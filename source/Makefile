@@ -2,17 +2,19 @@
 #Beware of using optmizations that lose accuracy - may give errors when running
 
 #Edit for CFITSIO directories
-cfitsio = /usr/local/Cluster-Users/cpac/cmb/2.1.0/cfitsio
-WMAP3 = /home/hvp20/code/wmap_likelihoodcode_v2p2p2
+cfitsio = /usr/local/cfitsio/intel10/64/3.040/lib
+#/usr/local/Cluster-Users/cpac/cmb/2.1.0/cfitsio
+
+WMAP = /home/aml1005/WMAP5/likelihood_v3
 
 IFLAG = -I
 INCLUDE=
 
 #Intel MPI (assuming mpif77 set to point to ifort)
 #change -lmkl_ia32 to -lmkl_p3 for MKL versions earlier than 6 (6 needed for ifc 8+) 
-#F90C     = mpif90
-#FFLAGS = -O2 -ip -W0 -WB -openmp -fpp -DMPI -vec_report0
-#LAPACKL = -L/opt/intel/mkl61/lib/32 -lmkl_lapack -lmkl_ia32 -lguide -lpthread
+F90C     = mpif90
+FFLAGS = -O2 -ip -W0 -WB -openmp -fpp -DMPI -vec_report0
+LAPACKL = -L/usr/local/intel/mkl/9.1/lib/em64t -lmkl_lapack -lmkl_em64t -lguide -lpthread
 
 #HPCF settings. Use Inteal 9 or 10.1, not 10.0
 #F90C     = mpif90
@@ -103,23 +105,25 @@ CLSFILE = CMB_Cls_simple.o
 #Can use params_H if you prefer more generic parameters
 PARAMETERIZATION = params_CMB.o
 
-WMAP3_inc = $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP3)
-WMAP3_lib = -L$(cfitsio)/lib -L$(WMAP3) -lcfitsio
+WMAP_inc = $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
+WMAP_lib = -L$(cfitsio)/lib -L$(WMAP) -lcfitsio
 
-CLSLIB  = $(WMAP3_lib) -L../camb -lcamb $(LAPACKL) 
+CLSLIB  = $(WMAP_lib) -L../camb -lcamb $(LAPACKL) 
 
-F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(WMAP3_inc) $(IFLAG)../camb $(INCLUDE)
+F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(WMAP_inc) $(IFLAG)../camb $(INCLUDE)
 
 DISTFILES = utils.o Matrix_utils.o settings.o GetDist.o
 
-WMAPOBJS = $(WMAP3)/read_archive_map.o \
-	$(WMAP3)/read_fits.o \
-	$(WMAP3)/WMAP_3yr_options.o \
-	$(WMAP3)/WMAP_3yr_util.o \
-	$(WMAP3)/WMAP_3yr_tt_pixlike.o \
-	$(WMAP3)/WMAP_3yr_tt_beam_and_ptsrc_corr.o \
-	$(WMAP3)/WMAP_3yr_teeebb_pixlike.o \
-	$(WMAP3)/WMAP_3yr_likelihood.o
+WMAPOBJS = $(WMAP)/read_archive_map.o \
+	$(WMAP)/read_fits.o \
+	$(WMAP)/WMAP_5yr_options.o \
+	$(WMAP)/WMAP_5yr_util.o \
+	$(WMAP)/WMAP_5yr_tt_pixlike.o \
+	$(WMAP)/WMAP_5yr_teeebb_pixlike.o \
+	$(WMAP)/WMAP_5yr_likelihood.o \
+	$(WMAP)/WMAP_5yr_gibbs.o \
+	$(WMAP)/WMAP_5yr_tt_beam_ptsrc_chisq.o \
+	$(WMAP)/br_mod_dist.o 
 
 OBJFILES= $(WMAPOBJS) utils.o Matrix_utils.o settings.o cmbtypes.o Planck_like.o \
 	cmbdata.o WeakLen.o mpk.o supernovae.o SDSSLy-a-v3.o\

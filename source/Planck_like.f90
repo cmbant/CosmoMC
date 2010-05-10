@@ -347,7 +347,7 @@ contains
   integer, intent(in) :: lmin
   real :: Cl(:,lmin:)
   character(LEN=1024) :: tmp
-  integer ix, i, j,i1,i2,l,ll
+  integer ix, i, j,i1,l,ll
   integer cols(6)
   real norm,tmp_ar(6)
   Type (TStringList) :: Li
@@ -446,7 +446,6 @@ contains
   Type(TIniFile) :: Ini 
   real, dimension(:,:), allocatable :: Cov
   character(LEN=*), intent(in) :: dataset_dir
-  character(LEN=256) cl_use
   integer ix, i
   character(LEN=Ini_max_string_len) :: S, S_order
   integer l,j
@@ -581,7 +580,7 @@ contains
 
     D%lowl_exact = Ini_Read_Logical_File(Ini,'lowl_exact')
     if (D%lowl_exact) then
-     if (num_cls==3) call MpiStop('CMBLikes current untests for only 3 C_l')
+     if (num_cls==3) call MpiStop('CMBLikes current untested for only 3 C_l')
      S = Ini_Read_String_File(Ini,'lowl_datafile')
      call StringReplace('%DATASETDIR%',dataset_dir,S)
      D%Lowl%lexact = Ini_Read_Int_File(Ini,'lowl_lexact')
@@ -708,9 +707,6 @@ contains
   integer l,  i, Ti,Ei,Bi
   logical :: quadratic
 
-  integer testix
-  real Amp
- 
   chisq =0
 
   if (D%highl_cl) then

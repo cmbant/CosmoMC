@@ -34,15 +34,13 @@ contains
 
 
  function GetMatrixTime()
-#ifdef __INTEL_COMPILER_BUILD_DATE      
-      USE IFPORT
-#else      
-      external etime
-      real etime
-#endif
-      real tarray(2), GetMatrixTime
+      real GetMatrixTime
+      real atime
+       
+      call cpu_time(atime)
 
-      GetMatrixTime = etime(tarray)
+      GetMatrixTime = atime  
+       
 
  end function GetMatrixTime
 
@@ -155,7 +153,6 @@ contains
    character(LEN=*), intent(in) :: aname
    real(dm), intent(in) :: vec(:)
    integer i,   file_unit 
-   character(LEN=50) fmt
  
    file_unit = new_file_unit()
    call CreateTxtFile(aname, file_unit)
@@ -336,7 +333,6 @@ contains
       real(dm), intent(out) :: diag(n)
       integer ierr, tmpsize ,isize
       real(dm), allocatable, dimension(:) :: tmp
-      real start
       integer, allocatable,dimension(:):: iwork
       
       call Matrix_Start('Diagonalize')
@@ -498,7 +494,6 @@ contains
       integer ierr, tmpsize ,isize, rworksize
       real(dm), allocatable, dimension(:) :: Rwork
       complex(dm), allocatable, dimension(:) :: tmp
-      real start
       integer, allocatable,dimension(:):: iwork
       
       call Matrix_Start('CDiagonalize')
@@ -591,7 +586,7 @@ contains
      complex(dm), intent(in) :: Mat(:,:),U(:,:)
      complex(dm) Out(:,:) 
      complex(dm), dimension(:,:), allocatable :: C
-     integer i,j,n
+     integer n
      logical, intent(in), optional :: triangular
      logical :: triang
 
@@ -650,7 +645,7 @@ contains
      real(dm), dimension(:,:), allocatable :: C
      logical, intent(in), optional :: triangular
      logical triang
-     integer i,j,n
+     integer n
 
       call Matrix_Start('RotateSymm')
       
@@ -908,7 +903,7 @@ contains
    real(dm), intent(inout) :: Mat(:,:)
    real(dm), intent(in) :: L(:,:) 
    character(LEN=*), intent(in) :: side
-   integer m,n,k
+   integer m,n
 
      call Matrix_Start('Matrix_MultTri')
     
@@ -1747,7 +1742,6 @@ contains
    complex(dm), intent(inout) :: Mat(m,n)
    complex(dm), intent(out),optional :: VT(n,n)
    real(dm), intent(out) :: D(*)
-   complex(dm) tmp(1)
    integer WorkSize, ierr
    integer,allocatable, dimension (:) :: IWork
    complex(dm), allocatable, dimension (:) :: rv1 
@@ -1877,7 +1871,7 @@ contains
      integer IPIV(size(a)),info
      real(dm), dimension(:,:), allocatable :: tmp
      real(dm), dimension(:), allocatable :: work
-     integer i, n, WorkSize
+     integer n, WorkSize
 
      n=Size(M,DIM=1)
      if (n<=1) return
@@ -2167,11 +2161,14 @@ contains
     integer, intent(in) :: nmat
     Type(TMatrixType), target :: Arr(*)
     Type(TMatrixType), pointer :: AM
-    Type(TMatrixType), target :: tmp
     integer n
-    integer i,j, MpiID, MpiSize, sid
-    integer sz, ierr
-     
+    integer i,MpiID, MpiSize
+    integer sz
+#ifdef MPI        
+    integer j, ierr, sid
+    Type(TMatrixType), target :: tmp
+#endif     
+
     call MpiStat(MpiID, MpiSize)
     if (MpiId==0) then
      n=nmat

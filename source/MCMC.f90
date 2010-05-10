@@ -379,7 +379,7 @@ contains
 
 
  subroutine WL_UpdateWeights
-  integer i,j,k, n
+  integer i,n
   real amin,asum,L
 
    if (WL_F > WL_min) then

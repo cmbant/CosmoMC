@@ -33,6 +33,8 @@ implicit none
 
  !Note all units are in k/h here
  
+  integer, parameter :: mpk_d = kind(1.d0)
+ 
   logical :: use_mpk = .false.
   
 contains 
@@ -168,7 +170,7 @@ contains
    real, dimension(:), allocatable :: w
    real, dimension(:), allocatable :: mpk_WPth, mpk_WPth_k2
    real :: covdat(mset%num_mpk_points_use), covth(mset%num_mpk_points_use),  covth_k2(mset%num_mpk_points_use)
-   real :: normV, Ag, Q, minchisq
+   real :: normV, Q, minchisq
    real :: a_scl  !LV_06 added for LRGDR4
    integer :: i, iQ
    logical :: do_marge
@@ -356,8 +358,8 @@ subroutine compute_scaling_factor(Ok,Ol,w,a)
   !     accurate to within about 0.1% for 0.2<Om<0.3.
   ! * a_radial = 1/H(z) relative to its value for flat Om=0.25 model
   implicit none
-  real*8 Or, Om, Ok, Ol, w, Ok0, Om0, Ol0, w0, z, eta, eta0, Hrelinv, Hrelinv0, tmp
-  real*8 a_radial, a_angular
+  real(mpk_d) Or, Om, Ok, Ol, w, Ok0, Om0, Ol0, w0, z, eta, eta0, Hrelinv, Hrelinv0, tmp
+  real(mpk_d) a_radial, a_angular
   real a
   !Or= 0.0000415996*(T_0/2.726)**4 / h**2
   Or= 0! Radiation density totally negligible at  z < 0.35
@@ -385,7 +387,7 @@ end subroutine compute_scaling_factor
 
 subroutine eta_demo
   implicit none
-  real*8 Or, Ok, Ol, w, h, z, eta
+  real(mpk_d) Or, Ok, Ol, w, h, z, eta
   h  = 0.7
   Ok = 0
   Ol = 0.7
@@ -408,7 +410,7 @@ logical function nobigbang2(Ok,Ol,w)
   !                                     or if w = 0 & Omega_l < 1       
   ! g(1) = Omega_m + Omega_k + Omega_l = 1 > 0
   implicit none
-  real*8 Ok, Ol, w, Om, tmp, a, epsilon
+  real(mpk_d) Ok, Ol, w, Om, tmp, a, epsilon
   integer failure
   failure = 0
   epsilon = 0
@@ -431,11 +433,11 @@ logical function nobigbang2(Ok,Ol,w)
 end function nobigbang2
 !END INTERFACE
 
-real*8 function eta_integrand(a)
+real(mpk_d) function eta_integrand(a)
   implicit none
-  real*8 Or, Ok, Ox, w
+  real(mpk_d) Or, Ok, Ox, w
   common/eta/Or, Ok, Ox, w
-  real*8 a, Om
+  real(mpk_d) a, Om
   ! eta = int (H0/H)dz = int (H0/H)(1+z)dln(1+z) = int (H0/H)/a dlna = int (H0/H)/a^2 da = 
   ! Integrand = (H0/H)/a^2
   ! (H/H0)**2 = Ox*a**(-3*(1+w)) + Ok/a**2 + Om/a**3 + Or/a**4 
@@ -453,9 +455,9 @@ subroutine eta_z_integral(Omega_r,Omega_k,Omega_x,w_eos,z,eta)
   ! of the curvature Omega_k, the dark energy density Omega_x
   ! and its equation of state w.
   implicit none
-  real*8 Or, Ok, Ox, w
+  real(mpk_d) Or, Ok, Ox, w
   common/eta/Or, Ok, Ox, w
-  real*8 Omega_r, Omega_k,Omega_x,w_eos, z, eta, epsabs, epsrel, amin, amax!, eta_integrand
+  real(mpk_d) Omega_r, Omega_k,Omega_x,w_eos, z, eta, epsabs, epsrel, amin, amax!, eta_integrand
   Or = Omega_r
   Ok = Omega_k
   Ox = Omega_x
@@ -471,7 +473,7 @@ end subroutine eta_z_integral
 subroutine compute_z_eta(Or,Ok,Ox,w,z,eta)
   ! Computes the conformal distance eta(z)
   implicit none
-  real*8 Or, Ok, Ox, w, z, eta, Ht0
+  real(mpk_d) Or, Ok, Ox, w, z, eta
 !  logical nobigbang2
   if (nobigbang2(Ok,Ox,w)) then
      print *,'No big bang, so eta undefined if z>zmax.'
@@ -494,12 +496,12 @@ SUBROUTINE qromb2(func,a,b,epsabs,epsrel,ss)
 ! when the integrand was near zero.
 ! epsabs = epsrel = 1e-6 are canonical choices.
   INTEGER JMAX,JMAXP,K,KM
-  REAL*8 a,b,func,ss,epsabs,epsrel
+  real(mpk_d) a,b,func,ss,epsabs,epsrel
   EXTERNAL func
   PARAMETER (JMAX=20, JMAXP=JMAX+1, K=5, KM=K-1)
                                 !    USES polint,trapzd
   INTEGER j
-  REAL*8 dss,h(JMAXP),s(JMAXP)
+  real(mpk_d) dss,h(JMAXP),s(JMAXP)
   h(1)=1.d0
   do j=1,JMAX
      call trapzd(func,a,b,s(j),j)
@@ -518,10 +520,10 @@ END SUBROUTINE qromb2
   
 SUBROUTINE polint(xa,ya,n,x,y,dy) ! From Numerical Recipes
   INTEGER n,NMAX
-  REAL*8 dy,x,y,xa(n),ya(n)
+  real(mpk_d) dy,x,y,xa(n),ya(n)
   PARAMETER (NMAX=10)
   INTEGER i,m,ns
-  REAL*8 den,dif,dift,ho,hp,w,c(NMAX),d(NMAX)
+  real(mpk_d) den,dif,dift,ho,hp,w,c(NMAX),d(NMAX)
   ns=1
   dif=abs(x-xa(1))
   do  i=1,n
@@ -562,10 +564,10 @@ END SUBROUTINE polint
       
 SUBROUTINE trapzd(func,a,b,s,n) ! From Numerical Recipes
   INTEGER n
-  REAL*8 a,b,s,func
+  real(mpk_d) a,b,s,func
   EXTERNAL func
   INTEGER it,j
-  REAL*8 del,sum,tnm,x
+  real(mpk_d) del,sum,tnm,x
   if (n.eq.1) then
      s=0.5*(b-a)*(func(a)+func(b))
   else

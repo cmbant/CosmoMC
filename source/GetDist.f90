@@ -1551,7 +1551,7 @@ program GetDist
 
     plot_data_dir = Ini_Read_String( 'plot_data_dir' )
     if ( plot_data_dir == '' ) then
-	plot_data_dir = 'plot_data/'
+    plot_data_dir = 'plot_data/'
     end if
 
     plot_data_dir = CheckTrailingSlash(plot_data_dir)

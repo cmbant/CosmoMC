@@ -142,7 +142,6 @@
      use settings
      use cmbtypes
      use CMB_Cls
-!SZ  use WMAP_OPTIONS
 
      implicit none
      real Params(num_params)
@@ -154,8 +153,6 @@
      integer error
      real  D_b,D_t,D_try,try_b,try_t, CMBToTheta, lasttry,tau
      external TauToZre,CMBToTheta
-
-!SZ   SZ_amp= Params(13)
 
      if (all(Params(1:num_hard) == Lastparams(1:num_hard))) then
        call SetForH(Params,CMB,LastH0)

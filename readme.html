@@ -1,4 +1,3 @@
-<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
 <html>
 <head>
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
@@ -9,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>This version February 2008</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>This version March 2008</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -72,26 +71,26 @@ Please e-mail details of any bugs or enhancements to <a href="http://cosmologist
 <li>
 Get the <a href="http://cosmologist.info/cosmomc/submit.html">download</a>
 and unzip and untar it (run "gunzip cosmomc.tar.gz", then "tar -xf cosmomc.tar")</li>
-<LI>To use WMAP3 you also need <A HREF="http://heasarc.gsfc.nasa.gov/docs/software/fitsio/fitsio.html">CFITSIO</A> installed
-<LI>For WMAP 3-year (obviously skip the first two steps below if already installed somewhere)
+<LI>To use WMAP5 you also need <A HREF="http://heasarc.gsfc.nasa.gov/docs/software/fitsio/fitsio.html">CFITSIO</A> installed
+<LI>For WMAP 5-year (obviously skip the first two steps below if already installed somewhere)
 <UL>
-<LI>Download the WMAP likelihood code and data from <A HREF="http://lambda.gsfc.nasa.gov/product/map/current/likelihood_get.cfm">here</A> (get wmap_likelihoodcode_v2p2p1.tar.gz or later).
-<LI>Extract to some separate directory
-<LI>Edit WMAP_3yr_options.f90 to hard code the full path instead of ./data/
-<LI>Make and run the test program supplied
+<LI>Download the WMAP likelihood code and data from <A HREF="http://lambda.gsfc.nasa.gov/product/map/current/likelihood_get.cfm">here</A> <LI>Extract to some separate directory
+<LI>Edit WMAP_5yr_options.F90 to hard code the full path instead of data/
+<LI>Make and run the test program supplied<BR>
+If you get seg faults see this <A HREF="http://cosmocoffee.info/viewtopic.php?t=1074">CosmoCoffee</A> topic
 </UL>
 <LI>Uncomment the relevant top parts of the Makefile in the camb directory depending on what system you are using, and whether or not you want to use OpenMP.
 <li>
 Run "make all" in the camb subdirectory</li>
 
-<LI>In cosmomc's source subdirectory edit the Makefile for your cfitsio and WMAP3 directories, and fortran compiler. Uncomment the relevant parts of the Makefile depending on what system you are using and whether or not you want to use MPI and/or OpenMP.
+<LI>In cosmomc's source subdirectory edit the Makefile for your cfitsio and WMAP directories, and fortran compiler. Uncomment the relevant parts of the Makefile depending on what system you are using and whether or not you want to use MPI and/or OpenMP. 
 <blockquote><FONT SIZE=2>Using MPI simplifies running several chains and proposal optimization. MPI can be used with OpenMP: generally you want to use OpenMP to use all the shared-memory processors on each node of a cluster, and MPI to run multiple chains on different nodes (the program can also just be run on a single CPU). 
 </FONT></blockquote>
 
 <li>
 Run "make all" in the source subdirectory (try "gmake all" if you get an error)</li>
 </ul>
-If you don't want to use WMA3 you can use Makefile_nowmap, then no need to link to cfitsio or the WMAP likelihood.
+If you don't want to use WMAP you can use Makefile_nowmap, then no need to link to cfitsio or the WMAP likelihood.
 <P>
 
 You will need a Fortran 90 (or higher) compiler - you can get free <A HREF="http://www.intel.com/software/products/compilers/downloads/forlin.htm" TARGET="_blank">Intel Linux</A>, <A HREF="http://g95.sourceforge.net/">G95</A> or <A HREF="http://gcc.gnu.org/wiki/GFortran">GFortran</A> compilers. Please let me know if you find compiler bugs and have specific fixes.
@@ -376,8 +375,8 @@ Performance of the MCMC can be improved by using parameters which have a close t
 <LI><B>n_t</B> - the tensor spectral index
 <LI><B>n_run</B> - the running of the scalar spectral index
 <LI><B>ln[10^10 A_s]</B> - A_s is the primordial superhorizon power in the curvature perturbation on 0.05Mpc^{-1} scales (i.e. in this is an amplitude parameter)
-<LI><B>amp_ratio</B> - the ration A_t/A_s, where A_t is the primordial power in the transverse traceless part of the metric tensor
-<LI>is an unused fast parameter
+<LI><B>amp_ratio</B> - the ratio A_t/A_s, where A_t is the primordial power in the transverse traceless part of the metric tensor
+<LI><B>A_SZ</B> SZ template normalization (assumed to be independent of other parameters)
 </OL>
 <P>
 Parameters like H_0 and Omega_lambda are derived from the above. Using theta rather than H_0 is more efficient as it is much less correlated with other parameters. There is an implit prior 40 < H_0 < 100. The .txt chain files list derived parameters after the 13 base parameters. By default these are &Omega;<sub>&Lambda;</sub> (14), Age/Gyr (15), &Omega;<sub>m</sub> (16), &sigma;<sub>8</sub> (17), z<sub>re</sub> (18), r<sub>10</sub> (19) and H<sub>0</sub> (20). r<sub>10</sub> is the ratio of the tensor to scalar C<sub>l</sub> at l=10.
@@ -500,9 +499,11 @@ weighting function or parameter mapping.</ul>
 </UL>
 <A NAME="Version"><h2>Version History</h2></A>
 <UL>
+<LI><B>March 2008</B><BR>
+Uses WMAP 5-year likelihood code. Added <B>cmb_dataset_SZ</B>x and <B>cmb_dataset_SZ_scale</B>x parameters to specify (parameter independent) SZ template for each CMB dataset (WMAP_SZ_VBand.dat included from <A HREF="http://lambda.gsfc.nasa.gov/product/map/dr2/pow_sz_spec_get.cfm">LAMBDA</A>). Parameter 13 is now A<sub>SZ</sub> - the scaling of all the SZ templates, as used in WMAP3/WMAP5 papers. Updated supplied covariance params_CMB.covmat for WMAP5. Minor compatibility changes.
 
-<LI><B>Feb 2008</B><BR>
-Added generic_mcmc in settings.f90 to easily use CosmoMC as generic sampling program without calling CAMB etc (write GenericLikelihoodFunction in calclike.f90 and use Makefile_nowmap). Added latest ACBAR dataset. CAMB update (including RECFAST 1.4). New Planck_like.f90 module for C<sub>l</sub> likelihoods using approximation of <A HREF="http://arxiv.org/abs/0801.0554">arXiv:0801.0554</A> (also basic low-l likelihood). Various minor changes/compatibility fixes.
+<LI><B>February 2008</B><BR>
+Added generic_mcmc in settings.f90 to easily use CosmoMC as generic sampling program without calling CAMB etc (write GenericLikelihoodFunction in calclike.f90 and use Makefile_nowmap). Added latest ACBAR dataset. CAMB update (including RECFAST 1.4). New Planck_like.f90 module for C<sub>l</sub> likelihoods using approximation of <A HREF="http://arxiv.org/abs/0801.0554">arXiv:0801.0554</A> (also basic low-l likelihood). Added <b>marker</b>x GetDist parameters for adding vertical lines to parameter x in 1D matlab plots. Various minor changes/compatibility fixes.
 
 <LI><B>November 2006</B><BR>
 
@@ -581,13 +582,6 @@ These are values for the best-fit sample, and projections of the n-Dimensional c
 <LI><B>I'm writing a paper "constraints on X". How do I add X to cosmomc?</B><BR>
 Often the easiest thing to do is to re-interpret one of the unused standard parameters, e.g. w, A_T, etc, depending on whether the parameter is "fast" or not (if in doubt, use one of the slow parameters like w or f_nu). You just need to change the CMBToCAMB routine in CMB_Cls_Simple.f90 so that your parameter is correctly fed into CAMB, change limits appropriately in the params.ini file, etc. See the undocumented references to w_is_w in the code for how w can be re-interpreted as a ratio of isocurvature to adiabatic in CAMB's initial conditions. If you need to add more than a couple of parameters you'll probably instead need to edit settings.f90 to increase the number of parameters, and edit the .ini file accordingly. Slow parameters should have numbers lower than fast parameters (i.e. to insert 5 slow parameters, the index of the fast parameters in the .ini file should increase by 5).
 <BR>&nbsp;
-<LI><B>How do I submit cosmomc jobs to the LSF Cambridge COSMOS supercomputer
-queues?</B><BR>
-The data files are already on cosmos, so just download the code from LAMBDA and then use 'ln -s /home/cosmos-tmp/WMAP data' to make the link from the WMAP/data directory to the existing files. To run use the runCosmomc script that should be installed on your path: type just 'runCosmomc' for command options. Use 'module load cosmolib' and linking options are
-<PRE>
-cfitsio = /home/cosmos/share-ia64
-WMAP3 = /home/cosmos/ccc-cam/aml1005/WMAP3
-</PRE>
 <LI><B>Why do some chains sometimes appear to get stuck?</B><BR>
 Usually this is because the starting position for the chain is a long way from the best fit region. Since the marginal distributions of e.q. A_s are rather narrow, it can take a while for chains to move from into an acceptable region of A_s exp(-2&tau;). The cure is to check your starting parameter values and start widths (make sure the widths are not too wide), or to use a sampling method that is more robust (e.g. use <B>sampling_method</B> = 4). If you are patient, stuck chains should eventually find a sensible region of parameter space anyway. Occasionally the staring position may be in a corner of parameter space so that prior ranges prevent any resonable proposed moves. In this case check your starting values and ranges, or just try re-starting the chain (a different random starting position will possibly be OK).
 <BR>&nbsp;

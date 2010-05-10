@@ -23,7 +23,8 @@ program SolveCosmology
         logical bad, est_bfp_before_covmat
         integer numsets, nummpksets, i, numtoget, action
         character(LEN=Ini_max_string_len) baseroot, filename(100), &
-         mpk_filename(100), numstr, fname
+         mpk_filename(100),  SZTemplate(100), numstr, fname
+        real SZscale(100)
         Type(ParamSet) Params, EstParams
         integer num_points
         integer status          
@@ -228,6 +229,17 @@ program SolveCosmology
          filename(i) = Ini_Read_String(numcat('cmb_dataset',i)) 
          !Need to close this ini file before reading in from another
         end do
+
+        Ini_fail_on_not_found = .false.
+
+        do i= 1, numsets
+         SZTemplate(i) = Ini_Read_String(numcat('cmb_dataset_SZ',i)) 
+         if (SZTemplate(i)/='') then
+          SZScale(i) = Ini_read_Real(numcat('cmb_dataset_SZ_scale',i),1.0)
+         end if 
+        end do
+
+        Ini_fail_on_not_found = .true.
         
         nummpksets = Ini_Read_Int('mpk_numdatasets',0)
         do i= 1, nummpksets
@@ -243,9 +255,9 @@ program SolveCosmology
         num_points = 0
         if (Use_CMB) then
          do i= 1, numsets
-        
           call ReadDataset(filename(i))
           num_points = num_points + datasets(i)%num_points
+          if (SZTemplate(i)/='') call ReadSZTemplate(datasets(i), SZTemplate(i),SZScale(i))
          end do
          if (Feedback > 1) write (*,*) 'read datasets'
         end if

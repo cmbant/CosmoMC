@@ -26,11 +26,12 @@
 
 !This version August 2006
 !Mar 04: added first_band parameter to .dataset files, added format for doing exact likelihoods
-!Jul 05: Readdataset_bcp .newdat changes for BOOM/CBI data, allowing for band cuts
+!Jul 05: Readdataset_bcp changes for BOOM/CBI data, allowing for band cuts
 !Mar 06: changed to WMAP 3-year likelihood
 !Aug 06: added cal**2 scaling of x-factors
 !Oct 06: edited ReadAllExact to auto-account for number of cls (e.g. missing BB)
 !Oct 07: added Planck-like CMBLikes format
+!March 08: switched to support WMAP5
 module cmbdata
 use settings
 use cmbtypes
@@ -56,6 +57,7 @@ implicit none
   Type CMBdataset
     logical :: use_set
     logical :: has_pol, windows_are_bandpowers,windows_are_normalized
+    logical :: has_sz_template
     real :: calib_uncertainty
     logical :: beam_uncertain, has_corr_errors, has_xfactors
     integer :: num_points, file_points
@@ -69,6 +71,7 @@ implicit none
     integer :: all_l_lmax
     real, pointer, dimension(:,:) :: all_l_obs, all_l_noise
     real, pointer, dimension(:) :: all_l_fsky
+    real, pointer, dimension(:) :: sz_template
     Type (TCMBLikes), pointer :: CMBLikes
   end Type CMBdataset
 
@@ -319,6 +322,8 @@ contains
    num_datasets = num_datasets + 1
    if (num_datasets > 10) stop 'too many datasets'
 
+   aset%has_sz_template = .false.
+
 !Special cases
    if (aname == 'MAP' .or. aname == 'WMAP') then 
      aset%name = 'WMAP'
@@ -463,6 +468,27 @@ contains
    datasets(num_datasets) = aset
 
  end subroutine ReadDataset
+
+ subroutine ReadSZTemplate(aset, aname, ascale)
+    Type (CMBdataset) :: aset
+    real, intent(in) :: ascale
+    character(LEN=*), intent(IN) :: aname
+    integer l
+    real sz
+    
+     allocate(aset%sz_template(2:lmax))
+     aset%sz_template = 0
+     aset%has_sz_template = .true.
+     
+     call OpenTxtFile(aname, 50)
+     do
+       read(50,*,end=2) l, sz
+       if (l>=2 .and. l<=lmax) aset%sz_template(l) = ascale * sz/(l*(l+1)/twopi)
+     end do
+     
+2    close(50)
+   
+ end subroutine ReadSZTemplate
 
  function GetWinBandPower(AP, cl)
    real  GetWinBandPower
@@ -876,16 +902,22 @@ contains
  
  end function CalcLnLike
 
- function CMBLnLike(cl)
-  real cl(lmax,num_cls), CMBLnLike
+ function CMBLnLike(cl, sznorm)
+  real, intent(in) ::  cl(lmax,num_cls), sznorm
+  real CMBLnLike
+  real szcl(lmax,num_cls)
   integer i
   real tot(num_datasets)
  
- do i=1, num_datasets
+  do i=1, num_datasets
+     szcl = cl
+     if (datasets(i)%has_sz_template) then
+      szcl(2:lmax,1) = szcl(2:lmax,1) + sznorm*datasets(i)%sz_template(2:lmax)  
+     end if
      if (datasets(i)%name == 'WMAP') then
-      tot(i) = MAPLnLike(cl)
+      tot(i) = MAPLnLike(szcl)
      else
-      tot(i) = CalcLnLike(cl,datasets(i))
+      tot(i) = CalcLnLike(szcl,datasets(i))
      end if
   end do
   CMBLnLike = SUM(tot) 
@@ -894,7 +926,7 @@ contains
 
  function MAPLnLike(cl)
 #ifndef NOWMAP
-  use WMAP_PASS2
+  use wmap_likelihood_5yr
   use WMAP_OPTIONS
   use WMAP_UTIL
 #endif
@@ -907,7 +939,7 @@ contains
 
   if (Init_MAP) then
    if (lmax<ttmax) stop 'lmax not large enough for WMAP'
-   if (Feedback>0) write(*,*) 'reading WMAP3 data'
+   if (Feedback>0) write(*,*) 'reading WMAP5 data'
    Init_MAP = .false.
   end if
 
@@ -924,7 +956,7 @@ contains
   end do
 
   like=0.0d0
-  call PASS2_COMPUTE_LIKELIHOOD(cl_tt,cl_te,cl_ee,cl_bb,like)
+  call wmap_likelihood_compute(cl_tt,cl_te,cl_ee,cl_bb,like)
   !call wmap_likelihood_error_report
   
   if (wmap_likelihood_ok) then
@@ -933,7 +965,7 @@ contains
      MAPLnLike = LogZero
   endif
 #else
-   MAPLnLike=0
+   MAPLnLike=cl(2,1) !just stop unused symbol warnings
    stop 'Compiled without WMAP'
 #endif
  end function

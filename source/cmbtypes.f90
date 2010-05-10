@@ -34,7 +34,7 @@ implicit none
   integer :: num_clsS=min(num_cls,3) 
 
 
-  integer, parameter :: norm_As=1, norm_amp_ratio=2
+  integer, parameter :: norm_As=1, norm_amp_ratio=2, norm_SZ = 3
   
   Type CMBParams
      real norm(1:num_norm)
@@ -298,7 +298,8 @@ contains
      if (num_cls>3 .and. num_ClsS==3) Cls(2:lmax,num_cls)=0
 
      if (CMB%norm(norm_amp_ratio) /= 0) then
-        Cls(2:lmax_tensor,:) =  Cls(2:lmax_tensor,:)+ T%cl_tensor(2:lmax_tensor,:) !CMB%norm(norm_As)*CMB%norm(norm_amp_ratio)*T%cl_tensor(2:lmax_tensor,:)
+        Cls(2:lmax_tensor,:) =  Cls(2:lmax_tensor,:)+ T%cl_tensor(2:lmax_tensor,:) 
+         !CMB%norm(norm_As)*CMB%norm(norm_amp_ratio)*T%cl_tensor(2:lmax_tensor,:)
      end if 
 
    end subroutine ClsFromTheoryData

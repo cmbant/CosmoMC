@@ -2167,7 +2167,11 @@ subroutine CreateOpenTxtFile(aname, aunit, append)
       return 
 #else
    call MpiStop('must compile with -DTHREEJ to use 3j routine')
+
+!Just prevent unused variable warnings:
+   thrcof(1)=l2in+l3in+m2in+m3in
 #endif
+
 
     end subroutine GetThreeJs
 

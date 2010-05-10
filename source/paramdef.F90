@@ -66,7 +66,7 @@ module ParamDef
  real    :: MPI_R_StopProposeUpdate = 0.
 
  logical    :: MPI_StartSliceSampling = .false.
- 
+
  double precision    :: MPI_StartTime
 
  real, private, allocatable, dimension(:,:) :: MPICovmat
@@ -92,9 +92,7 @@ subroutine DoStop(S)
 #endif
 
 #ifdef DECONLY
-
        pause
-
 #endif
        stop
 end subroutine DoStop
@@ -103,25 +101,18 @@ end subroutine DoStop
 subroutine DoAbort(S)
 
  character(LEN=*), intent(in), optional :: S
-
- integer ierror
-
-        if (present(S)) write (*,*) trim(S)
-
 #ifdef MPI 
-
+ integer ierror
+#endif
+        if (present(S)) write (*,*) trim(S)
+#ifdef MPI 
         call MPI_Abort(MPI_COMM_WORLD,ierror,ierror)
-
 #endif
 
 #ifdef DECONLY
-
        pause
-
 #endif
-
        stop
-
 end subroutine DoAbort
 
 subroutine Initialize(Params)
@@ -131,7 +122,7 @@ subroutine Initialize(Params)
         type (ParamSet) Params
         integer i
         character(LEN=5000) fname,InLine
-        character(LEN=120) prop_mat, numstr
+        character(LEN=120) prop_mat
         real center, wid, mult, like
 
         output_lines = 0
@@ -172,7 +163,7 @@ subroutine Initialize(Params)
                 num_fast = num_fast + 1
               else
                 num_slow = num_slow +1
-	          end if
+              end if
            end if
            if (new_chains) then
            do

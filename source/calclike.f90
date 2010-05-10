@@ -33,7 +33,7 @@ contains
    !set generic_mcmc=.true. in settings.f90, then write function here returning -Ln(Likelihood)
    !Parameter array is Params%P
     
-    GenericLikelihoodFunction = LogZero
+    GenericLikelihoodFunction = LogZero 
     stop 'GenericLikelihoodFunction: need to write this function!'
 
   end function GenericLikelihoodFunction
@@ -118,7 +118,7 @@ contains
          if (error /= 0) then
           GetLogLikePost = logZero 
          else
-          if (Use_CMB) GetLogLikePost = CMBLnLike(acl) + GetLogLikePost
+          if (Use_CMB) GetLogLikePost = CMBLnLike(acl, CMB%norm(norm_SZ)) + GetLogLikePost
           if (Use_mpk) GetLogLikePost = GetLogLikePost + LSSLnLike(CMB, Info%theory)
           if (Use_WeakLen) GetLogLikePost = GetLogLikePost + WeakLenLnLike(CMB, Info%theory)     
           if (Use_Lya) GetLogLikePost = GetLogLikePost +  LSS_Lyalike(CMB, Info%Theory)

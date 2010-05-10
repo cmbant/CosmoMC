@@ -21,7 +21,6 @@ contains
   real     MaxLike,CurLike,delta(num_params_used)
   integer  i,its,exitstatus,v
   real, parameter :: eps=1.E-10,tiny=1.E-5
-  real gg,dgg,gam,funprev,df1,moddfun
   integer ii
 
   MaxLike = LogZero
@@ -123,10 +122,10 @@ contains
   Type(ParamSet) OtherParams
   real vect(num_params_used)
   real df(num_params_used)
-  integer  i,j
-  real     delta(num_params_used),funcvect,tmp
+  integer  i
+  real     delta(num_params_used),funcvect
   real  dfplus,dfminus
-  real a, b, c, bb, xhat
+  real b, c, bb, xhat
 !  external ffn
 
 ! find the gradient numerically
@@ -178,8 +177,8 @@ contains
 
   Type(ParamSet) OtherParams
   real vect(num_params_used),vectplus(num_params_used),vectminus(num_params_used)
-  integer  i,j
-  real     funcvect,delta(num_params_used),funcvectplus,funcvectminus,tmp
+  integer  i
+  real     funcvect,delta(num_params_used),funcvectplus,funcvectminus
   real  dfplus,dfminus
  
 
@@ -304,7 +303,7 @@ contains
       integer  i,its,exitstatus,v
       real     eps,tiny
       parameter (eps=1.E-10,tiny=1.E-5)
-      real gg,dgg,dgg_pr,dgg_fr,gam,gam_pr,gam_fr,funprev,df1,moddfun
+      real gg, dgg_pr,dgg_fr,gam,gam_pr,gam_fr,funprev,df1,moddfun
 !      real ffn
 !      external ffn
 
@@ -364,7 +363,7 @@ contains
 
 !c        if(2.*abs(fun-funprev).le.ftol*(abs(fun)+abs(funprev)+eps)) then
         if(abs(fun-funprev).le.ftol) then
-          write(*,'(a,f10.8,a,i6,a)')   &
+          write(*,'(a,f12.8,a,i6,a)')   &
        ' Change in F is less than ',ftol,' after ',  &
         its,' iterations'
           if(v>1) write(*,*) 'The modulus of the gradient is ',moddfun
