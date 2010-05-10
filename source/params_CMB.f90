@@ -204,11 +204,15 @@
     use ParamNames
     Type(TParamNames) :: Names
  
-    if (generic_mcmc) then
-     Names%nnames=0
-     if (Feedback>0) write (*,*) 'edit SetParamNames in params_CMB.f90 if you want to use named params'
+    if (ParamNamesFile /='') then
+      call ParamNames_init(Names, ParamNamesFile)
     else
-     call ParamNames_init(Names, './params_CMB.paramnames')
+     if (generic_mcmc) then
+      Names%nnames=0
+      if (Feedback>0) write (*,*) 'edit SetParamNames in params_CMB.f90 if you want to use named params'
+     else
+       call ParamNames_init(Names, './params_CMB.paramnames')
+    end if
     end if
    end subroutine SetParamNames
 

@@ -6,7 +6,7 @@ EXTDATA =
 #EXTDATA = LRG
 
 #set WMAP empty not to compile with WMAP
-WMAP = /home/aml1005/WMAP5/likelihood_v3
+WMAP = /home/aml1005/WMAP7/likelihood_v4
 
 #Only needed for WMAP
 cfitsio = /usr/local/cfitsio/intel10/64/3.040
@@ -38,7 +38,7 @@ F90C = ifort
 FFLAGS = -openmp -O3 -w -fpp2 -DMPI
 LAPACKL = -mkl=sequential -lmkl_lapack -lmpi
 cfitsio = $(CFITSIO)
-WMAP = $(COSMOLIB)/WMAP
+WMAP = $(COSMOLIB)/WMAP7
 GSLPATH = $(GSL_ROOT)
 endif
 
@@ -141,15 +141,17 @@ endif
 ifneq ($(WMAP),)
 F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
 LINKFLAGS +=  -L$(cfitsio)/lib -L$(WMAP) -lcfitsio
+
 OBJFILES += $(WMAP)/read_archive_map.o \
 	$(WMAP)/read_fits.o \
-	$(WMAP)/WMAP_5yr_options.o \
-	$(WMAP)/WMAP_5yr_util.o \
-	$(WMAP)/WMAP_5yr_tt_pixlike.o \
-	$(WMAP)/WMAP_5yr_teeebb_pixlike.o \
-	$(WMAP)/WMAP_5yr_likelihood.o \
-	$(WMAP)/WMAP_5yr_gibbs.o \
-	$(WMAP)/WMAP_5yr_tt_beam_ptsrc_chisq.o \
+	$(WMAP)/healpix_types.o \
+	$(WMAP)/WMAP_7yr_options.o \
+	$(WMAP)/WMAP_7yr_util.o \
+	$(WMAP)/WMAP_7yr_tt_pixlike.o \
+	$(WMAP)/WMAP_7yr_teeebb_pixlike.o \
+	$(WMAP)/WMAP_7yr_likelihood.o \
+	$(WMAP)/WMAP_7yr_gibbs.o \
+	$(WMAP)/WMAP_7yr_tt_beam_ptsrc_chisq.o \
 	$(WMAP)/br_mod_dist.o 
 else
 F90FLAGS += -DNOWMAP

@@ -31,15 +31,17 @@
 !Aug 06: added cal**2 scaling of x-factors
 !Oct 06: edited ReadAllExact to auto-account for number of cls (e.g. missing BB)
 !Oct 07: added Planck-like CMBLikes format
-!March 08: switched to support WMAP5
 !Sept 09: modified ReadDataset_bcp for QUaD, allowing beam errors to be explicitly provided for each band
 !         CMBLnLike passes array of parameters for frequency-dependent part of signal
 !Oct 27 Oct 09: fixed bugs using .newdat files
+!Jan 10: switched to support WMAP7
+
 module cmbdata
 use settings
 use cmbtypes
 use MatrixUtils
 use CMBLikes
+use constants
 implicit none
 
  
@@ -251,9 +253,10 @@ contains
    chisq=0
    
    do l=2, 30 
-     dof = aset%all_l_fsky(l)**2*(2*l+1)
+     dof = aset%all_l_fsky(l)*(2*l+1)
        !Ignoring l correlations but using f_sky^2_eff fudge factor may be a good approx
        !for nearly full sky observations
+       !switched to just fsky**1 default Nov 09 since usually more useful
      CT = cl(l,1) + aset%all_l_noise(l,1)
      if (aset%has_pol) then
       CE = cl(l,3) + aset%all_l_noise(l,2)
@@ -613,7 +616,8 @@ contains
   ! correlation-matrix (ignored)
   ! }  
   ! covariance matrix
-
+   use constants
+ 
    CHARACTER(LEN=*), INTENT(IN) :: aname
    TYPE (CMBdataset) :: aset
 
@@ -800,7 +804,7 @@ contains
    !in units of T_CMB whitle bandpowers are in units
    !of \microK^2
    IF(FISHER_T_CMB) THEN
-      aset%N_inv = cal**4 * aset%N_inv *2.725**4 * 1.e24
+      aset%N_inv = cal**4 * aset%N_inv *COBE_CMBTemp**4 * 1.e24
    ELSE
       aset%N_inv = cal**4 * aset%N_inv
    ENDIF
@@ -833,12 +837,13 @@ contains
  END SUBROUTINE ReadDataset_bcp
 
 
- function CalcLnLike(cl, aset,nuisance_params) 
+ function CalcLnLike(clall, aset,nuisance_params) 
   !Compute -ln(Likelihood) 
-   real cl(lmax,num_cls), CalcLnLike
+   real clall(lmax,num_cls_tot), CalcLnLike
    real, intent(in) :: nuisance_params(:)
    Type(CMBdataset) aset
    integer i
+   real cl(lmax, num_cls)
    real chisq
    real chi2op, chi2pp, wpp, wdd
    real chi2dd,chi2pd,chi2od
@@ -849,10 +854,11 @@ contains
       CalcLnLike = 0
       return
    end if
+   cl = clall(:,1:num_cls) !without lensing power spectrum or other extra CL
 
    if (aset%CMBLike) then
 
-     chisq =  CMBLikes_CMBLike(aset%CMBLikes, cl, nuisance_params) 
+     chisq =  CMBLikes_CMBLike(aset%CMBLikes, clall, nuisance_params) 
 
    else if (aset%all_l_exact) then
      
@@ -942,10 +948,10 @@ contains
  end function CalcLnLike
 
  function CMBLnLike(cl, freq_params, nuisance_params)
-  real, intent(in) ::  cl(lmax,num_cls)
+  real, intent(in) ::  cl(lmax,num_cls_tot)
   real CMBLnLike
   real,intent(in) :: freq_params(num_freq_params),nuisance_params(:)
-  real sznorm, szcl(lmax,num_cls)
+  real sznorm, szcl(lmax,num_cls_tot)
   integer i
   integer nuisance
   real tot(num_datasets)
@@ -953,7 +959,7 @@ contains
   sznorm = freq_params(1)  
   nuisance =1
   do i=1, num_datasets
-     szcl = cl
+     szcl= cl
      if (datasets(i)%has_sz_template) then
       szcl(2:lmax,1) = szcl(2:lmax,1) + sznorm*datasets(i)%sz_template(2:lmax)  
      end if
@@ -970,11 +976,11 @@ contains
 
  function MAPLnLike(cl)
 #ifndef NOWMAP
-  use wmap_likelihood_5yr
+  use wmap_likelihood_7yr
   use WMAP_OPTIONS
   use WMAP_UTIL
 #endif
-  real cl(lmax,num_cls), MAPLnLike
+  real cl(lmax,num_cls_tot), MAPLnLike
 #ifndef NOWMAP
 
   real(8), dimension(2:ttmax) :: cl_tt,cl_te,cl_ee,cl_bb
@@ -987,7 +993,7 @@ contains
    use_TT_beam_ptsrc = .false.   
 #endif
    if (lmax<ttmax) stop 'lmax not large enough for WMAP'
-   if (Feedback>0) write(*,*) 'reading WMAP5 data'
+   if (Feedback>0) write(*,*) 'reading WMAP7 data'
    Init_MAP = .false.
   end if
 

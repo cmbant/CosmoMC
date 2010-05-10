@@ -48,6 +48,7 @@ module settings
     !write GenericLikelihoodFunction in calclike.f90   
 
   character(LEN=1024) :: DataDir='data/';
+  character(LEN=128)  :: ParamNamesFile = ''
 
   integer, parameter :: num_fast_params = num_initpower + num_norm + num_nuisance_params
 
@@ -77,14 +78,24 @@ module settings
 
 contains
 
-  function ReadIniFileName(Ini,key) result (filename)
+  function ReadIniFileName(Ini,key, ADir, NotFoundFail) result (filename)
    Type(TIniFile) :: Ini
    character(LEN=*), intent(in) :: Key
+   character(LEN=*), optional, intent(in) :: ADir
    character(LEN=Ini_max_string_len) :: filename
+   logical, optional :: NotFoundFail 
+ 
+   if (present(NotFoundFail)) then
+    filename = Ini_Read_String_File(Ini, key, NotFoundFail)
+   else
+    filename = Ini_Read_String_File(Ini, key)
+   end if
+   if (present(ADir)) then
+    call StringReplace('%DATASETDIR%',ADir,filename)
+   else
+    call StringReplace('%DATASETDIR%',DataDir,filename)
+   end if
    
-   filename = Ini_Read_String_File(Ini, key)
-   call StringReplace('%DATASETDIR%',DataDir,filename)
-
   end function ReadIniFileName
 
  subroutine CheckParamChangeF(F)

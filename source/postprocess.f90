@@ -74,7 +74,7 @@ contains
         Type(CMBParams) LastCMB,CMB, newCMB
         Type(CosmoTheory) Theory, CorrectTheory
         Type(ParamSetInfo) Info
-        real Cls(lmax,num_cls), truelike,mult,like
+        real Cls(lmax,num_cls_tot), truelike,mult,like
         real weight_min, weight_max, mult_sum, mult_ratio, mult_max,weight
 
         real max_like, max_truelike

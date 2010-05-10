@@ -2236,7 +2236,11 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
  subroutine Matrix_InverseArrayMPI(Arr,nmat)
    !Invert array of matrices by sending each to separate CPU
     integer, intent(in) :: nmat
+#ifdef __GFORTRAN__    
+    Type(TMatrixType), target :: Arr(:)
+#else
     Type(TMatrixType), target :: Arr(*)
+#endif
     Type(TMatrixType), pointer :: AM
     integer n
     integer i,MpiID, MpiSize

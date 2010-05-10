@@ -28,8 +28,8 @@ module CMB_Cls
     Type (CMBParams)   :: LastParams
   end Type ParamSetInfo
 
-  integer, parameter :: ScalClOrder(3) = (/1,3,2/), TensClOrder(4) = (/1,4,2,3/)
-      !Mapping of CAMB CL array ordering to TT , TE, EE, BB  
+  integer, parameter :: ScalClOrder(5) = (/1,3,2,4,5/), TensClOrder(4) = (/1,4,2,3/)
+      !Mapping of CAMB CL array ordering to TT , TE, EE, BB, phi, phiT  
   integer :: ncalls = 0
   type(CAMBParams)  CAMBP 
   logical :: w_is_w  = .true.
@@ -75,7 +75,7 @@ contains
    type(CMBParams) CMB
    integer error
    Type(ParamSetInfo) Info
-   real Cls(lmax,1:num_Cls)
+   real Cls(lmax,1:num_cls_tot)
    type(CAMBParams)  P
    logical NewTransfers
    integer zix
@@ -187,7 +187,7 @@ contains
 
  subroutine SetTheoryFromCAMB(Theory)
    Type(CosmoTheory) Theory
-   real, parameter :: cons =  2.726e6**2*2*pi
+   real, parameter :: cons =  (COBE_CMBTemp*1e6)**2*2*pi
    real nm
    integer l
 
@@ -202,14 +202,27 @@ contains
          else 
             Theory%cl(l,1:num_clsS) =  nm*Cl_scalar(l,1, scalClOrder(1:num_clsS))
        end if         
+
+       if (num_cls>num_clsS) Theory%cl(l,num_clsS+1:num_cls) = 0 
    
        if (compute_tensors .and. l<=lmax_tensor) then
             Theory%cl_tensor(l,1:num_cls) =  nm*Cl_tensor(l,1, TensClOrder(1:num_cls))
        end if
+ 
+       if (num_cls_ext > 0) then
+           !CMB lensing potential
+           !in camb Cphi is l^4 C_l, we want [l(l+1)]^2Cphi/2pi
+           if (.not. CMB_lensing) call MpiStop('Must have lensing on to use lensing potential')
+           Theory%cl(l,num_clsS+1) =  Cl_scalar(l,1, scalClOrder(4))*(real(l+1)**2/l**2)/twopi
+           if (num_cls_ext>1) then
+            !lensing-temp
+            if (num_cls_ext>1) call MpiStop('SetTheoryFromCAMB: check defs for num_cls_ext>1')    
+            Theory%cl(l,num_clsS+2) =   Cl_scalar(l,1, scalClOrder(5))/real(l)**3      
+           end if
+       end if
+ 
     end do 
     
-    if (num_cls>num_clsS) Theory%cl(:,num_clsS+1:num_cls) = 0 
-
 
  end subroutine SetTheoryFromCAMB
 

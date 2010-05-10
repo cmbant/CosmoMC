@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>This version October 2009</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>This version January 2010</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -71,11 +71,11 @@ Please e-mail details of any bugs or enhancements to <a href="http://cosmologist
 <li>
 Get the <a href="http://cosmologist.info/cosmomc/submit.html">download</a>
 and unzip and untar it (run "gunzip cosmomc.tar.gz", then "tar -xf cosmomc.tar")</li>
-<LI>To use WMAP5 you also need <A HREF="http://heasarc.gsfc.nasa.gov/docs/software/fitsio/fitsio.html">CFITSIO</A> installed
-<LI>For WMAP 5-year (obviously skip the first two steps below if already installed somewhere)
+<LI>To use WMAP you also need <A HREF="http://heasarc.gsfc.nasa.gov/docs/software/fitsio/fitsio.html">CFITSIO</A> installed
+<LI>For WMAP 7 data (obviously skip the first two steps below if already installed somewhere)
 <UL>
 <LI>Download the WMAP likelihood code and data from <A HREF="http://lambda.gsfc.nasa.gov/product/map/current/likelihood_get.cfm">here</A> <LI>Extract to some separate directory
-<LI>Edit WMAP_5yr_options.F90 to hard code the full path instead of data/
+<LI>Edit WMAP_7yr_options.F90 to hard code the full path instead of data/
 <LI>Make and run the test program supplied<BR>
 If you get seg faults see this <A HREF="http://cosmocoffee.info/viewtopic.php?t=1074">CosmoCoffee</A> topic
 </UL>
@@ -501,17 +501,26 @@ weighting function or parameter mapping.</ul>
 
 <A NAME="Addons"><h2>Add-ons and extra datasets</h2></A>
 <UL>
+<LI><A HREF="http://www.slac.stanford.edu/~amantz/work/cosmomc_priors/">Run-time priors</A>
 <LI><A HREF="http://www.mrao.cam.ac.uk/software/multinest/downloads.html">MultiNest</A> for nested sampling
 <LI><A HREF="http://background.uchicago.edu/camb_rpc/">Reionization principal components</A>
 <LI><A HREF="http://www.stanford.edu/~drapetti/fgas_module/">X-ray cluster gas mass fraction</A>
 <LI><A HREF="http://www.astro.caltech.edu/~rjm/cosmos/cosmomc/">COSMOS 3D weak lensing data</A>
 <LI><A HREF="http://astro.ic.ac.uk/~jaz/code/">python GetDist</A>
-<LI><A HREF="http://lappweb.in2p3.fr/~perotto/FUTURCMB/home.html">FuturCMB</A> forecasting with CMB lensing
+<LI><A HREF="http://lpsc.in2p3.fr/perotto/">FuturCMB</A> forecasting with CMB lensing
 <LI><A HREF="http://cosmonest.org">CosmoNest</A> Nested sampling add-on.
 <LI><A HREF="http://www.slosar.com/aslosar/lya.html">Lyman-alpha Forest Power Spectrum from the Sloan Digital Sky Survey</A>
 </UL>
 <A NAME="Version"><h2>Version History</h2></A>
+
 <UL>
+<LI><B>Jan 2010</B><BR>
+<UL>
+<LI>Updated to use WMAP 7-year likelihood
+<LI>Updated CAMB to Jan 2010 version - main change is use of RECFAST 1.5 (up to 2% change in C<sub>l</sub> at l=2000)
+<LI>Added ParamNamesFile optional input parameter for cosmomc
+<LI>Added basic support for CMB lensing reconstruction power spectrum, and full-sky implementation in Planck_like.
+</UL>
 <LI><B>October 2009</B><BR>
 <UL>
 <LI>[9th Nov] changed use_bao to use_BAO in the sample .ini file

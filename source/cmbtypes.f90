@@ -5,8 +5,12 @@ use settings
 implicit none
 
 
-!Number of Cls, 1 for just temperature, 3 (4) for polarization (with B)
+!Number of CMB Cls, 1 for just temperature, 3 (4) for polarization (with B)
   integer, parameter  :: num_cls  = 3
+
+  integer, parameter  :: num_cls_ext=1 
+   !number of other C_l
+   !e.g. 2 for CMB lensing potential and cross-correlation 
 
 !l_max. Tensors are not computed unless compute_tensors = T in input file
 !Make these multiples of 50, should be 50 more than you need accurately
@@ -14,6 +18,10 @@ implicit none
 
 !Parameters for calculating/storing the matter power spectrum
 !Note that by default everything is linear
+
+!Note these are the interpolated/extrapolated values. The k at which matter power is computed up to 
+  !by CAMB is set in CMB_Cls_xxx with, e.g. P%Transfer%kmax = 0.6 (which is enough for 2dF)
+
 !Old mpk settings
 #ifdef DR71RG
 !!! BR09: Reid et al 2009 settings for the LRG power spectrum.
@@ -33,9 +41,8 @@ implicit none
    real :: pivot_k = 0.05 !Point for defining primordial power spectra
    logical :: inflation_consistency = .false. !fix n_T or not
 
-        !Note these are the interpolated/extrapolated values. The k at which matter power is computed up to 
-        !by CAMB is set in CMB_Cls_xxx with, e.g. P%Transfer%kmax = 0.6 (which is enough for 2dF)
 
+  integer, parameter :: num_cls_tot = num_cls + num_cls_ext
 !Number of scalar-only cls
 !if num_cls=4 and CMB_lensing then increased to 4 
   integer :: num_clsS=min(num_cls,3) 
@@ -62,7 +69,8 @@ implicit none
   Type CosmoTheory
      real Age, r10
      real SN_loglike, HST_loglike, BAO_loglike, reserved(1)
-     real cl(lmax,num_cls), cl_tensor(lmax_tensor,num_cls) !TT, TE, EE and BB  in that order
+     real cl(lmax,num_cls_tot), cl_tensor(lmax_tensor,num_cls) 
+      !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
      real sigma_8
      real matter_power(num_matter_power,matter_power_lnzsteps)
        !second index is redshifts from 0 to matter_power_maxz
@@ -116,21 +124,21 @@ contains
     write(i) T%Age, T%r10, T%sigma_8, T%matter_power
 
     if (write_all_cls) then
-     write(i) T%cl(2:lmax,1:num_cls)
+     write(i) T%cl(2:lmax,1:num_cls_tot)
      write(i) T%cl_tensor(2:lmax_tensor,1:num_cls)
     else
 
        !Use interpolation scheme CAMB uses for flat models
        !If using significantly non-flat, or increasing interpolation accuracy, save all th cls instead
-        write(i) T%cl(2:20,1:num_cls)
+        write(i) T%cl(2:20,1:num_cls_tot)
         do j=30,90,10 
-         write(i) T%cl(j,1:num_cls)
+         write(i) T%cl(j,1:num_cls_tot)
         end do
         do j=110,130, 20
-         write(i) T%cl(j,1:num_cls)
+         write(i) T%cl(j,1:num_cls_tot)
         end do
         do j=150,lmax, 50
-         write(i) T%cl(j,1:num_cls)
+         write(i) T%cl(j,1:num_cls_tot)
         end do
 
         if (lmax_tensor /= 0) then
@@ -162,7 +170,7 @@ contains
     Type(CosmoTheory) T
     real like
     Type(CMBParams) CMB
-    real icl(lmax,1:num_cls)
+    real icl(lmax,1:num_cls_tot),iclt(lmax,1:num_cls)
     integer allcl,j,ind, ix(lmax)
     integer almax,almaxtensor, anumpowers, anumcls
    
@@ -180,7 +188,7 @@ contains
 
         read(i,end=100,err=100) mult,anumpowers,almax, almaxtensor, anumcls
         if (almax > lmax) stop 'reading file with larger lmax'
-        if (anumcls > num_cls) stop 'reading file with more Cls (polarization)'
+        if (anumcls /= num_cls) stop 'reading file with different Cls'
 
         read(i) T%SN_loglike, T%HST_loglike,T%reserved
    
@@ -193,59 +201,59 @@ contains
         T%cl_tensor = 0
          
         if(allcl==1) then  
-         read(i) T%cl(2:almax,1:anumcls)
-         read(i) T%cl_tensor(2:almaxtensor,1:anumcls)
+         read(i) T%cl(2:almax,1:num_cls_tot)
+         read(i) T%cl_tensor(2:almaxtensor,1:num_cls)
         else
 
-            read(i) icl(1:19,1:num_cls)
+            read(i) icl(1:19,1:num_cls_tot)
             ind =1
             do j =2,20 
                ix(ind)=j
                ind=ind+1
             end do
             do j=30,90,10 
-             read(i) icl(ind,1:num_cls)
+             read(i) icl(ind,1:num_cls_tot)
              ix(ind) = j
              ind = ind + 1
             end do
              do j=110,130,20 
-             read(i) icl(ind,1:num_cls)
+             read(i) icl(ind,1:num_cls_tot)
              ix(ind) = j
              ind = ind + 1
             end do
             do j=150,almax, 50
-             read(i) icl(ind,1:num_cls)
+             read(i) icl(ind,1:num_cls_tot)
              ix(ind) = j
              ind = ind+1
             end do
             ind = ind-1
  
-           call InterpCls(ix,icl, T%cl, ind, almax, num_Cls)
+           call InterpCls(ix,icl, T%cl, ind, almax, num_Cls_tot)
 
            if (almaxtensor /= 0) then     
-            read(i) icl(1:19,1:num_cls)
+            read(i) iclt(1:19,1:num_cls)
             ind =1
             do j =2,20 
                ix(ind)=j
                ind=ind+1
             end do
             do j=30,90,10 
-             read(i) icl(ind,1:num_cls)
+             read(i) iclt(ind,1:num_cls)
              ix(ind) = j
              ind = ind + 1
             end do
             do j=110,130,20 
-             read(i) icl(ind,1:num_cls)
+             read(i) iclt(ind,1:num_cls)
              ix(ind) = j
              ind = ind + 1
             end do
             do j=150,almaxtensor, 50
-             read(i) icl(ind,1:num_cls)
+             read(i) iclt(ind,1:num_cls)
              ix(ind) = j
              ind = ind+1
             end do
             ind = ind-1
-            call InterpCls(ix,icl, T%cl_tensor, ind, almaxtensor,num_cls)
+            call InterpCls(ix,iclt, T%cl_tensor, ind, almaxtensor,num_cls)
            end if
         
         end if 
@@ -260,7 +268,7 @@ contains
       subroutine InterpCls(l,iCl, all_Cl, n, almax, ncls)
       integer, intent(in) :: n, almax,ncls
    
-      real, intent(in) :: iCl(lmax,1:num_cls)
+      real, intent(in) :: iCl(lmax,1:ncls)
       integer l(n),p
       real all_Cl(:,:)
    
@@ -307,15 +315,18 @@ contains
    subroutine ClsFromTheoryData(T, CMB, Cls)
      Type(CosmoTheory) T
      Type(CMBParams) CMB
-     real Cls(lmax,num_cls)
+     real Cls(lmax,num_cls_tot)
      integer i
      
      Cls(2:lmax,1:num_clsS) =T%cl(2:lmax,1:num_clsS)    !CMB%norm(norm_As)*T%cl(2:lmax,1:num_clsS)
      if (num_cls>3 .and. num_ClsS==3) Cls(2:lmax,num_cls)=0
+     if (num_cls_ext>0) then
+      Cls(2:lmax,num_cls+1:num_cls_tot) =T%cl(2:lmax,num_clsS+1:num_clsS+num_cls_ext)   
+     end if
 
      i = norm_amp_ratio !this convolution is to avoid compile-time bounds-check errors on CMB%norm
      if (CMB%norm(i) /= 0) then
-        Cls(2:lmax_tensor,:) =  Cls(2:lmax_tensor,:)+ T%cl_tensor(2:lmax_tensor,:) 
+        Cls(2:lmax_tensor,1:num_cls) =  Cls(2:lmax_tensor,1:num_cls)+ T%cl_tensor(2:lmax_tensor,1:num_cls) 
          !CMB%norm(norm_As)*CMB%norm(norm_amp_ratio)*T%cl_tensor(2:lmax_tensor,:)
      end if 
 
@@ -326,12 +337,12 @@ contains
      Type(CMBParams) CMB
      character (LEN=*), intent(in) :: aname
      integer l
-     real Cls(lmax,num_cls)
+     real Cls(lmax,num_cls_tot)
 
      call ClsFromTheoryData(T,CMB,Cls)
      open(unit = tmp_file_unit, file = aname, form='formatted', status = 'replace')
      do l=2, lmax
-        write (tmp_file_unit,*) l, Cls(l,:)*l*(l+1)/(2*pi)
+        write (tmp_file_unit,*) l, Cls(l,1:num_cls)*l*(l+1)/(2*pi), Cls(l,num_cls+1:num_cls_tot)
      end do
      close(tmp_file_unit)
 

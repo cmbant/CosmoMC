@@ -117,6 +117,8 @@ program SolveCosmology
       
 #endif
 
+        ParamNamesFile = Ini_Read_String('ParamNamesFile')
+
         Ini_fail_on_not_found = .true.
         
         baseroot = Ini_Read_String('file_root')

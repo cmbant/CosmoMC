@@ -94,7 +94,7 @@ contains
     Type(ParamSetInfo) Info
     real, intent(in):: inCls(:,:)
     logical, intent(in) :: HasCls
-    real acl(lmax,num_cls)
+    real acl(lmax,num_cls_tot)
     integer error
 
     if (generic_mcmc) stop 'GetLogLikePost: not supported for generic'

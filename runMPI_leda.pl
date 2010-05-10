@@ -10,6 +10,7 @@ use Cwd;
 
 #Use current directory as root
 $cosmomc = cwd;
+$cosmomc =~ s/export\///;
 
 $params =  $ARGV[0];
 $num = $ARGV[1];
