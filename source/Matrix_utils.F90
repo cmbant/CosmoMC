@@ -72,8 +72,9 @@ contains
 
  end subroutine Matrix_WriteFileRow
 
- subroutine Matrix_Write(aname, mat, forcetable)
+ subroutine Matrix_Write(aname, mat, forcetable, commentline)
    character(LEN=*), intent(in) :: aname
+   character(LEN=*), intent(in), optional :: commentline   
    real(dm), intent(in) :: mat(:,:)
    logical, intent(in), optional :: forcetable
    integer i,k
@@ -89,6 +90,9 @@ contains
     end if
    file_unit = new_file_unit()
    call CreateTxtFile(aname, file_unit)
+   if (present(commentline)) then
+    write(file_unit,'(a)') '#'//trim(commentline)
+   end if
    fmt = trim(numcat('(',shp(2)))//'E15.5)'
    do i=1, shp(1)
      if (.not. WriteTab) then

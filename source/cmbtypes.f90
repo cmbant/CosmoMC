@@ -8,7 +8,7 @@ implicit none
 !Number of CMB Cls, 1 for just temperature, 3 (4) for polarization (with B)
   integer, parameter  :: num_cls  = 3
 
-  integer, parameter  :: num_cls_ext=1 
+  integer, parameter  :: num_cls_ext=0
    !number of other C_l
    !e.g. 2 for CMB lensing potential and cross-correlation 
 
@@ -41,6 +41,8 @@ implicit none
    real :: pivot_k = 0.05 !Point for defining primordial power spectra
    logical :: inflation_consistency = .false. !fix n_T or not
 
+   logical :: bbn_consistency = .true. !JH
+
 
   integer, parameter :: num_cls_tot = num_cls + num_cls_ext
 !Number of scalar-only cls
@@ -62,6 +64,7 @@ implicit none
      real zre, nufrac
      real h, H0
      real w
+     real YHe, nnu
      real reserved(5)
   
   end Type CMBParams
@@ -116,7 +119,7 @@ contains
 
     write(i) amult, num_matter_power, lmax, lmax_tensor, num_cls
 
-    write(i) T%SN_loglike, T%HST_loglike, T%reserved
+    write(i) T%SN_loglike, T%HST_loglike, T%BAO_loglike, T%reserved
 
     write(i) like
     write(i) CMB
@@ -190,7 +193,7 @@ contains
         if (almax > lmax) stop 'reading file with larger lmax'
         if (anumcls /= num_cls) stop 'reading file with different Cls'
 
-        read(i) T%SN_loglike, T%HST_loglike,T%reserved
+        read(i) T%SN_loglike, T%HST_loglike,T%BAO_loglike,T%reserved
    
         read(i,end = 100, err=100) like
         read(i) CMB

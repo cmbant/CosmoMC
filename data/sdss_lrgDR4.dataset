@@ -24,6 +24,6 @@ use_scaling = T
 min_mpk_kbands_use = 1
 max_mpk_kbands_use = 65
 
-windows_file = data/sdss_lrgDR4_windows.txt
-kbands_file = data/sdss_lrgDR4_kbands.txt
-measurements_file = data/sdss_lrgDR4_measurements.txt
+windows_file = %DATASETDIR%sdss_lrgDR4_windows.txt
+kbands_file = %DATASETDIR%sdss_lrgDR4_kbands.txt
+measurements_file = %DATASETDIR%sdss_lrgDR4_measurements.txt

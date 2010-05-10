@@ -47,7 +47,8 @@ module settings
     !set to true to not call CAMB, etc.
     !write GenericLikelihoodFunction in calclike.f90   
 
-  character(LEN=1024) :: DataDir='data/';
+  character(LEN=1024) :: DataDir='data/'
+  character(LEN=1024) :: LocalDir='./'   
   character(LEN=128)  :: ParamNamesFile = ''
 
   integer, parameter :: num_fast_params = num_initpower + num_norm + num_nuisance_params
@@ -165,6 +166,7 @@ contains
  end subroutine WriteVector
 
 
+
  subroutine ReadMatrix(aname, mat, m,n)
    character(LEN=*), intent(IN) :: aname
    integer, intent(in) :: m,n
@@ -197,6 +199,7 @@ contains
      stop
 
  end subroutine ReadMatrix
+
 
 
 end module settings

@@ -20,7 +20,7 @@ module CMB_Cls
   logical :: compute_tensors = .false.
   logical :: CMB_lensing = .false.
   logical :: use_nonlinear = .false.
-
+  
   Type ParamSetInfo  
     
     Type (CosmoTheory) :: Theory
@@ -52,6 +52,10 @@ contains
      P%InitialConditionVector(initial_iso_baryon) = CMB%w
      w_lam = -1
     end if
+    if (CMB%nnu < 3.04) call MpiStop('CMBToCAMB: nnu < 3.04, would give negative masless neutrinos')
+    P%Num_Nu_Massless = CMB%nnu - 3.046 !assume three massive
+    P%YHe = CMB%YHe
+       
   end subroutine CMBToCAMB
 
  function RecomputeTransfers (A, B)
@@ -59,7 +63,8 @@ contains
    type(CMBParams) A, B
 
    RecomputeTransfers =  .not. (A%omb == B%omb .and. A%omc == B%omc .and. A%omv == B%omv .and. &
-             A%omnu == B%omnu .and. A%zre == B%zre .and. A%omk == B%omk .and. A%w == B%w)
+             A%omnu == B%omnu .and. A%zre == B%zre .and. A%omk == B%omk .and. A%w == B%w .and. &
+               A%nnu == B%nnu .and. A%YHe == B%YHe)
               
  end function RecomputeTransfers
 
@@ -448,8 +453,8 @@ contains
           P%Transfer%redshifts(1) = 0
          end if   
         
-        P%Num_Nu_Massive = 3
-        P%Num_Nu_Massless = 0.04
+        P%Num_Nu_Massive = 3.046
+        P%Num_Nu_Massless = 0
         P%InitPower%nn = 1
         P%AccuratePolarization = num_cls/=1 
         P%Reion%use_optical_depth = .false.

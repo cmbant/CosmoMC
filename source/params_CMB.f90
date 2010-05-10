@@ -79,29 +79,42 @@
     end subroutine SetCAMBInitPower
  
 
- subroutine SetForH(Params,CMB,H0)
+ subroutine SetForH(Params,CMB,H0, firsttime)
      use settings
      use cmbtypes
      use CMB_Cls
+     use bbn
      implicit none
      real Params(num_Params)
-
+     logical, intent(in), optional :: firsttime
      Type(CMBParams) CMB
      real h2,H0
+     
   
     CMB%H0=H0
-    CMB%ombh2 = Params(1)    
-    CMB%omdmh2 = Params(2)
-    CMB%zre = Params(4) !!Not actually used.. is tau in this parameterization
-    CMB%Omk = Params(5)
-    CMB%nufrac = Params(6)
-    CMB%w = Params(7)
-
-    CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initPower-1)
-    CMB%norm(1) = exp(Params(index_norm))
-    CMB%norm(2:num_norm) = Params(index_norm+1:index_norm+num_norm-1)
-    CMB%nuisance(1:num_nuisance_params) = Params(index_nuisance:index_nuisance+num_nuisance_params-1)
-
+    if (present(firsttime)) then
+        CMB%ombh2 = Params(1)    
+        CMB%omdmh2 = Params(2)
+        CMB%zre = Params(4) !!Not actually used.. is tau in this parameterization
+        CMB%Omk = Params(5)
+        CMB%nufrac = Params(6)
+        CMB%w = Params(7)
+     
+        CMB%nnu = 3.046
+        if (bbn_consistency) then
+         CMB%YHe = yp_bbn(CMB%ombh2,CMB%nnu  - 3.046)
+        else
+         !e.g. set from free parameter..
+         CMB%YHe  = 0.24
+         !call MpiStop('params_CMB: YHe not free parameter in default parameterization')
+        end if
+        
+        CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initPower-1)
+        CMB%norm(1) = exp(Params(index_norm))
+        CMB%norm(2:num_norm) = Params(index_norm+1:index_norm+num_norm-1)
+        CMB%nuisance(1:num_nuisance_params) = Params(index_nuisance:index_nuisance+num_nuisance_params-1)
+    end if
+    
     CMB%h = CMB%H0/100
     h2 = CMB%h**2
     CMB%omnuh2 = CMB%omdmh2*CMB%nufrac
@@ -130,14 +143,14 @@
      external CMBToTheta
 
      if (all(Params(1:num_hard) == Lastparams(1:num_hard))) then
-       call SetForH(Params,CMB,LastH0)
+       call SetForH(Params,CMB,LastH0, .true.)
        CMB%zre = Lastzre
        CMB%reserved(1) = params(4)
      else
 
      DA = Params(3)/100
      try_b = 40
-     call SetForH(Params,CMB,try_b)
+     call SetForH(Params,CMB,try_b, .true.)
      D_b = CMBToTheta(CMB)
      try_t = 100
      call SetForH(Params,CMB,try_t)
@@ -161,7 +174,7 @@
     !!call InitCAMB(CMB,error)
     tau = params(4)
     CMB%zre = GetZreFromTau(CMB, tau)       
-
+  
     LastH0 = CMB%H0
     Lastzre = CMB%zre
     LastParams = Params
@@ -183,15 +196,15 @@
      real CMBToTheta
      external CMBToTheta
  
-      Params(1) =CMB%ombh2 
-      Params(2) =CMB%omdmh2
+      Params(1) = CMB%ombh2 
+      Params(2) = CMB%omdmh2
  
       Params(3) = CMBToTheta(CMB)*100
       Params(4) = CMB%reserved(1)
-      Params(5) =CMB%omk 
+      Params(5) = CMB%omk 
       
-      Params(6) =CMB%nufrac 
-      Params(7) =CMB%w
+      Params(6) = CMB%nufrac 
+      Params(7) = CMB%w
       Params(index_initpower:index_initpower+num_initpower-1) =CMB%InitPower(1:num_initpower) 
       Params(index_norm) = log(CMB%norm(1))
       Params(index_norm+1:index_norm+num_norm-1) = CMB%norm(2:num_norm)
@@ -211,7 +224,7 @@
       Names%nnames=0
       if (Feedback>0) write (*,*) 'edit SetParamNames in params_CMB.f90 if you want to use named params'
      else
-       call ParamNames_init(Names, './params_CMB.paramnames')
+       call ParamNames_init(Names, trim(LocalDir)//'params_CMB.paramnames')
     end if
     end if
    end subroutine SetParamNames

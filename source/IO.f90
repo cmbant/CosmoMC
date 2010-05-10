@@ -5,6 +5,7 @@ module IO
 !Al May09
 !Valid handles must be /=0
 use AmlUtils
+use settings
 implicit none
 
  
@@ -104,6 +105,61 @@ contains
    res = FileExists(name)
    
   end function IO_Exists
+
+ subroutine IO_ReadProposeMatrix(pmat, prop_mat)
+   use ParamNames
+   real pmat(:,:)
+   character(LEN=1024), intent(in) :: prop_mat
+   real,allocatable :: tmpMat(:,:)
+   integer i,y
+   integer file_id 
+   character(LEN=4096) :: InLine
+   integer num, cov_params(256) 
+    
+    file_id = new_file_unit()
+    call OpenTxtFile(prop_mat, file_id)
+    InLine=''
+    do while (InLine == '') 
+     read(file_id,'(a)', end = 10) InLine
+    end do
+    InLine = adjustl(InLine)
+    If (InLine(1:1)=='#') then
+     !Have paramnames to identify
+      InLine = InLine(2:len_trim(InLine))
+      num=-1
+      call ParamNames_ReadIndices(NameMapping,InLine, cov_params, num)
+      pmat=0
+      y=0
+      do
+       read(file_id,'(a)', end = 20) InLine
+       if (InLine/='') then
+         y=y+1
+         read(InLine,*,end=20) pmat(cov_params(1:num),cov_params(y))
+         if (y==num) exit
+       end if
+      end do 
+      call CloseFile(file_id) 
+      return
+20   call mpiStop('ReadProposeMatrix: wrong number of rows/columns in .covmat')
+        
+    end if
+10  call CloseFile(file_id)  
+ 
+   i=TxtNumberColumns(InLine)
+   if (i==num_params) then
+    call ReadMatrix(prop_mat,pmat, num_params, num_params)
+   else if (i==num_real_params) then
+    allocate(tmpMat(num_real_params,num_real_params))
+    call ReadMatrix(prop_mat,tmpmat, num_real_params, num_real_params)
+    pmat=0
+    pmat(1:num_real_params,1:num_real_params) = tmpMat
+    deallocate(tmpMat)
+   else
+    call MpiStop('Propose matrix the wrong size: '//trim(prop_mat))
+   end if
+   
+end subroutine IO_ReadProposeMatrix
+
 
  subroutine IO_OutputChainRow(handle, mult, like, values, nvalues)
   integer, intent(in) :: handle

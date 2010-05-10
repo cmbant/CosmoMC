@@ -22,7 +22,6 @@
 ! You can easily edit the .m and .sm files produced to produce custom layouts of plots, etc.
 ! Data for plots are exported to the plot_data_dir folder, other files to out_dir
 
-!This version September 2009
 !March 03: fixed bug computing the limits in the .margestats file
 !May 03: Added support for triangle plots 
 !Dec 03: Support for non-chain samples, auto-correlation convergence, auto_label,
@@ -41,6 +40,8 @@
 !         allowed map_params with 1-column input format
 !         plotparams parameter ordering is preserved (e.g. to change order of 1D plots)
 !Oct 09:  fixed bug in credible intervals with prior cutoffs (Jan Hammann)  
+!May 10:  added finish_run_command to run system command when getdist finished (e.g. "matlab < %ROOTNAME%.m")
+!          aded line_labels to write out roots of lines being plotted (matlab)
 module MCSamples
  use settings
  use MatrixUtils
@@ -293,17 +294,23 @@ contains
 
   
       subroutine GetCovMatrix
-        integer i, j
+        integer i, j, nused
         real mean(max_cols)
         real scale
         real, dimension(:,:), allocatable :: covmatrix
-                
+        integer used_ix(max_cols)        
+        character(LEN=4096) outline
+      
         allocate(corrmatrix(ncols-2,ncols-2))
     
         corrmatrix = 0
-
+        nused = 0
         do i=1, ncols-2
          if (isused(i+2)) then
+               if (i <= NameMapping%num_MCMC) then
+                 nused = nused + 1
+                 used_ix(nused)=i
+               end if
                mean(i) = sum(coldata(1,0:nrows-1)*coldata(i+2,0:nrows-1))/numsamp
          end if
         end do
@@ -320,15 +327,25 @@ contains
            end if
          end do 
 
+         if (NameMapping%nnames/=0) then
+                outline='' 
+                do i=1, nused
+                    outline = trim(outline)//' '//trim(ParamNames_name(NameMapping,used_ix(i))) 
+                end do  
+               allocate(covmatrix(nused,nused))
+               covmatrix = corrmatrix(used_ix(1:nused),used_ix(1:nused))
+               call Matrix_write(trim(rootdirname) //'.covmat',covmatrix,.true.,commentline=outline)
+               deallocate(covmatrix)
+          else
              if (covmat_dimension /= 0) then
               if (covmat_dimension > ncols -2) stop 'covmat_dimension larger than number of parameters'
               write (*,*) 'Writing covariance matrix for ',covmat_dimension,' parameters'
-              allocate(covmatrix(covmat_dimension,covmat_dimension))
-              covmatrix=corrmatrix(1:covmat_dimension,1:covmat_dimension)
-
-              call Matrix_write(trim(rootdirname) //'.covmat',covmatrix,.true.)
-              deallocate(covmatrix)
-             end if
+               allocate(covmatrix(covmat_dimension,covmat_dimension))
+               covmatrix=corrmatrix(1:covmat_dimension,1:covmat_dimension)
+               call Matrix_write(trim(rootdirname) //'.covmat',covmatrix,.true.)
+               deallocate(covmatrix)
+              end if
+          end if
 
               do i=1, ncols-2
                if (corrmatrix(i,i) > 0) then
@@ -474,12 +491,12 @@ contains
             ! find minimum length 1d confidence intervals
               logical, intent(IN) :: botlim,toplim 
               integer, intent(IN) :: ix,minbin,maxbin
-              integer i,ix1,j, lbin
+              integer i,j, lbin
               real, intent(IN) :: conflev,width,center
               real, intent(IN) :: bincounts(-1000:1000)
               real, dimension(max_intersections+1) :: MinInterval
               real :: try,try_t,try_b,try_last,try_sum,norm
-              real :: waterlevel,frac
+              real :: waterlevel
               real, dimension(max_intersections) :: zeros
               integer :: numzeros  
  
@@ -1470,6 +1487,21 @@ contains
        end do
 
      end subroutine Write1DplotMatLab
+
+     subroutine WriteMatlabLineLabels(aunit)
+         integer, intent(in) :: aunit 
+         integer ix1
+              
+           write(aunit,*) 'x=get(gca,''Position'');x(1)=0.1;x(2) = x(2)-0.1;x(3) = 0.85;x(4) = x(2) + 0.05;'
+           write(aunit,*) 'ax=axes(''Units'',''Normal'',''Position'',x,''Visible'',''off'');'
+           write(aunit,*) 't=text(0,0,'''//trim(rootname)//''',''color'', lineM{1}(2),''Interpreter'',''none'');'
+           do ix1 = 1, Num_ComparePlots
+             write(aunit,*) 'e=get(t,''extent'');x=e(1)+e(3)+0.02;'
+             write(aunit,*) 't=text(x,0,'''//trim(ComparePlots(ix1))//''',''Interpreter'',''none'',''color'',' &
+                            //trim(numcat('lineM{',ix1+1)) // '}(2));'
+           end do
+
+     end  subroutine WriteMatlabLineLabels
      
      subroutine EdgeWarning(param)
       integer, intent(in) :: param
@@ -1502,7 +1534,6 @@ end subroutine CheckMatlabAxes
 
 
 program GetDist
-
         use IniFile
         use MCSamples
         implicit none
@@ -1546,7 +1577,7 @@ program GetDist
         integer plotparams_num, plotparams(max_cols)
         character(LEN=max_cols) PCA_func
         logical Done2D(max_cols,max_cols)
-        logical no_plots
+        logical no_plots, line_labels
 
         real thin_cool
         logical no_tests, auto_label
@@ -1556,6 +1587,7 @@ program GetDist
         !for single_colum_chain_files    
         integer :: first_haschain, stat, ip, itmp, idx, nrows2(max_cols), tmp_params(max_cols)
         real :: rtmp
+        character(LEN=Ini_max_string_len) :: finish_run_command
      
         NameMapping%nnames = 0
 
@@ -1634,7 +1666,8 @@ program GetDist
 
         matlab_version = Ini_Read_Real('matlab_version',7.)
         font_scale  = Ini_Read_Real('font_scale',1.)
-
+        finish_run_command = Ini_Read_String('finish_run_command')
+        
         labels(1) = 'mult'
         labels(2) = 'likelihood'
         auto_label = Ini_Read_Logical('auto_label',.false.)
@@ -1662,7 +1695,8 @@ program GetDist
 
         no_tests = Ini_Read_Logical('no_tests',.false.)
         no_plots = Ini_Read_Logical('no_plots',.false.)
-
+        line_labels = Ini_Read_Logical('line_labels',.false.)
+         
         thin_factor = Ini_Read_Int('thin_factor',0)
         thin_cool = Ini_read_Real('thin_cool',1.)
 
@@ -2432,9 +2466,9 @@ program GetDist
           if (.not. no_plots) then
               write (50,*) 'quit'
               close(50)
-            
+
+              if (line_labels) call WriteMatlabLineLabels(51)
               write (51,*)  'set(gcf, ''PaperUnits'',''inches'');'
-     
               if (plot_row < plot_col .and. plot_row*plot_col>9) then
                 write (51,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 10]);';
               else
@@ -2539,15 +2573,15 @@ program GetDist
            end if
           end do
 
-              
+          if (line_labels) call WriteMatlabLineLabels(50)
+            
           write (50,*)  'set(gcf, ''PaperUnits'',''inches'');'
-              if (matlab_col/='') write (50,*) trim(matlab_col)
+          if (matlab_col/='') write (50,*) trim(matlab_col)
           if (num_2D_plots < 5) then
                 write (50,*) 'set(gcf, ''PaperPosition'',[ 0 0 6 6]);';
           else
             write (50,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 10]);';
           end if
-
           write (50,*) 'print -dpsc2 '//trim(rootname)//'_2D.ps;'
           close(50)
 
@@ -2717,5 +2751,12 @@ program GetDist
           end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: end of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!Comment this out if your compiler doesn't support "system"
+         if (finish_run_command /='') then
+          call StringReplace('%ROOTNAME%',rootname,finish_run_command)
+          call StringReplace('%PLOTDIR%',trim(plot_data_dir),finish_run_command)
+          call StringReplace('%PLOTROOT%',trim(plot_data_dir)//rootname,finish_run_command)
+          call system(finish_run_command)
+         end if
 end program GetDist
 

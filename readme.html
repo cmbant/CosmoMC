@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>This version January 2010</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>This version May 2010</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -106,7 +106,7 @@ See <A HREF="http://cosmologist.info/cosmomc/cosmomc.bib">BibTex file</A> for re
 <P>
 <B><FONT COLOR="blue">CosmoMC as a generic sampler</font></B>
 <P>
-CosmoMC can also be compiled to sample any function you like, without calling any cosmology codes. Use the supplied Makefile_nowmap and set <b>generic_mcmc = .true.</b> in settings.f90. Also in settings.f90 set <b>num_hard</b> to the number of parameters you want to vary, and num_initpower, and num_norm to zero. Write your likelihood function as a function of the array of parameters in GenericLikelihoodFunction (calclike.f90). You don't need CFITSIO or WMAP code installed to do this, but you will still need to compile CAMB.
+CosmoMC can also be compiled to sample any function you like, without calling any cosmology codes. Edit the supplied Makefile so that the WMAP variable is not set and set <b>generic_mcmc = .true.</b> in settings.f90. Also in settings.f90 set <b>num_hard</b> to the number of parameters you want to vary, and num_initpower, and num_norm to zero. Write your likelihood function as a function of the array of parameters in GenericLikelihoodFunction (calclike.f90). You don't need CFITSIO or WMAP code installed to do this, but you will still need to compile CAMB.
 <P>
 <A NAME="Running"><h2>Running and input parameters</h2></A>
 <P>
@@ -514,6 +514,16 @@ weighting function or parameter mapping.</ul>
 <A NAME="Version"><h2>Version History</h2></A>
 
 <UL>
+<LI><B>May 2010</B><BR>
+<UL>
+<LI>Sets helium abundance using BBN consistency ignoring very small error bar (bbn.f90 thanks to Jan Hamann). Set bbn_consistency=F to fix to old default value of 0.24.
+<LI>Added nnu (effective number of neutrinos) and YHe (healium fraction) to cmbtypes.f90; now easier to make these varying parameters [by default nnu is fixed to 3.046 and YHe set from BBN consistency)
+<LI>Updated supernovae.f90 to Union 2 (Nao Suzuki)
+<LI>Covariance matrices (.covmat) now only include varied parameters and have a header giving names of parameters used (so much easier to reuse if parameters are re-ordered or other parameters added)
+<LI>Aded <b>local_dir</b> parameter to change default location for .covmat and .paramname files
+<LI>GetDist option <b>line_labels=T</b> to write out legend of roots being plotted (matlab)
+<LI>GetDist option <b>finish_run_command</b> to run system command when getdist finished (e.g. "matlab < %ROOTNAME%.m" to make 1D plot)
+</UL>
 <LI><B>Jan 2010</B><BR>
 <UL>
 <LI>Updated to use WMAP 7-year likelihood

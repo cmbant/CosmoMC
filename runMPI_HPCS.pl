@@ -46,6 +46,7 @@ echo \`cat \$PBS_NODEFILE | uniq\`
 #cat \$PBS_NODEFILE | uniq > scripts/machine.file.\$PBS_JOBID
 
 export OMP_NUM_THREADS=$omp
+export IPATH_NO_CPUAFFINITY=1
 time mpiexec -npernode $chainspn ./cosmomc $ini > ./scripts/$params.log
 
 #time mpirun -np $nchains -machinefile scripts/machine.file.\$PBS_JOBID ./cosmomc $ini > ./scripts/$params.log

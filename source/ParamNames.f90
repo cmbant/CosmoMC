@@ -123,18 +123,25 @@ subroutine ParamNames_ReadIndices(Names,InLine, params, num)
  Type(TParamNames) :: Names
  character(LEN=*), intent(in) :: InLine
  integer, intent(out) :: params(*)
- integer, intent(in) :: num
+ integer  :: num
  character(LEN=ParamNames_maxlen) part
- integer param,len,ix, pos
+ integer param,len,ix, pos, max_num
+ integer, parameter :: unknown_num = 1024
  
  if (num==0) return
  len = len_trim(InLine)
  pos = 1
- do param = 1, num
+ if (num==-1) then
+  max_num = unknown_num 
+ else
+  max_num = num
+ end if
+ do param = 1, max_num
      do while (pos < len .and. InLine(pos:pos)==' ') 
       pos = pos+1
      end do 
      read(InLine(pos:), *, end=400, err=400) part
+     if (max_num == unknown_num) num = param
      pos = pos + len_trim(part)
      ix = ParamNames_index(Names,part)
      if (ix>0) then
@@ -147,7 +154,8 @@ subroutine ParamNames_ReadIndices(Names,InLine, params, num)
      end if
  end do 
  return
-400 call MpiStop('ParamNames: Not enough names or numbers - '//trim(InLine))
+400 if (max_num==unknown_num) return
+  call MpiStop('ParamNames: Not enough names or numbers - '//trim(InLine))
  
 end subroutine ParamNames_ReadIndices
 

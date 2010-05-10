@@ -44,6 +44,7 @@ program SolveCosmology
 #endif
 
 
+       instance = 0 
 #ifndef MPI 
         InputFile = GetParam(1)
         if (InputFile == '') call DoStop('No parameter input file')
@@ -52,8 +53,6 @@ program SolveCosmology
         if (numstr /= '') then
          read(numstr,*) instance
          rand_inst = instance   
-        else
-         instance = 0
         end if
 
 #ifdef MPI 
@@ -189,6 +188,7 @@ program SolveCosmology
         use_nonlinear = Ini_Read_Logical('nonlinear_pk',.false.)
         pivot_k = Ini_Read_Real('pivot_k',0.05)
         inflation_consistency = Ini_read_Logical('inflation_consistency',.false.)
+        bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
 
         w_is_w = Ini_Read_Logical ('w_is_w',.true.)     
         oversample_fast = Ini_Read_Int('oversample_fast',1)
@@ -211,7 +211,8 @@ program SolveCosmology
         Use_min_zre = Ini_Read_Double('use_min_zre',0.d0) 
         Use_Lya = Ini_Read_logical('use_lya',.false.)
        
-        if (Ini_HasKey('DataDir')) DataDir=Ini_Read_String('data_dir') 
+        if (Ini_HasKey('data_dir')) DataDir=Ini_Read_String('data_dir') 
+        if (Ini_HasKey('local_dir')) LocalDir=Ini_Read_String('local_dir') 
 
         if (Use_Lya .and. use_nonlinear) &
              call DoStop('Lya.f90 assumes LINEAR power spectrum input')
@@ -261,7 +262,7 @@ program SolveCosmology
         nummpksets = Ini_Read_Int('mpk_numdatasets',0)
         if (Use_mpk) then
          do i= 1, nummpksets
-          mpk_filename(i) = Ini_Read_String(numcat('mpk_dataset',i)) 
+          mpk_filename(i) = ReadIniFileName(DefIni,numcat('mpk_dataset',i)) 
           call ReadMpkDataset(mpk_filename(i))
          end do
          if (Feedback>1) write(*,*) 'read mpk datasets'
@@ -272,7 +273,7 @@ program SolveCosmology
 
         numtoget = Ini_Read_Int('samples')
 
-        call Initialize(Params)
+        call Initialize(DefIni,Params)
 
         call Ini_Close
 

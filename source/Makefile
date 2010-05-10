@@ -18,10 +18,10 @@ IFLAG = -I
 INCLUDE=
 
 #Intel MPI (assuming mpif77 set to point to ifort)
-#change -lmkl_ia32 to -lmkl_p3 for MKL versions earlier than 6 (6 needed for ifc 8+) 
+#these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
 F90C     = mpif90
-FFLAGS = -O2 -ip -W0 -WB -openmp -fpp -DMPI -vec_report0
-LAPACKL = -L/usr/local/intel/mkl/9.1/lib/em64t -lmkl_lapack -lmkl_em64t -lguide -lpthread
+FFLAGS = -O2 -ip -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
+LAPACKL = -lmkl_lapack 
 
 #HPCF settings. Use Inteal 9 or 10.1+, not 10.0
 #F90C     = mpif90
@@ -126,7 +126,7 @@ LINKFLAGS = -L../camb -lcamb $(LAPACKL)
 DISTFILES = utils.o ParamNames.o Matrix_utils.o settings.o GetDist.o
 
 OBJFILES= utils.o ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o \
-	cmbdata.o WeakLen.o bao.o lrggettheory.o mpk.o supernovae.o HST.o SDSSLy-a-v3.o \
+	cmbdata.o WeakLen.o bbn.o bao.o lrggettheory.o mpk.o supernovae.o HST.o SDSSLy-a-v3.o \
 	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
 	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
 
@@ -167,6 +167,7 @@ cmbtypes.o: settings.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o $(WMAPOBJS)
 WeakLen.o: cmbtypes.o
+bbn.o: settings.o
 bao.o: cmbtypes.o
 mpk.o: cmbtypes.o lrggettheory.o
 HST.o: cmbtypes.o

@@ -115,7 +115,7 @@ subroutine DoAbort(S)
        stop
 end subroutine DoAbort
 
-subroutine Initialize(Params)
+subroutine Initialize(Ini,Params)
         use IniFile
         use ParamNames
         use settings
@@ -123,12 +123,12 @@ subroutine Initialize(Params)
 
         implicit none
         type (ParamSet) Params
+        type (TIniFile) :: Ini
         integer i
         character(LEN=5000) fname,InLine
-        character(LEN=120) prop_mat
+        character(LEN=1024) prop_mat
         real center, wid, mult, like
-        real tmpMat(num_real_params,num_real_params)
-
+        
         output_lines = 0
         
         call SetParamNames(NameMapping)
@@ -137,10 +137,11 @@ subroutine Initialize(Params)
 
         call CMB_Initialize(Params%Info)
 
-        prop_mat = Ini_Read_String('propose_matrix')
+        prop_mat = trim(Ini_Read_String_File(Ini,'propose_matrix'))
         has_propose_matrix = prop_mat /= ''
-
-        fname = Ini_Read_String('continue_from')
+        prop_mat = concat(LocalDir,prop_mat)
+         
+        fname = Ini_Read_String_File(Ini,'continue_from')
         if (fname /= '') call DoStop('continue_from replaced by checkpoint')
 
        if (.not. new_chains) then
@@ -227,16 +228,8 @@ subroutine Initialize(Params)
    
         if (has_propose_matrix) then
            
-           i=TxtFileColumns(prop_mat)
-           if (i==num_params) then
-            call ReadMatrix(prop_mat,pmat, num_params, num_params)
-           else if (i==num_real_params) then
-            call ReadMatrix(prop_mat,tmpmat, num_real_params, num_real_params)
-            pmat=0
-            pmat(1:num_real_params,1:num_real_params) = tmpMat
-           else
-            call MpiStop('Propose matrix the wrong size: '//trim(prop_mat))
-           end if
+           call IO_ReadProposeMatrix(pmat, prop_mat)
+
            !If generated with constrained parameters, assume diagonal in those parameters
            do i=1,num_params
               if (pmat(i,i) ==0 .and. Scales%PWidth(i)/=0) then
@@ -249,7 +242,6 @@ subroutine Initialize(Params)
               pmat(:,i) = 0
            end if
            end do
-
 
            allocate(propose_matrix(num_params_used, num_params_used))
            propose_matrix = pmat(params_used, params_used)
@@ -264,6 +256,7 @@ subroutine Initialize(Params)
 100     call DoStop('Error reading param details: '//trim(InLIne))
 
 end subroutine Initialize
+
 
 
 subroutine SetProposeMatrix

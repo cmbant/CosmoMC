@@ -42,6 +42,7 @@
 		<File RelativePath="..\camb\reionization.f90"/>
 		<File RelativePath="..\camb\subroutines.f90"/></Filter>
 		<File RelativePath=".\bao.f90"/>
+		<File RelativePath=".\bbn.f90"/>
 		<File RelativePath=".\calclike.f90"/>
 		<File RelativePath=".\CMB_Cls_simple.f90"/>
 		<File RelativePath=".\cmbdata.f90"/>
