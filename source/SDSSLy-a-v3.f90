@@ -101,7 +101,8 @@ contains
    endif   
 
     if (CMB%W /= -1. .or. CMB%omnu/=0. .or. CMB%InitPower(3)/= 0.) then
-      write (*,*) 'SDSS Lya module does not support extended models'
+      write (*,*) 'This SDSS Lya module does not support extended models'
+      write (*,*) 'for extensions see http://www.slosar.com/aslosar/lya.html'
       stop
     end if
    

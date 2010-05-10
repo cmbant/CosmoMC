@@ -29,7 +29,7 @@
 !Jul 05: Readdataset_bcp .newdat changes for BOOM/CBI data, allowing for band cuts
 !Mar 06: changed to WMAP 3-year likelihood
 !Aug 06: added cal**2 scaling of x-factors
-
+!Oct 06: edited ReadAllExact to auto-account for number of cls (e.g. missing BB)
 module cmbdata
 use settings
 use cmbtypes
@@ -165,13 +165,16 @@ contains
  subroutine ReadAllExact(aset)
       Type (CMBdataset) :: aset
       character(LEN=Ini_max_string_len) :: fname
-      integer l, idum
+      integer l, idum, ncls, ncol
+      real inobs(4)
+
     !In this case we have data for every l, and use exact full-sky likelihood expression
     !with some fudge factor fsky_eff^2 to reduce the degrees of freedom: fsky^eff*(2l+1)
 
        aset%num_points = 0
        aset%all_l_lmax = Ini_Read_Int('all_l_lmax')
-       if (aset%all_l_lmax > lmax) stop 'cmbdata.f90: all_l_lmax > lmax'
+
+       if (aset%all_l_lmax > lmax) stop 'cmbdata.f90::ReadAllExact: all_l_lmax > lmax'
        if (aset%has_pol) then
         allocate(aset%all_l_obs(2:aset%all_l_lmax,num_cls))
         allocate(aset%all_l_noise(2:aset%all_l_lmax,2))
@@ -181,13 +184,27 @@ contains
        end if
        allocate(aset%all_l_fsky(2:aset%all_l_lmax))
        fname = trim(Ini_Read_String('all_l_file'))
+       ncol = TxtFileColumns(fname)
+       if (ncol==7) then
+         ncls = 3
+       elseif (ncol==8) then
+         ncls = 4
+       elseif (ncol==4) then 
+         ncls=1
+         if (aset%has_pol) stop 'cmbdata.f90::ReadAllExact: has_pol wrong'
+       else
+          stop 'cmbdata.f90::ReadAllExact: wrong number of columns'
+       end if
        call OpenTxtFile(fname,tmp_file_unit)
 !File format:
 !l C_TT (C_TE C_EE [C_BB]) N_T (N_P) fsky_eff
 !Must have num_cls set to correct value for file
        do l = 2, aset%all_l_lmax
-          read (tmp_file_unit, *, end=100, err=100) idum, aset%all_l_obs(l,:), aset%all_l_noise(l,:), aset%all_l_fsky(l)
+          read (tmp_file_unit, *, end=100, err=100) idum,inobs(1:ncls), aset%all_l_noise(l,:), aset%all_l_fsky(l)
           if (idum /= l) stop 'Error reading all_l_file'
+            !set BB to pure noise if not in file
+          if (aset%has_pol .and. ncls < num_cls) inobs(num_cls) = aset%all_l_noise(l,2)
+          aset%all_l_obs(l,:) = inobs(1:num_cls)
         end do
        close(tmp_file_unit)
 

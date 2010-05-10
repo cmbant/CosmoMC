@@ -3,9 +3,8 @@
 #Beware of using optmizations which lose accuracy - may give errors when running
 #With Visual Fortan open cosmomc.dsw workspace file instead.
 
-#Edit for CFITSIO, HEALPIX directories
+#Edit for CFITSIO directories
 cfitsio = /home/pascal/include/cfitsio
-healpix = /home/pascal/include/Healpix_2.00
 WMAP3 = /home/antlewis/WMAP3
 
 IFLAG = -I
@@ -105,9 +104,8 @@ CLSFILE = CMB_Cls_simple.o
 #Can use params_H if you prefer more generic parameters
 PARAMETERIZATION = params_CMB.o
 
-WMAP3_inc = $(IFLAG)$(cfitsio)/include $(IFLAG)$(healpix)/include $(IFLAG)$(WMAP3)
-WMAP3_lib = -L$(cfitsio)/lib -L$(healpix)/lib -L$(WMAP3) \
-	-lhealpix -lcfitsio
+WMAP3_inc = $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP3)
+WMAP3_lib = -L$(cfitsio)/lib -L$(WMAP3) -lcfitsio
 
 CLSLIB  = $(WMAP3_lib) -L../camb -lcamb $(LAPACKL) 
 

@@ -20,9 +20,9 @@
 ! * file_root.converge   - Various statistics to help assess chain convergence/sampling error
 
 ! You can easily edit the .m and .sm files produced to produce custom layouts of plots, etc.
-! Data for plots are exported to the plot_data folder
+! Data for plots are exported to the plot_data_dir folder, other files to out_dir
 
-!This version Aug 2006
+!This version Oct 2006
 !March 03: fixed bug computing the limits in the .margestats file
 !May 03: Added support for triangle plots 
 !Dec 03: Support for non-chain samples, auto-correlation convergence, auto_label,
@@ -31,6 +31,7 @@
 !Jul 05: Added limits info to .margestats output
 !Apr 06: Fixed some version confusions
 !Aug 06: speeded 2D plotting, added limitsxxx support with smoothing=F
+!Oct 06: Added plot_data_dir and out_dir
 module MCSamples
  use settings
  implicit none
@@ -55,7 +56,7 @@ module MCSamples
         integer colix(max_cols), num_vars  !Parameters with non-blank labels
         real mean(max_cols), sddev(max_cols)
         real, dimension(:,:), allocatable :: corrmatrix
-        character(LEN=120) rootname
+        character(LEN=120) rootname, plot_data_dir, out_dir, rootdirname
         character(LEN=120) labels(max_cols)
         logical has_limits(max_cols), has_limits_top(max_cols),has_limits_bot(max_cols)
         integer num_contours 
@@ -187,7 +188,7 @@ contains
     Feedback = 0          
     call initRandom()
     fmt = trim(numcat('(',ncols))//'E16.7)'
-    open(unit=50,file=trim(rootname)//'_single.txt',form='formatted',status='replace')
+    open(unit=50,file=trim(rootdirname)//'_single.txt',form='formatted',status='replace')
     maxmult = maxval(coldata(1,0:nrows-1))
     do i= 0, nrows -1
      if (ranmar() <= coldata(1,i)/maxmult/single_thin) write (50,fmt) 1.0, coldata(2:ncols,i)          
@@ -308,7 +309,7 @@ contains
               allocate(covmatrix(covmat_dimension,covmat_dimension))
               covmatrix=corrmatrix(1:covmat_dimension,1:covmat_dimension)
 
-              call WriteSqMatrix(trim(rootname) //'.covmat',covmatrix, covmat_dimension)
+              call WriteSqMatrix(trim(rootdirname) //'.covmat',covmatrix, covmat_dimension)
               deallocate(covmatrix)
              end if
 
@@ -319,7 +320,7 @@ contains
                corrmatrix(:,i) = corrmatrix(:,i)/scale
                end if
               end do
-             call WriteSqMatrix(trim(rootname) //'.corr',corrmatrix, ncols -2)
+             call WriteSqMatrix(trim(rootdirname) //'.corr',corrmatrix, ncols -2)
              
           end subroutine GetCovMatrix
 
@@ -435,7 +436,7 @@ contains
 
            
              write (*,*) 'Doing PCA for ',n,' parameters'
-             call CreateTxtFile(trim(rootname) //'.PCA', 40)
+             call CreateTxtFile(trim(rootdirname) //'.PCA', 40)
              write (40,*) 'PCA for parameters: '
 
              if (normparam_num /=0) then
@@ -619,7 +620,7 @@ contains
 
 ! Get statistics for individual chains, and do split tests on the samples
 
-          call CreateTxtFile(trim(rootname) //'.converge', 40)
+          call CreateTxtFile(trim(rootdirname) //'.converge', 40)
 
          if (num_chains_used > 1) write (*,*) 'Number of chains used =  ',num_chains_used
   
@@ -1138,7 +1139,7 @@ contains
 
 
               plotfile = numcat(trim(numcat(trim(rootname)//'_2D_',colix(j)-2))//'_',colix(j2)-2)
-              filename = 'plot_data/'//trim(plotfile)
+              filename = trim(plot_data_dir)//trim(plotfile)
               open(unit=49,file=filename,form='formatted',status='replace')
               do ix1 = ix_min(j), ix_max(j)
                   write (49,trim(numcat('(',ix_max(j2)-ix_min(j2)+1))//'E16.7)') bins2D(ix1,ix_min(j2):ix_max(j2))
@@ -1182,16 +1183,16 @@ contains
 
              PlotContMATLAB= .false. 
              plotfile = numcat(trim(numcat(trim(aroot)//'_2D_',colix(j)-2))//'_',colix(j2)-2)
-             if (.not. FileExists('plot_data/'//trim(plotfile))) return
+             if (.not. FileExists(trim(plot_data_dir)//trim(plotfile))) return
              PlotContMATLAB= .true.
-              write (aunit,'(a)') 'pts=load (fullfile(''plot_data'',''' // trim(plotfile) //'''));'
+              write (aunit,'(a)') "pts=load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //"'));"
      
               fname =trim(trim(aroot)//trim(numcat('_p',colix(j2)-2)))
-              write (aunit,'(a)') 'tmp = load (fullfile(''plot_data'',''' // trim(fname)//  '.dat''));'
+              write (aunit,'(a)') "tmp = load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.dat''));'
               write (aunit,*) 'x1 = tmp(:,1);'
 
               fname =trim(trim(aroot)//trim(numcat('_p',colix(j)-2)))
-              write (aunit,'(a)') 'tmp = load (fullfile(''plot_data'',''' // trim(fname)//  '.dat''));'
+              write (aunit,'(a)') "tmp = load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.dat''));'
               write (aunit,*) 'x2 = tmp(:,1);'
     
 !              fmt = trim(numcat('(''x1 = ['',',ix_max(j2)-ix_min(j2)+1))//'E16.7,''];'')'
@@ -1201,7 +1202,7 @@ contains
  !             write (aunit,fmt) (/(I, I=ix_min(j), ix_max(j), 1)/)*width(j)+center(j)
               if (DoShade) then
               if (shade_meanlikes) then
-                write (aunit,'(a)') 'load (fullfile(''plot_data'',''' // trim(plotfile) //'_likes''));'
+                write (aunit,'(a)') "load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //'_likes''));'
                 write (aunit,*) 'contourf(x1,x2,'//trim(plotfile)//'_likes,64);'
               else     
                 write (aunit,*) 'contourf(x1,x2,pts,64);'
@@ -1213,10 +1214,10 @@ contains
            
               if (num_contours /= 0) then
 
-               write (aunit,'(a)') 'cnt = load (fullfile(''plot_data'',''' // trim(plotfile) //'_cont''));'
+               write (aunit,'(a)') "cnt = load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //'_cont''));'
   
                if (plot_NDcontours) then
-                write (aunit,'(a)') 'load (fullfile(''plot_data'',''' // trim(plotfile) //'_confid''));'
+                write (aunit,'(a)') "load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //'_confid''));'
                 write(numstr,*) 1-contours(1:num_contours)  
                 if (num_contours==1) numstr = trim(numstr)//' '//trim(numstr)
                write (aunit,'(a)') 'contour(x1,x2,'//trim(plotfile)//'_confid,['//trim(numstr)//'],''r'');'
@@ -1293,14 +1294,14 @@ contains
        integer ix1
 
         fname =trim(trim(rootname)//trim(numcat('_p',colix(j)-2)))
-        write (aunit,*) 'load (fullfile(''plot_data'',''' // trim(fname)//  '.dat''));'
+        write (aunit,*) "load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.dat''));'
         write (aunit,*) 'pts='//trim(fname)//';'
         write (aunit,*) 'plot(pts(:,1),pts(:,2),lineM{1},''LineWidth'',lw1);'
         write (aunit,*) 'axis([-Inf,Inf,0,1.1]);axis manual;'
         write (aunit,*) 'set(gca,''FontSize'',axes_fontsize); hold on;'
 
         if (plot_meanlikes) then
-         write (aunit,*) 'load (fullfile(''plot_data'',''' // trim(fname)//  '.likes''));'
+         write (aunit,*) "load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.likes''));'
          write (aunit,*) 'pts='//trim(fname)//';'
          write (aunit,*) 'plot(pts(:,1),pts(:,2),lineL{1},''LineWidth'',lw1);'
         end if
@@ -1308,15 +1309,15 @@ contains
 
        do ix1 = 1, Num_ComparePlots
          fname =  trim(trim(ComparePlots(ix1))//trim(numcat('_p',colix(j)-2)))    
-         if (FileExists('plot_data/' // trim(fname)//'.dat')) then
+         if (FileExists(trim(plot_data_dir)// trim(fname)//'.dat')) then
 
-          write (aunit,*) 'pts = load (fullfile(''plot_data'',''' // trim(fname)// '.dat''));'
+          write (aunit,*) "pts = load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)// '.dat''));'
           fmt = trim(numcat('lineM{',ix1+1)) // '}'        
           write (aunit,*) 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
     
          if (plot_meanlikes) then
 
-            write (aunit,*) 'pts=load (fullfile(''plot_data'',''' //trim(fname)//'.likes''));'
+            write (aunit,*) "pts=load (fullfile('"//trim(plot_data_dir)//"','" //trim(fname)//'.likes''));'
            fmt = trim(numcat('lineL{',ix1+1)) // '}'        
             write (aunit,*) 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
 
@@ -1351,7 +1352,7 @@ program GetDist
                binsraw(-1000:1000)
     
         character(LEN=80) InputFile, numstr
-        character(LEN=300) fname
+        character(LEN=120) fname
         character(LEN=10000) InLine  ! ,LastL,OutLine
         real invars(max_cols)
         integer ix, ix1,i,ix2,ix3, nbins, wx
@@ -1423,7 +1424,7 @@ program GetDist
     
         Ini_fail_on_not_found = .false.
 
-        matlab_version = Ini_Read_Real('matlab_version',6.)
+        matlab_version = Ini_Read_Real('matlab_version',7.)
 
         labels(1) = 'mult'
         labels(2) = 'likelihood'
@@ -1520,13 +1521,29 @@ program GetDist
     matlab_col = Ini_Read_String('matlab_colscheme')
     smoothing = Ini_Read_Logical('smoothing',.true.)
 
+    out_dir = Ini_Read_String('out_dir')
+    
     out_root = Ini_Read_String('out_root')
     if (out_root /= '') then
      rootname = out_root
-     write (*,*) 'producing files with root '//trim(out_root)
+     write (*,*) 'producing files with with root '//trim(out_root)
     end if
-    sm_file = trim(rootname) // '.sm'
 
+    plot_data_dir = Ini_Read_String( 'plot_data_dir' )
+    if ( plot_data_dir == '' ) then
+	plot_data_dir = 'plot_data/'
+    end if
+
+    plot_data_dir = CheckTrailingSlash(plot_data_dir)
+
+    if (out_dir /= '') then
+     out_dir = CheckTrailingSlash(out_dir)
+     write (*,*) 'producing files in directory '//trim(out_dir)
+    end if
+
+    rootdirname = concat(out_dir,rootname)
+
+    sm_file = trim(rootdirname) // '.sm'
 
     contours(1) = Ini_Read_Real('contour1',0.)
     contours(2) = Ini_Read_Real('contour2',0.)
@@ -1676,7 +1693,7 @@ program GetDist
 !Must do this with unsorted output  
           if (thin_factor /= 0) then 
              call ThinData(thin_factor)
-             call WriteThinData(trim(rootname)//'_thin.txt',thin_cool)
+             call WriteThinData(trim(rootdirname)//'_thin.txt',thin_cool)
           end if
 
 !Produce file of weight-1 samples if requested
@@ -1764,17 +1781,17 @@ program GetDist
           plot_row = (num_vars +plot_col-1)/plot_col 
    
           !So we don't forget to run sm, delete current .ps file
-      call DeleteFile(trim(rootname)//'.ps')
+          call DeleteFile(trim(rootdirname)//'.ps')
     
     
-          open(unit=51,file=trim(rootname) // '.m',form='formatted',status='replace')
+          open(unit=51,file=trim(rootdirname) // '.m',form='formatted',status='replace')
          !MatLab file for 1D plots
           call WriteMatLabInit(51,num_vars>3)
 
           open(unit=50,file=sm_file,form='formatted',status='replace')
        !SuperMongo .sm file for 1D plots
           write (50,*) 'DEFINE TeX_strings 1'
-          write (50,*) 'device postfile '//trim(rootname)//'.ps'
+          write (50,*) 'device postfile '//trim(rootdirname)//'.ps'
           write (50,*) 'DEFINE default_font rm'
           if (num_vars > 6) then
            write (50,*) 'expand 0.8'
@@ -1792,7 +1809,7 @@ program GetDist
           end if
 
          if (triangle_plot) then
-          open(unit=52,file=trim(rootname) // '_tri.m',form='formatted',status='replace')
+          open(unit=52,file=trim(rootdirname) // '_tri.m',form='formatted',status='replace')
           call WriteMatLabInit(52,num_vars>4)
          end if
 
@@ -1908,7 +1925,7 @@ program GetDist
           if (.not. no_plots) then
 
           fname =trim(trim(rootname)//trim(numcat('_p',colix(j)-2)))
-          filename = 'plot_data/'// trim(fname)
+          filename = trim(plot_data_dir)//trim(fname)
           open(unit=49,file=trim(filename)//'.dat',form='formatted',status='replace')
           maxbin = maxval(bincounts(ix_min(j):ix_max(j)))
           if (maxbin==0) then
@@ -1997,9 +2014,9 @@ program GetDist
          
            do ix1 = 1, Num_ComparePlots
              fname =  trim(trim(ComparePlots(ix1))//trim(numcat('_p',colix(j)-2)))    
-             if (FileExists('plot_data/' // trim(fname)//'.dat')) then
+             if (FileExists(trim(plot_data_dir)// trim(fname)//'.dat')) then
 
-              write (50,*) 'data "plot_data/' // trim(fname) //'.dat"'
+              write (50,*) 'data "'//trim(plot_data_dir) // trim(fname) //'.dat"'
               write (50,*) 'read { x 1 y 2 mx 3}'
               write (50,*) 'ltype 0'
               if (BW) then
@@ -2010,7 +2027,7 @@ program GetDist
               end if
              write (50,*) 'connect x y'
              if (plot_meanlikes) then
-                write (50,*) 'data "plot_data/'//trim(fname)//'.likes"'
+                write (50,*) 'data "'//trim(plot_data_dir)//trim(fname)//'.likes"'
                 write (50,*) 'read { x 1 y 2}'
                 write (50,*) 'ltype 1'
                 write (50,*) 'connect x y'
@@ -2056,7 +2073,7 @@ program GetDist
               else
                 write (51,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 8]);';
               end if
-              write (51,*) 'print -dpsc2 '//trim(rootname)//'.ps;'
+              write (51,*) 'print -dpsc2 '//trim(rootdirname)//'.ps;'
               close(51)
           end if
                  
@@ -2116,7 +2133,7 @@ program GetDist
          if (num_2D_plots > 0 .and. .not. no_plots) then
 
           write (*,*) 'Producing ',num_2D_plots,' 2D plots'
-          filename = trim(rootname)//'_2D.m'
+          filename = trim(rootdirname)//'_2D.m'
           open(unit=50,file=filename,form='formatted',status='replace')
           call WriteMatLabInit(50,num_2D_plots >=7)
 
@@ -2164,7 +2181,7 @@ program GetDist
             write (50,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 10]);';
           end if
 
-          write (50,*) 'print -dpsc2 '//trim(rootname)//'_2D.ps;'
+          write (50,*) 'print -dpsc2 '//trim(rootdirname)//'_2D.ps;'
           close(50)
 
           end if
@@ -2183,7 +2200,7 @@ program GetDist
           end do
           write (52,*)  'set(gcf, ''PaperUnits'',''inches'');'
           write (52,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 8]);';
-          write (52,*) 'print -dpsc2 '//trim(rootname)//'_tri.ps;'
+          write (52,*) 'print -dpsc2 '//trim(rootdirname)//'_tri.ps;'
           close(52)
   
          end if
@@ -2193,7 +2210,7 @@ program GetDist
 
           if (num_3D_plots /=0 .and. .not. no_plots) then
               write (*,*) 'producing ',num_3D_plots, '2D colored scatter plots'
-              filename = trim(rootname)//'_3D.m'
+              filename = trim(rootdirname)//'_3D.m'
               open(unit=50,file=filename,form='formatted',status='replace')
               write (50,*) 'clf;colormap(''jet'');'
               if (num_3D_plots ==1 ) then
@@ -2209,7 +2226,7 @@ program GetDist
               plot_row = (num_3D_plots +plot_col-1)/plot_col 
 
            
-              write(50,*) 'pts = load('''//trim(rootname)//'_single.txt'');'
+              write(50,*) 'pts = load('''//trim(rootdirname)//'_single.txt'');'
              
               do j=1, num_3D_plots
                  read(plot_3D(j),*) ix1, ix2, ix3  !x, y, color
@@ -2241,7 +2258,7 @@ program GetDist
               write (50,*) 'set(gcf, ''PaperPosition'',[ 0 0 '//  &
                             trim(tmpstr) //' 8]);'
 
-              write (50,*) 'print -dpsc2 '//trim(rootname)//'_3D.ps;'
+              write (50,*) 'print -dpsc2 '//trim(rootdirname)//'_3D.ps;'
               close(50)
           end if
     
@@ -2250,9 +2267,9 @@ program GetDist
 !write out stats
 !Marginalized
 
-         open(unit=50,file=trim(rootname)//'.margestats',form='formatted',status='replace')
+         open(unit=50,file=trim(rootdirname)//'.margestats',form='formatted',status='replace')
           write(50,'(a)') 'param  mean          sddev         lower1        upper1        lower2        upper2'
-          open(unit=51,file='plot_data/'//trim(rootname)//'_params',form='formatted',status='replace')
+          open(unit=51,file=trim(plot_data_dir)//trim(rootname)//'_params',form='formatted',status='replace')
           do j=1, num_vars
              write(50,'(1I5,6E14.6,"   '//trim(labels(colix(j)))//'")') colix(j)-2, mean(j), sddev(j), &
                   cont_lines(j,1:2,1),cont_lines(j,1:2,2)
@@ -2276,7 +2293,7 @@ program GetDist
 
 
 !Limits from global likelihood
-          open(unit=50,file=trim(rootname)//'.likestats',form='formatted',status='replace')
+          open(unit=50,file=trim(rootdirname)//'.likestats',form='formatted',status='replace')
           write (50,*) 'Best fit sample -log(Like) = ',coldata(2,bestfit_ix)
           write (50,*) ''
           write(50,'(a)') 'param  bestfit       lower1        upper1        lower2        upper2'

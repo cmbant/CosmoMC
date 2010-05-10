@@ -9,7 +9,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>This version August 2006</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>This version October 2006</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -73,10 +73,10 @@ Please e-mail details of any bugs or enhancements to <a href="http://cosmologist
 <li>
 Get the <a href="http://cosmologist.info/cosmomc/submit.html">download</a>
 and unzip and untar it (run "gunzip cosmomc.tar.gz", then "tar -xf cosmomc.tar")</li>
-<LI>To use WMAP3 you also need <A HREF="http://healpix.jpl.nasa.gov/">Healpix</A> and <A HREF="http://heasarc.gsfc.nasa.gov/docs/software/fitsio/fitsio.html">CFITSIO</A> installed
+<LI>To use WMAP3 you also need <A HREF="http://heasarc.gsfc.nasa.gov/docs/software/fitsio/fitsio.html">CFITSIO</A> installed
 <LI>For WMAP 3-year (obviously skip the first two steps below if already installed somewhere)
 <UL>
-<LI>Download the WMAP likelihood code and data from <A HREF="http://lambda.gsfc.nasa.gov/product/map/current/likelihood_get.cfm">here</A> (get wmap_likelihoodcode_sw_only_v2p1.tar.gz or later).
+<LI>Download the WMAP likelihood code and data from <A HREF="http://lambda.gsfc.nasa.gov/product/map/current/likelihood_get.cfm">here</A> (get wmap_likelihoodcode_v2p2p1.tar.gz or later).
 <LI>Extract to some separate directory
 <LI>Edit WMAP_3yr_options.f90 to hard code the full path instead of ./data/
 <LI>Make and run the test program supplied
@@ -85,20 +85,20 @@ and unzip and untar it (run "gunzip cosmomc.tar.gz", then "tar -xf cosmomc.tar")
 <li>
 Run "make all" in the camb subdirectory</li>
 
-<LI>In cosmomc's source subdirectory edit the Makefile for your cfitsio, healpix and WMAP3 directories and compiler. Uncomment the relevant parts of the Makefile depending on what system you are using and whether or not you want to use MPI and/or OpenMP.
+<LI>In cosmomc's source subdirectory edit the Makefile for your cfitsio and WMAP3 directories, and fortran compiler. Uncomment the relevant parts of the Makefile depending on what system you are using and whether or not you want to use MPI and/or OpenMP.
 <blockquote><FONT SIZE=2>Using MPI simplifies running several chains and proposal optimization. MPI can be used with OpenMP: generally you want to use OpenMP to use all the shared-memory processors on each node of a cluster, and MPI to run multiple chains on different nodes (the program can also just be run on a single CPU). The intel compilers are changing frequently, there is a file Makefile_intel supplied you can use with the 7.1 versions that give problems.
 </FONT></blockquote>
 
 <li>
 Run "make all" in the source subdirectory (try "gmake all" if you get an error)</li>
 </ul>
-If you don't want to use WMAP3 you can compile with -DNOWMAP, then no need to link to cfitsio or healpix.
+If you don't want to use WMAP3 you can compile with -DNOWMAP, then no need to link to cfitsio.
 <P>
 You can download the Intel f90 compiler for Linux <A HREF="http://www.intel.com/software/products/compilers/flin/noncom.htm">here</A> (earlier versions of ifc 8 did not work; get Build 20040716Z or later. You will also need MKL or some other LAPACK library installation). There is also now a <A HREF="http://g95.sourceforge.net/">GNU F95</A> compiler you could try.
 Note that version 7.4 of the SGI compiler is buggy - install 7.4.1m compilers plus patch 5292 [or comment out "flush" in utils.F90]. Please let me know if you have specific fixes for other compilers.
 <P>
 Using (Compaq) Visual Fortran there's no need to use the Makefile, just open cosmomc.dsw in the source folder, and set params.ini as the program argument under Project, Settings, Debug and set the working directory to ..\. Under Tools, Options, Directories set the include path to [cxml
-path]/CXML/INCLUDE  and lib path to [cxml path]/CXML/LIB. Don't install the 6.6C3 update as it gives compiler errors (6.6B is fine). You then need to add healpix and cfitsio files to your project depending on where they are on your system.
+path]/CXML/INCLUDE  and lib path to [cxml path]/CXML/LIB. Don't install the 6.6C3 update as it gives compiler errors (6.6B is fine). You then need to add cfitsio files to your project depending on where they are on your system.
 <P>
 Note that to compile cosmomc you need to link to <a href="http://www.netlib.org/lapack/">LAPACK
 </a>(for doing matrix diagonalization, etc) - you may need to edit the
@@ -493,6 +493,13 @@ weighting function or parameter mapping.</ul>
 
 <A NAME="Version"><h2>Version History</h2></A>
 <UL>
+<LI><B>20th October 2006</B>
+
+Fixed k-scaling for SDSS LRG likelihood in mpk.f90. Changes for new version of WMAP likelihood code. Added <b>out_dir</b> and <b>plot_data_dir</b> options for GetDist. Minor compatibility fixes.
+
+<LI><B>October 2006</B>
+Added support for SDSS LRG data (<A HREF="http://arxiv.org/abs/astro-ph/0608632">astro-ph/0608632</A>; thanks to Licia Verde, Hiranya Peiris and Max Tegmark). CAMB fixes and other minor changes.
+
 
 <LI><B>August 2006</B>
 Improved speed of GetDist 2D plot generation, added limitsxxx support when smoothing = F. Added <A HREF="#sampling">sampling_method</A> = 5,6, preliminary implementations of multicanonical and Wang-Landau sampling for nasty (e.g. multi-modal) distributions (currently does not compute Evidence, just generates weighted samples). Changed matter_power_minkh (cmbtypes) to work around potential rounding errors on some computers. Updated <A HREF="http://camb.info">CAMB</A> following August 2006 version. Added warning about missing limits<b>xx</b> parameters to getdist. Added <B>MPI_Max_R_ProposeUpdateNew</B> parameter (when varying pareters that are fixed in covmat). Updated CBI data files.
@@ -566,7 +573,6 @@ queues?</B><BR>
 The data files are already on cosmos, so just download the code from LAMBDA and then use 'ln -s /home/cosmos-tmp/WMAP data' to make the link from the WMAP/data directory to the existing files. To run use the runCosmomc script that should be installed on your path: type just 'runCosmomc' for command options. Use 'module load cosmolib' and linking options are
 <PRE>
 cfitsio = /home/cosmos/share-ia64
-healpix = /home/cosmos/share-ia64/Healpix_2.01
 WMAP3 = /home/cosmos/ccc-cam/aml1005/WMAP3
 </PRE>
 <LI><B>Why do some chains sometimes appear to get stuck?</B><BR>

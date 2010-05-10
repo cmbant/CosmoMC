@@ -37,6 +37,8 @@ module posthoc
 
   Type(TPostParams) :: PostParams
 
+  logical :: txt_theory = .false. !True to put P_k in output chains
+
 contains
 
   subroutine ReadPostParams
@@ -62,6 +64,7 @@ contains
     PostParams%redo_add = Ini_Read_Logical('redo_add',.false.)
     PostParams%redo_from_text = Ini_Read_Logical('redo_from_text',.false.)
 
+    txt_theory = Ini_Read_Logical('txt_theory',.false.)
 
   end subroutine ReadPostParams
 
@@ -148,6 +151,7 @@ contains
     
 
         if (PostParams%redo_from_text) then
+          error = 0
           read(1, *) mult, like, Params(1:num_params)    
           call ParamsToCMBParams(Params, CMB)
 
@@ -242,7 +246,7 @@ contains
            mult_sum = mult_sum + mult
           
            if (mult /= 0) then        
-            call WriteCMBParams(newCMB, CorrectTheory, mult, truelike)
+            call WriteCMBParams(newCMB, CorrectTheory, mult, truelike,txt_theory)
             call WriteModel(3, newCMB, CorrectTheory,truelike,mult)
 
            else 
@@ -271,14 +275,14 @@ contains
            write (*,*) 'mean mult  = ', mult_sum/num
            write (*,*) 'mean importance weight (approx evidence ratio) = ',mult_ratio/num
            write (*,*) 'effective number of samples =',mult_sum/mult_max
-        end if
+           write (*,*) 'Best redo_likeoffset = ',max_truelike - max_like
+         end if
         
         if ((mult_ratio < 1e-6 .or. mult_ratio > 1e8) & 
 
             .and. .not.PostParams%redo_change_like_only) then
 
          write (*,*) 'WARNING: use redo_likeoffset to rescale likelihoods'
-         write (*,*) 'Try redo_likeoffset = ',max_truelike - max_like
         end if
 
 

@@ -336,4 +336,4 @@
     CheckPriority = SetPriorityClass(GetCurrentProcess(), dwPriority)
 
    end subroutine SetIdle
-#endif RUNIDLE
+#endif

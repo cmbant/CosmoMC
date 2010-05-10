@@ -1,4 +1,4 @@
-    !Module of useful routines and definitions
+!Module of useful routines and definitions
     !April 2006: fix to TList_RealArr_Thin
 
  module Lists
@@ -603,6 +603,22 @@
   end function ChangeFileExt
 
 
+  function CheckTrailingSlash(aname)
+     character(LEN=*), intent(in) :: aname
+     character(LEN=120) CheckTrailingSlash
+     integer len
+     
+     len = len_trim(aname)
+     if (aname(len:len) /= '\' .and. aname(len:len) /= '/') then
+      CheckTrailingSlash = trim(aname)//'/'
+     else
+      CheckTrailingSlash = aname
+     end if 
+
+
+  end  function CheckTrailingSlash
+
+
   subroutine DeleteFile(aname)
     character(LEN=*), intent(IN) :: aname
 
@@ -742,6 +758,23 @@ subroutine CreateOpenTxtFile(aname, aunit, append)
 10 rewind aunit
   
  end function FileColumns
+
+ function FileLines(aunit) result(n)
+   integer, intent(in) :: aunit
+   integer n
+   character(LEN=4096) :: InLine
+
+   n=0
+   do
+
+   read(aunit,'(a)', end = 200) InLine
+   n = n+1
+   end do
+ 
+200 rewind aunit
+    
+
+ end function FileLines
 
 
 
@@ -1421,7 +1454,7 @@ contains
        kl = mod(int(klr*1000), 30081)       
       end if
 
-      if (Feedback > 0 ) write(*,'(" Random seeds:",1I6,",",1I6," rand_inst:",1I4)")') ij,kl,rand_inst
+      if (Feedback > 0 ) write(*,'(" Random seeds:",1I6,",",1I6," rand_inst:",1I4)') ij,kl,rand_inst
       call rmarin(ij,kl)
   end subroutine initRandom
 
