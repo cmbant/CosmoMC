@@ -1,0 +1,20 @@
+omegabh2      \Omega_b h^2	#physical baryon density
+omegadmh2     \Omega_{DM} h^2	#physical dark matter density, including CDM and massive neutrinos
+theta         \theta		#100 times the ratio of the angular diameter distance to the LSS sound horizon (approx)
+tau           \tau
+omegak        \Omega_K
+fnu           f_\nu		#neutrino energy density as fraction of omegadmh2
+w             w			#constant equation of state parameter for scalar field dark energy 
+ns            n_s		#beware that pivot scale can change in .ini file
+nt            n_t
+nrun          n_{run}
+logA          log[10^{10} A_s]
+r             r			#ratio of tensor to scalar primordial amplitudes at pivot scale
+asz           A_{SZ}		#SZ template amplitude, as in WMAP
+omegal*       \Omega_\Lambda
+age*          Age/Gyr
+omegam*       \Omega_m
+sigma8*       \sigma_8
+zrei*         z_{re}
+r10*          r_{10}		#tensor-scalar C_l amplitude at l=10
+H0*           H_0		#hubble parameter is H0 km/s/Mpc

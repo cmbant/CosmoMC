@@ -14,14 +14,21 @@ implicit none
 
 !Parameters for calculating/storing the matter power spectrum
 !Note that by default everything is linear
-! integer, parameter :: num_matter_power = 49 !number of points computed in matter power spectrum
-!  real, parameter    :: matter_power_minkh =  3.16227766E-03 !minimum value of k/h to store
+!Old mpk settings
+#ifdef DR71RG
+!!! BR09: Reid et al 2009 settings for the LRG power spectrum.
+  integer, parameter :: num_matter_power = 300 !number of points computed in matter power spectrum
+  real, parameter    :: matter_power_minkh =  0.999e-4  !minimum value of k/h to store
+  real, parameter    :: matter_power_dlnkh = 0.03     !log spacing in k/h
+  real, parameter    :: matter_power_maxz = 0.
+  integer, parameter :: matter_power_lnzsteps = 4  ! z=0 to get sigma8 (this first entry appears to be coded in some spots in the code!!), plus 3 LRG redshifts.
+#else
   integer, parameter :: num_matter_power = 74 !number of points computed in matter power spectrum
   real, parameter    :: matter_power_minkh =  0.999e-4  !1e-4 !minimum value of k/h to store
-   real, parameter    :: matter_power_dlnkh = 0.143911568     !log spacing in k/h
+  real, parameter    :: matter_power_dlnkh = 0.143911568     !log spacing in k/h
   real, parameter    :: matter_power_maxz = 0.    !6.0
   integer, parameter :: matter_power_lnzsteps = 1 !20
-
+#endif
 !Only used in params_CMB
    real :: pivot_k = 0.05 !Point for defining primordial power spectra
    logical :: inflation_consistency = .false. !fix n_T or not
@@ -33,8 +40,7 @@ implicit none
 !if num_cls=4 and CMB_lensing then increased to 4 
   integer :: num_clsS=min(num_cls,3) 
 
-
-  integer, parameter :: norm_As=1, norm_amp_ratio=2, norm_SZ = 3
+  integer, parameter :: norm_As=1, norm_amp_ratio=2, norm_freq_ix = 3
   
   Type CMBParams
      real nuisance(1:num_nuisance_params)
@@ -55,12 +61,19 @@ implicit none
 
   Type CosmoTheory
      real Age, r10
-     real SN_loglike, reserved(3)
+     real SN_loglike, HST_loglike, BAO_loglike, reserved(1)
      real cl(lmax,num_cls), cl_tensor(lmax_tensor,num_cls) !TT, TE, EE and BB  in that order
      real sigma_8
      real matter_power(num_matter_power,matter_power_lnzsteps)
-       !second index is redshifts from 0 to matter_power_maxz, with equal spacing in
+       !second index is redshifts from 0 to matter_power_maxz
+       !if custom_redshift_steps = false with equal spacing in
        !log(1+z) and matter_power_lnzsteps points
+       !if custom_redshift_steps = true set in mpk.f90 
+     ! BR09 additions
+     real mpk_nw(num_matter_power,matter_power_lnzsteps) !no wiggles fit to matter power spectrum
+     real mpkrat_nw_nl(num_matter_power,matter_power_lnzsteps) !halofit run on mpk_nw
+     real finalLRGtheoryPk(num_matter_power)  !! this is the quantity that enters the LRG likelihood calculation
+    ! end BR09 additions
   end Type CosmoTheory
 
   logical, parameter ::  Old_format  = .false.
@@ -95,7 +108,7 @@ contains
 
     write(i) amult, num_matter_power, lmax, lmax_tensor, num_cls
 
-    write(i) T%SN_loglike, T%reserved
+    write(i) T%SN_loglike, T%HST_loglike, T%reserved
 
     write(i) like
     write(i) CMB
@@ -169,7 +182,7 @@ contains
         if (almax > lmax) stop 'reading file with larger lmax'
         if (anumcls > num_cls) stop 'reading file with more Cls (polarization)'
 
-        read(i) T%SN_loglike, T%reserved
+        read(i) T%SN_loglike, T%HST_loglike,T%reserved
    
         read(i,end = 100, err=100) like
         read(i) CMB
@@ -295,11 +308,13 @@ contains
      Type(CosmoTheory) T
      Type(CMBParams) CMB
      real Cls(lmax,num_cls)
-
+     integer i
+     
      Cls(2:lmax,1:num_clsS) =T%cl(2:lmax,1:num_clsS)    !CMB%norm(norm_As)*T%cl(2:lmax,1:num_clsS)
      if (num_cls>3 .and. num_ClsS==3) Cls(2:lmax,num_cls)=0
 
-     if (CMB%norm(norm_amp_ratio) /= 0) then
+     i = norm_amp_ratio !this convolution is to avoid compile-time bounds-check errors on CMB%norm
+     if (CMB%norm(i) /= 0) then
         Cls(2:lmax_tensor,:) =  Cls(2:lmax_tensor,:)+ T%cl_tensor(2:lmax_tensor,:) 
          !CMB%norm(norm_As)*CMB%norm(norm_amp_ratio)*T%cl_tensor(2:lmax_tensor,:)
      end if 
@@ -337,13 +352,36 @@ contains
      end if
      i = int(x)
      d = x - i
-     MatterPowerAt = exp(log(T%matter_power(i+1,1))*(1-d) + log(T%matter_power(i+2,1))*d)
+     MatterPowerAt = exp(log(T%matter_power(i+1,1))*(1-d) &
+       + log(T%matter_power(i+2,1))*d)
      !Just do linear interpolation in logs for now..
      !(since we already cublic-spline interpolated to get the stored values)
-
+     !Assume matter_power_lnzsteps is at redshift zero
    end function
 
 
+
+!BR09 this function is just a copy of the one above but with LRG theory put in instead of linear theory
+   function LRGPowerAt(T,kh)
+     !get LRG matter power spectrum today at kh = k/h by interpolation from stored values
+     real, intent(in) :: kh
+     Type(CosmoTheory) T
+     real LRGPowerAt
+     real x, d
+     integer i
+   
+     x = log(kh/matter_power_minkh) / matter_power_dlnkh
+     if (x < 0 .or. x >= num_matter_power-1) then
+        write (*,*) ' k/h out of bounds in MatterPowerAt (',kh,')'
+        stop 
+     end if
+     i = int(x)
+     d = x - i
+     LRGPowerAt = exp(log(T%finalLRGtheoryPk(i+1))*(1-d) + log(T%finalLRGtheoryPk(i+2))*d)
+     !Just do linear interpolation in logs for now..
+     !(since we already cublic-spline interpolated to get the stored values)
+   end function
+!!BRO09 addition end
 
    function MatterPowerAt_Z(T,kh,z)
      !get matter power spectrum at z at kh = k/h by interpolation from stored values

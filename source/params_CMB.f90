@@ -199,44 +199,64 @@
 
    end subroutine CMBParamsToParams
 
+   subroutine SetParamNames(Names)
+    use settings
+    use ParamNames
+    Type(TParamNames) :: Names
+ 
+    if (generic_mcmc) then
+     Names%nnames=0
+     if (Feedback>0) write (*,*) 'edit SetParamNames in params_CMB.f90 if you want to use named params'
+    else
+     call ParamNames_init(Names, './params_CMB.paramnames')
+    end if
+   end subroutine SetParamNames
+
 
   subroutine WriteParams(P, mult, like)
      use settings
      use cmbtypes
      use ParamDef
+     use IO
      implicit none
-    Type(ParamSet) P
-    real, intent(in) :: mult, like
-    character(LEN =60) fmt
-    Type(CMBParams) C
-    real r10
+     Type(ParamSet) P
+     real, intent(in) :: mult, like
+     Type(CMBParams) CMB
+     real r10
+     real, allocatable :: output_array(:)
   
-    if (outfile_unit ==0) return
+    if (outfile_handle ==0) return
   
     if (generic_mcmc) then
 
-      fmt = trim(numcat('(2E16.7,',num_params))//'E16.7)'
-      write (outfile_unit,fmt) mult,like, P%P
-
+      call IO_OutputChainRow(outfile_handle, mult, like, P%P)
+     
     else
     
-      call ParamsToCMBParams(P%P,C)
+      call ParamsToCMBParams(P%P,CMB)
 
       if (lmax_tensor /= 0 .and. compute_tensors) then
           r10 = P%Info%Theory%cl_tensor(10,1)/P%Info%Theory%cl(10,1)
       else
         r10 = 0
       end if
-      fmt = concat('(2E16.7,',num_real_params,'E16.7,7E16.7')
+      allocate(output_array(num_real_params + 7 + nuisance_params_used ))
+      output_array(1:num_real_params) =  P%P(1:num_real_params)
+      output_array(num_real_params+1) = CMB%omv
+      output_array(num_real_params+2) = P%Info%Theory%Age
+      output_array(num_real_params+3) = CMB%omdm+CMB%omb
+      output_array(num_real_params+4) = P%Info%Theory%Sigma_8      
+      output_array(num_real_params+5) = CMB%zre
+      output_array(num_real_params+6) = r10
+      output_array(num_real_params+7) = CMB%H0
       if (nuisance_params_used>0) then
-           fmt = concat(trim(fmt)//',',nuisance_params_used,'E16.7')
-      end if 
-      fmt = concat(fmt,')')
-      write (outfile_unit,fmt) mult,like, P%P(1:num_real_params), C%omv,P%Info%Theory%Age, C%omdm+C%omb, &
-          P%Info%Theory%Sigma_8, C%zre,r10,C%H0,P%P(num_real_params+1:num_real_params+nuisance_params_used) 
+       output_array(num_real_params+8:num_real_params+8+nuisance_params_used-1) = &
+        P%P(num_real_params+1:num_real_params+nuisance_params_used) 
+      end if
+ 
+      call IO_OutputChainRow(outfile_handle, mult, like, output_array)
+      deallocate(output_array)           
     end if
-
-     if (flush_write) call FlushFile(outfile_unit)
 
   end  subroutine WriteParams
 
@@ -247,15 +267,17 @@
      use settings
      use cmbtypes
      use ParamDef
+     use IO
      implicit none
     Type(ParamSet) P
     real, intent(in) :: mult, like
     character(LEN =30) fmt
-    Type(CMBParams) C
+    Type(CMBParams) CMB
     real r10
-  
-    if (outfile_unit ==0) return
-      call ParamsToCMBParams(P%P,C)
+    real,allocatable :: output_array(:)
+       
+    if (outfile_handle ==0) return
+      call ParamsToCMBParams(P%P,CMB)
 
       if (lmax_tensor /= 0 .and. compute_tensors) then
           r10 = P%Info%Theory%cl_tensor(10,1)/P%Info%Theory%cl(10,1)
@@ -263,12 +285,20 @@
         r10 = 0
       end if
 
-     fmt = trim(numcat('(2E16.7,',num_real_params+num_matter_power))//'E16.7,7E16.7)'
-      write (outfile_unit,fmt) mult,like, P%P(1:num_real_params), C%omv,P%Info%Theory%Age, C%omdm+C%omb, &
-          P%Info%Theory%Sigma_8, C%zre,r10,C%H0, P%Info%Theory%matter_power(:,1)
+     allocate(output_array(num_real_params + 7 + num_matter_power ))
+      output_array(1:num_real_params) =  P%P(1:num_real_params)
+      output_array(num_real_params+1) = CMB%omv
+      output_array(num_real_params+2) = P%Info%Theory%Age
+      output_array(num_real_params+3) = CMB%omdm+CMB%omb
+      output_array(num_real_params+4) = P%Info%Theory%Sigma_8      
+      output_array(num_real_params+5) = CMB%zre
+      output_array(num_real_params+6) = r10
+      output_array(num_real_params+7) = CMB%H0
+      output_array(num_real_params+8:num_real_params+8+num_matter_power-1) = &
+        P%Info%Theory%matter_power(:,1) 
 
-
-     if (flush_write) call FlushFile(outfile_unit)
+      call IO_OutputChainRow(outfile_handle, mult, like, output_array)
+      deallocate(output_array)
 
   end  subroutine WriteParamsAndDat
 

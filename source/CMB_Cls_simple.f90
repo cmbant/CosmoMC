@@ -9,8 +9,14 @@ module CMB_Cls
           
   use settings
   use snovae
+  use bao
+  use HST
+  use IO
   implicit none
   logical :: Use_SN =.false. !Compute Supernovae likelihoods only when background changes
+  logical :: Use_HST =.false. !Compute HST likelihoods only when background changes
+  logical :: Use_BAO = .false.
+
   logical :: compute_tensors = .false.
   logical :: CMB_lensing = .false.
   logical :: use_nonlinear = .false.
@@ -60,6 +66,12 @@ contains
 
  subroutine GetCls(CMB,Info, Cls, error)
    use ModelParams, only : ThreadNum
+#ifdef DR71RG 
+   use lrggettheory
+   real(dl) :: getabstransferscale 
+   !! BR09: this variable is for renormalizing the power spectra to the z=0 value; 
+   !this is the assumption of the LRG model.
+#endif     
    type(CMBParams) CMB
    integer error
    Type(ParamSetInfo) Info
@@ -67,6 +79,9 @@ contains
    type(CAMBParams)  P
    logical NewTransfers
    integer zix
+   character(LEN=128) :: LogLine
+  
+  
     error = 0
     Newtransfers = .false.
   
@@ -86,9 +101,22 @@ contains
          else
             Info%Theory%SN_Loglike = 0     
          end if  
+         if (Use_BAO) then
+            Info%Theory%BAO_loglike = BAO_LnLike(CMB)
+         else
+            Info%Theory%BAO_loglike = 0
+         end if 
+         if (Use_HST) then
+            Info%Theory%HST_Loglike = HST_LnLike(CMB)
+         else
+            Info%Theory%HST_Loglike = 0     
+         end if  
+         
          ncalls=ncalls+1
-         if (mod(ncalls,100)==0 .and. logfile_unit/=0) write (logfile_unit,*) 'CAMB called ',ncalls, ' times'
-    
+         if (mod(ncalls,100)==0 .and. logfile_unit/=0) then
+          write (logLine,*) 'CAMB called ',ncalls, ' times'
+          call IO_WriteLog(logfile_unit,logLine)
+         end if 
          if (Feedback > 1) write (*,*) 'CAMB done'
 
     end if 
@@ -114,7 +142,32 @@ contains
    
          if (Use_LSS) then
             Info%Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(matter_power_lnzsteps,1)
+#ifdef DR71RG 
+            !! BR09 get lrgtheory info
+            if (num_matter_power /= 0 .and. use_dr7lrg) then
+                do zix = 1,matter_power_lnzsteps
+                 if(zix .eq. iz0lrg .or. zix .eq. izNEARlrg .or. zix .eq. izMIDlrg .or. zix .eq. izFARlrg) then
+                   call Transfer_GetMatterPowerAndNW(Info%Transfers%MTrans,&
+                     Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                      1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
+                       kmindata,getabstransferscale, &
+                       Info%Theory%mpk_nw(:,zix),Info%Theory%mpkrat_nw_nl(:,zix))
+                     if(zix == iz0lrg) powerscaletoz0(1) = getabstransferscale**2.0d0
+                     if(zix == izNEARlrg)   powerscaletoz0(2) = powerscaletoz0(1)/getabstransferscale**2.0d0
+                     if(zix == izMIDlrg)   powerscaletoz0(3) = powerscaletoz0(1)/getabstransferscale**2.0d0
+                     if(zix == izFARlrg)   powerscaletoz0(4) = powerscaletoz0(1)/getabstransferscale**2.0d0
+                  else  !! not an LRG redshift, so call regular function.
+                   call Transfer_GetMatterPower(Info%Transfers%MTrans,&
+                     Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                     1,matter_power_minkh, matter_power_dlnkh,num_matter_power)
+                  end if
+                 end do
+                 if(zix == iz0lrg) powerscaletoz0(1) = 1.0d0
+             else if (num_matter_power /= 0) then
+            !! end BR09 get lrgtheory info
+#else
             if (num_matter_power /= 0) then
+#endif
                 do zix = 1,matter_power_lnzsteps
                  call Transfer_GetMatterPower(Info%Transfers%MTrans,& 
                    Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
@@ -162,6 +215,12 @@ contains
 
  subroutine GetClsInfo(CMB, Theory, error, DoCls, DoPk)
    use ModelParams, only : ThreadNum
+#ifdef DR71RG
+   use lrggettheory
+   real(dl) :: getabstransferscale
+   !! BR09: this variable is for renormalizing the power spectra to the z=0 value;
+   !this is the assumption of the LRG model.
+#endif
    type(CMBParams) CMB
    Type(CosmoTheory) Theory
    integer error
@@ -205,17 +264,43 @@ contains
        Theory%cl_tensor(2:lmax_tensor,1:num_cls) = 0
        call SetTheoryFromCAMB(Theory)
       end if
-  
+
+!!BR09 new addition, putting LRGs back here as well, same structure as above.  
       if (DoPk) then 
          Theory%sigma_8 = MT%sigma_8(matter_power_lnzsteps,1)
-         if (num_matter_power /= 0) then
-           do zix = 1,matter_power_lnzsteps
-                 call Transfer_GetMatterPower(MT,& 
-             Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,1,matter_power_minkh,&
-                        matter_power_dlnkh,num_matter_power) 
-           end do
-         
-         end if    
+
+#ifdef DR71RG
+         !! BR09 get lrgtheory info
+         if (num_matter_power /= 0 .and. use_dr7lrg) then
+             do zix = 1,matter_power_lnzsteps
+              if(zix .eq. iz0lrg .or. zix .eq. izNEARlrg .or. zix .eq. izMIDlrg .or. zix .eq. izFARlrg) then
+                call Transfer_GetMatterPowerAndNW(MT,&
+                  Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                   1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
+                    kmindata,getabstransferscale, &
+                    Theory%mpk_nw(:,zix),Theory%mpkrat_nw_nl(:,zix))
+                     if(zix == iz0lrg) powerscaletoz0(1) = getabstransferscale**2.0d0
+                     if(zix == izNEARlrg)   powerscaletoz0(2) = powerscaletoz0(1)/getabstransferscale**2.0d0
+                     if(zix == izMIDlrg)   powerscaletoz0(3) = powerscaletoz0(1)/getabstransferscale**2.0d0
+                     if(zix == izFARlrg)   powerscaletoz0(4) = powerscaletoz0(1)/getabstransferscale**2.0d0
+               else  !! not an LRG redshift, so call regular function.
+                call Transfer_GetMatterPower(MT,&
+                  Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                  1,matter_power_minkh, matter_power_dlnkh,num_matter_power)
+               end if
+             end do
+             if(zix == iz0lrg) powerscaletoz0(1) = 1.0d0
+              else if (num_matter_power /= 0) then
+         !! end BR09 get lrgtheory info
+#else
+            if (num_matter_power /= 0) then
+#endif
+                do zix = 1,matter_power_lnzsteps
+                 call Transfer_GetMatterPower(MT,&
+                   Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                    1,matter_power_minkh, matter_power_dlnkh,num_matter_power)
+                 end do
+            end if
       end if
       Theory%Age = CAMB_GetAge(P)
 
@@ -285,8 +370,10 @@ contains
    use lensing
    use ModelParams
    use Lya
+   use mpk
    type(CAMBParams)  P 
    integer zix
+   real redshifts(matter_power_lnzsteps)
 
         Threadnum =num_threads
         w_lam = -1
@@ -328,17 +415,25 @@ contains
         if (max_transfer_redshifts < matter_power_lnzsteps) then
           stop 'Need to manually set max_transfer_redshifts larger in CAMB''s modules.f90'
         end if
-        if (matter_power_lnzsteps==1) then
-          P%Transfer%redshifts(1) = 0
-        else
-         do zix=1, matter_power_lnzsteps
-           !Linear spacing in log(z+1)
+        if (use_LSS) then
+           redshifts(1) = 0
            
-          P%Transfer%redshifts(zix) = exp( log(matter_power_maxz+1) * &
-                real(matter_power_lnzsteps-zix)/(max(2,matter_power_lnzsteps)-1) )-1
+           do zix=2, matter_power_lnzsteps
+            !Default Linear spacing in log(z+1) if matter_power_lnzsteps > 1           
+             redshifts(zix) = exp( log(matter_power_maxz+1) * &
+                real(zix-1)/(max(2,matter_power_lnzsteps)-1) )-1
                !put in max(2,) to stop compilers complaining of div by zero
-         end do
-        end if   
+           end do
+           
+           if (use_mpk) call mpk_SetTransferRedshifts(redshifts) !can modify to use specific redshifts
+           if (redshifts(1) > 0.0001) call MpiStop('mpk redshifts: lowest redshift must be zero')
+           do zix=1, matter_power_lnzsteps 
+            !CAMB's ordering is from highest to lowest
+            P%Transfer%redshifts(zix) = redshifts(matter_power_lnzsteps-zix+1)
+           end do
+        else 
+          P%Transfer%redshifts(1) = 0
+         end if   
         
         P%Num_Nu_Massive = 3
         P%Num_Nu_Massless = 0.04
@@ -349,7 +444,7 @@ contains
 
         if (CMB_Lensing) then
             P%DoLensing = .true.
-            P%Max_l = lmax +250
+            P%Max_l = lmax +250 + 50 !+50 in case accuracyBoost>1 and so odd l spacing
             P%Max_eta_k = P%Max_l*2 
         end if
         

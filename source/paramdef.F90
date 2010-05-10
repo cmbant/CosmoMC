@@ -117,6 +117,9 @@ end subroutine DoAbort
 
 subroutine Initialize(Params)
         use IniFile
+        use ParamNames
+        use settings
+        use IO
 
         implicit none
         type (ParamSet) Params
@@ -127,6 +130,8 @@ subroutine Initialize(Params)
         real tmpMat(num_real_params,num_real_params)
 
         output_lines = 0
+        
+        call SetParamNames(NameMapping)
         
         Ini_fail_on_not_found = .false.
 
@@ -140,11 +145,10 @@ subroutine Initialize(Params)
 
        if (.not. new_chains) then
             fname = trim(rootname) //'.txt'
-            InLine = LastFileLine(fname)
-            read(InLine, *) mult, like, Params%P(1:num_params)
+            call IO_ReadLastChainParams(fname, mult, like, Params%P, num_params)
             StartLike = like
             burn_in = 4
-            call CreateOpenTxtFile(fname,outfile_unit,.true.)
+            outfile_handle = IO_OutputOpenForWrite(fname, append = .true.)
          end if
     
         num_params_used = 0
@@ -164,7 +168,16 @@ subroutine Initialize(Params)
               Scales%PWidth(i)=0
             end if  
            else 
-            InLine = Ini_Read_String(numcat('param',i), .true.)
+            InLine =  ParamNames_ReadIniForParam(NameMapping,DefIni,'param',i)
+            if (InLine=='') then
+             if (NameMapping%nnames/=0) then
+              call MpiStop('parameter ranges not found, param '//trim(IntToStr(i))// &
+                             ' - '//trim(NameMapping%Name(i)))
+             else
+              call MpiStop('parameter ranges not found, param '//trim(IntToStr(i)))
+             end if
+             !Ini_Read_String(numcat('param',i), .true.)
+            end if
             read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), wid, Scales%PWidth(i)
            end if  
            Scales%center(i) = center
@@ -375,10 +388,9 @@ end subroutine SetProposeMatrix
     Type(ParamSet) P
     real like
     Type(CMBParams) C
-    if (indepfile_unit ==0) return
+    if (indepfile_handle ==0) return
     call ParamsToCMBParams(P%P,C)
-    call WriteModel(indepfile_unit, C,P%Info%Theory,like)
-    if (flush_write) call FlushFile(indepfile_unit)
+    call WriteModel(indepfile_handle, C,P%Info%Theory,like)
    end subroutine WriteIndepSample
 
 
@@ -419,6 +431,7 @@ end subroutine SetProposeMatrix
      Type(TList_RealArr), save :: S
      integer, save :: slice_fac = 1
      logical, save :: all_burn = .false., done_check = .false., DoUpdates = .false.
+     character(LEN=128) logLine
 
 
 !Read in checkpoing stuff at restart
@@ -655,8 +668,8 @@ end subroutine SetProposeMatrix
                      if (Feedback > 0 .and. MPIRank==0) &
                       write (*,*) 'Current convergence R-1 = ',R, 'chain steps =',sample_num
                      if (logfile_unit/=0) then
-                      write (logfile_unit,*) 'Current convergence R-1 = ',R, 'chain steps =',sample_num
-                      if (flush_write) call FlushFile(logfile_unit)
+                      write(logLine,*) 'Current convergence R-1 = ',R, 'chain steps =',sample_num
+                      call IO_WriteLog(logfile_unit,logLine)
                      end if 
                      if (R < MPI_R_Stop .and. flukecheck) then
                        if (MPI_Check_Limit_Converge) then
@@ -725,6 +738,7 @@ end subroutine SetProposeMatrix
   logical :: AllOK 
   integer numCheck
   integer, allocatable, dimension(:) :: params_check
+ character(LEN=128) logLine
 
 
     if (MPI_Limit_Param/=0) then
@@ -771,9 +785,10 @@ end subroutine SetProposeMatrix
      write (*,*) 'Current worst limit error = ', WorstErr
      write (*,*) 'for parameter ',Worsti, 'samps = ',L%Count*MPI_thin_fac   
    end if
-   if (logfile_unit/=0) &
-      write (logfile_unit,*) 'Current limit err = ',WorstErr, ' param ',Worsti, 'samps = ',L%Count*MPI_thin_fac
-
+   if (logfile_unit/=0) then
+      write (logLine,*) 'Current limit err = ',WorstErr, ' param ',Worsti, 'samps = ',L%Count*MPI_thin_fac
+      call IO_WriteLog(logfile_unit,logLine)
+   end if
    if (WorstErr < MPI_Limit_Converge_Err) call DoStop
      
    deallocate(Limits)       

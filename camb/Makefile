@@ -1,4 +1,5 @@
 #CAMB Makefile
+
 #Edit for your compiler
 #Note there are many ifc versions, some of which behave oddly
 
@@ -58,19 +59,6 @@ FFLAGS = -openmp -O2 -ip -W0 -WB -fpp2 -vec_report0
 #F90C     = xlf90_r
 #FFLAGS  = -DESCAPEBACKSLASH -DIBMXL -qsmp=omp -qsuffix=f=f90:cpp=F90 -O3 -qstrict -qarch=pwr3 -qtune=pwr3
 
-
-#Files containing evolution equations initial power spectrum module
-EQUATIONS     = equations
-POWERSPECTRUM = power_tilt
-REIONIZATION = reionization
-#Module doing non-linear scaling
-NONLINEAR     = halofit
-
-#Driver program
-DRIVER        = inidriver.F90
-#DRIVER        = sigma8.f90
-#DRIVER        = tester.f90
-
 #Settings for building camb_fits
 #Location of FITSIO and name of library
 FITSDIR       = /home/cpac/cpac-tools/lib
@@ -78,50 +66,4 @@ FITSLIB       = cfitsio
 #Location of HEALPIX for building camb_fits
 HEALPIXDIR    = /home/cpac/cpac-tools/healpix
 
-CAMBLIB       = libcamb.a
-
-#Shouldn't need to change anything else...
-
-F90FLAGS      = $(FFLAGS)
-HEALPIXLD     = -L$(HEALPIXDIR)/lib -lhealpix -L$(FITSDIR) -l$(FITSLIB)
-FC            = $(F90C)
-
-CAMBOBJ       = subroutines.o inifile.o $(POWERSPECTRUM).o recfast.o $(REIONIZATION).o modules.o \
-	bessels.o $(EQUATIONS).o $(NONLINEAR).o lensing.o cmbmain.o camb.o
-
-default: camb
-
-all: camb $(CAMBLIB)
-
-subroutines: utils.o
-$(POWERSPECTRUM): subroutines.o
-recfast.o: subroutines.o
-$(REIONIZATION).o: recfast.o
-modules.o: $(REIONIZATION).o
-bessels.o: modules.o
-$(EQUATIONS): bessels.o
-$(NONLINEAR).o:  modules.o
-lensing.o: bessels.o
-cmbmain.o: lensing.o
-camb.o: cmbmain.o
-
-
-camb: utils.o $(CAMBOBJ) $(DRIVER)
-	$(F90C) $(F90FLAGS) utils.o $(CAMBOBJ) $(DRIVER) -o $@
-
-$(CAMBLIB): $(CAMBOBJ)
-	ar -r $@ $?
-
-camb_fits: writefits.f90 utils.o $(CAMBOBJ) $(DRIVER)
-	$(F90C) $(F90FLAGS) -I$(HEALPIXDIR)/include utils.o $(CAMBOBJ) writefits.f90 $(DRIVER) $(HEALPIXLD) -DWRITE_FITS -o $@
-
-%.o: %.f90
-	$(F90C) $(F90FLAGS) -c $*.f90
-
-utils.o:
-	$(F90C) $(F90FLAGS) -c utils.F90	
-
-clean:
-	-rm -f *.o *.a *.d core *.mod
-
-
+include ./Makefile_main

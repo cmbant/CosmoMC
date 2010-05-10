@@ -104,6 +104,38 @@ contains
 
  end subroutine Matrix_Write
 
+subroutine Matrix_Write_double(aname, mat, forcetable)
+   character(LEN=*), intent(in) :: aname
+   double precision, intent(in) :: mat(:,:)
+   logical, intent(in), optional :: forcetable
+   integer i,k
+   character(LEN=50) fmt
+   integer shp(2)
+   logical WriteTab
+   integer file_unit
+
+   shp = shape(mat)
+   WriteTab = shp(2)<=50
+   if (present(forcetable)) then
+     if (forcetable) WriteTab = .true.
+    end if
+   file_unit = new_file_unit()
+   call CreateTxtFile(aname, file_unit)
+   fmt = trim(numcat('(',shp(2)))//'E15.5)'
+   do i=1, shp(1)
+     if (.not. WriteTab) then
+      do k=1, shp(2)
+       write (file_unit, '(1E17.7)') mat(i,k)
+      end do
+     else
+      write (file_unit, fmt) mat(i,1:shp(2))
+     end if
+   end do
+
+   call CloseFile(file_unit)
+
+ end subroutine Matrix_Write_double
+
 
  subroutine Matrix_Write_Binary(aname, mat)
    character(LEN=*), intent(in) :: aname
@@ -145,7 +177,7 @@ contains
    integer shp(2)
   
    shp = shape(mat)
-   if (shp(1) /= shp(2)) call MpiStop('MatrixSym_Write_Binary: Not square matrix')
+   if (shp(1) /= shp(2)) call MpiStop('MatrixSym_Write_Binary_Single: Not square matrix')
    if (shp(1) == 0) return
    
    file_unit = new_file_unit()
@@ -1313,10 +1345,11 @@ contains
 
  end subroutine Matrix_Mult_TN
 
-  subroutine Matrix_Cholesky(M)
+  subroutine Matrix_Cholesky(M, err)
    !Note upper triangular is not zeroed
      real(dm), intent(inout):: M(:,:)
      integer n, info
+     integer, optional :: err
       
      n=Size(M,DIM=1)
      if (Size(M,DIM=2)/=n) call MpiStop('Matrix_Cholesky: non-square matrix')
@@ -1327,8 +1360,12 @@ contains
      call dpotrf ('L', n, M, n, info)
 #endif
 
-     if (info/=0) call MpiStop('Matrix_Cholesky: not positive definite '//trim(IntToStr(info))) 
-  
+     if (present(err)) then
+       err = info
+     else
+     if (info/=0) &
+       call MpiStop('Matrix_Cholesky: not positive definite '//trim(IntToStr(info))) 
+    end if
   end subroutine Matrix_Cholesky
  
   subroutine Matrix_CCholesky(M)
@@ -1442,25 +1479,34 @@ contains
   end subroutine Matrix_CCholeskyRootInverse
 
   
-  subroutine Matrix_inverse_chol(M)
+  subroutine Matrix_inverse_chol(M, err)
    !Inverse of symmetric matrix
    !This should not be used in real situations, but useful for quick testing
      real(dm), intent(inout):: M(:,:)
-     integer i,j,n, info
+     integer i,j,n
+     integer info  
+     integer, optional :: err
 
      n=Size(M,DIM=1)
      if (Size(M,DIM=2)/=n) call MpiStop('Matrix_Inverse: non-square matrix')
      call Matrix_Start('Inverse')
-     
-     call Matrix_Cholesky(M)
-  
+     if (present(err)) then
+      call Matrix_Cholesky(M,err)
+      if (err/=0) return
+     else
+      call Matrix_Cholesky(M)
+     end if
 #ifdef MATRIX_SINGLE
      call spotri ('L', n, M, n, info)
 #else
      call dpotri ('L', n, M, n, info)
 #endif
-     if (info/=0) call MpiStop('Matrix_inverse: error '//trim(IntToStr(info))) 
-     
+     if (present(err)) then
+        err = info
+        if (err/=0) return    
+     else
+      if (info/=0) call MpiStop('Matrix_inverse: error '//trim(IntToStr(info))) 
+     end if
      do i=1,n
       do j=1,i-1
        M(j,i) = M(i,j)

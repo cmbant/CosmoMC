@@ -8,10 +8,159 @@
 !AL April 2006: added covariance matrix support (following 2df 2005)
 !LV_06 : incorporation of LRG DR4 from Tegmark et al . astroph/0608632 
 !AL: modified LV SDSS to do Q and b^2 or b^2*Q marge internally as for 2df
+!BR09: added model LRG power spectrum.
+!AL Oct 20: switch to Ini_Read_xxx_File; fortran compatibility changes
 
-module mpk
+
+module LRGinfo
 use settings
 use cmbtypes
+use Precision
+use lrggettheory
+
+!use CMB_Cls
+
+implicit none
+
+!! these are the LRG redshift subsample weights.
+real(dl), parameter :: w0 = 0.0d0, wNEAR = 0.395d0, wMID = 0.355d0, wFAR = 0.250d0
+
+!in CAMB: 4=now (z=0), 3=NEAR, 2=MID, 1=FAR; opposite order in matter_power
+!! now generalized indices iz0lrg, izNEARlrg, izMIDlrg, izFARlrg
+real(dl), dimension(4) :: zeval, zweight, sigma2BAOfid, sigma2BAO
+
+real(dl) om_val, ol_val, ok_check, wval  ! passed in from CMBparams CMB
+
+! power spectra evaluated at fiducial cosmological theory (WMAP5 recommended values)
+real, allocatable :: ratio_power_nw_nl_fid(:,:)
+!real,dimension(num_matter_power,matter_power_lnzsteps) :: ratio_power_nw_nl_fid
+!make allocatable to avoid compile-time range errors when matter_power_lnzsteps<4
+
+contains
+
+subroutine LRGinfo_init()
+  integer :: iopb, i, ios
+  real(dl) :: omegakdummy,omegavdummy,wdummy,getabstransferscalefiddummy
+  real(dl) :: kval, plin, psmooth, rationwhalofit
+
+  !!BR09 only needed for LRGs, so only 4 redshifts no matter what matter_power_lnzsteps is
+  allocate(ratio_power_nw_nl_fid(num_matter_power,4))
+
+  sigma2BAOfid(1) = 1.0e-5  !! don't do any smearing at z=0; this won't be used anyway.
+  sigma2BAOfid(2) = sigma2BAONEAR
+  sigma2BAOfid(3) = sigma2BAOMID
+  sigma2BAOfid(4) = sigma2BAOFAR
+
+  zeval(1) = z0
+  zeval(2) = zNEAR
+  zeval(3) = zMID
+  zeval(4) = zFAR
+
+  zweight(1) = w0
+  zweight(2) = wNEAR
+  zweight(3) = wMID
+  zweight(4) = wFAR
+
+  !! first read in everything needed from the CAMB output files.
+  iopb = 0 !! check later if there was an error
+
+  open(unit=tmp_file_unit,file=trim(DataDir)//'lrgdr7fiducialmodel_matterpowerzNEAR.dat',form='formatted',err=500, iostat=ios)
+  read (tmp_file_unit,*,iostat=iopb) getabstransferscalefiddummy, omegakdummy,omegavdummy,wdummy
+  do i = 1, num_matter_power
+    read (tmp_file_unit,*,iostat=iopb) kval, plin, psmooth, rationwhalofit
+    ratio_power_nw_nl_fid(i,2) = rationwhalofit
+  end do
+  close(tmp_file_unit)
+
+  open(unit=tmp_file_unit,file=trim(DataDir)//'lrgdr7fiducialmodel_matterpowerzMID.dat',form='formatted',err=500, iostat=ios)
+  read (tmp_file_unit,*,iostat=iopb) getabstransferscalefiddummy,omegakdummy,omegavdummy,wdummy
+  do i = 1, num_matter_power
+    read (tmp_file_unit,*,iostat=iopb) kval, plin, psmooth, rationwhalofit
+    ratio_power_nw_nl_fid(i,3) = rationwhalofit
+  end do
+  close(tmp_file_unit)
+
+  open(unit=tmp_file_unit,file=trim(DataDir)//'lrgdr7fiducialmodel_matterpowerzFAR.dat',form='formatted',err=500,iostat=ios)
+  read (tmp_file_unit,*,iostat=iopb) getabstransferscalefiddummy,omegakdummy,omegavdummy,wdummy
+  do i = 1, num_matter_power
+    read (tmp_file_unit,*,iostat=iopb) kval, plin, psmooth, rationwhalofit
+    ratio_power_nw_nl_fid(i,4) = rationwhalofit
+  end do
+  close(tmp_file_unit)
+
+500 if(ios .ne. 0) stop 'Unable to open file'
+  if(iopb .ne. 0) stop 'Error reading model or fiducial theory files.'
+end subroutine LRGinfo_init
+
+! HARD CODING OF POLYNOMIAL FITS TO NEAR, MID, FAR SUBSAMPLES.
+subroutine LRGtoICsmooth(k,fidpolys)
+  real(dl), intent(in) :: k
+  real(dl) :: fidNEAR, fidMID, fidFAR
+  real(dl), dimension(2:4), intent(out) :: fidpolys
+
+  if(k < 0.194055d0) then !!this is where the two polynomials are equal
+    fidNEAR = (1.0d0 - 0.680886d0*k + 6.48151d0*k**2)
+  else
+    fidNEAR = (1.0d0 - 2.13627d0*k + 21.0537d0*k**2 - 50.1167d0*k**3 + 36.8155d0*k**4)*1.04482d0
+  end if
+
+  if(k < 0.19431) then
+    fidMID = (1.0d0 - 0.530799d0*k + 6.31822d0*k**2)
+  else
+    fidMID = (1.0d0 - 1.97873d0*k + 20.8551d0*k**2 - 50.0376d0*k**3 + 36.4056d0*k**4)*1.04384
+  end if
+
+  if(k < 0.19148) then
+    fidFAR = (1.0d0 - 0.475028d0*k + 6.69004d0*k**2)
+  else
+    fidFAR = (1.0d0 - 1.84891d0*k + 21.3479d0*k**2 - 52.4846d0*k**3 + 38.9541d0*k**4)*1.03753
+  end if
+  fidpolys(2) = fidNEAR
+  fidpolys(3) = fidMID
+  fidpolys(4) = fidFAR
+end subroutine LRGtoICsmooth
+
+subroutine fill_LRGTheory(Theory, minkh, dlnkh)
+  Type(CosmoTheory) Theory
+  real, intent(in) :: minkh, dlnkh
+  real(dl) :: logmink, xi, kval, expval, psmear, nlrat
+  real(dl), dimension(2:4) :: fidpolys, holdval
+
+  integer :: iz, ik, matterpowerindx
+
+  do iz = 1, 4
+    sigma2BAO(iz) = sigma2BAOfid(iz)
+  end do
+
+  logmink = log(minkh)
+  do ik=1,num_matter_power
+   xi = logmink + dlnkh*(ik-1)
+   kval = exp(xi)
+   Theory%finalLRGtheoryPk(ik) = 0.
+   do iz = 2,4
+    if(iz == 2) matterpowerindx = izNEARlrg
+    if(iz == 3) matterpowerindx = izMIDlrg
+    if(iz == 4) matterpowerindx = izFARlrg
+    expval = exp(-kval**2*sigma2BAO(iz)*0.5)
+    psmear = (Theory%matter_power(ik,matterpowerindx))*expval + (Theory%mpk_nw(ik,matterpowerindx))*(1.0-expval)
+    psmear = psmear*powerscaletoz0(iz)
+    nlrat = (Theory%mpkrat_nw_nl(ik,matterpowerindx))/(ratio_power_nw_nl_fid(ik,matterpowerindx))
+    call LRGtoICsmooth(kval,fidpolys)
+    holdval(iz) = zweight(iz)*psmear*nlrat*fidpolys(iz)
+    Theory%finalLRGtheoryPk(ik) = Theory%finalLRGtheoryPk(ik) + holdval(iz)
+   end do
+
+  end do
+
+end subroutine fill_LRGTheory
+
+end module
+
+module mpk
+use precision
+use settings
+use cmbtypes
+use LRGinfo
 implicit none
 
  Type mpkdataset
@@ -22,6 +171,9 @@ implicit none
     real, pointer, dimension(:,:) :: N_inv
     real, pointer, dimension(:,:) :: mpk_W, mpk_invcov
     real, pointer, dimension(:) :: mpk_P, mpk_sdev, mpk_k
+    real, pointer, dimension(:) :: mpk_zerowindowfxn
+    real, pointer, dimension(:) :: mpk_zerowindowfxnsubtractdat
+    real :: mpk_zerowindowfxnsubdatnorm !!the 0th entry in windowfxnsubtract file
     logical :: use_scaling !as SDSS_lrgDR3
    !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
     logical :: Q_marge, Q_flat
@@ -37,12 +189,59 @@ implicit none
  
   logical :: use_mpk = .false.
   
+  ! constants describing the allowed a1,a2 regions.
+  ! must check the functions below before changing these, because the shape of the space may change!
+
+  integer, parameter :: wp = selected_real_kind(11,99)
+
+  !!these are the 'nonconservative' nuisance parameter bounds
+  !!real(dl), parameter :: k1 = 0.1d0, k2 = 0.2d0, s1 = 0.02d0, s2 = 0.05d0, a1maxval = 0.5741d0
+  real(dl), parameter :: k1 = 0.1d0, k2 = 0.2d0, s1 = 0.04d0, s2 = 0.10d0, a1maxval = 1.1482d0
+  integer, parameter :: nptsa1 = 41, nptsa2 = 41, nptstot = 325  
+  !! but total number of points to evaluate is much smaller than 41**2 because lots of the space 
+  !is not allowed by the s1,s2 constraints.
+ 
+   ! only want to compute these once. 
+   real(dl), dimension(nptstot) :: a1list, a2list
+
 contains 
 
+  subroutine mpk_SetTransferRedshifts(redshifts)
+   real, intent(inout) :: redshifts(*)
+   !input is default log z spacing; can change here; check for consistency with other (e.g. lya)
+         
+   !Note internal ordering in CAMB is the opposite to that used in cosmomc transfer arrays (as here)
+   !first index here must be redshift zero
+   
+      if(use_dr7lrg .and. matter_power_lnzsteps < 4) &
+       call MpiStop('For LRGs matter_power_lnzsteps should be set to at least 4 (hardcoded in cmbtypes)')
+
+       if (matter_power_lnzsteps==1 .or. .not. use_dr7lrg) return
+
+       !! assigning indices to LRG NEAR, MID, FAR.  If you want to reorder redshifts, just change here.
+       iz0lrg = 1  !! we use the z=0 output to normalize things; this is already assumed index 1 elsewhere 
+                    !(like in calculation of sigma8).
+       izNEARlrg = 2
+       izMIDlrg = 3
+       izFARlrg = 4
+       redshifts(izNEARlrg) = zNEAR
+       redshifts(izMIDlrg) = zMID
+       redshifts(izFARlrg) = zFAR  
+       if(iz0lrg /= 1) then
+          redshifts(iz0lrg) = 0.0d0
+       else
+          if(redshifts(1) > 0.001) call MpiStop('redshifts(1) should be at z=0!')
+       endif
+         
+  end subroutine mpk_SetTransferRedshifts
+ 
   subroutine ReadmpkDataset(gname)   
     use MatrixUtils
     character(LEN=*), intent(IN) :: gname
-    character(LEN=120) :: kbands_file, measurements_file, windows_file, cov_file
+    character(LEN=Ini_max_string_len) :: kbands_file, measurements_file, windows_file, cov_file
+    !! added for the LRG window function subtraction
+    character(LEN=Ini_max_string_len) :: zerowindowfxn_file, zerowindowfxnsubtractdat_file
+
     Type (mpkdataset) :: mset
 
     integer i,iopb
@@ -56,30 +255,36 @@ contains
     real, dimension(:,:), allocatable :: mpk_Wfull, mpk_covfull
     real, dimension(:), allocatable :: mpk_kfull, mpk_fiducial
 
+    real, dimension(:), allocatable :: mpk_zerowindowfxnfull
+    real, dimension(:), allocatable :: mpk_zerowindowfxnsubfull
+
     character(80) :: dummychar
     logical bad
+    Type(TIniFile) :: Ini
+    integer file_unit
+    
  
     num_mpk_datasets = num_mpk_datasets + 1
     if (num_mpk_datasets > 10) stop 'too many datasets'
-
-    call Ini_Open(gname, 1, bad, .false.)
+    file_unit = new_file_unit()
+    call Ini_Open_File(Ini, gname, file_unit, bad, .false.)
     if (bad) then
       write (*,*)  'Error opening dataset file '//trim(gname)
       stop
     end if
 
-    mset%name = Ini_Read_String('name') 
+    mset%name = Ini_Read_String_File(Ini,'name') 
     Ini_fail_on_not_found = .false.
     mset%use_set =.true.
     if (Feedback > 0) write (*,*) 'reading: '//trim(mset%name)
-    num_mpk_points_full = Ini_Read_Int('num_mpk_points_full',0)
+    num_mpk_points_full = Ini_Read_Int_File(Ini,'num_mpk_points_full',0)
     if (num_mpk_points_full.eq.0) write(*,*) ' ERROR: parameter num_mpk_points_full not set'
-    num_mpk_kbands_full = Ini_Read_Int('num_mpk_kbands_full',0)
+    num_mpk_kbands_full = Ini_Read_Int_File(Ini,'num_mpk_kbands_full',0)
     if (num_mpk_kbands_full.eq.0) write(*,*) ' ERROR: parameter num_mpk_kbands_full not set'
-    min_mpk_points_use = Ini_Read_Int('min_mpk_points_use',1)
-    min_mpk_kbands_use = Ini_Read_Int('min_mpk_kbands_use',1)
-    max_mpk_points_use = Ini_Read_Int('max_mpk_points_use',num_mpk_points_full)
-    max_mpk_kbands_use = Ini_Read_Int('max_mpk_kbands_use',num_mpk_kbands_full)
+    min_mpk_points_use = Ini_Read_Int_File(Ini,'min_mpk_points_use',1)
+    min_mpk_kbands_use = Ini_Read_Int_File(Ini,'min_mpk_kbands_use',1)
+    max_mpk_points_use = Ini_Read_Int_File(Ini,'max_mpk_points_use',num_mpk_points_full)
+    max_mpk_kbands_use = Ini_Read_Int_File(Ini,'max_mpk_kbands_use',num_mpk_kbands_full)
     mset%num_mpk_points_use = max_mpk_points_use - min_mpk_points_use +1
     mset%num_mpk_kbands_use = max_mpk_kbands_use - min_mpk_kbands_use +1
 
@@ -89,9 +294,14 @@ contains
     allocate(mset%mpk_sdev(mset%num_mpk_points_use))  ! will need to replace with the covmat
     allocate(mset%mpk_k(mset%num_mpk_kbands_use))
     allocate(mset%mpk_W(mset%num_mpk_points_use,mset%num_mpk_kbands_use))
+    allocate(mset%mpk_zerowindowfxn(mset%num_mpk_kbands_use))
+    allocate(mset%mpk_zerowindowfxnsubtractdat(mset%num_mpk_points_use))
     allocate(mpk_fiducial(mset%num_mpk_points_use))
+    allocate(mpk_zerowindowfxnsubfull(num_mpk_points_full+1)) 
+      !!need to add 1 to get the normalization held in the first (really zeroth) entry
+    allocate(mpk_zerowindowfxnfull(num_mpk_kbands_full))
 
-    kbands_file  = Ini_Read_String('kbands_file')
+    kbands_file  = ReadIniFileName(Ini,'kbands_file')
     call ReadVector(kbands_file,mpk_kfull,num_mpk_kbands_full)
     mset%mpk_k(1:mset%num_mpk_kbands_use)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use) 
     if (Feedback > 1) then 
@@ -103,7 +313,7 @@ contains
        write (*,*) 'all k<matter_power_minkh will be set to matter_power_minkh' 
     end if
 
-    measurements_file  = Ini_Read_String('measurements_file')
+    measurements_file  = ReadIniFileName(Ini,'measurements_file')
     call OpenTxtFile(measurements_file, tmp_file_unit)
     mset%mpk_P=0.
     read (tmp_file_unit,*) dummychar
@@ -118,14 +328,34 @@ contains
     close(tmp_file_unit) 
     if (Feedback > 1) write(*,*) 'bands truncated at keff=  ',keff
     
-    windows_file  = Ini_Read_String('windows_file')
+    windows_file  = ReadIniFileName(Ini,'windows_file')
     if (windows_file.eq.'') write(*,*) 'ERROR: mpk windows_file not specified'
     call ReadMatrix(windows_file,mpk_Wfull,num_mpk_points_full,num_mpk_kbands_full)
     mset%mpk_W(1:mset%num_mpk_points_use,1:mset%num_mpk_kbands_use)= &
        mpk_Wfull(min_mpk_points_use:max_mpk_points_use,min_mpk_kbands_use:max_mpk_kbands_use)
     
+ 
+    if (mset%name == 'lrg_2009') then
+#ifndef DR71RG
+        call MpiStop('mpk: edit makefile to have "EXTDATA = LRG" to inlude LRGs')
+#else
+        use_dr7lrg = .true.
+        zerowindowfxn_file  = ReadIniFileName(Ini,'zerowindowfxn_file')
+    
+        print *, 'trying to read this many points', num_mpk_kbands_full
+        if (zerowindowfxn_file.eq.'') write(*,*) 'ERROR: mpk zerowindowfxn_file not specified'
+        call ReadVector(zerowindowfxn_file,mpk_zerowindowfxnfull,num_mpk_kbands_full)
+        mset%mpk_zerowindowfxn(1:mset%num_mpk_kbands_use) = mpk_zerowindowfxnfull(min_mpk_kbands_use:max_mpk_kbands_use)
+        zerowindowfxnsubtractdat_file  = ReadIniFileName(Ini,'zerowindowfxnsubtractdat_file')
+        if (zerowindowfxnsubtractdat_file.eq.'') write(*,*) 'ERROR: mpk zerowindowfxnsubtractdat_file not specified'
+        call ReadVector(zerowindowfxnsubtractdat_file,mpk_zerowindowfxnsubfull,num_mpk_points_full+1)
+        mset%mpk_zerowindowfxnsubtractdat(1:mset%num_mpk_points_use) = &
+         mpk_zerowindowfxnsubfull(min_mpk_points_use+1:max_mpk_points_use+1)
+        mset%mpk_zerowindowfxnsubdatnorm = mpk_zerowindowfxnsubfull(1)
+#endif
+    end if
 
-    cov_file  = Ini_Read_String('cov_file')
+    cov_file  = ReadIniFileName(Ini,'cov_file')
     if (cov_file /= '') then
      allocate(mpk_covfull(num_mpk_points_full,num_mpk_points_full))
      call ReadMatrix(cov_file,mpk_covfull,num_mpk_points_full,num_mpk_points_full)
@@ -137,28 +367,31 @@ contains
      nullify(mset%mpk_invcov)
     end if
 
-    mset%use_scaling = Ini_Read_Logical ('use_scaling',.false.)
+    mset%use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
 
-    mset%Q_marge = Ini_Read_Logical('Q_marge',.false.)
+    mset%Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)
     if (mset%Q_marge) then
-     mset%Q_flat = Ini_Read_Logical('Q_flat',.false.)
+     mset%Q_flat = Ini_Read_Logical_File(Ini,'Q_flat',.false.)
      if (.not. mset%Q_flat) then
       !gaussian prior on Q
-      mset%Q_mid = Ini_Read_Real('Q_mid')
-      mset%Q_sigma = Ini_Read_Real('Q_sigma')
+      mset%Q_mid = Ini_Read_Real_File(Ini,'Q_mid')
+      mset%Q_sigma = Ini_Read_Real_File(Ini,'Q_sigma')
      end if
-     mset%Ag = Ini_Read_Real('Ag', 1.4)
+     mset%Ag = Ini_Read_Real_File(Ini,'Ag', 1.4)
     end if 
     if (iopb.ne.0) then
        stop 'Error reading mpk file'
     endif
  
-   call Ini_Close
-
+   call Ini_Close_File(Ini)
+   call ClearFileUnit(file_unit)
+   
    deallocate(mpk_Wfull, mpk_kfull,mpk_fiducial)
 
    mpkdatasets(num_mpk_datasets) = mset
  
+  if (mset%name == 'lrg_2009') call LSS_LRG_mpklike_init()
+
   end subroutine ReadmpkDataset
 
  
@@ -318,9 +551,12 @@ contains
    real LSSLnLike
    integer i
    real tot(num_mpk_datasets)
+
   do i=1, num_mpk_datasets
      if (mpkdatasets(i)%name == 'twodf') then
         stop 'twodf no longer supported - use data/2df_2005.dataset'
+     else if (mpkdatasets(i)%name == 'lrg_2009') then
+        tot(i) = LSS_LRG_mpklike(Theory,mpkdatasets(i),CMB)
      else
       tot(i) = LSS_mpklike(Theory,mpkdatasets(i),CMB) !LV_06 added CMB here
      end if
@@ -365,7 +601,8 @@ subroutine compute_scaling_factor(Ok,Ol,w,a)
   !Or= 0.0000415996*(T_0/2.726)**4 / h**2
   Or= 0! Radiation density totally negligible at  z < 0.35
   Om= 1-Ok-Ol-Or
-  z  = 0.35
+  !!!z  = 0.35  !!edited by Beth 21-11-08: change to zeff of Will's LRG sample.
+  z = zeffDR7
   Hrelinv= 1/sqrt(Ol*(1+z)**(3*(1+w)) + Ok*(1+z)**2 + Om*(1+z)**3 + Or*(1+z)**4)
 !  write(*,*) Ok,Ol,w  
 call compute_z_eta(Or,Ok,Ol,w,z,eta)
@@ -384,6 +621,8 @@ call compute_z_eta(Or,Ok,Ol,w,z,eta)
   a=  (a_angular**2 * a_radial)**(1/3.d0)
   !write(*,'(9f10.5)') Ok,Ol,w,a,a_radial,a_angular,(Om/0.25)**(-0.065) * (-w*(1-Ok))**0.14
   !write(*,'(9f10.5)') Ok,Ol,w,a,a_radial**(2/3.d0),a_angular**(4/3.d0),((Om/0.25)**(-0.065) * (-w*(1-Ok))**0.14)**(4/3.d0)
+  !!! BR09 -- in previous version, scale factor is applied in the wrong direction!  So take a = 1/a to fix it.
+  a = 1.0/a
 end subroutine compute_scaling_factor
 
 subroutine eta_demo
@@ -588,9 +827,322 @@ END SUBROUTINE trapzd
             
 
 
+!! added by Beth Reid for LRG P(k) analysis
+
+  function a2maxpos(a1val) result(a2max)
+    real(dl), intent(in) :: a1val
+    real(dl) a2max
+    a2max = -1.0d0
+    if (a1val <= min(s1/k1,s2/k2)) then
+      a2max = min(s1/k1**2 - a1val/k1, s2/k2**2 - a1val/k2)
+    end if
+  end function a2maxpos
+
+  function a2min1pos(a1val) result(a2min1)
+    real(dl), intent(in) :: a1val
+    real(dl) a2min1
+    a2min1 = 0.0d0
+    if(a1val <= 0.0d0) then
+      a2min1 = max(-s1/k1**2 - a1val/k1, -s2/k2**2 - a1val/k2, 0.0d0)
+    end if
+  end function a2min1pos
+
+  function a2min2pos(a1val) result(a2min2)
+    real(dl), intent(in) :: a1val
+    real(dl) a2min2
+    a2min2 = 0.0d0
+    if(abs(a1val) >= 2.0d0*s1/k1 .and. a1val <= 0.0d0)  then
+      a2min2 = a1val**2/s1*0.25d0
+    end if
+  end function a2min2pos
+
+  function a2min3pos(a1val) result(a2min3)
+    real(dl), intent(in) :: a1val
+    real(dl) a2min3
+    a2min3 = 0.0d0
+    if(abs(a1val) >= 2.0d0*s2/k2 .and. a1val <= 0.0d0)  then
+      a2min3 = a1val**2/s2*0.25d0
+    end if
+  end function a2min3pos
+
+  function a2minfinalpos(a1val) result(a2minpos)
+    real(dl), intent(in) :: a1val
+    real(dl) a2minpos
+    a2minpos = max(a2min1pos(a1val),a2min2pos(a1val),a2min3pos(a1val))
+  end function a2minfinalpos
+
+  function a2minneg(a1val) result(a2min)
+    real(dl), intent(in) :: a1val
+    real(dl) a2min
+    if (a1val >= max(-s1/k1,-s2/k2)) then
+      a2min = max(-s1/k1**2 - a1val/k1, -s2/k2**2 - a1val/k2)
+    else
+      a2min = 1.0d0
+    end if
+  end function a2minneg
+
+  function a2max1neg(a1val) result(a2max1)
+    real(dl), intent(in) :: a1val
+    real(dl) a2max1
+    if(a1val >= 0.0d0) then
+      a2max1 = min(s1/k1**2 - a1val/k1, s2/k2**2 - a1val/k2, 0.0d0)
+    else
+      a2max1 = 0.0d0
+    end if
+  end function a2max1neg
+
+  function a2max2neg(a1val) result(a2max2)
+    real(dl), intent(in) :: a1val
+    real(dl) a2max2
+    a2max2 = 0.0d0
+    if(abs(a1val) >= 2.0d0*s1/k1 .and. a1val >= 0.0d0)  then
+      a2max2 = -a1val**2/s1*0.25d0
+    end if
+  end function a2max2neg
+
+  function a2max3neg(a1val) result(a2max3)
+    real(dl), intent(in) :: a1val
+    real(dl) a2max3
+    a2max3 = 0.0d0
+    if(abs(a1val) >= 2.0d0*s2/k2 .and. a1val >= 0.0d0)  then
+      a2max3 = -a1val**2/s2*0.25d0
+    end if
+  end function a2max3neg
+
+  function a2maxfinalneg(a1val) result(a2maxneg)
+    real(dl), intent(in) :: a1val
+    real(dl) a2maxneg
+    a2maxneg = min(a2max1neg(a1val),a2max2neg(a1val),a2max3neg(a1val))
+  end function a2maxfinalneg
 
 
+function testa1a2(a1val, a2val) result(testresult)
+    real(dl), intent(in) :: a1val,a2val
+    logical :: testresult
 
-end module 
+    real(dl) :: kext, diffval
+    testresult = .true.
+
+    ! check if there's an extremum; either a1val or a2val has to be negative, not both
+    kext = -a1val/2.0d0/a2val
+    diffval = abs(a1val*kext + a2val*kext**2)
+    if(kext > 0.0d0 .and. kext <= k1 .and. diffval > s1) testresult = .false.
+    if(kext > 0.0d0 .and. kext <= k2 .and. diffval > s2) testresult = .false.
+
+    if (abs(a1val*k1 + a2val*k1**2) > s1) testresult = .false.
+    if (abs(a1val*k2 + a2val*k2**2) > s2) testresult = .false.
+
+end function testa1a2
+
+!! copying LSS_mpklike above.
+!! points_use is how many points to use in the likelihood calculation; 
+!!kbands_use is how many points you need to have a theory for in order to convolve the theory with the window function.
 
 
+! this subroutine fills in the a1 and a2 values only once.
+ subroutine LSS_LRG_mpklike_init()
+   real(dl) :: a1val, a2val
+   real(dl) :: da1, da2  ! spacing of numerical integral over nuisance params.
+   integer :: countcheck = 0
+   integer :: i, j
+   !! this is just for checking the 'theory' curves for fiducial model
+   real :: fidLnLike
+   type(CosmoTheory) :: temptheory
+   type(CMBparams) :: tempCMB
+
+   da1 = a1maxval/(nptsa1/2)
+   da2 = a2maxpos(-a1maxval)/(nptsa2/2)
+   do i = -nptsa1/2, nptsa1/2
+      do j = -nptsa2/2, nptsa2/2
+         a1val = da1*i
+         a2val = da2*j
+
+         if ((a2val >= 0.0d0 .and. a2val <= a2maxpos(a1val) .and. a2val >= a2minfinalpos(a1val)) .or. &
+     & (a2val <= 0.0d0 .and. a2val <= a2maxfinalneg(a1val) .and. a2val >= a2minneg(a1val))) then
+            if(testa1a2(a1val,a2val) .eqv. .false.)  then
+               print *,'Failed a1, a2: ',a1val,a2val
+               if (a2val >= 0.0d0) print *,'pos', a2maxpos(a1val), a2minfinalpos(a1val)
+               if (a2val <= 0.0d0) print *,'neg', a2maxfinalneg(a1val), a2minneg(a1val)
+               stop
+            end if
+            countcheck = countcheck + 1
+            if(countcheck > nptstot) then
+               print *, 'countcheck > nptstot failure.'
+               stop
+            end if
+            a1list(countcheck) = a1val
+            a2list(countcheck) = a2val
+            !print *, countcheck, a1list(countcheck), a2list(countcheck)
+         end if
+      end do
+   end do
+   if(countcheck .ne. nptstot) then
+     print *, 'countcheck issue', countcheck, nptstot
+     stop
+   end if
+  call LRGinfo_init()
+ end subroutine LSS_LRG_mpklike_init
+
+
+ function LSS_LRG_mpklike(Theory,mset,CMB) result(LnLike)  ! LV_06 added CMB here
+   Type (mpkdataset) :: mset
+   Type (CosmoTheory) Theory
+   Type(CMBparams) CMB                  !LV_06 added for LRGDR4
+   real LnLike
+   integer :: i
+   real, dimension(:), allocatable :: mpk_raw, mpk_Pth, mpk_Pth_k, mpk_Pth_k2, k_scaled
+   real, dimension(:), allocatable :: mpk_WPth, mpk_WPth_k, mpk_WPth_k2
+   real :: covdat(mset%num_mpk_points_use), covth(mset%num_mpk_points_use), &
+          & covth_k(mset%num_mpk_points_use), covth_k2(mset%num_mpk_points_use), & 
+          & covth_zerowin(mset%num_mpk_points_use)
+
+   real, dimension(nptstot) :: chisq, chisqmarg  !! minus log likelihood list
+   real :: minchisq,maxchisq,deltaL
+
+   real(dl) :: a1val, a2val, zerowinsub
+   real :: sumDD, sumDT, sumDT_k, sumDT_k2, sumTT,& 
+     &  sumTT_k, sumTT_k2, sumTT_k_k, sumTT_k_k2, sumTT_k2_k2, &
+     &  sumDT_tot, sumTT_tot, &
+     &  sumDT_zerowin, sumTT_zerowin, sumTT_k_zerowin, sumTT_k2_zerowin, sumTT_zerowin_zerowin
+
+   real :: sumzerow_Pth, sumzerow_Pth_k, sumzerow_Pth_k2
+
+   real :: a_scl      !LV_06 added for LRGDR4
+
+   real(wp) :: temp1,temp2,temp3
+   real :: temp4
+
+   !! added for no marg
+   integer :: myminchisqindx
+   real :: currminchisq, currminchisqmarg, minchisqtheoryamp, chisqnonuis
+   real :: minchisqtheoryampnonuis, minchisqtheoryampminnuis
+   real(dl), dimension(2) :: myerfval
+
+   call fill_LRGTheory(Theory,matter_power_minkh,matter_power_dlnkh)
+   allocate(mpk_raw(mset%num_mpk_kbands_use) ,mpk_Pth(mset%num_mpk_kbands_use))
+   allocate(mpk_Pth_k(mset%num_mpk_kbands_use) ,mpk_Pth_k2(mset%num_mpk_kbands_use))
+   allocate(mpk_WPth(mset%num_mpk_points_use),mpk_WPth_k(mset%num_mpk_points_use),mpk_WPth_k2(mset%num_mpk_points_use))
+   allocate(k_scaled(mset%num_mpk_kbands_use))!LV_06 added for LRGDR4
+
+   chisq = 0
+
+   if (.not. mset%use_set) then
+      LnLike = 0
+      return
+   end if
+
+   IF(mset%use_scaling) then
+      call compute_scaling_factor(dble(CMB%omk),dble(CMB%omv),dble(CMB%w),a_scl)
+      !! this step now applied in compute_scaling_factor
+      !! this fixes the bug most easily !!
+      !!a_scl = 1.0d0/a_scl
+   else
+     a_scl = 1
+     stop 'use_scaling should be set to true for the LRGs!'
+   end if
+
+   do i=1, mset%num_mpk_kbands_use
+         k_scaled(i)=max(matter_power_minkh,a_scl*mset%mpk_k(i))
+         mpk_raw(i)=LRGPowerAt(Theory,k_scaled(i))/a_scl**3
+   end do
+
+   mpk_Pth = mpk_raw
+
+   mpk_Pth_k = mpk_Pth*k_scaled
+   mpk_Pth_k2 = mpk_Pth*k_scaled**2
+   mpk_WPth = matmul(mset%mpk_W,mpk_Pth)
+   mpk_WPth_k = matmul(mset%mpk_W,mpk_Pth_k)
+   mpk_WPth_k2 = matmul(mset%mpk_W,mpk_Pth_k2)
+
+   sumzerow_Pth = sum(mset%mpk_zerowindowfxn*mpk_Pth)/mset%mpk_zerowindowfxnsubdatnorm
+   sumzerow_Pth_k = sum(mset%mpk_zerowindowfxn*mpk_Pth_k)/mset%mpk_zerowindowfxnsubdatnorm
+   sumzerow_Pth_k2 = sum(mset%mpk_zerowindowfxn*mpk_Pth_k2)/mset%mpk_zerowindowfxnsubdatnorm
+
+
+   covdat = matmul(mset%mpk_invcov,mset%mpk_P)
+   covth = matmul(mset%mpk_invcov,mpk_WPth)
+   covth_k = matmul(mset%mpk_invcov,mpk_WPth_k)
+   covth_k2 = matmul(mset%mpk_invcov,mpk_WPth_k2)
+   covth_zerowin = matmul(mset%mpk_invcov,mset%mpk_zerowindowfxnsubtractdat)
+
+   sumDD = sum(mset%mpk_P*covdat)
+   sumDT = sum(mset%mpk_P*covth)
+   sumDT_k = sum(mset%mpk_P*covth_k)
+   sumDT_k2 = sum(mset%mpk_P*covth_k2)
+   sumDT_zerowin = sum(mset%mpk_P*covth_zerowin)
+
+   sumTT = sum(mpk_WPth*covth)
+   sumTT_k = sum(mpk_WPth*covth_k)
+   sumTT_k2 = sum(mpk_WPth*covth_k2)
+   sumTT_k_k = sum(mpk_WPth_k*covth_k)
+   sumTT_k_k2 = sum(mpk_WPth_k*covth_k2)
+   sumTT_k2_k2 = sum(mpk_WPth_k2*covth_k2)
+   sumTT_zerowin = sum(mpk_WPth*covth_zerowin)
+   sumTT_k_zerowin = sum(mpk_WPth_k*covth_zerowin)
+   sumTT_k2_zerowin = sum(mpk_WPth_k2*covth_zerowin)
+   sumTT_zerowin_zerowin = sum(mset%mpk_zerowindowfxnsubtractdat*covth_zerowin)
+
+   currminchisq = 1000.0d0
+   do i=1,nptstot
+     a1val = a1list(i)
+     a2val = a2list(i)
+     zerowinsub = -(sumzerow_Pth + a1val*sumzerow_Pth_k + a2val*sumzerow_Pth_k2)
+
+     sumDT_tot = sumDT + a1val*sumDT_k + a2val*sumDT_k2 + zerowinsub*sumDT_zerowin
+     sumTT_tot = sumTT + a1val**2.0d0*sumTT_k_k + a2val**2.0d0*sumTT_k2_k2 + & 
+                 & zerowinsub**2.0d0*sumTT_zerowin_zerowin &
+       & + 2.0d0*a1val*sumTT_k + 2.0d0*a2val*sumTT_k2 + 2.0d0*a1val*a2val*sumTT_k_k2 &
+       & + 2.0d0*zerowinsub*sumTT_zerowin + 2.0d0*zerowinsub*a1val*sumTT_k_zerowin &
+       & + 2.0d0*zerowinsub*a2val*sumTT_k2_zerowin
+     minchisqtheoryamp = sumDT_tot/sumTT_tot
+     chisq(i) = sumDD - 2.0d0*minchisqtheoryamp*sumDT_tot + minchisqtheoryamp**2.0d0*sumTT_tot
+#ifdef DR71RG
+     myerfval(1) = sumDT_tot/2.0d0/sqrt(sumTT_tot)
+     call geterf(myerfval)
+     chisqmarg(i) = sumDD - sumDT_tot**2.0d0/sumTT_tot & 
+         & + log(sumTT_tot) &
+         & - 2.0*log(1.0d0 + myerfval(2))
+#else
+     !!leave out the erf term, just to get it to compile.  This should never run.
+     chisqmarg(i) = sumDD - sumDT_tot**2.0d0/sumTT_tot & 
+         & + log(sumTT_tot)
+     if(0 .eq. 0) stop 'Logic problem.  Shouldnt be here.'
+#endif
+!this should always be here, but we're using gsl to call erf, so this function is only available if gsl is installed.
+     if(i == 1 .or. chisq(i) < currminchisq) then
+        myminchisqindx = i
+        currminchisq = chisq(i)
+        currminchisqmarg = chisqmarg(i)
+        minchisqtheoryampminnuis = minchisqtheoryamp
+     end if
+     if(i == int(nptstot/2)+1) then
+        chisqnonuis = chisq(i)
+        minchisqtheoryampnonuis = minchisqtheoryamp
+        if(abs(a1val) > 0.001 .or. abs(a2val) > 0.001) then
+           print *, 'ahhhh! violation!!', a1val, a2val
+        end if
+     end if
+
+   end do
+
+! numerically marginalize over a1,a2 now using values stored in chisq
+   minchisq = minval(chisqmarg)
+   maxchisq = maxval(chisqmarg)
+
+   LnLike = sum(exp(-(chisqmarg-minchisq)/2.0d0)/(nptstot*1.0d0))
+   if(LnLike == 0) then
+     LnLike = LogZero
+   else
+     LnLike = -log(LnLike) + minchisq/2.0d0
+   end if
+ deltaL = (maxchisq - minchisq)*0.5
+ if(Feedback > 1) print *,'LRG P(k) LnLike = ',LnLike
+
+   deallocate(mpk_raw, mpk_Pth)
+   deallocate(mpk_Pth_k, mpk_Pth_k2)
+   deallocate(mpk_WPth, mpk_WPth_k, mpk_WPth_k2)
+   deallocate(k_scaled) 
+
+ end function LSS_LRG_mpklike
+
+end module

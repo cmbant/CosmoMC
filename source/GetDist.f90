@@ -22,7 +22,7 @@
 ! You can easily edit the .m and .sm files produced to produce custom layouts of plots, etc.
 ! Data for plots are exported to the plot_data_dir folder, other files to out_dir
 
-!This version May 2008
+!This version September 2009
 !March 03: fixed bug computing the limits in the .margestats file
 !May 03: Added support for triangle plots 
 !Dec 03: Support for non-chain samples, auto-correlation convergence, auto_label,
@@ -37,9 +37,14 @@
 !May 08: Option to process WMAP5-formatted chains (thanks to Mike Nolta)
 !        Added do_minimal_1d_intervals for equal-likelihood 1D limits (thanks to Jan Hamann, see arXiv:0705.0440)
 !        Added font_scale to scale default font sizes, num_contours input parameter (allows more than 2)
+!Sept 09: use of .paramnames and parameter_names file for names and labels; referencing by name as alternative to number
+!         allowed map_params with 1-column input format
+!         plotparams parameter ordering is preserved (e.g. to change order of 1D plots)
+!Oct 09:  fixed bug in credible intervals with prior cutoffs (Jan Hammann)  
 module MCSamples
  use settings
  use MatrixUtils
+ use ParamNames
  implicit none
 
         integer, parameter :: gp = KIND(1.d0)
@@ -60,7 +65,7 @@ module MCSamples
         integer, parameter :: max_contours = 5
         
         integer chain_indices(max_chains), num_chains_used
-
+ 
         integer nrows, ncols
         real numsamp
         integer ND_cont1, ND_cont2
@@ -68,9 +73,9 @@ module MCSamples
         integer colix(max_cols), num_vars  !Parameters with non-blank labels
         real mean(max_cols), sddev(max_cols)
         real, dimension(:,:), allocatable :: corrmatrix
-        character(LEN=120) rootname, plot_data_dir, out_dir, rootdirname, in_root
-        character(LEN=120) labels(max_cols)
-        character(LEN=120) pname(max_cols)
+        character(LEN=128) rootname, plot_data_dir, out_dir, rootdirname, in_root
+        character(LEN=128) labels(max_cols)
+        character(LEN=128) pname(max_cols)
         logical has_limits(max_cols), has_limits_top(max_cols),has_limits_bot(max_cols)
         logical has_markers(max_cols)
         real markers(max_cols)
@@ -103,17 +108,17 @@ contains
    integer i
    real ombh2, chisq 
  
-!   stop 'You need to write the AdjustPriors subroutine in GetDist.f90 first!'
+   stop 'You need to write the AdjustPriors subroutine in GetDist.f90 first!'
   
-   write (*,*) 'Adjusting priors'
-   do i=0, nrows-1
-!E.g. ombh2 prior
-      ombh2 = coldata(1+2,i)
-      chisq = (ombh2 - 0.0213)**2/0.001 **2
-      coldata(1,i) = coldata(1,i)*exp(-chisq/2) 
-      coldata(2,i) = coldata(2,i) + chisq/2
-     
-   end do
+!   write (*,*) 'Adjusting priors'
+!   do i=0, nrows-1
+!!E.g. ombh2 prior
+!      ombh2 = coldata(1+2,i)
+!      chisq = (ombh2 - 0.0213)**2/0.001 **2
+!      coldata(1,i) = coldata(1,i)*exp(-chisq/2) 
+!      coldata(2,i) = coldata(2,i) + chisq/2
+!    
+!   end do
 
   end subroutine AdjustPriors
 
@@ -122,7 +127,6 @@ contains
 ! map parameters in invars: eg. invars(3)=invars(3)*invars(4) 
 
 !    invars(2+13)=invars(17+2)*exp(-invars(2+4)) 
-   
     stop 'Need to write MapParameters routine first'  
   
   end subroutine MapParameters
@@ -479,9 +483,9 @@ contains
               real, dimension(max_intersections) :: zeros
               integer :: numzeros  
  
-              
-             norm = sum(bincounts)
-
+              norm = sum(bincounts)
+              if (toplim) norm = norm - 0.5*bincounts(maxbin)
+              if (botlim) norm = norm - 0.5*bincounts(minbin)
 
              try_t = maxval(bincounts)
              try_b = 0
@@ -1390,7 +1394,7 @@ contains
               write (aunit,*) 'hold off; set(gca,''Layer'',''top'',''FontSize'',axes_fontsize);'
               fmt = ''',''FontSize'',lab_fontsize);'
               if (DoLabelx) write (aunit,*) 'xlabel('''//trim(labels(colix(j2)))//trim(fmt)
-              if (DoLabely) write (aunit,*) 'ylabel(''',trim(labels(colix(j)))//trim(fmt)
+              if (DoLabely) write (aunit,*) 'ylabel('''//trim(labels(colix(j)))//trim(fmt)
  
          end subroutine  Write2DPlotMATLAB
 
@@ -1466,8 +1470,20 @@ contains
        end do
 
      end subroutine Write1DplotMatLab
- 
      
+     subroutine EdgeWarning(param)
+      integer, intent(in) :: param
+      
+       if (NameMapping%nnames==0 .or. ParamNames_name(NameMapping,param)=='') then
+       call WriteS('Warning: sharp edge in parameter '//trim(intToStr(param))// &
+                         ' - check limits'//trim(intToStr(param)))
+       else
+        call WriteS('Warning: sharp edge in parameter '//trim(ParamNames_name(NameMapping,param))// &
+         ' - check limits['//trim(ParamNames_name(NameMapping,param))//'] or limits'//trim(intToStr(param)))
+       
+       end if                  
+      
+     end subroutine EdgeWarning
  
 end module MCSamples
 
@@ -1495,7 +1511,7 @@ program GetDist
                binsraw(-1000:1000)
     
         character(LEN=80) InputFile, numstr
-        character(LEN=120) fname
+        character(LEN=120) fname, parameter_names_file
         character(LEN=10000) InLine  ! ,LastL,OutLine
         real invars(max_cols)
         integer ix, ix1,i,ix2,ix3, nbins, wx
@@ -1538,9 +1554,10 @@ program GetDist
         logical :: single_column_chain_files, samples_are_chains
         integer sz
         !for single_colum_chain_files    
-        integer :: stat, ip, itmp, idx, nrows2(max_cols)
+        integer :: first_haschain, stat, ip, itmp, idx, nrows2(max_cols), tmp_params(max_cols)
         real :: rtmp
      
+        NameMapping%nnames = 0
 
         InputFile = GetParam(1)
         if (InputFile == '') stop 'No parameter input file'
@@ -1548,7 +1565,8 @@ program GetDist
         call Ini_Open(InputFile, 1, bad, .false.)
         if (bad) stop 'Error opening parameter file'
 
-        Ini_fail_on_not_found = .true.
+        parameter_names_file = Ini_Read_String('parameter_names')
+        if (parameter_names_file/='') call ParamNames_Init(NameMapping,parameter_names_file) 
         
         if (Ini_HasKey('nparams')) then
           ncols = Ini_Read_Int('nparams') + 2
@@ -1556,7 +1574,13 @@ program GetDist
         else
          ncols = Ini_Read_Int('columnnum',0)
         end if
- 
+
+        if (NameMapping%nnames/=0 .and. ncols==0) then
+          ncols = NameMapping%nnames+2
+        end if
+  
+        Ini_fail_on_not_found = .true.
+  
         in_root = Ini_Read_String('file_root')
         rootname = ExtractFileName(in_root)
         chain_num = Ini_Read_Int('chain_num')
@@ -1564,15 +1588,27 @@ program GetDist
         single_column_chain_files = Ini_Read_Logical( 'single_column_chain_files',.false.)
 
         if ( single_column_chain_files ) then
-
+ 
             pname(1) = 'weight'
             pname(2) = 'lnlike'
+            Ini_fail_on_not_found = .false.
             do ix=3, ncols
                 pname(ix) = Ini_Read_String(concat('pname',ix-2))
+                if (pname(ix)=='' .and. NameMapping%nnames/=0) then
+                  pname(ix) = NameMapping%name(ix-2)
+                end if
             end do
+           Ini_fail_on_not_found = .true.
 
        else
 
+          if (parameter_names_file=='') then
+            infile = trim(in_root) // '.paramnames'
+            if (FileExists(infile)) then
+             call ParamNames_Init(NameMapping,infile)
+             if (ncols==0) ncols = NameMapping%nnames+2
+            end if         
+          end if
           if (ncols==0) then
            if (chain_num == 0) then
             infile = trim(in_root) // '.txt'
@@ -1603,11 +1639,19 @@ program GetDist
         labels(2) = 'likelihood'
         auto_label = Ini_Read_Logical('auto_label',.false.)
         do ix=3, ncols
-           write (numstr,*) ix-2
            if (auto_label) then
+             write (numstr,*) ix-2
              labels(ix) = trim(adjustl(numstr))
            else
-             labels(ix) = Ini_Read_String('lab'//trim(adjustl(numstr)))
+             if (NameMapping%nnames/=0 .and. .not. &
+                 ParamNames_HasReadIniForParam(NameMapping,DefIni, 'lab',ix-2)) then
+             
+              labels(ix) = trim(NameMapping%label(ix-2))
+              
+             else 
+              labels(ix) = ParamNames_ReadIniForParam(NameMapping,DefIni,'lab',ix-2)
+             end if
+              !Ini_Read_String('lab'//trim(adjustl(numstr)))
            end if 
         end do
 
@@ -1640,11 +1684,11 @@ program GetDist
         markers=0
         has_markers=.false.
         do ix=3, ncols
-           write (numstr,*) ix-2
            if (bin_limits /= '') then
             InLine = bin_limits
            else
-            InLine = Ini_Read_String('limits'//trim(adjustl(numstr)))
+            InLine = ParamNames_ReadIniForParam(NameMapping,DefIni,'limits',ix-2) 
+             !Ini_Read_String('limits'//trim(adjustl(numstr)))
            end if
            if (InLine /= '') then
               read (InLine,*) InS1, InS2 
@@ -1658,7 +1702,7 @@ program GetDist
               end if
            end if
 
-           InLine = Ini_Read_String('marker'//trim(adjustl(numstr)))
+           InLine = ParamNames_ReadIniForParam(NameMapping,DefIni,'marker',ix-2) 
            if (InLine /= '') then
               has_markers(ix) = .true.
               read(InLine,*) markers(ix)
@@ -1666,9 +1710,26 @@ program GetDist
             
         end do
 
+
         has_limits = has_limits_top .or. has_limits_bot
 
-        plot_2D_param = Ini_Read_Int('plot_2D_param',0)
+        plotparams_num = Ini_Read_Int('plotparams_num',0)
+        if (plotparams_num /= 0) then
+           InLine = Ini_Read_String('plotparams')
+           call ParamNames_ReadIndices(NameMapping,InLine, plotparams, plotparams_num)
+        end if
+
+        InLine = Ini_Read_String('plot_2D_param')
+        if (InLine=='') then
+               plot_2D_param = 0
+        else
+              call ParamNames_ReadIndices(NameMapping,InLine, tmp_params, 1)
+              plot_2D_param = tmp_params(1)
+              if (plot_2D_param/=0 .and. plotparams_num/=0 .and. &
+                count(plotparams(1:plotparams_num)==plot_2D_param)==0) &
+               stop 'plot_2D_param not in plotparams'
+        end if
+
         if (plot_2D_param /= 0) then
          plot_2D_param = plot_2D_param + 2
          num_cust2D_plots = 0
@@ -1677,8 +1738,13 @@ program GetDist
         num_cust2D_plots = Ini_Read_Int('plot_2D_num',0)
            do ix = 1, num_cust2D_plots
              InLine = Ini_Read_String(numcat('plot',ix))
-             read (InLine, *) ix1,ix2
-             cust2DPLots(ix) = ix1+2 + (ix2+2)*100 
+             call ParamNames_ReadIndices(NameMapping,InLine, tmp_params, 2)
+             if (plotparams_num/=0 .and. (count(plotparams(1:plotparams_num)==tmp_params(1))==0 .or. &
+               count(plotparams(1:plotparams_num)==tmp_params(2))==0)) then 
+               write(*,*) trim(numcat('plot',ix)) //': parameter not in plotparams'
+               stop
+              end if
+             cust2DPLots(ix) = tmp_params(1)+2 + (tmp_params(2)+2)*100 
            end do
         end if
 
@@ -1736,9 +1802,12 @@ program GetDist
     force_twotail = Ini_Read_Logical('force_twotail',.false.)  
     if (force_twotail) write (*,*) 'Computing two tail limits'
 
-    covmat_dimension = Ini_Read_Int('cov_matrix_dimension',0)
-    if (covmat_dimension == -1) covmat_dimension = ncols-2
-    
+    if (Ini_Read_String('cov_matrix_dimension')=='') then
+     if (NameMapping%nnames/=0) covmat_dimension = NameMapping%num_MCMC
+    else
+     covmat_dimension = Ini_Read_Int('cov_matrix_dimension',0)
+     if (covmat_dimension == -1) covmat_dimension = ncols-2
+    end if
 
     plot_meanlikes = Ini_Read_Logical('plot_meanlikes',.false.)
     plot_NDcontours = Ini_Read_Logical('plot_NDcontours',.false.)
@@ -1755,16 +1824,18 @@ program GetDist
            if (InLine == 'ALL' .or. InLine == 'all') then
              PCA_params(1:PCA_num) = (/ (i, i=1,PCA_num)/)
            else
-             read (InLine,*) PCA_params(1:PCA_num)
+            call ParamNames_ReadIndices(NameMapping,InLine, PCA_params, PCA_num)
            end if
-           PCA_NormParam = Ini_Read_Int('PCA_normparam',0)
+           InLIne = Ini_Read_String('PCA_normparam')
+           if (InLine=='') then
+               PCA_NormParam = 0
+           else
+              call ParamNames_ReadIndices(NameMapping,InLine, tmp_params, 1)
+              PCA_NormParam = tmp_params(1)
+           end if
+
         end if
 
-        plotparams_num = Ini_Read_Int('plotparams_num',0)
-        if (plotparams_num /= 0) then
-          InLine = Ini_Read_String('plotparams')
-          read(InLine,*) plotparams(1:plotparams_num)
-        end if
 
         num_3D_plots = Ini_Read_Int('num_3D_plots',0)
         do ix =1, num_3D_plots
@@ -1791,20 +1862,26 @@ program GetDist
     if ( single_column_chain_files ) then
       !Use used for WMAP 5-year chains suppled on LAMBDA; code from Mike Nolta
         
-        if (map_params) stop 'map_params does not work with single_column_chain_files'
+!        if (map_params) stop 'map_params does not work with single_column_chain_files'
         
         num_chains_used = num_chains_used + 1
         if (num_chains_used > max_chains) stop 'Increase max_chains in GetDist'
       
         chain_indices(num_chains_used) = nrows
         chain_numbers(num_chains_used) = chain_ix
-
+        first_haschain=0 
         do ip = 1,ncols
             infile = concat(CheckTrailingSlash(concat(in_root,chain_ix)), pname(ip))
+            if (.not. FileExists(infile)) then
+            write (*,*) 'skipping missing ' // trim(infile)
+              coldata(ip,:) = 0
+              nrows2(ip) = -1
+            else
+            
             write (*,*) 'reading ' // trim(infile)
             call OpenTxtFile(infile,50)
-
-            nrows2(ip) = nrows
+            if (first_haschain==0) first_haschain=ip 
+            nrows2(ip) = 0
             idx = 0 !Jo -1
             do
                 read (50,'(a)',iostat=stat) InLine
@@ -1837,15 +1914,24 @@ program GetDist
     
             end do    
             close(50)
+            end if
         end do
+        if (first_haschain==0) stop 'no chain parameter files read!'
         do ip = 2,ncols
-            if ( nrows2(ip) /= nrows2(1) ) then
+            if ( nrows2(ip)/=-1 .and. nrows2(ip) /= nrows2(first_haschain) ) then
                 print *, '*** nrows mismatch:'
                 print *, nrows2(1:ncols)
                 stop
             end if
         end do
-        nrows = nrows2(1)
+        nrows = nrows2(first_haschain)
+        if (map_params) then
+         do ip = 1,nrows
+          invars(1:ncols) = coldata(1:ncols, ip)        
+          call MapParameters(invars)
+          coldata(1:ncols, ip) = invars(1:ncols)
+         end do
+        end if
         print *, 'all columns match, nrows = ', nrows
 
     else
@@ -1976,19 +2062,30 @@ program GetDist
 !Only use variables whose label's are not empty (and in list of plotparams if plotparams_num /= 0)
           num_vars = 0
           
-          do ix = 3,ncols
-
+          if (plotparams_num/=0) then
+           do j=1, plotparams_num
+             ix = plotparams(j)+2
+             if (ix <=ncols .and. labels(ix) /= '' .and. isused(ix)) then
+                 num_vars = num_vars + 1
+                 colix(num_vars) = ix
+             end if           
+           end do          
+          else
+           do ix = 3,ncols
            if (labels(ix) /= '' .and. isused(ix)) then
                 if (plotparams_num == 0 .or. any(plotparams(1:plotparams_num)==ix-2)) then
                  num_vars = num_vars + 1
                  colix(num_vars) = ix
-                 mean(num_vars) = sum(coldata(1,0:nrows-1)*coldata(ix,0:nrows-1))/numsamp
-                 sddev(num_vars)  = sqrt(sum(coldata(1,0:nrows-1)*(coldata(ix,0:nrows-1) &
-                           -mean(num_vars))**2)/numsamp)
                 end if
-             end if
+            end if
+           end do
+          end if
+          do j = 1, num_vars
+                 mean(j) = sum(coldata(1,0:nrows-1)*coldata( colix(j),0:nrows-1))/numsamp
+                 sddev(j)  = sqrt(sum(coldata(1,0:nrows-1)*(coldata(colix(j),0:nrows-1) &
+                           -mean(j))**2)/numsamp)
           end do
-
+          
           triangle_plot = triangle_plot .and. (num_vars > 1)
 
           write (*,*) 'using ',nrows,' rows, processing ',num_vars,' parameters'
@@ -2149,9 +2246,7 @@ program GetDist
               else
                if (binsraw(ix_min(j))==0  .and. &
                    binsraw(ix_min(j)+1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
-                 call WriteS('Warning: sharp edge in parameter '//trim(intToStr(ix-2))// &
-                         ' - check limits'//trim(intToStr(ix-2)))
-
+                    call EdgeWarning(ix-2)
                end if
               end if
               if (has_limits_top(ix)) then
@@ -2160,8 +2255,7 @@ program GetDist
               else
                if (binsraw(ix_max(j))==0  .and. &
                    binsraw(ix_max(j)-1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
-                 call WriteS('Warning: sharp edge in parameter '//trim(intToStr(ix-2))// &
-                         ' - check limits'//trim(intToStr(ix-2)))
+                   call EdgeWarning(ix-2)
                end if
                
               end if
@@ -2506,7 +2600,11 @@ program GetDist
               write(50,*) 'pts = load('''//trim(rootdirname)//'_single.txt'');'
              
               do j=1, num_3D_plots
-                 read(plot_3D(j),*) ix1, ix2, ix3  !x, y, color
+                 call ParamNames_ReadIndices(NameMapping,plot_3D(j), tmp_params, 3)
+                  !x, y, color
+                 ix1 = tmp_params(1)
+                 ix2 = tmp_params(2)
+                 ix3 = tmp_params(3)
                  if (ix3<1) ix3 = MostCorrelated2D(ix1,ix2,ix3)
                  
                  write (50,'(''subplot('',1I5,'','',1I5,'','',1I5,'');'')') plot_row,plot_col,j   

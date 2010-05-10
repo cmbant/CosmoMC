@@ -69,6 +69,7 @@ contains
   end subroutine ReadPostParams
 
    subroutine postprocess(InputFile)
+        use IO
         character(LEN=*), intent(INOUT):: InputFile
         Type(CMBParams) LastCMB,CMB, newCMB
         Type(CosmoTheory) Theory, CorrectTheory
@@ -80,6 +81,7 @@ contains
         integer error,num, debug
         character (LEN=120) :: post_root
         real Params(num_params)
+        integer infile_handle, outdata_handle
 
         flush_write = .false.
         weight_min= 1e30
@@ -91,27 +93,23 @@ contains
 
         max_truelike =1e30
 
-
         debug = 0
         Info%Theory%Sn_LogLike = 0
+        Info%Theory%HST_LogLike = 0
+        Info%Theory%BAO_LogLike = 0
 
-
+        infile_handle = 0
         Temperature = PostParams%redo_temperature 
 
         if (Feedback>0 .and. PostParams%redo_change_like_only) &
-
               write (*,*) 'Warning: only changing likelihoods not weights'
-
-
-        outfile_unit = 2
 
         if (PostParams%redo_datafile /= '') InputFile = PostParams%redo_datafile
 
-
         if (PostParams%redo_from_text) then
 
-         call OpenTxtFile(trim(InputFile)//'.txt',1)
-
+         infile_handle = IO_OpenChainForRead(trim(InputFile)//'.txt')
+         
          if (.not. PostParams%redo_theory) write (*,*) '**You probably want to set redo_theory**'
          if (.not. PostParams%redo_cls .and. Use_CMB) write (*,*) '**You probably want to set redo_cls**'
          if (.not. PostParams%redo_pk .and. Use_mpk) write (*,*) '**You probably want to set redo_pk**'
@@ -119,7 +117,7 @@ contains
          if (PostParams%redo_thin>1) write (*,*) 'redo_thin only OK with redo_from_text if input weights are 1'
 
         else
-         call OpenFile(trim(InputFile)//'.data',1,'unformatted')
+         infile_handle = IO_OpenDataForRead(trim(InputFile)//'.data')
         end if
 
          
@@ -134,34 +132,32 @@ contains
           if (PostParams%redo_from_text) then
            write (*,*) 'reading from: ' //  trim(InputFile)//'.txt'
           else
-          write (*,*) 'reading from: ' //  trim(InputFile)//'.data'
+           write (*,*) 'reading from: ' //  trim(InputFile)//'.data'
           end if
            write (*,*) 'writing to: ' // trim(post_root)//'.*'
         end if
 
         write (*,*) 'Using temperature: ', Temperature
 
-
-
-        call CreateTxtFile(trim(post_root)//'.txt', outfile_unit)
-        call CreateFile(trim(post_root)//'.data',3,'unformatted')
+        outfile_handle = IO_OutputOpenForWrite(trim(post_root)//'.txt')
+        
+        outdata_handle = IO_DataOpenForWrite(trim(post_root)//'.data')
      
         num = 0
         do
-    
 
         if (PostParams%redo_from_text) then
           error = 0
-          read(1, *, end=100,err=100) mult, like, Params(1:num_params)    
+          if (.not. IO_ReadChainRow(infile_handle, mult, like, Params, num_params)) exit
           call ParamsToCMBParams(Params, CMB)
 
         else
-          call ReadModel(1,CMB,Theory,mult,like, error)
+          call ReadModel(infile_handle,CMB,Theory,mult,like, error)
         end if
 
            
         if (error ==1) then
-          if (num==0) stop 'Error reading data file.'
+          if (num==0) call MpiStop('Error reading data file.')
 
           exit
         end if
@@ -203,7 +199,7 @@ contains
                
 
               if (Use_LSS .and. CorrectTheory%sigma_8==0) &
-                 stop 'Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.'
+                 call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
 
 
               call ClsFromTheoryData(CorrectTheory, newCMB, Cls)
@@ -240,14 +236,12 @@ contains
 
            max_truelike = min(max_truelike,truelike)
 
-            
-
            mult_ratio = mult_ratio + weight
            mult_sum = mult_sum + mult
           
            if (mult /= 0) then        
             call WriteCMBParams(newCMB, CorrectTheory, mult, truelike,txt_theory)
-            call WriteModel(3, newCMB, CorrectTheory,truelike,mult)
+            call WriteModel(outdata_handle, newCMB, CorrectTheory,truelike,mult)
 
            else 
 
@@ -264,10 +258,10 @@ contains
         
         end do
 
-100     close(1)
-        close(3)
-        close(outfile_unit)
-
+        call IO_Close(infile_handle)
+        call IO_Close(outfile_handle)
+        call IO_DataCloseWrite(outdata_handle)
+      
         num = (num - PostParams%redo_skip) / PostParams%redo_thin
         if (Feedback>0) then 
            write(*,*) 'finished. Processed ',num,' models'

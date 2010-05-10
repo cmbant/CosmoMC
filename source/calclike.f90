@@ -11,12 +11,11 @@ module CalcLike
  use Lya
  implicit none
 
- logical :: Use_HST = .true.
  logical :: Use_Age_Tophat_Prior = .true.
  logical :: Use_CMB = .true.
  logical :: Use_BBN = .false.
  logical :: Use_Clusters = .false.
- 
+  
  integer :: H0_min = 40, H0_max = 100
  real :: Omk_min = -0.3, Omk_max = 0.3
  real :: Use_min_zre = 0
@@ -28,13 +27,16 @@ contains
   function GenericLikelihoodFunction(Params) 
     type(ParamSet)  Params 
     real :: GenericLikelihoodFunction
+   
   
    !Used when you want to plug in your own CMB-independent likelihood function:
    !set generic_mcmc=.true. in settings.f90, then write function here returning -Ln(Likelihood)
    !Parameter array is Params%P
-    
-    GenericLikelihoodFunction = LogZero 
-    stop 'GenericLikelihoodFunction: need to write this function!'
+    !!!!
+   ! GenericLikelihoodFunction = greatLike(Params%P)
+   ! GenericLikelihoodFunction = LogZero 
+    call MpiStop('GenericLikelihoodFunction: need to write this function!')
+    GenericLikelihoodFunction=0
 
   end function GenericLikelihoodFunction
 
@@ -97,16 +99,13 @@ contains
 
     if (generic_mcmc) stop 'GetLogLikePost: not supported for generic'
 
-
     GetLogLikePost  = GetLogPrior(CMB, Info)
     if ( GetLogLikePost >= logZero) then
        GetLogLikePost = logZero
        
     else 
-          
        GetLogLikePost = GetLogLikePost + sum(CMB%nuisance(1:nuisance_params_used)**2)/2
           !Unit Gaussian prior on all nuisance parameters
-       if (Use_HST) GetLogLikePost = GetLogLikePost + (CMB%H0 - 72)**2/(2*8**2)  !HST 
        if (Use_BBN) GetLogLikePost = GetLogLikePost + (CMB%ombh2 - 0.022)**2/(2*0.002**2) 
           !I'm using increased error bars here
    
@@ -120,7 +119,8 @@ contains
          if (error /= 0) then
           GetLogLikePost = logZero 
          else
-          if (Use_CMB) GetLogLikePost = CMBLnLike(acl, CMB%norm(norm_SZ),CMB%nuisance) + GetLogLikePost
+          if (Use_CMB) GetLogLikePost = &
+            CMBLnLike(acl, CMB%norm(norm_freq_ix:norm_freq_ix+num_freq_params-1),CMB%nuisance) + GetLogLikePost
           if (Use_mpk) GetLogLikePost = GetLogLikePost + LSSLnLike(CMB, Info%theory)
           if (Use_WeakLen) GetLogLikePost = GetLogLikePost + WeakLenLnLike(CMB, Info%theory)     
           if (Use_Lya) GetLogLikePost = GetLogLikePost +  LSS_Lyalike(CMB, Info%Theory)
@@ -135,14 +135,31 @@ contains
              GetLogLikePost = GetLogLikePost + SN_LnLike(CMB)
             end if
                !Assume computed only every time hard parameters change
-  
-  
          end if
-   
-       else
-         if (Use_SN) GetLogLikePost = GetLogLikePost + SN_LnLike(CMB)
-       end if
-
+         if (Use_BAO .and. GetLogLikePost /= logZero ) then
+            if (Info%Theory%BAO_loglike /= 0) then
+             GetLogLikePost = GetLogLikePost + Info%Theory%BAO_loglike
+            else
+             GetLogLikePost = GetLogLikePost + BAO_LnLike(CMB)
+            end if
+               !Assume computed only every time hard parameters change
+         end if
+         if (Use_HST .and. GetLogLikePost /= logZero) then
+            if (Info%Theory%HST_loglike /= 0) then
+             GetLogLikePost = GetLogLikePost + Info%Theory%HST_loglike
+            else
+             GetLogLikePost = GetLogLikePost + HST_LnLike(CMB)
+            end if
+           !!Old: GetLogLikePost = GetLogLikePost + (CMB%H0 - 72)**2/(2*8**2)  !HST 
+         end if  
+     
+         else
+           if (Use_SN) GetLogLikePost = GetLogLikePost + SN_LnLike(CMB)
+           if (Use_BAO) GetLogLikePost = GetLogLikePost + BAO_LnLike(CMB)
+           if (Use_HST) GetLogLikePost = GetLogLikePost + HST_LnLike(CMB)           
+         end if
+         
+     
       if (Use_Clusters .and. GetLogLikePost /= LogZero) then
           GetLogLikePost = GetLogLikePost + &
                  (Info%Theory%Sigma_8-0.9)**2/(2*0.05**2)

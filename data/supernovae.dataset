@@ -1,0 +1,35 @@
+# Path to FITRES files
+
+# Both paths need to be present here
+# put some dummy if file does not exist and is not used
+MLCSfile = %DATASETDIR%MLCS.FITRES 
+SALTfile = %DATASETDIR%SALT2.FITRES
+
+# Define which sets to use:
+
+# SDSS_set:
+# 1: MLCS
+# 2: SALT
+SDSS_set = 1
+
+
+SDSS_subset = 1 3 4 50 100
+#or SDSS_subset = e
+
+# SDSS_subset, predefined:
+#!   a: SDSS only
+#!   b: SDSS+ESSENCE+SNLS
+#!   c: LOWZ+SDSS
+#!   d: LOWZ+SDSS+ESSENCE+SNLS
+#!   e: LOWZ+SDSS+ESSENCE+SNLS+HST
+#!   f: LOWZ+ESSENCE+SNLS
+#
+# or any space-seperated list of the following id's:
+#
+# 1 = SDSS
+# 3 = ESSE
+# 4 = SNLS
+# 50 = Nearby
+# 100 = HST
+#
+# eg. 'e' is equivalent to '1 3 4 50 100' 

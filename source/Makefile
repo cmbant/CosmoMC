@@ -1,11 +1,18 @@
 #You may need to edit the library paths for MKL for Intel
 #Beware of using optmizations that lose accuracy - may give errors when running
 
-#Edit for CFITSIO directories
-cfitsio = /usr/local/cfitsio/intel10/64/3.040
-#/usr/local/Cluster-Users/cpac/cmb/2.1.0/cfitsio
+##Uncomment the next line to include dr7 LRG
+EXTDATA = 
+#EXTDATA = LRG
 
+#set WMAP empty not to compile with WMAP
 WMAP = /home/aml1005/WMAP5/likelihood_v3
+
+#Only needed for WMAP
+cfitsio = /usr/local/cfitsio/intel10/64/3.040
+
+#GSL only needed for DR7 LRG
+GSLPATH = /home/aml1005/libs/gsl
 
 IFLAG = -I
 INCLUDE=
@@ -16,17 +23,24 @@ F90C     = mpif90
 FFLAGS = -O2 -ip -W0 -WB -openmp -fpp -DMPI -vec_report0
 LAPACKL = -L/usr/local/intel/mkl/9.1/lib/em64t -lmkl_lapack -lmkl_em64t -lguide -lpthread
 
-#HPCF settings. Use Inteal 9 or 10.1, not 10.0
+#HPCF settings. Use Inteal 9 or 10.1+, not 10.0
 #F90C     = mpif90
 #FFLAGS = -O2 -Vaxlib -W0 -WB -openmp -fpp -DMPI -vec_report0
-#LAPACKL = -L/usr/local/Cluster-Apps/intel/mkl/9.0.018/lib/em64t -lmkl_lapack -lmkl -lguide -lpthread
+#LAPACKL = -L/usr/local/Cluster-Apps/intel/mkl/10.2.2.025/lib/em64t -lmkl_lapack -lmkl -lguide -lpthread
+#GSLPATH = /usr/local/Cluster-Apps/gsl/1.9
+#cfitsio = /usr/local/Cluster-Users/cpac/cmb/2.1.0/cfitsio
 #INCLUDE=
 
-# Use with Intel 9 on the Altix (eg. COSMOS) [this is old]
-# (do "module load icomp90" before compiling, or add to .bashrc)
-#F90C = ifort
-#FFLAGS = -O3 -w -fpp2 -DMPI 
-#LAPACKL = -lscs -lguide -lmpi -ldl
+#COSMOS: use "module load cosmolib latest" 
+#use "runCosmomc" (globally installed) to run, defining required memory usage
+ifeq ($(COSMOHOST),cosmos)
+F90C = ifort
+FFLAGS = -openmp -O3 -w -fpp2 -DMPI
+LAPACKL = -mkl=sequential -lmkl_lapack -lmpi
+cfitsio = $(CFITSIO)
+WMAP = $(COSMOLIB)/WMAP
+GSLPATH = $(GSL_ROOT)
+endif
 
 #Intel fortran 8, check you have the latest update from the Intel web pages
 #See Makefile_intel for ifc 7.1 or lower (some versions have problems)
@@ -34,10 +48,15 @@ LAPACKL = -L/usr/local/intel/mkl/9.1/lib/em64t -lmkl_lapack -lmkl_em64t -lguide 
 #FFLAGS = -O2 -Vaxlib -ip -W0 -WB -openmp -fpp
 #LAPACKL = -L/opt/intel/mkl61/lib/32 -lmkl_lapack -lmkl_ia32 -lguide -lpthread
 
-#Intel fortran 8 on COSMOS
-#F90C     = ifort
-#FFLAGS = -O2 -Vaxlib -W0 -WB -openmp -fpp2 -lmpi -lscs  -ldl -DMPI
-#LAPACKL = -L/opt/intel/mkl80/lib/64 -lmkl_lapack -lmkl_ipf -limf
+#G95; make sure LAPACK and MPI libs also compiled with g95
+#F90C     = mpif90
+#FFLAGS = -O2 -DMPI
+#LAPACKL = /LAPACK/lapack_LINUX.a /LAPACK/blas_LINUX.a
+
+#GFortran: if pre v4.3 add -D__GFORTRAN__
+#F90C     = gfortran
+#FFLAGS = -O2 -ffree-form -x f95-cpp-input 
+#LAPACKL = -Wl,-framework -Wl,accelerate
 
 #SGI, -mp toggles multi-processor. Use -O2 if -Ofast gives problems.
 #Not various versions of the compiler are buggy giving erroneous seg faults with -mp.
@@ -50,16 +69,6 @@ LAPACKL = -L/usr/local/intel/mkl/9.1/lib/em64t -lmkl_lapack -lmkl_em64t -lguide 
 #F90C    = f90
 #FFLAGS  = -omp -O4 -arch host -math_library fast -tune host -fpe1
 #LAPACKL  = -lcxml
-
-#G95; make sure LAPACK and MPI libs also compiled with g95
-#F90C     = mpif90
-#FFLAGS = -O2 -DMPI
-#LAPACKL = /LAPACK/lapack_LINUX.a /LAPACK/blas_LINUX.a
-
-#GFortran: if pre v4.3 add -D__GFORTRAN__
-#F90C     = gfc
-#FFLAGS = -O2 -ffree-form 
-#LAPACKL = -Wl,-framework -Wl,accelerate
 
 #Absoft ProFortran, single processor, set -cpu:[type] for your local system 
 #F90C     = f95
@@ -111,16 +120,28 @@ CLSFILE = CMB_Cls_simple.o
 #Can use params_H if you prefer more generic parameters
 PARAMETERIZATION = params_CMB.o
 
-WMAP_inc = $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
-WMAP_lib = -L$(cfitsio)/lib -L$(WMAP) -lcfitsio
+F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
+LINKFLAGS = -L../camb -lcamb $(LAPACKL) 
 
-CLSLIB  = $(WMAP_lib) -L../camb -lcamb $(LAPACKL) 
+DISTFILES = utils.o ParamNames.o Matrix_utils.o settings.o GetDist.o
 
-F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(WMAP_inc) $(IFLAG)../camb $(INCLUDE)
+OBJFILES= utils.o ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o \
+	cmbdata.o WeakLen.o bao.o lrggettheory.o mpk.o supernovae.o HST.o SDSSLy-a-v3.o \
+	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
+	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
 
-DISTFILES = utils.o Matrix_utils.o settings.o GetDist.o
 
-WMAPOBJS = $(WMAP)/read_archive_map.o \
+ifeq ($(EXTDATA),LRG)
+F90FLAGS += -DDR71RG
+OBJFILES += bsplinepk.o
+GSLINC = -I$(GSLPATH)/include
+LINKFLAGS += -L$(GSLPATH)/lib -lgsl -lgslcblas
+endif
+
+ifneq ($(WMAP),)
+F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
+LINKFLAGS +=  -L$(cfitsio)/lib -L$(WMAP) -lcfitsio
+OBJFILES += $(WMAP)/read_archive_map.o \
 	$(WMAP)/read_fits.o \
 	$(WMAP)/WMAP_5yr_options.o \
 	$(WMAP)/WMAP_5yr_util.o \
@@ -130,25 +151,26 @@ WMAPOBJS = $(WMAP)/read_archive_map.o \
 	$(WMAP)/WMAP_5yr_gibbs.o \
 	$(WMAP)/WMAP_5yr_tt_beam_ptsrc_chisq.o \
 	$(WMAP)/br_mod_dist.o 
-
-OBJFILES= $(WMAPOBJS) utils.o Matrix_utils.o settings.o cmbtypes.o Planck_like.o \
-	cmbdata.o WeakLen.o mpk.o supernovae.o SDSSLy-a-v3.o\
-	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
-	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
+else
+F90FLAGS += -DNOWMAP
+endif
 
 default: cosmomc
 
 all : cosmomc getdist
 
+utils.o: ../camb/libcamb.a
 settings.o: utils.o
 cmbtypes.o: settings.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o $(WMAPOBJS)
 WeakLen.o: cmbtypes.o
-mpk.o: cmbtypes.o
+bao.o: cmbtypes.o
+mpk.o: cmbtypes.o lrggettheory.o
+HST.o: cmbtypes.o
 supernovae.o: cmbtypes.o
 SDSSLy-a-v3.o: cmbtypes.o
-$(CLSFILE): cmbtypes.o
+$(CLSFILE): cmbtypes.o mpk.o HST.o bao.o IO.o
 paramdef.o: $(CLSFILE)
 $(PROPOSE): paramdef.o
 $(PARAMETERIZATION): paramdef.o
@@ -159,8 +181,14 @@ postprocess.o: calclike.o
 MCMC.o: calclike.o
 driver.o: MCMC.o
 
+export FFLAGS
+export F90C
+
 .f.o:
 	f77 $(F90FLAGS) -c $<
+
+%.o: %.c
+	$(CC) $(GSLINC) -c $*.c
 
 %.o: %.f90
 	$(F90C) $(F90FLAGS) -c $*.f90
@@ -169,12 +197,19 @@ driver.o: MCMC.o
 	$(F90C) $(F90FLAGS) -c $*.F90
 
 
-cosmomc: $(OBJFILES) ../camb/libcamb.a 	
-	$(F90C) -o ../cosmomc $(OBJFILES) $(CLSLIB) $(F90FLAGS)
+cosmomc: camb $(OBJFILES)
+	$(F90C) -o ../cosmomc $(OBJFILES) $(LINKFLAGS) $(F90FLAGS)
 
 
-clean:
-	rm -f *.o *.mod *.d *.pc *.obj ../core
+clean: cleancosmomc
+	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod
 
-getdist: $(DISTFILES)
-	$(F90C) -o ../getdist $(DISTFILES) $(CLSLIB) $(F90FLAGS) 
+cleancosmomc:
+	rm -f *.o *.mod *.d *.pc *.obj ../core 
+
+
+getdist: camb $(DISTFILES)
+	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS) 
+
+camb:
+	cd ../camb && $(MAKE) --file=Makefile_main libcamb.a

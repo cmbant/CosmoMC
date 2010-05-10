@@ -2,6 +2,7 @@ module settings
   use AMLutils
   use Random
   use IniFile
+  use ParamNames
   implicit none
 
   real :: AccuracyLevel = 1.
@@ -9,19 +10,25 @@ module settings
   !Does not affect MCMC (except making it all slower)
 
 !num_norm is number of calibration and normalization parameters (fast)
+!         should be 2 or larger (scale for the scalar Cl, and the T/S ratio
 !num_initpower is the number of initial power parameters
 !num_hard is the number of 'hard' parameters
+!num_freq_params are parameters for frequency-dependant part of CMB signal
+!                 by default just one, an SZ amplitude
+!num_nuisance_params is number of nuisance parameters used internally by data likelihoods
+!                    (e.g. beam uncertainty modes, etc, specific to dataset)
 
   integer, parameter :: num_hard =7 
   integer, parameter :: num_initpower = 3 
-  integer, parameter :: num_norm = 3 
+  integer, parameter :: num_freq_params = 1
+  integer, parameter :: num_norm = 2 + num_freq_params 
   integer, parameter :: num_nuisance_params= 0
 
-     !Should be 2 or larger (scale for the scalar Cl, and the T/S ratio
-
-  logical :: use_fast_slow = .true.
+  logical :: use_fast_slow = .false.
     !Set to false if using a slow likelihood function so no there's point is treating
     !'fast' parameters differently (in fact, doing so will make performance worse)
+
+  Type(TParamNames) :: NameMapping
 
   integer :: oversample_fast = 0
   integer, parameter :: sampling_metropolis = 1, sampling_slice = 2, sampling_fastslice =3, &
@@ -40,6 +47,8 @@ module settings
     !set to true to not call CAMB, etc.
     !write GenericLikelihoodFunction in calclike.f90   
 
+  character(LEN=1024) :: DataDir='data/';
+
   integer, parameter :: num_fast_params = num_initpower + num_norm + num_nuisance_params
 
   integer, parameter :: num_params = num_norm + num_initpower + num_hard + num_nuisance_params
@@ -57,8 +66,8 @@ module settings
   logical :: Use_LSS = .true.
 
   integer :: logfile_unit  = 0
-  integer :: outfile_unit = 0 
-  integer :: indepfile_unit = 0
+  integer :: outfile_handle = 0 
+  integer :: indepfile_handle = 0
   integer :: slow_proposals = 0
   integer :: output_lines = 0
 
@@ -68,6 +77,15 @@ module settings
 
 contains
 
+  function ReadIniFileName(Ini,key) result (filename)
+   Type(TIniFile) :: Ini
+   character(LEN=*), intent(in) :: Key
+   character(LEN=Ini_max_string_len) :: filename
+   
+   filename = Ini_Read_String_File(Ini, key)
+   call StringReplace('%DATASETDIR%',DataDir,filename)
+
+  end function ReadIniFileName
 
  subroutine CheckParamChangeF(F)
    character(LEN=*), intent(in) ::  F

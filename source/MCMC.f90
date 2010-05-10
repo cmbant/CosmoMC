@@ -8,6 +8,7 @@ module MonteCarlo
  use CalcLike
  use Random
  use propose
+ use IO
  implicit none
 
  integer :: indep_sample = 0
@@ -470,7 +471,8 @@ function WL_Weight(L) result (W)
    integer num_metropolis,  num_metropolis_accept
    real testlike, testCurLike
    integer mc_update_burn_num, mc_updates
-
+   character(LEN=128) logLine
+   
    MaxLike = LogZero
    CurLike = StartLike
    testCurLike = StartLike
@@ -598,11 +600,11 @@ function WL_Weight(L) result (W)
                ' (M) best: ',real(MaxLike)
       end  if
       if (logfile_unit /=0 .and. mod(num_metropolis_accept,50) ==0) then
-           write (logfile_unit,*) 'rat:',real(num_metropolis_accept)/num_metropolis, ' in ',num_metropolis, &
+           write (logLine,*) 'rat:',real(num_metropolis_accept)/num_metropolis, ' in ',num_metropolis, &
                ', (M) best: ',real(MaxLike)
-           write (logfile_unit,*) 'local acceptance ratio:', 50./(num_metropolis - last_num) 
-           
-           call FlushFile(logfile_unit)
+           call IO_WriteLog(logfile_unit,logLine)
+           write (logLine,*) 'local acceptance ratio:', 50./(num_metropolis - last_num) 
+           call IO_WriteLog(logfile_unit,logLine)
            last_num = num_metropolis
       end if
     else

@@ -32,6 +32,9 @@
 !Oct 06: edited ReadAllExact to auto-account for number of cls (e.g. missing BB)
 !Oct 07: added Planck-like CMBLikes format
 !March 08: switched to support WMAP5
+!Sept 09: modified ReadDataset_bcp for QUaD, allowing beam errors to be explicitly provided for each band
+!         CMBLnLike passes array of parameters for frequency-dependent part of signal
+!Oct 27 Oct 09: fixed bugs using .newdat files
 module cmbdata
 use settings
 use cmbtypes
@@ -184,6 +187,9 @@ contains
 
     !In this case we have data for every l, and use exact full-sky likelihood expression
     !with some fudge factor fsky_eff^2 to reduce the degrees of freedom: fsky^eff*(2l+1)
+        
+       if (Feedback > 0) &
+        write(*,*) 'all_l_exact note: you might want to change fsky_eff^2 factor to fsky_eff' 
 
        aset%num_points = 0
        aset%all_l_lmax = Ini_Read_Int_File(Ini,'all_l_lmax')
@@ -238,12 +244,11 @@ contains
    Type(CMBdataset) :: aset
    integer l
    real ChiSqExact, chisq, term, CT, CE, CB, CC
-   real CThat, CChat, CEhat
+   real CThat, CChat, CEhat, CBhat
    real dof
    integer i
 
    chisq=0
-
    
    do l=2, 30 
      dof = aset%all_l_fsky(l)**2*(2*l+1)
@@ -274,18 +279,25 @@ contains
      CT=0
      CE=0
      CC=0
+     CB=0
      CThat=0
      CEhat=0
      CChat=0
+     CBhat=0
      do i=l,l+cl_bin_width-1
       dof = dof + aset%all_l_fsky(i)**2*(2*i+1)
-      CT = CT + (cl(l,1) + aset%all_l_noise(l,1))*(2*i+1)
-      CThat = CThat + aset%all_l_obs(l,1)*(2*i+1)
+      CT = CT + (cl(i,1) + aset%all_l_noise(i,1))*(2*i+1)
+      CThat = CThat + aset%all_l_obs(i,1)*(2*i+1)
       if (aset%has_pol) then
-       CE = CE + (cl(l,3) + aset%all_l_noise(l,2) ) *(2*i+1)
-       CC = CC +  cl(l,2)*(2*i+1)
-       CEhat = CEhat + aset%all_l_obs(l,3)*(2*i+1)
-       CChat = CChat + aset%all_l_obs(l,2)*(2*i+1)
+       CE = CE + (cl(i,3) + aset%all_l_noise(i,2) ) *(2*i+1)
+       CC = CC +  cl(i,2)*(2*i+1)
+       CEhat = CEhat + aset%all_l_obs(i,3)*(2*i+1)
+       CChat = CChat + aset%all_l_obs(i,2)*(2*i+1)
+       if (num_cls>3) then
+        !add in BB
+        CB = CB + (cl(i,num_cls) + aset%all_l_noise(i,2))*(2*i+1)
+        CBhat = CBhat + aset%all_l_obs(i,num_cls)*(2*i+1)
+       end if
       end if
      end do
 
@@ -297,9 +309,7 @@ contains
         + log( term/ (CTHat*CEHat - CCHat**2)) -2)
       if (num_cls>3) then
         !add in BB
-        CB = cl(l,num_cls) + aset%all_l_noise(l,2)
-        chisq = chisq + dof * (aset%all_l_obs(l,num_cls)/CB &
-                +log(CB/aset%all_l_obs(l,num_cls)) - 1)
+        chisq = chisq + dof * (CBhat/CB +log(CB/CBhat) - 1)
       end if
      else
         chisq = chisq + dof * (CTHat/CT +log(CT/CTHat) - 1)
@@ -338,7 +348,8 @@ contains
    elseif( aname(LEN_TRIM(aname)-5:LEN_TRIM(aname)) == 'newdat') then
     !Carlo format for polarized Boomerang et al.
      if (Feedback > 0) write(*,*) 'Reading BCP data set: ' // TRIM(aname)
-     call ReadDataset_bcp(aname)
+     call ReadDataset_bcp(aset,aname)
+     datasets(num_datasets) = aset
      return 
    end if
 
@@ -386,9 +397,8 @@ contains
 
        aset%calib_uncertainty = Ini_Read_Double_File(Ini,'calib_uncertainty')
        aset%beam_uncertain = Ini_Read_logical_File(Ini,'beam_uncertainty')
-
         
-       window_dir  = Ini_Read_String_File(Ini,'window_dir')
+       window_dir  = ReadIniFilename(Ini,'window_dir')
 
        windows_are_bare = Ini_Read_Logical_File(Ini,'windows_are_bare',.false.)
        aset%windows_are_bandpowers = Ini_Read_Logical_File(Ini,'windows_are_bandpowers',.true.)
@@ -589,7 +599,8 @@ contains
   !Routine by Carlo Contaldi to read .newdat file format (Boomerang et al)
   !Modified to account for offset lognormal toggle per band
   !AL July 2005: modified to allow band selection
- SUBROUTINE ReadDataset_bcp(aname)
+  !MLB May 09: modified to allow provision of per-band beam errors (Quad)
+ SUBROUTINE ReadDataset_bcp(aset,aname)
   !File Format:
   !name
   !n_bands_TT n_EE, n_BB, n_EB, n_TE, n_TB
@@ -604,11 +615,12 @@ contains
   ! covariance matrix
 
    CHARACTER(LEN=*), INTENT(IN) :: aname
+   TYPE (CMBdataset) :: aset
+
    CHARACTER(LEN=100) :: instr
    CHARACTER(LEN=3), DIMENSION(1:6) :: ch_types
 
    LOGICAL windows_are_bare
-   TYPE (CMBdataset) :: aset
    INTEGER i, j, k,use_i, n_types, xin
    REAL, POINTER, DIMENSION(:) :: tmp_x
    REAL, POINTER, DIMENSION(:,:) :: lb
@@ -616,26 +628,29 @@ contains
    integer, allocatable, dimension(:) :: used_bands
 
    INTEGER :: npol(6), minmax(2,6)
-   INTEGER :: file_i,ijunk, ilike
+   INTEGER :: file_i,ijunk, ilike, ibeam
    REAL :: cal, beam_width, beam_sigma, l_mid
    integer, parameter :: like_xfactorall=1, like_xfactorsome = 2
    !to be compatible with some older CITA output files
    LOGICAL :: FISHER_T_CMB
+   integer file_unit
+   
+   
+   file_unit = new_file_unit()
+   CALL OpenTxtFile(aname, file_unit)
 
-   CALL OpenTxtFile(aname, 62)
-
-   READ(62,'(a)') instr
+   READ(file_unit,'(a)') instr
    FISHER_T_CMB = .FALSE.
    IF(instr == 'FISHER_T_CMB') THEN
       FISHER_T_CMB = .TRUE.
-      READ(62,'(a)') instr
+      READ(file_unit,'(a)') instr
       WRITE(*,'(a)') 'FISHER_T_CMB is set for :'//TRIM(ADJUSTL(instr))
    ENDIF
    aset%name = TRIM(ADJUSTL(instr))
    WRITE(*,*) 'Reading: '//TRIM(ADJUSTL(aset%name))
    aset%use_set =.TRUE.
 
-   READ(62,*) npol(1:6)
+   READ(file_unit,*) npol(1:6)
 
    aset%has_pol = any(npol(2:6) /=0)
  
@@ -643,7 +658,7 @@ contains
    aset%file_points = SUM(npol)
    aset%num_points = SUM(npol)
    n_types = count(npol /= 0)
-   READ(62,'(a)') instr
+   READ(file_unit,'(a)') instr
    IF(instr == 'BAND_SELECTION') THEN
       !list of 'first_band last_band' for each pol type
       !if first_band=0 then ignore that pol type
@@ -651,7 +666,7 @@ contains
       aset%has_pol = .false.
       if(feedback>0) WRITE(*,*) 'Using selected band ranges' 
       do i=1,6
-       READ(62,*) minmax(1:2,i)
+       READ(file_unit,*) minmax(1:2,i)
        if (minmax(1,i)/=0) then
         aset%num_points = aset%num_points + minmax(2,i) - minmax(1,i) + 1
         if (i>1) aset%has_pol = .true.
@@ -659,7 +674,7 @@ contains
         minmax(2,i) = 0
        end if
       end do
-      READ(62,'(a)') instr
+      READ(file_unit,'(a)') instr
    ELSE
      !use all bands in file
       do i=1,6
@@ -672,8 +687,8 @@ contains
    READ(instr,*) ijunk, cal, aset%calib_uncertainty
    IF(ijunk == 0) aset%calib_uncertainty = 0.e0
 
-   READ(62,*) ijunk, beam_width, beam_sigma
-   aset%beam_uncertain = ijunk /= 0
+   READ(file_unit,*) ibeam, beam_width, beam_sigma
+   aset%beam_uncertain = ibeam /= 0
 
    !this agrees with latest windows coming out of MPIlikely
    windows_are_bare = .FALSE.
@@ -683,7 +698,7 @@ contains
    ALLOCATE(aset%points(aset%num_points))
    allocate(used_bands(aset%num_points))
 
-   READ(62,*) ilike
+   READ(file_unit,*) ilike
    aset%has_xfactors = ilike ==like_xfactorsome .or. ilike==like_xfactorall 
    !1 : all bands are offset lognormal
    !2 : only bands specified have offset lognormal
@@ -698,7 +713,7 @@ contains
    use_i = 0
    file_i = 0
    DO j=1,n_types
-      READ(62,'(a2)') ch_types(j)
+      READ(file_unit,'(a2)') ch_types(j)
       k = k + 1
       DO i=1,20
          IF(npol(k) == 0 ) THEN
@@ -715,52 +730,70 @@ contains
          if (i>=minmax(1,k) .and. i<=minmax(2,k)) then
              use_i = use_i + 1
              used_bands(use_i) = file_i
-             IF(ilike /= like_xfactorsome) THEN
-               READ(62,'(a)') instr
-               READ(instr,*) ijunk, aset%points(use_i)%obs,aset%points(use_i)%err_minus, &
-                     aset%points(use_i)%err_plus,tmp_x(use_i),lb(use_i,1),lb(use_i,2)
-             ELSE 
-                !like_xfactorsome
-                !read also offset switch per band
-                READ(62,*) ijunk, aset%points(use_i)%obs,aset%points(use_i)%err_minus, &
-                     aset%points(use_i)%err_plus,tmp_x(use_i),lb(use_i,1),lb(use_i,2),xin
-                aset%has_xfactor(use_i) = xin/=0
-             ENDIF
-             aset%points(use_i)%sigma = (aset%points(use_i)%err_minus + aset%points(use_i)%err_plus)/2
-             !beam error in bandpower
-             l_mid = (lb(use_i,2)-lb(use_i,1))/2.d0 + lb(use_i,1)
-             aset%points(use_i)%beam_err = exp(-l_mid*(l_mid+1.d0)*1.526e-8*2.d0*beam_sigma*beam_width)-1.d0 
-             aset%points(use_i)%beam_err = abs(aset%points(use_i)%beam_err)
-             if (Feedback>1 ) print*, aset%beam_uncertain, l_mid, aset%points(use_i)%beam_err 
+            IF(ibeam .le. 1) THEN 
+               IF(ilike /= like_xfactorsome) THEN
+                  READ(file_unit,'(a)') instr
+                  READ(instr,*) ijunk, aset%points(use_i)%obs,aset%points(use_i)%err_minus, &
+                       aset%points(use_i)%err_plus,tmp_x(use_i),lb(use_i,1),lb(use_i,2)
+               ELSE
+                  !like_xfactorsome
+                  !read also offset switch per band
+                  READ(file_unit,*) ijunk, aset%points(use_i)%obs,aset%points(use_i)%err_minus, &
+                       aset%points(use_i)%err_plus,tmp_x(use_i),lb(use_i,1),lb(use_i,2),xin
+                  aset%has_xfactor(use_i) = xin/=0
+               ENDIF
+               !beam error in bandpower
+               l_mid = (lb(use_i,2)-lb(use_i,1))/2.d0 + lb(use_i,1)
+               aset%points(use_i)%beam_err = exp(-l_mid*(l_mid+1.d0)*1.526e-8*2.d0*beam_sigma*beam_width)-1.d0 
+               aset%points(use_i)%beam_err = abs(aset%points(use_i)%beam_err)
+            ELSE !Bandpowers from file, a la Quad
+               IF(ilike /= like_xfactorsome) THEN
+                  READ(file_unit,'(a)') instr
+                  READ(instr,*) ijunk, aset%points(use_i)%obs,aset%points(use_i)%err_minus, &
+                       aset%points(use_i)%err_plus,tmp_x(use_i),lb(use_i,1),lb(use_i,2),aset%points(use_i)%beam_err
+               ELSE 
+                  !like_xfactorsome
+                  !read also offset switch per band
+                  READ(file_unit,*) ijunk, aset%points(use_i)%obs,aset%points(use_i)%err_minus, &
+                       aset%points(use_i)%err_plus,tmp_x(use_i),lb(use_i,1),lb(use_i,2),xin,aset%points(use_i)%beam_err
+                  aset%has_xfactor(use_i) = xin/=0
+               ENDIF
+               l_mid = (lb(use_i,2)-lb(use_i,1))/2.d0 + lb(use_i,1)
+            ENDIF
+            aset%points(use_i)%sigma = (aset%points(use_i)%err_minus + aset%points(use_i)%err_plus)/2
+
+            if (Feedback>1 ) print*, aset%beam_uncertain, l_mid, aset%points(use_i)%beam_err 
 
              !recalibrate
              aset%points(use_i)%obs = cal**2 * aset%points(use_i)%obs
              aset%points(use_i)%sigma = cal**2 * aset%points(use_i)%sigma
 
              aset%points(use_i)%var = aset%points(use_i)%sigma**2
-             CALL ReadWindow(aset%points(use_i),'data/windows/'//&
+!AL: Oct 08, changed to set path from the dataset path
+             CALL ReadWindow(aset%points(use_i), trim(concat(ExtractFilePath(aname),'windows/')) // &
                   TRIM(numcat(aset%name,file_i)),windows_are_bare,aset)
+
          else
           !discard band
-          READ(62,'(a)') instr
+          READ(file_unit,'(a)') instr
          end if
       ENDDO
       !discard correlation submatrix 
-      READ(62,'(a)') (instr,i=1,npol(k)) 
+      READ(file_unit,'(a)') (instr,i=1,npol(k)) 
    ENDDO
 
    !assume always have the matrix
    aset%has_corr_errors = .TRUE.
    allocate(tmp_mat(aset%file_points,aset%file_points))
    ALLOCATE(aset%N_inv(aset%num_points,aset%num_points))
-   READ(62,*) (tmp_mat(1:aset%file_points,i),i=1,aset%file_points)
+   READ(file_unit,*) (tmp_mat(1:aset%file_points,i),i=1,aset%file_points)
    aset%N_inv = tmp_mat(used_bands,used_bands)
    deallocate(tmp_mat)
    deallocate(used_bands)
  
-   !READ(62,*,err=101,end=101) instr
+   !READ(file_unit,*,err=101,end=101) instr
    !stop 'ReadDataset_bcp:Should be at end of file after reading matrix'
-101 CLOSE(62)
+101 call CloseFile(file_unit)
 
    !recalibrate and change units as required
    !some older output had final fisher matrix in 
@@ -795,10 +828,8 @@ contains
       CALL Matrix_Inverse(aset%N_inv)
    ENDIF
 
-   !add to full dataset
-   datasets(num_datasets) = aset
-
    DEALLOCATE(tmp_x)
+   deallocate(lb)
  END SUBROUTINE ReadDataset_bcp
 
 
@@ -910,14 +941,16 @@ contains
  
  end function CalcLnLike
 
- function CMBLnLike(cl, sznorm, nuisance_params)
-  real, intent(in) ::  cl(lmax,num_cls), sznorm
+ function CMBLnLike(cl, freq_params, nuisance_params)
+  real, intent(in) ::  cl(lmax,num_cls)
   real CMBLnLike
-  real,intent(in) :: nuisance_params(:)
-  real szcl(lmax,num_cls)
+  real,intent(in) :: freq_params(num_freq_params),nuisance_params(:)
+  real sznorm, szcl(lmax,num_cls)
   integer i
   integer nuisance
   real tot(num_datasets)
+  
+  sznorm = freq_params(1)  
   nuisance =1
   do i=1, num_datasets
      szcl = cl

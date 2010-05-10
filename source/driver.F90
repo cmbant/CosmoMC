@@ -1,6 +1,8 @@
 
 
 program SolveCosmology
+! This is a driving routine that illustrates the use of the program.
+
         use IniFile
         use MonteCarlo
         use ParamDef
@@ -13,15 +15,14 @@ program SolveCosmology
         use ConjGradModule
         use mpk
         use MatrixUtils
+        use IO
+        use ParamNames
 #ifdef WMAP_PARAMS
         use WMAP_OPTIONS
 #endif
-        implicit none
-      
+        implicit none 
         
-! This is a driving routine that illustrates the use of the program.
         character(LEN=Ini_max_string_len) InputFile, LogFile
-
 
         logical bad, est_bfp_before_covmat
         integer numsets, nummpksets, i, numtoget, action
@@ -33,14 +34,13 @@ program SolveCosmology
         integer status          
         integer file_unit
         real delta_loglike
-        
 
 #ifdef MPI
         double precision intime
         integer ierror
 
- call mpi_init(ierror)
- if (ierror/=MPI_SUCCESS) stop 'MPI fail: rank'
+        call mpi_init(ierror)
+        if (ierror/=MPI_SUCCESS) stop 'MPI fail: rank'
 #endif
 
 
@@ -61,7 +61,6 @@ program SolveCosmology
         if (instance /= 0) call DoStop('With MPI should not have second parameter')
         call mpi_comm_rank(mpi_comm_world,MPIrank,ierror)
 
-
         instance = MPIrank +1 !start at 1 for chains                                             
         write (numstr,*) instance
         rand_inst = instance
@@ -78,9 +77,10 @@ program SolveCosmology
         CALL MPI_Bcast(InputFile, LEN(InputFile), MPI_CHARACTER, 0, MPI_COMM_WORLD, ierror) 
 
 #endif
-        file_unit = new_file_unit()
-        call Ini_Open(InputFile, file_unit, bad, .false.)
+        call IO_Ini_Load(DefIni,InputFile, bad)
+        
         if (bad) call DoStop('Error opening parameter file')
+        
         Ini_fail_on_not_found = .false.
 
         propose_scale = Ini_Read_Real('propose_scale',2.4)
@@ -136,9 +136,9 @@ program SolveCosmology
         if (checkpoint) then
          if (action /= 0)  call DoStop('checkpoint only with action =0')
 #ifdef MPI 
-         new_chains = .not. FileExists(trim(rootname) //'.chk')
+         new_chains = .not. IO_Exists(trim(rootname) //'.chk')
 #else
-         new_chains = .not. FileExists(trim(rootname) //'.txt')
+         new_chains = .not. IO_Exists(trim(rootname) //'.txt')  
 #endif
         end if
 
@@ -153,22 +153,20 @@ program SolveCosmology
         LogFile = trim(rootname)//'.log'
 
         if (LogFile /= '') then
-         logfile_unit = 49
-         call CreateOpenTxtFile(LogFile,logfile_unit,.not. new_chains)
+         logfile_unit = IO_OutputOpenForWrite(LogFile, append=.not. new_chains, isLogFile = .true.)
         else
          logfile_unit = 0
         end if
 
-        outfile_unit = 48
+        outfile_handle = 0
         fname = trim(rootname)//'.txt'
-        if (new_chains) call CreateTxtFile(fname,outfile_unit)
-
+        if (new_chains) outfile_handle = IO_OutputOpenForWrite(fname, append = .false.)
+    
         indep_sample = Ini_Read_Int('indep_sample')
         if (indep_sample /=0) then
-          indepfile_unit = 47
           fname = trim(rootname)//'.data' 
-          call CreateOpenFile(fname,indepfile_unit,'unformatted',.not. new_chains)
-          !open(unit=indepfile_unit,file=fname,form='unformatted',status='replace')
+          indepfile_handle = IO_DataOpenForWrite(fname, append = .not. new_chains)
+!          call CreateOpenFile(fname,indepfile_unit,'unformatted',.not. new_chains)
         end if
  
         Ini_fail_on_not_found = .false.
@@ -204,13 +202,17 @@ program SolveCosmology
         Use_BBN = Ini_Read_Logical('use_BBN',.false.)
         Use_Age_Tophat_Prior= Ini_Read_Logical('use_Age_Tophat_Prior',.true.)
         Use_SN = Ini_Read_Logical('use_SN',.false.)
+        if (Use_SN) SN_filename = Ini_Read_String('SN_filename')
+        Use_BAO = Ini_Read_Logical('use_BAO',.false.)
         Use_CMB = Ini_Read_Logical('use_CMB',.true.)
         Use_WeakLen = Ini_Read_Logical('use_WeakLen',.false.)
         Use_min_zre = Ini_Read_Double('use_min_zre',0.d0) 
         Use_Lya = Ini_Read_logical('use_lya',.false.)
+       
+        if (Ini_HasKey('DataDir')) DataDir=Ini_Read_String('data_dir') 
+
         if (Use_Lya .and. use_nonlinear) &
              call DoStop('Lya.f90 assumes LINEAR power spectrum input')
-
 
         !flag to force getting sigma8 even if not using LSS data 
         use_LSS = Ini_Read_Logical('get_sigma8',.false.)
@@ -252,29 +254,30 @@ program SolveCosmology
          if (Feedback > 1) write (*,*) 'read datasets'
         end if
 
-        call Initialize(Params)
-
         Ini_fail_on_not_found = .true.
         
         nummpksets = Ini_Read_Int('mpk_numdatasets',0)
-        do i= 1, nummpksets
-         mpk_filename(i) = Ini_Read_String(numcat('mpk_dataset',i)) 
-        end do
+        if (Use_mpk) then
+         do i= 1, nummpksets
+          mpk_filename(i) = Ini_Read_String(numcat('mpk_dataset',i)) 
+          call ReadMpkDataset(mpk_filename(i))
+         end do
+         if (Feedback>1) write(*,*) 'read mpk datasets'
+        end if
+
+        if(Use_BAO .and. use_dr7lrg) &
+         call MpiStop('DR7 LRG and BAO are based on the same dataset. You cannot use both.')
 
         numtoget = Ini_Read_Int('samples')
 
+        call Initialize(Params)
+
         call Ini_Close
-        call ClearFileUnit(file_unit)
+
+        if (MpiRank==0 .and. action==0 .and. NameMapping%nnames/=0) &
+            call IO_OutputParamNames(NameMapping,trim(baseroot)//'.paramnames')
 
         call SetIdlePriority !If running on Windows
-
-
-        if (Use_mpk) then
-         do i=1,nummpksets
-          call ReadMpkDataset(mpk_filename(i))
-         end do
-        if (Feedback>1) write(*,*) 'read mpk datasets'
-        end if
 
         if (estimate_propose_matrix .or. action == 2) then
          ! slb5aug04  
@@ -328,10 +331,10 @@ program SolveCosmology
  
          if (Feedback > 0) write (*,*) 'finished'
 
-         if (logfile_unit /=0) close(logfile_unit)
-         if (indepfile_unit /=0) close(indepfile_unit)
+         if (logfile_unit /=0) call IO_Close(logfile_unit, isLogFile=  .true.)
+         if (indepfile_handle /=0) call IO_DataCloseWrite(indepfile_handle)
         
-         close(outfile_unit)
+         call IO_Close(outfile_handle)
 
         else if (action==1) then
           if (Feedback > 0) write (*,*) 'starting post processing'

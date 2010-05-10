@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<VisualStudioProject ProjectCreator="Intel Fortran" Keyword="Console Application - Converted from CVF" Version="9.10" ProjectIdGuid="{573A6A6A-BD92-4FF0-BD64-E101E2496178}">
+<VisualStudioProject ProjectCreator="Intel Fortran" Keyword="Console Application - Converted from CVF" Version="11.0" ProjectIdGuid="{573A6A6A-BD92-4FF0-BD64-E101E2496178}">
 	<Platforms>
 		<Platform Name="Win32"/></Platforms>
 	<Configurations>
 		<Configuration Name="Debug|Win32" OutputDirectory="GetDist_Debug" IntermediateDirectory="GetDist_Debug" DeleteExtensionsOnClean="*.obj;*.mod;*.pdb;*.asm;*.map;*.dyn;*.dpi;*.tmp;*.log;*.ilk;*.exe;$(TargetPath)">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="MATRIX_SINGLE,RUNIDLE" LocalVariableStorage="localStorageSave" CallingConvention="callConventionCVF" ModulePath="GetDist_Debug/" ObjectFile="$(INTDIR)/" AssemblerListingLocation="$(INTDIR)/" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtSingleThreadedDebug"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="MATRIX_SINGLE,RUNIDLE" LocalVariableStorage="localStorageSave" CallingConvention="callConventionCVF" ModulePath="GetDist_Debug/" ObjectFile="$(INTDIR)/" AssemblerListingLocation="$(INTDIR)/" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
 				<Tool Name="VFLinkerTool" AdditionalOptions="/MACHINE:I386" OutputFile="../GetDist.exe" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" AdditionalLibraryDirectories="C:\Program Files\Intel\MKL\9.1.027\ia32\lib" GenerateDebugInformation="true" ProgramDatabaseFile="GetDist_Debug/GetDist.pdb" SubSystem="subSystemConsole" ImportLibrary="" AdditionalDependencies="kernel32.lib mkl_s.lib libguide.lib"/>
 				<Tool Name="VFResourceCompilerTool" PreprocessorDefinitions="_DEBUG" Culture="rcEnglishBritain" ResourceOutputFileName="$(INTDIR)/$(InputName).res"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" HeaderFileName="" DLLDataFileName="" TypeLibraryName="$(OUTDIR)/GetDist.tlb"/>
@@ -28,6 +28,7 @@
 		<File RelativePath=".\GetDist.f90"/>
 		<File RelativePath="..\camb\inifile.f90"/>
 		<File RelativePath=".\Matrix_utils.F90"/>
+		<File RelativePath=".\ParamNames.f90"/>
 		<File RelativePath=".\settings.f90"/>
 		<File RelativePath=".\utils.F90"/></Filter></Files>
 	<Globals/></VisualStudioProject>
