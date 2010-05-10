@@ -13,6 +13,9 @@ program SolveCosmology
         use ConjGradModule
         use mpk
         use MatrixUtils
+#ifdef WMAP_PARAMS
+        use WMAP_OPTIONS
+#endif
         implicit none
       
         
@@ -28,7 +31,9 @@ program SolveCosmology
         Type(ParamSet) Params, EstParams
         integer num_points
         integer status          
+        integer file_unit
         real delta_loglike
+        
 
 #ifdef MPI
         double precision intime
@@ -73,8 +78,8 @@ program SolveCosmology
         CALL MPI_Bcast(InputFile, LEN(InputFile), MPI_CHARACTER, 0, MPI_COMM_WORLD, ierror) 
 
 #endif
-
-        call Ini_Open(InputFile, 1, bad, .false.)
+        file_unit = new_file_unit()
+        call Ini_Open(InputFile, file_unit, bad, .false.)
         if (bad) call DoStop('Error opening parameter file')
         Ini_fail_on_not_found = .false.
 
@@ -83,6 +88,13 @@ program SolveCosmology
 
         checkpoint = Ini_Read_Logical('checkpoint',.false.)
         if (checkpoint) flush_write = .true.
+        
+#ifdef WMAP_PARAMS
+        use_TT_beam_ptsrc = Ini_read_Logical('use_TT_beam_ptsrc')
+        use_TE = Ini_read_Logical('use_TE')
+        use_TT = Ini_Read_Logical('use_TT')
+        print *, 'WMAP beam TE TT', use_TT_beam_ptsrc, use_TE, use_TT
+#endif
 
 #ifdef MPI 
         
@@ -222,22 +234,25 @@ program SolveCosmology
 
         Ini_fail_on_not_found = .true.
 
-        call Initialize(Params)
-        
         numsets = Ini_Read_Int('cmb_numdatasets')
-        do i= 1, numsets
-         filename(i) = Ini_Read_String(numcat('cmb_dataset',i)) 
-         !Need to close this ini file before reading in from another
-        end do
+        num_points = 0
+        nuisance_params_used = 0
+        if (Use_CMB) then
+         do i= 1, numsets
+          filename(i) = Ini_Read_String(numcat('cmb_dataset',i)) 
+          call ReadDataset(filename(i))
+          num_points = num_points + datasets(i)%num_points
+          SZTemplate(i) = Ini_Read_String(numcat('cmb_dataset_SZ',i), .false.) 
+          if (SZTemplate(i)/='') then
+           SZScale(i) = Ini_read_Real(numcat('cmb_dataset_SZ_scale',i),1.0)
+           call ReadSZTemplate(datasets(i), SZTemplate(i),SZScale(i))
+          end if
+          nuisance_params_used = nuisance_params_used + datasets(i)%nuisance_parameters
+         end do
+         if (Feedback > 1) write (*,*) 'read datasets'
+        end if
 
-        Ini_fail_on_not_found = .false.
-
-        do i= 1, numsets
-         SZTemplate(i) = Ini_Read_String(numcat('cmb_dataset_SZ',i)) 
-         if (SZTemplate(i)/='') then
-          SZScale(i) = Ini_read_Real(numcat('cmb_dataset_SZ_scale',i),1.0)
-         end if 
-        end do
+        call Initialize(Params)
 
         Ini_fail_on_not_found = .true.
         
@@ -249,18 +264,10 @@ program SolveCosmology
         numtoget = Ini_Read_Int('samples')
 
         call Ini_Close
+        call ClearFileUnit(file_unit)
 
         call SetIdlePriority !If running on Windows
 
-        num_points = 0
-        if (Use_CMB) then
-         do i= 1, numsets
-          call ReadDataset(filename(i))
-          num_points = num_points + datasets(i)%num_points
-          if (SZTemplate(i)/='') call ReadSZTemplate(datasets(i), SZTemplate(i),SZScale(i))
-         end do
-         if (Feedback > 1) write (*,*) 'read datasets'
-        end if
 
         if (Use_mpk) then
          do i=1,nummpksets

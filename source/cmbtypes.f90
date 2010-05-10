@@ -37,6 +37,8 @@ implicit none
   integer, parameter :: norm_As=1, norm_amp_ratio=2, norm_SZ = 3
   
   Type CMBParams
+     real nuisance(1:num_nuisance_params)
+      !unit Gaussians for experimental parameters
      real norm(1:num_norm)
       !These are fast parameters controling amplitudes, calibrations, etc.
      real InitPower(1:num_initpower)

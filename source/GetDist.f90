@@ -22,7 +22,7 @@
 ! You can easily edit the .m and .sm files produced to produce custom layouts of plots, etc.
 ! Data for plots are exported to the plot_data_dir folder, other files to out_dir
 
-!This version Feb 2008
+!This version May 2008
 !March 03: fixed bug computing the limits in the .margestats file
 !May 03: Added support for triangle plots 
 !Dec 03: Support for non-chain samples, auto-correlation convergence, auto_label,
@@ -34,9 +34,12 @@
 !Oct 06: Added plot_data_dir and out_dir
 !Nov 07: uses Matrix_utils, fixed .ps file output filenames, 
 !        added markerxxx for vertical lines in 1D matlabl plots
+!May 08: Option to process WMAP5-formatted chains (thanks to Mike Nolta)
+!        Added do_minimal_1d_intervals for equal-likelihood 1D limits (thanks to Jan Hamann, see arXiv:0705.0440)
+!        Added font_scale to scale default font sizes, num_contours input parameter (allows more than 2)
 module MCSamples
  use settings
- use MAtrixUtils
+ use MatrixUtils
  implicit none
 
         integer, parameter :: gp = KIND(1.d0)
@@ -53,7 +56,9 @@ module MCSamples
         integer, parameter :: max_cols = 500
         integer, parameter :: max_chains = 100
         integer, parameter :: max_split_tests = 4 
-
+        integer, parameter :: max_intersections = 10 !JH: increase if posterior has more than five peaks
+        integer, parameter :: max_contours = 5
+        
         integer chain_indices(max_chains), num_chains_used
 
         integer nrows, ncols
@@ -63,14 +68,16 @@ module MCSamples
         integer colix(max_cols), num_vars  !Parameters with non-blank labels
         real mean(max_cols), sddev(max_cols)
         real, dimension(:,:), allocatable :: corrmatrix
-        character(LEN=120) rootname, plot_data_dir, out_dir, rootdirname
+        character(LEN=120) rootname, plot_data_dir, out_dir, rootdirname, in_root
         character(LEN=120) labels(max_cols)
+        character(LEN=120) pname(max_cols)
         logical has_limits(max_cols), has_limits_top(max_cols),has_limits_bot(max_cols)
         logical has_markers(max_cols)
         real markers(max_cols)
         integer num_contours 
         real matlab_version
-        real contours(2), contour_levels(2)
+        real :: font_scale = 1.
+        real contours(max_contours), contour_levels(max_contours)
         real mean_mult, max_mult
         integer :: indep_thin = 0 
         integer chain_numbers(max_chains)
@@ -94,20 +101,19 @@ contains
    !Can adjust the multiplicity of each sample in coldata(1, rownum) for new priors
    !Be careful as this code is parameterisation dependent
    integer i
-   real tau, chisq 
-
-   stop 'You need to write the AdjustPriors subroutine in GetDist.F90 first!'
+   real ombh2, chisq 
+ 
+   stop 'You need to write the AdjustPriors subroutine in GetDist.f90 first!'
   
    write (*,*) 'Adjusting priors'
    do i=0, nrows-1
-!E.g. tau prior
-      tau = coldata(4+2,i)
-      chisq = (tau - 0.1)**2/0.03**2
+!E.g. ombh2 prior
+      ombh2 = coldata(1+2,i)
+      chisq = (ombh2 - 0.0213)**2/0.001 **2
       coldata(1,i) = coldata(1,i)*exp(-chisq/2) 
       coldata(2,i) = coldata(2,i) + chisq/2
      
    end do
-   
 
   end subroutine AdjustPriors
 
@@ -424,6 +430,127 @@ contains
 
              ConfidVal = try_t
             end function ConfidVal
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: beginning of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+               
+            ! Find intersection of counts = x with linearly interpolated marginalised posterior
+            subroutine GetZeros(bincounts,botlim,toplim,minbin,maxbin,x,numzeros,zeros)
+              logical, intent(IN) :: botlim,toplim
+              integer, intent(IN) :: minbin,maxbin
+              real, intent(IN) :: bincounts(-1000:1000)
+              real, intent(IN) :: x
+              real, intent(OUT), dimension(max_intersections) :: zeros
+              integer, intent(OUT) :: numzeros
+              integer i
+              
+              zeros=0
+              numzeros=0
+
+             do i=-1000,999 ! identify intersections
+                if(((bincounts(i).lt.x).and.(bincounts(i+1).ge.x)) &
+                     &.or.((bincounts(i).ge.x).and.(bincounts(i+1).lt.x))) then
+
+                   numzeros = numzeros+1
+
+                   if (toplim .and.(i.eq. maxbin)) then ! identify intersections at limits
+                      zeros(numzeros)=i
+                   else if (botlim .and. (i.eq. minbin-1)) then
+                      zeros(numzeros)=i+1
+                   else ! otherwise do linear interpolation
+                      zeros(numzeros)=i+(x-bincounts(i))/(bincounts(i+1)-bincounts(i)) 
+                   end if
+                end if
+             end do
+
+            end subroutine GetZeros
+
+
+
+            function MinInterval(ix,conflev,bincounts,width,center,botlim,toplim,minbin,maxbin)  
+            ! find minimum length 1d confidence intervals
+              logical, intent(IN) :: botlim,toplim 
+              integer, intent(IN) :: ix,minbin,maxbin
+              integer i,ix1,j, lbin
+              real, intent(IN) :: conflev,width,center
+              real, intent(IN) :: bincounts(-1000:1000)
+              real, dimension(max_intersections+1) :: MinInterval
+              real :: try,try_t,try_b,try_last,try_sum,norm
+              real :: waterlevel,frac
+              real, dimension(max_intersections) :: zeros
+              integer :: numzeros  
+ 
+              
+             norm = sum(bincounts)
+
+
+             try_t = maxval(bincounts)
+             try_b = 0
+             try_last = -1
+
+             ! Iteration to find the number of counts x, such that the integral over the interval where the marginalised posterior 
+             ! is larger than x/norm gives the desired credibility level. Uses linear interpolation between bins.
+
+             do
+                try = (try_b + try_t)/2
+                
+                call GetZeros(bincounts,botlim,toplim,minbin,maxbin,try,numzeros,zeros) ! find integration limits
+                
+                try_sum = sum(bincounts,mask = bincounts .ge. (try_b + try_t)/2) ! step function approximation of integral
+                
+                do i=1,numzeros/2
+
+                   if (zeros(2*i-1).gt.0) then
+                      lbin = int(zeros(2*i-1))
+                   else
+                      lbin = int(zeros(2*i-1))-1
+                   end if
+              
+                ! corrections for left (odd) intersection(s) of posterior with trial number of counts
+                try_sum=try_sum-.5*bincounts(lbin+1)+(lbin+1-zeros(2*i-1))*(bincounts(lbin+1)-0.5* &
+                           ((bincounts(lbin+1)-bincounts(lbin))*(lbin+1-zeros(2*i-1))))
+
+                   if (zeros(2*i).gt.0) then
+                      lbin = int(zeros(2*i))
+                   else
+                      lbin = int(zeros(2*i))-1
+                   end if
+
+                ! corrections for right (even) intersection(s) of posterior with trial number of counts
+                try_sum=try_sum-.5*bincounts(lbin)+(zeros(2*i)-lbin)*(bincounts(lbin)-.5*((zeros(2*i)-lbin)* &
+                      (bincounts(lbin)-bincounts(lbin+1))))
+
+                end do
+
+                if (try_sum < conflev*norm) then
+                   try_t = (try_b+try_t)/2
+                else
+                   try_b = (try_b+try_t)/2
+                end if
+                if (abs(try_sum/try_last - 1) .lt. 0.001) exit
+                try_last = try_sum
+                
+             end do
+             
+             waterlevel = (try_b+try_t)/2 
+             
+
+             call GetZeros(bincounts,botlim,toplim,minbin,maxbin,waterlevel,numzeros,zeros)
+
+
+             MinInterval(max_intersections+1)=real(numzeros) ! store number of intersections in last entry of vector
+
+             do i=1,max_intersections
+                MinInterval(i) = zeros(i)*width+center ! translates bin # into parameter values
+                if (botlim .and.toplim .and.(zeros(i) .eq. minbin)) then
+                   MinInterval(i) = nint(1.e5*MinInterval(i))/1.e5 
+                   ! takes care of rounding errors if parameter has both upper and lower limits
+                end if
+             end do
+
+            end function MinInterval
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: end of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
           subroutine PCA(pars,n,param_map,normparam_num)
             !Perform principle component analysis
@@ -799,7 +926,7 @@ contains
 ! Now do Raftery and Lewis method
 ! See http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps
 ! Raw non-importance sampled chains only
-         if (all(abs(coldata(1,0:nrows-1) - nint(coldata(1,0:nrows-1)))<1e-4)) then
+         if (all(abs(coldata(1,0:nrows-1) - nint(max(0.6_gp,coldata(1,0:nrows-1))))<1e-4)) then
            nburn = 0
 
            do ix=1, num_chains_used
@@ -1271,12 +1398,13 @@ contains
          subroutine WriteMatLabInit(unit,sm)
           integer, intent(in) :: unit
           logical, intent(in) :: sm
-          if (sm) then
-           write(unit,*) 'lab_fontsize = 9; axes_fontsize = 9;'
-          else
-           write(unit,*) 'lab_fontsize = 12; axes_fontsize = 12;'
-          end if
-           write(unit,*) 'clf'
+          integer sz
+          
+          sz = 12
+          if (sm) sz=9 
+          sz = nint(sz*font_scale)
+          write(unit,*) concat('lab_fontsize = ',sz,'; axes_fontsize = ',sz,';')
+          write(unit,*) 'clf'
           if (BW) then
            if (plot_meanlikes) then
             write(unit,*) 'lineM = {''-k'',''-r'',''-b'',''-m'',''-g'',''-c'',''-y''};';
@@ -1301,15 +1429,15 @@ contains
        integer ix1
 
         fname =trim(trim(rootname)//trim(numcat('_p',colix(j)-2)))
-        write (aunit,*) "load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.dat''));'
-        write (aunit,*) 'pts='//trim(fname)//';'
+        write (aunit,'(a)') "load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.dat''));'
+        write (aunit,'(a)') 'pts='//trim(fname)//';'
         write (aunit,*) 'plot(pts(:,1),pts(:,2),lineM{1},''LineWidth'',lw1);'
         write (aunit,*) 'axis([-Inf,Inf,0,1.1]);axis manual;'
         write (aunit,*) 'set(gca,''FontSize'',axes_fontsize); hold on;'
 
         if (plot_meanlikes) then
-         write (aunit,*) "load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.likes''));'
-         write (aunit,*) 'pts='//trim(fname)//';'
+         write (aunit,'(a)') "load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.likes''));'
+         write (aunit,'(a)') 'pts='//trim(fname)//';'
          write (aunit,*) 'plot(pts(:,1),pts(:,2),lineL{1},''LineWidth'',lw1);'
         end if
 
@@ -1322,15 +1450,15 @@ contains
          fname =  trim(trim(ComparePlots(ix1))//trim(numcat('_p',colix(j)-2)))    
          if (FileExists(trim(plot_data_dir)// trim(fname)//'.dat')) then
 
-          write (aunit,*) "pts = load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)// '.dat''));'
+          write (aunit,'(a)') "pts = load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)// '.dat''));'
           fmt = trim(numcat('lineM{',ix1+1)) // '}'        
-          write (aunit,*) 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
+          write (aunit,'(a)') 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
     
          if (plot_meanlikes) then
 
-            write (aunit,*) "pts=load (fullfile('"//trim(plot_data_dir)//"','" //trim(fname)//'.likes''));'
+            write (aunit,'(a)') "pts=load (fullfile('"//trim(plot_data_dir)//"','" //trim(fname)//'.likes''));'
            fmt = trim(numcat('lineL{',ix1+1)) // '}'        
-            write (aunit,*) 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
+            write (aunit,'(a)') 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
 
          end if
 
@@ -1338,6 +1466,8 @@ contains
        end do
 
      end subroutine Write1DplotMatLab
+ 
+     
  
 end module MCSamples
 
@@ -1351,6 +1481,8 @@ subroutine CheckMatlabAxes(afile)
 
 end subroutine CheckMatlabAxes
 
+
+ 
 
 
 program GetDist
@@ -1372,7 +1504,7 @@ program GetDist
         logical bad, adjust_priors
 
         real  amax, amin
-        character(LEN=120) filename, infile, in_root,out_root,sm_file
+        character(LEN=120) filename, infile, out_root,sm_file
         character(LEN=120) matlab_col, InS1,InS2,fmt, tmpstr
         integer plot_row, plot_col, chain_num, first_chain,chain_ix, plot_num
        
@@ -1383,7 +1515,10 @@ program GetDist
         real limmin(max_cols),limmax(max_cols), maxbin
         integer plot_2D_param, j2min
         real try_b, try_t, binweight
-        real cont_lines(max_cols,2,2), dist, distweight, limfrac 
+        real cont_lines(max_cols,2,max_contours), dist, distweight, limfrac 
+        real :: minimal_intervals(max_cols,max_intersections+1,max_contours) !JH
+        logical do_minimal_1d_intervals !JH
+        
         integer bestfit_ix
         integer chain_exclude(max_chains), num_exclude
         logical map_params
@@ -1395,26 +1530,50 @@ program GetDist
         integer plotparams_num, plotparams(max_cols)
         character(LEN=max_cols) PCA_func
         logical Done2D(max_cols,max_cols)
-        logical samples_are_chains, no_plots
+        logical no_plots
 
         real thin_cool
         logical no_tests, auto_label
 
+        logical :: single_column_chain_files, samples_are_chains
+        integer sz
+        !for single_colum_chain_files    
+        integer :: stat, ip, itmp, idx, nrows2(max_cols)
+        real :: rtmp
+     
 
         InputFile = GetParam(1)
         if (InputFile == '') stop 'No parameter input file'
 
         call Ini_Open(InputFile, 1, bad, .false.)
         if (bad) stop 'Error opening parameter file'
-        Ini_fail_on_not_found = .true.
 
+        Ini_fail_on_not_found = .true.
+        
+        if (Ini_HasKey('nparams')) then
+          ncols = Ini_Read_Int('nparams') + 2
+          if (Ini_HasKey('columnnum')) stop 'specify only one of nparams or columnnum'
+        else
+         ncols = Ini_Read_Int('columnnum',0)
+        end if
+ 
         in_root = Ini_Read_String('file_root')
         rootname = ExtractFileName(in_root)
         chain_num = Ini_Read_Int('chain_num')
 
-        ncols = Ini_Read_Int('columnnum',0)
+        single_column_chain_files = Ini_Read_Logical( 'single_column_chain_files',.false.)
 
-        if (ncols==0) then
+        if ( single_column_chain_files ) then
+
+            pname(1) = 'weight'
+            pname(2) = 'lnlike'
+            do ix=3, ncols
+                pname(ix) = Ini_Read_String(concat('pname',ix-2))
+            end do
+
+       else
+
+          if (ncols==0) then
            if (chain_num == 0) then
             infile = trim(in_root) // '.txt'
            else
@@ -1424,8 +1583,10 @@ program GetDist
            ncols = TxtFileColumns(infile)
            write (*,*) 'Reading ',ncols, 'columns'
          end if
-         allocate(coldata(ncols,0:max_rows))
 
+    end if
+
+        allocate(coldata(ncols,0:max_rows))
   
         nbins = Ini_Read_Int('num_bins')
 
@@ -1436,6 +1597,7 @@ program GetDist
         Ini_fail_on_not_found = .false.
 
         matlab_version = Ini_Read_Real('matlab_version',7.)
+        font_scale  = Ini_Read_Real('font_scale',1.)
 
         labels(1) = 'mult'
         labels(2) = 'likelihood'
@@ -1449,8 +1611,6 @@ program GetDist
            end if 
         end do
 
-      
-  
         prob_label = Ini_Read_Logical('prob_label',.false.)
         triangle_plot = Ini_Read_Logical('triangle_plot',.false.)
         
@@ -1551,7 +1711,7 @@ program GetDist
 
     plot_data_dir = Ini_Read_String( 'plot_data_dir' )
     if ( plot_data_dir == '' ) then
-    plot_data_dir = 'plot_data/'
+      plot_data_dir = 'plot_data/'
     end if
 
     plot_data_dir = CheckTrailingSlash(plot_data_dir)
@@ -1564,13 +1724,14 @@ program GetDist
     rootdirname = concat(out_dir,rootname)
 
     sm_file = trim(rootdirname) // '.sm'
-
-    contours(1) = Ini_Read_Real('contour1',0.)
-    contours(2) = Ini_Read_Real('contour2',0.)
-    contours_str = trim(Ini_Read_String('contour1')) // ' ; '// &
-             trim(Ini_Read_String('contour2'))
-    num_contours = count(contours/= 0)
-    if (contours(1)==0) contours(1) = contours(2)
+    
+    num_contours = Ini_Read_Int('num_contours',2)
+    contours_str = ''
+    do i=1, num_contours
+     contours(i) = Ini_Read_Real(numcat('contour',i))
+     if (i>1) contours_str = concat(contours_str,'; ') 
+     contours_str = concat(contours_str, Ini_Read_String(numcat('contour',i)))
+    end do
 
     force_twotail = Ini_Read_Logical('force_twotail',.false.)  
     if (force_twotail) write (*,*) 'Computing two tail limits'
@@ -1581,6 +1742,8 @@ program GetDist
 
     plot_meanlikes = Ini_Read_Logical('plot_meanlikes',.false.)
     plot_NDcontours = Ini_Read_Logical('plot_NDcontours',.false.)
+
+    do_minimal_1d_intervals = Ini_Read_Logical('do_minimal_1d_intervals',.false.) !JH
 
         PCA_num = Ini_Read_Int('PCA_num',0)
         if (PCA_num /= 0) then
@@ -1624,7 +1787,70 @@ program GetDist
          do ix = 1, num_exclude
            if (chain_exclude(ix) == chain_ix) goto 30
          end do  
+
+    if ( single_column_chain_files ) then
+      !Use used for WMAP 5-year chains suppled on LAMBDA; code from Mike Nolta
+        
+        if (map_params) stop 'map_params does not work with single_column_chain_files'
+        
+        num_chains_used = num_chains_used + 1
+        if (num_chains_used > max_chains) stop 'Increase max_chains in GetDist'
       
+        chain_indices(num_chains_used) = nrows
+        chain_numbers(num_chains_used) = chain_ix
+
+        do ip = 1,ncols
+            infile = concat(CheckTrailingSlash(concat(in_root,chain_ix)), pname(ip))
+            write (*,*) 'reading ' // trim(infile)
+            call OpenTxtFile(infile,50)
+
+            nrows2(ip) = nrows
+            idx = 0 !Jo -1
+            do
+                read (50,'(a)',iostat=stat) InLine
+                if ( stat /= 0 ) exit
+                idx = idx + 1
+
+                if ( ignorerows >= 1 .and. idx <= nint(ignorerows) ) then
+                    print *, 'ignoring row'
+                    cycle
+                end if
+
+                if (SCAN (InLine, 'N') /=0) then
+                    write (*,*) 'WARNING: skipping line with probable NaN'
+                    cycle
+                end if
+
+                read(InLine,*,iostat=stat) itmp, rtmp
+                if ( stat /= 0 ) then
+                    write (*,*) 'error reading line ', nrows2(ip) + int(ignorerows), ' - skipping rest of file'
+                    exit
+                end if
+                if ( idx /= itmp ) then
+                    print *, "*** out of sync", idx, itmp
+                    stop
+                end if
+
+                coldata(ip,nrows2(ip)) = rtmp
+                nrows2(ip) = nrows2(ip) + 1
+                if (nrows2(ip) > max_rows) stop 'need to increase max_rows'
+    
+            end do    
+            close(50)
+        end do
+        do ip = 2,ncols
+            if ( nrows2(ip) /= nrows2(1) ) then
+                print *, '*** nrows mismatch:'
+                print *, nrows2(1:ncols)
+                stop
+            end if
+        end do
+        nrows = nrows2(1)
+        print *, 'all columns match, nrows = ', nrows
+
+    else
+     !Not single column chain files
+           
          if (chain_num == 0) then
             infile = trim(in_root) // '.txt'
          else
@@ -1633,10 +1859,8 @@ program GetDist
          end if
 
          write (*,*) 'reading ' // trim(infile)
-  
-
+    
          open(unit=50,file=infile,form='formatted',status='old', err=28)
-
 
           if (ignorerows >=1) then
            do ix = 1, nint(ignorerows)
@@ -1669,13 +1893,16 @@ program GetDist
            if (nrows > max_rows) stop 'need to increase max_rows'
 
           end do    
- 2       write (*,*) 'error reading line ', nrows + int(ignorerows), ' - skipping rest of file'
-     
- 1       close(50)
+     2       write (*,*) 'error reading line ', nrows + int(ignorerows), ' - skipping rest of file'
+         
+     1       close(50)
+    end if
+
          if (ignorerows<1 .and. ignorerows/=0) then
            i = chain_indices(num_chains_used)
            j = nint((nrows-i-1)*ignorerows)
            do ix = i,nrows-j-1
+
             coldata(:,ix) = coldata(:,ix+j)
            end do
            nrows = nrows - j
@@ -1940,6 +2167,32 @@ program GetDist
               end if
  
           end if
+          
+!!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: start of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+          if (do_minimal_1d_intervals) then ! Calculate minimal credible intervals (see arXiv:0705.0440)
+           
+             do ix1 = 1, num_contours ! get boundaries of minimal intervals
+                minimal_intervals(j,:,ix1) = MinInterval(ix1,contours(ix1),bincounts,width(j),center(j), &
+                    has_limits_bot(ix),has_limits_top(ix),ix_min(j),ix_max(j))
+
+                if (int(minimal_intervals(j,max_intersections+1,ix1)).ne.2) then ! if minimal region is not connected ...
+                   Write(*,*) 'Warning: the minimal '& ! ... spam screen with warning ...
+                        //trim(intToStr(nint(100*contours(ix1))))// '% credible region in parameter ' &
+                        //trim(intToStr(colix(j)-2))// &
+                        ' does not seem to be connected. Perhaps the posterior is multimodal?'// &
+                        'You might also want to try choosing a larger bin size and/or turn on smoothing to reduce noise.'
+                   Write(*,*) 'There are '//trim(intToStr(int(minimal_intervals(j,max_intersections+1,ix1))/2))//&
+                        'disconnected regions:' ! ... output intervals to screen and ...
+                   do i=1,int(minimal_intervals(j,max_intersections+1,ix1))/2
+                      Print*,minimal_intervals(j,2*i-1,ix1),' -> ',minimal_intervals(j,2*i,ix1)
+                      minimal_intervals(j,2*i-1,ix1)=0. ! ... set output in .minmarge file to zero to avoid confusion
+                      minimal_intervals(j,2*i,ix1)=0.
+                   end do
+                end if
+             end do
+          end if
+!!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: end of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
           if (.not. no_plots) then
@@ -2234,10 +2487,14 @@ program GetDist
               open(unit=50,file=filename,form='formatted',status='replace')
               write (50,*) 'clf;colormap(''jet'');'
               if (num_3D_plots ==1 ) then
-                write(50,*) 'lab_fontsize = 12; axes_fontsize = 12;'
+                sz = 12
               else
-                write(50,*) 'lab_fontsize = 9; axes_fontsize = 9;'
+                sz = 9
               end if
+              sz = nint(sz*font_scale)
+              write(50,*) concat('lab_fontsize = ',sz,'; axes_fontsize = ',sz,';')
+                        
+
               if (mod(num_3D_plots,2)==0 .and. num_3D_plots < 11) then
                plot_col = num_3D_plots/2
               else
@@ -2288,11 +2545,19 @@ program GetDist
 !Marginalized
 
          open(unit=50,file=trim(rootdirname)//'.margestats',form='formatted',status='replace')
-          write(50,'(a)') 'param  mean          sddev         lower1        upper1        lower2        upper2'
+          write(50,'(a)',advance='NO') 'param  mean          sddev         '       
+          do j=1, num_contours
+           write(50,'(a)',advance='NO') trim(concat('lower',j))//'        '//trim(concat('upper',j))//'        '
+          end do
+          write(50,'(a)') ''
+         
           open(unit=51,file=trim(plot_data_dir)//trim(rootname)//'_params',form='formatted',status='replace')
           do j=1, num_vars
-             write(50,'(1I5,6E14.6,"   '//trim(labels(colix(j)))//'")') colix(j)-2, mean(j), sddev(j), &
-                  cont_lines(j,1:2,1),cont_lines(j,1:2,2)
+             write(50,'(1I5,2E14.6)', advance='NO') colix(j)-2, mean(j), sddev(j)
+             do i=1, num_contours
+               write(50,'(2E14.6)',advance='NO') cont_lines(j,1:2,i)
+             end do
+             write(50,'(a)') '   '//trim(labels(colix(j)))
              write (51,*) colix(j)-2, trim(labels(colix(j)))
           end do
           close(51)
@@ -2330,6 +2595,29 @@ program GetDist
           close(50)
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: beginning of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          if (do_minimal_1d_intervals) then ! write limits to .minmarge file
+
+             open(unit=50,file=trim(rootdirname)//'.minmarge',form='formatted',status='replace')
+             write(50,'(a)',advance='NO') 'param  '       
+             do j=1, num_contours
+               write(50,'(a)',advance='NO') trim(concat('lower',j))//'        '//trim(concat('upper',j))//'        '
+             end do
+             write(50,'(a)') ''
+
+             do j=1, num_vars
+              write(50,'(1I5)', advance='NO') colix(j)-2
+              do i=1, num_contours
+                write(50,'(2E14.6)',advance='NO') minimal_intervals(j,1:2,i)
+              end do
+              write(50,'(a)') '   '//trim(labels(colix(j)))
+             end do
+             write (50,*) '' 
+             write (50,'(a)') 'Limits are: ' // trim(contours_str)
+             close(50)
+             
+          end if
+!!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: end of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end program GetDist
 

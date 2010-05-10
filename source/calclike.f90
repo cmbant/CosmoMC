@@ -103,7 +103,9 @@ contains
        GetLogLikePost = logZero
        
     else 
-
+          
+       GetLogLikePost = GetLogLikePost + sum(CMB%nuisance(1:nuisance_params_used)**2)/2
+          !Unit Gaussian prior on all nuisance parameters
        if (Use_HST) GetLogLikePost = GetLogLikePost + (CMB%H0 - 72)**2/(2*8**2)  !HST 
        if (Use_BBN) GetLogLikePost = GetLogLikePost + (CMB%ombh2 - 0.022)**2/(2*0.002**2) 
           !I'm using increased error bars here
@@ -118,7 +120,7 @@ contains
          if (error /= 0) then
           GetLogLikePost = logZero 
          else
-          if (Use_CMB) GetLogLikePost = CMBLnLike(acl, CMB%norm(norm_SZ)) + GetLogLikePost
+          if (Use_CMB) GetLogLikePost = CMBLnLike(acl, CMB%norm(norm_SZ),CMB%nuisance) + GetLogLikePost
           if (Use_mpk) GetLogLikePost = GetLogLikePost + LSSLnLike(CMB, Info%theory)
           if (Use_WeakLen) GetLogLikePost = GetLogLikePost + WeakLenLnLike(CMB, Info%theory)     
           if (Use_Lya) GetLogLikePost = GetLogLikePost +  LSS_Lyalike(CMB, Info%Theory)

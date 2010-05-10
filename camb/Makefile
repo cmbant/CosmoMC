@@ -86,7 +86,7 @@ F90FLAGS      = $(FFLAGS)
 HEALPIXLD     = -L$(HEALPIXDIR)/lib -lhealpix -L$(FITSDIR) -l$(FITSLIB)
 FC            = $(F90C)
 
-CAMBOBJ       = utils.o subroutines.o inifile.o $(POWERSPECTRUM).o recfast.o $(REIONIZATION).o modules.o \
+CAMBOBJ       = subroutines.o inifile.o $(POWERSPECTRUM).o recfast.o $(REIONIZATION).o modules.o \
 	bessels.o $(EQUATIONS).o $(NONLINEAR).o lensing.o cmbmain.o camb.o
 
 default: camb
@@ -106,14 +106,14 @@ cmbmain.o: lensing.o
 camb.o: cmbmain.o
 
 
-camb: $(CAMBOBJ) $(DRIVER)
-	$(F90C) $(F90FLAGS) $(CAMBOBJ) $(DRIVER) -o $@
+camb: utils.o $(CAMBOBJ) $(DRIVER)
+	$(F90C) $(F90FLAGS) utils.o $(CAMBOBJ) $(DRIVER) -o $@
 
 $(CAMBLIB): $(CAMBOBJ)
 	ar -r $@ $?
 
-camb_fits: writefits.f90 $(CAMBOBJ) $(DRIVER)
-	$(F90C) $(F90FLAGS) -I$(HEALPIXDIR)/include $(CAMBOBJ) writefits.f90 $(DRIVER) $(HEALPIXLD) -DWRITE_FITS -o $@
+camb_fits: writefits.f90 utils.o $(CAMBOBJ) $(DRIVER)
+	$(F90C) $(F90FLAGS) -I$(HEALPIXDIR)/include tils.o $(CAMBOBJ) writefits.f90 $(DRIVER) $(HEALPIXLD) -DWRITE_FITS -o $@
 
 %.o: %.f90
 	$(F90C) $(F90FLAGS) -c $*.f90

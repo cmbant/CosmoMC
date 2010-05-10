@@ -15,6 +15,8 @@ module settings
   integer, parameter :: num_hard =7 
   integer, parameter :: num_initpower = 3 
   integer, parameter :: num_norm = 3 
+  integer, parameter :: num_nuisance_params= 0
+
      !Should be 2 or larger (scale for the scalar Cl, and the T/S ratio
 
   logical :: use_fast_slow = .true.
@@ -38,13 +40,15 @@ module settings
     !set to true to not call CAMB, etc.
     !write GenericLikelihoodFunction in calclike.f90   
 
-  integer, parameter :: num_fast_params = num_initpower + num_norm
+  integer, parameter :: num_fast_params = num_initpower + num_norm + num_nuisance_params
 
-  integer, parameter :: num_params = num_norm + num_initpower + num_hard
+  integer, parameter :: num_params = num_norm + num_initpower + num_hard + num_nuisance_params
+  integer, parameter :: num_real_params = num_norm + num_initpower + num_hard 
   integer, parameter :: index_initpower = num_hard+1
   integer, parameter :: index_norm = index_initpower + num_initpower
+  integer, parameter :: index_nuisance = index_norm  + num_norm
   integer, dimension(:), allocatable :: params_used,fast_params_used
-  integer num_params_used, num_fast, num_slow
+  integer num_params_used, num_fast, num_slow, nuisance_params_used
 
   integer :: num_threads = 0
   integer :: instance = 0

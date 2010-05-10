@@ -1,7 +1,7 @@
 !Pseudo-Cl (or other C_l esimator) based likelihood approximation for cut sky with polarization
 !Simple harmonic low-l likelihood
 !Obviously this is not a realistic Planck likelihood code
-!AL Feb 2008
+!AL April 2008
 
 module CMBLikes
  use settings
@@ -12,7 +12,8 @@ module CMBLikes
  implicit none
 
   integer :: cl_E = 3, cl_B=4 ! stop compile time errors with num_cls=3
-
+  logical, parameter :: bin_test = .false.
+ 
   Type TSqMatrix
     real, dimension(:,:), pointer :: M
   end Type TSqMatrix
@@ -40,19 +41,29 @@ module CMBLikes
      integer ncl_used !Number of C_l actually used in covariance matrix (others assumed zero)
      integer cl_use_index(6)
      integer cl_lmin, cl_lmax !The range of l to use psuedo-cl-based likelihood
+     integer bin_width
      integer vecsize
+     integer nbins
      integer like_approx
-     real, dimension(:,:), pointer :: ClHat, ClFiducial, ClNoise
+   !  logical beam_mode_marge
+     real, dimension(:,:), pointer :: ClHat, ClFiducial, ClNoise, ClPointsources, ClOffset
+      !ClOffset is the alpha parameter determining skewness
      real, dimension(:,:), pointer :: inv_covariance
-     Type(TSqMatrix) ,dimension(:), pointer :: sqrt_fiducial
+     real, dimension(:,:), pointer :: binWindows, beammodes
+     integer beam_MCMC_modes
+     real point_source_error !fractional error in A
+     integer pointsource_MCMC_modes
+     integer num_nuisance_parameters
+     Type(TSqMatrix) ,dimension(:), pointer :: sqrt_fiducial, NoiseM, ChatM, OffsetM
      Type(TLowlLike) :: LowL
   end Type TCMBLikes
   
   character(LEN=3), parameter :: field_names = 'TEB'
-  integer, parameter :: like_approx_diag=1, like_approx_fid_gaussian=2, like_approx_fullsky_exact=3
-   ! like_approx_diag: new approximation from Hammimeche & Lewis
-   ! like_approx_fid_gaussian: fixed covariance matrix, (X-Xhat)^TC^{-1}(X-Xhat)
-   ! like_approx_exact: ignore all correlations, use exact full sky likelihood function
+  integer, parameter :: like_approx_diag=1   !new approximation from Hammimeche & Lewis arXiv: 0801.0554
+  integer, parameter :: like_approx_fid_gaussian=2 !fixed covariance matrix, (X-Xhat)^TC^{-1}(X-Xhat)
+  integer, parameter :: like_approx_fullsky_exact=3 !ignore all correlations, use exact full sky likelihood function
+  integer, parameter :: like_approx_gaussian=4 !includes theory dependent determinant
+  
   
 contains
 
@@ -341,18 +352,25 @@ contains
 
  end function TypeIndex
 
- subroutine CMBLikes_ReadClArr(D, aname, order, Cl, lmin)
+ subroutine CMBLikes_ReadClArr(D, aname, order, Cl, lmin, keepnorm)
   Type(TCMBLikes) :: D
   character(LEN=*), intent(in) :: aname, order
+  logical, intent(in), optional :: keepnorm
   integer, intent(in) :: lmin
   real :: Cl(:,lmin:)
   character(LEN=1024) :: tmp
   integer ix, i, j,i1,l,ll
   integer cols(6)
+  logical donorm
   real norm,tmp_ar(6)
   Type (TStringList) :: Li
   integer file_unit
       
+      if (present(keepnorm)) then
+       donorm = .not. keepnorm
+      else
+       donorm = .true.
+      end if
      call TStringList_Init(Li)
      call TStringList_SetFromString(Li,order,field_names)
      ix=0
@@ -376,12 +394,16 @@ contains
       read(tmp,*, end=1) l, tmp_ar(1:Li%Count)
       ll=l
       if (l>=D%cl_lmin .and. l <=D%cl_lmax) then
-        norm = l*(l+1)/twopi
+        if (donorm) then
+         norm = l*(l+1)/twopi
+        else
+         norm =1
+        end if
         do ix=1,D%ncl
           if (cols(ix)/=0) Cl(ix,l) = tmp_ar(cols(ix))/norm
         end do
       end if
-     end do 
+     end do
      if (ll<D%cl_lmax) then
        write(*,*) 'CMBLikes_ReadClArr: C_l file does not go up to lmax:', D%cl_lmax
        write (*,*) trim(aname)
@@ -441,17 +463,41 @@ contains
  
  end  subroutine CMBLikes_ReadDataFile 
 
+ subroutine CMBLike_ReadModes(D,modes, fname, nmodes)
+  Type(TCMBLikes) :: D
+  character(LEN=*), intent(in) :: fname
+  integer nmodes
+  real x, modes(D%cl_lmin:D%cl_lmax,nmodes)
+  integer stat, file_unit, l, i
+  
+     file_unit = new_file_unit()
+     call OpenTxtFile(fname,file_unit)
+     do
+            read(file_unit,*,iostat=stat) i, l, x
+            if ( stat /= 0 ) exit
+            if ( i <= nmodes .and. l>= D%cl_lmin .and. l<=D%cl_lmax ) then
+                modes(l,i) = x
+            end if
+     end do
+
+     call CloseFile(file_unit)
+  
+ end subroutine CMBLike_ReadModes
+
  subroutine CMBLikes_ReadData(D, Ini,dataset_dir)
   Type(TCMBLikes) :: D
   Type(TIniFile) :: Ini 
-  real, dimension(:,:), allocatable :: Cov
+  real, dimension(:,:), allocatable, target :: Cov, fullcov
   character(LEN=*), intent(in) :: dataset_dir
   integer ix, i
   character(LEN=Ini_max_string_len) :: S, S_order
-  integer l,j
+  integer l,j, x,y
+  integer l1,l2
   integer, dimension(:,:), allocatable :: indices
   integer lmin_covmat,lmax_covmat, vecsize_in
-  integer cov_num_cls
+  integer nmodes,cov_num_cls
+  double precision :: asum
+  real, allocatable :: avec(:)
 !  character(LEN=Ini_max_string_len) cache_name
    Ini_fail_on_not_found = .true.
 
@@ -467,11 +513,11 @@ contains
    D%vecsize =0
    D%ncl=0
    D%ncl_used=0 
+   D%num_nuisance_parameters=0
   
    if (D%highl_cl) then
 
    D%like_approx = Ini_read_Int_File(Ini,'like_approx')
-
    D%nfields = count(D%use_field)
    ix=0
    D%field_index=0
@@ -485,12 +531,28 @@ contains
    end do 
    D%ncl = (D%nfields*(D%nfields+1))/2
 
-
    D%cl_lmin = Ini_Read_Int_File(Ini,'cl_lmin')
    D%cl_lmax = Ini_Read_Int_File(Ini,'cl_lmax')
    D%vecsize = (D%cl_lmax-D%cl_lmin+1)
    D%ncl_used = 0
+   D%bin_width = Ini_Read_Int_File(Ini,'bin_width',1)
+   D%nbins = D%vecsize/D%bin_width !Make last bin bigger if not exact multiple
    
+
+   if (D%bin_width/=1 .or. bin_test) then
+    allocate(D%binWindows(D%cl_lmin:D%cl_lmax,D%nbins))
+    D%binWindows=0
+    do i=D%cl_lmin,D%cl_lmin+D%nbins*D%bin_width -1
+      D%binWindows(i,(i-D%cl_lmin)/D%bin_width+1)=2*i+1
+    end do  
+    do i=D%cl_lmin+D%nbins*D%bin_width,D%cl_lmax
+      D%binWindows(i,D%nbins)=2*i+1
+    end do  
+    do i=1, D%nbins
+     D%binWindows(:,i) = D%binWindows(:,i)/sum(D%binWindows(:,i))
+    end do
+   end if
+ 
    allocate(D%ClHat(D%ncl,D%cl_lmin:D%cl_lmax))
    allocate(D%ClFiducial(D%ncl,D%cl_lmin:D%cl_lmax))
    allocate(D%ClNoise(D%ncl,D%cl_lmin:D%cl_lmax))
@@ -514,16 +576,108 @@ contains
      D%ClHat =  D%ClHat + D%ClNoise
    end if
 
+   S = Ini_Read_String_File(Ini,'cl_offset_file', .false.)
+   if (S/='') then
+    call StringReplace('%DATASETDIR%',dataset_dir,S)
+    S_order = Ini_read_String_File(Ini,'cl_offset_order')
+    allocate(D%ClOffset(D%ncl,D%cl_lmin:D%cl_lmax))
+    call CMBLikes_ReadClArr(D, S,S_order,D%ClOffset,D%cl_lmin, .true.)
+   else
+    nullify(D%ClOffset)
+   end if
+
+   S = Ini_Read_String_File(Ini,'point_source_cl', .false.)
+   if (S/='') then
+     if (Feedback > 1 .and. IsMainMPI()) print *,'Using point source uncertainty'
+     call StringReplace('%DATASETDIR%',dataset_dir,S)
+     S_order = Ini_read_String_File(Ini,'point_source_cl_order')
+     allocate(D%ClPointsources(D%ncl,D%cl_lmin:D%cl_lmax))
+     call CMBLikes_ReadClArr(D, S,S_order,D%ClPointsources,D%cl_lmin)
+     D%pointsource_MCMC_modes = Ini_Read_Int_File(Ini,'pointsource_MCMC_modes');
+     D%num_nuisance_parameters = D%num_nuisance_parameters + D%pointsource_MCMC_modes
+    
+     D%point_source_error = Ini_Read_Real_File(Ini,'point_source_error')
+     if (.not. Ini_Read_Logical_File(Ini,'cl_noise_includes_pointsources')) then
+        D%ClNoise = D%ClNoise + D%ClPointsources
+       if (.not. Ini_Read_Logical_File(Ini,'cl_hat_includes_pointsources')) then
+        D%ClHat =  D%ClHat + D%ClPointsources
+       end if
+     else if (Ini_Read_Logical_File(Ini,'cl_hat_includes_pointsources')) then
+       !Already added as part of the noise
+       D%ClHat =  D%ClHat - D%ClPointsources
+     end if
+  
+   else
+    nullify(D%ClPointsources)  
+   end if
+   
+   S = Ini_Read_String_File(Ini,'beam_modes_file', .false.)
+   if (S/='') then
+      if (Feedback > 1 .and. IsMainMPI()) print *,'Using beam uncertainty modes'
+     if (D%ncl/=1) call MpiStop('Planck_like: beam modes currently only for temperature a al WMAP')
+     call StringReplace('%DATASETDIR%',dataset_dir,S)
+     nmodes = Ini_Read_Int_File(Ini,'beam_modes_number')
+     allocate(D%beammodes(D%cl_lmin:D%cl_lmax,nmodes))
+     call CMBLike_ReadModes(D, D%beammodes, S, nmodes)
+     D%beam_MCMC_modes = Ini_Read_Int_File(Ini,'beam_MCMC_modes');
+     if (D%beam_MCMC_modes > nmodes) call MpiStop('Planck_like: beam_MCMC_modes > beam_modes number')
+     D%num_nuisance_parameters = D%num_nuisance_parameters + D%beam_MCMC_modes
+   else
+     nullify(D%beammodes)
+   end if
+    
+
    if (D%like_approx /= like_approx_fullsky_exact) then
         
-    if (D%like_approx==like_approx_diag) then
-        allocate(D%sqrt_fiducial(D%cl_lmin:D%cl_lmax))
-        do l=D%cl_lmin,D%cl_lmax
-         allocate(D%sqrt_fiducial(l)%M(D%nfields,D%nfields))
-         call ElementsToMatrix(D, D%ClFiducial(:,l)+D%ClNoise(:,l), D%sqrt_fiducial(l)%M)
-         call Matrix_Root(D%sqrt_fiducial(l)%M, D%nfields, 0.5) 
-        end do
-    end if
+      if (D%bin_width/=1 .or. bin_test) then
+         allocate(D%ChatM(D%nbins))
+         allocate(D%NoiseM(D%nbins))
+         nullify(D%OffsetM)
+         allocate(D%sqrt_fiducial(D%nbins))
+         allocate(avec(D%ncl))
+         do i=1, D%nbins
+          allocate(D%NoiseM(i)%M(D%nfields,D%nfields))
+          do j=1,D%ncl
+           avec(j) = sum(D%binWindows(:,i)*(D%ClNoise(j,:)))
+          end do
+          call ElementsToMatrix(D, avec, D%NoiseM(i)%M)
+    
+          allocate(D%sqrt_fiducial(i)%M(D%nfields,D%nfields))
+          do j=1,D%ncl
+           avec(j) = sum(D%binWindows(:,i)*D%ClFiducial(j,:))
+          end do  
+          call ElementsToMatrix(D, avec, D%sqrt_fiducial(i)%M)
+          D%sqrt_fiducial(i)%M= D%sqrt_fiducial(i)%M + D%NoiseM(i)%M
+          call Matrix_Root(D%sqrt_fiducial(i)%M, D%nfields, 0.5) 
+
+          allocate(D%ChatM(i)%M(D%nfields,D%nfields))
+          do j=1,D%ncl
+           avec(j) = sum(D%binWindows(:,i)*D%ClHat(j,:))
+          end do
+          call ElementsToMatrix(D, avec, D%ChatM(i)%M)
+         end do
+         deallocate(avec)
+      else
+         nullify(D%NoiseM)
+         allocate(D%sqrt_fiducial(D%cl_lmin:D%cl_lmax))
+         allocate(D%ChatM(D%cl_lmin:D%cl_lmax))
+         allocate(D%NoiseM(D%cl_lmin:D%cl_lmax))
+         if (associated(D%ClOffset)) allocate(D%OffsetM(D%cl_lmin:D%cl_lmax))
+         do l=D%cl_lmin,D%cl_lmax
+          allocate(D%ChatM(l)%M(D%nfields,D%nfields))
+          call ElementsToMatrix(D, D%ClHat(:,l), D%ChatM(l)%M)
+          allocate(D%NoiseM(l)%M(D%nfields,D%nfields))
+          call ElementsToMatrix(D, D%ClNoise(:,l), D%NoiseM(l)%M)
+          if (associated(D%ClOffset)) then
+             allocate(D%OffsetM(l)%M(D%nfields,D%nfields))
+             call ElementsToMatrix(D, D%ClOffset(:,l), D%OffsetM(l)%M)
+          end if 
+          allocate(D%sqrt_fiducial(l)%M(D%nfields,D%nfields))
+          call ElementsToMatrix(D, D%ClFiducial(:,l)+D%ClNoise(:,l), D%sqrt_fiducial(l)%M)
+          call Matrix_Root(D%sqrt_fiducial(l)%M, D%nfields, 0.5) 
+         end do
+
+      end if
 
     lmax_covmat = Ini_Read_Int_File(Ini,'covmat_lmax')
     lmin_covmat = Ini_Read_Int_File(Ini,'covmat_lmin')
@@ -540,39 +694,82 @@ contains
     D%ncl_used = count(D%cl_use_index(1:D%ncl) /=0)
             
     vecsize_in =  (lmax_covmat-lmin_covmat+1)
-
         
-    allocate(D%inv_covariance(D%vecsize*D%ncl_used,  D%vecsize*D%ncl_used))
+    allocate(fullcov(D%vecsize*D%ncl_used, D%vecsize*D%ncl_used))
         
     S = Ini_Read_String_File(Ini,'covmat_fiducial')
     call StringReplace('%DATASETDIR%',dataset_dir,S)
-!    cache_name=trim(S)//'.inverse_'//trim(IntToStr(D%cl_lmax))//'-'//trim(IntToStr(D%cl_lmin))
-!    j=0
-!    do i=1, D%ncl
-!        if (D%cl_use_index(i)) j=j+2**i
-!    end do
-!    cache_name=trim(cache_name)//'_'//trim(IntToStr(j))
 
-!    if (FileExists(cache_name)) then
-!        call MatrixSym_Read_Binary(cache_name, D%inv_covariance)
-!    else
-        allocate(Cov(vecsize_in*cov_num_cls,vecsize_in*cov_num_cls)) 
-        call MatrixSym_Read_Binary(S, Cov)
+     allocate(Cov(vecsize_in*cov_num_cls,vecsize_in*cov_num_cls)) 
+     call MatrixSym_Read_Binary(S, Cov)
 
-        do i=1, D%ncl_used
+     do i=1, D%ncl_used
             do j=1,D%ncl_used
-            
-            D%inv_covariance((i-1)*D%vecsize+1:i*D%vecsize,(j-1)*D%vecsize+1:j*D%vecsize) &
+            fullcov((i-1)*D%vecsize+1:i*D%vecsize,(j-1)*D%vecsize+1:j*D%vecsize) &
             = Cov((i-1)*vecsize_in+(D%cl_lmin-lmin_covmat+1):(i-1)*vecsize_in +(D%cl_lmax-lmin_covmat+1), &
                     (j-1)*vecsize_in+(D%cl_lmin-lmin_covmat+1):(j-1)*vecsize_in +(D%cl_lmax-lmin_covmat+1))
             end do
+     end do
+     deallocate(Cov)
+
+        if (associated(D%ClPointsources) .and. D%pointsource_MCMC_modes==0) then
+         do i=1, D%ncl_used
+          do j=1,D%ncl_used
+           do l1= D%cl_lmin, D%cl_lmax
+           do l2= D%cl_lmin, D%cl_lmax
+           fullcov((i-1)*D%vecsize+ l1 -D%cl_lmin+1 ,(j-1)*D%vecsize+ l2 -D%cl_lmin+1 ) = &
+            fullcov((i-1)*D%vecsize+ l1 -D%cl_lmin+1,(j-1)*D%vecsize+ l2 -D%cl_lmin+1 ) +  &
+             D%point_source_error**2*D%ClPointsources(i,l1)*D%ClPointsources(j,l2)
+           end do
+           end do
+          end do
+         end do 
+        end if
+       if (associated(D%beammodes)) then
+        do i=D%beam_MCMC_modes+1, nmodes
+          D%BeamModes(D%cl_lmin:D%cl_lmax,i)=D%BeamModes(D%cl_lmin:D%cl_lmax,i)*D%ClFiducial(1,D%cl_lmin:D%cl_lmax)
         end do
-        deallocate(Cov)
-        call Matrix_inverse(D%inv_covariance)
-!        if (IsMainMPI()) then
-!         call MatrixSym_Write_Binary(cache_name, D%inv_covariance)
-!        end if
-!    end if
+         do i=D%beam_MCMC_modes+1, nmodes
+           do l1= D%cl_lmin, D%cl_lmax
+           do l2= D%cl_lmin, D%cl_lmax
+            fullcov(l1 -D%cl_lmin+1, l2 -D%cl_lmin+1 ) = &
+            fullcov(l1 -D%cl_lmin+1, l2 -D%cl_lmin+1 ) +  D%BeamModes(l1,i)*D%BeamModes(l2,i)
+           end do
+           end do
+         end do 
+       end if
+         
+       if (D%bin_width==1 .and. .not. bin_test) then
+         allocate(D%inv_covariance(D%vecsize*D%ncl_used, D%vecsize*D%ncl_used))
+         D%inv_covariance = fullcov
+         deallocate(fullcov)
+!        D%inv_covariance => fullcov
+       else 
+
+        allocate(D%inv_covariance(D%nbins*D%ncl_used, D%nbins*D%ncl_used))
+         do i=1, D%ncl_used
+          do j=1,D%ncl_used
+           do x=1, D%nbins
+            do y=1, D%nbins
+             if (i==j .and. y>x) exit
+             asum=0
+             do ix = 1, D%vecsize
+              if (D%binWindows(D%cl_lmin+ix-1,y)/=0) then
+               asum = asum + sum(D%binWindows(:,x)*fullcov((i-1)*D%vecsize+1:i*D%vecsize,(j-1)*D%vecsize+ix)) &
+                      * D%binWindows(D%cl_lmin+ix-1,y)
+              end if        
+             end do
+             D%inv_covariance((i-1)*D%nbins+x,(j-1)*D%nbins+y) = asum 
+             if (i==j) D%inv_covariance((i-1)*D%nbins+y,(j-1)*D%nbins+x) = asum 
+            end do
+           end do
+          end do
+         end do          
+        deallocate(fullcov)
+     
+       end if
+       
+      call Matrix_inverse(D%inv_covariance)
 
     end if 
 
@@ -593,20 +790,29 @@ contains
 
 
 
- subroutine CMBLikes_Transform(D, C, Chat, CsHalf)
+ subroutine CMBLikes_Transform(D, C, Chat, CfHalf, COffset)
   !Get  C = C_s^{1/2}  U f(D) U^T C_s^{1/2} where C^{-1/2} CHat C^{-1/2} = U D U^T
+
+  !Get  C = C_f^{1/2} C^{-1/2} C^{+1/2} U f(D) U^T C^{+1/2} C^{-1/2} C_f^{1/2} where C^{-1/2} CHat C^{-1/2} = U D U^T
+
   Type(TCMBLikes) :: D
-  real C(D%nfields,D%nfields), CHat(D%nfields,D%nfields), CsHalf(D%nfields,D%nfields)
-  real :: U(D%nfields,D%nfields), Rot(D%nfields,D%nfields) 
+  real C(D%nfields,D%nfields)
+  real, intent(in), optional :: COffset(D%nfields,D%nfields)
+  real, intent(in) :: CHat(D%nfields,D%nfields), CfHalf(D%nfields,D%nfields)
+  real :: U(D%nfields,D%nfields), U2(D%nfields,D%nfields), Rot(D%nfields,D%nfields) 
   real :: roots(D%nfields)
-  real :: diag(D%nfields)
+  real :: diag(D%nfields), diag2(D%nfields)
   integer i
 
-        U = C
-        call Matrix_Diagonalize(U,Diag,D%nfields)
-        
-        Rot= matmul(matmul(transpose(U),CHat),U)
-     
+        if (present(COffset)) then
+         U = C + Coffset*C
+         call Matrix_Diagonalize(U,Diag,D%nfields)
+         Rot= matmul(matmul(transpose(U),CHat+ COffset*C),U)
+        else
+         U = C 
+         call Matrix_Diagonalize(U,Diag,D%nfields)
+         Rot= matmul(matmul(transpose(U),CHat),U)
+        end if
         roots = sqrt(Diag)
         
         do i=1, D%nfields
@@ -620,14 +826,23 @@ contains
         Diag = sign(sqrt(2*max(0.,Diag-log(Diag)-1)),Diag-1)
         !want f(D)-1 to save calculating X-X_s
        
-        U = matmul(CsHalf,Rot)
+        if (present(COffset)) then
+         Rot = MatMul(transpose(U),Rot)
+         do i=1, D%nfields
+          Rot(i,:)=Rot(i,:)*roots(i)
+         end do
+         Rot = MatMul(U,Rot)
+         call Matrix_Root(C,D%nfields, -0.5)
+         Rot = MatMul(C,Rot)          
+        end if
+       
+        U = matmul(CfHalf,Rot)
         C = U
         do i=1, D%nfields
           C(:,i) = C(:,i)*Diag(i)
         end do
         C = MatMul(C,transpose(U))
-
-
+        
  end subroutine CMBLikes_Transform
 
 
@@ -697,55 +912,131 @@ contains
 
 
 
- function CMBLikes_CMBLike(D, cl) result (chisq)
+ function CMBLikes_CMBLike(D, cl_in, nuisance_params) result (chisq)
   Type(TCMBLikes) :: D
-  real cl(lmax,num_cls)
+  real, intent(in) :: nuisance_params(:)
+  real, intent(in) :: cl_in(lmax,num_cls)
+  real  :: cl(lmax,num_cls)
+
   real chisq
-  real C(D%nfields,D%nfields), Chat(D%nfields,D%nfields)
+  real C(D%nfields,D%nfields)
   real vecp(D%ncl)
-  real bigX(D%vecsize*D%ncl_used)
-  integer l,  i, Ti,Ei,Bi
+  real beamC(D%cl_lmin:D%cl_lmax)
+  real bigX(D%nbins*D%ncl_used),bigXHat(D%nbins*D%ncl_used)
+  integer l,  i, Ti,Ei,Bi, bin
+  integer mode
   logical :: quadratic
 
   chisq =0
+  cl = cl_in
 
   if (D%highl_cl) then
-
+  
   Ti = D%field_index(1)
   Ei = D%field_index(2)
   Bi = D%field_index(3)
+
+  if (D%num_nuisance_parameters/=0 .and. Ti /= 0) then
+    mode=0
+    if (D%pointsource_MCMC_modes>0) then
+      mode=mode+1
+      cl(D%cl_lmin:D%cl_lmax,1) = cl(D%cl_lmin:D%cl_lmax,1) + &
+        D%point_source_error*nuisance_params(mode)*D%ClPointsources(1,D%cl_lmin:D%cl_lmax)      
+    end if
+    beamC=0
+    do i=1, D%beam_MCMC_modes
+       mode = mode + 1
+       BeamC = BeamC + nuisance_params(mode) *cl(D%cl_lmin:D%cl_lmax,1)*D%beammodes( D%cl_lmin:D%cl_lmax,i )     
+    end do
+     cl(D%cl_lmin:D%cl_lmax,1) = cl(D%cl_lmin:D%cl_lmax,1) + beamC
+    
+   end if
+
   
   if (Bi/=0 .and. num_cls<3) call MpiStop('CMBLikes_CMBLike: Need num_cls =4 to use B modes')
-   
-     
-  do l = D%cl_lmin, D%cl_lmax 
-   
-       call ElementsToMatrix(D,D%ClNoise(:,l), C) 
-       if (Ti/=0) C(Ti,Ti) = C(Ti,Ti)+cl(l,1)
+  
+  if (D%bin_width/=1 .or. bin_test) then
+
+    if (D%like_approx == like_approx_fullsky_exact) call mpiStop('Planck_like: exact like cannot be binned!')
+    
+    do bin = 1, D%nbins
+     C=0
+      if (Ti/=0) C(Ti,Ti) = sum(D%BinWindows(:,bin)*cl(D%cl_lmin:D%Cl_lmax,1))
        if (Ei/=0) then
-         C(Ei,Ei) = C(Ei,Ei)+cl(l,3)
+         C(Ei,Ei) = sum(D%BinWindows(:,bin)*cl(D%cl_lmin:D%Cl_lmax,3))
          if (Ti/=0) then
-            C(Ei,Ti) = C(Ei,Ti) + cl(l,2)
+            C(Ei,Ti) = sum(D%BinWindows(:,bin)*cl(D%cl_lmin:D%Cl_lmax,2))
             C(Ti,Ei) = C(Ei,Ti)
          end if
        end if
-       if (Bi/=0) C(Bi,Bi) = C(Bi,Bi) + cl(l,num_cls)
- 
+       if (Bi/=0) C(Bi,Bi) = sum(D%BinWindows(:,bin)*cl(D%cl_lmin:D%Cl_lmax,num_cls))
+       C = C + D%NoiseM(bin)%M
+       
+       if (D%like_approx == like_approx_diag) then 
+        call CMBLikes_Transform(D, C, D%ChatM(bin)%M, D%sqrt_fiducial(bin)%M)
+       else if (D%like_approx == like_approx_fid_gaussian) then 
+         C = C - D%ChatM(bin)%M
+       else if (D%like_approx == like_approx_gaussian) then 
+         if (D%nfields/=1) call MpiStop('not done Gaussian for polarization')
+         !Det term is generally (n+1)[ log C - log C_f])
+         chisq = chisq + 2*log( C(1,1) / (D%sqrt_fiducial(bin)%M(1,1))**2 )
+         C = (C- D%ChatM(bin)%M) *  (D%sqrt_fiducial(bin)%M)**2 / C
+         quadratic = .true.
+       else
+        call MpiStop('Unknown like_approx') 
+       end if  
+    
+      quadratic = .true.
+      call MatrixToElements(D, C, vecp)
+   
+       do i=1,D%ncl
+         if (D%cl_use_index(i)/=0) then
+            bigX( (D%cl_use_index(i)-1)*D%nbins + bin) = vecp(i)
+         end if
+       end do
+            
+    end do
+   
+  
+  else 
+     
+  do l = D%cl_lmin, D%cl_lmax 
+       C=0
+       if (Ti/=0) C(Ti,Ti) = cl(l,1)
+       if (Ei/=0) then
+         C(Ei,Ei) = cl(l,3)
+         if (Ti/=0) then
+            C(Ei,Ti) = cl(l,2)
+            C(Ti,Ei) = C(Ei,Ti)
+         end if
+       end if
+       if (Bi/=0) C(Bi,Bi) =  cl(l,num_cls)
              
-       call ElementsToMatrix(D,D%ClHat(:,l), Chat) !could cache this
+       C =C + D%NoiseM(l)%M
         
        if (D%like_approx == like_approx_diag) then 
-        
-        call CMBLikes_Transform(D, C, Chat, D%sqrt_fiducial(l)%M)
+        if (Associated(D%OffsetM)) then
+          chisq = chisq +2*log( (D%ChatM(l)%M(1,1)+D%OffsetM(l)%M(1,1)*C(1,1))/D%ChatM(l)%M(1,1)/(1+D%OffsetM(l)%M(1,1)))
+          call CMBLikes_Transform(D, C, D%ChatM(l)%M, D%sqrt_fiducial(l)%M, D%OffsetM(l)%M )
+        else
+          call CMBLikes_Transform(D, C, D%ChatM(l)%M, D%sqrt_fiducial(l)%M)
+        end if
         call MatrixToElements(D, C, vecp)
         quadratic = .true.
-       else if (D%like_approx == like_approx_fid_gaussian) then 
-         C = C - Chat
-         call MatrixToElements(D, C, vecp)
+       else if (D%like_approx == like_approx_fid_gaussian) then
+         call MatrixToElements(D, C- D%ChatM(l)%M, vecp)
          quadratic = .true.
+       else if (D%like_approx == like_approx_gaussian) then 
+         if (D%nfields/=1) call MpiStop('not done Gaussian for polarization')
+         chisq = chisq + 2*log( C(1,1) / (D%sqrt_fiducial(l)%M(1,1))**2 )
+         C = (C- D%ChatM(l)%M) *  (D%sqrt_fiducial(l)%M)**2 / C
+         call MatrixToElements(D, C, vecp)
+         !Det term is generally (n+1)[ log C - log C_f])
+         quadratic = .true.
+   
        else if (D%like_approx == like_approx_fullsky_exact) then
           quadratic = .false.
-          chisq = chisq  + ExactChisq(D, C,Chat,l)
+          chisq = chisq  + ExactChisq(D, C,D%ChatM(l)%M,l)
        else
         call MpiStop('Unknown like_approx') 
        end if  
@@ -758,11 +1049,12 @@ contains
         end do
         end if
         
-
   end do
+  
+  end if !binned
 
-   if (quadratic) chisq = Matrix_QuadForm(D%inv_covariance,BigX)
-
+   if (quadratic) chisq = chisq + Matrix_QuadForm(D%inv_covariance,BigX)
+   
    end if
 
    if (D%lowl_exact) then

@@ -69,6 +69,7 @@ implicit none
     logical :: all_l_exact
     logical :: CMBLike !New format
     integer :: all_l_lmax
+    integer :: nuisance_parameters
     real, pointer, dimension(:,:) :: all_l_obs, all_l_noise
     real, pointer, dimension(:) :: all_l_fsky
     real, pointer, dimension(:) :: sz_template
@@ -110,14 +111,14 @@ contains
 
    AP%window = 0
 
-   call OpenTxtFile(aname, 50)
+   call OpenTxtFile(aname, tmp_file_unit)
 
      do
      if (aset%has_pol) then
-       read(50,'(a)',end=1) tmp
+       read(tmp_file_unit,'(a)',end=1) tmp
        read(tmp,*, end=1) ll, w, wpol
      else
-       read(50,*, end=1) ll, w
+       read(tmp_file_unit,*, end=1) ll, w
      end if
 
      l=nint(ll)
@@ -137,7 +138,7 @@ contains
      end if
 
      end do
-1  close(50)
+1  close(tmp_file_unit)
 
    do l=2, lmax
       if (any(AP%window(:,l)/=0)) then
@@ -173,7 +174,8 @@ contains
   
  end subroutine ReadWindow
 
- subroutine ReadAllExact(aset)
+ subroutine ReadAllExact(Ini,aset)
+      Type(TIniFile) :: Ini
       Type (CMBdataset) :: aset
       character(LEN=Ini_max_string_len) :: fname
       integer l, idum, ncls, ncol
@@ -184,7 +186,7 @@ contains
     !with some fudge factor fsky_eff^2 to reduce the degrees of freedom: fsky^eff*(2l+1)
 
        aset%num_points = 0
-       aset%all_l_lmax = Ini_Read_Int('all_l_lmax')
+       aset%all_l_lmax = Ini_Read_Int_File(Ini,'all_l_lmax')
 
        if (aset%all_l_lmax > lmax) stop 'cmbdata.f90::ReadAllExact: all_l_lmax > lmax'
        if (aset%has_pol) then
@@ -195,7 +197,7 @@ contains
         allocate(aset%all_l_noise(2:aset%all_l_lmax,1))
        end if
        allocate(aset%all_l_fsky(2:aset%all_l_lmax))
-       fname = trim(Ini_Read_String('all_l_file'))
+       fname = trim(Ini_Read_String_File(Ini,'all_l_file'))
        ncol = TxtFileColumns(fname)
        if (ncol==7) then
          ncls = 3
@@ -318,8 +320,11 @@ contains
    real, pointer, dimension(:,:) :: tmp_mat
    real, pointer, dimension(:) :: tmp_arr
    character(LEN=Ini_max_string_len) :: data_format
-
+   integer file_unit
+   Type(TIniFile) :: Ini
+   
    num_datasets = num_datasets + 1
+   
    if (num_datasets > 10) stop 'too many datasets'
 
    aset%has_sz_template = .false.
@@ -336,34 +341,38 @@ contains
      return 
    end if
 
-   call Ini_Open(aname, 1, bad, .false.)
+   file_unit = new_file_unit()
+   
+   call Ini_Open_File(Ini,aname, file_unit, bad, .false.)
    if (bad) then
      write (*,*)  'Error opening dataset file '//trim(aname)
      stop
    end if
    Ini_fail_on_not_found = .true.
       
-   aset%name = Ini_Read_String('name')
+   aset%name = Ini_Read_String_File(Ini,'name')
    aset%use_set =.true.
    aset%num_points = 0
+   aset%nuisance_parameters = 0
     
    if (Feedback > 0) write (*,*) 'reading: '//trim(aset%name)
 
    Ini_fail_on_not_found = .false.
 
-   data_format  = Ini_Read_String('dataset_format')
+   data_format  = Ini_Read_String_File(Ini,'dataset_format')
 
    aset%CMBlike = data_format == 'CMBLike'
 
    aset%all_l_exact = (data_format =='all_l_exact') &
-            .or. Ini_Read_Logical('all_l_exact',.false.)
+            .or. Ini_Read_Logical_File(Ini,'all_l_exact',.false.)
    if (aset%CMBLike) then
       allocate(aset%CMBLikes)
-      call CMBLikes_ReadData(aset%CMBLikes, DefIni, ExtractFilePath(aname))
-  
+      call CMBLikes_ReadData(aset%CMBLikes, Ini, ExtractFilePath(aname))
+      aset%nuisance_parameters = aset%CMBLikes%num_nuisance_parameters 
+    
    else if (aset%all_l_exact) then
-       aset%has_pol = Ini_Read_Logical('has_pol',.false.)
-       call ReadAllExact(aset)
+       aset%has_pol = Ini_Read_Logical_File(Ini,'has_pol',.false.)
+       call ReadAllExact(Ini,aset)
    else if (data_format/='') then
         write(*,*) 'Error in '//trim(aname)
         write(*,*) 'Unknown data_format: '//trim(data_format)
@@ -371,22 +380,22 @@ contains
    else
     !Otherwise do usual guassian/offset lognormal stuff
 
-       aset%has_pol = Ini_Read_Logical('has_pol',.false.)
+       aset%has_pol = Ini_Read_Logical_File(Ini,'has_pol',.false.)
 
-       aset%num_points = Ini_Read_Int('num_points')
+       aset%num_points = Ini_Read_Int_File(Ini,'num_points')
 
-       aset%calib_uncertainty = Ini_Read_Double('calib_uncertainty')
-       aset%beam_uncertain = Ini_Read_logical('beam_uncertainty')
+       aset%calib_uncertainty = Ini_Read_Double_File(Ini,'calib_uncertainty')
+       aset%beam_uncertain = Ini_Read_logical_File(Ini,'beam_uncertainty')
 
         
-       window_dir  = Ini_Read_String('window_dir')
+       window_dir  = Ini_Read_String_File(Ini,'window_dir')
 
-       windows_are_bare = Ini_Read_Logical('windows_are_bare',.false.)
-       aset%windows_are_bandpowers = Ini_Read_Logical('windows_are_bandpowers',.true.)
-       aset%windows_are_normalized = Ini_Read_Logical('windows_are_normalized',.false.)
+       windows_are_bare = Ini_Read_Logical_File(Ini,'windows_are_bare',.false.)
+       aset%windows_are_bandpowers = Ini_Read_Logical_File(Ini,'windows_are_bandpowers',.true.)
+       aset%windows_are_normalized = Ini_Read_Logical_File(Ini,'windows_are_normalized',.false.)
   
-       aset%file_points = Ini_read_Int('file_points',aset%num_points)
-       first_band = Ini_read_Int('first_band',1)
+       aset%file_points = Ini_read_Int_File(Ini,'file_points',aset%num_points)
+       first_band = Ini_read_Int_File(Ini,'first_band',1)
        if (first_band + aset%num_points > aset%file_points+1) then
             write (*,*)  'Error with dataset file '//trim(aname)
             write (*,*) 'first_band + num_points > file_points'
@@ -394,14 +403,14 @@ contains
        end if
     !Read in the observed values, errors and beam uncertainties
        allocate(aset%points(aset%num_points))
-       band_file = Ini_Read_String('bandpowers')
+       band_file = Ini_Read_String_File(Ini,'bandpowers')
        if (band_file /= '') call OpenTxtFile(band_file, 51)
        Ini_fail_on_not_found = .true.
        do i=1, aset%num_points + first_band -1
           if (band_file /= '') then
             read(51,'(a)') InLine
           else
-            InLine = Ini_Read_String(numcat('data',i))
+            InLine = Ini_Read_String_File(Ini,numcat('data',i))
           end if
           if (i < first_band) cycle
           use_i = i - first_band + 1          
@@ -423,7 +432,7 @@ contains
     !See if the inverse covariance matrix is given (otherwise assume diagonal)
        Ini_fail_on_not_found = .false.
     
-       Ninv_file = Ini_Read_String('N_inv')
+       Ninv_file = Ini_Read_String_File(Ini,'N_inv')
        aset%has_corr_errors = Ninv_file /= ''
        if (aset%has_corr_errors) then
           allocate(tmp_mat(aset%file_points,aset%file_points))
@@ -441,11 +450,11 @@ contains
           deallocate(tmp_mat)
        end if
 
-       if (Ini_Read_Logical('use_hyperparameter',.false.)) stop 'Hyperparameters deprecated'
+       if (Ini_Read_Logical_File(Ini,'use_hyperparameter',.false.)) stop 'Hyperparameters deprecated'
 
     !See if xfactors are given
 
-       xfact_file = Ini_Read_String('xfactors')
+       xfact_file = Ini_Read_String_File(Ini,'xfactors')
        aset%has_xfactors = xfact_file /= ''
 
        if (aset%has_xfactors) then
@@ -463,7 +472,8 @@ contains
 
    end if !not all_l_exact or cut sky unbinned
    
-   call Ini_Close
+   call Ini_Close_File(Ini)
+   call ClearFileUnit(file_unit)
 
    datasets(num_datasets) = aset
 
@@ -473,21 +483,18 @@ contains
     Type (CMBdataset) :: aset
     real, intent(in) :: ascale
     character(LEN=*), intent(IN) :: aname
-    integer l
+    integer l, unit
     real sz
-    
      allocate(aset%sz_template(2:lmax))
      aset%sz_template = 0
      aset%has_sz_template = .true.
-     
-     call OpenTxtFile(aname, 50)
+     call OpenTxtFile(aname, tmp_file_unit)
      do
-       read(50,*,end=2) l, sz
+       read(tmp_file_unit,*,end=2) l, sz
        if (l>=2 .and. l<=lmax) aset%sz_template(l) = ascale * sz/(l*(l+1)/twopi)
      end do
      
-2    close(50)
-   
+2    Close(tmp_file_unit)
  end subroutine ReadSZTemplate
 
  function GetWinBandPower(AP, cl)
@@ -795,9 +802,10 @@ contains
  END SUBROUTINE ReadDataset_bcp
 
 
- function CalcLnLike(cl, aset) 
+ function CalcLnLike(cl, aset,nuisance_params) 
   !Compute -ln(Likelihood) 
    real cl(lmax,num_cls), CalcLnLike
+   real, intent(in) :: nuisance_params(:)
    Type(CMBdataset) aset
    integer i
    real chisq
@@ -813,7 +821,7 @@ contains
 
    if (aset%CMBLike) then
 
-     chisq =  CMBLikes_CMBLike(aset%CMBLikes, cl) 
+     chisq =  CMBLikes_CMBLike(aset%CMBLikes, cl, nuisance_params) 
 
    else if (aset%all_l_exact) then
      
@@ -902,13 +910,15 @@ contains
  
  end function CalcLnLike
 
- function CMBLnLike(cl, sznorm)
+ function CMBLnLike(cl, sznorm, nuisance_params)
   real, intent(in) ::  cl(lmax,num_cls), sznorm
   real CMBLnLike
+  real,intent(in) :: nuisance_params(:)
   real szcl(lmax,num_cls)
   integer i
+  integer nuisance
   real tot(num_datasets)
- 
+  nuisance =1
   do i=1, num_datasets
      szcl = cl
      if (datasets(i)%has_sz_template) then
@@ -917,7 +927,8 @@ contains
      if (datasets(i)%name == 'WMAP') then
       tot(i) = MAPLnLike(szcl)
      else
-      tot(i) = CalcLnLike(szcl,datasets(i))
+      tot(i) = CalcLnLike(szcl,datasets(i), nuisance_params(nuisance:))
+      if (datasets(i)%CMBLike) nuisance = nuisance + datasets(i)%CMBLikes%num_nuisance_parameters
      end if
   end do
   CMBLnLike = SUM(tot) 
@@ -938,6 +949,10 @@ contains
   integer  l
 
   if (Init_MAP) then
+#ifdef WMAPNOHIGHLTT
+   use_TT = .false.
+   use_TT_beam_ptsrc = .false.   
+#endif
    if (lmax<ttmax) stop 'lmax not large enough for WMAP'
    if (Feedback>0) write(*,*) 'reading WMAP5 data'
    Init_MAP = .false.

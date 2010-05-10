@@ -61,6 +61,16 @@ contains
      end if
  end subroutine  Matrix_end
 
+ subroutine Matrix_WriteFileRow(aunit, vec,n)
+  integer, intent(in) :: aunit
+  integer, intent(in) :: n
+  real(dm) :: vec(n)
+  character(LEN=50) fmt
+  
+   fmt = trim(numcat('(',n))//'E17.7)'
+   write (aunit, fmt) vec(1:n)
+
+ end subroutine Matrix_WriteFileRow
 
  subroutine Matrix_Write(aname, mat, forcetable)
    character(LEN=*), intent(in) :: aname
@@ -196,6 +206,27 @@ contains
    call CloseFile(file_unit)
 
  end subroutine MatrixSym_Read_Binary
+
+  subroutine MatrixSym_Read_Binary_Single(aname, mat)
+   character(LEN=*), intent(in) :: aname
+   real, intent(out) :: mat(:,:)
+   integer i,    file_unit
+   integer shp(2)
+
+   shp = shape(mat)
+   if (shp(1) /= shp(2)) call MpiStop( 'MatrixSym_Read_Binary: Not square matrix')
+   if (shp(1) == 0) return
+ 
+   file_unit = new_file_unit()
+   call OpenFile(aname, file_unit,'unformatted')
+   do i=1,shp(1)
+    read (file_unit) mat(i:shp(1),i)
+    mat(i,i:shp(1)) = mat(i:shp(1),i)
+   end do
+   call CloseFile(file_unit)
+
+ end subroutine MatrixSym_Read_Binary_Single
+
 
 
 

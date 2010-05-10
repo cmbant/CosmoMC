@@ -124,6 +124,7 @@ subroutine Initialize(Params)
         character(LEN=5000) fname,InLine
         character(LEN=120) prop_mat
         real center, wid, mult, like
+        real tmpMat(num_real_params,num_real_params)
 
         output_lines = 0
         
@@ -151,10 +152,21 @@ subroutine Initialize(Params)
         num_slow = 0
         do i=1,num_params
    
-           InLine = Ini_Read_String(numcat('param',i), .true.)
-          
-           read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), wid, Scales%PWidth(i)
-
+           if (i>=index_nuisance) then
+            !All unit Gaussians
+            center=0
+            Scales%PMin(i)=-10
+            Scales%PMax(i)=10
+            wid=1
+            if (i-index_nuisance < nuisance_params_used) then
+              Scales%PWidth(i)=1
+            else
+              Scales%PWidth(i)=0
+            end if  
+           else 
+            InLine = Ini_Read_String(numcat('param',i), .true.)
+            read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), wid, Scales%PWidth(i)
+           end if  
            Scales%center(i) = center
            if (Scales%PMax(i) < Scales%PMin(i)) call DoStop('You have param Max < Min')
            if (Scales%PWidth(i) /= 0) then
@@ -202,7 +214,16 @@ subroutine Initialize(Params)
    
         if (has_propose_matrix) then
            
-           call ReadMatrix(prop_mat,pmat, num_params, num_params)
+           i=TxtFileColumns(prop_mat)
+           if (i==num_params) then
+            call ReadMatrix(prop_mat,pmat, num_params, num_params)
+           else if (i==num_real_params) then
+            call ReadMatrix(prop_mat,tmpmat, num_real_params, num_real_params)
+            pmat=0
+            pmat(1:num_real_params,1:num_real_params) = tmpMat
+           else
+            call MpiStop('Propose matrix the wrong size: '//trim(prop_mat))
+           end if
            !If generated with constrained parameters, assume diagonal in those parameters
            do i=1,num_params
               if (pmat(i,i) ==0 .and. Scales%PWidth(i)/=0) then

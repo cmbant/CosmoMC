@@ -25,7 +25,7 @@
      double precision, external :: dsoundda, rombint
      real CMBToTheta
      integer error
-
+  
      call InitCAMB(CMB,error,.false.)
 
 !!From Hu & Sugiyama
@@ -100,6 +100,7 @@
     CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initPower-1)
     CMB%norm(1) = exp(Params(index_norm))
     CMB%norm(2:num_norm) = Params(index_norm+1:index_norm+num_norm-1)
+    CMB%nuisance(1:num_nuisance_params) = Params(index_nuisance:index_nuisance+num_nuisance_params-1)
 
     CMB%h = CMB%H0/100
     h2 = CMB%h**2
@@ -125,7 +126,6 @@
 
      Type(CMBParams) CMB
      real DA
-     integer error
      real  D_b,D_t,D_try,try_b,try_t, CMBToTheta, lasttry,tau
      external CMBToTheta
 
@@ -195,7 +195,8 @@
       Params(index_initpower:index_initpower+num_initpower-1) =CMB%InitPower(1:num_initpower) 
       Params(index_norm) = log(CMB%norm(1))
       Params(index_norm+1:index_norm+num_norm-1) = CMB%norm(2:num_norm)
-  
+      Params(index_nuisance:index_nuisance+num_nuisance_params-1)=CMB%nuisance(1:num_nuisance_params) 
+
    end subroutine CMBParamsToParams
 
 
@@ -206,7 +207,7 @@
      implicit none
     Type(ParamSet) P
     real, intent(in) :: mult, like
-    character(LEN =30) fmt
+    character(LEN =60) fmt
     Type(CMBParams) C
     real r10
   
@@ -226,10 +227,13 @@
       else
         r10 = 0
       end if
-
-      fmt = trim(numcat('(2E16.7,',num_params))//'E16.7,7E16.7)'
-      write (outfile_unit,fmt) mult,like, P%P, C%omv,P%Info%Theory%Age, C%omdm+C%omb, &
-          P%Info%Theory%Sigma_8, C%zre,r10,C%H0
+      fmt = concat('(2E16.7,',num_real_params,'E16.7,7E16.7')
+      if (nuisance_params_used>0) then
+           fmt = concat(trim(fmt)//',',nuisance_params_used,'E16.7')
+      end if 
+      fmt = concat(fmt,')')
+      write (outfile_unit,fmt) mult,like, P%P(1:num_real_params), C%omv,P%Info%Theory%Age, C%omdm+C%omb, &
+          P%Info%Theory%Sigma_8, C%zre,r10,C%H0,P%P(num_real_params+1:num_real_params+nuisance_params_used) 
     end if
 
      if (flush_write) call FlushFile(outfile_unit)
@@ -259,8 +263,8 @@
         r10 = 0
       end if
 
-     fmt = trim(numcat('(2E16.7,',num_params+num_matter_power))//'E16.7,7E16.7)'
-      write (outfile_unit,fmt) mult,like, P%P, C%omv,P%Info%Theory%Age, C%omdm+C%omb, &
+     fmt = trim(numcat('(2E16.7,',num_real_params+num_matter_power))//'E16.7,7E16.7)'
+      write (outfile_unit,fmt) mult,like, P%P(1:num_real_params), C%omv,P%Info%Theory%Age, C%omdm+C%omb, &
           P%Info%Theory%Sigma_8, C%zre,r10,C%H0, P%Info%Theory%matter_power(:,1)
 
 

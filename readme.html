@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>This version April 2008</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>This version May 2008</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -262,7 +262,7 @@ you need to set the <b>limits</b>xxx variables to the corresponding limits
 limits are computed automatically. <i>DO NOT</i> use limitsxx to change
 the bounds on other plots - the program uses the limits information when
 it is estimating the posteriors from the samples. When limitsxx are used the .margestats file
-contains one tail statistics. If only one end is fixed you can use N the floating end, e.g. "limitsxx = 0 N" for the tensor amplitude which has a greater than zero prior.
+ contains one tail statistics - i.e. the lower bound is where 1-x of points are lower and x of the points higher, the upper bound is where 1-x of the points are higher and x lower (usually only one of the limits would be used). If only one end is fixed you can use N the floating end, e.g. "limitsxx = 0 N" for the tensor amplitude which has a greater than zero prior.
 <BLOCKQUOTE>
 <Font color=#FF0000>Example:</font> Since <I>many</I> people get this wrong, here is an illustration of what happens when generating plots from a tensor run set of chains (with prior r>0):<P>
 <table border=0 Cellpadding=20><TR><TD>
@@ -279,7 +279,7 @@ The .ini file comments should explain the other options.
 <A NAME="GetDistOutput">
 <B><FONT COLOR="blue">Output Text Files</FONT></B>
 <UL>
-<LI><B>file_root.margestats</B> file contains the means, standard deviations and marginalized limits for the different parameters (including derived parameters).
+<LI><B>file_root.margestats</B> file contains the means, standard deviations and marginalized limits for the different parameters (including derived parameters). Limits to calculate are set using the <B>contour</B>xx input parameters. 
 <BR><BR>
 <LI><B>file_root.likestats</B> gives the best fit sample model, its likelihood, and limits from the extremal values of the N-dimensional distribution. Note that MCMC does not generally provide accurate values for the best-fit.
 <BR><BR>
@@ -296,6 +296,8 @@ param1^a param2^b param3^c ...&nbsp; = x \pm y.
 <LI><B>file_root.corr</B> contains parameter correlations
 <BR><BR>
 <LI><B>file_root.covmat</B> contains a covariance matrix you can use as a proposal matrix for generating future chains
+<BR><BR>
+<LI><B>file_root.minmarge</B> (only if <b>do_minimal_1d_intervals=T</B>), contains 1D minimum credible intervals (equal-likelihood limits, as opposed to .margestats file which has equal tail-integral limits). See e.g. <A HREF="http://arxiv.org/abs/0705.0440">0705.0440</A>.
 </UL>
 <P>
 <A NAME="Plotting">
@@ -388,7 +390,7 @@ Since the program uses a covariance matrix for the parameters, it knows about (o
 Changing parameters does in principle change the results as each base parameter has a flat prior. However for well constrained parameters this effect is very small. In particular using theta rather than H_0 has a small effect on marginalized results.
 </P>
 <P>
-The above parameterization does make use of some knowledge about the physics, in particular the (approximate) formula for the sound horizon. Also supplied is a <B>params_H.f90</B> file which uses H_0,z_re and A_s instead of theta, tau and log(10^10 A_s) which is more generic. Though slower to converge, this may be useful if you want to play around with different extended models - just edit the Makefile to use params_H.f90 instead of params_CMB.f90. Sample input files and covariance matrix along with params_H.f90 are <A HREF="http://cosmologist.info/cosmomc/params_H.tar.gz">available here</A>. Since the parameters have a different meaning in this parameterization, you should not try to mix .covmat (or other) files with those from the default parameterization.
+The above parameterization does make use of some knowledge about the physics, in particular the (approximate) formula for the sound horizon. Also supplied is a <B>params_H.f90</B> file which uses H_0,z_re and A_s instead of theta, tau and log(10^10 A_s) which is more generic. Though slower to converge, this may be useful if you want to play around with different extended models - just edit the Makefile to use params_H.f90 instead of params_CMB.f90. Sample input files and covariance matrix along with params_H.f90 are <A HREF="http://cosmologist.info/cosmomc/params_H.tar.gz">available here</A>. Since the parameters have a different meaning in this parameterization, you should not try to mix .covmat (or other) files with those from the default parameterization. Note this file tends to get out of synch with the latest CosmoMC version.
 
 <BLOCKQUOTE>
 <B>Hard coded priors</B><BR><BR>
@@ -464,7 +466,7 @@ CMBfit, DASH, PICO, etc.
 <li>
 <b>supernovae.f90</b></li>
 
-<br>As of May 2006, uses SNLS by default. Edit to use Riess gold. (thanks to David Rapetti, Jochen Weller and Anze Slosar).
+<br>As of May 2008 uses <A HREF="http://arxiv.org/abs/0804.4142">UNION</A> by default (thanks to Anze Slosar). Other alternative supernovae_xxx files are supplied.
 
 <li>
 <b>SDSSLy-a-v3.f90, lya.f90</b></li>
@@ -499,6 +501,11 @@ weighting function or parameter mapping.</ul>
 </UL>
 <A NAME="Version"><h2>Version History</h2></A>
 <UL>
+<LI><B>May 2008</B><BR>
+supernovae.f90 now replaced by default with <A HREF="http://arxiv.org/abs/0804.4142">UNION</A> Supernovae Ia dataset (previous code now supernovae_ReissSNLS.f90; thanks to Anze Slosar).
+Additions to Planck_like module; support for sampling and hence marginalizing over data nuisance parameters, point sources, beam uncertainty modes.
+New GetDist option <B>single_column_chain_files</B> to support <A HREF="http://lambda.gsfc.nasa.gov/product/map/dr3/parameters.cfm">WMAP 5-year format chains</A> (thanks to Mike Nolta): <B>1col_distparams.ini</B> is a supplied sample input file. New GetDist option <b>do_minimal_1d_intervals</B> to calculate equal-likelihood 1-D limits (see <A HREF="http://arxiv.org/abs/0705.0440">0705.0440</A>, thanks to Jan Hamann). New GetDist option <B>num_contours</B> to produce more than two sets of limits.
+
 <LI><B>April 2008</B><BR>
 Includes latest CAMB version with new reionization parameterization - default now assumes first ionization of helium happened at the same time as hydogen, and z_re is defined as the point where x<sub>e</sub> is half its maximum (the optical depth and z_re are related in a way independent of the speed of the transition in the new parameterization). This changes the z_re numbers at the ~6% level. Fixed bug reading in mpk parameters.
 

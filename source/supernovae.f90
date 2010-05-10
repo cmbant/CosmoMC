@@ -1,142 +1,109 @@
-!Edit SN_usexxx parameters below; SNLS by default
-!SN_useRiess: Use the gold sample SNe Ia of Riess et al.(2004)
-!   See astro-ph/0402512 
-!SN_useSNLS: use SNLS astro-ph/0510447
+!
+! UNION Supernovae Ia dataset
+!
+!
+! This module uses the Union compilation. Please cite "Kowalski et
+! al. (The Supernova Cosmology Project), Ap.J., 2008.".  If the Union
+! compilation is included in any other data sets that are distributed,
+! please include this citation request there too.
+!
+! By A Slosar, heavily based on the original code by A Lewis, S Bridle
+! and D Rapetti. E-mail: Anze Slosar (anze@berkeley.edu) for questions
+! about the code and David Rubin (rubind@berkeley.edu) for questions
+! regarding the dataset itself.
+!
+! Marginalizes anayltically over H_0 with flat prior.  (equivalent to
+! marginalizing over M, absolute magnitude; see appendix F of cosmomc
+! paper). Resultant log likelihood has arbitary origin and is
+! numerically equal to -chi^2/2 value at the best-fit value.
 
-!May 2004 (modified by David Rapetti)
-!May 2006: includes SNLS option (thanks to Anze Slosar)
 
-!Marginalize anayltically over H_0 with flat prior 
-!(equivalent to mariganlize over M, absolute magnitude; see appendix F of cosmomc paper) 
-!resultant log likelihood has arbitary origin, but is returned equal
-!to the best-fit value.
 module snovae
 use cmbtypes
+use MatrixUtils
 implicit none
 
- integer, parameter :: riessN=157, snlsN=115
- integer, parameter :: SN_num = riessN+snlsN
+ integer, parameter :: SN_num = 307
  double precision, parameter :: Pi_num = 3.14159265359D0 
- double precision :: SN_z(SN_num), SN_moduli(SN_num), SN_diagerr(SN_num)
- double precision :: SN_Ninv(SN_num,SN_Num), SN_Ninvmarge(SN_num,SN_Num)
- double precision :: aprima, bprima, cprima, a1
- double precision :: SN_trNinv
- logical :: do_SN_init = .true.
+ double precision :: SN_z(SN_num), SN_moduli(SN_num)
+ double precision :: SN_Ninv(SN_num,SN_Num)
+ double precision :: SN_sumninv
 
- logical, parameter :: SN_marg = .true.
- logical, parameter :: SN_useRiess=.false.
- logical, parameter :: SN_useSNLS=.true.
+ logical, parameter :: SN_marg = .True.
+ logical, parameter :: SN_syscovmat = .True.  !! Use covariance matrix with or without systematics
+ 
 
 contains
 
 
  subroutine SN_init
-   character (LEN=1200) :: InLine
-   character (LEN=20) :: names(186)
-   double precision :: input (186,3)
-   integer gold(riessN)
+   character (LEN=20):: name
    integer i
+   real :: tmp_mat(sn_num, sn_num)
 
-   if (Feedback > 0) write (*,*) 'reading: supernovae data'
-   call OpenTxtFile('data/sn_data_riess.dat',tmp_file_unit)
-   read(tmp_file_unit,'(a)') InLine
-   do i=1, 186
-      read(tmp_file_unit, *) names(i), input(i,:)
+   if (Feedback > 0) write (*,*) 'Reading: supernovae data'
+   call OpenTxtFile('data/sn_z_mu_dmu.txt',tmp_file_unit)
+   do i=1,  sn_num
+      read(tmp_file_unit, *) name, SN_z(i), SN_moduli(i)
    end do
    close(tmp_file_unit)
 
-!Use only those supernovae used for `gold sample'
-   gold = (/(I, I=1, 29), 32, 33, 34, 35, 37, (I, I=42,45)&
-        ,(I,I=48,57),60,62,63,64,65,68,69,(I,I=71,90),(I,I=92,105)&
-        ,107,(I,I=109,121),(I,I=123,131),133,134,135,136,137,138&
-        ,(I,I=140,144),(I,I=146,161),163,164,169,170,171,173&
-        ,174,(I,I=176,186)/)
+   if (SN_syscovmat) then
+      call OpenTxtFile('data/sn_covmat_sys.txt',tmp_file_unit)
+   else
+      call OpenTxtFile('data/sn_covmat_nosys.txt',tmp_file_unit)
+   end if
 
-   SN_z(1:riessN) = input(gold,1)
-   SN_moduli(1:riessN) = input(gold,2)
-   SN_diagerr(1:riessN) = 1/input(gold,3)**2 !included the extra velocities (see Riess et al.(2004))
-
-!!! Now add snls
-   call OpenTxtFile('data/snls.dat',tmp_file_unit)
-   do i=riessN+1, sn_Num
-      read(tmp_file_unit, *) SN_z(i), sn_moduli(i), sn_diagerr(i)
-      sn_diagerr(i)=1d0/sn_diagerr(i)**2
+   do i=1, sn_num
+      read (tmp_file_unit,*) tmp_mat (i,1:sn_num)
    end do
-   close(tmp_file_unit)
    
+   close (tmp_file_unit)
 
-   SN_trNinv = sum(SN_diagerr)
-   do_SN_init = .false.
+   call Matrix_Inverse(tmp_mat)
+   sn_ninv = DBLE (tmp_mat)
 
- end subroutine SN_init
+   SN_sumninv = SUM(sn_ninv)
+   
+  end subroutine SN_init
 
  function SN_LnLike(CMB)
-  !Assume this is called just after CAMB with the correct model
-  use camb
+   use camb
+  !Assume this is called just after CAMB with the correct model  use camb
   implicit none
   type(CMBParams) CMB
+  logical, save :: do_SN_init = .true.
+
   real SN_LnLike
-  integer i,kk,aa,bb
-  double precision z
+  integer i
+  double precision z, AT, BT
   real diffs(SN_num), chisq
 
-  if (do_SN_init) call SN_init
+  if (do_SN_init) then 
+     call SN_init
+     do_SN_init = .false.
+  end if
 
-     !$OMP PARALLEL DO DEFAULT(SHARED),SCHEDULE(STATIC), PRIVATE(z,i)
+
+!! This is actually seems to be faster without OMP
      do i=1, SN_num
-        !Obviously this is not v efficient...
-
-        if ((i.le.riessN).and.(.not.SN_useRiess)) cycle
-        if ((i.gt.riessn).and.(.not.SN_useSNLS)) cycle
         z= SN_z(i)
-        diffs(i) = 5*log10((1+z)**2*AngularDiameterDistance(z))+25 - SN_moduli(i)
-!        print *, 5*log10((1+z)**2*AngularDiameterDistance(z)*1e5/CMB%h), SN_moduli(i), cmb%h
+        diffs(i) = 5*log10((1+z)**2*AngularDiameterDistance(z))+25 -sn_moduli(i)
      end do
-     !$OMP END PARALLEL DO 
-
-
-!!! WE do analytical marginalisation separatelly for riess and SNLS
-
-     chisq=0
-
-     do kk=1,2
-
-        if ((kk.eq.1).and.(.not.SN_useRiess)) cycle
-        if ((kk.eq.2).and.(.not.SN_useSNLS)) cycle
-
-
-        if (kk.eq.1) then 
-           aa=1
-           bb=riessN
-        else
-           aa=riessN+1
-           bb=SN_Num
-        end if
-
-        !analytical marginalization over H_0 (equivaltent for M, absolute magnitude) 
-        
-        
-        aprima = sum(diffs(aa:bb)**2*SN_diagerr(aa:bb))
-        bprima = sum(diffs(aa:bb)*SN_diagerr(aa:bb))
-        cprima = sum(SN_diagerr(aa:bb))
-!        print *,aprima, cprima
      
-        if (sn_marg) then 
-           ! to calculate the abslolute chisquare 
-           
-           a1=log(cprima/(2*Pi_num))
-           chisq=chisq+a1+aprima-((bprima**2)/(cprima))
-        else
-           chisq=chisq+aprima
-        end if
+     AT = dot_product(diffs,matmul(sn_ninv,diffs))
+     BT = SUM(matmul(sn_ninv,diffs))
+     
+     !! H0 normalisation alla Bridle and co. 
+     chisq = AT-BT**2/sn_sumninv
 
-     end do
+     if (Feedback > 1) write (*,*) 'SN chisq: ', chisq
 
 
-!     if (Feedback > 1) write (*,*) 'SN chisq: ', chisq
+
      SN_LnLike = chisq/2
 
-!     stop
+
  end function SN_LnLike
 
 
