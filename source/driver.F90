@@ -12,6 +12,7 @@ program SolveCosmology
         use EstCovmatModule
         use ConjGradModule
         use mpk
+        use MatrixUtils
         implicit none
       
         
@@ -237,6 +238,8 @@ program SolveCosmology
 
         call Ini_Close
 
+        call SetIdlePriority !If running on Windows
+
         num_points = 0
         if (Use_CMB) then
          do i= 1, numsets
@@ -289,7 +292,7 @@ program SolveCosmology
               has_propose_matrix = status > 0
               if (MPIRank == 0) then ! write out the covariance matrix
                 if (Feedback>0) write (*,*) 'Estimated covariance matrix:'
-                call WriteSqMatrix(trim(baseroot) //'.local_invhessian',propose_matrix, num_params_used)
+                call Matrix_write(trim(baseroot) //'.local_invhessian',propose_matrix,forcetable=.true.)
                 if (Feedback>0) write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.local_hessian'
               end if
               if (has_propose_matrix) then
@@ -300,10 +303,6 @@ program SolveCosmology
               end if
         end if
     
-#ifdef RUNIDLE
-       call SetIdle
-#endif 
-
         if (action == 0) then
          if (Feedback > 0) write (*,*) 'starting Monte-Carlo'
          call MCMCSample(Params, numtoget)
@@ -326,17 +325,3 @@ program SolveCosmology
 
 end program SolveCosmology
 
-
-
-#ifdef RUNIDLE
- !If in Windows and want to run with low priorty so can multitask
-   subroutine SetIdle
-    USE DFWIN
-    Integer dwPriority 
-    Integer CheckPriority
-
-    dwPriority = 64 ! idle priority
-    CheckPriority = SetPriorityClass(GetCurrentProcess(), dwPriority)
-
-   end subroutine SetIdle
-#endif

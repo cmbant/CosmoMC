@@ -24,6 +24,20 @@ module CalcLike
  real :: Temperature  = 1
 
 contains
+
+  function GenericLikelihoodFunction(Params) 
+    type(ParamSet)  Params 
+    real :: GenericLikelihoodFunction
+  
+   !Used when you want to plug in your own CMB-independent likelihood function:
+   !set generic_mcmc=.true. in settings.f90, then write function here returning -Ln(Likelihood)
+   !Parameter array is Params%P
+    
+    GenericLikelihoodFunction = LogZero
+    stop 'GenericLikelihoodFunction: need to write this function!'
+
+  end function GenericLikelihoodFunction
+
   
   function GetLogPrior(CMB, Info) !Get -Ln(Prior)
     real GetLogPrior
@@ -33,14 +47,17 @@ contains
 
     GetLogPrior = logZero
  
-    if (CMB%H0 < H0_min .or. CMB%H0 > H0_max) return
-    if (CMB%omk < Omk_min .or. CMB%omk > Omk_max .or. CMB%Omv < 0) return
-    if (CMB%zre < Use_min_zre) return
+    if (.not. generic_mcmc) then
+     if (CMB%H0 < H0_min .or. CMB%H0 > H0_max) return
+     if (CMB%omk < Omk_min .or. CMB%omk > Omk_max .or. CMB%Omv < 0) return
+     if (CMB%zre < Use_min_zre) return
 
-    Age = GetAge(CMB, Info)
-     !This sets up parameters in CAMB, so do not delete unless you are careful!
+     Age = GetAge(CMB, Info)
+      !This sets up parameters in CAMB, so do not delete unless you are careful!
  
-    if (Use_Age_Tophat_Prior .and. (Age < Age_min .or. Age > Age_max) .or. Age < 0) return
+     if (Use_Age_Tophat_Prior .and. (Age < Age_min .or. Age > Age_max) .or. Age < 0) return
+    
+    end if
     GetLogPrior = 0
  
   end function GetLogPrior
@@ -56,10 +73,16 @@ contains
         return
     end if
 
-    call ParamsToCMBParams(Params%P,CMB)
+    if (generic_mcmc) then
+        GetLogLike = GenericLikelihoodFunction(Params) 
+        if (GetLogLike /= LogZero) GetLogLike = GetLogLike/Temperature
 
-    GetLogLike = GetLogLikePost(CMB, Params%Info,dum,.false.)
-   
+    else
+
+     call ParamsToCMBParams(Params%P,CMB)
+
+     GetLogLike = GetLogLikePost(CMB, Params%Info,dum,.false.)
+    end if 
    end function GetLogLike
 
     
@@ -71,6 +94,9 @@ contains
     logical, intent(in) :: HasCls
     real acl(lmax,num_cls)
     integer error
+
+    if (generic_mcmc) stop 'GetLogLikePost: not supported for generic'
+
 
     GetLogLikePost  = GetLogPrior(CMB, Info)
     if ( GetLogLikePost >= logZero) then

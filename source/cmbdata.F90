@@ -30,9 +30,12 @@
 !Mar 06: changed to WMAP 3-year likelihood
 !Aug 06: added cal**2 scaling of x-factors
 !Oct 06: edited ReadAllExact to auto-account for number of cls (e.g. missing BB)
+!Oct 07: added Planck-like CMBLikes format
 module cmbdata
 use settings
 use cmbtypes
+use MatrixUtils
+use CMBLikes
 implicit none
 
  
@@ -62,15 +65,20 @@ implicit none
     real, pointer, dimension(:) :: xfactors
     logical, pointer, dimension(:) :: has_xfactor !whether each bin has one
     logical :: all_l_exact
+    logical :: CMBLike !New format
     integer :: all_l_lmax
     real, pointer, dimension(:,:) :: all_l_obs, all_l_noise
     real, pointer, dimension(:) :: all_l_fsky
+    Type (TCMBLikes), pointer :: CMBLikes
   end Type CMBdataset
 
   integer :: num_datasets = 0
   Type(CMBdataset) datasets(10)
 
   logical :: init_MAP = .true.
+
+  integer :: cl_bin_width =1
+
  
   integer, parameter :: halfsteps = 5 !do 2*halfsteps+1 steps in numerical marginalization
   real margeweights(-halfsteps:halfsteps)
@@ -167,6 +175,7 @@ contains
       character(LEN=Ini_max_string_len) :: fname
       integer l, idum, ncls, ncol
       real inobs(4)
+      integer file_unit
 
     !In this case we have data for every l, and use exact full-sky likelihood expression
     !with some fudge factor fsky_eff^2 to reduce the degrees of freedom: fsky^eff*(2l+1)
@@ -195,18 +204,21 @@ contains
        else
           stop 'cmbdata.f90::ReadAllExact: wrong number of columns'
        end if
-       call OpenTxtFile(fname,tmp_file_unit)
+       
+       file_unit =  new_file_unit()
+
+       call OpenTxtFile(fname,file_unit)
 !File format:
 !l C_TT (C_TE C_EE [C_BB]) N_T (N_P) fsky_eff
 !Must have num_cls set to correct value for file
        do l = 2, aset%all_l_lmax
-          read (tmp_file_unit, *, end=100, err=100) idum,inobs(1:ncls), aset%all_l_noise(l,:), aset%all_l_fsky(l)
+          read (file_unit, *, end=100, err=100) idum,inobs(1:ncls), aset%all_l_noise(l,:), aset%all_l_fsky(l)
           if (idum /= l) stop 'Error reading all_l_file'
             !set BB to pure noise if not in file
           if (aset%has_pol .and. ncls < num_cls) inobs(num_cls) = aset%all_l_noise(l,2)
           aset%all_l_obs(l,:) = inobs(1:num_cls)
         end do
-       close(tmp_file_unit)
+       call CloseFile(file_unit)
 
        return
 100    stop 'Error reading all_l_file file'
@@ -220,12 +232,15 @@ contains
    real cl(lmax,num_cls)
    Type(CMBdataset) :: aset
    integer l
-   real ChiSqExact, chisq, term, CT, CE, CB
+   real ChiSqExact, chisq, term, CT, CE, CB, CC
+   real CThat, CChat, CEhat
    real dof
+   integer i
 
    chisq=0
 
-   do l=2, aset%all_l_lmax
+   
+   do l=2, 30 
      dof = aset%all_l_fsky(l)**2*(2*l+1)
        !Ignoring l correlations but using f_sky^2_eff fudge factor may be a good approx
        !for nearly full sky observations
@@ -247,11 +262,51 @@ contains
                 +log(CT/aset%all_l_obs(l,1)) - 1)
      end if
    end do
+
+
+   do l=31 , aset%all_l_lmax, cl_bin_width
+     dof = 0
+     CT=0
+     CE=0
+     CC=0
+     CThat=0
+     CEhat=0
+     CChat=0
+     do i=l,l+cl_bin_width-1
+      dof = dof + aset%all_l_fsky(i)**2*(2*i+1)
+      CT = CT + (cl(l,1) + aset%all_l_noise(l,1))*(2*i+1)
+      CThat = CThat + aset%all_l_obs(l,1)*(2*i+1)
+      if (aset%has_pol) then
+       CE = CE + (cl(l,3) + aset%all_l_noise(l,2) ) *(2*i+1)
+       CC = CC +  cl(l,2)*(2*i+1)
+       CEhat = CEhat + aset%all_l_obs(l,3)*(2*i+1)
+       CChat = CChat + aset%all_l_obs(l,2)*(2*i+1)
+      end if
+     end do
+
+
+     if (aset%has_pol) then
+      term = CT*CE - CC**2
+      chisq = chisq + dof*( &
+       (CT*CEHat + CE*CThat - 2 *CC*CCHat)/term &
+        + log( term/ (CTHat*CEHat - CCHat**2)) -2)
+      if (num_cls>3) then
+        !add in BB
+        CB = cl(l,num_cls) + aset%all_l_noise(l,2)
+        chisq = chisq + dof * (aset%all_l_obs(l,num_cls)/CB &
+                +log(CB/aset%all_l_obs(l,num_cls)) - 1)
+      end if
+     else
+        chisq = chisq + dof * (CTHat/CT +log(CT/CTHat) - 1)
+     end if
+   end do
+
    ChiSqExact = ChiSq
 
  end function ChiSqExact
 
  subroutine ReadDataset(aname)
+   use CMBLikes
    character(LEN=*), intent(IN) :: aname
    character(LEN=Ini_max_string_len) :: InLine, window_dir, Ninv_file, xfact_file, band_file
    logical bad, windows_are_bare
@@ -259,6 +314,7 @@ contains
    integer i, first_band, use_i
    real, pointer, dimension(:,:) :: tmp_mat
    real, pointer, dimension(:) :: tmp_arr
+   character(LEN=Ini_max_string_len) :: data_format
 
    num_datasets = num_datasets + 1
    if (num_datasets > 10) stop 'too many datasets'
@@ -284,18 +340,33 @@ contains
       
    aset%name = Ini_Read_String('name')
    aset%use_set =.true.
+   aset%num_points = 0
     
    if (Feedback > 0) write (*,*) 'reading: '//trim(aset%name)
 
    Ini_fail_on_not_found = .false.
 
-   aset%has_pol = Ini_Read_Logical('has_pol',.false.)
-   
-   aset%all_l_exact = Ini_Read_Logical('all_l_exact',.false.)
-   if (aset%all_l_exact) then
+   data_format  = Ini_Read_String('dataset_format')
+
+   aset%CMBlike = data_format == 'CMBLike'
+
+   aset%all_l_exact = (data_format =='all_l_exact') &
+            .or. Ini_Read_Logical('all_l_exact',.false.)
+   if (aset%CMBLike) then
+      allocate(aset%CMBLikes)
+      call CMBLikes_ReadData(aset%CMBLikes, DefIni, ExtractFilePath(aname))
+  
+   else if (aset%all_l_exact) then
+       aset%has_pol = Ini_Read_Logical('has_pol',.false.)
        call ReadAllExact(aset)
+   else if (data_format/='') then
+        write(*,*) 'Error in '//trim(aname)
+        write(*,*) 'Unknown data_format: '//trim(data_format)
+        stop
    else
     !Otherwise do usual guassian/offset lognormal stuff
+
+       aset%has_pol = Ini_Read_Logical('has_pol',.false.)
 
        aset%num_points = Ini_Read_Int('num_points')
 
@@ -385,7 +456,7 @@ contains
         
        end if
 
-   end if !not all_l_exact
+   end if !not all_l_exact or cut sky unbinned
    
    call Ini_Close
 
@@ -514,7 +585,7 @@ contains
    INTEGER :: npol(6), minmax(2,6)
    INTEGER :: file_i,ijunk, ilike
    REAL :: cal, beam_width, beam_sigma, l_mid
-
+   integer, parameter :: like_xfactorall=1, like_xfactorsome = 2
    !to be compatible with some older CITA output files
    LOGICAL :: FISHER_T_CMB
 
@@ -580,10 +651,10 @@ contains
    allocate(used_bands(aset%num_points))
 
    READ(62,*) ilike
-   aset%has_xfactors = ilike > 0
+   aset%has_xfactors = ilike ==like_xfactorsome .or. ilike==like_xfactorall 
    !1 : all bands are offset lognormal
    !2 : only bands specified have offset lognormal
-   IF(ilike > 0) then
+   IF(aset%has_xfactors) then
      ALLOCATE(aset%has_xfactor(1:aset%num_points))
      aset%has_xfactor = .true.
    end if
@@ -611,11 +682,12 @@ contains
          if (i>=minmax(1,k) .and. i<=minmax(2,k)) then
              use_i = use_i + 1
              used_bands(use_i) = file_i
-             IF(ilike < 2) THEN
+             IF(ilike /= like_xfactorsome) THEN
                READ(62,'(a)') instr
                READ(instr,*) ijunk, aset%points(use_i)%obs,aset%points(use_i)%err_minus, &
                      aset%points(use_i)%err_plus,tmp_x(use_i),lb(use_i,1),lb(use_i,2)
-             ELSE
+             ELSE 
+                !like_xfactorsome
                 !read also offset switch per band
                 READ(62,*) ijunk, aset%points(use_i)%obs,aset%points(use_i)%err_minus, &
                      aset%points(use_i)%err_plus,tmp_x(use_i),lb(use_i,1),lb(use_i,2),xin
@@ -713,10 +785,14 @@ contains
       return
    end if
 
-   if (aset%all_l_exact) then
+   if (aset%CMBLike) then
+
+     chisq =  CMBLikes_CMBLike(aset%CMBLikes, cl) 
+
+   else if (aset%all_l_exact) then
      
      chisq = ChiSqExact(cl,aset)
-    
+   
    else
    
        denom = 1 !Assume Prob \propto exp(-chisq/2)/sqrt(denom)

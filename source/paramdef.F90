@@ -139,6 +139,7 @@ subroutine Initialize(Params)
         Ini_fail_on_not_found = .false.
 
         call CMB_Initialize(Params%Info)
+
         prop_mat = Ini_Read_String('propose_matrix')
         has_propose_matrix = prop_mat /= ''
 
@@ -171,7 +172,7 @@ subroutine Initialize(Params)
                 num_fast = num_fast + 1
               else
                 num_slow = num_slow +1
-	      end if
+	          end if
            end if
            if (new_chains) then
            do
@@ -241,6 +242,7 @@ end subroutine Initialize
 
 
 subroutine SetProposeMatrix
+  use MAtrixUtils
   real proj_len(num_params_used)
   real U(num_params_used,num_params_used)
   real vecs(num_slow,num_params_used)
@@ -274,7 +276,7 @@ subroutine SetProposeMatrix
             U = propose_matrix
             call Matrix_Inverse(U)
             propose_matrix_fast = U(num_slow+1:num_params_used, num_slow+1:num_params_used)
-            call Diagonalize(propose_matrix_fast,propose_diag_fast, num_fast)
+            call Matrix_Diagonalize(propose_matrix_fast,propose_diag_fast, num_fast)
             !propose_matrix^-1 = U D U^T, returning U in propose_matrix
             propose_matrix_fast = transpose(propose_matrix_fast)
 
@@ -292,7 +294,7 @@ subroutine SetProposeMatrix
 
     if (.not. allocated(propose_diag)) allocate(propose_diag(num_params_used))
 
-    call Diagonalize(propose_matrix, propose_diag, num_params_used)
+    call Matrix_Diagonalize(propose_matrix, propose_diag, num_params_used)
       !propose_matrix = U D U^T, returning U in propose_matrix
 
 
@@ -541,7 +543,7 @@ end subroutine SetProposeMatrix
                 call MPI_TESTALL(MPIChains-1,req, flag, stats, ierror)
                 Waiting = .not. flag
 
-              elseif (mod(npoints,(MPI_Sample_update_freq*num_params_used)/(slice_fac*MPI_thin_fac))==0) then
+              elseif (mod(npoints,max(1,(MPI_Sample_update_freq*num_params_used)/(slice_fac*MPI_thin_fac)))==0) then
 
                  Waiting = .true.
                  do j=1, MPIChains-1              
@@ -632,7 +634,7 @@ end subroutine SetProposeMatrix
                             meanscov(:,j) = meanscov(:,j) /sc                 
                       end do
  
-                     call Diagonalize(meanscov, evals, num_params_used)
+                     call Matrix_Diagonalize(meanscov, evals, num_params_used)
                      cov = matmul(matmul(transpose(meanscov),cov),meanscov)
                      R = 0
                      do j=1,num_params_used

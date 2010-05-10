@@ -68,7 +68,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE F90 /check:bounds /compile_only /dbglibs /debug:full /nologo /traceback /warn:argument_checking /warn:nofileopt
-# ADD F90 /check:bounds /compile_only /dbglibs /debug:full /define:"NOWMAP" /define:"DECONLY" /fpp /nologo /traceback /warn:argument_checking /warn:nofileopt
+# ADD F90 /check:bounds /compile_only /dbglibs /debug:full /define:"NOWMAP" /define:"MATRIX_SINGLE" /define:"DECONLY" /fpp /nologo /traceback /warn:argument_checking /warn:nofileopt
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
 # ADD CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
 # ADD BASE RSC /l 0x809 /d "_DEBUG"
@@ -95,16 +95,17 @@ LINK32=link.exe
 # Begin Source File
 
 SOURCE=..\camb\bessels.f90
-NODEP_F90_BESSE=\
+DEP_F90_BESSE=\
 	".\Debug\lvalues.mod"\
 	".\Debug\ModelParams.mod"\
 	".\Debug\Precision.mod"\
+	".\Debug\Ranges.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=..\camb\camb.f90
-NODEP_F90_CAMB_=\
+DEP_F90_CAMB_=\
 	".\Debug\CAMBmain.mod"\
 	".\Debug\GaugeInterface.mod"\
 	".\Debug\InitialPower.mod"\
@@ -112,13 +113,15 @@ NODEP_F90_CAMB_=\
 	".\Debug\ModelData.mod"\
 	".\Debug\ModelParams.mod"\
 	".\Debug\Precision.mod"\
+	".\Debug\SpherBessels.mod"\
+	".\Debug\ThermoData.mod"\
 	".\Debug\Transfer.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=..\camb\cmbmain.f90
-NODEP_F90_CMBMA=\
+DEP_F90_CMBMA=\
 	".\Debug\GaugeInterface.mod"\
 	".\Debug\InitialPower.mod"\
 	".\Debug\lvalues.mod"\
@@ -129,15 +132,13 @@ NODEP_F90_CMBMA=\
 	".\Debug\Precision.mod"\
 	".\Debug\SpherBessels.mod"\
 	".\Debug\ThermoData.mod"\
-	".\Debug\TimeSteps.mod"\
 	".\Debug\Transfer.mod"\
-	".\Debug\USpherBessels.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=..\camb\equations.f90
-NODEP_F90_EQUAT=\
+DEP_F90_EQUAT=\
 	".\Debug\lvalues.mod"\
 	".\Debug\MassiveNu.mod"\
 	".\Debug\ModelData.mod"\
@@ -150,7 +151,7 @@ NODEP_F90_EQUAT=\
 # Begin Source File
 
 SOURCE=..\camb\halofit.f90
-NODEP_F90_HALOF=\
+DEP_F90_HALOF=\
 	".\Debug\ModelParams.mod"\
 	".\Debug\Transfer.mod"\
 	
@@ -162,7 +163,7 @@ SOURCE=..\camb\inifile.f90
 # Begin Source File
 
 SOURCE=..\camb\lensing.f90
-NODEP_F90_LENSI=\
+DEP_F90_LENSI=\
 	".\Debug\InitialPower.mod"\
 	".\Debug\lvalues.mod"\
 	".\Debug\ModelData.mod"\
@@ -173,36 +174,41 @@ NODEP_F90_LENSI=\
 # Begin Source File
 
 SOURCE=..\camb\modules.f90
-NODEP_F90_MODUL=\
+DEP_F90_MODUL=\
+	".\Debug\AMLutils.mod"\
 	".\Debug\IniFile.mod"\
 	".\Debug\InitialPower.mod"\
 	".\Debug\Precision.mod"\
+	".\Debug\Ranges.mod"\
 	".\Debug\RECFAST.MOD"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=..\camb\power_tilt.f90
-NODEP_F90_POWER=\
+DEP_F90_POWER=\
 	".\Debug\Precision.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=..\camb\recfast.f90
-NODEP_F90_RECFA=\
+DEP_F90_RECFA=\
 	".\Debug\Precision.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=..\camb\subroutines.f90
+DEP_F90_SUBRO=\
+	".\Debug\AMLutils.mod"\
+	
 # End Source File
 # End Group
 # Begin Source File
 
 SOURCE=.\calclike.f90
-NODEP_F90_CALCL=\
+DEP_F90_CALCL=\
 	".\Debug\CMB_Cls.mod"\
 	".\Debug\cmbdata.mod"\
 	".\Debug\cmbtypes.mod"\
@@ -218,7 +224,7 @@ NODEP_F90_CALCL=\
 # Begin Source File
 
 SOURCE=.\CMB_Cls_simple.f90
-NODEP_F90_CMB_C=\
+DEP_F90_CMB_C=\
 	".\Debug\CAMB.mod"\
 	".\Debug\cmbtypes.mod"\
 	".\Debug\LambdaGeneral.mod"\
@@ -232,9 +238,13 @@ NODEP_F90_CMB_C=\
 # Begin Source File
 
 SOURCE=.\cmbdata.f90
-NODEP_F90_CMBDA=\
+DEP_F90_CMBDA=\
+	".\Debug\CMBLikes.mod"\
 	".\Debug\cmbtypes.mod"\
+	".\Debug\MatrixUtils.mod"\
 	".\Debug\settings.mod"\
+	
+NODEP_F90_CMBDA=\
 	".\Debug\WMAP_OPTIONS.mod"\
 	".\Debug\WMAP_PASS2.mod"\
 	".\Debug\WMAP_UTIL.mod"\
@@ -243,14 +253,14 @@ NODEP_F90_CMBDA=\
 # Begin Source File
 
 SOURCE=.\cmbtypes.f90
-NODEP_F90_CMBTY=\
+DEP_F90_CMBTY=\
 	".\Debug\settings.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\conjgrad_wrapper.f90
-NODEP_F90_CONJG=\
+DEP_F90_CONJG=\
 	".\Debug\CalcLike.mod"\
 	".\Debug\ParamDef.mod"\
 	".\Debug\Random.mod"\
@@ -259,13 +269,15 @@ NODEP_F90_CONJG=\
 # Begin Source File
 
 SOURCE=.\driver.F90
-NODEP_F90_DRIVE=\
+DEP_F90_DRIVE=\
 	".\Debug\CalcLike.mod"\
 	".\Debug\cmbdata.mod"\
 	".\Debug\ConjGradModule.mod"\
 	".\Debug\EstCovmatModule.mod"\
 	".\Debug\IniFile.mod"\
+	".\Debug\MatrixUtils.mod"\
 	".\Debug\MonteCarlo.mod"\
+	".\Debug\mpk.mod"\
 	".\Debug\ParamDef.mod"\
 	".\Debug\posthoc.mod"\
 	".\Debug\settings.mod"\
@@ -275,8 +287,9 @@ NODEP_F90_DRIVE=\
 # Begin Source File
 
 SOURCE=.\EstCovmat.f90
-NODEP_F90_ESTCO=\
+DEP_F90_ESTCO=\
 	".\Debug\CalcLike.mod"\
+	".\Debug\MatrixUtils.mod"\
 	".\Debug\ParamDef.mod"\
 	".\Debug\Random.mod"\
 	".\Debug\settings.mod"\
@@ -285,15 +298,25 @@ NODEP_F90_ESTCO=\
 # Begin Source File
 
 SOURCE=.\lya.f90
-NODEP_F90_LYA_F=\
+DEP_F90_LYA_F=\
 	".\Debug\cmbtypes.mod"\
 	".\Debug\settings.mod"\
 	
 # End Source File
 # Begin Source File
 
+SOURCE=.\Matrix_utils.F90
+DEP_F90_MATRI=\
+	".\Debug\AMLutils.mod"\
+	
+NODEP_F90_MATRI=\
+	".\Debug\IFPORT.mod"\
+	
+# End Source File
+# Begin Source File
+
 SOURCE=.\MCMC.f90
-NODEP_F90_MCMC_=\
+DEP_F90_MCMC_=\
 	".\Debug\CalcLike.mod"\
 	".\Debug\ParamDef.mod"\
 	".\Debug\propose.mod"\
@@ -303,19 +326,21 @@ NODEP_F90_MCMC_=\
 # Begin Source File
 
 SOURCE=.\mpk.f90
-NODEP_F90_MPK_F=\
+DEP_F90_MPK_F=\
 	".\Debug\cmbtypes.mod"\
+	".\Debug\MatrixUtils.mod"\
 	".\Debug\settings.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\paramdef.F90
-NODEP_F90_PARAM=\
+DEP_F90_PARAM=\
 	".\Debug\CMB_Cls.mod"\
 	".\Debug\cmbdata.mod"\
 	".\Debug\cmbtypes.mod"\
 	".\Debug\IniFile.mod"\
+	".\Debug\MatrixUtils.mod"\
 	".\Debug\Random.mod"\
 	".\Debug\settings.mod"\
 	
@@ -323,7 +348,7 @@ NODEP_F90_PARAM=\
 # Begin Source File
 
 SOURCE=.\params_CMB.f90
-NODEP_F90_PARAMS=\
+DEP_F90_PARAMS=\
 	".\Debug\CAMB.mod"\
 	".\Debug\CMB_Cls.mod"\
 	".\Debug\cmbtypes.mod"\
@@ -335,8 +360,19 @@ NODEP_F90_PARAMS=\
 # End Source File
 # Begin Source File
 
+SOURCE=.\Planck_like.f90
+DEP_F90_PLANC=\
+	".\Debug\AMLutils.mod"\
+	".\Debug\cmbtypes.mod"\
+	".\Debug\IniFile.mod"\
+	".\Debug\MatrixUtils.mod"\
+	".\Debug\settings.mod"\
+	
+# End Source File
+# Begin Source File
+
 SOURCE=.\postprocess.f90
-NODEP_F90_POSTP=\
+DEP_F90_POSTP=\
 	".\Debug\CalcLike.mod"\
 	".\Debug\CMB_Cls.mod"\
 	".\Debug\cmbdata.mod"\
@@ -347,7 +383,7 @@ NODEP_F90_POSTP=\
 # Begin Source File
 
 SOURCE=.\propose.f90
-NODEP_F90_PROPO=\
+DEP_F90_PROPO=\
 	".\Debug\ParamDef.mod"\
 	".\Debug\Random.mod"\
 	".\Debug\settings.mod"\
@@ -356,7 +392,7 @@ NODEP_F90_PROPO=\
 # Begin Source File
 
 SOURCE=.\settings.f90
-NODEP_F90_SETTI=\
+DEP_F90_SETTI=\
 	".\Debug\AMLutils.mod"\
 	".\Debug\IniFile.mod"\
 	".\Debug\Random.mod"\
@@ -365,7 +401,7 @@ NODEP_F90_SETTI=\
 # Begin Source File
 
 SOURCE=.\supernovae.f90
-NODEP_F90_SUPER=\
+DEP_F90_SUPER=\
 	".\Debug\CAMB.mod"\
 	".\Debug\cmbtypes.mod"\
 	
@@ -380,13 +416,14 @@ DEP_F90_UTILS=\
 	
 NODEP_F90_UTILS=\
 	".\Debug\F90_UNIX.mod"\
+	".\Debug\IFPORT.mod"\
 	".\Debug\mpif.h"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\WeakLen.f90
-NODEP_F90_WEAKL=\
+DEP_F90_WEAKL=\
 	".\Debug\cmbtypes.mod"\
 	
 # End Source File

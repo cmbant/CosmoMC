@@ -152,7 +152,7 @@ contains
 
         if (PostParams%redo_from_text) then
           error = 0
-          read(1, *) mult, like, Params(1:num_params)    
+          read(1, *, end=100,err=100) mult, like, Params(1:num_params)    
           call ParamsToCMBParams(Params, CMB)
 
         else
@@ -264,7 +264,7 @@ contains
         
         end do
 
-        close(1)
+100     close(1)
         close(3)
         close(outfile_unit)
 

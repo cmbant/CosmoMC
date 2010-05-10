@@ -11,6 +11,7 @@ module EstCovmatModule
  use ParamDef
  use CalcLike
  use settings
+ use Matrixutils
  implicit none
 
  real, dimension(:,:,:,:), allocatable :: Lgrid
@@ -70,7 +71,7 @@ contains
       call GetHess(CenterParams,parsteps,Hess)
 
       U=Hess
-      call Diagonalize(U, D, num_params_used)  
+      call Matrix_Diagonalize(U, D, num_params_used)  
       if (any(D <= 0)) then
         write(*,*) 
         write(*,*) '!!! -ve evals, so spreading the grid out by a factor of ~2'

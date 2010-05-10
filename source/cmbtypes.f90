@@ -365,7 +365,7 @@ contains
         stop
      end if
 
-     iz = int(y)
+     iz = int(y*0.99999999)
      dz = y - iz
 
      i = int(x)

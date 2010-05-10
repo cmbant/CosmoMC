@@ -22,7 +22,7 @@
 ! You can easily edit the .m and .sm files produced to produce custom layouts of plots, etc.
 ! Data for plots are exported to the plot_data_dir folder, other files to out_dir
 
-!This version Oct 2006
+!This version Feb 2008
 !March 03: fixed bug computing the limits in the .margestats file
 !May 03: Added support for triangle plots 
 !Dec 03: Support for non-chain samples, auto-correlation convergence, auto_label,
@@ -32,11 +32,18 @@
 !Apr 06: Fixed some version confusions
 !Aug 06: speeded 2D plotting, added limitsxxx support with smoothing=F
 !Oct 06: Added plot_data_dir and out_dir
+!Nov 07: uses Matrix_utils, fixed .ps file output filenames, 
+!        added markerxxx for vertical lines in 1D matlabl plots
 module MCSamples
  use settings
+ use MAtrixUtils
  implicit none
 
         integer, parameter :: gp = KIND(1.d0)
+
+
+! #define coldata(a, b) coldata(b, a)
+!uncomment to switch order for compilation so confid_val is faster - suggested by Reijo Keskitalo March07
 
         real(gp), dimension(:,:), target, allocatable :: coldata  !(col_index, row_index)
         integer, dimension(:), allocatable :: thin_ix  
@@ -59,6 +66,8 @@ module MCSamples
         character(LEN=120) rootname, plot_data_dir, out_dir, rootdirname
         character(LEN=120) labels(max_cols)
         logical has_limits(max_cols), has_limits_top(max_cols),has_limits_bot(max_cols)
+        logical has_markers(max_cols)
+        real markers(max_cols)
         integer num_contours 
         real matlab_version
         real contours(2), contour_levels(2)
@@ -106,7 +115,7 @@ contains
     real invars(1:ncols)
 ! map parameters in invars: eg. invars(3)=invars(3)*invars(4) 
 
-!    invars(2+13)=invars(17+2)*exp(-invars(2+4))
+!    invars(2+13)=invars(17+2)*exp(-invars(2+4)) 
    
     stop 'Need to write MapParameters routine first'  
   
@@ -143,8 +152,6 @@ contains
           
   end subroutine DeleteZeros
 
-
-
   subroutine SortColData(bycol)
  !Sort coldata in order of likelihood
      Type(double_pointer), dimension(:), allocatable :: rowptrs
@@ -159,7 +166,7 @@ contains
       rowptrs(i)%p => coldata(1:,i)
      end do
 
-    call QuickSortArr(rowptrs(0), 1, nrows, bycol)
+    call QuickSortArr(rowptrs, 1, nrows, bycol)
 
 !Make new table using sorted pointers   
     do i = 0, nrows-1
@@ -309,7 +316,7 @@ contains
               allocate(covmatrix(covmat_dimension,covmat_dimension))
               covmatrix=corrmatrix(1:covmat_dimension,1:covmat_dimension)
 
-              call WriteSqMatrix(trim(rootdirname) //'.covmat',covmatrix, covmat_dimension)
+              call Matrix_write(trim(rootdirname) //'.covmat',covmatrix,.true.)
               deallocate(covmatrix)
              end if
 
@@ -320,7 +327,7 @@ contains
                corrmatrix(:,i) = corrmatrix(:,i)/scale
                end if
               end do
-             call WriteSqMatrix(trim(rootdirname) //'.corr',corrmatrix, ncols -2)
+             call Matrix_write(trim(rootdirname) //'.corr',corrmatrix, .true.)
              
           end subroutine GetCovMatrix
 
@@ -340,7 +347,7 @@ contains
             mat2D = corrmatrix(pars,pars)
             u = mat2D
 
-            call Diagonalize(u, evals, 2)
+            call Matrix_Diagonalize(u, evals, 2)
             corrs = matmul(transpose(u), corrmatrix(pars,:))
             corrs(:,pars) = 0
           
@@ -483,7 +490,7 @@ contains
          end do 
             
              u = corrmatrix
-             call Diagonalize(u, evals, n)
+             call Matrix_Diagonalize(u, evals, n)
 
              write (40,*) ''
              write (40,*) 'e-values of correlation matrix'
@@ -738,7 +745,7 @@ contains
                 meanscov(:,jj) = meanscov(:,jj) /sc                 
           end do
  
-         call Diagonalize(meanscov, evals, num)
+         call Matrix_Diagonalize(meanscov, evals, num)
          cov = matmul(matmul(transpose(meanscov),cov),meanscov)
          write (40,*) ''
          write (40,*) 'var(mean)/mean(var) for eigenvalues of covariance of means'
@@ -925,7 +932,7 @@ contains
             if (any(thin_fac(1:num_chains_used)==0)) then
               write (*,*) 'RL: Not enough samples to estimate convergence stats'
             else        
-              call writeS ('RL: Thin for Markov:         '//&
+              call writeS('RL: Thin for Markov:         '//&
                  Trim(IntToStr(maxval(markov_thin(1:num_chains_used)))))
               indep_thin = maxval(thin_fac(1:num_chains_used))
               call writeS('RL: Thin for indep samples:  '// &
@@ -1272,16 +1279,16 @@ contains
            write(unit,*) 'clf'
           if (BW) then
            if (plot_meanlikes) then
-            write(unit,*) 'lineM = {''-k'',''-r'',''-b'',''-m'',''-g'',''-y''};';
-            write(unit,*) 'lineL = {'':k'','':r'','':b'','':m'','':g'','':y''};';
+            write(unit,*) 'lineM = {''-k'',''-r'',''-b'',''-m'',''-g'',''-c'',''-y''};';
+            write(unit,*) 'lineL = {'':k'','':r'','':b'','':m'','':g'','':c'','':y''};';
             write(unit,*) 'lw1=3;lw2=1;' !Line Widths     
            else
-            write(unit,*) 'lineM = {''-k'',''--r'',''-.b'','':m'',''--g'',''-.y''};';
+            write(unit,*) 'lineM = {''-k'',''--r'',''-.b'','':m'',''--g'',''-.c'',''-y''};';
             write(unit,*) 'lw1=1;lw2=1;' !Line Widths     
            end if
            else
-            write(unit,*) 'lineM = {''-k'',''-r'',''-b'',''-m'',''-g'',''-y''};';
-            write(unit,*) 'lineL = {'':k'','':r'','':b'','':m'','':g'','':y''};';
+            write(unit,*) 'lineM = {''-k'',''-r'',''-b'',''-m'',''-g'',''-c'',''-y'',''--k'',''--r'',''--b''};';
+            write(unit,*) 'lineL = {'':k'','':r'','':b'','':m'','':g'','':c'','':y'',''-.k'',''-.r'',''-.b''};';
            write(unit,*) 'lw1=1;lw2=1;' !Line Widths     
           end if
 
@@ -1304,6 +1311,10 @@ contains
          write (aunit,*) "load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.likes''));'
          write (aunit,*) 'pts='//trim(fname)//';'
          write (aunit,*) 'plot(pts(:,1),pts(:,2),lineL{1},''LineWidth'',lw1);'
+        end if
+
+        if (has_markers(colix(j))) then
+           write (aunit,'("line([",1e15.6," ",1e15.6,"],[0 2],''Color'',''k'');")') markers(colix(j)),markers(colix(j))
         end if
 
 
@@ -1466,6 +1477,8 @@ program GetDist
         has_limits_bot = .false.
         
         bin_limits = Ini_Read_String('all_limits')
+        markers=0
+        has_markers=.false.
         do ix=3, ncols
            write (numstr,*) ix-2
            if (bin_limits /= '') then
@@ -1484,23 +1497,30 @@ program GetDist
                 read(InS2,*) limmax(ix)
               end if
            end if
+
+           InLine = Ini_Read_String('marker'//trim(adjustl(numstr)))
+           if (InLine /= '') then
+              has_markers(ix) = .true.
+              read(InLine,*) markers(ix)
+           end if 
+            
         end do
 
         has_limits = has_limits_top .or. has_limits_bot
 
         plot_2D_param = Ini_Read_Int('plot_2D_param',0)
         if (plot_2D_param /= 0) then
-        plot_2D_param = plot_2D_param + 2
-        num_cust2D_plots = 0
-    else
+         plot_2D_param = plot_2D_param + 2
+         num_cust2D_plots = 0
+        else
          !Use custom array of specific plots
-     num_cust2D_plots = Ini_Read_Int('plot_2D_num',0)
-     do ix = 1, num_cust2D_plots
-        InLine = Ini_Read_String(numcat('plot',ix))
-        read (InLine, *) ix1,ix2
-        cust2DPLots(ix) = ix1+2 + (ix2+2)*100 
-     end do
-    end if
+        num_cust2D_plots = Ini_Read_Int('plot_2D_num',0)
+           do ix = 1, num_cust2D_plots
+             InLine = Ini_Read_String(numcat('plot',ix))
+             read (InLine, *) ix1,ix2
+             cust2DPLots(ix) = ix1+2 + (ix2+2)*100 
+           end do
+        end if
 
     InS1 =Ini_Read_String('exclude_chain')
     num_exclude = 0
@@ -1781,7 +1801,7 @@ program GetDist
           plot_row = (num_vars +plot_col-1)/plot_col 
    
           !So we don't forget to run sm, delete current .ps file
-          call DeleteFile(trim(rootdirname)//'.ps')
+          call DeleteFile(trim(rootname)//'.ps')
     
     
           open(unit=51,file=trim(rootdirname) // '.m',form='formatted',status='replace')
@@ -1791,7 +1811,7 @@ program GetDist
           open(unit=50,file=sm_file,form='formatted',status='replace')
        !SuperMongo .sm file for 1D plots
           write (50,*) 'DEFINE TeX_strings 1'
-          write (50,*) 'device postfile '//trim(rootdirname)//'.ps'
+          write (50,*) 'device postfile '//trim(rootname)//'.ps'
           write (50,*) 'DEFINE default_font rm'
           if (num_vars > 6) then
            write (50,*) 'expand 0.8'
@@ -1902,8 +1922,8 @@ program GetDist
               else
                if (binsraw(ix_min(j))==0  .and. &
                    binsraw(ix_min(j)+1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
-                 write (*,*) 'Warning: sharp edge in parameter '//trim(intToStr(ix-2))// &
-                         ' - check limits'//trim(intToStr(ix-2))
+                 call WriteS('Warning: sharp edge in parameter '//trim(intToStr(ix-2))// &
+                         ' - check limits'//trim(intToStr(ix-2)))
 
                end if
               end if
@@ -1913,8 +1933,8 @@ program GetDist
               else
                if (binsraw(ix_max(j))==0  .and. &
                    binsraw(ix_max(j)-1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
-                 write (*,*) 'Warning: sharp edge in parameter '//trim(intToStr(ix-2))// &
-                         ' - check limits'//trim(intToStr(ix-2))
+                 call WriteS('Warning: sharp edge in parameter '//trim(intToStr(ix-2))// &
+                         ' - check limits'//trim(intToStr(ix-2)))
                end if
                
               end if
@@ -2073,7 +2093,7 @@ program GetDist
               else
                 write (51,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 8]);';
               end if
-              write (51,*) 'print -dpsc2 '//trim(rootdirname)//'.ps;'
+              write (51,*) 'print -dpsc2 '//trim(rootname)//'.ps;'
               close(51)
           end if
                  
@@ -2181,7 +2201,7 @@ program GetDist
             write (50,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 10]);';
           end if
 
-          write (50,*) 'print -dpsc2 '//trim(rootdirname)//'_2D.ps;'
+          write (50,*) 'print -dpsc2 '//trim(rootname)//'_2D.ps;'
           close(50)
 
           end if
@@ -2200,7 +2220,7 @@ program GetDist
           end do
           write (52,*)  'set(gcf, ''PaperUnits'',''inches'');'
           write (52,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 8]);';
-          write (52,*) 'print -dpsc2 '//trim(rootdirname)//'_tri.ps;'
+          write (52,*) 'print -dpsc2 '//trim(rootname)//'_tri.ps;'
           close(52)
   
          end if
@@ -2258,7 +2278,7 @@ program GetDist
               write (50,*) 'set(gcf, ''PaperPosition'',[ 0 0 '//  &
                             trim(tmpstr) //' 8]);'
 
-              write (50,*) 'print -dpsc2 '//trim(rootdirname)//'_3D.ps;'
+              write (50,*) 'print -dpsc2 '//trim(rootname)//'_3D.ps;'
               close(50)
           end if
     

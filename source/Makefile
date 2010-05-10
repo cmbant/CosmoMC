@@ -1,21 +1,26 @@
-#Settings here are for Intel ifort on CITA cluster; uncomment others below
 #You may need to edit the library paths for MKL for Intel
-#Beware of using optmizations which lose accuracy - may give errors when running
-#With Visual Fortan open cosmomc.dsw workspace file instead.
+#Beware of using optmizations that lose accuracy - may give errors when running
 
 #Edit for CFITSIO directories
-cfitsio = /home/pascal/include/cfitsio
-WMAP3 = /home/antlewis/WMAP3
+cfitsio = /usr/local/Cluster-Users/cpac/cmb/2.1.0/cfitsio
+WMAP3 = /home/hvp20/code/wmap_likelihoodcode_v2p2p2
 
 IFLAG = -I
+INCLUDE=
 
-#Intel MPI (assuming mpif77 set to point to ifc)
+#Intel MPI (assuming mpif77 set to point to ifort)
 #change -lmkl_ia32 to -lmkl_p3 for MKL versions earlier than 6 (6 needed for ifc 8+) 
-F90C     = mpif77
-FFLAGS = -O2 -Vaxlib -ip -W0 -WB -openmp -fpp -DMPI
-LAPACKL = -L/opt/intel/mkl61/lib/32 -lmkl_lapack -lmkl_ia32 -lguide -lpthread
+#F90C     = mpif90
+#FFLAGS = -O2 -ip -W0 -WB -openmp -fpp -DMPI -vec_report0
+#LAPACKL = -L/opt/intel/mkl61/lib/32 -lmkl_lapack -lmkl_ia32 -lguide -lpthread
 
-# Use with Intel 9 on the Altix (eg. COSMOS)
+#HPCF settings. Use Inteal 9 or 10.1, not 10.0
+#F90C     = mpif90
+#FFLAGS = -O2 -Vaxlib -W0 -WB -openmp -fpp -DMPI -vec_report0
+#LAPACKL = -L/usr/local/Cluster-Apps/intel/mkl/9.0.018/lib/em64t -lmkl_lapack -lmkl -lguide -lpthread
+#INCLUDE=
+
+# Use with Intel 9 on the Altix (eg. COSMOS) [this is old]
 # (do "module load icomp90" before compiling, or add to .bashrc)
 #F90C = ifort
 #FFLAGS = -O3 -w -fpp2 -DMPI 
@@ -44,21 +49,15 @@ LAPACKL = -L/opt/intel/mkl61/lib/32 -lmkl_lapack -lmkl_ia32 -lguide -lpthread
 #FFLAGS  = -omp -O4 -arch host -math_library fast -tune host -fpe1
 #LAPACKL  = -lcxml
 
-#Intel Itanium efc, -openmp toggles multi-processor:
-#F90C     = efc
-#FFLAGS = -O2 -Vaxlib -W0 -WB -openmp -fpp
-#LAPACKL = -L/opt/intel/mkl/lib/64 -lmkl_lapack -lmkl_ipf -lguide -lpthread -static
-
-#Intel Itanium efc MPI:
-# mpirun -np 4 ./cosmomc params.ini
-#F90C     = efc
-#FFLAGS = -O2 -Vaxlib -W0 -WB -openmp -fpp -lmpi -lscs  -ldl -DMPI
-#LAPACKL = -L/opt/intel/mkl/lib/64 -lmkl_lapack -lmkl_ipf -limf
-
 #G95; make sure LAPACK and MPI libs also compiled with g95
 #F90C     = mpif90
 #FFLAGS = -O2 -DMPI
 #LAPACKL = /LAPACK/lapack_LINUX.a /LAPACK/blas_LINUX.a
+
+#GFortran: if pre v4.3 add -D__GFORTRAN__
+#F90C     = gfc
+#FFLAGS = -O2 -ffree-form 
+#LAPACKL = -Wl,-framework -Wl,accelerate
 
 #Absoft ProFortran, single processor, set -cpu:[type] for your local system 
 #F90C     = f95
@@ -109,9 +108,9 @@ WMAP3_lib = -L$(cfitsio)/lib -L$(WMAP3) -lcfitsio
 
 CLSLIB  = $(WMAP3_lib) -L../camb -lcamb $(LAPACKL) 
 
-F90FLAGS = $(FFLAGS) $(WMAP3_inc) $(IFLAG)../camb $(INCLUDE)
+F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(WMAP3_inc) $(IFLAG)../camb $(INCLUDE)
 
-DISTFILES = utils.o settings.o GetDist.o
+DISTFILES = utils.o Matrix_utils.o settings.o GetDist.o
 
 WMAPOBJS = $(WMAP3)/read_archive_map.o \
 	$(WMAP3)/read_fits.o \
@@ -122,8 +121,8 @@ WMAPOBJS = $(WMAP3)/read_archive_map.o \
 	$(WMAP3)/WMAP_3yr_teeebb_pixlike.o \
 	$(WMAP3)/WMAP_3yr_likelihood.o
 
-OBJFILES= $(WMAPOBJS) utils.o settings.o cmbtypes.o cmbdata.o WeakLen.o mpk.o \
-	supernovae.o SDSSLy-a-v3.o\
+OBJFILES= $(WMAPOBJS) utils.o Matrix_utils.o settings.o cmbtypes.o Planck_like.o \
+	cmbdata.o WeakLen.o mpk.o supernovae.o SDSSLy-a-v3.o\
 	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
 	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
 

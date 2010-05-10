@@ -239,6 +239,14 @@
     real r10
   
     if (outfile_unit ==0) return
+  
+    if (generic_mcmc) then
+
+      fmt = trim(numcat('(2E16.7,',num_params))//'E16.7)'
+      write (outfile_unit,fmt) mult,like, P%P
+
+    else
+    
       call ParamsToCMBParams(P%P,C)
 
       if (lmax_tensor /= 0 .and. compute_tensors) then
@@ -250,6 +258,7 @@
       fmt = trim(numcat('(2E16.7,',num_params))//'E16.7,7E16.7)'
       write (outfile_unit,fmt) mult,like, P%P, C%omv,P%Info%Theory%Age, C%omdm+C%omb, &
           P%Info%Theory%Sigma_8, C%zre,r10,C%H0
+    end if
 
      if (flush_write) call FlushFile(outfile_unit)
 

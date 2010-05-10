@@ -38,6 +38,7 @@ implicit none
 contains 
 
   subroutine ReadmpkDataset(gname)   
+    use MatrixUtils
     character(LEN=*), intent(IN) :: gname
     character(LEN=120) :: kbands_file, measurements_file, windows_file, cov_file
     Type (mpkdataset) :: mset
