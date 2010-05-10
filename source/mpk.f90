@@ -94,7 +94,7 @@ contains
        write(*,*) 'reading: ',mset%name,' data'
        write(*,*) 'Using kbands windows between',mset%mpk_k(1),' < k/h < ',mset%mpk_k(mset%num_mpk_kbands_use)      
     endif
-    if  (mset%mpk_k(i) < matter_power_minkh) then
+    if  (mset%mpk_k(1) < matter_power_minkh) then
        write (*,*) 'WARNING: k_min in '//trim(mset%name)//'less than setting in cmbtypes.f90'
        write (*,*) 'all k<matter_power_minkh will be set to matter_power_minkh' 
     end if

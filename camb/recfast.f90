@@ -24,7 +24,7 @@
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
 !CN     Name:        RECFAST
-!CV     Version: 1.0
+!CV     Version: 1.3
 !C 
 !CP     Purpose:  Calculate ionised fraction as a function of redshift.
 !CP            Solves for H and He simultaneously, and includes
@@ -81,6 +81,7 @@
 !CA     hw is the interval in W
 !CA     C,k_B,h_P: speed of light, Boltzmann's and Planck's constants
 !CA     m_e,m_H: electron mass and mass of H atom in SI
+!CA	    not4: ratio of 4He atomic mass to 1H atomic mass
 !CA     sigma: Thomson cross-section
 !CA     a: radiation constant for u=aT^4
 !CA     Lambda: 2s-1s two photon rate for Hydrogen
@@ -157,13 +158,16 @@
 !                       March 2005 added option for corrections from astro-ph/0501672.
 !                                  thanks to V.K.Dubrovich, S.I.Grachev
 !                       June 2006 defined RECFAST_fudge as free parameter (AML)
+!                       October 2006 (included new value for G)
+!                       October 2006 (improved m_He/m_H to be "not4")
+!                       October 2006 (fixed error, x for x_H in part of f(1))
 !!      ===============================================================
 
        module RECDATA
         use Precision
         implicit none
          
-        real(dl) C,k_B,h_P,m_e,m_H,sigma,a,G
+        real(dl) C,k_B,h_P,m_e,m_H,not4,sigma,a,G
         real(dl) Lambda,DeltaB,DeltaB_He,Lalpha,mu_H,mu_T,H_frac
         real(dl) Lambda_He,Lalpha_He,Bfact,CK_He,CL_He
         real(dl) L_H_ion,L_H_alpha,L_He1_ion,L_He2_ion,L_He_2s,L_He_2p
@@ -172,21 +176,23 @@
         real(dl) Tnow,HO,Nnow
 
 !       --- Data
-        data    C,k_B,h_P /2.99792458D8,1.380658D-23,6.6260755D-34/
-        data    m_e,m_H     /9.1093897D-31,1.673725D-27/ !av. H atom
-        data    sigma,a     /6.6524616D-29,7.565914D-16/ !a=4/c*sigma_B
-        data    G   /6.67259D-11/
-!       Fundamental constants in SI units
+        data    C,k_B,h_P   /2.99792458D8,1.380658D-23,6.6260755D-34/
+        data    m_e,m_H     /9.1093897D-31,1.673575D-27/    !av. H atom
+        data    not4        /3.9715D0/      !mass He/H atom
+        data    sigma,a     /6.6524616D-29,7.565914D-16/
+        data    G           /6.6742D-11/            !new value
+!Fundamental constants in SI units
 
-        data    Lambda            /8.2245809d0/
-        data    Lambda_He   /51.3d0/   !new value from Dalgarno
-        data    L_H_ion          /1.096787737D7/      !level for H ion. (in m^-1)
+        data    Lambda      /8.2245809d0/
+        data    Lambda_He   /51.3d0/    !new value from Dalgarno
+        data    L_H_ion     /1.096787737D7/ !level for H ion. (in m^-1)
         data    L_H_alpha   /8.225916453D6/ !averaged over 2 levels
-        data    L_He1_ion   /1.98310772D7/     !from Drake (1993)
-        data    L_He2_ion   /4.389088863D7/    !from JPhysChemRefData (1987)
-        data    L_He_2s          /1.66277434D7/       !from Drake (1993)
-        data    L_He_2p          /1.71134891D7/       !from Drake (1993)
-!       2 photon rates and atomic levels in SI units
+        data    L_He1_ion   /1.98310772D7/  !from Drake (1993)
+        data    L_He2_ion   /4.389088863D7/ !from JPhysChemRefData (1987)
+        data    L_He_2s     /1.66277434D7/  !from Drake (1993)
+        data    L_He_2p     /1.71134891D7/  !from Drake (1993)
+!   2 photon rates and atomic levels in SI units
+
        end module RECDATA
 
 
@@ -197,7 +203,7 @@
         integer, parameter :: Nz0=10000
         real(dl) zrec(Nz0),xrec(Nz0),dxrec(Nz0)
         integer Nz
-        real(dl) :: RECFAST_fudge = 1.14
+        real(dl) :: RECFAST_fudge = 1.14_dl
 
         logical :: use_Dubrovich = .false. !use astro-ph/0501672 corrections
  
@@ -288,9 +294,10 @@
 
 
 !       sort out the helium abundance parameters
-        mu_H = 1._dl/(1._dl-Yp)         !Mass per H atom
-        mu_T = 4._dl/(4._dl-3._dl*Yp)            !Mass per atom
-        fHe = Yp/(4._dl*(1._dl-Yp))              !n_He_tot / n_H_tot
+        mu_H = 1.d0/(1.d0-Yp)           !Mass per H atom
+        mu_T = not4/(not4-(not4-1.d0)*Yp)   !Mass per atom
+        fHe = Yp/(not4*(1.d0-Yp))       !n_He_tot / n_H_tot
+
 
         Nnow = 3._dl*HO*HO*OmegaB/(8._dl*Pi*G*mu_H*m_H)
         n = Nnow * (1._dl+z)**3
@@ -299,8 +306,8 @@
 
       
 !       Set up some constants so they don't have to be calculated later
-        Lalpha = 1._dl/L_H_alpha
-        Lalpha_He = 1._dl/L_He_2p
+        Lalpha = 1.d0/L_H_alpha
+        Lalpha_He = 1.d0/L_He_2p
         DeltaB = h_P*C*(L_H_ion-L_H_alpha)
         CDB = DeltaB/k_B
         DeltaB_He = h_P*C*(L_He1_ion-L_He_2s)   !2s, not 2p
@@ -308,14 +315,15 @@
         CB1 = h_P*C*L_H_ion/k_B
         CB1_He1 = h_P*C*L_He1_ion/k_B   !ionization for HeI
         CB1_He2 = h_P*C*L_He2_ion/k_B   !ionization for HeII
-        CR = 2._dl*Pi*(m_e/h_P)*(k_B/h_P)
-        CK = Lalpha**3/(8._dl*Pi)
-        CK_He = Lalpha_He**3/(8._dl*Pi)
+        CR = 2.d0*Pi*(m_e/h_P)*(k_B/h_P)
+        CK = Lalpha**3/(8.d0*Pi)
+        CK_He = Lalpha_He**3/(8.d0*Pi)
         CL = C*h_P/(k_B*Lalpha)
-        CL_He = C*h_P/(k_B/L_He_2s)     !comes from det.bal. of 2s-1s
-        CT = (8._dl/3._dl)*(sigma/(m_e*C))*a
+        CL_He = C*h_P/(k_B/L_He_2s) !comes from det.bal. of 2s-1s
+        CT = (8.d0/3.d0)*(sigma/(m_e*C))*a
         Bfact = h_P*C*(L_He_2p-L_He_2s)/k_B
 
+        
 !       Matter departs from radiation when t(Th) > H_frac * t(H)
 !       choose some safely small number
         H_frac = 1.D-3
@@ -520,21 +528,18 @@
 !Stas
 
 
-!       the Pequignot, Petitjean & Boisson fitting parameters for Hydrogen     
-        a_PPB = 4.309
-        b_PPB =- 0.6166
-        c_PPB = 0.6703
-        d_PPB = 0.5300
+!       the Pequignot, Petitjean & Boisson fitting parameters for Hydrogen    
+        a_PPB = 4.309d0
+        b_PPB = -0.6166d0
+        c_PPB = 0.6703d0
+        d_PPB = 0.5300d0
 !       the Verner and Ferland type fitting parameters for Helium
-        T_0 = 3._dl
-
-   !    a_VF = 10._dl**(-11.7718d0)
-   !    b_VF = 1.51930d0
-   !    T_1 = 10._dl**(4.50550d0)
-   !Bug reported by savita gahlaut
+!       fixed to match those in the SSS papers, and now correct
         a_VF = 10.d0**(-16.744d0)
-        b_VF = 0.711d0
+        b_VF = 0.711
+        T_0 = 10.d0**(0.477121d0)   !3K
         T_1 = 10.d0**(5.114d0)
+ 
        
         x_H = y(1)
         x_He = y(2)
@@ -545,10 +550,11 @@
         n_He = fHe * Nnow * (1._dl+z)**3
         Trad = Tnow * (1._dl+z)
 
-        Hz = 1/dtauda(1/(1._dl+z))*(1._dl+z)**2/1.02928d14
+        Hz = 1/dtauda(1/(1._dl+z))*(1._dl+z)**2/1.029272d14
         ! Now use universal background function, fixing factor of Omega_total
         !  Hz = HO * sqrt((1._dl+z)**4/(1+z_eq)*OmegaT + OmegaT*(1._dl+z)**3 &
         !       + OmegaK*(1._dl+z)**2 + OmegaL)
+        !constant is  Mpc/c = 1.029272d14 in SI units
      
 
 !       Get the radiative rates using PPQ fit, identical to Hummer's table
@@ -560,18 +566,17 @@
 !       calculate He using a fit to a Verner & Ferland type formula
         sq_0 = sqrt(Tmat/T_0)
         sq_1 = sqrt(Tmat/T_1)
-!        Rdown_He = a_VF/(sq_0*(1._dl+sq_1)**(1._dl-b_VF))
-!        Rdown_He = rdown_He/(1._dl+sq_1)**(1._dl+b_VF)
- !         !Bug reported by savita gahlaut
-        Rdown_He = a_VF/(sq_0 * (1.d0+sq_0)**(1.d0-b_VF)* &
-                    (1.d0 + sq_1)**(1.d0 + b_VF))
-
-
-        
+!       typo here corrected by Wayne Hu and Savita Gahlaut
+        Rdown_He = a_VF/(sq_0*(1.d0+sq_0)**(1.d0-b_VF))
+        Rdown_He = rdown_He/(1.d0+sq_1)**(1.d0+b_VF)
         Rup_He = Rdown_He*(CR*Tmat)**(1.5d0)*exp(-CDB_He/Tmat)
-        Rup_He = 4._dl*Rup_He    !statistical weights factor for HeI   
-   
- 
+        Rup_He = 4.d0*Rup_He    !statistical weights factor for HeI
+!       Avoid overflow (pointed out by Jacques Roland)
+        if((Bfact/Tmat) > 680.d0)then
+          He_Boltz = exp(680.d0)
+        else
+          He_Boltz = exp(Bfact/Tmat)
+        end if
         K = CK/Hz              !Peebles coefficient K=lambda_a^3/8piH
         K_He = CK_He/Hz  !Peebles coefficient for Helium
 
@@ -611,8 +616,8 @@
 
         f(1) = ((x*x_H*n*Rdown - Rup*(1.d0-x_H)*exp(-CL/Tmat)) &
                 *(1.d0 + D2P*D2S*n*(1.d0-x_H))) &
-                /(Hz*(1.d0+z)*(1.d0/fu+D2P*D2S*n*(1.d0-x)/fu &
-                +D2P*Rup*n*(1.d0-x)))
+                /(Hz*(1.d0+z)*(1.d0/fu+D2P*D2S*n*(1.d0-x_H)/fu &
+                +D2P*Rup*n*(1.d0-x_H)))
 
         end if
    
@@ -649,8 +654,6 @@
         end if
 !  Stas
 
-        He_Boltz = exp(min(Bfact/Tmat,680._dl))  !Changed by AML Aug/00
-           
         f(2) = ((x*x_He*n*Rdown_He &
             - Rup_He*(1-x_He)*exp(-CL_He/Tmat)) &
                 *(1 + D2P*D2S*n_He*(1.d0-x_He)*He_Boltz)) &

@@ -2,7 +2,7 @@
 
 !     Code for Anisotropies in the Microwave Background
 !     by Antony Lewis (http://cosmologist.info) and Anthony Challinor
-!     See readme.html for documentation. This version August 2006.
+!     See readme.html for documentation. This version November 2006.
 !
 !     Based on CMBFAST  by  Uros Seljak and Matias Zaldarriaga, itself based
 !     on Boltzmann code written by Edmund Bertschinger, Chung-Pei Ma and Paul Bode.
@@ -30,7 +30,7 @@
         implicit none    
         public
 
-        character(LEN=*), parameter :: version = 'Aug_06'
+        character(LEN=*), parameter :: version = 'Nov_06'
         
         integer :: FeedbackLevel = 0 !if >0 print out useful information about the model
 
@@ -212,7 +212,7 @@
            external GetOmegak
            real(dl), save :: last_tau0
            !Constants in SI units
-           real(dl), parameter :: Mpc = 3.085678e22_dl, G=6.6726e-11_dl, kappa=2*fourpi*G, &
+           real(dl), parameter :: Mpc = 3.085678e22_dl, G=6.6742e-11_dl, kappa=2*fourpi*G, &
                    sigma_thomson = 6.6524616e-29_dl, c = 2.99792458e8_dl, m_p = 1.672623e-27_dl, &
                    sigma_boltz = 5.67051e-8_dl
             if ((P%WantTensors .or. P%WantVectors).and. P%WantTransfer .and. .not. P%WantScalars) then
