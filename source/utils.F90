@@ -2,7 +2,8 @@
 !Antony Lewis, http://cosmologist.info/
 
 !April 2006: fix to TList_RealArr_Thin
-!This version Feb 2008
+!March 2008: fix to Ranges
+!This version Mar 2008
 
  module Ranges
  !A collection of ranges, consisting of sections of minimum step size
@@ -381,7 +382,7 @@
                min_request = RequestDelta(i)
                max_request = min_request
               end if
-              if (i/= ix) then
+              if (i/= Reg%Count) then  !from i/= ix Mar08
                LastReg => Reg%R(i+1)
                if (RequestDelta(i) >= AReg%delta .and. Diff <= LastReg%Delta_min &
                           .and. LastReg%Delta_min <= max_request) then 
@@ -404,7 +405,8 @@
                LastReg => Reg%R(i-1)
                if (RequestDelta(i) >= AReg%delta .and. Diff <= LastReg%Delta_max &
                           .and. LastReg%Delta_max <= min_request) then
-                   LastReg%Low = AReg%Low
+                   LastReg%High = AReg%High
+                   !AlMat08 LastReg%Low = AReg%Low
                    if (Diff > LastReg%Delta_max*RangeTol) then
                       LastReg%steps =  LastReg%steps + 1
                    end if
@@ -1290,6 +1292,26 @@
 
   end function ExtractFilePath
 
+  function ExtractFileExt(aname)
+    character(LEN=*), intent(IN) :: aname
+    character(LEN=120) ExtractFileExt
+    integer len, i
+
+    len = len_trim(aname)
+    do i = len, 1, -1
+       if (aname(i:i)=='/') then
+          ExtractFileExt = ''
+          return
+       else if (aname(i:i)=='.') then
+          ExtractFileExt= aname(i:len)   
+          return
+       end if
+    end do
+    ExtractFileExt = ''
+
+  end function ExtractFileExt
+
+
  function ExtractFileName(aname)
     character(LEN=*), intent(IN) :: aname
     character(LEN=120) ExtractFileName
@@ -1332,7 +1354,11 @@
 #ifdef IBMXL
      if (aname(len:len) /= '\\' .and. aname(len:len) /= '/') then
 #else
+#ifdef ESCAPEBACKSLASH
+     if (aname(len:len) /= '\\' .and. aname(len:len) /= '/') then
+#else
      if (aname(len:len) /= '\' .and. aname(len:len) /= '/') then
+#endif
 #endif
       CheckTrailingSlash = trim(aname)//'/'
      else

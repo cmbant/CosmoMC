@@ -3,7 +3,7 @@ module CMB_Cls
   use cmbtypes
   use CAMB, only : CAMB_GetResults, CAMB_GetAge, CAMBParams, CAMB_SetDefParams,Transfer_GetMatterPower, &
           AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, &
-          CAMBParams_Set,Re_OpticalDepthAtZ, MT, CAMBdata, NonLinear_Pk,&
+          CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
           CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, &
           initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_neutrino, initial_iso_neutrino_vel
           
@@ -223,28 +223,50 @@ contains
  end subroutine GetClsInfo
 
 
- subroutine InitCAMB(CMB,error)
+ subroutine InitCAMB(CMB,error, DoReion)
    type(CMBParams), intent(in) :: CMB
+   logical, optional, intent(in) :: DoReion
+   logical WantReion
    type(CAMBParams)  P
    integer error
+   
+   if (present(DoReion)) then
+    WantReion = DoReion
+   else
+    WantReion = .true.
+   end if
 
    call CMBToCAMB(CMB, P)
-   call CAMBParams_Set(P,error)
+   call CAMBParams_Set(P,error,WantReion)
 
  end subroutine InitCAMB
 
  function GetOpticalDepth(CMB)
    type(CMBParams) CMB
    real GetOpticalDepth
+   type(CAMBParams)  P
    integer error
+   
+   call CMBToCAMB(CMB, P)
+   call CAMBParams_Set(P,error)
 
-   call InitCAMB(CMB,error)
    if (error/= 0) then
       GetOpticalDepth = -1 
    else
-      GetOpticalDepth = Re_OpticalDepthAtZ(CMB%zre*1.d0)
+      GetOpticalDepth = Reionization_GetOptDepth(P%Reion, P%ReionHist) 
    end if
  end  function GetOpticalDepth
+
+ function GetZreFromTau(CMB, tau)
+   type(CMBParams) CMB
+   real, intent(in) :: tau
+   real GetZreFromTau
+   type(CAMBParams)  P
+   
+   call CMBToCAMB(CMB, P)
+   GetZreFromTau = CAMB_GetZreFromTau(P,dble(tau))
+ 
+ end  function GetZreFromTau 
  
  function GetAge(CMB, Info)
    !Return <0 if error
@@ -322,7 +344,7 @@ contains
         P%Num_Nu_Massless = 0.04
         P%InitPower%nn = 1
         P%AccuratePolarization = num_cls/=1 
-        P%use_optical_depth = .false.
+        P%Reion%use_optical_depth = .false.
         P%OnlyTransfers = .true.
 
         if (CMB_Lensing) then

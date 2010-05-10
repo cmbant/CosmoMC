@@ -134,6 +134,25 @@ default: cosmomc
 
 all : cosmomc getdist
 
+settings.o: utils.o
+cmbtypes.o: settings.o
+Planck_like.o: cmbtypes.o
+cmbdata.o: Planck_like.o $(WMAPOBJS)
+WeakLen.o: cmbtypes.o
+mpk.o: cmbtypes.o
+supernovae.o: cmbtypes.o
+SDSSLy-a-v3.o: cmbtypes.o
+$(CLSFILE): cmbtypes.o
+paramdef.o: $(CLSFILE)
+$(PROPOSE): paramdef.o
+$(PARAMETERIZATION): paramdef.o
+calclike.o: $(PARAMETERIZATION)
+conjgrad_wrapper.o: calclike.o
+EstCovmat.o: conjgrad_wrapper.o
+postprocess.o: calclike.o
+MCMC.o: calclike.o
+driver.o: MCMC.o
+
 .f.o:
 	f77 $(F90FLAGS) -c $<
 
@@ -144,7 +163,7 @@ all : cosmomc getdist
 	$(F90C) $(F90FLAGS) -c $*.F90
 
 
-cosmomc: $(OBJFILES) 	
+cosmomc: $(OBJFILES) ../camb/libcamb.a 	
 	$(F90C) -o ../cosmomc $(OBJFILES) $(CLSLIB) $(F90FLAGS)
 
 

@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>This version March 2008</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>This version April 2008</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -499,6 +499,9 @@ weighting function or parameter mapping.</ul>
 </UL>
 <A NAME="Version"><h2>Version History</h2></A>
 <UL>
+<LI><B>April 2008</B><BR>
+Includes latest CAMB version with new reionization parameterization - default now assumes first ionization of helium happened at the same time as hydogen, and z_re is defined as the point where x<sub>e</sub> is half its maximum (the optical depth and z_re are related in a way independent of the speed of the transition in the new parameterization). This changes the z_re numbers at the ~6% level. Fixed bug reading in mpk parameters.
+
 <LI><B>March 2008</B><BR>
 Uses WMAP 5-year likelihood code. Added <B>cmb_dataset_SZ</B>x and <B>cmb_dataset_SZ_scale</B>x parameters to specify (parameter independent) SZ template for each CMB dataset (WMAP_SZ_VBand.dat included from <A HREF="http://lambda.gsfc.nasa.gov/product/map/dr2/pow_sz_spec_get.cfm">LAMBDA</A>). Parameter 13 is now A<sub>SZ</sub> - the scaling of all the SZ templates, as used in WMAP3/WMAP5 papers. Updated supplied covariance params_CMB.covmat for WMAP5. Minor compatibility changes.
 

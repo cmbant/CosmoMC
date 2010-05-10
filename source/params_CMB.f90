@@ -18,14 +18,15 @@
      use cmbtypes
      use ModelParams
      use CMB_Cls
+     use Precision
      implicit none
      Type(CMBParams) CMB
-     double precision zstar, astar, atol, rs, dsoundda, DA, rombint
-     external dsoundda, rombint
+     double precision zstar, astar, atol, rs,  DA
+     double precision, external :: dsoundda, rombint
      real CMBToTheta
      integer error
 
-     call InitCAMB(CMB,error)
+     call InitCAMB(CMB,error,.false.)
 
 !!From Hu & Sugiyama
        zstar =  1048*(1+0.00124*CMB%ombh2**(-0.738))*(1+ &
@@ -42,32 +43,6 @@
   end function CMBToTheta
 
 
-      function TauToZre(tau)
-      use ModelParams
-      implicit none
-      real TauToZre,tau
-! This subroutine calculates the redshift of reionization
-! from an Reion%optical_depth and sets the reionization fraction CP%Reion%fraction=1.
-! assumes sharp reionization and fraction of 1   
-      integer na
-      real dz, optd
-      real(dl) dtauda  !diff of tau w.r.t a and integration
-      external dtauda
-
-      real(dl) z
-      
-         na=1
-         optd=0
-         dz=1._dl/2000
-         z=0
-         do while (optd < tau)
-            z=na*dz
-            optd=optd+dz*akthom*dtauda(1/(1+z))
-            na=na+1
-         end do
-         TauToZre = z
-   
-      end function TauToZre
 
 
 !Mapping between array of power spectrum parameters and CAMB
@@ -149,10 +124,10 @@
      real, save :: LastH0, Lastzre
 
      Type(CMBParams) CMB
-     real DA, tauToZre
+     real DA
      integer error
      real  D_b,D_t,D_try,try_b,try_t, CMBToTheta, lasttry,tau
-     external TauToZre,CMBToTheta
+     external CMBToTheta
 
      if (all(Params(1:num_hard) == Lastparams(1:num_hard))) then
        call SetForH(Params,CMB,LastH0)
@@ -183,9 +158,9 @@
               lasttry = D_try
      end do
 
-    call InitCAMB(CMB,error)
+    !!call InitCAMB(CMB,error)
     tau = params(4)
-    CMB%zre = TauToZre(tau)       
+    CMB%zre = GetZreFromTau(CMB, tau)       
 
     LastH0 = CMB%H0
     Lastzre = CMB%zre

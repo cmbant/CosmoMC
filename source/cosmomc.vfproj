@@ -36,6 +36,7 @@
 		<File RelativePath="..\camb\modules.f90"/>
 		<File RelativePath="..\camb\power_tilt.f90"/>
 		<File RelativePath="..\camb\recfast.f90"/>
+		<File RelativePath="..\camb\reionization.f90"/>
 		<File RelativePath="..\camb\subroutines.f90"/></Filter>
 		<File RelativePath=".\calclike.f90"/>
 		<File RelativePath=".\CMB_Cls_simple.f90"/>

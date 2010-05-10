@@ -69,6 +69,7 @@ contains
     end if
 
     mset%name = Ini_Read_String('name') 
+    Ini_fail_on_not_found = .false.
     mset%use_set =.true.
     if (Feedback > 0) write (*,*) 'reading: '//trim(mset%name)
     num_mpk_points_full = Ini_Read_Int('num_mpk_points_full',0)
