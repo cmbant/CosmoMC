@@ -69,6 +69,11 @@ LAPACKL = -L/usr/local/intel/mkl/9.1/lib/em64t  -lmkl_lapack -lmkl_em64t -lguide
 #FFLAGS = -DNAGF95 -O3
 #LAPACKL = -llapack -lblas -lg2c
 
+#PGF90
+#F90C = pgf90
+#FFLAGS = -O2 -DESCAPEBACKSLASH
+#LAPACKL = -llapack -lblas
+
 #Sun, single processor:
 #F90C     = f90
 #FFLAGS = -fast -ftrap=%none

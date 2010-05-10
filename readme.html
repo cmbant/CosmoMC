@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>This version May 2008</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>This version June 2008</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -493,6 +493,7 @@ weighting function or parameter mapping.</ul>
 
 <A NAME="Addons"><h2>Add-ons and extra datasets</h2></A>
 <UL>
+<LI><A HREF="http://www.stanford.edu/~drapetti/fgas_module/">X-ray cluster gas mass fraction</A>
 <LI><A HREF="http://www.astro.caltech.edu/~rjm/cosmos/cosmomc/">COSMOS 3D weak lensing data</A>
 <LI><A HREF="http://astro.ic.ac.uk/~jaz/code/">python GetDist</A>
 <LI><A HREF="http://lappweb.in2p3.fr/~perotto/FUTURCMB/home.html">FuturCMB</A> forecasting with CMB lensing
@@ -501,6 +502,9 @@ weighting function or parameter mapping.</ul>
 </UL>
 <A NAME="Version"><h2>Version History</h2></A>
 <UL>
+<LI><B>June 2008</B><BR>
+Fixed problem initializing nuisance parameters. Updated CAMB to June 2008 version (fix for very closed models).
+
 <LI><B>May 2008</B><BR>
 supernovae.f90 now replaced by default with <A HREF="http://arxiv.org/abs/0804.4142">UNION</A> Supernovae Ia dataset (previous code now supernovae_ReissSNLS.f90; thanks to Anze Slosar).
 Additions to Planck_like module; support for sampling and hence marginalizing over data nuisance parameters, point sources, beam uncertainty modes.

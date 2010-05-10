@@ -328,7 +328,8 @@ contains
    if (num_datasets > 10) stop 'too many datasets'
 
    aset%has_sz_template = .false.
-
+   aset%nuisance_parameters = 0
+ 
 !Special cases
    if (aname == 'MAP' .or. aname == 'WMAP') then 
      aset%name = 'WMAP'
@@ -353,7 +354,6 @@ contains
    aset%name = Ini_Read_String_File(Ini,'name')
    aset%use_set =.true.
    aset%num_points = 0
-   aset%nuisance_parameters = 0
     
    if (Feedback > 0) write (*,*) 'reading: '//trim(aset%name)
 

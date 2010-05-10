@@ -2,7 +2,7 @@
 #Beware of using optmizations that lose accuracy - may give errors when running
 
 #Edit for CFITSIO directories
-cfitsio = /usr/local/cfitsio/intel10/64/3.040/lib
+cfitsio = /usr/local/cfitsio/intel10/64/3.040
 #/usr/local/Cluster-Users/cpac/cmb/2.1.0/cfitsio
 
 WMAP = /home/aml1005/WMAP5/likelihood_v3
@@ -71,6 +71,12 @@ LAPACKL = -L/usr/local/intel/mkl/9.1/lib/em64t -lmkl_lapack -lmkl_em64t -lguide 
 #F90C     = f95
 #FFLAGS = -DNAGF95 -O3
 #LAPACKL = -llapack -lblas -lg2c
+
+#PGF90
+#F90C = pgf90
+#FFLAGS = -O2 -DESCAPEBACKSLASH
+#LAPACKL = -llapack -lblas
+
 
 #Sun, single processor:
 #F90C     = f90

@@ -43,7 +43,7 @@ FFLAGS = -openmp -O2 -ip -W0 -WB -fpp2 -vec_report0
 
 #PGF90
 #F90C = pgf90
-#FLAGS = -O2 -DESCAPEBACKSLASH
+#FFLAGS = -O2 -DESCAPEBACKSLASH
 
 #Sun V880
 #F90C = mpf90
@@ -113,7 +113,7 @@ $(CAMBLIB): $(CAMBOBJ)
 	ar -r $@ $?
 
 camb_fits: writefits.f90 utils.o $(CAMBOBJ) $(DRIVER)
-	$(F90C) $(F90FLAGS) -I$(HEALPIXDIR)/include tils.o $(CAMBOBJ) writefits.f90 $(DRIVER) $(HEALPIXLD) -DWRITE_FITS -o $@
+	$(F90C) $(F90FLAGS) -I$(HEALPIXDIR)/include utils.o $(CAMBOBJ) writefits.f90 $(DRIVER) $(HEALPIXLD) -DWRITE_FITS -o $@
 
 %.o: %.f90
 	$(F90C) $(F90FLAGS) -c $*.f90

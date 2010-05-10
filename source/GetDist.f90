@@ -103,7 +103,7 @@ contains
    integer i
    real ombh2, chisq 
  
-   stop 'You need to write the AdjustPriors subroutine in GetDist.f90 first!'
+!   stop 'You need to write the AdjustPriors subroutine in GetDist.f90 first!'
   
    write (*,*) 'Adjusting priors'
    do i=0, nrows-1
@@ -1403,7 +1403,7 @@ contains
           sz = 12
           if (sm) sz=9 
           sz = nint(sz*font_scale)
-          write(unit,*) concat('lab_fontsize = ',sz,'; axes_fontsize = ',sz,';')
+          write(unit,*) trim(concat('lab_fontsize = ',sz,'; axes_fontsize = ',sz,';'))
           write(unit,*) 'clf'
           if (BW) then
            if (plot_meanlikes) then
@@ -2492,7 +2492,7 @@ program GetDist
                 sz = 9
               end if
               sz = nint(sz*font_scale)
-              write(50,*) concat('lab_fontsize = ',sz,'; axes_fontsize = ',sz,';')
+              write(50,*) trim(concat('lab_fontsize = ',sz,'; axes_fontsize = ',sz,';'))
                         
 
               if (mod(num_3D_plots,2)==0 .and. num_3D_plots < 11) then
