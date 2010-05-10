@@ -1,0 +1,27 @@
+name = sdss
+
+# NB. Cosmomc does not do non-linear theory at the moment,
+# and yet the SDSS window functions go significantly above
+# k/h=0.3, where the non-linear contribution is significant
+# (and non-linear biasing may also be a problem)
+
+# number of points and kbands in the input files
+num_mpk_points_full = 22
+num_mpk_kbands_full = 97
+
+# decide which bandpowers to use, min to max
+min_mpk_points_use = 1
+max_mpk_points_use = 19 
+# as in the Tegmark papers
+
+# decide which kbands to use N.B. P(k) is set to zero outside
+# these limits. 
+# Since the windows file starts at k/h=1e-4 then truncate 
+# to matter_power_minkh in cmbtypes.
+# Similarly the windows file goes to k/h=100, so truncate to 1.00.
+min_mpk_kbands_use = 1
+max_mpk_kbands_use = 65
+
+windows_file = data/sdss_windows.txt
+kbands_file = data/sdss_kbands.txt
+measurements_file = data/sdss_measurements.txt

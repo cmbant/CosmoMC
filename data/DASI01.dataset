@@ -1,0 +1,17 @@
+name = dasi
+num_points = 9
+calib_uncertainty = 0.07
+beam_uncertainty = F
+window_dir = data/windows
+#N_inv = data/dasi_invcovmat.dat
+N_inv = data/dasi_rad_matrix.dat
+xfactors = data/dasi_rad_x.dat
+data1= 3768.00  815.66  815.66
+data2= 5283.00  546.26  546.26
+data3= 3664.00  336.01  336.01
+data4= 1645.00  195.68  195.68
+data5= 1887.00  217.46  217.46
+data6= 2842.00  290.93  290.93
+data7= 1669.00  267.69  267.69
+data8= 2010.00  354.82  354.82
+data9= 2318.00  445.08  445.08

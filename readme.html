@@ -1,0 +1,583 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>COSMOMC ReadMe</title>
+</head>
+<body bgcolor="#FFFFFF" link="#0000FF" vlink="#800080">
+
+<center>
+<h2>CosmoMC Readme </h2></center>
+
+<center><b>This version August 2006</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+page</a> for the latest version.<BR>
+</center>
+<P>
+<BR>
+</P>
+<H2>Contents</H2>
+See also the <A HREF="http://www.sarahbridle.net/cosmologui/">CosmoloGUI</A> readme for information about how to make plots from samples using an easy-to-use graphical user interface.
+<UL>
+<LI><A HREF="#Intro">Introduction</A>
+<LI><A HREF="#Compiling">Downloading and compiling</A>
+<LI><A HREF="#Running">Running chains and input parameters</A>
+ <UL>
+<LI><A HREF="#Input">Input Parameters</A>
+<LI><A HREF="#Output">Output Files</A>
+</UL>
+<LI><A HREF="#Analysing">Analysing samples and plotting</A>
+ <UL>
+<LI><A HREF="#GetDistParams">GetDist Parameters</A>
+<LI><A HREF="#GetDistOutput">GetDist Output</A>
+<LI><A HREF="#Plotting">GetDist Plotting</A>
+</UL>
+<LI><A HREF="#Convergence">Convergence statistics</A>
+<LI><A HREF="#Kosowsky">Parameterizations</A>
+<LI><A HREF="#Data">Data</A>
+<LI><A HREF="#Programming">Programming</A>
+<LI><A HREF="#Version">Version history</A>
+<LI><A HREF="#Reference">References</A>
+<LI><A HREF="#FAQ">FAQ</A>
+</UL>
+
+<A NAME="Intro"><h2>Introduction</h2></A>
+CosmoMC is a Fortran 90 Markov-Chain Monte-Carlo (MCMC) engine for exploring cosmological
+parameter space, together with code for analysing Monte-Carlo samples and importance sampling.
+The code does brute force (but accurate) theoretical matter power spectrum and <I>C<sub>l</sub></I> calculations with
+<a href="http://camb.info/">CAMB</a>. See the <a href="http://arxiv.org/abs/astro-ph/0205436">paper</a>
+for an introduction, descriptions, and typical results from some pre-WMAP data.
+<P>
+On a multi-processor machine you can start to get good results in a couple of hours. On single processors
+you'll need to set aside rather longer. You can also run on a cluster. Also check our <a href="http://cosmologist.info/cosmomc/chains.html">chains</a>
+page to see if we have suitable runs available that you can importance
+sample from very quickly (typically just seconds to re-compute a few thousand
+likelihoods).
+<p>By default CosmoMC uses a simple Metropolis algorithm, but there are options for slice sampling and more powerful methods of exploring the fast/slow parameter space.
+The program takes as inputs estimates of central values and posterior uncertainties of the various parameters. The proposal density can use information about parameter correlations from a supplied covariance matrix: use one if possible as it will significantly improve performance. There is an option to esimate the covariance about the best-fit point, and one covariance matrix is supplied for the default base parameters. If you compile and run with <A HREF="http://www-unix.mcs.anl.gov/mpi/">MPI</A> (to run across nodes in a cluster), there is an option to dynamically
+learn the proposal matrix from the covariance of the post-burn-in samples so far. The MPI option also allows you to terminate the computation automatically when a particular convergence criterion is matched. MPI is recommended.
+
+<p>There are two programs supplied <B>cosmomc</B> and <B>getdist</B>. The first
+does the actual Monte-Carlo and produces sets of .txt chain files and (optionally) .data output
+files (the binary .data files include the theoretical CMB power spectra
+etc.). The "getdist" program analyses the .txt files calculating statistics
+and outputs files for the requested 1D, 2D and 3D plots (and could be used independently of the main cosmomc program).
+ The "cosmomc" program also does post processing on .data files, for example doing importance
+sampling with new data.
+<P>
+Please e-mail details of any bugs or enhancements to <a href="http://cosmologist.info/">Antony Lewis</a>. If you have any questions please ask in the <A HREF="http://cosmocoffee.info">CosmoCoffee</A> computers and software forum. You can also read answers to other people's questions there.
+
+
+<A NAME="Compiling"><h2>Downloading and Compiling</h2></A>
+
+<ul>
+<li>
+Get the <a href="http://cosmologist.info/cosmomc/submit.html">download</a>
+and unzip and untar it (run "gunzip cosmomc.tar.gz", then "tar -xf cosmomc.tar")</li>
+<LI>To use WMAP3 you also need <A HREF="http://healpix.jpl.nasa.gov/">Healpix</A> and <A HREF="http://heasarc.gsfc.nasa.gov/docs/software/fitsio/fitsio.html">CFITSIO</A> installed
+<LI>For WMAP 3-year (obviously skip the first two steps below if already installed somewhere)
+<UL>
+<LI>Download the WMAP likelihood code and data from <A HREF="http://lambda.gsfc.nasa.gov/product/map/current/likelihood_get.cfm">here</A> (get wmap_likelihoodcode_sw_only_v2p1.tar.gz or later).
+<LI>Extract to some separate directory
+<LI>Edit WMAP_3yr_options.f90 to hard code the full path instead of ./data/
+<LI>Make and run the test program supplied
+</UL>
+<LI>Uncomment the relevant top parts of the Makefile in the camb directory depending on what system you are using, and whether or not you want to use OpenMP.
+<li>
+Run "make all" in the camb subdirectory</li>
+
+<LI>In cosmomc's source subdirectory edit the Makefile for your cfitsio, healpix and WMAP3 directories and compiler. Uncomment the relevant parts of the Makefile depending on what system you are using and whether or not you want to use MPI and/or OpenMP.
+<blockquote><FONT SIZE=2>Using MPI simplifies running several chains and proposal optimization. MPI can be used with OpenMP: generally you want to use OpenMP to use all the shared-memory processors on each node of a cluster, and MPI to run multiple chains on different nodes (the program can also just be run on a single CPU). The intel compilers are changing frequently, there is a file Makefile_intel supplied you can use with the 7.1 versions that give problems.
+</FONT></blockquote>
+
+<li>
+Run "make all" in the source subdirectory (try "gmake all" if you get an error)</li>
+</ul>
+If you don't want to use WMAP3 you can compile with -DNOWMAP, then no need to link to cfitsio or healpix.
+<P>
+You can download the Intel f90 compiler for Linux <A HREF="http://www.intel.com/software/products/compilers/flin/noncom.htm">here</A> (earlier versions of ifc 8 did not work; get Build 20040716Z or later. You will also need MKL or some other LAPACK library installation). There is also now a <A HREF="http://g95.sourceforge.net/">GNU F95</A> compiler you could try.
+Note that version 7.4 of the SGI compiler is buggy - install 7.4.1m compilers plus patch 5292 [or comment out "flush" in utils.F90]. Please let me know if you have specific fixes for other compilers.
+<P>
+Using (Compaq) Visual Fortran there's no need to use the Makefile, just open cosmomc.dsw in the source folder, and set params.ini as the program argument under Project, Settings, Debug and set the working directory to ..\. Under Tools, Options, Directories set the include path to [cxml
+path]/CXML/INCLUDE  and lib path to [cxml path]/CXML/LIB. Don't install the 6.6C3 update as it gives compiler errors (6.6B is fine). You then need to add healpix and cfitsio files to your project depending on where they are on your system.
+<P>
+Note that to compile cosmomc you need to link to <a href="http://www.netlib.org/lapack/">LAPACK
+</a>(for doing matrix diagonalization, etc) - you may need to edit the
+Makefile to specify where this on your system.
+<P>
+To change the l_max which is used for generating Cls you'll need to
+edit the value in cmbtypes.f90, run "make clean" then "make" to
+rebuild everything. Note l_max should be 50 larger than the largest l which you need accurately. You can also change matter_power_lnzsteps, the number of redshifts at which matter power spectra are sampled.
+<P>
+The default code includes polarization. You can edit the <B>num_cls</B> parameter in cmbtypes.f90 to include just temperature (num_cls=1), TT, TE and EE (num_cls=3) or TT, TE, EE and BB (num_cls=4). You will need the last option if you are including tensors and using polarized data. You can use temperature-only datasets with num_cls 3 or 4, the only disadvantage being that it will be marginally slower, and the .data files with be substantially larger. For WMAP data you need num_cls = 3 or 4.
+</P>
+See <A HREF="http://cosmologist.info/cosmomc/cosmomc.bib">BibTex file</A> for relevant citations.
+<P>
+<A NAME="Running"><h2>Running and input parameters</h2></A>
+<P>
+See the supplied <B>params.ini</B> file for a fairly self-explanatory list of
+input parameters and options. The <b>file_root</b> entry gives the root name for all files produced. Running using MPI on a cluster is recommended if possible as you can automatically handle convergence testing and stopping.
+<UL>
+<LI><B><FONT COLOR="blue">Running individual chains</FONT></B><BR>
+ <BR>
+
+Run the program using
+<BLOCKQUOTE>
+<B>./cosmomc params.ini</B>
+</BLOCKQUOTE>
+The samples will be in file_root.txt, etc. You can start several instances of the program generating separate chains using
+<BLOCKQUOTE>
+<B>./cosmomc params.ini 1<BR>
+ ./cosmomc params.ini 2
+  </B><BR>
+etc.
+</BLOCKQUOTE>
+In this case samples will be in the files file_root_NN.txt, where NN labels the chain number.
+<BR><BR>
+<LI><B><FONT COLOR="blue">MPI runs on a cluster</FONT></B><BR><BR>
+If you edit the Makefile to run with MPI (compile with -DMPI), a number of chains will be run according to the number of nodes assigned by MPI when you run the program. Output file names will have "_1","_2" appended to the root name automatically. You may be able to run over 4 nodes using e.g.
+<BLOCKQUOTE>
+<B>mpirun -np 4 ./cosmomc params.ini</B>
+</BLOCKQUOTE>
+There is also a supplied perl script runMPI.pl that you may be able to adapt for submitting jobs to a PBS queue, running lamboot, etc,  e.g.
+<BLOCKQUOTE>
+  <B>perl runMPI.pl params 4</B>
+</BLOCKQUOTE>
+ to run 4 chains over four nodes using the params.ini parameters file (the script is set up by default for the CITA cluster - edit ppn=2 to the number of CPUs per node you have). On the UK Cosmos computer see the FAQ below.<BR><BR>
+ In the parameters file you can set <B>MPI_Converge_Stop</B> to a convergence criterion (see <A HREF="#Convergence">Convergence Diagnostics</A>. Small numbers are better convergence; generally need R-1 < 0.1, but may want much smaller especially for importance sampling or accurate confidence limits. You can also directly impose an error limit on confidence values - see the parameter input file for details). If you set <B>MPI_LearnPropose</B> = T, the proposal density will be updated using the covariance matrix of the last half of all samples (across chains) so far. <BR><BR>
+Using MPI_LearnPropose will significantly improve performance if you are adding new parameters for which you don't have a pre-computed covariance matrix. However adjusting the proposal density is not strictly Markov, though asymptotically it is as the covariance will converge. The burn in period should therefore be taken to be larger when learning the proposal density to allow for the time it takes the covariance matrix to converge sufficiently (though in practice it probably doesn't matter much in most cases). Note also that as the proposal density changes the number of steps between independent samples is not constant (i.e. the correlation length should decrease along the chain until the covariance has converged). The stopping criterion uses the last half of the samples in each chain, minus a (shortish) initial burn in period. If you don't have a starting covariance matrix a fairly safe thing to do is set <B>ignore_rows=0.5</B> in the <A HREF="#Analysing">GetDist</A> parameter file to skip the first half of each chain. <BR><BR>
+You can also set the <B>MPI_R_StopProposeUpdate</B> parameter to stop updating the proposal density after it has converged to R-1 smaller than a specified number. After this point the chain will be strictly Markovian. The number of burn in rows can be calculated by looking at the params.log file for the number of output lines at which R-1 has reached the required value.
+<P>
+If things go wrong check the .log and any error files in your cosmomc/scripts directory.
+</UL>
+<BR>
+</P>
+<A NAME="Input">
+<B><FONT COLOR="blue">Input Parameters</FONT></B>
+<BR><BR>
+<UL>
+
+<LI><B>Parameter limits and proposal density</B><BR>
+The parameter limits, estimated distribution widths and starting points are listed
+as the <B>param</B>xxx variables. The proposal density changes parameters
+using a Gaussian with a standard deviation given by the specified width multiplied by the value of the <B>propose_scale</B> parameter.  The widths should be of the order of the posterior width unless the parameter is very correlated in which case it should be smaller. If you specify a <b>propose_matrix</b>
+(approximate covariance matrix for the parameters), the
+parameter distribution widths are determined from its eigenvalues instead, and
+the proposal density changes the parameter eigenvectors. The covariance
+matrix can be computed using "getdist" once you have done one run - the file_root.covmat file.
+A .covmat file is supplied for some basic parameter sets. The covariance matrix does not have to include all the parameters that are used - zero entries will be updated from the input propose widths of new parameters (the propose width should be of the size of the conditional distribution of the parameter - typically quite a bit smaller than the marginalized posterior width; generally too small is better than too large). The "start width" paramxxx entry determines the randomly chosen dispersion of the starting position about the given centre, and should  be as large or larger than the posterior (for the convergence diagnostic to be reliable, chains should start at widely separated points). The scale of the proposal density relative to the covariance is given by the <B>propose_scale</B> parameter. If your propose_matrix is significantly broader than the expected posterior, this number can be decreased.
+<BR>
+If you don't have a propose_matrix, set <B>estimate_propose_matrix</B> = T to automatically esimate it by numerical differentiation about the best fit point. To use this option you should not have parameter priors cutting off the distribution near the maximum likelihood.
+
+<BR><BR>
+<LI><A NAME="sampling"></A><B>Sampling method</B><BR>
+Set <B>sampling_method</B>=1 to use the default Metropolis algorithm in the optimal fast/slow subspaces. Other options are slice sampling (2), slice sampling fast paramters (3), and directional gridding (4). These methods should work fine for most simple distributions; the temperature input parameter can be increased to probe further into the tails if required (e.g. to get better high-confidence limits). Further sampling_method options that you can try for nastier (e.g. multi-modal distributions) are multicanonical sampling (5) and Wang-Landau-like sampling (6). These latter methods could be modified to calculate the evidence, but at the moment are only implemented to sample nastier distributions via importance sampling. Multicanonical sampling probes into the tails a distance proportional to the running time, and all samples can be kept if the distribution turns out to be unimodal. The Wang-Landau-like sampling probes the full likelihood range from the word go, and produces no samples for the first 10,000 or so steps (thereafter all samples are strictly Markovian may be kept without burn in). Methods 5 and 6 can be used with MPI, but MPI stopping should probably be turned off; MPI proposal learning may work with method 6, though this is not extensively tested. Both are likely to require <B>samples = 100000</B> or larger, hence significantly slow than a basic MCMC run for simple distributions. Settings for methods 5 and 6 can be edited at the top of MCMC.f90. See the  <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A> for a more detailed explanation of sampling methods. See also this (non-general) <A HREF="http://cosmonest.org">nested sampling</A> add-on.
+
+<BR><BR>
+<LI><B>Best-fit point</B><BR>
+
+Set <B>action</B> =2 to just calculate the best-fit point and stop. Set <B>delta_loglike</B> to the tolerance on the log likelihood for finding the best fit. The values are output to a file called file_root.minimum. Note that this function does not always work very reliably.
+
+<BR><BR>
+
+<LI><B>Data file output</B><BR>
+Since consecutive points are correlated and the output files can get quite large, you may want to thin the chains automatically: set the <b>indep_sample</b> parameter to determine at what frequency full information is dumped to a binary .data file (which includes the Cls, matter power spectrum, parameters, etc). If zero no .data file is generated. You only need to keep nearly uncorrelated samples for later importance sampling. You can specify a <b>burn_in</b>, though you may prefer to set this
+to zero and remove entries when you come to process the output samples.
+<BR><BR>
+
+
+
+<LI><B>Threads and run-time adjustment</B><BR>
+The <b>num_threads</b> parameter will determine the number of openMP threads (in MPI runs, usually set to the number of CPUs on each node). Scaling is linear up to about 8 processors on most systems, then
+falls off slowly. It is probably best to run several chains on 8 or fewer
+processors. You can terminate a run before it finishes by creating a file
+called file_root_NN.read containing "exit =1" - it will read it in, delete the .read file and stop.
+The .read file can also have "num_threads =xx" to change the number of
+threads (per chain) dynamically. If you have multiple chains you can create file_root.read which will be read by all the chains. In this case the .read file is not deleted automatically.<BR><BR>
+
+<LI><B>Post-processing (e.g. importance sampling)</B><BR>
+
+The <b>action</b> variable determines what to do. Use action=1 to process
+a .data file produced by a previous MCMC run - this is used for importance
+sampling with new data, correcting results generated by approximate means,
+or re-calculating the theoretical predictions in more detail. If action=1
+set the redo_xxx parameters to determine what to do. With <B>redo_add=F</B> you should include all the data you want used for the final result (e.g. if you generated original samples with CMB data, also include CMB data when you importance sample - it will not be weighted twice). With <B>redo_add=T</B> you should include only data you want to add - the new likelihoods are added to those already stored in the chains. PostProcessing is fastest if you have binary .data files from an original run, however if you do not have these you can use <B>redo_from_text=T</B> to read in chains from .txt files.
+<BR><BR>
+<LI><B>Exploring tails and high-significant limits</B><BR>
+The <b>temperature</b> setting allows you to sample from P^(1/T) rather
+than P - this is good for exploring the tails of distributions, discovering
+other local minima, and for getting more robust high-confidence error bars. See also the different <B>sampling_method</B>s.
+<BR><BR>
+
+<A NAME="Checkpoint">
+<LI><B>Checkpointing</B><BR>
+ Set <B>checkpoint = T</B> in the .ini file to checkpoint: i.e. generate files so that if the processes are terminated they can be restarted again from close to where they left off. With MPI this setting creates file_root.chk files used to store the current status. To continue a prematurely terminated run, just run again using exactly the same commands and files as originally. Note that if you use checkpointing, but you want to overwrite existing chains of the same name, you must manually delete all the file_root.* files (otherwise it will attempt to continue from where they left off). Please note this feature is not fantastically well tested, please let us know of any problems. Also note that for checkpointing to work the first run must run for at least past the initial burn phase (you can see when the file_root.chk files have been produced), otherwise the run will just start from scratch again.
+</UL>
+
+<A NAME="Output">
+<B><FONT COLOR="blue">Output files</FONT></B><BR>
+<UL>
+<LI>The program produces a <B>file_root.txt</B> file listing each accepted set of
+parameters; the first column gives the number of iterations staying at
+that parameter set (more generally, the sample weight), and the second the likelihood.  <BR><BR>
+<LI>If <b>indep_sample</b> is non-zero, a file_root.data file is produced containing full computed
+model information at the independent sample points. These can be used for quick importance sampling using action=1.<BR><BR>
+<LI>A <B>file_root.log</B> file
+contains some info which may be useful to assess performance.<BR><BR>
+<LI>For post-processing (action=1), the program reads in an existing .data file and processes
+according to the redo_xxx parameters. At this point the acceptance multiplicities
+are non-integer, and the output is already thinned by whatever the original
+<b>indep_sample</b>
+parameter was. The post-processed file are output to files with root <b>redo_outroot</b>.
+</UL>
+<A NAME="Analysing"><h2>Analysing samples and plotting</h2></A>
+The <b>getdist</b> program analyses text files produced by the cosmomc program. These are in the format
+<p>&nbsp;&nbsp;&nbsp; <i>weight like param1 param2 param3</i> ...
+<p>The <i>weight</i> gives the number of samples (or importance weight)
+with these parameters. <i>like</i> gives -log(likelihood). The getdist
+program could be used completely independently of the cosmomc program.
+<P>
+Run <B>getdist distparams.ini</B> to process the chains specified in the
+parameter input file distparams.ini. This should be fairly self-explanatory,
+in the same format as the cosmomc parameter input file. Note that sigma_8 is only computed if you are including LSS data when generating the chain (as computing the matter power spectrum slows things down considerably; You can post-process to compute sigma8 if you like, see action=1 in the cosmomc input file).
+</P>
+
+<P>
+<A NAME="GetDistParams">
+<B><FONT COLOR="blue">GetDist Parameters</FONT></B>
+<UL>
+<LI>GetDist processes the <B>file_root</B>.txt file (or, if there are multiple chains,
+set the <b>chain_num</b> parameter), and outputs statistics, marginalized
+plots, samples plots, and performs PCA (principle component analysis). <BR><BR>
+<LI>Set <b>ignore_rows</b> to a positive integer to ignore that number of output rows as burn-in, or to a fraction &lt;1 to skip that fraction of each chain's rows.
+<BR><BR><LI>
+Set the <b>thin_factor</b> parameter to produce a file_root_thin.txt file containing
+every <b>thin_factor</b>th sample.
+<BR><BR><LI>
+Set <b>adjust_priors</b> to adjust the
+sample multiplicities for a new prior (write the corresponding code in GetDist.f90).
+<BR><BR><LI>
+If your variable has a prior which cuts off when the posterior is non-negligible
+you need to set the <b>limits</b>xxx variables to the corresponding limits
+- for example for the neutrino mass where m_v >0. Otherwise
+limits are computed automatically. <i>DO NOT</i> use limitsxx to change
+the bounds on other plots - the program uses the limits information when
+it is estimating the posteriors from the samples. When limitsxx are used the .margestats file
+contains one tail statistics. If only one end is fixed you can use N the floating end, e.g. "limitsxx = 0 N" for the tensor amplitude which has a greater than zero prior.
+<BLOCKQUOTE>
+<Font color=#FF0000>Example:</font> Since <I>many</I> people get this wrong, here is an illustration of what happens when generating plots from a tensor run set of chains (with prior r>0):<P>
+<table border=0 Cellpadding=20><TR><TD>
+<IMG SRC="http://cosmologist.info/cosmomc/pics/r_wrong.png"><BR>
+Incorrect result when <B>limits12</B> is not set.</TD><TD> <IMG SRC="http://cosmologist.info/cosmomc/pics/r_correct.png"><BR>Correct result when setting <B>limits12=0 N</B>.</TD></TR></table>
+<P>
+Of course you should also check that you have set <B>num_bins</B> large enough and that your plots are stable to increasing it. Turning off <B>smoothing</B> can also be a useful check.
+
+</BLOCKQUOTE>
+
+</UL>
+The .ini file comments should explain the other options.
+<P>
+<A NAME="GetDistOutput">
+<B><FONT COLOR="blue">Output Text Files</FONT></B>
+<UL>
+<LI><B>file_root.margestats</B> file contains the means, standard deviations and marginalized limits for the different parameters (including derived parameters).
+<BR><BR>
+<LI><B>file_root.likestats</B> gives the best fit sample model, its likelihood, and limits from the extremal values of the N-dimensional distribution. Note that MCMC does not generally provide accurate values for the best-fit.
+<BR><BR>
+<LI><B>file_root.converge</B> contains various <A HREF="#Convergence">convergence diagnostics</A>
+<BR><BR>
+<LI><B>file_root.PCA</B> contains a principle component analysis (PCA) for<b>PCA_num</b> parameters, specified in&nbsp;<b>PCA_params</b> parameter. You can specify the mapping
+used with <b>PCA_func</b>, for example 'L' to use logs (what you usually
+want for positive definite parameters). The output file contains
+the analysis including the correlation matrix, eigenvectors and eigenvalues,
+as well as the well constrained parameter combinations and their marginalized
+errors. This is how you automatically work out constraints of the form
+param1^a param2^b param3^c ...&nbsp; = x \pm y.
+<BR><BR>
+<LI><B>file_root.corr</B> contains parameter correlations
+<BR><BR>
+<LI><B>file_root.covmat</B> contains a covariance matrix you can use as a proposal matrix for generating future chains
+</UL>
+<P>
+<A NAME="Plotting">
+<B><FONT COLOR="blue">Plotting</FONT></B><P>
+See also third-party <A HREF="http://astro.ic.ac.uk/~jaz/code/">python GetDist</A><BR><BR>
+
+<UL>
+<LI><B>SuperMongo 1D plots</B><BR>
+GetDist produces a <B>file_root.sm</B> file for use with sm. Run <B>sm &lt; file_root.sm</B> to produce file_root.ps containing a plot of the 1D marginalized posterior distributions.<BR><BR>
+
+<LI><B>Matlab plots</B><BR>
+GetDist produces MatLab '.m' files to do 1D, 2D and 3D plots. Type <B>file_root</B> into a MatLab
+window set to the directory containing the .m files to produce 1D marginalized plots. You can also do
+<UL>
+<LI><B>file_root</B>_2D for 2D maringalized plots
+<LI><B>file_root</B>_3D to make coloured 2D samples plots (like the ones on the <a href="http://cosmologist.info/cosmomc/">home
+page</a>)
+<LI><B>file_root</B>_tri to make 'triangle' plots (<A HREF="http://cosmologist.info/cosmomc/power/fig5.ps">example</A>. Set triangle_plot=T in the .ini file)
+</UL>
+You can use the <B>blue</B> matlab script (in the <B>mscripts</B>) directory to change to a B&W-friendly colormap (see also other colormaps in that directory). To compare two different sets of chains set <B>compare_num=1</B> in the .ini file, and <B>compare1</B> to the root name of some chains you have previously run GetDist on.
+<BR><BR>
+<A NAME="CustPlotting">
+<LI><B>Custom Matlab plots</B><BR>
+Some matlab scripts are also supplied for making custom matlab plots using the files produced by GetDist (see also <A HREF="http://www.sarahbridle.net/cosmologui/">CosmoloGui</A>). The scripts are in the <B> mscripts</B> directory - you will probably want to add this to your matlab path using e.g. <B>addpath('mscripts')</B>. The scripts are:
+<UL>
+<LI><B>confid2D</B> makes marginalized contour plots like <A HREF="http://cosmologist.info/cosmomc/pics/WMAP3_TT.png">this</A>. For example <B>confid2D('file_root',8,17,'-k','b')</B> plots the 8th parameter against the 17th parameter (by default n<sub>s</sub> against &sigma;<sub>8</sub>), using black line colour, and filling the contours in dark and light blue. Using the last parameter 'bg' would instead fill the contours in blue and green, or you can specify custom colors in RGB form like <B>[.15 .15 .5; 0 1 1]</B>. This script uses the <B>contourf_col</B> script supplied for making filled contour plots with specific colours. You can overlay contours from different data on top of each other, for example
+<PRE>
+confid2D('file_root1',8,17,'-k','b');
+hold on;
+confid2D('file_root2',8,17,'-k','r');
+hold off;
+show_contours_behind;
+</PRE>
+This last (optional) command is a supplied script which will show dotted lines lying behind other solid contours. If the last colour argument is omitted, confid2D plots unfilled contours only.
+<LI><B>plot4D</B> generates a rotatable 3D plot, coloured by a fourth parameter, like <A HREF="http://cosmologist.info/cosmomc/pics/4D.png">this</A>. For example <B>plot4D('file_root',16,20,17,4)</B> would plot parameters 16, 20 and 17 on the x, y and z axes, coloured by parameter 4 (as in the example plot). Note that plot4D uses the file file_root_single.txt, which is generated by GetDist only when you explicitly thin the chains, or generate at least one 3D plot.
+
+</BR>
+</UL>
+
+</UL>
+<P>
+Parameter labels are set in distparams.ini - if any are blank the parameter is ignored. You can also specify which parameters to plot, or if parameters are not specified for
+the 2D plots or the colour of the 3D plots getdist automatically works out
+the most correlated variables and uses them.
+The data files used by  SuperMongo and MatLab
+are output to the plot_data directory.
+<A NAME="Convergence"><h2>Convergence diagnostics</h2></A>
+
+The <B>getdist</B> program will output convergence diagnostics, both short summary information when getdist is run, and also more detailed information in the file_root.converge file. When running with MPI the first two of the parameters below can also be calculated when running the chains for comparison with a stopping criterion (see the .ini input file).
+<UL>
+<LI>For multiple chains the code computes the Gelman and Rubin "variance of chain means"/"mean of chain variances" R statistic for each parameter using the second half of each chain (<A HREF="http://www.statslab.cam.ac.uk/~steve/mypapers/brog96.ps">reference</A>). The <B>.converge</B> file produced by getdist contains the numbers for each parameter individually. The program also writes out the value for the worst eigenvalue of the covariance of the means, which should be a worst case (catching poor chain coverage in directions not aligned with the base parameters). This "R-1" statistic is also used for the stopping criterion when generating chains with MPI.
+If the numbers are much less than one then the second half of each chain probably provides an accurate estimate of the means and variances. If the distribution is bimodal and no chains find the second mode low values can be misleading. Typically you want the value to be less than 0.2. Low values do not guarantee that small percentiles will be measured accurately (though it certainly helps), or that the value won't increase as you run longer and probe further into the tails.<BR><BR>
+<LI>
+For MPI runs, in addition to specifying a stopping criterion as above, you can also give a convergence criterion for a confidence limit. In general it is much harder to get an accurate value for a small confidence value than for the mean, so imposing a tight limit may make your chains run for a very long time (though you can then be pretty confident in your confidence). The value computed is the variance of the chain percentiles from the last half of the different chains, in units of the standard deviation of each parameter. You can either specify a particular parameter to check, or do all of them. Any parameter with a slowly explored tail will only converge very slowly, in which case you may be able to improve things by generating chains at a higher temperature (so the tails are explored more readily; GetDist can adjust for the temperature automatically), or re-parameterizing.
+<BR><BR>
+<LI>
+For individual chains (before importance sampling) getdist computes the Raftery and Lewis convergence diagnostics. This uses a binary chain derived from each parameter depending on whether the parameter is above or below a given percentile of its distribution. The code works out how much the binary chain needs to be thinned to approximate a Markov process better than a second order process, and then uses analytical results for the convergence of binary Markov chains to assess the burn in period. It also assesses the thin factor needed for the binary chain to approximate an independence chain, which gives an idea of how much you need to thin the chain to obtain independent samples (i.e. how much you can get away with thinning it for importance sampling, though thinning isn't entirely lossless). The .converge file contains the numbers for each chain used, getdist writes out the worst case.  See this <A HREF="http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps">reference</A> for details.<BR><BR>
+<LI>
+A simpler way to asses the error on quantile limits is by computing them using subsets of the samples. GetDist produces the file_root.converge contains the 'split-test' rms change on the parameter quantiles in units of the standard deviation when the samples are split into 2,3 or 4 parts. Small numbers are clearly better. A number of 0.5 for a 2-way split indicates that the 95% confidence limit may in fact be off by the order of half a standard deviation (though probably better, as the limit is computed using all the samples). Large values in a particular parameter may indicate that there is a long tail that is only being explored slowly (in which case generating the chain at a higher temperature or changing parameters to the log might help).
+<BR><BR>
+<LI>The file_root.converge file also outputs the parameter auto-correlations as a function of step separation (see e.g. <A HREF="http://arxiv.org/astro-ph/0310723">astro-ph/0310723</A>). The correlation length is similar to the Raftery&Lewis statistics in giving a measure (though harder to quantify) of how far apart independent samples are, though it is less sensitive to how well the tails are explored (see bad case example in the <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A>).
+</UL>
+<BLOCKQUOTE>
+<B><FONT COLOR="blue">Differences between GetDist and MPI run-time statistics</FONT></B><BR><BR>
+GetDist will cut out <B>ignore_rows</B> from the beginning of each chain, then compute the R statistic using the last half of the <I>remaining</I> samples. The MPI run-time statistic uses the last half of all of the samples. In addition, GetDist will use all the parameters, including derived parameters. If a derived parameter has poor convergence this may show up when running GetDist but not when running the chain (however the eigenvalues of covariance of means is computed using only base parameters). The run-time values also use thinned samples (by default every one in ten), whereas GetDist will use all of them. GetDist will allow you to use only subsets of the chains.
+</BLOCKQUOTE>
+<A NAME="Kosowsky"><H2>Parameterizations</B></H2>
+<P>
+Performance of the MCMC can be improved by using parameters which have a close to Gaussian posterior distribution. The default parameters (which get implicit flat priors) are
+<OL>
+<LI><B>ombh2</B> - the physical baryon density
+<LI><B>omch2</B> - the physical dark matter density
+<LI><B>100*theta</B> - 100*(the ratio of the [approx] sound horizon to the angular diameter distance)
+<LI><B>tau</B> - the optical depth
+<LI><B>omk</B> - omega_K
+<LI><B>nufrac</B> - the fraction of the dark matter energy in the form of massive neutrinos
+<LI><B>w</B> - the (assumed constant) equation of state of the dark energy (taken to be quintessence)
+<LI><B>n_s</B> - the scale spectral index
+<LI><B>n_t</B> - the tensor spectral index
+<LI><B>n_run</B> - the running of the scalar spectral index
+<LI><B>ln[10^10 A_s]</B> - A_s is the primordial superhorizon power in the curvature perturbation on 0.05Mpc^{-1} scales (i.e. in this is an amplitude parameter)
+<LI><B>amp_ratio</B> - the ration A_t/A_s, where A_t is the primordial power in the transverse traceless part of the metric tensor
+<LI>is an unused fast parameter
+</OL>
+<P>
+Parameters like H_0 and Omega_lambda are derived from the above. Using theta rather than H_0 is more efficient as it is much less correlated with other parameters. There is an implit prior 40 < H_0 < 100. The .txt chain files list derived parameters after the 13 base parameters. By default these are &Omega;<sub>&Lambda;</sub> (14), Age/Gyr (15), &Omega;<sub>m</sub> (16), &sigma;<sub>8</sub> (17), z<sub>re</sub> (18), r<sub>10</sub> (19) and H<sub>0</sub> (20). r<sub>10</sub> is the ratio of the tensor to scalar C<sub>l</sub> at l=10.
+</P>
+<P>
+Since the program uses a covariance matrix for the parameters, it knows about (or will learn about) linear combination degeneracies. In particular ln[10^10 A_s]&nbsp;-&nbsp;2*tau is well constrained, since exp(-2tau)A_s determines the overall amplitude of the observed CMB anisotropy (thus the above parameterization explores the tau-A degeneracy efficiently). The supplied covariance matrix will do this even if you add new parameters.
+</P>
+<P>
+Changing parameters does in principle change the results as each base parameter has a flat prior. However for well constrained parameters this effect is very small. In particular using theta rather than H_0 has a small effect on marginalized results.
+</P>
+<P>
+The above parameterization does make use of some knowledge about the physics, in particular the (approximate) formula for the sound horizon. Also supplied is a <B>params_H.f90</B> file which uses H_0,z_re and A_s instead of theta, tau and log(10^10 A_s) which is more generic. Though slower to converge, this may be useful if you want to play around with different extended models - just edit the Makefile to use params_H.f90 instead of params_CMB.f90. Sample input files and covariance matrix along with params_H.f90 are <A HREF="http://cosmologist.info/cosmomc/params_H.tar.gz">available here</A>. Since the parameters have a different meaning in this parameterization, you should not try to mix .covmat (or other) files with those from the default parameterization.
+
+<BLOCKQUOTE>
+<B>Hard coded priors</B><BR><BR>
+
+The default installation hard codes a few priors, in some instances you may wish to edit these:
+<UL>
+<LI><B> 40 < H_0 < 100</B> This is hard coded in params_CMB.f90 (ParamsToCMBParams routine for solving for H from theta), and also in calclike.f90.
+<LI><B>  -0.3 < Omega_k < 0.3</B> in calclike.f90
+<LI><B> 10Gyr< age < 20Gyr</B> in calclike.f90, but only used if you've set Use_Age_Tophat_Prio=T in the .ini file
+<LI><B> chi < 3.14 </B> In a closed universe, the code does not allow models where the photons wrap around
+</UL>
+There is no prior on the positivity of Omega_Lambda.
+</BLOCKQUOTE>
+<A NAME="Data"><h2>Data</h2></A>
+<P>
+The supplied CMB datasets that are used for computing the likelihood are given in
+*.dataset files in the data directory (these may not be up to date). These are in a standard .ini format,
+and contain the data points and errors, data name, calibration and beam
+uncertainties, and window file directory. Code for handling these is in <B>cmbdata.f90</B>. The WMAP data is handled separately as a special case. Various simple priors are encoded in <B>calclike.f90</B>.<BR><BR>
+There is also built-in support for 2dF and (few years old) supernovae observations. Adding new data sets should be quite straightforward - you are encouraged to donate anything you add to be used by everyone.
+
+</P>
+
+<A NAME="Programming"><h2>Programming</h2></A>
+<P>
+The most likely need to modify the code is to change l_max, num_cls, or matter_power_lnzsteps, all specified in cmbtypes.f90. To change the numbers of parameters you'll need to change the constants in settings.f90. Run "make clean" after changing settings before re-compiling. When adding just one additional parameter it's often easiest to re-interpret one of the default parameters rather than adding in new parameters.
+</P>
+<P>You are encouraged to examine what the code is doing and consider carefully
+changes you may wish to make. For example, the results can depend on the
+parameterization. You may also want to use different CAMB modules, e.g.
+slow-roll parameters for inflation, or use a fast approximator. The main
+source code files you may want to modify are
+</P>
+<ul>
+<li>
+<b>params_CMB.f90</b></li>
+
+<br>This defines what the input variables mean. Change this to use different
+variables. You can change which parameterization file to use in the Makefile. <B>params_H.f90</B> is also supplied for using z_re, A_s and H_0 instead of tau, log(A_s) and theta.
+<li>
+<b>cmbtypes.f90</b></li>
+
+<br>You need to change this file to specify the l_max used. Chains can
+be generated at low l_max, then post-processed with a compile using a higher
+l_max. You can also change the num_cls number of (temperature plus polarization) Cls to compute and store.
+<li>
+<b>settings.f90</b></li>
+
+<br>This defines the number of parameters and their types. You will need
+to change this if you use more parameters.
+<li>
+<b>cmbdata.f90</b></li>
+
+<br>This reads in the CMB .dataset information and computes likelihoods.
+You may wish to edit this, for example to use likelihood distributions
+for the band powers, or to compute the likelihood from actual polarized data. This version assumes polarized data points are an arbitrary combination of the raw TT, TE, EE, and BB Cls, as specified in the window  files in data/windows. WMAP data is handled as a special case.
+
+<li>
+<b>mpk.f90</b></li>
+<BR>Analagous to cmbdata, but for matter power spectrum measurements. Reads in generic dataset files, supported (fixed) covariance matrices.
+
+<li>
+<b>propose.f90</b></li>
+
+<br>This is the proposal density and related constants and subroutines. The efficiency
+of MCMC is quite dependent on the proposal. Fast+slow and fast parameter subspaces are proposed separately. See the <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A> for a discussion of the proposal density and use of fast and slow parameters.
+<li>
+<b>CMB_Cls_simple.f90</b></li>
+
+<br>Routines for generating Cls, matter power spectra and sigma8 from CAMB.
+Replace this file to use other generators, e.g. a fast approximator like
+CMBfit, DASH, PICO, etc.
+<li>
+<b>supernovae.f90</b></li>
+
+<br>As of May 2006, uses SNLS by default. Edit to use Riess gold. (thanks to David Rapetti, Jochen Weller and Anze Slosar).
+
+<li>
+<b>SDSSLy-a-v3.f90, lya.f90</b></li>
+
+<br>SDSS Lyman alpha data (thanks to Kevork Abazajian).  Note this is only tested and likely to be reliable for standard LCDM models. For more general code see <A HREF="http://www.slosar.com/aslosar/lya.html">this patch</A>.  thanks to Matteo Viel, J.Lesgourgues). Can also replace with lya.f90 and recompile to use with LUQAS (thanks to Matteo Viel, J.Lesgourgues).
+
+<li>
+<b>postprocess.f90</b></li>
+
+<br>Reads in .data files and re-calculates likelihoods or theory predictions. Unused in MCMC runs.
+<li>
+<b>calclike.f90</b></li>
+
+<br>Add in calls to other likelihood calculators, etc., here.
+<li>
+<b>driver.F90</b></li>
+
+<br>Main program that reads in parameters and calls MCMC or post-processing.
+<li>
+<b>GetDist.f90</b></li>
+
+<br>The "getdist" program for analysing chains. Write your own importance
+weighting function or parameter mapping.</ul>
+
+<A NAME="Version"><h2>Version History</h2></A>
+<UL>
+
+<LI><B>August 2006</B>
+Improved speed of GetDist 2D plot generation, added limitsxxx support when smoothing = F. Added <A HREF="#sampling">sampling_method</A> = 5,6, preliminary implementations of multicanonical and Wang-Landau sampling for nasty (e.g. multi-modal) distributions (currently does not compute Evidence, just generates weighted samples). Changed matter_power_minkh (cmbtypes) to work around potential rounding errors on some computers. Updated <A HREF="http://camb.info">CAMB</A> following August 2006 version. Added warning about missing limits<b>xx</b> parameters to getdist. Added <B>MPI_Max_R_ProposeUpdateNew</B> parameter (when varying pareters that are fixed in covmat). Updated CBI data files.
+
+<LI><B>May 2006</B>
+Supernovae.f90 updated to use SNLS by default, edit to use Riess Gold. 2dF updated (twodf.f90 file deleted, use 2df_2005.dataset); covariance matrix support in mpk.f90.
+Fixed bug using LSS with non-flat models. Improved error checking and matlab 7 enhancements in getdist. Getdist auto column counting with columnnum=0, various hidden extra options now shown in sample distparams.ini. Extra fix for confid2D. Fixed MPI thinning bug in utils.F90. Makefile fixes. Fixed mpk.f90 analytical marginalization (since March 2006). SDSS likelihood now computed from k/h=1e-4.
+
+<LI><B>April 2006</B>
+Fixed bug in lya.f90 (SDSS lyman-alpha now the default; lya.f90 now includes Croft by default). Fixes to Confid2D matlab script. Added .covmat files for WMAP with running and tensors, and basic Planck simulation. Fixed version confusion in GetDist (one-tail limits set to prior limit value).
+
+<LI><B>March 2006</B>
+Updated for 3-year WMAP. Added <B>use_lya</B> to include lyman-alpha data (standard LCDM only). Default in lya.f90 is LUQAS (can also compile with SDSSLy-a-v3.f90 for SDSS).
+New matlab <A HREF="#CustPlotting">scripts</A> for producing solid contour and 4D plots. New <B>checkpoint</B> option to generate <A HREF="#Checkpoint">checkpoint</A> files and continue terminated runs.
+Added action=1 parameters <B>redo_add</B> (adds new likelihoods rather than recalculating) and <B>redo_from_text</B> (if you don't have .data files). Added <B>pivot_k</B> and <B>inflation_consistency</B> for use with default power spectrum parameterization.
+
+<LI><B>July 2005</B>
+Added <B>get_sigma8</B> to force calculation of &sigma;<sub>8</sub>. Updated .newdat CMB dataset format (also added B03 data files). New <B>use_fast_slow</B> parameter to turn on/off fast-slow optimizations. Fixed bug which resulted in occasional wrong tau values when importance sampling .data files. GetDist now outputs one/two-tail limit info in .margestats file. Updated CAMB version (support for non-linear matter power spectrum).
+
+<LI><B>February 2005</B>
+Updated <A HREF="http://camb.info">CAMB</A> for new accurate lensed <I>C<sub>l</sub></I> calculation of <A HREF="http://arxiv.org/abs/astro-ph/0502425">astro-ph/0502425</A>. Minor changes to getdist (new <B>matlab_version</B> input parameter,  <B>all_limits</B> to set same limits for all parameters). cmbdata.f90 includes new format used by BOOMERANG/CBI for polarization.
+
+<LI><B>October 13 2004</B>
+Fixed bug in mpk.f90 when using 2df. Changes to GetDist for compatibility with MatLab 7. Fixed Makefile_intel (though now obsolete if you have Intel fortran v8).
+
+<LI><B>October 2004</B>
+Added mpk.f90 for reading in general (multiple) matter power spectrum data files in a similar way to CMB dataset files  - corresponding changes to input parameter file. Included SDSS data files (note CosmoMC only models linear spectrum).
+Various minor bug fixes and improved MPI error handling. Included (though not compiled by default) supernovae_riess_gold.f90 file to include more recent supernova data. Some mscripts fixes for compatibility with MatLab 7.
+
+<LI><B>August 2004</B>
+Improved proposal density for efficient handling of fast and slow parameters, plus more robust distance proposal (should see significant speed improvement). New <B>sampling_method</B> parameter: new options for slice sampling (robust) and directional gridding (robust and efficient use of fast parameters). Also option to use slice sampling for burn in (more robust than Metropolis in many cases), then switch to Metropolis (faster with good covariance matrix). See the <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A> for details. Improved MPI handling and minor bug fixes. Fixed effect of reionization on CAMB's lensed <I>C<sub>l</sub></I> results.
+
+<LI><B>June 2004</B>
+Uses June 2004 CAMB version: bessel_cache.camb file no longer produced or needed (prevents MPI problems). Increased sig figs of chain output and GetDist analysis. New parameter propose_scale, the ratio of proposal width to st. dev., default 2.4 (following <A HREF="http://www.stat.columbia.edu/~gelman/research/published/theory7.ps">Roberts, Gelman, Gilks</A>, <A HREF="http://arxiv.org/abs/astro-ph/0405462">astro-ph/0405462</A>) - often significantly speeds convergence (parameters in .ini file are now estimates of the st. dev., not desired proposal widths).  Added MPI_R_StopProposeUpdate to stop updating proposal covariance matrix after a given convergence level has been reached. Added accuracy_level parameter to run at higher CAMB accuracy level (may be useful for forecasting).
+
+<LI><B>March 2004</B>
+Added new VSA and CBI datasets. Added first_band= option to .dataset files to cut out low l that aren't wanted. CAMB pivot scale for tensors changed to 0.05/MPc (same as scalar). Fixed various compiler compatibility issues. Corrected CMB_lensing parameter in sample .ini file. Fixed minor typo in params_CMB.f90. Fixed reading in of MPI_Limit_Converge parameter in driver.F90.
+Fixed bounds checking in MatterPowerAt (harmless with 2df). Added an exact likelihood calculation/data format to cmbdata.f90 for polarized full sky CMB <I>C<sub>l</sub></I>.
+
+<LI><B>December 2003</B> Added MPI support, with stopping on convergence and optional proposal density updating. Added calculation of matter power spectrum at different redshifts using CAMB (settings in cmbtypes.f90). Fixed bug when restarting chains using "continue_from" parameter [March 2006: now obsolete], and a few compiler compatibility issues.  Updated CAMB for more accurate non-flat model results. Added output of parameter auto-correlations to GetDist, along with support for ignore_rows&lt;1 to cut out a fraction of the chain and percentile split-test error estimators. Changed proposal density to proposal a random number of parameter changes on each step. Added GetDist samples_are_chains option - if false, rows can be any samples of anything (starting in column one, without an importance weight or likelihood value as produced by CosmoMC) - useful for analysing samples that don't come from CosmoMC. Added GetDist auto_label parameter to label parameters automatically by their parameter number.
+<LI><B>July 2003</B>  Fixed bug in MCMC.f90 affecting all raw chains - weights and likelihoods were displaced by one row. Post-processed results were correct, and effect on parameters is very small. Minor bug fixes in GetDist. Can now make file_root.read file to be read by all chains file_root_1, file_root_2, etc (this file is not auto-deleted after being read).
+<LI><B>May 2003</B> Added support for 'triangle' plots to GetDist (<A HREF="http://cosmologist.info/cosmomc/power/fig5.ps">example</A>. Set triangle_plot=T in the .ini file). If truncation is required, the covariance matrix for CMB data sets is now truncated (rather than truncating the inverse covariance). Fixed CAMB bug with non-flat models, and problem setting CAMB parameters when run separately from CosmoMC.
+<LI><B>March 4 2003</B> Fixed bug in GetDist - the .margestats file produced contained incorrect limits (the mean and stddev were OK)
+<LI><B>Feb 2003</B> Support for WMAP data (customized code fixes TE and amplitude bugs).  CMB computation now uses <I>C<sub>l</sub></I> transfer functions - complete split possible between transfer functions and the initial power spectrum, so improved efficiency handling fast parameters. Bug fixes and tidying of proposal function. Initial power spectrum no longer assumed smooth for P_k. GetDist limitsxxx variables can be N to auto-size one end (margestats are still one tail). Support of IBM XL fortran (workarounds for bug on Seaborg). GetDist will automatically compute some chain statistics to help diagnose convergence and accuracy. CAMB updated, including more accurate and faster handling of tight coupling. Option to generate chains including CMB lensing effect. Various other changes.
+<LI><B>Nov 2002</B> Added support for polarization, and improved compatibility with different compilers and systems.
+</UL>
+<A NAME="Reference"><h2>Reference links</h2></A>
+<a href="http://www.cs.toronto.edu/~radford/review.abstract.html">Probabilistic
+Inference Using Markov Chain Monte Carlo Methods</a>
+<p><a href="http://www.inference.phy.cam.ac.uk/mackay/itprnn/book.html">Information
+Theory, Inference and Learning Algorithms</a>
+<p><a href="http://www.statslab.cam.ac.uk/~mcmc/">MCMC Preprint Service</a>
+<P><A HREF="http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps">Raftery and Lewis convergence diagnostics</A>
+<p>
+There are also some <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A> on the proposal density, fast and slow parameters, and slice sampling as used by CosmoMC. See also the  <A HREF="http://cosmologist.info/cosmomc/cosmomc.bib">BibTex file</A> of CosmoMC references you should cite, along with some references
+of potential interest.
+
+<A NAME="FAQ"><h2>FAQ</h2></A>
+<OL>
+<LI><B>What are the dotted lines on the plots?</B><BR>
+Dotted lines are mean likelihoods of samples, solid lines are marginalized probabilities. For Gaussian distributions they should be the same. For skew disctributions, or if chains are poorly converged, they will not be. Sometime there is a much better fit (giving high mean likelihood) in a small region of parameter space which has very low marginalized probability. There is more discussion in the original  <a href="http://arxiv.org/abs/astro-ph/0205436">paper</a>.
+<BR>&nbsp;
+<LI><B>What's in the .likestats file produced by getdist?</B><BR>
+These are values for the best-fit sample, and projections of the n-Dimensional confidence region. Usually people only look at the best-fit values. The n-D limits give you some idea of the range of the posterior, and are much more conservative than the marginalized limits.
+<BR>&nbsp;
+<LI><B>I'm writing a paper "constraints on X". How do I add X to cosmomc?</B><BR>
+Often the easiest thing to do is to re-interpret one of the unused standard parameters, e.g. w, A_T, etc, depending on whether the parameter is "fast" or not (if in doubt, use one of the slow parameters like w or f_nu). You just need to change the CMBToCAMB routine in CMB_Cls_Simple.f90 so that your parameter is correctly fed into CAMB, change limits appropriately in the params.ini file, etc. See the undocumented references to w_is_w in the code for how w can be re-interpreted as a ratio of isocurvature to adiabatic in CAMB's initial conditions. If you need to add more than a couple of parameters you'll probably instead need to edit settings.f90 to increase the number of parameters, and edit the .ini file accordingly. Slow parameters should have numbers lower than fast parameters (i.e. to insert 5 slow parameters, the index of the fast parameters in the .ini file should increase by 5).
+<BR>&nbsp;
+<LI><B>How do I submit cosmomc jobs to the LSF Cambridge COSMOS supercomputer
+queues?</B><BR>
+The data files are already on cosmos, so just download the code from LAMBDA and then use 'ln -s /home/cosmos-tmp/WMAP data' to make the link from the WMAP/data directory to the existing files. To run use the runCosmomc script that should be installed on your path: type just 'runCosmomc' for command options. Use 'module load cosmolib' and linking options are
+<PRE>
+cfitsio = /home/cosmos/share-ia64
+healpix = /home/cosmos/share-ia64/Healpix_2.01
+WMAP3 = /home/cosmos/ccc-cam/aml1005/WMAP3
+</PRE>
+<LI><B>Why do some chains sometimes appear to get stuck?</B><BR>
+Usually this is because the starting position for the chain is a long way from the best fit region. Since the marginal distributions of e.q. A_s are rather narrow, it can take a while for chains to move from into an acceptable region of A_s exp(-2&tau;). The cure is to check your starting parameter values and start widths (make sure the widths are not too wide), or to use a sampling method that is more robust (e.g. use <B>sampling_method</B> = 4). If you are patient, stuck chains should eventually find a sensible region of parameter space anyway. Occasionally the staring position may be in a corner of parameter space so that prior ranges prevent any resonable proposed moves. In this case check your starting values and ranges, or just try re-starting the chain (a different random starting position will possibly be OK).
+<BR>&nbsp;
+<LI><B>How to I simulate futuristic CMB data?</B>
+See <A HREF="http://cosmocoffee.info/viewtopic.php?t=231">CosmoCoffee</A>. Also if you want to include lensing potential reconstruction, see <A HREF="http://lappweb.in2p3.fr/~perotto/FUTURCMB/home.html">this page</A>.
+</OL>
+<P>
+Feel free to ask questions (and read answers to other people's) on the <A HREF="http://cosmocoffee.info">CosmoCoffee</A> software forum. There is also a FAQ in the <A HREF="http://www.sarahbridle.net/cosmologui/">CosmoloGUI readme</A>.
+<hr>
+<FONT SIZE=2><a href="http://cosmologist.info/">Antony Lewis</a></A>.
+</body>
+</html>
