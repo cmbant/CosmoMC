@@ -41,7 +41,8 @@
 !         plotparams parameter ordering is preserved (e.g. to change order of 1D plots)
 !Oct 09:  fixed bug in credible intervals with prior cutoffs (Jan Hammann)  
 !May 10:  added finish_run_command to run system command when getdist finished (e.g. "matlab < %ROOTNAME%.m")
-!          aded line_labels to write out roots of lines being plotted (matlab)
+!          added line_labels to write out roots of lines being plotted (matlab)
+!          added no_triangle_axis_labels
 module MCSamples
  use settings
  use MatrixUtils
@@ -1384,13 +1385,20 @@ contains
         end function PlotContMATLAB
 
 
-        subroutine Write2DPlotMATLAB(aunit,j,j2, DoLabelx,DoLabely)
+        subroutine Write2DPlotMATLAB(aunit,j,j2, DoLabelx,DoLabely, hide_ticklabels)
           integer, intent(in) :: aunit,j,j2
           logical, intent(in) :: DoLabelx,DoLabely
+          logical, intent(in), optional :: hide_ticklabels
           character(LEN=120) fmt
           integer i
+          logical hide_ticks
           
-
+          if (present(hide_ticklabels)) then
+           hide_ticks = hide_ticklabels
+          else
+           hide_ticks = .false.
+          endif 
+ 
               if (PlotContMATLAB(aunit,rootname,j,j2,do_shading) .and. &
                   num_contours /= 0) then
 
@@ -1410,9 +1418,16 @@ contains
 
               write (aunit,*) 'hold off; set(gca,''Layer'',''top'',''FontSize'',axes_fontsize);'
               fmt = ''',''FontSize'',lab_fontsize);'
-              if (DoLabelx) write (aunit,*) 'xlabel('''//trim(labels(colix(j2)))//trim(fmt)
-              if (DoLabely) write (aunit,*) 'ylabel('''//trim(labels(colix(j)))//trim(fmt)
- 
+              if (DoLabelx) then
+               write (aunit,*) 'xlabel('''//trim(labels(colix(j2)))//trim(fmt)
+              else
+                if (hide_ticks) write(aunit,*) 'set(gca,''xticklabel'',[]);'
+              end if
+              if (DoLabely) then
+               write (aunit,*) 'ylabel('''//trim(labels(colix(j)))//trim(fmt)
+              else
+                if (hide_ticks) write(aunit,*) 'set(gca,''yticklabel'',[]);'
+              end if
          end subroutine  Write2DPlotMATLAB
 
 
@@ -1523,7 +1538,9 @@ subroutine CheckMatlabAxes(afile)
  integer, intent(in) :: afile
 
   write (afile,*) 'ls =get(gca,''XTick'');sz=size(ls,2);'
-  write (afile,*) 'if(sz > 4)'
+  write (afile,*) 'if(sz>2 && abs(ls(sz)-ls(1))<0.01)'
+  write (afile,*) ' set(gca,''XTick'',ls(:,1:round(sz/2):sz));'
+  write (afile,*) 'elseif (sz>4)'
   write (afile,*) ' set(gca,''XTick'',ls(:,1:2:sz));'
   write (afile,*) 'end;'
 
@@ -1570,6 +1587,7 @@ program GetDist
         integer chain_exclude(max_chains), num_exclude
         logical map_params
         logical :: triangle_plot = .false.
+        logical :: no_triangle_axis_labels = .false.
         real counts
         real cool
         integer PCA_num, PCA_normparam
@@ -1690,6 +1708,7 @@ program GetDist
 
         prob_label = Ini_Read_Logical('prob_label',.false.)
         triangle_plot = Ini_Read_Logical('triangle_plot',.false.)
+        no_triangle_axis_labels = Ini_read_Logical('no_triangle_axis_labels',.false.)
         
         samples_are_chains = Ini_Read_Logical('samples_are_chains',.true.)
 
@@ -2189,6 +2208,7 @@ program GetDist
          if (triangle_plot) then
           open(unit=52,file=trim(rootdirname) // '_tri.m',form='formatted',status='replace')
           call WriteMatLabInit(52,num_vars>4)
+          if (num_vars>6) write(52,*) 'axes_fontsize=axes_fontsize*2/3;lab_fontsize=lab_fontsize-1;'
          end if
 
           cont_lines = 0
@@ -2381,6 +2401,8 @@ program GetDist
             if (prob_label)  write (52,*) 'ylabel(''Probability'')'
             if (j==num_vars) then
              write(52,*)  'xlabel('''//   trim(labels(ix))//''',''FontSize'',lab_fontsize);'
+            else if (no_triangle_axis_labels) then
+                write(52,*) 'set(gca,''xticklabel'',[]);'
             end if
             write (52,*) 'set(gca,''ytick'',[]);hold off;'
            end if
@@ -2594,13 +2616,22 @@ program GetDist
               if (.not. Done2D(j2,j)) call Get2DPlotData(j2,j)
               write (52,'(''subplot('',1I5,'','',1I5,'','',1I5,'');'')') num_vars, num_vars, &
                    (j2-1)*num_vars + j                   
-              call Write2DPlotMATLAB(52,j2,j,j2==num_vars, j==1)
+              call Write2DPlotMATLAB(52,j2,j,j2==num_vars, j==1,no_triangle_axis_Labels)
               if (num_vars > 2) call CheckMatlabAxes(52)
 
            end do
           end do
           write (52,*)  'set(gcf, ''PaperUnits'',''inches'');'
           write (52,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 8]);';
+          if (no_triangle_axis_labels) then
+           write(52,*) 'h = get(gcf,''Children'');'
+           write(52,*) 'for i=1:length(h)'
+           write(52,*) 'p=get(h(i),''position'');'
+           write(52,*) 'sc=1.2;w=max(p(3)*sc,p(4)*sc);'
+           write(52,*) 'p(1)=p(1)-(w-p(3))/2; p(2)=p(2)-(w-p(4))/2;p(3)=w;p(4)=w;'
+           write(52,*) 'set(h(i),''position'',p);'
+           write(52,*) 'end;'
+          end if
           write (52,*) 'print -dpsc2 '//trim(rootname)//'_tri.ps;'
           close(52)
   

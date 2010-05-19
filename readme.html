@@ -519,10 +519,16 @@ weighting function or parameter mapping.</ul>
 <LI>Sets helium abundance using BBN consistency ignoring very small error bar (bbn.f90 thanks to Jan Hamann). Set bbn_consistency=F to fix to old default value of 0.24.
 <LI>Added nnu (effective number of neutrinos) and YHe (healium fraction) to cmbtypes.f90; now easier to make these varying parameters [by default nnu is fixed to 3.046 and YHe set from BBN consistency)
 <LI>Updated supernovae.f90 to Union 2 (Nao Suzuki)
+<LI>Updates to BAO for more general acoustic scale calculation (thanks to Jan Hamann and Beth Reid)
 <LI>Covariance matrices (.covmat) now only include varied parameters and have a header giving names of parameters used (so much easier to reuse if parameters are re-ordered or other parameters added)
 <LI>Aded <b>local_dir</b> parameter to change default location for .covmat and .paramname files
-<LI>GetDist option <b>line_labels=T</b> to write out legend of roots being plotted (matlab)
-<LI>GetDist option <b>finish_run_command</b> to run system command when getdist finished (e.g. "matlab < %ROOTNAME%.m" to make 1D plot)
+<LI>New GetDist options
+<UL>
+<LI><b>line_labels=T</b> to write out legend of roots being plotted (matlab)
+<LI><b>finish_run_command</b> to run system command when getdist finished (e.g. "matlab < %ROOTNAME%.m" to make 1D plot)
+<LI><b>no_triangle_axis_labels</b> to suppress axis tick labels (except on edges) when making large triangle plots
+</UL>
+<LI>Makefile updated for simpler MKL linking with ifort version 11.1+
 </UL>
 <LI><B>Jan 2010</B><BR>
 <UL>
