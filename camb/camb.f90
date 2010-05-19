@@ -319,7 +319,9 @@
             P%WantScalars = .true.
             P%WantVectors = .false.
             P%WantTensors = .false.
-            
+            P%want_zstar = .false.  !!JH 
+            P%want_zdrag = .false.  !!JH  
+
             P%Max_l=1500
             P%Max_eta_k=3000
             P%Max_l_tensor=400

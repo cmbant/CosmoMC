@@ -460,6 +460,9 @@ contains
         P%Reion%use_optical_depth = .false.
         P%OnlyTransfers = .true.
 
+        if (use_BAO) P%want_zdrag = .true. !JH
+        P%want_zstar = .false. !set to true if you want CAMB to calculate exact z_star
+
         if (CMB_Lensing) then
             P%DoLensing = .true.
             P%Max_l = lmax +250 + 50 !+50 in case accuracyBoost>1 and so odd l spacing
