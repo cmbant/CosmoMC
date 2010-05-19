@@ -809,7 +809,7 @@ contains
       aset%N_inv = cal**4 * aset%N_inv
    ENDIF
 
-   IF(aset%has_pol) WRITE(*,*) 'has pols: ', ADJUSTR(ch_types(1:n_types))
+   IF(aset%has_pol) WRITE(*,*) 'has pols: ', ch_types(1:n_types) !removed ADJUSTR, maybe avoid PG fortran
 
    !transform into Z_B = ln(C_B+x_B) for bandpowers with xfactors
    IF(aset%has_xfactors) THEN
@@ -966,7 +966,11 @@ contains
      if (datasets(i)%name == 'WMAP') then
       tot(i) = MAPLnLike(szcl)
      else
-      tot(i) = CalcLnLike(szcl,datasets(i), nuisance_params(nuisance:))
+       if (ubound(nuisance_params,1) < 1) then 
+        tot(i) = CalcLnLike(szcl,datasets(i), nuisance_params)
+       else
+        tot(i) = CalcLnLike(szcl,datasets(i), nuisance_params(nuisance:))
+       end if
       if (datasets(i)%CMBLike) nuisance = nuisance + datasets(i)%CMBLikes%num_nuisance_parameters
      end if
   end do
