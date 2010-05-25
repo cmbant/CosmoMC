@@ -791,6 +791,7 @@
     80.D0*dopac(j)*ypol(2))/k**2)*vis(j)+(3.D0/16.D0*ddvis(j)*pig+9.D0/ &
     8.D0*ddvis(j)*ypol(2))/k**2+21.D0/10.D0/k/EV%Kf(1)*vis(j)*etak   
 
+
 ! Doppler term
 !   sources(1)=  (sigma+vb)/k*dvis(j)+((-2.D0*adotoa*sigma+vbdot)/k-1.D0/k**2*dgpi)*vis(j) &
 !         +1.D0/k/EV%Kf(1)*vis(j)*etak
@@ -836,6 +837,7 @@
          sources(3) = 0
        end if
       end if
+      
      end subroutine output
 
 
@@ -1326,6 +1328,7 @@
         clxr = y(7+EV%lmaxg)
         k    = EV%k_buf
         k2   = EV%k2_buf
+
  
         Arr(Transfer_kh) = k/(CP%h0/100._dl)
         Arr(Transfer_cdm) = clxc/k2
@@ -1335,7 +1338,7 @@
   
         dgrho = 0 
         grho =  0
-
+        
         if (CP%Num_Nu_Massive > 0) then
           call MassiveNuVars(EV,y,a,grho,gpres,dgrho,dgq)
            Arr(Transfer_nu) = dgrho/grho/k2
