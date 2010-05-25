@@ -123,9 +123,9 @@ PARAMETERIZATION = params_CMB.o
 F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
 LINKFLAGS = -L../camb -lcamb $(LAPACKL) 
 
-DISTFILES = utils.o ParamNames.o Matrix_utils.o settings.o GetDist.o
+DISTFILES = ParamNames.o Matrix_utils.o settings.o GetDist.o
 
-OBJFILES= utils.o ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o \
+OBJFILES=  ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o \
 	cmbdata.o WeakLen.o bbn.o bao.o lrggettheory.o mpk.o supernovae.o HST.o SDSSLy-a-v3.o \
 	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
 	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
@@ -161,8 +161,7 @@ default: cosmomc
 
 all : cosmomc getdist
 
-utils.o: ../camb/libcamb.a
-settings.o: utils.o
+settings.o: ../camb/libcamb.a
 cmbtypes.o: settings.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o $(WMAPOBJS)
