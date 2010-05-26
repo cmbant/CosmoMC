@@ -24,7 +24,6 @@
 !When x-factors are used the inverse covariance matrix is assumed to be that for Z.
 !See the RADPACK page for data http://bubba.ucdavis.edu/~knox/radpack.html
 
-!This version August 2006
 !Mar 04: added first_band parameter to .dataset files, added format for doing exact likelihoods
 !Jul 05: Readdataset_bcp changes for BOOM/CBI data, allowing for band cuts
 !Mar 06: changed to WMAP 3-year likelihood
@@ -35,6 +34,7 @@
 !         CMBLnLike passes array of parameters for frequency-dependent part of signal
 !Oct 27 Oct 09: fixed bugs using .newdat files
 !Jan 10: switched to support WMAP7
+!May 10: initialized CMBlike=.false.
 
 module cmbdata
 use settings
@@ -342,7 +342,8 @@ contains
 
    aset%has_sz_template = .false.
    aset%nuisance_parameters = 0
- 
+   aset%CMBlike = .false.
+   
 !Special cases
    if (aname == 'MAP' .or. aname == 'WMAP') then 
      aset%name = 'WMAP'
