@@ -14,6 +14,7 @@
 
 ! AL: note requires *linear* power spectrum input
 ! AL: April 2006: added assumption violation traps
+! AL: modified for /data/ path consistency
 
 module Lya
 use settings
@@ -62,7 +63,7 @@ contains
       minSDSSPchi = 1.d30
       z_SDSSP = 3.d0
       kh_SDSSP = 0.009d0
-      call OpenTxtFile('data/SDSSPlyachi2.txt', tmp_file_unit)
+      call OpenTxtFile(trim(DataDir)//'SDSSPlyachi2.txt', tmp_file_unit)
       do i=1,n_SDSSLya
          do j=1,n_SDSSLya
             read(tmp_file_unit,*)SDSSLya_delta(i),SDSSLya_neff(j),temp,SDSSLya_chi2(i,j)

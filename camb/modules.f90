@@ -41,13 +41,11 @@
         logical, parameter :: DebugMsgs=.false. !Set to true to view progress and timing
 
         logical, parameter :: DebugEvolution = .false. !Set to true to do all the evolution for all k
-          
-        logical, parameter :: do_bispectrum = .false. 
-          !parameter tweaks for calculating separable bispectra
-          !uncomment code in CalcScalCls in cmbmain.f90 to actually calculate the bispectrum
-        logical, parameter :: hard_bispectrum = do_bispectrum .and. .false. !!! e.g. warm inflation where delicate cancellations
+
+        logical ::  do_bispectrum  = .false. 
+        logical, parameter :: hard_bispectrum = .false. !!! e.g. warm inflation where delicate cancellations
         
-        logical, parameter :: full_bessel_integration = do_bispectrum !(go into the tails when calculating the sources)
+        logical, parameter :: full_bessel_integration = .false. !(go into the tails when calculating the sources)
 
         integer, parameter :: Nu_int = 0, Nu_trunc=1, Nu_approx = 2, Nu_best = 3
          !For CAMBparams%MassiveNuMethod
@@ -128,9 +126,9 @@
         
          type(InitialPowerParams) :: InitPower  !see power_tilt.f90 - you can change this
          type(ReionizationParams) :: Reion
-         type(RecombinationParams) :: Recomb
+         type(RecombinationParams):: Recomb
          type(TransferParams)     :: Transfer 
-
+         
          real(dl) ::  InitialConditionVector(1:10) !Allow up to 10 for future extensions
           !ignored unless Scalar_initial_condition == initial_vector
 
@@ -145,7 +143,7 @@
          real(dl) curv,r, Ksign !CP%r = 1/sqrt(|CP%curv|), CP%Ksign = 1,0 or -1
          real(dl) tau0,chi0 !time today and rofChi(CP%tau0/CP%r) 
     
-         
+                      
          end type CAMBparams
 
         type(CAMBparams) CP  !Global collection of parameters
@@ -187,7 +185,6 @@
           !Increase lSampleBoost to increase sampling in lSamp%l for Cl interpolation
           
       real(dl) :: AccuracyBoost =1._dl  
-
 
           !Decrease step sizes, etc. by this parameter. Useful for checking accuracy.
           !Can also be used to improve speed significantly if less accuracy is required.              
@@ -967,7 +964,7 @@
              end do
              do il=10100,CP%Max_l, 100
                scale = (real(il+1)/il)**2/OutputDenominator
-               write(fileio_unit,'(1I15.5,7E15.5)') real(il), fact*Cl_scalar(il,in,C_Temp:C_E),0.,fact*Cl_scalar(il,in,C_Cross), &
+               write(fileio_unit,'(1E15.5,7E15.5)') real(il), fact*Cl_scalar(il,in,C_Temp:C_E),0.,fact*Cl_scalar(il,in,C_Cross), &
                     scale*Cl_scalar(il,in,C_Phi),&
                    (real(il+1)/il)**1.5/OutputDenominator*sqrt(fact)*Cl_scalar(il,in,C_PhiTemp:C_PhiE)
              end do
@@ -2409,7 +2406,7 @@
               dtaurec=min(dtaurec,taurst/160)/AccuracyBoost 
            else
               dtaurec=min(dtaurec,taurst/40)/AccuracyBoost 
-              if (hard_bispectrum) dtaurec = dtaurec / 4
+              if (do_bispectrum .and. hard_bispectrum) dtaurec = dtaurec / 4
            end if
             
            if (CP%Reion%Reionization) taurend=min(taurend,CP%ReionHist%tau_start)
