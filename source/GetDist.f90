@@ -75,7 +75,8 @@ module MCSamples
         integer colix(max_cols), num_vars  !Parameters with non-blank labels
         real mean(max_cols), sddev(max_cols)
         real, dimension(:,:), allocatable :: corrmatrix
-        character(LEN=128) rootname, plot_data_dir, out_dir, rootdirname, in_root
+        character(LEN=Ini_max_string_len) rootname, plot_data_dir, out_dir, &
+                              rootdirname, in_root
         character(LEN=128) labels(max_cols)
         character(LEN=128) pname(max_cols)
         logical has_limits(max_cols), has_limits_top(max_cols),has_limits_bot(max_cols)
@@ -1150,7 +1151,7 @@ contains
          integer i,ix1,ix2,wx,wy
          real binweight, dist, norm, maxbin
          real try_b, try_t,try_sum, try_last
-         character(LEN=120) :: plotfile, filename,numstr
+         character(LEN=Ini_max_string_len) :: plotfile, filename,numstr
          real, dimension(:,:), allocatable :: finebins, finebinlikes, Win
          integer :: fine_fac = 5
          real widthj,widthj2
@@ -1334,7 +1335,7 @@ contains
          character(LEN=*), intent(in) :: aroot
          integer, intent(in) :: j, j2,aunit
          logical, intent(in) :: DoShade
-         character(LEN=120) fname,numstr,plotfile
+         character(LEN=Ini_max_string_len) fname,numstr,plotfile
          logical PlotContMATLAB
 
              PlotContMATLAB= .false. 
@@ -1460,7 +1461,7 @@ contains
 
      subroutine Write1DplotMatLab(aunit,j)
       integer, intent(in) :: aunit, j
-      character(LEN=120) fname
+      character(LEN=Ini_max_string_len) fname
        character(LEN=60) fmt
        integer ix1
 
@@ -1553,13 +1554,14 @@ end subroutine CheckMatlabAxes
 program GetDist
         use IniFile
         use MCSamples
+        use IO
         implicit none
 
         real  bincounts(-1000:1000),binlikes(-1000:1000),binmaxlikes(-1000:1000), &
                binsraw(-1000:1000)
     
-        character(LEN=80) InputFile, numstr
-        character(LEN=120) fname, parameter_names_file
+        character(LEN=Ini_max_string_len) InputFile, numstr
+        character(LEN=Ini_max_string_len) fname, parameter_names_file
         character(LEN=10000) InLine  ! ,LastL,OutLine
         real invars(max_cols)
         integer ix, ix1,i,ix2,ix3, nbins, wx
@@ -1568,7 +1570,7 @@ program GetDist
         logical bad, adjust_priors
 
         real  amax, amin
-        character(LEN=120) filename, infile, out_root,sm_file
+        character(LEN=Ini_max_string_len) filename, infile, out_root,sm_file
         character(LEN=120) matlab_col, InS1,InS2,fmt, tmpstr
         integer plot_row, plot_col, chain_num, first_chain,chain_ix, plot_num
        
@@ -1612,7 +1614,8 @@ program GetDist
         InputFile = GetParam(1)
         if (InputFile == '') stop 'No parameter input file'
 
-        call Ini_Open(InputFile, 1, bad, .false.)
+        call IO_Ini_Load(DefIni,InputFile, bad)
+   
         if (bad) stop 'Error opening parameter file'
 
         parameter_names_file = Ini_Read_String('parameter_names')

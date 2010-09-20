@@ -123,7 +123,7 @@ PARAMETERIZATION = params_CMB.o
 F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
 LINKFLAGS = -L../camb -lcamb $(LAPACKL) 
 
-DISTFILES = ParamNames.o Matrix_utils.o settings.o GetDist.o
+DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
 OBJFILES=  ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o \
 	cmbdata.o WeakLen.o bbn.o bao.o lrggettheory.o mpk.o supernovae.o HST.o SDSSLy-a-v3.o \
