@@ -5,7 +5,7 @@
 EXTDATA = 
 #EXTDATA = LRG
 
-#set WMAP empty not to compile with WMAPg95
+#set WMAP empty not to compile with WMAP
 WMAP = /home/aml1005/WMAP7/likelihood_v4
 
 #Only needed for WMAP

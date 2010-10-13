@@ -2062,7 +2062,6 @@ subroutine CreateOpenTxtFile(aname, aunit, append)
       integer, parameter :: dl = KIND(1.d0)
       integer, intent(in) :: l2in,l3in, m2in,m3in
       real(dl), dimension(*) :: thrcof
-#ifdef THREEJ
       INTEGER, PARAMETER :: i8 = 8
       integer(i8) :: l2,l3,m2,m3
       integer(i8) :: l1, m1, l1min,l1max, lmatch, nfin, a1, a2
@@ -2336,13 +2335,6 @@ subroutine CreateOpenTxtFile(aname, aunit, append)
          thrcof(n) = cnorm*thrcof(n)
       end do
       return 
-#else
-   call MpiStop('must compile with -DTHREEJ to use 3j routine')
-
-!Just prevent unused variable warnings:
-   thrcof(1)=l2in+l3in+m2in+m3in
-#endif
-
 
     end subroutine GetThreeJs
 
