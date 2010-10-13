@@ -5,7 +5,7 @@
 EXTDATA = 
 #EXTDATA = LRG
 
-#set WMAP empty not to compile with WMAP
+#set WMAP empty not to compile with WMAPg95
 WMAP = /home/aml1005/WMAP7/likelihood_v4
 
 #Only needed for WMAP
@@ -50,7 +50,7 @@ endif
 
 #G95; make sure LAPACK and MPI libs also compiled with g95
 #F90C     = mpif90
-#FFLAGS = -O2 -DMPI
+#FFLAGS = -O2 -cpp -DMPI
 #LAPACKL = /LAPACK/lapack_LINUX.a /LAPACK/blas_LINUX.a
 
 #GFortran: if pre v4.3 add -D__GFORTRAN__
