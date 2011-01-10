@@ -40,7 +40,9 @@
 		<File RelativePath="..\camb\power_tilt.f90"/>
 		<File RelativePath="..\camb\recfast.f90"/>
 		<File RelativePath="..\camb\reionization.f90"/>
-		<File RelativePath="..\camb\subroutines.f90"/></Filter>
+		<File RelativePath="..\camb\SeparableBispectrum.f90"/>
+		<File RelativePath="..\camb\subroutines.f90"/>
+		<File RelativePath="..\camb\utils.F90"/></Filter>
 		<File RelativePath=".\bao.f90"/>
 		<File RelativePath=".\bbn.f90"/>
 		<File RelativePath=".\calclike.f90"/>
@@ -65,6 +67,5 @@
 		<File RelativePath=".\SDSSLy-a-v3.f90"/>
 		<File RelativePath=".\settings.f90"/>
 		<File RelativePath=".\supernovae.f90"/>
-		<File RelativePath=".\utils.F90"/>
 		<File RelativePath=".\WeakLen.f90"/></Filter></Files>
 	<Globals/></VisualStudioProject>

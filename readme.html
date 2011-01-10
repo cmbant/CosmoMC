@@ -501,6 +501,7 @@ weighting function or parameter mapping.</ul>
 
 <A NAME="Addons"><h2>Add-ons and extra datasets</h2></A>
 <UL>
+<LI><A HREF="http://www.esnested.info">Evolutionary Strategies for Cosmology</a> (nested sampling)
 <LI><A HREF="http://www.physi.ch/lukas/Code.html">Python GetDist</A>
 <LI><A HREF="http://theory.physics.unige.ch/~ringeval/fieldinf.html">Field inflation</a> module for CosmoMC
 <LI><A HREF="http://zuserver2.star.ucl.ac.uk/~hiranya/ModeCode/">ModeCode</A> (Bayesian Parameter Estimation for Inflation)
@@ -552,7 +553,7 @@ weighting function or parameter mapping.</ul>
 <LI>[27th Oct] fixed problems with .newdat files, and sometime-problem in LRG likelihood; updated ACBAR and BICEP dataset; COSMOS computer detected by Makefile
 <LI>Support for naming parameters to simplify changing number of parameters and parameterization. Transfer of names and labels between cosmomc chains and getdist via .paramnames files (should be backwards compatible with old .ini files). Reference indexed .ini parameters by name, e.g. param[omegambh2] as alias for param1. Give getdist plot parameters
 as name lists (e.g. H0 omegam tau).
-<LI>Added <A HREF="http://arxiv.org/abs/0907.1659">SDSS LRG</A> dataset (thanks to Beth Reid; many changes to mpk.f90; to use must have EXTDATA = LRG in the Makefile) 
+<LI>Added <A HREF="http://arxiv.org/abs/0907.1659">SDSS LRG</A> dataset (thanks to Beth Reid; many changes to mpk.f90; to use must have EXTDATA = LRG in the Makefile)
 <LI>supernovae.f90 now replaced by default with <A HREF="http://arxiv.org/abs/0908.4274">SDSS</A> Supernovae compilation  (previous code now supernovae_Union.f90; thanks to Wessel Valkenburg); config in data/supernovae.dataset.
 <LI>Added simple <A HREF="http://arxiv.org/abs/0907.1660">baryon oscillation</a> option (thanks to Beth Reid)
 <LI>Added <A HREF="http://find.uchicago.edu/quad/">Quad</A> pipeline 1 dataset (QUAD_pipeline1_2009.newdat). Support for QUAD-format .newdat files.

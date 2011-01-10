@@ -29,8 +29,9 @@
 		<Filter Name="Source Files" Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat;f90;for;f;fpp">
 		<File RelativePath=".\GetDist.f90"/>
 		<File RelativePath="..\camb\inifile.f90"/>
+		<File RelativePath=".\IO.f90"/>
 		<File RelativePath=".\Matrix_utils.F90"/>
 		<File RelativePath=".\ParamNames.f90"/>
 		<File RelativePath=".\settings.f90"/>
-		<File RelativePath=".\utils.F90"/></Filter></Files>
+		<File RelativePath="..\camb\utils.F90"/></Filter></Files>
 	<Globals/></VisualStudioProject>
