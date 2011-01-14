@@ -43,6 +43,7 @@
 !May 10:  added finish_run_command to run system command when getdist finished (e.g. "matlab < %ROOTNAME%.m")
 !          added line_labels to write out roots of lines being plotted (matlab)
 !          added no_triangle_axis_labels
+!Jan 11:  fix to confidence interval calcaultion for obscure cases with very empty tails (thanks Andrew Fowlie)
 module MCSamples
  use settings
  use MatrixUtils
@@ -435,7 +436,8 @@ contains
                else
                   try_t = (try_b+try_t)/2
                end if
-               if (try == lasttry) exit
+               if (try == lasttry &
+                 .and. abs((try_b - try_t)/(try_b + try_t)) < 0.05) exit
                lasttry = try
              end do
              else
@@ -446,7 +448,8 @@ contains
                else
                   try_b = (try_b+try_t)/2
                end if
-               if (try == lasttry) exit
+               if (try == lasttry &
+                 .and. abs((try_b - try_t)/(try_b + try_t)) < 0.05) exit
                lasttry = try
                 end do
              end if
