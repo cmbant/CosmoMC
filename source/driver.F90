@@ -278,7 +278,7 @@ program SolveCosmology
         call Ini_Close
 
         if (MpiRank==0 .and. action==0 .and. NameMapping%nnames/=0) &
-            call IO_OutputParamNames(NameMapping,trim(baseroot)//'.paramnames')
+            call IO_OutputParamNames(NameMapping,trim(baseroot))
 
         call SetIdlePriority !If running on Windows
 

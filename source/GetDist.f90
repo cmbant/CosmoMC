@@ -127,7 +127,7 @@ contains
   end subroutine AdjustPriors
 
   subroutine MapParameters(invars)
-    real invars(1:ncols)
+    real(gp) invars(1:ncols)
 ! map parameters in invars: eg. invars(3)=invars(3)*invars(4) 
 
 !    invars(2+13)=invars(17+2)*exp(-invars(2+4)) 
@@ -297,6 +297,7 @@ contains
 
   
       subroutine GetCovMatrix
+       use IO
         integer i, j, nused
         real mean(max_cols)
         real scale
@@ -337,7 +338,8 @@ contains
                 end do  
                allocate(covmatrix(nused,nused))
                covmatrix = corrmatrix(used_ix(1:nused),used_ix(1:nused))
-               call Matrix_write(trim(rootdirname) //'.covmat',covmatrix,.true.,commentline=outline)
+               call IO_WriteProposeMatrix(covmatrix,trim(rootdirname) //'.covmat', outline)
+!               call Matrix_write(trim(rootdirname) //'.covmat',covmatrix,.true.,commentline=outline)
                deallocate(covmatrix)
           else
              if (covmat_dimension /= 0) then
@@ -345,7 +347,8 @@ contains
               write (*,*) 'Writing covariance matrix for ',covmat_dimension,' parameters'
                allocate(covmatrix(covmat_dimension,covmat_dimension))
                covmatrix=corrmatrix(1:covmat_dimension,1:covmat_dimension)
-               call Matrix_write(trim(rootdirname) //'.covmat',covmatrix,.true.)
+               call IO_WriteProposeMatrix(covmatrix,trim(rootdirname) //'.covmat')
+!               call Matrix_write(trim(rootdirname) //'.covmat',covmatrix,.true.)
                deallocate(covmatrix)
               end if
           end if
@@ -1611,6 +1614,8 @@ program GetDist
         integer :: first_haschain, stat, ip, itmp, idx, nrows2(max_cols), tmp_params(max_cols)
         real :: rtmp
         character(LEN=Ini_max_string_len) :: finish_run_command
+        integer chain_handle
+        logical chainOK
      
         NameMapping%nnames = 0
 
@@ -1659,12 +1664,10 @@ program GetDist
        else
 
           if (parameter_names_file=='') then
-            infile = trim(in_root) // '.paramnames'
-            if (FileExists(infile)) then
-             call ParamNames_Init(NameMapping,infile)
-             if (ncols==0) ncols = NameMapping%nnames+2
-            end if         
+             call IO_ReadParamNames(NameMapping,in_root)
+             if (ncols==0 .and. NameMapping%nnames/=0) ncols = NameMapping%nnames+2
           end if
+          
           if (ncols==0) then
            if (chain_num == 0) then
             infile = trim(in_root) // '.txt'
@@ -1915,19 +1918,18 @@ program GetDist
         do chain_ix = first_chain, first_chain-1 + max(1,chain_num)
 
          do ix = 1, num_exclude
-           if (chain_exclude(ix) == chain_ix) goto 30
+           if (chain_exclude(ix) == chain_ix) cycle
          end do  
+
+         num_chains_used = num_chains_used + 1
+         if (num_chains_used > max_chains) stop 'Increase max_chains in GetDist'
+         chain_indices(num_chains_used) = nrows
+         chain_numbers(num_chains_used) = chain_ix
 
     if ( single_column_chain_files ) then
       !Use used for WMAP 5-year chains suppled on LAMBDA; code from Mike Nolta
+      !Standard CosmoMC case below
         
-!        if (map_params) stop 'map_params does not work with single_column_chain_files'
-        
-        num_chains_used = num_chains_used + 1
-        if (num_chains_used > max_chains) stop 'Increase max_chains in GetDist'
-      
-        chain_indices(num_chains_used) = nrows
-        chain_numbers(num_chains_used) = chain_ix
         first_haschain=0 
         do ip = 1,ncols
             infile = concat(CheckTrailingSlash(concat(in_root,chain_ix)), pname(ip))
@@ -1938,12 +1940,13 @@ program GetDist
             else
             
             write (*,*) 'reading ' // trim(infile)
-            call OpenTxtFile(infile,50)
+           ! call OpenTxtFile(infile,50)
+            chain_handle = IO_OpenChainForRead(infile)
             if (first_haschain==0) first_haschain=ip 
             nrows2(ip) = 0
             idx = 0 !Jo -1
             do
-                read (50,'(a)',iostat=stat) InLine
+                read (chain_handle,'(a)',iostat=stat) InLine
                 if ( stat /= 0 ) exit
                 idx = idx + 1
 
@@ -1971,8 +1974,8 @@ program GetDist
                 nrows2(ip) = nrows2(ip) + 1
                 if (nrows2(ip) > max_rows) stop 'need to increase max_rows'
     
-            end do    
-            close(50)
+            end do  
+            call IO_Close(chain_handle)  
             end if
         end do
         if (first_haschain==0) stop 'no chain parameter files read!'
@@ -1984,77 +1987,35 @@ program GetDist
             end if
         end do
         nrows = nrows2(first_haschain)
-        if (map_params) then
-         do ip = 1,nrows
-          invars(1:ncols) = coldata(1:ncols, ip)        
-          call MapParameters(invars)
-          coldata(1:ncols, ip) = invars(1:ncols)
-         end do
-        end if
         print *, 'all columns match, nrows = ', nrows
 
-    else
-     !Not single column chain files
-           
-         if (chain_num == 0) then
-            infile = trim(in_root) // '.txt'
-         else
-            write (numstr,*) chain_ix
-            infile = trim(in_root) //'_'//trim(adjustl(numstr))// '.txt'
-         end if
-
-         write (*,*) 'reading ' // trim(infile)
+    else  !Not single column chain files (usual cosmomc format)
     
-         open(unit=50,file=infile,form='formatted',status='old', err=28)
+          !This increments nrows by number read in
+         if (.not. IO_ReadChainRows(in_root, chain_ix, chain_num, nint(ignorerows),nrows,ncols,max_rows, &
+                                                    coldata,samples_are_chains)) then
+            num_chains_used = num_chains_used - 1
+            cycle
+         endif  
+     
+     end if
 
-          if (ignorerows >=1) then
-           do ix = 1, nint(ignorerows)
-             read (50,'(a)',end=1) InLine
-           end do
-          end if
+       if (map_params) then
+         do ip =chain_indices(num_chains_used),nrows-1
+          call MapParameters(coldata(1:ncols, ip))
+         end do
+       end if
 
-         num_chains_used = num_chains_used + 1
-         if (num_chains_used > max_chains) stop 'Increase max_chains in GetDist'
-         chain_indices(num_chains_used) = nrows
-         chain_numbers(num_chains_used) = chain_ix
-          do
-           read (50,'(a)',end=1) InLine
-           if (SCAN (InLine, 'N') /=0) then
-             write (*,*) 'WARNING: skipping line with probable NaN'
-             cycle
-           end if
-           if (samples_are_chains) then
-            read(InLine,*,end=1, err=2) invars(1:ncols) 
-           else
-            read(InLine,*,end=1, err=2) invars(3:ncols) 
-            invars(1) = 1
-            invars(2) = 1
-           end if
-
-           if (map_params) call MapParameters(invars)
-           coldata(1:ncols, nrows) = invars(1:ncols)
-           
-           nrows = nrows + 1
-           if (nrows > max_rows) stop 'need to increase max_rows'
-
-          end do    
-     2       write (*,*) 'error reading line ', nrows + int(ignorerows), ' - skipping rest of file'
-         
-     1       close(50)
-    end if
-
-         if (ignorerows<1 .and. ignorerows/=0) then
+       if (ignorerows<1 .and. ignorerows/=0) then
            i = chain_indices(num_chains_used)
            j = nint((nrows-i-1)*ignorerows)
            do ix = i,nrows-j-1
-
             coldata(:,ix) = coldata(:,ix+j)
            end do
            nrows = nrows - j
-         end if
-         goto 30
- 28      write (*,'(" chain ",1I4," missing")') chain_ix
- 30      end do
+       end if
+         
+       end do
 
           if (nrows == 0) stop 'No un-ignored rows! (check number of chains/burn in)'
 
@@ -2712,38 +2673,14 @@ program GetDist
 
 !write out stats
 !Marginalized
-
-         open(unit=50,file=trim(rootdirname)//'.margestats',form='formatted',status='replace')
-          write(50,'(a)',advance='NO') 'param  mean          sddev         '       
-          do j=1, num_contours
-           write(50,'(a)',advance='NO') trim(concat('lower',j))//'        '//trim(concat('upper',j))//'        '
-          end do
-          write(50,'(a)') ''
+         call IO_OutputMargeStats(rootdirname, num_vars,num_contours,contours, contours_str, &
+                     cont_lines, colix, mean, sddev, has_limits, labels, force_twotail)
          
           open(unit=51,file=trim(plot_data_dir)//trim(rootname)//'_params',form='formatted',status='replace')
           do j=1, num_vars
-             write(50,'(1I5,2E14.6)', advance='NO') colix(j)-2, mean(j), sddev(j)
-             do i=1, num_contours
-               write(50,'(2E14.6)',advance='NO') cont_lines(j,1:2,i)
-             end do
-             write(50,'(a)') '   '//trim(labels(colix(j)))
              write (51,*) colix(j)-2, trim(labels(colix(j)))
           end do
           close(51)
-          write (50,*) '' 
-          write (50,'(a)') 'Limits are: ' // trim(contours_str)
-          if (.not. force_twotail) then
-              do j=1, num_vars
-               if (has_limits(colix(j))) then
-                 write(50,'(1I5," one tail;  '//trim(labels(colix(j)))//'")') colix(j)-2
-                else
-                 write(50,'(1I5," two tail;  '//trim(labels(colix(j)))//'")') colix(j)-2
-                end if
-              end do
-          else
-              write (50,*) 'All limits are two tail'
-          end if
-          close(50)
 
 
 !Limits from global likelihood

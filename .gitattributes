@@ -1,0 +1,4 @@
+*.txt           text
+*.f90           text
+*.F90           text
+Makefile	text

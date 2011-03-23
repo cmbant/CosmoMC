@@ -88,7 +88,8 @@ subroutine DoStop(S)
            write (*,*) 'Slow proposals: ', slow_proposals
 
         end if
-        call mpi_finalize(ierror)
+        call DoAbort('') !Abort all in case other continuing chains want to communicate with us
+        !call mpi_finalize(ierror)
 #endif
 
 #ifdef DECONLY
