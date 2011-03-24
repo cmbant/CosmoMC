@@ -2,7 +2,6 @@
 module IO
 !Module to wrap output functions
 !Replace file e.g. to store output in a pipline database (indexed by filename)
-!Al May09
 !Valid handles must be /=0
 use AmlUtils
 use settings

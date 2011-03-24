@@ -1917,9 +1917,7 @@ program GetDist
 
         do chain_ix = first_chain, first_chain-1 + max(1,chain_num)
 
-         do ix = 1, num_exclude
-           if (chain_exclude(ix) == chain_ix) cycle
-         end do  
+         if (any(chain_exclude(1:num_exclude)==chain_ix)) cycle
 
          num_chains_used = num_chains_used + 1
          if (num_chains_used > max_chains) stop 'Increase max_chains in GetDist'
@@ -1992,7 +1990,7 @@ program GetDist
     else  !Not single column chain files (usual cosmomc format)
     
           !This increments nrows by number read in
-         if (.not. IO_ReadChainRows(in_root, chain_ix, chain_num, nint(ignorerows),nrows,ncols,max_rows, &
+         if (.not. IO_ReadChainRows(in_root, chain_ix, chain_num, int(ignorerows),nrows,ncols,max_rows, &
                                                     coldata,samples_are_chains)) then
             num_chains_used = num_chains_used - 1
             cycle
