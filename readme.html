@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>This version May 2010</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>This version xxx 2011</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -521,7 +521,9 @@ weighting function or parameter mapping.</ul>
 <LI><B>xxxx 2011</B><BR>
 <UL>
 <LI>Updated matlab colormaps in mscripts directory; added <b>color_for_bw.m</b> (yellow-blue/black, which should look consistent printing in B&W).
-<LI><b>all_l_exact</b> likelihood now uses fsky rather than fsky^2 scaling at all L.
+<LI><b>all_l_exact</b> likelihood now uses fsky rather than fsky<sup>2</sup> scaling at all L.
+<LI>GetDist changes to use more IO wrapper functions
+<LI>%DATASETDIR% placeholder support for all input files; <b>custom_params</b> input parameter to read and store additional parameter file in CustomParams object (settings.f90), also used as optional additional placeholders.
 </UL>
 
 <LI><B>May 2010</B><BR>
