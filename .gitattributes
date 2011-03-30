@@ -2,3 +2,6 @@
 *.f90           text
 *.F90           text
 Makefile	text
+*.m             text
+*.paramnames    text
+*.ini           text

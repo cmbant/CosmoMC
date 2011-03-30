@@ -27,7 +27,7 @@ program SolveCosmology
         logical bad, est_bfp_before_covmat
         integer numsets, nummpksets, i, numtoget, action
         character(LEN=Ini_max_string_len) baseroot, filename(100), &
-         mpk_filename(100),  SZTemplate(100), numstr, fname
+         mpk_filename(100),  SZTemplate(100), numstr, fname, keyname
         real SZscale(100)
         Type(ParamSet) Params, EstParams
         integer num_points
@@ -82,6 +82,22 @@ program SolveCosmology
         
         Ini_fail_on_not_found = .false.
 
+        call TNameValueList_Init(CustomParams%L)
+        call TNameValueList_Init(CustomParams%ReadValues)
+
+        if (Ini_HasKey('local_dir')) LocalDir=ReadIniFileName(DefIni,'local_dir') 
+        if (Ini_HasKey('data_dir')) DataDir=ReadIniFileName(DefIni,'data_dir') 
+        
+        if (Ini_HasKey('custom_params')) then
+          fname = ReadIniFileName(DefIni,'custom_params')
+          if (fname/='') then
+           file_unit = new_file_unit()
+           call  Ini_Open_File(CustomParams,  fname, file_unit, bad)
+           call ClearFileUnit(file_unit)
+           if (bad) call DoStop('Error reading custom_params parameter file')
+         end if
+        end if   
+
         propose_scale = Ini_Read_Real('propose_scale',2.4)
         AccuracyLevel = Ini_Read_Real('accuracy_level',1.)
 
@@ -116,11 +132,11 @@ program SolveCosmology
       
 #endif
 
-        ParamNamesFile = Ini_Read_String('ParamNamesFile')
+        ParamNamesFile = ReadIniFileName(DefIni,'ParamNamesFile')
 
         Ini_fail_on_not_found = .true.
         
-        baseroot = Ini_Read_String('file_root')
+        baseroot = ReadIniFileName(DefIni,'file_root')
         
         rootname = trim(baseroot)
 
@@ -204,15 +220,13 @@ program SolveCosmology
         Use_BBN = Ini_Read_Logical('use_BBN',.false.)
         Use_Age_Tophat_Prior= Ini_Read_Logical('use_Age_Tophat_Prior',.true.)
         Use_SN = Ini_Read_Logical('use_SN',.false.)
-        if (Use_SN) SN_filename = Ini_Read_String('SN_filename')
+        if (Use_SN) SN_filename = ReadIniFileName(DefIni,'SN_filename')
         Use_BAO = Ini_Read_Logical('use_BAO',.false.)
         Use_CMB = Ini_Read_Logical('use_CMB',.true.)
         Use_WeakLen = Ini_Read_Logical('use_WeakLen',.false.)
         Use_min_zre = Ini_Read_Double('use_min_zre',0.d0) 
         Use_Lya = Ini_Read_logical('use_lya',.false.)
        
-        if (Ini_HasKey('data_dir')) DataDir=Ini_Read_String('data_dir') 
-        if (Ini_HasKey('local_dir')) LocalDir=Ini_Read_String('local_dir') 
 
         if (Use_Lya .and. use_nonlinear) &
              call DoStop('Lya.f90 assumes LINEAR power spectrum input')
@@ -244,10 +258,12 @@ program SolveCosmology
         nuisance_params_used = 0
         if (Use_CMB) then
          do i= 1, numsets
-          filename(i) = Ini_Read_String(numcat('cmb_dataset',i)) 
+          filename(i) = ReadIniFileName(DefIni,numcat('cmb_dataset',i)) 
           call ReadDataset(filename(i))
           num_points = num_points + datasets(i)%num_points
-          SZTemplate(i) = Ini_Read_String(numcat('cmb_dataset_SZ',i), .false.) 
+          keyname=numcat('cmb_dataset_SZ',i)
+          SZTemplate(i) = ''
+          if (Ini_HasKey(KeyName)) SZTemplate(i) = Ini_Read_String(keyname, .false.) 
           if (SZTemplate(i)/='') then
            SZScale(i) = Ini_read_Real(numcat('cmb_dataset_SZ_scale',i),1.0)
            call ReadSZTemplate(datasets(i), SZTemplate(i),SZScale(i))

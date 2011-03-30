@@ -47,9 +47,10 @@ module settings
     !set to true to not call CAMB, etc.
     !write GenericLikelihoodFunction in calclike.f90   
 
-  character(LEN=1024) :: DataDir='data/'
-  character(LEN=1024) :: LocalDir='./'   
-  character(LEN=128)  :: ParamNamesFile = ''
+  character(LEN=Ini_max_string_len) :: DataDir='data/'
+  character(LEN=Ini_max_string_len) :: LocalDir='./'   
+  character(LEN=Ini_max_string_len) :: ParamNamesFile = ''
+  Type(TIniFile) :: CustomParams
 
   integer, parameter :: num_fast_params = num_initpower + num_norm + num_nuisance_params
 
@@ -79,12 +80,23 @@ module settings
 
 contains
 
+  function ReplaceDirs(S, repdir) result (filename)
+   character(LEN=*), intent(in) :: S, repdir
+   character(LEN=Ini_max_string_len) :: filename
+   
+   filename=S
+   call StringReplace('%DATASETDIR%',repdir,filename)
+   call StringReplace('%LOCALDIR%',LocalDir,filename)
+   
+  end function ReplaceDirs
+
   function ReadIniFileName(Ini,key, ADir, NotFoundFail) result (filename)
    Type(TIniFile) :: Ini
    character(LEN=*), intent(in) :: Key
    character(LEN=*), optional, intent(in) :: ADir
-   character(LEN=Ini_max_string_len) :: filename
-   logical, optional :: NotFoundFail 
+   character(LEN=Ini_max_string_len) :: filename, repdir
+   logical, optional :: NotFoundFail
+   integer i 
  
    if (present(NotFoundFail)) then
     filename = Ini_Read_String_File(Ini, key, NotFoundFail)
@@ -92,10 +104,16 @@ contains
     filename = Ini_Read_String_File(Ini, key)
    end if
    if (present(ADir)) then
-    call StringReplace('%DATASETDIR%',ADir,filename)
+     repdir=ADir
    else
-    call StringReplace('%DATASETDIR%',DataDir,filename)
-   end if
+     repdir=DataDir
+   end if     
+   filename= ReplaceDirs(filename, repdir)
+   
+   do i=1, CustomParams%L%Count
+    call StringReplace('%'//trim(CustomParams%L%Items(i)%P%Name)//'%',&
+                 trim(ReplaceDirs(CustomParams%L%Items(i)%P%Value, repdir)) ,filename)
+   end do
    
   end function ReadIniFileName
 
@@ -113,7 +131,7 @@ contains
        num_threads = Ini_Read_Int('num_threads',num_threads)
        call Ini_Close
        if (F== FileChangeIni) call DeleteFile(FileChangeini)
-       if (doexit) stop
+       if (doexit) call MpiStop('exit requested')
 
    end if
 
