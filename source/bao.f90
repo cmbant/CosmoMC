@@ -68,7 +68,8 @@ real(dl) function BAO_LnLike(CMB)
 
   !!AngularDiameterDistance and rs returned in Mpc no h units.
   !! at z <~ 0.5, the neutrinos are nonrelativistic, so they contribute to the matter density, unlike at zdrag.
-  !! note for really tiny neutrino masses, this breaks down; see Section 3.3 of Komatsu et al 2010, WMAP7 cosmological interpretation paper.  However, completely negigible given current error bars!
+  !! note for really tiny neutrino masses, this breaks down; see Section 3.3 of Komatsu et al 2010, 
+  !WMAP7 cosmological interpretation paper.  However, completely negigible given current error bars!
   omegam = 1.d0 - CMB%omv - CMB%omk
   hz1 = sqrt(omegam*(1.0d0+z1)**3.0d0+CMB%omk*(1.0d0+z1)**2.0+CMB%omv*(1.0d0+z1)**(3.0d0*(1.0d0+CMB%w)))
   hz2 = sqrt(omegam*(1.0d0+z2)**3.0d0+CMB%omk*(1.0d0+z2)**2.0+CMB%omv*(1.0d0+z2)**(3.0d0*(1.0d0+CMB%w)))

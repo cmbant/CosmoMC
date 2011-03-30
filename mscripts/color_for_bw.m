@@ -1,3 +1,5 @@
+function cmap=color_for_bw
+
 %Colormap that should print consistently in B & W
 %Yellow to blue/black
 cmap = colormap('gray');

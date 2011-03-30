@@ -35,7 +35,7 @@
 !Oct 27 Oct 09: fixed bugs using .newdat files
 !Jan 10: switched to support WMAP7
 !May 10: initialized CMBlike=.false.
-
+!Mar 11: all_l_exact likelihood uses fsky not fsky^2 everywhere; also consistent for datasetdir placeholders
 module cmbdata
 use settings
 use cmbtypes
@@ -66,6 +66,7 @@ implicit none
     real :: calib_uncertainty
     logical :: beam_uncertain, has_corr_errors, has_xfactors
     integer :: num_points, file_points
+    character(LEN=Ini_max_string_len) :: dataset_filename
     character(LEN=80) :: name
     Type(CMBdatapoint), pointer, dimension(:) :: points
     real, pointer, dimension(:,:) :: N_inv
@@ -191,7 +192,7 @@ contains
     !with some fudge factor fsky_eff^2 to reduce the degrees of freedom: fsky^eff*(2l+1)
         
        if (Feedback > 0) &
-        write(*,*) 'all_l_exact note: you might want to change fsky_eff^2 factor to fsky_eff' 
+        write(*,*) 'all_l_exact note: all fsky_eff^2 changed to fsky_eff in this version' 
 
        aset%num_points = 0
        aset%all_l_lmax = Ini_Read_Int_File(Ini,'all_l_lmax')
@@ -205,7 +206,7 @@ contains
         allocate(aset%all_l_noise(2:aset%all_l_lmax,1))
        end if
        allocate(aset%all_l_fsky(2:aset%all_l_lmax))
-       fname = trim(Ini_Read_String_File(Ini,'all_l_file'))
+       fname = ReadIniFilename(Ini, 'all_l_file',ExtractFilePath(aset%dataset_filename))
        ncol = TxtFileColumns(fname)
        if (ncol==7) then
          ncls = 3
@@ -254,9 +255,6 @@ contains
    
    do l=2, 30 
      dof = aset%all_l_fsky(l)*(2*l+1)
-       !Ignoring l correlations but using f_sky^2_eff fudge factor may be a good approx
-       !for nearly full sky observations
-       !switched to just fsky**1 default Nov 09 since usually more useful
      CT = cl(l,1) + aset%all_l_noise(l,1)
      if (aset%has_pol) then
       CE = cl(l,3) + aset%all_l_noise(l,2)
@@ -288,7 +286,8 @@ contains
      CChat=0
      CBhat=0
      do i=l,l+cl_bin_width-1
-      dof = dof + aset%all_l_fsky(i)**2*(2*i+1)
+      dof = dof + aset%all_l_fsky(i)*(2*i+1)
+       !switched to just fsky here Apr 2011 
       CT = CT + (cl(i,1) + aset%all_l_noise(i,1))*(2*i+1)
       CThat = CThat + aset%all_l_obs(i,1)*(2*i+1)
       if (aset%has_pol) then
@@ -343,6 +342,7 @@ contains
    aset%has_sz_template = .false.
    aset%nuisance_parameters = 0
    aset%CMBlike = .false.
+   aset%dataset_filename=aname
    
 !Special cases
    if (aname == 'MAP' .or. aname == 'WMAP') then 

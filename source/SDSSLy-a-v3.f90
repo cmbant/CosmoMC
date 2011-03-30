@@ -200,7 +200,7 @@ contains
    khi=klo+1
    h=xa(khi)-xa(klo)
    if (h == 0.0)then
-      write(*,*)('bad xa input in splintt')
+      write(*,*) 'bad xa input in splintt'
       splintt = -99.
    else
       a=(xa(khi)-x)/h
