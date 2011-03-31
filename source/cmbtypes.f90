@@ -6,7 +6,7 @@ implicit none
 
 
 !Number of CMB Cls, 1 for just temperature, 3 (4) for polarization (with B)
-  integer, parameter  :: num_cls  = 3
+  integer, parameter  :: num_cls  = 4
 
   integer, parameter  :: num_cls_ext=0
    !number of other C_l
@@ -87,8 +87,7 @@ implicit none
     ! end BR09 additions
   end Type CosmoTheory
 
-  logical, parameter ::  Old_format  = .false.
-  logical, parameter :: write_all_Cls = .false. 
+  logical, parameter :: write_all_Cls = .true. 
    !if false use CAMB's flat interpolation scheme (lossless if models are flat except near lmax when lensed)
 
 contains
@@ -108,11 +107,6 @@ contains
        amult = 1
     end if
     
-    if (Old_format) then
-
-      stop 'old not supported'    
-    else
-
     j = 0 !format ID
     if (write_all_cls) j=1
     write(i) j
@@ -145,7 +139,7 @@ contains
         end do
 
         if (lmax_tensor /= 0) then
-            if (lmax_tensor<150) stop 'lmax_tensor too small'
+            if (lmax_tensor<150) call MpiStop('lmax_tensor too small')
             write(i) T%cl_tensor(2:20,1:num_cls)
             do j=30,90,10 
              write(i) T%cl_tensor(j,1:num_cls)
@@ -158,8 +152,6 @@ contains
             end do
         end if
     end if
-
-    end if 
 
     if (flush_write) call FlushFile(i)
 
@@ -177,21 +169,15 @@ contains
     integer allcl,j,ind, ix(lmax)
     integer almax,almaxtensor, anumpowers, anumcls
    
-    error = 0
-
-    if (old_format) then
-
-       stop 'old not supported'
-
-    else
+         error = 0
 
         read(i,end=100,err=100) allcl
 
-        if (allcl/=0 .and. allcl/=1) stop 'wrong file format'
+        if (allcl/=0 .and. allcl/=1) call MpiStop('wrong file format')
 
         read(i,end=100,err=100) mult,anumpowers,almax, almaxtensor, anumcls
-        if (almax > lmax) stop 'reading file with larger lmax'
-        if (anumcls /= num_cls) stop 'reading file with different Cls'
+        if (almax > lmax) call MpiStop('reading file with larger lmax')
+        if (anumcls /= num_cls) call MpiStop('reading file with different Cls')
 
         read(i) T%SN_loglike, T%HST_loglike,T%BAO_loglike,T%reserved
    
@@ -264,7 +250,6 @@ contains
         return
     100 error = 1
 
-    end if
 
    end subroutine ReadModel
 
@@ -362,7 +347,7 @@ contains
      x = log(kh/matter_power_minkh) / matter_power_dlnkh
      if (x < 0 .or. x >= num_matter_power-1) then
         write (*,*) ' k/h out of bounds in MatterPowerAt (',kh,')'
-        stop 
+        call MpiStop('') 
      end if
      i = int(x)
      d = x - i
@@ -387,7 +372,7 @@ contains
      x = log(kh/matter_power_minkh) / matter_power_dlnkh
      if (x < 0 .or. x >= num_matter_power-1) then
         write (*,*) ' k/h out of bounds in MatterPowerAt (',kh,')'
-        stop 
+        call MpiStop('') 
      end if
      i = int(x)
      d = x - i
@@ -412,12 +397,12 @@ contains
 
      if (z > matter_power_maxz ) then
         write (*,*) ' z out of bounds in MatterPowerAt_Z (',z,')'
-        stop
+        call MpiStop('')
      end if
      x = log(kh/matter_power_minkh) / matter_power_dlnkh
      if (x < 0 .or. x >= num_matter_power-1) then
         write (*,*) ' k/h out of bounds in MatterPowerAt_Z (',kh,')'
-        stop
+        call MpiStop('')
      end if
 
      iz = int(y*0.99999999)
