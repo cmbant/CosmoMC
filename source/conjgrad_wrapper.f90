@@ -79,7 +79,7 @@ contains
  subroutine OutOfBounds
     write(*,*) 'ERROR: Trial parameters excluded by prior or error in likelihood'
     write(*,*) 'Try starting further away from problem regions?'
-    call DoStop
+    call DoAbort
  end  subroutine OutOfBounds
 
 

@@ -88,7 +88,9 @@ subroutine DoStop(S)
            write (*,*) 'Slow proposals: ', slow_proposals
 
         end if
-        call DoAbort('') !Abort all in case other continuing chains want to communicate with us
+        ierror =0 
+        call MPI_Abort(MPI_COMM_WORLD,ierror,ierror)
+        !Abort all in case other continuing chains want to communicate with us
         !call mpi_finalize(ierror)
 #endif
 
@@ -97,7 +99,6 @@ subroutine DoStop(S)
 #endif
        stop
 end subroutine DoStop
-
 
 subroutine DoAbort(S)
 
@@ -143,7 +144,7 @@ subroutine Initialize(Ini,Params)
         prop_mat = concat(LocalDir,prop_mat)
          
         fname = Ini_Read_String_File(Ini,'continue_from')
-        if (fname /= '') call DoStop('continue_from replaced by checkpoint')
+        if (fname /= '') call DoAbort('continue_from replaced by checkpoint')
 
        if (.not. new_chains) then
             fname = trim(rootname) //'.txt'
@@ -183,7 +184,7 @@ subroutine Initialize(Ini,Params)
             read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), wid, Scales%PWidth(i)
            end if  
            Scales%center(i) = center
-           if (Scales%PMax(i) < Scales%PMin(i)) call DoStop('You have param Max < Min')
+           if (Scales%PMax(i) < Scales%PMin(i)) call DoAbort('You have param Max < Min')
            if (Scales%PWidth(i) /= 0) then
                num_params_used = num_params_used + 1
               if (i > num_hard .and. use_fast_slow) then
@@ -254,7 +255,7 @@ subroutine Initialize(Ini,Params)
         if (.not. new_chains) call AddMPIParams(Params%P,like, .true.)    
    
         return
-100     call DoStop('Error reading param details: '//trim(InLIne))
+100     call DoAbort('Error reading param details: '//trim(InLIne))
 
 end subroutine Initialize
 
@@ -300,7 +301,7 @@ subroutine SetProposeMatrix
             propose_matrix_fast = transpose(propose_matrix_fast)
 
             if (any(propose_diag_fast <= 0)) &
-              call DoStop('Fast proposal matrix has negative or zero eigenvalues')
+              call DoAbort('Fast proposal matrix has negative or zero eigenvalues')
 
 
             propose_diag_fast = 1/sqrt(propose_diag_fast)
@@ -318,7 +319,7 @@ subroutine SetProposeMatrix
 
 
     if (any(propose_diag <= 0)) &
-        call DoStop('Proposal matrix has negative or zero eigenvalues')
+        call DoAbort('Proposal matrix has negative or zero eigenvalues')
     propose_diag = sqrt(max(1e-12,propose_diag))
 
 
@@ -433,7 +434,7 @@ end subroutine SetProposeMatrix
       if (Feedback > 0) write (*,*) instance, 'Reading checkpoint from '//trim(rootname)//'.chk'
       call OpenFile(trim(rootname)//'.chk',tmp_file_unit,'unformatted')
       read (tmp_file_unit) ID
-      if (ID/=chk_id) call DoStop('invalid checkpoint files')
+      if (ID/=chk_id) call DoAbort('invalid checkpoint files')
       read(tmp_file_unit) num, sample_num, MPI_thin_fac, npoints, Burn_done, all_burn,sampling_method, &
             slice_fac, has_propose_matrix, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
       if (has_propose_matrix) then

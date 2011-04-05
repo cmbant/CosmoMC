@@ -120,7 +120,7 @@ contains
    if (Lgrid(1,1,2,2).eq.LogZero) then
          write(*,*) 'ERROR: Trial parameters excluded by prior or bad likelihood'
          write(*,*) 'Try starting further away from problem regions?'
-         call DoStop
+         call DoAbort
    end if
 
    ! Decide how big to make the grid
@@ -230,7 +230,7 @@ contains
         if (Lgrid(i,1,istep,jstep).eq.LogZero) then
           write(*,*) 'ERROR: Trial parameters hit prior or error in function evaluation'
           write(*,*) 'Try starting further away from problem regions?'
-          call DoStop
+          call DoAbort
         end if
       end do
       Hess(i,i)=1/(wii*wii) *(Lgrid(i,1,1,2) + Lgrid(i,1,3,2) - 2*Lgrid(i,1,2,2))
@@ -251,7 +251,7 @@ contains
                if (Lgrid(i,j,istep,jstep).eq.LogZero) then
                 write(*,*) 'ERROR: Trial parameters hit prior or error in function evaluation'
                      write(*,*) 'Try starting further away from problem regions?'
-                call DoStop
+                call DoAbort
                end if
 
             end do

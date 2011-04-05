@@ -47,7 +47,7 @@ program SolveCosmology
        instance = 0 
 #ifndef MPI 
         InputFile = GetParam(1)
-        if (InputFile == '') call DoStop('No parameter input file')
+        if (InputFile == '') call DoAbort('No parameter input file')
 #endif
         numstr = GetParam(2)
         if (numstr /= '') then
@@ -57,13 +57,13 @@ program SolveCosmology
 
 #ifdef MPI 
 
-        if (instance /= 0) call DoStop('With MPI should not have second parameter')
+        if (instance /= 0) call DoAbort('With MPI should not have second parameter')
         call mpi_comm_rank(mpi_comm_world,MPIrank,ierror)
 
         instance = MPIrank +1 !start at 1 for chains                                             
         write (numstr,*) instance
         rand_inst = instance
-        if (ierror/=MPI_SUCCESS) call DoStop('MPI fail')
+        if (ierror/=MPI_SUCCESS) call DoAbort('MPI fail')
 
         call mpi_comm_size(mpi_comm_world,MPIchains,ierror)
 
@@ -78,7 +78,7 @@ program SolveCosmology
 #endif
         call IO_Ini_Load(DefIni,InputFile, bad)
         
-        if (bad) call DoStop('Error opening parameter file')
+        if (bad) call DoAbort('Error opening parameter file')
         
         Ini_fail_on_not_found = .false.
 
@@ -94,7 +94,7 @@ program SolveCosmology
            file_unit = new_file_unit()
            call  Ini_Open_File(CustomParams,  fname, file_unit, bad)
            call ClearFileUnit(file_unit)
-           if (bad) call DoStop('Error reading custom_params parameter file')
+           if (bad) call DoAbort('Error reading custom_params parameter file')
          end if
         end if   
 
@@ -151,7 +151,7 @@ program SolveCosmology
         action = Ini_Read_Int('action',0)
 
         if (checkpoint) then
-         if (action /= 0)  call DoStop('checkpoint only with action =0')
+         if (action /= 0)  call DoAbort('checkpoint only with action =0')
 #ifdef MPI 
          new_chains = .not. IO_Exists(trim(rootname) //'.chk')
 #else
@@ -189,7 +189,7 @@ program SolveCosmology
         Ini_fail_on_not_found = .false.
         burn_in = Ini_Read_Int('burn_in',0)     
         sampling_method = Ini_Read_Int('sampling_method',sampling_metropolis)
-        if (sampling_method > 6 .or. sampling_method<1) call DoStop('Unknown sampling method')
+        if (sampling_method > 6 .or. sampling_method<1) call DoAbort('Unknown sampling method')
         if (sampling_method==4) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
         end if
 
@@ -211,7 +211,7 @@ program SolveCosmology
         use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
  
         if (Ini_Read_Logical('cmb_hyperparameters', .false.)) &
-            call DoStop( 'Hyperparameters not supported any more')
+            call DoAbort( 'Hyperparameters not supported any more')
 
         if (Ini_Read_String('use_2dF') /= '') stop 'use_2dF now replaced with use_mpk'
         Use_Clusters = Ini_Read_Logical('use_clusters',.false.)
@@ -229,7 +229,7 @@ program SolveCosmology
        
 
         if (Use_Lya .and. use_nonlinear) &
-             call DoStop('Lya.f90 assumes LINEAR power spectrum input')
+             call DoAbort('Lya.f90 assumes LINEAR power spectrum input')
 
         !flag to force getting sigma8 even if not using LSS data 
         use_LSS = Ini_Read_Logical('get_sigma8',.false.)
@@ -245,7 +245,7 @@ program SolveCosmology
         estimate_propose_matrix = Ini_Read_Logical('estimate_propose_matrix',.false.)
         if (estimate_propose_matrix) then
          if (Ini_Read_String('propose_matrix') /= '') &
-           call DoStop('Cannot have estimate_propose_matrix and propose_matrix')
+           call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
         end if
 
         delta_loglike = Ini_Read_Real('delta_loglike',2.)
@@ -322,7 +322,7 @@ program SolveCosmology
                     write(*,*) 'Have estimated the minimum, now exiting since action=2'
                     write(*,*) 'Wrote the minimum to file ',trim(baseroot)//'.minimum'
                   end if
-                call DoStop
+                call DoAbort
               end if
               if (Feedback>0) write (*,*) 'Now estimating propose matrix from Hessian'
               allocate(propose_matrix(num_params_used, num_params_used))
@@ -359,7 +359,7 @@ program SolveCosmology
           if (Feedback > 0) write (*,*) 'starting post processing'
           call postprocess(rootname)
         else
-         call DoStop('undefined action')
+         call DoAbort('undefined action')
         end if
 
         call DoStop

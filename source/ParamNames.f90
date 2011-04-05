@@ -8,6 +8,7 @@ module ParamNames
     integer nnames, num_MCMC, num_derived
     character(LEN=ParamNames_maxlen), dimension(:), pointer ::  name
     character(LEN=ParamNames_maxlen), dimension(:), pointer ::  label    
+    character(LEN=ParamNames_maxlen), dimension(:), pointer ::  comment    
     logical, dimension(:), pointer ::  is_derived
   end Type TParamNames
 
@@ -21,28 +22,15 @@ function IsWhiteSpace(C)
 
 end function IsWhiteSpace
 
-subroutine ParamNames_Init(Names, filename)
- Type(TParamNames) :: Names
- character(Len=*), intent(in) :: filename
- integer handle,n, len, pos
- character (LEN=ParamNames_maxlen*3) :: InLine
-  
-  handle = new_file_unit()
-  call OpenTxtFile(filename,handle)
-  n = FileLines(handle)
-  allocate(Names%name(n))
-  allocate(Names%label(n)) 
-  allocate(Names%is_derived(n))
-  Names%is_derived = .false. 
-  Names%num_MCMC = 0
-  Names%num_derived = 0
-
-  Names%name = '' 
-  n=0
-  do 
-      read (handle,'(a)',end=400) InLine
+     
+   function ParamNames_ParseLine(Names,InLine,n) result(res)
+       type(TParamNames) :: Names
+       character(LEN=*) :: InLine
+       integer n
+       logical res
+       integer pos, len
+       
       len = len_trim(InLIne)
-      n=n+1
       pos =1
       do while (pos < len .and. IsWhiteSpace(InLIne(pos:pos))) 
        pos = pos+1
@@ -52,9 +40,14 @@ subroutine ParamNames_Init(Names, filename)
       do while (pos < len .and. IsWhiteSpace(InLIne(pos:pos))) 
        pos = pos+1
       end do 
-      Names%label(n) = trim(adjustl(InLine(pos:ParamNames_maxlen))) 
+      Names%label(n) = trim(adjustl(InLine(pos:len))) 
       pos = scan(Names%label(n),'#')
-      if (pos/=0) Names%label(n) = Names%label(n)(1:pos-1)
+      if (pos/=0) then
+       Names%comment(n) = Names%label(n)(pos+1: len_trim(Names%label(n)))    
+       Names%label(n) = Names%label(n)(1:pos-1)
+      else
+       Names%comment(n) = ''         
+      endif 
       pos = scan(Names%label(n),char(9))
       if (pos/=0) Names%label(n) = Names%label(n)(1:pos-1)      
       Names%name(n) = trim(adjustl(Names%name(n)))
@@ -62,14 +55,60 @@ subroutine ParamNames_Init(Names, filename)
       if (Names%name(n)(len:len)=='*') then 
        Names%name(n)(len:len)=' ' 
        Names%is_derived(n) = .true.
-       Names%num_derived = Names%num_derived + 1
       else
-       Names%num_MCMC =  Names%num_MCMC + 1
-      end if 
-  end do
+       Names%is_derived(n) = .false. 
+      end if
+      res = .true.
+      return
+400    res=.false.
+       return
+      
+   end function ParamNames_ParseLine
 
-400  call CloseFile(handle) 
+subroutine ParamNames_Alloc(Names,n)
+Type(TParamNames) :: Names
+integer,intent(in) :: n
+
+  allocate(Names%name(n))
+  allocate(Names%label(n)) 
+  allocate(Names%comment(n))
+  allocate(Names%is_derived(n))
+  Names%nnames = n
+  Names%is_derived = .false. 
+  Names%num_MCMC = 0
+  Names%num_derived = 0
+  Names%name = '' 
+  Names%comment=''
+  Names%label=''
+  
+end subroutine ParamNames_Alloc
+
+subroutine ParamNames_Init(Names, filename)
+ Type(TParamNames) :: Names
+ character(Len=*), intent(in) :: filename
+ integer handle,n, len, pos
+ character (LEN=ParamNames_maxlen*3) :: InLine
+  
+  handle = new_file_unit()
+  call OpenTxtFile(filename,handle)
+  n = FileLines(handle)
+  call ParamNames_Alloc(Names,n)
+
+  n=0
+  do 
+     read (handle,'(a)',end=500) InLine
+     n=n+1
+     if (.not. ParamNames_ParseLine(Names,InLine,n)) then
+      call MpiStop('ParamNames_Init: error parsing line')
+     end if
+  end do
+  
+500  call CloseFile(handle) 
+
    Names%nnames = n
+   Names%num_derived = count(Names%is_derived)
+   Names%num_MCMC = Names%nnames - Names%num_derived 
+
 
 end subroutine ParamNames_Init
 
@@ -159,20 +198,40 @@ subroutine ParamNames_ReadIndices(Names,InLine, params, num)
  
 end subroutine ParamNames_ReadIndices
 
+function ParamNames_AsString(Names, i, want_comment) result(line)
+  Type(TParamNames) :: Names
+  integer, intent(in) :: i
+  logical ,intent(in), optional :: want_comment
+  character(LEN=ParamNames_maxlen*3) Line
+  logical wantCom
+
+   if (present(want_comment)) then
+   wantCom = want_comment
+   else
+   wantCom = .false.
+   end if
+   
+     if (i> Names%nnames) call MpiStop('ParamNames_AsString: index out of range')
+     Line = trim(Names%name(i))
+     if (Names%is_derived(i))Line = concat(Line,'*')
+     Line =  trim(Line)//char(9)//trim(Names%label(i))
+     if (wantCom .and. Names%comment(i)/='') then
+       Line = trim(Line)//char(9)//'#'//trim(Names%comment(i))
+     end if
+
+end function ParamNames_AsString
+
 subroutine ParamNames_WriteFile(Names, fname)
  Type(TParamNames) :: Names
  character(LEN=*), intent(in) :: fname
  integer :: unit
  integer i
- character(LEN=ParamNames_maxlen) nm
-
+ 
  unit = new_file_unit()
  call CreateTxtFile(fname,unit)
    
    do i=1, Names%nnames
-     nm = trim(Names%name(i))
-     if (Names%is_derived(i)) nm = concat(nm,'*')
-     write(unit,*) trim(nm)//char(9)//trim(Names%label(i))
+    write(unit,*) trim(ParamNames_AsString(Names,i))
    end do   
 
  call CloseFile(unit)
