@@ -74,10 +74,13 @@ module ParamDef
 
 contains
 
-subroutine DoStop(S)
+subroutine DoStop(S, abort)
  character(LEN=*), intent(in), optional :: S
  integer ierror
-        if (present(S)) write (*,*) trim(S)
+ logical, intent(in), optional :: abort
+ logical wantbort
+ 
+ if (present(S)) write (*,*) trim(S)
 #ifdef MPI 
         MPI_StartTime = MPI_WTime() - MPI_StartTime 
         if (Feedback > 0 .and. MPIRank==0) then
@@ -89,9 +92,18 @@ subroutine DoStop(S)
 
         end if
         ierror =0 
-        call MPI_Abort(MPI_COMM_WORLD,ierror,ierror)
-        !Abort all in case other continuing chains want to communicate with us
-        !call mpi_finalize(ierror)
+        if (present(abort)) then
+         wantbort = abort
+        else 
+         wantbort = .false. 
+        end if
+        if (wantbort) then
+         !Abort all in case other continuing chains want to communicate with us
+         !in the case when max number of samples is reached    
+          call MPI_Abort(MPI_COMM_WORLD,ierror,ierror)
+        else
+          call mpi_finalize(ierror)
+        end if
 #endif
 
 #ifdef DECONLY
@@ -672,7 +684,7 @@ end subroutine SetProposeMatrix
                         call CheckLImitsConverge(S)
                        else
                         !If not also checking limits, we are done
-                        call DoStop
+                        call DoStop('Requested convergence R achieved')
                        end if
                      end if
                      flukecheck = R < MPI_R_Stop
@@ -784,7 +796,7 @@ end subroutine SetProposeMatrix
       write (logLine,*) 'Current limit err = ',WorstErr, ' param ',Worsti, 'samps = ',L%Count*MPI_thin_fac
       call IO_WriteLog(logfile_unit,logLine)
    end if
-   if (WorstErr < MPI_Limit_Converge_Err) call DoStop
+   if (WorstErr < MPI_Limit_Converge_Err) call DoStop('Requested limit convergence achieved')
      
    deallocate(Limits)       
    deallocate(params_check)

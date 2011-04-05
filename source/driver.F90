@@ -362,7 +362,7 @@ program SolveCosmology
          call DoAbort('undefined action')
         end if
 
-        call DoStop
+        call DoStop('Total requested samples obtained',.true.)
 
 end program SolveCosmology
 

@@ -525,6 +525,7 @@ weighting function or parameter mapping.</ul>
 <LI>GetDist changes to use more IO wrapper functions
 <LI>%DATASETDIR% and %LOCALDIR% placeholder support for all input file names; <b>custom_params</b> input parameter to read and store additional parameter file in CustomParams object (settings.f90), also used as optional additional placeholders.
 <LI>.ini files now support INCLUDE(filename) to share common parameters between files. INCLUDES can be nested.
+<LI>MPI job now finishes neatly (not aborted) if convergence criterion is achieved    
 <LI><b>num_cls</b> now set to 4 by default (include BB). C_l .data files now store every L by default
 </UL>
 
