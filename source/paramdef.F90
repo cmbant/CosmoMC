@@ -81,6 +81,7 @@ subroutine DoStop(S, abort)
  logical wantbort
  
  if (present(S)) write (*,*) trim(S)
+ call IO_Close(outfile_handle)
 #ifdef MPI 
         MPI_StartTime = MPI_WTime() - MPI_StartTime 
         if (Feedback > 0 .and. MPIRank==0) then
