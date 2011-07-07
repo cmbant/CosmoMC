@@ -2,7 +2,7 @@
 
 !     Code for Anisotropies in the Microwave Background
 !     by Antony Lewis (http://cosmologist.info) and Anthony Challinor
-!     See readme.html for documentation. This version July 2008.
+!     See readme.html for documentation. 
 !
 !     Based on CMBFAST  by  Uros Seljak and Matias Zaldarriaga, itself based
 !     on Boltzmann code written by Edmund Bertschinger, Chung-Pei Ma and Paul Bode.
@@ -34,16 +34,16 @@
         implicit none    
         public
 
-        character(LEN=*), parameter :: version = 'May_10'
+        character(LEN=*), parameter :: version = 'July_11'
         
         integer :: FeedbackLevel = 0 !if >0 print out useful information about the model
 
         logical, parameter :: DebugMsgs=.false. !Set to true to view progress and timing
 
         logical, parameter :: DebugEvolution = .false. !Set to true to do all the evolution for all k
-
+ 
         logical ::  do_bispectrum  = .false. 
-        logical, parameter :: hard_bispectrum = .false. !!! e.g. warm inflation where delicate cancellations
+        logical, parameter :: hard_bispectrum = .false. ! e.g. warm inflation where delicate cancellations
         
         logical, parameter :: full_bessel_integration = .false. !(go into the tails when calculating the sources)
 
@@ -55,7 +55,7 @@
          !Nu_best: automatically use mixture which is fastest and most accurate
 
         integer, parameter :: max_Nu = 5 !Maximum number of neutrino species    
-        integer, parameter :: max_transfer_redshifts = 500    !!!
+        integer, parameter :: max_transfer_redshifts = 50    
         integer, parameter :: fileio_unit = 13 !Any number not used elsewhere will do       
         integer, parameter :: outCOBE=0, outNone=1
     
@@ -98,7 +98,8 @@
 
          real(dl)  :: omegab, omegac, omegav, omegan
          !Omega baryon, CDM, Lambda and massive neutrino
-         real(dl)  :: H0,TCMB,yhe,Num_Nu_massless,Num_Nu_massive
+         real(dl)  :: H0,TCMB,yhe,Num_Nu_massless
+         integer   :: Num_Nu_massive
 
          logical :: Nu_mass_splittings
          integer   :: Nu_mass_eigenstates  !1 for degenerate masses
@@ -179,7 +180,9 @@
        !If zero assigned automatically, obviously only used if parallelised
    
 !Parameters for checking/changing overall accuracy
-!1._dl corresponds to target 1% scalar accuracy for non-extreme models
+!If HighAccuracyDefault=.false., the other parameters equal to 1 corresponds to ~0.3% scalar C_l accuracy
+!If HighAccuracyDefault=.true., the other parameters equal to 1 corresponds to ~0.1% scalar C_l accuracy (at L>600)
+      logical :: HighAccuracyDefault = .false.
 
       real(dl) :: lSampleBoost=1._dl
           !Increase lSampleBoost to increase sampling in lSamp%l for Cl interpolation
@@ -194,7 +197,7 @@
       real(sp) :: lAccuracyBoost=1. 
           !Boost number of multipoles integrated in Boltzman heirarchy
 
-      integer, parameter :: lmin = 2  !!!!!
+      integer, parameter :: lmin = 2  
           !must be either 1 or 2       
 
       real(dl), parameter :: OmegaKFlat = 5e-7_dl !Value at which to use flat code
@@ -207,7 +210,7 @@
       integer, parameter:: l0max=4000
 
 !     lmax is max possible number of l's evaluated
-      integer, parameter :: lmax_arr = l0max !!!100+l0max/7
+      integer, parameter :: lmax_arr = l0max 
  
         contains
       
@@ -215,11 +218,11 @@
          subroutine CAMBParams_Set(P, error, DoReion)
            use constants
            type(CAMBparams), intent(in) :: P
-           real(dl) GetOmegak
+           real(dl) GetOmegak, fractional_number
            integer, optional :: error !Zero if OK
            logical, optional :: DoReion
            logical WantReion
-           integer nu_i
+           integer nu_i,actual_massless
            external GetOmegak
            real(dl), save :: last_tau0
            !Constants in SI units
@@ -314,7 +317,14 @@
           ! grhog=1.4952d-13*tcmb**4
            grhor = 7._dl/8*(4._dl/11)**(4._dl/3)*grhog !7/8*(4/11)^(4/3)*grhog (per neutrino species)
           !grhor=3.3957d-14*tcmb**4
-           grhornomass=grhor*CP%Num_Nu_massless
+           !correction for fractional number of neutrinos, e.g. 3.04 to give slightly higher T_nu hence rhor
+           !Num_Nu_massive is already integer, Num_Nu_massless can contain fraction
+           !We assume all eigenstates affected the same way
+           fractional_number  = CP%Num_Nu_massless + CP%Num_Nu_massive
+           actual_massless = int(CP%Num_Nu_massless + 1e-6)
+           grhor = grhor * fractional_number/(actual_massless + CP%Num_Nu_massive)
+          
+           grhornomass=grhor*actual_massless
            grhormass=0
            do nu_i = 1, CP%Nu_mass_eigenstates
             grhormass(nu_i)=grhor*CP%Nu_mass_degeneracies(nu_i)
@@ -460,14 +470,19 @@
         end function f_K
 
 
-        function DeltaTime(a1,a2)
+        function DeltaTime(a1,a2, in_tol)
         implicit none
         real(dl) DeltaTime, atol
         real(dl), intent(IN) :: a1,a2
+        real(dl), optional, intent(in) :: in_tol
         real(dl) dtauda, rombint !diff of tau w.CP%r.t a and integration
         external dtauda, rombint
 
-        atol = tol/1000/exp(AccuracyBoost-1)
+        if (present(in_tol)) then
+         atol = in_tol
+        else
+         atol = tol/1000/exp(AccuracyBoost-1)
+        end if
         DeltaTime=rombint(dtauda,a1,a2,atol)
       
         end function DeltaTime
@@ -539,7 +554,6 @@
 
         Type lSamples
             integer l0
-           ! integer, dimension(:), pointer :: lSamp%l 
             integer l(lmax_arr)
         end Type lSamples
 
@@ -763,11 +777,11 @@
         
           Type (Regions) :: q
 
-          real(dl), dimension(:,:,:), pointer :: Delta_p_l_k
+          real(dl), dimension(:,:,:), pointer :: Delta_p_l_k => NULL() 
       
          end Type ClTransferData
 
-         Type(ClTransferData), target :: CTransScal, CTransTens, CTransVec
+         Type(ClTransferData), save, target :: CTransScal, CTransTens, CTransVec
 
         !Computed output power spectra data
                          
@@ -1173,18 +1187,17 @@
    
           real(dl) dlnam
 
-          real(dl), dimension(:), allocatable ::  r1,p1,dr1,dp1,ddr1,qdn
-          
-          real(dl), parameter :: dq=1._dl  
-          !Sample for massive neutrino momentum; increase nqmax0 appropriately
-          !These settings appear to be OK for P_k accuate at 1e-3 level
-          integer, parameter :: nqmax0=15 !number of q to sample for each l
+          real(dl), dimension(:), allocatable ::  r1,p1,dr1,dp1,ddr1
 
-          real(dl) dlfdlq(nqmax0) !pre-computed array
-          integer nqmax
+          !Sample for massive neutrino momentum
+          !These settings appear to be OK for P_k accuate at 1e-3 level
+          integer, parameter :: nqmax0=80 !maximum array size of q momentum samples 
+          real(dl) :: nu_q(nqmax0), nu_int_kernel(nqmax0)
  
-       public Nu_Init,Nu_background,Nu_Integrate,Nu_Integrate01,Nu_Intvsq, &
-              Nu_Shear,Nu_derivs, Nu_rho, nqmax, dlfdlq, dq, nqmax0
+          integer nqmax !actual number of q modes evolves
+ 
+       public const,Nu_Init,Nu_background, Nu_rho, Nu_drho,  nqmax0, nqmax, &
+           nu_int_kernel, nu_q
        contains
   !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
@@ -1194,9 +1207,8 @@
 !  Use cubic splines interpolation of log rhonu and pnu vs. log a*m.
  
          integer i
-         real(dl) q, am, rhonu,pnu
+         real(dl) dq,dlfdlq, q, am, rhonu,pnu
          real(dl) spline_data(nrhopn)
-
      
 !  nu_masses=m_nu(i)*c**2/(k_B*T_nu0).
 !  Get number density n of neutrinos from
@@ -1210,16 +1222,48 @@
         end do
 
         if (allocated(r1)) return
-         
+        allocate(r1(nrhopn),p1(nrhopn),dr1(nrhopn),dp1(nrhopn),ddr1(nrhopn))
 
-        allocate(r1(nrhopn),p1(nrhopn),dr1(nrhopn),dp1(nrhopn),ddr1(nrhopn),qdn(nqmax0))
+        
+        nqmax=3
+        if (AccuracyBoost >1) nqmax=4
+        if (AccuracyBoost >2) nqmax=5
+        if (AccuracyBoost >3) nqmax=nint(AccuracyBoost*10) 
+          !note this may well be worse than the 5 optimized points
 
-         do i=1,nqmax0
+        if (nqmax > nqmax0) call MpiStop('Nu_Init: qmax > nqmax0')
+
+        !We evolve evolve 4F_l/dlfdlq(i), so kernel includes dlfdlnq factor
+        !Integration scheme gets (Fermi-Dirac thing)*q^n exact,for n=-4, -2..2
+        !see CAMB notes
+        if (nqmax==3) then
+          !Accurate at 2e-4 level
+          nu_q(1:3) = (/0.913201, 3.37517, 7.79184/)
+          nu_int_kernel(1:3) = (/0.0687359, 3.31435, 2.29911/)
+          
+        else if (nqmax==4) then
+          !This seems to be very accurate (limited by other numerics)
+           nu_q(1:4) = (/0.7, 2.62814, 5.90428, 12.0/)
+           nu_int_kernel(1:4) = (/0.0200251, 1.84539, 3.52736, 0.289427/)
+      
+        else if (nqmax==5) then
+        !exact for n=-4,-2..3 
+        !This seems to be very accurate (limited by other numerics)
+         nu_q(1:5) = (/0.583165, 2.0, 4.0, 7.26582, 13.0/)  
+         nu_int_kernel(1:5) = (/0.0081201, 0.689407, 2.8063, 2.05156, 0.126817/) 
+  
+        else
+         dq = (12 + nqmax/5)/real(nqmax)
+         do i=1,nqmax
             q=(i-0.5d0)*dq
-            dlfdlq(i)=-q/(1._dl+exp(-q))
-            qdn(i)=dq*q**3/(exp(q)+1._dl)
+            nu_q(i) = q 
+            dlfdlq=-q/(1._dl+exp(-q))
+            nu_int_kernel(i)=dq*q**3/(exp(q)+1._dl) * (-0.25_dl*dlfdlq) !now evolve 4F_l/dlfdlq(i)
+            
          end do
-
+        end if
+        nu_int_kernel=nu_int_kernel/const
+        
         dlnam=-(log(am_min/am_max))/(nrhopn-1)
  
 
@@ -1242,22 +1286,19 @@
        
         end subroutine Nu_init
 
-
-      
-
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
         subroutine nuRhoPres(am,rhonu,pnu)
 !  Compute the density and pressure of one eigenstate of massive neutrinos,
 !  in units of the mean density of one flavor of massless neutrinos.
 
         real(dl),  parameter :: qmax=30._dl
-        integer, parameter :: nq=1000
+        integer, parameter :: nq=100
         real(dl) dum1(nq+1),dum2(nq+1)
         real(dl), intent(in) :: am
         real(dl), intent(out) ::  rhonu,pnu
         integer i
         real(dl) q,aq,v,aqdn,adq
-       
+      
 
 !  q is the comoving momentum in units of k_B*T_nu0/c.
 !  Integrate up to qmax and then use asymptotic expansion for remainder.
@@ -1352,196 +1393,18 @@
         rhonu=exp(rhonu)
        end subroutine Nu_rho
 
-
-!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-        subroutine Nu_Integrate01(am,drhonu,fnu,psi0,psi1)
-        use precision
-        use ModelParams
-    
-!  Compute the perturbations of density and energy flux
-!  of one eigenstate of massive neutrinos, in units of the mean
-!  density of one eigenstate of massless neutrinos, by integrating over
-!  momentum.
-        real(dl), intent(IN)  :: am,psi0(nqmax0),psi1(nqmax0) 
-        real(dl), intent(OUT) ::  drhonu,fnu
-        real(dl), parameter   :: qmax=nqmax0-0.5d0
-    
-
-        real(dl) g0(4),g1(nqmax0+1),g3(nqmax0+1)
-        real(dl) aq,v,q
-        integer iq
-   
-!  q is the comoving momentum in units of k_B*T_nu0/c.
-        g1(1)=0
-        g3(1)=0
-        do iq=2,(nqmax0+1)
-            q=(iq-1.5d0)*dq
-            aq=am/q
-            v=1._dl/sqrt(1._dl+aq*aq)          
-            g1(iq)=qdn(iq-1)*psi0(iq-1)/v           
-            g3(iq)=qdn(iq-1)*psi1(iq-1)           
-        end do
-        call splint(g1,g0(1),nqmax0+1)
-        call splint(g3,g0(3),nqmax0+1)
-  
-        drhonu=(g0(1)+g1(nqmax0+1)*2._dl/qmax)/const
-        fnu=(g0(3)+g3(nqmax0+1)*2._dl/qmax)/const
-     
-        end subroutine Nu_Integrate01
-
-
-!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-        subroutine Nu_Integrate(am,drhonu,fnu,dpnu,shearnu,psi0,psi1,psi2)
-        use precision
-        use ModelParams
-    
-!  Compute the perturbations of density, energy flux, pressure, and
-!  shear stress of one eigenstate of massive neutrinos, in units of the mean
-!  density of one eigenstate of massless neutrinos, by integrating over
-!  momentum.
-        real(dl), intent(IN)  :: am,psi0(nqmax0),psi1(nqmax0),psi2(nqmax0) 
-        real(dl), intent(OUT) ::  drhonu,fnu,dpnu,shearnu
-        real(dl), parameter   :: qmax=nqmax0-0.5d0
-    
-
-        real(dl) g0(4),g1(nqmax0+1),g2(nqmax0+1)
-        real(dl) g3(nqmax0+1),g4(nqmax0+1)
-        real(dl) aq,v,q
-        integer iq
-   
-
-!  q is the comoving momentum in units of k_B*T_nu0/c.
-        g1(1)=0._dl
-        g2(1)=0._dl
-        g3(1)=0._dl
-        g4(1)=0._dl
-        do iq=2,(nqmax0+1)
-            q=(iq-1.5d0)*dq
-            aq=am/q
-            v=1._dl/sqrt(1._dl+aq*aq)          
-            g1(iq)=qdn(iq-1)*psi0(iq-1)/v
-            g2(iq)=qdn(iq-1)*psi0(iq-1)*v
-            g3(iq)=qdn(iq-1)*psi1(iq-1)
-            g4(iq)=qdn(iq-1)*psi2(iq-1)*v         
-        end do
-        call splint(g1,g0(1),nqmax0+1)
-        call splint(g2,g0(2),nqmax0+1)
-        call splint(g3,g0(3),nqmax0+1)
-        call splint(g4,g0(4),nqmax0+1)
-  
-        drhonu=(g0(1)+g1(nqmax0+1)*2._dl/qmax)/const
-        fnu=(g0(3)+g3(nqmax0+1)*2._dl/qmax)/const
-        dpnu=(g0(2)+g2(nqmax0+1)*2._dl/qmax)/const/3._dl
-        shearnu=(g0(4)+g4(nqmax0+1)*2._dl/qmax)/const*2._dl/3._dl
-
-        end subroutine Nu_Integrate
-
-!cccccccccccccccccccccccccccccccccccccccccccccc
-   subroutine Nu_Intvsq(am,G11,G30,psi1,psi3)
-        use precision
-        use ModelParams
-
-!  Compute the third order variables (in velocity dispersion) 
-!by integrating over momentum.
-
-        real(dl), intent(IN) :: am
-        real(dl), parameter :: qmax=nqmax0-0.5d0
-        real(dl)  psi1(nqmax0),psi3(nqmax0)
-
-        real(dl) g0(4),g1(nqmax0+1),g2(nqmax0+1)
-            
-        real(dl) G11,G30
-        real(dl) aq,q,v
-        integer iq
-
-!  q is the comoving momentum in units of k_B*T_nu0/c.
-        g1(1)=0._dl
-        g2(1)=0._dl
-   
-        do iq=2,(nqmax0+1)
-            q=(iq-1.5d0)*dq
-            aq=am/q
-            v=1._dl/sqrt(1._dl+aq*aq)          
-            g1(iq)=qdn(iq-1)*psi1(iq-1)*v**2
-            g2(iq)=qdn(iq-1)*psi3(iq-1)*v**2
-         
-        end do
-        call splint(g1,g0(1),nqmax0+1)
-        call splint(g2,g0(2),nqmax0+1)
-             
-        G11=(g0(1)+g1(nqmax0+1)*2._dl/qmax)/const
-        G30=(g0(2)+g2(nqmax0+1)*2._dl/qmax)/const
-       
-        end subroutine Nu_Intvsq
-
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-        subroutine Nu_Shear(am,shearnu,psi2)
-        use precision
-        use ModelParams
-
-!  Compute the perturbations of 
-!  shear stress of one eigenstate of massive neutrinos, in units of the mean
-!  density of one eigenstate of massless neutrinos, by integrating over
-!  momentum.
-        real(dl), intent(IN) :: am 
-     
-        real(dl), parameter :: qmax=nqmax0-0.5d0
-        real(dl) psi2(nqmax0)
-
-        real(dl) g0(4),g4(nqmax0+1)
-        real(dl) shearnu,q,aq,v
-        integer iq
-
-        if (nqmax==0) then
-          shearnu=0._dl
-          return
-        end if
-!
-!  q is the comoving momentum in units of k_B*T_nu0/c.
-        g4(1)=0._dl      
-        do  iq=2,(nqmax0+1)
-            q=(iq-1.5d0)*dq
-            aq=am/q
-            v=1._dl/sqrt(1._dl+aq*aq)                     
-            g4(iq)=qdn(iq-1)*psi2(iq-1)*v         
-        end do
-        call splint(g4,g0(4),nqmax0+1)       
-        shearnu=(g0(4)+g4(nqmax0+1)*2._dl/qmax)/const*2._dl/3._dl
-
-        end subroutine Nu_Shear
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
-        subroutine Nu_derivs(am,adotoa,rhonu,rhonudot,shearnudot,psi2,psi2dot)
+        function Nu_drho(am,adotoa,rhonu) result (rhonudot)
         use precision
         use ModelParams
 
 !  Compute the time derivative of the mean density in massive neutrinos
 !  and the shear perturbation.
-!
-      
-        real(dl), parameter :: qmax=nqmax0-0.5d0
-        real(dl) psi2(nqmax0),psi2dot(nqmax0)
-
-        real(dl) g1(nqmax0+1)
-        real(dl) adotoa,rhonu,rhonudot,shearnudot
-        real(dl) aq,q,v,d,aqdot,vdot,g0
+        real(dl) adotoa,rhonu,rhonudot
+        real(dl) d
         real(dl), intent(IN) :: am
-        integer iq,i
-     
-
-!  q is the comoving momentum in units of k_B*T_nu0/c.
-        g1(1)=0._dl
-        do iq=2,(nqmax0+1)
-            q=(iq-1.5d0)*dq
-            aq=am/q
-            aqdot=aq*adotoa
-            v=1._dl/sqrt(1._dl+aq*aq)
-            vdot=-aq*aqdot/(1._dl+aq*aq)**1.5d0
-            g1(iq)=qdn(iq-1)*(psi2dot(iq-1)*v+psi2(iq-1)*vdot)
-        end do
-        call splint(g1,g0,nqmax0+1)
-     
-        shearnudot=(g0+g1(nqmax0+1)*2._dl/qmax)/const*2._dl/3._dl
+        integer i
 
         if (am< am_minp) then
 
@@ -1564,7 +1427,7 @@
            rhonudot=rhonu*adotoa*rhonudot/dlnam
         end if
       
-        end subroutine Nu_derivs
+        end function Nu_drho
 
       end module MassiveNu
 
@@ -1576,11 +1439,9 @@
         logical, intent(IN) :: has_massive_nu
 
         if (has_massive_nu) then
-             nqmax=nqmax0 
              call Nu_Init  
         else
              nu_masses = 0
-             nqmax= 0
         end if
       end subroutine init_massive_nu
 
@@ -1607,24 +1468,24 @@
         Type MatterTransferData
          !Computed data
          integer   ::  num_q_trans   !    number of steps in k for transfer calculation
-         real(dl), dimension (:), pointer :: q_trans
-         real(dl), dimension (:,:), pointer ::  sigma_8
-         real, dimension(:,:,:), pointer :: TransferData
+         real(dl), dimension (:), pointer :: q_trans => NULL() 
+         real(dl), dimension (:,:), pointer ::  sigma_8 => NULL() 
+         real, dimension(:,:,:), pointer :: TransferData => NULL() 
          !TransferData(entry,k_index,z_index) for entry=Tranfer_kh.. Transfer_tot
         end Type MatterTransferData
 
         Type MatterPowerData
          !everything is a function of k/h
           integer   ::  num_k, num_z          
-          real(dl), dimension(:), pointer :: log_kh, redshifts
+          real(dl), dimension(:), pointer :: log_kh, redshifts => NULL() 
           !matpower is log(P_k)
-          real(dl), dimension(:,:), pointer :: matpower, ddmat
+          real(dl), dimension(:,:), pointer :: matpower, ddmat => NULL() 
           !if NonLinear, nonlin_ratio =  sqrt(P_nonlinear/P_linear)
           !function of k and redshift NonLinearScaling(k_index,z_index)         
-          real(dl), dimension(:,:), pointer :: nonlin_ratio
+          real(dl), dimension(:,:), pointer :: nonlin_ratio => NULL() 
         end Type MatterPowerData
 
-        Type (MatterTransferData) :: MT        
+        Type (MatterTransferData), save :: MT        
 
       contains
 
@@ -2124,7 +1985,7 @@
         use ModelData
         implicit none
         private
-        integer,parameter :: nthermo=10000
+        integer,parameter :: nthermo=20000
         
         real(dl) tb(nthermo),cs2(nthermo),xe(nthermo)
         real(dl) dcs2(nthermo)
@@ -2162,8 +2023,7 @@
         !Linear interpolation if out of bounds (should not occur).
           cs2b=cs2(1)+(d+i-1)*dcs2(1)
           opacity=dotmu(1)+(d-1)*ddotmu(1)
-!!!
-           stop 'thermo out of bounds'
+          stop 'thermo out of bounds'
         else if (i >= nthermo) then
           cs2b=cs2(nthermo)+(d+i-nthermo)*dcs2(nthermo)
           opacity=dotmu(nthermo)+(d-nthermo)*ddotmu(nthermo)
@@ -2181,7 +2041,7 @@
               +2*(dotmu(i)-dotmu(i+1)))))
 
          if (present(dopacity)) then
-!!!
+
           dopacity=(ddotmu(i)+d*(dddotmu(i)+d*(3*(ddotmu(i+1)  &
               -ddotmu(i))-2*dddotmu(i)-dddotmu(i+1)+d*(dddotmu(i) &
               +dddotmu(i+1)+2*(ddotmu(i)-ddotmu(i+1))))))/(tau*dlntau)
@@ -2244,9 +2104,8 @@
         last_dotmu = 0
 
         matter_verydom_tau = 0
-        a_verydom = AccuracyBoost*10*(grhog+grhornomass)/(grhoc+grhob)
-        if (CP%Num_Nu_massive /= 0) a_verydom=a_verydom*1.5 
-
+        a_verydom = AccuracyBoost*5*(grhog+grhornomass)/(grhoc+grhob)
+ 
 !  Initial conditions: assume radiation-dominated universe.
         tau01=tauminn
         adot0=adotrad
@@ -2388,7 +2247,7 @@
                 tau_maxvis = tau
                end if
                if (vfi > 0.995) then 
-                taurend=tau
+                taurend=tau 
                 iv=2
                 exit
                end if
@@ -2405,7 +2264,7 @@
            if (CP%WantTensors) then
               dtaurec=min(dtaurec,taurst/160)/AccuracyBoost 
            else
-              dtaurec=min(dtaurec,taurst/40)/AccuracyBoost 
+              dtaurec=min(dtaurec,taurst/40)/AccuracyBoost  
               if (do_bispectrum .and. hard_bispectrum) dtaurec = dtaurec / 4
            end if
             
@@ -2415,8 +2274,6 @@
            write (*,*) 'taurst, taurend = ', taurst, taurend
          end if
   
-        matter_verydom_tau = max(matter_verydom_tau,taurend)
-
         call splini(spline_data,nthermo)
         call splder(cs2,dcs2,nthermo,spline_data)
         call splder(dotmu,ddotmu,nthermo,spline_data)
@@ -2455,7 +2312,7 @@
            if (CP%WantTensors) then
               dtau0=max(taurst/40,Maxtau/2000._dl/AccuracyBoost)
            else       
-              dtau0=Maxtau/500._dl/AccuracyBoost  
+              dtau0=Maxtau/500._dl/AccuracyBoost 
               if (do_bispectrum) dtau0 = dtau0/3 
              !Don't need this since adding in Limber on small scales
               !  if (CP%DoLensing) dtau0=dtau0/2 
@@ -2555,7 +2412,7 @@
 
         function optdepth(z)
           real(dl) :: rombint2
-          external rombint
+          external rombint2
           real(dl) optdepth
           real(dl),intent(in) :: z
 
@@ -2579,7 +2436,7 @@
 
         function dragoptdepth(z)
           real(dl) :: rombint2
-          external rombint
+          external rombint2
           real(dl) dragoptdepth
           real(dl),intent(in) :: z
 

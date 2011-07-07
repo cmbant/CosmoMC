@@ -1,7 +1,8 @@
 !Pseudo-Cl (or other C_l esimator) based likelihood approximation for cut sky with polarization
 !Simple harmonic low-l likelihood
 !Obviously this is not a realistic Planck likelihood code
-!AL Mar 2010 - fixed bug using on E, added support for multiple input simulate Chat for bias testing
+!AL Mar 2010 - fixed bug using on E, added support for multiple input simulated Chat for bias testing
+!Apr 2011, added fullsky_exact_fksy
 
 module CMBLikes
  use settings
@@ -45,6 +46,7 @@ module CMBLikes
      integer vecsize
      integer nbins
      integer like_approx
+     real fullsky_exact_fksy ! only used for testing with exactly fullsky
      integer ncl_hat !1, or more if using multiple simulations
      real, dimension(:,:), pointer :: ClFiducial, ClNoise, ClPointsources, ClOffset
      real, dimension(:,:,:), pointer :: ClHat
@@ -583,7 +585,9 @@ contains
     S = ReadIniFileName(Ini,'cl_fiducial_file',dataset_dir)
     S_order = Ini_read_String_File(Ini,'cl_fiducial_order')
     call CMBLikes_ReadClArr(D, S,S_order,D%ClFiducial,D%cl_lmin)
-   else
+   else 
+    !Exact like
+    D%fullsky_exact_fksy = Ini_Read_Real_File(Ini,'fullsky_exact_fksy', 1.)
     nullify(D%ClFiducial)
    end if
    
@@ -1006,7 +1010,7 @@ contains
   M = C
   call Matrix_root(M,D%nfields,-0.5)
   M = matmul(M,matmul(Chat,M))
-  ExactChiSq = (2*l+1)*(Matrix_Trace(M) - D%nfields - MatrixSym_LogDet(M) )
+  ExactChiSq = (2*l+1)*D%fullsky_exact_fksy*(Matrix_Trace(M) - D%nfields - MatrixSym_LogDet(M) )
   
  end function ExactChiSq
 
@@ -1028,7 +1032,7 @@ contains
    Cphi = cl_in(l,phi_ix) + D%ClPhiNoise(1,l)
    CPhihat = D%ClPhihat(1,l)
    if (D%phi_like_approx == like_approx_fullsky_exact) then 
-       chisq = chisq + (2*l+1)*( CPhiHat/CPhi + log(CPhi/CPhiHat) -1)
+       chisq = chisq + (2*l+1)*D%fullsky_exact_fksy*( CPhiHat/CPhi + log(CPhi/CPhiHat) -1)
    else if (D%phi_like_approx == like_approx_fid_gaussian) then 
        vec(l) = CPhiHat - CPhi
    else

@@ -2,7 +2,7 @@
 #Beware of using optmizations that lose accuracy - may give errors when running
 
 ##Uncomment the next line to include dr7 LRG
-EXTDATA = 
+EXTDATA =
 #EXTDATA = LRG
 
 #set WMAP empty not to compile with WMAP
@@ -21,7 +21,7 @@ INCLUDE=
 #these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
 F90C     = mpif90
 FFLAGS = -O2 -ip -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
-LAPACKL = -lmkl_lapack 
+LAPACKL = -lmkl_lapack
 
 #HPCF settings. Use Inteal 9 or 10.1+, not 10.0
 #F90C     = mpif90
@@ -31,7 +31,7 @@ LAPACKL = -lmkl_lapack
 #cfitsio = /usr/local/Cluster-Users/cpac/cmb/2.1.0/cfitsio
 #INCLUDE=
 
-#COSMOS: use "module load cosmolib latest" 
+#COSMOS: use "module load cosmolib latest"
 #use "runCosmomc" (globally installed) to run, defining required memory usage
 ifeq ($(COSMOHOST),cosmos)
 F90C = ifort
@@ -55,8 +55,9 @@ endif
 
 #GFortran: if pre v4.3 add -D__GFORTRAN__
 #F90C     = gfortran
-#FFLAGS = -O2 -ffree-form -x f95-cpp-input 
+#FFLAGS = -O2 -ffree-form -x f95-cpp-input
 #LAPACKL = -Wl,-framework -Wl,accelerate
+#may need to delete -Wl,accelerate, and/or add -shared
 
 #SGI, -mp toggles multi-processor. Use -O2 if -Ofast gives problems.
 #Not various versions of the compiler are buggy giving erroneous seg faults with -mp.
@@ -70,10 +71,10 @@ endif
 #FFLAGS  = -omp -O4 -arch host -math_library fast -tune host -fpe1
 #LAPACKL  = -lcxml
 
-#Absoft ProFortran, single processor, set -cpu:[type] for your local system 
+#Absoft ProFortran, single processor, set -cpu:[type] for your local system
 #F90C     = f95
-#FFLAGS = -O2 -s -cpu:athlon -lU77 -w -YEXT_NAMES="LCS" -YEXT_SFX="_" 
-#LAPACKL =  -llapack -lblas -lg2c 
+#FFLAGS = -O2 -s -cpu:athlon -lU77 -w -YEXT_NAMES="LCS" -YEXT_SFX="_"
+#LAPACKL =  -llapack -lblas -lg2c
 #IFLAG = -p
 
 #NAGF95, single processor:
@@ -121,11 +122,11 @@ CLSFILE = CMB_Cls_simple.o
 PARAMETERIZATION = params_CMB.o
 
 F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
-LINKFLAGS = -L../camb -lcamb $(LAPACKL) 
+LINKFLAGS = -L../camb -lcamb $(LAPACKL)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
-OBJFILES=  ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o \
+OBJFILES=  ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
 	cmbdata.o WeakLen.o bbn.o bao.o lrggettheory.o mpk.o supernovae.o HST.o SDSSLy-a-v3.o \
 	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
 	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
@@ -152,7 +153,7 @@ OBJFILES += $(WMAP)/read_archive_map.o \
 	$(WMAP)/WMAP_7yr_likelihood.o \
 	$(WMAP)/WMAP_7yr_gibbs.o \
 	$(WMAP)/WMAP_7yr_tt_beam_ptsrc_chisq.o \
-	$(WMAP)/br_mod_dist.o 
+	$(WMAP)/br_mod_dist.o
 else
 F90FLAGS += -DNOWMAP
 endif
@@ -164,7 +165,7 @@ all : cosmomc getdist
 settings.o: ../camb/libcamb.a
 cmbtypes.o: settings.o
 Planck_like.o: cmbtypes.o
-cmbdata.o: Planck_like.o $(WMAPOBJS)
+cmbdata.o: Planck_like.o  $(WMAPOBJS)
 WeakLen.o: cmbtypes.o
 bbn.o: settings.o
 bao.o: cmbtypes.o
@@ -207,11 +208,11 @@ clean: cleancosmomc
 	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod
 
 cleancosmomc:
-	rm -f *.o *.mod *.d *.pc *.obj ../core 
+	rm -f *.o *.mod *.d *.pc *.obj ../core
 
 
 getdist: camb $(DISTFILES)
-	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS) 
+	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS)
 
 camb:
 	cd ../camb && $(MAKE) --file=Makefile_main libcamb.a

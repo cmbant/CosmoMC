@@ -5,7 +5,8 @@ module CMB_Cls
           AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, &
           CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
           CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, &
-          initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_neutrino, initial_iso_neutrino_vel
+          initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_neutrino, initial_iso_neutrino_vel, &
+          HighAccuracyDefault, highL_unlensed_cl_template
           
   use settings
   use snovae
@@ -405,6 +406,7 @@ contains
 
         P%Max_l=lmax
         P%Max_eta_k=lmax*2
+      
         P%Max_l_tensor=lmax_tensor
         P%Max_eta_k_tensor=lmax_tensor*5./2
  
@@ -419,7 +421,7 @@ contains
         if (Use_Lya) P%Transfer%kmax = lya_kmax
         P%Transfer%num_redshifts = matter_power_lnzsteps
         
-        if (AccuracyLevel > 1) then
+        if (AccuracyLevel > 1 .or. HighAccuracyDefault) then
           if (USE_LSS) then
             P%Transfer%high_precision=.true.
             P%Transfer%kmax=P%Transfer%kmax + 0.2
@@ -453,8 +455,8 @@ contains
           P%Transfer%redshifts(1) = 0
          end if   
         
-        P%Num_Nu_Massive = 3.046
-        P%Num_Nu_Massless = 0
+        P%Num_Nu_Massive = 3
+        P%Num_Nu_Massless = 0.046
         P%InitPower%nn = 1
         P%AccuratePolarization = num_cls/=1 
         P%Reion%use_optical_depth = .false.
@@ -465,8 +467,12 @@ contains
 
         if (CMB_Lensing) then
             P%DoLensing = .true.
-            P%Max_l = lmax +250 + 50 !+50 in case accuracyBoost>1 and so odd l spacing
+            P%Max_l = lmax +100 + 50 !+50 in case accuracyBoost>1 and so odd l spacing
             P%Max_eta_k = P%Max_l*2 
+        end if
+        
+        if (HighAccuracyDefault) then
+         P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl,P%Max_eta_k)
         end if
         
         lensing_includes_tensors = .false.

@@ -385,8 +385,10 @@ end subroutine IO_ReadProposeMatrix
 
  end function IO_ReadChainRows
 
- subroutine IO_OutputMargeStats(froot,num_vars,num_contours, contours,contours_str, &
+ subroutine IO_OutputMargeStats(Names, froot,num_vars,num_contours, contours,contours_str, &
            cont_lines, colix, mean, sddev, has_limits, labels, force_twotail)
+        use ParamNames
+       Type(TParamNames) :: Names
        character(LEN=*), intent(in) :: froot
        integer, intent(in) :: num_vars, num_contours
        logical,intent(in) :: force_twotail, has_limits(*)

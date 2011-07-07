@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>This version xxx 2011</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>This version July 2011</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -508,7 +508,7 @@ weighting function or parameter mapping.</ul>
 <LI><A HREF="http://www.slac.stanford.edu/~amantz/work/cosmomc_priors/">Run-time priors</A>
 <LI><A HREF="http://www.mrao.cam.ac.uk/software/multinest/downloads.html">MultiNest</A> for nested sampling
 <LI><A HREF="http://background.uchicago.edu/camb_rpc/">Reionization principal components</A>
-<LI><A HREF="http://www.stanford.edu/~drapetti/fgas_module/">X-ray cluster gas mass fraction</A>
+<LI><A HREF="http://www.slac.stanford.edu/~drapetti/fgas_module/">X-ray cluster gas mass fraction</A>
 <LI><A HREF="http://www.astro.caltech.edu/~rjm/cosmos/cosmomc/">COSMOS 3D weak lensing data</A>
 <LI><A HREF="http://www-astro.physics.ox.ac.uk/~Zuntz/page4/page4.html">python GetDist</A>
 <LI><A HREF="http://lpsc.in2p3.fr/perotto/">FuturCMB</A> forecasting with CMB lensing
@@ -518,15 +518,17 @@ weighting function or parameter mapping.</ul>
 <A NAME="Version"><h2>Version History</h2></A>
 
 <UL>
-<LI><B>xxxx 2011</B><BR>
+<LI><B>July 2011</B><BR>
 <UL>
 <LI>Updated matlab colormaps in mscripts directory; added <b>color_for_bw.m</b> (yellow-blue/black, which should look consistent printing in B&W).
 <LI><b>all_l_exact</b> likelihood now uses fsky rather than fsky<sup>2</sup> scaling at all L.
 <LI>GetDist changes to use more IO wrapper functions
 <LI>%DATASETDIR% and %LOCALDIR% placeholder support for all input file names; <b>custom_params</b> input parameter to read and store additional parameter file in CustomParams object (settings.f90), also used as optional additional placeholders.
 <LI>.ini files now support INCLUDE(filename) to share common parameters between files. INCLUDES can be nested.
-<LI>MPI job now finishes neatly (not aborted) if convergence criterion is achieved    
+<LI>MPI job now finishes neatly (not aborted) if convergence criterion is achieved
 <LI><b>num_cls</b> now set to 4 by default (include BB). C_l .data files now store every L by default
+<LI>CAMB updated to July 2011 version; new <b>high_accuracy_default</b> input parameter to target 0.1%-accuracy on small scales
+<LI>Added directory of generic python scripts; simple example to make fake perfect CMB dataset with given beam and noise
 </UL>
 
 <LI><B>May 2010</B><BR>

@@ -229,6 +229,39 @@
     end if
    end subroutine SetParamNames
 
+ 
+  function CalcDerivedParams(P, derived) result (num_derived)
+     use settings
+     use cmbtypes
+     use ParamDef
+     use Lists
+     implicit none
+     Type(real_pointer) :: derived
+     Type(ParamSet) P
+     Type(CMBParams) CMB
+     real r10   
+     integer num_derived 
+     
+     num_derived = 7
+   
+     allocate(Derived%P(num_derived))
+   
+      call ParamsToCMBParams(P%P,CMB)
+
+      if (lmax_tensor /= 0 .and. compute_tensors) then
+          r10 = P%Info%Theory%cl_tensor(10,1)/P%Info%Theory%cl(10,1)
+      else
+        r10 = 0
+      end if
+
+      derived%P(1) = CMB%omv
+      derived%P(2) = P%Info%Theory%Age
+      derived%P(3) = CMB%omdm+CMB%omb
+      derived%P(4) = P%Info%Theory%Sigma_8      
+      derived%P(5) = CMB%zre
+      derived%P(6) = r10
+      derived%P(7) = CMB%H0
+  end function CalcDerivedParams
   
 
   subroutine WriteParams(P, mult, like)
@@ -236,12 +269,16 @@
      use cmbtypes
      use ParamDef
      use IO
+     use Lists
      implicit none
      Type(ParamSet) P
      real, intent(in) :: mult, like
      Type(CMBParams) CMB
-     real r10
      real, allocatable :: output_array(:)
+     Type(real_pointer) :: derived
+     integer numderived 
+     real CalcDerivedParams
+     external CalcDerivedParams
   
     if (outfile_handle ==0) return
   
@@ -251,24 +288,15 @@
      
     else
     
-      call ParamsToCMBParams(P%P,CMB)
+      numderived = CalcDerivedParams(P, derived)
 
-      if (lmax_tensor /= 0 .and. compute_tensors) then
-          r10 = P%Info%Theory%cl_tensor(10,1)/P%Info%Theory%cl(10,1)
-      else
-        r10 = 0
-      end if
-      allocate(output_array(num_real_params + 7 + nuisance_params_used ))
+      allocate(output_array(num_real_params + numderived + nuisance_params_used ))
       output_array(1:num_real_params) =  P%P(1:num_real_params)
-      output_array(num_real_params+1) = CMB%omv
-      output_array(num_real_params+2) = P%Info%Theory%Age
-      output_array(num_real_params+3) = CMB%omdm+CMB%omb
-      output_array(num_real_params+4) = P%Info%Theory%Sigma_8      
-      output_array(num_real_params+5) = CMB%zre
-      output_array(num_real_params+6) = r10
-      output_array(num_real_params+7) = CMB%H0
+      output_array(num_real_params+1:num_real_params+numderived) =  derived%P
+      deallocate(derived%P)
+
       if (nuisance_params_used>0) then
-       output_array(num_real_params+8:num_real_params+8+nuisance_params_used-1) = &
+       output_array(num_real_params+numderived+1:num_real_params+numderived+nuisance_params_used) = &
         P%P(num_real_params+1:num_real_params+nuisance_params_used) 
       end if
  
@@ -286,33 +314,28 @@
      use cmbtypes
      use ParamDef
      use IO
+     use Lists
      implicit none
-    Type(ParamSet) P
-    real, intent(in) :: mult, like
-    character(LEN =30) fmt
-    Type(CMBParams) CMB
-    real r10
-    real,allocatable :: output_array(:)
-       
+     Type(ParamSet) P
+     real, intent(in) :: mult, like
+     character(LEN =30) fmt
+     Type(CMBParams) CMB
+     real,allocatable :: output_array(:)
+     Type(real_pointer) :: derived
+     integer numderived 
+     real CalcDerivedParams
+     external CalcDerivedParams
+         
     if (outfile_handle ==0) return
-      call ParamsToCMBParams(P%P,CMB)
 
-      if (lmax_tensor /= 0 .and. compute_tensors) then
-          r10 = P%Info%Theory%cl_tensor(10,1)/P%Info%Theory%cl(10,1)
-      else
-        r10 = 0
-      end if
+      numderived = CalcDerivedParams(P, derived)
 
-     allocate(output_array(num_real_params + 7 + num_matter_power ))
+      allocate(output_array(num_real_params + numderived + num_matter_power ))
       output_array(1:num_real_params) =  P%P(1:num_real_params)
-      output_array(num_real_params+1) = CMB%omv
-      output_array(num_real_params+2) = P%Info%Theory%Age
-      output_array(num_real_params+3) = CMB%omdm+CMB%omb
-      output_array(num_real_params+4) = P%Info%Theory%Sigma_8      
-      output_array(num_real_params+5) = CMB%zre
-      output_array(num_real_params+6) = r10
-      output_array(num_real_params+7) = CMB%H0
-      output_array(num_real_params+8:num_real_params+8+num_matter_power-1) = &
+      output_array(num_real_params+1:num_real_params+numderived) =  derived%P
+      deallocate(derived%P)
+
+      output_array(num_real_params+numderived+1:num_real_params+numderived+num_matter_power) = &
         P%Info%Theory%matter_power(:,1) 
 
       call IO_OutputChainRow(outfile_handle, mult, like, output_array)

@@ -80,8 +80,15 @@ subroutine DoStop(S, abort)
  logical, intent(in), optional :: abort
  logical wantbort
  
- if (present(S)) write (*,*) trim(S)
  call IO_Close(outfile_handle)
+
+ if (present(abort)) then
+         wantbort = abort
+        else 
+         wantbort = .false. 
+ end if
+
+ if (present(S) .and. (wantbort .or. MPIRank==0)) write (*,*) trim(S)
 #ifdef MPI 
         MPI_StartTime = MPI_WTime() - MPI_StartTime 
         if (Feedback > 0 .and. MPIRank==0) then
@@ -93,11 +100,6 @@ subroutine DoStop(S, abort)
 
         end if
         ierror =0 
-        if (present(abort)) then
-         wantbort = abort
-        else 
-         wantbort = .false. 
-        end if
         if (wantbort) then
          !Abort all in case other continuing chains want to communicate with us
          !in the case when max number of samples is reached    

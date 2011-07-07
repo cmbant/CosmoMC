@@ -2671,7 +2671,7 @@ program GetDist
 
 !write out stats
 !Marginalized
-         call IO_OutputMargeStats(rootdirname, num_vars,num_contours,contours, contours_str, &
+         call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
                      cont_lines, colix, mean, sddev, has_limits, labels, force_twotail)
          
           open(unit=51,file=trim(plot_data_dir)//trim(rootname)//'_params',form='formatted',status='replace')

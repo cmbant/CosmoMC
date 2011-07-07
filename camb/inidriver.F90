@@ -25,7 +25,7 @@
         integer i
         character(LEN=Ini_max_string_len) TransferFileNames(max_transfer_redshifts), &
                MatterPowerFileNames(max_transfer_redshifts), outroot
-        real(dl) output_factor, Age
+        real(dl) output_factor, Age, nmassive
 
 #ifdef WRITE_FITS
        character(LEN=Ini_max_string_len) FITSfilename
@@ -117,7 +117,10 @@
        P%tcmb   = Ini_Read_Double('temp_cmb',COBE_CMBTemp)
        P%yhe    = Ini_Read_Double('helium_fraction',0.24_dl)
        P%Num_Nu_massless  = Ini_Read_Double('massless_neutrinos')
-       P%Num_Nu_massive   = Ini_Read_Double('massive_neutrinos')
+       nmassive = Ini_Read_Double('massive_neutrinos')
+       !Store fractional numbers in the massless total
+       P%Num_Nu_massive   = int(nmassive+1e-6)
+       P%Num_Nu_massless  = P%Num_Nu_massless + nmassive-P%Num_Nu_massive
    
        P%nu_mass_splittings = .true.
        P%Nu_mass_eigenstates = Ini_Read_Int('nu_mass_eigenstates',1)
@@ -245,7 +248,7 @@
        else
         DoLateRadTruncation = Ini_Read_Logical('do_late_rad_truncation',.true.)
        end if
-       DoTensorNeutrinos = Ini_Read_Logical('do_tensor_neutrinos',DoTensorNeutrinos)
+       DoTensorNeutrinos = Ini_Read_Logical('do_tensor_neutrinos',DoTensorNeutrinos )
        FeedbackLevel = Ini_Read_Int('feedback_level',FeedbackLevel)
        
        P%MassiveNuMethod  = Ini_Read_Int('massive_nu_approx',Nu_best)
@@ -253,6 +256,11 @@
        ThreadNum      = Ini_Read_Int('number_of_threads',ThreadNum)
        AccuracyBoost  = Ini_Read_Double('accuracy_boost',AccuracyBoost)
        lAccuracyBoost = Ini_Read_Real('l_accuracy_boost',lAccuracyBoost)
+       HighAccuracyDefault = Ini_Read_Logical('high_accuracy_default',HighAccuracyDefault)
+       if (HighAccuracyDefault) then
+         P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl,P%Max_eta_k)
+       end if
+       DoTensorNeutrinos = DoTensorNeutrinos .or. HighAccuracyDefault
        if (do_bispectrum) then
         lSampleBoost   = 50
        else
