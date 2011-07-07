@@ -23,11 +23,10 @@ $mem = ( 7972 * $numnodes ) ;  # MB
 $ini = $params;
 if ($ini !~ m/\.ini/) {$ini= "$ini.ini"}
 
-$path = $cosmomc;
-
 open(Fout,">./scripts/script_MPI");
 print Fout <<EMP;
 #!/bin/bash
+#PBS -q woodcrest
 #PBS -N cosmomc
 #PBS -l nodes=$numnodes:ppn=$ppn,mem=${mem}mb,walltime=10:00:00
 #PBS -m abe
