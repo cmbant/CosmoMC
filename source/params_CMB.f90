@@ -86,13 +86,13 @@
      use bbn
      implicit none
      real Params(num_Params)
-     logical, intent(in), optional :: firsttime
+     logical, intent(in) :: firsttime
      Type(CMBParams) CMB
      real h2,H0
      
   
     CMB%H0=H0
-    if (present(firsttime)) then
+    if (firsttime) then
         CMB%ombh2 = Params(1)    
         CMB%omdmh2 = Params(2)
         CMB%zre = Params(4) !!Not actually used.. is tau in this parameterization
@@ -153,14 +153,14 @@
      call SetForH(Params,CMB,try_b, .true.)
      D_b = CMBToTheta(CMB)
      try_t = 100
-     call SetForH(Params,CMB,try_t)
+     call SetForH(Params,CMB,try_t, .false.)
      D_t = CMBToTheta(CMB)
      if (DA < D_b .or. DA > D_t) then
       cmb%H0=0 !Reject it
      else
      lasttry = -1
      do
-            call SetForH(Params,CMB,(try_b+try_t)/2)
+            call SetForH(Params,CMB,(try_b+try_t)/2, .false.)
             D_try = CMBToTheta(CMB)
                if (D_try < DA) then
                   try_b = (try_b+try_t)/2
@@ -277,7 +277,7 @@
      real, allocatable :: output_array(:)
      Type(real_pointer) :: derived
      integer numderived 
-     real CalcDerivedParams
+     integer CalcDerivedParams
      external CalcDerivedParams
   
     if (outfile_handle ==0) return
@@ -323,7 +323,7 @@
      real,allocatable :: output_array(:)
      Type(real_pointer) :: derived
      integer numderived 
-     real CalcDerivedParams
+     integer CalcDerivedParams
      external CalcDerivedParams
          
     if (outfile_handle ==0) return
