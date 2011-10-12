@@ -19,8 +19,9 @@ INCLUDE=
 
 #Intel MPI (assuming mpif77 set to point to ifort)
 #these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
+#Can add -xHost if your cluster is uniform, or specify specific processor optimizations -x...
 F90C     = mpif90
-FFLAGS = -fast -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
+FFLAGS = -O3 -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
 LAPACKL = -lmpi
 
 #GFortran: defaults for v4.5; if pre v4.3 add -D__GFORTRAN__

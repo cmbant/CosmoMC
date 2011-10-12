@@ -32,6 +32,7 @@ module CMB_Cls
   integer, parameter :: ScalClOrder(5) = (/1,3,2,4,5/), TensClOrder(4) = (/1,4,2,3/)
       !Mapping of CAMB CL array ordering to TT , TE, EE, BB, phi, phiT  
   integer :: ncalls = 0
+  integer :: nerrors = 0
   type(CAMBParams)  CAMBP 
   logical :: w_is_w  = .true.
 
@@ -120,12 +121,12 @@ contains
           end if
          else
           if (stop_on_error) call MpiStop('CAMB error '//trim(global_error_message))
-          write (logLine,*) 'CAMB returned error '//trim(global_error_message)  
           if (Feedback > 0) write(*,*) 'CAMB returned error '//trim(global_error_message)           
+          nerrors=nerrors+1
          end if         
          ncalls=ncalls+1
          if (mod(ncalls,100)==0 .and. logfile_unit/=0) then
-          write (logLine,*) 'CAMB called ',ncalls, ' times'
+          write (logLine,*) 'CAMB called ',ncalls, ' times; ', nerrors,' errors'
           call IO_WriteLog(logfile_unit,logLine)
          end if 
          if (Feedback > 1) write (*,*) 'CAMB done'
