@@ -21,15 +21,14 @@ INCLUDE=
 #these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
 F90C     = mpif90
 FFLAGS = -fast -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
-LAPACKL = -lmkl_lapack
 
 #GFortran: defaults for v4.5; if pre v4.3 add -D__GFORTRAN__
 #F90C     = gfortran
 #in earlier versions use FFLAGS = -O2 -ffree-form -x f95-cpp-input -D__GFORTRAN__
-FFLAGS =  -O3 -fopenmp -ffree-form -x f95-cpp-input -ffast-math -march=native -funroll-loops
+#FFLAGS =  -O3 -fopenmp -ffree-form -x f95-cpp-input -ffast-math -march=native -funroll-loops
 #LAPACKL = -Wl,-framework -Wl,accelerate
 #commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
-LAPACKL = -lblas -llapack
+#LAPACKL = -lblas -llapack
 
 #HPCF settings. Use Intel 9 or 10.1+, not 10.0
 #F90C     = mpif90
