@@ -139,6 +139,8 @@ program SolveCosmology
 
         ParamNamesFile = ReadIniFileName(DefIni,'ParamNamesFile')
 
+        stop_on_error = Ini_Read_logical('stop_on_error',stop_on_error)
+
         Ini_fail_on_not_found = .true.
         
         baseroot = ReadIniFileName(DefIni,'file_root')

@@ -63,6 +63,7 @@
       use lvalues
       use MassiveNu
       use InitialPower
+      use Errors
 
       implicit none
 
@@ -156,7 +157,7 @@ contains
        end if
     
       call InitVars !Most of single thread time spent here (in InitRECFAST)
-
+      if (global_error_flag/=0) return
 
       if (DebugMsgs .and. Feedbacklevel > 0) then
          timeprev=actual
@@ -166,6 +167,7 @@ contains
       end if 
 
        if (.not. CP%OnlyTransfers)  call InitializePowers(CP%InitPower,CP%curv)
+       if (global_error_flag/=0) return
 
 !     Calculation of the CMB sources.
 
@@ -198,7 +200,7 @@ contains
          !$OMP PARAllEl DO DEFAUlT(SHARED),SCHEDUlE(DYNAMIC) &
          !$OMP & PRIVATE(EV, q_ix)
          do q_ix= 1,Evolve_q%npoints
-             call DoSourcek(EV,q_ix)
+             if (global_error_flag==0) call DoSourcek(EV,q_ix)
          end do
          !$OMP END PARAllEl DO
         
@@ -212,7 +214,7 @@ contains
 
    
 !     If transfer functions are requested, set remaining k values and output
-      if (CP%WantTransfer) then
+      if (CP%WantTransfer .and. global_error_flag==0) then
         call TransferOut
          if (DebugMsgs .and. Feedbacklevel > 0) then
          timeprev=actual
@@ -222,7 +224,7 @@ contains
       end if
 
        if (CP%WantTransfer .and. CP%WantCls .and. CP%DoLensing &
-            .and. CP%NonLinear==NonLinear_Lens) then
+            .and. CP%NonLinear==NonLinear_Lens .and. global_error_flag==0) then
           
           call NonLinearLensing
           if (DebugMsgs .and. Feedbacklevel > 0) then
@@ -233,7 +235,7 @@ contains
 
        end if
 
-       if (CP%WantTransfer .and. .not. CP%OnlyTransfers) &
+       if (CP%WantTransfer .and. .not. CP%OnlyTransfers .and. global_error_flag==0) &
           call Transfer_Get_sigma8(MT,8._dl) 
            !Can call with other arguments if need different size
  
@@ -242,7 +244,9 @@ contains
 
 
       if (CP%WantCls) then
-
+         
+         if (global_error_flag==0) then
+          
          call InitSourceInterpolation   
        
          ExactClosedSum = CP%curv > 5e-9_dl .or. scale < 0.93_dl
@@ -266,11 +270,14 @@ contains
          write(*,*)actual-timeprev,' Timing For Integration'
         end if
  
+        end if
+        
         call FreeSourceMem
 
         !Final calculations for CMB output unless want the Cl transfer functions only.
 
-        if (.not. CP%OnlyTransfers) call ClTransferToCl(CTransScal,CTransTens, CTransVec)
+        if (.not. CP%OnlyTransfers .and. global_error_flag==0) &
+          call ClTransferToCl(CTransScal,CTransTens, CTransVec)
 
       end if
 
@@ -287,7 +294,7 @@ contains
      subroutine ClTransferToCl(CTransS,CTransT, CTransV)
         Type(ClTransferData) :: CTransS,CTransT, CTransV
 
-       if (CP%WantScalars) then
+       if (CP%WantScalars .and. global_error_flag==0) then
            lSamp = CTransS%ls
            allocate(iCl_Scalar(CTransS%ls%l0,C_Temp:C_last,CP%InitPower%nn))
            iCl_scalar = 0
@@ -296,7 +303,7 @@ contains
            if (DebugMsgs .and. Feedbacklevel > 0) write (*,*) 'CalcScalCls'
        end if    
 
-       if (CP%WantVectors) then
+       if (CP%WantVectors .and. global_error_flag==0) then
            allocate(iCl_vector(CTransV%ls%l0,C_Temp:CT_Cross,CP%InitPower%nn))
            iCl_vector = 0
            call CalcVecCls(CTransV,GetInitPowerArrayVec)
@@ -304,26 +311,31 @@ contains
        end if    
 
 
-       if (CP%WantTensors) then
+       if (CP%WantTensors .and. global_error_flag==0) then
            allocate(iCl_Tensor(CTransT%ls%l0,CT_Temp:CT_Cross,CP%InitPower%nn))
            iCl_tensor = 0
            call CalcTensCls(CTransT,GetInitPowerArrayTens)
            if (DebugMsgs .and. Feedbacklevel > 0) write (*,*) 'CalcTensCls'
        end if
 
-       call Init_Cls
- !     Calculating Cls for every l.
-       call InterpolateCls(CTransS,CTransT, CTransV)
+       if (global_error_flag==0) then
+        call Init_Cls
+ 
+  !     Calculating Cls for every l.
+        call InterpolateCls(CTransS,CTransT, CTransV)
    
-       if (DebugMsgs .and. Feedbacklevel > 0) write (*,*) 'InterplolateCls'
+        if (DebugMsgs .and. Feedbacklevel > 0) write (*,*) 'InterplolateCls'
 
-       if (CP%WantScalars) deallocate(iCl_scalar)
-       if (CP%WantVectors) deallocate(iCl_vector)
-       if (CP%WantTensors) deallocate(iCl_tensor)
+       end if
+
+       if (CP%WantScalars .and. allocated(iCl_Scalar)) deallocate(iCl_scalar)
+       if (CP%WantVectors .and. allocated(iCl_Vector)) deallocate(iCl_vector)
+       if (CP%WantTensors .and. allocated(iCl_Tensor)) deallocate(iCl_tensor)
+       
+       if (global_error_flag/=0) return
  
        if (CP%OutputNormalization >=2) call NormalizeClsAtl(CP%OutputNormalization)
        !Normalize to C_l=1 at l=OutputNormalization 
-  
      
      end subroutine ClTransferToCl
     
@@ -511,10 +523,9 @@ contains
 
             EV%q=Evolve_q%points(q_ix) 
  
-!!!!!!
-if (fixq/=0._dl) then
-EV%q=fixq
-end if
+            if (fixq/=0._dl) then
+                EV%q=fixq !for testing
+            end if
             EV%q2=EV%q**2
 
             EV%q_ix = q_ix
@@ -524,9 +535,9 @@ end if
    
             call GetNumEqns(EV)
 
-            if (CP%WantScalars) call CalcScalarSources(EV,taustart)
-            if (CP%WantVectors) call CalcVectorSources(EV,taustart)
-            if (CP%WantTensors) call CalcTensorSources(EV,taustart)
+            if (CP%WantScalars .and. global_error_flag==0) call CalcScalarSources(EV,taustart)
+            if (CP%WantVectors .and. global_error_flag==0) call CalcVectorSources(EV,taustart)
+            if (CP%WantTensors .and. global_error_flag==0) call CalcTensorSources(EV,taustart)
 
       end subroutine DoSourcek
 
@@ -553,7 +564,7 @@ end if
 
        subroutine FreeSourceMem
          
-        deallocate(Src, ddSrc)
+        if (allocated(Src))deallocate(Src, ddSrc)
         call Ranges_Free(Evolve_q)
 
        end subroutine FreeSourceMem
@@ -610,6 +621,7 @@ end if
 !     saved in order to do the integration. So TimeSteps is set here.
       !These routines in ThermoData (modules.f90)
       call inithermo(taumin,CP%tau0)
+      if (global_error_flag/=0) return
    
       if (DebugMsgs .and. Feedbacklevel > 0) write (*,*) 'inithermo'
 
@@ -643,9 +655,9 @@ end if
 !     polarization will be calculated. For low values of k we
 !     use a logarithmic spacing. closed case dealt with by SetClosedkValues
 
-         SourceAccuracyBoost = AccuracyBoost     
+         SourceAccuracyBoost = AccuracyBoost  
          if (CP%WantScalars .and. CP%Reion%Reionization .and. CP%AccuratePolarization) then
-            dlnk0=2._dl/10/SourceAccuracyBoost
+            dlnk0=2._dl/10/SourceAccuracyBoost 
             !Need this to get accurate low l polarization
          else
             dlnk0=5._dl/10/SourceAccuracyBoost
@@ -678,15 +690,54 @@ end if
          call Ranges_GetArray(Evolve_q, .false.)
 
          if (CP%closed) &
-           call SetClosedkValuesFromArr(Evolve_q) 
+           call SetClosedkValuesFromArr(Evolve_q, .false.) 
  
       end subroutine SetkValuesForSources
 
 
-      subroutine SetClosedkValuesFromArr(R)
+      subroutine SetClosedkValuesFromArr(R, forInt)
       Type(Regions) :: R
       integer i,nu,lastnu,nmax
        !nu = 3,4,5... in CP%closed case, so set nearest integers from arr array
+      logical, intent(in) :: forInt
+      integer ix
+      real(dl) dnu
+      integer, allocatable :: nu_array(:)
+             
+       if (forInt .and. nint(R%points(1)*CP%r)<=3) then
+        
+         !quantization is important       
+       call Ranges_Getdpoints(R,half_ends = .false.)
+       R%dpoints = max(1,int(R%dpoints*CP%r+0.02))
+       lastnu=2
+       ix=1
+       dnu =R%dpoints(ix)
+       nmax=0
+       lastnu=2   
+       allocate(nu_array(R%npoints*2))    
+       do
+        
+       do while (R%dpoints(ix)==dnu .and. ix <R%npoints) 
+        ix=ix+1
+       end do
+       do nu=lastnu+1,nint(R%points(ix)*CP%r), nint(dnu)
+          nmax=nmax+1 
+          nu_array(nmax)= nu
+       end do
+       lastnu=nu_array(nmax) + nint(dnu)-1
+       if (ix==R%npoints) exit
+       dnu = R%dpoints(ix)
+       end do
+       if (nint(R%points(R%npoints)*CP%r) > nu_array(nmax)) then
+          nmax=nmax+1
+          nu_array(nmax) = nint(R%points(R%npoints)*CP%r)
+       end if 
+       deallocate(R%points)
+       allocate(R%points(nmax))
+       R%points = nu_array(1:nmax)/CP%r
+       deallocate(nu_array)
+       
+      else
                 
        lastnu=3
        nmax=1
@@ -694,13 +745,16 @@ end if
        do i=2,R%npoints
          nu=nint(R%points(i)*CP%r)
          if (nu > lastnu) then
-          nmax=nmax+1
+          nmax=nmax+1 
           lastnu=nu         
           R%points(nmax)=nu/CP%r 
          end if
        
        end do  
        R%points(1)=3/CP%r
+       
+       end if
+       
        R%Lowest = R%points(1) 
        R%Highest = R%points(nmax)
        R%npoints=nmax
@@ -726,7 +780,7 @@ end if
          w=0
          y=0
          call initial(EV,y, taustart)
-
+         if (global_error_flag/=0) return
        
          tau=taustart
          ind=1
@@ -764,6 +818,7 @@ end if
              
              !Integrate over time, calulate end point derivs and calc output
              call GaugeInterface_EvolveScal(EV,tau,y,tauend,tol1,ind,c,w)
+             if (global_error_flag/=0) return
  
              call output(EV,y,j,tau,sources)
              Src(EV%q_ix,1:SourceNum,j)=sources
@@ -774,6 +829,7 @@ end if
                   if (tauend < tautf(itf) .and.TimeSteps%points(j+1)  > tautf(itf)) then
                           
                      call GaugeInterface_EvolveScal(EV,tau,y,tautf(itf),tol1,ind,c,w)
+                     if (global_error_flag/=0) return
 
                   endif
                 end if  
@@ -927,10 +983,12 @@ end if
        if (CP%Transfer%high_precision) atol=atol/10000
 
        ind=1
-       call initial(EV,y, tau)  
+       call initial(EV,y, tau) 
+       if (global_error_flag/=0) return 
          
        do i=1,CP%Transfer%num_redshifts
           call GaugeInterface_EvolveScal(EV,tau,y,tautf(i),atol,ind,c,w)
+          if (global_error_flag/=0) return
           call outtransf(EV,y,MT%TransferData(:,EV%q_ix,i))
        end do
  
@@ -1025,7 +1083,7 @@ end if
 
        qmax_int = min(qmax,max_bessels_etak/CP%tau0)
 
-       IntSampleBoost=AccuracyBoost  
+       IntSampleBoost=AccuracyBoost 
        if (do_bispectrum) then
         IntSampleBoost = IntSampleBoost * 2  
         if (hard_bispectrum) IntSampleBoost = IntSampleBoost * 2  
@@ -1045,20 +1103,13 @@ end if
       !Split up into logarithmically spaced intervals from qmin up to k=lognum*dk0
       !then no-lognum*dk0 linearly spaced at dk0 up to no*dk0
       !then at dk up to max_k_dk, then dk2 up to qmax_int
-         if (CP%closed) then
-            lognum=nint(20*IntSampleBoost)
-            dlnk1=1._dl/lognum 
-            no=nint(1300*IntSampleBoost)
-            dk=1.2/CP%r/CP%chi0/IntSampleBoost 
-            dk0=0.4_dl/CP%r/CP%chi0/IntSampleBoost
-         else 
-            lognum=nint(10*IntSampleBoost)
-            dlnk1=1._dl/lognum  
-            no=nint(600*IntSampleBoost)
-            dk0=1.8_dl/CP%r/CP%chi0/IntSampleBoost   
-            dk=3._dl/CP%r/CP%chi0/IntSampleBoost 
-         end if
-         if (HighAccuracyDefault) dk=dk/1.4
+         lognum=nint(10*IntSampleBoost)
+         dlnk1=1._dl/lognum  
+         no=nint(600*IntSampleBoost)
+         dk0=1.8_dl/CP%r/CP%chi0/IntSampleBoost   
+         dk=3._dl/CP%r/CP%chi0/IntSampleBoost 
+         
+         if (HighAccuracyDefault) dk=dk/1.6 
 
          k_max_log = lognum*dk0
          k_max_0  = no*dk0
@@ -1086,10 +1137,13 @@ end if
          call Init_ClTransfer(ThisCT)
 
        if (CP%closed) then
-        call SetClosedkValuesFromArr(ThisCT%q)
+        call SetClosedkValuesFromArr(ThisCT%q,.true.)
         call Ranges_Getdpoints(ThisCT%q,half_ends = .false.)
         ThisCT%q%dpoints(1) = 1/CP%r
-     
+        !!!  
+        deallocate(ThisCT%Delta_p_l_k) !Re-do this from Init_ClTransfer because number of points changed
+        allocate(ThisCT%Delta_p_l_k(ThisCT%NumSources,min(max_bessels_l_index,ThisCT%ls%l0), ThisCT%q%npoints))
+        ThisCT%Delta_p_l_k = 0     
        end if
 
        end if !ExactClosedSum
@@ -1412,7 +1466,7 @@ end if
          miny1= 0.5d-4/l/AccuracyBoost
          sums=0
          qmax_int= max(850,lSamp%l(j))*3*AccuracyBoost/(CP%chi0*CP%r)
-         if (HighAccuracyDefault) qmax_int=qmax_int*1.2
+         if (HighAccuracyDefault) qmax_int=qmax_int*1.2 
          DoInt =  SourceNum/=3 .or. IV%q < qmax_int
          if (DoInt) then
          if ((nstart < min(TimeSteps%npoints-1,IV%SourceSteps)).and.(y1dis > miny1)) then
@@ -1562,6 +1616,7 @@ end if
       real(dl) sources(SourceNum), out(SourceNum)
    
       IntAccuracyBoost=AccuracyBoost 
+
 ! atau0 is the array with the time where the sources are stored.
       if (nend==nstart) then  
             out = 0
@@ -1575,21 +1630,19 @@ end if
       scalel=l/scale
       if (scalel>=2400) then
          num2=num1*2.5
-      else if (scalel>=1100) then
-         num2=num1*1.5
       else if (scalel< 50) then
          num2=num1*0.8_dl
-      else if (scalel < 170) then 
-        num2=num1*1.5_dl
-      else if (scalel < 1100) then 
-         num2=num1*1.2_dl
-      else
-         num2=num1
+      else 
+        num2=num1*1.5_dl 
       end if    
       !Dec 2003, since decrease dtaurec, can make this smaller
       if (dtau==dtaurec_q) then
        num2=num2/4
       end if
+
+      if (HighAccuracyDefault .and. scalel<1500 .and. scalel > 150) &
+          IntAccuracyBoost=IntAccuracyBoost*(1+(2000-scalel)*0.6/2000 ) 
+
       if (num2*IntAccuracyBoost < dchisource .and. (.not. CP%DoLensing .or. UseLimber(l,IV%q)) & 
 !       if ((num2*IntAccuracyBoost < dchisource ) & !Oscillating fast 
         .or. (nstart>IV%SourceSteps.and.nend>IV%SourceSteps)) then  
@@ -1616,7 +1669,7 @@ end if
          chiDispTop = 1d20
       end if
 
-      minujl=MINUJl1/l/IntAccuracyBoost
+      minujl=MINUJl1/l/IntAccuracyBoost 
       isgn=sign(1,Startn-nend)!direction of chi integration 
         !higher n, later time, smaller chi
     
@@ -1630,8 +1683,8 @@ end if
       ap1=l*(l+1)
       sh=rofChi(chi)
            
-      if (scalel < 120) then
-         dchimax=0.4_dl*num1
+      if (scalel < 1100) then
+         dchimax= 0.3*num1 
       else if (scalel < 1400) then
          dchimax=0.25_dl*num1 *1.5
       else
@@ -1942,6 +1995,7 @@ end if
          do i = 1, numks
          !!change to vec...
             pows(i) =  ScalarPower(ks(i) ,pix)
+            if (global_error_flag/=0) exit
          end do
 
         end subroutine GetInitPowerArrayVec
@@ -1954,6 +2008,7 @@ end if
       
          do i = 1, numks
             pows(i) =  TensorPower(ks(i) ,pix)
+            if (global_error_flag/=0) exit
          end do
 
         end subroutine GetInitPowerArrayTens
@@ -1983,7 +2038,7 @@ end if
              end if
 
              pows(q_ix) =  ScalarPower(ks(q_ix) ,pix)
-
+             if (global_error_flag/=0) return
       
           end do
 
@@ -1994,7 +2049,6 @@ end if
          do j=1,CTrans%ls%l0
 
         !Integrate dk/k Delta_l_q**2 * Power(k)
-
           do q_ix = 1, CTrans%q%npoints 
 
              if (.not.(CP%closed.and.nint(CTrans%q%points(q_ix)*CP%r)<=CTrans%ls%l(j))) then 
@@ -2076,6 +2130,7 @@ end if
              end if
 
              pows(q_ix) =  ScalarPower(ks(q_ix) ,in)
+             if (global_error_flag/=0) return
 
           end do
 

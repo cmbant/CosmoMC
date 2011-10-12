@@ -20,10 +20,18 @@ INCLUDE=
 #Intel MPI (assuming mpif77 set to point to ifort)
 #these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
 F90C     = mpif90
-FFLAGS = -O2 -ip -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
+FFLAGS = -fast -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
 LAPACKL = -lmkl_lapack
 
-#HPCF settings. Use Inteal 9 or 10.1+, not 10.0
+#GFortran: defaults for v4.5; if pre v4.3 add -D__GFORTRAN__
+#F90C     = gfortran
+#in earlier versions use FFLAGS = -O2 -ffree-form -x f95-cpp-input -D__GFORTRAN__
+FFLAGS =  -O3 -fopenmp -ffree-form -x f95-cpp-input -ffast-math -march=native -funroll-loops
+#LAPACKL = -Wl,-framework -Wl,accelerate
+#commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
+LAPACKL = -lblas -llapack
+
+#HPCF settings. Use Intel 9 or 10.1+, not 10.0
 #F90C     = mpif90
 #FFLAGS = -O2 -Vaxlib -W0 -WB -openmp -fpp -DMPI -vec_report0
 #LAPACKL = -L/usr/local/Cluster-Apps/intel/mkl/10.2.2.025/lib/em64t -lmkl_lapack -lmkl -lguide -lpthread
@@ -35,7 +43,7 @@ LAPACKL = -lmkl_lapack
 #use "runCosmomc" (globally installed) to run, defining required memory usage
 ifeq ($(COSMOHOST),cosmos)
 F90C = ifort
-FFLAGS = -openmp -O3 -w -fpp2 -DMPI
+FFLAGS = -openmp -fast -w -fpp2 -DMPI
 LAPACKL = -mkl=sequential -lmkl_lapack -lmpi
 cfitsio = $(CFITSIO)
 WMAP = $(COSMOLIB)/WMAP7
@@ -52,12 +60,6 @@ endif
 #F90C     = mpif90
 #FFLAGS = -O2 -cpp -DMPI
 #LAPACKL = /LAPACK/lapack_LINUX.a /LAPACK/blas_LINUX.a
-
-#GFortran: if pre v4.3 add -D__GFORTRAN__
-#F90C     = gfortran
-#FFLAGS = -O2 -ffree-form -x f95-cpp-input
-#LAPACKL = -Wl,-framework -Wl,accelerate
-#may need to delete -Wl,accelerate, and/or add -shared
 
 #SGI, -mp toggles multi-processor. Use -O2 if -Ofast gives problems.
 #Not various versions of the compiler are buggy giving erroneous seg faults with -mp.

@@ -7,7 +7,7 @@ module CMB_Cls
           CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, &
           initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_neutrino, initial_iso_neutrino_vel, &
           HighAccuracyDefault, highL_unlensed_cl_template
-          
+  use Errors !CAMB        
   use settings
   use snovae
   use bao
@@ -54,7 +54,7 @@ contains
      w_lam = -1
     end if
     if (CMB%nnu < 3.04) call MpiStop('CMBToCAMB: nnu < 3.04, would give negative masless neutrinos')
-    P%Num_Nu_Massless = CMB%nnu - 3.046 !assume three massive
+    P%Num_Nu_Massless = CMB%nnu - 3 !AL Sept 11 for CAMB's new treatment; previously 3.046; we assume three massive
     P%YHe = CMB%YHe
        
   end subroutine CMBToCAMB
@@ -102,22 +102,27 @@ contains
          call CAMB_GetTransfers(P, Info%Transfers, error)
          NewTransfers = .true.
          Info%LastParams = CMB
-         if (Use_SN) then
+         if (error==0) then
+          if (Use_SN) then
             Info%Theory%SN_Loglike = SN_LnLike(CMB)
-         else
+          else
             Info%Theory%SN_Loglike = 0     
-         end if  
-         if (Use_BAO) then
+          end if  
+          if (Use_BAO) then
             Info%Theory%BAO_loglike = BAO_LnLike(CMB)
-         else
+          else
             Info%Theory%BAO_loglike = 0
-         end if 
-         if (Use_HST) then
+          end if 
+          if (Use_HST) then
             Info%Theory%HST_Loglike = HST_LnLike(CMB)
-         else
+          else
             Info%Theory%HST_Loglike = 0     
-         end if  
-         
+          end if
+         else
+          if (stop_on_error) call MpiStop('CAMB error '//trim(global_error_message))
+          write (logLine,*) 'CAMB returned error '//trim(global_error_message)  
+          if (Feedback > 0) write(*,*) 'CAMB returned error '//trim(global_error_message)           
+         end if         
          ncalls=ncalls+1
          if (mod(ncalls,100)==0 .and. logfile_unit/=0) then
           write (logLine,*) 'CAMB called ',ncalls, ' times'
@@ -133,10 +138,14 @@ contains
       !Always get everything again. Slight waste of time in general, but allows complete mixing of fast
       !parameters, and works with lensing
 
-         call SetCAMBInitPower(Info%Transfers%Params,CMB,1)       
-
+         call SetCAMBInitPower(Info%Transfers%Params,CMB,1)      
+      
          call CAMB_TransfersToPowers(Info%Transfers)
             !this sets slow CAMB params correctly from value stored in Transfers
+         if (global_error_flag/=0) then
+          error=global_error_flag
+          return
+         end if 
            
          call SetTheoryFromCAMB(Info%Theory)
     
@@ -275,7 +284,7 @@ contains
    end if
    
    call CAMB_GetResults(P)
-   error = 0 !using error optional parameter gives seg faults on SGI
+   error = global_error_flag !using error optional parameter gives seg faults on SGI
    if (error==0) then
        
       if (DoCls) then

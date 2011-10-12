@@ -51,6 +51,8 @@ module settings
   character(LEN=Ini_max_string_len) :: LocalDir='./'   
   character(LEN=Ini_max_string_len) :: ParamNamesFile = ''
   Type(TIniFile) :: CustomParams
+  
+  logical :: stop_on_error = .true. !whether to stop with error, or continue ignoring point
 
   integer, parameter :: num_fast_params = num_initpower + num_norm + num_nuisance_params
 
