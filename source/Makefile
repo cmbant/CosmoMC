@@ -21,6 +21,7 @@ INCLUDE=
 #these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
 F90C     = mpif90
 FFLAGS = -fast -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
+LAPACKL = -lmpi
 
 #GFortran: defaults for v4.5; if pre v4.3 add -D__GFORTRAN__
 #F90C     = gfortran
