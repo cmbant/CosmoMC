@@ -446,13 +446,15 @@ contains
           stop 'Need to manually set max_transfer_redshifts larger in CAMB''s modules.f90'
         end if
         if (use_LSS) then
-           redshifts(1) = 0
-           
-           do zix=2, matter_power_lnzsteps
+           do zix=1, matter_power_lnzsteps
+            if (zix==1) then
+             redshifts(1) = 0
+            else
             !Default Linear spacing in log(z+1) if matter_power_lnzsteps > 1           
              redshifts(zix) = exp( log(matter_power_maxz+1) * &
                 real(zix-1)/(max(2,matter_power_lnzsteps)-1) )-1
                !put in max(2,) to stop compilers complaining of div by zero
+            end if
            end do
            
            if (use_mpk) call mpk_SetTransferRedshifts(redshifts) !can modify to use specific redshifts
