@@ -130,7 +130,7 @@ LINKFLAGS = -L../camb -lcamb $(LAPACKL)
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
 OBJFILES=  ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
-	cmbdata.o WeakLen.o bbn.o bao.o lrggettheory.o mpk.o supernovae.o HST.o SDSSLy-a-v3.o \
+	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
 	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
 	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
 
@@ -171,8 +171,8 @@ Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o  $(WMAPOBJS)
 WeakLen.o: cmbtypes.o
 bbn.o: settings.o
-bao.o: cmbtypes.o
 mpk.o: cmbtypes.o lrggettheory.o
+bao.o: cmbtypes.o mpk.o
 HST.o: cmbtypes.o
 supernovae.o: cmbtypes.o
 SDSSLy-a-v3.o: cmbtypes.o
