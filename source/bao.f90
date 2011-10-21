@@ -34,7 +34,6 @@ contains
 
 !JD copied structure from mpk.f90
 subroutine ReadBaoDataset(gname)   
-    use mpk
     use MatrixUtils
     character(LEN=*), intent(IN) :: gname
     character(LEN=Ini_max_string_len) :: bao_measurements_file, bao_invcov_file
@@ -57,13 +56,6 @@ subroutine ReadBaoDataset(gname)
     
     bset%name = Ini_Read_String_File(Ini,'name')
     
-    if(use_dr7lrg .and. bset%name =='sdss')then
-    	write(*,*)'DR7 LRG and SDSS BAO are based on the same data set. You cannot use both.'
-    	write(*,*)'Disregarding SDSS BAO data set'
-    	num_bao_datasets = num_bao_datasets-1
-    	return
-    end if
-
     Ini_fail_on_not_found = .false.
     bset%use_set =.true.
     if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(bset%name)

@@ -293,13 +293,17 @@ program SolveCosmology
          if (Feedback>1) write(*,*) 'read mpk datasets'
         end if
 
-        !From Jason Dosset
+        !From Jason Dosset, minor changes by AL
         numbaosets = Ini_Read_Int('bao_numdatasets',0)
         if (Use_BAO) then
              if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
              do i= 1, numbaosets
               bao_filename(i) = ReadIniFileName(DefIni,numcat('bao_dataset',i)) 
               call ReadBaoDataset(bao_filename(i))
+              if(use_dr7lrg .and. baodatasets(i)%name =='sdss')then
+                 !Al stop rather than ignore, avoid depending of bao on mpk
+                 call MpiStop('DR7 LRG and SDSS BAO are based on the same data set. You cannot use both.')
+              end if
              end do
              if (Feedback>1) write(*,*) 'read bao datasets'
         end if
