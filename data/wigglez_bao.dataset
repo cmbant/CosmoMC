@@ -1,0 +1,12 @@
+#This is the WiggleZ BAO data set see  
+#Blake et al. arXiv:1108.2635 
+name = wigglez_2011
+
+#Type of measurement: rs/D_V = 1, A(z) = 2
+type_bao = 2
+
+#number of bao data points 
+num_bao = 3
+
+bao_measurements_file = %DATASETDIR%wigglez_BAO.txt
+bao_invcov_file = %DATASETDIR%wigglez_BAO_invcov.txt

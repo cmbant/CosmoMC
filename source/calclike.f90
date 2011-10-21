@@ -89,6 +89,9 @@ contains
 
     
   function GetLogLikePost(CMB, Info, inCls, HasCls) 
+    use cambmain, only: initvars
+    use Camb, only: CAMBParams_Set 
+    type(CAMBParams)  P
     real GetLogLikePost
     Type (CMBParams) CMB
     Type(ParamSetInfo) Info
@@ -155,8 +158,20 @@ contains
      
          else
            if (Use_SN) GetLogLikePost = GetLogLikePost + SN_LnLike(CMB)
-           if (Use_BAO) GetLogLikePost = GetLogLikePost + BAO_LnLike(CMB)
-           if (Use_HST) GetLogLikePost = GetLogLikePost + HST_LnLike(CMB)           
+           if (Use_BAO)then
+                !From Jason Dosset           
+                !JD had to change below so new BAO will work without CMB
+                !previous way z_drag was not calculated without calling get_cls.
+                if (RecomputeTransfers(CMB, Info%LastParams))  then
+                    call CMBToCAMB(CMB, P)
+                    call CAMBParams_Set(P)
+                    call InitVars
+                    Info%Theory%BAO_loglike = Bao_lnLike(CMB)
+                    Info%LastParams = CMB
+                end if
+                GetLogLikePost = GetLogLikePost + Info%Theory%BAO_loglike
+           end if
+           if (Use_HST) GetLogLikePost = GetLogLikePost + HST_LnLike(CMB)
          end if
          
      

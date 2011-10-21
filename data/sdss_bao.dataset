@@ -1,0 +1,15 @@
+#This is the SDSS BAO Data set
+#for SDSS data set:
+#default values from http://arxiv.org/abs/0907.1660
+#for explanation of the changes to the rs expression, see Hamann et al, 
+#http://xxx.lanl.gov/abs/1003.3999
+name = sdss
+
+#Type of measurement: rs/D_V = 1, A(z) = 2
+type_bao = 1
+
+#number of bao data points 
+num_bao = 2
+
+bao_measurements_file = %DATASETDIR%sdss_bao.txt
+bao_invcov_file = %DATASETDIR%sdss_bao_invcov.txt

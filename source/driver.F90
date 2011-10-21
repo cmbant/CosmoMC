@@ -28,6 +28,8 @@ program SolveCosmology
         integer numsets, nummpksets, i, numtoget, action
         character(LEN=Ini_max_string_len) baseroot, filename(100), &
          mpk_filename(100),  SZTemplate(100), numstr, fname, keyname
+        integer numbaosets
+        character(LEN=Ini_max_string_len) bao_filename(100)
         real SZscale(100)
         Type(ParamSet) Params, EstParams
         integer num_points
@@ -291,9 +293,17 @@ program SolveCosmology
          if (Feedback>1) write(*,*) 'read mpk datasets'
         end if
 
-        if(Use_BAO .and. use_dr7lrg) &
-         call MpiStop('DR7 LRG and BAO are based on the same dataset. You cannot use both.')
-
+        !From Jason Dosset
+        numbaosets = Ini_Read_Int('bao_numdatasets',0)
+        if (Use_BAO) then
+             if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
+             do i= 1, numbaosets
+              bao_filename(i) = ReadIniFileName(DefIni,numcat('bao_dataset',i)) 
+              call ReadBaoDataset(bao_filename(i))
+             end do
+             if (Feedback>1) write(*,*) 'read bao datasets'
+        end if
+			
         numtoget = Ini_Read_Int('samples')
 
         call Initialize(DefIni,Params)

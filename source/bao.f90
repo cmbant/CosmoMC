@@ -1,32 +1,113 @@
-! Percival et al 2009 BAO results hard-coded here by Beth Reid March 2009
-! Copied structure from supernovae.f90
+!!! Generalized BAO module added by J. Dossett
+! Copied structure from mpk.f90 and Reid BAO code
 !
+! When using WiggleZ data set cite Blake et al. arXiv:1108.2635 
+!!!!!!!!
+!for SDSS data set:
 !default values from http://arxiv.org/abs/0907.1660
 !! for explanation of the changes to the rs expression, see Hamann et al, 
 !! http://xxx.lanl.gov/abs/1003.3999
+
+
 
 module bao
 use cmbtypes
 use CAMB, only : AngularDiameterDistance  !!angular diam distance also in Mpc no h units
 use constants
-implicit none
+use Precision
+ implicit none
+ 
+  Type baodataset
+    logical :: use_set
+    integer :: num_bao ! total number of points used
+    integer :: type_bao  !what type of bao data is used rs/D_v =1 ie SDSS; A(z) =2 ie WiggleZ
+    character(LEN=20) :: name
+    real(dl), pointer, dimension(:) :: bao_z, bao_obs
+    real(dl), pointer, dimension(:,:) :: bao_invcov
+   
+   end Type baodataset
+  integer :: num_bao_datasets = 0
+  Type(baodataset) baodatasets(10)
+ 
 
-real(dl), parameter :: rstodvz1 = 0.190533, z1 = 0.2
-real(dl), parameter :: rstodvz2 = 0.109715, z2 = 0.35
-real(dl), dimension(2,2) :: invcov
+contains 
 
-contains
+!JD copied structure from mpk.f90
+subroutine ReadBaoDataset(gname)   
+    use mpk
+    use MatrixUtils
+    character(LEN=*), intent(IN) :: gname
+    character(LEN=Ini_max_string_len) :: bao_measurements_file, bao_invcov_file
+	type (baodataset) bset
+    integer i,iopb
+    logical bad
+    Type(TIniFile) :: Ini
+    integer file_unit
+    
+ 
+    num_bao_datasets = num_bao_datasets + 1
+    if (num_bao_datasets > 10) stop 'too many datasets'
+    file_unit = new_file_unit()
+    call Ini_Open_File(Ini, gname, file_unit, bad, .false.)
+    if (bad) then
+      write (*,*)  'Error opening data set file '//trim(gname)
+      stop
+    end if
+    
+    
+    bset%name = Ini_Read_String_File(Ini,'name')
+    
+    if(use_dr7lrg .and. bset%name =='sdss')then
+    	write(*,*)'DR7 LRG and SDSS BAO are based on the same data set. You cannot use both.'
+    	write(*,*)'Disregarding SDSS BAO data set'
+    	num_bao_datasets = num_bao_datasets-1
+    	return
+    end if
 
- subroutine BAO_init
+    Ini_fail_on_not_found = .false.
+    bset%use_set =.true.
+    if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(bset%name)
+   	bset%num_bao = Ini_Read_Int_File(Ini,'num_bao',0)
+   	if (bset%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
+   	bset%type_bao = Ini_Read_Int_File(Ini,'type_bao',1)
+   	if(bset%type_bao /= 1 .and. bset%type_bao /=2 ) then
+   		write(*,*) bset%type_bao
+   		write(*,*)'ERROR: Invalid bao type specified in BAO dataset: '//trim(bset%name)
+   		call MPIStop()
+   	end if
+   	
 
-invcov(1,1) = 30124.1d0
-invcov(1,2) = -17226.9d0
-invcov(2,1) = invcov(1,2)
-invcov(2,2) = 86976.6d0
+    allocate(bset%bao_invcov(bset%num_bao,bset%num_bao))
+    allocate(bset%bao_z(bset%num_bao))
+    allocate(bset%bao_obs(bset%num_bao))
+    
 
- end subroutine BAO_init
+    bao_invcov_file  = ReadIniFileName(Ini,'bao_invcov_file')
+    call OpenTxtFile(bao_invcov_file, tmp_file_unit)
+    do i=1,bset%num_bao
+		read (tmp_file_unit,*, iostat=iopb) bset%bao_invcov(i,:)
+	end do
+	close(tmp_file_unit)
+    bao_measurements_file = ReadIniFileName(Ini,'bao_measurements_file')
+    call OpenTxtFile(bao_measurements_file, tmp_file_unit)
+	do i=1,bset%num_bao
+		read (tmp_file_unit,*, iostat=iopb) bset%bao_z(i),bset%bao_obs(i)
+	end do
+    close(tmp_file_unit) 
 
-!JH: new routines; integrate to get sound horizon rather than using EH98 formula.
+    if (iopb.ne.0) then
+       stop 'Error reading mpk file'
+    endif
+ 
+   call Ini_Close_File(Ini)
+   call ClearFileUnit(file_unit)
+
+   baodatasets(num_bao_datasets) = bset
+
+end subroutine ReadBaoDataset
+
+
+!JD copied from Reid BAO code
 function CMBToBAOrs(CMB)
    use settings
    use cmbtypes
@@ -39,7 +120,7 @@ function CMBToBAOrs(CMB)
    real(dl), external :: dsoundda, rombint
    real(dl) :: CMBToBAOrs
    integer error
-
+   
    adrag = 1.0d0/(1.0d0+z_drag)
    atol = 1e-6
    rsdrag = rombint(dsoundda,1d-8,adrag,atol)
@@ -47,45 +128,87 @@ function CMBToBAOrs(CMB)
 
 end function CMBToBAOrs
 
+function D_v(CMB,z)
+    Type(CMBParams) CMB
+	real(dl), intent(IN) :: z
+    real(dl)  D_v, Hz, ADD, hzoh0,omegam
+    
+    omegam = 1.d0 - CMB%omv - CMB%omk 
+    hzoh0 = sqrt(CMB%omk*(1.d0+z)**2.d0+omegam*(1.d0+z)**3.d0 &
+			+ CMB%omv*(1.d0+z)**(3.d0*(1.d0+CMB%w)))
+    
+    ADD = AngularDiameterDistance(z)*(1.d0+z)
+	Hz = CMB%h0*1000.d0*hzoh0
+    D_v = ((ADD)**2.d0*c*z/Hz)**(1.d0/3.d0)
+end function D_v
 
-real(dl) function BAO_LnLike(CMB)
-  use Precision
-  type(CMBParams) CMB
-  real :: rs, dv1theory, dv2theory, hz1, hz2, omegam
-  real :: rstodvz1theorydelta, rstodvz2theorydelta
-!JH: ratio of fitting formula vs. exact result for fiducial model of Percival et al., arXiv:0907.1660
-  real, parameter :: rs_rescale = 154.6588d0/150.8192d0
-  logical, save :: do_BAO_init = .true.
+function Acoustic(CMB,z)
+	Type(CMBParams) CMB
+	real(dl) Acoustic
+	real(dl), intent(IN) :: z
+	real(dl) omh2,ckm,omegam,h
+	omegam = 1.d0 - CMB%omv - CMB%omk
+	h = CMB%h0/100
+	ckm = c/1e3_dl !JD c in km/s
+	
+	omh2 = omegam*h**2.d0
+	Acoustic = 100*D_v(CMB,z)*sqrt(omh2)/(ckm*z)
+end function Acoustic
 
-  if(do_BAO_init) then
-    call BAO_init
-    do_BAO_init = .false.
-  end if
+function rstodv(CMB,z)
+	Type(CMBparams) CMB
+	real(dl) rstodv
+	real(dl), intent(IN)::z
+	real(dl) rs
+	real(dl), parameter :: rs_rescale = 154.6588d0/150.8192d0
+	
+	rs = CMBToBAOrs(CMB)*rs_rescale
+	
+	rstodv = rs/D_v(CMB,z)
+end function rstodv
 
-!JH: Need to rescale rs because Percival et al. data assume inaccurate fitting formula result for z_drag
-!    rescaled rs has correct dependence on all cosmological parameters though (e.g., N_nu, Y_He, ...)
-  rs = CMBToBAOrs(CMB)*rs_rescale
 
-  !!AngularDiameterDistance and rs returned in Mpc no h units.
-  !! at z <~ 0.5, the neutrinos are nonrelativistic, so they contribute to the matter density, unlike at zdrag.
-  !! note for really tiny neutrino masses, this breaks down; see Section 3.3 of Komatsu et al 2010, 
-  !WMAP7 cosmological interpretation paper.  However, completely negigible given current error bars!
-  omegam = 1.d0 - CMB%omv - CMB%omk
-  hz1 = sqrt(omegam*(1.0d0+z1)**3.0d0+CMB%omk*(1.0d0+z1)**2.0+CMB%omv*(1.0d0+z1)**(3.0d0*(1.0d0+CMB%w)))
-  hz2 = sqrt(omegam*(1.0d0+z2)**3.0d0+CMB%omk*(1.0d0+z2)**2.0+CMB%omv*(1.0d0+z2)**(3.0d0*(1.0d0+CMB%w)))
-  dv1theory = ((1.0d0+z1)*AngularDiameterDistance(z1))**2.0d0*c*z1/CMB%H0/hz1/1000.0d0
-  dv2theory = ((1.0d0+z2)*AngularDiameterDistance(z2))**2.0d0*c*z2/CMB%H0/hz2/1000.0d0
-  dv1theory = dv1theory**(1.0d0/3.0d0)
-  dv2theory = dv2theory**(1.0d0/3.0d0)
+!===================================================================================
 
-  rstodvz1theorydelta = rs/dv1theory - rstodvz1
-  rstodvz2theorydelta = rs/dv2theory - rstodvz2
+function BAO_LnLike(CMB)
+   implicit none
+   Type(CMBParams) CMB
+   integer i,j,k
+   real(dl)  BAO_LnLike
+   real(dl) tot(num_bao_datasets)
+   real(dl), allocatable :: BAO_theory(:)
+   
+   do i=1,num_bao_datasets
+   		allocate(BAO_theory(baodatasets(i)%num_bao))
+	
+		if(baodatasets(i)%type_bao ==1)then
+			do j=1, baodatasets(i)%num_bao
+				BAO_theory(j) = rstodv(CMB,baodatasets(i)%bao_z(j))
+			end do
+		else if(baodatasets(i)%type_bao ==2)then
+			do j=1, baodatasets(i)%num_bao
+				BAO_theory(j) = Acoustic(CMB,baodatasets(i)%bao_z(j))
+			end do
+		end if
+	
+		do j=1, baodatasets(i)%num_bao
+			do k=1, baodatasets(i)%num_bao
+				tot(i) = tot(i) +&
+						(BAO_theory(j)-baodatasets(i)%bao_obs(j))* &
+						baodatasets(i)%bao_invcov(j,k)*&
+						(BAO_theory(k)-baodatasets(i)%bao_obs(k))
+			end do
+		end do
+		tot(i) = tot(i)/2.d0
+	
+		if(feedback>1)write(*,*)'Bao dataset: '//trim(baodatasets(i)%name)//' LnLike = ',tot(i)
+   		deallocate(BAO_theory)
+   end do
+    
+   BAO_LnLike = sum(tot)
+   if(feedback>1)write(*,*)'Bao_LnLike = ', Bao_LnLike
 
-  BAO_LnLike = 0.5*((rstodvz1theorydelta) * invcov(1,1) * (rstodvz1theorydelta) &
-     & + 2.0d0 * (rstodvz1theorydelta) * invcov(1,2) * (rstodvz2theorydelta) &
-     & + (rstodvz2theorydelta) * invcov(2,2) * (rstodvz2theorydelta))
-
-   if (Feedback > 1) print *,'BAO_LnLike: ',BAO_LnLike
 end function BAO_LnLike
+
 
 end module bao
