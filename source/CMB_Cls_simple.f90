@@ -464,7 +464,6 @@ contains
             P%Transfer%redshifts(zix) = redshifts(matter_power_lnzsteps-zix+1)
            end do
         else 
-          P%Transfer%num_redshifts = 1
           P%Transfer%redshifts(1) = 0
          end if   
         
