@@ -28,7 +28,7 @@ implicit none
   integer, parameter :: num_matter_power = 300 !number of points computed in matter power spectrum
   real, parameter    :: matter_power_minkh =  0.999e-4  !minimum value of k/h to store
   real, parameter    :: matter_power_dlnkh = 0.03     !log spacing in k/h
-  real, parameter    :: matter_power_maxz = 0.
+  real, parameter    :: matter_power_maxz = 1. !Not used, but must be non-zero to avoid error when have 4 z steps and use_mpk=F
   integer, parameter :: matter_power_lnzsteps = 4  ! z=0 to get sigma8 (this first entry appears to be coded in some spots in the code!!), plus 3 LRG redshifts.
 #else
   integer, parameter :: num_matter_power = 74 !number of points computed in matter power spectrum
