@@ -229,7 +229,7 @@ program SolveCosmology
         Use_BBN = Ini_Read_Logical('use_BBN',.false.)
         Use_Age_Tophat_Prior= Ini_Read_Logical('use_Age_Tophat_Prior',.true.)
         Use_SN = Ini_Read_Logical('use_SN',.false.)
-!        if (Use_SN) SN_filename = ReadIniFileName(DefIni,'SN_filename')
+        if (Use_SN) SN_filename = ReadIniFileName(DefIni,'SN_filename')
         Use_BAO = Ini_Read_Logical('use_BAO',.false.)
         Use_CMB = Ini_Read_Logical('use_CMB',.true.)
         Use_WeakLen = Ini_Read_Logical('use_WeakLen',.false.)
@@ -307,7 +307,7 @@ program SolveCosmology
              end do
              if (Feedback>1) write(*,*) 'read bao datasets'
         end if
-            
+			
         numtoget = Ini_Read_Int('samples')
 
         call Initialize(DefIni,Params)

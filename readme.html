@@ -416,7 +416,7 @@ The supplied CMB datasets that are used for computing the likelihood are given i
 *.dataset files in the data directory (these may not be up to date). These are in a standard .ini format,
 and contain the data points and errors, data name, calibration and beam
 uncertainties, and window file directory. Code for handling these is in <B>cmbdata.f90</B>. The WMAP data is handled separately as a special case. Various simple priors are encoded in <B>calclike.f90</B>.<BR><BR>
- Adding new data sets should be quite straightforward - you are encouraged to donate anything you add to be used by everyone. See <A HREF="#Addons">add-ons and datasets</A>.
+There is also built-in support for 2dF and (few years old) supernovae observations. Adding new data sets should be quite straightforward - you are encouraged to donate anything you add to be used by everyone. See <A HREF="#Addons">add-ons and datasets</A>.
 
 </P>
 
@@ -475,7 +475,7 @@ CMBfit, DASH, PICO, etc.
 <li>
 <b>supernovae.f90</b></li>
 
-<br>As of Oct 2011 uses <A HREF="http://www.nhn.ou.edu/~wang/SNcode/index.html">SNLS3</A> by default (thanks to Yun Wang). Other alternative supernovae_xxx files are supplied (may need to add dummy SN_filename parameter if switching).
+<br>As of Oct 2009 uses <A HREF="http://arxiv.org/abs/0908.4274">SDSS</A> by default (thanks to Wessel Valkenburg). Other alternative supernovae_xxx files are supplied (may need to add dummy SN_filename parameter if switching).
 
 <li>
 <b>SDSSLy-a-v3.f90, lya.f90</b></li>
@@ -525,10 +525,9 @@ weighting function or parameter mapping.</ul>
 <LI><B>October 2011</B><BR>
 <UL>
 <LI>New BAO multiple-dataset module including Wigglez (thanks to Jason Dosset)
-<LI>New supernova module: <A HREF="http://www.nhn.ou.edu/~wang/SNcode/index.html">Supernova Flux-averaging Likelihood Code</A> (thanks to Yun Wang)
 <LI><B>stop_on_error</B> parameter, if <b>F</b> global_error_flag&gt;0 from CAMB results in a rejected point rather than stop
 <LI>Fix to setting fractional number of neutrinos since July CAMB version (thanks to Zhiqi Huang)
-<LI>CAMB Oct 2011 update: high_accuracy_default precision in non-flat models, minor tweaks, and error flag
+<LI>CAMB Oct 2001 update: high_accuracy_default precision in non-flat models, minor tweaks, and error flag
 <LI>Makefile updates
 </UL>
 
