@@ -87,7 +87,7 @@ endif
 
 #PGF90
 #F90C = pgf90
-#FFLAGS = -O2 -DESCAPEBACKSLASH
+#FFLAGS = -O2 -DESCAPEBACKSLASH -Mpreprocess
 #LAPACKL = -llapack -lblas
 
 

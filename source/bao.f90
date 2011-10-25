@@ -170,6 +170,7 @@ function BAO_LnLike(CMB)
    real(dl) tot(num_bao_datasets)
    real(dl), allocatable :: BAO_theory(:)
    
+   tot=0
    do i=1,num_bao_datasets
    		allocate(BAO_theory(baodatasets(i)%num_bao))
 	
