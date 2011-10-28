@@ -90,9 +90,8 @@ contains
   
   
     error = 0
-    global_error_flag = 0
     Newtransfers = .false.
-   
+  
     if (RecomputeTransfers(CMB, Info%LastParams))  then
      !Slow parameters have changed
          call CAMB_InitCAMBdata(Info%Transfers)
