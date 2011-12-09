@@ -68,8 +68,9 @@ contains
 
   end subroutine ReadPostParams
 
-   subroutine postprocess(InputFile)
+   subroutine postprocess(InputFile, baseroot)
         use IO
+        character(LEN=*), intent(IN) :: baseroot
         character(LEN=*), intent(INOUT):: InputFile
         Type(CMBParams) LastCMB,CMB, newCMB
         Type(CosmoTheory) Theory, CorrectTheory
@@ -122,11 +123,15 @@ contains
 
          
         if (PostParams%redo_outroot == '') then
-          post_root = trim(ExtractFilePath(InputFile))//'post_'// trim(ExtractFileName(InputFile))
+          post_root = trim(ExtractFilePath(baseroot))//'post_'// trim(ExtractFileName(baseroot))
         else
           post_root = PostParams%redo_outroot
-          if (instance /= 0) post_root = numcat(trim(post_root)//'_',instance)
         end if
+    
+        if (MpiRank==0 .and. NameMapping%nnames/=0) &
+            call IO_OutputParamNames(NameMapping,trim(post_root))
+        
+        if (instance /= 0) post_root = numcat(trim(post_root)//'_',instance)
 
         if (Feedback > 0) then
           if (PostParams%redo_from_text) then
