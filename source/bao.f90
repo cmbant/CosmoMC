@@ -88,7 +88,7 @@ subroutine ReadBaoDataset(gname)
     close(tmp_file_unit) 
 
     if (iopb.ne.0) then
-       stop 'Error reading mpk file'
+       stop 'Error reading bao file'
     endif
  
    call Ini_Close_File(Ini)
