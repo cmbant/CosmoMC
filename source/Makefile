@@ -20,6 +20,7 @@ INCLUDE=
 #Intel MPI (assuming mpif77 set to point to ifort)
 #these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
 #Can add -xHost if your cluster is uniform, or specify specific processor optimizations -x...
+#If getdist gives segfaults remove openmp when compiling getdist
 F90C     = mpif90
 FFLAGS = -O3 -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
 LAPACKL = -lmpi
@@ -42,7 +43,7 @@ LAPACKL = -lmpi
 
 #COSMOS: use "module load cosmolib latest"
 #use "runCosmomc" (globally installed) to run, defining required memory usage
-ifeq ($(COSMOHOST),cosmos)
+ifneq ($(COSMOHOST),cosmos)
 F90C = ifort
 FFLAGS = -openmp -fast -w -fpp2 -DMPI
 LAPACKL = -mkl=sequential -lmkl_lapack -lmpi
