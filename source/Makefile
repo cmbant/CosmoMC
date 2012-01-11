@@ -1,5 +1,5 @@
 #You may need to edit the library paths for MKL for Intel
-#Beware of using optmizations that lose accuracy - may give errors when running
+#Beware of using optimizations that lose accuracy - may give errors when running
 
 ##Uncomment the next line to include dr7 LRG
 EXTDATA =
@@ -43,7 +43,7 @@ LAPACKL = -lmpi
 
 #COSMOS: use "module load cosmolib latest"
 #use "runCosmomc" (globally installed) to run, defining required memory usage
-ifneq ($(COSMOHOST),cosmos)
+ifeq ($(COSMOHOST),cosmos)
 F90C = ifort
 FFLAGS = -openmp -fast -w -fpp2 -DMPI
 LAPACKL = -mkl=sequential -lmkl_lapack -lmpi

@@ -10,6 +10,7 @@ function compare_means(varargin)
 %varargin={'post2','post1','post12'};
 %nargin=size(varargin,2);
 
+
 ext='.margestats';
 data={};
 errs=[];
@@ -84,7 +85,10 @@ for i=1:nvar
 text(left-0.05,i,names{i},'fontsize',14,'interpreter',interpreter);
 end;
 ticks=get(gca,'xtick');
+if (ticks(2)~=0) 
 set(gca,'xtick',ticks(2:size(ticks,2)));
+end;
+set(gca,'XTickMode','manual');
 set(gca,'ytick',[]);
 if (compare_errors)
 title('fractional difference in error bar','fontsize',13);
@@ -93,6 +97,4 @@ title('difference in posterior mean / error bar','fontsize',13);
 end;
 legend(legend_labels,'location','Best');
 
-set(gcf, 'PaperUnits','inches');
-set(gcf, 'PaperPosition',[ 0 0 6.8 9]);
 print('-depsc2', [varargin{1} '_bar_errors.eps']);
