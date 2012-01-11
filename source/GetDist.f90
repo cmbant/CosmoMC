@@ -44,6 +44,7 @@
 !          added line_labels to write out roots of lines being plotted (matlab)
 !          added no_triangle_axis_labels
 !Jan 11:  fix to confidence interval calcaultion for obscure cases with very empty tails (thanks Andrew Fowlie)
+!Jan 12:  increased precision of output files
 module MCSamples
  use settings
  use MatrixUtils
@@ -2685,11 +2686,11 @@ program GetDist
           open(unit=50,file=trim(rootdirname)//'.likestats',form='formatted',status='replace')
           write (50,*) 'Best fit sample -log(Like) = ',coldata(2,bestfit_ix)
           write (50,*) ''
-          write(50,'(a)') 'param  bestfit       lower1        upper1        lower2        upper2'
+          write(50,'(a)') 'param  bestfit        lower1         upper1         lower2         upper2'
           
           do j=1, num_vars
      
-          write(50,'(1I5,5E14.6,"   '//trim(labels(colix(j)))//'")') colix(j)-2, coldata(colix(j),bestfit_ix),&
+          write(50,'(1I5,5E15.7,"   '//trim(labels(colix(j)))//'")') colix(j)-2, coldata(colix(j),bestfit_ix),&
           minval(coldata(colix(j),0:ND_cont1)), &
           maxval(coldata(colix(j),0:ND_cont1)), &
           minval(coldata(colix(j),0:ND_cont2)), &
@@ -2705,14 +2706,14 @@ program GetDist
              open(unit=50,file=trim(rootdirname)//'.minmarge',form='formatted',status='replace')
              write(50,'(a)',advance='NO') 'param  '       
              do j=1, num_contours
-               write(50,'(a)',advance='NO') trim(concat('lower',j))//'        '//trim(concat('upper',j))//'        '
+               write(50,'(a)',advance='NO') trim(concat('lower',j))//'         '//trim(concat('upper',j))//'         '
              end do
              write(50,'(a)') ''
 
              do j=1, num_vars
               write(50,'(1I5)', advance='NO') colix(j)-2
               do i=1, num_contours
-                write(50,'(2E14.6)',advance='NO') minimal_intervals(j,1:2,i)
+                write(50,'(2E15.7)',advance='NO') minimal_intervals(j,1:2,i)
               end do
               write(50,'(a)') '   '//trim(labels(colix(j)))
              end do

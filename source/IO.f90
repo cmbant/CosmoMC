@@ -401,16 +401,16 @@ end subroutine IO_ReadProposeMatrix
          
          file_id = new_file_unit()
          open(unit=file_id,file=trim(froot)//'.margestats',form='formatted',status='replace')
-          write(file_id,'(a)',advance='NO') 'param  mean          sddev         '       
+          write(file_id,'(a)',advance='NO') 'param  mean           sddev          '       
           do j=1, num_contours
-           write(file_id,'(a)',advance='NO') trim(concat('lower',j))//'        '//trim(concat('upper',j))//'        '
+           write(file_id,'(a)',advance='NO') trim(concat('lower',j))//'         '//trim(concat('upper',j))//'         '
           end do
           write(file_id,'(a)') ''
          
           do j=1, num_vars
-             write(file_id,'(1I5,2E14.6)', advance='NO') colix(j)-2, mean(j), sddev(j)
+             write(file_id,'(1I5,2E15.7)', advance='NO') colix(j)-2, mean(j), sddev(j)
              do i=1, num_contours
-               write(file_id,'(2E14.6)',advance='NO') cont_lines(j,1:2,i)
+               write(file_id,'(2E15.7)',advance='NO') cont_lines(j,1:2,i)
              end do
              write(file_id,'(a)') '   '//trim(labels(colix(j)))
           end do
