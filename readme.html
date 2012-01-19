@@ -171,8 +171,12 @@ If you don't have a propose_matrix, set <B>estimate_propose_matrix</B> = T to au
 <BR><BR>
 <LI><A NAME="sampling"></A><B>Sampling method</B><BR>
 Set <B>sampling_method</B>=1 to use the default Metropolis algorithm (in the optimal fast/slow subspaces if <b>use_fast_slow</b> is true). Other options are slice sampling (2), slice sampling fast parameters (3), and directional gridding (4). These methods should work fine for most simple distributions; the temperature input parameter can be increased to probe further into the tails if required (e.g. to get better high-confidence limits). Further sampling_method options that you can try for nastier (e.g. multi-modal distributions) are multicanonical sampling (5) and Wang-Landau-like sampling (6). These latter methods could be modified to calculate the evidence, but at the moment are only implemented to sample nastier distributions via importance sampling. Multicanonical sampling probes into the tails a distance proportional to the running time, and all samples can be kept if the distribution turns out to be unimodal. The Wang-Landau-like sampling probes the full likelihood range from the word go, and produces no samples for the first 10,000 or so steps (thereafter all samples are strictly Markovian may be kept without burn in). Methods 5 and 6 can be used with MPI, but MPI stopping should probably be turned off; MPI proposal learning may work with method 6, though this is not extensively tested. Both are likely to require <B>samples = 100000</B> or larger, hence significantly slow than a basic MCMC run for simple distributions. Settings for methods 5 and 6 can be edited at the top of MCMC.f90. See the  <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A> for a more detailed explanation of sampling methods.
-
 <BR><BR>
+
+<LI><B>CAMB's numerical accuracy</B><BR>
+The default accuracy is aimed at WMAP. Set <B>high_accuracy_default = T</B> to target ~0.1% accuracy on the CMB power spectra from CAMB. This is sufficient for numerical biases to be small compared to the error bar for Planck; for an accuracy study see <A HREF="http://arxiv.org/abs/1201.3654">arXiv:1201.3654</A>. You can also use the <B>accuracy_level</b> parameter to increase accuracy further, however this is numerically inefficient and is best used mainly for numerical stability checks using importance sampling (<b>action=1</b>).
+<BR><BR>
+
 <LI><B>Best-fit point</B><BR>
 
 Set <B>action</B> =2 to just calculate the best-fit point and stop. Set <B>delta_loglike</B> to the tolerance on the log likelihood for finding the best fit. The values are output to a file called file_root.minimum. Note that this function does not always work very reliably.
@@ -183,7 +187,6 @@ Set <B>action</B> =2 to just calculate the best-fit point and stop. Set <B>delta
 Since consecutive points are correlated and the output files can get quite large, you may want to thin the chains automatically: set the <b>indep_sample</b> parameter to determine at what frequency full information is dumped to a binary .data file (which includes the Cls, matter power spectrum, parameters, etc). If zero no .data file is generated. You only need to keep nearly uncorrelated samples for later importance sampling. You can specify a <b>burn_in</b>, though you may prefer to set this
 to zero and remove entries when you come to process the output samples.
 <BR><BR>
-
 
 
 <LI><B>Threads and run-time adjustment</B><BR>
@@ -523,8 +526,8 @@ weighting function or parameter mapping.</ul>
 <LI><B>January 2012</B><BR>
 <UL>
 <LI>Fixed generation of .paramnames file when using post processing (importance sampling)
-<LI>CAMB update for January 2012 (~1e-3 improvement in interpolation error, slightly faster for high accuracy)
-<LI>Added <b>compare_means</b>.m matlab script to graphically compare differences between posterior means from two or more .margestats files with the same parameters
+<LI>CAMB update for January 2012 (~1e-3 improvement in interpolation error, slightly faster for high accuracy); see  <A HREF="http://arxiv.org/abs/1201.3654">arXiv:1201.3654</A>
+<LI>Added <b>compare_means</b>.m matlab script to graphically compare differences between posterior means from two or more .margestats files with the same parameters (like <A HREF="http://cosmologist.info/cosmomc/bar_errors.pdf">this</A>)
 <LI>Increased precision in GetDist's .margestat files
 <LI>Included a couple of extra Planck-like .covmat files for non-flat models and massive neutrinos
 </UL>
