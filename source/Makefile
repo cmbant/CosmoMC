@@ -133,7 +133,7 @@ DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist_py.o
 
 OBJFILES=  ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
 	cmbdata.o WeakLen.o bbn.o lrggettheory.o wigglezgettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
-	hzlike.o $(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
+	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
 	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
 
 

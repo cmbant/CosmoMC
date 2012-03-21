@@ -11,7 +11,6 @@ module CMB_Cls
   use settings
   use snovae
   use bao
-  use hz
   use HST
   use IO
   implicit none
@@ -124,11 +123,6 @@ contains
             Info%Theory%HST_Loglike = HST_LnLike(CMB)
           else
             Info%Theory%HST_Loglike = 0     
-          end if
-          if (Use_Hz) then
-            Info%Theory%Hz_Loglike = Hz_LnLike(CMB)
-          else
-            Info%Theory%Hz_Loglike = 0     
           end if
 
          else

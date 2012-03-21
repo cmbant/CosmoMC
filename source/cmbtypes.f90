@@ -79,7 +79,7 @@ implicit none
 
   Type CosmoTheory
      real Age, r10
-     real SN_loglike, HST_loglike, BAO_loglike, Hz_loglike, reserved(1)
+     real SN_loglike, HST_loglike, BAO_loglike, reserved(1)
      real cl(lmax,num_cls_tot), cl_tensor(lmax_tensor,num_cls) 
       !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
      real sigma_8

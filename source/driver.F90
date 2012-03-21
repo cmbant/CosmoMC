@@ -13,7 +13,6 @@ program SolveCosmology
         use CalcLike
         use EstCovmatModule
         use ConjGradModule
-	use hz
         use mpk
         use MatrixUtils
         use IO
@@ -31,8 +30,6 @@ program SolveCosmology
          mpk_filename(100),  SZTemplate(100), numstr, fname, keyname
         integer numbaosets
         character(LEN=Ini_max_string_len) bao_filename(100)
-        integer numhzsets
-        character(LEN=Ini_max_string_len) hz_filename(100)
         real SZscale(100)
         Type(ParamSet) Params, EstParams
         integer num_points
@@ -234,7 +231,6 @@ program SolveCosmology
         Use_SN = Ini_Read_Logical('use_SN',.false.)
         if (Use_SN) SN_filename = ReadIniFileName(DefIni,'SN_filename')
         Use_BAO = Ini_Read_Logical('use_BAO',.false.)
-        Use_Hz = Ini_Read_Logical('use_Hz',.false.)
         Use_CMB = Ini_Read_Logical('use_CMB',.true.)
         Use_WeakLen = Ini_Read_Logical('use_WeakLen',.false.)
         Use_min_zre = Ini_Read_Double('use_min_zre',0.d0) 
@@ -320,16 +316,6 @@ program SolveCosmology
               end if
              end do
              if (Feedback>1) write(*,*) 'read bao datasets'
-        end if
-
-        numhzsets = Ini_Read_Int('hz_numdatasets',0)
-        if (Use_Hz) then
-             if (numhzsets<1) call MpiStop('Use_Hz but numhzsets = 0')
-             do i= 1, numhzsets
-              hz_filename(i) = ReadIniFileName(DefIni,numcat('hzdataset',i)) 
-              call ReadHzDataset(hz_filename(i))
-              if (Feedback>1) write(*,*) 'read hz datasets'
-	     enddo
         end if
 
 
