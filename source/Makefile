@@ -2,17 +2,18 @@
 #Beware of using optimizations that lose accuracy - may give errors when running
 
 ##Uncomment the next line to include dr7 LRG
-EXTDATA =
+#EXTDATA = WIGZ
 #EXTDATA = LRG
+EXTDATA = LRGWIGZ
 
 #set WMAP empty not to compile with WMAP
-WMAP = /home/aml1005/WMAP7/likelihood_v4
+WMAP = 
 
 #Only needed for WMAP
-cfitsio = /usr/local/cfitsio/intel10/64/3.040
+cfitsio = /Users/uqdpark7/Projects/cfitsio
 
 #GSL only needed for DR7 LRG
-GSLPATH = /home/aml1005/libs/gsl
+GSLPATH = /usr/local/lib/gsl
 
 IFLAG = -I
 INCLUDE=
@@ -21,15 +22,15 @@ INCLUDE=
 #these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
 #Can add -xHost if your cluster is uniform, or specify specific processor optimizations -x...
 #If getdist gives segfaults remove openmp when compiling getdist
-F90C     = mpif90
-FFLAGS = -O3 -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
-LAPACKL = -lmpi
+#F90C     = mpif90
+#FFLAGS = -O3 -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
+#LAPACKL = -lmpi
 
 #GFortran: defaults for v4.5; if pre v4.3 add -D__GFORTRAN__
-#F90C     = gfortran
+F90C     = gfortran
 #in earlier versions use FFLAGS = -O2 -ffree-form -x f95-cpp-input -D__GFORTRAN__
-#FFLAGS =  -O3 -fopenmp -ffree-form -x f95-cpp-input -ffast-math -march=native -funroll-loops
-#LAPACKL = -Wl,-framework -Wl,accelerate
+FFLAGS =  -O3 -fopenmp -ffree-form -x f95-cpp-input -ffast-math -march=native -funroll-loops
+LAPACKL = -Wl,-framework -Wl,accelerate
 #commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
 #LAPACKL = -lblas -llapack
 
@@ -128,20 +129,33 @@ PARAMETERIZATION = params_CMB.o
 F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
 LINKFLAGS = -L../camb -lcamb $(LAPACKL)
 
-DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
+DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist_py.o
 
 OBJFILES=  ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
-	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
-	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
+	cmbdata.o WeakLen.o bbn.o lrggettheory.o wigglezgettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
+	hzlike.o $(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
 	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
 
 
 ifeq ($(EXTDATA),LRG)
 F90FLAGS += -DDR71RG
-OBJFILES += bsplinepk.o
+OBJFILES += bsplinepk2.o
 GSLINC = -I$(GSLPATH)/include
-LINKFLAGS += -L$(GSLPATH)/lib -lgsl -lgslcblas
+LINKFLAGS += -L$(GSLPATH) -lgsl -lgslcblas
 endif
+
+ifeq ($(EXTDATA),WIGZ)
+F90FLAGS += -DWIGZ
+OBJFILES += bsplinepk2.o 
+LINKFLAGS += -L$(GSLPATH) -lgsl -lgslcblas
+endif
+
+ifeq ($(EXTDATA),LRGWIGZ)
+F90FLAGS += -DDR71RG -DWIGZ
+OBJFILES += bsplinepk2.o
+LINKFLAGS += -L$(GSLPATH) -lgsl -lgslcblas
+endif
+
 
 ifneq ($(WMAP),)
 F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
