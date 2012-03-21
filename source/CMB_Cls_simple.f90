@@ -11,12 +11,14 @@ module CMB_Cls
   use settings
   use snovae
   use bao
+  use hz
   use HST
   use IO
   implicit none
   logical :: Use_SN =.false. !Compute Supernovae likelihoods only when background changes
   logical :: Use_HST =.false. !Compute HST likelihoods only when background changes
   logical :: Use_BAO = .false.
+
 
   logical :: compute_tensors = .false.
   logical :: CMB_lensing = .false.
@@ -54,7 +56,7 @@ contains
      P%InitialConditionVector(initial_iso_baryon) = CMB%w
      w_lam = -1
     end if
-    if (CMB%nnu < 3.04) call MpiStop('CMBToCAMB: nnu < 3.04, would give negative masless neutrinos')
+!    if (CMB%nnu < 3.04) call MpiStop('CMBToCAMB: nnu < 3.04, would give negative masless neutrinos')
     P%Num_Nu_Massless = CMB%nnu - 3 !AL Sept 11 for CAMB's new treatment; previously 3.046; we assume three massive
     P%YHe = CMB%YHe
        
@@ -73,12 +75,16 @@ contains
 
  subroutine GetCls(CMB,Info, Cls, error)
    use ModelParams, only : ThreadNum
+
+#ifdef WIGZ
+   use wigglezgettheory
+#endif 
 #ifdef DR71RG 
    use lrggettheory
    real(dl) :: getabstransferscale 
    !! BR09: this variable is for renormalizing the power spectra to the z=0 value; 
    !this is the assumption of the LRG model.
-#endif     
+#endif    
    type(CMBParams) CMB
    integer error
    Type(ParamSetInfo) Info
@@ -119,6 +125,12 @@ contains
           else
             Info%Theory%HST_Loglike = 0     
           end if
+          if (Use_Hz) then
+            Info%Theory%Hz_Loglike = Hz_LnLike(CMB)
+          else
+            Info%Theory%Hz_Loglike = 0     
+          end if
+
          else
           if (stop_on_error) call MpiStop('CAMB error '//trim(global_error_message))
           if (Feedback > 0) write(*,*) 'CAMB returned error '//trim(global_error_message)           
@@ -160,7 +172,7 @@ contains
             Info%Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(matter_power_lnzsteps,1)
 #ifdef DR71RG 
             !! BR09 get lrgtheory info
-            if (num_matter_power /= 0 .and. use_dr7lrg) then
+            if (num_matter_power /= 0 .and. (use_dr7lrg.or.use_wigz10)) then
                 do zix = 1,matter_power_lnzsteps
                  if(zix .eq. iz0lrg .or. zix .eq. izNEARlrg .or. zix .eq. izMIDlrg .or. zix .eq. izFARlrg) then
                    call Transfer_GetMatterPowerAndNW(Info%Transfers%MTrans,&
@@ -172,32 +184,52 @@ contains
                      if(zix == izNEARlrg)   powerscaletoz0(2) = powerscaletoz0(1)/getabstransferscale**2.0d0
                      if(zix == izMIDlrg)   powerscaletoz0(3) = powerscaletoz0(1)/getabstransferscale**2.0d0
                      if(zix == izFARlrg)   powerscaletoz0(4) = powerscaletoz0(1)/getabstransferscale**2.0d0
+#ifdef WIGZ
+ 
+                  else if(Use_wigz10) then
+                     print*, 'wigz', zix
+                     call Transfer_GetMatterPowerNWandNL(Info%Transfers%MTrans,&
+                          Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                          1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
+                          Info%Theory%mpk_nw(:,zix),Info%Theory%mpkrat_nw_nl(:,zix))
+#endif
                   else  !! not an LRG redshift, so call regular function.
                    call Transfer_GetMatterPower(Info%Transfers%MTrans,&
                      Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
                      1,matter_power_minkh, matter_power_dlnkh,num_matter_power)
-                  end if
-                 end do
-                 if(zix == iz0lrg) powerscaletoz0(1) = 1.0d0
-             else if (num_matter_power /= 0) then
-            !! end BR09 get lrgtheory info
+                end if
+             end do
+          endif
+          if(zix == iz0lrg) powerscaletoz0(1) = 1.0d0
+                 
+                 !! end BR09 get lrgtheory info
+#elif WIGZ
+          if (num_matter_power /= 0 .and. Use_wigz10) then
+             do zix=1,matter_power_lnzsteps
+                call Transfer_GetMatterPowerNWandNL(Info%Transfers%MTrans,&
+                     Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                     1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
+                     Info%Theory%mpk_nw(:,zix),Info%Theory%mpkrat_nw_nl(:,zix))
+             enddo
+          endif
 #else
-            if (num_matter_power /= 0) then
-#endif
-                do zix = 1,matter_power_lnzsteps
-                 call Transfer_GetMatterPower(Info%Transfers%MTrans,& 
-                   Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+          if (num_matter_power /= 0) then
+             do zix = 1,matter_power_lnzsteps
+                call Transfer_GetMatterPower(Info%Transfers%MTrans,& 
+                     Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
                     1,matter_power_minkh, matter_power_dlnkh,num_matter_power) 
-                 end do             
-             end if
-         else
-            Info%Theory%sigma_8 = 0
-         end if
+             end do
+          end if
+#endif
+       else
+          Info%Theory%sigma_8 = 0
+       end if
 
-     end if
-     if (error /= 0) return
-
-     call ClsFromTheoryData(Info%Theory, CMB, Cls)
+    end if
+    
+    if (error /= 0) return
+ 
+    call ClsFromTheoryData(Info%Theory, CMB, Cls)
      
  end subroutine GetCls
 
@@ -244,6 +276,9 @@ contains
 
  subroutine GetClsInfo(CMB, Theory, error, DoCls, DoPk)
    use ModelParams, only : ThreadNum
+#ifdef WIGZ
+   use wigglezgettheory
+#endif 
 #ifdef DR71RG
    use lrggettheory
    real(dl) :: getabstransferscale
@@ -297,40 +332,61 @@ contains
 !!BR09 new addition, putting LRGs back here as well, same structure as above.  
       if (DoPk) then 
          Theory%sigma_8 = MT%sigma_8(matter_power_lnzsteps,1)
-
-#ifdef DR71RG
+#ifdef DR71RG 
          !! BR09 get lrgtheory info
-         if (num_matter_power /= 0 .and. use_dr7lrg) then
-             do zix = 1,matter_power_lnzsteps
-              if(zix .eq. iz0lrg .or. zix .eq. izNEARlrg .or. zix .eq. izMIDlrg .or. zix .eq. izFARlrg) then
-                call Transfer_GetMatterPowerAndNW(MT,&
-                  Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
-                   1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
-                    kmindata,getabstransferscale, &
-                    Theory%mpk_nw(:,zix),Theory%mpkrat_nw_nl(:,zix))
-                     if(zix == iz0lrg) powerscaletoz0(1) = getabstransferscale**2.0d0
-                     if(zix == izNEARlrg)   powerscaletoz0(2) = powerscaletoz0(1)/getabstransferscale**2.0d0
-                     if(zix == izMIDlrg)   powerscaletoz0(3) = powerscaletoz0(1)/getabstransferscale**2.0d0
-                     if(zix == izFARlrg)   powerscaletoz0(4) = powerscaletoz0(1)/getabstransferscale**2.0d0
-               else  !! not an LRG redshift, so call regular function.
-                call Transfer_GetMatterPower(MT,&
-                  Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
-                  1,matter_power_minkh, matter_power_dlnkh,num_matter_power)
-               end if
-             end do
-             if(zix == iz0lrg) powerscaletoz0(1) = 1.0d0
-              else if (num_matter_power /= 0) then
-         !! end BR09 get lrgtheory info
-#else
-            if (num_matter_power /= 0) then
+         if (num_matter_power /= 0 .and. (use_dr7lrg.or.use_wigz10)) then
+            do zix = 1,matter_power_lnzsteps
+               if(zix .eq. iz0lrg .or. zix .eq. izNEARlrg .or. zix .eq. izMIDlrg .or. zix .eq. izFARlrg) then
+                  call Transfer_GetMatterPowerAndNW(MT,&
+                       Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                       1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
+                       kmindata,getabstransferscale, &
+                       Theory%mpk_nw(:,zix),Theory%mpkrat_nw_nl(:,zix))
+                  if(zix == iz0lrg) powerscaletoz0(1) = getabstransferscale**2.0d0
+                  if(zix == izNEARlrg)   powerscaletoz0(2) = powerscaletoz0(1)/getabstransferscale**2.0d0
+                  if(zix == izMIDlrg)   powerscaletoz0(3) = powerscaletoz0(1)/getabstransferscale**2.0d0
+                  if(zix == izFARlrg)   powerscaletoz0(4) = powerscaletoz0(1)/getabstransferscale**2.0d0
+#ifdef WIGZ
+ 
+               else if(Use_wigz10) then
+                  print*, 'wigz', zix
+                  call Transfer_GetMatterPowerNWandNL(MT,&
+                       Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                       1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
+                       Theory%mpk_nw(:,zix),Theory%mpkrat_nw_nl(:,zix))
 #endif
-                do zix = 1,matter_power_lnzsteps
-                 call Transfer_GetMatterPower(MT,&
-                   Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
-                    1,matter_power_minkh, matter_power_dlnkh,num_matter_power)
-                 end do
-            end if
+               else  !! not an LRG redshift, so call regular function.
+                  call Transfer_GetMatterPower(MT,&
+                       Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                       1,matter_power_minkh, matter_power_dlnkh,num_matter_power)
+               end if
+            end do
+         endif
+         if(zix == iz0lrg) powerscaletoz0(1) = 1.0d0
+         
+         !! end BR09 get lrgtheory info
+#elif WIGZ
+         if (num_matter_power /= 0 .and. Use_wigz10) then
+            do zix=1,matter_power_lnzsteps
+               call Transfer_GetMatterPowerNWandNL(MT,&
+                    Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                    1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
+                    Theory%mpk_nw(:,zix),Theory%mpkrat_nw_nl(:,zix))
+            enddo
+         endif
+#else
+         if (num_matter_power /= 0) then
+            do zix = 1,matter_power_lnzsteps
+               call Transfer_GetMatterPower(MT,& 
+                    Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                    1,matter_power_minkh, matter_power_dlnkh,num_matter_power) 
+            end do
+         end if
+#endif
+      else
+         Theory%sigma_8 = 0
       end if
+      
       Theory%Age = CAMB_GetAge(P)
 
    end if
@@ -400,6 +456,7 @@ contains
    use ModelParams
    use Lya
    use mpk
+   use wigglezgettheory
    type(CAMBParams)  P 
    integer zix
    real redshifts(matter_power_lnzsteps)
@@ -424,9 +481,9 @@ contains
  
         if (use_nonlinear) then
          P%NonLinear = NonLinear_Pk
-         P%Transfer%kmax = 1.2
+         P%Transfer%kmax = 12.
         else
-         P%Transfer%kmax = 0.8
+         P%Transfer%kmax = 12.
         end if
         if (Use_Lya) P%Transfer%kmax = lya_kmax
         P%Transfer%num_redshifts = matter_power_lnzsteps
@@ -456,8 +513,18 @@ contains
                !put in max(2,) to stop compilers complaining of div by zero
             end if
            end do
-           
-           if (use_mpk) call mpk_SetTransferRedshifts(redshifts) !can modify to use specific redshifts
+#ifdef WIGZ           
+           if (use_mpk.and.(.not.use_wigz10)) then
+               call mpk_SetTransferRedshifts(redshifts) !can modify to use specific redshifts
+!           else if((.not.use_mpk).and.use_wigz10) then
+               ! nothing really happens
+           else if(use_mpk.and.use_wigz10) then ! using both SDSS and WiggleZ - exciting!
+              call wigglez_sdss_SetTransferRedshifts(redshifts)
+!                call MpiStop('mpk: not yet set up for SDSS and WiggleZ')
+           endif
+#else
+           if(use_mpk) call mpk_SetTransferRedshifts(redshifts)
+#endif           
            if (redshifts(1) > 0.0001) call MpiStop('mpk redshifts: lowest redshift must be zero')
            do zix=1, matter_power_lnzsteps 
             !CAMB's ordering is from highest to lowest

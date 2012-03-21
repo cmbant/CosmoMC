@@ -23,12 +23,20 @@ implicit none
   !by CAMB is set in CMB_Cls_xxx with, e.g. P%Transfer%kmax = 0.6 (which is enough for 2dF)
 
 !Old mpk settings
-#ifdef DR71RG
-!!! BR09: Reid et al 2009 settings for the LRG power spectrum.
-  integer, parameter :: num_matter_power = 300 !number of points computed in matter power spectrum
+!Old mpk settings
+#ifdef WIGZ 
+!!! Settings for WiggleZ power spectrum.
+  integer, parameter :: num_matter_power = 500 !number of points computed in matter power spectrum
   real, parameter    :: matter_power_minkh =  0.999e-4  !minimum value of k/h to store
-  real, parameter    :: matter_power_dlnkh = 0.03     !log spacing in k/h
-  real, parameter    :: matter_power_maxz = 1. !Not used, but must be non-zero to avoid error when have 4 z steps and use_mpk=F
+  real, parameter    :: matter_power_dlnkh = 0.024     !log spacing in k/h
+  real, parameter    :: matter_power_maxz = 1.
+  integer, parameter :: matter_power_lnzsteps = 8  ! z=0 to get sigma8 (this first entry appears to be coded in some spots in the code!!), plus 4 redshift bins.
+#elif DR71RG
+!!! BR09: Reid et al 2009 settings for the LRG power spectrum.
+  integer, parameter :: num_matter_power = 500 !number of points computed in matter power spectrum
+  real, parameter    :: matter_power_minkh =  0.999e-4  !minimum value of k/h to store
+  real, parameter    :: matter_power_dlnkh = 0.024     !log spacing in k/h
+  real, parameter    :: matter_power_maxz = 0.
   integer, parameter :: matter_power_lnzsteps = 4  ! z=0 to get sigma8 (this first entry appears to be coded in some spots in the code!!), plus 3 LRG redshifts.
 #else
   integer, parameter :: num_matter_power = 74 !number of points computed in matter power spectrum
@@ -71,7 +79,7 @@ implicit none
 
   Type CosmoTheory
      real Age, r10
-     real SN_loglike, HST_loglike, BAO_loglike, reserved(1)
+     real SN_loglike, HST_loglike, BAO_loglike, Hz_loglike, reserved(1)
      real cl(lmax,num_cls_tot), cl_tensor(lmax_tensor,num_cls) 
       !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
      real sigma_8
