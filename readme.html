@@ -67,7 +67,10 @@ Please e-mail details of any bugs or enhancements to <a href="http://cosmologist
 
 <A NAME="Compiling"><h2>Downloading and Compiling</h2></A>
 
-You can use CosmoMC (and CAMB) in the pre-configured virtual machine <A HREF="http://cosmologist.info/CosmoBox">CosmoBox</A> (excluding WMAP), or download and install yourself:
+Two options:
+<UL>
+<LI>Use CosmoMC (and CAMB) in the pre-configured virtual machine <A HREF="http://cosmologist.info/CosmoBox">CosmoBox</A> (excluding WMAP). This is good for development and debugging or if you have problems with compilers etc on your local system (note default version of CosmoMC is a bit out of date, follow instructions on CosmoBox page to update easily).
+<LI>Download and install yourself:
 <ul>
 <li>
 Get the <a href="http://cosmologist.info/cosmomc/submit.html">download</a>
@@ -87,6 +90,7 @@ If you get seg faults see this <A HREF="http://cosmocoffee.info/viewtopic.php?t=
 <li>
 Run "make all" in the source subdirectory (try "gmake all" if you get an error)</li>
 </ul>
+<P>
 If you don't want to use WMAP you can just comment out the definition of WMAP in the Makefile, then no need to link to cfitsio or the WMAP likelihood. To use <A HREF="http://arxiv.org/abs/0907.1659">SDSS DR7 LRGs</A> edit the Makefile so &quot;EXTDATA = LRG&quot;; you will also need to set the variable for the location of the <A HREF="http://www.gnu.org/software/gsl/">Gnu Scientific Library</A> (GSL).
 <P>
 
@@ -96,6 +100,7 @@ Makefile to specify where this on your system. Intel systems often use Intel's M
 <P>
 Using Visual Fortran there's no need to use the Makefile, just open the project file in the source folder, and set params.ini as the program argument. For Compaq CVF do this under Project, Settings, Debug and set the working directory to ..\. Under Tools, Options, Directories set the include path to [cxml
 path]/CXML/INCLUDE  and lib path to [cxml path]/CXML/LIB. Don't install the 6.6C3 update as it gives compiler errors (6.6B is fine). You then need to add cfitsio files to your project depending on where they are on your system.
+</UL>
 <P>
 To change the l_max which is used for generating Cls you'll need to
 edit the value in cmbtypes.f90, run "make clean" then "make" to
