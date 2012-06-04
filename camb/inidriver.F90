@@ -93,8 +93,7 @@
                 
 !  Read initial parameters.
        
-       w_lam = Ini_Read_Double('w', -1.d0)   
-       cs2_lam = Ini_Read_Double('cs2_lam',1.d0)
+       call DarkEnergy_ReadParams(DefIni)
 
        P%h0     = Ini_Read_Double('hubble')
  
