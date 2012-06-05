@@ -212,15 +212,20 @@
 
 !     lmax is max possible number of l's evaluated
       integer, parameter :: lmax_arr = l0max 
- 
+      
       character(LEN=1024) :: highL_unlensed_cl_template = 'HighLExtrapTemplate_lenspotentialCls.dat'
            !fiducial high-accuracy high-L C_L used for making small cosmology-independent numerical corrections
            !to lensing and C_L interpolation. Ideally close to models of interest, but dependence is weak.
       logical :: use_spline_template = .true.  
       integer, parameter :: lmax_extrap_highl = 6000
       real(dl), allocatable :: highL_CL_template(:,:)
-           
-        contains
+
+      integer, parameter :: derived_zstar=1, derived_rstar=2, derived_thetastar=3,derived_zdrag=4, &
+         derived_rdrag=5,derived_kD=6,derived_thetaD=7 , derived_zEQ =8, derived_thetaEQ=9
+      integer, parameter :: nthermo_derived = 9        
+      real(dl) ThermoDerivedParams(nthermo_derived)
+      
+       contains
       
 
          subroutine CAMBParams_Set(P, error, DoReion)
@@ -2106,14 +2111,10 @@
          !Times when 1/(opacity*tau) = 0.01, for use switching tight coupling approximation
         real(dl) :: matter_verydom_tau
         real(dl) :: r_drag0, z_star, z_drag  !!JH for updated BAO likelihood.
-        integer, parameter :: derived_zstar=1, derived_rstar=2, derived_thetastar=3,derived_zdrag=4, &
-               derived_rdrag=5,derived_kD=6,derived_thetaD=7 , derived_zEQ =8, derived_thetaEQ=9
-        integer, parameter :: nthermo_derived = 9        
-        real(dl) ThermoDerivedParams(nthermo_derived)
         
         public thermo,inithermo,vis,opac,expmmu,dvis,dopac,ddvis,lenswin, tight_tau,&
                Thermo_OpacityToTime,matter_verydom_tau, ThermoData_Free,&
-               z_star, z_drag, ThermoDerivedParams !!JH for updated BAO likelihood.
+               z_star, z_drag  !!JH for updated BAO likelihood.
        contains
 
         subroutine thermo(tau,cs2b,opacity, dopacity)
