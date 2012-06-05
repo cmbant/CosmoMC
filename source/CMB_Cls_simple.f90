@@ -332,6 +332,7 @@ contains
             end if
       end if
       Theory%Age = CAMB_GetAge(P)
+      Theory%numderived = nthermo_derived
       Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
 
    end if
