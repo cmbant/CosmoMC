@@ -111,6 +111,7 @@
         end if
         
         CMB%iso_cdm_correlated =  Params(11)
+        CMB%zre_delta = Params(12)
         
         CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initPower-1)
         CMB%norm(1) = exp(Params(index_norm))
@@ -212,7 +213,8 @@
       Params(9) = CMB%nnu
       Params(10) = CMB%YHe
       Params(11) = CMB%iso_cdm_correlated
-
+      Params(12) = CMB%zre_delta  
+      
       Params(index_initpower:index_initpower+num_initpower-1) =CMB%InitPower(1:num_initpower) 
       Params(index_norm) = log(CMB%norm(1))
       Params(index_norm+1:index_norm+num_norm-1) = CMB%norm(2:num_norm)

@@ -47,6 +47,7 @@ contains
     P%omegav = CMB%omv
     P%H0 = CMB%H0
     P%Reion%redshift= CMB%zre    
+    P%Reion%delta_redshift = CMB%zre_delta
     w_lam = CMB%w
     wa_ppf = CMB%wa
     P%InitialConditionVector(initial_iso_CDM) = sqrt(CMB%iso_cdm_correlated/(1-CMB%iso_cdm_correlated))
@@ -65,7 +66,8 @@ contains
 
    RecomputeTransfers =  .not. (A%omb == B%omb .and. A%omc == B%omc .and. A%omv == B%omv .and. &
              A%omnu == B%omnu .and. A%zre == B%zre .and. A%omk == B%omk .and. A%w == B%w .and. &
-               A%nnu == B%nnu .and. A%YHe == B%YHe.and. A%wa == B%wa .and. A%iso_cdm_correlated == B%iso_cdm_correlated)
+               A%nnu == B%nnu .and. A%YHe == B%YHe.and. A%wa == B%wa .and. &
+             A%iso_cdm_correlated == B%iso_cdm_correlated .and. A%delta_redshift==B%delta_redshift)
               
  end function RecomputeTransfers
 

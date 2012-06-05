@@ -8,7 +8,8 @@ w             w			#equation of state parameter for scalar field dark energy toda
 wa            w_a       #w_a variation
 nnu           N_{eff}   #effective number of neutrinos (only clearly defined for massless)
 YHe           Y_{He}    #Helium mass fraction (not used if bbn_consistency)    
-alphaCDM      \alpha_{-1} #correlated CDM isocurvature modes
+alphaCDM      \alpha_{-1} #correlated CDM isocurvature 
+deltazre      \Delta_{z,re} #width of reionization
 ns            n_s	    #beware that pivot scale can change in .ini file
 nt            n_t
 nrun          n_{run}

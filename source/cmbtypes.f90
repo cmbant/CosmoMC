@@ -62,7 +62,7 @@ implicit none
      !Now remaining (non-independent) parameters
      real omb, omc, omv, omnu, omk, omdm
      real ombh2, omch2, omnuh2, omdmh2
-     real zre, nufrac
+     real zre, zre_delta, nufrac
      real h, H0
      real w, wa
      real YHe, nnu, iso_cdm_correlated
