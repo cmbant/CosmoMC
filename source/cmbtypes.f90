@@ -122,7 +122,7 @@ contains
     write(i) CMB
 
     write(i) T%Age, T%r10, T%sigma_8, T%matter_power
-    write(i) T%DerivedParameters !!
+    write(i) T%derived_parameters !!
     
     if (write_all_cls) then
      write(i) T%cl(2:lmax,1:num_cls_tot)
@@ -189,7 +189,7 @@ contains
         read(i) CMB
 
         read(i) T%Age, T%r10, T%sigma_8, T%matter_power(1:anumpowers,1:matter_power_lnzsteps)
-        read(i) T%DerivedParameters
+        read(i) T%derived_parameters
   
         T%cl = 0
         T%cl_tensor = 0
