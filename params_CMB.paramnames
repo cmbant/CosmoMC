@@ -4,20 +4,25 @@ theta         \theta		#100 times the ratio of the angular diameter distance to t
 tau           \tau
 omegak        \Omega_K
 fnu           f_\nu		#neutrino energy density as fraction of omegadmh2
-w             w			#constant equation of state parameter for scalar field dark energy 
-ns            n_s		#beware that pivot scale can change in .ini file
+w             w			#equation of state parameter for scalar field dark energy today
+wa            w_a       #w_a variation
+nnu           N_{eff}   #effective number of neutrinos (only clearly defined for massless)
+YHe           Y_{He}    #Helium mass fraction (not used if bbn_consistency)    
+alphaCDM      \alpha_{-1} #correlated CDM isocurvature modes
+ns            n_s	    #beware that pivot scale can change in .ini file
 nt            n_t
 nrun          n_{run}
 logA          log[10^{10} A_s]
-r             r			#ratio of tensor to scalar primordial amplitudes at pivot scale
+r             r_{pivot} #ratio of tensor to scalar primordial amplitudes at pivot scale
 asz           A_{SZ}		#SZ template amplitude, as in WMAP
 omegal*       \Omega_\Lambda
 age*          Age/Gyr
 omegam*       \Omega_m
 sigma8*       \sigma_8
 zrei*         z_{re}
-r10*          r_{10}		#tensor-scalar C_l amplitude at l=10
+r10*          r_{10}	#tensor-scalar C_l amplitude at l=10
 H0*           H_0		#hubble parameter is H0 km/s/Mpc
+r02*          r         #r at k=0.002
 zstar*        z_*
 rstar*        r_*
 thetastar*    \theta_*

@@ -64,8 +64,8 @@ implicit none
      real ombh2, omch2, omnuh2, omdmh2
      real zre, nufrac
      real h, H0
-     real w
-     real YHe, nnu
+     real w, wa
+     real YHe, nnu, iso_cdm_correlated
      real reserved(5)
   
   end Type CMBParams
@@ -75,7 +75,7 @@ implicit none
      real SN_loglike, HST_loglike, BAO_loglike, reserved(1)
      real cl(lmax,num_cls_tot), cl_tensor(lmax_tensor,num_cls) 
       !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
-     real sigma_8
+     real sigma_8, tensor_ratio_02
      integer numderived
      real derived_parameters(max_derived_parameters)
      real matter_power(num_matter_power,matter_power_lnzsteps)
@@ -122,7 +122,7 @@ contains
     write(i) CMB
 
     write(i) T%Age, T%r10, T%sigma_8, T%matter_power
-    write(i) T%derived_parameters !!
+    write(i) T%tensor_ratio_02, T%derived_parameters !!
     
     if (write_all_cls) then
      write(i) T%cl(2:lmax,1:num_cls_tot)
@@ -189,7 +189,7 @@ contains
         read(i) CMB
 
         read(i) T%Age, T%r10, T%sigma_8, T%matter_power(1:anumpowers,1:matter_power_lnzsteps)
-        read(i) T%derived_parameters
+        read(i) T%tensor_ratio_02, T%derived_parameters
   
         T%cl = 0
         T%cl_tensor = 0

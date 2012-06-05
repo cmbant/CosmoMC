@@ -99,15 +99,18 @@
         CMB%Omk = Params(5)
         CMB%nufrac = Params(6)
         CMB%w = Params(7)
-     
-        CMB%nnu = 3.046
+        CMB%wa = Params(8)
+        CMB%nnu = Params(9) !3.046
+        
         if (bbn_consistency) then
          CMB%YHe = yp_bbn(CMB%ombh2,CMB%nnu  - 3.046)
         else
          !e.g. set from free parameter..
-         CMB%YHe  = 0.24
+         CMB%YHe  =Params(10)
          !call MpiStop('params_CMB: YHe not free parameter in default parameterization')
         end if
+        
+        CMB%iso_cdm_correlated =  Params(11)
         
         CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initPower-1)
         CMB%norm(1) = exp(Params(index_norm))
@@ -205,6 +208,11 @@
       
       Params(6) = CMB%nufrac 
       Params(7) = CMB%w
+      Params(8) = CMB%wa
+      Params(9) = CMB%nnu
+      Params(10) = CMB%YHe
+      Params(11) = CMB%iso_cdm_correlated
+
       Params(index_initpower:index_initpower+num_initpower-1) =CMB%InitPower(1:num_initpower) 
       Params(index_norm) = log(CMB%norm(1))
       Params(index_norm+1:index_norm+num_norm-1) = CMB%norm(2:num_norm)
@@ -239,10 +247,10 @@
      Type(real_pointer) :: derived
      Type(ParamSet) P
      Type(CMBParams) CMB
-     real r10   
+     real r10 , rat  
      integer num_derived 
      
-     num_derived = 7 +  P%Info%Theory%numderived
+     num_derived = 8 +  P%Info%Theory%numderived
    
      allocate(Derived%P(num_derived))
    
@@ -261,7 +269,9 @@
       derived%P(5) = CMB%zre
       derived%P(6) = r10
       derived%P(7) = CMB%H0
-      derived%P(8:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
+      derived%P(8) = P%Info%Theory%tensor_ratio_02
+      
+      derived%P(9:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
       
   end function CalcDerivedParams
   

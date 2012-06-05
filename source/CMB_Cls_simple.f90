@@ -5,7 +5,7 @@ module CMB_Cls
           AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, &
           CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
           CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, &
-          initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_neutrino, initial_iso_neutrino_vel, &
+          initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
           HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived
   use Errors !CAMB        
   use settings
@@ -34,8 +34,7 @@ module CMB_Cls
   integer :: ncalls = 0
   integer :: nerrors = 0
   type(CAMBParams)  CAMBP 
-  logical :: w_is_w  = .true.
-
+  
 contains
   subroutine CMBToCAMB(CMB,P)
     use LambdaGeneral
@@ -48,14 +47,14 @@ contains
     P%omegav = CMB%omv
     P%H0 = CMB%H0
     P%Reion%redshift= CMB%zre    
-    if (w_is_w) then
-     w_lam = CMB%w
-    else
-     P%InitialConditionVector(initial_iso_baryon) = CMB%w
-     w_lam = -1
-    end if
-    if (CMB%nnu < 3.04) call MpiStop('CMBToCAMB: nnu < 3.04, would give negative masless neutrinos')
-    P%Num_Nu_Massless = CMB%nnu - 3 !AL Sept 11 for CAMB's new treatment; previously 3.046; we assume three massive
+    w_lam = CMB%w
+    wa_ppf = CMB%wa
+    P%InitialConditionVector(initial_iso_CDM) = sqrt(CMB%iso_cdm_correlated/(1-CMB%iso_cdm_correlated))
+    
+!    if (CMB%nnu < 3.04) call MpiStop('CMBToCAMB: nnu < 3.04, would give negative masless neutrinos')
+    !Not clear this recipe is the best thing to do in general, but should work for massless case with unusual nnu
+    P%Num_Nu_Massive = int(CMB%nnu)
+    P%Num_Nu_Massless = CMB%nnu - P%Num_Nu_Massive !AL Sept 11 for CAMB's new treatment; previously 3.046; we assume three massive
     P%YHe = CMB%YHe
        
   end subroutine CMBToCAMB
@@ -66,7 +65,7 @@ contains
 
    RecomputeTransfers =  .not. (A%omb == B%omb .and. A%omc == B%omc .and. A%omv == B%omv .and. &
              A%omnu == B%omnu .and. A%zre == B%zre .and. A%omk == B%omk .and. A%w == B%w .and. &
-               A%nnu == B%nnu .and. A%YHe == B%YHe)
+               A%nnu == B%nnu .and. A%YHe == B%YHe.and. A%wa == B%wa .and. A%iso_correlated == B%iso_correlated)
               
  end function RecomputeTransfers
 
@@ -75,6 +74,7 @@ contains
    use ModelParams, only : ThreadNum
 #ifdef DR71RG 
    use lrggettheory
+   use InitialPower
    real(dl) :: getabstransferscale 
    !! BR09: this variable is for renormalizing the power spectra to the z=0 value; 
    !this is the assumption of the LRG model.
@@ -152,11 +152,17 @@ contains
          end if 
            
          call SetTheoryFromCAMB(Info%Theory)
-    
+         
          if (any(Info%Theory%cl(:,1) < 0 )) then
             error = 1
             !Kill initial power spectra that go negative
             return
+         end if
+         
+         if (compute_tensors) then
+             Info%Theory%tensor_ratio_02 = TensorPower(0.002d0,1)/ScalarPower(0.002d0,1)
+         else
+             Info%Theory%tensor_ratio_02 = 0 
          end if
    
          if (Use_LSS) then
@@ -412,6 +418,7 @@ contains
 
         Threadnum =num_threads
         w_lam = -1
+        wa_ppf = 0._dl
         call CAMB_SetDefParams(P)
  
         P%OutputNormalization = outNone
