@@ -35,7 +35,7 @@
         implicit none    
         public
 
-        character(LEN=*), parameter :: version = 'Apr_12'
+        character(LEN=*), parameter :: version = 'Planck_Jun_12'
         
         integer :: FeedbackLevel = 0 !if >0 print out useful information about the model
 
@@ -56,7 +56,7 @@
          !Nu_best: automatically use mixture which is fastest and most accurate
 
         integer, parameter :: max_Nu = 5 !Maximum number of neutrino species    
-        integer, parameter :: max_transfer_redshifts = 50    
+        integer, parameter :: max_transfer_redshifts = 150   
         integer, parameter :: fileio_unit = 13 !Any number not used elsewhere will do       
         integer, parameter :: outCOBE=0, outNone=1
     
@@ -330,7 +330,7 @@
            fractional_number  = CP%Num_Nu_massless + CP%Num_Nu_massive
            actual_massless = int(CP%Num_Nu_massless + 1e-6)
            if (actual_massless + CP%Num_Nu_massive /= 0) then
-             grhor = grhor * fractional_number/(actual_massless + CP%Num_Nu_massive)
+             grhor = grhor * fractional_number/(actual_massless + CP%Num_Nu_massive)          
              grhornomass=grhor*actual_massless
            else
              !Prevent problems with n_eff < 1; thanks Zhen Hou
@@ -1668,7 +1668,7 @@
           call MatterPowerdata_getsplines(PK_data)
 
         end subroutine MatterPowerData_Load
-
+        
 
         subroutine MatterPowerdata_getsplines(PK_data)
           Type(MatterPowerData) :: PK_data
@@ -1963,14 +1963,22 @@
        subroutine Transfer_SetForNonlinearLensing(P)
           Type(TransferParams) :: P
           integer i
+          real maxRedshift
 
-          P%kmax = 5*AccuracyBoost
+          P%kmax = 5*AccuracyBoost  
           P%k_per_logint  = 0
-          P%num_redshifts =  nint(10*AccuracyBoost)
+          maxRedshift = 10
+          P%num_redshifts =  nint(10*AccuracyBoost)  
+          if (HighAccuracyDefault) then
+           !only notionally more accuracy, more stable for RS   
+           maxRedshift =15
+           P%num_redshifts = P%num_redshifts *3
+          end if
           if (P%num_redshifts > max_transfer_redshifts) &
                 stop 'Transfer_SetForNonlinearLensing: Too many redshifts'
           do i=1,P%num_redshifts
-           P%redshifts(i) = real(P%num_redshifts-i)/(P%num_redshifts/10)
+           P%redshifts(i) = real(P%num_redshifts-i)/(P%num_redshifts/maxRedshift)
+
           end do
 
        end subroutine Transfer_SetForNonlinearLensing
@@ -2089,14 +2097,16 @@
         real(dl) sdotmu(nthermo),emmu(nthermo)
         real(dl) demmu(nthermo)
         real(dl) dddotmu(nthermo),ddddotmu(nthermo)
+        real(dl) winlens(nthermo),dwinlens(nthermo), scalefactor(nthermo)
         real(dl) tauminn,dlntau,Maxtau
-        real(dl), dimension(:), allocatable :: vis,dvis,ddvis,expmmu,dopac, opac
+        real(dl), dimension(:), allocatable :: vis,dvis,ddvis,expmmu,dopac, opac, lenswin
+        logical, parameter :: dowinlens = .false.
     
         real(dl) :: tight_tau, actual_opt_depth
          !Times when 1/(opacity*tau) = 0.01, for use switching tight coupling approximation
         real(dl) :: matter_verydom_tau
         real(dl) :: r_drag0, z_star, z_drag  !!JH for updated BAO likelihood.
-        public thermo,inithermo,vis,opac,expmmu,dvis,dopac,ddvis, tight_tau,&
+        public thermo,inithermo,vis,opac,expmmu,dvis,dopac,ddvis,lenswin, tight_tau,&
                Thermo_OpacityToTime,matter_verydom_tau, ThermoData_Free,&
                z_star, z_drag !!JH for updated BAO likelihood.
        contains
@@ -2184,7 +2194,10 @@
         real(dl) dtauda  !diff of tau w.CP%r.t a and integration
         external dtauda
         real(dl) a_verydom
-     
+        real(dl) awin_lens1,awin_lens2,dwing_lens, rs, DA, kD
+        real(dl) rombint
+        external rombint
+        
         call Recombination_Init(CP%Recomb, CP%omegac, CP%omegab,CP%Omegan, CP%Omegav, CP%h0,CP%tcmb,CP%yhe)
           !almost all the time spent here
         if (global_error_flag/=0) return
@@ -2192,7 +2205,10 @@
         tight_tau = 0
         actual_opt_depth = 0
         ncount=0
+        z_star=0.d0
+        z_drag=0.d0
         thomc0= Compton_CT * CP%tcmb**4 
+        r_drag0 = 3.d0/4.d0*CP%omegab*grhom/grhog
         !thomc0=5.0577d-8*CP%tcmb**4
         
         tauminn=0.05d0*taumin
@@ -2226,6 +2242,7 @@
 !  Integrate Friedmann equation using inverse trapezoidal rule.
       
           a=a0+adot0*dtau
+          scaleFactor(i)=a
           a2=a*a
 
           adot=1/dtauda(a)
@@ -2312,6 +2329,13 @@
                actual_opt_depth==0 .and. xe(j1) < 1e-3) then
               actual_opt_depth = -sdotmu(j1)+sdotmu(nthermo) 
            end if
+           if (CP%AccurateReionization .and. z_star==0.d0) then
+              if (sdotmu(nthermo)-sdotmu(j1) - actual_opt_depth < 1) then
+                tau01=1-(sdotmu(nthermo)-sdotmu(j1) - actual_opt_depth)
+                tau01=tau01*(1._dl/dotmu(j1)+1._dl/dotmu(j1-1))/2
+                z_star = 1/(scaleFactor(j1)- tau01/dtauda(scaleFactor(j1))) -1
+              end if
+           end if
           end if
         end do  
 
@@ -2319,6 +2343,7 @@
          write(*,'("Reion opt depth      = ",f7.4)') actual_opt_depth
         end if
 
+       
         iv=0
         vfi=0._dl
 ! Getting the starting and finishing times for decoupling and time of maximum visibility
@@ -2355,6 +2380,25 @@
              return
            end if
 
+          if (dowinlens) then
+             vfi=0
+             awin_lens1=0
+              awin_lens2=0
+              winlens=0
+              do j1=1,nthermo-1
+                   vis = emmu(j1)*dotmu(j1)
+                   tau = tauminn*exp((j1-1)*dlntau)
+                   vfi=vfi+vis*cf1*dlntau*tau
+                    if (vfi < 0.995) then
+                          dwing_lens =  vis*cf1*dlntau*tau / 0.995
+     
+                          awin_lens1 = awin_lens1 + dwing_lens  
+                          awin_lens2 = awin_lens2 + dwing_lens/(CP%tau0-tau)  
+                      end if
+                      winlens(j1)= awin_lens1/(CP%tau0-tau) - awin_lens2 
+                 end do  
+         end if
+           
 ! Calculating the timesteps during recombination.
     
            if (CP%WantTensors) then
@@ -2376,7 +2420,8 @@
         call splder(ddotmu,dddotmu,nthermo,spline_data)  
         call splder(dddotmu,ddddotmu,nthermo,spline_data)
         call splder(emmu,demmu,nthermo,spline_data)
-   
+        if (dowinlens) call splder(winlens,dwinlens,nthermo,spline_data)
+        
         call SetTimeSteps
 
         !$OMP PARALLEL DO DEFAULT(SHARED),SCHEDULE(STATIC) 
@@ -2385,15 +2430,40 @@
         end do 
          !$OMP END PARALLEL DO 
 
+        
         if (CP%want_zdrag .or. CP%want_zstar) then !JH: calculate exact zstar and/or zdrag
 
-           r_drag0 = 3.d0/4.d0*CP%omegab*grhom/grhog
-
-           if (CP%want_zstar) call find_z(optdepth,z_star)
+           if (CP%want_zstar .and. z_star==0.d0) call find_z(optdepth,z_star)
            if (CP%want_zdrag) call find_z(dragoptdepth,z_drag)
 
         end if
-        end subroutine inithermo        
+
+        if (FeedbackLevel > 0) then    
+                    if (z_star==0.d0) call find_z(optdepth,z_star)
+                    if (z_drag==0.d0) call find_z(dragoptdepth,z_drag)
+                    
+                    write(*,'("zstar                = ",f8.2)') z_star
+!                    call find_z(optdepth,z_star) 
+!                   write(*,'("zstar                = ",f8.2)') z_star
+
+                    rs =rombint(dsound_da,1d-8,1/(z_star+1),1d-6)   
+                    DA = AngularDiameterDistance(z_star)/(1/(z_star+1))
+                    write(*,'("r_s(zstar)/Mpc       = ",f7.2)') rs                
+                    write(*,'("100*theta            = ",f9.6)') 100*rs/DA                  
+
+                    write(*,'("zdrag                = ",f8.2)') z_drag
+                    rs =rombint(dsound_da,1d-8,1/(z_drag+1),1d-6)   
+                    write(*,'("r_s(zdrag)/Mpc       = ",f7.2)') rs                
+  
+                    kD = sqrt(1.d0/(rombint(ddamping_da, 1d-8, 1/(z_star+1), 1d-6)/6))
+                    write(*,'("k_D(zstar) Mpc       = ",f7.4)')  kD
+                    write(*,'("100*theta_D          = ",f9.6)')  100*pi/kD/DA
+                                        
+                    write(*,'("z_EQ (if v_nu=1)     = ",f8.2)')  (grhob+grhoc)/(grhog+grhornomass+sum(grhormass(1:CP%Nu_mass_eigenstates))) -1
+         end if 
+
+        
+     end subroutine inithermo        
 
 
         subroutine SetTimeSteps
@@ -2431,8 +2501,10 @@
 
         if (allocated(vis)) then
            deallocate(vis,dvis,ddvis,expmmu,dopac, opac)
+           if (dowinlens) deallocate(lenswin)
         end if
         allocate(vis(nstep),dvis(nstep),ddvis(nstep),expmmu(nstep),dopac(nstep),opac(nstep))
+        if (dowinlens) allocate(lenswin(nstep))
 
         if (DebugMsgs .and. FeedbackLevel > 0) write(*,*) 'Set ',nstep, ' time steps'
     
@@ -2442,6 +2514,7 @@
         subroutine ThermoData_Free
          if (allocated(vis)) then
            deallocate(vis,dvis,ddvis,expmmu,dopac, opac)
+           if (dowinlens) deallocate(lenswin)
          end if
          call Ranges_Free(TimeSteps)
 
@@ -2473,7 +2546,12 @@
           expmmu(j2)=emmu(i)+d*(demmu(i)+d*(3._dl*(emmu(i+1)-emmu(i)) &
               -2._dl*demmu(i)-demmu(i+1)+d*(demmu(i)+demmu(i+1) &
               +2._dl*(emmu(i)-emmu(i+1)))))
- 
+          
+          if (dowinlens) then
+          lenswin(j2)=winlens(i)+d*(dwinlens(i)+d*(3._dl*(winlens(i+1)-winlens(i)) &
+              -2._dl*dwinlens(i)-dwinlens(i+1)+d*(dwinlens(i)+dwinlens(i+1) &
+              +2._dl*(winlens(i)-winlens(i+1)))))
+          end if
           vis(j2)=opac(j2)*expmmu(j2)
           dvis(j2)=expmmu(j2)*(opac(j2)**2+dopac(j2))
           ddvis(j2)=expmmu(j2)*(opac(j2)**3+3*opac(j2)*dopac(j2)+ddopac)
@@ -2489,6 +2567,21 @@
           end if
         end subroutine DoThermoSpline
 
+        
+        function ddamping_da(a)
+          real(dl) :: ddamping_da
+          real(dl), intent(in) :: a
+          real(dl) :: R
+          real(dl) :: dtauda
+          external dtauda
+
+          R=r_drag0*a
+          !ignoring reionisation, not relevant for distance measures
+          ddamping_da = (R**2 + 16*(1+R)/15)/(1+R)**2*dtauda(a)*a**2/(Recombination_xe(a)*akthom) 
+
+        end function ddamping_da
+
+        
 !!!!!!!!!!!!!!!!!!!
 !JH: functions and subroutines for calculating z_star and z_drag
 
