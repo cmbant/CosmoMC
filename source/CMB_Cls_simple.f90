@@ -67,7 +67,7 @@ contains
    RecomputeTransfers =  .not. (A%omb == B%omb .and. A%omc == B%omc .and. A%omv == B%omv .and. &
              A%omnu == B%omnu .and. A%zre == B%zre .and. A%omk == B%omk .and. A%w == B%w .and. &
                A%nnu == B%nnu .and. A%YHe == B%YHe.and. A%wa == B%wa .and. &
-             A%iso_cdm_correlated == B%iso_cdm_correlated .and. A%delta_redshift==B%delta_redshift)
+             A%iso_cdm_correlated == B%iso_cdm_correlated .and. A%zre_delta==B%zre_delta)
               
  end function RecomputeTransfers
 
