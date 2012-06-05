@@ -119,6 +119,9 @@ contains
           else
             Info%Theory%HST_Loglike = 0     
           end if
+          Info%Theory%numderived = nthermo_derived
+          if (nthermo_derived > max_derived_parameters) call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
+          Info%Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
          else
           if (stop_on_error) call MpiStop('CAMB error '//trim(global_error_message))
           if (Feedback > 0) write(*,*) 'CAMB returned error '//trim(global_error_message)           
@@ -333,6 +336,7 @@ contains
       end if
       Theory%Age = CAMB_GetAge(P)
       Theory%numderived = nthermo_derived
+      if (nthermo_derived > max_derived_parameters) call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
       Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
 
    end if
