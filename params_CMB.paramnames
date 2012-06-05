@@ -18,3 +18,12 @@ sigma8*       \sigma_8
 zrei*         z_{re}
 r10*          r_{10}		#tensor-scalar C_l amplitude at l=10
 H0*           H_0		#hubble parameter is H0 km/s/Mpc
+zstar*        z_*
+rstar*        r_*
+thetastar*    \theta_*
+zdrag*        z_{drag}
+rdrag*        r_{drag}
+kd*           k_d
+thetad*       \theta_d
+zeq*          z_{EQ}
+thetaeq*      \theta_{EQ}

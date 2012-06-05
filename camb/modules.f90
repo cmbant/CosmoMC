@@ -2106,9 +2106,14 @@
          !Times when 1/(opacity*tau) = 0.01, for use switching tight coupling approximation
         real(dl) :: matter_verydom_tau
         real(dl) :: r_drag0, z_star, z_drag  !!JH for updated BAO likelihood.
+        integer, parameter :: derived_zstar=1, derived_rstar=2, derived_thetastar=3,derived_zdrag=4, &
+               derived_rdrag=5,derived_kD=6,derived_thetaD=7 , derived_zEQ =8, derived_thetaEQ=9
+        integer, parameter :: nthermo_derived = 9        
+        real(dl) ThermoDerivedParams(nthermo_derived)
+        
         public thermo,inithermo,vis,opac,expmmu,dvis,dopac,ddvis,lenswin, tight_tau,&
                Thermo_OpacityToTime,matter_verydom_tau, ThermoData_Free,&
-               z_star, z_drag !!JH for updated BAO likelihood.
+               z_star, z_drag, ThermoDerivedParams !!JH for updated BAO likelihood.
        contains
 
         subroutine thermo(tau,cs2b,opacity, dopacity)
@@ -2194,7 +2199,7 @@
         real(dl) dtauda  !diff of tau w.CP%r.t a and integration
         external dtauda
         real(dl) a_verydom
-        real(dl) awin_lens1,awin_lens2,dwing_lens, rs, DA, kD
+        real(dl) awin_lens1,awin_lens2,dwing_lens, rs, DA 
         real(dl) rombint
         external rombint
         
@@ -2431,35 +2436,43 @@
          !$OMP END PARALLEL DO 
 
         
-        if (CP%want_zdrag .or. CP%want_zstar) then !JH: calculate exact zstar and/or zdrag
+        !if (CP%want_zdrag .or. CP%want_zstar) then !JH: calculate exact zstar and/or zdrag
 
-           if (CP%want_zstar .and. z_star==0.d0) call find_z(optdepth,z_star)
-           if (CP%want_zdrag) call find_z(dragoptdepth,z_drag)
+         !  if (CP%want_zstar .and. z_star==0.d0) call find_z(optdepth,z_star)
+          ! if (CP%want_zdrag) call find_z(dragoptdepth,z_drag)
 
-        end if
+        !end if
 
+        if (z_star==0.d0) call find_z(optdepth,z_star)
+        if (z_drag==0.d0) call find_z(dragoptdepth,z_drag)
+        rs =rombint(dsound_da,1d-8,1/(z_star+1),1d-6)   
+        DA = AngularDiameterDistance(z_star)/(1/(z_star+1))
+        
+        ThermoDerivedParams( derived_zstar ) = z_star
+        ThermoDerivedParams( derived_rstar ) = rs
+        ThermoDerivedParams( derived_thetastar ) = 100*rs/DA 
+        ThermoDerivedParams( derived_zdrag ) = z_drag
+        rs =rombint(dsound_da,1d-8,1/(z_drag+1),1d-6)   
+        ThermoDerivedParams( derived_rdrag ) = rs
+        ThermoDerivedParams( derived_kD ) =  sqrt(1.d0/(rombint(ddamping_da, 1d-8, 1/(z_star+1), 1d-6)/6))
+        ThermoDerivedParams( derived_thetaD ) =  100*pi/ThermoDerivedParams( derived_kD )/DA
+        ThermoDerivedParams( derived_zEQ ) = (grhob+grhoc)/(grhog+grhornomass+sum(grhormass(1:CP%Nu_mass_eigenstates))) -1  
+        ThermoDerivedParams( derived_thetaEQ ) = 100*timeOfz( ThermoDerivedParams( derived_zEQ ))/DA
+        
         if (FeedbackLevel > 0) then    
-                    if (z_star==0.d0) call find_z(optdepth,z_star)
-                    if (z_drag==0.d0) call find_z(dragoptdepth,z_drag)
                     
-                    write(*,'("zstar                = ",f8.2)') z_star
-!                    call find_z(optdepth,z_star) 
-!                   write(*,'("zstar                = ",f8.2)') z_star
+                    write(*,'("zstar                = ",f8.2)') ThermoDerivedParams( derived_zstar )
+                    write(*,'("r_s(zstar)/Mpc       = ",f7.2)') ThermoDerivedParams( derived_rstar )            
+                    write(*,'("100*theta            = ",f9.6)') ThermoDerivedParams( derived_thetastar )                 
 
-                    rs =rombint(dsound_da,1d-8,1/(z_star+1),1d-6)   
-                    DA = AngularDiameterDistance(z_star)/(1/(z_star+1))
-                    write(*,'("r_s(zstar)/Mpc       = ",f7.2)') rs                
-                    write(*,'("100*theta            = ",f9.6)') 100*rs/DA                  
-
-                    write(*,'("zdrag                = ",f8.2)') z_drag
-                    rs =rombint(dsound_da,1d-8,1/(z_drag+1),1d-6)   
-                    write(*,'("r_s(zdrag)/Mpc       = ",f7.2)') rs                
+                    write(*,'("zdrag                = ",f8.2)') ThermoDerivedParams( derived_zdrag )
+                    write(*,'("r_s(zdrag)/Mpc       = ",f7.2)') ThermoDerivedParams( derived_rdrag )           
   
-                    kD = sqrt(1.d0/(rombint(ddamping_da, 1d-8, 1/(z_star+1), 1d-6)/6))
-                    write(*,'("k_D(zstar) Mpc       = ",f7.4)')  kD
-                    write(*,'("100*theta_D          = ",f9.6)')  100*pi/kD/DA
-                                        
-                    write(*,'("z_EQ (if v_nu=1)     = ",f8.2)')  (grhob+grhoc)/(grhog+grhornomass+sum(grhormass(1:CP%Nu_mass_eigenstates))) -1
+                    write(*,'("k_D(zstar) Mpc       = ",f7.4)') ThermoDerivedParams( derived_kD )
+                    write(*,'("100*theta_D          = ",f9.6)') ThermoDerivedParams( derived_thetaD ) 
+
+                    write(*,'("z_EQ (if v_nu=1)     = ",f8.2)') ThermoDerivedParams( derived_zEQ )
+                    write(*,'("100*theta_EQ         = ",f9.6)') ThermoDerivedParams( derived_thetaEQ )
          end if 
 
         

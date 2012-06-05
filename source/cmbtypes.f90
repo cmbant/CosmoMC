@@ -42,7 +42,8 @@ implicit none
    logical :: inflation_consistency = .false. !fix n_T or not
 
    logical :: bbn_consistency = .true. !JH
-
+   integer, parameter :: max_derived_parameters = 20
+   
 
   integer, parameter :: num_cls_tot = num_cls + num_cls_ext
 !Number of scalar-only cls
@@ -75,6 +76,8 @@ implicit none
      real cl(lmax,num_cls_tot), cl_tensor(lmax_tensor,num_cls) 
       !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
      real sigma_8
+     integer numderived
+     real derived_parameters(max_derived_parameters)
      real matter_power(num_matter_power,matter_power_lnzsteps)
        !second index is redshifts from 0 to matter_power_maxz
        !if custom_redshift_steps = false with equal spacing in
@@ -119,7 +122,8 @@ contains
     write(i) CMB
 
     write(i) T%Age, T%r10, T%sigma_8, T%matter_power
-
+    write(i) T%DerivedParameters !!
+    
     if (write_all_cls) then
      write(i) T%cl(2:lmax,1:num_cls_tot)
      write(i) T%cl_tensor(2:lmax_tensor,1:num_cls)
@@ -184,8 +188,9 @@ contains
         read(i,end = 100, err=100) like
         read(i) CMB
 
-    
         read(i) T%Age, T%r10, T%sigma_8, T%matter_power(1:anumpowers,1:matter_power_lnzsteps)
+        read(i) T%DerivedParameters
+  
         T%cl = 0
         T%cl_tensor = 0
          

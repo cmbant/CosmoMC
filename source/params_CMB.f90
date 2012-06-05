@@ -242,7 +242,7 @@
      real r10   
      integer num_derived 
      
-     num_derived = 7
+     num_derived = 7 +  P%Info%Theory%numderived
    
      allocate(Derived%P(num_derived))
    
@@ -261,6 +261,8 @@
       derived%P(5) = CMB%zre
       derived%P(6) = r10
       derived%P(7) = CMB%H0
+      derived%P(8:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
+      
   end function CalcDerivedParams
   
 
