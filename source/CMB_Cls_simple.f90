@@ -6,7 +6,7 @@ module CMB_Cls
           CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
           CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, &
           initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_neutrino, initial_iso_neutrino_vel, &
-          HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams
+          HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived
   use Errors !CAMB        
   use settings
   use snovae
