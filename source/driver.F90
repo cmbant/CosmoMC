@@ -215,7 +215,6 @@ program SolveCosmology
         inflation_consistency = Ini_read_Logical('inflation_consistency',.false.)
         bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
 
-        w_is_w = Ini_Read_Logical ('w_is_w',.true.)     
         oversample_fast = Ini_Read_Int('oversample_fast',1)
         use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
  
