@@ -221,8 +221,8 @@
       real(dl), allocatable :: highL_CL_template(:,:)
 
       integer, parameter :: derived_zstar=1, derived_rstar=2, derived_thetastar=3,derived_zdrag=4, &
-         derived_rdrag=5,derived_kD=6,derived_thetaD=7 , derived_zEQ =8, derived_thetaEQ=9
-      integer, parameter :: nthermo_derived = 9        
+         derived_rdrag=5,derived_kD=6,derived_thetaD=7 , derived_zEQ =8, derived_thetaEQ=9, derived_mnu=10
+      integer, parameter :: nthermo_derived = 10        
       real(dl) ThermoDerivedParams(nthermo_derived)
       
        contains
@@ -2201,6 +2201,7 @@
         external dtauda
         real(dl) a_verydom
         real(dl) awin_lens1,awin_lens2,dwing_lens, rs, DA 
+        integer nu_i
         real(dl) rombint
         external rombint
         
@@ -2459,7 +2460,13 @@
         ThermoDerivedParams( derived_thetaD ) =  100*pi/ThermoDerivedParams( derived_kD )/DA
         ThermoDerivedParams( derived_zEQ ) = (grhob+grhoc)/(grhog+grhornomass+sum(grhormass(1:CP%Nu_mass_eigenstates))) -1  
         ThermoDerivedParams( derived_thetaEQ ) = 100*timeOfz( ThermoDerivedParams( derived_zEQ ))/DA
-        
+        ThermoDerivedParams( derived_mnu ) = 0 
+        if (CP%Num_Nu_Massive > 0) then
+                do nu_i=1, CP%Nu_mass_eigenstates 
+                    ThermoDerivedParams( derived_mnu ) = ThermoDerivedParams( derived_mnu ) + CP%nu_mass_degeneracies(nu_i)*1.68e-4*nu_masses(nu_i)
+                end do
+          end if
+            
         if (FeedbackLevel > 0) then    
                     
                     write(*,'("zstar                = ",f8.2)') ThermoDerivedParams( derived_zstar )

@@ -7,9 +7,10 @@ fnu           f_\nu		#neutrino energy density as fraction of omegadmh2
 w             w			#equation of state parameter for scalar field dark energy today
 wa            w_a       #w_a variation
 nnu           N_{eff}   #effective number of neutrinos (only clearly defined for massless)
-YHe           Y_{He}    #Helium mass fraction (not used if bbn_consistency)    
-alphaCDM      \alpha_{-1} #correlated CDM isocurvature 
-deltazre      \Delta_{z,re} #width of reionization
+yhe           Y_{He}    #Helium mass fraction (not used if bbn_consistency)    
+alpha1        \alpha_{-1} #correlated CDM isocurvature 
+deltazrei     \Delta_{z,re} #width of reionization
+Alens         A_{L}     #lensing potential scaled by sqrt(A_lens)
 ns            n_s	    #beware that pivot scale can change in .ini file
 nt            n_t
 nrun          n_{run}
@@ -24,6 +25,10 @@ zrei*         z_{re}
 r10*          r_{10}	#tensor-scalar C_l amplitude at l=10
 H0*           H_0		#hubble parameter is H0 km/s/Mpc
 r02*          r         #r at k=0.002
+A*            10^9 A_s
+omegach2*     \Omega_c h^2
+omegamh2*     \Omega_m h^2 #includes massive neutrinos
+omeganuh2*    \Omega_\nu h^2
 zstar*        z_*
 rstar*        r_*
 thetastar*    \theta_*
@@ -33,3 +38,4 @@ kd*           k_d
 thetad*       \theta_d
 zeq*          z_{EQ}
 thetaeq*      \theta_{EQ}
+mnu*          \sum m_\nu

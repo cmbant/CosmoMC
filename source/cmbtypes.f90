@@ -65,7 +65,7 @@ implicit none
      real zre, zre_delta, nufrac
      real h, H0
      real w, wa
-     real YHe, nnu, iso_cdm_correlated
+     real YHe, nnu, iso_cdm_correlated, ALens
      real reserved(5)
   
   end Type CMBParams

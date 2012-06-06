@@ -115,6 +115,8 @@
 
       real(dl) :: fixq = 0._dl !Debug output of one q
       
+      real(dl) :: ALens = 1._dl
+      
       Type(ClTransferData), pointer :: ThisCT
                     
       public cmbmain, ClTransferToCl, InitVars !InitVars for BAO hack
@@ -2096,14 +2098,14 @@ contains
             iCl_scalar(j,C_Cross,pix) =  iCl_scalar(j,C_Cross,pix)*dbletmp*sqrt(ctnorm)
             if (CTrans%NumSources>2) then
                      iCl_scalar(j,C_Phi,pix)   =  &
-                            iCl_scalar(j,C_Phi,pix)*fourpi*real(CTrans%ls%l(j)**2,dl)**2    
+                          ALens*iCl_scalar(j,C_Phi,pix)*fourpi*real(CTrans%ls%l(j)**2,dl)**2    
                      !The lensing power spectrum computed is l^4 C_l^{\phi\phi}
                      !We put pix extra factors of l here to improve interpolation in CTrans%ls%l
                      iCl_scalar(j,C_PhiTemp,pix)   =  &
-                            iCl_scalar(j,C_PhiTemp,pix)*fourpi*real(CTrans%ls%l(j)**2,dl)*CTrans%ls%l(j)
+                          sqrt(ALens)*  iCl_scalar(j,C_PhiTemp,pix)*fourpi*real(CTrans%ls%l(j)**2,dl)*CTrans%ls%l(j)
                       !Cross-correlation is CTrans%ls%l^3 C_l^{\phi T}
                      iCl_scalar(j,C_PhiE,pix)   =  &
-                            iCl_scalar(j,C_PhiE,pix)*fourpi*real(CTrans%ls%l(j)**2,dl)*CTrans%ls%l(j)*sqrt(ctnorm)
+                          sqrt(ALens)*  iCl_scalar(j,C_PhiE,pix)*fourpi*real(CTrans%ls%l(j)**2,dl)*CTrans%ls%l(j)*sqrt(ctnorm)
                       !Cross-correlation is CTrans%ls%l^3 C_l^{\phi E}
              end if
 

@@ -38,6 +38,7 @@ module CMB_Cls
 contains
   subroutine CMBToCAMB(CMB,P)
     use LambdaGeneral
+    use CAMBmain, only : ALens 
     type(CMBParams) CMB
     type(CAMBParams)  P
     P = CAMBP
@@ -50,6 +51,7 @@ contains
     P%Reion%delta_redshift = CMB%zre_delta
     w_lam = CMB%w
     wa_ppf = CMB%wa
+    ALens = CMB%ALens
     P%InitialConditionVector(initial_iso_CDM) = sqrt(CMB%iso_cdm_correlated/(1-CMB%iso_cdm_correlated))
     
 !    if (CMB%nnu < 3.04) call MpiStop('CMBToCAMB: nnu < 3.04, would give negative masless neutrinos')
@@ -67,7 +69,7 @@ contains
    RecomputeTransfers =  .not. (A%omb == B%omb .and. A%omc == B%omc .and. A%omv == B%omv .and. &
              A%omnu == B%omnu .and. A%zre == B%zre .and. A%omk == B%omk .and. A%w == B%w .and. &
                A%nnu == B%nnu .and. A%YHe == B%YHe.and. A%wa == B%wa .and. &
-             A%iso_cdm_correlated == B%iso_cdm_correlated .and. A%zre_delta==B%zre_delta)
+             A%iso_cdm_correlated == B%iso_cdm_correlated .and. A%zre_delta==B%zre_delta .and. A%ALens == B%ALens)
               
  end function RecomputeTransfers
 

@@ -18,7 +18,7 @@ module settings
 !num_nuisance_params is number of nuisance parameters used internally by data likelihoods
 !                    (e.g. beam uncertainty modes, etc, specific to dataset)
 
-  integer, parameter :: num_hard =12 
+  integer, parameter :: num_hard =13 
   integer, parameter :: num_initpower = 3 
   integer, parameter :: num_freq_params = 1
   integer, parameter :: num_norm = 2 + num_freq_params 
