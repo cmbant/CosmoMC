@@ -1,0 +1,2 @@
+getdist_base.ini
+getdist_base_w.ini
