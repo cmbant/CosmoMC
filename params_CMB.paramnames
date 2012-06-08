@@ -29,6 +29,7 @@ A*            10^9 A_s
 omegach2*     \Omega_c h^2
 omegamh2*     \Omega_m h^2 #includes massive neutrinos
 omeganuh2*    \Omega_\nu h^2
+yheused*      Y_{He} #MCMC value or from bbn consistency
 zstar*        z_*
 rstar*        r_*
 thetastar*    \theta_*

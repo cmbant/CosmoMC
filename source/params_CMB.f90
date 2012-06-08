@@ -254,7 +254,7 @@
      real r10 , rat  
      integer num_derived 
      
-     num_derived = 12 +  P%Info%Theory%numderived
+     num_derived = 13 +  P%Info%Theory%numderived
    
      allocate(Derived%P(num_derived))
    
@@ -278,8 +278,9 @@
       derived%P(10)= CMB%omch2
       derived%P(11)= CMB%omdmh2 + CMB%ombh2
       derived%P(12)= CMB%omnuh2        
+      derived%P(13)= CMB%Yhe !value actually used, may be set from bbn consistency        
       
-      derived%P(13:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
+      derived%P(14:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
       
   end function CalcDerivedParams
   
