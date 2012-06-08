@@ -52,7 +52,7 @@ contains
     w_lam = CMB%w
     wa_ppf = CMB%wa
     ALens = CMB%ALens
-    P%InitialConditionVector(initial_iso_CDM) = sqrt(CMB%iso_cdm_correlated/(1-CMB%iso_cdm_correlated))
+    P%InitialConditionVector(initial_iso_CDM) = sign(sqrt(abs(CMB%iso_cdm_correlated)/(1-abs(CMB%iso_cdm_correlated))),CMB%iso_cdm_correlated)
     
 !    if (CMB%nnu < 3.04) call MpiStop('CMBToCAMB: nnu < 3.04, would give negative masless neutrinos')
     !Not clear this recipe is the best thing to do in general, but should work for massless case with unusual nnu
