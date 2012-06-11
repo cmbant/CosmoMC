@@ -4,6 +4,8 @@ EQUATIONS     = equations
 POWERSPECTRUM = power_tilt
 REIONIZATION = reionization
 RECOMBINATION = recfast
+#RECOMBINATION = cosmorec
+
 BISPECTRUM = SeparableBispectrum
 
 #Module doing non-linear scaling
@@ -25,6 +27,11 @@ HEALPIXLD     = -L$(HEALPIXDIR)/lib -lhealpix -L$(FITSDIR) -l$(FITSLIB)
 CAMBOBJ       = constants.o utils.o $(EXTCAMBFILES) subroutines.o inifile.o $(POWERSPECTRUM).o $(RECOMBINATION).o \
 	$(REIONIZATION).o modules.o bessels.o $(EQUATIONS).o $(NONLINEAR).o lensing.o $(BISPECTRUM).o cmbmain.o camb.o
 
+## CosmoRec
+ifeq ($(RECOMBINATION),cosmorec)
+F90CRLINK += -L$(COSMOREC_PATH) -lCosmoRec $(GSL_LINK)
+endif
+
 default: camb
 
 all: camb $(CAMBLIB)
@@ -44,7 +51,7 @@ cmbmain.o: lensing.o $(NONLINEAR).o $(EQUATIONS).o $(BISPECTRUM).o
 camb.o: cmbmain.o
 Matrix_utils.o: utils.o
 camb: $(CAMBOBJ) $(DRIVER)
-	$(F90C) $(F90FLAGS) $(CAMBOBJ) $(DRIVER) -o $@
+	$(F90C) $(F90FLAGS) $(CAMBOBJ) $(DRIVER) $(F90CRLINK) -o $@
 
 $(CAMBLIB): $(CAMBOBJ)
 	ar -r $@ $?

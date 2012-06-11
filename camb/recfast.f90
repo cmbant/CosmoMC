@@ -449,10 +449,11 @@
 
 
 
-        subroutine Recombination_init(Recomb, OmegaC, OmegaB, Omegan, Omegav, h0inp,tcmb,yp)
+        subroutine Recombination_init(Recomb, OmegaC, OmegaB, Omegan, Omegav, h0inp,tcmb,yp, nnu)
         !Would love to pass structure as arguments, but F90 would give circular reference...
         !hence mess passing parameters explcitly and non-generally
         !Note recfast only uses OmegaB, h0inp, tcmb and yp - others used only for Tmat approximation where effect small
+        !nnu currently not used here
         use RECDATA
         use AMLUtils
         implicit none
@@ -463,7 +464,8 @@
         real(dl) Trad,Tmat,Tspin,d0hi,d0lo
         integer I
 
-        real(dl) OmegaB,OmegaC, Omegan, Omegav, H
+        real(dl), intent(in) :: OmegaB,OmegaC, Omegan, Omegav, H
+        real(dl), intent(in), optional :: nnu
         real(dl) z,n,x,x0,rhs,x_H,x_He,x_H0,x_He0,h0inp
         real(dl) zstart,zend,tcmb
         real(dl) cw(24)

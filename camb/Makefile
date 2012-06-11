@@ -3,6 +3,21 @@
 #Set FISHER=Y to compile bispectrum fisher matrix code
 FISHER=
 
+
+### CosmoRec support
+COSMOREC_PATH=../CosmoRec/
+GSL_LINK=-lgsl -lgslcblas
+#CXXC = icpc
+CXXC = g++
+CXXFLAGS = -O2
+
+## This is flag is passed to the Fortran compiler allowing it to link C++ (uncomment the right one).
+# GCC (gfortran/g++)
+#F90CRLINK = -lstdc++
+# Intel Compilers (ifort/icpc)
+F90CRLINK = -cxxlib
+
+
 #Edit for your compiler
 #Note there are many old ifc versions, some of which behave oddly
 
