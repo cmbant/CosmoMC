@@ -1,9 +1,11 @@
 //========================================================================================
 // Author: Jens Chluba
-// Last modification: Oct 2010
+// first implementation: June 2010
+// Last modification: June 2012
 // CITA, University of Toronto
 // All rights reserved.
 //========================================================================================
+// 08.06.2012: added option to use external hubble factor
 
 #include <cmath>
 #include <iostream>
@@ -22,7 +24,7 @@ extern struct Input input;
 //========================================================================================
 // Hubble-function in 1/sec
 //========================================================================================
-double H_z(double z)
+double H_z_loc(double z)
 {
   double Fnu, Zeq, z1=1.0+z;
   
@@ -34,6 +36,17 @@ double H_z(double z)
   return input.H0*sqrt(input.OmegaL+pow(z1, 2)
                        *(input.OmegaK+z1*input.OmegaM*(1.0+z1/(1.0+Zeq)) ) );
 }
+
+//========================================================================================
+// allow setting Hubble function from outside of Recfast++ (added 08.06.2012)
+//========================================================================================
+double (*H_z_ptr)(double)=H_z_loc;
+void set_H_pointer(double (*Hz_p)(double)){ H_z_ptr=Hz_p; return; }
+void reset_H_pointer(){ H_z_ptr=H_z_loc; return; }
+
+//========================================================================================
+double H_z(double z)
+{ return H_z_ptr(z); }
 
 //========================================================================================
 // hydrogen number density in m^-3
@@ -59,3 +72,6 @@ double calc_Orel(double TCMB0, double Nnu, double h100)
     double b=3.0*pow(H0, 2)/(8.0*RF_PI*RF_G);  
     return a/b*(1.0+Nnu*(7.0/8.0)*pow(4.0/11.0, 4.0/3.0));
 }
+
+//========================================================================================
+//========================================================================================

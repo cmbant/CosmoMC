@@ -1,8 +1,10 @@
 //===========================================================================================================
-// Author: Jens Chluba 
-// last modification: March 2012
+// Author: Jens Chluba
+// first implementation: April 2010
+// last modification: June 2012
 // purpose: to access the main CosmoRec code
 //===========================================================================================================
+// 08.06.2012: Added version to communicate Hubble 
 
 #ifndef COSMOREC_H
 #define COSMOREC_H
@@ -41,16 +43,29 @@ int CosmoRec(const int runmode, const double runpars[5],
              const int nz, double *z_arr, double *Xe_arr, double *Te_arr,
              const int label);
 
+
 //===========================================================================================================
 // Wrap the C++ Fortran routine to be allow calling from Fortran. Arguments are as above.
 // Added 06.03.2011 (Richard Shaw)
 //===========================================================================================================
+// 08.06.2012: Added version to communicate Hubble
+//===========================================================================================================
 extern "C" {
     
-    void cosmorec_calc_cpp_(int * runmode, double * runpars, 
-                            double * omega_c, double * omega_b, double * omega_k, 
-                            double * num_nu, double * h0, double * t_cmb, double * y_he, 
-                            double * za_in, double * xe_out, double * tb_out, int * len, int* label);
+    void cosmorec_calc_cpp_(const int * runmode, const double * runpars, 
+                            const double * omega_c, const double * omega_b, const double * omega_k, 
+                            const double * num_nu, const double * h0, 
+                            const double * t_cmb, const double * y_he, 
+                            double * za_in, double * xe_out, double * tb_out, 
+                            const int * len, const int* label);
+    
+    void cosmorec_calc_h_cpp_(const int * runmode, const double * runpars, 
+                              const double * omega_c, const double * omega_b, const double * omega_k, 
+                              const double * num_nu, const double * h0, 
+                              const double * t_cmb, const double * y_he, 
+                              const double * z_Hz, const double * Hz, const int * nz,
+                              double * za_in, double * xe_out, double * tb_out, 
+                              const int * len, const int* label); 
 }
 
 //===========================================================================================================

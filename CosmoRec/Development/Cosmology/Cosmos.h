@@ -1,19 +1,15 @@
 //========================================================================================
 // Author: Jens Chluba (May 2003)
-// Last modification: Oct 2010
+// Last modification: June 2012
 // CITA, University of Toronto
 // All rights reserved.
 //========================================================================================
-#ifndef COSMOS_H
-#define COSMOS_H
 
-#include <iostream>
-#include <cmath>
-#include <string>
-
-#include "physical_consts.h"
-
-using namespace std;
+//========================================================================================
+// 08.06.2012
+//========================================================================================
+// added possibility to load Hubble factor from some external table
+//========================================================================================
 
 //========================================================================================
 // 28.05.2008
@@ -24,6 +20,48 @@ using namespace std;
 // recombination computations.
 //========================================================================================
 
+#ifndef COSMOS_H
+#define COSMOS_H
+
+#include <iostream>
+#include <cmath>
+#include <string>
+#include <vector>
+
+#include "physical_consts.h"
+
+using namespace std;
+
+//========================================================================================
+// added 08.06.2012
+//========================================================================================
+class Hubble
+{
+    
+private:
+    
+    int mem_index_Hz;
+    double zmax, zmin;
+    
+public:
+
+    bool loaded;
+    
+    Hubble();
+    Hubble(const vector<double> &z, const vector<double> &Hz);
+    ~Hubble();
+    
+    void init(const vector<double> &z, const vector<double> &Hz);
+    void init(const double *z, const double *Hz, const int nz);
+    void clear();
+    
+    bool check_limits(double z);
+    
+    double H(double z);
+};
+
+
+//========================================================================================
 class Cosmos
 {
 
@@ -101,14 +139,19 @@ private:
     double calc_spline_log(double z, int memindex);
     //====================================================================================
 
-    double RF_hPlanck, RF_kBoltz, RF_mElect; // local physical constants        
+    double RF_hPlanck, RF_kBoltz, RF_mElect; // local physical constants     
+    
+    //====================================================================================
+    // to load an external hubble function from a table (08.06.2012)
+    //====================================================================================
+    Hubble loaded_Hz;
     
 public:
 
     double zs, ze;
 
     //====================================================================================
-    //Konstructors and Destructors
+    // Konstructors and Destructors
     //====================================================================================
     Cosmos();
     Cosmos(const double h100, const double T0, const double Yp, 
@@ -124,7 +167,15 @@ public:
               const double Nnu=3.04);
     
     void init_splines();
-
+    
+    //====================================================================================
+    // to load an external hubble function from a table (08.06.2012)
+    //====================================================================================
+    void init_Hubble(const vector<double> &z, const vector<double> &Hz);
+    void init_Hubble(const double *z, const double *Hz, const int nz);
+    void clear_Hubble(){ loaded_Hz.clear(); }
+    
+    //====================================================================================
     void display_cosmology();
     void dump_cosmology(string filename);
 
@@ -324,7 +375,7 @@ public:
     // Hubble parameter 
     //====================================================================================
     double H(double z);
-
+    
     //====================================================================================
     // different derivatives 
     //====================================================================================

@@ -1,9 +1,11 @@
 //========================================================================================
 // Author: Jens Chluba
-// Last modification: Oct 2010
+// first implementation: June 2010
+// Last modification: June 2012
 // CITA, University of Toronto
 // All rights reserved.
 //========================================================================================
+// 08.06.2012: added option to use external hubble factor
 
 #ifndef COSMOLOGY_RECFAST_H
 #define COSMOLOGY_RECFAST_H
@@ -35,6 +37,12 @@ struct Input
 double H_z(double z);
 
 //========================================================================================
+// allow setting Hubble function from outside of Recfast++ (added 08.06.2012)
+//========================================================================================
+void set_H_pointer(double (*Hz_p)(double));
+void reset_H_pointer();
+
+//========================================================================================
 // hydrogen number density in m^-3
 //========================================================================================
 double NH(double z);
@@ -50,3 +58,6 @@ double TCMB(double z);
 double calc_Orel(double TCMB0, double Nnu, double h100);
 
 #endif 
+
+//========================================================================================
+//========================================================================================

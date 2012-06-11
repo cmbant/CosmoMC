@@ -1,9 +1,11 @@
 //===========================================================================================================
 //
-// Author: Jens Chluba 
-// last modification: March 2012
+// Author: Jens Chluba
+// last modification: June 2012
+// purpose: to access main CosmoRec code
 //
 //===========================================================================================================
+// 08.06.2012: added C-version to communicate Hubble 
 
 //===========================================================================================================
 // Standards
@@ -386,6 +388,23 @@ int CosmoRec()
 
 //===========================================================================================================
 //
+// to cleanup after finishing with CosmoRec
+//
+//===========================================================================================================
+void cleanup_CosmoRec()
+{
+    //======================================================================
+    // clean up memory
+    //======================================================================
+    deallocate();
+    clear_atoms();
+    free_all_splines_JC();
+    
+    return;
+}
+
+//===========================================================================================================
+//
 // CosmoRec for run from console giving a parameter file
 //
 //===========================================================================================================
@@ -413,6 +432,7 @@ int CosmoRec(int narg, char *args[])
     //========================================================================
     // initialize cosmology and the general startup
     //========================================================================
+    print_message(" You are entering CosmoRec "+CosmoRec_version+".");
     read_startup_data(filename, parameters, cosmos);
     set_array_dimensions_and_parameters();
     allocate();
@@ -432,11 +452,9 @@ int CosmoRec(int narg, char *args[])
     //========================================================================
     // clean up memory
     //========================================================================
-    deallocate();
-    clear_atoms();
-    free_all_splines_JC();
+    cleanup_CosmoRec();
 
-    if(show_CosmoRec_mess>=0) cout << " finished... " << endl;
+    if(show_CosmoRec_mess>=0) cout << " CosmoRec finished normally. " << endl;
 
     return err;
 }
@@ -714,7 +732,7 @@ int CosmoRec(const int runmode, const double runpars[5],
         cout << " || The first run was successful." 
              << " Will now switch to 'silent' mode." << endl;
         cout << " ====================================================="
-             << "===================================================== " << endl;
+             << "===================================================== \n" << endl;
     }
 
     CosmoRec_is_initialized=1;
@@ -726,36 +744,47 @@ int CosmoRec(const int runmode, const double runpars[5],
 // Wrap the C++ Fortran routine to be allow calling from Fortran. Arguments are as above.
 // Added 06.03.2011 (Richard Shaw)
 //===========================================================================================================
+// 08.06.2012: Added version to communicate Hubble 
+//===========================================================================================================
 extern "C" {
     
-    void cosmorec_calc_cpp_(int * runmode, double * runpars, 
-                            double * omega_c, double * omega_b, double * omega_k, 
-                            double * num_nu, double * h0, double * t_cmb, double * y_he, 
-                            double * za_in, double * xe_out, double * tb_out, int * len, int* label) 
+    void cosmorec_calc_cpp_(const int * runmode, const double * runpars, 
+                            const double * omega_c, const double * omega_b, const double * omega_k, 
+                            const double * num_nu, const double * h0, 
+                            const double * t_cmb, const double * y_he, 
+                            double * za_in, double * xe_out, double * tb_out, 
+                            const int * len, const int* label) 
     {
+        //======================================================================
+        // Call standard CosmoRec routine
+        //======================================================================
+        CosmoRec(*runmode, runpars, *omega_c, *omega_b, *omega_k, *num_nu, 
+                 *h0 / 100.0, *t_cmb, *y_he, *len, za_in, xe_out, tb_out, *label);
+        
+        return;
+    } 
+    
+    void cosmorec_calc_h_cpp_(const int * runmode, const double * runpars, 
+                              const double * omega_c, const double * omega_b, const double * omega_k, 
+                              const double * num_nu, const double * h0, 
+                              const double * t_cmb, const double * y_he, 
+                              const double * z_Hz, const double * Hz, const int * nz,
+                              double * za_in, double * xe_out, double * tb_out, 
+                              const int * len, const int* label) 
+    {
+        cosmos.init_Hubble(z_Hz, Hz, *nz);
         
         //======================================================================
         // Call standard CosmoRec routine
         //======================================================================
         CosmoRec(*runmode, runpars, *omega_c, *omega_b, *omega_k, *num_nu, 
                  *h0 / 100.0, *t_cmb, *y_he, *len, za_in, xe_out, tb_out, *label);
+        
+        cosmos.clear_Hubble();
+        
+        return;
     } 
-    
 }
 
-//===========================================================================================================
-// to cleanup after finishing with CosmoRec
-//===========================================================================================================
-void cleanup_CosmoRec()
-{
-    //======================================================================
-    // clean up memory
-    //======================================================================
-    deallocate();
-    clear_atoms();
-    free_all_splines_JC();
-    
-    return;
-}
 //===========================================================================================================
 

@@ -1,9 +1,25 @@
 //========================================================================================
 // Author: Jens Chluba (May 2003)
-// Last modification: Oct 2010
+// Last modification: June 2012
 // CITA, University of Toronto
 // All rights reserved.
 //========================================================================================
+
+//========================================================================================
+// 08.06.2012
+//========================================================================================
+// added possibility to load Hubble factor from some external table
+//========================================================================================
+
+//========================================================================================
+// 28.05.2008
+//========================================================================================
+// Set the variable fac_mHemH in "physical_consts.h" to take into
+// account the fact that the helium mass is not 4*mH (Wong et al 2008)
+// However, we only changed those variables that are important for the
+// recombination computations.
+//========================================================================================
+
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -11,6 +27,7 @@
 #include <cmath>
 
 #include "Cosmos.h"
+#include "cosmology.Recfast.h"
 #include "recombination.Recfast.h"
 #include "physical_consts.h"
 #include "routines.h"
@@ -21,12 +38,116 @@ using namespace std;
 //========================================================================================
 // pointer for GSL integrals (avoid type-casting)
 //========================================================================================
-Cosmos *GSL_cosmosptr;
+Cosmos *GSL_cosmosptr=NULL;
 
 //========================================================================================
 // level of communication
 //========================================================================================
 int Cosmos_mess_flag=0;
+
+//========================================================================================
+//
+// Class Hubble
+//
+//========================================================================================
+
+//========================================================================================
+// Konstructors and Destructors
+//========================================================================================
+Hubble :: Hubble(){ loaded=0; mem_index_Hz=-10; }
+
+Hubble :: Hubble(const vector<double> &z, const vector<double> &Hz)
+{ 
+    loaded=0; mem_index_Hz=-10; 
+    init(z, Hz); 
+}
+
+Hubble :: ~Hubble(){ if(loaded) clear(); }
+
+//========================================================================================
+void Hubble :: init(const double *z, const double *Hz, const int nz)
+{
+    vector<double> lz(nz), lHz(nz);  
+    
+    // check ordering
+    if(z[0]<z[1]) 
+    {
+        if(z[0]==0) lz[0]=log(1.0e-10);
+        else lz[0]=log(z[0]);
+        
+        zmin=exp(lz[0]); 
+        zmax=z[nz-1];
+        
+        for(int k=1; k<nz; k++) 
+        {
+            lz[k]=log(z[k]);
+            lHz[k]=log(Hz[k]);            
+        }
+    }
+    else 
+    {
+        if(z[nz-1]==0) lz[0]=log(1.0e-10);
+        else lz[0]=log(z[nz-1]);
+        
+        zmin=exp(lz[0]); 
+        zmax=z[0];
+        
+        for(int k=1; k<nz; k++) 
+        {
+            lz[k]=log(z[nz-1-k]);
+            lHz[k]=log(Hz[nz-1-k]);            
+        }
+    }
+    
+    if(mem_index_Hz==-10) 
+        mem_index_Hz=calc_spline_coeffies_JC(nz, &lz[0], &lHz[0], "Hubble:: Hz");
+    
+    else update_spline_coeffies_JC(mem_index_Hz, nz, &lz[0], &lHz[0], "Hubble:: Hz");
+    
+    loaded=1;
+    lz.clear();
+    lHz.clear();
+    
+    return;
+}
+
+void Hubble :: init(const vector<double> &z, const vector<double> &Hz)
+{
+    int nz=z.size();
+    
+    init(&z[0], &Hz[0], nz);
+    
+    return;
+}
+
+//========================================================================================
+void Hubble :: clear()
+{
+    if(mem_index_Hz!=-10) free_spline_JC(mem_index_Hz);
+    loaded=0; 
+    mem_index_Hz=-10;
+
+    return;
+}
+
+bool Hubble :: check_limits(double z)
+{
+    if(loaded==1 && z>zmin && z<zmax) return 1;
+    return 0;
+}
+
+//========================================================================================
+double Hubble :: H(double z)
+{
+    if(loaded) return exp(calc_spline_JC(log(z), mem_index_Hz, " Hubble:: H(z)"));
+    
+    cerr << " Hubble:: Hubble was not loaded " << endl;
+    
+    return 0;
+}
+//========================================================================================
+
+
 
 //========================================================================================
 //
@@ -78,6 +199,20 @@ void Cosmos :: init(const double h, const double T0, const double Yp,
     return;
 }
 
+void Cosmos :: init_Hubble(const vector<double> &z, const vector<double> &Hz)
+{
+    loaded_Hz.init(z, Hz);
+    
+    return;
+}
+
+void Cosmos :: init_Hubble(const double *z, const double *Hz, const int nz)
+{
+    loaded_Hz.init(z, Hz, nz);
+    
+    return;
+}
+
 //========================================================================================
 Cosmos :: Cosmos(){ spline_memory_allocated=0; }
 Cosmos :: Cosmos(const double h, const double T0, const double Yp, 
@@ -85,7 +220,7 @@ Cosmos :: Cosmos(const double h, const double T0, const double Yp,
                  const double zstart, const double zend, 
                  const int n_Xe_pts, const double Nnu)
 { 
-    spline_memory_allocated=0;
+    spline_memory_allocated=0; 
     init(h, T0, Yp, densities, zstart, zend, n_Xe_pts, Nnu); 
 }
 
@@ -156,6 +291,8 @@ int Cosmos :: recombination_history(int nzpts, double zstart, double zend, doubl
 }
 
 //========================================================================================
+double Hfunction(double z){ return GSL_cosmosptr->H(z); }
+
 int Cosmos :: recombination_history(int nzpts, double zstart, double zend, 
                                     double *zarr, double *Xe_H, 
                                     double *Xe_He, double *Xe, double *dXe, 
@@ -197,8 +334,15 @@ int Cosmos :: recombination_history(int nzpts, double zstart, double zend,
         cout << " Chluba & Thomas correction function: " << param[13] << endl;
     }
     
+    // call with hubble function of cosmology object!
+    GSL_cosmosptr=this;
+    set_H_pointer(Hfunction);
+    
     Xe_frac(param, zarr, Xe_H, Xe_He, Xe, dXe, dX_H, TM, Cosmos_mess_flag);
 
+    reset_H_pointer();
+    GSL_cosmosptr=NULL;
+    
     delete [] param;
     return 0;
 }
@@ -399,6 +543,8 @@ void Cosmos :: dump_cosmology(string filename)
 //========================================================================================
 double Cosmos :: H(double z)
 {
+    if(loaded_Hz.check_limits(z)) return loaded_Hz.H(z); 
+    
     //====================================================================================
     // This is equivalent with Seager 2000 ApJSS 128
     // return H0*sqrt(O_L+zp1*zp1*(O_k+zp1*O_m*(1.0+zp1/(1.0+z_eq)))); 
@@ -425,6 +571,7 @@ double Cosmos :: t(double z)
     
     r=Integrate_gk_GSL(6, a, b, epsInt, epsabs, dtdz_GSL);  
 
+    GSL_cosmosptr=NULL;
     return r;
 }
 
@@ -455,6 +602,7 @@ double Cosmos :: E_Int(double zh, double z, double pow)
 
     r=Integrate_gk_GSL(6, a, b, epsInt, epsabs, dE_GSL);
 
+    GSL_cosmosptr=NULL;
     return r;
 }
 
@@ -527,9 +675,16 @@ int Cosmos :: recombine_using_Recfast_system(int nzpts, double zi, double ze, do
              << Xei << " " << TMi << endl << endl;
     }
     
+    // call with hubble function of cosmology object!
+    GSL_cosmosptr=this;
+    set_H_pointer(Hfunction);
+                  
     Xe_frac_rescaled(param, zarr, Xe_H, Xe_He, Xe, TM, Xe_Hi, 
                      Xe_Hei, Xei, TMi, dXei, Cosmos_mess_flag);
 
+    reset_H_pointer();
+    GSL_cosmosptr=NULL;
+    
     delete [] param;
     return 0;
 }
