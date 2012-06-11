@@ -464,14 +464,13 @@
         real(dl) Trad,Tmat,Tspin,d0hi,d0lo
         integer I
 
-        real(dl), intent(in) :: OmegaB,OmegaC, Omegan, Omegav, H
+        real(dl), intent(in) :: OmegaB,OmegaC, Omegan, Omegav, h0inp, yp
         real(dl), intent(in), optional :: nnu
-        real(dl) z,n,x,x0,rhs,x_H,x_He,x_H0,x_He0,h0inp
+        real(dl) z,n,x,x0,rhs,x_H,x_He,x_H0,x_He0,H
         real(dl) zstart,zend,tcmb
         real(dl) cw(24)
         real(dl), dimension(:,:), allocatable :: w
         real(dl) y(4)
-        real(dl) yp
         real(dl) C10, tau_21Ts
         real(dl) fnu
         integer ind,nw
