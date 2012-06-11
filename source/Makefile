@@ -14,6 +14,17 @@ cfitsio = /usr/local/cfitsio/intel10/64/3.040
 #GSL only needed for DR7 LRG
 GSLPATH = /home/aml1005/libs/gsl
 
+F90CRLINK =
+
+### CosmoRec support
+COSMOREC_PATH=../CosmoRec/
+## This is flag is passed to the Fortran compiler allowing it to link C++ (uncomment the right one).
+# GCC (gfortran/g++)
+#F90CRLINK = -lstdc++ -L$(COSMOREC_PATH) -lCosmoRec
+# Intel Compilers (ifort/icpc)
+#F90CRLINK = -cxxlib -L$(COSMOREC_PATH) -lCosmoRec
+
+
 IFLAG = -I
 INCLUDE=
 
@@ -126,7 +137,7 @@ CLSFILE = CMB_Cls_simple.o
 PARAMETERIZATION = params_CMB.o
 
 F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
-LINKFLAGS = -L../camb -lcamb $(LAPACKL)
+LINKFLAGS = -L../camb -lcamb $(LAPACKL) $(F90CRLINK)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
