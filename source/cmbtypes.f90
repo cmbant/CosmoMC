@@ -187,7 +187,7 @@ contains
    
         read(i,end = 100, err=100) like
         read(i) CMB
-
+        if (anumpowers > num_matter_power) call MpiStop('mismatched num_matter_power in .data')  
         read(i) T%Age, T%r10, T%sigma_8, T%matter_power(1:anumpowers,1:matter_power_lnzsteps)
         read(i) T%tensor_ratio_02, T%derived_parameters
   

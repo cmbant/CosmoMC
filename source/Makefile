@@ -16,7 +16,7 @@ GSLPATH = /home/aml1005/libs/gsl
 
 F90CRLINK =
 
-### CosmoRec support
+### CosmoRec support; note you need EXTDATA or otherwise add gsl link flags
 COSMOREC_PATH=../CosmoRec/
 ## This is flag is passed to the Fortran compiler allowing it to link C++ (uncomment the right one).
 # GCC (gfortran/g++)
