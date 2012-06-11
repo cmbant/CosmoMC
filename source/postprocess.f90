@@ -189,6 +189,7 @@ contains
          end if
 
          Theory%Age = CorrectTheory%Age
+         Theory%derived_parameters = CorrectTheory%derived_parameters
      
         else
           error = 0
