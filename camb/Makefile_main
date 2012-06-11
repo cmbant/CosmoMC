@@ -69,3 +69,11 @@ camb_fits: writefits.f90 $(CAMBOBJ) $(DRIVER)
 clean:
 	-rm -f *.o *.a *.d core *.mod
 
+
+## CosmoRec make parts
+cleanCR:
+	cd $(COSMOREC_PATH); make tidy;
+
+libCosmoRec.a:
+	cd $(COSMOREC_PATH); make;
+
