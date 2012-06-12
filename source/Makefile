@@ -5,6 +5,11 @@
 EXTDATA =
 #EXTDATA = LRG
 
+RECOMB=recfast
+#RECOMB=cosmorec
+### for CosmoRec support
+COSMOREC_PATH=../CosmoRec/
+
 #set WMAP empty not to compile with WMAP
 WMAP = /home/aml1005/WMAP7/likelihood_v4
 
@@ -13,16 +18,6 @@ cfitsio = /usr/local/cfitsio/intel10/64/3.040
 
 #GSL only needed for DR7 LRG
 GSLPATH = /home/aml1005/libs/gsl
-
-F90CRLINK =
-
-### CosmoRec support; note you need EXTDATA or otherwise add gsl link flags
-COSMOREC_PATH=../CosmoRec/
-## This is flag is passed to the Fortran compiler allowing it to link C++ (uncomment the right one).
-# GCC (gfortran/g++)
-#F90CRLINK = -lstdc++ -L$(COSMOREC_PATH) -lCosmoRec
-# Intel Compilers (ifort/icpc)
-#F90CRLINK = -cxxlib -L$(COSMOREC_PATH) -lCosmoRec
 
 
 IFLAG = -I
@@ -152,6 +147,17 @@ F90FLAGS += -DDR71RG
 OBJFILES += bsplinepk.o
 GSLINC = -I$(GSLPATH)/include
 LINKFLAGS += -L$(GSLPATH)/lib -lgsl -lgslcblas
+endif
+
+F90CRLINK =
+
+ifeq ($(RECOMB),cosmorec)
+## This is flag is passed to the Fortran compiler allowing it to link C++ (uncomment the right one).
+# GCC (gfortran/g++)
+F90CRLINK = -lstdc++ -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas
+# Intel Compilers (ifort/icpc)
+#F90CRLINK = -cxxlib -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas
+FFLAGS +=  -DCOSMOREC
 endif
 
 ifneq ($(WMAP),)

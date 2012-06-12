@@ -113,6 +113,7 @@
         CMB%iso_cdm_correlated =  Params(11)
         CMB%zre_delta = Params(12)
         CMB%ALens = Params(13)
+        CMB%fdm = Params(14)
         
         CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initPower-1)
         CMB%norm(1) = exp(Params(index_norm))
@@ -150,7 +151,7 @@
      if (all(Params(1:num_hard) == Lastparams(1:num_hard))) then
        call SetForH(Params,CMB,LastH0, .true.)
        CMB%zre = Lastzre
-       CMB%reserved(1) = params(4)
+       CMB%tau = params(4)
      else
 
      DA = Params(3)/100
@@ -186,7 +187,7 @@
     end if
 
     CMB%reserved = 0
-    CMB%reserved(1) = params(4) !tau
+    CMB%tau = params(4) !tau
   
      end if
  
@@ -205,7 +206,7 @@
       Params(2) = CMB%omdmh2
  
       Params(3) = CMBToTheta(CMB)*100
-      Params(4) = CMB%reserved(1)
+      Params(4) = CMB%tau
       Params(5) = CMB%omk 
       
       Params(6) = CMB%nufrac 
@@ -216,6 +217,7 @@
       Params(11) = CMB%iso_cdm_correlated
       Params(12) = CMB%zre_delta  
       Params(13) = CMB%ALens  
+      Params(14) = CMB%fdm  
       
       Params(index_initpower:index_initpower+num_initpower-1) =CMB%InitPower(1:num_initpower) 
       Params(index_norm) = log(CMB%norm(1))
@@ -279,7 +281,7 @@
       derived%P(11)= CMB%omdmh2 + CMB%ombh2
       derived%P(12)= CMB%omnuh2        
       derived%P(13)= CMB%Yhe !value actually used, may be set from bbn consistency        
-      derived%P(14)= derived%P(9)*exp(-2*CMB%reserved(1))  !A e^{-2 tau} 
+      derived%P(14)= derived%P(9)*exp(-2*CMB%tau)  !A e^{-2 tau} 
       
       derived%P(15:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
       

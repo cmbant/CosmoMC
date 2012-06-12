@@ -59,7 +59,10 @@ contains
     P%Num_Nu_Massive = int(CMB%nnu)
     P%Num_Nu_Massless = CMB%nnu - P%Num_Nu_Massive !AL Sept 11 for CAMB's new treatment; previously 3.046; we assume three massive
     P%YHe = CMB%YHe
-       
+#ifdef COSMOREC    
+    if (P%Recomb%fdm/=0.) P%Recomb%runmode = 3
+    P%Recomb%fdm = CMB%fdm
+#endif       
   end subroutine CMBToCAMB
 
  function RecomputeTransfers (A, B)
