@@ -215,7 +215,7 @@
         c = (a**3 - a)* h**2 / 6
         d = (b**3 - b)* h**2 / 6
 
-        spline_val = (a*yv(kl) + b*yv(kh) + c*y2(kl) + d*yv(kh))
+        spline_val = (a*yv(kl) + b*yv(kh) + c*y2(kl) + d*y2(kh))
 
     end if
     end function spline_val
