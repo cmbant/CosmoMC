@@ -190,6 +190,7 @@ contains
 
          Theory%Age = CorrectTheory%Age
          Theory%derived_parameters = CorrectTheory%derived_parameters
+         Theory%numderived = CorrectTheory%numderived
      
         else
           error = 0
