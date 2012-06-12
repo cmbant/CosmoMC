@@ -122,7 +122,8 @@ contains
     write(i) CMB
 
     write(i) T%Age, T%r10, T%sigma_8, T%matter_power
-    write(i) T%tensor_ratio_02, T%derived_parameters, T%numderived !!
+    write(i) T%numderived
+    write(i) T%tensor_ratio_02, T%derived_parameters(1:T%numderived) !!
     
     if (write_all_cls) then
      write(i) T%cl(2:lmax,1:num_cls_tot)
@@ -189,7 +190,8 @@ contains
         read(i) CMB
         if (anumpowers > num_matter_power) call MpiStop('mismatched num_matter_power in .data')  
         read(i) T%Age, T%r10, T%sigma_8, T%matter_power(1:anumpowers,1:matter_power_lnzsteps)
-        read(i) T%tensor_ratio_02, T%derived_parameters, T%numderived
+        read(i) T%numderived
+        read(i) T%tensor_ratio_02, T%derived_parameters(1:T%numderived)
   
         T%cl = 0
         T%cl_tensor = 0
