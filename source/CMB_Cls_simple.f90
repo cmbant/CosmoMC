@@ -62,6 +62,8 @@ contains
 #ifdef COSMOREC    
     if (P%Recomb%fdm/=0.) P%Recomb%runmode = 3
     P%Recomb%fdm = CMB%fdm * 1e-23
+#else
+    if (P%Recomb%fdm/=0.) call MpiStop('Compile with CosmoRec to use fdm') 
 #endif       
   end subroutine CMBToCAMB
 
