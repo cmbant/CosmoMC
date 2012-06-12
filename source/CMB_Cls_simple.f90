@@ -61,7 +61,7 @@ contains
     P%YHe = CMB%YHe
 #ifdef COSMOREC    
     if (P%Recomb%fdm/=0.) P%Recomb%runmode = 3
-    P%Recomb%fdm = CMB%fdm
+    P%Recomb%fdm = CMB%fdm * 1e-23
 #endif       
   end subroutine CMBToCAMB
 
