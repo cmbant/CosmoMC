@@ -4,7 +4,10 @@ EQUATIONS     = equations
 POWERSPECTRUM = power_tilt
 REIONIZATION = reionization
 RECOMBINATION = recfast
-#RECOMBINATION = cosmorec
+ifeq ($(RECOMB),cosmorec)
+RECOMBINATION = cosmorec
+endif
+
 
 BISPECTRUM = SeparableBispectrum
 

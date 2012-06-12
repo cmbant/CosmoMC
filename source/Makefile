@@ -236,4 +236,4 @@ getdist: camb $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS)
 
 camb:
-	cd ../camb && $(MAKE) --file=Makefile_main libcamb.a
+	cd ../camb && $(MAKE) --file=Makefile_main libcamb.a RECOMB=$(RECOMB)
