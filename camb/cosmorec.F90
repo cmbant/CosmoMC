@@ -3,7 +3,7 @@
     ! Author: Richard Shaw (CITA)
     !---------------------------------------------------------------------------------------------------
     ! 08.06.2012: added possibility to communicate Hubble (Jens Chluba)
-    ! 11.06.2012: AL, changed interface to pass nnu directly
+    ! 12.06.2012: AL, changed interface to pass nnu directly; fixed spline extrapolation
 
     module Recombination
     use constants
@@ -189,7 +189,7 @@
     integer :: kh,kl,kn
     real(dl) :: h,a,b,c,d
 
-    ! Extrapolate if value is above of below interval
+    ! Extrapolate if value is above or below interval
     if(x < xv(1)) then
         spline_val = yv(1)
     else if(x > xv(n)) then
