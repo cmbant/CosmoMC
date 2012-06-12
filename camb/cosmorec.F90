@@ -191,13 +191,9 @@
 
     ! Extrapolate if value is above of below interval
     if(x < xv(1)) then
-        h = xv(2) - xv(1)
-        a = yv(2) - yv(1) / h
-        spline_val = (a - h * y2(2) / 6) * (x - xv(1)) + yv(1)
+        spline_val = yv(1)
     else if(x > xv(n)) then
-        h = xv(n) - xv(n-1)
-        a = yv(n) - yv(n-1) / h
-        spline_val = (a + h * y2(n-1) / 6) * (x - xv(n)) + yv(n)
+        spline_val = yv(n)
     else
         ! Bisection to find correct interval
         kh = n
