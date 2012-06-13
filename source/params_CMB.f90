@@ -93,9 +93,10 @@
   
     CMB%H0=H0
     if (firsttime) then
+        CMB%reserved = 0
         CMB%ombh2 = Params(1)    
         CMB%omdmh2 = Params(2)
-        CMB%zre = Params(4) !!Not actually used.. is tau in this parameterization
+        CMB%tau = params(4) !tau, set zre later
         CMB%Omk = Params(5)
         CMB%nufrac = Params(6)
         CMB%w = Params(7)
@@ -145,13 +146,12 @@
 
      Type(CMBParams) CMB
      real DA
-     real  D_b,D_t,D_try,try_b,try_t, CMBToTheta, lasttry,tau
+     real  D_b,D_t,D_try,try_b,try_t, CMBToTheta, lasttry
      external CMBToTheta
 
      if (all(Params(1:num_hard) == Lastparams(1:num_hard))) then
        call SetForH(Params,CMB,LastH0, .true.)
        CMB%zre = Lastzre
-       CMB%tau = params(4)
      else
 
      DA = Params(3)/100
@@ -178,16 +178,13 @@
      end do
 
     !!call InitCAMB(CMB,error)
-    tau = params(4)
-    CMB%zre = GetZreFromTau(CMB, tau)       
+    CMB%zre = GetZreFromTau(CMB, CMB%tau)       
   
     LastH0 = CMB%H0
     Lastzre = CMB%zre
     LastParams = Params
     end if
 
-    CMB%reserved = 0
-    CMB%tau = params(4) !tau
   
      end if
  
@@ -256,7 +253,7 @@
      real r10 , rat  
      integer num_derived 
      
-     num_derived = 14 +  P%Info%Theory%numderived
+     num_derived = 15 +  P%Info%Theory%numderived
    
      allocate(Derived%P(num_derived))
    
@@ -279,11 +276,12 @@
       derived%P(9) = cl_norm*CMB%norm(norm_As)*1e9
       derived%P(10)= CMB%omch2
       derived%P(11)= CMB%omdmh2 + CMB%ombh2
-      derived%P(12)= CMB%omnuh2        
-      derived%P(13)= CMB%Yhe !value actually used, may be set from bbn consistency        
-      derived%P(14)= derived%P(9)*exp(-2*CMB%tau)  !A e^{-2 tau} 
+      derived%P(12)= derived%P(11)*CMB%h
+      derived%P(13)= CMB%omnuh2        
+      derived%P(14)= CMB%Yhe !value actually used, may be set from bbn consistency        
+      derived%P(15)= derived%P(9)*exp(-2*CMB%tau)  !A e^{-2 tau} 
       
-      derived%P(15:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
+      derived%P(16:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
       
   end function CalcDerivedParams
   

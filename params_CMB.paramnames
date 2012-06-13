@@ -29,6 +29,7 @@ r02*          r         #r at k=0.002
 A*            10^9 A_s
 omegach2*     \Omega_c h^2
 omegamh2*     \Omega_m h^2 #includes massive neutrinos
+omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
 omeganuh2*    \Omega_\nu h^2
 yheused*      Y_{He} #MCMC value or from bbn consistency
 clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
