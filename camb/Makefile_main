@@ -68,7 +68,7 @@ camb: $(CAMBOBJ) $(DRIVER)
 	$(F90C) $(F90FLAGS) $(CAMBOBJ) $(DRIVER) $(F90CRLINK) -o $@
 
 $(CAMBLIB): $(CAMBOBJ)
-	ar -r $@ $?
+	ar -r $@ $(CAMBOBJ)
 
 camb_fits: writefits.f90 $(CAMBOBJ) $(DRIVER)
 	$(F90C) $(F90FLAGS) -I$(HEALPIXDIR)/include $(CAMBOBJ) writefits.f90 $(DRIVER) $(HEALPIXLD) -DWRITE_FITS -o $@
