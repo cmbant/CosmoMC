@@ -38,9 +38,10 @@ endif
 
 
 ifeq ($(RECOMBINATION),hyrec)
+HYREC_PATH ?= ../HyRec/
 camb: libhyrec.a
 $(CAMBLIB): libhyrec.a
-F90CRLINK += -L../HyRec/ -lhyrec
+F90CRLINK += -L$(HYREC_PATH) -lhyrec
 endif
 
 
@@ -87,10 +88,10 @@ cleanCR:
 	cd $(COSMOREC_PATH); make tidy;
 
 libCosmoRec.a:
-	cd $(COSMOREC_PATH); make;
+	cd $(COSMOREC_PATH); make lib;
 
 
 libhyrec.a:
-	cd ../HyRec/; make;
+	cd $(HYREC_PATH); make libhyrec.a;
 
 
