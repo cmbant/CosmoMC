@@ -60,10 +60,6 @@ WMAP = $(COSMOLIB)/WMAP7
 GSLPATH = $(GSL_ROOT)
 endif
 
-ifeq ($(RECOMB),hyrec)
-F90CRLINK += -L../HyRec/ -lhyrec
-endif
-
 #Intel fortran 8, check you have the latest update from the Intel web pages
 #See Makefile_intel for ifc 7.1 or lower (some versions have problems)
 #F90C     = ifort
@@ -164,6 +160,10 @@ F90CRLINK = -lstdc++ -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslc
 # Intel Compilers (ifort/icpc)
 #F90CRLINK = -cxxlib -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas
 FFLAGS +=  -DCOSMOREC
+endif
+
+ifeq ($(RECOMB),hyrec)
+F90CRLINK += -L../HyRec/ -lhyrec
 endif
 
 ifneq ($(WMAP),)
