@@ -1,5 +1,6 @@
+#use "make RECOMB=cosmorec" to build with CosmoRec rather than RECFAST default
+
 #You may need to edit the library paths for MKL for Intel
-#Beware of using optimizations that lose accuracy - may give errors when running
 
 ##Uncomment the next line to include dr7 LRG
 EXTDATA =
@@ -8,9 +9,6 @@ EXTDATA =
 ifeq ($(RECOMB),)
 RECOMB=recfast
 endif
-
-### for CosmoRec support
-COSMOREC_PATH=../CosmoRec/
 
 #set WMAP empty not to compile with WMAP
 WMAP = /home/aml1005/WMAP7/likelihood_v4

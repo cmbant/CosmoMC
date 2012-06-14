@@ -33,6 +33,9 @@ CAMBOBJ       = constants.o utils.o $(EXTCAMBFILES) subroutines.o inifile.o $(PO
 
 ## CosmoRec
 ifeq ($(RECOMBINATION),cosmorec)
+ifeq ($(COSMOREC_PATH),)
+COSMOREC_PATH=../CosmoRec/
+endif
 camb: libCosmoRec.a
 $(CAMBLIB): libCosmoRec.a
 F90CRLINK += -L$(COSMOREC_PATH) -lCosmoRec $(GSL_LINK)
