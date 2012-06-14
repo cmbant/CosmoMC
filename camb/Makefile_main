@@ -93,6 +93,6 @@ libCosmoRec.a:
 
 
 libhyrec.a:
-        cd ../HyRec/; make;
+	cd ../HyRec/; make;
 
 
