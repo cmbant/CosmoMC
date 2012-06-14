@@ -4,8 +4,9 @@ EQUATIONS     = equations
 POWERSPECTRUM = power_tilt
 REIONIZATION = reionization
 RECOMBINATION = recfast
-ifeq ($(RECOMB),cosmorec)
-RECOMBINATION = cosmorec
+
+ifneq ($(RECOMB),)
+RECOMBINATION = $(RECOMB)
 endif
 
 
@@ -32,8 +33,18 @@ CAMBOBJ       = constants.o utils.o $(EXTCAMBFILES) subroutines.o inifile.o $(PO
 
 ## CosmoRec
 ifeq ($(RECOMBINATION),cosmorec)
+camb:libCosmoRec.a
+$(CAMBLIB):libCosmoRec.a
 F90CRLINK += -L$(COSMOREC_PATH) -lCosmoRec $(GSL_LINK)
 endif
+
+
+ifeq ($(RECOMBINATION),hyrec)
+camb:libhyrec.a
+$(CAMBLIB):libhyrec.a
+F90CRLINK += -L../HyRec/ -lhyrec
+endif
+
 
 default: camb
 
@@ -79,4 +90,9 @@ cleanCR:
 
 libCosmoRec.a:
 	cd $(COSMOREC_PATH); make;
+
+
+libhyrec.a:
+        cd ../HyRec/; make;
+
 
