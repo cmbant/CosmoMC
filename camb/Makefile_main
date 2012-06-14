@@ -33,15 +33,15 @@ CAMBOBJ       = constants.o utils.o $(EXTCAMBFILES) subroutines.o inifile.o $(PO
 
 ## CosmoRec
 ifeq ($(RECOMBINATION),cosmorec)
-camb:libCosmoRec.a
-$(CAMBLIB):libCosmoRec.a
+camb: libCosmoRec.a
+$(CAMBLIB): libCosmoRec.a
 F90CRLINK += -L$(COSMOREC_PATH) -lCosmoRec $(GSL_LINK)
 endif
 
 
 ifeq ($(RECOMBINATION),hyrec)
-camb:libhyrec.a
-$(CAMBLIB):libhyrec.a
+camb: libhyrec.a
+$(CAMBLIB): libhyrec.a
 F90CRLINK += -L../HyRec/ -lhyrec
 endif
 
