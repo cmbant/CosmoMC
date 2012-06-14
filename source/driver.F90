@@ -378,6 +378,8 @@ program SolveCosmology
         else if (action==1) then
           if (Feedback > 0) write (*,*) 'starting post processing'
           call postprocess(rootname, baseroot)
+          call DoStop('Postprocesing done',.false.)
+
         else
          call DoAbort('undefined action')
         end if
