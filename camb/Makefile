@@ -83,10 +83,10 @@ endif
 
 #Settings for building camb_fits
 #Location of FITSIO and name of library
-FITSDIR       = /home/cpac/cpac-tools/lib
+FITSDIR       ?= /home/cpac/cpac-tools/lib
 FITSLIB       = cfitsio
 #Location of HEALPIX for building camb_fits
-HEALPIXDIR    = /home/cpac/cpac-tools/healpix
+HEALPIXDIR    ?= /home/cpac/cpac-tools/healpix
 
 ifneq ($(FISHER),)
 FFLAGS += -DFISHER

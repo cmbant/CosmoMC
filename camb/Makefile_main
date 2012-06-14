@@ -1,24 +1,21 @@
 
 #Files containing evolution equations initial power spectrum module
-EQUATIONS     = equations
-POWERSPECTRUM = power_tilt
-REIONIZATION = reionization
-RECOMBINATION = recfast
-
-ifneq ($(RECOMB),)
-RECOMBINATION = $(RECOMB)
-endif
+EQUATIONS     ?= equations
+POWERSPECTRUM ?= power_tilt
+REIONIZATION ?= reionization
+RECOMBINATION ?= recfast
 
 
-BISPECTRUM = SeparableBispectrum
+
+BISPECTRUM ?= SeparableBispectrum
 
 #Module doing non-linear scaling
-NONLINEAR     = halofit
+NONLINEAR     ?= halofit
 
 #Driver program
-DRIVER        = inidriver.F90
-#DRIVER        = sigma8.f90
-#DRIVER        = tester.f90
+DRIVER        ?= inidriver.F90
+#DRIVER       ?= sigma8.f90
+#DRIVER       ?= tester.f90
 
 
 CAMBLIB       = libcamb_$(RECOMBINATION).a
@@ -33,9 +30,7 @@ CAMBOBJ       = constants.o utils.o $(EXTCAMBFILES) subroutines.o inifile.o $(PO
 
 ## CosmoRec
 ifeq ($(RECOMBINATION),cosmorec)
-ifeq ($(COSMOREC_PATH),)
-COSMOREC_PATH=../CosmoRec/
-endif
+COSMOREC_PATH ?=../CosmoRec/
 camb: libCosmoRec.a
 $(CAMBLIB): libCosmoRec.a
 F90CRLINK += -L$(COSMOREC_PATH) -lCosmoRec $(GSL_LINK)

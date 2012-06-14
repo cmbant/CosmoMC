@@ -1,4 +1,4 @@
-#use "make RECOMB=cosmorec" to build with CosmoRec rather than RECFAST default
+#use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
 
 #You may need to edit the library paths for MKL for Intel
 
@@ -6,9 +6,7 @@
 EXTDATA =
 #EXTDATA = LRG
 
-ifeq ($(RECOMB),)
-RECOMB=recfast
-endif
+RECOMBINATION ?=recfast
 
 #set WMAP empty not to compile with WMAP
 WMAP = /home/aml1005/WMAP7/likelihood_v4
@@ -17,7 +15,7 @@ WMAP = /home/aml1005/WMAP7/likelihood_v4
 cfitsio = /usr/local/cfitsio/intel10/64/3.040
 
 #GSL only needed for DR7 LRG
-GSLPATH = /home/aml1005/libs/gsl
+GSLPATH ?= /home/aml1005/libs/gsl
 
 
 IFLAG = -I
@@ -132,7 +130,7 @@ CLSFILE = CMB_Cls_simple.o
 PARAMETERIZATION = params_CMB.o
 
 F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
-LINKFLAGS = -L../camb -lcamb_$(RECOMB) $(LAPACKL) $(F90CRLINK)
+LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
@@ -151,17 +149,19 @@ endif
 
 F90CRLINK =
 
-ifeq ($(RECOMB),cosmorec)
+ifeq ($(RECOMBINATION),cosmorec)
 ## This is flag is passed to the Fortran compiler allowing it to link C++ (uncomment the right one).
 # GCC (gfortran/g++)
+COSMOREC_PATH ?= ../CosmoRec/
 F90CRLINK = -lstdc++ -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas
 # Intel Compilers (ifort/icpc)
 #F90CRLINK = -cxxlib -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas
 FFLAGS +=  -DCOSMOREC
 endif
 
-ifeq ($(RECOMB),hyrec)
-F90CRLINK += -L../HyRec/ -lhyrec
+ifeq ($(RECOMBINATION),hyrec)
+HYREC_PATH ?= ../HyRec/
+F90CRLINK += -L$(HYREC_PATH) -lhyrec
 endif
 
 ifneq ($(WMAP),)
@@ -187,7 +187,7 @@ default: cosmomc
 
 all : cosmomc getdist
 
-settings.o: ../camb/libcamb_$(RECOMB).a
+settings.o: ../camb/libcamb_$(RECOMBINATION).a
 cmbtypes.o: settings.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o  $(WMAPOBJS)
@@ -240,4 +240,4 @@ getdist: camb $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS)
 
 camb:
-	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMB).a RECOMB=$(RECOMB)
+	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION)
