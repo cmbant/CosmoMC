@@ -5,8 +5,10 @@
 EXTDATA =
 #EXTDATA = LRG
 
+ifeq ($(RECOMB),)
 RECOMB=recfast
-#RECOMB=cosmorec
+endif
+
 ### for CosmoRec support
 COSMOREC_PATH=../CosmoRec/
 
@@ -56,6 +58,10 @@ LAPACKL = -mkl=sequential -lmkl_lapack -lmpi
 cfitsio = $(CFITSIO)
 WMAP = $(COSMOLIB)/WMAP7
 GSLPATH = $(GSL_ROOT)
+endif
+
+ifeq ($(RECOMB),hyrec)
+F90CRLINK += -L../HyRec/ -lhyrec
 endif
 
 #Intel fortran 8, check you have the latest update from the Intel web pages
@@ -132,7 +138,7 @@ CLSFILE = CMB_Cls_simple.o
 PARAMETERIZATION = params_CMB.o
 
 F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
-LINKFLAGS = -L../camb -lcamb $(LAPACKL) $(F90CRLINK)
+LINKFLAGS = -L../camb -lcamb_$(RECOMB) $(LAPACKL) $(F90CRLINK)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
@@ -183,7 +189,7 @@ default: cosmomc
 
 all : cosmomc getdist
 
-settings.o: ../camb/libcamb.a
+settings.o: ../camb/libcamb_$(RECOMB).a
 cmbtypes.o: settings.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o  $(WMAPOBJS)
@@ -236,4 +242,4 @@ getdist: camb $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS)
 
 camb:
-	cd ../camb && $(MAKE) --file=Makefile_main libcamb.a RECOMB=$(RECOMB)
+	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMB).a RECOMB=$(RECOMB)

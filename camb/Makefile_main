@@ -21,7 +21,7 @@ DRIVER        = inidriver.F90
 #DRIVER        = tester.f90
 
 
-CAMBLIB       = libcamb.a
+CAMBLIB       = libcamb_$(RECOMBINATION).a
 
 #Shouldn't need to change anything else...
 
