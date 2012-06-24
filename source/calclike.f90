@@ -9,7 +9,9 @@ module CalcLike
  use snovae
  use WeakLen
  use Lya
+#ifdef CLIK
  use cliklike !#clik#
+#endif
  implicit none
 
  logical :: Use_Age_Tophat_Prior = .true.
@@ -113,7 +115,7 @@ contains
        if (Use_BBN) GetLogLikePost = GetLogLikePost + (CMB%ombh2 - 0.022)**2/(2*0.002**2) 
           !I'm using increased error bars here
    
-       if (Use_CMB .or. Use_LSS .or. Use_clik) then !#clik#
+       if (Use_CMB .or. Use_LSS) then !#clik#
           if (HasCls) then
            acl = inCls
            error =0
@@ -125,12 +127,12 @@ contains
          else
           if (Use_CMB) GetLogLikePost = &
             CMBLnLike(acl, CMB%norm(norm_freq_ix:norm_freq_ix+num_freq_params-1),CMB%nuisance) + GetLogLikePost
-!#clik#
+#ifdef CLIK
 !Assuming CAMspec nuisance parameters are set as freq_params(2:12) and smica nuisance parameters as freq_params(13:14)
           if (Use_clik) then
              GetLogLikePost = GetLogLikePost + clik_lnlike(dble(acl),dble(CMB%norm(norm_freq_ix+1:norm_freq_ix+num_freq_params-1)))
           end if
-!#clik#
+#endif
           if (Use_mpk) GetLogLikePost = GetLogLikePost + LSSLnLike(CMB, Info%theory)
           if (Use_WeakLen) GetLogLikePost = GetLogLikePost + WeakLenLnLike(CMB, Info%theory)     
           if (Use_Lya) GetLogLikePost = GetLogLikePost +  LSS_Lyalike(CMB, Info%Theory)

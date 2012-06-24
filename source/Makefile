@@ -17,9 +17,14 @@ cfitsio = /usr/local/cfitsio/intel10/64/3.040
 #GSL only needed for DR7 LRG
 GSLPATH ?= /home/aml1005/libs/gsl
 
+PLANCKLIKE = CLIK 
+#PLANCKLIN
+
 #clik path and library
+ifeq ($(PLANCKLIKE),CLIK)
 CLIKPATH = /path/to/clik
 CLIKL = -L$(CLIKPATH)/lib -lclik_f90
+endif
 
 IFLAG = -I
 INCLUDE = $(IFLAG)$(CLIKPATH)/include
@@ -137,9 +142,15 @@ LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
+LIKEFILES= calclike.o
+ifeq ($(PLANCKLIKE),CLIK)
+LIKEFILES +=  cliklike.o
+FFLAGS += -DCLIK
+endif
+
 OBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
 	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
-	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) cliklike.o calclike.o \
+	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) $(LIKEFILES) \
 	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
 
 

@@ -20,7 +20,11 @@ module settings
 
   integer, parameter :: num_hard = 14 
   integer, parameter :: num_initpower = 3 
+#ifdef CLIK
   integer, parameter :: num_freq_params = 14 !#clik#
+#else
+  integer, parameter :: num_freq_params = 1
+#endif
   integer, parameter :: num_norm = 2 + num_freq_params 
   integer, parameter :: num_nuisance_params = 0
 
