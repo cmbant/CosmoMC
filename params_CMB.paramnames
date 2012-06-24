@@ -18,6 +18,19 @@ nrun          n_{run}
 logA          log[10^{10} A_s]
 r             r_{pivot} #ratio of tensor to scalar primordial amplitudes at pivot scale
 asz           A_{SZ}		#SZ template amplitude, as in WMAP
+aps100        A_{PS}^{100}      # Point source amplitude at 100 GHz
+aps143        A_{PS}^{143}      # Point source amplitude at 143 GHz
+aps217        A_{PS}^{217}      # Point source amplitude at 217 GHz
+acib143       A_{CIB143}        # CIB amplitude at 143 GHz
+acib217       A_{CIB217}        # CIB amplitude at 217 GHz
+asz143        A_{SZ143}         # Thermal SZ amplitude at 143 GHz
+psr           psr               # 143-217 correlation coefficient of point source residuals
+cibr          cibr              # 143-217 correlation coefficient of CIB
+cal0          cal0              # 100/143 relative calibration factor
+cal1          cal1              # 143 absolute calibration factor
+cal2          cal2              # 217/143 relative calibration factor
+norm_rg       D_r               # amplitude of radio foreground spectrum
+norm_dg_cl    D_c               # amplitude of dusty foreground spectrum
 omegal*       \Omega_\Lambda
 age*          Age/Gyr
 omegam*       \Omega_m

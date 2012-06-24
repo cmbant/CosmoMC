@@ -17,9 +17,12 @@ cfitsio = /usr/local/cfitsio/intel10/64/3.040
 #GSL only needed for DR7 LRG
 GSLPATH ?= /home/aml1005/libs/gsl
 
+#clik path and library
+CLIKPATH = /path/to/clik
+CLIKL = -L$(CLIKPATH)/lib -lclik_f90
 
 IFLAG = -I
-INCLUDE=
+INCLUDE = $(IFLAG)$(CLIKPATH)/include
 
 #Intel MPI (assuming mpif77 set to point to ifort)
 #these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
@@ -130,13 +133,13 @@ CLSFILE = CMB_Cls_simple.o
 PARAMETERIZATION = params_CMB.o
 
 F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
-LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK)
+LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
-OBJFILES=  ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
+OBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
 	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
-	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
+	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) cliklike.o calclike.o \
 	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
 
 

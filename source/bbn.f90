@@ -85,6 +85,23 @@ contains
      call bbnini   
      initialized = .true.
     end if
+
+ 
+!Make sure ombh2 and deltan are within ranges covered by the data file
+    if ((ombh2_in .gt. bbn_data%ombh2(size(bbn_data%ombh2))) .or. (ombh2_in .lt. bbn_data%ombh2(1))) then
+       Print ('(A,F6.3,A,F6.3,A)'),' Baryon density must be between',bbn_data%ombh2(1) &
+            & ,' and',bbn_data%ombh2(size(bbn_data%ombh2)) &
+            & ,' if you want to use the BBN consistency relation. Stopping.'
+       call MpiStop
+    end if
+    if ((deltan_in .gt. bbn_data%deltan(size(bbn_data%deltan))) .or. (deltan_in .lt. bbn_data%deltan(1))) then
+       Print ('(A,F6.3,A,F7.3,A)'),' Effective number of neutrinos must be between'&
+            ,(bbn_data%deltan(1)+3.046),' and',(bbn_data%deltan(size(bbn_data%deltan))+3.046) &
+            & ,' if you want to use the BBN consistency relation. Stopping.'
+       call MpiStop
+    end if
+
+
     call bbn_splin2(bbn_data%ombh2,bbn_data%deltan,bbn_data%yp,bbn_data%ddyp,bbn_data%n_ombh2, &
                     bbn_data%n_deltan,real(ombh2_in,dp),real(deltan_in,dp),res)
     yp_bbn = res

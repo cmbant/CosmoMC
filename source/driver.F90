@@ -17,6 +17,7 @@ program SolveCosmology
         use MatrixUtils
         use IO
         use ParamNames
+        use cliklike !#clik#
 #ifdef WMAP_PARAMS
         use WMAP_OPTIONS
 #endif
@@ -232,6 +233,7 @@ program SolveCosmology
         if (Use_SN) SN_filename = ReadIniFileName(DefIni,'SN_filename')
         Use_BAO = Ini_Read_Logical('use_BAO',.false.)
         Use_CMB = Ini_Read_Logical('use_CMB',.true.)
+        Use_clik = Ini_Read_Logical('use_clik',.false.) !#clik#
         Use_WeakLen = Ini_Read_Logical('use_WeakLen',.false.)
         Use_min_zre = Ini_Read_Double('use_min_zre',0.d0) 
         Use_Lya = Ini_Read_logical('use_lya',.false.)
@@ -281,6 +283,13 @@ program SolveCosmology
          end do
          if (Feedback > 1) write (*,*) 'read datasets'
         end if
+
+!#clik#
+        if (Use_clik) then
+           clik_filename = Ini_Read_String('clik_likefile', .false.)
+           if (feedback .gt. 1) print*,'Using clik with likelihood file ',trim(clik_filename)
+        end if
+!#clik#
 
         Ini_fail_on_not_found = .true.
         

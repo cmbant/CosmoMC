@@ -18,11 +18,11 @@ module settings
 !num_nuisance_params is number of nuisance parameters used internally by data likelihoods
 !                    (e.g. beam uncertainty modes, etc, specific to dataset)
 
-  integer, parameter :: num_hard =14 
+  integer, parameter :: num_hard = 14 
   integer, parameter :: num_initpower = 3 
-  integer, parameter :: num_freq_params = 1
+  integer, parameter :: num_freq_params = 14 !#clik#
   integer, parameter :: num_norm = 2 + num_freq_params 
-  integer, parameter :: num_nuisance_params= 0
+  integer, parameter :: num_nuisance_params = 0
 
   logical :: use_fast_slow = .false.
     !Set to false if using a slow likelihood function so no there's point is treating
