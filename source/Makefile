@@ -17,17 +17,21 @@ cfitsio = /usr/local/cfitsio/intel10/64/3.040
 #GSL only needed for DR7 LRG
 GSLPATH ?= /home/aml1005/libs/gsl
 
-PLANCKLIKE = CLIK 
-#PLANCKLIN
+#empty not to compile with CLIK, otherwise set to CLIK
+PLANCKLIKE =
+#PLANCKLIKE =CLIK
+
+IFLAG = -I
+INCLUDE = 
 
 #clik path and library
 ifeq ($(PLANCKLIKE),CLIK)
 CLIKPATH = /path/to/clik
 CLIKL = -L$(CLIKPATH)/lib -lclik_f90
+INCLUDE = $(IFLAG)$(CLIKPATH)/include
 endif
 
-IFLAG = -I
-INCLUDE = $(IFLAG)$(CLIKPATH)/include
+
 
 #Intel MPI (assuming mpif77 set to point to ifort)
 #these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
