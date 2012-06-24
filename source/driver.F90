@@ -214,6 +214,7 @@ program SolveCosmology
         pivot_k = Ini_Read_Real('pivot_k',0.05)
         inflation_consistency = Ini_read_Logical('inflation_consistency',.false.)
         bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
+        num_massive_neutrinos = Ini_read_int('num_massive_neutrinos',-1)
 
         oversample_fast = Ini_Read_Int('oversample_fast',1)
         use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)

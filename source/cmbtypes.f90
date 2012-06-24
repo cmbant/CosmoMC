@@ -42,6 +42,11 @@ implicit none
    logical :: inflation_consistency = .false. !fix n_T or not
 
    logical :: bbn_consistency = .true. !JH
+
+   integer :: num_massive_neutrinos = -1 !if >0, number of massive degenerate eigenstates
+   real :: neutrino_fixed_omnuh2 = -1 !if fixed >0, e.g. to minimal hierarchy mass
+  !minimal hierarchy is approx: neutrino_fixed_omnuh2 =  0.0006, num_massive_neutrinos=1
+
    integer, parameter :: max_derived_parameters = 20
    
 

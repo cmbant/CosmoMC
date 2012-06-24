@@ -98,7 +98,12 @@
         CMB%omdmh2 = Params(2)
         CMB%tau = params(4) !tau, set zre later
         CMB%Omk = Params(5)
-        CMB%nufrac = Params(6)
+        if (neutrino_fixed_omnuh2 > 0 ) then
+          if (Params(6) /= 0.) call MpiStop('f_nu should be zero if using fixed minimal hierarchy')
+          CMB%nufrac =  neutrino_fixed_omnuh2/CMB%omdmh2  !!!Params(6)
+        else
+          CMB%nufrac=Params(6) 
+        end if 
         CMB%w = Params(7)
         CMB%wa = Params(8)
         CMB%nnu = Params(9) !3.046

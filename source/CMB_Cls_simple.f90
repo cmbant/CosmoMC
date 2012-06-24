@@ -56,7 +56,12 @@ contains
     
 !    if (CMB%nnu < 3.04) call MpiStop('CMBToCAMB: nnu < 3.04, would give negative masless neutrinos')
     !Not clear this recipe is the best thing to do in general, but should work for massless case with unusual nnu
-    P%Num_Nu_Massive = int(CMB%nnu)
+    if (num_massive_neutrinos == -1) then
+     P%Num_Nu_Massive = int(CMB%nnu)
+    else
+     P%Num_Nu_Massive = num_massive_neutrinos 
+    end if
+
     P%Num_Nu_Massless = CMB%nnu - P%Num_Nu_Massive !AL Sept 11 for CAMB's new treatment; previously 3.046; we assume three massive
     P%YHe = CMB%YHe
 #ifdef COSMOREC    
