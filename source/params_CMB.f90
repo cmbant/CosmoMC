@@ -292,7 +292,7 @@
       derived%P(8) = P%Info%Theory%tensor_ratio_02
       derived%P(9) = cl_norm*CMB%norm(norm_As)*1e9
       derived%P(10)= CMB%omdmh2 + CMB%ombh2
-      derived%P(11)= derived%P(11)*CMB%h
+      derived%P(11)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
       derived%P(12)= CMB%Yhe !value actually used, may be set from bbn consistency        
       derived%P(13)= derived%P(9)*exp(-2*CMB%tau)  !A e^{-2 tau}
       
