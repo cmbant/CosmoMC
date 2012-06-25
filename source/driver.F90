@@ -18,7 +18,7 @@ program SolveCosmology
         use IO
         use ParamNames
 #ifdef CLIK
-        use cliklike !#clik#
+        use cliklike 
 #endif
 #ifdef WMAP_PARAMS
         use WMAP_OPTIONS
@@ -236,7 +236,11 @@ program SolveCosmology
         Use_BAO = Ini_Read_Logical('use_BAO',.false.)
         Use_CMB = Ini_Read_Logical('use_CMB',.true.)
 #ifdef CLIK
-        Use_clik = Ini_Read_Logical('use_clik',.false.) !#clik#
+        Use_clik = Ini_Read_Logical('use_clik',.false.) 
+        if (use_clik .and. .not. use_CMB) &
+         call DoAbort('must have use_CMB=.true. to have use_clik (cmb_numdatasets = 0 for only clik)')
+#else
+         if (Ini_Read_Logical('use_clik',.false.)) call DoAbort('compile with CLIK to use clik - see Makefile')
 #endif
         Use_WeakLen = Ini_Read_Logical('use_WeakLen',.false.)
         Use_min_zre = Ini_Read_Double('use_min_zre',0.d0) 

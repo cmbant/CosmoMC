@@ -23,6 +23,7 @@
        real(dl), parameter :: sigma_thomson = 6.6524616e-29_dl
        real(dl), parameter :: sigma_boltz = 5.6704e-8_dl  
        real(dl), parameter :: k_B = 1.3806504e-23_dl 
+       real(dl), parameter :: eV = 1.60217646e-19_dl
 
 
        real(dl), parameter :: m_p = 1.672621637e-27_dl  ! 1.672623e-27_dl

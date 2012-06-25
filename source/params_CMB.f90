@@ -95,14 +95,17 @@
     if (firsttime) then
         CMB%reserved = 0
         CMB%ombh2 = Params(1)    
-        CMB%omdmh2 = Params(2)
         CMB%tau = params(4) !tau, set zre later
         CMB%Omk = Params(5)
-        if (neutrino_fixed_omnuh2 > 0 ) then
-          if (Params(6) /= 0.) call MpiStop('f_nu should be zero if using fixed minimal hierarchy')
-          CMB%nufrac =  neutrino_fixed_omnuh2/CMB%omdmh2  !!!Params(6)
+        if (neutrino_param_mnu) then
+        !Params(6) is now mnu, params(2) is omch2
+         if (Params(9) < 3 .or. Params(9)>3.1) call DoAbort('params_CMB: change for non-standard nnu with massive nu')
+         CMB%omnuh2=Params(6)/93.14
+         CMB%nufrac=CMB%omnuh2/CMB%omdmh2
+         CMB%omdmh2 = Params(2) + CMB%omnuh2
         else
-          CMB%nufrac=Params(6) 
+         CMB%omdmh2 = Params(2)
+         CMB%nufrac=Params(6)
         end if 
         CMB%w = Params(7)
         CMB%wa = Params(8)
@@ -205,13 +208,18 @@
      external CMBToTheta
  
       Params(1) = CMB%ombh2 
-      Params(2) = CMB%omdmh2
  
       Params(3) = CMBToTheta(CMB)*100
       Params(4) = CMB%tau
       Params(5) = CMB%omk 
       
-      Params(6) = CMB%nufrac 
+      if (neutrino_param_mnu) then
+          Params(2) = CMB%omch2
+          Params(6) = CMB%omnuh2*93.14
+      else
+          Params(2) = CMB%omdmh2
+          Params(6) = CMB%nufrac
+      end if
       Params(7) = CMB%w
       Params(8) = CMB%wa
       Params(9) = CMB%nnu
@@ -240,8 +248,12 @@
       Names%nnames=0
       if (Feedback>0) write (*,*) 'edit SetParamNames in params_CMB.f90 if you want to use named params'
      else
+#ifdef CLIK
+       call ParamNames_init(Names, trim(LocalDir)//'clik.paramnames')
+#else
        call ParamNames_init(Names, trim(LocalDir)//'params_CMB.paramnames')
-    end if
+#endif
+     end if
     end if
    end subroutine SetParamNames
 
@@ -258,7 +270,7 @@
      real r10 , rat  
      integer num_derived 
      
-     num_derived = 15 +  P%Info%Theory%numderived
+     num_derived = 13 +  P%Info%Theory%numderived
    
      allocate(Derived%P(num_derived))
    
@@ -279,14 +291,12 @@
       derived%P(7) = CMB%H0
       derived%P(8) = P%Info%Theory%tensor_ratio_02
       derived%P(9) = cl_norm*CMB%norm(norm_As)*1e9
-      derived%P(10)= CMB%omch2
-      derived%P(11)= CMB%omdmh2 + CMB%ombh2
-      derived%P(12)= derived%P(11)*CMB%h
-      derived%P(13)= CMB%omnuh2        
-      derived%P(14)= CMB%Yhe !value actually used, may be set from bbn consistency        
-      derived%P(15)= derived%P(9)*exp(-2*CMB%tau)  !A e^{-2 tau} 
+      derived%P(10)= CMB%omdmh2 + CMB%ombh2
+      derived%P(11)= derived%P(11)*CMB%h
+      derived%P(12)= CMB%Yhe !value actually used, may be set from bbn consistency        
+      derived%P(13)= derived%P(9)*exp(-2*CMB%tau)  !A e^{-2 tau}
       
-      derived%P(16:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
+      derived%P(14:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
       
   end function CalcDerivedParams
   

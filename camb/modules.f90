@@ -231,7 +231,7 @@
          subroutine CAMBParams_Set(P, error, DoReion)
            use constants
            type(CAMBparams), intent(in) :: P
-           real(dl) GetOmegak, fractional_number
+           real(dl) GetOmegak, fractional_number, conv
            integer, optional :: error !Zero if OK
            logical, optional :: DoReion
            logical WantReion
@@ -405,9 +405,10 @@
               write(*,'("Om_m (1-Om_K-Om_L)   = ",f9.6)') 1-CP%omegak-CP%omegav
               write(*,'("100 theta (CosmoMC)  = ",f9.6)') 100*CosmomcTheta()
               if (CP%Num_Nu_Massive > 0) then
+                conv = k_B*(8*grhor/grhog/7)**0.25*CP%tcmb/eV !approx 1.68e-4
                 do nu_i=1, CP%Nu_mass_eigenstates 
                  write(*,'(f5.2, " nu, m_nu*c^2/k_B/T_nu0   = ",f8.2," (m_nu = ",f6.3," eV)")') &
-                     CP%nu_mass_degeneracies(nu_i), nu_masses(nu_i),1.68e-4*nu_masses(nu_i)
+                     CP%nu_mass_degeneracies(nu_i), nu_masses(nu_i),conv*nu_masses(nu_i)
                 end do
               end if
            end if

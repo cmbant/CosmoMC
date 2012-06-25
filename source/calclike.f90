@@ -10,7 +10,7 @@ module CalcLike
  use WeakLen
  use Lya
 #ifdef CLIK
- use cliklike !#clik#
+ use cliklike
 #endif
  implicit none
 
