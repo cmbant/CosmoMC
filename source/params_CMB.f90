@@ -101,11 +101,14 @@
         !Params(6) is now mnu, params(2) is omch2
          if (Params(9) < 3 .or. Params(9)>3.1) call MpiStop('params_CMB: change for non-standard nnu with massive nu')
          CMB%omnuh2=Params(6)/93.04
-         CMB%omdmh2 = Params(2) + CMB%omnuh2
+         CMB%omch2 = Params(2)
+         CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
          CMB%nufrac=CMB%omnuh2/CMB%omdmh2
         else
          CMB%omdmh2 = Params(2)
          CMB%nufrac=Params(6)
+         CMB%omnuh2 = CMB%omdmh2*CMB%nufrac
+         CMB%omch2 = CMB%omdmh2 - CMB%omnuh2
         end if 
         CMB%w = Params(7)
         CMB%wa = Params(8)
@@ -132,8 +135,6 @@
     
     CMB%h = CMB%H0/100
     h2 = CMB%h**2
-    CMB%omnuh2 = CMB%omdmh2*CMB%nufrac
-    CMB%omch2 = CMB%omdmh2 - CMB%omnuh2
     CMB%omb = CMB%ombh2/h2
     CMB%omc = CMB%omch2/h2
     CMB%omnu = CMB%omnuh2/h2
