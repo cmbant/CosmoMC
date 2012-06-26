@@ -99,8 +99,9 @@
         CMB%Omk = Params(5)
         if (neutrino_param_mnu) then
         !Params(6) is now mnu, params(2) is omch2
-         if (Params(9) < 3 .or. Params(9)>3.1) call MpiStop('params_CMB: change for non-standard nnu with massive nu')
          CMB%omnuh2=Params(6)/93.04
+         if (CMB%omnuh2 > 0 .and. (Params(9) < 3 .or. Params(9)>3.1)) &
+            call MpiStop('params_CMB: change for non-standard nnu with massive nu')
          CMB%omch2 = Params(2)
          CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
          CMB%nufrac=CMB%omnuh2/CMB%omdmh2
