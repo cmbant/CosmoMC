@@ -197,8 +197,9 @@
 !CH   			 Sept 2008 (added extra term to make transition, smoother for Tmat evolution)
 !                Sept 2008 Recfast 1.4.2 changes above added (AML) 
 !                          General recombination module structure, fix to make He x_e smooth also in recfast (AML)
-!CH		      	 Jan 2010 (added fitting function to modify K
+!CH		 Jan 2010 (added fitting function to modify K
 !CH			 	 to match x_e(z) for new H physics)
+!AL             June 2012 updated fudge parameters to match HyRec and CosmoRec (AML)
 
 !!      ===============================================================
 
@@ -266,16 +267,16 @@
         integer, parameter ::  RECFAST_Heswitch_default = 6
         real(dl), parameter :: RECFAST_fudge_He_default = 0.86_dl !Helium fudge parameter
         logical, parameter  :: RECFAST_Hswitch_default = .true. !include H corrections (v1.5, 2010)
-        real(dl), parameter :: RECFAST_fudge_default = 1.14_dl
-        real(dl), parameter :: RECFAST_fudge_default2 = 1.105d0 
+        real(dl), parameter :: RECFAST_fudge_default = 1.14_dl !1.14_dl
+        real(dl), parameter :: RECFAST_fudge_default2 = 1.105d0 + 0.02d0
               !fudge parameter if RECFAST_Hswitch
         
-        real(dl), parameter :: AGauss1 =   -0.14D0  !Amplitude of 1st Gaussian
-        real(dl), parameter :: AGauss2 =    0.05D0  !Amplitude of 2nd Gaussian
-        real(dl), parameter :: zGauss1 =    7.28D0  !ln(1+z) of 1st Gaussian
-        real(dl), parameter :: zGauss2=	    6.75D0  !ln(1+z) of 2nd Gaussian
-        real(dl), parameter :: wGauss1=	    0.18D0  !Width of 1st Gaussian
-        real(dl), parameter :: wGauss2=	    0.33D0  !Width of 2nd Gaussian
+        real(dl) :: AGauss1 =      -0.14D0  !Amplitude of 1st Gaussian
+        real(dl) :: AGauss2 =       0.079D0 ! 0.05D0  !Amplitude of 2nd Gaussian
+        real(dl) :: zGauss1 =       7.28D0  !ln(1+z) of 1st Gaussian
+        real(dl) :: zGauss2=	    6.73D0  !ln(1+z) of 2nd Gaussian
+        real(dl) :: wGauss1=	    0.18D0  !Width of 1st Gaussian
+        real(dl) :: wGauss2=	    0.33D0  !Width of 2nd Gaussian
          !	Gaussian fits for extra H physics (fit by Adam Moss)
 
         type RecombinationParams
@@ -338,10 +339,16 @@
              R%RECFAST_Heswitch = Ini_Read_Int_File(Ini, 'RECFAST_Heswitch',RECFAST_Heswitch_default)
              R%RECFAST_Hswitch = Ini_Read_Logical_File(Ini, 'RECFAST_Hswitch',RECFAST_Hswitch_default)
              R%RECFAST_fudge = Ini_Read_Double_File(Ini,'RECFAST_fudge',RECFAST_fudge_default)
+             AGauss1 = Ini_REad_Double_File(Ini,'AGauss1',AGauss1)
+             AGauss2 = Ini_REad_Double_File(Ini,'AGauss2',AGauss2)
+             zGauss1 = Ini_REad_Double_File(Ini,'zGauss1',zGauss1)
+             zGauss2 = Ini_REad_Double_File(Ini,'zGauss2',zGauss2)
+             wGauss1 = Ini_REad_Double_File(Ini,'wGauss1',wGauss1)
+             wGauss2 = Ini_REad_Double_File(Ini,'wGauss2',wGauss2)
              if (R%RECFAST_Hswitch) then
                 R%RECFAST_fudge = R%RECFAST_fudge - (RECFAST_fudge_default - RECFAST_fudge_default2)
              end if   
-         end subroutine Recombination_ReadParams 
+         end subroutine Recombination_ReadParams
 
         subroutine Recombination_SetDefParams(R)
          type (RecombinationParams) ::R

@@ -269,7 +269,7 @@
      Type(real_pointer) :: derived
      Type(ParamSet) P
      Type(CMBParams) CMB
-     real r10 , rat  
+     real r10
      integer num_derived 
      
      num_derived = 13 +  P%Info%Theory%numderived
@@ -357,8 +357,6 @@
      implicit none
      Type(ParamSet) P
      real, intent(in) :: mult, like
-     character(LEN =30) fmt
-     Type(CMBParams) CMB
      real,allocatable :: output_array(:)
      Type(real_pointer) :: derived
      integer numderived 

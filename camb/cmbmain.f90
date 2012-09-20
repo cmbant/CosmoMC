@@ -1038,7 +1038,7 @@ contains
                 scaling(i) = CAMB_Pk%nonlin_ratio(ik,i)
             end do
             if (all(abs(scaling-1) < 5e-4)) cycle
-            call spline(tautf,scaling(1),CP%Transfer%num_redshifts,&
+            call spline(tautf(1),scaling(1),CP%Transfer%num_redshifts,&
                                  spl_large,spl_large,ddScaling(1))
        
             tf_lo=1
@@ -1233,7 +1233,7 @@ contains
                   end if
                end do
                IV%SourceSteps = step
-  
+
 
           if (.not.CP%flat) then
              do i=1, SourceNum
@@ -1314,13 +1314,15 @@ contains
         integer l
         real(dl) :: k
  
+        !note increasing non-limber to l>700 is not neccessarily more accurate unless AccruacyBoost much higher 
+        !use **0.2 to at least give some sensitivity to Limber effects
         if (CP%AccurateBB .or. CP%flat) then
-         UseLimber = l > 700*AccuracyBoost .and. k > 0.05    
+         UseLimber = l > 700*AccuracyBoost**0.2 .and. k > 0.05    
         else
          !This is accurate at percent level only (good enough here)
-         UseLimber = l > 300*AccuracyBoost .or. k>0.05
+         UseLimber = l > 300*min(AccuracyBoost,2.4_dl) .or. k>0.05
         end if
-
+        
       end function UseLimber
 
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc

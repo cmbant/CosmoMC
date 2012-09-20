@@ -77,7 +77,7 @@
            
        end subroutine DarkEnergy_ReadParams
 
-      
+
          subroutine setddwa
          real(dl), parameter :: wlo=1.d30, whi=1.d30
 

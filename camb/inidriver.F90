@@ -197,7 +197,7 @@
               numstr = Ini_Read_String('initial_vector',.true.)
               read (numstr,*) P%InitialConditionVector(1:initial_iso_neutrino_vel)
             end if
-
+            if (P%Scalar_initial_condition/= initial_adiabatic) use_spline_template = .false.
         end if
         
        if (P%WantScalars) then
@@ -239,7 +239,8 @@
        P%AccuratePolarization = Ini_Read_Logical('accurate_polarization',.true.)
        P%AccurateReionization = Ini_Read_Logical('accurate_reionization',.false.)
        P%AccurateBB = Ini_Read_Logical('accurate_BB',.false.)
- 
+       P%DerivedParameters = Ini_Read_Logical('derived_parameters',.true.)
+
        version_check = Ini_Read_String('version_check')
        if (version_check == '') then
           !tag the output used parameters .ini file with the version of CAMB being used now
