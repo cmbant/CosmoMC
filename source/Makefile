@@ -22,7 +22,7 @@ PLANCKLIKE =
 #PLANCKLIKE =CLIK
 
 IFLAG = -I
-INCLUDE = 
+INCLUDE =
 
 #clik path and library
 ifeq ($(PLANCKLIKE),CLIK)
@@ -155,7 +155,8 @@ endif
 OBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
 	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
 	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) $(LIKEFILES) \
-	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
+	conjgrad_wrapper.o EstCovmat.o PowellConstrainedMinimize.o minimize.o \
+    postprocess.o MCMC.o driver.o
 
 
 ifeq ($(EXTDATA),LRG)
@@ -225,7 +226,8 @@ conjgrad_wrapper.o: calclike.o
 EstCovmat.o: conjgrad_wrapper.o
 postprocess.o: calclike.o
 MCMC.o: calclike.o
-driver.o: MCMC.o
+driver.o: MCMC.o minimize.o
+minimize.o: PowellConstrainedMinimize.o
 
 export FFLAGS
 export F90C

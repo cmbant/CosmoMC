@@ -13,6 +13,7 @@ program SolveCosmology
         use CalcLike
         use EstCovmatModule
         use ConjGradModule
+        use minimize
         use mpk
         use MatrixUtils
         use IO
@@ -336,7 +337,16 @@ program SolveCosmology
 
         call SetIdlePriority !If running on Windows
 
-        if (estimate_propose_matrix .or. action == 2) then
+        if (action == 2) then
+          if (MPIRank /= 0) call DoAbort( &
+           'Mimization only uses one MPI thread, use -np 1 or compile without MPI')
+          Params%P(params_used) = Scales%center(params_used)
+          bestfit_loglike = FindBestFit(Params,0.01,2000)
+          call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
+          call DoStop('Best-fit parameters found')
+        end if
+        
+        if (estimate_propose_matrix) then
          ! slb5aug04  
             EstParams = Params
             EstParams%P(params_used) = Scales%center(params_used)
