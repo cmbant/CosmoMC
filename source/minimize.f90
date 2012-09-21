@@ -38,8 +38,6 @@
 
 
     function ffn(n,vect) result(like)
-    use ParamDef
-    use CalcLike
     implicit none
     integer, intent(in) :: n
     real(Powell_CO_prec) :: like
@@ -73,12 +71,12 @@
     XU = Scales%PMax(params_used) / Scales%PWidth(params_used)  
 
     !Initial and final radius of region required (in normalized units)
-    rhobeg = 0.1
-    rhoend = sigma_frac_err  
+    rhobeg = 0.1*sqrt(real(num_params_used))
+    rhoend = sigma_frac_err*sqrt(real(num_params_used))
 
     npt = 2*num_params_used +1
     if (.not. BOBYQA (ffn, num_params_used ,npt, vect,XL,XU,rhobeg,rhoend,FeedBack+1, max_iterations)) &
-    stop 'FindBestFit failed'
+       stop 'minimize: FindBestFit failed'
 
     best_like = ffn(num_params_used,vect)
 
@@ -145,7 +143,6 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
 #endif
 
     subroutine WriteBestFitParams(like, Params, fname)
-    integer i
     real like
     Type(ParamSet) Params
     character(LEN=*), intent(in) :: fname

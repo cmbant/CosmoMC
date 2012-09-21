@@ -155,8 +155,7 @@ endif
 OBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
 	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
 	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) $(LIKEFILES) \
-	conjgrad_wrapper.o EstCovmat.o PowellConstrainedMinimize.o minimize.o \
-    postprocess.o MCMC.o driver.o
+	EstCovmat.o PowellConstrainedMinimize.o minimize.o postprocess.o MCMC.o driver.o
 
 
 ifeq ($(EXTDATA),LRG)
@@ -222,12 +221,10 @@ paramdef.o: $(CLSFILE)
 $(PROPOSE): paramdef.o
 $(PARAMETERIZATION): paramdef.o
 calclike.o: $(PARAMETERIZATION)
-conjgrad_wrapper.o: calclike.o
-EstCovmat.o: conjgrad_wrapper.o
 postprocess.o: calclike.o
 MCMC.o: calclike.o
-driver.o: MCMC.o minimize.o
-minimize.o: PowellConstrainedMinimize.o
+driver.o: EstCovmat.o MCMC.o minimize.o
+minimize.o: PowellConstrainedMinimize.o calclike.o
 
 export FFLAGS
 export F90C
