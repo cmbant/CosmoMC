@@ -49,7 +49,8 @@
 
     like = GetLogLike(P)
 
-    call AcceptReject(.true., P%Info,MinParams%Info)
+    call AcceptReject(.true.,MinParams%Info, P%Info)
+    MinParams = P !want to keep e.g. the Age calculation
 
     end function ffn
 
@@ -81,7 +82,8 @@
     best_like = ffn(num_params_used,vect)
 
     !back to real units
-    call VectToParams(vect, Params)
+    call AcceptReject(.true.,Params%Info, MinParams%Info)
+    Params = MinParams
 
     end function FindBestFit
 

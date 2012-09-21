@@ -96,7 +96,7 @@ subroutine DoStop(S, abort)
            write (*,*) 'Total time:', nint(MPI_StartTime), &
                                    '(',MPI_StartTime/(60*60),' hours)'
 
-           write (*,*) 'Slow proposals: ', slow_proposals
+           if (slow_proposals/=0) write (*,*) 'Slow proposals: ', slow_proposals
 
         end if
         ierror =0 
