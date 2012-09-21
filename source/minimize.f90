@@ -94,7 +94,7 @@
     Type(ParamSet) Params
     character(LEN=*), intent(in) :: fname
 
-    if (Feedback>0) write (*,*) 'Best fit parameters like = ', like
+    if (Feedback>0) write (*,*) 'Best fit parameters, -log(like) = ', like
     call CreateTxtFile(fname,tmp_file_unit)
     write (tmp_file_unit,*) 'Best fit sample -log(Like) = ',like
     write (tmp_file_unit,*) ''

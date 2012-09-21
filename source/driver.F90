@@ -40,6 +40,7 @@ program SolveCosmology
         integer status          
         integer file_unit
         real delta_loglike
+        real max_like_radius
 
 #ifdef MPI
         double precision intime
@@ -273,7 +274,8 @@ program SolveCosmology
 
         delta_loglike = Ini_Read_Real('delta_loglike',2.)
         est_bfp_before_covmat = Ini_Read_Logical('est_bfp_before_covmat',.true.) ! for testing
-
+        max_like_radius = Ini_Read_Real('max_like_radius',0.01)
+        
         Ini_fail_on_not_found = .true.
 
         numsets = Ini_Read_Int('cmb_numdatasets')
@@ -344,7 +346,7 @@ program SolveCosmology
           if (MPIRank /= 0) call DoAbort( &
            'Mimization only uses one MPI thread, use -np 1 or compile without MPI')
           Params%P(params_used) = Scales%center(params_used)
-          bestfit_loglike = FindBestFit(Params,0.01,2000)
+          bestfit_loglike = FindBestFit(Params,max_like_radius,2000)
           call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
           call DoStop('Best-fit parameters found')
         end if
