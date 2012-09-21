@@ -78,13 +78,13 @@
 
     npt = 2*num_params_used +1
     if (.not. BOBYQA (ffn, num_params_used ,npt, vect,XL,XU,rhobeg,rhoend,FeedBack+1, max_iterations)) &
-    stop 'FindBestFit failed'
+      stop 'FindBestFit failed'
 
     best_like = ffn(num_params_used,vect)
 
     !back to real units
-    call VectToParams(vect, MinParams)
-
+    call VectToParams(vect, Params)
+    
     end function FindBestFit
 
 
@@ -94,7 +94,7 @@
     Type(ParamSet) Params
     character(LEN=*), intent(in) :: fname
 
-    if (Feedback>0) write (*,*) 'Best fit parameters values:'
+    if (Feedback>0) write (*,*) 'Best fit parameters like = ', like
     call CreateTxtFile(fname,tmp_file_unit)
     write (tmp_file_unit,*) 'Best fit sample -log(Like) = ',like
     write (tmp_file_unit,*) ''

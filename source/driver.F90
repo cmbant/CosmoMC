@@ -109,8 +109,11 @@ program SolveCosmology
         HighAccuracyDefault = Ini_Read_Logical('high_accuracy_default',.false.)
         AccuracyLevel = Ini_Read_Real('accuracy_level',1.)
         
-        if (Ini_HasKey('highL_unlensed_cl_template')) &
-          highL_unlensed_cl_template=  ReadIniFilename(DefIni,'highL_unlensed_cl_template')
+        if (Ini_HasKey('highL_unlensed_cl_template')) then
+          highL_unlensed_cl_template=  ReadIniFilename(DefIni,'highL_unlensed_cl_template') 
+        else
+          highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
+        end if
 
         checkpoint = Ini_Read_Logical('checkpoint',.false.)
         if (checkpoint) flush_write = .true.
