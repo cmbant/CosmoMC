@@ -273,7 +273,7 @@ program SolveCosmology
            call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
         end if
 
-        if (action==0) est_bfp_before_covmat = Ini_Read_Logical('est_bfp_before_covmat',.true.) ! for testing
+        if (action==0) est_bfp_before_covmat = Ini_Read_Logical('est_bfp_before_covmat',.true.) 
         max_like_radius = Ini_Read_Real('max_like_radius',0.01) 
          !radius in normalized parameter space to converge 
         
@@ -347,9 +347,10 @@ program SolveCosmology
         !New Powell 2009 minimization, AL Sept 2012
           if (action == 2 .and. MPIRank /= 0) call DoAbort( &
            'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
+          if (MpiRank==0 .and. Feedback> 0) write(*,*) 'finding best fit point'
           Params%P(params_used) = Scales%center(params_used)
           bestfit_loglike = FindBestFit(Params,max_like_radius,2000)
-          call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
+          if (MPIRank == 0) call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
           if (action==2) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
         end if
         
