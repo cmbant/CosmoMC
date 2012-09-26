@@ -98,8 +98,7 @@ You will need a Fortran 90 (or higher) compiler - you can get free <A HREF="http
 You also need to link to <a href="http://www.netlib.org/lapack/">LAPACK</a> (for doing matrix diagonalization, etc) - you may need to edit the
 Makefile to specify where this on your system. Intel systems often use Intel's MKL.
 <P>
-Using Visual Fortran there's no need to use the Makefile, just open the project file in the source folder, and set params.ini as the program argument. For Compaq CVF do this under Project, Settings, Debug and set the working directory to ..\. Under Tools, Options, Directories set the include path to [cxml
-path]/CXML/INCLUDE  and lib path to [cxml path]/CXML/LIB. Don't install the 6.6C3 update as it gives compiler errors (6.6B is fine). You then need to add cfitsio files to your project depending on where they are on your system.
+Using Visual Fortran there's no need to use the Makefile, just open the project file in the source folder, and set params.ini as the program argument. This is not set up to compile with MPI, so mainly useful for development.
 </UL>
 <P>
 To change the l_max which is used for generating Cls you'll need to

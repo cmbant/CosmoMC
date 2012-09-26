@@ -41,7 +41,6 @@ program SolveCosmology
         real bestfit_loglike
         real max_like_radius
         integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2  
-        character(LEN=4096) outline
 
 
 #ifdef MPI
@@ -356,6 +355,7 @@ program SolveCosmology
             Params%P(params_used) = Scales%center(params_used)
             bestfit_loglike = FindBestFit(Params,max_like_radius,2000)
             call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
+            call WriteBestFitCovmat(trim(baseroot) //'_BOBYQA.covmat')
             if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
           end if
 #ifdef MPI 
@@ -376,15 +376,7 @@ program SolveCosmology
                   call AcceptReject(.true., EstParams%Info, Params%Info)
                   has_propose_matrix = status > 0
                   if (Feedback>0) write (*,*) 'Estimated covariance matrix:'
-                  if (NameMapping%nnames/=0) then
-                      outline='' 
-                      do i=1, num_params_used
-                        outline = trim(outline)//' '//trim(ParamNames_name(NameMapping,params_used(i))) 
-                      end do  
-                     call IO_WriteProposeMatrix(propose_matrix,trim(baseroot) //'.local_invhessian', outline)
-                  else
-                   call Matrix_write(trim(baseroot) //'.local_invhessian',propose_matrix,forcetable=.true.)
-                  end if
+                  call WriteCovMat(trim(baseroot) //'.local_invhessian', propose_matrix)
                   if (Feedback>0) write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.local_hessian'
               else
                 has_propose_matrix = .true.

@@ -8,7 +8,8 @@
 
     Type(ParamSet) MinParams
 
-    public FindBestFit, WriteBestFitParams
+    public FindBestFit, WriteBestFitParams, WriteBestFitCovmat, &
+       WriteCovMat, SetBestFitProposeMatrix
 
     contains
 
@@ -157,5 +158,37 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
     
    
     end subroutine WriteBestFitParams
+    
+    subroutine WriteCovMat(fname, matrix)
+     use IO
+     integer i  
+     character(LEN=*), intent(in) :: fname
+     character(LEN=4096) outline
+     real, intent(in) :: matrix(:,:)
+
+        if (NameMapping%nnames/=0) then
+              outline='' 
+              do i=1, num_params_used
+                outline = trim(outline)//' '//trim(ParamNames_name(NameMapping,params_used(i))) 
+              end do  
+              call IO_WriteProposeMatrix(matrix ,fname, outline)
+        else
+              call Matrix_write(fname,matrix,forcetable=.true.)
+        end if
+    end subroutine WriteCovMat
+ 
+    subroutine WriteBestFitCovmat(fname)
+     character(LEN=*), intent(in) :: fname
+    
+      call WriteCovMat(fname, real(BOBYQA_Hessian))   
+      
+    end  subroutine WriteBestFitCovmat
+    
+    subroutine SetBestFitProposeMatrix
+      allocate(propose_Matrix(num_params_used,num_params_used))
+      propose_matrix =BOBYQA_Hessian
+      
+    end subroutine SetBestFitProposeMatrix
+    
 
     end module minimize
