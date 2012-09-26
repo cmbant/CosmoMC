@@ -312,7 +312,6 @@
      implicit none
      Type(ParamSet) P
      real, intent(in) :: mult, like
-     Type(CMBParams) CMB
      real, allocatable :: output_array(:)
      Type(real_pointer) :: derived
      integer numderived 

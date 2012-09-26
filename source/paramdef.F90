@@ -807,6 +807,24 @@ end subroutine SetProposeMatrix
 
 #endif
 
+    subroutine WriteCovMat(fname, matrix)
+     use IO
+     integer i  
+     character(LEN=*), intent(in) :: fname
+     character(LEN=4096) outline
+     real, intent(in) :: matrix(:,:)
+
+        if (NameMapping%nnames/=0) then
+              outline='' 
+              do i=1, num_params_used
+                outline = trim(outline)//' '//trim(ParamNames_name(NameMapping,params_used(i))) 
+              end do  
+              call IO_WriteProposeMatrix(matrix ,fname, outline)
+        else
+              call Matrix_write(fname,matrix,forcetable=.true.)
+        end if
+    end subroutine WriteCovMat
+
 end module ParamDef
 
 

@@ -7,10 +7,8 @@
     private 
 
     Type(ParamSet) MinParams
-    real, allocatable :: Hessian(:,:) !estimate of covariance (inv Hessian)
 
-    public FindBestFit, WriteBestFitParams, WriteBestFitHessian, &
-       WriteCovMat
+    public FindBestFit, WriteBestFitParams
 
     contains
 
@@ -64,7 +62,7 @@
     real best_like
     real(Powell_CO_prec) :: vect(num_params_used), XL(num_params_used), XU(num_params_used)
     real(Powell_CO_prec) rhobeg, rhoend
-    integer npt, i
+    integer npt
 
     MinParams = Params
     ! scale the params so they are all roughly the same order of magnitude
@@ -86,14 +84,6 @@
     !back to real units
     call AcceptReject(.true.,Params%Info, MinParams%Info)
     Params = MinParams
-    
-    if (allocated(Hessian)) deallocate(Hessian)
-    allocate(Hessian(num_params_used,num_params_used))
-    Hessian = BOBYQA_Hessian
-    do i=1, num_params_used
-        Hessian(i,:)=Hessian(i,:)/Scales%PWidth(params_used(i))
-        Hessian(:,i)=Hessian(:,i)/Scales%PWidth(params_used(i))
-    end do
 
     end function FindBestFit
 
@@ -167,32 +157,6 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
     
    
     end subroutine WriteBestFitParams
-    
-    subroutine WriteCovMat(fname, matrix)
-     use IO
-     integer i  
-     character(LEN=*), intent(in) :: fname
-     character(LEN=4096) outline
-     real, intent(in) :: matrix(:,:)
-
-        if (NameMapping%nnames/=0) then
-              outline='' 
-              do i=1, num_params_used
-                outline = trim(outline)//' '//trim(ParamNames_name(NameMapping,params_used(i))) 
-              end do  
-              call IO_WriteProposeMatrix(matrix ,fname, outline)
-        else
-              call Matrix_write(fname,matrix,forcetable=.true.)
-        end if
-    end subroutine WriteCovMat
- 
-    subroutine WriteBestFitHessian(fname)
-     character(LEN=*), intent(in) :: fname
-     
-      call WriteCovMat(fname, Hessian)   
-      
-    end  subroutine WriteBestFitHessian
-    
     
 
     end module minimize
