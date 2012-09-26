@@ -355,7 +355,7 @@ program SolveCosmology
             Params%P(params_used) = Scales%center(params_used)
             bestfit_loglike = FindBestFit(Params,max_like_radius,2000)
             call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
-            call WriteBestFitCovmat(trim(baseroot) //'_BOBYQA.covmat')
+            call WriteBestFitHessian(trim(baseroot) //'_BOBYQA.hessian') 
             if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
           end if
 #ifdef MPI 

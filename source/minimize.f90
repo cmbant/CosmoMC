@@ -9,7 +9,7 @@
     Type(ParamSet) MinParams
     real, allocatable :: Hessian(:,:) !estimate of covariance (inv Hessian)
 
-    public FindBestFit, WriteBestFitParams, WriteBestFitCovmat, &
+    public FindBestFit, WriteBestFitParams, WriteBestFitHessian, &
        WriteCovMat
 
     contains
@@ -90,10 +90,9 @@
     if (allocated(Hessian)) deallocate(Hessian)
     allocate(Hessian(num_params_used,num_params_used))
     Hessian = BOBYQA_Hessian
-    call Matrix_Inverse(Hessian)
     do i=1, num_params_used
-        Hessian(i,:)=Hessian(i,:)*Scales%PWidth(params_used(i))
-        Hessian(:,i)=Hessian(:,i)*Scales%PWidth(params_used(i))
+        Hessian(i,:)=Hessian(i,:)/Scales%PWidth(params_used(i))
+        Hessian(:,i)=Hessian(:,i)/Scales%PWidth(params_used(i))
     end do
 
     end function FindBestFit
@@ -187,12 +186,12 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
         end if
     end subroutine WriteCovMat
  
-    subroutine WriteBestFitCovmat(fname)
+    subroutine WriteBestFitHessian(fname)
      character(LEN=*), intent(in) :: fname
      
       call WriteCovMat(fname, Hessian)   
       
-    end  subroutine WriteBestFitCovmat
+    end  subroutine WriteBestFitHessian
     
     
 
