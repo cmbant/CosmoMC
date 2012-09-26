@@ -364,7 +364,7 @@ program SolveCosmology
         end if
         
         if (estimate_propose_matrix .and. action == action_MCMC) then
-         ! slb5aug04  
+         ! slb5aug04 with AL updates
               allocate(propose_matrix(num_params_used, num_params_used))
               if (MpiRank==0) then
                   EstParams = Params
