@@ -7,9 +7,10 @@
     private 
 
     Type(ParamSet) MinParams
+    real, allocatable :: Hessian(:,:) !estimate of covariance (inv Hessian)
 
     public FindBestFit, WriteBestFitParams, WriteBestFitCovmat, &
-       WriteCovMat, SetBestFitProposeMatrix
+       WriteCovMat
 
     contains
 
@@ -63,7 +64,7 @@
     real best_like
     real(Powell_CO_prec) :: vect(num_params_used), XL(num_params_used), XU(num_params_used)
     real(Powell_CO_prec) rhobeg, rhoend
-    integer npt
+    integer npt, i
 
     MinParams = Params
     ! scale the params so they are all roughly the same order of magnitude
@@ -85,6 +86,15 @@
     !back to real units
     call AcceptReject(.true.,Params%Info, MinParams%Info)
     Params = MinParams
+    
+    if (allocated(Hessian)) deallocate(Hessian)
+    allocate(Hessian(num_params_used,num_params_used))
+    Hessian = BOBYQA_Hessian
+    call Matrix_Inverse(Hessian)
+    do i=1, num_params_used
+        Hessian(i,:)=Hessian(i,:)*Scales%PWidth(params_used(i))
+        Hessian(:,i)=Hessian(:,i)*Scales%PWidth(params_used(i))
+    end do
 
     end function FindBestFit
 
@@ -179,16 +189,11 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
  
     subroutine WriteBestFitCovmat(fname)
      character(LEN=*), intent(in) :: fname
-    
-      call WriteCovMat(fname, real(BOBYQA_Hessian))   
+     
+      call WriteCovMat(fname, Hessian)   
       
     end  subroutine WriteBestFitCovmat
     
-    subroutine SetBestFitProposeMatrix
-      allocate(propose_Matrix(num_params_used,num_params_used))
-      propose_matrix =BOBYQA_Hessian
-      
-    end subroutine SetBestFitProposeMatrix
     
 
     end module minimize

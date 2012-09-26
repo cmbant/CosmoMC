@@ -68,12 +68,6 @@ WMAP = $(COSMOLIB)/WMAP7
 GSLPATH = $(GSL_ROOT)
 endif
 
-#Intel fortran 8, check you have the latest update from the Intel web pages
-#See Makefile_intel for ifc 7.1 or lower (some versions have problems)
-#F90C     = ifort
-#FFLAGS = -O2 -Vaxlib -ip -W0 -WB -openmp -fpp
-#LAPACKL = -L/opt/intel/mkl61/lib/32 -lmkl_lapack -lmkl_ia32 -lguide -lpthread
-
 #G95; make sure LAPACK and MPI libs also compiled with g95
 #F90C     = mpif90
 #FFLAGS = -O2 -cpp -DMPI
