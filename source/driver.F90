@@ -40,6 +40,9 @@ program SolveCosmology
         integer file_unit
         real bestfit_loglike
         real max_like_radius
+        integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2  
+        character(LEN=4096) outline
+
 
 #ifdef MPI
         double precision intime
@@ -164,10 +167,10 @@ program SolveCosmology
 
         new_chains = .true. 
 
-        action = Ini_Read_Int('action',0)
+        action = Ini_Read_Int('action',action_MCMC)
 
         if (checkpoint) then
-         if (action /= 0)  call DoAbort('checkpoint only with action =0')
+         if (action /= action_MCMC)  call DoAbort('checkpoint only with action =0')
 #ifdef MPI 
          new_chains = .not. IO_Exists(trim(rootname) //'.chk')
 #else
@@ -176,12 +179,12 @@ program SolveCosmology
         end if
 
 
-        if (action ==1) call ReadPostParams
+        if (action == action_importance) call ReadPostParams
 
         FeedBack = Ini_Read_Int('feedback',0)
         FileChangeIni = trim(rootname)//'.read'
 
-        if (action ==0) then
+        if (action == action_MCMC) then
 
             LogFile = trim(rootname)//'.log'
 
@@ -273,7 +276,7 @@ program SolveCosmology
            call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
         end if
 
-        if (action==0) est_bfp_before_covmat = Ini_Read_Logical('est_bfp_before_covmat',.true.) 
+        if (action==action_MCMC) est_bfp_before_covmat = Ini_Read_Logical('est_bfp_before_covmat',.true.) 
         max_like_radius = Ini_Read_Real('max_like_radius',0.01) 
          !radius in normalized parameter space to converge 
         
@@ -338,47 +341,66 @@ program SolveCosmology
 
         call Ini_Close
 
-        if (MpiRank==0 .and. action==0 .and. NameMapping%nnames/=0) &
+        if (MpiRank==0 .and. action==action_MCMC .and. NameMapping%nnames/=0) &
             call IO_OutputParamNames(NameMapping,trim(baseroot))
 
         call SetIdlePriority !If running on Windows
 
-        if (action == 2 .or. estimate_propose_matrix .and. est_bfp_before_covmat) then
+        if (action == action_maxlike &
+            .or. action == action_MCMC .and. estimate_propose_matrix .and. est_bfp_before_covmat) then
         !New Powell 2009 minimization, AL Sept 2012
-          if (action == 2 .and. MPIRank /= 0) call DoAbort( &
+          if (action == action_maxlike .and. MPIchains>1) call DoAbort( &
            'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
-          if (MpiRank==0 .and. Feedback> 0) write(*,*) 'finding best fit point'
-          Params%P(params_used) = Scales%center(params_used)
-          bestfit_loglike = FindBestFit(Params,max_like_radius,2000)
-          if (MPIRank == 0) call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
-          if (action==2) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
+          if (MpiRank==0) then
+            if (Feedback> 0) write(*,*) 'finding best fit point'
+            Params%P(params_used) = Scales%center(params_used)
+            bestfit_loglike = FindBestFit(Params,max_like_radius,2000)
+            call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
+            if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
+          end if
+#ifdef MPI 
+          CALL MPI_Bcast(Params%P, size(Params%P), MPI_REAL, 0, MPI_COMM_WORLD, ierror) 
+#endif
         end if
         
-        if (estimate_propose_matrix) then
+        if (estimate_propose_matrix .and. action == action_MCMC) then
          ! slb5aug04  
-              EstParams = Params
-              if (.not. est_bfp_before_covmat) EstParams%P(params_used) = Scales%center(params_used)
-              if (Feedback>0) write (*,*) 'Now estimating propose matrix from Hessian'
               allocate(propose_matrix(num_params_used, num_params_used))
-              propose_matrix=EstCovmat(EstParams,4.,status)
-              ! By default the grid used to estimate the covariance matrix has spacings
-              ! such that deltaloglike ~ 4 for each parameter.               
-              call AcceptReject(.true., EstParams%Info, Params%Info)
-              has_propose_matrix = status > 0
-              if (MPIRank == 0) then ! write out the covariance matrix
-                if (Feedback>0) write (*,*) 'Estimated covariance matrix:'
-                call Matrix_write(trim(baseroot) //'.local_invhessian',propose_matrix,forcetable=.true.)
-                if (Feedback>0) write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.local_hessian'
+              if (MpiRank==0) then
+                  EstParams = Params
+                  if (.not. est_bfp_before_covmat) EstParams%P(params_used) = Scales%center(params_used)
+                  if (Feedback>0) write (*,*) 'Now estimating propose matrix from Hessian'
+                  propose_matrix=EstCovmat(EstParams,4.,status)
+                  ! By default the grid used to estimate the covariance matrix has spacings
+                  ! such that deltaloglike ~ 4 for each parameter.               
+                  call AcceptReject(.true., EstParams%Info, Params%Info)
+                  has_propose_matrix = status > 0
+                  if (Feedback>0) write (*,*) 'Estimated covariance matrix:'
+                  if (NameMapping%nnames/=0) then
+                      outline='' 
+                      do i=1, num_params_used
+                        outline = trim(outline)//' '//trim(ParamNames_name(NameMapping,params_used(i))) 
+                      end do  
+                     call IO_WriteProposeMatrix(propose_matrix,trim(baseroot) //'.local_invhessian', outline)
+                  else
+                   call Matrix_write(trim(baseroot) //'.local_invhessian',propose_matrix,forcetable=.true.)
+                  end if
+                  if (Feedback>0) write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.local_hessian'
+              else
+                has_propose_matrix = .true.
               end if
               if (has_propose_matrix) then
-                   call SetProposeMatrix
+#ifdef MPI 
+                CALL MPI_Bcast(propose_matrix, size(propose_matrix), MPI_REAL, 0, MPI_COMM_WORLD, ierror) 
+#endif
+                call SetProposeMatrix
               else
-                   write (*,*) 'estimating propose matrix failed'
+                   call DoAbort('estimate_propose_matrix: estimating propose matrix failed')
                    deallocate(propose_matrix)  
               end if
         end if
     
-        if (action == 0) then
+        if (action == action_MCMC) then
          if (Feedback > 0) write (*,*) 'starting Monte-Carlo'
          call MCMCSample(Params, numtoget)
  
@@ -389,7 +411,7 @@ program SolveCosmology
         
          call IO_Close(outfile_handle)
 
-        else if (action==1) then
+        else if (action==action_importance) then
           if (Feedback > 0) write (*,*) 'starting post processing'
           call postprocess(rootname, baseroot)
           call DoStop('Postprocesing done',.false.)
