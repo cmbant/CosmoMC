@@ -10,8 +10,10 @@
     INTEGER, PARAMETER  :: func_dp = dp  !SELECTED_REAL_KIND(12, 60)
     INTEGER, PARAMETER :: Powell_CO_prec = dp
 
+    REAL(Powell_CO_prec), allocatable :: BOBYQA_Hessian(:,:)
+    
     PRIVATE
-    PUBLIC  :: BOBYQA , Powell_CO_prec
+    PUBLIC  :: BOBYQA , Powell_CO_prec,BOBYQA_Hessian
 
     CONTAINS
 
@@ -24,6 +26,7 @@
     real(dp), allocatable :: W(:)
     REAL(func_dp) funkk
     external funkk
+    integer I,J 
     !   This subroutine seeks the least value of a function of many variables,
     !   by applying a trust region method that forms quadratic models by
     !   interpolation. There is usually some freedom in the interpolation
@@ -151,6 +154,17 @@
     &  W(IXP),W(IFV),W(IXO),W(IGO),W(IHQ),W(IPQ),W(IBMAT),W(IZMAT),&
     &  NDIM,W(ISL),W(ISU),W(IXN),W(IXA),W(ID),W(IVL),W(IW))
 
+    if (allocated(BOBYQA_Hessian)) deallocate(BOBYQA_Hessian)
+    allocate(BOBYQA_Hessian(N,N))
+    IH=0
+    DO J=1,N
+            DO I=1,J
+                BOBYQA_Hessian(I,J) = W(IHQ+IH)
+                BOBYQA_Hessian(J,I)=BOBYQA_Hessian(I,J)
+                IH=IH+1
+            END DO
+    END DO
+    
 40  deallocate(W)
 
     end function BOBYQA
