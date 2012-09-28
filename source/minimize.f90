@@ -19,7 +19,7 @@
 
     do i=1, num_params_used
         ii=params_used(i)
-        P%P(ii)=vect(i)*Scales%PWidth(ii)
+        P%P(ii)=vect(i)*Scales%PWidth(ii) + Scales%center(ii)
     end do
 
     end subroutine VectToparams
@@ -31,7 +31,7 @@
 
     do i=1, num_params_used
         ii=params_used(i)
-        vect(i)=P%P(ii)/Scales%PWidth(ii)
+        vect(i)=(P%P(ii)-Scales%center(ii))/Scales%PWidth(ii)
     end do
 
     end subroutine ParamsToVect
@@ -67,10 +67,11 @@
 
     MinParams = Params
     ! scale the params so they are all roughly the same order of magnitude
-    call ParamsToVect(MinParams, vect)
+    !call ParamsToVect(MinParams, vect)
+    vect = 0 !start at zero by definition (from input center values)
     !normalized parameter bounds
-    XL = Scales%PMin(params_used) / Scales%PWidth(params_used)
-    XU = Scales%PMax(params_used) / Scales%PWidth(params_used)  
+    XL = (Scales%PMin(params_used)-Scales%center(params_used)) / Scales%PWidth(params_used)
+    XU = (Scales%PMax(params_used)-Scales%center(params_used)) / Scales%PWidth(params_used)  
 
     !Initial and final radius of region required (in normalized units)
     rhobeg = 0.1*sqrt(real(num_params_used))
