@@ -8,7 +8,7 @@
 
     Type(ParamSet) MinParams
 
-    public FindBestFit, WriteBestFitParams, BestFitCovmat
+    public FindBestFit, WriteBestFitParams, BestFitCovmatEstimate
 
     contains
 
@@ -162,14 +162,31 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
    
     end subroutine WriteBestFitParams
     
-    function BestFitCovmat
+    function BestFitCovmatEstimate(tol) result (M)
      use MatrixUtils
-     real BestFitCovmat(num_params_used,num_params_used)
-    
-     BestFitCovmat = BOBYQA_Hessian
-     call Matrix_Inverse(BestFitCovmat)
+     real M(num_params_used,num_params_used), diag(num_params_used)
+     real tol !tol is the smallest normalized eigenvalue to allow (e..g fraction of input width)
+     integer i
      
-    end function BestFitCovmat
-    
+      M = BOBYQA_Hessian
+      !this may not be invertible, let's make sure all eigenvalues are positive
+      
+      call  Matrix_Diagonalize(M, diag, num_params_used)
+           !Does m = U diag U^T, returning U in M
+      if (Feedback > 0) print *,  'Un-regularized Hessian evalues: ', diag
+      do i=1,num_params_used
+        diag(i) = max(diag(i), tol)
+        M(:,i) = M(:,i) * sqrt(diag(i))
+      end do
+      M = matmul(M, transpose(M))
+
+      !now go back to un-normalized units
+      do i=1, num_params_used
+           M(:,i) = M(:,i) * Scales%PWidth(params_used(i))
+           M(i,:) = M(i,:) * Scales%PWidth(params_used(i))
+      end do
+
+    end function BestFitCovmatEstimate
+
 
     end module minimize
