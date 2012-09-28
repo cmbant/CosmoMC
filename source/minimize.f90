@@ -8,7 +8,7 @@
 
     Type(ParamSet) MinParams
 
-    public FindBestFit, WriteBestFitParams
+    public FindBestFit, WriteBestFitParams, BestFitCovmat
 
     contains
 
@@ -54,11 +54,12 @@
 
     end function ffn
 
-    function FindBestFit(Params,sigma_frac_err, max_iterations) result(best_like)
+    function FindBestFit(Params,sigma_frac_err, max_iterations, est_cov_mat) result(best_like)
     use ParamDef
     Type(ParamSet) Params
     integer, intent(in) :: max_iterations
     real, intent(in) :: sigma_frac_err
+    logical, intent(in) :: est_cov_mat
     real best_like
     real(Powell_CO_prec) :: vect(num_params_used), XL(num_params_used), XU(num_params_used)
     real(Powell_CO_prec) rhobeg, rhoend
@@ -74,8 +75,11 @@
     !Initial and final radius of region required (in normalized units)
     rhobeg = 0.1*sqrt(real(num_params_used))
     rhoend = sigma_frac_err*sqrt(real(num_params_used))
-
-    npt = 2*num_params_used +1
+    if (est_cov_mat) then
+     npt = (num_params_used+1)*(num_params_used+2)/2
+    else
+     npt = 2*num_params_used +1 !Hessian approximation is singular in general
+    end if
     if (.not. BOBYQA (ffn, num_params_used ,npt, vect,XL,XU,rhobeg,rhoend,FeedBack+1, max_iterations)) &
        stop 'minimize: FindBestFit failed'
 
@@ -157,6 +161,15 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
     
    
     end subroutine WriteBestFitParams
+    
+    function BestFitCovmat
+     use MatrixUtils
+     real BestFitCovmat(num_params_used,num_params_used)
+    
+     BestFitCovmat = BOBYQA_Hessian
+     call Matrix_Inverse(BestFitCovmat)
+     
+    end function BestFitCovmat
     
 
     end module minimize
