@@ -355,7 +355,7 @@ program SolveCosmology
             call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
             if (estimate_propose_matrix) then
                   allocate(propose_matrix(num_params_used, num_params_used))
-                  propose_matrix = BestFitCovmat()
+                  propose_matrix = BestFitCovmatEstimate(0.01)
                   if (Feedback>0) write (*,*) 'Estimated covariance matrix:'
                   call WriteCovMat(trim(baseroot) //'.local_invhessian', propose_matrix)
                   if (Feedback>0) write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.local_invhessian'
