@@ -176,7 +176,7 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
       if (Feedback > 0) print *,  'Un-regularized Hessian evalues: ', diag
       do i=1,num_params_used
         diag(i) = max(diag(i), tol)
-        M(:,i) = M(:,i) * sqrt(diag(i))
+        M(:,i) = M(:,i) / sqrt(diag(i))
       end do
       M = matmul(M, transpose(M))
 
