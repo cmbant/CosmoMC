@@ -1314,15 +1314,15 @@ contains
         integer l
         real(dl) :: k
  
-        !note increasing non-limber to l>700 is not neccessarily more accurate unless AccruacyBoost much higher 
+        !note increasing non-limber to l>700 is not neccessarily more accurate unless AccruacyBoost much higher
         !use **0.2 to at least give some sensitivity to Limber effects
         if (CP%AccurateBB .or. CP%flat) then
-         UseLimber = l > 700*AccuracyBoost**0.2 .and. k > 0.05    
+         UseLimber = l > 700*AccuracyBoost**0.2 .and. k > 0.05
         else
          !This is accurate at percent level only (good enough here)
          UseLimber = l > 300*min(AccuracyBoost,2.4_dl) .or. k>0.05
         end if
-        
+
       end function UseLimber
 
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc

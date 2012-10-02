@@ -27,7 +27,7 @@
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
 !CN     Name:        RECFAST
-!CV     Version: 1.5
+!CV     Version: 1.5.2
 !C 
 !CP     Purpose:  Calculate ionised fraction as a function of redshift.
 !CP            Solves for H and He simultaneously, and includes
@@ -200,6 +200,7 @@
 !CH		 Jan 2010 (added fitting function to modify K
 !CH			 	 to match x_e(z) for new H physics)
 !AL             June 2012 updated fudge parameters to match HyRec and CosmoRec (AML)
+!AL             Sept 2012 changes now in public recfast, version number changed to match Recfast 1.5.2.
 
 !!      ===============================================================
 
@@ -277,7 +278,7 @@
         real(dl) :: zGauss2=	    6.73D0  !ln(1+z) of 2nd Gaussian
         real(dl) :: wGauss1=	    0.18D0  !Width of 1st Gaussian
         real(dl) :: wGauss2=	    0.33D0  !Width of 2nd Gaussian
-         !	Gaussian fits for extra H physics (fit by Adam Moss)
+        !Gaussian fits for extra H physics (fit by Adam Moss , modified by Antony Lewis)
 
         type RecombinationParams
 
@@ -299,7 +300,7 @@
    
         end  type RecombinationParams
 
-        character(LEN=*), parameter :: Recombination_Name = 'Recfast_1.5'
+        character(LEN=*), parameter :: Recombination_Name = 'Recfast_1.5.2'
       
         real(dl) zrec(Nz),xrec(Nz),dxrec(Nz), Tsrec(Nz) ,dTsrec(Nz), tmrec(Nz),dtmrec(Nz)
 
