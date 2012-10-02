@@ -8,7 +8,7 @@
 
     Type(ParamSet) MinParams
 
-    public FindBestFit, WriteBestFitParams, BestFitCovmatEstimate
+    public FindBestFit, WriteBestFitParams
 
     contains
 
@@ -54,12 +54,11 @@
 
     end function ffn
 
-    function FindBestFit(Params,sigma_frac_err, max_iterations, est_cov_mat) result(best_like)
+    function FindBestFit(Params,sigma_frac_err, max_iterations) result(best_like)
     use ParamDef
     Type(ParamSet) Params
     integer, intent(in) :: max_iterations
     real, intent(in) :: sigma_frac_err
-    logical, intent(in) :: est_cov_mat
     real best_like
     real(Powell_CO_prec) :: vect(num_params_used), XL(num_params_used), XU(num_params_used)
     real(Powell_CO_prec) rhobeg, rhoend
@@ -76,11 +75,7 @@
     !Initial and final radius of region required (in normalized units)
     rhobeg = 0.1*sqrt(real(num_params_used))
     rhoend = sigma_frac_err*sqrt(real(num_params_used))
-    if (est_cov_mat) then
-     npt = (num_params_used+1)*(num_params_used+2)/2
-    else
-     npt = 2*num_params_used +1 !Hessian approximation is singular in general
-    end if
+    npt = 2*num_params_used +1 !Hessian approximation is singular in general
     if (.not. BOBYQA (ffn, num_params_used ,npt, vect,XL,XU,rhobeg,rhoend,FeedBack+1, max_iterations)) &
        stop 'minimize: FindBestFit failed'
 
@@ -163,31 +158,33 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
    
     end subroutine WriteBestFitParams
     
-    function BestFitCovmatEstimate(tol) result (M)
-     use MatrixUtils
-     real M(num_params_used,num_params_used), diag(num_params_used)
-     real tol !tol is the smallest normalized eigenvalue to allow (e..g fraction of input width)
-     integer i
-     
-      M = BOBYQA_Hessian
-      !this may not be invertible, let's make sure all eigenvalues are positive
-      
-      call  Matrix_Diagonalize(M, diag, num_params_used)
-           !Does m = U diag U^T, returning U in M
-      if (Feedback > 0) print *,  'Un-regularized Hessian evalues: ', diag
-      do i=1,num_params_used
-        diag(i) = max(diag(i), tol)
-        M(:,i) = M(:,i) / sqrt(diag(i))
-      end do
-      M = matmul(M, transpose(M))
-
-      !now go back to un-normalized units
-      do i=1, num_params_used
-           M(:,i) = M(:,i) * Scales%PWidth(params_used(i))
-           M(i,:) = M(i,:) * Scales%PWidth(params_used(i))
-      end do
-
-    end function BestFitCovmatEstimate
+    !function BestFitCovmatEstimate(tol) result (M)
+    !!Cannot find any way to get usable Hessian matrix from BOBYQA, even with high NPT
+    !!This is not used..
+    ! use MatrixUtils
+    ! real M(num_params_used,num_params_used), diag(num_params_used)
+    ! real tol !tol is the smallest normalized eigenvalue to allow (e..g fraction of input width)
+    ! integer i
+    ! 
+    !  M = BOBYQA_Hessian
+    !  !this may not be invertible, let's make sure all eigenvalues are positive
+    !  
+    !  call  Matrix_Diagonalize(M, diag, num_params_used)
+    !       !Does m = U diag U^T, returning U in M
+    !  if (Feedback > 0) print *,  'Un-regularized Hessian evalues: ', diag
+    !  do i=1,num_params_used
+    !    diag(i) = max(diag(i), tol)
+    !    M(:,i) = M(:,i) / sqrt(diag(i))
+    !  end do
+    !  M = matmul(M, transpose(M))
+    !
+    !  !now go back to un-normalized units
+    !  do i=1, num_params_used
+    !       M(:,i) = M(:,i) * Scales%PWidth(params_used(i))
+    !       M(i,:) = M(i,:) * Scales%PWidth(params_used(i))
+    !  end do
+    !
+    !end function BestFitCovmatEstimate
 
 
     end module minimize

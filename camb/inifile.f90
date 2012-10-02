@@ -399,6 +399,19 @@ contains
 
   end function Ini_Read_String
 
+  function Ini_Read_String_Default(Key, Default,AllowBlank) result(AValue)
+   character (LEN=*), intent(IN) :: Key, Default
+   character(LEN=Ini_max_string_len) :: AValue
+   logical, intent(in), optional :: AllowBlank
+
+   if (present(AllowBlank)) then
+      AValue = Ini_Read_String_Default_File(DefIni, Key, Default, AllowBlank)
+   else    
+      AValue = Ini_Read_String_Default_File(DefIni, Key, Default)
+   end if
+   
+  end function Ini_Read_String_Default
+
 
   function Ini_Read_String_File(Ini, Key, NotFoundFail) result(AValue)
    Type(TIniFile) :: Ini
@@ -426,7 +439,24 @@ contains
    end if
 
   end function Ini_Read_String_File
+
+  function Ini_Read_String_Default_File(Ini, Key, Default, AllowBlank) result(AValue)
+   Type(TIniFile) :: Ini
+   character (LEN=*), intent(IN) :: Key, Default
+   character(LEN=Ini_max_string_len) :: AValue
+   logical, intent(in), optional :: AllowBlank
+
+   if (Ini_HasKey_File(Ini,Key)) then
+    AValue = Ini_Read_String_file(Ini, Key, .false.)
+    if (present(AllowBlank)) then
+      if (AllowBlank) return
+    end if
+    if (AValue=='') AValue = Default
+   else
+    AValue = Default
+   end if
   
+  end function Ini_Read_String_Default_File
   
   function Ini_HasKey(Key) result(AValue)
    character (LEN=*), intent(IN) :: Key

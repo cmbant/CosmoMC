@@ -28,9 +28,12 @@ HEALPIXLD     = -L$(HEALPIXDIR)/lib -lhealpix -L$(FITSDIR) -l$(FITSLIB)
 CAMBOBJ       = constants.o utils.o $(EXTCAMBFILES) subroutines.o inifile.o $(POWERSPECTRUM).o $(RECOMBINATION).o \
 	$(REIONIZATION).o modules.o bessels.o $(EQUATIONS).o $(NONLINEAR).o lensing.o $(BISPECTRUM).o cmbmain.o camb.o
 
+F90CRLINK ?= -lstdc++
+
 ## CosmoRec
 ifeq ($(RECOMBINATION),cosmorec)
 COSMOREC_PATH ?=../CosmoRec/
+GSL_LINK ?=-lgsl -lgslcblas
 camb: libCosmoRec.a
 $(CAMBLIB): libCosmoRec.a
 F90CRLINK += -L$(COSMOREC_PATH) -lCosmoRec $(GSL_LINK)

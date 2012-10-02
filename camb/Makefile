@@ -3,29 +3,16 @@
 #Set FISHER=Y to compile bispectrum fisher matrix code
 FISHER=
 
-
-### CosmoRec support
-COSMOREC_PATH=../CosmoRec/
-GSL_LINK=-lgsl -lgslcblas
-#CXXC = icpc
-CXXC = g++
-CXXFLAGS = -O2
-
-## This is flag is passed to the Fortran compiler allowing it to link C++ (uncomment the right one).
-# GCC (gfortran/g++)
-#F90CRLINK = -lstdc++
-# Intel Compilers (ifort/icpc)
-F90CRLINK = -cxxlib
-
-
 #Edit for your compiler
-#Note there are many old ifc versions, some of which behave oddly
+#Note there are many old ifort versions, some of which behave oddly
 
 
 #Intel , -openmp toggles mutli-processor:
 #note version 10.0 gives wrong result for lensed when compiled with -openmp [fixed in 10.1]
 F90C     = ifort
 FFLAGS = -openmp -fast -W0 -WB -fpp2 -vec_report0
+## This is flag is passed to the Fortran compiler allowing it to link C++ if required (not usually):
+F90CRLINK = -cxxlib
 ifneq ($(FISHER),)
 FFLAGS += -mkl
 endif
