@@ -26,17 +26,16 @@
 
          logical :: w_perturb = .true.
        contains
-       
+
         subroutine DarkEnergy_ReadParams(Ini)
-        use IniFile 
+        use IniFile
         Type(TIniFile) :: Ini
 
-           w_lam = Ini_Read_Double_File(Ini,'w', -1.d0)   
+           w_lam = Ini_Read_Double_File(Ini,'w', -1.d0)
            cs2_lam = Ini_Read_Double_File(Ini,'cs2_lam',1.d0)
-           
-       end subroutine DarkEnergy_ReadParams
 
-         
+        end subroutine DarkEnergy_ReadParams
+
        end module LambdaGeneral
 
 

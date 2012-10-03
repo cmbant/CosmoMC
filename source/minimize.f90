@@ -75,10 +75,11 @@
     !Initial and final radius of region required (in normalized units)
     rhobeg = 0.1*sqrt(real(num_params_used))
     rhoend = sigma_frac_err*sqrt(real(num_params_used))
-    npt = 2*num_params_used +1 !Hessian approximation is singular in general
+    npt = 2*num_params_used +1 
     if (.not. BOBYQA (ffn, num_params_used ,npt, vect,XL,XU,rhobeg,rhoend,FeedBack+1, max_iterations)) &
        stop 'minimize: FindBestFit failed'
-
+       !BOBYQA generally uses too few operations to get a Hessian estimate
+       !I have asked M Powell, and he indeed recommended calculating the Hessian sepratately afterwards
     best_like = ffn(num_params_used,vect)
 
     !back to real units

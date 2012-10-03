@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioProject ProjectType="typeStaticLibrary" ProjectCreator="Intel Fortran" Keyword="Static Library" Version="11.0" ProjectIdGuid="{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}">
+	<Platforms>
+		<Platform Name="Win32"/>
+		<Platform Name="x64"/></Platforms>
+	<Configurations>
+		<Configuration Name="Debug|Win32" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFLibrarianTool"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/></Configuration>
+		<Configuration Name="Release|Win32" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP"/>
+				<Tool Name="VFLibrarianTool"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/></Configuration>
+		<Configuration Name="Debug|x64" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFLibrarianTool"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/></Configuration>
+		<Configuration Name="Release|x64" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" HeapArrays="0" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP" OpenMP="OpenMPParallelCode"/>
+				<Tool Name="VFLibrarianTool"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/></Configuration></Configurations>
+	<Files>
+		<Filter Name="Header Files" Filter="fi;fd"/>
+		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
+		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<Filter Name="Likelihood">
+		<File RelativePath="..\source\bao.f90"/>
+		<File RelativePath="..\source\cmbdata.F90"/>
+		<File RelativePath="..\source\HST.f90"/>
+		<File RelativePath="..\source\lrggettheory.f90"/>
+		<File RelativePath="..\source\mpk.f90"/>
+		<File RelativePath="..\source\Planck_like.f90"/>
+		<File RelativePath="..\source\SDSSLy-a-v3.f90"/>
+		<File RelativePath="..\source\supernovae.f90"/>
+		<File RelativePath="..\source\WeakLen.f90"/>
+		<File RelativePath="..\source\WMAP_1yr_likelihood.f90"/></Filter>
+		<Filter Name="Cosmology">
+		<File RelativePath="..\source\bbn.f90"/>
+		<File RelativePath="..\source\CMB_Cls_simple.f90"/>
+		<File RelativePath="..\source\cmbtypes.f90"/>
+		<File RelativePath="..\source\params_CMB.f90"/></Filter>
+		<File RelativePath="..\source\calclike.f90"/>
+		<File RelativePath="..\source\EstCovmat.f90"/>
+		<File RelativePath="..\source\IO.f90"/>
+		<File RelativePath="..\source\MCMC.f90"/>
+		<File RelativePath="..\source\minimize.f90"/>
+		<File RelativePath="..\source\paramdef.F90"/>
+		<File RelativePath="..\source\ParamNames.f90"/>
+		<File RelativePath="..\source\postprocess.f90"/>
+		<File RelativePath="..\source\PowellConstrainedMinimize.f90"/>
+		<File RelativePath="..\source\propose.f90"/>
+		<File RelativePath="..\source\settings.f90"/></Filter></Files>
+	<Globals/></VisualStudioProject>
