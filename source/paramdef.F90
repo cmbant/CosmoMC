@@ -807,6 +807,24 @@ end subroutine SetProposeMatrix
 
 #endif
 
+     function ParamNameOrNumber(ix) result(name)
+     character(len=ParamNames_maxlen)  :: name
+     integer, intent(in) :: ix
+
+     name = ParamNames_name(NameMapping,ix) 
+     if (name == '') name = IntToStr(ix)
+
+     end function ParamNameOrNumber
+
+    function UsedParamNameOrNumber(i) result(name)
+     character(len=ParamNames_maxlen)  :: name
+     integer, intent(in) :: i
+ 
+     name = ParamNameOrNumber(params_used(i))
+
+     end function UsedParamNameOrNumber
+
+
     subroutine WriteCovMat(fname, matrix)
      use IO
      integer i  
@@ -817,7 +835,7 @@ end subroutine SetProposeMatrix
         if (NameMapping%nnames/=0) then
               outline='' 
               do i=1, num_params_used
-                outline = trim(outline)//' '//trim(ParamNames_name(NameMapping,params_used(i))) 
+                outline = trim(outline)//' '//trim(UsedParamNameOrNumber(i)) 
               end do  
               call IO_WriteProposeMatrix(matrix ,fname, outline)
         else
