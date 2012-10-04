@@ -349,11 +349,12 @@ program SolveCosmology
           if (action == action_maxlike .and. MPIchains>1) call DoAbort( &
            'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
           if (MpiRank==0) then
-            if (Feedback> 0) write(*,*) 'finding best fit point'
+            write(*,*) 'finding best fit point...'
             Params%P(params_used) = Scales%center(params_used)
             bestfit_loglike = FindBestFit(Params,max_like_radius,2000)
+            if (Feedback >0) write(*,*) 'Best-fit results: '
             call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
-              if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
+            if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
           end if
 #ifdef MPI 
           CALL MPI_Bcast(Params%P, size(Params%P), MPI_REAL, 0, MPI_COMM_WORLD, ierror) 
@@ -365,7 +366,7 @@ program SolveCosmology
               allocate(propose_matrix(num_params_used, num_params_used))
               if (MpiRank==0) then
                   EstParams = Params
-                  if (Feedback>0) write (*,*) 'Now estimating propose matrix from Hessian'
+                  write (*,*) 'Estimating propose matrix from Hessian at bfp...'
                   propose_matrix=EstCovmat(EstParams,4.,status)
                   ! By default the grid used to estimate the covariance matrix has spacings
                   ! such that deltaloglike ~ 4 for each parameter.               
@@ -373,7 +374,7 @@ program SolveCosmology
                   has_propose_matrix = status > 0
                   if (Feedback>0) write (*,*) 'Estimated covariance matrix:'
                   call WriteCovMat(trim(baseroot) //'.local_invhessian', propose_matrix)
-                  if (Feedback>0) write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.local_hessian'
+                  write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.local_hessian'
               else
                 has_propose_matrix = .true.
               end if 
