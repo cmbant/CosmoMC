@@ -12,7 +12,7 @@ program SolveCosmology
         use WeakLen
         use CalcLike
         use EstCovmatModule
-        use ConjGradModule
+        use minimize
         use mpk
         use MatrixUtils
         use IO
@@ -24,7 +24,7 @@ program SolveCosmology
         
         character(LEN=Ini_max_string_len) InputFile, LogFile
 
-        logical bad, est_bfp_before_covmat
+        logical bad
         integer numsets, nummpksets, i, numtoget, action
         character(LEN=Ini_max_string_len) baseroot, filename(100), &
          mpk_filename(100),  SZTemplate(100), numstr, fname, keyname
@@ -33,9 +33,11 @@ program SolveCosmology
         real SZscale(100)
         Type(ParamSet) Params, EstParams
         integer num_points
-        integer status          
-        integer file_unit
-        real delta_loglike
+        integer file_unit, status
+        real bestfit_loglike
+        real max_like_radius
+        integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2  
+
 
 #ifdef MPI
         double precision intime
@@ -105,8 +107,11 @@ program SolveCosmology
         HighAccuracyDefault = Ini_Read_Logical('high_accuracy_default',.false.)
         AccuracyLevel = Ini_Read_Real('accuracy_level',1.)
         
-        if (Ini_HasKey('highL_unlensed_cl_template')) &
-          highL_unlensed_cl_template=  ReadIniFilename(DefIni,'highL_unlensed_cl_template')
+        if (Ini_HasKey('highL_unlensed_cl_template')) then
+          highL_unlensed_cl_template=  ReadIniFilename(DefIni,'highL_unlensed_cl_template') 
+        else
+          highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
+        end if
 
         checkpoint = Ini_Read_Logical('checkpoint',.false.)
         if (checkpoint) flush_write = .true.
@@ -157,10 +162,10 @@ program SolveCosmology
 
         new_chains = .true. 
 
-        action = Ini_Read_Int('action',0)
+        action = Ini_Read_Int('action',action_MCMC)
 
         if (checkpoint) then
-         if (action /= 0)  call DoAbort('checkpoint only with action =0')
+         if (action /= action_MCMC)  call DoAbort('checkpoint only with action =0')
 #ifdef MPI 
          new_chains = .not. IO_Exists(trim(rootname) //'.chk')
 #else
@@ -169,37 +174,38 @@ program SolveCosmology
         end if
 
 
-        if (action ==1) call ReadPostParams
+        if (action == action_importance) call ReadPostParams
 
         FeedBack = Ini_Read_Int('feedback',0)
         FileChangeIni = trim(rootname)//'.read'
 
-        if (action /= 1) then
+        if (action == action_MCMC) then
 
-        LogFile = trim(rootname)//'.log'
+            LogFile = trim(rootname)//'.log'
 
-        if (LogFile /= '') then
-         logfile_unit = IO_OutputOpenForWrite(LogFile, append=.not. new_chains, isLogFile = .true.)
-        else
-         logfile_unit = 0
-        end if
+            if (LogFile /= '') then
+             logfile_unit = IO_OutputOpenForWrite(LogFile, append=.not. new_chains, isLogFile = .true.)
+            else
+             logfile_unit = 0
+            end if
 
-        outfile_handle = 0
-        fname = trim(rootname)//'.txt'
-        if (new_chains) outfile_handle = IO_OutputOpenForWrite(fname, append = .false.)
+            outfile_handle = 0
+            fname = trim(rootname)//'.txt'
+            if (new_chains) outfile_handle = IO_OutputOpenForWrite(fname, append = .false.)
     
-        indep_sample = Ini_Read_Int('indep_sample')
-        if (indep_sample /=0) then
-          fname = trim(rootname)//'.data' 
-          indepfile_handle = IO_DataOpenForWrite(fname, append = .not. new_chains)
-!          call CreateOpenFile(fname,indepfile_unit,'unformatted',.not. new_chains)
-        end if
+            indep_sample = Ini_Read_Int('indep_sample')
+            if (indep_sample /=0) then
+              fname = trim(rootname)//'.data'
+              indepfile_handle = IO_DataOpenForWrite(fname, append = .not. new_chains)
+            end if
  
-        Ini_fail_on_not_found = .false.
-        burn_in = Ini_Read_Int('burn_in',0)     
-        sampling_method = Ini_Read_Int('sampling_method',sampling_metropolis)
-        if (sampling_method > 6 .or. sampling_method<1) call DoAbort('Unknown sampling method')
-        if (sampling_method==4) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
+            Ini_fail_on_not_found = .false.
+            burn_in = Ini_Read_Int('burn_in',0)
+            sampling_method = Ini_Read_Int('sampling_method',sampling_metropolis)
+            if (sampling_method > 6 .or. sampling_method<1) call DoAbort('Unknown sampling method')
+            if (sampling_method==4) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
+        else
+         Ini_fail_on_not_found = .false.
         end if
 
         numstr = Ini_Read_String('rand_seed')
@@ -215,7 +221,7 @@ program SolveCosmology
         inflation_consistency = Ini_read_Logical('inflation_consistency',.false.)
         bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
 
-        w_is_w = Ini_Read_Logical ('w_is_w',.true.)     
+        w_is_w = Ini_Read_Logical ('w_is_w',.true.)
         oversample_fast = Ini_Read_Int('oversample_fast',1)
         use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
  
@@ -257,8 +263,8 @@ program SolveCosmology
            call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
         end if
 
-        delta_loglike = Ini_Read_Real('delta_loglike',2.)
-        est_bfp_before_covmat = Ini_Read_Logical('est_bfp_before_covmat',.true.) ! for testing
+        max_like_radius = Ini_Read_Real('max_like_radius',0.01)
+         !radius in normalized parameter space to converge
 
         Ini_fail_on_not_found = .true.
 
@@ -314,58 +320,56 @@ program SolveCosmology
 
         call Ini_Close
 
-        if (MpiRank==0 .and. action==0 .and. NameMapping%nnames/=0) &
+        if (MpiRank==0 .and. action==action_MCMC .and. NameMapping%nnames/=0) &
             call IO_OutputParamNames(NameMapping,trim(baseroot))
 
         call SetIdlePriority !If running on Windows
 
-        if (estimate_propose_matrix .or. action == 2) then
-         ! slb5aug04  
-            EstParams = Params
-            EstParams%P(params_used) = Scales%center(params_used)
-            if (est_bfp_before_covmat) then
-              if (Feedback > 0) write(*,*) 'Finding max-like point' 
-              call conjgrad_wrapper(EstParams,delta_loglike,status)  
-              if (MPIRank == 0) then
-                if (Feedback>0) write (*,*) 'Best fit parameters values:'
-                call CreateTxtFile(trim(baseroot)//'.minimum',tmp_file_unit)
-                write (tmp_file_unit,*) 'Best fit -log(Like) found: ', Bestfit_loglike
-                write (tmp_file_unit,*) '' 
-                do i=1, num_params_used
-                  if (Feedback>0) write (*,*) params_used(i), ' : ', EstParams%P(params_used(i))
-                  write (tmp_file_unit,*) params_used(i), ' : ', EstParams%P(params_used(i))
-                end do
-                close(tmp_file_unit)
-              end if
-            end if
-              if (action == 2) then
-                  if (Feedback>0) then
-                    write(*,*) 'Have estimated the minimum, now exiting since action=2'
-                    write(*,*) 'Wrote the minimum to file ',trim(baseroot)//'.minimum'
-                  end if
-                call DoAbort
-              end if
-              if (Feedback>0) write (*,*) 'Now estimating propose matrix from Hessian'
+        if (action == action_maxlike &
+            .or. action == action_MCMC .and. estimate_propose_matrix) then
+        !New Powell 2009 minimization, AL Sept 2012
+          if (action == action_maxlike .and. MPIchains>1) call DoAbort( &
+           'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
+          if (MpiRank==0) then
+            if (Feedback> 0) write(*,*) 'finding best fit point'
+            Params%P(params_used) = Scales%center(params_used)
+            bestfit_loglike = FindBestFit(Params,max_like_radius,2000)
+            call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
+              if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
+          end if
+#ifdef MPI
+          CALL MPI_Bcast(Params%P, size(Params%P), MPI_REAL, 0, MPI_COMM_WORLD, ierror)
+#endif
+        end if
+
+        if (estimate_propose_matrix .and. action == action_MCMC) then
+         ! slb5aug04 with AL updates
               allocate(propose_matrix(num_params_used, num_params_used))
-              propose_matrix=EstCovmat(EstParams,4.,status)
-              ! By default the grid used to estimate the covariance matrix has spacings
-              ! such that deltaloglike ~ 4 for each parameter.               
-              call AcceptReject(.true., EstParams%Info, Params%Info)
-              has_propose_matrix = status > 0
-              if (MPIRank == 0) then ! write out the covariance matrix
-                if (Feedback>0) write (*,*) 'Estimated covariance matrix:'
-                call Matrix_write(trim(baseroot) //'.local_invhessian',propose_matrix,forcetable=.true.)
-                if (Feedback>0) write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.local_hessian'
+              if (MpiRank==0) then
+                  EstParams = Params
+                  if (Feedback>0) write (*,*) 'Now estimating propose matrix from Hessian'
+                  propose_matrix=EstCovmat(EstParams,4.,status)
+                  ! By default the grid used to estimate the covariance matrix has spacings
+                  ! such that deltaloglike ~ 4 for each parameter.
+                  call AcceptReject(.true., EstParams%Info, Params%Info)
+                  has_propose_matrix = status > 0
+                  if (Feedback>0) write (*,*) 'Estimated covariance matrix:'
+                  call WriteCovMat(trim(baseroot) //'.local_invhessian', propose_matrix)
+                  if (Feedback>0) write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.local_hessian'
+              else
+                has_propose_matrix = .true.
               end if
               if (has_propose_matrix) then
-                   call SetProposeMatrix
+#ifdef MPI
+                CALL MPI_Bcast(propose_matrix, size(propose_matrix), MPI_REAL, 0, MPI_COMM_WORLD, ierror)
+#endif
+                call SetProposeMatrix
               else
-                   write (*,*) 'estimating propose matrix failed'
-                   deallocate(propose_matrix)  
+                   call DoAbort('estimate_propose_matrix: estimating propose matrix failed')
               end if
-        end if
+       end if
     
-        if (action == 0) then
+        if (action == action_MCMC) then
          if (Feedback > 0) write (*,*) 'starting Monte-Carlo'
          call MCMCSample(Params, numtoget)
  
@@ -376,9 +380,11 @@ program SolveCosmology
         
          call IO_Close(outfile_handle)
 
-        else if (action==1) then
+        else if (action==action_importance) then
           if (Feedback > 0) write (*,*) 'starting post processing'
           call postprocess(rootname, baseroot)
+          call DoStop('Postprocesing done',.false.)
+
         else
          call DoAbort('undefined action')
         end if

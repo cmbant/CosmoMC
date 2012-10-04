@@ -152,6 +152,7 @@ contains
 !safeguard against extrapolation added    
     if (.not. (((x.ge.xa(n)) .and. (x.le.xa(1))) .or. ((x.ge.xa(1)) .and. (x.lt.xa(n))))) then 
        Print*,'Input of bbn_splint out of interpolation range.'
+       print *,'See http://cosmocoffee.info/viewtopic.php?p=5488'
        Print*,xa(n),x,xa(1)
        stop
     end if
