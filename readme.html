@@ -188,7 +188,7 @@ The default accuracy is aimed at WMAP. Set <B>high_accuracy_default = T</B> to t
 
 <LI><B>Best-fit point</B><BR>
 
-Set <B>action</B> =2 to just calculate the best-fit point and stop (also outputting a .covmat estimate from the inverse Hessian if  <b>estimate_propose_matrix</b>=T). As of Sept 2012 this uses
+Set <B>action</B> =2 to just calculate the best-fit point and stop (also outputting a .covmat estimate from the inverse Hessian if  <b>estimate_propose_matrix</b>=T). As of Oct 2012 this uses
 <A HREF="http://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf">Powell's  2009 BOBYQA</A> bounded minimization routine, which works from two parameters up to hundreds of parameters, but does require that the likelihood return a valid number at all points between the bounds given on the base parameters in the input .ini file. The algorithm starts at the point given by the <i>center</i> parameter values given in the .ini file, and iterates until the parameter values are converged to within a radius of  <b>max_like_radius</b> in units of the input parameter <i>propose width</i>s; by default <i>max_like_radius = 0.01</i> (the convergence criterion is a radius in nD space; <em>max_like_radius</em> is scaled by the root of the number of parameters so that on average each parameter is converged to a fraction <em>max_like_radius</em> of its <em>propose_width</em>). The best-fit values (and derived and nuisance parameters) are output to a file called <em>file_root</em>.minimum. The method works for parameters with hard bounds that truncate the posterior, e.g. for neutrino mass mnu>0. It does not use the propose_matrix, only the input parameter bounds, center and propose_width.
 <BR><BR>
 action=2 only runs on one node, so compile without MPI or run only one MPI instance. It can be run  interactively to get best-fit points in typically order 100 CAMB calls, just a few minutes if you have  fast multi-core processor  (so CAMB is using multiple openmp threads).
@@ -545,7 +545,7 @@ weighting function or parameter mapping.</ul>
 
 <LI><B>October 2012</B><BR>
 <UL>
-<LI>New best-fit finding routine (action=2) uses Powell's 2009 bounded BOBYQA routine (faster and reliable with bounded
+<LI>New best-fit finding routine (action=2) uses <A HREF="http://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf">Powell's  2009 BOBYQA</A> routine (faster and reliable with bounded
     parameters). Best-fit parameter values written out including derived parameters.
 <LI>estimate_propose_matrix outputs file in named parameter .covmat compatible format and copes better with parameters with hard prior cuts
 <LI>CAMB October 2012 update: tweaked recfast model and support for compiling CosmoMC with CosmoRec and HyRec recombination codes; updated halofit model
