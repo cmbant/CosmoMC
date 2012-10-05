@@ -9,13 +9,16 @@ LDFLAG = -O2
 HYREC_SRC = hyrectools.o helium.o hydrogen.o history.o 
 HYREC_EXE = hyrec.o 
 
+HYREC_SRC2 = hyrectools.c helium.c hydrogen.c history.c hyrec.c
+
 default: libhyrec.a
 
 clean: 
 	rm *.o
 
-hyrec: $(HYREC_SRC) $(HYREC_EXE)
-	$(CC) $(LDFLAG) -o hyrec $(HYREC_SRC) $(HYREC_EXE) -lm
+hyrec: $(HYREC_SRC2) 
+	$(CC) $(LDFLAG) -o hyrec  $(HYREC_SRC2) -lm
+
 
 libhyrec.a: $(HYREC_SRC)
 	$(AR) $@ $(HYREC_SRC)

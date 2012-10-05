@@ -4,7 +4,7 @@
 /*                                                                                                    */
 /*         history.c: functions for recombination history                                             */
 /*                                                                                                    */
-/*         Version: May 2012                                                                          */
+/*         Version: October 2012                                                                      */
 /*                                                                                                    */
 /*         Revision history:                                                                          */
 /*            - written November 2010                                                                 */
@@ -15,6 +15,8 @@
 /*                             and improved numerical radiative transfer equations                    */
 /*                             so the Lyman-lines spectrum can be extracted                           */
 /*                           - split some functions for more clarity                                  */
+/*             - October 2012: added some wrapper functions for running CAMB with HyRec               */
+/*                             (courtesy of Antony Lewis)                                             */
 /******************************************************************************************************/ 
 
 
@@ -26,6 +28,46 @@
 #include "helium.h"
 #include "hydrogen.h"
 #include "history.h" 
+
+
+/*****************************************************************************
+Setting derived cosmological parameters needed for recombination calculation 
+******************************************************************************/
+
+void rec_set_derived_params(REC_COSMOPARAMS *param){
+/* Separated by AML to avoid duplication */
+
+    double z, Pion, Tresc, RLya, four_betaB; 
+
+    param->nH0 = 11.223846333047*param->obh2*(1.-param->Y);  /* number density of hydrogen today in m-3 */
+    param->fHe = param->Y/(1-param->Y)/3.97153;              /* abundance of helium by number */
+    /* these should depend on fsR and meR, strictly speaking; however, these are corrections to corrections */
+
+    /* Total number of redshift steps */ 
+    param->nz = (long) floor(2+log((1.+ZSTART)/(1.+ZEND))/DLNA);  
+
+    /* (Added May 2012) 
+       In order to save memory for the radiation field tables, compute right away 
+       the range of redshifts at which radiative transfer is actually followed,
+       and the corresponding number of steps.
+       Radiative transfer starts when Tr < TR_MAX and stops when the ionization probablity 
+       from n=2 (estimated with simple Peebles model) is less than PION_MAX. */
+  
+    param->izH0 = (long) floor(1 + log(kBoltz*param->T0/square(param->fsR)/param->meR*(1.+ZSTART)/TR_MAX)/DLNA); 
+    param->zH0  = (1.+ZSTART)*exp(-param->izH0 * DLNA) - 1.;    
+  
+    Pion = 1.; 
+    z = 900.;
+    while (Pion > PION_MAX && z > ZEND) {
+        Tresc      = kBoltz* param->T0*(1.+z)/param->fsR/param->fsR/param->meR; /* Tr rescaled for alpha, me */
+        RLya       = LYA_FACT(param->fsR, param->meR) * rec_HubbleConstant(param, z) / (1e-6*param->nH0*cube(1.+z));   
+        four_betaB = SAHA_FACT(param->fsR, param->meR) *Tresc*sqrt(Tresc) *exp(-0.25*EI/Tresc) * alphaB_PPB(Tresc, param->fsR, param->meR);
+        Pion       = four_betaB/(3.*RLya + L2s_rescaled(param->fsR, param->meR) + four_betaB);  
+        z -= 10.;
+    }
+     
+    param->nzrt = (long) floor(2+log((1.+ZSTART)/(1.+z))/DLNA) - param->izH0; 
+}
 
 
 /************************************************************************************* 
@@ -161,40 +203,7 @@ double rec_HubbleConstant(REC_COSMOPARAMS *param, double z) {
 }
 #endif
 
-void rec_set_derived_params(REC_COSMOPARAMS *param){
-/* Separated by AML to avoid duplication */
 
-    double z, Pion, Tresc, RLya, four_betaB; 
-
-    param->nH0 = 11.223846333047*param->obh2*(1.-param->Y);  /* number density of hydrogen today in m-3 */
-    param->fHe = param->Y/(1-param->Y)/3.97153;              /* abundance of helium by number */
-    /* these should depend on fsR and meR, strictly speaking; however, these are corrections to corrections */
-
-    /* Total number of redshift steps */ 
-    param->nz = (long) floor(2+log((1.+ZSTART)/(1.+ZEND))/DLNA);  
-
-    /* (Added May 2012) 
-       In order to save memory for the radiation field tables, compute right away 
-       the range of redshifts at which radiative transfer is actually followed,
-       and the corresponding number of steps.
-       Radiative transfer starts when Tr < TR_MAX and stops when the ionization probablity 
-       from n=2 (estimated with simple Peebles model) is less than PION_MAX. */
-  
-    param->izH0 = (long) floor(1 + log(kBoltz*param->T0/square(param->fsR)/param->meR*(1.+ZSTART)/TR_MAX)/DLNA); 
-    param->zH0  = (1.+ZSTART)*exp(-param->izH0 * DLNA) - 1.;    
-  
-    Pion = 1.; 
-    z = 900.;
-    while (Pion > PION_MAX && z > ZEND) {
-        Tresc      = kBoltz* param->T0*(1.+z)/param->fsR/param->fsR/param->meR; /* Tr rescaled for alpha, me */
-        RLya       = LYA_FACT(param->fsR, param->meR) * rec_HubbleConstant(param, z) / (1e-6*param->nH0*cube(1.+z));   
-        four_betaB = SAHA_FACT(param->fsR, param->meR) *Tresc*sqrt(Tresc) *exp(-0.25*EI/Tresc) * alphaB_PPB(Tresc, param->fsR, param->meR);
-        Pion       = four_betaB/(3.*RLya + L2s_rescaled(param->fsR, param->meR) + four_betaB);  
-        z -= 10.;
-    }
-     
-    param->nzrt = (long) floor(2+log((1.+ZSTART)/(1.+z))/DLNA) - param->izH0; 
-}
 
 /************************************************************************************************* 
 Cosmological parameters Input/Output 
