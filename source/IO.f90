@@ -326,10 +326,10 @@ end subroutine IO_ReadProposeMatrix
   character(LEN=*), intent(in) :: in_root
   integer,intent(in) :: chain_ix, chain_num
   integer, intent(in) :: max_rows, ignorerows
+  integer, intent(in) :: ncols
   real(KIND(1.d0)), intent(inout) :: coldata(ncols,0:max_rows) !(col_index, row_index)
   logical, intent(in) :: samples_are_chains
   integer, intent(inout) :: nrows
-  integer, intent(in) :: ncols
   logical OK
   real invars(1:ncols)
   logical chainOK
