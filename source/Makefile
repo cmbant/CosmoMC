@@ -140,11 +140,13 @@ LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
-LIKEFILES= calclike.o
+LIKEFILES=
 ifeq ($(PLANCKLIKE),CLIK)
-LIKEFILES = cliklike.o $(LIKEFILES)
+LIKEFILES += cliklike.o 
 FFLAGS += -DCLIK
 endif
+
+LIKEFILES+= calclike.o
 
 OBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
 	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
