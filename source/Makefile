@@ -142,7 +142,7 @@ DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
 LIKEFILES= calclike.o
 ifeq ($(PLANCKLIKE),CLIK)
-LIKEFILES +=  cliklike.o
+LIKEFILES = cliklike.o $(LIKEFILES)
 FFLAGS += -DCLIK
 endif
 
