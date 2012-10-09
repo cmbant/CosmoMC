@@ -52,7 +52,8 @@ contains
     w_lam = CMB%w
     wa_ppf = CMB%wa
     ALens = CMB%ALens
-    P%InitialConditionVector(initial_iso_CDM) = sign(sqrt(abs(CMB%iso_cdm_correlated)/(1-abs(CMB%iso_cdm_correlated))),CMB%iso_cdm_correlated)
+    P%InitialConditionVector(initial_iso_CDM) = sign(sqrt(abs(CMB%iso_cdm_correlated) &
+           /(1-abs(CMB%iso_cdm_correlated))),CMB%iso_cdm_correlated)
     
 !    if (CMB%nnu < 3.04) call MpiStop('CMBToCAMB: nnu < 3.04, would give negative masless neutrinos')
     !Not clear this recipe is the best thing to do in general, but should work for massless case with unusual nnu
@@ -135,7 +136,8 @@ contains
             Info%Theory%HST_Loglike = 0     
           end if
           Info%Theory%numderived = nthermo_derived
-          if (nthermo_derived > max_derived_parameters) call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
+          if (nthermo_derived > max_derived_parameters) &
+             call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
           Info%Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
          else
           if (stop_on_error) call MpiStop('CAMB error '//trim(global_error_message))
@@ -357,7 +359,8 @@ contains
       end if
       Theory%Age = CAMB_GetAge(P)
       Theory%numderived = nthermo_derived
-      if (nthermo_derived > max_derived_parameters) call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
+      if (nthermo_derived > max_derived_parameters) &
+        call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
       Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
 
    end if
