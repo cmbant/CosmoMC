@@ -6,7 +6,7 @@
     implicit none
     private 
 
-    Type(ParamSet) MinParams
+    Type(ParamSet), save :: MinParams
 
     public FindBestFit, WriteBestFitParams
 
