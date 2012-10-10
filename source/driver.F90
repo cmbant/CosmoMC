@@ -17,6 +17,7 @@ program SolveCosmology
         use MatrixUtils
         use IO
         use ParamNames
+        use GaugeInterface, only : Eqns_name
 #ifdef CLIK
         use cliklike 
 #endif
@@ -336,7 +337,10 @@ program SolveCosmology
         
         if (MpiRank==0) then
             call TNameValueList_Add(DefIni%ReadValues, 'Compiled_CAMB_version', version)
-            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Recombination_model', Recombination_Name)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Recombination', Recombination_Name)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Equations', Eqns_name)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Reionization', Reionization_Name)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_InitialPower', Power_Name)
             unit = new_file_unit()
             call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
             call ClearFileUnit(unit)
