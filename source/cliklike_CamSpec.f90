@@ -66,22 +66,22 @@
     !beamcoeffs=freq_params(13:13+20-1)
     !xi=freq_params(13+20)
     !A_ksz=freq_params(13+21)
-    
-    A_ps_100=freq_params(2)
-    A_ps_143 = freq_params(3)
-    A_ps_217 = freq_params(4)
-    A_cib_143=freq_params(5)
-    A_cib_217=freq_params(6) 
-    A_sz=freq_params(7)  !143
-    r_ps = freq_params(8)
-    r_cib=freq_params(9)
-    cal0=freq_params(10)
-    cal1=freq_params(11) 
-    cal2=freq_params(12)
-    xi=freq_params(13)
-    A_ksz=freq_params(14)
-    beamcoeffs=freq_params(15:15+nbeammodes-1)
-    print *, 'xi, A_ksz = ', xi, A_ksz
+
+    !asz is already removed, start at second feq param
+    A_ps_100=freq_params(1)
+    A_ps_143 = freq_params(2)
+    A_ps_217 = freq_params(3)
+    A_cib_143=freq_params(4)
+    A_cib_217=freq_params(5) 
+    A_sz=freq_params(6)  !143
+    r_ps = freq_params(7)
+    r_cib=freq_params(8)
+    cal0=freq_params(9)
+    cal1=freq_params(10) 
+    cal2=freq_params(11)
+    xi=freq_params(12)
+    A_ksz=freq_params(13)
+    beamcoeffs=freq_params(14:14+nbeammodes-1)
 
     do L=lmin,lmax
         cell_cmb(L)=cl(L,1)/twopi !this is a georgeism
