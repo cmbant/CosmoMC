@@ -29,6 +29,28 @@ cibr          cibr              # 143-217 correlation coefficient of CIB
 cal0          cal0              # 100/143 relative calibration factor
 cal1          cal1              # 143 absolute calibration factor
 cal2          cal2              # 217/143 relative calibration factor
+xi	          \xi
+aksz	      A_{kSZ}
+beam1         beam_{1}
+beam2         beam_{2}
+beam3         beam_{3}
+beam4         beam_{4}
+beam5         beam_{5}
+beam6         beam_{6}
+beam7         beam_{7}
+beam8         beam_{8}
+beam9         beam_{9}
+beam10        beam_{10}
+beam11        beam_{11}
+beam12        beam_{12}
+beam13        beam_{13}
+beam14        beam_{14}
+beam15        beam_{15}
+beam16        beam_{16}
+beam17        beam_{17}
+beam18        beam_{18}
+beam19        beam_{19}
+beam20        beam_{20}
 norm_rg       D_r               # amplitude of radio foreground spectrum
 norm_dg_cl    D_c               # amplitude of dusty foreground spectrum
 omegal*       \Omega_\Lambda

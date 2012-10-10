@@ -20,7 +20,7 @@ program SolveCosmology
 #ifdef CLIK
         use cliklike 
 #endif
-#ifdef WMAP_PARAMS
+#ifndef NOWMAP
         use WMAP_OPTIONS
 #endif
         implicit none 
@@ -119,10 +119,10 @@ program SolveCosmology
         checkpoint = Ini_Read_Logical('checkpoint',.false.)
         if (checkpoint) flush_write = .true.
         
-#ifdef WMAP_PARAMS
-        use_TT_beam_ptsrc = Ini_read_Logical('use_TT_beam_ptsrc')
-        use_TE = Ini_read_Logical('use_TE')
-        use_TT = Ini_Read_Logical('use_TT')
+#ifndef NOWMAP
+        use_TT_beam_ptsrc = Ini_read_Logical('use_WMAP_TT_beam_ptsrc', .true.)
+        use_TE = Ini_read_Logical('use_WMAP_TE',.true.)
+        use_TT = Ini_Read_Logical('use_WMAP_TT',.true.)
         print *, 'WMAP beam TE TT', use_TT_beam_ptsrc, use_TE, use_TT
 #endif
 
@@ -300,10 +300,7 @@ program SolveCosmology
         end if
 
 #ifdef CLIK
-        if (Use_clik) then
-           clik_filename = Ini_Read_String('clik_likefile', .false.)
-           if (feedback .gt. 1) print*,'Using clik with likelihood file ',trim(clik_filename)
-        end if
+        if (Use_clik) call clik_readParams(DefIni)
 #endif
 
         Ini_fail_on_not_found = .true.

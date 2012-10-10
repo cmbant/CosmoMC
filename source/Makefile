@@ -17,15 +17,17 @@ cfitsio = /usr/local/cfitsio/intel10/64/3.040
 #GSL only needed for DR7 LRG
 GSLPATH ?= /home/aml1005/libs/gsl
 
-#empty not to compile with CLIK, otherwise set to CLIK
-PLANCKLIKE =
-#PLANCKLIKE =CLIK
+#empty not to compile with CLIK, otherwise set to name of cliklike.f90 file
+PLANCKLIKE ?= cliklike_CamSpec
+#PLANCKLIKE =cliklike_CamSpec
+#PLANCKLIKE =cliklike
+
 
 IFLAG = -I
 INCLUDE =
 
 #clik path and library
-ifeq ($(PLANCKLIKE),CLIK)
+ifeq ($(PLANCKLIKE),cliklike)
 CLIKPATH = /path/to/clik
 CLIKL = -L$(CLIKPATH)/lib -lclik_f90
 INCLUDE = $(IFLAG)$(CLIKPATH)/include
@@ -140,13 +142,17 @@ LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
-LIKEFILES=
-ifeq ($(PLANCKLIKE),CLIK)
-LIKEFILES += cliklike.o 
+ifneq ($(PLANCKLIKE),)
 FFLAGS += -DCLIK
 endif
 
-LIKEFILES+= calclike.o
+PLANCKLIKEFILES=
+
+ifeq ($(PLANCKLIKE),cliklike_CamSpec)
+PLANCKLIKEFILES += temp_like.o
+endif
+
+LIKEFILES = $(PLANCKLIKEFILES) $(PLANCKLIKE).o calclike.o
 
 OBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
 	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \

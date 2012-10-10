@@ -25,9 +25,17 @@ module cliklike
   
 
   private
-  public :: clik_lnlike, use_clik, clik_filename, using_CAMspec, using_PLik
+  public :: clik_readParams, clik_lnlike, use_clik, clik_filename, using_CAMspec, using_PLik
   
 contains
+
+    subroutine clik_readParams(Ini)
+     Type(TIniFile) Ini
+    
+           clik_filename = Ini_Read_String_File(Ini,'clik_likefile', .false.)
+           if (feedback .gt. 1) print*,'Using clik with likelihood file ',trim(clik_filename)
+        
+    end subroutine clik_readParams
 
   function clik_lnlike(cl,clik_nuis)
     real(dp) :: clik_lnlike
@@ -161,7 +169,7 @@ contains
 !Appending nuisance parameters     
     if (clik_nnuis .ne. 0) then 
        if (using_CAMspec) offset = 0
-       if (using_PLik) offset = 11
+       if (using_PLik) offset = 13+20
        do i=1,clik_nnuis
           clik_cl_and_pars(j) = clik_nuis(i+offset)
           j = j+1

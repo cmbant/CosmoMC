@@ -21,7 +21,7 @@ module settings
   integer, parameter :: num_hard = 14 
   integer, parameter :: num_initpower = 3 
 #ifdef CLIK
-  integer, parameter :: num_freq_params = 14 !#clik#
+  integer, parameter :: num_freq_params = 14 + 20+ 2 !camspec forground + beam + plik
 #else
   integer, parameter :: num_freq_params = 1
 #endif
