@@ -40,6 +40,7 @@ program SolveCosmology
         real bestfit_loglike
         real max_like_radius
         integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2  
+        integer unit
 
 
 #ifdef MPI
@@ -332,6 +333,12 @@ program SolveCosmology
         numtoget = Ini_Read_Int('samples')
 
         call Initialize(DefIni,Params)
+        
+        if (MpiRank==0) then
+            unit = new_file_unit()
+            call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
+            call ClearFileUnit(unit)
+        end if
 
         call Ini_Close
 
