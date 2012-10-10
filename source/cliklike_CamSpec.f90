@@ -17,21 +17,21 @@
 
     subroutine clik_readParams(Ini)
     Type(TIniFile) Ini
+    use settings
     character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
     beamfilename, kszfilename,tszxcibfilename
 
-    likefilename=Ini_Read_String_File(Ini,'likefile',.false.)
+    likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
 
-    sz143filename=Ini_Read_String_File(Ini,'sz143file',.false.)
+    sz143filename=ReadIniFileName(Ini,'sz143file',NotFoundFail = .true.)
 
-    tszxcibfilename=Ini_Read_String_File(Ini,'tszxcibfile',.false.)
+    tszxcibfilename=ReadIniFileName(Ini,'tszxcibfile',NotFoundFail = .true.)
 
-    kszfilename=Ini_Read_String_File(Ini,'kszfile',.false.)
+    kszfilename=ReadIniFileName(Ini,'kszfile',NotFoundFail = .true.)
 
-    beamfilename=Ini_Read_String_File(Ini,'beamfile',.false.)
+    beamfilename=ReadIniFileName(Ini,'beamfile',NotFoundFail = .true.)
 
     call like_init(likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename)
-
 
     end subroutine clik_readParams
 
