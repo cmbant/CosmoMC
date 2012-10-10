@@ -207,6 +207,7 @@ default: cosmomc
 
 all : cosmomc getdist
 
+cliklike_CamSpec.o: temp_like.o
 settings.o: ../camb/libcamb_$(RECOMBINATION).a
 cmbtypes.o: settings.o
 Planck_like.o: cmbtypes.o

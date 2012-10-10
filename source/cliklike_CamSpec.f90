@@ -21,6 +21,7 @@
     character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
     beamfilename, kszfilename,tszxcibfilename
 
+    print *,' using cliklike_CamSpec'
     likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
 
     sz143filename=ReadIniFileName(Ini,'sz143file',NotFoundFail = .true.)
@@ -82,7 +83,7 @@
     beamcoeffs=freq_params(15:15+nbeammodes-1)
 
     do L=lmin,lmax
-        cell_cmb(L)=cl(L,1)/twopi
+        cell_cmb(L)=cl(L,1)/twopi !this is a georgeism
     enddo
 
     do ii=1,nbeams
