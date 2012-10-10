@@ -97,7 +97,7 @@
 
     clik_lnlike = zlike/2
 
-    if (Feedback>0) Print*,'clik lnlike = ',clik_lnlike
+    if (Feedback>0) Print*,'CamSpec lnlike = ',clik_lnlike
 
     end function clik_lnlike
 

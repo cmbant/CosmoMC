@@ -29,7 +29,7 @@ cibr          cibr              # 143-217 correlation coefficient of CIB
 cal0          cal0              # 100/143 relative calibration factor
 cal1          cal1              # 143 absolute calibration factor
 cal2          cal2              # 217/143 relative calibration factor
-xi	          \xi
+xi	          \xi               # TSZ-CIB template amplitude (positive is negative) 
 aksz	      A_{kSZ}
 beam1         beam_{1}
 beam2         beam_{2}

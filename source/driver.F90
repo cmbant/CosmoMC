@@ -123,7 +123,7 @@ program SolveCosmology
         use_TT_beam_ptsrc = Ini_read_Logical('use_WMAP_TT_beam_ptsrc', .true.)
         use_TE = Ini_read_Logical('use_WMAP_TE',.true.)
         use_TT = Ini_Read_Logical('use_WMAP_TT',.true.)
-        print *, 'WMAP beam TE TT', use_TT_beam_ptsrc, use_TE, use_TT
+        print *, 'WMAP options (beam TE TT)', use_TT_beam_ptsrc, use_TE, use_TT
 #endif
 
 #ifdef MPI 
