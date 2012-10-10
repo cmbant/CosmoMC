@@ -335,6 +335,8 @@ program SolveCosmology
         call Initialize(DefIni,Params)
         
         if (MpiRank==0) then
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_CAMB_version', version)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Recombination_model', Recombination_Name)
             unit = new_file_unit()
             call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
             call ClearFileUnit(unit)

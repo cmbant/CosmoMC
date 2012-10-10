@@ -79,9 +79,9 @@
     cal1=freq_params(11) 
     cal2=freq_params(12)
     xi=freq_params(13)
-    if (Feedback >0) print *, 'xi = ', xi
     A_ksz=freq_params(14)
     beamcoeffs=freq_params(15:15+nbeammodes-1)
+    print *, 'xi, A_ksz = ', xi, A_ksz
 
     do L=lmin,lmax
         cell_cmb(L)=cl(L,1)/twopi !this is a georgeism
