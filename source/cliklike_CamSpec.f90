@@ -16,8 +16,8 @@
     contains
 
     subroutine clik_readParams(Ini)
-    Type(TIniFile) Ini
     use settings
+    Type(TIniFile) Ini
     character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
     beamfilename, kszfilename,tszxcibfilename
 
