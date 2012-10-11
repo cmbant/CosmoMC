@@ -7,7 +7,7 @@ mnu           \Sigma m_\nu
 w             w			#equation of state parameter for scalar field dark energy today
 wa            w_a       #w_a variation
 nnu           N_{eff}   #effective number of neutrinos (only clearly defined for massless)
-yhe           Y_{He}    #Helium mass fraction (not used if bbn_consistency)    
+yhe           Y_{P}    #Helium mass fraction (not used if bbn_consistency)    
 alpha1        \alpha_{-1} #correlated CDM isocurvature 
 deltazrei     \Delta_{z,re} #width of reionization
 Alens         A_{L}     #lensing potential scaled by sqrt(A_lens)
@@ -29,7 +29,7 @@ cibr          cibr              # 143-217 correlation coefficient of CIB
 cal0          cal0              # 100/143 relative calibration factor
 cal1          cal1              # 143 absolute calibration factor
 cal2          cal2              # 217/143 relative calibration factor
-xi	          \xi               # TSZ-CIB template amplitude (positive is negative) 
+xi	          \xi_{SZ-CIB}      # TSZ-CIB template amplitude (positive is negative) 
 aksz	      A_{kSZ}
 beam1         beam_{1}
 beam2         beam_{2}
