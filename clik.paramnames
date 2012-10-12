@@ -71,7 +71,7 @@ rstar*        r_*
 thetastar*    \theta_*
 zdrag*        z_{drag}
 rdrag*        r_{drag}
-kd*           k_d
-thetad*       \theta_d
+kd*           k_D
+thetad*       \theta_D
 zeq*          z_{EQ}
 thetaeq*      \theta_{EQ}
