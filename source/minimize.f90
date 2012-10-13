@@ -8,7 +8,7 @@
 
     Type(ParamSet), save :: MinParams
 
-    public FindBestFit, WriteBestFitParams
+    public FindBestFit, WriteBestFitParams,WriteBestFitData
 
     contains
 
@@ -158,7 +158,30 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
     
    
     end subroutine WriteBestFitParams
-    
+
+    subroutine WriteBestFitData(fname,Params)
+     character(LEN=*), intent(in) :: fname
+     Type(ParamSet) Params
+     integer l
+     real nm
+     character(LEN=50) fmt
+     real Cls(lmax,num_cls_tot)
+
+      call ClsFromTheoryData(Params%Info%Theory, Params%Info%LastParams, Cls)
+      call CreateTxtFile(fname,tmp_file_unit)
+      fmt = concat('(1I6,',num_cls_tot,'E15.5')
+      do l = 2, lmax
+       nm = 2*pi/(l*(l+1))
+       if (num_cls_ext > 0) then
+        write (tmp_file_unit,fmt) l, cls(l,1:num_cls)/nm, cls(l,num_cls+1:num_cls_tot) 
+       else
+        write (tmp_file_unit,fmt) l, cls(l,:)/nm
+       end if
+      end do
+      call CloseFile(tmp_file_unit)
+
+    end subroutine WriteBestFitData
+
     !function BestFitCovmatEstimate(tol) result (M)
     !!Cannot find any way to get usable Hessian matrix from BOBYQA, even with high NPT
     !!This is not used..

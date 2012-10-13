@@ -365,6 +365,7 @@ program SolveCosmology
             if (Feedback >0) write(*,*) 'Best-fit results: '
             call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
             if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
+            if (use_CMB) call WriteBestFitData(trim(baseroot)//'.bestfit_cl',Params)
           end if
 #ifdef MPI 
           CALL MPI_Bcast(Params%P, size(Params%P), MPI_REAL, 0, MPI_COMM_WORLD, ierror) 
