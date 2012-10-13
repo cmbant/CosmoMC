@@ -42,6 +42,7 @@ program SolveCosmology
         real max_like_radius
         integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2  
         integer unit
+        logical want_minimize
 
 
 #ifdef MPI
@@ -275,9 +276,16 @@ program SolveCosmology
          if (Ini_Read_String('propose_matrix') /= '') &
            call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
         end if
+        want_minimize = action == action_maxlike &
+              .or. action == action_MCMC .and. estimate_propose_matrix
 
-        max_like_radius = Ini_Read_Real('max_like_radius',0.01) 
-         !radius in normalized parameter space to converge 
+        if (want_minimize) then
+         max_like_radius = Ini_Read_Real('max_like_radius',0.01)
+          !radius in normalized parameter space to converge
+         dense_minimization_points = &
+            Ini_Read_Logical('dense_minimization_points',dense_minimization_points)
+           !if true, use O(N^2) interpolation points; seems this is more robust if slower for high N
+        end if
         
         Ini_fail_on_not_found = .true.
 
@@ -353,8 +361,7 @@ program SolveCosmology
 
         call SetIdlePriority !If running on Windows
 
-        if (action == action_maxlike &
-            .or. action == action_MCMC .and. estimate_propose_matrix) then
+        if (want_minimize) then
         !New Powell 2009 minimization, AL Sept 2012
           if (action == action_maxlike .and. MPIchains>1) call DoAbort( &
            'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')

@@ -7,8 +7,9 @@
     private 
 
     Type(ParamSet), save :: MinParams
+    logical :: dense_minimization_points = .true.
 
-    public FindBestFit, WriteBestFitParams,WriteBestFitData
+    public FindBestFit, WriteBestFitParams,WriteBestFitData,dense_minimization_points
 
     contains
 
@@ -75,7 +76,11 @@
     !Initial and final radius of region required (in normalized units)
     rhobeg = 0.1*sqrt(real(num_params_used))
     rhoend = sigma_frac_err*sqrt(real(num_params_used))
-    npt = 2*num_params_used +1 
+    if (dense_minimization_points) then
+     npt = ((num_params_used +1)*(num_params_used +2))/2
+    else
+     npt = 2*num_params_used +1
+    end if
     if (.not. BOBYQA (ffn, num_params_used ,npt, vect,XL,XU,rhobeg,rhoend,FeedBack+1, max_iterations)) &
        stop 'minimize: FindBestFit failed'
        !BOBYQA generally uses too few operations to get a Hessian estimate
