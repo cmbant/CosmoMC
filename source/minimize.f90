@@ -169,7 +169,7 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
 
       call ClsFromTheoryData(Params%Info%Theory, Params%Info%LastParams, Cls)
       call CreateTxtFile(fname,tmp_file_unit)
-      fmt = concat('(1I6,',num_cls_tot,'E15.5')
+      fmt = concat('(1I6,',num_cls_tot,'E15.5)')
       do l = 2, lmax
        nm = 2*pi/(l*(l+1))
        if (num_cls_ext > 0) then
