@@ -9,12 +9,21 @@ module cliklike
   logical, save :: initialised = .false.
   logical :: using_CAMspec = .false.
   logical :: using_PLik = .false.
+  logical :: using_ACTSPT = .false.
 
   integer, parameter :: dp = kind(1.d0)
   integer(kind=4),dimension(6) :: clik_has_cl,clik_lmax
   integer :: clik_n,clik_ncl,clik_nnuis
   integer :: i,j,l
   integer, dimension(4) :: mapped_index
+
+!Number of nuisance parameters expected for different data sets
+  integer :: num_CAMspec = 33
+  integer :: num_PLik = 10
+  integer :: num_ACTSPT = 21
+  integer :: num_CAMspec_ACTSPT_common = 6
+  integer :: num_PLik_ACTSPT_common = 3
+
   real(dp), dimension(:), allocatable :: clik_cl_and_pars
 
   character (len=256) :: clik_filename
@@ -25,7 +34,7 @@ module cliklike
   
 
   private
-  public :: clik_lnlike, use_clik, clik_filename, using_CAMspec, using_PLik
+  public :: clik_lnlike, use_clik, clik_filename
   
 contains
 
@@ -44,7 +53,7 @@ contains
 !Safeguard
        if (lmax .lt. maxval(clik_lmax)+500) then
           print*,'lmax too low: it should at least be set to',(maxval(clik_lmax)+500)
-          call MpiStop
+          call MPIstop
        end if
 
 
@@ -71,39 +80,35 @@ contains
 !Another safeguard
        if (clik_nnuis .gt. (num_freq_params-1)) then
           Print*,'You are not supplying all required nuisance parameters. Stopping.'
-          stop
+          call MPIstop
        end if
         
-!WARNING: The following part is specific for use with CAMspec v4.1 and PLik v2.  
-!If future versions of these likelihoods use different nuisance parameters,
-!it will need to be updated.
 
-       if (clik_nnuis .eq. 11) then
-          Print*,'You appear to be using a CAMspec v4.X likelihood file.'
+       if (clik_nnuis .eq. num_CAMspec) then
+          Print*,'You appear to be using a CAMspec DX9 likelihood file.'
           using_CAMspec = .true.
-       else if (clik_nnuis .eq. 2) then
-          Print*,'You appear to be using a PLik likelihood file.'
+       else if (clik_nnuis .eq. num_PLik) then
+          Print*,'You appear to be using a PLik DX9 likelihood file.'
           using_PLik = .true.
-       else if (clik_nnuis .eq. 9) then
-          Print*,'You appear to be using a CAMspec v3.X or earlier likelihood file &
-               & which is no longer supported by cliklike. You will have to modify &
-               & cliklike.f90 to ensure that the nuisance parameters are correctly &
-               & passed to the likelihood function in calclike.f90. &
-               & The following nuisance parameters are required:'
-          do i=1,clik_nnuis
-             Print*,trim(names(i))
-          end do
-          stop
-       else if (clik_nnuis .eq. 3) then
-          Print*,'You appear to be using a PLik v1 or earlier likelihood file &
-               & which is no longer supported by cliklike. You will have to modify &
-               & cliklike.f90 to ensure that the nuisance parameters are correctly &
-               & passed to the likelihood function in calclike.f90. &
-               & The following nuisance parameters are required:'
-          do i=1,clik_nnuis
-             Print*,trim(names(i))
-          end do
-          stop
+       else if (clik_nnuis .eq. num_ACTSPT) then 
+          Print*,'You appear to be using an ACT/SPT likelihood file.'
+          using_ACTSPT = .true.
+       else if (clik_nnuis .eq. (num_CAMspec + num_ACTSPT - num_CAMspec_ACTSPT_common)) then
+          Print*,'You appear to be using a CAMspec DX9 + ACT/SPT likelihood file.'
+          Print*,'WARNING: absolutely make sure that the CAMspec nuisance parameters'
+          Print*,'are listed AFTER then ACT/SPT nuisance parameters below.'
+          Print*,'If not, you need to create the combined .clik file with a different'
+          Print*,'of arguments.'
+          using_CAMspec = .true.
+          using_ACTSPT = .true.       
+       else if (clik_nnuis .eq. (num_PLik + num_ACTSPT - num_PLik_ACTSPT_common)) then
+          Print*,'You appear to be using a PLik DX9 + ACT/SPT likelihood file.'
+       	  Print*,'WARNING: absolutely make sure that the PLik nuisance parameters'
+       	  Print*,'are listed AFTER then ACT/SPT nuisance parameters below.'
+       	  Print*,'If not, you need to create the combined .clik file with a different'
+       	  Print*,'of arguments.'
+          using_PLik = .true.  
+          using_ACTSPT = .true.
        else if (clik_nnuis .ne. 0) then
           Print*,'Unknown likelihood format.  Make sure that nuisance parameters are &
                & correctly passed to the likelihood function in calclike.f90 before &
@@ -111,7 +116,7 @@ contains
           do i=1,clik_nnuis
              Print*,trim(names(i))
           end do
-          stop
+          call MPIstop
        end if
 
 
@@ -121,7 +126,6 @@ contains
              Print*,trim(names(i))
           end do
        end if
-
 
 
 !tidying up
@@ -157,16 +161,58 @@ contains
           j = j+1
        end do
     end do
+
  
-!Appending nuisance parameters     
+!Appending nuisance parameters
+!Not pretty. Oh well.     
     if (clik_nnuis .ne. 0) then 
        if (using_CAMspec) offset = 0
-       if (using_PLik) offset = 11
-       do i=1,clik_nnuis
-          clik_cl_and_pars(j) = clik_nuis(i+offset)
-          j = j+1
-        end do
+       if (using_PLik) offset = num_CAMspec
+
+       if (.not. using_ACTSPT) then
+          do i=1,clik_nnuis
+             clik_cl_and_pars(j) = clik_nuis(i+offset)
+             j = j+1
+          end do
+       else
+          if (using_CAMspec) then
+             do i=1,num_CAMspec
+                clik_cl_and_pars(j) = clik_nuis(i)
+                j = j+1
+             end do
+             !skip ACT/SPT parameters 1,2,3,9,10,14 (already included in CAMspec nuisance params)
+             do i=1,num_ACTSPT
+                if (.not. ((i .eq. 1) .or. (i .eq. 2) .or. (i .eq. 3) .or. &
+                    & (i .eq. 9) .or. (i .eq. 10) .or. (i .eq. 14))) then
+                       clik_cl_and_pars(j) = clik_nuis(i+num_CAMspec+num_PLik)
+                       j = j+1
+                end if
+             end do
+          else if (using_PLik) then
+             do i=1,num_PLik
+                clik_cl_and_pars(j) = clik_nuis(i+num_CAMspec)
+                j = j+1
+             end do
+       	     !skip ACT/SPT parameters 9,10,14 (already included in CAMspec nuisance params)
+             do i=1,num_ACTSPT 
+       	       	if (.not. ((i .eq. 9) .or. (i .eq. 10) .or. (i .eq. 14))) then
+                       clik_cl_and_pars(j) = clik_nuis(i+num_CAMspec+num_PLik)
+                       j = j+1
+       	       	end if
+             end do
+          else
+             do i=1,clik_nnuis
+                clik_cl_and_pars(j) = clik_nuis(i+num_CAMspec+num_PLik)
+                j = j+1
+             end do
+          end if 
+       end if
     end if   
+
+
+!   do i=1,clik_nnuis
+!     Print*,clik_cl_and_pars(size(clik_cl_and_pars)-clik_nnuis+i)
+!   end do
 
 
 !Get - ln like needed by CosmoMC

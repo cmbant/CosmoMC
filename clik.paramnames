@@ -18,19 +18,70 @@ nrun          n_{run}
 logA          log[10^{10} A_s]
 r             r_{pivot} #ratio of tensor to scalar primordial amplitudes at pivot scale
 asz           A_{SZ}		#SZ template amplitude, as in WMAP
-aps100        A_{PS}^{100}      # Point source amplitude at 100 GHz
-aps143        A_{PS}^{143}      # Point source amplitude at 143 GHz
-aps217        A_{PS}^{217}      # Point source amplitude at 217 GHz
-acib143       A_{CIB143}        # CIB amplitude at 143 GHz
-acib217       A_{CIB217}        # CIB amplitude at 217 GHz
-asz143        A_{SZ143}         # Thermal SZ amplitude at 143 GHz
+aps100        A_{PS100}         # PS amplitude at 100
+aps143        A_{PS143}         # PS amplitude at 143
+aps217        A_{PS217}         # PS amplitude at 217
+acib143       A_{CIB143}        # CIB amplitude at 143
+acib217       A_{CIB217}        # CIB amplitude at 217
+asz143        A_{SZ143}         # Thermal SZ amplitude at 143
 psr           psr               # 143-217 correlation coefficient of point source residuals
 cibr          cibr              # 143-217 correlation coefficient of CIB
-cal0          cal0              # 100/143 relative calibration factor
-cal1          cal1              # 143 absolute calibration factor
-cal2          cal2              # 217/143 relative calibration factor
-norm_rg       D_r               # amplitude of radio foreground spectrum
-norm_dg_cl    D_c               # amplitude of dusty foreground spectrum
+cal0          cal0              # relative calibration factor 100/143
+cal1          cal1              # calibration factor 143
+cal2          cal2              # relative calibration factor 217/143
+xi            xi
+aksz         A_{kSZ}
+bm_1_1
+bm_1_2
+bm_1_3
+bm_1_4
+bm_1_5
+bm_2_1
+bm_2_2
+bm_2_3
+bm_2_4
+bm_2_5
+bm_3_1
+bm_3_2
+bm_3_3
+bm_3_4
+bm_3_5
+bm_4_1
+bm_4_2
+bm_4_3
+bm_4_4
+bm_4_5
+A_cib_143
+A_cib_217
+r_cib
+ps_pwfe_A_100_100
+ps_pwfe_A_100_143
+ps_pwfe_A_100_217
+ps_pwfe_A_143_143
+ps_pwfe_A_143_217 
+ps_pwfe_A_217_217 
+gal_norm 
+A_sz_AS
+A_ksz_AS
+xi_sz_cib_AS
+a_ps_act_148
+a_ps_act_217
+a_ps_spt_95
+a_ps_spt_150
+a_ps_spt_220
+A_cib_143_AS
+A_cib_217_AS
+r_ps_spt_95x150
+r_ps_spt_95x220
+r_ps_150x220
+r_cib_AS
+cal_acts_148
+cal_acts_217
+cal_acte_148
+cal_acte_217
+cal_spt_95
+cal_spt_150
+cal_spt_220
 omegal*       \Omega_\Lambda
 age*          Age/Gyr
 omegam*       \Omega_m

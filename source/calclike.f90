@@ -128,7 +128,8 @@ contains
           if (Use_CMB) GetLogLikePost = &
             CMBLnLike(acl, CMB%norm(norm_freq_ix:norm_freq_ix+num_freq_params-1),CMB%nuisance) + GetLogLikePost
 #ifdef CLIK
-!Assuming CAMspec nuisance parameters are set as freq_params(2:12) and smica nuisance parameters as freq_params(13:14)
+!Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
+!freq_params(35:44), ACT/SPT as freq_params(45:65)
           if (Use_clik) then
              GetLogLikePost = GetLogLikePost + clik_lnlike(dble(acl),dble(CMB%norm(norm_freq_ix+1:norm_freq_ix+num_freq_params-1)))
           end if
