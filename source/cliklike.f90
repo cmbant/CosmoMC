@@ -98,7 +98,7 @@ contains
           Print*,'WARNING: absolutely make sure that the CAMspec nuisance parameters'
           Print*,'are listed AFTER then ACT/SPT nuisance parameters below.'
           Print*,'If not, you need to create the combined .clik file with a different'
-          Print*,'of arguments.'
+          Print*,'order of arguments.'
           using_CAMspec = .true.
           using_ACTSPT = .true.       
        else if (clik_nnuis .eq. (num_PLik + num_ACTSPT - num_PLik_ACTSPT_common)) then
@@ -106,7 +106,7 @@ contains
        	  Print*,'WARNING: absolutely make sure that the PLik nuisance parameters'
        	  Print*,'are listed AFTER then ACT/SPT nuisance parameters below.'
        	  Print*,'If not, you need to create the combined .clik file with a different'
-       	  Print*,'of arguments.'
+       	  Print*,'order of arguments.'
           using_PLik = .true.  
           using_ACTSPT = .true.
        else if (clik_nnuis .ne. 0) then
