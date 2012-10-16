@@ -18,7 +18,7 @@ cfitsio ?= /usr/local/cfitsio/intel10/64/3.040
 GSLPATH ?= /home/aml1005/libs/gsl
 
 #empty not to compile with CLIK, otherwise set to name of cliklike.f90 file
-PLANCKLIKE ?= cliklike_CamSpec
+PLANCKLIKE ?= 
 #PLANCKLIKE =cliklike_CamSpec
 #PLANCKLIKE =cliklike
 
@@ -116,10 +116,10 @@ endif
 PLANCKLIKEFILES=
 
 ifeq ($(PLANCKLIKE),cliklike_CamSpec)
-PLANCKLIKEFILES += temp_like.o
+PLANCKLIKEFILES += temp_like.o $(PLANCKLIKE).o
 endif
 
-LIKEFILES = $(PLANCKLIKEFILES) $(PLANCKLIKE).o calclike.o
+LIKEFILES = $(PLANCKLIKEFILES)  calclike.o
 
 OBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
 	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
