@@ -17,10 +17,11 @@ program SolveCosmology
         use MatrixUtils
         use IO
         use ParamNames
+        use GaugeInterface, only : Eqns_name
 #ifdef CLIK
         use cliklike 
 #endif
-#ifdef WMAP_PARAMS
+#ifndef NOWMAP
         use WMAP_OPTIONS
 #endif
         implicit none 
@@ -40,6 +41,8 @@ program SolveCosmology
         real bestfit_loglike
         real max_like_radius
         integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2  
+        integer unit
+        logical want_minimize
 
 
 #ifdef MPI
@@ -119,11 +122,11 @@ program SolveCosmology
         checkpoint = Ini_Read_Logical('checkpoint',.false.)
         if (checkpoint) flush_write = .true.
         
-#ifdef WMAP_PARAMS
-        use_TT_beam_ptsrc = Ini_read_Logical('use_TT_beam_ptsrc')
-        use_TE = Ini_read_Logical('use_TE')
-        use_TT = Ini_Read_Logical('use_TT')
-        print *, 'WMAP beam TE TT', use_TT_beam_ptsrc, use_TE, use_TT
+#ifndef NOWMAP
+        use_TT_beam_ptsrc = Ini_read_Logical('use_WMAP_TT_beam_ptsrc', .true.)
+        use_TE = Ini_read_Logical('use_WMAP_TE',.true.)
+        use_TT = Ini_Read_Logical('use_WMAP_TT',.true.)
+        print *, 'WMAP options (beam TE TT)', use_TT_beam_ptsrc, use_TE, use_TT
 #endif
 
 #ifdef MPI 
@@ -273,9 +276,16 @@ program SolveCosmology
          if (Ini_Read_String('propose_matrix') /= '') &
            call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
         end if
+        want_minimize = action == action_maxlike &
+              .or. action == action_MCMC .and. estimate_propose_matrix
 
-        max_like_radius = Ini_Read_Real('max_like_radius',0.01) 
-         !radius in normalized parameter space to converge 
+        if (want_minimize) then
+         max_like_radius = Ini_Read_Real('max_like_radius',0.01)
+          !radius in normalized parameter space to converge
+         dense_minimization_points = &
+            Ini_Read_Logical('dense_minimization_points',dense_minimization_points)
+           !if true, use O(N^2) interpolation points; seems this is more robust if slower for high N
+        end if
         
         Ini_fail_on_not_found = .true.
 
@@ -300,10 +310,7 @@ program SolveCosmology
         end if
 
 #ifdef CLIK
-        if (Use_clik) then
-           clik_filename = Ini_Read_String('clik_likefile', .false.)
-           if (feedback .gt. 1) print*,'Using clik with likelihood file ',trim(clik_filename)
-        end if
+        if (Use_clik) call clik_readParams(DefIni)
 #endif
 
         Ini_fail_on_not_found = .true.
@@ -335,6 +342,17 @@ program SolveCosmology
         numtoget = Ini_Read_Int('samples')
 
         call Initialize(DefIni,Params)
+        
+        if (MpiRank==0) then
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_CAMB_version', version)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Recombination', Recombination_Name)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Equations', Eqns_name)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Reionization', Reionization_Name)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_InitialPower', Power_Name)
+            unit = new_file_unit()
+            call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
+            call ClearFileUnit(unit)
+        end if
 
         call Ini_Close
 
@@ -343,8 +361,7 @@ program SolveCosmology
 
         call SetIdlePriority !If running on Windows
 
-        if (action == action_maxlike &
-            .or. action == action_MCMC .and. estimate_propose_matrix) then
+        if (want_minimize) then
         !New Powell 2009 minimization, AL Sept 2012
           if (action == action_maxlike .and. MPIchains>1) call DoAbort( &
            'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
@@ -354,6 +371,7 @@ program SolveCosmology
             bestfit_loglike = FindBestFit(Params,max_like_radius,2000)
             if (Feedback >0) write(*,*) 'Best-fit results: '
             call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
+            if (use_CMB) call WriteBestFitData(trim(baseroot)//'.bestfit_cl',Params)
             if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
           end if
 #ifdef MPI 

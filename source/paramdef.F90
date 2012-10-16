@@ -132,6 +132,15 @@ subroutine DoAbort(S)
        stop
 end subroutine DoAbort
 
+subroutine ParamError(str,param)
+  character(LEN=*), intent(in) :: str
+  integer, intent(in) :: param
+
+  call DoAbort(trim(str)//': '//trim(ParamNameOrNumber(param)))
+
+end subroutine ParamError
+
+
 subroutine Initialize(Ini,Params)
         use IniFile
         use ParamNames
@@ -156,7 +165,7 @@ subroutine Initialize(Ini,Params)
 
         prop_mat = trim(Ini_Read_String_File(Ini,'propose_matrix'))
         has_propose_matrix = prop_mat /= ''
-        prop_mat = concat(LocalDir,prop_mat)
+        if (prop_mat(1:1) /= '/') prop_mat = concat(LocalDir,prop_mat)
          
         fname = Ini_Read_String_File(Ini,'continue_from')
         if (fname /= '') call DoAbort('continue_from replaced by checkpoint')
@@ -187,19 +196,13 @@ subroutine Initialize(Ini,Params)
             end if  
            else 
             InLine =  ParamNames_ReadIniForParam(NameMapping,DefIni,'param',i)
-            if (InLine=='') then
-             if (NameMapping%nnames/=0) then
-              call MpiStop('parameter ranges not found, param '//trim(IntToStr(i))// &
-                             ' - '//trim(NameMapping%Name(i)))
-             else
-              call MpiStop('parameter ranges not found, param '//trim(IntToStr(i)))
-             end if
-             !Ini_Read_String(numcat('param',i), .true.)
-            end if
+            if (InLine=='') call ParamError('parameter ranges not found',i) 
             read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), wid, Scales%PWidth(i)
            end if  
            Scales%center(i) = center
-           if (Scales%PMax(i) < Scales%PMin(i)) call DoAbort('You have param Max < Min')
+           if (Scales%PMax(i) < Scales%PMin(i)) call ParamError('You have param Max < Min',i)
+           if (Scales%center(i) < Scales%PMin(i)) call ParamError('You have param center < Min',i)
+           if (Scales%center(i) > Scales%PMax(i)) call ParamError('You have param center > Max',i)
            if (Scales%PWidth(i) /= 0) then
                num_params_used = num_params_used + 1
               if (i > num_hard .and. use_fast_slow) then
@@ -404,7 +407,7 @@ end subroutine SetProposeMatrix
    end subroutine WriteIndepSample
 
 
-   subroutine AddMPIParams(P,like, checkpoint_start)     
+   subroutine AddMPIParams(P,like, checkpoint_start)
      real, intent(in) ::like
      real P(:)
      logical, intent(in), optional :: checkpoint_start

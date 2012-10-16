@@ -7,7 +7,7 @@ mnu           \Sigma m_\nu
 w             w			#equation of state parameter for scalar field dark energy today
 wa            w_a       #w_a variation
 nnu           N_{eff}   #effective number of neutrinos (only clearly defined for massless)
-yhe           Y_{He}    #Helium mass fraction (not used if bbn_consistency)    
+yhe           Y_{P}    #Helium mass fraction (not used if bbn_consistency)    
 alpha1        \alpha_{-1} #correlated CDM isocurvature 
 deltazrei     \Delta_{z,re} #width of reionization
 Alens         A_{L}     #lensing potential scaled by sqrt(A_lens)
@@ -18,19 +18,19 @@ nrun          n_{run}
 logA          log[10^{10} A_s]
 r             r_{pivot} #ratio of tensor to scalar primordial amplitudes at pivot scale
 asz           A_{SZ}		#SZ template amplitude, as in WMAP
-aps100        A_{PS100}         # PS amplitude at 100
-aps143        A_{PS143}         # PS amplitude at 143
-aps217        A_{PS217}         # PS amplitude at 217
-acib143       A_{CIB143}        # CIB amplitude at 143
-acib217       A_{CIB217}        # CIB amplitude at 217
-asz143        A_{SZ143}         # Thermal SZ amplitude at 143
-psr           psr               # 143-217 correlation coefficient of point source residuals
+aps100        A_{PS}^{100}      # Point source amplitude at 100 GHz
+aps143        A_{PS}^{143}      # Point source amplitude at 143 GHz
+aps217        A_{PS}^{217}      # Point source amplitude at 217 GHz
+acib143       A_{CIB143}        # CIB amplitude at 143 GHz
+acib217       A_{CIB217}        # CIB amplitude at 217 GHz
+asz143        A_{SZ143}         # Thermal SZ amplitude at 143 GHzpsr           
+psr               # 143-217 correlation coefficient of point source residuals
 cibr          cibr              # 143-217 correlation coefficient of CIB
 cal0          cal0              # relative calibration factor 100/143
 cal1          cal1              # calibration factor 143
 cal2          cal2              # relative calibration factor 217/143
-xi            xi
-aksz         A_{kSZ}
+xi            \xi_{SZ-CIB}      # TSZ-CIB template amplitude (positive is negative)
+aksz          A_{kSZ}
 bm_1_1
 bm_1_2
 bm_1_3
@@ -100,7 +100,7 @@ rstar*        r_*
 thetastar*    \theta_*
 zdrag*        z_{drag}
 rdrag*        r_{drag}
-kd*           k_d
-thetad*       \theta_d
+kd*           k_D
+thetad*       \theta_D
 zeq*          z_{EQ}
 thetaeq*      \theta_{EQ}

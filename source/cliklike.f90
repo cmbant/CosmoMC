@@ -31,12 +31,19 @@ module cliklike
   character (len=256), dimension(:), pointer :: names
 
   type(clik_object) :: clikid
-  
 
   private
-  public :: clik_lnlike, use_clik, clik_filename
-  
+  public :: clik_readParams,clik_lnlike, use_clik, clik_filename
+
 contains
+
+    subroutine clik_readParams(Ini)
+     Type(TIniFile) Ini
+    
+           clik_filename = Ini_Read_String_File(Ini,'clik_likefile', .false.)
+           if (feedback .gt. 1) print*,'Using clik with likelihood file ',trim(clik_filename)
+        
+    end subroutine clik_readParams
 
   function clik_lnlike(cl,clik_nuis)
     real(dp) :: clik_lnlike

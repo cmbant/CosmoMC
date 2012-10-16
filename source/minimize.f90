@@ -7,8 +7,9 @@
     private 
 
     Type(ParamSet), save :: MinParams
+    logical :: dense_minimization_points = .true.
 
-    public FindBestFit, WriteBestFitParams
+    public FindBestFit, WriteBestFitParams,WriteBestFitData,dense_minimization_points
 
     contains
 
@@ -75,7 +76,11 @@
     !Initial and final radius of region required (in normalized units)
     rhobeg = 0.1*sqrt(real(num_params_used))
     rhoend = sigma_frac_err*sqrt(real(num_params_used))
-    npt = 2*num_params_used +1 
+    if (dense_minimization_points) then
+     npt = min(4*num_params_used,((num_params_used +1)*(num_params_used +2))/2)
+    else
+     npt = 2*num_params_used +1 !have had some problems using just this
+    end if
     if (.not. BOBYQA (ffn, num_params_used ,npt, vect,XL,XU,rhobeg,rhoend,FeedBack+1, max_iterations)) &
        stop 'minimize: FindBestFit failed'
        !BOBYQA generally uses too few operations to get a Hessian estimate
@@ -158,7 +163,30 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
     
    
     end subroutine WriteBestFitParams
-    
+
+    subroutine WriteBestFitData(fname,Params)
+     character(LEN=*), intent(in) :: fname
+     Type(ParamSet) Params
+     integer l
+     real nm
+     character(LEN=50) fmt
+     real Cls(lmax,num_cls_tot)
+
+      call ClsFromTheoryData(Params%Info%Theory, Params%Info%LastParams, Cls)
+      call CreateTxtFile(fname,tmp_file_unit)
+      fmt = concat('(1I6,',num_cls_tot,'E15.5)')
+      do l = 2, lmax
+       nm = 2*pi/(l*(l+1))
+       if (num_cls_ext > 0) then
+        write (tmp_file_unit,fmt) l, cls(l,1:num_cls)/nm, cls(l,num_cls+1:num_cls_tot) 
+       else
+        write (tmp_file_unit,fmt) l, cls(l,:)/nm
+       end if
+      end do
+      call CloseFile(tmp_file_unit)
+
+    end subroutine WriteBestFitData
+
     !function BestFitCovmatEstimate(tol) result (M)
     !!Cannot find any way to get usable Hessian matrix from BOBYQA, even with high NPT
     !!This is not used..

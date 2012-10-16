@@ -9,23 +9,25 @@ EXTDATA =
 RECOMBINATION ?=recfast
 
 #set WMAP empty not to compile with WMAP
-WMAP = /home/aml1005/WMAP7/likelihood_v4
+WMAP ?= /home/aml1005/WMAP7/likelihood_v4
 
 #Only needed for WMAP
-cfitsio = /usr/local/cfitsio/intel10/64/3.040
+cfitsio ?= /usr/local/cfitsio/intel10/64/3.040
 
 #GSL only needed for DR7 LRG
 GSLPATH ?= /home/aml1005/libs/gsl
 
-#empty not to compile with CLIK, otherwise set to CLIK
-PLANCKLIKE =
-#PLANCKLIKE =CLIK
+#empty not to compile with CLIK, otherwise set to name of cliklike.f90 file
+PLANCKLIKE ?= cliklike_CamSpec
+#PLANCKLIKE =cliklike_CamSpec
+#PLANCKLIKE =cliklike
+
 
 IFLAG = -I
 INCLUDE =
 
 #clik path and library
-ifeq ($(PLANCKLIKE),CLIK)
+ifeq ($(PLANCKLIKE),cliklike)
 CLIKPATH = /path/to/clik
 CLIKL = -L$(CLIKPATH)/lib -lclik_f90
 INCLUDE = $(IFLAG)$(CLIKPATH)/include
@@ -49,13 +51,6 @@ LAPACKL = -lmpi
 #commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
 #LAPACKL = -lblas -llapack
 
-#HPCF settings. Use Intel 9 or 10.1+, not 10.0
-#F90C     = mpif90
-#FFLAGS = -O2 -Vaxlib -W0 -WB -openmp -fpp -DMPI -vec_report0
-#LAPACKL = -L/usr/local/Cluster-Apps/intel/mkl/10.2.2.025/lib/em64t -lmkl_lapack -lmkl -lguide -lpthread
-#GSLPATH = /usr/local/Cluster-Apps/gsl/1.9
-#cfitsio = /usr/local/Cluster-Users/cpac/cmb/2.1.0/cfitsio
-#INCLUDE=
 
 #COSMOS: use "module load cosmolib latest"
 #use "runCosmomc" (globally installed) to run, defining required memory usage
@@ -68,22 +63,17 @@ WMAP = $(COSMOLIB)/WMAP7
 GSLPATH = $(GSL_ROOT)
 endif
 
+ifeq ($(COSMOHOST),darwin)
+WMAP = /scratch/stg20/likelihood_v4p1
+cfitsio = /usr/local/Cluster-Apps/cfitsio/intel/3.300
+FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
+endif
+
+
 #G95; make sure LAPACK and MPI libs also compiled with g95
 #F90C     = mpif90
 #FFLAGS = -O2 -cpp -DMPI
 #LAPACKL = /LAPACK/lapack_LINUX.a /LAPACK/blas_LINUX.a
-
-#SGI, -mp toggles multi-processor. Use -O2 if -Ofast gives problems.
-#Not various versions of the compiler are buggy giving erroneous seg faults with -mp.
-#Version 7.3 is OK, currently version 7.4 is bugged, as are some earlier versions.
-#F90C     = f90
-#LAPACKL = -lcomplib.sgimath
-#FFLAGS  = -Ofast -mp
-
-#Digital/Compaq fortran, -omp toggles multi-processor
-#F90C    = f90
-#FFLAGS  = -omp -O4 -arch host -math_library fast -tune host -fpe1
-#LAPACKL  = -lcxml
 
 #Absoft ProFortran, single processor, set -cpu:[type] for your local system
 #F90C     = f95
@@ -100,27 +90,6 @@ endif
 #F90C = pgf90
 #FFLAGS = -O2 -DESCAPEBACKSLASH -Mpreprocess
 #LAPACKL = -llapack -lblas
-
-
-#Sun, single processor:
-#F90C     = f90
-#FFLAGS = -fast -ftrap=%none
-#LAPACKL = -lsunperf -lfsu
-#LAPACKL = -lsunperf -lfsu -lsocket -lm
-#IFLAG = -M
-
-#Sun MPI
-#F90C = mpf90
-#FFLAGS =  -O4 -openmp -ftrap=%none -dalign -DMPI
-#LAPACKL = -lsunperf -lfsu -lmpi_mt
-#IFLAG = -M
-
-#Sun parallel enterprise:
-#F90C     = f95
-#FFLAGS =  -O4 -xarch=native64 -openmp -ftrap=%none
-#LAPACKL = -lsunperf -lfsu
-#IFLAG = -M
-
 
 #IBM XL Fortran, multi-processor (run "module load lapack" then run "gmake")
 # See also http://cosmocoffee.info/viewtopic.php?t=326
@@ -140,13 +109,17 @@ LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
-LIKEFILES=
-ifeq ($(PLANCKLIKE),CLIK)
-LIKEFILES += cliklike.o 
+ifneq ($(PLANCKLIKE),)
 FFLAGS += -DCLIK
 endif
 
-LIKEFILES+= calclike.o
+PLANCKLIKEFILES=
+
+ifeq ($(PLANCKLIKE),cliklike_CamSpec)
+PLANCKLIKEFILES += temp_like.o
+endif
+
+LIKEFILES = $(PLANCKLIKEFILES) $(PLANCKLIKE).o calclike.o
 
 OBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
 	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
@@ -201,6 +174,7 @@ default: cosmomc
 
 all : cosmomc getdist
 
+cliklike_CamSpec.o: temp_like.o
 settings.o: ../camb/libcamb_$(RECOMBINATION).a
 cmbtypes.o: settings.o
 Planck_like.o: cmbtypes.o
