@@ -14,7 +14,7 @@ implicit none
 
 !l_max. Tensors are not computed unless compute_tensors = T in input file
 !Make these multiples of 50, should be 50 more than you need accurately
-  integer, parameter :: lmax = 3100, lmax_tensor = 400 !#clik#
+  integer, parameter :: lmax = 6500, lmax_tensor = 400 !note only lmax_computed_cl is actually calculated
 
 !Parameters for calculating/storing the matter power spectrum
 !Note that by default everything is linear

@@ -29,11 +29,15 @@ module CMB_Cls
     Type (CMBParams)   :: LastParams
   end Type ParamSetInfo
 
+  integer :: lmax_computed_cl = lmax !value used for CAMB
+  
   integer, parameter :: ScalClOrder(5) = (/1,3,2,4,5/), TensClOrder(4) = (/1,4,2,3/)
       !Mapping of CAMB CL array ordering to TT , TE, EE, BB, phi, phiT  
   integer :: ncalls = 0
   integer :: nerrors = 0
   type(CAMBParams)  CAMBP 
+  
+  real, allocatable :: highL_lensedCL_template(:,:)
   
 contains
   subroutine CMBToCAMB(CMB,P)
@@ -232,11 +236,12 @@ contains
    real, parameter :: cons =  (COBE_CMBTemp*1e6)**2*2*pi
    real nm
    integer l
-
+   real highL_norm
+   
    !The reason we store tensors separately is that can then importance sample re-computing scalars only,
    !using the stored tensor C_l
-
-    do l = 2, lmax
+    Theory%cl=0
+    do l = 2, lmax_computed_cl
 
        nm = cons/(l*(l+1))
        if (CMB_Lensing) then
@@ -265,6 +270,13 @@ contains
  
     end do 
     
+    if (lmax_computed_cl/=lmax) then
+        !use template for very high L theory tail, scaled not to be discontinuous
+       highL_norm = Theory%cl(lmax_computed_cl,1)/highL_lensedCL_template(lmax_computed_cl,1)
+       do l = lmax_computed_cl+1, lmax
+          Theory%cl(l,1:num_ClsS) =  highL_norm*highL_lensedCL_template(l,1:num_clsS)
+       end do 
+     end if
 
  end subroutine SetTheoryFromCAMB
 
@@ -445,8 +457,8 @@ contains
         P%WantTensors = compute_tensors
         P%WantTransfer = Use_LSS
 
-        P%Max_l=lmax
-        P%Max_eta_k=lmax*2
+        P%Max_l=lmax_computed_cl
+        P%Max_eta_k=lmax_computed_cl*2
       
         P%Max_l_tensor=lmax_tensor
         P%Max_eta_k_tensor=lmax_tensor*5./2
@@ -511,7 +523,7 @@ contains
 
         if (CMB_Lensing) then
             P%DoLensing = .true.
-            P%Max_l = lmax +100 + 50 !+50 in case accuracyBoost>1 and so odd l spacing
+            P%Max_l = lmax_computed_cl +100 + 50 !+50 in case accuracyBoost>1 and so odd l spacing
             P%Max_eta_k = P%Max_l*2 
         end if
         
@@ -527,6 +539,29 @@ contains
 
 
  end subroutine InitCAMBParams
+ 
+ 
+ subroutine LoadFiducialHighLTemplate(fname)
+ !This should be a lensed scalar CMB power spectrum, e.g. for including at very high L where foregrounds etc. dominate anyway
+   integer L
+   real array(4), nm
+   character(LEN=*), intent(in) :: fname
+
+        allocate(highL_lensedCL_template(2:lmax, num_clsS))
+        call OpenTxtFile(fname,tmp_file_unit)
+        do
+         read(tmp_file_unit,*, end=500) L , array
+         if (L>lmax) exit
+         nm = 2*pi/(l*(l+1))
+         if (L>=2) highL_lensedCL_template(L,1:num_clsS) = nm*array(TensClOrder(1:num_clsS))
+        end do
+        if (L<lmax) call MpiStop('highL_theory_cl_template does not go to lmax')
+        if (highL_lensedCL_template(2,1) < 100) &
+           call MpiStop('highL_theory_cl_template must be in muK^2')
+
+        500  close(tmp_file_unit)
+
+ end subroutine LoadFiducialHighLTemplate
 
  subroutine CMB_Initialize(Info)
    Type(ParamSetInfo) Info
@@ -534,11 +569,17 @@ contains
         compute_tensors = Ini_Read_Logical('compute_tensors',.false.)
         if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
         CMB_lensing = Ini_Read_Logical('CMB_lensing',.false.)
-
+        lmax_computed_cl = Ini_Read_Int('lmax_computed_cl',lmax)
+        if (lmax_computed_cl /= lmax) then
+          if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
+          call LoadFiducialHighLTemplate(Ini_Read_String('highL_theory_cl_template',.true.))
+        end if
+        
         if (Feedback > 0 ) then
           write (*,*) 'Computing tensors:', compute_tensors
           write (*,*) 'Doing CMB lensing:',CMB_lensing
           write(*,'(" lmax           = ",1I4)') lmax       
+          write(*,'(" lmax_computed_cl  = ",1I4)') lmax_computed_cl
           if (compute_tensors) write(*,'(" lmax_tensor    = ",1I4)') lmax_tensor
           write(*,'(" Number of C_ls = ",1I4)') num_cls
         end if
