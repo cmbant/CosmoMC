@@ -19,11 +19,12 @@ $ini = $params;
 if ($ini !~ m/\.ini/) {$ini= "$ini.ini"}
 
 $path = $cosmomc;
+$params =~ s/\//_/g;
 
 open(Fout,">./scripts/script_MPI");
 print Fout <<EMP;
 #!/bin/csh -f
-#PBS -N cosmomc
+#PBS -N $params
 #PBS -l nodes=$num:ppn=2,walltime=10:00:00
 #PBS -r n
 #PBS -W x=NACCESSPOLICY:SINGLEJOB
