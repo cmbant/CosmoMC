@@ -77,9 +77,9 @@
     rhobeg = 0.1*sqrt(real(num_params_used))
     rhoend = sigma_frac_err*sqrt(real(num_params_used))
     if (dense_minimization_points) then
-     npt = ((num_params_used +1)*(num_params_used +2))/2
+     npt = min(4*num_params_used,((num_params_used +1)*(num_params_used +2))/2)
     else
-     npt = 2*num_params_used +1
+     npt = 2*num_params_used +1 !have had some problems using just this
     end if
     if (.not. BOBYQA (ffn, num_params_used ,npt, vect,XL,XU,rhobeg,rhoend,FeedBack+1, max_iterations)) &
        stop 'minimize: FindBestFit failed'
