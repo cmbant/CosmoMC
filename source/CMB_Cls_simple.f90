@@ -541,12 +541,13 @@ contains
  end subroutine InitCAMBParams
  
  
- subroutine LoadFiducialHighLTemplate(fname)
+ subroutine LoadFiducialHighLTemplate
  !This should be a lensed scalar CMB power spectrum, e.g. for including at very high L where foregrounds etc. dominate anyway
    integer L
    real array(4), nm
-   character(LEN=*), intent(in) :: fname
-
+   character(LEN=Ini_max_string_len) :: fname
+  
+        fname = ReadIniFilename(DefIni,DataDir,'highL_theory_cl_template',.true.)
         allocate(highL_lensedCL_template(2:lmax, num_clsS))
         call OpenTxtFile(fname,tmp_file_unit)
         do
@@ -555,11 +556,12 @@ contains
          nm = 2*pi/(l*(l+1))
          if (L>=2) highL_lensedCL_template(L,1:num_clsS) = nm*array(TensClOrder(1:num_clsS))
         end do
-        if (L<lmax) call MpiStop('highL_theory_cl_template does not go to lmax')
+500     close(tmp_file_unit)
+
         if (highL_lensedCL_template(2,1) < 100) &
            call MpiStop('highL_theory_cl_template must be in muK^2')
 
-        500  close(tmp_file_unit)
+        if (L<lmax) call MpiStop('highL_theory_cl_template does not go to lmax')
 
  end subroutine LoadFiducialHighLTemplate
 
@@ -572,7 +574,7 @@ contains
         lmax_computed_cl = Ini_Read_Int('lmax_computed_cl',lmax)
         if (lmax_computed_cl /= lmax) then
           if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
-          call LoadFiducialHighLTemplate(Ini_Read_String('highL_theory_cl_template',.true.))
+          call LoadFiducialHighLTemplate
         end if
         
         if (Feedback > 0 ) then
