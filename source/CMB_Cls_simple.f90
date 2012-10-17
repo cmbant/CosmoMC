@@ -547,7 +547,7 @@ contains
    real array(4), nm
    character(LEN=Ini_max_string_len) :: fname
   
-        fname = ReadIniFilename(DefIni,DataDir,'highL_theory_cl_template',.true.)
+        fname = ReadIniFilename(DefIni,'highL_theory_cl_template',DataDir,.true.)
         allocate(highL_lensedCL_template(2:lmax, num_clsS))
         call OpenTxtFile(fname,tmp_file_unit)
         do
