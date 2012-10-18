@@ -225,7 +225,7 @@ contains
 !Get - ln like needed by CosmoMC
     clik_lnlike = -1.d0*clik_compute(clikid,clik_cl_and_pars)
 
-    Print*,'clik lnlike = ',clik_lnlike
+    if (Feedback >0) Print*,'clik lnlike = ',clik_lnlike
 
 
   end function clik_lnlike

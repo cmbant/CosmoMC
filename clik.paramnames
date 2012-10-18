@@ -18,39 +18,39 @@ nrun          n_{run}
 logA          log[10^{10} A_s]
 r             r_{pivot} #ratio of tensor to scalar primordial amplitudes at pivot scale
 asz           A_{SZ}		#SZ template amplitude, as in WMAP
-aps100        A_{PS}^{100}      # Point source amplitude at 100 GHz
-aps143        A_{PS}^{143}      # Point source amplitude at 143 GHz
-aps217        A_{PS}^{217}      # Point source amplitude at 217 GHz
-acib143       A_{CIB143}        # CIB amplitude at 143 GHz
-acib217       A_{CIB217}        # CIB amplitude at 217 GHz
-asz143        A_{SZ143}         # Thermal SZ amplitude at 143 GHzpsr           
-psr               # 143-217 correlation coefficient of point source residuals
-cibr          cibr              # 143-217 correlation coefficient of CIB
-cal0          cal0              # relative calibration factor 100/143
-cal1          cal1              # calibration factor 143
-cal2          cal2              # relative calibration factor 217/143
-xi            \xi_{SZ-CIB}      # TSZ-CIB template amplitude (positive is negative)
-aksz          A_{kSZ}
-bm_1_1
-bm_1_2
-bm_1_3
-bm_1_4
-bm_1_5
-bm_2_1
-bm_2_2
-bm_2_3
-bm_2_4
-bm_2_5
-bm_3_1
-bm_3_2
-bm_3_3
-bm_3_4
-bm_3_5
-bm_4_1
-bm_4_2
-bm_4_3
-bm_4_4
-bm_4_5
+aps100        A^{PS}_{100}      # Point source amplitude at 100 GHz
+aps143        A^{PS}_{143}      # Point source amplitude at 143 GHz
+aps217        A^{PS}_{217}      # Point source amplitude at 217 GHz
+acib143       A^{CIB}_{143}     # CIB amplitude at 143 GHz
+acib217       A^{CIB}_{217}     # CIB amplitude at 217 GHz
+asz143        A^{tSZ}_{143}     # Thermal SZ amplitude at 143 GHz
+psr           r_{PS {143x217}}  # 143-217 correlation coefficient of point source residuals
+cibr          r_{CIB}           # 143-217 correlation coefficient of CIB
+cal0          c_{100x143}       # relative calibration factor 100/143
+cal1          c_{143x143}       # calibration factor 143
+cal2          c_{217x143}       # relative calibration factor 217/143
+xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
+aksz          A^{kSZ}
+bm_1_1        \beta^1_1
+bm_1_2        \beta^1_2
+bm_1_3        \beta^1_3
+bm_1_4        \beta^1_4
+bm_1_5        \beta^1_5
+bm_2_1        \beta^2_1
+bm_2_2        \beta^2_2
+bm_2_3        \beta^2_3
+bm_2_4        \beta^2_4
+bm_2_5        \beta^2_5
+bm_3_1        \beta^3_1
+bm_3_2        \beta^3_2
+bm_3_3        \beta^3_3
+bm_3_4        \beta^3_4
+bm_3_5        \beta^3_5
+bm_4_1        \beta^4_1
+bm_4_2        \beta^4_2
+bm_4_3        \beta^4_3
+bm_4_4        \beta^4_4
+bm_4_5        \beta^4_5
 A_cib_143
 A_cib_217
 r_cib
@@ -104,3 +104,4 @@ kd*           k_D
 thetad*       \theta_D
 zeq*          z_{EQ}
 thetaeq*      \theta_{EQ}
+
