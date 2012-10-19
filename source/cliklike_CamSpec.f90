@@ -102,6 +102,7 @@
     cal2=freq_params(11)
     xi=freq_params(12)
     A_ksz=freq_params(13)
+    beamcoeffs = freq_params(14:14+nbeammodes-1)
 
     do L=lmin,lmax
         cell_cmb(L)=cl(L,1)/twopi !this is a georgeism
