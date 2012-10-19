@@ -571,6 +571,7 @@ contains
         compute_tensors = Ini_Read_Logical('compute_tensors',.false.)
         if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
         CMB_lensing = Ini_Read_Logical('CMB_lensing',.false.)
+        if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
         lmax_computed_cl = Ini_Read_Int('lmax_computed_cl',lmax)
         if (lmax_computed_cl /= lmax) then
           if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
@@ -580,16 +581,14 @@ contains
         if (Feedback > 0 ) then
           write (*,*) 'Computing tensors:', compute_tensors
           write (*,*) 'Doing CMB lensing:',CMB_lensing
-          write(*,'(" lmax           = ",1I4)') lmax       
+          write(*,'(" lmax              = ",1I4)') lmax       
           write(*,'(" lmax_computed_cl  = ",1I4)') lmax_computed_cl
           if (compute_tensors) write(*,'(" lmax_tensor    = ",1I4)') lmax_tensor
           write(*,'(" Number of C_ls = ",1I4)') num_cls
         end if
 
-        if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
-     
         call InitCAMBParams(P)
-  
+
         call CAMB_InitCAMBdata(Info%Transfers)
     
         P%WantTensors = compute_tensors

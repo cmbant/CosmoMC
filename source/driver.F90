@@ -352,6 +352,8 @@ program SolveCosmology
             unit = new_file_unit()
             if (action==action_importance) then
               call Ini_SaveReadValues(trim(PostParams%redo_outroot) //'.inputparams',unit)
+            else if actioon==action_maxlike) then
+              call Ini_SaveReadValues(trim(baseroot) //'.mininum.inputparams',unit)
             else
               call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
             end if
