@@ -41,7 +41,9 @@ module posthoc
 
 contains
 
-  subroutine ReadPostParams
+  subroutine ReadPostParams(baseroot)
+    character(LEN=*), intent(in):: baseroot
+
 
     Ini_Fail_On_Not_Found = .false.
     PostParams%redo_like = Ini_Read_Logical('redo_likelihoods')
@@ -66,11 +68,16 @@ contains
 
     txt_theory = Ini_Read_Logical('txt_theory',.false.)
 
+    if (PostParams%redo_outroot == '') then
+      PostParams%redo_outroot = trim(ExtractFilePath(baseroot))//'post_' &
+               // trim(ExtractFileName(baseroot))
+    end if
+
+    
   end subroutine ReadPostParams
 
-   subroutine postprocess(InputFile, baseroot)
+   subroutine postprocess(InputFile)
         use IO
-        character(LEN=*), intent(IN) :: baseroot
         character(LEN=*), intent(INOUT):: InputFile
         Type(CMBParams) LastCMB,CMB, newCMB
         Type(CosmoTheory) Theory, CorrectTheory
@@ -121,12 +128,7 @@ contains
          infile_handle = IO_OpenDataForRead(trim(InputFile)//'.data')
         end if
 
-         
-        if (PostParams%redo_outroot == '') then
-          post_root = trim(ExtractFilePath(baseroot))//'post_'// trim(ExtractFileName(baseroot))
-        else
-          post_root = PostParams%redo_outroot
-        end if
+        post_root = PostParams%redo_outroot 
     
         if (MpiRank==0 .and. NameMapping%nnames/=0) &
             call IO_OutputParamNames(NameMapping,trim(post_root))

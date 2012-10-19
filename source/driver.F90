@@ -180,7 +180,7 @@ program SolveCosmology
         end if
 
 
-        if (action == action_importance) call ReadPostParams
+        if (action == action_importance) call ReadPostParams(baseroot)
 
         FeedBack = Ini_Read_Int('feedback',0)
         FileChangeIni = trim(rootname)//'.read'
@@ -350,7 +350,11 @@ program SolveCosmology
             call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Reionization', Reionization_Name)
             call TNameValueList_Add(DefIni%ReadValues, 'Compiled_InitialPower', Power_Name)
             unit = new_file_unit()
-            call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
+            if (action==action_importance) then
+              call Ini_SaveReadValues(trim(PostParams%redo_outroot) //'.inputparams',unit)
+            else
+              call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
+            end if
             call ClearFileUnit(unit)
         end if
 
@@ -419,7 +423,7 @@ program SolveCosmology
 
         else if (action==action_importance) then
           if (Feedback > 0) write (*,*) 'starting post processing'
-          call postprocess(rootname, baseroot)
+          call postprocess(rootname)
           call DoStop('Postprocesing done',.false.)
 
         else
