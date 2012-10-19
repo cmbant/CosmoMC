@@ -121,7 +121,7 @@ ifneq ($(highL),)
 FFLAGS += -DhighL
 LINKFLAGS += -L$(highL) -lhigh
 INCLUDE += $(IFLAG)$(highL)
-cliklike_CamSpec.o: libhigh.a
+cliklike_CamSpec.o: $(highL)/libhigh.a
 endif
 
 PLANCKLIKEFILES=
@@ -240,5 +240,5 @@ getdist: camb $(DISTFILES)
 camb:
 	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf
 
-libhigh.a: $(highL)/mlibhigh.a
+$(highL)/libhigh.a: 
 	cd $(highL); make libhigh.a;
