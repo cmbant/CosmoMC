@@ -22,8 +22,9 @@ PLANCKLIKE ?=
 #PLANCKLIKE =cliklike_CamSpec
 #PLANCKLIKE =cliklike
 
+#set to build with ACT/SPT without CLIK
 highL ?= 
-#highL =/scratch/aml1005/actse_sptkr_clean_lranges_fg_camspecmodel_v0
+#highL = ../highL
 
 
 IFLAG = -I
@@ -120,6 +121,7 @@ ifneq ($(highL),)
 FFLAGS += -DhighL
 LINKFLAGS += -L$(highL) -lhigh
 INCLUDE += $(IFLAG)$(highL)
+cliklike_CamSpec.o: libhigh.a
 endif
 
 PLANCKLIKEFILES=
@@ -237,3 +239,6 @@ getdist: camb $(DISTFILES)
 
 camb:
 	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf
+
+libhigh.a:
+	cd $(highL); make libhigh.a;
