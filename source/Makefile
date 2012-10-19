@@ -207,6 +207,10 @@ MCMC.o: calclike.o
 driver.o: EstCovmat.o MCMC.o minimize.o
 minimize.o: PowellConstrainedMinimize.o calclike.o
 
+ifneq ($(highL),)
+cliklike_CamSpec.o: $(highL)/libhigh.a
+endif
+
 export FFLAGS
 export F90C
 
@@ -242,3 +246,4 @@ camb:
 
 $(highL)/libhigh.a: 
 	cd $(highL); make libhigh.a;
+
