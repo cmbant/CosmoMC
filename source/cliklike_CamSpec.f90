@@ -49,7 +49,7 @@
     if (use_highL) then
 #ifdef highL
       if (lmax < tt_lmax_mc) call MpiStop('set lmax>=tt_lmax_mc in settings to use highL data')
-      data_dir = AddTrailingSlash(ReadIniFileName(Ini,'highL_data_dir'))
+      data_dir = CheckTrailingSlash(ReadIniFileName(Ini,'highL_data_dir'))
       SPT_data_dir = trim(data_dir) // 'data_act/' 
       ACT_data_dir = trim(data_dir) // 'data_spt/'
       if (Feedback>0) write(*,*) 'reading High ell data'
