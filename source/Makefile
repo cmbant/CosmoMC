@@ -121,7 +121,6 @@ ifneq ($(highL),)
 FFLAGS += -DhighL
 LINKFLAGS += -L$(highL) -lhigh
 INCLUDE += $(IFLAG)$(highL)
-cliklike_CamSpec.o: $(highL)/libhigh.a
 endif
 
 PLANCKLIKEFILES=
