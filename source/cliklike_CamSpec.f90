@@ -131,7 +131,12 @@
     integer, parameter :: lmin=2
     real(dp)  cl_tt(tt_lmax)
     integer L, offset
-
+    real(dp) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz_143, r_ps, r_cib, &
+      cal0, cal1, cal2, xi, A_ksz
+    real(dp) a_ps_act_148,a_ps_act_217,a_ps_spt_95,a_ps_spt_150,a_ps_spt_220, &
+       r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220, &
+       cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220
+    
     !asz is already removed, start at second feq param
     A_ps_100=freq_params(1)
     A_ps_143 = freq_params(2)
