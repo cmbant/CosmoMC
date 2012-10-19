@@ -97,9 +97,10 @@ subroutine ParamNames_Init(Names, filename)
   n=0
   do 
      read (handle,'(a)',end=500) InLine
+     if (trim(InLine)=='') cycle
      n=n+1
      if (.not. ParamNames_ParseLine(Names,InLine,n)) then
-      call MpiStop('ParamNames_Init: error parsing line')
+      call MpiStop(concat('ParamNames_Init: error parsing line: ',n))
      end if
   end do
   

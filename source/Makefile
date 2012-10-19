@@ -18,9 +18,12 @@ cfitsio ?= /usr/local/cfitsio/intel10/64/3.040
 GSLPATH ?= /home/aml1005/libs/gsl
 
 #empty not to compile with CLIK, otherwise set to name of cliklike.f90 file
-PLANCKLIKE ?= 
+PLANCKLIKE ?=
 #PLANCKLIKE =cliklike_CamSpec
 #PLANCKLIKE =cliklike
+
+highL ?= 
+#highL =/scratch/aml1005/actse_sptkr_clean_lranges_fg_camspecmodel_v0
 
 
 IFLAG = -I
@@ -111,6 +114,12 @@ DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
 ifneq ($(PLANCKLIKE),)
 FFLAGS += -DCLIK
+endif
+
+ifneq ($(highL),)
+FFLAGS += -DhighL
+LINKFLAGS += -L$(highL) -lhigh
+INCLUDE += $(IFLAG)$(highL)
 endif
 
 PLANCKLIKEFILES=
