@@ -562,6 +562,7 @@ contains
            call MpiStop('highL_theory_cl_template must be in muK^2')
 
         if (L<lmax) call MpiStop('highL_theory_cl_template does not go to lmax')
+        if (num_cls_ext>0) write(*,*) 'WARNING: zero padding ext cls in LoadFiducialHighLTemplate'
 
  end subroutine LoadFiducialHighLTemplate
 

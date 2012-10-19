@@ -240,5 +240,5 @@ getdist: camb $(DISTFILES)
 camb:
 	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf
 
-libhigh.a:
+libhigh.a: $(highL)/mlibhigh.a
 	cd $(highL); make libhigh.a;
