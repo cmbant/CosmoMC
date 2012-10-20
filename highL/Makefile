@@ -14,11 +14,10 @@ RM = rm -f
 
 LIBS ?= $(LAPACKL)
 
-
 F90C    ?= ifort
-FFLAGS  ?=  -O2 -ip -W0 -WB -fpp2 -vec_report0
-INCS    ?= -I. -I/usr/local/include
-LIBS  ?= -L. -L/usr/local/shared/lib -lmkl -lmkl_core -lmkl_lapack -lguide -lpthread -lm -llapack
+#problems with -openmp in v12 intel compilers
+FFLAGS  =  -mkl -O2 -ip -W0 -WB -fpp2 -vec_report0
+LIBS  ?=
 
 #			Rules.
 #
