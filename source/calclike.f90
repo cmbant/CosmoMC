@@ -18,7 +18,9 @@ module CalcLike
  logical :: Use_CMB = .true.
  logical :: Use_BBN = .false.
  logical :: Use_Clusters = .false.
-  
+ logical :: Use_tau_prior = .false. !for quick fake WMAP low-L
+ real :: tau_prior_mean= 0.09, tau_prior_std=0.015
+
  integer :: H0_min = 40, H0_max = 100
  real :: Omk_min = -0.3, Omk_max = 0.3
  real :: Use_min_zre = 0
@@ -114,7 +116,9 @@ contains
           !Unit Gaussian prior on all nuisance parameters
        if (Use_BBN) GetLogLikePost = GetLogLikePost + (CMB%ombh2 - 0.022)**2/(2*0.002**2) 
           !I'm using increased error bars here
-   
+       if (Use_tau_prior) GetLogLikePost = GetLogLikePost + & 
+            (CMB%tau - tau_prior_mean)**2/(2*tau_prior_std**2)
+
        if (Use_CMB .or. Use_LSS) then !#clik#
           if (HasCls) then
            acl = inCls
