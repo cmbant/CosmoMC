@@ -536,6 +536,8 @@ weighting function or parameter mapping.</ul>
 <UL>
 <LI><B>non-public Planck-only changes</B><BR>
 <UL>
+<LI>cliklike_CamSpec.f90 to call high-L and camSpec likelihoods without clik (swaps with cliklike.f90)
+<LI>Option <b>use_tau_prior</b> to fake low-L tau information much faster (can set tau_prior_mean,tau_prior_std)
 <LI>Output .initparams file for each chain giving input parameters used
 <LI>Base parameters changed to use m<sub>nu</sub> rather than f<sub>nu</sub>; several new chain and derived parameters supported and output by default.
 <LI>Input parameter <B>num_massive_neutrinos</B> for use with the <b>mnu</b> parameter (e.g. can fix to 0.06 with num_massive_neutrinos=1 to approximate minimal hierarchy)
