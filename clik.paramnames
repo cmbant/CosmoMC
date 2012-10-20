@@ -61,27 +61,27 @@ ps_pwfe_A_143_143
 ps_pwfe_A_143_217 
 ps_pwfe_A_217_217 
 gal_norm 
-A_sz_AS
-A_ksz_AS
-xi_sz_cib_AS
-a_ps_act_148
-a_ps_act_217
-a_ps_spt_95
-a_ps_spt_150
-a_ps_spt_220
-A_cib_143_AS
-A_cib_217_AS
-r_ps_spt_95x150
-r_ps_spt_95x220
-r_ps_150x220
-r_cib_AS
-cal_acts_148
-cal_acts_217
-cal_acte_148
-cal_acte_217
-cal_spt_95
-cal_spt_150
-cal_spt_220
+A_sz_AS          A_{SZ}
+A_ksz_AS         A^{kSZ}
+xi_sz_cib_AS     \xi^{tSZ-CIB}
+a_ps_act_148     A_{PS,ACT}^{148}
+a_ps_act_217     A_{PS,ACT}^{217}
+a_ps_spt_95      A_{PS,SPT}^{95}
+a_ps_spt_150     A_{PS,SPT}^{150}
+a_ps_spt_220     A_{PS,SPT}^{220}
+A_cib_143_AS     A^{CIB}_{143}
+A_cib_217_AS     A^{CIB}_{217}
+r_ps_spt_95x150  r_{PS}^{95/150}
+r_ps_spt_95x220  r_{PS}^{95/220}
+r_ps_150x220     r_{PS}^{150/220}
+r_cib_AS         r_{CIB}
+cal_acts_148     c_{ACTs}^{148}
+cal_acts_217     c_{ACTs}^{217}
+cal_acte_148     c_{ACTe}^{148}
+cal_acte_217     c_{ACTe}^{217}
+cal_spt_95       c_{SPT}^{95}
+cal_spt_150      c_{SPT}^{150}
+cal_spt_220      c_{SPT}^{220}
 omegal*       \Omega_\Lambda
 age*          Age/Gyr
 omegam*       \Omega_m
