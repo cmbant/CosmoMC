@@ -16,11 +16,8 @@ module CalcLike
 
  logical :: Use_Age_Tophat_Prior = .true.
  logical :: Use_CMB = .true.
- logical :: Use_BBN = .false.
  logical :: Use_Clusters = .false.
- logical :: Use_tau_prior = .false. !for quick fake WMAP low-L
- real :: tau_prior_mean= 0.09, tau_prior_std=0.015
-
+ 
  integer :: H0_min = 40, H0_max = 100
  real :: Omk_min = -0.3, Omk_max = 0.3
  real :: Use_min_zre = 0
@@ -90,8 +87,26 @@ contains
 
      GetLogLike = GetLogLikePost(CMB, Params%Info,dum,.false.)
     end if 
-   end function GetLogLike
 
+    if (GetLogLike /= LogZero) GetLogLike = GetLogLike + getLogPriors(Params%P)
+
+  end function GetLogLike
+  
+  function getLogPriors(P) result(logLike)
+  integer i
+  real, intent(in) :: P(num_params)
+  real logLike
+  
+  logLike=0
+  do i=1,num_params
+        if (Scales%PWidth(i)/=0 .and. GaussPriors%std(i)/=0) then
+          logLike = logLike + ((P(i)-GaussPriors%mean(i))/GaussPriors%std(i))**2
+        end if
+  end do
+  logLike=logLike/2/Temperature
+  
+  end function getLogPriors
+  
     
   function GetLogLikePost(CMB, Info, inCls, HasCls) 
     use cambmain, only: initvars
@@ -112,12 +127,6 @@ contains
        GetLogLikePost = logZero
        
     else 
-       GetLogLikePost = GetLogLikePost + sum(CMB%nuisance(1:nuisance_params_used)**2)/2
-          !Unit Gaussian prior on all nuisance parameters
-       if (Use_BBN) GetLogLikePost = GetLogLikePost + (CMB%ombh2 - 0.022)**2/(2*0.002**2) 
-          !I'm using increased error bars here
-       if (Use_tau_prior) GetLogLikePost = GetLogLikePost + & 
-            (CMB%tau - tau_prior_mean)**2/(2*tau_prior_std**2)
 
        if (Use_CMB .or. Use_LSS) then !#clik#
           if (HasCls) then

@@ -238,8 +238,8 @@ program SolveCosmology
         if (Ini_Read_String('use_2dF') /= '') stop 'use_2dF now replaced with use_mpk'
         Use_Clusters = Ini_Read_Logical('use_clusters',.false.)
         Use_mpk = Ini_Read_Logical('use_mpk',.false.) ! matter power spectrum, incl 2dF
-        Use_HST = Ini_Read_Logical('use_HST',.true.)
-        Use_BBN = Ini_Read_Logical('use_BBN',.false.)
+        Use_HST = Ini_Read_Logical('use_HST',.false.)
+        if(Ini_Read_Logical('use_BBN',.false.)) call DoAbort('Use_BBN not supported: use prior[omegabh2]=mean std')
         Use_Age_Tophat_Prior= Ini_Read_Logical('use_Age_Tophat_Prior',.true.)
         Use_SN = Ini_Read_Logical('use_SN',.false.)
         if (Use_SN) SN_filename = ReadIniFileName(DefIni,'SN_filename')
@@ -256,12 +256,6 @@ program SolveCosmology
         Use_min_zre = Ini_Read_Double('use_min_zre',0.d0) 
         Use_Lya = Ini_Read_logical('use_lya',.false.)
        
-        Use_tau_prior = Ini_read_Logical('use_tau_prior',.false.)
-        if (Use_tau_prior) then
-          tau_prior_mean= Ini_read_real('tau_prior_mean',tau_prior_mean)
-          tau_prior_std= Ini_read_real('tau_prior_std',tau_prior_std)
-        end if
-        
         if (Use_Lya .and. use_nonlinear) &
              call DoAbort('Lya.f90 assumes LINEAR power spectrum input')
 

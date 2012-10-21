@@ -22,6 +22,11 @@ module ParamDef
 
  Type(ParamScale) Scales
 
+ Type ParamGaussPrior
+   real mean(num_params),std(num_params) !std=0 for no prior (default)
+ end Type ParamGaussPrior
+ Type(ParamGaussPrior) GaussPriors
+ 
  Real :: StartLike = LogZero
    !bad, unless re-starting in which case it is set to last value in chain
  integer :: Num = 0
@@ -181,6 +186,7 @@ subroutine Initialize(Ini,Params)
         num_params_used = 0
         num_fast = 0
         num_slow = 0
+        GaussPriors%std=0 !no priors by default
         do i=1,num_params
    
            if (i>=index_nuisance) then
@@ -191,6 +197,8 @@ subroutine Initialize(Ini,Params)
             wid=1
             if (i-index_nuisance < nuisance_params_used) then
               Scales%PWidth(i)=1
+              GaussPriors%std(i)=1
+              GaussPriors%mean(i)=0
             else
               Scales%PWidth(i)=0
             end if  
@@ -198,6 +206,10 @@ subroutine Initialize(Ini,Params)
             InLine =  ParamNames_ReadIniForParam(NameMapping,DefIni,'param',i)
             if (InLine=='') call ParamError('parameter ranges not found',i) 
             read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), wid, Scales%PWidth(i)
+            if (Scales%PWidth(i)/=0) then
+             InLine =  ParamNames_ReadIniForParam(NameMapping,DefIni,'prior',i)
+             if (InLine/='') read(InLine, *, err = 101) GaussPriors%mean(i), GaussPriors%std(i)
+            end if
            end if  
            Scales%center(i) = center
            if (Scales%PMax(i) < Scales%PMin(i)) call ParamError('You have param Max < Min',i)
@@ -274,6 +286,7 @@ subroutine Initialize(Ini,Params)
    
         return
 100     call DoAbort('Error reading param details: '//trim(InLIne))
+101     call DoAbort('Error reading prior mean and stdd dev: '//trim(InLIne))
 
 end subroutine Initialize
 

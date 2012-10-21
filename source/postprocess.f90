@@ -225,6 +225,11 @@ contains
                  truelike = logZero
               else
                truelike = GetLogLikePost(newCMB, Info, Cls,.true.)
+               if (truelike /= LogZero) then
+                  call CMBParamsToParams(newCMB, Params)
+                  truelike = truelike + getLogPriors(Params)
+               end if
+
               end if
               if (truelike == logZero) then
                weight = 0

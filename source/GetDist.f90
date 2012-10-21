@@ -45,6 +45,8 @@
 !          added no_triangle_axis_labels
 !Jan 11:  fix to confidence interval calcaultion for obscure cases with very empty tails (thanks Andrew Fowlie)
 !Jan 12:  increased precision of output files
+!Oct 12:  matlab_plot_output for pdf,eps,ps output support; matlab_subplot_size_inch
+!         fix for more than 100 parameters
 module MCSamples
  use settings
  use MatrixUtils
@@ -86,6 +88,8 @@ module MCSamples
         real markers(max_cols)
         integer num_contours 
         real matlab_version
+        character(LEN=3) :: matlab_plot_output = 'eps'
+        real :: matlab_subplot_size_inch = 3.0
         real :: font_scale = 1.
         real contours(max_contours), contour_levels(max_contours)
         real mean_mult, max_mult
@@ -1443,9 +1447,10 @@ contains
           integer, intent(in) :: unit
           logical, intent(in) :: sm
           integer sz
-          
+
+          write(unit,*) 'plot_size_inch = '//trim(RealToStr(matlab_subplot_size_inch))//';'
           sz = 12
-          if (sm) sz=9 
+          if (sm .and. matlab_subplot_size_inch < 4) sz=9 
           sz = nint(sz*font_scale)
           write(unit,*) trim(concat('lab_fontsize = ',sz,'; axes_fontsize = ',sz,';'))
           write(unit,*) 'clf'
@@ -1466,6 +1471,18 @@ contains
 
          end subroutine WriteMatLabInit
 
+        subroutine WriteMatLabPrint(unit, plot_col, plot_row)
+         integer, intent(in) :: unit, plot_col, plot_row
+
+           write(unit,*)  'set(gcf, ''PaperUnits'',''inches'');'
+           write(unit,*) 'x=',plot_col,'*plot_size_inch; y=',plot_row,'*plot_size_inch;'
+           write(unit,*) 'set(gcf, ''PaperPosition'',[0 0 x y]); set(gcf, ''PaperSize'',[x y]);'
+           if (matlab_plot_output == 'ps') write (unit,*) 'print -dpsc2 '//trim(rootname)//'.ps;'
+           if (matlab_plot_output == 'pdf') write (unit,*) 'print -dpdf '//trim(rootname)//'.pdf;'
+           if (matlab_plot_output == 'eps') write (unit,*) 'print -depsc2 '//trim(rootname)//'.eps;'
+
+        end subroutine WriteMatLabPrint
+         
      subroutine Write1DplotMatLab(aunit,j)
       integer, intent(in) :: aunit, j
       character(LEN=Ini_max_string_len) fname
@@ -1693,6 +1710,9 @@ program GetDist
         Ini_fail_on_not_found = .false.
 
         matlab_version = Ini_Read_Real('matlab_version',7.)
+        matlab_plot_output = Ini_Read_String_Default('matlab_plot_output',matlab_plot_output)
+        matlab_subplot_size_inch = Ini_Read_Real('matlab_subplot_size_inch', &
+                                    matlab_subplot_size_inch)
         font_scale  = Ini_Read_Real('font_scale',1.)
         finish_run_command = Ini_Read_String('finish_run_command')
         
@@ -1807,7 +1827,7 @@ program GetDist
                write(*,*) trim(numcat('plot',ix)) //': parameter not in plotparams'
                stop
               end if
-             cust2DPLots(ix) = tmp_params(1)+2 + (tmp_params(2)+2)*100 
+             cust2DPLots(ix) = tmp_params(1)+2 + (tmp_params(2)+2)*1000 
            end do
         end if
 
@@ -2456,13 +2476,7 @@ program GetDist
               close(50)
 
               if (line_labels) call WriteMatlabLineLabels(51)
-              write (51,*)  'set(gcf, ''PaperUnits'',''inches'');'
-              if (plot_row < plot_col .and. plot_row*plot_col>9) then
-                write (51,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 10]);';
-              else
-                write (51,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 8]);';
-              end if
-              write (51,*) 'print -dpsc2 '//trim(rootname)//'.ps;'
+              call WriteMatLabPrint(51, plot_col, plot_row)
               close(51)
           end if
                  
@@ -2495,7 +2509,7 @@ program GetDist
                end if
                try_t = try_b
 
-             cust2Dplots(j) = colix(x) + colix(y)*100
+             cust2Dplots(j) = colix(x) + colix(y)*1000
              end do
 
           end if
@@ -2546,7 +2560,7 @@ program GetDist
 
               if (plot_2D_param/=0 .and. colix(j2) /= plot_2D_param) cycle
               if (num_cust2D_plots /= 0 .and.  &
-                count(cust2Dplots(1:num_cust2D_plots) == colix(j)*100 + colix(j2))==0) cycle
+                count(cust2Dplots(1:num_cust2D_plots) == colix(j)*1000 + colix(j2))==0) cycle
       
               plot_num = plot_num + 1
               done2D(j,j2) = .true.
