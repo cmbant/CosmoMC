@@ -1371,7 +1371,7 @@ contains
               if (DoShade) then
               if (shade_meanlikes) then
                 write (aunit,'(a)') "load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //'_likes''));'
-                write (aunit,*) 'contourf(x1,x2,'//trim(plotfile)//'_likes,64);'
+                write (aunit,'(a)') 'contourf(x1,x2,'//trim(plotfile)//'_likes,64);'
               else     
                 write (aunit,*) 'contourf(x1,x2,pts,64);'
               end if
@@ -1428,15 +1428,15 @@ contains
 
               end if
 
-              write (aunit,*) 'hold off; set(gca,''Layer'',''top'',''FontSize'',axes_fontsize);'
+              write (aunit,'(a)') 'hold off; set(gca,''Layer'',''top'',''FontSize'',axes_fontsize);'
               fmt = ''',''FontSize'',lab_fontsize);'
               if (DoLabelx) then
-               write (aunit,*) 'xlabel('''//trim(labels(colix(j2)))//trim(fmt)
+               write (aunit,'(a)') 'xlabel('''//trim(labels(colix(j2)))//trim(fmt)
               else
                 if (hide_ticks) write(aunit,*) 'set(gca,''xticklabel'',[]);'
               end if
               if (DoLabely) then
-               write (aunit,*) 'ylabel('''//trim(labels(colix(j)))//trim(fmt)
+               write (aunit,'(a)') 'ylabel('''//trim(labels(colix(j)))//trim(fmt)
               else
                 if (hide_ticks) write(aunit,*) 'set(gca,''yticklabel'',[]);'
               end if
@@ -1477,9 +1477,9 @@ contains
            write(unit,*)  'set(gcf, ''PaperUnits'',''inches'');'
            write(unit,*) 'x=',plot_col,'*plot_size_inch; y=',plot_row,'*plot_size_inch;'
            write(unit,*) 'set(gcf, ''PaperPosition'',[0 0 x y]); set(gcf, ''PaperSize'',[x y]);'
-           if (matlab_plot_output == 'ps') write (unit,*) 'print -dpsc2 '//trim(rootname)//'.ps;'
-           if (matlab_plot_output == 'pdf') write (unit,*) 'print -dpdf '//trim(rootname)//'.pdf;'
-           if (matlab_plot_output == 'eps') write (unit,*) 'print -depsc2 '//trim(rootname)//'.eps;'
+           if (matlab_plot_output == 'ps') write (unit,'(a)') 'print -dpsc2 '//trim(rootname)//'.ps;'
+           if (matlab_plot_output == 'pdf') write (unit,'(a)') 'print -dpdf '//trim(rootname)//'.pdf;'
+           if (matlab_plot_output == 'eps') write (unit,'(a)') 'print -depsc2 '//trim(rootname)//'.eps;'
 
         end subroutine WriteMatLabPrint
          
@@ -1532,12 +1532,12 @@ contains
          integer, intent(in) :: aunit 
          integer ix1
               
-           write(aunit,*) 'x=get(gca,''Position'');x(1)=0.1;x(2) = x(2)-0.1;x(3) = 0.85;x(4) = x(2) + 0.05;'
-           write(aunit,*) 'ax=axes(''Units'',''Normal'',''Position'',x,''Visible'',''off'');'
-           write(aunit,*) 't=text(0,0,'''//trim(rootname)//''',''color'', lineM{1}(2),''Interpreter'',''none'');'
+           write(aunit,'(a)') 'x=get(gca,''Position'');x(1)=0.1;x(2) = x(2)-0.1;x(3) = 0.85;x(4) = x(2) + 0.05;'
+           write(aunit,'(a)') 'ax=axes(''Units'',''Normal'',''Position'',x,''Visible'',''off'');'
+           write(aunit,'(a)') 't=text(0,0,'''//trim(rootname)//''',''color'', lineM{1}(2),''Interpreter'',''none'');'
            do ix1 = 1, Num_ComparePlots
-             write(aunit,*) 'e=get(t,''extent'');x=e(1)+e(3)+0.02;'
-             write(aunit,*) 't=text(x,0,'''//trim(ComparePlots(ix1))//''',''Interpreter'',''none'',''color'',' &
+             write(aunit,'(a)') 'e=get(t,''extent'');x=e(1)+e(3)+0.02;'
+             write(aunit,'(a)') 't=text(x,0,'''//trim(ComparePlots(ix1))//''',''Interpreter'',''none'',''color'',' &
                             //trim(numcat('lineM{',ix1+1)) // '}(2));'
            end do
 
