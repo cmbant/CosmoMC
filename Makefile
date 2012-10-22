@@ -1,9 +1,11 @@
-default:
-	cd ./source && make 
+default: all
 
-getdist:
+getdist: ./source/*.*90
 	cd ./source && make getdist
 
-all:
+cosmomc: ./source/*.*90
+	cd ./source && make
+
+all: ./source/*.*90
 	cd ./source && make all
 
