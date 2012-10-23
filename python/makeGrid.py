@@ -20,6 +20,16 @@ datasets.append([[planck,highL],['CAMspec_ACTSPT_defaults.ini']])
 params=dict()
 params['mnu']='0 0 5 0.1 0.03'
 params['omegak']='0 -0.3 0.3 0.001 0.001'
+params['w']='-1 -3 -0.3 0.02 0.02'
+params['nnu']='3.046 0 10 0.1 0.1'
+params['nrun']='0 -1 1 0.001 0.001'
+params['r']='0 0 2 0.03 0.03'
+params['Alens']='0 0 10 0.05 0.05'
+params['yhe']='0.245 0.1 0.5 0.006 0.006'
+params['alpha1']='0 -1 1 0.0003 0.0003'
+params['deltazrei']='0.5 0.1 3 0.3 0.3'
+params['wa']='0 -2 2 0.3 0.3'
+
 
 #ini files you want to base each set of runs on
 defaults=['common_batch1.ini']
@@ -65,4 +75,4 @@ for dataset in datasets:
         outfile.write("\n".join(f))
         outfile.close()
 
-
+print 'Done... to run do: python python/runbatch.py '+batchPath+'iniFiles'
