@@ -32,9 +32,14 @@ Non-clik CamSpec code is included in ./source, and data files are available from
 <h2>Changes</h2>
 See the <A HREF="readme.html#Version">readme</A>.
 
-
+<h2>Grids of models</h2>
+See the ./python directory, and edit makeGrid.py appropriately. Then run
+<blockquote>
+<b>python python/makeGrid /scratch/.../newdirectoryforbatch [action]</b>
+</blockquote>
+Also edit and use runbatch.py to submit all the ini files produced to the queue. You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge.
 <h2>To do</h2>
 
-Lensing likelihood. Updated BAO. Full batch scripting. Define consistent priors for nuisance parameters. Efficient use of fast highL nuisance parameters. Uncorrelated isocuvature?
+Lensing likelihood. Updated BAO.  Define consistent priors for nuisance parameters. Efficient use of fast highL nuisance parameters. Uncorrelated isocuvature? Figure out consistent way to handle mnu with non-standard nnu.
 
-</body></center>
+</body></center> 
