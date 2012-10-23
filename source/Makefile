@@ -23,7 +23,7 @@ PLANCKLIKE ?=
 #PLANCKLIKE =cliklike
 
 #set to build with ACT/SPT without CLIK
-highL ?= 
+highL ?=
 #highL = ../highL
 
 
@@ -101,6 +101,9 @@ endif
 #FFLAGS  = -WF,-DIBMXL -qsmp=omp -qsuffix=f=f90:cpp=F90 -O3 -qstrict -qarch=pwr3 -qtune=pwr3
 #INCLUDE = -lessl
 #LAPACKL =
+
+#would like to embed this somehow..
+#GIT_HASHTAG = "git log --pretty=format:'%H:%cd' -n 1"
 
 PROPOSE = propose.o
 CLSFILE = CMB_Cls_simple.o
@@ -243,6 +246,6 @@ getdist: camb $(DISTFILES)
 camb:
 	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf
 
-$(highL)/libhigh.a: 
+$(highL)/libhigh.a:
 	cd $(highL); make libhigh.a;
 
