@@ -19,12 +19,12 @@ GSLPATH ?= /home/aml1005/libs/gsl
 
 #empty not to compile with CLIK, otherwise set to name of cliklike.f90 file
 PLANCKLIKE ?=
-#PLANCKLIKE =cliklike_CamSpec
+PLANCKLIKE =cliklike_CamSpec
 #PLANCKLIKE =cliklike
 
 #set to build with ACT/SPT without CLIK
 highL ?=
-#highL = ../highL
+highL = ../highL
 
 
 IFLAG = -I
