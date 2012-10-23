@@ -16,7 +16,7 @@ highL='highL'
 
 #0: chains, 1: importance sampling, 2: best-fit, 3: best-fit and Hessian
 cosmomcAction = 0
-if len(sys.argv) > 2: cosmomcAction = sys.argv[2]
+if len(sys.argv) > 2: cosmomcAction = int(sys.argv[2])
 
 datasets=[]
 #lists of dataset names to combine, with corresponding sets of inis to include
@@ -87,4 +87,6 @@ for dataset in datasets:
         outfile.write("\n".join(f))
         outfile.close()
 
-print 'Done... to run do: python python/runbatch.py '+batchPath+'iniFiles'
+comment= 'Done... to run do: python python/runbatch.py '+batchPath+'iniFiles' 
+if cosmomcAction==3 or cosmomcAction==2: comment+= ' 0' 
+print comment

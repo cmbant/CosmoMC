@@ -120,9 +120,11 @@ program SolveCosmology
           highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
         end if
 
-        checkpoint = Ini_Read_Logical('checkpoint',.false.)
-        if (checkpoint) flush_write = .true.
-        
+        if (action==action_MCMC) then
+         checkpoint = Ini_Read_Logical('checkpoint',.false.)
+         if (checkpoint) flush_write = .true.
+        end if
+         
 #ifndef NOWMAP
         use_TT_beam_ptsrc = Ini_read_Logical('use_WMAP_TT_beam_ptsrc', .true.)
         use_TE = Ini_read_Logical('use_WMAP_TE',.true.)
