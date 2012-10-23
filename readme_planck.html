@@ -5,6 +5,7 @@
 </head>
 <body bgcolor="#FFFFFF" link="#0000FF" vlink="#800080">
 
+
 <h2>Planck Cosmomc Readme </h2>
 <h3>Compiling</h3>
 As usual. Edit the makefile, setting <b>PLANCKLIKE = cliklike</b> to run with clik (v4), or <b>PLANCKLIKE = cliklike_CamSpec</b> to run directly with CamSpec. Set <b>highL = ../highL</b> to build direct ACT/SPT support (for use with PLANCKLIKE = cliklike_CamSpec). To use clik you need of course to have clik installed, and set the CLIKPATH variable etc. appropriately.  You can either use clik or other likelihoods directly in an interchangeable way, parameter definitions etc are the same.
@@ -14,13 +15,19 @@ A set of .ini files are supplied in ./batch1 which set up standard for Planck ru
 <p>
 Default settings for parameters in the baseline model are described in the P11 svn paper draft, and should be reflected in the batch1 ini files.
 <h3>Running</h3>
-As usual, e.g. <b>perl runMPI.pl batch1/base 4</b>. 
+As usual, e.g. <b>perl runMPI.pl batch1/base 4</b>.
 <p>
 The runMPI_HPCS.pl sample script also supports best-fit runs, using last parameter zero: e.g. if ini has action=2 then run <b>perl runMPI_HPCS batch1/ini 0</b>.
 <p>
 The <b>lmax_computed_cl</b> parameter is set up with defaults (hopefully) appropriate for the various data combinations (eg. in CAMspec_defaults.ini, CAMspec_ACTSPT_defaults.ini). The settings.f90 lmax is fixed, and set to a high value.
 <p>
 For initial explorations you can use settings in batch1/fast_approx.ini.
+<P>
+Clik is available <A HREF="http://hfilfi.planck.fr/index.php/PSAndLikelihood/TopClik">here</A>.
+The non-clik highL code is included with cosmomcplanck in the ./highL. The data files are available on Magique 3 at <br>
+<b>/home/ecalabrese/actse_sptkr_clean_lranges_fg_camspecmodel_v0/data</b>
+<Br>
+Non-clik CamSpec code is included in ./source, and data files are available from Steven.
 
 <h2>Changes</h2>
 See the <A HREF="readme.html#Version">readme</A>.

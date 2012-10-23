@@ -1,0 +1,12 @@
+plot_data/
+dist/
+scripts/
+chains/
+*.mod
+*.a
+*.o
+*.sm
+*~
+.metadata
+.project
+.pydevproject

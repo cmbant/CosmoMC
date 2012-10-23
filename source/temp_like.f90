@@ -24,6 +24,7 @@ module temp_like
   character*100 storeroot,storename,storenumstring
 
   character*100 :: bestroot,bestnum,bestname
+  character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.2'
 
 
 contains
