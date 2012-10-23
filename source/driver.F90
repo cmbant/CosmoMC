@@ -109,6 +109,8 @@ program SolveCosmology
          end if
         end if   
 
+        action = Ini_Read_Int('action',action_MCMC)
+
         propose_scale = Ini_Read_Real('propose_scale',2.4)
 
         HighAccuracyDefault = Ini_Read_Logical('high_accuracy_default',.false.)
@@ -134,7 +136,7 @@ program SolveCosmology
 
 #ifdef MPI 
         
-        
+        if (action==action_MCMC) then
         MPI_StartTime = MPI_WTime()
         MPI_R_Stop = Ini_Read_Real('MPI_Converge_Stop',MPI_R_Stop)
         MPI_LearnPropose = Ini_Read_Logical('MPI_LearnPropose',.true.)  
@@ -149,6 +151,7 @@ program SolveCosmology
          MPI_Limit_Converge = Ini_Read_Real('MPI_Limit_Converge',0.025)
          MPI_Limit_Converge_Err = Ini_Read_Real('MPI_Limit_Converge_Err',0.3)
          MPI_Limit_Param = Ini_Read_Int('MPI_Limit_Param',0)
+        end if
         end if
       
 #endif
@@ -171,10 +174,7 @@ program SolveCosmology
 
         new_chains = .true. 
 
-        action = Ini_Read_Int('action',action_MCMC)
-
         if (checkpoint) then
-         if (action /= action_MCMC)  call DoAbort('checkpoint only with action =0')
 #ifdef MPI 
          new_chains = .not. IO_Exists(trim(rootname) //'.chk')
 #else
