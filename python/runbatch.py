@@ -14,7 +14,7 @@ iniDir=os.path.abspath(sys.argv[1])+ os.sep
 
 dirList=os.listdir(iniDir)
 for fname in dirList:
-	print '***** submitting...' + fname
-	print  'test:'+ 'perl '+subScript +' ' +iniDir + fname + ' '+noOfMpiNodes
-#	os.system('perl '+subScript +' ' + fname + ' '+noOfMpiNodes)
+	command = 'perl '+subScript +' ' +iniDir + fname + ' '+noOfMpiNodes
+	print 'Submitting...' + command
+	os.system(command)
 
