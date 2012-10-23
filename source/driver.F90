@@ -40,7 +40,8 @@ program SolveCosmology
         integer file_unit, status
         real bestfit_loglike
         real max_like_radius
-        integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2  
+        integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2, &
+                              action_Hessian=3
         integer unit
         logical want_minimize
 
@@ -275,7 +276,7 @@ program SolveCosmology
          if (Ini_Read_String('propose_matrix') /= '') &
            call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
         end if
-        want_minimize = action == action_maxlike &
+        want_minimize = action == action_maxlike .or. action==action_Hessian &
               .or. action == action_MCMC .and. estimate_propose_matrix
 
         if (want_minimize) then
@@ -351,7 +352,7 @@ program SolveCosmology
             unit = new_file_unit()
             if (action==action_importance) then
               call Ini_SaveReadValues(trim(PostParams%redo_outroot) //'.inputparams',unit)
-            else if (action==action_maxlike) then
+            else if (action==action_maxlike .or. action==action_Hessian) then
               call Ini_SaveReadValues(trim(baseroot) //'.mininum.inputparams',unit)
             else
               call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
@@ -368,7 +369,7 @@ program SolveCosmology
 
         if (want_minimize) then
         !New Powell 2009 minimization, AL Sept 2012
-          if (action == action_maxlike .and. MPIchains>1) call DoAbort( &
+          if (action /= action_MCMC .and. MPIchains>1) call DoAbort( &
            'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
           if (MpiRank==0) then
             write(*,*) 'finding best fit point...'
@@ -384,7 +385,7 @@ program SolveCosmology
 #endif
         end if
         
-        if (estimate_propose_matrix .and. action == action_MCMC) then
+        if (estimate_propose_matrix .and. action == action_MCMC .or. action==action_Hessian) then
          ! slb5aug04 with AL updates
               allocate(propose_matrix(num_params_used, num_params_used))
               if (MpiRank==0) then
@@ -396,8 +397,9 @@ program SolveCosmology
                   call AcceptReject(.true., EstParams%Info, Params%Info)
                   has_propose_matrix = status > 0
                   if (Feedback>0) write (*,*) 'Estimated covariance matrix:'
-                  call WriteCovMat(trim(baseroot) //'.local_invhessian', propose_matrix)
-                  write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.local_hessian'
+                  call WriteCovMat(trim(baseroot) //'.hessian.covmat', propose_matrix)
+                  write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.hessian.covmat'
+                  if (action==action_Hessian) call DoStop
               else
                 has_propose_matrix = .true.
               end if 

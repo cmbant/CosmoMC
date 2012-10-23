@@ -4,11 +4,12 @@ import os
 
 
 if len(sys.argv) < 2:
-	print 'Usage: python/runbatch.py directory_containing_inifiles'
+	print 'Usage: python/runbatch.py directory_containing_inifiles [num_nodes]'
 
 subScript = 'runMPI_HPCS.pl'
 
 noOfMpiNodes = '2';
+if len(sys.argv) > 2: noOfMpiNodes = sys.argv[2]
 
 iniDir=os.path.abspath(sys.argv[1])+ os.sep
 

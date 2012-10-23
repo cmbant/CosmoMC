@@ -28,7 +28,7 @@ class covMat():
 		for i in range(self.size):
 			splitLine = textFileLines[i+1].split()
 			for j in range(len(splitLine)):
-			 	matrix[i][j] = float(splitLine[j])
+				matrix[i][j] = float(splitLine[j])
 			if matrix[i].count(0.) != self.size:
 				used.append(i)
 
