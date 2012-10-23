@@ -4,7 +4,7 @@ import os
 
 
 if len(sys.argv) < 2:
-	print 'Usage: test/runbatch.py directory_containing_inifiles'
+	print 'Usage: python/runbatch.py directory_containing_inifiles'
 
 subScript = 'runMPI_HPCS.pl'
 

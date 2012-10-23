@@ -1,8 +1,11 @@
 import os, sys
 
-#path to put input files and outputchains, make if not exist
-batchPath=  'z://test1/'
-#'/scratch/aml1005/gridtest/'
+
+if len(sys.argv) < 2:
+    print 'Usage: python/makeGrid.py new_directory_for_outputs'
+
+
+batchPath=os.path.abspath(sys.argv[1])
 
 #sets of parameters to vary in addition to baseline
 extparams=[[],['mnu'],['omegak']]
