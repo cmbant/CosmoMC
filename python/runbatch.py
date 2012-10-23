@@ -8,7 +8,7 @@ if len(sys.argv) < 2:
 
 subScript = 'runMPI_HPCS.pl'
 
-noOfMpiNodes = 2;
+noOfMpiNodes = '2';
 
 iniDir=os.path.abspath(sys.argv[1])
 
