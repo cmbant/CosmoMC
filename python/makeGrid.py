@@ -72,6 +72,10 @@ for dataset in datasets:
                 
         if 'mnu' in param_set:
             f.append('num_massive_neutrinos=3')        
+        if 'nnu' in param_set:
+            if ('mnu' in param_set): raise Exception('no support for nnu and mnu')
+            f.append('param[mnu]=0 0 0 0 0')        
+
                 
         chainPath = batchPath +paramtag+'/' +datatag  +'/'
         if not os.path.exists(chainPath): os.makedirs(chainPath)

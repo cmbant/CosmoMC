@@ -389,7 +389,8 @@ program SolveCosmology
         
         if (estimate_propose_matrix .and. action == action_MCMC .or. action==action_Hessian) then
          ! slb5aug04 with AL updates
-              allocate(propose_matrix(num_params_used, num_params_used))
+              if (.not. allocated(propose_matrix)) & !
+                 allocate(propose_matrix(num_params_used, num_params_used))
               if (MpiRank==0) then
                   EstParams = Params
                   write (*,*) 'Estimating propose matrix from Hessian at bfp...'
