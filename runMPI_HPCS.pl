@@ -28,7 +28,7 @@ $walltime='01:00:00';
 {
 $chainspn = 4;  # number of chains per node
 $omp = 4;       # value of OMP_NUM_THREADS
-$walltime='08:00:00';
+$walltime='20:00:00';
 }
 
 $ppn = ( $chainspn * $omp ) ; # NB this must be <= 16
