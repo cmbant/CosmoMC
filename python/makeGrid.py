@@ -38,7 +38,7 @@ params['wa']='0 -2 2 0.3 0.3'
 defaults=['common_batch1.ini']
 
 
-basePath = os.path.dirname(sys.path[0]) +'/../'
+basePath = os.path.dirname(sys.path[0]) + os.sep
 
 commonPath = basePath + 'batch1/'
 
