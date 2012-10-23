@@ -5,7 +5,7 @@ if len(sys.argv) < 2:
     print 'Usage: python/makeGrid.py new_directory_for_outputs'
 
 
-batchPath=os.path.abspath(sys.argv[1])
+batchPath=os.path.abspath(sys.argv[1]) + os.sep
 
 #sets of parameters to vary in addition to baseline
 extparams=[[],['mnu'],['omegak']]
