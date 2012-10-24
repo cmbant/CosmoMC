@@ -9,6 +9,7 @@
 !
 !AL Oct 2012: encorporate DR9 data into something close to new cosmomc format
 
+
 module bao
 use cmbtypes
 use CAMB, only : AngularDiameterDistance  !!angular diam distance also in Mpc no h units
@@ -19,7 +20,12 @@ use Precision
   Type baodataset
     logical :: use_set
     integer :: num_bao ! total number of points used
-    integer :: type_bao  !what type of bao data is used rs/D_v =1 ie SDSS; A(z) =2 ie WiggleZ
+    integer :: type_bao  
+     !what type of bao data is used 
+     !1: old sdss, no longer
+     !2: A(z) =2 ie WiggleZ
+     !3 D_V/rs in fitting forumla appox (DR9)
+     !4: D_v - 6DF
     character(LEN=20) :: name
     real(dl), pointer, dimension(:) :: bao_z, bao_obs, bao_err
     real(dl), pointer, dimension(:,:) :: bao_invcov
@@ -167,15 +173,16 @@ function Acoustic(CMB,z)
     Acoustic = 100*D_v(z)*sqrt(omh2)/(ckm*z)
 end function Acoustic
 
-function dvtors(z)
-    real(dl) dvtors
+function SDSS_dvtors(CMB,z)
+    Type(CMBParams) CMB
+    real(dl) SDSS_dvtors
     real(dl), intent(IN)::z
     real(dl) rs
     
-    rs = CMBToBAOrs()
+    rs = SDSS_CMBToBAOrs(CMB)
     
-    dvtors = D_v(z)/rs
-end function dvtors
+    SDSS_dvtors = D_v(z)/rs
+end function SDSS_dvtors
 
 
 !===================================================================================
@@ -198,7 +205,7 @@ function BAO_LnLike(CMB)
     
         if(baodatasets(i)%type_bao ==3)then
             do j=1, baodatasets(i)%num_bao
-                BAO_theory(j) = dvtors(baodatasets(i)%bao_z(j))
+                BAO_theory(j) = SDSS_dvtors(CMB,baodatasets(i)%bao_z(j))
             end do
         else if(baodatasets(i)%type_bao ==2)then
             do j=1, baodatasets(i)%num_bao
@@ -271,12 +278,10 @@ end subroutine BAO_DR7_init
 
  function BAO_DR7_loglike(CMB,z)
  Type(CMBParams) CMB
- real (dl) z, BAO_DR7_loglike, dv1theory, alpha_chain, rs, prob
+ real (dl) z, BAO_DR7_loglike, alpha_chain, prob
  real,parameter :: rs_wmap7=152.7934d0,dv1_wmap7=1340.177  !r_s and D_V computed for wmap7 cosmology
  integer ii
-             dv1theory = D_v(z)
-             rs = SDSS_CMBToBAOrs(CMB)
-             alpha_chain = (dv1theory/rs)/(dv1_wmap7/rs_wmap7)
+             alpha_chain = (SDSS_dvtors(CMB,z))/(dv1_wmap7/rs_wmap7)
              if ((alpha_chain.gt.DR7_alpha_file(DR7_alpha_npoints-1)).or.(alpha_chain.lt.DR7_alpha_file(1))) then
                 BAO_DR7_loglike = logZero
              else
