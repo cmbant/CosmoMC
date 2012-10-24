@@ -2,8 +2,8 @@
 
 name = 6DF
 
-#Type of measurement: A(z) = 2, D_V/rs=3
-type_bao = 3
+#Type of measurement: A(z) = 2, D_V/rs=3, Dv=4
+type_bao = 4
 
 #number of bao data points 
 num_bao = 1

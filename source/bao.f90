@@ -63,7 +63,7 @@ subroutine ReadBaoDataset(gname)
     bset%num_bao = Ini_Read_Int_File(Ini,'num_bao',0)
     if (bset%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
     bset%type_bao = Ini_Read_Int_File(Ini,'type_bao',1)
-    if(bset%type_bao /= 3 .and. bset%type_bao /=2 ) then
+    if(bset%type_bao /= 3 .and. bset%type_bao /=2 .and. bset%type_bao /=4) then
         write(*,*) bset%type_bao
         write(*,*)'ERROR: Invalid bao type specified in BAO dataset: '//trim(bset%name)
         call MPIStop()
@@ -203,6 +203,10 @@ function BAO_LnLike(CMB)
         else if(baodatasets(i)%type_bao ==2)then
             do j=1, baodatasets(i)%num_bao
                 BAO_theory(j) = Acoustic(CMB,baodatasets(i)%bao_z(j))
+            end do
+        else if(baodatasets(i)%type_bao ==4)then
+            do j=1, baodatasets(i)%num_bao
+                BAO_theory(j) = D_v(baodatasets(i)%bao_z(j))
             end do
         end if
 
