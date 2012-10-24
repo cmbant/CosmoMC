@@ -98,7 +98,7 @@ subroutine ReadBaoDataset(gname)
         close(tmp_file_unit)
 
         if (iopb.ne.0) then
-           call DoAbort('Error reading bao file '//trim(bao_invcov_file))
+           call MpiStop('Error reading bao file '//trim(bao_invcov_file))
         endif
         
        else
