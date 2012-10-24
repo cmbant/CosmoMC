@@ -83,7 +83,7 @@ subroutine ReadBaoDataset(gname)
 
     if (bset%name == 'DR7') then
      !don't used observed value, probabilty distribution instead
-      call BAO_DR7_init(Ini_Read_String_File(Ini,'prob_dist'))    
+      call BAO_DR7_init(ReadIniFileName(Ini,'prob_dist'))    
     else
 
        allocate(bset%bao_invcov(bset%num_bao,bset%num_bao))

@@ -308,7 +308,7 @@ program SolveCosmology
           end if
           nuisance_params_used = nuisance_params_used + datasets(i)%nuisance_parameters
          end do
-         if (Feedback > 1) write (*,*) 'read datasets'
+         if (Feedback > 1) write (*,*) 'read CMB datasets'
         end if
 
 #ifdef CLIK
@@ -327,9 +327,9 @@ program SolveCosmology
         end if
 
         !From Jason Dosset, minor changes by AL
-        numbaosets = Ini_Read_Int('bao_numdatasets',0)
         if (Use_BAO) then
-             if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
+            numbaosets = Ini_Read_Int('bao_numdatasets',0)
+            if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
              do i= 1, numbaosets
               bao_filename(i) = ReadIniFileName(DefIni,numcat('bao_dataset',i)) 
               call ReadBaoDataset(bao_filename(i))
