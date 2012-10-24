@@ -23,9 +23,8 @@ module CMB_Cls
   logical :: use_nonlinear = .false.
   
   Type ParamSetInfo  
-    
-    Type (CosmoTheory) :: Theory
     Type (CAMBdata)    :: Transfers
+    Type (CosmoTheory) :: Theory
     Type (CMBParams)   :: LastParams
   end Type ParamSetInfo
 
@@ -105,9 +104,7 @@ contains
    real Cls(lmax,1:num_cls_tot)
    type(CAMBParams)  P
    logical NewTransfers
-   integer zix
    character(LEN=128) :: LogLine
-  
   
     error = 0
     Newtransfers = .false.
@@ -187,39 +184,7 @@ contains
          end if
    
          if (Use_LSS) then
-            Info%Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(matter_power_lnzsteps,1)
-#ifdef DR71RG 
-            !! BR09 get lrgtheory info
-            if (num_matter_power /= 0 .and. use_dr7lrg) then
-                do zix = 1,matter_power_lnzsteps
-                 if(zix .eq. iz0lrg .or. zix .eq. izNEARlrg .or. zix .eq. izMIDlrg .or. zix .eq. izFARlrg) then
-                   call Transfer_GetMatterPowerAndNW(Info%Transfers%MTrans,&
-                     Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
-                      1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
-                       kmindata,getabstransferscale, &
-                       Info%Theory%mpk_nw(:,zix),Info%Theory%mpkrat_nw_nl(:,zix))
-                     if(zix == iz0lrg) powerscaletoz0(1) = getabstransferscale**2.0d0
-                     if(zix == izNEARlrg)   powerscaletoz0(2) = powerscaletoz0(1)/getabstransferscale**2.0d0
-                     if(zix == izMIDlrg)   powerscaletoz0(3) = powerscaletoz0(1)/getabstransferscale**2.0d0
-                     if(zix == izFARlrg)   powerscaletoz0(4) = powerscaletoz0(1)/getabstransferscale**2.0d0
-                  else  !! not an LRG redshift, so call regular function.
-                   call Transfer_GetMatterPower(Info%Transfers%MTrans,&
-                     Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
-                     1,matter_power_minkh, matter_power_dlnkh,num_matter_power)
-                  end if
-                 end do
-                 if(zix == iz0lrg) powerscaletoz0(1) = 1.0d0
-             else if (num_matter_power /= 0) then
-            !! end BR09 get lrgtheory info
-#else
-            if (num_matter_power /= 0) then
-#endif
-                do zix = 1,matter_power_lnzsteps
-                 call Transfer_GetMatterPower(Info%Transfers%MTrans,& 
-                   Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
-                    1,matter_power_minkh, matter_power_dlnkh,num_matter_power) 
-                 end do             
-             end if
+            call SetPkFromCAMB(Info%Theory,Info%Transfers%MTrans)
          else
             Info%Theory%sigma_8 = 0
          end if
@@ -238,9 +203,8 @@ contains
    integer l
    real highL_norm
    
-   !The reason we store tensors separately is that can then importance sample re-computing scalars only,
-   !using the stored tensor C_l
     Theory%cl=0
+    Theory%cl_tensor=0
     do l = 2, lmax_computed_cl
 
        nm = cons/(l*(l+1))
@@ -294,7 +258,7 @@ contains
    logical, intent(in) :: DoCls, DoPk
    type(CAMBParams)  P
    logical MatterOnly
-   integer zix
+   
    error = 0
    Threadnum =num_threads
    call CMBToCAMB(CMB, P)
@@ -313,8 +277,6 @@ contains
    if (DoCls) then
       !Assume we just want Cls to higher l
       P%WantScalars = .true.
-      !P%WantTensors = .false.
-      !compute_tensors = .false.
       P%WantTensors = compute_tensors 
        
        if (.not. DoPk) then
@@ -326,22 +288,34 @@ contains
    error = global_error_flag !using error optional parameter gives seg faults on SGI
    if (error==0) then
        
-      if (DoCls) then
-  
-       Theory%cl_tensor(2:lmax_tensor,1:num_cls) = 0
-       call SetTheoryFromCAMB(Theory)
-      end if
+      if (DoCls) call SetTheoryFromCAMB(Theory)
 
-!!BR09 new addition, putting LRGs back here as well, same structure as above.  
-      if (DoPk) then 
-         Theory%sigma_8 = MT%sigma_8(matter_power_lnzsteps,1)
+      if (DoPk) call SetPkFromCAMB(Theory,MT)
+
+      Theory%Age = CAMB_GetAge(P) !should just be another derived parameter..
+      Theory%numderived = nthermo_derived
+      if (nthermo_derived > max_derived_parameters) &
+        call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
+      Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
+
+   end if
+ end subroutine GetClsInfo
+
+
+ subroutine SetPkFromCAMB(Theory,M)
+   use camb, only : MatterTransferData
+   Type(CosmoTheory) Theory
+   Type(MatterTransferData) M
+   integer zix
+   
+   Theory%sigma_8 = M%sigma_8(matter_power_lnzsteps,1)
 
 #ifdef DR71RG
          !! BR09 get lrgtheory info
          if (num_matter_power /= 0 .and. use_dr7lrg) then
              do zix = 1,matter_power_lnzsteps
               if(zix .eq. iz0lrg .or. zix .eq. izNEARlrg .or. zix .eq. izMIDlrg .or. zix .eq. izFARlrg) then
-                call Transfer_GetMatterPowerAndNW(MT,&
+                call Transfer_GetMatterPowerAndNW(M,&
                   Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
                    1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
                     kmindata,getabstransferscale, &
@@ -351,7 +325,7 @@ contains
                      if(zix == izMIDlrg)   powerscaletoz0(3) = powerscaletoz0(1)/getabstransferscale**2.0d0
                      if(zix == izFARlrg)   powerscaletoz0(4) = powerscaletoz0(1)/getabstransferscale**2.0d0
                else  !! not an LRG redshift, so call regular function.
-                call Transfer_GetMatterPower(MT,&
+                call Transfer_GetMatterPower(M,&
                   Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
                   1,matter_power_minkh, matter_power_dlnkh,num_matter_power)
                end if
@@ -363,22 +337,13 @@ contains
             if (num_matter_power /= 0) then
 #endif
                 do zix = 1,matter_power_lnzsteps
-                 call Transfer_GetMatterPower(MT,&
+                 call Transfer_GetMatterPower(M,&
                    Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
                     1,matter_power_minkh, matter_power_dlnkh,num_matter_power)
                  end do
             end if
-      end if
-      Theory%Age = CAMB_GetAge(P)
-      Theory%numderived = nthermo_derived
-      if (nthermo_derived > max_derived_parameters) &
-        call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
-      Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
-
-   end if
- end subroutine GetClsInfo
-
-
+ end subroutine SetPkFromCAMB
+ 
  subroutine InitCAMB(CMB,error, DoReion)
    type(CMBParams), intent(in) :: CMB
    logical, optional, intent(in) :: DoReion
