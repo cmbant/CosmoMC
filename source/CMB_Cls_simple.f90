@@ -87,17 +87,20 @@ contains
               
  end function RecomputeTransfers
 
+ function RecomputePowers(A, B)
+   logical RecomputePowers
+   type(CMBParams) A, B
+
+   !force redo on tensor ampltiude change too for the moment: changing ration changes n_t if inflation consistency
+   RecomputePowers =  A%norm(norm_As)/=B%norm(norm_As) .or. A%norm(norm_amp_ratio)/=B%norm(norm_amp_ratio)  &
+                      .or. any(A%InitPower(1:num_initpower)/=B%InitPower(1:num_initpower))
+
+ end function RecomputePowers
+
 
  subroutine GetCls(CMB,Info, Cls, error)
    use ModelParams, only : ThreadNum
    use InitialPower
-#ifdef DR71RG 
-   use lrggettheory
-   use InitialPower
-   real(dl) :: getabstransferscale 
-   !! BR09: this variable is for renormalizing the power spectra to the z=0 value; 
-   !this is the assumption of the LRG model.
-#endif     
    type(CMBParams) CMB
    integer error
    Type(ParamSetInfo) Info
@@ -119,7 +122,6 @@ contains
   
          call CAMB_GetTransfers(P, Info%Transfers, error)
          NewTransfers = .true.
-         Info%LastParams = CMB
          if (error==0) then
           if (Use_SN) then
             Info%Theory%SN_Loglike = SN_LnLike(CMB)
@@ -154,14 +156,13 @@ contains
 
     end if 
     
-!    if ((error==0) .and. (Newtransfers .or. any(CMB%InitPower /= Info%LastParams%InitPower))) then
+     if (NewTransfers .or. RecomputePowers(CMB, Info%LastParams)) then
        !Use the initial power spectra to get the Cls and matter power spectrum
-     if (error == 0) then
-      !Always get everything again. Slight waste of time in general, but allows complete mixing of fast
-      !parameters, and works with lensing
+
+         Info%LastParams = CMB
+         if (error /= 0) return
 
          call SetCAMBInitPower(Info%Transfers%Params,CMB,1)      
-      
          call CAMB_TransfersToPowers(Info%Transfers)
             !this sets slow CAMB params correctly from value stored in Transfers
          if (global_error_flag/=0) then
@@ -182,13 +183,12 @@ contains
          else
              Info%Theory%tensor_ratio_02 = 0 
          end if
-   
+
          if (Use_LSS) then
             call SetPkFromCAMB(Info%Theory,Info%Transfers%MTrans)
          else
             Info%Theory%sigma_8 = 0
          end if
-
      end if
      if (error /= 0) return
 
@@ -246,18 +246,11 @@ contains
 
  subroutine GetClsInfo(CMB, Theory, error, DoCls, DoPk)
    use ModelParams, only : ThreadNum
-#ifdef DR71RG
-   use lrggettheory
-   real(dl) :: getabstransferscale
-   !! BR09: this variable is for renormalizing the power spectra to the z=0 value;
-   !this is the assumption of the LRG model.
-#endif
    type(CMBParams) CMB
    Type(CosmoTheory) Theory
    integer error
    logical, intent(in) :: DoCls, DoPk
    type(CAMBParams)  P
-   logical MatterOnly
    
    error = 0
    Threadnum =num_threads
@@ -265,11 +258,9 @@ contains
    P%OnlyTransfers = .false.
    call SetCAMBInitPower(P,CMB,1)   
     
-   MatterOnly = .false.
    if (DoPk) then
       P%WantTransfer = .true.
       if (.not. DoCls) then
-         MatterOnly = .true.         
          P%WantScalars = .false.
          P%WantTensors = .false.
       end if
@@ -278,10 +269,7 @@ contains
       !Assume we just want Cls to higher l
       P%WantScalars = .true.
       P%WantTensors = compute_tensors 
-       
-       if (.not. DoPk) then
-        P%WantTransfer = .false.
-       end if
+       if (.not. DoPk) P%WantTransfer = .false.
    end if
    
    call CAMB_GetResults(P)
@@ -303,6 +291,12 @@ contains
 
 
  subroutine SetPkFromCAMB(Theory,M)
+#ifdef DR71RG
+   use lrggettheory
+   real(dl) :: getabstransferscale
+   !! BR09: this variable is for renormalizing the power spectra to the z=0 value;
+   !this is the assumption of the LRG model.
+#endif
    use camb, only : MatterTransferData
    Type(CosmoTheory) Theory
    Type(MatterTransferData) M
