@@ -333,7 +333,7 @@ program SolveCosmology
              do i= 1, numbaosets
               bao_filename(i) = ReadIniFileName(DefIni,numcat('bao_dataset',i)) 
               call ReadBaoDataset(bao_filename(i))
-              if(use_dr7lrg .and. baodatasets(i)%name =='sdss')then
+              if(use_dr7lrg .and. (baodatasets(i)%name =='DR7' .or. baodatasets(i)%name =='DR9'))then
                  !Al stop rather than ignore, avoid depending of bao on mpk
                  call MpiStop('DR7 LRG and SDSS BAO are based on the same data set. You cannot use both.')
               end if

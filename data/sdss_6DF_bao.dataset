@@ -1,0 +1,12 @@
+#From SDSS data set: http://www.sdss3.org/science/boss_dr9_final_results/
+
+name = 6DF
+
+#Type of measurement: rs/D_V = 1, A(z) = 2
+type_bao = 1
+
+#number of bao data points 
+num_bao = 1
+
+bao_measurements_file = %DATASETDIR%sdss_6DF_bao.txt
+
