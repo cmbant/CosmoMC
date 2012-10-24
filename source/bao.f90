@@ -24,7 +24,7 @@ use Precision
     real(dl), pointer, dimension(:) :: bao_z, bao_obs, bao_err
     real(dl), pointer, dimension(:,:) :: bao_invcov
    
-   end Type baodataset
+  end Type baodataset
   integer :: num_bao_datasets = 0
   Type(baodataset) baodatasets(10)
 
@@ -55,7 +55,6 @@ subroutine ReadBaoDataset(gname)
       stop
     end if
     
-    
     bset%name = Ini_Read_String_File(Ini,'name')
     
     Ini_fail_on_not_found = .false.
@@ -64,7 +63,7 @@ subroutine ReadBaoDataset(gname)
     bset%num_bao = Ini_Read_Int_File(Ini,'num_bao',0)
     if (bset%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
     bset%type_bao = Ini_Read_Int_File(Ini,'type_bao',1)
-    if(bset%type_bao /= 1 .and. bset%type_bao /=2 ) then
+    if(bset%type_bao /= 3 .and. bset%type_bao /=2 ) then
         write(*,*) bset%type_bao
         write(*,*)'ERROR: Invalid bao type specified in BAO dataset: '//trim(bset%name)
         call MPIStop()
@@ -99,7 +98,7 @@ subroutine ReadBaoDataset(gname)
         close(tmp_file_unit)
 
         if (iopb.ne.0) then
-           stop 'Error reading bao file'
+           call DoAbort('Error reading bao file '//trim(bao_invcov_file))
         endif
         
        else
@@ -168,15 +167,15 @@ function Acoustic(CMB,z)
     Acoustic = 100*D_v(z)*sqrt(omh2)/(ckm*z)
 end function Acoustic
 
-function rstodv(z)
-    real(dl) rstodv
+function dvtors(z)
+    real(dl) dvtors
     real(dl), intent(IN)::z
     real(dl) rs
     
     rs = CMBToBAOrs()
     
-    rstodv = rs/D_v(z)
-end function rstodv
+    dvtors = D_v(z)/rs
+end function dvtors
 
 
 !===================================================================================
@@ -197,9 +196,9 @@ function BAO_LnLike(CMB)
 
         allocate(BAO_theory(baodatasets(i)%num_bao))
     
-        if(baodatasets(i)%type_bao ==1)then
+        if(baodatasets(i)%type_bao ==3)then
             do j=1, baodatasets(i)%num_bao
-                BAO_theory(j) = rstodv(baodatasets(i)%bao_z(j))
+                BAO_theory(j) = dvtors(baodatasets(i)%bao_z(j))
             end do
         else if(baodatasets(i)%type_bao ==2)then
             do j=1, baodatasets(i)%num_bao
@@ -221,8 +220,11 @@ function BAO_LnLike(CMB)
        
        if(feedback>1)write(*,*)'Bao dataset: '//trim(baodatasets(i)%name)//' LnLike = ',tot(i)
    end do
-    
-   BAO_LnLike = sum(tot)
+   if (any(tot==logZero)) then
+       BAO_LnLike = logZero
+   else
+       BAO_LnLike = sum(tot)
+   end if
    if(feedback>1)write(*,*)'Bao_LnLike = ', Bao_LnLike
 
 end function BAO_LnLike

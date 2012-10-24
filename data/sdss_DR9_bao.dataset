@@ -5,8 +5,8 @@
 
 name = DR9
 
-#Type of measurement: rs/D_V = 1, A(z) = 2
-type_bao = 1
+#Type of measurement: A(z) = 2, D_V/rs=3
+type_bao = 3
 
 #number of bao data points 
 num_bao = 1
