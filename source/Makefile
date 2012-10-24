@@ -129,8 +129,13 @@ endif
 PLANCKLIKEFILES=
 
 ifeq ($(PLANCKLIKE),cliklike_CamSpec)
-PLANCKLIKEFILES += temp_like.o $(PLANCKLIKE).o
+PLANCKLIKEFILES += temp_like.o
 endif
+
+ifneq ($(PLANCKLIKE),)
+PLANCKLIKEFILES += $(PLANCKLIKE).o
+endif
+
 
 LIKEFILES = $(PLANCKLIKEFILES)  calclike.o
 
