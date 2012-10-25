@@ -84,7 +84,9 @@ for dataset in datasets:
 
 #        f.append('propose_matrix =' + datatag + '.covmat')
 
-        if newCovmat: f.append('MPI_Max_R_ProposeUpdate = 20')
+        if newCovmat:
+            f.append('MPI_Max_R_ProposeUpdate = 20')
+            f.append('start_at_bestfit = T')
         f.append('action =' + str(cosmomcAction))
 
         outfile = open(batchPath + 'iniFiles/' + fulltag + '.ini', 'w')
