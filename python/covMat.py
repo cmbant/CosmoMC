@@ -43,6 +43,6 @@ class covMat():
 	def saveToFile(self, filename):  	
 		fout = open(filename, 'w')
 		fout.write('# '+self.paramNameString()+'\n')
-		self.matrix.savetxt(fout,'%E')
+		np.savetxt(fout,self.matrix,'%E')
 		fout.close
 
