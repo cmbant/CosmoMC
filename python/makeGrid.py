@@ -82,7 +82,7 @@ for dataset in datasets:
         fulltag = paramtag + '_' + datatag
         f.append('file_root = ' + chainPath + fulltag)
 
-        f.append('propose_matrix =' + datatag + '.covmat')
+#        f.append('propose_matrix =' + datatag + '.covmat')
 
         if newCovmat: f.append('MPI_Max_R_ProposeUpdate = 20')
         f.append('action =' + str(cosmomcAction))
