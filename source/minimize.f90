@@ -121,6 +121,7 @@
                 write (aunit,'(a)') trim(NameMapping%label(i))
             end if 
         end do
+        write (aunit,*) ''
     end do
 
     if (generic_mcmc) return
