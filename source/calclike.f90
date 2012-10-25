@@ -125,7 +125,6 @@ contains
     GetLogLikePost  = GetLogPrior(CMB, Info)
     if ( GetLogLikePost >= logZero) then
        GetLogLikePost = logZero
-       
     else 
 
        if (Use_CMB .or. Use_LSS) then !#clik#
@@ -176,7 +175,6 @@ contains
             else
              GetLogLikePost = GetLogLikePost + HST_LnLike(CMB)
             end if
-           !!Old: GetLogLikePost = GetLogLikePost + (CMB%H0 - 72)**2/(2*8**2)  !HST 
          end if  
      
          else

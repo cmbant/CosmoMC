@@ -14,31 +14,16 @@
 !Assumes prior 0.4 < h < 1
 
    function CMBToTheta(CMB)
-     use settings
      use cmbtypes
      use ModelParams
      use CMB_Cls
-     use Precision
      implicit none
      Type(CMBParams) CMB
-     double precision zstar, astar, atol, rs,  DA
-     double precision, external :: dsoundda, rombint
      real CMBToTheta
      integer error
   
      call InitCAMB(CMB,error,.false.)
-
-!!From Hu & Sugiyama
-       zstar =  1048*(1+0.00124*CMB%ombh2**(-0.738))*(1+ &
-        (0.0783*CMB%ombh2**(-0.238)/(1+39.5*CMB%ombh2**0.763)) * &
-           (CMB%omdmh2+CMB%ombh2)**(0.560/(1+21.1*CMB%ombh2**1.81)))
-     
-       astar = 1/(1+zstar)
-       atol = 1e-6
-       rs = rombint(dsoundda,1d-8,astar,atol)
-       DA = AngularDiameterDistance(zstar)/astar
-       CMBToTheta = rs/DA
-!       print *,'z* = ',zstar, 'r_s = ',rs, 'DA = ',DA, rs/DA
+     CMBToTheta = CosmomcTheta()
 
   end function CMBToTheta
 
@@ -76,8 +61,21 @@
          stop 'params_CMB:Wrong initial power spectrum'
        end if
 
-    end subroutine SetCAMBInitPower
+     end subroutine SetCAMBInitPower
  
+
+ subroutine SetFast(Params,CMB)
+     use settings
+     use cmbtypes
+     real Params(num_Params)
+     Type(CMBParams) CMB
+     
+        CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initPower-1)
+        CMB%norm(1) = exp(Params(index_norm))
+        CMB%norm(2:num_norm) = Params(index_norm+1:index_norm+num_norm-1)
+        CMB%nuisance(1:num_nuisance_params) = Params(index_nuisance:index_nuisance+num_nuisance_params-1)
+ 
+ end subroutine SetFast
 
  subroutine SetForH(Params,CMB,H0, firsttime)
      use settings
@@ -120,18 +118,13 @@
         else
          !e.g. set from free parameter..
          CMB%YHe  =Params(10)
-         !call MpiStop('params_CMB: YHe not free parameter in default parameterization')
         end if
         
         CMB%iso_cdm_correlated =  Params(11)
         CMB%zre_delta = Params(12)
         CMB%ALens = Params(13)
         CMB%fdm = Params(14)
-        
-        CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initPower-1)
-        CMB%norm(1) = exp(Params(index_norm))
-        CMB%norm(2:num_norm) = Params(index_norm+1:index_norm+num_norm-1)
-        CMB%nuisance(1:num_nuisance_params) = Params(index_nuisance:index_nuisance+num_nuisance_params-1)
+        call SetFast(Params,CMB)
     end if
     
     CMB%h = CMB%H0/100
@@ -152,16 +145,16 @@
      implicit none
      real Params(num_params)
      real, save :: LastParams(num_params) = 0.
-     real, save :: LastH0, Lastzre
 
      Type(CMBParams) CMB
+     Type(CMBParams), save :: LastCMB
      real DA
      real  D_b,D_t,D_try,try_b,try_t, CMBToTheta, lasttry
      external CMBToTheta
 
      if (all(Params(1:num_hard) == Lastparams(1:num_hard))) then
-       call SetForH(Params,CMB,LastH0, .true.)
-       CMB%zre = Lastzre
+       CMB = LastCMB
+       call SetFast(Params,CMB)
      else
 
      DA = Params(3)/100
@@ -190,13 +183,11 @@
     !!call InitCAMB(CMB,error)
     CMB%zre = GetZreFromTau(CMB, CMB%tau)       
   
-    LastH0 = CMB%H0
-    Lastzre = CMB%zre
+    LastCMB = CMB
     LastParams = Params
     end if
 
-  
-     end if
+    end if
  
    end subroutine ParamsToCMBParams
 
@@ -378,19 +369,4 @@
       deallocate(output_array)
 
   end  subroutine WriteParamsAndDat
-
-
-  function dsoundda(a)
-          use Precision
-          use ModelParams
-     
-          implicit none
-          real(dl) dsoundda,dtauda,a,R,cs
-          external dtauda
-
-           R=3.0d4*a*CP%omegab*(CP%h0/100.0d0)**2
-           cs=1.0d0/sqrt(3*(1+R))
-           dsoundda=dtauda(a)*cs
-        
-  end function dsoundda
 

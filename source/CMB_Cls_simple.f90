@@ -196,6 +196,51 @@ contains
      
  end subroutine GetCls
 
+  subroutine GetClsInfo(CMB, Theory, error, DoCls, DoPk)
+   use ModelParams, only : ThreadNum
+   type(CMBParams) CMB
+   Type(CosmoTheory) Theory
+   integer error
+   logical, intent(in) :: DoCls, DoPk
+   type(CAMBParams)  P
+   
+   error = 0
+   Threadnum =num_threads
+   call CMBToCAMB(CMB, P)
+   P%OnlyTransfers = .false.
+   call SetCAMBInitPower(P,CMB,1)   
+    
+   if (DoPk) then
+      P%WantTransfer = .true.
+      if (.not. DoCls) then
+         P%WantScalars = .false.
+         P%WantTensors = .false.
+      end if
+   end if
+   if (DoCls) then
+      !Assume we just want Cls to higher l
+      P%WantScalars = .true.
+      P%WantTensors = compute_tensors 
+       if (.not. DoPk) P%WantTransfer = .false.
+   end if
+   
+   call CAMB_GetResults(P)
+   error = global_error_flag !using error optional parameter gives seg faults on SGI
+   if (error==0) then
+       
+      if (DoCls) call SetTheoryFromCAMB(Theory)
+
+      if (DoPk) call SetPkFromCAMB(Theory,MT)
+
+      Theory%Age = CAMB_GetAge(P) !should just be another derived parameter..
+      Theory%numderived = nthermo_derived
+      if (nthermo_derived > max_derived_parameters) &
+        call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
+      Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
+
+   end if
+ end subroutine GetClsInfo
+ 
  subroutine SetTheoryFromCAMB(Theory)
    Type(CosmoTheory) Theory
    real, parameter :: cons =  (COBE_CMBTemp*1e6)**2*2*pi
@@ -243,51 +288,6 @@ contains
      end if
 
  end subroutine SetTheoryFromCAMB
-
- subroutine GetClsInfo(CMB, Theory, error, DoCls, DoPk)
-   use ModelParams, only : ThreadNum
-   type(CMBParams) CMB
-   Type(CosmoTheory) Theory
-   integer error
-   logical, intent(in) :: DoCls, DoPk
-   type(CAMBParams)  P
-   
-   error = 0
-   Threadnum =num_threads
-   call CMBToCAMB(CMB, P)
-   P%OnlyTransfers = .false.
-   call SetCAMBInitPower(P,CMB,1)   
-    
-   if (DoPk) then
-      P%WantTransfer = .true.
-      if (.not. DoCls) then
-         P%WantScalars = .false.
-         P%WantTensors = .false.
-      end if
-   end if
-   if (DoCls) then
-      !Assume we just want Cls to higher l
-      P%WantScalars = .true.
-      P%WantTensors = compute_tensors 
-       if (.not. DoPk) P%WantTransfer = .false.
-   end if
-   
-   call CAMB_GetResults(P)
-   error = global_error_flag !using error optional parameter gives seg faults on SGI
-   if (error==0) then
-       
-      if (DoCls) call SetTheoryFromCAMB(Theory)
-
-      if (DoPk) call SetPkFromCAMB(Theory,MT)
-
-      Theory%Age = CAMB_GetAge(P) !should just be another derived parameter..
-      Theory%numderived = nthermo_derived
-      if (nthermo_derived > max_derived_parameters) &
-        call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
-      Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
-
-   end if
- end subroutine GetClsInfo
 
 
  subroutine SetPkFromCAMB(Theory,M)

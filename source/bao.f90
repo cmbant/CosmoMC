@@ -133,12 +133,12 @@ function CMBToBAOrs()
    use ThermoData, only : z_drag
    implicit none
    real(dl) ::  adrag, atol, rsdrag
-   real(dl), external :: dsoundda, rombint
+   real(dl), external :: rombint
    real(dl) :: CMBToBAOrs
    
    adrag = 1.0d0/(1.0d0+z_drag)
    atol = 1e-6
-   rsdrag = rombint(dsoundda,1d-8,adrag,atol)
+   rsdrag = rombint(dsound_da,1d-8,adrag,atol)
    CMBToBAOrs = rsdrag
 
 end function CMBToBAOrs
