@@ -45,17 +45,6 @@ map1 = dict(zip(params1,range(0,l1)))
 map2 = dict(zip(params2,range(0,l2)))
 map = dict(zip(range(0,l),params))
 
-print map1['beam3']
-
-print map1
-print map2
-print map
-
-print map[3]
-print map1['beam3']
-print map2['omegabh2']
-print map1[map[3]]
-
 cov1 = numpy.empty((l1,l1))
 cov2 = numpy.empty((l2,l2))
 cov = numpy.empty((l,l))
