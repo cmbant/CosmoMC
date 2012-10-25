@@ -17,7 +17,7 @@ cov1 = covMat.covMat(finname1)
 cov2 = covMat.covMat(finname2)    
 cov = covMat.covMat()
 
-cov.paramNames.add(cov1.paramNames)   
+cov.paramNames.append(cov1.paramNames)   
   
    
 for param in cov2.paramNames:
