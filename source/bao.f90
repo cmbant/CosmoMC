@@ -5,9 +5,9 @@
 !!!!!!!!
 !for SDSS data set: http://www.sdss3.org/science/boss_dr9_final_results/README_sdssbaodr9iso
 !! for explanation of the changes to the rs expression, see Hamann et al, 
-!! http://xxx.lanl.gov/abs/1003.3999
+!! http://arxiv.org/abs/1003.3999
 !
-!AL Oct 2012: encorporate DR9 data into something close to new cosmomc format
+!AL/JH Oct 2012: encorporate DR9 data into something close to new cosmomc format
 
 
 module bao
@@ -138,7 +138,7 @@ function CMBToBAOrs()
    
    adrag = 1.0d0/(1.0d0+z_drag)
    atol = 1e-6
-   rsdrag = rombint(dsoundda,1d-8,adrag,atol)
+   rsdrag = rombint(dsound_da,1d-8,adrag,atol)
    CMBToBAOrs = rsdrag
 
 end function CMBToBAOrs
@@ -148,15 +148,9 @@ function D_v(z)
     real(dl)  D_v, Hz, ADD
     real(dl) dtauda 
     external dtauda !CAMB's d eta/da
-    
- !   omegam = 1.d0 - CMB%omv - CMB%omk 
- !   hzoh0 = sqrt(CMB%omk*(1.d0+z)**2.d0+omegam*(1.d0+z)**3.d0 &
-  !    +CMB%omv*exp(-3.0d0*(-(1.0d0+CMB%w+CMB%wa)*log(1.0d0+z)+CMB%wa*z/(1.0d0+z))
-    !+ CMB%omv*(1.d0+z)**(3.d0*(1.d0+CMB%w)))
+
     ADD = AngularDiameterDistance(z)*(1.d0+z)
     Hz = 1/dtauda(1/(1._dl+z))*(1._dl+z)**2
-!   Hz = CMB%h0*1000.d0*hzoh0
-!   D_v = ((ADD)**2.d0*c*z/Hz)**(1.d0/3.d0)
     D_v = ((ADD)**2.d0*z/Hz)**(1.d0/3.d0)
 end function D_v
 
@@ -174,14 +168,18 @@ function Acoustic(CMB,z)
 end function Acoustic
 
 function SDSS_dvtors(CMB,z)
+!This uses numerical value of D_v/r_s, but re-scales it to match definition of SDSS
+!paper fitting at the fiducial model. Idea being it is also valid for e.g. varying N_eff
     Type(CMBParams) CMB
     real(dl) SDSS_dvtors
     real(dl), intent(IN)::z
     real(dl) rs
+    real(dl), parameter :: rs_rescale = 153.017d0/149.0808
     
-    rs = SDSS_CMBToBAOrs(CMB)
-    
-    SDSS_dvtors = D_v(z)/rs
+!    rs = SDSS_CMBToBAOrs(CMB)
+     rs = CMBToBAOrs()*rs_rescale !rescaled to match fitting formula for LCDM
+     SDSS_dvtors = D_v(z)/rs
+
 end function SDSS_dvtors
 
 
