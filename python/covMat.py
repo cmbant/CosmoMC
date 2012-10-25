@@ -2,13 +2,12 @@ import numpy as np
 
 class covMat():
 
-	def __init__(self, aname):
+	def __init__(self, filename = ''):
 
 		self.matrix = []
 		self.paramNames=[]
 		self.size =0
-		self.name=aname
-		self.comment=''
+		if filename != '': self.loadFromFile(filename)
 
 	def paramNameString(self):
 		return " ".join(self.paramNames)
