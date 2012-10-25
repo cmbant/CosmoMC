@@ -42,7 +42,7 @@ for i in range(0, l):
         if cov.paramNames[i] in params1 and cov.paramNames[j] in params1:
             cov.matrix[i][j] = cov1.matrix[map1[covmap[i]]][map1[covmap[j]]]
         elif cov.paramNames[i] in params2 and cov.paramNames[j] in params2:
-            cov[i][j] = cov2[map2[map[i]]][map2[map[j]]]
+            cov.matrix[i][j] = cov2.matrix[map2[covmap[i]]][map2[map[j]]]
 
 cov.saveToFile(foutname)
 
