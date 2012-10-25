@@ -13,10 +13,8 @@ foutname = sys.argv[1]
 finname1 = sys.argv[2]
 finname2 = sys.argv[3]
     
-cov1 = covMat.covMat()    
-cov2 = covMat.covMat()    
-cov1.loadFromFile(finname1)
-cov2.loadFromFile(finname2) 
+cov1 = covMat.covMat(finname1)    
+cov2 = covMat.covMat(finname2)    
 cov = covMat.covMat()
 
 cov.paramNames.add(cov1.paramNames)   
