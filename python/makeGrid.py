@@ -20,8 +20,8 @@ if len(sys.argv) > 2: cosmomcAction = int(sys.argv[2])
 
 datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
-datasets.append([[planck], ['CAMspec_defaults_merged.ini']])
-datasets.append([[planck, highL], ['CAMspec_ACTSPT_defaults_merged.ini']])
+datasets.append([[planck], ['CAMspec_defaults.ini']])
+datasets.append([[planck, highL], ['CAMspec_ACTSPT_defaults.ini']])
 
 # priors and widths for parameters which are varied
 params = dict()
