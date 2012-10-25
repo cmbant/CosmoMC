@@ -6,8 +6,8 @@ import sys
 import numpy
 import covMat
 
-#if len(sys.argv) < 3:
-#    print 'Usage: python covcmb.py out.covmat in1.covmat in2.covmat'
+if len(sys.argv) < 3:
+    print 'Usage: python covcmb.py out.covmat in1.covmat in2.covmat'
 
 foutname = sys.argv[1]
 finname1 = sys.argv[2]
