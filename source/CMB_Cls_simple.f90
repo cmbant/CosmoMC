@@ -98,13 +98,12 @@ contains
  end function RecomputePowers
 
 
- subroutine GetCls(CMB,Info, Cls, error)
+ function GetCMBTheory(CMB,Info, error) result(NewTransfers)
    use ModelParams, only : ThreadNum
    use InitialPower
    type(CMBParams) CMB
    integer error
    Type(ParamSetInfo) Info
-   real Cls(lmax,1:num_cls_tot)
    type(CAMBParams)  P
    logical NewTransfers
    character(LEN=128) :: LogLine
@@ -190,11 +189,8 @@ contains
             Info%Theory%sigma_8 = 0
          end if
      end if
-     if (error /= 0) return
 
-     call ClsFromTheoryData(Info%Theory, CMB, Cls)
-     
- end subroutine GetCls
+ end function GetCMBTheory
 
   subroutine GetClsInfo(CMB, Theory, error, DoCls, DoPk)
    use ModelParams, only : ThreadNum

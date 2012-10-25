@@ -43,13 +43,13 @@ contains
   end function GenericLikelihoodFunction
 
   
-  function GetLogPrior(CMB, Info) !Get -Ln(Prior)
-    real GetLogPrior
+  function TestHardPriors(CMB, Info) 
+    real TestHardPriors
     real Age
     Type (CMBParams) CMB
     Type(ParamSetInfo) Info
 
-    GetLogPrior = logZero
+    TestHardPriors = logZero
  
     if (.not. generic_mcmc) then
      if (CMB%H0 < H0_min .or. CMB%H0 > H0_max) return
@@ -62,9 +62,9 @@ contains
      if (Use_Age_Tophat_Prior .and. (Age < Age_min .or. Age > Age_max) .or. Age < 0) return
     
     end if
-    GetLogPrior = 0
+    TestHardPriors = 0
  
-  end function GetLogPrior
+  end function TestHardPriors
 
   function GetLogLike(Params) !Get -Ln(Likelihood)
     type(ParamSet)  Params 
@@ -80,15 +80,15 @@ contains
     if (generic_mcmc) then
         GetLogLike = GenericLikelihoodFunction(Params) 
         if (GetLogLike /= LogZero) GetLogLike = GetLogLike/Temperature
-
     else
 
      call ParamsToCMBParams(Params%P,CMB)
 
      GetLogLike = GetLogLikePost(CMB, Params%Info,dum,.false.)
+    if (GetLogLike /= LogZero) GetLogLike = GetLogLike + getLogPriors(Params%P)
+
     end if 
 
-    if (GetLogLike /= LogZero) GetLogLike = GetLogLike + getLogPriors(Params%P)
 
   end function GetLogLike
   
@@ -119,39 +119,39 @@ contains
     logical, intent(in) :: HasCls
     real acl(lmax,num_cls_tot)
     integer error
+    logical NewTransfers
 
     if (generic_mcmc) stop 'GetLogLikePost: not supported for generic'
 
-    GetLogLikePost  = GetLogPrior(CMB, Info)
-    if ( GetLogLikePost >= logZero) then
-       GetLogLikePost = logZero
-    else 
-
-       if (Use_CMB .or. Use_LSS) then !#clik#
+    NewTransfers = .false.
+    GetLogLikePost  = TestHardPriors(CMB, Info)
+    if ( GetLogLikePost /= logZero) then
+       if (Use_CMB .or. Use_LSS) then 
           if (HasCls) then
            acl = inCls
            error =0
           else
-           call GetCls(CMB, Info, acl, error)
+           NewTransfers = GetCMBTheory(CMB, Info, error)
           end if
          if (error /= 0) then
           GetLogLikePost = logZero 
          else
-          if (Use_CMB) GetLogLikePost = &
-            CMBLnLike(acl, CMB%norm(norm_freq_ix:norm_freq_ix+num_freq_params-1),CMB%nuisance) + GetLogLikePost
+          if (Use_CMB) then
+            if (.not. hasCls) call ClsFromTheoryData(Info%Theory, CMB, acl)
+            GetLogLikePost = &
+              CMBLnLike(acl, CMB%norm(norm_freq_ix:norm_freq_ix+num_freq_params-1),CMB%nuisance) + GetLogLikePost
 #ifdef CLIK
 !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
 !freq_params(35:44), ACT/SPT as freq_params(45:65)
-          if (Use_clik) then
+            if (Use_clik) then
              GetLogLikePost = GetLogLikePost + clik_lnlike(dble(acl),dble(CMB%norm(norm_freq_ix+1:norm_freq_ix+num_freq_params-1)))
-          end if
+            end if
 #endif
+          end if
           if (Use_mpk) GetLogLikePost = GetLogLikePost + LSSLnLike(CMB, Info%theory)
           if (Use_WeakLen) GetLogLikePost = GetLogLikePost + WeakLenLnLike(CMB, Info%theory)     
           if (Use_Lya) GetLogLikePost = GetLogLikePost +  LSS_Lyalike(CMB, Info%Theory)
-          if ( GetLogLikePost >= logZero) then
-            GetLogLikePost = logZero
-          end if
+          if (GetLogLikePost >= logZero) GetLogLikePost = logZero
          end if
          if (Use_SN .and. GetLogLikePost /= logZero ) then
             if (Info%Theory%SN_loglike /= 0) then

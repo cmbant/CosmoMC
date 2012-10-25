@@ -12,7 +12,7 @@
 
 module bao
 use cmbtypes
-use CAMB, only : AngularDiameterDistance  !!angular diam distance also in Mpc no h units
+use CAMB, only : AngularDiameterDistance, Hofz  !!angular diam distance also in Mpc no h units
 use constants
 use Precision
  implicit none
@@ -146,17 +146,9 @@ end function CMBToBAOrs
 function D_v(z)
     real(dl), intent(IN) :: z
     real(dl)  D_v, Hz, ADD
-    real(dl) dtauda 
-    external dtauda !CAMB's d eta/da
     
- !   omegam = 1.d0 - CMB%omv - CMB%omk 
- !   hzoh0 = sqrt(CMB%omk*(1.d0+z)**2.d0+omegam*(1.d0+z)**3.d0 &
-  !    +CMB%omv*exp(-3.0d0*(-(1.0d0+CMB%w+CMB%wa)*log(1.0d0+z)+CMB%wa*z/(1.0d0+z))
-    !+ CMB%omv*(1.d0+z)**(3.d0*(1.d0+CMB%w)))
     ADD = AngularDiameterDistance(z)*(1.d0+z)
-    Hz = 1/dtauda(1/(1._dl+z))*(1._dl+z)**2
-!   Hz = CMB%h0*1000.d0*hzoh0
-!   D_v = ((ADD)**2.d0*c*z/Hz)**(1.d0/3.d0)
+    Hz = Hofz(z)
     D_v = ((ADD)**2.d0*z/Hz)**(1.d0/3.d0)
 end function D_v
 
