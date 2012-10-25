@@ -8,7 +8,7 @@ if len(sys.argv) < 2:
 batchPath = os.path.abspath(sys.argv[1]) + os.sep
 
 # sets of parameters to vary in addition to baseline
-extparams = [[], ['omegak', 'mnu'], ['omegak'], ['nnu'], ['nrun']]
+extparams = [[], ['omegak', 'mnu'], ['nrun', 'r'], ['omegak'], ['nnu'], ['nrun']]
 
 # dataset names
 planck = 'planck_CAMspec'
