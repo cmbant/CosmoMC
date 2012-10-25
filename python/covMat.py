@@ -41,3 +41,9 @@ class covMat():
 				self.matrix[i,j] = matrix[used[i]][used[j]]
 	
 
+	def saveToFile(self, filename):  	
+		fout = open(filename, 'w')
+		fout.write('# '+self.paramNameString()+'\n')
+		self.matrix.savetxt(fout,'%E')
+		fout.close
+
