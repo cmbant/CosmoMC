@@ -116,9 +116,7 @@
     do isused = 0,1
         do i=1, num_real_params
             if (isused==0 .and. Scales%PWidth(i)/=0 .or. isused==1 .and. Scales%PWidth(i)==0) then
-!                write(aunit,'(1I5,1E15.7,"   '//trim(ParamNames_name(NameMapping,i))//'")') i, P%P(i)
-                write(aunit,'(1I5,1E15.7,"   ",1A22,"'//trim(NameMapping%label(i))//'")') &
-                 i, P%P(i), ParamNames_name(NameMapping,i) 
+                write(aunit,'(1I5,1E15.7,"   '//trim(ParamNames_name(NameMapping,i))//'")') i, P%P(i)
             end if 
         end do
         write (aunit,*) ''
@@ -128,9 +126,8 @@
 
     numderived = CalcDerivedParams(P, derived)
     do i=1, numderived
-!        write(aunit,'(1I5,1E15.7,"   '//trim(ParamNames_name(NameMapping,num_real_params + i ))//'")') &
-         write(aunit,'(1I5,1E15.7,"   ",1A22,"'//trim(NameMapping%label(num_real_params+i))//'")') &
-             num_real_params+i, derived%P(i), ParamNames_name(NameMapping,num_real_params + i )
+        write(aunit,'(1I5,1E15.7,"   '//trim(ParamNames_name(NameMapping,num_real_params + i ))//'")') &
+        num_real_params+i, derived%P(i)
     end do
     deallocate(derived%P)
 

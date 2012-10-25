@@ -129,8 +129,13 @@ endif
 PLANCKLIKEFILES=
 
 ifeq ($(PLANCKLIKE),cliklike_CamSpec)
-PLANCKLIKEFILES += temp_like.o $(PLANCKLIKE).o
+PLANCKLIKEFILES += temp_like.o
 endif
+
+ifneq ($(PLANCKLIKE),)
+PLANCKLIKEFILES += $(PLANCKLIKE).o
+endif
+
 
 LIKEFILES = $(PLANCKLIKEFILES)  calclike.o
 
@@ -153,7 +158,7 @@ ifeq ($(RECOMBINATION),cosmorec)
 ## This is flag is passed to the Fortran compiler allowing it to link C++ (uncomment the right one).
 # GCC (gfortran/g++)
 COSMOREC_PATH ?= ../CosmoRec/
-F90CRLINK = -lstdc++ -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas
+F90CRLINK = -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas -lstdc++
 # Intel Compilers (ifort/icpc)
 #F90CRLINK = -cxxlib -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas
 FFLAGS +=  -DCOSMOREC
