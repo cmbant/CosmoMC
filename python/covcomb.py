@@ -27,7 +27,7 @@ for param in cov2.paramNames:
 params1=cov1.paramNames
 params2=cov2.paramNames
 
-l1 = len(params2)
+l1 = len(params1)
 l2 = len(params2)
 l = len(C.paramNames)
 
