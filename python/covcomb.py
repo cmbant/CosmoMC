@@ -31,7 +31,7 @@ l1 = len(params2)
 l2 = len(params2)
 l = len(C.paramNames)
 
-map1 = dict(zip(params2,range(0,l1)))
+map1 = dict(zip(params1,range(0,l1)))
 map2 = dict(zip(params2,range(0,l2)))
 covmap = dict(zip(range(0,l),C.paramNames))
 
