@@ -9,10 +9,12 @@ class iniFile:
         self.params = dict()
         self.readOrder = []
         if filename != '': self.readFile(filename)
+        self.defaults = []
+        self.includes = []
 
 
     def readFile(self, filename):
-        includes = []
+        fileincludes = []
 
         textFileHandle = open(filename)
         # Remove blanck lines and comment lines from the python list of lists.
@@ -21,7 +23,9 @@ class iniFile:
             if s == 'END':break
             if s.startswith('#'):continue
             elif s.startswith('INCLUDE('):
-                includes.append(s[s.find('(') + 1:s.rfind(')')])
+                fileincludes.append(s[s.find('(') + 1:s.rfind(')')])
+            elif s.startswith('DEFAULT('):
+                raise Exception('not added DEFAULT support yet here')
             elif s != '':
                 eq = s.find('=')
                 if eq >= 0:
@@ -33,7 +37,7 @@ class iniFile:
                     self.readOrder.append(key);
 
         textFileHandle.close()
-        for ffile in includes:
+        for ffile in fileincludes:
             if os.path.isabs(ffile):
                 self.readFile(ffile)
             else:
@@ -55,6 +59,11 @@ class iniFile:
             return str(value)
 
         parameterLines = []
+        for include in self.includes:
+            parameterLines.append('INCLUDE(' + include + ')')
+        for default in self.defaults:
+            parameterLines.append('DEFAULT(' + default + ')')
+
         keys = self.params.keys()
         keys.sort()
 
