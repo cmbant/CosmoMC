@@ -70,7 +70,6 @@ contains
     type(ParamSet)  Params 
     Type (CMBParams) CMB
     real GetLogLike
-    real dum(1,1)
  
     if (any(Params%P > Scales%PMax) .or. any(Params%P < Scales%PMin)) then
        GetLogLike = logZero
@@ -79,16 +78,14 @@ contains
 
     if (generic_mcmc) then
         GetLogLike = GenericLikelihoodFunction(Params) 
+        if (GetLogLike /= LogZero) GetLogLike = GetLogLike + getLogPriors(Params%P)
         if (GetLogLike /= LogZero) GetLogLike = GetLogLike/Temperature
     else
 
      call ParamsToCMBParams(Params%P,CMB)
-
-     GetLogLike = GetLogLikePost(CMB, Params%Info,dum,.false.)
-    if (GetLogLike /= LogZero) GetLogLike = GetLogLike + getLogPriors(Params%P)
+     GetLogLike = GetLogLikePost(CMB, Params%P, Params%Info,.false.)
 
     end if 
-
 
   end function GetLogLike
   
@@ -103,33 +100,36 @@ contains
           logLike = logLike + ((P(i)-GaussPriors%mean(i))/GaussPriors%std(i))**2
         end if
   end do
-  logLike=logLike/2/Temperature
-  
+  logLike=logLike/2
+
   end function getLogPriors
   
     
-  function GetLogLikePost(CMB, Info, inCls, HasCls) 
-    use cambmain, only: initvars
-    use Camb, only: CAMBParams_Set 
-    type(CAMBParams)  P
+  function GetLogLikePost(CMB, P, Info, HasTheory) 
     real GetLogLikePost
     Type (CMBParams) CMB
+    real P(num_params)
     Type(ParamSetInfo) Info
-    real, intent(in):: inCls(:,:)
-    logical, intent(in) :: HasCls
+    logical, intent(in) :: HasTheory
     real acl(lmax,num_cls_tot)
     integer error
-    logical NewTransfers
+    logical SlowChanged
+    logical, save:: first=.true.
 
     if (generic_mcmc) stop 'GetLogLikePost: not supported for generic'
+    
+    SlowChanged = first .or. any(Info%lastParamArray(1:num_hard)/=P(1:num_hard))
+!    NormChanged = SlowChanged .or. any(Info%lastParamArray(num_hard)/=P(1:num_hard))
+    
+    first= .false.
 
     NewTransfers = .false.
     GetLogLikePost  = TestHardPriors(CMB, Info)
     if ( GetLogLikePost /= logZero) then
        if (Use_CMB .or. Use_LSS) then 
-          if (HasCls) then
-           acl = inCls
+          if (HasTheory) then
            error =0
+           call SetTheoryBackground(CMB, Info)
           else
            NewTransfers = GetCMBTheory(CMB, Info, error)
           end if
@@ -137,7 +137,7 @@ contains
           GetLogLikePost = logZero 
          else
           if (Use_CMB) then
-            if (.not. hasCls) call ClsFromTheoryData(Info%Theory, CMB, acl)
+            call ClsFromTheoryData(Info%Theory, CMB, acl)
             GetLogLikePost = &
               CMBLnLike(acl, CMB%norm(norm_freq_ix:norm_freq_ix+num_freq_params-1),CMB%nuisance) + GetLogLikePost
 #ifdef CLIK
@@ -177,7 +177,9 @@ contains
             end if
          end if  
      
-         else
+       else !No transfer functions
+           call SetTheoryBackground(CMB, Info)
+
            if (Use_SN) GetLogLikePost = GetLogLikePost + SN_LnLike(CMB)
            if (Use_BAO)then
                 !From Jason Dosset           
@@ -190,7 +192,7 @@ contains
                     Info%Theory%BAO_loglike = Bao_lnLike(CMB)
                     Info%LastParams = CMB
                 end if
-                GetLogLikePost = GetLogLikePost + Info%Theory%BAO_loglike
+                GetLogLikePost = GetLogLikePost + Bao_lnLike(CMB)
            end if
            if (Use_HST) GetLogLikePost = GetLogLikePost + HST_LnLike(CMB)
          end if
@@ -202,8 +204,8 @@ contains
           stop 'Write your cluster prior in calclike.f90 first!'
       end if
 
+     if (GetLogLikePost /= LogZero) GetLogLikePost = GetLogLikePost + getLogPriors(Params%P)
      if (GetLogLikePost /= LogZero) GetLogLikePost = GetLogLikePost/Temperature
-   
 
     end if
 

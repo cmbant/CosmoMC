@@ -47,19 +47,16 @@ implicit none
    logical :: neutrino_param_mnu = .true. !parameter 6 is sum mnu (false for old behaviour of param(6) is fnu)
 
    integer, parameter :: max_derived_parameters = 20
-   
-
+  
   integer, parameter :: num_cls_tot = num_cls + num_cls_ext
 !Number of scalar-only cls
 !if num_cls=4 and CMB_lensing then increased to 4 
   integer :: num_clsS=min(num_cls,3) 
 
-  integer, parameter :: norm_As=1, norm_amp_ratio=2, norm_freq_ix = 3
-  
   Type CMBParams
      real nuisance(1:num_nuisance_params)
       !unit Gaussians for experimental parameters
-     real norm(1:num_norm)
+     real data_params(1:num_freq_params)
       !These are fast parameters controling amplitudes, calibrations, etc.
      real InitPower(1:num_initpower)
       !These are fast paramters for the initial power spectrum
@@ -96,6 +93,8 @@ implicit none
 
   logical, parameter :: write_all_Cls = .true. 
    !if false use CAMB's flat interpolation scheme (lossless if models are flat except near lmax when lensed)
+   
+  integer, parameter :: As_index=4, amp_ratio_index = 5
 
 contains
 
@@ -323,8 +322,8 @@ contains
       Cls(2:lmax,num_cls+1:num_cls_tot) =T%cl(2:lmax,num_clsS+1:num_clsS+num_cls_ext)   
      end if
 
-     i = norm_amp_ratio !this convolution is to avoid compile-time bounds-check errors on CMB%norm
-     if (CMB%norm(i) /= 0) then
+     i = amp_ratio_index !this convolution is to avoid compile-time bounds-check errors on CMB%norm
+     if (CMB%InitPower(amp_ratio_index) /= 0) then
         Cls(2:lmax_tensor,1:num_cls) =  Cls(2:lmax_tensor,1:num_cls)+ T%cl_tensor(2:lmax_tensor,1:num_cls) 
          !CMB%norm(norm_As)*CMB%norm(norm_amp_ratio)*T%cl_tensor(2:lmax_tensor,:)
      end if 

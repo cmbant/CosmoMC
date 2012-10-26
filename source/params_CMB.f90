@@ -35,6 +35,7 @@
        use camb
        use settings
        use cmbtypes
+       use CMB_Cls
        implicit none
        type(CAMBParams)  P
        Type(CMBParams) CMB
@@ -47,14 +48,15 @@
        P%InitPower%k_0_scalar = pivot_k
        P%InitPower%k_0_tensor = pivot_k
 
-       P%InitPower%ScalarPowerAmp(in) = cl_norm*CMB%norm(norm_As)
-       P%InitPower%rat(in) = CMB%norm(norm_amp_ratio)
+       P%InitPower%ScalarPowerAmp(in) = cl_norm*CMB%InitPower(4)
+       P%InitPower%rat(in) = CMB%InitPower(amp_ratio_index)
+
         
        P%InitPower%an(in) = CMB%InitPower(1)
        P%InitPower%ant(in) = CMB%InitPower(2)
        P%InitPower%n_run(in) = CMB%InitPower(3)
        if (inflation_consistency) then
-         P%InitPower%ant(in) = - CMB%norm(norm_amp_ratio)/8.
+         P%InitPower%ant(in) = - CMB%InitPower(amp_ratio_index)/8.
           !note input n_T is ignored, so should be fixed (to anything)
        end if
        else
@@ -70,9 +72,9 @@
      real Params(num_Params)
      Type(CMBParams) CMB
      
-        CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initPower-1)
-        CMB%norm(1) = exp(Params(index_norm))
-        CMB%norm(2:num_norm) = Params(index_norm+1:index_norm+num_norm-1)
+        CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initpower-1)
+        CMB%InitPower(As_index) = exp(CMB%InitPower(As_index))
+        CMB%data_params(1:num_freq_params) = Params(index_freq:index_freq+num_freq_params-1)
         CMB%nuisance(1:num_nuisance_params) = Params(index_nuisance:index_nuisance+num_nuisance_params-1)
  
  end subroutine SetFast
@@ -223,8 +225,9 @@
       Params(14) = CMB%fdm  
       
       Params(index_initpower:index_initpower+num_initpower-1) =CMB%InitPower(1:num_initpower) 
-      Params(index_norm) = log(CMB%norm(1))
-      Params(index_norm+1:index_norm+num_norm-1) = CMB%norm(2:num_norm)
+      Params(index_initpower + As_index-1 ) = log(CMB%InitPower(As_index))
+      
+      Params(index_freq:index_freq+num_freq_params-1) = CMB%data_params(1:num_freq_params)
       Params(index_nuisance:index_nuisance+num_nuisance_params-1)=CMB%nuisance(1:num_nuisance_params) 
 
    end subroutine CMBParamsToParams
@@ -283,7 +286,7 @@
       derived%P(6) = r10
       derived%P(7) = CMB%H0
       derived%P(8) = P%Info%Theory%tensor_ratio_02
-      derived%P(9) = cl_norm*CMB%norm(norm_As)*1e9
+      derived%P(9) = cl_norm*CMB%InitPower(As_index)*1e9
       derived%P(10)= CMB%omdmh2 + CMB%ombh2
       derived%P(11)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
       derived%P(12)= CMB%Yhe !value actually used, may be set from bbn consistency        

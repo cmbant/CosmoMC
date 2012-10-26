@@ -19,13 +19,12 @@ module settings
 !                    (e.g. beam uncertainty modes, etc, specific to dataset)
 
   integer, parameter :: num_hard = 14 
-  integer, parameter :: num_initpower = 3 
+  integer, parameter :: num_initpower = 5 
 #ifdef CLIK
   integer, parameter :: num_freq_params = 65 ! WMAP(1)/CAMspec(33)/PLik(10)/ACTSPT(21), in that order #clik#
 #else
   integer, parameter :: num_freq_params = 1
 #endif
-  integer, parameter :: num_norm = 2 + num_freq_params 
   integer, parameter :: num_nuisance_params = 0
 
   logical :: use_fast_slow = .false.
@@ -58,13 +57,15 @@ module settings
   
   logical :: stop_on_error = .true. !whether to stop with error, or continue ignoring point
 
-  integer, parameter :: num_fast_params = num_initpower + num_norm + num_nuisance_params
-
-  integer, parameter :: num_params = num_norm + num_initpower + num_hard + num_nuisance_params
-  integer, parameter :: num_real_params = num_norm + num_initpower + num_hard 
+  integer, parameter :: num_fast_params = num_initpower + num_freq_params + num_nuisance_params
+  integer, parameter :: num_theory_params = num_initpower + num_hard 
+  integer, parameter :: num_real_params = num_freq_params + num_theory_params
+  integer, parameter :: num_params = num_real_params + num_nuisance_params
+  integer, parameter :: num_theory_fast = num_initpower
+  
   integer, parameter :: index_initpower = num_hard+1
-  integer, parameter :: index_norm = index_initpower + num_initpower
-  integer, parameter :: index_nuisance = index_norm  + num_norm
+  integer, parameter :: index_freq = index_initpower + num_initpower
+  integer, parameter :: index_nuisance = index_freq  + num_freq_params
   integer, dimension(:), allocatable :: params_used,fast_params_used
   integer num_params_used, num_fast, num_slow, nuisance_params_used
 

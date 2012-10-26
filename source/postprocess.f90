@@ -82,7 +82,7 @@ contains
         Type(CMBParams) LastCMB,CMB, newCMB
         Type(CosmoTheory) Theory, CorrectTheory
         Type(ParamSetInfo) Info
-        real Cls(lmax,num_cls_tot), truelike,mult,like
+        real truelike,mult,like
         real weight_min, weight_max, mult_sum, mult_ratio, mult_max,weight
 
         real max_like, max_truelike
@@ -162,7 +162,6 @@ contains
           call ReadModel(infile_handle,CMB,Theory,mult,like, error)
         end if
 
-           
         if (error ==1) then
           if (num==0) call MpiStop('Error reading data file.')
 
@@ -181,8 +180,6 @@ contains
          if (PostParams%redo_cls) then
             Theory%cl = CorrectTheory%cl
             Theory%cl_tensor = CorrectTheory%cl_tensor
-            !!In last version redo_cls just for going to higher l on temperature
-
          end if
   
          if (PostParams%redo_pk) then
@@ -205,32 +202,14 @@ contains
          if (error ==0) then
  
            if (PostParams%redo_like) then
-               
 
               if (Use_LSS .and. CorrectTheory%sigma_8==0) &
                  call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
 
-
-              call ClsFromTheoryData(CorrectTheory, newCMB, Cls)
               Info%Theory = CorrectTheory
-            
-              if (any(Cls(2:lmax,1) < 0)) then
-                 write (*,*) 'WARNING: bad model with C_l < 0 being rejected'
-                 write (*,*) 'in '//trim(InputFile)
-                 !This shouldn't happen. 
-                 !But good sanity check, esp when playing around with extended models
-                 !Think have fixed problems with Om_k \sim -7e-4, w\sim -0.7.
-                 write (*,*) newCMB
-                 write (*,*)
-                 truelike = logZero
-              else
-               truelike = GetLogLikePost(newCMB, Info, Cls,.true.)
-               if (truelike /= LogZero) then
-                  call CMBParamsToParams(newCMB, Params)
-                  truelike = truelike + getLogPriors(Params)
-               end if
+              call CMBParamsToParams(newCMB, Params)
+              truelike = GetLogLikePost(newCMB, Params, Info,.true.)
 
-              end if
               if (truelike == logZero) then
                weight = 0
               else

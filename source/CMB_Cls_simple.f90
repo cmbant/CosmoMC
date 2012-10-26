@@ -26,6 +26,7 @@ module CMB_Cls
     Type (CAMBdata)    :: Transfers
     Type (CosmoTheory) :: Theory
     Type (CMBParams)   :: LastParams
+    real lastParamArray(num_params)
   end Type ParamSetInfo
 
   integer :: lmax_computed_cl = lmax !value used for CAMB
@@ -92,11 +93,31 @@ contains
    type(CMBParams) A, B
 
    !force redo on tensor ampltiude change too for the moment: changing ration changes n_t if inflation consistency
-   RecomputePowers =  A%norm(norm_As)/=B%norm(norm_As) .or. A%norm(norm_amp_ratio)/=B%norm(norm_amp_ratio)  &
-                      .or. any(A%InitPower(1:num_initpower)/=B%InitPower(1:num_initpower))
+   RecomputePowers = any(A%InitPower(1:num_initpower)/=B%InitPower(1:num_initpower))
 
  end function RecomputePowers
 
+
+ function SetTheoryBackground(CMB, Info) result(hasChanged)
+    use cambmain, only: initvars
+    use Camb, only: CAMBParams_Set 
+    type(CMBParams) CMB
+    type(ParamSetInfo) Info
+    type(CAMBParams)  P
+    logical hasChanged
+    
+  if (RecomputeTransfers(CMB, Info%LastParams))  then  
+    call CMBToCAMB(CMB, P)
+    call CAMBParams_Set(P)
+    call InitVars
+    Info%LastParams = CMB
+    hasChanged= .true.
+  else
+     hasChanged= .false.
+  end if
+  
+ end function SetTheoryBackground
+ 
 
  function GetCMBTheory(CMB,Info, error) result(NewTransfers)
    use ModelParams, only : ThreadNum
