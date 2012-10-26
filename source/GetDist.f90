@@ -1709,7 +1709,7 @@ program GetDist
     
         Ini_fail_on_not_found = .false.
 
-        matlab_version = Ini_Read_Real('matlab_version',7.)
+        matlab_version = Ini_Read_Real('matlab_version',8.)
         matlab_plot_output = Ini_Read_String_Default('matlab_plot_output',matlab_plot_output)
         matlab_subplot_size_inch = Ini_Read_Real('matlab_subplot_size_inch', &
                                     matlab_subplot_size_inch)

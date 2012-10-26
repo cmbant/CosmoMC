@@ -53,7 +53,6 @@ batch.save()
 for jobItem in batch.items():
         jobItem.makeChainPath()
         ini = iniFile.iniFile()
-        f = []
 
         for param in jobItem.param_set:
             ini.params['param[' + param + ']'] = params[param]
