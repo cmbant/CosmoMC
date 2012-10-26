@@ -1953,12 +1953,12 @@ program GetDist
         do ip = 1,ncols
             infile = concat(CheckTrailingSlash(concat(in_root,chain_ix)), pname(ip))
             if (.not. FileExists(infile)) then
-            write (*,*) 'skipping missing ' // trim(infile)
+            write (*,'(a)') 'skipping missing ' // trim(infile)
               coldata(ip,:) = 0
               nrows2(ip) = -1
             else
             
-            write (*,*) 'reading ' // trim(infile)
+            write (*,'(a)') 'reading ' // trim(infile)
            ! call OpenTxtFile(infile,50)
             chain_handle = IO_OpenChainForRead(infile)
             if (first_haschain==0) first_haschain=ip 

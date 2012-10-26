@@ -67,6 +67,8 @@ for jobItem in batch.items():
         if 'nnu' in jobItem.param_set:
             if ('mnu' in jobItem.param_set): raise Exception('no support for nnu and mnu')
             ini.params['param[mnu]'] = '0 0 0 0 0'
+        if 'r' in jobItem.param_set:
+            ini.params['compute_tensors'] = True
 
         ini.params['file_root'] = jobItem.chainRoot
 #        f.append('propose_matrix =' + jobItem.datatag + '.covmat')
