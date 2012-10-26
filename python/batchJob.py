@@ -19,11 +19,12 @@ class jobItem:
             paramtag = paramtag + '_' + param
         datatag = "_".join(data_set[0])
         self.datatag = datatag
-        self.paramatag = paramtag
+        self.paramtag = paramtag
         self.name = paramtag + '_' + datatag
         self.batchPath = path
         self.chainPath = path + paramtag + '/' + datatag + '/'
         self.chainRoot = self.chainPath + self.name
+        self.distPath = self.chainPath + 'dist/'
 
     def iniFile(self):
         return self.batchPath + 'iniFiles/' + self.name + '.ini'

@@ -2642,7 +2642,7 @@ program GetDist
               plot_row = (num_3D_plots +plot_col-1)/plot_col 
 
            
-              write(50,*) 'pts = load('''//trim(rootdirname)//'_single.txt'');'
+              write(50,'(a)') 'pts = load('''//trim(rootdirname)//'_single.txt'');'
              
               do j=1, num_3D_plots
                  call ParamNames_ReadIndices(NameMapping,plot_3D(j), tmp_params, 3)
