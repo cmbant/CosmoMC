@@ -1,4 +1,4 @@
-import os, sys, batchJob
+import os, sys, batchJob, iniFile
 
 
 if len(sys.argv) < 2:
@@ -52,31 +52,31 @@ batch.save()
 
 for jobItem in batch.items():
         jobItem.makeChainPath()
+        ini = iniFile.iniFile()
         f = []
 
         for param in jobItem.param_set:
-            f.append('param[' + param + ']=' + params[param])
+            ini.params['param[' + param + ']'] = params[param]
         for deffile in defaults:
-            f.append('DEFAULT(' + batch.commonPath + deffile + ')')
-        for ini in jobItem.data_set[1]:
-            f.append('INCLUDE(' + batch.commonPath + ini + ')')
+            ini.defaults.append(batch.commonPath + deffile)
+        for iniitem in jobItem.data_set[1]:
+            ini.includes.append(batch.commonPath + iniitem)
 
         if 'mnu' in jobItem.param_set:
-            f.append('num_massive_neutrinos=3')
+            ini.params['num_massive_neutrinos'] = 3
         if 'nnu' in jobItem.param_set:
             if ('mnu' in jobItem.param_set): raise Exception('no support for nnu and mnu')
-            f.append('param[mnu]=0 0 0 0 0')
+            ini.params['param[mnu]'] = '0 0 0 0 0'
 
-        f.append('file_root = ' + jobItem.chainRoot)
+        ini.params['file_root'] = jobItem.chainRoot
 #        f.append('propose_matrix =' + jobItem.datatag + '.covmat')
 
         if newCovmat:
-            f.append('MPI_Max_R_ProposeUpdate = 20')
-            f.append('start_at_bestfit = T')
+            ini.params['MPI_Max_R_ProposeUpdate'] = 20
+            ini.params['start_at_bestfit'] = True
 
-        f.append('action =' + str(cosmomcAction))
-
-        jobItem.writeIniLines(f)
+        ini.params['action'] = cosmomcAction
+        ini.saveFile(jobItem.iniFile())
 
 comment = 'Done... to run do: python python/runbatch.py ' + batchPath + 'iniFiles'
 if cosmomcAction == 3 or cosmomcAction == 2: comment += ' 0'

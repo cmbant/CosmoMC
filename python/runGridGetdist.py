@@ -12,7 +12,6 @@ base_ini = 'getdist_common_batch1.ini'
 batchPath = os.path.abspath(sys.argv[1]) + os.sep
 batch = batchJob.readobject(batchPath + 'batch.pyobj')
 
-ini = iniFile.iniFile()
 
 data_dir = batchPath + 'plot_data' + os.sep
 ini_dir = batchPath + 'getdist' + os.sep
@@ -21,6 +20,7 @@ checkDir(data_dir)
 checkDir(ini_dir)
 
 for jobItem in batch.items():
+    ini = iniFile.iniFile()
     ini.params['file_root'] = jobItem.chainRoot
     out_dir = jobItem.chainPath + 'dist/'
     checkDir(out_dir)
