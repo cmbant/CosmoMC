@@ -3,6 +3,7 @@ import os, sys, batchJob, iniFile
 
 if len(sys.argv) < 2:
     print 'Usage: python/makeGrid.py new_directory_for_outputs [action]'
+    sys.exit()
 
 
 batchPath = os.path.abspath(sys.argv[1]) + os.sep

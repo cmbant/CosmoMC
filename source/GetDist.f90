@@ -1370,8 +1370,8 @@ contains
  !             write (aunit,fmt) (/(I, I=ix_min(j), ix_max(j), 1)/)*width(j)+center(j)
               if (DoShade) then
               if (shade_meanlikes) then
-                write (aunit,'(a)') "load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //'_likes''));'
-                write (aunit,'(a)') 'contourf(x1,x2,'//trim(plotfile)//'_likes,64);'
+                write (aunit,'(a)') "ptsL=load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //'_likes''));'
+                write (aunit,'(a)') 'contourf(x1,x2,ptsL,64);'
               else     
                 write (aunit,*) 'contourf(x1,x2,pts,64);'
               end if
@@ -1385,10 +1385,10 @@ contains
                write (aunit,'(a)') "cnt = load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //'_cont''));'
   
                if (plot_NDcontours) then
-                write (aunit,'(a)') "load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //'_confid''));'
+                write (aunit,'(a)') "ptND=load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //'_confid''));'
                 write(numstr,*) 1-contours(1:num_contours)  
                 if (num_contours==1) numstr = trim(numstr)//' '//trim(numstr)
-               write (aunit,'(a)') 'contour(x1,x2,'//trim(plotfile)//'_confid,['//trim(numstr)//'],''r'');'
+               write (aunit,'(a)') 'contour(x1,x2,ptND,['//trim(numstr)//'],''r'');'
                
                end if
               end if
@@ -1471,15 +1471,19 @@ contains
 
          end subroutine WriteMatLabInit
 
-        subroutine WriteMatLabPrint(unit, plot_col, plot_row)
+        subroutine WriteMatLabPrint(unit, tag, plot_col, plot_row)
          integer, intent(in) :: unit, plot_col, plot_row
+         character(LEN=*), intent(in) :: tag
+         character(LEN=10) command
 
            write(unit,*)  'set(gcf, ''PaperUnits'',''inches'');'
            write(unit,*) 'x=',plot_col,'*plot_size_inch; y=',plot_row,'*plot_size_inch;'
            write(unit,*) 'set(gcf, ''PaperPosition'',[0 0 x y]); set(gcf, ''PaperSize'',[x y]);'
-           if (matlab_plot_output == 'ps') write (unit,'(a)') 'print -dpsc2 '//trim(rootname)//'.ps;'
-           if (matlab_plot_output == 'pdf') write (unit,'(a)') 'print -dpdf '//trim(rootname)//'.pdf;'
-           if (matlab_plot_output == 'eps') write (unit,'(a)') 'print -depsc2 '//trim(rootname)//'.eps;'
+           if (matlab_plot_output == 'ps')  command='-dpsc2'
+           if (matlab_plot_output == 'pdf')  command='-dpdf'
+           if (matlab_plot_output == 'eps') command='-depsc2'
+           write (unit,'(a)') 'print('''//trim(command)//''',fullfile('''// &
+                     trim(out_dir)//''',''' // trim(rootname)//trim(tag)//'.'//trim(matlab_plot_output)//'''));'
 
         end subroutine WriteMatLabPrint
          
@@ -1490,15 +1494,13 @@ contains
        integer ix1
 
         fname =trim(trim(rootname)//trim(numcat('_p',colix(j)-2)))
-        write (aunit,'(a)') "load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.dat''));'
-        write (aunit,'(a)') 'pts='//trim(fname)//';'
+        write (aunit,'(a)') "pts=load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.dat''));'
         write (aunit,*) 'plot(pts(:,1),pts(:,2),lineM{1},''LineWidth'',lw1);'
         write (aunit,*) 'axis([-Inf,Inf,0,1.1]);axis manual;'
         write (aunit,*) 'set(gca,''FontSize'',axes_fontsize); hold on;'
 
         if (plot_meanlikes) then
-         write (aunit,'(a)') "load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.likes''));'
-         write (aunit,'(a)') 'pts='//trim(fname)//';'
+         write (aunit,'(a)') "pts=load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.likes''));'
          write (aunit,*) 'plot(pts(:,1),pts(:,2),lineL{1},''LineWidth'',lw1);'
         end if
 
@@ -2476,7 +2478,7 @@ program GetDist
               close(50)
 
               if (line_labels) call WriteMatlabLineLabels(51)
-              call WriteMatLabPrint(51, plot_col, plot_row)
+              call WriteMatLabPrint(51, '', plot_col, plot_row)
               close(51)
           end if
                  
@@ -2577,14 +2579,16 @@ program GetDist
 
           if (line_labels) call WriteMatlabLineLabels(50)
             
-          write (50,*)  'set(gcf, ''PaperUnits'',''inches'');'
           if (matlab_col/='') write (50,*) trim(matlab_col)
-          if (num_2D_plots < 5) then
-                write (50,*) 'set(gcf, ''PaperPosition'',[ 0 0 6 6]);';
-          else
-            write (50,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 10]);';
-          end if
-          write (50,*) 'print -dpsc2 '//trim(rootname)//'_2D.ps;'
+          call WriteMatLabPrint(50, '_2D', plot_col, plot_row)
+
+!          write (50,*)  'set(gcf, ''PaperUnits'',''inches'');'
+!          if (num_2D_plots < 5) then
+!          write (50,*) 'set(gcf, ''PaperPosition'',[ 0 0 6 6]);';
+  !        else
+  !         write (50,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 10]);';
+  !        end if
+   !       write (50,*) 'print -dpsc2 '//trim(rootname)//'_2D.ps;'
           close(50)
 
           end if
@@ -2601,8 +2605,8 @@ program GetDist
 
            end do
           end do
-          write (52,*)  'set(gcf, ''PaperUnits'',''inches'');'
-          write (52,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 8]);';
+        !  write (52,*)  'set(gcf, ''PaperUnits'',''inches'');'
+        !  write (52,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 8]);';
           if (no_triangle_axis_labels) then
            write(52,*) 'h = get(gcf,''Children'');'
            write(52,*) 'for i=1:length(h)'
@@ -2612,7 +2616,8 @@ program GetDist
            write(52,*) 'set(h(i),''position'',p);'
            write(52,*) 'end;'
           end if
-          write (52,*) 'print -dpsc2 '//trim(rootname)//'_tri.ps;'
+          call WriteMatLabPrint(50, '_tri', num_vars+1, num_vars+1)
+          !write (52,*) 'print -dpsc2 '//trim(rootname)//'_tri.ps;'
           close(52)
   
          end if
@@ -2672,13 +2677,13 @@ program GetDist
                  end if
                end do
            
-              write (50,*)  'set(gcf, ''PaperUnits'',''inches'');'
-     
-              tmpstr = RealToStr((plot_col*8.)/plot_row)
-              write (50,*) 'set(gcf, ''PaperPosition'',[ 0 0 '//  &
-                            trim(tmpstr) //' 8]);'
+!              write (50,*)  'set(gcf, ''PaperUnits'',''inches'');'
+!              tmpstr = RealToStr((plot_col*8.)/plot_row)
+!              write (50,*) 'set(gcf, ''PaperPosition'',[ 0 0 '//  &
+!                            trim(tmpstr) //' 8]);'
+!              write (50,*) 'print -dpsc2 '//trim(rootname)//'_3D.ps;'
 
-              write (50,*) 'print -dpsc2 '//trim(rootname)//'_3D.ps;'
+              call WriteMatLabPrint(50, '_3D', plot_col, plot_row)
               close(50)
           end if
     

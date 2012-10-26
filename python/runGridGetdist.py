@@ -6,6 +6,7 @@ def checkDir(fname):
 
 if len(sys.argv) < 2:
     print 'Usage: python/runGridGetdist.py directory_with_outputs [-plots]'
+    sys.exit()
 
 base_ini = 'getdist_common_batch1.ini'
 
@@ -40,7 +41,8 @@ if len(sys.argv) < 3 or sys.argv[2] != '-plots':
         os.system('./getdist ' + fname)
 
 
-plot_types = ['.m', '_2D.m', '_3D.m', '_tri.m']
+plot_types = ['.m', '_2D.m', '_3D.m']
+# '_tri.m' is very slow for so may
 
 cat_cmd = 'cat '
 for jobItem in batch.items():

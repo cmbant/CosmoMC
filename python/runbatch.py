@@ -5,6 +5,7 @@ import os
 
 if len(sys.argv) < 2:
     print 'Usage: python/runbatch.py directory_containing_inifiles [num_nodes]'
+    sys.exit()
 
 subScript = 'runMPI_HPCS.pl'
 
