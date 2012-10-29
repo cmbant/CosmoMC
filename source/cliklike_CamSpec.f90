@@ -15,7 +15,7 @@
     integer, parameter :: dp = kind(1.d0)
 
     integer, parameter :: num_camSpec =33
-    integer, parameter :: num_plik=10
+    integer, parameter :: num_plik=12
     integer, parameter :: num_actSpt = 21
 
     
