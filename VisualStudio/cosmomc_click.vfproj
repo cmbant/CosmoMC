@@ -55,14 +55,17 @@
 		<File RelativePath="..\source\CMB_Cls_simple.f90"/>
 		<File RelativePath="..\source\cmbdata.F90"/>
 		<File RelativePath="..\source\cmbtypes.f90"/>
+		<File RelativePath="..\source\DataLikelihoods.f90"/>
 		<File RelativePath="..\source\driver.F90"/>
 		<File RelativePath="..\source\EstCovmat.f90"/>
 		<File RelativePath="..\source\HST.f90"/>
 		<File RelativePath="..\source\IO.f90"/>
+		<File RelativePath="..\source\likelihood.f90"/>
 		<File RelativePath="..\source\lrggettheory.f90"/>
 		<File RelativePath="..\source\MCMC.f90"/>
 		<File RelativePath="..\source\minimize.f90"/>
 		<File RelativePath="..\source\mpk.f90"/>
+		<File RelativePath="..\source\ObjectLists.f90"/>
 		<File RelativePath="..\source\paramdef.F90"/>
 		<File RelativePath="..\source\ParamNames.f90"/>
 		<File RelativePath="..\source\params_CMB.f90"/>
