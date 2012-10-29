@@ -29,6 +29,9 @@ class jobItem:
     def iniFile(self):
         return self.batchPath + 'iniFiles/' + self.name + '.ini'
 
+    def postIniFile(self, tag):
+        return self.batchPath + 'postIniFiles/' + self.name + tag + '.ini'
+
     def makeChainPath(self):
         if not os.path.exists(self.chainPath): os.makedirs(self.chainPath)
         return self.chainPath
@@ -46,6 +49,7 @@ class batchJob:
         self.batchPath = path
         self.extparams = []
         self.datasets = []
+        self.importanceRuns = []
         self.basePath = os.path.dirname(sys.path[0]) + os.sep
         self.commonPath = self.basePath + 'batch1/'
 
@@ -65,4 +69,6 @@ class batchJob:
             if not os.path.exists(self.batchPath + 'iniFiles'):
                 os.makedirs(self.batchPath + 'iniFiles')
 
+            if not os.path.exists(self.batchPath + 'postIniFiles'):
+                os.makedirs(self.batchPath + 'postIniFiles')
 

@@ -28,6 +28,8 @@ batch.datasets = []
 batch.datasets.append([[planck], ['CAMspec_defaults.ini']])
 batch.datasets.append([[planck, highL], ['CAMspec_ACTSPT_defaults.ini']])
 
+batch.importanceRuns.append('BAO')
+
 # priors and widths for parameters which are varied
 params = dict()
 params['mnu'] = '0 0 5 0.1 0.03'
@@ -47,6 +49,8 @@ newCovmat = True
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
+
+importanceDefaults = ['importance_sampling.ini']
 
 batch.makeDirectories()
 batch.save()
@@ -79,6 +83,20 @@ for jobItem in batch.items():
 
         ini.params['action'] = cosmomcAction
         ini.saveFile(jobItem.iniFile())
+
+# add ini files for importance sampling runs
+        for imp in batch.importanceRuns:
+            ini = iniFile.iniFile()
+            ini.defaults.append(jobItem.iniFile())
+            tag = '_post_' + imp
+            for deffile in importanceDefaults:
+                ini.includes.append(batch.commonPath + deffile)
+
+            ini.params['redo_outroot'] = jobItem.chainRoot + tag
+            ini.params['action'] = 1
+            ini.params['use_' + imp] = True
+            ini.saveFile(jobItem.postIniFile(tag))
+
 
 comment = 'Done... to run do: python python/runbatch.py ' + batchPath + 'iniFiles'
 if cosmomcAction == 3 or cosmomcAction == 2: comment += ' 0'
