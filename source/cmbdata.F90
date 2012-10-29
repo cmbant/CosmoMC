@@ -42,9 +42,17 @@ use cmbtypes
 use MatrixUtils
 use CMBLikes
 use constants
+use likelihood
 implicit none
 
- 
+   type, extends(DataLikelihood) :: CMBDataLikelihood
+    contains
+    procedure :: LogLike => CMBLogLike
+    procedure :: Init => CMBInit
+    end type CMBDataLikelihood
+
+    logical :: Use_clik= .false., Use_CMB
+
 !if CMBdataset%has_xfactors then obs, var and N_inv are for the offset-lognormal variables Z
 
   Type CMBdatapoint
@@ -497,7 +505,7 @@ contains
     Type (CMBdataset) :: aset
     real, intent(in) :: ascale
     character(LEN=*), intent(IN) :: aname
-    integer l, unit
+    integer l
     real sz
      allocate(aset%sz_template(2:lmax))
      aset%sz_template = 0
@@ -1030,37 +1038,66 @@ contains
  end function
 
 
-!WMAP1
-! function MAPLnLike(cl)
-!  use WMAP
-!  real cl(lmax,num_cls), MAPLnLike
-! integer  l
-!  real(WMAP_precision) clTT(WMAP_lmax_TT), clTE(WMAP_lmax_TT), ClEE(WMAP_lmax_TT)
-!  integer stat 
-!  character(LEN=20) :: ttFile = 'WMAP/tt_diag.dat'
-!  character(LEN=20) :: ttOffDiag ='WMAP/tt_offdiag.dat'
-! character(LEN=20) :: teFile   = 'WMAP/te_diag.dat'
-!  character(LEN=20) :: teOffDiag ='WMAP/te_offdiag.dat'
-! 
-!  if (Init_MAP) then
-!   if (lmax<WMAP_lmax_TT) stop 'lmax not large enough for WMAP'
-!   if (Feedback>0) write(*,*) 'reading WMAP data'
-!   Call WMAP_init(ttFile, ttOffDiag, teFile, teOffDiag, stat)!
-!
-!   if (stat /=0) stop 'Error reading WMAP files'
-!   if (Feedback>0) write(*,*) 'WMAP read'
-!   Init_MAP = .false.
-!  end if
+ function CMBLogLike(like, CMB, Theory) 
+#ifdef CLIK
+     use cliklike
+#endif
+     use CMB_Cls
+     Class(CMBDataLikelihood) :: like
+     Type (CMBParams) CMB
+     Type(CosmoTheory) Theory
+     real acl(lmax,num_cls_tot)
+     real CMBLogLike
 
-!  do l = 2, WMAP_lmax_TT
-!      clTT(l) = cl(l,1)*l*(l+1)/twopi
-!      clTE(l) = cl(l,2)*l*(l+1)/twopi
-!      clEE(l) = cl(l,3)*l*(l+1)/twopi
-!  end do
-!  MAPLnLike = -(WMAP_LnLike_TT(clTT) + WMAP_LnLike_TE(clTT, clTE, clEE))
+     call ClsFromTheoryData(Theory, CMB, acl)
+     CMBLogLike = CMBLnLike(acl, CMB%data_params,CMB%nuisance)
+#ifdef CLIK
+!Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
+!freq_params(35:44), ACT/SPT as freq_params(45:65)
+            if (Use_clik) then
+             CMBLogLike = CMBLogLike + clik_lnlike(dble(acl),dble(CMB%data_params))
+            end if
+#endif
+ end function CMBLogLike
 
-! end function
+    subroutine CMBInit(like, ini)
+    use IniFile
+    class(CMBDataLikelihood) :: like
+    Type(TIniFile) :: ini
+    integer numsets, num_points, i
+    character(LEN=Ini_max_string_len) filename,keyname,SZTemplate
+    real SZScale
 
+        Use_CMB = Ini_Read_Logical_File(Ini, 'use_CMB',.true.)
+
+        numsets = Ini_Read_Int_File(Ini,'cmb_numdatasets',0)
+        num_points = 0
+        nuisance_params_used = 0
+         do i= 1, numsets
+          filename = ReadIniFileName(Ini,numcat('cmb_dataset',i)) 
+          call ReadDataset(filename)
+          call TStringList_Add(like%data_names,filename) 
+          num_points = num_points + datasets(i)%num_points
+          keyname=numcat('cmb_dataset_SZ',i)
+          SZTemplate = ''
+          if (Ini_HasKey_File(Ini,KeyName)) SZTemplate = Ini_Read_String_File(Ini,keyname, .false.) 
+          if (SZTemplate/='') then
+           SZScale = Ini_read_Real_File(Ini,numcat('cmb_dataset_SZ_scale',i),1.0)
+           call ReadSZTemplate(datasets(i), SZTemplate,SZScale)
+          end if
+          nuisance_params_used = nuisance_params_used + datasets(i)%nuisance_parameters
+         end do
+         if (Feedback > 1) write (*,*) 'read CMB datasets'
+#ifdef CLIK
+        Use_clik = Ini_Read_Logical_File(Ini, 'use_clik',.false.) 
+        if (use_clik .and. .not. use_CMB) &
+         call DoAbort('must have use_CMB=.true. to have use_clik (cmb_numdatasets = 0 for only clik)')
+        if (Use_clik) call clik_readParams(Ini)
+#else
+         if (Ini_Read_Logical('use_clik',.false.)) call DoAbort('compile with CLIK to use clik - see Makefile')
+#endif
+
+    end subroutine CMBInit
 
 end module cmbdata
 

@@ -8,7 +8,13 @@ module HST
 use cmbtypes
 use CAMB, only : AngularDiameterDistance  !!physical angular diam distance also in Mpc no h units
 use constants
+use likelihood
 implicit none
+
+type, extends(DataLikelihood) :: HSTLikelihood
+    contains
+    procedure :: LogLike => HST_LnLike
+end type HSTLikelihood
 
 ! angdistinveffh0 is the inverse of the angular diameter distance at z = 0.04 for H_0 = 74.2
 ! and a fiducial cosmology (omega_k = 0, omega_lambda = 0.7, w = -1); this is proportional to 
@@ -22,8 +28,20 @@ real(dl), parameter :: angdistinvzeffh0 = 6.45904e-3, zeffh0 = 0.04, &
 
 contains
 
-real(dl) function HST_LnLike(CMB)
+   subroutine HST_init(like, ini)
+    use IniFile
+    class(HSTLikelihood) :: like
+    Type(TIniFile) :: ini
+    
+    Like%LikelihoodName = 'Hubble'
+    call Like%datasets%Add(DataItem('HST'))
+    
+    end subroutine HST_init
+    
+real function HST_LnLike(like, CMB, Theory)
+  Class(HSTLikelihood) :: like
   type(CMBParams) CMB
+  Type(CosmoTheory) Theory
   real(dl) :: theoryval
 
   theoryval = 1.0/AngularDiameterDistance(zeffh0)

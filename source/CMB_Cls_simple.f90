@@ -7,16 +7,11 @@ module CMB_Cls
           CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, &
           initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
           HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived
-  use Errors !CAMB        
+  use Errors !CAMB
   use settings
-  use snovae
-  use bao
-  use HST
   use IO
+  use likelihood
   implicit none
-  logical :: Use_SN =.false. !Compute Supernovae likelihoods only when background changes
-  logical :: Use_HST =.false. !Compute HST likelihoods only when background changes
-  logical :: Use_BAO = .false.
 
   logical :: compute_tensors = .false.
   logical :: CMB_lensing = .false.
@@ -27,6 +22,7 @@ module CMB_Cls
     Type (CosmoTheory) :: Theory
     Type (CMBParams)   :: LastParams
     real lastParamArray(num_params)
+    real likelihoods(max_likelihood_functions)
   end Type ParamSetInfo
 
   integer :: lmax_computed_cl = lmax !value used for CAMB
@@ -77,91 +73,42 @@ contains
 #endif       
   end subroutine CMBToCAMB
 
- function RecomputeTransfers (A, B)
-   logical RecomputeTransfers
-   type(CMBParams) A, B
 
-   RecomputeTransfers =  .not. (A%omb == B%omb .and. A%omc == B%omc .and. A%omv == B%omv .and. &
-             A%omnu == B%omnu .and. A%zre == B%zre .and. A%omk == B%omk .and. A%w == B%w .and. &
-               A%nnu == B%nnu .and. A%YHe == B%YHe.and. A%wa == B%wa .and. &
-             A%iso_cdm_correlated == B%iso_cdm_correlated .and. A%zre_delta==B%zre_delta .and. A%ALens == B%ALens)
-              
- end function RecomputeTransfers
-
- function RecomputePowers(A, B)
-   logical RecomputePowers
-   type(CMBParams) A, B
-
-   !force redo on tensor ampltiude change too for the moment: changing ration changes n_t if inflation consistency
-   RecomputePowers = any(A%InitPower(1:num_initpower)/=B%InitPower(1:num_initpower))
-
- end function RecomputePowers
-
-
- function SetTheoryBackground(CMB, Info) result(hasChanged)
+ subroutine SetTheoryForBackground(CMB) 
     use cambmain, only: initvars
     use Camb, only: CAMBParams_Set 
     type(CMBParams) CMB
     type(ParamSetInfo) Info
     type(CAMBParams)  P
-    logical hasChanged
     
-  if (RecomputeTransfers(CMB, Info%LastParams))  then  
     call CMBToCAMB(CMB, P)
     call CAMBParams_Set(P)
     call InitVars
-    Info%LastParams = CMB
-    hasChanged= .true.
-  else
-     hasChanged= .false.
-  end if
   
- end function SetTheoryBackground
+ end subroutine SetTheoryForBackground
  
-
- function GetCMBTheory(CMB,Info, error) result(NewTransfers)
+ subroutine GetNewTransferData(CMB,Info,error)
    use ModelParams, only : ThreadNum
    use InitialPower
    type(CMBParams) CMB
    integer error
    Type(ParamSetInfo) Info
    type(CAMBParams)  P
-   logical NewTransfers
    character(LEN=128) :: LogLine
-  
-    error = 0
-    Newtransfers = .false.
-  
-    if (RecomputeTransfers(CMB, Info%LastParams))  then
-     !Slow parameters have changed
+
          call CAMB_InitCAMBdata(Info%Transfers)
          call CMBToCAMB(CMB, P) 
-      
+
          if (Feedback > 1) write (*,*) 'Calling CAMB'
          Threadnum =num_threads
   
          call CAMB_GetTransfers(P, Info%Transfers, error)
-         NewTransfers = .true.
          if (error==0) then
-          if (Use_SN) then
-            Info%Theory%SN_Loglike = SN_LnLike(CMB)
-          else
-            Info%Theory%SN_Loglike = 0     
-          end if  
-          if (Use_BAO) then
-            Info%Theory%BAO_loglike = BAO_LnLike(CMB)
-          else
-            Info%Theory%BAO_loglike = 0
-          end if 
-          if (Use_HST) then
-            Info%Theory%HST_Loglike = HST_LnLike(CMB)
-          else
-            Info%Theory%HST_Loglike = 0     
-          end if
-          Info%Theory%numderived = nthermo_derived
-          if (nthermo_derived > max_derived_parameters) &
-             call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
-          Info%Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
+           Info%Theory%numderived = nthermo_derived
+           if (nthermo_derived > max_derived_parameters) &
+               call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
+            Info%Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
+            Info%Theory%Age =  CAMB_GetAge(P)
          else
           if (stop_on_error) call MpiStop('CAMB error '//trim(global_error_message))
           if (Feedback > 0) write(*,*) 'CAMB returned error '//trim(global_error_message)           
@@ -173,16 +120,17 @@ contains
           call IO_WriteLog(logfile_unit,logLine)
          end if 
          if (Feedback > 1) write (*,*) 'CAMB done'
+ 
+end subroutine GetNewTransferData
 
-    end if 
-    
-     if (NewTransfers .or. RecomputePowers(CMB, Info%LastParams)) then
-       !Use the initial power spectra to get the Cls and matter power spectrum
+subroutine GetNewPowerData(CMB,Info,error)
+   use ModelParams, only : ThreadNum
+   use InitialPower
+   type(CMBParams) CMB
+   integer error
+   Type(ParamSetInfo) Info
 
-         Info%LastParams = CMB
-         if (error /= 0) return
-
-         call SetCAMBInitPower(Info%Transfers%Params,CMB,1)      
+         call SetCAMBInitPower(Info%Transfers%Params,CMB,1)
          call CAMB_TransfersToPowers(Info%Transfers)
             !this sets slow CAMB params correctly from value stored in Transfers
          if (global_error_flag/=0) then
@@ -190,12 +138,10 @@ contains
           return
          end if 
            
-         call SetTheoryFromCAMB(Info%Theory)
+         call SetPowersFromCAMB(Info%Theory)
          
          if (any(Info%Theory%cl(:,1) < 0 )) then
-            error = 1
-            !Kill initial power spectra that go negative
-            return
+            call MpiStop('CMB_cls_simple: negative C_l (could set error here)')
          end if
          
          if (compute_tensors) then
@@ -209,9 +155,8 @@ contains
          else
             Info%Theory%sigma_8 = 0
          end if
-     end if
 
- end function GetCMBTheory
+end subroutine GetNewPowerData
 
   subroutine GetClsInfo(CMB, Theory, error, DoCls, DoPk)
    use ModelParams, only : ThreadNum
@@ -258,7 +203,8 @@ contains
    end if
  end subroutine GetClsInfo
  
- subroutine SetTheoryFromCAMB(Theory)
+ subroutine SetPowersFromCAMB(Theory)
+   use constants
    Type(CosmoTheory) Theory
    real, parameter :: cons =  (COBE_CMBTemp*1e6)**2*2*pi
    real nm
@@ -302,9 +248,9 @@ contains
        do l = lmax_computed_cl+1, lmax
           Theory%cl(l,1:num_ClsS) =  highL_norm*highL_lensedCL_template(l,1:num_clsS)
        end do 
-     end if
+    end if
 
- end subroutine SetTheoryFromCAMB
+ end subroutine SetPowersFromCAMB
 
 
  subroutine SetPkFromCAMB(Theory,M)
@@ -400,19 +346,6 @@ contains
  
  end  function GetZreFromTau 
  
- function GetAge(CMB, Info)
-   !Return <0 if error
-   real GetAge
-   type(CMBParams) CMB
-   Type(ParamSetInfo) Info
-   type(CAMBParams)  P
-   call CMBToCAMB(CMB, P)
- 
-   Info%Theory%Age = CAMB_GetAge(P)
- 
-   GetAge = Info%Theory%Age
- end function GetAge
-
  subroutine InitCAMBParams(P)
    use lensing
    use ModelParams
@@ -493,9 +426,6 @@ contains
         P%AccuratePolarization = num_cls/=1 
         P%Reion%use_optical_depth = .false.
         P%OnlyTransfers = .true.
-
-        if (use_BAO) P%want_zdrag = .true. !JH
-        P%want_zstar = .false. !set to true if you want CAMB to calculate exact z_star
 
         if (CMB_Lensing) then
             P%DoLensing = .true.

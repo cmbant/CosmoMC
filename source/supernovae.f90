@@ -58,7 +58,15 @@
 module snovae
 use cmbtypes
 use MatrixUtils
+use likelihood
 implicit none
+
+   type, extends(DataLikelihood) :: SNLikelihood
+    contains
+    procedure :: LogLike => SN_LnLike
+    procedure :: Init => SN_init
+    end type SNLikelihood
+    
 
  integer, parameter :: SN_num = 557
  double precision, parameter :: Pi_num = 3.14159265359D0 
@@ -78,12 +86,19 @@ implicit none
 contains
 
 
- subroutine SN_init
-   use settings
+ subroutine SN_init(like, ini)
+    use IniFile
+    use settings
+    class(SNLikelihood) :: like
+    Type(TIniFile) :: ini
    character (LEN=20):: name
    integer i
    real :: tmp_mat(sn_num, sn_num)
 
+   Like%LikelihoodName = 'SN'
+   
+   call Like%datasets%Add(DataItem('Union2'))
+   
    if (Feedback > 0) write (*,*) 'Reading: supernovae data'
    call OpenTxtFile(trim(DataDir)//'sn_z_mu_dmu_union2.txt',tmp_file_unit)
    do i=1,  sn_num
@@ -110,22 +125,16 @@ contains
    
   end subroutine SN_init
 
- function SN_LnLike(CMB)
+ function SN_LnLike(like, CMB, Theory) 
    use camb
   !Assume this is called just after CAMB with the correct model  use camb
-  implicit none
   type(CMBParams) CMB
-  logical, save :: do_SN_init = .true.
-
+  Class(SNLikelihood) :: like
+  Type(CosmoTheory) Theory
   real SN_LnLike
   integer i
   double precision z, AT, BT
   real diffs(SN_num), chisq
-
-  if (do_SN_init) then 
-     call SN_init
-     do_SN_init = .false.
-  end if
 
 
 !! This is actually seems to be faster without OMP

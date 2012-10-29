@@ -31,7 +31,7 @@ program SolveCosmology
         logical bad
         integer numsets, nummpksets, i, numtoget, action
         character(LEN=Ini_max_string_len) baseroot, filename(100), &
-         mpk_filename(100),  SZTemplate(100), numstr, fname, keyname
+         mpk_filename(100),  numstr, fname, keyname
         integer numbaosets
         character(LEN=Ini_max_string_len) bao_filename(100)
         real SZscale(100)
@@ -237,36 +237,9 @@ program SolveCosmology
  
         if (Ini_Read_Logical('cmb_hyperparameters', .false.)) &
             call DoAbort( 'Hyperparameters not supported any more')
-
-        if (Ini_Read_String('use_2dF') /= '') stop 'use_2dF now replaced with use_mpk'
-        Use_Clusters = Ini_Read_Logical('use_clusters',.false.)
-        Use_mpk = Ini_Read_Logical('use_mpk',.false.) ! matter power spectrum, incl 2dF
-        Use_HST = Ini_Read_Logical('use_HST',.false.)
-        if(Ini_Read_Logical('use_BBN',.false.)) call DoAbort('Use_BBN not supported: use prior[omegabh2]=mean std')
-        Use_Age_Tophat_Prior= Ini_Read_Logical('use_Age_Tophat_Prior',.true.)
-        Use_SN = Ini_Read_Logical('use_SN',.false.)
-        if (Use_SN) SN_filename = ReadIniFileName(DefIni,'SN_filename')
-        Use_BAO = Ini_Read_Logical('use_BAO',.false.)
-        Use_CMB = Ini_Read_Logical('use_CMB',.true.)
-#ifdef CLIK
-        Use_clik = Ini_Read_Logical('use_clik',.false.) 
-        if (use_clik .and. .not. use_CMB) &
-         call DoAbort('must have use_CMB=.true. to have use_clik (cmb_numdatasets = 0 for only clik)')
-#else
-         if (Ini_Read_Logical('use_clik',.false.)) call DoAbort('compile with CLIK to use clik - see Makefile')
-#endif
-        Use_WeakLen = Ini_Read_Logical('use_WeakLen',.false.)
-        Use_min_zre = Ini_Read_Double('use_min_zre',0.d0) 
-        Use_Lya = Ini_Read_logical('use_lya',.false.)
-       
-        if (Use_Lya .and. use_nonlinear) &
-             call DoAbort('Lya.f90 assumes LINEAR power spectrum input')
-
-        !flag to force getting sigma8 even if not using LSS data 
-        use_LSS = Ini_Read_Logical('get_sigma8',.false.)
-        ! use_LSS = Use_2dF .or. Use_Clusters .or. Use_WeakLen
-        use_LSS = Use_LSS .or. Use_mpk .or. Use_Clusters .or. Use_WeakLen .or. Use_Lya
-
+        
+        call SetDataLikelihoods(DefIni)
+        
         Temperature = Ini_Read_Real('temperature',1.)
         
         num_threads = Ini_Read_Int('num_threads',0)
@@ -288,32 +261,6 @@ program SolveCosmology
             Ini_Read_Logical('dense_minimization_points',dense_minimization_points)
            !if true, use O(N^2) interpolation points; seems this is more robust if slower for high N
         end if
-        
-        Ini_fail_on_not_found = .true.
-
-        numsets = Ini_Read_Int('cmb_numdatasets')
-        num_points = 0
-        nuisance_params_used = 0
-        if (Use_CMB) then
-         do i= 1, numsets
-          filename(i) = ReadIniFileName(DefIni,numcat('cmb_dataset',i)) 
-          call ReadDataset(filename(i))
-          num_points = num_points + datasets(i)%num_points
-          keyname=numcat('cmb_dataset_SZ',i)
-          SZTemplate(i) = ''
-          if (Ini_HasKey(KeyName)) SZTemplate(i) = Ini_Read_String(keyname, .false.) 
-          if (SZTemplate(i)/='') then
-           SZScale(i) = Ini_read_Real(numcat('cmb_dataset_SZ_scale',i),1.0)
-           call ReadSZTemplate(datasets(i), SZTemplate(i),SZScale(i))
-          end if
-          nuisance_params_used = nuisance_params_used + datasets(i)%nuisance_parameters
-         end do
-         if (Feedback > 1) write (*,*) 'read CMB datasets'
-        end if
-
-#ifdef CLIK
-        if (Use_clik) call clik_readParams(DefIni)
-#endif
 
         Ini_fail_on_not_found = .true.
         
