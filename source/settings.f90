@@ -21,7 +21,7 @@ module settings
   integer, parameter :: num_hard = 14 
   integer, parameter :: num_initpower = 3 
 #ifdef CLIK
-  integer, parameter :: num_freq_params = 65 ! WMAP(1)/CAMspec(33)/PLik(10)/ACTSPT(21), in that order #clik#
+  integer, parameter :: num_freq_params = 67 ! WMAP(1)/CAMspec(33)/PLik(12)/ACTSPT(21), in that order #clik#
 #else
   integer, parameter :: num_freq_params = 1
 #endif

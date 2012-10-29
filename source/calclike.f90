@@ -17,7 +17,6 @@ module CalcLike
  logical :: Use_Age_Tophat_Prior = .true.
  logical :: Use_CMB = .true.
  logical :: Use_Clusters = .false.
- 
  integer :: H0_min = 40, H0_max = 100
  real :: Omk_min = -0.3, Omk_max = 0.3
  real :: Use_min_zre = 0
@@ -142,7 +141,7 @@ contains
             CMBLnLike(acl, CMB%norm(norm_freq_ix:norm_freq_ix+num_freq_params-1),CMB%nuisance) + GetLogLikePost
 #ifdef CLIK
 !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
-!freq_params(35:44), ACT/SPT as freq_params(45:65)
+!freq_params(35:46), ACT/SPT as freq_params(47:67)
           if (Use_clik) then
              GetLogLikePost = GetLogLikePost + clik_lnlike(dble(acl),dble(CMB%norm(norm_freq_ix+1:norm_freq_ix+num_freq_params-1)))
           end if

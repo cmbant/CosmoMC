@@ -19,10 +19,10 @@ module cliklike
 
 !Number of nuisance parameters expected for different data sets
   integer :: num_CAMspec = 33
-  integer :: num_PLik = 10
+  integer :: num_PLik = 12
   integer :: num_ACTSPT = 21
   integer :: num_CAMspec_ACTSPT_common = 6
-  integer :: num_PLik_ACTSPT_common = 3
+  integer :: num_PLik_ACTSPT_common = 5
 
   real(dp), dimension(:), allocatable :: clik_cl_and_pars
 
@@ -31,19 +31,20 @@ module cliklike
   character (len=256), dimension(:), pointer :: names
 
   type(clik_object) :: clikid
+  
 
   private
-  public :: clik_readParams,clik_lnlike, use_clik, clik_filename
-
+  public :: clik_readParams, clik_lnlike, use_clik, clik_filename
+  
 contains
 
-    subroutine clik_readParams(Ini)
-     Type(TIniFile) Ini
-    
-           clik_filename = Ini_Read_String_File(Ini,'clik_likefile', .false.)
-           if (feedback .gt. 1) print*,'Using clik with likelihood file ',trim(clik_filename)
-        
-    end subroutine clik_readParams
+  subroutine clik_readParams(Ini)
+    Type(TIniFile) Ini
+
+       clik_filename = Ini_Read_String_File(Ini,'clik_likefile', .false.)
+       if (feedback .gt. 1) print*,'Using clik with likelihood file ',trim(clik_filename)
+
+  end subroutine clik_readParams
 
   function clik_lnlike(cl,clik_nuis)
     real(dp) :: clik_lnlike
@@ -58,8 +59,8 @@ contains
        call clik_get_lmax(clikid,clik_lmax)
 
 !Safeguard
-       if (lmax .lt. maxval(clik_lmax)+500) then
-          print*,'lmax too low: it should at least be set to',(maxval(clik_lmax)+500)
+       if ((lmax .lt. maxval(clik_lmax)+500) .and. (lmax .lt. 4500)) then
+          print*,'lmax too low: it should at least be set to',min(4500,(maxval(clik_lmax)+500))
           call MPIstop
        end if
 
@@ -95,7 +96,7 @@ contains
           Print*,'You appear to be using a CAMspec DX9 likelihood file.'
           using_CAMspec = .true.
        else if (clik_nnuis .eq. num_PLik) then
-          Print*,'You appear to be using a PLik DX9 likelihood file.'
+          Print*,'You appear to be using a PLik v3 DX9 likelihood file.'
           using_PLik = .true.
        else if (clik_nnuis .eq. num_ACTSPT) then 
           Print*,'You appear to be using an ACT/SPT likelihood file.'
@@ -105,15 +106,15 @@ contains
           Print*,'WARNING: absolutely make sure that the CAMspec nuisance parameters'
           Print*,'are listed AFTER then ACT/SPT nuisance parameters below.'
           Print*,'If not, you need to create the combined .clik file with a different'
-          Print*,'order of arguments.'
+          Print*,'of arguments.'
           using_CAMspec = .true.
           using_ACTSPT = .true.       
        else if (clik_nnuis .eq. (num_PLik + num_ACTSPT - num_PLik_ACTSPT_common)) then
-          Print*,'You appear to be using a PLik DX9 + ACT/SPT likelihood file.'
+          Print*,'You appear to be using a PLik v3 DX9 + ACT/SPT likelihood file.'
        	  Print*,'WARNING: absolutely make sure that the PLik nuisance parameters'
        	  Print*,'are listed AFTER then ACT/SPT nuisance parameters below.'
        	  Print*,'If not, you need to create the combined .clik file with a different'
-       	  Print*,'order of arguments.'
+       	  Print*,'of arguments.'
           using_PLik = .true.  
           using_ACTSPT = .true.
        else if (clik_nnuis .ne. 0) then
@@ -200,9 +201,10 @@ contains
                 clik_cl_and_pars(j) = clik_nuis(i+num_CAMspec)
                 j = j+1
              end do
-       	     !skip ACT/SPT parameters 9,10,14 (already included in CAMspec nuisance params)
+       	     !skip ACT/SPT parameters 1,3,9,10,14 (already included in CAMspec nuisance params)
              do i=1,num_ACTSPT 
-       	       	if (.not. ((i .eq. 9) .or. (i .eq. 10) .or. (i .eq. 14))) then
+                if (.not. ((i .eq. 1) .or. (i .eq. 3) .or. &
+       	       	    & (i .eq. 9) .or. (i .eq. 10) .or. (i .eq. 14))) then
                        clik_cl_and_pars(j) = clik_nuis(i+num_CAMspec+num_PLik)
                        j = j+1
        	       	end if
@@ -221,11 +223,12 @@ contains
 !     Print*,clik_cl_and_pars(size(clik_cl_and_pars)-clik_nnuis+i)
 !   end do
 
+!   stop
 
 !Get - ln like needed by CosmoMC
     clik_lnlike = -1.d0*clik_compute(clikid,clik_cl_and_pars)
 
-    if (Feedback >0) Print*,'clik lnlike = ',clik_lnlike
+    Print*,'clik lnlike = ',clik_lnlike
 
 
   end function clik_lnlike
