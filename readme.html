@@ -539,6 +539,7 @@ weighting function or parameter mapping.</ul>
 <LI>BAO data up dated to BOSS DR9 <A HREF="http://www.sdss3.org/science/boss_dr9_final_results/">final results</A> (DR7, DR9 and 6DF). Note the code is not identical, new cosmomc computed the drag sound horizon numerically for DR9 and 6DF.
 <LI>HST data updated to Riess et al: 1103.2976 (from BOSS mod)
 <LI><b>action=3</b> to find best-fit and hessian (if it works!), and then stop; output .hessian.covmat file and best-fit
+<LI><b>start_at_bestfit = T</b> option to start chains at best fit point (if true, be careful with convergence since non-dispersed)
 <LI>T_CMB changed to 2.7255
 <LI><b>lmax_computed_cl</b> to define CAMB maximum L; higher L are approximated by scaling fixed template file (highL_theory_cl_template), for use where non-primordial contributions dominate.
 <LI>GetDist change for making large arrays of 1D plots not too small; matlab_subplot_size_inch, matlab_plot_output parameters (corresponding for 2D,3D not done yet)

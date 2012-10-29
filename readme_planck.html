@@ -38,8 +38,12 @@ See the ./python directory, and edit makeGrid.py appropriately. Then run
 <b>python python/makeGrid /scratch/.../newdirectoryforbatch [action]</b>
 </blockquote>
 Also edit and use runbatch.py to submit all the ini files produced to the queue. You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge.
+<P>
+Runs with the same data by default all use the same covmat, this should be changed when we have some runs. But the covmat can be a merged covmat that contains many parameters, defaults are provided from combining several different separate covmats. Use the python/covcomb.py script if you want to make a new one.
 <h2>To do</h2>
 
 Lensing likelihood. Updated BAO.  Define consistent priors for nuisance parameters. Efficient use of fast highL nuisance parameters. Uncorrelated isocuvature? Figure out consistent way to handle mnu with non-standard nnu.
+
+
 
 </body></center> 

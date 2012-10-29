@@ -10,3 +10,7 @@ chains/
 .metadata
 .project
 .pydevproject
+x64/
+Debug/
+Release/
+*.suo
