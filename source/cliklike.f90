@@ -18,9 +18,6 @@ module cliklike
   integer, dimension(4) :: mapped_index
 
 !Number of nuisance parameters expected for different data sets
-  integer :: num_CAMspec = 33
-  integer :: num_PLik = 12
-  integer :: num_ACTSPT = 21
   integer :: num_CAMspec_ACTSPT_common = 6
   integer :: num_PLik_ACTSPT_common = 5
 
