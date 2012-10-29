@@ -2616,7 +2616,7 @@ program GetDist
            write(52,*) 'set(h(i),''position'',p);'
            write(52,*) 'end;'
           end if
-          call WriteMatLabPrint(50, '_tri', num_vars+1, num_vars+1)
+          call WriteMatLabPrint(52, '_tri', num_vars+1, num_vars+1)
           !write (52,*) 'print -dpsc2 '//trim(rootname)//'_tri.ps;'
           close(52)
   
