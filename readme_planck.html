@@ -8,7 +8,7 @@
 
 <h2>Planck Cosmomc Readme </h2>
 <h3>Compiling</h3>
-As usual. Edit the makefile, setting <b>PLANCKLIKE = cliklike</b> to run with clik (v4.0b2), or <b>PLANCKLIKE = cliklike_CamSpec</b> to run directly with CamSpec. Set <b>highL = ../highL</b> to build direct ACT/SPT support (for use with PLANCKLIKE = cliklike_CamSpec). To use clik you need of course to have clik installed, and set the CLIKPATH variable etc. appropriately.  You can either use clik or other likelihoods directly in an interchangeable way, parameter definitions etc are the same.
+As usual. Edit the makefile, setting <b>PLANCKLIKE = cliklike</b> to run with clik (v4.0), or <b>PLANCKLIKE = cliklike_CamSpec</b> to run directly with CamSpec. Set <b>highL = ../highL</b> to build direct ACT/SPT support (for use with PLANCKLIKE = cliklike_CamSpec). To use clik you need of course to have clik installed, and set the CLIKPATH variable etc. appropriately.  You can either use clik or other likelihoods directly in an interchangeable way, parameter definitions etc are the same.
 <p>
 <h3>Data files</h3>
 A set of .ini files are supplied in ./batch1 which set up standard for Planck runs. Location of data files is set in CAMspec_ACTSPT_defaults, CAMspec_defaults or PLik_ACTSPT_defaults depending on what you want to use. You can either edit these, or make symbolic links from ./data/clik and ./data/highL and ./data/camspec to the relevant actual file locations depending on what you want to use.

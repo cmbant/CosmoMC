@@ -38,6 +38,7 @@
        use camb
        use settings
        use cmbtypes
+       use CMB_Cls
        implicit none
        type(CAMBParams)  P
        Type(CMBParams) CMB
@@ -55,6 +56,8 @@
         
        P%InitPower%an(in) = CMB%InitPower(1)
        P%InitPower%ant(in) = CMB%InitPower(2)
+       if (P%InitPower%rat(in)>0 .and. .not. compute_tensors) &
+        call MpiStop('computing r>0 but compute_tensors=F')
        P%InitPower%n_run(in) = CMB%InitPower(3)
        if (inflation_consistency) then
          P%InitPower%ant(in) = - CMB%norm(norm_amp_ratio)/8.
