@@ -386,16 +386,16 @@ end subroutine IO_ReadProposeMatrix
  end function IO_ReadChainRows
 
  subroutine IO_OutputMargeStats(Names, froot,num_vars,num_contours, contours,contours_str, &
-           cont_lines, colix, mean, sddev, has_limits, labels, force_twotail)
+           cont_lines, colix, mean, sddev, has_limits_bot, has_limits_top, labels, force_twotail)
         use ParamNames
        Type(TParamNames) :: Names
        character(LEN=*), intent(in) :: froot
        integer, intent(in) :: num_vars, num_contours
-       logical,intent(in) :: force_twotail, has_limits(*)
+       logical,intent(in) :: force_twotail, has_limits_bot(*),has_limits_top(*)
        real, intent(in) :: mean(*), sddev(*), contours(*), cont_lines(:,:,:)
        character(LEN=*), intent(in) :: contours_str
        integer,intent(in) :: colix(*)
-       character(LEN=128) labels(*)
+       character(LEN=128) labels(*), tag
         
        integer i,j,file_id
          
@@ -419,11 +419,19 @@ end subroutine IO_ReadProposeMatrix
           write (file_id,'(a)') 'Limits are: ' // trim(contours_str)
           if (.not. force_twotail) then
               do j=1, num_vars
-               if (has_limits(colix(j))) then
-                 write(file_id,'(1I5," one tail;  '//trim(labels(colix(j)))//'")') colix(j)-2
+              if (has_limits_bot(colix(j)).and. has_limits_top(colix(j))) then
+                  tag='no tail'
+                elseif (has_limits_bot(colix(j))) then
+                 tag= '> one tail' 
+                elseif (has_limits_top(colix(j))) then 
+                 tag = '< one tail' 
                 else
-                 write(file_id,'(1I5," two tail;  '//trim(labels(colix(j)))//'")') colix(j)-2
+                 tag = 'two tail'
                 end if
+               write(file_id,'(1I5," ",1A20," ",1A12)', advance='NO')  &
+                    colix(j)-2, ParamNames_name(Names,colix(j)-2),tag
+               write(file_id,'(a)') trim(labels(colix(j)))
+
               end do
           else
               write (file_id,*) 'All limits are two tail'
