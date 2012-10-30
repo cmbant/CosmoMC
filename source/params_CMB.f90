@@ -21,23 +21,11 @@
      use Precision
      implicit none
      Type(CMBParams) CMB
-     double precision zstar, astar, atol, rs,  DA
-     double precision, external :: dsoundda, rombint
      real CMBToTheta
      integer error
   
      call InitCAMB(CMB,error,.false.)
-
-!!From Hu & Sugiyama
-       zstar =  1048*(1+0.00124*CMB%ombh2**(-0.738))*(1+ &
-        (0.0783*CMB%ombh2**(-0.238)/(1+39.5*CMB%ombh2**0.763)) * &
-           (CMB%omdmh2+CMB%ombh2)**(0.560/(1+21.1*CMB%ombh2**1.81)))
-     
-       astar = 1/(1+zstar)
-       atol = 1e-6
-       rs = rombint(dsoundda,1d-8,astar,atol)
-       DA = AngularDiameterDistance(zstar)/astar
-       CMBToTheta = rs/DA
+     CMBToTheta = CosmomcTheta()
 !       print *,'z* = ',zstar, 'r_s = ',rs, 'DA = ',DA, rs/DA
 
   end function CMBToTheta
@@ -378,19 +366,3 @@
       deallocate(output_array)
 
   end  subroutine WriteParamsAndDat
-
-
-  function dsoundda(a)
-          use Precision
-          use ModelParams
-     
-          implicit none
-          real(dl) dsoundda,dtauda,a,R,cs
-          external dtauda
-
-           R=3.0d4*a*CP%omegab*(CP%h0/100.0d0)**2
-           cs=1.0d0/sqrt(3*(1+R))
-           dsoundda=dtauda(a)*cs
-        
-  end function dsoundda
-

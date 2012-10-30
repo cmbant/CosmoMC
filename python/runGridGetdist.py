@@ -5,7 +5,7 @@ def checkDir(fname):
 
 
 if len(sys.argv) < 2:
-    print 'Usage: python/runGridGetdist.py directory_with_outputs [-plots]'
+    print 'Usage: python/runGridGetdist.py directory_with_outputs [-plots, -imponly]'
     sys.exit()
 
 base_ini = 'getdist_common_batch1.ini'
@@ -37,21 +37,47 @@ if len(sys.argv) < 3 or sys.argv[2] != '-plots':
         ini.defaults.append(batch.commonPath + base_ini)
         fname = ini_dir + jobItem.name + '.ini'
         ini.saveFile(fname)
-        print "running: " + fname
-        os.system('./getdist ' + fname)
+        if len(sys.argv) < 3 or sys.argv[2] != '-imponly':
+            print "running: " + fname
+            os.system('./getdist ' + fname)
+
+# add ini files for importance sampling runs
+        for imp in batch.importanceRuns:
+            tag = '_post_' + imp
+            ini.params['file_root'] = jobItem.chainRoot + tag
+            fname = ini_dir + jobItem.name + tag + '.ini'
+            ini.params['compare_num'] = 1
+            ini.params['compare1'] = jobItem.chainRoot
+            ini.saveFile(fname)
+            if os.path.exists(ini.params['file_root'] + '_1.txt'):
+                print "running: " + fname
+                os.system('./getdist ' + fname)
 
 
 plot_types = ['.m', '_2D.m', '_3D.m']
-# '_tri.m' is very slow for so may
+# '_tri.m' is very slow for so many
+
+if len(sys.argv) < 3 or sys.argv[2] != '-imponly':
+    cat_cmd = 'cat '
+    for jobItem in batch.items():
+        os.chdir(jobItem.distPath)
+        for tp in plot_types:
+            fname = jobItem.distPath + jobItem.name + tp
+            print fname
+            if os.path.exists(fname):
+                cat_cmd = cat_cmd + ' ' + fname
+    os.system(cat_cmd + '|' + matlab)
 
 cat_cmd = 'cat '
 for jobItem in batch.items():
     os.chdir(jobItem.distPath)
-    for tp in plot_types:
-        fname = jobItem.distPath + jobItem.name + tp
-        print fname
-        if os.path.exists(fname):
-            cat_cmd = cat_cmd + ' ' + fname
+    for imp in batch.importanceRuns:
+        tag = '_post_' + imp
+        for tp in plot_types:
+            fname = jobItem.distPath + jobItem.name + tag + tp
+            print fname
+            if os.path.exists(fname):
+                cat_cmd = cat_cmd + ' ' + fname
 os.system(cat_cmd + '|' + matlab)
 
 
