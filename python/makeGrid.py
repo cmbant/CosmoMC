@@ -65,10 +65,10 @@ for jobItem in batch.items():
 
         for param in jobItem.param_set:
             ini.params['param[' + param + ']'] = params[param]
+        for iniitem in jobItem.data_set[1]:
+            ini.defaults.append(batch.commonPath + iniitem)
         for deffile in defaults:
             ini.defaults.append(batch.commonPath + deffile)
-        for iniitem in jobItem.data_set[1]:
-            ini.includes.append(batch.commonPath + iniitem)
 
         if 'mnu' in jobItem.param_set:
             ini.params['num_massive_neutrinos'] = 3
