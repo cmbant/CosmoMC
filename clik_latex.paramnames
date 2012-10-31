@@ -6,7 +6,7 @@ omegak        \Omega_K
 mnu           \Sigma m_\nu		
 w             w			#equation of state parameter for scalar field dark energy today
 wa            w_a       #w_a variation
-nnu           N_{eff}   #effective number of neutrinos (only clearly defined for massless)
+nnu           N_{\rm eff}   #effective number of neutrinos (only clearly defined for massless)
 yhe           Y_{P}    #Helium mass fraction (not used if bbn_consistency)    
 alpha1        \alpha_{-1} #correlated CDM isocurvature 
 deltazrei     \Delta_{z,re} #width of reionization
@@ -14,23 +14,23 @@ Alens         A_{L}     #lensing potential scaled by sqrt(A_lens)
 fdm           \epsilon_0 f_d    #CosmoRec dark matter annihilation parameter, 0910.3663
 ns            n_s	    #beware that pivot scale can change in .ini file
 nt            n_t
-nrun          n_{run}
-logA          log[10^{10} A_s]
-r             r_{pivot} #ratio of tensor to scalar primordial amplitudes at pivot scale
-asz           A_{SZ}		#SZ template amplitude, as in WMAP
-aps100        A^{PS}_{100}      # Point source amplitude at 100 GHz
-aps143        A^{PS}_{143}      # Point source amplitude at 143 GHz
-aps217        A^{PS}_{217}      # Point source amplitude at 217 GHz
-acib143       A^{CIB}_{143}     # CIB amplitude at 143 GHz
-acib217       A^{CIB}_{217}     # CIB amplitude at 217 GHz
-asz143        A^{tSZ}_{143}     # Thermal SZ amplitude at 143 GHz
-psr           r_{PS {143/217}}  # 143-217 correlation coefficient of point source residuals
-cibr          r_{CIB}           # 143-217 correlation coefficient of CIB
+nrun          n_{\rm run}
+logA          \log[10^{10} A_s]
+r             r_{\rm pivot} #ratio of tensor to scalar primordial amplitudes at pivot scale
+asz           A_{\rm SZ}		#SZ template amplitude, as in WMAP
+aps100        A^{\rm PS}_{100}      # Point source amplitude at 100 GHz
+aps143        A^{\rm PS}_{143}      # Point source amplitude at 143 GHz
+aps217        A^{\rm PS}_{217}      # Point source amplitude at 217 GHz
+acib143       A^{\rm CIB}_{143}     # CIB amplitude at 143 GHz
+acib217       A^{\rm CIB}_{217}     # CIB amplitude at 217 GHz
+asz143        A^{\rm tSZ}_{143}     # Thermal SZ amplitude at 143 GHz
+psr           r_{\rm PS}^{143/217}  # 143-217 correlation coefficient of point source residuals
+cibr          r_{\rm CIB}           # 143-217 correlation coefficient of CIB
 cal0          c_{100/143}       # relative calibration factor 100/143
 cal1          c_{143/143}       # calibration factor 143
 cal2          c_{217/143}       # relative calibration factor 217/143
-xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
-aksz          A^{kSZ}
+xi            \xi^{\rm tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
+aksz          A^{\rm kSZ}
 bm_1_1        \beta^1_1
 bm_1_2        \beta^1_2
 bm_1_3        \beta^1_3
@@ -85,7 +85,7 @@ cal_spt_95       c_{SPT}^{95}
 cal_spt_150      c_{SPT}^{150}
 cal_spt_220      c_{SPT}^{220}
 omegal*       \Omega_\Lambda
-age*          Age/Gyr
+age*          {\rm Age/Gyr}
 omegam*       \Omega_m
 sigma8*       \sigma_8
 zrei*         z_{re}
@@ -95,13 +95,13 @@ r02*          r         #r at k=0.002
 A*            10^9 A_s
 omegamh2*     \Omega_m h^2 #includes massive neutrinos
 omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
-yheused*      Y_{He} #MCMC value or from bbn consistency
+yheused*      Y_{P} #MCMC value or from bbn consistency
 clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
 zstar*        z_*
 rstar*        r_*
 thetastar*    \theta_*
-zdrag*        z_{drag}
-rdrag*        r_{drag}
+zdrag*        z_{\rm drag}
+rdrag*        r_{\rm drag}
 kd*           k_D
 thetad*       \theta_D
 zeq*          z_{EQ}

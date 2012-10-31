@@ -9,6 +9,7 @@ class paramInfo:
         self.label = ''
         self.comment = ''
         self.filenameLoadedFrom = ''
+        self.number = None
         if line is not None:
             self.setFromString(line)
 
@@ -18,12 +19,13 @@ class paramInfo:
         if self.name.endswith('*'):
             self.name = self.name.strip('*')
             self.isDerived = True
-        tmp = items[1].split('#', 1)
-        self.label = tmp[0].strip().replace('!', '\\')
-        if len(tmp) > 1:
-            self.comment = tmp[1].strip()
-        else:
-            self.comment = ''
+        if len(items) > 1:
+            tmp = items[1].split('#', 1)
+            self.label = tmp[0].strip().replace('!', '\\')
+            if len(tmp) > 1:
+                self.comment = tmp[1].strip()
+            else:
+                self.comment = ''
         return self
 
     def setFromStringWithComment(self, items):
@@ -38,17 +40,51 @@ class paramInfo:
             res = res + '\t#' + self.comment
         return res
 
+class paramList:
 
-class paramNames:
-
-
-    def __init__(self, fileName=None):
+    def __init__(self, fileName=None, setParamNameFile=None):
 
         self.names = []
         if fileName is not None: self.loadFromFile(fileName)
+        if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
 
     def numDerived(self):
         return len([1 for info in self.names if info.isDerived])
+
+    def list(self):
+        return [name.name for name in self.names]
+
+    def listString(self):
+        return " ".join(self.list())
+
+    def numParams(self):
+        return len(self.names)
+
+    def numNonDerived(self):
+        return len([1 for info in self.names if not info.isDerived])
+
+    def parWithNumber(self, num):
+        for par in self.names:
+            if par.number == num:
+                return par
+        return None
+
+    def parWithName(self, name):
+        for par in self.names:
+            if par.name == name:
+                return par
+        return None
+
+    def setLabelsAndDerivedFromParamNames(self, fname):
+        p = paramNames(fname)
+        for par in p.names:
+            param = self.parWithName(par.name)
+            if not param is None:
+                param.label = par.label
+                param.isDerived = par.isDerived
+
+
+class paramNames(paramList):
 
 
     def loadFromFile(self, fileName):
@@ -82,9 +118,4 @@ class paramNames:
             textFileHandle.write(info.string() + '\n')
         textFileHandle.close()
 
-    def list(self):
-        return [name.name for name in self.names]
-
-    def listString(self):
-        return " ".join(self.list())
 

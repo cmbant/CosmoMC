@@ -90,6 +90,7 @@ module MCSamples
         real matlab_version
         character(LEN=3) :: matlab_plot_output = 'eps'
         real :: matlab_subplot_size_inch = 3.0
+        logical :: matlab_latex = .false.
         real :: font_scale = 1.
         real contours(max_contours), contour_levels(max_contours)
         real mean_mult, max_mult
@@ -1396,6 +1397,16 @@ contains
                       
         end function PlotContMATLAB
 
+        function matlabLabel(i)
+        integer, intent(in) :: i
+        character(LEN=120) matlabLabel
+
+        if (matlab_latex) then
+         matlabLabel = '$$'//trim(labels(i))//'$$'
+        else
+         matlabLabel= labels(i)
+        end if
+        end function matlabLabel
 
         subroutine Write2DPlotMATLAB(aunit,j,j2, DoLabelx,DoLabely, hide_ticklabels)
           integer, intent(in) :: aunit,j,j2
@@ -1431,12 +1442,12 @@ contains
               write (aunit,'(a)') 'hold off; set(gca,''Layer'',''top'',''FontSize'',axes_fontsize);'
               fmt = ''',''FontSize'',lab_fontsize);'
               if (DoLabelx) then
-               write (aunit,'(a)') 'xlabel('''//trim(labels(colix(j2)))//trim(fmt)
+               write (aunit,'(a)') 'xlabel('''//trim(matlabLabel(colix(j2)))//trim(fmt)
               else
                 if (hide_ticks) write(aunit,*) 'set(gca,''xticklabel'',[]);'
               end if
               if (DoLabely) then
-               write (aunit,'(a)') 'ylabel('''//trim(labels(colix(j)))//trim(fmt)
+               write (aunit,'(a)') 'ylabel('''//trim(matlabLabel(colix(j)))//trim(fmt)
               else
                 if (hide_ticks) write(aunit,*) 'set(gca,''yticklabel'',[]);'
               end if
@@ -1453,6 +1464,7 @@ contains
           if (sm .and. matlab_subplot_size_inch < 4) sz=9 
           sz = nint(sz*font_scale)
           write(unit,*) trim(concat('lab_fontsize = ',sz,'; axes_fontsize = ',sz,';'))
+          if (matlab_latex) write(unit,*) 'set(0,''DefaultTextInterpreter'',''Latex'');'
           write(unit,*) 'clf'
           if (BW) then
            if (plot_meanlikes) then
@@ -1587,7 +1599,8 @@ program GetDist
                binsraw(-1000:1000)
     
         character(LEN=Ini_max_string_len) InputFile, numstr
-        character(LEN=Ini_max_string_len) fname, parameter_names_file
+        character(LEN=Ini_max_string_len) fname, parameter_names_file, &
+         parameter_names_labels
         character(LEN=10000) InLine  ! ,LastL,OutLine
         real invars(max_cols)
         integer ix, ix1,i,ix2,ix3, nbins, wx
@@ -1648,6 +1661,8 @@ program GetDist
 
         parameter_names_file = Ini_Read_String('parameter_names')
         if (parameter_names_file/='') call ParamNames_Init(NameMapping,parameter_names_file) 
+        parameter_names_labels = Ini_Read_String('parameter_names_labels')
+        matlab_latex = Ini_read_logical('matlab_latex',.false.)
         
         if (Ini_HasKey('nparams')) then
           ncols = Ini_Read_Int('nparams') + 2
@@ -1687,6 +1702,9 @@ program GetDist
              call IO_ReadParamNames(NameMapping,in_root)
              if (ncols==0 .and. NameMapping%nnames/=0) ncols = NameMapping%nnames+2
           end if
+          if (parameter_names_labels/='') &
+                 call ParamNames_SetLabels(NameMapping,parameter_names_labels) 
+
           
           if (ncols==0) then
            if (chain_num == 0) then
@@ -2379,7 +2397,7 @@ program GetDist
             end if
            end if
            if (prob_label)  write (51,*) 'ylabel(''Probability'')'
-           write(51,*)  'xlabel('''//   trim(labels(ix))//''',''FontSize'',lab_fontsize);'
+           write(51,*)  'xlabel('''//   trim(matlabLabel(ix))//''',''FontSize'',lab_fontsize);'
            write (51,*) 'set(gca,''ytick'',[]);hold off;'
 
            if (triangle_plot) then
@@ -2388,7 +2406,7 @@ program GetDist
             if (num_vars > 2) call CheckMatlabAxes(52)
             if (prob_label)  write (52,*) 'ylabel(''Probability'')'
             if (j==num_vars) then
-             write(52,*)  'xlabel('''//   trim(labels(ix))//''',''FontSize'',lab_fontsize);'
+             write(52,*)  'xlabel('''//   trim(matlabLabel(ix))//''',''FontSize'',lab_fontsize);'
             else if (no_triangle_axis_labels) then
                 write(52,*) 'set(gca,''xticklabel'',[]);'
             end if
@@ -2661,12 +2679,12 @@ program GetDist
                  write (50,*) '%Do params ',ix1,ix2,ix3
                  write (50,*) 'scatter(pts(:,',2+ix1,'),pts(:,',2+ix2,'),3,pts(:,',2+ix3,'));'
                  fmt = ''',''FontSize'',lab_fontsize);'
-                 write (50,*) 'xlabel('''//trim(labels(ix1+2))//trim(fmt)
-                 write (50,*) 'ylabel('''//trim(labels(ix2+2))//trim(fmt)
+                 write (50,*) 'xlabel('''//trim(matlabLabel(ix1+2))//trim(fmt)
+                 write (50,*) 'ylabel('''//trim(matlabLabel(ix2+2))//trim(fmt)
                  write (50,*) 'set(gca,''FontSize'',axes_fontsize); ax = gca;'
                  write (50,*) 'hbar = colorbar(''horiz'');axes(hbar);'
 
-                  write (50,*) 'xlabel('''//trim(labels(ix3+2))//trim(fmt)
+                  write (50,*) 'xlabel('''//trim(matlabLabel(ix3+2))//trim(fmt)
                   write (50,*) 'set(gca,''FontSize'',axes_fontsize);'
                  if (num_3D_plots > 2 .and. matlab_version < 7) then
                    write (50,*) ' p = get(ax,''Position'');'

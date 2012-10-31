@@ -113,6 +113,21 @@ subroutine ParamNames_Init(Names, filename)
 
 end subroutine ParamNames_Init
 
+subroutine ParamNames_SetLabels(Names,filename)
+  Type(TParamNames) :: Names, LabNames
+  character(Len=*), intent(in) :: filename
+  integer i,ix
+
+  call ParamNames_init(LabNames,filename)
+  do i=1, LabNames%nnames
+    ix = ParamNames_index(Names, LabNames%name(i))
+    if (ix/=-1) then
+         Names%label(ix) = LabNames%label(i)
+    end if
+  end do
+
+end subroutine ParamNames_SetLabels
+
 function ParamNames_index(Names,name) result(ix)
  Type(TParamNames) :: Names
  character(len=*), intent(in) :: name
