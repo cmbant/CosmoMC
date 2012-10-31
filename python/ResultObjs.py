@@ -264,6 +264,8 @@ class margeStats(paramResults):
 
     def addBestFit(self, bf):
         self.logLike = bf.logLike
+ # the next line deletes parameters not in best-fit; this is good e.g. to get rid of yhe from importance sampled result
+        self.names = [x for x in self.names if bf.parWithName(x.name) is not None]
         for par in self.names:
             param = bf.parWithNumber(par.number)
             par.best_fit = param.best_fit

@@ -17,6 +17,8 @@ batch = batchJob.readobject(batchPath + 'batch.pyobj')
 # this is just for the latex labelsm set None to use those in chain .paramnames
 paramNameFile = 'clik_latex.paramnames'
 
+numColumns = 3;
+
 lines = []
 lines.append('\\documentclass[11pt]{article}')
 lines.append('\\usepackage{fullpage}')
@@ -30,27 +32,27 @@ def addResultTable(caption, bf_file, marge_file):
         caption += ' (Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % bf.logLike) + '$)'
     else: bf = None
     if opt == '-bestfitonly':
-        lines.append(bf.resultTable(3, caption).tableTex())
+        lines.append(bf.resultTable(numColumns, caption).tableTex())
     else:
         if os.path.exists(marge_file):
             marge = ResultObjs.margeStats(marge_file, paramNameFile)
             if not bf is None and opt == '-bestfit': marge.addBestFit(bf)
-            lines.append(marge.resultTable(3, caption).tableTex())
+            lines.append(marge.resultTable(numColumns, caption).tableTex())
         else: print 'missing: ' + marge_file
     lines.append('\\newpage')
 
 
 
 for jobItem in batch.items():
-    caption = jobItem.name.replace('_', '-')
+    caption = jobItem.name.replace('_', '{\\textunderscore}')
     bf_file = jobItem.chainRoot + '.minimum'
     marge_file = jobItem.distRoot() + '.margestats'
     addResultTable(caption, bf_file, marge_file)
     for imp in batch.importanceRuns:
         tag = '_post_' + imp
-        bf_file = ''
-        marge_File = jobItem.distRoot() + tag + '.margestats'
-        caption = (jobItem.name + tag).replace('_', '-')
+        bf_file = jobItem.chainRoot + tag + '.minimum'
+        marge_file = jobItem.distRoot() + tag + '.margestats'
+        caption = (jobItem.name + tag).replace('_', '{\\textunderscore}')
         addResultTable(caption, bf_file, marge_file)
 
 

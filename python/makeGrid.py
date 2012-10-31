@@ -89,11 +89,14 @@ for jobItem in batch.items():
             ini = iniFile.iniFile()
             ini.defaults.append(jobItem.iniFile())
             tag = '_post_' + imp
-            for deffile in importanceDefaults:
-                ini.includes.append(batch.commonPath + deffile)
+            if cosmomcAction == 0:
+                for deffile in importanceDefaults:
+                    ini.includes.append(batch.commonPath + deffile)
+                ini.params['redo_outroot'] = jobItem.chainRoot + tag
+                ini.params['action'] = 1
+            else:
+                ini.params['file_root'] = jobItem.chainRoot + tag
 
-            ini.params['redo_outroot'] = jobItem.chainRoot + tag
-            ini.params['action'] = 1
             ini.params['use_' + imp] = True
             ini.saveFile(jobItem.postIniFile(tag))
 
@@ -101,3 +104,7 @@ for jobItem in batch.items():
 comment = 'Done... to run do: python python/runbatch.py ' + batchPath + 'iniFiles'
 if cosmomcAction == 3 or cosmomcAction == 2: comment += ' 0'
 print comment
+comment = 'for importance sampled: python python/runbatch.py ' + batchPath + 'postIniFiles'
+if cosmomcAction == 3 or cosmomcAction == 2: comment += ' 0'
+print comment
+

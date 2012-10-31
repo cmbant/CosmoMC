@@ -216,7 +216,11 @@
       Params(7) = CMB%w
       Params(8) = CMB%wa
       Params(9) = CMB%nnu
-      Params(10) = CMB%YHe
+      if (bbn_consistency) then
+          Params(10) = 0
+      else
+          Params(10) = CMB%YHe
+      endif
       Params(11) = CMB%iso_cdm_correlated
       Params(12) = CMB%zre_delta  
       Params(13) = CMB%ALens  
