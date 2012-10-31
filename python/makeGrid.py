@@ -44,6 +44,9 @@ params['alpha1'] = '0 -1 1 0.0003 0.0003'
 params['deltazrei'] = '0.5 0.1 3 0.3 0.3'
 params['wa'] = '0 -2 2 0.3 0.3'
 
+batch.skip = []
+batch.skip.append('base_omegak_mnu_planck_CAMspec_highL')
+
 # if covmats are unreliable, so start learning ASAP
 newCovmat = True
 
@@ -56,6 +59,7 @@ batch.makeDirectories()
 batch.save()
 
 for jobItem in batch.items():
+
         jobItem.makeChainPath()
         ini = iniFile.iniFile()
 
@@ -77,9 +81,13 @@ for jobItem in batch.items():
         ini.params['file_root'] = jobItem.chainRoot
 #        f.append('propose_matrix =' + jobItem.datatag + '.covmat')
 
-        if newCovmat:
+        covmat = batch.basePath + 'planck_covmats/' + jobItem.name + '.covmat'
+        if os.path.exists(covmat):
+            ini.params['propose_matrix'] = covmat
+        elif newCovmat:
             ini.params['MPI_Max_R_ProposeUpdate'] = 20
-            ini.params['start_at_bestfit'] = True
+
+        if newCovmat: ini.params['start_at_bestfit'] = True
 
         ini.params['action'] = cosmomcAction
         ini.saveFile(jobItem.iniFile())

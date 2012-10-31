@@ -53,13 +53,15 @@ class batchJob:
         self.extparams = []
         self.datasets = []
         self.importanceRuns = []
+        self.skip = []
         self.basePath = os.path.dirname(sys.path[0]) + os.sep
         self.commonPath = self.basePath + 'batch1/'
 
     def items(self):
         for data_set in self.datasets:
             for param_set in self.extparams:
-                    yield(jobItem(self.batchPath, param_set, data_set))
+                item = jobItem(self.batchPath, param_set, data_set)
+                if not item.name in self.skip: yield(item)
 
     def save(self, filename=''):
         saveobject(self, (self.batchPath + 'batch.pyobj', filename)[filename != ''])

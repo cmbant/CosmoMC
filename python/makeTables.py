@@ -27,15 +27,17 @@ lines.append('\\renewcommand{\\arraystretch}{1.5}')
 lines.append('\\begin{document}')
 
 def addResultTable(caption, bf_file, marge_file):
-    if bf_file != '' and os.path.exists(bf_file):
-        bf = ResultObjs.bestFit(bf_file, paramNameFile)
+    if bf_file != '' and os.path.exists(bf_file + '.minimum'):
+        bf = ResultObjs.bestFit(bf_file + '.minimum', paramNameFile)
         caption += ' (Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % bf.logLike) + '$)'
     else: bf = None
     if opt == '-bestfitonly':
         lines.append(bf.resultTable(numColumns, caption).tableTex())
     else:
-        if os.path.exists(marge_file):
-            marge = ResultObjs.margeStats(marge_file, paramNameFile)
+        if os.path.exists(marge_file + '.margestats'):
+            converge = ResultObjs.convergeStats(marge_file + '.converge')
+            caption += '; R-1 =' + converge.worstR()
+            marge = ResultObjs.margeStats(marge_file + '.margestats', paramNameFile)
             if not bf is None and opt == '-bestfit': marge.addBestFit(bf)
             lines.append(marge.resultTable(numColumns, caption).tableTex())
         else: print 'missing: ' + marge_file
@@ -45,13 +47,13 @@ def addResultTable(caption, bf_file, marge_file):
 
 for jobItem in batch.items():
     caption = jobItem.name.replace('_', '{\\textunderscore}')
-    bf_file = jobItem.chainRoot + '.minimum'
-    marge_file = jobItem.distRoot() + '.margestats'
+    bf_file = jobItem.chainRoot
+    marge_file = jobItem.distRoot()
     addResultTable(caption, bf_file, marge_file)
     for imp in batch.importanceRuns:
         tag = '_post_' + imp
-        bf_file = jobItem.chainRoot + tag + '.minimum'
-        marge_file = jobItem.distRoot() + tag + '.margestats'
+        bf_file = jobItem.chainRoot + tag
+        marge_file = jobItem.distRoot() + tag
         caption = (jobItem.name + tag).replace('_', '{\\textunderscore}')
         addResultTable(caption, bf_file, marge_file)
 

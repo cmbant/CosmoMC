@@ -203,9 +203,7 @@ class paramResults(paramNames.paramList):
 class bestFit(paramResults):
 
     def loadFromFile(self, filename):
-        textFileHandle = open(filename)
-        textFileLines = textFileHandle.readlines()
-        textFileHandle.close()
+        textFileLines = self.fileList(filename)
         first = textFileLines[0].strip().split('=')
         self.logLike = float(first[1].strip())
         isFixed = False
@@ -233,9 +231,7 @@ class bestFit(paramResults):
 class margeStats(paramResults):
 
     def loadFromFile(self, filename):
-        textFileHandle = open(filename)
-        textFileLines = textFileHandle.readlines()
-        textFileHandle.close()
+        textFileLines = self.fileList(filename)
         for i in range(1, len(textFileLines)):
             line = textFileLines[i]
             if len(line.strip()) == 0:
@@ -264,7 +260,7 @@ class margeStats(paramResults):
 
     def addBestFit(self, bf):
         self.logLike = bf.logLike
- # the next line deletes parameters not in best-fit; this is good e.g. to get rid of yhe from importance sampled result
+# the next line deletes parameters not in best-fit; this is good e.g. to get rid of yhe from importance sampled result
         self.names = [x for x in self.names if bf.parWithName(x.name) is not None]
         for par in self.names:
             param = bf.parWithNumber(par.number)
@@ -273,4 +269,21 @@ class margeStats(paramResults):
 
     def addHeader(self, table):
         table.margeHeaderRow()
+
+
+class convergeStats(paramResults):
+    def loadFromFile(self, filename):
+        textFileLines = self.fileList(filename)
+        self.R_eigs = []
+        for i in range(len(textFileLines)):
+            if textFileLines[i].find('var(mean)') >= 0:
+                for line in textFileLines[i + 1:]:
+                    if len(line.strip()) == 0:return
+                    self.R_eigs.append(line.split()[1])
+
+    def worstR(self):
+        return self.R_eigs[len(self.R_eigs) - 1]
+
+
+
 

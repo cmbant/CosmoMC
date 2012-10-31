@@ -83,6 +83,12 @@ class paramList:
                 param.label = par.label
                 param.isDerived = par.isDerived
 
+    def fileList(self, fname):
+        textFileHandle = open(fname)
+        textFileLines = textFileHandle.readlines()
+        textFileHandle.close()
+        return textFileLines
+
 
 class paramNames(paramList):
 
