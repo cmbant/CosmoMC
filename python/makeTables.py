@@ -1,8 +1,5 @@
 import os, sys, batchJob, ResultObjs
 
-def checkDir(fname):
-    if not os.path.exists(fname): os.makedirs(fname)
-
 
 if len(sys.argv) < 3:
     print 'Usage: python/makeTables.py directory_with_outputs outfile [-bestfitonly, -bestfit]'
@@ -27,24 +24,35 @@ lines.append('\\usepackage[landscape]{geometry}')
 lines.append('\\renewcommand{\\arraystretch}{1.5}')
 lines.append('\\begin{document}')
 
-
-for jobItem in batch.items():
-    caption = jobItem.name.replace('_', '-')
-    bf_file = jobItem.chainRoot + '.minimum'
-    if os.path.exists(bf_file):
+def addResultTable(caption, bf_file, marge_file):
+    if bf_file != '' and os.path.exists(bf_file):
         bf = ResultObjs.bestFit(bf_file, paramNameFile)
         caption += ' (Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % bf.logLike) + '$)'
     else: bf = None
     if opt == '-bestfitonly':
         lines.append(bf.resultTable(3, caption).tableTex())
     else:
-        fname = jobItem.distPath + jobItem.name + '.margestats'
-        if os.path.exists(fname):
-            marge = ResultObjs.margeStats(fname, paramNameFile)
+        if os.path.exists(marge_file):
+            marge = ResultObjs.margeStats(marge_file, paramNameFile)
             if not bf is None and opt == '-bestfit': marge.addBestFit(bf)
             lines.append(marge.resultTable(3, caption).tableTex())
-        else: print 'missing: ' + fname
+        else: print 'missing: ' + marge_file
     lines.append('\\newpage')
+
+
+
+for jobItem in batch.items():
+    caption = jobItem.name.replace('_', '-')
+    bf_file = jobItem.chainRoot + '.minimum'
+    marge_file = jobItem.distRoot() + '.margestats'
+    addResultTable(caption, bf_file, marge_file)
+    for imp in batch.importanceRuns:
+        tag = '_post_' + imp
+        bf_file = ''
+        marge_File = jobItem.distRoot() + tag + '.margestats'
+        caption = (jobItem.name + tag).replace('_', '-')
+        addResultTable(caption, bf_file, marge_file)
+
 
 lines.append('\\end{document}')
 

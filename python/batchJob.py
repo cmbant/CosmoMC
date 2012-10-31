@@ -26,6 +26,9 @@ class jobItem:
         self.chainRoot = self.chainPath + self.name
         self.distPath = self.chainPath + 'dist/'
 
+    def distRoot(self):
+        return self.distPath + self.name
+
     def iniFile(self):
         return self.batchPath + 'iniFiles/' + self.name + '.ini'
 

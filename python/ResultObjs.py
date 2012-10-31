@@ -50,7 +50,7 @@ def numberFigs(number, sigfig):
 
 class resultTable():
 
-    def __init__(self, ncol, caption='', results=None, numResults=1, border='||'):
+    def __init__(self, ncol, caption='', results=None, numResults=1, border='||', position='!ht'):
         self.lines = []
         self.caption = caption
         self.sig_figs = 4
@@ -58,7 +58,7 @@ class resultTable():
         self.ncol = ncol
         self.results = results
         self.boldBaseParameters = True
-        self.lines.append('\\begin{table}')
+        self.lines.append('\\begin{table}[' + position + ']')
         self.lines.append('\\begin{tabular} {' + (border + " l " + "| c"* numResults) * ncol + border + '}')
         self.addLine()
 
@@ -117,7 +117,7 @@ class resultTable():
         lims = param.limits[1]
         sf = 3
         if param.twotail:
-            res, plus_str, minus_str, sf = self.namesigFigs(param.mean, lims[1] - param.mean, lims[0] - param.mean)[0:4]
+            res, plus_str, minus_str = self.namesigFigs(param.mean, lims[1] - param.mean, lims[0] - param.mean)
             res = res + '^{' + plus_str + '}_{' + minus_str + '}'
         elif param.lim_bot and not param.lim_top:
             res = '< ' + self.formatNumber(lims[1], sf)
@@ -126,7 +126,9 @@ class resultTable():
         else: res = '---'
         meanResult = self.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
         if self.numResults == 2:  # add best fit too
-            meanResult += self.textAsColumn(self.formatNumber(param.best_fit, sf), True, separator=True)
+            range = (lims[1] - lims[0]) / 10
+            bres = self.namesigFigs(param.best_fit, range, -range)[0]
+            meanResult += self.textAsColumn(bres, True, separator=True)
         meanResult += self.textAsColumn(res, res != '---')
 
         return meanResult
@@ -144,15 +146,19 @@ class resultTable():
         elif frac > 0.01 and value < 1000: sf = 3
 #        if abs(value) < 1 and limplus - limminus > abs(value): sf = 2
         res = self.formatNumber(value, sf)
-        while abs(value) < 1 and max(self.decimal_places(plus_str), self.decimal_places(minus_str)) \
-                < self.decimal_places(res):
+        maxdp = max(self.decimal_places(plus_str), self.decimal_places(minus_str))
+        while abs(value) < 1 and maxdp < self.decimal_places(res):
             sf -= 1
-            res = self.formatNumber(value, sf)
+            if sf == 0:
+                res = ('%.' + str(maxdp) + 'f') % value
+                if (float(res) == 0.0): res = ('%.' + str(maxdp) + 'f') % 0
+                break
+            else: res = self.formatNumber(value, sf)
 
         while self.decimal_places(plus_str) > self.decimal_places(res):
             sf += 1
             res = self.formatNumber(value, sf)
-        return (res, plus_str, minus_str, sf, err_sf)
+        return (res, plus_str, minus_str)
 
     def addMargeStatParamRow(self, row):
         line = " & ".join(self.margeTex(param) for param in row)
