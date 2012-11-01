@@ -358,7 +358,7 @@ program SolveCosmology
             if (action==action_importance) then
               call Ini_SaveReadValues(trim(PostParams%redo_outroot) //'.inputparams',unit)
             else if (action==action_maxlike .or. action==action_Hessian) then
-              call Ini_SaveReadValues(trim(baseroot) //'.mininum.inputparams',unit)
+              call Ini_SaveReadValues(trim(baseroot) //'.minimum.inputparams',unit)
             else
               call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
             end if
