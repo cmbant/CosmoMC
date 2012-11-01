@@ -12,6 +12,8 @@ batchPath = os.path.abspath(sys.argv[1]) + os.sep
 cosmomcAction = 0
 if len(sys.argv) > 2: cosmomcAction = int(sys.argv[2])
 
+if cosmomcAction == 1: print 'actually you don''t need to do this, use action=0 and configure importanceRuns'
+
 
 batch = batchJob.batchJob(batchPath)
 
@@ -21,6 +23,7 @@ batch.extparams = [[], ['omegak', 'mnu'], ['nrun', 'r'], ['omegak'], ['nnu'], ['
 # dataset names
 planck = 'planck_CAMspec'
 highL = 'highL'
+BAO = 'BAO'
 
 
 batch.datasets = []
@@ -28,7 +31,8 @@ batch.datasets = []
 batch.datasets.append([[planck], ['CAMspec_defaults.ini']])
 batch.datasets.append([[planck, highL], ['CAMspec_ACTSPT_defaults.ini']])
 
-batch.importanceRuns.append('BAO')
+importanceRuns = []
+importanceRuns.append(BAO)
 
 # priors and widths for parameters which are varied
 params = dict()
@@ -55,10 +59,11 @@ defaults = ['common_batch1.ini']
 
 importanceDefaults = ['importance_sampling.ini']
 
+batch.makeItems(importanceRuns)
 batch.makeDirectories()
 batch.save()
 
-for jobItem in batch.items():
+for jobItem in batch.items(wantSubItems=False):
 
         jobItem.makeChainPath()
         ini = iniFile.iniFile()
@@ -93,20 +98,20 @@ for jobItem in batch.items():
         ini.saveFile(jobItem.iniFile())
 
 # add ini files for importance sampling runs
-        for imp in batch.importanceRuns:
+        for imp in jobItem.importanceJobs():
             ini = iniFile.iniFile()
             ini.defaults.append(jobItem.iniFile())
-            tag = '_post_' + imp
+            if batch.hasName(imp.name.replace('_post', '')): raise Exception('importance sampling something you already have?')
             if cosmomcAction == 0:
                 for deffile in importanceDefaults:
                     ini.includes.append(batch.commonPath + deffile)
-                ini.params['redo_outroot'] = jobItem.chainRoot + tag
+                ini.params['redo_outroot'] = imp.chainRoot
                 ini.params['action'] = 1
             else:
-                ini.params['file_root'] = jobItem.chainRoot + tag
+                ini.params['file_root'] = imp.chainRoot
 
-            ini.params['use_' + imp] = True
-            ini.saveFile(jobItem.postIniFile(tag))
+            ini.params['use_' + imp.importanceTag] = True
+            ini.saveFile(imp.postIniFile())
 
 
 comment = 'Done... to run do: python python/runbatch.py ' + batchPath + 'iniFiles'

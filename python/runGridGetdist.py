@@ -48,10 +48,9 @@ if opt != '-plots':
             os.system('./getdist ' + fname)
 
 # add ini files for importance sampling runs
-        for imp in batch.importanceRuns:
-            tag = '_post_' + imp
-            ini.params['file_root'] = jobItem.chainRoot + tag
-            fname = ini_dir + jobItem.name + tag + '.ini'
+        for imp in jobItem.importanceJobs():
+            ini.params['file_root'] = imp.chainRoot
+            fname = ini_dir + imp.name + '.ini'
             ini.params['compare_num'] = 1
             ini.params['compare1'] = jobItem.chainRoot
             ini.saveFile(fname)
@@ -74,18 +73,18 @@ if opt != '-norun':
                 print fname
                 if os.path.exists(fname):
                     cat_cmd = cat_cmd + ' ' + fname
-        os.system(cat_cmd + '|' + matlab)
+        if len(cat_cmd) > 5: os.system(cat_cmd + '|' + matlab)
 
     cat_cmd = 'cat '
     for jobItem in batch.items():
         os.chdir(jobItem.distPath)
-        for imp in batch.importanceRuns:
+        for imp in jobItem.importanceRuns:
             tag = '_post_' + imp
             for tp in plot_types:
                 fname = jobItem.distPath + jobItem.name + tag + tp
                 print fname
                 if os.path.exists(fname):
                     cat_cmd = cat_cmd + ' ' + fname
-    os.system(cat_cmd + '|' + matlab)
+    if len(cat_cmd) > 5: os.system(cat_cmd + '|' + matlab)
 
 

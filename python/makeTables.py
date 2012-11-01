@@ -45,18 +45,9 @@ def addResultTable(caption, bf_file, marge_file):
 
 
 
-for jobItem in batch.items():
+for jobItem in batch.items(wantImportance=True):
     caption = jobItem.name.replace('_', '{\\textunderscore}')
-    bf_file = jobItem.chainRoot
-    marge_file = jobItem.distRoot()
-    addResultTable(caption, bf_file, marge_file)
-    for imp in batch.importanceRuns:
-        tag = '_post_' + imp
-        bf_file = jobItem.chainRoot + tag
-        marge_file = jobItem.distRoot() + tag
-        caption = (jobItem.name + tag).replace('_', '{\\textunderscore}')
-        addResultTable(caption, bf_file, marge_file)
-
+    addResultTable(caption, jobItem.chainRoot, jobItem.distRoot)
 
 lines.append('\\end{document}')
 

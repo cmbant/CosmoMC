@@ -25,15 +25,31 @@ class jobItem:
         self.chainPath = path + paramtag + '/' + datatag + '/'
         self.chainRoot = self.chainPath + self.name
         self.distPath = self.chainPath + 'dist/'
-
-    def distRoot(self):
-        return self.distPath + self.name
+        self.distRoot = self.distPath + self.name
+        self.isImportanceJob = False
+        self.importanceItems = []
 
     def iniFile(self):
         return self.batchPath + 'iniFiles/' + self.name + '.ini'
 
-    def postIniFile(self, tag):
-        return self.batchPath + 'postIniFiles/' + self.name + tag + '.ini'
+    def postIniFile(self):
+        return self.batchPath + 'postIniFiles/' + self.name + '.ini'
+
+    def makeImportance(self, importanceRuns):
+        self.importanceItems = []
+        for imp in importanceRuns:
+            job = jobItem(self.batchPath, self.param_set, self.data_set)
+            job.importanceTag = imp
+            tag = '_post_' + imp
+            job.name = self.name + tag
+            job.chainRoot = self.chainRoot + tag
+            job.distRoot = self.distRoot + tag
+            job.datatag = self.datatag + tag
+            job.isImportanceJob = True
+            self.importanceItems.append(job)
+
+    def importanceJobs(self):
+        return self.importanceItems
 
     def makeChainPath(self):
         if not os.path.exists(self.chainPath): os.makedirs(self.chainPath)
@@ -52,16 +68,37 @@ class batchJob:
         self.batchPath = path
         self.extparams = []
         self.datasets = []
-        self.importanceRuns = []
         self.skip = []
         self.basePath = os.path.dirname(sys.path[0]) + os.sep
         self.commonPath = self.basePath + 'batch1/'
+        self.subBatches = []
+        self.jobItems = None
 
-    def items(self):
-        for data_set in self.datasets:
-            for param_set in self.extparams:
-                item = jobItem(self.batchPath, param_set, data_set)
-                if not item.name in self.skip: yield(item)
+    def makeItems(self, importanceRuns):
+            self.jobItems = []
+            for data_set in self.datasets:
+                for param_set in self.extparams:
+                    item = jobItem(self.batchPath, param_set, data_set)
+                    if not item.name in self.skip:
+                        item.makeImportance(importanceRuns)
+                        self.jobItems.append(item)
+
+
+    def items(self, wantSubItems=True, wantImportance=False):
+        for item in self.jobItems:
+            yield(item)
+            if wantImportance:
+                for imp in item.importanceJobs():
+                    if not imp.name in self.skip: yield(imp)
+
+        if wantSubItems:
+            for subBatch in self.subBatches:
+                for item in subBatch.items(wantSubItems, wantImportance): yield(item)
+
+    def hasName(self, name, wantSubItems=True):
+        for jobItem in self.items(wantSubItems):
+            if jobItem.name == name: return True
+        return False
 
     def save(self, filename=''):
         saveobject(self, (self.batchPath + 'batch.pyobj', filename)[filename != ''])
