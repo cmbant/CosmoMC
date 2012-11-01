@@ -2647,15 +2647,8 @@ program GetDist
               write (*,*) 'producing ',num_3D_plots, '2D colored scatter plots'
               filename = trim(rootdirname)//'_3D.m'
               open(unit=50,file=filename,form='formatted',status='replace')
+              call WriteMatLabInit(50,num_3D_plots>1)
               write (50,*) 'clf;colormap(''jet'');'
-              if (num_3D_plots ==1 ) then
-                sz = 12
-              else
-                sz = 9
-              end if
-              sz = nint(sz*font_scale)
-              write(50,*) trim(concat('lab_fontsize = ',sz,'; axes_fontsize = ',sz,';'))
-                        
 
               if (mod(num_3D_plots,2)==0 .and. num_3D_plots < 11) then
                plot_col = num_3D_plots/2
