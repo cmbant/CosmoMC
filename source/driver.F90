@@ -281,7 +281,8 @@ program SolveCosmology
            call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
         end if
         want_minimize = action == action_maxlike .or. action==action_Hessian &
-              .or. action == action_MCMC .and. estimate_propose_matrix .or. start_at_bestfit
+              .or. action == action_MCMC .and. estimate_propose_matrix .or. &
+                start_at_bestfit .and. new_chains
 
         if (want_minimize) then
          max_like_radius = Ini_Read_Real('max_like_radius',0.01)
