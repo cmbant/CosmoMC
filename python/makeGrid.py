@@ -115,9 +115,9 @@ for jobItem in batch.items(wantSubItems=False):
 
 
 comment = 'Done... to run do: python python/runbatch.py ' + batchPath
-if cosmomcAction == 3 or cosmomcAction == 2: comment += '--nodes 0'
+if cosmomcAction == 3 or cosmomcAction == 2: comment += ' --nodes 0'
 print comment
-comment = 'for importance sampled: python python/runbatch.py ' + batchPath + '--importance'
-if cosmomcAction == 3 or cosmomcAction == 2: comment += '--nodes 0'
+comment = 'for importance sampled: python python/runbatch.py ' + batchPath + ' --importance'
+if cosmomcAction == 3 or cosmomcAction == 2: comment += ' --nodes 0'
 print comment
 
