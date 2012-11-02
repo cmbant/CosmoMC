@@ -11,8 +11,7 @@ if outfile.find('.') < 0: outfile += '.tex'
 opt = ''
 if len(sys.argv) > 3: opt = sys.argv[3]
 
-batchPath = os.path.abspath(sys.argv[1]) + os.sep
-batch = batchJob.readobject(batchPath + 'batch.pyobj')
+batch = batchJob.readobject()
 
 # this is just for the latex labelsm set None to use those in chain .paramnames
 paramNameFile = 'clik_latex.paramnames'

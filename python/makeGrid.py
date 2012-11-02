@@ -24,7 +24,7 @@ batch.extparams = [[], ['omegak', 'mnu'], ['nrun', 'r'], ['omegak'], ['nnu'], ['
 planck = 'planck_CAMspec'
 highL = 'highL'
 BAO = 'BAO'
-
+HST = 'HST'
 
 batch.datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
@@ -33,6 +33,7 @@ batch.datasets.append([[planck, highL], ['CAMspec_ACTSPT_defaults.ini']])
 
 importanceRuns = []
 importanceRuns.append(BAO)
+importanceRuns.append(HST)
 
 # priors and widths for parameters which are varied
 params = dict()
@@ -99,9 +100,10 @@ for jobItem in batch.items(wantSubItems=False):
 
 # add ini files for importance sampling runs
         for imp in jobItem.importanceJobs():
+            if batch.hasName(imp.name.replace('_post', '')): raise Exception('importance sampling something you already have?')
             ini = iniFile.iniFile()
             ini.defaults.append(jobItem.iniFile())
-            if batch.hasName(imp.name.replace('_post', '')): raise Exception('importance sampling something you already have?')
+            ini.includes.append(batch.commonPath + imp.importanceTag + '.ini')
             if cosmomcAction == 0:
                 for deffile in importanceDefaults:
                     ini.includes.append(batch.commonPath + deffile)
@@ -109,15 +111,13 @@ for jobItem in batch.items(wantSubItems=False):
                 ini.params['action'] = 1
             else:
                 ini.params['file_root'] = imp.chainRoot
-
-            ini.params['use_' + imp.importanceTag] = True
             ini.saveFile(imp.postIniFile())
 
 
-comment = 'Done... to run do: python python/runbatch.py ' + batchPath + 'iniFiles'
-if cosmomcAction == 3 or cosmomcAction == 2: comment += ' 0'
+comment = 'Done... to run do: python python/runbatch.py ' + batchPath
+if cosmomcAction == 3 or cosmomcAction == 2: comment += '--nodes 0'
 print comment
-comment = 'for importance sampled: python python/runbatch.py ' + batchPath + 'postIniFiles'
-if cosmomcAction == 3 or cosmomcAction == 2: comment += ' 0'
+comment = 'for importance sampled: python python/runbatch.py ' + batchPath + '--importance'
+if cosmomcAction == 3 or cosmomcAction == 2: comment += '--nodes 0'
 print comment
 

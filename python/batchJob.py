@@ -1,8 +1,11 @@
 
 import os, sys, pickle
 
-def readobject(filename):
-    with open(filename, 'rb') as inp:
+
+def readobject(directory=None):
+    if directory == None:
+        directory = sys.argv[1]
+    with open(os.path.abspath(directory) + os.sep + 'batch.pyobj', 'rb') as inp:
         return pickle.load(inp)
 
 def saveobject(obj, filename):

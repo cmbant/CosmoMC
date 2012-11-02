@@ -90,6 +90,8 @@ module MCSamples
         real matlab_version
         character(LEN=3) :: matlab_plot_output = 'eps'
         real :: matlab_subplot_size_inch = 3.0
+        real :: matlab_subplot_size_inch2, matlab_subplot_size_inch3
+        
         logical :: matlab_latex = .false.
         real :: font_scale = 1.
         real contours(max_contours), contour_levels(max_contours)
@@ -1354,14 +1356,14 @@ contains
              plotfile = numcat(trim(numcat(trim(aroot)//'_2D_',colix(j)-2))//'_',colix(j2)-2)
              if (.not. FileExists(trim(plot_data_dir)//trim(plotfile))) return
              PlotContMATLAB= .true.
-              write (aunit,'(a)') "pts=load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //"'));"
+              write (aunit,'(a)') "pts=load(fullfile(plotdir,'" // trim(plotfile) //"'));"
      
               fname =trim(trim(aroot)//trim(numcat('_p',colix(j2)-2)))
-              write (aunit,'(a)') "tmp = load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.dat''));'
+              write (aunit,'(a)') "tmp = load(fullfile(plotdir,'" // trim(fname)//  '.dat''));'
               write (aunit,*) 'x1 = tmp(:,1);'
 
               fname =trim(trim(aroot)//trim(numcat('_p',colix(j)-2)))
-              write (aunit,'(a)') "tmp = load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.dat''));'
+              write (aunit,'(a)') "tmp = load(fullfile(plotdir,'" // trim(fname)//  '.dat''));'
               write (aunit,*) 'x2 = tmp(:,1);'
     
 !              fmt = trim(numcat('(''x1 = ['',',ix_max(j2)-ix_min(j2)+1))//'E16.7,''];'')'
@@ -1371,7 +1373,7 @@ contains
  !             write (aunit,fmt) (/(I, I=ix_min(j), ix_max(j), 1)/)*width(j)+center(j)
               if (DoShade) then
               if (shade_meanlikes) then
-                write (aunit,'(a)') "ptsL=load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //'_likes''));'
+                write (aunit,'(a)') "ptsL=load(fullfile(plotdir,'" // trim(plotfile) //'_likes''));'
                 write (aunit,'(a)') 'contourf(x1,x2,ptsL,64);'
               else     
                 write (aunit,*) 'contourf(x1,x2,pts,64);'
@@ -1383,10 +1385,10 @@ contains
            
               if (num_contours /= 0) then
 
-               write (aunit,'(a)') "cnt = load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //'_cont''));'
+               write (aunit,'(a)') "cnt = load(fullfile(plotdir,'" // trim(plotfile) //'_cont''));'
   
                if (plot_NDcontours) then
-                write (aunit,'(a)') "ptND=load (fullfile('"//trim(plot_data_dir)//"','" // trim(plotfile) //'_confid''));'
+                write (aunit,'(a)') "ptND=load(fullfile(plotdir,'" // trim(plotfile) //'_confid''));'
                 write(numstr,*) 1-contours(1:num_contours)  
                 if (num_contours==1) numstr = trim(numstr)//' '//trim(numstr)
                write (aunit,'(a)') 'contour(x1,x2,ptND,['//trim(numstr)//'],''r'');'
@@ -1454,14 +1456,17 @@ contains
          end subroutine  Write2DPlotMATLAB
 
 
-         subroutine WriteMatLabInit(unit,sm)
+         subroutine WriteMatLabInit(unit,sm, subplot_size)
           integer, intent(in) :: unit
           logical, intent(in) :: sm
+          real, intent(in) :: subplot_size
           integer sz
 
-          write(unit,*) 'plot_size_inch = '//trim(RealToStr(matlab_subplot_size_inch))//';'
+          write(unit,*) 'plot_size_inch = '//trim(RealToStr(subplot_size))//';'
+          write(unit,'(a)') 'plotdir='''//trim(plot_data_dir)//''';'
+          write(unit,'(a)') 'outdir='''//trim(out_dir)//''';'
           sz = 12
-          if (sm .and. matlab_subplot_size_inch < 4) sz=9 
+          if (sm .and. subplot_size < 4) sz=9 
           sz = nint(sz*font_scale)
           write(unit,*) trim(concat('lab_fontsize = ',sz,'; axes_fontsize = ',sz,';'))
           if (matlab_latex) write(unit,*) 'set(0,''DefaultTextInterpreter'',''Latex'');'
@@ -1494,8 +1499,8 @@ contains
            if (matlab_plot_output == 'ps')  command='-dpsc2'
            if (matlab_plot_output == 'pdf')  command='-dpdf'
            if (matlab_plot_output == 'eps') command='-depsc2'
-           write (unit,'(a)') 'print('''//trim(command)//''',fullfile('''// &
-                     trim(out_dir)//''',''' // trim(rootname)//trim(tag)//'.'//trim(matlab_plot_output)//'''));'
+           write (unit,'(a)') 'print('''//trim(command)//''',fullfile(outdir,''' &
+               // trim(rootname)//trim(tag)//'.'//trim(matlab_plot_output)//'''));'
 
         end subroutine WriteMatLabPrint
          
@@ -1506,13 +1511,13 @@ contains
        integer ix1
 
         fname =trim(trim(rootname)//trim(numcat('_p',colix(j)-2)))
-        write (aunit,'(a)') "pts=load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.dat''));'
+        write (aunit,'(a)') "pts=load(fullfile(plotdir,'" // trim(fname)//  '.dat''));'
         write (aunit,*) 'plot(pts(:,1),pts(:,2),lineM{1},''LineWidth'',lw1);'
         write (aunit,*) 'axis([-Inf,Inf,0,1.1]);axis manual;'
         write (aunit,*) 'set(gca,''FontSize'',axes_fontsize); hold on;'
 
         if (plot_meanlikes) then
-         write (aunit,'(a)') "pts=load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)//  '.likes''));'
+         write (aunit,'(a)') "pts=load(fullfile(plotdir,'" // trim(fname)//  '.likes''));'
          write (aunit,*) 'plot(pts(:,1),pts(:,2),lineL{1},''LineWidth'',lw1);'
         end if
 
@@ -1525,13 +1530,13 @@ contains
          fname =  trim(trim(ComparePlots(ix1))//trim(numcat('_p',colix(j)-2)))    
          if (FileExists(trim(plot_data_dir)// trim(fname)//'.dat')) then
 
-          write (aunit,'(a)') "pts = load (fullfile('"//trim(plot_data_dir)//"','" // trim(fname)// '.dat''));'
+          write (aunit,'(a)') "pts = load(fullfile(plotdir,'" // trim(fname)// '.dat''));'
           fmt = trim(numcat('lineM{',ix1+1)) // '}'        
           write (aunit,'(a)') 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
     
          if (plot_meanlikes) then
 
-            write (aunit,'(a)') "pts=load (fullfile('"//trim(plot_data_dir)//"','" //trim(fname)//'.likes''));'
+            write (aunit,'(a)') "pts=load(fullfile(plotdir,'" //trim(fname)//'.likes''));'
            fmt = trim(numcat('lineL{',ix1+1)) // '}'        
             write (aunit,'(a)') 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
 
@@ -1733,6 +1738,11 @@ program GetDist
         matlab_plot_output = Ini_Read_String_Default('matlab_plot_output',matlab_plot_output)
         matlab_subplot_size_inch = Ini_Read_Real('matlab_subplot_size_inch', &
                                     matlab_subplot_size_inch)
+        matlab_subplot_size_inch2 = Ini_Read_Real('matlab_subplot_size_inch2', &
+                                    matlab_subplot_size_inch)
+        matlab_subplot_size_inch3 = Ini_Read_Real('matlab_subplot_size_inch3', &
+                                    matlab_subplot_size_inch)
+       
         font_scale  = Ini_Read_Real('font_scale',1.)
         finish_run_command = Ini_Read_String('finish_run_command')
         
@@ -2189,7 +2199,7 @@ program GetDist
     
           open(unit=51,file=trim(rootdirname) // '.m',form='formatted',status='replace')
          !MatLab file for 1D plots
-          call WriteMatLabInit(51,num_vars>3)
+          call WriteMatLabInit(51,num_vars>3, matlab_subplot_size_inch)
 
           open(unit=50,file=sm_file,form='formatted',status='replace')
        !SuperMongo .sm file for 1D plots
@@ -2213,7 +2223,7 @@ program GetDist
 
          if (triangle_plot) then
           open(unit=52,file=trim(rootdirname) // '_tri.m',form='formatted',status='replace')
-          call WriteMatLabInit(52,num_vars>4)
+          call WriteMatLabInit(52,num_vars>4, matlab_subplot_size_inch)
           if (num_vars>6) write(52,*) 'axes_fontsize=axes_fontsize*2/3;lab_fontsize=lab_fontsize-1;'
          end if
 
@@ -2558,7 +2568,7 @@ program GetDist
           write (*,*) 'Producing ',num_2D_plots,' 2D plots'
           filename = trim(rootdirname)//'_2D.m'
           open(unit=50,file=filename,form='formatted',status='replace')
-          call WriteMatLabInit(50,num_2D_plots >=7)
+          call WriteMatLabInit(50,num_2D_plots >=7,matlab_subplot_size_inch2)
 
           plot_col = nint(sqrt(num_2D_plots/1.4))
           plot_row = (num_2D_plots +plot_col-1)/plot_col 
@@ -2647,7 +2657,7 @@ program GetDist
               write (*,*) 'producing ',num_3D_plots, '2D colored scatter plots'
               filename = trim(rootdirname)//'_3D.m'
               open(unit=50,file=filename,form='formatted',status='replace')
-              call WriteMatLabInit(50,num_3D_plots>1)
+              call WriteMatLabInit(50,num_3D_plots>1,matlab_subplot_size_inch3)
               write (50,*) 'clf;colormap(''jet'');'
 
               if (mod(num_3D_plots,2)==0 .and. num_3D_plots < 11) then
