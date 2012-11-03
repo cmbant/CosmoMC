@@ -1,19 +1,10 @@
 #!/usr/bin/env python
-import sys, os, batchJob
-try: import argparse
-except:
-    print 'use module load to load python 2.7'
-    sys.exit()
+import os, batchJobArgs
 
-parser = argparse.ArgumentParser(description='Submit jobs to run chains or importance sample')
+Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', importance=True)
+Opts.parser.add_argument('--nodes', type=int, default=2)
 
-parser.add_argument('batchPath')
-
-parser.add_argument('--nodes', type=int, default=2)
-
-parser.add_argument('--importance', nargs='*', default=None)
-
-args = parser.parse_args()
+(batch, args) = Opts.parseForBatch()
 
 
 # if len(sys.argv) < 2:
@@ -22,7 +13,7 @@ args = parser.parse_args()
 
 subScript = 'runMPI_HPCS.pl'
 
-batch = batchJob.readobject(args.batchPath)
+
 
 def submitJob(ini):
         command = 'perl ' + subScript + ' ' + ini + ' ' + str(args.nodes)
@@ -35,8 +26,7 @@ for jobItem in batch.items(wantSubItems=False):
         submitJob(jobItem.iniFile())
     else:
         for imp in jobItem.importanceJobs():
-            if (len(args.importance) == 0 or imp.importanceTag in args.importance):
-                submitJob(imp.postIniFile())
+            if Opts.wantImportance(imp.importanceTag): submitJob(imp.postIniFile())
 
 
 
