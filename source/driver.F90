@@ -237,9 +237,6 @@ program SolveCosmology
         oversample_fast = Ini_Read_Int('oversample_fast',1)
         use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
  
-        if (Ini_Read_Logical('cmb_hyperparameters', .false.)) &
-            call DoAbort( 'Hyperparameters not supported any more')
-
         if (Ini_Read_String('use_2dF') /= '') stop 'use_2dF now replaced with use_mpk'
         Use_Clusters = Ini_Read_Logical('use_clusters',.false.)
         Use_mpk = Ini_Read_Logical('use_mpk',.false.) ! matter power spectrum, incl 2dF

@@ -254,6 +254,39 @@ subroutine ParamNames_WriteFile(Names, fname)
    
 end subroutine ParamNames_WriteFile
 
+
+function ParamNames_NameOrNumber(Names,ix) result(name)
+ Type(TParamNames) :: Names
+ character(len=ParamNames_maxlen)  :: name
+ integer, intent(in) :: ix
+
+ name = ParamNames_name(Names,ix) 
+ if (name == '') name = IntToStr(ix)
+
+end function ParamNames_NameOrNumber
+
+subroutine ParamNames_WriteMatlab(Names,  unit)
+ Type(TParamNames) :: Names
+ character(len=ParamNames_maxlen) name, obj
+ integer :: unit
+ integer i
+ 
+   do i=1, Names%nnames
+     name = ParamNames_name(Names,i) 
+     if (name /= '') then
+      write(unit,'(a)') trim(name)//'.n='//trim(intToStr(i))//';'
+      write(unit,'(a)') trim(name)//'.label='''//trim(Names%label(i))//''';'
+      if (Names%is_derived(i)) then
+           write(unit,'(a)') trim(name)//'.derived=true;'
+      else
+           write(unit,'(a)') trim(name)//'.derived=false;'
+      endif
+      write(unit,'(a)') 'params('//trim(intToStr(i))//')='//trim(name)//';'
+    end if
+   end do   
+   
+end subroutine ParamNames_WriteMatlab
+
      function ParamNames_ReadIniForParam(Names,Ini,Key, param) result(input)
       ! read Key[name] or Keyn where n is the parameter number
       use IniFile

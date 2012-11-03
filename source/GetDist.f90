@@ -2361,6 +2361,14 @@ program GetDist
 
           if (.not. no_plots) then
 
+          filename = trim(plot_data_dir)//trim(rootname)//'.m'
+          call CreateTxtFile(trim(filename),49)
+          write(49,'(a)') trim(rootname)//'.distroot='''//trim(rootdirname)//''';'
+          write(49,'(a)') trim(rootname)//'.plotroot='''//trim(plot_data_dir)//trim(rootname)//''';'
+          write(49,'(a)') trim(rootname)//'.root='''//trim(rootname)//''';'
+          call ParamNames_WriteMatlab(NameMapping,  49)
+          close(49)
+          
           fname =trim(trim(rootname)//trim(numcat('_p',colix(j)-2)))
           filename = trim(plot_data_dir)//trim(fname)
           open(unit=49,file=trim(filename)//'.dat',form='formatted',status='replace')

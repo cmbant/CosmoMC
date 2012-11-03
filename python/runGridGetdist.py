@@ -13,7 +13,7 @@ base_ini = 'getdist_common_batch1.ini'
 matlab = 'matlab'
 
 batchPath = os.path.abspath(sys.argv[1]) + os.sep
-batch = batchJob.readobject(batchPath + 'batch.pyobj')
+batch = batchJob.readobject(batchPath)
 
 
 data_dir = batchPath + 'plot_data' + os.sep
