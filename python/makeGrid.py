@@ -111,7 +111,7 @@ for jobItem in batch.items(wantSubItems=False):
                 ini.params['action'] = 1
             else:
                 ini.params['file_root'] = imp.chainRoot
-            ini.saveFile(imp.postIniFile())
+            ini.saveFile(imp.iniFile())
 
 
 comment = 'Done... to run do: python python/runbatch.py ' + batchPath

@@ -41,9 +41,7 @@ def addResultTable(caption, bf_file, marge_file):
     lines.append('\\newpage')
 
 
-
-for jobItem in batch.items(wantImportance=True):
-    if Opts.jobItemWanted(jobItem):
+for jobItem in Opts.filteredBatchItems():
         caption = jobItem.name.replace('_', '{\\textunderscore}')
         addResultTable(caption, jobItem.chainRoot, jobItem.distRoot)
 

@@ -33,10 +33,10 @@ class jobItem:
         self.importanceItems = []
 
     def iniFile(self):
-        return self.batchPath + 'iniFiles/' + self.name + '.ini'
+        if self.isImportanceJob:
+            return self.batchPath + 'iniFiles/' + self.name + '.ini'
+        else: return self.batchPath + 'postIniFiles/' + self.name + '.ini'
 
-    def postIniFile(self):
-        return self.batchPath + 'postIniFiles/' + self.name + '.ini'
 
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
@@ -49,6 +49,7 @@ class jobItem:
             job.distRoot = self.distRoot + tag
             job.datatag = self.datatag + tag
             job.isImportanceJob = True
+            job.parent = self
             self.importanceItems.append(job)
 
     def importanceJobs(self):

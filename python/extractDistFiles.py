@@ -12,8 +12,7 @@ if not os.path.exists(target_dir): os.makedirs(target_dir)
 
 for ext in args.file_extension:
     pattern = '*.' + ext
-    for jobItem in batch.items(wantImportance=True):
-        if Opts.jobItemWanted(jobItem):
+    for jobItem in Opts.filteredBatchItems():
             for f in os.listdir(jobItem.distPath):
                 if fnmatch.fnmatch(f, jobItem.name + pattern):
                     print jobItem.distPath + f
