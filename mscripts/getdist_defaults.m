@@ -15,11 +15,14 @@ classdef getdist_defaults < handle
     end
     methods
         function obj = getdist_defaults(plot_data) % constructor
-        if nargin > 0 && path ~=''
+        if nargin > 0 && ~isempty(plot_data)
             path(plot_data,path)
         else
             p=getenv('getdist_plot_data');
-            if  size(p,1)>0
+            if p(length(p))=='/'
+             p=p(1:length(p)-1);
+            end
+            if ~isempty(p) && isempty(strfind(path,p))
              path(p,path)
             end
         end
