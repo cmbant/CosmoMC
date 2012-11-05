@@ -4,9 +4,11 @@ def checkDir(fname):
     if not os.path.exists(fname): os.makedirs(fname)
 
 
-Opts = batchJobArgs.batchArgs('Run getdist over the grid of models', importance=True)
+Opts = batchJobArgs.batchArgs('Run getdist over the grid of models')
 Opts.parser.add_argument('--plots', action='store_true')
 Opts.parser.add_argument('--norun', action='store_true')
+Opts.parser.add_argument('--noplots', action='store_true')
+
 
 (batch, args) = Opts.parseForBatch()
 
@@ -52,7 +54,7 @@ if not args.plots:
                 else: print "Chains do not exist yet: " + jobItem.chainRoot
 
 
-if not args.norun:
+if not args.norun and not args.noplots:
     cat_cmd = 'cat '
     for jobItem in Opts.filteredBatchItems():
             os.chdir(jobItem.distPath)

@@ -275,17 +275,15 @@ subroutine ParamNames_WriteMatlab(Names,  unit, headObj)
    do i=1, Names%nnames
      name = ParamNames_name(Names,i) 
      if (name /= '') then
-      name = trim(headObj)//'.'//trim(name)
-      write(unit,'(a)') trim(name)//'.n='//trim(intToStr(i))//';'
-      write(unit,'(a)') trim(name)//'.label='''//trim(Names%label(i))//''';'
+      write(unit,'(a)', advance='NO') trim(headObj)//trim(name)//'= struct(''n'','//trim(intToStr(i)) &
+                 //',''label'','''//trim(Names%label(i))//''',''isDerived'','
       if (Names%is_derived(i)) then
-           write(unit,'(a)') trim(name)//'.derived=true;'
+           write(unit,'(a)') 'true);'
       else
-           write(unit,'(a)') trim(name)//'.derived=false;'
+           write(unit,'(a)') 'false);'
       endif
-      write(unit,'(a)') trim(headObj)//'.params('//trim(intToStr(i))//')='//trim(name)//';'
     end if
-   end do   
+   end do
    
 end subroutine ParamNames_WriteMatlab
 

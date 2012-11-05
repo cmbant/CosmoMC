@@ -85,7 +85,6 @@ for jobItem in batch.items(wantSubItems=False):
             ini.params['compute_tensors'] = True
 
         ini.params['file_root'] = jobItem.chainRoot
-#        f.append('propose_matrix =' + jobItem.datatag + '.covmat')
 
         covmat = batch.basePath + 'planck_covmats/' + jobItem.name + '.covmat'
         if os.path.exists(covmat):

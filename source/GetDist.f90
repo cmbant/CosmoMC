@@ -2363,13 +2363,15 @@ program GetDist
 
           filename = trim(plot_data_dir)//trim(rootname)//'.m'
           call CreateTxtFile(trim(filename),49)
-          write(49,'(a)') 'function [ p ] = '//trim(rootname)//'()'
-          write(49,'(a)') 'p.distroot='''//trim(rootdirname)//''';'
-
-          write(49,'(a)') 'p.distroot='''//trim(rootdirname)//''';'
-          write(49,'(a)') 'p.plotroot='''//trim(plot_data_dir)//trim(rootname)//''';'
-          write(49,'(a)') 'p.root='''//trim(rootname)//''';'
-          call ParamNames_WriteMatlab(NameMapping,  49,'p')
+          write(49,'(a)') 'classdef '//trim(trim(rootname))//' < handle'
+          write(49,'(a)') 'properties'
+          write(49,'(a)') 'last=[];'
+          write(49,'(a)') 'distroot='''//trim(rootdirname)//''';'
+          write(49,'(a)') 'plotroot='''//trim(plot_data_dir)//trim(rootname)//''';'
+          write(49,'(a)') 'root='''//trim(rootname)//''';'
+          call ParamNames_WriteMatlab(NameMapping,  49,'')
+          write(49,'(a)') 'end'
+          write(49,'(a)') 'end'
           close(49)
           
           fname =trim(trim(rootname)//trim(numcat('_p',colix(j)-2)))
