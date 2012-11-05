@@ -265,15 +265,17 @@ function ParamNames_NameOrNumber(Names,ix) result(name)
 
 end function ParamNames_NameOrNumber
 
-subroutine ParamNames_WriteMatlab(Names,  unit)
+subroutine ParamNames_WriteMatlab(Names,  unit, headObj)
  Type(TParamNames) :: Names
  character(len=ParamNames_maxlen) name, obj
+ character(len=*), intent(in) :: headObj
  integer :: unit
  integer i
  
    do i=1, Names%nnames
      name = ParamNames_name(Names,i) 
      if (name /= '') then
+      name = trim(headObj)//'.'//trim(name)
       write(unit,'(a)') trim(name)//'.n='//trim(intToStr(i))//';'
       write(unit,'(a)') trim(name)//'.label='''//trim(Names%label(i))//''';'
       if (Names%is_derived(i)) then
@@ -281,7 +283,7 @@ subroutine ParamNames_WriteMatlab(Names,  unit)
       else
            write(unit,'(a)') trim(name)//'.derived=false;'
       endif
-      write(unit,'(a)') 'params('//trim(intToStr(i))//')='//trim(name)//';'
+      write(unit,'(a)') trim(headObj)//'.params('//trim(intToStr(i))//')='//trim(name)//';'
     end if
    end do   
    

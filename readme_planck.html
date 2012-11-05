@@ -33,13 +33,32 @@ Non-clik CamSpec code is included in ./source, and data files are available from
 See the <A HREF="readme.html#Version">readme</A>.
 
 <h2>Grids of models</h2>
-See the ./python directory, and edit makeGrid.py appropriately. Then run
+See the ./python directory for scripts (python 2.7+), most can be run without arguments to show a list of possible input parameters. To start copy and edit makeGrid.py appropriately. Then run
 <blockquote>
-<b>python python/makeGrid /scratch/.../newdirectoryforbatch [action]</b>
+<b>python python/makeGrid.py /scratch/.../Planckgrids/newdirectoryforbatch [action]</b>
 </blockquote>
-Also edit and use runbatch.py to submit all the ini files produced to the queue. You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge.
+Also edit and use runbatch.py to submit all the ini files produced to the queue. You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge. Use action=2 to do minimization-only runs (quick).
 <P>
 Runs with the same data by default all use the same covmat, this should be changed when we have some runs. But the covmat can be a merged covmat that contains many parameters, defaults are provided from combining several different separate covmats. Use the python/covcomb.py script if you want to make a new one.
+<p>
+Scripts include:
+<UL>
+<LI>makeGrid.py: as descried above, for setting up a grid of models. Stores the information in a "pickle" file that can then be read be the other scripts for iterating over batch items.
+    <LI>addGridBatch.py: if you run multiple grids, e.g. a standard one and a separate small one for some parameter for interest, they can be combined using addGridBatch.py. Also use if the main batch importance samples some data, but a few of the models need to be run separately as chains: the script automatically replaces importance sampled runs with full chain runs if there is an overlap.
+<LI>batchJob.py: not a script, this just defines the objects and iterators used
+<LI>covcomb.py: for combining covariance matrices (thanks Steven!)
+<LI>covMat.py: object for covariance matrix and reading .covmat
+<LI>extractDistFiles.py: for copying all files of a particular type from all the subdirectories in the grid, e.g. to extract all .covmat files, or all .pdf plots
+<LI>iniFile.py: for reading and writing .ini files (does not support reading fully at the moment, but not needed as yet)
+<LI>makePerfectForecastDataset.py: a simple old script for simulating perfect fake CMB datasets
+<LI>makeTables.py: script for making latex (and hence PDF) tables from .margestats and .minimum files produced by grid runs.
+<LI>paramNames.py: for reading paramNames files, and general objects for storing parameter info
+<LI>ResultObjs.py: objects for getdist output results (.margestats) and .minimum files. Note is expects formats to be those produced by cosmomcplanck , not older versions.
+<LI>runBatch.py: submit runs to a job submission script
+<LI>runGridGetdist.py: make getdist .ini files and run getdist over grid of models.
+</UL>
+Many scripts have standardized input parameters to restrict to subsets of grid items, e.g. filtering by importance sampling run, no importance sampling, or specific item name.
+
 <h2>To do</h2>
 
 Lensing likelihood. Define consistent priors for nuisance parameters. Efficient use of fast highL nuisance parameters. Uncorrelated isocuvature? Figure out consistent way to handle mnu with non-standard nnu.
