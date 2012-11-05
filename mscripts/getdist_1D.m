@@ -11,7 +11,7 @@ ish=ishold;
 hold on;
 pts=load([root.plotroot '_p' int2str(param.n) '.likes']);
 plot(pts(:,1),pts(:,2),p.lineL{plotno},'LineWidth',p.lw1);
-xlabel(p.label,'FontSize',p.lab_fontsize);
+xlabel(param.label,'FontSize',p.lab_fontsize);
 set(gca,'ytick',[]);
 if ~ish
 hold off;

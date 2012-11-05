@@ -8,6 +8,7 @@ Opts = batchJobArgs.batchArgs('Run getdist over the grid of models')
 Opts.parser.add_argument('--plots', action='store_true')
 Opts.parser.add_argument('--norun', action='store_true')
 Opts.parser.add_argument('--noplots', action='store_true')
+Opts.parser.add_argument('--specific', action='store_true')
 
 
 (batch, args) = Opts.parseForBatch()
@@ -26,7 +27,7 @@ ini_dir = batch.batchPath + 'getdist' + os.sep
 checkDir(data_dir)
 checkDir(ini_dir)
 
-if not args.plots:
+if not args.plots and not args.specific:
     for jobItem in Opts.filteredBatchItems():
             ini = iniFile.iniFile()
             ini.params['file_root'] = jobItem.chainRoot
@@ -55,12 +56,17 @@ if not args.plots:
 
 
 if not args.norun and not args.noplots:
-    cat_cmd = 'cat '
-    for jobItem in Opts.filteredBatchItems():
-            os.chdir(jobItem.distPath)
-            for tp in plot_types:
-                fname = jobItem.distRoot + tp
-                print fname
-                if os.path.exists(fname):
-                    cat_cmd = cat_cmd + ' ' + fname
-    if len(cat_cmd) > 5: os.system(cat_cmd + '|' + matlab)
+    if not args.specific:
+        cat_cmd = 'cat '
+        for jobItem in Opts.filteredBatchItems():
+                os.chdir(jobItem.distPath)
+                for tp in plot_types:
+                    fname = jobItem.distRoot + tp
+                    print fname
+                    if os.path.exists(fname):
+                        cat_cmd = cat_cmd + ' ' + fname
+        if len(cat_cmd) > 5: os.system(cat_cmd + '|' + matlab)
+
+    os.system('export getdist_plot_data=' + data_dir + ';export MATLABPATH=' + batch.basePath + 'mscripts' + os.sep
+                + ';cat ' + batch.commonPath + 'specificplots' + os.sep + '*.m | ' + matlab)
+

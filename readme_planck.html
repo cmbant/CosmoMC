@@ -59,6 +59,9 @@ Scripts include:
 </UL>
 Many scripts have standardized input parameters to restrict to subsets of grid items, e.g. filtering by importance sampling run, no importance sampling, or specific item name (pattern match).
 
+<h2>Plots</h2>
+The runGridGetdist.py script will produce standard sets of getdist plots automatically for all runs. These can be customized in parameter-variation-specific way by adding additional getdist .ini include files in batch1\plots. Further completely general plots with custom matlab scripts can be installed in batch1\specificplots. These can use new matlab functions getdist_xxx provided in the mscripts directory (which must be added to your path if you want to run them directly in matlab; you can also set the getdist_plot_data environment variable so it knows where to look for getdist grid outputs; runGridGetdist sets up paths automatically).
+
 <h2>To do</h2>
 
 Lensing likelihood. Define consistent priors for nuisance parameters. Efficient use of fast highL nuisance parameters. Uncorrelated isocuvature? Figure out consistent way to handle mnu with non-standard nnu.
