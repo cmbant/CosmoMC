@@ -67,6 +67,10 @@ if not args.norun and not args.noplots:
                         cat_cmd = cat_cmd + ' ' + fname
         if len(cat_cmd) > 5: os.system(cat_cmd + '|' + matlab)
 
-    os.system('export getdist_plot_data=' + data_dir + ';export MATLABPATH=' + batch.basePath + 'mscripts' + os.sep
-                + ';cat ' + batch.commonPath + 'specificplots' + os.sep + '*.m | ' + matlab)
+    if args.name is None:
+        specficPath = batch.batchPath + 'specific_plots' + os.sep
+        checkDir(specficPath)
+        os.chdir(specficPath)
+        os.system('export getdist_plot_data=' + data_dir + ';export MATLABPATH=' + batch.basePath + 'mscripts' + os.sep
+                    + ';cat ' + batch.commonPath + 'specificplots' + os.sep + '*.m | ' + matlab)
 
