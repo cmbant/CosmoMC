@@ -8,7 +8,7 @@ module CalcLike
  implicit none
 
  logical :: Use_CMB = .true.
- 
+
  integer :: H0_min = 40, H0_max = 100
  real :: Omk_min = -0.3, Omk_max = 0.3
  real :: Use_min_zre = 0
@@ -160,6 +160,7 @@ contains
           if (like%needs_background_functions .and. .not. backgroundSet) then
               call SetTheoryForBackground(CMB)
               backgroundSet = .true.
+
           end if
           itemLike = like%LogLike(CMB, Info%Theory)
           if (itemLike == logZero) return logZero

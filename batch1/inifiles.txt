@@ -1,3 +1,0 @@
-base.ini
-base_w.ini
-base_mnu.ini

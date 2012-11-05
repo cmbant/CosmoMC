@@ -1,0 +1,108 @@
+omegabh2      \Omega_b h^2	#physical baryon density
+omegach2      \Omega_c h^2	#physical CDM matter density
+theta         \theta		#100 times the ratio of the angular diameter distance to the LSS sound horizon (approx)
+tau           \tau
+omegak        \Omega_K
+mnu           \Sigma m_\nu		
+w             w			#equation of state parameter for scalar field dark energy today
+wa            w_a       #w_a variation
+nnu           N_{\rm eff}   #effective number of neutrinos (only clearly defined for massless)
+yhe           Y_{P}    #Helium mass fraction (not used if bbn_consistency)    
+alpha1        \alpha_{-1} #correlated CDM isocurvature 
+deltazrei     \Delta_{z,re} #width of reionization
+Alens         A_{L}     #lensing potential scaled by sqrt(A_lens)
+fdm           \epsilon_0 f_d    #CosmoRec dark matter annihilation parameter, 0910.3663
+ns            n_s	    #beware that pivot scale can change in .ini file
+nt            n_t
+nrun          n_{\rm run}
+logA          \log[10^{10} A_s]
+r             r_{\rm pivot} #ratio of tensor to scalar primordial amplitudes at pivot scale
+asz           A_{\rm SZ}		#SZ template amplitude, as in WMAP
+aps100        A^{\rm PS}_{100}      # Point source amplitude at 100 GHz
+aps143        A^{\rm PS}_{143}      # Point source amplitude at 143 GHz
+aps217        A^{\rm PS}_{217}      # Point source amplitude at 217 GHz
+acib143       A^{\rm CIB}_{143}     # CIB amplitude at 143 GHz
+acib217       A^{\rm CIB}_{217}     # CIB amplitude at 217 GHz
+asz143        A^{\rm tSZ}_{143}     # Thermal SZ amplitude at 143 GHz
+psr           r_{\rm PS}^{143/217}  # 143-217 correlation coefficient of point source residuals
+cibr          r_{\rm CIB}           # 143-217 correlation coefficient of CIB
+cal0          c_{100/143}       # relative calibration factor 100/143
+cal1          c_{143/143}       # calibration factor 143
+cal2          c_{217/143}       # relative calibration factor 217/143
+xi            \xi^{\rm tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
+aksz          A^{\rm kSZ}
+bm_1_1        \beta^1_1
+bm_1_2        \beta^1_2
+bm_1_3        \beta^1_3
+bm_1_4        \beta^1_4
+bm_1_5        \beta^1_5
+bm_2_1        \beta^2_1
+bm_2_2        \beta^2_2
+bm_2_3        \beta^2_3
+bm_2_4        \beta^2_4
+bm_2_5        \beta^2_5
+bm_3_1        \beta^3_1
+bm_3_2        \beta^3_2
+bm_3_3        \beta^3_3
+bm_3_4        \beta^3_4
+bm_3_5        \beta^3_5
+bm_4_1        \beta^4_1
+bm_4_2        \beta^4_2
+bm_4_3        \beta^4_3
+bm_4_4        \beta^4_4
+bm_4_5        \beta^4_5
+A_cib_143
+A_cib_217
+r_cib
+A_sz
+xi_sz_cib
+ps_pwfe_A_100_100
+ps_pwfe_A_100_143
+ps_pwfe_A_100_217
+ps_pwfe_A_143_143
+ps_pwfe_A_143_217 
+ps_pwfe_A_217_217 
+gal_norm 
+A_sz_AS          A_{SZ}
+A_ksz_AS         A^{kSZ}
+xi_sz_cib_AS     \xi^{tSZ-CIB}
+a_ps_act_148     A_{PS,ACT}^{148}
+a_ps_act_217     A_{PS,ACT}^{217}
+a_ps_spt_95      A_{PS,SPT}^{95}
+a_ps_spt_150     A_{PS,SPT}^{150}
+a_ps_spt_220     A_{PS,SPT}^{220}
+A_cib_143_AS     A^{CIB}_{143}
+A_cib_217_AS     A^{CIB}_{217}
+r_ps_spt_95x150  r_{PS}^{95/150}
+r_ps_spt_95x220  r_{PS}^{95/220}
+r_ps_150x220     r_{PS}^{150/220}
+r_cib_AS         r_{CIB}
+cal_acts_148     c_{ACTs}^{148}
+cal_acts_217     c_{ACTs}^{217}
+cal_acte_148     c_{ACTe}^{148}
+cal_acte_217     c_{ACTe}^{217}
+cal_spt_95       c_{SPT}^{95}
+cal_spt_150      c_{SPT}^{150}
+cal_spt_220      c_{SPT}^{220}
+omegal*       \Omega_\Lambda
+age*          {\rm Age/Gyr}
+omegam*       \Omega_m
+sigma8*       \sigma_8
+zrei*         z_{re}
+r10*          r_{10}	#tensor-scalar C_l amplitude at l=10
+H0*           H_0		#hubble parameter is H0 km/s/Mpc
+r02*          r         #r at k=0.002
+A*            10^9 A_s
+omegamh2*     \Omega_m h^2 #includes massive neutrinos
+omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
+yheused*      Y_{P} #MCMC value or from bbn consistency
+clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
+zstar*        z_*
+rstar*        r_*
+thetastar*    \theta_*
+zdrag*        z_{\rm drag}
+rdrag*        r_{\rm drag}
+kd*           k_D
+thetad*       \theta_D
+zeq*          z_{EQ}
+thetaeq*      \theta_{EQ}

@@ -113,6 +113,21 @@ subroutine ParamNames_Init(Names, filename)
 
 end subroutine ParamNames_Init
 
+subroutine ParamNames_SetLabels(Names,filename)
+  Type(TParamNames) :: Names, LabNames
+  character(Len=*), intent(in) :: filename
+  integer i,ix
+
+  call ParamNames_init(LabNames,filename)
+  do i=1, LabNames%nnames
+    ix = ParamNames_index(Names, LabNames%name(i))
+    if (ix/=-1) then
+         Names%label(ix) = LabNames%label(i)
+    end if
+  end do
+
+end subroutine ParamNames_SetLabels
+
 function ParamNames_index(Names,name) result(ix)
  Type(TParamNames) :: Names
  character(len=*), intent(in) :: name
@@ -238,6 +253,39 @@ subroutine ParamNames_WriteFile(Names, fname)
  call CloseFile(unit)
    
 end subroutine ParamNames_WriteFile
+
+
+function ParamNames_NameOrNumber(Names,ix) result(name)
+ Type(TParamNames) :: Names
+ character(len=ParamNames_maxlen)  :: name
+ integer, intent(in) :: ix
+
+ name = ParamNames_name(Names,ix) 
+ if (name == '') name = IntToStr(ix)
+
+end function ParamNames_NameOrNumber
+
+subroutine ParamNames_WriteMatlab(Names,  unit, headObj)
+ Type(TParamNames) :: Names
+ character(len=ParamNames_maxlen) name, obj
+ character(len=*), intent(in) :: headObj
+ integer :: unit
+ integer i
+ 
+   do i=1, Names%nnames
+     name = ParamNames_name(Names,i) 
+     if (name /= '') then
+      write(unit,'(a)', advance='NO') trim(headObj)//trim(name)//'= struct(''n'','//trim(intToStr(i)) &
+                 //',''label'','''//trim(Names%label(i))//''',''isDerived'','
+      if (Names%is_derived(i)) then
+           write(unit,'(a)') 'true);'
+      else
+           write(unit,'(a)') 'false);'
+      endif
+    end if
+   end do
+   
+end subroutine ParamNames_WriteMatlab
 
      function ParamNames_ReadIniForParam(Names,Ini,Key, param) result(input)
       ! read Key[name] or Keyn where n is the parameter number

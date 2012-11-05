@@ -54,6 +54,8 @@
         
        P%InitPower%an(in) = CMB%InitPower(1)
        P%InitPower%ant(in) = CMB%InitPower(2)
+       if (P%InitPower%rat(in)>0 .and. .not. compute_tensors) &
+        call MpiStop('computing r>0 but compute_tensors=F')
        P%InitPower%n_run(in) = CMB%InitPower(3)
        if (inflation_consistency) then
          P%InitPower%ant(in) = - CMB%InitPower(amp_ratio_index)/8.
@@ -218,7 +220,11 @@
       Params(7) = CMB%w
       Params(8) = CMB%wa
       Params(9) = CMB%nnu
-      Params(10) = CMB%YHe
+      if (bbn_consistency) then
+          Params(10) = 0
+      else
+          Params(10) = CMB%YHe
+      endif
       Params(11) = CMB%iso_cdm_correlated
       Params(12) = CMB%zre_delta  
       Params(13) = CMB%ALens  
@@ -372,4 +378,3 @@
       deallocate(output_array)
 
   end  subroutine WriteParamsAndDat
-

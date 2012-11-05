@@ -1,21 +1,18 @@
 #!/usr/bin/env python
-import sys
-import os
+import os, batchJobArgs
 
+Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample')
+Opts.parser.add_argument('--nodes', type=int, default=2)
 
-if len(sys.argv) < 2:
-    print 'Usage: python/runbatch.py directory_containing_inifiles [num_nodes]'
-    sys.exit()
+(batch, args) = Opts.parseForBatch()
 
 subScript = 'runMPI_HPCS.pl'
 
-noOfMpiNodes = '2';
-if len(sys.argv) > 2: noOfMpiNodes = sys.argv[2]
+def submitJob(ini):
+        command = 'perl ' + subScript + ' ' + ini + ' ' + str(args.nodes)
+        print 'Submitting...' + command
+        os.system(command)
 
-iniDir = os.path.abspath(sys.argv[1]) + os.sep
 
-dirList = os.listdir(iniDir)
-for fname in dirList:
-    command = 'perl ' + subScript + ' ' + iniDir + fname + ' ' + noOfMpiNodes
-    print 'Submitting...' + command
-    os.system(command)
+for jobItem in Opts.filteredBatchItems(wantSubItems=False):
+        submitJob(jobItem.iniFile())

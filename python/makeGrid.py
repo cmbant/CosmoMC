@@ -12,6 +12,8 @@ batchPath = os.path.abspath(sys.argv[1]) + os.sep
 cosmomcAction = 0
 if len(sys.argv) > 2: cosmomcAction = int(sys.argv[2])
 
+if cosmomcAction == 1: print 'actually you don''t need to do this, use action=0 and configure importanceRuns'
+
 
 batch = batchJob.batchJob(batchPath)
 
@@ -21,12 +23,17 @@ batch.extparams = [[], ['omegak', 'mnu'], ['nrun', 'r'], ['omegak'], ['nnu'], ['
 # dataset names
 planck = 'planck_CAMspec'
 highL = 'highL'
-
+BAO = 'BAO'
+HST = 'HST'
 
 batch.datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
 batch.datasets.append([[planck], ['CAMspec_defaults.ini']])
 batch.datasets.append([[planck, highL], ['CAMspec_ACTSPT_defaults.ini']])
+
+importanceRuns = []
+importanceRuns.append(BAO)
+importanceRuns.append(HST)
 
 # priors and widths for parameters which are varied
 params = dict()
@@ -42,25 +49,32 @@ params['alpha1'] = '0 -1 1 0.0003 0.0003'
 params['deltazrei'] = '0.5 0.1 3 0.3 0.3'
 params['wa'] = '0 -2 2 0.3 0.3'
 
+batch.skip = []
+batch.skip.append('base_omegak_mnu_planck_CAMspec_highL')
+
 # if covmats are unreliable, so start learning ASAP
 newCovmat = True
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
 
+importanceDefaults = ['importance_sampling.ini']
+
+batch.makeItems(importanceRuns)
 batch.makeDirectories()
 batch.save()
 
-for jobItem in batch.items():
+for jobItem in batch.items(wantSubItems=False):
+
         jobItem.makeChainPath()
         ini = iniFile.iniFile()
 
         for param in jobItem.param_set:
             ini.params['param[' + param + ']'] = params[param]
+        for iniitem in jobItem.data_set[1]:
+            ini.defaults.append(batch.commonPath + iniitem)
         for deffile in defaults:
             ini.defaults.append(batch.commonPath + deffile)
-        for iniitem in jobItem.data_set[1]:
-            ini.includes.append(batch.commonPath + iniitem)
 
         if 'mnu' in jobItem.param_set:
             ini.params['num_massive_neutrinos'] = 3
@@ -71,15 +85,38 @@ for jobItem in batch.items():
             ini.params['compute_tensors'] = True
 
         ini.params['file_root'] = jobItem.chainRoot
-#        f.append('propose_matrix =' + jobItem.datatag + '.covmat')
 
-        if newCovmat:
+        covmat = batch.basePath + 'planck_covmats/' + jobItem.name + '.covmat'
+        if os.path.exists(covmat):
+            ini.params['propose_matrix'] = covmat
+        elif newCovmat:
             ini.params['MPI_Max_R_ProposeUpdate'] = 20
-            ini.params['start_at_bestfit'] = True
+
+        if newCovmat: ini.params['start_at_bestfit'] = True
 
         ini.params['action'] = cosmomcAction
         ini.saveFile(jobItem.iniFile())
 
-comment = 'Done... to run do: python python/runbatch.py ' + batchPath + 'iniFiles'
-if cosmomcAction == 3 or cosmomcAction == 2: comment += ' 0'
+# add ini files for importance sampling runs
+        for imp in jobItem.importanceJobs():
+            if batch.hasName(imp.name.replace('_post', '')): raise Exception('importance sampling something you already have?')
+            ini = iniFile.iniFile()
+            ini.defaults.append(jobItem.iniFile())
+            ini.includes.append(batch.commonPath + imp.importanceTag + '.ini')
+            if cosmomcAction == 0:
+                for deffile in importanceDefaults:
+                    ini.includes.append(batch.commonPath + deffile)
+                ini.params['redo_outroot'] = imp.chainRoot
+                ini.params['action'] = 1
+            else:
+                ini.params['file_root'] = imp.chainRoot
+            ini.saveFile(imp.iniFile())
+
+
+comment = 'Done... to run do: python python/runbatch.py ' + batchPath
+if cosmomcAction == 3 or cosmomcAction == 2: comment += ' --nodes 0'
 print comment
+comment = 'for importance sampled: python python/runbatch.py ' + batchPath + ' --importance'
+if cosmomcAction == 3 or cosmomcAction == 2: comment += ' --nodes 0'
+print comment
+

@@ -14,11 +14,6 @@
 
     integer, parameter :: dp = kind(1.d0)
 
-    integer, parameter :: num_camSpec =33
-    integer, parameter :: num_plik=10
-    integer, parameter :: num_actSpt = 21
-
-    
     private
     public :: clik_readParams,clik_lnlike, use_clik
 

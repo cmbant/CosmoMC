@@ -241,7 +241,7 @@ program SolveCosmology
             call DoAbort( 'Hyperparameters not supported any more')
         
         call SetDataLikelihoods(DefIni)
-        
+
         Temperature = Ini_Read_Real('temperature',1.)
         
         num_threads = Ini_Read_Int('num_threads',0)
@@ -254,7 +254,8 @@ program SolveCosmology
            call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
         end if
         want_minimize = action == action_maxlike .or. action==action_Hessian &
-              .or. action == action_MCMC .and. estimate_propose_matrix .or. start_at_bestfit
+              .or. action == action_MCMC .and. estimate_propose_matrix .or. &
+                start_at_bestfit .and. new_chains
 
         if (want_minimize) then
          max_like_radius = Ini_Read_Real('max_like_radius',0.01)
@@ -304,7 +305,7 @@ program SolveCosmology
             if (action==action_importance) then
               call Ini_SaveReadValues(trim(PostParams%redo_outroot) //'.inputparams',unit)
             else if (action==action_maxlike .or. action==action_Hessian) then
-              call Ini_SaveReadValues(trim(baseroot) //'.mininum.inputparams',unit)
+              call Ini_SaveReadValues(trim(baseroot) //'.minimum.inputparams',unit)
             else
               call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
             end if
