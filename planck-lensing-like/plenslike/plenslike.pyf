@@ -1,0 +1,43 @@
+python module _plenslike
+interface
+	subroutine wignerd_cl_from_cf(s1, s2, nfunc, ntheta, lmax, cos_theta, integration_weights, out_cl, in_cf)
+		   intent(c) wignerd_cl_from_cf
+		   intent(c) 
+		   integer intent(in) :: s1, s2, nfunc, ntheta, lmax
+		   double precision intent(in), depend(ntheta) :: cos_theta(ntheta)
+		   double precision intent(in), depend(ntheta) :: integration_weights(ntheta)
+		   double precision intent(in), depend(ntheta, nfunc) :: in_cf(ntheta*nfunc)
+		   double precision intent(out) :: out_cl((lmax+1)*nfunc)
+        end subroutine wignerd_cl_from_cf
+
+	subroutine wignerd_cf_from_cl(s1, s2, nfunc, ntheta, lmax, cos_theta, out_cf, in_cl)
+		   intent(c) wignerd_cf_from_cl
+		   intent(c) 
+		   integer intent(in) :: s1, s2, nfunc, ntheta, lmax
+		   double precision intent(in), depend(ntheta) :: cos_theta(ntheta)
+		   double precision intent(out), depend(ntheta, nfunc) :: out_cf(ntheta*nfunc)
+		   double precision intent(in), depend(lmax, nfunc) :: in_cl((lmax+1)*nfunc)
+        end subroutine wignerd_cf_from_cl
+
+	subroutine init_gauss_legendre_quadrature(n, x, w)
+		   intent(c) init_gauss_legendre_quadrature
+		   intent(c)
+		   integer intent(in) :: n
+		   double precision intent(out) :: x(n)
+		   double precision intent(out) :: w(n)
+	end subroutine init_gauss_legendre_quadrature
+	
+	subroutine calc_qe_plm_resp_plm_mono(lmax, resp, cltt_fid, bl_fid, fl, cltt, bl)
+		   fortranname fill_qe_plm_resp_plm_mono
+		   intent(c) calc_qe_plm_resp_plm_mono
+		   intent(c)
+		   integer intent(in) :: lmax
+		   double precision intent(out), depend(lmax) :: resp(lmax+1)
+		   double precision intent(in), depend(lmax)  :: cltt_fid(lmax+1)
+		   double precision intent(in), depend(lmax)  :: bl_fid(lmax+1)
+		   double precision intent(in), depend(lmax)  :: fl(lmax+1)
+		   double precision intent(in), depend(lmax)  :: cltt(lmax+1)
+		   double precision intent(in), depend(lmax)  :: bl(lmax+1)
+ 	end subroutine calc_qe_plm_resp_plm_mono
+end interface
+end python module _plenslike

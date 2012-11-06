@@ -3,13 +3,13 @@ import os, batchJobArgs
 
 Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample')
 Opts.parser.add_argument('--nodes', type=int, default=2)
+Opts.parser.add_argument('--script', default='runMPI_HPCS.pl')
 
 (batch, args) = Opts.parseForBatch()
 
-subScript = 'runMPI_HPCS.pl'
 
 def submitJob(ini):
-        command = 'perl ' + subScript + ' ' + ini + ' ' + str(args.nodes)
+        command = 'perl ' + args.script + ' ' + ini + ' ' + str(args.nodes)
         print 'Submitting...' + command
         os.system(command)
 

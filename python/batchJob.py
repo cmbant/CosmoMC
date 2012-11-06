@@ -33,16 +33,17 @@ class jobItem:
         self.importanceItems = []
 
     def iniFile(self):
-        if self.isImportanceJob:
+        if not self.isImportanceJob:
             return self.batchPath + 'iniFiles/' + self.name + '.ini'
         else: return self.batchPath + 'postIniFiles/' + self.name + '.ini'
 
 
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
-        for imp in importanceRuns:
+        for (imp, ini) in [(x[0], x[1]) for x in importanceRuns]:
             job = jobItem(self.batchPath, self.param_set, self.data_set)
             job.importanceTag = imp
+            job.importaceSettings = ini
             tag = '_post_' + imp
             job.name = self.name + tag
             job.chainRoot = self.chainRoot + tag
@@ -78,7 +79,7 @@ class batchJob:
         self.subBatches = []
         self.jobItems = None
 
-    def makeItems(self, importanceRuns):
+    def makeItems(self, importanceRuns=[]):
             self.jobItems = []
             for data_set in self.datasets:
                 for param_set in self.extparams:

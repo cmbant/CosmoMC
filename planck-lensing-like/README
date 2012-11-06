@@ -1,0 +1,25 @@
+PLENSLIKE
+=========
+
+This is a library which contains code and data files associated with the Planck lensing likelihood. 
+
+Multiple likelihoods are available, based on different data cuts and band combinations. The likelihood data files are human readable, and located in the plenslike/data directory. 
+
+Each likelihood file describes (at least) a choice of bins (l_{min}^{i}, l_{max}^{i}), a weight function for accumulating signal into the bins (C_l^{pp, fid.} V_l^{-1}), measured amplitudes for each bin, and an associated covariance matrix.
+
+The likelihood for a potential power spectrum C_l^{pp} is calculated as
+
+lnL[C_l^{pp}] = -1/2 \sum_{ij} ( D^{i}[C_l^{pp}] - D^{i}[\hat{C}_l^{pp}] ) \sigma^{-1}_{ij} \sum_{ij} ( D^{j}[C_l^{pp}] - D^{j}[\hat{C}_l^{pp}] ),
+
+where D^{i}[C_l] is a binning function given by
+
+D^{i}[C_l] = (\sum_{l_{min}^{i}}^{l_{max}^{i}} C_l C_l^{pp, fid} V_l^{-1}) / (\sum_{l_{min}^{i}}^{l_{max}^{i}} (C_l^{pp, fid})^2 V_l^{-1}).
+
+D^{i}[\hat{C}_l^{pp}] are the measured bin values.
+
+The bin covariance \sigma_{ij} is determined from simulations based on a fiducial bestfit cosmology C_l^{TT, fid} and beam transfer function(s) B_l^{fid}. It includes the uncertainty due to CMB+EFG+Noise power, and the point source shot-noise correction. Cosmological and beam uncertainties on the binned estimate may be accounted for (if desired) in a sampling approach. Given an underlying theoretical lensing power spectrum C_l^{pp, th} and revised estimates of C_l^{TT} and the beam transfer function(s) B_l, this is accomplished by rescaling the theoretical power spectrum to account for the difference between the fiducial estimator normalization and that expected given the revised cosmology/beam description. Code to apply this renormalization when calculating the likelihood is provided.
+
+There are multiple formats for the likelihood files, depending on how many effective beams and effective filter functions are needed to describe the lensing measurement:
+
+* "mono"
+      This format describes to a likelihood based on lens reconstruction from a single map with a single effective beam. The likelihood file contains the associated filter function F_l and beam B_l^{fid}, as well as the estimator normalization A_l.
