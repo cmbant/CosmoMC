@@ -33,7 +33,7 @@ class jobItem:
         self.importanceItems = []
 
     def iniFile(self):
-        if self.isImportanceJob:
+        if not self.isImportanceJob:
             return self.batchPath + 'iniFiles/' + self.name + '.ini'
         else: return self.batchPath + 'postIniFiles/' + self.name + '.ini'
 
