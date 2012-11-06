@@ -416,7 +416,7 @@ end subroutine SetProposeMatrix
     Type(CMBParams) C
     if (indepfile_handle ==0) return
     call ParamsToCMBParams(P%P,C)
-    call WriteModel(indepfile_handle, C,P%Info%Theory,like)
+    call WriteModel(indepfile_handle, C,P%Info%Theory,P%Info%likelihoods, like)
    end subroutine WriteIndepSample
 
 

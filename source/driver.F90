@@ -72,7 +72,7 @@ program SolveCosmology
         if (instance /= 0) call DoAbort('With MPI should not have second parameter')
         call mpi_comm_rank(mpi_comm_world,MPIrank,ierror)
 
-        instance = MPIrank +1 !start at 1 for chains                                             
+        instance = MPIrank +1 !start at 1 for chains
         write (numstr,*) instance
         rand_inst = instance
         if (ierror/=MPI_SUCCESS) call DoAbort('MPI fail')
@@ -276,20 +276,6 @@ program SolveCosmology
          if (Feedback>1) write(*,*) 'read mpk datasets'
         end if
 
-        !From Jason Dosset, minor changes by AL
-        if (Use_BAO) then
-            numbaosets = Ini_Read_Int('bao_numdatasets',0)
-            if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
-             do i= 1, numbaosets
-              bao_filename(i) = ReadIniFileName(DefIni,numcat('bao_dataset',i)) 
-              call ReadBaoDataset(bao_filename(i))
-              if(use_dr7lrg .and. (baodatasets(i)%name =='DR7' .or. baodatasets(i)%name =='DR9'))then
-                 !Al stop rather than ignore, avoid depending of bao on mpk
-                 call MpiStop('DR7 LRG and SDSS BAO are based on the same data set. You cannot use both.')
-              end if
-             end do
-             if (Feedback>1) write(*,*) 'read bao datasets'
-        end if
 
         numtoget = Ini_Read_Int('samples')
 

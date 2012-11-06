@@ -190,7 +190,7 @@ end subroutine GetNewPowerData
    error = global_error_flag !using error optional parameter gives seg faults on SGI
    if (error==0) then
        
-      if (DoCls) call SetTheoryFromCAMB(Theory)
+      if (DoCls) call SetPowersFromCAMB(Theory)
 
       if (DoPk) call SetPkFromCAMB(Theory,MT)
 

@@ -80,9 +80,6 @@ implicit none
 ! default .True. = with systematic errors
  logical, parameter :: SN_syscovmat = .True.  !! Use covariance matrix with or without systematics
 
-! The following line is not used by this module but it is needed for SDSSII supernova module
- character(len=256) :: SN_filename = ''
-
 contains
 
 

@@ -1062,6 +1062,7 @@ contains
 
     subroutine CMBInit(like, ini)
     use IniFile
+    use cliklike
     class(CMBDataLikelihood) :: like
     Type(TIniFile) :: ini
     integer numsets, num_points, i
@@ -1076,7 +1077,7 @@ contains
          do i= 1, numsets
           filename = ReadIniFileName(Ini,numcat('cmb_dataset',i)) 
           call ReadDataset(filename)
-          call TStringList_Add(like%data_names,filename) 
+          call like%datasets%add(DataItem(filename)) 
           num_points = num_points + datasets(i)%num_points
           keyname=numcat('cmb_dataset_SZ',i)
           SZTemplate = ''
@@ -1091,7 +1092,7 @@ contains
 #ifdef CLIK
         Use_clik = Ini_Read_Logical_File(Ini, 'use_clik',.false.) 
         if (use_clik .and. .not. use_CMB) &
-         call DoAbort('must have use_CMB=.true. to have use_clik (cmb_numdatasets = 0 for only clik)')
+         call MpiStop('must have use_CMB=.true. to have use_clik (cmb_numdatasets = 0 for only clik)')
         if (Use_clik) call clik_readParams(Ini)
 #else
          if (Ini_Read_Logical('use_clik',.false.)) call DoAbort('compile with CLIK to use clik - see Makefile')

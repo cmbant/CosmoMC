@@ -102,9 +102,6 @@ contains
         max_truelike =1e30
 
         debug = 0
-        Info%Theory%Sn_LogLike = 0
-        Info%Theory%HST_LogLike = 0
-        Info%Theory%BAO_LogLike = 0
 
         infile_handle = 0
         Temperature = PostParams%redo_temperature 
@@ -119,8 +116,8 @@ contains
          infile_handle = IO_OpenChainForRead(trim(InputFile)//'.txt')
          
          if (.not. PostParams%redo_theory) write (*,*) '**You probably want to set redo_theory**'
-         if (.not. PostParams%redo_cls .and. Use_CMB) write (*,*) '**You probably want to set redo_cls**'
-         if (.not. PostParams%redo_pk .and. Use_mpk) write (*,*) '**You probably want to set redo_pk**'
+!         if (.not. PostParams%redo_cls .and. Use_CMB) write (*,*) '**You probably want to set redo_cls**'
+!         if (.not. PostParams%redo_pk .and. Use_mpk) write (*,*) '**You probably want to set redo_pk**'
 
          if (PostParams%redo_thin>1) write (*,*) 'redo_thin only OK with redo_from_text if input weights are 1'
 
@@ -208,7 +205,7 @@ contains
 
               Info%Theory = CorrectTheory
               call CMBParamsToParams(newCMB, Params)
-              truelike = GetLogLikePost(newCMB, Params, Info,.true.)
+              truelike = GetLogLikePost(newCMB, Params, Info)
 
               if (truelike == logZero) then
                weight = 0
@@ -234,7 +231,7 @@ contains
           
            if (mult /= 0) then        
             call WriteCMBParams(newCMB, CorrectTheory, mult, truelike,txt_theory)
-            call WriteModel(outdata_handle, newCMB, CorrectTheory,truelike,mult)
+            call WriteModel(outdata_handle, newCMB, CorrectTheory,Info%likelihoods,truelike,mult)
 
            else 
 

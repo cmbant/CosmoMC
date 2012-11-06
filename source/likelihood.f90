@@ -21,8 +21,8 @@
     end type DataItemList
 
     type :: DataLikelihood
-        Type(DataItemList) :: datasets
-        logical :: dependent_params(num_params)
+        Type(DataItemList) :: datasets = DataItemList()
+        logical :: dependent_params(num_params) = .false.
         real :: TotalLogLike = 0.
         logical :: needs_background_functions = .true.
         logical :: needs_linear_pk = .false.
@@ -31,12 +31,10 @@
     contains
     procedure :: Init 
     procedure :: LogLike
-
     end type DataLikelihood
 
  !This is the global list of likelihoods we will use
     Type, extends(TObjectList) :: LikelihoodList 
-
     contains
     procedure :: Item => LikelihoodItem
     end type LikelihoodList
@@ -51,7 +49,7 @@
     select type (like => L%Items(i)%P)
     class is (DataLikelihood)
         P => like 
-        class default
+    class default
         stop 'List contains non-DataLikelihood item'
     end select
 

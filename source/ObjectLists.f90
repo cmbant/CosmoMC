@@ -6,6 +6,7 @@
 
     type Object_pointer
         class(*), pointer :: p
+        class(*), pointer :: tag => null()
     end type Object_pointer
 
     Type TObjectList

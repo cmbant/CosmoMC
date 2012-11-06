@@ -73,12 +73,12 @@ implicit none
 
   Type CosmoTheory
      real Age, r10
-     real SN_loglike, HST_loglike, BAO_loglike, reserved(1)
      real cl(lmax,num_cls_tot), cl_tensor(lmax_tensor,num_cls) 
       !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
      real sigma_8, tensor_ratio_02
      integer numderived
      real derived_parameters(max_derived_parameters)
+     
      real matter_power(num_matter_power,matter_power_lnzsteps)
        !second index is redshifts from 0 to matter_power_maxz
        !if custom_redshift_steps = false with equal spacing in
@@ -99,11 +99,11 @@ implicit none
 contains
 
 
-   subroutine WriteModel(i,CMB, T, like, mult)
+   subroutine WriteModel(i,CMB, T, Likelihoods, like, mult)
     integer i
     real, intent(in), optional :: mult
     Type(CosmoTheory) T
-    real like, amult
+    real like, amult, Likelihoods(:)
     Type(CMBParams) CMB
     integer j 
 
@@ -119,7 +119,7 @@ contains
 
     write(i) amult, num_matter_power, lmax, lmax_tensor, num_cls
 
-    write(i) T%SN_loglike, T%HST_loglike, T%BAO_loglike, T%reserved
+    write(i) Likelihoods
 
     write(i) like
     write(i) CMB
@@ -187,8 +187,8 @@ contains
         if (almax > lmax) call MpiStop('reading file with larger lmax')
         if (anumcls /= num_cls) call MpiStop('reading file with different Cls')
 
-        read(i) T%SN_loglike, T%HST_loglike,T%BAO_loglike,T%reserved
-   
+         stop 'not updated readModel yet'
+        
         read(i,end = 100, err=100) like
         read(i) CMB
         if (anumpowers > num_matter_power) call MpiStop('mismatched num_matter_power in .data')  

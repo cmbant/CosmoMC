@@ -15,7 +15,14 @@ use cmbtypes
 use CAMB, only : AngularDiameterDistance, Hofz  !!angular diam distance also in Mpc no h units
 use constants
 use Precision
+use likelihood
  implicit none
+ 
+    type, extends(DataLikelihood) :: BAOLikelihood
+    contains
+    procedure :: LogLike => BAO_LnLike
+    procedure :: Init => BAO_init
+    end type BAOLikelihood
  
   Type baodataset
     logical :: use_set
@@ -38,8 +45,31 @@ use Precision
   real(dl) DR7_dalpha
   integer DR7_alpha_npoints
 
-contains 
+    contains 
 
+ subroutine BAO_init(like, ini)
+    use IniFile
+    use settings
+    class(BAOLikelihood) :: like
+    Type(TIniFile) :: ini
+    integer numbaosets, i
+
+        Like%LikelihoodName = 'BAO'
+
+        numbaosets = Ini_Read_Int_File(Ini,'bao_numdatasets',0)
+        if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
+            do i= 1, numbaosets
+            call ReadBaoDataset(ReadIniFileName(Ini,numcat('bao_dataset',i)) )
+            call like%datasets%Add(DataItem(baodatasets(i)%name))
+!            if(use_dr7lrg .and. (baodatasets(i)%name =='DR7' .or. baodatasets(i)%name =='DR9'))then
+!                !Al stop rather than ignore, avoid depending of bao on mpk
+!                call MpiStop('DR7 LRG and SDSS BAO are based on the same data set. You cannot use both.')
+!            end if
+            end do
+            if (Feedback>1) write(*,*) 'read bao datasets'
+             
+ end subroutine BAO_init
+    
 !JD copied structure from mpk.f90
 subroutine ReadBaoDataset(gname)   
     use MatrixUtils
@@ -184,11 +214,12 @@ end function SDSS_dvtors
 
 !===================================================================================
 
-function BAO_LnLike(CMB)
-   implicit none
-   Type(CMBParams) CMB
+function BAO_LnLike(like, CMB, Theory) 
+   type(CMBParams) CMB
+   Class(BAOLikelihood) :: like
+   Type(CosmoTheory) Theory
    integer i,j,k
-   real(dl)  BAO_LnLike
+   real  BAO_LnLike
    real(dl) tot(num_bao_datasets)
    real(dl), allocatable :: BAO_theory(:)
    
