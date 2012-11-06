@@ -33,11 +33,12 @@ Non-clik CamSpec code is included in ./source, and data files are available from
 See the <A HREF="readme.html#Version">readme</A>.
 
 <h2>Grids of models</h2>
-See the ./python directory for scripts (python 2.7+), most can be run without arguments to show a list of possible input parameters. To start copy and edit makeGrid.py appropriately. Then run
+See the ./python directory for scripts (python 2.7+), most can be run without arguments to show a list of possible input parameters. 
+To start copy and edit settings_testchain.py appropriately. Then if you saved it as python/my_settings_file.py run
 <blockquote>
-<b>python python/makeGrid.py /scratch/.../Planckgrids/newdirectoryforbatch [action]</b>
+<b>python python/makeGrid.py /scratch/.../Planckgrids/newdirectoryforbatch my_settings_file [action]</b>
 </blockquote>
-Also edit and use runbatch.py to submit all the ini files produced to the queue. You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge. Use action=2 to do minimization-only runs (quick).
+Use runbatch.py to submit all the ini files produced to the queue. You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge and is the default. Use action=2 to do minimization-only runs (quick), otherwise can be omitted.
 <P>
 Runs with the same data by default all use the same covmat unless an existing covmat exists in planck_covmats. Covmats can be a merged covmat that contains many parameters, defaults are provided from combining several different separate covmats for use where no planck_covmats file exists. Use the python/covcomb.py script if you want to make a new one.
 <p>
