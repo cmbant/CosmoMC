@@ -267,7 +267,7 @@
      real r10
      integer num_derived 
      
-     num_derived = 13 +  P%Info%Theory%numderived
+     num_derived = 12 +  P%Info%Theory%numderived
    
      allocate(Derived%P(num_derived))
    
@@ -280,20 +280,19 @@
       end if
 
       derived%P(1) = CMB%omv
-      derived%P(2) = P%Info%Theory%Age
-      derived%P(3) = CMB%omdm+CMB%omb
-      derived%P(4) = P%Info%Theory%Sigma_8      
-      derived%P(5) = CMB%zre
-      derived%P(6) = r10
-      derived%P(7) = CMB%H0
-      derived%P(8) = P%Info%Theory%tensor_ratio_02
-      derived%P(9) = cl_norm*CMB%norm(norm_As)*1e9
-      derived%P(10)= CMB%omdmh2 + CMB%ombh2
-      derived%P(11)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
-      derived%P(12)= CMB%Yhe !value actually used, may be set from bbn consistency        
-      derived%P(13)= derived%P(9)*exp(-2*CMB%tau)  !A e^{-2 tau}
+      derived%P(2) = CMB%omdm+CMB%omb
+      derived%P(3) = P%Info%Theory%Sigma_8
+      derived%P(4) = CMB%zre
+      derived%P(5) = r10
+      derived%P(6) = CMB%H0
+      derived%P(7) = P%Info%Theory%tensor_ratio_02
+      derived%P(8) = cl_norm*CMB%norm(norm_As)*1e9
+      derived%P(9) = CMB%omdmh2 + CMB%ombh2
+      derived%P(10)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
+      derived%P(11)= CMB%Yhe !value actually used, may be set from bbn consistency
+      derived%P(12)= derived%P(8)*exp(-2*CMB%tau)  !A e^{-2 tau}
       
-      derived%P(14:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
+      derived%P(13:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
       
   end function CalcDerivedParams
   

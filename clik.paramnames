@@ -85,7 +85,6 @@ cal_spt_95       c_{SPT}^{95}
 cal_spt_150      c_{SPT}^{150}
 cal_spt_220      c_{SPT}^{220}
 omegal*       \Omega_\Lambda
-age*          Age/Gyr
 omegam*       \Omega_m
 sigma8*       \sigma_8
 zrei*         z_{re}
@@ -97,6 +96,7 @@ omegamh2*     \Omega_m h^2 #includes massive neutrinos
 omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
 yheused*      Y_{He} #MCMC value or from bbn consistency
 clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
+age*          Age/Gyr
 zstar*        z_*
 rstar*        r_*
 thetastar*    \theta_*
