@@ -111,9 +111,9 @@ contains
             Info%Theory%Age =  CAMB_GetAge(P)
          else
           if (stop_on_error) call MpiStop('CAMB error '//trim(global_error_message))
-          if (Feedback > 0) write(*,*) 'CAMB returned error '//trim(global_error_message)           
+          if (Feedback > 0) write(*,*) 'CAMB returned error '//trim(global_error_message)
           nerrors=nerrors+1
-         end if         
+         end if
          ncalls=ncalls+1
          if (mod(ncalls,100)==0 .and. logfile_unit/=0) then
           write (logLine,*) 'CAMB called ',ncalls, ' times; ', nerrors,' errors'
