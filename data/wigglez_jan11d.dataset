@@ -1,0 +1,38 @@
+# WiggleZ data from Chris Blake
+# Based on supplied 2df_2005.dataset
+name = data/wigglez_jan11d
+
+# number of points and kbands in the input files
+num_mpk_points_full = 50
+num_mpk_kbands_full = 100
+
+# use scaling by dv/dv(fid) for Pk
+use_scaling = F
+
+# decide which bandpowers to use, min to max
+min_mpk_points_use = 3
+max_mpk_points_use = 20 
+min_mpk_kbands_use = 1
+max_mpk_kbands_use = 100 
+
+Q_marge = F
+Q_mid = 4.0
+Q_sigma = 1.5
+Ag = 1.4
+Use_jennings = F
+Use_simpledamp = F
+Use_gigglez = T
+sigmav = 212.
+
+Use_9-hr_region = T
+Use_11-hr_region = T
+Use_15-hr_region = T
+Use_22-hr_region = T
+Use_0-hr_region = T
+Use_1-hr_region = T
+Use_3-hr_region = T
+
+windows_file =data/wigglez_jan11d_windows.txt
+kbands_file = data/wigglez_jan11kbands.txt
+measurements_file = data/wigglez_jan11d_measurements.txt
+cov_file = data/wigglez_jan11d_cov.txt
