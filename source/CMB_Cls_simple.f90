@@ -76,7 +76,7 @@ contains
    use ModelParams, only : ThreadNum
 
 #ifdef WIGZ
-   use wigglezgettheory
+   use wigglezinfo
 #endif 
 #ifdef DR71RG 
    use lrggettheory
@@ -181,11 +181,9 @@ contains
 #ifdef WIGZ
  
                   else if(Use_wigz10) then
-                     print*, 'wigz', zix
-                     call Transfer_GetMatterPowerNWandNL(Info%Transfers%MTrans,&
-                          Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
-                          1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
-                          Info%Theory%mpk_nw(:,zix),Info%Theory%mpkrat_nw_nl(:,zix))
+                     call Transfer_GetMatterPower(Info%Transfers%MTrans,&
+                     Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+                     1,matter_power_minkh, matter_power_dlnkh,num_matter_power)
 #endif
                   else  !! not an LRG redshift, so call regular function.
                    call Transfer_GetMatterPower(Info%Transfers%MTrans,&
@@ -200,10 +198,13 @@ contains
 #elif WIGZ
           if (num_matter_power /= 0 .and. Use_wigz10) then
              do zix=1,matter_power_lnzsteps
-                call Transfer_GetMatterPowerNWandNL(Info%Transfers%MTrans,&
+                call Transfer_GetMatterPower(Info%Transfers%MTrans,& 
                      Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
-                     1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
-                     Info%Theory%mpk_nw(:,zix),Info%Theory%mpkrat_nw_nl(:,zix))
+                    1,matter_power_minkh, matter_power_dlnkh,num_matter_power) 
+!                call Transfer_GetMatterPowerNWandNL(Info%Transfers%MTrans,&
+!                     Info%Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
+!                     1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
+!                     Info%Theory%mpk_nw(:,zix),Info%Theory%mpkrat_nw_nl(:,zix))
              enddo
           endif
 #else
@@ -271,7 +272,7 @@ contains
  subroutine GetClsInfo(CMB, Theory, error, DoCls, DoPk)
    use ModelParams, only : ThreadNum
 #ifdef WIGZ
-   use wigglezgettheory
+   use wigglezinfo
 #endif 
 #ifdef DR71RG
    use lrggettheory
@@ -343,11 +344,9 @@ contains
 #ifdef WIGZ
  
                else if(Use_wigz10) then
-                  print*, 'wigz', zix
-                  call Transfer_GetMatterPowerNWandNL(MT,&
+                  call Transfer_GetMatterPower(MT,&
                        Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
-                       1,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
-                       Theory%mpk_nw(:,zix),Theory%mpkrat_nw_nl(:,zix))
+                       1,matter_power_minkh, matter_power_dlnkh,num_matter_power)
 #endif
                else  !! not an LRG redshift, so call regular function.
                   call Transfer_GetMatterPower(MT,&
@@ -450,7 +449,7 @@ contains
    use ModelParams
    use Lya
    use mpk
-   use wigglezgettheory
+   use wigglezinfo
    type(CAMBParams)  P 
    integer zix
    real redshifts(matter_power_lnzsteps)

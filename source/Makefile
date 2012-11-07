@@ -1,36 +1,39 @@
+#use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
+
 #You may need to edit the library paths for MKL for Intel
-#Beware of using optimizations that lose accuracy - may give errors when running
 
 ##Uncomment the next line to include dr7 LRG
-#EXTDATA = WIGZ
+EXTDATA = LRGWIGZ 
 #EXTDATA = LRG
-EXTDATA = LRGWIGZ
+
+RECOMBINATION ?=recfast
 
 #set WMAP empty not to compile with WMAP
-WMAP = 
+WMAP = /home/aml1005/WMAP7/likelihood_v4p1
 
 #Only needed for WMAP
-cfitsio = /Users/uqdpark7/Projects/cfitsio
+cfitsio = /usr/local/cfitsio/intel10/64/3.040
 
 #GSL only needed for DR7 LRG
-GSLPATH = /usr/local/lib/gsl
+GSLPATH ?= /home/aml1005/libs/gsl
+
 
 IFLAG = -I
-INCLUDE=
+INCLUDE =
 
 #Intel MPI (assuming mpif77 set to point to ifort)
 #these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
 #Can add -xHost if your cluster is uniform, or specify specific processor optimizations -x...
 #If getdist gives segfaults remove openmp when compiling getdist
-#F90C     = mpif90
-#FFLAGS = -O3 -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
-#LAPACKL = -lmpi
+F90C     = mpif90
+FFLAGS = -O3 -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=paralell
+LAPACKL = -lmpi 
 
 #GFortran: defaults for v4.5; if pre v4.3 add -D__GFORTRAN__
-F90C     = gfortran
+#F90C     = gfortran
 #in earlier versions use FFLAGS = -O2 -ffree-form -x f95-cpp-input -D__GFORTRAN__
-FFLAGS =  -O3 -fopenmp -ffree-form -x f95-cpp-input -ffast-math -march=native -funroll-loops
-LAPACKL = -Wl,-framework -Wl,accelerate
+#FFLAGS =  -O3 -fopenmp -ffree-form -x f95-cpp-input -ffast-math -march=native -funroll-loops
+#LAPACKL = -Wl,-framework -Wl,accelerate
 #commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
 #LAPACKL = -lblas -llapack
 
@@ -52,12 +55,6 @@ cfitsio = $(CFITSIO)
 WMAP = $(COSMOLIB)/WMAP7
 GSLPATH = $(GSL_ROOT)
 endif
-
-#Intel fortran 8, check you have the latest update from the Intel web pages
-#See Makefile_intel for ifc 7.1 or lower (some versions have problems)
-#F90C     = ifort
-#FFLAGS = -O2 -Vaxlib -ip -W0 -WB -openmp -fpp
-#LAPACKL = -L/opt/intel/mkl61/lib/32 -lmkl_lapack -lmkl_ia32 -lguide -lpthread
 
 #G95; make sure LAPACK and MPI libs also compiled with g95
 #F90C     = mpif90
@@ -127,35 +124,54 @@ CLSFILE = CMB_Cls_simple.o
 PARAMETERIZATION = params_CMB.o
 
 F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
-LINKFLAGS = -L../camb -lcamb $(LAPACKL)
+LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) 
 
-DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist_py.o
+DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
-OBJFILES=  ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
-	cmbdata.o WeakLen.o bbn.o lrggettheory.o wigglezgettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
-	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) calclike.o \
-	conjgrad_wrapper.o EstCovmat.o postprocess.o MCMC.o driver.o
+LIKEFILES= calclike.o
+
+OBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
+	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
+	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) $(LIKEFILES) \
+	EstCovmat.o PowellConstrainedMinimize.o minimize.o postprocess.o MCMC.o driver.o
 
 
 ifeq ($(EXTDATA),LRG)
 F90FLAGS += -DDR71RG
-OBJFILES += bsplinepk2.o
+OBJFILES += bsplinepk.o
 GSLINC = -I$(GSLPATH)/include
-LINKFLAGS += -L$(GSLPATH) -lgsl -lgslcblas
+LINKFLAGS += -L$(GSLPATH)/lib -lgsl -lgslcblas
 endif
 
 ifeq ($(EXTDATA),WIGZ)
 F90FLAGS += -DWIGZ
-OBJFILES += bsplinepk2.o 
-LINKFLAGS += -L$(GSLPATH) -lgsl -lgslcblas
+OBJFILES += bsplinepk.o
+LINKFLAGS += -L$(GSLPATH)/lib -lgsl -lgslcblas
 endif
 
 ifeq ($(EXTDATA),LRGWIGZ)
 F90FLAGS += -DDR71RG -DWIGZ
-OBJFILES += bsplinepk2.o
-LINKFLAGS += -L$(GSLPATH) -lgsl -lgslcblas
+OBJFILES += bsplinepk.o
+GSLINC = -I$(GSLPATH)/include
+LINKFLAGS += -L$(GSLPATH)/lib -lgsl -lgslcblas
 endif
 
+F90CRLINK =
+
+ifeq ($(RECOMBINATION),cosmorec)
+## This is flag is passed to the Fortran compiler allowing it to link C++ (uncomment the right one).
+# GCC (gfortran/g++)
+COSMOREC_PATH ?= ../CosmoRec/
+F90CRLINK = -lstdc++ -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas
+# Intel Compilers (ifort/icpc)
+#F90CRLINK = -cxxlib -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas
+FFLAGS +=  -DCOSMOREC
+endif
+
+ifeq ($(RECOMBINATION),hyrec)
+HYREC_PATH ?= ../HyRec/
+F90CRLINK += -L$(HYREC_PATH) -lhyrec
+endif
 
 ifneq ($(WMAP),)
 F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
@@ -180,7 +196,7 @@ default: cosmomc
 
 all : cosmomc getdist
 
-settings.o: ../camb/libcamb.a
+settings.o: ../camb/libcamb_$(RECOMBINATION).a
 cmbtypes.o: settings.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o  $(WMAPOBJS)
@@ -196,11 +212,10 @@ paramdef.o: $(CLSFILE)
 $(PROPOSE): paramdef.o
 $(PARAMETERIZATION): paramdef.o
 calclike.o: $(PARAMETERIZATION)
-conjgrad_wrapper.o: calclike.o
-EstCovmat.o: conjgrad_wrapper.o
 postprocess.o: calclike.o
 MCMC.o: calclike.o
-driver.o: MCMC.o
+driver.o: EstCovmat.o MCMC.o minimize.o
+minimize.o: PowellConstrainedMinimize.o calclike.o
 
 export FFLAGS
 export F90C
@@ -233,4 +248,4 @@ getdist: camb $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS)
 
 camb:
-	cd ../camb && $(MAKE) --file=Makefile_main libcamb.a
+	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION)

@@ -161,13 +161,12 @@ module wigglezinfo
   use cmbtypes
   use Precision
 !use lrggettheory
-  use wigglezgettheory
 
 !use CMB_Cls
 
   implicit none
 
-
+  integer, dimension(4) :: izwigglez
   real(dl), parameter :: z0 = 0.d0, za = 0.22d0, zb = 0.41d0, zc = 0.6d0, zd = 0.78d0
 
 !in CAMB: 5=now (z=0), 4=a, 3=b, 2=c, 1=d; opposite order in matter_power
@@ -177,16 +176,16 @@ module wigglezinfo
   real(dl) om_val, ol_val, ok_check, wval  ! passed in from CMBparams CMB
 
 ! power spectra evaluated at GiggleZ fiducial cosmological theory 
-  real, dimension(num_matter_power,4) :: power_nw_hf_fid
+  real, dimension(num_matter_power,4) :: power_hf_fid
 !real,dimension(num_matter_power,matter_power_lnzsteps) :: ratio_power_nw_nl_fid
 !make allocatable to avoid compile-time range errors when matter_power_lnzsteps<4
-
+  logical :: use_wigz10 = .false.
 
 contains
 
   subroutine GiggleZinfo_init(redshift)
     integer :: iopb, i, ios, iz
-    real(dl) :: kval, power_nw_nl
+    real(dl) :: kval, power_nl
     real redshift
     logical save
 
@@ -216,8 +215,8 @@ contains
     endif
 
     do i = 1, num_matter_power
-       read (tmp_file_unit,*,iostat=iopb) kval, power_nw_nl
-       power_nw_hf_fid(i,iz) = power_nw_nl
+       read (tmp_file_unit,*,iostat=iopb) kval, power_nl
+       power_hf_fid(i,iz) = power_nl
     end do
     close(tmp_file_unit)
 
@@ -236,13 +235,18 @@ contains
     !This is z=0, put here for the sake of completeness, not to be used
 !    fidz_0 = (4.54679d0 - 11.2413d0*k + 30.0297d0*k**2 - 34.9125d0*k**3)
 
-    fidz_1 = (4.46156d0 - 9.41743d0*k + 18.6255d0*k**2 - 15.555d0*k**3)
-    
-    fidz_2 = (4.50568d0 - 9.41886d0*k + 18.2398d0*k**2 - 14.9585d0*k**3)
+    fidz_1 = (4.619d0 - 13.7787d0*k + 58.941d0*k**2 - 175.24d0*k**3 + 284.321d0*k**4 - 187.284d0*k**5)
+    fidz_2 = (4.63079d0 - 12.6293d0*k + 42.9265d0*k**2 - 91.8068d0*k**3 + 97.808d0*k**4 - 37.633d0*k**5)
+    fidz_3 = (4.69659d0 - 12.7287d0*k + 42.5681d0*k**2 - 89.5578d0*k**3 + 96.664d0*k**4 - 41.2564*k**5)
+    fidz_4 = (4.6849d0 - 13.4747d0*k + 53.7172d0*k**2 - 145.832d0*k**3 + 216.638d0*k**4 - 132.782*k**5)
 
-    fidz_3 = (4.5837d0 - 9.80682d0*k + 19.777d0*k**2 - 16.8924d0*k**3)
+!    fidz_1 = (4.46156d0 - 9.41743d0*k + 18.6255d0*k**2 - 15.555d0*k**3)
     
-    fidz_4 = (4.5447d0 - 9.51283d0*k + 18.9695d0*k**2 - 16.0172d0*k**3)
+!    fidz_2 = (4.50568d0 - 9.41886d0*k + 18.2398d0*k**2 - 14.9585d0*k**3)
+
+!    fidz_3 = (4.5837d0 - 9.80682d0*k + 19.777d0*k**2 - 16.8924d0*k**3)
+    
+!    fidz_4 = (4.5447d0 - 9.51283d0*k + 18.9695d0*k**2 - 16.0172d0*k**3)
     
     
     fidpolys(1) = 10**fidz_1
@@ -253,14 +257,14 @@ contains
 
   end subroutine GiggleZtoICsmooth
 
-  subroutine fill_GiggleZTheory(Theory, minkh, dlnkh,z,h,sigma_v)
+  subroutine fill_GiggleZTheory(Theory, minkh, dlnkh,z)
     Type(CosmoTheory) Theory
-    real, intent(in) :: minkh, dlnkh,sigma_v,h
+    real, intent(in) :: minkh, dlnkh
     real(dl), intent(in) :: z
     real(dl) :: logmink, xi, kval, expval,  nlrat
     real(dl), dimension(4) :: fidpolys
     real(dl) y, dz, matter_power_dlnz
-    real(dl) pk_lin, pk_nw, pk_nw_hf, psmear, holdval
+    real(dl) pk_hf, holdval
     integer :: i,iz, iz2, ik
     character(len=32) fname
     logmink = log(minkh)
@@ -270,54 +274,35 @@ contains
        if(abs(z-zeval(i)).le.0.001) iz = i
     enddo
 
-!    write(fname,'(a,i2.2,a)') 'pk_lin_',int(z*100.),'.dat'
+!    write(fname,'(a,i2.2,a)') 'pk_hf_',int(z*100.),'.dat'
 !    open(unit=60,file=fname,status='unknown')
-!    write(fname,'(a,i2.2,a)') 'pk_damped_',int(z*100.),'.dat'
-!    open(unit=61,file=fname,status='unknown')
-!    write(fname,'(a,i2.2,a)') 'pk_nw_lin_',int(z*100.),'.dat'
-!    open(unit=62,file=fname,status='unknown')
-!    write(fname,'(a,i2.2,a)') 'pk_nw_hf_',int(z*100.),'.dat'
-!    open(unit=63,file=fname,status='unknown')
 !    write(fname,'(a,i2.2,a)') 'pk_final_',int(z*100.d0),'.dat'
-!    open(unit=64,file=fname,status='unknown')
+!    open(unit=61,file=fname,status='unknown')
 !    write(fname,'(a,i2.2,a)') 'pk_poly_',int(z*100.),'.dat'
-!    open(unit=65,file=fname,status='unknown')
+!    open(unit=62,file=fname,status='unknown')
 
 
     do ik=1,num_matter_power
        xi = logmink + dlnkh*(ik-1)
        kval = exp(xi)
        Theory%finalLRGtheoryPk(ik) = 0.
-       expval = exp(-(kval*dble(sigma_v))**2)
-       pk_lin = Theory%matter_power(ik,izwigglez(iz))
-       pk_nw =  Theory%mpk_nw(ik,izwigglez(iz))
-       pk_nw_hf =  Theory%mpkrat_nw_nl(ik,izwigglez(iz))
+       pk_hf = Theory%matter_power(ik,izwigglez(iz))
        
-       ! matter_power from Theory is linear
-       psmear = pk_lin*expval + pk_nw*(1.d0-expval)
-!       write(60,*) kval, pk_lin
-!       write(61,*) kval, psmear
-!       write(62,*) kval, pk_nw
-!       write(63,*) kval, pk_nw_hf
-
-       ! this the ratio of the halofit no-wigglez spectrum and the linear no_wigglez_spectrum
-       nlrat = pk_nw_hf/pk_nw
+       ! matter_power from Theory is non-linear ! DRP 22-June-2012
+!       write(60,*) kval, pk_hf
 
        call GiggleZtoICsmooth(kval,fidpolys)
-!       write(65,*) kval, real(fidpolys(iz))
+!       write(61,*) kval, real(fidpolys(iz))
 
-       holdval = psmear*nlrat*fidpolys(iz)/power_nw_hf_fid(ik,iz)
-!       print*, kval, holdval, psmear, nlrat, fidpolys(iz), power_nw_hf_fid(ik,iz)
+       holdval = pk_hf*fidpolys(iz)/power_hf_fid(ik,iz)
        ! we're using the finalLRGtheory data structure, even though these aren't actually LRGs
        Theory%finalLRGtheoryPk(ik) = Theory%finalLRGtheoryPk(ik) + holdval
-!       write(64,*) kval, Theory%finalLRGtheoryPk(ik), holdval       
+!       write(62,*) kval, Theory%finalLRGtheoryPk(ik), holdval       
 
     end do
 !    close(60)
 !    close(61)
 !    close(62)
-!    close(63)
-!    close(64)
 
   end subroutine fill_GiggleZTheory
 
@@ -673,43 +658,21 @@ contains
       stop
     end if
 
+#ifndef WIGZ
+       call MpiStop('mpk: edit makefile to have "EXTDATA = WIGZ" to inlude WiggleZ data')
+#else
+       use_wigz10 = .true.
+#endif
+
  
 
 ! we've opened the file, now we have to break it up ourselves
 
 
     wmset%name = Ini_Read_String_File(Ini,'name') 
-    if (wmset%name == 'data/wigglez_nov11a') then
-#ifndef WIGZ
-       call MpiStop('mpk: edit makefile to have "EXTDATA = WIGZ" to inlude WiggleZ data')
-#else
-       use_wigz10 = .true.
-#endif
-       wmset%redshift = 0.22
-    else if (wmset%name == 'data/wigglez_nov11b') then
-#ifndef WIGZ
-       call MpiStop('mpk: edit makefile to have "EXTDATA = WIGZ" to inlude WiggleZ data')
-#else
-       use_wigz10 = .true.
-#endif
-       wmset%redshift = 0.41
-    else if (wmset%name == 'data/wigglez_nov11c') then
-#ifndef WIGZ
-       call MpiStop('mpk: edit makefile to have "EXTDATA = WIGZ" to inlude WiggleZ data')
-#else
-       use_wigz10 = .true.
-#endif
-       wmset%redshift = 0.6
-    else if (wmset%name == 'data/wigglez_nov11d') then
-#ifndef WIGZ
-       call MpiStop('mpk: edit makefile to have "EXTDATA = WIGZ" to inlude WiggleZ data')
-#else
-       use_wigz10 = .true.
-#endif
-       wmset%redshift = 0.78
-    else
-       print*, "Not a recognised wigglez data file", wmset%name
-       stop
+    wmset%redshift = Ini_Read_Real_File(Ini,'redshift',0.0)
+    if(wmset%redshift.eq.0.0) then
+       call MpiStop('mpk: failed  to read in WiggleZ redshift')
     end if
     
     Ini_fail_on_not_found = .false.
@@ -1079,7 +1042,7 @@ contains
 
 
  function LSSLnLike(CMB, Theory)
-   use wigglezgettheory
+   use wigglezinfo
    Type (CMBParams) CMB
    Type (CosmoTheory) Theory
    real LSSLnLike
@@ -1593,7 +1556,6 @@ end function testa1a2
      a_scl = 1
      stop 'use_scaling should be set to true for the LRGs!'
    end if
-   print*, 'scaling factor', a_scl
 
    do i=1, mset%num_mpk_kbands_use
          k_scaled(i)=max(matter_power_minkh,a_scl*mset%mpk_k(i))
@@ -1765,7 +1727,6 @@ end function testa1a2
    IF(wmset%use_scaling) then
 !      call compute_scaling_factor(dble(z),dble(CMB%omk),dble(CMB%omv),dble(CMB%w),a_scl)
       call compute_scaling_factor(z,dble(CMB%omk),dble(CMB%omv),dble(CMB%w),omk_fid,omv_fid,w_fid,a_scl)
-      if(Feedback > 1) print*, "scaling factor", a_scl**3
    else
      a_scl = 1
    end if
@@ -1777,10 +1738,11 @@ end function testa1a2
    if(iz.eq.0) call MpiStop('could not indentify redshift')
 
    if(wmset%use_gigglez) then
-      sigma_v = sqrt(func_sigma_v(num_matter_power,matter_power_minkh,matter_power_dlnkh,real(z*1.),&
-           CMB%omk,CMB%omv,Theory%matter_power(:,izwigglez(iz))))
-      if(feedback.ge.2) print*, 'redshift', z, 'sigma v', sigma_v
-      call fill_GiggleZTheory(Theory,matter_power_minkh,matter_power_dlnkh,z,CMB%h,sigma_v)
+!      sigma_v = sqrt(func_sigma_v(num_matter_power,matter_power_minkh,matter_power_dlnkh,real(z*1.),&
+!           CMB%omk,CMB%omv,Theory%matter_power(:,izwigglez(iz))))
+!      if(feedback.ge.2) print*, 'redshift', z, 'sigma v', sigma_v
+      call fill_GiggleZTheory(Theory,matter_power_minkh,matter_power_dlnkh,z)
+!     call fill_GiggleZTheory(Theory,matter_power_minkh,matter_power_dlnkh,z,CMB%h,sigma_v)
    endif
 
    do i=1, wmset%num_mpk_kbands_use 
@@ -2182,21 +2144,10 @@ end function testa1a2
    func_sigma_v = 0.0
 
    do ik=1,nk
-      k(ik) = kmin*exp(dlnk*real(ik-1))
-      if(z-0.22.le.0.01) write(34,*) k(ik), Pk_dd(ik)
+     k(ik) = kmin*exp(dlnk*real(ik-1))
    enddo
-!   write(fname,'(a,i2.2,a)') 'ptt_',int(z*100),'.dat'
-!   open(unit=24,file=TRIM(fname),status='unknown')
    a = 1.0/(1.0+z)
-!   print*, z, growth_rate(a)
    Ptt(:) = Pk_dd(:)*growth_rate(a,ok,ol)**2
-!   do ik=1,nk
-!      write(24,*) k(ik), Ptt(ik)
-!   enddo
-!   close(24)
-!   do ik=1,nk
-!      ln_k(ik) = log(k(ik))
-!   enddo
 
 ! Simpson's rule
 !   do ik=2,nk-1
@@ -2208,7 +2159,6 @@ end function testa1a2
    enddo
 
    func_sigma_v = func_sigma_v*2.0/(3.0*(2.0*Pi_num)**2)
-
    return
  end function func_sigma_v
 

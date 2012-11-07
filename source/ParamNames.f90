@@ -176,7 +176,7 @@ subroutine ParamNames_ReadIndices(Names,InLine, params, num)
   max_num = num
  end if
  do param = 1, max_num
-     do while (pos < len .and. InLine(pos:pos)==' ') 
+     do while (pos < len .and. IsWhiteSpace(InLine(pos:pos)) ) 
       pos = pos+1
      end do 
      read(InLine(pos:), *, end=400, err=400) part

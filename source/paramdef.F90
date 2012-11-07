@@ -96,7 +96,7 @@ subroutine DoStop(S, abort)
            write (*,*) 'Total time:', nint(MPI_StartTime), &
                                    '(',MPI_StartTime/(60*60),' hours)'
 
-           write (*,*) 'Slow proposals: ', slow_proposals
+           if (slow_proposals/=0) write (*,*) 'Slow proposals: ', slow_proposals
 
         end if
         ierror =0 
@@ -806,6 +806,42 @@ end subroutine SetProposeMatrix
  end subroutine CheckLimitsConverge
 
 #endif
+
+     function ParamNameOrNumber(ix) result(name)
+     character(len=ParamNames_maxlen)  :: name
+     integer, intent(in) :: ix
+
+     name = ParamNames_name(NameMapping,ix) 
+     if (name == '') name = IntToStr(ix)
+
+     end function ParamNameOrNumber
+
+    function UsedParamNameOrNumber(i) result(name)
+     character(len=ParamNames_maxlen)  :: name
+     integer, intent(in) :: i
+ 
+     name = ParamNameOrNumber(params_used(i))
+
+     end function UsedParamNameOrNumber
+
+
+    subroutine WriteCovMat(fname, matrix)
+     use IO
+     integer i  
+     character(LEN=*), intent(in) :: fname
+     character(LEN=4096) outline
+     real, intent(in) :: matrix(:,:)
+
+        if (NameMapping%nnames/=0) then
+              outline='' 
+              do i=1, num_params_used
+                outline = trim(outline)//' '//trim(UsedParamNameOrNumber(i)) 
+              end do  
+              call IO_WriteProposeMatrix(matrix ,fname, outline)
+        else
+              call Matrix_write(fname,matrix,forcetable=.true.)
+        end if
+    end subroutine WriteCovMat
 
 end module ParamDef
 

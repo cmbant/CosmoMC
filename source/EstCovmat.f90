@@ -1,5 +1,6 @@
 !Estimate the covariance matrix by making steps on a grid in nd
 ! slb 5 aug 2004
+! AML 2012, updates to have chance of working with bounded and unconstrained parameters
 
 ! Overwrites whatever is in propose_matrix with the newly estimated matrix
 ! (In future could add/replace some entries with any better info on the covmat
@@ -13,29 +14,10 @@ module EstCovmatModule
  use settings
  use Matrixutils
  implicit none
-
- real, dimension(:,:,:,:), allocatable :: Lgrid
- ! Store likelihood values in LGrid to save on computations
- ! This isn't really used much at the moment though..
- ! Ideally would have an array with n dimensions but too hard to code.
- ! This method has a lot of redundancy, but its the best I can think of.
- ! For each pair of parameters i,j we need to consider 9 likelihood values:
- ! all combinations of stepping forward, backward and staying still in each parameter
- ! These are stored in Lgrid(i,j,istep,jstep)
- ! where istep is 1, 2 or 3 for backwards step, staying still and forwards step
- ! similarly jstep.
- ! This means there are the following redundancies:
- ! Lgrid(i,j,2,2) is the center of the grid
- ! So Lgrid(:,:,2,2) all have the same value. So only use and fill Lgrid(1,1,2,2).
- ! Lgrid(i,j,1,2) means that parameter j has stayed still (jstep=2)
- ! so Lgrid(i,:,1,2) all have the same value. So only use and fill Lgrid(i,1,1,2)
- ! Similarly Lgrid(:,j,2,1) all have the same value. So only use and fill Lgrid(1,j,2,1)
- ! Similarly for Lgrid(i,:,3,2). So only use and fill Lgrid(i,1,3,2).
- ! Similarly for Lgrid(:,j,2,3). So only use and fill Lgrid(1,j,2,3).
- ! Finally Lgrid(i,j,istep,jstep)= Lgrid(j,i,jstep,istep). 
- ! So in practice only fill and use Lgrid for j>i 
-
-  
+ 
+ integer, allocatable :: step_positions(:,:) !step, parameter
+ !step is -1,0,1 for normal case, but one-sided e.g. 0,1,2 in case of hard prior boundary nearby
+ logical, allocatable  :: is_weakly_constrained(:)
 contains
 
 
@@ -49,6 +31,7 @@ contains
    !double precision Gaussian1
    real Hess(num_params_used,num_params_used), U(num_params_used,num_params_used)
    real D(num_params_used),EstCovmat(num_params_used,num_params_used)
+   real CenterLike
 
    itries=0
    sucess=0
@@ -60,15 +43,15 @@ contains
 
    ! Set up the grid position
    CenterParams = Params 
-   allocate(LGrid(num_params_used,num_params_used,3,3))
-   Lgrid=0.0 ! Clear it to be on the safe side
+   allocate(step_positions(3,num_params_used))
+   allocate(is_weakly_constrained(num_params_used))
    parsteps=Scales%PWidth(params_used)
-   call PlaceGrid(CenterParams,parsteps,bestdll)
+   CenterLike = PlaceGrid(CenterParams,parsteps,bestdll)
   
    ! Loop over attempts to find the covariance matrix
    do while (sucess.eq.0)
       itries = itries + 1
-      call GetHess(CenterParams,parsteps,Hess)
+      call GetHess(CenterParams,CenterLike,parsteps,Hess)
 
       U=Hess
       call Matrix_Diagonalize(U, D, num_params_used)  
@@ -76,7 +59,7 @@ contains
         write(*,*) 
         write(*,*) '!!! -ve evals, so spreading the grid out by a factor of ~2'
         bestdll=bestdll*2 ! try using a more spread out grid 
-        call PlaceGrid(CenterParams,parsteps,bestdll)
+        CenterLike= PlaceGrid(CenterParams,parsteps,bestdll)
       else
              sucess=1
       end if
@@ -99,25 +82,24 @@ contains
 
    call AcceptReject(.true.,CenterParams%Info,Params%Info)
 
-   deallocate(LGrid)
+   deallocate(step_positions,is_weakly_constrained)
 
  end function EstCovmat
 
  
- subroutine PlaceGrid(CenterParams,parsteps,bestdll)
+ function PlaceGrid(CenterParams,parsteps,bestdll) result(CenterLike)
    ! Takes the input CenterParams and parsteps values and improves on them
-   ! While doing so, fills the likelhood grid LGrid
-   ! Leaving LGrid(:,:,1:3,2) and LGrid(:,:<2,1:3) set correctly for the returned 
+   ! While doing so, fills the likelhood grid 
    ! CenterParams and parsteps values
    Type(ParamSet) P, CenterParams
-   real parsteps(num_params_used),bestdll
+   real parsteps(num_params_used),bestdll, CenterLike
    integer maxstepsizetries
 
    if (Feedback>1) write(*,*) 'Improving the grid spacings'
    P = CenterParams
-   Lgrid(1,1,2,2) = GetLogLike(CenterParams)
+   CenterLike = GetLogLike(CenterParams)
    call AcceptReject(.true., P%Info, CenterParams%Info)
-   if (Lgrid(1,1,2,2).eq.LogZero) then
+   if (CenterLike == LogZero) then
          write(*,*) 'ERROR: Trial parameters excluded by prior or bad likelihood'
          write(*,*) 'Try starting further away from problem regions?'
          call DoAbort
@@ -125,15 +107,14 @@ contains
 
    ! Decide how big to make the grid
    maxstepsizetries=20
-   call GetStepsForDChisq1(CenterParams,maxstepsizetries,parsteps,bestdll)
+   call GetStepsForDChisq1(CenterParams,CenterLike,maxstepsizetries,parsteps,bestdll)
    ! See if this is a good place to center it
    !if (.any.istepsizetries>maxstepsizetries) then it failed...
 
- end subroutine PlaceGrid
+ end function PlaceGrid
 
 
- subroutine GetStepsForDChisq1(CenterParams,maxstepsizetries,parsteps,bestdll)
- !!New version using binary division, AL 22Aug04
+ subroutine GetStepsForDChisq1(CenterParams,LCenter, maxstepsizetries,parsteps,bestdll)
    ! Stays centered on CenterParams
    ! But for each paramter, iterates for a maximum of maxstepsizetries to try to find
    ! parsteps such that Delta chisq is of order 1 (when stepping only in that parameter)
@@ -146,24 +127,37 @@ contains
    Type(ParamSet) StepParams
    real LCenter, LStep,dloglike
    real step_min, step_max
+   real step_limit
    integer asign
 
    ! The center of the whole grid 
-   LCenter = Lgrid(1,1,2,2) ! see notes at top of this file on Lgrid indices
- 
+   is_weakly_constrained = .false.
    !! Estimate some good step sizes to use by interating until dchisq~1
    do i=1, num_params_used
       ii= params_used(i) 
-      
+
       step_max = 0.
       step_min = 0.
-      asign = 1
-      if (.not. CenterParams%P(ii) == Scales%PMin(ii) .and. &
-          CenterParams%P(ii) > Scales%PMax(ii) - Scales%PWidth(ii)/100) asign = -1
+
+      if (CenterParams%P(ii)- Scales%PMin(ii) < Scales%PMax(ii) - CenterParams%P(ii)) then
+          asign=1
+          step_limit = (Scales%PMax(ii) - CenterParams%P(ii))/2
+      else
+          asign = -1
+          step_limit = (CenterParams%P(ii)- Scales%PMin(ii))/2
+      end if
+      parsteps(i) = min(parsteps(i), step_limit * 0.8)
 
       ! Find step sizes that give a half sensible Delta chisq eg. 0.5 to 10
       do tries = 1, maxstepsizetries
 
+         if (parsteps(i) > step_limit) then
+           is_weakly_constrained(i) = .true.
+           parsteps(i) = step_limit
+           if (Feedback >1 ) write(*,*) &
+            ' Parameter '//trim(UsedParamNameOrNumber(i))//' is weakly constrained, neglect correlations'
+           exit
+         end if
          StepParams=CenterParams ! reset back to original starting point
          StepParams%P(ii)=CenterParams%P(ii) + parsteps(i)*asign
          LStep=GetLogLike(StepParams)
@@ -189,15 +183,24 @@ contains
             write(*,*) 'Couldn''t find a good stepsize for parameter ',ii,' with Delta chisq ~1 but continuing anyway'
          end if
       end do
-      if (Feedback>1) write(*,*) ' Decided on stepsize ',parsteps(i),' for parameter ',ii
+      if (Feedback>1) write(*,*) ' Decided on stepsize ',parsteps(i),' for parameter '//trim(UsedParamNameOrNumber(i))
 
+      if (CenterParams%P(ii) - parsteps(i) < Scales%PMin(ii)) then
+        !Is hard prior bound below, one sided steps above only
+         step_positions(:,i) = (/0,1,2/)
+      else if (CenterParams%P(ii) + parsteps(i) > Scales%PMax(ii)) then
+        !Is hard prior bound below, one sided steps below only
+         step_positions(:,i) = (/-2,-1,0/)
+      else 
+         step_positions(:,i)  = (/-1,0,1/)
+      end if
    end do
 
  end subroutine GetStepsForDChisq1
 
 
    
- subroutine GetHess(CenterParams,parsteps,Hess)
+ subroutine GetHess(CenterParams,CenterLike,parsteps,Hess)
    ! Get the curvature matrix (Hess) for the grid defined by CenterParams
    ! and parsteps. 
    ! Return the answer in Hess.
@@ -206,60 +209,65 @@ contains
    Type(ParamSet) CenterParams,StepParams
    real parsteps(num_params_used)
    real Hess(num_params_used,num_params_used)
-   real Steps(3),wii,wjj
+   real wii,wjj
+   real LGrid(3), LGrid2(3,3), CenterLike
    integer i,j,ii,jj,istep,jstep
-       
-   Steps(1)=-1 ! Some bits of the code assume these values are -1, 0 1
-   Steps(2)=0  ! so can't go changing them without thinking carefully.
-   Steps(3)=1  ! The only point of the array is to make loops possible.
 
    ! Find likelihood values on a grid to estimate curvature matrix (Hess)
    if (Feedback>1) write(*,*) ' Finding curvature matrix ...'
+   Hess = 0
    do i=1, num_params_used
       ii= params_used(i) 
       if (Feedback>1) write(*,*)
-      if (Feedback>1) write(*,*) ' Parameter ',i
+      if (Feedback>1) write(*,*) ' Parameter '//trim(UsedParamNameOrNumber(i))
 
-      wii=parsteps(i)
-      do istep=1,3
-        jstep=2
-        StepParams=CenterParams ! rest back to original starting point
-        StepParams%P(ii)=CenterParams%P(ii) + Steps(istep)*wii
-        Lgrid(i,1,istep,jstep) = GetLogLike(StepParams)
-        call AcceptReject(.true., StepParams%Info, CenterParams%Info)
-        if (Lgrid(i,1,istep,jstep).eq.LogZero) then
-          write(*,*) 'ERROR: Trial parameters hit prior or error in function evaluation'
-          write(*,*) 'Try starting further away from problem regions?'
-          call DoAbort
-        end if
-      end do
-      Hess(i,i)=1/(wii*wii) *(Lgrid(i,1,1,2) + Lgrid(i,1,3,2) - 2*Lgrid(i,1,2,2))
-
+      if (is_weakly_constrained(i)) then
+         Hess(i,i) = 1/((Scales%PMax(ii) - Scales%PMin(ii))/2)
+      else
+          wii=parsteps(i)
+          do istep=1,3
+            if (step_positions(istep,i)==0) then
+             Lgrid(istep) = CenterLike
+             cycle
+            end if
+            StepParams=CenterParams ! rest back to original starting point
+            StepParams%P(ii)=CenterParams%P(ii) + step_positions(istep,i)*wii
+            Lgrid(istep) = GetLogLike(StepParams)
+            call AcceptReject(.true., StepParams%Info, CenterParams%Info)
+            if (Lgrid(istep) == LogZero) then
+              write(*,*) 'ERROR: Trial parameters hit prior or error in function evaluation'
+              write(*,*) 'Try starting further away from problem regions?'
+              call DoAbort
+            end if
+          end do
+          Hess(i,i)=1/(wii*wii) *(Lgrid(1) + Lgrid(3) - 2*LGrid(2))
+      end if
        do j=(i+1), num_params_used 
          jj=params_used(j)
-         if (Feedback>1) write(*,*) ' Parameter pair ',i,' , ',j
+         if (is_weakly_constrained(j)) cycle !just put zero in off diagonal for unconstrained
+         if (Feedback>1) write(*,*) ' Parameter pair '//trim(UsedParamNameOrNumber(i))// &
+                                    ' , '//trim(UsedParamNameOrNumber(j))
          wjj=parsteps(j)
 
-         ! Complete overkill here, make the whole matrix for debugging purposes
-         do istep=1,3
+         do istep=1,3,2
              do jstep= 1,3,2  ! ie just do jstep=1 and jstep=3
                StepParams=CenterParams ! rest back to original starting point
-               StepParams%P(jj)=CenterParams%P(jj) + Steps(jstep)*wjj
-               StepParams%P(ii)=CenterParams%P(ii) + Steps(istep)*wii
-               Lgrid(i,j,istep,jstep) = GetLogLike(StepParams)
+               StepParams%P(jj)=CenterParams%P(jj) + step_positions(jstep,j)*wjj
+               StepParams%P(ii)=CenterParams%P(ii) + step_positions(istep,i)*wii
+               LGrid2(istep,jstep) = GetLogLike(StepParams)
                call AcceptReject(.true., StepParams%Info, CenterParams%Info)
-               if (Lgrid(i,j,istep,jstep).eq.LogZero) then
+               if (LGrid2(istep,jstep) == LogZero) then
                 write(*,*) 'ERROR: Trial parameters hit prior or error in function evaluation'
                      write(*,*) 'Try starting further away from problem regions?'
+                     write(*,*) '  - parameter pair is '//trim(UsedParamNameOrNumber(i))// &
+                                    ' , '//trim(UsedParamNameOrNumber(j))
                 call DoAbort
                end if
 
             end do
          end do
-!                write(4,*) CenterParams%P(ii),CenterParams%P(jj),wii,wjj,Lgrid
 
-        Hess(j,j)=1/(wjj*wjj) * (Lgrid(i,j,2,1) + Lgrid(i,j,2,3) - 2*Lgrid(i,1,2,2))
-        Hess(i,j)=1/(wii*wjj*4)*(Lgrid(i,j,1,1) + Lgrid(i,j,3,3) - Lgrid(i,j,1,3) - Lgrid(i,j,3,1))
+        Hess(i,j)=1/(wii*wjj*4)*(Lgrid2(1,1) + Lgrid2(3,3) - Lgrid2(1,3) - Lgrid2(3,1))
         Hess(j,i)=Hess(i,j)
 
       end do
