@@ -17,9 +17,9 @@ class batchArgs():
                 self.parser.add_argument('--importance', nargs='*', default=None)
             self.parser.add_argument('--name', default=None, nargs='+')
             self.parser.add_argument('--param', default=None, nargs='+')
-            self.parser.add_argument('--paramtag', default=None, nargs='1')
-            self.parser.add_argument('--data', default=None, nargs='1')
-            self.parser.add_argument('--datatag', default=None, nargs='1')
+            self.parser.add_argument('--paramtag', default=None)
+            self.parser.add_argument('--data', default=None)
+            self.parser.add_argument('--datatag', default=None)
 
             self.args = self.parser.parse_args()
             self.batch = batchJob.readobject(self.args.batchPath)
