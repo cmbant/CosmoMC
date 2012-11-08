@@ -47,7 +47,7 @@ class batchArgs():
         def paramsMatch(self, jobItem):
             if self.args.paramtag is None:
                 if self.args.param is None: return True
-                for pat in self.args.name:
+                for pat in self.args.param:
                     if pat in jobItem.param_set: return True
                 return False
             else:
