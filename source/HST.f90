@@ -6,7 +6,6 @@
 
 module HST
 use cmbtypes
-use CAMB, only : AngularDiameterDistance  !!physical angular diam distance also in Mpc no h units
 use constants
 use likelihood
 implicit none
@@ -23,27 +22,35 @@ end type HSTLikelihood
 !real(dl), parameter :: angdistinvzeffh0 = 6.49405e-3, zeffh0 = 0.04, &
 !                       angdistinvzeffh0errsqr = 9.93e-8
 
-real(dl), parameter :: angdistinvzeffh0 = 6.45904e-3, zeffh0 = 0.04, &
-                       angdistinvzeffh0errsqr = 4.412e-8
-
 contains
 
-   subroutine HST_init(like, ini)
-    use IniFile
-    class(HSTLikelihood) :: like
+   subroutine HSTLikelihood_Add(LikeList, Ini)
+    class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
+    Type(HSTLikelihood), allocatable, save :: like
     
-    Like%LikelihoodName = 'Hubble'
-    call Like%datasets%Add(DataItem('HST'))
-    
-    end subroutine HST_init
+    if (Ini_Read_Logical_File(Ini, 'use_HST',.false.)) then
+        allocate(like)
+        like%LikelihoodType = 'Hubble'
+        like%name='HST'
+        like%needs_background_functions = .true.
+        like%dependent_params(1:num_hard) = .true.
+        call LikeList%Add(like)
+    end if
+
+   end subroutine HSTLikelihood_Add
     
 real function HST_LnLike(like, CMB, Theory)
+  use CAMB, only : AngularDiameterDistance  !!physical angular diam distance also in Mpc no h units
   Class(HSTLikelihood) :: like
   type(CMBParams) CMB
   Type(CosmoTheory) Theory
   real(dl) :: theoryval
 
+  real(dl), parameter :: angdistinvzeffh0 = 6.45904e-3, zeffh0 = 0.04, &
+                       angdistinvzeffh0errsqr = 4.412e-8
+
+  
   theoryval = 1.0/AngularDiameterDistance(zeffh0)
   HST_LnLike = (theoryval - angdistinvzeffh0)**2/(2*angdistinvzeffh0errsqr)
   if (Feedback > 1) print *,'HST_LnLike like: ',HST_LnLike

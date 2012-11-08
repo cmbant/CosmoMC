@@ -34,7 +34,6 @@ contains
   
   function TestHardPriors(CMB, Info) 
     real TestHardPriors
-    real Age
     Type (CMBParams) CMB
     Type(ParamSetInfo) Info
 
@@ -140,7 +139,6 @@ contains
     Type (CMBParams) CMB
     Type(ParamSet) Params
     integer error
-    real P(num_params)
     real itemLike
     Class(DataLikelihood), pointer :: like
     integer i

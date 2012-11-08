@@ -19,13 +19,6 @@ use likelihood
  implicit none
  
     type, extends(DataLikelihood) :: BAOLikelihood
-    contains
-    procedure :: LogLike => BAO_LnLike
-    procedure :: Init => BAO_init
-    end type BAOLikelihood
- 
-  Type baodataset
-    logical :: use_set
     integer :: num_bao ! total number of points used
     integer :: type_bao  
      !what type of bao data is used 
@@ -33,13 +26,12 @@ use likelihood
      !2: A(z) =2 ie WiggleZ
      !3 D_V/rs in fitting forumla appox (DR9)
      !4: D_v - 6DF
-    character(LEN=20) :: name
-    real(dl), pointer, dimension(:) :: bao_z, bao_obs, bao_err
-    real(dl), pointer, dimension(:,:) :: bao_invcov
+    real(dl), allocatable, dimension(:) :: bao_z, bao_obs, bao_err
+    real(dl), allocatable, dimension(:,:) :: bao_invcov
    
-  end Type baodataset
-  integer :: num_bao_datasets = 0
-  Type(baodataset) baodatasets(10)
+    contains
+    procedure :: LogLike => BAO_LnLike
+    end type BAOLikelihood
 
   real(dl), dimension(10000) :: DR7_alpha_file, DR7_prob_file
   real(dl) DR7_dalpha
@@ -47,43 +39,45 @@ use likelihood
 
     contains 
 
- subroutine BAO_init(like, ini)
+ subroutine BAOLikelihood_Add(LikeList, Ini)
     use IniFile
     use settings
-    class(BAOLikelihood) :: like
+    class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
+    Type(BAOLikelihood), allocatable, target, save :: likes(:)
+    Type(BAOLikelihood), pointer :: like
+    
     integer numbaosets, i
 
-        Like%LikelihoodName = 'BAO'
-
+     if (Ini_Read_Logical_File(Ini, 'use_BAO',.false.)) then
         numbaosets = Ini_Read_Int_File(Ini,'bao_numdatasets',0)
         if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
-            do i= 1, numbaosets
-            call ReadBaoDataset(ReadIniFileName(Ini,numcat('bao_dataset',i)) )
-            call like%datasets%Add(DataItem(baodatasets(i)%name))
-!            if(use_dr7lrg .and. (baodatasets(i)%name =='DR7' .or. baodatasets(i)%name =='DR9'))then
-!                !Al stop rather than ignore, avoid depending of bao on mpk
-!                call MpiStop('DR7 LRG and SDSS BAO are based on the same data set. You cannot use both.')
-!            end if
-            end do
-            if (Feedback>1) write(*,*) 'read bao datasets'
-             
- end subroutine BAO_init
+        allocate(likes(numbaosets))
+        do i= 1, numbaosets
+              like=>likes(i)
+              call ReadBaoDataset(like, ReadIniFileName(Ini,numcat('bao_dataset',i)) )
+              like%LikelihoodType = 'BAO'
+              like%needs_background_functions = .true.
+              like%dependent_params(1:num_hard) = .true.
+              call LikeList%Add(like)
+        end do
+        if (Feedback>1) write(*,*) 'read bao datasets'
+     end if
+
+ end subroutine BAOLikelihood_Add
     
 !JD copied structure from mpk.f90
-subroutine ReadBaoDataset(gname)   
+subroutine ReadBaoDataset(bset, gname)   
     use MatrixUtils
+    type (BAOLikelihood) bset
     character(LEN=*), intent(IN) :: gname
     character(LEN=Ini_max_string_len) :: bao_measurements_file, bao_invcov_file
-    type (baodataset) bset
     integer i,iopb
     logical bad
     Type(TIniFile) :: Ini
     integer file_unit
     
- 
-    num_bao_datasets = num_bao_datasets + 1
-    if (num_bao_datasets > 10) stop 'too many datasets'
+
     file_unit = new_file_unit()
     call Ini_Open_File(Ini, gname, file_unit, bad, .false.)
     if (bad) then
@@ -94,7 +88,6 @@ subroutine ReadBaoDataset(gname)
     bset%name = Ini_Read_String_File(Ini,'name')
     
     Ini_fail_on_not_found = .false.
-    bset%use_set =.true.
     if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(bset%name)
     bset%num_bao = Ini_Read_Int_File(Ini,'num_bao',0)
     if (bset%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
@@ -118,7 +111,7 @@ subroutine ReadBaoDataset(gname)
 
     if (bset%name == 'DR7') then
      !don't used observed value, probabilty distribution instead
-      call BAO_DR7_init(ReadIniFileName(Ini,'prob_dist'))    
+      call BAO_DR7_init(ReadIniFileName(Ini,'prob_dist'))
     else
 
        allocate(bset%bao_invcov(bset%num_bao,bset%num_bao))
@@ -148,8 +141,6 @@ subroutine ReadBaoDataset(gname)
     
    call Ini_Close_File(Ini)
    call ClearFileUnit(file_unit)
-
-   baodatasets(num_bao_datasets) = bset
 
 end subroutine ReadBaoDataset
 
@@ -218,53 +209,42 @@ function BAO_LnLike(like, CMB, Theory)
    type(CMBParams) CMB
    Class(BAOLikelihood) :: like
    Type(CosmoTheory) Theory
-   integer i,j,k
+   integer j,k
    real  BAO_LnLike
-   real(dl) tot(num_bao_datasets)
    real(dl), allocatable :: BAO_theory(:)
-   
-   tot=0
-   do i=1,num_bao_datasets
-        if (baodatasets(i)%name=='DR7') then
-            tot(i) = BAO_DR7_loglike(CMB,baodatasets(i)%bao_z(1))
+
+         BAO_LnLike=0
+        if (like%name=='DR7') then
+            BAO_LnLike = BAO_DR7_loglike(CMB,like%bao_z(1))
+            return
         else
 
-        allocate(BAO_theory(baodatasets(i)%num_bao))
+        allocate(BAO_theory(like%num_bao))
     
-        if(baodatasets(i)%type_bao ==3)then
-            do j=1, baodatasets(i)%num_bao
-                BAO_theory(j) = SDSS_dvtors(CMB,baodatasets(i)%bao_z(j))
+        if(like%type_bao ==3)then
+            do j=1, like%num_bao
+                BAO_theory(j) = SDSS_dvtors(CMB,like%bao_z(j))
             end do
-        else if(baodatasets(i)%type_bao ==2)then
-            do j=1, baodatasets(i)%num_bao
-                BAO_theory(j) = Acoustic(CMB,baodatasets(i)%bao_z(j))
+        else if(like%type_bao ==2)then
+            do j=1, like%num_bao
+                BAO_theory(j) = Acoustic(CMB,like%bao_z(j))
             end do
-        else if(baodatasets(i)%type_bao ==4)then
-            do j=1, baodatasets(i)%num_bao
-                BAO_theory(j) = D_v(baodatasets(i)%bao_z(j))
+        else if(like%type_bao ==4)then
+            do j=1, like%num_bao
+                BAO_theory(j) = D_v(like%bao_z(j))
             end do
         end if
 
-        do j=1, baodatasets(i)%num_bao
-            do k=1, baodatasets(i)%num_bao
-                tot(i) = tot(i) +&
-                        (BAO_theory(j)-baodatasets(i)%bao_obs(j))* &
-                        baodatasets(i)%bao_invcov(j,k)*&
-                        (BAO_theory(k)-baodatasets(i)%bao_obs(k))
+        do j=1, like%num_bao
+            do k=1, like%num_bao
+                BAO_LnLike = BAO_LnLike +&
+                        (BAO_theory(j)-like%bao_obs(j))*like%bao_invcov(j,k)*&
+                        (BAO_theory(k)-like%bao_obs(k))
             end do
         end do
-        tot(i) = tot(i)/2.d0
+        BAO_LnLike = BAO_LnLike/2.d0
         deallocate(BAO_theory)
         end if
-       
-       if(feedback>1)write(*,*)'Bao dataset: '//trim(baodatasets(i)%name)//' LnLike = ',tot(i)
-   end do
-   if (any(tot==logZero)) then
-       BAO_LnLike = logZero
-   else
-       BAO_LnLike = sum(tot)
-   end if
-   if(feedback>1)write(*,*)'Bao_LnLike = ', Bao_LnLike
 
 end function BAO_LnLike
 

@@ -48,7 +48,7 @@
        P%InitPower%k_0_scalar = pivot_k
        P%InitPower%k_0_tensor = pivot_k
 
-       P%InitPower%ScalarPowerAmp(in) = cl_norm*CMB%InitPower(4)
+       P%InitPower%ScalarPowerAmp(in) = cl_norm*CMB%InitPower(As_index)
        P%InitPower%rat(in) = CMB%InitPower(amp_ratio_index)
 
         
@@ -291,7 +291,7 @@
       derived%P(5) = r10
       derived%P(6) = CMB%H0
       derived%P(7) = P%Info%Theory%tensor_ratio_02
-      derived%P(8) = cl_norm*CMB%norm(norm_As)*1e9
+      derived%P(8) = cl_norm*CMB%InitPower(As_index)*1e9
       derived%P(9) = CMB%omdmh2 + CMB%ombh2
       derived%P(10)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
       derived%P(11)= CMB%Yhe !value actually used, may be set from bbn consistency

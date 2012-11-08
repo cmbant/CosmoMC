@@ -61,45 +61,49 @@ use MatrixUtils
 use likelihood
 implicit none
 
-   type, extends(DataLikelihood) :: SNLikelihood
-    contains
-    procedure :: LogLike => SN_LnLike
-    procedure :: Init => SN_init
-    end type SNLikelihood
-    
-
  integer, parameter :: SN_num = 557
- double precision, parameter :: Pi_num = 3.14159265359D0 
- double precision :: SN_z(SN_num), SN_moduli(SN_num)
- double precision :: SN_Ninv(SN_num,SN_Num)
- double precision :: SN_sumninv
+
+   type, extends(DataLikelihood) :: SNLikelihood
+     double precision :: SN_z(SN_num), SN_moduli(SN_num)
+     double precision :: SN_Ninv(SN_num,SN_Num)
+     double precision :: SN_sumninv
+   contains
+    procedure :: LogLike => SN_LnLike
+   end type SNLikelihood
 
  logical, parameter :: SN_marg = .True.
 
 ! The following line selects which error estimate to use
 ! default .True. = with systematic errors
  logical, parameter :: SN_syscovmat = .True.  !! Use covariance matrix with or without systematics
+ 
 
-contains
+ contains
 
-
- subroutine SN_init(like, ini)
+ subroutine SNLikelihood_Add(LikeList, Ini)
     use IniFile
     use settings
-    class(SNLikelihood) :: like
+    class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
-   character (LEN=20):: name
-   integer i
-   real :: tmp_mat(sn_num, sn_num)
+    Type(SNLikelihood), allocatable, save :: like
+    character (LEN=20):: name
+    integer i
+    real :: tmp_mat(sn_num, sn_num)
 
-   Like%LikelihoodName = 'SN'
+    if (.not. Ini_Read_Logical_File(Ini, 'use_SN',.false.)) return
+
+   allocate(like)
    
-   call Like%datasets%Add(DataItem('Union2'))
+   Like%LikelihoodType = 'SN'
+   Like%name='Union2'
+   like%needs_background_functions = .true.
+   like%dependent_params(1:num_hard) = .true.
+   call LikeList%Add(like)
    
    if (Feedback > 0) write (*,*) 'Reading: supernovae data'
    call OpenTxtFile(trim(DataDir)//'sn_z_mu_dmu_union2.txt',tmp_file_unit)
    do i=1,  sn_num
-      read(tmp_file_unit, *) name, SN_z(i), SN_moduli(i)
+      read(tmp_file_unit, *) name, Like%SN_z(i), Like%SN_moduli(i)
    end do
    close(tmp_file_unit)
 
@@ -116,11 +120,11 @@ contains
    close (tmp_file_unit)
 
    call Matrix_Inverse(tmp_mat)
-   sn_ninv = DBLE (tmp_mat)
+   Like%sn_ninv = DBLE (tmp_mat)
 
-   SN_sumninv = SUM(sn_ninv)
+   Like%SN_sumninv = SUM(Like%sn_ninv)
    
-  end subroutine SN_init
+  end subroutine SNLikelihood_Add
 
  function SN_LnLike(like, CMB, Theory) 
    use camb
@@ -136,19 +140,17 @@ contains
 
 !! This is actually seems to be faster without OMP
      do i=1, SN_num
-        z= SN_z(i)
-        diffs(i) = 5*log10((1+z)**2*AngularDiameterDistance(z))+25 -sn_moduli(i)
+        z= like%SN_z(i)
+        diffs(i) = 5*log10((1+z)**2*AngularDiameterDistance(z))+25 -like%sn_moduli(i)
      end do
      
-     AT = dot_product(diffs,matmul(sn_ninv,diffs))
-     BT = SUM(matmul(sn_ninv,diffs))
+     AT = dot_product(diffs,matmul(like%sn_ninv,diffs))
+     BT = SUM(matmul(like%sn_ninv,diffs))
      
      !! H0 normalisation alla Bridle and co. 
-     chisq = AT-BT**2/sn_sumninv
+     chisq = AT-BT**2/like%sn_sumninv
 
      if (Feedback > 1) write (*,*) 'SN chisq: ', chisq
-
-
 
      SN_LnLike = chisq/2
 

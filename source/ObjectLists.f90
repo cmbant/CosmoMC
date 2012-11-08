@@ -5,7 +5,7 @@
     implicit none
 
     type Object_pointer
-        class(*), pointer :: p
+        class(*), pointer :: p => null()
         class(*), pointer :: tag => null()
     end type Object_pointer
 
@@ -43,14 +43,13 @@
 
     end subroutine Clear
 
-
     subroutine Add(L, C)
     Class(TObjectList) :: L
     class(*), intent(in), target :: C
 
     if (L%Count == L%Capacity) call SetCapacity(L, L%Capacity + L%Delta)
     L%Count = L%Count + 1
-    L%Items(L%Count)%P => C
+    L%Items(L%Count)%P=>C
 
     end subroutine Add
 

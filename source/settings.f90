@@ -76,7 +76,8 @@ module settings
   integer :: instance = 0
   integer :: MPIchains = 1, MPIrank = 0
 
-  logical :: Use_LSS = .true.
+  logical :: Use_LSS = .false.
+  logical :: Use_CMB = .false.
 
   integer :: logfile_unit  = 0
   integer :: outfile_handle = 0 

@@ -9,7 +9,6 @@ program SolveCosmology
         use settings
         use cmbdata
         use posthoc
-        use WeakLen
         use CalcLike
         use EstCovmatModule
         use minimize
@@ -18,25 +17,16 @@ program SolveCosmology
         use IO
         use ParamNames
         use GaugeInterface, only : Eqns_name
-#ifdef CLIK
-        use cliklike 
-#endif
-#ifndef NOWMAP
-        use WMAP_OPTIONS
-#endif
+
         implicit none 
         
         character(LEN=Ini_max_string_len) InputFile, LogFile
 
         logical bad
-        integer numsets, nummpksets, i, numtoget, action
-        character(LEN=Ini_max_string_len) baseroot, filename(100), &
-         mpk_filename(100),  numstr, fname, keyname
-        integer numbaosets
-        character(LEN=Ini_max_string_len) bao_filename(100)
-        real SZscale(100)
+        integer nummpksets, i, numtoget, action
+        character(LEN=Ini_max_string_len) baseroot,  &
+         mpk_filename(100),  numstr, fname
         Type(ParamSet) Params, EstParams
-        integer num_points
         integer file_unit, status
         real bestfit_loglike
         real max_like_radius
@@ -128,13 +118,7 @@ program SolveCosmology
          if (checkpoint) flush_write = .true.
          start_at_bestfit= Ini_read_logical('start_at_bestfit',.false.)
         end if
-         
-#ifndef NOWMAP
-        use_TT_beam_ptsrc = Ini_read_Logical('use_WMAP_TT_beam_ptsrc', .true.)
-        use_TE = Ini_read_Logical('use_WMAP_TE',.true.)
-        use_TT = Ini_Read_Logical('use_WMAP_TT',.true.)
-        print *, 'WMAP options (beam TE TT)', use_TT_beam_ptsrc, use_TE, use_TT
-#endif
+
 
 #ifdef MPI 
         

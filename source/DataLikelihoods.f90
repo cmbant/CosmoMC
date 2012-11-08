@@ -11,44 +11,28 @@ module DataLikelihoodList
 
 contains
 
-subroutine addDataLike(Ini,D)
- Type(TIniFile), intent(in) :: Ini
- class(DataLikelihood) :: D
-
-  call D%init(Ini)
-  call DataLikelihoods%Add(D) 
-           
-end subroutine addDataLike
-
 subroutine SetDataLikelihoods(Ini)
  use HST
  use snovae
  use cmbdata
  use bao
  Type(TIniFile), intent(in) :: Ini
-
+ 
         use_LSS = Ini_Read_Logical_File(Ini,'get_sigma8',.false.)
  
-        Use_CMB = Ini_Read_Logical_File(Ini, 'use_CMB',.true.)
-        if (Use_CMB) then
-            call addDataLike(Ini,CMBDataLikelihood())
-        end if
+        call CMBDataLikelihoods_Add(DataLikelihoods, Ini)
 
 !        if (Ini_Read_Logical_File(Ini, 'use_mpk',.false.)) &
 !           call DataLikelihoods%Add(MpkLikelihood()%Init(Ini)) 
 !        use_LSS=.true.
-
-        if (Ini_Read_Logical_File(Ini, 'use_HST',.false.)) &
-           call addDataLike(Ini,HSTLikelihood())
+        call HSTLikelihood_Add(DataLikelihoods, Ini)
+        
+        call BAOLikelihood_Add(DataLikelihoods, Ini)
+        
+        call SNLikelihood_Add(DataLikelihoods, Ini)
 
         if(Ini_Read_Logical_File(Ini,'use_BBN',.false.)) &
           call DoAbort('Use_BBN not supported: use prior[omegabh2]=mean std')
-
-        if (Ini_Read_Logical_File(Ini, 'use_SN',.false.)) &
-          call addDataLike(Ini,SNLikelihood())
-
-        if (Ini_Read_Logical_File(Ini, 'use_BAO',.false.)) &
-          call addDataLike(Ini,BAOLikelihood())
 
 !        Use_WeakLen = Ini_Read_Logical('use_WeakLen',.false.)
          Use_min_zre = Ini_Read_Double_File(Ini,'use_min_zre',0.d0) 

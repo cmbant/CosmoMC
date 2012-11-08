@@ -45,13 +45,7 @@ use constants
 use likelihood
 implicit none
 
-   type, extends(DataLikelihood) :: CMBDataLikelihood
-    contains
-    procedure :: LogLike => CMBLogLike
-    procedure :: Init => CMBInit
-    end type CMBDataLikelihood
-
-    logical :: Use_clik= .false., Use_CMB
+    logical :: Use_clik= .false.
 
 !if CMBdataset%has_xfactors then obs, var and N_inv are for the offset-lognormal variables Z
 
@@ -75,7 +69,6 @@ implicit none
     logical :: beam_uncertain, has_corr_errors, has_xfactors
     integer :: num_points, file_points
     character(LEN=Ini_max_string_len) :: dataset_filename
-    character(LEN=80) :: name
     Type(CMBdatapoint), pointer, dimension(:) :: points
     real, pointer, dimension(:,:) :: N_inv
     real, pointer, dimension(:) :: xfactors
@@ -83,16 +76,26 @@ implicit none
     logical :: all_l_exact
     logical :: CMBLike !New format
     integer :: all_l_lmax
-    integer :: nuisance_parameters
     real, pointer, dimension(:,:) :: all_l_obs, all_l_noise
     real, pointer, dimension(:) :: all_l_fsky
     real, pointer, dimension(:) :: sz_template
     Type (TCMBLikes), pointer :: CMBLikes
   end Type CMBdataset
 
-  integer :: num_datasets = 0
-  Type(CMBdataset) datasets(10)
+    type, extends(DataLikelihood) :: CMBDataLikelihood
+     Type(CMBdataset) dataset
+    contains
+    procedure :: LogLike => CMBLnLike
+    end type CMBDataLikelihood
 
+#ifdef CLIK
+   type, extends(DataLikelihood) :: ClikLikelihood
+     Type(CMBdataset) dataset
+    contains
+    procedure :: LogLike => ClikLogLike
+    end type ClikLikelihood
+#endif
+    
   logical :: init_MAP = .true.
 
   integer :: cl_bin_width =1
@@ -330,12 +333,13 @@ contains
 
  end function ChiSqExact
 
- subroutine ReadDataset(aname)
+ subroutine ReadDataset(like,aname)
    use CMBLikes
+   Type(CMBDataLikelihood), target :: like
    character(LEN=*), intent(IN) :: aname
    character(LEN=Ini_max_string_len) :: InLine, window_dir, Ninv_file, xfact_file, band_file
    logical bad, windows_are_bare
-   Type (CMBdataset) :: aset
+   Type (CMBdataset), pointer :: aset
    integer i, first_band, use_i
    real, pointer, dimension(:,:) :: tmp_mat
    real, pointer, dimension(:) :: tmp_arr
@@ -343,25 +347,20 @@ contains
    integer file_unit
    Type(TIniFile) :: Ini
    
-   num_datasets = num_datasets + 1
+   aset=> like%dataset
    
-   if (num_datasets > 10) stop 'too many datasets'
-
    aset%has_sz_template = .false.
-   aset%nuisance_parameters = 0
    aset%CMBlike = .false.
    aset%dataset_filename=aname
    
 !Special cases
    if (aname == 'MAP' .or. aname == 'WMAP') then 
-     aset%name = 'WMAP'
-     datasets(num_datasets) = aset
+     like%name = 'WMAP'
      return   
    elseif( aname(LEN_TRIM(aname)-5:LEN_TRIM(aname)) == 'newdat') then
     !Carlo format for polarized Boomerang et al.
      if (Feedback > 0) write(*,*) 'Reading BCP data set: ' // TRIM(aname)
-     call ReadDataset_bcp(aset,aname)
-     datasets(num_datasets) = aset
+     call ReadDataset_bcp(like, aname)
      return 
    end if
 
@@ -374,11 +373,11 @@ contains
    end if
    Ini_fail_on_not_found = .true.
       
-   aset%name = Ini_Read_String_File(Ini,'name')
+   like%name = Ini_Read_String_File(Ini,'name')
    aset%use_set =.true.
    aset%num_points = 0
     
-   if (Feedback > 0) write (*,*) 'reading: '//trim(aset%name)
+   if (Feedback > 0) write (*,*) 'reading: '//trim(like%name)
 
    Ini_fail_on_not_found = .false.
 
@@ -391,7 +390,6 @@ contains
    if (aset%CMBLike) then
       allocate(aset%CMBLikes)
       call CMBLikes_ReadData(aset%CMBLikes, Ini, ExtractFilePath(aname))
-      aset%nuisance_parameters = aset%CMBLikes%num_nuisance_parameters 
     
    else if (aset%all_l_exact) then
        aset%has_pol = Ini_Read_Logical_File(Ini,'has_pol',.false.)
@@ -446,7 +444,7 @@ contains
           end if
           aset%points(use_i)%sigma = (aset%points(use_i)%err_minus + aset%points(use_i)%err_plus)/2
           aset%points(use_i)%var = aset%points(use_i)%sigma**2
-          call ReadWindow(aset%points(use_i),trim(window_dir)//'/'//trim(numcat(aset%name,i)),windows_are_bare,aset)
+          call ReadWindow(aset%points(use_i),trim(window_dir)//'/'//trim(numcat(like%name,i)),windows_are_bare,aset)
        end do
        if (band_file /= '') Close(51)
   
@@ -496,8 +494,6 @@ contains
    
    call Ini_Close_File(Ini)
    call ClearFileUnit(file_unit)
-
-   datasets(num_datasets) = aset
 
  end subroutine ReadDataset
 
@@ -612,7 +608,7 @@ contains
   !Modified to account for offset lognormal toggle per band
   !AL July 2005: modified to allow band selection
   !MLB May 09: modified to allow provision of per-band beam errors (Quad)
- SUBROUTINE ReadDataset_bcp(aset,aname)
+ SUBROUTINE ReadDataset_bcp(like,aname)
   !File Format:
   !name
   !n_bands_TT n_EE, n_BB, n_EB, n_TE, n_TB
@@ -626,9 +622,9 @@ contains
   ! }  
   ! covariance matrix
    use constants
- 
+   Type(CMBDataLikelihood), target :: like
    CHARACTER(LEN=*), INTENT(IN) :: aname
-   TYPE (CMBdataset) :: aset
+   TYPE (CMBdataset), pointer :: aset
 
    CHARACTER(LEN=100) :: instr
    CHARACTER(LEN=3), DIMENSION(1:6) :: ch_types
@@ -648,7 +644,7 @@ contains
    LOGICAL :: FISHER_T_CMB
    integer file_unit
    
-   
+   aset=>like%dataset
    file_unit = new_file_unit()
    CALL OpenTxtFile(aname, file_unit)
 
@@ -659,8 +655,8 @@ contains
       READ(file_unit,'(a)') instr
       WRITE(*,'(a)') 'FISHER_T_CMB is set for :'//TRIM(ADJUSTL(instr))
    ENDIF
-   aset%name = TRIM(ADJUSTL(instr))
-   WRITE(*,*) 'Reading: '//TRIM(ADJUSTL(aset%name))
+   like%name = TRIM(ADJUSTL(instr))
+   WRITE(*,*) 'Reading: '//TRIM(ADJUSTL(like%name))
    aset%use_set =.TRUE.
 
    READ(file_unit,*) npol(1:6)
@@ -784,7 +780,7 @@ contains
              aset%points(use_i)%var = aset%points(use_i)%sigma**2
 !AL: Oct 08, changed to set path from the dataset path
              CALL ReadWindow(aset%points(use_i), trim(concat(ExtractFilePath(aname),'windows/')) // &
-                  TRIM(numcat(aset%name,file_i)),windows_are_bare,aset)
+                  TRIM(numcat(like%name,file_i)),windows_are_bare,aset)
 
          else
           !discard band
@@ -846,10 +842,9 @@ contains
  END SUBROUTINE ReadDataset_bcp
 
 
- function CalcLnLike(clall, aset,nuisance_params) 
+ function CalcLnLike(clall, aset) 
   !Compute -ln(Likelihood) 
    real clall(lmax,num_cls_tot), CalcLnLike
-   real, intent(in) :: nuisance_params(:)
    Type(CMBdataset) aset
    integer i
    real cl(lmax, num_cls)
@@ -867,7 +862,7 @@ contains
 
    if (aset%CMBLike) then
 
-     chisq =  CMBLikes_CMBLike(aset%CMBLikes, clall, nuisance_params) 
+     chisq =  CMBLikes_CMBLike(aset%CMBLikes, clall) 
 
    else if (aset%all_l_exact) then
      
@@ -956,34 +951,29 @@ contains
  
  end function CalcLnLike
 
- function CMBLnLike(cl, freq_params, nuisance_params)
-  real, intent(in) ::  cl(lmax,num_cls_tot)
-  real CMBLnLike
-  real,intent(in) :: freq_params(num_freq_params),nuisance_params(:)
-  real sznorm, szcl(lmax,num_cls_tot)
-  integer i
-  integer nuisance
-  real tot(num_datasets)
-  
-  sznorm = freq_params(1)  
-  nuisance =1
-  do i=1, num_datasets
+ 
+ function CMBLnLike(like, CMB, Theory) 
+    use CMB_Cls
+    Class(CMBDataLikelihood) :: like
+    Type (CMBParams) CMB
+    Type(CosmoTheory) Theory
+    real cl(lmax,num_cls_tot)
+    real CMBLnLike
+    real sznorm, szcl(lmax,num_cls_tot)
+
+    call ClsFromTheoryData(Theory, CMB, cl)
+
      szcl= cl
-     if (datasets(i)%has_sz_template) then
-      szcl(2:lmax,1) = szcl(2:lmax,1) + sznorm*datasets(i)%sz_template(2:lmax)  
+     if (like%dataset%has_sz_template) then
+         sznorm = CMB%data_params(1)  
+         szcl(2:lmax,1) = szcl(2:lmax,1) + sznorm*like%dataset%sz_template(2:lmax)  
      end if
-     if (datasets(i)%name == 'WMAP') then
-      tot(i) = MAPLnLike(szcl)
+     if (like%name == 'WMAP') then
+       CMBLnLike = MAPLnLike(szcl)
      else
-       if (ubound(nuisance_params,1) < 1) then 
-        tot(i) = CalcLnLike(szcl,datasets(i), nuisance_params)
-       else
-        tot(i) = CalcLnLike(szcl,datasets(i), nuisance_params(nuisance:))
-       end if
-      if (datasets(i)%CMBLike) nuisance = nuisance + datasets(i)%CMBLikes%num_nuisance_parameters
+       CMBLnLike = CalcLnLike(szcl,like%dataset)
      end if
-  end do
-  CMBLnLike = SUM(tot) 
+  
  end function
 
 
@@ -1038,67 +1028,92 @@ contains
  end function
 
 
- function CMBLogLike(like, CMB, Theory) 
+
 #ifdef CLIK
+  real function ClikLogLike(like, CMB, Theory) 
      use cliklike
-#endif
      use CMB_Cls
-     Class(CMBDataLikelihood) :: like
+     Class(ClikLikelihood) :: like
      Type (CMBParams) CMB
      Type(CosmoTheory) Theory
      real acl(lmax,num_cls_tot)
-     real CMBLogLike
 
      call ClsFromTheoryData(Theory, CMB, acl)
-     CMBLogLike = CMBLnLike(acl, CMB%data_params,CMB%nuisance)
-#ifdef CLIK
 !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
 !freq_params(35:44), ACT/SPT as freq_params(45:65)
-            if (Use_clik) then
-             CMBLogLike = CMBLogLike + clik_lnlike(dble(acl),dble(CMB%data_params))
-            end if
+      ClikLogLike = clik_lnlike(dble(acl),dble(CMB%data_params))
+ end function ClikLogLike
 #endif
- end function CMBLogLike
-
-    subroutine CMBInit(like, ini)
+ 
+ 
+ 
+   subroutine CMBDataLikelihoods_Add(LikeList, Ini)
     use IniFile
+#ifdef CLIK
     use cliklike
-    class(CMBDataLikelihood) :: like
+    Type(ClikLikelihood), allocatable, save :: clikLikelihood
+#endif
+#ifndef NOWMAP
+        use WMAP_OPTIONS
+#endif
+    class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
-    integer numsets, num_points, i
+
+    Type(CMBDataLikelihood), allocatable, target, save:: likes(:)
+    Type(CMBDataLikelihood), pointer :: like
+    integer numsets,  i
     character(LEN=Ini_max_string_len) filename,keyname,SZTemplate
     real SZScale
 
-        Use_CMB = Ini_Read_Logical_File(Ini, 'use_CMB',.true.)
+        Use_CMB = Use_CMB .or. Ini_Read_Logical_File(Ini, 'use_CMB',.true.)
+
+#ifndef NOWMAP
+        use_TT_beam_ptsrc = Ini_read_Logical_File(Ini,'use_WMAP_TT_beam_ptsrc', .true.)
+        use_TE = Ini_read_Logical_File(Ini,'use_WMAP_TE',.true.)
+        use_TT = Ini_read_Logical_File(Ini,'use_WMAP_TT',.true.)
+        print *, 'WMAP options (beam TE TT)', use_TT_beam_ptsrc, use_TE, use_TT
+#endif
 
         numsets = Ini_Read_Int_File(Ini,'cmb_numdatasets',0)
-        num_points = 0
-        nuisance_params_used = 0
+        allocate(likes(numsets))
          do i= 1, numsets
+          like => likes(i)
+          call LikeList%Add(like) 
+          like%LikelihoodType = 'CMB'
+          like%dependent_params(1:num_theory_params) = .true.
+          
           filename = ReadIniFileName(Ini,numcat('cmb_dataset',i)) 
-          call ReadDataset(filename)
-          call like%datasets%add(DataItem(filename)) 
-          num_points = num_points + datasets(i)%num_points
+          call ReadDataset(like, filename)
+
           keyname=numcat('cmb_dataset_SZ',i)
           SZTemplate = ''
           if (Ini_HasKey_File(Ini,KeyName)) SZTemplate = Ini_Read_String_File(Ini,keyname, .false.) 
           if (SZTemplate/='') then
            SZScale = Ini_read_Real_File(Ini,numcat('cmb_dataset_SZ_scale',i),1.0)
-           call ReadSZTemplate(datasets(i), SZTemplate,SZScale)
+           call ReadSZTemplate(like%dataset, SZTemplate,SZScale)
+           like%dependent_params(index_freq) = .true.
           end if
-          nuisance_params_used = nuisance_params_used + datasets(i)%nuisance_parameters
+
          end do
          if (Feedback > 1) write (*,*) 'read CMB datasets'
+
 #ifdef CLIK
         Use_clik = Ini_Read_Logical_File(Ini, 'use_clik',.false.) 
         if (use_clik .and. .not. use_CMB) &
          call MpiStop('must have use_CMB=.true. to have use_clik (cmb_numdatasets = 0 for only clik)')
-        if (Use_clik) call clik_readParams(Ini)
+        if (Use_clik) then 
+            allocate(clikLikelihood)
+            call LikeList%Add(clikLikelihood) 
+            clikLikelihood%dependent_params(1:index_freq+num_camSpec+num_plik)=.true.
+            clikLikelihood%LikelihoodType = 'CMB'
+            clikLikelihood%name='CLIK'
+            call clik_readParams(Ini)
+        end if
 #else
          if (Ini_Read_Logical('use_clik',.false.)) call DoAbort('compile with CLIK to use clik - see Makefile')
 #endif
 
-    end subroutine CMBInit
+    end subroutine CMBDataLikelihoods_Add
 
 end module cmbdata
 

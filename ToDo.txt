@@ -1,7 +1,7 @@
+
 BAO DR7 vs LRG7 joint exclusion
 
 importance sampling
 
-weaklen
 lya
 mpk

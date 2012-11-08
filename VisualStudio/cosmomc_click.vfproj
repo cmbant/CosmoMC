@@ -75,6 +75,5 @@
 		<File RelativePath="..\source\SDSSLy-a-v3.f90"/>
 		<File RelativePath="..\source\settings.f90"/>
 		<File RelativePath="..\source\supernovae.f90"/>
-		<File RelativePath="..\source\temp_like.f90"/>
-		<File RelativePath="..\source\WeakLen.f90"/></Filter></Files>
+		<File RelativePath="..\source\temp_like.f90"/></Filter></Files>
 	<Globals/></VisualStudioProject>

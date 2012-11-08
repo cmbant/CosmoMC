@@ -1048,9 +1048,8 @@ contains
   
  end function CMBLikes_LensRecon_Like
 
- function CMBLikes_CMBLike(D, cl_in, nuisance_params) result (chisq)
+ function CMBLikes_CMBLike(D, cl_in) result (chisq)
   Type(TCMBLikes) :: D
-  real, intent(in) :: nuisance_params(:)
   real, intent(in) :: cl_in(lmax,num_cls_tot)
   real  :: cl(lmax,num_cls)
 
@@ -1075,21 +1074,22 @@ contains
   Ei = D%field_index(2)
   Bi = D%field_index(3)
 
-  if (D%num_nuisance_parameters/=0 .and. Ti /= 0) then
-    mode=0
-    if (D%pointsource_MCMC_modes>0) then
-      mode=mode+1
-      cl(D%cl_lmin:D%cl_lmax,1) = cl(D%cl_lmin:D%cl_lmax,1) + &
-        D%point_source_error*nuisance_params(mode)*D%ClPointsources(1,D%cl_lmin:D%cl_lmax)      
-    end if
-    beamC=0
-    do i=1, D%beam_MCMC_modes
-       mode = mode + 1
-       BeamC = BeamC + nuisance_params(mode) *cl(D%cl_lmin:D%cl_lmax,1)*D%beammodes( D%cl_lmin:D%cl_lmax,i )     
-    end do
-     cl(D%cl_lmin:D%cl_lmax,1) = cl(D%cl_lmin:D%cl_lmax,1) + beamC
-    
-   end if
+  !removed nuisance parameters for the moment
+  !if (D%num_nuisance_parameters/=0 .and. Ti /= 0) then
+  !  mode=0
+  !  if (D%pointsource_MCMC_modes>0) then
+  !    mode=mode+1
+  !    cl(D%cl_lmin:D%cl_lmax,1) = cl(D%cl_lmin:D%cl_lmax,1) + &
+  !      D%point_source_error*nuisance_params(mode)*D%ClPointsources(1,D%cl_lmin:D%cl_lmax)      
+  !  end if
+  !  beamC=0
+  !  do i=1, D%beam_MCMC_modes
+  !     mode = mode + 1
+  !     BeamC = BeamC + nuisance_params(mode) *cl(D%cl_lmin:D%cl_lmax,1)*D%beammodes( D%cl_lmin:D%cl_lmax,i )     
+  !  end do
+  !   cl(D%cl_lmin:D%cl_lmax,1) = cl(D%cl_lmin:D%cl_lmax,1) + beamC
+  !  
+  ! end if
 
   
   if (Bi/=0 .and. num_cls<3) call MpiStop('CMBLikes_CMBLike: Need num_cls =4 to use B modes')
