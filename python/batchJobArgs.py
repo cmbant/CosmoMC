@@ -55,7 +55,7 @@ class batchArgs():
 
         def filteredBatchItems(self, wantSubItems=True):
             for jobItem in self.batch.items(wantImportance=not self.args.noimportance, wantSubItems=wantSubItems):
-                if self.jobItemWanted(jobItem) and self.nameMatches(jobItem) and self.paramsMatch(jobItem): yield(jobItem)
+                if self.jobItemWanted(jobItem) and self.nameMatches(jobItem) and self.paramsMatch(jobItem)  and self.dataMatches(jobItem): yield(jobItem)
 
 
 
