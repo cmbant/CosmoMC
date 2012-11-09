@@ -159,10 +159,29 @@ subroutine Initialize(Ini,Params)
         character(LEN=5000) fname,InLine
         character(LEN=1024) prop_mat
         real center, wid, mult, like
+        integer fast_params(num_params)
+        integer fast_number, fast_param_index
         
         output_lines = 0
         
         call SetParamNames(NameMapping)
+        if (use_fast_slow) then
+            if (Ini_HasKey_File(Ini,'fast_parameters')) then
+            !List of parmeter names to treat as fast
+             fast_number = num_params
+             call ParamNames_ReadIndices(NameMapping,Ini_Read_String_File(Ini,'fast_parameters'), fast_params, fast_number)
+            else
+             !all parameters at and above fast_param_index
+             fast_param_index= Ini_Read_Int_File(Ini,'fast_param_index',num_hard+1) 
+             fast_number = 0
+             do i=fast_param_index, num_params
+              fast_number = fast_number+1
+              fast_params(fast_number) = i
+              end do
+            end if
+        else 
+            fast_number = 0
+        end if
         
         Ini_fail_on_not_found = .false.
 
@@ -185,7 +204,8 @@ subroutine Initialize(Ini,Params)
     
         num_params_used = 0
         num_fast = 0
-        num_slow = 0
+        num_slow=0
+
         GaussPriors%std=0 !no priors by default
         do i=1,num_params
    
@@ -203,11 +223,11 @@ subroutine Initialize(Ini,Params)
               Scales%PWidth(i)=0
             end if  
            else 
-            InLine =  ParamNames_ReadIniForParam(NameMapping,DefIni,'param',i)
+            InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'param',i)
             if (InLine=='') call ParamError('parameter ranges not found',i) 
             read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), wid, Scales%PWidth(i)
             if (Scales%PWidth(i)/=0) then
-             InLine =  ParamNames_ReadIniForParam(NameMapping,DefIni,'prior',i)
+             InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'prior',i)
              if (InLine/='') read(InLine, *, err = 101) GaussPriors%mean(i), GaussPriors%std(i)
             end if
            end if  
@@ -215,9 +235,9 @@ subroutine Initialize(Ini,Params)
            if (Scales%PMax(i) < Scales%PMin(i)) call ParamError('You have param Max < Min',i)
            if (Scales%center(i) < Scales%PMin(i)) call ParamError('You have param center < Min',i)
            if (Scales%center(i) > Scales%PMax(i)) call ParamError('You have param center > Max',i)
-           if (Scales%PWidth(i) /= 0) then
+           if (Scales%PWidth(i) /= 0) then !to get sizes for allocation arrays
                num_params_used = num_params_used + 1
-              if (i > num_hard .and. use_fast_slow) then
+              if (use_fast_slow .and. any(i==fast_params(1:fast_number))) then
                 num_fast = num_fast + 1
               else
                 num_slow = num_slow +1
@@ -238,26 +258,35 @@ subroutine Initialize(Ini,Params)
            end do
            end if
         end do
-  
-        if (Feedback > 0 ) write(*,'(" Varying ",1I2," parameters (",1I2," fast)")') &
-               num_params_used,num_fast
-        
+
         allocate(params_used(num_params_used))
         allocate(fast_params_used(num_fast))
+        allocate(slow_params_used(num_slow))
+        allocate(fast_in_used(num_fast))
+        allocate(slow_in_used(num_slow))
 
         num_params_used = 0
         num_fast = 0
+        num_slow=0
         do i=1,num_params
            if (Scales%PWidth(i) /= 0) then
               num_params_used = num_params_used + 1
               params_used(num_params_used) = i
-              if (i > num_hard .and. use_fast_slow) then
+              if (use_fast_slow .and. any(i==fast_params(1:fast_number))) then
                 num_fast = num_fast + 1
-                fast_params_used(num_fast) = i          
+                fast_params_used(num_fast) = i
+                fast_in_used(num_fast) = num_params_used
+              else
+                num_slow = num_slow +1
+                slow_params_used(num_slow) = i
+                slow_in_used(num_slow)=num_params_used
               end if
            end if
         end do
-   
+
+        if (Feedback > 0 ) write(*,'(" Varying ",1I2," parameters (",1I2," fast)")') &
+               num_params_used,num_fast
+
         if (has_propose_matrix) then
            
            call IO_ReadProposeMatrix(pmat, prop_mat)
@@ -326,7 +355,7 @@ subroutine SetProposeMatrix
 
             U = propose_matrix
             call Matrix_Inverse(U)
-            propose_matrix_fast = U(num_slow+1:num_params_used, num_slow+1:num_params_used)
+            propose_matrix_fast = U(fast_in_used, fast_in_used)
             call Matrix_Diagonalize(propose_matrix_fast,propose_diag_fast, num_fast)
             !propose_matrix^-1 = U D U^T, returning U in propose_matrix
             propose_matrix_fast = transpose(propose_matrix_fast)
@@ -353,15 +382,12 @@ subroutine SetProposeMatrix
         call DoAbort('Proposal matrix has negative or zero eigenvalues')
     propose_diag = sqrt(max(1e-12,propose_diag))
 
-
 !Get projected lengths 
 
     do i = 1, num_params_used
-          vecs(:,i) = propose_diag(i)*propose_matrix(1:num_slow,i)
+          vecs(:,i) = propose_diag(i)*propose_matrix(slow_in_used,i)
           proj_len(i) = sum(vecs(:,i)**2)  
     end do
-
-
 
      if (.not. allocated(slow_evecs)) allocate(slow_evecs(num_slow))
 
@@ -385,8 +411,6 @@ subroutine SetProposeMatrix
 end subroutine SetProposeMatrix
 
 
-
- 
   subroutine WriteCMBParams(CMB,Theory,mult,like, with_data)     
      Type (CosmoTheory) Theory 
      real, intent(in) :: mult, like

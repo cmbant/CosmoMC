@@ -73,7 +73,7 @@ contains
     if (fast) then
       vec(1:num_fast) =  Rot_fast(:,i) * dist * propose_diag_fast  
       tmp%P(fast_params_used) =  tmp%P(fast_params_used) + & 
-        sigmas(num_slow+1:num_slow+ num_fast) * matmul (propose_matrix_fast, vec(1:num_fast))
+        sigmas(fast_in_used) * matmul (propose_matrix_fast, vec(1:num_fast))
     else
       vec(1:num_slow) =  Rot_slow(:,i) * dist * propose_diag(slow_evecs) 
       tmp%P(params_used) =  tmp%P(params_used) + &
@@ -84,8 +84,8 @@ contains
      tmp%P(fast_params_used) = tmp%P(fast_params_used) + &
               Rot_fast(:,i) * dist *  Scales%PWidth(fast_params_used)
     else
-     tmp%P(params_used(1:num_slow)) = tmp%P(params_used(1:num_slow)) +  &
-        Rot_slow(:,i) * dist *  Scales%PWidth(params_used(1:num_slow))
+     tmp%P(slow_params_used) = tmp%P(slow_params_used) +  &
+        Rot_slow(:,i) * dist *  Scales%PWidth(slow_params_used)
     end if
   end if
  

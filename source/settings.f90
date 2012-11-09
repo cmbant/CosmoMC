@@ -69,7 +69,8 @@ module settings
   integer, parameter :: index_initpower = num_hard+1
   integer, parameter :: index_freq = index_initpower + num_initpower
   integer, parameter :: index_nuisance = index_freq  + num_freq_params
-  integer, dimension(:), allocatable :: params_used,fast_params_used
+  integer, dimension(:), allocatable :: params_used,fast_params_used,slow_params_used !indices into full parameter list
+  integer, dimension(:), allocatable :: fast_in_used,slow_in_used !indices into the used parameters
   integer num_params_used, num_fast, num_slow, nuisance_params_used
 
   integer :: num_threads = 0

@@ -525,7 +525,7 @@ function WL_Weight(L) result (W)
               output_lines = output_lines +1
               call WriteParams(CurParams,real(mult), CurLike)
             end if
-            call SliceSampleFastParams(CurParams, CurLike)           
+            call SliceSampleFastParams(CurParams, CurLike)
            if (CurLike < MaxLike) MaxLike = CurLike
             mult = 1 
         end if 
