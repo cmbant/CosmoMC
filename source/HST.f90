@@ -53,7 +53,7 @@ real function HST_LnLike(like, CMB, Theory)
   
   theoryval = 1.0/AngularDiameterDistance(zeffh0)
   HST_LnLike = (theoryval - angdistinvzeffh0)**2/(2*angdistinvzeffh0errsqr)
-  if (Feedback > 1) print *,'HST_LnLike like: ',HST_LnLike
+
 end function  HST_LnLike
 
 end module HST

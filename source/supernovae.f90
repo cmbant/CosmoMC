@@ -150,10 +150,7 @@ implicit none
      !! H0 normalisation alla Bridle and co. 
      chisq = AT-BT**2/like%sn_sumninv
 
-     if (Feedback > 1) write (*,*) 'SN chisq: ', chisq
-
      SN_LnLike = chisq/2
-
 
  end function SN_LnLike
 

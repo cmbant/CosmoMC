@@ -98,6 +98,7 @@
     use settings
     use cmbtypes
     use ParamDef
+    use DataLikelihoodList
     implicit none
     Type(ParamSet) P
     real, intent(in), optional :: like
@@ -140,18 +141,14 @@
             write(aunit,'(1I5,1E15.7)') num_real_params+i, P%P(num_real_params+i)
         end do
     end if
+    
+    if (present(like)) then
+      write(aunit,*) ''
+      write(aunit,*) '-log(Like) contributions'
+      call DataLikelihoods%WriteLikelihoodContribs(aunit, P%Info%likelihoods)
+    end if
 
     end  subroutine WriteParamsHumanText
-
-#ifdef f2003
-use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
-                                          output_unit=>stdout, &
-                                          error_unit=>stderr
-#else
-#define stdin  5
-#define stdout 6
-#define stderr 0
-#endif
 
     subroutine WriteBestFitParams(like, Params, fname)
     real like

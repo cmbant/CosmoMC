@@ -26,6 +26,7 @@
     Type, extends(TObjectList) :: LikelihoodList 
     contains
     procedure :: Item => LikelihoodItem
+    procedure :: WriteLikelihoodContribs
     end type LikelihoodList
 
     contains
@@ -44,6 +45,21 @@
 
     end function LikelihoodItem
 
+    subroutine WriteLikelihoodContribs(L, aunit, likelihoods)
+    Class(LikelihoodList) :: L
+    integer, intent(in) :: aunit
+    real, intent(in) :: likelihoods(*)
+    integer i
+    Class(DataLikelihood), pointer :: LikeItem
+
+     do i=1,L%Count
+        LikeItem =>  L%Item(i)
+        write (aunit,'(2f12.2,1A20)') likelihoods(i),likelihoods(i)/2, &
+           trim(LikeItem%LikelihoodType)//': '//LikeItem%name
+     end do
+
+    end subroutine WriteLikelihoodContribs
+    
     function LogLike(like, CMB, Theory)
     class(DataLikelihood) :: like
     Type(CMBParams) :: CMB

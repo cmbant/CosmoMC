@@ -3,6 +3,13 @@ module settings
   use Random
   use IniFile
   use ParamNames
+#ifdef f2003
+use, intrinsic :: iso_fortran_env, only : input_unit, output_unit,error_unit
+#else
+#define input_unit  5
+#define output_unit 6
+#define error_unit 0
+#endif
   implicit none
 
   real :: AccuracyLevel = 1.
@@ -24,7 +31,8 @@ module settings
   integer, parameter :: num_camSpec =33
   integer, parameter :: num_plik=12
   integer, parameter :: num_actSpt = 21
-  integer, parameter :: num_freq_params = 1+num_camSpec + num_plik+num_actSpt ! WMAP(1)/CAMspec(33)/PLik(12)/ACTSPT(21), in that order #clik#
+  integer, parameter :: num_freq_params = 1+num_camSpec + num_plik+num_actSpt 
+    ! WMAP(1)/CAMspec(33)/PLik(12)/ACTSPT(21), in that order #clik#
 #else
   integer, parameter :: num_freq_params = 1
 #endif
@@ -89,7 +97,8 @@ module settings
   real, parameter :: logZero = 1e30
   character (LEN =120) :: FileChangeIni = '', FileChangeIniAll = ''
 
-
+  integer, parameter :: stdout = output_unit
+  
 contains
 
   function ReplaceDirs(S, repdir) result (filename)

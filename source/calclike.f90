@@ -81,7 +81,10 @@ contains
      end if
 
      if (GetLogLike/=logZero) Params%Info%lastParamArray = Params%P
-    end if 
+    end if
+
+    if (Feedback>1 .and. GetLogLike/=LogZero) &
+      call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%Info%likelihoods)
 
   end function GetLogLike
 
