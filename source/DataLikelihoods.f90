@@ -4,8 +4,6 @@ module DataLikelihoodList
     use ParamDef
     implicit none
 
-    Type(LikelihoodList), target, save :: DataLikelihoods
-
     integer :: H0_min = 40, H0_max = 100
     real :: Use_min_zre = 0
 

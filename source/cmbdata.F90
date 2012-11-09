@@ -1041,7 +1041,7 @@ contains
      call ClsFromTheoryData(Theory, CMB, acl)
 !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
 !freq_params(35:44), ACT/SPT as freq_params(45:65)
-      ClikLogLike = clik_lnlike(dble(acl),dble(CMB%data_params))
+      ClikLogLike = clik_lnlike(dble(acl),dble(CMB%data_params(2:num_freq_params)))
  end function ClikLogLike
 #endif
  

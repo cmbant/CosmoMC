@@ -29,6 +29,8 @@
     procedure :: WriteLikelihoodContribs
     end type LikelihoodList
 
+    Type(LikelihoodList), target, save :: DataLikelihoods
+
     contains
 
     function LikelihoodItem(L, i) result(P)
