@@ -74,18 +74,39 @@ contains
 
 
  subroutine SetTheoryForBackground(CMB) 
-    use cambmain, only: initvars
     use Camb, only: CAMBParams_Set 
     type(CMBParams) CMB
     type(ParamSetInfo) Info
     type(CAMBParams)  P
-    
+!set background dparameters, but don't calculate thermal history
     call CMBToCAMB(CMB, P)
     call CAMBParams_Set(P)
-    call InitVars
   
  end subroutine SetTheoryForBackground
- 
+
+  subroutine GetNewBackgroundData(CMB,Info,error)
+    use cambmain, only: initvars
+   type(CMBParams) CMB
+   integer error
+   Type(ParamSetInfo) Info
+    
+    call SetTheoryForBackground(CMB)
+    call InitVars !calculate thermal history, e.g. z_drag etc.
+    call SetDerived(Info)
+    error=0
+   
+  end subroutine GetNewBackgroundData
+
+  subroutine SetDerived(Info)
+   Type(ParamSetInfo) Info
+   
+      Info%Theory%numderived = nthermo_derived
+      if (nthermo_derived > max_derived_parameters) &
+              call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
+      Info%Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
+  
+  end subroutine SetDerived
+  
  subroutine GetNewTransferData(CMB,Info,error)
    use ModelParams, only : ThreadNum
    use InitialPower
@@ -103,11 +124,7 @@ contains
   
          call CAMB_GetTransfers(P, Info%Transfers, error)
          if (error==0) then
-           Info%Theory%numderived = nthermo_derived
-           if (nthermo_derived > max_derived_parameters) &
-               call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
-            Info%Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
-            Info%Theory%Age =  CAMB_GetAge(P)
+             call SetDerived(Info)
          else
           if (stop_on_error) call MpiStop('CAMB error '//trim(global_error_message))
           if (Feedback > 0) write(*,*) 'CAMB returned error '//trim(global_error_message)
@@ -193,7 +210,6 @@ end subroutine GetNewPowerData
 
       if (DoPk) call SetPkFromCAMB(Theory,MT)
 
-      Theory%Age = CAMB_GetAge(P) !should just be another derived parameter..
       Theory%numderived = nthermo_derived
       if (nthermo_derived > max_derived_parameters) &
         call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
@@ -348,7 +364,7 @@ end subroutine GetNewPowerData
  subroutine InitCAMBParams(P)
    use lensing
    use ModelParams
-   use Lya
+!   use Lya
    use mpk
    type(CAMBParams)  P 
    integer zix
@@ -379,7 +395,7 @@ end subroutine GetNewPowerData
         else
          P%Transfer%kmax = 0.8
         end if
-        if (Use_Lya) P%Transfer%kmax = lya_kmax
+!        if (Use_Lya) P%Transfer%kmax = lya_kmax
         P%Transfer%num_redshifts = matter_power_lnzsteps
         
         if (AccuracyLevel > 1 .or. HighAccuracyDefault) then

@@ -35,6 +35,7 @@ use likelihood
 
   real(dl), dimension(10000) :: DR7_alpha_file, DR7_prob_file
   real(dl) DR7_dalpha
+  real rsdrag_theory
   integer DR7_alpha_npoints
 
     contains 
@@ -144,26 +145,6 @@ subroutine ReadBaoDataset(bset, gname)
 
 end subroutine ReadBaoDataset
 
-
-!JD copied from Reid BAO code
-function CMBToBAOrs()
-   use settings
-   use cmbtypes
-   use ModelParams
-   use Precision
-   use ThermoData, only : z_drag
-   implicit none
-   real(dl) ::  adrag, atol, rsdrag
-   real(dl), external :: rombint
-   real(dl) :: CMBToBAOrs
-   
-   adrag = 1.0d0/(1.0d0+z_drag)
-   atol = 1e-6
-   rsdrag = rombint(dsound_da,1d-8,adrag,atol)
-   CMBToBAOrs = rsdrag
-
-end function CMBToBAOrs
-
 function D_v(z)
     real(dl), intent(IN) :: z
     real(dl)  D_v, Hz, ADD
@@ -194,10 +175,10 @@ function SDSS_dvtors(CMB,z)
     real(dl) SDSS_dvtors
     real(dl), intent(IN)::z
     real(dl) rs
-    real(dl), parameter :: rs_rescale = 153.017d0/149.0808
+    real(dl), parameter :: rs_rescale = 153.017d0/148.92 !149.0808
     
 !    rs = SDSS_CMBToBAOrs(CMB)
-     rs = CMBToBAOrs()*rs_rescale !rescaled to match fitting formula for LCDM
+     rs = rsdrag_theory*rs_rescale !rescaled to match fitting formula for LCDM
      SDSS_dvtors = D_v(z)/rs
 
 end function SDSS_dvtors
@@ -206,6 +187,7 @@ end function SDSS_dvtors
 !===================================================================================
 
 function BAO_LnLike(like, CMB, Theory) 
+   use ModelParams, only : derived_zdrag,derived_rdrag
    type(CMBParams) CMB
    Class(BAOLikelihood) :: like
    Type(CosmoTheory) Theory
@@ -213,7 +195,8 @@ function BAO_LnLike(like, CMB, Theory)
    real  BAO_LnLike
    real(dl), allocatable :: BAO_theory(:)
 
-         BAO_LnLike=0
+        rsdrag_theory =  Theory%derived_parameters( derived_rdrag ) 
+        BAO_LnLike=0
         if (like%name=='DR7') then
             BAO_LnLike = BAO_DR7_loglike(CMB,like%bao_z(1))
             return
@@ -251,7 +234,8 @@ end function BAO_LnLike
 
  subroutine BAO_DR7_init(fname)
  character(LEN=*), intent(in) :: fname
- real(dl) :: tmp0,tmp1,DR7_alpha
+ real(dl) :: tmp0,tmp1
+ real(dl) :: DR7_alpha =0
  integer ios,ii
 
   open(unit=7,file=fname,status='old')

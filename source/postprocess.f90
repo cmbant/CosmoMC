@@ -184,7 +184,6 @@ contains
             Theory%Matter_Power = CorrectTheory%Matter_Power
          end if
 
-         Theory%Age = CorrectTheory%Age
          Theory%derived_parameters = CorrectTheory%derived_parameters
          Theory%numderived = CorrectTheory%numderived
      

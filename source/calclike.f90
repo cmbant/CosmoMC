@@ -131,6 +131,8 @@ contains
          if (SlowChanged .or. PowerChanged .and. error==0) then
            call GetNewPowerData(CMB, Params%Info, error)
          end if
+     else
+         if (SlowChanged) call GetNewBackgroundData(CMB, Params%Info, error)
      end if
    CalculateRequiredTheoryChanges = error==0
 
@@ -147,9 +149,9 @@ contains
     integer i
     logical backgroundSet
     
-    backgroundSet = slowChanged
+    backgroundSet = slowChanged 
     logLike = logZero
-
+    print *,'GetLogLikeWithTheorySet'
     do i= 1, DataLikelihoods%count
      like => DataLikelihoods%Item(i)
      if (any(like%dependent_params .and. changeMask )) then
@@ -158,6 +160,7 @@ contains
               backgroundSet = .true.
           end if
           itemLike = like%LogLike(CMB, Params%Info%Theory)
+          print *, trim(like%name), itemLike
           if (itemLike == logZero) return
           Params%Info%Likelihoods(i) = itemLike
      end if

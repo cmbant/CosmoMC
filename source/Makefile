@@ -116,6 +116,7 @@ LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
+
 ifneq ($(PLANCKLIKE),)
 FFLAGS += -DCLIK
 endif
@@ -136,12 +137,12 @@ ifneq ($(PLANCKLIKE),)
 PLANCKLIKEFILES += $(PLANCKLIKE).o
 endif
 
+DATAMODULES = $(PLANCKLIKEFILES) lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o
 
-LIKEFILES = $(PLANCKLIKEFILES)  calclike.o
+LIKEFILES =  DataLikelihoods.o calclike.o
 
-OBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
-	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
-	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) $(LIKEFILES) \
+OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
+	likelihood.o bbn.o $(DATAMODULES) $(CLSFILE) cmbdata.o paramdef.o $(PROPOSE) $(PARAMETERIZATION) $(LIKEFILES) \
 	EstCovmat.o PowellConstrainedMinimize.o minimize.o postprocess.o MCMC.o driver.o
 
 
@@ -192,23 +193,24 @@ default: cosmomc
 
 all : cosmomc getdist
 
+likelihood.o: ObjectLists.o settings.o
+DataLikelihoods.o: likelihood.o paramdef.o $(DATAMODULES)
 cliklike_CamSpec.o: temp_like.o
 settings.o: ../camb/libcamb_$(RECOMBINATION).a
 cmbtypes.o: settings.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o  $(WMAPOBJS)
-WeakLen.o: cmbtypes.o
 bbn.o: settings.o
 mpk.o: cmbtypes.o lrggettheory.o
 bao.o: cmbtypes.o mpk.o
 HST.o: cmbtypes.o
 supernovae.o: cmbtypes.o
 SDSSLy-a-v3.o: cmbtypes.o
-$(CLSFILE): cmbtypes.o mpk.o HST.o bao.o IO.o
+$(CLSFILE): cmbtypes.o IO.o
 paramdef.o: $(CLSFILE)
 $(PROPOSE): paramdef.o
 $(PARAMETERIZATION): paramdef.o
-calclike.o: $(PARAMETERIZATION)
+calclike.o: $(PARAMETERIZATION) DataLikelihoods.o
 postprocess.o: calclike.o
 MCMC.o: calclike.o
 driver.o: EstCovmat.o MCMC.o minimize.o

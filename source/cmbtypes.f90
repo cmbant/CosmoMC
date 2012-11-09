@@ -72,7 +72,7 @@ implicit none
   end Type CMBParams
 
   Type CosmoTheory
-     real Age, r10
+     real r10
      real cl(lmax,num_cls_tot), cl_tensor(lmax_tensor,num_cls) 
       !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
      real sigma_8, tensor_ratio_02
@@ -124,7 +124,7 @@ contains
     write(i) like
     write(i) CMB
 
-    write(i) T%Age, T%r10, T%sigma_8, T%matter_power
+    write(i) T%r10, T%sigma_8, T%matter_power
     write(i) T%numderived
     write(i) T%tensor_ratio_02, T%derived_parameters(1:T%numderived) !!
     
@@ -192,7 +192,7 @@ contains
         read(i,end = 100, err=100) like
         read(i) CMB
         if (anumpowers > num_matter_power) call MpiStop('mismatched num_matter_power in .data')  
-        read(i) T%Age, T%r10, T%sigma_8, T%matter_power(1:anumpowers,1:matter_power_lnzsteps)
+        read(i)  T%r10, T%sigma_8, T%matter_power(1:anumpowers,1:matter_power_lnzsteps)
         read(i) T%numderived
         read(i) T%tensor_ratio_02, T%derived_parameters(1:T%numderived)
   

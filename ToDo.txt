@@ -5,3 +5,5 @@ importance sampling
 
 lya
 mpk
+
+kmax, lmax (e.g. lya)

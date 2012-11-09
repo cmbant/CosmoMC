@@ -1048,13 +1048,13 @@ contains
  
  
    subroutine CMBDataLikelihoods_Add(LikeList, Ini)
-    use IniFile
+#ifndef NOWMAP
+        use WMAP_OPTIONS
+#endif
+   use IniFile
 #ifdef CLIK
     use cliklike
     Type(ClikLikelihood), allocatable, save :: clikLikelihood
-#endif
-#ifndef NOWMAP
-        use WMAP_OPTIONS
 #endif
     class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
