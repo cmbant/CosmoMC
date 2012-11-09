@@ -174,8 +174,10 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
      real nm
      character(LEN=50) fmt
      real Cls(lmax,num_cls_tot)
+     Type (CMBParams) CMB
 
-      call ClsFromTheoryData(Params%Info%Theory, Params%Info%LastParams, Cls)
+      call ParamsToCMBParams(Params%Info%LastParamArray,CMB)
+      call ClsFromTheoryData(Params%Info%Theory, CMB, Cls)
       call CreateTxtFile(fname,tmp_file_unit)
       fmt = concat('(1I6,',num_cls_tot,'E15.5)')
       do l = 2, lmax

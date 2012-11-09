@@ -20,7 +20,6 @@ module CMB_Cls
   Type ParamSetInfo  
     Type (CAMBdata)    :: Transfers
     Type (CosmoTheory) :: Theory
-    Type (CMBParams)   :: LastParams
     real lastParamArray(num_params)
     real likelihoods(max_likelihood_functions)
   end Type ParamSetInfo
@@ -499,7 +498,6 @@ end subroutine GetNewPowerData
         call CAMB_InitCAMBdata(Info%Transfers)
     
         P%WantTensors = compute_tensors
-        Info%LastParams%omb = -1 !Make sure we calculate the CMB first time called
         CAMBP = P
         
  end subroutine CMB_Initialize

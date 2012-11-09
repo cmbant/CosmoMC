@@ -64,9 +64,9 @@ contains
         if (GetLogLike /= LogZero) GetLogLike = GetLogLike + getLogPriors(Params%P)
         if (GetLogLike /= LogZero) GetLogLike = GetLogLike/Temperature
     else
+      call ParamsToCMBParams(Params%P,CMB)
       GetLogLike  = TestHardPriors(CMB, Params%Info)
       if (GetLogLike == logZero) return
-      call ParamsToCMBParams(Params%P,CMB)
       if (first) then
            changeMask = .true.
            first = .false.
