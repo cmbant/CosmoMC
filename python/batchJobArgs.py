@@ -16,6 +16,11 @@ class batchArgs():
                 self.parser.add_argument('--noimportance', action='store_true')
                 self.parser.add_argument('--importance', nargs='*', default=None)
             self.parser.add_argument('--name', default=None, nargs='+')
+            self.parser.add_argument('--param', default=None, nargs='+')
+            self.parser.add_argument('--paramtag', default=None)
+            self.parser.add_argument('--data', default=None)
+            self.parser.add_argument('--datatag', default=None)
+
             self.args = self.parser.parse_args()
             self.batch = batchJob.readobject(self.args.batchPath)
             return (self.batch, self.args)
@@ -32,9 +37,25 @@ class batchArgs():
                 if fnmatch.fnmatch(jobItem.name, pat): return True
             return False
 
+        def dataMatches(self, jobItem):
+            if self.args.datatag is None:
+                if self.args.data is None: return True
+                return self.args.data in jobItem.data_set
+            else:
+                return jobItem.datatag == self.args.datatag
+
+        def paramsMatch(self, jobItem):
+            if self.args.paramtag is None:
+                if self.args.param is None: return True
+                for pat in self.args.param:
+                    if pat in jobItem.param_set: return True
+                return False
+            else:
+                return jobItem.paramTag == self.args.paramtag
+
         def filteredBatchItems(self, wantSubItems=True):
             for jobItem in self.batch.items(wantImportance=not self.args.noimportance, wantSubItems=wantSubItems):
-                if self.jobItemWanted(jobItem) and self.nameMatches(jobItem): yield(jobItem)
+                if self.jobItemWanted(jobItem) and self.nameMatches(jobItem) and self.paramsMatch(jobItem)  and self.dataMatches(jobItem): yield(jobItem)
 
 
 
