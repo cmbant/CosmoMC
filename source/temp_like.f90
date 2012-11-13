@@ -1,5 +1,6 @@
 module temp_like
   use settings, only: MPIrank
+  use AMLutils
 
   implicit none
 
@@ -27,7 +28,24 @@ module temp_like
   character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.2'
 
 
-contains
+    contains
+
+   function CAMSpec_Quad(Mat,vec)
+   integer, parameter :: dm = kind(1.d0)
+   real(dm), intent(in) :: Mat(:,:)
+   real(dm) vec(:), CAMSpec_Quad
+   real(dm) Outv(nx) 
+   real(dm)  mult, beta
+   real(dm) ddot
+   external ddot
+
+
+     mult = 1
+     beta = 0
+     call DSYMV('U',nX,mult,Mat,nX,vec, 1,beta, Outv,1)
+     CAMSpec_Quad = ddot(nX, vec, 1, outv, 1)
+  
+  end function CAMSpec_Quad
 
 
   subroutine like_init(like_file, sz143_file, tszxcib_file, ksz_file, beam_file)
@@ -116,7 +134,7 @@ contains
        r_ps, r_cib, xi, A_ksz, cal0, cal1, cal2, beam_coeffs)
 
     integer :: i, j, l, ipause,ii,jj
-    real*8, dimension(:),  allocatable ::  X_theory, X_f, X_data, X_beam_corr_model, Y 
+    real*8, dimension(:),  allocatable, save ::  X_theory, X_f, X_data, X_beam_corr_model, Y 
     real*8, dimension(0:) :: cell_cmb
     real*8 zlike, A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz, r_ps, r_cib, &
          cal0, cal1, cal2, xi, A_ksz
@@ -128,19 +146,22 @@ contains
     real*8 :: beamfac
 
     integer :: ie1,ie2,if1,if2
-
+    real *8 atime
 
     if (needinit) then
        print*, 'like_init should have been called before attempting to call calc_like.'
        stop
     end if
+    if (.not. allocated(X_theory)) then
     allocate(X_theory(1:nX))      
     allocate(X_data(1:nX))      
     allocate(X_f(1:nX))      
     allocate(X_beam_corr_model(1:nX))      
     allocate(Y(1:nX))
+    end if
 
 
+    ! atime = MPI_Wtime()
 
     if(Nspec.ne.4) then
        print*, 'Nspec inconsistent with foreground corrections in calc_like.'
@@ -218,13 +239,16 @@ contains
     end do
 
     zlike = 0.d+00
+!$OMP parallel do private(j,i,ztemp) reduction(+:zlike) schedule(static,16)
     do  j = 1, nX
-       ztemp=0.d0
-       do  i = 1, nX
+       ztemp= 0
+       do  i = j+1, nX
           ztemp = ztemp + Y(i)*c_inv(i, j)
        end do
-       zlike=zlike+ztemp*Y(j)
+       zlike=zlike+(ztemp*2 +c_inv(j, j)*Y(j))*Y(j)
     end do
+
+!     zlike = CAMSpec_Quad(c_inv, Y)
 
 
     do if2=1,beam_Nspec
@@ -243,6 +267,8 @@ contains
     zlike=zlike+((cal2/cal1-0.9966d0)/0.0015d0)**2 &
          +((cal0/cal1-1.0006d0)/0.0004d0)**2
 
+   ! print *,'CAMspec time:',  MPI_Wtime() - atime
+    
     ! WARNING; weakening prior...
     !    zlike=zlike+((cal2/cal1-1.0056d0)/0.0063d0)**2 &
     !               +((cal0/cal1-1.0127d0)/0.003d0)**2
@@ -306,11 +332,11 @@ contains
     !endif
 
 
-    deallocate(X_theory)
-    deallocate(X_data)     
-    deallocate(X_f)      
-    deallocate(X_beam_corr_model)
-    deallocate(Y)
+  !  deallocate(X_theory)
+  !  deallocate(X_data)     
+  !  deallocate(X_f)      
+  !  deallocate(X_beam_corr_model)
+  !  deallocate(Y)
 
 
 

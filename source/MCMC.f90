@@ -182,21 +182,30 @@ contains
   real, allocatable :: likes_start(:), likes_end(:)
   integer interp_step
   real frac
+  double precision atime
 
+   atime = MPI_Wtime(); 
    call GetProposalProjSlow(CurParams, TrialEnd)
+   
    CurEndLike = GetLogLike(TrialEnd) 
    CurStartLike = CurLike
+   if (Feedback > 2) then
+    print *, 'Dragging Slow time:',  MPI_Wtime()-atime;
+    atime = MPI_Wtime(); 
+   end if
+
+   num_drag_steps = num_fast
+
+   num_intermediates = nint(3 / marginal_marged_ratio_direction)
+   if (Feedback >2 ) print *,'dragging with ',num_intermediates,'intermediates'
 
    allocate(likes_start(0:num_intermediates-1), likes_end(0:num_intermediates-1))
-   
-   num_intermediates = nint(2 / marginal_marged_ratio_direction)
-   if (Feedback >1 ) print *,'dragging with ',num_intermediates,'intermediates'
-   num_drag_steps = num_fast
 
 
    likes_end(0) = CurEndLike
    likes_start(0) = CurStartLike
 
+   TrialStart = CurParams
    CurIntParams = TrialEnd
 
    numaccpt = 0
@@ -206,10 +215,13 @@ contains
 
    do drag_step =1, num_drag_steps
     call GetProposalProjFast(CurIntParams, TrialEnd)
+
     TrialStart%P(fast_params_used) = TrialEnd%P(fast_params_used)
 
+    atime = MPI_Wtime()
     EndLike = GetLogLike(TrialEnd)
     StartLike = GetLogLike(TrialStart)
+
     if (Feedback > 2) print *,'End,start drag: ', drag_step, EndLike, StartLike
     IntLike = StartLike*(1-frac) + frac*EndLike
 
@@ -229,6 +241,8 @@ contains
    likes_end(interp_step) = CurEndLike
    
    end do
+   
+   if (Feedback > 2) print *, 'Dragging time:',  MPI_Wtime()-atime;
    
    if (Feedback > 1) print *,'drag steps accept ratio:', real(numaccpt)/num_drag_steps
 
@@ -616,7 +630,7 @@ function WL_Weight(L) result (W)
   elseif (sampling_method == sampling_slowgrid .and. CurLike /= LogZero .and. num_fast /= 0 .and. num_slow /=0) then
           if (Feedback > 1) write (*,*) instance, 'Directional gridding, Like: ', CurLike
           call SampleSlowGrid(CurParams, CurLike,mult, MaxLike, num, num_accept) 
-  elseif (sampling_method == sampling_fast_dragging .and. CurLike /= LogZero .and. num_fast/=0) then
+  elseif (sampling_method == sampling_fast_dragging .and. CurLike /= LogZero .and. num_fast/=0 .and. num_slow /=0) then
           if (Feedback > 1) write (*,*) instance, 'Fast dragging, Like: ', CurLike
           call FastDragging(CurParams, CurLike,mult, MaxLike, num, num_accept) 
   else

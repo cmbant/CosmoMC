@@ -148,18 +148,25 @@
 
      implicit none
      real Params(num_params)
-     real, save :: LastParams(num_params) = 0.
+     integer, parameter :: ncache =2
+     real, save :: LastParams(num_params,ncache) = 0.
 
      Type(CMBParams) CMB
-     Type(CMBParams), save :: LastCMB
+     Type(CMBParams), save :: LastCMB(ncache)
      real DA
      real  D_b,D_t,D_try,try_b,try_t, CMBToTheta, lasttry
      external CMBToTheta
-
-     if (all(Params(1:num_hard) == Lastparams(1:num_hard))) then
-       CMB = LastCMB
-       call SetFast(Params,CMB)
-     else
+     integer, save :: cache=1
+     integer i
+     
+     do i=1, ncache
+      !want to save two slow positions for some fast-slow methods
+       if (all(Params(1:num_hard) == Lastparams(1:num_hard, i))) then
+        CMB = LastCMB(i)
+        call SetFast(Params,CMB)
+        return
+       end if
+     end do
 
      DA = Params(3)/100
      try_b = 40
@@ -187,9 +194,9 @@
     !!call InitCAMB(CMB,error)
     CMB%zre = GetZreFromTau(CMB, CMB%tau)       
   
-    LastCMB = CMB
-    LastParams = Params
-    end if
+    LastCMB(cache) = CMB
+    LastParams(:,cache) = Params
+    cache = mod(cache,ncache)+1
 
     end if
  

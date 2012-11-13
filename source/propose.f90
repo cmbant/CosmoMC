@@ -76,7 +76,7 @@ contains
       tmp%P(fast_params_used) =  tmp%P(fast_params_used) + & 
         sigmas(fast_in_used) * matmul (propose_matrix_fast, vec(1:num_fast))
     else
-      if (sampling_method == sampling_fast_dragging ) then
+      if (sampling_method == sampling_fast_dragging .and. num_fast /=0) then
         vec(1:num_slow) =  Rot_slow(:,i) * dist 
         tmp%P(slow_params_used) =  tmp%P(slow_params_used) + & 
            sigmas(slow_in_used) * matmul (slow_marged_mapping, vec(1:num_slow))

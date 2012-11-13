@@ -75,7 +75,7 @@ contains
       end if
 
      if (CalculateRequiredTheoryChanges(CMB, Params)) then
-       GetLogLike = GetLogLikeWithTheorySet(CMB, Params)
+      GetLogLike = GetLogLikeWithTheorySet(CMB, Params)
      else
        GetLogLike = logZero
      end if
@@ -83,7 +83,7 @@ contains
      if (GetLogLike/=logZero) Params%Info%lastParamArray = Params%P
     end if
 
-    if (Feedback>1 .and. GetLogLike/=LogZero) &
+    if (Feedback>2 .and. GetLogLike/=LogZero) &
       call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%Info%likelihoods)
 
   end function GetLogLike
@@ -121,14 +121,14 @@ contains
     type (CMBParams) CMB
     integer error
 
-     SlowChanged = any(changeMask(1:num_hard))
+    SlowChanged = any(changeMask(1:num_hard))
      PowerChanged = any(changeMask(index_initpower:index_initpower+num_initpower-1))
      error=0
      if (Use_CMB .or. Use_LSS) then
          if (SlowChanged) then
            call GetNewTransferData(CMB, Params%Info, error)
          end if
-         if (SlowChanged .or. PowerChanged .and. error==0) then
+         if ((SlowChanged .or. PowerChanged) .and. error==0) then
            call GetNewPowerData(CMB, Params%Info, error)
          end if
      else
