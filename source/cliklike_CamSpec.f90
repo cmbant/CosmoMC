@@ -23,7 +23,7 @@
     use settings
     Type(TIniFile) Ini
     character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
-    beamfilename, kszfilename,tszxcibfilename, highLdir
+    beamfilename, kszfilename,tszxcibfilename
 
     print *,' using cliklike_CamSpec'
     use_CAMspec = Ini_Read_Logical_File(Ini,'use_CAMspec',.true.)

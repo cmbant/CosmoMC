@@ -18,7 +18,7 @@ module propose
  logical :: fast_slicing = .false. !slice fast parameters when using Metropolis 
  logical :: slice_stepout = .true.
  logical :: slice_randomsize = .false.
-
+ real :: marginal_marged_ratio_direction = 1.
  real, allocatable, dimension(:,:), save :: Rot_slow, Rot_fast
 
 contains
@@ -67,6 +67,7 @@ contains
    integer, intent(in) :: i
    logical, intent(in) :: fast
    real, intent(in) :: dist
+   real marginal_marged_ratio_direction
 
   if (has_propose_matrix) then
     vec = 0
@@ -75,9 +76,17 @@ contains
       tmp%P(fast_params_used) =  tmp%P(fast_params_used) + & 
         sigmas(fast_in_used) * matmul (propose_matrix_fast, vec(1:num_fast))
     else
-      vec(1:num_slow) =  Rot_slow(:,i) * dist * propose_diag(slow_evecs) 
-      tmp%P(params_used) =  tmp%P(params_used) + &
+      if (sampling_method == sampling_fast_dragging ) then
+        vec(1:num_slow) =  Rot_slow(:,i) * dist 
+        tmp%P(slow_params_used) =  tmp%P(slow_params_used) + & 
+           sigmas(slow_in_used) * matmul (slow_marged_mapping, vec(1:num_slow))
+        marginal_marged_ratio_direction = 1/sum((Rot_slow(:,i)/slow_conditional_marged_ratio)**2)
+        print *,i,'marginal_marged_ratio_direction', marginal_marged_ratio_direction
+      else
+       vec(1:num_slow) =  Rot_slow(:,i) * dist * propose_diag(slow_evecs) 
+       tmp%P(params_used) =  tmp%P(params_used) + &
             sigmas * matmul (propose_matrix(:,slow_evecs), vec(1:num_slow))
+      end if
     end if
   else
     if (fast) then
@@ -92,66 +101,66 @@ contains
  end subroutine UpdateParamsDirection
 
 
-subroutine GetProposal(In, Out)
+subroutine GetProposal(InP, OutP)
 
-  type (ParamSet) In, Out
+  type (ParamSet) InP, OutP
   integer, save :: fast_ix = 0
 
   fast_ix = fast_ix + 1
   if (num_slow ==0 .or. num_fast /= 0 .and. &
        mod(fast_ix, 2*(1 + (num_fast*oversample_fast)/num_slow)) /= 0) then
-   call GetProposalProjFast(In, Out)
+   call GetProposalProjFast(InP, OutP)
   else
-   call GetProposalProjSlow(In, Out)
+   call GetProposalProjSlow(InP, OutP)
   end if
 
 end subroutine GetProposal
 
-subroutine GetProposalProjSlow(In, Out)
+subroutine GetProposalProjSlow(InP, OutP)
   use settings
   use Random
   use ParamDef
   implicit none
-  type (ParamSet) In, Out
+  type (ParamSet) InP, OutP
   real  wid
   integer, save :: loopix = 0
  
   slow_proposals = slow_proposals + 1
 !Change only slow params, or eigenvectors of covmat which most change the slow params
 
-   Out= In
+   OutP= InP
    wid = propose_scale
    if (mod(loopix,num_slow)==0) then
         if (.not. allocated(Rot_slow)) allocate(Rot_slow(num_slow,num_slow))
-        call RotMatrix(Rot_slow, num_slow)      
+        call RotMatrix(Rot_slow, num_slow)
         loopix = 0
    end if
    loopix = loopix + 1
 
-   call UpdateParamsDirection(Out,.false.,Propose_r(num_slow) * wid, loopix)
+   call UpdateParamsDirection(OutP,.false.,Propose_r(num_slow) * wid, loopix)
 
 end subroutine GetProposalProjSlow
 
 
-subroutine GetProposalProjFast(In, Out, ascale)
-  type (ParamSet) In, Out
+subroutine GetProposalProjFast(InP, OutP, ascale)
+  type (ParamSet) InP, OutP
   real wid
   real, intent(in), optional :: ascale
   integer, save :: loopix = 0
 
-   Out= In
+   OutP= InP
 
    wid = propose_scale
    if (present(ascale)) wid = ascale
 
    if (mod(loopix,num_fast)==0) then
         if (.not. allocated(Rot_fast)) allocate(Rot_fast(num_fast,num_fast))
-        call RotMatrix(Rot_fast, num_fast)      
+        call RotMatrix(Rot_fast, num_fast)
         loopix = 0
    end if
    loopix = loopix + 1
 
-   call UpdateParamsDirection(Out,.true.,Propose_r(num_fast) * wid, loopix)
+   call UpdateParamsDirection(OutP,.true.,Propose_r(num_fast) * wid, loopix)
      
 end subroutine GetProposalProjFast
 

@@ -198,7 +198,7 @@ program SolveCosmology
             Ini_fail_on_not_found = .false.
             burn_in = Ini_Read_Int('burn_in',0)     
             sampling_method = Ini_Read_Int('sampling_method',sampling_metropolis)
-            if (sampling_method > 6 .or. sampling_method<1) call DoAbort('Unknown sampling method')
+            if (sampling_method > 7 .or. sampling_method<1) call DoAbort('Unknown sampling method')
             if (sampling_method==4) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
         else
          Ini_fail_on_not_found = .false.

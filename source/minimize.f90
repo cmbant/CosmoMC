@@ -144,7 +144,7 @@
     
     if (present(like)) then
       write(aunit,*) ''
-      write(aunit,*) '-log(Like)    chi-sq   data'
+      write(aunit,*) '-log(Like)     chi-sq   data'
       call DataLikelihoods%WriteLikelihoodContribs(aunit, P%Info%likelihoods)
     end if
 

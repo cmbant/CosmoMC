@@ -154,6 +154,111 @@ contains
    
  end subroutine SliceSampleFastParams
 
+ function MetropolisAccept(Like, CurLike)
+    real Like, CurLike
+    logical MetropolisAccept
+    
+    if (Like /=LogZero) then
+      MetropolisAccept = CurLike > Like
+      if (.not. MetropolisAccept) MetropolisAccept = randexp1() > Like - CurLike
+    else
+      MetropolisAccept = .false.
+    end if
+    
+ end function MetropolisAccept
+ 
+  subroutine FastDragging(CurParams, CurLike, mult, MaxLike, num, num_accept) 
+  !Make proposals in fast-marginalized slow parameters 
+  !'drag' fast parameters using method of Neal
+  Type(ParamSet) TrialEnd, TrialStart, CurParams, CurIntParams
+  real CurLike, MaxLike
+  integer num, num_accept, mult
+  integer drag_step, numaccpt
+  real CurIntLike, IntLike, CurEndLike, CurStartLike, EndLike, StartLike
+  real CurDragLike, DragLike
+  logical :: accpt
+  integer :: num_drag_steps
+  integer :: num_intermediates
+  real, allocatable :: likes_start(:), likes_end(:)
+  integer interp_step
+  real frac
+
+   call GetProposalProjSlow(CurParams, TrialEnd)
+   CurEndLike = GetLogLike(TrialEnd) 
+   CurStartLike = CurLike
+
+   allocate(likes_start(0:num_intermediates-1), likes_end(0:num_intermediates-1))
+   
+   num_intermediates = nint(2 / marginal_marged_ratio_direction)
+   if (Feedback >1 ) print *,'dragging with ',num_intermediates,'intermediates'
+   num_drag_steps = num_fast
+
+
+   likes_end(0) = CurEndLike
+   likes_start(0) = CurStartLike
+
+   CurIntParams = TrialEnd
+
+   numaccpt = 0
+   do interp_step = 1, num_intermediates-1 
+   frac = real(interp_step)/num_intermediates
+   CurIntLike = CurStartLike*(1-frac) + frac*CurEndLike
+
+   do drag_step =1, num_drag_steps
+    call GetProposalProjFast(CurIntParams, TrialEnd)
+    TrialStart%P(fast_params_used) = TrialEnd%P(fast_params_used)
+
+    EndLike = GetLogLike(TrialEnd)
+    StartLike = GetLogLike(TrialStart)
+    if (Feedback > 2) print *,'End,start drag: ', drag_step, EndLike, StartLike
+    IntLike = StartLike*(1-frac) + frac*EndLike
+
+    accpt = MetropolisAccept(IntLike, CurIntLike)
+    call AcceptReject(accpt, CurIntParams%Info, TrialEnd%Info)
+
+    if (accpt) then
+       CurIntParams = TrialEnd
+       CurEndLike = EndLike
+       CurStartLike = StartLike
+       CurIntLike = IntLike
+       numaccpt = numaccpt + 1
+    end if
+   end do
+
+   likes_start(interp_step) = CurStartLike
+   likes_end(interp_step) = CurEndLike
+   
+   end do
+   
+   if (Feedback > 1) print *,'drag steps accept ratio:', real(numaccpt)/num_drag_steps
+
+   CurDragLike = sum(likes_start)/num_intermediates  !old slow
+   DragLike = sum(likes_end)/num_intermediates       !proposed new slow
+   if (Feedback > 2) print *,'CurDragLike, DragLike: ', CurDragLike, DragLike
+
+   accpt = MetropolisAccept(DragLike, CurDragLike)
+
+   call AcceptReject(accpt, CurParams%Info, CurIntParams%Info)
+
+   if (accpt) then
+       if (num_accept> burn_in) then
+          output_lines = output_lines +1
+          call WriteParams(CurParams,real(mult),CurLike)
+       end if
+       num_accept = num_accept + 1
+       CurParams = CurIntParams
+       CurLike = CurEndLike
+       if (CurLike < MaxLike) MaxLike = CurLike
+       mult=1
+   else
+       mult = mult + 1
+   end if
+
+   num = num + 1
+   
+   deallocate(likes_start, likes_end)
+
+  end subroutine FastDragging
 
 
  subroutine SampleSlowGrid(CurParams, CurLike, mult, MaxLike, num, num_accept) 
@@ -217,7 +322,7 @@ contains
    
     if (Feedback > 1) write (*,*) r, 'Likelihood: ', Like, 'Current Like:', CurLike
 
-    if ((Like /= logZero) .and. (CurLike > Like .or. randexp1() > Like - CurLike)) then
+    if (MetropolisAccept(Like, CurLike)) then
     !Accept
  
       if (num_accept> burn_in) then
@@ -509,10 +614,11 @@ function WL_Weight(L) result (W)
           if (CurLike < MaxLike) MaxLike = CurLike
 
   elseif (sampling_method == sampling_slowgrid .and. CurLike /= LogZero .and. num_fast /= 0 .and. num_slow /=0) then
-
           if (Feedback > 1) write (*,*) instance, 'Directional gridding, Like: ', CurLike
           call SampleSlowGrid(CurParams, CurLike,mult, MaxLike, num, num_accept) 
-
+  elseif (sampling_method == sampling_fast_dragging .and. CurLike /= LogZero .and. num_fast/=0) then
+          if (Feedback > 1) write (*,*) instance, 'Fast dragging, Like: ', CurLike
+          call FastDragging(CurParams, CurLike,mult, MaxLike, num, num_accept) 
   else
 
    !Do metropolis, except for (optional) slice sampling on fast parameters
@@ -538,9 +644,6 @@ function WL_Weight(L) result (W)
 
     if (Feedback > 1) write (*,*) 'Likelihood: ', Like, 'Current Like:', CurLike
 
-!!!    accpt = (Like /= logZero) .and. (CurLike > Like .or. randexp1() > Like - CurLike) 
-             !Include the min() so that compilers not doing optimal compilation don't complain
-
     if (Like /= logZero) then
        if (sampling_method == sampling_multicanonical) then
         testLike = MC_WeightLike(Like)   
@@ -549,7 +652,7 @@ function WL_Weight(L) result (W)
        else
         testLike = Like
        end if
-       accpt = (testLike /= LogZero) .and. (testCurLike > testLike .or. randexp1() > testLike - testCurLike) 
+       accpt = MetropolisAccept(testLike, testCurLike)
        if (.not. accpt .and. sampling_method == sampling_wang_landau) testCurLike = testCurLike + WL_f
     else
       accpt = .false.

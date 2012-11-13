@@ -41,12 +41,13 @@ use, intrinsic :: iso_fortran_env, only : input_unit, output_unit,error_unit
   logical :: use_fast_slow = .false.
     !Set to false if using a slow likelihood function so no there's point is treating
     !'fast' parameters differently (in fact, doing so will make performance worse)
-
+ 
   Type(TParamNames) :: NameMapping
 
   integer :: oversample_fast = 0
   integer, parameter :: sampling_metropolis = 1, sampling_slice = 2, sampling_fastslice =3, &
-         sampling_slowgrid = 4,  sampling_multicanonical = 5,  sampling_wang_landau = 6
+         sampling_slowgrid = 4,  sampling_multicanonical = 5,  sampling_wang_landau = 6, &
+        sampling_fast_dragging = 7
 
   integer :: sampling_method = sampling_metropolis
  

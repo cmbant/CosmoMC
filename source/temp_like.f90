@@ -40,7 +40,7 @@ contains
     ! tsz_x_cib_template.txt is is (l D_l), from l=2 to 9999, normalized to unity 
     !    at l=3000 
 
-    if(needinit==.false.) then
+    if(.not. needinit) then
        return
     endif
 

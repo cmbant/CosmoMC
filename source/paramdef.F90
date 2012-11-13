@@ -34,16 +34,18 @@ module ParamDef
  integer :: burn_in = 2 !Minimum to get sensible answers
 
  logical :: has_propose_matrix = .false., estimate_propose_matrix = .false.
- real, dimension(:,:), allocatable :: propose_matrix, propose_matrix_fast 
+ real, dimension(:,:), allocatable ::  propose_matrix, propose_matrix_fast
  real, dimension(:),   allocatable :: sigmas, propose_diag, propose_diag_fast
-
+ real, dimension(:,:), allocatable ::  slow_marged_mapping
+ real, allocatable :: slow_conditional_marged_ratio(:)
+ 
  integer, dimension(:), allocatable :: slow_evecs
 
  logical :: checkpoint = .false.
  logical :: new_chains = .true.
  integer, parameter :: checkpoint_freq = 100
  character(LEN=500) :: rootname
- real pmat(num_params,num_params) !actual covariance matrix
+ real, allocatable :: full_propmat(:,:) !actual covariance matrix (not rescaled)
 
  real    :: MPI_R_Stop = 0.05
 
@@ -161,6 +163,7 @@ subroutine Initialize(Ini,Params)
         real center, wid, mult, like
         integer fast_params(num_params)
         integer fast_number, fast_param_index
+        real pmat(num_params,num_params)
         
         output_lines = 0
         
@@ -304,6 +307,7 @@ subroutine Initialize(Ini,Params)
            end if
            end do
 
+           allocate(full_propmat(num_params_used, num_params_used))
            allocate(propose_matrix(num_params_used, num_params_used))
            propose_matrix = pmat(params_used, params_used)
 
@@ -324,12 +328,14 @@ end subroutine Initialize
 subroutine SetProposeMatrix
   use MAtrixUtils
   real proj_len(num_params_used)
-  real U(num_params_used,num_params_used)
+  real covInv(num_params_used,num_params_used)
   real vecs(num_slow,num_params_used)
+  real SlowConditional(num_slow,num_slow) 
+  real propose_matrix_marged(num_slow, num_slow), propose_diag_marged(num_slow)
   integer i, ii,j
 
-
-   pmat(params_used, params_used) = propose_matrix
+   if (.not. allocated(full_propmat)) allocate(full_propmat(num_params_used,num_params_used))
+   full_propmat = propose_matrix
 
 !std devs of base parameters
 
@@ -343,8 +349,6 @@ subroutine SetProposeMatrix
      propose_matrix(:,i) = propose_matrix(:,i) / sigmas(i)
    end do
 
-
-
    if (num_fast /= 0) then
 
       !Get the conditional covariance by projecting the inverse covariances of fast parameters
@@ -353,19 +357,58 @@ subroutine SetProposeMatrix
               allocate(propose_diag_fast(num_fast))
             end if
 
-            U = propose_matrix
-            call Matrix_Inverse(U)
-            propose_matrix_fast = U(fast_in_used, fast_in_used)
+            covInv = propose_matrix
+            call Matrix_Inverse(covInv)
+            propose_matrix_fast = covInv(fast_in_used, fast_in_used)
             call Matrix_Diagonalize(propose_matrix_fast,propose_diag_fast, num_fast)
             !propose_matrix^-1 = U D U^T, returning U in propose_matrix
             propose_matrix_fast = transpose(propose_matrix_fast)
 
             if (any(propose_diag_fast <= 0)) &
               call DoAbort('Fast proposal matrix has negative or zero eigenvalues')
-
-
             propose_diag_fast = 1/sqrt(propose_diag_fast)
 
+        !Also want the slow proposal marginalized over fast parameters
+        if (sampling_method == sampling_fast_dragging) then
+           if (.not. allocated(slow_marged_mapping)) then
+                allocate(slow_marged_mapping(num_slow, num_slow))
+                allocate(slow_conditional_marged_ratio(num_slow))
+           end if
+           propose_matrix_marged = propose_matrix(slow_in_used,slow_in_used)
+           call Matrix_Diagonalize(propose_matrix_marged,propose_diag_marged, num_slow)
+           if (any(propose_diag_marged <= 0)) &
+                    call DoAbort('fast-marged proposal matrix has negative or zero eigenvalues')
+           propose_diag_marged = sqrt(max(1e-12,propose_diag_marged))
+          !marginal
+            SlowConditional= covInv(slow_in_used,slow_in_used)
+            call Matrix_Inverse(SlowConditional)
+            if (Feedback > 0 .and. MpiRank==0) then
+             print *, 'marginal slow variances in units original marged variance:'
+             do i=1,num_slow
+                print *,trim(ParamNames_NameOrNumber(NameMapping,slow_params_used(i))), SlowConditional(i,i)
+             end do
+            end if
+            slow_marged_mapping=matmul(transpose(propose_matrix_marged),matmul(SlowConditional,propose_matrix_marged))
+            !all Matrix_RotateSymm(SlowConditional, propose_matrix_marged, 
+            do i=1,num_slow
+                 slow_marged_mapping(i,:)=slow_marged_mapping(i,:)/propose_diag_marged(i)
+                 slow_marged_mapping(:,i)=slow_marged_mapping(:,i)/propose_diag_marged(i)
+            end do
+            call Matrix_Diagonalize(slow_marged_mapping,slow_conditional_marged_ratio, num_slow)
+            slow_conditional_marged_ratio = sqrt(slow_conditional_marged_ratio)
+            if (Feedback>0 .and. MpiRank==0) then
+             print *, 'Joint orthogonal marginal/marged standard deviation ratios'
+             !Near one makes for easy dragging if Gaussian - fast and slow directions nearly uncorrelated
+             do i=1,num_slow
+                print *,i,  slow_conditional_marged_ratio(i)
+             end do
+            end if
+            !get U D^{1/2} U' to map from orthonormalized parmeters in ratio-diagonal basis to normal parameters
+            do i=1,num_slow
+             slow_marged_mapping(i,:) = propose_diag_marged(i) * slow_marged_mapping(i,:)
+            end do
+            slow_marged_mapping = matmul(propose_matrix_marged, slow_marged_mapping)
+        end if
    end if
 
 
@@ -518,7 +561,7 @@ end subroutine SetProposeMatrix
       write (tmp_file_unit) chk_id
       write(tmp_file_unit) num, sample_num, MPI_thin_fac, npoints, Burn_done, all_burn, sampling_method, &
             slice_fac, has_propose_matrix, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
-      if (has_propose_matrix) write(tmp_file_unit) pmat(params_used, params_used) 
+      if (has_propose_matrix) write(tmp_file_unit) full_propmat 
       call TList_RealArr_SaveBinary(S,tmp_file_unit)
       close(tmp_file_unit)      
      end if
