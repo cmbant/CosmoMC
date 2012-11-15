@@ -158,7 +158,7 @@
      external CMBToTheta
      integer, save :: cache=1
      integer i
-     
+!$OMP CRITICAL
      do i=1, ncache
       !want to save two slow positions for some fast-slow methods
        if (all(Params(1:num_hard) == Lastparams(1:num_hard, i))) then
@@ -199,7 +199,7 @@
     cache = mod(cache,ncache)+1
 
     end if
- 
+ !$OMP END CRITICAL 
    end subroutine ParamsToCMBParams
 
    subroutine CMBParamsToParams(CMB, Params)

@@ -18,6 +18,7 @@ module propose
  logical :: fast_slicing = .false. !slice fast parameters when using Metropolis 
  logical :: slice_stepout = .true.
  logical :: slice_randomsize = .false.
+ logical :: slow_from_marginalized = .true.
  real :: marginal_marged_ratio_direction = 1.
  real, allocatable, dimension(:,:), save :: Rot_slow, Rot_fast
 
@@ -67,7 +68,6 @@ contains
    integer, intent(in) :: i
    logical, intent(in) :: fast
    real, intent(in) :: dist
-   real marginal_marged_ratio_direction
 
   if (has_propose_matrix) then
     vec = 0
@@ -76,13 +76,14 @@ contains
       tmp%P(fast_params_used) =  tmp%P(fast_params_used) + & 
         sigmas(fast_in_used) * matmul (propose_matrix_fast, vec(1:num_fast))
     else
-      if (sampling_method == sampling_fast_dragging .and. num_fast /=0) then
+      if (slow_from_marginalized) then
         vec(1:num_slow) =  Rot_slow(:,i) * dist 
         tmp%P(slow_params_used) =  tmp%P(slow_params_used) + & 
            sigmas(slow_in_used) * matmul (slow_marged_mapping, vec(1:num_slow))
         marginal_marged_ratio_direction = 1/sum((Rot_slow(:,i)/slow_conditional_marged_ratio)**2)
-        print *,i,'marginal_marged_ratio_direction', marginal_marged_ratio_direction
+        if (Feedback>2) write(*,*) i,'marginal_marged_ratio_direction', marginal_marged_ratio_direction
       else
+       marginal_marged_ratio_direction = 0.7 !not correct of course
        vec(1:num_slow) =  Rot_slow(:,i) * dist * propose_diag(slow_evecs) 
        tmp%P(params_used) =  tmp%P(params_used) + &
             sigmas * matmul (propose_matrix(:,slow_evecs), vec(1:num_slow))

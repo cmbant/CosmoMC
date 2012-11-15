@@ -2709,7 +2709,7 @@ program GetDist
                   !workaround for colorbar/label overlap bug
                     write (50,*) 'fix_colorbar(hbar,ax); axes(ax);'
                  end if
-               end do
+             end do
            
 !              write (50,*)  'set(gcf, ''PaperUnits'',''inches'');'
 !              tmpstr = RealToStr((plot_col*8.)/plot_row)

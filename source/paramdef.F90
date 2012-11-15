@@ -74,10 +74,11 @@ module ParamDef
 
  logical    :: MPI_StartSliceSampling = .false.
 
- double precision    :: MPI_StartTime
+ integer,parameter :: time_dp = KIND(1.d0)
+ real(time_dp) ::  MPI_StartTime, timer_start
 
  real, private, allocatable, dimension(:,:) :: MPICovmat
-
+ 
 
 contains
 
@@ -121,6 +122,27 @@ subroutine DoStop(S, abort)
 #endif
        stop
 end subroutine DoStop
+
+function TimerTime()
+ real time
+ real(time_dp) :: TimerTime
+#ifdef MPI 
+ TimerTime = MPI_WTime()
+#else
+ call cpu_time(time)
+ TimerTime=  time
+#endif
+end function TimerTime
+
+subroutine Timer(Msg)
+ character(LEN=*), intent(in), optional :: Msg
+ 
+ if (present(Msg)) then
+     write (*,*) trim(Msg)//': ', TimerTime() - timer_start
+ end if
+ timer_start= TimerTime()
+
+end subroutine Timer
 
 subroutine DoAbort(S)
 

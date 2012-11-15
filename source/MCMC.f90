@@ -182,21 +182,31 @@ contains
   real, allocatable :: likes_start(:), likes_end(:)
   integer interp_step
   real frac
-  double precision atime
-
-   atime = MPI_Wtime(); 
+  integer, save :: num_fast_calls = 0, num_slow_calls = 0
+  integer, save :: loops = 0
+  
+   if (mod(loops,num_slow)==0) then 
+    !alternate sampling from fully marginalized or from slow-fast correlated combinations
+    !slow_from_marginalized = .not. slow_from_marginalized
+   end if
+   loops = loops + 1
+   
+   call Timer()
    call GetProposalProjSlow(CurParams, TrialEnd)
    
-   CurEndLike = GetLogLike(TrialEnd) 
-   CurStartLike = CurLike
-   if (Feedback > 2) then
-    print *, 'Dragging Slow time:',  MPI_Wtime()-atime;
-    atime = MPI_Wtime(); 
+   CurEndLike = GetLogLike(TrialEnd)
+   if (CurEndLike==logZero) then
+       call AcceptReject(.false., CurParams%Info, TrialEnd%Info)
+       mult = mult + 1
+       return
    end if
+   CurStartLike = CurLike
+   if (Feedback > 1) call Timer('Dragging Slow time')
 
-   num_drag_steps = num_fast
+   num_slow_calls = num_slow_calls + 1
+   num_drag_steps = num_fast 
 
-   num_intermediates = nint(3 / marginal_marged_ratio_direction)
+   num_intermediates = nint(dragging_steps / marginal_marged_ratio_direction)
    if (Feedback >2 ) print *,'dragging with ',num_intermediates,'intermediates'
 
    allocate(likes_start(0:num_intermediates-1), likes_end(0:num_intermediates-1))
@@ -215,17 +225,22 @@ contains
 
    do drag_step =1, num_drag_steps
     call GetProposalProjFast(CurIntParams, TrialEnd)
-
     TrialStart%P(fast_params_used) = TrialEnd%P(fast_params_used)
 
-    atime = MPI_Wtime()
     EndLike = GetLogLike(TrialEnd)
-    StartLike = GetLogLike(TrialStart)
+    accpt = EndLike /= logZero
+    if (accpt) then 
+     num_fast_calls = num_fast_calls + 2
+     StartLike = GetLogLike(TrialStart)
+     if (StartLike==logZero) call MpiStop('dragging assumes bounds on fast independent of slow')
 
-    if (Feedback > 2) print *,'End,start drag: ', drag_step, EndLike, StartLike
-    IntLike = StartLike*(1-frac) + frac*EndLike
-
-    accpt = MetropolisAccept(IntLike, CurIntLike)
+     if (Feedback > 2) print *,'End,start drag: ', drag_step, EndLike, StartLike
+     IntLike = StartLike*(1-frac) + frac*EndLike
+    
+     accpt = MetropolisAccept(IntLike, CurIntLike)
+     
+    end if
+    
     call AcceptReject(accpt, CurIntParams%Info, TrialEnd%Info)
 
     if (accpt) then
@@ -242,13 +257,13 @@ contains
    
    end do
    
-   if (Feedback > 2) print *, 'Dragging time:',  MPI_Wtime()-atime;
+   if (Feedback > 1) call Timer('Dragging time')
    
-   if (Feedback > 1) print *,'drag steps accept ratio:', real(numaccpt)/num_drag_steps
+   if (Feedback > 2) print *,'drag steps accept ratio:', real(numaccpt)/num_drag_steps
 
    CurDragLike = sum(likes_start)/num_intermediates  !old slow
    DragLike = sum(likes_end)/num_intermediates       !proposed new slow
-   if (Feedback > 2) print *,'CurDragLike, DragLike: ', CurDragLike, DragLike
+   if (Feedback > 1) print *,'CurDragLike, DragLike: ', CurDragLike, DragLike
 
    accpt = MetropolisAccept(DragLike, CurDragLike)
 
@@ -264,12 +279,12 @@ contains
        CurLike = CurEndLike
        if (CurLike < MaxLike) MaxLike = CurLike
        mult=1
+       if (Feedback > 0) write (*,*) mult, ' accepting drag, accpt:', real(num_accept)/num, &
+                         'fast/slow',real(num_fast_calls)/num_slow_calls
    else
        mult = mult + 1
    end if
 
-   num = num + 1
-   
    deallocate(likes_start, likes_end)
 
   end subroutine FastDragging

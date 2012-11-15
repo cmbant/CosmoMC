@@ -25,8 +25,15 @@ use, intrinsic :: iso_fortran_env, only : input_unit, output_unit,error_unit
 !num_nuisance_params is number of nuisance parameters used internally by data likelihoods
 !                    (e.g. beam uncertainty modes, etc, specific to dataset)
 
+#ifdef TESTLIKE
+ !Just use a Gaussian given by the proposal matrix
+  logical, parameter :: test_likelihood= .true.
+#else
+  logical, parameter :: test_likelihood= .false.
+#endif
   integer, parameter :: num_hard = 14 
   integer, parameter :: num_initpower = 5 
+
 #ifdef CLIK
   integer, parameter :: num_camSpec =33
   integer, parameter :: num_plik=12
@@ -53,6 +60,9 @@ use, intrinsic :: iso_fortran_env, only : input_unit, output_unit,error_unit
  
   !scale of the proposal distribution in units of the posterior standard deviation
   real    :: propose_scale  = 2.4 
+  
+  !For fast dragging method, baseline number of intermediate drag steps
+  integer :: dragging_steps = 4
 
 !The rest are set up automatically
 

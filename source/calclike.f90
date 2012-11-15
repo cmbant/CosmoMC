@@ -18,6 +18,16 @@ contains
   function GenericLikelihoodFunction(Params) 
     type(ParamSet)  Params 
     real :: GenericLikelihoodFunction
+    real, allocatable, save :: covInv(:,:)
+    real X(num_params_used)
+    
+    if (.not. allocated(covInv)) then
+     allocate(covInv(num_params_used,num_params_used))
+     covInv = full_propmat
+     call Matrix_Inverse(covInv)
+    end if
+    X = Params%P(params_used) - scales%Center(params_used)
+    GenericLikelihoodFunction= dot_product(X, matmul(covInv, X))/2
    
   
    !Used when you want to plug in your own CMB-independent likelihood function:
@@ -26,8 +36,8 @@ contains
     !!!!
    ! GenericLikelihoodFunction = greatLike(Params%P)
    ! GenericLikelihoodFunction = LogZero 
-    call MpiStop('GenericLikelihoodFunction: need to write this function!')
-    GenericLikelihoodFunction=0
+!call MpiStop('GenericLikelihoodFunction: need to write this function!')
+!    GenericLikelihoodFunction=0
 
   end function GenericLikelihoodFunction
 
@@ -59,7 +69,7 @@ contains
        return
     end if
 
-    if (generic_mcmc) then
+    if (generic_mcmc .or. test_likelihood) then
         GetLogLike = GenericLikelihoodFunction(Params) 
         if (GetLogLike /= LogZero) GetLogLike = GetLogLike + getLogPriors(Params%P)
         if (GetLogLike /= LogZero) GetLogLike = GetLogLike/Temperature

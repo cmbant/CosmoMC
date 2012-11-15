@@ -121,9 +121,8 @@ program SolveCosmology
 
 
 #ifdef MPI 
-        
-        if (action==action_MCMC) then
         MPI_StartTime = MPI_WTime()
+        if (action==action_MCMC) then
         MPI_R_Stop = Ini_Read_Real('MPI_Converge_Stop',MPI_R_Stop)
         MPI_LearnPropose = Ini_Read_Logical('MPI_LearnPropose',.true.)  
         if (MPI_LearnPropose) then
@@ -199,7 +198,9 @@ program SolveCosmology
             burn_in = Ini_Read_Int('burn_in',0)     
             sampling_method = Ini_Read_Int('sampling_method',sampling_metropolis)
             if (sampling_method > 7 .or. sampling_method<1) call DoAbort('Unknown sampling method')
-            if (sampling_method==4) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
+            if (sampling_method==sampling_slowgrid) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
+            if (sampling_method==sampling_fast_dragging) dragging_steps = Ini_Read_Int('dragging_steps',4)
+            
         else
          Ini_fail_on_not_found = .false.
         end if
