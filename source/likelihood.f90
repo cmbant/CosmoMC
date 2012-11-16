@@ -56,7 +56,7 @@
 
      do i=1,L%Count
         LikeItem =>  L%Item(i)
-        write (aunit,'(2f11.3)',advance='NO') likelihoods(i),likelihoods(i)/2
+        write (aunit,'(2f11.3)',advance='NO') likelihoods(i),likelihoods(i)*2
         write(aunit,'(a)') '   '//trim(LikeItem%LikelihoodType)//': '//trim(LikeItem%name)
      end do
 

@@ -242,12 +242,24 @@ module temp_like
 !$OMP parallel do private(j,i,ztemp) reduction(+:zlike) schedule(static,16)
     do  j = 1, nX
        ztemp= 0
-       do  i = j+1, nX
+       do  i = j+1,nX
           ztemp = ztemp + Y(i)*c_inv(i, j)
        end do
        zlike=zlike+(ztemp*2 +c_inv(j, j)*Y(j))*Y(j)
     end do
+  !  print *,'1',zlike
 
+    !zlike = 0.d+00
+    !do  j = 1, nX
+    !   ztemp= 0
+    !   do  i = 1, nX
+    !      ztemp = ztemp + Y(i)*c_inv(i, j)
+    !   end do
+    !   zlike=zlike+ztemp*Y(j)
+    !end do
+    !print *,'2',zlike
+    !
+    !stop
 !     zlike = CAMSpec_Quad(c_inv, Y)
 
 
