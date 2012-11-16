@@ -181,15 +181,8 @@ contains
   integer :: num_intermediates
   real, allocatable :: likes_start(:), likes_end(:)
   integer interp_step
-  real frac
+  real frac, delta_fast(num_fast)
   integer, save :: num_fast_calls = 0, num_slow_calls = 0
-  integer, save :: loops = 0
-  
-   if (mod(loops,num_slow)==0) then 
-    !alternate sampling from fully marginalized or from slow-fast correlated combinations
-    !slow_from_marginalized = .not. slow_from_marginalized
-   end if
-   loops = loops + 1
    
    call Timer()
    call GetProposalProjSlow(CurParams, TrialEnd)
@@ -211,7 +204,6 @@ contains
 
    allocate(likes_start(0:num_intermediates-1), likes_end(0:num_intermediates-1))
 
-
    likes_end(0) = CurEndLike
    likes_start(0) = CurStartLike
 
@@ -225,7 +217,8 @@ contains
 
    do drag_step =1, num_drag_steps
     call GetProposalProjFast(CurIntParams, TrialEnd)
-    TrialStart%P(fast_params_used) = TrialEnd%P(fast_params_used)
+    delta_fast = TrialEnd%P(fast_params_used) - CurIntParams%P(fast_params_used)
+    TrialStart%P(fast_params_used) = TrialStart%P(fast_params_used) + delta_fast
 
     EndLike = GetLogLike(TrialEnd)
     accpt = EndLike /= logZero

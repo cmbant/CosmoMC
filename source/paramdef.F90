@@ -34,12 +34,15 @@ module ParamDef
  integer :: burn_in = 2 !Minimum to get sensible answers
 
  logical :: has_propose_matrix = .false., estimate_propose_matrix = .false.
- real, dimension(:,:), allocatable ::  propose_matrix, propose_matrix_fast
- real, dimension(:),   allocatable :: sigmas, propose_diag, propose_diag_fast
- real, dimension(:,:), allocatable ::  slow_marged_mapping
- real, allocatable :: slow_conditional_marged_ratio(:)
+ real, dimension(:,:), allocatable ::  propose_matrix
+ !, propose_matrix_fast
+ real, dimension(:),   allocatable :: sigmas
+ !, propose_diag, propose_diag_fast
+ !real, dimension(:,:), allocatable ::  slow_marged_mapping
+ real, dimension(:,:), allocatable :: param_transform_fast, param_transform_slow
+! real, allocatable :: slow_conditional_marged_ratio(:)
  
- integer, dimension(:), allocatable :: slow_evecs
+ !integer, dimension(:), allocatable :: slow_evecs
 
  logical :: checkpoint = .false.
  logical :: new_chains = .true.
@@ -350,11 +353,12 @@ end subroutine Initialize
 
 subroutine SetProposeMatrix
   use MAtrixUtils
-  real proj_len(num_params_used)
-  real covInv(num_params_used,num_params_used)
-  real vecs(num_slow,num_params_used)
-  real SlowConditional(num_slow,num_slow) 
-  real propose_matrix_marged(num_slow, num_slow), propose_diag_marged(num_slow)
+  real L(num_params_used,num_params_used)
+!  real proj_len(num_params_used)
+!  real covInv(num_params_used,num_params_used),
+!  real vecs(num_slow,num_params_used)
+!  real SlowConditional(num_slow,num_slow) 
+!  real propose_matrix_marged(num_slow, num_slow), propose_diag_marged(num_slow)
   integer i, ii,j
 
    if (.not. allocated(full_propmat)) allocate(full_propmat(num_params_used,num_params_used))
@@ -372,107 +376,127 @@ subroutine SetProposeMatrix
      propose_matrix(:,i) = propose_matrix(:,i) / sigmas(i)
    end do
 
-   if (num_fast /= 0) then
+   L(1:num_slow, 1:num_slow) = propose_matrix(slow_in_used, slow_in_used)
+   L(num_slow+1:num_params_used, num_slow+1:num_params_used) = propose_matrix(fast_in_used, fast_in_used)
+   L(1:num_slow, num_slow+1:num_params_used) = propose_matrix(slow_in_used, fast_in_used)
+   L(num_slow+1:num_params_used,1:num_slow) = propose_matrix(fast_in_used, slow_in_used)
+   !do C = L L^T, so L^{-1}x are uncorrelated; update to x is then x->x + L v where v uncorrelated Gaussians
+   call Matrix_Cholesky(L,zeroed=.true.)
 
-      !Get the conditional covariance by projecting the inverse covariances of fast parameters
-            if (.not. allocated(propose_matrix_fast)) then  
-              allocate(propose_matrix_fast(num_fast, num_fast))
-              allocate(propose_diag_fast(num_fast))
-            end if
-
-            covInv = propose_matrix
-            call Matrix_Inverse(covInv)
-            propose_matrix_fast = covInv(fast_in_used, fast_in_used)
-            call Matrix_Diagonalize(propose_matrix_fast,propose_diag_fast, num_fast)
-            !propose_matrix^-1 = U D U^T, returning U in propose_matrix
-            propose_matrix_fast = transpose(propose_matrix_fast)
-
-            if (any(propose_diag_fast <= 0)) &
-              call DoAbort('Fast proposal matrix has negative or zero eigenvalues')
-            propose_diag_fast = 1/sqrt(propose_diag_fast)
-
-        !Also want the slow proposal marginalized over fast parameters
-        if (sampling_method == sampling_fast_dragging) then
-           if (.not. allocated(slow_marged_mapping)) then
-                allocate(slow_marged_mapping(num_slow, num_slow))
-                allocate(slow_conditional_marged_ratio(num_slow))
-           end if
-           propose_matrix_marged = propose_matrix(slow_in_used,slow_in_used)
-           call Matrix_Diagonalize(propose_matrix_marged,propose_diag_marged, num_slow)
-           if (any(propose_diag_marged <= 0)) &
-                    call DoAbort('fast-marged proposal matrix has negative or zero eigenvalues')
-           propose_diag_marged = sqrt(max(1e-12,propose_diag_marged))
-          !marginal
-            SlowConditional= covInv(slow_in_used,slow_in_used)
-            call Matrix_Inverse(SlowConditional)
-            if (Feedback > 0 .and. MpiRank==0) then
-             print *, 'marginal slow variances in units original marged variance:'
-             do i=1,num_slow
-                print *,trim(ParamNames_NameOrNumber(NameMapping,slow_params_used(i))), SlowConditional(i,i)
-             end do
-            end if
-            slow_marged_mapping=matmul(transpose(propose_matrix_marged),matmul(SlowConditional,propose_matrix_marged))
-            !all Matrix_RotateSymm(SlowConditional, propose_matrix_marged, 
-            do i=1,num_slow
-                 slow_marged_mapping(i,:)=slow_marged_mapping(i,:)/propose_diag_marged(i)
-                 slow_marged_mapping(:,i)=slow_marged_mapping(:,i)/propose_diag_marged(i)
-            end do
-            call Matrix_Diagonalize(slow_marged_mapping,slow_conditional_marged_ratio, num_slow)
-            slow_conditional_marged_ratio = sqrt(slow_conditional_marged_ratio)
-            if (Feedback>0 .and. MpiRank==0) then
-             print *, 'Joint orthogonal marginal/marged standard deviation ratios'
-             !Near one makes for easy dragging if Gaussian - fast and slow directions nearly uncorrelated
-             do i=1,num_slow
-                print *,i,  slow_conditional_marged_ratio(i)
-             end do
-            end if
-            !get U D^{1/2} U' to map from orthonormalized parmeters in ratio-diagonal basis to normal parameters
-            do i=1,num_slow
-             slow_marged_mapping(i,:) = propose_diag_marged(i) * slow_marged_mapping(i,:)
-            end do
-            slow_marged_mapping = matmul(propose_matrix_marged, slow_marged_mapping)
-        end if
+   if (.not. allocated(param_transform_slow)) then 
+              allocate(param_transform_slow(num_params_used, num_slow))
    end if
-
-
-
-   if (num_slow /= 0) then
-
-    if (.not. allocated(propose_diag)) allocate(propose_diag(num_params_used))
-
-    call Matrix_Diagonalize(propose_matrix, propose_diag, num_params_used)
-      !propose_matrix = U D U^T, returning U in propose_matrix
-
-
-    if (any(propose_diag <= 0)) &
-        call DoAbort('Proposal matrix has negative or zero eigenvalues')
-    propose_diag = sqrt(max(1e-12,propose_diag))
-
-!Get projected lengths 
-
-    do i = 1, num_params_used
-          vecs(:,i) = propose_diag(i)*propose_matrix(slow_in_used,i)
-          proj_len(i) = sum(vecs(:,i)**2)  
-    end do
-
-     if (.not. allocated(slow_evecs)) allocate(slow_evecs(num_slow))
-
-!keep evectors with longest projected lengths in slow dimensions, orthogonal to previous longest       
-
-       do i = 1, num_slow
-         j = MaxIndex(proj_len, num_params_used)
-         slow_evecs(i) = j
-         do ii= 1, num_params_used
-           if (proj_len(ii) /= 0. .and. ii/=j) then
-            vecs(:,ii) = vecs(:,ii) - sum(vecs(:,j)*vecs(:,ii))*vecs(:,j)/proj_len(j)
-                  !Take out projection onto jth eigendirection
-            proj_len(ii) = sum(vecs(:,ii)**2)
-           end if
-         end do
-
-         proj_len(j) = 0.
-       end do
-   end if
+   param_transform_slow = L(1:num_params_used,1:num_slow)
+ 
+!   if (num_fast /= 0) then
+!
+!      if (.not. allocated(param_transform_fast)) then  
+!            allocate(param_transform_fast(num_fast, num_fast))
+!      end if
+!      param_transform_fast = L(num_slow+1:num_params_used, num_slow+1:num_params_used)
+!      
+!      !Rest is not needed..
+!      
+!      !Get the conditional covariance by projecting the inverse covariances of fast parameters
+!            if (.not. allocated(propose_matrix_fast)) then  
+!              allocate(propose_matrix_fast(num_fast, num_fast))
+!              allocate(propose_diag_fast(num_fast))
+!            end if
+!
+!            covInv = propose_matrix
+!            call Matrix_Inverse(covInv)
+!            propose_matrix_fast = covInv(fast_in_used, fast_in_used)
+!            call Matrix_Diagonalize(propose_matrix_fast,propose_diag_fast, num_fast)
+!            !propose_matrix^-1 = U D U^T, returning U in propose_matrix
+!            propose_matrix_fast = transpose(propose_matrix_fast)
+!
+!            if (any(propose_diag_fast <= 0)) &
+!              call DoAbort('Fast proposal matrix has negative or zero eigenvalues')
+!            propose_diag_fast = 1/sqrt(propose_diag_fast)
+!
+!        !Also want the slow proposal marginalized over fast parameters
+!        if (sampling_method == sampling_fast_dragging) then
+!            
+!           if (.not. allocated(slow_marged_mapping)) then
+!                allocate(slow_marged_mapping(num_slow, num_slow))
+!                allocate(slow_conditional_marged_ratio(num_slow))
+!           end if
+!           propose_matrix_marged = propose_matrix(slow_in_used,slow_in_used)
+!           call Matrix_Diagonalize(propose_matrix_marged,propose_diag_marged, num_slow)
+!           if (any(propose_diag_marged <= 0)) &
+!                    call DoAbort('fast-marged proposal matrix has negative or zero eigenvalues')
+!           propose_diag_marged = sqrt(max(1e-12,propose_diag_marged))
+!          !marginal
+!            SlowConditional= covInv(slow_in_used,slow_in_used)
+!            call Matrix_Inverse(SlowConditional)
+!            if (Feedback > 0 .and. MpiRank==0) then
+!             print *, 'marginal slow variances in units original marged variance:'
+!             do i=1,num_slow
+!                print *,trim(ParamNames_NameOrNumber(NameMapping,slow_params_used(i))), SlowConditional(i,i)
+!             end do
+!            end if
+!            slow_marged_mapping=matmul(transpose(propose_matrix_marged),matmul(SlowConditional,propose_matrix_marged))
+!            !all Matrix_RotateSymm(SlowConditional, propose_matrix_marged, 
+!            do i=1,num_slow
+!                 slow_marged_mapping(i,:)=slow_marged_mapping(i,:)/propose_diag_marged(i)
+!                 slow_marged_mapping(:,i)=slow_marged_mapping(:,i)/propose_diag_marged(i)
+!            end do
+!            call Matrix_Diagonalize(slow_marged_mapping,slow_conditional_marged_ratio, num_slow)
+!            slow_conditional_marged_ratio = sqrt(slow_conditional_marged_ratio)
+!            if (Feedback>0 .and. MpiRank==0) then
+!             print *, 'Joint orthogonal marginal/marged standard deviation ratios'
+!             !Near one makes for easy dragging if Gaussian - fast and slow directions nearly uncorrelated
+!             do i=1,num_slow
+!                print *,i,  slow_conditional_marged_ratio(i)
+!             end do
+!            end if
+!            !get U D^{1/2} U' to map from orthonormalized parmeters in ratio-diagonal basis to normal parameters
+!            do i=1,num_slow
+!             slow_marged_mapping(i,:) = propose_diag_marged(i) * slow_marged_mapping(i,:)
+!            end do
+!            slow_marged_mapping = matmul(propose_matrix_marged, slow_marged_mapping)
+!        end if
+!   end if
+!
+!
+!
+!   if (num_slow /= 0) then
+!
+!    if (.not. allocated(propose_diag)) allocate(propose_diag(num_params_used))
+!
+!    call Matrix_Diagonalize(propose_matrix, propose_diag, num_params_used)
+!      !propose_matrix = U D U^T, returning U in propose_matrix
+!
+!
+!    if (any(propose_diag <= 0)) &
+!        call DoAbort('Proposal matrix has negative or zero eigenvalues')
+!    propose_diag = sqrt(max(1e-12,propose_diag))
+!
+!!Get projected lengths 
+!
+!    do i = 1, num_params_used
+!          vecs(:,i) = propose_diag(i)*propose_matrix(slow_in_used,i)
+!          proj_len(i) = sum(vecs(:,i)**2)  
+!    end do
+!
+!     if (.not. allocated(slow_evecs)) allocate(slow_evecs(num_slow))
+!
+!!keep evectors with longest projected lengths in slow dimensions, orthogonal to previous longest       
+!
+!       do i = 1, num_slow
+!         j = MaxIndex(proj_len, num_params_used)
+!         slow_evecs(i) = j
+!         do ii= 1, num_params_used
+!           if (proj_len(ii) /= 0. .and. ii/=j) then
+!            vecs(:,ii) = vecs(:,ii) - sum(vecs(:,j)*vecs(:,ii))*vecs(:,j)/proj_len(j)
+!                  !Take out projection onto jth eigendirection
+!            proj_len(ii) = sum(vecs(:,ii)**2)
+!           end if
+!         end do
+!
+!         proj_len(j) = 0.
+!       end do
+!   end if
 
 end subroutine SetProposeMatrix
 

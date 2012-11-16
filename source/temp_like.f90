@@ -239,13 +239,14 @@ module temp_like
     end do
 
     zlike = 0.d+00
+    !until data bug fixed, just try to reproduce old results..
 !$OMP parallel do private(j,i,ztemp) reduction(+:zlike) schedule(static,16)
     do  j = 1, nX
        ztemp= 0
-       do  i = j+1,nX
+       do  i = 1,nX
           ztemp = ztemp + Y(i)*c_inv(i, j)
        end do
-       zlike=zlike+(ztemp*2 +c_inv(j, j)*Y(j))*Y(j)
+       zlike=zlike+ ztemp*Y(j) !(ztemp*2 +c_inv(j, j)*Y(j))*Y(j)
     end do
   !  print *,'1',zlike
 

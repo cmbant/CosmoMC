@@ -64,30 +64,34 @@ contains
  subroutine UpdateParamsDirection(tmp, fast, dist,i)
   !Change parameters in tmp by dist in the direction of the ith random e-vector
    Type(ParamSet) tmp
-   real vec(num_params_used)
+   real vec_slow(num_slow), vec_fast(num_fast)
    integer, intent(in) :: i
    logical, intent(in) :: fast
    real, intent(in) :: dist
 
   if (has_propose_matrix) then
-    vec = 0
     if (fast) then
-      vec(1:num_fast) =  Rot_fast(:,i) * dist * propose_diag_fast  
-      tmp%P(fast_params_used) =  tmp%P(fast_params_used) + & 
-        sigmas(fast_in_used) * matmul (propose_matrix_fast, vec(1:num_fast))
+!      vec(1:num_fast) =  Rot_fast(:,i) * dist * propose_diag_fas
+!      tmp%P(fast_params_used) =  tmp%P(fast_params_used) + & 
+!        sigmas(fast_in_used) * matmul (propose_matrix_fast, vec(1:num_fast))
+      vec_fast =  Rot_fast(:,i) * dist
+      tmp%P(fast_params_used) =  tmp%P(fast_params_used) + &
+                 sigmas(fast_in_used)*matmul(param_transform_fast, vec_fast)
     else
-      if (slow_from_marginalized) then
-        vec(1:num_slow) =  Rot_slow(:,i) * dist 
-        tmp%P(slow_params_used) =  tmp%P(slow_params_used) + & 
-           sigmas(slow_in_used) * matmul (slow_marged_mapping, vec(1:num_slow))
-        marginal_marged_ratio_direction = 1/sum((Rot_slow(:,i)/slow_conditional_marged_ratio)**2)
-        if (Feedback>2) write(*,*) i,'marginal_marged_ratio_direction', marginal_marged_ratio_direction
-      else
-       marginal_marged_ratio_direction = 0.7 !not correct of course
-       vec(1:num_slow) =  Rot_slow(:,i) * dist * propose_diag(slow_evecs) 
-       tmp%P(params_used) =  tmp%P(params_used) + &
-            sigmas * matmul (propose_matrix(:,slow_evecs), vec(1:num_slow))
-      end if
+       vec_slow =  Rot_slow(:,i) * dist 
+       tmp%P(params_used) =  tmp%P(params_used) + sigmas*matmul(param_transform_slow, vec_slow)
+      !if (slow_from_marginalized) then
+      !  vec(1:num_slow) =  Rot_slow(:,i) * dist 
+      !  tmp%P(slow_params_used) =  tmp%P(slow_params_used) + & 
+      !     sigmas(slow_in_used) * matmul (slow_marged_mapping, vec(1:num_slow))
+      !  marginal_marged_ratio_direction = 1/sum((Rot_slow(:,i)/slow_conditional_marged_ratio)**2)
+      !  if (Feedback>2) write(*,*) i,'marginal_marged_ratio_direction', marginal_marged_ratio_direction
+      !else
+      ! marginal_marged_ratio_direction = 0.7 !not correct of course
+      ! vec(1:num_slow) =  Rot_slow(:,i) * dist * propose_diag(slow_evecs) 
+      ! tmp%P(params_used) =  tmp%P(params_used) + &
+      !      sigmas * matmul (propose_matrix(:,slow_evecs), vec(1:num_slow))
+      !end if
     end if
   else
     if (fast) then
