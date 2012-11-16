@@ -388,12 +388,12 @@ subroutine SetProposeMatrix
    end if
    param_transform_slow = L(1:num_params_used,1:num_slow)
  
-!   if (num_fast /= 0) then
-!
-!      if (.not. allocated(param_transform_fast)) then  
-!            allocate(param_transform_fast(num_fast, num_fast))
-!      end if
-!      param_transform_fast = L(num_slow+1:num_params_used, num_slow+1:num_params_used)
+   if (num_fast /= 0) then
+
+      if (.not. allocated(param_transform_fast)) then  
+            allocate(param_transform_fast(num_fast, num_fast))
+      end if
+      param_transform_fast = L(num_slow+1:num_params_used, num_slow+1:num_params_used)
 !      
 !      !Rest is not needed..
 !      
@@ -456,7 +456,7 @@ subroutine SetProposeMatrix
 !            end do
 !            slow_marged_mapping = matmul(propose_matrix_marged, slow_marged_mapping)
 !        end if
-!   end if
+   end if
 !
 !
 !

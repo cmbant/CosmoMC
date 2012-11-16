@@ -181,11 +181,13 @@ contains
   integer :: num_intermediates
   real, allocatable :: likes_start(:), likes_end(:)
   integer interp_step
-  real frac, delta_fast(num_fast)
+  real frac, delta_fast(num_fast), StartFast(num_fast)
   integer, save :: num_fast_calls = 0, num_slow_calls = 0
    
    call Timer()
+
    call GetProposalProjSlow(CurParams, TrialEnd)
+   StartFast = TrialEnd%P(fast_params_used)
    
    CurEndLike = GetLogLike(TrialEnd)
    if (CurEndLike==logZero) then
@@ -217,8 +219,8 @@ contains
 
    do drag_step =1, num_drag_steps
     call GetProposalProjFast(CurIntParams, TrialEnd)
-    delta_fast = TrialEnd%P(fast_params_used) - CurIntParams%P(fast_params_used)
-    TrialStart%P(fast_params_used) = TrialStart%P(fast_params_used) + delta_fast
+    delta_fast = TrialEnd%P(fast_params_used) - StartFast
+    TrialStart%P(fast_params_used) = CurParams%P(fast_params_used) + delta_fast
 
     EndLike = GetLogLike(TrialEnd)
     accpt = EndLike /= logZero
@@ -252,7 +254,7 @@ contains
    
    if (Feedback > 1) call Timer('Dragging time')
    
-   if (Feedback > 2) print *,'drag steps accept ratio:', real(numaccpt)/num_drag_steps
+   if (Feedback > 1) print *,'drag steps accept ratio:', real(numaccpt)/num_drag_steps
 
    CurDragLike = sum(likes_start)/num_intermediates  !old slow
    DragLike = sum(likes_end)/num_intermediates       !proposed new slow
