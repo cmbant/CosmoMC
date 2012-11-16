@@ -173,13 +173,12 @@ contains
   Type(ParamSet) TrialEnd, TrialStart, CurParams, CurIntParams
   real CurLike, MaxLike
   integer num, num_accept, mult
-  integer drag_step, numaccpt
+  integer sample_step, numaccpt
   real CurIntLike, IntLike, CurEndLike, CurStartLike, EndLike, StartLike
   real CurDragLike, DragLike
   logical :: accpt
-  integer :: num_drag_steps
-  integer :: num_intermediates
-  real, allocatable :: likes_start(:), likes_end(:)
+  integer :: metropolis_steps
+  real  :: likes_start(0:dragging_steps-1), likes_end(0:dragging_steps-1)
   integer interp_step
   real frac, delta_fast(num_fast), EndStartFast(num_fast)
   integer, save :: num_fast_calls = 0, num_slow_calls = 0
@@ -198,12 +197,7 @@ contains
    if (Feedback > 1) call Timer('Dragging Slow time')
 
    num_slow_calls = num_slow_calls + 1
-   num_drag_steps = num_fast 
-
-   num_intermediates = nint(dragging_steps / marginal_marged_ratio_direction)
-   if (Feedback >2 ) print *,'dragging with ',num_intermediates,'intermediates'
-
-   allocate(likes_start(0:num_intermediates-1), likes_end(0:num_intermediates-1))
+   metropolis_steps = num_fast 
 
    likes_end(0) = CurEndLike
    likes_start(0) = CurStartLike
@@ -213,11 +207,11 @@ contains
    CurIntParams = TrialEnd
 
    numaccpt = 0
-   do interp_step = 1, num_intermediates-1 
-   frac = real(interp_step)/num_intermediates
+   do interp_step = 1, dragging_steps-1 
+   frac = real(interp_step)/dragging_steps
    CurIntLike = CurStartLike*(1-frac) + frac*CurEndLike
 
-   do drag_step =1, num_drag_steps
+   do sample_step =1, metropolis_steps
     call GetProposalProjFast(CurIntParams, TrialEnd)
 
     EndLike = GetLogLike(TrialEnd)
@@ -229,10 +223,10 @@ contains
      StartLike = GetLogLike(TrialStart)
      accpt = StartLike/=logZero
      if (accpt) then
-     !call MpiStop('dragging assumes bounds on fast independent of slow')
+
       num_fast_calls = num_fast_calls + 1
 
-      if (Feedback > 2) print *,'End,start drag: ', drag_step, EndLike, StartLike
+      if (Feedback > 2) print *,'End,start drag: ', sample_step, EndLike, StartLike
       IntLike = StartLike*(1-frac) + frac*EndLike
     
       accpt = MetropolisAccept(IntLike, CurIntLike)
@@ -257,10 +251,11 @@ contains
    
    if (Feedback > 1) call Timer('Dragging time')
    
-   if (Feedback > 1) print *,'drag steps accept ratio:', real(numaccpt)/num_drag_steps
+   if (Feedback > 1) print *,'drag steps accept ratio:', &
+        real(numaccpt)/(real(dragging_steps-1)*metropolis_steps)
 
-   CurDragLike = sum(likes_start)/num_intermediates  !old slow
-   DragLike = sum(likes_end)/num_intermediates       !proposed new slow
+   CurDragLike = sum(likes_start)/dragging_steps !old slow
+   DragLike = sum(likes_end)/dragging_steps !proposed new slow
    if (Feedback > 2) print *,'CurDragLike, DragLike: ', CurDragLike, DragLike
 
    accpt = MetropolisAccept(DragLike, CurDragLike)
@@ -282,8 +277,6 @@ contains
    else
        mult = mult + 1
    end if
-
-   deallocate(likes_start, likes_end)
 
   end subroutine FastDragging
 
