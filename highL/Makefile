@@ -16,7 +16,7 @@ LIBS ?= $(LAPACKL)
 
 F90C    ?= ifort
 #problems with -openmp in v12 intel compilers
-FFLAGS  =  -mkl -O2 -ip -W0 -WB -fpp2 -vec_report0
+FFLAGS  =  -mkl -O2 -ip -W0 -WB -fpp2 -vec_report0 -openmp
 LIBS  ?=
 
 #			Rules.

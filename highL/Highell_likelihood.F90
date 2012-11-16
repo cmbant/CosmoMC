@@ -8,8 +8,10 @@ MODULE Highell_likelihood
   use act_equa_likelihood
   use spt_reichardt_likelihood
   use spt_keisler_likelihood
+  implicit none
+  integer :: highL_Feedback = 0
 
-  contains
+ contains
 
   ! ===========================================================================
   SUBROUTINE highell_likelihood_init
@@ -28,7 +30,6 @@ MODULE Highell_likelihood
 
   ! ====================================================================================================================================
   SUBROUTINE highell_likelihood_compute(cl_tt,amp_tsz,amp_ksz,xi,aps148,aps217,aps95,aps150,aps220,acib150,acib220,rps0,rps1,rps,rcib,cas1,cas2,cae1,cae2,cal_1,cal_2,cal_3,like_tot)
-
     IMPLICIT NONE
     REAL(8), dimension(2:tt_lmax_mc) :: cl_tt
     REAL(8), intent(in) :: amp_tsz,amp_ksz,xi,aps148,aps217,aps95,aps150,aps220,acib150,acib220,rps0,rps1,rps,rcib,cas1,cas2,cae1,cae2,cal_1,cal_2,cal_3
@@ -41,27 +42,38 @@ MODULE Highell_likelihood
     like_sptk = 0.d0
     like_tot  = 0.d0
 
-
-    if (use_act_south == .true.) then
+!$omp parallel sections DEFAULT(SHARED)
+!$omp section
+if (use_act_south == .true.) then
        call act_south_likelihood_compute(cl_tt,amp_tsz,amp_ksz,xi,aps148,aps217,acib150,acib220,rps,rcib,cas1,cas2,like_acts)
+       if (highL_Feedback >1) then
        print *, "----------------------------------------"
        print *, 'ACT south chi2 =', 2*like_acts
+       end if
     end if
-
+!$omp section
     if (use_act_equa == .true.) then
        call act_equa_likelihood_compute(cl_tt,amp_tsz,amp_ksz,xi,aps148,aps217,acib150,acib220,rps,rcib,cae1,cae2,like_acte)
+       if (highL_Feedback >1) then
        print *, 'ACT equa chi2 =', 2*like_acte
+       end if
     end if
+!$omp section
 
     if (use_spt_highell == .true.) then
         call spt_reichardt_likelihood_compute(cl_tt,amp_tsz,amp_ksz,xi,aps95,aps150,aps220,acib150,acib220,rps0,rps1,rps,rcib,cal_1,cal_2,cal_3,like_sptr)
+        if (highL_Feedback >1) then
         print *, 'SPT high ell chi2 =', 2*like_sptr 
+        end if
     end if
-
+!$omp section
     if (use_spt_lowell == .true.) then
        call spt_keisler_likelihood_compute(cl_tt,amp_tsz,amp_ksz,xi,aps150,acib150,cal_2,like_sptk)
+       if (highL_Feedback >1) then
        print *, 'SPT low ell chi2 =', 2*like_sptk
+       end if
     end if
+!$omp end parallel sections
 
     like_tot= like_acts + like_acte + like_sptr + like_sptk
 

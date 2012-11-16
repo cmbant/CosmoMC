@@ -263,7 +263,7 @@ contains
 
    CurDragLike = sum(likes_start)/num_intermediates  !old slow
    DragLike = sum(likes_end)/num_intermediates       !proposed new slow
-   if (Feedback > 1) print *,'CurDragLike, DragLike: ', CurDragLike, DragLike
+   if (Feedback > 2) print *,'CurDragLike, DragLike: ', CurDragLike, DragLike
 
    accpt = MetropolisAccept(DragLike, CurDragLike)
 

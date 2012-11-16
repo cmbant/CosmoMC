@@ -12,7 +12,7 @@ MODULE spt_reichardt_likelihood ! Parameters are defined in options module
   REAL(8), dimension(:,:,:) :: btt_var(nspec_r,nspec_r,0:bmax0_r-1)
   REAL(8) ::  bval(nspec_r,0:bmax0_r-1), inverse(1:datap_r,1:datap_r)
   REAL(8), dimension (:), allocatable :: cl_src
-  REAL(8) :: win_func(nspec_r,0:bmax0_r-1,1:10000)
+  REAL(8) :: win_func(1:10000,0:bmax0_r-1,nspec_r)
   
   PRIVATE
   public :: spt_reichardt_likelihood_init
@@ -59,6 +59,7 @@ MODULE spt_reichardt_likelihood ! Parameters are defined in options module
     !-----------------------------------------------
     ! load TT data 
     !----------------------------------------------
+    win_func=0
     do j=1,nspec_r
 
        inquire(file=ttfilename(j),exist = good)
@@ -80,9 +81,8 @@ MODULE spt_reichardt_likelihood ! Parameters are defined in options module
        endif
        call get_free_lun( lun )
        open(unit=lun,file=winfilename(j),form='formatted',status='unknown',action='read')
-       win_func(j,0:bmax0_r-1,1:10000)=0.d0 
        do il = 2, tt_lmax
-          read(lun,*) ii, (win_func(j,i,il), i=0,bmax0_r-1)       
+          read(lun,*) ii, (win_func(il,i,j), i=0,bmax0_r-1)       
        enddo
        close(lun) 
    enddo
@@ -138,7 +138,6 @@ MODULE spt_reichardt_likelihood ! Parameters are defined in options module
     f3_synch  =214.1d0
     f3_dust   =219.6d0
  
-
     call sz_func(f1_sz,sz_corr)
     f1 = sz_corr
     call sz_func(f2_sz,sz_corr)
@@ -168,7 +167,7 @@ MODULE spt_reichardt_likelihood ! Parameters are defined in options module
     !----------------------------------------------------------------
     ! Calculate theory
     !----------------------------------------------------------------
-    
+
     do j=1,nspec_r
        cltt_temp(2:tt_lmax)=0.d0
        do il=2,tt_lmax
@@ -193,7 +192,7 @@ MODULE spt_reichardt_likelihood ! Parameters are defined in options module
              cltt_temp(il) =cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)
           endif
        enddo
-     btt_th(j,0:bmax0_r-1)=MATMUL(win_func(j,0:bmax0_r-1,2:tt_lmax),cltt_temp(2:tt_lmax))
+     btt_th(j,0:bmax0_r-1)=MATMUL(cltt_temp(2:tt_lmax),win_func(2:tt_lmax,0:bmax0_r-1,j))
     enddo
    
     !--------------------------------------------------------------
@@ -226,11 +225,11 @@ MODULE spt_reichardt_likelihood ! Parameters are defined in options module
        diffs2(1,i) = diffs(i,1)
     enddo
 
-
     tmp(:,:) = matmul(inverse(:,:),diffs(:,:))
     chi2(:,:) = matmul(diffs2(:,:),tmp(:,:)) 
 
     like_sptr = like_sptr+chi2(1,1)/2.0
+
 
    10  continue
     

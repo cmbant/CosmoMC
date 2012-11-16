@@ -1104,7 +1104,7 @@ contains
         if (Use_clik) then 
             allocate(clikLikelihood)
             call LikeList%Add(clikLikelihood) 
-            clikLikelihood%dependent_params(1:index_freq+num_camSpec+num_plik)=.true.
+            clikLikelihood%dependent_params(1:index_freq+num_camSpec+num_plik+num_actSpt)=.true.
             clikLikelihood%LikelihoodType = 'CMB'
             clikLikelihood%name='CLIK'
             call clik_readParams(Ini)

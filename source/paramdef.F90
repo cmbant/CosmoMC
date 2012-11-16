@@ -75,7 +75,7 @@ module ParamDef
  logical    :: MPI_StartSliceSampling = .false.
 
  integer,parameter :: time_dp = KIND(1.d0)
- real(time_dp) ::  MPI_StartTime, timer_start
+ real(time_dp) ::  MPI_StartTime
 
  real, private, allocatable, dimension(:,:) :: MPICovmat
  
@@ -136,6 +136,7 @@ end function TimerTime
 
 subroutine Timer(Msg)
  character(LEN=*), intent(in), optional :: Msg
+ real(time_dp), save :: timer_start
  
  if (present(Msg)) then
      write (*,*) trim(Msg)//': ', TimerTime() - timer_start

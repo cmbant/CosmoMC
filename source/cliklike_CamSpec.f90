@@ -190,7 +190,7 @@
        cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220,like_tot)
     clik_lnlike_highL = like_tot
 
-    if (Feedback>0) Print*,'highL lnlike = ',clik_lnlike_highL
+    if (Feedback>2) Print*,'highL lnlike = ',clik_lnlike_highL
 
     end function clik_lnlike_highL
 #endif
