@@ -181,13 +181,12 @@ contains
   integer :: num_intermediates
   real, allocatable :: likes_start(:), likes_end(:)
   integer interp_step
-  real frac, delta_fast(num_fast), StartFast(num_fast)
+  real frac, delta_fast(num_fast), EndStartFast(num_fast)
   integer, save :: num_fast_calls = 0, num_slow_calls = 0
    
    call Timer()
 
    call GetProposalProjSlow(CurParams, TrialEnd)
-   StartFast = TrialEnd%P(fast_params_used)
    
    CurEndLike = GetLogLike(TrialEnd)
    if (CurEndLike==logZero) then
@@ -209,6 +208,7 @@ contains
    likes_end(0) = CurEndLike
    likes_start(0) = CurStartLike
 
+   EndStartFast = TrialEnd%P(fast_params_used)
    TrialStart = CurParams
    CurIntParams = TrialEnd
 
@@ -219,21 +219,24 @@ contains
 
    do drag_step =1, num_drag_steps
     call GetProposalProjFast(CurIntParams, TrialEnd)
-    delta_fast = TrialEnd%P(fast_params_used) - StartFast
-    TrialStart%P(fast_params_used) = CurParams%P(fast_params_used) + delta_fast
 
     EndLike = GetLogLike(TrialEnd)
     accpt = EndLike /= logZero
     if (accpt) then 
-     num_fast_calls = num_fast_calls + 2
+     num_fast_calls = num_fast_calls + 1
+     delta_fast = TrialEnd%P(fast_params_used) - EndStartFast
+     TrialStart%P(fast_params_used) = CurParams%P(fast_params_used) + delta_fast
      StartLike = GetLogLike(TrialStart)
-     if (StartLike==logZero) call MpiStop('dragging assumes bounds on fast independent of slow')
+     accpt = StartLike/=logZero
+     if (accpt) then
+     !call MpiStop('dragging assumes bounds on fast independent of slow')
+      num_fast_calls = num_fast_calls + 1
 
-     if (Feedback > 2) print *,'End,start drag: ', drag_step, EndLike, StartLike
-     IntLike = StartLike*(1-frac) + frac*EndLike
+      if (Feedback > 2) print *,'End,start drag: ', drag_step, EndLike, StartLike
+      IntLike = StartLike*(1-frac) + frac*EndLike
     
-     accpt = MetropolisAccept(IntLike, CurIntLike)
-     
+      accpt = MetropolisAccept(IntLike, CurIntLike)
+     end if
     end if
     
     call AcceptReject(accpt, CurIntParams%Info, TrialEnd%Info)
