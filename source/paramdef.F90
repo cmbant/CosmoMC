@@ -252,6 +252,7 @@ subroutine Initialize(Ini,Params)
             InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'param',i)
             if (InLine=='') call ParamError('parameter ranges not found',i) 
             read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), wid, Scales%PWidth(i)
+         !!   if (i/=1 .and. i/=21) Scales%PWidth(i)=0
             if (Scales%PWidth(i)/=0) then
              InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'prior',i)
              if (InLine/='') read(InLine, *, err = 101) GaussPriors%mean(i), GaussPriors%std(i)
@@ -322,7 +323,7 @@ subroutine Initialize(Ini,Params)
         call Proposer%Init(param_blocks)
 
         if (Feedback > 0 .and. MpiRank==0) &
-         write(*,'(" Varying ",1I2," parameters (",1I2," fast, ",1I2," semi-fast")') &
+         write(*,'(" Varying ",1I2," parameters (",1I2," fast, ",1I2," semi-fast)")') &
             num_params_used,num_fast,num_semi_fast
 
         num_fast = num_fast + num_semi_fast
