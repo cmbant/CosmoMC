@@ -9,10 +9,11 @@ module ParamDef
  use cmbdata
  use Random
  use settings
+ use Propose
  implicit none
 
- Type ParamSet
-    real P(num_params)
+ Type :: ParamSet
+    real(mcp) :: P(num_params)
     Type(ParamSetInfo) Info
  end Type
 
@@ -33,22 +34,14 @@ module ParamDef
    !zero unless from checkpoint
  integer :: burn_in = 2 !Minimum to get sensible answers
 
- logical :: has_propose_matrix = .false., estimate_propose_matrix = .false.
+ logical :: estimate_propose_matrix = .false.
  real, dimension(:,:), allocatable ::  propose_matrix
- !, propose_matrix_fast
- real, dimension(:),   allocatable :: sigmas
- !, propose_diag, propose_diag_fast
- !real, dimension(:,:), allocatable ::  slow_marged_mapping
- real, dimension(:,:), allocatable :: param_transform_fast, param_transform_slow
-! real, allocatable :: slow_conditional_marged_ratio(:)
+ Type(BlockedProposer), save :: Proposer
  
- !integer, dimension(:), allocatable :: slow_evecs
-
  logical :: checkpoint = .false.
  logical :: new_chains = .true.
  integer, parameter :: checkpoint_freq = 100
  character(LEN=500) :: rootname
- real, allocatable :: full_propmat(:,:) !actual covariance matrix (not rescaled)
 
  real    :: MPI_R_Stop = 0.05
 
@@ -81,7 +74,7 @@ module ParamDef
  real(time_dp) ::  MPI_StartTime
 
  real, private, allocatable, dimension(:,:) :: MPICovmat
- 
+ logical :: StartCovMat = .false.
 
 contains
 
@@ -190,7 +183,11 @@ subroutine Initialize(Ini,Params)
         integer fast_params(num_params)
         integer fast_number, fast_param_index
         real pmat(num_params,num_params)
-        
+        logical has_propose_matrix
+        Type(int_arr_pointer) :: param_blocks(2)
+        integer, dimension(:), allocatable :: fast_params_used,slow_params_used !indices into full parameter list
+        integer, dimension(:), allocatable, target :: fast_in_used,slow_in_used !indices into the used parameters
+
         output_lines = 0
         
         call SetParamNames(NameMapping)
@@ -313,11 +310,17 @@ subroutine Initialize(Ini,Params)
            end if
         end do
 
+        param_blocks(1)%P => slow_in_used
+        param_blocks(2)%P => fast_in_used
+        call Proposer%Init(param_blocks)
+
         if (Feedback > 0 ) write(*,'(" Varying ",1I2," parameters (",1I2," fast)")') &
                num_params_used,num_fast
 
+        allocate(propose_matrix(num_params_used, num_params_used))
         if (has_propose_matrix) then
-           
+
+           StartCovMat = .true.
            call IO_ReadProposeMatrix(pmat, prop_mat)
 
            !If generated with constrained parameters, assume diagonal in those parameters
@@ -333,14 +336,16 @@ subroutine Initialize(Ini,Params)
            end if
            end do
 
-           allocate(full_propmat(num_params_used, num_params_used))
-           allocate(propose_matrix(num_params_used, num_params_used))
            propose_matrix = pmat(params_used, params_used)
-
-           call SetProposeMatrix
-          
+        else
+           propose_matrix = 0
+           do i=1,num_params_used
+               propose_matrix(i,i) = Scales%PWidth(params_used(i))**2
+           end do
         end if
-
+        
+        call SetProposeMatrix
+          
         if (.not. new_chains) call AddMPIParams(Params%P,like, .true.)    
    
         return
@@ -352,48 +357,45 @@ end subroutine Initialize
 
 
 subroutine SetProposeMatrix
-  use MAtrixUtils
-  real L(num_params_used,num_params_used)
-!  real proj_len(num_params_used)
-!  real covInv(num_params_used,num_params_used),
-!  real vecs(num_slow,num_params_used)
-!  real SlowConditional(num_slow,num_slow) 
-!  real propose_matrix_marged(num_slow, num_slow), propose_diag_marged(num_slow)
-  integer i, ii,j
 
-   if (.not. allocated(full_propmat)) allocate(full_propmat(num_params_used,num_params_used))
-   full_propmat = propose_matrix
-
-!std devs of base parameters
-
-   if (.not. allocated(sigmas)) allocate(sigmas(num_params_used))
-   do i = 1, num_params_used
-     sigmas(i) = sqrt(propose_matrix(i,i))
-   end do
-
-   do i = 1, num_params_used
-     propose_matrix(i,:) = propose_matrix(i,:) / sigmas(i)
-     propose_matrix(:,i) = propose_matrix(:,i) / sigmas(i)
-   end do
-
-   L(1:num_slow, 1:num_slow) = propose_matrix(slow_in_used, slow_in_used)
-   L(num_slow+1:num_params_used, num_slow+1:num_params_used) = propose_matrix(fast_in_used, fast_in_used)
-   L(1:num_slow, num_slow+1:num_params_used) = propose_matrix(slow_in_used, fast_in_used)
-   L(num_slow+1:num_params_used,1:num_slow) = propose_matrix(fast_in_used, slow_in_used)
-   !do C = L L^T, so L^{-1}x are uncorrelated; update to x is then x->x + L v where v uncorrelated Gaussians
-   call Matrix_Cholesky(L,zeroed=.true.)
-
-   if (.not. allocated(param_transform_slow)) then 
-              allocate(param_transform_slow(num_params_used, num_slow))
-   end if
-   param_transform_slow = L(1:num_params_used,1:num_slow)
- 
-   if (num_fast /= 0) then
-
-      if (.not. allocated(param_transform_fast)) then  
-            allocate(param_transform_fast(num_fast, num_fast))
-      end if
-      param_transform_fast = L(num_slow+1:num_params_used, num_slow+1:num_params_used)
+   call Proposer%SetCovariance(propose_matrix)
+!  
+!!std devs of base parameters
+!
+!   if (.not. allocated(sigmas)) allocate(sigmas(num_params_used))
+!   do i = 1, num_params_used
+!     sigmas(i) = sqrt(propose_matrix(i,i))
+!   end do
+!
+!   do i = 1, num_params_used
+!     propose_matrix(i,:) = propose_matrix(i,:) / sigmas(i)
+!     propose_matrix(:,i) = propose_matrix(:,i) / sigmas(i)
+!   end do
+!
+!   L(1:num_slow, 1:num_slow) = propose_matrix(slow_in_used, slow_in_used)
+!   L(num_slow+1:num_params_used, num_slow+1:num_params_used) = propose_matrix(fast_in_used, fast_in_used)
+!   L(1:num_slow, num_slow+1:num_params_used) = propose_matrix(slow_in_used, fast_in_used)
+!   L(num_slow+1:num_params_used,1:num_slow) = propose_matrix(fast_in_used, slow_in_used)
+!   !do C = L L^T, so L^{-1}x are uncorrelated; update to x is then x->x + L v where v uncorrelated Gaussians
+!   call Matrix_Cholesky(L,zeroed=.true.)
+!
+!   if (.not. allocated(param_transform_slow)) then 
+!              allocate(param_transform_slow(num_params_used, num_slow))
+!   end if
+!   param_transform_slow = L(1:num_params_used,1:num_slow)
+!   do i=1, num_slow
+!    param_transform_slow(slow_in_used(i),:) =  sigmas(slow_in_used(i)) * L(i,1:num_slow) 
+!   end do
+!   do i=1, num_fast
+!    param_transform_slow(fast_in_used(i),:) =  sigmas(fast_in_used(i)) * L(num_slow+i,1:num_slow) 
+!   end do
+! 
+!   if (num_fast /= 0) then
+!
+!      if (.not. allocated(param_transform_fast)) then  
+!            allocate(param_transform_fast(num_fast, num_fast))
+!      end if
+!      param_transform_fast = L(num_slow+1:num_params_used, num_slow+1:num_params_used)
 !      
 !      !Rest is not needed..
 !      
@@ -456,7 +458,7 @@ subroutine SetProposeMatrix
 !            end do
 !            slow_marged_mapping = matmul(propose_matrix_marged, slow_marged_mapping)
 !        end if
-   end if
+!   end if
 !
 !
 !
@@ -566,7 +568,7 @@ end subroutine SetProposeMatrix
 
      integer, allocatable, dimension(:), save :: req, buf 
      integer,  allocatable, dimension(:), save :: param_changes
-     logical, save :: StartCovMat, flukecheck, Waiting = .false.
+     logical :: , flukecheck, Waiting = .false.
 
      Type(TList_RealArr), save :: S
      integer, save :: slice_fac = 1
@@ -581,14 +583,9 @@ end subroutine SetProposeMatrix
       read (tmp_file_unit) ID
       if (ID/=chk_id) call DoAbort('invalid checkpoint files')
       read(tmp_file_unit) num, sample_num, MPI_thin_fac, npoints, Burn_done, all_burn,sampling_method, &
-            slice_fac, has_propose_matrix, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
-      if (has_propose_matrix) then
-        if (.not. allocated(propose_matrix)) then
-              allocate(propose_matrix(num_params_used, num_params_used))
-        end if
-        read(tmp_file_unit) propose_matrix  
-        call SetProposeMatrix
-      end if
+            slice_fac, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
+      read(tmp_file_unit) propose_matrix
+      call SetProposeMatrix
       call TList_RealArr_Init(S)
       call TList_RealArr_ReadBinary(S,tmp_file_unit)
       close(tmp_file_unit)
@@ -607,12 +604,11 @@ end subroutine SetProposeMatrix
       call CreateFile(trim(rootname)//'.chk',tmp_file_unit,'unformatted')
       write (tmp_file_unit) chk_id
       write(tmp_file_unit) num, sample_num, MPI_thin_fac, npoints, Burn_done, all_burn, sampling_method, &
-            slice_fac, has_propose_matrix, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
-      if (has_propose_matrix) write(tmp_file_unit) full_propmat 
+            slice_fac, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
+      write(tmp_file_unit) propose_matrix 
       call TList_RealArr_SaveBinary(S,tmp_file_unit)
-      close(tmp_file_unit)      
-     end if
-
+      close(tmp_file_unit)
+      end if
 
 !Do main adding samples functions
      sample_num = sample_num + 1
@@ -663,7 +659,7 @@ end subroutine SetProposeMatrix
               allocate(req(MPIChains-1), buf(MPIChains-1))
 
               i = 0 
-              do j=0, MPIChains-1              
+              do j=0, MPIChains-1
                if (j /= MPIRank) then
                 i=i+1
                 call MPI_ISEND(MPIRank,1,MPI_INTEGER, j,0,MPI_COMM_WORLD,req(i),ierror)
@@ -671,8 +667,7 @@ end subroutine SetProposeMatrix
                 end if
               end do  
 
-
-               call TList_RealArr_Clear(S)         
+               call TList_RealArr_Clear(S)
                MPI_Min_Sample_Update = &
                   max((MPI_Min_Sample_Update*max(1,num_fast))/(MPI_thin_fac*slice_fac), npoints)
                npoints = 0
@@ -839,18 +834,9 @@ end subroutine SetProposeMatrix
                      sampling_method = sampling_metropolis
 
                 end if        
-              
-
-               if (.not. allocated(propose_matrix)) then
-                 allocate(propose_matrix(num_params_used, num_params_used))
-               end if
 
                propose_matrix = MPICovMat
-        
-
                call SetProposeMatrix
-
-               has_propose_matrix = .true.
 
              end if !update propose
             end if !all chains have enough

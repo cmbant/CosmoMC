@@ -21,23 +21,22 @@ contains
     real, allocatable, save :: covInv(:,:)
     real X(num_params_used)
     
-    if (.not. allocated(covInv)) then
-     allocate(covInv(num_params_used,num_params_used))
-     covInv = full_propmat
-     call Matrix_Inverse(covInv)
-    end if
-    X = Params%P(params_used) - scales%Center(params_used)
-    GenericLikelihoodFunction= dot_product(X, matmul(covInv, X))/2
-   
-  
+    if (test_likelihood) then
+        if (.not. allocated(covInv)) then
+         allocate(covInv(num_params_used,num_params_used))
+         covInv = propose_matrix
+         call Matrix_Inverse(covInv)
+        end if
+        X = Params%P(params_used) - scales%Center(params_used)
+        GenericLikelihoodFunction= dot_product(X, matmul(covInv, X))/2
+    else
+        
    !Used when you want to plug in your own CMB-independent likelihood function:
    !set generic_mcmc=.true. in settings.f90, then write function here returning -Ln(Likelihood)
    !Parameter array is Params%P
-    !!!!
-   ! GenericLikelihoodFunction = greatLike(Params%P)
-   ! GenericLikelihoodFunction = LogZero 
-!call MpiStop('GenericLikelihoodFunction: need to write this function!')
-!    GenericLikelihoodFunction=0
+    GenericLikelihoodFunction = LogZero 
+    call MpiStop('GenericLikelihoodFunction: need to write this function!')
+    end if
 
   end function GenericLikelihoodFunction
 

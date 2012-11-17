@@ -6,21 +6,51 @@
 !proposing changes to each, then generate a new random basis
 !The distance proposal in the random direction is given by a two-D Gaussian 
 !radial function mixed with an exponential, which is quite robust to wrong width estimates
-!See http://cosmologist.info/notes/cosmomc.ps.gz
+!See http://cosmologist.info/notes/cosmomc.pdf
 
 module propose
-  use settings
   use Random
-  use ParamDef
+  use settings
   implicit none
+ 
+  Type RandDirectionProposer
+    integer n
+    integer :: loopix =0
+    integer :: propose_count = 0
+    real(mcp), allocatable, dimension(:,:) :: R
+  contains
+   procedure :: ProposeVec
+   procedure :: Propose_r
+  end type RandDirectionProposer
+  
+  Type, extends(RandDirectionProposer) :: BlockProposer
+      integer :: block_start
+      integer, allocatable :: used_param_indices(:)
+      integer, allocatable :: params_changed(:), used_params_changed(:)
+      real(mcp), allocatable :: mapping_matrix(:,:)
+  contains
+    procedure :: UpdateParams
+  end Type BlockProposer
+  
+  Type BlockedProposer
+    integer :: nBlocks
+    integer, allocatable :: indices(:), ProposerForIndex(:)
+    integer :: block_loopix = 0, fast_block_loopix = 0
+    Type(BlockProposer), allocatable :: Proposer(:)
+  contains
+   procedure :: Init
+   procedure :: SetCovariance
+   procedure :: GetBlockProposal
+   procedure :: GetProposal
+   procedure :: GetProposalSlow
+   procedure :: GetProposalFastDelta
+  end Type BlockedProposer
+
+  type int_arr_pointer
+    integer, dimension(:), pointer :: p 
+  end type int_arr_pointer
 
  logical :: propose_rand_directions = .true.
- logical :: fast_slicing = .false. !slice fast parameters when using Metropolis 
- logical :: slice_stepout = .true.
- logical :: slice_randomsize = .false.
- logical :: slow_from_marginalized = .true.
- real :: marginal_marged_ratio_direction = 1.
- real, allocatable, dimension(:,:), save :: Rot_slow, Rot_fast
 
 contains
 
@@ -40,17 +70,41 @@ contains
  
  end  subroutine RotMatrix
 
+    
+  function ProposeVec(this, ascale) result(vec)
+   Class(RandDirectionProposer) :: this
+   real(mcp) :: vec(this%n)
+   real(mcp), intent(in), optional :: ascale
+   real(mcp) ::  wid 
+   
+   if (present(ascale)) then
+    wid = ascale
+   else
+    wid = propose_scale
+   end if 
+   
+   if (mod(this%loopix,this%n)==0) then
+       !Get a new random rotation
+        if (.not. allocated(this%R)) allocate(this%R(this%n,this%n))
+        call RotMatrix(this%R, this%n)
+        this%loopix = 0
+   end if
+   this%loopix = this%loopix + 1
+   this%propose_count= this%propose_count + 1
+   vec = this%R(:,this%loopix) * ( this%Propose_r() * wid )
+   
+  end function ProposeVec
 
- function Propose_r(in_n) result(r_fac)
+ function Propose_r(this) result(r_fac)
   !distance proposal function (scale is 1)
-   integer, intent(in) :: in_n
+   Class(RandDirectionProposer), intent(in) :: this
    integer i,n
-   real r_fac
+   real(mcp) r_fac
 
       if (ranmar() < 0.33d0) then
        r_fac = randexp1()
       else
-       n = min(in_n,2)
+       n = min(this%n, 2)
        r_fac = 0
        do i = 1, n
         r_fac = r_fac + Gaussian1()**2
@@ -60,113 +114,132 @@ contains
 
  end function Propose_r
 
-
- subroutine UpdateParamsDirection(tmp, fast, dist,i)
-  !Change parameters in tmp by dist in the direction of the ith random e-vector
-   Type(ParamSet) tmp
-   real vec_slow(num_slow), vec_fast(num_fast)
-   integer, intent(in) :: i
-   logical, intent(in) :: fast
-   real, intent(in) :: dist
-
-  if (has_propose_matrix) then
-    if (fast) then
-!      vec(1:num_fast) =  Rot_fast(:,i) * dist * propose_diag_fas
-!      tmp%P(fast_params_used) =  tmp%P(fast_params_used) + & 
-!        sigmas(fast_in_used) * matmul (propose_matrix_fast, vec(1:num_fast))
-      vec_fast =  Rot_fast(:,i) * dist
-      tmp%P(fast_params_used) =  tmp%P(fast_params_used) + &
-                 sigmas(fast_in_used)*matmul(param_transform_fast, vec_fast)
-    else
-       vec_slow =  Rot_slow(:,i) * dist 
-       tmp%P(params_used) =  tmp%P(params_used) + sigmas*matmul(param_transform_slow, vec_slow)
-      !if (slow_from_marginalized) then
-      !  vec(1:num_slow) =  Rot_slow(:,i) * dist 
-      !  tmp%P(slow_params_used) =  tmp%P(slow_params_used) + & 
-      !     sigmas(slow_in_used) * matmul (slow_marged_mapping, vec(1:num_slow))
-      !  marginal_marged_ratio_direction = 1/sum((Rot_slow(:,i)/slow_conditional_marged_ratio)**2)
-      !  if (Feedback>2) write(*,*) i,'marginal_marged_ratio_direction', marginal_marged_ratio_direction
-      !else
-      ! marginal_marged_ratio_direction = 0.7 !not correct of course
-      ! vec(1:num_slow) =  Rot_slow(:,i) * dist * propose_diag(slow_evecs) 
-      ! tmp%P(params_used) =  tmp%P(params_used) + &
-      !      sigmas * matmul (propose_matrix(:,slow_evecs), vec(1:num_slow))
-      !end if
-    end if
-  else
-    if (fast) then
-     tmp%P(fast_params_used) = tmp%P(fast_params_used) + &
-              Rot_fast(:,i) * dist *  Scales%PWidth(fast_params_used)
-    else
-     tmp%P(slow_params_used) = tmp%P(slow_params_used) +  &
-        Rot_slow(:,i) * dist *  Scales%PWidth(slow_params_used)
-    end if
-  end if
  
- end subroutine UpdateParamsDirection
+ subroutine UpdateParams(this, P, vec)
+  Class(BlockProposer) :: this
+  real(mcp) :: P(:)
+  real(mcp):: vec(this%n)
+
+   P(this%params_changed) =  P(this%params_changed) + matmul(this%mapping_matrix, vec)
+  
+ end subroutine UpdateParams
+
+  subroutine Init(this, parameter_blocks)
+   Class(BlockedProposer), target :: this
+   type(int_arr_pointer) :: parameter_blocks(:)
+   integer used_blocks(size(parameter_blocks))
+   integer i, ix, n
+   Type(BlockProposer), pointer :: BP
+   
+   this%nBlocks = size(parameter_blocks) 
+   n=0
+   do i=1, this%nBlocks
+       if (size(parameter_blocks(i)%P)>0) then
+        n=n+1
+        used_blocks(n)=i
+       end if
+   end do
+   this%nBlocks = n
+   allocate(this%Proposer(this%nBlocks))
+   allocate(this%indices(num_params_used))
+   allocate(this%ProposerForIndex(num_params_used))
+   this%indices=0
+   ix = 1
+   do i=1, this%nBlocks
+       !loop from slow to fast
+       BP => this%Proposer(i)
+       BP%block_start = ix
+       BP%n = size(parameter_blocks(used_blocks(i))%P)
+       allocate(BP%used_param_indices(BP%n))
+       BP%used_param_indices = parameter_blocks(used_blocks(i))%P
+       this%indices(ix:ix+BP%n-1) = BP%used_param_indices
+       this%ProposerForIndex(ix:ix+BP%n-1) = i
+       ix = ix + BP%n
+   end do
+   if (any(this%indices==0)) stop 'DecomposeCovariance: not all used parameters blocked'
+   do i=1, this%nBlocks
+       BP => this%Proposer(i)
+       allocate(BP%used_params_changed(num_params_used-BP%block_start+1))
+       allocate(BP%params_changed(num_params_used-BP%block_start+1))
+       BP%used_params_changed = this%indices(BP%block_start:num_params_used)
+       BP%params_changed = params_used(BP%used_params_changed)
+   end do
+
+  end subroutine Init
+
+    subroutine SetCovariance(this, propose_matrix)
+  !take covariance of used parameters (propose_matrix), and construct orthonormal parmeters 
+  !where orthonormal parameters are grouped in blocks by speed, so changes in slowest block 
+  !changes slow and fast parameters, but changes in the fastest block only changes fast parameters
+   use MatrixUtils
+   Class(BlockedProposer), target :: this
+   real(mcp), intent(in) :: propose_matrix(num_params_used,num_params_used)
+   real(mcp) corr(num_params_used,num_params_used)
+   real(mcp) :: sigmas(num_params_used), L(num_params_used,num_params_used)
+   integer i, j
+   Type(BlockProposer), pointer :: BP
+
+   do i = 1, num_params_used
+     sigmas(i) = sqrt(propose_matrix(i,i))
+     corr(i,:) = propose_matrix(i,:) / sigmas(i)
+   end do
+   do i = 1, num_params_used
+     corr(:,i) = corr(:,i) / sigmas(i)
+   end do
+   L = corr(this%indices,this%indices)
+   call Matrix_Cholesky(L,zeroed=.true.)
+   do i=1, this%nBlocks
+       BP => this%Proposer(i)
+       if (.not. allocated(BP%mapping_matrix)) allocate(BP%mapping_matrix(size(BP%used_params_changed), BP%n))
+       do j = 1, size(BP%used_params_changed)
+           BP%mapping_matrix(j,:)  =  sigmas(BP%used_params_changed(j)) * L(BP%block_start+j-1,1:BP%n) 
+       end do
+   end do
+   !For two blocks, fast and slow, the effect is like this
+   !param_transform_slow = L(1:num_params_used,1:num_slow)
+   !do i=1, num_slow
+   ! param_transform_slow(slow_in_used(i),:) =  sigmas(slow_in_used(i)) * L(i,1:num_slow) 
+   !end do
+   !do i=1, num_fast
+   ! param_transform_slow(fast_in_used(i),:) =  sigmas(fast_in_used(i)) * L(num_slow+i,1:num_slow) 
+   !end do 
+    end subroutine SetCovariance
+
+    
+  subroutine GetBlockProposal(this, P, i)
+  class(BlockedProposer) :: this
+  real(mcp) :: P(:)
+  integer, intent(in) :: i
+
+   call this%Proposer(i)%UpdateParams(P, this%Proposer(i)%Proposevec()) 
+
+  end subroutine GetBlockProposal
 
 
-subroutine GetProposal(InP, OutP)
+  subroutine GetProposal(this, P)
+   class(BlockedProposer) :: this
+   real(mcp) :: P(:) 
 
-  type (ParamSet) InP, OutP
-  integer, save :: fast_ix = 0
+   this%block_loopix = mod(this%block_loopix, num_params_used) + 1
+   call this%GetBlockProposal(P, this%ProposerForIndex(this%block_loopix))
 
-  fast_ix = fast_ix + 1
-  if (num_slow ==0 .or. num_fast /= 0 .and. &
-       mod(fast_ix, 2*(1 + (num_fast*oversample_fast)/num_slow)) /= 0) then
-   call GetProposalProjFast(InP, OutP)
-  else
-   call GetProposalProjSlow(InP, OutP)
-  end if
+  end subroutine GetProposal
 
-end subroutine GetProposal
+  subroutine GetProposalSlow(this, P)
+   class(BlockedProposer) :: this
+   real(mcp) :: P(:) 
 
-subroutine GetProposalProjSlow(InP, OutP)
-  use settings
-  use Random
-  use ParamDef
-  implicit none
-  type (ParamSet) InP, OutP
-  real  wid
-  integer, save :: loopix = 0
- 
-  slow_proposals = slow_proposals + 1
-!Change only slow params, or eigenvectors of covmat which most change the slow params
+   call this%GetBlockProposal(P, 1)
 
-   OutP= InP
-   wid = propose_scale
-   if (mod(loopix,num_slow)==0) then
-        if (.not. allocated(Rot_slow)) allocate(Rot_slow(num_slow,num_slow))
-        call RotMatrix(Rot_slow, num_slow)
-        loopix = 0
-   end if
-   loopix = loopix + 1
+  end subroutine GetProposalSlow
+  
+  subroutine GetProposalFastDelta(this, P)
+   class(BlockedProposer) :: this
+   real(mcp) :: P(:) 
+   P=0
+   this%fast_block_loopix = max(this%Proposer(1)%n+1,mod(this%fast_block_loopix, num_params_used) + 1)
+   call this%GetBlockProposal(P, this%ProposerForIndex(this%fast_block_loopix))
 
-   call UpdateParamsDirection(OutP,.false.,Propose_r(num_slow) * wid, loopix)
-
-end subroutine GetProposalProjSlow
-
-
-subroutine GetProposalProjFast(InP, OutP, ascale)
-  type (ParamSet) InP, OutP
-  real wid
-  real, intent(in), optional :: ascale
-  integer, save :: loopix = 0
-
-   OutP= InP
-
-   wid = propose_scale
-   if (present(ascale)) wid = ascale
-
-   if (mod(loopix,num_fast)==0) then
-        if (.not. allocated(Rot_fast)) allocate(Rot_fast(num_fast,num_fast))
-        call RotMatrix(Rot_fast, num_fast)
-        loopix = 0
-   end if
-   loopix = loopix + 1
-
-   call UpdateParamsDirection(OutP,.true.,Propose_r(num_fast) * wid, loopix)
-     
-end subroutine GetProposalProjFast
+  end subroutine GetProposalFastDelta
 
 end module propose

@@ -12,6 +12,8 @@ use, intrinsic :: iso_fortran_env, only : input_unit, output_unit,error_unit
 #endif
   implicit none
 
+  integer, parameter :: mcp= KIND(1.0)
+  
   real :: AccuracyLevel = 1.
   !Set to >1 to use CAMB etc on higher accuracy settings. 
   !Does not affect MCMC (except making it all slower)
@@ -88,8 +90,7 @@ use, intrinsic :: iso_fortran_env, only : input_unit, output_unit,error_unit
   integer, parameter :: index_initpower = num_hard+1
   integer, parameter :: index_freq = index_initpower + num_initpower
   integer, parameter :: index_nuisance = index_freq  + num_freq_params
-  integer, dimension(:), allocatable :: params_used,fast_params_used,slow_params_used !indices into full parameter list
-  integer, dimension(:), allocatable :: fast_in_used,slow_in_used !indices into the used parameters
+  integer, dimension(:), allocatable :: params_used
   integer num_params_used, num_fast, num_slow, nuisance_params_used
 
   integer :: num_threads = 0

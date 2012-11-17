@@ -21,6 +21,9 @@ module MonteCarlo
  real, parameter    :: eps_1 = 1.00001
  real :: MaxLike
 
+ logical :: fast_slicing = .false. !slice fast parameters when using Metropolis 
+ logical :: slice_stepout = .true.
+ logical :: slice_randomsize = .false.
 
 !Multicanonical/W-L sampling parameters
   real, parameter :: mc_logspace =  6. !1/ steps to use in log-likelihood * number of parameter
@@ -36,124 +39,124 @@ module MonteCarlo
   real :: WL_flat_tol = 1.4 !factor by which smallest histogram can be smaller than mean
 contains
 
- function UpdateParamsLike(Params, fast, dist, i, freeNew, Lik) result(NewLik) 
-  !For slice sampling movement and likelihood
-  Type(ParamSet) tmp, Params
-  integer, intent(in) :: i
-  real, intent(in), optional :: Lik
-  real NewLik
-  logical, intent(in) :: fast, freeNew
-  real, intent(in) :: dist
-
-  tmp = Params
-
-  call UpdateParamsDirection(tmp, fast, dist, i)
-
-  NewLik = GetLogLike(tmp)
-  if (freeNew) then
-    call AcceptReject(.true., tmp%Info, Params%Info)
-  else
-     if (NewLik <= Lik*eps_1) then 
-       !accept move
-       call AcceptReject(.false., tmp%Info, Params%Info)
-       Params = tmp
-     else
-       call AcceptReject(.true., tmp%Info, Params%Info)
-     endif
-  endif
-
- end function UpdateParamsLike
-
-
- subroutine SliceUpdate(Params, fast, i, Like)
- !Do slice sampling, see http://www.cs.toronto.edu/~radford/slice-aos.abstract.html
- !update parameter i, input Like updated to new value.
- !Use linear stepping for the moment
-  Type(ParamSet) Params
-  integer, intent(in) :: i
-  logical, intent(in) :: fast
-  real, intent(inout) :: Like
-  real offset,  P
-  real L, R 
-  real LikL, LikR, Range, LikT, w
-  integer fevals
-
-
-   w = propose_scale
-   if (slice_randomsize) w =w * Gaussian1()
-   Like = Like + randexp1()  !New vertical position (likelihood)  
-   fevals = 0
-
-   offset = ranmar() 
- 
-   L = -offset
-   R = 1- offset
-
-   !step out
-   if (slice_stepout) then
-       do
-        LikL = UpdateParamsLike(Params, fast, w*L, i, .true.)
-        fevals = fevals + 1
-        if (LikL*eps_1 > Like) exit
-        L = L  - 1
-       end do
-
-       do
-        LikR = UpdateParamsLike(Params, fast, w*R, i,.true.)
-        fevals = fevals + 1
-        if (LikR*eps_1 > Like) exit
-        R = R + 1
-       end do
-   end if
-     
-   !stepping in
-   do
-    Range =  R - L
-    P  =  ranmar() * Range + L
-    LikT = UpdateParamsLike(Params, fast, w*P, i, .false., Like)
-    fevals = fevals + 1
-    if (LikT < Like*eps_1) exit
-    if (P > 0) then
-        R = P
-    else
-        L = P
-    end if
-   end do
-   Like = LikT
-   if (.not. fast) slow_proposals = slow_proposals + fevals
- 
- end subroutine SliceUpdate
-
-
- subroutine SliceSampleSlowParam(CurParams, CurLike) 
-  Type(ParamSet) CurParams
-  real CurLike
-  integer, save:: loopix = 0
-
-   if (mod(loopix,num_slow)==0) then
-        if (.not. allocated(Rot_slow)) allocate(Rot_slow(num_slow,num_slow))
-        call RotMatrix(Rot_slow,num_slow)
-        loopix = 0
-   end if
-   loopix = loopix + 1
-   call SliceUpdate(CurParams, .false., loopix,CurLike) 
-
- end subroutine SliceSampleSlowParam
- 
- subroutine SliceSampleFastParams(CurParams, CurLike)
-  Type(ParamSet) CurParams
-  real CurLike
-  integer j 
-
-   if (.not. allocated(Rot_fast)) allocate(Rot_fast(num_fast,num_fast))
-   call RotMatrix(Rot_fast,num_fast)
-   
-   do j = 1, num_fast * max(1,oversample_fast)
-      call SliceUpdate(CurParams, .true., mod(j-1,num_fast)+1,CurLike) 
-   end do
-   
- end subroutine SliceSampleFastParams
-
+ !function UpdateParamsLike(Params, fast, dist, i, freeNew, Lik) result(NewLik) 
+ ! !For slice sampling movement and likelihood
+ ! Type(ParamSet) tmp, Params
+ ! integer, intent(in) :: i
+ ! real, intent(in), optional :: Lik
+ ! real NewLik
+ ! logical, intent(in) :: fast, freeNew
+ ! real, intent(in) :: dist
+ !
+ ! tmp = Params
+ !
+ ! call UpdateParamsDirection(tmp, fast, dist, i)
+ !
+ ! NewLik = GetLogLike(tmp)
+ ! if (freeNew) then
+ !   call AcceptReject(.true., tmp%Info, Params%Info)
+ ! else
+ !    if (NewLik <= Lik*eps_1) then 
+ !      !accept move
+ !      call AcceptReject(.false., tmp%Info, Params%Info)
+ !      Params = tmp
+ !    else
+ !      call AcceptReject(.true., tmp%Info, Params%Info)
+ !    endif
+ ! endif
+ !
+ !end function UpdateParamsLike
+ !
+ !
+ !subroutine SliceUpdate(Params, fast, i, Like)
+ !!Do slice sampling, see http://www.cs.toronto.edu/~radford/slice-aos.abstract.html
+ !!update parameter i, input Like updated to new value.
+ !!Use linear stepping for the moment
+ ! Type(ParamSet) Params
+ ! integer, intent(in) :: i
+ ! logical, intent(in) :: fast
+ ! real, intent(inout) :: Like
+ ! real offset,  P
+ ! real L, R 
+ ! real LikL, LikR, Range, LikT, w
+ ! integer fevals
+ !
+ !
+ !  w = propose_scale
+ !  if (slice_randomsize) w =w * Gaussian1()
+ !  Like = Like + randexp1()  !New vertical position (likelihood)  
+ !  fevals = 0
+ !
+ !  offset = ranmar() 
+ !
+ !  L = -offset
+ !  R = 1- offset
+ !
+ !  !step out
+ !  if (slice_stepout) then
+ !      do
+ !       LikL = UpdateParamsLike(Params, fast, w*L, i, .true.)
+ !       fevals = fevals + 1
+ !       if (LikL*eps_1 > Like) exit
+ !       L = L  - 1
+ !      end do
+ !
+ !      do
+ !       LikR = UpdateParamsLike(Params, fast, w*R, i,.true.)
+ !       fevals = fevals + 1
+ !       if (LikR*eps_1 > Like) exit
+ !       R = R + 1
+ !      end do
+ !  end if
+ !    
+ !  !stepping in
+ !  do
+ !   Range =  R - L
+ !   P  =  ranmar() * Range + L
+ !   LikT = UpdateParamsLike(Params, fast, w*P, i, .false., Like)
+ !   fevals = fevals + 1
+ !   if (LikT < Like*eps_1) exit
+ !   if (P > 0) then
+ !       R = P
+ !   else
+ !       L = P
+ !   end if
+ !  end do
+ !  Like = LikT
+ !  if (.not. fast) slow_proposals = slow_proposals + fevals
+ !
+ !end subroutine SliceUpdate
+ !
+ !
+ !subroutine SliceSampleSlowParam(CurParams, CurLike) 
+ ! Type(ParamSet) CurParams
+ ! real CurLike
+ ! integer, save:: loopix = 0
+ !
+ !  if (mod(loopix,num_slow)==0) then
+ !       if (.not. allocated(Rot_slow)) allocate(Rot_slow(num_slow,num_slow))
+ !       call RotMatrix(Rot_slow,num_slow)
+ !       loopix = 0
+ !  end if
+ !  loopix = loopix + 1
+ !  call SliceUpdate(CurParams, .false., loopix,CurLike) 
+ !
+ !end subroutine SliceSampleSlowParam
+ !
+ !subroutine SliceSampleFastParams(CurParams, CurLike)
+ ! Type(ParamSet) CurParams
+ ! real CurLike
+ ! integer j 
+ !
+ !  if (.not. allocated(Rot_fast)) allocate(Rot_fast(num_fast,num_fast))
+ !  call RotMatrix(Rot_fast,num_fast)
+ !  
+ !  do j = 1, num_fast * max(1,oversample_fast)
+ !     call SliceUpdate(CurParams, .true., mod(j-1,num_fast)+1,CurLike) 
+ !  end do
+ !  
+ !end subroutine SliceSampleFastParams
+ !
  function MetropolisAccept(Like, CurLike)
     real Like, CurLike
     logical MetropolisAccept
@@ -170,7 +173,7 @@ contains
   subroutine FastDragging(CurParams, CurLike, mult, MaxLike, num, num_accept) 
   !Make proposals in fast-marginalized slow parameters 
   !'drag' fast parameters using method of Neal
-  Type(ParamSet) TrialEnd, TrialStart, CurParams, CurIntParams
+  Type(ParamSet) TrialEnd, TrialStart, CurParams, CurEndParams, CurStartParams
   real CurLike, MaxLike
   integer num, num_accept, mult
   integer sample_step, numaccpt
@@ -180,12 +183,12 @@ contains
   integer :: metropolis_steps
   real  :: likes_start(0:dragging_steps-1), likes_end(0:dragging_steps-1)
   integer interp_step
-  real frac, delta_fast(num_fast), EndStartFast(num_fast)
+  real frac, delta(num_params)
   integer, save :: num_fast_calls = 0, num_slow_calls = 0
    
    call Timer()
-
-   call GetProposalProjSlow(CurParams, TrialEnd)
+   TrialEnd = CurParams
+   call Proposer%GetProposalSlow(TrialEnd%P)
    
    CurEndLike = GetLogLike(TrialEnd)
    if (CurEndLike==logZero) then
@@ -197,14 +200,13 @@ contains
    if (Feedback > 1) call Timer('Dragging Slow time')
 
    num_slow_calls = num_slow_calls + 1
-   metropolis_steps = num_fast 
+   metropolis_steps = num_fast * oversample_fast
 
    likes_end(0) = CurEndLike
    likes_start(0) = CurStartLike
 
-   EndStartFast = TrialEnd%P(fast_params_used)
-   TrialStart = CurParams
-   CurIntParams = TrialEnd
+   CurStartParams = CurParams
+   CurEndParams = TrialEnd
 
    numaccpt = 0
    do interp_step = 1, dragging_steps-1 
@@ -212,14 +214,15 @@ contains
    CurIntLike = CurStartLike*(1-frac) + frac*CurEndLike
 
    do sample_step =1, metropolis_steps
-    call GetProposalProjFast(CurIntParams, TrialEnd)
-
+    call Proposer%GetProposalFastDelta(delta)
+    TrialEnd = CurEndParams
+    TrialEnd%P = TrialEnd%P + delta 
     EndLike = GetLogLike(TrialEnd)
     accpt = EndLike /= logZero
     if (accpt) then 
      num_fast_calls = num_fast_calls + 1
-     delta_fast = TrialEnd%P(fast_params_used) - EndStartFast
-     TrialStart%P(fast_params_used) = CurParams%P(fast_params_used) + delta_fast
+     TrialStart = CurStartParams
+     TrialStart%P = TrialStart%P  + delta
      StartLike = GetLogLike(TrialStart)
      accpt = StartLike/=logZero
      if (accpt) then
@@ -233,10 +236,12 @@ contains
      end if
     end if
     
-    call AcceptReject(accpt, CurIntParams%Info, TrialEnd%Info)
+    call AcceptReject(accpt, CurEndParams%Info, TrialEnd%Info)
+    call AcceptReject(accpt, CurStartParams%Info, TrialStart%Info)
 
     if (accpt) then
-       CurIntParams = TrialEnd
+       CurEndParams = TrialEnd
+       CurStartParams = TrialStart       
        CurEndLike = EndLike
        CurStartLike = StartLike
        CurIntLike = IntLike
@@ -252,7 +257,7 @@ contains
    if (Feedback > 1) call Timer('Dragging time')
    
    if (Feedback > 1) print *,'drag steps accept ratio:', &
-        real(numaccpt)/(real(dragging_steps-1)*metropolis_steps)
+        real(numaccpt)/((dragging_steps-1)*metropolis_steps)
 
    CurDragLike = sum(likes_start)/dragging_steps !old slow
    DragLike = sum(likes_end)/dragging_steps !proposed new slow
@@ -260,7 +265,7 @@ contains
 
    accpt = MetropolisAccept(DragLike, CurDragLike)
 
-   call AcceptReject(accpt, CurParams%Info, CurIntParams%Info)
+   call AcceptReject(accpt, CurParams%Info, CurEndParams%Info)
 
    if (accpt) then
        if (num_accept> burn_in) then
@@ -268,7 +273,7 @@ contains
           call WriteParams(CurParams,real(mult),CurLike)
        end if
        num_accept = num_accept + 1
-       CurParams = CurIntParams
+       CurParams = CurEndParams
        CurLike = CurEndLike
        if (CurLike < MaxLike) MaxLike = CurLike
        mult=1
@@ -281,110 +286,110 @@ contains
   end subroutine FastDragging
 
 
- subroutine SampleSlowGrid(CurParams, CurLike, mult, MaxLike, num, num_accept) 
-  !sampling_method = method_slowgrid
-  !Make proposals on a grid in each slow direction simultaneously with changes to
-  !fast parameters. Allows fast paraters to 'adapt' to slow parameter values, thereby
-  !increasing slow acceptance rate
-  Type(ParamSet) Trial, CurParams
-  real CurLike, MaxLike
-  integer num, num_accept, mult
-  real w
-  integer r, r_min, r_max, last_r
-  Type(ParamSet), dimension(:), allocatable :: grid
-  integer i, accpt
-  real Like
-  integer, save:: loopix = 0
-
-
-   if (mod(loopix,num_slow)==0) then
-        if (.not. allocated(Rot_slow)) allocate(Rot_slow(num_slow,num_slow))
-        call RotMatrix(Rot_slow,num_slow)
-        loopix = 0
-   end if
-   loopix = loopix + 1
-
-   w = max(1e-5,propose_r(num_slow)) * propose_scale / 2
- 
-   r = 0
-   r_min = 0
-   r_max = 0
-   accpt = 0
-
-   allocate(grid(-directional_grid_steps:directional_grid_steps))
-   grid(0) = CurParams
-   
-   do i = 1, directional_grid_steps*oversample_fast
-
-    last_r = r
-
-    if (ranmar() < 0.5) then
-     r =r  + 1
-    else
-     r =r  - 1
-    end if
-  
-    Trial = Grid(last_r)
-    call UpdateParamsDirection(Trial, .false., (r-last_r)*w, loopix)
- 
-    if (r > r_max  .or. r < r_min) then
-     grid(r) = Trial
-     slow_proposals = slow_proposals + 1
-     r_min = min(r,r_min)
-     r_max = max(r,r_max)
-    else
-     grid(r)%P(fast_params_used) = Trial%P(fast_params_used)
-    end if
-
-    call GetProposalProjFast(grid(r), grid(r), propose_scale)
-  
-    Like = GetLogLike(grid(r))
-   
-    if (Feedback > 1) write (*,*) r, 'Likelihood: ', Like, 'Current Like:', CurLike
-
-    if (MetropolisAccept(Like, CurLike)) then
-    !Accept
- 
-      if (num_accept> burn_in) then
-          output_lines = output_lines +1
-         call WriteParams(grid(last_r),real(mult),CurLike)
-      end if
-   
-      CurLike = Like
-      accpt = accpt + 1
-      if (Like < MaxLike) MaxLike = Like
-      mult=1
-
-    else
-    !Reject
-      r = last_r
-      mult=mult+1
-    end if  
-
-    call AddMPIParams(grid(r)%P,CurLike) 
- 
-   num = num + 1
-
-   end do
-   
-   if (Feedback > 1) write(*,*) 'Done slow grid, direction', loopix
-   if (Feedback > 1) write(*,*) 'grid steps moved:',abs(r), ' acc rate =',&
-            real(accpt)/(directional_grid_steps*oversample_fast)
-   
-   !Have to be careful freeing up here.. (logZero results don't allocate new)
-   do last_r = r_max, r+1, -1
-      call AcceptReject(.true., grid(last_r)%Info,grid(last_r-1)%Info)  
-   end do
-   do last_r = r_min, r-1
-      call AcceptReject(.true., grid(last_r)%Info,grid(last_r+1)%Info)  
-   end do
-
-   CurParams = grid(r)
-   num_accept = num_accept + accpt
-
-   deallocate(grid)
-
- end subroutine SampleSlowGrid
+ !subroutine SampleSlowGrid(CurParams, CurLike, mult, MaxLike, num, num_accept) 
+ ! !sampling_method = method_slowgrid
+ ! !Make proposals on a grid in each slow direction simultaneously with changes to
+ ! !fast parameters. Allows fast paraters to 'adapt' to slow parameter values, thereby
+ ! !increasing slow acceptance rate
+ ! Type(ParamSet) Trial, CurParams
+ ! real CurLike, MaxLike
+ ! integer num, num_accept, mult
+ ! real w
+ ! integer r, r_min, r_max, last_r
+ ! Type(ParamSet), dimension(:), allocatable :: grid
+ ! integer i, accpt
+ ! real Like
+ ! integer, save:: loopix = 0
+ !
+ !
+ !  if (mod(loopix,num_slow)==0) then
+ !       if (.not. allocated(Rot_slow)) allocate(Rot_slow(num_slow,num_slow))
+ !       call RotMatrix(Rot_slow,num_slow)
+ !       loopix = 0
+ !  end if
+ !  loopix = loopix + 1
+ !
+ !  w = max(1e-5,propose_r(num_slow)) * propose_scale / 2
+ !
+ !  r = 0
+ !  r_min = 0
+ !  r_max = 0
+ !  accpt = 0
+ !
+ !  allocate(grid(-directional_grid_steps:directional_grid_steps))
+ !  grid(0) = CurParams
+ !  
+ !  do i = 1, directional_grid_steps*oversample_fast
+ !
+ !   last_r = r
+ !
+ !   if (ranmar() < 0.5) then
+ !    r =r  + 1
+ !   else
+ !    r =r  - 1
+ !   end if
+ ! 
+ !   Trial = Grid(last_r)
+ !   call UpdateParamsDirection(Trial, .false., (r-last_r)*w, loopix)
+ !
+ !   if (r > r_max  .or. r < r_min) then
+ !    grid(r) = Trial
+ !    slow_proposals = slow_proposals + 1
+ !    r_min = min(r,r_min)
+ !    r_max = max(r,r_max)
+ !   else
+ !    grid(r)%P(fast_params_used) = Trial%P(fast_params_used)
+ !   end if
+ !
+ !   call GetProposalProjFast(grid(r), grid(r), propose_scale)
+ ! 
+ !   Like = GetLogLike(grid(r))
+ !  
+ !   if (Feedback > 1) write (*,*) r, 'Likelihood: ', Like, 'Current Like:', CurLike
+ !
+ !   if (MetropolisAccept(Like, CurLike)) then
+ !   !Accept
+ !
+ !     if (num_accept> burn_in) then
+ !         output_lines = output_lines +1
+ !        call WriteParams(grid(last_r),real(mult),CurLike)
+ !     end if
+ !  
+ !     CurLike = Like
+ !     accpt = accpt + 1
+ !     if (Like < MaxLike) MaxLike = Like
+ !     mult=1
+ !
+ !   else
+ !   !Reject
+ !     r = last_r
+ !     mult=mult+1
+ !   end if  
+ !
+ !   call AddMPIParams(grid(r)%P,CurLike) 
+ !
+ !  num = num + 1
+ !
+ !  end do
+ !  
+ !  if (Feedback > 1) write(*,*) 'Done slow grid, direction', loopix
+ !  if (Feedback > 1) write(*,*) 'grid steps moved:',abs(r), ' acc rate =',&
+ !           real(accpt)/(directional_grid_steps*oversample_fast)
+ !  
+ !  !Have to be careful freeing up here.. (logZero results don't allocate new)
+ !  do last_r = r_max, r+1, -1
+ !     call AcceptReject(.true., grid(last_r)%Info,grid(last_r-1)%Info)  
+ !  end do
+ !  do last_r = r_min, r-1
+ !     call AcceptReject(.true., grid(last_r)%Info,grid(last_r+1)%Info)  
+ !  end do
+ !
+ !  CurParams = grid(r)
+ !  num_accept = num_accept + accpt
+ !
+ !  deallocate(grid)
+ !
+ !end subroutine SampleSlowGrid
 
 !Multicanonical/Wang-Landau
 
@@ -622,20 +627,20 @@ function WL_Weight(L) result (W)
 
    if (CurLike /= LogZero .and. sampling_method == sampling_slice) then 
     !Slice sampling
-          if (num_accept> burn_in) then
-           output_lines = output_lines +1
-           call WriteParams(CurParams, real(mult), CurLike)
-          end if
-          if (Feedback > 1) write (*,*) instance, 'Slicing, Current Like:', CurLike
-          mult = 1
-          if (num_slow /=0) call SliceSampleSlowParam(CurParams, CurLike) 
-          if (num_fast /=0) call SliceSampleFastParams(CurParams, CurLike) 
-          num_accept = num_accept + 1
-          if (CurLike < MaxLike) MaxLike = CurLike
+          !if (num_accept> burn_in) then
+          ! output_lines = output_lines +1
+          ! call WriteParams(CurParams, real(mult), CurLike)
+          !end if
+          !if (Feedback > 1) write (*,*) instance, 'Slicing, Current Like:', CurLike
+          !mult = 1
+          !if (num_slow /=0) call SliceSampleSlowParam(CurParams, CurLike) 
+          !if (num_fast /=0) call SliceSampleFastParams(CurParams, CurLike) 
+          !num_accept = num_accept + 1
+          !if (CurLike < MaxLike) MaxLike = CurLike
 
   elseif (sampling_method == sampling_slowgrid .and. CurLike /= LogZero .and. num_fast /= 0 .and. num_slow /=0) then
           if (Feedback > 1) write (*,*) instance, 'Directional gridding, Like: ', CurLike
-          call SampleSlowGrid(CurParams, CurLike,mult, MaxLike, num, num_accept) 
+!          call SampleSlowGrid(CurParams, CurLike,mult, MaxLike, num, num_accept) 
   elseif (sampling_method == sampling_fast_dragging .and. CurLike /= LogZero .and. num_fast/=0 .and. num_slow /=0) then
           if (Feedback > 1) write (*,*) instance, 'Fast dragging, Like: ', CurLike
           call FastDragging(CurParams, CurLike,mult, MaxLike, num, num_accept) 
@@ -646,18 +651,19 @@ function WL_Weight(L) result (W)
    ! expense of additional function evaluations)
     if (sampling_method == sampling_fastslice) then
 
-        if (CurLike /=LogZero .and. num_fast /=0) then
-            if (num_accept> burn_in) then
-              output_lines = output_lines +1
-              call WriteParams(CurParams,real(mult), CurLike)
-            end if
-            call SliceSampleFastParams(CurParams, CurLike)
-           if (CurLike < MaxLike) MaxLike = CurLike
-            mult = 1 
-        end if 
-        call GetProposalProjSlow(CurParams, Trial)
+        !if (CurLike /=LogZero .and. num_fast /=0) then
+        !    if (num_accept> burn_in) then
+        !      output_lines = output_lines +1
+        !      call WriteParams(CurParams,real(mult), CurLike)
+        !    end if
+        !    call SliceSampleFastParams(CurParams, CurLike)
+        !   if (CurLike < MaxLike) MaxLike = CurLike
+        !    mult = 1 
+        !end if 
+        !call GetProposalProjSlow(CurParams, Trial)
     else
-        call GetProposal(CurParams, Trial)
+        Trial = CurParams
+        call Proposer%GetProposal(Trial%P)
     end if
 
     Like = GetLogLike(Trial) 

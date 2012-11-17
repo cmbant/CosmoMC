@@ -312,8 +312,6 @@ program SolveCosmology
         
         if (estimate_propose_matrix .and. action == action_MCMC .or. action==action_Hessian) then
          ! slb5aug04 with AL updates
-              if (.not. allocated(propose_matrix)) & !
-                 allocate(propose_matrix(num_params_used, num_params_used))
               if (MpiRank==0) then
                   EstParams = Params
                   write (*,*) 'Estimating propose matrix from Hessian at bfp...'
@@ -321,22 +319,16 @@ program SolveCosmology
                   ! By default the grid used to estimate the covariance matrix has spacings
                   ! such that deltaloglike ~ 4 for each parameter.               
                   call AcceptReject(.true., EstParams%Info, Params%Info)
-                  has_propose_matrix = status > 0
+                  if (status==0) call DoAbort('estimate_propose_matrix: estimating propose matrix failed')
                   if (Feedback>0) write (*,*) 'Estimated covariance matrix:'
                   call WriteCovMat(trim(baseroot) //'.hessian.covmat', propose_matrix)
                   write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.hessian.covmat'
                   if (action==action_Hessian) call DoStop
-              else
-                has_propose_matrix = .true.
               end if 
-              if (has_propose_matrix) then
 #ifdef MPI 
-                CALL MPI_Bcast(propose_matrix, size(propose_matrix), MPI_REAL, 0, MPI_COMM_WORLD, ierror) 
+              CALL MPI_Bcast(propose_matrix, size(propose_matrix), MPI_REAL, 0, MPI_COMM_WORLD, ierror) 
 #endif
-                call SetProposeMatrix
-              else
-                   call DoAbort('estimate_propose_matrix: estimating propose matrix failed')
-              end if
+              call SetProposeMatrix
        end if
     
         if (action == action_MCMC) then
