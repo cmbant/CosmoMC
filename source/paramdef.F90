@@ -579,7 +579,7 @@ end subroutine SetProposeMatrix
 
      integer, allocatable, dimension(:), save :: req, buf 
      integer,  allocatable, dimension(:), save :: param_changes
-     logical :: , flukecheck, Waiting = .false.
+     logical :: flukecheck, Waiting = .false.
 
      Type(TList_RealArr), save :: S
      integer, save :: slice_fac = 1

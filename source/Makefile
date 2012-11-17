@@ -142,7 +142,7 @@ DATAMODULES = $(PLANCKLIKEFILES) lrggettheory.o mpk.o bao.o supernovae.o HST.o S
 LIKEFILES =  DataLikelihoods.o calclike.o
 
 OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
-	likelihood.o bbn.o $(DATAMODULES) $(CLSFILE) cmbdata.o paramdef.o $(PROPOSE) $(PARAMETERIZATION) $(LIKEFILES) \
+	likelihood.o bbn.o $(DATAMODULES) $(CLSFILE) cmbdata.o $(PROPOSE) paramdef.o  $(PARAMETERIZATION) $(LIKEFILES) \
 	EstCovmat.o PowellConstrainedMinimize.o minimize.o postprocess.o MCMC.o driver.o
 
 
