@@ -192,7 +192,7 @@ contains
        BP => this%Proposer(i)
        if (.not. allocated(BP%mapping_matrix)) allocate(BP%mapping_matrix(size(BP%used_params_changed), BP%n))
        do j = 1, size(BP%used_params_changed)
-           BP%mapping_matrix(j,:)  =  sigmas(BP%used_params_changed(j)) * L(BP%block_start+j-1,1:BP%n) 
+           BP%mapping_matrix(j,:)  =  sigmas(BP%used_params_changed(j)) * L(BP%block_start+j-1,BP%block_start:BP%block_start+BP%n-1) 
        end do
    end do
    !For two blocks, fast and slow, the effect is like this

@@ -767,8 +767,9 @@ function WL_Weight(L) result (W)
          call MC_AddLike(CurLike)
       end if
 
-     
-     else
+      if (use_fast_slow .and. Feedback>1) write(*,*) 'slow changes', slow_changes, 'power changes', power_changes
+
+    else
       if (num > 1000) then
         call DoAbort('MCMC.f90: Couldn''t start after 1000 tries - check starting ranges')
       end if    

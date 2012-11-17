@@ -184,10 +184,9 @@ subroutine Initialize(Ini,Params)
         integer fast_number, fast_param_index
         real pmat(num_params,num_params)
         logical has_propose_matrix
-        Type(int_arr_pointer) :: param_blocks(2)
-        integer, dimension(:), allocatable :: fast_params_used,slow_params_used !indices into full parameter list
-        integer, dimension(:), allocatable, target :: fast_in_used,slow_in_used !indices into the used parameters
-
+        Type(int_arr_pointer) :: param_blocks(3)
+        integer, dimension(:), allocatable, target :: semi_fast_in_used, fast_in_used,slow_in_used !indices into the used parameters
+        integer num_semi_fast
         output_lines = 0
         
         call SetParamNames(NameMapping)
@@ -231,6 +230,7 @@ subroutine Initialize(Ini,Params)
         num_params_used = 0
         num_fast = 0
         num_slow=0
+        num_semi_fast=0
 
         GaussPriors%std=0 !no priors by default
         do i=1,num_params
@@ -264,7 +264,11 @@ subroutine Initialize(Ini,Params)
            if (Scales%PWidth(i) /= 0) then !to get sizes for allocation arrays
                num_params_used = num_params_used + 1
               if (use_fast_slow .and. any(i==fast_params(1:fast_number))) then
-                num_fast = num_fast + 1
+                if (i >= index_freq) then
+                    num_fast = num_fast + 1
+                else
+                    num_semi_fast = num_semi_fast + 1 
+                end if
               else
                 num_slow = num_slow +1
               end if
@@ -286,36 +290,42 @@ subroutine Initialize(Ini,Params)
         end do
 
         allocate(params_used(num_params_used))
-        allocate(fast_params_used(num_fast))
-        allocate(slow_params_used(num_slow))
         allocate(fast_in_used(num_fast))
+        allocate(semi_fast_in_used(num_semi_fast))
         allocate(slow_in_used(num_slow))
 
         num_params_used = 0
         num_fast = 0
         num_slow=0
+        num_semi_fast=0
         do i=1,num_params
            if (Scales%PWidth(i) /= 0) then
               num_params_used = num_params_used + 1
               params_used(num_params_used) = i
               if (use_fast_slow .and. any(i==fast_params(1:fast_number))) then
+                if (i >= index_freq) then
                 num_fast = num_fast + 1
-                fast_params_used(num_fast) = i
                 fast_in_used(num_fast) = num_params_used
+                else
+                  num_semi_fast=num_semi_fast+1
+                  semi_fast_in_used(num_semi_fast) = num_params_used
+                end if
               else
                 num_slow = num_slow +1
-                slow_params_used(num_slow) = i
                 slow_in_used(num_slow)=num_params_used
               end if
            end if
         end do
-
         param_blocks(1)%P => slow_in_used
-        param_blocks(2)%P => fast_in_used
+        param_blocks(2)%P => semi_fast_in_used
+        param_blocks(3)%P => fast_in_used
         call Proposer%Init(param_blocks)
 
-        if (Feedback > 0 ) write(*,'(" Varying ",1I2," parameters (",1I2," fast)")') &
-               num_params_used,num_fast
+        if (Feedback > 0 .and. MpiRank==0) &
+         write(*,'(" Varying ",1I2," parameters (",1I2," fast, ",1I2," semi-fast")') &
+            num_params_used,num_fast,num_semi_fast
+
+        num_fast = num_fast + num_semi_fast
 
         allocate(propose_matrix(num_params_used, num_params_used))
         if (has_propose_matrix) then

@@ -8,8 +8,10 @@ module CalcLike
  use likelihood
  implicit none
 
- real :: Temperature  = 1
+ real(mcp) :: Temperature  = 1
 
+ integer :: power_changes=0, slow_changes=0
+ 
  logical changeMask(num_params)
  logical SlowChanged, PowerChanged
 
@@ -17,9 +19,9 @@ contains
 
   function GenericLikelihoodFunction(Params) 
     type(ParamSet)  Params 
-    real :: GenericLikelihoodFunction
-    real, allocatable, save :: covInv(:,:)
-    real X(num_params_used)
+    real(mcp) :: GenericLikelihoodFunction
+    real(mcp), allocatable, save :: covInv(:,:)
+    real(mcp) X(num_params_used)
     
     if (test_likelihood) then
         if (.not. allocated(covInv)) then
@@ -42,7 +44,7 @@ contains
 
   
   function TestHardPriors(CMB, Info) 
-    real TestHardPriors
+    real(mcp) TestHardPriors
     Type (CMBParams) CMB
     Type(ParamSetInfo) Info
 
@@ -60,7 +62,7 @@ contains
   function GetLogLike(Params) !Get -Ln(Likelihood) for chains
     type(ParamSet)  Params 
     Type (CMBParams) CMB
-    real GetLogLike
+    real(mcp) GetLogLike
     logical, save:: first=.true.
 
     if (any(Params%P > Scales%PMax) .or. any(Params%P < Scales%PMin)) then
@@ -99,10 +101,10 @@ contains
 
   function GetLogLikePost(CMB, P, Info)
   !for importance sampling where theory may be pre-stored
-    real GetLogLikePost
+    real(mcp) GetLogLikePost
     Type (CMBParams) CMB
     Type(ParamSetInfo) Info
-    real P(num_params)
+    real(mcp) P(num_params)
     
     GetLogLikePost=logZero
    
@@ -112,8 +114,8 @@ contains
   
   function getLogPriors(P) result(logLike)
   integer i
-  real, intent(in) :: P(num_params)
-  real logLike
+  real(mcp), intent(in) :: P(num_params)
+  real(mcp) logLike
   
   logLike=0
   do i=1,num_params
@@ -130,15 +132,17 @@ contains
     type (CMBParams) CMB
     integer error
 
-    SlowChanged = any(changeMask(1:num_hard))
+     SlowChanged = any(changeMask(1:num_hard))
      PowerChanged = any(changeMask(index_initpower:index_initpower+num_initpower-1))
      error=0
      if (Use_CMB .or. Use_LSS) then
          if (SlowChanged) then
+           slow_changes = slow_changes + 1
            call GetNewTransferData(CMB, Params%Info, error)
          end if
          if ((SlowChanged .or. PowerChanged) .and. error==0) then
-           call GetNewPowerData(CMB, Params%Info, error)
+             if (.not. SlowChanged) power_changes = power_changes  + 1
+             call GetNewPowerData(CMB, Params%Info, error)
          end if
      else
          if (SlowChanged) call GetNewBackgroundData(CMB, Params%Info, error)
@@ -149,11 +153,11 @@ contains
 
   
   function GetLogLikeWithTheorySet(CMB, Params) result(logLike)
-    real logLike
+    real(mcp) logLike
     Type (CMBParams) CMB
     Type(ParamSet) Params
     integer error
-    real itemLike
+    real(mcp) itemLike
     Class(DataLikelihood), pointer :: like
     integer i
     logical backgroundSet
