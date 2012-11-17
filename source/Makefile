@@ -207,8 +207,8 @@ HST.o: cmbtypes.o
 supernovae.o: cmbtypes.o
 SDSSLy-a-v3.o: cmbtypes.o
 $(CLSFILE): cmbtypes.o IO.o
-paramdef.o: $(CLSFILE)
-$(PROPOSE): paramdef.o
+paramdef.o: $(CLSFILE) propose.o
+$(PROPOSE): settings.o
 $(PARAMETERIZATION): paramdef.o
 calclike.o: $(PARAMETERIZATION) DataLikelihoods.o
 postprocess.o: calclike.o
