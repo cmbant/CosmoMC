@@ -682,7 +682,6 @@ end subroutine SetProposeMatrix
                MPI_Min_Sample_Update = &
                   max((MPI_Min_Sample_Update*max(1,num_fast))/(MPI_thin_fac*slice_fac), npoints)
                npoints = 0
-               StartCovMat = has_propose_matrix
                flukecheck = .false.
                deallocate(param_changes)
                allocate(MPIcovmat(num_params_used,num_params_used))
