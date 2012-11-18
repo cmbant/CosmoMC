@@ -166,17 +166,31 @@ subroutine ParamError(str,param)
 
 end subroutine ParamError
 
+subroutine orderIndices(arr,n)
+ integer, intent(in) :: n
+ integer arr(:), tmp(n),j, s, i
+ 
+ tmp=arr(1:n)
+ s=n
+ do i=1,n
+     arr(i) = minval(tmp(1:s))
+     j=indexOf(arr(i),tmp,s)
+     tmp(j:s-1)= tmp(j+1:s)
+     s=s-1
+ end do
+end subroutine orderIndices
 
 subroutine Initialize(Ini,Params)
         use IniFile
         use ParamNames
         use settings
         use IO
+        use likelihood
 
         implicit none
         type (ParamSet) Params
         type (TIniFile) :: Ini
-        integer i
+        integer i, j, ix
         character(LEN=5000) fname,InLine
         character(LEN=1024) prop_mat
         real center, wid, mult, like
@@ -187,9 +201,10 @@ subroutine Initialize(Ini,Params)
         integer param_type(num_params)
         integer speed, num_speed
         integer, parameter :: tp_unused = 0, tp_slow=1, tp_semislow=2, tp_semifast=3, tp_fast=4
-        Type(int_arr_pointer) :: param_blocks(tp_slow:tp_fast)
-        logical :: block_semi_fast
-
+        Type(int_arr_pointer), allocatable :: param_blocks(:)
+        logical :: block_semi_fast =.false., block_fast_likelihood_params=.false.
+        integer :: breaks(num_params), num_breaks
+        Type(DataLikelihood), pointer :: DataLike
         output_lines = 0
 
         call SetParamNames(NameMapping)
@@ -208,6 +223,7 @@ subroutine Initialize(Ini,Params)
               end do
             end if
             block_semi_fast = Ini_Read_Logical_File(Ini,'block_semi_fast',.true.)
+            block_fast_likelihood_params = Ini_Read_logical_File(Ini,'block_fast_likelihood_params',.true.)
         else 
             fast_number = 0
         end if
@@ -302,8 +318,34 @@ subroutine Initialize(Ini,Params)
           params_used(num_params_used)=i
          end if
         end do
-  
-        do speed= tp_slow, tp_fast
+
+        num_breaks=0
+        if (block_fast_likelihood_params) then
+            !put parameters for different likelihoods in separate blocks, 
+            !so not doing randomly mix them and hence don't all need to be recomputed
+            do i=1,DataLikelihoods%Count
+                DataLike=>DataLikelihoods%Item(i)
+                do j=1, num_params_used-1
+                    if (param_type(params_used(j))==tp_fast .and. &
+                     (DataLike%dependent_params(params_used(j)) .neqv. DataLike%dependent_params(params_used(j+1))) &
+                       .and. .not. any(breaks(1:num_breaks)==j)) then
+                      num_breaks = num_breaks+1 
+                      breaks(num_breaks)=j
+                    end if
+                end do
+            end do
+        end if
+        num_breaks = num_breaks + 1
+        breaks(num_breaks) = num_params_used
+        if (Feedback>0 .and. MpiRank==0) then
+            write(*,*) 'Fast divided into ',num_breaks-1,' blocks'
+            if (num_breaks>1) write(*,*) 'Breaks at: ',breaks(1:num_breaks-1)
+        end if
+
+        call orderIndices(breaks, num_breaks)
+
+        allocate(param_blocks(tp_semifast+num_breaks))
+        do speed= tp_slow, tp_semifast
          allocate(param_blocks(speed)%P(count(param_type == speed)))
          num_speed=0
          do i=1,num_params_used
@@ -312,6 +354,19 @@ subroutine Initialize(Ini,Params)
               param_blocks(speed)%P(num_speed) = i
              end if
          end do
+        end do
+        ix=1
+        do speed = tp_fast, tp_fast+num_breaks-1
+         j = breaks(speed-tp_fast+1)
+         allocate(param_blocks(speed)%P(count(param_type(params_used(ix:j)) == tp_fast)))
+         num_speed=0
+         do i=ix,j
+             if (param_type(params_used(i))==tp_fast) then
+              num_speed=num_speed+1
+              param_blocks(speed)%P(num_speed) = i
+             end if
+         end do
+         ix=j+1
         end do
 
         call Proposer%Init(param_blocks, slow_block_max= 2)

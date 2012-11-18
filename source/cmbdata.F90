@@ -88,14 +88,7 @@ implicit none
     procedure :: LogLike => CMBLnLike
     end type CMBDataLikelihood
 
-#ifdef CLIK
-   type, extends(DataLikelihood) :: ClikLikelihood
-     Type(CMBdataset) dataset
-    contains
-    procedure :: LogLike => ClikLogLike
-    end type ClikLikelihood
-#endif
-    
+   
   logical :: init_MAP = .true.
 
   integer :: cl_bin_width =1
@@ -1029,24 +1022,6 @@ contains
 
 
 
-#ifdef CLIK
-  real function ClikLogLike(like, CMB, Theory) 
-     use cliklike
-     use CMB_Cls
-     Class(ClikLikelihood) :: like
-     Type (CMBParams) CMB
-     Type(CosmoTheory) Theory
-     real acl(lmax,num_cls_tot)
-
-     call ClsFromTheoryData(Theory, CMB, acl)
-!Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
-!freq_params(35:44), ACT/SPT as freq_params(45:65)
-      ClikLogLike = clik_lnlike(dble(acl),dble(CMB%data_params(2:num_freq_params)))
- end function ClikLogLike
-#endif
- 
- 
- 
    subroutine CMBDataLikelihoods_Add(LikeList, Ini)
 #ifndef NOWMAP
         use WMAP_OPTIONS
@@ -1054,7 +1029,6 @@ contains
    use IniFile
 #ifdef CLIK
     use cliklike
-    Type(ClikLikelihood), pointer :: clikLikelihood
 #endif
     class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
@@ -1100,12 +1074,7 @@ contains
         if (use_clik .and. .not. use_CMB) &
          call MpiStop('must have use_CMB=.true. to have use_clik (cmb_numdatasets = 0 for only clik)')
         if (Use_clik) then 
-            allocate(clikLikelihood)
-            call LikeList%Add(clikLikelihood) 
-            clikLikelihood%dependent_params(1:index_freq+num_camSpec+num_plik+num_actSpt)=.true.
-            clikLikelihood%LikelihoodType = 'CMB'
-            clikLikelihood%name='CLIK'
-            call clik_readParams(Ini)
+            call clik_readParams(LikeList, Ini)
         end if
 #else
          if (Ini_Read_Logical('use_clik',.false.)) call DoAbort('compile with CLIK to use clik - see Makefile')

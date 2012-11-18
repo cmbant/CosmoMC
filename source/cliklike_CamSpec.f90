@@ -2,34 +2,57 @@
     use cmbtypes
     use settings
     use temp_like
+    use Likelihood
 #ifdef highL
     use HIGHELL_OPTIONS
     use highell_likelihood
 #endif
     implicit none
 
-    logical :: use_clik = .false.  
     logical :: use_CAMspec = .true.
     logical :: use_highL = .false.
+
+   type, extends(DataLikelihood) :: CamSpecLikelihood
+    contains
+    procedure :: LogLike => CamSpecLogLike
+    end type CamSpecLikelihood
+
+#ifdef highL
+   type, extends(DataLikelihood) :: highLLikelihood
+    contains
+    procedure :: LogLike => highLLogLike
+   end type highLLikelihood
+#endif
 
     integer, parameter :: dp = kind(1.d0)
 
     private
-    public :: clik_readParams,clik_lnlike, use_clik
+    public :: clik_readParams
 
     contains
 
-    subroutine clik_readParams(Ini)
+    
+    subroutine clik_readParams(LikeLIst, Ini)
     use settings
     Type(TIniFile) Ini
+    class(LikelihoodList) :: LikeList
     character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
-    beamfilename, kszfilename,tszxcibfilename
+      beamfilename, kszfilename,tszxcibfilename
+    Type(CamspecLikelihood), pointer :: CamLike
+#ifdef highL
+    Type(HighLLikelihood), pointer :: highLike
+#endif
 
     print *,' using cliklike_CamSpec'
     use_CAMspec = Ini_Read_Logical_File(Ini,'use_CAMspec',.true.)
 
     if (use_CAMspec) then
-        
+        allocate(CamLike)
+        call LikeList%Add(CamLike) 
+        CamLike%dependent_params(1:index_freq+num_camSpec)=.true.
+        CamLike%LikelihoodType = 'CMB'
+        CamLike%name='CamSpec'
+
         likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
         sz143filename=ReadIniFileName(Ini,'sz143file',NotFoundFail = .true.)
         tszxcibfilename=ReadIniFileName(Ini,'tszxcibfile',NotFoundFail = .true.)
@@ -43,6 +66,12 @@
 
     if (use_highL) then
 #ifdef highL
+        allocate(highLike)
+        call LikeList%Add(highLike) 
+        highLike%dependent_params(1:index_freq+num_camSpec+num_plik+num_actSpt)=.true.
+        highLike%LikelihoodType = 'CMB'
+        highLike%name='highL'
+        
       if (lmax < tt_lmax_mc) call MpiStop('set lmax>=tt_lmax_mc in settings to use highL data')
       data_dir = CheckTrailingSlash(ReadIniFileName(Ini,'highL_data_dir'))
       SPT_data_dir = trim(data_dir) // 'data_spt/' 
@@ -56,18 +85,20 @@
     
     end subroutine clik_readParams
 
-    function clik_lnlike(cl,freq_params)
-    real(dp) :: clik_lnlike
-    real(dp), intent(in) :: cl(lmax,num_cls_tot)
-    real(dp), intent(in) :: freq_params(1:num_freq_params-1)   
-    
-    clik_lnlike = 0
-    if (use_CAMspec)  clik_lnlike=clik_lnlike+clik_lnlike_camSpec(cl,freq_params)
-#ifdef highL
-    if (use_highL)    clik_lnlike=clik_lnlike+clik_lnlike_highL(cl,freq_params)
-#endif
-    end function clik_lnlike
 
+  real function CamspecLogLike(like, CMB, Theory) 
+     Class(CamspecLikelihood) :: like
+     Type (CMBParams) CMB
+     Type(CosmoTheory) Theory
+     real acl(lmax,num_cls_tot)
+
+     call ClsFromTheoryData(Theory, CMB, acl)
+!Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
+!freq_params(35:44), ACT/SPT as freq_params(45:65)
+      CamspecLogLike = clik_lnlike_camSpec(dble(acl),dble(CMB%data_params(2:num_freq_params)))
+ end function CamspecLogLike
+
+ 
     function clik_lnlike_camSpec(cl,freq_params)
     real(dp) :: clik_lnlike_camSpec
     real(dp), intent(in) :: cl(lmax,num_cls_tot)
@@ -119,7 +150,20 @@
     end function clik_lnlike_camSpec
 
 #ifdef highL
-    function clik_lnlike_highL(cl,freq_params)
+  real function highLLogLike(like, CMB, Theory) 
+     Class(highLLikelihood) :: like
+     Type (CMBParams) CMB
+     Type(CosmoTheory) Theory
+     real acl(lmax,num_cls_tot)
+
+     call ClsFromTheoryData(Theory, CMB, acl)
+!Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
+!freq_params(35:44), ACT/SPT as freq_params(45:65)
+      highLLogLike = clik_lnlike_highL(dble(acl),dble(CMB%data_params(2:num_freq_params)))
+ end function highLLogLike
+
+
+  function clik_lnlike_highL(cl,freq_params)
     real(dp) :: clik_lnlike_highL
     real(dp), intent(in) :: cl(lmax,num_cls_tot)
     real(dp), intent(in)  :: freq_params(1:num_freq_params-1)   
