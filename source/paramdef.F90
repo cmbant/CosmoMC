@@ -184,11 +184,15 @@ subroutine Initialize(Ini,Params)
         integer fast_number, fast_param_index
         real pmat(num_params,num_params)
         logical has_propose_matrix
-        Type(int_arr_pointer) :: param_blocks(3)
-        integer, dimension(:), allocatable, target :: semi_fast_in_used, fast_in_used,slow_in_used !indices into the used parameters
-        integer num_semi_fast
+        integer param_type(num_params)
+        integer, dimension(:), allocatable, target :: &
+          semi_fast_in_used, semi_slow_in_used, fast_in_used,slow_in_used !indices into the used parameters
+        integer speed, num_speed
+        integer, parameter :: tp_unused = 0, tp_slow=1, tp_semislow=2, tp_semifast=3, tp_fast=4
+        Type(int_arr_pointer) :: param_blocks(tp_slow:tp_fast)
+
         output_lines = 0
-        
+
         call SetParamNames(NameMapping)
         if (use_fast_slow) then
             if (Ini_HasKey_File(Ini,'fast_parameters')) then
@@ -227,10 +231,7 @@ subroutine Initialize(Ini,Params)
             outfile_handle = IO_OutputOpenForWrite(fname, append = .true.)
          end if
     
-        num_params_used = 0
-        num_fast = 0
-        num_slow=0
-        num_semi_fast=0
+        param_type = tp_unused
 
         GaussPriors%std=0 !no priors by default
         do i=1,num_params
@@ -263,15 +264,18 @@ subroutine Initialize(Ini,Params)
            if (Scales%center(i) < Scales%PMin(i)) call ParamError('You have param center < Min',i)
            if (Scales%center(i) > Scales%PMax(i)) call ParamError('You have param center > Max',i)
            if (Scales%PWidth(i) /= 0) then !to get sizes for allocation arrays
-               num_params_used = num_params_used + 1
               if (use_fast_slow .and. any(i==fast_params(1:fast_number))) then
                 if (i >= index_freq) then
-                    num_fast = num_fast + 1
+                   param_type(i) = tp_fast
                 else
-                    num_semi_fast = num_semi_fast + 1 
+                   param_type(i) = tp_semifast
                 end if
               else
-                num_slow = num_slow +1
+                if (use_fast_slow .and. i >= index_initpower) then
+                 param_type(i) = tp_semislow
+                else
+                 param_type(i) = tp_slow
+                end if
               end if
            end if
            if (new_chains) then
@@ -290,44 +294,35 @@ subroutine Initialize(Ini,Params)
            end if
         end do
 
-        allocate(params_used(num_params_used))
-        allocate(fast_in_used(num_fast))
-        allocate(semi_fast_in_used(num_semi_fast))
-        allocate(slow_in_used(num_slow))
-
-        num_params_used = 0
-        num_fast = 0
-        num_slow=0
-        num_semi_fast=0
+        allocate(params_used( count(param_type /= tp_unused)))
+        num_params_used=0
         do i=1,num_params
-           if (Scales%PWidth(i) /= 0) then
-              num_params_used = num_params_used + 1
-              params_used(num_params_used) = i
-              if (use_fast_slow .and. any(i==fast_params(1:fast_number))) then
-                if (i >= index_freq) then
-                num_fast = num_fast + 1
-                fast_in_used(num_fast) = num_params_used
-                else
-                  num_semi_fast=num_semi_fast+1
-                  semi_fast_in_used(num_semi_fast) = num_params_used
-                end if
-              else
-                num_slow = num_slow +1
-                slow_in_used(num_slow)=num_params_used
-              end if
-           end if
+         if (param_type(i)/=tp_unused) then
+          num_params_used=num_params_used+1
+          params_used(num_params_used)=i
+         end if
         end do
-        param_blocks(1)%P => slow_in_used
-        param_blocks(2)%P => semi_fast_in_used
-        param_blocks(3)%P => fast_in_used
-        call Proposer%Init(param_blocks)
+  
+        do speed= tp_slow, tp_fast
+         allocate(param_blocks(speed)%P(count(param_type == speed)))
+         num_speed=0
+         do i=1,num_params_used
+             if (param_type(params_used(i))==speed) then
+              num_speed=num_speed+1
+              param_blocks(speed)%P(num_speed) = i
+             end if
+         end do
+        end do
 
-        if (Feedback > 0 .and. MpiRank==0) &
-         write(*,'(" Varying ",1I2," parameters (",1I2," fast, ",1I2," semi-fast)")') &
-            num_params_used,num_fast,num_semi_fast
+        call Proposer%Init(param_blocks, slow_block_max= 2)
+        num_slow = Proposer%Slow%n
+        num_fast = Proposer%Fast%n
 
-        num_fast = num_fast + num_semi_fast
-
+        if (Feedback > 0 .and. MpiRank==0) then
+         write(*,'(" Varying ",1I2," parameters (",1I2," slow (",1I2," semi-slow), ",1I2," fast (",1I2," semi-fast))")') &
+            num_params_used,num_slow, size(param_blocks(tp_semislow)%P), num_fast,size(param_blocks(tp_semifast)%P)
+        end if
+ 
         allocate(propose_matrix(num_params_used, num_params_used))
         if (has_propose_matrix) then
 

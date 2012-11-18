@@ -27,7 +27,7 @@ contains
    subroutine HSTLikelihood_Add(LikeList, Ini)
     class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
-    Type(HSTLikelihood), allocatable, save :: like
+    Type(HSTLikelihood), pointer :: like
     
     if (Ini_Read_Logical_File(Ini, 'use_HST',.false.)) then
         allocate(like)

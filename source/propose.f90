@@ -13,9 +13,18 @@ module propose
   use settings
   implicit none
  
-  Type RandDirectionProposer
-    integer n
-    integer :: loopix =0
+  Type IndexCycler
+      integer n
+      integer :: loopix=0
+  end Type IndexCycler
+  
+  Type, extends(IndexCycler) :: CyclicIndexRandomizer
+      integer, allocatable :: indices(:)
+  contains
+     procedure :: Next
+  end Type CyclicIndexRandomizer
+  
+  Type, extends(IndexCycler) :: RandDirectionProposer
     integer :: propose_count = 0
     real(mcp), allocatable, dimension(:,:) :: R
   contains
@@ -35,7 +44,7 @@ module propose
   Type BlockedProposer
     integer :: nBlocks
     integer, allocatable :: indices(:), ProposerForIndex(:)
-    integer :: block_loopix = 0, fast_block_loopix = 0
+    Type(CyclicIndexRandomizer) :: Slow, Fast, All
     Type(BlockProposer), allocatable :: Proposer(:)
   contains
    procedure :: Init
@@ -54,6 +63,18 @@ module propose
 
 contains
 
+ function Next(this)
+  Class(CyclicIndexRandomizer) :: this
+  integer Next
+   this%loopix = mod(this%loopix, this%n) + 1
+   if (this%loopix == 1) then
+       if (.not. allocated(this%indices)) allocate(this%indices(this%n))
+       call randIndices(this%indices, this%n, this%n)
+   end if
+   Next = this%indices(this%loopix)
+
+ end function Next
+  
  subroutine RotMatrix(M,n)
   integer, intent(in) :: n
   real M(n,n)
@@ -124,25 +145,33 @@ contains
   
  end subroutine UpdateParams
 
-  subroutine Init(this, parameter_blocks)
+  subroutine Init(this, parameter_blocks, slow_block_max)
+  !slow_block_max determines which parameter blocks are grouped together as being 'slow'
    Class(BlockedProposer), target :: this
    type(int_arr_pointer) :: parameter_blocks(:)
+   integer, intent(in) :: slow_block_max
    integer used_blocks(size(parameter_blocks))
-   integer i, ix, n
+   integer i, ix, n, np
    Type(BlockProposer), pointer :: BP
    
    this%nBlocks = size(parameter_blocks) 
    n=0
+   this%All%n=0
+   this%Slow%n=0
    do i=1, this%nBlocks
-       if (size(parameter_blocks(i)%P)>0) then
+       np = size(parameter_blocks(i)%P)
+       if (np >0) then
+        this%All%n = this%All%n+ np
+        if (i <= slow_block_max) this%Slow%n= this%Slow%n + np
         n=n+1
         used_blocks(n)=i
        end if
    end do
+   this%Fast%n = this%All%n - this%Slow%n
    this%nBlocks = n
    allocate(this%Proposer(this%nBlocks))
-   allocate(this%indices(num_params_used))
-   allocate(this%ProposerForIndex(num_params_used))
+   allocate(this%indices(this%All%n))
+   allocate(this%ProposerForIndex(this%All%n))
    this%indices=0
    ix = 1
    do i=1, this%nBlocks
@@ -159,9 +188,9 @@ contains
    if (any(this%indices==0)) stop 'DecomposeCovariance: not all used parameters blocked'
    do i=1, this%nBlocks
        BP => this%Proposer(i)
-       allocate(BP%used_params_changed(num_params_used-BP%block_start+1))
-       allocate(BP%params_changed(num_params_used-BP%block_start+1))
-       BP%used_params_changed = this%indices(BP%block_start:num_params_used)
+       allocate(BP%used_params_changed(this%All%n-BP%block_start+1))
+       allocate(BP%params_changed(this%All%n-BP%block_start+1))
+       BP%used_params_changed = this%indices(BP%block_start:this%All%n)
        BP%params_changed = params_used(BP%used_params_changed)
    end do
 
@@ -192,7 +221,8 @@ contains
        BP => this%Proposer(i)
        if (.not. allocated(BP%mapping_matrix)) allocate(BP%mapping_matrix(size(BP%used_params_changed), BP%n))
        do j = 1, size(BP%used_params_changed)
-           BP%mapping_matrix(j,:)  =  sigmas(BP%used_params_changed(j)) * L(BP%block_start+j-1,BP%block_start:BP%block_start+BP%n-1) 
+           BP%mapping_matrix(j,:)  =  sigmas(BP%used_params_changed(j)) * &
+                        L(BP%block_start+j-1,BP%block_start:BP%block_start+BP%n-1) 
        end do
    end do
    !For two blocks, fast and slow, the effect is like this
@@ -220,8 +250,7 @@ contains
    class(BlockedProposer) :: this
    real(mcp) :: P(:) 
 
-   this%block_loopix = mod(this%block_loopix, num_params_used) + 1
-   call this%GetBlockProposal(P, this%ProposerForIndex(this%block_loopix))
+   call this%GetBlockProposal(P, this%ProposerForIndex(this%All%Next()))
 
   end subroutine GetProposal
 
@@ -229,16 +258,16 @@ contains
    class(BlockedProposer) :: this
    real(mcp) :: P(:) 
 
-   call this%GetBlockProposal(P, 1)
+   call this%GetBlockProposal(P, this%ProposerForIndex(this%Slow%Next()))
 
   end subroutine GetProposalSlow
   
   subroutine GetProposalFastDelta(this, P)
    class(BlockedProposer) :: this
    real(mcp) :: P(:) 
+
    P=0
-   this%fast_block_loopix = max(this%Proposer(1)%n+1,mod(this%fast_block_loopix, num_params_used) + 1)
-   call this%GetBlockProposal(P, this%ProposerForIndex(this%fast_block_loopix))
+   call this%GetBlockProposal(P, this%ProposerForIndex(this%Slow%n + this%Fast%Next()))
 
   end subroutine GetProposalFastDelta
 

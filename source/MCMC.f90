@@ -174,16 +174,15 @@ contains
   !Make proposals in fast-marginalized slow parameters 
   !'drag' fast parameters using method of Neal
   Type(ParamSet) TrialEnd, TrialStart, CurParams, CurEndParams, CurStartParams
-  real CurLike, MaxLike
-  integer num, num_accept, mult
-  integer sample_step, numaccpt
-  real CurIntLike, IntLike, CurEndLike, CurStartLike, EndLike, StartLike
-  real CurDragLike, DragLike
+  real(mcp) CurLike, MaxLike
+  integer mult
+  integer num, num_accept, numaccpt
+  real(mcp) CurIntLike, IntLike, CurEndLike, CurStartLike, EndLike, StartLike
+  real(mcp) CurDragLike, DragLike
   logical :: accpt
-  integer :: metropolis_steps
-  real  :: likes_start(0:dragging_steps-1), likes_end(0:dragging_steps-1)
-  integer interp_step
-  real frac, delta(num_params)
+  real(mcp)  :: likes_start_sum, likes_end_sum
+  integer interp_step, interp_steps
+  real(mcp) frac, delta(num_params)
   integer, save :: num_fast_calls = 0, num_slow_calls = 0
    
    call Timer()
@@ -200,20 +199,17 @@ contains
    if (Feedback > 1) call Timer('Dragging Slow time')
 
    num_slow_calls = num_slow_calls + 1
-   metropolis_steps = num_fast * oversample_fast
 
-   likes_end(0) = CurEndLike
-   likes_start(0) = CurStartLike
+   likes_end_sum = CurEndLike
+   likes_start_sum = CurStartLike
 
    CurStartParams = CurParams
    CurEndParams = TrialEnd
 
-   numaccpt = 0
-   do interp_step = 1, dragging_steps-1 
-   frac = real(interp_step)/dragging_steps
-   CurIntLike = CurStartLike*(1-frac) + frac*CurEndLike
+   interp_steps = dragging_steps * num_fast * oversample_fast + 1
 
-   do sample_step =1, metropolis_steps
+   numaccpt = 0
+   do interp_step = 1, interp_steps-1 
     call Proposer%GetProposalFastDelta(delta)
     TrialEnd = CurEndParams
     TrialEnd%P = TrialEnd%P + delta 
@@ -228,11 +224,13 @@ contains
      if (accpt) then
 
       num_fast_calls = num_fast_calls + 1
+      if (Feedback > 2) print *,'End,start drag: ', interp_step, EndLike, StartLike
 
-      if (Feedback > 2) print *,'End,start drag: ', sample_step, EndLike, StartLike
+      frac = real(interp_step, mcp)/interp_steps
+      CurIntLike = CurStartLike*(1-frac) + frac*CurEndLike
       IntLike = StartLike*(1-frac) + frac*EndLike
-    
       accpt = MetropolisAccept(IntLike, CurIntLike)
+
      end if
     end if
     
@@ -241,26 +239,25 @@ contains
 
     if (accpt) then
        CurEndParams = TrialEnd
-       CurStartParams = TrialStart       
+       CurStartParams = TrialStart
        CurEndLike = EndLike
        CurStartLike = StartLike
        CurIntLike = IntLike
        numaccpt = numaccpt + 1
     end if
+
+   likes_start_sum = likes_start_sum + CurStartLike
+   likes_end_sum = likes_end_sum + CurEndLike
+
    end do
 
-   likes_start(interp_step) = CurStartLike
-   likes_end(interp_step) = CurEndLike
-   
-   end do
-   
    if (Feedback > 1) call Timer('Dragging time')
    
    if (Feedback > 1) print *,'drag steps accept ratio:', &
-        real(numaccpt)/((dragging_steps-1)*metropolis_steps)
+        real(numaccpt)/(interp_steps)
 
-   CurDragLike = sum(likes_start)/dragging_steps !old slow
-   DragLike = sum(likes_end)/dragging_steps !proposed new slow
+   CurDragLike = likes_start_sum/interp_steps !old slow
+   DragLike = likes_end_sum/interp_steps !proposed new slow
    if (Feedback > 2) print *,'CurDragLike, DragLike: ', CurDragLike, DragLike
 
    accpt = MetropolisAccept(DragLike, CurDragLike)

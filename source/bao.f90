@@ -45,7 +45,6 @@ use likelihood
     use settings
     class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
-    Type(BAOLikelihood), allocatable, target, save :: likes(:)
     Type(BAOLikelihood), pointer :: like
     
     integer numbaosets, i
@@ -53,9 +52,8 @@ use likelihood
      if (Ini_Read_Logical_File(Ini, 'use_BAO',.false.)) then
         numbaosets = Ini_Read_Int_File(Ini,'bao_numdatasets',0)
         if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
-        allocate(likes(numbaosets))
         do i= 1, numbaosets
-              like=>likes(i)
+              allocate(like)
               call ReadBaoDataset(like, ReadIniFileName(Ini,numcat('bao_dataset',i)) )
               like%LikelihoodType = 'BAO'
               like%needs_background_functions = .true.

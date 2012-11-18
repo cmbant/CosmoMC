@@ -1054,13 +1054,12 @@ contains
    use IniFile
 #ifdef CLIK
     use cliklike
-    Type(ClikLikelihood), allocatable, save :: clikLikelihood
+    Type(ClikLikelihood), pointer :: clikLikelihood
 #endif
     class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
 
-    Type(CMBDataLikelihood), allocatable, target, save:: likes(:)
-    Type(CMBDataLikelihood), pointer :: like
+    Type(CMBDataLikelihood), pointer  :: like
     integer numsets,  i
     character(LEN=Ini_max_string_len) filename,keyname,SZTemplate
     real SZScale
@@ -1075,9 +1074,8 @@ contains
 #endif
 
         numsets = Ini_Read_Int_File(Ini,'cmb_numdatasets',0)
-        allocate(likes(numsets))
          do i= 1, numsets
-          like => likes(i)
+          allocate(like)
           call LikeList%Add(like) 
           like%LikelihoodType = 'CMB'
           like%dependent_params(1:num_theory_params) = .true.

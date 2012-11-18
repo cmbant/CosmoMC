@@ -13,11 +13,13 @@
         integer :: Count =0
         integer :: Delta = 64
         integer :: Capacity = 0
+        logical :: OwnsObjects = .true.
         Type(Object_pointer), dimension(:), allocatable :: Items
     contains
     procedure :: Init
     procedure :: Add
     procedure :: DeleteItem
+    procedure :: FreeItem
     procedure :: SetCapacity
     FINAL :: Clear
     end Type TObjectList
@@ -36,20 +38,39 @@
 
     subroutine Clear(L)
     Type(TObjectList) :: L
-
-    if (allocated(L%Items)) deallocate (L%Items)
+    integer i
+    
+    if (allocated(L%Items)) then
+        if (L%OwnsObjects) then
+         do i=1,L%count
+          call L%FreeItem(i)
+         end do
+        end if
+        deallocate (L%Items)
+    end if
     L%Count = 0
     L%Capacity = 0
 
     end subroutine Clear
 
-    subroutine Add(L, C)
+    subroutine Add(L, C, copy)
     Class(TObjectList) :: L
     class(*), intent(in), target :: C
+    logical, intent(in), optional :: copy
 
-    if (L%Count == L%Capacity) call SetCapacity(L, L%Capacity + L%Delta)
+    if (L%Count == L%Capacity) call L%SetCapacity(L%Capacity + L%Delta)
     L%Count = L%Count + 1
-    L%Items(L%Count)%P=>C
+    if (present(copy)) then
+     if (L%OwnsObjects .and. copy) then
+          allocate(L%Items(L%Count)%P, source=C)
+     elseif (copy) then 
+         stop 'ObjectLists: Cannot add copy to un-owned list'
+     else 
+         L%Items(L%Count)%P=>C
+     end if
+    else
+     L%Items(L%Count)%P=>C
+    end if
 
     end subroutine Add
 
@@ -72,10 +93,22 @@
     L%Capacity = C
     end subroutine SetCapacity
 
+    subroutine FreeItem(L, i)
+    Class(TObjectList) :: L
+    integer, intent(in) :: i
+
+    if (associated(L%Items(i)%P)) deallocate(L%Items(i)%P)
+    if (associated(L%Items(i)%tag)) deallocate(L%Items(i)%tag)
+    L%Items(i)%P=> null()
+    L%Items(i)%tag=> null()
+
+    end subroutine FreeItem
+
     subroutine DeleteItem(L, i)
     Class(TObjectList) :: L
     integer, intent(in) :: i
-    !
+    
+    if (L%OwnsObjects) call L%FreeItem(i)
     if (L%Count > 1) L%Items(i:L%Count-1) = L%Items(i+1:L%Count)
     L%Count = L%Count -1
 

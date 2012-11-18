@@ -85,7 +85,7 @@ implicit none
     use settings
     class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
-    Type(SNLikelihood), allocatable, save :: like
+    Type(SNLikelihood), pointer :: like
     character (LEN=20):: name
     integer i
     real :: tmp_mat(sn_num, sn_num)
@@ -93,7 +93,6 @@ implicit none
     if (.not. Ini_Read_Logical_File(Ini, 'use_SN',.false.)) return
 
    allocate(like)
-   
    Like%LikelihoodType = 'SN'
    Like%name='Union2'
    like%needs_background_functions = .true.
