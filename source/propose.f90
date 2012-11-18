@@ -225,15 +225,7 @@ contains
                         L(BP%block_start+j-1,BP%block_start:BP%block_start+BP%n-1) 
        end do
    end do
-   !For two blocks, fast and slow, the effect is like this
-   !param_transform_slow = L(1:num_params_used,1:num_slow)
-   !do i=1, num_slow
-   ! param_transform_slow(slow_in_used(i),:) =  sigmas(slow_in_used(i)) * L(i,1:num_slow) 
-   !end do
-   !do i=1, num_fast
-   ! param_transform_slow(fast_in_used(i),:) =  sigmas(fast_in_used(i)) * L(num_slow+i,1:num_slow) 
-   !end do 
-    end subroutine SetCovariance
+  end subroutine SetCovariance
 
     
   subroutine GetBlockProposal(this, P, i)

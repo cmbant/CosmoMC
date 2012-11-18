@@ -185,11 +185,10 @@ subroutine Initialize(Ini,Params)
         real pmat(num_params,num_params)
         logical has_propose_matrix
         integer param_type(num_params)
-        integer, dimension(:), allocatable, target :: &
-          semi_fast_in_used, semi_slow_in_used, fast_in_used,slow_in_used !indices into the used parameters
         integer speed, num_speed
         integer, parameter :: tp_unused = 0, tp_slow=1, tp_semislow=2, tp_semifast=3, tp_fast=4
         Type(int_arr_pointer) :: param_blocks(tp_slow:tp_fast)
+        logical :: block_semi_fast
 
         output_lines = 0
 
@@ -201,13 +200,14 @@ subroutine Initialize(Ini,Params)
              call ParamNames_ReadIndices(NameMapping,Ini_Read_String_File(Ini,'fast_parameters'), fast_params, fast_number)
             else
              !all parameters at and above fast_param_index
-             fast_param_index= Ini_Read_Int_File(Ini,'fast_param_index',num_hard+1) 
+             fast_param_index= Ini_Read_Int_File(Ini,'fast_param_index',index_freq) 
              fast_number = 0
              do i=fast_param_index, num_params
               fast_number = fast_number+1
               fast_params(fast_number) = i
               end do
             end if
+            block_semi_fast = Ini_Read_Logical_File(Ini,'block_semi_fast',.true.)
         else 
             fast_number = 0
         end if
@@ -265,13 +265,13 @@ subroutine Initialize(Ini,Params)
            if (Scales%center(i) > Scales%PMax(i)) call ParamError('You have param center > Max',i)
            if (Scales%PWidth(i) /= 0) then !to get sizes for allocation arrays
               if (use_fast_slow .and. any(i==fast_params(1:fast_number))) then
-                if (i >= index_freq) then
+                if (i >= index_freq .or. .not. block_semi_fast) then
                    param_type(i) = tp_fast
                 else
                    param_type(i) = tp_semifast
                 end if
               else
-                if (use_fast_slow .and. i >= index_initpower) then
+                if (use_fast_slow .and. i >= index_initpower .and. block_semi_fast) then
                  param_type(i) = tp_semislow
                 else
                  param_type(i) = tp_slow
