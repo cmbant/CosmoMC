@@ -101,17 +101,17 @@ contains
        else if (clik_nnuis .eq. (num_CAMspec + num_ACTSPT - num_CAMspec_ACTSPT_common)) then
           Print*,'You appear to be using a CAMspec DX9 + ACT/SPT likelihood file.'
           Print*,'WARNING: absolutely make sure that the CAMspec nuisance parameters'
-          Print*,'are listed AFTER then ACT/SPT nuisance parameters below.'
+          Print*,'are listed BEFORE then ACT/SPT nuisance parameters below.'
           Print*,'If not, you need to create the combined .clik file with a different'
-          Print*,'of arguments.'
+          Print*,'order of arguments.'
           using_CAMspec = .true.
           using_ACTSPT = .true.       
        else if (clik_nnuis .eq. (num_PLik + num_ACTSPT - num_PLik_ACTSPT_common)) then
           Print*,'You appear to be using a PLik v3 DX9 + ACT/SPT likelihood file.'
        	  Print*,'WARNING: absolutely make sure that the PLik nuisance parameters'
-       	  Print*,'are listed AFTER then ACT/SPT nuisance parameters below.'
+       	  Print*,'are listed BEFORE then ACT/SPT nuisance parameters below.'
        	  Print*,'If not, you need to create the combined .clik file with a different'
-       	  Print*,'of arguments.'
+       	  Print*,'order of arguments.'
           using_PLik = .true.  
           using_ACTSPT = .true.
        else if (clik_nnuis .ne. 0) then
@@ -139,7 +139,7 @@ contains
        clik_n = clik_ncl + clik_nnuis
        allocate(clik_cl_and_pars(clik_n))
        
-!Mapping CosmoMC's power spectrum indices to clic's
+!Mapping CosmoMC's power spectrum indices to clik's
        mapped_index(1) = 1
        mapped_index(2) = 3
        mapped_index(3) = 4
@@ -198,7 +198,7 @@ contains
                 clik_cl_and_pars(j) = clik_nuis(i+num_CAMspec)
                 j = j+1
              end do
-       	     !skip ACT/SPT parameters 1,3,9,10,14 (already included in CAMspec nuisance params)
+       	     !skip ACT/SPT parameters 1,3,9,10,14 (already included in PLik nuisance params)
              do i=1,num_ACTSPT 
                 if (.not. ((i .eq. 1) .or. (i .eq. 3) .or. &
        	       	    & (i .eq. 9) .or. (i .eq. 10) .or. (i .eq. 14))) then
