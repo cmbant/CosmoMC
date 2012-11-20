@@ -407,7 +407,7 @@ subroutine Initialize(Ini,Params)
         
         call SetProposeMatrix
           
-        if (.not. new_chains) call AddMPIParams(Params%P,like, .true.)    
+        if (.not. new_chains) call AddMPIParams(Params%P,like, .true.)
    
         return
 100     call DoAbort('Error reading param details: '//trim(InLIne))

@@ -200,7 +200,7 @@ program SolveCosmology
             if (sampling_method > 7 .or. sampling_method<1) call DoAbort('Unknown sampling method')
             if (sampling_method==sampling_slowgrid) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
             if (sampling_method==sampling_fast_dragging) then
-                dragging_steps = Ini_Read_Int('dragging_steps',4)
+                dragging_steps = Ini_Read_Real('dragging_steps',2.)
                 if (dragging_steps<2) call MpiStop('dragging_steps must be two or more')
             end if
         else

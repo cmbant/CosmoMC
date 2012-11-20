@@ -64,7 +64,7 @@ use, intrinsic :: iso_fortran_env, only : input_unit, output_unit,error_unit
   real    :: propose_scale  = 2.4 
   
   !For fast dragging method, baseline number of intermediate drag steps
-  integer :: dragging_steps = 4
+  real :: dragging_steps = 4.
 
 !The rest are set up automatically
 
