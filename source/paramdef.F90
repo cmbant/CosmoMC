@@ -338,8 +338,8 @@ subroutine Initialize(Ini,Params)
         num_breaks = num_breaks + 1
         breaks(num_breaks) = num_params_used
         if (Feedback>0 .and. MpiRank==0) then
-            write(*,*) 'Fast divided into ',num_breaks-1,' blocks'
-            if (num_breaks>1) write(*,*) 'Breaks at: ',breaks(1:num_breaks-1)
+            write(*,*) 'Fast divided into ',num_breaks,' blocks'
+            if (num_breaks>1) write(*,*) 'Block breaks at: ',breaks(1:num_breaks-1)
         end if
 
         call orderIndices(breaks, num_breaks)
