@@ -201,7 +201,11 @@ program SolveCosmology
             if (sampling_method==sampling_slowgrid) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
             if (sampling_method==sampling_fast_dragging) then
                 dragging_steps = Ini_Read_Real('dragging_steps',2.)
+                use_fast_slow = .true.
+            else
+                use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
             end if
+
         else
          Ini_fail_on_not_found = .false.
         end if
@@ -220,19 +224,12 @@ program SolveCosmology
         bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
         num_massive_neutrinos = Ini_read_int('num_massive_neutrinos',-1)
 
-        oversample_fast = Ini_Read_Int('oversample_fast',1)
-        use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
- 
-        if (Ini_Read_Logical('cmb_hyperparameters', .false.)) &
-            call DoAbort( 'Hyperparameters not supported any more')
-        
         call SetDataLikelihoods(DefIni)
 
         Temperature = Ini_Read_Real('temperature',1.)
         
         num_threads = Ini_Read_Int('num_threads',0)
         !$ if (num_threads /=0) call OMP_SET_NUM_THREADS(num_threads)
-
 
         estimate_propose_matrix = Ini_Read_Logical('estimate_propose_matrix',.false.)
         if (estimate_propose_matrix) then

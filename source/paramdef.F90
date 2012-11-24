@@ -219,6 +219,7 @@ subroutine Initialize(Ini,Params)
         logical :: block_semi_fast =.false., block_fast_likelihood_params=.false.
         integer :: breaks(num_params), num_breaks
         Type(DataLikelihood), pointer :: DataLike
+        real(mcp) :: oversample_fast= 1._mcp
         output_lines = 0
 
         call SetParamNames(NameMapping)
@@ -238,6 +239,7 @@ subroutine Initialize(Ini,Params)
             end if
             block_semi_fast = Ini_Read_Logical_File(Ini,'block_semi_fast',.true.)
             block_fast_likelihood_params = Ini_Read_logical_File(Ini,'block_fast_likelihood_params',.true.)
+            oversample_fast = Ini_Read_Real('oversample_fast',1.)
         else 
             fast_number = 0
         end if
@@ -336,7 +338,7 @@ subroutine Initialize(Ini,Params)
         num_breaks=0
         if (block_fast_likelihood_params) then
             !put parameters for different likelihoods in separate blocks, 
-            !so not doing randomly mix them and hence don't all need to be recomputed
+            !so not randomly mix them and hence don't all need to be recomputed
             do i=1,DataLikelihoods%Count
                 DataLike=>DataLikelihoods%Item(i)
                 do j=1, num_params_used-1
@@ -383,7 +385,7 @@ subroutine Initialize(Ini,Params)
          ix=j+1
         end do
 
-        call Proposer%Init(param_blocks, slow_block_max= 2)
+        call Proposer%Init(param_blocks, slow_block_max= 2, oversample_fast=oversample_fast)
         num_slow = Proposer%Slow%n
         num_fast = Proposer%Fast%n
 

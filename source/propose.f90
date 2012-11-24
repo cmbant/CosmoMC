@@ -44,14 +44,16 @@ module propose
   Type BlockedProposer
     integer :: nBlocks
     integer, allocatable :: indices(:), ProposerForIndex(:)
-    Type(CyclicIndexRandomizer) :: Slow, Fast, All
+    Type(CyclicIndexRandomizer) :: Slow, Fast, All, FastOversampler
     Type(BlockProposer), allocatable :: Proposer(:)
+    real(mcp) :: oversample_fast = 1._mcp
   contains
    procedure :: Init
    procedure :: SetCovariance
    procedure :: GetBlockProposal
    procedure :: GetProposal
    procedure :: GetProposalSlow
+   procedure :: GetProposalFast
    procedure :: GetProposalFastDelta
   end Type BlockedProposer
 
@@ -85,7 +87,7 @@ contains
    else
       M = 0
       do i = 1, n
-           M(i,i) = sign(1., real(ranmar())-0.5)
+           M(i,i) = sign(1._mcp, real(ranmar(),mcp)-0.5_mcp)
       end do
    end if
  
@@ -145,15 +147,19 @@ contains
   
  end subroutine UpdateParams
 
-  subroutine Init(this, parameter_blocks, slow_block_max)
+  subroutine Init(this, parameter_blocks, slow_block_max, oversample_fast)
   !slow_block_max determines which parameter blocks are grouped together as being 'slow'
    Class(BlockedProposer), target :: this
    type(int_arr_pointer) :: parameter_blocks(:)
    integer, intent(in) :: slow_block_max
    integer used_blocks(size(parameter_blocks))
+   real(mcp), intent(in), optional :: oversample_fast
    integer i, ix, n, np
    Type(BlockProposer), pointer :: BP
    
+   if (present(oversample_fast)) then
+        this%oversample_fast = oversample_fast
+   endif
    this%nBlocks = size(parameter_blocks) 
    n=0
    this%All%n=0
@@ -168,6 +174,7 @@ contains
        end if
    end do
    this%Fast%n = this%All%n - this%Slow%n
+   this%FastOversampler%n = max(this%Fast%n,nint(this%Fast%n * this%oversample_fast)) + this%Slow%n
    this%nBlocks = n
    allocate(this%Proposer(this%nBlocks))
    allocate(this%indices(this%All%n))
@@ -242,7 +249,11 @@ contains
    class(BlockedProposer) :: this
    real(mcp) :: P(:) 
 
-   call this%GetBlockProposal(P, this%ProposerForIndex(this%All%Next()))
+   if (this%FastOversampler%Next() > this%Slow%n) then
+       call  GetProposalFast(this, P)
+   else
+       call  GetProposalSlow(this, P)
+   end if
 
   end subroutine GetProposal
 
@@ -254,13 +265,21 @@ contains
 
   end subroutine GetProposalSlow
   
+  subroutine GetProposalFast(this, P)
+   class(BlockedProposer) :: this
+   real(mcp) :: P(:) 
+
+   call this%GetBlockProposal(P, this%ProposerForIndex(this%Slow%n + this%Fast%Next()))
+
+  end subroutine GetProposalFast
+  
   subroutine GetProposalFastDelta(this, P)
    class(BlockedProposer) :: this
    real(mcp) :: P(:) 
 
    P=0
-   call this%GetBlockProposal(P, this%ProposerForIndex(this%Slow%n + this%Fast%Next()))
-
+   call this%GetProposalFast(P) 
+  
   end subroutine GetProposalFastDelta
 
 end module propose

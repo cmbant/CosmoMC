@@ -206,7 +206,7 @@ contains
    CurStartParams = CurParams
    CurEndParams = TrialEnd
 
-   interp_steps = max(2,nint(dragging_steps * num_fast * oversample_fast) + 1)
+   interp_steps = max(2,nint(dragging_steps * num_fast * Proposer%oversample_fast) + 1)
 
    numaccpt = 0
    do interp_step = 1, interp_steps-1 
