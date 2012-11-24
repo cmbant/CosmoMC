@@ -16,3 +16,5 @@ Release/
 *.suo
 *.pyc
 *.asv
+*.u2d
+*.user
