@@ -32,8 +32,8 @@ real(dl), dimension(4) :: zeval, zweight, sigma2BAOfid, sigma2BAO
 real(dl) om_val, ol_val, ok_check, wval  ! passed in from CMBparams CMB
 
 ! power spectra evaluated at fiducial cosmological theory (WMAP5 recommended values)
-real, allocatable :: ratio_power_nw_nl_fid(:,:)
-!real,dimension(num_matter_power,matter_power_lnzsteps) :: ratio_power_nw_nl_fid
+real(mcp), allocatable :: ratio_power_nw_nl_fid(:,:)
+!real(mcp),dimension(num_matter_power,matter_power_lnzsteps) :: ratio_power_nw_nl_fid
 !make allocatable to avoid compile-time range errors when matter_power_lnzsteps<4
 
 contains
@@ -121,8 +121,8 @@ subroutine LRGtoICsmooth(k,fidpolys)
 end subroutine LRGtoICsmooth
 
 subroutine fill_LRGTheory(Theory, minkh, dlnkh)
-  Type(CosmoTheory) Theory
-  real, intent(in) :: minkh, dlnkh
+  Type(TheoryPredictions) Theory
+  real(mcp), intent(in) :: minkh, dlnkh
   real(dl) :: logmink, xi, kval, expval, psmear, nlrat
   real(dl), dimension(2:4) :: fidpolys, holdval
 
@@ -168,16 +168,16 @@ implicit none
     integer :: num_mpk_points_use ! total number of points used (ie. max-min+1)
     integer :: num_mpk_kbands_use ! total number of kbands used (ie. max-min+1)
     character(LEN=20) :: name
-    real, pointer, dimension(:,:) :: N_inv
-    real, pointer, dimension(:,:) :: mpk_W, mpk_invcov
-    real, pointer, dimension(:) :: mpk_P, mpk_sdev, mpk_k
-    real, pointer, dimension(:) :: mpk_zerowindowfxn
-    real, pointer, dimension(:) :: mpk_zerowindowfxnsubtractdat
-    real :: mpk_zerowindowfxnsubdatnorm !!the 0th entry in windowfxnsubtract file
+    real(mcp), pointer, dimension(:,:) :: N_inv
+    real(mcp), pointer, dimension(:,:) :: mpk_W, mpk_invcov
+    real(mcp), pointer, dimension(:) :: mpk_P, mpk_sdev, mpk_k
+    real(mcp), pointer, dimension(:) :: mpk_zerowindowfxn
+    real(mcp), pointer, dimension(:) :: mpk_zerowindowfxnsubtractdat
+    real(mcp) :: mpk_zerowindowfxnsubdatnorm !!the 0th entry in windowfxnsubtract file
     logical :: use_scaling !as SDSS_lrgDR3
    !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
     logical :: Q_marge, Q_flat
-    real :: Q_mid, Q_sigma, Ag
+    real(mcp) :: Q_mid, Q_sigma, Ag
    end Type mpkdataset
 
  integer :: num_mpk_datasets = 0
@@ -207,7 +207,7 @@ implicit none
 contains 
 
   subroutine mpk_SetTransferRedshifts(redshifts)
-   real, intent(inout) :: redshifts(*)
+   real(mcp), intent(inout) :: redshifts(*)
    !input is default log z spacing; can change here; check for consistency with other (e.g. lya)
          
    !Note internal ordering in CAMB is the opposite to that used in cosmomc transfer arrays (as here)
@@ -245,18 +245,18 @@ contains
     Type (mpkdataset) :: mset
 
     integer i,iopb
-    real keff,klo,khi,beff
+    real(mcp) keff,klo,khi,beff
     integer :: num_mpk_points_full ! actual number of bandpowers in the infile
     integer :: num_mpk_kbands_full ! actual number of k positions " in the infile
     integer :: max_mpk_points_use ! in case you don't want the smallest scale modes (eg. sdss)
     integer :: min_mpk_points_use ! in case you don't want the largest scale modes
     integer :: max_mpk_kbands_use ! in case you don't want to calc P(k) on the smallest scales (will truncate P(k) to zero here!)
     integer :: min_mpk_kbands_use ! in case you don't want to calc P(k) on the largest scales (will truncate P(k) to zero here!)
-    real, dimension(:,:), allocatable :: mpk_Wfull, mpk_covfull
-    real, dimension(:), allocatable :: mpk_kfull, mpk_fiducial
+    real(mcp), dimension(:,:), allocatable :: mpk_Wfull, mpk_covfull
+    real(mcp), dimension(:), allocatable :: mpk_kfull, mpk_fiducial
 
-    real, dimension(:), allocatable :: mpk_zerowindowfxnfull
-    real, dimension(:), allocatable :: mpk_zerowindowfxnsubfull
+    real(mcp), dimension(:), allocatable :: mpk_zerowindowfxnfull
+    real(mcp), dimension(:), allocatable :: mpk_zerowindowfxnsubfull
 
     character(80) :: dummychar
     logical bad
@@ -397,22 +397,22 @@ contains
  
   function LSS_mpklike(Theory,mset,CMB) result(LnLike) ! LV_06 added CMB here
    Type (mpkdataset) :: mset
-   Type (CosmoTheory) Theory
+   Type (TheoryPredictions) Theory
    Type(CMBparams) CMB     !LV_06 added for LRGDR4
-   real LnLike
-   real, dimension(:), allocatable :: mpk_Pth, mpk_k2,mpk_lin,k_scaled !LV_06 added for LRGDR4
-   real, dimension(:), allocatable :: w
-   real, dimension(:), allocatable :: mpk_WPth, mpk_WPth_k2
-   real :: covdat(mset%num_mpk_points_use), covth(mset%num_mpk_points_use),  covth_k2(mset%num_mpk_points_use)
-   real :: normV, Q, minchisq
-   real :: a_scl  !LV_06 added for LRGDR4
+   real(mcp) LnLike
+   real(mcp), dimension(:), allocatable :: mpk_Pth, mpk_k2,mpk_lin,k_scaled !LV_06 added for LRGDR4
+   real(mcp), dimension(:), allocatable :: w
+   real(mcp), dimension(:), allocatable :: mpk_WPth, mpk_WPth_k2
+   real(mcp) :: covdat(mset%num_mpk_points_use), covth(mset%num_mpk_points_use),  covth_k2(mset%num_mpk_points_use)
+   real(mcp) :: normV, Q, minchisq
+   real(mcp) :: a_scl  !LV_06 added for LRGDR4
    integer :: i, iQ
    logical :: do_marge
    integer, parameter :: nQ=6
-   real :: tmp, dQ = 0.4
-   real chisq(-nQ:nQ)
-   real calweights(-nQ:nQ)
-   real vec2(2),Mat(2,2)
+   real(mcp) :: tmp, dQ = 0.4
+   real(mcp) chisq(-nQ:nQ)
+   real(mcp) calweights(-nQ:nQ)
+   real(mcp) vec2(2),Mat(2,2)
    
    allocate(mpk_lin(mset%num_mpk_kbands_use) ,mpk_Pth(mset%num_mpk_kbands_use))
    allocate(mpk_WPth(mset%num_mpk_points_use))
@@ -547,10 +547,10 @@ contains
 
  function LSSLnLike(CMB, Theory)
    Type (CMBParams) CMB
-   Type (CosmoTheory) Theory
-   real LSSLnLike
+   Type (TheoryPredictions) Theory
+   real(mcp) LSSLnLike
    integer i
-   real tot(num_mpk_datasets)
+   real(mcp) tot(num_mpk_datasets)
 
   do i=1, num_mpk_datasets
      if (mpkdatasets(i)%name == 'twodf') then
@@ -566,7 +566,7 @@ contains
  end function LSSLnLike
 
  subroutine inv_mat22(M)
-    real M(2,2), Minv(2,2), det
+    real(mcp) M(2,2), Minv(2,2), det
 
     det = M(1,1)*M(2,2)-M(1,2)*M(2,1)
     Minv(1,1)=M(2,2)
@@ -597,7 +597,7 @@ subroutine compute_scaling_factor(Ok,Ol,w,a)
   implicit none
   real(mpk_d) Or, Om, Ok, Ol, w, Ok0, Om0, Ol0, w0, z, eta, eta0, Hrelinv, Hrelinv0, tmp
   real(mpk_d) a_radial, a_angular
-  real a
+  real(mcp) a
   !Or= 0.0000415996*(T_0/2.726)**4 / h**2
   Or= 0! Radiation density totally negligible at  z < 0.35
   Om= 1-Ok-Ol-Or
@@ -946,8 +946,8 @@ end function testa1a2
    integer :: countcheck = 0
    integer :: i, j
    !! this is just for checking the 'theory' curves for fiducial model
-   real :: fidLnLike
-   type(CosmoTheory) :: temptheory
+   real(mcp) :: fidLnLike
+   type(TheoryPredictions) :: temptheory
    type(CMBparams) :: tempCMB
 
    da1 = a1maxval/(nptsa1/2)
@@ -986,36 +986,36 @@ end function testa1a2
 
  function LSS_LRG_mpklike(Theory,mset,CMB) result(LnLike)  ! LV_06 added CMB here
    Type (mpkdataset) :: mset
-   Type (CosmoTheory) Theory
+   Type (TheoryPredictions) Theory
    Type(CMBparams) CMB                  !LV_06 added for LRGDR4
-   real LnLike
+   real(mcp) LnLike
    integer :: i
-   real, dimension(:), allocatable :: mpk_raw, mpk_Pth, mpk_Pth_k, mpk_Pth_k2, k_scaled
-   real, dimension(:), allocatable :: mpk_WPth, mpk_WPth_k, mpk_WPth_k2
-   real :: covdat(mset%num_mpk_points_use), covth(mset%num_mpk_points_use), &
+   real(mcp), dimension(:), allocatable :: mpk_raw, mpk_Pth, mpk_Pth_k, mpk_Pth_k2, k_scaled
+   real(mcp), dimension(:), allocatable :: mpk_WPth, mpk_WPth_k, mpk_WPth_k2
+   real(mcp) :: covdat(mset%num_mpk_points_use), covth(mset%num_mpk_points_use), &
           & covth_k(mset%num_mpk_points_use), covth_k2(mset%num_mpk_points_use), & 
           & covth_zerowin(mset%num_mpk_points_use)
 
-   real, dimension(nptstot) :: chisq, chisqmarg  !! minus log likelihood list
-   real :: minchisq,maxchisq,deltaL
+   real(mcp), dimension(nptstot) :: chisq, chisqmarg  !! minus log likelihood list
+   real(mcp) :: minchisq,maxchisq,deltaL
 
    real(dl) :: a1val, a2val, zerowinsub
-   real :: sumDD, sumDT, sumDT_k, sumDT_k2, sumTT,& 
+   real(mcp) :: sumDD, sumDT, sumDT_k, sumDT_k2, sumTT,& 
      &  sumTT_k, sumTT_k2, sumTT_k_k, sumTT_k_k2, sumTT_k2_k2, &
      &  sumDT_tot, sumTT_tot, &
      &  sumDT_zerowin, sumTT_zerowin, sumTT_k_zerowin, sumTT_k2_zerowin, sumTT_zerowin_zerowin
 
-   real :: sumzerow_Pth, sumzerow_Pth_k, sumzerow_Pth_k2
+   real(mcp) :: sumzerow_Pth, sumzerow_Pth_k, sumzerow_Pth_k2
 
-   real :: a_scl      !LV_06 added for LRGDR4
+   real(mcp) :: a_scl      !LV_06 added for LRGDR4
 
    real(wp) :: temp1,temp2,temp3
-   real :: temp4
+   real(mcp) :: temp4
 
    !! added for no marg
    integer :: myminchisqindx
-   real :: currminchisq, currminchisqmarg, minchisqtheoryamp, chisqnonuis
-   real :: minchisqtheoryampnonuis, minchisqtheoryampminnuis
+   real(mcp) :: currminchisq, currminchisqmarg, minchisqtheoryamp, chisqnonuis
+   real(mcp) :: minchisqtheoryampnonuis, minchisqtheoryampminnuis
    real(dl), dimension(2) :: myerfval
 
    call fill_LRGTheory(Theory,matter_power_minkh,matter_power_dlnkh)

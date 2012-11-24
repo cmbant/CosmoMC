@@ -76,8 +76,8 @@ contains
 
 
 !interpolate Yp from grid
-  real function yp_bbn(ombh2_in,deltan_in)
-    real :: ombh2_in,deltan_in
+  real(mcp) function yp_bbn(ombh2_in,deltan_in)
+    real(mcp) :: ombh2_in,deltan_in
     logical, save:: initialized = .false.
     real(dp) res
 

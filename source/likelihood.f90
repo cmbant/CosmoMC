@@ -3,7 +3,6 @@
     !Can be multiple of same type
     use AMLUtils
     use settings
-    use cmbtypes
     use IniFile
     use ObjectLists, only: TObjectList
     implicit none
@@ -18,6 +17,7 @@
 !        integer :: needs_cl_lmax = 0
         character(LEN=80) :: name = ''
         character(LEN=80) :: LikelihoodType= ''
+        character(LEN=80) :: version = ''
     contains
     procedure :: LogLike
     end type DataLikelihood
@@ -50,7 +50,7 @@
     subroutine WriteLikelihoodContribs(L, aunit, likelihoods)
     Class(LikelihoodList) :: L
     integer, intent(in) :: aunit
-    real, intent(in) :: likelihoods(*)
+    real(mcp), intent(in) :: likelihoods(*)
     integer i
     Class(DataLikelihood), pointer :: LikeItem
 
@@ -64,9 +64,9 @@
     
     function LogLike(like, CMB, Theory)
     class(DataLikelihood) :: like
-    Type(CMBParams) :: CMB
-    Type(CosmoTheory) :: Theory
-    real LogLike
+    class(*) :: CMB
+    class(*) :: Theory
+    real(mcp) LogLike
     
     LogLike= logZero
     stop 'likeliood Init should not be called'

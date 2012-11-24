@@ -9,14 +9,14 @@ module CMBLikes
  use cmbtypes
  use IniFile
  use AMLutils
- use MatrixUtils !Compiled with MATRIX_SINGLE defined
+ use MatrixUtils 
  implicit none
 
   integer :: cl_E = 3, cl_B=4 ! stop compile time errors with num_cls=3
   logical, parameter :: bin_test = .false.
  
   Type TSqMatrix
-    real, dimension(:,:), pointer :: M
+    real(mcp), dimension(:,:), pointer :: M
   end Type TSqMatrix
 
   Type TLowlLike
@@ -46,23 +46,23 @@ module CMBLikes
      integer vecsize
      integer nbins
      integer like_approx
-     real fullsky_exact_fksy ! only used for testing with exactly fullsky
+     real(mcp) fullsky_exact_fksy ! only used for testing with exactly fullsky
      integer ncl_hat !1, or more if using multiple simulations
-     real, dimension(:,:), pointer :: ClFiducial, ClNoise, ClPointsources, ClOffset
-     real, dimension(:,:,:), pointer :: ClHat
+     real(mcp), dimension(:,:), pointer :: ClFiducial, ClNoise, ClPointsources, ClOffset
+     real(mcp), dimension(:,:,:), pointer :: ClHat
      !ClOffset is the alpha parameter determining skewness
 
      integer cl_phi_lmin, cl_phi_lmax !lmax for the lensing reconstruction
      integer lensing_recon_ncl !0 for no lensing recon, 1 for phi-phi spectru, 2 phi-phi and phi-T
      integer phi_like_approx
-     real, dimension(:,:), pointer :: ClPhiHat, ClPhiNoise, phi_inv_covariance 
+     real(mcp), dimension(:,:), pointer :: ClPhiHat, ClPhiNoise, phi_inv_covariance 
        !for lensing reconstruction
        !note these are [l(l+1)]^4C_l/2pi
        
-     real, dimension(:,:), pointer :: inv_covariance
-     real, dimension(:,:), pointer :: binWindows, beammodes
+     real(mcp), dimension(:,:), pointer :: inv_covariance
+     real(mcp), dimension(:,:), pointer :: binWindows, beammodes
      integer beam_MCMC_modes
-     real point_source_error !fractional error in A
+     real(mcp) point_source_error !fractional error in A
      integer pointsource_MCMC_modes
      integer num_nuisance_parameters
      Type(TSqMatrix) ,dimension(:), pointer :: sqrt_fiducial, NoiseM, OffsetM
@@ -182,7 +182,7 @@ contains
   subroutine CMBLikes_lowl_GetFullCovariance(D, Cov, cl, lmin, lsum)
    Type(TCMBLikes) :: D
    double precision Cov(:,:)
-   real cl(lmax,num_cls)
+   real(mcp) cl(lmax,num_cls)
    integer, intent (in) :: lmin, lsum
    integer i,j
    double precision :: sum1,sum2,tmp,tmpEE,tmpBB, tmpEB, tmpBE
@@ -275,8 +275,8 @@ contains
 
   function CMBLikes_lowl_CMBLike(D, cl) result (chisq)
     Type(TCMBLikes) :: D
-    real cl(lmax,num_cls)
-    real chisq
+    real(mcp) cl(lmax,num_cls)
+    real(mcp) chisq
     double precision, allocatable :: Cov(:,:)
     integer j
    
@@ -369,12 +369,12 @@ contains
   character(LEN=*), intent(in) :: aname, order
   logical, intent(in), optional :: keepnorm
   integer, intent(in) :: lmin
-  real :: Cl(:,lmin:)
+  real(mcp) :: Cl(:,lmin:)
   character(LEN=1024) :: tmp
   integer ix, i, j,i1,l,ll
   integer cols(6)
   logical donorm
-  real norm,tmp_ar(6)
+  real(mcp) norm,tmp_ar(6)
   Type (TStringList) :: Li
   integer file_unit
       
@@ -479,7 +479,7 @@ contains
   Type(TCMBLikes) :: D
   character(LEN=*), intent(in) :: fname
   integer nmodes
-  real x, modes(D%cl_lmin:D%cl_lmax,nmodes)
+  real(mcp) x, modes(D%cl_lmin:D%cl_lmax,nmodes)
   integer stat, file_unit, l, i
   
      file_unit = new_file_unit()
@@ -499,7 +499,7 @@ contains
  subroutine CMBLikes_ReadData(D, Ini,dataset_dir)
   Type(TCMBLikes) :: D
   Type(TIniFile) :: Ini 
-  real, dimension(:,:), allocatable, target :: Cov, fullcov
+  real(mcp), dimension(:,:), allocatable, target :: Cov, fullcov
   character(LEN=*), intent(in) :: dataset_dir
   integer ix, i
   character(LEN=Ini_max_string_len) :: S, S_order
@@ -508,9 +508,9 @@ contains
   integer, dimension(:,:), allocatable :: indices
   integer lmin_covmat,lmax_covmat, vecsize_in
   integer nmodes,cov_num_cls
-  real covmat_scale
+  real(mcp) covmat_scale
   double precision :: asum
-  real, allocatable :: avec(:)
+  real(mcp), allocatable :: avec(:)
 !  character(LEN=Ini_max_string_len) cache_name
    Ini_fail_on_not_found = .true.
 
@@ -674,7 +674,7 @@ contains
            end do  
            call ElementsToMatrix(D, avec, D%sqrt_fiducial(i)%M)
            D%sqrt_fiducial(i)%M= D%sqrt_fiducial(i)%M + D%NoiseM(i)%M
-           call Matrix_Root(D%sqrt_fiducial(i)%M, D%nfields, 0.5) 
+           call Matrix_Root(D%sqrt_fiducial(i)%M, D%nfields, 0.5_mcp) 
           end if
           do clix =1, D%ncl_hat
            allocate(D%ChatM(i,clix)%M(D%nfields,D%nfields))
@@ -705,7 +705,7 @@ contains
           if (associated(D%ClFiducial)) then
            allocate(D%sqrt_fiducial(l)%M(D%nfields,D%nfields))
            call ElementsToMatrix(D, D%ClFiducial(:,l)+D%ClNoise(:,l), D%sqrt_fiducial(l)%M)
-           call Matrix_Root(D%sqrt_fiducial(l)%M, D%nfields, 0.5) 
+           call Matrix_Root(D%sqrt_fiducial(l)%M, D%nfields, 0.5_mcp) 
           end if   
          end do
 
@@ -809,7 +809,7 @@ contains
        end if    
     end if !MainMPI    
 #ifdef MPI
-     call MPI_BCAST(D%inv_covariance,Size(D%inv_covariance),MPI_REAL, 0, MPI_COMM_WORLD, i)
+     call MPI_BCAST(D%inv_covariance,Size(D%inv_covariance),MPI_real, 0, MPI_COMM_WORLD, i)
 #endif
     end if 
 
@@ -867,7 +867,7 @@ contains
  subroutine CMBLikes_ReadClPhiArr(D, aname, Cl)
   Type(TCMBLikes) :: D
   character(LEN=*), intent(in) :: aname
-  real :: Cl(:,D%cl_phi_lmin:), tmp_arr(D%lensing_recon_ncl)
+  real(mcp) :: Cl(:,D%cl_phi_lmin:), tmp_arr(D%lensing_recon_ncl)
   integer file_unit
   character(LEN=1024) :: tmp
   integer l, ll    
@@ -900,12 +900,12 @@ contains
   !Get  C = C_f^{1/2} C^{-1/2} C^{+1/2} U f(D) U^T C^{+1/2} C^{-1/2} C_f^{1/2} where C^{-1/2} CHat C^{-1/2} = U D U^T
 
   Type(TCMBLikes) :: D
-  real C(D%nfields,D%nfields)
-  real, intent(in), optional :: COffset(D%nfields,D%nfields)
-  real, intent(in) :: CHat(D%nfields,D%nfields), CfHalf(D%nfields,D%nfields)
-  real :: U(D%nfields,D%nfields), U2(D%nfields,D%nfields), Rot(D%nfields,D%nfields) 
-  real :: roots(D%nfields)
-  real :: diag(D%nfields), diag2(D%nfields)
+  real(mcp) C(D%nfields,D%nfields)
+  real(mcp), intent(in), optional :: COffset(D%nfields,D%nfields)
+  real(mcp), intent(in) :: CHat(D%nfields,D%nfields), CfHalf(D%nfields,D%nfields)
+  real(mcp) :: U(D%nfields,D%nfields), Rot(D%nfields,D%nfields) 
+  real(mcp) :: roots(D%nfields)
+  real(mcp) :: diag(D%nfields)
   integer i
 
         if (present(COffset)) then
@@ -927,7 +927,7 @@ contains
         Rot = matmul(U,matmul(Rot,transpose(U))) 
         call Matrix_Diagonalize(Rot,Diag,D%nfields)
 
-        Diag = sign(sqrt(2*max(0.,Diag-log(Diag)-1)),Diag-1)
+        Diag = sign(sqrt(2*max(0._mcp,Diag-log(Diag)-1)),Diag-1)
         !want f(D)-1 to save calculating X-X_s
        
         if (present(COffset)) then
@@ -936,7 +936,7 @@ contains
           Rot(i,:)=Rot(i,:)*roots(i)
          end do
          Rot = MatMul(U,Rot)
-         call Matrix_Root(C,D%nfields, -0.5)
+         call Matrix_Root(C,D%nfields, -0.5_mcp)
          Rot = MatMul(C,Rot)          
         end if
        
@@ -952,8 +952,8 @@ contains
 
  subroutine MatrixToElements(D, M, X)
   Type(TCMBLikes) :: D
-  real :: M(D%nfields,D%nfields) 
-  real :: X(D%ncl)
+  real(mcp) :: M(D%nfields,D%nfields) 
+  real(mcp) :: X(D%ncl)
   integer ix,i,j
 
   ix=0
@@ -985,8 +985,8 @@ contains
 
  subroutine ElementsToMatrix(D, X, M)
   Type(TCMBLikes) :: D
-  real, intent(out) :: M(D%nfields,D%nfields) 
-  real, intent(in) :: X(D%ncl)
+  real(mcp), intent(out) :: M(D%nfields,D%nfields) 
+  real(mcp), intent(in) :: X(D%ncl)
   integer ix,i,j
 
   ix=0
@@ -1002,13 +1002,13 @@ contains
 
  function ExactChiSq(D, C,Chat,l)
   Type(TCMBLikes) :: D
-  real, intent(in) :: C(D%nfields,D%nfields), Chat(D%nfields,D%nfields)
+  real(mcp), intent(in) :: C(D%nfields,D%nfields), Chat(D%nfields,D%nfields)
   integer, intent(in) :: l   
-  real ExactChiSq
-  real M(D%nfields,D%nfields)
+  real(mcp) ExactChiSq
+  real(mcp) M(D%nfields,D%nfields)
   
   M = C
-  call Matrix_root(M,D%nfields,-0.5)
+  call Matrix_root(M,D%nfields,-0.5_mcp)
   M = matmul(M,matmul(Chat,M))
   ExactChiSq = (2*l+1)*D%fullsky_exact_fksy*(Matrix_Trace(M) - D%nfields - MatrixSym_LogDet(M) )
   
@@ -1016,10 +1016,10 @@ contains
 
  function CMBLikes_LensRecon_Like(D, cl_in) result (chisq)
   Type(TCMBLikes) :: D
-  real, intent(in) :: cl_in(lmax,num_cls_tot)
-  real vec(D%cl_phi_lmin:D%cl_phi_lmax)
+  real(mcp), intent(in) :: cl_in(lmax,num_cls_tot)
+  real(mcp) vec(D%cl_phi_lmin:D%cl_phi_lmax)
   integer l, phi_ix
-  real chisq, Cphi, CPhiHat
+  real(mcp) chisq, Cphi, CPhiHat
   
    if (Feedback > 1) print *,'CMBLikes_LensRecon_CMBLike'
   
@@ -1050,16 +1050,15 @@ contains
 
  function CMBLikes_CMBLike(D, cl_in) result (chisq)
   Type(TCMBLikes) :: D
-  real, intent(in) :: cl_in(lmax,num_cls_tot)
-  real  :: cl(lmax,num_cls)
+  real(mcp), intent(in) :: cl_in(lmax,num_cls_tot)
+  real(mcp)  :: cl(lmax,num_cls)
 
-  real chisq
-  real C(D%nfields,D%nfields)
-  real vecp(D%ncl)
-  real beamC(D%cl_lmin:D%cl_lmax)
-  real bigX(D%nbins*D%ncl_used),bigXHat(D%nbins*D%ncl_used)
+  real(mcp) chisq
+  real(mcp) C(D%nfields,D%nfields)
+  real(mcp) vecp(D%ncl)
+  real(mcp) bigX(D%nbins*D%ncl_used)
   integer l,  i, Ti,Ei,Bi, bin,clix
-  integer mode
+!  integer mode
   logical :: quadratic
 
   chisq =0

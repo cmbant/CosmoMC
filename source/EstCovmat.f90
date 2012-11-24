@@ -25,13 +25,13 @@ contains
    integer :: ntries = 10 ! Maximum number of attempts to get a covmat with all +ve evals
    integer itries ! Number of tries so far
    integer, intent(out) :: sucess
-   real parsteps(num_params_used), bestdll
-   real, intent(in) :: bestdll_in  ! the dloglike value used to determine grid spacing eg. try 4
+   real(mcp) parsteps(num_params_used), bestdll
+   real(mcp), intent(in) :: bestdll_in  ! the dloglike value used to determine grid spacing eg. try 4
    Type(ParamSet) Params, CenterParams
    !double precision Gaussian1
-   real Hess(num_params_used,num_params_used), U(num_params_used,num_params_used)
-   real D(num_params_used),EstCovmat(num_params_used,num_params_used)
-   real CenterLike
+   real(mcp) Hess(num_params_used,num_params_used), U(num_params_used,num_params_used)
+   real(mcp) D(num_params_used),EstCovmat(num_params_used,num_params_used)
+   real(mcp) CenterLike
 
    itries=0
    sucess=0
@@ -92,7 +92,7 @@ contains
    ! While doing so, fills the likelhood grid 
    ! CenterParams and parsteps values
    Type(ParamSet) P, CenterParams
-   real parsteps(num_params_used),bestdll, CenterLike
+   real(mcp) parsteps(num_params_used),bestdll, CenterLike
    integer maxstepsizetries
 
    if (Feedback>1) write(*,*) 'Improving the grid spacings'
@@ -122,12 +122,12 @@ contains
    ! Outputs: parsteps
    Type(ParamSet) CenterParams
    integer, intent(in) :: maxstepsizetries
-   real parsteps(num_params_used), bestdll
+   real(mcp) parsteps(num_params_used), bestdll
    integer i, ii, tries
    Type(ParamSet) StepParams
-   real LCenter, LStep,dloglike
-   real step_min, step_max
-   real step_limit
+   real(mcp) LCenter, LStep,dloglike
+   real(mcp) step_min, step_max
+   real(mcp) step_limit
    integer asign
 
    ! The center of the whole grid 
@@ -207,10 +207,10 @@ contains
    ! Input only: CenterParams, parsteps
    ! Ouput only: Hess
    Type(ParamSet) CenterParams,StepParams
-   real parsteps(num_params_used)
-   real Hess(num_params_used,num_params_used)
-   real wii,wjj
-   real LGrid(3), LGrid2(3,3), CenterLike
+   real(mcp) parsteps(num_params_used)
+   real(mcp) Hess(num_params_used,num_params_used)
+   real(mcp) wii,wjj
+   real(mcp) LGrid(3), LGrid2(3,3), CenterLike
    integer i,j,ii,jj,istep,jstep
 
    ! Find likelihood values on a grid to estimate curvature matrix (Hess)

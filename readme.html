@@ -536,6 +536,17 @@ weighting function or parameter mapping.</ul>
 <UL>
 <LI><B>non-public Planck-only changes (for now)</B><BR>
 <UL>
+<LI>New fast-slow <b>sampling_method=7</b>, using new fast/slow blocked decorrelation scheme and fast dragging following <A HREF="http://arxiv.org/math.ST/0502099">Neal 2005</A>. This is recommended for Planck. 
+    <UL>
+    <LI><b>fast_param_index</b> specifies that all parameters with number greater or equal to fast_param_index should be treated as fast. Can alternatively use <B>fast_parameters</b> to set specific parameter to be treated as fast.
+    <LI><b>dragging_steps</b> determines the number of fast steps per slow step. In total dragging_steps x num_fast metropolis steps are taken in the fast direction for each slow step. Does not need to be an integer, 2 works well for Planck. 
+     <LI>for fine-tuning <b>block_semi_fast</b> boolean defines whether initial power spectrum parameters are treated as separate blocks, <b>block_fast_likelihood_params</b> determines if fast parameters are blocked depending on likelihood dependencies. Both true (default) is usually fastest.
+    </UL>
+<LI>Restructuring using Fortran 2003 features (probably does not compile on gfortran, ifort 13 OK); likelihoods and theory now only re-computed as required as parameters change (enables the fast-slow sampling method to work). Each likelihood specifies its own theory and nuisance parameter requirements.
+<LI>Likelihood/chi-square values for the separate data sets tracked separately (as well as total), and output in .minimum file
+<LI>Importance sampling can use redo_add to only calculate changes due to new set of likelihoods (without re-computing old ones)
+<LI>.data format for importance sampling re-organised; can now be re-used if unused parameter ordering and numbering changes
+<LI>Can be compiled in single or double precision (double is new default)
 <LI>BAO data up dated to BOSS DR9 <A HREF="http://www.sdss3.org/science/boss_dr9_final_results/">final results</A> (DR7, DR9 and 6DF). Note the code is not identical, cosmomc computes the drag sound horizon numerically (recalibrated to be consistent in the fiducial model); also be aware of correlation with Wigglez.
 <LI>HST data updated to Riess et al: 1103.2976 (from BOSS mod)
 <LI>Output .bestfit_cl files with best-fit C_L from action=2 runs. .minimum files now include latex labels (from .paramnames)

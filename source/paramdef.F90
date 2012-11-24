@@ -10,32 +10,38 @@ module ParamDef
  use Random
  use settings
  use Propose
+ use SampleList
  implicit none
 
  Type :: ParamSet
     real(mcp) :: P(num_params)
+    real(mcp) likelihoods(max_likelihood_functions)
+    Type(TheoryPredictions) :: Theory
     Type(ParamSetInfo) Info
+ contains
+  procedure :: ReadModel 
+  procedure :: WriteModel
  end Type
 
  Type ParamScale
-    real PMin(num_params), PMax(num_params), PWidth(num_params), center(num_params)
+    real(mcp) PMin(num_params), PMax(num_params), PWidth(num_params), center(num_params)
  end Type ParamScale
 
  Type(ParamScale) Scales
 
  Type ParamGaussPrior
-   real mean(num_params),std(num_params) !std=0 for no prior (default)
+   real(mcp) mean(num_params),std(num_params) !std=0 for no prior (default)
  end Type ParamGaussPrior
  Type(ParamGaussPrior) GaussPriors
  
- Real :: StartLike = LogZero
+ real(mcp) :: StartLike = LogZero
    !bad, unless re-starting in which case it is set to last value in chain
  integer :: Num = 0
    !zero unless from checkpoint
  integer :: burn_in = 2 !Minimum to get sensible answers
 
  logical :: estimate_propose_matrix = .false.
- real, dimension(:,:), allocatable ::  propose_matrix
+ real(mcp), dimension(:,:), allocatable ::  propose_matrix
  Type(BlockedProposer), save :: Proposer
  
  logical :: checkpoint = .false.
@@ -43,7 +49,7 @@ module ParamDef
  integer, parameter :: checkpoint_freq = 100
  character(LEN=500) :: rootname
 
- real    :: MPI_R_Stop = 0.05
+ real  :: MPI_R_Stop = 0.05
 
  integer  :: MPI_thin_fac = 3
  !following are numbers of samples / (number of parameters)
@@ -55,7 +61,7 @@ module ParamDef
  logical :: MPI_Check_Limit_Converge = .false.
 !After given R_Stop is reached, can optionally check for limit convergence
 !(which is generally a much more stringent test of enough samples)
- real    :: MPI_Limit_Converge = 0.025
+ real(mcp)    :: MPI_Limit_Converge = 0.025
  real    :: MPI_Limit_Converge_Err = 0.3 
    !Tolerated cross-chain error on the limit in units of standard deviation
  integer :: MPI_Limit_Param = 0
@@ -64,7 +70,7 @@ module ParamDef
  
 !If convergence R is too bad, we don't update proposal matrix if we had one to start with
 !(which should be quite good unless using new parameters or much better data)
- real    :: MPI_Max_R_ProposeUpdate = 2., MPI_Max_R_ProposeUpdateNew  = 30.
+ real  :: MPI_Max_R_ProposeUpdate = 2., MPI_Max_R_ProposeUpdateNew  = 30.
 
  real    :: MPI_R_StopProposeUpdate = 0.
 
@@ -73,9 +79,17 @@ module ParamDef
  integer,parameter :: time_dp = KIND(1.d0)
  real(time_dp) ::  MPI_StartTime
 
- real, private, allocatable, dimension(:,:) :: MPICovmat
+ real(mcp), private, allocatable, dimension(:,:) :: MPICovmat
  logical :: StartCovMat = .false.
 
+#ifdef MPI 
+#ifdef SINGLE
+  integer, parameter :: MPI_real_mcp = MPI_REAL
+#else
+  integer, parameter :: MPI_real_mcp = MPI_DOUBLE
+#endif
+#endif
+ 
 contains
 
 subroutine DoStop(S, abort)
@@ -120,7 +134,7 @@ subroutine DoStop(S, abort)
 end subroutine DoStop
 
 function TimerTime()
- real time
+ real(mcp) time
  real(time_dp) :: TimerTime
 #ifdef MPI 
  TimerTime = MPI_WTime()
@@ -193,10 +207,10 @@ subroutine Initialize(Ini,Params)
         integer i, j, ix
         character(LEN=5000) fname,InLine
         character(LEN=1024) prop_mat
-        real center, wid, mult, like
+        real(mcp) center, wid, mult, like
         integer fast_params(num_params)
         integer fast_number, fast_param_index
-        real pmat(num_params,num_params)
+        real(mcp) pmat(num_params,num_params)
         logical has_propose_matrix
         integer param_type(num_params)
         integer speed, num_speed
@@ -420,161 +434,15 @@ end subroutine Initialize
 subroutine SetProposeMatrix
 
    call Proposer%SetCovariance(propose_matrix)
-!  
-!!std devs of base parameters
-!
-!   if (.not. allocated(sigmas)) allocate(sigmas(num_params_used))
-!   do i = 1, num_params_used
-!     sigmas(i) = sqrt(propose_matrix(i,i))
-!   end do
-!
-!   do i = 1, num_params_used
-!     propose_matrix(i,:) = propose_matrix(i,:) / sigmas(i)
-!     propose_matrix(:,i) = propose_matrix(:,i) / sigmas(i)
-!   end do
-!
-!   L(1:num_slow, 1:num_slow) = propose_matrix(slow_in_used, slow_in_used)
-!   L(num_slow+1:num_params_used, num_slow+1:num_params_used) = propose_matrix(fast_in_used, fast_in_used)
-!   L(1:num_slow, num_slow+1:num_params_used) = propose_matrix(slow_in_used, fast_in_used)
-!   L(num_slow+1:num_params_used,1:num_slow) = propose_matrix(fast_in_used, slow_in_used)
-!   !do C = L L^T, so L^{-1}x are uncorrelated; update to x is then x->x + L v where v uncorrelated Gaussians
-!   call Matrix_Cholesky(L,zeroed=.true.)
-!
-!   if (.not. allocated(param_transform_slow)) then 
-!              allocate(param_transform_slow(num_params_used, num_slow))
-!   end if
-!   param_transform_slow = L(1:num_params_used,1:num_slow)
-!   do i=1, num_slow
-!    param_transform_slow(slow_in_used(i),:) =  sigmas(slow_in_used(i)) * L(i,1:num_slow) 
-!   end do
-!   do i=1, num_fast
-!    param_transform_slow(fast_in_used(i),:) =  sigmas(fast_in_used(i)) * L(num_slow+i,1:num_slow) 
-!   end do
-! 
-!   if (num_fast /= 0) then
-!
-!      if (.not. allocated(param_transform_fast)) then  
-!            allocate(param_transform_fast(num_fast, num_fast))
-!      end if
-!      param_transform_fast = L(num_slow+1:num_params_used, num_slow+1:num_params_used)
-!      
-!      !Rest is not needed..
-!      
-!      !Get the conditional covariance by projecting the inverse covariances of fast parameters
-!            if (.not. allocated(propose_matrix_fast)) then  
-!              allocate(propose_matrix_fast(num_fast, num_fast))
-!              allocate(propose_diag_fast(num_fast))
-!            end if
-!
-!            covInv = propose_matrix
-!            call Matrix_Inverse(covInv)
-!            propose_matrix_fast = covInv(fast_in_used, fast_in_used)
-!            call Matrix_Diagonalize(propose_matrix_fast,propose_diag_fast, num_fast)
-!            !propose_matrix^-1 = U D U^T, returning U in propose_matrix
-!            propose_matrix_fast = transpose(propose_matrix_fast)
-!
-!            if (any(propose_diag_fast <= 0)) &
-!              call DoAbort('Fast proposal matrix has negative or zero eigenvalues')
-!            propose_diag_fast = 1/sqrt(propose_diag_fast)
-!
-!        !Also want the slow proposal marginalized over fast parameters
-!        if (sampling_method == sampling_fast_dragging) then
-!            
-!           if (.not. allocated(slow_marged_mapping)) then
-!                allocate(slow_marged_mapping(num_slow, num_slow))
-!                allocate(slow_conditional_marged_ratio(num_slow))
-!           end if
-!           propose_matrix_marged = propose_matrix(slow_in_used,slow_in_used)
-!           call Matrix_Diagonalize(propose_matrix_marged,propose_diag_marged, num_slow)
-!           if (any(propose_diag_marged <= 0)) &
-!                    call DoAbort('fast-marged proposal matrix has negative or zero eigenvalues')
-!           propose_diag_marged = sqrt(max(1e-12,propose_diag_marged))
-!          !marginal
-!            SlowConditional= covInv(slow_in_used,slow_in_used)
-!            call Matrix_Inverse(SlowConditional)
-!            if (Feedback > 0 .and. MpiRank==0) then
-!             print *, 'marginal slow variances in units original marged variance:'
-!             do i=1,num_slow
-!                print *,trim(ParamNames_NameOrNumber(NameMapping,slow_params_used(i))), SlowConditional(i,i)
-!             end do
-!            end if
-!            slow_marged_mapping=matmul(transpose(propose_matrix_marged),matmul(SlowConditional,propose_matrix_marged))
-!            !all Matrix_RotateSymm(SlowConditional, propose_matrix_marged, 
-!            do i=1,num_slow
-!                 slow_marged_mapping(i,:)=slow_marged_mapping(i,:)/propose_diag_marged(i)
-!                 slow_marged_mapping(:,i)=slow_marged_mapping(:,i)/propose_diag_marged(i)
-!            end do
-!            call Matrix_Diagonalize(slow_marged_mapping,slow_conditional_marged_ratio, num_slow)
-!            slow_conditional_marged_ratio = sqrt(slow_conditional_marged_ratio)
-!            if (Feedback>0 .and. MpiRank==0) then
-!             print *, 'Joint orthogonal marginal/marged standard deviation ratios'
-!             !Near one makes for easy dragging if Gaussian - fast and slow directions nearly uncorrelated
-!             do i=1,num_slow
-!                print *,i,  slow_conditional_marged_ratio(i)
-!             end do
-!            end if
-!            !get U D^{1/2} U' to map from orthonormalized parmeters in ratio-diagonal basis to normal parameters
-!            do i=1,num_slow
-!             slow_marged_mapping(i,:) = propose_diag_marged(i) * slow_marged_mapping(i,:)
-!            end do
-!            slow_marged_mapping = matmul(propose_matrix_marged, slow_marged_mapping)
-!        end if
-!   end if
-!
-!
-!
-!   if (num_slow /= 0) then
-!
-!    if (.not. allocated(propose_diag)) allocate(propose_diag(num_params_used))
-!
-!    call Matrix_Diagonalize(propose_matrix, propose_diag, num_params_used)
-!      !propose_matrix = U D U^T, returning U in propose_matrix
-!
-!
-!    if (any(propose_diag <= 0)) &
-!        call DoAbort('Proposal matrix has negative or zero eigenvalues')
-!    propose_diag = sqrt(max(1e-12,propose_diag))
-!
-!!Get projected lengths 
-!
-!    do i = 1, num_params_used
-!          vecs(:,i) = propose_diag(i)*propose_matrix(slow_in_used,i)
-!          proj_len(i) = sum(vecs(:,i)**2)  
-!    end do
-!
-!     if (.not. allocated(slow_evecs)) allocate(slow_evecs(num_slow))
-!
-!!keep evectors with longest projected lengths in slow dimensions, orthogonal to previous longest       
-!
-!       do i = 1, num_slow
-!         j = MaxIndex(proj_len, num_params_used)
-!         slow_evecs(i) = j
-!         do ii= 1, num_params_used
-!           if (proj_len(ii) /= 0. .and. ii/=j) then
-!            vecs(:,ii) = vecs(:,ii) - sum(vecs(:,j)*vecs(:,ii))*vecs(:,j)/proj_len(j)
-!                  !Take out projection onto jth eigendirection
-!            proj_len(ii) = sum(vecs(:,ii)**2)
-!           end if
-!         end do
-!
-!         proj_len(j) = 0.
-!       end do
-!   end if
 
 end subroutine SetProposeMatrix
 
 
-  subroutine WriteCMBParams(CMB,Theory,mult,like, with_data)     
-     Type (CosmoTheory) Theory 
-     real, intent(in) :: mult, like
+  subroutine WriteCMBParams(P,mult,like, with_data)
+     real(mcp), intent(in) :: mult, like
      logical, intent(in), optional :: with_data
      Type(ParamSet) P
-     Type(CMBParams) CMB
 
-
-     call CMBParamsToParams(CMB,P%P)
-
-     P%Info%Theory = Theory
      if (present(with_data)) then
       if (with_data) then
       call WriteParamsAndDat(P, mult,like)
@@ -589,17 +457,15 @@ end subroutine SetProposeMatrix
    
   subroutine WriteIndepSample(P, like)
     Type(ParamSet) P
-    real like
-    Type(CMBParams) C
+    real(mcp) like
     if (indepfile_handle ==0) return
-    call ParamsToCMBParams(P%P,C)
-    call WriteModel(indepfile_handle, C,P%Info%Theory,P%Info%likelihoods, like)
+    call P%WriteModel(indepfile_handle, like, 1._mcp)
    end subroutine WriteIndepSample
 
 
    subroutine AddMPIParams(P,like, checkpoint_start)
-     real, intent(in) ::like
-     real P(:)
+     real(mcp), intent(in) ::like
+     real(mcp) P(:)
      logical, intent(in), optional :: checkpoint_start
 !Collect thinned samples after a burn-in perdiod
 !Then use second half of the samples to get convergence
@@ -616,14 +482,14 @@ end subroutine SetProposeMatrix
      logical flag
 
  
-     real, allocatable, dimension(:), save ::MPIMean
-     real, allocatable, dimension(:,:,:) ::MPICovmats
-     real, allocatable, dimension(:,:)   ::MPIMeans
-     real norm, mean(num_params_used), chain_means(MPIChains,num_params_used)
-     integer, parameter :: chk_id = 3252356
+     real(mcp), allocatable, dimension(:), save ::MPIMean
+     real(mcp), allocatable, dimension(:,:,:) ::MPICovmats
+     real(mcp), allocatable, dimension(:,:)   ::MPIMeans
+     real(mcp) norm, mean(num_params_used), chain_means(MPIChains,num_params_used)
+     integer, parameter :: chk_id = 3252357
      integer ID
-     real MeansCov(num_params_used,num_params_used), cov(num_params_used,num_params_used)
-     real sc, evals(num_params_used), last_P, R
+     real(mcp) MeansCov(num_params_used,num_params_used), cov(num_params_used,num_params_used)
+     real(mcp) sc, evals(num_params_used), last_P, R
      integer ierror
      logical DoCheckpoint
 
@@ -631,7 +497,7 @@ end subroutine SetProposeMatrix
      integer,  allocatable, dimension(:), save :: param_changes
      logical :: flukecheck, Waiting = .false.
 
-     Type(TList_RealArr), save :: S
+     Type(TRealArrayList), save :: S
      integer, save :: slice_fac = 1
      logical, save :: all_burn = .false., done_check = .false., DoUpdates = .false.
      character(LEN=128) logLine
@@ -647,8 +513,7 @@ end subroutine SetProposeMatrix
             slice_fac, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
       read(tmp_file_unit) propose_matrix
       call SetProposeMatrix
-      call TList_RealArr_Init(S)
-      call TList_RealArr_ReadBinary(S,tmp_file_unit)
+      call S%ReadBinary(tmp_file_unit)
       close(tmp_file_unit)
       allocate(req(MPIChains-1))      
       allocate(MPIcovmat(num_params_used,num_params_used))
@@ -667,7 +532,7 @@ end subroutine SetProposeMatrix
       write(tmp_file_unit) num, sample_num, MPI_thin_fac, npoints, Burn_done, all_burn, sampling_method, &
             slice_fac, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
       write(tmp_file_unit) propose_matrix 
-      call TList_RealArr_SaveBinary(S,tmp_file_unit)
+      call S%SaveBinary(tmp_file_unit)
       close(tmp_file_unit)
       end if
 
@@ -679,7 +544,6 @@ end subroutine SetProposeMatrix
      if (npoints == 0 .and. .not. Burn_done)then
         allocate(param_changes(num_params_used))
         param_changes= 0
-        call TList_RealArr_Init(S)
         if (MPI_StartSliceSampling) then
           sampling_method = sampling_slice
         end if 
@@ -691,9 +555,8 @@ end subroutine SetProposeMatrix
      end if
  
 
-     call TList_RealArr_Add(S, P(params_used))
-     npoints = npoints + 1       
-
+     call S%Add(P(params_used))
+     npoints = npoints + 1
 
      if (.not. Burn_done) then
          
@@ -701,7 +564,7 @@ end subroutine SetProposeMatrix
         !We're not really after independent samples or all of burn in
         !Make sure all parameters are being explored
              do i=1, num_params_used             
-              if (S%Items(S%Count)%P(i) /= S%Items(S%Count-1)%P(i)) &
+              if (S%Value(S%Count, i) /= S%Value(S%Count-1, i)) &
                    param_changes(i) =  param_changes(i) + 1
              end do
              Burn_done = all(param_changes > 100/MPI_thin_fac/slice_fac+2)
@@ -728,7 +591,7 @@ end subroutine SetProposeMatrix
                 end if
               end do  
 
-               call TList_RealArr_Clear(S)
+               call S%Clear()
                MPI_Min_Sample_Update = &
                   max((MPI_Min_Sample_Update*max(1,num_fast))/(MPI_thin_fac*slice_fac), npoints)
                npoints = 0
@@ -796,13 +659,13 @@ end subroutine SetProposeMatrix
              MPIMean = 0
              MPImean(0) = S%Count - S%Count/2 + 1
              do i = S%Count/2, S%Count
-              MPiMean(1:num_params_used) = MPiMean(1:num_params_used) + S%Items(i)%P     
+              MPiMean(1:num_params_used) = MPiMean(1:num_params_used) + S%Item(i)
              end do
              MPiMean(1:num_params_used) = MPiMean(1:num_params_used) / MPImean(0)
              do i = S%Count/2, S%Count
                do j = 1, num_params_used
                  MPICovmat(:,j) =  MPICovmat(:,j) + &
-                 (S%Items(i)%P(:)-MPIMean(1:num_params_used))*(S%Items(i)%P(j)- MPIMean(j))
+                 (S%Item(i)-MPIMean(1:num_params_used))*(S%Item(i,j)- MPIMean(j))
               end do
              end do
              MPICovMat = MPICovMat / MPImean(0)
@@ -812,17 +675,17 @@ end subroutine SetProposeMatrix
 
             do i=1, MPIChains  
                j = i-1
-               call MPI_BCAST(MPICovMats(:,:,i),Size(MPICovMat),MPI_REAL,j,MPI_COMM_WORLD,ierror)
-               call MPI_BCAST(MPIMeans(:,i),Size(MPIMean),MPI_REAL,j,MPI_COMM_WORLD,ierror)
+               call MPI_BCAST(MPICovMats(:,:,i),Size(MPICovMat),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
+               call MPI_BCAST(MPIMeans(:,i),Size(MPIMean),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
              end do
 
              
 
   ! These should be better but don't work
-  !          call MPI_ALLGATHER(MPICovMat,Size(MPICovMat),MPI_REAL,MPICovmats,Size(MPICovmats), &
-  !               MPI_REAL, MPI_COMM_WORLD,ierror)
-  !          call MPI_ALLGATHER(MPIMean,Size(MPIMean),MPI_REAL,MPIMeans,Size(MPIMeans), &
-  !               MPI_REAL, MPI_COMM_WORLD,ierror)
+  !          call MPI_ALLGATHER(MPICovMat,Size(MPICovMat),MPI_real_mcp,MPICovmats,Size(MPICovmats), &
+  !               MPI_real_mcp, MPI_COMM_WORLD,ierror)
+  !          call MPI_ALLGATHER(MPIMean,Size(MPIMean),MPI_real_mcp,MPIMeans,Size(MPIMeans), &
+  !               MPI_real_mcp, MPI_COMM_WORLD,ierror)
  
             if (all(MPIMeans(0,:)> MPI_Min_Sample_Update/2 + 2)) then
                !check have reasonable number of samples in each)   
@@ -851,14 +714,14 @@ end subroutine SetProposeMatrix
                             cov(j,:) = cov(j,:) / sc
                             cov(:,j) = cov(:,j) / sc
                             meanscov(j,:) = meanscov(j,:) /sc
-                            meanscov(:,j) = meanscov(:,j) /sc                 
+                            meanscov(:,j) = meanscov(:,j) /sc
                       end do
  
                      call Matrix_Diagonalize(meanscov, evals, num_params_used)
                      cov = matmul(matmul(transpose(meanscov),cov),meanscov)
                      R = 0
                      do j=1,num_params_used
-                       R = max(R,evals(j)/max(1e-12,cov(j,j)))
+                       R = max(R,evals(j)/max(1e-12_mcp,cov(j,j)))
                      end do
                      if (Feedback > 0 .and. MPIRank==0) &
                       write (*,*) 'Current convergence R-1 = ',R, 'chain steps =',sample_num
@@ -878,7 +741,7 @@ end subroutine SetProposeMatrix
                      flukecheck = R < MPI_R_Stop
                      if (S%Count > 100000) then
                         !Try not to blow memory by storing too many samples
-                          call TList_RealArr_Thin(S, 2)
+                          call S%Thin(2)
                           MPI_thin_fac = MPI_thin_fac*2 
                      end if
 
@@ -917,10 +780,10 @@ end subroutine SetProposeMatrix
  subroutine CheckLimitsConverge(L)
   !Check limits from last half chains agree well enough across chains to be confident of result
   !Slowly explored tails will cause problems (long time till stops)
-  Type(TList_RealArr), intent(in) :: L
+  Type(TRealArrayList), intent(in) :: L
   integer i,j, side, ierror, worsti
-  real, allocatable, dimension(:,:,:) :: Limits
-  real MeanLimit, var, LimErr, WorstErr
+  real(mcp), allocatable, dimension(:,:,:) :: Limits
+  real(mcp) MeanLimit, var, LimErr, WorstErr
   logical :: AllOK 
   integer numCheck
   integer, allocatable, dimension(:) :: params_check
@@ -945,13 +808,13 @@ end subroutine SetProposeMatrix
    allocate(Limits(2,numCheck,MPIChains))
        
      do j=1, numCheck
-      call TList_RealArr_ConfidVal(L, params_check(j), MPI_Limit_Converge, L%Count/2, L%Count, &
+      call L%ConfidVal(params_check(j), MPI_Limit_Converge, L%Count/2, L%Count, &
                 Limits(1,j,instance),Limits(2,j,instance))
      end do
       !Now tell everyone else
      do i=1, MPIChains  
          j = i-1
-         call MPI_BCAST(Limits(:,:,i),2*numCheck,MPI_REAL,j,MPI_COMM_WORLD,ierror)
+         call MPI_BCAST(Limits(:,:,i),2*numCheck,MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
      end do
 !Take as test statistics the rms deviation from the mean limit in units of the standard deviation
      WorstErr = 0.
@@ -1006,7 +869,7 @@ end subroutine SetProposeMatrix
      integer i  
      character(LEN=*), intent(in) :: fname
      character(LEN=4096) outline
-     real, intent(in) :: matrix(:,:)
+     real(mcp), intent(in) :: matrix(:,:)
 
         if (NameMapping%nnames/=0) then
               outline='' 
@@ -1018,6 +881,135 @@ end subroutine SetProposeMatrix
               call Matrix_write(fname,matrix,forcetable=.true.)
         end if
     end subroutine WriteCovMat
+
+    
+   subroutine WriteModel(Params, i, like, mult)
+    Class(ParamSet) :: Params 
+    integer i
+    real(mcp), intent(in) :: mult, like
+    integer j , len, unused
+    logical, save :: first = .true.
+    Type(DataLikelihood), pointer :: DataLike
+
+    if (first) then
+      first = .false.
+      if (mcp==kind(1.0)) then
+        j=3
+      else
+        j=4
+      end if
+      write(i) j, num_params_used
+     if (.not. any (NameMapping%Name=='')) then
+         write(i) .true.
+         do j=1,num_params_used
+              len=len_trim(NameMapping%name(params_used(j)))
+              write(i) len
+              write(i) NameMapping%name(params_used(j))(1:len)
+          end do
+        else
+            write(i) .false.
+      end if
+      write(i) DataLikelihoods%Count
+      do j=1, DataLikelihoods%Count
+        DataLike => DataLikelihoods%Item(j)
+        len = len_trim(dataLIke%name)
+        write(i) len
+        write(i) dataLIke%name(1:len)
+      end do
+      unused=0
+      write(i) unused
+    end if
+
+    write(i) mult, like
+!  write(i) num_matter_power
+    write(i) Params%Likelihoods(1:DataLikelihoods%Count)
+    write(i) Params%P(params_used)
+
+    call Params%Theory%WriteTheory(i)
+
+    if (flush_write) call FlushFile(i)
+
+   end subroutine WriteModel
+   
+    subroutine ReadModel(Params,  i, has_likes, mult, like, error)
+    Class (ParamSet) :: Params
+    integer, intent(in) :: i
+    integer, intent(out) :: error
+    real(mcp), intent(out) :: mult, like
+    logical, intent(out) :: has_likes(:)
+    real(mcp), allocatable, save :: likes(:)
+    integer j, k, np, len, unused
+    character(LEN=80) :: name
+    logical, save :: first = .true.
+    integer, save :: numlikes, tmp(1)
+    integer, allocatable, save :: like_indices(:)
+    Type(DataLikelihood), pointer :: DataLike
+    character(LEN=ParamNames_maxlen) ::  pname
+    integer, allocatable, save ::  current_param_indices(:)
+    logical :: has_names
+    
+    error = 0
+    if (first) then
+        first = .false.
+        read(i,end=100,err=100) j, np
+        if (j/=3 .and. mcp==kind(1.0) .or. j/=4 .and. mcp/=kind(1.0)) &
+                call MpiStop('ReadModel: wrong file format (old cosmomc version?)')
+        if (np/=num_params_used) call MpiStop('ReadModel: number of parameters changed')
+        read(i) has_names
+        allocate(current_param_indices(num_params_used))
+        current_param_indices=-1
+        if (has_names) then
+          do j=1,num_params_used
+              read(i) len
+              pname=''
+              read(i) pname(1:len)
+              current_param_indices(j) = ParamNames_index(NameMapping, pname)
+          end do
+           if (any(current_param_indices==-1)) &
+            call MpiStop('ReadModel: parameters in .data files could not be matched')
+        else
+           current_param_indices = params_used
+        end if
+        read(i) numlikes
+        allocate(likes(numlikes))
+        allocate(like_indices(numlikes))
+        like_indices=0
+        do j=1, numlikes
+           read(i) len
+           name=''
+           read(i) name(1:len)
+           do k=1, DataLikelihoods%Count
+               DataLike => DataLikelihoods%Item(k)
+               if (DataLike%name==name) then
+                   like_indices(j)=k
+                   exit
+               end if
+           end do
+        end do
+        do j=1, DataLikelihoods%Count
+         has_likes(j) = any(like_indices==j)
+        end do
+        read(i) unused
+        if (unused/=0) call MpiStop('ReadModel: Don''t know what extra info is')
+        if (unused>0) read(i) tmp(1:unused)
+    end if
+
+        Params%Likelihoods=0
+        read(i,end = 100, err=100) mult, like
+        read(i) likes(1:numlikes)
+        do j=1,numlikes
+         if (like_indices(j)/=0) Params%Likelihoods(like_indices(j)) = likes(j)
+        end do
+        Params%P= Scales%center
+        read(i) Params%P(current_param_indices)
+        call Params%Theory%ReadTheory(i)
+
+        return
+    100 error = 1
+
+   end subroutine ReadModel
+
+
 
 end module ParamDef
 

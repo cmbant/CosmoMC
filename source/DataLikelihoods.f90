@@ -32,14 +32,11 @@ subroutine SetDataLikelihoods(Ini)
         if(Ini_Read_Logical_File(Ini,'use_BBN',.false.)) &
           call DoAbort('Use_BBN not supported: use prior[omegabh2]=mean std')
 
-!        Use_WeakLen = Ini_Read_Logical('use_WeakLen',.false.)
          Use_min_zre = Ini_Read_Double_File(Ini,'use_min_zre',0.d0) 
 !        Use_Lya = Ini_Read_logical('use_lya',.false.)
        
 !        if (Use_Lya .and. use_nonlinear) &
 !             call DoAbort('Lya.f90 assumes LINEAR power spectrum input')
-
-        !flag to force getting sigma8 even if not using LSS data 
 
  
 end subroutine SetDataLikelihoods

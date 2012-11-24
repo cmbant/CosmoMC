@@ -28,14 +28,14 @@ program SolveCosmology
          mpk_filename(100),  numstr, fname
         Type(ParamSet) Params, EstParams
         integer file_unit, status
-        real bestfit_loglike
-        real max_like_radius
+        real(mcp) bestfit_loglike
+        real(mcp) max_like_radius
         integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2, &
                               action_Hessian=3
         integer unit
         logical want_minimize
         logical :: start_at_bestfit = .false.
-
+        Class(DataLikelihood), pointer :: Like
 
 #ifdef MPI
         double precision intime
@@ -195,7 +195,7 @@ program SolveCosmology
             end if
  
             Ini_fail_on_not_found = .false.
-            burn_in = Ini_Read_Int('burn_in',0)     
+            burn_in = Ini_Read_Int('burn_in',0)
             sampling_method = Ini_Read_Int('sampling_method',sampling_metropolis)
             if (sampling_method > 7 .or. sampling_method<1) call DoAbort('Unknown sampling method')
             if (sampling_method==sampling_slowgrid) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
@@ -268,6 +268,11 @@ program SolveCosmology
         call Initialize(DefIni,Params)
         
         if (MpiRank==0) then
+            do i=1, DataLikelihoods%Count
+               like => DataLikelihoods%Item(i)
+               if (like%version/='')  call TNameValueList_Add(DefIni%ReadValues, &
+                               concat('Compiled_data_',like%name),like%version)
+            end do
             call TNameValueList_Add(DefIni%ReadValues, 'Compiled_CAMB_version', version)
             call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Recombination', Recombination_Name)
             call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Equations', Eqns_name)
@@ -305,7 +310,7 @@ program SolveCosmology
             if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
           end if
 #ifdef MPI 
-          CALL MPI_Bcast(Params%P, size(Params%P), MPI_REAL, 0, MPI_COMM_WORLD, ierror) 
+          CALL MPI_Bcast(Params%P, size(Params%P), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror) 
 #endif
         end if
         
@@ -314,7 +319,7 @@ program SolveCosmology
               if (MpiRank==0) then
                   EstParams = Params
                   write (*,*) 'Estimating propose matrix from Hessian at bfp...'
-                  propose_matrix=EstCovmat(EstParams,4.,status)
+                  propose_matrix=EstCovmat(EstParams,4._mcp,status)
                   ! By default the grid used to estimate the covariance matrix has spacings
                   ! such that deltaloglike ~ 4 for each parameter.               
                   call AcceptReject(.true., EstParams%Info, Params%Info)
@@ -325,7 +330,7 @@ program SolveCosmology
                   if (action==action_Hessian) call DoStop
               end if 
 #ifdef MPI 
-              CALL MPI_Bcast(propose_matrix, size(propose_matrix), MPI_REAL, 0, MPI_COMM_WORLD, ierror) 
+              CALL MPI_Bcast(propose_matrix, size(propose_matrix), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror) 
 #endif
               call SetProposeMatrix
        end if

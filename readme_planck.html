@@ -30,10 +30,12 @@ The non-clik highL code is included with cosmomcplanck in the ./highL. The data 
 Non-clik CamSpec code is included in ./source, and data files are available from Steven.
 
 <h2>Changes</h2>
-See the <A HREF="readme.html#Version">readme</A>.
+By default CosmoMC now uses a fast-slow sampling method which works very well for Planck. See the <A HREF="http://hfilfi.planck.fr/index.php/WG/WG?action=download&upname=Dragging2.pdf">Wiki notes</A>.
+<p>
+See the <A HREF="readme.html#Version">readme</A> for code changes.
 
 <h2>Grids of models</h2>
-See the ./python directory for scripts (python 2.7+), most can be run without arguments to show a list of possible input parameters. 
+See the ./python directory for scripts (python 2.7+), most can be run without arguments to show a list of possible input parameters.
 To start copy and edit settings_testchain.py appropriately. Then if you saved it as python/my_settings_file.py run
 <blockquote>
 <b>python python/makeGrid.py /scratch/.../Planckgrids/newdirectoryforbatch my_settings_file [action]</b>

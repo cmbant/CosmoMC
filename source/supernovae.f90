@@ -88,7 +88,7 @@ implicit none
     Type(SNLikelihood), pointer :: like
     character (LEN=20):: name
     integer i
-    real :: tmp_mat(sn_num, sn_num)
+    real(mcp) :: tmp_mat(sn_num, sn_num)
 
     if (.not. Ini_Read_Logical_File(Ini, 'use_SN',.false.)) return
 
@@ -128,13 +128,13 @@ implicit none
  function SN_LnLike(like, CMB, Theory) 
    use camb
   !Assume this is called just after CAMB with the correct model  use camb
-  type(CMBParams) CMB
+  Class(CMBParams) CMB
   Class(SNLikelihood) :: like
-  Type(CosmoTheory) Theory
-  real SN_LnLike
+  Class(TheoryPredictions) Theory
+  real(mcp) SN_LnLike
   integer i
   double precision z, AT, BT
-  real diffs(SN_num), chisq
+  real(mcp) diffs(SN_num), chisq
 
 
 !! This is actually seems to be faster without OMP

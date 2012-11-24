@@ -84,7 +84,7 @@ contains
 
  function LSS_Lyalike(CMB, Theory)
    Type (CMBParams) CMB
-   Type (CosmoTheory) Theory
+   Type (TheoryPredictions) Theory
    real LSS_Lyalike
    
    real hubz,h,omm,oml
@@ -92,7 +92,7 @@ contains
    real(dl) chi2   
    real(dl) delta,neff
 
-   real D0,D2,khlya,pk0,lnkhlya1,lnkhlya2,lnpk1,lnpk2
+   real(mcp) D0,D2,khlya,pk0,lnkhlya1,lnkhlya2,lnpk1,lnpk2
 
    real(dl) rombint
    external rombint

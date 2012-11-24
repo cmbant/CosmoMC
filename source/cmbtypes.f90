@@ -26,19 +26,19 @@ implicit none
 #ifdef DR71RG
 !!! BR09: Reid et al 2009 settings for the LRG power spectrum.
   integer, parameter :: num_matter_power = 300 !number of points computed in matter power spectrum
-  real, parameter    :: matter_power_minkh =  0.999e-4  !minimum value of k/h to store
-  real, parameter    :: matter_power_dlnkh = 0.03     !log spacing in k/h
-  real, parameter    :: matter_power_maxz = 1. !Not used, but must be non-zero to avoid error when have 4 z steps and use_mpk=F
+  real(mcp), parameter    :: matter_power_minkh =  0.999e-4_mcp  !minimum value of k/h to store
+  real(mcp), parameter    :: matter_power_dlnkh = 0.03_mcp     !log spacing in k/h
+  real(mcp), parameter    :: matter_power_maxz = 1._mcp !Not used, but must be non-zero to avoid error when have 4 z steps and use_mpk=F
   integer, parameter :: matter_power_lnzsteps = 4  ! z=0 to get sigma8 (this first entry appears to be coded in some spots in the code!!), plus 3 LRG redshifts.
 #else
   integer, parameter :: num_matter_power = 74 !number of points computed in matter power spectrum
-  real, parameter    :: matter_power_minkh =  0.999e-4  !1e-4 !minimum value of k/h to store
-  real, parameter    :: matter_power_dlnkh = 0.143911568     !log spacing in k/h
-  real, parameter    :: matter_power_maxz = 0.    !6.0
+  real(mcp), parameter    :: matter_power_minkh =  0.999e-4_mcp  !1e-4 !minimum value of k/h to store
+  real(mcp), parameter    :: matter_power_dlnkh = 0.143911568_mcp     !log spacing in k/h
+  real(mcp), parameter    :: matter_power_maxz = 0._mcp    !6.0
   integer, parameter :: matter_power_lnzsteps = 1 !20
 #endif
 !Only used in params_CMB
-   real :: pivot_k = 0.05 !Point for defining primordial power spectra
+   real(mcp) :: pivot_k = 0.05_mcp !Point for defining primordial power spectra
    logical :: inflation_consistency = .false. !fix n_T or not
 
    logical :: bbn_consistency = .true. !JH
@@ -54,266 +54,122 @@ implicit none
   integer :: num_clsS=min(num_cls,3) 
 
   Type CMBParams
-     real nuisance(1:num_nuisance_params)
+     real(mcp) nuisance(1:num_nuisance_params)
       !unit Gaussians for experimental parameters
-     real data_params(1:num_freq_params)
+     real(mcp) data_params(1:num_freq_params)
       !These are fast parameters controling amplitudes, calibrations, etc.
-     real InitPower(1:num_initpower)
+     real(mcp) InitPower(1:num_initpower)
       !These are fast paramters for the initial power spectrum
      !Now remaining (non-independent) parameters
-     real omb, omc, omv, omnu, omk, omdm
-     real ombh2, omch2, omnuh2, omdmh2
-     real zre, zre_delta, nufrac
-     real h, H0, tau
-     real w, wa
-     real YHe, nnu, iso_cdm_correlated, ALens, fdm !fdm is dark matter annihilation, eg,. 0910.3663
-     real reserved(5)
+     real(mcp) omb, omc, omv, omnu, omk, omdm
+     real(mcp) ombh2, omch2, omnuh2, omdmh2
+     real(mcp) zre, zre_delta, nufrac
+     real(mcp) h, H0, tau
+     real(mcp) w, wa
+     real(mcp) YHe, nnu, iso_cdm_correlated, ALens, fdm !fdm is dark matter annihilation, eg,. 0910.3663
+     real(mcp) reserved(5)
   
   end Type CMBParams
 
-  Type CosmoTheory
-     real r10
-     real cl(lmax,num_cls_tot), cl_tensor(lmax_tensor,num_cls) 
+  Type TheoryPredictions
+     real(mcp) r10
+     real(mcp) cl(lmax,num_cls_tot), cl_tensor(lmax_tensor,num_cls) 
       !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
-     real sigma_8, tensor_ratio_02
+     real(mcp) sigma_8, tensor_ratio_02
      integer numderived
-     real derived_parameters(max_derived_parameters)
+     real(mcp) derived_parameters(max_derived_parameters)
      
-     real matter_power(num_matter_power,matter_power_lnzsteps)
+     real(mcp) matter_power(num_matter_power,matter_power_lnzsteps)
        !second index is redshifts from 0 to matter_power_maxz
        !if custom_redshift_steps = false with equal spacing in
        !log(1+z) and matter_power_lnzsteps points
        !if custom_redshift_steps = true set in mpk.f90 
      ! BR09 additions
-     real mpk_nw(num_matter_power,matter_power_lnzsteps) !no wiggles fit to matter power spectrum
-     real mpkrat_nw_nl(num_matter_power,matter_power_lnzsteps) !halofit run on mpk_nw
-     real finalLRGtheoryPk(num_matter_power)  !! this is the quantity that enters the LRG likelihood calculation
+     real(mcp) mpk_nw(num_matter_power,matter_power_lnzsteps) !no wiggles fit to matter power spectrum
+     real(mcp) mpkrat_nw_nl(num_matter_power,matter_power_lnzsteps) !halofit run on mpk_nw
+     real(mcp) finalLRGtheoryPk(num_matter_power)  !! this is the quantity that enters the LRG likelihood calculation
     ! end BR09 additions
-  end Type CosmoTheory
+  contains 
+     procedure :: WriteTheory
+     procedure :: ReadTheory
+  end Type TheoryPredictions
 
-  logical, parameter :: write_all_Cls = .true. 
-   !if false use CAMB's flat interpolation scheme (lossless if models are flat except near lmax when lensed)
-   
   integer, parameter :: As_index=4, amp_ratio_index = 5
+  logical :: compute_tensors = .false.
 
 contains
 
-
-   subroutine WriteModel(i,CMB, T, Likelihoods, like, mult)
+   subroutine WriteTheory(T, i)
     integer i
-    real, intent(in), optional :: mult
-    Type(CosmoTheory) T
-    real like, amult, Likelihoods(:)
-    Type(CMBParams) CMB
-    integer j 
-
-    if (present(mult)) then
-       amult = mult
-    else
-       amult = 1
-    end if
+    Class(TheoryPredictions) T
+    integer unused
+    logical, save :: first = .true.
     
-    j = 0 !format ID
-    if (write_all_cls) j=1
-    write(i) j
+    if (first) then
+      first = .false.
+      write(i) use_LSS, compute_tensors
+      write(i) lmax, lmax_tensor, num_cls, num_cls_ext
+      unused=0
+      write(i) unused
+    end if
 
-    write(i) amult, num_matter_power, lmax, lmax_tensor, num_cls
-
-    write(i) Likelihoods
-
-    write(i) like
-    write(i) CMB
-
-    write(i) T%r10, T%sigma_8, T%matter_power
     write(i) T%numderived
-    write(i) T%tensor_ratio_02, T%derived_parameters(1:T%numderived) !!
-    
-    if (write_all_cls) then
-     write(i) T%cl(2:lmax,1:num_cls_tot)
-     write(i) T%cl_tensor(2:lmax_tensor,1:num_cls)
-    else
+    write(i) T%derived_parameters(1:T%numderived) 
+    write(i) T%cl(2:lmax,1:num_cls)
+    if (num_cls_ext>0) write(i) T%cl(2:lmax,num_cls+1:num_cls_tot)
 
-       !Use interpolation scheme CAMB uses for flat models
-       !If using significantly non-flat, or increasing interpolation accuracy, save all th cls instead
-        write(i) T%cl(2:20,1:num_cls_tot)
-        do j=30,90,10 
-         write(i) T%cl(j,1:num_cls_tot)
-        end do
-        do j=110,130, 20
-         write(i) T%cl(j,1:num_cls_tot)
-        end do
-        do j=150,lmax, 50
-         write(i) T%cl(j,1:num_cls_tot)
-        end do
-
-        if (lmax_tensor /= 0) then
-            if (lmax_tensor<150) call MpiStop('lmax_tensor too small')
-            write(i) T%cl_tensor(2:20,1:num_cls)
-            do j=30,90,10 
-             write(i) T%cl_tensor(j,1:num_cls)
-            end do
-            do j=110,130,20 
-             write(i) T%cl_tensor(j,1:num_cls)
-            end do
-            do j=150,lmax_tensor, 50
-             write(i) T%cl_tensor(j,1:num_cls)
-            end do
-        end if
+    if (compute_tensors) then
+          write(i) T%tensor_ratio_02, T%r10
+          write(i) T%cl_tensor(2:lmax_tensor,1:num_cls)
+    end if
+    if (use_LSS) then
+     write(i) T%sigma_8, T%matter_power
     end if
 
-    if (flush_write) call FlushFile(i)
+   end subroutine WriteTheory
 
-   end subroutine WriteModel
-
-   
- subroutine ReadModel(i,CMB, T, mult, like, error)
+ subroutine ReadTheory(T, i)
+    Class(TheoryPredictions) T
     integer, intent(in) :: i
-    integer, intent(out) :: error
-    real, intent(out) :: mult
-    Type(CosmoTheory) T
-    real like
-    Type(CMBParams) CMB
-    real icl(lmax,1:num_cls_tot),iclt(lmax,1:num_cls)
-    integer allcl,j,ind, ix(lmax)
-    integer almax,almaxtensor, anumpowers, anumcls
-   
-         error = 0
+    integer unused
+    logical, save :: first = .true.
+    logical, save :: has_LSS, has_tensors
+    integer, save :: almax, almaxtensor, anumcls, anumclsext, tmp(1)
 
-        read(i,end=100,err=100) allcl
+    if (first) then
+        first = .false.
+        read(i) has_LSS, has_tensors
+        read(i) almax, almaxtensor, anumcls, anumclsext
+        if (almax > lmax) call MpiStop('ReadTheory: reading file with larger lmax')
+        if (anumcls /= num_cls) call MpiStop('ReadTheory: reading file with different Cls')
+        if (anumclsext /= num_cls_ext) call MpiStop('ReadTheory: reading file with different ext Cls')
+        read(i) unused
+        if (unused>0) read(i) tmp(1:unused)
+    end if
 
-        if (allcl/=0 .and. allcl/=1) call MpiStop('wrong file format')
-
-        read(i,end=100,err=100) mult,anumpowers,almax, almaxtensor, anumcls
-        if (almax > lmax) call MpiStop('reading file with larger lmax')
-        if (anumcls /= num_cls) call MpiStop('reading file with different Cls')
-
-         stop 'not updated readModel yet'
-        
-        read(i,end = 100, err=100) like
-        read(i) CMB
-        if (anumpowers > num_matter_power) call MpiStop('mismatched num_matter_power in .data')  
-        read(i)  T%r10, T%sigma_8, T%matter_power(1:anumpowers,1:matter_power_lnzsteps)
-        read(i) T%numderived
-        read(i) T%tensor_ratio_02, T%derived_parameters(1:T%numderived)
-  
         T%cl = 0
         T%cl_tensor = 0
-         
-        if(allcl==1) then  
-         read(i) T%cl(2:almax,1:num_cls_tot)
-         read(i) T%cl_tensor(2:almaxtensor,1:num_cls)
-        else
+        T%derived_parameters=0
+        read(i) T%numderived
+        read(i) T%derived_parameters(1:T%numderived)
+        read(i) T%cl(2:almax,1:anumcls)
+        if (anumclsext >0) read(i) T%cl(2:almax,num_cls+1:num_cls+anumclsext)
 
-            read(i) icl(1:19,1:num_cls_tot)
-            ind =1
-            do j =2,20 
-               ix(ind)=j
-               ind=ind+1
-            end do
-            do j=30,90,10 
-             read(i) icl(ind,1:num_cls_tot)
-             ix(ind) = j
-             ind = ind + 1
-            end do
-             do j=110,130,20 
-             read(i) icl(ind,1:num_cls_tot)
-             ix(ind) = j
-             ind = ind + 1
-            end do
-            do j=150,almax, 50
-             read(i) icl(ind,1:num_cls_tot)
-             ix(ind) = j
-             ind = ind+1
-            end do
-            ind = ind-1
- 
-           call InterpCls(ix,icl, T%cl, ind, almax, num_Cls_tot)
+        if (has_tensors) then
+          read(i) T%tensor_ratio_02, T%r10
+          read(i) T%cl_tensor(2:almaxtensor,1:anumcls)
+        end if
 
-           if (almaxtensor /= 0) then     
-            read(i) iclt(1:19,1:num_cls)
-            ind =1
-            do j =2,20 
-               ix(ind)=j
-               ind=ind+1
-            end do
-            do j=30,90,10 
-             read(i) iclt(ind,1:num_cls)
-             ix(ind) = j
-             ind = ind + 1
-            end do
-            do j=110,130,20 
-             read(i) iclt(ind,1:num_cls)
-             ix(ind) = j
-             ind = ind + 1
-            end do
-            do j=150,almaxtensor, 50
-             read(i) iclt(ind,1:num_cls)
-             ix(ind) = j
-             ind = ind+1
-            end do
-            ind = ind-1
-            call InterpCls(ix,iclt, T%cl_tensor, ind, almaxtensor,num_cls)
-           end if
-        
-        end if 
+        if (has_LSS) then
+          read(i) T%sigma_8, T%matter_power
+        end if
 
-        return
-    100 error = 1
+   end subroutine ReadTheory
 
-
-   end subroutine ReadModel
-
-      subroutine InterpCls(l,iCl, all_Cl, n, almax, ncls)
-      integer, intent(in) :: n, almax,ncls
-   
-      real, intent(in) :: iCl(lmax,1:ncls)
-      integer l(n),p
-      real all_Cl(:,:)
-   
-      integer il,llo,lhi,xi
-      real xl(n),  ddCl(n)
-
-      real a0,b0,ho
-      real inCl(n)
-
-    
-      do p =1, ncls
-
-        do il=1,n
-           inCl(il) = iCl(il,p)*l(il)**2
-        end do
-
-        xl = l
-        call spline_real(xl,inCl,n,ddCl)
-     
-        llo=1
-        do il=2,l(n)
-           xi=il
-           if ((xi > l(llo+1)).and.(llo < n)) then
-              llo=llo+1
-           end if
-           lhi=llo+1
-           ho=l(lhi)-l(llo)
-           a0=(xl(lhi)-xi)/ho
-           b0=(xi-xl(llo))/ho
-          
-           all_Cl(il,p) = (a0*inCl(llo)+ b0*inCl(lhi)+((a0**3-a0)* ddCl(llo) &
-                   +(b0**3-b0)*ddCl(lhi))*ho**2/6)/il**2
-  
-        end do
-
-      end do
-
-      all_Cl(l(n)+1:almax,:) = 0
-       
-
-      end subroutine InterpCls
-  
-  
    subroutine ClsFromTheoryData(T, CMB, Cls)
-     Type(CosmoTheory) T
+     Type(TheoryPredictions) T
      Type(CMBParams) CMB
-     real Cls(lmax,num_cls_tot)
+     real(mcp) Cls(lmax,num_cls_tot)
      integer i
      
      Cls(2:lmax,1:num_clsS) =T%cl(2:lmax,1:num_clsS)    !CMB%norm(norm_As)*T%cl(2:lmax,1:num_clsS)
@@ -331,11 +187,11 @@ contains
    end subroutine ClsFromTheoryData
 
    subroutine WriteTextCls(aname,T, CMB)
-     Type(CosmoTheory) T
+     Type(TheoryPredictions) T
      Type(CMBParams) CMB
      character (LEN=*), intent(in) :: aname
      integer l
-     real Cls(lmax,num_cls_tot)
+     real(mcp) Cls(lmax,num_cls_tot)
 
      call ClsFromTheoryData(T,CMB,Cls)
      open(unit = tmp_file_unit, file = aname, form='formatted', status = 'replace')
@@ -348,10 +204,10 @@ contains
 
    function MatterPowerAt(T,kh)
      !get matter power spectrum today at kh = k/h by interpolation from stored values
-     real, intent(in) :: kh
-     Type(CosmoTheory) T
-     real MatterPowerAt
-     real x, d
+     real(mcp), intent(in) :: kh
+     Type(TheoryPredictions) T
+     real(mcp) MatterPowerAt
+     real(mcp) x, d
      integer i
    
      x = log(kh/matter_power_minkh) / matter_power_dlnkh
@@ -373,10 +229,10 @@ contains
 !BR09 this function is just a copy of the one above but with LRG theory put in instead of linear theory
    function LRGPowerAt(T,kh)
      !get LRG matter power spectrum today at kh = k/h by interpolation from stored values
-     real, intent(in) :: kh
-     Type(CosmoTheory) T
-     real LRGPowerAt
-     real x, d
+     real(mcp), intent(in) :: kh
+     Type(TheoryPredictions) T
+     real(mcp) LRGPowerAt
+     real(mcp) x, d
      integer i
    
      x = log(kh/matter_power_minkh) / matter_power_dlnkh
@@ -395,11 +251,11 @@ contains
    function MatterPowerAt_Z(T,kh,z)
      !get matter power spectrum at z at kh = k/h by interpolation from stored values
 
-     real, intent(in) :: kh
-     Type(CosmoTheory) T
-     real MatterPowerAt_Z
-     real x, d, z, y, dz, mup, mdn
-     real matter_power_dlnz
+     real(mcp), intent(in) :: kh
+     Type(TheoryPredictions) T
+     real(mcp) MatterPowerAt_Z
+     real(mcp) x, d, z, y, dz, mup, mdn
+     real(mcp) matter_power_dlnz
      integer i, iz
    
      matter_power_dlnz = log(matter_power_maxz+1) / (matter_power_lnzsteps -1 + 1e-13)
@@ -427,8 +283,6 @@ contains
      MatterPowerAt_Z = exp(mdn*(1-dz) + mup*dz)
 
    end function MatterPowerAt_Z
-
-
 
 
 end module cmbtypes

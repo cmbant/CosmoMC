@@ -12,9 +12,12 @@ use, intrinsic :: iso_fortran_env, only : input_unit, output_unit,error_unit
 #endif
   implicit none
 
+#ifdef SINGLE
   integer, parameter :: mcp= KIND(1.0)
-  
-  real :: AccuracyLevel = 1.
+#else
+  integer, parameter :: mcp= KIND(1.d0)
+#endif
+  real(mcp) :: AccuracyLevel = 1.
   !Set to >1 to use CAMB etc on higher accuracy settings. 
   !Does not affect MCMC (except making it all slower)
 
@@ -61,14 +64,14 @@ use, intrinsic :: iso_fortran_env, only : input_unit, output_unit,error_unit
   integer :: sampling_method = sampling_metropolis
  
   !scale of the proposal distribution in units of the posterior standard deviation
-  real    :: propose_scale  = 2.4 
+  real(mcp)    :: propose_scale  = 2.4_mcp 
   
   !For fast dragging method, baseline number of intermediate drag steps
-  real :: dragging_steps = 4.
+  real(mcp) :: dragging_steps = 4._mcp
 
 !The rest are set up automatically
 
-  real, parameter :: cl_norm = 1e-10 !units for As
+  real(mcp), parameter :: cl_norm = 1e-10_mcp !units for As
 
   logical, parameter ::  generic_mcmc= .false. 
     !set to true to not call CAMB, etc.
@@ -106,10 +109,15 @@ use, intrinsic :: iso_fortran_env, only : input_unit, output_unit,error_unit
   integer :: slow_proposals = 0
   integer :: output_lines = 0
 
-  real, parameter :: logZero = 1e30
-  character (LEN =120) :: FileChangeIni = '', FileChangeIniAll = ''
+  real(mcp), parameter :: logZero = 1e30_mcp
+  character (LEN =1024) :: FileChangeIni = '', FileChangeIniAll = ''
 
   integer, parameter :: stdout = output_unit
+  
+  type mc_real_pointer
+    real(mcp), dimension(:), pointer :: p 
+  end type mc_real_pointer
+
   
 contains
 
@@ -180,7 +188,7 @@ contains
   subroutine ReadVector(aname, vec, n)
    character(LEN=*), intent(IN) :: aname
    integer, intent(in) :: n
-   real, intent(out) :: vec(n)
+   real(mcp), intent(out) :: vec(n)
    integer j
 
    if (Feedback > 0) write(*,*) 'reading: '//trim(aname)
@@ -203,7 +211,7 @@ contains
  subroutine WriteVector(aname, vec, n)
    character(LEN=*), intent(IN) :: aname
    integer, intent(in) :: n
-   real, intent(in) :: vec(n)
+   real(mcp), intent(in) :: vec(n)
    integer j
   
    call CreateTxtFile(aname, tmp_file_unit)
@@ -221,9 +229,9 @@ contains
  subroutine ReadMatrix(aname, mat, m,n)
    character(LEN=*), intent(IN) :: aname
    integer, intent(in) :: m,n
-   real, intent(out) :: mat(m,n)
+   real(mcp), intent(out) :: mat(m,n)
    integer j,k
-   real tmp
+   real(mcp) tmp
 
    if (Feedback > 0) write(*,*) 'reading: '//trim(aname)
    call OpenTxtFile(aname, tmp_file_unit)

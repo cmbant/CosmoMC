@@ -13,15 +13,12 @@ module CMB_Cls
   use likelihood
   implicit none
 
-  logical :: compute_tensors = .false.
   logical :: CMB_lensing = .false.
   logical :: use_nonlinear = .false.
   
-  Type ParamSetInfo  
-    Type (CAMBdata)    :: Transfers
-    Type (CosmoTheory) :: Theory
-    real lastParamArray(num_params)
-    real likelihoods(max_likelihood_functions)
+  Type ParamSetInfo
+    Type (CAMBdata) :: Transfers
+    real(mcp) lastParamArray(num_params)
   end Type ParamSetInfo
 
   integer :: lmax_computed_cl = lmax !value used for CAMB
@@ -32,7 +29,7 @@ module CMB_Cls
   integer :: nerrors = 0
   type(CAMBParams)  CAMBP 
   
-  real, allocatable :: highL_lensedCL_template(:,:)
+  real(mcp), allocatable :: highL_lensedCL_template(:,:)
   
 contains
   subroutine CMBToCAMB(CMB,P)
@@ -46,7 +43,7 @@ contains
     P%omegac = CMB%omc
     P%omegav = CMB%omv
     P%H0 = CMB%H0
-    P%Reion%redshift= CMB%zre    
+    P%Reion%redshift= CMB%zre
     P%Reion%delta_redshift = CMB%zre_delta
     w_lam = CMB%w
     wa_ppf = CMB%wa
@@ -64,11 +61,11 @@ contains
 
     P%Num_Nu_Massless = CMB%nnu - P%Num_Nu_Massive !AL Sept 11 for CAMB's new treatment; previously 3.046; we assume three massive
     P%YHe = CMB%YHe
-#ifdef COSMOREC    
-    if (P%Recomb%fdm/=0.) P%Recomb%runmode = 3
-    P%Recomb%fdm = CMB%fdm * 1e-23
+#ifdef COSMOREC
+    if (P%Recomb%fdm/=0._mcp) P%Recomb%runmode = 3
+    P%Recomb%fdm = CMB%fdm * 1e-23_mcp
 #else
-    if (CMB%fdm/=0.) call MpiStop('Compile with CosmoRec to use fdm') 
+    if (CMB%fdm/=0._mcp) call MpiStop('Compile with CosmoRec to use fdm') 
 #endif       
   end subroutine CMBToCAMB
 
@@ -76,7 +73,6 @@ contains
  subroutine SetTheoryForBackground(CMB) 
     use Camb, only: CAMBParams_Set 
     type(CMBParams) CMB
-    type(ParamSetInfo) Info
     type(CAMBParams)  P
 !set background dparameters, but don't calculate thermal history
     call CMBToCAMB(CMB, P)
@@ -84,11 +80,11 @@ contains
   
  end subroutine SetTheoryForBackground
 
-  subroutine GetNewBackgroundData(CMB,Info,error)
+  subroutine GetNewBackgroundData(CMB,Theory,error)
     use cambmain, only: initvars
    type(CMBParams) CMB
    integer error
-   Type(ParamSetInfo) Info
+   Class(TheoryPredictions) Theory
     
     call SetTheoryForBackground(CMB)
     call InitVars !calculate thermal history, e.g. z_drag etc.
@@ -96,26 +92,27 @@ contains
           error=global_error_flag
           return
     end if 
-    call SetDerived(Info)
+    call SetDerived(Theory)
     
   end subroutine GetNewBackgroundData
 
-  subroutine SetDerived(Info)
-   Type(ParamSetInfo) Info
+  subroutine SetDerived(Theory)
+   Class(TheoryPredictions) Theory
    
-      Info%Theory%numderived = nthermo_derived
+      Theory%numderived = nthermo_derived
       if (nthermo_derived > max_derived_parameters) &
               call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
-      Info%Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
+      Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
   
   end subroutine SetDerived
   
- subroutine GetNewTransferData(CMB,Info,error)
+ subroutine GetNewTransferData(CMB,Info,Theory,error)
    use ModelParams, only : ThreadNum
    use InitialPower
    type(CMBParams) CMB
    integer error
    Type(ParamSetInfo) Info
+   Type(TheoryPredictions) Theory
    type(CAMBParams)  P
    character(LEN=128) :: LogLine
 
@@ -127,7 +124,7 @@ contains
   
          call CAMB_GetTransfers(P, Info%Transfers, error)
          if (error==0) then
-             call SetDerived(Info)
+             call SetDerived(Theory)
          else
           if (stop_on_error) call MpiStop('CAMB error '//trim(global_error_message))
           if (Feedback > 0) write(*,*) 'CAMB returned error '//trim(global_error_message)
@@ -142,12 +139,12 @@ contains
  
 end subroutine GetNewTransferData
 
-subroutine GetNewPowerData(CMB,Info,error)
+subroutine GetNewPowerData(CMB, Info, Theory, error)
    use ModelParams, only : ThreadNum
-   use InitialPower
    type(CMBParams) CMB
    integer error
    Type(ParamSetInfo) Info
+   Type(TheoryPredictions) Theory
 
          call SetCAMBInitPower(Info%Transfers%Params,CMB,1)
          call CAMB_TransfersToPowers(Info%Transfers)
@@ -157,39 +154,36 @@ subroutine GetNewPowerData(CMB,Info,error)
           return
          end if 
            
-         call SetPowersFromCAMB(Info%Theory)
+         call SetPowersFromCAMB(Theory)
          
-         if (any(Info%Theory%cl(:,1) < 0 )) then
+         if (any(Theory%cl(:,1) < 0 )) then
             call MpiStop('CMB_cls_simple: negative C_l (could set error here)')
-         end if
-         
-         if (compute_tensors) then
-             Info%Theory%tensor_ratio_02 = TensorPower(0.002d0,1)/ScalarPower(0.002d0,1)
-         else
-             Info%Theory%tensor_ratio_02 = 0 
          end if
 
          if (Use_LSS) then
-            call SetPkFromCAMB(Info%Theory,Info%Transfers%MTrans)
+            call SetPkFromCAMB(Theory,Info%Transfers%MTrans)
          else
-            Info%Theory%sigma_8 = 0
+            Theory%sigma_8 = 0
          end if
 
 end subroutine GetNewPowerData
 
-  subroutine GetClsInfo(CMB, Theory, error, DoCls, DoPk)
+  subroutine GetTheoryForImportance(Params, Theory, error, DoCls, DoPk)
    use ModelParams, only : ThreadNum
    type(CMBParams) CMB
-   Type(CosmoTheory) Theory
+   Type(TheoryPredictions) Theory
    integer error
    logical, intent(in) :: DoCls, DoPk
+   real(mcp):: Params(:)
    type(CAMBParams)  P
-   
+
+   call ParamsToCMBParams(Params,CMB)
+
    error = 0
    Threadnum =num_threads
    call CMBToCAMB(CMB, P)
    P%OnlyTransfers = .false.
-   call SetCAMBInitPower(P,CMB,1)   
+   call SetCAMBInitPower(P,CMB,1)
     
    if (DoPk) then
       P%WantTransfer = .true.
@@ -208,9 +202,8 @@ end subroutine GetNewPowerData
    call CAMB_GetResults(P)
    error = global_error_flag !using error optional parameter gives seg faults on SGI
    if (error==0) then
-       
-      if (DoCls) call SetPowersFromCAMB(Theory)
 
+      if (DoCls) call SetPowersFromCAMB(Theory)
       if (DoPk) call SetPkFromCAMB(Theory,MT)
 
       Theory%numderived = nthermo_derived
@@ -219,15 +212,16 @@ end subroutine GetNewPowerData
       Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
 
    end if
- end subroutine GetClsInfo
+ end subroutine GetTheoryForImportance
  
  subroutine SetPowersFromCAMB(Theory)
    use constants
-   Type(CosmoTheory) Theory
-   real, parameter :: cons =  (COBE_CMBTemp*1e6)**2*2*pi
-   real nm
+   use InitialPower
+   Type(TheoryPredictions) Theory
+   real(mcp), parameter :: cons =  (COBE_CMBTemp*1e6)**2*2*pi
+   real(mcp) nm
    integer l
-   real highL_norm
+   real(mcp) highL_norm
    
     Theory%cl=0
     Theory%cl_tensor=0
@@ -259,7 +253,13 @@ end subroutine GetNewPowerData
        end if
  
     end do 
-    
+
+    if (compute_tensors) then
+       Theory%tensor_ratio_02 = TensorPower(0.002d0,1)/ScalarPower(0.002d0,1)
+    else
+       Theory%tensor_ratio_02 = 0 
+   end if
+
     if (lmax_computed_cl/=lmax) then
         !use template for very high L theory tail, scaled not to be discontinuous
        highL_norm = Theory%cl(lmax_computed_cl,1)/highL_lensedCL_template(lmax_computed_cl,1)
@@ -279,7 +279,7 @@ end subroutine GetNewPowerData
    !this is the assumption of the LRG model.
 #endif
    use camb, only : MatterTransferData
-   Type(CosmoTheory) Theory
+   Type(TheoryPredictions) Theory
    Type(MatterTransferData) M
    integer zix
    
@@ -339,7 +339,7 @@ end subroutine GetNewPowerData
 
  function GetOpticalDepth(CMB)
    type(CMBParams) CMB
-   real GetOpticalDepth
+   real(mcp) GetOpticalDepth
    type(CAMBParams)  P
    integer error
    
@@ -355,8 +355,8 @@ end subroutine GetNewPowerData
 
  function GetZreFromTau(CMB, tau)
    type(CMBParams) CMB
-   real, intent(in) :: tau
-   real GetZreFromTau
+   real(mcp), intent(in) :: tau
+   real(mcp) GetZreFromTau
    type(CAMBParams)  P
    
    call CMBToCAMB(CMB, P)
@@ -367,11 +367,10 @@ end subroutine GetNewPowerData
  subroutine InitCAMBParams(P)
    use lensing
    use ModelParams
-!   use Lya
    use mpk
    type(CAMBParams)  P 
    integer zix
-   real redshifts(matter_power_lnzsteps)
+   real(mcp) redshifts(matter_power_lnzsteps)
 
         Threadnum =num_threads
         w_lam = -1
@@ -468,7 +467,7 @@ end subroutine GetNewPowerData
  subroutine LoadFiducialHighLTemplate
  !This should be a lensed scalar CMB power spectrum, e.g. for including at very high L where foregrounds etc. dominate anyway
    integer L
-   real array(4), nm
+   real(mcp) array(4), nm
    character(LEN=Ini_max_string_len) :: fname
   
         fname = ReadIniFilename(DefIni,'highL_theory_cl_template',DataDir,.true.)

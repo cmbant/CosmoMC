@@ -12,8 +12,13 @@ module CalcLike
 
  integer :: power_changes=0, slow_changes=0
  
- logical changeMask(num_params)
- logical SlowChanged, PowerChanged
+ Type LikeCalculator
+     type(ParamSet), pointer :: Params
+     type (CMBParams), pointer :: CMB
+     logical changeMask(num_params)
+     logical SlowChanged, PowerChanged
+ end Type LikeCalculator
+ 
 
 contains
 
@@ -42,17 +47,15 @@ contains
 
   end function GenericLikelihoodFunction
 
-  
-  function TestHardPriors(CMB, Info) 
-    real(mcp) TestHardPriors
-    Type (CMBParams) CMB
-    Type(ParamSetInfo) Info
+  function TestHardPriors(Calc)
+  Type(LikeCalculator) :: Calc
+  real(mcp) TestHardPriors
 
     TestHardPriors = logZero
  
     if (.not. generic_mcmc) then
-     if (CMB%H0 < H0_min .or. CMB%H0 > H0_max) return
-     if (CMB%zre < Use_min_zre) return
+     if (Calc%CMB%H0 < H0_min .or. Calc%CMB%H0 > H0_max) return
+     if (Calc%CMB%zre < Use_min_zre) return
 
     end if
     TestHardPriors = 0
@@ -60,10 +63,11 @@ contains
   end function TestHardPriors
 
   function GetLogLike(Params) !Get -Ln(Likelihood) for chains
-    type(ParamSet)  Params 
-    Type (CMBParams) CMB
+    type(ParamSet), target :: Params 
+    Type (CMBParams), target :: CMB
     real(mcp) GetLogLike
     logical, save:: first=.true.
+    Type(LikeCalculator) :: Calc
 
     if (any(Params%P > Scales%PMax) .or. any(Params%P < Scales%PMin)) then
        GetLogLike = logZero
@@ -75,18 +79,20 @@ contains
         if (GetLogLike /= LogZero) GetLogLike = GetLogLike + getLogPriors(Params%P)
         if (GetLogLike /= LogZero) GetLogLike = GetLogLike/Temperature
     else
+      Calc%Params => Params
+      Calc%CMB=>CMB
       call ParamsToCMBParams(Params%P,CMB)
-      GetLogLike  = TestHardPriors(CMB, Params%Info)
+      GetLogLike  = TestHardPriors(Calc)
       if (GetLogLike == logZero) return
       if (first) then
-           changeMask = .true.
+           Calc%changeMask = .true.
            first = .false.
       else
-           changeMask = Params%Info%lastParamArray/=Params%P
+           Calc%changeMask = Params%Info%lastParamArray/=Params%P
       end if
 
-     if (CalculateRequiredTheoryChanges(CMB, Params)) then
-      GetLogLike = GetLogLikeWithTheorySet(CMB, Params)
+     if (CalculateRequiredTheoryChanges(Calc)) then
+      GetLogLike = GetLogLikeWithTheorySet(Calc)
      else
        GetLogLike = logZero
      end if
@@ -95,21 +101,28 @@ contains
     end if
 
     if (Feedback>2 .and. GetLogLike/=LogZero) &
-      call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%Info%likelihoods)
+      call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%likelihoods)
 
   end function GetLogLike
 
-  function GetLogLikePost(CMB, P, Info)
+  function GetLogLikePost(Params, do_like)
   !for importance sampling where theory may be pre-stored
-    real(mcp) GetLogLikePost
-    Type (CMBParams) CMB
-    Type(ParamSetInfo) Info
-    real(mcp) P(num_params)
-    
-    GetLogLikePost=logZero
-   
-    !need to init background correctly if new BAO etc
+    real(mcp)  GetLogLikePost
+    Type(ParamSet), target :: Params
+    Type (CMBParams), target :: CMB
+    Type(LikeCalculator) :: Calc
+    logical, optional, intent(in) :: do_like(DataLikelihoods%count)
 
+    Calc%slowChanged = .false.
+    Calc%ChangeMask = .true.
+    call ParamsToCMBParams(Params%P,CMB)
+    Calc%Params => Params
+    Calc%CMB=>CMB
+    if (present(do_like)) then
+     GetLogLikePost=GetLogLikeWithTheorySet(Calc, do_like)
+    else
+     GetLogLikePost=GetLogLikeWithTheorySet(Calc)
+    end if
   end function GetLogLikePost
   
   function getLogPriors(P) result(logLike)
@@ -127,57 +140,63 @@ contains
 
   end function getLogPriors
   
-  logical function CalculateRequiredTheoryChanges(CMB, Params)
-    type(ParamSet)  Params 
-    type (CMBParams) CMB
+  logical function CalculateRequiredTheoryChanges(Calc)
+    Type(LikeCalculator) :: Calc
     integer error
 
-     SlowChanged = any(changeMask(1:num_hard))
-     PowerChanged = any(changeMask(index_initpower:index_initpower+num_initpower-1))
+     Calc%SlowChanged = any(Calc%changeMask(1:num_hard))
+     Calc%PowerChanged = any(Calc%changeMask(index_initpower:index_initpower+num_initpower-1))
      error=0
      if (Use_CMB .or. Use_LSS) then
-         if (SlowChanged) then
+         if (Calc%SlowChanged) then
            slow_changes = slow_changes + 1
-           call GetNewTransferData(CMB, Params%Info, error)
+           call GetNewTransferData(Calc%CMB, Calc%Params%Info,Calc%Params%Theory, error)
          end if
-         if ((SlowChanged .or. PowerChanged) .and. error==0) then
-             if (.not. SlowChanged) power_changes = power_changes  + 1
-             call GetNewPowerData(CMB, Params%Info, error)
+         if ((Calc%SlowChanged .or. Calc%PowerChanged) .and. error==0) then
+             if (.not. Calc%SlowChanged) power_changes = power_changes  + 1
+             call GetNewPowerData(Calc%CMB, Calc%Params%Info, Calc%Params%Theory,error)
          end if
      else
-         if (SlowChanged) call GetNewBackgroundData(CMB, Params%Info, error)
+         if (Calc%SlowChanged) call GetNewBackgroundData(Calc%CMB, Calc%Params%Theory, error)
      end if
    CalculateRequiredTheoryChanges = error==0
 
   end function CalculateRequiredTheoryChanges
 
   
-  function GetLogLikeWithTheorySet(CMB, Params) result(logLike)
+  function GetLogLikeWithTheorySet(Calc, likelihood_mask) result(logLike)
     real(mcp) logLike
-    Type (CMBParams) CMB
-    Type(ParamSet) Params
-    integer error
+    Type(LikeCalculator) :: Calc
+    logical, intent(in), optional :: likelihood_mask(DataLikelihoods%count)
     real(mcp) itemLike
     Class(DataLikelihood), pointer :: like
     integer i
     logical backgroundSet
-    
-    backgroundSet = slowChanged 
+    logical :: do_like(DataLikelihoods%count)
+
+    if (present(likelihood_Mask)) then
+        do_like = likelihood_mask
+    else
+        do_like = .true.
+    end if
+    backgroundSet = Calc%slowChanged 
     logLike = logZero
     do i= 1, DataLikelihoods%count
+     if (do_like(i)) then
      like => DataLikelihoods%Item(i)
-     if (any(like%dependent_params .and. changeMask )) then
+     if (any(like%dependent_params .and. Calc%changeMask )) then
           if (like%needs_background_functions .and. .not. backgroundSet) then
-              call SetTheoryForBackground(CMB)
+              call SetTheoryForBackground(Calc%CMB)
               backgroundSet = .true.
           end if
-          itemLike = like%LogLike(CMB, Params%Info%Theory)
+          itemLike = like%LogLike(Calc%CMB, Calc%Params%Theory)
           if (itemLike == logZero) return
-          Params%Info%Likelihoods(i) = itemLike
+          Calc%Params%Likelihoods(i) = itemLike
+     end if
      end if
     end do
-    logLike = sum(Params%Info%likelihoods(1:DataLikelihoods%Count))
-    logLike = logLike + getLogPriors(Params%P)
+    logLike = sum(Calc%Params%likelihoods(1:DataLikelihoods%Count))
+    logLike = logLike + getLogPriors(Calc%Params%P)
     logLike = logLike/Temperature
 
   end function GetLogLikeWithTheorySet

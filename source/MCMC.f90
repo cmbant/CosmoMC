@@ -18,35 +18,35 @@ module MonteCarlo
  integer :: directional_grid_steps = 20 
   !for sampling_method = sampling_slowgrid, number of steps per grid
 
- real, parameter    :: eps_1 = 1.00001
- real :: MaxLike
+ real(mcp), parameter    :: eps_1 = 1.00001
+ real(mcp) :: MaxLike
 
  logical :: fast_slicing = .false. !slice fast parameters when using Metropolis 
  logical :: slice_stepout = .true.
  logical :: slice_randomsize = .false.
 
 !Multicanonical/W-L sampling parameters
-  real, parameter :: mc_logspace =  6. !1/ steps to use in log-likelihood * number of parameter
+  real(mcp), parameter :: mc_logspace =  6. !1/ steps to use in log-likelihood * number of parameter
   integer :: mc_mini = 0, mc_maxi = 0
   integer :: mc_update_steps = 7000, mc_update_burn = 50
   integer :: mc_steps_inc = 1000
-  real, dimension(:,:), allocatable :: mc_like_counts
-  real, dimension(:), allocatable :: mc_lnweights
+  real(mcp), dimension(:,:), allocatable :: mc_like_counts
+  real(mcp), dimension(:), allocatable :: mc_lnweights
 !Wang-Landau parameter
-  real :: WL_f = 1, WL_min = 0.1, WL_minW
-  real :: WL_maxL=8. !WL_maxL is log like from best to use, in units of number of parameters
+  real(mcp) :: WL_f = 1, WL_min = 0.1, WL_minW
+  real(mcp) :: WL_maxL=8. !WL_maxL is log like from best to use, in units of number of parameters
   integer :: WL_update_steps = 4000
-  real :: WL_flat_tol = 1.4 !factor by which smallest histogram can be smaller than mean
+  real(mcp) :: WL_flat_tol = 1.4 !factor by which smallest histogram can be smaller than mean
 contains
 
  !function UpdateParamsLike(Params, fast, dist, i, freeNew, Lik) result(NewLik) 
  ! !For slice sampling movement and likelihood
  ! Type(ParamSet) tmp, Params
  ! integer, intent(in) :: i
- ! real, intent(in), optional :: Lik
- ! real NewLik
+ ! real(mcp), intent(in), optional :: Lik
+ ! real(mcp) NewLik
  ! logical, intent(in) :: fast, freeNew
- ! real, intent(in) :: dist
+ ! real(mcp), intent(in) :: dist
  !
  ! tmp = Params
  !
@@ -75,10 +75,10 @@ contains
  ! Type(ParamSet) Params
  ! integer, intent(in) :: i
  ! logical, intent(in) :: fast
- ! real, intent(inout) :: Like
- ! real offset,  P
- ! real L, R 
- ! real LikL, LikR, Range, LikT, w
+ ! real(mcp), intent(inout) :: Like
+ ! real(mcp) offset,  P
+ ! real(mcp) L, R 
+ ! real(mcp) LikL, LikR, Range, LikT, w
  ! integer fevals
  !
  !
@@ -130,7 +130,7 @@ contains
  !
  !subroutine SliceSampleSlowParam(CurParams, CurLike) 
  ! Type(ParamSet) CurParams
- ! real CurLike
+ ! real(mcp) CurLike
  ! integer, save:: loopix = 0
  !
  !  if (mod(loopix,num_slow)==0) then
@@ -145,7 +145,7 @@ contains
  !
  !subroutine SliceSampleFastParams(CurParams, CurLike)
  ! Type(ParamSet) CurParams
- ! real CurLike
+ ! real(mcp) CurLike
  ! integer j 
  !
  !  if (.not. allocated(Rot_fast)) allocate(Rot_fast(num_fast,num_fast))
@@ -158,7 +158,7 @@ contains
  !end subroutine SliceSampleFastParams
  !
  function MetropolisAccept(Like, CurLike)
-    real Like, CurLike
+    real(mcp) Like, CurLike
     logical MetropolisAccept
     
     if (Like /=LogZero) then
@@ -267,7 +267,7 @@ contains
    if (accpt) then
        if (num_accept> burn_in) then
           output_lines = output_lines +1
-          call WriteParams(CurParams,real(mult),CurLike)
+          call WriteParams(CurParams,real(mult,mcp),CurLike)
        end if
        num_accept = num_accept + 1
        CurParams = CurEndParams
@@ -289,13 +289,13 @@ contains
  ! !fast parameters. Allows fast paraters to 'adapt' to slow parameter values, thereby
  ! !increasing slow acceptance rate
  ! Type(ParamSet) Trial, CurParams
- ! real CurLike, MaxLike
+ ! real(mcp) CurLike, MaxLike
  ! integer num, num_accept, mult
- ! real w
+ ! real(mcp) w
  ! integer r, r_min, r_max, last_r
  ! Type(ParamSet), dimension(:), allocatable :: grid
  ! integer i, accpt
- ! real Like
+ ! real(mcp) Like
  ! integer, save:: loopix = 0
  !
  !
@@ -349,7 +349,7 @@ contains
  !
  !     if (num_accept> burn_in) then
  !         output_lines = output_lines +1
- !        call WriteParams(grid(last_r),real(mult),CurLike)
+ !        call WriteParams(grid(last_r),real(mult,mcp),CurLike)
  !     end if
  !  
  !     CurLike = Like
@@ -391,7 +391,7 @@ contains
 !Multicanonical/Wang-Landau
 
  subroutine MC_AddLike(L)
-  real, intent(in) :: L
+  real(mcp), intent(in) :: L
   integer like_ix
   integer, dimension(:,:), allocatable :: tmp
   integer sc
@@ -433,8 +433,8 @@ contains
  end subroutine MC_AddLike
 
  subroutine MC_UpdateWeights
-    real, dimension(:), allocatable :: tmp
-    real win(-2:2)
+    real(mcp), dimension(:), allocatable :: tmp
+    real(mcp) win(-2:2)
     integer i
          
     allocate(tmp(mc_mini:mc_maxi))
@@ -452,7 +452,7 @@ contains
        tmp(i) = sum(mc_like_counts(i-2:i+2,1)*win)
     end do 
     !tmp=mc_like_counts
-    tmp = max(tmp,1.)
+    tmp = max(tmp,1._mcp)
     mc_lnweights = mc_lnweights + log(tmp/real(maxval(tmp))) 
     deallocate(tmp)
     mc_like_counts = 0
@@ -460,8 +460,8 @@ contains
  end  subroutine MC_UpdateWeights
  
  function MC_LnWeight(L)
-  real, intent(in) :: L
-  real MC_LnWeight
+  real(mcp), intent(in) :: L
+  real(mcp) MC_LnWeight
   integer like_ix
 
   if (.not. allocated(mc_lnweights)) then
@@ -481,8 +481,8 @@ contains
 
 
  function MC_WeightLike(L) result (Like)
-  real, intent(in) :: L
-  real Like
+  real(mcp), intent(in) :: L
+  real(mcp) Like
 
    Like = L + MC_LnWeight(L)
 
@@ -490,8 +490,8 @@ contains
 
 
  function MC_Weight(L) result(W)
-  real, intent(in) :: L
-  real mx, W
+  real(mcp), intent(in) :: L
+  real(mcp) mx, W
   integer like_ix
 
   if (.not. allocated(mc_lnweights)) then
@@ -508,7 +508,7 @@ contains
 
  subroutine WL_UpdateWeights
   integer i,n
-  real amin,asum,L
+  real(mcp) amin,asum,L
 
    if (WL_F > WL_min) then
 
@@ -549,8 +549,8 @@ contains
  end  subroutine WL_UpdateWeights
 
  function WL_WeightLike(L) result (Like)
-  real, intent(in) :: L
-  real Like
+  real(mcp), intent(in) :: L
+  real(mcp) Like
   integer like_ix
 
   if (L > MaxLike + WL_maxL*num_params_used) then
@@ -569,8 +569,8 @@ contains
 
 
 function WL_Weight(L) result (W)
-  real, intent(in) :: L
-  real W
+  real(mcp), intent(in) :: L
+  real(mcp) W
   integer like_ix
 
   if (L > MaxLike + WL_maxL*num_params_used) then
@@ -591,12 +591,12 @@ function WL_Weight(L) result (W)
  subroutine MCMCsample(Params, samples_to_get)
    integer samples_to_get
    Type(ParamSet) Trial, Params, CurParams
-   real Like, CurLike
+   real(mcp) Like, CurLike
    logical accpt
-   real rmult
+   real(mcp) rmult
    integer mult,num_accept, last_num
    integer num_metropolis,  num_metropolis_accept
-   real testlike, testCurLike
+   real(mcp) testlike, testCurLike
    integer mc_update_burn_num, mc_updates
    character(LEN=128) logLine
    
@@ -626,7 +626,7 @@ function WL_Weight(L) result (W)
     !Slice sampling
           !if (num_accept> burn_in) then
           ! output_lines = output_lines +1
-          ! call WriteParams(CurParams, real(mult), CurLike)
+          ! call WriteParams(CurParams, real(mult,mcp), CurLike)
           !end if
           !if (Feedback > 1) write (*,*) instance, 'Slicing, Current Like:', CurLike
           !mult = 1
@@ -651,7 +651,7 @@ function WL_Weight(L) result (W)
         !if (CurLike /=LogZero .and. num_fast /=0) then
         !    if (num_accept> burn_in) then
         !      output_lines = output_lines +1
-        !      call WriteParams(CurParams,real(mult), CurLike)
+        !      call WriteParams(CurParams,real(mult,mcp), CurLike)
         !    end if
         !    call SliceSampleFastParams(CurParams, CurLike)
         !   if (CurLike < MaxLike) MaxLike = CurLike

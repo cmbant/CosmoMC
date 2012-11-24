@@ -52,11 +52,11 @@ implicit none
   Type CMBdatapoint
     integer win_min, win_max
      !Ranges in which window is non-zero
-    real, pointer, dimension(:,:) :: window
+    real(mcp), pointer, dimension(:,:) :: window
      !Normalized window function in l
-    real obs, err_minus, err_plus, sigma, var
+    real(mcp) obs, err_minus, err_plus, sigma, var
      !Observed value of l(l+1) C_l/2pi bandpowers in MicroK^2, with errors
-    real beam_err !fractional beam error (file is value in MicroK^2)
+    real(mcp) beam_err !fractional beam error (file is value in MicroK^2)
     logical inc_pol
 
   end Type CMBdatapoint
@@ -65,20 +65,20 @@ implicit none
     logical :: use_set
     logical :: has_pol, windows_are_bandpowers,windows_are_normalized
     logical :: has_sz_template
-    real :: calib_uncertainty
+    real(mcp) :: calib_uncertainty
     logical :: beam_uncertain, has_corr_errors, has_xfactors
     integer :: num_points, file_points
     character(LEN=Ini_max_string_len) :: dataset_filename
     Type(CMBdatapoint), pointer, dimension(:) :: points
-    real, pointer, dimension(:,:) :: N_inv
-    real, pointer, dimension(:) :: xfactors
+    real(mcp), pointer, dimension(:,:) :: N_inv
+    real(mcp), pointer, dimension(:) :: xfactors
     logical, pointer, dimension(:) :: has_xfactor !whether each bin has one
     logical :: all_l_exact
     logical :: CMBLike !New format
     integer :: all_l_lmax
-    real, pointer, dimension(:,:) :: all_l_obs, all_l_noise
-    real, pointer, dimension(:) :: all_l_fsky
-    real, pointer, dimension(:) :: sz_template
+    real(mcp), pointer, dimension(:,:) :: all_l_obs, all_l_noise
+    real(mcp), pointer, dimension(:) :: all_l_fsky
+    real(mcp), pointer, dimension(:) :: sz_template
     Type (TCMBLikes), pointer :: CMBLikes
   end Type CMBdataset
 
@@ -95,8 +95,8 @@ implicit none
 
  
   integer, parameter :: halfsteps = 5 !do 2*halfsteps+1 steps in numerical marginalization
-  real margeweights(-halfsteps:halfsteps)
-  real :: margenorm = 0 
+  real(mcp) margeweights(-halfsteps:halfsteps)
+  real(mcp) :: margenorm = 0 
   private halfsteps, margeweights, margenorm
 contains
 
@@ -107,7 +107,7 @@ contains
    logical, intent(IN) :: are_bare
    Type (CMBdataset) :: aset
    integer l, ncls
-   real wpol(1:num_cls-1),ll, IW,w
+   real(mcp) wpol(1:num_cls-1),ll, IW,w
    character(LEN=200) tmp
 
    if (Feedback > 1) write (*,*) 'reading window: '//trim(aname)
@@ -189,7 +189,7 @@ contains
       Type (CMBdataset) :: aset
       character(LEN=Ini_max_string_len) :: fname
       integer l, idum, ncls, ncol
-      real inobs(4)
+      real(mcp) inobs(4)
       integer file_unit
 
     !In this case we have data for every l, and use exact full-sky likelihood expression
@@ -247,12 +247,12 @@ contains
 
  function ChiSqExact(cl, aset) 
   !Compute -ln(Likelihood) 
-   real cl(lmax,num_cls)
+   real(mcp) cl(lmax,num_cls)
    Type(CMBdataset) :: aset
    integer l
-   real ChiSqExact, chisq, term, CT, CE, CB, CC
-   real CThat, CChat, CEhat, CBhat
-   real dof
+   real(mcp) ChiSqExact, chisq, term, CT, CE, CB, CC
+   real(mcp) CThat, CChat, CEhat, CBhat
+   real(mcp) dof
    integer i
 
    chisq=0
@@ -334,8 +334,8 @@ contains
    logical bad, windows_are_bare
    Type (CMBdataset), pointer :: aset
    integer i, first_band, use_i
-   real, pointer, dimension(:,:) :: tmp_mat
-   real, pointer, dimension(:) :: tmp_arr
+   real(mcp), pointer, dimension(:,:) :: tmp_mat
+   real(mcp), pointer, dimension(:) :: tmp_arr
    character(LEN=Ini_max_string_len) :: data_format
    integer file_unit
    Type(TIniFile) :: Ini
@@ -492,10 +492,10 @@ contains
 
  subroutine ReadSZTemplate(aset, aname, ascale)
     Type (CMBdataset) :: aset
-    real, intent(in) :: ascale
+    real(mcp), intent(in) :: ascale
     character(LEN=*), intent(IN) :: aname
     integer l
-    real sz
+    real(mcp) sz
      allocate(aset%sz_template(2:lmax))
      aset%sz_template = 0
      aset%has_sz_template = .true.
@@ -509,11 +509,11 @@ contains
  end subroutine ReadSZTemplate
 
  function GetWinBandPower(AP, cl)
-   real  GetWinBandPower
-   real cl(lmax,num_cls)
+   real(mcp)  GetWinBandPower
+   real(mcp) cl(lmax,num_cls)
    Type(CMBdatapoint) AP
    integer l
-   real bandpower
+   real(mcp) bandpower
 
    bandpower = sum(cl(AP%win_min:AP%win_max,1)*AP%window(1,AP%win_min:AP%win_max))
 
@@ -540,11 +540,11 @@ contains
   !Numerically integrate over the calibration uncertainty
   !Assume Gaussian prior, as for analytic calculation without x-factors
   !Could also Monte-Carlo
-   real GetCalibMargexChisq
+   real(mcp) GetCalibMargexChisq
    Type(CMBdataset) aset
-   real bandpowers(aset%num_points),beambandpowers(aset%num_points),diffs(aset%num_points)
-   real calib, chisq(-halfsteps:halfsteps),chisqcalib(-halfsteps:halfsteps)
-   real minchisq
+   real(mcp) bandpowers(aset%num_points),beambandpowers(aset%num_points),diffs(aset%num_points)
+   real(mcp) calib, chisq(-halfsteps:halfsteps),chisqcalib(-halfsteps:halfsteps)
+   real(mcp) minchisq
    integer i,j, ibeam
 
    if (margenorm == 0) call InitNumericalMarge
@@ -582,7 +582,7 @@ contains
 
       minchisq = minval(chisq)
 
-      chisqcalib(ibeam) = -2*log(sum(margeweights*exp(max(-30.,-(chisq-minchisq)/2)))/margenorm) + minchisq
+      chisqcalib(ibeam) = -2*log(sum(margeweights*exp(max(-30._mcp,-(chisq-minchisq)/2)))/margenorm) + minchisq
 
       if (.not. aset%beam_uncertain) then
          GetCalibMargexChisq = chisqcalib(ibeam)
@@ -592,7 +592,7 @@ contains
    end do
 
    minchisq = minval(chisqcalib)
-   GetCalibMargexChisq = -2*log(sum(margeweights*exp(max(-30.,-(chisqcalib-minchisq)/2)))/margenorm) + minchisq
+   GetCalibMargexChisq = -2*log(sum(margeweights*exp(max(-30._mcp,-(chisqcalib-minchisq)/2)))/margenorm) + minchisq
   
  end function GetCalibMargexChisq
 
@@ -624,14 +624,14 @@ contains
 
    LOGICAL windows_are_bare
    INTEGER i, j, k,use_i, n_types, xin
-   REAL, POINTER, DIMENSION(:) :: tmp_x
-   REAL, POINTER, DIMENSION(:,:) :: lb
-   real, allocatable, dimension(:,:) :: tmp_mat
+   real(mcp), POINTER, DIMENSION(:) :: tmp_x
+   real(mcp), POINTER, DIMENSION(:,:) :: lb
+   real(mcp), allocatable, dimension(:,:) :: tmp_mat
    integer, allocatable, dimension(:) :: used_bands
 
    INTEGER :: npol(6), minmax(2,6)
    INTEGER :: file_i,ijunk, ilike, ibeam
-   REAL :: cal, beam_width, beam_sigma, l_mid
+   real(mcp) :: cal, beam_width, beam_sigma, l_mid
    integer, parameter :: like_xfactorall=1, like_xfactorsome = 2
    !to be compatible with some older CITA output files
    LOGICAL :: FISHER_T_CMB
@@ -837,15 +837,15 @@ contains
 
  function CalcLnLike(clall, aset) 
   !Compute -ln(Likelihood) 
-   real clall(lmax,num_cls_tot), CalcLnLike
+   real(mcp) clall(lmax,num_cls_tot), CalcLnLike
    Type(CMBdataset) aset
    integer i
-   real cl(lmax, num_cls)
-   real chisq
-   real chi2op, chi2pp, wpp, wdd
-   real chi2dd,chi2pd,chi2od
-   real bandpowers(aset%num_points), diffs(aset%num_points), tmp(aset%num_points), beam(aset%num_points)
-   real denom
+   real(mcp) cl(lmax, num_cls)
+   real(mcp) chisq
+   real(mcp) chi2op, chi2pp, wpp, wdd
+   real(mcp) chi2dd,chi2pd,chi2od
+   real(mcp) bandpowers(aset%num_points), diffs(aset%num_points), tmp(aset%num_points), beam(aset%num_points)
+   real(mcp) denom
 
    if (.not. aset%use_set) then
       CalcLnLike = 0
@@ -948,11 +948,11 @@ contains
  function CMBLnLike(like, CMB, Theory) 
     use CMB_Cls
     Class(CMBDataLikelihood) :: like
-    Type (CMBParams) CMB
-    Type(CosmoTheory) Theory
-    real cl(lmax,num_cls_tot)
-    real CMBLnLike
-    real sznorm, szcl(lmax,num_cls_tot)
+    Class (CMBParams) CMB
+    Class(TheoryPredictions) Theory
+    real(mcp) cl(lmax,num_cls_tot)
+    real(mcp) CMBLnLike
+    real(mcp) sznorm, szcl(lmax,num_cls_tot)
 
     call ClsFromTheoryData(Theory, CMB, cl)
 
@@ -976,7 +976,7 @@ contains
   use WMAP_OPTIONS
   use WMAP_UTIL
 #endif
-  real cl(lmax,num_cls_tot), MAPLnLike
+  real(mcp) cl(lmax,num_cls_tot), MAPLnLike
 #ifndef NOWMAP
 
   real(8), dimension(2:ttmax) :: cl_tt,cl_te,cl_ee,cl_bb
@@ -1036,7 +1036,7 @@ contains
     Type(CMBDataLikelihood), pointer  :: like
     integer numsets,  i
     character(LEN=Ini_max_string_len) filename,keyname,SZTemplate
-    real SZScale
+    real(mcp) SZScale
 
         Use_CMB = Use_CMB .or. Ini_Read_Logical_File(Ini, 'use_CMB',.true.)
 

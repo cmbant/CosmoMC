@@ -19,7 +19,7 @@
      use CMB_Cls
      implicit none
      Type(CMBParams) CMB
-     real CMBToTheta
+     real(mcp) CMBToTheta
      integer error
   
      call InitCAMB(CMB,error,.false.)
@@ -71,7 +71,7 @@
  subroutine SetFast(Params,CMB)
      use settings
      use cmbtypes
-     real Params(num_Params)
+     real(mcp) Params(num_Params)
      Type(CMBParams) CMB
      
         CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initpower-1)
@@ -87,10 +87,10 @@
      use CMB_Cls
      use bbn
      implicit none
-     real Params(num_Params)
+     real(mcp) Params(num_Params)
      logical, intent(in) :: firsttime
      Type(CMBParams) CMB
-     real h2,H0
+     real(mcp) h2,H0
      
   
     CMB%H0=H0
@@ -147,14 +147,14 @@
      use CMB_Cls
 
      implicit none
-     real Params(num_params)
+     real(mcp) Params(num_params)
      integer, parameter :: ncache =2
-     real, save :: LastParams(num_params,ncache) = 0.
+     real(mcp), save :: LastParams(num_params,ncache) = 0._mcp
 
      Type(CMBParams) CMB
      Type(CMBParams), save :: LastCMB(ncache)
-     real DA
-     real  D_b,D_t,D_try,try_b,try_t, CMBToTheta, lasttry
+     real(mcp) DA
+     real(mcp)  D_b,D_t,D_try,try_b,try_t, CMBToTheta, lasttry
      external CMBToTheta
      integer, save :: cache=1
      integer i
@@ -167,7 +167,6 @@
         return
        end if
      end do
-
      DA = Params(3)/100
      try_b = 40
      call SetForH(Params,CMB,try_b, .true.)
@@ -205,9 +204,9 @@
      use settings
      use cmbtypes
      implicit none
-     real Params(num_Params)
+     real(mcp) Params(num_Params)
      Type(CMBParams) CMB
-     real CMBToTheta
+     real(mcp) CMBToTheta
      external CMBToTheta
  
       Params(1) = CMB%ombh2 
@@ -272,38 +271,38 @@
      use ParamDef
      use Lists
      implicit none
-     Type(real_pointer) :: derived
+     Type(mc_real_pointer) :: derived
      Type(ParamSet) P
      Type(CMBParams) CMB
-     real r10
+     real(mcp) r10
      integer num_derived 
      
-     num_derived = 12 +  P%Info%Theory%numderived
+     num_derived = 12 +  P%Theory%numderived
    
      allocate(Derived%P(num_derived))
    
       call ParamsToCMBParams(P%P,CMB)
 
       if (lmax_tensor /= 0 .and. compute_tensors) then
-          r10 = P%Info%Theory%cl_tensor(10,1)/P%Info%Theory%cl(10,1)
+          r10 = P%Theory%cl_tensor(10,1)/P%Theory%cl(10,1)
       else
-        r10 = 0
+         r10 = 0
       end if
 
       derived%P(1) = CMB%omv
       derived%P(2) = CMB%omdm+CMB%omb
-      derived%P(3) = P%Info%Theory%Sigma_8
+      derived%P(3) = P%Theory%Sigma_8
       derived%P(4) = CMB%zre
       derived%P(5) = r10
       derived%P(6) = CMB%H0
-      derived%P(7) = P%Info%Theory%tensor_ratio_02
+      derived%P(7) = P%Theory%tensor_ratio_02
       derived%P(8) = cl_norm*CMB%InitPower(As_index)*1e9
       derived%P(9) = CMB%omdmh2 + CMB%ombh2
       derived%P(10)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
       derived%P(11)= CMB%Yhe !value actually used, may be set from bbn consistency
       derived%P(12)= derived%P(8)*exp(-2*CMB%tau)  !A e^{-2 tau}
       
-      derived%P(13:num_derived) = P%Info%Theory%derived_parameters(1: P%Info%Theory%numderived)
+      derived%P(13:num_derived) = P%Theory%derived_parameters(1: P%Theory%numderived)
       
   end function CalcDerivedParams
   
@@ -316,9 +315,9 @@
      use Lists
      implicit none
      Type(ParamSet) P
-     real, intent(in) :: mult, like
-     real, allocatable :: output_array(:)
-     Type(real_pointer) :: derived
+     real(mcp), intent(in) :: mult, like
+     real(mcp), allocatable :: output_array(:)
+     Type(mc_real_pointer) :: derived
      integer numderived 
      integer CalcDerivedParams
      external CalcDerivedParams
@@ -360,9 +359,9 @@
      use Lists
      implicit none
      Type(ParamSet) P
-     real, intent(in) :: mult, like
-     real,allocatable :: output_array(:)
-     Type(real_pointer) :: derived
+     real(mcp), intent(in) :: mult, like
+     real(mcp),allocatable :: output_array(:)
+     Type(mc_real_pointer) :: derived
      integer numderived 
      integer CalcDerivedParams
      external CalcDerivedParams
@@ -377,7 +376,7 @@
       deallocate(derived%P)
 
       output_array(num_real_params+numderived+1:num_real_params+numderived+num_matter_power) = &
-        P%Info%Theory%matter_power(:,1) 
+        P%Theory%matter_power(:,1) 
 
       call IO_OutputChainRow(outfile_handle, mult, like, output_array)
       deallocate(output_array)

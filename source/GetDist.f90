@@ -73,29 +73,29 @@ module MCSamples
         integer chain_indices(max_chains), num_chains_used
  
         integer nrows, ncols
-        real numsamp
+        real(mcp) numsamp
         integer ND_cont1, ND_cont2
         integer covmat_dimension
         integer colix(max_cols), num_vars  !Parameters with non-blank labels
-        real mean(max_cols), sddev(max_cols)
-        real, dimension(:,:), allocatable :: corrmatrix
+        real(mcp) mean(max_cols), sddev(max_cols)
+        real(mcp), dimension(:,:), allocatable :: corrmatrix
         character(LEN=Ini_max_string_len) rootname, plot_data_dir, out_dir, &
                               rootdirname, in_root
         character(LEN=128) labels(max_cols)
         character(LEN=128) pname(max_cols)
         logical has_limits(max_cols), has_limits_top(max_cols),has_limits_bot(max_cols)
         logical has_markers(max_cols)
-        real markers(max_cols)
+        real(mcp) markers(max_cols)
         integer num_contours 
-        real matlab_version
+        real(mcp) matlab_version
         character(LEN=3) :: matlab_plot_output = 'eps'
         real :: matlab_subplot_size_inch = 3.0
         real :: matlab_subplot_size_inch2, matlab_subplot_size_inch3
         
         logical :: matlab_latex = .false.
-        real :: font_scale = 1.
-        real contours(max_contours), contour_levels(max_contours)
-        real mean_mult, max_mult
+        real(mcp) :: font_scale = 1.
+        real(mcp) contours(max_contours), contour_levels(max_contours)
+        real(mcp) mean_mult, max_mult
         integer :: indep_thin = 0 
         integer chain_numbers(max_chains)
         logical isused(max_cols)
@@ -104,9 +104,9 @@ module MCSamples
         logical shade_meanlikes, make_single_samples
         integer single_thin,cust2DPlots(max_cols**2)
         integer ix_min(max_cols),ix_max(max_cols)
-        real center(max_cols),width(max_cols)   
-        real, dimension(:,:), allocatable :: TheBins, bins2D, bin2Dlikes, bin2Dmax
-        real meanlike, maxlike, maxmult
+        real(mcp) center(max_cols),width(max_cols)   
+        real(mcp), dimension(:,:), allocatable :: TheBins, bins2D, bin2Dlikes, bin2Dmax
+        real(mcp) meanlike, maxlike, maxmult
         logical BW,do_shading
         character(LEN=80) ComparePlots(20)
         integer Num_ComparePlots
@@ -117,8 +117,8 @@ contains
   subroutine AdjustPriors
    !Can adjust the multiplicity of each sample in coldata(1, rownum) for new priors
    !Be careful as this code is parameterisation dependent
-   integer i
-   real ombh2, chisq 
+ !  integer i
+!   real(mcp) ombh2, chisq 
  
    stop 'You need to write the AdjustPriors subroutine in GetDist.f90 first!'
   
@@ -144,9 +144,9 @@ contains
   end subroutine MapParameters
 
   subroutine CoolChain(cool)
-    real, intent(in) :: cool
+    real(mcp), intent(in) :: cool
     integer i
-    real maxL, newL
+    real(mcp) maxL, newL
     
     write (*,*) 'Cooling chains by ', cool
     MaxL = minval(coldata(2,0:nrows-1))
@@ -213,7 +213,7 @@ contains
     integer i, single_thin
     character(LEN=20) :: fmt
     
-    real maxmult
+    real(mcp) maxmult
     Feedback = 0          
     call initRandom()
     fmt = trim(numcat('(',ncols))//'E16.7)'
@@ -228,11 +228,11 @@ contains
 
   subroutine WriteThinData(fname,cool)
     character(LEN=*), intent(in) :: fname
-    real,intent(in) :: cool
+    real(mcp),intent(in) :: cool
  
     character(LEN=20) :: fmt
     integer i
-    real MaxL, NewL      
+    real(mcp) MaxL, NewL      
 
     if (cool /= 1) write (*,*) 'Cooled thinned output with temp: ', cool
   
@@ -307,9 +307,9 @@ contains
       subroutine GetCovMatrix
        use IO
         integer i, j, nused
-        real mean(max_cols)
-        real scale
-        real, dimension(:,:), allocatable :: covmatrix
+        real(mcp) mean(max_cols)
+        real(mcp) scale
+        real(mcp), dimension(:,:), allocatable :: covmatrix
         integer used_ix(max_cols)        
         character(LEN=4096) outline
       
@@ -378,8 +378,8 @@ contains
             integer MostCorrelated2D
             !Find which parameter is most correllated with the degeneracy in ix1, ix2
             integer pars(2)
-            real mat2D(2,2), evals(2), u(2,2)
-            real corrs(2,ncols-2)
+            real(mcp) mat2D(2,2), evals(2), u(2,2)
+            real(mcp) corrs(2,ncols-2)
           
             if (direc /= 0 .and. direc /= -1) stop 'Invalid 3D color parameter'
 
@@ -392,7 +392,7 @@ contains
             corrs = matmul(transpose(u), corrmatrix(pars,:))
             corrs(:,pars) = 0
           
-            MostCorrelated2D = MaxIndex(abs(corrs(2+direc,colix(1:num_vars)-2)), num_vars)
+            MostCorrelated2D = MaxIndex(real(abs(corrs(2+direc,colix(1:num_vars)-2))), num_vars)
             MostCorrelated2D = colix(MostCorrelated2D) -2
          
           end function MostCorrelated2D
@@ -400,7 +400,7 @@ contains
           subroutine GetFractionIndices(fraction_indices,n)
              integer, intent(in) :: n
              integer num, fraction_indices(*), i
-             real tot, aim
+             real(mcp) tot, aim
 
              tot = 0
              aim=numsamp/n
@@ -421,11 +421,11 @@ contains
 
            function ConfidVal(ix,limfrac,upper,ix1,ix2)
              integer, intent(IN) :: ix
-             real, intent(IN) :: limfrac
+             real(mcp), intent(IN) :: limfrac
              logical, intent(IN) :: upper
              integer, intent(IN), optional :: ix1,ix2
-             real ConfidVal, samps
-             real try, lasttry, try_t, try_b
+             real(mcp) ConfidVal, samps
+             real(mcp) try, lasttry, try_t, try_b
              integer l,t 
           !find upper and lower bounds
             
@@ -474,9 +474,9 @@ contains
             subroutine GetZeros(bincounts,botlim,toplim,minbin,maxbin,x,numzeros,zeros)
               logical, intent(IN) :: botlim,toplim
               integer, intent(IN) :: minbin,maxbin
-              real, intent(IN) :: bincounts(-1000:1000)
-              real, intent(IN) :: x
-              real, intent(OUT), dimension(max_intersections) :: zeros
+              real(mcp), intent(IN) :: bincounts(-1000:1000)
+              real(mcp), intent(IN) :: x
+              real(mcp), intent(OUT), dimension(max_intersections) :: zeros
               integer, intent(OUT) :: numzeros
               integer i
               
@@ -503,17 +503,17 @@ contains
 
 
 
-            function MinInterval(ix,conflev,bincounts,width,center,botlim,toplim,minbin,maxbin)  
+            function MinInterval(conflev,bincounts,width,center,botlim,toplim,minbin,maxbin)  
             ! find minimum length 1d confidence intervals
               logical, intent(IN) :: botlim,toplim 
-              integer, intent(IN) :: ix,minbin,maxbin
-              integer i,j, lbin
-              real, intent(IN) :: conflev,width,center
-              real, intent(IN) :: bincounts(-1000:1000)
-              real, dimension(max_intersections+1) :: MinInterval
-              real :: try,try_t,try_b,try_last,try_sum,norm
-              real :: waterlevel
-              real, dimension(max_intersections) :: zeros
+              integer, intent(IN) :: minbin,maxbin
+              integer i,lbin
+              real(mcp), intent(IN) :: conflev,width,center
+              real(mcp), intent(IN) :: bincounts(-1000:1000)
+              real(mcp), dimension(max_intersections+1) :: MinInterval
+              real(mcp) :: try,try_t,try_b,try_last,try_sum,norm
+              real(mcp) :: waterlevel
+              real(mcp), dimension(max_intersections) :: zeros
               integer :: numzeros  
  
               norm = sum(bincounts)
@@ -598,10 +598,10 @@ contains
             integer i, j, normparam, locarr(1:1)
             character(LEN =60) fmt, tmpS
 
-            real PCmean(n), sd(n), newmean(n), newsd(n)
-            real evals(n)
-            real corrmatrix(n,n), u(n,n)
-            real, dimension(:,:), allocatable :: PCdata
+            real(mcp) PCmean(n), sd(n), newmean(n), newsd(n)
+            real(mcp) evals(n)
+            real(mcp) corrmatrix(n,n), u(n,n)
+            real(mcp), dimension(:,:), allocatable :: PCdata
             character(LEN=100) PClabs(n), div, expo
             logical doexp
 
@@ -769,22 +769,22 @@ contains
          end subroutine GetUsedCols
 
          subroutine DoConvergeTests
-          real chain_means(max_chains,max_cols),chain_samp(max_chains)
-          real between_chain_var(max_cols), in_chain_var(max_cols)
+          real(mcp) chain_means(max_chains,max_cols),chain_samp(max_chains)
+          real(mcp) between_chain_var(max_cols), in_chain_var(max_cols)
           integer frac(max_split_tests+1), split_n, chain_start(max_chains)
           integer i,j,k,jj,kk,ix, maxoff
-          real split_tests(max_split_tests)
-          real mean(max_cols), fullmean(max_cols),fullvar(max_cols)
-          real, parameter :: cutfrac = 0.5
-          real usedsamps,evals(max_cols),sc,R, maxsamp
-          real, dimension(:,:), allocatable :: cov, meanscov
+          real(mcp) split_tests(max_split_tests)
+          real(mcp) mean(max_cols), fullmean(max_cols),fullvar(max_cols)
+          real(mcp), parameter :: cutfrac = 0.5
+          real(mcp) usedsamps,evals(max_cols),sc,R, maxsamp
+          real(mcp), dimension(:,:), allocatable :: cov, meanscov
           integer usedvars(max_cols), num, thin_fac(max_chains), markov_thin(max_chains)
           real(gp) u, g2, fitted, focus, alpha, beta, probsum, tmp1
-          real confid
+          real(mcp) confid
           integer i1,i2,i3, nburn(max_chains), hardest, endb,hardestend
           integer tran(2,2,2), tran2(2,2), off    
           integer, dimension(:), allocatable :: binchain
-          real, parameter :: epsilon = 0.001
+          real(mcp), parameter :: epsilon = 0.001
           double precision, dimension(:,:), allocatable :: corrs
           character(LEN=10) :: typestr
           integer autocorr_thin
@@ -1163,12 +1163,12 @@ contains
         subroutine Get2DPlotData(j,j2)
          integer, intent(in) :: j,j2
          integer i,ix1,ix2,wx,wy
-         real binweight, dist, norm, maxbin
-         real try_b, try_t,try_sum, try_last
+         real(mcp) binweight, dist, norm, maxbin
+         real(mcp) try_b, try_t,try_sum, try_last
          character(LEN=Ini_max_string_len) :: plotfile, filename,numstr
-         real, dimension(:,:), allocatable :: finebins, finebinlikes, Win
+         real(mcp), dimension(:,:), allocatable :: finebins, finebinlikes, Win
          integer :: fine_fac = 5
-         real widthj,widthj2
+         real(mcp) widthj,widthj2
          integer imin,imax,jmin,jmax
          logical :: fast_smoothing = .true.
 
@@ -1600,33 +1600,32 @@ program GetDist
         use IO
         implicit none
 
-        real  bincounts(-1000:1000),binlikes(-1000:1000),binmaxlikes(-1000:1000), &
+        real(mcp)  bincounts(-1000:1000),binlikes(-1000:1000),binmaxlikes(-1000:1000), &
                binsraw(-1000:1000)
     
         character(LEN=Ini_max_string_len) InputFile, numstr
         character(LEN=Ini_max_string_len) fname, parameter_names_file, &
          parameter_names_labels
         character(LEN=10000) InLine  ! ,LastL,OutLine
-        real invars(max_cols)
         integer ix, ix1,i,ix2,ix3, nbins, wx
-        real ignorerows
+        real(mcp) ignorerows
    
         logical bad, adjust_priors
 
-        real  amax, amin
+        real(mcp)  amax, amin
         character(LEN=Ini_max_string_len) filename, infile, out_root,sm_file
-        character(LEN=120) matlab_col, InS1,InS2,fmt, tmpstr
+        character(LEN=120) matlab_col, InS1,InS2,fmt
         integer plot_row, plot_col, chain_num, first_chain,chain_ix, plot_num
        
         integer x,y,j,j2, num_2D_plots, num_cust2D_plots
         integer num_3D_plots
         character(LEN=80) contours_str, plot_3D(20), bin_limits
         integer plot_x, plot_y, thin_factor, outliers
-        real limmin(max_cols),limmax(max_cols), maxbin
+        real(mcp) limmin(max_cols),limmax(max_cols), maxbin
         integer plot_2D_param, j2min
-        real try_b, try_t, binweight
-        real cont_lines(max_cols,2,max_contours), dist, distweight, limfrac 
-        real :: minimal_intervals(max_cols,max_intersections+1,max_contours) !JH
+        real(mcp) try_b, try_t, binweight
+        real(mcp) cont_lines(max_cols,2,max_contours), dist, distweight, limfrac 
+        real(mcp) :: minimal_intervals(max_cols,max_intersections+1,max_contours) !JH
         logical do_minimal_1d_intervals !JH
         
         integer bestfit_ix
@@ -1634,8 +1633,8 @@ program GetDist
         logical map_params
         logical :: triangle_plot = .false.
         logical :: no_triangle_axis_labels = .false.
-        real counts
-        real cool
+        real(mcp) counts
+        real(mcp) cool
         integer PCA_num, PCA_normparam
         integer PCA_params(max_cols)
         integer plotparams_num, plotparams(max_cols)
@@ -1643,17 +1642,15 @@ program GetDist
         logical Done2D(max_cols,max_cols)
         logical no_plots, line_labels
 
-        real thin_cool
+        real(mcp) thin_cool
         logical no_tests, auto_label
 
         logical :: single_column_chain_files, samples_are_chains
-        integer sz
         !for single_colum_chain_files    
         integer :: first_haschain, stat, ip, itmp, idx, nrows2(max_cols), tmp_params(max_cols)
-        real :: rtmp
+        real(mcp) :: rtmp
         character(LEN=Ini_max_string_len) :: finish_run_command
         integer chain_handle
-        logical chainOK
      
         NameMapping%nnames = 0
 
@@ -2251,13 +2248,13 @@ program GetDist
              if (has_limits_bot(ix)) then
               amin = limmin(ix)
              else
-              amin = ConfidVal(ix,0.001,.false.)
+              amin = ConfidVal(ix,0.001_mcp,.false.)
              end if
 
              if (has_limits_top(ix)) then
               amax = limmax(ix)
              else
-              amax = ConfidVal(ix,0.001,.true.)
+              amax = ConfidVal(ix,0.001_mcp,.true.)
              end if
 
 
@@ -2337,7 +2334,7 @@ program GetDist
           if (do_minimal_1d_intervals) then ! Calculate minimal credible intervals (see arXiv:0705.0440)
            
              do ix1 = 1, num_contours ! get boundaries of minimal intervals
-                minimal_intervals(j,:,ix1) = MinInterval(ix1,contours(ix1),bincounts,width(j),center(j), &
+                minimal_intervals(j,:,ix1) = MinInterval(contours(ix1),bincounts,width(j),center(j), &
                     has_limits_bot(ix),has_limits_top(ix),ix_min(j),ix_max(j))
 
                 if (int(minimal_intervals(j,max_intersections+1,ix1)).ne.2) then ! if minimal region is not connected ...

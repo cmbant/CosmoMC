@@ -77,11 +77,11 @@ contains
   
  subroutine RotMatrix(M,n)
   integer, intent(in) :: n
-  real M(n,n)
+  real(mcp) M(n,n)
   integer i
   
    if (propose_rand_directions .and. n > 1) then
-      call RandRotation(M, n)      
+      call RandRotation(M, n)
    else
       M = 0
       do i = 1, n

@@ -8,6 +8,9 @@ EXTDATA =
 
 RECOMBINATION ?=recfast
 
+#use PRECISION=SINGLE to use single precision
+PRECISION ?= 
+
 #set WMAP empty not to compile with WMAP
 WMAP ?= /home/aml1005/WMAP7/likelihood_v4
 
@@ -111,11 +114,16 @@ CLSFILE = CMB_Cls_simple.o
 #Can use params_H if you prefer more generic parameters
 PARAMETERIZATION = params_CMB.o
 
-F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
+F90FLAGS = $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
 LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
 
+
+
+ifneq ($(PRECISION),)
+FFLAGS += -D$(PRECISION) -DMATRIX_$(PRECISION)
+endif
 
 ifneq ($(PLANCKLIKE),)
 FFLAGS += -DCLIK
@@ -141,7 +149,7 @@ DATAMODULES = $(PLANCKLIKEFILES) lrggettheory.o mpk.o bao.o supernovae.o HST.o S
 
 LIKEFILES =  DataLikelihoods.o calclike.o
 
-OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
+OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o settings.o samples.o IO.o cmbtypes.o Planck_like.o  \
 	likelihood.o bbn.o $(DATAMODULES) $(CLSFILE) cmbdata.o $(PROPOSE) paramdef.o  $(PARAMETERIZATION) $(LIKEFILES) \
 	EstCovmat.o PowellConstrainedMinimize.o minimize.o postprocess.o MCMC.o driver.o
 
@@ -193,9 +201,10 @@ default: cosmomc
 
 all : cosmomc getdist
 
+samples.o: ObjectLists.o settings.o
 likelihood.o: ObjectLists.o settings.o
 DataLikelihoods.o: likelihood.o paramdef.o $(DATAMODULES)
-cliklike_CamSpec.o: temp_like.o
+$(PLANCKLIKE).o: temp_like.o cmbtypes.o
 settings.o: ../camb/libcamb_$(RECOMBINATION).a
 cmbtypes.o: settings.o
 Planck_like.o: cmbtypes.o
@@ -207,7 +216,7 @@ HST.o: cmbtypes.o
 supernovae.o: cmbtypes.o
 SDSSLy-a-v3.o: cmbtypes.o
 $(CLSFILE): cmbtypes.o IO.o
-paramdef.o: $(CLSFILE) propose.o
+paramdef.o: $(CLSFILE) propose.o samples.o
 $(PROPOSE): settings.o
 $(PARAMETERIZATION): paramdef.o
 calclike.o: $(PARAMETERIZATION) DataLikelihoods.o

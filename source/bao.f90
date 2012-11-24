@@ -186,11 +186,11 @@ end function SDSS_dvtors
 
 function BAO_LnLike(like, CMB, Theory) 
    use ModelParams, only : derived_zdrag,derived_rdrag
-   type(CMBParams) CMB
+   Class(CMBParams) CMB
    Class(BAOLikelihood) :: like
-   Type(CosmoTheory) Theory
+   Class(TheoryPredictions) Theory
    integer j,k
-   real  BAO_LnLike
+   real(mcp) BAO_LnLike
    real(dl), allocatable :: BAO_theory(:)
 
         rsdrag_theory =  Theory%derived_parameters( derived_rdrag ) 
@@ -267,7 +267,7 @@ end function BAO_LnLike
 end subroutine BAO_DR7_init
 
  function BAO_DR7_loglike(CMB,z)
- Type(CMBParams) CMB
+ Class(CMBParams) CMB
  real (dl) z, BAO_DR7_loglike, alpha_chain, prob
  real,parameter :: rs_wmap7=152.7934d0,dv1_wmap7=1340.177  !r_s and D_V computed for wmap7 cosmology
  integer ii

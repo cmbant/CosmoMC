@@ -21,7 +21,7 @@ contains
      integer file_unit
      
      file_unit = new_file_unit()
-     call Ini_Open(InputFile, file_unit, bad, .false.)
+     call Ini_Open_File(Ini,InputFile, file_unit, bad, .false.)
      call ClearFileUnit(file_unit)
   end subroutine IO_Ini_Load
 
@@ -117,7 +117,7 @@ contains
   end function IO_Exists
 
  subroutine IO_WriteProposeMatrix(pmat, prop_mat, comment)
-   real pmat(:,:)
+   real(mcp) pmat(:,:)
    character(LEN=*), intent(in) :: prop_mat
    character(LEN=*), optional, intent(in) :: comment
    
@@ -131,9 +131,9 @@ contains
 
  subroutine IO_ReadProposeMatrix(pmat, prop_mat)
    use ParamNames
-   real pmat(:,:)
+   real(mcp) pmat(:,:)
    character(LEN=1024), intent(in) :: prop_mat
-   real,allocatable :: tmpMat(:,:)
+   real(mcp), allocatable :: tmpMat(:,:)
    integer i,y
    integer file_id 
    character(LEN=4096) :: InLine
@@ -186,7 +186,7 @@ end subroutine IO_ReadProposeMatrix
 
  subroutine IO_OutputChainRow(handle, mult, like, values, nvalues)
   integer, intent(in) :: handle
-  real mult, like, values(:)
+  real(mcp) mult, like, values(:)
   integer, intent(in), optional :: nvalues
   character(LEN =128) fmt
   integer n
@@ -233,7 +233,7 @@ end subroutine IO_ReadProposeMatrix
   !Returns chainOK = false if bad line or NaN, chainOK=false and OK=true for NaN (continue reading)
   logical OK
   integer, intent(in) :: handle
-  real, intent(out) :: mult, like, values(:)
+  real(mcp), intent(out) :: mult, like, values(:)
   integer, intent(in), optional :: nvalues
   logical, optional, intent(out) :: ChainOK
   logical, optional, intent(in) :: samples_chains
@@ -280,7 +280,7 @@ end subroutine IO_ReadProposeMatrix
 
  subroutine IO_ReadLastChainParams(name, mult, like, values, nvalues)
   character(LEN=*), intent(in) :: name
-  real, intent(out) :: mult, like, values(:)
+  real(mcp), intent(out) :: mult, like, values(:)
   integer, intent(in), optional :: nvalues
   character(LEN=5000) :: InLine
   integer n
@@ -331,7 +331,7 @@ end subroutine IO_ReadProposeMatrix
   logical, intent(in) :: samples_are_chains
   integer, intent(inout) :: nrows
   logical OK
-  real invars(1:ncols)
+  real(mcp) invars(1:ncols)
   logical chainOK
   integer chain_handle, row_start
   character(LEN=Ini_max_string_len) infile, numstr
@@ -392,7 +392,7 @@ end subroutine IO_ReadProposeMatrix
        character(LEN=*), intent(in) :: froot
        integer, intent(in) :: num_vars, num_contours
        logical,intent(in) :: force_twotail, has_limits_bot(*),has_limits_top(*)
-       real, intent(in) :: mean(*), sddev(*), contours(*), cont_lines(:,:,:)
+       real(mcp), intent(in) :: mean(*), sddev(*), contours(*), cont_lines(:,:,:)
        character(LEN=*), intent(in) :: contours_str
        integer,intent(in) :: colix(*)
        character(LEN=128) labels(*), tag

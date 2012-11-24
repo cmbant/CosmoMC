@@ -3,16 +3,16 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "GetDist", "GetDist.vfproj", "{207BF71A-E457-49F3-BEC8-B2F9E85F74BA}"
 	ProjectSection(ProjectDependencies) = postProject
-		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25} = {9A850B68-FC7B-42F7-BB78-C4C38EF90B25}
 		{1A3D537A-76A7-4EB3-86B0-973B2DC56A13} = {1A3D537A-76A7-4EB3-86B0-973B2DC56A13}
+		{AF06CAAD-59B7-4605-A4D6-5B9C3E2ECE47} = {AF06CAAD-59B7-4605-A4D6-5B9C3E2ECE47}
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95} = {C7D790F6-3574-43A1-A5E1-1E6FC5478F95}
 	EndProjectSection
 EndProject
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "SharedObj", "..\camb\VisualStudio\SharedObj.vfproj", "{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}"
 EndProject
-Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "MatrixSingle", "..\camb\VisualStudio\MatrixSingle.vfproj", "{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}"
-EndProject
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "CAMBLib_ppf", "..\camb\VisualStudio\CAMBLib_ppf.vfproj", "{1A3D537A-76A7-4EB3-86B0-973B2DC56A13}"
+EndProject
+Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "MatrixDouble", "..\camb\VisualStudio\MatrixDouble.vfproj", "{AF06CAAD-59B7-4605-A4D6-5B9C3E2ECE47}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,18 +36,20 @@ Global
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.Release|Win32.ActiveCfg = Release|Win32
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.Release|Win32.Build.0 = Release|Win32
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.Release|x64.ActiveCfg = Release|x64
-		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Debug|Win32.ActiveCfg = Debug|Win32
-		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Debug|Win32.Build.0 = Debug|Win32
-		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Debug|x64.ActiveCfg = Debug|x64
-		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Release|Win32.ActiveCfg = Release|Win32
-		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Release|Win32.Build.0 = Release|Win32
-		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Release|x64.ActiveCfg = Release|x64
 		{1A3D537A-76A7-4EB3-86B0-973B2DC56A13}.Debug|Win32.ActiveCfg = Debug|Win32
 		{1A3D537A-76A7-4EB3-86B0-973B2DC56A13}.Debug|Win32.Build.0 = Debug|Win32
 		{1A3D537A-76A7-4EB3-86B0-973B2DC56A13}.Debug|x64.ActiveCfg = Debug|x64
 		{1A3D537A-76A7-4EB3-86B0-973B2DC56A13}.Release|Win32.ActiveCfg = Release|Win32
 		{1A3D537A-76A7-4EB3-86B0-973B2DC56A13}.Release|Win32.Build.0 = Release|Win32
 		{1A3D537A-76A7-4EB3-86B0-973B2DC56A13}.Release|x64.ActiveCfg = Release|x64
+		{AF06CAAD-59B7-4605-A4D6-5B9C3E2ECE47}.Debug|Win32.ActiveCfg = Debug|Win32
+		{AF06CAAD-59B7-4605-A4D6-5B9C3E2ECE47}.Debug|Win32.Build.0 = Debug|Win32
+		{AF06CAAD-59B7-4605-A4D6-5B9C3E2ECE47}.Debug|x64.ActiveCfg = Debug|x64
+		{AF06CAAD-59B7-4605-A4D6-5B9C3E2ECE47}.Debug|x64.Build.0 = Debug|x64
+		{AF06CAAD-59B7-4605-A4D6-5B9C3E2ECE47}.Release|Win32.ActiveCfg = Release|Win32
+		{AF06CAAD-59B7-4605-A4D6-5B9C3E2ECE47}.Release|Win32.Build.0 = Release|Win32
+		{AF06CAAD-59B7-4605-A4D6-5B9C3E2ECE47}.Release|x64.ActiveCfg = Release|x64
+		{AF06CAAD-59B7-4605-A4D6-5B9C3E2ECE47}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

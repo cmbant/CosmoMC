@@ -1633,6 +1633,10 @@
 
         Type (MatterTransferData), save :: MT
 
+        interface Transfer_GetMatterPower
+         module procedure Transfer_GetMatterPowerD,Transfer_GetMatterPowerS
+        end interface
+        
       contains
 
         subroutine Transfer_GetMatterPowerData(MTrans, PK_data, in, itf_only)
@@ -1813,8 +1817,21 @@
 
         end function MatterPowerData_k
 
+        subroutine Transfer_GetMatterPowerS(MTrans,outpower, itf, in, minkh, dlnkh, npoints)
+         Type(MatterTransferData), intent(in) :: MTrans
+          integer, intent(in) :: itf, in, npoints
+          real, intent(out) :: outpower(*)
+          real, intent(in) :: minkh, dlnkh
+          real(dl) :: outpowerd(npoints)
+          real(dl):: minkhd, dlnkhd
+ 
+          minkhd = minkh; dlnkhd = dlnkh
+          call Transfer_GetMatterPowerD(MTrans,outpowerd, itf, in, minkhd, dlnkhd, npoints)
+          outpower(1:npoints) = outpowerd(1:npoints)
+          
+        end subroutine Transfer_GetMatterPowerS
 
-        subroutine Transfer_GetMatterPower(MTrans,outpower, itf, in, minkh, dlnkh, npoints)
+        subroutine Transfer_GetMatterPowerD(MTrans,outpower, itf, in, minkh, dlnkh, npoints)
           !Allows for non-smooth priordial spectra
           !if CP%Nonlinear/ = NonLinear_none includes non-linear evolution
           !Get total matter power spectrum at logarithmically equal intervals dlnkh of k/h starting at minkh
@@ -1826,8 +1843,8 @@
           Type(MatterPowerData) :: PK
 
           integer, intent(in) :: itf, in, npoints
-          real, intent(out) :: outpower(npoints)
-          real, intent(in) :: minkh, dlnkh
+          real(dl), intent(out) :: outpower(npoints)
+          real(dl), intent(in) :: minkh, dlnkh
           real(dl), parameter :: cllo=1.e30_dl,clhi=1.e30_dl
           integer ik, llo,il,lhi,lastix
           real(dl) matpower(MTrans%num_q_trans), kh, kvals(MTrans%num_q_trans), ddmat(MTrans%num_q_trans)
@@ -1897,7 +1914,7 @@
                lastix = lastix+1
             end do
 
-            outpower = exp(max(-30.,outpower))
+            outpower = exp(max(-30.d0,outpower))
 
             do il = 1, npoints
                k = exp(logmink + dlnkh*(il-1))*h
@@ -1907,7 +1924,7 @@
 
           if (CP%NonLinear/=NonLinear_None) call MatterPowerdata_Free(PK)
 
-        end subroutine Transfer_GetMatterPower
+        end subroutine Transfer_GetMatterPowerD
 
         subroutine Transfer_Get_sigma8(MTrans, sigr8)
           use MassiveNu
@@ -2115,7 +2132,7 @@
 !             dlnkh = log(MTrans%TransferData(Transfer_kh,MTrans%num_q_trans,itf)/minkh)/(points-0.999)
              allocate(outpower(points,CP%InitPower%nn))
              do in = 1, CP%InitPower%nn
-              call Transfer_GetMatterPower(MTrans,outpower(1,in), itf, in, minkh,dlnkh, points)
+              call Transfer_GetMatterPowerS(MTrans,outpower(1,in), itf, in, minkh,dlnkh, points)
               if (CP%OutputNormalization == outCOBE) then
                  if (allocated(COBE_scales)) then
                   outpower(:,in) = outpower(:,in)*COBE_scales(in)

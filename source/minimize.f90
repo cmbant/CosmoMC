@@ -59,8 +59,8 @@
     use ParamDef
     Type(ParamSet) Params
     integer, intent(in) :: max_iterations
-    real, intent(in) :: sigma_frac_err
-    real best_like
+    real(mcp), intent(in) :: sigma_frac_err
+    real(mcp) best_like
     real(Powell_CO_prec) :: vect(num_params_used), XL(num_params_used), XU(num_params_used)
     real(Powell_CO_prec) rhobeg, rhoend
     integer npt
@@ -87,7 +87,7 @@
        !I have asked M Powell, and he indeed recommended calculating the Hessian sepratately afterwards
     best_like = ffn(num_params_used,vect)
 
-    !back to real units
+    !back to real(mcp) units
     call AcceptReject(.true.,Params%Info, MinParams%Info)
     Params = MinParams
 
@@ -101,9 +101,9 @@
     use DataLikelihoodList
     implicit none
     Type(ParamSet) P
-    real, intent(in), optional :: like
+    real(mcp), intent(in), optional :: like
     integer, intent(in) :: aunit
-    Type(real_pointer) :: derived
+    Type(mc_real_pointer) :: derived
     integer numderived 
     integer CalcDerivedParams
     external CalcDerivedParams
@@ -145,13 +145,13 @@
     if (present(like)) then
       write(aunit,*) ''
       write(aunit,*) '-log(Like)     chi-sq   data'
-      call DataLikelihoods%WriteLikelihoodContribs(aunit, P%Info%likelihoods)
+      call DataLikelihoods%WriteLikelihoodContribs(aunit, P%likelihoods)
     end if
 
     end  subroutine WriteParamsHumanText
 
     subroutine WriteBestFitParams(like, Params, fname)
-    real like
+    real(mcp) like
     Type(ParamSet) Params
     character(LEN=*), intent(in) :: fname
 
@@ -168,13 +168,13 @@
      character(LEN=*), intent(in) :: fname
      Type(ParamSet) Params
      integer l
-     real nm
+     real(mcp) nm
      character(LEN=50) fmt
-     real Cls(lmax,num_cls_tot)
+     real(mcp) Cls(lmax,num_cls_tot)
      Type (CMBParams) CMB
 
       call ParamsToCMBParams(Params%Info%LastParamArray,CMB)
-      call ClsFromTheoryData(Params%Info%Theory, CMB, Cls)
+      call ClsFromTheoryData(Params%Theory, CMB, Cls)
       call CreateTxtFile(fname,tmp_file_unit)
       fmt = concat('(1I6,',num_cls_tot,'E15.5)')
       do l = 2, lmax
@@ -193,8 +193,8 @@
     !!Cannot find any way to get usable Hessian matrix from BOBYQA, even with high NPT
     !!This is not used..
     ! use MatrixUtils
-    ! real M(num_params_used,num_params_used), diag(num_params_used)
-    ! real tol !tol is the smallest normalized eigenvalue to allow (e..g fraction of input width)
+    ! real(mcp) M(num_params_used,num_params_used), diag(num_params_used)
+    ! real(mcp) tol !tol is the smallest normalized eigenvalue to allow (e..g fraction of input width)
     ! integer i
     ! 
     !  M = BOBYQA_Hessian

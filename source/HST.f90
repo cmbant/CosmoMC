@@ -6,7 +6,6 @@
 
 module HST
 use cmbtypes
-use constants
 use likelihood
 implicit none
 
@@ -19,7 +18,7 @@ end type HSTLikelihood
 ! and a fiducial cosmology (omega_k = 0, omega_lambda = 0.7, w = -1); this is proportional to 
 !H_0 but includes the tiny cosmological dependence of the measurement (primarily on w) correctly.
 ! angdistinveffh0err = 3.6 / DL(0.04)
-!real(dl), parameter :: angdistinvzeffh0 = 6.49405e-3, zeffh0 = 0.04, &
+!real(mcp), parameter :: angdistinvzeffh0 = 6.49405e-3, zeffh0 = 0.04, &
 !                       angdistinvzeffh0errsqr = 9.93e-8
 
 contains
@@ -40,18 +39,19 @@ contains
 
    end subroutine HSTLikelihood_Add
     
-real function HST_LnLike(like, CMB, Theory)
+real(mcp) function HST_LnLike(like, CMB, Theory)
   use CAMB, only : AngularDiameterDistance  !!physical angular diam distance also in Mpc no h units
+  use constants
   Class(HSTLikelihood) :: like
-  type(CMBParams) CMB
-  Type(CosmoTheory) Theory
-  real(dl) :: theoryval
+  Class(CMBParams) CMB
+  Class(TheoryPredictions) Theory
+  real(mcp) :: theoryval
 
-  real(dl), parameter :: angdistinvzeffh0 = 6.45904e-3, zeffh0 = 0.04, &
+  real(mcp), parameter :: angdistinvzeffh0 = 6.45904e-3, zeffh0 = 0.04, &
                        angdistinvzeffh0errsqr = 4.412e-8
 
   
-  theoryval = 1.0/AngularDiameterDistance(zeffh0)
+  theoryval = 1.0/AngularDiameterDistance(real(zeffh0,dl))
   HST_LnLike = (theoryval - angdistinvzeffh0)**2/(2*angdistinvzeffh0errsqr)
 
 end function  HST_LnLike

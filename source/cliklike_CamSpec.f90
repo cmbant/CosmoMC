@@ -52,6 +52,7 @@
         CamLike%dependent_params(1:index_freq+num_camSpec)=.true.
         CamLike%LikelihoodType = 'CMB'
         CamLike%name='CamSpec'
+        CamLike%version = CAMSpec_like_version
 
         likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
         sz143filename=ReadIniFileName(Ini,'sz143file',NotFoundFail = .true.)
@@ -71,6 +72,7 @@
         highLike%dependent_params(1:index_freq+num_camSpec+num_plik+num_actSpt)=.true.
         highLike%LikelihoodType = 'CMB'
         highLike%name='highL'
+        highLike%version = CAMSpec_like_version
         
       if (lmax < tt_lmax_mc) call MpiStop('set lmax>=tt_lmax_mc in settings to use highL data')
       data_dir = CheckTrailingSlash(ReadIniFileName(Ini,'highL_data_dir'))
@@ -86,16 +88,16 @@
     end subroutine clik_readParams
 
 
-  real function CamspecLogLike(like, CMB, Theory) 
+  real(mcp) function CamspecLogLike(like, CMB, Theory) 
      Class(CamspecLikelihood) :: like
-     Type (CMBParams) CMB
-     Type(CosmoTheory) Theory
-     real acl(lmax,num_cls_tot)
+     Class (CMBParams) CMB
+     Class(TheoryPredictions) Theory
+     real(mcp) acl(lmax,num_cls_tot)
 
      call ClsFromTheoryData(Theory, CMB, acl)
 !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
 !freq_params(35:44), ACT/SPT as freq_params(45:65)
-      CamspecLogLike = clik_lnlike_camSpec(dble(acl),dble(CMB%data_params(2:num_freq_params)))
+      CamspecLogLike = clik_lnlike_camSpec(real(acl,dp),real(CMB%data_params(2:num_freq_params),dp))
  end function CamspecLogLike
 
  
@@ -110,7 +112,7 @@
     real(dp) cell_cmb(0:10000)
     integer, parameter :: nbeams=4, nmodesperbeam=5
     integer, parameter :: nbeammodes = nbeams*nmodesperbeam
-    real beamcoeffs(nbeammodes)
+    real(mcp) beamcoeffs(nbeammodes)
     real(dp) beam_coeffs(nbeams,nmodesperbeam)
     integer ii,jj,L
 
@@ -150,16 +152,16 @@
     end function clik_lnlike_camSpec
 
 #ifdef highL
-  real function highLLogLike(like, CMB, Theory) 
+  real(mcp) function highLLogLike(like, CMB, Theory) 
      Class(highLLikelihood) :: like
-     Type (CMBParams) CMB
-     Type(CosmoTheory) Theory
-     real acl(lmax,num_cls_tot)
+     Class (CMBParams) CMB
+     Class(TheoryPredictions) Theory
+     real(mcp) acl(lmax,num_cls_tot)
 
      call ClsFromTheoryData(Theory, CMB, acl)
 !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
 !freq_params(35:44), ACT/SPT as freq_params(45:65)
-      highLLogLike = clik_lnlike_highL(dble(acl),dble(CMB%data_params(2:num_freq_params)))
+      highLLogLike = clik_lnlike_highL(real(acl,dp),real(CMB%data_params(2:num_freq_params),dp))
  end function highLLogLike
 
 
