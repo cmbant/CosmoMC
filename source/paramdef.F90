@@ -697,7 +697,6 @@ end subroutine SetProposeMatrix
                   end do 
                   
                   if (MPIChains > 1) then
-                  !Do generalized Gelman & Rubin to assess convergence
                       do i=1,num_params_used
                         do j=i,num_params_used
                          cov(i,j) = sum(MPIMeans(0,:)*MPICovMats(i,j,:))/ norm

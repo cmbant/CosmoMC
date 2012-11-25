@@ -46,6 +46,11 @@ class covMat():
         np.savetxt(fout, self.matrix, '%E')
         fout.close
 
+    def rescaleParameter(self, name, scale):
+        i = self.paramNames.index(name)
+        self.matrix[:, i] = self.matrix[:, i] * scale;
+        self.matrix[i, :] = self.matrix[i, :] * scale;
+
 
     def mergeCovmatWhereNew(self, cov2):
         params1 = self.paramNames
