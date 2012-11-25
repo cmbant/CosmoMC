@@ -1,80 +1,48 @@
-    module SampleList
+
+    module Samples
     use ObjectLists
     use settings
 
     integer, parameter :: sample_prec = mcp
 
-    Type, extends(TObjectList):: TRealArrayList
+    Type, extends(TRealArrayList):: TSampleList
     contains
-    procedure :: Value
-    procedure :: RealItem
-    procedure :: Compare => CompareReal
-    procedure :: ConfidVal
-    generic :: Item => Value, RealItem
-    end Type TRealArrayList
+    procedure :: ConfidVal => TSampleList_ConfidVal
+    end Type TSampleList
 
     contains
+    
+    subroutine GelmanRubinEvalues(cov, meanscov, evals, num)
+     use MatrixUtils
+     integer, intent(in) :: num
+     real(sample_prec) :: cov(num,num), meanscov(num,num), evals(num)
+     integer jj
+     real(sample_prec) rot(num,num), rotmeans(num,num)
+     real(sample_prec) :: sc
+     
+     rot = cov
+     rotmeans = meanscov
+     do jj=1,num
+                sc = sqrt(cov(jj,jj))
+                rot(jj,:) = rot(jj,:) / sc
+                rot(:,jj) = rot(:,jj) / sc
+                rotmeans(jj,:) = rotmeans(jj,:) /sc
+                rotmeans(:,jj) = rotmeans(:,jj) /sc
+     end do
 
-    function RealItem(L, i) result(P)
-    Class(TRealArrayList) :: L
-    integer, intent(in) :: i
-    real(sample_prec), pointer :: P(:)
-    class(*), pointer :: Item(:)
+     call Matrix_CholeskyRootInverse(rot)
+     rotmeans =  matmul(matmul(rot, rotmeans), transpose(rot))
+     call Matrix_Diagonalize(rotmeans, evals, num)
+    
+    end subroutine GelmanRubinEvalues
+         
 
-    Item => L%ArrayItem(i)
-    select type (pt=>Item)
-    type is (real(kind=sample_prec))
-        P=> pt
-        class default
-        stop 'TRealArrayList: object of wrong type'
-    end select
-
-    end function RealItem
-
-    function Value(L, i, j) result(P)
-    Class(TRealArrayList) :: L
-    integer, intent(in) :: i, j
-    real(sample_prec) :: P
-    class(*), pointer :: C
-
-    C => L%ArrayItemIndex(i,j)
-    select type (Arr=> C)
-    Type is (real(sample_prec))
-        P = Arr
-    end select
-
-    end function Value
-
-    integer function CompareReal(this, R1, R2) result(comp)
-    Class(TRealArrayList) :: this
-    class(*) R1,R2 
-    real(sample_prec) R
-
-    select type (RR1 => R1)
-    type is (real(sample_prec))
-        select type (RR2 => R2)
-        type is (real(sample_prec))
-            R = RR1-RR2
-            if (R< 0) then
-                comp =-1
-            elseif (R>0) then
-                comp = 1
-            else 
-                comp = 0
-            end if
-            return
-        end select
-    end select
-
-
-    end function CompareReal
-
-    subroutine ConfidVal(L, ix, limfrac, ix1, ix2, Lower, Upper)
+    subroutine TSampleList_ConfidVal(L, ix, limfrac, ix1, ix2, Lower, Upper)
     !Taking the ix'th entry in each array to be a sample, value for which
     !limfrac of the items between ix1 and ix2 (inc) are above or below
     !e.g. if limfrac = 0.05 get two tail 90% confidence limits
-    Class(TRealArrayList) :: L
-    Type(TRealArrayList) :: SortItems
+    Class(TSampleList) :: L
+    Type(TSampleList) :: SortItems
     integer, intent(IN) :: ix
     real(sample_prec), intent(IN) :: limfrac
     real(sample_prec), intent(OUT), optional :: Lower, Upper
@@ -109,7 +77,7 @@
         end if
     end if
 
-    end subroutine ConfidVal
+    end subroutine TSampleList_ConfidVal
 
-    end module SampleList
+    end module Samples
 

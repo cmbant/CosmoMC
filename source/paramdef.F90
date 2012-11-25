@@ -10,7 +10,7 @@ module ParamDef
  use Random
  use settings
  use Propose
- use SampleList
+ use Samples
  implicit none
 
  Type :: ParamSet
@@ -488,10 +488,11 @@ end subroutine SetProposeMatrix
      real(mcp), allocatable, dimension(:,:,:) ::MPICovmats
      real(mcp), allocatable, dimension(:,:)   ::MPIMeans
      real(mcp) norm, mean(num_params_used), chain_means(MPIChains,num_params_used)
+     real(mcp) delta(num_params_used)
      integer, parameter :: chk_id = 3252357
      integer ID
      real(mcp) MeansCov(num_params_used,num_params_used), cov(num_params_used,num_params_used)
-     real(mcp) sc, evals(num_params_used), last_P, R
+     real(mcp) evals(num_params_used), last_P, R
      integer ierror
      logical DoCheckpoint
 
@@ -499,7 +500,7 @@ end subroutine SetProposeMatrix
      integer,  allocatable, dimension(:), save :: param_changes
      logical :: flukecheck, Waiting = .false.
 
-     Type(TRealArrayList), save :: S
+     Type(TSampleList), save :: S
      integer, save :: slice_fac = 1
      logical, save :: all_burn = .false., done_check = .false., DoUpdates = .false.
      character(LEN=128) logLine
@@ -656,8 +657,7 @@ end subroutine SetProposeMatrix
             if (Feedback > 0) write (*,*) 'Chain',instance,' MPI communicating'
             allocate(MPIcovmats(num_params_used,num_params_used,MPIChains))
             allocate(MPIMeans(0:num_params_used,MPIChains))
-
-             MPICovMat = 0          
+             MPICovMat = 0
              MPIMean = 0
              MPImean(0) = S%Count - S%Count/2 + 1
              do i = S%Count/2, S%Count
@@ -665,9 +665,9 @@ end subroutine SetProposeMatrix
              end do
              MPiMean(1:num_params_used) = MPiMean(1:num_params_used) / MPImean(0)
              do i = S%Count/2, S%Count
+               delta = S%Item(i)-MPIMean(1:num_params_used)
                do j = 1, num_params_used
-                 MPICovmat(:,j) =  MPICovmat(:,j) + &
-                 (S%Item(i)-MPIMean(1:num_params_used))*(S%Item(i,j)- MPIMean(j))
+                 MPICovmat(:,j) =  MPICovmat(:,j) + delta*(S%Item(i,j)- MPIMean(j))
               end do
              end do
              MPICovMat = MPICovMat / MPImean(0)
@@ -680,8 +680,6 @@ end subroutine SetProposeMatrix
                call MPI_BCAST(MPICovMats(:,:,i),Size(MPICovMat),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
                call MPI_BCAST(MPIMeans(:,i),Size(MPIMean),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
              end do
-
-             
 
   ! These should be better but don't work
   !          call MPI_ALLGATHER(MPICovMat,Size(MPICovMat),MPI_real_mcp,MPICovmats,Size(MPICovmats), &
@@ -711,24 +709,14 @@ end subroutine SetProposeMatrix
                       end do
                       MPICovMat = Cov + meansCov !Estimate global covariance for proposal density   
                       meansCov = meansCov * real(MPIChains)/(MPIChains-1)
-                      do j=1,num_params_used
-                            sc = sqrt(cov(j,j))
-                            cov(j,:) = cov(j,:) / sc
-                            cov(:,j) = cov(:,j) / sc
-                            meanscov(j,:) = meanscov(j,:) /sc
-                            meanscov(:,j) = meanscov(:,j) /sc
-                      end do
- 
-                     call Matrix_Diagonalize(meanscov, evals, num_params_used)
-                     cov = matmul(matmul(transpose(meanscov),cov),meanscov)
-                     R = 0
-                     do j=1,num_params_used
-                       R = max(R,evals(j)/max(1e-12_mcp,cov(j,j)))
-                     end do
+                      
+                     call GelmanRubinEvalues(cov, meanscov, evals, num_params_used)
+                     R = maxval(evals)
+                     if (Feedback > 1 .and. MPIRank==0) write (*,*) 'Convergence e-values: ', real(evals)
                      if (Feedback > 0 .and. MPIRank==0) &
-                      write (*,*) 'Current convergence R-1 = ',R, 'chain steps =',sample_num
+                      write (*,*) 'Current convergence R-1 = ',real(R), 'chain steps =',sample_num
                      if (logfile_unit/=0) then
-                      write(logLine,*) 'Current convergence R-1 = ',R, 'chain steps =',sample_num
+                      write(logLine,*) 'Current convergence R-1 = ',real(R), 'chain steps =',sample_num
                       call IO_WriteLog(logfile_unit,logLine)
                      end if 
                      if (R < MPI_R_Stop .and. flukecheck) then
@@ -782,7 +770,7 @@ end subroutine SetProposeMatrix
  subroutine CheckLimitsConverge(L)
   !Check limits from last half chains agree well enough across chains to be confident of result
   !Slowly explored tails will cause problems (long time till stops)
-  Type(TRealArrayList), intent(in) :: L
+  Type(TSampleList), intent(in) :: L
   integer i,j, side, ierror, worsti
   real(mcp), allocatable, dimension(:,:,:) :: Limits
   real(mcp) MeanLimit, var, LimErr, WorstErr

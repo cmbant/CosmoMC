@@ -298,13 +298,8 @@ contains
  ! real(mcp) Like
  ! integer, save:: loopix = 0
  !
- !
- !  if (mod(loopix,num_slow)==0) then
- !       if (.not. allocated(Rot_slow)) allocate(Rot_slow(num_slow,num_slow))
- !       call RotMatrix(Rot_slow,num_slow)
- !       loopix = 0
- !  end if
- !  loopix = loopix + 1
+ !   TrialEnd = CurParams
+ !   call Proposer%GetProposalSlow(TrialEnd%P)
  !
  !  w = max(1e-5,propose_r(num_slow)) * propose_scale / 2
  !

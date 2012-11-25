@@ -50,6 +50,8 @@
 		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
 		<File RelativePath="..\source\GetDist.f90"/>
 		<File RelativePath="..\source\IO.f90"/>
+		<File RelativePath="..\source\ObjectLists.f90"/>
 		<File RelativePath="..\source\ParamNames.f90"/>
+		<File RelativePath="..\source\samples.f90"/>
 		<File RelativePath="..\source\settings.f90"/></Filter></Files>
 	<Globals/></VisualStudioProject>

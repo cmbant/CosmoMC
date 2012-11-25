@@ -11,7 +11,6 @@
     ! procedure, abstract :: ReadBinary
     !end type ReadWriteObject
 
-
     type Object_pointer
         class(*), pointer :: p => null()
     end type Object_pointer
@@ -19,6 +18,12 @@
     type Object_array_pointer
         class(*), pointer :: p(:) => null()
     end type Object_array_pointer
+
+#ifdef SINGLE
+    integer, parameter :: list_prec = Kind(1.0)
+#else
+    integer, parameter :: list_prec = Kind(1.d0)
+#endif
 
     Type TObjectList
         integer :: Count =0
@@ -44,12 +49,20 @@
     procedure :: Thin
     procedure :: SortArr
     procedure :: Swap
-    procedure :: Compare
+    procedure :: Compare => CompareReal
     procedure :: Clear
     procedure :: DeltaSize
     FINAL :: finalize
     generic :: Add => AddItem, AddArray
     end Type TObjectList
+
+    Type, extends(TObjectList):: TRealArrayList
+    contains
+    procedure :: Value
+    procedure :: RealItem
+    generic :: Item => Value, RealItem
+    end Type TRealArrayList
+
 
     contains
 
@@ -326,13 +339,6 @@
 
     end subroutine Swap
 
-    integer function Compare(this, R1, R2)
-    Class(TObjectList) :: this
-    class(*), intent(in) :: R1, R2
-    Compare=0
-    stop 'TObjectList: compare must be defined in derived types'
-    end function Compare
-
     recursive subroutine QuickSortArr(this, Lin, R, index)
     !Sorts an array of pointers by the value of the index'th entry
     Class(TObjectList) :: this
@@ -378,6 +384,63 @@
     call L%QuickSortArr(1, L%Count, index)
 
     end subroutine SortArr
+
+    ! List of arrays of reals
+
+    function RealItem(L, i) result(P)
+    Class(TRealArrayList) :: L
+    integer, intent(in) :: i
+    real(list_prec), pointer :: P(:)
+    class(*), pointer :: Item(:)
+
+    Item => L%ArrayItem(i)
+    select type (pt=>Item)
+    type is (real(kind=list_prec))
+        P=> pt
+        class default
+        stop 'TRealArrayList: object of wrong type'
+    end select
+
+    end function RealItem
+
+    function Value(L, i, j) result(P)
+    Class(TRealArrayList) :: L
+    integer, intent(in) :: i, j
+    real(list_prec) :: P
+    class(*), pointer :: C
+
+    C => L%ArrayItemIndex(i,j)
+    select type (Arr=> C)
+    Type is (real(list_prec))
+        P = Arr
+    end select
+
+    end function Value
+
+    integer function CompareReal(this, R1, R2) result(comp)
+    Class(TObjectList) :: this
+    class(*) R1,R2 
+    real(list_prec) R
+
+    select type (RR1 => R1)
+    type is (real(list_prec))
+        select type (RR2 => R2)
+        type is (real(list_prec))
+            R = RR1-RR2
+            if (R< 0) then
+                comp =-1
+            elseif (R>0) then
+                comp = 1
+            else 
+                comp = 0
+            end if
+            return
+        end select
+        class default
+        stop 'TObjectList: Compare not defined for this type' 
+    end select
+
+    end function CompareReal
 
     end module ObjectLists
 

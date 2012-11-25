@@ -9,7 +9,7 @@ EXTDATA =
 RECOMBINATION ?=recfast
 
 #use PRECISION=SINGLE to use single precision
-PRECISION ?= 
+PRECISION ?=
 
 #set WMAP empty not to compile with WMAP
 WMAP ?= /home/aml1005/WMAP7/likelihood_v4
@@ -117,7 +117,7 @@ PARAMETERIZATION = params_CMB.o
 F90FLAGS = $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
 LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
-DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
+DISTFILES = ParamNames.o Matrix_utils.o settings.o ObjectLists.o samples.o IO.o GetDist.o
 
 
 

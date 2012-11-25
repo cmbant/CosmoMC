@@ -51,6 +51,7 @@ module MCSamples
  use settings
  use MatrixUtils
  use ParamNames
+ use Samples
  implicit none
 
         integer, parameter :: gp = KIND(1.d0)
@@ -176,32 +177,20 @@ contains
 
   subroutine SortColData(bycol)
  !Sort coldata in order of likelihood
-     Type(double_pointer), dimension(:), allocatable :: rowptrs
      integer, intent(in) :: bycol
-     real(gp), dimension(:,:), pointer :: tmp 
      integer i
+     Type(TSampleList) :: S
 
-     allocate(tmp(ncols,0:nrows-1))
-  
-     allocate(rowptrs(0:nrows-1))
+     call S%SetCapacity(nrows)
      do i = 0, nrows -1
-      rowptrs(i)%p => coldata(1:,i)
+      call S%Add(coldata(1:ncols,i))
      end do
 
-    call QuickSortArr(rowptrs, 1, nrows, bycol)
-
-!Make new table using sorted pointers   
-    do i = 0, nrows-1
-    tmp(1:ncols,i) = rowptrs(i)%p(1:ncols)
-    end do
-
-    deallocate(rowptrs)
-    do i=0, nrows-1
-     !Write this out explicitly to avoid stack overflow problems
-     coldata(1:ncols,i) = tmp(1:ncols,i)
-    end do
-    deallocate(tmp)
-
+     call S%SortArr(bycol)
+     do i = 0, nrows-1
+      coldata(1:ncols,i) =  S%Item(i+1)
+     end do
+     call S%Clear()
   end  subroutine SortColData
 
 
@@ -775,7 +764,7 @@ contains
           integer i,j,k,jj,kk,ix, maxoff
           real(mcp) split_tests(max_split_tests)
           real(mcp) mean(max_cols), fullmean(max_cols),fullvar(max_cols)
-          real(mcp), parameter :: cutfrac = 0.5
+          real(mcp), parameter :: cutfrac = 0._mcp 
           real(mcp) usedsamps,evals(max_cols),sc,R, maxsamp
           real(mcp), dimension(:,:), allocatable :: cov, meanscov
           integer usedvars(max_cols), num, thin_fac(max_chains), markov_thin(max_chains)
@@ -788,7 +777,7 @@ contains
           double precision, dimension(:,:), allocatable :: corrs
           character(LEN=10) :: typestr
           integer autocorr_thin
-
+          
 ! Get statistics for individual chains, and do split tests on the samples
 
           call CreateTxtFile(trim(rootdirname) //'.converge', 40)
@@ -829,7 +818,7 @@ contains
           if (num_chains_used > 1) then
           
           write (40,*) ''
-          write(40,*)  'Variance test convergence stats using last half chains'
+          write(40,*)  'Variance test convergence stats using remaining chains'
           write (40,*) 'param var(chain mean)/mean(chain var)'
           write (40,*) ''
 
@@ -901,27 +890,30 @@ contains
           meanscov = meanscov/(num_chains_used-1) !(usedsamps/maxsamp -1)
           cov = cov / usedsamps
 
+          call GelmanRubinEvalues(cov, meanscov, evals, num)
+          write (40,*) ''
+          write (40,'(a)') 'var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters'
+          R = 0
           do jj=1,num
-                sc = sqrt(cov(jj,jj))
-                cov(jj,:) = cov(jj,:) / sc
-                cov(:,jj) = cov(:,jj) / sc
-                meanscov(jj,:) = meanscov(jj,:) /sc
-                meanscov(:,jj) = meanscov(:,jj) /sc                 
+            write (40,'(1I3,f9.4)') jj,evals(jj)
+            R = max(R,evals(jj))
           end do
- 
-         call Matrix_Diagonalize(meanscov, evals, num)
-         cov = matmul(matmul(transpose(meanscov),cov),meanscov)
-         write (40,*) ''
-         write (40,*) 'var(mean)/mean(var) for eigenvalues of covariance of means'
-         R = 0
-         do jj=1,num
-           write (40,'(1I3,f9.4)') jj,evals(jj)/cov(jj,jj)       
-           R = max(R,evals(jj)/cov(jj,jj))
-         end do
 !R is essentially the Gelman and Rubin statistic
-         write (*,'(" var(mean)/mean(var), 1/2 chains, worst e-value: R-1 = ",f9.4)') R      
+          write (*,'(" var(mean)/mean(var), remaining chains, worst e-value: R-1 = ",f9.4)') R
+         
+!         call Matrix_Diagonalize(meanscov, evals, num)
+!         cov = matmul(matmul(transpose(meanscov),cov),meanscov)
+!         write (40,*) ''
+!         write (40,*) 'var(mean)/mean(var) for eigenvalues of covariance of means'
+!         R = 0
+!         do jj=1,num
+!           write (40,'(1I3,f9.4)') jj,evals(jj)/cov(jj,jj)       
+!           R = max(R,evals(jj)/cov(jj,jj))
+!         end do
+!!R is essentially the Gelman and Rubin statistic
+!         write (*,'(" var(mean)/mean(var), 1/2 chains, worst e-value: R-1 = ",f9.4)') R      
         
-         deallocate(cov,meanscov)                 
+         deallocate(cov,meanscov)
          end if
      
 
