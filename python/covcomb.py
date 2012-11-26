@@ -7,6 +7,7 @@ import covMat
 
 if len(sys.argv) < 3:
     print 'Usage: python covcmb.py out.covmat in1.covmat in2.covmat [in3.covmat...]'
+    sys.exit()
 
 foutname = sys.argv[1]
 
