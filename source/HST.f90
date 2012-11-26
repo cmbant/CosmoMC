@@ -11,7 +11,7 @@ implicit none
 
 type, extends(DataLikelihood) :: HSTLikelihood
     contains
-    procedure :: LogLike => HST_LnLike
+    procedure :: LogLikeTheory => HST_LnLike
 end type HSTLikelihood
 
 ! angdistinveffh0 is the inverse of the angular diameter distance at z = 0.04 for H_0 = 74.2
@@ -39,12 +39,11 @@ contains
 
    end subroutine HSTLikelihood_Add
     
-real(mcp) function HST_LnLike(like, CMB, Theory)
+real(mcp) function HST_LnLike(like, CMB)
   use CAMB, only : AngularDiameterDistance  !!physical angular diam distance also in Mpc no h units
   use constants
   Class(HSTLikelihood) :: like
   Class(CMBParams) CMB
-  Class(TheoryPredictions) Theory
   real(mcp) :: theoryval
 
   real(mcp), parameter :: angdistinvzeffh0 = 6.45904e-3, zeffh0 = 0.04, &

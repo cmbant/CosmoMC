@@ -54,9 +54,6 @@ implicit none
   integer :: num_clsS=min(num_cls,3) 
 
   Type CMBParams
-     real(mcp) nuisance(1:num_nuisance_params)
-      !unit Gaussians for experimental parameters
-     real(mcp) data_params(1:num_freq_params)
       !These are fast parameters controling amplitudes, calibrations, etc.
      real(mcp) InitPower(1:num_initpower)
       !These are fast paramters for the initial power spectrum

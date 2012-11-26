@@ -68,7 +68,7 @@ implicit none
      double precision :: SN_Ninv(SN_num,SN_Num)
      double precision :: SN_sumninv
    contains
-    procedure :: LogLike => SN_LnLike
+    procedure :: LogLikeTheory => SN_LnLike
    end type SNLikelihood
 
  logical, parameter :: SN_marg = .True.
@@ -125,12 +125,11 @@ implicit none
    
   end subroutine SNLikelihood_Add
 
- function SN_LnLike(like, CMB, Theory) 
+ function SN_LnLike(like, CMB) 
    use camb
   !Assume this is called just after CAMB with the correct model  use camb
   Class(CMBParams) CMB
   Class(SNLikelihood) :: like
-  Class(TheoryPredictions) Theory
   real(mcp) SN_LnLike
   integer i
   double precision z, AT, BT

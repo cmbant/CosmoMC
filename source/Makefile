@@ -202,19 +202,20 @@ default: cosmomc
 all : cosmomc getdist
 
 samples.o: ObjectLists.o settings.o
-likelihood.o: ObjectLists.o settings.o
+likelihood.o: ObjectLists.o settings.o ParamNames.o
 DataLikelihoods.o: likelihood.o paramdef.o $(DATAMODULES)
-$(PLANCKLIKE).o: temp_like.o cmbtypes.o
+cliklike_CamSpec.o: temp_like.o
+$(PLANCKLIKE).o: cmbtypes.o likelihood.o
 settings.o: ../camb/libcamb_$(RECOMBINATION).a
 cmbtypes.o: settings.o
-Planck_like.o: cmbtypes.o
+Planck_like.o: likelihood.o cmbtypes.o
 cmbdata.o: Planck_like.o  $(WMAPOBJS)
-bbn.o: settings.o
-mpk.o: cmbtypes.o lrggettheory.o
-bao.o: cmbtypes.o mpk.o
-HST.o: cmbtypes.o
-supernovae.o: cmbtypes.o
-SDSSLy-a-v3.o: cmbtypes.o
+bbn.o: settings.o likelihood.o
+mpk.o: cmbtypes.o lrggettheory.o likelihood.o
+bao.o: cmbtypes.o mpk.o likelihood.o
+HST.o: cmbtypes.o likelihood.o
+supernovae.o: cmbtypes.o likelihood.o
+SDSSLy-a-v3.o: cmbtypes.o likelihood.o
 $(CLSFILE): cmbtypes.o IO.o
 paramdef.o: $(CLSFILE) propose.o samples.o
 $(PROPOSE): settings.o

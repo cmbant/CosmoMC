@@ -18,7 +18,7 @@ module CMB_Cls
   
   Type ParamSetInfo
     Type (CAMBdata) :: Transfers
-    real(mcp) lastParamArray(num_params)
+    real(mcp) lastParamArray(max_num_params)
   end Type ParamSetInfo
 
   integer :: lmax_computed_cl = lmax !value used for CAMB

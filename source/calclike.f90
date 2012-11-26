@@ -15,7 +15,7 @@ module CalcLike
  Type LikeCalculator
      type(ParamSet), pointer :: Params
      type (CMBParams), pointer :: CMB
-     logical changeMask(num_params)
+     logical changeMask(max_num_params)
      logical SlowChanged, PowerChanged
  end Type LikeCalculator
  
@@ -85,10 +85,10 @@ contains
       GetLogLike  = TestHardPriors(Calc)
       if (GetLogLike == logZero) return
       if (first) then
-           Calc%changeMask = .true.
+           Calc%changeMask(1:num_params) = .true.
            first = .false.
       else
-           Calc%changeMask = Params%Info%lastParamArray/=Params%P
+           Calc%changeMask(1:num_params) = Params%Info%lastParamArray(1:num_params)/=Params%P(1:num_params)
       end if
 
      if (CalculateRequiredTheoryChanges(Calc)) then
@@ -97,7 +97,7 @@ contains
        GetLogLike = logZero
      end if
 
-     if (GetLogLike/=logZero) Params%Info%lastParamArray = Params%P
+     if (GetLogLike/=logZero) Params%Info%lastParamArray(1:num_params) = Params%P(1:num_params)
     end if
 
     if (Feedback>2 .and. GetLogLike/=LogZero) &
@@ -184,12 +184,12 @@ contains
     do i= 1, DataLikelihoods%count
      if (do_like(i)) then
      like => DataLikelihoods%Item(i)
-     if (any(like%dependent_params .and. Calc%changeMask )) then
+     if (any(like%dependent_params(1:num_params) .and. Calc%changeMask(1:num_params) )) then
           if (like%needs_background_functions .and. .not. backgroundSet) then
               call SetTheoryForBackground(Calc%CMB)
               backgroundSet = .true.
           end if
-          itemLike = like%LogLike(Calc%CMB, Calc%Params%Theory)
+          itemLike = like%LogLike(Calc%CMB, Calc%Params%Theory, Calc%Params%P(like%nuisance_indices))
           if (itemLike == logZero) return
           Calc%Params%Likelihoods(i) = itemLike
      end if

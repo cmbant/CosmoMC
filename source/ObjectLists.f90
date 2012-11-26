@@ -45,13 +45,15 @@
     procedure :: ArrayItemIndex
     procedure :: SaveBinary
     procedure :: ReadBinary
-    procedure :: QuickSortArr
     procedure :: Thin
+    procedure :: Sort
     procedure :: SortArr
     procedure :: Swap
     procedure :: Compare => CompareReal
     procedure :: Clear
     procedure :: DeltaSize
+    procedure :: QuickSort
+    procedure :: QuickSortArr
     FINAL :: finalize
     generic :: Add => AddItem, AddArray
     end Type TObjectList
@@ -62,7 +64,6 @@
     procedure :: RealItem
     generic :: Item => Value, RealItem
     end Type TRealArrayList
-
 
     contains
 
@@ -381,9 +382,54 @@
     Class(TObjectList) :: L
     integer, intent(in) :: index
 
-    call L%QuickSortArr(1, L%Count, index)
+    if (L%Count>1) call L%QuickSortArr(1, L%Count, index)
 
     end subroutine SortArr
+    
+    
+    recursive subroutine QuickSort(this, Lin, R)
+    Class(TObjectList) :: this
+    integer, intent(in) :: Lin, R
+    integer I, J, L
+    class(*), pointer :: P
+
+    L = Lin
+    do
+
+    I = L
+    J = R
+    P => this%Items((L + R)/2)%P
+
+    do
+        do while (this%Compare(this%Items(I)%P,P) <  0)
+            I = I + 1
+        end do
+
+        do while (this%Compare(this%Items(J)%P, P) > 0)
+            J = J - 1
+        end do
+
+        if (I <= J) then
+            call this%Swap(I,J)
+            I = I + 1
+            J = J - 1
+        end if
+        if (I > J) exit
+
+    end do
+    if (L < J) call this%QuickSort(L, J)
+    L = I
+    if (I >= R) exit
+    end do
+
+    end subroutine QuickSort
+
+    subroutine Sort(L)
+    Class(TObjectList) :: L
+
+    if (L%Count>1) call L%QuickSort(1, L%Count)
+
+    end subroutine Sort
 
     ! List of arrays of reals
 

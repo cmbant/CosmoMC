@@ -36,6 +36,7 @@ program SolveCosmology
         logical want_minimize
         logical :: start_at_bestfit = .false.
         Class(DataLikelihood), pointer :: Like
+        character(LEN=Ini_max_string_len) :: ParamNamesFile = ''
 
 #ifdef MPI
         double precision intime
@@ -259,10 +260,12 @@ program SolveCosmology
          if (Feedback>1) write(*,*) 'read mpk datasets'
         end if
 
-
         numtoget = Ini_Read_Int('samples')
 
-        call Initialize(DefIni,Params)
+        call SetTheoryParamNames(NameMapping, ParamNamesFile)
+        call DataLikelihoods%AddNuisanceParameters(NameMapping)
+        call CMB_Initialize(Params%Info)
+        call InitializeUsedParams(DefIni,Params)
         
         if (MpiRank==0) then
             do i=1, DataLikelihoods%Count

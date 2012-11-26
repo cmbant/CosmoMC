@@ -212,13 +212,13 @@ contains
    do interp_step = 1, interp_steps-1 
     call Proposer%GetProposalFastDelta(delta)
     TrialEnd = CurEndParams
-    TrialEnd%P = TrialEnd%P + delta 
+    TrialEnd%P(1:num_params) = TrialEnd%P(1:num_params) + delta 
     EndLike = GetLogLike(TrialEnd)
     accpt = EndLike /= logZero
     if (accpt) then 
      num_fast_calls = num_fast_calls + 1
      TrialStart = CurStartParams
-     TrialStart%P = TrialStart%P  + delta
+     TrialStart%P(1:num_params) = TrialStart%P(1:num_params)  + delta
      StartLike = GetLogLike(TrialStart)
      accpt = StartLike/=logZero
      if (accpt) then

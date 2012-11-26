@@ -171,11 +171,11 @@ contains
    i=TxtNumberColumns(InLine)
    if (i==num_params) then
     call ReadMatrix(prop_mat,pmat, num_params, num_params)
-   else if (i==num_real_params) then
-    allocate(tmpMat(num_real_params,num_real_params))
-    call ReadMatrix(prop_mat,tmpmat, num_real_params, num_real_params)
+   else if (i==num_theory_params) then
+    allocate(tmpMat(num_theory_params,num_theory_params))
+    call ReadMatrix(prop_mat,tmpmat, num_theory_params, num_theory_params)
     pmat=0
-    pmat(1:num_real_params,1:num_real_params) = tmpMat
+    pmat(1:num_theory_params,1:num_theory_params) = tmpMat
     deallocate(tmpMat)
    else
     call MpiStop('Propose matrix the wrong size: '//trim(prop_mat))

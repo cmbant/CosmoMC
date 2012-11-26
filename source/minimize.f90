@@ -115,7 +115,7 @@
     end if
 
     do isused = 0,1
-        do i=1, num_real_params
+        do i=1, num_params
             if (isused==0 .and. Scales%PWidth(i)/=0 .or. isused==1 .and. Scales%PWidth(i)==0) then
                 write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
                               i, P%P(i), ParamNames_name(NameMapping,i)
@@ -130,18 +130,11 @@
     numderived = CalcDerivedParams(P, derived)
     do i=1, numderived
          write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-             num_real_params+i, derived%P(i), ParamNames_name(NameMapping,num_real_params + i )
-         write (aunit,'(a)') trim(NameMapping%label(num_real_params+i))
+             num_params+i, derived%P(i), ParamNames_name(NameMapping,num_params + i )
+         write (aunit,'(a)') trim(NameMapping%label(num_params+i))
     end do
     deallocate(derived%P)
 
-    if (nuisance_params_used>0) then
-        write (aunit,*) ''
-        do i=1, nuisance_params_used
-            write(aunit,'(1I5,1E15.7)') num_real_params+i, P%P(num_real_params+i)
-        end do
-    end if
-    
     if (present(like)) then
       write(aunit,*) ''
       write(aunit,*) '-log(Like)     chi-sq   data'

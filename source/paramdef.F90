@@ -11,10 +11,15 @@ module ParamDef
  use settings
  use Propose
  use Samples
+ use likelihood
+ use IniFile
+ use ParamNames
+ use IO
+
  implicit none
 
  Type :: ParamSet
-    real(mcp) :: P(num_params)
+    real(mcp) :: P(max_num_params)
     real(mcp) likelihoods(max_likelihood_functions)
     Type(TheoryPredictions) :: Theory
     Type(ParamSetInfo) Info
@@ -24,13 +29,13 @@ module ParamDef
  end Type
 
  Type ParamScale
-    real(mcp) PMin(num_params), PMax(num_params), PWidth(num_params), center(num_params)
+    real(mcp) PMin(max_num_params), PMax(max_num_params), PWidth(max_num_params), center(max_num_params)
  end Type ParamScale
 
  Type(ParamScale) Scales
 
  Type ParamGaussPrior
-   real(mcp) mean(num_params),std(num_params) !std=0 for no prior (default)
+   real(mcp) mean(max_num_params),std(max_num_params) !std=0 for no prior (default)
  end Type ParamGaussPrior
  Type(ParamGaussPrior) GaussPriors
  
@@ -194,13 +199,17 @@ subroutine orderIndices(arr,n)
  end do
 end subroutine orderIndices
 
-subroutine Initialize(Ini,Params)
-        use IniFile
-        use ParamNames
-        use settings
-        use IO
-        use likelihood
+subroutine InitializeUsedParams(Ini,Params)
+        type (ParamSet) Params
+        type (TIniFile) :: Ini
 
+        num_params = max(num_theory_params, NameMapping%num_MCMC)
+        num_data_params = num_params - num_theory_params
+        call Initalize(Ini,Params)
+
+end subroutine InitializeUsedParams
+
+subroutine Initalize(Ini,Params)
         implicit none
         type (ParamSet) Params
         type (TIniFile) :: Ini
@@ -220,17 +229,19 @@ subroutine Initialize(Ini,Params)
         integer :: breaks(num_params), num_breaks
         Type(DataLikelihood), pointer :: DataLike
         real(mcp) :: oversample_fast= 1._mcp
+        logical first
+
         output_lines = 0
 
-        call SetParamNames(NameMapping)
         if (use_fast_slow) then
             if (Ini_HasKey_File(Ini,'fast_parameters')) then
             !List of parmeter names to treat as fast
              fast_number = num_params
              call ParamNames_ReadIndices(NameMapping,Ini_Read_String_File(Ini,'fast_parameters'), fast_params, fast_number)
             else
-             !all parameters at and above fast_param_index
-             fast_param_index= Ini_Read_Int_File(Ini,'fast_param_index',index_freq) 
+             fast_param_index = max(index_data,DataLikelihoods%first_fast_param)
+                !all parameters at and above fast_param_index
+             fast_param_index= Ini_Read_Int_File(Ini,'fast_param_index',fast_param_index) 
              fast_number = 0
              do i=fast_param_index, num_params
               fast_number = fast_number+1
@@ -245,8 +256,6 @@ subroutine Initialize(Ini,Params)
         end if
         
         Ini_fail_on_not_found = .false.
-
-        call CMB_Initialize(Params%Info)
 
         prop_mat = trim(Ini_Read_String_File(Ini,'propose_matrix'))
         has_propose_matrix = prop_mat /= ''
@@ -268,20 +277,6 @@ subroutine Initialize(Ini,Params)
         GaussPriors%std=0 !no priors by default
         do i=1,num_params
    
-           if (i>=index_nuisance) then
-            !All unit Gaussians
-            center=0
-            Scales%PMin(i)=-10
-            Scales%PMax(i)=10
-            wid=1
-            if (i-index_nuisance < nuisance_params_used) then
-              Scales%PWidth(i)=1
-              GaussPriors%std(i)=1
-              GaussPriors%mean(i)=0
-            else
-              Scales%PWidth(i)=0
-            end if  
-           else 
             InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'param',i)
             if (InLine=='') call ParamError('parameter ranges not found',i) 
             read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), wid, Scales%PWidth(i)
@@ -290,14 +285,14 @@ subroutine Initialize(Ini,Params)
              InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'prior',i)
              if (InLine/='') read(InLine, *, err = 101) GaussPriors%mean(i), GaussPriors%std(i)
             end if
-           end if  
+
            Scales%center(i) = center
            if (Scales%PMax(i) < Scales%PMin(i)) call ParamError('You have param Max < Min',i)
            if (Scales%center(i) < Scales%PMin(i)) call ParamError('You have param center < Min',i)
            if (Scales%center(i) > Scales%PMax(i)) call ParamError('You have param center > Max',i)
            if (Scales%PWidth(i) /= 0) then !to get sizes for allocation arrays
               if (use_fast_slow .and. any(i==fast_params(1:fast_number))) then
-                if (i >= index_freq .or. .not. block_semi_fast) then
+                if (i >= index_data .or. .not. block_semi_fast) then
                    param_type(i) = tp_fast
                 else
                    param_type(i) = tp_semifast
@@ -339,14 +334,19 @@ subroutine Initialize(Ini,Params)
         if (block_fast_likelihood_params) then
             !put parameters for different likelihoods in separate blocks, 
             !so not randomly mix them and hence don't all need to be recomputed
+            first=.true.
             do i=1,DataLikelihoods%Count
                 DataLike=>DataLikelihoods%Item(i)
                 do j=1, num_params_used-1
-                    if (param_type(params_used(j))==tp_fast .and. &
-                     (DataLike%dependent_params(params_used(j)) .neqv. DataLike%dependent_params(params_used(j+1))) &
-                       .and. .not. any(breaks(1:num_breaks)==j)) then
-                      num_breaks = num_breaks+1 
-                      breaks(num_breaks)=j
+                    if (param_type(params_used(j))==tp_fast .and. params_used(j) >= DataLike%new_param_block_start &
+                     .and. params_used(j) < DataLike%new_param_block_start + DataLike%new_params) then
+                      if (first) then
+                        first = .false.
+                      else
+                        num_breaks = num_breaks+1 
+                        breaks(num_breaks)=j
+                      end if
+                      exit
                     end if
                 end do
             end do
@@ -429,7 +429,7 @@ subroutine Initialize(Ini,Params)
 100     call DoAbort('Error reading param details: '//trim(InLIne))
 101     call DoAbort('Error reading prior mean and stdd dev: '//trim(InLIne))
 
-end subroutine Initialize
+end subroutine Initalize
 
 
 

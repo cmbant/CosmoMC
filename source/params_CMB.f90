@@ -76,8 +76,6 @@
      
         CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initpower-1)
         CMB%InitPower(As_index) = exp(CMB%InitPower(As_index))
-        CMB%data_params(1:num_freq_params) = Params(index_freq:index_freq+num_freq_params-1)
-        CMB%nuisance(1:num_nuisance_params) = Params(index_nuisance:index_nuisance+num_nuisance_params-1)
  
  end subroutine SetFast
 
@@ -149,7 +147,7 @@
      implicit none
      real(mcp) Params(num_params)
      integer, parameter :: ncache =2
-     real(mcp), save :: LastParams(num_params,ncache) = 0._mcp
+     real(mcp), save :: LastParams(num_theory_params,ncache) = 0._mcp
 
      Type(CMBParams) CMB
      Type(CMBParams), save :: LastCMB(ncache)
@@ -237,16 +235,14 @@
       
       Params(index_initpower:index_initpower+num_initpower-1) =CMB%InitPower(1:num_initpower) 
       Params(index_initpower + As_index-1 ) = log(CMB%InitPower(As_index))
-      
-      Params(index_freq:index_freq+num_freq_params-1) = CMB%data_params(1:num_freq_params)
-      Params(index_nuisance:index_nuisance+num_nuisance_params-1)=CMB%nuisance(1:num_nuisance_params) 
 
    end subroutine CMBParamsToParams
 
-   subroutine SetParamNames(Names)
-    use settings
+   subroutine SetTheoryParamNames(Names,ParamNamesFile)
     use ParamNames
+    use settings
     Type(TParamNames) :: Names
+    character(LEN=*), intent(in) :: ParamNamesFile
  
     if (ParamNamesFile /='') then
       call ParamNames_init(Names, ParamNamesFile)
@@ -255,14 +251,10 @@
       Names%nnames=0
       if (Feedback>0) write (*,*) 'edit SetParamNames in params_CMB.f90 if you want to use named params'
      else
-#ifdef CLIK
-       call ParamNames_init(Names, trim(LocalDir)//'clik.paramnames')
-#else
        call ParamNames_init(Names, trim(LocalDir)//'params_CMB.paramnames')
-#endif
      end if
     end if
-   end subroutine SetParamNames
+   end subroutine SetTheoryParamNames
 
  
   function CalcDerivedParams(P, derived) result (num_derived)
@@ -326,21 +318,16 @@
   
     if (generic_mcmc) then
 
-      call IO_OutputChainRow(outfile_handle, mult, like, P%P)
+      call IO_OutputChainRow(outfile_handle, mult, like, P%P, num_params)
      
     else
     
       numderived = CalcDerivedParams(P, derived)
 
-      allocate(output_array(num_real_params + numderived + nuisance_params_used ))
-      output_array(1:num_real_params) =  P%P(1:num_real_params)
-      output_array(num_real_params+1:num_real_params+numderived) =  derived%P
+      allocate(output_array(num_params + numderived))
+      output_array(1:num_params) =  P%P(1:num_params)
+      output_array(num_params+1:num_params+numderived) =  derived%P
       deallocate(derived%P)
-
-      if (nuisance_params_used>0) then
-       output_array(num_real_params+numderived+1:num_real_params+numderived+nuisance_params_used) = &
-        P%P(num_real_params+1:num_real_params+nuisance_params_used) 
-      end if
  
       call IO_OutputChainRow(outfile_handle, mult, like, output_array)
       deallocate(output_array)           
@@ -370,12 +357,12 @@
 
       numderived = CalcDerivedParams(P, derived)
 
-      allocate(output_array(num_real_params + numderived + num_matter_power ))
-      output_array(1:num_real_params) =  P%P(1:num_real_params)
-      output_array(num_real_params+1:num_real_params+numderived) =  derived%P
+      allocate(output_array(num_params + numderived + num_matter_power ))
+      output_array(1:num_params) =  P%P(1:num_params)
+      output_array(num_params+1:num_params+numderived) =  derived%P
       deallocate(derived%P)
 
-      output_array(num_real_params+numderived+1:num_real_params+numderived+num_matter_power) = &
+      output_array(num_params+numderived+1:num_params+numderived+num_matter_power) = &
         P%Theory%matter_power(:,1) 
 
       call IO_OutputChainRow(outfile_handle, mult, like, output_array)

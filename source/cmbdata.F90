@@ -349,6 +349,7 @@ contains
 !Special cases
    if (aname == 'MAP' .or. aname == 'WMAP') then 
      like%name = 'WMAP'
+     like%speed = -1
      return   
    elseif( aname(LEN_TRIM(aname)-5:LEN_TRIM(aname)) == 'newdat') then
     !Carlo format for polarized Boomerang et al.
@@ -945,11 +946,12 @@ contains
  end function CalcLnLike
 
  
- function CMBLnLike(like, CMB, Theory) 
+ function CMBLnLike(like, CMB, Theory, DataParams) 
     use CMB_Cls
     Class(CMBDataLikelihood) :: like
     Class (CMBParams) CMB
     Class(TheoryPredictions) Theory
+    real(mcp) :: DataParams(:)
     real(mcp) cl(lmax,num_cls_tot)
     real(mcp) CMBLnLike
     real(mcp) sznorm, szcl(lmax,num_cls_tot)
@@ -958,7 +960,7 @@ contains
 
      szcl= cl
      if (like%dataset%has_sz_template) then
-         sznorm = CMB%data_params(1)  
+         sznorm = DataParams(1) 
          szcl(2:lmax,1) = szcl(2:lmax,1) + sznorm*like%dataset%sz_template(2:lmax)  
      end if
      if (like%name == 'WMAP') then
@@ -1063,7 +1065,8 @@ contains
           if (SZTemplate/='') then
            SZScale = Ini_read_Real_File(Ini,numcat('cmb_dataset_SZ_scale',i),1.0)
            call ReadSZTemplate(like%dataset, SZTemplate,SZScale)
-           like%dependent_params(index_freq) = .true.
+           !like%dependent_params(index_freq) = .true.
+           call like%loadParamNames(DataDir//'WMAP.paramnames')
           end if
 
          end do

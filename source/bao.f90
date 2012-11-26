@@ -184,11 +184,12 @@ end function SDSS_dvtors
 
 !===================================================================================
 
-function BAO_LnLike(like, CMB, Theory) 
+function BAO_LnLike(like, CMB, Theory, DataParams) 
    use ModelParams, only : derived_zdrag,derived_rdrag
    Class(CMBParams) CMB
    Class(BAOLikelihood) :: like
    Class(TheoryPredictions) Theory
+   real(mcp) :: DataParams(:)
    integer j,k
    real(mcp) BAO_LnLike
    real(dl), allocatable :: BAO_theory(:)

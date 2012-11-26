@@ -49,10 +49,11 @@
     if (use_CAMspec) then
         allocate(CamLike)
         call LikeList%Add(CamLike) 
-        CamLike%dependent_params(1:index_freq+num_camSpec)=.true.
+        CamLike%dependent_params(1:num_theory_params)=.true.
         CamLike%LikelihoodType = 'CMB'
         CamLike%name='CamSpec'
         CamLike%version = CAMSpec_like_version
+        call CamLike%loadParamNames(trim(DataDir)//'camspec.paramnames')
 
         likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
         sz143filename=ReadIniFileName(Ini,'sz143file',NotFoundFail = .true.)
@@ -69,10 +70,13 @@
 #ifdef highL
         allocate(highLike)
         call LikeList%Add(highLike) 
-        highLike%dependent_params(1:index_freq+num_camSpec+num_plik+num_actSpt)=.true.
+        highLike%dependent_params(1:num_theory_params)=.true.
         highLike%LikelihoodType = 'CMB'
         highLike%name='highL'
         highLike%version = CAMSpec_like_version
+        highLike%speed = 1
+
+        call highLike%loadParamNames(trim(DataDir)//'highL.paramnames')
         
       if (lmax < tt_lmax_mc) call MpiStop('set lmax>=tt_lmax_mc in settings to use highL data')
       data_dir = CheckTrailingSlash(ReadIniFileName(Ini,'highL_data_dir'))
@@ -88,23 +92,24 @@
     end subroutine clik_readParams
 
 
-  real(mcp) function CamspecLogLike(like, CMB, Theory) 
+  real(mcp) function CamspecLogLike(like, CMB, Theory, DataParams) 
      Class(CamspecLikelihood) :: like
      Class (CMBParams) CMB
      Class(TheoryPredictions) Theory
      real(mcp) acl(lmax,num_cls_tot)
+     real(mcp) DataParams(:)
 
      call ClsFromTheoryData(Theory, CMB, acl)
 !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
 !freq_params(35:44), ACT/SPT as freq_params(45:65)
-      CamspecLogLike = clik_lnlike_camSpec(real(acl,dp),real(CMB%data_params(2:num_freq_params),dp))
+      CamspecLogLike = clik_lnlike_camSpec(real(acl,dp),real(DataParams,dp))
  end function CamspecLogLike
 
  
     function clik_lnlike_camSpec(cl,freq_params)
     real(dp) :: clik_lnlike_camSpec
     real(dp), intent(in) :: cl(lmax,num_cls_tot)
-    real(dp), intent(in)  :: freq_params(1:num_freq_params-1)   
+    real(dp), intent(in)  :: freq_params(:)
     real(dp) zlike, A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz_143, r_ps, r_cib, &
     cal0, cal1, cal2, xi, A_ksz
 
@@ -152,23 +157,23 @@
     end function clik_lnlike_camSpec
 
 #ifdef highL
-  real(mcp) function highLLogLike(like, CMB, Theory) 
+  real(mcp) function highLLogLike(like, CMB, Theory, DataParams) 
      Class(highLLikelihood) :: like
      Class (CMBParams) CMB
      Class(TheoryPredictions) Theory
      real(mcp) acl(lmax,num_cls_tot)
+     real(mcp) DataParams(:)
 
      call ClsFromTheoryData(Theory, CMB, acl)
-!Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
-!freq_params(35:44), ACT/SPT as freq_params(45:65)
-      highLLogLike = clik_lnlike_highL(real(acl,dp),real(CMB%data_params(2:num_freq_params),dp))
- end function highLLogLike
+      highLLogLike = clik_lnlike_highL(real(acl,dp),real(DataParams,dp))
+
+  end function highLLogLike
 
 
   function clik_lnlike_highL(cl,freq_params)
     real(dp) :: clik_lnlike_highL
     real(dp), intent(in) :: cl(lmax,num_cls_tot)
-    real(dp), intent(in)  :: freq_params(1:num_freq_params-1)   
+    real(dp), intent(in)  :: freq_params(:)
     real(dp) like_tot
     integer, parameter :: lmin=2
     real(dp)  cl_tt(tt_lmax)
@@ -180,47 +185,27 @@
        cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220
     
     !asz is already removed, start at second feq param
-    A_ps_100=freq_params(1)
-    A_ps_143 = freq_params(2)
-    A_ps_217 = freq_params(3)
-    A_cib_143=freq_params(4)
-    A_cib_217=freq_params(5) 
-    A_sz_143=freq_params(6)  !143
-    r_ps = freq_params(7)
-    r_cib=freq_params(8)
-    cal0=freq_params(9)
-    cal1=freq_params(10) 
-    cal2=freq_params(11)
-    xi=freq_params(12)
-    A_ksz=freq_params(13)
-
-     !skip ACT/SPT parameters 1,2,3,9,10,14 (already included in CAMspec nuisance params)
-    offset = num_camSpec + num_plik
-    if (.not. use_Camspec) then
-     A_sz_143 = freq_params(offset+1)
-     A_ksz= freq_params(offset+2)
-     xi= freq_params(offset+3)
-    end if    
-    a_ps_act_148= freq_params(offset+4)
-    a_ps_act_217= freq_params(offset+5)
-    a_ps_spt_95= freq_params(offset+6)
-    a_ps_spt_150= freq_params(offset+7)
-    a_ps_spt_220= freq_params(offset+8)
-    if (.not. use_Camspec) then
-     A_cib_143= freq_params(offset+9)
-     A_cib_217= freq_params(offset+10)
-    end if
-    r_ps_spt_95x150= freq_params(offset+11)
-    r_ps_spt_95x220= freq_params(offset+12)
-    r_ps_150x220= freq_params(offset+13)
-    if (.not. use_Camspec) r_cib = freq_params(offset+14)
-    cal_acts_148= freq_params(offset+15)
-    cal_acts_217= freq_params(offset+16)
-    cal_acte_148= freq_params(offset+17)
-    cal_acte_217= freq_params(offset+18)
-    cal_spt_95= freq_params(offset+19)
-    cal_spt_150= freq_params(offset+20)
-    cal_spt_220= freq_params(offset+21)
+    A_sz_143=freq_params(1)
+    A_ksz = freq_params(2)
+    xi = freq_params(3)
+    a_ps_act_148=freq_params(4)
+    a_ps_act_217=freq_params(5) 
+    a_ps_spt_95=freq_params(6)  
+    a_ps_spt_150 =freq_params(7)
+    a_ps_spt_220 = freq_params(8)
+    A_cib_143=freq_params(9)
+    A_cib_217=freq_params(10)
+    r_ps_spt_95x150=freq_params(11) 
+    r_ps_spt_95x220=freq_params(12)
+    r_ps_150x220=freq_params(13)
+    r_cib=freq_params(14)
+    cal_acts_148  =freq_params(15)
+    cal_acts_217=freq_params(16)
+    cal_acte_148=freq_params(17)
+    cal_acte_217 =freq_params(18)
+    cal_spt_95 =freq_params(19)
+    cal_spt_150 =freq_params(20)
+    cal_spt_220 =freq_params(21)
 
     do l =2, tt_lmax
      if (l.le.tt_lmax_mc) then
