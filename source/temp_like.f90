@@ -173,7 +173,7 @@ module temp_like
     do l = lminX(1), lmaxX(1)
 
        zell = dfloat(l)
-       X_f(l - lminX(1) + 1) = A_ps_100*1.d-6 + &
+       X_f(l - lminX(1) + 1) = A_ps_100*1.d-6/9.d0 + &
             A_ksz*ksz_temp(l)/dfloat(l*(l+1))+ &
             A_sz*2.022d0*sz_143_temp(l)/dfloat(l*(l+1))
        X_data(l - lminX(1) + 1) = X(l - lminX(1) + 1)
@@ -188,7 +188,7 @@ module temp_like
     do l = lminX(2), lmaxX(2)
        zell = dfloat(l)
        zCIB = 1.134d0*A_cib_143*(dfloat(l)/3000.)**(0.8)/dfloat(l*(l+1))
-       X_f(l - lminX(2) + npt(2)) = A_ps_143*1.d-6 + zCIB + &
+       X_f(l - lminX(2) + npt(2)) = A_ps_143*1.d-6/9.d0 + zCIB + &
             A_ksz*ksz_temp(l)/dfloat(l*(l+1))+&
             A_sz*0.95d0*sz_143_temp(l)/dfloat(l*(l+1)) + &
             -2.0*sqrt(1.134d0*A_cib_143*0.95d0*A_sz*4.796)*xi*tszxcib_temp(l)/dfloat(l*(l+1))
@@ -205,7 +205,7 @@ module temp_like
     do l = lminX(3), lmaxX(3)
        zell = dfloat(l)
        zCIB = 1.33d0*A_cib_217*(dfloat(l)/3000.)**(0.8)/dfloat(l*(l+1))
-       X_f(l - lminX(3) + npt(3) ) = A_ps_217*1.d-6 + zCIB &
+       X_f(l - lminX(3) + npt(3) ) = A_ps_217*1.d-6/9.d0 + zCIB &
             + A_ksz*ksz_temp(l)/dfloat(l*(l+1))   
        X_data(l - lminX(3) + npt(3)) = X(l - lminX(3) + npt(3))
        X_theory(l-lminX(3) + npt(3)) = cell_cmb(l)
@@ -223,7 +223,7 @@ module temp_like
        zCIB = 1.23d0*dsqrt(A_cib_143*A_cib_217)*(dfloat(l)/3000.)**(0.8) &
             /dfloat(l*(l+1))
        X_f(l - lminX(4) + npt(4) ) = &
-            r_ps*dsqrt(A_ps_143*A_ps_217)*1.d-6 + r_cib*zCIB &
+            r_ps*dsqrt(A_ps_143*A_ps_217)*1.d-6/9.d0 + r_cib*zCIB &
             +A_ksz*ksz_temp(l)/dfloat(l*(l+1))  &
             -sqrt(1.33d0*A_cib_217*0.95d0*A_sz*4.796)*xi*tszxcib_temp(l)/dfloat(l*(l+1))  
        X_data(l - lminX(4) + npt(4)) =  X(l - lminX(4) + npt(4))
