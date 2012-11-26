@@ -536,6 +536,7 @@ weighting function or parameter mapping.</ul>
 <UL>
 <LI><B>non-public Planck-only changes (for now)</B><BR>
 <UL>
+<LI>Data likelihoods now specify their own .paramnames file for any nuisance parameters (samples in ./data). Combining theory and data parameters is done internally, there's no need to change hard-coded parameter numbers when new nuisance parameters are added, and unused likelihood nuisance parameter are no longer output. Each likelihood function is passed the array of its nuisance parameters, completely independent of what other likelihoods are doing (but multiple likelihood functions can use the same nuisance parameter names when they are the same parameter). Likelihoods specify their speed (<0 is slow, >=0 is fast, with higher faster), and are internally sorted to be in speed order before use.
 <LI>GetDist R-1 statistics now use all samples left after cutting ignore_rows. The value is redefined more uniquely to be the worst eigenvalue of the covariance of the chain means of mean-covariance-orthonormalized parameters
 <LI>New fast-slow <b>sampling_method=7</b>, using new fast/slow blocked decorrelation scheme and fast dragging following <A HREF="http://arxiv.org/math.ST/0502099">Neal 2005</A>. This is recommended for Planck.
     <UL>

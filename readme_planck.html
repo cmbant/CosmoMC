@@ -50,6 +50,7 @@ Scripts include:
     <LI>addGridBatch.py: if you run multiple grids, e.g. a standard one and a separate small one for some parameter for interest, they can be combined using addGridBatch.py. Also use if the main batch importance samples some data, but a few of the models need to be run separately as chains: the script automatically replaces importance sampled runs with full chain runs if there is an overlap.
 <LI>batchJob.py: not a script, this just defines the objects and iterators used
 <LI>covcomb.py: for combining covariance matrices (thanks Steven!)
+<LI>covscale.py: for modifying .covmat files if parameters are re-scaled
 <LI>covMat.py: object for covariance matrix and reading .covmat
 <LI>extractDistFiles.py: for copying all files of a particular type from all the subdirectories in the grid, e.g. to extract all .covmat files, or all .pdf plots
 <LI>iniFile.py: for reading and writing .ini files (does not support reading fully at the moment, but not needed as yet)
