@@ -336,7 +336,7 @@ program SolveCosmology
        end if
     
         if (action == action_MCMC) then
-         if (Feedback > 0) write (*,*) 'starting Monte-Carlo'
+         if (Feedback > 0 .and. MPIRank==0) write (*,*) 'starting Monte-Carlo'
          call MCMCSample(Params, numtoget)
  
          if (Feedback > 0) write (*,*) 'finished'
@@ -347,7 +347,7 @@ program SolveCosmology
          call IO_Close(outfile_handle)
 
         else if (action==action_importance) then
-          if (Feedback > 0) write (*,*) 'starting post processing'
+          if (Feedback > 0 .and. MPIRank==0) write (*,*) 'starting post processing'
           call postprocess(rootname)
           call DoStop('Postprocesing done',.false.)
 

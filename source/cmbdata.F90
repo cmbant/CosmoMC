@@ -1046,7 +1046,7 @@ contains
         use_TT_beam_ptsrc = Ini_read_Logical_File(Ini,'use_WMAP_TT_beam_ptsrc', .true.)
         use_TE = Ini_read_Logical_File(Ini,'use_WMAP_TE',.true.)
         use_TT = Ini_read_Logical_File(Ini,'use_WMAP_TT',.true.)
-        print *, 'WMAP options (beam TE TT)', use_TT_beam_ptsrc, use_TE, use_TT
+        if (MPIRank==0) print *, 'WMAP options (beam TE TT)', use_TT_beam_ptsrc, use_TE, use_TT
 #endif
 
         numsets = Ini_Read_Int_File(Ini,'cmb_numdatasets',0)

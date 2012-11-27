@@ -502,7 +502,7 @@ end subroutine GetNewPowerData
           call LoadFiducialHighLTemplate
         end if
         
-        if (Feedback > 0 ) then
+        if (Feedback > 0 .and. MPIRank==0) then
           write (*,*) 'Computing tensors:', compute_tensors
           write (*,*) 'Doing CMB lensing:',CMB_lensing
           write(*,'(" lmax              = ",1I4)') lmax       

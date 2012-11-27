@@ -706,7 +706,7 @@ end subroutine SetProposeMatrix
                          cov(j,i) = cov(i,j)
                         end do
                       end do
-                      MPICovMat = Cov + meansCov !Estimate global covariance for proposal density   
+                      MPICovMat = Cov !+ meansCov !Estimate global covariance for proposal density   
                       meansCov = meansCov * real(MPIChains)/(MPIChains-1)
                       
                      call GelmanRubinEvalues(cov, meanscov, evals, num_params_used)

@@ -78,7 +78,6 @@
     integer function CompareLikes(this, R1, R2) result(comp)
     Class(LikelihoodList) :: this
     class(*) R1,R2 
-    Class(DataLikelihood), pointer :: LikeItem
 
     select type (RR1 => R1)
     class is (DataLikelihood)
@@ -104,7 +103,7 @@
     L%first_fast_param=0
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
-        print *,'adding parameters for: '//trim(DataLIke%name)
+        if (Feedback>0 .and. MPIrank==0) print *,'adding parameters for: '//trim(DataLIke%name)
         DataLike%new_param_block_start = Names%num_MCMC +1
         if (DataLike%nuisance_params%num_derived>0) call MpiStop('No support for likelihood derived params yet')
         call ParamNames_Add(Names, DataLike%nuisance_params)
@@ -117,7 +116,7 @@
             end do
             if (any(DataLike%nuisance_indices==-1)) call MpiStop('AddNuisanceParameters: unmatched data param')
             DataLike%dependent_params(DataLike%nuisance_indices) = .true.
-            if (Feedback>1) print *,trim(DataLike%name)//' data param indices:', DataLike%nuisance_indices
+            if (Feedback>1 .and. MPIrank==0) print *,trim(DataLike%name)//' data param indices:', DataLike%nuisance_indices
             if (L%first_fast_param==0 .and. DataLike%speed >=0 .and. &
                     DataLike%new_params>0) L%first_fast_param = DataLike%new_param_block_start
         end if
