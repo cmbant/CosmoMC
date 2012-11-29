@@ -1,7 +1,6 @@
+lensing
 
 BAO DR7 vs LRG7 joint exclusion
-
-importance sampling
 
 lya
 mpk
