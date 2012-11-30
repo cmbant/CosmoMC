@@ -6,7 +6,7 @@ end;
 
 matname = [root.plotroot '_2D_' int2str(param1.n) '_' int2str(param2.n)];
 if ~exist(matname,'file')
- matname = [root.plootroot '_2D_' int2str(param2.n) '_' int2str(param1.n)];
+ matname = [root.plotroot '_2D_' int2str(param2.n) '_' int2str(param1.n)];
  trans=true;
 else
  trans=false;

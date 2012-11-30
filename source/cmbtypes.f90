@@ -177,8 +177,7 @@ contains
 
      i = amp_ratio_index !this convolution is to avoid compile-time bounds-check errors on CMB%norm
      if (CMB%InitPower(amp_ratio_index) /= 0) then
-        Cls(2:lmax_tensor,1:num_cls) =  Cls(2:lmax_tensor,1:num_cls)+ T%cl_tensor(2:lmax_tensor,1:num_cls) 
-         !CMB%norm(norm_As)*CMB%norm(norm_amp_ratio)*T%cl_tensor(2:lmax_tensor,:)
+        Cls(2:lmax_tensor,1:num_cls) =  Cls(2:lmax_tensor,1:num_cls)+ T%cl_tensor(2:lmax_tensor,1:num_cls)
      end if 
 
    end subroutine ClsFromTheoryData
