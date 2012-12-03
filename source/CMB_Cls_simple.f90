@@ -3,7 +3,7 @@ module CMB_Cls
   use cmbtypes
   use CAMB, only : CAMB_GetResults, CAMB_GetAge, CAMBParams, CAMB_SetDefParams,Transfer_GetMatterPower, &
           AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, wa_ppf,&
-          CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
+          CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Nonlinear_lens, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
           CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, &
           initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
           HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived
@@ -15,7 +15,8 @@ module CMB_Cls
 
   logical :: CMB_lensing = .false.
   logical :: use_nonlinear = .false.
-  
+  logical :: use_nonlinear_lensing = .false.
+
   Type ParamSetInfo
     Type (CAMBdata) :: Transfers
     real(mcp) lastParamArray(max_num_params)
@@ -390,9 +391,9 @@ end subroutine GetNewPowerData
         P%Max_eta_k_tensor=lmax_tensor*5./2
  
         P%Transfer%k_per_logint=0
- 
+
         if (use_nonlinear) then
-         P%NonLinear = NonLinear_Pk
+         P%NonLinear = NonLinear_pk
          P%Transfer%kmax = 1.2
         else
          P%Transfer%kmax = 0.8
@@ -414,6 +415,7 @@ end subroutine GetNewPowerData
         if (max_transfer_redshifts < matter_power_lnzsteps) then
           stop 'Need to manually set max_transfer_redshifts larger in CAMB''s modules.f90'
         end if
+
         if (use_LSS) then
            do zix=1, matter_power_lnzsteps
             if (zix==1) then
@@ -453,7 +455,13 @@ end subroutine GetNewPowerData
         if (HighAccuracyDefault) then
          P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl,P%Max_eta_k)
         end if
-        
+
+        if (CMB_Lensing .and. use_nonlinear_lensing) then
+          if (use_LSS) call MpiStop('non-linear lensing and LSS data not supported currently')
+          P%NonLinear = NonLinear_lens
+          call Transfer_SetForNonlinearLensing(P%Transfer)
+        end if
+
         lensing_includes_tensors = .false.
 
         P%Scalar_initial_condition = initial_vector

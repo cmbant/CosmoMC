@@ -11,7 +11,7 @@ double calc_plenslike_mono( plenslike_dat_mono *dat, double *clpp ) {
   double ret;
   double *bins = malloc( dat->nbins * sizeof(double) );
 
-  fill_plenslike_mono_bins(dat, clpp, bins);
+  fill_plenslike_mono_bins(dat, bins, clpp);
 
   ret = 0.0;
   for (i=0; i<dat->nbins; i++) {
@@ -38,7 +38,7 @@ double calc_plenslike_mono_renorm( plenslike_dat_mono *dat, double *clpp, double
     clpp_renorm[l] = resp[l] * resp[l] / dat->al_inv[l] / dat->al_inv[l] * clpp[l];
   }
 
-  fill_plenslike_mono_bins(dat, clpp_renorm, bins);
+  fill_plenslike_mono_bins(dat, bins, clpp_renorm);
 
   ret = 0.0;
   for (i=0; i<dat->nbins; i++) {
@@ -54,7 +54,7 @@ double calc_plenslike_mono_renorm( plenslike_dat_mono *dat, double *clpp, double
   return -0.5*ret;
 }
 
-void fill_plenslike_mono_bins( plenslike_dat_mono *dat, double *clpp, double *bins ) {
+void fill_plenslike_mono_bins( plenslike_dat_mono *dat, double *bins, double *clpp ) {
   int i, l;
   double num, den;
 
@@ -66,7 +66,7 @@ void fill_plenslike_mono_bins( plenslike_dat_mono *dat, double *clpp, double *bi
     }
     bins[i] = num/den;
   }
-};
+}
 
 void fill_qe_plm_resp_plm_mono( int lmax, double *resp, double *cltt_fid, double *bl_fid, double *fl, double *cltt, double *bl) {
   int i, l, ngl;

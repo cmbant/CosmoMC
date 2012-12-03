@@ -22,4 +22,7 @@ The bin covariance \sigma_{ij} is determined from simulations based on a fiducia
 There are multiple formats for the likelihood files, depending on how many effective beams and effective filter functions are needed to describe the lensing measurement:
 
 * "mono"
-      This format describes to a likelihood based on lens reconstruction from a single map with a single effective beam. The likelihood file contains the associated filter function F_l and beam B_l^{fid}, as well as the estimator normalization A_l.
+      This format is for likelihoods based on lens reconstruction from a single map with a single effective beam. The likelihood file contains the associated filter function F_l and beam B_l^{fid}, as well as the estimator normalization A_l.
+
+* "quad"
+      This format describes a completely general likelihood in which the four multiples of the trispectrum used to probe C_l^{pp} may each be sourced by a different map with a different effective beam. This format also allows the use of non-standard quadratic lensing estimators.

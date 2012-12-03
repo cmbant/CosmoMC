@@ -4,7 +4,7 @@ if (~isfield(root.last,'single'))
 root.last.single = load([root.distroot '_single.txt']);
 end
 colormap(p.colormap);
-scatter(root.last.single(:,param1.n+2),root.last.single(:,param2.n+2),3,root.last.single(:,param3.n+2));
+h=scatter(root.last.single(:,param1.n+2),root.last.single(:,param2.n+2),3,root.last.single(:,param3.n+2));
 xlabel(param1.label,'FontSize',p.lab_fontsize);
 ylabel(param2.label,'FontSize',p.lab_fontsize);
 set(gca,'FontSize',p.axes_fontsize); ax = gca;

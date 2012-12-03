@@ -1,5 +1,5 @@
 function [C, h]=getdist_solid_2D(p, root, param1, param2, col,contcols)
-%e.g. getdist_solid_2D(p,'lya',nnu,omegak,'-k','gc')
+%e.g. getdist_solid_2D(p,pl,nnu,omegak,'-k','gc')
 
 matname = [root.plotroot '_2D_' int2str(param1.n) '_' int2str(param2.n)];
 if ~exist(matname,'file')
@@ -20,7 +20,6 @@ tmp = load([root.plotroot '_p' int2str(param2.n) '.dat']);
 x2 = tmp(:,1);
 
 conts = load([matname '_cont']);
-contcols=[];
 shade=false;
 
 if nargin>4
