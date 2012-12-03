@@ -13,10 +13,19 @@
         type(clik_object) :: clikid
         integer(kind=4),dimension(6) :: clik_has_cl, clik_lmax
         integer :: clik_n,clik_ncl,clik_nnuis
+        character (len=256), dimension(:), pointer :: names
     contains
     procedure :: LogLike => clik_LnLike
     procedure :: clik_likeinit
+    procedure :: do_checks
     end type ClikLikelihood
+
+    type, extends(ClikLikelihood) :: ClikLensingLikelihood
+    integer(kind=4) lensing_lmax
+    contains
+    procedure :: LogLike => clik_lensing_LnLike
+    procedure :: clik_likeinit => clik_lensing_likeinit
+    end type ClikLensingLikelihood
 
     private
     integer, dimension(4) :: mapped_index
@@ -31,15 +40,22 @@
     Type(TIniFile) Ini
     character (LEN=Ini_max_string_len) :: fname, params, name
     integer i
-    Type(ClikLikelihood), pointer :: like
+    Class(ClikLikelihood), pointer :: like
+    logical is_lensing
+
 
     do i=1, Ini%L%Count
         if (Ini%L%Items(i)%P%Name(1:10)=='clik_data_') then
             name =Ini%L%Items(i)%P%Name
             fname = ReadIniFileName(Ini,name, NotFoundFail = .false.)
             if (MpiRank==0 .and. feedback > 0) &
-               print*,'Using clik with likelihood file ',trim(fname)
-            allocate(like)
+            print*,'Using clik with likelihood file ',trim(fname)
+            call clik_try_lensing(is_lensing, fname)
+            if (is_lensing) then
+                allocate(ClikLensingLikelihood::like)
+            else
+                allocate(ClikLikelihood::like)
+            end if
             call LikeList%Add(Like) 
             Like%dependent_params(1:num_theory_params)=.true.
             Like%LikelihoodType = 'CMB'
@@ -67,18 +83,11 @@
     character(LEN=*), intent(in) :: fname
     character (len=2),dimension(6) :: clnames
     integer i
-    character (len=256), dimension(:), pointer :: names
 
-    Print*,'Initialising clik...'
+    if (Feedback > 1 .and. MPIRank==0) Print*,'Initialising clik...'
     call clik_init(like%clikid,fname)
     call clik_get_has_cl(like%clikid,like%clik_has_cl)
     call clik_get_lmax(like%clikid,like%clik_lmax)
-
-    !Safeguard
-    if ((lmax .lt. maxval(like%clik_lmax)+500) .and. (lmax .lt. 4500)) then
-        print*,'lmax too low: it should at least be set to',min(4500,(maxval(like%clik_lmax)+500))
-        call MPIstop
-    end if
 
     !output Cls used
     clnames(1)='TT'
@@ -87,7 +96,7 @@
     clnames(4)='TE'
     clnames(5)='TB'
     clnames(6)='EB'
-    print*,'Likelihood uses the following Cls:'
+    if (Feedback > 1 .and. MPIRank==0) print*,'Likelihood uses the following Cls:'
     do i=1,6
         if (like%clik_has_cl(i) .eq. 1) then
             print*,'  ',trim(clnames(i)),' from l=0 to l=',like%clik_lmax(i)
@@ -96,18 +105,10 @@
 
     like%clik_ncl = sum(like%clik_lmax) + 6 
 
-    like%clik_nnuis = clik_get_extra_parameter_names(like%clikid,names)
-    if (like%clik_nnuis/= like%nuisance_params%nnames) &
-        call MpiStop('clik_nnuis has different number of nuisance parameters than .paramnames')
-    if (like%clik_nnuis .ne. 0) then
-        Print*,'Clik will run with the following nuisance parameters:'
-        do i=1,like%clik_nnuis
-            Print*,trim(names(i))
-        end do
-    end if
+    like%clik_nnuis = clik_get_extra_parameter_names(like%clikid,like%names)
+    call like%do_checks()
 
     !tidying up
-    if (like%clik_nnuis >0) deallocate(names)
 
     like%clik_n = like%clik_ncl + like%clik_nnuis
 
@@ -120,7 +121,7 @@
     real(mcp) DataParams(:)
     integer :: i,j ,l
     real(mcp) acl(lmax,num_cls_tot)
-    real(mcp) clik_cl_and_pars(like%clik_n)
+    real(dp) clik_cl_and_pars(like%clik_n)
 
     call ClsFromTheoryData(Theory, CMB, acl)
 
@@ -157,6 +158,86 @@
 
     end function clik_lnlike
 
+    subroutine do_checks(like)
+    class (ClikLikelihood) :: like
+    integer i
 
+    !Safeguard
+    if ((lmax < maxval(like%clik_lmax)+500) .and. (lmax < 4500)) then
+        print*,'lmax too low: it should at least be set to',min(4500,(maxval(like%clik_lmax)+500))
+        call MPIstop
+    end if
+
+    if (like%clik_nnuis/= like%nuisance_params%nnames) &
+    call MpiStop('clik_nnuis has different number of nuisance parameters than .paramnames')
+    if (like%clik_nnuis /= 0) then
+        Print*,'Clik will run with the following nuisance parameters:'
+        do i=1,like%clik_nnuis
+            Print*,trim(like%names(i))
+        end do
+    end if
+    if (like%clik_nnuis >0) deallocate(like%names)
+
+    end subroutine do_checks
+
+    subroutine clik_lensing_likeinit(like, fname)
+    class (ClikLensingLikelihood) :: like
+    character(LEN=*), intent(in) :: fname
+    integer i
+
+    if (Feedback > 1) Print*,'Initialising clik lensing...'
+    call clik_lensing_init(like%clikid,fname)
+    call clik_lensing_get_lmax(like%clikid,like%lensing_lmax)
+
+    like%clik_nnuis = clik_lensing_get_extra_parameter_names(like%clikid,like%names)
+    call like%do_checks()
+
+    like%clik_n = 2*(like%lensing_lmax+1) + like%clik_nnuis
+
+    end subroutine clik_lensing_likeinit
+
+    real(mcp) function clik_lensing_lnlike(like, CMB, Theory, DataParams) 
+    Class(ClikLensingLikelihood) :: like
+    Class (CMBParams) CMB
+    Class(TheoryPredictions) Theory
+    real(mcp) DataParams(:)
+    integer :: i,j ,l
+    real(mcp) acl(lmax,num_cls_tot)
+    real(dp) clik_cl_and_pars(like%clik_n)
+
+    call ClsFromTheoryData(Theory, CMB, acl)
+
+    !set C_l and parameter vector to zero initially
+    clik_cl_and_pars = 0.d0
+
+    j = 1
+
+    do l=0,like%lensing_lmax
+            !skip C_0 and C_1
+            if (l >= 2) then
+                clik_cl_and_pars(j) = acl(l,mapped_index(1))/real(l*(l+1),mcp)**2*twopi
+            end if
+            j = j+1
+    end do
+
+    do l=0,like%lensing_lmax
+            !skip C_0 and C_1
+            if (l >= 2) then
+                clik_cl_and_pars(j) = acl(l,num_cls+1)
+            end if
+            j = j+1
+    end do
+
+    do i=1,like%clik_nnuis
+            clik_cl_and_pars(j) = DataParams(i)
+            j = j+1
+    end do
+
+    !Get - ln like needed by CosmoMC
+    clik_lensing_lnlike = -1.d0*clik_lensing_compute(like%clikid,clik_cl_and_pars)
+
+    if (Feedback>1) Print*,trim(like%name)//' lnlike = ',clik_lensing_lnlike
+
+    end function clik_lensing_lnlike
 
     end module cliklike
