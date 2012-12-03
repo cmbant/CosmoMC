@@ -12,6 +12,8 @@ r_ps_spt_95x150  r_{PS}^{95/150}
 r_ps_spt_95x220  r_{PS}^{95/220}
 r_ps_150x220     r_{PS}^{150/220}
 cibr             r_{CIB}
+act_dust_s       A_{dust,s}
+act_dust_e       A_{dust,e}
 cal_acts_148     c_{ACTs}^{148}
 cal_acts_217     c_{ACTs}^{217}
 cal_acte_148     c_{ACTe}^{148}

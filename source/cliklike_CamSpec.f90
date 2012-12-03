@@ -38,22 +38,19 @@
     class(LikelihoodList) :: LikeList
     character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
       beamfilename, kszfilename,tszxcibfilename
-    Type(CamspecLikelihood), pointer :: CamLike
-#ifdef highL
-    Type(HighLLikelihood), pointer :: highLike
-#endif
+    Class(DataLikelihood), pointer :: Like
 
     print *,' using cliklike_CamSpec'
     use_CAMspec = Ini_Read_Logical_File(Ini,'use_CAMspec',.true.)
 
     if (use_CAMspec) then
-        allocate(CamLike)
-        call LikeList%Add(CamLike) 
-        CamLike%dependent_params(1:num_theory_params)=.true.
-        CamLike%LikelihoodType = 'CMB'
-        CamLike%name='CamSpec'
-        CamLike%version = CAMSpec_like_version
-        call CamLike%loadParamNames(trim(DataDir)//'camspec.paramnames')
+        allocate(CamSpecLikelihood::Like)
+        call LikeList%Add(Like) 
+        Like%dependent_params(1:num_theory_params)=.true.
+        Like%LikelihoodType = 'CMB'
+        Like%name='CamSpec'
+        Like%version = CAMSpec_like_version
+        call Like%loadParamNames(trim(DataDir)//'camspec.paramnames')
 
         likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
         sz143filename=ReadIniFileName(Ini,'sz143file',NotFoundFail = .true.)
@@ -68,15 +65,15 @@
 
     if (use_highL) then
 #ifdef highL
-        allocate(highLike)
-        call LikeList%Add(highLike) 
-        highLike%dependent_params(1:num_theory_params)=.true.
-        highLike%LikelihoodType = 'CMB'
-        highLike%name='highL'
-        highLike%version = CAMSpec_like_version
-        highLike%speed = 1
+        allocate(highLLikelihood::Like)
+        call LikeList%Add(Like) 
+        Like%dependent_params(1:num_theory_params)=.true.
+        Like%LikelihoodType = 'CMB'
+        Like%name='highL'
+        Like%version = CAMSpec_like_version
+        Like%speed = 1
 
-        call highLike%loadParamNames(trim(DataDir)//'highL.paramnames')
+        call Like%loadParamNames(trim(DataDir)//'highL.paramnames')
         
       if (lmax < tt_lmax_mc) call MpiStop('set lmax>=tt_lmax_mc in settings to use highL data')
       data_dir = CheckTrailingSlash(ReadIniFileName(Ini,'highL_data_dir'))
