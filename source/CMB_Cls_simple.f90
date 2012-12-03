@@ -14,6 +14,7 @@ module CMB_Cls
   implicit none
 
   logical :: CMB_lensing = .false.
+  logical :: use_lensing_potential = .false.
   logical :: use_nonlinear = .false.
   logical :: use_nonlinear_lensing = .false.
 
@@ -453,7 +454,10 @@ end subroutine GetNewPowerData
         end if
         
         if (HighAccuracyDefault) then
-         P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl,P%Max_eta_k)
+         P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl*AccuracyLevel,P%Max_eta_k)
+         if (CMB_Lensing .and. use_lensing_potential) P%Max_eta_k = max(P%Max_eta_k, 12000*AccuracyLevel)
+         !k_etamax=18000 give c_phi_phi accurate to sub-percent at L=1000, <4% at L=2000
+         !k_etamax=10000 is just < 1% at L<=500
         end if
 
         if (CMB_Lensing .and. use_nonlinear_lensing) then
@@ -502,8 +506,13 @@ end subroutine GetNewPowerData
    type(CAMBParams)  P 
         compute_tensors = Ini_Read_Logical('compute_tensors',.false.)
         if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
-        CMB_lensing = Ini_Read_Logical('CMB_lensing',.false.)
+        CMB_lensing = Ini_Read_Logical('CMB_lensing',CMB_lensing)
+        use_lensing_potential = Ini_Read_logical('use_lensing_potential',use_lensing_potential)
         if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
+        if (use_lensing_potential .and. num_cls_ext ==0) & 
+           call MpiStop('num_cls_ext should be > 0 to use_lensing_potential')
+        if (use_lensing_potential .and. .not. CMB_lensing) &
+           call MpiStop('use_lensing_potential must have CMB_lensing=T')
         lmax_computed_cl = Ini_Read_Int('lmax_computed_cl',lmax)
         if (lmax_computed_cl /= lmax) then
           if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
