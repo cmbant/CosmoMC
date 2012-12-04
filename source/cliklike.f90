@@ -170,7 +170,7 @@
 
     if (like%clik_nnuis/= like%nuisance_params%nnames) &
     call MpiStop('clik_nnuis has different number of nuisance parameters than .paramnames')
-    if (like%clik_nnuis /= 0) then
+    if (like%clik_nnuis /= 0 .and. MPIRank==0 .and. Feedback>0) then
         Print*,'Clik will run with the following nuisance parameters:'
         do i=1,like%clik_nnuis
             Print*,trim(like%names(i))
@@ -211,11 +211,10 @@
     clik_cl_and_pars = 0.d0
 
     j = 1
-
     do l=0,like%lensing_lmax
             !skip C_0 and C_1
             if (l >= 2) then
-                clik_cl_and_pars(j) = acl(l,mapped_index(1))/real(l*(l+1),mcp)**2*twopi
+                clik_cl_and_pars(j) = acl(l,num_cls+1)/real(l*(l+1),mcp)**2*twopi
             end if
             j = j+1
     end do
@@ -223,7 +222,7 @@
     do l=0,like%lensing_lmax
             !skip C_0 and C_1
             if (l >= 2) then
-                clik_cl_and_pars(j) = acl(l,num_cls+1)
+                clik_cl_and_pars(j) = acl(l,mapped_index(1))
             end if
             j = j+1
     end do
