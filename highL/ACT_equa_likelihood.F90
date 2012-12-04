@@ -125,17 +125,17 @@ contains
   END SUBROUTINE act_equa_likelihood_init
 
  ! ===================================================================================================================================
-  SUBROUTINE act_equa_likelihood_compute(cltt,amp_tsz,amp_ksz,xi,aps148,aps217,acib150,acib220,rps,rcib,cae1,cae2,like_acte)
+  SUBROUTINE act_equa_likelihood_compute(cltt,amp_tsz,amp_ksz,xi,aps148,aps217,acib150,acib220,rps,rcib,age,cae1,cae2,like_acte)
  ! ===================================================================================================================================
 
     IMPLICIT NONE
-    REAL(8), intent(in) :: cltt(2:*), amp_tsz,amp_ksz,xi,aps148,aps217,acib150,acib220,rps,rcib,cae1,cae2
+    REAL(8), intent(in) :: cltt(2:*), amp_tsz,amp_ksz,xi,aps148,aps217,acib150,acib220,rps,rcib,age,cae1,cae2
     REAL(8), intent(out) :: like_acte
     INTEGER :: lun,il,i,j,k
     REAL(8) :: cltt_temp(2:tt_lmax)
     REAL(8) :: btt_th(nspec,0:tbin-1)
     REAL(8) :: diffs(datap_e,1),tmp(datap_e,1),diffs2(1,datap_e),chi2(1,1)
-    REAL(8) :: f0,f1,f2,fcal_j,beta_c
+    REAL(8) :: f0,f1,f2,fcal_j,beta_c,beta_g
     REAL(8) :: f1_sz,f1_synch,f1_dust,f2_sz,f2_synch,f2_dust,fp2,fp3
     REAL(8) :: sz_corr, planckfunctionratio_corr,flux2tempratio_corr
     REAL(8) :: planckratiod1,planckratiod2,fluxtempd1,fluxtempd2
@@ -166,6 +166,7 @@ contains
     fluxtempd2 = flux2tempratio_corr
 
     beta_c = 2.2d0
+    beta_g = 3.8d0
 
     !----------------------------------------------------------------
     ! Calculate theory
@@ -177,18 +178,18 @@ contains
           if(j==1) then
              cl_src(il) = aps148*cl_p(il)+acib150*cl_c(il)*(f1_dust/fp2)**(2.0*beta_c)*(planckratiod1*fluxtempd1)**2.0 &
                           -2.0*sqrt(acib150*amp_tsz*4.796*f1*f1/f0/f0)*xi*cl_szcib(il)*(f1_dust/fp2)**beta_c*(planckratiod1*fluxtempd1)
-             cltt_temp(il) =cltt(il)+cl_src(il)+f1*f1/f0/f0*amp_tsz*cl_tsz(il)+amp_ksz*cl_ksz(il)
+             cltt_temp(il) =cltt(il)+cl_src(il)+f1*f1/f0/f0*amp_tsz*cl_tsz(il)+amp_ksz*cl_ksz(il)+age*cl_cir(il)*(f1_dust**2.0/fp2**2.0)**beta_g*fluxtempd1**2.0
           else if (j==2) then
              cl_src(il) = rps*sqrt(aps148*aps217)*cl_p(il)+rcib*sqrt(acib150*acib220)*cl_c(il)*(f1_dust/fp2)**beta_c*(planckratiod1*fluxtempd1)*(f2_dust/fp3)**beta_c*(planckratiod2*fluxtempd2)
-             cltt_temp(il) =cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)-sqrt(acib220*amp_tsz*4.796*f1*f1/f0/f0)*xi*cl_szcib(il)*(f2_dust/fp3)**beta_c*(planckratiod2*fluxtempd2)
+             cltt_temp(il) =cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)-sqrt(acib220*amp_tsz*4.796*f1*f1/f0/f0)*xi*cl_szcib(il)*(f2_dust/fp3)**beta_c*(planckratiod2*fluxtempd2)+age*cl_cir(il)*(f2_dust*f1_dust/fp2/fp3)**beta_g*fluxtempd2*fluxtempd1
           else if(j ==3) then
              cl_src(il) = aps217*cl_p(il)+acib220*cl_c(il)*(f2_dust/fp3)**(2.0*beta_c)*(planckratiod2*fluxtempd2)**2.0
-             cltt_temp(il) =cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)
+             cltt_temp(il) =cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)+age*cl_cir(il)*(f2_dust**2.0/fp3**2.0)**beta_g*fluxtempd2**2.0
           endif
           cltt_temp(il) = cltt_temp(il)/((dble(il)*(dble(il)+1.0))/(2*PI))
-      enddo  
+      enddo
       btt_th(j,0:tbin-1)=MATMUL(win_func(j,0:tbin-1,2:tt_lmax),cltt_temp(2:tt_lmax))
-    enddo 
+    enddo
  
     !--------------------------------------------------------------
     ! Calibrate theory

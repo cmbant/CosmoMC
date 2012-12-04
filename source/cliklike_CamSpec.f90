@@ -180,6 +180,7 @@
     real(dp) a_ps_act_148,a_ps_act_217,a_ps_spt_95,a_ps_spt_150,a_ps_spt_220, &
        r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220, &
        cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220
+    real(dp) act_dust_s,act_dust_e
     
     !asz is already removed, start at second feq param
     A_sz_143=freq_params(1)
@@ -196,13 +197,15 @@
     r_ps_spt_95x220=freq_params(12)
     r_ps_150x220=freq_params(13)
     r_cib=freq_params(14)
-    cal_acts_148  =freq_params(15)
-    cal_acts_217=freq_params(16)
-    cal_acte_148=freq_params(17)
-    cal_acte_217 =freq_params(18)
-    cal_spt_95 =freq_params(19)
-    cal_spt_150 =freq_params(20)
-    cal_spt_220 =freq_params(21)
+    act_dust_s = freq_params(15)
+    act_dust_e = freq_params(16)
+    cal_acts_148  =freq_params(17)
+    cal_acts_217=freq_params(18)
+    cal_acte_148=freq_params(19)
+    cal_acte_217 =freq_params(20)
+    cal_spt_95 =freq_params(21)
+    cal_spt_150 =freq_params(22)
+    cal_spt_220 =freq_params(23)
 
     do l =2, tt_lmax
      if (l.le.tt_lmax_mc) then
@@ -214,7 +217,7 @@
 
     like_tot = 0.d0
     call highell_likelihood_compute(cl_tt,A_sz_143,A_ksz,xi,a_ps_act_148,a_ps_act_217,a_ps_spt_95,a_ps_spt_150,a_ps_spt_220, &
-       A_cib_143,A_cib_217,  r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220,r_cib, &
+       A_cib_143,A_cib_217,  r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220,r_cib,act_dust_s,act_dust_e, &
        cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220,like_tot)
     clik_lnlike_highL = like_tot
 

@@ -5,7 +5,7 @@ MODULE foregrounds_loading
   use highell_subroutines
 
   logical :: initialise_foregrounds=.true.
-  REAL(8), dimension (:), allocatable :: cl_tsz,cl_ksz,cl_szcib,cl_cir,cl_p,cl_c
+  REAL(8), dimension (:), allocatable :: cl_tsz,cl_ksz,cl_szcib,cl_cir,cl_cirspt,cl_p,cl_c
   public :: foregrounds_init
 
    contains
@@ -19,7 +19,7 @@ MODULE foregrounds_loading
     REAL(8)  :: dummy
 
     allocate(cl_tsz(2:tt_lmax),cl_ksz(2:tt_lmax),cl_szcib(2:tt_lmax))
-    allocate(cl_p(2:tt_lmax),cl_cir(2:tt_lmax),cl_c(2:tt_lmax))
+    allocate(cl_p(2:tt_lmax),cl_cir(2:tt_lmax),cl_cirspt(2:tt_lmax),cl_c(2:tt_lmax))
 
     
     call get_free_lun(lun)
@@ -38,7 +38,7 @@ MODULE foregrounds_loading
     close(lun)
     
     do il=2,tt_lmax
-       cl_p(il)=(il/3000.d0)**2 
+       cl_p(il)=(il/3000.d0)**2.0
     enddo
 
     do il=2,tt_lmax
@@ -54,7 +54,11 @@ MODULE foregrounds_loading
     close(lun)
 
     do il=2,tt_lmax
-       cl_cir(il)=(il/3000.d0)**(-1.2)
+       cl_cir(il)=(il/3000.d0)**(-0.7)
+    enddo
+
+    do il=2,tt_lmax
+       cl_cirspt(il)=(il/3000.d0)**(-1.2)
     enddo
 
     initialise_foregrounds=.false.

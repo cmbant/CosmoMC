@@ -171,25 +171,25 @@ MODULE spt_reichardt_likelihood ! Parameters are defined in options module
     do j=1,nspec_r
        cltt_temp(2:tt_lmax)=0.d0
        do il=2,tt_lmax
-          if(j==1) then 
+          if(j==1) then
              cl_src(il) = aps95*cl_p(il)
-             cltt_temp(il) = cltt(il)+cl_src(il)+f1*f1/f0/f0*amp_tsz*cl_tsz(il)+amp_ksz*cl_ksz(il)
+             cltt_temp(il) = cltt(il)+cl_src(il)+f1*f1/f0/f0*amp_tsz*cl_tsz(il)+amp_ksz*cl_ksz(il)+gc1*cl_cirspt(il)
            else if (j==2) then
              cl_src(il) = rps0*sqrt(aps95*aps150)*cl_p(il)
-             cltt_temp(il) = cltt(il)+cl_src(il)+f1/f0*f2/f0*amp_tsz*cl_tsz(il)+amp_ksz*cl_ksz(il)-sqrt(acib150*amp_tsz*4.796*f1*f1/f0/f0)*xi*cl_szcib(il)*(f2_dust/fp2)**beta_c*(planckratiod2*fluxtempd2)
+             cltt_temp(il) = cltt(il)+cl_src(il)+f1/f0*f2/f0*amp_tsz*cl_tsz(il)+amp_ksz*cl_ksz(il)-sqrt(acib150*amp_tsz*4.796*f1*f1/f0/f0)*xi*cl_szcib(il)*(f2_dust/fp2)**beta_c*(planckratiod2*fluxtempd2)+sqrt(gc2*gc1)*cl_cirspt(il)
            else if (j==3) then
              cl_src(il) = rps1*sqrt(aps95*aps220)*cl_p(il)
-             cltt_temp(il) = cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)-sqrt(acib220*amp_tsz*4.796*f1*f1/f0/f0)*xi*cl_szcib(il)*(f3_dust/fp3)**beta_c*(planckratiod3*fluxtempd3)
+             cltt_temp(il) = cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)-sqrt(acib220*amp_tsz*4.796*f1*f1/f0/f0)*xi*cl_szcib(il)*(f3_dust/fp3)**beta_c*(planckratiod3*fluxtempd3)+sqrt(gc1*gc3)*cl_cirspt(il)
            else if (j==4) then
              cl_src(il) = aps150*cl_p(il)+acib150*cl_c(il)*(f2_dust/fp2)**(2.0*beta_c)*(planckratiod2*fluxtempd2)**2.0 &
                           -2.0*sqrt(acib150*amp_tsz*4.796*f2*f2/f0/f0)*xi*cl_szcib(il)*(f2_dust/fp2)**beta_c*(planckratiod2*fluxtempd2)
-             cltt_temp(il) =cltt(il)+cl_src(il)+f2*f2/f0/f0*amp_tsz*cl_tsz(il)+amp_ksz*cl_ksz(il)
+             cltt_temp(il) =cltt(il)+cl_src(il)+f2*f2/f0/f0*amp_tsz*cl_tsz(il)+amp_ksz*cl_ksz(il)+gc2*cl_cirspt(il)
           else if (j==5) then
              cl_src(il) = rps*sqrt(aps150*aps220)*cl_p(il)+rcib*sqrt(acib150*acib220)*cl_c(il)*(f2_dust/fp2)**beta_c*(planckratiod2*fluxtempd2)*(f3_dust/fp3)**beta_c*(planckratiod3*fluxtempd3)
-             cltt_temp(il) =cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)-sqrt(acib220*amp_tsz*4.796*f2*f2/f0/f0)*xi*cl_szcib(il)*(f3_dust/fp3)**beta_c*(planckratiod3*fluxtempd3)
+             cltt_temp(il) =cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)-sqrt(acib220*amp_tsz*4.796*f2*f2/f0/f0)*xi*cl_szcib(il)*(f3_dust/fp3)**beta_c*(planckratiod3*fluxtempd3)+sqrt(gc2*gc3)*cl_cirspt(il)
           else if(j ==6) then
              cl_src(il) = aps220*cl_p(il)+acib220*cl_c(il)*(f3_dust/fp3)**(2.0*beta_c)*(planckratiod3*fluxtempd3)**2.0
-             cltt_temp(il) =cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)
+             cltt_temp(il) =cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)+gc3*cl_cirspt(il)
           endif
        enddo
      btt_th(j,0:bmax0_r-1)=MATMUL(cltt_temp(2:tt_lmax),win_func(2:tt_lmax,0:bmax0_r-1,j))
