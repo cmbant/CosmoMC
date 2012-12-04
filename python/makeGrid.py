@@ -84,7 +84,7 @@ for jobItem in batch.items(wantSubItems=False):
             ini.saveFile(imp.iniFile())
 
 
-comment = 'Done... to run do: python python/runbatch.py ' + batchPath
+comment = 'Done... to run do: python python/runbatch.py ' + batchPath + ' --noimportance'
 if cosmomcAction == 3 or cosmomcAction == 2: comment += ' --nodes 0'
 print comment
 comment = 'for importance sampled: python python/runbatch.py ' + batchPath + ' --importance'
