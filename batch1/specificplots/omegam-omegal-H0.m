@@ -3,8 +3,8 @@
 
 p=getdist_defaults();
 
-pl=base_omegak_planck_CAMspec;
-pl_bao=base_omegak_planck_CAMspec_BAO;
+pl=base_omegak_planck_CAMspec_lowl_lowLike;
+pl_bao=base_omegak_planck_CAMspec_lowl_lowLike_BAO;
 
 getdist_3D(p,pl,pl.omegam,pl.omegal,pl.H0);
 

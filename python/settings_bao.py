@@ -6,14 +6,15 @@ extparams = [['omegak'], ['nnu']]
 planck = 'planck_CAMspec'
 highL = 'highL'
 BAO = 'BAO'
+lowl = 'lowl'
+lowLike = 'lowLike'
+lensing = 'lensing'
 
 
 datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
-
-datasets.append([[planck, BAO], ['CAMspec_defaults.ini', 'BAO.ini']])
-datasets.append([[planck, highL, BAO], ['CAMspec_ACTSPT_defaults.ini', 'BAO.ini']])
-
+datasets.append([[planck, lowl, lowLike, BAO], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini','BAO.ini']])
+datasets.append([[planck, lowl, lowLike, highL, BAO], ['CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini','BAO.ini']])
 
 importanceRuns = []
 
@@ -44,3 +45,5 @@ defaults = ['common_batch1.ini']
 
 importanceDefaults = ['importance_sampling.ini']
 
+covrenames = dict()
+covrenames['planck_CAMspec_lowl_lowLike'] = 'planck_CAMspec'
