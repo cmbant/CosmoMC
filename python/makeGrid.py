@@ -53,7 +53,7 @@ for jobItem in batch.items(wantSubItems=False):
             ini.params['propose_matrix'] = covmat
         else:
             hasCov = False
-            for (new, old) in settings.covrenames:
+            for new, old in settings.covrenames.items():
                 covmat = batch.basePath + 'planck_covmats/' + jobItem.name.replace(new, old) + '.covmat'
                 if os.path.exists(covmat):
                     ini.params['propose_matrix'] = covmat
