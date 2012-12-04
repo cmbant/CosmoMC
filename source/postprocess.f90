@@ -179,7 +179,7 @@
 
     if (PostParams%redo_like .or. PostParams%redo_add) then
 
-    if (Use_LSS .and. newTheory%sigma_8==0) &
+    if (Use_LSS .and. Params%Theory%sigma_8==0) &
     call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
 
     if (PostParams%redo_add) then
