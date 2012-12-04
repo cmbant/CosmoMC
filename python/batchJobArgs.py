@@ -40,7 +40,7 @@ class batchArgs():
         def dataMatches(self, jobItem):
             if self.args.datatag is None:
                 if self.args.data is None: return True
-                return self.args.data in jobItem.data_set
+                return self.args.data in jobItem.data_set[0]
             else:
                 return jobItem.datatag == self.args.datatag
 
