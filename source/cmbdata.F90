@@ -1066,7 +1066,7 @@ contains
            SZScale = Ini_read_Real_File(Ini,numcat('cmb_dataset_SZ_scale',i),1.0)
            call ReadSZTemplate(like%dataset, SZTemplate,SZScale)
            !like%dependent_params(index_freq) = .true.
-           call like%loadParamNames(DataDir//'WMAP.paramnames')
+           call like%loadParamNames(trim(DataDir)//'WMAP.paramnames')
           end if
 
          end do
