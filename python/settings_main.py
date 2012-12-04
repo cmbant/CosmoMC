@@ -49,6 +49,9 @@ newCovmat = True
 
 start_at_bestfit = True
 
+covrenames = dict()
+covrenames['planck_CAMspec_lowl_lowLike'] = 'planck_CAMspec'
+
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
 
