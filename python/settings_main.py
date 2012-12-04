@@ -1,21 +1,28 @@
 # sample settings for a particular grid run
 
 # sets of parameters to vary in addition to baseline
-extparams = [[], ['omegak', 'mnu'], ['nrun', 'r'], ['omegak'], ['nnu'], ['nrun']]
+extparams = [[], ['omegak'], ['nrun', 'r'], ['mnu'], ['nnu'], ['nrun'], ['Alens']]
 
 # dataset names
 planck = 'planck_CAMspec'
+lowl = 'lowl'
+lowLike = 'lowLike'
+lensing = 'lensing'
 highL = 'highL'
+WMAP = 'WMAP'
 BAO = 'BAO'
 HST = 'HST'
 
 datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
-datasets.append([[planck], ['CAMspec_defaults.ini']])
-datasets.append([[planck, highL], ['CAMspec_ACTSPT_defaults.ini']])
+datasets.append([[planck, lowl, lowLike], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini']])
+datasets.append([[planck, lowl], ['CAMspec_defaults.ini', 'lowl.ini']])
+datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini']])
+datasets.append([[WMAP], ['WMAP.ini']])
 
 # add importance name tags, and list of specific .ini files to include (in batch1/)
 importanceRuns = []
+importanceRuns.append([lensing, ['lensing.ini']])
 importanceRuns.append([BAO, ['BAO.ini']])
 importanceRuns.append([HST, ['HST.ini']])
 
@@ -35,6 +42,7 @@ params['wa'] = '0 -2 2 0.3 0.3'
 
 skip = []
 skip.append('base_omegak_mnu_planck_CAMspec_highL')
+skip.append('WMAP_lensing')
 
 # if covmats are unreliable, so start learning ASAP
 newCovmat = True
