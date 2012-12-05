@@ -83,10 +83,10 @@ for jobItem in batch.items(wantSubItems=False):
                     ini.params['file_root'] = imp.chainRoot
                 if minimize:
                     ini.params['action'] = 2
-                    ini.defaults.append(jobItem.iniFile('_minimize'))
-                else:
-                    ini.defaults.append(jobItem.iniFile())
-                ini.saveFile(imp.iniFile())
+                    variant = '_minimize'
+                else: variant = ''
+                ini.defaults.append(jobItem.iniFile())
+                ini.saveFile(imp.iniFile(variant))
                 if cosmomcAction != 0: break
 
 
@@ -96,5 +96,5 @@ print comment
 comment = 'for importance sampled: python python/runbatch.py ' + batchPath + ' --importance'
 if cosmomcAction == 3 or cosmomcAction == 2: comment += ' --nodes 0'
 print comment
-comment = 'for best-fit for importance sampled: python python/runbatch.py ' + batchPath + ' --variant minimize --importance  --nodes 0'
+comment = 'for best-fit for importance sampled: python python/runbatch.py ' + batchPath + ' --importance_minimize --importance  --nodes 0'
 print comment
