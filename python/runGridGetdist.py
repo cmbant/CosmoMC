@@ -49,7 +49,7 @@ if not args.plots and not args.specific:
             fname = ini_dir + jobItem.name + '.ini'
             ini.saveFile(fname)
             if not args.norun:
-                if os.path.exists(jobItem.chainRoot + '_1.txt'):
+                if jobItem.chainExists():
                     print "running: " + fname
                     os.system('./getdist ' + fname)
                 else: print "Chains do not exist yet: " + jobItem.chainRoot

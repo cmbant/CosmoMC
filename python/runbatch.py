@@ -10,7 +10,6 @@ Opts.parser.add_argument('--subitems', action='store_true')
 
 (batch, args) = Opts.parseForBatch()
 
-
 def submitJob(ini):
         command = 'perl ' + args.script + ' ' + ini + ' ' + str(args.nodes)
         print 'Submitting...' + command
@@ -18,5 +17,5 @@ def submitJob(ini):
 
 
 for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
-        if not args.notexist or not os.path.exists(jobItem.chainRoot + '_1.txt'):
+        if not args.notexist or not jobItem.chainExists():
             submitJob(jobItem.iniFile())

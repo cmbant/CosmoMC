@@ -65,6 +65,10 @@ class jobItem:
         outfile.write("\n".join(f))
         outfile.close()
 
+    def chainExists(self):
+        fname = self.chainRoot + '_1.txt'
+        return os.path.exists(fname) and os.path.getsize(fname) > 0
+
 
 
 class batchJob:

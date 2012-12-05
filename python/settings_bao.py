@@ -13,8 +13,8 @@ lensing = 'lensing'
 
 datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
-datasets.append([[planck, lowl, lowLike, BAO], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini','BAO.ini']])
-datasets.append([[planck, lowl, lowLike, highL, BAO], ['CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini','BAO.ini']])
+datasets.append([[planck, lowl, lowLike, BAO], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'BAO.ini']])
+datasets.append([[planck, lowl, lowLike, highL, BAO], ['CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini', 'BAO.ini']])
 
 importanceRuns = []
 
@@ -26,7 +26,7 @@ params['w'] = '-1 -3 -0.3 0.02 0.02'
 params['nnu'] = '3.046 0 10 0.05 0.05'
 params['nrun'] = '0 -1 1 0.001 0.001'
 params['r'] = '0 0 2 0.03 0.03'
-params['Alens'] = '0 0 10 0.05 0.05'
+params['Alens'] = '1 0 10 0.05 0.05'
 params['yhe'] = '0.245 0.1 0.5 0.006 0.006'
 params['alpha1'] = '0 -1 1 0.0003 0.0003'
 params['deltazrei'] = '0.5 0.1 3 0.3 0.3'
