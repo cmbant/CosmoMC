@@ -1584,7 +1584,7 @@ subroutine CreateOpenTxtFile(aname, aunit, append)
  end subroutine CreateTxtFile
 
  
- subroutine c(aname, aunit,mode)
+ subroutine CreateFile(aname, aunit,mode)
     character(LEN=*), intent(IN) :: aname,mode
    integer, intent(in) :: aunit
 
