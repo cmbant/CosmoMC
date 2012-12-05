@@ -70,18 +70,24 @@ for jobItem in batch.items(wantSubItems=False):
 # add ini files for importance sampling runs
         for imp in jobItem.importanceJobs():
             if batch.hasName(imp.name.replace('_post', '')): raise Exception('importance sampling something you already have?')
-            ini = iniFile.iniFile()
-            for inc in imp.importaceSettings:
-                ini.includes.append(batch.commonPath + inc)
-            if cosmomcAction == 0:
-                for deffile in settings.importanceDefaults:
-                    ini.defaults.append(batch.commonPath + deffile)
-                ini.params['redo_outroot'] = imp.chainRoot
-                ini.params['action'] = 1
-            else:
-                ini.params['file_root'] = imp.chainRoot
-            ini.defaults.append(jobItem.iniFile())
-            ini.saveFile(imp.iniFile())
+            for minimize in (False, True):
+                ini = iniFile.iniFile()
+                for inc in imp.importaceSettings:
+                    ini.includes.append(batch.commonPath + inc)
+                if cosmomcAction == 0 and not minimize:
+                    for deffile in settings.importanceDefaults:
+                        ini.defaults.append(batch.commonPath + deffile)
+                    ini.params['redo_outroot'] = imp.chainRoot
+                    ini.params['action'] = 1
+                else:
+                    ini.params['file_root'] = imp.chainRoot
+                if minimize:
+                    ini.params['action'] = 2
+                    ini.defaults.append(jobItem.iniFile('_minimize'))
+                else:
+                    ini.defaults.append(jobItem.iniFile())
+                ini.saveFile(imp.iniFile())
+                if cosmomcAction != 0: break
 
 
 comment = 'Done... to run do: python python/runbatch.py ' + batchPath + ' --noimportance'
@@ -90,4 +96,5 @@ print comment
 comment = 'for importance sampled: python python/runbatch.py ' + batchPath + ' --importance'
 if cosmomcAction == 3 or cosmomcAction == 2: comment += ' --nodes 0'
 print comment
-
+comment = 'for best-fit for importance sampled: python python/runbatch.py ' + batchPath + ' --variant minimize --importance  --nodes 0'
+print comment

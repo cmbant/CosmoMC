@@ -6,10 +6,11 @@ except:
 
 class batchArgs():
 
-        def __init__(self, desc='', importance=True, noBatchPath=False):
+        def __init__(self, desc='', importance=True, noBatchPath=False, notExist=False):
             self.parser = argparse.ArgumentParser(description=desc)
             if not noBatchPath: self.parser.add_argument('batchPath')
             self.importanceParameter = importance;
+            self.notExist = notExist
 
         def parseForBatch(self):
             if self.importanceParameter:
@@ -22,7 +23,7 @@ class batchArgs():
             self.parser.add_argument('--datatag', default=None)
             self.parser.add_argument('--skip_data', default=None)
             self.parser.add_argument('--skip_param', default=None)
-
+            if self.notExist: self.parser.add_argument('--notexist', action='store_true')
 
             self.args = self.parser.parse_args()
             self.batch = batchJob.readobject(self.args.batchPath)

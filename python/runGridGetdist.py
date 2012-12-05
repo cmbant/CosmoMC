@@ -4,7 +4,7 @@ def checkDir(fname):
     if not os.path.exists(fname): os.makedirs(fname)
 
 
-Opts = batchJobArgs.batchArgs('Run getdist over the grid of models')
+Opts = batchJobArgs.batchArgs('Run getdist over the grid of models', notExist=True)
 Opts.parser.add_argument('--plots', action='store_true')
 Opts.parser.add_argument('--norun', action='store_true')
 Opts.parser.add_argument('--noplots', action='store_true')
@@ -48,7 +48,7 @@ if not args.plots and not args.specific:
                 ini.params['compare1'] = jobItem.parent.chainRoot
             fname = ini_dir + jobItem.name + '.ini'
             ini.saveFile(fname)
-            if not args.norun:
+            if not args.norun and (not args.notexist or not jobItem.getDistExists()):
                 if jobItem.chainExists():
                     print "running: " + fname
                     os.system('./getdist ' + fname)

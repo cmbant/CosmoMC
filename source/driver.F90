@@ -303,7 +303,7 @@ program SolveCosmology
           if (MpiRank==0) then
             write(*,*) 'finding best fit point...'
             Params%P(params_used) = Scales%center(params_used)
-            bestfit_loglike = FindBestFit(Params,max_like_radius,2000)
+            bestfit_loglike = FindBestFit(Params,max_like_radius,4000)
             if (Feedback >0) write(*,*) 'Best-fit results: '
             call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
             if (use_CMB) call WriteBestFitData(trim(baseroot)//'.bestfit_cl',Params)

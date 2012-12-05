@@ -32,11 +32,10 @@ class jobItem:
         self.isImportanceJob = False
         self.importanceItems = []
 
-    def iniFile(self):
+    def iniFile(self, variant=''):
         if not self.isImportanceJob:
-            return self.batchPath + 'iniFiles/' + self.name + '.ini'
-        else: return self.batchPath + 'postIniFiles/' + self.name + '.ini'
-
+            return self.batchPath + 'iniFiles/' + self.name + variant + '.ini'
+        else: return self.batchPath + 'postIniFiles/' + self.name + variant + '.ini'
 
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
@@ -69,6 +68,8 @@ class jobItem:
         fname = self.chainRoot + '_1.txt'
         return os.path.exists(fname) and os.path.getsize(fname) > 0
 
+    def getDistExists(self):
+        return os.path.exists(self.distRoot + '.margestats')
 
 
 class batchJob:
