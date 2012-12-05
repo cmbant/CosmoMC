@@ -1241,7 +1241,7 @@
 
   function numcat(S, num)
    character(LEN=*) S
-   character(LEN=120) numcat, numstr
+   character(LEN=1024) numcat, numstr
    integer num
 
    write (numstr, *) num
@@ -1443,7 +1443,7 @@
 
  function ExtractFileName(aname)
     character(LEN=*), intent(IN) :: aname
-    character(LEN=120) ExtractFileName
+    character(LEN=1024) ExtractFileName
     integer len, i
 
     len = len_trim(aname)
@@ -1584,7 +1584,7 @@ subroutine CreateOpenTxtFile(aname, aunit, append)
  end subroutine CreateTxtFile
 
  
- subroutine CreateFile(aname, aunit,mode)
+ subroutine c(aname, aunit,mode)
     character(LEN=*), intent(IN) :: aname,mode
    integer, intent(in) :: aunit
 

@@ -4,7 +4,7 @@
 p=getdist_defaults();
 
 pl=base_planck_CAMspec_lowl_lowLike;
-pl_bao=base_planck_CAMspec_post__lowl_lowLike_post_BAO;
+pl_bao=base_planck_CAMspec_post_lowl_lowLike_post_BAO;
 
 %getdist_3D(p,pl,pl.omegam,pl.H0,pl.ns, pl_bao);
 %getdist_print(p,'omegam-H0-ns_planck_bao',1,1);

@@ -20,6 +20,9 @@ class batchArgs():
             self.parser.add_argument('--paramtag', default=None)
             self.parser.add_argument('--data', default=None)
             self.parser.add_argument('--datatag', default=None)
+            self.parser.add_argument('--skip_data', default=None)
+            self.parser.add_argument('--skip_param', default=None)
+
 
             self.args = self.parser.parse_args()
             self.batch = batchJob.readobject(self.args.batchPath)
@@ -39,14 +42,16 @@ class batchArgs():
 
         def dataMatches(self, jobItem):
             if self.args.datatag is None:
-                if self.args.data is None: return True
+                if self.args.data is None:
+                    return self.args.skip_data is None or not self.args.skip_data in jobItem.data_set[0]
                 return self.args.data in jobItem.data_set[0]
             else:
                 return jobItem.datatag == self.args.datatag
 
         def paramsMatch(self, jobItem):
             if self.args.paramtag is None:
-                if self.args.param is None: return True
+                if self.args.param is None:
+                    return self.args.skip_param is None or not self.args.skip_param in jobItem.param_set
                 for pat in self.args.param:
                     if pat in jobItem.param_set: return True
                 return False

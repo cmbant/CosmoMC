@@ -77,7 +77,7 @@
     real(mcp) weight_min, weight_max, mult_sum, mult_ratio, mult_max,weight
     real(mcp) max_like, max_truelike
     integer error,num, debug
-    character (LEN=120) :: post_root
+    character (LEN=Ini_max_string_len) :: post_root
     integer infile_handle, outdata_handle
     Type (ParamSet) :: Params
     logical :: has_likes(DataLikelihoods%Count)

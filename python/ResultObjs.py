@@ -50,33 +50,38 @@ def numberFigs(number, sigfig):
 
 class resultTable():
 
-    def __init__(self, ncol, caption='', results=None, numResults=1, border='||', position='!ht'):
+    def __init__(self, ncol, caption='', results=None, compareNum=0, numResults=1, border='||', position='!ht'):
         self.lines = []
         self.caption = caption
         self.sig_figs = 4
         self.numResults = numResults
+        self.compareNum = compareNum
         self.ncol = ncol
         self.results = results
         self.boldBaseParameters = True
         self.lines.append('\\begin{table}[' + position + ']')
         self.lines.append('\\begin{tabular} {' + (border + " l " + "| c"* numResults) * ncol + border + '}')
+        self.endofrow = '\\\\'
+        self.paramText = 'Parameter'
+        self.bestFitText = 'Best fit'
         self.addLine()
 
     def addLine(self):
         return self.lines.append('\\hline')
 
     def margeHeaderRow(self):
-        res = '& Parameter & '
-        if self.numResults > 1: res += 'Best fit & '
-        res += str(round(float(self.results.limits[1]) * 100)) + '\\% limits'
-        self.lines.append((res * self.ncol)[1:] + '\\\\')
+        res = '& ' + self.paramText + ' & '
+        paramHead = ''
+        if self.numResults > 1: paramHead += self.bestFitText + ' & '
+        paramHead += str(round(float(self.results.limits[1]) * 100)) + '\\% limits'
+        res = res + paramHead * (self.compareNum + 1)
+        self.lines.append((res * self.ncol)[1:] + self.endofrow)
         self.addLine()
         self.addLine()
-
 
     def addBestFitParamRow(self, row):
         line = " & ".join(self.bestFitParamTex(param) for param in row)
-        self.lines.append(line + ' & & ' * (self.ncol - len(row)) + '\\\\')
+        self.lines.append(line + ' & & ' * (self.ncol - len(row)) + self.endofrow)
         self.addLine()
 
     def formatNumber(self, value, sig_figs=None, wantSign=False):
@@ -113,7 +118,13 @@ class resultTable():
         res = self.formatNumber(param.best_fit)
         return self.labelAndResult(param, res, True)
 
-    def margeTex(self, param):
+    def paramLabelColumn(self, param):
+        return  self.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
+
+    def margeTexRow(self, param):
+        return self.paramLabelColumn(param) + self.margeAndBestFitTexParam(param)
+
+    def margeAndBestFitTexParam(self, param):
         lims = param.limits[1]
         sf = 3
         if param.twotail:
@@ -124,14 +135,13 @@ class resultTable():
         elif param.lim_top and not param.lim_bot:
             res = '> ' + self.formatNumber(lims[0], sf)
         else: res = '---'
-        meanResult = self.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
+        paramResultText = ''
         if self.numResults == 2:  # add best fit too
-            range = (lims[1] - lims[0]) / 10
-            bres = self.namesigFigs(param.best_fit, range, -range)[0]
-            meanResult += self.textAsColumn(bres, True, separator=True)
-        meanResult += self.textAsColumn(res, res != '---')
-
-        return meanResult
+            rangew = (lims[1] - lims[0]) / 10
+            bres = self.namesigFigs(param.best_fit, rangew, -rangew)[0]
+            paramResultText += self.textAsColumn(bres, True, separator=True)
+        paramResultText += self.textAsColumn(res, res != '---')
+        return paramResultText
 
 
     def namesigFigs(self, value, limplus, limminus):
@@ -161,7 +171,7 @@ class resultTable():
         return (res, plus_str, minus_str)
 
     def addMargeStatParamRow(self, row):
-        line = " & ".join(self.margeTex(param) for param in row)
+        line = " & ".join(self.margeTexRow(param) for param in row)
         self.lines.append(line + ' & ' * ((1 + self.numResults) * (self.ncol - len(row))) + '\\\\')
         self.lines.append('\\hline')
 
@@ -182,7 +192,7 @@ class resultTable():
 
 class paramResults(paramNames.paramList):
 
-    def resultTable(self, ncol, caption=''):
+    def resultTable(self, ncol, caption='', compareResults=[]):
         numrow = self.numParams() / ncol
         if self.numParams() % ncol != 0: numrow += 1
         rows = []
@@ -192,7 +202,8 @@ class paramResults(paramNames.paramList):
             for i in range(numrow * col, min(numrow * (col + 1), self.numParams())):
                 rows[i - numrow * col].append(self.names[i]);
         hasBestFit = hasattr(self, 'logLike')
-        r = resultTable(ncol, caption, self, numResults=(1, 2)[hasBestFit])
+        r = resultTable(ncol, caption, self, compareNum=len(compareResults) , numResults=(1, 2)[hasBestFit])
+
         self.addHeader(r)
         for row in rows: self.addParamTableRow(r, row)
         r.endTable()
@@ -208,10 +219,24 @@ class bestFit(paramResults):
         self.logLike = float(first[1].strip())
         isFixed = False
         isDerived = False
-        for line in textFileLines[2:]:
+        self.chiSquareds = []
+        chunks = 0
+        for ix in range(2, len(textFileLines)):
+            line = textFileLines[ix]
             if len(line.strip()) == 0:
+                chunks += 1
                 isFixed = not isFixed
                 isDerived = True
+                if chunks == 3:
+                    if ix + 2 >= len(textFileLines): break
+                    for likePart in textFileLines[ix + 2:]:
+                        if len(likePart.strip()) != 0:
+                            (chisq, name) = [s.strip() for s in likePart.split(None, 2)][1:]
+                            name = [s.strip() for s in name.split(':', 1)]
+                            if len(name) > 1:
+                                (kind, name) = name
+                            else: kind = ''
+                            self.chiSquareds.append((kind, name, float(chisq)))
                 continue
             if not isFixed:
                 param = paramNames.paramInfo()
@@ -220,6 +245,13 @@ class bestFit(paramResults):
                 param.number = int(param.number)
                 param.best_fit = float(param.best_fit)
                 self.names.append(param)
+
+    def sortedChiSquareds(self):
+        likes = dict()
+        for (kind, name, chisq) in self.chiSquareds:
+            if not kind in likes: likes[kind] = []
+            likes[kind].append((name, chisq))
+        return sorted(likes.iteritems())
 
     def addParamTableRow(self, resultTable, row):
         resultTable.addBestFitParamRow(row)
@@ -283,7 +315,4 @@ class convergeStats(paramResults):
 
     def worstR(self):
         return self.R_eigs[len(self.R_eigs) - 1]
-
-
-
 
