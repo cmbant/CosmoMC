@@ -109,7 +109,7 @@ module MCSamples
         real(mcp), dimension(:,:), allocatable :: TheBins, bins2D, bin2Dlikes, bin2Dmax
         real(mcp) meanlike, maxlike, maxmult
         logical BW,do_shading
-        character(LEN=80) ComparePlots(20)
+        character(LEN=Ini_max_string_len), allocatable :: ComparePlots(:)
         integer Num_ComparePlots
         logical ::   prob_label = .false.      
             
@@ -1775,6 +1775,7 @@ program GetDist
         cool = Ini_Read_Real('cool',1.)
 
         Num_ComparePlots = Ini_Read_Int('compare_num',0)
+        allocate(ComparePlots(num_comparePlots))
         do ix = 1, Num_ComparePlots
            ComparePlots(ix) = ExtractFileName(Ini_Read_String(numcat('compare',ix)))
         end do
