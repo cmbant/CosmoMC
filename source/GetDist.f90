@@ -436,8 +436,8 @@ contains
                else
                   try_t = (try_b+try_t)/2
                end if
-               if (try == lasttry &
-                 .and. abs((try_b - try_t)/(try_b + try_t)) < 0.05) exit
+               if (try == lasttry .and. (abs(try_b + try_t)< 1e-10_mcp &
+                 .or. abs((try_b - try_t)/(try_b + try_t)) < 0.05_mcp )) exit
                lasttry = try
              end do
              else
@@ -448,8 +448,8 @@ contains
                else
                   try_b = (try_b+try_t)/2
                end if
-               if (try == lasttry &
-                 .and. abs((try_b - try_t)/(try_b + try_t)) < 0.05) exit
+               if (try == lasttry .and. (abs(try_b + try_t)< 1e-10_mcp &
+                 .or. abs((try_b - try_t)/(try_b + try_t)) < 0.05_mcp )) exit
                lasttry = try
                 end do
              end if
@@ -928,11 +928,13 @@ contains
           do j = 3, ncols
            if (isused(j)) then
            do endb =0,1
+           if (endb==0 .and. has_limits_top(j))cycle
+           if (endb==1 .and. has_limits_bot(j))cycle
            do split_n = 2,max_split_tests
             call GetFractionIndices(frac,split_n)
              split_tests(split_n) = 0
              confid =  ConfidVal(j,(1-contours(num_contours))/2,endb==0,0,nrows-1)
-            do i=1,split_n
+             do i=1,split_n
 
               split_tests(split_n) = split_tests(split_n) + &
                 (ConfidVal(j,(1-contours(num_contours))/2,endb==0,frac(i),frac(i+1)-1)-confid)**2
@@ -957,12 +959,11 @@ contains
 ! Raw non-importance sampled chains only
          if (all(abs(coldata(1,0:nrows-1) - nint(max(0.6_gp,coldata(1,0:nrows-1))))<1e-4)) then
            nburn = 0
-
            do ix=1, num_chains_used
            thin_fac(ix) = nint(maxval(coldata(1,chain_indices(ix):chain_indices(ix+1)-1)))
 
            do j = 3, covmat_dimension+2
-            if (isused(j) .and. (force_twotail .or. .not. has_limits(j))) then          
+            if (isused(j) .and. (force_twotail .or. .not. has_limits(j))) then
               do endb =0,1
              !Get binary chain depending on whether above or below confidence value
               u = ConfidVal(j,(1-contours(num_contours))/2,endb==0,&
