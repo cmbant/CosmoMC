@@ -49,8 +49,14 @@ newCovmat = True
 
 start_at_bestfit = True
 
+# try to match run to exisitng covmat
 covrenames = dict()
-covrenames['planck_CAMspec_lowl_lowLike'] = 'planck_CAMspec'
+covrenames['_BAO'] = '_post_BAO'
+covrenames['_HST'] = '_post_HST'
+covrenames['_lowl'] = '_lowl_lowLike'
+covrenames['_lowl_lowLike'] = ''
+covrenames['planck_CAMspec_'] = 'planck_CAMspec_lowl_'
+covrenames['_lensing'] = ''
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
