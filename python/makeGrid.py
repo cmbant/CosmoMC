@@ -43,6 +43,8 @@ for jobItem in batch.items(wantSubItems=False):
         if 'nnu' in jobItem.param_set:
             if ('mnu' in jobItem.param_set): raise Exception('no support for nnu and mnu')
             ini.params['param[mnu]'] = '0 0 0 0 0'
+        if 'yhe' in jobItem.param_set:
+            ini.params['bbn_consistency'] = False
         if 'r' in jobItem.param_set:
             ini.params['compute_tensors'] = True
 

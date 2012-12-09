@@ -50,16 +50,15 @@ def numberFigs(number, sigfig):
 
 class resultTable():
 
-    def __init__(self, ncol, caption='', results=None, compareNum=0, numResults=1, border='||', position='!ht'):
+    def __init__(self, ncol, results=None, compareNum=0, numResults=1, border='||', position='!ht'):
         self.lines = []
-        self.caption = caption
         self.sig_figs = 4
         self.numResults = numResults
         self.compareNum = compareNum
         self.ncol = ncol
         self.results = results
         self.boldBaseParameters = True
-        self.lines.append('\\begin{table}[' + position + ']')
+       # self.lines.append('\\begin{table}[' + position + ']')
         self.lines.append('\\begin{tabular} {' + (border + " l " + "| c"* numResults) * ncol + border + '}')
         self.endofrow = '\\\\'
         self.paramText = 'Parameter'
@@ -79,10 +78,17 @@ class resultTable():
         self.addLine()
         self.addLine()
 
-    def addBestFitParamRow(self, row):
-        line = " & ".join(self.bestFitParamTex(param) for param in row)
-        self.lines.append(line + ' & & ' * (self.ncol - len(row)) + self.endofrow)
+#    def addBestFitParamRow(self, row):
+#        line = " & ".join(self.bestFitParamTex(param) for param in row)
+#        self.lines.append(line + ' & & ' * (self.ncol - len(row)) + self.endofrow)
+#        self.addLine()
+
+
+    def addFullTableRow(self, row, paramResultsTex):
+        line = " & ".join(self.paramLabelColumn(param) + paramResultsTex(param) for param in row)
+        self.lines.append(line + ' & ' * ((1 + self.numResults * self.compareNum) * (self.ncol - len(row))) + self.endofrow)
         self.addLine()
+
 
     def formatNumber(self, value, sig_figs=None, wantSign=False):
         if sig_figs is None:
@@ -178,8 +184,6 @@ class resultTable():
 
     def endTable(self):
         self.lines.append('\\end{tabular}')
-        if self.caption != '': self.lines.append('\\caption{' + self.caption + '}')
-        self.lines.append('\\end{table}')
 
     def tableTex(self):
         return "\n".join(self.lines)
@@ -192,7 +196,7 @@ class resultTable():
 
 class paramResults(paramNames.paramList):
 
-    def resultTable(self, ncol, caption='', compareResults=[]):
+    def resultTable(self, ncol, compareResults=[]):
         numrow = self.numParams() / ncol
         if self.numParams() % ncol != 0: numrow += 1
         rows = []
@@ -202,13 +206,12 @@ class paramResults(paramNames.paramList):
             for i in range(numrow * col, min(numrow * (col + 1), self.numParams())):
                 rows[i - numrow * col].append(self.names[i]);
         hasBestFit = hasattr(self, 'logLike')
-        r = resultTable(ncol, caption, self, compareNum=len(compareResults) , numResults=(1, 2)[hasBestFit])
+        r = resultTable(ncol, self, compareNum=len(compareResults) , numResults=(1, 2)[hasBestFit])
 
         self.addHeader(r)
         for row in rows: self.addParamTableRow(r, row)
         r.endTable()
         return r
-
 
 
 class bestFit(paramResults):
@@ -316,3 +319,13 @@ class convergeStats(paramResults):
     def worstR(self):
         return self.R_eigs[len(self.R_eigs) - 1]
 
+
+class textFile:
+
+    def __init__(self, lines=[]):
+        self.lines = lines
+
+    def write(self, outfile):
+        textFileHandle = open(outfile, 'w')
+        textFileHandle.write("\n".join(self.lines))
+        textFileHandle.close()
