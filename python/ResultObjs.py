@@ -1,5 +1,19 @@
 import paramNames, decimal
 
+class textFile:
+
+    def __init__(self, lines=[]):
+        self.lines = lines
+
+    def write(self, outfile):
+        textFileHandle = open(outfile, 'w')
+        textFileHandle.write("\n".join(self.lines))
+        textFileHandle.close()
+
+def texEscapeText(string):
+        return string.replace('_', '{\\textunderscore}')
+
+
 def float_to_decimal(f):
     # http://docs.python.org/library/decimal.html#decimal-faq
     "Convert a floating point number to a Decimal with no loss of information"
@@ -50,45 +64,67 @@ def numberFigs(number, sigfig):
 
 class resultTable():
 
-    def __init__(self, ncol, results=None, compareNum=0, numResults=1, border='||', position='!ht'):
+    def __init__(self, ncol, results, tableParamNames=None, border='||', titles=None):
+# results is a list of margeStats or bestFit tables
         self.lines = []
         self.sig_figs = 4
-        self.numResults = numResults
-        self.compareNum = compareNum
         self.ncol = ncol
+        if tableParamNames is None:
+            self.tableParamNames = results[0]
+        else: self.tableParamNames = tableParamNames
         self.results = results
         self.boldBaseParameters = True
-       # self.lines.append('\\begin{table}[' + position + ']')
-        self.lines.append('\\begin{tabular} {' + (border + " l " + "| c"* numResults) * ncol + border + '}')
+        self.colsPerResult = len(results[0].columns)
+        self.colsPerParam = len(results) * self.colsPerResult
         self.endofrow = '\\\\'
         self.paramText = 'Parameter'
-        self.bestFitText = 'Best fit'
+
+        nparams = self.tableParamNames.numParams()
+        numrow = nparams / ncol
+        if nparams % ncol != 0: numrow += 1
+        rows = []
+        for par in self.tableParamNames.names[0:numrow]:
+            rows.append([par])
+        for col in range(1, ncol):
+            for i in range(numrow * col, min(numrow * (col + 1), nparams)):
+                rows[i - numrow * col].append(self.tableParamNames.names[i]);
+
+        self.lines.append('\\begin{tabular} {' + (border + " l " + "| c"* self.colsPerParam) * ncol + border + '}')
+        if titles is not None: self.addTitlesRow(titles)
+        self.addHeaderRow()
+        for row in rows: self.addFullTableRow(row)
+        self.endTable()
+
+
+    def addFullTableRow(self, row):
+        txt = " & ".join(self.paramLabelColumn(param) + self.paramResultsTex(param) for param in row)
+        if not self.ncol == len(row):
+            txt += ' & ' * ((1 + self.colsPerParam) * (self.ncol - len(row)))
+        self.lines.append(txt + self.endofrow)
         self.addLine()
 
     def addLine(self):
         return self.lines.append('\\hline')
 
-    def margeHeaderRow(self):
-        res = '& ' + self.paramText + ' & '
-        paramHead = ''
-        if self.numResults > 1: paramHead += self.bestFitText + ' & '
-        paramHead += str(round(float(self.results.limits[1]) * 100)) + '\\% limits'
-        res = res + paramHead * (self.compareNum + 1)
+    def addDoubleLine(self):
+        self.addLine()
+        self.addLine()
+
+    def addTitlesRow(self, titles):
+        self.addLine()
+        res = ' & ' + " & ".join(' \\multicolumn{' + str(self.colsPerResult) + '}{|c|}{' + texEscapeText(title) + '}' for title in titles)
+        self.lines.append((('& ' + res) * self.ncol)[1:] + self.endofrow)
+
+    def addHeaderRow(self):
+        self.addLine()
+        res = '& ' + self.paramText
+        for result in self.results:
+            res += ' & ' + " & ".join(result.columns)
         self.lines.append((res * self.ncol)[1:] + self.endofrow)
-        self.addLine()
-        self.addLine()
+        self.addDoubleLine()
 
-#    def addBestFitParamRow(self, row):
-#        line = " & ".join(self.bestFitParamTex(param) for param in row)
-#        self.lines.append(line + ' & & ' * (self.ncol - len(row)) + self.endofrow)
-#        self.addLine()
-
-
-    def addFullTableRow(self, row, paramResultsTex):
-        line = " & ".join(self.paramLabelColumn(param) + paramResultsTex(param) for param in row)
-        self.lines.append(line + ' & ' * ((1 + self.numResults * self.compareNum) * (self.ncol - len(row))) + self.endofrow)
-        self.addLine()
-
+    def paramResultsTex(self, param):
+        return " & ".join(result.paramResultTex(self, param) for result in self.results)
 
     def formatNumber(self, value, sig_figs=None, wantSign=False):
         if sig_figs is None:
@@ -117,37 +153,9 @@ class resultTable():
         if separator: res += ' & '
         return res
 
-    def labelAndResult(self, param, res, latexResult=False):
-        return self.textAsColumn(param.label, True) + ' & ' + self.textAsColumn(res, latexResult)
-
-    def bestFitParamTex(self, param):
-        res = self.formatNumber(param.best_fit)
-        return self.labelAndResult(param, res, True)
 
     def paramLabelColumn(self, param):
         return  self.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
-
-    def margeTexRow(self, param):
-        return self.paramLabelColumn(param) + self.margeAndBestFitTexParam(param)
-
-    def margeAndBestFitTexParam(self, param):
-        lims = param.limits[1]
-        sf = 3
-        if param.twotail:
-            res, plus_str, minus_str = self.namesigFigs(param.mean, lims[1] - param.mean, lims[0] - param.mean)
-            res = res + '^{' + plus_str + '}_{' + minus_str + '}'
-        elif param.lim_bot and not param.lim_top:
-            res = '< ' + self.formatNumber(lims[1], sf)
-        elif param.lim_top and not param.lim_bot:
-            res = '> ' + self.formatNumber(lims[0], sf)
-        else: res = '---'
-        paramResultText = ''
-        if self.numResults == 2:  # add best fit too
-            rangew = (lims[1] - lims[0]) / 10
-            bres = self.namesigFigs(param.best_fit, rangew, -rangew)[0]
-            paramResultText += self.textAsColumn(bres, True, separator=True)
-        paramResultText += self.textAsColumn(res, res != '---')
-        return paramResultText
 
 
     def namesigFigs(self, value, limplus, limminus):
@@ -176,11 +184,6 @@ class resultTable():
             res = self.formatNumber(value, sf)
         return (res, plus_str, minus_str)
 
-    def addMargeStatParamRow(self, row):
-        line = " & ".join(self.margeTexRow(param) for param in row)
-        self.lines.append(line + ' & ' * ((1 + self.numResults) * (self.ncol - len(row))) + '\\\\')
-        self.lines.append('\\hline')
-
 
     def endTable(self):
         self.lines.append('\\end{tabular}')
@@ -189,34 +192,15 @@ class resultTable():
         return "\n".join(self.lines)
 
     def writeTable(self, fname):
-        textFileHandle = open(fname, 'w')
-        textFileHandle.write(self.tableTex())
-        textFileHandle.close()
+        textFile(self.lines).write(fname)
 
 
-class paramResults(paramNames.paramList):
-
-    def resultTable(self, ncol, compareResults=[]):
-        numrow = self.numParams() / ncol
-        if self.numParams() % ncol != 0: numrow += 1
-        rows = []
-        for par in self.names[0:numrow]:
-            rows.append([par])
-        for col in range(1, ncol):
-            for i in range(numrow * col, min(numrow * (col + 1), self.numParams())):
-                rows[i - numrow * col].append(self.names[i]);
-        hasBestFit = hasattr(self, 'logLike')
-        r = resultTable(ncol, self, compareNum=len(compareResults) , numResults=(1, 2)[hasBestFit])
-
-        self.addHeader(r)
-        for row in rows: self.addParamTableRow(r, row)
-        r.endTable()
-        return r
-
+class paramResults(paramNames.paramList): pass
 
 class bestFit(paramResults):
 
     def loadFromFile(self, filename):
+        self.colums = ['Best fit']
         textFileLines = self.fileList(filename)
         first = textFileLines[0].strip().split('=')
         self.logLike = float(first[1].strip())
@@ -256,10 +240,10 @@ class bestFit(paramResults):
             likes[kind].append((name, chisq))
         return sorted(likes.iteritems())
 
-    def addParamTableRow(self, resultTable, row):
-        resultTable.addBestFitParamRow(row)
-
-    def addHeader(self, table):pass
+    def paramResultTex(self, formatter, param):
+        p = self.parWithName(param.name)
+        if p is None: formatter.textAsColumn('')
+        else: return formatter.textAsColumn(formatter.formatNumber(param.best_fit), True)
 
 
 
@@ -289,11 +273,11 @@ class margeStats(paramResults):
             param.limits = [[float(s) for s in items[3:5]], [float(s) for s in items[5:7]]]
             param.label = items[7]
             self.names.append(param)
+        self.columns = [str(round(float(self.limits[1]) * 100)) + '\\% limits']
 
-    def addParamTableRow(self, resultTable, row):
-        resultTable.addMargeStatParamRow(row)
 
     def addBestFit(self, bf):
+        self.columns = ['Best fit'] + self.columns
         self.logLike = bf.logLike
 # the next line deletes parameters not in best-fit; this is good e.g. to get rid of yhe from importance sampled result
         self.names = [x for x in self.names if bf.parWithName(x.name) is not None]
@@ -302,8 +286,29 @@ class margeStats(paramResults):
             par.best_fit = param.best_fit
             par.isDerived = param.isDerived
 
-    def addHeader(self, table):
-        table.margeHeaderRow()
+
+    def paramResultTex(self, formatter, p):
+        param = self.parWithName(p.name)
+        if not param is None:
+            lims = param.limits[1]
+            sf = 3
+            if param.twotail:
+                res, plus_str, minus_str = formatter.namesigFigs(param.mean, lims[1] - param.mean, lims[0] - param.mean)
+                res = res + '^{' + plus_str + '}_{' + minus_str + '}'
+            elif param.lim_bot and not param.lim_top:
+                res = '< ' + formatter.formatNumber(lims[1], sf)
+            elif param.lim_top and not param.lim_bot:
+                res = '> ' + formatter.formatNumber(lims[0], sf)
+            else: res = '---'
+            txt = ''
+            if len(self.columns) > 1:  # add best fit too
+                rangew = (lims[1] - lims[0]) / 10
+                bres = formatter.namesigFigs(param.best_fit, rangew, -rangew)[0]
+                txt += formatter.textAsColumn(bres, True, separator=True)
+            txt += formatter.textAsColumn(res, res != '---')
+            return txt
+        else: return formatter.textAsColumn('') * len(self.columns)
+
 
 
 class convergeStats(paramResults):
@@ -320,12 +325,3 @@ class convergeStats(paramResults):
         return self.R_eigs[len(self.R_eigs) - 1]
 
 
-class textFile:
-
-    def __init__(self, lines=[]):
-        self.lines = lines
-
-    def write(self, outfile):
-        textFileHandle = open(outfile, 'w')
-        textFileHandle.write("\n".join(self.lines))
-        textFileHandle.close()
