@@ -1,6 +1,7 @@
 %set environment variable getdist_plot_data to your path to plot_data directory
 %e.g. export getdist_plot_data=/scratch/aml1005/testchain/plot_data/
 
+clf;
 p=getdist_defaults();
 
 pl=base_omegak_planck_CAMspec_lowl_lowLike;

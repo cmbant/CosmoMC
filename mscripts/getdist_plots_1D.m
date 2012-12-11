@@ -1,5 +1,5 @@
 function [plot_col, plot_row]=getdist_plots_1D(p, root, params, varargin)
-
+clf;
 nparam=size(params,2);
 
 plot_row =  round(sqrt(nparam/1.4));
