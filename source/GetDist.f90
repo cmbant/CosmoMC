@@ -765,7 +765,7 @@ contains
           real(mcp) split_tests(max_split_tests)
           real(mcp) mean(max_cols), fullmean(max_cols),fullvar(max_cols)
           real(mcp), parameter :: cutfrac = 0._mcp 
-          real(mcp) usedsamps,evals(max_cols),sc,R, maxsamp
+          real(mcp) usedsamps,evals(max_cols),R, maxsamp
           real(mcp), dimension(:,:), allocatable :: cov, meanscov
           integer usedvars(max_cols), num, thin_fac(max_chains), markov_thin(max_chains)
           real(gp) u, g2, fitted, focus, alpha, beta, probsum, tmp1
@@ -1302,7 +1302,7 @@ contains
              deallocate(TheBins)
 
 
-              plotfile = numcat(trim(numcat(trim(rootname)//'_2D_',colix(j)-2))//'_',colix(j2)-2)
+              plotfile = dat_file_2D(rootname, j, j2)
               filename = trim(plot_data_dir)//trim(plotfile)
               open(unit=49,file=filename,form='formatted',status='replace')
               do ix1 = ix_min(j), ix_max(j)
@@ -1346,16 +1346,16 @@ contains
          logical PlotContMATLAB
 
              PlotContMATLAB= .false. 
-             plotfile = numcat(trim(numcat(trim(aroot)//'_2D_',colix(j)-2))//'_',colix(j2)-2)
+             plotfile = dat_file_2D(aroot, j, j2) 
              if (.not. FileExists(trim(plot_data_dir)//trim(plotfile))) return
              PlotContMATLAB= .true.
               write (aunit,'(a)') "pts=load(fullfile(plotdir,'" // trim(plotfile) //"'));"
      
-              fname =trim(trim(aroot)//trim(numcat('_p',colix(j2)-2)))
+              fname = dat_file_name(aroot, j2)
               write (aunit,'(a)') "tmp = load(fullfile(plotdir,'" // trim(fname)//  '.dat''));'
               write (aunit,*) 'x1 = tmp(:,1);'
 
-              fname =trim(trim(aroot)//trim(numcat('_p',colix(j)-2)))
+              fname = dat_file_name(aroot, j)
               write (aunit,'(a)') "tmp = load(fullfile(plotdir,'" // trim(fname)//  '.dat''));'
               write (aunit,*) 'x2 = tmp(:,1);'
     
@@ -1503,7 +1503,7 @@ contains
        character(LEN=60) fmt
        integer ix1
 
-        fname =trim(trim(rootname)//trim(numcat('_p',colix(j)-2)))
+        fname = dat_file_name(rootname, j)
         write (aunit,'(a)') "pts=load(fullfile(plotdir,'" // trim(fname)//  '.dat''));'
         write (aunit,*) 'plot(pts(:,1),pts(:,2),lineM{1},''LineWidth'',lw1);'
         write (aunit,*) 'axis([-Inf,Inf,0,1.1]);axis manual;'
@@ -1520,7 +1520,7 @@ contains
 
 
        do ix1 = 1, Num_ComparePlots
-         fname =  trim(trim(ComparePlots(ix1))//trim(numcat('_p',colix(j)-2)))    
+         fname = dat_file_name(ComparePlots(ix1),j)
          if (FileExists(trim(plot_data_dir)// trim(fname)//'.dat')) then
 
           write (aunit,'(a)') "pts = load(fullfile(plotdir,'" // trim(fname)// '.dat''));'
@@ -1565,9 +1565,24 @@ contains
         call WriteS('Warning: sharp edge in parameter '//trim(ParamNames_name(NameMapping,param))// &
          ' - check limits['//trim(ParamNames_name(NameMapping,param))//'] or limits'//trim(intToStr(param)))
        
-       end if                  
+       end if
       
      end subroutine EdgeWarning
+     
+    function dat_file_name(rootname,j)
+           integer, intent(in) :: j
+           character(LEN=*) :: rootname
+           character(LEN= Ini_max_string_len) :: dat_file_name
+           dat_file_name =  trim(rootname)//'_p_'//trim(ParamNames_NameOrNumber(NameMapping, colix(j)-2))
+    end function dat_file_name
+
+   function dat_file_2D(rootname,j, j2)
+           integer, intent(in) :: j, j2
+           character(LEN=*) :: rootname
+           character(LEN= Ini_max_string_len) :: dat_file_2D
+           dat_file_2D =  trim(rootname)//'_2D_'//trim(ParamNames_NameOrNumber(NameMapping, colix(j)-2)) &
+             //'_'//trim(ParamNames_NameOrNumber(NameMapping, colix(j2)-2))
+    end function dat_file_2D
  
 end module MCSamples
 
@@ -1582,9 +1597,6 @@ subroutine CheckMatlabAxes(afile)
   write (afile,*) 'end;'
 
 end subroutine CheckMatlabAxes
-
-
- 
 
 
 program GetDist
@@ -2365,7 +2377,7 @@ program GetDist
           write(49,'(a)') 'end'
           close(49)
           
-          fname =trim(trim(rootname)//trim(numcat('_p',colix(j)-2)))
+          fname = trim(dat_file_name(rootname,j))
           filename = trim(plot_data_dir)//trim(fname)
           open(unit=49,file=trim(filename)//'.dat',form='formatted',status='replace')
           maxbin = maxval(bincounts(ix_min(j):ix_max(j)))
@@ -2456,7 +2468,7 @@ program GetDist
          end if
          
            do ix1 = 1, Num_ComparePlots
-             fname =  trim(trim(ComparePlots(ix1))//trim(numcat('_p',colix(j)-2)))    
+             fname = dat_file_name(ComparePlots(ix1),j)
              if (FileExists(trim(plot_data_dir)// trim(fname)//'.dat')) then
 
               write (50,*) 'data "'//trim(plot_data_dir) // trim(fname) //'.dat"'

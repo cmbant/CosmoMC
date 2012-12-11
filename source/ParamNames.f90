@@ -334,8 +334,8 @@
     do i=1, Names%nnames
         name = ParamNames_name(Names,i) 
         if (name /= '') then
-            write(unit,'(a)', advance='NO') trim(headObj)//trim(name)//'= struct(''n'','//trim(intToStr(i)) &
-            //',''label'','''//trim(Names%label(i))//''',''isDerived'','
+            write(unit,'(a)', advance='NO') trim(headObj)//trim(name)//'= struct(''n'','''//trim(name) &
+            //''',''label'','''//trim(Names%label(i))//''',''isDerived'','
             if (Names%is_derived(i)) then
                 write(unit,'(a)') 'true);'
             else

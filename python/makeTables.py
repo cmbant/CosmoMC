@@ -79,7 +79,10 @@ def compareTable(jobItems):
                                    titles=[jobItem.datatag for jobItem in jobItems if jobItem.result_marge is not None]).lines
 
 def filterBatchData(batch, datatags):
-    return [jobItem for jobItem in batch if jobItem.datatag in datatags]
+    items = []
+    for tag in datatags:
+        items += [jobItem for jobItem in batch if jobItem.datatag == tag]
+    return items
 
 items = dict()
 for jobItem in Opts.filteredBatchItems():
