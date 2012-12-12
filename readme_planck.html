@@ -56,6 +56,10 @@ Scripts include:
 <LI>iniFile.py: for reading and writing .ini files (does not support reading fully at the moment, but not needed as yet)
 <LI>makePerfectForecastDataset.py: a simple old script for simulating perfect fake CMB datasets
 <LI>makeTables.py: script for making latex (and hence PDF) tables from .margestats and .minimum files produced by grid runs.
+<BR>To make file of comparison plots do something like
+<pre>
+ python python/makeTables.py main comp --compare planck_CAMspec_lowl planck_CAMspec_lowl_lowLike  planck_CAMspec_lowl_lowLike_highL --portrait
+</pre>
 <LI>paramNames.py: for reading paramNames files, and general objects for storing parameter info
 <LI>ResultObjs.py: objects for getdist output results (.margestats) and .minimum files. Note is expects formats to be those produced by cosmomcplanck, not older versions.
 <LI>runBatch.py: submit runs to a job submission script

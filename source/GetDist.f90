@@ -95,7 +95,7 @@ module MCSamples
         
         logical :: matlab_latex = .false.
         real(mcp) :: font_scale = 1.
-        real(mcp) contours(max_contours), contour_levels(max_contours)
+        real(mcp) contours(max_contours)
         real(mcp) mean_mult, max_mult
         integer :: indep_thin = 0 
         integer chain_numbers(max_chains)
@@ -111,7 +111,8 @@ module MCSamples
         logical BW,do_shading
         character(LEN=Ini_max_string_len), allocatable :: ComparePlots(:)
         integer Num_ComparePlots
-        logical ::   prob_label = .false.      
+        logical ::   prob_label = .false.
+        logical :: plots_only
             
 contains
 
@@ -339,7 +340,7 @@ contains
 !               call Matrix_write(trim(rootdirname) //'.covmat',covmatrix,.true.,commentline=outline)
                deallocate(covmatrix)
           else
-             if (covmat_dimension /= 0) then
+             if (covmat_dimension /= 0 .and. .not. plots_only) then
               if (covmat_dimension > ncols -2) stop 'covmat_dimension larger than number of parameters'
               write (*,*) 'Writing covariance matrix for ',covmat_dimension,' parameters'
                allocate(covmatrix(covmat_dimension,covmat_dimension))
@@ -357,7 +358,7 @@ contains
                corrmatrix(:,i) = corrmatrix(:,i)/scale
                end if
               end do
-             call Matrix_write(trim(rootdirname) //'.corr',corrmatrix, .true.)
+             if (.not. plots_only) call Matrix_write(trim(rootdirname) //'.corr',corrmatrix, .true.)
              
           end subroutine GetCovMatrix
 
@@ -1143,14 +1144,11 @@ contains
         
             deallocate(Corrs)
 
-
-
          end if
      
          close(40)
 
          end subroutine DoConvergeTests
-         
 
 
         subroutine Get2DPlotData(j,j2)
@@ -1161,7 +1159,7 @@ contains
          character(LEN=Ini_max_string_len) :: plotfile, filename,numstr
          real(mcp), dimension(:,:), allocatable :: finebins, finebinlikes, Win
          integer :: fine_fac = 5
-         real(mcp) widthj,widthj2
+         real(mcp) widthj,widthj2, contour_levels(max_contours)
          integer imin,imax,jmin,jmax
          logical :: fast_smoothing = .true.
 
@@ -1477,7 +1475,8 @@ contains
             write(unit,*) 'lineM = {''-k'',''-r'',''-b'',''-m'',''-g'',''-c'',''-y'',''--k'',''--r'',''--b''};';
             write(unit,*) 'lineL = {'':k'','':r'','':b'','':m'','':g'','':c'','':y'',''-.k'',''-.r'',''-.b''};';
            write(unit,*) 'lw1=1;lw2=1;' !Line Widths     
-          end if
+           end if
+           write(unit,*) 'colstr=''krbmgcykrb'';'
 
          end subroutine WriteMatLabInit
 
@@ -1543,14 +1542,12 @@ contains
      subroutine WriteMatlabLineLabels(aunit)
          integer, intent(in) :: aunit 
          integer ix1
-              
-           write(aunit,'(a)') 'x=get(gca,''Position'');x(1)=0.1;x(2) = x(2)-0.1;x(3) = 0.85;x(4) = x(2) + 0.05;'
-           write(aunit,'(a)') 'ax=axes(''Units'',''Normal'',''Position'',x,''Visible'',''off'');'
-           write(aunit,'(a)') 't=text(0,0,'''//trim(rootname)//''',''color'', lineM{1}(2),''Interpreter'',''none'');'
+           call WriteFormatInts(aunit,'set(gcf,''Units'',''Normal''); frac=1/%u;',Num_ComparePlots+1)
+           write(aunit,'(a)') 'ax=axes(''Units'',''Normal'',''Position'',[0.1,0.05,0.85,0.05],''Visible'',''off'');'
+           write(aunit,'(a)') 't=text(0,0,'''//trim(rootname)//''',''color'', colstr(1),''Interpreter'',''none'');'
            do ix1 = 1, Num_ComparePlots
-             write(aunit,'(a)') 'e=get(t,''extent'');x=e(1)+e(3)+0.02;'
-             write(aunit,'(a)') 't=text(x,0,'''//trim(ComparePlots(ix1))//''',''Interpreter'',''none'',''color'',' &
-                            //trim(numcat('lineM{',ix1+1)) // '}(2));'
+               call WriteFormatInts(aunit, 't=text(frac*%u,0,''' //trim(ComparePlots(ix1)) // &
+               ''',''Interpreter'',''none'',''color'',colstr(%u));', ix1, ix1+1)
            end do
 
      end  subroutine WriteMatlabLineLabels
@@ -1774,8 +1771,9 @@ program GetDist
         
         samples_are_chains = Ini_Read_Logical('samples_are_chains',.true.)
 
-        no_tests = Ini_Read_Logical('no_tests',.false.)
         no_plots = Ini_Read_Logical('no_plots',.false.)
+        plots_only = Ini_Read_Logical('plots_only',.false.)
+        no_tests = plots_only .or. Ini_Read_Logical('no_tests',.false.)
         line_labels = Ini_Read_Logical('line_labels',.false.)
          
         thin_factor = Ini_Read_Int('thin_factor',0)
@@ -2108,7 +2106,8 @@ program GetDist
             single_thin = max(1,nint(numsamp/maxmult)/2000)
         end if
  
-      if (make_single_samples) call MakeSingleSamples(single_thin)
+      if (make_single_samples .and. .not. plots_only) &
+       call MakeSingleSamples(single_thin)
 
 !Sort data in order of likelihood of points
 
@@ -2168,10 +2167,10 @@ program GetDist
           end if
 !Get covariance matrix and correlation matrix
 
-          call GetCovMatrix
+       call GetCovMatrix
+       if (PCA_num>0 .and. .not. plots_only) call PCA(PCA_params,PCA_num,PCA_func, PCA_NormParam)
 
-          if (PCA_num>0) call PCA(PCA_params,PCA_num,PCA_func, PCA_NormParam)
-
+       
 !Find best fit, and mean likelihood     
       bestfit_ix = 0 !Since we have sorted the lines
       maxlike = coldata(2,bestfit_ix)
@@ -2607,11 +2606,11 @@ program GetDist
               if (plot_2D_param/=0 .and. colix(j2) /= plot_2D_param) cycle
               if (num_cust2D_plots /= 0 .and.  &
                 count(cust2Dplots(1:num_cust2D_plots) == colix(j)*1000 + colix(j2))==0) cycle
-      
+
               plot_num = plot_num + 1
               done2D(j,j2) = .true.
-              call Get2DPlotData(j,j2)
-          
+              if (.not. plots_only) call Get2DPlotData(j,j2)
+
               write (50,'(''subplot('',1I5,'','',1I5,'','',1I5,'');'')') plot_row,plot_col,plot_num
               call Write2DPlotMATLAB(50,j,j2,.true.,.true.)
               if (plot_row*plot_col > 4) call CheckMatlabAxes(50)
@@ -2641,7 +2640,7 @@ program GetDist
           !Add the off-diagonal 2D plots
           do j = 1, num_vars
             do j2 = j+1, num_vars
-              if (.not. Done2D(j2,j)) call Get2DPlotData(j2,j)
+              if (.not. Done2D(j2,j) .and. .not. plots_only) call Get2DPlotData(j2,j)
               write (52,'(''subplot('',1I5,'','',1I5,'','',1I5,'');'')') num_vars, num_vars, &
                    (j2-1)*num_vars + j                   
               call Write2DPlotMATLAB(52,j2,j,j2==num_vars, j==1,no_triangle_axis_Labels)
@@ -2728,6 +2727,7 @@ program GetDist
 
 !write out stats
 !Marginalized
+         if (.not. plots_only) &
          call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
                 cont_lines, colix, mean, sddev, has_limits_bot, has_limits_top, labels, force_twotail)
          
@@ -2739,6 +2739,8 @@ program GetDist
 
 
 !Limits from global likelihood
+         if (.not. plots_only) then
+
           open(unit=50,file=trim(rootdirname)//'.likestats',form='formatted',status='replace')
           write (50,*) 'Best fit sample -log(Like) = ',coldata(2,bestfit_ix)
           write (50,*) ''
@@ -2754,10 +2756,12 @@ program GetDist
 
           end do
           close(50)
+          
+         end if
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: beginning of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-          if (do_minimal_1d_intervals) then ! write limits to .minmarge file
+          if (do_minimal_1d_intervals .and. .not. plots_only) then ! write limits to .minmarge file
 
              open(unit=50,file=trim(rootdirname)//'.minmarge',form='formatted',status='replace')
              write(50,'(a)',advance='NO') 'param  '       

@@ -57,7 +57,7 @@ class batchArgs():
                     if pat in jobItem.param_set: return True
                 return False
             else:
-                return jobItem.paramTag == self.args.paramtag
+                return jobItem.paramtag == self.args.paramtag
 
         def filteredBatchItems(self, wantSubItems=True):
             for jobItem in self.batch.items(wantImportance=not self.args.noimportance, wantSubItems=wantSubItems):
