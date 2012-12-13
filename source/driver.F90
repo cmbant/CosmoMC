@@ -30,6 +30,7 @@ program SolveCosmology
         integer file_unit, status
         real(mcp) bestfit_loglike
         real(mcp) max_like_radius
+        integer max_like_iterations
         integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2, &
                               action_Hessian=3
         integer unit
@@ -243,6 +244,7 @@ program SolveCosmology
 
         if (want_minimize) then
          max_like_radius = Ini_Read_Real('max_like_radius',0.01)
+         max_like_iterations = Ini_Read_Int('max_like_iterations',4000)
           !radius in normalized parameter space to converge
          dense_minimization_points = &
             Ini_Read_Logical('dense_minimization_points',dense_minimization_points)
@@ -266,7 +268,7 @@ program SolveCosmology
         call DataLikelihoods%AddNuisanceParameters(NameMapping)
         call CMB_Initialize(Params%Info)
         call InitializeUsedParams(DefIni,Params)
-        
+
         if (MpiRank==0) then
             do i=1, DataLikelihoods%Count
                like => DataLikelihoods%Item(i)
@@ -302,8 +304,9 @@ program SolveCosmology
            'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
           if (MpiRank==0) then
             write(*,*) 'finding best fit point...'
-            Params%P(params_used) = Scales%center(params_used)
-            bestfit_loglike = FindBestFit(Params,max_like_radius,4000)
+            Params%P(1:num_params) = Scales%center(1:num_params)
+            bestfit_loglike = FindBestFit(Params,max_like_radius,max_like_iterations)
+            if (bestfit_loglike==logZero) write(*,*) 'WARNING: FindBestFit did not converge'
             if (Feedback >0) write(*,*) 'Best-fit results: '
             call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
             if (use_CMB) call WriteBestFitData(trim(baseroot)//'.bestfit_cl',Params)
@@ -312,6 +315,7 @@ program SolveCosmology
 #ifdef MPI 
           CALL MPI_Bcast(Params%P, size(Params%P), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror) 
 #endif
+          Scales%center(1:num_params) = Params%P(1:num_params)
         end if
         
         if (estimate_propose_matrix .and. action == action_MCMC .or. action==action_Hessian) then
@@ -336,6 +340,7 @@ program SolveCosmology
        end if
     
         if (action == action_MCMC) then
+         if (new_chains) call SetStartPositions(Params)
          if (Feedback > 0 .and. MPIRank==0) write (*,*) 'starting Monte-Carlo'
          call MCMCSample(Params, numtoget)
  

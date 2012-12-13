@@ -1543,10 +1543,10 @@ contains
          integer, intent(in) :: aunit 
          integer ix1
            call WriteFormatInts(aunit,'set(gcf,''Units'',''Normal''); frac=1/%u;',Num_ComparePlots+1)
-           write(aunit,'(a)') 'ax=axes(''Units'',''Normal'',''Position'',[0.1,0.05,0.85,0.05],''Visible'',''off'');'
-           write(aunit,'(a)') 't=text(0,0,'''//trim(rootname)//''',''color'', colstr(1),''Interpreter'',''none'');'
+           write(aunit,'(a)') 'ax=axes(''Units'',''Normal'',''Position'',[0.1,0.95,0.85,0.05],''Visible'',''off'');'
+           write(aunit,'(a)') 'text(0,0,'''//trim(rootname)//''',''color'', colstr(1),''Interpreter'',''none'');'
            do ix1 = 1, Num_ComparePlots
-               call WriteFormatInts(aunit, 't=text(frac*%u,0,''' //trim(ComparePlots(ix1)) // &
+               call WriteFormatInts(aunit, 'text(frac*%u,0,''' //trim(ComparePlots(ix1)) // &
                ''',''Interpreter'',''none'',''color'',colstr(%u));', ix1, ix1+1)
            end do
 

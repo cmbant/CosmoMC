@@ -461,7 +461,9 @@ end subroutine GetNewPowerData
         end if
 
         if (CMB_Lensing .and. use_nonlinear_lensing) then
-          if (use_LSS) call MpiStop('non-linear lensing and LSS data not supported currently')
+          if (use_LSS  .and. (matter_power_lnzsteps>1 .or. use_mpk)) &
+            call MpiStop('non-linear lensing and LSS data not supported currently')
+          !Haven't sorted out how to use LSS data etc with linear/nonlinear/sigma8/non-linear CMB lensing...
           P%NonLinear = NonLinear_lens
           call Transfer_SetForNonlinearLensing(P%Transfer)
         end if
@@ -508,6 +510,7 @@ end subroutine GetNewPowerData
         if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
         CMB_lensing = Ini_Read_Logical('CMB_lensing',CMB_lensing)
         use_lensing_potential = Ini_Read_logical('use_lensing_potential',use_lensing_potential)
+        use_nonlinear_lensing = Ini_Read_logical('use_nonlinear_lensing',use_nonlinear_lensing)
         if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
         if (use_lensing_potential .and. num_cls_ext ==0) & 
            call MpiStop('num_cls_ext should be > 0 to use_lensing_potential')
@@ -518,17 +521,22 @@ end subroutine GetNewPowerData
           if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
           call LoadFiducialHighLTemplate
         end if
-        
+
+        call InitCAMBParams(P)
+
         if (Feedback > 0 .and. MPIRank==0) then
           write (*,*) 'Computing tensors:', compute_tensors
           write (*,*) 'Doing CMB lensing:',CMB_lensing
-          write(*,'(" lmax              = ",1I4)') lmax       
+          write (*,*) 'Doing non-linear Pk:',P%NonLinear
+
+          write(*,'(" lmax              = ",1I4)') lmax
           write(*,'(" lmax_computed_cl  = ",1I4)') lmax_computed_cl
+          write(*,*) 'max_eta_k         = ', P%Max_eta_k
+          write(*,*) 'transfer kmax     = ', P%Transfer%kmax
+
           if (compute_tensors) write(*,'(" lmax_tensor    = ",1I4)') lmax_tensor
           write(*,'(" Number of C_ls = ",1I4)') num_cls
         end if
-
-        call InitCAMBParams(P)
 
         call CAMB_InitCAMBdata(Info%Transfers)
     

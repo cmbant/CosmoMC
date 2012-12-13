@@ -29,7 +29,8 @@ module ParamDef
  end Type
 
  Type ParamScale
-    real(mcp) PMin(max_num_params), PMax(max_num_params), PWidth(max_num_params), center(max_num_params)
+    real(mcp) PMin(max_num_params), PMax(max_num_params), StartWidth(max_num_params), &
+      PWidth(max_num_params), center(max_num_params)
  end Type ParamScale
 
  Type(ParamScale) Scales
@@ -199,6 +200,27 @@ subroutine orderIndices(arr,n)
  end do
 end subroutine orderIndices
 
+subroutine SetStartPositions(Params)
+        type (ParamSet) Params
+        integer ix,i
+        
+        do ix=1,num_params_used
+            i = params_used(ix)
+            do
+            if (Scales%StartWidth(i) < 0) then
+              !This case we want half gaussian, width -Scales%StartWidth(i)
+              !e.g. for positive definite parameters
+              Params%P(i) = Scales%center(i) - abs(Gaussian1())*Scales%StartWidth(i)
+            else
+              Params%P(i) = Scales%center(i) + Gaussian1()*Scales%StartWidth(i)
+            end if
+            !Repeat until get acceptable values in range
+            if (Params%P(i)>=  Scales%PMin(i) .and. Params%P(i) <= Scales%PMax(i)) exit
+           end do
+        end do
+        
+end subroutine SetStartPositions
+
 subroutine InitializeUsedParams(Ini,Params)
         type (ParamSet) Params
         type (TIniFile) :: Ini
@@ -216,7 +238,7 @@ subroutine Initalize(Ini,Params)
         integer i, j, ix
         character(LEN=5000) fname,InLine
         character(LEN=1024) prop_mat
-        real(mcp) center, wid, mult, like
+        real(mcp) center,  mult, like
         integer fast_params(num_params)
         integer fast_number, fast_param_index
         real(mcp) pmat(num_params,num_params)
@@ -279,14 +301,15 @@ subroutine Initalize(Ini,Params)
    
             InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'param',i)
             if (InLine=='') call ParamError('parameter ranges not found',i) 
-            read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), wid, Scales%PWidth(i)
-         !!   if (i/=1 .and. i/=21) Scales%PWidth(i)=0
+            read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), &
+              Scales%StartWidth(i), Scales%PWidth(i)
             if (Scales%PWidth(i)/=0) then
              InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'prior',i)
              if (InLine/='') read(InLine, *, err = 101) GaussPriors%mean(i), GaussPriors%std(i)
             end if
 
            Scales%center(i) = center
+           if (new_chains) Params%P(i) = center
            if (Scales%PMax(i) < Scales%PMin(i)) call ParamError('You have param Max < Min',i)
            if (Scales%center(i) < Scales%PMin(i)) call ParamError('You have param center < Min',i)
            if (Scales%center(i) > Scales%PMax(i)) call ParamError('You have param center > Max',i)
@@ -304,20 +327,6 @@ subroutine Initalize(Ini,Params)
                  param_type(i) = tp_slow
                 end if
               end if
-           end if
-           if (new_chains) then
-           do
-            if (wid < 0) then
-              !This case we want half gaussian, width -wid
-              !e.g. for positive definite parameters
-              Params%P(i) = center - abs(Gaussian1())*wid
-            else
-              Params%P(i) = center + Gaussian1()*wid
-            end if
-            !Repeat until get acceptable values in range
-            if (Params%P(i)>=  Scales%PMin(i) .and. Params%P(i) <= Scales%PMax(i)) exit
-      
-           end do
            end if
         end do
 

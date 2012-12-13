@@ -25,6 +25,7 @@ importanceRuns = []
 importanceRuns.append([lensing, ['lensing.ini']])
 importanceRuns.append([BAO, ['BAO.ini']])
 importanceRuns.append([HST, ['HST.ini']])
+importanceRuns.append(['acc', ['accuracy.ini']])
 
 # priors and widths for parameters which are varied
 params = dict()

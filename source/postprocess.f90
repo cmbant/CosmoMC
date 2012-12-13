@@ -31,6 +31,7 @@
         logical redo_from_text
         !Redo from text files if .data files not available
 
+        logical redo_no_new_data !true to make no new .data files to save space
     end Type TPostParams
 
     Type(TPostParams) :: PostParams
@@ -57,6 +58,7 @@
     PostParams%redo_change_like_only = Ini_Read_Logical('redo_change_like_only',.false.)
     PostParams%redo_add = Ini_Read_Logical('redo_add',.false.)
     PostParams%redo_from_text = Ini_Read_Logical('redo_from_text',.false.)
+    PostParams%redo_no_new_data = Ini_Read_Logical('redo_no_new_data',.false.)
     if (PostParams%redo_from_text .and. PostParams%redo_add) &
     call Mpistop('redo_new_likes requires .data files, not from text')
     txt_theory = Ini_Read_Logical('txt_theory',.false.)
@@ -78,7 +80,8 @@
     real(mcp) max_like, max_truelike
     integer error,num, debug
     character (LEN=Ini_max_string_len) :: post_root
-    integer infile_handle, outdata_handle
+    integer infile_handle
+    integer :: outdata_handle=-1
     Type (ParamSet) :: Params
     logical :: has_likes(DataLikelihoods%Count)
 
@@ -135,7 +138,7 @@
     write (*,*) 'Using temperature: ', Temperature
 
     outfile_handle = IO_OutputOpenForWrite(trim(post_root)//'.txt')
-    outdata_handle = IO_DataOpenForWrite(trim(post_root)//'.data')
+    if (.not. PostParams%redo_no_new_data) outdata_handle = IO_DataOpenForWrite(trim(post_root)//'.data')
     num = 0
 
     do
@@ -207,7 +210,7 @@
 
     if (mult /= 0) then
         call WriteCMBParams(Params, mult, truelike,txt_theory)
-        call Params%WriteModel(outdata_handle, truelike,mult)
+        if (outdata_handle>=0) call Params%WriteModel(outdata_handle, truelike,mult)
     else 
 
     if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
@@ -226,7 +229,7 @@
 
     call IO_Close(infile_handle)
     call IO_Close(outfile_handle)
-    call IO_DataCloseWrite(outdata_handle)
+    if (outdata_handle >=0) call IO_DataCloseWrite(outdata_handle)
 
     num = (num - PostParams%redo_skip) / PostParams%redo_thin
     if (Feedback>0) then 
