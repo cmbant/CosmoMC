@@ -20,12 +20,20 @@ datasets.append([[planck, lowl], ['CAMspec_defaults.ini', 'lowl.ini']])
 datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini']])
 datasets.append([[WMAP], ['WMAP.ini']])
 
+class importanceFilterPlanck:
+    def wantImportance(self, jobItem):
+        return planck in jobItem.data_set[0]
+
+class importanceFilterAcc:
+    def wantImportance(self, jobItem):
+        return lowLike in jobItem.data_set[0]
+
 # add importance name tags, and list of specific .ini files to include (in batch1/)
 importanceRuns = []
-importanceRuns.append([lensing, ['lensing.ini']])
+importanceRuns.append([lensing, ['lensing.ini'], importanceFilterPlanck()])
 importanceRuns.append([BAO, ['BAO.ini']])
 importanceRuns.append([HST, ['HST.ini']])
-importanceRuns.append(['acc', ['accuracy.ini']])
+importanceRuns.append(['acc', ['accuracy.ini'], importanceFilterAcc()])
 
 # priors and widths for parameters which are varied
 params = dict()
@@ -42,7 +50,6 @@ params['deltazrei'] = '0.5 0.1 3 0.3 0.3'
 params['wa'] = '0 -2 2 0.3 0.3'
 
 skip = []
-skip.append('base_omegak_mnu_planck_CAMspec_highL')
 skip.append('WMAP_lensing')
 
 # if covmats are unreliable, so start learning ASAP
