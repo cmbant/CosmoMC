@@ -43,7 +43,7 @@ class jobItem:
             if len(arr) > 2 and not arr[2].wantImportance(self): continue
             job = jobItem(self.batchPath, self.param_set, self.data_set)
             job.importanceTag = imp
-            job.importaceSettings = ini
+            job.importanceSettings = ini
             tag = '_post_' + imp
             job.name = self.name + tag
             job.chainRoot = self.chainRoot + tag

@@ -74,7 +74,7 @@ for jobItem in batch.items(wantSubItems=False):
             if batch.hasName(imp.name.replace('_post', '')): raise Exception('importance sampling something you already have?')
             for minimize in (False, True):
                 ini = iniFile.iniFile()
-                for inc in imp.importaceSettings:
+                for inc in imp.importanceSettings:
                     ini.includes.append(batch.commonPath + inc)
                 if cosmomcAction == 0 and not minimize:
                     for deffile in settings.importanceDefaults:

@@ -33,7 +33,9 @@ importanceRuns = []
 importanceRuns.append([lensing, ['lensing.ini'], importanceFilterPlanck()])
 importanceRuns.append([BAO, ['BAO.ini']])
 importanceRuns.append([HST, ['HST.ini']])
-importanceRuns.append(['acc', ['accuracy.ini'], importanceFilterAcc()])
+# importanceRuns.append(['acc', ['accuracy.ini'], importanceFilterAcc()])
+# importanceRuns.append(['v61N', ['v61N.ini'], importanceFilterAcc()])
+# importanceRuns.append(['lensing_acc', ['lensing_acc.ini'], importanceFilterAcc()])
 
 # priors and widths for parameters which are varied
 params = dict()

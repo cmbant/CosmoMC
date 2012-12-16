@@ -7,6 +7,7 @@ classdef getdist_defaults < handle
         colormap='jet';
         lineM = {'-k','-r','-b','-m','-g','-c','-y','--k','--r','--b'};
         lineL = {':k',':r',':b',':m',':g',':c',':y','-.k','-.r','-.b'};
+        colstr='krbmgcykrb';
         lw1=1;
         lw2=1;
         printex='pdf';
