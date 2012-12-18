@@ -730,11 +730,11 @@ CONTAINS
     ENDIF
 
     IF (Feedback > 2) THEN
-       WRITE(*,'(" SNLS pec z: ",F5.3)') pecz 
-       WRITE(*,'(" SNLS default sigma int: ",F5.3)') idisp_zero
+       WRITE(*,'(" SNLS pec z: ",F6.3)') pecz 
+       WRITE(*,'(" SNLS default sigma int: ",F6.3)') idisp_zero
        DO i=1, max_idisp_datasets
           IF ( idispdataset(i)) &
-               WRITE(*,'(" SNLS sigma int for dataset ",I2,": ",F5.3)') &
+               WRITE(*,'(" SNLS sigma int for dataset ",I2,": ",F6.3)') &
                i-1,intrinsicdisp(i)
        END DO
        IF (has_absdist) THEN
