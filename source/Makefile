@@ -150,7 +150,7 @@ ifneq ($(PLANCKLIKE),)
 PLANCKLIKEFILES += $(PLANCKLIKE).o
 endif
 
-SUPERNOVAE = supernovae_union2.o supernovae_SNLS.o
+SUPERNOVAE = supernovae_Union2.o supernovae_SNLS.o
 
 DATAMODULES = $(PLANCKLIKEFILES) lrggettheory.o mpk.o bao.o $(SUPERNOVAE) supernovae.o HST.o SDSSLy-a-v3.o
 
