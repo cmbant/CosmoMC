@@ -188,7 +188,6 @@
     subroutine AddArray(L, P)
     Class (TObjectList) :: L
     class(*), target, intent(in) :: P(:)
-    !    Type(object_array_pointer), pointer :: Pt
     class(*), pointer :: Pt
 
     allocate(object_array_pointer::Pt)
@@ -202,6 +201,21 @@
         end if
     end select
     end subroutine AddArray
+
+    !why this crashes in ifort 13 I do not know..
+    !subroutine AddArray(L, P)
+    !Class (TObjectList) :: L
+    !class(*), target, intent(in) :: P(:)
+    !Type(object_array_pointer), pointer :: Pt
+    !
+    !allocate(Pt)
+    !call L%AddItem(Pt)
+    !if (L%ownsObjects) then
+    !    allocate(Pt%P(1:SIZE(P)), source= P)
+    !else
+    !    Pt%P => P
+    !end if
+    !end subroutine AddArray
 
     function ArrayItem(L, i) result(P)
     Class(TObjectList) :: L
@@ -385,8 +399,8 @@
     if (L%Count>1) call L%QuickSortArr(1, L%Count, index)
 
     end subroutine SortArr
-    
-    
+
+
     recursive subroutine QuickSort(this, Lin, R)
     Class(TObjectList) :: this
     integer, intent(in) :: Lin, R

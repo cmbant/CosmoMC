@@ -75,6 +75,14 @@ class paramList:
                 return par
         return None
 
+    def numberOfName(self, name):
+        for i, par in enumerate(self.names):
+            if par.name == name:return i
+        return -1
+
+    def parsWithNames(self, names):
+        return [self.parWithName(name) for name in names]
+
     def setLabelsAndDerivedFromParamNames(self, fname):
         p = paramNames(fname)
         for par in p.names:

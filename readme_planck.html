@@ -8,7 +8,7 @@
 
 <h2>Planck Cosmomc Readme </h2>
 <h3>Compiling</h3>
-As usual. Edit the makefile, setting <b>PLANCKLIKE = cliklike</b> to run with clik (v5.0), or <b>PLANCKLIKE = cliklike_CamSpec</b> to run directly with CamSpec. Set <b>highL = ../highL</b> to build direct ACT/SPT support (for use with PLANCKLIKE = cliklike_CamSpec). To use clik you need of course to have clik installed, and set the CLIKPATH variable etc. appropriately [can set "export PLANCKLIKE=cliklike" in your .bashrc to automatically compile with clik].  You can either use clik or other likelihoods directly in an interchangeable way, parameter definitions etc are the same.
+As usual, but now requires ifort 13+ (or other compiler with more complete Fortran 2003 coverage; this does not include gfortran). Edit the makefile, setting <b>PLANCKLIKE = cliklike</b> to run with clik (v5.0), or <b>PLANCKLIKE = cliklike_CamSpec</b> to run directly with CamSpec. Set <b>highL = ../highL</b> to build direct ACT/SPT support (for use with PLANCKLIKE = cliklike_CamSpec). To use clik you need of course to have clik installed, and set the CLIKPATH variable etc. appropriately [can set "export PLANCKLIKE=cliklike" in your .bashrc to automatically compile with clik].  You can either use clik or other likelihoods directly in an interchangeable way, parameter definitions etc are the same.
 <p>
 <h3>Data files</h3>
 A set of .ini files are supplied in ./batch1 which set up standard for Planck runs. Location of data files is set in CAMspec_ACTSPT_defaults, CAMspec_defaults or PLik_ACTSPT_defaults depending on what you want to use. You can either edit these, or make symbolic links from ./data/clik and ./data/highL and ./data/camspec to the relevant actual file locations depending on what you want to use.
@@ -40,7 +40,7 @@ To start copy and edit settings_testchain.py appropriately. Then if you saved it
 <blockquote>
 <b>python python/makeGrid.py /scratch/.../Planckgrids/newdirectoryforbatch my_settings_file [action]</b>
 </blockquote>
-Use runbatch.py to submit all the ini files produced to the queue. You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge and is the default. Use action=2 to do minimization-only runs (quick), otherwise can be omitted.
+Use runbatch.py to submit all the ini files produced to the queue. You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge and is the default. Use action=2 to do minimization-only runs (quick), otherwise can be omitted. For brevity you can make a symbolic link in the cosmomcplanck directory to the actual scratch location of the (large) batch results.
 <P>
 Runs with the same data by default all use the same covmat unless an existing covmat exists in planck_covmats. Covmats can be a merged covmat that contains many parameters, defaults are provided from combining several different separate covmats for use where no planck_covmats file exists. Use the python/covcomb.py script if you want to make a new one.
 <p>
