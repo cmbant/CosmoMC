@@ -190,6 +190,7 @@ contains
               backgroundSet = .true.
           end if
           itemLike = like%LogLike(Calc%CMB, Calc%Params%Theory, Calc%Params%P(like%nuisance_indices))
+
           if (itemLike == logZero) return
           Calc%Params%Likelihoods(i) = itemLike
      end if

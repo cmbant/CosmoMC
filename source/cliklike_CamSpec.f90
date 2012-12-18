@@ -50,6 +50,7 @@
         Like%LikelihoodType = 'CMB'
         Like%name='CamSpec'
         Like%version = CAMSpec_like_version
+        Like%speed = 5
         call Like%loadParamNames(trim(DataDir)//'camspec.paramnames')
 
         likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
@@ -71,7 +72,7 @@
         Like%LikelihoodType = 'CMB'
         Like%name='highL'
         Like%version = CAMSpec_like_version
-        Like%speed = 1
+        Like%speed = 6
 
         call Like%loadParamNames(trim(DataDir)//'highL.paramnames')
         
