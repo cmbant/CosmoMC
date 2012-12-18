@@ -72,13 +72,6 @@
     procedure :: LogLikeTheory => SN_LnLike
     end type Union2Likelihood
 
-    logical, parameter :: SN_marg = .True.
-
-    ! The following line selects which error estimate to use
-    ! default .True. = with systematic errors
-    logical, parameter :: SN_syscovmat = .False.  !! Use covariance matrix with or without systematics
-
-
     contains
 
     subroutine Union2Likelihood_Add(LikeList, Ini)
@@ -90,6 +83,10 @@
     character (LEN=20):: name
     integer i
     real(mcp) :: tmp_mat(sn_num, sn_num)
+    ! The following line selects which error estimate to use
+    ! default .True. = with systematic errors
+    logical :: Union_syscovmat = .False.  !! Use covariance matrix with or without systematics
+
 
     if (.not. Ini_Read_Logical_File(Ini, 'use_Union',.false.)) return
 
@@ -100,6 +97,7 @@
     like%dependent_params(1:num_hard) = .true.
     call LikeList%Add(like)
 
+    Union_syscovmat = Ini_read_Logical_File(Ini,'Union_syscovmat',Union_syscovmat)
 
     if (Feedback > 0) write (*,*) 'Reading: supernovae data'
     call OpenTxtFile(trim(DataDir)//'sn_z_mu_dmu_plow_union2.1.txt',tmp_file_unit)
@@ -110,7 +108,7 @@
     end do
     close(tmp_file_unit)
 
-    if (SN_syscovmat) then
+    if (Union_syscovmat) then
         call OpenTxtFile(trim(DataDir)//'sn_wmat_sys_union2.1.txt',tmp_file_unit)
     else
         call OpenTxtFile(trim(DataDir)//'sn_wmat_nosys_union2.1.txt',tmp_file_unit)
