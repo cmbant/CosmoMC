@@ -27,7 +27,8 @@ class GetDistPlotSettings:
         self.no_triangle_axis_labels = True
         self.solid_contour_palefactor = 0.5
 # see http://www.scipy.org/Cookbook/Matplotlib/Show_colormaps
-        self.colormap = cm.jet
+        self.colormap = cm.Blues
+        self.colormap_scatter = cm.jet
         self.param_names_for_labels = None  # 'clik_latex.paramnames'
 
     def setWithSubplotSize(self, size_inch):
@@ -279,9 +280,10 @@ class GetDistPlotter():
         for i, param in enumerate(params):
             subplot(plot_col, plot_col, i * plot_col + i + 1)
             self.plot_1d(roots, param, do_xlabel=i == plot_col - 1, no_label_no_numbers=self.settings.no_triangle_axis_labels)
-            xmin, xmax = xlim()
-            r = xmax - xmin
-            xlim([xmin - r / 10, xmax + r / 10])
+            if not shaded:
+                xmin, xmax = xlim()
+                r = xmax - xmin
+                xlim([xmin - r / 10, xmax + r / 10])
             lims[i] = xlim()
         for i, param in enumerate(params):
             for i2 in range(i + 1, len(params)):
@@ -315,7 +317,7 @@ class GetDistPlotter():
         cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
         setp(getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.axes_fontsize)
 
-    def add_3D_scatter(self, root, in_params, color_bar=True):
+    def add_3d_scatter(self, root, in_params, color_bar=True):
         params = self.get_param_array(root, in_params)
         pts = self.load_single_samples(root)
         names = self.paramNamesForRoot(root)
@@ -323,12 +325,12 @@ class GetDistPlotter():
         for param in params:
             cols.append(names.numberOfName(param.name) + 2)
         self.last_scatter = scatter(pts[:, cols[0]], pts[:, cols[1]], edgecolors='none',
-                s=self.settings.scatter_size, c=pts[:, cols[2]], cmap=self.settings.colormap)
+                s=self.settings.scatter_size, c=pts[:, cols[2]], cmap=self.settings.colormap_scatter)
         if color_bar: self.add_colorbar(params[2])
 
     def plot_3d(self, roots, in_params, color_bar=True, line_offset=0, filled=False, **ax_args):
         params = self.get_param_array(roots[0], in_params)
-        self.add_3D_scatter(roots[0], params, color_bar=color_bar)
+        self.add_3d_scatter(roots[0], params, color_bar=color_bar)
         for i, root in enumerate(roots[1:]):
             self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled)
         self.setAxes(params, **ax_args)
@@ -357,7 +359,7 @@ def sample_plots():
 
     roots = ['base_omegak_planck_CAMspec_lowl_lowLike', 'base_omegak_planck_CAMspec_lowl_lowLike_post_lensing', 'base_omegak_planck_CAMspec_lowl_lowLike_BAO']
     params = g.get_param_array(roots[0], ['omegam', 'omegal', 'H0'])
-    g.add_3D_scatter(roots[0], params)
+    g.add_3d_scatter(roots[0], params)
     g.add_line([1, 0], [0, 1])
     g.add_2d_contours(roots[1], params[0], params[1], filled=False, color='g')
     g.add_2d_contours(roots[2], params[0], params[1], filled=True, color='#CC1100')

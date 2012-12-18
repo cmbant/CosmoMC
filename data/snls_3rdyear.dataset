@@ -1,0 +1,23 @@
+#Settings for SNLS 3rd year data analysis
+name = SNLS 3rd year
+data_file = data/snls_3rdyear_lcparams.txt
+pecz = 0.0005
+intrinsicdisp = 0.13
+intrinsicdisp0 = 0.0675
+intrinsicdisp1 = 0.1133
+intrinsicdisp2 = 0.0815
+intrinsicdisp3 = 0.0989
+twoscriptmfit = T
+scriptmcut = 10.0
+has_mag_covmat = T
+mag_covmat_file = data/snls3_v0_covmatrix.dat
+has_stretch_covmat = T
+stretch_covmat_file = data/snls3_va_covmatrix.dat
+has_colour_covmat = T
+colour_covmat_file = data/snls3_vb_covmatrix.dat
+has_mag_stretch_covmat = T
+mag_stretch_covmat_file = data/snls3_v0a_covmatrix.dat
+has_mag_colour_covmat = T
+mag_colour_covmat_file = data/snls3_v0b_covmatrix.dat
+has_stretch_colour_covmat = T
+stretch_colour_covmat_file = data/snls3_vab_covmatrix.dat

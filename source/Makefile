@@ -150,7 +150,9 @@ ifneq ($(PLANCKLIKE),)
 PLANCKLIKEFILES += $(PLANCKLIKE).o
 endif
 
-DATAMODULES = $(PLANCKLIKEFILES) lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o
+SUPERNOVAE = supernovae_union2.o supernovae_SNLS.o
+
+DATAMODULES = $(PLANCKLIKEFILES) lrggettheory.o mpk.o bao.o $(SUPERNOVAE) supernovae.o HST.o SDSSLy-a-v3.o
 
 LIKEFILES =  DataLikelihoods.o calclike.o
 
@@ -206,6 +208,7 @@ default: cosmomc
 
 all : cosmomc getdist
 
+supernovae.o: $(SUPERNOVAE)
 samples.o: ObjectLists.o settings.o
 likelihood.o: ObjectLists.o settings.o ParamNames.o
 DataLikelihoods.o: likelihood.o paramdef.o $(DATAMODULES)
