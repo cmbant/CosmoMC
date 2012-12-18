@@ -536,6 +536,8 @@ weighting function or parameter mapping.</ul>
 <UL>
 <LI><B>non-public Planck-only changes (for now)</B><BR>
 <UL>
+<LI>Added SNLS supernovae and updated Union to Union 2.1
+<LI>Getdist removed sm support. Added python/GetDistPlots.py with fairly general plotting support.
 <LI>Added <b>use_lensing_potential</b> and <b>use_nonlinear_lensing</b> (currently can't be used with any LSS data; also note that it is not calculated consistency when only the initial power spectra are changed). Changed default num_cls_ext=1.
     Lensing potential accuracy increased for use_lensing_potential=T.
 <LI>Data likelihoods now specify their own .paramnames file for any nuisance parameters (samples in ./data). Combining theory and data parameters is done internally, there's no need to change hard-coded parameter numbers when new nuisance parameters are added, and unused likelihood nuisance parameter are no longer output. Each likelihood function is passed the array of its nuisance parameters, completely independent of what other likelihoods are doing (but multiple likelihood functions can use the same nuisance parameter names when they are the same parameter). Likelihoods specify their speed (<0 is slow, >=0 is fast, with higher faster), and are internally sorted to be in speed order before use.
