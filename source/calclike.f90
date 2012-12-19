@@ -1,11 +1,6 @@
     module CalcLike
-    use CMB_Cls
     use cmbtypes
-    use Random
-    use settings
-    use ParamDef
     use DataLikelihoodList
-    use likelihood
     implicit none
 
     real(mcp) :: Temperature  = 1
@@ -18,7 +13,6 @@
         logical changeMask(max_num_params)
         logical SlowChanged, PowerChanged
     end Type LikeCalculator
-
 
     contains
 
