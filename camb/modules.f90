@@ -146,6 +146,9 @@
          real(dl) omegak
          real(dl) curv,r, Ksign !CP%r = 1/sqrt(|CP%curv|), CP%Ksign = 1,0 or -1
          real(dl) tau0,chi0 !time today and rofChi(CP%tau0/CP%r)
+!MODIFIED P(K)
+         logical :: modpkfeedback
+!END MODIFIED P(K)  
 
          end type CAMBparams
 
