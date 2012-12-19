@@ -78,6 +78,14 @@
                !is still linear, exit
                goto 101
          end if
+
+!MODIFIED P(K)
+          if (xlogr1 > 3.49999) then
+               !exit 
+             goto 101
+          end if
+!END MODIFIED P(K)
+
       end do
 
 ! now calculate power spectra for a logarithmic range of wavenumbers (rk)
@@ -97,6 +105,13 @@
     ! where ph is represents the self-correlation halo term. 
  
              call halofit(rk,rneff,rncur,rknl,plin,pnl,pq,ph)   ! halo fitting formula 
+             
+!MODIFIED P(K)
+             if (pnl.le.0 .or. isnan(pnl) .or. pnl>1e30) then
+                pnl=plin
+             endif
+!END MODIFIED P(K)
+             
              CAMB_Pk%nonlin_ratio(i,itf) = sqrt(pnl/plin)
 
          end if

@@ -306,7 +306,7 @@ end function Reionization_GetOptDepth
     write (*,*) 'Reionization_zreFromOptDepth: Did not converge to optical depth'
     write (*,*) 'tau =',tau, 'optical_depth = ', Reion%optical_depth
     write (*,*) try_t, try_b
-    call mpiStop()
+    !call mpiStop()
   end if
     
  end subroutine Reionization_zreFromOptDepth 

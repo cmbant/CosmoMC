@@ -125,6 +125,9 @@ contains
 
      
       subroutine cmbmain
+!MODIFIED P(K)
+      use camb_interface, only : modpkoutput
+!END MODIFIED P(K) 
       integer q_ix 
       type(EvolutionVars) EV
   
@@ -167,6 +170,10 @@ contains
          write(*,*) actual-timeprev,' Timing for InitVars'
          write (*,*) 'r = ',real(CP%r),' scale = ',real(scale), 'age = ', real(CP%tau0)  
       end if 
+
+!MODIFIED P(K)
+      if (CP%modpkfeedback) modpkoutput=.true.
+!END MODIFIED P(K)
 
        if (.not. CP%OnlyTransfers)  call InitializePowers(CP%InitPower,CP%curv)
        if (global_error_flag/=0) return

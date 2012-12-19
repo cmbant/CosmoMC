@@ -1126,7 +1126,7 @@
 !
 
       write (*,*) 'Error in dverk, x =',x, 'xend=', xend
-      call MpiStop()
+!      call MpiStop()
 !
 !  end abort action
 !
