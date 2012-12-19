@@ -248,7 +248,7 @@ program SolveCosmology
         Use_BAO = Ini_Read_Logical('use_BAO',.false.)
         Use_CMB = Ini_Read_Logical('use_CMB',.true.)
 #ifdef CLIK
-        Use_clik = Ini_Read_Logical('use_clik',.false.) 
+        Use_clik = Ini_Read_Logical('use_clik',.false.)          
         if (use_clik .and. .not. use_CMB) &
          call DoAbort('must have use_CMB=.true. to have use_clik (cmb_numdatasets = 0 for only clik)')
 #else
@@ -312,7 +312,8 @@ program SolveCosmology
         end if
 
 #ifdef CLIK
-        if (Use_clik) call clik_readParams(DefIni)
+        numcliksets = Ini_Read_Int('clik_numdatasets',0)
+        if (Use_clik) call clik_readParams(DefIni,numcliksets)
 #endif
 
         Ini_fail_on_not_found = .true.

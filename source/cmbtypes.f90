@@ -8,7 +8,7 @@ implicit none
 !Number of CMB Cls, 1 for just temperature, 3 (4) for polarization (with B)
   integer, parameter  :: num_cls  = 4
 
-  integer, parameter  :: num_cls_ext=0
+  integer, parameter  :: num_cls_ext=1
    !number of other C_l
    !e.g. 2 for CMB lensing potential and cross-correlation 
 

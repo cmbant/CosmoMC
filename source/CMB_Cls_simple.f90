@@ -21,6 +21,8 @@ module CMB_Cls
   logical :: compute_tensors = .false.
   logical :: CMB_lensing = .false.
   logical :: use_nonlinear = .false.
+  logical :: use_nonlinear_lensing = .false.
+  logical :: use_lensing_potential = .false.
   
   Type ParamSetInfo  
     
@@ -526,17 +528,28 @@ contains
             P%Max_l = lmax_computed_cl +100 + 50 !+50 in case accuracyBoost>1 and so odd l spacing
             P%Max_eta_k = P%Max_l*2 
         end if
-        
+
+   
         if (HighAccuracyDefault) then
-         P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl,P%Max_eta_k)
+         P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl*AccuracyLevel,P%Max_eta_k)
+         if (CMB_Lensing .and. use_lensing_potential) P%Max_eta_k = max(P%Max_eta_k,12000*AccuracyLevel)
+         !k_etamax=18000 give c_phi_phi accurate to sub-percent at L=1000, <4% at L=2000         
+         !k_etamax=10000 is just < 1% at L<=500
         end if
-        
+
+        if (CMB_Lensing .and. use_nonlinear_lensing) then
+          if (use_LSS  .and. (matter_power_lnzsteps>1 .or. use_mpk)) &
+            call MpiStop('non-linear lensing and LSS data not supported currently')
+          !Haven't sorted out how to use LSS data etc with linear/nonlinear/sigma8/non-linear CMB lensing...
+          P%NonLinear = NonLinear_lens
+          call Transfer_SetForNonlinearLensing(P%Transfer)        
+        end if
+
         lensing_includes_tensors = .false.
 
         P%Scalar_initial_condition = initial_vector
         P%InitialConditionVector = 0
         P%InitialConditionVector(initial_adiabatic) = -1
-
 
  end subroutine InitCAMBParams
  
@@ -572,7 +585,15 @@ contains
         compute_tensors = Ini_Read_Logical('compute_tensors',.false.)
         if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
         CMB_lensing = Ini_Read_Logical('CMB_lensing',.false.)
+        CMB_lensing = Ini_Read_Logical('CMB_lensing',CMB_lensing)
+        use_lensing_potential = Ini_Read_logical('use_lensing_potential',use_lensing_potential)
+        use_nonlinear_lensing = Ini_Read_logical('use_nonlinear_lensing',use_nonlinear_lensing)
         if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
+        if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
+        if (use_lensing_potential .and. num_cls_ext ==0) & 
+           call MpiStop('num_cls_ext should be > 0 to use_lensing_potential')
+        if (use_lensing_potential .and. .not. CMB_lensing) &
+           call MpiStop('use_lensing_potential must have CMB_lensing=T')
         lmax_computed_cl = Ini_Read_Int('lmax_computed_cl',lmax)
         if (lmax_computed_cl /= lmax) then
           if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
@@ -590,8 +611,22 @@ contains
 
         call InitCAMBParams(P)
 
+        if (Feedback > 0 .and. MPIRank==0) then
+          write (*,*) 'Computing tensors:', compute_tensors
+          write (*,*) 'Doing CMB lensing:',CMB_lensing
+          write (*,*) 'Doing non-linear Pk:',P%NonLinear
+
+          write(*,'(" lmax              = ",1I4)') lmax
+          write(*,'(" lmax_computed_cl  = ",1I4)') lmax_computed_cl
+          write(*,*) 'max_eta_k         = ', P%Max_eta_k
+          write(*,*) 'transfer kmax     = ', P%Transfer%kmax
+
+          if (compute_tensors) write(*,'(" lmax_tensor    = ",1I4)') lmax_tensor
+          write(*,'(" Number of C_ls = ",1I4)') num_cls
+        end if
+
         call CAMB_InitCAMBdata(Info%Transfers)
-    
+
         P%WantTensors = compute_tensors
         Info%LastParams%omb = -1 !Make sure we calculate the CMB first time called
         CAMBP = P
