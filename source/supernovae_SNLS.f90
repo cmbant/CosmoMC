@@ -1194,7 +1194,7 @@ CONTAINS
     IF (Feedback > 1) THEN
        IF (Feedback > 2) THEN
           IF (twoscriptmfit) THEN
-             WRITE(*,'(" SNLS alpha: ",F7.4," beta: ",F7.4," scriptm1: ",F7.4, "scriptm2: ",F7.4)') &
+             WRITE(*,'(" SNLS alpha: ",F7.4," beta: ",F7.4," scriptm1: ",F7.4, "scriptm2: ",F9.4)') &
                   alpha,beta,(amarg_B*amarg_F-amarg_C*amarg_D)/tempG,&
                   (amarg_C*amarg_E-amarg_B*amarg_D)/tempG
           ELSE

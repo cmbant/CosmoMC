@@ -107,8 +107,6 @@
     integer, intent(in) :: aunit
     Type(mc_real_pointer) :: derived
     integer numderived 
-    integer CalcDerivedParams
-    external CalcDerivedParams
     integer isused,i
 
     if (present(like)) then
@@ -129,7 +127,7 @@
 
     if (generic_mcmc) return
 
-    numderived = CalcDerivedParams(P, derived)
+    numderived = Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
     do i=1, numderived
          write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
              num_params+i, derived%P(i), ParamNames_name(NameMapping,num_params + i )
@@ -168,7 +166,7 @@
      real(mcp) Cls(lmax,num_cls_tot)
      Type (CMBParams) CMB
 
-      call ParamsToCMBParams(Params%Info%LastParamArray,CMB)
+      call Parameterization%ParamsToCMBParams(Params%Info%LastParamArray,CMB)
       call ClsFromTheoryData(Params%Theory, CMB, Cls)
       call CreateTxtFile(fname,tmp_file_unit)
       fmt = concat('(1I6,',num_cls_tot,'E15.5)')

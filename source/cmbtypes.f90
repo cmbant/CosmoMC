@@ -64,7 +64,6 @@ implicit none
      real(mcp) w, wa
      real(mcp) YHe, nnu, iso_cdm_correlated, ALens, fdm !fdm is dark matter annihilation, eg,. 0910.3663
      real(mcp) reserved(5)
-  
   end Type CMBParams
 
   Type TheoryPredictions
@@ -90,10 +89,61 @@ implicit none
      procedure :: ReadTheory
   end Type TheoryPredictions
 
+ type, abstract :: TParameterization
+  contains
+   procedure(TParamsToCMBParams), deferred :: ParamsToCMBParams
+   procedure(TCMBParamsToParams), deferred :: CMBParamsToParams
+   procedure(TNonBaseParameterPriors), deferred :: NonBaseParameterPriors
+   procedure(TCalcDerivedParams), deferred :: CalcDerivedParams
+  end type TParameterization
+
+  abstract interface
+  subroutine TParamsToCMBParams(this,Params, CMB)
+   use settings
+   import TParameterization
+   import CMBParams
+     class(TParameterization) :: this
+     real(mcp) Params(num_params)
+     Type(CMBParams) :: CMB
+  end subroutine
+  
+  subroutine TCMBParamsToParams(this, CMB, Params)
+   use settings
+   import TParameterization
+   import CMBParams
+     class(TParameterization) :: this
+     real(mcp) Params(num_params)
+     Type(CMBParams) :: CMB
+  end subroutine
+  
+  function TNonBaseParameterPriors(this, CMB)
+   use settings
+    import TParameterization
+    import CMBParams
+      class(TParameterization) :: this
+      Type(CMBParams) :: CMB
+      real(mcp):: TNonBaseParameterPriors
+  end function
+
+   function TCalcDerivedParams(this, P, Theory, derived) result (num_derived)
+     use settings
+     import TheoryPredictions
+     import TParameterization
+     class(TParameterization) :: this
+     Type(mc_real_pointer) :: derived
+     class(TheoryPredictions) :: Theory
+     real(mcp) :: P(max_num_params)
+     integer num_derived 
+   end function
+
+  end interface
+  
+  class(TParameterization), pointer :: Parameterization
+
   integer, parameter :: As_index=4, amp_ratio_index = 5
   logical :: compute_tensors = .false.
 
-contains
+    contains
 
    subroutine WriteTheory(T, i)
     integer i
@@ -278,6 +328,5 @@ contains
      MatterPowerAt_Z = exp(mdn*(1-dz) + mup*dz)
 
    end function MatterPowerAt_Z
-
 
 end module cmbtypes

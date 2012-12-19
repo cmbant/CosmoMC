@@ -234,11 +234,11 @@ class GetDistPlotter():
             self.extra_artists = [self.fig.legend(lines, legend_labels, legend_loc, prop={'size':self.settings.axes_fontsize})]
 
 
-    def plots_1d(self, roots, in_params=None, legend_labels=None):
-        params = self.get_param_array(roots[0], in_params)
+    def plots_1d(self, roots, params=None, legend_labels=None, nx=None):
+        params = self.get_param_array(roots[0], params)
 
         nparam = len(params)
-        plot_col, plot_row = self.make_figure(nparam)
+        plot_col, plot_row = self.make_figure(nparam, nx=nx)
 
         for i, param in enumerate(params):
             subplot(plot_row, plot_col, i + 1)

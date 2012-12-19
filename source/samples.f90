@@ -76,6 +76,7 @@
             Upper = Upper*(1 - d) + d * SortItems%Value(b+1,ix) 
         end if
     end if
+    call SortItems%Clear(itemsOnly=.true.)
 
     end subroutine TSampleList_ConfidVal
 

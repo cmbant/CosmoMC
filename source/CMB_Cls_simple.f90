@@ -179,7 +179,7 @@ end subroutine GetNewPowerData
    real(mcp):: Params(:)
    type(CAMBParams)  P
 
-   call ParamsToCMBParams(Params,CMB)
+   call Parameterization%ParamsToCMBParams(Params,CMB)
 
    error = 0
    Threadnum =num_threads
@@ -365,6 +365,21 @@ end subroutine GetNewPowerData
    GetZreFromTau = CAMB_GetZreFromTau(P,dble(tau))
  
  end  function GetZreFromTau 
+
+ function CMBToTheta(CMB)
+     use ModelParams
+     implicit none
+     Type(CMBParams) CMB
+     real(mcp) CMBToTheta
+     integer error
+  
+     call InitCAMB(CMB,error,.false.)
+     CMBToTheta = CosmomcTheta()
+
+  end function CMBToTheta
+
+
+
  
  subroutine InitCAMBParams(P)
    use lensing
@@ -476,6 +491,42 @@ end subroutine GetNewPowerData
 
 
  end subroutine InitCAMBParams
+
+!Mapping between array of power spectrum parameters and CAMB
+     subroutine SetCAMBInitPower(P,CMB,in)
+       use camb
+       use settings
+       use cmbtypes
+       implicit none
+       type(CAMBParams)  P
+       Type(CMBParams) CMB
+
+       integer, intent(in) :: in
+
+
+       if (Power_Name == 'power_tilt') then
+
+       P%InitPower%k_0_scalar = pivot_k
+       P%InitPower%k_0_tensor = pivot_k
+
+       P%InitPower%ScalarPowerAmp(in) = cl_norm*CMB%InitPower(As_index)
+       P%InitPower%rat(in) = CMB%InitPower(amp_ratio_index)
+
+        
+       P%InitPower%an(in) = CMB%InitPower(1)
+       P%InitPower%ant(in) = CMB%InitPower(2)
+       if (P%InitPower%rat(in)>0 .and. .not. compute_tensors) &
+        call MpiStop('computing r>0 but compute_tensors=F')
+       P%InitPower%n_run(in) = CMB%InitPower(3)
+       if (inflation_consistency) then
+         P%InitPower%ant(in) = - CMB%InitPower(amp_ratio_index)/8.
+          !note input n_T is ignored, so should be fixed (to anything)
+       end if
+       else
+         stop 'params_CMB:Wrong initial power spectrum'
+       end if
+
+     end subroutine SetCAMBInitPower
  
  
  subroutine LoadFiducialHighLTemplate

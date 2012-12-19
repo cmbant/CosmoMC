@@ -67,14 +67,20 @@
 
     contains
 
-    subroutine Clear(L)
+    subroutine Clear(L, itemsOnly)
     Class(TObjectList) :: L
     integer i
+    logical, intent(in), optional :: itemsOnly
+    logical eachItem
 
     if (allocated(L%Items)) then
-        do i=1,L%count
-            call L%FreeItem(i)
-        end do
+        eachItem = .true.
+        if (present(itemsOnly)) eachItem=.not. itemsOnly
+        if (eachItem) then
+            do i=1,L%count
+                call L%FreeItem(i)
+            end do
+        end if
         deallocate (L%Items)
     end if
     L%Count = 0

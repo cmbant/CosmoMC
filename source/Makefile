@@ -228,10 +228,10 @@ $(CLSFILE): cmbtypes.o IO.o
 paramdef.o: $(CLSFILE) propose.o samples.o
 $(PROPOSE): settings.o
 $(PARAMETERIZATION): paramdef.o
-calclike.o: $(PARAMETERIZATION) DataLikelihoods.o
+calclike.o: DataLikelihoods.o
 postprocess.o: calclike.o
 MCMC.o: calclike.o
-driver.o: EstCovmat.o MCMC.o minimize.o
+driver.o: EstCovmat.o MCMC.o minimize.o $(PARAMETERIZATION)
 minimize.o: PowellConstrainedMinimize.o calclike.o
 
 ifneq ($(highL),)

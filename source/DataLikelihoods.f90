@@ -4,10 +4,8 @@
     use ParamDef
     implicit none
 
-    integer :: H0_min = 40, H0_max = 100
-    real :: Use_min_zre = 0
-
     contains
+
 
     subroutine SetDataLikelihoods(Ini)
     use HST
@@ -32,7 +30,6 @@
     if(Ini_Read_Logical_File(Ini,'use_BBN',.false.)) &
     call DoAbort('Use_BBN not supported: use prior[omegabh2]=mean std')
 
-    Use_min_zre = Ini_Read_Double_File(Ini,'use_min_zre',0.d0) 
     !        Use_Lya = Ini_Read_logical('use_lya',.false.)
 
     !        if (Use_Lya .and. use_nonlinear) &

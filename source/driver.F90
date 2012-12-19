@@ -17,6 +17,7 @@ program SolveCosmology
         use IO
         use ParamNames
         use GaugeInterface, only : Eqns_name
+        use DefineParameterization
 
         implicit none 
         
@@ -37,8 +38,6 @@ program SolveCosmology
         logical want_minimize
         logical :: start_at_bestfit = .false.
         Class(DataLikelihood), pointer :: Like
-        character(LEN=Ini_max_string_len) :: ParamNamesFile = ''
-
 #ifdef MPI
         double precision intime
         integer ierror
@@ -46,7 +45,6 @@ program SolveCosmology
         call mpi_init(ierror)
         if (ierror/=MPI_SUCCESS) stop 'MPI fail: rank'
 #endif
-
 
        instance = 0 
 #ifndef MPI 
@@ -142,8 +140,6 @@ program SolveCosmology
         end if
       
 #endif
-
-        ParamNamesFile = ReadIniFileName(DefIni,'ParamNamesFile')
 
         stop_on_error = Ini_Read_logical('stop_on_error',stop_on_error)
 
@@ -264,7 +260,7 @@ program SolveCosmology
 
         numtoget = Ini_Read_Int('samples')
 
-        call SetTheoryParamNames(NameMapping, ParamNamesFile)
+        call SetParameterization(DefIni, NameMapping)
         call DataLikelihoods%AddNuisanceParameters(NameMapping)
         call CMB_Initialize(Params%Info)
         call InitializeUsedParams(DefIni,Params)
