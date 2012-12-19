@@ -116,9 +116,42 @@ contains
              matpowernw(ik) = log(atransfernw**2*k*pi*twopi*h**3)
              matpowernwhalofit(ik) = log(atransfernwhalofit**2*k*pi*twopi*h**3)
           end do
+
+!MODIFIED P(K)
+          do ik=1,MTrans%num_q_trans
+               
+!              print *, 'outpower: ' , il, outpower(il)
+               
+             if (matpower(ik)>40.) then
+                matpower(ik)=40.
+             endif
+             if (matpowernw(ik)>40.) then
+                matpowernw(ik)=40.
+             endif
+             if (matpowernwhalofit(ik)>40.) then
+                matpowernwhalofit(ik)=40.
+             endif
+          enddo
+!END MODIFIED P(K)
+
           call spline(kvals,matpower,MTrans%num_q_trans,cllo,clhi,ddmat)
           call spline(kvals,matpowernw,MTrans%num_q_trans,cllo,clhi,ddmatnw)
           call spline(kvals,matpowernwhalofit,MTrans%num_q_trans,cllo,clhi,ddmatnwhalofit)
+
+!MODIFIED P(K)
+            do ik=1,MTrans%num_q_trans
+               if (isnan(ddmat(ik))) then
+                  ddmat(ik)=0
+               endif
+               if (isnan(ddmatnw(ik))) then
+                  ddmatnw(ik)=0
+               endif
+               if (isnan(ddmatnwhalofit(ik))) then
+                  ddmatnwhalofit(ik)=0
+               endif
+            enddo
+!END MODIFIED P(K)
+
 
 
             llo=1
@@ -163,9 +196,14 @@ contains
                lastix = lastix+1
             end do
 
-            outpower = exp(max(-30.,outpower))
-            outpowernw = exp(max(-30.,outpowernw))
-            outpowerrationwhalofit = exp(max(-30.,outpowerrationwhalofit))
+!MODIFIED P(K)
+            outpower = exp(max(-30.,min(40.,outpower)))
+            outpowernw = exp(max(-30.,min(40.,outpowernw)))
+            outpowerrationwhalofit = exp(max(-30.,min(40.,outpowerrationwhalofit)))
+!            outpower = exp(max(-30.,outpower))
+!            outpowernw = exp(max(-30.,outpowernw))
+!            outpowerrationwhalofit = exp(max(-30.,outpowerrationwhalofit))
+!END MODIFIED P(K)
 
 
             do il = 1, npoints

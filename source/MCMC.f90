@@ -9,6 +9,11 @@ module MonteCarlo
  use Random
  use propose
  use IO
+
+!MODIFIED P(K)
+ use camb_interface, only : pk_bad
+!END MODIFIED P(K)
+
  implicit none
 
  integer :: indep_sample = 0
@@ -462,6 +467,12 @@ function WL_Weight(L) result (W)
 
 
  subroutine MCMCsample(Params, samples_to_get)
+!MODIFIED P(K)
+   use settings, only : index_vpar, num_vpar
+   use ParamDef, only : Scales
+   use Random
+   integer i
+!END MODIFIED P(K)
    integer samples_to_get
    Type(ParamSet) Trial, Params, CurParams
    real Like, CurLike
@@ -530,11 +541,21 @@ function WL_Weight(L) result (W)
             mult = 1 
         end if 
         call GetProposalProjSlow(CurParams, Trial)
+!MODIFIED P(K)
+    else if (sampling_method == sampling_uniform) then
+    ! draw samples uniformly from the prior
+        Trial = CurParams
+        do i = 1, num_params_used
+           Trial%P(params_used(i)) = Scales%PMin(params_used(i))+ranmar()*(Scales%PMax(params_used(i))-Scales%PMin(params_used(i)))
+        end do
+        !write(*,*) Trial%P(1:num_params)
+!END MODIFIED P(K)
     else
         call GetProposal(CurParams, Trial)
     end if
 
     Like = GetLogLike(Trial) 
+
 
     if (Feedback > 1) write (*,*) 'Likelihood: ', Like, 'Current Like:', CurLike
 
@@ -611,6 +632,12 @@ function WL_Weight(L) result (W)
        mult=mult+1
        if (Feedback > 1) write (*,*) num_metropolis,' rejecting. ratio:', real(num_metropolis_accept)/num_metropolis
     end if
+
+!MODIFIED P(K)
+    if (pk_bad/=0) write (logfile_unit,'(a9,i3,a11,i8,a19,100(e12.5,1x))') ' pk_bad =', pk_bad, ' for sample', num_metropolis, &
+         ' with infl. param.:', Trial%P(index_vpar:index_vpar+num_vpar-1)
+    pk_bad=0
+!END MODIFIED P(K)
 
     end if !not slicing 
 

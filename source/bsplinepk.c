@@ -47,6 +47,7 @@ void dopksmoothbspline_(double *kvals, double *lnpklinear, double *lnpksmooth, i
 			}
 		}
 	n = countkeep;
+
 	ncoeffs = nbreak + 2;
 
 	/* allocate a cubic bspline workspace (k = 4) */
@@ -90,32 +91,47 @@ void dopksmoothbspline_(double *kvals, double *lnpklinear, double *lnpksmooth, i
 	double yi,yierr,chisq;
 	gsl_multifit_wlinear(X,w,y,c,cov,&chisq,mw);
 	i = 0;
-	for(j=0;j<(*npts);j++)  {
-		if((kvals[j]) >= gsl_vector_get(mybreaks,0) && (kvals[j]) <= gsl_vector_get(mybreaks,nbreak-1)) {
-			gsl_bspline_eval(gsl_vector_get(x,i),B,bw);
-			gsl_multifit_linear_est(B,c,cov,&yi,&yierr);
-			lnpksmooth[j] = log(yi*pow(kvals[j],-1.5));
-			i += 1;
+	for(j=0;j<(*npts);j++) {
+	  if((kvals[j]) >= gsl_vector_get(mybreaks,0)  && (kvals[j]) <= gsl_vector_get(mybreaks,nbreak-1)) {
+      
+	      gsl_bspline_eval(gsl_vector_get(x,i),B,bw);
+	      gsl_multifit_linear_est(B,c,cov,&yi,&yierr);
+//MODIFIED PK
+//			lnpksmooth[j] = log(yi*pow(kvals[j],-1.5));
+			if (yi>0) {
+			  lnpksmooth[j] = log(yi*pow(kvals[j],-1.5));
+			} else {
+			  lnpksmooth[j] = lnpklinear[j];
 			}
-		else {
-			lnpksmooth[j] = lnpklinear[j];
-			}
-		//spline is wacky at small k -- suppress difference at k < 0.01
-		if(kvals[j] < kmaxsuppress)  {
-			lnpksmooth[j] = lnpklinear[j];
-			}
-		}
-	assert(i==n);
-	gsl_bspline_free(bw);
-	gsl_vector_free(B);
-	gsl_vector_free(x);
-	gsl_vector_free(y);
-	gsl_vector_free(mybreaks);
-	gsl_matrix_free(X);
-	gsl_vector_free(c);
-	gsl_vector_free(w);
-	gsl_matrix_free(cov);
-	gsl_multifit_linear_free(mw);
+//END MODIFIED PK
+	      
+	      i += 1;
+	    }
+	  else {
+	    lnpksmooth[j] = lnpklinear[j];
+	  }
+
+	    //spline is wacky at small k -- suppress difference at k < 0.01
+	  if(kvals[j] < kmaxsuppress)  {
+	    lnpksmooth[j] = lnpklinear[j];	   	     
+	  }
+	 
+	}
+
+
+       
+	  assert(i==n);
+	  gsl_bspline_free(bw);
+	  gsl_vector_free(B);
+	  gsl_vector_free(x);
+	  gsl_vector_free(y);
+	  gsl_vector_free(mybreaks);
+	  gsl_matrix_free(X);
+	  gsl_vector_free(c);
+	  gsl_vector_free(w);
+	  gsl_matrix_free(cov);
+	  gsl_multifit_linear_free(mw);
+
 	}
 /*
 

@@ -1,0 +1,400 @@
+
+
+program SolveCosmology
+! This is a driving routine that illustrates the use of the program.
+
+        use IniFile
+        use MonteCarlo
+        use ParamDef
+        use settings
+        use cmbdata
+        use posthoc
+        use WeakLen
+        use CalcLike
+        use EstCovmatModule
+        use minimize
+        use mpk
+        use MatrixUtils
+        use IO
+        use ParamNames
+	use nestwrap
+#ifdef WMAP_PARAMS
+        use WMAP_OPTIONS
+#endif
+        implicit none 
+        
+        character(LEN=Ini_max_string_len) InputFile, LogFile
+
+        logical bad
+        integer numsets, nummpksets, i, numtoget, action
+        character(LEN=Ini_max_string_len) baseroot, filename(100), &
+         mpk_filename(100),  SZTemplate(100), numstr, fname, keyname
+        integer numbaosets
+        character(LEN=Ini_max_string_len) bao_filename(100)
+        real SZscale(100)
+        Type(ParamSet) Params, EstParams
+        integer num_points
+        integer file_unit, status
+        real bestfit_loglike
+        real max_like_radius
+        integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2, action_MN=3
+
+
+!#ifdef MPI
+!        double precision intime
+!        integer ierror
+!
+!        call mpi_init(ierror)
+!        if (ierror/=MPI_SUCCESS) stop 'MPI fail: rank'
+!#endif
+
+
+       instance = 0 
+!#ifndef MPI 
+        InputFile = GetParam(1)
+        if (InputFile == '') call DoAbort('No parameter input file')
+!#endif
+        numstr = GetParam(2)
+        if (numstr /= '') then
+         read(numstr,*) instance
+         rand_inst = instance   
+        end if
+
+	if (instance /= 0) call DoStop('With MultiNest should not have second parameter')
+
+!#ifdef MPI 
+!
+!        if (instance /= 0) call DoAbort('With MPI should not have second parameter')
+!        call mpi_comm_rank(mpi_comm_world,MPIrank,ierror)
+!
+!        instance = MPIrank +1 !start at 1 for chains                                             
+!        write (numstr,*) instance
+!        rand_inst = instance
+!        if (ierror/=MPI_SUCCESS) call DoAbort('MPI fail')
+!
+!        call mpi_comm_size(mpi_comm_world,MPIchains,ierror)
+!
+!        if (instance == 1) then
+!          print *, 'Number of MPI processes:',mpichains
+!          InputFile=GetParam(1)
+!        end if
+!
+!
+!        CALL MPI_Bcast(InputFile, LEN(InputFile), MPI_CHARACTER, 0, MPI_COMM_WORLD, ierror) 
+!
+!#endif
+        call IO_Ini_Load(DefIni,InputFile, bad)
+        
+        if (bad) call DoAbort('Error opening parameter file')
+        
+        Ini_fail_on_not_found = .false.
+
+        call TNameValueList_Init(CustomParams%L)
+        call TNameValueList_Init(CustomParams%ReadValues)
+
+        if (Ini_HasKey('local_dir')) LocalDir=ReadIniFileName(DefIni,'local_dir') 
+        if (Ini_HasKey('data_dir')) DataDir=ReadIniFileName(DefIni,'data_dir') 
+        
+        if (Ini_HasKey('custom_params')) then
+          fname = ReadIniFileName(DefIni,'custom_params')
+          if (fname/='') then
+           file_unit = new_file_unit()
+           call  Ini_Open_File(CustomParams,  fname, file_unit, bad)
+           call ClearFileUnit(file_unit)
+           if (bad) call DoAbort('Error reading custom_params parameter file')
+         end if
+        end if   
+
+        propose_scale = Ini_Read_Real('propose_scale',2.4)
+
+        HighAccuracyDefault = Ini_Read_Logical('high_accuracy_default',.false.)
+        AccuracyLevel = Ini_Read_Real('accuracy_level',1.)
+        
+        if (Ini_HasKey('highL_unlensed_cl_template')) then
+          highL_unlensed_cl_template=  ReadIniFilename(DefIni,'highL_unlensed_cl_template') 
+        else
+          highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
+        end if
+
+!HVP        checkpoint = Ini_Read_Logical('checkpoint',.false.)
+	nest_resume = Ini_Read_Logical('checkpoint',.false.)
+	checkpoint = .false.
+        if (checkpoint) flush_write = .true.
+        
+#ifdef WMAP_PARAMS
+        use_TT_beam_ptsrc = Ini_read_Logical('use_TT_beam_ptsrc')
+        use_TE = Ini_read_Logical('use_TE')
+        use_TT = Ini_Read_Logical('use_TT')
+        print *, 'WMAP beam TE TT', use_TT_beam_ptsrc, use_TE, use_TT
+#endif
+
+!#ifdef MPI 
+!        
+!        
+!        MPI_StartTime = MPI_WTime()
+!        MPI_R_Stop = Ini_Read_Real('MPI_Converge_Stop',MPI_R_Stop)
+!        MPI_LearnPropose = Ini_Read_Logical('MPI_LearnPropose',.true.)  
+!        if (MPI_LearnPropose) then
+!            MPI_R_StopProposeUpdate=Ini_Read_Real('MPI_R_StopProposeUpdate',0.)
+!            MPI_Max_R_ProposeUpdate=Ini_Read_Real('MPI_Max_R_ProposeUpdate',2.)
+!            MPI_Max_R_ProposeUpdateNew=Ini_Read_Real('MPI_Max_R_ProposeUpdateNew',30.)
+!        end if
+!        MPI_Check_Limit_Converge = Ini_Read_Logical('MPI_Check_Limit_Converge',.false.)
+!        MPI_StartSliceSampling = Ini_Read_Logical('MPI_StartSliceSampling',.false.)
+!        if (MPI_Check_Limit_Converge) then
+!         MPI_Limit_Converge = Ini_Read_Real('MPI_Limit_Converge',0.025)
+!         MPI_Limit_Converge_Err = Ini_Read_Real('MPI_Limit_Converge_Err',0.3)
+!         MPI_Limit_Param = Ini_Read_Int('MPI_Limit_Param',0)
+!        end if
+!      
+!#endif
+
+        ParamNamesFile = ReadIniFileName(DefIni,'ParamNamesFile')
+
+        stop_on_error = Ini_Read_logical('stop_on_error',stop_on_error)
+
+        Ini_fail_on_not_found = .true.
+        
+        baseroot = ReadIniFileName(DefIni,'file_root')
+        
+        rootname = trim(baseroot)
+
+        FileChangeIniAll = trim(rootname)//'.read'
+
+        if (instance /= 0) then
+            rootname = trim(rootname)//'_'//trim(adjustl(numstr))
+        end if
+
+!MODIFIED P(K)
+	Ini_fail_on_not_found = .false.
+        parnameroot = Ini_Read_String('parameter_names_root')
+	if (parnameroot == '') parnameroot = InputFile(1:len(trim(InputFile))-4)
+	Ini_fail_on_not_found = .true.
+!END MODIFIED P(K)
+
+        new_chains = .true. 
+
+        action = Ini_Read_Int('action',action_MCMC)
+        if(action/=action_MN) then
+                write(*,*) "This executable can only be used to with MultiNest (action=3)'"
+                stop
+        endif
+
+        if (checkpoint) then
+         if (action /= action_MCMC)  call DoAbort('checkpoint only with action =0')
+#ifdef MPI 
+         new_chains = .not. IO_Exists(trim(rootname) //'.chk')
+#else
+         new_chains = .not. IO_Exists(trim(rootname) //'.txt')  
+#endif
+        end if
+
+
+        if (action == action_importance) call ReadPostParams
+
+        FeedBack = Ini_Read_Int('feedback',0)
+        FileChangeIni = trim(rootname)//'.read'
+
+        if (action == action_MCMC) then
+
+            LogFile = trim(rootname)//'.log'
+
+            if (LogFile /= '') then
+             logfile_unit = IO_OutputOpenForWrite(LogFile, append=.not. new_chains, isLogFile = .true.)
+            else
+             logfile_unit = 0
+            end if
+
+            outfile_handle = 0
+            !fname = trim(rootname)//'.txt'
+            !if (new_chains) outfile_handle = IO_OutputOpenForWrite(fname, append = .false.)
+            !!conflicting file handles so give this one a manual file handle
+            outfile_handle = 201        
+
+            indep_sample = Ini_Read_Int('indep_sample')
+            if (indep_sample /=0) then
+              fname = trim(rootname)//'.data'
+              indepfile_handle = IO_DataOpenForWrite(fname, append = .not. new_chains)
+            end if
+ 
+            Ini_fail_on_not_found = .false.
+            burn_in = Ini_Read_Int('burn_in',0)
+            sampling_method = Ini_Read_Int('sampling_method',sampling_metropolis)
+            if (sampling_method > 6 .or. sampling_method<1) call DoAbort('Unknown sampling method')
+            if (sampling_method==4) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
+        else
+         Ini_fail_on_not_found = .false.
+        end if
+
+        numstr = Ini_Read_String('rand_seed')
+        if (numstr /= '') then
+          read(numstr,*) i
+          call InitRandom(i)
+        else
+          call InitRandom()
+        end if
+
+        use_nonlinear = Ini_Read_Logical('nonlinear_pk',.false.)
+        pivot_k = Ini_Read_Real('pivot_k',0.05)
+        inflation_consistency = Ini_read_Logical('inflation_consistency',.false.)
+        bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
+
+        w_is_w = Ini_Read_Logical ('w_is_w',.true.)
+        oversample_fast = Ini_Read_Int('oversample_fast',1)
+        use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
+
+!MODIFIED P(K)
+	use_modpk_mc = Ini_Read_Logical('use_modpk',.true.)
+	if (use_modpk_mc) then
+	  if (use_fast_slow) write(*,*) 'Setting use_fast_slow=F for modified P(k).'
+	  use_fast_slow = .false.
+	end if
+	modpk_physical_priors_mc = Ini_Read_Logical('modpk_physical_priors',.false.)
+	if (modpk_physical_priors_mc) then 
+          modpk_rho_reheat_mc = Ini_Read_Double('modpk_rho_reheat',1.d0) !units are GeV^4
+          modpk_w_primordial_lower_mc = Ini_Read_Double('modpk_w_primordial_lower',-0.333333d0)
+          modpk_w_primordial_upper_mc = Ini_Read_Double('modpk_w_primordial_upper',1.d0)
+        endif
+	potential_choice_mc = Ini_Read_Int('potential_choice',1)	
+	reconstruction_Nefold_limit_mc =  Ini_Read_Double('reconstruction_Nefold_limit',20.d0)
+	vnderivs_mc = Ini_Read_Logical('vnderivs',.true.)
+	phi_init_mc = Ini_Read_Double('phi_init',17.d0)
+	slowroll_infl_end_mc = Ini_Read_Logical('slowroll_infl_end',.true.)
+	phi_infl_end_mc = Ini_Read_Double('phi_infl_end',0.d0)
+	instreheat_mc = Ini_Read_Logical('instreheat',.false.)
+	k_pivot_mc = Ini_Read_Double('infl_pivot_k',0.05d0)
+	k_min_mc = Ini_Read_Double('infl_min_k',1.d-5)
+	k_max_mc = Ini_Read_Double('infl_max_k',5.d0)
+!END MODIFIED P(K)
+ 
+        if (Ini_Read_Logical('cmb_hyperparameters', .false.)) &
+            call DoAbort( 'Hyperparameters not supported any more')
+
+        if (Ini_Read_String('use_2dF') /= '') stop 'use_2dF now replaced with use_mpk'
+        Use_Clusters = Ini_Read_Logical('use_clusters',.false.)
+        Use_mpk = Ini_Read_Logical('use_mpk',.false.) ! matter power spectrum, incl 2dF
+        Use_HST = Ini_Read_Logical('use_HST',.true.)
+        Use_BBN = Ini_Read_Logical('use_BBN',.false.)
+        Use_Age_Tophat_Prior= Ini_Read_Logical('use_Age_Tophat_Prior',.true.)
+        Use_SN = Ini_Read_Logical('use_SN',.false.)
+        if (Use_SN) SN_filename = ReadIniFileName(DefIni,'SN_filename')
+        Use_BAO = Ini_Read_Logical('use_BAO',.false.)
+        Use_CMB = Ini_Read_Logical('use_CMB',.true.)
+        Use_WeakLen = Ini_Read_Logical('use_WeakLen',.false.)
+        Use_min_zre = Ini_Read_Double('use_min_zre',0.d0) 
+        Use_Lya = Ini_Read_logical('use_lya',.false.)
+       
+
+        if (Use_Lya .and. use_nonlinear) &
+             call DoAbort('Lya.f90 assumes LINEAR power spectrum input')
+
+        !flag to force getting sigma8 even if not using LSS data 
+        use_LSS = Ini_Read_Logical('get_sigma8',.false.)
+        ! use_LSS = Use_2dF .or. Use_Clusters .or. Use_WeakLen
+        use_LSS = Use_LSS .or. Use_mpk .or. Use_Clusters .or. Use_WeakLen .or. Use_Lya
+
+        Temperature = Ini_Read_Real('temperature',1.)
+        
+        num_threads = Ini_Read_Int('num_threads',0)
+        !$ if (num_threads /=0) call OMP_SET_NUM_THREADS(num_threads)
+
+
+        estimate_propose_matrix = Ini_Read_Logical('estimate_propose_matrix',.false.)
+        if (estimate_propose_matrix) then
+         if (Ini_Read_String('propose_matrix') /= '') &
+           call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
+        end if
+
+        max_like_radius = Ini_Read_Real('max_like_radius',0.01)
+         !radius in normalized parameter space to converge
+
+        Ini_fail_on_not_found = .true.
+
+        numsets = Ini_Read_Int('cmb_numdatasets')
+        num_points = 0
+        nuisance_params_used = 0
+        if (Use_CMB) then
+         do i= 1, numsets
+          filename(i) = ReadIniFileName(DefIni,numcat('cmb_dataset',i)) 
+          call ReadDataset(filename(i))
+          num_points = num_points + datasets(i)%num_points
+          keyname=numcat('cmb_dataset_SZ',i)
+          SZTemplate(i) = ''
+          if (Ini_HasKey(KeyName)) SZTemplate(i) = Ini_Read_String(keyname, .false.) 
+          if (SZTemplate(i)/='') then
+           SZScale(i) = Ini_read_Real(numcat('cmb_dataset_SZ_scale',i),1.0)
+           call ReadSZTemplate(datasets(i), SZTemplate(i),SZScale(i))
+          end if
+          nuisance_params_used = nuisance_params_used + datasets(i)%nuisance_parameters
+         end do
+         if (Feedback > 1) write (*,*) 'read datasets'
+        end if
+
+        Ini_fail_on_not_found = .true.
+        
+        nummpksets = Ini_Read_Int('mpk_numdatasets',0)
+        if (Use_mpk) then
+         do i= 1, nummpksets
+          mpk_filename(i) = ReadIniFileName(DefIni,numcat('mpk_dataset',i)) 
+          call ReadMpkDataset(mpk_filename(i))
+         end do
+         if (Feedback>1) write(*,*) 'read mpk datasets'
+        end if
+
+        !From Jason Dosset, minor changes by AL
+        numbaosets = Ini_Read_Int('bao_numdatasets',0)
+        if (Use_BAO) then
+             if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
+             do i= 1, numbaosets
+              bao_filename(i) = ReadIniFileName(DefIni,numcat('bao_dataset',i)) 
+              call ReadBaoDataset(bao_filename(i))
+              if(use_dr7lrg .and. baodatasets(i)%name =='sdss')then
+                 !Al stop rather than ignore, avoid depending of bao on mpk
+                 call MpiStop('DR7 LRG and SDSS BAO are based on the same data set. You cannot use both.')
+              end if
+             end do
+             if (Feedback>1) write(*,*) 'read bao datasets'
+        end if
+
+        numtoget = Ini_Read_Int('samples')
+
+        call Initialize(DefIni,Params)
+
+        !read the MultiNest parameters
+        if(action==action_MN) then
+          !set up MultiNest parameters
+          nest_mmodal = Ini_Read_Logical('multimodal',.false.)
+          nest_nlive = Ini_Read_Int('nlive',400)
+          nest_maxmodes = Ini_Read_Int('maxmodes',1)
+          nest_efr = Ini_Read_Double('eff',0.3d0)
+          nest_tol = Ini_Read_Double('tol',0.5d0)
+          nest_ceff = Ini_Read_Logical('ceff',.false.)
+          nest_updInt = Ini_Read_Int('updInt',50)
+          nest_root=rootname
+          !set up the seed for MultiNest
+!          if (seed /= 0) then
+!             nest_seed = seed
+!          else
+             nest_seed=-1 !take it from system clock
+!          end if
+          !feedback for MultiNest
+          if(FeedBack>0) then
+             nest_fb=.true.
+          else
+             nest_fb=.false.
+          end if
+        endif
+
+        call Ini_Close
+
+        if (action==action_MN .and. NameMapping%nnames/=0) &
+            call IO_OutputParamNames(NameMapping,trim(baseroot))
+
+        call SetIdlePriority !If running on Windows
+
+	if (Feedback > 0) write (*,*) 'Calling MultiNest'
+	
+	call nest_sample
+
+end program SolveCosmology
+
