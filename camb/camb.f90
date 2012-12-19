@@ -77,11 +77,24 @@
        subroutine CAMB_TransfersToPowers(CData)
         use CAMBmain
         use lensing
+!MODIFIED P(K)
+        use camb_interface, only : pk_bad, modpkoutput
+!END MODIFIED P(K)
         type (CAMBdata) :: CData
 
         CP = CData%Params
+
+!MODIFIED P(K)
+        if (CP%modpkfeedback) modpkoutput=.true.
+!END MODIFIED P(K)
+
         call InitializePowers(CP%InitPower,CP%curv)
         if (global_error_flag/=0) return
+
+!MODIFIED P(K)
+        if (pk_bad/=0) RETURN
+!END MODIFIED P(K)
+
         if (CData%Params%WantCls) then
           call ClTransferToCl(CData%ClTransScal,CData%ClTransTens, CData%ClTransvec)  
           if (CP%DoLensing .and. global_error_flag==0) call lens_Cls
@@ -99,12 +112,19 @@
         use CAMBmain
         use lensing
         use Bispectrum
+!MODIFIED P(K)
+        use camb_interface, only : pk_initialized
+!END MODIFIED P(K)
         use Errors
         type(CAMBparams) :: Params
         integer, optional :: error !Zero if OK
         type(CAMBparams) P
         logical :: separate = .true. !whether to do P_k in separate call or not
         logical :: InReionization
+
+!MODIFIED P(K)
+        pk_initialized = .false.
+!END MODIFIED P(K)
         
         if (Params%DoLensing .and. Params%NonLinear==NonLinear_Lens) separate = .false.
         InReionization = Params%Reion%Reionization
