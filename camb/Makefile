@@ -11,6 +11,7 @@ FISHER=
 #note version 10.0 gives wrong result for lensed when compiled with -openmp [fixed in 10.1]
 F90C     = ifort
 FFLAGS = -openmp -fast -W0 -WB -fpp2 -vec_report0
+#FFLAGS = -openmp -fast -W0 -WB -fpp2 -vec_report0 -DWIGGLY
 ## This is flag is passed to the Fortran compiler allowing it to link C++ if required (not usually):
 F90CRLINK = -cxxlib
 ifneq ($(FISHER),)
@@ -82,4 +83,4 @@ else
 EXTCAMBFILES =
 endif
 
-include ./Makefile_main
+include ./Makefile_main_modpk
