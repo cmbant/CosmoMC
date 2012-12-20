@@ -260,7 +260,7 @@ program SolveCosmology
 
         numtoget = Ini_Read_Int('samples')
 
-        call SetParameterization(DefIni, NameMapping)
+        call SetTheoryParameterization(DefIni, NameMapping)
         call DataLikelihoods%AddNuisanceParameters(NameMapping)
         call CMB_Initialize(Params%Info)
         call InitializeUsedParams(DefIni,Params)

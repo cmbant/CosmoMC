@@ -660,7 +660,7 @@ function WL_Weight(L) result (W)
 
     Like = GetLogLike(Trial) 
 
-    if (Feedback > 1) write (*,*) 'Likelihood: ', Like, 'Current Like:', CurLike
+    if (Feedback > 1) write (*,*) instance, 'Likelihood: ', Like, 'Current Like:', CurLike
 
     if (Like /= logZero) then
        if (sampling_method == sampling_multicanonical) then

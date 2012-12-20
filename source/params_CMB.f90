@@ -10,47 +10,67 @@
 
     module DefineParameterization
     use cmbtypes
+    implicit none
+
+    real(mcp), parameter :: neutrino_mass_fac= 93.04
 
     Type, extends(TParameterization) :: ThetaParameterization
         real(mcp) :: H0_min = 40, H0_max = 100
-        real(mcp) :: use_min_zre
+        real(mcp) :: use_min_zre = 0._mcp
     contains  
     procedure :: ParamsToCMBParams
     procedure :: CMBParamsToParams
     procedure :: NonBaseParameterPriors
     procedure :: CalcDerivedParams
+    procedure :: Initialize => ThetaParameterization_Init
     end type ThetaParameterization
 
-    Type(ThetaParameterization), save, target :: CMBParameterization
+    Type, extends(TParameterization) :: BackgroundParameterization
+    contains  
+    procedure :: ParamsToCMBParams => Background_ParamsToCMBParams
+    procedure :: CMBParamsToParams => Background_CMBParamsToParams
+    procedure :: CalcDerivedParams => Background_CalcDerivedParams
+    procedure :: Initialize => BackgroundParameterization_Init
+    end type BackgroundParameterization
 
     contains
 
-    subroutine SetParameterization(Ini, Names)
+    subroutine SetTheoryParameterization(Ini, Names)
     Type(TIniFile) :: Ini
     Type(TParamNames) :: Names
-    character(LEN=Ini_max_string_len) :: ParamNamesFile = ''
+    character(LEN=Ini_max_string_len) :: paramtxt
+    Type(ThetaParameterization), pointer :: CMBParameterization
+    Type(BackgroundParameterization), pointer :: BackgroundParam
 
-    Parameterization => CMBParameterization
-
-    ParamNamesFile = ReadIniFileName(Ini,'ParamNamesFile', NotFoundFail=.false.)
-
-    CMBParameterization%H0_min = Ini_Read_Double_File(Ini, 'H0_min',CMBParameterization%H0_min)
-    CMBParameterization%H0_max = Ini_Read_Double_File(Ini, 'H0_max',CMBParameterization%H0_max)
-    CMBParameterization%Use_min_zre = Ini_Read_Double_File(Ini,'use_min_zre',0.d0) 
-
-    if (ParamNamesFile /='') then
-        call ParamNames_init(Names, ParamNamesFile)
+    paramtxt = Ini_Read_String_Default_File(Ini,'parameterization', 'theta')
+    if (paramtxt =='background') then
+        allocate(BackgroundParam)
+        Parameterization => BackgroundParam
+        call BackgroundParam%Initialize(Ini,Names)
+    else if (paramtxt=='theta') then
+        allocate(CMBParameterization)
+        Parameterization => CMBParameterization
+        call CMBParameterization%Initialize(Ini,Names)
     else
-        if (generic_mcmc) then
-            Names%nnames=0
-            if (Feedback>0) write (*,*) 'edit SetParamNames in params_CMB.f90 if you want to use named params'
-        else
-            call ParamNames_init(Names, trim(LocalDir)//'params_CMB.paramnames')
-        end if
+        call MpiStop('params_CMB: unknown parameterization :'//trim(paramtxt))
     end if
 
-    end subroutine SetParameterization
+    end subroutine SetTheoryParameterization
 
+    subroutine ThetaParameterization_Init(this, Ini, Names)
+    Class(ThetaParameterization) :: this
+    Type(TIniFile) :: Ini
+    Type(TParamNames) :: Names
+
+    call SetTheoryParameterNumbers(14,5)
+
+    this%H0_min = Ini_Read_Double_File(Ini, 'H0_min',this%H0_min)
+    this%H0_max = Ini_Read_Double_File(Ini, 'H0_max',this%H0_max)
+    this%Use_min_zre = Ini_Read_Double_File(Ini,'use_min_zre',this%use_min_zre) 
+
+    call this%Init(Ini,Names, 'params_CMB.paramnames')
+
+    end subroutine ThetaParameterization_Init
 
     function NonBaseParameterPriors(this,CMB)
     class(ThetaParameterization) :: this
@@ -66,11 +86,10 @@
 
     subroutine ParamsToCMBParams(this, Params, CMB)
     use CMB_Cls
-    implicit none
     class(ThetaParameterization) :: this
-    real(mcp) Params(num_params)
+    real(mcp) Params(:)
     integer, parameter :: ncache =2
-    real(mcp), save :: LastParams(num_theory_params,ncache) = 0._mcp
+    real(mcp), save :: LastParams(max_theory_params,ncache) = 0._mcp
     Type(CMBParams) CMB
     Type(CMBParams), save :: LastCMB(ncache)
     real(mcp) DA
@@ -94,7 +113,7 @@
     call SetForH(Params,CMB,try_t, .false.)
     D_t = CMBToTheta(CMB)
     if (DA < D_b .or. DA > D_t) then
-        if (Feedback>1) print *,'Out of range finding H0'
+        if (Feedback>1) write(*,*) instance, 'Out of range finding H0: ', real(Params(3))
         cmb%H0=0 !Reject it
     else
         lasttry = -1
@@ -111,10 +130,14 @@
         end do
 
         !!call InitCAMB(CMB,error)
-        CMB%zre = GetZreFromTau(CMB, CMB%tau)
+        if (CMB%tau==0._mcp) then
+            CMB%zre=0
+        else
+            CMB%zre = GetZreFromTau(CMB, CMB%tau)
+        end if
 
         LastCMB(cache) = CMB
-        LastParams(:,cache) = Params
+        LastParams(1:num_hard,cache) = Params(1:num_hard)
         cache = mod(cache,ncache)+1
     end if
     end subroutine ParamsToCMBParams
@@ -122,7 +145,7 @@
     subroutine CMBParamsToParams(this,CMB, Params)
     use CMB_Cls
     class(ThetaParameterization) :: this
-    real(mcp) Params(num_Params)
+    real(mcp) Params(:)
     Type(CMBParams) CMB
 
     Params(1) = CMB%ombh2 
@@ -133,7 +156,7 @@
 
     if (neutrino_param_mnu) then
         Params(2) = CMB%omch2
-        Params(6) = CMB%omnuh2*93.04
+        Params(6) = CMB%omnuh2*neutrino_mass_fac
     else
         Params(2) = CMB%omdmh2
         Params(6) = CMB%nufrac
@@ -161,7 +184,7 @@
     class(ThetaParameterization) :: this
     Type(mc_real_pointer) :: derived
     class(TheoryPredictions) :: Theory
-    real(mcp) :: P(max_num_params)
+    real(mcp) :: P(:)
     Type(CMBParams) CMB
     real(mcp) r10
     integer num_derived 
@@ -170,7 +193,7 @@
 
     allocate(Derived%P(num_derived))
 
-    call Parameterization%ParamsToCMBParams(P,CMB)
+    call this%ParamsToCMBParams(P,CMB)
 
     if (lmax_tensor /= 0 .and. compute_tensors) then
         r10 = Theory%cl_tensor(10,1)/Theory%cl(10,1)
@@ -220,7 +243,7 @@
         CMB%Omk = Params(5)
         if (neutrino_param_mnu) then
             !Params(6) is now mnu, params(2) is omch2
-            CMB%omnuh2=Params(6)/93.04
+            CMB%omnuh2=Params(6)/neutrino_mass_fac
             if (CMB%omnuh2 > 0 .and. (Params(9) < 3 .or. Params(9)>3.1)) &
             call MpiStop('params_CMB: change for non-standard nnu with massive nu')
             CMB%omch2 = Params(2)
@@ -259,5 +282,86 @@
     CMB%omv = 1- CMB%omk - CMB%omb - CMB%omdm
 
     end subroutine SetForH
+
+    !!! Simple parameterization for background data, e.g. Supernovae only (no thermal history)
+    subroutine BackgroundParameterization_Init(this, Ini, Names)
+    Class(BackgroundParameterization) :: this
+    Type(TIniFile) :: Ini
+    Type(TParamNames) :: Names
+
+    call SetTheoryParameterNumbers(7,0)
+    this%late_time_only = .true.
+    call this%Init(Ini,Names, 'params_background.paramnames')
+
+    end subroutine BackgroundParameterization_Init
+
+    subroutine Background_ParamsToCMBParams(this, Params, CMB)
+    class(BackgroundParameterization) :: this
+    real(mcp) Params(:)
+    Type(CMBParams) CMB
+    real(mcp) omegam, h2
+
+    omegam = Params(1)
+    CMB%H0 = Params(2)
+    CMB%omk = Params(3)
+    CMB%omnuh2=Params(4)/neutrino_mass_fac
+    CMB%w =    Params(5)
+    CMB%wa =    Params(6)
+    CMB%nnu =    Params(7)
+
+    CMB%h=CMB%H0/100
+    h2 = CMB%h**2
+    CMB%Yhe=0.24
+    CMB%omnu = CMB%omnuh2/h2
+    CMB%omb= omegam - CMB%omnu
+    CMB%ombh2 = CMB%omb*h2
+    CMB%omc=0
+    CMB%omch2 = CMB%omc*h2
+    CMB%zre=0
+    CMB%tau=0
+    CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
+    CMB%omdm = CMB%omdmh2/h2
+    CMB%omv = 1- CMB%omk - CMB%omb - CMB%omdm
+    CMB%nufrac=CMB%omnuh2/CMB%omdmh2
+    CMB%reserved=0
+    CMB%fdm=0
+    CMB%iso_cdm_correlated=0
+    CMB%Alens=1
+
+    end subroutine Background_ParamsToCMBParams
+
+    subroutine Background_CMBParamsToParams(this,CMB, Params)
+    use CMB_Cls
+    class(BackgroundParameterization) :: this
+    real(mcp) Params(:)
+    Type(CMBParams) CMB
+
+    Params(1) = CMB%omb+CMB%omc+CMB%omnu
+    Params(2) = CMB%H0
+    Params(3) = CMB%omk
+    Params(4) = CMB%omnuh2*neutrino_mass_fac
+    Params(5) = CMB%w
+    Params(6) = CMB%wa
+    Params(7) = CMB%nnu
+    end subroutine Background_CMBParamsToParams
+
+    function Background_CalcDerivedParams(this, P, Theory, derived) result (num_derived)
+    class(BackgroundParameterization) :: this
+    Type(mc_real_pointer) :: derived
+    class(TheoryPredictions) :: Theory
+    real(mcp) :: P(:)
+    Type(CMBParams) CMB
+    integer num_derived 
+
+    num_derived = 1
+
+    allocate(Derived%P(num_derived))
+
+    call this%ParamsToCMBParams(P,CMB)
+
+    derived%P(1) = CMB%omv
+
+    end function Background_CalcDerivedParams
+
 
     end module DefineParameterization

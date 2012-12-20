@@ -89,12 +89,14 @@ contains
    Class(TheoryPredictions) Theory
     
     call SetTheoryForBackground(CMB)
-    call InitVars !calculate thermal history, e.g. z_drag etc.
-    if (global_error_flag/=0) then
+    if (.not. Parameterization%late_time_only) then
+     call InitVars !calculate thermal history, e.g. z_drag etc.
+     if (global_error_flag/=0) then
           error=global_error_flag
           return
-    end if 
-    call SetDerived(Theory)
+     end if 
+     call SetDerived(Theory)
+    end if
     
   end subroutine GetNewBackgroundData
 

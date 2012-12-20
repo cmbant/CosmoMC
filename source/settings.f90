@@ -21,25 +21,16 @@
     !Set to >1 to use CAMB etc on higher accuracy settings. 
     !Does not affect MCMC (except making it all slower)
 
-    !num_norm is number of calibration and normalization parameters (fast)
-    !         should be 2 or larger (scale for the scalar Cl, and the T/S ratio
-    !num_initpower is the number of initial power parameters
-    !num_hard is the number of 'hard' parameters
-    !num_freq_params are parameters for frequency-dependant part of CMB signal
-    !                 by default just one, an SZ amplitude
-    !num_nuisance_params is number of nuisance parameters used internally by data likelihoods
-    !                    (e.g. beam uncertainty modes, etc, specific to dataset)
-
 #ifdef TESTLIKE
     !Just use a Gaussian given by the proposal matrix
     logical, parameter :: test_likelihood= .true.
 #else
     logical, parameter :: test_likelihood= .false.
 #endif
-    integer, parameter :: num_hard = 14 
-    integer, parameter :: num_initpower = 5 
 
     integer, parameter :: max_data_params = 100
+    integer, parameter :: max_theory_params = 30
+    integer, parameter :: max_num_params = max_theory_params + max_data_params
 
     logical :: use_fast_slow = .false.
     !Set to false if using a slow likelihood function so no there's point is treating
@@ -60,9 +51,6 @@
     real(mcp) :: dragging_steps = 4._mcp
 
     !The rest are set up automatically
-
-    real(mcp), parameter :: cl_norm = 1e-10_mcp !units for As
-
     logical, parameter ::  generic_mcmc= .false. 
     !set to true to not call CAMB, etc.
     !write GenericLikelihoodFunction in calclike.f90   
@@ -74,11 +62,8 @@
 
     logical :: stop_on_error = .true. !whether to stop with error, or continue ignoring point
 
-    integer, parameter :: num_theory_params = num_initpower + num_hard 
-    integer, parameter :: max_num_params = num_theory_params + max_data_params
+    integer :: num_theory_params, index_data !set later depending on datasets and theory parameterization
 
-    integer, parameter :: index_initpower = num_hard+1
-    integer, parameter :: index_data = index_initpower + num_initpower
     integer, dimension(:), allocatable :: params_used
     integer num_params, num_params_used, num_data_params, num_fast, num_slow
 

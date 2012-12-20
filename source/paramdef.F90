@@ -565,7 +565,6 @@
         end if
     end if
 
-
     call S%Add(P(params_used))
     npoints = npoints + 1
 
@@ -653,7 +652,6 @@
                 if (flag)  then
                     call MPI_RECV(i,1,MPI_INTEGER, 0,0,MPI_COMM_WORLD,status,ierror)
                     !Just get rid of it. Must be neater way to do this...
-
                 end if
             end if
 
@@ -682,7 +680,6 @@
 
             MPICovMats(:,:,instance) = MPICovMat
             MPIMeans(:,instance) = MPIMean
-
             do i=1, MPIChains
                 j = i-1
                 call MPI_BCAST(MPICovMats(:,:,i),Size(MPICovMat),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
@@ -715,23 +712,20 @@
                         end do
                     end do
                     MPICovMat = Cov !+ meansCov !Estimate global covariance for proposal density
-                    meansCov = meansCov * real(MPIChains)/(MPIChains-1)
-
+                    meansCov = meansCov * real(MPIChains,mcp)/(MPIChains-1)
                     call GelmanRubinEvalues(cov, meanscov, evals, num_params_used)
                     R = maxval(evals)
                     if (Feedback > 1 .and. MPIRank==0) write (*,*) 'Convergence e-values: ', real(evals)
                     if (Feedback > 0 .and. MPIRank==0) &
                     write (*,*) 'Current convergence R-1 = ',real(R), ' chain steps =',sample_num
                     if (logfile_unit/=0) then
-                        write(logLine,*) 'Current convergence R-1 = ',real(R), 'chain steps =',sample_num
+                        write(logLine,*) 'Current convergence R-1 = ',real(R), ' chain steps =',sample_num
                         call IO_WriteLog(logfile_unit,logLine)
                     end if
                     if (R < MPI_R_Stop .and. flukecheck) then
                         if (MPI_Check_Limit_Converge) then
                             !Now check if limits from different chains agree well enough
-                            if (Feedback > 0) print *,'Checking if limits converged'
                             call CheckLImitsConverge(S)
-                            if (Feedback > 0) print *,'End checking if limits converged'
                         else
                             !If not also checking limits, we are done
                             call DoStop('Requested convergence R achieved')
@@ -826,7 +820,7 @@
                 WorstErr = LimErr
                 Worsti = params_check(j)
             end if
-            if (MPIRank ==0) print *, 'param ',params_check(j), 'lim err', LimErr
+            if (Feedback > 0 .and. MPIRank ==0) print *, 'param ',params_check(j), 'lim err', LimErr
         end do
     end do
     if (Feedback > 0 .and. MPIRank==0) then

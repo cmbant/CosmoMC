@@ -16,6 +16,18 @@
 
     contains
 
+    subroutine AddLike(CurrentLike, LikeToAdd)
+    real(mcp), intent(in) :: LikeToAdd
+    real(mcp) CurrentLike
+    if (CurrentLike/=LogZero) then
+        if (LikeToAdd == logZero) then
+            CurrentLike = LogZero
+        else
+            CurrentLike = CurrentLike + LikeToAdd/Temperature
+        end if
+    end if
+    end subroutine AddLike
+
     function GenericLikelihoodFunction(Params) 
     type(ParamSet)  Params 
     real(mcp) :: GenericLikelihoodFunction
@@ -53,17 +65,17 @@
         return
     end if
 
+    GetLogLike=0
+
     if (generic_mcmc .or. test_likelihood) then
-        GetLogLike = GenericLikelihoodFunction(Params) 
-        if (GetLogLike /= LogZero) GetLogLike = GetLogLike + getLogPriors(Params%P)
-        if (GetLogLike /= LogZero) GetLogLike = GetLogLike/Temperature
+        call AddLike(GetLogLike,GenericLikelihoodFunction(Params)) 
+        call AddLike(GetLogLike,getLogPriors(Params%P)) 
     else
         Calc%Params => Params
         Calc%CMB=>CMB
         call Parameterization%ParamsToCMBParams(Params%P,CMB)
-        GetLogLike  = Parameterization%NonBaseParameterPriors(CMB)
+        call AddLike(GetLogLike, Parameterization%NonBaseParameterPriors(CMB))
         if (GetLogLike == logZero) return
-        GetLogLike = GetLogLike/Temperature
         if (first) then
             Calc%changeMask(1:num_params) = .true.
             first = .false.
@@ -72,7 +84,7 @@
         end if
 
         if (CalculateRequiredTheoryChanges(Calc)) then
-            GetLogLike = GetLogLike+GetLogLikeWithTheorySet(Calc)
+            call AddLike(GetLogLike, GetLogLikeWithTheorySet(Calc))
         else
             GetLogLike = logZero
         end if
@@ -95,18 +107,16 @@
 
     Calc%slowChanged = .false.
     Calc%ChangeMask = .true.
+    GetLogLikePost = 0
+
     call Parameterization%ParamsToCMBParams(Params%P,CMB)
-    GetLogLikePost = Parameterization%NonBaseParameterPriors(CMB)
+    call AddLike(GetLogLikePost,Parameterization%NonBaseParameterPriors(CMB))
     if (GetLogLikePost == logZero) return
-    GetLogLikePost = GetLogLikePost/Temperature
 
     Calc%Params => Params
     Calc%CMB=>CMB
-    if (present(do_like)) then
-        GetLogLikePost=GetLogLikePost+GetLogLikeWithTheorySet(Calc, do_like)
-    else
-        GetLogLikePost=GetLogLikePost+GetLogLikeWithTheorySet(Calc)
-    end if
+    call AddLike(GetLogLikePost, GetLogLikeWithTheorySet(Calc, do_like))
+
     end function GetLogLikePost
 
     function getLogPriors(P) result(logLike)
@@ -182,7 +192,6 @@
     end do
     logLike = sum(Calc%Params%likelihoods(1:DataLikelihoods%Count))
     logLike = logLike + getLogPriors(Calc%Params%P)
-    logLike = logLike/Temperature
 
     end function GetLogLikeWithTheorySet
 
