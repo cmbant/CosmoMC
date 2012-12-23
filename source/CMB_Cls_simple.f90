@@ -8,12 +8,25 @@ module CMB_Cls
           initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
           HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived
   use Errors !CAMB        
+
+!MODIFIED P(K)
+  use modpkparams, only : use_modpk, modpk_physical_priors, vnderivs, instreheat, &
+       modpk_rho_reheat, modpk_w_primordial_lower, modpk_w_primordial_upper, &
+       potential_choice, k_pivot, N_pivot, vparams, slowroll_infl_end, &
+       phi_init0, phi_infl_end, &
+       modpk_ns, modpk_nt, modpk_nrun, modpk_As, modpk_r, modpk_w, &
+       reconstruction_Nefold_limit
+!END MODIFIED P(K)
+     
   use settings
   use snovae
   use bao
   use HST
   use IO
   implicit none
+!MODIFIED P(K)
+  logical :: Use_CMB = .true.  !moved here from calclike.f90
+!END MODIFIED P(K)
   logical :: Use_SN =.false. !Compute Supernovae likelihoods only when background changes
   logical :: Use_HST =.false. !Compute HST likelihoods only when background changes
   logical :: Use_BAO = .false.
@@ -60,6 +73,12 @@ contains
     ALens = CMB%ALens
     P%InitialConditionVector(initial_iso_CDM) = sign(sqrt(abs(CMB%iso_cdm_correlated) &
            /(1-abs(CMB%iso_cdm_correlated))),CMB%iso_cdm_correlated)
+
+!MODIFIED P(K)
+    N_pivot = CMB%N_pivot
+    vparams(1:num_vpar-1) = CMB%vparams(1:num_vpar-1)
+    if (Feedback > 1) P%modpkfeedback = .true.
+!END MODIFIED P(K)
     
 !    if (CMB%nnu < 3.04) call MpiStop('CMBToCAMB: nnu < 3.04, would give negative masless neutrinos')
     !Not clear this recipe is the best thing to do in general, but should work for massless case with unusual nnu
@@ -83,16 +102,26 @@ contains
    logical RecomputeTransfers
    type(CMBParams) A, B
 
+!MODIFIED P(K)
+!   RecomputeTransfers =  .not. (A%omb == B%omb .and. A%omc == B%omc .and. A%omv == B%omv .and. &
+!             A%omnu == B%omnu .and. A%zre == B%zre .and. A%omk == B%omk .and. A%w == B%w .and. &
+!               A%nnu == B%nnu .and. A%YHe == B%YHe.and. A%wa == B%wa .and. &
+!             A%iso_cdm_correlated == B%iso_cdm_correlated .and. A%zre_delta==B%zre_delta .and. A%ALens == B%ALens)
    RecomputeTransfers =  .not. (A%omb == B%omb .and. A%omc == B%omc .and. A%omv == B%omv .and. &
              A%omnu == B%omnu .and. A%zre == B%zre .and. A%omk == B%omk .and. A%w == B%w .and. &
                A%nnu == B%nnu .and. A%YHe == B%YHe.and. A%wa == B%wa .and. &
-             A%iso_cdm_correlated == B%iso_cdm_correlated .and. A%zre_delta==B%zre_delta .and. A%ALens == B%ALens)
+             A%iso_cdm_correlated == B%iso_cdm_correlated .and. A%zre_delta==B%zre_delta .and. A%ALens == B%ALens .and. &
+             A%N_pivot == B%N_pivot .and. all(A%vparams(1:num_vpar-1) == B%vparams(1:num_vpar-1)))
+!END MODIFIED P(K)
               
  end function RecomputeTransfers
 
 
  subroutine GetCls(CMB,Info, Cls, error)
    use ModelParams, only : ThreadNum
+!MODIFIED P(K)
+   use camb_interface, only : pk_bad
+!END MODIFIED P(K)
    use InitialPower
 #ifdef DR71RG 
    use lrggettheory
@@ -169,6 +198,27 @@ contains
       
          call CAMB_TransfersToPowers(Info%Transfers)
             !this sets slow CAMB params correctly from value stored in Transfers
+
+!MODIFIED P(K)
+         if (use_modpk) then
+
+         if (pk_bad /= 0) then
+            error = 1
+            return
+         else if (Feedback > 1) then
+            !write(*,'(a12,es10.2)') ' N_pivot =', N_pivot
+            write(*,'(a12,100es10.2)') ' vparams =', (vparams(zix),zix=1,num_vpar-1)
+            write(*,'(a12,es10.2)') ' n_s =', modpk_ns
+            write(*,'(a12,es10.2)') ' n_t =', modpk_nt
+            write(*,'(a12,es10.2)') ' n_run =', modpk_nrun
+            write(*,'(a12,es10.2)') ' ln(A_s) =', log(modpk_As)
+            write(*,'(a12,es10.2)') ' r =', modpk_r
+            if(modpk_physical_priors) write(*,'(a12,es10.2)') ' w_prim =', modpk_w
+         end if
+
+         end if
+!END MODIFIED P(K)
+
          if (global_error_flag/=0) then
           error=global_error_flag
           return
@@ -229,7 +279,10 @@ contains
      end if
      if (error /= 0) return
 
-     call ClsFromTheoryData(Info%Theory, CMB, Cls)
+!MODIFIED P(K)
+!     call ClsFromTheoryData(Info%Theory, CMB, Cls)
+     call ClsFromTheoryData(Info%Theory, CMB, Cls, .true.)
+!END MODIFIED P(K)    
      
  end subroutine GetCls
 
@@ -272,6 +325,16 @@ contains
  
     end do 
     
+!MODIFIED P(K)
+    Theory%modpk_Npivot = N_pivot
+    Theory%modpk_ns = modpk_ns
+    Theory%modpk_nt = modpk_nt
+    Theory%modpk_nrun = modpk_nrun
+    Theory%modpk_As = modpk_As
+    Theory%modpk_r = modpk_r
+    Theory%modpk_w = modpk_w
+!END MODIFIED P(K)    
+
     if (lmax_computed_cl/=lmax) then
         !use template for very high L theory tail, scaled not to be discontinuous
        highL_norm = Theory%cl(lmax_computed_cl,1)/highL_lensedCL_template(lmax_computed_cl,1)
@@ -451,6 +514,27 @@ contains
         Threadnum =num_threads
         w_lam = -1
         wa_ppf = 0._dl
+
+!MODIFIED P(K)
+        use_modpk = use_modpk_mc
+        if (use_modpk) then
+           modpk_physical_priors = modpk_physical_priors_mc
+           if (modpk_physical_priors) then 
+              modpk_rho_reheat = modpk_rho_reheat_mc
+              modpk_w_primordial_lower = modpk_w_primordial_lower_mc
+              modpk_w_primordial_upper = modpk_w_primordial_upper_mc
+           endif
+           potential_choice = potential_choice_mc
+           reconstruction_Nefold_limit =  reconstruction_Nefold_limit_mc
+           vnderivs = vnderivs_mc
+           phi_init0 = phi_init_mc
+           slowroll_infl_end = slowroll_infl_end_mc
+           phi_infl_end = phi_infl_end_mc
+           instreheat = instreheat_mc
+           k_pivot = k_pivot_mc
+        end if
+!END MODIFIED P(K)
+
         call CAMB_SetDefParams(P)
  
         P%OutputNormalization = outNone

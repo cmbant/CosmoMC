@@ -170,7 +170,7 @@ contains
     if (.not. (((x.ge.xa(n)) .and. (x.le.xa(1))) .or. ((x.ge.xa(1)) .and. (x.lt.xa(n))))) then 
        Print*,'Input of bbn_splint out of interpolation range.'
        Print*,xa(n),x,xa(1)
-       stop
+       !stop
     end if
     klo=1
     khi=n

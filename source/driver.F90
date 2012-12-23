@@ -174,6 +174,13 @@ program SolveCosmology
             rootname = trim(rootname)//'_'//trim(adjustl(numstr))
         end if
 
+!MODIFIED P(K)
+	Ini_fail_on_not_found = .false.
+        parnameroot = Ini_Read_String('parameter_names_root')
+	if (parnameroot == '') parnameroot = InputFile(1:len(trim(InputFile))-4)
+	Ini_fail_on_not_found = .true.
+!END MODIFIED P(K)
+
         new_chains = .true. 
 
         if (checkpoint) then
@@ -190,7 +197,10 @@ program SolveCosmology
         FeedBack = Ini_Read_Int('feedback',0)
         FileChangeIni = trim(rootname)//'.read'
 
-        if (action == action_MCMC) then
+!!MODIFIED P(K)
+!        if (action == action_MCMC) then
+        if (action /= action_importance) then
+!END MODIFIED P(K)
 
             LogFile = trim(rootname)//'.log'
 
@@ -214,7 +224,10 @@ program SolveCosmology
             Ini_fail_on_not_found = .false.
             burn_in = Ini_Read_Int('burn_in',0)     
             sampling_method = Ini_Read_Int('sampling_method',sampling_metropolis)
-            if (sampling_method > 6 .or. sampling_method<1) call DoAbort('Unknown sampling method')
+!MODIFIED P(K)
+        if (sampling_method > 7 .or. sampling_method<1) call DoAbort('Unknown sampling method')
+!        if (sampling_method > 6 .or. sampling_method<1) call DoAbort('Unknown sampling method')
+!END MODIFIED P(K)
             if (sampling_method==4) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
         else
          Ini_fail_on_not_found = .false.
@@ -237,6 +250,30 @@ program SolveCosmology
         oversample_fast = Ini_Read_Int('oversample_fast',1)
         use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
  
+!MODIFIED P(K)
+	use_modpk_mc = Ini_Read_Logical('use_modpk',.true.)
+	if (use_modpk_mc) then
+	  if (use_fast_slow) write(*,*) 'Setting use_fast_slow=F for modified P(k).'
+	  use_fast_slow = .false.
+	end if
+	modpk_physical_priors_mc = Ini_Read_Logical('modpk_physical_priors',.false.)
+	if (modpk_physical_priors_mc) then 
+          modpk_rho_reheat_mc = Ini_Read_Double('modpk_rho_reheat',1.d0) !units are GeV^4
+          modpk_w_primordial_lower_mc = Ini_Read_Double('modpk_w_primordial_lower',-0.333333d0)
+          modpk_w_primordial_upper_mc = Ini_Read_Double('modpk_w_primordial_upper',1.d0)
+        endif
+	potential_choice_mc = Ini_Read_Int('potential_choice',1)
+        reconstruction_Nefold_limit_mc =  Ini_Read_Double('reconstruction_Nefold_limit',20.d0)
+	vnderivs_mc = Ini_Read_Logical('vnderivs',.true.)
+	phi_init_mc = Ini_Read_Double('phi_init',17.d0)
+	slowroll_infl_end_mc = Ini_Read_Logical('slowroll_infl_end',.true.)
+	phi_infl_end_mc = Ini_Read_Double('phi_infl_end',0.d0)
+	instreheat_mc = Ini_Read_Logical('instreheat',.false.)
+	k_pivot_mc = Ini_Read_Double('infl_pivot_k',0.05d0)
+	k_min_mc = Ini_Read_Double('infl_min_k',1.d-5)
+	k_max_mc = Ini_Read_Double('infl_max_k',5.d0)
+!END MODIFIED P(K)
+
         if (Ini_Read_String('use_2dF') /= '') stop 'use_2dF now replaced with use_mpk'
         Use_Clusters = Ini_Read_Logical('use_clusters',.false.)
         Use_mpk = Ini_Read_Logical('use_mpk',.false.) ! matter power spectrum, incl 2dF

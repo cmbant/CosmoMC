@@ -41,6 +41,13 @@ implicit none
    real :: pivot_k = 0.05 !Point for defining primordial power spectra
    logical :: inflation_consistency = .false. !fix n_T or not
 
+!MODIFIED P(K)
+   logical :: use_modpk_mc, modpk_physical_priors_mc, instreheat_mc, slowroll_infl_end_mc, vnderivs_mc
+   integer :: potential_choice_mc
+   real*8 :: phi_init_mc, phi_infl_end_mc, k_pivot_mc, modpk_rho_reheat_mc, modpk_w_primordial_lower_mc, modpk_w_primordial_upper_mc
+   real*8 :: reconstruction_Nefold_limit_mc, k_max_mc, k_min_mc
+!END MODIFIED P(K)
+
    logical :: bbn_consistency = .true. !JH
 
    integer :: num_massive_neutrinos = -1 !if >0, number of massive degenerate eigenstates
@@ -63,6 +70,11 @@ implicit none
       !These are fast parameters controling amplitudes, calibrations, etc.
      real InitPower(1:num_initpower)
       !These are fast paramters for the initial power spectrum
+!MODIFIED P(K)
+     real*8 N_pivot
+      !inflationary potential parameters
+     real*8 vparams(1:num_vpar-1)
+!END MODIFIED P(K)
      !Now remaining (non-independent) parameters
      real omb, omc, omv, omnu, omk, omdm
      real ombh2, omch2, omnuh2, omdmh2
@@ -92,6 +104,9 @@ implicit none
      real mpkrat_nw_nl(num_matter_power,matter_power_lnzsteps) !halofit run on mpk_nw
      real finalLRGtheoryPk(num_matter_power)  !! this is the quantity that enters the LRG likelihood calculation
     ! end BR09 additions
+!MODIFIED P(K)
+     real modpk_ns, modpk_r, modpk_As, modpk_nt, modpk_nrun, modpk_Npivot, modpk_w
+!END MODIFIED P(K)
   end Type CosmoTheory
 
   logical, parameter :: write_all_Cls = .true. 
@@ -311,7 +326,11 @@ contains
       end subroutine InterpCls
   
   
-   subroutine ClsFromTheoryData(T, CMB, Cls)
+!MODIFIED P(K)
+!   subroutine ClsFromTheoryData(T, CMB, Cls)
+   subroutine ClsFromTheoryData(T, CMB, Cls, tensors)
+     logical :: tensors
+!END MODIFIED P(K)
      Type(CosmoTheory) T
      Type(CMBParams) CMB
      real Cls(lmax,num_cls_tot)
@@ -324,7 +343,10 @@ contains
      end if
 
      i = norm_amp_ratio !this convolution is to avoid compile-time bounds-check errors on CMB%norm
-     if (CMB%norm(i) /= 0) then
+!MODIFIED P(K)
+!     if (CMB%norm(i) /= 0) then
+     if (tensors) then
+!END MODIFIED P(K)
         Cls(2:lmax_tensor,1:num_cls) =  Cls(2:lmax_tensor,1:num_cls)+ T%cl_tensor(2:lmax_tensor,1:num_cls) 
          !CMB%norm(norm_As)*CMB%norm(norm_amp_ratio)*T%cl_tensor(2:lmax_tensor,:)
      end if 
@@ -338,7 +360,10 @@ contains
      integer l
      real Cls(lmax,num_cls_tot)
 
-     call ClsFromTheoryData(T,CMB,Cls)
+!MODIFIED P(K)
+!     call ClsFromTheoryData(T,CMB,Cls)
+     call ClsFromTheoryData(T,CMB,Cls,.true.)
+!END MODIFIED P(K)
      open(unit = tmp_file_unit, file = aname, form='formatted', status = 'replace')
      do l=2, lmax
         write (tmp_file_unit,*) l, Cls(l,1:num_cls)*l*(l+1)/(2*pi), Cls(l,num_cls+1:num_cls_tot)

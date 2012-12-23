@@ -3,6 +3,10 @@ module ParamNames
  implicit none
  
  integer, parameter :: ParamNames_maxlen = 128
+
+!MODIFIED P(K)
+ character(LEN=500) :: parnameroot
+!END MODIFIED P(K)
  
   Type TParamNames
     integer nnames, num_MCMC, num_derived

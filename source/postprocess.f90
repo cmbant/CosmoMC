@@ -211,7 +211,10 @@ contains
                  call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
 
 
-              call ClsFromTheoryData(CorrectTheory, newCMB, Cls)
+!MODIFIED P(K)
+!              call ClsFromTheoryData(CorrectTheory, newCMB, Cls)
+              call ClsFromTheoryData(CorrectTheory, newCMB, Cls, .true.)
+!END MODIFIED P(K)
               Info%Theory = CorrectTheory
             
               if (any(Cls(2:lmax,1) < 0)) then

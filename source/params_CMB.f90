@@ -45,8 +45,10 @@
 
        integer, intent(in) :: in
 
-
-       if (Power_Name == 'power_tilt') then
+!MODIFIED P(K)
+!       if (Power_Name == 'power_tilt') then
+       if ((Power_Name == 'power_tilt') .or. (Power_Name == 'power_tilt_modpk')) then
+!END MODIFIED P(K)
 
        P%InitPower%k_0_scalar = pivot_k
        P%InitPower%k_0_tensor = pivot_k
@@ -75,6 +77,9 @@
      use cmbtypes
      use CMB_Cls
      use bbn
+!MODIFIED P(K)
+     use modpkparams, only : instreheat
+!END MODIFIED P(K)
      implicit none
      real Params(num_Params)
      logical, intent(in) :: firsttime
@@ -119,6 +124,11 @@
         CMB%ALens = Params(13)
         CMB%fdm = Params(14)
         
+!MODIFIED P(K)
+        if (.not.instreheat) CMB%N_pivot = Params(index_vpar)
+        CMB%vparams(1:num_vpar-1) = Params(index_vpar+1:index_vpar+num_vpar-1)
+!END MODIFIED P(K)
+
         CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initPower-1)
         CMB%norm(1) = exp(Params(index_norm))
         CMB%norm(2:num_norm) = Params(index_norm+1:index_norm+num_norm-1)
@@ -150,7 +160,11 @@
      real  D_b,D_t,D_try,try_b,try_t, CMBToTheta, lasttry
      external CMBToTheta
 
-     if (all(Params(1:num_hard) == Lastparams(1:num_hard))) then
+!MODIFIED P(K)
+!     if (all(Params(1:num_hard) == Lastparams(1:num_hard))) then
+     if (all(Params(1:num_hard) == Lastparams(1:num_hard)) .and. &
+          all(Params(index_vpar:index_vpar+num_vpar-1) == LastParams(index_vpar:index_vpar+num_vpar-1))) then
+!END MODIFIED P(K)
        call SetForH(Params,CMB,LastH0, .true.)
        CMB%zre = Lastzre
      else
@@ -231,6 +245,11 @@
       Params(index_norm+1:index_norm+num_norm-1) = CMB%norm(2:num_norm)
       Params(index_nuisance:index_nuisance+num_nuisance_params-1)=CMB%nuisance(1:num_nuisance_params) 
 
+!MODIFIED P(K)
+      Params(index_vpar) = CMB%N_pivot
+      Params(index_vpar+1:index_vpar+num_vpar-1) = CMB%vparams(1:num_vpar-1)
+!END MODIFIED P(K)
+
    end subroutine CMBParamsToParams
 
    subroutine SetParamNames(Names)
@@ -296,6 +315,132 @@
       
   end function CalcDerivedParams
   
+  subroutine WriteParams_nest(P, nPar, Cube)
+     use settings
+     use cmbtypes
+     use ParamDef
+     use IO
+     use Lists
+!MODIFIED P(K)
+     use modpkparams, only : use_modpk, instreheat
+!END MODIFIED P(K)
+     implicit none
+     Type(ParamSet) P
+     Type(CMBParams) CMB
+     integer :: mult
+!MODIFIED P(K)
+    integer il, nPar, i, j
+  ! set range in l to write for each model if feedback=3
+    integer, parameter :: wp_lmin = 2
+    integer, parameter :: wp_lmax = 1000
+!END MODIFIED P(K)
+     real, allocatable :: output_array(:)
+     real*8 :: Cube(1:nPar)
+     Type(real_pointer) :: derived
+     integer numderived 
+     integer CalcDerivedParams
+     external CalcDerivedParams
+  
+     mult = 0
+     if (outfile_handle ==0) return
+  
+    if (generic_mcmc) then
+
+      !call IO_OutputChainRow(outfile_handle, mult, like, P%P)
+     
+    else
+    
+      numderived = CalcDerivedParams(P, derived)
+
+!MODIFIED P(K)
+      if (use_modpk) then
+         allocate(output_array(num_real_params + numderived + nuisance_params_used + 7 ))
+      else
+         allocate(output_array(num_real_params + numderived + nuisance_params_used ))
+      end if
+!END MODIFIED P(K)
+      do i=1, num_params_used
+		Cube(i) = P%P(params_used(i))
+      end do
+
+      output_array(1:num_real_params) =  P%P(1:num_real_params)
+      output_array(num_real_params+1:num_real_params+numderived) =  derived%P
+      deallocate(derived%P)
+
+      j=1
+      do i=num_params_used+1, num_params_used+numderived
+                Cube(i) = output_array(num_real_params+j)
+		j=j+1
+      end do
+
+!MODIFIED P(K)
+      if (use_modpk) then
+         output_array(num_real_params+numderived+1) = P%Info%Theory%modpk_Npivot
+         output_array(num_real_params+numderived+2) = P%Info%Theory%modpk_ns
+         output_array(num_real_params+numderived+3) = P%Info%Theory%modpk_nt
+         output_array(num_real_params+numderived+4) = P%Info%Theory%modpk_nrun
+         output_array(num_real_params+numderived+5) = log(1.d10*P%Info%Theory%modpk_As)
+         output_array(num_real_params+numderived+6) = P%Info%Theory%modpk_r
+         output_array(num_real_params+numderived+7) = P%Info%Theory%modpk_w
+         j=numderived+1
+         do i=num_params_used+numderived+1, num_params_used+numderived+7
+                Cube(i) = output_array(num_real_params+j)
+		j=j+1
+         end do
+     end if
+!END MODIFIED P(K)
+
+      if (nuisance_params_used>0) then
+!MODIFIED P(K)
+         if (use_modpk) then
+            output_array(num_real_params+numderived+7+1:num_real_params+numderived+7+nuisance_params_used) = &
+                 P%P(num_real_params+1:num_real_params+nuisance_params_used) 
+         else
+            output_array(num_real_params+numderived+1:num_real_params+numderived+nuisance_params_used) = &
+                 P%P(num_real_params+1:num_real_params+nuisance_params_used) 
+         end if
+         Cube(j:j+nuisance_params_used-1) = &
+              P%P(num_real_params+1:num_real_params+nuisance_params_used)
+!END MODIFIED P(K)
+      end if
+ 
+      !call IO_OutputChainRow(outfile_handle, mult, like, output_array)
+      deallocate(output_array)           
+    end if
+
+!MODIFIED P(K)
+! write large scale C_l's for each sample to files
+! (useful for testing or for computing distribution of C_l)
+     if (Feedback > 2) then
+        open(unit=13,file=trim(rootname)//'.clt',form='formatted',status='unknown',position='append')
+        if (compute_tensors) then
+           write(13,'(10000E15.5)') mult,(il*(il+1)* &
+                (P%Info%Theory%cl(il,1)+P%Info%Theory%cl_tensor(il,1))/(2.*pi), il=wp_lmin,wp_lmax)
+        else
+           write(13,'(10000E15.5)') mult,(il*(il+1)*P%Info%Theory%cl(il,1)/(2.*pi), il=wp_lmin,wp_lmax)
+        end if
+        close(13)
+        open(unit=13,file=trim(rootname)//'.cle',form='formatted',status='unknown',position='append')
+        if (compute_tensors) then
+           write(13,'(10000E15.5)') mult,(il*(il+1)* &
+                (P%Info%Theory%cl(il,3)+P%Info%Theory%cl_tensor(il,3))/(2.*pi), il=wp_lmin,wp_lmax)
+        else
+           write(13,'(10000E15.5)') mult,(il*(il+1)*P%Info%Theory%cl(il,3)/(2.*pi), il=wp_lmin,wp_lmax)
+        end if
+        close(13)
+        open(unit=13,file=trim(rootname)//'.clc',form='formatted',status='unknown',position='append')
+        if (compute_tensors) then
+           write(13,'(10000E15.5)') mult,(il*(il+1)* &
+                (P%Info%Theory%cl(il,2)+P%Info%Theory%cl_tensor(il,2))/(2.*pi), il=wp_lmin,wp_lmax)
+        else
+           write(13,'(10000E15.5)') mult,(il*(il+1)*P%Info%Theory%cl(il,2)/(2.*pi), il=wp_lmin,wp_lmax)
+        end if
+        close(13)
+     end if
+!END MODIFIED P(K)
+
+  end  subroutine WriteParams_nest
+
 
   subroutine WriteParams(P, mult, like)
      use settings
@@ -303,9 +448,26 @@
      use ParamDef
      use IO
      use Lists
+!MODIFIED P(K)
+     use CAMB
+     use modpkparams, only : use_modpk, instreheat, &
+          N_pivot, modpk_ns, modpk_nt, modpk_nrun, modpk_As, modpk_r, modpk_w
+     use camb_interface, only : pk_bad, pk_initialized
+     use InitialPower, only : InitializePowers
+     use CMB_Cls, only : Use_CMB
+     use mpk, only : use_mpk
+!END MODIFIED P(K)
      implicit none
      Type(ParamSet) P
      real, intent(in) :: mult, like
+!MODIFIED P(K)
+     Type(CMBParams) CMB
+     Type(CAMBParams) PP
+     integer il
+  ! set range in l to write for each model if feedback=3
+     integer, parameter :: wp_lmin = 2
+     integer, parameter :: wp_lmax = 1000
+!END MODIFIED P(K)
      real, allocatable :: output_array(:)
      Type(real_pointer) :: derived
      integer numderived 
@@ -322,19 +484,93 @@
     
       numderived = CalcDerivedParams(P, derived)
 
-      allocate(output_array(num_real_params + numderived + nuisance_params_used ))
+!MODIFIED P(K)
+      if (use_modpk) then
+         allocate(output_array(num_real_params + numderived + nuisance_params_used + 7 ))
+      else
+         allocate(output_array(num_real_params + numderived + nuisance_params_used ))
+      end if
+!END MODIFIED P(K)
       output_array(1:num_real_params) =  P%P(1:num_real_params)
       output_array(num_real_params+1:num_real_params+numderived) =  derived%P
       deallocate(derived%P)
+!MODIFIED P(K)
+      if (use_modpk) then
+         if ((.not.Use_CMB) .and. (.not.use_mpk)) then
+         ! compute P(k) to get derived parameters
+         ! *** This is computed for the CURRENT parameters, not the *****
+         ! *** TRIAL parameters as for the usual sampling, so pk_bad ****
+         ! *** reports in the log file will list the wrong parameters ***
+            pk_initialized = .false.
+            call InitializePowers(PP%InitPower,-CMB%Omk/(299792.458_dl/CMB%H0)**2)
+            output_array(num_real_params+numderived+1) = N_pivot
+            output_array(num_real_params+numderived+2) = modpk_ns
+            output_array(num_real_params+numderived+3) = modpk_nt
+            output_array(num_real_params+numderived+4) = modpk_nrun
+            output_array(num_real_params+numderived+5) = log(1.d10*modpk_As)
+            output_array(num_real_params+numderived+6) = modpk_r
+            output_array(num_real_params+numderived+7) = modpk_w
+         else
+            output_array(num_real_params+numderived+1) = P%Info%Theory%modpk_Npivot
+            output_array(num_real_params+numderived+2) = P%Info%Theory%modpk_ns
+            output_array(num_real_params+numderived+3) = P%Info%Theory%modpk_nt
+            output_array(num_real_params+numderived+4) = P%Info%Theory%modpk_nrun
+            output_array(num_real_params+numderived+5) = log(1.d10*P%Info%Theory%modpk_As)
+            output_array(num_real_params+numderived+6) = P%Info%Theory%modpk_r
+            output_array(num_real_params+numderived+7) = P%Info%Theory%modpk_w
+         end if
+      end if
+!END MODIFIED P(K)
 
       if (nuisance_params_used>0) then
-       output_array(num_real_params+numderived+1:num_real_params+numderived+nuisance_params_used) = &
-        P%P(num_real_params+1:num_real_params+nuisance_params_used) 
+!MODIFIED P(K)
+         if (use_modpk) then
+            output_array(num_real_params+numderived+7+1:num_real_params+numderived+7+nuisance_params_used) = &
+                 P%P(num_real_params+1:num_real_params+nuisance_params_used) 
+         else
+            output_array(num_real_params+numderived+1:num_real_params+numderived+nuisance_params_used) = &
+                 P%P(num_real_params+1:num_real_params+nuisance_params_used) 
+         end if
+!END MODIFIED P(K)
       end if
  
-      call IO_OutputChainRow(outfile_handle, mult, like, output_array)
+ !MODIFIED P(K) 
+      if (pk_bad==0) call IO_OutputChainRow(outfile_handle, mult, like, output_array)
+!      call IO_OutputChainRow(outfile_handle, mult, like, output_array)
+!END MODIFIED P(K)
       deallocate(output_array)           
     end if
+
+!MODIFIED P(K)
+! write large scale C_l's for each sample to files
+! (useful for testing or for computing distribution of C_l)
+     if (Feedback > 2) then
+        open(unit=13,file=trim(rootname)//'.clt',form='formatted',status='unknown',position='append')
+	if (compute_tensors) then
+           write(13,'(10000E15.5)') mult,(il*(il+1)* &
+                (P%Info%Theory%cl(il,1)+P%Info%Theory%cl_tensor(il,1))/(2.*pi), il=wp_lmin,wp_lmax)
+        else
+           write(13,'(10000E15.5)') mult,(il*(il+1)*P%Info%Theory%cl(il,1)/(2.*pi), il=wp_lmin,wp_lmax)
+        end if
+        close(13)
+        open(unit=13,file=trim(rootname)//'.cle',form='formatted',status='unknown',position='append')
+	if (compute_tensors) then
+           write(13,'(10000E15.5)') mult,(il*(il+1)* &
+                (P%Info%Theory%cl(il,3)+P%Info%Theory%cl_tensor(il,3))/(2.*pi), il=wp_lmin,wp_lmax)
+        else
+           write(13,'(10000E15.5)') mult,(il*(il+1)*P%Info%Theory%cl(il,3)/(2.*pi), il=wp_lmin,wp_lmax)
+        end if
+        close(13)
+        open(unit=13,file=trim(rootname)//'.clc',form='formatted',status='unknown',position='append')
+	if (compute_tensors) then
+           write(13,'(10000E15.5)') mult,(il*(il+1)* &
+                (P%Info%Theory%cl(il,2)+P%Info%Theory%cl_tensor(il,2))/(2.*pi), il=wp_lmin,wp_lmax)
+        else
+           write(13,'(10000E15.5)') mult,(il*(il+1)*P%Info%Theory%cl(il,2)/(2.*pi), il=wp_lmin,wp_lmax)
+        end if
+        close(13)
+     end if
+!END MODIFIED P(K)
 
   end  subroutine WriteParams
 

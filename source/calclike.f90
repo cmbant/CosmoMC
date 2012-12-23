@@ -15,7 +15,9 @@ module CalcLike
  implicit none
 
  logical :: Use_Age_Tophat_Prior = .true.
- logical :: Use_CMB = .true.
+!MODIFIED P(K)
+! logical :: Use_CMB = .true.  !moved to CMB_Cls_simple_modpk.f90
+!END MODIFIED P(K)
  logical :: Use_Clusters = .false.
  integer :: H0_min = 40, H0_max = 100
  real :: Omk_min = -0.3, Omk_max = 0.3

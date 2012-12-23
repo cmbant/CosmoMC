@@ -35,7 +35,13 @@ module settings
   integer, parameter :: num_norm = 2 + num_freq_params 
   integer, parameter :: num_nuisance_params = 0
 
+!MODIFIED P(K)
+  ! total number of inflationary parameters (size of vparams + 1 for N_pivot)
+  integer, parameter :: num_vpar = 10
+
+  ! inflationary parameters may not be varied correctly if use_fast_slow=.true.
   logical :: use_fast_slow = .false.
+!END MODIFIED P(K)
     !Set to false if using a slow likelihood function so no there's point is treating
     !'fast' parameters differently (in fact, doing so will make performance worse)
 
@@ -43,7 +49,11 @@ module settings
 
   integer :: oversample_fast = 0
   integer, parameter :: sampling_metropolis = 1, sampling_slice = 2, sampling_fastslice =3, &
-         sampling_slowgrid = 4,  sampling_multicanonical = 5,  sampling_wang_landau = 6
+!MODIFIED P(K)
+         sampling_slowgrid = 4,  sampling_multicanonical = 5,  sampling_wang_landau = 6, &
+         sampling_uniform = 7
+!         sampling_slowgrid = 4,  sampling_multicanonical = 5,  sampling_wang_landau = 6
+!END MODIFIED P(K)
 
   integer :: sampling_method = sampling_metropolis
  
@@ -67,11 +77,19 @@ module settings
 
   integer, parameter :: num_fast_params = num_initpower + num_norm + num_nuisance_params
 
-  integer, parameter :: num_params = num_norm + num_initpower + num_hard + num_nuisance_params
-  integer, parameter :: num_real_params = num_norm + num_initpower + num_hard 
+!MODIFIED P(K)
+  integer, parameter :: num_params = num_norm + num_initpower + num_hard + num_nuisance_params + num_vpar
+  integer, parameter :: num_real_params = num_norm + num_initpower + num_hard + num_vpar
+!  integer, parameter :: num_params = num_norm + num_initpower + num_hard + num_nuisance_params
+!  integer, parameter :: num_real_params = num_norm + num_initpower + num_hard 
+!END MODIFIED P(K)
   integer, parameter :: index_initpower = num_hard+1
   integer, parameter :: index_norm = index_initpower + num_initpower
-  integer, parameter :: index_nuisance = index_norm  + num_norm
+!MODIFIED P(K)
+  integer, parameter :: index_vpar = index_norm + num_norm
+!  integer, parameter :: index_nuisance = index_norm  + num_norm
+  integer, parameter :: index_nuisance = index_vpar  + num_vpar
+!END MODIFIED P(K)
   integer, dimension(:), allocatable :: params_used,fast_params_used
   integer num_params_used, num_fast, num_slow, nuisance_params_used
 

@@ -217,7 +217,10 @@ subroutine Initialize(Ini,Params)
            if (Scales%center(i) > Scales%PMax(i)) call ParamError('You have param center > Max',i)
            if (Scales%PWidth(i) /= 0) then
                num_params_used = num_params_used + 1
-              if (i > num_hard .and. use_fast_slow) then
+!MODIFIED P(K)
+              !if (i > num_hard .and. use_fast_slow) then
+              if (i > num_hard .and. i < index_vpar .and. use_fast_slow) then
+!END MODIFIED P(K)
                 num_fast = num_fast + 1
               else
                 num_slow = num_slow +1
@@ -251,7 +254,10 @@ subroutine Initialize(Ini,Params)
            if (Scales%PWidth(i) /= 0) then
               num_params_used = num_params_used + 1
               params_used(num_params_used) = i
-              if (i > num_hard .and. use_fast_slow) then
+!MODIFIED P(K)
+              !if (i > num_hard .and. use_fast_slow) then
+              if (i > num_hard .and. i < index_vpar .and. use_fast_slow) then
+!END MODIFIED P(K)
                 num_fast = num_fast + 1
                 fast_params_used(num_fast) = i          
               end if

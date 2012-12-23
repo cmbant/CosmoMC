@@ -18,7 +18,11 @@ program SolveCosmology
         use IO
         use ParamNames
 	use nestwrap
-#ifdef WMAP_PARAMS
+        use GaugeInterface, only : Eqns_name
+#ifdef CLIK
+        use cliklike 
+#endif
+#ifndef NOWMAP
         use WMAP_OPTIONS
 #endif
         implicit none 
@@ -37,7 +41,11 @@ program SolveCosmology
         integer file_unit, status
         real bestfit_loglike
         real max_like_radius
-        integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2, action_MN=3
+        integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2, &
+                              action_MN=3, action_Hessian=4
+        integer unit
+        logical want_minimize
+        logical :: start_at_bestfit = .false.
 
 
 !#ifdef MPI
@@ -67,7 +75,7 @@ program SolveCosmology
 !        if (instance /= 0) call DoAbort('With MPI should not have second parameter')
 !        call mpi_comm_rank(mpi_comm_world,MPIrank,ierror)
 !
-!        instance = MPIrank +1 !start at 1 for chains                                             
+!        instance = MPIrank +1 !start at 1 for chains                                    !         
 !        write (numstr,*) instance
 !        rand_inst = instance
 !        if (ierror/=MPI_SUCCESS) call DoAbort('MPI fail')
@@ -105,6 +113,12 @@ program SolveCosmology
          end if
         end if   
 
+        action = Ini_Read_Int('action',action_MCMC)
+        if(action/=action_MN) then
+                write(*,*) "This executable can only be used to with MultiNest (action=3)'"
+                stop
+        endif
+
         propose_scale = Ini_Read_Real('propose_scale',2.4)
 
         HighAccuracyDefault = Ini_Read_Logical('high_accuracy_default',.false.)
@@ -116,21 +130,29 @@ program SolveCosmology
           highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
         end if
 
-!HVP        checkpoint = Ini_Read_Logical('checkpoint',.false.)
-	nest_resume = Ini_Read_Logical('checkpoint',.false.)
-	checkpoint = .false.
-        if (checkpoint) flush_write = .true.
-        
-#ifdef WMAP_PARAMS
-        use_TT_beam_ptsrc = Ini_read_Logical('use_TT_beam_ptsrc')
-        use_TE = Ini_read_Logical('use_TE')
-        use_TT = Ini_Read_Logical('use_TT')
-        print *, 'WMAP beam TE TT', use_TT_beam_ptsrc, use_TE, use_TT
+        if (action==action_MCMC) then
+         checkpoint = Ini_Read_Logical('checkpoint',.false.)
+         if (checkpoint) flush_write = .true.
+         start_at_bestfit= Ini_read_logical('start_at_bestfit',.false.)
+        end if
+         
+        if (action==action_MN) then
+           nest_resume = Ini_Read_Logical('checkpoint',.false.)
+           checkpoint = .false.
+           if (checkpoint) flush_write = .true.
+        end if
+
+
+#ifndef NOWMAP
+        use_TT_beam_ptsrc = Ini_read_Logical('use_WMAP_TT_beam_ptsrc', .true.)
+        use_TE = Ini_read_Logical('use_WMAP_TE',.true.)
+        use_TT = Ini_Read_Logical('use_WMAP_TT',.true.)
+        print *, 'WMAP options (beam TE TT)', use_TT_beam_ptsrc, use_TE, use_TT
 #endif
 
 !#ifdef MPI 
 !        
-!        
+!        if (action==action_MCMC) then
 !        MPI_StartTime = MPI_WTime()
 !        MPI_R_Stop = Ini_Read_Real('MPI_Converge_Stop',MPI_R_Stop)
 !        MPI_LearnPropose = Ini_Read_Logical('MPI_LearnPropose',.true.)  
@@ -145,6 +167,7 @@ program SolveCosmology
 !         MPI_Limit_Converge = Ini_Read_Real('MPI_Limit_Converge',0.025)
 !         MPI_Limit_Converge_Err = Ini_Read_Real('MPI_Limit_Converge_Err',0.3)
 !         MPI_Limit_Param = Ini_Read_Int('MPI_Limit_Param',0)
+!        end if
 !        end if
 !      
 !#endif
@@ -174,14 +197,7 @@ program SolveCosmology
 
         new_chains = .true. 
 
-        action = Ini_Read_Int('action',action_MCMC)
-        if(action/=action_MN) then
-                write(*,*) "This executable can only be used to with MultiNest (action=3)'"
-                stop
-        endif
-
         if (checkpoint) then
-         if (action /= action_MCMC)  call DoAbort('checkpoint only with action =0')
 #ifdef MPI 
          new_chains = .not. IO_Exists(trim(rootname) //'.chk')
 #else
@@ -190,12 +206,15 @@ program SolveCosmology
         end if
 
 
-        if (action == action_importance) call ReadPostParams
+        if (action == action_importance) call ReadPostParams(baseroot)
 
         FeedBack = Ini_Read_Int('feedback',0)
         FileChangeIni = trim(rootname)//'.read'
 
-        if (action == action_MCMC) then
+!!MODIFIED P(K)
+!        if (action == action_MCMC) then
+        if (action /= action_importance) then
+!END MODIFIED P(K)
 
             LogFile = trim(rootname)//'.log'
 
@@ -209,16 +228,17 @@ program SolveCosmology
             !fname = trim(rootname)//'.txt'
             !if (new_chains) outfile_handle = IO_OutputOpenForWrite(fname, append = .false.)
             !!conflicting file handles so give this one a manual file handle
-            outfile_handle = 201        
-
+            outfile_handle = 201  
+    
             indep_sample = Ini_Read_Int('indep_sample')
             if (indep_sample /=0) then
-              fname = trim(rootname)//'.data'
+              fname = trim(rootname)//'.data' 
               indepfile_handle = IO_DataOpenForWrite(fname, append = .not. new_chains)
+    !          call CreateOpenFile(fname,indepfile_unit,'unformatted',.not. new_chains)
             end if
  
             Ini_fail_on_not_found = .false.
-            burn_in = Ini_Read_Int('burn_in',0)
+            burn_in = Ini_Read_Int('burn_in',0)     
             sampling_method = Ini_Read_Int('sampling_method',sampling_metropolis)
             if (sampling_method > 6 .or. sampling_method<1) call DoAbort('Unknown sampling method')
             if (sampling_method==4) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
@@ -238,11 +258,11 @@ program SolveCosmology
         pivot_k = Ini_Read_Real('pivot_k',0.05)
         inflation_consistency = Ini_read_Logical('inflation_consistency',.false.)
         bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
+        num_massive_neutrinos = Ini_read_int('num_massive_neutrinos',-1)
 
-        w_is_w = Ini_Read_Logical ('w_is_w',.true.)
         oversample_fast = Ini_Read_Int('oversample_fast',1)
         use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
-
+ 
 !MODIFIED P(K)
 	use_modpk_mc = Ini_Read_Logical('use_modpk',.true.)
 	if (use_modpk_mc) then
@@ -255,8 +275,8 @@ program SolveCosmology
           modpk_w_primordial_lower_mc = Ini_Read_Double('modpk_w_primordial_lower',-0.333333d0)
           modpk_w_primordial_upper_mc = Ini_Read_Double('modpk_w_primordial_upper',1.d0)
         endif
-	potential_choice_mc = Ini_Read_Int('potential_choice',1)	
-	reconstruction_Nefold_limit_mc =  Ini_Read_Double('reconstruction_Nefold_limit',20.d0)
+	potential_choice_mc = Ini_Read_Int('potential_choice',1)
+        reconstruction_Nefold_limit_mc =  Ini_Read_Double('reconstruction_Nefold_limit',20.d0)
 	vnderivs_mc = Ini_Read_Logical('vnderivs',.true.)
 	phi_init_mc = Ini_Read_Double('phi_init',17.d0)
 	slowroll_infl_end_mc = Ini_Read_Logical('slowroll_infl_end',.true.)
@@ -266,25 +286,28 @@ program SolveCosmology
 	k_min_mc = Ini_Read_Double('infl_min_k',1.d-5)
 	k_max_mc = Ini_Read_Double('infl_max_k',5.d0)
 !END MODIFIED P(K)
- 
-        if (Ini_Read_Logical('cmb_hyperparameters', .false.)) &
-            call DoAbort( 'Hyperparameters not supported any more')
 
         if (Ini_Read_String('use_2dF') /= '') stop 'use_2dF now replaced with use_mpk'
         Use_Clusters = Ini_Read_Logical('use_clusters',.false.)
         Use_mpk = Ini_Read_Logical('use_mpk',.false.) ! matter power spectrum, incl 2dF
-        Use_HST = Ini_Read_Logical('use_HST',.true.)
-        Use_BBN = Ini_Read_Logical('use_BBN',.false.)
+        Use_HST = Ini_Read_Logical('use_HST',.false.)
+        if(Ini_Read_Logical('use_BBN',.false.)) call DoAbort('Use_BBN not supported: use prior[omegabh2]=mean std')
         Use_Age_Tophat_Prior= Ini_Read_Logical('use_Age_Tophat_Prior',.true.)
         Use_SN = Ini_Read_Logical('use_SN',.false.)
         if (Use_SN) SN_filename = ReadIniFileName(DefIni,'SN_filename')
         Use_BAO = Ini_Read_Logical('use_BAO',.false.)
         Use_CMB = Ini_Read_Logical('use_CMB',.true.)
+#ifdef CLIK
+        Use_clik = Ini_Read_Logical('use_clik',.false.)          
+        if (use_clik .and. .not. use_CMB) &
+         call DoAbort('must have use_CMB=.true. to have use_clik (cmb_numdatasets = 0 for only clik)')
+#else
+         if (Ini_Read_Logical('use_clik',.false.)) call DoAbort('compile with CLIK to use clik - see Makefile')
+#endif
         Use_WeakLen = Ini_Read_Logical('use_WeakLen',.false.)
         Use_min_zre = Ini_Read_Double('use_min_zre',0.d0) 
         Use_Lya = Ini_Read_logical('use_lya',.false.)
        
-
         if (Use_Lya .and. use_nonlinear) &
              call DoAbort('Lya.f90 assumes LINEAR power spectrum input')
 
@@ -304,10 +327,18 @@ program SolveCosmology
          if (Ini_Read_String('propose_matrix') /= '') &
            call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
         end if
+        want_minimize = action == action_maxlike .or. action==action_Hessian &
+              .or. action == action_MCMC .and. estimate_propose_matrix .or. &
+                start_at_bestfit .and. new_chains
 
-        max_like_radius = Ini_Read_Real('max_like_radius',0.01)
-         !radius in normalized parameter space to converge
-
+        if (want_minimize) then
+         max_like_radius = Ini_Read_Real('max_like_radius',0.01)
+          !radius in normalized parameter space to converge
+         dense_minimization_points = &
+            Ini_Read_Logical('dense_minimization_points',dense_minimization_points)
+           !if true, use O(N^2) interpolation points; seems this is more robust if slower for high N
+        end if
+        
         Ini_fail_on_not_found = .true.
 
         numsets = Ini_Read_Int('cmb_numdatasets')
@@ -327,8 +358,13 @@ program SolveCosmology
           end if
           nuisance_params_used = nuisance_params_used + datasets(i)%nuisance_parameters
          end do
-         if (Feedback > 1) write (*,*) 'read datasets'
+         if (Feedback > 1) write (*,*) 'read CMB datasets'
         end if
+
+#ifdef CLIK
+        numcliksets = Ini_Read_Int('clik_numdatasets',0)
+        if (Use_clik) call clik_readParams(DefIni,numcliksets)
+#endif
 
         Ini_fail_on_not_found = .true.
         
@@ -342,13 +378,13 @@ program SolveCosmology
         end if
 
         !From Jason Dosset, minor changes by AL
-        numbaosets = Ini_Read_Int('bao_numdatasets',0)
         if (Use_BAO) then
-             if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
+            numbaosets = Ini_Read_Int('bao_numdatasets',0)
+            if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
              do i= 1, numbaosets
               bao_filename(i) = ReadIniFileName(DefIni,numcat('bao_dataset',i)) 
               call ReadBaoDataset(bao_filename(i))
-              if(use_dr7lrg .and. baodatasets(i)%name =='sdss')then
+              if(use_dr7lrg .and. (baodatasets(i)%name =='DR7' .or. baodatasets(i)%name =='DR9'))then
                  !Al stop rather than ignore, avoid depending of bao on mpk
                  call MpiStop('DR7 LRG and SDSS BAO are based on the same data set. You cannot use both.')
               end if
@@ -359,7 +395,7 @@ program SolveCosmology
         numtoget = Ini_Read_Int('samples')
 
         call Initialize(DefIni,Params)
-
+        
         !read the MultiNest parameters
         if(action==action_MN) then
           !set up MultiNest parameters

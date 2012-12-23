@@ -26,9 +26,10 @@ PLANCKLIKE ?=
 highL ?=
 #highL = ../highL
 
+LIB_NS =../multinest
 
 IFLAG = -I
-INCLUDE =
+INCLUDE =$(IFLAG)
 
 #clik path and library
 ifeq ($(PLANCKLIKE),cliklike)
@@ -111,7 +112,7 @@ CLSFILE = CMB_Cls_simple.o
 #Can use params_H if you prefer more generic parameters
 PARAMETERIZATION = params_CMB.o
 
-F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
+F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE) $(LIB_NS)
 LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
@@ -144,10 +145,16 @@ OBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o 
 	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) $(LIKEFILES) \
 	EstCovmat.o PowellConstrainedMinimize.o minimize.o postprocess.o MCMC.o driver.o
 
+MNOBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
+	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
+	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) $(LIKEFILES) \
+	EstCovmat.o PowellConstrainedMinimize.o minimize.o postprocess.o MCMC.o nestwrap.o driver_nest.o
+
 
 ifeq ($(EXTDATA),LRG)
 F90FLAGS += -DDR71RG
 OBJFILES += bsplinepk.o
+MNOBJFILES += bsplinepk.o
 GSLINC = -I$(GSLPATH)/include
 LINKFLAGS += -L$(GSLPATH)/lib -lgsl -lgslcblas
 endif
@@ -170,8 +177,8 @@ F90CRLINK += -L$(HYREC_PATH) -lhyrec
 endif
 
 ifneq ($(WMAP),)
-F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
-LINKFLAGS +=  -L$(cfitsio)/lib -L$(WMAP) -lcfitsio
+F90FLAGS += $(IFLAG)$(cfitsio) $(IFLAG)$(WMAP)
+LINKFLAGS +=  -L$(cfitsio) -L$(WMAP) -lcfitsio
 
 OBJFILES += $(WMAP)/read_archive_map.o \
 	$(WMAP)/read_fits.o \
@@ -184,13 +191,28 @@ OBJFILES += $(WMAP)/read_archive_map.o \
 	$(WMAP)/WMAP_7yr_gibbs.o \
 	$(WMAP)/WMAP_7yr_tt_beam_ptsrc_chisq.o \
 	$(WMAP)/br_mod_dist.o
+MNOBJFILES += $(WMAP)/read_archive_map.o \
+	$(WMAP)/read_fits.o \
+	$(WMAP)/healpix_types.o \
+	$(WMAP)/WMAP_7yr_options.o \
+	$(WMAP)/WMAP_7yr_util.o \
+	$(WMAP)/WMAP_7yr_tt_pixlike.o \
+	$(WMAP)/WMAP_7yr_teeebb_pixlike.o \
+	$(WMAP)/WMAP_7yr_likelihood.o \
+	$(WMAP)/WMAP_7yr_gibbs.o \
+	$(WMAP)/WMAP_7yr_tt_beam_ptsrc_chisq.o \
+	$(WMAP)/br_mod_dist.o
 else
-F90FLAGS += -DNOWMAP
+F90FLAGS += -DNOWMAP $(IFLAG)$(LIB_NS)
 endif
 
-default: cosmomc
+MNLINKFLAGS = $(LINKFLAGS) -L$(LIB_NS) -lnest3
 
-all : cosmomc getdist
+default: cosmomc multinest
+
+all : cosmomc getdist multinest
+
+multinest: nestlib cosmomc_multinest
 
 cliklike_CamSpec.o: temp_like.o
 settings.o: ../camb/libcamb_$(RECOMBINATION).a
@@ -237,6 +259,8 @@ export F90C
 cosmomc: camb $(OBJFILES)
 	$(F90C) -o ../cosmomc $(OBJFILES) $(LINKFLAGS) $(F90FLAGS)
 
+cosmomc_multinest: camb $(MNOBJFILES)
+	$(F90C) -o ../cosmomc_multinest $(MNOBJFILES) $(MNLINKFLAGS) $(F90FLAGS)
 
 clean: cleancosmomc
 	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod
@@ -244,13 +268,19 @@ clean: cleancosmomc
 cleancosmomc:
 	rm -f *.o *.mod *.d *.pc *.obj ../core
 
+cleanmultinest:
+	make -C ../multinest clean
 
 getdist: camb $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS)
 
 camb:
-	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf
+	cd ../camb && $(MAKE) --file=Makefile_main_modpk libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf
 
 $(highL)/libhigh.a:
 	cd $(highL); make libhigh.a;
 
+
+#library libnest3.a for MultiNest
+nestlib:
+	cd ../multinest/; $(MAKE) all
