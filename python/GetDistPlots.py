@@ -108,7 +108,7 @@ class GetDistPlotter():
         if transpose: pts = pts.transpose()
         return pts
 
-    def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, cols=None):
+    def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, cols=None, alpha=0.5):
         param1, param2 = self.get_param_array(root, [param1, param2])
         pts = self.load_2d(root, param1, param2)
         if pts is None: return None, None, None
@@ -122,11 +122,11 @@ class GetDistPlotter():
                 cols = [matplotlib.colors.colorConverter.to_rgb(color)]
                 for i in range(1, len(cnt)):
                     cols = [[c * (1 - self.settings.solid_contour_palefactor) + self.settings.solid_contour_palefactor for c in cols[0]]] + cols
-            contourf(x1, x2, pts, sorted(np.append([pts.max() + 1], cnt)), colors=cols)
+            contourf(x1, x2, pts, sorted(np.append([pts.max() + 1], cnt)), colors=cols, alpha=alpha)
         else:
             if color is None: color = self.settings.lineM[plotno][-1]
             cols = [color]
-        contour(x1, x2, pts, cnt, colors=cols , linewidth=self.settings.lw_contour)
+        contour(x1, x2, pts, cnt, colors=cols , linewidth=self.settings.lw_contour, alpha=alpha)
 
         return (x1.min(), x2.min()), (x1.max(), x2.max())
 

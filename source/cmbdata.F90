@@ -974,7 +974,7 @@ contains
 
  function MAPLnLike(cl)
 #ifndef NOWMAP
-  use wmap_likelihood_7yr
+  use wmap_likelihood_9yr
   use WMAP_OPTIONS
   use WMAP_UTIL
 #endif
@@ -1065,7 +1065,6 @@ contains
           if (SZTemplate/='') then
            SZScale = Ini_read_Real_File(Ini,numcat('cmb_dataset_SZ_scale',i),1.0)
            call ReadSZTemplate(like%dataset, SZTemplate,SZScale)
-           !like%dependent_params(index_freq) = .true.
            call like%loadParamNames(trim(DataDir)//'WMAP.paramnames')
           end if
 

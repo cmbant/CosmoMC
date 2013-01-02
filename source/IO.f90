@@ -296,12 +296,14 @@ end subroutine IO_ReadProposeMatrix
 
  end subroutine IO_ReadLastChainParams
 
- subroutine IO_OutputParamNames(Names, fname)
+ subroutine IO_OutputParamNames(Names, fname, indices, add_derived)
    use ParamNames
    Type(TParamNames) :: Names
    character(len=*), intent(in) :: fname
+   integer, intent(in), optional :: indices(:)
+   logical, intent(in), optional :: add_derived
       
-   call ParamNames_WriteFile(Names,trim(fname)//'.paramnames')
+   call ParamNames_WriteFile(Names,trim(fname)//'.paramnames', indices, add_derived)
 
  end subroutine IO_OutputParamNames
 

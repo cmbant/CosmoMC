@@ -11,8 +11,8 @@ RECOMBINATION ?=recfast
 #use PRECISION=SINGLE to use single precision
 PRECISION ?=
 
-#set WMAP empty not to compile with WMAP
-WMAP ?= /home/aml1005/WMAP7/likelihood_v4
+#set WMAP empty not to compile with WMAP, e.g. WMAP = /scratch/../WMAP9/likelihood_v5
+WMAP ?= 
 
 #Only needed for WMAP
 cfitsio ?= /usr/local/cfitsio/intel10/64/3.040
@@ -66,7 +66,7 @@ F90C = ifort
 FFLAGS = -openmp -fast -w -fpp2 -DMPI
 LAPACKL = -mkl=sequential -lmkl_lapack -lmpi
 cfitsio = $(CFITSIO)
-WMAP = $(COSMOLIB)/WMAP7
+WMAP = $(COSMOLIB)/WMAP9
 GSLPATH = $(GSL_ROOT)
 endif
 
@@ -76,7 +76,7 @@ CLIKPATH = /scratch/aml1005/clik_5.0/clik-5.0
 CLIKL = -L$(CLIKPATH)/lib -lclik_f90
 INCLUDE = $(IFLAG)$(CLIKPATH)/include
 endif
-WMAP = /scratch/stg20/likelihood_v4p1
+WMAP = /scratch/aml1005/wmap_likelihood_v5
 cfitsio = /usr/local/Cluster-Apps/cfitsio/intel/3.300
 FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
 endif
@@ -185,25 +185,6 @@ HYREC_PATH ?= ../HyRec/
 F90CRLINK += -L$(HYREC_PATH) -lhyrec
 endif
 
-ifneq ($(WMAP),)
-F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
-LINKFLAGS +=  -L$(cfitsio)/lib -L$(WMAP) -lcfitsio
-
-OBJFILES += $(WMAP)/read_archive_map.o \
-	$(WMAP)/read_fits.o \
-	$(WMAP)/healpix_types.o \
-	$(WMAP)/WMAP_7yr_options.o \
-	$(WMAP)/WMAP_7yr_util.o \
-	$(WMAP)/WMAP_7yr_tt_pixlike.o \
-	$(WMAP)/WMAP_7yr_teeebb_pixlike.o \
-	$(WMAP)/WMAP_7yr_likelihood.o \
-	$(WMAP)/WMAP_7yr_gibbs.o \
-	$(WMAP)/WMAP_7yr_tt_beam_ptsrc_chisq.o \
-	$(WMAP)/br_mod_dist.o
-else
-F90FLAGS += -DNOWMAP
-endif
-
 default: cosmomc
 
 all : cosmomc getdist
@@ -217,7 +198,7 @@ $(PLANCKLIKE).o: cmbtypes.o likelihood.o
 settings.o: ../camb/libcamb_$(RECOMBINATION).a
 cmbtypes.o: settings.o
 Planck_like.o: likelihood.o cmbtypes.o
-cmbdata.o: Planck_like.o  $(WMAPOBJS)
+cmbdata.o: Planck_like.o 
 bbn.o: settings.o likelihood.o
 mpk.o: cmbtypes.o lrggettheory.o likelihood.o
 bao.o: cmbtypes.o mpk.o likelihood.o
@@ -237,6 +218,15 @@ minimize.o: PowellConstrainedMinimize.o calclike.o
 ifneq ($(highL),)
 cliklike_CamSpec.o: $(highL)/libhigh.a
 endif
+
+ifneq ($(WMAP),)
+cmbdata.o: $(WMAP)/libwmap9.a
+F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
+LINKFLAGS +=  -L$(cfitsio)/lib -L$(WMAP) -lcfitsio -lwmap9
+else
+F90FLAGS += -DNOWMAP
+endif
+
 
 export FFLAGS
 export F90C
@@ -274,3 +264,5 @@ camb:
 $(highL)/libhigh.a:
 	cd $(highL); make libhigh.a;
 
+$(WMAP)/libwmap9.a:
+	cd $(WMAP); make libwmap9.a;

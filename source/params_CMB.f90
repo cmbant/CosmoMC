@@ -1,4 +1,4 @@
-    !Parameterization using theta = r_s/D_a instead of H_0, and tau instead of z_re
+    !Default parameterization using theta = r_s/D_a instead of H_0, and tau instead of z_re
     !and log(A_s) instead of A_s
     !Less general, but should give better performance
     !
@@ -6,7 +6,7 @@
     !parameter 3 is 100*theta, parameter 4 is tau, others same as params_H except A->log(A)
     !Theta is much better constrained than H_0
     !
-    !Assumes prior 0.4 < h < 1
+    !Also a background-only parameterization, e.g. for use with just supernoave etc
 
     module DefineParameterization
     use cmbtypes
@@ -17,7 +17,7 @@
     Type, extends(TParameterization) :: ThetaParameterization
         real(mcp) :: H0_min = 40, H0_max = 100
         real(mcp) :: use_min_zre = 0._mcp
-    contains  
+    contains
     procedure :: ParamsToCMBParams
     procedure :: CMBParamsToParams
     procedure :: NonBaseParameterPriors
@@ -26,7 +26,7 @@
     end type ThetaParameterization
 
     Type, extends(TParameterization) :: BackgroundParameterization
-    contains  
+    contains
     procedure :: ParamsToCMBParams => Background_ParamsToCMBParams
     procedure :: CMBParamsToParams => Background_CMBParamsToParams
     procedure :: CalcDerivedParams => Background_CalcDerivedParams
@@ -66,7 +66,7 @@
 
     this%H0_min = Ini_Read_Double_File(Ini, 'H0_min',this%H0_min)
     this%H0_max = Ini_Read_Double_File(Ini, 'H0_max',this%H0_max)
-    this%Use_min_zre = Ini_Read_Double_File(Ini,'use_min_zre',this%use_min_zre) 
+    this%Use_min_zre = Ini_Read_Double_File(Ini,'use_min_zre',this%use_min_zre)
 
     call this%Init(Ini,Names, 'params_CMB.paramnames')
 
@@ -148,11 +148,11 @@
     real(mcp) Params(:)
     Type(CMBParams) CMB
 
-    Params(1) = CMB%ombh2 
+    Params(1) = CMB%ombh2
 
     Params(3) = CMBToTheta(CMB)*100
     Params(4) = CMB%tau
-    Params(5) = CMB%omk 
+    Params(5) = CMB%omk
 
     if (neutrino_param_mnu) then
         Params(2) = CMB%omch2
@@ -170,11 +170,11 @@
         Params(10) = CMB%YHe
     endif
     Params(11) = CMB%iso_cdm_correlated
-    Params(12) = CMB%zre_delta  
-    Params(13) = CMB%ALens  
-    Params(14) = CMB%fdm  
+    Params(12) = CMB%zre_delta
+    Params(13) = CMB%ALens
+    Params(14) = CMB%fdm
 
-    Params(index_initpower:index_initpower+num_initpower-1) =CMB%InitPower(1:num_initpower) 
+    Params(index_initpower:index_initpower+num_initpower-1) =CMB%InitPower(1:num_initpower)
     Params(index_initpower + As_index-1 ) = log(CMB%InitPower(As_index))
 
     end subroutine CMBParamsToParams
@@ -187,7 +187,7 @@
     real(mcp) :: P(:)
     Type(CMBParams) CMB
     real(mcp) r10
-    integer num_derived 
+    integer num_derived
 
     num_derived = 12 +  Theory%numderived
 
@@ -254,7 +254,7 @@
             CMB%nufrac=Params(6)
             CMB%omnuh2 = CMB%omdmh2*CMB%nufrac
             CMB%omch2 = CMB%omdmh2 - CMB%omnuh2
-        end if 
+        end if
         CMB%w = Params(7)
         CMB%wa = Params(8)
         CMB%nnu = Params(9) !3.046
@@ -351,7 +351,7 @@
     class(TheoryPredictions) :: Theory
     real(mcp) :: P(:)
     Type(CMBParams) CMB
-    integer num_derived 
+    integer num_derived
 
     num_derived = 1
 

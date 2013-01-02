@@ -289,8 +289,10 @@ program SolveCosmology
 
         call Ini_Close
 
-        if (MpiRank==0 .and. action==action_MCMC .and. NameMapping%nnames/=0) &
-            call IO_OutputParamNames(NameMapping,trim(baseroot))
+        if (MpiRank==0 .and. action==action_MCMC .and. NameMapping%nnames/=0) then
+            call IO_OutputParamNames(NameMapping,trim(baseroot), params_used, add_derived = .true.)
+            call OutputParamRanges(NameMapping, trim(baseroot)//'.ranges')
+        end if
 
         call SetIdlePriority !If running on Windows
 

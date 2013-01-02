@@ -76,7 +76,7 @@
     allocate(Names%comment(n))
     allocate(Names%is_derived(n))
     Names%nnames = n
-    Names%is_derived = .false. 
+    Names%is_derived = .false.
     Names%num_MCMC = 0
     Names%num_derived = 0
     Names%name = '' 
@@ -84,15 +84,14 @@
     Names%label=''
 
     end subroutine ParamNames_Alloc
-    
+
     subroutine ParamNames_dealloc(Names)
-        Type(TParamNames) :: Names
-        integer i
-        if (associated(Names%name)) &
-         deallocate(Names%name,Names%label,Names%comment,Names%is_derived)
-      
+    Type(TParamNames) :: Names
+    if (associated(Names%name)) &
+    deallocate(Names%name,Names%label,Names%comment,Names%is_derived)
+
     end subroutine ParamNames_dealloc
-    
+
     subroutine ParamNames_Init(Names, filename)
     Type(TParamNames) :: Names
     character(Len=*), intent(in) :: filename
@@ -296,18 +295,32 @@
 
     end function ParamNames_AsString
 
-    subroutine ParamNames_WriteFile(Names, fname)
+    subroutine ParamNames_WriteFile(Names, fname, indices, add_derived)
     Type(TParamNames) :: Names
     character(LEN=*), intent(in) :: fname
+    integer, intent(in), optional :: indices(:)
+    logical, intent(in), optional :: add_derived
     integer :: unit
     integer i
 
     unit = new_file_unit()
     call CreateTxtFile(fname,unit)
-
-    do i=1, Names%nnames
-        write(unit,*) trim(ParamNames_AsString(Names,i))
-    end do   
+    if (present(indices)) then
+        do i=1, size(indices)
+            write(unit,*) trim(ParamNames_AsString(Names,indices(i)))
+        end do
+        if (present(add_derived)) then
+            if (add_derived) then
+                do i=1,Names%num_derived
+                    write(unit,*) trim(ParamNames_AsString(Names,Names%num_mcmc+i))
+                end do
+            end if
+        end if
+    else
+        do i=1, Names%nnames
+            write(unit,*) trim(ParamNames_AsString(Names,i))
+        end do
+    end if
 
     call CloseFile(unit)
 

@@ -305,6 +305,9 @@
     if (Scales%PWidth(i)/=0) then
         InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'prior',i)
         if (InLine/='') read(InLine, *, err = 101) GaussPriors%mean(i), GaussPriors%std(i)
+    else
+        scales%PMin(i) = center
+        Scales%PMax(i) = center
     end if
 
     Scales%center(i) = center
@@ -1013,15 +1016,15 @@
 
     if (generic_mcmc) then
 
-    call IO_OutputChainRow(outfile_handle, mult, like, P%P, num_params)
+    call IO_OutputChainRow(outfile_handle, mult, like, P%P(params_used), num_params_used)
 
     else
 
     numderived = Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
 
-    allocate(output_array(num_params + numderived))
-    output_array(1:num_params) =  P%P(1:num_params)
-    output_array(num_params+1:num_params+numderived) =  derived%P
+    allocate(output_array(num_params_used + numderived))
+    output_array(1:num_params_used) =  P%P(params_used)
+    output_array(num_params_used+1:num_params_used+numderived) =  derived%P
     deallocate(derived%P)
 
     call IO_OutputChainRow(outfile_handle, mult, like, output_array)
@@ -1042,12 +1045,12 @@
 
     numderived =Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
 
-    allocate(output_array(num_params + numderived + num_matter_power ))
-    output_array(1:num_params) =  P%P(1:num_params)
-    output_array(num_params+1:num_params+numderived) =  derived%P
+    allocate(output_array(num_params_used + numderived + num_matter_power ))
+    output_array(1:num_params_used) =  P%P(params_used)
+    output_array(num_params_used+1:num_params_used+numderived) =  derived%P
     deallocate(derived%P)
 
-    output_array(num_params+numderived+1:num_params+numderived+num_matter_power) = &
+    output_array(num_params_used+numderived+1:num_params_used+numderived+num_matter_power) = &
     P%Theory%matter_power(:,1)
 
     call IO_OutputChainRow(outfile_handle, mult, like, output_array)
@@ -1055,6 +1058,19 @@
 
     end  subroutine WriteParamsAndDat
 
+    subroutine OutputParamRanges(Names, fname)
+    use ParamNames
+    Type(TParamNames) :: Names
+    character(len=*), intent(in) :: fname
+    integer unit,i
 
+    unit = new_file_unit()
+    call CreateTxtFile(fname,unit)
+    do i=1, Names%num_MCMC
+        write(unit,'(1A22,2E17.7)') ParamNames_NameOrNumber(Names,i), Scales%PMin(i),Scales%PMax(i)
+    end do
+    call CloseFile(unit)
+
+    end subroutine OutputParamRanges
 
     end module ParamDef

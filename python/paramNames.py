@@ -97,6 +97,10 @@ class paramList:
         textFileHandle.close()
         return textFileLines
 
+    def deleteIndices(self, indices):
+        self.names = [name for i, name in enumerate(self.names) if not i in indices]
+
+
 
 class paramNames(paramList):
 

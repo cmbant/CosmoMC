@@ -2586,6 +2586,7 @@
     call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
     cont_lines, colix, mean, sddev, has_limits_bot, has_limits_top, labels, force_twotail)
 
+    call ParamNames_WriteFile(NameMapping, trim(plot_data_dir)//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
     open(unit=51,file=trim(plot_data_dir)//trim(rootname)//'.paramnames',form='formatted',status='replace')
     do j=1, num_vars
         write(51,'(a)') trim(ParamNames_AsString(NameMapping,colix(j)-2))
