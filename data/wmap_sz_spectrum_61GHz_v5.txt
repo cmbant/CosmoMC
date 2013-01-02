@@ -1,14 +1,3 @@
-# Wilkinson Microwave Anisotropy Probe (WMAP) 9-year data release, version 5.0 (December 2012)
-# Predicted Sunyaev-Zel'dovich Power Spectrum, 61 GHz, based on Battaglia et al. (2012)
-#
-# References: - WMAP Explanatory Supplement: http://lambda.gsfc.nasa.gov/
-#             - Bennett et al. (2012)
-#             - Hinshaw et al. (2012)
-#             - Battaglia et al. (2012)
-#
-# Column 1 = multipole moment l
-# Column 2 = TT power spectrum, units = uK^2, = l(l+1)/2pi * C_l.
-#
            2   4.6100280e-05
            3    0.0093582093
            4     0.018670286
