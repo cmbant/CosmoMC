@@ -33,7 +33,6 @@ contains
         like%LikelihoodType = 'Hubble'
         like%name='HST'
         like%needs_background_functions = .true.
-        like%dependent_params(1:num_hard) = .true.
         call LikeList%Add(like)
     end if
 

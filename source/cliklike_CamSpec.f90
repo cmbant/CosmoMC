@@ -46,7 +46,7 @@
     if (use_CAMspec) then
         allocate(CamSpecLikelihood::Like)
         call LikeList%Add(Like) 
-        Like%dependent_params(1:num_theory_params)=.true.
+        Like%needs_powerspectra =.true.
         Like%LikelihoodType = 'CMB'
         Like%name='CamSpec'
         Like%version = CAMSpec_like_version
@@ -68,11 +68,11 @@
 #ifdef highL
         allocate(highLLikelihood::Like)
         call LikeList%Add(Like) 
-        Like%dependent_params(1:num_theory_params)=.true.
         Like%LikelihoodType = 'CMB'
         Like%name='highL'
         Like%version = CAMSpec_like_version
         Like%speed = 6
+        Like%needs_powerspectra =.true.
 
         call Like%loadParamNames(trim(DataDir)//'highL.paramnames')
         

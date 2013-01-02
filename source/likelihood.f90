@@ -12,6 +12,7 @@
 
     type :: DataLikelihood
         logical :: needs_background_functions = .true.
+        logical :: needs_powerspectra = .false.
         integer :: speed = 0  !negative for slow likelihoods, larger positive for faster
         !not implemented yet..
         !        logical :: needs_linear_pk = .false.

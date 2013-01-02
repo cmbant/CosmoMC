@@ -94,7 +94,6 @@
     Like%LikelihoodType = 'SN'
     Like%name='Union2.1'
     like%needs_background_functions = .true.
-    like%dependent_params(1:num_hard) = .true.
     call LikeList%Add(like)
 
     Union_syscovmat = Ini_read_Logical_File(Ini,'Union_syscovmat',Union_syscovmat)

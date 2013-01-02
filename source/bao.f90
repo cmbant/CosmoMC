@@ -57,7 +57,6 @@ use likelihood
               call ReadBaoDataset(like, ReadIniFileName(Ini,numcat('bao_dataset',i)) )
               like%LikelihoodType = 'BAO'
               like%needs_background_functions = .true.
-              like%dependent_params(1:num_hard) = .true.
               call LikeList%Add(like)
         end do
         if (Feedback>1) write(*,*) 'read bao datasets'

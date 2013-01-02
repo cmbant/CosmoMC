@@ -227,7 +227,6 @@ CONTAINS
        Like%LikelihoodType = 'SN'
        Like%name='SNLS'
        like%needs_background_functions = .true.
-       like%dependent_params(1:num_hard) = .true.
        Like%version = SNLS_version
        call Like%loadParamNames(trim(DataDir)//'SNLS.paramnames')
        call LikeList%Add(like)

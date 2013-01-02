@@ -96,7 +96,7 @@
     end Type TheoryPredictions
 
     type, abstract :: TParameterization
-     logical :: late_time_only = .false.
+        logical :: late_time_only = .false.
     contains
     procedure(TParamsToCMBParams), deferred :: ParamsToCMBParams
     procedure(TCMBParamsToParams), deferred :: CMBParamsToParams
@@ -146,7 +146,10 @@
     contains
 
     subroutine SetTheoryParameterNumbers(hard_num, power_num)
+    use likelihood
     integer, intent (in) :: hard_num,power_num
+    Type(DataLikelihood), pointer :: DataLike
+    integer i
 
     num_hard = hard_num
     num_initpower = power_num
@@ -155,6 +158,12 @@
     index_data =  num_theory_params+1
     if (num_initpower> max_inipower_params) call MpiStop('see cmbtypes.f90: num_initpower> max_inipower_params')
     if (num_theory_params> max_theory_params) call MpiStop('see settings.f90: num_theory_params> max_theory_params')
+
+    do i=1,DataLikelihoods%Count
+        DataLike=>DataLikelihoods%Item(i)
+        if (DataLike%needs_background_functions) DataLike%dependent_params(1:num_hard)=.true.
+        if (DataLike%needs_powerspectra) DataLike%dependent_params(1:num_theory_params)=.true.
+    end do
 
     end subroutine SetTheoryParameterNumbers
 

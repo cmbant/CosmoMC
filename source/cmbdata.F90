@@ -1054,8 +1054,7 @@ contains
           allocate(like)
           call LikeList%Add(like) 
           like%LikelihoodType = 'CMB'
-          like%dependent_params(1:num_theory_params) = .true.
-          
+          like%needs_powerspectra = .true.
           filename = ReadIniFileName(Ini,numcat('cmb_dataset',i)) 
           call ReadDataset(like, filename)
 

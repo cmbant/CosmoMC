@@ -57,7 +57,7 @@
                 allocate(ClikLikelihood::like)
             end if
             call LikeList%Add(Like) 
-            Like%dependent_params(1:num_theory_params)=.true.
+            Like%needs_powerspectra =.true.
             Like%LikelihoodType = 'CMB'
             Like%name= ExtractFileName(fname)
             !                Like%version = CAMSpec_like_version
