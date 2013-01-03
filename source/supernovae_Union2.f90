@@ -65,7 +65,7 @@
 
     integer, parameter :: SN_num = 580
 
-    type, extends(DataLikelihood) :: Union2Likelihood
+    type, extends(CosmologyLikelihood) :: Union2Likelihood
         double precision :: SN_z(SN_num), SN_moduli(SN_num), SN_modulierr(SN_num), SN_plow(SN_num)
         double precision :: SN_Ninv(SN_num,SN_Num)
     contains
@@ -82,7 +82,6 @@
     Type(Union2Likelihood), pointer :: like
     character (LEN=20):: name
     integer i
-    real(mcp) :: tmp_mat(sn_num, sn_num)
     ! The following line selects which error estimate to use
     ! default .True. = with systematic errors
     logical :: Union_syscovmat = .False.  !! Use covariance matrix with or without systematics

@@ -73,7 +73,7 @@
     else
         Calc%Params => Params
         Calc%CMB=>CMB
-        call Parameterization%ParamsToCMBParams(Params%P,CMB)
+        call Parameterization%ParamArrayToTheoryParams(Params%P,CMB)
         call AddLike(GetLogLike, Parameterization%NonBaseParameterPriors(CMB))
         if (GetLogLike == logZero) return
         if (first) then
@@ -109,7 +109,7 @@
     Calc%ChangeMask = .true.
     GetLogLikePost = 0
 
-    call Parameterization%ParamsToCMBParams(Params%P,CMB)
+    call Parameterization%ParamArrayToTheoryParams(Params%P,CMB)
     call AddLike(GetLogLikePost,Parameterization%NonBaseParameterPriors(CMB))
     if (GetLogLikePost == logZero) return
 
@@ -179,7 +179,7 @@
         if (do_like(i)) then
             like => DataLikelihoods%Item(i)
             if (any(like%dependent_params(1:num_params) .and. Calc%changeMask(1:num_params) )) then
-                if (like%needs_background_functions .and. .not. backgroundSet) then
+                if (any(like%dependent_params(1:num_hard)) .and. .not. backgroundSet) then
                     call SetTheoryForBackground(Calc%CMB)
                     backgroundSet = .true.
                 end if

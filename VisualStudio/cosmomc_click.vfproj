@@ -79,5 +79,6 @@
 		<File RelativePath="..\source\postprocess.f90"/>
 		<File RelativePath="..\source\propose.f90"/>
 		<File RelativePath="..\source\samples.f90"/>
-		<File RelativePath="..\source\settings.f90"/></Filter></Files>
+		<File RelativePath="..\source\settings.f90"/>
+		<File RelativePath="..\source\GeneralTypes.f90"/></Filter></Files>
 	<Globals/></VisualStudioProject>

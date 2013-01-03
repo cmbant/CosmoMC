@@ -18,7 +18,7 @@ use Precision
 use likelihood
  implicit none
  
-    type, extends(DataLikelihood) :: BAOLikelihood
+    type, extends(CosmologyLikelihood) :: BAOLikelihood
     integer :: num_bao ! total number of points used
     integer :: type_bao  
      !what type of bao data is used 

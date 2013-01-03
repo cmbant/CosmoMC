@@ -12,13 +12,13 @@
     logical :: use_CAMspec = .true.
     logical :: use_highL = .false.
 
-   type, extends(DataLikelihood) :: CamSpecLikelihood
+   type, extends(CosmologyLikelihood) :: CamSpecLikelihood
     contains
     procedure :: LogLike => CamSpecLogLike
     end type CamSpecLikelihood
 
 #ifdef highL
-   type, extends(DataLikelihood) :: highLLikelihood
+   type, extends(CosmologyLikelihood) :: highLLikelihood
     contains
     procedure :: LogLike => highLLogLike
    end type highLLikelihood
@@ -38,7 +38,7 @@
     class(LikelihoodList) :: LikeList
     character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
       beamfilename, kszfilename,tszxcibfilename
-    Class(DataLikelihood), pointer :: Like
+    Class(CosmologyLikelihood), pointer :: Like
 
     print *,' using cliklike_CamSpec'
     use_CAMspec = Ini_Read_Logical_File(Ini,'use_CAMspec',.true.)
@@ -97,7 +97,7 @@
      real(mcp) acl(lmax,num_cls_tot)
      real(mcp) DataParams(:)
 
-     call ClsFromTheoryData(Theory, CMB, acl)
+     call ClsFromTheoryData(Theory, acl)
 !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
 !freq_params(35:44), ACT/SPT as freq_params(45:65)
       CamspecLogLike = clik_lnlike_camSpec(real(acl,dp),real(DataParams,dp))

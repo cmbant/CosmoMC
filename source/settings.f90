@@ -62,7 +62,7 @@
 
     logical :: stop_on_error = .true. !whether to stop with error, or continue ignoring point
 
-    integer :: num_theory_params, index_data !set later depending on datasets and theory parameterization
+    integer :: num_theory_params, index_data, index_semislow=-1 !set later depending on datasets and theory parameterization
 
     integer, dimension(:), allocatable :: params_used
     integer num_params, num_params_used, num_data_params, num_fast, num_slow

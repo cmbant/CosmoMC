@@ -9,7 +9,7 @@
 
     integer, parameter :: dp = kind(1.d0)
 
-    type, extends(DataLikelihood) :: ClikLikelihood
+    type, extends(CosmologyLikelihood) :: ClikLikelihood
         type(clik_object) :: clikid
         integer(kind=4),dimension(6) :: clik_has_cl, clik_lmax
         integer :: clik_n,clik_ncl,clik_nnuis
@@ -123,7 +123,7 @@
     real(mcp) acl(lmax,num_cls_tot)
     real(dp) clik_cl_and_pars(like%clik_n)
 
-    call ClsFromTheoryData(Theory, CMB, acl)
+    call ClsFromTheoryData(Theory, acl)
 
     !set C_l and parameter vector to zero initially
     clik_cl_and_pars = 0.d0
@@ -205,7 +205,7 @@
     real(mcp) acl(lmax,num_cls_tot)
     real(dp) clik_cl_and_pars(like%clik_n)
 
-    call ClsFromTheoryData(Theory, CMB, acl)
+    call ClsFromTheoryData(Theory, acl)
 
     !set C_l and parameter vector to zero initially
     clik_cl_and_pars = 0.d0

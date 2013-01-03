@@ -82,7 +82,7 @@ implicit none
     Type (TCMBLikes), pointer :: CMBLikes
   end Type CMBdataset
 
-    type, extends(DataLikelihood) :: CMBDataLikelihood
+    type, extends(CosmologyLikelihood) :: CMBDataLikelihood
      Type(CMBdataset) dataset
     contains
     procedure :: LogLike => CMBLnLike
@@ -956,7 +956,7 @@ contains
     real(mcp) CMBLnLike
     real(mcp) sznorm, szcl(lmax,num_cls_tot)
 
-    call ClsFromTheoryData(Theory, CMB, cl)
+    call ClsFromTheoryData(Theory, cl)
 
      szcl= cl
      if (like%dataset%has_sz_template) then

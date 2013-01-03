@@ -237,7 +237,7 @@
     integer i, j, ix
     character(LEN=5000) fname,InLine
     character(LEN=1024) prop_mat
-    real(mcp) center,  mult, like
+    real(mcp) center
     integer fast_params(num_params)
     integer fast_number, fast_param_index
     real(mcp) pmat(num_params,num_params)
@@ -285,14 +285,6 @@
     fname = Ini_Read_String_File(Ini,'continue_from')
     if (fname /= '') call DoAbort('continue_from replaced by checkpoint')
 
-    if (.not. new_chains) then
-        fname = trim(rootname) //'.txt'
-        call IO_ReadLastChainParams(fname, mult, like, Params%P, num_params)
-        StartLike = like
-        burn_in = 4
-        outfile_handle = IO_OutputOpenForWrite(fname, append = .true.)
-    end if
-
     param_type = tp_unused
 
     GaussPriors%std=0 !no priors by default
@@ -300,8 +292,7 @@
 
     InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'param',i)
     if (InLine=='') call ParamError('parameter ranges not found',i)
-    read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), &
-    Scales%StartWidth(i), Scales%PWidth(i)
+    read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), Scales%StartWidth(i), Scales%PWidth(i)
     if (Scales%PWidth(i)/=0) then
         InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'prior',i)
         if (InLine/='') read(InLine, *, err = 101) GaussPriors%mean(i), GaussPriors%std(i)
@@ -311,7 +302,7 @@
     end if
 
     Scales%center(i) = center
-    if (new_chains) Params%P(i) = center
+    Params%P(i) = center
     if (Scales%PMax(i) < Scales%PMin(i)) call ParamError('You have param Max < Min',i)
     if (Scales%center(i) < Scales%PMin(i)) call ParamError('You have param center < Min',i)
     if (Scales%center(i) > Scales%PMax(i)) call ParamError('You have param center > Max',i)
@@ -323,7 +314,7 @@
                 param_type(i) = tp_semifast
             end if
         else
-            if (use_fast_slow .and. i >= index_initpower .and. block_semi_fast) then
+            if (use_fast_slow .and. index_semislow >=0 .and. i >= index_semislow .and. block_semi_fast) then
                 param_type(i) = tp_semislow
             else
                 param_type(i) = tp_slow
@@ -432,9 +423,7 @@
         end do
     end if
 
-    call SetProposeMatrix
-
-    if (.not. new_chains) call AddMPIParams(Params%P,like, .true.)
+    call Proposer%SetCovariance(propose_matrix)
 
     return
 100 call DoAbort('Error reading param details: '//trim(InLIne))
@@ -443,30 +432,6 @@
     end subroutine Initalize
 
 
-
-    subroutine SetProposeMatrix
-
-    call Proposer%SetCovariance(propose_matrix)
-
-    end subroutine SetProposeMatrix
-
-
-    subroutine WriteCMBParams(P,mult,like, with_data)
-    real(mcp), intent(in) :: mult, like
-    logical, intent(in), optional :: with_data
-    Type(ParamSet) P
-
-    if (present(with_data)) then
-        if (with_data) then
-            call WriteParamsAndDat(P, mult,like)
-        else
-            call WriteParams(P, mult,like)
-        end if
-    else
-        call WriteParams(P, mult,like)
-    end if
-
-    end subroutine WriteCMBParams
 
     subroutine WriteIndepSample(P, like)
     Type(ParamSet) P
@@ -493,7 +458,6 @@
     integer, save :: npoints = 0
     integer index, STATUS(MPI_STATUS_SIZE),STATs(MPI_STATUS_SIZE*(MPIChains-1))
     logical flag
-
 
     real(mcp), allocatable, dimension(:), save ::MPIMean
     real(mcp), allocatable, dimension(:,:,:) ::MPICovmats
@@ -526,7 +490,7 @@
         read(tmp_file_unit) num, sample_num, MPI_thin_fac, npoints, Burn_done, all_burn,sampling_method, &
         slice_fac, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
         read(tmp_file_unit) propose_matrix
-        call SetProposeMatrix
+        call Proposer%SetCovariance(propose_matrix)
         call S%ReadBinary(tmp_file_unit)
         close(tmp_file_unit)
         allocate(req(MPIChains-1))
@@ -755,7 +719,7 @@
                     end if
 
                     propose_matrix = MPICovMat
-                    call SetProposeMatrix
+                    call Proposer%SetCovariance(propose_matrix)
 
                 end if !update propose
             end if !all chains have enough

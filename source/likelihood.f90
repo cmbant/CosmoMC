@@ -11,12 +11,7 @@
     integer, parameter :: max_likelihood_functions = 50
 
     type :: DataLikelihood
-        logical :: needs_background_functions = .true.
-        logical :: needs_powerspectra = .false.
         integer :: speed = 0  !negative for slow likelihoods, larger positive for faster
-        !not implemented yet..
-        !        logical :: needs_linear_pk = .false.
-        !        integer :: needs_cl_lmax = 0
         character(LEN=80) :: name = ''
         character(LEN=80) :: LikelihoodType= ''
         character(LEN=80) :: version = ''
@@ -126,7 +121,7 @@
     end subroutine AddNuisanceParameters
 
     function logLikeTheory(like, CMB)
-    !For likelihoods that don't need Theory of DataParams
+    !For likelihoods that don't need Theory or DataParams
     class(DataLikelihood) :: like
     class(*) :: CMB
     real(mcp) LogLikeTheory

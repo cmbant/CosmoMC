@@ -278,21 +278,14 @@ end subroutine IO_ReadProposeMatrix
 
  end function IO_ReadChainRow
 
- subroutine IO_ReadLastChainParams(name, mult, like, values, nvalues)
+ subroutine IO_ReadLastChainParams(name, mult, like, values, params_used)
   character(LEN=*), intent(in) :: name
   real(mcp), intent(out) :: mult, like, values(:)
-  integer, intent(in), optional :: nvalues
+  integer, intent(in) :: params_used(:)
   character(LEN=5000) :: InLine
-  integer n
-  
-  if (present(nvalues)) then
-   n = nvalues
-  else
-   n = size(values)
-  end if 
-       
+
   InLine = LastFileLine(name)
-  read(InLine, *) mult, like, values(1:n)
+  read(InLine, *) mult, like, values(params_used)
 
  end subroutine IO_ReadLastChainParams
 

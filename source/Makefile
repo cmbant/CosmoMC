@@ -156,7 +156,7 @@ DATAMODULES = $(PLANCKLIKEFILES) lrggettheory.o mpk.o bao.o $(SUPERNOVAE) supern
 
 LIKEFILES =  DataLikelihoods.o calclike.o
 
-OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o settings.o samples.o IO.o cmbtypes.o Planck_like.o  \
+OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o settings.o samples.o IO.o GeneralTypes.o cmbtypes.o Planck_like.o  \
 	likelihood.o bbn.o $(DATAMODULES) $(CLSFILE) cmbdata.o $(PROPOSE) paramdef.o  $(PARAMETERIZATION) $(LIKEFILES) \
 	EstCovmat.o PowellConstrainedMinimize.o minimize.o postprocess.o MCMC.o driver.o
 
@@ -196,7 +196,7 @@ DataLikelihoods.o: likelihood.o paramdef.o $(DATAMODULES)
 cliklike_CamSpec.o: temp_like.o
 $(PLANCKLIKE).o: cmbtypes.o
 settings.o: ../camb/libcamb_$(RECOMBINATION).a
-cmbtypes.o: settings.o likelihood.o
+cmbtypes.o: settings.o likelihood.o GeneralTypes.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o
 bbn.o: settings.o likelihood.o
@@ -208,7 +208,7 @@ SDSSLy-a-v3.o: cmbtypes.o
 $(CLSFILE): cmbtypes.o IO.o
 paramdef.o: $(CLSFILE) propose.o samples.o
 $(PROPOSE): settings.o
-$(PARAMETERIZATION): paramdef.o
+$(PARAMETERIZATION): paramdef.o 
 calclike.o: DataLikelihoods.o
 postprocess.o: calclike.o
 MCMC.o: calclike.o

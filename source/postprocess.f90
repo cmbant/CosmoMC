@@ -43,7 +43,6 @@
     subroutine ReadPostParams(baseroot)
     character(LEN=*), intent(in):: baseroot
 
-
     Ini_Fail_On_Not_Found = .false.
     PostParams%redo_like = Ini_Read_Logical('redo_likelihoods')
     PostParams%redo_theory = Ini_read_Logical('redo_theory')
@@ -68,8 +67,24 @@
         // trim(ExtractFileName(baseroot))
     end if
 
-
     end subroutine ReadPostParams
+
+    subroutine WritePostParams(P,mult,like, with_data)
+    real(mcp), intent(in) :: mult, like
+    logical, intent(in), optional :: with_data
+    Type(ParamSet) P
+
+    if (present(with_data)) then
+        if (with_data) then
+            call WriteParamsAndDat(P, mult,like)
+        else
+            call WriteParams(P, mult,like)
+        end if
+    else
+        call WriteParams(P, mult,like)
+    end if
+
+    end subroutine WritePostParams
 
     subroutine postprocess(InputFile)
     use IO
@@ -163,7 +178,6 @@
 
     if (PostParams%redo_cls) then
         Params%Theory%cl = newTheory%cl
-        Params%Theory%cl_tensor = newTheory%cl_tensor
     end if
 
     if (PostParams%redo_pk) then
@@ -209,7 +223,7 @@
     mult_sum = mult_sum + mult
 
     if (mult /= 0) then
-        call WriteCMBParams(Params, mult, truelike,txt_theory)
+        call WritePostParams(Params, mult, truelike,txt_theory)
         if (outdata_handle>=0) call Params%WriteModel(outdata_handle, truelike,mult)
     else 
 

@@ -89,6 +89,8 @@ contains
    Class(TheoryPredictions) Theory
     
     call SetTheoryForBackground(CMB)
+    select type (Parameterization)
+    class is (CosmologyParameterization)
     if (.not. Parameterization%late_time_only) then
      call InitVars !calculate thermal history, e.g. z_drag etc.
      if (global_error_flag/=0) then
@@ -97,6 +99,9 @@ contains
      end if 
      call SetDerived(Theory)
     end if
+     class default
+          call MpiStop('CMB_Cls_Simple: Must have CosmologyParameterization')
+    end select
     
   end subroutine GetNewBackgroundData
 
@@ -181,7 +186,7 @@ end subroutine GetNewPowerData
    real(mcp):: Params(:)
    type(CAMBParams)  P
 
-   call Parameterization%ParamsToCMBParams(Params,CMB)
+   call Parameterization%ParamArrayToTheoryParams(Params,CMB)
 
    error = 0
    Threadnum =num_threads
@@ -228,7 +233,6 @@ end subroutine GetNewPowerData
    real(mcp) highL_norm
    
     Theory%cl=0
-    Theory%cl_tensor=0
     do l = 2, lmax_computed_cl
 
        nm = cons/(l*(l+1))
@@ -241,7 +245,7 @@ end subroutine GetNewPowerData
        if (num_cls>num_clsS) Theory%cl(l,num_clsS+1:num_cls) = 0 
    
        if (compute_tensors .and. l<=lmax_tensor) then
-            Theory%cl_tensor(l,1:num_cls) =  nm*Cl_tensor(l,1, TensClOrder(1:num_cls))
+            Theory%cl(l,1:num_cls) =  Theory%cl(l,1:num_cls) + nm*Cl_tensor(l,1, TensClOrder(1:num_cls))
        end if
  
        if (num_cls_ext > 0) then
@@ -260,8 +264,10 @@ end subroutine GetNewPowerData
 
     if (compute_tensors) then
        Theory%tensor_ratio_02 = TensorPower(0.002d0,1)/ScalarPower(0.002d0,1)
+       Theory%tensor_ratio_r10 = Cl_tensor(10, 1, 1)/Cl_scalar(10,1, 1)
     else
-       Theory%tensor_ratio_02 = 0 
+       Theory%tensor_ratio_02 = 0
+       Theory%tensor_ratio_r10 = 0
    end if
 
     if (lmax_computed_cl/=lmax) then

@@ -9,7 +9,7 @@
     Type(ParamSet), save :: MinParams
     logical :: dense_minimization_points = .true.
 
-    public FindBestFit, WriteBestFitParams,WriteBestFitData,dense_minimization_points
+    public FindBestFit, WriteBestFitParams,dense_minimization_points
 
     contains
 
@@ -148,39 +148,13 @@
     Type(ParamSet) Params
     character(LEN=*), intent(in) :: fname
 
-     
     call CreateTxtFile(fname,tmp_file_unit)
     call WriteParamsHumanText(tmp_file_unit,Params, like)
     close(tmp_file_unit)
     if (Feedback>0) call WriteParamsHumanText(stdout,Params, like)
-    
    
     end subroutine WriteBestFitParams
 
-    subroutine WriteBestFitData(fname,Params)
-     character(LEN=*), intent(in) :: fname
-     Type(ParamSet) Params
-     integer l
-     real(mcp) nm
-     character(LEN=50) fmt
-     real(mcp) Cls(lmax,num_cls_tot)
-     Type (CMBParams) CMB
-
-      call Parameterization%ParamsToCMBParams(Params%Info%LastParamArray,CMB)
-      call ClsFromTheoryData(Params%Theory, CMB, Cls)
-      call CreateTxtFile(fname,tmp_file_unit)
-      fmt = concat('(1I6,',num_cls_tot,'E15.5)')
-      do l = 2, lmax
-       nm = 2*pi/(l*(l+1))
-       if (num_cls_ext > 0) then
-        write (tmp_file_unit,fmt) l, cls(l,1:num_cls)/nm, cls(l,num_cls+1:num_cls_tot) 
-       else
-        write (tmp_file_unit,fmt) l, cls(l,:)/nm
-       end if
-      end do
-      call CloseFile(tmp_file_unit)
-
-    end subroutine WriteBestFitData
 
     !function BestFitCovmatEstimate(tol) result (M)
     !!Cannot find any way to get usable Hessian matrix from BOBYQA, even with high NPT

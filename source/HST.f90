@@ -9,7 +9,7 @@ use cmbtypes
 use likelihood
 implicit none
 
-type, extends(DataLikelihood) :: HSTLikelihood
+type, extends(CosmologyLikelihood) :: HSTLikelihood
     contains
     procedure :: LogLikeTheory => HST_LnLike
 end type HSTLikelihood

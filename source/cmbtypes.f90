@@ -2,8 +2,9 @@
 
     module cmbtypes
     use settings
+    use likelihood
+    use GeneralTypes
     implicit none
-
 
     !Number of CMB Cls, 1 for just temperature, 3 (4) for polarization (with B)
     integer, parameter  :: num_cls  = 4
@@ -59,7 +60,17 @@
     integer:: num_hard, num_initpower
     integer :: index_initpower
 
-    Type CMBParams
+
+    type, extends(DataLikelihood) :: CosmologyLikelihood
+        !not implemented yet..
+        !        logical :: needs_linear_pk = .false.
+        !        integer :: needs_cl_lmax = 0
+        logical :: needs_background_functions = .true.
+        logical :: needs_powerspectra = .false.
+    contains
+    end type CosmologyLikelihood
+
+    Type, extends(TTheoryParams) :: CMBParams
         real(mcp) InitPower(max_inipower_params)
         !These are fast paramters for the initial power spectrum
         !Now remaining (non-independent) parameters
@@ -72,11 +83,11 @@
         real(mcp) reserved(5)
     end Type CMBParams
 
-    Type TheoryPredictions
-        real(mcp) r10
-        real(mcp) cl(lmax,num_cls_tot), cl_tensor(lmax_tensor,num_cls) 
+    Type, extends(TTheoryPredictions) :: TheoryPredictions
+        real(mcp) cl(lmax,num_cls_tot)
         !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
-        real(mcp) sigma_8, tensor_ratio_02
+        real(mcp) sigma_8
+        real(mcp) tensor_ratio_r10, tensor_ratio_02
         integer numderived
         real(mcp) derived_parameters(max_derived_parameters)
 
@@ -93,50 +104,12 @@
     contains 
     procedure :: WriteTheory
     procedure :: ReadTheory
+    procedure :: WriteBestFitData
     end Type TheoryPredictions
 
-    type, abstract :: TParameterization
-        logical :: late_time_only = .false.
-    contains
-    procedure(TParamsToCMBParams), deferred :: ParamsToCMBParams
-    procedure(TCMBParamsToParams), deferred :: CMBParamsToParams
-    procedure(TCalcDerivedParams), deferred :: CalcDerivedParams
-    procedure :: Init => TParameterization_init
-    procedure :: NonBaseParameterPriors => TParameterization_NonBaseParameterPriors
-    end type TParameterization
-
-    abstract interface
-    subroutine TParamsToCMBParams(this,Params, CMB)
-    use settings
-    import TParameterization
-    import CMBParams
-    class(TParameterization) :: this
-    real(mcp) Params(:)
-    Type(CMBParams) :: CMB
-    end subroutine
-
-    subroutine TCMBParamsToParams(this, CMB, Params)
-    use settings
-    import TParameterization
-    import CMBParams
-    class(TParameterization) :: this
-    real(mcp) Params(:)
-    Type(CMBParams) :: CMB
-    end subroutine
-
-
-    function TCalcDerivedParams(this, P, Theory, derived) result (num_derived)
-    use settings
-    import TheoryPredictions
-    import TParameterization
-    class(TParameterization) :: this
-    Type(mc_real_pointer) :: derived
-    class(TheoryPredictions) :: Theory
-    real(mcp) :: P(:)
-    integer num_derived 
-    end function
-
-    end interface
+    Type, extends(TParameterization) :: CosmologyParameterization
+        logical :: late_time_only = .false. 
+    end type
 
     class(TParameterization), pointer :: Parameterization
 
@@ -145,60 +118,31 @@
 
     contains
 
-    subroutine SetTheoryParameterNumbers(hard_num, power_num)
+    subroutine SetTheoryParameterNumbers(slow_num, semi_slow_num)
     use likelihood
-    integer, intent (in) :: hard_num,power_num
-    Type(DataLikelihood), pointer :: DataLike
+    integer, intent (in) :: slow_num, semi_slow_num
     integer i
+    class(DataLikelihood), pointer :: DataLike
 
-    num_hard = hard_num
-    num_initpower = power_num
+    num_hard = slow_num
+    num_initpower = semi_slow_num
     num_theory_params= num_hard + num_initpower
-    index_initpower = hard_num+1
+    index_initpower = num_hard+1
+    index_semislow = index_initpower
     index_data =  num_theory_params+1
     if (num_initpower> max_inipower_params) call MpiStop('see cmbtypes.f90: num_initpower> max_inipower_params')
     if (num_theory_params> max_theory_params) call MpiStop('see settings.f90: num_theory_params> max_theory_params')
 
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
-        if (DataLike%needs_background_functions) DataLike%dependent_params(1:num_hard)=.true.
-        if (DataLike%needs_powerspectra) DataLike%dependent_params(1:num_theory_params)=.true.
+        select type (DataLike)
+        class is (CosmologyLikelihood)
+            if (DataLike%needs_background_functions) DataLike%dependent_params(1:num_hard)=.true.
+            if (DataLike%needs_powerspectra) DataLike%dependent_params(1:num_theory_params)=.true.
+        end select
     end do
 
     end subroutine SetTheoryParameterNumbers
-
-
-    subroutine TParameterization_Init(this, Ini, Names, DefaultName)
-    Class(TParameterization) :: this
-    Type(TIniFile) :: Ini
-    Type(TParamNames) :: Names
-    character(LEN=*), intent(in) :: DefaultName
-    character(LEN=Ini_max_string_len) :: ParamNamesFile = ''
-
-    ParamNamesFile = ReadIniFileName(Ini,'ParamNamesFile', NotFoundFail=.false.)
-
-    if (ParamNamesFile /='') then
-        call ParamNames_init(Names, ParamNamesFile)
-    else
-        if (generic_mcmc) then
-            Names%nnames=0
-            if (Feedback>0) write (*,*) 'Change the Parameterization type implementation to use Parameter names'
-        else
-            call ParamNames_init(Names, trim(LocalDir)//trim(DefaultName))
-        end if
-    end if
-    end subroutine TParameterization_Init
-
-    function TParameterization_NonBaseParameterPriors(this,CMB)
-    class(TParameterization) :: this
-    Type(CMBParams) :: CMB
-    real(mcp):: TParameterization_NonBaseParameterPriors
-
-    TParameterization_NonBaseParameterPriors = 0
-
-    end function TParameterization_NonBaseParameterPriors
-
-
 
     subroutine WriteTheory(T, i)
     integer i
@@ -220,8 +164,7 @@
     if (num_cls_ext>0) write(i) T%cl(2:lmax,num_cls+1:num_cls_tot)
 
     if (compute_tensors) then
-        write(i) T%tensor_ratio_02, T%r10
-        write(i) T%cl_tensor(2:lmax_tensor,1:num_cls)
+        write(i) T%tensor_ratio_02, T%tensor_ratio_r10
     end if
     if (use_LSS) then
         write(i) T%sigma_8, T%matter_power
@@ -249,7 +192,6 @@
     end if
 
     T%cl = 0
-    T%cl_tensor = 0
     T%derived_parameters=0
     read(i) T%numderived
     read(i) T%derived_parameters(1:T%numderived)
@@ -257,8 +199,7 @@
     if (anumclsext >0) read(i) T%cl(2:almax,num_cls+1:num_cls+anumclsext)
 
     if (has_tensors) then
-        read(i) T%tensor_ratio_02, T%r10
-        read(i) T%cl_tensor(2:almaxtensor,1:anumcls)
+        read(i) T%tensor_ratio_02, T%tensor_ratio_r10
     end if
 
     if (has_LSS) then
@@ -267,40 +208,47 @@
 
     end subroutine ReadTheory
 
-    subroutine ClsFromTheoryData(T, CMB, Cls)
+    subroutine ClsFromTheoryData(T, Cls)
     Type(TheoryPredictions) T
-    Type(CMBParams) CMB
     real(mcp) Cls(lmax,num_cls_tot)
-    integer i
 
-    Cls(2:lmax,1:num_clsS) =T%cl(2:lmax,1:num_clsS)    !CMB%norm(norm_As)*T%cl(2:lmax,1:num_clsS)
+    Cls(2:lmax,1:num_clsS) =T%cl(2:lmax,1:num_clsS)
     if (num_cls>3 .and. num_ClsS==3) Cls(2:lmax,num_cls)=0
     if (num_cls_ext>0) then
-        Cls(2:lmax,num_cls+1:num_cls_tot) =T%cl(2:lmax,num_clsS+1:num_clsS+num_cls_ext)   
+        Cls(2:lmax,num_cls+1:num_cls_tot) =T%cl(2:lmax,num_clsS+1:num_clsS+num_cls_ext)
     end if
-
-    i = amp_ratio_index !this convolution is to avoid compile-time bounds-check errors on CMB%norm
-    if (CMB%InitPower(amp_ratio_index) /= 0) then
-        Cls(2:lmax_tensor,1:num_cls) =  Cls(2:lmax_tensor,1:num_cls)+ T%cl_tensor(2:lmax_tensor,1:num_cls)
-    end if 
 
     end subroutine ClsFromTheoryData
 
-    subroutine WriteTextCls(aname,T, CMB)
+    subroutine WriteTextCls(aname,T)
     Type(TheoryPredictions) T
-    Type(CMBParams) CMB
     character (LEN=*), intent(in) :: aname
     integer l
-    real(mcp) Cls(lmax,num_cls_tot)
+    real(mcp) Cls(lmax,num_cls_tot), nm
+    character(LEN=80) fmt
 
-    call ClsFromTheoryData(T,CMB,Cls)
-    open(unit = tmp_file_unit, file = aname, form='formatted', status = 'replace')
-    do l=2, lmax
-        write (tmp_file_unit,*) l, Cls(l,1:num_cls)*l*(l+1)/(2*pi), Cls(l,num_cls+1:num_cls_tot)
+    call CreateTxtFile(aname,tmp_file_unit)
+    call ClsFromTheoryData(T, Cls)
+    fmt = concat('(1I6,',num_cls_tot,'E15.5)')
+    do l = 2, lmax
+        nm = 2*pi/(l*(l+1))
+        if (num_cls_ext > 0) then
+            write (tmp_file_unit,fmt) l, cls(l,1:num_cls)/nm, cls(l,num_cls+1:num_cls_tot) 
+        else
+            write (tmp_file_unit,fmt) l, cls(l,:)/nm
+        end if
     end do
-    close(tmp_file_unit)
+    call CloseFile(tmp_file_unit)
 
     end subroutine WriteTextCls
+
+    subroutine WriteBestFitData(Theory,fnameroot)
+    class(TheoryPredictions) Theory
+    character(LEN=*), intent(in) :: fnameroot
+
+    call WriteTextCls(fnameroot //'.bestfit_cl', Theory)
+
+    end subroutine WriteBestFitData
 
     function MatterPowerAt(T,kh)
     !get matter power spectrum today at kh = k/h by interpolation from stored values

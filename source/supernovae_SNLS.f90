@@ -117,7 +117,7 @@
   IMPLICIT NONE
 
   
-   type, extends(DataLikelihood) :: SNLSLikelihood
+   type, extends(CosmologyLikelihood) :: SNLSLikelihood
    contains
     procedure :: LogLike => snls_LnLike
    end type SNLSLikelihood
@@ -788,7 +788,7 @@ CONTAINS
     REAL(dl), INTENT(IN) :: alpha, beta
     INTEGER, INTENT(INOUT) :: status
 
-    INTEGER :: I,J,K
+    INTEGER :: I
     REAL(dl) :: alphasq, betasq, alphabeta
 
     !Quick exit check
