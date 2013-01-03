@@ -232,15 +232,18 @@
     end function ParamNames_name
 
 
-    subroutine ParamNames_ReadIndices(Names,InLine, params, num)
+    subroutine ParamNames_ReadIndices(Names,InLine, params, num, unknown_value)
     Type(TParamNames) :: Names
     character(LEN=*), intent(in) :: InLine
     integer, intent(out) :: params(*)
+    integer, intent(in), optional :: unknown_value
     integer  :: num
     character(LEN=ParamNames_maxlen) part
-    integer param,len,ix, pos, max_num
+    integer param,len,ix, pos, max_num, outparam, outvalue
     integer, parameter :: unknown_num = 1024
+    character(LEN=1024) :: skips
 
+    skips=''
     if (num==0) return
     len = len_trim(InLine)
     pos = 1
@@ -249,25 +252,40 @@
     else
         max_num = num
     end if
+    outparam=0
     do param = 1, max_num
-        do while (pos < len .and. IsWhiteSpace(InLine(pos:pos)) ) 
+        do while (pos < len .and. IsWhiteSpace(InLine(pos:pos)))
             pos = pos+1
         end do 
         read(InLine(pos:), *, end=400, err=400) part
-        if (max_num == unknown_num) num = param
         pos = pos + len_trim(part)
         ix = ParamNames_index(Names,part)
         if (ix>0) then
-            params(param) = ix
+            outparam = outparam +1
+            if (max_num == unknown_num) num = outparam
+            params(outparam) = ix
         else
             if (verify(trim(part),'0123456789') /= 0) then
+                if (present(unknown_value)) then
+                    skips = trim(skips)//' '//trim(part)
+                    if (unknown_value/=-1) then
+                        outvalue = unknown_value
+                    else
+                        cycle
+                    end if
+                end if
                 call MpiStop( 'ParamNames: Unknown parameter name '//trim(part))
+            else
+                read(part,*) outvalue
             end if
-            read(part,*) params(param)
+            outparam = outparam +1
+            if (max_num == unknown_num) num = outparam
+            params(outparam) = outvalue
         end if
     end do 
     return
-400 if (max_num==unknown_num) return
+400 if (skips/='') write(*,'(a)') ' skipped unused params:'//trim(skips)
+    if (max_num==unknown_num) return
     call MpiStop('ParamNames: Not enough names or numbers - '//trim(InLine))
 
     end subroutine ParamNames_ReadIndices

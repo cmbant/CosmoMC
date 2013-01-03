@@ -1820,7 +1820,7 @@
         InLine = Ini_Read_String('triangle_params')
         triangle_num=-1
         if (InLine/='') then
-            call ParamNames_ReadIndices(NameMapping,InLine, triangle_params, triangle_num)
+            call ParamNames_ReadIndices(NameMapping,InLine, triangle_params, triangle_num, unknown_value=-1)
         end if
     end if
 
