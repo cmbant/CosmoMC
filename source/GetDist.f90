@@ -1779,10 +1779,13 @@
 
     has_limits = has_limits_top .or. has_limits_bot
 
-    plotparams_num = Ini_Read_Int('plotparams_num',0)
-    if (plotparams_num /= 0) then
-        InLine = Ini_Read_String('plotparams')
-        call ParamNames_ReadIndices(NameMapping,InLine, plotparams, plotparams_num)
+    if (Ini_HasKey('plotparams_num')) stop 'plotparams_num deprectated; just use plot_params'
+    InLine = Ini_Read_String('plot_params')
+    if (InLine/='') then
+        plotparams_num=-1
+        call ParamNames_ReadIndices(NameMapping,InLine, plotparams, plotparams_num, unknown_value=-1)
+    else
+      plotparams_num = 0
     end if
 
     InLine = Ini_Read_String('plot_2D_param')

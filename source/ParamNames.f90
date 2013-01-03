@@ -273,8 +273,9 @@
                     else
                         cycle
                     end if
+                else
+                 call MpiStop( 'ParamNames: Unknown parameter name '//trim(part))
                 end if
-                call MpiStop( 'ParamNames: Unknown parameter name '//trim(part))
             else
                 read(part,*) outvalue
             end if
