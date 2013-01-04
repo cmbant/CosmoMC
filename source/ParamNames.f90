@@ -261,9 +261,7 @@
         pos = pos + len_trim(part)
         ix = ParamNames_index(Names,part)
         if (ix>0) then
-            outparam = outparam +1
-            if (max_num == unknown_num) num = outparam
-            params(outparam) = ix
+            outvalue = ix
         else
             if (verify(trim(part),'0123456789') /= 0) then
                 if (present(unknown_value)) then
@@ -274,15 +272,15 @@
                         cycle
                     end if
                 else
-                 call MpiStop( 'ParamNames: Unknown parameter name '//trim(part))
+                    call MpiStop( 'ParamNames: Unknown parameter name '//trim(part))
                 end if
             else
                 read(part,*) outvalue
             end if
-            outparam = outparam +1
-            if (max_num == unknown_num) num = outparam
-            params(outparam) = outvalue
         end if
+        outparam = outparam +1
+        if (max_num == unknown_num) num = outparam
+        params(outparam) = outvalue
     end do 
     return
 400 if (skips/='') write(*,'(a)') ' skipped unused params:'//trim(skips)

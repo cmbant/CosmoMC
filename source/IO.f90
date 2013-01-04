@@ -134,10 +134,10 @@ contains
    real(mcp) pmat(:,:)
    character(LEN=1024), intent(in) :: prop_mat
    real(mcp), allocatable :: tmpMat(:,:)
-   integer i,y
+   integer i,x,y
    integer file_id 
    character(LEN=4096) :: InLine
-   integer num, cov_params(256) 
+   integer num, cov_params(1024) 
     
     file_id = new_file_unit()
     call OpenTxtFile(prop_mat, file_id)
@@ -150,18 +150,27 @@ contains
      !Have paramnames to identify
       InLine = InLine(2:len_trim(InLine))
       num=-1
-      call ParamNames_ReadIndices(NameMapping,InLine, cov_params, num)
+      call ParamNames_ReadIndices(NameMapping,InLine, cov_params, num, unknown_value=0)
+      allocate(tmpMat(num,num))
       pmat=0
       y=0
       do
        read(file_id,'(a)', end = 20) InLine
        if (InLine/='') then
          y=y+1
-         read(InLine,*,end=20) pmat(cov_params(1:num),cov_params(y))
+         read(InLine,*,end=20) tmpMat(:,y)
          if (y==num) exit
        end if
       end do 
-      call CloseFile(file_id) 
+      call CloseFile(file_id)
+      do y=1,num
+        if (cov_params(y)/=0) then
+         do x=1,num
+            if (cov_params(x)/=0) pmat(cov_params(x),cov_params(y)) = tmpMat(x,y)
+          end do
+        end if
+      end do
+      deallocate(tmpMat)
       return
 20   call mpiStop('ReadProposeMatrix: wrong number of rows/columns in .covmat')
         
