@@ -189,7 +189,9 @@ default: cosmomc
 
 all : cosmomc getdist
 
+GetDist.o: IO.o samples.o
 supernovae.o: $(SUPERNOVAE)
+IO.o: ParamNames.o settings.o
 samples.o: ObjectLists.o settings.o
 likelihood.o: ObjectLists.o settings.o ParamNames.o
 DataLikelihoods.o: likelihood.o paramdef.o $(DATAMODULES)
