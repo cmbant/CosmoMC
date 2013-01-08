@@ -111,9 +111,7 @@
         logical :: late_time_only = .false. 
     end type
 
-    class(TParameterization), pointer :: Parameterization
-
-    integer, parameter :: As_index=4, amp_ratio_index = 5
+    integer, parameter :: As_index=4, amp_ratio_index = 5, Aphiphi_index = 6
     logical :: compute_tensors = .false.
 
     contains

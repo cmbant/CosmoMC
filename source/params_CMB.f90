@@ -60,7 +60,7 @@
     Type(TIniFile) :: Ini
     Type(TParamNames) :: Names
 
-    call SetTheoryParameterNumbers(14,5)
+    call SetTheoryParameterNumbers(14,6)
 
     this%H0_min = Ini_Read_Double_File(Ini, 'H0_min',this%H0_min)
     this%H0_max = Ini_Read_Double_File(Ini, 'H0_max',this%H0_max)

@@ -17,6 +17,7 @@ module CMB_Cls
   logical :: use_lensing_potential = .false.
   logical :: use_nonlinear = .false.
   logical :: use_nonlinear_lensing = .false.
+  real(mcp) :: lens_recon_scale = 1._mcp
 
   Type ParamSetInfo
     Type (CAMBdata) :: Transfers
@@ -255,8 +256,8 @@ end subroutine GetNewPowerData
            Theory%cl(l,num_clsS+1) =  Cl_scalar(l,1, scalClOrder(4))*(real(l+1)**2/l**2)/twopi
            if (num_cls_ext>1) then
             !lensing-temp
-            if (num_cls_ext>1) call MpiStop('SetTheoryFromCAMB: check defs for num_cls_ext>1')    
-            Theory%cl(l,num_clsS+2) =   Cl_scalar(l,1, scalClOrder(5))/real(l)**3      
+            if (num_cls_ext>1) call MpiStop('SetTheoryFromCAMB: check defs for num_cls_ext>1')
+            Theory%cl(l,num_clsS+2) =   Cl_scalar(l,1, scalClOrder(5))/real(l)**3 * lens_recon_scale
            end if
        end if
  
@@ -530,6 +531,7 @@ end subroutine GetNewPowerData
          P%InitPower%ant(in) = - CMB%InitPower(amp_ratio_index)/8.
           !note input n_T is ignored, so should be fixed (to anything)
        end if
+       lens_recon_scale = CMB%InitPower(Aphiphi_index)
        else
          stop 'params_CMB:Wrong initial power spectrum'
        end if

@@ -17,6 +17,7 @@ nt            n_t
 nrun          n_{run}
 logA          log[10^{10} A_s]
 r             r_{pivot} #ratio of tensor to scalar primordial amplitudes at pivot scale
+Aphiphi       A_{\phi\phi} #scaling of lensing potential power (lensed power spectra unchanged)
 omegal*       \Omega_\Lambda
 omegam*       \Omega_m
 sigma8*       \sigma_8

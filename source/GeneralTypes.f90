@@ -16,6 +16,8 @@
     procedure :: NonBaseParameterPriors => TParameterization_NonBaseParameterPriors
     end type TParameterization
 
+    class(TParameterization), pointer :: Parameterization
+
     contains
 
     subroutine ParamArrayToTheoryParams(this, Params, CMB)
