@@ -16,6 +16,7 @@
 
     Type, extends(CosmologyParameterization) :: ThetaParameterization
         real(mcp) :: H0_min = 40, H0_max = 100
+        real(mcp) :: H0_prior_mean = 0._mcp, H0_prior_std = 0._mcp
         real(mcp) :: use_min_zre = 0._mcp
     contains
     procedure :: ParamArrayToTheoryParams => TP_ParamArrayToTheoryParams
@@ -59,12 +60,16 @@
     Class(ThetaParameterization) :: this
     Type(TIniFile) :: Ini
     Type(TParamNames) :: Names
-
+    character(LEN=Ini_max_string_len) prior
     call SetTheoryParameterNumbers(14,6)
 
     this%H0_min = Ini_Read_Double_File(Ini, 'H0_min',this%H0_min)
     this%H0_max = Ini_Read_Double_File(Ini, 'H0_max',this%H0_max)
     this%Use_min_zre = Ini_Read_Double_File(Ini,'use_min_zre',this%use_min_zre)
+    prior = Ini_Read_String_File(Ini, 'H0_prior')
+    if (prior/='') then
+        read(prior,*) this%H0_prior_mean, this%H0_prior_std
+    end if
 
     call this%Init(Ini,Names, 'params_CMB.paramnames')
 
@@ -77,10 +82,13 @@
 
     select type (CMB)
     class is (CMBParams)
-    TP_NonBaseParameterPriors = logZero
-    if (CMB%H0 < this%H0_min .or. CMB%H0 > this%H0_max) return
-    if (CMB%zre < this%Use_min_zre) return
-    TP_NonBaseParameterPriors = 0
+        TP_NonBaseParameterPriors = logZero
+        if (CMB%H0 < this%H0_min .or. CMB%H0 > this%H0_max) return
+        if (CMB%zre < this%Use_min_zre) return
+        TP_NonBaseParameterPriors = 0
+        if (this%H0_prior_mean/=0._mcp) then
+            TP_NonBaseParameterPriors = ((CMB%H0 - this%H0_prior_mean)/this%H0_prior_std)**2/2
+        end if
     end select
     end function TP_NonBaseParameterPriors
 
@@ -96,55 +104,55 @@
     integer, save :: cache=1
     integer i
     Type(CMBParams), pointer :: CP
-    
+
     select type (CMB)
     class is (CMBParams)
-    do i=1, ncache
-        !want to save two slow positions for some fast-slow methods
-        if (all(Params(1:num_hard) == LastCMB(i)%BaseParams(1:num_hard))) then
-            CP => CMB !needed to make next line work for some odd reason CMB=LastCMB(i) does not work
-            CP = LastCMB(i)
-            call this%CosmologyParameterization%ParamArrayToTheoryParams(Params, CMB)
-            call SetFast(Params,CMB)
-            return
-        end if
-    end do
-    call this%CosmologyParameterization%ParamArrayToTheoryParams(Params, CMB)
-
-    DA = Params(3)/100
-    try_b = this%H0_min
-    call SetForH(Params,CMB,try_b, .true.)
-    D_b = CMBToTheta(CMB)
-    try_t = this%H0_max
-    call SetForH(Params,CMB,try_t, .false.)
-    D_t = CMBToTheta(CMB)
-    if (DA < D_b .or. DA > D_t) then
-        if (Feedback>1) write(*,*) instance, 'Out of range finding H0: ', real(Params(3))
-        cmb%H0=0 !Reject it
-    else
-        lasttry = -1
-        do
-            call SetForH(Params,CMB,(try_b+try_t)/2, .false.)
-            D_try = CMBToTheta(CMB)
-            if (D_try < DA) then
-                try_b = (try_b+try_t)/2
-            else
-                try_t = (try_b+try_t)/2
+        do i=1, ncache
+            !want to save two slow positions for some fast-slow methods
+            if (all(Params(1:num_hard) == LastCMB(i)%BaseParams(1:num_hard))) then
+                CP => CMB !needed to make next line work for some odd reason CMB=LastCMB(i) does not work
+                CP = LastCMB(i)
+                call this%CosmologyParameterization%ParamArrayToTheoryParams(Params, CMB)
+                call SetFast(Params,CMB)
+                return
             end if
-            if (abs(D_try - lasttry)< 1e-7) exit
-            lasttry = D_try
         end do
+        call this%CosmologyParameterization%ParamArrayToTheoryParams(Params, CMB)
 
-        !!call InitCAMB(CMB,error)
-        if (CMB%tau==0._mcp) then
-            CMB%zre=0
+        DA = Params(3)/100
+        try_b = this%H0_min
+        call SetForH(Params,CMB,try_b, .true.)
+        D_b = CMBToTheta(CMB)
+        try_t = this%H0_max
+        call SetForH(Params,CMB,try_t, .false.)
+        D_t = CMBToTheta(CMB)
+        if (DA < D_b .or. DA > D_t) then
+            if (Feedback>1) write(*,*) instance, 'Out of range finding H0: ', real(Params(3))
+            cmb%H0=0 !Reject it
         else
-            CMB%zre = GetZreFromTau(CMB, CMB%tau)
-        end if
+            lasttry = -1
+            do
+                call SetForH(Params,CMB,(try_b+try_t)/2, .false.)
+                D_try = CMBToTheta(CMB)
+                if (D_try < DA) then
+                    try_b = (try_b+try_t)/2
+                else
+                    try_t = (try_b+try_t)/2
+                end if
+                if (abs(D_try - lasttry)< 1e-7) exit
+                lasttry = D_try
+            end do
 
-        LastCMB(cache) = CMB
-        cache = mod(cache,ncache)+1
-    end if
+            !!call InitCAMB(CMB,error)
+            if (CMB%tau==0._mcp) then
+                CMB%zre=0
+            else
+                CMB%zre = GetZreFromTau(CMB, CMB%tau)
+            end if
+
+            LastCMB(cache) = CMB
+            cache = mod(cache,ncache)+1
+        end if
     end select
     end subroutine TP_ParamArrayToTheoryParams
 
@@ -159,27 +167,25 @@
 
     select type (Theory)
     class is (TheoryPredictions)
+        num_derived = 12 +  Theory%numderived
+        allocate(Derived%P(num_derived))
 
-    num_derived = 12 +  Theory%numderived
+        call this%ParamArrayToTheoryParams(P,CMB)
 
-    allocate(Derived%P(num_derived))
+        derived%P(1) = CMB%omv
+        derived%P(2) = CMB%omdm+CMB%omb
+        derived%P(3) = Theory%Sigma_8
+        derived%P(4) = CMB%zre
+        derived%P(5) = Theory%tensor_ratio_r10
+        derived%P(6) = CMB%H0
+        derived%P(7) = Theory%tensor_ratio_02
+        derived%P(8) = cl_norm*CMB%InitPower(As_index)*1e9
+        derived%P(9) = CMB%omdmh2 + CMB%ombh2
+        derived%P(10)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
+        derived%P(11)= CMB%Yhe !value actually used, may be set from bbn consistency
+        derived%P(12)= derived%P(8)*exp(-2*CMB%tau)  !A e^{-2 tau}
 
-    call this%ParamArrayToTheoryParams(P,CMB)
-
-    derived%P(1) = CMB%omv
-    derived%P(2) = CMB%omdm+CMB%omb
-    derived%P(3) = Theory%Sigma_8
-    derived%P(4) = CMB%zre
-    derived%P(5) = Theory%tensor_ratio_r10
-    derived%P(6) = CMB%H0
-    derived%P(7) = Theory%tensor_ratio_02
-    derived%P(8) = cl_norm*CMB%InitPower(As_index)*1e9
-    derived%P(9) = CMB%omdmh2 + CMB%ombh2
-    derived%P(10)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
-    derived%P(11)= CMB%Yhe !value actually used, may be set from bbn consistency
-    derived%P(12)= derived%P(8)*exp(-2*CMB%tau)  !A e^{-2 tau}
-
-    derived%P(13:num_derived) = Theory%derived_parameters(1: Theory%numderived)
+        derived%P(13:num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
     end function TP_CalcDerivedParams
@@ -269,32 +275,32 @@
 
     select type (CMB)
     class is (CMBParams)
-    omegam = Params(1)
-    CMB%H0 = Params(2)
-    CMB%omk = Params(3)
-    CMB%omnuh2=Params(4)/neutrino_mass_fac
-    CMB%w =    Params(5)
-    CMB%wa =    Params(6)
-    CMB%nnu =    Params(7)
+        omegam = Params(1)
+        CMB%H0 = Params(2)
+        CMB%omk = Params(3)
+        CMB%omnuh2=Params(4)/neutrino_mass_fac
+        CMB%w =    Params(5)
+        CMB%wa =    Params(6)
+        CMB%nnu =    Params(7)
 
-    CMB%h=CMB%H0/100
-    h2 = CMB%h**2
-    CMB%Yhe=0.24
-    CMB%omnu = CMB%omnuh2/h2
-    CMB%omb= omegam - CMB%omnu
-    CMB%ombh2 = CMB%omb*h2
-    CMB%omc=0
-    CMB%omch2 = CMB%omc*h2
-    CMB%zre=0
-    CMB%tau=0
-    CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
-    CMB%omdm = CMB%omdmh2/h2
-    CMB%omv = 1- CMB%omk - CMB%omb - CMB%omdm
-    CMB%nufrac=CMB%omnuh2/CMB%omdmh2
-    CMB%reserved=0
-    CMB%fdm=0
-    CMB%iso_cdm_correlated=0
-    CMB%Alens=1
+        CMB%h=CMB%H0/100
+        h2 = CMB%h**2
+        CMB%Yhe=0.24
+        CMB%omnu = CMB%omnuh2/h2
+        CMB%omb= omegam - CMB%omnu
+        CMB%ombh2 = CMB%omb*h2
+        CMB%omc=0
+        CMB%omch2 = CMB%omc*h2
+        CMB%zre=0
+        CMB%tau=0
+        CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
+        CMB%omdm = CMB%omdmh2/h2
+        CMB%omv = 1- CMB%omk - CMB%omb - CMB%omdm
+        CMB%nufrac=CMB%omnuh2/CMB%omdmh2
+        CMB%reserved=0
+        CMB%fdm=0
+        CMB%iso_cdm_correlated=0
+        CMB%Alens=1
     end select
     end subroutine BK_ParamArrayToTheoryParams
 

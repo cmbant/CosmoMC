@@ -432,7 +432,6 @@
     end subroutine Initalize
 
 
-
     subroutine WriteIndepSample(P, like)
     Type(ParamSet) P
     real(mcp) like
@@ -464,7 +463,7 @@
     real(mcp), allocatable, dimension(:,:)   ::MPIMeans
     real(mcp) norm, mean(num_params_used), chain_means(MPIChains,num_params_used)
     real(mcp) delta(num_params_used)
-    integer, parameter :: chk_id = 3252357
+    integer, parameter :: chk_id = 3252358
     integer ID
     real(mcp) MeansCov(num_params_used,num_params_used), cov(num_params_used,num_params_used)
     real(mcp) evals(num_params_used), last_P, R
