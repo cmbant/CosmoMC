@@ -66,7 +66,7 @@
     this%H0_min = Ini_Read_Double_File(Ini, 'H0_min',this%H0_min)
     this%H0_max = Ini_Read_Double_File(Ini, 'H0_max',this%H0_max)
     this%Use_min_zre = Ini_Read_Double_File(Ini,'use_min_zre',this%use_min_zre)
-    prior = Ini_Read_String_File(Ini, 'H0_prior')
+    prior = Ini_Read_String_File(Ini, 'H0_prior',NotFoundFail=.false.)
     if (prior/='') then
         read(prior,*) this%H0_prior_mean, this%H0_prior_std
     end if
