@@ -109,7 +109,7 @@
     real(dp), intent(in) :: cl(lmax,num_cls_tot)
     real(dp), intent(in)  :: freq_params(:)
     real(dp) zlike, A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz_143, r_ps, r_cib, &
-    cal0, cal1, cal2, xi, A_ksz
+    cal0, cal1, cal2, xi, A_ksz, ncib
 
     integer, parameter :: lmin=2
     real(dp) cell_cmb(0:10000)
@@ -128,12 +128,13 @@
     A_sz_143=freq_params(6)  !143
     r_ps = freq_params(7)
     r_cib=freq_params(8)
-    cal0=freq_params(9)
-    cal1=freq_params(10) 
-    cal2=freq_params(11)
-    xi=freq_params(12)
-    A_ksz=freq_params(13)
-    beamcoeffs = freq_params(14:14+nbeammodes-1)
+    ncib = freq_params(9)
+    cal0=freq_params(10)
+    cal1=freq_params(11) 
+    cal2=freq_params(12)
+    xi=freq_params(13)
+    A_ksz=freq_params(14)
+    beamcoeffs = freq_params(15:15+nbeammodes-1)
 
     do L=lmin,lmax
         cell_cmb(L)=cl(L,1)/twopi !this is a georgeism
@@ -146,7 +147,7 @@
     enddo
 
     call calc_like(zlike,  cell_cmb, A_ps_100,  A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz_143,  &
-    r_ps, r_cib, xi, A_ksz, cal0, cal1, cal2, beam_coeffs)
+    r_ps, r_cib, xi, A_ksz, ncib, cal0, cal1, cal2, beam_coeffs)
 
     clik_lnlike_camSpec = zlike/2
 
@@ -177,7 +178,7 @@
     real(dp)  cl_tt(tt_lmax)
     integer L, offset
     real(dp) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz_143, r_ps, r_cib, &
-      cal0, cal1, cal2, xi, A_ksz
+      cal0, cal1, cal2, xi, A_ksz, ncib
     real(dp) a_ps_act_148,a_ps_act_217,a_ps_spt_95,a_ps_spt_150,a_ps_spt_220, &
        r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220, &
        cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220
@@ -194,19 +195,20 @@
     a_ps_spt_220 = freq_params(8)
     A_cib_143=freq_params(9)
     A_cib_217=freq_params(10)
-    r_ps_spt_95x150=freq_params(11) 
-    r_ps_spt_95x220=freq_params(12)
-    r_ps_150x220=freq_params(13)
-    r_cib=freq_params(14)
-    act_dust_s = freq_params(15)
-    act_dust_e = freq_params(16)
-    cal_acts_148  =freq_params(17)
-    cal_acts_217=freq_params(18)
-    cal_acte_148=freq_params(19)
-    cal_acte_217 =freq_params(20)
-    cal_spt_95 =freq_params(21)
-    cal_spt_150 =freq_params(22)
-    cal_spt_220 =freq_params(23)
+    ncib = freq_params(11)
+    r_ps_spt_95x150=freq_params(12) 
+    r_ps_spt_95x220=freq_params(13)
+    r_ps_150x220=freq_params(14)
+    r_cib=freq_params(15)
+    act_dust_s = freq_params(16)
+    act_dust_e = freq_params(17)
+    cal_acts_148  =freq_params(18)
+    cal_acts_217=freq_params(19)
+    cal_acte_148=freq_params(20)
+    cal_acte_217 =freq_params(21)
+    cal_spt_95 =freq_params(22)
+    cal_spt_150 =freq_params(23)
+    cal_spt_220 =freq_params(24)
 
     do l =2, tt_lmax
      if (l.le.tt_lmax_mc) then
@@ -218,7 +220,7 @@
 
     like_tot = 0.d0
     call highell_likelihood_compute(cl_tt,A_sz_143,A_ksz,xi,a_ps_act_148,a_ps_act_217,a_ps_spt_95,a_ps_spt_150,a_ps_spt_220, &
-       A_cib_143,A_cib_217,  r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220,r_cib,act_dust_s,act_dust_e, &
+       A_cib_143,A_cib_217, ncib, r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220,r_cib,act_dust_s,act_dust_e, &
        cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220,like_tot)
     clik_lnlike_highL = like_tot
 
