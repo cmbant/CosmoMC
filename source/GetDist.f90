@@ -262,26 +262,24 @@
 
     mult = coldata(1,i)
     do while (i< nend)
+        if (abs(nint(coldata(1,i)) - coldata(1,i)) > 1e-4) &
+        stop 'non-integer weights in ThinData'
 
-    if (abs(nint(coldata(1,i)) - coldata(1,i)) > 1e-4) &
-    stop 'non-integer weights in ThinData'
-
-    if (mult + tot < fac) then
-        tot = tot + mult
-        i=i+1
-        if (i< nend) mult = nint(coldata(1,i))
-    else
-        thin_ix(nout) = i
-        nout= nout+1
-        if (mult == fac - tot) then
+        if (mult + tot < fac) then
+            tot = tot + mult
             i=i+1
             if (i< nend) mult = nint(coldata(1,i))
         else
-            mult = mult - (fac -tot)
+            thin_ix(nout) = i
+            nout= nout+1
+            if (mult == fac - tot) then
+                i=i+1
+                if (i< nend) mult = nint(coldata(1,i))
+            else
+                mult = mult - (fac -tot)
+            end if
+            tot = 0
         end if
-        tot = 0
-    end if
-
     end do
 
     thin_rows = nout
@@ -812,42 +810,38 @@
 
 
     if (num_chains_used > 1) then
+        write (40,*) ''
+        write(40,*)  'Variance test convergence stats using remaining chains'
+        write (40,*) 'param var(chain mean)/mean(chain var)'
+        write (40,*) ''
 
-    write (40,*) ''
-    write(40,*)  'Variance test convergence stats using remaining chains'
-    write (40,*) 'param var(chain mean)/mean(chain var)'
-    write (40,*) ''
+        do j = 3, ncols
+            between_chain_var(j) = 0
+            in_chain_var(j) = 0
 
-    do j = 3, ncols
-        between_chain_var(j) = 0
-        in_chain_var(j) = 0
+            if (isused(j)) then
+                if (num_chains_used > 1) then
+                    !Get stats for individual chains - the variance of the means over the mean of the variances
+                    do i=1, num_chains_used
+                        chain_means(i,j) =   sum(coldata(1,chain_start(i):chain_indices(i+1)-1)* &
+                        coldata(j,chain_start(i):chain_indices(i+1)-1))/chain_samp(i)
 
-        if (isused(j)) then
+                        between_chain_var(j) = between_chain_var(j) + &
+                        ! chain_samp(i)/maxsamp* & !Weight for different length chains
+                        (chain_means(i,j) - mean(j))**2
 
-        if (num_chains_used > 1) then
-            !Get stats for individual chains - the variance of the means over the mean of the variances
-            do i=1, num_chains_used
-                chain_means(i,j) =   sum(coldata(1,chain_start(i):chain_indices(i+1)-1)* &
-                coldata(j,chain_start(i):chain_indices(i+1)-1))/chain_samp(i)
+                        in_chain_var(j) = in_chain_var(j) +  & !chain_samp(i)/maxsamp *&
+                        sum(coldata(1,chain_start(i):chain_indices(i+1)-1)* &
+                        (coldata(j,chain_start(i):chain_indices(i+1)-1)-chain_means(i,j))**2)
 
-                between_chain_var(j) = between_chain_var(j) + &
-                ! chain_samp(i)/maxsamp* & !Weight for different length chains
-                (chain_means(i,j) - mean(j))**2
-
-                in_chain_var(j) = in_chain_var(j) +  & !chain_samp(i)/maxsamp *&
-                sum(coldata(1,chain_start(i):chain_indices(i+1)-1)* &
-                (coldata(j,chain_start(i):chain_indices(i+1)-1)-chain_means(i,j))**2)
-
-            end do
-            between_chain_var(j) = between_chain_var(j)/(num_chains_used-1) !(usedsamps/maxsamp -1)
-            in_chain_var(j) = in_chain_var(j)/usedsamps
-            write (40,'(1I3,f9.4,"  '//trim(labels(j))//'")') j-2, &
-            between_chain_var(j) /in_chain_var(j)
-        end if
-
-        end if
-    end do
-
+                    end do
+                    between_chain_var(j) = between_chain_var(j)/(num_chains_used-1) !(usedsamps/maxsamp -1)
+                    in_chain_var(j) = in_chain_var(j)/usedsamps
+                    write (40,'(1I3,f9.4,"  '//trim(labels(j))//'")') j-2, &
+                    between_chain_var(j) /in_chain_var(j)
+                end if
+            end if
+        end do
     end if
 
     if (num_chains_used > 1 .and. covmat_dimension>0) then
@@ -1051,7 +1045,6 @@
             end do !thin_fac
 
 203         if (thin_rows < 2) thin_fac(ix) = 0
-
         end do !chains
 
         write (40,*) ''
@@ -1078,7 +1071,6 @@
             call WriteS('RL: Estimated burn in steps: '//&
             trim(IntToStr(maxval(nburn(1:num_chains_used))))//' ('//&
             trim(IntToStr(nint(maxval(nburn(1:num_chains_used))/mean_mult)))//' rows)')
-
         end if
 
         !!Get correlation lengths
@@ -1123,7 +1115,6 @@
         end do
 
         deallocate(Corrs)
-
     end if
 
     close(40)
@@ -1190,15 +1181,14 @@
         deallocate(Win,finebins,finebinlikes)
 
     else
-
-    !no smoothing
-    do i = 0, nrows-1
-        ix1=nint((coldata(colix(j),i)-center(j))/width(j))
-        ix2=nint((coldata(colix(j2),i)-center(j2))/width(j2))
-        bins2D(ix1,ix2) = bins2D(ix1,ix2) + coldata(1,i)
-        bin2Dlikes(ix1,ix2) = bin2Dlikes(ix1,ix2) + coldata(1,i)*exp(meanlike-coldata(2,i))
-        bin2Dmax(ix1,ix2) = min(bin2Dmax(ix1,ix2),real(coldata(2,i)))
-    end do
+        !no smoothing
+        do i = 0, nrows-1
+            ix1=nint((coldata(colix(j),i)-center(j))/width(j))
+            ix2=nint((coldata(colix(j2),i)-center(j2))/width(j2))
+            bins2D(ix1,ix2) = bins2D(ix1,ix2) + coldata(1,i)
+            bin2Dlikes(ix1,ix2) = bin2Dlikes(ix1,ix2) + coldata(1,i)*exp(meanlike-coldata(2,i))
+            bin2Dmax(ix1,ix2) = min(bin2Dmax(ix1,ix2),real(coldata(2,i)))
+        end do
 
     end if
 
@@ -1218,23 +1208,21 @@
 
 
     if (has_limits(colix(j)) .or. has_limits(colix(j2))) then
-
-    !Fix up underweighting near edges. Note this makes edge pixels noisier.
-    do ix1 = ix_min(j), ix_max(j)
-        do ix2 = ix_min(j2),ix_max(j2)
-            if (ix1 ==ix_min(j) .and. has_limits_bot(colix(j))) bins2D(ix1,ix2) = bins2D(ix1,ix2)*2
-            if (ix1 ==ix_max(j) .and. has_limits_top(colix(j))) bins2D(ix1,ix2) = bins2D(ix1,ix2)*2
-            if (ix2 ==ix_min(j2).and. has_limits_bot(colix(j2))) bins2D(ix1,ix2) = bins2D(ix1,ix2)*2
-            if (ix2 ==ix_max(j2).and. has_limits_top(colix(j2))) bins2D(ix1,ix2) = bins2D(ix1,ix2)*2
-            if (smoothing) then !!Aug 2006
-                if (ix1 ==ix_min(j)+1.and. has_limits_bot(colix(j))) bins2D(ix1,ix2) = bins2D(ix1,ix2)/0.84
-                if (ix1 ==ix_max(j)-1.and. has_limits_top(colix(j))) bins2D(ix1,ix2) = bins2D(ix1,ix2)/0.84
-                if (ix2 ==ix_min(j2)+1.and. has_limits_bot(colix(j2))) bins2D(ix1,ix2) = bins2D(ix1,ix2)/0.84
-                if (ix2 ==ix_max(j2)-1.and. has_limits_top(colix(j2))) bins2D(ix1,ix2) = bins2D(ix1,ix2)/0.84
-            end if 
+        !Fix up underweighting near edges. Note this makes edge pixels noisier.
+        do ix1 = ix_min(j), ix_max(j)
+            do ix2 = ix_min(j2),ix_max(j2)
+                if (ix1 ==ix_min(j) .and. has_limits_bot(colix(j))) bins2D(ix1,ix2) = bins2D(ix1,ix2)*2
+                if (ix1 ==ix_max(j) .and. has_limits_top(colix(j))) bins2D(ix1,ix2) = bins2D(ix1,ix2)*2
+                if (ix2 ==ix_min(j2).and. has_limits_bot(colix(j2))) bins2D(ix1,ix2) = bins2D(ix1,ix2)*2
+                if (ix2 ==ix_max(j2).and. has_limits_top(colix(j2))) bins2D(ix1,ix2) = bins2D(ix1,ix2)*2
+                if (smoothing) then !!Aug 2006
+                    if (ix1 ==ix_min(j)+1.and. has_limits_bot(colix(j))) bins2D(ix1,ix2) = bins2D(ix1,ix2)/0.84
+                    if (ix1 ==ix_max(j)-1.and. has_limits_top(colix(j))) bins2D(ix1,ix2) = bins2D(ix1,ix2)/0.84
+                    if (ix2 ==ix_min(j2)+1.and. has_limits_bot(colix(j2))) bins2D(ix1,ix2) = bins2D(ix1,ix2)/0.84
+                    if (ix2 ==ix_max(j2)-1.and. has_limits_top(colix(j2))) bins2D(ix1,ix2) = bins2D(ix1,ix2)/0.84
+                end if 
+            end do
         end do
-    end do
-
     end if
 
     ! Get contour containing contours(:) of the probability
@@ -1257,10 +1245,8 @@
             end if
             if (try_sum == try_last) exit
             try_last = try_sum
-
         end do
         contour_levels(ix1) = (try_b+try_t)/2
-
     end do
     deallocate(TheBins)
 
@@ -1370,21 +1356,17 @@
         hide_ticks = .false.
     endif
 
-    if (PlotContMATLAB(aunit,rootname,j,j2,do_shading) .and. &
-    num_contours /= 0) then
+    if (PlotContMATLAB(aunit,rootname,j,j2,do_shading) .and. num_contours /= 0) then
+        write (aunit,'(a)') '[C h] = contour(x1,x2,pts,cnt,lineM{1});'
+        write (aunit,'(a)') 'set(h,''LineWidth'',lw1);'
+        write (aunit,*) 'hold on; axis manual; '
 
-    write (aunit,'(a)') '[C h] = contour(x1,x2,pts,cnt,lineM{1});'
-    write (aunit,'(a)') 'set(h,''LineWidth'',lw1);'
-    write (aunit,*) 'hold on; axis manual; '
-
-    do i = 1, Num_ComparePlots
-        fmt = trim(numcat('lineM{',i+1)) // '}'
-        if (PlotContMATLAB(aunit,ComparePlots(i),j,j2,.false.)) &
-        write (aunit,'(a)') '[C h] = contour(x1,x2,pts,cnt,'//trim(fmt)//');'
-        write (aunit,'(a)') 'set(h,''LineWidth'',lw2);'
-
-    end do
-
+        do i = 1, Num_ComparePlots
+            fmt = trim(numcat('lineM{',i+1)) // '}'
+            if (PlotContMATLAB(aunit,ComparePlots(i),j,j2,.false.)) &
+            write (aunit,'(a)') '[C h] = contour(x1,x2,pts,cnt,'//trim(fmt)//');'
+            write (aunit,'(a)') 'set(h,''LineWidth'',lw2);'
+        end do
     end if
 
     write (aunit,'(a)') 'hold off; set(gca,''Layer'',''top'',''FontSize'',axes_fontsize);'
@@ -1475,19 +1457,15 @@
     do ix1 = 1, Num_ComparePlots
         fname = dat_file_name(ComparePlots(ix1),j)
         if (FileExists(trim(plot_data_dir)// trim(fname)//'.dat')) then
+            write (aunit,'(a)') "pts = load(fullfile(plotdir,'" // trim(fname)// '.dat''));'
+            fmt = trim(numcat('lineM{',ix1+1)) // '}'
+            write (aunit,'(a)') 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
 
-        write (aunit,'(a)') "pts = load(fullfile(plotdir,'" // trim(fname)// '.dat''));'
-        fmt = trim(numcat('lineM{',ix1+1)) // '}'
-        write (aunit,'(a)') 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
-
-        if (plot_meanlikes) then
-
-        write (aunit,'(a)') "pts=load(fullfile(plotdir,'" //trim(fname)//'.likes''));'
-        fmt = trim(numcat('lineL{',ix1+1)) // '}'
-        write (aunit,'(a)') 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
-
-        end if
-
+            if (plot_meanlikes) then
+                write (aunit,'(a)') "pts=load(fullfile(plotdir,'" //trim(fname)//'.likes''));'
+                fmt = trim(numcat('lineL{',ix1+1)) // '}'
+                write (aunit,'(a)') 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
+            end if
         end if
     end do
 
@@ -1643,38 +1621,34 @@
     single_column_chain_files = Ini_Read_Logical( 'single_column_chain_files',.false.)
 
     if ( single_column_chain_files ) then
-
-    pname(1) = 'weight'
-    pname(2) = 'lnlike'
-    Ini_fail_on_not_found = .false.
-    do ix=3, ncols
-        pname(ix) = Ini_Read_String(concat('pname',ix-2))
-        if (pname(ix)=='' .and. NameMapping%nnames/=0) then
-            pname(ix) = NameMapping%name(ix-2)
-        end if
-    end do
-    Ini_fail_on_not_found = .true.
+        pname(1) = 'weight'
+        pname(2) = 'lnlike'
+        Ini_fail_on_not_found = .false.
+        do ix=3, ncols
+            pname(ix) = Ini_Read_String(concat('pname',ix-2))
+            if (pname(ix)=='' .and. NameMapping%nnames/=0) then
+                pname(ix) = NameMapping%name(ix-2)
+            end if
+        end do
+        Ini_fail_on_not_found = .true.
 
     else
-
-    if (parameter_names_file=='') then
-        call IO_ReadParamNames(NameMapping,in_root)
-        if (ncols==0 .and. NameMapping%nnames/=0) ncols = NameMapping%nnames+2
-    end if
-    if (parameter_names_labels/='') &
-    call ParamNames_SetLabels(NameMapping,parameter_names_labels)
-
-
-    if (ncols==0) then
-        if (chain_num == 0) then
-            infile = trim(in_root) // '.txt'
-        else
-            infile = trim(in_root) //'_1.txt'
+        if (parameter_names_file=='') then
+            call IO_ReadParamNames(NameMapping,in_root)
+            if (ncols==0 .and. NameMapping%nnames/=0) ncols = NameMapping%nnames+2
         end if
+        if (parameter_names_labels/='') call ParamNames_SetLabels(NameMapping,parameter_names_labels)
 
-        ncols = TxtFileColumns(infile)
-        write (*,*) 'Reading ',ncols, 'columns'
-    end if
+        if (ncols==0) then
+            if (chain_num == 0) then
+                infile = trim(in_root) // '.txt'
+            else
+                infile = trim(in_root) //'_1.txt'
+            end if
+
+            ncols = TxtFileColumns(infile)
+            write (*,*) 'Reading ',ncols, 'columns'
+        end if
 
     end if
 
@@ -1785,7 +1759,7 @@
         plotparams_num=-1
         call ParamNames_ReadIndices(NameMapping,InLine, plotparams, plotparams_num, unknown_value=-1)
     else
-      plotparams_num = 0
+        plotparams_num = 0
     end if
 
     InLine = Ini_Read_String('plot_2D_param')
@@ -1914,7 +1888,6 @@
 
     end if
 
-
     num_3D_plots = Ini_Read_Int('num_3D_plots',0)
     do ix =1, num_3D_plots
         plot_3D(ix) = Ini_Read_String(numcat('3D_plot',ix))
@@ -1926,108 +1899,104 @@
 
     allocate(bins2D(-1000:1000,-1000:1000),bin2Dlikes(-1000:1000,-1000:1000),bin2Dmax(-1000:1000,-1000:1000))
 
-
     !Read in the chains
     nrows = 0
     num_chains_used =0
 
     do chain_ix = first_chain, first_chain-1 + max(1,chain_num)
+        if (any(chain_exclude(1:num_exclude)==chain_ix)) cycle
 
-    if (any(chain_exclude(1:num_exclude)==chain_ix)) cycle
+        num_chains_used = num_chains_used + 1
+        if (num_chains_used > max_chains) stop 'Increase max_chains in GetDist'
+        chain_indices(num_chains_used) = nrows
+        chain_numbers(num_chains_used) = chain_ix
 
-    num_chains_used = num_chains_used + 1
-    if (num_chains_used > max_chains) stop 'Increase max_chains in GetDist'
-    chain_indices(num_chains_used) = nrows
-    chain_numbers(num_chains_used) = chain_ix
+        if ( single_column_chain_files ) then
+            !Use used for WMAP 5-year chains suppled on LAMBDA; code from Mike Nolta
+            !Standard CosmoMC case below
 
-    if ( single_column_chain_files ) then
-        !Use used for WMAP 5-year chains suppled on LAMBDA; code from Mike Nolta
-        !Standard CosmoMC case below
+            first_haschain=0
+            do ip = 1,ncols
+                infile = concat(CheckTrailingSlash(concat(in_root,chain_ix)), pname(ip))
+                if (.not. FileExists(infile)) then
+                    write (*,'(a)') 'skipping missing ' // trim(infile)
+                    coldata(ip,:) = 0
+                    nrows2(ip) = -1
+                else
 
-        first_haschain=0
-        do ip = 1,ncols
-            infile = concat(CheckTrailingSlash(concat(in_root,chain_ix)), pname(ip))
-            if (.not. FileExists(infile)) then
-                write (*,'(a)') 'skipping missing ' // trim(infile)
-                coldata(ip,:) = 0
-                nrows2(ip) = -1
-            else
+                write (*,'(a)') 'reading ' // trim(infile)
+                ! call OpenTxtFile(infile,50)
+                chain_handle = IO_OpenChainForRead(infile)
+                if (first_haschain==0) first_haschain=ip
+                nrows2(ip) = 0
+                idx = 0 !Jo -1
+                do
+                    read (chain_handle,'(a)',iostat=stat) InLine
+                    if ( stat /= 0 ) exit
+                    idx = idx + 1
 
-            write (*,'(a)') 'reading ' // trim(infile)
-            ! call OpenTxtFile(infile,50)
-            chain_handle = IO_OpenChainForRead(infile)
-            if (first_haschain==0) first_haschain=ip
-            nrows2(ip) = 0
-            idx = 0 !Jo -1
-            do
-                read (chain_handle,'(a)',iostat=stat) InLine
-                if ( stat /= 0 ) exit
-                idx = idx + 1
+                    if ( ignorerows >= 1 .and. idx <= nint(ignorerows) ) then
+                        print *, 'ignoring row'
+                        cycle
+                    end if
 
-                if ( ignorerows >= 1 .and. idx <= nint(ignorerows) ) then
-                    print *, 'ignoring row'
-                    cycle
+                    if (SCAN (InLine, 'N') /=0) then
+                        write (*,*) 'WARNING: skipping line with probable NaN'
+                        cycle
+                    end if
+
+                    read(InLine,*,iostat=stat) itmp, rtmp
+                    if ( stat /= 0 ) then
+                        write (*,*) 'error reading line ', nrows2(ip) + int(ignorerows), ' - skipping rest of file'
+                        exit
+                    end if
+                    if ( idx /= itmp ) then
+                        print *, "*** out of sync", idx, itmp
+                        stop
+                    end if
+
+                    coldata(ip,nrows2(ip)) = rtmp
+                    nrows2(ip) = nrows2(ip) + 1
+                    if (nrows2(ip) > max_rows) stop 'need to increase max_rows'
+
+                end do
+                call IO_Close(chain_handle)
                 end if
-
-                if (SCAN (InLine, 'N') /=0) then
-                    write (*,*) 'WARNING: skipping line with probable NaN'
-                    cycle
-                end if
-
-                read(InLine,*,iostat=stat) itmp, rtmp
-                if ( stat /= 0 ) then
-                    write (*,*) 'error reading line ', nrows2(ip) + int(ignorerows), ' - skipping rest of file'
-                    exit
-                end if
-                if ( idx /= itmp ) then
-                    print *, "*** out of sync", idx, itmp
+            end do
+            if (first_haschain==0) stop 'no chain parameter files read!'
+            do ip = 2,ncols
+                if ( nrows2(ip)/=-1 .and. nrows2(ip) /= nrows2(first_haschain) ) then
+                    print *, '*** nrows mismatch:'
+                    print *, nrows2(1:ncols)
                     stop
                 end if
-
-                coldata(ip,nrows2(ip)) = rtmp
-                nrows2(ip) = nrows2(ip) + 1
-                if (nrows2(ip) > max_rows) stop 'need to increase max_rows'
-
             end do
-            call IO_Close(chain_handle)
-            end if
-        end do
-        if (first_haschain==0) stop 'no chain parameter files read!'
-        do ip = 2,ncols
-            if ( nrows2(ip)/=-1 .and. nrows2(ip) /= nrows2(first_haschain) ) then
-                print *, '*** nrows mismatch:'
-                print *, nrows2(1:ncols)
-                stop
-            end if
-        end do
-        nrows = nrows2(first_haschain)
-        print *, 'all columns match, nrows = ', nrows
+            nrows = nrows2(first_haschain)
+            print *, 'all columns match, nrows = ', nrows
 
-    else  !Not single column chain files (usual cosmomc format)
+        else  !Not single column chain files (usual cosmomc format)
+            !This increments nrows by number read in
+            if (.not. IO_ReadChainRows(in_root, chain_ix, chain_num, int(ignorerows),nrows,ncols,max_rows, &
+            coldata,samples_are_chains)) then
+                num_chains_used = num_chains_used - 1
+                cycle
+            endif
+        end if
 
-    !This increments nrows by number read in
-    if (.not. IO_ReadChainRows(in_root, chain_ix, chain_num, int(ignorerows),nrows,ncols,max_rows, &
-    coldata,samples_are_chains)) then
-        num_chains_used = num_chains_used - 1
-        cycle
-    endif
+        if (map_params) then
+            do ip =chain_indices(num_chains_used),nrows-1
+                call MapParameters(coldata(1:ncols, ip))
+            end do
+        end if
 
-    end if
-
-    if (map_params) then
-        do ip =chain_indices(num_chains_used),nrows-1
-            call MapParameters(coldata(1:ncols, ip))
-        end do
-    end if
-
-    if (ignorerows<1 .and. ignorerows/=0) then
-        i = chain_indices(num_chains_used)
-        j = nint((nrows-i-1)*ignorerows)
-        do ix = i,nrows-j-1
-            coldata(:,ix) = coldata(:,ix+j)
-        end do
-        nrows = nrows - j
-    end if
+        if (ignorerows<1 .and. ignorerows/=0) then
+            i = chain_indices(num_chains_used)
+            j = nint((nrows-i-1)*ignorerows)
+            do ix = i,nrows-j-1
+                coldata(:,ix) = coldata(:,ix+j)
+            end do
+            nrows = nrows - j
+        end if
 
     end do
 
@@ -2263,111 +2232,99 @@
         end do
 
         if (ix_min(j) /= ix_max(j)) then
-
-        !account for underweighting near edges
-        if (has_limits_bot(ix)) then
-            bincounts(ix_min(j))   = bincounts(ix_min(j))*2
-            if (smoothing) bincounts(ix_min(j)+1) = bincounts(ix_min(j)+1)/0.84
-        else
-            if (binsraw(ix_min(j))==0  .and. &
-            binsraw(ix_min(j)+1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
-                call EdgeWarning(ix-2)
+            !account for underweighting near edges
+            if (has_limits_bot(ix)) then
+                bincounts(ix_min(j))   = bincounts(ix_min(j))*2
+                if (smoothing) bincounts(ix_min(j)+1) = bincounts(ix_min(j)+1)/0.84
+            else
+                if (binsraw(ix_min(j))==0  .and. &
+                binsraw(ix_min(j)+1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
+                    call EdgeWarning(ix-2)
+                end if
             end if
-        end if
-        if (has_limits_top(ix)) then
-            bincounts(ix_max(j))   = bincounts(ix_max(j))*2
-            if (smoothing) bincounts(ix_max(j)-1) = bincounts(ix_max(j)-1)/0.84
-        else
-            if (binsraw(ix_max(j))==0  .and. &
-            binsraw(ix_max(j)-1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
-                call EdgeWarning(ix-2)
+            if (has_limits_top(ix)) then
+                bincounts(ix_max(j))   = bincounts(ix_max(j))*2
+                if (smoothing) bincounts(ix_max(j)-1) = bincounts(ix_max(j)-1)/0.84
+            else
+                if (binsraw(ix_max(j))==0  .and. &
+                binsraw(ix_max(j)-1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
+                    call EdgeWarning(ix-2)
+                end if
             end if
-
-        end if
-
         end if
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: start of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
         if (do_minimal_1d_intervals) then ! Calculate minimal credible intervals (see arXiv:0705.0440)
+            do ix1 = 1, num_contours ! get boundaries of minimal intervals
+                minimal_intervals(j,:,ix1) = MinInterval(contours(ix1),bincounts,width(j),center(j), &
+                has_limits_bot(ix),has_limits_top(ix),ix_min(j),ix_max(j))
 
-        do ix1 = 1, num_contours ! get boundaries of minimal intervals
-            minimal_intervals(j,:,ix1) = MinInterval(contours(ix1),bincounts,width(j),center(j), &
-            has_limits_bot(ix),has_limits_top(ix),ix_min(j),ix_max(j))
-
-            if (int(minimal_intervals(j,max_intersections+1,ix1)).ne.2) then ! if minimal region is not connected ...
-                Write(*,*) 'Warning: the minimal '& ! ... spam screen with warning ...
-                //trim(intToStr(nint(100*contours(ix1))))// '% credible region in parameter ' &
-                //trim(intToStr(colix(j)-2))// &
-                ' does not seem to be connected. Perhaps the posterior is multimodal?'// &
-                'You might also want to try choosing a larger bin size and/or turn on smoothing to reduce noise.'
-                Write(*,*) 'There are '//trim(intToStr(int(minimal_intervals(j,max_intersections+1,ix1))/2))//&
-                'disconnected regions:' ! ... output intervals to screen and ...
-                do i=1,int(minimal_intervals(j,max_intersections+1,ix1))/2
-                    Print*,minimal_intervals(j,2*i-1,ix1),' -> ',minimal_intervals(j,2*i,ix1)
-                    minimal_intervals(j,2*i-1,ix1)=0. ! ... set output in .minmarge file to zero to avoid confusion
-                    minimal_intervals(j,2*i,ix1)=0.
-                end do
-            end if
-        end do
+                if (int(minimal_intervals(j,max_intersections+1,ix1)).ne.2) then ! if minimal region is not connected ...
+                    Write(*,*) 'Warning: the minimal '& ! ... spam screen with warning ...
+                    //trim(intToStr(nint(100*contours(ix1))))// '% credible region in parameter ' &
+                    //trim(intToStr(colix(j)-2))// &
+                    ' does not seem to be connected. Perhaps the posterior is multimodal?'// &
+                    'You might also want to try choosing a larger bin size and/or turn on smoothing to reduce noise.'
+                    Write(*,*) 'There are '//trim(intToStr(int(minimal_intervals(j,max_intersections+1,ix1))/2))//&
+                    'disconnected regions:' ! ... output intervals to screen and ...
+                    do i=1,int(minimal_intervals(j,max_intersections+1,ix1))/2
+                        Print*,minimal_intervals(j,2*i-1,ix1),' -> ',minimal_intervals(j,2*i,ix1)
+                        minimal_intervals(j,2*i-1,ix1)=0. ! ... set output in .minmarge file to zero to avoid confusion
+                        minimal_intervals(j,2*i,ix1)=0.
+                    end do
+                end if
+            end do
         end if
         !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: end of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-        if (.not. no_plots) then
-
-        filename = trim(plot_data_dir)//trim(rootname)//'.m'
-        call CreateTxtFile(trim(filename),49)
-        write(49,'(a)') 'classdef '//trim(trim(rootname))//' < handle'
-        write(49,'(a)') 'properties'
-        write(49,'(a)') 'last=[];'
-        write(49,'(a)') 'distroot='''//trim(rootdirname)//''';'
-        write(49,'(a)') 'plotroot='''//trim(plot_data_dir)//trim(rootname)//''';'
-        write(49,'(a)') 'root='''//trim(rootname)//''';'
-        call ParamNames_WriteMatlab(NameMapping,  49,'')
-        write(49,'(a)') 'end'
-        write(49,'(a)') 'end'
-        close(49)
-
-        fname = trim(dat_file_name(rootname,j))
-        filename = trim(plot_data_dir)//trim(fname)
-        open(unit=49,file=trim(filename)//'.dat',form='formatted',status='replace')
         maxbin = maxval(bincounts(ix_min(j):ix_max(j)))
         if (maxbin==0) then
-            fname =  IntToStr(colix(j)-2)
-            write (*,*) 'no samples in bin, param:'//trim(fname)
+            write (*,*) 'no samples in bin, param: '//trim(ParamNames_NameOrNumber(NameMapping, colix(j)-2))
             stop
         end if
-        do i = ix_min(j), ix_max(j)
-            write (49,'(3E16.7)') center(j) + i*width(j), bincounts(i)/maxbin, binmaxlikes(i)
-        end do
-        if (ix_min(j) == ix_max(j)) write (49,'(1E16.7,'' 0'')') center(j) + ix_min*width(j)
-        close(49)
-
         !Detect ends which don't go to zero
         if (.not. force_twotail) then
             if (bincounts(ix_max(j)) > maxbin*.15) cont_lines(j,2,:) = amax
             if (bincounts(ix_min(j)) > maxbin*.15) cont_lines(j,1,:) = amin
         end if
 
-        if (plot_meanlikes) then
+        if (.not. no_plots) then
+            filename = trim(plot_data_dir)//trim(rootname)//'.m'
+            call CreateTxtFile(trim(filename),49)
+            write(49,'(a)') 'classdef '//trim(trim(rootname))//' < handle'
+            write(49,'(a)') 'properties'
+            write(49,'(a)') 'last=[];'
+            write(49,'(a)') 'distroot='''//trim(rootdirname)//''';'
+            write(49,'(a)') 'plotroot='''//trim(plot_data_dir)//trim(rootname)//''';'
+            write(49,'(a)') 'root='''//trim(rootname)//''';'
+            call ParamNames_WriteMatlab(NameMapping,  49,'')
+            write(49,'(a)') 'end'
+            write(49,'(a)') 'end'
+            close(49)
 
-        open(unit=49,file=trim(filename)//'.likes',form='formatted',status='replace')
-        maxbin = maxval(binlikes(ix_min(j):ix_max(j)))
-        do i = ix_min(j), ix_max(j)
-            write (49,'(2E16.7)') center(j) + i*width(j), binlikes(i)/maxbin
-        end do
-        close(49)
-        end if
+            fname = trim(dat_file_name(rootname,j))
+            filename = trim(plot_data_dir)//trim(fname)
+            open(unit=49,file=trim(filename)//'.dat',form='formatted',status='replace')
+            do i = ix_min(j), ix_max(j)
+                write (49,'(3E16.7)') center(j) + i*width(j), bincounts(i)/maxbin, binmaxlikes(i)
+            end do
+            if (ix_min(j) == ix_max(j)) write (49,'(1E16.7,'' 0'')') center(j) + ix_min*width(j)
+            close(49)
 
-        !        plot_x = mod(j+plot_col-1,plot_col)+1
-        !        plot_y = plot_row - (j+plot_col-1)/plot_col + 1
+            if (plot_meanlikes) then
+                open(unit=49,file=trim(filename)//'.likes',form='formatted',status='replace')
+                maxbin = maxval(binlikes(ix_min(j):ix_max(j)))
+                do i = ix_min(j), ix_max(j)
+                    write (49,'(2E16.7)') center(j) + i*width(j), binlikes(i)/maxbin
+                end do
+                close(49)
+            end if
 
-        call WriteFormatInts(51,'subplot(%u,%u,%u);',plot_row,plot_col,j)
-        call Write1DplotMatLab(51,j);
-        if (prob_label)  write (51,*) 'ylabel(''Probability'')'
-        write(51,*)  'xlabel('''//   trim(matlabLabel(ix))//''',''FontSize'',lab_fontsize);'
-        write (51,*) 'set(gca,''ytick'',[]);hold off;'
+            call WriteFormatInts(51,'subplot(%u,%u,%u);',plot_row,plot_col,j)
+            call Write1DplotMatLab(51,j);
+            if (prob_label)  write (51,*) 'ylabel(''Probability'')'
+            write(51,*)  'xlabel('''//   trim(matlabLabel(ix))//''',''FontSize'',lab_fontsize);'
+            write (51,*) 'set(gca,''ytick'',[]);hold off;'
 
         end if !no plots
     end do
@@ -2396,15 +2353,12 @@
             end do
 
         end if
-
     end if
 
 
     !do 2D bins and produce matlab file
-
     if (plot_2D_param == 0 .and. num_cust2D_plots==0 .and. .not. no_plots) then
         !In this case output the most correlated variable combinations
-
         write (*,*) 'doing 2D plots for most correlated variables'
         try_t = 1e5
 
@@ -2453,51 +2407,46 @@
 
     done2D= .false.
     if (num_2D_plots > 0 .and. .not. no_plots) then
+        write (*,*) 'Producing ',num_2D_plots,' 2D plots'
+        filename = trim(rootdirname)//'_2D.m'
+        open(unit=50,file=filename,form='formatted',status='replace')
+        call WriteMatLabInit(50,num_2D_plots >=7,matlab_subplot_size_inch2)
 
-    write (*,*) 'Producing ',num_2D_plots,' 2D plots'
-    filename = trim(rootdirname)//'_2D.m'
-    open(unit=50,file=filename,form='formatted',status='replace')
-    call WriteMatLabInit(50,num_2D_plots >=7,matlab_subplot_size_inch2)
-
-    plot_col = nint(sqrt(num_2D_plots/1.4))
-    plot_row = (num_2D_plots +plot_col-1)/plot_col
-    plot_num = 0
+        plot_col = nint(sqrt(num_2D_plots/1.4))
+        plot_row = (num_2D_plots +plot_col-1)/plot_col
+        plot_num = 0
 
 
-    do j= 1, num_vars
-        if (ix_min(j) /= ix_max(j)) then
+        do j= 1, num_vars
+            if (ix_min(j) /= ix_max(j)) then
+                if (plot_2D_param/=0 .or. num_cust2D_plots /= 0) then
+                    if (colix(j) == plot_2D_param) cycle
+                    j2min = 1
+                else
+                    j2min = j+1
+                end if
 
-        if (plot_2D_param/=0 .or. num_cust2D_plots /= 0) then
-            if (colix(j) == plot_2D_param) cycle
-            j2min = 1
-        else
-            j2min = j+1
-        end if
+                do j2 = j2min, num_vars
+                    if (ix_min(j2) /= ix_max(j2)) then
+                        if (plot_2D_param/=0 .and. colix(j2) /= plot_2D_param) cycle
+                        if (num_cust2D_plots /= 0 .and.  &
+                        count(cust2Dplots(1:num_cust2D_plots) == colix(j)*1000 + colix(j2))==0) cycle
 
-        do j2 = j2min, num_vars
-            if (ix_min(j2) /= ix_max(j2)) then
-
-            if (plot_2D_param/=0 .and. colix(j2) /= plot_2D_param) cycle
-            if (num_cust2D_plots /= 0 .and.  &
-            count(cust2Dplots(1:num_cust2D_plots) == colix(j)*1000 + colix(j2))==0) cycle
-
-            plot_num = plot_num + 1
-            done2D(j,j2) = .true.
-            if (.not. plots_only) call Get2DPlotData(j,j2)
-            call WriteFormatInts(50,'subplot(%u,%u,%u);',plot_row,plot_col,plot_num)
-            call Write2DPlotMATLAB(50,j,j2,.true.,.true.)
-            if (plot_row*plot_col > 4 .and. matlab_subplot_size_inch<3.5) call CheckMatlabAxes(50)
-
+                        plot_num = plot_num + 1
+                        done2D(j,j2) = .true.
+                        if (.not. plots_only) call Get2DPlotData(j,j2)
+                        call WriteFormatInts(50,'subplot(%u,%u,%u);',plot_row,plot_col,plot_num)
+                        call Write2DPlotMATLAB(50,j,j2,.true.,.true.)
+                        if (plot_row*plot_col > 4 .and. matlab_subplot_size_inch<3.5) call CheckMatlabAxes(50)
+                    end if
+                end do
             end if
         end do
-        end if
-    end do
 
-    if (line_labels) call WriteMatlabLineLabels(50)
-    if (matlab_col/='') write (50,*) trim(matlab_col)
-    call WriteMatLabPrint(50, '_2D', plot_col, plot_row)
-    close(50)
-
+        if (line_labels) call WriteMatlabLineLabels(50)
+        if (matlab_col/='') write (50,*) trim(matlab_col)
+        call WriteMatLabPrint(50, '_2D', plot_col, plot_row)
+        close(50)
     end if
 
     if (triangle_plot .and. .not. no_plots) then
@@ -2557,7 +2506,7 @@
                 write (*,*) 'Warning: 3D plot parameters not in used parameters'
                 continue
             end if
-!            if (ix3<1) ix3 = MostCorrelated2D(ix1,ix2,ix3)
+            !            if (ix3<1) ix3 = MostCorrelated2D(ix1,ix2,ix3)
 
             call WriteFormatInts(50,'subplot(%u,%u,%u);', plot_row,plot_col,j)
             write (50,*) '%Do params ',tmp_params(1:3)
@@ -2598,47 +2547,41 @@
 
     !Limits from global likelihood
     if (.not. plots_only) then
+        open(unit=50,file=trim(rootdirname)//'.likestats',form='formatted',status='replace')
+        write (50,*) 'Best fit sample -log(Like) = ',coldata(2,bestfit_ix)
+        write (50,*) ''
+        write(50,'(a)') 'param  bestfit        lower1         upper1         lower2         upper2'
 
-    open(unit=50,file=trim(rootdirname)//'.likestats',form='formatted',status='replace')
-    write (50,*) 'Best fit sample -log(Like) = ',coldata(2,bestfit_ix)
-    write (50,*) ''
-    write(50,'(a)') 'param  bestfit        lower1         upper1         lower2         upper2'
-
-    do j=1, num_vars
-
-    write(50,'(1I5,5E15.7,"   '//trim(labels(colix(j)))//'")') colix(j)-2, coldata(colix(j),bestfit_ix),&
-    minval(coldata(colix(j),0:ND_cont1)), &
-    maxval(coldata(colix(j),0:ND_cont1)), &
-    minval(coldata(colix(j),0:ND_cont2)), &
-    maxval(coldata(colix(j),0:ND_cont2))
-
-    end do
-    close(50)
-
+        do j=1, num_vars
+            write(50,'(1I5,5E15.7,"   '//trim(labels(colix(j)))//'")') colix(j)-2, coldata(colix(j),bestfit_ix),&
+            minval(coldata(colix(j),0:ND_cont1)), &
+            maxval(coldata(colix(j),0:ND_cont1)), &
+            minval(coldata(colix(j),0:ND_cont2)), &
+            maxval(coldata(colix(j),0:ND_cont2))
+        end do
+        close(50)
     end if
 
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: beginning of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     if (do_minimal_1d_intervals .and. .not. plots_only) then ! write limits to .minmarge file
-
-    open(unit=50,file=trim(rootdirname)//'.minmarge',form='formatted',status='replace')
-    write(50,'(a)',advance='NO') 'param  '
-    do j=1, num_contours
-        write(50,'(a)',advance='NO') trim(concat('lower',j))//'         '//trim(concat('upper',j))//'         '
-    end do
-    write(50,'(a)') ''
-
-    do j=1, num_vars
-        write(50,'(1I5)', advance='NO') colix(j)-2
-        do i=1, num_contours
-            write(50,'(2E15.7)',advance='NO') minimal_intervals(j,1:2,i)
+        open(unit=50,file=trim(rootdirname)//'.minmarge',form='formatted',status='replace')
+        write(50,'(a)',advance='NO') 'param  '
+        do j=1, num_contours
+            write(50,'(a)',advance='NO') trim(concat('lower',j))//'         '//trim(concat('upper',j))//'         '
         end do
-        write(50,'(a)') '   '//trim(labels(colix(j)))
-    end do
-    write (50,*) ''
-    write (50,'(a)') 'Limits are: ' // trim(contours_str)
-    close(50)
+        write(50,'(a)') ''
 
+        do j=1, num_vars
+            write(50,'(1I5)', advance='NO') colix(j)-2
+            do i=1, num_contours
+                write(50,'(2E15.7)',advance='NO') minimal_intervals(j,1:2,i)
+            end do
+            write(50,'(a)') '   '//trim(labels(colix(j)))
+        end do
+        write (50,*) ''
+        write (50,'(a)') 'Limits are: ' // trim(contours_str)
+        close(50)
     end if
     !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: end of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -2649,4 +2592,5 @@
         call StringReplace('%PLOTROOT%',trim(plot_data_dir)//rootname,finish_run_command)
         call system(finish_run_command)
     end if
+
     end program GetDist

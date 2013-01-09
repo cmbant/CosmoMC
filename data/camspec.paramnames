@@ -6,6 +6,7 @@ acib217       A^{CIB}_{217}     # CIB amplitude at 217 GHz
 asz143        A^{tSZ}_{143}     # Thermal SZ amplitude at 143 GHz
 psr           r_{PS {143/217}}  # 143-217 correlation coefficient of point source residuals
 cibr          r_{CIB}           # 143-217 correlation coefficient of CIB
+ncib          n^{CIB}           # spectral index of the CIB
 cal0          c_{100/143}       # relative calibration factor 100/143
 cal1          c_{143/143}       # calibration factor 143
 cal2          c_{217/143}       # relative calibration factor 217/143

@@ -8,6 +8,7 @@ a_ps_spt_150     A_{PS,SPT}^{150}
 a_ps_spt_220     A_{PS,SPT}^{220}
 acib143          A^{CIB}_{143}
 acib217          A^{CIB}_{217}
+ncib             n^{CIB}
 r_ps_spt_95x150  r_{PS}^{95/150}
 r_ps_spt_95x220  r_{PS}^{95/220}
 r_ps_150x220     r_{PS}^{150/220}
