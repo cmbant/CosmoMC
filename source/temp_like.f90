@@ -148,13 +148,13 @@ module temp_like
 
 
   subroutine calc_like(zlike,  cell_cmb, A_ps_100,  A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz,  &
-       r_ps, r_cib, xi, A_ksz, cal0, cal1, cal2, beam_coeffs)
+       r_ps, r_cib, xi, A_ksz, ncib, cal0, cal1, cal2, beam_coeffs)
 
     integer :: i, j, l, ipause,ii,jj
     real*8, dimension(:),  allocatable, save ::  X_theory, X_f, X_data, X_beam_corr_model, Y 
     real*8, dimension(0:) :: cell_cmb
     real*8 zlike, A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz, r_ps, r_cib, &
-         cal0, cal1, cal2, xi, A_ksz
+         cal0, cal1, cal2, xi, A_ksz, ncib
     real*8 zell, zGF, zCIB
     real*8 ztemp
 
@@ -211,7 +211,7 @@ cib_bandpass217_nom217 = 1.33d0
     !
     do l = lminX(2), lmaxX(2)
        zell = dfloat(l)
-       zCIB = cib_bandpass143_nom143*A_cib_143*(dfloat(l)/3000.)**(0.8)/dfloat(l*(l+1))
+       zCIB = cib_bandpass143_nom143*A_cib_143*(dfloat(l)/3000.)**(ncib)/dfloat(l*(l+1))
        X_f(l - lminX(2) + npt(2)) = A_ps_143*1.d-6/9.d0 + zCIB + &
             A_ksz*ksz_temp(l)/dfloat(l*(l+1))+&
             A_sz*sz_bandpass143_nom143*sz_143_temp(l)/dfloat(l*(l+1)) + &
@@ -228,7 +228,7 @@ cib_bandpass217_nom217 = 1.33d0
     !
     do l = lminX(3), lmaxX(3)
        zell = dfloat(l)
-       zCIB = cib_bandpass217_nom217*A_cib_217*(dfloat(l)/3000.)**(0.8)/dfloat(l*(l+1))
+       zCIB = cib_bandpass217_nom217*A_cib_217*(dfloat(l)/3000.)**(ncib)/dfloat(l*(l+1))
        X_f(l - lminX(3) + npt(3) ) = A_ps_217*1.d-6/9.d0 + zCIB &
             + A_ksz*ksz_temp(l)/dfloat(l*(l+1))   
        X_data(l - lminX(3) + npt(3)) = X(l - lminX(3) + npt(3))
@@ -244,7 +244,7 @@ cib_bandpass217_nom217 = 1.33d0
     !
     do l = lminX(4), lmaxX(4)
        zell = dfloat(l)
-       zCIB = dsqrt(cib_bandpass143_nom143*A_cib_143*cib_bandpass217_nom217*A_cib_217)*(dfloat(l)/3000.)**(0.8) &
+       zCIB = dsqrt(cib_bandpass143_nom143*A_cib_143*cib_bandpass217_nom217*A_cib_217)*(dfloat(l)/3000.)**(ncib) &
             /dfloat(l*(l+1))
        X_f(l - lminX(4) + npt(4) ) = &
             r_ps*dsqrt(A_ps_143*A_ps_217)*1.d-6/9.d0 + r_cib*zCIB &
