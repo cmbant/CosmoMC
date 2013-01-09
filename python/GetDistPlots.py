@@ -1,4 +1,4 @@
-import os, paramNames, numpy as np
+import os, paramNames
 import matplotlib
 matplotlib.use('Agg')
 from pylab import *
@@ -41,19 +41,45 @@ class GetDistPlotSettings:
         self.scatter_size = 1 + self.subplot_size_inch
 
 
-class GetDistPlotter():
+class Density1D():
+    def bounds(self): return min(self.x), max(self.x)
 
-    def __init__(self, plot_data, settings=None,):
-        if settings is None: self.settings = GetDistPlotSettings()
-        else: self.settings = settings
+class Density2D():
+    def bounds(self):
+        return (self.x1.min(), self.x2.min()), (self.x1.max(), self.x2.max())
+
+class SampleAnalysisGetDist():
+
+    def __init__(self, plot_data):
         self.plot_data = plot_data
-        self.newPlot()
 
-    def newPlot(self):
-        clf()
-        self.extra_artists = []
-        self.single_samples = dict()
-        self.param_name_sets = dict()
+    def get_density_grid(self, root, param1, param2, conts=True, likes=False):
+        result = Density2D()
+        if likes:  result.pts = self.load_2d(root, param1, param2, '_likes')
+        else: result.pts = self.load_2d(root, param1, param2)
+        if result.pts is None: return None
+        result.x1 = self.load_1d(root, param1)[:, 0]
+        result.x2 = self.load_1d(root, param2)[:, 0]
+        if (conts): result.contours = self.load_2d(root, param1, param2, '_cont')
+        return result
+
+    def get_density(self, root, param, likes=False):
+        result = Density1D()
+        pts = self.load_1d(root, param)
+        if pts is None: return None
+        result.x = pts[:, 0]
+        result.pts = pts[:, 1]
+        if (likes): result.likes = self.load_1d(root, param, '.likes')
+        return result
+
+    def load_single_samples(self, root):
+        if not root in self.single_samples: self.single_samples[root] = loadtxt(self.plot_data_file(root) + '_single.txt')
+        return self.single_samples[root]
+
+    def paramsForRoot(self, root, labelParams=None):
+        names = paramNames.paramNames(self.plot_data_file(root) + '.paramnames')
+        if labelParams is not None: names.setLabelsAndDerivedFromParamNames(labelParams)
+        return names
 
     def plot_data_file(self, root):
         return self.plot_data + os.sep + root
@@ -67,19 +93,6 @@ class GetDistPlotter():
             return self.plot_data_file(root) + '_2D_' + name1 + '_' + name2, True
         else: return fname, False
 
-    def paramsForRoot(self, root):
-        names = paramNames.paramNames(self.plot_data_file(root) + '.paramnames')
-        if self.settings.param_names_for_labels is not None: names.setLabelsAndDerivedFromParamNames(self.settings.param_names_for_labels)
-        return names
-
-    def paramNamesForRoot(self, root):
-        if not root in self.param_name_sets: self.param_name_sets[root] = self.paramsForRoot(root)
-        return self.param_name_sets[root]
-
-    def load_single_samples(self, root):
-        if not root in self.single_samples: self.single_samples[root] = loadtxt(self.plot_data_file(root) + '_single.txt')
-        return self.single_samples[root]
-
     def load_1d(self, root, param, ext='.dat'):
         fname = self.plot_data_file_1D(root, param.name) + ext
         if not hasattr(param, 'plot_data'): param.plot_data = dict()
@@ -88,19 +101,6 @@ class GetDistPlotter():
             else: param.plot_data[fname] = loadtxt(fname)
         return param.plot_data[fname]
 
-    def add_1d(self, root, param, plotno=0,):
-        param = self.check_param(roots, param)
-        pts = self.load_1d(root, param)
-        if pts is None: return None
-        plot(pts[:, 0], pts[:, 1], self.settings.lineM[plotno], linewidth=self.settings.lw1)
-        xmin = min(pts[:, 0])
-        xmax = max(pts[:, 0])
-        if self.settings.plot_meanlikes:
-            pts = self.load_1d(root, param, '.likes')
-            plot(pts[:, 0], pts[:, 1], self.settings.lineL[plotno], linewidth=self.settings.lw_likes)
-
-        return xmin, xmax
-
     def load_2d(self, root, param1, param2, ext=''):
         fname, transpose = self.plot_data_file_2D(root, param1.name, param2.name)
         if not os.path.exists(fname + ext): return None
@@ -108,38 +108,67 @@ class GetDistPlotter():
         if transpose: pts = pts.transpose()
         return pts
 
+
+
+class GetDistPlotter():
+
+    def __init__(self, plot_data, settings=None,):
+        if settings is None: self.settings = GetDistPlotSettings()
+        else: self.settings = settings
+        self.plot_data = plot_data
+        self.sampleAnalyser = SampleAnalysisGetDist(plot_data)
+        self.newPlot()
+
+    def newPlot(self):
+        clf()
+        self.extra_artists = []
+        self.single_samples = dict()
+        self.param_name_sets = dict()
+
+
+    def paramNamesForRoot(self, root):
+        if not root in self.param_name_sets: self.param_name_sets[root] = self.sampleAnalyser.paramsForRoot(root, labelParams=self.settings.param_names_for_labels)
+        return self.param_name_sets[root]
+
+    def add_1d(self, root, param, plotno=0,):
+        param = self.check_param(roots, param)
+        density = self.sampleAnalyser.get_density(root, param, likes=self.settings.plot_meanlikes)
+        if density is None: return None;
+
+        plot(density.x, density.pts, self.settings.lineM[plotno], linewidth=self.settings.lw1)
+        if self.settings.plot_meanlikes:
+            plot(density.x, density.likes, self.settings.lineL[plotno], linewidth=self.settings.lw_likes)
+
+        return density.bounds()
+
     def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, cols=None, alpha=0.5):
         param1, param2 = self.get_param_array(root, [param1, param2])
-        pts = self.load_2d(root, param1, param2)
-        if pts is None: return None, None, None
-        x1 = self.load_1d(root, param1)[:, 0]
-        x2 = self.load_1d(root, param2)[:, 0]
 
-        cnt = self.load_2d(root, param1, param2, '_cont')
+        density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=True, likes=False)
+        if density is None: return None
+
         if filled:
             if cols is None:
                 if color is None: color = self.settings.solid_colors[plotno]
                 cols = [matplotlib.colors.colorConverter.to_rgb(color)]
-                for i in range(1, len(cnt)):
+                for _ in range(1, len(density.contours)):
                     cols = [[c * (1 - self.settings.solid_contour_palefactor) + self.settings.solid_contour_palefactor for c in cols[0]]] + cols
-            contourf(x1, x2, pts, sorted(np.append([pts.max() + 1], cnt)), colors=cols, alpha=alpha)
+            contourf(density.x1, density.x2, density.pts, sorted(np.append([density.pts.max() + 1], density.contours)), colors=cols, alpha=alpha)
         else:
             if color is None: color = self.settings.lineM[plotno][-1]
             cols = [color]
-        contour(x1, x2, pts, cnt, colors=cols , linewidth=self.settings.lw_contour, alpha=alpha)
+        contour(density.x1, density.x2, density.pts, colors=cols , linewidth=self.settings.lw_contour, alpha=alpha)
 
-        return (x1.min(), x2.min()), (x1.max(), x2.max())
+        return density.bounds()
 
     def add_2d_shading(self, root, param1, param2):
         param1, param2 = self.get_param_array(root, [param1, param2])
-        x1 = self.load_1d(root, param1)[:, 0]
-        x2 = self.load_1d(root, param2)[:, 0]
-        if self.settings.shade_meanlikes: shade_dat = self.load_2d(root, param1, param2, '_likes')
-        else: shade_dat = self.load_2d(root, param1, param2)
+        density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=False, likes=self.settings.shade_meanlikes)
+
 #        pcolor(x1, x2, shade_dat, cmap=self.settings.colormap, vmax=shade_dat.max(), vmin=shade_dat.min())
-        contourf(x1, x2, shade_dat, self.settings.num_shades, cmap=self.settings.colormap)
+        contourf(density.x1, density.x2, density.pts, self.settings.num_shades, cmap=self.settings.colormap)
 # doing contour gets rid of annoying wehite lines
-        contour(x1, x2, shade_dat, self.settings.num_shades, cmap=self.settings.colormap)
+        contour(density.x1, density.x2, density.pts, self.settings.num_shades, cmap=self.settings.colormap)
 #        contour(cs, hold='on')
 
     def plot_2d(self, roots, param_pair, shaded=True, filled=False, **ax_args):
@@ -148,6 +177,7 @@ class GetDistPlotter():
         if shaded and not filled: self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
         for i, root in enumerate(roots):
             res = self.add_2d_contours(root, param_pair[0], param_pair[1], i, filled=filled)
+            if res is None: continue
             if i == 0: mins, maxs = res
             elif not shaded:
                 mins = min(res[0], mins)
@@ -319,7 +349,7 @@ class GetDistPlotter():
 
     def add_3d_scatter(self, root, in_params, color_bar=True):
         params = self.get_param_array(root, in_params)
-        pts = self.load_single_samples(root)
+        pts = self.sampleAnalyser.load_single_samples(root)
         names = self.paramNamesForRoot(root)
         cols = []
         for param in params:
