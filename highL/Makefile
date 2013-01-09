@@ -14,7 +14,7 @@ RM = rm -f
 
 LIBS ?= $(LAPACKL)
 
-F90C    ?= ifort
+F90C    ?= mpif90intel 
 #problems with -openmp in v12 intel compilers
 FFLAGS  =  -mkl -O2 -ip -W0 -WB -fpp2 -vec_report0 -openmp
 LIBS  ?=

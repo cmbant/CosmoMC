@@ -10,7 +10,7 @@ MODULE spt_keisler_likelihood
 
   REAL(8) ::  btt_dat(0:bmax0_k-1),btt_var(0:bmax0_k-1)
   REAL(8) ::  inverse(1:bmax0_k,1:bmax0_k),bval(0:bmax0_k-1)
-  REAL(8), dimension (:), allocatable :: cl_src
+  REAL(8), dimension (:), allocatable :: cl_src, cl_c
   REAL(8), dimension(:,:), allocatable :: win_func
   
   PRIVATE
@@ -29,7 +29,7 @@ MODULE spt_keisler_likelihood
     CHARACTER(LEN=240) :: ttfilename, bblfilename, invcovfilename
     LOGICAL  :: good
     
-    allocate(cl_src(2:tt_lmax_k))
+    allocate(cl_c(2:tt_lmax),cl_src(2:tt_lmax_k))
 
     !-----------------------------------------------
     ! set file names
@@ -78,11 +78,11 @@ MODULE spt_keisler_likelihood
   END SUBROUTINE spt_keisler_likelihood_init
   
   ! ===========================================================================================================================
-  SUBROUTINE spt_keisler_likelihood_compute(cltt,amp_tsz,amp_ksz,xi,aps150,acib150,cal_2,like_sptk)
+  SUBROUTINE spt_keisler_likelihood_compute(cltt,amp_tsz,amp_ksz,xi,aps150,acib150,ncib,cal_2,like_sptk)
   ! ===========================================================================================================================
     
     IMPLICIT NONE
-    REAL(8), intent(in) :: cltt(2:*), amp_tsz,amp_ksz,xi,aps150,acib150,cal_2
+    REAL(8), intent(in) :: cltt(2:*), amp_tsz,amp_ksz,xi,aps150,acib150,ncib,cal_2
     REAL(8), intent(out) :: like_sptk 
     INTEGER :: lun,il,i   
     REAL(8) :: cltt_temp(2:tt_lmax_k)
@@ -110,12 +110,21 @@ MODULE spt_keisler_likelihood
     fluxtempd2 = flux2tempratio_corr
 
     !----------------------------------------------------------------
+    ! Define CIB term
+    !----------------------------------------------------------------
+    cl_c(2:tt_lmax) = 0.d0
+    do il=2,tt_lmax
+       cl_c(il)=(il/3000.d0)**ncib
+    enddo
+
+
+    !----------------------------------------------------------------
     ! Calculate theory
     !----------------------------------------------------------------
 
     do il=2,tt_lmax_k
        cl_src(il) = (aps150+9.2)*cl_p(il)+acib150*cl_c(il)*(f2_dust/fp2)**(2.0*beta_c)*(planckratiod2*fluxtempd2)**2.0 &
-                    -2.0*sqrt(acib150*amp_tsz*4.796*f2*f2/f0/f0)*xi*cl_szcib(il)*(f2_dust/fp2)**beta_c*(planckratiod2*fluxtempd2)
+                    -2.0*sqrt(acib150*amp_tsz*f2*f2/f0/f0)*xi*cl_szcib(il)*(f2_dust/fp2)**beta_c*(planckratiod2*fluxtempd2)
        cltt_temp(il) =cltt(il)+cl_src(il)+f2*f2/(f0*f0)*amp_tsz*cl_tsz(il)+amp_ksz*cl_ksz(il)
 
        ! Calibrate theory

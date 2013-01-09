@@ -11,7 +11,7 @@ MODULE act_equa_likelihood
   REAL(8), dimension(:,:) :: btt_dat1(nsp11_e,0:nbin11-1),btt_dat12(nsp12_e,0:nbin12-1),btt_dat2(nsp22_e,0:nbin22-1)
   REAL(8), dimension(:,:) :: bval1(nsp11_e,0:nbin11-1),bval12(nsp12_e,0:nbin12-1),bval2(nsp22_e,0:nbin22-1)
   REAL(8) ::  inverse(1:datap_e,1:datap_e)
-  REAL(8), dimension (:), allocatable :: cl_src
+  REAL(8), dimension (:), allocatable :: cl_src, cl_c
   REAL(8) :: win_func(nspec,0:tbin-1,1:10000)
   
   PRIVATE
@@ -33,7 +33,7 @@ contains
     CHARACTER(LEN=240) :: ttfilename(nspec_e), winfilename(nspec)
     LOGICAL  :: good
 
-    allocate(cl_src(2:tt_lmax))
+    allocate(cl_c(2:tt_lmax),cl_src(2:tt_lmax))
 
 #ifdef TIMING
     call act_equa_timing_start('act_likelihood_init')
@@ -125,11 +125,11 @@ contains
   END SUBROUTINE act_equa_likelihood_init
 
  ! ===================================================================================================================================
-  SUBROUTINE act_equa_likelihood_compute(cltt,amp_tsz,amp_ksz,xi,aps148,aps217,acib150,acib220,rps,rcib,age,cae1,cae2,like_acte)
+  SUBROUTINE act_equa_likelihood_compute(cltt,amp_tsz,amp_ksz,xi,aps148,aps217,acib150,acib220,ncib,rps,rcib,age,cae1,cae2,like_acte)
  ! ===================================================================================================================================
 
     IMPLICIT NONE
-    REAL(8), intent(in) :: cltt(2:*), amp_tsz,amp_ksz,xi,aps148,aps217,acib150,acib220,rps,rcib,age,cae1,cae2
+    REAL(8), intent(in) :: cltt(2:*), amp_tsz,amp_ksz,xi,aps148,aps217,acib150,acib220,ncib,rps,rcib,age,cae1,cae2
     REAL(8), intent(out) :: like_acte
     INTEGER :: lun,il,i,j,k
     REAL(8) :: cltt_temp(2:tt_lmax)
@@ -169,6 +169,14 @@ contains
     beta_g = 3.8d0
 
     !----------------------------------------------------------------
+    ! Define CIB term
+    !----------------------------------------------------------------
+    cl_c(2:tt_lmax) = 0.d0
+    do il=2,tt_lmax
+       cl_c(il)=(il/3000.d0)**ncib
+    enddo
+
+    !----------------------------------------------------------------
     ! Calculate theory
     !----------------------------------------------------------------
     
@@ -177,11 +185,11 @@ contains
        do il=2,tt_lmax
           if(j==1) then
              cl_src(il) = aps148*cl_p(il)+acib150*cl_c(il)*(f1_dust/fp2)**(2.0*beta_c)*(planckratiod1*fluxtempd1)**2.0 &
-                          -2.0*sqrt(acib150*amp_tsz*4.796*f1*f1/f0/f0)*xi*cl_szcib(il)*(f1_dust/fp2)**beta_c*(planckratiod1*fluxtempd1)
+                          -2.0*sqrt(acib150*amp_tsz*f1*f1/f0/f0)*xi*cl_szcib(il)*(f1_dust/fp2)**beta_c*(planckratiod1*fluxtempd1)
              cltt_temp(il) =cltt(il)+cl_src(il)+f1*f1/f0/f0*amp_tsz*cl_tsz(il)+amp_ksz*cl_ksz(il)+age*cl_cir(il)*(f1_dust**2.0/fp2**2.0)**beta_g*fluxtempd1**2.0
           else if (j==2) then
              cl_src(il) = rps*sqrt(aps148*aps217)*cl_p(il)+rcib*sqrt(acib150*acib220)*cl_c(il)*(f1_dust/fp2)**beta_c*(planckratiod1*fluxtempd1)*(f2_dust/fp3)**beta_c*(planckratiod2*fluxtempd2)
-             cltt_temp(il) =cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)-sqrt(acib220*amp_tsz*4.796*f1*f1/f0/f0)*xi*cl_szcib(il)*(f2_dust/fp3)**beta_c*(planckratiod2*fluxtempd2)+age*cl_cir(il)*(f2_dust*f1_dust/fp2/fp3)**beta_g*fluxtempd2*fluxtempd1
+             cltt_temp(il) =cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)-sqrt(acib220*amp_tsz*f1*f1/f0/f0)*xi*cl_szcib(il)*(f2_dust/fp3)**beta_c*(planckratiod2*fluxtempd2)+age*cl_cir(il)*(f2_dust*f1_dust/fp2/fp3)**beta_g*fluxtempd2*fluxtempd1
           else if(j ==3) then
              cl_src(il) = aps217*cl_p(il)+acib220*cl_c(il)*(f2_dust/fp3)**(2.0*beta_c)*(planckratiod2*fluxtempd2)**2.0
              cltt_temp(il) =cltt(il)+cl_src(il)+amp_ksz*cl_ksz(il)+age*cl_cir(il)*(f2_dust**2.0/fp3**2.0)**beta_g*fluxtempd2**2.0
