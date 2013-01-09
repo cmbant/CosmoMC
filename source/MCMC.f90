@@ -768,7 +768,7 @@ function WL_Weight(L) result (W)
 
    if (Feedback > 0) then
      write(*,*) MPIRank, 'Stopping as have ',samples_to_get ,' samples. '
-     if (use_fast_slow) write(*,*) 'slow changes', slow_changes, 'power changes', power_changes
+     if (use_fast_slow) write(*,*) 'slow changes', slow_changes, 'semi-slow changes', semislow_changes
    end if
 
  end subroutine MCMCsample

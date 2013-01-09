@@ -5,8 +5,6 @@
 
     real(mcp) :: Temperature  = 1
 
-    integer :: power_changes=0, slow_changes=0
-
     Type LikeCalculator
         type(ParamSet), pointer :: Params
         type (CMBParams), pointer :: CMB
@@ -147,7 +145,7 @@
             call GetNewTransferData(Calc%CMB, Calc%Params%Info,Calc%Params%Theory, error)
         end if
         if ((Calc%SlowChanged .or. Calc%PowerChanged) .and. error==0) then
-            if (.not. Calc%SlowChanged) power_changes = power_changes  + 1
+            if (.not. Calc%SlowChanged) semislow_changes = semislow_changes  + 1
             call GetNewPowerData(Calc%CMB, Calc%Params%Info, Calc%Params%Theory,error)
         end if
     else

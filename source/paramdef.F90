@@ -45,6 +45,7 @@
     integer :: Num = 0, num_accept=0
     !zero unless from checkpoint
     integer :: burn_in = 2 !Minimum to get sensible answers
+    integer :: semislow_changes=0, slow_changes=0
 
     logical :: estimate_propose_matrix = .false.
     real(mcp), dimension(:,:), allocatable ::  propose_matrix
@@ -549,7 +550,7 @@
                 write (*,*) 'Chain',instance, &
                 ' MPI done ''burn'', like = ',like, 'Samples = ',sample_num
                 write (*,*) 'Time: ', MPI_WTime() - MPI_StartTime, 'output lines=',output_lines
-                if (use_fast_slow) write(*,*) 'slow changes', slow_changes
+                if (use_fast_slow) write(*,*) 'slow changes', slow_changes, 'semi-slow changes', semislow_changes
             end if
 
 
@@ -685,11 +686,11 @@
                     if (Feedback > 1 .and. MPIRank==0) write (*,*) 'Convergence e-values: ', real(evals)
                     if (Feedback > 0 .and. MPIRank==0) then
                         write (*,*) 'Current convergence R-1 = ',real(R), ' chain steps =',sample_num
-                        if (use_fast_slow) write(*,*) 'slow likelihood evaluations', slow_changes
+                        if (use_fast_slow) write(*,*) 'slow changes', slow_changes, 'power changes', semislow_changes
                     end if
                     if (logfile_unit/=0) then
                         write(logLine,*) 'Current convergence R-1 = ',real(R), ' chain steps =',sample_num
-                        if (use_fast_slow) write(logLine,*) 'slow likelihood evaluations', slow_changes
+                        if (use_fast_slow) write(logLine,*) 'slow changes', slow_changes, 'power changes', semislow_changes
                         call IO_WriteLog(logfile_unit,logLine)
                     end if
                     if (R < MPI_R_Stop .and. flukecheck) then
