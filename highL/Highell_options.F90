@@ -8,9 +8,9 @@ MODULE HIGHELL_OPTIONS
 !---------------------------------------------------
 ! location of input data
 ! ---------------------------------------------------
-  character(len=5000) :: data_dir = '/usersVol2/erminia/planck_groupshare/erminia/likelihood_release/actse_sptkr_clean_lranges_fg_camspecmodel_v0/data/' 
-  character(len=5000) :: ACT_data_dir = '/usersVol2/erminia/planck_groupshare/erminia/likelihood_release/actse_sptkr_clean_lranges_fg_camspecmodel_v0/data/data_act/' 
-  character(len=5000) :: SPT_data_dir = '/usersVol2/erminia/planck_groupshare/erminia/likelihood_release/actse_sptkr_clean_lranges_fg_camspecmodel_v0/data/data_spt/'
+  character(len=5000) :: data_dir = '/usersVol2/erminia/planck_groupshare/erminia/cosmomcplanck/testlike/data/highL/'
+  character(len=5000) :: ACT_data_dir = '/usersVol2/erminia/planck_groupshare/erminia/cosmomcplanck/testlike/data/highL/data_act/'
+  character(len=5000) :: SPT_data_dir = '/usersVol2/erminia/planck_groupshare/erminia/cosmomcplanck/testlike/data/highL/data_spt/'
 !---------------------------------------------------
 
 !---------------------------------------------------
@@ -31,11 +31,11 @@ MODULE HIGHELL_OPTIONS
   integer, parameter :: tbin    = 34 !theory from 2 to 10000
 !---------------------------------------------------
 !chande here to choose your ell range
-  integer :: lmin11  = 2000   !148x148 not below 500
+  integer :: lmin11  = 1000   !148x148 not below 500
   integer :: lmax11  = 10000 !148x148
-  integer :: lmin12  = 2000  !148x220 not below 1500
+  integer :: lmin12  = 1500  !148x220 not below 1500
   integer :: lmax12  = 10000 !148x220
-  integer :: lmin22  = 2000  !220x220 not below 1500
+  integer :: lmin22  = 1500  !220x220 not below 1500
   integer :: lmax22  = 10000 !220x220
 
 !south

@@ -5,7 +5,7 @@ MODULE foregrounds_loading
   use highell_subroutines
 
   logical :: initialise_foregrounds=.true.
-  REAL(8), dimension (:), allocatable :: cl_tsz,cl_ksz,cl_szcib,cl_cir,cl_cirspt,cl_p,cl_c
+  REAL(8), dimension (:), allocatable :: cl_tsz,cl_ksz,cl_szcib,cl_cir,cl_cirspt,cl_p
   public :: foregrounds_init
 
    contains
@@ -19,13 +19,14 @@ MODULE foregrounds_loading
     REAL(8)  :: dummy
 
     allocate(cl_tsz(2:tt_lmax),cl_ksz(2:tt_lmax),cl_szcib(2:tt_lmax))
-    allocate(cl_p(2:tt_lmax),cl_cir(2:tt_lmax),cl_cirspt(2:tt_lmax),cl_c(2:tt_lmax))
+    allocate(cl_p(2:tt_lmax),cl_cir(2:tt_lmax),cl_cirspt(2:tt_lmax))
 
     
     call get_free_lun(lun)
     open(unit=lun,file=trim(data_dir)//'Fg/tsz_143_eps0.50.dat',form='formatted',status='unknown')
     do il=2,tt_lmax
        read(lun,*) dummy,cl_tsz(il)
+       cl_tsz(il) = cl_tsz(il)/4.796 !normalization at ell = 3000
     enddo
     close(lun)
 
@@ -34,15 +35,12 @@ MODULE foregrounds_loading
     cl_ksz(2:tt_lmax) = 0.d0
     do il=2,tt_lmax-1
        read(lun,*) dummy,cl_ksz(il)
+       cl_ksz(il) = cl_ksz(il)/2.05697 !normalization at ell = 3000
     enddo
     close(lun)
     
     do il=2,tt_lmax
        cl_p(il)=(il/3000.d0)**2.0
-    enddo
-
-    do il=2,tt_lmax
-       cl_c(il)=(il/3000.d0)**0.8
     enddo
 
     call get_free_lun(lun)

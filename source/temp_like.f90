@@ -54,6 +54,8 @@ module temp_like
 
     character*100 like_file, sz143_file, ksz_file, tszxcib_file, beam_file
 
+    real*8 renorm
+
     ! cl_ksz_148_tbo.dat file is in D_l, format l D_l, from l=2 to 10000
     ! tsz_x_cib_template.txt is is (l D_l), from l=2 to 9999, normalized to unity 
     !    at l=3000 
@@ -91,17 +93,32 @@ module temp_like
     enddo
     close(48)
 
+    renorm=1.d0/sz_143_temp(3000)
+    do i=2,lmax_sz
+       sz_143_temp(i)=sz_143_temp(i)*renorm
+    enddo
+
     open(48, file=ksz_file, form='formatted',status='unknown')
     do i=2,lmax_sz
        read(48,*) dummy,ksz_temp(i)
     enddo
     close(48)
 
+    renorm=1.d0/ksz_temp(3000)
+    do i=2,lmax_sz
+       ksz_temp(i)=ksz_temp(i)*renorm
+    enddo
+
     open(48, file=tszxcib_file,form='formatted',status='unknown')
     do i=2,lmax_sz
        read(48,*) dummy,tszxcib_temp(i)
     enddo
     close(48)
+
+    renorm=1.d0/tszxcib_temp(3000)
+    do i=2,lmax_sz
+       tszxcib_temp(i)=tszxcib_temp(i)*renorm
+    enddo
 
     open(48, file=beam_file, form='unformatted', status='unknown')
     read(48) beam_Nspec,num_modes_per_beam,beam_lmax
@@ -131,13 +148,13 @@ module temp_like
 
 
   subroutine calc_like(zlike,  cell_cmb, A_ps_100,  A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz,  &
-       r_ps, r_cib, xi, A_ksz, cal0, cal1, cal2, beam_coeffs)
+       r_ps, r_cib, xi, A_ksz, ncib, cal0, cal1, cal2, beam_coeffs)
 
     integer :: i, j, l, ipause,ii,jj
     real*8, dimension(:),  allocatable, save ::  X_theory, X_f, X_data, X_beam_corr_model, Y 
     real*8, dimension(0:) :: cell_cmb
     real*8 zlike, A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz, r_ps, r_cib, &
-         cal0, cal1, cal2, xi, A_ksz
+         cal0, cal1, cal2, xi, A_ksz, ncib
     real*8 zell, zGF, zCIB
     real*8 ztemp
 
@@ -147,6 +164,8 @@ module temp_like
 
     integer :: ie1,ie2,if1,if2
     real *8 atime
+
+    real*8 :: sz_bandpass100_nom143, cib_bandpass143_nom143, sz_bandpass143_nom143, cib_bandpass217_nom217
 
     if (needinit) then
        print*, 'like_init should have been called before attempting to call calc_like.'
@@ -168,6 +187,11 @@ module temp_like
        stop
     end if
 
+sz_bandpass100_nom143 = 2.022d0
+cib_bandpass143_nom143 = 1.134d0
+sz_bandpass143_nom143 = 0.95d0
+cib_bandpass217_nom217 = 1.33d0
+
     !   100 foreground
     !
     do l = lminX(1), lmaxX(1)
@@ -175,7 +199,7 @@ module temp_like
        zell = dfloat(l)
        X_f(l - lminX(1) + 1) = A_ps_100*1.d-6/9.d0 + &
             A_ksz*ksz_temp(l)/dfloat(l*(l+1))+ &
-            A_sz*2.022d0*sz_143_temp(l)/dfloat(l*(l+1))
+            A_sz*sz_bandpass100_nom143*sz_143_temp(l)/dfloat(l*(l+1))
        X_data(l - lminX(1) + 1) = X(l - lminX(1) + 1)
        X_theory(l-lminX(1) + 1) = cell_cmb(l)
        X_beam_corr_model(l-lminX(1)+1) = &
@@ -187,11 +211,11 @@ module temp_like
     !
     do l = lminX(2), lmaxX(2)
        zell = dfloat(l)
-       zCIB = 1.134d0*A_cib_143*(dfloat(l)/3000.)**(0.8)/dfloat(l*(l+1))
+       zCIB = cib_bandpass143_nom143*A_cib_143*(dfloat(l)/3000.)**(ncib)/dfloat(l*(l+1))
        X_f(l - lminX(2) + npt(2)) = A_ps_143*1.d-6/9.d0 + zCIB + &
             A_ksz*ksz_temp(l)/dfloat(l*(l+1))+&
-            A_sz*0.95d0*sz_143_temp(l)/dfloat(l*(l+1)) + &
-            -2.0*sqrt(1.134d0*A_cib_143*0.95d0*A_sz*4.796)*xi*tszxcib_temp(l)/dfloat(l*(l+1))
+            A_sz*sz_bandpass143_nom143*sz_143_temp(l)/dfloat(l*(l+1)) + &
+            -2.0*sqrt(cib_bandpass143_nom143*A_cib_143*sz_bandpass143_nom143*A_sz)*xi*tszxcib_temp(l)/dfloat(l*(l+1))
        X_data(l - lminX(2) +npt(2)) = X(l - lminX(2) + npt(2))
        X_theory(l-lminX(2) + npt(2)) = cell_cmb(l) 
        X_beam_corr_model(l-lminX(2)+npt(2)) = &
@@ -204,7 +228,7 @@ module temp_like
     !
     do l = lminX(3), lmaxX(3)
        zell = dfloat(l)
-       zCIB = 1.33d0*A_cib_217*(dfloat(l)/3000.)**(0.8)/dfloat(l*(l+1))
+       zCIB = cib_bandpass217_nom217*A_cib_217*(dfloat(l)/3000.)**(ncib)/dfloat(l*(l+1))
        X_f(l - lminX(3) + npt(3) ) = A_ps_217*1.d-6/9.d0 + zCIB &
             + A_ksz*ksz_temp(l)/dfloat(l*(l+1))   
        X_data(l - lminX(3) + npt(3)) = X(l - lminX(3) + npt(3))
@@ -220,12 +244,12 @@ module temp_like
     !
     do l = lminX(4), lmaxX(4)
        zell = dfloat(l)
-       zCIB = 1.23d0*dsqrt(A_cib_143*A_cib_217)*(dfloat(l)/3000.)**(0.8) &
+       zCIB = dsqrt(cib_bandpass143_nom143*A_cib_143*cib_bandpass217_nom217*A_cib_217)*(dfloat(l)/3000.)**(ncib) &
             /dfloat(l*(l+1))
        X_f(l - lminX(4) + npt(4) ) = &
             r_ps*dsqrt(A_ps_143*A_ps_217)*1.d-6/9.d0 + r_cib*zCIB &
             +A_ksz*ksz_temp(l)/dfloat(l*(l+1))  &
-            -sqrt(1.33d0*A_cib_217*0.95d0*A_sz*4.796)*xi*tszxcib_temp(l)/dfloat(l*(l+1))  
+            -sqrt(cib_bandpass217_nom217*A_cib_217*sz_bandpass143_nom143*A_sz)*xi*tszxcib_temp(l)/dfloat(l*(l+1))  
        X_data(l - lminX(4) + npt(4)) =  X(l - lminX(4) + npt(4))
        X_theory(l-lminX(4) + npt(4)) = cell_cmb(l)
        X_beam_corr_model(l-lminX(4)+npt(4)) = &
