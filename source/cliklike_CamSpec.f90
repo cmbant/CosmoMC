@@ -163,7 +163,7 @@
      real(mcp) acl(lmax,num_cls_tot)
      real(mcp) DataParams(:)
 
-     call ClsFromTheoryData(Theory, CMB, acl)
+     call ClsFromTheoryData(Theory, acl)
       highLLogLike = clik_lnlike_highL(real(acl,dp),real(DataParams,dp))
 
   end function highLLogLike
