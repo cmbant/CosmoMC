@@ -47,10 +47,11 @@ class covMat():
         fout.close
 
     def rescaleParameter(self, name, scale):
-        i = self.paramNames.index(name)
-        self.matrix[:, i] = self.matrix[:, i] * scale;
-        self.matrix[i, :] = self.matrix[i, :] * scale;
-
+        if name in self.paramNames:
+            i = self.paramNames.index(name)
+            self.matrix[:, i] = self.matrix[:, i] * scale;
+            self.matrix[i, :] = self.matrix[i, :] * scale;
+        else: print 'Not in covmat: ' + name
 
     def mergeCovmatWhereNew(self, cov2):
         params1 = self.paramNames
