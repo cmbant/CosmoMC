@@ -162,7 +162,6 @@
     class(TTheoryPredictions) :: Theory
     real(mcp) :: P(:)
     Type(CMBParams) CMB
-    real(mcp) r10
     integer num_derived
 
     select type (Theory)
