@@ -148,7 +148,7 @@
     integer unused
     logical, save :: first = .true.
 
-    if (first) then
+    if (first .and. new_chains) then
         first = .false.
         write(i) use_LSS, compute_tensors
         write(i) lmax, lmax_tensor, num_cls, num_cls_ext

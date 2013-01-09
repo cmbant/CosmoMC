@@ -42,7 +42,7 @@
 
     real(mcp) :: StartLike = LogZero
     !bad, unless re-starting in which case it is set to last value in chain
-    integer :: Num = 0
+    integer :: Num = 0, num_accept=0
     !zero unless from checkpoint
     integer :: burn_in = 2 !Minimum to get sensible answers
 
@@ -51,7 +51,6 @@
     Type(BlockedProposer), save :: Proposer
 
     logical :: checkpoint = .false.
-    logical :: new_chains = .true.
     integer, parameter :: checkpoint_freq = 100
     character(LEN=500) :: rootname
 
@@ -487,7 +486,7 @@
         call OpenFile(trim(rootname)//'.chk',tmp_file_unit,'unformatted')
         read (tmp_file_unit) ID
         if (ID/=chk_id) call DoAbort('invalid checkpoint files')
-        read(tmp_file_unit) num, sample_num, MPI_thin_fac, npoints, Burn_done, all_burn,sampling_method, &
+        read(tmp_file_unit) num, sample_num, num_accept, MPI_thin_fac, npoints, Burn_done, all_burn,sampling_method, &
         slice_fac, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
         read(tmp_file_unit) propose_matrix
         call Proposer%SetCovariance(propose_matrix)
@@ -507,7 +506,7 @@
         if (Feedback > 1) write (*,*) instance, 'Writing checkpoint'
         call CreateFile(trim(rootname)//'.chk',tmp_file_unit,'unformatted')
         write (tmp_file_unit) chk_id
-        write(tmp_file_unit) num, sample_num, MPI_thin_fac, npoints, Burn_done, all_burn, sampling_method, &
+        write(tmp_file_unit) num, sample_num, num_accept, MPI_thin_fac, npoints, Burn_done, all_burn, sampling_method, &
         slice_fac, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
         write(tmp_file_unit) propose_matrix
         call S%SaveBinary(tmp_file_unit)
@@ -550,6 +549,7 @@
                 write (*,*) 'Chain',instance, &
                 ' MPI done ''burn'', like = ',like, 'Samples = ',sample_num
                 write (*,*) 'Time: ', MPI_WTime() - MPI_StartTime, 'output lines=',output_lines
+                if (use_fast_slow) write(*,*) 'slow changes', slow_changes
             end if
 
 
@@ -683,10 +683,13 @@
                     call GelmanRubinEvalues(cov, meanscov, evals, num_params_used)
                     R = maxval(evals)
                     if (Feedback > 1 .and. MPIRank==0) write (*,*) 'Convergence e-values: ', real(evals)
-                    if (Feedback > 0 .and. MPIRank==0) &
-                    write (*,*) 'Current convergence R-1 = ',real(R), ' chain steps =',sample_num
+                    if (Feedback > 0 .and. MPIRank==0) then
+                        write (*,*) 'Current convergence R-1 = ',real(R), ' chain steps =',sample_num
+                        if (use_fast_slow) write(*,*) 'slow likelihood evaluations', slow_changes
+                    end if
                     if (logfile_unit/=0) then
                         write(logLine,*) 'Current convergence R-1 = ',real(R), ' chain steps =',sample_num
+                        if (use_fast_slow) write(logLine,*) 'slow likelihood evaluations', slow_changes
                         call IO_WriteLog(logfile_unit,logLine)
                     end if
                     if (R < MPI_R_Stop .and. flukecheck) then
@@ -851,7 +854,7 @@
     logical, save :: first = .true.
     Type(DataLikelihood), pointer :: DataLike
 
-    if (first) then
+    if (first .and. new_chains) then
         first = .false.
         if (mcp==kind(1.0)) then
             j=3

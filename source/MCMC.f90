@@ -170,13 +170,13 @@ contains
     
  end function MetropolisAccept
  
-  subroutine FastDragging(CurParams, CurLike, mult, MaxLike, num, num_accept) 
+  subroutine FastDragging(CurParams, CurLike, mult, MaxLike) 
   !Make proposals in fast-marginalized slow parameters 
   !'drag' fast parameters using method of Neal
   Type(ParamSet) TrialEnd, TrialStart, CurParams, CurEndParams, CurStartParams
   real(mcp) CurLike, MaxLike
   integer mult
-  integer num, num_accept, numaccpt
+  integer numaccpt
   real(mcp) CurIntLike, IntLike, CurEndLike, CurStartLike, EndLike, StartLike
   real(mcp) CurDragLike, DragLike
   logical :: accpt
@@ -184,7 +184,7 @@ contains
   integer interp_step, interp_steps
   real(mcp) frac, delta(num_params)
   integer, save :: num_fast_calls = 0, num_slow_calls = 0
-   
+
    call Timer()
    TrialEnd = CurParams
    call Proposer%GetProposalSlow(TrialEnd%P)
@@ -589,7 +589,7 @@ function WL_Weight(L) result (W)
    real(mcp) Like, CurLike
    logical accpt
    real(mcp) rmult
-   integer mult,num_accept, last_num
+   integer mult, last_num
    integer num_metropolis,  num_metropolis_accept
    real(mcp) testlike, testCurLike
    integer mc_update_burn_num, mc_updates
@@ -599,7 +599,6 @@ function WL_Weight(L) result (W)
    CurLike = StartLike
    testCurLike = StartLike
    CurParams = Params
-   num_accept = 0
    last_num = 0
    mult= 1
    num_metropolis = 0
@@ -635,7 +634,7 @@ function WL_Weight(L) result (W)
 !          call SampleSlowGrid(CurParams, CurLike,mult, MaxLike, num, num_accept) 
   elseif (sampling_method == sampling_fast_dragging .and. CurLike /= LogZero .and. num_fast/=0 .and. num_slow /=0) then
           if (Feedback > 1) write (*,*) instance, 'Fast dragging, Like: ', CurLike
-          call FastDragging(CurParams, CurLike,mult, MaxLike, num, num_accept) 
+          call FastDragging(CurParams, CurLike,mult, MaxLike) 
   else
 
    !Do metropolis, except for (optional) slice sampling on fast parameters
@@ -759,8 +758,6 @@ function WL_Weight(L) result (W)
          call MC_AddLike(CurLike)
       end if
 
-      if (use_fast_slow .and. Feedback>1) write(*,*) 'slow changes', slow_changes, 'power changes', power_changes
-
     else
       if (num > 1000) then
         call DoAbort('MCMC.f90: Couldn''t start after 1000 tries - check starting ranges')
@@ -770,8 +767,8 @@ function WL_Weight(L) result (W)
    end do
 
    if (Feedback > 0) then
-     write(*,*) 'Stopping as have ',samples_to_get ,' samples. '
-     write(*,*) MPIRank, ' Slow proposals: ',slow_proposals
+     write(*,*) MPIRank, 'Stopping as have ',samples_to_get ,' samples. '
+     if (use_fast_slow) write(*,*) 'slow changes', slow_changes, 'power changes', power_changes
    end if
 
  end subroutine MCMCsample
