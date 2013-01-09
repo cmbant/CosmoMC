@@ -52,6 +52,10 @@ class SampleAnalysisGetDist():
 
     def __init__(self, plot_data):
         self.plot_data = plot_data
+        self.newPlot()
+
+    def newPlot(self):
+        self.single_samples = dict()
 
     def get_density_grid(self, root, param1, param2, conts=True, likes=False):
         result = Density2D()
@@ -122,9 +126,8 @@ class GetDistPlotter():
     def newPlot(self):
         clf()
         self.extra_artists = []
-        self.single_samples = dict()
         self.param_name_sets = dict()
-
+        self.sampleAnalyser.newPlot()
 
     def paramNamesForRoot(self, root):
         if not root in self.param_name_sets: self.param_name_sets[root] = self.sampleAnalyser.paramsForRoot(root, labelParams=self.settings.param_names_for_labels)
@@ -157,7 +160,7 @@ class GetDistPlotter():
         else:
             if color is None: color = self.settings.lineM[plotno][-1]
             cols = [color]
-        contour(density.x1, density.x2, density.pts, colors=cols , linewidth=self.settings.lw_contour, alpha=alpha)
+        contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linewidth=self.settings.lw_contour, alpha=alpha)
 
         return density.bounds()
 

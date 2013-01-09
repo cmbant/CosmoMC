@@ -112,7 +112,7 @@
     cal0, cal1, cal2, xi, A_ksz, ncib
 
     integer, parameter :: lmin=2
-    real(dp) cell_cmb(0:10000)
+    real(dp) cell_cmb(0:lmax)
     integer, parameter :: nbeams=4, nmodesperbeam=5
     integer, parameter :: nbeammodes = nbeams*nmodesperbeam
     real(mcp) beamcoeffs(nbeammodes)
