@@ -209,7 +209,7 @@ contains
    interp_steps = max(2,nint(dragging_steps * num_fast * Proposer%oversample_fast) + 1)
 
    numaccpt = 0
-   do interp_step = 1, interp_steps-1 
+   do interp_step = 1, interp_steps-1
     call Proposer%GetProposalFastDelta(delta)
     TrialEnd = CurEndParams
     TrialEnd%P(1:num_params) = TrialEnd%P(1:num_params) + delta 

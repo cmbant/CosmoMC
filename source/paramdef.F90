@@ -181,7 +181,7 @@
     character(LEN=*), intent(in) :: str
     integer, intent(in) :: param
 
-    call DoAbort(trim(str)//': '//trim(ParamNameOrNumber(param)))
+    call DoAbort(trim(str)//': '//trim(ParamNames_NameOrNumber(NameMapping, param)))
 
     end subroutine ParamError
 
@@ -790,15 +790,17 @@
                 WorstErr = LimErr
                 Worsti = params_check(j)
             end if
-            if (Feedback > 0 .and. MPIRank ==0) print *, 'param ',params_check(j), 'lim err', LimErr
+            if (Feedback > 0 .and. MPIRank ==0) &
+            write(*,'(1A22,1A8,1f8.3)') UsedParamNameOrNumber(params_check(j)),'lim err', LimErr
         end do
     end do
     if (Feedback > 0 .and. MPIRank==0) then
-        write (*,*) 'Current worst limit error = ', WorstErr
-        write (*,*) 'for parameter ',Worsti, 'samps = ',L%Count*MPI_thin_fac
+        write (*,*) 'Current worst limit error = ', WorstErr, &
+        ' param '//trim(UsedParamNameOrNumber(Worsti))//'; samps = ',L%Count*MPI_thin_fac
     end if
     if (logfile_unit/=0) then
-        write (logLine,*) 'Current limit err = ',WorstErr, ' param ',Worsti, 'samps = ',L%Count*MPI_thin_fac
+        write (logLine,*) 'Current limit err = ',WorstErr, &
+        ' param '//trim(UsedParamNameOrNumber(Worsti))//'; samps = ',L%Count*MPI_thin_fac
         call IO_WriteLog(logfile_unit,logLine)
     end if
     if (WorstErr < MPI_Limit_Converge_Err) call DoStop('Requested limit convergence achieved')
@@ -809,20 +811,11 @@
 
 #endif
 
-    function ParamNameOrNumber(ix) result(name)
-    character(len=ParamNames_maxlen)  :: name
-    integer, intent(in) :: ix
-
-    name = ParamNames_name(NameMapping,ix)
-    if (name == '') name = IntToStr(ix)
-
-    end function ParamNameOrNumber
-
     function UsedParamNameOrNumber(i) result(name)
     character(len=ParamNames_maxlen)  :: name
     integer, intent(in) :: i
 
-    name = ParamNameOrNumber(params_used(i))
+    name = ParamNames_NameOrNumber(NameMapping, params_used(i))
 
     end function UsedParamNameOrNumber
 

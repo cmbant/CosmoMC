@@ -100,14 +100,14 @@
      call ClsFromTheoryData(Theory, acl)
 !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
 !freq_params(35:44), ACT/SPT as freq_params(45:65)
-      CamspecLogLike = clik_lnlike_camSpec(real(acl,dp),real(DataParams,dp))
+      CamspecLogLike = clik_lnlike_camSpec(acl,DataParams)
  end function CamspecLogLike
 
  
     function clik_lnlike_camSpec(cl,freq_params)
     real(dp) :: clik_lnlike_camSpec
-    real(dp), intent(in) :: cl(lmax,num_cls_tot)
-    real(dp), intent(in)  :: freq_params(:)
+    real(mcp), intent(in) :: cl(lmax,num_cls_tot)
+    real(mcp), intent(in)  :: freq_params(:)
     real(dp) zlike, A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz_143, r_ps, r_cib, &
     cal0, cal1, cal2, xi, A_ksz, ncib
 
@@ -164,15 +164,15 @@
      real(mcp) DataParams(:)
 
      call ClsFromTheoryData(Theory, acl)
-      highLLogLike = clik_lnlike_highL(real(acl,dp),real(DataParams,dp))
+     highLLogLike = clik_lnlike_highL(acl,DataParams)
 
   end function highLLogLike
 
 
   function clik_lnlike_highL(cl,freq_params)
     real(dp) :: clik_lnlike_highL
-    real(dp), intent(in) :: cl(lmax,num_cls_tot)
-    real(dp), intent(in)  :: freq_params(:)
+    real(mcp), intent(in) :: cl(lmax,num_cls_tot)
+    real(mcp), intent(in)  :: freq_params(:)
     real(dp) like_tot
     integer, parameter :: lmin=2
     real(dp)  cl_tt(tt_lmax)
@@ -189,8 +189,8 @@
     A_ksz = freq_params(2)
     xi = freq_params(3)
     a_ps_act_148=freq_params(4)
-    a_ps_act_217=freq_params(5) 
-    a_ps_spt_95=freq_params(6)  
+    a_ps_act_217=freq_params(5)
+    a_ps_spt_95=freq_params(6)
     a_ps_spt_150 =freq_params(7)
     a_ps_spt_220 = freq_params(8)
     A_cib_143=freq_params(9)
