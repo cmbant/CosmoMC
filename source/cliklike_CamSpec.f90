@@ -101,53 +101,22 @@
 !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
 !freq_params(35:44), ACT/SPT as freq_params(45:65)
       CamspecLogLike = clik_lnlike_camSpec(acl,DataParams)
- end function CamspecLogLike
+  end function CamspecLogLike
 
  
     function clik_lnlike_camSpec(cl,freq_params)
     real(dp) :: clik_lnlike_camSpec
     real(mcp), intent(in) :: cl(lmax,num_cls_tot)
     real(mcp), intent(in)  :: freq_params(:)
-    real(dp) zlike, A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz_143, r_ps, r_cib, &
-    cal0, cal1, cal2, xi, A_ksz, ncib
-
     integer, parameter :: lmin=2
-    real(dp) cell_cmb(0:lmax)
-    integer, parameter :: nbeams=4, nmodesperbeam=5
-    integer, parameter :: nbeammodes = nbeams*nmodesperbeam
-    real(mcp) beamcoeffs(nbeammodes)
-    real(dp) beam_coeffs(nbeams,nmodesperbeam)
-    integer ii,jj,L
-
-    !asz is already removed, start at second feq param
-    A_ps_100=freq_params(1)
-    A_ps_143 = freq_params(2)
-    A_ps_217 = freq_params(3)
-    A_cib_143=freq_params(4)
-    A_cib_217=freq_params(5) 
-    A_sz_143=freq_params(6)  !143
-    r_ps = freq_params(7)
-    r_cib=freq_params(8)
-    ncib = freq_params(9)
-    cal0=freq_params(10)
-    cal1=freq_params(11) 
-    cal2=freq_params(12)
-    xi=freq_params(13)
-    A_ksz=freq_params(14)
-    beamcoeffs = freq_params(15:15+nbeammodes-1)
+    real(dp) zlike, cell_cmb(0:lmax)
+    integer L
 
     do L=lmin,lmax
         cell_cmb(L)=cl(L,1)/twopi !this is a georgeism
     enddo
 
-    do ii=1,nbeams
-        do jj=1,nmodesperbeam
-            beam_coeffs(ii,jj)=beamcoeffs(jj+nmodesperbeam*(ii-1))
-        enddo
-    enddo
-
-    call calc_like(zlike,  cell_cmb, A_ps_100,  A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz_143,  &
-    r_ps, r_cib, xi, A_ksz, ncib, cal0, cal1, cal2, beam_coeffs)
+    call calc_like(zlike,  cell_cmb, freq_params)
 
     clik_lnlike_camSpec = zlike/2
 

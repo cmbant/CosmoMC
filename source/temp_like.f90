@@ -6,9 +6,9 @@
 
     integer, parameter :: campc = KIND(1.d0)
 
-    real(campc), dimension(:), allocatable :: X
+    real(campc), dimension(:), allocatable :: X_data
     real(campc),  dimension(:,:), allocatable :: c_inv
-    integer :: Nspec,nX,num_ells,nXfromdiff
+    integer :: Nspec,nX,num_ells,nXfromdiff, CAMspec_lmax
     integer, dimension(:), allocatable  :: lminX, lmaxX, np, npt
     integer, parameter :: lmax_sz = 5000
     real(campc) :: sz_143_temp(lmax_sz)
@@ -26,7 +26,8 @@
     integer :: countnum
     !    character*100 storeroot,storename,storenumstring
     !   character*100 :: bestroot,bestnum,bestname
-    character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.2'
+    character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.1-11012013'
+
 
     contains
 
@@ -82,14 +83,16 @@
     allocate(lmaxX(Nspec))
     allocate(np(Nspec))
     allocate(npt(Nspec))
-    allocate(X(nX))
+    allocate(X_data(nX))
     allocate(c_inv(nX,nX))
 
     read(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
-    read(48) (X(i), i=1, nX)
+    read(48) (X_data(i), i=1, nX)
     read(48)
     read(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX)
     close(48)
+
+    CAMspec_lmax = maxval(lmaxX)
 
     call CAMspec_ReadNormSZ(sz143_file, sz_143_temp)
     call CAMspec_ReadNormSZ(ksz_file, ksz_temp)
@@ -119,121 +122,112 @@
     end subroutine like_init
 
 
-    subroutine calc_like(zlike,  cell_cmb, A_ps_100,  A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz,  &
-    r_ps, r_cib, xi, A_ksz, ncib, cal0, cal1, cal2, beam_coeffs)
-
-    integer :: i, j, l, ii,jj
-    real(campc), dimension(:),  allocatable, save ::  X_theory, X_f, X_data, X_beam_corr_model, Y
+    subroutine calc_like(zlike,  cell_cmb, freq_params)
+    real(campc), intent(in)  :: freq_params(:)
     real(campc), dimension(0:) :: cell_cmb
-    real(campc) zlike, A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz, r_ps, r_cib, &
-    cal0, cal1, cal2, xi, A_ksz, ncib
-    real(campc) zell, zCIB
+    integer ::  j, l, ii,jj
+    real(campc) , allocatable, save ::  X_beam_corr_model(:), Y(:),  C_foregrounds(:,:)
+    real(campc) zlike
+    real(campc) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz, r_ps, r_cib, ncib, cal0, cal1, cal2, xi, A_ksz
+    real(campc) zCIB
     real(campc) ztemp
-
-    real(campc), dimension(:,:) :: beam_coeffs
-
+    real(campc) beam_coeffs(beam_Nspec,num_modes_per_beam)
     integer :: ie1,ie2,if1,if2
+    integer num_non_beam
+    real(campc) cl_cib(CAMspec_lmax) !CIB
+    real(campc), parameter :: sz_bandpass100_nom143 = 2.022d0
+    real(campc), parameter :: cib_bandpass143_nom143 = 1.134d0
+    real(campc), parameter :: sz_bandpass143_nom143 = 0.95d0
+    real(campc), parameter :: cib_bandpass217_nom217 = 1.33d0
+    real(campc), parameter :: ps_scale  = 1.d-6/9.d0
+    real(campc) :: A_cib_217_bandpass, A_sz_143_bandpass, A_cib_143_bandpass
     !    real(campc) atime
-    real(campc) Lfac
-    real(campc) :: sz_bandpass100_nom143, cib_bandpass143_nom143, sz_bandpass143_nom143, cib_bandpass217_nom217
 
     if (.not. allocated(lminX)) then
         print*, 'like_init should have been called before attempting to call calc_like.'
         stop
     end if
-    if (.not. allocated(X_theory)) then
-        allocate(X_theory(1:nX))
-        allocate(X_data(1:nX))
-        allocate(X_f(1:nX))
-        allocate(X_beam_corr_model(1:nX))
-        allocate(Y(1:nX))
-    end if
-
-
-    ! atime = MPI_Wtime()
-
     if(Nspec.ne.4) then
         print*, 'Nspec inconsistent with foreground corrections in calc_like.'
         stop
     end if
+    if (.not. allocated(Y)) then
+        allocate(X_beam_corr_model(1:nX))
+        allocate(Y(1:nX))
+        allocate(C_foregrounds(CAMspec_lmax,Nspec))
+        C_foregrounds=0
+    end if
 
-    sz_bandpass100_nom143 = 2.022d0
-    cib_bandpass143_nom143 = 1.134d0
-    sz_bandpass143_nom143 = 0.95d0
-    cib_bandpass217_nom217 = 1.33d0
+    ! atime = MPI_Wtime()
+
+    num_non_beam = 14
+    if (size(freq_params) < num_non_beam +  beam_Nspec*num_modes_per_beam) stop 'CAMspec: not enough parameters'
+    A_ps_100=freq_params(1)
+    A_ps_143 = freq_params(2)
+    A_ps_217 = freq_params(3)
+    A_cib_143 =freq_params(4)
+    A_cib_217 =freq_params(5) 
+    A_sz = freq_params(6)  !143
+    r_ps = freq_params(7)
+    r_cib = freq_params(8)
+    ncib = freq_params(9)
+    cal0 = freq_params(10)
+    cal1 = freq_params(11) 
+    cal2 = freq_params(12)
+    xi = freq_params(13)
+    A_ksz = freq_params(14)
+    do ii=1,beam_Nspec
+        do jj=1,num_modes_per_beam
+            beam_coeffs(ii,jj)=freq_params(num_non_beam+jj+num_modes_per_beam*(ii-1))
+        enddo
+    enddo
+
+    do l=1, CAMspec_lmax
+        cl_cib(l) = (real(l,campc)/3000)**(ncib)
+    end do
 
     !   100 foreground
     !
     do l = lminX(1), lmaxX(1)
-        zell = real(l,campc)
-        Lfac = real(l*(l+1),campc)
-        X_f(l - lminX(1) + 1) = A_ps_100*1.d-6/9.d0 + &
-        A_ksz*ksz_temp(l)/Lfac+ &
-        A_sz*sz_bandpass100_nom143*sz_143_temp(l)/Lfac
-        X_data(l - lminX(1) + 1) = X(l - lminX(1) + 1)
-        X_theory(l-lminX(1) + 1) = cell_cmb(l)
-        X_beam_corr_model(l-lminX(1)+1) = &
-        ( X_theory(l - lminX(1) + 1)+ X_f(l - lminX(1) + 1))* &
-        corrected_beam(1,l)/cal0
+        C_foregrounds(l,1)= A_ps_100*ps_scale+  &
+        ( A_ksz*ksz_temp(l) + A_sz*sz_bandpass100_nom143*sz_143_temp(l) )/(l*(l+1))
+        X_beam_corr_model(l-lminX(1)+1) = ( cell_cmb(l) + C_foregrounds(l,1) )* corrected_beam(1,l)/cal0
     end do
 
     !   143 foreground
     !
+    A_sz_143_bandpass = A_sz * sz_bandpass143_nom143
+    A_cib_143_bandpass = A_cib_143 * cib_bandpass143_nom143
     do l = lminX(2), lmaxX(2)
-        zell = real(l,campc)
-        Lfac = real(l*(l+1),campc)
-        zCIB = cib_bandpass143_nom143*A_cib_143*(zell/3000)**(ncib)/Lfac
-        X_f(l - lminX(2) + npt(2)) = A_ps_143*1.d-6/9.d0 + zCIB + &
-        A_ksz*ksz_temp(l)/Lfac + A_sz*sz_bandpass143_nom143*sz_143_temp(l)/Lfac  &
-        -2.0*sqrt(cib_bandpass143_nom143*A_cib_143*sz_bandpass143_nom143*A_sz)*xi*tszxcib_temp(l)/Lfac
-        X_data(l - lminX(2) +npt(2)) = X(l - lminX(2) + npt(2))
-        X_theory(l-lminX(2) + npt(2)) = cell_cmb(l)
-        X_beam_corr_model(l-lminX(2)+npt(2)) = &
-        ( X_theory(l - lminX(2) + npt(2))+ X_f(l - lminX(2) + npt(2)))* &
-        corrected_beam(2,l)/cal1
+        zCIB = A_cib_143_bandpass*cl_cib(l)
+        C_foregrounds(l,2)= A_ps_143*ps_scale + &
+        (zCIB +  A_ksz*ksz_temp(l) + A_sz_143_bandpass*sz_143_temp(l) &
+        -2.0*sqrt(A_cib_143_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )/(l*(l+1))
+        X_beam_corr_model(l-lminX(2)+npt(2)) =  (cell_cmb(l)+ C_foregrounds(l,2))*corrected_beam(2,l)/cal1
     end do
 
-    !
     !   217 foreground
     !
+    A_cib_217_bandpass = A_cib_217 * cib_bandpass217_nom217
     do l = lminX(3), lmaxX(3)
-        zell = real(l,campc)
-        Lfac = real(l*(l+1),campc)
-        zCIB = cib_bandpass217_nom217*A_cib_217*(zell/3000)**(ncib)/Lfac
-        X_f(l - lminX(3) + npt(3) ) = A_ps_217*1.d-6/9.d0 + zCIB &
-        + A_ksz*ksz_temp(l)/Lfac
-        X_data(l - lminX(3) + npt(3)) = X(l - lminX(3) + npt(3))
-        X_theory(l-lminX(3) + npt(3)) = cell_cmb(l)
-        X_beam_corr_model(l-lminX(3)+npt(3)) = &
-        ( X_theory(l - lminX(3) + npt(3))+ X_f(l - lminX(3) + npt(3)))* &
-        corrected_beam(3,l)/cal2
+        zCIB = A_cib_217_bandpass*cl_cib(l)
+        C_foregrounds(l,3) = A_ps_217*ps_scale + (zCIB + A_ksz*ksz_temp(l) )/(l*(l+1))
+        X_beam_corr_model(l-lminX(3)+npt(3)) = (cell_cmb(l)+ C_foregrounds(l,3))* corrected_beam(3,l)/cal2
     end do
 
     !   143x217 foreground
     !
     do l = lminX(4), lmaxX(4)
-        zell = real(l,campc)
-        Lfac = real(l*(l+1),campc)
-        zCIB = dsqrt(cib_bandpass143_nom143*A_cib_143*cib_bandpass217_nom217*A_cib_217)*(zell/3000)**(ncib) &
-        /Lfac
-        X_f(l - lminX(4) + npt(4) ) = &
-        r_ps*dsqrt(A_ps_143*A_ps_217)*1.d-6/9.d0 + r_cib*zCIB &
-        +A_ksz*ksz_temp(l)/Lfac  &
-        -sqrt(cib_bandpass217_nom217*A_cib_217*sz_bandpass143_nom143*A_sz)*xi*tszxcib_temp(l)/Lfac
-        X_data(l - lminX(4) + npt(4)) =  X(l - lminX(4) + npt(4))
-        X_theory(l-lminX(4) + npt(4)) = cell_cmb(l)
-        X_beam_corr_model(l-lminX(4)+npt(4)) = &
-        ( X_theory(l - lminX(4) + npt(4))+ X_f(l - lminX(4) + npt(4)))* &
-        corrected_beam(4,l)/dsqrt(cal1*cal2)
+        zCIB = sqrt(A_cib_143_bandpass*A_cib_217_bandpass)*cl_cib(l)
+        C_foregrounds(l,4) = r_ps*sqrt(A_ps_143*A_ps_217)*ps_scale + &
+        ( r_cib*zCIB + A_ksz*ksz_temp(l) -sqrt(A_cib_217_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )/(l*(l+1))
+        X_beam_corr_model(l-lminX(4)+npt(4)) =  ( cell_cmb(l) + C_foregrounds(l,4))*corrected_beam(4,l)/sqrt(cal1*cal2)
     end do
 
-
-    do i = 1, nX
-        Y(i) = X_data(i) - X_beam_corr_model(i)
-    end do
+    Y = X_data - X_beam_corr_model
 
     zlike = 0
-    !$OMP parallel do private(j,i,ztemp) reduction(+:zlike) schedule(static,16)
+    !$OMP parallel do private(j,ztemp) reduction(+:zlike) schedule(static,16)
     do  j = 1, nX
         ztemp= dot_product(Y(j+1:nX), c_inv(j+1:nX, j))
         zlike=zlike+ (ztemp*2 +c_inv(j, j)*Y(j))*Y(j)

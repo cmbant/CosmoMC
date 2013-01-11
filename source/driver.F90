@@ -1,5 +1,3 @@
-
-
     program SolveCosmology
     ! This is a driving routine that illustrates the use of the program.
 
@@ -19,7 +17,7 @@
     use GaugeInterface, only : Eqns_name
     use DefineParameterization
 
-    implicit none 
+    implicit none
 
     character(LEN=Ini_max_string_len) InputFile, LogFile
 
@@ -38,7 +36,7 @@
     logical want_minimize
     logical :: start_at_bestfit = .false.
     Class(DataLikelihood), pointer :: Like
-    real(mcp) mult 
+    real(mcp) mult
 #ifdef MPI
     double precision intime
     integer ierror
@@ -47,18 +45,18 @@
     if (ierror/=MPI_SUCCESS) stop 'MPI fail: rank'
 #endif
 
-    instance = 0 
-#ifndef MPI 
+    instance = 0
+#ifndef MPI
     InputFile = GetParam(1)
     if (InputFile == '') call DoAbort('No parameter input file')
 #endif
     numstr = GetParam(2)
     if (numstr /= '') then
         read(numstr,*) instance
-        rand_inst = instance   
+        rand_inst = instance
     end if
 
-#ifdef MPI 
+#ifdef MPI
 
     if (instance /= 0) call DoAbort('With MPI should not have second parameter')
     call mpi_comm_rank(mpi_comm_world,MPIrank,ierror)
@@ -76,7 +74,7 @@
     end if
 
 
-    CALL MPI_Bcast(InputFile, LEN(InputFile), MPI_CHARACTER, 0, MPI_COMM_WORLD, ierror) 
+    CALL MPI_Bcast(InputFile, LEN(InputFile), MPI_CHARACTER, 0, MPI_COMM_WORLD, ierror)
 
 #endif
     call IO_Ini_Load(DefIni,InputFile, bad)
@@ -88,8 +86,8 @@
     call TNameValueList_Init(CustomParams%L)
     call TNameValueList_Init(CustomParams%ReadValues)
 
-    if (Ini_HasKey('local_dir')) LocalDir=ReadIniFileName(DefIni,'local_dir') 
-    if (Ini_HasKey('data_dir')) DataDir=ReadIniFileName(DefIni,'data_dir') 
+    if (Ini_HasKey('local_dir')) LocalDir=ReadIniFileName(DefIni,'local_dir')
+    if (Ini_HasKey('data_dir')) DataDir=ReadIniFileName(DefIni,'data_dir')
 
     if (Ini_HasKey('custom_params')) then
         fname = ReadIniFileName(DefIni,'custom_params')
@@ -99,7 +97,7 @@
             call ClearFileUnit(file_unit)
             if (bad) call DoAbort('Error reading custom_params parameter file')
         end if
-    end if   
+    end if
 
     action = Ini_Read_Int('action',action_MCMC)
 
@@ -109,7 +107,7 @@
     AccuracyLevel = Ini_Read_Real('accuracy_level',1.)
 
     if (Ini_HasKey('highL_unlensed_cl_template')) then
-        highL_unlensed_cl_template=  ReadIniFilename(DefIni,'highL_unlensed_cl_template') 
+        highL_unlensed_cl_template=  ReadIniFilename(DefIni,'highL_unlensed_cl_template')
     else
         highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
     end if
@@ -121,11 +119,11 @@
     end if
 
 
-#ifdef MPI 
+#ifdef MPI
     MPI_StartTime = MPI_WTime()
     if (action==action_MCMC) then
         MPI_R_Stop = Ini_Read_Real('MPI_Converge_Stop',MPI_R_Stop)
-        MPI_LearnPropose = Ini_Read_Logical('MPI_LearnPropose',.true.)  
+        MPI_LearnPropose = Ini_Read_Logical('MPI_LearnPropose',.true.)
         if (MPI_LearnPropose) then
             MPI_R_StopProposeUpdate=Ini_Read_Real('MPI_R_StopProposeUpdate',0.)
             MPI_Max_R_ProposeUpdate=Ini_Read_Real('MPI_Max_R_ProposeUpdate',2.)
@@ -156,13 +154,13 @@
         rootname = trim(rootname)//'_'//trim(adjustl(numstr))
     end if
 
-    new_chains = .true. 
+    new_chains = .true.
 
     if (checkpoint) then
-#ifdef MPI 
+#ifdef MPI
         new_chains = .not. IO_Exists(trim(rootname) //'.chk')
 #else
-        new_chains = .not. IO_Exists(trim(rootname) //'.txt')  
+        new_chains = .not. IO_Exists(trim(rootname) //'.txt')
 #endif
     end if
 
@@ -173,34 +171,32 @@
     FileChangeIni = trim(rootname)//'.read'
 
     if (action == action_MCMC) then
+        LogFile = trim(rootname)//'.log'
 
-    LogFile = trim(rootname)//'.log'
+        if (LogFile /= '') then
+            logfile_unit = IO_OutputOpenForWrite(LogFile, append=.not. new_chains, isLogFile = .true.)
+        else
+            logfile_unit = 0
+        end if
 
-    if (LogFile /= '') then
-        logfile_unit = IO_OutputOpenForWrite(LogFile, append=.not. new_chains, isLogFile = .true.)
-    else
-        logfile_unit = 0
-    end if
+        indep_sample = Ini_Read_Int('indep_sample')
+        if (indep_sample /=0) then
+            fname = trim(rootname)//'.data'
+            indepfile_handle = IO_DataOpenForWrite(fname, append = .not. new_chains)
+            !          call CreateOpenFile(fname,indepfile_unit,'unformatted',.not. new_chains)
+        end if
 
-    indep_sample = Ini_Read_Int('indep_sample')
-    if (indep_sample /=0) then
-        fname = trim(rootname)//'.data' 
-        indepfile_handle = IO_DataOpenForWrite(fname, append = .not. new_chains)
-        !          call CreateOpenFile(fname,indepfile_unit,'unformatted',.not. new_chains)
-    end if
-
-    Ini_fail_on_not_found = .false.
-    burn_in = Ini_Read_Int('burn_in',0)
-    sampling_method = Ini_Read_Int('sampling_method',sampling_metropolis)
-    if (sampling_method > 7 .or. sampling_method<1) call DoAbort('Unknown sampling method')
-    if (sampling_method==sampling_slowgrid) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
-    if (sampling_method==sampling_fast_dragging) then
-        dragging_steps = Ini_Read_Real('dragging_steps',2.)
-        use_fast_slow = .true.
-    else
-        use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
-    end if
-
+        Ini_fail_on_not_found = .false.
+        burn_in = Ini_Read_Int('burn_in',0)
+        sampling_method = Ini_Read_Int('sampling_method',sampling_metropolis)
+        if (sampling_method > 7 .or. sampling_method<1) call DoAbort('Unknown sampling method')
+        if (sampling_method==sampling_slowgrid) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
+        if (sampling_method==sampling_fast_dragging) then
+            dragging_steps = Ini_Read_Real('dragging_steps',2.)
+            use_fast_slow = .true.
+        else
+            use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
+        end if
     else
         Ini_fail_on_not_found = .false.
     end if
@@ -249,7 +245,7 @@
     nummpksets = Ini_Read_Int('mpk_numdatasets',0)
     if (Use_mpk) then
         do i= 1, nummpksets
-            mpk_filename(i) = ReadIniFileName(DefIni,numcat('mpk_dataset',i)) 
+            mpk_filename(i) = ReadIniFileName(DefIni,numcat('mpk_dataset',i))
             call ReadMpkDataset(mpk_filename(i))
         end do
         if (Feedback>1) write(*,*) 'read mpk datasets'
@@ -307,8 +303,8 @@
             if (use_CMB) call Params%Theory%WriteBestFitData(trim(baseroot))
             if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
         end if
-#ifdef MPI 
-        CALL MPI_Bcast(Params%P, size(Params%P), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror) 
+#ifdef MPI
+        CALL MPI_Bcast(Params%P, size(Params%P), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror)
 #endif
         Scales%center(1:num_params) = Params%P(1:num_params)
     end if
@@ -320,23 +316,23 @@
             write (*,*) 'Estimating propose matrix from Hessian at bfp...'
             propose_matrix=EstCovmat(EstParams,4._mcp,status)
             ! By default the grid used to estimate the covariance matrix has spacings
-            ! such that deltaloglike ~ 4 for each parameter.               
+            ! such that deltaloglike ~ 4 for each parameter.          
             call AcceptReject(.true., EstParams%Info, Params%Info)
             if (status==0) call DoAbort('estimate_propose_matrix: estimating propose matrix failed')
             if (Feedback>0) write (*,*) 'Estimated covariance matrix:'
             call WriteCovMat(trim(baseroot) //'.hessian.covmat', propose_matrix)
             write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.hessian.covmat'
             if (action==action_Hessian) call DoStop
-        end if 
-#ifdef MPI 
-        CALL MPI_Bcast(propose_matrix, size(propose_matrix), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror) 
+        end if
+#ifdef MPI
+        CALL MPI_Bcast(propose_matrix, size(propose_matrix), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror)
 #endif
         call Proposer%SetCovariance(propose_matrix)
     end if
 
     if (action == action_MCMC) then
         fname = trim(rootname)//'.txt'
-        if (new_chains) then 
+        if (new_chains) then
             call SetStartPositions(Params)
         else
             call IO_ReadLastChainParams(fname, mult, StartLike, Params%P, params_used)
@@ -367,4 +363,3 @@
     call DoStop('Total requested samples obtained',.true.)
 
     end program SolveCosmology
-

@@ -795,12 +795,12 @@
         end do
     end do
     if (Feedback > 0 .and. MPIRank==0) then
-        write (*,*) 'Current worst limit error = ', WorstErr, &
-        ' param '//trim(UsedParamNameOrNumber(Worsti))//'; samps = ',L%Count*MPI_thin_fac
+        write (*,'(a)')  'Current limit err = '//trim(RealToStr(WorstErr))// &
+        ' for '//trim(UsedParamNameOrNumber(Worsti))//'; samps = '//trim(IntToStr(L%Count*MPI_thin_fac))
     end if
     if (logfile_unit/=0) then
-        write (logLine,*) 'Current limit err = ',WorstErr, &
-        ' param '//trim(UsedParamNameOrNumber(Worsti))//'; samps = ',L%Count*MPI_thin_fac
+        write (logLine,'(a)') 'Current limit err = '//trim(RealToStr(WorstErr))// &
+        ' for '//trim(UsedParamNameOrNumber(Worsti))//'; samps = '//trim(IntToStr(L%Count*MPI_thin_fac))
         call IO_WriteLog(logfile_unit,logLine)
     end if
     if (WorstErr < MPI_Limit_Converge_Err) call DoStop('Requested limit convergence achieved')
