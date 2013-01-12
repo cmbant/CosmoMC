@@ -273,9 +273,9 @@ contains
        CurParams = CurEndParams
        CurLike = CurEndLike
        if (CurLike < MaxLike) MaxLike = CurLike
+       if (Feedback > 0) write (*,*) trim(concat('Chain:',MpiRank,' mult: ', mult, ' accept drag, accpt:')), &
+          real(num_accept)/num, 'fast/slow',real(num_fast_calls)/num_slow_calls
        mult=1
-       if (Feedback > 0) write (*,*) mult, ' accepting drag, accpt:', real(num_accept)/num, &
-                         'fast/slow',real(num_fast_calls)/num_slow_calls
    else
        mult = mult + 1
    end if

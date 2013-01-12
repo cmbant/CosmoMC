@@ -2119,7 +2119,6 @@
     call GetCovMatrix
     if (PCA_num>0 .and. .not. plots_only) call PCA(PCA_params,PCA_num,PCA_func, PCA_NormParam)
 
-
     !Find best fit, and mean likelihood
     bestfit_ix = 0 !Since we have sorted the lines
     maxlike = coldata(2,bestfit_ix)
@@ -2134,23 +2133,17 @@
     meanlike = sum(coldata(2,0:nrows-1)*coldata(1,0:nrows-1)) / numsamp
     write (*,*) 'mean(-Ln(like)) = ', meanlike
 
-    meanlike = -log(sum(exp(-(coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) &
-    / numsamp) + maxlike
+    meanlike = -log(sum(exp(-(coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) / numsamp) + maxlike
     write (*,*) '-Ln(mean like)  = ', meanlike
 
-
-    !Output files for 1D plots
-
-    plot_col =  nint(sqrt(num_vars/1.4))
-    plot_row = (num_vars +plot_col-1)/plot_col
-
-    !So we don't forget to run sm, delete current .ps file
-    call DeleteFile(trim(rootname)//'.ps')
-
-
-    open(unit=51,file=trim(rootdirname) // '.m',form='formatted',status='replace')
-    !MatLab file for 1D plots
-    call WriteMatLabInit(51,num_vars>3, matlab_subplot_size_inch)
+    if (.not. no_plots) then
+        !Output files for 1D plots
+        plot_col =  nint(sqrt(num_vars/1.4))
+        plot_row = (num_vars +plot_col-1)/plot_col
+        open(unit=51,file=trim(rootdirname) // '.m',form='formatted',status='replace')
+        !MatLab file for 1D plots
+        call WriteMatLabInit(51,num_vars>3, matlab_subplot_size_inch)
+    end if
 
     cont_lines = 0
 
@@ -2161,16 +2154,6 @@
         binlikes = 0
         binmaxlikes = 0
         binsraw = 0
-
-        do ix1 = 1, num_contours
-            limfrac = (1-contours(ix1))
-            if (.not. has_limits(ix) .or. force_twotail) then
-                limfrac = limfrac/2 !two tail
-            end if
-            cont_lines(j,2,ix1) = ConfidVal(ix,limfrac,.true.)
-            cont_lines(j,1,ix1) = ConfidVal(ix,limfrac,.false.)
-        end do !contour lines
-
 
         if (has_limits_bot(ix)) then
             amin = limmin(ix)
@@ -2184,15 +2167,18 @@
             amax = ConfidVal(ix,0.001_mcp,.true.)
         end if
 
+        do ix1 = 1, num_contours
+            limfrac = (1-contours(ix1))
+            if (.not. has_limits(ix) .or. force_twotail) then
+                limfrac = limfrac/2 !two tail
+            end if
+            cont_lines(j,2,ix1) = ConfidVal(ix,limfrac,.true.)
+            cont_lines(j,1,ix1) = ConfidVal(ix,limfrac,.false.)
+        end do !contour lines
 
         width(j) = (amax-amin)/(nbins+1)
         if (width(j)==0) cycle
 
-        !        if (amin <= 0) then
-        !          center(j) = amax
-        !        else
-        !          center(j) = amin
-        !        end if
         if (has_limits_top(ix)) then
             center(j) = amax !- width(j)/2
         else
