@@ -134,6 +134,7 @@ class GetDistPlotter():
         if not self.settings.plot_args is None and len(self.settings.plot_args) > plotno:
             args = self.settings.plot_args[plotno]  #
             if args is None: args = dict()
+        else: args = dict()
         args.update(kwargs)
         return args
 
