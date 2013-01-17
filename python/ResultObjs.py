@@ -64,7 +64,7 @@ def numberFigs(number, sigfig):
 
 class resultTable():
 
-    def __init__(self, ncol, results, tableParamNames=None, border='||', titles=None):
+    def __init__(self, ncol, results, tableParamNames=None, border='|', titles=None):
 # results is a list of margeStats or bestFit tables
         self.lines = []
         self.sig_figs = 4
@@ -108,7 +108,7 @@ class resultTable():
 
     def addDoubleLine(self):
         self.addLine()
-        self.addLine()
+#        self.addLine()
 
     def addTitlesRow(self, titles):
         self.addLine()
