@@ -15,6 +15,7 @@ class GetDistPlotSettings:
             self.lineM = ['-k', '-r', '-b', '-g', '-m', '-y']
         else:
             self.lineM = ['-k', '--r', '-.b', ':g', '--m', '-.y']
+        self.plot_args = None
         self.lineL = [':k', ':r', ':b', ':m', ':g', ':y']
         self.solid_colors = ['#009966', '#66CC99', '#336600', '#006633' , 'g', 'm', 'r']
         self.printex = 'pdf'
@@ -129,22 +130,36 @@ class GetDistPlotter():
         self.param_name_sets = dict()
         self.sampleAnalyser.newPlot()
 
+    def get_plot_args(self, plotno, **kwargs):
+        if not self.settings.plot_args is None and len(self.settings.plot_args) > plotno:
+            args = self.settings.plot_args[plotno]  #
+            if args is None: args = dict()
+        args.update(kwargs)
+        return args
+
+    def get_color(self, plotno, **kwargs):
+        args = self.get_plot_args(plotno, **kwargs)
+        return args.get('color', self.settings.lineM[plotno][-1])
+
     def paramNamesForRoot(self, root):
         if not root in self.param_name_sets: self.param_name_sets[root] = self.sampleAnalyser.paramsForRoot(root, labelParams=self.settings.param_names_for_labels)
         return self.param_name_sets[root]
 
-    def add_1d(self, root, param, plotno=0,):
+    def add_1d(self, root, param, plotno=0, **kwargs):
         param = self.check_param(roots, param)
         density = self.sampleAnalyser.get_density(root, param, likes=self.settings.plot_meanlikes)
         if density is None: return None;
 
-        plot(density.x, density.pts, self.settings.lineM[plotno], linewidth=self.settings.lw1)
+        args = self.get_plot_args(plotno)
+        args.update(kwargs)
+        kwargs = args
+        plot(density.x, density.pts, self.settings.lineM[plotno], linewidth=self.settings.lw1, **kwargs)
         if self.settings.plot_meanlikes:
-            plot(density.x, density.likes, self.settings.lineL[plotno], linewidth=self.settings.lw_likes)
+            plot(density.x, density.likes, self.settings.lineL[plotno], linewidth=self.settings.lw_likes, **kwargs)
 
         return density.bounds()
 
-    def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, cols=None, alpha=0.5):
+    def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, cols=None, alpha=0.5, **kwargs):
         param1, param2 = self.get_param_array(root, [param1, param2])
 
         density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=True, likes=False)
@@ -158,9 +173,10 @@ class GetDistPlotter():
                     cols = [[c * (1 - self.settings.solid_contour_palefactor) + self.settings.solid_contour_palefactor for c in cols[0]]] + cols
             contourf(density.x1, density.x2, density.pts, sorted(np.append([density.pts.max() + 1], density.contours)), colors=cols, alpha=alpha)
         else:
-            if color is None: color = self.settings.lineM[plotno][-1]
+            if color is None: color = self.get_color(plotno, **kwargs)
             cols = [color]
-        contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linewidth=self.settings.lw_contour, alpha=alpha)
+        kwargs = self.get_plot_args(plotno, **kwargs)
+        contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linewidth=self.settings.lw_contour, alpha=alpha, **kwargs)
 
         return density.bounds()
 
@@ -262,9 +278,11 @@ class GetDistPlotter():
         if self.settings.line_labels and len(legend_labels) > 1:
             lines = []
             for i in enumerate(legend_labels):
+                color = self.get_color(i[0] + line_offset)
                 col = self.settings.lineM[i[0] + line_offset]
-                lines.append(Line2D([0, 1], [0, 1], color=col[-1], ls=col[0:-1]))
-            self.extra_artists = [self.fig.legend(lines, legend_labels, legend_loc, prop={'size':self.settings.axes_fontsize})]
+
+                lines.append(Line2D([0, 1], [0, 1], color=color, ls=col[0:-1]))
+            self.extra_artists = [self.fig.legend(lines, legend_labels, legend_loc, prop={'size':self.settings.lab_fontsize})]
 
 
     def plots_1d(self, roots, params=None, legend_labels=None, nx=None):
