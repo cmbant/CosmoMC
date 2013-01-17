@@ -3,6 +3,7 @@ g=GetDistPlots.GetDistPlotter('main/plot_data')
 
 roots = ['base_omegak_planck_CAMspec_lowl_lowLike','base_omegak_planck_CAMspec_lowl_lowLike_post_lensing','base_omegak_planck_CAMspec_lowl_lowLike_BAO']
 params = g.get_param_array(roots[0], ['omegam', 'omegal', 'H0'])
+g.settings.setWithSubplotSize(4)
 g.settings.lw_contour = 0.2
 g.setAxes(params, lims=[0, 1, 0, 1])
 g.add_3d_scatter(roots[0], params)
