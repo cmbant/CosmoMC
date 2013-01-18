@@ -147,7 +147,7 @@ class GetDistPlotter():
         return self.param_name_sets[root]
 
     def add_1d(self, root, param, plotno=0, **kwargs):
-        param = self.check_param(roots, param)
+        param = self.check_param(root, param)
         density = self.sampleAnalyser.get_density(root, param, likes=self.settings.plot_meanlikes)
         if density is None: return None;
 
@@ -264,19 +264,20 @@ class GetDistPlotter():
     def get_param_array(self, root, in_params):
         if in_params is None or len(in_params) == 0: return self.paramNamesForRoot(root).names
         else:
-            if not isinstance(in_params[0], paramNames.paramInfo): return self.paramNamesForRoot(root).parsWithNames(in_params)
+            if not isinstance(in_params[0], paramNames.paramInfo): return self.paramNamesForRoot(root).parsWithNames(in_params, error=True)
         return in_params
 
     def check_param(self, root, param):
-        if not isinstance(param, paramNames.paramInfo): return self.paramNamesForRoot(root).parWithName(param)
+        if not isinstance(param, paramNames.paramInfo): return self.paramNamesForRoot(root).parWithName(param, error=True)
         return param
 
     def finish_plot(self, legend_labels=[], legend_loc='upper center', line_offset=0, no_gap=False):
+        has_legend = self.settings.line_labels and len(legend_labels) > 1
         if self.settings.tight_layout:
             if no_gap: tight_layout(h_pad=0, w_pad=0)
             else: tight_layout()
 
-        if self.settings.line_labels and len(legend_labels) > 1:
+        if has_legend:
             lines = []
             for i in enumerate(legend_labels):
                 color = self.get_color(i[0] + line_offset)
