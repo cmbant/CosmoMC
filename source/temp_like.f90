@@ -26,7 +26,7 @@
     integer :: countnum
     !    character*100 storeroot,storename,storenumstring
     !   character*100 :: bestroot,bestnum,bestname
-    character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.1-11012013'
+    character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.2-11012013'
 
 
     contains
