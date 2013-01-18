@@ -74,7 +74,7 @@ class SampleAnalysisGetDist():
         if pts is None: return None
         result.x = pts[:, 0]
         result.pts = pts[:, 1]
-        if (likes): result.likes = self.load_1d(root, param, '.likes')
+        if (likes): result.likes = self.load_1d(root, param, '.likes')[:, 1]
         return result
 
     def load_single_samples(self, root):
