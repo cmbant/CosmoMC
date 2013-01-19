@@ -45,7 +45,7 @@
 
     Ini_Fail_On_Not_Found = .false.
     PostParams%redo_like = Ini_Read_Logical('redo_likelihoods')
-    PostParams%redo_theory = Ini_read_Logical('rsedo_theory')
+    PostParams%redo_theory = Ini_read_Logical('redo_theory')
     PostParams%redo_cls= Ini_read_Logical('redo_cls')
     PostParams%redo_Pk= Ini_read_Logical('redo_pk')
     PostParams%redo_skip = Ini_Read_Int('redo_skip',100)
