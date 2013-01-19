@@ -31,11 +31,13 @@ class GetDistPlotSettings:
         self.colormap = cm.Blues
         self.colormap_scatter = cm.jet
         self.param_names_for_labels = None  # 'clik_latex.paramnames'
+        self.figure_legend_loc = 'upper center'
+        self.xtick_prune = None  # 'lower' or 'upper'
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
-        self.lab_fontsize = 3 + 3 * self.subplot_size_inch
-        self.axes_fontsize = 2 + 2 * self.subplot_size_inch
+        self.lab_fontsize = 5 + 3 * self.subplot_size_inch
+        self.axes_fontsize = 3 + 2 * self.subplot_size_inch
         self.lw1 = self.subplot_size_inch / 3.0
         self.lw_contour = self.lw1 * 0.4
         self.lw_likes = self.subplot_size_inch / 6.0
@@ -216,9 +218,9 @@ class GetDistPlotter():
         else:
             xmin, xmax = xlim()
             if (abs(xmax - xmin) < 0.01 or max(abs(xmin), abs(xmax)) >= 1000):
-                axis.set_major_locator(MaxNLocator(self.settings.subplot_size_inch / 2 + 3))
+                axis.set_major_locator(MaxNLocator(self.settings.subplot_size_inch / 2 + 3, prune=self.settings.xtick_prune))
             else:
-                axis.set_major_locator(MaxNLocator(4 + self.settings.subplot_size_inch / 2))
+                axis.set_major_locator(MaxNLocator(4 + self.settings.subplot_size_inch / 2, prune=self.settings.xtick_prune))
 
     def setAxes(self, params, lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False):
         if lims is not None: axis(lims)
@@ -271,13 +273,14 @@ class GetDistPlotter():
         if not isinstance(param, paramNames.paramInfo): return self.paramNamesForRoot(root).parWithName(param, error=True)
         return param
 
-    def finish_plot(self, legend_labels=[], legend_loc='upper center', line_offset=0, no_gap=False):
+    def finish_plot(self, legend_labels=[], legend_loc=None, line_offset=0, no_gap=False, no_extra_legend_space=False):
         has_legend = self.settings.line_labels and len(legend_labels) > 1
         if self.settings.tight_layout:
             if no_gap: tight_layout(h_pad=0, w_pad=0)
             else: tight_layout()
 
         if has_legend:
+            if legend_loc is None: legend_loc = self.settings.figure_legend_loc
             lines = []
             for i in enumerate(legend_labels):
                 color = self.get_color(i[0] + line_offset)
@@ -286,7 +289,9 @@ class GetDistPlotter():
                 lines.append(Line2D([0, 1], [0, 1], color=color, ls=col[0:-1]))
             self.legend = self.fig.legend(lines, legend_labels, legend_loc, prop={'size':self.settings.lab_fontsize})
             self.extra_artists = [self.legend]
-            if self.settings.tight_layout: subplots_adjust(top=1 - 0.5 / self.plot_row)
+            if self.settings.tight_layout and not no_extra_legend_space:
+                if 'upper' in legend_loc: subplots_adjust(top=1 - 0.5 / self.plot_row)
+                elif 'lower' in legend_loc: subplots_adjust(bottom=0.5 / self.plot_row)
 
 
     def plots_1d(self, roots, params=None, legend_labels=None, nx=None):
@@ -358,7 +363,7 @@ class GetDistPlotter():
             cb = self.fig.colorbar(self.last_scatter, cax=self.fig.add_axes([0.9, 0.5, 0.03, 0.35]))
             self.add_colorbar_label(cb, col_param)
 
-        self.finish_plot([legend_labels, roots][legend_labels is None], legend_loc=None, no_gap=self.settings.no_triangle_axis_labels)
+        self.finish_plot([legend_labels, roots][legend_labels is None], legend_loc=None, no_gap=self.settings.no_triangle_axis_labels, no_extra_legend_space=True)
 
     def add_colorbar(self, param):
         cb = colorbar()
