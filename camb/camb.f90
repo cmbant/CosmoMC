@@ -296,6 +296,7 @@
             P%YHe     = 0.24
             P%Num_Nu_massless =3.04
             P%Num_Nu_massive  =0
+            P%nearthermal_massive_neutrinos=.false.
             P%Nu_mass_splittings = .false.
             P%Nu_mass_eigenstates = 0
            

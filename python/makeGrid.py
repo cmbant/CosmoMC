@@ -40,9 +40,9 @@ for jobItem in batch.items(wantSubItems=False):
 
         if 'mnu' in jobItem.param_set:
             ini.params['num_massive_neutrinos'] = 3
-        if 'nnu' in jobItem.param_set:
-            if ('mnu' in jobItem.param_set): raise Exception('no support for nnu and mnu')
-            ini.params['param[mnu]'] = '0 0 0 0 0'
+        if 'nnu' in jobItem.param_set: pass
+#            if ('mnu' in jobItem.param_set): raise Exception('no support for nnu and mnu')
+#            ini.params['param[mnu]'] = '0 0 0 0 0'
         if 'yhe' in jobItem.param_set:
             ini.params['bbn_consistency'] = False
         if 'r' in jobItem.param_set:

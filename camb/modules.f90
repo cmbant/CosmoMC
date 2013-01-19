@@ -101,6 +101,7 @@
          !Omega baryon, CDM, Lambda and massive neutrino
          real(dl)  :: H0,TCMB,yhe,Num_Nu_massless
          integer   :: Num_Nu_massive
+         logical   :: nearthermal_massive_neutrinos
 
          logical :: Nu_mass_splittings
          integer   :: Nu_mass_eigenstates  !1 for degenerate masses
@@ -334,14 +335,32 @@
            !correction for fractional number of neutrinos, e.g. 3.04 to give slightly higher T_nu hence rhor
            !Num_Nu_massive is already integer, Num_Nu_massless can contain fraction
            !We assume all eigenstates affected the same way
-           fractional_number  = CP%Num_Nu_massless + CP%Num_Nu_massive
-           actual_massless = int(CP%Num_Nu_massless + 1e-6)
-           if (actual_massless + CP%Num_Nu_massive /= 0) then
-             grhor = grhor * fractional_number/(actual_massless + CP%Num_Nu_massive)
-             grhornomass=grhor*actual_massless
+           if (CP%nearthermal_massive_neutrinos) then
+            !Keep Num_Nu_massive neutrinos as standard (quasi-)thermal, and add massless neutrinos to make up total n_eff
+               if (CP%Num_Nu_massless>=0.045_dl) then
+                 grhornomass=max(0._dl,grhor*(CP%Num_Nu_massless - CP%Num_Nu_massive*(3.046/3-1)))
+                 grhor = grhor * 3.046/3 !assume standard-like massive neutrinos with quasi-thermal distribution
+               else
+                 call GlobalError('can''t have Num_Nu_massless<0 with nearthermal_massive_neutrinos in CAMB',error_unsupported_params)
+               end if
            else
-             !Prevent problems with n_eff < 1; thanks Zhen Hou
-             grhornomass=grhor*CP%Num_Nu_massless
+               fractional_number  = CP%Num_Nu_massless + CP%Num_Nu_massive
+               if (CP%Num_Nu_massless < 0) then
+                   !reduce temperature of massive neutrinos to give correct total
+                   if (CP%Num_Nu_massive<=0) &
+                     call GlobalError('Num_Nu_massless < 0 with no massive neutrinos',error_unsupported_params)
+                   grhor=grhor * fractional_number/CP%Num_Nu_massive
+                   grhornomass=0
+               else
+                   actual_massless = int(CP%Num_Nu_massless + 1e-6)
+                   if (actual_massless + CP%Num_Nu_massive /= 0) then
+                     grhor = grhor * fractional_number/(actual_massless + CP%Num_Nu_massive)
+                     grhornomass=grhor*actual_massless
+                   else
+                     !Prevent problems with n_eff < 1; thanks Zhen Hou
+                     grhornomass=grhor*CP%Num_Nu_massless
+                   end if
+               end if
            end if
            grhormass=0
            do nu_i = 1, CP%Nu_mass_eigenstates
