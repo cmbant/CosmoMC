@@ -254,12 +254,12 @@ class GetDistPlotter():
 
     def make_figure(self, nplot=1, nx=None, ny=None, xstretch=1):
         self.newPlot()
-        if nx is None: plot_col = round(sqrt(nplot / 1.4))
-        else: plot_col = nx
-        if ny is None: plot_row = (nplot + plot_col - 1) / plot_col
-        else: plot_row = ny
-        self.fig = figure(figsize=(self.settings.subplot_size_inch * plot_col * xstretch, self.settings.subplot_size_inch * plot_row))
-        return plot_col, plot_row
+        if nx is None: self.plot_col = int(round(sqrt(nplot / 1.4)))
+        else: self.plot_col = nx
+        if ny is None: self.plot_row = (nplot + self.plot_col - 1) / self.plot_col
+        else: self.plot_row = ny
+        self.fig = figure(figsize=(self.settings.subplot_size_inch * self.plot_col * xstretch, self.settings.subplot_size_inch * self.plot_row))
+        return self.plot_col, self.plot_row
 
     def get_param_array(self, root, in_params):
         if in_params is None or len(in_params) == 0: return self.paramNamesForRoot(root).names
@@ -284,7 +284,9 @@ class GetDistPlotter():
                 col = self.settings.lineM[i[0] + line_offset]
 
                 lines.append(Line2D([0, 1], [0, 1], color=color, ls=col[0:-1]))
-            self.extra_artists = [self.fig.legend(lines, legend_labels, legend_loc, prop={'size':self.settings.lab_fontsize})]
+            self.legend = self.fig.legend(lines, legend_labels, legend_loc, prop={'size':self.settings.lab_fontsize})
+            self.extra_artists = [self.legend]
+            if self.settings.tight_layout: subplots_adjust(top=1 - 0.5 / self.plot_row)
 
 
     def plots_1d(self, roots, params=None, legend_labels=None, nx=None):
