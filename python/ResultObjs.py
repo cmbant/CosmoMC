@@ -62,11 +62,59 @@ def numberFigs(number, sigfig):
         result.insert(0, '-')
     return ''.join(result)
 
+class tableFormatter():
+    def __init__(self):
+        self.border = '|'
+        self.endofrow = '\\\\'
+        self.hline = '\\hline'
+        self.paramText = 'Parameter'
+        self.aboveTitles = self.hline
+        self.majorDividor = '|'
+        self.minorDividor = '|'
+        self.colDividor = '||'
+        self.belowTitles = ''
+
+    def getLine(self, position=None):
+        if position is not None and hasattr(self, position): return getattr(self, position)
+        return self.hline
+
+    def startTable(self, ncol, colsPerResult, numResults):
+        part = self.majorDividor + (" c" + self.minorDividor) * (colsPerResult - 1) + ' c'
+        return '\\begin{tabular} {' + self.border + " l " + part * numResults + (self.colDividor + " l " + part * numResults) * (ncol - 1) + self.border + '}'
+
+    def endTable(self):
+        return '\\end{tabular}'
+
+    def titleSubColumn(self, colsPerResult, title):
+        return ' \\multicolumn{' + str(colsPerResult) + '}{' + self.majorDividor + 'c' + self.majorDividor + '}{' + self.formatTitle(title) + '}'
+
+    def formatTitle(self, title):
+        return '\\bf ' + texEscapeText(title)
+
+class planckTableFormatter(tableFormatter):
+
+    def __init__(self):
+        tableFormatter.__init__(self)
+        self.border = ''
+        self.hline = '\\hline'
+        self.aboveTitles = r'\noalign{\vskip 3pt}\hline\noalign{\vskip 1.5pt}\hline\noalign{\vskip 5pt}'
+        self.belowTitles = r'\noalign{\vskip 3pt}\hline'
+        self.aboveHeader = ''
+        self.belowHeader = r'\hline'
+        self.minorDividor = ''
+        self.belowFinalRow = ''
+
+    def titleSubColumn(self, colsPerResult, title):
+        return ' \\multicolumn{' + str(colsPerResult) + '}{' + 'c' + '}{ ' + self.formatTitle(title) + '}'
+
+
 class resultTable():
 
-    def __init__(self, ncol, results, tableParamNames=None, border='|', titles=None):
+    def __init__(self, ncol, results, tableParamNames=None, titles=None, formatter=None):
 # results is a list of margeStats or bestFit tables
         self.lines = []
+        if formatter is None: self.format = planckTableFormatter()
+        else: self.format = formatter
         self.sig_figs = 4
         self.ncol = ncol
         if tableParamNames is None:
@@ -76,8 +124,6 @@ class resultTable():
         self.boldBaseParameters = True
         self.colsPerResult = len(results[0].columns)
         self.colsPerParam = len(results) * self.colsPerResult
-        self.endofrow = '\\\\'
-        self.paramText = 'Parameter'
 
         nparams = self.tableParamNames.numParams()
         numrow = nparams / ncol
@@ -89,39 +135,38 @@ class resultTable():
             for i in range(numrow * col, min(numrow * (col + 1), nparams)):
                 rows[i - numrow * col].append(self.tableParamNames.names[i]);
 
-        self.lines.append('\\begin{tabular} {' + (border + " l " + "| c"* self.colsPerParam) * ncol + border + '}')
+        self.lines.append(self.format.startTable(ncol, self.colsPerResult, len(results)))
         if titles is not None: self.addTitlesRow(titles)
         self.addHeaderRow()
-        for row in rows: self.addFullTableRow(row)
+        for row in rows[:-1]: self.addFullTableRow(row)
+        self.addFullTableRow(rows[-1], True)
         self.endTable()
 
 
-    def addFullTableRow(self, row):
+    def addFullTableRow(self, row, last=False):
         txt = " & ".join(self.paramLabelColumn(param) + self.paramResultsTex(param) for param in row)
         if not self.ncol == len(row):
             txt += ' & ' * ((1 + self.colsPerParam) * (self.ncol - len(row)))
-        self.lines.append(txt + self.endofrow)
-        self.addLine()
+        self.lines.append(txt + self.format.endofrow)
+        if last: self.addLine("belowFinalRow")
+        else: self.addLine("belowRow")
 
-    def addLine(self):
-        return self.lines.append('\\hline')
-
-    def addDoubleLine(self):
-        self.addLine()
-#        self.addLine()
+    def addLine(self, position):
+        return self.lines.append(self.format.getLine(position))
 
     def addTitlesRow(self, titles):
-        self.addLine()
-        res = ' & ' + " & ".join(' \\multicolumn{' + str(self.colsPerResult) + '}{|c|}{' + texEscapeText(title) + '}' for title in titles)
-        self.lines.append((('& ' + res) * self.ncol)[1:] + self.endofrow)
+        self.addLine("aboveTitles")
+        res = self.format.titleSubColumn(1, '') + ' & ' + " & ".join(self.format.titleSubColumn(self.colsPerResult, title) for title in titles)
+        self.lines.append((('& ' + res) * self.ncol)[1:] + self.format.endofrow)
+        self.addLine("belowTitles")
 
     def addHeaderRow(self):
-        self.addLine()
-        res = '& ' + self.paramText
+        self.addLine("aboveHeader")
+        res = '& ' + self.format.paramText
         for result in self.results:
             res += ' & ' + " & ".join(result.columns)
-        self.lines.append((res * self.ncol)[1:] + self.endofrow)
-        self.addDoubleLine()
+        self.lines.append((res * self.ncol)[1:] + self.format.endofrow)
+        self.addLine("belowHeader")
 
     def paramResultsTex(self, param):
         return " & ".join(result.paramResultTex(self, param) for result in self.results)
@@ -186,7 +231,7 @@ class resultTable():
 
 
     def endTable(self):
-        self.lines.append('\\end{tabular}')
+        self.lines.append(self.format.endTable())
 
     def tableTex(self):
         return "\n".join(self.lines)
