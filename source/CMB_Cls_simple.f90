@@ -526,26 +526,24 @@
 
     integer, intent(in) :: in
 
-
     if (Power_Name == 'power_tilt') then
+        P%InitPower%k_0_scalar = pivot_k
+        P%InitPower%k_0_tensor = pivot_k
 
-    P%InitPower%k_0_scalar = pivot_k
-    P%InitPower%k_0_tensor = pivot_k
-
-    P%InitPower%ScalarPowerAmp(in) = cl_norm*CMB%InitPower(As_index)
-    P%InitPower%rat(in) = CMB%InitPower(amp_ratio_index)
+        P%InitPower%ScalarPowerAmp(in) = cl_norm*CMB%InitPower(As_index)
+        P%InitPower%rat(in) = CMB%InitPower(amp_ratio_index)
 
 
-    P%InitPower%an(in) = CMB%InitPower(1)
-    P%InitPower%ant(in) = CMB%InitPower(2)
-    if (P%InitPower%rat(in)>0 .and. .not. compute_tensors) &
-    call MpiStop('computing r>0 but compute_tensors=F')
-    P%InitPower%n_run(in) = CMB%InitPower(3)
-    if (inflation_consistency) then
-        P%InitPower%ant(in) = - CMB%InitPower(amp_ratio_index)/8.
-        !note input n_T is ignored, so should be fixed (to anything)
-    end if
-    lens_recon_scale = CMB%InitPower(Aphiphi_index)
+        P%InitPower%an(in) = CMB%InitPower(1)
+        P%InitPower%ant(in) = CMB%InitPower(2)
+        if (P%InitPower%rat(in)>0 .and. .not. compute_tensors) &
+        call MpiStop('computing r>0 but compute_tensors=F')
+        P%InitPower%n_run(in) = CMB%InitPower(3)
+        if (inflation_consistency) then
+            P%InitPower%ant(in) = - CMB%InitPower(amp_ratio_index)/8.
+            !note input n_T is ignored, so should be fixed (to anything)
+        end if
+        lens_recon_scale = CMB%InitPower(Aphiphi_index)
     else
         stop 'params_CMB:Wrong initial power spectrum'
     end if
