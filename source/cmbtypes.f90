@@ -45,6 +45,7 @@
     logical :: bbn_consistency = .true. !JH
 
     integer :: num_massive_neutrinos = -1 !if >0, number of massive degenerate eigenstates
+    logical :: nonthermal_masive_neutrinos = .false.
     logical :: neutrino_param_mnu = .true. !parameter 6 is sum mnu (false for old behaviour of param(6) is fnu)
 
     real(mcp), parameter :: cl_norm = 1e-10_mcp !units for As

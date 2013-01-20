@@ -12,7 +12,8 @@
     use cmbtypes
     implicit none
 
-    real(mcp), parameter :: neutrino_mass_fac= 93.04
+    real(mcp), parameter :: neutrino_mass_fac= 94.082 !conversion factor for thermal with Neff=3 
+    !93.014 for 3.046
 
     Type, extends(CosmologyParameterization) :: ThetaParameterization
         real(mcp) :: H0_min = 40, H0_max = 100
@@ -212,11 +213,21 @@
         CMB%ombh2 = Params(1)
         CMB%tau = params(4) !tau, set zre later
         CMB%Omk = Params(5)
+        CMB%w = Params(7)
+        CMB%wa = Params(8)
+        CMB%nnu = Params(9) !3.046
         if (neutrino_param_mnu) then
             !Params(6) is now mnu, params(2) is omch2
             CMB%omnuh2=Params(6)/neutrino_mass_fac
-!            if (CMB%omnuh2 > 0 .and. (Params(9) < 3 .or. Params(9)>3.1)) &
-!            call MpiStop('params_CMB: change for non-standard nnu with massive nu')
+            if (CMB%omnuh2 >0 .and. CMB%nnu < 3.046_mcp) then
+                CMB%omnuh2 = CMB%omnuh2 * (CMB%nnu/num_massive_neutrinos)**0.75_mcp
+            else
+                if (nonthermal_masive_neutrinos) then
+                    CMB%omnuh2 = CMB%omnuh2 * ((CMB%nnu-3.046_mcp)/num_massive_neutrinos)**0.75_mcp
+                else
+                    CMB%omnuh2 = CMB%omnuh2 *(3.046/num_massive_neutrinos)**0.75_mcp
+                end if
+            end if 
             CMB%omch2 = Params(2)
             CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
             CMB%nufrac=CMB%omnuh2/CMB%omdmh2
@@ -226,9 +237,6 @@
             CMB%omnuh2 = CMB%omdmh2*CMB%nufrac
             CMB%omch2 = CMB%omdmh2 - CMB%omnuh2
         end if
-        CMB%w = Params(7)
-        CMB%wa = Params(8)
-        CMB%nnu = Params(9) !3.046
 
         if (bbn_consistency) then
             CMB%YHe = yp_bbn(CMB%ombh2,CMB%nnu  - 3.046)

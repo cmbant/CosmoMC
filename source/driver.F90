@@ -214,6 +214,7 @@
     inflation_consistency = Ini_read_Logical('inflation_consistency',.false.)
     bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
     num_massive_neutrinos = Ini_read_int('num_massive_neutrinos',-1)
+    nonthermal_masive_neutrinos = Ini_Read_Logical('nonthermal_masive_neutrinos',.false.)
 
     call SetDataLikelihoods(DefIni)
 

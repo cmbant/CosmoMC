@@ -35,7 +35,7 @@
         implicit none
         public
 
-        character(LEN=*), parameter :: version = 'Nov_12'
+        character(LEN=*), parameter :: version = 'Jan_13'
 
         integer :: FeedbackLevel = 0 !if >0 print out useful information about the model
 
@@ -101,8 +101,8 @@
          !Omega baryon, CDM, Lambda and massive neutrino
          real(dl)  :: H0,TCMB,yhe,Num_Nu_massless
          integer   :: Num_Nu_massive
-         logical   :: nearthermal_massive_neutrinos
-
+         logical   :: nearthermal_massive_neutrinos, nonthermal_masive_neutrinos
+         real(dl)  :: massive_neutrino_rho_factor
          logical :: Nu_mass_splittings
          integer   :: Nu_mass_eigenstates  !1 for degenerate masses
          real(dl)  :: Nu_mass_degeneracies(max_nu)
@@ -337,14 +337,19 @@
            !We assume all eigenstates affected the same way
            if (CP%nearthermal_massive_neutrinos) then
             !Keep Num_Nu_massive neutrinos as standard (quasi-)thermal, and add massless neutrinos to make up total n_eff
-               if (CP%Num_Nu_massless>=0.045_dl) then
-                 grhornomass=max(0._dl,grhor*(CP%Num_Nu_massless - CP%Num_Nu_massive*(3.046/3-1)))
-                 grhor = grhor * 3.046/3 !assume standard-like massive neutrinos with quasi-thermal distribution
+               if (CP%nonthermal_masive_neutrinos) stop 'can''t have nonthermal_masive_neutrino and nearthermal_massive_neutrinos'
+               if (CP%Num_Nu_massless>=default_nnu -3 - 0.001) then
+                 grhornomass=max(0._dl,grhor*(CP%Num_Nu_massless - CP%Num_Nu_massive*(default_nnu/3-1)))
+                 grhor = grhor * default_nnu/3 !assume standard-like massive neutrinos with quasi-thermal distribution
                else
-                 call GlobalError('can''t have Num_Nu_massless<0 with nearthermal_massive_neutrinos in CAMB',error_unsupported_params)
+                 call GlobalError('can''t have Num_Nu_massless<0 with nearthermal_massive_neutrinos in CAMB',&
+                   error_unsupported_params)
                end if
+           else if (CP%nonthermal_masive_neutrinos) then
+                grhornomass=grhor*CP%Num_Nu_massless
+                grhor=grhor*CP%massive_neutrino_rho_factor
            else
-               fractional_number  = CP%Num_Nu_massless + CP%Num_Nu_massive
+               fractional_number = CP%Num_Nu_massless + CP%Num_Nu_massive
                if (CP%Num_Nu_massless < 0) then
                    !reduce temperature of massive neutrinos to give correct total
                    if (CP%Num_Nu_massive<=0) &

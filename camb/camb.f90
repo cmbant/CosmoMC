@@ -294,9 +294,11 @@
 
             P%TCMB    = COBE_CMBTemp
             P%YHe     = 0.24
-            P%Num_Nu_massless =3.04
+            P%Num_Nu_massless =default_nnu
             P%Num_Nu_massive  =0
-            P%nearthermal_massive_neutrinos=.false.
+            P%nearthermal_massive_neutrinos = .false.
+            P%nonthermal_masive_neutrinos = .false.
+            P%massive_neutrino_rho_factor = 1
             P%Nu_mass_splittings = .false.
             P%Nu_mass_eigenstates = 0
            
