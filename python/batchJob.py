@@ -82,7 +82,7 @@ class jobItem:
             self.result_bestfit = ResultObjs.bestFit(bf_file, paramNameFile)
         if not bestfitonly:
             if os.path.exists(marge_root + '.margestats'):
-                self.result_converge = ResultObjs.convergeStats(marge_root + '.converge')
+                if not noconverge: self.result_converge = ResultObjs.convergeStats(marge_root + '.converge')
                 self.result_marge = ResultObjs.margeStats(marge_root + '.margestats', paramNameFile)
                 if not self.result_bestfit is None and bestfit: self.result_marge.addBestFit(self.result_bestfit)
             else: print 'missing: ' + marge_root
