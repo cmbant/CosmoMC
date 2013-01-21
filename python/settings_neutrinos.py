@@ -1,6 +1,6 @@
 # settings for grid of planck+BAO runs where importance sampling does not work well
 
-extparams = [['mnu', 'omegak'], ['w'], ['yhe'], ['r']]
+extparams = [['nnu', 'yhe'], ['nnu', 'mnu']]
 
 # dataset names
 planck = 'planck_CAMspec'
@@ -13,10 +13,10 @@ lensing = 'lensing'
 datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
 datasets.append([[planck, lowl, lowLike], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini']])
-datasets.append([[planck, lowl, lowLike, highL, BAO], ['CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini', 'BAO.ini']])
-datasets.append([[planck, lowl, lowLike, BAO], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'BAO.ini']])
+datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini']])
 
 importanceRuns = []
+importanceRuns.append([BAO, ['BAO.ini']])
 
 # priors and widths for parameters which are varied
 params = dict()
@@ -45,6 +45,5 @@ defaults = ['common_batch1.ini']
 importanceDefaults = ['importance_sampling.ini']
 
 covrenames = dict()
-covrenames['planck_CAMspec_lowl_lowLike'] = 'planck_CAMspec'
 covrenames['planck_CAMspec_lowl_lowLike_highL'] = 'planck_CAMspec_lowl_lowLike'
-covrenames['planck_CAMspec_lowl_lowLike_highL_BAO'] = 'planck_CAMspec_lowl_lowLike_BAO'
+covrenames['planck_CAMspec_lowl_lowLike_highL_BAO'] = 'planck_CAMspec_lowl_lowLike'
