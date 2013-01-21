@@ -96,7 +96,6 @@ class planckTableFormatter(tableFormatter):
     def __init__(self):
         tableFormatter.__init__(self)
         self.border = ''
-        self.hline = '\\hline'
         self.aboveTitles = r'\noalign{\vskip 3pt}\hline\noalign{\vskip 1.5pt}\hline\noalign{\vskip 5pt}'
         self.belowTitles = r'\noalign{\vskip 3pt}\hline'
         self.aboveHeader = ''

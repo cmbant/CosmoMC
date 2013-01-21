@@ -35,26 +35,10 @@ if not args.forpaper:
 def texEscapeText(string):
     return string.replace('_', '{\\textunderscore}')
 
-def loadJobItemResults(jobItem):
-    bf_file = jobItem.chainRoot + '.minimum'
-    marge_root = jobItem.distRoot
-    jobItem.result_converge = None
-    jobItem.result_marge = None
-    jobItem.result_bestfit = None
-    if os.path.exists(bf_file):
-        jobItem.result_bestfit = ResultObjs.bestFit(bf_file, args.paramNameFile)
-    if not args.bestfitonly:
-        if os.path.exists(marge_root + '.margestats'):
-            jobItem.result_converge = ResultObjs.convergeStats(marge_root + '.converge')
-            jobItem.result_marge = ResultObjs.margeStats(marge_root + '.margestats', args.paramNameFile)
-            if not jobItem.result_bestfit is None and args.bestfit: jobItem.result_marge.addBestFit(jobItem.result_bestfit)
-        else: print 'missing: ' + marge_root
-
-
 def paramResultTable(jobItem):
     tableLines = []
     caption = ''
-    loadJobItemResults(jobItem)
+    jobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=args.bestfit, bestfitonly=args.bestfitonly)
     bf = jobItem.result_bestfit
     if not bf is None:
         caption += ' Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % (jobItem.result_bestfit.logLike * 2)) + '$'
@@ -76,7 +60,7 @@ def paramResultTable(jobItem):
 
 def compareTable(jobItems, titles=None):
     for jobItem in jobItems:
-        loadJobItemResults(jobItem)
+        jobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=args.bestfit, bestfitonly=args.bestfitonly)
         print jobItem.name
     if titles is None: titles = [jobItem.datatag for jobItem in jobItems if jobItem.result_marge is not None]
     else: titles = titles.split(';')
