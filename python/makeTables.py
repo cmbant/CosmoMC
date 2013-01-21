@@ -8,6 +8,7 @@ Opts.parser.add_argument('--bestfit', action='store_true', default=True)
 
 # this is just for the latex labelsm set None to use those in chain .paramnames
 Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')
+Opts.parser.add_argument('--blockEndParams', default=None)
 Opts.parser.add_argument('--columns', type=int, nargs=1, default=3)
 Opts.parser.add_argument('--compare', nargs='+', default=None)
 Opts.parser.add_argument('--portrait', action='store_true')
@@ -17,6 +18,7 @@ Opts.parser.add_argument('--forpaper', action='store_true')
 
 (batch, args) = Opts.parseForBatch()
 
+if args.blockEndParams is not None: args.blockEndParams = args.blockEndParams.split(';')
 outfile = args.latex_filename
 if outfile.find('.') < 0: outfile += '.tex'
 
@@ -43,10 +45,10 @@ def paramResultTable(jobItem):
     if not bf is None:
         caption += ' Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % (jobItem.result_bestfit.logLike * 2)) + '$'
     if args.bestfitonly:
-        tableLines += ResultObjs.resultTable(args.columns, [bf]).lines
+        tableLines += ResultObjs.resultTable(args.columns, [bf], blockEndParams=args.blockEndParams).lines
     else:
         if not jobItem.result_converge is None: caption += '; R-1 =' + jobItem.result_converge.worstR()
-        if not jobItem.result_marge is None: tableLines += ResultObjs.resultTable(args.columns, [jobItem.result_marge]).lines
+        if not jobItem.result_marge is None: tableLines += ResultObjs.resultTable(args.columns, [jobItem.result_marge], blockEndParams=args.blockEndParams).lines
     tableLines.append('')
     if not not args.forpaper: tableLines.append(caption)
     if not bf is None and not args.forpaper:
@@ -65,7 +67,7 @@ def compareTable(jobItems, titles=None):
     if titles is None: titles = [jobItem.datatag for jobItem in jobItems if jobItem.result_marge is not None]
     else: titles = titles.split(';')
     return ResultObjs.resultTable(1, [jobItem.result_marge for jobItem in jobItems if jobItem.result_marge is not None],
-                                   titles=titles).lines
+                                   titles=titles, blockEndParams=args.blockEndParams).lines
 
 def filterBatchData(batch, datatags):
     items = []

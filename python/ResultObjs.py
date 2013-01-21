@@ -78,6 +78,9 @@ class tableFormatter():
         if position is not None and hasattr(self, position): return getattr(self, position)
         return self.hline
 
+    def belowTitleLine(self, colsPerParam):
+        return self.getLine("belowTitles")
+
     def startTable(self, ncol, colsPerResult, numResults):
         part = self.majorDividor + (" c" + self.minorDividor) * (colsPerResult - 1) + ' c'
         return '\\begin{tabular} {' + self.border + " l " + part * numResults + (self.colDividor + " l " + part * numResults) * (ncol - 1) + self.border + '}'
@@ -96,23 +99,38 @@ class planckTableFormatter(tableFormatter):
     def __init__(self):
         tableFormatter.__init__(self)
         self.border = ''
-        self.aboveTitles = r'\noalign{\vskip 3pt}\hline\noalign{\vskip 1.5pt}\hline\noalign{\vskip 5pt}'
-        self.belowTitles = r'\noalign{\vskip 3pt}\hline'
+        self.aboveTitles = r'\noalign{\vskip 3pt}' + self.hline + r'\noalign{\vskip 1.5pt}' + self.hline + r'\noalign{\vskip 5pt}'
+        self.belowTitles = r'\noalign{\vskip 3pt}' + self.hline
         self.aboveHeader = ''
-        self.belowHeader = r'\hline'
+        self.belowHeader = self.hline
         self.minorDividor = ''
         self.belowFinalRow = ''
 
     def titleSubColumn(self, colsPerResult, title):
         return ' \\multicolumn{' + str(colsPerResult) + '}{' + 'c' + '}{ ' + self.formatTitle(title) + '}'
 
+class planckNoLineTableFormatter(planckTableFormatter):
+
+    def __init__(self):
+        planckTableFormatter.__init__(self)
+        self.aboveHeader = ''
+#        self.belowHeader = r'\noalign{\vskip 5pt}'
+        self.minorDividor = ''
+        self.majorDividor = ''
+        self.belowFinalRow = self.hline
+        self.belowBlockRow = self.hline
+        self.colDividor = '|'
+        self.hline = ''
+
+    def belowTitleLine(self, colsPerParam):
+        return r'\noalign{\vskip 3pt}\cline{2-' + str(colsPerParam + 1) + r'}\noalign{\vskip 3pt}'
 
 class resultTable():
 
-    def __init__(self, ncol, results, tableParamNames=None, titles=None, formatter=None):
-# results is a list of margeStats or bestFit tables
+    def __init__(self, ncol, results, tableParamNames=None, titles=None, formatter=None, blockEndParams=None):
+# results is a margeStats or bestFit table
         self.lines = []
-        if formatter is None: self.format = planckTableFormatter()
+        if formatter is None: self.format = planckNoLineTableFormatter()
         else: self.format = formatter
         self.sig_figs = 4
         self.ncol = ncol
@@ -137,18 +155,20 @@ class resultTable():
         self.lines.append(self.format.startTable(ncol, self.colsPerResult, len(results)))
         if titles is not None: self.addTitlesRow(titles)
         self.addHeaderRow()
-        for row in rows[:-1]: self.addFullTableRow(row)
-        self.addFullTableRow(rows[-1], True)
+        for row in rows[:-1]:
+            self.addFullTableRow(row)
+            if ncol == 1 and blockEndParams is not None and row[0].name in blockEndParams: self.addLine("belowBlockRow")
+            else: self.addLine("belowRow")
+        self.addFullTableRow(rows[-1])
+        self.addLine("belowFinalRow")
         self.endTable()
 
 
-    def addFullTableRow(self, row, last=False):
+    def addFullTableRow(self, row):
         txt = " & ".join(self.paramLabelColumn(param) + self.paramResultsTex(param) for param in row)
         if not self.ncol == len(row):
             txt += ' & ' * ((1 + self.colsPerParam) * (self.ncol - len(row)))
         self.lines.append(txt + self.format.endofrow)
-        if last: self.addLine("belowFinalRow")
-        else: self.addLine("belowRow")
 
     def addLine(self, position):
         return self.lines.append(self.format.getLine(position))
@@ -157,7 +177,7 @@ class resultTable():
         self.addLine("aboveTitles")
         res = self.format.titleSubColumn(1, '') + ' & ' + " & ".join(self.format.titleSubColumn(self.colsPerResult, title) for title in titles)
         self.lines.append((('& ' + res) * self.ncol)[1:] + self.format.endofrow)
-        self.addLine("belowTitles")
+        self.lines.append(self.format.belowTitleLine(self.colsPerParam))
 
     def addHeaderRow(self):
         self.addLine("aboveHeader")
