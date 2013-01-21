@@ -72,7 +72,7 @@ class jobItem:
     def getDistExists(self):
         return os.path.exists(self.distRoot + '.margestats')
 
-    def loadJobItemResults(self, paramNameFile=None, bestfit=True, bestfitonly=False, noconverge=False):
+    def loadJobItemResults(self, paramNameFile=None, bestfit=True, bestfitonly=False, noconverge=False, silent=False):
         marge_root = self.distRoot
         self.result_converge = None
         self.result_marge = None
@@ -85,7 +85,7 @@ class jobItem:
                 if not noconverge: self.result_converge = ResultObjs.convergeStats(marge_root + '.converge')
                 self.result_marge = ResultObjs.margeStats(marge_root + '.margestats', paramNameFile)
                 if not self.result_bestfit is None and bestfit: self.result_marge.addBestFit(self.result_bestfit)
-            else: print 'missing: ' + marge_root
+            elif not silent: print 'missing: ' + marge_root
 
 
 class batchJob:
