@@ -1,6 +1,6 @@
 # settings for grid of planck+BAO runs where importance sampling does not work well
 
-extparams = [['mnu', 'omegak'], ['w'], ['yhe'], ['r']]
+extparams = [['mnu', 'omegak'], ['w'], ['yhe']]
 
 # dataset names
 planck = 'planck_CAMspec'

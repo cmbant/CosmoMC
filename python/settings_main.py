@@ -1,7 +1,7 @@
 # sample settings for a particular grid run
 
 # sets of parameters to vary in addition to baseline
-extparams = [[], ['omegak'], ['nrun', 'r'], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['alpha1']]
+extparams = [[], ['omegak'], ['mnu'], ['nrun', 'r'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['alpha1']]
 
 # dataset names
 planck = 'planck_CAMspec'
