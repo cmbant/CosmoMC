@@ -72,7 +72,7 @@ endif
 
 ifeq ($(COSMOHOST),darwin)
 ifeq ($(PLANCKLIKE),cliklike)
-CLIKPATH = /scratch/aml1005/clik_5.0/clik-5.0
+CLIKPATH = /scratch/aml1005/clik_6.0/clik-6.0b
 CLIKL = -L$(CLIKPATH)/lib -lclik_f90
 INCLUDE = $(IFLAG)$(CLIKPATH)/include
 endif

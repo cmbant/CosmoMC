@@ -1078,7 +1078,7 @@ contains
             call clik_readParams(LikeList, Ini)
         end if
 #else
-         if (Ini_Read_Logical('use_clik',.false.)) call DoAbort('compile with CLIK to use clik - see Makefile')
+         if (Ini_Read_Logical('use_clik',.false.)) call MpiStop('compile with CLIK to use clik - see Makefile')
 #endif
 
     end subroutine CMBDataLikelihoods_Add
