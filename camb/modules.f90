@@ -230,7 +230,7 @@
 
       Type TBackgroundOutputs
        real(dl), pointer :: z_outputs(:) => null()
-       real(dl), allocatable :: H(:), DA(:), D_v(:)
+       real(dl), allocatable :: H(:), DA(:), rs_by_D_v(:)
       end Type TBackgroundOutputs
       
       Type(TBackgroundOutputs), save :: BackgroundOutputs
@@ -2596,13 +2596,13 @@
       
            if (associated(BackgroundOutputs%z_outputs)) then
             if (allocated(BackgroundOutputs%H)) &
-              deallocate(BackgroundOutputs%H, BackgroundOutputs%DA, BackgroundOutputs%D_v)
+              deallocate(BackgroundOutputs%H, BackgroundOutputs%DA, BackgroundOutputs%rs_by_D_v)
             noutput = size(BackgroundOutputs%z_outputs)
-            allocate(BackgroundOutputs%H(noutput), BackgroundOutputs%DA(noutput), BackgroundOutputs%D_v(noutput))
+            allocate(BackgroundOutputs%H(noutput), BackgroundOutputs%DA(noutput), BackgroundOutputs%rs_by_D_v(noutput))
             do i=1,noutput
                    BackgroundOutputs%H(i) = HofZ(BackgroundOutputs%z_outputs(i))
                    BackgroundOutputs%DA(i) = AngularDiameterDistance(BackgroundOutputs%z_outputs(i))
-                   BackgroundOutputs%D_v(i) = BAO_D_v_from_DA_H(BackgroundOutputs%z_outputs(i), &
+                   BackgroundOutputs%rs_by_D_v(i) = rs/BAO_D_v_from_DA_H(BackgroundOutputs%z_outputs(i), &
                       BackgroundOutputs%DA(i),BackgroundOutputs%H(i))
              end do
            end if
