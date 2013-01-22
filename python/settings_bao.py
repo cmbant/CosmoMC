@@ -47,3 +47,4 @@ importanceDefaults = ['importance_sampling.ini']
 
 covrenames = dict()
 covrenames['planck_CAMspec_lowl_lowLike'] = 'planck_CAMspec'
+covrenames['w_wa_'] = 'w_'

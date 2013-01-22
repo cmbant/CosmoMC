@@ -67,6 +67,7 @@ covrenames['_lowl'] = '_lowl_lowLike'
 covrenames['_lowl_lowLike'] = ''
 covrenames['planck_CAMspec_'] = 'planck_CAMspec_lowl_'
 covrenames['_lensing'] = ''
+covrenames['_alpha1'] = ''
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
