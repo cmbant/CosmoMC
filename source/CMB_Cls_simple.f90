@@ -236,10 +236,7 @@
     if (DoCls) call SetPowersFromCAMB(Theory)
     if (DoPk) call SetPkFromCAMB(Theory,MT)
 
-    Theory%numderived = nthermo_derived
-    if (nthermo_derived > max_derived_parameters) &
-    call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
-    Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
+    call SetDerived(Theory)
 
     end if
     end subroutine GetTheoryForImportance
