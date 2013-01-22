@@ -54,7 +54,7 @@ class batchArgs():
                 if self.args.param is None:
                     return self.args.skip_param is None or not self.args.skip_param in jobItem.param_set
                 for pat in self.args.param:
-                    if pat in jobItem.param_set: return True
+                    if pat in jobItem.param_set: return self.args.skip_param is None or not self.args.skip_param in jobItem.param_set
                 return False
             else:
                 return jobItem.paramtag == self.args.paramtag
