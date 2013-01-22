@@ -1,0 +1,9 @@
+python python/makeGrid.py main settings_main
+python python/makeGrid.py main/bao settings_bao
+python python/makeGrid.py main/extparams settings_extparams
+python python/makeGrid.py main/neutrinos settings_neutrinos
+python python/addGridBatch.py main main/bao
+python python/addGridBatch.py main main/extparams 
+python python/addGridBatch.py main main/neutrinos
+
+python python/runbatch.py main --dryrun --noimportance

@@ -1,2 +1,7 @@
 
  ./waf configure --install_all_deps --lapack_mkl=${MKLROOT} --lapack_mkl_version=10.3 --no_bopix
+
+set in ~/.bashrc
+
+export PLANCKLIKE=cliklike
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/scratch/aml1005/clik_6.0/clik-6.0b/lib
