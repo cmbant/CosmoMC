@@ -536,6 +536,8 @@ weighting function or parameter mapping.</ul>
 <UL>
 <LI><B>non-public Planck-only changes (for now)</B><BR>
 <UL>
+<LI>Derived parameters now include r_s/D_v(0.57)
+<LI>Added <b>redo_like_name</b> for importance sampling when only one likelihood is changed
 <LI>Added <b>redo_no_new_data</b> option to redo only a specific likelihood when importance sampling
 <LI>Added support for massive neutrinos with varying n_eff (nnu), treating massive as nearly thermal and the rest as massless (for n>3.046), or reducing the temperature of the massive neutrinos for n<3.046.
 <LI>Output chains .txt files only include parameters that are actually varied (specified in .paramnames file; .ranges file specifies all parameters with ranges, including fixed parameters)

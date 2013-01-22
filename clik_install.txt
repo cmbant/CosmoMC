@@ -5,3 +5,6 @@ set in ~/.bashrc
 
 export PLANCKLIKE=cliklike
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/scratch/aml1005/clik_6.0/clik-6.0b/lib
+
+To make local datafiles for commander and lowLike see
+http://hfilfi.planck.fr/index.php/PSAndLikelihood/TopClik#intern
