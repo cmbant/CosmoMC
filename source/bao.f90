@@ -12,7 +12,7 @@
 
 module bao
 use cmbtypes
-use CAMB, only : AngularDiameterDistance, Hofz  !!angular diam distance also in Mpc no h units
+use CAMB, only : AngularDiameterDistance, Hofz, BAO_D_v  !!angular diam distance also in Mpc no h units
 use constants
 use Precision
 use likelihood
@@ -142,16 +142,6 @@ subroutine ReadBaoDataset(bset, gname)
 
 end subroutine ReadBaoDataset
 
-function D_v(z)
-    real(dl), intent(IN) :: z
-    real(dl)  D_v, Hz, ADD
-
-    ADD = AngularDiameterDistance(z)*(1.d0+z)
-    Hz = Hofz(z)
-    D_v = ((ADD)**2.d0*z/Hz)**(1.d0/3.d0)
-
-end function D_v
-
 function Acoustic(CMB,z)
     Type(CMBParams) CMB
     real(dl) Acoustic
@@ -162,7 +152,7 @@ function Acoustic(CMB,z)
     ckm = c/1e3_dl !JD c in km/s
     
     omh2 = omegam*h**2.d0
-    Acoustic = 100*D_v(z)*sqrt(omh2)/(ckm*z)
+    Acoustic = 100*BAO_D_v(z)*sqrt(omh2)/(ckm*z)
 end function Acoustic
 
 function SDSS_dvtors(CMB,z)
@@ -176,7 +166,7 @@ function SDSS_dvtors(CMB,z)
     
 !    rs = SDSS_CMBToBAOrs(CMB)
      rs = rsdrag_theory*rs_rescale !rescaled to match fitting formula for LCDM
-     SDSS_dvtors = D_v(z)/rs
+     SDSS_dvtors = BAO_D_v(z)/rs
 
 end function SDSS_dvtors
 
@@ -212,7 +202,7 @@ function BAO_LnLike(like, CMB, Theory, DataParams)
             end do
         else if(like%type_bao ==4)then
             do j=1, like%num_bao
-                BAO_theory(j) = D_v(like%bao_z(j))
+                BAO_theory(j) = BAO_D_v(like%bao_z(j))
             end do
         end if
 

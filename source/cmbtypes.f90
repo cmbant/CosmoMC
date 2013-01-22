@@ -17,6 +17,9 @@
     !Make these multiples of 50, should be 50 more than you need accurately
     integer, parameter :: lmax = 6500, lmax_tensor = 400 !note only lmax_computed_cl is actually calculated
 
+    !redshifts for output of BAO_dv background parameters 
+    real(mcp), target :: z_outputs(1) = [0.57_mcp]
+    
     !Parameters for calculating/storing the matter power spectrum
     !Note that by default everything is linear
 
@@ -50,7 +53,7 @@
 
     real(mcp), parameter :: cl_norm = 1e-10_mcp !units for As
 
-    integer, parameter :: max_derived_parameters = 20
+    integer, parameter :: max_derived_parameters = 30
 
     integer, parameter :: num_cls_tot = num_cls + num_cls_ext
     !Number of scalar-only cls

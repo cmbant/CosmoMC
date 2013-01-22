@@ -6,7 +6,7 @@
     CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Nonlinear_lens, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
     CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, &
     initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
-    HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived
+    HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs
     use Errors !CAMB
     use settings
     use IO
@@ -122,12 +122,18 @@
 
     subroutine SetDerived(Theory)
     Class(TheoryPredictions) Theory
+    integer noutputs, i
 
-    Theory%numderived = nthermo_derived
+    noutputs = size(BackgroundOutputs%z_outputs)*3
+    Theory%numderived = nthermo_derived + noutputs
     if (nthermo_derived > max_derived_parameters) &
     call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
     Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
-
+    do i=1, noutputs
+     Theory%derived_parameters(nthermo_derived+(i-1)*3+1) = BackgroundOutputs%D_v(i)
+     Theory%derived_parameters(nthermo_derived+(i-1)*3+2) = BackgroundOutputs%H(i)
+     Theory%derived_parameters(nthermo_derived+(i-1)*3+3) = BackgroundOutputs%DA(i)
+    end do
     end subroutine SetDerived
 
     subroutine GetNewTransferData(CMB,Info,Theory,error)
@@ -512,7 +518,8 @@
     P%InitialConditionVector = 0
     P%InitialConditionVector(initial_adiabatic) = -1
 
-
+    BackgroundOutputs%z_outputs => z_outputs
+    
     end subroutine InitCAMBParams
 
     !Mapping between array of power spectrum parameters and CAMB

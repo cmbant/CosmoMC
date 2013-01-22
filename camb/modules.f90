@@ -225,9 +225,17 @@
       integer, parameter :: derived_age=1, derived_zstar=2, derived_rstar=3, derived_thetastar=4,derived_zdrag=5, &
          derived_rdrag=6,derived_kD=7,derived_thetaD=8 , derived_zEQ =9, derived_thetaEQ=10 
       integer, parameter :: nthermo_derived = 10
+
       real(dl) ThermoDerivedParams(nthermo_derived)
 
-       contains
+      Type TBackgroundOutputs
+       real(dl), pointer :: z_outputs(:) => null()
+       real(dl), allocatable :: H(:), DA(:), D_v(:)
+      end Type TBackgroundOutputs
+      
+      Type(TBackgroundOutputs), save :: BackgroundOutputs
+      
+      contains
 
 
          subroutine CAMBParams_Set(P, error, DoReion)
@@ -350,14 +358,14 @@
                 grhor=grhor*CP%massive_neutrino_rho_factor
            else
                fractional_number = CP%Num_Nu_massless + CP%Num_Nu_massive
-               if (CP%Num_Nu_massless < 0) then
+               if (CP%Num_Nu_massless < 1e-6_dl) then
                    !reduce temperature of massive neutrinos to give correct total
                    if (CP%Num_Nu_massive<=0) &
                      call GlobalError('Num_Nu_massless < 0 with no massive neutrinos',error_unsupported_params)
                    grhor=grhor * fractional_number/CP%Num_Nu_massive
                    grhornomass=0
                else
-                   actual_massless = int(CP%Num_Nu_massless + 1e-6)
+                   actual_massless = int(CP%Num_Nu_massless + 1e-6_dl)
                    if (actual_massless + CP%Num_Nu_massive /= 0) then
                      grhor = grhor * fractional_number/(actual_massless + CP%Num_Nu_massive)
                      grhornomass=grhor*actual_massless
@@ -555,12 +563,21 @@
         end function DeltaPhysicalTimeGyr
 
         function AngularDiameterDistance(z)
+        !This is the physical (non-comoving) angular diameter distance in Mpc
           real(dl) AngularDiameterDistance
           real(dl), intent(in) :: z
 
           AngularDiameterDistance = CP%r/(1+z)*rofchi(ComovingRadialDistance(z) /CP%r)
 
         end function AngularDiameterDistance
+
+        function LuminosityDistance(z)
+          real(dl) LuminosityDistance
+          real(dl), intent(in) :: z
+
+          LuminosityDistance = AngularDiameterDistance(z)*(1+z)**2
+
+        end function LuminosityDistance
 
         function ComovingRadialDistance(z) 
           real(dl) ComovingRadialDistance
@@ -581,6 +598,22 @@
 
         end function Hofz
 
+        real(dl) function BAO_D_v_from_DA_H(z, DA, Hz)
+        real(dl), intent(in) :: z, DA, Hz
+        real(dl) ADD
+        
+         ADD = DA*(1.d0+z)
+         BAO_D_v_from_DA_H = ((ADD)**2.d0*z/Hz)**(1.d0/3.d0)
+         
+        end function BAO_D_v_from_DA_H
+        
+        real(dl) function BAO_D_v(z)
+        real(dl), intent(IN) :: z
+
+        BAO_D_v = BAO_D_v_from_DA_H(z,AngularDiameterDistance(z), Hofz(z))
+          
+        end function BAO_D_v
+        
        function dsound_da_exact(a)
           implicit none
           real(dl) dsound_da_exact,dtauda,a,R,cs
@@ -2298,6 +2331,7 @@
         real(dl) a_verydom
         real(dl) awin_lens1,awin_lens2,dwing_lens, rs, DA
         real(dl) rombint
+        integer noutput
         external rombint
 
         call Recombination_Init(CP%Recomb, CP%omegac, CP%omegab,CP%Omegan, CP%Omegav, &
@@ -2559,6 +2593,19 @@
            !         ThermoDerivedParams( derived_mnu ) + CP%nu_mass_degeneracies(nu_i)*1.68e-4*nu_masses(nu_i)
            !         end do
            ! end if
+      
+           if (associated(BackgroundOutputs%z_outputs)) then
+            if (allocated(BackgroundOutputs%H)) &
+              deallocate(BackgroundOutputs%H, BackgroundOutputs%DA, BackgroundOutputs%D_v)
+            noutput = size(BackgroundOutputs%z_outputs)
+            allocate(BackgroundOutputs%H(noutput), BackgroundOutputs%DA(noutput), BackgroundOutputs%D_v(noutput))
+            do i=1,noutput
+                   BackgroundOutputs%H(i) = HofZ(BackgroundOutputs%z_outputs(i))
+                   BackgroundOutputs%DA(i) = AngularDiameterDistance(BackgroundOutputs%z_outputs(i))
+                   BackgroundOutputs%D_v(i) = BAO_D_v_from_DA_H(BackgroundOutputs%z_outputs(i), &
+                      BackgroundOutputs%DA(i),BackgroundOutputs%H(i))
+             end do
+           end if
 
             if (FeedbackLevel > 0) then
 
