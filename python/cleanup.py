@@ -9,7 +9,7 @@ Opts.parser.add_argument('--confirm', action='store_true')
 (batch, args) = Opts.parseForBatch()
 
 
-args.ext = ['.' + ext for ext in args.ext] + ['._*' + ext for ext in args.ext]
+args.ext = ['.' + ext for ext in args.ext] + ['_*.' + ext for ext in args.ext]
 for jobItem in Opts.filteredBatchItems():
     if args.converge == 0 or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
         dirs = [jobItem.chainPath]
