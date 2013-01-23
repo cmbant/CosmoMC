@@ -225,7 +225,7 @@
                 if (nonthermal_masive_neutrinos) then
                     CMB%omnuh2 = CMB%omnuh2 * ((CMB%nnu-3.046_mcp)/num_massive_neutrinos)**0.75_mcp
                 else
-                    CMB%omnuh2 = CMB%omnuh2 *(3.046/num_massive_neutrinos)**0.75_mcp
+                    CMB%omnuh2 = CMB%omnuh2 *(3.046_mcp/3)**0.75_mcp
                 end if
             end if 
             CMB%omch2 = Params(2)
