@@ -79,7 +79,7 @@ endif
 WMAP = /scratch/aml1005/wmap_likelihood_v5
 cfitsio = /usr/local/Cluster-Apps/cfitsio/intel/3.300
 FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
-#FFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -DMPI
+#FFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -DMPI -fpe0
 endif
 
 

@@ -215,7 +215,6 @@
     Threadnum =num_threads
     call CMBToCAMB(CMB, P)
     P%OnlyTransfers = .false.
-    call SetCAMBInitPower(P,CMB,1)
 
     if (DoPk) then
         P%WantTransfer = .true.
