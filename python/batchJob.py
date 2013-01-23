@@ -69,6 +69,10 @@ class jobItem:
         fname = self.chainRoot + '_1.txt'
         return os.path.exists(fname) and os.path.getsize(fname) > 0
 
+    def chainMinimumExists(self):
+        fname = self.chainRoot + '.minimum'
+        return os.path.exists(fname) and os.path.getsize(fname) > 0
+
     def getDistExists(self):
         return os.path.exists(self.distRoot + '.margestats')
 

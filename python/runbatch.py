@@ -15,9 +15,7 @@ Opts.parser.add_argument('--importance_minimize', action='store_true')
 variant = ''
 if args.importance_minimize:
     variant = '_minimize'
-    if args.importance is None:
-        print 'can only minimize for importance runs'
-        sys.exit()
+    if args.importance is None: args.importance = []
 
 def submitJob(ini):
         command = 'perl ' + args.script + ' ' + ini + ' ' + str(args.nodes)
@@ -26,5 +24,5 @@ def submitJob(ini):
 
 
 for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
-        if not args.notexist or not jobItem.chainExists():
+        if not args.notexist or args.importance_minimize and not jobItem.chainMinimumExists() or not args.importance_minimize and not jobItem.chainExists():
             submitJob(jobItem.iniFile(variant))
