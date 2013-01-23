@@ -16,6 +16,7 @@ variant = ''
 if args.importance_minimize:
     variant = '_minimize'
     if args.importance is None: args.importance = []
+    args.nodes = 0
 
 def submitJob(ini):
         command = 'perl ' + args.script + ' ' + ini + ' ' + str(args.nodes)

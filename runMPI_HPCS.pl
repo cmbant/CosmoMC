@@ -23,7 +23,7 @@ if ($numnodes == 0){
 $chainspn=1;
 $omp=16;
 $numnodes=1;
-$walltime='03:00:00';
+$walltime='04:00:00';
 } else
 {
 $chainspn = 4;  # number of chains per node
