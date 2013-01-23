@@ -124,8 +124,8 @@
     Class(TheoryPredictions) Theory
     integer noutputs, i
 
-    noutputs = size(BackgroundOutputs%z_outputs)*3
-    Theory%numderived = nthermo_derived + noutputs
+    noutputs = size(BackgroundOutputs%z_outputs)
+    Theory%numderived = nthermo_derived + noutputs*3
     if (nthermo_derived > max_derived_parameters) &
     call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
     Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
