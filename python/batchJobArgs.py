@@ -6,9 +6,10 @@ except:
 
 class batchArgs():
 
-        def __init__(self, desc='', importance=True, noBatchPath=False, notExist=False):
+        def __init__(self, desc='', importance=True, noBatchPath=False, notExist=False, converge=False):
             self.parser = argparse.ArgumentParser(description=desc)
             if not noBatchPath: self.parser.add_argument('batchPath')
+            if converge: self.parser.add_argument('--converge', type=float, default=0)
             self.importanceParameter = importance;
             self.notExist = notExist
 

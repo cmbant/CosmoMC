@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os, batchJobArgs, sys
 
-Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', notExist=True)
+Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', notExist=True, converge=True)
 Opts.parser.add_argument('--nodes', type=int, default=2)
 Opts.parser.add_argument('--script', default='runMPI_HPCS.pl')
 
@@ -26,4 +26,4 @@ def submitJob(ini):
 
 for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
         if not args.notexist or args.importance_minimize and not jobItem.chainMinimumExists() or not args.importance_minimize and not jobItem.chainExists():
-            submitJob(jobItem.iniFile(variant))
+            if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge): submitJob(jobItem.iniFile(variant))

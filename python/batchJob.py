@@ -31,6 +31,7 @@ class jobItem:
         self.distRoot = self.distPath + self.name
         self.isImportanceJob = False
         self.importanceItems = []
+        self.result_converge = None
 
     def iniFile(self, variant=''):
         if not self.isImportanceJob:
@@ -75,6 +76,14 @@ class jobItem:
 
     def getDistExists(self):
         return os.path.exists(self.distRoot + '.margestats')
+
+    def hasConvergeBetterThan(self, R, returnNotExist=False):
+        if self.result_converge is None:
+            fname = self.distRoot + '.converge'
+            if not os.path.exists(fname): return returnNotExist
+            self.result_converge = ResultObjs.convergeStats(fname)
+        return float(self.result_converge.worstR()) <= R
+
 
     def loadJobItemResults(self, paramNameFile=None, bestfit=True, bestfitonly=False, noconverge=False, silent=False):
         marge_root = self.distRoot
