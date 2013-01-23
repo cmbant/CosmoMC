@@ -84,6 +84,8 @@
 #else
     if (CMB%fdm/=0._mcp) call MpiStop('Compile with CosmoRec to use fdm') 
 #endif       
+    call SetCAMBInitPower(P,CMB,1)
+
     end subroutine CMBToCAMB
 
 
@@ -576,7 +578,7 @@
     call MpiStop('highL_theory_cl_template must be in muK^2')
 
     if (L<lmax) call MpiStop('highL_theory_cl_template does not go to lmax')
-    if (num_cls_ext>0 .and. MpiRank==9) &
+    if (num_cls_ext>0 .and. MpiRank==0) &
     write(*,*) 'WARNING: zero padding ext cls in LoadFiducialHighLTemplate'
 
     end subroutine LoadFiducialHighLTemplate
