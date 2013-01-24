@@ -12,7 +12,7 @@
     use cmbtypes
     implicit none
 
-    real(mcp), parameter :: neutrino_mass_fac= 94.082 !conversion factor for thermal with Neff=3 
+    real(mcp), parameter :: neutrino_mass_fac= 94.082 !conversion factor for thermal with Neff=3 TCMB-2.7255
     !93.014 for 3.046
 
     Type, extends(CosmologyParameterization) :: ThetaParameterization
@@ -62,7 +62,7 @@
     Type(TIniFile) :: Ini
     Type(TParamNames) :: Names
     character(LEN=Ini_max_string_len) prior
-    call SetTheoryParameterNumbers(14,6)
+    call SetTheoryParameterNumbers(15,6)
 
     this%H0_min = Ini_Read_Double_File(Ini, 'H0_min',this%H0_min)
     this%H0_max = Ini_Read_Double_File(Ini, 'H0_max',this%H0_max)
@@ -167,7 +167,7 @@
 
     select type (Theory)
     class is (TheoryPredictions)
-        num_derived = 12 +  Theory%numderived
+        num_derived = 13 +  Theory%numderived
         allocate(Derived%P(num_derived))
 
         call this%ParamArrayToTheoryParams(P,CMB)
@@ -184,8 +184,8 @@
         derived%P(10)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
         derived%P(11)= CMB%Yhe !value actually used, may be set from bbn consistency
         derived%P(12)= derived%P(8)*exp(-2*CMB%tau)  !A e^{-2 tau}
-
-        derived%P(13:num_derived) = Theory%derived_parameters(1: Theory%numderived)
+        derived%P(13)= CMB%omnuh2_sterile*neutrino_mass_fac/(CMB%nnu-3.046_mcp+1d-8)**0.75_mcp
+        derived%P(14:num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
     end function TP_CalcDerivedParams
@@ -205,7 +205,7 @@
     real(mcp) Params(num_Params)
     logical, intent(in) :: firsttime
     Type(CMBParams) CMB
-    real(mcp) h2,H0
+    real(mcp) h2,H0, heat_factor
 
     CMB%H0=H0
     if (firsttime) then
@@ -216,18 +216,17 @@
         CMB%w = Params(7)
         CMB%wa = Params(8)
         CMB%nnu = Params(9) !3.046
+        CMB%omnuh2_sterile = Params(15)
         if (neutrino_param_mnu) then
             !Params(6) is now mnu, params(2) is omch2
+            heat_factor=(3.046_mcp/3)**0.75_mcp
             CMB%omnuh2=Params(6)/neutrino_mass_fac
             if (CMB%omnuh2 >0 .and. CMB%nnu < 3.046_mcp) then
                 CMB%omnuh2 = CMB%omnuh2 * (CMB%nnu/num_massive_neutrinos)**0.75_mcp
             else
-                if (nonthermal_masive_neutrinos) then
-                    CMB%omnuh2 = CMB%omnuh2 * ((CMB%nnu-3.046_mcp)/num_massive_neutrinos)**0.75_mcp
-                else
-                    CMB%omnuh2 = CMB%omnuh2 *(3.046_mcp/3)**0.75_mcp
-                end if
-            end if 
+                CMB%omnuh2 = CMB%omnuh2 *heat_factor
+            end if
+            CMB%omnuh2 = CMB%omnuh2 + CMB%omnuh2_sterile
             CMB%omch2 = Params(2)
             CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
             CMB%nufrac=CMB%omnuh2/CMB%omdmh2

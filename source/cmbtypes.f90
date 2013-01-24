@@ -47,8 +47,7 @@
 
     logical :: bbn_consistency = .true. !JH
 
-    integer :: num_massive_neutrinos = -1 !if >0, number of massive degenerate eigenstates
-    logical :: nonthermal_masive_neutrinos = .false.
+    integer :: num_massive_neutrinos = 3 !if >0, number of massive degenerate eigenstates
     logical :: neutrino_param_mnu = .true. !parameter 6 is sum mnu (false for old behaviour of param(6) is fnu)
 
     real(mcp), parameter :: cl_norm = 1e-10_mcp !units for As
@@ -84,6 +83,7 @@
         real(mcp) h, H0, tau
         real(mcp) w, wa
         real(mcp) YHe, nnu, iso_cdm_correlated, ALens, fdm !fdm is dark matter annihilation, eg,. 0910.3663
+        real(mcp) :: omnuh2_sterile = 0._mcp  !note omnhu2 is the sum of this + standard neutrinos
         real(mcp) reserved(5)
     end Type CMBParams
 

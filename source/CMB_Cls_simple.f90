@@ -41,6 +41,8 @@
     use constants, only : default_nnu
     type(CMBParams) CMB
     type(CAMBParams)  P
+    real(dl) neff_massive_standard
+
     P = CAMBP
     P%omegab = CMB%omb
     P%omegan = CMB%omnu
@@ -54,27 +56,37 @@
     ALens = CMB%ALens
     P%InitialConditionVector(initial_iso_CDM) = & 
     sign(sqrt(abs(CMB%iso_cdm_correlated) /(1-abs(CMB%iso_cdm_correlated))),CMB%iso_cdm_correlated)
-
-    !This is some quick adhockery, not incredibly well tested
-    if (num_massive_neutrinos == -1) then
-        P%Num_Nu_Massive = int(CMB%nnu)
-        P%nearthermal_massive_neutrinos =.false.
-        P%nonthermal_masive_neutrinos =.false.
-        P%Num_Nu_Massless = CMB%nnu - P%Num_Nu_Massive
-    else 
-        P%nonthermal_masive_neutrinos = nonthermal_masive_neutrinos
-        P%Num_Nu_Massive = num_massive_neutrinos
-        if (nonthermal_masive_neutrinos) then
-            if (CMB%nnu < default_nnu+ 1e-6) then
-                call MpiStop('nonthermal_masive_neutrinos assumed neff > 3.046')
+    P%Num_Nu_Massive = 0
+    P%Num_Nu_Massless = CMB%nnu
+    if (CMB%omnuh2>0) then
+        P%Nu_mass_splittings = .true.
+        P%Nu_mass_eigenstates=0
+        if (CMB%omnuh2>CMB%omnuh2_sterile) then
+            neff_massive_standard = num_massive_neutrinos*default_nnu/3
+            P%Num_Nu_Massive = num_massive_neutrinos
+            P%Nu_mass_eigenstates=P%Nu_mass_eigenstates+1
+            if (CMB%nnu > neff_massive_standard) then
+                P%Num_Nu_Massless = CMB%nnu - neff_massive_standard
             else
-                P%Num_Nu_Massless = default_nnu
-                P%massive_neutrino_rho_factor =  max(0._mcp,(CMB%nnu - default_nnu)/num_massive_neutrinos)
+                P%Num_Nu_Massless = 0
+                neff_massive_standard=CMB%nnu
             end if
-        else
-            P%nearthermal_massive_neutrinos = CMB%nnu - num_massive_neutrinos > default_nnu-3
-            P%Num_Nu_Massless = CMB%nnu - P%Num_Nu_Massive
+            P%Nu_mass_degeneracies(P%Nu_mass_eigenstates) = neff_massive_standard
+            P%Nu_mass_fractions(P%Nu_mass_eigenstates) = (CMB%omnuh2-CMB%omnuh2_sterile)/CMB%omnuh2
+        else 
+            neff_massive_standard=0
         end if
+        if (CMB%omnuh2_sterile>0) then
+            if (CMB%nnu<default_nnu) call MpiStop('nnu < 3.046 with massive sterile')
+            P%Num_Nu_Massless = default_nnu - neff_massive_standard
+            P%Num_Nu_Massive=P%Num_Nu_Massive+1
+            P%Nu_mass_eigenstates=P%Nu_mass_eigenstates+1
+            P%Nu_mass_degeneracies(P%Nu_mass_eigenstates) = CMB%nnu - default_nnu
+            P%Nu_mass_fractions(P%Nu_mass_eigenstates) = CMB%omnuh2_sterile/CMB%omnuh2
+        end if
+        P%Num_Nu_Massive = max(1,nint(sum(P%Nu_mass_degeneracies(1:P%Nu_mass_eigenstates))))
+    else
+        P%Nu_mass_splittings = .false.
     end if
 
     P%YHe = CMB%YHe
@@ -83,7 +95,7 @@
     P%Recomb%fdm = CMB%fdm * 1e-23_mcp
 #else
     if (CMB%fdm/=0._mcp) call MpiStop('Compile with CosmoRec to use fdm') 
-#endif       
+#endif
     call SetCAMBInitPower(P,CMB,1)
 
     end subroutine CMBToCAMB
@@ -132,9 +144,9 @@
     call MpiStop('nthermo_derived > max_derived_parameters: increase in cmbtypes.f90')
     Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
     do i=1, noutputs
-     Theory%derived_parameters(nthermo_derived+(i-1)*3+1) = BackgroundOutputs%rs_by_D_v(i)
-     Theory%derived_parameters(nthermo_derived+(i-1)*3+2) = BackgroundOutputs%H(i)
-     Theory%derived_parameters(nthermo_derived+(i-1)*3+3) = BackgroundOutputs%DA(i)
+        Theory%derived_parameters(nthermo_derived+(i-1)*3+1) = BackgroundOutputs%rs_by_D_v(i)
+        Theory%derived_parameters(nthermo_derived+(i-1)*3+2) = BackgroundOutputs%H(i)
+        Theory%derived_parameters(nthermo_derived+(i-1)*3+3) = BackgroundOutputs%DA(i)
     end do
     end subroutine SetDerived
 
@@ -517,7 +529,7 @@
     P%InitialConditionVector(initial_adiabatic) = -1
 
     BackgroundOutputs%z_outputs => z_outputs
-    
+
     end subroutine InitCAMBParams
 
     !Mapping between array of power spectrum parameters and CAMB
