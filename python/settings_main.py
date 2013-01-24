@@ -57,7 +57,7 @@ skip.append('WMAP_lensing')
 # if covmats are unreliable, so start learning ASAP
 newCovmat = True
 
-start_at_bestfit = True
+start_at_bestfit = False
 
 # try to match run to exisitng covmat
 covrenames = dict()

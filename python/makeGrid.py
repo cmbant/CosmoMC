@@ -1,8 +1,8 @@
 import os, sys, batchJob, iniFile
 
 
-if len(sys.argv) < 3:
-    print 'Usage: python/makeGrid.py new_directory_for_outputs grid_settings_python_file [action]'
+if len(sys.argv) < 2:
+    print 'Usage: python/makeGrid.py new_directory_for_outputs grid_settings_python_file'
     print 'e.g. python/makeGrid.py /scratch/aml1005/planckgrids/testchain settings_testchain'
     sys.exit()
 
@@ -11,9 +11,6 @@ batchPath = os.path.abspath(sys.argv[1]) + os.sep
 
 # 0: chains, 1: importance sampling, 2: best-fit, 3: best-fit and Hessian
 cosmomcAction = 0
-if len(sys.argv) > 3: cosmomcAction = int(sys.argv[3])
-
-if cosmomcAction == 1: print 'actually you don''t need to do this, use action=0 and configure importanceRuns'
 
 batch = batchJob.batchJob(batchPath)
 
@@ -65,9 +62,13 @@ for jobItem in batch.items(wantSubItems=False):
                 ini.params['MPI_Max_R_ProposeUpdate'] = 20
 
         ini.params['start_at_bestfit'] = settings.start_at_bestfit
-
         ini.params['action'] = cosmomcAction
         ini.saveFile(jobItem.iniFile())
+        if not settings.start_at_bestfit:
+            ini.params['action'] = 2
+            variant = '_minimize'
+            ini.saveFile(jobItem.iniFile(variant))
+
 
 # add ini files for importance sampling runs
         for imp in jobItem.importanceJobs():
@@ -93,10 +94,12 @@ for jobItem in batch.items(wantSubItems=False):
 
 
 comment = 'Done... to run do: python python/runbatch.py ' + batchPath + ' --noimportance'
-if cosmomcAction == 3 or cosmomcAction == 2: comment += ' --nodes 0'
 print comment
+if not settings.start_at_bestfit:
+    comment = '....... for best fits: python python/runbatch.py ' + batchPath + ' --minimize'
+    print comment
+print ''
 comment = 'for importance sampled: python python/runbatch.py ' + batchPath + ' --importance'
-if cosmomcAction == 3 or cosmomcAction == 2: comment += ' --nodes 0'
 print comment
-comment = 'for best-fit for importance sampled: python python/runbatch.py ' + batchPath + ' --importance_minimize --importance --nodes 0'
+comment = 'for best-fit for importance sampled: python python/runbatch.py ' + batchPath + ' --importance_minimize'
 print comment

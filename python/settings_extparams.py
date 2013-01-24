@@ -37,7 +37,7 @@ skip = []
 # if covmats are unreliable, so start learning ASAP
 newCovmat = True
 
-start_at_bestfit = True
+start_at_bestfit = False
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']

@@ -1,7 +1,7 @@
 import os, batchJobArgs, ResultObjs
 
 
-Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True)
+Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True, converge=True)
 Opts.parser.add_argument('latex_filename')
 Opts.parser.add_argument('--bestfitonly', action='store_true')
 Opts.parser.add_argument('--bestfit', action='store_true', default=True)
@@ -90,10 +90,11 @@ for paramtag, parambatch in items:
         else: print 'no matches for compare'
     else:
         for jobItem in parambatch:
-            if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
-            tableLines = paramResultTable(jobItem)
-            ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
-            lines += tableLines
+            if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
+                if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
+                tableLines = paramResultTable(jobItem)
+                ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
+                lines += tableLines
     if not args.forpaper: lines.append('\\newpage')
 
 if not args.forpaper: lines.append('\\end{document}')
