@@ -12,6 +12,7 @@ highL = 'highL'
 WMAP = 'WMAP'
 BAO = 'BAO'
 HST = 'HST'
+SNLS = 'SNLS'
 
 datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
@@ -33,6 +34,8 @@ importanceRuns = []
 importanceRuns.append([lensing, ['lensing.ini'], importanceFilterPlanck()])
 importanceRuns.append([BAO, ['BAO.ini']])
 importanceRuns.append([HST, ['HST.ini']])
+importanceRuns.append([SNLS, ['SNLS.ini']])
+
 # importanceRuns.append(['acc', ['accuracy.ini'], importanceFilterAcc()])
 # importanceRuns.append(['v61N', ['v61N.ini'], importanceFilterAcc()])
 # importanceRuns.append(['lensing_acc', ['lensing_acc.ini'], importanceFilterAcc()])
@@ -64,8 +67,7 @@ covrenames = dict()
 covrenames['_BAO'] = '_post_BAO'
 covrenames['_HST'] = '_post_HST'
 covrenames['_lowl'] = '_lowl_lowLike'
-covrenames['_lowl_lowLike'] = ''
-covrenames['planck_CAMspec_'] = 'planck_CAMspec_lowl_'
+covrenames['_lowl_lowLike_highL'] = '_lowl_lowLike'
 covrenames['_lensing'] = ''
 covrenames['_alpha1'] = ''
 covrenames['_r'] = ''

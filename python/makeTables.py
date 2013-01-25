@@ -50,7 +50,7 @@ def paramResultTable(jobItem):
         if not jobItem.result_converge is None: caption += '; R-1 =' + jobItem.result_converge.worstR()
         if not jobItem.result_marge is None: tableLines += ResultObjs.resultTable(args.columns, [jobItem.result_marge], blockEndParams=args.blockEndParams).lines
     tableLines.append('')
-    if not not args.forpaper: tableLines.append(caption)
+    if not args.forpaper: tableLines.append(caption)
     if not bf is None and not args.forpaper:
         tableLines.append('')
         tableLines.append('$\chi^2_{\\rm eff}$:')

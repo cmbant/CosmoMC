@@ -46,6 +46,6 @@ defaults = ['common_batch1.ini']
 importanceDefaults = ['importance_sampling.ini']
 
 covrenames = dict()
-covrenames['planck_CAMspec_lowl_lowLike'] = 'planck_CAMspec'
+covrenames['lowl_lowLike_highL'] = 'lowl_lowLike'
+covrenames['lowl_BAO'] = 'lowl_lowLike_BAO'
 covrenames['w_wa_'] = 'w_'
-covrenames['w_wa_'] = ''
