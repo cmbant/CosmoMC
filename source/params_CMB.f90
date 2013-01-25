@@ -184,7 +184,7 @@
         derived%P(10)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
         derived%P(11)= CMB%Yhe !value actually used, may be set from bbn consistency
         derived%P(12)= derived%P(8)*exp(-2*CMB%tau)  !A e^{-2 tau}
-        derived%P(13)= CMB%omnuh2_sterile*neutrino_mass_fac/(CMB%nnu-3.046_mcp+1d-8)**0.75_mcp
+        derived%P(13)= CMB%omnuh2_sterile*neutrino_mass_fac 
         derived%P(14:num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
@@ -205,7 +205,7 @@
     real(mcp) Params(num_Params)
     logical, intent(in) :: firsttime
     Type(CMBParams) CMB
-    real(mcp) h2,H0, heat_factor
+    real(mcp) h2,H0
 
     CMB%H0=H0
     if (firsttime) then
@@ -219,13 +219,9 @@
         CMB%omnuh2_sterile = Params(15)
         if (neutrino_param_mnu) then
             !Params(6) is now mnu, params(2) is omch2
-            heat_factor=(3.046_mcp/3)**0.75_mcp
-            CMB%omnuh2=Params(6)/neutrino_mass_fac
-            if (CMB%omnuh2 >0 .and. CMB%nnu < 3.046_mcp) then
-                CMB%omnuh2 = CMB%omnuh2 * (CMB%nnu/num_massive_neutrinos)**0.75_mcp
-            else
-                CMB%omnuh2 = CMB%omnuh2 *heat_factor
-            end if
+            CMB%omnuh2=Params(6)/neutrino_mass_fac*(default_nnu/3)
+             !we are using interpretation where there are degeneracy_factor neutrinos, eacb exactly thermal
+             !So internally 3.046 or 3.046/3 massive neutrnos. But mnu is the physical mass sum.
             CMB%omnuh2 = CMB%omnuh2 + CMB%omnuh2_sterile
             CMB%omch2 = Params(2)
             CMB%omdmh2 = CMB%omch2+ CMB%omnuh2

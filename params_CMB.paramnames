@@ -31,7 +31,7 @@ omegamh2*     \Omega_m h^2 #includes massive neutrinos
 omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
 yheused*      Y_{He} #MCMC value or from bbn consistency
 clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
-mnus*         m_nu^s #mass of sterile massive neutrino
+mnus*         N_{eff}^s m_\nu^s 
 age*          Age/Gyr
 zstar*        z_*
 rstar*        r_*

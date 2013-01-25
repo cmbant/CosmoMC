@@ -19,7 +19,7 @@
 
     !redshifts for output of BAO_dv background parameters 
     real(mcp), target :: z_outputs(1) = [0.57_mcp]
-    
+
     !Parameters for calculating/storing the matter power spectrum
     !Note that by default everything is linear
 

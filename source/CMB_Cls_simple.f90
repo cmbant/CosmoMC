@@ -76,7 +76,7 @@
         else 
             neff_massive_standard=0
         end if
-        if (CMB%omnuh2_sterile>0) then
+        if (CMB%omnuh2_sterile>1e-5) then
             if (CMB%nnu<default_nnu) call MpiStop('nnu < 3.046 with massive sterile')
             P%Num_Nu_Massless = default_nnu - neff_massive_standard
             P%Num_Nu_Massive=P%Num_Nu_Massive+1
