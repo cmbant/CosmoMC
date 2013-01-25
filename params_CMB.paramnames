@@ -3,7 +3,8 @@ omegach2      \Omega_c h^2	#physical CDM matter density
 theta         \theta		#100 times the ratio of the angular diameter distance to the LSS sound horizon (approx)
 tau           \tau
 omegak        \Omega_K
-mnu           \Sigma m_\nu    #sum of masses of standard neutrinos
+mnu           \Sigma m_\nu    #sum of physical masses of standard neutrinos
+meffsterile   m_{\nu,s}^{eff}  #effective mass of sterile neutrino, \approx omeganuh2*94
 w             w			#equation of state parameter for scalar field dark energy today
 wa            w_a       #w_a variation
 nnu           N_{eff}   #effective number of neutrinos (only clearly defined for massless)
@@ -12,7 +13,6 @@ alpha1        \alpha_{-1} #correlated CDM isocurvature
 deltazrei     \Delta_{z,re} #width of reionization
 Alens         A_{L}     #lensing potential scaled by sqrt(A_lens)
 fdm           \epsilon_0 f_d    #CosmoRec dark matter annihilation parameter, 0910.3663
-omegansh2     \Omega_\nu^s h^2  #physical density in a massive sterile neutrino		
 ns            n_s	    #beware that pivot scale can change in .ini file
 nt            n_t
 nrun          n_{run}
@@ -31,7 +31,7 @@ omegamh2*     \Omega_m h^2 #includes massive neutrinos
 omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
 yheused*      Y_{He} #MCMC value or from bbn consistency
 clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
-mnus*         N_{eff}^s m_\nu^s 
+omeganuh2*    \Omega_\nu h^2 
 age*          Age/Gyr
 zstar*        z_*
 rstar*        r_*

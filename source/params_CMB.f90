@@ -184,7 +184,7 @@
         derived%P(10)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
         derived%P(11)= CMB%Yhe !value actually used, may be set from bbn consistency
         derived%P(12)= derived%P(8)*exp(-2*CMB%tau)  !A e^{-2 tau}
-        derived%P(13)= CMB%omnuh2_sterile*neutrino_mass_fac 
+        derived%P(13) = CMB%omnuh2
         derived%P(14:num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
@@ -213,37 +213,32 @@
         CMB%ombh2 = Params(1)
         CMB%tau = params(4) !tau, set zre later
         CMB%Omk = Params(5)
-        CMB%w = Params(7)
-        CMB%wa = Params(8)
-        CMB%nnu = Params(9) !3.046
-        CMB%omnuh2_sterile = Params(15)
-        if (neutrino_param_mnu) then
-            !Params(6) is now mnu, params(2) is omch2
-            CMB%omnuh2=Params(6)/neutrino_mass_fac*(3.046_mcp/3)**0.75_mcp
-             !we are using interpretation where there are degeneracy_factor neutrinos, each exactly thermal
-             !So internally 3.046 or 3.046/3 massive neutrnos. But mnu is the physical integer mass sum.
-            CMB%omnuh2 = CMB%omnuh2 + CMB%omnuh2_sterile
-            CMB%omch2 = Params(2)
-            CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
-            CMB%nufrac=CMB%omnuh2/CMB%omdmh2
-        else
-            CMB%omdmh2 = Params(2)
-            CMB%nufrac=Params(6)
-            CMB%omnuh2 = CMB%omdmh2*CMB%nufrac
-            CMB%omch2 = CMB%omdmh2 - CMB%omnuh2
-        end if
+        CMB%w = Params(8)
+        CMB%wa = Params(9)
+        CMB%nnu = Params(10) !3.046
+        !Params(6) is now mnu, where mnu is physical standard neutrino mass and we assume standard heating 
+        CMB%omnuh2=Params(6)/neutrino_mass_fac*(3.046_mcp/3)**0.75_mcp
+        !Params(7) is mass_sterile*Neff_sterile
+        CMB%omnuh2_sterile = Params(7)/neutrino_mass_fac
+        !we are using interpretation where there are degeneracy_factor neutrinos, each exactly thermal
+        !So internally 3.046 or 3.046/3 massive neutrnos. But mnu is the physical integer mass sum.
+        if (CMB%omnuh2_sterile >0 .and. CMB%nnu < 3.0455) call MpiStop('sterile neutrino mass required Neff>3.046')
+        CMB%omnuh2 = CMB%omnuh2 + CMB%omnuh2_sterile
+        CMB%omch2 = Params(2)
+        CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
+        CMB%nufrac=CMB%omnuh2/CMB%omdmh2
 
         if (bbn_consistency) then
             CMB%YHe = yp_bbn(CMB%ombh2,CMB%nnu  - 3.046)
         else
             !e.g. set from free parameter..
-            CMB%YHe  =Params(10)
+            CMB%YHe  =Params(11)
         end if
 
-        CMB%iso_cdm_correlated =  Params(11)
-        CMB%zre_delta = Params(12)
-        CMB%ALens = Params(13)
-        CMB%fdm = Params(14)
+        CMB%iso_cdm_correlated =  Params(12)
+        CMB%zre_delta = Params(13)
+        CMB%ALens = Params(14)
+        CMB%fdm = Params(15)
         call SetFast(Params,CMB)
     end if
 
@@ -280,7 +275,7 @@
         omegam = Params(1)
         CMB%H0 = Params(2)
         CMB%omk = Params(3)
-        CMB%omnuh2=Params(4)/neutrino_mass_fac
+        CMB%omnuh2=Params(4)/neutrino_mass_fac*(3.046_mcp/3)**0.75_mcp
         CMB%w =    Params(5)
         CMB%wa =    Params(6)
         CMB%nnu =    Params(7)

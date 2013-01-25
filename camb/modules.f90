@@ -355,7 +355,7 @@
             grhornomass=grhor*CP%Num_Nu_massless
         end if
     else
-     grhornomass=grhor*CP%Num_Nu_massless
+        grhornomass=grhor*CP%Num_Nu_massless
     end if
     grhormass=0
     do nu_i = 1, CP%Nu_mass_eigenstates
@@ -423,19 +423,13 @@
         if (CP%Num_Nu_Massive > 0) then
             conv = k_B*(8*grhor/grhog/7)**0.25*CP%tcmb/eV !approx 1.68e-4
             do nu_i=1, CP%Nu_mass_eigenstates
-                if (CP%nu_mass_splittings) then
-                   conv = k_B*(CP%nu_mass_degeneracies(nu_i)*8*grhor/grhog/7)**0.25*CP%tcmb/eV !approx 1.68e-4
-                    write(*,'("eigenstate total: m_nu*c^2/k_B/T_nu0   = ",f8.2," (m_nu = ",f6.3," eV)")') &
-                                   nu_masses(nu_i),conv*nu_masses(nu_i)
-                else
-                 write(*,'(f5.2, " nu, m_nu*c^2/k_B/T_nu0   = ",f8.2," (m_nu = ",f6.3," eV)")') &
-                 CP%nu_mass_degeneracies(nu_i), nu_masses(nu_i),conv*nu_masses(nu_i)
-                end if
+                write(*,'(f7.4, " nu, m_nu*c^2/k_B/T_nu0   = ",f8.2," (m_nu = ",f6.3," eV)")') &
+                CP%nu_mass_degeneracies(nu_i), nu_masses(nu_i),conv*nu_masses(nu_i)
             end do
         end if
     end if
     CP%chi0=rofChi(CP%tau0/CP%r)
-    scale= CP%chi0*CP%r/CP%tau0  !e.g. changel sampling depending on approx peak spacing
+    scale= CP%chi0*CP%r/CP%tau0  !e.g. change l sampling depending on approx peak spacing
 
     end subroutine CAMBParams_Set
 
