@@ -103,6 +103,7 @@
     integer   :: Num_Nu_massive
     logical :: Nu_mass_splittings
     integer   :: Nu_mass_eigenstates  !1 for degenerate masses
+    logical   :: same_neutrino_Neff !take fractional part to heat all eigenstates the same
     real(dl)  :: Nu_mass_degeneracies(max_nu)
     real(dl)  :: Nu_mass_fractions(max_nu)
     !The ratios of the masses
@@ -344,7 +345,7 @@
 
     !With mass splitting=True, the Nu_mass_degeneracies parameters account for heating from grhor
     !Otherwise we set from Neff
-    if (.not. CP%Nu_mass_splittings) then
+    if (CP%same_neutrino_Neff) then
         fractional_number = CP%Num_Nu_massless + CP%Num_Nu_massive
         actual_massless = int(CP%Num_Nu_massless + 1e-6_dl)
         if (actual_massless + CP%Num_Nu_massive /= 0) then

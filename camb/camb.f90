@@ -297,6 +297,7 @@
             P%Num_Nu_massless =default_nnu
             P%Num_Nu_massive  =0
             P%Nu_mass_splittings = .false.
+            P%same_neutrino_Neff = .false.
             P%Nu_mass_eigenstates = 0
            
             P%Scalar_initial_condition =initial_adiabatic
