@@ -16,6 +16,23 @@ batch = batchJob.batchJob(batchPath)
 
 settings = __import__(sys.argv[2])
 
+# priors and widths for parameters which are varied
+if not hasattr(settings, 'params'):
+    params = dict()
+    params['mnu'] = '0 0 5 0.1 0.03'
+    params['omegak'] = '0 -0.3 0.3 0.001 0.001'
+    params['w'] = '-1 -3 -0.3 0.02 0.02'
+    params['nnu'] = '3.046 0 10 0.05 0.05'
+    params['nrun'] = '0 -1 1 0.001 0.001'
+    params['r'] = '0 0 2 0.03 0.03'
+    params['Alens'] = '1 0 10 0.05 0.05'
+    params['yhe'] = '0.245 0.1 0.5 0.006 0.006'
+    params['alpha1'] = '0 -1 1 0.0003 0.0003'
+    params['deltazrei'] = '0.5 0.1 3 0.3 0.3'
+    params['wa'] = '0 -2 2 0.3 0.3'
+    params['meffsterile'] = '0 0 5 0.1 0.03'
+    settings.params = params
+
 batch.datasets = settings.datasets
 batch.extparams = settings.extparams
 batch.skip = settings.skip

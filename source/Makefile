@@ -35,7 +35,7 @@ INCLUDE =
 
 #clik path and library
 ifeq ($(PLANCKLIKE),cliklike)
-CLIKPATH = /path/to/clik
+CLIKPATH ?= /path/to/clik
 CLIKL = -L$(CLIKPATH)/lib -lclik_f90
 INCLUDE = $(IFLAG)$(CLIKPATH)/include
 endif
