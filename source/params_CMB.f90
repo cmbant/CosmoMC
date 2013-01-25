@@ -219,7 +219,7 @@
         CMB%omnuh2_sterile = Params(15)
         if (neutrino_param_mnu) then
             !Params(6) is now mnu, params(2) is omch2
-            CMB%omnuh2=Params(6)/neutrino_mass_fac*(3.046_mcp/3)
+            CMB%omnuh2=Params(6)/neutrino_mass_fac*(3.046_mcp/3)**0.75_dl
              !we are using interpretation where there are degeneracy_factor neutrinos, eacb exactly thermal
              !So internally 3.046 or 3.046/3 massive neutrnos. But mnu is the physical integer mass sum.
             CMB%omnuh2 = CMB%omnuh2 + CMB%omnuh2_sterile
