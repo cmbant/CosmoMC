@@ -292,10 +292,10 @@
 
     InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'param',i)
     if (InLine=='') call ParamError('parameter ranges not found',i)
-    read(InLine, *, err = 100) center, Scales%PMin(i), Scales%PMax(i), Scales%StartWidth(i), Scales%PWidth(i)
+    read(InLine, *, err = 100, end =100) center, Scales%PMin(i), Scales%PMax(i), Scales%StartWidth(i), Scales%PWidth(i)
     if (Scales%PWidth(i)/=0) then
         InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'prior',i)
-        if (InLine/='') read(InLine, *, err = 101) GaussPriors%mean(i), GaussPriors%std(i)
+        if (InLine/='') read(InLine, *, err = 101, end=101) GaussPriors%mean(i), GaussPriors%std(i)
     else
         scales%PMin(i) = center
         Scales%PMax(i) = center
@@ -780,7 +780,7 @@
         call MPI_BCAST(Limits(:,:,i),2*numCheck,MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
     end do
     !Take as test statistics the rms deviation from the mean limit in units of the standard deviation
-    WorstErr = 0.
+    WorstErr = 0
     do j=1, numCheck
         do side = 1,2
             MeanLimit = Sum(Limits(side,j,:))/MPIChains
