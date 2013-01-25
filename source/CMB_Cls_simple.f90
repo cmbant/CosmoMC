@@ -76,12 +76,12 @@
         else 
             neff_massive_standard=0
         end if
-        if (CMB%omnuh2_sterile>1e-5) then
+        if (CMB%omnuh2_sterile>0) then
             if (CMB%nnu<default_nnu) call MpiStop('nnu < 3.046 with massive sterile')
             P%Num_Nu_Massless = default_nnu - neff_massive_standard
             P%Num_Nu_Massive=P%Num_Nu_Massive+1
             P%Nu_mass_eigenstates=P%Nu_mass_eigenstates+1
-            P%Nu_mass_degeneracies(P%Nu_mass_eigenstates) = CMB%nnu - default_nnu
+            P%Nu_mass_degeneracies(P%Nu_mass_eigenstates) = max(1e-6,CMB%nnu - default_nnu)
             P%Nu_mass_fractions(P%Nu_mass_eigenstates) = CMB%omnuh2_sterile/CMB%omnuh2
         end if
         P%Num_Nu_Massive = max(1,nint(sum(P%Nu_mass_degeneracies(1:P%Nu_mass_eigenstates))))
