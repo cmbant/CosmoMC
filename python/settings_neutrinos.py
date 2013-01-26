@@ -1,6 +1,6 @@
 # settings for grid of 2-extra-parameter neutrino runs
 
-extparams = [['nnu', 'yhe'], ['nnu', 'mnu'], ['nnu', 'meffsterile'], ['mnu', 'omegak'], ['omegak', 'nrun', 'r']]
+extparams = [['nnu', 'yhe'], ['nnu', 'mnu'], ['nnu', 'meffsterile'], ['mnu', 'omegak'], ['nrun', 'r', 'omegak']]
 
 # dataset names
 planck = 'planck_CAMspec'
