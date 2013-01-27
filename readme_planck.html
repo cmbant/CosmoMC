@@ -8,14 +8,14 @@
 
 <h2>Planck Cosmomc Readme </h2>
 <h3>Compiling</h3>
-As usual, but now requires ifort 13+ (or other compiler with more complete Fortran 2003 coverage; this does not include gfortran). Edit the makefile, setting <b>PLANCKLIKE = cliklike</b> to run with clik (v5.0), or <b>PLANCKLIKE = cliklike_CamSpec</b> to run directly with CamSpec. Set <b>highL = ../highL</b> to build direct ACT/SPT support (for use with PLANCKLIKE = cliklike_CamSpec). To use clik you need of course to have clik installed, and set the CLIKPATH variable etc. appropriately [can set "export PLANCKLIKE=cliklike" in your .bashrc to automatically compile with clik].  You can either use clik or other likelihoods directly in an interchangeable way, parameter definitions etc are the same.
+As usual, but now requires ifort 13+ (or other compiler with more complete Fortran 2003 coverage; this does not include gfortran). Edit the makefile, setting <b>PLANCKLIKE = cliklike</b> to run with clik (v6.0), or <b>PLANCKLIKE = cliklike_CamSpec</b> to run directly with CamSpec. Set <b>highL = ../highL</b> to build direct ACT/SPT support (for use with PLANCKLIKE = cliklike_CamSpec). To use clik you need of course to have clik installed, and set the CLIKPATH variable etc. appropriately [can set "export PLANCKLIKE=cliklike" in your .bashrc to automatically compile with clik].  You can either use clik or other likelihoods directly in an interchangeable way, parameter definitions etc are the same.
 <p>
 <h3>Data files</h3>
 A set of .ini files are supplied in ./batch1 which set up standard for Planck runs. Location of data files is set in CAMspec_ACTSPT_defaults, CAMspec_defaults or PLik_ACTSPT_defaults depending on what you want to use. You can either edit these, or make symbolic links from ./data/clik and ./data/highL and ./data/camspec to the relevant actual file locations depending on what you want to use.
 <p>
 Default settings for parameters in the baseline model are described in the P11 svn paper draft, and should be reflected in the batch1 ini files.
 <h3>Running</h3>
-As usual, e.g. <b>perl runMPI.pl batch1/base 4</b>.
+As usual for example for quick tests, e.g. <b>mpirun -np 2 ./cosmomc test.ini</b> or <b>perl runMPI.pl test 4</b>.
 <p>
 The runMPI_HPCS.pl sample script also supports best-fit runs, using last parameter zero: e.g. if ini has action=2 then run <b>perl runMPI_HPCS batch1/ini 0</b>.
 <p>
@@ -38,9 +38,12 @@ See the <A HREF="readme.html#Version">readme</A> for code changes.
 See the ./python directory for scripts (python 2.7+), most can be run without arguments to show a list of possible input parameters.
 To start copy and edit settings_testchain.py appropriately. Then if you saved it as python/my_settings_file.py run
 <blockquote>
-<b>python python/makeGrid.py /scratch/.../Planckgrids/newdirectoryforbatch my_settings_file [action]</b>
+<b>python python/makeGrid.py /scratch/.../Planckgrids/newdirectoryforbatch my_settings_file</b>
 </blockquote>
-Use runbatch.py to submit all the ini files produced to the queue. You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge and is the default. Use action=2 to do minimization-only runs (quick), otherwise can be omitted. For brevity you can make a symbolic link in the cosmomcplanck directory to the actual scratch location of the (large) batch results.
+In practice I usually make a symlink to the grid path for convenience, e.g. <b>ln -s /scratch/aml1005/newgrid main</b> from the cosmomcplanck folder, so ./main then reference the output grid directory. This directory is used as input to most of the other scripts. See <b>prepareFullPlanckGrids</b> for commands to make the Planck parameter grid configuration (one main grid, plus a few subgrids that are then merged in).
+<P>
+Use runbatch.py to submit all the ini files produced to the queue; makeGrid will tell you what to do.
+You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge and is the default.  For brevity you can make a symbolic link in the cosmomcplanck directory to the actual scratch location of the (large) batch results.
 <P>
 Runs with the same data by default all use the same covmat unless an existing covmat exists in planck_covmats. Covmats can be a merged covmat that contains many parameters, defaults are provided from combining several different separate covmats for use where no planck_covmats file exists. Use the python/covcomb.py script if you want to make a new one.
 <p>
@@ -50,12 +53,13 @@ Grid run scripts include:
     <LI>addGridBatch.py: if you run multiple grids, e.g. a standard one and a separate small one for some parameter for interest, they can be combined using addGridBatch.py. Also use if the main batch importance samples some data, but a few of the models need to be run separately as chains: the script automatically replaces importance sampled runs with full chain runs if there is an overlap.
 <LI>batchJob.py: not a script, this just defines the objects and iterators used
 <LI>extractDistFiles.py: for copying all files of a particular type from all the subdirectories in the grid, e.g. to extract all .covmat files, or all .pdf plots
+<LI>makeCompare.py: to extract parameter constraints from .margestats files in the grid
 <LI>makeTables.py: script for making latex (and hence PDF) tables from .margestats and .minimum files produced by grid runs.
 <BR>To make file of comparison plots do something like
 <pre>
  python python/makeTables.py main comp --compare planck_CAMspec_lowl planck_CAMspec_lowl_lowLike  planck_CAMspec_lowl_lowLike_highL --portrait
 </pre>
-<LI>runBatch.py: submit runs to a job submission script
+<LI>runbatch.py: submit runs to a job submission script
 <LI>runGridGetdist.py: make getdist .ini files, run getdist over grid of models, and generate plots by running matlab.
 <LI>settings_xx.py: sample settings files for use with makeGrid.py
 </UL>
@@ -67,7 +71,7 @@ Multi-purpose use and utility scripts include
 <LI>covcomb.py: for combining covariance matrices (thanks Steven!)
 <LI>covscale.py: for modifying .covmat files if parameters are re-scaled
 <LI>covMat.py: object for covariance matrix and reading .covmat
-<LI>GetDistPlots.py: make pylab-matplotlib plots from getdist outputs (alternative to matlab,with some additional flexibility)
+<LI>GetDistPlots.py: make pylab-matplotlib plots from getdist outputs (alternative to matlab,with some additional flexibility). Add ./python to your $PYTHONPATH to use this from scripts elsewhere (e.g. in batch1/specificplots).
 <LI>iniFile.py: for reading and writing .ini files (does not support reading fully at the moment, but not needed as yet)
 <LI>makePerfectForecastDataset.py: a simple old script for simulating perfect fake CMB datasets
 <LI>paramNames.py: for reading paramNames files, and general objects for storing parameter info
@@ -75,12 +79,7 @@ Multi-purpose use and utility scripts include
 </UL>
 
 <h2>Plots</h2>
-The runGridGetdist.py script will produce standard sets of getdist plots automatically for all runs. These can be customized in parameter-variation-specific way by adding additional getdist .ini include files in batch1\plots. Further completely general plots with custom matlab scripts can be installed in batch1\specificplots. These can use new matlab functions getdist_xxx provided in the mscripts directory (which must be added to your path if you want to run them directly in matlab; you can also set the getdist_plot_data environment variable so it knows where to look for getdist grid outputs; runGridGetdist sets up paths automatically).
-
-<h2>To do</h2>
-
- efine consistent priors for nuisance parameters. Uncorrelated isocuvature? Figure out consistent way to handle mnu with non-standard nnu.
-
+The runGridGetdist.py script will produce standard sets of getdist plots automatically for all runs. These can be customized in parameter-variation-specific way by adding additional getdist .ini include files in batch1\plots. Further completely general plots with custom scripts can be installed in batch1\specificplots. These are moving to python, using python/GetDistPlots.py.
 
 
 </body></center> 
