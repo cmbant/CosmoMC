@@ -884,11 +884,11 @@
         write (40,'(a)') 'var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters'
         R = 0
         do jj=1,num
-            write (40,'(1I3,f9.4)') jj,evals(jj)
+            write (40,'(1I3,f13.5)') jj,evals(jj)
             R = max(R,evals(jj))
         end do
         !R is essentially the Gelman and Rubin statistic
-        write (*,'(" var(mean)/mean(var), remaining chains, worst e-value: R-1 = ",f9.4)') R
+        write (*,'(" var(mean)/mean(var), remaining chains, worst e-value: R-1 = ",f13.5)') R
         deallocate(cov,meanscov)
     end if
 

@@ -8,6 +8,12 @@ Opts.parser.add_argument('--confirm', action='store_true')
 
 (batch, args) = Opts.parseForBatch()
 
+def fsizestr(fname):
+    sz = os.path.getsize(fname) / 1024
+    if (sz < 1024): return str(sz) + 'KB'
+    if (sz < 1024 * 1024): return str(sz / 1024) + 'MB'
+    if (sz < 1024 * 1024 * 1024): return str(sz / 1024 / 1024) + 'GB'
+
 
 args.ext = ['.' + ext for ext in args.ext] + ['_*.' + ext for ext in args.ext]
 for jobItem in Opts.filteredBatchItems():
@@ -16,12 +22,13 @@ for jobItem in Opts.filteredBatchItems():
         if args.dist: dirs = []
         dirs += [jobItem.distPath]
         for adir in dirs:
-            for f in os.listdir(adir):
+            files = sorted(os.listdir(adir))
+            for f in files:
                 for ext in args.ext:
                     if fnmatch.fnmatch(f, jobItem.name + ext):
                         fname = adir + f
                         if os.path.exists(fname):
-                            print fname
-                            if args. confirm: os.remove(fname)
+                            print fname, ' (' + fsizestr(fname) + ')'
+                            if args.confirm: os.remove(fname)
 
 if not args.confirm: print 'Files not actually deleted: add --confirm to delete'
