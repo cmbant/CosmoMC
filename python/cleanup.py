@@ -4,6 +4,7 @@ Opts = batchJobArgs.batchArgs('delete failed chains, files etc.', importance=Tru
 
 Opts.parser.add_argument('--dist', action='store_true')
 Opts.parser.add_argument('--ext', nargs='+', default=['*'])
+Opts.parser.add_argument('--empty', action='store_true')
 Opts.parser.add_argument('--confirm', action='store_true')
 Opts.parser.add_argument('--chainnum', default=None)
 
@@ -31,7 +32,8 @@ for jobItem in Opts.filteredBatchItems():
                     if fnmatch.fnmatch(f, jobItem.name + ext):
                         fname = adir + f
                         if os.path.exists(fname):
-                            print fname, ' (' + fsizestr(fname) + ')'
-                            if args.confirm: os.remove(fname)
+                            if not args.empty or os.path.getsize(fname) == 0:
+                                print fname, ' (' + fsizestr(fname) + ')'
+                                if args.confirm: os.remove(fname)
 
 if not args.confirm: print 'Files not actually deleted: add --confirm to delete'

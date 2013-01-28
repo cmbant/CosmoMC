@@ -80,7 +80,7 @@ class jobItem:
     def R(self):
         if self.result_converge is None:
             fname = self.distRoot + '.converge'
-            if not os.path.exists(fname): return None
+            if not os.path.exists(fname) or os.path.getsize(fname) == 0: return None
             self.result_converge = ResultObjs.convergeStats(fname)
         return float(self.result_converge.worstR())
 
