@@ -837,7 +837,7 @@
                     end do
                     between_chain_var(j) = between_chain_var(j)/(num_chains_used-1) !(usedsamps/maxsamp -1)
                     in_chain_var(j) = in_chain_var(j)/usedsamps
-                    write (40,'(1I3,f9.4,"  '//trim(labels(j))//'")') j-2, &
+                    write (40,'(1I3,f13.5,"  '//trim(labels(j))//'")') j-2, &
                     between_chain_var(j) /in_chain_var(j)
                 end if
             end if

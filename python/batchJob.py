@@ -25,9 +25,9 @@ class jobItem:
         self.paramtag = paramtag
         self.name = paramtag + '_' + datatag
         self.batchPath = path
-        self.chainPath = path + paramtag + '/' + datatag + '/'
+        self.chainPath = path + paramtag + os.sep + datatag + os.sep
         self.chainRoot = self.chainPath + self.name
-        self.distPath = self.chainPath + 'dist/'
+        self.distPath = self.chainPath + 'dist' + os.sep
         self.distRoot = self.distPath + self.name
         self.isImportanceJob = False
         self.importanceItems = []
@@ -35,8 +35,8 @@ class jobItem:
 
     def iniFile(self, variant=''):
         if not self.isImportanceJob:
-            return self.batchPath + 'iniFiles/' + self.name + variant + '.ini'
-        else: return self.batchPath + 'postIniFiles/' + self.name + variant + '.ini'
+            return self.batchPath + 'iniFiles' + os.sep + self.name + variant + '.ini'
+        else: return self.batchPath + 'postIniFiles' + os.sep + self.name + variant + '.ini'
 
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
@@ -77,13 +77,17 @@ class jobItem:
     def getDistExists(self):
         return os.path.exists(self.distRoot + '.margestats')
 
-    def hasConvergeBetterThan(self, R, returnNotExist=False):
+    def R(self):
         if self.result_converge is None:
             fname = self.distRoot + '.converge'
-            if not os.path.exists(fname): return returnNotExist
+            if not os.path.exists(fname): return None
             self.result_converge = ResultObjs.convergeStats(fname)
-        return float(self.result_converge.worstR()) <= R
+        return float(self.result_converge.worstR())
 
+    def hasConvergeBetterThan(self, R, returnNotExist=False):
+        chainR = self.R()
+        if chainR is None: return returnNotExist
+        return chainR <= R
 
     def loadJobItemResults(self, paramNameFile=None, bestfit=True, bestfitonly=False, noconverge=False, silent=False):
         marge_root = self.distRoot

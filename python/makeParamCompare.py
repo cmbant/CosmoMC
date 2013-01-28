@@ -1,4 +1,4 @@
-import os, batchJobArgs
+import batchJobArgs
 
 
 Opts = batchJobArgs.batchArgs('Compare parameter constraints over set of models')

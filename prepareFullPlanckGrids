@@ -5,3 +5,6 @@ python python/addGridBatch.py main main/bao
 python python/addGridBatch.py main main/neutrinos
 
 python python/runbatch.py main --dryrun --noimportance
+
+#for find possible failed scripts (that are not quick "minimize" runs):
+#ls scripts/*.e* | grep -v minimize

@@ -383,7 +383,8 @@ class convergeStats(paramResults):
             if textFileLines[i].find('var(mean)') >= 0:
                 for line in textFileLines[i + 1:]:
                     if len(line.strip()) == 0:return
-                    self.R_eigs.append(line.split()[1])
+                    try: self.R_eigs.append(line.split()[1])
+                    except: self.R_eigs.append('1e30')
 
     def worstR(self):
         return self.R_eigs[len(self.R_eigs) - 1]
