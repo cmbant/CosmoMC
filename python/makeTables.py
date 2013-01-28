@@ -1,4 +1,4 @@
-import os, batchJobArgs, ResultObjs
+import os, batchJobArgs, ResultObjs, paramNames
 
 
 Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True, converge=True)
@@ -8,6 +8,7 @@ Opts.parser.add_argument('--bestfit', action='store_true', default=True)
 
 # this is just for the latex labelsm set None to use those in chain .paramnames
 Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')
+Opts.parser.add_argument('--paramList', default=None)
 Opts.parser.add_argument('--blockEndParams', default=None)
 Opts.parser.add_argument('--columns', type=int, nargs=1, default=3)
 Opts.parser.add_argument('--compare', nargs='+', default=None)
@@ -21,6 +22,8 @@ Opts.parser.add_argument('--forpaper', action='store_true')
 if args.blockEndParams is not None: args.blockEndParams = args.blockEndParams.split(';')
 outfile = args.latex_filename
 if outfile.find('.') < 0: outfile += '.tex'
+
+if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
 
 lines = []
 if not args.forpaper:
@@ -43,12 +46,13 @@ def paramResultTable(jobItem):
     jobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=args.bestfit, bestfitonly=args.bestfitonly)
     bf = jobItem.result_bestfit
     if not bf is None:
-        caption += ' Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % (jobItem.result_bestfit.logLike * 2)) + '$'
+        caption += ' Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % (bf.logLike * 2)) + '$'
     if args.bestfitonly:
-        tableLines += ResultObjs.resultTable(args.columns, [bf], blockEndParams=args.blockEndParams).lines
+        tableLines += ResultObjs.resultTable(args.columns, [bf], blockEndParams=args.blockEndParams, args.paramList).lines
     else:
         if not jobItem.result_converge is None: caption += '; R-1 =' + jobItem.result_converge.worstR()
-        if not jobItem.result_marge is None: tableLines += ResultObjs.resultTable(args.columns, [jobItem.result_marge], blockEndParams=args.blockEndParams).lines
+        if not jobItem.result_marge is None: tableLines += ResultObjs.resultTable(args.columns,
+                                                                                  [jobItem.result_marge], blockEndParams=args.blockEndParams, args.paramList).lines
     tableLines.append('')
     if not args.forpaper: tableLines.append(caption)
     if not bf is None and not args.forpaper:

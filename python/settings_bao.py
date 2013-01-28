@@ -22,7 +22,7 @@ importanceRuns = []
 importanceRuns.append([lensing, ['lensing.ini']])
 importanceRuns.append([BAO, ['BAO.ini']])
 importanceRuns.append([HST, ['HST.ini']])
-importanceRuns.append([SNLS, ['SNLS.ini']])
+# importanceRuns.append([SNLS, ['SNLS.ini']])
 
 skip = ['HST_HST', 'BAO_BAO', 'SNLS_SNLS']
 
