@@ -15,7 +15,7 @@ for jobItem in Opts.filteredBatchItems():
     elif args.converge == 0 or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
         converge.append(jobItem)
 
-print 'Checking batch:'
+print 'Checking batch (from last runGridGetdist.py output):'
 if not args.exist and len(notExist) > 0:
     print 'Not exist...'
     for jobItem in notExist:

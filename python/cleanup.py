@@ -5,6 +5,7 @@ Opts = batchJobArgs.batchArgs('delete failed chains, files etc.', importance=Tru
 Opts.parser.add_argument('--dist', action='store_true')
 Opts.parser.add_argument('--ext', nargs='+', default=['*'])
 Opts.parser.add_argument('--confirm', action='store_true')
+Opts.parser.add_argument('--chainnum', default=None)
 
 (batch, args) = Opts.parseForBatch()
 
@@ -14,8 +15,10 @@ def fsizestr(fname):
     if (sz < 1024 * 1024): return str(sz / 1024) + 'MB'
     if (sz < 1024 * 1024 * 1024): return str(sz / 1024 / 1024) + 'GB'
 
+if args.chainnum is not None:
+    args.ext = ['_' + args.chainnum + '.' + ext for ext in args.ext]
+else: args.ext = ['.' + ext for ext in args.ext] + ['_*.' + ext for ext in args.ext]
 
-args.ext = ['.' + ext for ext in args.ext] + ['_*.' + ext for ext in args.ext]
 for jobItem in Opts.filteredBatchItems():
     if args.converge == 0 or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
         dirs = [jobItem.chainPath]

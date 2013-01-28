@@ -103,7 +103,7 @@
     Type (ParamSet) :: Params
     logical :: has_likes(DataLikelihoods%Count)
     Type(DataLikelihood), pointer :: DataLike
-    logical :: first = .false.
+    logical :: first = .false., has_chain = .true.
 
     flush_write = .false.
     weight_min= 1e30_mcp
@@ -130,7 +130,12 @@
         if (.not. PostParams%redo_theory) write (*,*) '**You probably want to set redo_theory**'
         if (PostParams%redo_thin>1) write (*,*) 'redo_thin only OK with redo_from_text if input weights are 1'
     else
-        infile_handle = IO_OpenDataForRead(trim(InputFile)//'.data')
+        if (FileExists(trim(InputFile)//'.data')) then
+            infile_handle = IO_OpenDataForRead(trim(InputFile)//'.data')
+        else
+            write(*,*) 'Chain .data files does not exist: ', MpiRank+1
+            has_chain =.false.
+        end if
     end if
 
     post_root = PostParams%redo_outroot 
@@ -138,138 +143,136 @@
     if (MpiRank==0 .and. NameMapping%nnames/=0) &
     call IO_OutputParamNames(NameMapping,trim(post_root),params_used, add_derived=.true.)
 
-    if (instance /= 0) post_root = numcat(trim(post_root)//'_',instance)
+    if (has_chain) then
+        if (instance /= 0) post_root = numcat(trim(post_root)//'_',instance)
 
-    if (Feedback > 0) then
-        if (PostParams%redo_from_text) then
-            write (*,*) 'reading from: ' //  trim(InputFile)//'.txt'
-        else
-            write (*,*) 'reading from: ' //  trim(InputFile)//'.data'
-        end if
-        write (*,*) 'writing to: ' // trim(post_root)//'.*'
-    end if
-
-    write (*,*) 'Using temperature: ', Temperature
-
-    outfile_handle = IO_OutputOpenForWrite(trim(post_root)//'.txt')
-    if (.not. PostParams%redo_no_new_data) outdata_handle = IO_DataOpenForWrite(trim(post_root)//'.data')
-    num = 0
-
-    do
-        if (PostParams%redo_from_text) then
-            error = 0
-            if (.not. IO_ReadChainRow(infile_handle, mult, like, Params%P, num_params)) exit
-        else
-            call Params%ReadModel(infile_handle,has_likes, mult,like, error)
-            if (first .and. PostParams%redo_like_name/='') then
-                first=.false.
-                do i=1, DataLikelihoods%Count
-                    DataLike => DataLikelihoods%Item(i)
-                    if (DataLike%name==PostParams%redo_like_name) then
-                        if (.not. has_likes(i)) &
-                        call MpiStop('does not currently have like named:'//trim(PostParams%redo_like_name))
-                        has_likes(i)=.true.
-                        if (any(.not. has_likes)) call MpiStop('not all other likelihoods exist already')
-                        has_likes(i)=.false.
-                        PostParams%redo_add =.true.
-                        exit
-                    end if
-                end do
-            end if
-        end if
-
-        if (error ==1) then
-            if (num==0) call MpiStop('Error reading data file.')
-            exit
-        end if
-        num=num+1
-        if (num>PostParams%redo_skip .and. mod(num,PostParams%redo_thin) == 0) then
-            if (PostParams%redo_theory) then
-                call GetTheoryForImportance(Params%P, newTheory, error, PostParams%redo_cls, PostParams%redo_pk)
-
-                if (PostParams%redo_cls) then
-                    Params%Theory%cl = newTheory%cl
-                end if
-
-                if (PostParams%redo_pk) then
-                    Params%Theory%sigma_8 = newTheory%sigma_8
-                    Params%Theory%Matter_Power = newTheory%Matter_Power
-                end if
-
-                Params%Theory%derived_parameters = newTheory%derived_parameters
-                Params%Theory%numderived = newTheory%numderived
+        if (Feedback > 0) then
+            if (PostParams%redo_from_text) then
+                write (*,*) 'reading from: ' //  trim(InputFile)//'.txt'
             else
-                error = 0
+                write (*,*) 'reading from: ' //  trim(InputFile)//'.data'
             end if
-
-            if (error ==0) then
-                if (PostParams%redo_like .or. PostParams%redo_add) then
-                    if (Use_LSS .and. Params%Theory%sigma_8==0) &
-                    call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
-
-                    if (PostParams%redo_add) then
-                        truelike = GetLogLikePost(Params, .not. has_likes)
-                    else
-                        truelike = GetLogLikePost(Params)
-                    end if
-                    if (truelike == logZero) then
-                        weight = 0
-                    else
-                        weight = exp(like-truelike+PostParams%redo_likeoffset)
-                    end if
-
-                    if (.not. PostParams%redo_change_like_only)  mult = mult*weight
-                else
-                    truelike = like
-                    weight = 1
-                end if
-
-                max_like = min(max_like,like)
-                max_truelike = min(max_truelike,truelike)
-
-                mult_ratio = mult_ratio + weight
-                mult_sum = mult_sum + mult
-
-                if (mult /= 0) then
-                    call WritePostParams(Params, mult, truelike,txt_theory)
-                    if (outdata_handle>=0) call Params%WriteModel(outdata_handle, truelike,mult)
-                else 
-                    if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
-                end if
-
-                if (Feedback > 1) write (*,*) num, ' mult= ', &
-                real(mult), ' weight = ', real(weight)
-                weight_max = max(weight,weight_max)
-                weight_min = min(weight,weight_min)
-                mult_max = max(mult_max,mult)
-
-            end if
+            write (*,*) 'writing to: ' // trim(post_root)//'.*'
         end if
 
-    end do
+        write (*,*) 'Using temperature: ', Temperature
 
-    call IO_Close(infile_handle)
-    call IO_Close(outfile_handle)
-    if (outdata_handle >=0) call IO_DataCloseWrite(outdata_handle)
+        outfile_handle = IO_OutputOpenForWrite(trim(post_root)//'.txt')
+        if (.not. PostParams%redo_no_new_data) outdata_handle = IO_DataOpenForWrite(trim(post_root)//'.data')
+        num = 0
 
-    num = (num - PostParams%redo_skip) / PostParams%redo_thin
-    if (Feedback>0) then 
-        write(*,*) 'finished. Processed ',num,' models'
-        write (*,*) 'max weight= ',weight_max, ' min weight = ',weight_min
-        write (*,*) 'mean mult  = ', mult_sum/num
-        write (*,*) 'mean importance weight (approx evidence ratio) = ',mult_ratio/num
-        write (*,*) 'effective number of samples =',mult_sum/mult_max
-        write (*,*) 'Best redo_likeoffset = ',max_truelike - max_like
+        do
+            if (PostParams%redo_from_text) then
+                error = 0
+                if (.not. IO_ReadChainRow(infile_handle, mult, like, Params%P, num_params)) exit
+            else
+                call Params%ReadModel(infile_handle,has_likes, mult,like, error)
+                if (first .and. PostParams%redo_like_name/='') then
+                    first=.false.
+                    do i=1, DataLikelihoods%Count
+                        DataLike => DataLikelihoods%Item(i)
+                        if (DataLike%name==PostParams%redo_like_name) then
+                            if (.not. has_likes(i)) &
+                            call MpiStop('does not currently have like named:'//trim(PostParams%redo_like_name))
+                            has_likes(i)=.true.
+                            if (any(.not. has_likes)) call MpiStop('not all other likelihoods exist already')
+                            has_likes(i)=.false.
+                            PostParams%redo_add =.true.
+                            exit
+                        end if
+                    end do
+                end if
+            end if
+
+            if (error ==1) then
+                if (num==0) call MpiStop('Error reading data file.')
+                exit
+            end if
+            num=num+1
+            if (num>PostParams%redo_skip .and. mod(num,PostParams%redo_thin) == 0) then
+                if (PostParams%redo_theory) then
+                    call GetTheoryForImportance(Params%P, newTheory, error, PostParams%redo_cls, PostParams%redo_pk)
+
+                    if (PostParams%redo_cls) then
+                        Params%Theory%cl = newTheory%cl
+                    end if
+
+                    if (PostParams%redo_pk) then
+                        Params%Theory%sigma_8 = newTheory%sigma_8
+                        Params%Theory%Matter_Power = newTheory%Matter_Power
+                    end if
+
+                    Params%Theory%derived_parameters = newTheory%derived_parameters
+                    Params%Theory%numderived = newTheory%numderived
+                else
+                    error = 0
+                end if
+
+                if (error ==0) then
+                    if (PostParams%redo_like .or. PostParams%redo_add) then
+                        if (Use_LSS .and. Params%Theory%sigma_8==0) &
+                        call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
+
+                        if (PostParams%redo_add) then
+                            truelike = GetLogLikePost(Params, .not. has_likes)
+                        else
+                            truelike = GetLogLikePost(Params)
+                        end if
+                        if (truelike == logZero) then
+                            weight = 0
+                        else
+                            weight = exp(like-truelike+PostParams%redo_likeoffset)
+                        end if
+
+                        if (.not. PostParams%redo_change_like_only)  mult = mult*weight
+                    else
+                        truelike = like
+                        weight = 1
+                    end if
+
+                    max_like = min(max_like,like)
+                    max_truelike = min(max_truelike,truelike)
+
+                    mult_ratio = mult_ratio + weight
+                    mult_sum = mult_sum + mult
+
+                    if (mult /= 0) then
+                        call WritePostParams(Params, mult, truelike,txt_theory)
+                        if (outdata_handle>=0) call Params%WriteModel(outdata_handle, truelike,mult)
+                    else 
+                        if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
+                    end if
+
+                    if (Feedback > 1) write (*,*) num, ' mult= ', &
+                    real(mult), ' weight = ', real(weight)
+                    weight_max = max(weight,weight_max)
+                    weight_min = min(weight,weight_min)
+                    mult_max = max(mult_max,mult)
+
+                end if
+            end if
+
+        end do
+
+        call IO_Close(infile_handle)
+        call IO_Close(outfile_handle)
+        if (outdata_handle >=0) call IO_DataCloseWrite(outdata_handle)
+
+        num = (num - PostParams%redo_skip) / PostParams%redo_thin
+        if (Feedback>0) then 
+            write(*,*) 'finished. Processed ',num,' models'
+            write (*,*) 'max weight= ',weight_max, ' min weight = ',weight_min
+            write (*,*) 'mean mult  = ', mult_sum/num
+            write (*,*) 'mean importance weight (approx evidence ratio) = ',mult_ratio/num
+            write (*,*) 'effective number of samples =',mult_sum/mult_max
+            write (*,*) 'Best redo_likeoffset = ',max_truelike - max_like
+        end if
+
+        if ((mult_ratio < 1e-6 .or. mult_ratio > 1e8) .and. .not.PostParams%redo_change_like_only) then
+            write (*,*) 'WARNING: use redo_likeoffset to rescale likelihoods'
+        end if
+
     end if
-
-    if ((mult_ratio < 1e-6 .or. mult_ratio > 1e8) & 
-
-    .and. .not.PostParams%redo_change_like_only) then
-
-    write (*,*) 'WARNING: use redo_likeoffset to rescale likelihoods'
-    end if
-
-    return
 
     end subroutine postprocess
 
