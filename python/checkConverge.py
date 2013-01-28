@@ -12,7 +12,7 @@ converge = []
 for jobItem in Opts.filteredBatchItems():
     if not jobItem.chainExists():
         notExist.append(jobItem)
-    elif args.converge != 0 and not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
+    elif args.converge == 0 or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
         converge.append(jobItem)
 
 print 'Checking batch:'
