@@ -291,7 +291,10 @@
             CP%Nu_mass_degeneracies(1) = CP%Num_Nu_Massive
             CP%Nu_mass_fractions(1) = 1
         else
-            if (CP%Nu_mass_degeneracies(1)==0) CP%Nu_mass_degeneracies(1) = CP%Num_Nu_Massive
+            if (CP%Nu_mass_degeneracies(1)==0) then
+                CP%Nu_mass_degeneracies(1) = CP%Num_Nu_Massive
+                CP%same_neutrino_Neff = .true.
+            end if
             if (abs(sum(CP%Nu_mass_fractions(1:CP%Nu_mass_eigenstates))-1) > 1e-4) &
             stop 'Nu_mass_fractions do not add up to 1'
 

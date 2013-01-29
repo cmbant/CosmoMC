@@ -130,8 +130,7 @@
        if (P%Nu_mass_eigenstates > max_nu) stop 'too many mass eigenstates'
        numstr = Ini_Read_String('nu_mass_degeneracies')
        if (numstr=='') then
-         P%same_neutrino_Neff = .true.
-         P%Nu_mass_degeneracies(1)= P%Num_nu_massive
+         P%Nu_mass_degeneracies(1)= 0
        else
         read(numstr,*) P%Nu_mass_degeneracies(1:P%Nu_mass_eigenstates)
        end if

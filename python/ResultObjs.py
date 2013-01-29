@@ -62,6 +62,50 @@ def numberFigs(number, sigfig):
         result.insert(0, '-')
     return ''.join(result)
 
+def numberFormatter():
+
+    def namesigFigs(self, value, limplus, limminus):
+        frac = limplus / (abs(value) + limplus)
+        err_sf = 2
+        if value >= 20 and frac > 0.1 and limplus >= 2: err_sf = 1
+
+        plus_str = self.formatNumber(limplus, err_sf, True)
+        minus_str = self.formatNumber(limminus, err_sf, True)
+        sf = self.sig_figs
+        if frac > 0.1 and value < 100 and value >= 20: sf = 2
+        elif frac > 0.01 and value < 1000: sf = 3
+#        if abs(value) < 1 and limplus - limminus > abs(value): sf = 2
+        res = self.formatNumber(value, sf)
+        maxdp = max(self.decimal_places(plus_str), self.decimal_places(minus_str))
+        while abs(value) < 1 and maxdp < self.decimal_places(res):
+            sf -= 1
+            if sf == 0:
+                res = ('%.' + str(maxdp) + 'f') % value
+                if (float(res) == 0.0): res = ('%.' + str(maxdp) + 'f') % 0
+                break
+            else: res = self.formatNumber(value, sf)
+
+        while self.decimal_places(plus_str) > self.decimal_places(res):
+            sf += 1
+            res = self.formatNumber(value, sf)
+        return (res, plus_str, minus_str)
+
+    def formatNumber(self, value, sig_figs=None, wantSign=False):
+        if sig_figs is None:
+            sf = self.sig_figs
+        else: sf = sig_figs
+        s = numberFigs(value, sf)
+        if wantSign:
+            if s[0] != '-' and float(s) < 0: s = '-' + s
+            if  float(s) > 0: s = '+' + s
+        return s
+
+    def decimal_places(self, s):
+        i = s.find('.')
+        if i > 0: return len(s) - i - 1
+        return 0
+
+
 class tableFormatter():
     def __init__(self):
         self.border = '|'
@@ -127,7 +171,7 @@ class planckNoLineTableFormatter(planckTableFormatter):
 
 class resultTable():
 
-    def __init__(self, ncol, results, tableParamNames=None, titles=None, formatter=None, blockEndParams=None, paramList=None):
+    def __init__(self, ncol, results, tableParamNames=None, titles=None, formatter=None, numFormatter=None, blockEndParams=None, paramList=None):
 # results is a margeStats or bestFit table
         self.lines = []
         if formatter is None: self.format = planckNoLineTableFormatter()
@@ -138,6 +182,8 @@ class resultTable():
             self.tableParamNames = results[0]
         else: self.tableParamNames = tableParamNames
         if paramList is not None: self.tableParamNames = self.tableParamNames.filteredCopy(paramList)
+        if numFormatter is None: self.numberFormatter = numberFormatter()
+        else: self.numberFormatter = numFormatter
         self.results = results
         self.boldBaseParameters = True
         self.colsPerResult = len(results[0].columns)
@@ -189,22 +235,7 @@ class resultTable():
         self.addLine("belowHeader")
 
     def paramResultsTex(self, param):
-        return " & ".join(result.paramResultTex(self, param) for result in self.results)
-
-    def formatNumber(self, value, sig_figs=None, wantSign=False):
-        if sig_figs is None:
-            sf = self.sig_figs
-        else: sf = sig_figs
-        s = numberFigs(value, sf)
-        if wantSign:
-            if s[0] != '-' and float(s) < 0: s = '-' + s
-            if  float(s) > 0: s = '+' + s
-        return s
-
-    def decimal_places(self, s):
-        i = s.find('.')
-        if i > 0: return len(s) - i - 1
-        return 0
+        return " & ".join(result.paramResultTex(self.numberFormatter, param) for result in self.results)
 
     def textAsColumn(self, txt, latex=False, separator=False, bold=False):
         wid = len(txt)
@@ -223,33 +254,6 @@ class resultTable():
         return  self.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
 
 
-    def namesigFigs(self, value, limplus, limminus):
-        frac = limplus / (abs(value) + limplus)
-        err_sf = 2
-        if value >= 20 and frac > 0.1 and limplus >= 2: err_sf = 1
-
-        plus_str = self.formatNumber(limplus, err_sf, True)
-        minus_str = self.formatNumber(limminus, err_sf, True)
-        sf = self.sig_figs
-        if frac > 0.1 and value < 100 and value >= 20: sf = 2
-        elif frac > 0.01 and value < 1000: sf = 3
-#        if abs(value) < 1 and limplus - limminus > abs(value): sf = 2
-        res = self.formatNumber(value, sf)
-        maxdp = max(self.decimal_places(plus_str), self.decimal_places(minus_str))
-        while abs(value) < 1 and maxdp < self.decimal_places(res):
-            sf -= 1
-            if sf == 0:
-                res = ('%.' + str(maxdp) + 'f') % value
-                if (float(res) == 0.0): res = ('%.' + str(maxdp) + 'f') % 0
-                break
-            else: res = self.formatNumber(value, sf)
-
-        while self.decimal_places(plus_str) > self.decimal_places(res):
-            sf += 1
-            res = self.formatNumber(value, sf)
-        return (res, plus_str, minus_str)
-
-
     def endTable(self):
         self.lines.append(self.format.endTable())
 
@@ -264,7 +268,12 @@ class paramResults(paramNames.paramList): pass
 
 class bestFit(paramResults):
 
-    def loadFromFile(self, filename):
+    def __init__(self, fileName=None, setParamNameFile=None, want_fixed=False):
+        paramResults.__init__(self)
+        if fileName is not None: self.loadFromFile(fileName, want_fixed=want_fixed)
+        if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
+
+    def loadFromFile(self, filename, want_fixed=False):
         self.colums = ['Best fit']
         textFileLines = self.fileList(filename)
         first = textFileLines[0].strip().split('=')
@@ -289,8 +298,9 @@ class bestFit(paramResults):
                                 (kind, name) = name
                             else: kind = ''
                             self.chiSquareds.append((kind, name, float(chisq)))
+                    break
                 continue
-            if not isFixed:
+            if not isFixed or want_fixed:
                 param = paramNames.paramInfo()
                 param.isDerived = isDerived
                 (param.number, param.best_fit, param.name, param.label) = [s.strip() for s in line.split(None, 3)]
