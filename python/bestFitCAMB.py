@@ -22,7 +22,6 @@ bf = ResultObjs.bestFit(root + '.minimum', setParamNameFile=root + '.paramnames'
 
 for camb, cosmomc in pars.items():
     par = bf.parWithName(cosmomc)
-    print camb, cosmomc, par
     if par is not None: ini.params[camb] = par.best_fit
 
 ini.params['scalar_amp(1)'] = float(ini.params['scalar_amp(1)']) / 1e9
@@ -37,4 +36,4 @@ ini.params['tensor_spectral_index(1)'] = -float(ini.params['initial_ratio(1)']) 
 
 ini.saveFile(sys.argv[2])
 
-print 'warning: this does not support all parameter extensions from LCDM'
+print 'OK, though note this does not support all parameter extensions from LCDM'

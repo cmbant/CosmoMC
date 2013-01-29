@@ -36,6 +36,7 @@
     real(dl), dimension(10000) :: DR7_alpha_file, DR7_prob_file
     real(dl) DR7_dalpha
     real rsdrag_theory
+    real(dl) :: BAO_fixed_rs = -1._dl
     integer DR7_alpha_npoints
 
     contains
@@ -52,6 +53,9 @@
     if (Ini_Read_Logical_File(Ini, 'use_BAO',.false.)) then
         numbaosets = Ini_Read_Int_File(Ini,'bao_numdatasets',0)
         if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
+        if (Ini_Haskey_file(Ini,'BAO_fixed_rs')) then
+            BAO_fixed_rs= Ini_Read_Double_File(Ini,'bao_numdatasets',-1._dl)
+        end if
         do i= 1, numbaosets
             allocate(like)
             call ReadBaoDataset(like, ReadIniFileName(Ini,numcat('bao_dataset',i)) )
@@ -180,7 +184,12 @@
     real(mcp) BAO_LnLike
     real(dl), allocatable :: BAO_theory(:)
 
-    rsdrag_theory =  Theory%derived_parameters( derived_rdrag )
+    if (BAO_fixed_rs>0) then
+        !this is just for use for e.g. BAO 'only' constraints
+        rsdrag_theory =  BAO_fixed_rs
+    else
+        rsdrag_theory =  Theory%derived_parameters( derived_rdrag )
+    end if
     BAO_LnLike=0
     if (like%name=='DR7') then
         BAO_LnLike = BAO_DR7_loglike(CMB,like%bao_z(1))

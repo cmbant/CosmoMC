@@ -289,38 +289,37 @@
 
     GaussPriors%std=0 !no priors by default
     do i=1,num_params
-
-    InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'param',i)
-    if (InLine=='') call ParamError('parameter ranges not found',i)
-    read(InLine, *, err = 100, end =100) center, Scales%PMin(i), Scales%PMax(i), Scales%StartWidth(i), Scales%PWidth(i)
-    if (Scales%PWidth(i)/=0) then
-        InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'prior',i)
-        if (InLine/='') read(InLine, *, err = 101, end=101) GaussPriors%mean(i), GaussPriors%std(i)
-    else
-        scales%PMin(i) = center
-        Scales%PMax(i) = center
-    end if
-
-    Scales%center(i) = center
-    Params%P(i) = center
-    if (Scales%PMax(i) < Scales%PMin(i)) call ParamError('You have param Max < Min',i)
-    if (Scales%center(i) < Scales%PMin(i)) call ParamError('You have param center < Min',i)
-    if (Scales%center(i) > Scales%PMax(i)) call ParamError('You have param center > Max',i)
-    if (Scales%PWidth(i) /= 0) then !to get sizes for allocation arrays
-        if (use_fast_slow .and. any(i==fast_params(1:fast_number))) then
-            if (i >= index_data .or. .not. block_semi_fast) then
-                param_type(i) = tp_fast
-            else
-                param_type(i) = tp_semifast
-            end if
+        InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'param',i)
+        if (InLine=='') call ParamError('parameter ranges not found',i)
+        read(InLine, *, err = 100, end =100) center, Scales%PMin(i), Scales%PMax(i), Scales%StartWidth(i), Scales%PWidth(i)
+        if (Scales%PWidth(i)/=0) then
+            InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'prior',i)
+            if (InLine/='') read(InLine, *, err = 101, end=101) GaussPriors%mean(i), GaussPriors%std(i)
         else
-            if (use_fast_slow .and. index_semislow >=0 .and. i >= index_semislow .and. block_semi_fast) then
-                param_type(i) = tp_semislow
+            scales%PMin(i) = center
+            Scales%PMax(i) = center
+        end if
+
+        Scales%center(i) = center
+        Params%P(i) = center
+        if (Scales%PMax(i) < Scales%PMin(i)) call ParamError('You have param Max < Min',i)
+        if (Scales%center(i) < Scales%PMin(i)) call ParamError('You have param center < Min',i)
+        if (Scales%center(i) > Scales%PMax(i)) call ParamError('You have param center > Max',i)
+        if (Scales%PWidth(i) /= 0) then !to get sizes for allocation arrays
+            if (use_fast_slow .and. any(i==fast_params(1:fast_number))) then
+                if (i >= index_data .or. .not. block_semi_fast) then
+                    param_type(i) = tp_fast
+                else
+                    param_type(i) = tp_semifast
+                end if
             else
-                param_type(i) = tp_slow
+                if (use_fast_slow .and. index_semislow >=0 .and. i >= index_semislow .and. block_semi_fast) then
+                    param_type(i) = tp_semislow
+                else
+                    param_type(i) = tp_slow
+                end if
             end if
         end if
-    end if
     end do
 
     allocate(params_used( count(param_type /= tp_unused)))
@@ -398,24 +397,23 @@
 
     allocate(propose_matrix(num_params_used, num_params_used))
     if (has_propose_matrix) then
+        StartCovMat = .true.
+        call IO_ReadProposeMatrix(pmat, prop_mat)
 
-    StartCovMat = .true.
-    call IO_ReadProposeMatrix(pmat, prop_mat)
+        !If generated with constrained parameters, assume diagonal in those parameters
+        do i=1,num_params
+            if (pmat(i,i) ==0 .and. Scales%PWidth(i)/=0) then
+                pmat(i,i) = Scales%PWidth(i)**2
+                MPI_Max_R_ProposeUpdate = MPI_Max_R_ProposeUpdateNew
+            end if
+            !Enforce new constraints (should really be fixing the inverse...)
+            if (Scales%PWidth(i)==0) then
+                pmat(i,:) = 0
+                pmat(:,i) = 0
+            end if
+        end do
 
-    !If generated with constrained parameters, assume diagonal in those parameters
-    do i=1,num_params
-        if (pmat(i,i) ==0 .and. Scales%PWidth(i)/=0) then
-            pmat(i,i) = Scales%PWidth(i)**2
-            MPI_Max_R_ProposeUpdate = MPI_Max_R_ProposeUpdateNew
-        end if
-        !Enforce new constraints (should really be fixing the inverse...)
-        if (Scales%PWidth(i)==0) then
-            pmat(i,:) = 0
-            pmat(:,i) = 0
-        end if
-    end do
-
-    propose_matrix = pmat(params_used, params_used)
+        propose_matrix = pmat(params_used, params_used)
     else
         propose_matrix = 0
         do i=1,num_params_used
@@ -535,49 +533,48 @@
     npoints = npoints + 1
 
     if (.not. Burn_done) then
-
-    if (npoints > 200/MPI_thin_fac +1) then
-        !We're not really after independent samples or all of burn in
-        !Make sure all parameters are being explored
-        do i=1, num_params_used   
-            if (S%Value(S%Count, i) /= S%Value(S%Count-1, i)) &
-            param_changes(i) =  param_changes(i) + 1
-        end do
-        Burn_done = all(param_changes > 100/MPI_thin_fac/slice_fac+2)
-        if (Burn_done) then
-            if (Feedback > 0) then
-                write (*,*) 'Chain',instance, &
-                ' MPI done ''burn'', like = ',like, 'Samples = ',sample_num
-                write (*,*) 'Time: ', MPI_WTime() - MPI_StartTime, 'output lines=',output_lines
-                if (use_fast_slow) write(*,*) 'slow changes', slow_changes, 'semi-slow changes', semislow_changes
-            end if
-
-
-            !Here we make something like an MPE_IBARRIER to see if all threads have passed burn in
-
-            !On completion of IRECV all should be OK
-
-            allocate(req(MPIChains-1), buf(MPIChains-1))
-
-            i = 0
-            do j=0, MPIChains-1
-                if (j /= MPIRank) then
-                    i=i+1
-                    call MPI_ISEND(MPIRank,1,MPI_INTEGER, j,0,MPI_COMM_WORLD,req(i),ierror)
-                    call MPI_IRECV(buf(i),1,MPI_INTEGER, j,0,MPI_COMM_WORLD,req(i),ierror)
-                end if
+        if (npoints > 200/MPI_thin_fac +1) then
+            !We're not really after independent samples or all of burn in
+            !Make sure all parameters are being explored
+            do i=1, num_params_used   
+                if (S%Value(S%Count, i) /= S%Value(S%Count-1, i)) &
+                param_changes(i) =  param_changes(i) + 1
             end do
+            Burn_done = all(param_changes > 100/MPI_thin_fac/slice_fac+2)
+            if (Burn_done) then
+                if (Feedback > 0) then
+                    write (*,*) 'Chain',instance, &
+                    ' MPI done ''burn'', like = ',like, 'Samples = ',sample_num
+                    write (*,*) 'Time: ', MPI_WTime() - MPI_StartTime, 'output lines=',output_lines
+                    if (use_fast_slow) write(*,*) 'slow changes', slow_changes, 'semi-slow changes', semislow_changes
+                end if
 
-            call S%Clear()
-            MPI_Min_Sample_Update = &
-            max((MPI_Min_Sample_Update*max(1,num_fast))/(MPI_thin_fac*slice_fac), npoints)
-            npoints = 0
-            flukecheck = .false.
-            deallocate(param_changes)
-            allocate(MPIcovmat(num_params_used,num_params_used))
-            allocate(MPIMean(0:num_params_used))
+
+                !Here we make something like an MPE_IBARRIER to see if all threads have passed burn in
+
+                !On completion of IRECV all should be OK
+
+                allocate(req(MPIChains-1), buf(MPIChains-1))
+
+                i = 0
+                do j=0, MPIChains-1
+                    if (j /= MPIRank) then
+                        i=i+1
+                        call MPI_ISEND(MPIRank,1,MPI_INTEGER, j,0,MPI_COMM_WORLD,req(i),ierror)
+                        call MPI_IRECV(buf(i),1,MPI_INTEGER, j,0,MPI_COMM_WORLD,req(i),ierror)
+                    end if
+                end do
+
+                call S%Clear()
+                MPI_Min_Sample_Update = &
+                max((MPI_Min_Sample_Update*max(1,num_fast))/(MPI_thin_fac*slice_fac), npoints)
+                npoints = 0
+                flukecheck = .false.
+                deallocate(param_changes)
+                allocate(MPIcovmat(num_params_used,num_params_used))
+                allocate(MPIMean(0:num_params_used))
+            end if
         end if
-    end if
 
     else
         flag = .false.
@@ -598,20 +595,15 @@
 
         if (DoUpdates) then
             if (MPIRank == 0) then
-
-            if (Waiting) then
-                call MPI_TESTALL(MPIChains-1,req, flag, stats, ierror)
-                Waiting = .not. flag
-
-            elseif (mod(npoints,max(1,(MPI_Sample_update_freq*num_params_used)/(slice_fac*MPI_thin_fac)))==0) then
-
-            Waiting = .true.
-            do j=1, MPIChains-1
-                call MPI_ISSEND(MPIRank,1,MPI_INTEGER, j,0,MPI_COMM_WORLD,req(j),ierror)
-            end do
-
-            end if
-
+                if (Waiting) then
+                    call MPI_TESTALL(MPIChains-1,req, flag, stats, ierror)
+                    Waiting = .not. flag
+                elseif (mod(npoints,max(1,(MPI_Sample_update_freq*num_params_used)/(slice_fac*MPI_thin_fac)))==0) then
+                    Waiting = .true.
+                    do j=1, MPIChains-1
+                        call MPI_ISSEND(MPIRank,1,MPI_INTEGER, j,0,MPI_COMM_WORLD,req(j),ierror)
+                    end do
+                end if
 
             else
                 !See if notified by root chain that time to do stuff
