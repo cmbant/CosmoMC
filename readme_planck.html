@@ -52,6 +52,7 @@ Grid run scripts include:
 <LI>makeGrid.py: as descried above, for setting up a grid of models. Stores the information in a "pickle" file that can then be read by the other scripts for iterating over batch items.
     <LI>addGridBatch.py: if you run multiple grids, e.g. a standard one and a separate small one for some parameter for interest, they can be combined using addGridBatch.py. Also use if the main batch importance samples some data, but a few of the models need to be run separately as chains: the script automatically replaces importance sampled runs with full chain runs if there is an overlap.
 <LI>batchJob.py: not a script, this just defines the objects and iterators used
+<LI>checkConverge.py: for finding chains which are missing or have R-1 larger than a specified threshold
 <LI>cleanup.py: for cleaning up files (e.g. before re-running a failed chain); can also just be used to list files for runs matching input parameters
 <LI>extractDistFiles.py: for copying all files of a particular type from all the subdirectories in the grid, e.g. to extract all .covmat files, or all .pdf plots
 <LI>makeCompare.py: to extract parameter constraints from .margestats files in the grid
@@ -68,6 +69,7 @@ Most scripts have standardized input parameters to restrict to subsets of grid i
 <P>
 Multi-purpose use and utility scripts include
 <UL>
+<LI>bestFitCAMB.py: for converting .minimum best-fit file to CAMB input .ini file (not all parameter combinations)
 <LI>chains.py: under development, not used by anything else (could make base for python version of GetDist)
 <LI>covcomb.py: for combining covariance matrices (thanks Steven!)
 <LI>covscale.py: for modifying .covmat files if parameters are re-scaled
@@ -77,6 +79,7 @@ Multi-purpose use and utility scripts include
 <LI>makePerfectForecastDataset.py: a simple old script for simulating perfect fake CMB datasets
 <LI>paramNames.py: for reading paramNames files, and general objects for storing parameter info
 <LI>ResultObjs.py: objects for getdist output results (.margestats) and .minimum files. Note is expects formats to be those produced by cosmomcplanck, not older versions.
+<LI>runningJobs.py: shows full long job names for running jobs (may not be portable) with status
 </UL>
 
 <h2>Plots</h2>
