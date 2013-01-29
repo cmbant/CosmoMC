@@ -16,7 +16,6 @@ ini = iniFile.iniFile()
 ini.params['re_use_optical_depth'] = True
 ini.params['temp_cmb'] = 2.7255
 ini.params['CMB_outputscale'] = 2.7255e6 ** 2.
-ini.params['tensor_spectral_index(1)'] = -float(ini.params['initial_ratio(1)']) / 8
 ini.defaults.append('params.ini')
 
 bf = ResultObjs.bestFit(root + '.minimum', setParamNameFile=root + '.paramnames', want_fixed=True)
@@ -33,6 +32,7 @@ neffstandard = 3.046 / 3
 ini.params['massless_neutrinos'] = float(ini.params['massless_neutrinos']) - neffstandard * nmassive
 ini.params['massive_neutrinos'] = int(round(neffstandard * nmassive))
 ini.params['nu_mass_degeneracies'] = neffstandard * nmassive
+ini.params['tensor_spectral_index(1)'] = -float(ini.params['initial_ratio(1)']) / 8
 
 
 ini.saveFile(sys.argv[2])
