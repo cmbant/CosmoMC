@@ -54,7 +54,7 @@
         numbaosets = Ini_Read_Int_File(Ini,'bao_numdatasets',0)
         if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
         if (Ini_Haskey_file(Ini,'BAO_fixed_rs')) then
-            BAO_fixed_rs= Ini_Read_Double_File(Ini,'bao_numdatasets',-1._dl)
+            BAO_fixed_rs= Ini_Read_Double_File(Ini,'BAO_fixed_rs',-1._dl)
         end if
         do i= 1, numbaosets
             allocate(like)
