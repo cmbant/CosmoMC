@@ -48,11 +48,11 @@ def paramResultTable(jobItem):
     if not bf is None:
         caption += ' Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % (bf.logLike * 2)) + '$'
     if args.bestfitonly:
-        tableLines += ResultObjs.resultTable(args.columns, [bf], blockEndParams=args.blockEndParams, args.paramList).lines
+        tableLines += ResultObjs.resultTable(args.columns, [bf], blockEndParams=args.blockEndParams, paramList=args.paramList).lines
     else:
         if not jobItem.result_converge is None: caption += '; R-1 =' + jobItem.result_converge.worstR()
         if not jobItem.result_marge is None: tableLines += ResultObjs.resultTable(args.columns,
-                                                                                  [jobItem.result_marge], blockEndParams=args.blockEndParams, args.paramList).lines
+                                                                                  [jobItem.result_marge], blockEndParams=args.blockEndParams, paramList=args.paramList).lines
     tableLines.append('')
     if not args.forpaper: tableLines.append(caption)
     if not bf is None and not args.forpaper:

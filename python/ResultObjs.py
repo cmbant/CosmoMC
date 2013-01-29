@@ -127,7 +127,7 @@ class planckNoLineTableFormatter(planckTableFormatter):
 
 class resultTable():
 
-    def __init__(self, ncol, results, tableParamNames=None, titles=None, formatter=None, blockEndParams=None):
+    def __init__(self, ncol, results, tableParamNames=None, titles=None, formatter=None, blockEndParams=None, paramList=None):
 # results is a margeStats or bestFit table
         self.lines = []
         if formatter is None: self.format = planckNoLineTableFormatter()
@@ -137,6 +137,7 @@ class resultTable():
         if tableParamNames is None:
             self.tableParamNames = results[0]
         else: self.tableParamNames = tableParamNames
+        if paramList is not None: self.tableParamNames = self.tableParamNames.filteredCopy(paramList)
         self.results = results
         self.boldBaseParameters = True
         self.colsPerResult = len(results[0].columns)

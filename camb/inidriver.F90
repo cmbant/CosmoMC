@@ -57,6 +57,10 @@
         P%WantCls= P%WantScalars .or. P%WantTensors .or. P%WantVectors
 
         P%WantTransfer=Ini_Read_Logical('get_transfer')
+
+        AccuracyBoost  = Ini_Read_Double('accuracy_boost',AccuracyBoost)
+        lAccuracyBoost = Ini_Read_Real('l_accuracy_boost',lAccuracyBoost)
+        HighAccuracyDefault = Ini_Read_Logical('high_accuracy_default',HighAccuracyDefault)
         
         P%NonLinear = Ini_Read_Int('do_nonlinear',NonLinear_none)
    
@@ -262,9 +266,6 @@
        P%MassiveNuMethod  = Ini_Read_Int('massive_nu_approx',Nu_best)
 
        ThreadNum      = Ini_Read_Int('number_of_threads',ThreadNum)
-       AccuracyBoost  = Ini_Read_Double('accuracy_boost',AccuracyBoost)
-       lAccuracyBoost = Ini_Read_Real('l_accuracy_boost',lAccuracyBoost)
-       HighAccuracyDefault = Ini_Read_Logical('high_accuracy_default',HighAccuracyDefault)
        use_spline_template = Ini_Read_Logical('use_spline_template',use_spline_template)
        if (HighAccuracyDefault) then
          P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl,P%Max_eta_k)

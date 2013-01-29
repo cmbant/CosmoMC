@@ -101,7 +101,12 @@ class paramList:
     def deleteIndices(self, indices):
         self.names = [name for i, name in enumerate(self.names) if not i in indices]
 
-
+    def filteredCopy(self, params):
+        usedNames = self.__class__()
+        for name in self.names:
+            p = params.parWithName(name.name)
+            if p is not None: usedNames.names.append(name)
+        return usedNames
 
 class paramNames(paramList):
 
@@ -136,5 +141,4 @@ class paramNames(paramList):
         for info in self.names:
             textFileHandle.write(info.string() + '\n')
         textFileHandle.close()
-
 
