@@ -12,9 +12,10 @@ Opts.parser.add_argument('--paramList', default=None)
 Opts.parser.add_argument('--blockEndParams', default=None)
 Opts.parser.add_argument('--columns', type=int, nargs=1, default=3)
 Opts.parser.add_argument('--compare', nargs='+', default=None)
-Opts.parser.add_argument('--portrait', action='store_true')
 Opts.parser.add_argument('--titles', default=None)  # for compare plots
 Opts.parser.add_argument('--forpaper', action='store_true')
+Opts.parser.add_argument('--height', default="10in")
+Opts.parser.add_argument('--width', default="10in")
 
 
 (batch, args) = Opts.parseForBatch()
@@ -30,8 +31,7 @@ if not args.forpaper:
     lines.append('\\documentclass[10pt]{article}')
     lines.append('\\usepackage{fullpage}')
     lines.append('\\usepackage[pdftex]{hyperref}')
-    if args.portrait: lines.append('\\usepackage[paperheight=15in,margin=0.8in]{geometry}')
-    else: lines.append('\\usepackage[landscape,margin=0.8in]{geometry}')
+    lines.append('\\usepackage[paperheight=' + args.height + ',paperwidth=' + args.width + ',margin=0.8in]{geometry}')
 
     lines.append('\\renewcommand{\\arraystretch}{1.5}')
     lines.append('\\begin{document}')
@@ -81,8 +81,9 @@ def filterBatchData(batch, datatags):
 
 items = dict()
 for jobItem in Opts.filteredBatchItems():
-    if not jobItem.paramtag in items: items[jobItem.paramtag] = []
-    items[jobItem.paramtag].append(jobItem)
+    if jobItem.chainExists():
+        if not jobItem.paramtag in items: items[jobItem.paramtag] = []
+        items[jobItem.paramtag].append(jobItem)
 items = sorted(items.iteritems())
 
 for paramtag, parambatch in items:

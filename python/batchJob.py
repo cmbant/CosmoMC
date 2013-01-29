@@ -41,7 +41,7 @@ class jobItem:
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
         for (imp, ini, arr) in [(x[0], x[1], x) for x in importanceRuns]:
-            if len(arr) > 2 and not arr[2].wantImportance(self): continue
+            if len(arr) > 2 and not arr[2].wantImportance(self) or imp in self.data_set[0]: continue
             job = jobItem(self.batchPath, self.param_set, self.data_set)
             job.importanceTag = imp
             job.importanceSettings = ini

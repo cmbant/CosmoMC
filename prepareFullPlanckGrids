@@ -1,6 +1,6 @@
 python python/makeGrid.py main settings_main
-python python/makeGrid.py main/bao settings_bao
 python python/makeGrid.py main/neutrinos settings_neutrinos
+python python/makeGrid.py main/bao settings_bao
 python python/addGridBatch.py main main/bao
 python python/addGridBatch.py main main/neutrinos
 

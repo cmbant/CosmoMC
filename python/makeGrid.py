@@ -70,14 +70,13 @@ for jobItem in batch.items(wantSubItems=False):
             ini.params['propose_matrix'] = covmat
         else:
             hasCov = False
+            ini.params['MPI_Max_R_ProposeUpdate'] = 20
             for new, old in settings.covrenames.items():
                 covmat = batch.basePath + 'planck_covmats/' + jobItem.name.replace(new, old) + '.covmat'
                 if os.path.exists(covmat):
                     ini.params['propose_matrix'] = covmat
                     hasCov = True
                     break
-            if not hasCov and settings.newCovmat:
-                ini.params['MPI_Max_R_ProposeUpdate'] = 20
 
         ini.params['start_at_bestfit'] = settings.start_at_bestfit
         ini.params['action'] = cosmomcAction

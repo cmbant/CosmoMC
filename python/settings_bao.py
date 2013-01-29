@@ -1,6 +1,6 @@
 # settings for grid of planck+BAO runs where importance sampling does not work well
 
-extparams = [['omegak'], ['nnu'], ['mnu', 'omegak'], ['w'], ['w', 'wa']]
+extparams = [['omegak'], ['nnu'], ['mnu', 'omegak'], ['w'], ['w', 'wa'], ['nrun', 'r', 'omegak']]
 
 # dataset names
 planck = 'planck_CAMspec'
@@ -24,12 +24,9 @@ importanceRuns.append([BAO, ['BAO.ini']])
 importanceRuns.append([HST, ['HST.ini']])
 # importanceRuns.append([SNLS, ['SNLS.ini']])
 
-skip = ['HST_HST', 'BAO_BAO', 'SNLS_SNLS']
-
-# if covmats are unreliable, so start learning ASAP
-newCovmat = True
-
 start_at_bestfit = False
+
+skip = []
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']

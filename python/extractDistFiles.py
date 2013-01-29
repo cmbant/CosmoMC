@@ -12,7 +12,8 @@ target_dir = os.path.abspath(args.target_dir) + os.sep
 if not os.path.exists(target_dir): os.makedirs(target_dir)
 
 for ext in args.file_extension:
-    pattern = '*.' + ext
+    if not '.' in ext: pattern = '.' + ext
+    else: pattern = ext
     for jobItem in Opts.filteredBatchItems():
         if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
             for f in os.listdir(jobItem.distPath):

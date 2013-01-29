@@ -40,6 +40,7 @@ if not args.plots and not args.specific:
                 checkDir(jobItem.distPath)
                 ini.params['out_dir'] = jobItem.distPath
                 ini.params['plot_data_dir'] = data_dir
+                if 'meffsterile' in jobItem.param_set: ini.params['limits[nnu]'] = '3.046 N'
                 custom_plot = batch.commonPath + 'plots' + os.sep + jobItem.paramtag + '.ini'
                 custom_plot2 = batch.commonPath + 'plots' + os.sep + jobItem.name + '.ini'
                 if os.path.exists(custom_plot2):

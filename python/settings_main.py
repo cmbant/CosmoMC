@@ -42,10 +42,7 @@ importanceRuns.append([HST, ['HST.ini']])
 
 
 skip = []
-skip.append('WMAP_lensing')
 
-# if covmats are unreliable, so start learning ASAP
-newCovmat = True
 
 start_at_bestfit = False
 
