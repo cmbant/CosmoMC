@@ -4,7 +4,7 @@ import os, batchJobArgs, ResultObjs, paramNames
 Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True, converge=True)
 Opts.parser.add_argument('latex_filename')
 Opts.parser.add_argument('--bestfitonly', action='store_true')
-Opts.parser.add_argument('--bestfit', action='store_true', default=True)
+Opts.parser.add_argument('--nobestfit', action='store_true')
 
 # this is just for the latex labelsm set None to use those in chain .paramnames
 Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')
@@ -43,15 +43,15 @@ def texEscapeText(string):
 def paramResultTable(jobItem):
     tableLines = []
     caption = ''
-    jobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=args.bestfit, bestfitonly=args.bestfitonly)
+    jobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=not args.nobestfit, bestfitonly=args.bestfitonly)
     bf = jobItem.result_bestfit
     if not bf is None:
         caption += ' Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % (bf.logLike * 2)) + '$'
     if args.bestfitonly:
-        tableLines += ResultObjs.resultTable(args.columns, [bf], blockEndParams=args.blockEndParams, paramList=args.paramList).lines
+        if bf is not None: tableLines += ResultObjs.resultTable(args.columns, [bf], blockEndParams=args.blockEndParams, paramList=args.paramList).lines
     else:
-        if not jobItem.result_converge is None: caption += '; R-1 =' + jobItem.result_converge.worstR()
-        if not jobItem.result_marge is None: tableLines += ResultObjs.resultTable(args.columns,
+        if jobItem.result_converge is not None: caption += '; R-1 =' + jobItem.result_converge.worstR()
+        if jobItem.result_marge is not None: tableLines += ResultObjs.resultTable(args.columns,
                                                                                   [jobItem.result_marge], blockEndParams=args.blockEndParams, paramList=args.paramList).lines
     tableLines.append('')
     if not args.forpaper: tableLines.append(caption)

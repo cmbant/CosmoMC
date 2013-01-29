@@ -62,7 +62,9 @@ def numberFigs(number, sigfig):
         result.insert(0, '-')
     return ''.join(result)
 
-def numberFormatter():
+class numberFormatter():
+    def __init__(self, sig_figs=4):
+        self.sig_figs = sig_figs
 
     def namesigFigs(self, value, limplus, limminus):
         frac = limplus / (abs(value) + limplus)
@@ -176,7 +178,6 @@ class resultTable():
         self.lines = []
         if formatter is None: self.format = planckNoLineTableFormatter()
         else: self.format = formatter
-        self.sig_figs = 4
         self.ncol = ncol
         if tableParamNames is None:
             self.tableParamNames = results[0]
@@ -184,6 +185,7 @@ class resultTable():
         if paramList is not None: self.tableParamNames = self.tableParamNames.filteredCopy(paramList)
         if numFormatter is None: self.numberFormatter = numberFormatter()
         else: self.numberFormatter = numFormatter
+
         self.results = results
         self.boldBaseParameters = True
         self.colsPerResult = len(results[0].columns)
@@ -235,7 +237,17 @@ class resultTable():
         self.addLine("belowHeader")
 
     def paramResultsTex(self, param):
-        return " & ".join(result.paramResultTex(self.numberFormatter, param) for result in self.results)
+        return " & ".join(self.paramResultTex(result, param) for result in self.results)
+
+    def paramResultTex(self, result, p):
+        values = result.texValues(self.numberFormatter, p)
+        if values is not None:
+            if len(values) > 1: txt = self.textAsColumn(values[1], True, separator=True)
+            else: txt = ''
+            txt += self.textAsColumn(values[0], values[0] != '---')
+            return txt
+        else: return self.textAsColumn('') * len(result.columns)
+
 
     def textAsColumn(self, txt, latex=False, separator=False, bold=False):
         wid = len(txt)
@@ -249,10 +261,8 @@ class resultTable():
         if separator: res += ' & '
         return res
 
-
     def paramLabelColumn(self, param):
         return  self.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
-
 
     def endTable(self):
         self.lines.append(self.format.endTable())
@@ -270,11 +280,11 @@ class bestFit(paramResults):
 
     def __init__(self, fileName=None, setParamNameFile=None, want_fixed=False):
         paramResults.__init__(self)
+        self.columns = ['Best fit']
         if fileName is not None: self.loadFromFile(fileName, want_fixed=want_fixed)
         if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
 
     def loadFromFile(self, filename, want_fixed=False):
-        self.colums = ['Best fit']
         textFileLines = self.fileList(filename)
         first = textFileLines[0].strip().split('=')
         self.logLike = float(first[1].strip())
@@ -315,11 +325,10 @@ class bestFit(paramResults):
             likes[kind].append((name, chisq))
         return sorted(likes.iteritems())
 
-    def paramResultTex(self, formatter, param):
-        p = self.parWithName(param.name)
-        if p is None: formatter.textAsColumn('')
-        else: return formatter.textAsColumn(formatter.formatNumber(param.best_fit), True)
-
+    def texValues(self, formatter, p):
+        param = self.parWithName(p.name)
+        if param is not None: return [formatter.formatNumber(param.best_fit)]
+        else: return None
 
 
 class margeStats(paramResults):
@@ -361,8 +370,7 @@ class margeStats(paramResults):
             par.best_fit = param.best_fit
             par.isDerived = param.isDerived
 
-
-    def paramResultTex(self, formatter, p):
+    def texValues(self, formatter, p):
         param = self.parWithName(p.name)
         if not param is None:
             lims = param.limits[1]
@@ -375,15 +383,12 @@ class margeStats(paramResults):
             elif param.lim_top and not param.lim_bot:
                 res = '> ' + formatter.formatNumber(lims[0], sf)
             else: res = '---'
-            txt = ''
             if len(self.columns) > 1:  # add best fit too
                 rangew = (lims[1] - lims[0]) / 10
-                bres = formatter.namesigFigs(param.best_fit, rangew, -rangew)[0]
-                txt += formatter.textAsColumn(bres, True, separator=True)
-            txt += formatter.textAsColumn(res, res != '---')
-            return txt
-        else: return formatter.textAsColumn('') * len(self.columns)
-
+                bestfit = formatter.namesigFigs(param.best_fit, rangew, -rangew)[0]
+                return [res, bestfit]
+            return [res]
+        else: return None
 
 
 class convergeStats(paramResults):
