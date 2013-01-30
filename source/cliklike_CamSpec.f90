@@ -144,7 +144,7 @@
     real(mcp), intent(in)  :: freq_params(:)
     real(dp) like_tot
     integer, parameter :: lmin=2
-    real(dp)  cl_tt(tt_lmax)
+    real(dp)  cl_tt(2:tt_lmax)
     integer L, offset
     real(dp) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz_143, r_ps, r_cib, &
       cal0, cal1, cal2, xi, A_ksz, ncib
