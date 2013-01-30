@@ -1,6 +1,6 @@
-!AL Dec 12: Adapted from http://casa.colorado.edu/~aaconley/cosmomc_snls/
-!AL Jan 13: added option to internally marginalize parameters (with openmp parallelization)
-    
+    !AL Dec 12: Adapted from http://casa.colorado.edu/~aaconley/cosmomc_snls/
+    !AL Jan 13: added option to internally marginalize parameters (with openmp parallelization)
+
     MODULE SNLS
     !Module for handling SNLS supernova data
     !The differences between this and the supernova.f90 module are:
@@ -208,9 +208,9 @@
 
     !Other convenience variables
     REAL(dl), ALLOCATABLE, PRIVATE :: lumdists(:)
-    LOGICAL, PRIVATE :: first_inversion = .FALSE.
     REAL(dl), PRIVATE :: alpha_prev, beta_prev
 
+    LOGICAL, PRIVATE :: first_inversion 
     LOGICAL, PUBLIC :: snls_read = .FALSE.
     LOGICAL, PUBLIC :: snls_prepped = .FALSE. 
 
@@ -784,8 +784,8 @@
         WRITE (*,*) " Has stretch_colour covariance matrix"
     ENDIF
 
+    first_inversion = .true.
     snls_read = .TRUE.
-    first_inversion = .TRUE.
     snls_prepped = .FALSE.
     RETURN
 
@@ -1072,11 +1072,12 @@
     REAL(dl) :: amarg_A, amarg_B, amarg_C
     REAL(dl) :: amarg_D, amarg_E, amarg_F, tempG !Marginalization params
     real(dl) :: diffmag(nsn),invvars(nsn) 
-    real(dl), allocatable :: invcovmat(:,:) 
+    !    real(dl), allocatable :: invcovmat(:,:)
+    real(dl) :: invcovmat(nsn,nsn)
 
-    IF (.NOT. diag_errors) THEN
-        ALLOCATE( invcovmat(nsn,nsn) )
-    END IF
+    !    IF (.NOT. diag_errors) THEN
+    !        ALLOCATE( invcovmat(nsn,nsn) )
+    !    END IF
 
     alphasq   = alpha*alpha
     betasq    = beta*beta
@@ -1118,9 +1119,9 @@
         IF (status .NE. 0) THEN 
             WRITE (*,invfmt) alpha,beta
             SNLS_alpha_beta_like = logZero
-            IF (.NOT. diag_errors) THEN
-                DEALLOCATE( invcovmat)
-            END IF
+            !            IF (.NOT. diag_errors) THEN
+            !                DEALLOCATE( invcovmat)
+            ! END IF
             RETURN
         ENDIF
 
@@ -1162,7 +1163,7 @@
                     amarg_E = amarg_E + invcovmat(I,I) + 2.0_dl*SUM( invcovmat( I+1:nsn, I ) )
                 END DO
             END IF
-        ENDIF       
+        ENDIF
     END IF
 
     IF (twoscriptmfit) THEN
@@ -1194,9 +1195,9 @@
         WRITE(*,'(" SNLS chi2: ",F7.2," for ",I5," SN")') chisq,nsn
     ENDIF
 
-    IF (.NOT. diag_errors) THEN
-        DEALLOCATE( invcovmat)
-    END IF
+    !    IF (.NOT. diag_errors) THEN
+    !        DEALLOCATE( invcovmat)
+    !    END IF
 
     end FUNCTION  SNLS_alpha_beta_like
 
@@ -1209,7 +1210,7 @@
     real(mcp) DataParams(:)
     ! norm_alpha, norm_beta are the positions of alpha/beta in norm
     REAL(mcp) :: snls_LnLike 
-    real(dl) grid_best, aLike, zhel, zcmb, alpha, beta
+    real(dl) grid_best, zhel, zcmb, alpha, beta
     integer grid_i, i
 
     snls_LnLike = logZero
@@ -1239,33 +1240,26 @@
             lumdists( snabsdist(i)%index ) = 5.0*LOG10( snabsdist(i)%dl )
         ENDDO
     ENDIF
-
-    !$OMP PARALLEL DO DEFAULT(SHARED),SCHEDULE(STATIC), IF(SNLS_int_points>1) &
-    !$OMP & PRIVATE(alpha,beta, aLike,grid_i)
-    do grid_i = 1, SNLS_int_points
-        if (SNLS_marginalize) then
+    if (SNLS_marginalize) then
+        first_inversion = .false.
+        !$OMP PARALLEL DO DEFAULT(SHARED),SCHEDULE(STATIC), PRIVATE(alpha,beta, grid_i)
+        do grid_i = 1, SNLS_int_points
             alpha = alpha_grid(grid_i)
             beta=beta_grid(grid_i)
-        else
-            alpha=DataParams(1)
-            beta=DataParams(2)
+            SNLS_marge_grid(grid_i) = SNLS_alpha_beta_like(alpha, beta, lumdists)
+        end do
+
+        grid_best = minval(SNLS_marge_grid,mask=SNLS_marge_grid/=logZero)
+        snls_LnLike =  grid_best - log(sum(exp(-SNLS_marge_grid + grid_best),  mask=SNLS_marge_grid/=logZero)*SNLS_step_width**2)
+        IF (Feedback > 1) THEN
+            WRITE(*,'(" SNLS best logLike ",F7.2,", marge logLike: ",F7.2," for ",I5," SN")') grid_best, snls_LnLike,nsn
         end if
+    else
+        alpha=DataParams(1)
+        beta=DataParams(2)
 
-        aLike = SNLS_alpha_beta_like(alpha, beta, lumdists)
-        if (.not. SNLS_marginalize) then
-            snls_LnLike =aLike 
-        else
-            SNLS_marge_grid(grid_i) = aLike
-        end if
-    end do
-
-    if (.not. SNLS_marginalize) return
-
-    grid_best = minval(SNLS_marge_grid,mask=SNLS_marge_grid/=logZero)
-    snls_LnLike =  grid_best - log(sum(exp(-SNLS_marge_grid + grid_best),  mask=SNLS_marge_grid/=logZero)*SNLS_step_width**2)
-    IF (Feedback > 1) THEN
-        WRITE(*,'(" SNLS best logLike ",F7.2,", marge logLike: ",F7.2," for ",I5," SN")') grid_best, snls_LnLike,nsn
-    end if 
+        snls_LnLike=SNLS_alpha_beta_like(alpha, beta, lumdists)
+    end if
 
     END FUNCTION snls_LnLike
 

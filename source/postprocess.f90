@@ -1,10 +1,6 @@
     ! This module does post-processing of .data files. For example to importance sample new data,
     ! correct approximate theory (eg. add in lensing), or to compute missing theory (e.g. matter power).
 
-
-    !March 2006: added redo_add parameter to add new data rather than re-computing all likelihoods
-    !Tensors now always recomputed if redo_cls=T
-
     module posthoc
     use settings
     use CMB_Cls
@@ -243,8 +239,7 @@
                         if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
                     end if
 
-                    if (Feedback > 1) write (*,*) num, ' mult= ', &
-                    real(mult), ' weight = ', real(weight)
+                    if (Feedback > 1) write (*,*) num, ' mult= ', real(mult), ' weight = ', real(weight)
                     weight_max = max(weight,weight_max)
                     weight_min = min(weight,weight_min)
                     mult_max = max(mult_max,mult)
