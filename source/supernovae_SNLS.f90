@@ -1,5 +1,6 @@
 !AL Dec 12: Adapted from http://casa.colorado.edu/~aaconley/cosmomc_snls/
-
+!AL Jan 13: added option to internally marginalize parameters (with openmp parallelization)
+    
     MODULE SNLS
     !Module for handling SNLS supernova data
     !The differences between this and the supernova.f90 module are:
@@ -1261,7 +1262,7 @@
     if (.not. SNLS_marginalize) return
 
     grid_best = minval(SNLS_marge_grid,mask=SNLS_marge_grid/=logZero)
-    snls_LnLike =  grid_best + log(sum(exp(-SNLS_marge_grid + grid_best),  mask=SNLS_marge_grid/=logZero)/SNLS_step_width**2)
+    snls_LnLike =  grid_best - log(sum(exp(-SNLS_marge_grid + grid_best),  mask=SNLS_marge_grid/=logZero)*SNLS_step_width**2)
     IF (Feedback > 1) THEN
         WRITE(*,'(" SNLS best logLike ",F7.2,", marge logLike: ",F7.2," for ",I5," SN")') grid_best, snls_LnLike,nsn
     end if 
