@@ -248,7 +248,6 @@ class resultTable():
             return txt
         else: return self.textAsColumn('') * len(result.columns)
 
-
     def textAsColumn(self, txt, latex=False, separator=False, bold=False):
         wid = len(txt)
         if latex:

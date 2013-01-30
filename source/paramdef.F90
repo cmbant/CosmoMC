@@ -543,15 +543,12 @@
             Burn_done = all(param_changes > 100/MPI_thin_fac/slice_fac+2)
             if (Burn_done) then
                 if (Feedback > 0) then
-                    write (*,*) 'Chain',instance, &
-                    ' MPI done ''burn'', like = ',like, 'Samples = ',sample_num
+                    write (*,*) trim(concat('Chain',instance, ', MPI done ''burn'', Samples = ',sample_num))//', like = ',real(like)
                     write (*,*) 'Time: ', MPI_WTime() - MPI_StartTime, 'output lines=',output_lines
                     if (use_fast_slow) write(*,*) 'slow changes', slow_changes, 'semi-slow changes', semislow_changes
                 end if
 
-
                 !Here we make something like an MPE_IBARRIER to see if all threads have passed burn in
-
                 !On completion of IRECV all should be OK
 
                 allocate(req(MPIChains-1), buf(MPIChains-1))

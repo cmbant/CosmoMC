@@ -109,6 +109,7 @@
         if (Params%DoLensing .and. Params%NonLinear==NonLinear_Lens) separate = .false.
         InReionization = Params%Reion%Reionization
         global_error_flag = 0
+        call_again = .false.
         
          if (Params%WantCls .and. Params%WantScalars) then
           P = Params
