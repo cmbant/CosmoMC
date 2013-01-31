@@ -54,6 +54,10 @@ class jobItem:
             job.parent = self
             self.importanceItems.append(job)
 
+    def matchesDatatag(self, tagList):
+        if self.datatag in tagList: return True
+        return self.datatag.replace('_post', '') in  [tag.replace('_post', '') for tag in tagList]
+
     def importanceJobs(self):
         return self.importanceItems
 
