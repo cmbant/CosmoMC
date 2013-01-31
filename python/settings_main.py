@@ -34,7 +34,7 @@ importanceRuns = []
 importanceRuns.append([lensing, ['lensing.ini'], importanceFilterPlanck()])
 importanceRuns.append([BAO, ['BAO.ini']])
 importanceRuns.append([HST, ['HST.ini']])
-# importanceRuns.append([SNLS, ['SNLS.ini']]) ' can't do this with extra parameters
+importanceRuns.append([SNLS, ['SNLS_marge.ini']])
 
 # importanceRuns.append(['acc', ['accuracy.ini'], importanceFilterAcc()])
 # importanceRuns.append(['v61N', ['v61N.ini'], importanceFilterAcc()])
