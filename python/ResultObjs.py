@@ -370,7 +370,8 @@ class margeStats(paramResults):
             par.isDerived = param.isDerived
 
     def texValues(self, formatter, p):
-        param = self.parWithName(p.name)
+        if not isinstance(p, paramNames.paramInfo): param = self.parWithName(p)
+        else: param = self.parWithName(p.name)
         if not param is None:
             lims = param.limits[1]
             sf = 3
