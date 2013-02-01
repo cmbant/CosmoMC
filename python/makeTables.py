@@ -52,7 +52,7 @@ def paramResultTable(jobItem):
     else:
         if jobItem.result_converge is not None: caption += '; R-1 =' + jobItem.result_converge.worstR()
         if jobItem.result_marge is not None: tableLines += ResultObjs.resultTable(args.columns,
-                                                                                  [jobItem.result_marge], blockEndParams=args.blockEndParams, paramList=args.paramList).lines
+                                     [jobItem.result_marge], blockEndParams=args.blockEndParams, paramList=args.paramList).lines
     tableLines.append('')
     if not args.forpaper: tableLines.append(caption)
     if not bf is None and not args.forpaper:
@@ -71,7 +71,7 @@ def compareTable(jobItems, titles=None):
     if titles is None: titles = [jobItem.datatag for jobItem in jobItems if jobItem.result_marge is not None]
     else: titles = titles.split(';')
     return ResultObjs.resultTable(1, [jobItem.result_marge for jobItem in jobItems if jobItem.result_marge is not None],
-                                   titles=titles, blockEndParams=args.blockEndParams).lines
+                                   titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
 
 def filterBatchData(batch, datatags):
     items = []

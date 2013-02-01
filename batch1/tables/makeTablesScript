@@ -1,1 +1,1 @@
- python python/makeTables.py main mainGridAutoTable --compare planck_CAMspec_lowl planck_CAMspec_lowl_lowLike  planck_CAMspec_lowl_lowLike_highL --portrait --paramtag='base' --forpaper --titles "Planck TT;Planck+WP;Planck+WP+HighL" 
+python python/makeTables.py main mainGridAutoTable --compare planck_CAMspec_lowl planck_CAMspec_lowl_lowLike  planck_CAMspec_lowl_lowLike_highL --paramtag='base' --forpaper --titles "Planck TT;Planck+WP;Planck+WP+HighL" --blockEndParams "aksz;logA" --paramList ./batch1/tables/paper_table.paramnames 
