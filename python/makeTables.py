@@ -66,7 +66,7 @@ def paramResultTable(jobItem):
 
 def compareTable(jobItems, titles=None):
     for jobItem in jobItems:
-        jobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=args.bestfit, bestfitonly=args.bestfitonly)
+        jobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=not args.nobestfit, bestfitonly=args.bestfitonly)
         print jobItem.name
     if titles is None: titles = [jobItem.datatag for jobItem in jobItems if jobItem.result_marge is not None]
     else: titles = titles.split(';')
