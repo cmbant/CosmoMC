@@ -294,8 +294,9 @@ class GetDistPlotter():
             self.legend = self.fig.legend(lines, legend_labels, legend_loc, prop={'size':self.settings.lab_fontsize})
             self.extra_artists = [self.legend]
             if self.settings.tight_layout and not no_extra_legend_space:
-                if 'upper' in legend_loc: subplots_adjust(top=1 - 0.5 / self.plot_row)
-                elif 'lower' in legend_loc: subplots_adjust(bottom=0.5 / self.plot_row)
+                frac = 0.2 + len(legend_labels) * 0.1
+                if 'upper' in legend_loc: subplots_adjust(top=1 - frac / self.plot_row)
+                elif 'lower' in legend_loc: subplots_adjust(bottom=frac / self.plot_row)
 
 
     def plots_1d(self, roots, params=None, legend_labels=None, nx=None):
