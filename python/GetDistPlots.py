@@ -33,6 +33,7 @@ class GetDistPlotSettings:
         self.param_names_for_labels = None  # 'clik_latex.paramnames'
         self.figure_legend_loc = 'upper center'
         self.xtick_prune = None  # 'lower' or 'upper'
+        self.tight_gap_fraction = 0.13  # space between ticks and the edge
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
@@ -214,13 +215,16 @@ class GetDistPlotter():
         formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
         axis.set_major_formatter(formatter)
         tick_params(axis='both', which='major', labelsize=self.settings.axes_fontsize)
-        if x and self.settings.x_label_rotation != 0:setp(xticks()[1], rotation=self.settings.x_label_rotation)
-        else:
-            xmin, xmax = xlim()
-            if (abs(xmax - xmin) < 0.01 or max(abs(xmin), abs(xmax)) >= 1000):
-                axis.set_major_locator(MaxNLocator(self.settings.subplot_size_inch / 2 + 3, prune=self.settings.xtick_prune))
+        if x:
+            if self.settings.x_label_rotation != 0:setp(xticks()[1], rotation=self.settings.x_label_rotation)
             else:
-                axis.set_major_locator(MaxNLocator(4 + self.settings.subplot_size_inch / 2, prune=self.settings.xtick_prune))
+                xmin, xmax = xlim()
+                if (abs(xmax - xmin) < 0.01 or max(abs(xmin), abs(xmax)) >= 1000):
+                    axis.set_major_locator(MaxNLocator(self.settings.subplot_size_inch / 2 + 3, prune=self.settings.xtick_prune))
+                else:
+                    axis.set_major_locator(MaxNLocator(4 + self.settings.subplot_size_inch / 2, prune=self.settings.xtick_prune))
+
+        else:  axis.set_major_locator(MaxNLocator(4 + self.settings.subplot_size_inch / 2, prune=self.settings.xtick_prune))
 
     def setAxes(self, params, lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False):
         if lims is not None: axis(lims)
@@ -331,20 +335,35 @@ class GetDistPlotter():
 
         return plot_col, plot_row
 
-    def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled_compare=False, shaded=True):
+    def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled_compare=False, shaded=False):
         params = self.get_param_array(roots[0], in_params)
         plot_col = len(params)
         if plot_3d_with_param is not None: col_param = self.check_param(roots[0], plot_3d_with_param)
         self.make_figure(nx=plot_col, ny=plot_col)
         lims = dict()
+        ticks = dict()
         for i, param in enumerate(params):
             subplot(plot_col, plot_col, i * plot_col + i + 1)
             self.plot_1d(roots, param, do_xlabel=i == plot_col - 1, no_label_no_numbers=self.settings.no_triangle_axis_labels)
-            if not shaded:
-                xmin, xmax = xlim()
-                r = xmax - xmin
-                xlim([xmin - r / 10, xmax + r / 10])
+#            if not shaded:
+#                xmin, xmax = xlim()
+#                r = xmax - xmin
+#                xlim([xmin - r * self.settings.tight_gap_fraction, xmax + r * self.settings.tight_gap_fraction])
+
             lims[i] = xlim()
+            if self.settings.no_triangle_axis_labels:
+                tick = [tick for tick in gca().get_xticks() if tick > lims[i][0] and tick < lims[i][1]]
+                gap_wanted = (lims[i][1] - lims[i][0]) * self.settings.tight_gap_fraction
+                if not shaded:
+                    lims[i] = [min(tick[0] - gap_wanted, lims[i][0]), max(tick[-1] + gap_wanted, lims[i][1])]
+                    xlim(lims[i])
+                else:
+                    if tick[0] - lims[i][0] < gap_wanted: tick = tick[1:]
+                    if lims[i][1] - tick[-1] < gap_wanted:tick = tick[:-1]
+                gca().set_xticks(tick)
+
+            ticks[i] = gca().get_xticks()
+
         for i, param in enumerate(params):
             for i2 in range(i + 1, len(params)):
                 param2 = params[i2]
@@ -355,6 +374,8 @@ class GetDistPlotter():
                 else:
                     self.plot_2d(roots, param_pair=[param, param2], do_xlabel=i2 == plot_col - 1, do_ylabel=i == 0,
                                         no_label_no_numbers=self.settings.no_triangle_axis_labels, shaded=shaded)
+                gca().set_xticks(ticks[i])
+                gca().set_yticks(ticks[i2])
                 xlim(lims[i])
                 ylim(lims[i2])
 

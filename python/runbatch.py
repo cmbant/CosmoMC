@@ -9,6 +9,7 @@ Opts.parser.add_argument('--dryrun', action='store_true')
 Opts.parser.add_argument('--subitems', action='store_true')
 Opts.parser.add_argument('--minimize', action='store_true')
 Opts.parser.add_argument('--importance_minimize', action='store_true')
+Opts.parser.add_argument('--minimize_failed', action='store_true')
 
 
 (batch, args) = Opts.parseForBatch()
@@ -35,5 +36,6 @@ def submitJob(ini):
 
 
 for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
-        if not args.notexist or args.importance_minimize and not jobItem.chainMinimumExists() or not args.importance_minimize and not jobItem.chainExists():
+        if (not args.notexist or args.importance_minimize and not jobItem.chainMinimumExists()
+       or not args.importance_minimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged()):
             if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge): submitJob(jobItem.iniFile(variant))

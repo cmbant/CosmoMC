@@ -78,6 +78,12 @@ class jobItem:
         fname = self.chainRoot + '.minimum'
         return os.path.exists(fname) and os.path.getsize(fname) > 0
 
+    def chainMinimumConverged(self):
+        fname = self.chainRoot + '.minimum'
+        if not os.path.exists(fname) or os.path.getsize(fname) == 0: return False
+        bf = ResultObjs.bestFit(fname)
+        return bf.logLike < 1e29
+
     def getDistExists(self):
         return os.path.exists(self.distRoot + '.margestats')
 
