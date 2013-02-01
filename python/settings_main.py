@@ -13,6 +13,7 @@ WMAP = 'WMAP'
 BAO = 'BAO'
 HST = 'HST'
 SNLS = 'SNLS'
+Union = 'Union2'
 
 datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
@@ -35,6 +36,7 @@ importanceRuns.append([lensing, ['lensing.ini'], importanceFilterPlanck()])
 importanceRuns.append([BAO, ['BAO.ini']])
 importanceRuns.append([HST, ['HST.ini']])
 importanceRuns.append([SNLS, ['SNLS_marge.ini']])
+importanceRuns.append([Union, ['Union.ini']])
 
 # importanceRuns.append(['acc', ['accuracy.ini'], importanceFilterAcc()])
 # importanceRuns.append(['v61N', ['v61N.ini'], importanceFilterAcc()])

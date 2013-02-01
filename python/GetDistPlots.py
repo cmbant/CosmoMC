@@ -299,8 +299,11 @@ class GetDistPlotter():
                 elif 'lower' in legend_loc: subplots_adjust(bottom=frac / self.plot_row)
 
 
-    def plots_1d(self, roots, params=None, legend_labels=None, nx=None):
+    def plots_1d(self, roots, params=None, legend_labels=None, nx=None, paramList=None):
         params = self.get_param_array(roots[0], params)
+        if paramList is not None:
+            wantedParams = self.paramNameListFromFile(paramList)
+            params = [param for param in params if param.name in wantedParams]
 
         nparam = len(params)
         plot_col, plot_row = self.make_figure(nparam, nx=nx)
@@ -431,6 +434,10 @@ class GetDistPlotter():
 
     def export(self, fname):
         savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
+
+    def paramNameListFromFile(self, fname):
+        p = paramNames.paramNames(fname)
+        return [name.name for name in p.names]
 
 
 

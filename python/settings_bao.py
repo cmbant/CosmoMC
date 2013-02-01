@@ -10,6 +10,8 @@ lowl = 'lowl'
 lowLike = 'lowLike'
 lensing = 'lensing'
 SNLS = 'SNLS'
+Union = 'Union2'
+
 HST = 'HST'
 
 datasets = []
@@ -17,6 +19,7 @@ datasets = []
 datasets.append([[planck, lowl, lowLike, BAO], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'BAO.ini']])
 datasets.append([[planck, lowl, lowLike, highL, BAO], ['CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini', 'BAO.ini']])
 datasets.append([[planck, lowl, lowLike, SNLS], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'SNLS.ini']])
+datasets.append([[planck, lowl, lowLike, Union], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'Union.ini']])
 
 importanceRuns = []
 importanceRuns.append([lensing, ['lensing.ini']])
@@ -37,5 +40,6 @@ covrenames = dict()
 covrenames['lowl_lowLike_highL'] = 'lowl_lowLike'
 covrenames['lowl_BAO'] = 'lowl_lowLike_BAO'
 covrenames['SNLS'] = 'BAO'
-
+covrenames['Union'] = 'SNLS'
+covrenames['Union'] = 'BAO'
 covrenames['w_wa_'] = 'w_'
