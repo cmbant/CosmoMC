@@ -24,7 +24,7 @@ for jobItem in Opts.filteredBatchItems():
     if args.converge == 0 or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
         dirs = [jobItem.chainPath]
         if args.dist: dirs = []
-        dirs += [jobItem.distPath]
+        if os.path.exists(jobItem.distPath): dirs += [jobItem.distPath]
         for adir in dirs:
             files = sorted(os.listdir(adir))
             for f in files:

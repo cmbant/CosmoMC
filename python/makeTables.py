@@ -3,6 +3,7 @@ import os, batchJobArgs, ResultObjs, paramNames
 
 Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True, converge=True)
 Opts.parser.add_argument('latex_filename')
+Opts.parser.add_argument('--sigma', type=int, default=2)
 Opts.parser.add_argument('--bestfitonly', action='store_true')
 Opts.parser.add_argument('--nobestfit', action='store_true')
 
@@ -22,7 +23,6 @@ Opts.parser.add_argument('--width', default="10in")
 
 if args.blockEndParams is not None: args.blockEndParams = args.blockEndParams.split(';')
 outfile = args.latex_filename
-if outfile.find('.') < 0: outfile += '.tex'
 
 if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
 
@@ -40,6 +40,10 @@ if not args.forpaper:
 def texEscapeText(string):
     return string.replace('_', '{\\textunderscore}')
 
+def getTableLines(content):
+    return ResultObjs.resultTable(args.columns, [content], blockEndParams=args.blockEndParams,
+                                  paramList=args.paramList, sigma=args.sigma).lines
+
 def paramResultTable(jobItem):
     tableLines = []
     caption = ''
@@ -48,11 +52,10 @@ def paramResultTable(jobItem):
     if not bf is None:
         caption += ' Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % (bf.logLike * 2)) + '$'
     if args.bestfitonly:
-        if bf is not None: tableLines += ResultObjs.resultTable(args.columns, [bf], blockEndParams=args.blockEndParams, paramList=args.paramList).lines
+        if bf is not None: tableLines += getTableLines(bf)
     else:
         if jobItem.result_converge is not None: caption += '; R-1 =' + jobItem.result_converge.worstR()
-        if jobItem.result_marge is not None: tableLines += ResultObjs.resultTable(args.columns,
-                                     [jobItem.result_marge], blockEndParams=args.blockEndParams, paramList=args.paramList).lines
+        if jobItem.result_marge is not None: tableLines += getTableLines(jobItem.result_marge)
     tableLines.append('')
     if not args.forpaper: tableLines.append(caption)
     if not bf is None and not args.forpaper:
@@ -71,7 +74,7 @@ def compareTable(jobItems, titles=None):
     if titles is None: titles = [jobItem.datatag for jobItem in jobItems if jobItem.result_marge is not None]
     else: titles = titles.split(';')
     return ResultObjs.resultTable(1, [jobItem.result_marge for jobItem in jobItems if jobItem.result_marge is not None],
-                                   titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
+                           sigma=args.sigma, titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
 
 def filterBatchData(batch, datatags):
     items = []
@@ -95,7 +98,7 @@ for paramtag, parambatch in items:
         else: print 'no matches for compare'
     else:
         for jobItem in parambatch:
-            if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
+            if os.path.exists(jobItem.distPath) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
                 if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
                 tableLines = paramResultTable(jobItem)
                 ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
@@ -104,11 +107,20 @@ for paramtag, parambatch in items:
 
 if not args.forpaper: lines.append('\\end{document}')
 
+if outfile.find('.') < 0: outfile += '.tex'
+(outdir, outname) = os.path.split(outfile)
+if not os.path.exists(outdir): os.makedirs(os.path.dirname(outdir))
 ResultObjs.textFile(lines).write(outfile)
+(root, _) = os.path.splitext(outfile)
 
 if not args.forpaper:
     print 'Now converting to PDF...'
-    os.system('pdflatex ' + outfile)
+    delext = ['aux', 'log', 'out', 'toc']
+    os.system('cd ' + outdir + '; pdflatex ' + outname)
     # #again to get table of contents
-    os.system('pdflatex ' + outfile)
+    os.system('cd ' + outdir + '; pdflatex ' + outname)  #
+    for ext in delext:
+        if os.path.exists(root + '.' + ext):
+            os.remove(root + '.' + ext)
+
 

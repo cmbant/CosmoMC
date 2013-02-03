@@ -36,4 +36,5 @@ importanceDefaults = ['importance_sampling.ini']
 covrenames = dict()
 covrenames['lowl_lowLike_highL'] = 'lowl_lowLike'
 covrenames['lowl_lowLike_highL_BAO'] = 'lowl_lowLike'
+covrenames['mnu_Alens'] = 'mnu'
 covrenames['_nrun_r'] = ''

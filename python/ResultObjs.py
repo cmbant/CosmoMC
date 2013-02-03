@@ -173,7 +173,7 @@ class planckNoLineTableFormatter(planckTableFormatter):
 
 class resultTable():
 
-    def __init__(self, ncol, results, tableParamNames=None, titles=None, formatter=None, numFormatter=None, blockEndParams=None, paramList=None):
+    def __init__(self, ncol, results, sigma=2, tableParamNames=None, titles=None, formatter=None, numFormatter=None, blockEndParams=None, paramList=None):
 # results is a margeStats or bestFit table
         self.lines = []
         if formatter is None: self.format = planckNoLineTableFormatter()
@@ -188,8 +188,9 @@ class resultTable():
 
         self.results = results
         self.boldBaseParameters = True
-        self.colsPerResult = len(results[0].columns)
+        self.colsPerResult = len(results[0].getColumLabels(sigma))
         self.colsPerParam = len(results) * self.colsPerResult
+        self.sigma = sigma
 
         nparams = self.tableParamNames.numParams()
         numrow = nparams / ncol
@@ -232,7 +233,7 @@ class resultTable():
         self.addLine("aboveHeader")
         res = '& ' + self.format.paramText
         for result in self.results:
-            res += ' & ' + " & ".join(result.columns)
+            res += ' & ' + " & ".join(result.getColumLabels(self.sigma))
         self.lines.append((res * self.ncol)[1:] + self.format.endofrow)
         self.addLine("belowHeader")
 
@@ -240,13 +241,13 @@ class resultTable():
         return " & ".join(self.paramResultTex(result, param) for result in self.results)
 
     def paramResultTex(self, result, p):
-        values = result.texValues(self.numberFormatter, p)
+        values = result.texValues(self.numberFormatter, p, self.sigma)
         if values is not None:
             if len(values) > 1: txt = self.textAsColumn(values[1], True, separator=True)
             else: txt = ''
             txt += self.textAsColumn(values[0], values[0] != '---')
             return txt
-        else: return self.textAsColumn('') * len(result.columns)
+        else: return self.textAsColumn('') * len(result.getColumLabels(self.sigma))
 
     def textAsColumn(self, txt, latex=False, separator=False, bold=False):
         wid = len(txt)
@@ -279,9 +280,11 @@ class bestFit(paramResults):
 
     def __init__(self, fileName=None, setParamNameFile=None, want_fixed=False):
         paramResults.__init__(self)
-        self.columns = ['Best fit']
         if fileName is not None: self.loadFromFile(fileName, want_fixed=want_fixed)
         if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
+
+    def getColumLabels(self, sigma=None):
+        return ['Best fit']
 
     def loadFromFile(self, filename, want_fixed=False):
         textFileLines = self.fileList(filename)
@@ -324,7 +327,7 @@ class bestFit(paramResults):
             likes[kind].append((name, chisq))
         return sorted(likes.iteritems())
 
-    def texValues(self, formatter, p):
+    def texValues(self, formatter, p, sigma=None):
         param = self.parWithName(p.name)
         if param is not None: return [formatter.formatNumber(param.best_fit)]
         else: return None
@@ -334,6 +337,7 @@ class margeStats(paramResults):
 
     def loadFromFile(self, filename):
         textFileLines = self.fileList(filename)
+        self.hasBestFit = False
         for i in range(1, len(textFileLines)):
             line = textFileLines[i]
             if len(line.strip()) == 0:
@@ -356,11 +360,10 @@ class margeStats(paramResults):
             param.limits = [[float(s) for s in items[3:5]], [float(s) for s in items[5:7]]]
             param.label = items[7]
             self.names.append(param)
-        self.columns = [str(round(float(self.limits[1]) * 100)) + '\\% limits']
 
 
     def addBestFit(self, bf):
-        self.columns = ['Best fit'] + self.columns
+        self.hasBestFit = True
         self.logLike = bf.logLike
 # the next line deletes parameters not in best-fit; this is good e.g. to get rid of yhe from importance sampled result
         self.names = [x for x in self.names if bf.parWithName(x.name) is not None]
@@ -369,21 +372,28 @@ class margeStats(paramResults):
             par.best_fit = param.best_fit
             par.isDerived = param.isDerived
 
-    def texValues(self, formatter, p):
+    def getColumLabels(self, sigma=2):
+        if self.hasBestFit: res = ['Best fit']
+        else: res = []
+        return res + [str(round(float(self.limits[sigma - 1]) * 100)) + '\\% limits']
+
+
+    def texValues(self, formatter, p, sigma=2):
         if not isinstance(p, paramNames.paramInfo): param = self.parWithName(p)
         else: param = self.parWithName(p.name)
         if not param is None:
-            lims = param.limits[1]
+            lims = param.limits[sigma - 1]
             sf = 3
             if param.twotail:
                 res, plus_str, minus_str = formatter.namesigFigs(param.mean, lims[1] - param.mean, lims[0] - param.mean)
-                res = res + '^{' + plus_str + '}_{' + minus_str + '}'
+                if sigma == 1 and plus_str[1:] == minus_str[1:]: res += '\pm ' + plus_str[1:]
+                else: res += '^{' + plus_str + '}_{' + minus_str + '}'
             elif param.lim_bot and not param.lim_top:
                 res = '< ' + formatter.formatNumber(lims[1], sf)
             elif param.lim_top and not param.lim_bot:
                 res = '> ' + formatter.formatNumber(lims[0], sf)
             else: res = '---'
-            if len(self.columns) > 1:  # add best fit too
+            if self.hasBestFit:  # add best fit too
                 rangew = (lims[1] - lims[0]) / 10
                 bestfit = formatter.namesigFigs(param.best_fit, rangew, -rangew)[0]
                 return [res, bestfit]
