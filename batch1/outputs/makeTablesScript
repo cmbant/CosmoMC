@@ -1,10 +1,10 @@
-python python/makeTables.py main outputs/comparetables_2sigma --sigma 2 --height 20in --width 13in --compare planck_CAMspec_lowl planck_CAMspec_lowl_post_lensing planck_CAMspec_lowl_lowLike planck_CAMspec_lowl_lowLike_highL
+python python/makeTables.py main outputs/comparetables_2sigma --sigma 2 --height 15in --width 13in --compare planck_CAMspec_lowl  planck_CAMspec_lowl_lowLike planck_CAMspec_lowl_lowLike_highL planck_CAMspec_lowl_lowLike_highL_BAO --paramList batch1/outputs/paper_table.paramnames
 
-python python/makeTables.py main outputs/comparetables_1sigma --sigma 1 --height 20in --width 13in --compare planck_CAMspec_lowl planck_CAMspec_lowl_post_lensing  planck_CAMspec_lowl_lowLike planck_CAMspec_lowl_lowLike_highL
+python python/makeTables.py main outputs/comparetables_1sigma --sigma 1 --height 15in --width 13in --compare planck_CAMspec_lowl  planck_CAMspec_lowl_lowLike planck_CAMspec_lowl_lowLike_highL planck_CAMspec_lowl_lowLike_highL_BAO --paramList batch1/outputs/paper_table.paramnames
 
 python python/makeTables.py main outputs/grid_1sigma --sigma 1 
 python python/makeTables.py main outputs/grid_2sigma --sigma 2
 
-python python/makeTables.py main outputs/mainGridAutoTable --compare planck_CAMspec_lowl planck_CAMspec_lowl_post_lensing planck_CAMspec_lowl_lowLike  planck_CAMspec_lowl_lowLike_highL --paramtag='base' --forpaper --titles "Planck TT;Planck+lensing;Planck+WP;Planck+WP+HighL" --blockEndParams "aksz;logA" --paramList batch1/outputs/paper_table.paramnames 
+python python/makeTables.py main outputs/mainGridAutoTable --compare planck_CAMspec_lowl planck_CAMspec_lowl_post_lensing planck_CAMspec_lowl_lowLike  planck_CAMspec_lowl_lowLike_highL --paramtag='base' --forpaper --titles "Planck TT;Planck+lensing;Planck+WP;Planck+WP+HighL" --blockEndParams "aksz;logA" --paramList batch1/outputs/paper_table.paramnames
 
 python python/makeTables.py main outputs/mainGridAutoTable_1sigma --sigma 1 --compare planck_CAMspec_lowl planck_CAMspec_lowl_post_lensing planck_CAMspec_lowl_lowLike  planck_CAMspec_lowl_lowLike_highL --paramtag='base' --forpaper --titles "Planck TT;Planck+lensing;Planck+WP;Planck+WP+HighL" --blockEndParams "aksz;logA" --paramList batch1/outputs/paper_table.paramnames 

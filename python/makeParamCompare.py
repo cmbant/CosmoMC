@@ -6,6 +6,7 @@ Opts.parser.add_argument('--params', nargs='+', default=None)
 Opts.parser.add_argument('--compare', nargs='+', default=None)
 Opts.parser.add_argument('--nobestfits', action='store_true')
 Opts.parser.add_argument('--single_extparam', action='store_true')
+Opts.parser.add_argument('--sigma', type=int, default=2)
 
 (batch, args) = Opts.parseForBatch()
 formatter = ResultObjs.numberFormatter()
@@ -19,7 +20,7 @@ for jobItem in Opts.filteredBatchItems():
         if jobItem.result_marge is not None:
             results = []
             for par in args.params:
-                texValues = jobItem.result_marge.texValues(formatter, par)
+                texValues = jobItem.result_marge.texValues(formatter, par, sigma=args.sigma)
                 if texValues is not None:
                     if not jobItem.paramtag in table: table[jobItem.paramtag] = dict()
                     dataTable = table[jobItem.paramtag]

@@ -132,7 +132,8 @@
     end type SNLSLikelihood
 
     character(LEN=*), parameter :: SNLS_version =  'April_2012'
-
+    logical, parameter :: allow_inv_cache = .false. !AL inverse cache does not work.. have not checked why.
+    
     !Constants
     REAL(dl), PARAMETER, PRIVATE :: inv_twoPI = 1.0_dl / const_twopi  
     CHARACTER, PARAMETER, PRIVATE :: uplo = 'U' !For LAPACK
@@ -820,7 +821,7 @@
     !Quick exit check
     !Note that first_inversion can't be true if the first one
     ! failed (has status != 0).
-    IF (.NOT. first_inversion) THEN
+    IF (.NOT. first_inversion .and. allow_inv_cache) THEN
         IF (.NOT. alphabeta_covmat) THEN
             !covmatrix doesn't depend on alpha/beta, has already been
             ! inverted once.
@@ -1241,7 +1242,6 @@
         ENDDO
     ENDIF
     if (SNLS_marginalize) then
-        first_inversion = .false.
         !$OMP PARALLEL DO DEFAULT(SHARED),SCHEDULE(STATIC), PRIVATE(alpha,beta, grid_i)
         do grid_i = 1, SNLS_int_points
             alpha = alpha_grid(grid_i)
