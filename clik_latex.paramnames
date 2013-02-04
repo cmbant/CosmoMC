@@ -16,7 +16,7 @@ fdm           \epsilon_0 f_d    #CosmoRec dark matter annihilation parameter, 09
 ns            n_s	    #beware that pivot scale can change in .ini file
 nt            n_t
 nrun          n_{run}
-logA          log[10^{10} A_s]
+logA          \log[10^{10} A_s]
 r             r_{pivot} #ratio of tensor to scalar primordial amplitudes at pivot scale
 Aphiphi       A_{\phi\phi} #scaling of lensing potential power (lensed power spectra unchanged)
 alpha_SNLS    \alpha_{SNLS}
