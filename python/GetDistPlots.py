@@ -7,8 +7,8 @@ class GetDistPlotSettings:
 
     def __init__(self, subplot_size_inch=2):
 
-        self.plot_meanlikes = True
-        self.shade_meanlikes = True
+        self.plot_meanlikes = False
+        self.shade_meanlikes = False
         self.prob_label = None
         # self.prob_label = 'Probability'
         if self.plot_meanlikes:
@@ -17,7 +17,7 @@ class GetDistPlotSettings:
             self.lineM = ['-k', '--r', '-.b', ':g', '--m', '-.y']
         self.plot_args = None
         self.lineL = [':k', ':r', ':b', ':m', ':g', ':y']
-        self.solid_colors = ['#009966', '#66CC99', '#336600', '#006633' , 'g', 'm', 'r']
+        self.solid_colors = ['#009966', '#000866', '#336600', '#006633' , 'g', 'm', 'r']  # '#66CC99'
         self.printex = 'pdf'
         self.line_labels = True
         self.x_label_rotation = 0
@@ -211,20 +211,20 @@ class GetDistPlotter():
     def add_1d_marker(self, marker, marker_color='k'):
         gca().add_line(Line2D([marker, marker], [0, 2], color=marker_color))
 
+    def set_locator(self, axis, x=False):
+        if x: xmin, xmax = axis.get_view_interval()
+        if (x and (abs(xmax - xmin) < 0.01 or max(abs(xmin), abs(xmax)) >= 1000)):
+            axis.set_major_locator(MaxNLocator(self.settings.subplot_size_inch / 2 + 3, prune=self.settings.xtick_prune))
+        else:
+            axis.set_major_locator(MaxNLocator(self.settings.subplot_size_inch / 2 + 4, prune=self.settings.xtick_prune))
+
+
     def setAxisProperties(self, axis, x):
         formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
         axis.set_major_formatter(formatter)
         tick_params(axis='both', which='major', labelsize=self.settings.axes_fontsize)
-        if x:
-            if self.settings.x_label_rotation != 0:setp(xticks()[1], rotation=self.settings.x_label_rotation)
-            else:
-                xmin, xmax = xlim()
-                if (abs(xmax - xmin) < 0.01 or max(abs(xmin), abs(xmax)) >= 1000):
-                    axis.set_major_locator(MaxNLocator(self.settings.subplot_size_inch / 2 + 3, prune=self.settings.xtick_prune))
-                else:
-                    axis.set_major_locator(MaxNLocator(4 + self.settings.subplot_size_inch / 2, prune=self.settings.xtick_prune))
-
-        else:  axis.set_major_locator(MaxNLocator(4 + self.settings.subplot_size_inch / 2, prune=self.settings.xtick_prune))
+        if x and self.settings.x_label_rotation != 0:setp(xticks()[1], rotation=self.settings.x_label_rotation)
+        self.set_locator(axis, x)
 
     def setAxes(self, params, lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False):
         if lims is not None: axis(lims)
@@ -339,6 +339,33 @@ class GetDistPlotter():
 
         return plot_col, plot_row
 
+    def subplot(self, x, y, **kwargs):
+        return subplot(self.plot_row, self.plot_col, x + (y - 1) * self.plot_col, **kwargs)
+
+    def plots_2d_triplets(self, root_params_triplets, nx=None, filled=False, x_lim=None):
+        plot_col, plot_row = self.make_figure(len(root_params_triplets), nx=nx)
+        for i, (root, param1, param2) in enumerate(root_params_triplets):
+            subplot(plot_row, plot_col, i + 1)
+            self.plot_2d([root], param_pair=[param1, param2], filled=filled)
+            if x_lim is not None:xlim(x_lim)
+        self.finish_plot()
+        return plot_col, plot_row
+
+
+    def spaceTicks(self, axis, expand=True):
+            lims = axis.get_view_interval()
+            tick = [tick for tick in axis.get_ticklocs() if tick > lims[0] and tick < lims[1]]
+            gap_wanted = (lims[1] - lims[0]) * self.settings.tight_gap_fraction
+            if expand:
+                lims = [min(tick[0] - gap_wanted, lims[0]), max(tick[-1] + gap_wanted, lims[1])]
+                axis.set_view_interval(lims[0], lims[1])
+            else:
+                if tick[0] - lims[0] < gap_wanted: tick = tick[1:]
+                if lims[1] - tick[-1] < gap_wanted:tick = tick[:-1]
+            axis.set_ticks(tick)
+            return tick
+
+
     def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled_compare=False, shaded=False):
         params = self.get_param_array(roots[0], in_params)
         plot_col = len(params)
@@ -349,23 +376,8 @@ class GetDistPlotter():
         for i, param in enumerate(params):
             subplot(plot_col, plot_col, i * plot_col + i + 1)
             self.plot_1d(roots, param, do_xlabel=i == plot_col - 1, no_label_no_numbers=self.settings.no_triangle_axis_labels)
-#            if not shaded:
-#                xmin, xmax = xlim()
-#                r = xmax - xmin
-#                xlim([xmin - r * self.settings.tight_gap_fraction, xmax + r * self.settings.tight_gap_fraction])
-
+            if self.settings.no_triangle_axis_labels: self.spaceTicks(gca().xaxis, expand=not shaded)
             lims[i] = xlim()
-            if self.settings.no_triangle_axis_labels:
-                tick = [tick for tick in gca().get_xticks() if tick > lims[i][0] and tick < lims[i][1]]
-                gap_wanted = (lims[i][1] - lims[i][0]) * self.settings.tight_gap_fraction
-                if not shaded:
-                    lims[i] = [min(tick[0] - gap_wanted, lims[i][0]), max(tick[-1] + gap_wanted, lims[i][1])]
-                    xlim(lims[i])
-                else:
-                    if tick[0] - lims[i][0] < gap_wanted: tick = tick[1:]
-                    if lims[i][1] - tick[-1] < gap_wanted:tick = tick[:-1]
-                gca().set_xticks(tick)
-
             ticks[i] = gca().get_xticks()
 
         for i, param in enumerate(params):
@@ -390,6 +402,37 @@ class GetDistPlotter():
 
         self.finish_plot([legend_labels, roots][legend_labels is None], legend_loc=None, no_gap=self.settings.no_triangle_axis_labels, no_extra_legend_space=True)
 
+    def rectangle_plot(self, xparams, yparams, yroots, filled=True, ymarkers=None, xmarkers=None, marker_ls='--', marker_color='gray'):
+            self.make_figure(nx=len(xparams), ny=len(yparams))
+#            f, plots = subplots(len(yparams), len(xparams), sharex='col', sharey='row')
+            sharey = None
+            yshares = []
+            for x, xparam in enumerate(xparams):
+                sharex = None
+                for y, (yparam, roots) in enumerate(zip(yparams, yroots)):
+#                    f.sca(plots[y, x])
+                    if x > 0: sharey = yshares[y]
+                    ax = self.subplot(x + 1, y + 1, sharex=sharex, sharey=sharey)
+                    if y == 0: sharex = ax
+                    if isinstance(roots, basestring): roots = [roots]
+                    self.plot_2d(roots, param_pair=[xparam, yparam], filled=filled, do_xlabel=y == len(yparams) - 1, do_ylabel=x == 0)
+                    if ymarkers is not None and ymarkers[y] is not None: axhline(ymarkers[y], ls=marker_ls, color=marker_color)
+                    if xmarkers is not None and xmarkers[x] is not None: axvline(xmarkers[x], ls=marker_ls, color=marker_color)
+                    if y == 0: lims = xlim()
+                    else: lims = (min(xlim()[0], lims[0]), max(xlim()[1], lims[1]))
+                    if y != len(yparams) - 1: setp(ax.get_xticklabels(), visible=False)
+                    if x != 0: setp(ax.get_yticklabels(), visible=False)
+                    if x == 0: yshares.append(ax)
+
+                sharex.set_xlim(lims)
+                self.spaceTicks(sharex.xaxis)
+                sharex.set_xlim(sharex.xaxis.get_view_interval())
+            for ax in yshares:
+                self.spaceTicks(ax.yaxis)
+                ax.set_ylim(ax.yaxis.get_view_interval())
+            subplots_adjust(wspace=0, hspace=0)
+            self.finish_plot(no_gap=True)
+
     def add_colorbar(self, param):
         cb = colorbar()
         self.add_colorbar_label(cb, param)
@@ -411,7 +454,7 @@ class GetDistPlotter():
             cols.append(names.numberOfName(param.name) + 2)
         self.last_scatter = scatter(pts[:, cols[0]], pts[:, cols[1]], edgecolors='none',
                 s=self.settings.scatter_size, c=pts[:, cols[2]], cmap=self.settings.colormap_scatter)
-        if color_bar: self.add_colorbar(params[2])
+        if color_bar: self.last_colorbar = self.add_colorbar(params[2])
 
     def plot_3d(self, roots, in_params, color_bar=True, line_offset=0, filled=False, **ax_args):
         params = self.get_param_array(roots[0], in_params)
