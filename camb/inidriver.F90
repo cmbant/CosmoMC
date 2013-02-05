@@ -12,6 +12,7 @@
         use Transfer
         use constants
         use Bispectrum
+        use CAMBmain
 #ifdef NAGF95 
         use F90_UNIX
 #endif
@@ -183,6 +184,8 @@
        endif
   
         Ini_fail_on_not_found = .false. 
+        
+        ALens = Ini_Read_Double('Alens',Alens)
   
         call Reionization_ReadParams(P%Reion, DefIni)
         call InitialPower_ReadParams(P%InitPower, DefIni, P%WantTensors) 
