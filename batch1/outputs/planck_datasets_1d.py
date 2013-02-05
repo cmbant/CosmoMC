@@ -10,4 +10,4 @@ g.export('planck_datasets_1d.eps')
 
 g.newPlot()
 g.plots_1d(roots,['omegabh2','omegach2','tau','A','ns','omegam','H0','sigma8'],nx=2, legend_labels=labels)
-g.export('planck_datasets_1d_params.eps')
+g.export('outputs/planck_datasets_1d_params.eps')

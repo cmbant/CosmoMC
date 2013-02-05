@@ -8,7 +8,7 @@ g.settings.plot_meanlikes = False
 g.settings.plot_args= [None,None, {'color': 'gray'}]
 g.triangle_plot(roots, ['omegabh2', 'omegach2', 'ns', 'tau', 'omegal', ], plot_3d_with_param='H0', filled_compare=False,
                     legend_labels=['Planck+WP', 'Planck+WP+BAO','WMAP9'])
-g.export('triangle_plot_vs_WMAP.eps')
+g.export('outputs/triangle_plot_vs_WMAP.eps')
 
 #import GetDistPlots
 #roots = ['base_Alens_planck_CAMspec_lowl_lowLike', 'base_Alens_planck_CAMspec_lowl_lowLike_highL','base_Alens_planck_CAMspec_lowl_lowLike_#post_lensing']

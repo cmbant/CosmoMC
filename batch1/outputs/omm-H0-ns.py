@@ -8,6 +8,6 @@ g.settings.lw_contour = 0.2
 g.setAxes(params)
 g.add_3d_scatter(roots[0], params)
 g.add_2d_contours(roots[1], params[0], params[1], filled=False)
-g.export('Omegam-H0-ns.eps')
+g.export('outputs/Omegam-H0-ns.eps')
 
 
