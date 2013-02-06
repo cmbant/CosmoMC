@@ -62,13 +62,12 @@ class SampleAnalysisGetDist():
         self.single_samples = dict()
 
     def get_density_grid(self, root, param1, param2, conts=True, likes=False):
+        if likes:  res = self.load_2d(root, param1, param2, '_likes')
+        else: res = self.load_2d(root, param1, param2)
+        if res is None: return None
         result = Density2D()
-        if likes:  result.pts = self.load_2d(root, param1, param2, '_likes')
-        else: result.pts = self.load_2d(root, param1, param2)
-        if result.pts is None: return None
-        result.x1 = self.load_1d(root, param1)[:, 0]
-        result.x2 = self.load_1d(root, param2)[:, 0]
-        if (conts): result.contours = self.load_2d(root, param1, param2, '_cont')
+        (result.pts, result.x1, result.x2) = res
+        if (conts): result.contours = self.load_2d(root, param1, param2, '_cont', no_axes=True)
         return result
 
     def get_density(self, root, param, likes=False):
@@ -109,13 +108,16 @@ class SampleAnalysisGetDist():
             else: param.plot_data[fname] = loadtxt(fname)
         return param.plot_data[fname]
 
-    def load_2d(self, root, param1, param2, ext=''):
+    def load_2d(self, root, param1, param2, ext='', no_axes=False):
         fname, transpose = self.plot_data_file_2D(root, param1.name, param2.name)
         if not os.path.exists(fname + ext): return None
         pts = loadtxt(fname + ext)
         if transpose: pts = pts.transpose()
-        return pts
-
+        if no_axes: return pts
+        x = loadtxt(fname + '_x')
+        y = loadtxt(fname + '_y')
+        if transpose: return (pts, y, x)
+        else: return (pts, x, y)
 
 
 class GetDistPlotter():

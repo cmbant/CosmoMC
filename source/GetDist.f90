@@ -71,7 +71,7 @@
 
     integer chain_indices(max_chains), num_chains_used
 
-    integer nrows, ncols
+    integer nrows, ncols, nbins
     real(mcp) numsamp
     integer ND_cont1, ND_cont2
     integer covmat_dimension
@@ -99,18 +99,18 @@
     integer chain_numbers(max_chains)
     logical isused(max_cols)
     logical force_twotail
-    logical smoothing, plot_meanlikes, plot_NDcontours
+    logical smoothing, plot_meanlikes
     logical shade_meanlikes, make_single_samples
     integer single_thin,cust2DPlots(max_cols**2)
     integer ix_min(max_cols),ix_max(max_cols)
-    real(mcp) center(max_cols),width(max_cols)
-    real(mcp), dimension(:,:), allocatable :: TheBins, bins2D, bin2Dlikes, bin2Dmax
+    real(mcp) center(max_cols),width(max_cols), range_min(max_cols), range_max(max_cols)
     real(mcp) meanlike, maxlike, maxmult
     logical BW,do_shading
     character(LEN=Ini_max_string_len), allocatable :: ComparePlots(:)
     integer Num_ComparePlots
     logical ::   prob_label = .false.
     logical :: plots_only
+    real(mcp) :: smooth_scale_2D = 1.d0
 
     contains
 
@@ -910,10 +910,8 @@
                     split_tests(split_n) = 0
                     confid =  ConfidVal(j,(1-contours(num_contours))/2,endb==0,0,nrows-1)
                     do i=1,split_n
-
-                    split_tests(split_n) = split_tests(split_n) + &
-                    (ConfidVal(j,(1-contours(num_contours))/2,endb==0,frac(i),frac(i+1)-1)-confid)**2
-
+                        split_tests(split_n) = split_tests(split_n) + &
+                        (ConfidVal(j,(1-contours(num_contours))/2,endb==0,frac(i),frac(i+1)-1)-confid)**2
                     end do !i
                     split_tests(split_n) = sqrt(split_tests(split_n)/split_n/fullvar(j))
                 end do
@@ -1129,115 +1127,135 @@
     real(mcp) try_b, try_t,try_sum, try_last
     character(LEN=Ini_max_string_len) :: plotfile, filename,numstr
     real(mcp), dimension(:,:), allocatable :: finebins, finebinlikes, Win
-    integer :: fine_fac = 5
+    integer :: fine_fac_base = 5, fine_fac
     real(mcp) widthj,widthj2, contour_levels(max_contours)
     integer imin,imax,jmin,jmax
+    real(mcp) :: corr, edge_fac
+    real(mcp), allocatable :: prior_mask(:,:)
+    real(mcp), dimension(:,:), allocatable :: bins2D, bin2Dlikes
+    real(mcp) widthx, widthy
+    integer ixmax,iymax,ixmin,iymin
+    integer winw, nbin2D
+    logical has_prior
+    real(mcp) smooth_scale
 
+    has_prior=has_limits(colix(j)) .or. has_limits(colix(j2))
     bins2D = 0
     bin2Dlikes = 0
-    bin2Dmax = 1e30_mcp
 
-    if (smoothing) then
-        imin = (ix_min(j)-3)*fine_fac+1
-        imax = (ix_max(j)+3)*fine_fac-1
-        jmin = (ix_min(j2)-3)*fine_fac+1
-        jmax = (ix_max(j2)+3)*fine_fac-1
-        allocate(finebins(imin:imax,jmin:jmax))
-        allocate(finebinlikes(imin:imax,jmin:jmax))
-        finebins = 0
-        finebinlikes=0
+    corr = corrmatrix(colix(j)-2,colix(j2)-2)
+    if (abs(corr)<0.3) corr=0._mcp !keep things simple unless obvious degeneracy
+    corr=max(-0.95,corr)
+    corr=min(0.95,corr)
+    nbin2D = min(4*nbins,nint(nbins/(1-abs(corr)))) !for tight degeneracies increase bin density
+    widthx =  (range_max(j)-range_min(j))/(nbin2D+1)
+    widthy =  (range_max(j2)-range_min(j2))/(nbin2D+1)
+    smooth_scale = (smooth_scale_2D*nbin2D)/nbins
+    fine_fac = max(2,nint(fine_fac_base/smooth_scale))
 
-        widthj = width(j)/fine_fac
-        widthj2 = width(j2)/fine_fac
-        do i = 0, nrows-1
-            ix1=nint((coldata(colix(j),i)-center(j))/widthj)
-            ix2=nint((coldata(colix(j2),i)-center(j2))/widthj2)
-            if (ix1>=imin .and. ix1<=imax .and. ix2>=jmin .and. ix2 <=jmax) then
-                finebins(ix1,ix2) = finebins(ix1,ix2) + coldata(1,i)
-                finebinlikes(ix1,ix2) = finebinlikes(ix1,ix2) + coldata(1,i)*exp(meanlike - coldata(2,i))
+    ixmin = nint((range_min(j) - center(j))/widthx)
+    ixmax = nint((range_max(j) - center(j))/widthx)
 
-                ix1=nint((coldata(colix(j),i)-center(j))/width(j))
-                ix2=nint((coldata(colix(j2),i)-center(j2))/width(j2))
-                bin2Dmax(ix1,ix2) = min(bin2Dmax(ix1,ix2),real(coldata(2,i),mcp))
-            end if
+    iymin = nint((range_min(j2) - center(j2))/widthy)
+    iymax = nint((range_max(j2) - center(j2))/widthy)
+
+    if ( .not. has_limits_bot(colix(j))) ixmin = ixmin-1
+    if ( .not. has_limits_bot(colix(j2))) iymin = iymin-1
+    if ( .not. has_limits_top(colix(j))) ixmax = ixmax+1
+    if ( .not. has_limits_top(colix(j2))) iymax = iymax+1
+
+    allocate(bins2D(ixmin:ixmax,iymin:iymax))
+    allocate(bin2Dlikes(ixmin:ixmax,iymin:iymax))
+
+    winw = nint(fine_fac*smooth_scale)
+    imin = (ixmin-3)*winw+1
+    imax = (ixmax+3)*winw-1
+    jmin = (iymin-3)*winw+1
+    jmax = (iymax+3)*winw-1
+    allocate(finebins(imin:imax,jmin:jmax))
+    if (shade_meanlikes) allocate(finebinlikes(imin:imax,jmin:jmax))
+    finebins = 0
+    if (shade_meanlikes) finebinlikes=0
+
+    widthj = widthx/fine_fac
+    widthj2 = widthy/fine_fac
+    do i = 0, nrows-1
+        ix1=nint((coldata(colix(j),i)-center(j))/widthj)
+        ix2=nint((coldata(colix(j2),i)-center(j2))/widthj2)
+        if (ix1>=imin .and. ix1<=imax .and. ix2>=jmin .and. ix2 <=jmax) then
+            finebins(ix1,ix2) = finebins(ix1,ix2) + coldata(1,i)
+            if (shade_meanlikes) finebinlikes(ix1,ix2) = finebinlikes(ix1,ix2) + coldata(1,i)*exp(meanlike - coldata(2,i))
+        end if
+    end do
+
+    winw = nint(2*fine_fac*smooth_scale)
+    allocate(Win(-winw:winw,-winw:winw))
+
+    do ix1=-winw,winw
+        do ix2=-winw,winw
+            !                Win(ix1,ix2) = exp(-(ix1**2+ix2**2)/real(fine_fac**2,mcp)/2)
+            Win(ix1,ix2) = exp(-(ix1**2+ix2**2 - 2*corr*ix1*ix2)/(2*fine_fac**2*smooth_scale**2*(1-corr**2)))
         end do
+    end do
 
-        allocate(Win(-2*fine_fac:2*fine_fac,-2*fine_fac:2*fine_fac))
-
-        do ix1=-2*fine_fac,2*fine_fac
-            do ix2=-2*fine_fac,2*fine_fac
-                Win(ix1,ix2) = exp(-(ix1**2+ix2**2)/real(fine_fac**2,mcp)/2)
-            end do
-        end do
-        do ix1=ix_min(j), ix_max(j)
-            do ix2=ix_min(j2),ix_max(j2)
-                bins2D(ix1,ix2) = sum(win* finebins(ix1*fine_fac-2*fine_fac:ix1*fine_fac+2*fine_fac, &
-                ix2*fine_fac-2*fine_fac:ix2*fine_fac+2*fine_fac ))
-                bin2Dlikes(ix1,ix2)= sum(win* finebinlikes(ix1*fine_fac-2*fine_fac:ix1*fine_fac+2*fine_fac, &
-                ix2*fine_fac-2*fine_fac:ix2*fine_fac+2*fine_fac ))
-            end do
-        end do
-
-        deallocate(Win,finebins,finebinlikes)
-
-    else
-        !no smoothing
-        do i = 0, nrows-1
-            ix1=nint((coldata(colix(j),i)-center(j))/width(j))
-            ix2=nint((coldata(colix(j2),i)-center(j2))/width(j2))
-            bins2D(ix1,ix2) = bins2D(ix1,ix2) + coldata(1,i)
-            bin2Dlikes(ix1,ix2) = bin2Dlikes(ix1,ix2) + coldata(1,i)*exp(meanlike-coldata(2,i))
-            bin2Dmax(ix1,ix2) = min(bin2Dmax(ix1,ix2),real(coldata(2,i)))
-        end do
-
+    if (has_prior) then
+        norm=sum(win)
+        allocate(prior_mask(imin:imax,jmin:jmax))
+        prior_mask =1
+        if (has_limits_bot(colix(j))) then
+            prior_mask(ixmin*fine_fac,:) = prior_mask(ixmin*fine_fac,:)/2
+            prior_mask(imin:ixmin*fine_fac-1,:) = 0
+        end if
+        if (has_limits_top(colix(j))) then
+            prior_mask(ixmax*fine_fac,:) = prior_mask(ixmax*fine_fac,:)/2
+            prior_mask(ixmin*fine_fac+1:imax,:) = 0
+        end if
+        if (has_limits_bot(colix(j2))) then
+            prior_mask(:,iymin*fine_fac) = prior_mask(:,iymin*fine_fac)/2
+            prior_mask(:,jmin:iymin*fine_fac-1) = 0
+        end if
+        if (has_limits_top(colix(j2))) then
+            prior_mask(:,iymax*fine_fac) = prior_mask(:,iymax*fine_fac)/2
+            prior_mask(:,iymin*fine_fac+1:jmax) = 0
+        end if
     end if
 
-    do ix1=ix_min(j),ix_max(j)
-        do ix2 =ix_min(j2),ix_max(j2)
-            if (bins2D(ix1,ix2) >0) bin2Dlikes(ix1,ix2) = bin2Dlikes(ix1,ix2)/bins2D(ix1,ix2)
-            if (plot_NDcontours) then
-                !Map maximum likelihood in each bin into a significance value from the full N-D distribution
-                if (bin2DMax(ix1,ix2) == 1e30_mcp) then
-                    bin2DMax(ix1,ix2) = 0
-                else
-                    bin2DMax(ix1,ix2) = sum(coldata(1,0:nrows-1), mask = coldata(2,0:nrows-1) > bin2DMax(ix1,ix2))/numsamp
-                end if
+    do ix1=ixmin, ixmax
+        do ix2=iymin,iymax
+            bins2D(ix1,ix2) = sum(win* finebins(ix1*fine_fac-winw:ix1*fine_fac+winw, ix2*fine_fac-winw:ix2*fine_fac+winw))
+            if (shade_meanlikes) bin2Dlikes(ix1,ix2)= &
+            sum(win* finebinlikes(ix1*fine_fac-winw:ix1*fine_fac+winw,ix2*fine_fac-winw:ix2*fine_fac+winw ))
+
+            if (has_prior) then
+                !correct for normalization of window where it is cut by prior boundaries
+                edge_fac=norm/sum(win*prior_mask(ix1*fine_fac-winw:ix1*fine_fac+winw, ix2*fine_fac-winw:ix2*fine_fac+winw))
+                bins2D(ix1,ix2) = bins2D(ix1,ix2)*edge_fac
+                if (shade_meanlikes) bin2Dlikes(ix1,ix2)=bin2Dlikes(ix1,ix2)*edge_fac
             end if
         end do
     end do
 
+    deallocate(Win,finebins)
+    if (has_prior)  deallocate(prior_mask)
 
-    if (has_limits(colix(j)) .or. has_limits(colix(j2))) then
-        !Fix up underweighting near edges. Note this makes edge pixels noisier.
-        do ix1 = ix_min(j), ix_max(j)
-            do ix2 = ix_min(j2),ix_max(j2)
-                if (ix1 ==ix_min(j) .and. has_limits_bot(colix(j))) bins2D(ix1,ix2) = bins2D(ix1,ix2)*2
-                if (ix1 ==ix_max(j) .and. has_limits_top(colix(j))) bins2D(ix1,ix2) = bins2D(ix1,ix2)*2
-                if (ix2 ==ix_min(j2).and. has_limits_bot(colix(j2))) bins2D(ix1,ix2) = bins2D(ix1,ix2)*2
-                if (ix2 ==ix_max(j2).and. has_limits_top(colix(j2))) bins2D(ix1,ix2) = bins2D(ix1,ix2)*2
-                if (smoothing) then !!Aug 2006
-                    if (ix1 ==ix_min(j)+1.and. has_limits_bot(colix(j))) bins2D(ix1,ix2) = bins2D(ix1,ix2)/0.84
-                    if (ix1 ==ix_max(j)-1.and. has_limits_top(colix(j))) bins2D(ix1,ix2) = bins2D(ix1,ix2)/0.84
-                    if (ix2 ==ix_min(j2)+1.and. has_limits_bot(colix(j2))) bins2D(ix1,ix2) = bins2D(ix1,ix2)/0.84
-                    if (ix2 ==ix_max(j2)-1.and. has_limits_top(colix(j2))) bins2D(ix1,ix2) = bins2D(ix1,ix2)/0.84
-                end if 
+    if (shade_meanlikes) then
+        deallocate(finebinlikes)
+        do ix1=ixmin,ixmax
+            do ix2 =iymin,iymax
+                if (bins2D(ix1,ix2) >0) bin2Dlikes(ix1,ix2) = bin2Dlikes(ix1,ix2)/bins2D(ix1,ix2)
             end do
         end do
     end if
 
     ! Get contour containing contours(:) of the probability
-
-    allocate(TheBins(ix_max(j)-ix_min(j)+1,ix_max(j2)-ix_min(j2)+1))
-    TheBins = bins2D(ix_min(j):ix_max(j),ix_min(j2):ix_max(j2))
-
-    norm = sum(TheBins)
+    norm = sum(bins2D)
 
     do ix1 = 1, num_contours
-        try_t = maxval(TheBins)
+        try_t = maxval(bins2D)
         try_b = 0
         try_last = -1
         do
-            try_sum = sum(TheBins,mask = TheBins < (try_b + try_t)/2)
+            try_sum = sum(bins2D,mask = bins2D < (try_b + try_t)/2)
             if (try_sum > (1-contours(ix1))*norm) then
                 try_t = (try_b+try_t)/2
             else
@@ -1248,39 +1266,38 @@
         end do
         contour_levels(ix1) = (try_b+try_t)/2
     end do
-    deallocate(TheBins)
-
 
     plotfile = dat_file_2D(rootname, j, j2)
     filename = trim(plot_data_dir)//trim(plotfile)
-    open(unit=49,file=filename,form='formatted',status='replace')
-    do ix1 = ix_min(j), ix_max(j)
-        write (49,trim(numcat('(',ix_max(j2)-ix_min(j2)+1))//'E16.7)') bins2D(ix1,ix_min(j2):ix_max(j2))
+    call CreateTxtFile(filename,49)
+    do ix1 = ixmin, ixmax
+        write (49,trim(numcat('(',iymax-iymin+1))//'E16.7)') bins2D(ix1,iymin:iymax)
     end do
     close(49)
 
-    open(unit=49,file=trim(filename)//'_cont',form='formatted',status='replace')
+    call CreateTxtFile(trim(filename)//'_y',49)
+    do i = ixmin, ixmax
+        write (49,'(1E16.7)') center(j) + i*widthx
+    end do
+    close(49)
+
+    call CreateTxtFile(trim(filename)//'_x',49)
+    do i = iymin, iymax
+        write (49,'(1E16.7)') center(j2) + i*widthy
+    end do
+    close(49)
+
+    call CreateTxtFile(trim(filename)//'_cont',49)
     write(numstr,*) contour_levels(1:num_contours)
     if (num_contours==1) numstr = trim(numstr)//' '//trim(numstr)
     write (49,*) trim(numstr)
     close(49)
 
     if (shade_meanlikes) then
-        open(unit=49,file=trim(filename)//'_likes',form='formatted',status='replace')
-        maxbin = maxval(bin2Dlikes(ix_min(j):ix_max(j),ix_min(j2):ix_max(j2)))
-        do ix1 = ix_min(j), ix_max(j)
-            write (49,trim(numcat('(',ix_max(j2)-ix_min(j2)+1))//'E16.7)') &
-            bin2Dlikes(ix1,ix_min(j2):ix_max(j2))/maxbin
-        end do
-        close(49)
-    end if
-
-    if (plot_NDcontours) then
-        open(unit=49,file=trim(filename)//'_confid',form='formatted',status='replace')
-        do ix1 = ix_min(j), ix_max(j)
-            write (49,trim(numcat('(',ix_max(j2)-ix_min(j2)+1))//'E16.7)') &
-            bin2Dmax(ix1,ix_min(j2):ix_max(j2))
-
+        call CreateTxtFile(trim(filename)//'_likes',49)
+        maxbin = maxval(bin2Dlikes(ixmin:ixmax,iymin:iymax))
+        do ix1 = ixmin, ixmax
+            write (49,trim(numcat('(',iymax-iymin+1))//'E16.7)')  bin2Dlikes(ix1,iymin:iymax)/maxbin
         end do
         close(49)
     end if
@@ -1291,7 +1308,7 @@
     character(LEN=*), intent(in) :: aroot
     integer, intent(in) :: j, j2,aunit
     logical, intent(in) :: DoShade
-    character(LEN=Ini_max_string_len) fname,numstr,plotfile
+    character(LEN=Ini_max_string_len) numstr,plotfile
     logical PlotContMATLAB
 
     PlotContMATLAB= .false.
@@ -1300,12 +1317,10 @@
     PlotContMATLAB= .true.
     write (aunit,'(a)') "pts=load(fullfile(plotdir,'" // trim(plotfile) //"'));"
 
-    fname = dat_file_name(aroot, j2)
-    write (aunit,'(a)') "tmp = load(fullfile(plotdir,'" // trim(fname)//  '.dat''));'
+    write (aunit,'(a)') "tmp = load(fullfile(plotdir,'" // trim(plotfile) //'_x''));'
     write (aunit,*) 'x1 = tmp(:,1);'
 
-    fname = dat_file_name(aroot, j)
-    write (aunit,'(a)') "tmp = load(fullfile(plotdir,'" // trim(fname)//  '.dat''));'
+    write (aunit,'(a)') "tmp = load(fullfile(plotdir,'" // trim(plotfile) //'_y''));'
     write (aunit,*) 'x2 = tmp(:,1);'
     if (DoShade) then
         if (shade_meanlikes) then
@@ -1320,13 +1335,6 @@
 
     if (num_contours /= 0) then
         write (aunit,'(a)') "cnt = load(fullfile(plotdir,'" // trim(plotfile) //'_cont''));'
-
-        if (plot_NDcontours) then
-            write (aunit,'(a)') "ptND=load(fullfile(plotdir,'" // trim(plotfile) //'_confid''));'
-            write(numstr,*) 1-contours(1:num_contours)
-            if (num_contours==1) numstr = trim(numstr)//' '//trim(numstr)
-            write (aunit,'(a)') 'contour(x1,x2,ptND,['//trim(numstr)//'],''r'');'
-        end if
     end if
 
     end function PlotContMATLAB
@@ -1541,12 +1549,11 @@
     character(LEN=Ini_max_string_len) fname, parameter_names_file, &
     parameter_names_labels
     character(LEN=10000) InLine  ! ,LastL,OutLine
-    integer ix, ix1,i,ix2,ix3, nbins, wx
+    integer ix, ix1,i,ix2,ix3, wx
     real(mcp) ignorerows
 
     logical bad, adjust_priors
 
-    real(mcp)  amax, amin
     character(LEN=Ini_max_string_len) filename, infile, out_root
     character(LEN=120) matlab_col, InS1,InS2,fmt
     integer plot_row, plot_col, chain_num, first_chain,chain_ix, plot_num
@@ -1586,6 +1593,7 @@
     character(LEN=Ini_max_string_len) :: finish_run_command
     integer chain_handle
     integer triangle_num, triangle_params(max_cols)
+    integer smooth_edge
 
     NameMapping%nnames = 0
 
@@ -1655,6 +1663,7 @@
     allocate(coldata(ncols,0:max_rows))
 
     nbins = Ini_Read_Int('num_bins')
+    smooth_scale_2D = Ini_read_Double('smooth_scale_2D',1.d0) !smoothing scale in terms of bin scale
 
     ignorerows = Ini_Read_Double('ignore_rows',0.d0)
 
@@ -1862,7 +1871,6 @@
     end if
 
     plot_meanlikes = Ini_Read_Logical('plot_meanlikes',.false.)
-    plot_NDcontours = Ini_Read_Logical('plot_NDcontours',.false.)
 
     do_minimal_1d_intervals = Ini_Read_Logical('do_minimal_1d_intervals',.false.) !JH
 
@@ -1896,8 +1904,6 @@
     BW = Ini_Read_Logical('B&W',.false.)
     do_shading = Ini_Read_Logical('do_shading',.true.)
     call Ini_Close
-
-    allocate(bins2D(-1000:1000,-1000:1000),bin2Dlikes(-1000:1000,-1000:1000),bin2Dmax(-1000:1000,-1000:1000))
 
     !Read in the chains
     nrows = 0
@@ -2156,15 +2162,15 @@
         binsraw = 0
 
         if (has_limits_bot(ix)) then
-            amin = limmin(ix)
+            range_min(j) = limmin(ix)
         else
-            amin = ConfidVal(ix,0.001_mcp,.false.)
+            range_min(j) = ConfidVal(ix,0.001_mcp,.false.)
         end if
 
         if (has_limits_top(ix)) then
-            amax = limmax(ix)
+            range_max(j) = limmax(ix)
         else
-            amax = ConfidVal(ix,0.001_mcp,.true.)
+            range_max(j) = ConfidVal(ix,0.001_mcp,.true.)
         end if
 
         do ix1 = 1, num_contours
@@ -2176,17 +2182,17 @@
             cont_lines(j,1,ix1) = ConfidVal(ix,limfrac,.false.)
         end do !contour lines
 
-        width(j) = (amax-amin)/(nbins+1)
+        width(j) = (range_max(j)-range_min(j))/(nbins+1)
         if (width(j)==0) cycle
 
         if (has_limits_top(ix)) then
-            center(j) = amax !- width(j)/2
+            center(j) = range_max(j) !- width(j)/2
         else
-            center(j) = amin !+ width(j)/2
+            center(j) = range_min(j) !+ width(j)/2
         end if
 
-        ix_min(j) = nint((amin - center(j))/width(j))
-        ix_max(j) = nint((amax - center(j))/width(j))
+        ix_min(j) = nint((range_min(j) - center(j))/width(j))
+        ix_max(j) = nint((range_max(j) - center(j))/width(j))
 
         if (smoothing .and. .not. has_limits_bot(ix)) ix_min(j) = ix_min(j)-1
         if (smoothing .and. .not. has_limits_top(ix)) ix_max(j) = ix_max(j)+1
@@ -2196,14 +2202,14 @@
             binsraw(ix2) = binsraw(ix2) + coldata(1,i)
 
             if (smoothing .and. ix_min(j) /= ix_max(j)) then
-                do wx = max(ix_min(j),ix2-2),min(ix_max(j),ix2+2)
+                smooth_edge = 2
+                do wx = max(ix_min(j),ix2-smooth_edge),min(ix_max(j),ix2+smooth_edge)
                     dist = coldata(colix(j),i) - (center(j) + wx*width(j))
-                    distweight = exp(- dist**2/width(j)**2/2)
+                    distweight = exp(- (dist/width(j))**2/2)
                     binweight = coldata(1,i)*distweight
                     bincounts(wx) = bincounts(wx)  + binweight
                     binlikes(wx) = binlikes(wx) + binweight*exp(meanlike-coldata(2,i))
-                    binmaxlikes(wx) = max(binmaxlikes(wx), &
-                    real(exp(maxlike-coldata(2,i))*distweight))
+                    binmaxlikes(wx) = max(binmaxlikes(wx), real(exp(maxlike-coldata(2,i))*distweight))
                 end do
             else
                 bincounts(ix2) = bincounts(ix2) + coldata(1,i)
@@ -2211,7 +2217,6 @@
                 binmaxlikes(ix2) = max(binmaxlikes(ix2), real(exp(maxlike-coldata(2,i))))
             end if
         end do
-
 
         do i=ix_min(j),ix_max(j)
             if (bincounts(i) >0) binlikes(i) = binlikes(i)/bincounts(i)
@@ -2221,7 +2226,7 @@
             !account for underweighting near edges
             if (has_limits_bot(ix)) then
                 bincounts(ix_min(j))   = bincounts(ix_min(j))*2
-                if (smoothing) bincounts(ix_min(j)+1) = bincounts(ix_min(j)+1)/0.84
+                bincounts(ix_min(j)+1) = bincounts(ix_min(j)+1)/0.84
             else
                 if (binsraw(ix_min(j))==0  .and. &
                 binsraw(ix_min(j)+1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
@@ -2270,8 +2275,8 @@
         end if
         !Detect ends which don't go to zero
         if (.not. force_twotail) then
-            if (bincounts(ix_max(j)) > maxbin*.15) cont_lines(j,2,:) = amax
-            if (bincounts(ix_min(j)) > maxbin*.15) cont_lines(j,1,:) = amin
+            if (bincounts(ix_max(j)) > maxbin*.15) cont_lines(j,2,:) = range_max(j)
+            if (bincounts(ix_min(j)) > maxbin*.15) cont_lines(j,1,:) = range_min(j)
         end if
 
         if (.not. no_plots) then
