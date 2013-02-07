@@ -9,8 +9,8 @@ g.settings.lab_fontsize +=6
 g.settings.solid_colors = ['#009966', '#000866', '#000866','#336600', '#006633' , 'g', 'm', 'r'] 
 
 bases=['omegabh2','omegach2','ns','H0','sigma8']
-params=['omegak','mnu','nnu','yhe','nrun','r']
-defs=[0,0.06,3.046,0.247816,0,0]
+params=['omegak','mnu','nnu','yhe','nrun','r','w']
+defs=[0,0.06,3.046,0.247816,0,0,-1]
 bfs=[0.02209,0.1194,0.962,67.5,0.827]
 
 

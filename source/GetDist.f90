@@ -76,6 +76,7 @@
     integer ND_cont1, ND_cont2
     integer covmat_dimension
     integer colix(max_cols), num_vars  !Parameters with non-blank labels
+    real(mcp) prior_ranges(2,max_cols)
     real(mcp) mean(max_cols), sddev(max_cols)
     real(mcp), dimension(:,:), allocatable :: corrmatrix
     character(LEN=Ini_max_string_len) rootname, plot_data_dir, out_dir, &
@@ -1208,7 +1209,7 @@
         end if
         if (has_limits_top(colix(j))) then
             prior_mask(ixmax*fine_fac,:) = prior_mask(ixmax*fine_fac,:)/2
-            prior_mask(ixmin*fine_fac+1:imax,:) = 0
+            prior_mask(ixmax*fine_fac+1:imax,:) = 0
         end if
         if (has_limits_bot(colix(j2))) then
             prior_mask(:,iymin*fine_fac) = prior_mask(:,iymin*fine_fac)/2
@@ -1216,7 +1217,7 @@
         end if
         if (has_limits_top(colix(j2))) then
             prior_mask(:,iymax*fine_fac) = prior_mask(:,iymax*fine_fac)/2
-            prior_mask(:,iymin*fine_fac+1:jmax) = 0
+            prior_mask(:,iymax*fine_fac+1:jmax) = 0
         end if
     end if
 
@@ -1642,7 +1643,7 @@
 
     else
         if (parameter_names_file=='') then
-            call IO_ReadParamNames(NameMapping,in_root)
+            call IO_ReadParamNames(NameMapping,in_root,prior_ranges)
             if (ncols==0 .and. NameMapping%nnames/=0) ncols = NameMapping%nnames+2
         end if
         if (parameter_names_labels/='') call ParamNames_SetLabels(NameMapping,parameter_names_labels)
@@ -1738,7 +1739,6 @@
             InLine = bin_limits
         else
             InLine = ParamNames_ReadIniForParam(NameMapping,DefIni,'limits',ix-2)
-            !Ini_Read_String('limits'//trim(adjustl(numstr)))
         end if
         if (InLine /= '') then
             read (InLine,*) InS1, InS2
@@ -2068,8 +2068,7 @@
     end if
     do j = 1, num_vars
         mean(j) = sum(coldata(1,0:nrows-1)*coldata( colix(j),0:nrows-1))/numsamp
-        sddev(j)  = sqrt(sum(coldata(1,0:nrows-1)*(coldata(colix(j),0:nrows-1) &
-        -mean(j))**2)/numsamp)
+        sddev(j)  = sqrt(sum(coldata(1,0:nrows-1)*(coldata(colix(j),0:nrows-1) -mean(j))**2)/numsamp)
     end do
 
     if (make_single_samples) call MakeSingleSamples(single_thin)
@@ -2161,17 +2160,30 @@
         binmaxlikes = 0
         binsraw = 0
 
+        range_min(j) = ConfidVal(ix,0.001_mcp,.false.)
+        range_max(j) = ConfidVal(ix,0.001_mcp,.true.)
+        width(j) = (range_max(j)-range_min(j))/(nbins+1)
+
         if (has_limits_bot(ix)) then
-            range_min(j) = limmin(ix)
-        else
-            range_min(j) = ConfidVal(ix,0.001_mcp,.false.)
+            if ( range_min(j)-limmin(ix) > width(j)) then
+                !long way from limit
+                has_limits_bot(ix) = .false.
+            else
+                range_min(j) = limmin(ix)
+            end if
         end if
 
         if (has_limits_top(ix)) then
-            range_max(j) = limmax(ix)
-        else
-            range_max(j) = ConfidVal(ix,0.001_mcp,.true.)
+            if ( limmax(ix) - range_max(j) > width(j)) then
+                has_limits_top(ix) = .false.
+            else
+                range_max(j) = limmax(ix)
+            end if
         end if
+
+        width(j) = (range_max(j)-range_min(j))/(nbins+1)
+        if (width(j)==0) cycle
+        has_limits(ix)= has_limits_top(ix) .or. has_limits_bot(ix)
 
         do ix1 = 1, num_contours
             limfrac = (1-contours(ix1))
@@ -2182,13 +2194,11 @@
             cont_lines(j,1,ix1) = ConfidVal(ix,limfrac,.false.)
         end do !contour lines
 
-        width(j) = (range_max(j)-range_min(j))/(nbins+1)
-        if (width(j)==0) cycle
 
         if (has_limits_top(ix)) then
-            center(j) = range_max(j) !- width(j)/2
+            center(j) = range_max(j)
         else
-            center(j) = range_min(j) !+ width(j)/2
+            center(j) = range_min(j)
         end if
 
         ix_min(j) = nint((range_min(j) - center(j))/width(j))

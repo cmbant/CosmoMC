@@ -30,7 +30,7 @@ class GetDistPlotSettings:
 # see http://www.scipy.org/Cookbook/Matplotlib/Show_colormaps
         self.colormap = cm.Blues
         self.colormap_scatter = cm.jet
-        self.param_names_for_labels = None  # 'clik_latex.paramnames'
+        self.param_names_for_labels = 'clik_latex.paramnames'
         self.figure_legend_loc = 'upper center'
         self.xtick_prune = None  # 'lower' or 'upper'
         self.tight_gap_fraction = 0.13  # space between ticks and the edge
