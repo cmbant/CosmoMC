@@ -910,8 +910,7 @@
                 read(i) pname(1:len)
                 current_param_indices(j) = ParamNames_index(NameMapping, pname)
             end do
-            if (any(current_param_indices==-1)) &
-            call MpiStop('ReadModel: parameters in .data files could not be matched')
+            if (any(current_param_indices==-1)) call MpiStop('ReadModel: parameters in .data files could not be matched')
         else
             current_param_indices = params_used
         end if

@@ -34,7 +34,7 @@ ncib          \gamma^{\mathrm{CIB}}           # spectral index of the CIB
 cal0          c_{100}       # relative power spectrum calibration factor 100/143 to rescale measured power with
 cal1          c_{143}       # calibration factor 143
 cal2          c_{217}       # relative calibration factor 217/143 (as for 100)
-xi            \xi^{\mbox{tSZ--CIB}}     # TSZ-CIB template amplitude (positive is negative)
+xi            \xi^{\mathrm{tSZ}-\mathrm{CIB}}     # TSZ-CIB template amplitude (positive is negative)
 aksz          A^{\mathrm{kSZ}}
 bm_1_1        \beta^1_1 
 bm_1_2        \beta^1_2

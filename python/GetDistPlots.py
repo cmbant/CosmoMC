@@ -11,10 +11,8 @@ class GetDistPlotSettings:
         self.shade_meanlikes = False
         self.prob_label = None
         # self.prob_label = 'Probability'
-        if self.plot_meanlikes:
-            self.lineM = ['-k', '-r', '-b', '-g', '-m', '-y']
-        else:
-            self.lineM = ['-k', '--r', '-.b', ':g', '--m', '-.y']
+        self.lineM = ['-k', '-r', '-b', '-g', '-m', '-y']
+        # elf.lineM = ['-k', '--r', '-.b', ':g', '--m', '-.y']
         self.plot_args = None
         self.lineL = [':k', ':r', ':b', ':m', ':g', ':y']
         self.solid_colors = ['#009966', '#000866', '#336600', '#006633' , 'g', 'm', 'r']  # '#66CC99'
@@ -147,6 +145,11 @@ class GetDistPlotter():
         args = self.get_plot_args(plotno, **kwargs)
         return args.get('color', self.settings.lineM[plotno][-1])
 
+    def get_linestyle(self, plotno, **kwargs):
+        args = self.get_plot_args(plotno, **kwargs)
+        return args.get('ls', self.settings.lineM[plotno][:-1])
+
+
     def paramNamesForRoot(self, root):
         if not root in self.param_name_sets: self.param_name_sets[root] = self.sampleAnalyser.paramsForRoot(root, labelParams=self.settings.param_names_for_labels)
         return self.param_name_sets[root]
@@ -156,22 +159,21 @@ class GetDistPlotter():
         density = self.sampleAnalyser.get_density(root, param, likes=self.settings.plot_meanlikes)
         if density is None: return None;
 
-        args = self.get_plot_args(plotno)
-        args.update(kwargs)
-        kwargs = args
+        kwargs = self.get_plot_args(plotno, **kwargs)
         plot(density.x, density.pts, self.settings.lineM[plotno], linewidth=self.settings.lw1, **kwargs)
         if self.settings.plot_meanlikes:
             plot(density.x, density.likes, self.settings.lineL[plotno], linewidth=self.settings.lw_likes, **kwargs)
 
         return density.bounds()
 
-    def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, cols=None, alpha=0.5, **kwargs):
+    def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, ls=None, cols=None, alpha=0.5, **kwargs):
         param1, param2 = self.get_param_array(root, [param1, param2])
 
         density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=True, likes=False)
         if density is None: return None
 
         if filled:
+            linestyles = ['-']
             if cols is None:
                 if color is None: color = self.settings.solid_colors[plotno]
                 cols = [matplotlib.colors.colorConverter.to_rgb(color)]
@@ -181,8 +183,11 @@ class GetDistPlotter():
         else:
             if color is None: color = self.get_color(plotno, **kwargs)
             cols = [color]
+            if ls is None: ls = self.get_linestyle(plotno, **kwargs)
+            linestyles = [ls]
+
         kwargs = self.get_plot_args(plotno, **kwargs)
-        contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linewidth=self.settings.lw_contour, alpha=alpha, **kwargs)
+        contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidth=self.settings.lw_contour, alpha=alpha, **kwargs)
 
         return density.bounds()
 
@@ -290,9 +295,8 @@ class GetDistPlotter():
             lines = []
             for i in enumerate(legend_labels):
                 color = self.get_color(i[0] + line_offset)
-                col = self.settings.lineM[i[0] + line_offset]
-
-                lines.append(Line2D([0, 1], [0, 1], color=color, ls=col[0:-1]))
+                ls = self.get_linestyle(i[0] + line_offset)
+                lines.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
             self.legend = self.fig.legend(lines, legend_labels, legend_loc, prop={'size':self.settings.lab_fontsize})
             self.extra_artists = [self.legend]
             if self.settings.tight_layout and not no_extra_legend_space:

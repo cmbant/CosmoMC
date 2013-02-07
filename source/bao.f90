@@ -195,32 +195,31 @@
         BAO_LnLike = BAO_DR7_loglike(CMB,like%bao_z(1))
         return
     else
+        allocate(BAO_theory(like%num_bao))
 
-    allocate(BAO_theory(like%num_bao))
+        if(like%type_bao ==3)then
+            do j=1, like%num_bao
+                BAO_theory(j) = SDSS_dvtors(CMB,like%bao_z(j))
+            end do
+        else if(like%type_bao ==2)then
+            do j=1, like%num_bao
+                BAO_theory(j) = Acoustic(CMB,like%bao_z(j))
+            end do
+        else if(like%type_bao ==4)then
+            do j=1, like%num_bao
+                BAO_theory(j) = BAO_D_v(like%bao_z(j))
+            end do
+        end if
 
-    if(like%type_bao ==3)then
         do j=1, like%num_bao
-            BAO_theory(j) = SDSS_dvtors(CMB,like%bao_z(j))
+            do k=1, like%num_bao
+                BAO_LnLike = BAO_LnLike +&
+                (BAO_theory(j)-like%bao_obs(j))*like%bao_invcov(j,k)*&
+                (BAO_theory(k)-like%bao_obs(k))
+            end do
         end do
-    else if(like%type_bao ==2)then
-        do j=1, like%num_bao
-            BAO_theory(j) = Acoustic(CMB,like%bao_z(j))
-        end do
-    else if(like%type_bao ==4)then
-        do j=1, like%num_bao
-            BAO_theory(j) = BAO_D_v(like%bao_z(j))
-        end do
-    end if
-
-    do j=1, like%num_bao
-        do k=1, like%num_bao
-            BAO_LnLike = BAO_LnLike +&
-            (BAO_theory(j)-like%bao_obs(j))*like%bao_invcov(j,k)*&
-            (BAO_theory(k)-like%bao_obs(k))
-        end do
-    end do
-    BAO_LnLike = BAO_LnLike/2.d0
-    deallocate(BAO_theory)
+        BAO_LnLike = BAO_LnLike/2.d0
+        deallocate(BAO_theory)
     end if
 
     end function BAO_LnLike
