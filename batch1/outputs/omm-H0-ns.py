@@ -1,7 +1,7 @@
 import GetDistPlots
 g=GetDistPlots.GetDistPlotter('main/plot_data')
 
-roots = ['base_planck_CAMspec_lowl','base_planck_CAMspec_lowl_lowLike_post_lensing']
+roots = ['base_planck_CAMspec_lowl','base_planck_CAMspec_lowl_lowLike']
 params = g.get_param_array(roots[0], ['omegam', 'H0', 'ns'])
 g.settings.setWithSubplotSize(4)
 g.settings.lw_contour = 0.2
