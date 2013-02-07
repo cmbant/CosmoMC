@@ -1,6 +1,6 @@
 omegabh2      \Omega_{\mathrm{b}} h^2	#physical baryon density
 omegach2      \Omega_{\mathrm{c}} h^2	#physical CDM matter density
-theta         \theta_{\mathrm{MC}}		#100 times the ratio of sound horizon to angular-diameter distance to (CMB) last-scattering surface (approx)
+theta         100\theta_{\mathrm{MC}}		#100 times the ratio of sound horizon to angular-diameter distance to (CMB) last-scattering surface (approx)
 tau           \tau
 omegak        \Omega_K
 mnu           \Sigma m_\nu    #sum of physical masses of standard neutrinos
@@ -89,13 +89,13 @@ omeganuh2*    \Omega_\nu h^2
 age*          \mathrm{Age}/\mathrm{Gyr}
 zstar*        z_\ast
 rstar*        r_\ast
-thetastar*    \theta_\ast
+thetastar*    100\theta_\ast
 zdrag*        z_{\mathrm{drag}}
 rdrag*        r_{\mathrm{drag}}
 kd*           k_{\mathrm{D}}
-thetad*       \theta_{\mathrm{D}}
+thetad*       100\theta_{\mathrm{D}}
 zeq*          z_{\mathrm{eq}}
-thetaeq*      \theta_{\mathrm{eq}}
+thetaeq*      100\theta_{\mathrm{eq}}
 rsDv057*       r_{\mathrm{drag}}/D_{\mathrm{V}}(0.57) 
 H057*          H(0.57) 
 DA057*         D_{\mathrm{A}}(0.57)
