@@ -23,12 +23,12 @@ if ($numnodes == 0){
 $chainspn=1;
 $omp=16;
 $numnodes=1;
-$walltime='04:00:00';
+$walltime='08:00:00';
 } else
 {
 $chainspn = 4;  # number of chains per node
 $omp = 4;       # value of OMP_NUM_THREADS
-$walltime='20:00:00';
+$walltime='24:00:00';
 }
 
 $ppn = ( $chainspn * $omp ) ; # NB this must be <= 16

@@ -77,7 +77,7 @@
     rhobeg = 0.1*sqrt(real(num_params_used))
     rhoend = sigma_frac_err
     if (dense_minimization_points) then
-     npt = min(4*num_params_used,((num_params_used +1)*(num_params_used +2))/2)
+     npt = min(6*num_params_used,((num_params_used +1)*(num_params_used +2))/2)
     else
      npt = 2*num_params_used +1 !have had some problems using just this
     end if
