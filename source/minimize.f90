@@ -75,7 +75,7 @@
 
     !Initial and final radius of region required (in normalized units)
     rhobeg = 0.1*sqrt(real(num_params_used))
-    rhoend = sigma_frac_err*sqrt(real(num_params_used))
+    rhoend = sigma_frac_err
     if (dense_minimization_points) then
      npt = min(4*num_params_used,((num_params_used +1)*(num_params_used +2))/2)
     else
