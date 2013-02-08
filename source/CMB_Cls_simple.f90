@@ -324,7 +324,8 @@
     Type(MatterTransferData) M
     integer zix
 
-    Theory%sigma_8 = M%sigma_8(matter_power_lnzsteps,1)
+    Theory%sigma_8 = M%sigma_8(size(M%sigma_8,1),1)
+    !redshifts are in increasing order, so last index is redshift zero
 
 #ifdef DR71RG
     !! BR09 get lrgtheory info

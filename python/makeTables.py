@@ -26,6 +26,9 @@ outfile = args.latex_filename
 
 if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
 
+if not args.forpaper: formatter = ResultObjs.planckNoLineTableFormatter()
+else: formatter = None
+
 lines = []
 if not args.forpaper:
     lines.append('\\documentclass[10pt]{article}')
@@ -42,7 +45,7 @@ def texEscapeText(string):
 
 def getTableLines(content):
     return ResultObjs.resultTable(args.columns, [content], blockEndParams=args.blockEndParams,
-                                  paramList=args.paramList, sigma=args.sigma).lines
+                         formatter=formatter, paramList=args.paramList, sigma=args.sigma).lines
 
 def paramResultTable(jobItem):
     tableLines = []
@@ -74,7 +77,7 @@ def compareTable(jobItems, titles=None):
     if titles is None: titles = [jobItem.datatag for jobItem in jobItems if jobItem.result_marge is not None]
     else: titles = titles.split(';')
     return ResultObjs.resultTable(1, [jobItem.result_marge for jobItem in jobItems if jobItem.result_marge is not None],
-                           sigma=args.sigma, titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
+               formatter=formatter, sigma=args.sigma, titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
 
 def filterBatchData(batch, datatags):
     items = []
