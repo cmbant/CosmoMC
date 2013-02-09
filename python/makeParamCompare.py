@@ -8,7 +8,10 @@ Opts.parser.add_argument('--nobestfits', action='store_true')
 Opts.parser.add_argument('--single_extparam', action='store_true')
 Opts.parser.add_argument('--sigma', type=int, default=2)
 Opts.parser.add_argument('--latex_filename', default=None)
+Opts.parser.add_argument('--mathColumns', action='store_true')
+Opts.parser.add_argument('--endline', default='\\cr')
 Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')
+
 
 (batch, args) = Opts.parseForBatch()
 formatter = ResultObjs.numberFormatter()
@@ -36,15 +39,13 @@ for jobItem in Opts.filteredBatchItems():
                     if not jobItem.datatag in dataTable: dataTable[dataName] = dict()
                     dataTable[dataName][par] = texValues
 
-def textAsColumn(txt, latex=True, bold=False):
-        wid = len(txt)
-        if latex:
-            wid += 2
-            if bold: wid += 11
-        res = txt + ' ' * max(0, 28 - wid)
-        if latex:
-            res = '$' + res + '$'
-        return res
+def makeMath(txt):
+    if args.mathColumns: return '$' + txt + '$'
+    else: return txt
+
+def textAsColumn(txt, latex=True):
+        if latex: return makeMath(txt)
+        else: return txt
 
 
 def sortData(batch, datatags):
@@ -60,7 +61,7 @@ for i, par in enumerate(args.params):
         print paramtag
         dataTable = table[paramtag]
         if args.compare is not None: dataTable = sortData(dataTable, args.compare)
-        cols = ['$' + names.parWithName(par, True).label + '$']
+        cols = [makeMath(names.parWithName(par, True).label)]
         for datatag in dataTable:
             if args.latex_filename is not None:
                 for par in args.params:
@@ -69,7 +70,7 @@ for i, par in enumerate(args.params):
                         if len(res) > 1: cols.append(textAsColumn(res[1]))
                         cols.append(textAsColumn(res[0], latex=res[0] != '---'))
             else: print ' ', table[paramtag][datatag], datatag
-        lines.append(" & ".join(cols) + '\\\\')
+        lines.append(" & ".join(cols) + args.endline)
 
 
 if args.latex_filename is not None:
