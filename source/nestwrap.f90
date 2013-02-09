@@ -150,7 +150,7 @@ subroutine nest_Sample
 		
 		
 		!Calling MultiNest
-	  	call nestRun(nest_mmodal,nest_ceff,nest_nlive,nest_tol,nest_efr,sdim,nest_nPar, &
+	  	call nestRun(.false., nest_mmodal,nest_ceff,nest_nlive,nest_tol,nest_efr,sdim,nest_nPar, &
 	  	2,nest_maxModes,nest_updInt,-1.d90,nest_root,nest_seed,nest_pWrap, &
 	  	nest_fb,nest_resume,.true.,.true.,-1.d90,-1,getLogLikeNS,dumper,context)
 	  	

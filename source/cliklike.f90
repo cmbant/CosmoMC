@@ -19,7 +19,6 @@ module cliklike
   logical :: use_clik = .false.  
   logical, save :: initialised = .false.
   logical, dimension(maxcliksets) :: using_CAMspec = .false.
-  logical, dimension(maxcliksets) :: using_PLik = .false.
   logical, dimension(maxcliksets) :: using_ACTSPT = .false.
   logical, dimension(maxcliksets) :: is_lensing = .false.
 
@@ -33,8 +32,7 @@ module cliklike
 
 
 !Number of nuisance parameters expected for different data sets
-  integer :: num_CAMspec_ACTSPT_common = 6
-  integer :: num_PLik_ACTSPT_common = 5
+  integer :: num_CAMspec_ACTSPT_common = 7
 
   type(clik_input_cls), dimension(maxcliksets) :: clik_input
 
@@ -125,11 +123,8 @@ contains
 
 
           if (clik_nnuis(n) .eq. num_CAMspec) then
-             Print*,'You appear to be using a CAMspec DX9 likelihood file.'
+             Print*,'You appear to be using a CAMspec v6+ likelihood file.'
              using_CAMspec(n) = .true.
-          else if (clik_nnuis(n) .eq. num_PLik) then
-             Print*,'You appear to be using a PLik v4 DX9 likelihood file.'
-             using_PLik(n) = .true.
           else if (clik_nnuis(n) .eq. num_ACTSPT) then
              Print*,'You appear to be using an ACT/SPT likelihood file.'
              using_ACTSPT(n) = .true.
@@ -245,70 +240,48 @@ contains
                 end do
              end if
 
-             if (using_PLik(n)) then     
-                offset = num_CAMspec
-                m = 1
-                do i=1,clik_nnuis(n)
-                   ! First five nuisance parameters are common with CAMspec
-                   if (i .eq. 1) then
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(4)  ! A_cib_143
-       	           else if (i .eq. 2) then
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(5)  ! A_cib_217
-         	   else if (i .eq. 3) then
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(8)  ! r_cib
-                   else if (i .eq. 4) then
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(6)  ! A_sz
-                   else if (i .eq. 5) then
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(12) ! xi_sz_cib
-                   else
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(m+offset)
-                      m = m+1
-                   end if
-                   j = j+1
-                end do
-      	      end if
 
-              if (using_actspt(n)) then
-                offset = num_CAMspec + num_PLik - num_CS_PLik_common
-                m = 1
-                do i=1,clik_nnuis(n)
-       	           ! Fill in common nuisance parameters
-                   if (i .eq. 1) then
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(6)   ! A_sz
-                   else if (i .eq. 2) then 
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(13)  ! A_ksz
-                   else if (i .eq. 3) then
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(12)  ! xi_sz_cib
-                   else if (i .eq. 9) then
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(4)   ! A_cib_143
-       	           else if (i .eq. 10) then
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(5)   ! A_cib_217                
-                   else if (i .eq. 14) then
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(8)   ! r_cib
-                   else
-                      clik_input(n)%clik_cl_and_pars(j) = clik_nuis(m+offset)
-                      m = m+1
-       	           end if
+             if (using_actspt(n)) then
+               offset = num_CAMspec
+               m = 1
+               do i=1,clik_nnuis(n)
+       	          ! Fill in common nuisance parameters
+                  if (i .eq. 1) then
+                     clik_input(n)%clik_cl_and_pars(j) = clik_nuis(6)   ! A_sz
+                  else if (i .eq. 2) then 
+                     clik_input(n)%clik_cl_and_pars(j) = clik_nuis(14)  ! A_ksz
+                  else if (i .eq. 3) then
+                     clik_input(n)%clik_cl_and_pars(j) = clik_nuis(13)  ! xi_sz_cib
+                  else if (i .eq. 9) then
+                     clik_input(n)%clik_cl_and_pars(j) = clik_nuis(4)   ! A_cib_143
+       	          else if (i .eq. 10) then
+                     clik_input(n)%clik_cl_and_pars(j) = clik_nuis(5)   ! A_cib_217
+                  else if (i .eq. 11) then
+                     clik_input(n)%clik_cl_and_pars(j) = clik_nuis(9)   ! n_Dl_cib                 
+                  else if (i .eq. 15) then
+                     clik_input(n)%clik_cl_and_pars(j) = clik_nuis(8)   ! r_cib
+                  else
+                     clik_input(n)%clik_cl_and_pars(j) = clik_nuis(m+offset)
+                     m = m+1
+       	          end if
 ! Gaussian prior on a_gs and a_ge
-                   if (i .eq. 15) then ! a_gs = 0.4 \pm 0.2
-                      clik_lnlike = clik_lnlike + &
-                         & ((clik_input(n)%clik_cl_and_pars(j) - 0.4d0)/0.2d0)**2
-                   end if       	       	
-                   if (i .eq. 16) then ! a_ge = 0.8 \pm 0.2
-                      clik_lnlike = clik_lnlike + &
-                         & ((clik_input(n)%clik_cl_and_pars(j) - 0.8d0)/0.2d0)**2
-       	           end if
-                   j = j+1
-                end do
-              end if
+                  if (i .eq. 16) then ! a_gs = 0.4 \pm 0.2
+                     clik_lnlike = clik_lnlike + &
+                        & ((clik_input(n)%clik_cl_and_pars(j) - 0.4d0)/0.2d0)**2
+                  end if       	       	
+                  if (i .eq. 17) then ! a_ge = 0.8 \pm 0.2
+                     clik_lnlike = clik_lnlike + &
+                        & ((clik_input(n)%clik_cl_and_pars(j) - 0.8d0)/0.2d0)**2
+       	          end if
+                  j = j+1
+               end do
+             end if
 
           end if   
    
 !   do i=1,clik_nnuis(n)
 !     Print*,i,clik_input(n)%clik_cl_and_pars(size(clik_input(n)%clik_cl_and_pars)-clik_nnuis(n)+i)
 !   end do
-
-!   stop
 
 !Get - ln like needed by CosmoMC
           clik_lnlike = clik_lnlike - 1.d0*clik_compute(clikid(n),clik_input(n)%clik_cl_and_pars)

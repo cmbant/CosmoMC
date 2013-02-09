@@ -21,14 +21,11 @@ module settings
   integer, parameter :: num_hard = 14 
   integer, parameter :: num_initpower = 3 
 #ifdef CLIK
-  integer, parameter :: num_CAMspec = 33
-  integer, parameter :: num_PLik = 12
-  integer, parameter :: num_CS_PLik_common = 5
-  integer, parameter :: num_CS_AS_common = 6
-  integer, parameter :: num_actspt = 23
-  integer, parameter :: num_freq_params = 1 + num_CAMspec + num_plik + num_actspt - &
-    & num_CS_PLik_common - num_CS_AS_common
- ! WMAP(1)/CAMspec(33)/PLik(7)/ACTSPT(17), in that order #clik#
+  integer, parameter :: num_CAMspec = 34
+  integer, parameter :: num_CS_AS_common = 7
+  integer, parameter :: num_actspt = 24
+  integer, parameter :: num_freq_params = 1 + num_CAMspec + num_actspt - num_CS_AS_common
+ ! WMAP(1)/CAMspec(34)/ACTSPT(17), in that order #clik#
 #else
   integer, parameter :: num_freq_params = 1
 #endif
