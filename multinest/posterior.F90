@@ -2,6 +2,7 @@
 
 module posterior
   use utils1
+  use xmeans_clstr
   
   implicit none
       
@@ -18,7 +19,7 @@ contains
 !------------------------------------------------------------------------
       
  subroutine pos_samp(Ztol,nIter,root,nLpt,ndim,nCdim,nPar,multimodal,outfile,globZ,globinfo,ic_n,ic_Z,ic_info,ic_reme, &
- ic_vnow,ic_npt,ic_nBrnch,ic_brnch,phyP,l,evDataAll,dumper,context)
+ ic_vnow,ic_npt,ic_nBrnch,ic_brnch,phyP,l,evDataAll,IS,IS_logZ,dumper,context)
  !subroutine pos_samp
   	implicit none
   	
@@ -34,6 +35,8 @@ contains
 	integer i,j,k,i1,ios,ic_n,m,indx
 	integer ic_npt(ic_n),ic_nptloc(ic_n),ic_nBrnch(ic_n)
 	double precision ic_Z(ic_n),ic_info(ic_n),ic_vnow(ic_n),ic_brnch(ic_n,ic_n),phyP(nPar,nLpt),l(nLpt),evDataAll(:)
+	logical IS !importance sampling?
+	double precision IS_logZ !importance sampling log(Z) estimate
 	logical ic_reme(ic_n)
   	character(len=100) evfile,livefile,postfile,resumefile
       	character(len=100) sepFile,statsFile,postfile4,strictSepFile,summaryFile
@@ -255,7 +258,8 @@ contains
       			
 		open(unit=57,file=statsFile,form='formatted',status='replace')
       		!stats file
-		write(57,'(a,E28.18,a,E28.18)')"Global Evidence:",gzloc,"  +/-",sqrt(ginfoloc/dble(nLpt))
+		write(57,'(a,E28.18,a,E28.18)')		"Nested Sampling Global Log-Evidence           :",gzloc,"  +/-",sqrt(ginfoloc/dble(nLpt))
+		if( IS ) write(57,'(a,E28.18,a,E28.18)')"Nested Importance Sampling Global Log-Evidence:",IS_logZ
 	      		
 		!now the separated posterior samples
 	      
@@ -526,8 +530,8 @@ contains
 			write(funit3,*)
 			write(funit3,'(a,i4)')'Mode',i
 			d3=(nliveP-locNpt(i))*sinfo/locInfo(i)+locNpt(i)
-			write(funit3,'(a,E28.18,a,E28.18)')"Strictly Local Evidence",slocZ," +/-",sqrt(sinfo/locNpt(i))
-			write(funit3,'(a,E28.18,a,E28.18)')"Local Evidence",locZ(i)," +/-",sqrt(locInfo(i)/d3)
+			write(funit3,'(a,E28.18,a,E28.18)')"Strictly Local Log-Evidence",slocZ," +/-",sqrt(sinfo/locNpt(i))
+			write(funit3,'(a,E28.18,a,E28.18)')"Local Log-Evidence",locZ(i)," +/-",sqrt(locInfo(i)/d3)
      		endif
 		write(funit3,'(a)')""
 		write(funit3,'(a)')"Dim No.       Mean        Sigma"

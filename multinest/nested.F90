@@ -1,5 +1,5 @@
 ! Do nested sampling algorithm to calculate Bayesian evidence
-! Aug 2012
+! Jan 2013
 ! Farhan Feroz
 
 module Nested
@@ -33,18 +33,20 @@ module Nested
   integer maxIter
   logical fback,resumeFlag,dlive,genLive,dino
   !output files name
-  character(LEN=100)physname,broot,rname,resumename,livename,evname
+  character(LEN=100)physname,broot,rname,resumename,livename,evname,IS_Files(3)
   !output file units
-  integer u_ev,u_resume,u_phys,u_live
+  integer u_ev,u_resume,u_phys,u_live,u_IS(3)
   double precision gZ,ginfo !total log(evidence) & info
   integer count,sCount
   logical, dimension(:), allocatable :: pWrap
   logical mWrap,aWrap !whether to do wraparound for mode separation
   logical debug, prior_warning, resume, outfile
+  !importance sampling
+  logical IS
 
 contains
   
-  subroutine nestRun(nest_mmodal,nest_ceff,nest_nlive,nest_tol,nest_ef,nest_ndims,nest_totPar,nest_nCdims,maxClst, &
+  subroutine nestRun(nest_IS,nest_mmodal,nest_ceff,nest_nlive,nest_tol,nest_ef,nest_ndims,nest_totPar,nest_nCdims,maxClst, &
   nest_updInt,nest_Ztol,nest_root,seed,nest_pWrap,nest_fb,nest_resume,nest_outfile,initMPI,nest_logZero,nest_maxIter, &
   loglike,dumper,context)
         
@@ -52,7 +54,7 @@ contains
         
 	integer nest_ndims,nest_nlive,nest_updInt,context,seed,i
 	integer maxClst,nest_nsc,nest_totPar,nest_nCdims,nest_pWrap(*),nest_maxIter
-	logical nest_mmodal,nest_fb,nest_resume,nest_ceff,nest_outfile,initMPI
+	logical nest_IS,nest_mmodal,nest_fb,nest_resume,nest_ceff,nest_outfile,initMPI
 	character(LEN=100) nest_root
 	double precision nest_tol,nest_ef,nest_Ztol,nest_logZero
 	
@@ -88,6 +90,7 @@ contains
 	mpi_nthreads=1
 	my_rank=0
 #endif
+	IS=nest_IS
 	nest_nsc=50
       	nlive=nest_nlive
 	Ztol=nest_Ztol
@@ -130,11 +133,19 @@ contains
       		physname = trim(rname)//'phys_live.points'
       		livename = trim(rname)//'live.points'
       		evname = trim(rname)//'ev.dat'
-      		!setup the output file units
       		u_ev=55
 		u_phys=57
       		u_live=59
 		u_resume=61
+		
+		if( IS ) then
+			IS_Files(1) = trim(rname)//'IS.points'
+			IS_Files(2) = trim(rname)//'IS.ptprob'
+			IS_Files(3) = trim(rname)//'IS.iterinfo'
+			u_IS(1) = 62
+			u_IS(2) = 63
+			u_IS(3) = 64
+		endif
 	endif
 	
 	allocate(pWrap(ndims))
@@ -150,6 +161,7 @@ contains
 		endif
 	enddo
       	multimodal=nest_mmodal
+	!if( IS ) multimodal = .false.
 	ceff=nest_ceff
       	tol=nest_tol
       	ef=nest_ef
@@ -201,12 +213,14 @@ contains
 		endif
       
 		write(*,*)"*****************************************************"
-		write(*,*)"MultiNest v2.18"
+		write(*,*)"MultiNest v3.0"
       		write(*,*)"Copyright Farhan Feroz & Mike Hobson"
-      		write(*,*)"Release Aug 2012"
+      		write(*,*)"Release Jan 2013"
 		write(*,*)
       		write(*,'(a,i4)')" no. of live points = ",nest_nlive
       		write(*,'(a,i4)')" dimensionality = ",nest_ndims
+		if(IS) write(*,'(a)')" using Nested Importance Sampling"
+		if(ceff) write(*,'(a)')" running in constant efficiency mode"
       		if(resumeFlag) write(*,'(a)')" resuming from previous job"
       		write(*,*)"*****************************************************"
         
@@ -275,7 +289,7 @@ contains
 		genLive=.true.
 	
 		if(resumeflag) then
-			!check if the last run was aborted during the live points generation
+			!check if the last job was aborted during the live points generation
 			open(unit=u_resume,file=resumename,status='old')
 			read(u_resume,*)genLive
 			
@@ -446,6 +460,16 @@ contains
 	    		else
 	      			open(unit=u_live,file=livename,form='formatted',status='replace')
 	    			open(unit=u_phys,file=physname,form='formatted',status='replace')
+				
+				if( IS ) then
+	      				open(unit=u_IS(2),file=IS_Files(2),form='unformatted',access='sequential',status='replace')
+					write(u_IS(2))0,0,0
+					close(u_IS(2))
+	      				open(unit=u_IS(1),file=IS_Files(1),form='unformatted',access='sequential',status='replace')
+					close(u_IS(1))
+	      				open(unit=u_IS(3),file=IS_Files(3),form='unformatted',access='sequential',status='replace')
+					close(u_IS(3))
+				endif
 	    		endif
 		endif
     
@@ -680,6 +704,13 @@ contains
 	
 	!mode separation
 	integer nCdim
+	
+	!importance sampling
+	double precision, allocatable :: IS_allpts(:,:), IS_iterinfo(:,:), IS_V(:)
+	integer IS_counter(7)
+	integer :: IS_nstore = 10000, IS_nMC = 1000
+	double precision :: IS_Z
+	logical :: IS_CheckAll = .false., IS_betterMC = .true.
 	      
 	INTERFACE
     		!the likelihood function
@@ -718,6 +749,36 @@ contains
 	
 	if(my_rank==0) then
 		!memory allocation
+		if( IS ) then
+			allocate(IS_allpts(nlive+IS_nstore,ndims+6), IS_iterinfo(nlive+IS_nstore/10,5), IS_V(maxeCls))
+			IS_allpts = 0d0
+			IS_iterinfo = 0d0
+			
+			do i = 1, nlive
+				IS_allpts(i,1:ndims) = p(1:ndims,i)	!point
+			enddo
+			IS_allpts(1:nlive,ndims+1) = l(1:nlive)		!likelihood
+			IS_allpts(1:nlive,ndims+2) = dble(nlive)	!p(\Theta) n = \Sum_{i}^{niter} n_{i} E_{i}(\Theta) / V_{i}
+			IS_allpts(1:nlive,ndims+3) = 1d0		!check this point for ellipsoid membership in later iterations
+			IS_allpts(1:nlive,ndims+4) = 1d0		!which ellipsoid this point lies in
+			IS_allpts(1:nlive,ndims+5) = 1d0		!Mahalanobis distance
+			IS_allpts(1:nlive,ndims+6) = 1d0		!node
+			
+			IS_iterinfo(1:nlive,1) = 1d0			!volume
+			IS_iterinfo(1:nlive,2) = 1d0			!total no. of points collected at each iteration, excluding points outside prior
+			IS_iterinfo(1:nlive,4) = 1d0			!total no. of points collected at each iteration, including points outside prior
+			IS_iterinfo(1:nlive,3) = 1d0			!effective no. of points collected at each iteration
+			IS_iterinfo(1:nlive,5) = 1d0			!node
+			
+			IS_counter(1) = nlive				!total no. of points collected so far
+			IS_counter(2) = 1				!first point to be checked for ellipsoid membership in later iterations
+			IS_counter(3) = nlive+IS_nstore			!total no. of points that can be stored in IS_allpts array
+			IS_counter(4) = nlive+IS_nstore/10		!total no. of points that can be stored in IS_iterinfo array
+			IS_counter(5) = nlive				!total no. of iterations done so far
+			IS_counter(6) = 0				!total no. of IS_iterinfo members written to output file
+			IS_counter(7) = 0				!total no. of IS_allpts members written to output file
+		endif
+		
 		allocate(evDataAll(1))
 		allocate(sc_npt(maxeCls), nptk(maxeCls), nptx(nlive), meank(maxeCls,ndims), &
 		sc_eval(maxeCls,ndims), evalk(maxeCls,ndims), sc_invcov(maxeCls,ndims,ndims), &
@@ -734,6 +795,7 @@ contains
 			allocate(ic_eff(maxCls,4))
 			ic_eff(:,1:2)=0d0
 			ic_eff(:,3)=1d0
+			ic_eff(:,3)=ef
 			ic_eff(:,4)=1d0
 		endif
 		allocate(pnewa(maxCls,mpi_nthreads,ndims),phyPnewa(maxCls,mpi_nthreads,totPar),lnewa(maxCls,mpi_nthreads), &
@@ -880,6 +942,67 @@ contains
 				endif
 			enddo
 			close(u_phys)
+			
+			!read the IS files
+			if( IS ) then
+				!read all the points collected so far
+				open(unit=u_IS(2),file=IS_Files(2),form='unformatted',access='sequential',status='old')
+				read(u_IS(2))j,IS_counter(2),k
+				call ExtendArrayIfRequired(IS_counter(1),j-IS_counter(1),IS_counter(3),IS_nstore,ndims+6,IS_allpts)
+				IS_counter(1) = j
+				IS_counter(7) = j
+				call ExtendArrayIfRequired(IS_counter(5),k-IS_counter(5),IS_counter(4),IS_nstore/10,5,IS_iterinfo)
+				IS_counter(5) = k
+				IS_counter(6) = k
+				
+				do i = 1, IS_counter(1)
+					read(u_IS(2),IOSTAT=iostatus)IS_allpts(i,ndims+2),IS_allpts(i,ndims+3)
+					
+					!end of file?
+					if(iostatus<0) then
+						write(*,*)"ERROR: Not enough points in ",IS_Files(2)
+						write(*,*)"Aborting"
+#ifdef MPI
+						call MPI_ABORT(MPI_COMM_WORLD,errcode)
+#endif
+						stop
+					endif
+				enddo
+				close(u_IS(2))
+				
+				open(unit=u_IS(1),file=IS_Files(1),form='unformatted',access='sequential',status='old')
+				do i = 1, IS_counter(1)
+					read(u_IS(1),IOSTAT=iostatus)IS_allpts(i,1:ndims+1),IS_allpts(i,ndims+6)
+					
+					!end of file?
+					if(iostatus<0) then
+						write(*,*)"ERROR: Not enough points in ",IS_Files(1)
+						write(*,*)"Aborting"
+#ifdef MPI
+						call MPI_ABORT(MPI_COMM_WORLD,errcode)
+#endif
+						stop
+					endif
+				enddo
+				close(u_IS(1))
+				
+				!read the iteration info
+				open(unit=u_IS(3),file=IS_Files(3),form='unformatted',access='sequential',status='old')
+				do i = 1, IS_counter(5)
+					read(u_IS(3),IOSTAT=iostatus)IS_iterinfo(i,1:5)
+					
+					!end of file?
+					if(iostatus<0) then
+						write(*,*)"ERROR: Not enough points in ",IS_Files(3)
+						write(*,*)"Aborting"
+#ifdef MPI
+						call MPI_ABORT(MPI_COMM_WORLD,errcode)
+#endif
+						stop
+					endif
+				enddo
+				close(u_IS(3))
+			endif
 		endif
 		
 		!find the highest likelihood for each node
@@ -962,11 +1085,20 @@ contains
 	                  		close(funit1)
 				endif
 				
+				if( IS ) then
+					IS_Z = logZero
+					do j = 1, IS_counter(1)
+						d1 = IS_allpts(j,ndims+1)-log(IS_allpts(j,ndims+2))
+						IS_Z = LogSumExp(IS_Z, d1)
+					enddo
+				endif
+				
 				!fback
-                		if(fback) call gfeedback(gZ,numlike,globff,.false.)
+                		if(fback) call gfeedback(gZ,IS,IS_Z,numlike,globff,.false.)
+				
 				call pos_samp(Ztol,globff,broot,nlive,ndims,nCdims,totPar,multimodal,outfile,gZ,ginfo,ic_n,ic_Z(1:ic_n), &
 				ic_info(1:ic_n),ic_reme(1:ic_n),ic_vnow(1:ic_n),ic_npt(1:ic_n),ic_nBrnch(1:ic_n),ic_brnch(1:ic_n,:,1),phyP(:,1:nlive), &
-				l(1:nlive),evDataAll,dumper,context)
+				l(1:nlive),evDataAll,IS,IS_Z,dumper,context)
 				
 				!if done then add in the contribution to the global evidence from live points
 				j=0
@@ -1006,6 +1138,7 @@ contains
 				deallocate(totVol,eVolFrac,x1,x2,y1,y2,slope,intcpt,cVolFrac,pVolFrac)
 				if( prior_warning ) deallocate( ic_mean, ic_sigma )
 				deallocate( evDataAll )
+				if( IS ) deallocate(IS_allpts,IS_iterinfo,IS_V)
 			endif
 			
 			deallocate( eswitchff, escount, dmin, evData, ic_sc, ic_npt, ic_done, ic_climits, &
@@ -1147,6 +1280,7 @@ contains
 				n=0 !no. of sub-clusters created so far
 				do i1=1,ic_n
 					if(ic_npt(i1)==0) then
+						totvol(i1) = 0d0
 						sck(i1)=0
 						q=q+ic_sc(i1) !no. of sub-clusters traversed
 						cycle
@@ -1446,6 +1580,106 @@ contains
 		endif
 #endif
 
+		if( IS .and. flag2 .and. eswitch .and. my_rank == 0 ) then
+			!estimate the total ellipsoidal volume taking the overlap into account
+			
+			nd_i = 0 !no. of ellipsoids traversed
+			nd_j = 0 !no. of points traversed
+			do i = 1, ic_n
+				if( ic_sc(i) <= 1 .or. ic_done(i) ) then
+					j1 = 1
+					m = 1
+				else
+					m = 0
+					j1 = ic_npt(i)
+					if( IS_betterMC .and. IS_nMC > nlive ) j1 = int(dble(IS_nMC) * dble(ic_npt(i)) / dble(nlive))
+					do j = nd_j+1, nd_j+j1
+						if( j > nd_j+ic_npt(i) ) then
+							!first pick an ellipsoid according to the vol
+							do
+								!pick a sub-cluster according to the vol
+								call selectEll(ic_sc(i), sc_vol(nd_i+1:nd_i+ic_sc(i)), k)
+								k = k + nd_i
+								if( sc_kfac(k) == 0d0 .or. sc_vol(k) == 0d0 ) cycle
+								exit
+							enddo
+							
+							d1=sc_kfac(k)*sc_eff(k)
+							call genPtInEll(ndims, sc_mean(k,:), d1, sc_tMat(k,:,:), my_rank, pnew(1:ndims))
+						else
+							pnew(1:ndims) = p(1:ndims,j)
+						endif
+						
+						i2 = 0
+						do k = nd_i+1, nd_i+ic_sc(i)
+		            				if( ptIn1Ell(ndims, pnew(1:ndims), sc_mean(k,:), sc_invcov(k,:,:), sc_kfac(k)*sc_eff(k)) ) i2 = i2+1
+		            			enddo
+						
+						if( j > nd_j+ic_npt(i) ) then
+							if( i2 > 1 ) then
+								urv = ranmarNS(0)
+								if( urv > 1d0/dble(i2) ) then
+									i2 = 0
+									j1 = j1-1
+								endif
+							endif
+						endif
+						m = m+i2
+					enddo
+				endif
+				
+				IS_V(i) = ( totVol(i) / ic_volFac(i) ) * dble(j1) / dble(m)
+				
+				nd_j = nd_j+ic_npt(i)
+				nd_i = nd_i+ic_sc(i)
+			enddo
+			
+			
+			lowlike = minval(l(1:nlive))
+			flag = .false.	!found the very first point which is inside the ellipsoidal bound?
+			j1 = IS_counter(2)
+			if( IS_CheckAll ) j1 = 1
+			do j = j1, IS_counter(1)
+				d1 = huge(1d0)
+				if( IS_CheckAll .or. IS_allpts(j,ndims+3) == 1d0 ) then
+					IS_allpts(j,ndims+3) = 0d0
+					
+					nd_i = 0 !no. of ellipsoids traversed
+					do i = 1, ic_n
+						if( ic_done(i) .or. totvol(i) == 0d0 .or. ic_npt(i) == 0 .or. ( multimodal .and. .not.isAncestor(int(IS_allpts(j,ndims+6)), i, ic_fnode(1:i)) ) ) then
+							nd_i = nd_i+ic_sc(i)
+							cycle
+						endif
+						
+						!apply current limits to this point
+						call ApplyLimits(0, ic_climits(i,:,:), IS_allpts(j,1:ndims), pt(1,1:ndims))
+						
+						do k = nd_i+1, nd_i+ic_sc(i)
+							!check if this point is inside the ellipsoid
+							call ScaleFactor(1, ndims , pt(1,1:ndims), sc_mean(k,:), sc_invcov(k,:,:), d2)
+							if( d2  < sc_kfac(k)*sc_eff(k) .and. d2/(sc_kfac(k)*sc_eff(k)) < d1 ) then
+								d1 = d2/(sc_kfac(k)*sc_eff(k))
+									
+								IS_allpts(j,ndims+3) = 1d0
+								IS_allpts(j,ndims+4) = dble(k)	!ellipsoid ID
+								IS_allpts(j,ndims+5) = d2	!Mahalanobis distance of this point
+									
+								if( .not.flag ) then
+									flag = .true.
+									IS_counter(2) = j
+								endif
+							endif
+						enddo
+						
+						nd_i = nd_i+ic_sc(i)
+					enddo
+				endif
+			enddo
+			
+			!not a single point inside the current ellipsoidal decomposition
+			if( .not.flag ) IS_counter(2) = IS_counter(1)+1
+		endif
+
 		nd_i=0 !no. of ellipsoids traversed
 		nd_j=0 !no. of points traversed
 		do nd=1,ic_n	
@@ -1523,7 +1757,7 @@ contains
 #endif
 	                  			if(.not.remFlag) then
 	            					!generate mpi_nthreads potential points
-							call samp(pnew,phyPnew,lnew,sc_mean(1,:),d1,sc_tMat(1,:,:),ic_climits(nd,:,:),loglike,eswitch,lowlike,context)
+							call samp(pnew,phyPnew,lnew,sc_mean(1,:),d1,sc_tMat(1,:,:),ic_climits(nd,:,:),loglike,eswitch,lowlike,n,context)
 						
 							if(my_rank==0) then
 								lnewa(nd,1)=lnew
@@ -1553,6 +1787,30 @@ contains
 							endif
 							call MPI_BARRIER(MPI_COMM_WORLD,errcode)
 #endif
+							
+							if( IS .and. my_rank == 0 ) then
+								call ExtendArrayIfRequired(IS_counter(5),globff+1-IS_counter(5),IS_counter(4),IS_nstore/10,5,IS_iterinfo)
+								call ExtendArrayIfRequired(IS_counter(1),mpi_nthreads,IS_counter(3),IS_nstore,ndims+6,IS_allpts)
+								
+								IS_counter(5) = globff+1
+								
+								i3 = IS_counter(1)	!no. of points in IS_allpts array
+								do i2 = 1, mpi_nthreads
+									if( lnewa(nd,i2)>logZero ) then
+										IS_counter(1) = IS_counter(1)+1					!total no. of points collected so far
+										IS_allpts(IS_counter(1),1:ndims) = pnewa(nd,i2,1:ndims)		!point
+										IS_allpts(IS_counter(1),ndims+1) = lnewa(nd,i2)			!likelihood
+									else
+										if( IS ) IS_iterinfo(globff+1,4) = IS_iterinfo(globff+1,4) + 1
+									endif
+								enddo
+								IS_allpts(i3+1:IS_counter(1),ndims+3) = 1d0					!check this point for ellipsoid membership in later iterations
+								IS_allpts(i3+1:IS_counter(1),ndims+6) = dble(nd)				!node
+								
+								IS_iterinfo(globff+1,1) = 1d0							!current volume, V_{i}
+								IS_iterinfo(globff+1,2:4) = IS_iterinfo(globff+1,2:4) + IS_counter(1)-i3	!no. of points collected at current iteration, n_{i}
+								IS_iterinfo(globff+1,5) = dble(nd)						!current node
+							endif
 						endif
 					
 						if(my_rank==0) then
@@ -1603,6 +1861,29 @@ contains
 							call setLimits(multimodal,ndims,nCdims,ic_llimits(nd,:,:), &
 							ic_climits(nd,:,:),pnew,phyPnew(1:nCdims),ic_climits(nd,:,:))
 						endif
+						
+						
+						!calculate p(\Theta) n = \Sum_{i}^{niter} n_{i} E_{i}(\Theta) / V_{i}
+						if( IS ) then
+							n1 = 0; n2 = 0
+							if( IS_counter(5) == globff+1 ) then
+								n1 = int(IS_iterinfo(globff+1,2))	!n_{i}
+								n2 = int(IS_iterinfo(globff+1,4))	!n_{i}
+							endif
+							
+							if( n1 > 0 .and. n2 > 0 ) then
+								!(p(\Theta) n1) for points collected in current iteration from current iteration
+								IS_allpts(IS_counter(1)-n1+1:IS_counter(1),ndims+2) = dble(n2)
+							
+								!(p(\Theta) n1) for points collected in previous iterations from current iteration
+								IS_allpts(1:IS_counter(1)-n1,ndims+2) = IS_allpts(1:IS_counter(1)-n1,ndims+2) + dble(n2)
+							
+								!(p(\Theta) n1) for points collected in current iteration from previous iterations
+								do i = 1, globff
+									IS_allpts(IS_counter(1)-n1+1:IS_counter(1),ndims+2) = IS_allpts(IS_counter(1)-n1+1:IS_counter(1),ndims+2) + IS_iterinfo(i,4)
+								enddo
+							endif
+						endif
 					endif
 	            		else
 					num_old=numlike
@@ -1629,8 +1910,15 @@ contains
 						
 							!generate mpi_nthreads potential points
 							d1=sc_kfac(i)*sc_eff(i)
-							call samp(pnew,phyPnew,lnew,sc_mean(i,:),d1,sc_tMat(i,:,:),ic_climits(nd,:,:),loglike,eswitch,lowlike,context)
+							call samp(pnew,phyPnew,lnew,sc_mean(i,:),d1,sc_tMat(i,:,:),ic_climits(nd,:,:),loglike,eswitch,lowlike,n,context)
+							
 							if(my_rank==0) then
+								if( IS ) then
+									call ExtendArrayIfRequired(IS_counter(5),globff+1-IS_counter(5),IS_counter(4),IS_nstore/10,5,IS_iterinfo)
+									call ExtendArrayIfRequired(IS_counter(1),mpi_nthreads,IS_counter(3),IS_nstore,ndims+6,IS_allpts)
+									IS_counter(5) = globff+1
+								endif
+								
 								lnewa(nd,1)=lnew
 						
 								if(lnew>logZero) then
@@ -1638,11 +1926,14 @@ contains
 									pnewa(nd,1,:)=pnew(:)
 									phyPnewa(nd,1,:)=phyPnew
 								endif
+								
+								if( IS ) IS_iterinfo(globff+1,4) = IS_iterinfo(globff+1,4) + n
 							endif
 #ifdef MPI
 							call MPI_BARRIER(MPI_COMM_WORLD,errcode)
 							!now send the points to the root node
 							if(my_rank/=0) then
+								if( IS ) call MPI_SEND(n,1,MPI_INTEGER,0,my_rank,MPI_COMM_WORLD,errcode)
 								call MPI_SEND(lnew,1,MPI_DOUBLE_PRECISION,0,my_rank,MPI_COMM_WORLD,errcode)
 								if(lnew>logZero) then
 									call MPI_SEND(i-nd_i,1,MPI_INTEGER,0,my_rank,MPI_COMM_WORLD,errcode)
@@ -1651,6 +1942,10 @@ contains
 								endif
 							else
 								do i2=1,mpi_nthreads-1
+									if( IS ) then
+										call MPI_RECV(n,1,MPI_INTEGER,i2,i2,MPI_COMM_WORLD,mpi_status,errcode)
+										IS_iterinfo(globff+1,4) = IS_iterinfo(globff+1,4) + n
+									endif
 									call MPI_RECV(lnewa(nd,i2+1),1,MPI_DOUBLE_PRECISION,i2,i2,MPI_COMM_WORLD,mpi_status,errcode)
 									if(lnewa(nd,i2+1)>logZero) then
 										call MPI_RECV(sEll(nd,i2+1),1,MPI_INTEGER,i2,i2,MPI_COMM_WORLD,mpi_status,errcode)
@@ -1661,6 +1956,37 @@ contains
 							endif
 							call MPI_BARRIER(MPI_COMM_WORLD,errcode)
 #endif
+							if( IS .and. my_rank == 0 ) then
+								i3 = IS_counter(1)
+								do i2=1, mpi_nthreads
+									if( lnewa(nd,i2) > logZero ) then
+										IS_counter(1) = IS_counter(1)+1					!total no. of points collected so far
+										
+										!reverse the limits on this point such that it is in unit hypercube & store it
+										call ApplyLimits(1, ic_climits(nd,:,:), pnewa(nd,i2,1:ndims), IS_allpts(IS_counter(1),1:ndims))
+										IS_allpts(IS_counter(1),ndims+1) = lnewa(nd,i2)			!likelihood
+										
+										!check how many ellipsoids this point lies in
+										j = 1
+	            								do m = nd_i+1, nd_i+ic_sc(nd)
+	            									if( m == sEll(nd,i2)+nd_i .or. sc_npt(m) == 0 ) then
+												IS_allpts(IS_counter(1),ndims+4) = m
+												call ScaleFactor(1, ndims , pnewa(nd,i2,:), sc_mean(m,:), sc_invcov(m,:,:), IS_allpts(IS_counter(1),ndims+5))
+												cycle
+											endif
+											if( ptIn1Ell(ndims,pnewa(nd,i2,:),sc_mean(m,:),sc_invcov(m,:,:),sc_kfac(m)*sc_eff(m))) j=j+1
+	            								enddo
+										IS_allpts(IS_counter(1),ndims+2) = dble(j) / ( totvol(nd) / ic_volFac(nd) )
+										IS_iterinfo(globff+1,3) = IS_iterinfo(globff+1,3) + 1d0/dble(j)	!effective no. of points collected at each iteration
+									endif
+								enddo
+								
+								IS_iterinfo(globff+1,1) = IS_V(nd)						!volume, V_{i}
+								IS_iterinfo(globff+1,2) = IS_iterinfo(globff+1,2) + IS_counter(1)-i3		!total no. of points collected at each iteration
+								IS_iterinfo(globff+1,5) = dble(nd)						!node
+								IS_allpts(i3+1:IS_counter(1),ndims+3) = 1d0					!check this point for ellipsoid membership in later iterations					!node
+								IS_allpts(i3+1:IS_counter(1),ndims+6) = dble(nd)				!node
+							endif
 						endif
 					
 						if(my_rank==0) then
@@ -1750,6 +2076,50 @@ contains
 
 				
 					if(my_rank==0) then
+						
+						!calculate p(\Theta) n = \Sum_{i}^{niter} n_{i} E_{i}(\Theta) / V_{i}
+						if( IS ) then
+							n1 = 0; n2 = 0
+							if( IS_counter(5) == globff+1 ) then
+								n1 = int(IS_iterinfo(globff+1,2))	!n_{coll, i}
+								n2 = int(IS_iterinfo(globff+1,4))	!n_{i}
+							endif
+							
+							if( n1 > 0 .and. n2 > 0 ) then
+								
+								!(p(\Theta) n) for points collected in current iteration from current iteration
+								IS_allpts(IS_counter(1)-n1+1:IS_counter(1),ndims+2) = IS_allpts(IS_counter(1)-n1+1:IS_counter(1),ndims+2) * dble(n2)
+								
+								!(p(\Theta) n) for points collected in previous iterations from current iteration
+								i1 = 0
+								do j = IS_counter(2), IS_counter(1)-n1
+									if( IS_allpts(j,ndims+3) == 0d0 ) cycle
+									
+									if( multimodal .and. .not.isAncestor(int(IS_allpts(j,ndims+6)), nd, ic_fnode(1:nd)) ) then
+										IS_allpts(j,ndims+3) = 0d0
+										cycle
+									endif
+								
+									!check if this point lies in current ellipsoidal decomposition
+									m = int(IS_allpts(j,ndims+4))
+									if( m > nd_i .and. m <= nd_i+ic_sc(nd) .and. IS_allpts(j,ndims+5) <= sc_kfac(m)*sc_eff(m) ) then
+										IS_allpts(j,ndims+2) = IS_allpts(j,ndims+2) + dble(n2) / IS_iterinfo(globff+1,1)
+										if( i1 == 0 ) IS_counter(2) = j
+										i1 = j
+									else
+										IS_allpts(j,ndims+3) = 0d0
+									endif
+								enddo
+								if( i1 == 0 ) IS_counter(2) = IS_counter(1)-n1+1
+								
+								!(p(\Theta) n) for points collected in current iteration from previous iterations
+								do j = 1, globff
+									if( multimodal .and. .not.isAncestor(int(IS_iterinfo(j,5)), nd, ic_fnode(1:nd)) ) cycle
+									
+									if( int(IS_iterinfo(j,4)) > 0 ) IS_allpts(IS_counter(1)-n1+1:IS_counter(1),ndims+2) = IS_allpts(IS_counter(1)-n1+1:IS_counter(1),ndims+2) + IS_iterinfo(j,4) / IS_iterinfo(j,1)
+								enddo
+							endif
+						endif
 				
 						if(ceff) then
 							if(ic_eff(nd,1)>0d0 .and. mod(int(ic_eff(nd,1)),10)==0) then
@@ -2000,6 +2370,34 @@ contains
 							if(ceff) write(funit1,'(1E28.18)')ic_eff(i,4)
 						enddo
 	                  			close(funit1)
+						
+						
+						!write the IS files
+						if( IS ) then
+							!write all the points collected so far
+							open(unit=u_IS(1), file=IS_Files(1), form='unformatted', access='sequential', status='old', position='append')
+							do i = IS_counter(7)+1, IS_counter(1)
+								write(u_IS(1))IS_allpts(i,1:ndims+1),int(IS_allpts(i,ndims+6))
+							enddo
+							IS_counter(7) = IS_counter(1)
+							close(u_IS(1))
+							
+							!write all the points collected so far
+							open(unit=u_IS(2), file=IS_Files(2), form='unformatted', access='sequential', status='replace')
+							write(u_IS(2))IS_counter(1:2),IS_counter(5)
+							do i = 1, IS_counter(1)
+								write(u_IS(2))IS_allpts(i,ndims+2),int(IS_allpts(i,ndims+3))
+							enddo
+							close(u_IS(2))
+							
+							!write the iteration info
+							open(unit=u_IS(3), file=IS_Files(3), form='unformatted', access='sequential',status='old', position='append')
+							do i = IS_counter(6)+1, IS_counter(5)
+								write(u_IS(3))IS_iterinfo(i,1),int(IS_iterinfo(i,2:5))
+							enddo
+							IS_counter(6) = IS_counter(5)
+							close(u_IS(3))
+						endif
 					endif
 					
 					!check if the parameters are close the prior edges
@@ -2038,8 +2436,8 @@ contains
 					endif
 					
 					if(mod(sff,updInt*10)==0 .or. ic_done(0)) call pos_samp(Ztol,globff,broot,nlive,ndims,nCdims,totPar, &
-					multimodal,outfile,gZ,ginfo,ic_n,ic_Z(1:ic_n),ic_info(1:ic_n),ic_reme(1:ic_n),ic_vnow(1:ic_n), &
-					ic_npt(1:ic_n),ic_nBrnch(1:ic_n),ic_brnch(1:ic_n,:,1),phyP(:,1:nlive),l(1:nlive),evDataAll,dumper,context)
+					multimodal,outfile,gZ,ginfo,ic_n,ic_Z(1:ic_n),ic_info(1:ic_n),ic_reme(1:ic_n),ic_vnow(1:ic_n),ic_npt(1:ic_n), &
+					ic_nBrnch(1:ic_n),ic_brnch(1:ic_n,:,1),phyP(:,1:nlive),l(1:nlive),evDataAll,IS,IS_Z,dumper,context)
 				endif
 			endif
 			
@@ -2055,15 +2453,18 @@ contains
 		if(my_rank==0) then
 			!update the total volume
 			if(eswitch) then
-				k=0
-				do i=1,ic_n
-					if(ic_done(i)) then
-						totVol(i)=0.d0
+				k = 0
+				do i = 1, ic_n
+					if( ic_done(i) ) then
+						totVol(i) = 0d0
 					else
-						totVol(i)=sum(sc_vol(k+1:k+ic_sc(i)))
-						if(ceff) ic_eff(i,4)=ic_vnow(i)*ic_volFac(i)/totVol(i)
+						d1 = totVol(i)
+						totVol(i) = sum(sc_vol(k+1:k+ic_sc(i)))
+						if( ceff ) ic_eff(i,4) = ic_vnow(i) * ic_volFac(i) / totVol(i)
+						
+						if( IS ) IS_V(i) = IS_V(i) * totVol(i) / d1
 					endif
-					k=k+ic_sc(i)
+					k = k + ic_sc(i)
 				enddo
 			endif
 			
@@ -2071,7 +2472,15 @@ contains
 			if(mod(ff,50)==0) then
 				
 				if(fback) then
-					call gfeedback(gZ,numlike,globff,.false.)
+					if( IS ) then
+						IS_Z = logZero
+						do j = 1, IS_counter(1)
+							d1 = IS_allpts(j,ndims+1)-log(IS_allpts(j,ndims+2))
+							IS_Z = LogSumExp(IS_Z, d1)
+						enddo
+					endif
+					
+					call gfeedback(gZ,IS,IS_Z,numlike,globff,.false.)
 				
 					if(debug) then
 						d1=0.d0
@@ -2202,7 +2611,7 @@ contains
 
 !---------------------------------------------------------------------- 
   !sample a point inside the given ellipsoid with log-likelihood>lboundary
-  subroutine samp(pnew,phyPnew,lnew,mean,ekfac,TMat,limits,loglike,eswitch,lowlike,context)
+  subroutine samp(pnew,phyPnew,lnew,mean,ekfac,TMat,limits,loglike,eswitch,lowlike,n,context)
 	
 	implicit none
 	double precision lnew
@@ -2210,8 +2619,11 @@ contains
     	double precision mean(ndims),TMat(ndims,ndims)
 	double precision limits(ndims,2)
 	double precision lowlike	!likelihood threshold
-    	logical eswitch, mark_bad_ellipses_SMF !SMF
-    	integer id,i,context, i_cyc_SMF, i_SMF !SMF
+	integer n			!no. of points drawn
+    	logical eswitch
+    	integer id,i,context
+    	logical mark_bad_ellipses_SMF !SMF
+    	integer i_cyc_SMF, i_SMF !SMF
     
     	INTERFACE
     		!the likelihood function
@@ -2221,11 +2633,15 @@ contains
 		end subroutine loglike
     	end INTERFACE
     	
-    	id=my_rank
+	
+	n = 0
+    	id = my_rank
         i_cyc_SMF = 0 !SMF
         mark_bad_ellipses_SMF = .true. !SMF
     	
 	do
+		n = n+1
+		
 	    	if(.not.eswitch) then
 			!generate a random point inside unit hypercube
 			call getrandom(ndims,pnew(1:ndims),id)
@@ -2307,6 +2723,35 @@ contains
   end subroutine samp
   
   !----------------------------------------------------------------------
+  
+  subroutine ApplyLimits(flag,limits,pt,transpt)
+  	
+	implicit none
+	
+	!input parameters
+	integer flag				!0 => given point in unit hypercube, apply the limits
+						!1 => point to be transformed to unit hypercube, reverse the limits
+	double precision limits(ndims,2)	!current limits
+	double precision pt(ndims)		!point
+	
+	!output variables
+	double precision transpt(ndims)		!final result
+	
+	
+	if( flag == 0 ) then
+		!apply the limits to point in unit hypercube
+		transpt(:)=(pt(:)-limits(:,1))/(limits(:,2)-limits(:,1))
+	elseif( flag == 1 ) then
+		!reverse the limits such that the point is in unit hypercube
+		transpt(:)=limits(:,1)+(limits(:,2)-limits(:,1))*pt(:)
+	else
+		write(*,*)'Incorrect value of flag passed to ApplyLimits'
+		stop
+	endif
+	
+  end subroutine ApplyLimits
+  
+  !----------------------------------------------------------------------
  
   subroutine selectEll(n,volx,sEll)
  	
@@ -2335,20 +2780,23 @@ contains
 !----------------------------------------------------------------------
    
    !provide fback to the user
-  subroutine gfeedback(logZ,nlike,nacc,dswitch)
+  subroutine gfeedback(logZ,IS,IS_logZ,nlike,nacc,dswitch)
     
 	implicit none
     	!input variables
     	double precision logZ !log-evidence
+	logical IS !importance sampling being done?
+	double precision IS_logZ !importance sampling log-evidence
     	integer nlike !no. of likelihood evaluations
     	integer nacc !no. of accepted samples
 	logical dswitch !dynamic live points
     
-    	write(*,'(a,F14.6)')'Acceptance Rate:',dble(nacc)/dble(nlike)
-	write(*,'(a,i14)')   'Replacements:   ',nacc
-	write(*,'(a,i14)')   'Total Samples:  ',nlike
-	write(*,'(a,F14.6)')'ln(Z):          ',logZ
-	if(dswitch) write(*,'(a,i5)')'Total No. of Live Points:',nlive
+    	write(*,'(a,F14.6)')	     'Acceptance Rate:                  ',dble(nacc)/dble(nlike)
+	write(*,'(a,i14)')   	     'Replacements:                     ',nacc
+	write(*,'(a,i14)')   	     'Total Samples:                    ',nlike
+	write(*,'(a,F14.6)')	     'Nested Sampling ln(Z):            ',logZ
+	if( IS ) write(*,'(a,F14.6)')'Nested Importance Sampling ln(Z): ',IS_logZ
+	if(dswitch) write(*,'(a,i5)')'Total No. of Live Points:         ',nlive
     
   end subroutine gfeedback
   
@@ -2409,7 +2857,7 @@ contains
 	
 	do i=1,nN
 		!enlargement factor
-		ef0 = max( ( ic_vnow(i) * 100d0 / 111d0 ) + ( 11d0 / 111d0 ) , 0.4d0 )
+		ef0 = max( ( ic_vnow(i) * 100d0 / 111d0 ) + ( 11d0 / 111d0 ) , 0.8d0 )
 	
 		i3=ic_n
 		
@@ -2542,7 +2990,8 @@ contains
 					toBeChkd(j)=.false.
 					mean1(:)=meank(j,:)
 					eval1(:)=evalk(j,:)
-					ef1=kfack(j)*((1.d0+ef0*sqrt(40.d0/dble(nptx(sc_n+j))))**(1d0/nCdim))
+					ef1=kfack(j)*((1.d0+ef0*sqrt(60.d0/dble(nptx(sc_n+j))))**(1d0/nCdim))
+					ef1=kfack(j)*1.5d0
 					invcov1(:,:)=invcovk(j,:,:)
 					evec1(:,:)=eveck(j,:,:)
 					exit
@@ -2553,7 +3002,8 @@ contains
 				do n=1,k
 					if(lList(n) .or. n==j .or. .not.overlapk(n,j)) cycle
 					mean2(:)=meank(n,:)
-					ef2=kfack(n)*((1.d0+ef0*sqrt(40.d0/dble(nptx(sc_n+n))))**(1d0/nCdim))
+					ef2=kfack(n)*((1.d0+ef0*sqrt(60.d0/dble(nptx(sc_n+n))))**(1d0/nCdim))
+					ef2=kfack(n)*1.5d0
 					invcov2(:,:)=invcovk(n,:,:)
 					
 					intFlag=.false.
@@ -2923,7 +3373,6 @@ contains
  
  end subroutine Cube2Scaled
   
-  
 !----------------------------------------------------------------------
 
  subroutine returnOrder(nBits,n,order)
@@ -2953,5 +3402,82 @@ contains
 	enddo
  
  end subroutine returnOrder
+ 
 !----------------------------------------------------------------------
+ 
+ subroutine ExtendArrayIfRequired(n1,n2,n3,n4,n5,array)
+ 
+ 	implicit none
+	
+	!input variables
+	integer n1					!number of rows stored
+	integer n2					!additional rows to be stored
+	integer n3					!max rows that can be stored
+	integer n4					!no. of rows to be added if required
+	integer n5					!no. of columns
+	
+	!output variables
+	double precision, allocatable :: array(:,:)	!array
+	
+	!work variables
+	integer i
+	double precision, allocatable :: temp(:,:)
+	
+	
+	if( n2 == 0 ) return
+	
+	if( n1+n2 > n3 ) then
+		allocate(temp(n1,n5))
+		temp = array
+		deallocate(array)
+		allocate(array(n1+max(n2,n4),n5))
+		array = 0d0
+		do i = 1, n1
+			array(i,:) = temp(i,:)
+		enddo
+		deallocate(temp)
+		
+		n3 = n1+max(n2,n4)
+	endif
+ 
+ end subroutine ExtendArrayIfRequired
+  
+!----------------------------------------------------------------------
+ 
+ !check if node1 is ancestor of node2
+ logical function isAncestor(node1, node2, fnode)
+ 
+ 	implicit none
+	
+	!input variables
+	integer node1			!ancestor node to be checked
+	integer node2			!child node to be checked
+	integer fnode(node2)		!array with parent nodes
+	
+	!work variables
+	integer i, n2
+	
+	isAncestor = .false.
+	if( node1 > node2 ) return
+	
+	if( node1 == 1 ) then
+		isAncestor = .true.
+		return
+	endif
+	
+	n2 = node2
+	do
+		if( n2 == node1 ) then
+			isAncestor = .true.
+			return
+		else
+			n2 = fnode(n2)
+			if( node1 > n2 ) return
+		endif
+	enddo
+ 
+ end function isAncestor
+  
+!----------------------------------------------------------------------
+
 end module Nested
