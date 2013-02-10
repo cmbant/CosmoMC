@@ -9,9 +9,11 @@
     INTEGER, PARAMETER  :: dp = KIND(1.d0) !SELECTED_REAL_KIND(12, 60)
     INTEGER, PARAMETER  :: func_dp = dp  !SELECTED_REAL_KIND(12, 60)
     INTEGER, PARAMETER :: Powell_CO_prec = dp
+    REAL(dp) Last_bestfit
+    REAL(dp) :: FVAL_Converge_difference = 0.2d0 
 
     PRIVATE
-    PUBLIC  :: BOBYQA , Powell_CO_prec
+    PUBLIC  :: BOBYQA , Powell_CO_prec, FVAL_Converge_difference
 
     CONTAINS
 
@@ -69,6 +71,7 @@
     !   Return if the value of NPT is unacceptable.
 
     BOBYQA = .false.
+    Last_bestfit = 1d30
     
     NP=N+1
     IF (NPT  <  N+2 .OR. NPT  >  ((N+2)*NP)/2) THEN
@@ -787,7 +790,7 @@
     !  The calculations with the current value of RHO are complete. Pick the
     !    next values of RHO and DELTA.
     !
-680 IF (RHO  >  RHOEND) THEN
+680 IF (RHO  >  RHOEND .and. abs(FVAL(KOPT)-Last_bestfit) > FVAL_Converge_difference) THEN
         DELTA=HALF*RHO
         RATIO=RHO/RHOEND
         IF (RATIO  <=  16.0D0) THEN
@@ -798,6 +801,7 @@
             RHO=TENTH*RHO
         END IF
         DELTA=DMAX1(DELTA,RHO)
+        Last_bestfit = FVAL(KOPT)
         IF (IPRINT  >=  2) THEN
             IF (IPRINT  >=  3) PRINT 690
 690         FORMAT (5X)

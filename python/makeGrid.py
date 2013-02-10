@@ -40,6 +40,11 @@ batch.makeItems(settings.importanceRuns)
 batch.makeDirectories()
 batch.save()
 
+def setMinimize(jobItem, ini):
+    ini.params['action'] = 2
+    if 'omegak' in jobItem.param_set: ini.params['accuracy_level'] = 1.3
+
+
 for jobItem in batch.items(wantSubItems=False):
 
         jobItem.makeChainPath()
@@ -82,7 +87,7 @@ for jobItem in batch.items(wantSubItems=False):
         ini.params['action'] = cosmomcAction
         ini.saveFile(jobItem.iniFile())
         if not settings.start_at_bestfit:
-            ini.params['action'] = 2
+            setMinimize(jobItem, ini)
             variant = '_minimize'
             ini.saveFile(jobItem.iniFile(variant))
 
@@ -102,7 +107,7 @@ for jobItem in batch.items(wantSubItems=False):
                 else:
                     ini.params['file_root'] = imp.chainRoot
                 if minimize:
-                    ini.params['action'] = 2
+                    setMinimize(jobItem, ini)
                     variant = '_minimize'
                 else: variant = ''
                 ini.defaults.append(jobItem.iniFile())
