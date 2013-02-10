@@ -175,7 +175,10 @@ use, intrinsic :: iso_fortran_env, only : input_unit=>stdin, &
      character(LEN=50) fmt
      real Cls(lmax,num_cls_tot)
 
-      call ClsFromTheoryData(Params%Info%Theory, Params%Info%LastParams, Cls)
+!MODIFIED P(K)
+!      call ClsFromTheoryData(Params%Info%Theory, Params%Info%LastParams, Cls)
+      call ClsFromTheoryData(Params%Info%Theory, Params%Info%LastParams, Cls, .true.)
+!END MODIFIED P(K)
       call CreateTxtFile(fname,tmp_file_unit)
       fmt = concat('(1I6,',num_cls_tot,'E15.5)')
       do l = 2, lmax

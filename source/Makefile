@@ -9,18 +9,21 @@ EXTDATA =
 RECOMBINATION ?=recfast
 
 #set WMAP empty not to compile with WMAP
-WMAP ?= /home/aml1005/WMAP7/likelihood_v4
+WMAP =
+#?= /home/aml1005/WMAP7/likelihood_v4
 
 #Only needed for WMAP
-cfitsio ?= /usr/local/cfitsio/intel10/64/3.040
+cfitsio =
+#?= /usr/local/cfitsio/intel10/64/3.040
 
 #GSL only needed for DR7 LRG
-GSLPATH ?= /home/aml1005/libs/gsl
+GSLPATH =
+#?= /home/aml1005/libs/gsl
 
 #empty not to compile with CLIK, otherwise set to name of cliklike.f90 file
-PLANCKLIKE ?=
+#PLANCKLIKE ?=
 #PLANCKLIKE =cliklike_CamSpec
-#PLANCKLIKE =cliklike
+PLANCKLIKE =cliklike
 
 #set to build with ACT/SPT without CLIK
 highL ?=
@@ -29,24 +32,27 @@ highL ?=
 LIB_NS =../multinest
 
 IFLAG = -I
-INCLUDE =$(IFLAG)
+INCLUDE =
 
 #clik path and library
 ifeq ($(PLANCKLIKE),cliklike)
-CLIKPATH = /path/to/clik
+CLIKPATH = /share/apps/clik-6.0/
 CLIKL = -L$(CLIKPATH)/lib -lclik_f90
 INCLUDE = $(IFLAG)$(CLIKPATH)/include
 endif
 
-
+# hypatia configuration
+F90C    = mpif90
+FFLAGS  = -O2 -ip -openmp -fpp -DMPI -vec_report0 -mkl=parallel
+LAPACKL = -L$(LIBRARY_PATH) -lmkl_lapack
 
 #Intel MPI (assuming mpif77 set to point to ifort)
 #these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
 #Can add -xHost if your cluster is uniform, or specify specific processor optimizations -x...
 #If getdist gives segfaults remove openmp when compiling getdist
-F90C     = mpif90
-FFLAGS = -O3 -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
-LAPACKL = -lmpi
+#F90C     = mpif90
+#FFLAGS = -O3 -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
+#LAPACKL = -lmpi
 
 #GFortran: defaults for v4.5; if pre v4.3 add -D__GFORTRAN__
 #F90C     = gfortran
@@ -112,7 +118,7 @@ CLSFILE = CMB_Cls_simple.o
 #Can use params_H if you prefer more generic parameters
 PARAMETERIZATION = params_CMB.o
 
-F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE) $(LIB_NS)
+F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE) $(IFLAG)/$(LIB_NS)
 LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
