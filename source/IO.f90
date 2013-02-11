@@ -404,6 +404,16 @@
 
     end function IO_ReadChainRows
 
+    subroutine IO_WriteLeftTextNoAdvance(file_id, Form, str)
+    integer file_id
+    character(LEN=*) str, Form
+    Character(LEN=128) tmp
+
+    tmp = str
+    write(file_id,form, advance='NO') tmp
+
+    end subroutine IO_WriteLeftTextNoAdvance
+
     subroutine IO_OutputMargeStats(Names, froot,num_vars,num_contours, contours,contours_str, &
     cont_lines, colix, mean, sddev, has_limits_bot, has_limits_top, labels, force_twotail)
     use ParamNames
@@ -414,47 +424,50 @@
     real(mcp), intent(in) :: mean(*), sddev(*), contours(*), cont_lines(:,:,:)
     character(LEN=*), intent(in) :: contours_str
     integer,intent(in) :: colix(*)
-    character(LEN=128) labels(*), tag
-
+    character(LEN=128) labels(*), tag, nameFormat
     integer i,j,file_id
+    character(LEN=*), parameter :: txtFormat = '(1A15)'
+
+    j = max(9,ParamNames_MaxNameLen(Names))
+    nameFormat = concat('(1A',j+1,')')
 
     file_id = new_file_unit()
     open(unit=file_id,file=trim(froot)//'.margestats',form='formatted',status='replace')
-    write(file_id,'(a)',advance='NO') 'param  mean           sddev          '       
+    write (file_id,'(a)') 'Marginalized limits: ' // trim(contours_str)
+    write (file_id,*) ''
+    call IO_WriteLeftTextNoAdvance(file_id,nameFormat,'parameter')
+    write(file_id,'(a)', advance='NO') '  '
+    call IO_WriteLeftTextNoAdvance(file_id,txtFormat,'mean')
+    call IO_WriteLeftTextNoAdvance(file_id,txtFormat,'sddev')
     do j=1, num_contours
-        write(file_id,'(a)',advance='NO') trim(concat('lower',j))//'         '//trim(concat('upper',j))//'         '
+        call IO_WriteLeftTextNoAdvance(file_id,txtFormat,concat('lower',j))
+        call IO_WriteLeftTextNoAdvance(file_id,txtFormat,concat('upper',j))
     end do
+    call IO_WriteLeftTextNoAdvance(file_id,'(1A7)','limits')
     write(file_id,'(a)') ''
 
     do j=1, num_vars
-        write(file_id,'(1I5,2E15.7)', advance='NO') colix(j)-2, mean(j), sddev(j)
+        call IO_WriteLeftTextNoAdvance(file_id,nameFormat,ParamNames_NameOrNumber(Names,colix(j)-2))
+        write(file_id,'(2E15.7)', advance='NO')  mean(j), sddev(j)
         do i=1, num_contours
             write(file_id,'(2E15.7)',advance='NO') cont_lines(j,1:2,i)
         end do
+        if (.not. force_twotail) then
+            if (has_limits_bot(colix(j)).and. has_limits_top(colix(j))) then
+                tag='none'
+            elseif (has_limits_bot(colix(j))) then
+                tag= '>'
+            elseif (has_limits_top(colix(j))) then 
+                tag = '<'
+            else
+                tag = 'two'
+            end if
+        else
+            tag='two'
+        end if
+        write(file_id,'(1A7)', advance='NO') '  '//tag
         write(file_id,'(a)') '   '//trim(labels(colix(j)))
     end do
-    write (file_id,*) ''
-
-    write (file_id,'(a)') 'Limits are: ' // trim(contours_str)
-    if (.not. force_twotail) then
-        do j=1, num_vars
-            if (has_limits_bot(colix(j)).and. has_limits_top(colix(j))) then
-                tag='no tail'
-            elseif (has_limits_bot(colix(j))) then
-                tag= '> one tail' 
-            elseif (has_limits_top(colix(j))) then 
-                tag = '< one tail' 
-            else
-                tag = 'two tail'
-            end if
-            write(file_id,'(1I5," ",1A20," ",1A12)', advance='NO')  &
-            colix(j)-2, ParamNames_name(Names,colix(j)-2),tag
-            write(file_id,'(a)') trim(labels(colix(j)))
-
-        end do
-    else
-        write (file_id,*) 'All limits are two tail'
-    end if
 
     call CloseFile(file_id)
 

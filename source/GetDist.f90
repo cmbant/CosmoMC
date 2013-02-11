@@ -84,6 +84,9 @@
     character(LEN=128) labels(max_cols)
     character(LEN=128) pname(max_cols)
     logical has_limits(max_cols), has_limits_top(max_cols),has_limits_bot(max_cols)
+    !has limits for plotting, to avoid underweighting at edges
+    logical marge_limits_top(max_cols),marge_limits_bot(max_cols)
+    !has limits for 1 vs 2 tail outputs in margestats
     logical has_markers(max_cols)
     real(mcp) markers(max_cols)
     integer num_contours
@@ -112,6 +115,7 @@
     logical ::   prob_label = .false.
     logical :: plots_only
     real(mcp) :: smooth_scale_2D = 1.d0
+    real(mcp) :: max_frac_twotail = 0.15_mcp !how small the end bin must be relative to max to use two tail
 
     contains
 
@@ -1566,7 +1570,7 @@
     real(mcp) limmin(max_cols),limmax(max_cols), maxbin
     integer plot_2D_param, j2min
     real(mcp) try_b, try_t, binweight
-    real(mcp) cont_lines(max_cols,2,max_contours), dist, distweight, limfrac
+    real(mcp) LowerUpperLimits(max_cols,2,max_contours), dist, distweight, limfrac
     real(mcp) :: minimal_intervals(max_cols,max_intersections+1,max_contours) !JH
     logical do_minimal_1d_intervals !JH
 
@@ -1628,6 +1632,7 @@
     chain_num = Ini_Read_Int('chain_num')
 
     single_column_chain_files = Ini_Read_Logical( 'single_column_chain_files',.false.)
+    prior_ranges = 0
 
     if ( single_column_chain_files ) then
         pname(1) = 'weight'
@@ -1735,6 +1740,13 @@
     markers=0
     has_markers=.false.
     do ix=3, ncols
+        if (prior_ranges(1,ix-2)/=prior_ranges(2,ix-2)) then
+            !Whether we actually use these limits later depends on if there are samples near them
+            limmin(ix) = prior_ranges(1,ix-2)
+            limmax(ix) = prior_ranges(2,ix-2)
+            has_limits_top(ix) = .true.
+            has_limits_bot(ix) = .true.
+        end if
         if (bin_limits /= '') then
             InLine = bin_limits
         else
@@ -1860,6 +1872,7 @@
         contours_str = concat(contours_str, Ini_Read_String(numcat('contour',i)))
     end do
 
+    max_frac_twotail = Ini_Read_Double('max_frac_twotail',max_frac_twotail)
     force_twotail = Ini_Read_Logical('force_twotail',.false.)
     if (force_twotail) write (*,*) 'Computing two tail limits'
 
@@ -2150,7 +2163,7 @@
         call WriteMatLabInit(51,num_vars>3, matlab_subplot_size_inch)
     end if
 
-    cont_lines = 0
+    LowerUpperLimits = 0
 
     !Do 1D bins
     do j = 1,num_vars
@@ -2184,16 +2197,6 @@
         width(j) = (range_max(j)-range_min(j))/(nbins+1)
         if (width(j)==0) cycle
         has_limits(ix)= has_limits_top(ix) .or. has_limits_bot(ix)
-
-        do ix1 = 1, num_contours
-            limfrac = (1-contours(ix1))
-            if (.not. has_limits(ix) .or. force_twotail) then
-                limfrac = limfrac/2 !two tail
-            end if
-            cont_lines(j,2,ix1) = ConfidVal(ix,limfrac,.true.)
-            cont_lines(j,1,ix1) = ConfidVal(ix,limfrac,.false.)
-        end do !contour lines
-
 
         if (has_limits_top(ix)) then
             center(j) = range_max(j)
@@ -2283,11 +2286,26 @@
             write (*,*) 'no samples in bin, param: '//trim(ParamNames_NameOrNumber(NameMapping, colix(j)-2))
             stop
         end if
-        !Detect ends which don't go to zero
-        if (.not. force_twotail) then
-            if (bincounts(ix_max(j)) > maxbin*.15) cont_lines(j,2,:) = range_max(j)
-            if (bincounts(ix_min(j)) > maxbin*.15) cont_lines(j,1,:) = range_min(j)
-        end if
+
+        !Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
+        marge_limits_bot(ix) =  has_limits_bot(ix) .and. .not. force_twotail .and. bincounts(ix_min(j)) > maxbin*max_frac_twotail
+        marge_limits_top(ix) =  has_limits_top(ix) .and. .not. force_twotail .and. bincounts(ix_max(j)) > maxbin*max_frac_twotail
+        do ix1 = 1, num_contours
+            limfrac = (1-contours(ix1)) 
+            if (.not. marge_limits_bot(ix) .and. .not. marge_limits_top(ix)) then
+                limfrac = limfrac/2 !two tail
+            end if
+            if (marge_limits_top(ix)) then
+                LowerUpperLimits(j,2,:) = range_max(j)
+            else
+                LowerUpperLimits(j,2,ix1) = ConfidVal(ix,limfrac,.true.)
+            end if
+            if (marge_limits_bot(ix)) then
+                LowerUpperLimits(j,1,:) = range_min(j)
+            else
+                LowerUpperLimits(j,1,ix1) = ConfidVal(ix,limfrac,.false.)
+            end if
+        end do 
 
         if (.not. no_plots) then
             filename = trim(plot_data_dir)//trim(rootname)//'.m'
@@ -2537,7 +2555,7 @@
     !Marginalized
     if (.not. plots_only) &
     call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
-    cont_lines, colix, mean, sddev, has_limits_bot, has_limits_top, labels, force_twotail)
+    LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels, force_twotail)
 
     call ParamNames_WriteFile(NameMapping, trim(plot_data_dir)//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
     open(unit=51,file=trim(plot_data_dir)//trim(rootname)//'.paramnames',form='formatted',status='replace')

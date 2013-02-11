@@ -337,28 +337,24 @@ class margeStats(paramResults):
 
     def loadFromFile(self, filename):
         textFileLines = self.fileList(filename)
+        lims = textFileLines[0].split(':')[1]
+        self.limits = [float(s.strip()) for s in lims.split(';')]
         self.hasBestFit = False
-        for i in range(1, len(textFileLines)):
-            line = textFileLines[i]
-            if len(line.strip()) == 0:
-                lims = textFileLines[i + 1].split(':')[1]
-                self.limits = [float(s.strip()) for s in lims.split(';')]
-                for line in textFileLines[i + 2:]:
-                    par = self.parWithNumber(int(line.split()[0].strip()))
-                    par.name = line.split()[1].strip()
-                    tag = line[27:39].strip()
-                    par.twotail = tag == 'two tail'
-                    par.lim_top = tag == '< one tail' or tag == 'no tail'
-                    par.lim_bot = tag == '> one tail' or tag == 'no tail'
-                break
+        for line in textFileLines[3:]:
+            if len(line.strip()) == 0: break
             param = paramNames.paramInfo()
-            items = [s.strip() for s in line.split(None, 7)]
-            param.number = int(items[0])
+            items = [s.strip() for s in line.split(None, len(self.limits) * 2 + 4)]
+            param.name = items[0]
             param.mean = float(items[1])
             param.err = float(items[2])
-
-            param.limits = [[float(s) for s in items[3:5]], [float(s) for s in items[5:7]]]
-            param.label = items[7]
+            param.limits = []
+            for i in range(len(self.limits)):
+                param.limits.append([float(s) for s in items[3 + i * 2:5 + i * 2] ])
+            param.label = items[-1]
+            tag = items[-2]
+            param.twotail = tag == 'two'
+            param.lim_top = tag == '<' or tag == 'none'
+            param.lim_bot = tag == '>' or tag == 'none'
             self.names.append(param)
 
 

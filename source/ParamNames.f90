@@ -354,6 +354,17 @@
 
     end function ParamNames_NameOrNumber
 
+    function ParamNames_MaxNameLen(Names) result(len)
+    Type(TParamNames) :: Names
+    integer len, i
+
+    len = 0
+    do i=1, Names%nnames
+        len = max(len, len_trim(ParamNames_NameOrNumber(Names,i)))
+    end do
+
+    end function ParamNames_MaxNameLen
+
     subroutine ParamNames_WriteMatlab(Names,  unit, headObj)
     Type(TParamNames) :: Names
     character(len=ParamNames_maxlen) name
