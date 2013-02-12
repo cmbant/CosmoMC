@@ -103,6 +103,11 @@
     Type(LikeCalculator) :: Calc
     logical, optional, intent(in) :: do_like(DataLikelihoods%count)
 
+    if (any(Params%P > Scales%PMax) .or. any(Params%P < Scales%PMin)) then
+        GetLogLikePost = logZero
+        return
+    end if
+
     Calc%slowChanged = .false.
     Calc%ChangeMask = .true.
     GetLogLikePost = 0
