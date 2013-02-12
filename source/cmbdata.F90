@@ -991,7 +991,7 @@ contains
    use_TT_beam_ptsrc = .false.   
 #endif
    if (lmax<ttmax) stop 'lmax not large enough for WMAP'
-   if (Feedback>0) write(*,*) 'reading WMAP7 data'
+   if (Feedback>0) write(*,*) 'reading WMAP9 data'
    Init_MAP = .false.
   end if
 
