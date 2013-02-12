@@ -403,6 +403,10 @@
               P%P(num_real_params+1:num_real_params+nuisance_params_used)
 !END MODIFIED P(K)
       end if
+
+!MODIFIED P(K)
+      Cube(j+nuisance_params_used:nPar) = 0.d0 !zero out crud in the rest of Cube
+!END MODIFIED P(K)
  
       !call IO_OutputChainRow(outfile_handle, mult, like, output_array)
       deallocate(output_array)           
