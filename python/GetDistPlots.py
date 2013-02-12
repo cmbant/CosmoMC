@@ -32,6 +32,7 @@ class GetDistPlotSettings:
         self.figure_legend_loc = 'upper center'
         self.xtick_prune = None  # 'lower' or 'upper'
         self.tight_gap_fraction = 0.13  # space between ticks and the edge
+        self.num_contours = 2
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
@@ -59,13 +60,13 @@ class SampleAnalysisGetDist():
     def newPlot(self):
         self.single_samples = dict()
 
-    def get_density_grid(self, root, param1, param2, conts=True, likes=False):
+    def get_density_grid(self, root, param1, param2, conts=2, likes=False):
         if likes:  res = self.load_2d(root, param1, param2, '_likes')
         else: res = self.load_2d(root, param1, param2)
         if res is None: return None
         result = Density2D()
         (result.pts, result.x1, result.x2) = res
-        if (conts): result.contours = self.load_2d(root, param1, param2, '_cont', no_axes=True)
+        if conts > 0: result.contours = self.load_2d(root, param1, param2, '_cont', no_axes=True)[0:conts]
         return result
 
     def get_density(self, root, param, likes=False):
@@ -169,7 +170,7 @@ class GetDistPlotter():
     def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, ls=None, cols=None, alpha=0.5, **kwargs):
         param1, param2 = self.get_param_array(root, [param1, param2])
 
-        density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=True, likes=False)
+        density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
         if density is None: return None
 
         if filled:
@@ -193,7 +194,7 @@ class GetDistPlotter():
 
     def add_2d_shading(self, root, param1, param2):
         param1, param2 = self.get_param_array(root, [param1, param2])
-        density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=False, likes=self.settings.shade_meanlikes)
+        density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=0, likes=self.settings.shade_meanlikes)
 
 #        pcolor(x1, x2, shade_dat, cmap=self.settings.colormap, vmax=shade_dat.max(), vmin=shade_dat.min())
         contourf(density.x1, density.x2, density.pts, self.settings.num_shades, cmap=self.settings.colormap)
