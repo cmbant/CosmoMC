@@ -136,8 +136,10 @@
 
     post_root = PostParams%redo_outroot 
 
-    if (MpiRank==0 .and. NameMapping%nnames/=0) &
-    call IO_OutputParamNames(NameMapping,trim(post_root),params_used, add_derived=.true.)
+    if (MpiRank==0 .and. NameMapping%nnames/=0) then
+        call IO_OutputParamNames(NameMapping,trim(post_root),params_used, add_derived=.true.)
+        call OutputParamRanges(NameMapping, trim(post_root)//'.ranges')
+    end if
 
     if (has_chain) then
         if (instance /= 0) post_root = numcat(trim(post_root)//'_',instance)
