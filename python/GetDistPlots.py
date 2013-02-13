@@ -16,7 +16,6 @@ class GetDistPlotSettings:
         self.plot_args = None
         self.lineL = [':k', ':r', ':b', ':m', ':g', ':y']
         self.solid_colors = ['#009966', '#000866', '#336600', '#006633' , 'g', 'm', 'r']  # '#66CC99'
-        self.printex = 'pdf'
         self.line_labels = True
         self.x_label_rotation = 0
         self.num_shades = 80

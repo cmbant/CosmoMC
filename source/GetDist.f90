@@ -85,7 +85,7 @@
     character(LEN=128) pname(max_cols)
     logical has_limits(max_cols), has_limits_top(max_cols),has_limits_bot(max_cols)
     !has limits for plotting, to avoid underweighting at edges
-    logical marge_limits_top(max_cols),marge_limits_bot(max_cols)
+    logical marge_limits_top(max_contours, max_cols),marge_limits_bot(max_contours, max_cols)
     !has limits for 1 vs 2 tail outputs in margestats
     logical has_markers(max_cols)
     real(mcp) markers(max_cols)
@@ -98,6 +98,7 @@
     logical :: matlab_latex = .false.
     real(mcp) :: font_scale = 1.
     real(mcp) contours(max_contours)
+    real(mcp) :: max_frac_twotail(max_contours) !how small the end bin must be relative to max to use two tail
     real(mcp) mean_mult, max_mult
     integer :: indep_thin = 0
     integer chain_numbers(max_chains)
@@ -116,7 +117,7 @@
     logical :: prob_label = .false.
     logical :: plots_only, no_plots
     real(mcp) :: smooth_scale_1D=1.d0, smooth_scale_2D = 1.d0
-    real(mcp) :: max_frac_twotail = 0.15_mcp !how small the end bin must be relative to max to use two tail
+    logical :: adjust_limits_for_cutoff = .true.
 
     contains
 
@@ -1130,7 +1131,7 @@
     real(mcp), allocatable :: binlikes(:), binsraw(:), win(:), prior_mask(:)
     real(mcp), allocatable :: finebins(:),finebinlikes(:)
     integer ix
-    integer imin, imax, winw
+    integer imin, imax, winw, end_edge
     real(mcp) widthj,edge_fac, maxbin
     logical :: has_prior
     character(LEN=Ini_max_string_len) :: fname, filename
@@ -1150,8 +1151,9 @@
     ix_min(j) = nint((range_min(j) - center(j))/width(j))
     ix_max(j) = nint((range_max(j) - center(j))/width(j))
 
-    if (.not. has_limits_bot(ix)) ix_min(j) = ix_min(j)-1
-    if (.not. has_limits_top(ix)) ix_max(j) = ix_max(j)+1
+    end_edge = nint(smooth_scale_1D)
+    if (.not. has_limits_bot(ix)) ix_min(j) = ix_min(j)-end_edge
+    if (.not. has_limits_top(ix)) ix_max(j) = ix_max(j)+end_edge
 
     allocate(binLikes(ix_min(j):ix_max(j)))
     allocate(binsraw(ix_min(j):ix_max(j)))
@@ -1213,12 +1215,12 @@
 
     if (ix_min(j) /= ix_max(j)) then
         !account for underweighting near edges
-        if (.not. has_limits_bot(ix) .and. binsraw(ix_min(j))==0  .and. &
-        binsraw(ix_min(j)+1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
+        if (.not. has_limits_bot(ix) .and. binsraw(ix_min(j)+end_edge-1)==0  .and. &
+        binsraw(ix_min(j)+end_edge) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
             call EdgeWarning(ix-2)
         end if
-        if (.not. has_limits_top(ix) .and. binsraw(ix_max(j))==0  .and. &
-        binsraw(ix_max(j)-1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
+        if (.not. has_limits_top(ix) .and. binsraw(ix_max(j)-end_edge+1)==0  .and. &
+        binsraw(ix_max(j)-end_edge) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
             call EdgeWarning(ix-2)
         end if
     end if
@@ -1656,8 +1658,6 @@
     //'_'//trim(ParamNames_NameOrNumber(NameMapping, colix(j2)-2))
     end function dat_file_2D
 
-    end module MCSamples
-
     subroutine CheckMatlabAxes(afile)
     integer, intent(in) :: afile
 
@@ -1670,6 +1670,53 @@
 
     end subroutine CheckMatlabAxes
 
+    ! normal inverse translate from
+    !http://home.online.no/~pjacklam/notes/invnorm
+    ! a routine written by john herrero
+    function dinvnorm(p)
+    real(mcp) dinvnorm, p,p_low,p_high
+    real(mcp) a1,a2,a3,a4,a5,a6
+    real(mcp) b1,b2,b3,b4,b5
+    real(mcp) c1,c2,c3,c4,c5,c6
+    real(mcp) d1,d2,d3,d4
+    real(mcp) q,r
+    a1=-39.6968302866538
+    a2=220.946098424521
+    a3=-275.928510446969
+    a4=138.357751867269
+    a5=-30.6647980661472
+    a6=2.50662827745924
+    b1=-54.4760987982241
+    b2=161.585836858041
+    b3=-155.698979859887
+    b4=66.8013118877197
+    b5=-13.2806815528857
+    c1=-0.00778489400243029
+    c2=-0.322396458041136
+    c3=-2.40075827716184
+    c4=-2.54973253934373
+    c5=4.37466414146497
+    c6=2.93816398269878
+    d1=0.00778469570904146
+    d2=0.32246712907004
+    d3=2.445134137143
+    d4=3.75440866190742
+    p_low=0.02425
+    p_high=1-p_low
+    if(p < p_low) then
+        q=dsqrt(-2*dlog(p))
+        dinvnorm=(((((c1*q+c2)*q+c3)*q+c4)*q+c5)*q+c6)/((((d1*q+d2)*q+d3)*q+d4)*q+1)
+    else if((p.le.p_high)) then
+        q=p-0.5
+        r=q*q
+        dinvnorm=(((((a1*r+a2)*r+a3)*r+a4)*r+a5)*r+a6)*q/(((((b1*r+b2)*r+b3)*r+b4)*r+b5)*r+1)
+    else
+        q=dsqrt(-2*dlog(1-p))
+        dinvnorm=-(((((c1*q+c2)*q+c3)*q+c4)*q+c5)*q+c6)/ ((((d1*q+d2)*q+d3)*q+d4)*q+1)
+    end if
+    end function dinvnorm
+
+    end module MCSamples
 
     program GetDist
     use IniFile
@@ -1696,7 +1743,7 @@
     real(mcp) limmin(max_cols),limmax(max_cols)
     integer plot_2D_param, j2min
     real(mcp) try_b, try_t
-    real(mcp) LowerUpperLimits(max_cols,2,max_contours), limfrac
+    real(mcp) LowerUpperLimits(max_cols,2,max_contours), limfrac, P_top, P_bot
     real(mcp) :: minimal_intervals(max_cols,max_intersections+1,max_contours) !JH
     logical do_minimal_1d_intervals !JH
 
@@ -1992,15 +2039,16 @@
     num_contours = Ini_Read_Int('num_contours',2)
     contours_str = ''
     do i=1, num_contours
-        contours(i) = Ini_Read_Real(numcat('contour',i))
+        contours(i) = Ini_Read_Double(numcat('contour',i))
         if (i>1) contours_str = concat(contours_str,'; ')
         contours_str = concat(contours_str, Ini_Read_String(numcat('contour',i)))
+        max_frac_twotail(i) = Ini_Read_Double(numcat('max_frac_twotail',i), exp(-dinvnorm((1-contours(i))/2)**2/2))
     end do
 
-    max_frac_twotail = Ini_Read_Double('max_frac_twotail',max_frac_twotail)
     force_twotail = Ini_Read_Logical('force_twotail',.false.)
     if (force_twotail) write (*,*) 'Computing two tail limits'
-
+    adjust_limits_for_cutoff = Ini_read_logical('adjust_limits_for_cutoff',adjust_limits_for_cutoff)
+    
     if (Ini_Read_String('cov_matrix_dimension')=='') then
         if (NameMapping%nnames/=0) covmat_dimension = NameMapping%num_MCMC
     else
@@ -2344,22 +2392,38 @@
         !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: end of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         !Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
-        marge_limits_bot(ix) =  has_limits_bot(ix) .and. .not. force_twotail .and. bincounts(ix_min(j)) > max_frac_twotail
-        marge_limits_top(ix) =  has_limits_top(ix) .and. .not. force_twotail .and. bincounts(ix_max(j)) > max_frac_twotail
         do ix1 = 1, num_contours
-            limfrac = 1-contours(ix1)
-            if (.not. marge_limits_bot(ix) .and. .not. marge_limits_top(ix)) then
-                limfrac = limfrac/2 !two tail
-            end if
-            if (marge_limits_top(ix)) then
-                LowerUpperLimits(j,2,:) = range_max(j)
+            P_bot = bincounts(ix_min(j))
+            P_top = bincounts(ix_max(j))
+            marge_limits_bot(ix1,ix) =  has_limits_bot(ix) .and. .not. force_twotail .and. P_bot > max_frac_twotail(ix1)
+            marge_limits_top(ix1,ix) =  has_limits_top(ix) .and. .not. force_twotail .and. P_top > max_frac_twotail(ix1)
+            if (marge_limits_top(ix1,ix)) then
+                LowerUpperLimits(j,2,ix1) = range_max(j)
             else
-                LowerUpperLimits(j,2,ix1) = ConfidVal(ix,limfrac,.true.)
+                limfrac = 1-contours(ix1)
+                if (.not. marge_limits_bot(ix1,ix)) limfrac = limfrac/2
+                if (P_top >0 .and. adjust_limits_for_cutoff) then
+                    limfrac  = limfrac - erfc(sqrt(-2*log(P_top))) !assume Gaussian tail outside prior boundary
+                end if
+                if (limfrac>0) then
+                    LowerUpperLimits(j,2,ix1) = ConfidVal(ix,limfrac,.true.)
+                else
+                    LowerUpperLimits(j,2,ix1) = range_max(j)
+                end if
             end if
-            if (marge_limits_bot(ix)) then
-                LowerUpperLimits(j,1,:) = range_min(j)
+            if (marge_limits_bot(ix1,ix)) then
+                LowerUpperLimits(j,1,ix1) = range_min(j)
             else
-                LowerUpperLimits(j,1,ix1) = ConfidVal(ix,limfrac,.false.)
+                limfrac = 1-contours(ix1)
+                if (.not. marge_limits_top(ix1,ix)) limfrac = limfrac/2
+                if (P_bot >0 .and. adjust_limits_for_cutoff) then
+                    limfrac  = limfrac - erfc(sqrt(-2*log(P_bot)))
+                end if
+                if (limfrac>0) then
+                    LowerUpperLimits(j,1,ix1) = ConfidVal(ix,limfrac,.false.)
+                else
+                    LowerUpperLimits(j,1,ix1) =  range_min(j)
+                end if
             end if
         end do 
 
@@ -2593,7 +2657,7 @@
     !Marginalized
     if (.not. plots_only) &
     call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
-    LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels, force_twotail)
+    LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels)
 
     call ParamNames_WriteFile(NameMapping, trim(plot_data_dir)//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
     open(unit=51,file=trim(plot_data_dir)//trim(rootname)//'.paramnames',form='formatted',status='replace')
