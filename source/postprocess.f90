@@ -162,7 +162,8 @@
         do
             if (PostParams%redo_from_text) then
                 error = 0
-                if (.not. IO_ReadChainRow(infile_handle, mult, like, Params%P, num_params)) exit
+                Params%P= Scales%center
+                if (.not. IO_ReadChainRow(infile_handle, mult, like, Params%P, params_used)) exit
             else
                 call Params%ReadModel(infile_handle,has_likes, mult,like, error)
                 if (first .and. PostParams%redo_like_name/='') then

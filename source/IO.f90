@@ -237,24 +237,17 @@
 
     end function IO_SkipChainRows
 
-    function IO_ReadChainRow(handle, mult, like, values, nvalues, chainOK, samples_chains) result(OK)
+    function IO_ReadChainRow(handle, mult, like, values, params_used, chainOK, samples_chains) result(OK)
     !Returns OK=false if end of file or if not enough values on each line, otherwise OK = true
     !Returns chainOK = false if bad line or NaN, chainOK=false and OK=true for NaN (continue reading)
     logical OK
     integer, intent(in) :: handle
     real(mcp), intent(out) :: mult, like, values(:)
-    integer, intent(in), optional :: nvalues
+    integer, intent(in) :: params_used(:)
     logical, optional, intent(out) :: ChainOK
     logical, optional, intent(in) :: samples_chains
     logical samples_are_chains
-    integer n
     character(LEN=10000) InLine  
-
-    if (present(nvalues)) then
-        n = nvalues
-    else
-        n = size(values)
-    end if 
 
     if (present(samples_chains)) then
         samples_are_chains=samples_chains
@@ -272,11 +265,11 @@
     end if
 
     if (samples_are_chains) then
-        read(InLine, *, end=100,err=110) mult, like, values(1:n)    
+        read(InLine, *, end=100,err=110) mult, like, values(params_used)
     else
         mult=1
         like=1
-        read(InLine, *, end=100,err=110) values(1:n)    
+        read(InLine, *, end=100,err=110) values(params_used)
     end if
     OK = .true.
     return   
@@ -353,6 +346,7 @@
     real(mcp) invars(1:ncols)
     logical chainOK
     integer chain_handle, row_start
+    integer, allocatable :: indices(:)
     character(LEN=Ini_max_string_len) infile, numstr
 
     row_start=nrows
@@ -380,10 +374,12 @@
         end if
     end if
 
+    allocate(indices(ncols-2))
+    indices=[3:ncols]
     OK = .true.
     do
         if (.not. IO_ReadChainRow(chain_handle, invars(1), invars(2), &
-        invars(3:),ncols-2,chainOK,samples_are_chains)) then
+        invars,indices,chainOK,samples_are_chains)) then
             if (.not. chainOK) then
                 write (*,*) 'error reading line ', nrows -row_start + ignorerows ,' - skipping rest of file'
             endif 
