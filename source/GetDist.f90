@@ -1151,7 +1151,7 @@
     ix_min(j) = nint((range_min(j) - center(j))/width(j))
     ix_max(j) = nint((range_max(j) - center(j))/width(j))
 
-    end_edge = nint(smooth_scale_1D)
+    end_edge = nint(smooth_scale_1D*2)
     if (.not. has_limits_bot(ix)) ix_min(j) = ix_min(j)-end_edge
     if (.not. has_limits_top(ix)) ix_max(j) = ix_max(j)+end_edge
 
