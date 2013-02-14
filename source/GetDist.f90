@@ -1945,8 +1945,6 @@
 
     end do
 
-    has_limits = has_limits_top .or. has_limits_bot
-
     if (Ini_HasKey('plotparams_num')) stop 'plotparams_num deprectated; just use plot_params'
     InLine = Ini_Read_String('plot_params')
     if (InLine/='') then
@@ -2362,7 +2360,6 @@
                 range_max(j) = limmax(ix)
             end if
         end if
-
         has_limits(ix)= has_limits_top(ix) .or. has_limits_bot(ix)
 
         call Get1DDensity(j)
