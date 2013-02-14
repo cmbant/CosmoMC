@@ -72,8 +72,8 @@ endif
 
 ifeq ($(COSMOHOST),darwin)
 ifeq ($(PLANCKLIKE),cliklike)
-CLIKPATH = /scratch/aml1005/clik_6.0/clik-6.0b
-CLIKL = -L$(CLIKPATH)/lib -lclik_f90
+CLIKPATH? = /scratch/aml1005/clik_7.0/clik-7.0b
+CLIKL? = -L$(CLIKPATH)/lib -lclik_f90
 INCLUDE = $(IFLAG)$(CLIKPATH)/include
 endif
 WMAP = /scratch/aml1005/wmap_likelihood_v5
