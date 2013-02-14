@@ -21,12 +21,14 @@
     logical :: writebest=.false.
     real(campc) :: bestlike = 1e30_campc
     integer :: tempinstance
+    logical :: beam_cov_marge = .true.
 
     logical :: storeall=.false.
     integer :: countnum
     !    character*100 storeroot,storename,storenumstring
     !   character*100 :: bestroot,bestnum,bestname
     character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.2-11012013'
+    real(campc) :: beam_factor = 3.d0
 
 
     contains
@@ -66,9 +68,12 @@
     end subroutine CAMspec_ReadNormSZ
 
     subroutine like_init(like_file, sz143_file, tszxcib_file, ksz_file, beam_file)
+    use MatrixUtils
     integer :: i, j, l
     character(LEN=1024), intent(in) :: like_file, sz143_file, ksz_file, tszxcib_file, beam_file
     logical, save :: needinit=.true.
+    real(campc) , allocatable:: fid_cl(:)
+    integer if1,if2, ie1, ie2, ii, jj, L2
 
     ! cl_ksz_148_tbo.dat file is in D_l, format l D_l, from l=2 to 10000
     ! tsz_x_cib_template.txt is is (l D_l), from l=2 to 9999, normalized to unity
@@ -88,11 +93,20 @@
 
     read(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
     read(48) (X_data(i), i=1, nX)
-    read(48)
-    read(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX)
+    read(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX) !covarianbce
+    read(48) !((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
     close(48)
 
     CAMspec_lmax = maxval(lmaxX)
+    allocate(fid_cl(CAMspec_lmax))
+
+    open(48, file='./data/base_planck_CAMspec_lowl_lowLike_highL.bestfit_cl', form='formatted', status='unknown')
+    do i=2,CAMspec_lmax
+        read(48,*) j,fid_cl(i)
+        if (j/=i) stop 'error reading fiducial C_l for beams'
+        fid_cl(i) = fid_cl(i)/(i*(i+1))!want C_l/2Pi
+    enddo
+    close(48)
 
     call CAMspec_ReadNormSZ(sz143_file, sz_143_temp)
     call CAMspec_ReadNormSZ(ksz_file, ksz_temp)
@@ -105,9 +119,42 @@
     cov_dim=beam_Nspec*num_modes_per_beam
     allocate(beam_cov_inv(cov_dim,cov_dim))
     read(48) (((beam_modes(i,l,j),j=1,Nspec),l=0,beam_lmax),i=1,num_modes_per_beam)
-    read(48) ! skipping beam_cov
-    read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim)
+    read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim)  ! beam_cov
+    read(48) !((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
     close(48)
+
+    !Here beam_cov_inv and c_inv are the covariances NOT the inv covariances as implied by name
+    beam_cov_inv = beam_cov_inv*beam_factor
+    !    do if2=2, 2000,20
+    !      print *,if2, beam_modes(1,if2,1),beam_modes(1,if2,3) 
+    !     end do
+    !   print *,'beamcov 11:',beam_cov_inv(1,1)
+    !  print *,'before', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502), c_inv(npt(4)-1002,npt(4)-1000)
+    if (beam_cov_marge) then 
+        do if2=1,beam_Nspec
+            do if1=1,beam_Nspec
+                do ie2=1,num_modes_per_beam
+                    do ie1=1,num_modes_per_beam
+                        ii=ie1+num_modes_per_beam*(if1-1)
+                        jj=ie2+num_modes_per_beam*(if2-1)
+                        do L2 = lminX(if2),lmaxX(if2)
+                            !if (ii==1) cycle
+                            !if (jj==1) cycle
+                            c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
+                            c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
+                            beam_modes(ie1,lminX(if1):lmaxX(if1),if1)*  beam_cov_inv(ii,jj) * beam_modes(ie2,L2,if2) &
+                            *fid_cl(L2)*fid_cl(lminX(if1):lmaxX(if1))
+                        end do
+                    enddo
+                enddo
+            enddo
+        enddo
+    else
+        call Matrix_inverse(beam_cov_inv)
+    end if
+    ! print *,'after', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502),  c_inv(npt(4)-1002,npt(4)-1000)
+
+    call Matrix_inverse(c_inv)
 
     !tempinstance=MPIrank+1
     !
@@ -141,6 +188,7 @@
     real(campc), parameter :: cib_bandpass217_nom217 = 1.33d0
     real(campc), parameter :: ps_scale  = 1.d-6/9.d0
     real(campc) :: A_cib_217_bandpass, A_sz_143_bandpass, A_cib_143_bandpass
+
     !    real(campc) atime
 
     if (.not. allocated(lminX)) then
@@ -181,6 +229,8 @@
             beam_coeffs(ii,jj)=freq_params(num_non_beam+jj+num_modes_per_beam*(ii-1))
         enddo
     enddo
+
+    if (beam_cov_marge) beam_coeffs= 0
 
     do l=1, CAMspec_lmax
         cl_cib(l) = (real(l,campc)/3000)**(ncib)
