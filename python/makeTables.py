@@ -3,7 +3,7 @@ import os, batchJobArgs, ResultObjs, paramNames
 
 Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True, converge=True)
 Opts.parser.add_argument('latex_filename')
-Opts.parser.add_argument('--sigma', type=int, default=2)
+Opts.parser.add_argument('--limit', type=int, default=2)
 Opts.parser.add_argument('--bestfitonly', action='store_true')
 Opts.parser.add_argument('--nobestfit', action='store_true')
 
@@ -45,7 +45,7 @@ def texEscapeText(string):
 
 def getTableLines(content):
     return ResultObjs.resultTable(args.columns, [content], blockEndParams=args.blockEndParams,
-                         formatter=formatter, paramList=args.paramList, sigma=args.sigma).lines
+                         formatter=formatter, paramList=args.paramList, limit=args.limit).lines
 
 def paramResultTable(jobItem):
     tableLines = []
@@ -77,7 +77,7 @@ def compareTable(jobItems, titles=None):
     if titles is None: titles = [jobItem.datatag for jobItem in jobItems if jobItem.result_marge is not None]
     else: titles = titles.split(';')
     return ResultObjs.resultTable(1, [jobItem.result_marge for jobItem in jobItems if jobItem.result_marge is not None],
-               formatter=formatter, sigma=args.sigma, titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
+               formatter=formatter, limit=args.limit, titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
 
 def filterBatchData(batch, datatags):
     items = []

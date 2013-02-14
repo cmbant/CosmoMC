@@ -173,7 +173,7 @@ class planckNoLineTableFormatter(planckTableFormatter):
 
 class resultTable():
 
-    def __init__(self, ncol, results, sigma=2, tableParamNames=None, titles=None, formatter=None, numFormatter=None, blockEndParams=None, paramList=None):
+    def __init__(self, ncol, results, limit=2, tableParamNames=None, titles=None, formatter=None, numFormatter=None, blockEndParams=None, paramList=None):
 # results is a margeStats or bestFit table
         self.lines = []
         if formatter is None: self.format = planckNoLineTableFormatter()
@@ -188,9 +188,9 @@ class resultTable():
 
         self.results = results
         self.boldBaseParameters = True
-        self.colsPerResult = len(results[0].getColumLabels(sigma))
+        self.colsPerResult = len(results[0].getColumLabels(limit))
         self.colsPerParam = len(results) * self.colsPerResult
-        self.sigma = sigma
+        self.limit = limit
 
         nparams = self.tableParamNames.numParams()
         numrow = nparams / ncol
@@ -233,7 +233,7 @@ class resultTable():
         self.addLine("aboveHeader")
         res = '& ' + self.format.paramText
         for result in self.results:
-            res += ' & ' + " & ".join(result.getColumLabels(self.sigma))
+            res += ' & ' + " & ".join(result.getColumLabels(self.limit))
         self.lines.append((res * self.ncol)[1:] + self.format.endofrow)
         self.addLine("belowHeader")
 
@@ -241,13 +241,13 @@ class resultTable():
         return " & ".join(self.paramResultTex(result, param) for result in self.results)
 
     def paramResultTex(self, result, p):
-        values = result.texValues(self.numberFormatter, p, self.sigma)
+        values = result.texValues(self.numberFormatter, p, self.limit)
         if values is not None:
             if len(values) > 1: txt = self.textAsColumn(values[1], True, separator=True)
             else: txt = ''
             txt += self.textAsColumn(values[0], values[0] != '---')
             return txt
-        else: return self.textAsColumn('') * len(result.getColumLabels(self.sigma))
+        else: return self.textAsColumn('') * len(result.getColumLabels(self.limit))
 
     def textAsColumn(self, txt, latex=False, separator=False, bold=False):
         wid = len(txt)
@@ -283,7 +283,7 @@ class bestFit(paramResults):
         if fileName is not None: self.loadFromFile(fileName, want_fixed=want_fixed)
         if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
 
-    def getColumLabels(self, sigma=None):
+    def getColumLabels(self, limit=None):
         return ['Best fit']
 
     def loadFromFile(self, filename, want_fixed=False):
@@ -327,11 +327,18 @@ class bestFit(paramResults):
             likes[kind].append((name, chisq))
         return sorted(likes.iteritems())
 
-    def texValues(self, formatter, p, sigma=None):
+    def texValues(self, formatter, p, limit=None):
         param = self.parWithName(p.name)
         if param is not None: return [formatter.formatNumber(param.best_fit)]
         else: return None
 
+class paramLimit():
+    def __init__(self, minmax, tag='two'):
+        self.lower = minmax[0]
+        self.upper = minmax[1]
+        self.twotail = tag == 'two'
+        self.onetail_upper = tag == '>'
+        self.onetail_lower = tag == '<'
 
 class margeStats(paramResults):
 
@@ -343,18 +350,14 @@ class margeStats(paramResults):
         for line in textFileLines[3:]:
             if len(line.strip()) == 0: break
             param = paramNames.paramInfo()
-            items = [s.strip() for s in line.split(None, len(self.limits) * 2 + 4)]
+            items = [s.strip() for s in line.split(None, len(self.limits) * 3 + 3)]
             param.name = items[0]
             param.mean = float(items[1])
             param.err = float(items[2])
+            param.label = items[-1]
             param.limits = []
             for i in range(len(self.limits)):
-                param.limits.append([float(s) for s in items[3 + i * 2:5 + i * 2] ])
-            param.label = items[-1]
-            tag = items[-2]
-            param.twotail = tag == 'two'
-            param.lim_top = tag == '<' or tag == 'none'
-            param.lim_bot = tag == '>' or tag == 'none'
+                param.limits.append(paramLimit([float(s) for s in items[3 + i * 3:5 + i * 3] ], items[6 + i * 3]))
             self.names.append(param)
 
 
@@ -368,29 +371,29 @@ class margeStats(paramResults):
             par.best_fit = param.best_fit
             par.isDerived = param.isDerived
 
-    def getColumLabels(self, sigma=2):
+    def getColumLabels(self, limit=2):
         if self.hasBestFit: res = ['Best fit']
         else: res = []
-        return res + [str(round(float(self.limits[sigma - 1]) * 100)) + '\\% limits']
+        return res + [str(round(float(self.limits[limit - 1]) * 100)) + '\\% limits']
 
 
-    def texValues(self, formatter, p, sigma=2):
+    def texValues(self, formatter, p, limit=2):
         if not isinstance(p, paramNames.paramInfo): param = self.parWithName(p)
         else: param = self.parWithName(p.name)
         if not param is None:
-            lims = param.limits[sigma - 1]
+            lim = param.limits[limit - 1]
             sf = 3
-            if param.twotail:
-                res, plus_str, minus_str = formatter.namesigFigs(param.mean, lims[1] - param.mean, lims[0] - param.mean)
-                if sigma == 1 and plus_str[1:] == minus_str[1:]: res += '\pm ' + plus_str[1:]
+            if lim.twotail:
+                res, plus_str, minus_str = formatter.namesigFigs(param.mean, lim.upper - param.mean, lim.lower - param.mean)
+                if limit == 1 and plus_str[1:] == minus_str[1:]: res += '\pm ' + plus_str[1:]
                 else: res += '^{' + plus_str + '}_{' + minus_str + '}'
-            elif param.lim_bot and not param.lim_top:
-                res = '< ' + formatter.formatNumber(lims[1], sf)
-            elif param.lim_top and not param.lim_bot:
-                res = '> ' + formatter.formatNumber(lims[0], sf)
+            elif lim.onetail_upper:
+                res = '< ' + formatter.formatNumber(lim.upper, sf)
+            elif lim.onetail_lower:
+                res = '> ' + formatter.formatNumber(lim.lower, sf)
             else: res = '---'
             if self.hasBestFit:  # add best fit too
-                rangew = (lims[1] - lims[0]) / 10
+                rangew = (lim.upper - lim.lower) / 10
                 bestfit = formatter.namesigFigs(param.best_fit, rangew, -rangew)[0]
                 return [res, bestfit]
             return [res]
