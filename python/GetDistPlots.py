@@ -215,8 +215,9 @@ class GetDistPlotter():
         if not 'lims' in ax_args: ax_args['lims'] = [mins[0], maxs[0], mins[1], maxs[1]]
         self.setAxes(param_pair, **ax_args)
 
-    def add_1d_marker(self, marker, marker_color='k'):
-        gca().add_line(Line2D([marker, marker], [0, 2], color=marker_color))
+    def add_1d_marker(self, marker, color='k', ls='-'):
+#        gca().add_line(Line2D([marker, marker], [0, 2], color=marker_color))
+        axvline(marker, ls=ls, color=color)
 
     def set_locator(self, axis, x=False):
         if x: xmin, xmax = axis.get_view_interval()

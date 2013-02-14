@@ -6,7 +6,10 @@ getdist: ./source/*.*90
 cosmomc: ./source/*.*90
 	cd ./source && make
 
-clean: 
+camspec: ./source/*.*90
+    cd ./source && make highL=../highL PLANCKLIKE=cliklike_CamSpec
+
+clean:
 	cd ./source && make clean
 
 all: ./source/*.*90
