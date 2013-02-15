@@ -1,0 +1,50 @@
+omegabh2      \Omega_b h^2	#physical baryon density
+omegach2      \Omega_c h^2	#physical CDM matter density
+theta         \theta		#100 times the ratio of the angular diameter distance to the LSS sound horizon (approx)
+tau           \tau
+aps100        A^{PS}_{100}      # Point source amplitude at 100 GHz
+aps143        A^{PS}_{143}      # Point source amplitude at 143 GHz
+aps217        A^{PS}_{217}      # Point source amplitude at 217 GHz
+acib143       A^{CIB}_{143}     # CIB amplitude at 143 GHz
+acib217       A^{CIB}_{217}     # CIB amplitude at 217 GHz
+asz143        A^{tSZ}_{143}     # Thermal SZ amplitude at 143 GHz
+psr           r_{PS {143/217}}  # 143-217 correlation coefficient of point source residuals
+cibr          r_{CIB}           # 143-217 correlation coefficient of CIB
+ncib          n^{CIB}           # spectral index of the CIB
+cal1          c_{143/143}       # calibration factor 143
+cal2          c_{217/143}       # relative calibration factor 217/143
+xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
+aksz          A^{kSZ}
+bm_1_1        \beta^1_1
+Npivot        N_{pivot}         #number of e-folds of inflation after k_pivot exits horizon
+vpar1         log \Lambda       #potential parameter 1
+vpar2         log f             #potential parameter 2
+omegal*       \Omega_\Lambda
+omegam*       \Omega_m
+sigma8*       \sigma_8
+zrei*         z_{re}
+r10*          r_{10}	#tensor-scalar C_l amplitude at l=10
+H0*           H_0		#hubble parameter is H0 km/s/Mpc
+r02*          r         #r at k=0.002
+A*            10^9 A_s
+omegamh2*     \Omega_m h^2 #includes massive neutrinos
+omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
+yheused*      Y_{He} #MCMC value or from bbn consistency
+clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
+age*          Age/Gyr
+zstar*        z_*
+rstar*        r_*
+thetastar*    \theta_*
+zdrag*        z_{drag}
+rdrag*        r_{drag}
+kd*           k_D
+thetad*       \theta_D
+zeq*          z_{EQ}
+thetaeq*      \theta_{EQ}
+modpk_Npivot* N_{pivot}         #number of e-folds of inflation after k_pivot exits horizon
+modpk_ns*     n_s               #beware that pivot scale can change in .ini file
+modpk_nt*     n_t
+modpk_nrun*   n_{run}
+modpk_logA*   ln(10^{10} A_s)
+modpk_r*      r                 #ratio of tensor to scalar primordial amplitudes at pivot scale
+modpk_w*      w_{primordial}    #reheating equation of state
