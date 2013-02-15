@@ -71,11 +71,6 @@ GSLPATH = $(GSL_ROOT)
 endif
 
 ifeq ($(COSMOHOST),darwin)
-ifeq ($(PLANCKLIKE),cliklike)
-CLIKPATH? = /scratch/aml1005/clik_7.0/clik-7.0b
-CLIKL? = -L$(CLIKPATH)/lib -lclik_f90
-INCLUDE = $(IFLAG)$(CLIKPATH)/include
-endif
 WMAP = /scratch/aml1005/wmap_likelihood_v5
 cfitsio = /usr/local/Cluster-Apps/cfitsio/intel/3.300
 FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
