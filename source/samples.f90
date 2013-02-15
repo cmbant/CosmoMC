@@ -10,32 +10,44 @@
     procedure :: ConfidVal => TSampleList_ConfidVal
     end Type TSampleList
 
+    !Spline interpolated density function
+    Type TDensity1D
+        integer n
+        real(mcp) :: spacing
+        real(mcp), dimension(:), allocatable :: X
+        real(mcp), dimension(:), allocatable :: P, ddP
     contains
-    
-    subroutine GelmanRubinEvalues(cov, meanscov, evals, num)
-     use MatrixUtils
-     integer, intent(in) :: num
-     real(sample_prec) :: cov(num,num), meanscov(num,num), evals(num)
-     integer jj
-     real(sample_prec) rot(num,num), rotmeans(num,num)
-     real(sample_prec) :: sc
-     
-     rot = cov
-     rotmeans = meanscov
-     do jj=1,num
-                sc = sqrt(cov(jj,jj))
-                rot(jj,:) = rot(jj,:) / sc
-                rot(:,jj) = rot(:,jj) / sc
-                rotmeans(jj,:) = rotmeans(jj,:) /sc
-                rotmeans(:,jj) = rotmeans(:,jj) /sc
-     end do
+    procedure :: Prob => Density1d_prob
+    procedure :: Free => Density1d_Free
+    end Type TDensity1D
 
-     call Matrix_CholeskyRootInverse(rot)
-     rotmeans =  matmul(matmul(rot, rotmeans), transpose(rot))
-     call Matrix_Diagonalize(rotmeans, evals, num)
-    
+
+    contains
+
+    subroutine GelmanRubinEvalues(cov, meanscov, evals, num)
+    use MatrixUtils
+    integer, intent(in) :: num
+    real(sample_prec) :: cov(num,num), meanscov(num,num), evals(num)
+    integer jj
+    real(sample_prec) rot(num,num), rotmeans(num,num)
+    real(sample_prec) :: sc
+
+    rot = cov
+    rotmeans = meanscov
+    do jj=1,num
+        sc = sqrt(cov(jj,jj))
+        rot(jj,:) = rot(jj,:) / sc
+        rot(:,jj) = rot(:,jj) / sc
+        rotmeans(jj,:) = rotmeans(jj,:) /sc
+        rotmeans(:,jj) = rotmeans(:,jj) /sc
+    end do
+
+    call Matrix_CholeskyRootInverse(rot)
+    rotmeans =  matmul(matmul(rot, rotmeans), transpose(rot))
+    call Matrix_Diagonalize(rotmeans, evals, num)
+
     end subroutine GelmanRubinEvalues
-         
+
 
     subroutine TSampleList_ConfidVal(L, ix, limfrac, ix1, ix2, Lower, Upper)
     !Taking the ix'th entry in each array to be a sample, value for which
@@ -79,6 +91,43 @@
     call SortItems%Clear(itemsOnly=.true.)
 
     end subroutine TSampleList_ConfidVal
+
+    function Density1D_prob(D, x)
+    Class(TDensity1D) :: D
+    real(sample_prec) :: Density1D_prob
+    real(sample_prec), intent(in) :: x
+    integer llo,lhi
+    real(sample_prec) a0,b0
+
+    if (x>D%X(D%n) - D%spacing/1d6) then
+        if (x > D%X(D%n) + D%spacing/1d6) then
+            write (*,*) 'Density: x too big ', x
+            stop 
+        end if
+        Density1D_prob=D%P(D%n)
+        return
+    end if
+    if (x< D%X(1)- D%spacing/1d6) then
+        write (*,*) 'Density: out of range ', x, D%X(1), D%X(D%n)
+        stop
+    else
+    end if
+    llo = 1 + max(0,int((x-D%X(1))/D%spacing))
+    lhi=llo+1
+    a0=(D%X(lhi)-x)/D%spacing
+    b0=(x-D%X(llo))/D%spacing
+    Density1D_prob = a0*D%P(llo)+ b0*D%P(lhi)+((a0**3-a0)* D%ddP(llo) +(b0**3-b0)*D%ddP(lhi))*D%spacing**2/6
+
+    end function Density1D_prob
+
+    subroutine Density1D_Free(D)
+    Class(TDensity1D) :: D
+
+    if (allocated(D%X)) then
+        deallocate(D%X,D%P,D%ddP)
+    end if
+    end subroutine Density1D_Free
+
 
     end module Samples
 

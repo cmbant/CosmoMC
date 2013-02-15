@@ -69,9 +69,11 @@
     integer, parameter :: max_intersections = 10 !JH: increase if posterior has more than five peaks
     integer, parameter :: max_contours = 5
 
+    Type(TDensity1D) :: Density1D
+
     integer chain_indices(max_chains), num_chains_used
 
-    integer nrows, ncols, nbins
+    integer nrows, ncols, num_bins, num_bins_2D
     real(mcp) numsamp
     integer ND_cont1, ND_cont2
     integer covmat_dimension
@@ -117,7 +119,6 @@
     logical :: prob_label = .false.
     logical :: plots_only, no_plots
     real(mcp) :: smooth_scale_1D=1.d0, smooth_scale_2D = 1.d0
-    logical :: adjust_limits_for_cutoff = .true.
 
     contains
 
@@ -1139,7 +1140,7 @@
 
     ix = colix(j)
 
-    width(j) = (range_max(j)-range_min(j))/(nbins+1)
+    width(j) = (range_max(j)-range_min(j))/(num_bins+1)
     if (width(j)==0) return
 
     if (has_limits_top(ix)) then
@@ -1233,6 +1234,8 @@
         bincounts(ix_min(j):ix_max(j))=bincounts(ix_min(j):ix_max(j))/maxbin
     end if
 
+    call Get1DSplineDensity(Density1D, j)
+
     if (.not. no_plots) then
         fname = trim(dat_file_name(rootname,j))
         filename = trim(plot_data_dir)//trim(fname)
@@ -1254,6 +1257,84 @@
     end if
 
     end subroutine Get1DDensity
+
+    subroutine Get1DSplineDensity(D, j)
+    Type(TDensity1D) :: D
+    integer, intent(in) :: j
+    integer i 
+
+    call D%Free()
+    D%n = ix_max(j)-ix_min(j)+1
+    D%spacing = width(j)
+    allocate(D%X(D%n))
+    allocate(D%P(D%n))
+    allocate(D%ddP(D%n))
+    do i = ix_min(j), ix_max(j)
+        D%P(i-ix_min(j)+1) = bincounts(i)
+        D%X(i-ix_min(j)+1) = center(j) + i*D%spacing
+    end do
+    call spline_double(D%x,D%P,D%n,D%ddP)
+
+    end subroutine Get1DSplineDensity
+
+    subroutine DensityLimits(D, p, mn, mx, lim_bot,lim_top)
+    integer i, bign
+    Type(TDensity1D) :: D
+    real(mcp), intent(in) :: p
+    logical,intent(out) :: lim_bot,lim_top
+    real(mcp), intent(out) :: mn,mx
+    integer, parameter :: factor = 100 
+    real(mcp) norm, try, try_sum, try_t,try_b,try_last
+    real(mcp), allocatable :: grid(:)
+
+    bign=(D%n-1)*factor + 1
+    allocate(grid(bign))
+    do i=1, bign
+        grid(i) = D%Prob(D%X(1) + (i-1)*D%spacing/factor)
+    end do
+    norm = sum(grid)
+    norm = norm - 0.5*D%P(D%n) - 0.5*D%P(1)
+
+    try_t = maxval(grid)
+    try_b = 0
+    try_last = -1
+    do
+        try = (try_b + try_t)/2
+        try_sum = sum(grid,mask = grid >=  try)
+        if (try_sum < p*norm) then
+            try_t = (try_b+try_t)/2
+        else
+            try_b = (try_b+try_t)/2
+        end if
+        if (abs(try_sum/try_last - 1) < 0.0001) exit
+        try_last = try_sum
+    end do
+    try = (try_b+try_t)/2
+    lim_bot = grid(1) >= try
+    if (lim_bot) then
+        mn = D%P(1)
+    else
+        do i=1, bign
+            if (grid(i) > try) then
+                mn = D%X(1) + (i-1)*D%spacing/factor
+                exit
+            end if
+        end do
+    end if
+    lim_top=grid(bign) >= try
+    if (lim_top) then
+        mx = D%P(D%n)
+    else
+        do i=bign,1,-1
+            if (grid(i) > try) then
+                mx = D%X(1) + (i-1)*D%spacing/factor
+                exit
+            end if
+        end do
+    end if
+
+    end subroutine DensityLimits
+
 
     subroutine Get2DPlotData(j,j2)
     integer, intent(in) :: j,j2
@@ -1280,10 +1361,10 @@
     if (abs(corr)<0.3) corr=0._mcp !keep things simple unless obvious degeneracy
     corr=max(-0.95,corr)
     corr=min(0.95,corr)
-    nbin2D = min(4*nbins,nint(nbins/(1-abs(corr)))) !for tight degeneracies increase bin density
+    nbin2D = min(4*num_bins_2D,nint(num_bins_2D/(1-abs(corr)))) !for tight degeneracies increase bin density
     widthx =  (range_max(j)-range_min(j))/(nbin2D+1)
     widthy =  (range_max(j2)-range_min(j2))/(nbin2D+1)
-    smooth_scale = (smooth_scale_2D*nbin2D)/nbins
+    smooth_scale = (smooth_scale_2D*nbin2D)/num_bins_2D
     fine_fac = max(2,nint(fine_fac_base/smooth_scale))
 
     ixmin = nint((range_min(j) - center(j))/widthx)
@@ -1771,6 +1852,7 @@
     character(LEN=Ini_max_string_len) :: finish_run_command
     integer chain_handle
     integer triangle_num, triangle_params(max_cols)
+    real(mcp) tail_limit_bot,tail_limit_top
 
     NameMapping%nnames = 0
 
@@ -1840,9 +1922,11 @@
 
     allocate(coldata(ncols,0:max_rows))
 
-    nbins = Ini_Read_Int('num_bins')
+    num_bins = Ini_Read_Int('num_bins')
+    num_bins_2D = Ini_Read_Int('num_bins_2D', num_bins)
     smooth_scale_1D = Ini_read_Double('smooth_scale_1D',smooth_scale_1D) 
     smooth_scale_2D = Ini_read_Double('smooth_scale_2D',smooth_scale_2D) !smoothing scale in terms of bin scale
+    if (smooth_scale_1D<1) write(*,*) 'WARNING: smooth_scale_1D<1 may be unreliable'
 
     ignorerows = Ini_Read_Double('ignore_rows',0.d0)
 
@@ -2045,8 +2129,7 @@
 
     force_twotail = Ini_Read_Logical('force_twotail',.false.)
     if (force_twotail) write (*,*) 'Computing two tail limits'
-    adjust_limits_for_cutoff = Ini_read_logical('adjust_limits_for_cutoff',adjust_limits_for_cutoff)
-    
+
     if (Ini_Read_String('cov_matrix_dimension')=='') then
         if (NameMapping%nnames/=0) covmat_dimension = NameMapping%num_MCMC
     else
@@ -2342,7 +2425,7 @@
 
         range_min(j) = ConfidVal(ix,0.001_mcp,.false.)
         range_max(j) = ConfidVal(ix,0.001_mcp,.true.)
-        width(j) = (range_max(j)-range_min(j))/(nbins+1)
+        width(j) = (range_max(j)-range_min(j))/(num_bins+1)
 
         if (has_limits_bot(ix)) then
             if ( range_min(j)-limmin(ix) > width(j)) then
@@ -2394,33 +2477,26 @@
             P_top = bincounts(ix_max(j))
             marge_limits_bot(ix1,ix) =  has_limits_bot(ix) .and. .not. force_twotail .and. P_bot > max_frac_twotail(ix1)
             marge_limits_top(ix1,ix) =  has_limits_top(ix) .and. .not. force_twotail .and. P_top > max_frac_twotail(ix1)
-            if (marge_limits_top(ix1,ix)) then
-                LowerUpperLimits(j,2,ix1) = range_max(j)
-            else
+            if (.not. marge_limits_bot(ix1,ix) .or. .not. marge_limits_top(ix1,ix)) then
+                !give limit
+                call DensityLimits(Density1D, contours(ix1), tail_limit_bot, tail_limit_top, marge_limits_bot(ix1,ix), marge_limits_top(ix1,ix))
                 limfrac = 1-contours(ix1)
-                if (.not. marge_limits_bot(ix1,ix)) limfrac = limfrac/2
-                if (P_top >0 .and. adjust_limits_for_cutoff) then
-                    limfrac  = limfrac - erfc(sqrt(-2*log(P_top))) !assume Gaussian tail outside prior boundary
+                if (marge_limits_bot(ix1,ix)) then
+                    tail_limit_bot = range_min(j)
+                elseif (marge_limits_top(ix1,ix)) then
+                    !this may be a bit more accurate for one tail
+                    tail_limit_bot = ConfidVal(ix,limfrac,.false.)
                 end if
-                if (limfrac>0) then
-                    LowerUpperLimits(j,2,ix1) = ConfidVal(ix,limfrac,.true.)
-                else
-                    LowerUpperLimits(j,2,ix1) = range_max(j)
+                if (marge_limits_top(ix1,ix)) then
+                    tail_limit_top = range_max(j)
+                elseif (marge_limits_bot(ix1,ix)) then
+                    tail_limit_top = ConfidVal(ix,limfrac,.true.)
                 end if
-            end if
-            if (marge_limits_bot(ix1,ix)) then
+                LowerUpperLimits(j,2,ix1) = tail_limit_top
+                LowerUpperLimits(j,1,ix1) = tail_limit_bot
+            else !no limit
                 LowerUpperLimits(j,1,ix1) = range_min(j)
-            else
-                limfrac = 1-contours(ix1)
-                if (.not. marge_limits_top(ix1,ix)) limfrac = limfrac/2
-                if (P_bot >0 .and. adjust_limits_for_cutoff) then
-                    limfrac  = limfrac - erfc(sqrt(-2*log(P_bot)))
-                end if
-                if (limfrac>0) then
-                    LowerUpperLimits(j,1,ix1) = ConfidVal(ix,limfrac,.false.)
-                else
-                    LowerUpperLimits(j,1,ix1) =  range_min(j)
-                end if
+                LowerUpperLimits(j,2,ix1) = range_max(j)
             end if
         end do 
 
