@@ -124,7 +124,7 @@ class tableFormatter():
         self.colDividor = '||'
         self.belowTitles = ''
         self.headerWrapper = " %s"
-        self.noContraint = '---'
+        self.noConstraint = '---'
 
     def getLine(self, position=None):
         if position is not None and hasattr(self, position): return getattr(self, position)
