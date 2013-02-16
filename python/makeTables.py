@@ -1,4 +1,4 @@
-import os, batchJobArgs, ResultObjs, paramNames
+import os, batchJobArgs, ResultObjs, paramNames, planckStyle
 
 
 Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True, converge=True)
@@ -26,7 +26,7 @@ outfile = args.latex_filename
 
 if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
 
-if not args.forpaper: formatter = ResultObjs.planckNoLineTableFormatter()
+if args.forpaper: formatter = planckStyle.planckStyleTableFormatter()
 else: formatter = None
 
 lines = []

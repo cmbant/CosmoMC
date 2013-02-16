@@ -43,6 +43,8 @@ class GetDistPlotSettings:
         self.scatter_size = 1 + self.subplot_size_inch
 
 
+defaultSettings = GetDistPlotSettings()
+
 class Density1D():
     def bounds(self): return min(self.x), max(self.x)
 
@@ -121,7 +123,7 @@ class SampleAnalysisGetDist():
 class GetDistPlotter():
 
     def __init__(self, plot_data, settings=None,):
-        if settings is None: self.settings = GetDistPlotSettings()
+        if settings is None: self.settings = defaultSettings
         else: self.settings = settings
         self.plot_data = plot_data
         self.sampleAnalyser = SampleAnalysisGetDist(plot_data)

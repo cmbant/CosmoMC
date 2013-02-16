@@ -1,12 +1,12 @@
-import GetDistPlots
+import planckStyle
 from pylab import *
 import sys
 
-g=GetDistPlots.GetDistPlotter('main/plot_data')
+g=planckStyle.planckPlotter('main/plot_data')
 g.settings.setWithSubplotSize(3)
 g.settings.axes_fontsize +=2
 g.settings.lab_fontsize +=6
-g.settings.solid_colors = ['#009966', '#000866', '#000866','#336600', '#006633' , 'g', 'm', 'r'] 
+g.settings.solid_colors = ['#009966', '#000866', '#000866'] 
 
 bases=['omegabh2','omegach2','ns','H0','sigma8']
 params=['omegak','mnu','nnu','yhe','nrun','r','w']
