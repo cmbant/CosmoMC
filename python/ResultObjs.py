@@ -398,7 +398,7 @@ class margeStats(paramResults):
             sf = 3
             if lim.twotail:
                 if not formatter.numberFormatter.plusMinusLimit(limit, lim.upper - param.mean, lim.lower - param.mean):
-                    res, plus_str, _ = formatter.namesigFigs(param.mean, param.err, param.err, wantSign=False)
+                    res, plus_str, _ = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err, wantSign=False)
                     res += '\pm ' + plus_str
                 else:
                     res, plus_str, minus_str = formatter.numberFormatter.namesigFigs(param.mean, lim.upper - param.mean, lim.lower - param.mean)
