@@ -123,12 +123,14 @@ class tableFormatter():
         self.minorDividor = '|'
         self.colDividor = '||'
         self.belowTitles = ''
+        self.headerWrapper = " %s"
+        self.noContraint = '---'
 
     def getLine(self, position=None):
         if position is not None and hasattr(self, position): return getattr(self, position)
         return self.hline
 
-    def belowTitleLine(self, colsPerParam):
+    def belowTitleLine(self, colsPerParam, numParams=None):
         return self.getLine("belowTitles")
 
     def startTable(self, ncol, colsPerResult, numResults):
@@ -143,6 +145,18 @@ class tableFormatter():
 
     def formatTitle(self, title):
         return '\\bf ' + texEscapeText(title)
+
+    def textAsColumn(self, txt, latex=False, separator=False, bold=False):
+        wid = len(txt)
+        if latex:
+            wid += 2
+            if bold: wid += 11
+        res = txt + ' ' * max(0, 28 - wid)
+        if latex:
+            if bold: res = '{\\boldmath$' + res + '$}'
+            else:  res = '$' + res + '$'
+        if separator: res += ' & '
+        return res
 
 class planckTableFormatter(tableFormatter):
 
@@ -192,7 +206,7 @@ class resultTable():
 
         self.results = results
         self.boldBaseParameters = True
-        self.colsPerResult = len(results[0].getColumLabels(limit))
+        self.colsPerResult = len(results[0].getColumnLabels(limit))
         self.colsPerParam = len(results) * self.colsPerResult
         self.limit = limit
 
@@ -225,19 +239,24 @@ class resultTable():
         self.lines.append(txt + self.format.endofrow)
 
     def addLine(self, position):
-        return self.lines.append(self.format.getLine(position))
+        if self.format.getLine(position) is None:  # no line is appended if the attribute is None
+            return self.lines
+        else:
+            return self.lines.append(self.format.getLine(position))
 
     def addTitlesRow(self, titles):
         self.addLine("aboveTitles")
         res = self.format.titleSubColumn(1, '') + ' & ' + " & ".join(self.format.titleSubColumn(self.colsPerResult, title) for title in titles)
         self.lines.append((('& ' + res) * self.ncol)[1:] + self.format.endofrow)
-        self.lines.append(self.format.belowTitleLine(self.colsPerParam))
+        belowTitleLine = self.format.belowTitleLine(self.colsPerResult, self.colsPerParam / self.colsPerResult)
+        if belowTitleLine:
+            self.lines.append(belowTitleLine)
 
     def addHeaderRow(self):
         self.addLine("aboveHeader")
-        res = '& ' + self.format.paramText
+        res = '& ' + self.format.headerWrapper % self.format.paramText
         for result in self.results:
-            res += ' & ' + " & ".join(result.getColumLabels(self.limit))
+            res += ' & ' + " & ".join([self.format.headerWrapper % s for s in result.getColumnLabels(self.limit)])
         self.lines.append((res * self.ncol)[1:] + self.format.endofrow)
         self.addLine("belowHeader")
 
@@ -247,26 +266,14 @@ class resultTable():
     def paramResultTex(self, result, p):
         values = result.texValues(self.numberFormatter, p, self.limit)
         if values is not None:
-            if len(values) > 1: txt = self.textAsColumn(values[1], True, separator=True)
+            if len(values) > 1: txt = self.format.textAsColumn(values[1], True, separator=True)
             else: txt = ''
-            txt += self.textAsColumn(values[0], values[0] != '---')
+            txt += self.format.textAsColumn(values[0], values[0] != self.format.noConstraint)
             return txt
-        else: return self.textAsColumn('') * len(result.getColumLabels(self.limit))
-
-    def textAsColumn(self, txt, latex=False, separator=False, bold=False):
-        wid = len(txt)
-        if latex:
-            wid += 2
-            if bold: wid += 11
-        res = txt + ' ' * max(0, 28 - wid)
-        if latex:
-            if bold: res = '{\\boldmath$' + res + '$}'
-            else:  res = '$' + res + '$'
-        if separator: res += ' & '
-        return res
+        else: return self.format.textAsColumn('') * len(result.getColumnLabels(self.limit))
 
     def paramLabelColumn(self, param):
-        return  self.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
+        return  self.format.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
 
     def endTable(self):
         self.lines.append(self.format.endTable())
@@ -287,7 +294,7 @@ class bestFit(paramResults):
         if fileName is not None: self.loadFromFile(fileName, want_fixed=want_fixed)
         if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
 
-    def getColumLabels(self, limit=None):
+    def getColumnLabels(self, limit=None):
         return ['Best fit']
 
     def loadFromFile(self, filename, want_fixed=False):
@@ -375,11 +382,13 @@ class margeStats(paramResults):
             par.best_fit = param.best_fit
             par.isDerived = param.isDerived
 
-    def getColumLabels(self, limit=2):
+    def getColumnLabels(self, limit=2):
         if self.hasBestFit: res = ['Best fit']
         else: res = []
-        return res + [str(round(float(self.limits[limit - 1]) * 100)) + '\\% limits']
-
+        number_string = str(round(float(self.limits[limit - 1]) * 100))
+        if number_string.endswith(".0"):  # e.g. 95.0 -> 95
+            number_string = number_string.split(".")[0]
+        return res + [number_string + '\\% limits']
 
     def texValues(self, formatter, p, limit=2):
         if not isinstance(p, paramNames.paramInfo): param = self.parWithName(p)
@@ -398,7 +407,7 @@ class margeStats(paramResults):
                 res = '< ' + formatter.formatNumber(lim.upper, sf)
             elif lim.onetail_lower:
                 res = '> ' + formatter.formatNumber(lim.lower, sf)
-            else: res = '---'
+            else: res = formatter.noConstraint
             if self.hasBestFit:  # add best fit too
                 rangew = (lim.upper - lim.lower) / 10
                 bestfit = formatter.namesigFigs(param.best_fit, rangew, -rangew)[0]
