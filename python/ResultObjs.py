@@ -357,7 +357,7 @@ class margeStats(paramResults):
             param.label = items[-1]
             param.limits = []
             for i in range(len(self.limits)):
-                param.limits.append(paramLimit([float(s) for s in items[3 + i * 3:5 + i * 3] ], items[6 + i * 3]))
+                param.limits.append(paramLimit([float(s) for s in items[3 + i * 3:5 + i * 3] ], items[5 + i * 3]))
             self.names.append(param)
 
 
