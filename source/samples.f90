@@ -18,7 +18,10 @@
         real(mcp), dimension(:), allocatable :: P, ddP
     contains
     procedure :: Prob => Density1d_prob
+    procedure :: Init => Density1D_Init
     procedure :: Free => Density1d_Free
+    procedure :: InitSpline => Density1D_initSpline
+    procedure :: Limits => Density1D_Limits
     end Type TDensity1D
 
 
@@ -120,6 +123,20 @@
 
     end function Density1D_prob
 
+    subroutine Density1D_Init(D,n, spacing)
+    Class(TDensity1D) :: D
+    integer, intent(in) :: n
+    real(sample_prec), intent(in) :: spacing
+
+    call D%Free()
+    D%n=n
+    allocate(D%X(n))
+    allocate(D%P(n))
+    allocate(D%ddP(n))
+    D%spacing = spacing
+
+    end subroutine Density1D_Init
+
     subroutine Density1D_Free(D)
     Class(TDensity1D) :: D
 
@@ -128,6 +145,71 @@
     end if
     end subroutine Density1D_Free
 
+    subroutine Density1D_initSpline(D)
+    Class(TDensity1D) :: D
+    
+    call spline_double(D%x,D%P,D%n,D%ddP)
+    
+    end subroutine Density1D_initSpline
 
+    subroutine Density1D_Limits(D, p, mn, mx, lim_bot,lim_top)
+    class(TDensity1D) :: D
+    integer i, bign
+    real(mcp), intent(in) :: p
+    logical,intent(out) :: lim_bot,lim_top
+    real(mcp), intent(out) :: mn,mx
+    integer, parameter :: factor = 100 
+    real(mcp) norm, try, try_sum, try_t,try_b,try_last
+    real(mcp), allocatable :: grid(:)
+
+    bign=(D%n-1)*factor + 1
+    allocate(grid(bign))
+    do i=1, bign
+        grid(i) = D%Prob(D%X(1) + (i-1)*D%spacing/factor)
+    end do
+    norm = sum(grid)
+    norm = norm - 0.5*D%P(D%n) - 0.5*D%P(1)
+
+    try_t = maxval(grid)
+    try_b = 0
+    try_last = -1
+    do
+        try = (try_b + try_t)/2
+        try_sum = sum(grid,mask = grid >=  try)
+        if (try_sum < p*norm) then
+            try_t = (try_b+try_t)/2
+        else
+            try_b = (try_b+try_t)/2
+        end if
+        if (abs(try_sum/try_last - 1) < 0.0001) exit
+        try_last = try_sum
+    end do
+    try = (try_b+try_t)/2
+    lim_bot = grid(1) >= try
+    if (lim_bot) then
+        mn = D%P(1)
+    else
+        do i=1, bign
+            if (grid(i) > try) then
+                mn = D%X(1) + (i-1)*D%spacing/factor
+                exit
+            end if
+        end do
+    end if
+    lim_top=grid(bign) >= try
+    if (lim_top) then
+        mx = D%P(D%n)
+    else
+        do i=bign,1,-1
+            if (grid(i) > try) then
+                mx = D%X(1) + (i-1)*D%spacing/factor
+                exit
+            end if
+        end do
+    end if
+
+    end subroutine Density1D_Limits
+
+    
     end module Samples
 
