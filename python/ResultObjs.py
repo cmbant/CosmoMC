@@ -108,7 +108,7 @@ class numberFormatter():
         if i > 0: return len(s) - i - 1
         return 0
 
-    def plusMinusLimits(self, limit, upper, lower):
+    def plusMinusLimit(self, limit, upper, lower):
         return limit != 1 or abs(abs(upper / lower) - 1) > self.separate_limit_tol
 
 
