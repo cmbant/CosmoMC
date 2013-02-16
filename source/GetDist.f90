@@ -110,7 +110,8 @@
     logical shade_meanlikes, make_single_samples
     integer single_thin,cust2DPlots(max_cols**2)
     integer ix_min(max_cols),ix_max(max_cols)
-    real(mcp) center(max_cols),width(max_cols), range_min(max_cols), range_max(max_cols)
+    real(mcp) limmin(max_cols),limmax(max_cols)
+    real(mcp) center(max_cols), param_min(max_cols), param_max(max_cols), range_min(max_cols), range_max(max_cols)
     real(mcp) meanlike, maxlike, maxmult
     logical BW,do_shading
     character(LEN=Ini_max_string_len), allocatable :: ComparePlots(:)
@@ -1015,15 +1016,35 @@
     real(mcp), allocatable :: finebins(:),finebinlikes(:)
     integer ix
     integer imin, imax, winw, end_edge, fine_edge
-    real(mcp) widthj,edge_fac, maxbin
+    real(mcp) width,fine_width, edge_fac, maxbin
     logical :: has_prior
     character(LEN=Ini_max_string_len) :: fname, filename
     integer, parameter :: fine_fac = 10
 
     ix = colix(j)
 
-    width(j) = (range_max(j)-range_min(j))/(num_bins+1)
-    if (width(j)==0) return
+    width = (range_max(j)-range_min(j))/(num_bins+1)
+    if (width==0) return
+
+    end_edge = nint(smooth_scale_1D*2)
+
+    if (has_limits_bot(ix)) then
+        if ( range_min(j)-limmin(ix) > width*end_edge .and. param_min(j)-limmin(ix)>width) then
+            !long way from limit
+            has_limits_bot(ix) = .false.
+        else
+            range_min(j) = limmin(ix)
+        end if
+    end if
+
+    if (has_limits_top(ix)) then
+        if ( limmax(ix) - range_max(j) > width*end_edge .and. limmax(ix)-param_max(j)>width) then
+            has_limits_top(ix) = .false.
+        else
+            range_max(j) = limmax(ix)
+        end if
+    end if
+    has_limits(ix)= has_limits_top(ix) .or. has_limits_bot(ix)
 
     if (has_limits_top(ix)) then
         center(j) = range_max(j)
@@ -1031,10 +1052,9 @@
         center(j) = range_min(j)
     end if
 
-    ix_min(j) = nint((range_min(j) - center(j))/width(j))
-    ix_max(j) = nint((range_max(j) - center(j))/width(j))
+    ix_min(j) = nint((range_min(j) - center(j))/width)
+    ix_max(j) = nint((range_max(j) - center(j))/width)
 
-    end_edge = nint(smooth_scale_1D*2)
     if (.not. has_limits_bot(ix)) ix_min(j) = ix_min(j)-end_edge
     if (.not. has_limits_top(ix)) ix_max(j) = ix_max(j)+end_edge
 
@@ -1043,19 +1063,19 @@
 
     winw = nint(2.5*fine_fac*smooth_scale_1D)
     fine_edge = winw+fine_fac*end_edge
-    widthj = width(j)/fine_fac
+    fine_width = width/fine_fac
 
-    imin = nint((minval(coldata(ix,0:nrows-1)) - center(j))/widthj)
-    imax = nint((maxval(coldata(ix,0:nrows-1)) - center(j))/widthj)
+    imin = nint((param_min(j) - center(j))/fine_width)
+    imax = nint((param_max(j) - center(j))/fine_width)
     allocate(finebins(imin-fine_edge:imax+fine_edge))
     finebins=0
     if (plot_meanlikes) allocate(finebinlikes(imin-fine_edge:imax+fine_edge))
     if (plot_meanlikes) finebinlikes=0
 
     do i = 0, nrows-1
-        ix2=nint((coldata(ix,i)-center(j))/width(j))
+        ix2=nint((coldata(ix,i)-center(j))/width)
         if (ix2<=ix_max(j) .and. ix2>= ix_min(j)) binsraw(ix2) = binsraw(ix2) + coldata(1,i)
-        ix2=nint((coldata(ix,i)-center(j))/widthj)
+        ix2=nint((coldata(ix,i)-center(j))/fine_width)
         finebins(ix2) = finebins(ix2) + coldata(1,i)
         if (plot_meanlikes) finebinlikes(ix2) = finebinlikes(ix2) + coldata(1,i)*exp(meanlike - coldata(2,i))
     end do
@@ -1095,10 +1115,10 @@
     !High resolution density (sampled many times per smoothing scale)
     if (has_limits_bot(ix)) imin=ix_min(j)*fine_fac
     if (has_limits_top(ix)) imax=ix_max(j)*fine_fac
-    call Density1D%Init(imax-imin+1,widthj)
+    call Density1D%Init(imax-imin+1,fine_width)
     do i = imin,imax
         Density1D%P(i-imin+1) = sum(win* finebins(i-winw:i+winw))
-        Density1D%X(i-imin+1) = center(j) + i*widthj
+        Density1D%X(i-imin+1) = center(j) + i*fine_width
         if (has_prior .and. Density1D%P(i-imin+1)>0) then
             !correct for normalization of window where it is cut by prior boundaries
             edge_fac=1/sum(win*prior_mask(i-winw:i+winw))
@@ -1138,16 +1158,16 @@
         filename = trim(plot_data_dir)//trim(fname)
         open(unit=49,file=trim(filename)//'.dat',form='formatted',status='replace')
         do i = ix_min(j), ix_max(j)
-            write (49,'(2E16.7)') center(j) + i*width(j), bincounts(i)
+            write (49,'(2E16.7)') center(j) + i*width, bincounts(i)
         end do
-        if (ix_min(j) == ix_max(j)) write (49,'(1E16.7,'' 0'')') center(j) + ix_min*width(j)
+        if (ix_min(j) == ix_max(j)) write (49,'(1E16.7,'' 0'')') center(j) + ix_min*width
         close(49)
 
         if (plot_meanlikes) then
             open(unit=49,file=trim(filename)//'.likes',form='formatted',status='replace')
             maxbin = maxval(binlikes(ix_min(j):ix_max(j)))
             do i = ix_min(j), ix_max(j)
-                write (49,'(2E16.7)') center(j) + i*width(j), binlikes(i)/maxbin
+                write (49,'(2E16.7)') center(j) + i*width, binlikes(i)/maxbin
             end do
             close(49)
         end if
@@ -1640,7 +1660,6 @@
     integer num_3D_plots
     character(LEN=80) contours_str, plot_3D(20), bin_limits
     integer thin_factor, outliers
-    real(mcp) limmin(max_cols),limmax(max_cols)
     integer plot_2D_param, j2min
     real(mcp) try_b, try_t
     real(mcp) LowerUpperLimits(max_cols,2,max_contours), limfrac
@@ -2241,28 +2260,10 @@
     !Do 1D bins
     do j = 1,num_vars
         ix = colix(j)
-
+        param_min(j) = minval(coldata(ix,0:nrows-1))
+        param_max(j) = maxval(coldata(ix,0:nrows-1))
         range_min(j) = ConfidVal(ix,0.001_mcp,.false.)
         range_max(j) = ConfidVal(ix,0.001_mcp,.true.)
-        width(j) = (range_max(j)-range_min(j))/(num_bins+1)
-
-        if (has_limits_bot(ix)) then
-            if ( range_min(j)-limmin(ix) > width(j)) then
-                !long way from limit
-                has_limits_bot(ix) = .false.
-            else
-                range_min(j) = limmin(ix)
-            end if
-        end if
-
-        if (has_limits_top(ix)) then
-            if ( limmax(ix) - range_max(j) > width(j)) then
-                has_limits_top(ix) = .false.
-            else
-                range_max(j) = limmax(ix)
-            end if
-        end if
-        has_limits(ix)= has_limits_top(ix) .or. has_limits_bot(ix)
 
         call Get1DDensity(j)
 

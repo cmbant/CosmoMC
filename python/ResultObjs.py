@@ -65,14 +65,15 @@ def numberFigs(number, sigfig):
 class numberFormatter():
     def __init__(self, sig_figs=4):
         self.sig_figs = sig_figs
+        self.separate_limit_tol = 0.1
 
-    def namesigFigs(self, value, limplus, limminus):
+    def namesigFigs(self, value, limplus, limminus, wantSign=True):
         frac = limplus / (abs(value) + limplus)
         err_sf = 2
         if value >= 20 and frac > 0.1 and limplus >= 2: err_sf = 1
 
-        plus_str = self.formatNumber(limplus, err_sf, True)
-        minus_str = self.formatNumber(limminus, err_sf, True)
+        plus_str = self.formatNumber(limplus, err_sf, wantSign)
+        minus_str = self.formatNumber(limminus, err_sf, wantSign)
         sf = self.sig_figs
         if frac > 0.1 and value < 100 and value >= 20: sf = 2
         elif frac > 0.01 and value < 1000: sf = 3
@@ -106,6 +107,9 @@ class numberFormatter():
         i = s.find('.')
         if i > 0: return len(s) - i - 1
         return 0
+
+    def plusMinusLimits(self, limit, upper, lower):
+        return limit != 1 or abs(abs(upper / lower) - 1) > self.separate_limit_tol
 
 
 class tableFormatter():
@@ -384,9 +388,12 @@ class margeStats(paramResults):
             lim = param.limits[limit - 1]
             sf = 3
             if lim.twotail:
-                res, plus_str, minus_str = formatter.namesigFigs(param.mean, lim.upper - param.mean, lim.lower - param.mean)
-                if limit == 1 and plus_str[1:] == minus_str[1:]: res += '\pm ' + plus_str[1:]
-                else: res += '^{' + plus_str + '}_{' + minus_str + '}'
+                if not formatter.plusMinusLimit(limit, lim.upper - param.mean, lim.lower - param.mean):
+                    res, plus_str, _ = formatter.namesigFigs(param.mean, param.err, param.err, wantSign=False)
+                    res += '\pm ' + plus_str
+                else:
+                    res, plus_str, minus_str = formatter.namesigFigs(param.mean, lim.upper - param.mean, lim.lower - param.mean)
+                    res += '^{' + plus_str + '}_{' + minus_str + '}'
             elif lim.onetail_upper:
                 res = '< ' + formatter.formatNumber(lim.upper, sf)
             elif lim.onetail_lower:
