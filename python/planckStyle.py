@@ -82,7 +82,7 @@ class planckStyleTableFormatter(ResultObjs.noLineTableFormatter):
         if colsPerParam > 1:
             out += "\n"
             out += r"\omit"
-            out += (r"&\multispan" + str(colsPerParam) + r"\hrulefill") * len(numResults)
+            out += (r"&\multispan" + str(colsPerParam) + r"\hrulefill") * numResults
             out += r"\cr"
         out += self.getLine("belowTitles")
         return out
@@ -96,7 +96,7 @@ class planckStyleTableFormatter(ResultObjs.noLineTableFormatter):
                 if res < numResults - 1:
                     tableOpen += r"\hfil$#$\hfil\tabskip=1.7em&" + "\n"
         else:
-            tableOpen += r"$#$\hfil&" * len(colsPerResult * numResults - 1)
+            tableOpen += r"$#$\hfil&" * (colsPerResult * numResults - 1)
         tableOpen += r"\hfil$#$\hfil\tabskip=0pt\cr"
         return tableOpen
 
