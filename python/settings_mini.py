@@ -21,7 +21,7 @@ Union = 'Union2'
 datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
 datasets.append([[planck, lowl, lowLike], ['CAMspec_lmax1000_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
-datasets.append([[planck, lowl], ['CAMspec_lmax_10000_defaults.ini', 'lowl49.ini']])
+datasets.append([[planck, lowl], ['CAMspec_lmax_1000_defaults.ini', 'lowl49.ini']])
 datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_lmax1000_ACTSPT_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
 
 class importanceFilterPlanck:
