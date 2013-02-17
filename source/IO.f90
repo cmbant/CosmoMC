@@ -247,7 +247,8 @@
     logical, optional, intent(out) :: ChainOK
     logical, optional, intent(in) :: samples_chains
     logical samples_are_chains
-    character(LEN=10000) InLine  
+    character(LEN=10000) InLine
+    real(mcp) invals(size(params_used))
 
     if (present(samples_chains)) then
         samples_are_chains=samples_chains
@@ -265,12 +266,13 @@
     end if
 
     if (samples_are_chains) then
-        read(InLine, *, end=100,err=110) mult, like, values(params_used)
+        read(InLine, *, end=100,err=110) mult, like, invals
     else
         mult=1
         like=1
-        read(InLine, *, end=100,err=110) values(params_used)
+        read(InLine, *, end=100,err=110) invals
     end if
+    values(params_used) =invals
     OK = .true.
     return   
 100 OK = .false. 
