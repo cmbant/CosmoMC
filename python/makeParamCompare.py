@@ -6,7 +6,7 @@ Opts.parser.add_argument('--params', nargs='+')
 Opts.parser.add_argument('--compare', nargs='+', default=None)
 Opts.parser.add_argument('--nobestfits', action='store_true')
 Opts.parser.add_argument('--single_extparam', action='store_true')
-Opts.parser.add_argument('--sigma', type=int, default=2)
+Opts.parser.add_argument('--limit', type=int, default=2)
 Opts.parser.add_argument('--latex_filename', default=None)
 Opts.parser.add_argument('--mathColumns', action='store_true')
 Opts.parser.add_argument('--endline', default='\\cr')
@@ -30,7 +30,7 @@ for jobItem in Opts.filteredBatchItems():
         if jobItem.result_marge is not None:
             results = []
             for par in args.params:
-                texValues = jobItem.result_marge.texValues(formatter, par, sigma=args.sigma)
+                texValues = jobItem.result_marge.texValues(formatter, par, limit=args.limit)
                 if texValues is not None:
                     if not jobItem.paramtag in table: table[jobItem.paramtag] = dict()
                     dataTable = table[jobItem.paramtag]
