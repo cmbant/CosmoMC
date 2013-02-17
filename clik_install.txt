@@ -1,10 +1,11 @@
 
  ./waf configure --install_all_deps --lapack_mkl=${MKLROOT} --lapack_mkl_version=10.3 --no_bopix
 
-set in ~/.bashrc
+set the following in ~/.bashrc
 
 export PLANCKLIKE=cliklike
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/scratch/aml1005/clik_6.0/clik-6.0b/lib
+export CLIKPATH=/scratch/aml1005/clik_7.0/clik-7.0b
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CLIKPATH/lib
 
-To make local datafiles for commander and lowLike see
+To make local datafiles for commander and lowLike when not using *.cldf.clik. see
 http://hfilfi.planck.fr/index.php/PSAndLikelihood/TopClik#intern
