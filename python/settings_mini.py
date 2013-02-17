@@ -1,11 +1,14 @@
 # sample settings for a particular grid run
 
 # sets of parameters to vary in addition to baseline
-extparams = [[], ['omegak'], ['mnu'], ['nrun', 'r'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['w'], ['yhe'], ['alpha1']]
+extparams = [[], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+
+
+newCovmats = True
 
 # dataset names
-planck = 'planck_CAMspec'
-lowl = 'lowl'
+planck = 'planck_CAMspec_lmax1000'
+lowl = 'lowl49'
 lowLike = 'lowLike'
 lensing = 'lensing'
 highL = 'highL'
@@ -17,10 +20,9 @@ Union = 'Union2'
 
 datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
-datasets.append([[planck, lowl, lowLike], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini']])
-datasets.append([[planck, lowl], ['CAMspec_defaults.ini', 'lowl.ini']])
-datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini']])
-datasets.append([[WMAP], ['WMAP.ini']])
+datasets.append([[planck, lowl, lowLike], ['CAMspec_lmax1000_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
+datasets.append([[planck, lowl], ['CAMspec_lmax_10000_defaults.ini', 'lowl49.ini']])
+datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_lmax1000_ACTSPT_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
 
 class importanceFilterPlanck:
     def wantImportance(self, jobItem):
@@ -34,23 +36,18 @@ class importanceFilterAcc:
 importanceRuns = []
 importanceRuns.append([lensing, ['lensing.ini'], importanceFilterPlanck()])
 importanceRuns.append([BAO, ['BAO.ini']])
-importanceRuns.append([HST, ['HST.ini']])
-importanceRuns.append([SNLS, ['SNLS_marge.ini']])
-importanceRuns.append([Union, ['Union.ini']])
-
-# importanceRuns.append(['acc', ['accuracy.ini'], importanceFilterAcc()])
-# importanceRuns.append(['v61N', ['v61N.ini'], importanceFilterAcc()])
-# importanceRuns.append(['lensing_acc', ['lensing_acc.ini'], importanceFilterAcc()])
-
 
 skip = []
 
 
 start_at_bestfit = False
-newCovmats = False
 
 # try to match run to exisitng covmat
 covrenames = dict()
+covrenames['_lowl49'] = '_lowl'
+covrenames['_lmax1000'] = ''
+covrenames['_lmax1000_lowl49'] = '_lowl'
+
 covrenames['_BAO'] = '_post_BAO'
 covrenames['_HST'] = '_post_HST'
 covrenames['_lowl'] = '_lowl_lowLike'
