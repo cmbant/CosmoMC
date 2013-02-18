@@ -21,15 +21,17 @@ rc('text.latex')
 
 rcParams.update(params)
 
-planck ='Planck TT'
-WP ='Planck+WP'
+planck = 'Planck TT'
+WP = 'Planck+WP'
 WPhighL = 'Planck+WP+highL'
-lensing ='Planck+lensing'
+lensing = 'Planck+lensing'
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
-    pass
+    def export(self, fname):
+        GetDistPlots.GetDistPlotter.export(self, 'outputs/' + fname + '.pdf')
+        GetDistPlots.GetDistPlotter.export(self, 'outputs/' + fname + '.eps')
 
-plotter=planckPlotter('main/plot_data')
+plotter = planckPlotter('main/plot_data')
 
 
 class planckStyleTableFormatter(ResultObjs.noLineTableFormatter):
