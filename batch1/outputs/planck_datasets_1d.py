@@ -8,7 +8,7 @@ g.plots_1d(roots, legend_labels=labels)
 g.export('planck_datasets_1d')
 
 g.newPlot()
-g.plots_1d(roots,['omegabh2','omegach2','tau','A','ns','omegam','H0','sigma8'],nx=2, legend_labels=labels)
+g.plots_1d(roots,['omegabh2','omegach2','thetastar','ns','omegam','H0','tau','zrei','A','sigma8'],nx=2, legend_labels=labels)
 g.export('planck_datasets_1d_params')
 
 
