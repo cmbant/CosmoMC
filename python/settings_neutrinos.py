@@ -26,6 +26,7 @@ importanceRuns.append([HST, ['HST.ini']])
 skip = []
 
 start_at_bestfit = False
+newCovmats = True
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']

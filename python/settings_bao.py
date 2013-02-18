@@ -31,6 +31,7 @@ start_at_bestfit = False
 
 skip = []
 
+newCovmats = False
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
 
