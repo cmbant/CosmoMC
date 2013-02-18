@@ -93,20 +93,22 @@ for jobItem in Opts.filteredBatchItems():
 items = sorted(items.iteritems())
 
 for paramtag, parambatch in items:
-    if not args.forpaper: lines.append('\\section{ ' + texEscapeText("+".join(parambatch[0].param_set)) + '}')
+    if not args.forpaper: section = '\\newpage\\section{ ' + texEscapeText("+".join(parambatch[0].param_set)) + '}'
+    else: section = ''
     if not args.compare is None:
         compares = filterBatchData(parambatch, args.compare)
         if len(compares) == len(args.compare):
+            lines.append(section)
             lines += compareTable(compares, args.titles)
-        else: print 'no matches for compare'
+        else: print 'no matches for compare: ' + paramtag
     else:
+        lines.append(section)
         for jobItem in parambatch:
             if os.path.exists(jobItem.distPath) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
                 if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
                 tableLines = paramResultTable(jobItem)
                 ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
                 lines += tableLines
-    if not args.forpaper: lines.append('\\newpage')
 
 if not args.forpaper: lines.append('\\end{document}')
 
