@@ -31,7 +31,11 @@ WPhighLlensing = r'\textit{Planck}+WP+highL+lensing'
 class planckPlotter(GetDistPlots.GetDistPlotter):
     def export(self, fname):
         GetDistPlots.GetDistPlotter.export(self, 'outputs/' + fname + '.pdf')
-        GetDistPlots.GetDistPlotter.export(self, 'outputs/' + fname + '.eps')
+#        GetDistPlots.GetDistPlotter.export(self, 'outputs/' + fname + '.eps')
+
+    def exportExtra(self, fname):
+        GetDistPlots.GetDistPlotter.export(self, 'plots/' + fname + '.pdf')
+
 
 plotter = planckPlotter('main/plot_data')
 
