@@ -25,6 +25,8 @@ planck = r'\textit{Planck} TT'
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
 lensing = r'\textit{Planck}+lensing'
+WPhighLlensing = r'\textit{Planck}+WP+highL+lensing'
+
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
     def export(self, fname):
