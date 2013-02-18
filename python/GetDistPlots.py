@@ -34,6 +34,7 @@ class GetDistPlotSettings:
         self.num_contours = 2
         self.legend_frac_subplot_margin = 0.2
         self.legend_frac_subplot_line = 0.1
+        self.alpha_filled_add = 0.5
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
@@ -153,6 +154,11 @@ class GetDistPlotter():
         args = self.get_plot_args(plotno, **kwargs)
         return args.get('ls', self.settings.lineM[plotno][:-1])
 
+    def get_alpha2D(self, plotno, filled, **kwargs):
+        args = self.get_plot_args(plotno, **kwargs)
+        if filled: default = self.settings.alpha_filled_add
+        else: default = 1
+        return args.get('alpha', [1, default](plotno))
 
     def paramNamesForRoot(self, root):
         if not root in self.param_name_sets: self.param_name_sets[root] = self.sampleAnalyser.paramsForRoot(root, labelParams=self.settings.param_names_for_labels)
@@ -170,11 +176,12 @@ class GetDistPlotter():
 
         return density.bounds()
 
-    def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, ls=None, cols=None, alpha=0.5, **kwargs):
+    def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, ls=None, cols=None, alpha=None, **kwargs):
         param1, param2 = self.get_param_array(root, [param1, param2])
 
         density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
         if density is None: return None
+        if alpha is None: alpha = self.get_alpha2D(plotno, filled, **kwargs)
 
         if filled:
             linestyles = ['-']
@@ -189,7 +196,6 @@ class GetDistPlotter():
             cols = [color]
             if ls is None: ls = self.get_linestyle(plotno, **kwargs)
             linestyles = [ls]
-
         kwargs = self.get_plot_args(plotno, **kwargs)
         contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidth=self.settings.lw_contour, alpha=alpha, **kwargs)
 
