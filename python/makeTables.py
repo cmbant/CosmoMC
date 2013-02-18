@@ -96,7 +96,7 @@ for paramtag, parambatch in items:
     if not args.forpaper: lines.append('\\section{ ' + texEscapeText("+".join(parambatch[0].param_set)) + '}')
     if not args.compare is None:
         compares = filterBatchData(parambatch, args.compare)
-        if len(compares) > 0:
+        if len(compares) == len(args.compare):
             lines += compareTable(compares, args.titles)
         else: print 'no matches for compare'
     else:
