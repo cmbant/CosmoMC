@@ -158,7 +158,7 @@ class GetDistPlotter():
         args = self.get_plot_args(plotno, **kwargs)
         if filled: default = self.settings.alpha_filled_add
         else: default = 1
-        return args.get('alpha', [1, default](plotno))
+        return args.get('alpha', (1, default)[plotno])
 
     def paramNamesForRoot(self, root):
         if not root in self.param_name_sets: self.param_name_sets[root] = self.sampleAnalyser.paramsForRoot(root, labelParams=self.settings.param_names_for_labels)
