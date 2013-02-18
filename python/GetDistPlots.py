@@ -32,6 +32,8 @@ class GetDistPlotSettings:
         self.xtick_prune = None  # 'lower' or 'upper'
         self.tight_gap_fraction = 0.13  # space between ticks and the edge
         self.num_contours = 2
+        self.legend_frac_subplot_margin = 0.2
+        self.legend_frac_subplot_line = 0.1
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
@@ -303,7 +305,7 @@ class GetDistPlotter():
             self.legend = self.fig.legend(lines, legend_labels, legend_loc, prop={'size':self.settings.lab_fontsize})
             self.extra_artists = [self.legend]
             if self.settings.tight_layout and not no_extra_legend_space:
-                frac = 0.2 + len(legend_labels) * 0.1
+                frac = self.settings.legend_frac_subplot_margin + len(legend_labels) * self.settings.legend_frac_subplot_line
                 if 'upper' in legend_loc: subplots_adjust(top=1 - frac / self.plot_row)
                 elif 'lower' in legend_loc: subplots_adjust(bottom=frac / self.plot_row)
 
