@@ -21,8 +21,16 @@ rc('text.latex')
 
 rcParams.update(params)
 
+planck ='Planck TT'
+WP ='Planck+WP'
+WPhighL = 'Planck+WP+highL'
+lensing ='Planck+lensing'
+
 class planckPlotter(GetDistPlots.GetDistPlotter):
     pass
+
+plotter=planckPlotter('main/plot_data')
+
 
 class planckStyleTableFormatter(ResultObjs.noLineTableFormatter):
     """Planck style guide compliant formatter
