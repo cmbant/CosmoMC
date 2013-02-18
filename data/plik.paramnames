@@ -1,13 +1,15 @@
-A_cib_143          A^{CIB}_{143}
-A_cib_217          A^{CIB}_{217}
-r_cib              r_{CIB}
+A_cib_143      CIB_{143}
+A_cib_217      CIB_{217}
+r_cib  r_{cib}
+A_sz   A_{sz}
+xi_sz_cib      xi_{szcib}
+cib_index      cib index
 ps_pwfe_A_100_100      ps_{100}
 ps_pwfe_A_100_143      ps_{100x143}
 ps_pwfe_A_100_217      ps_{100x217}
 ps_pwfe_A_143_143      ps_{143}
 ps_pwfe_A_143_217      ps_{143x217}
 ps_pwfe_A_217_217      ps_{217}
-gal_norm           gal_{norm} 
-A_sz               A_{SZ}
-xi_sz_cib           \xi^{tSZ-CIB}
+gal_norm       gal_{norm}
+ksz_norm       A_{ksz}
 
