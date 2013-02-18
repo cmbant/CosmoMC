@@ -21,10 +21,10 @@ rc('text.latex')
 
 rcParams.update(params)
 
-planck = '\textit{Planck} TT'
-WP = '\textit{Planck}+WP'
-WPhighL = '\textit{Planck}+WP+highL'
-lensing = '\textit{Planck}+lensing'
+planck = r'\textit{Planck} TT'
+WP = r'\textit{Planck}+WP'
+WPhighL = r'\textit{Planck}+WP+highL'
+lensing = r'\textit{Planck}+lensing'
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
     def export(self, fname):
