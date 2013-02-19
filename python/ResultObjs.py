@@ -196,7 +196,7 @@ class resultTable():
     def __init__(self, ncol, results, limit=2, tableParamNames=None, titles=None, formatter=None, numFormatter=None, blockEndParams=None, paramList=None):
 # results is a margeStats or bestFit table
         self.lines = []
-        if formatter is None: self.format = openTableFormatter()
+        if formatter is None: self.format = noLineTableFormatter()
         else: self.format = formatter
         self.ncol = ncol
         if tableParamNames is None:

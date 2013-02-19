@@ -38,8 +38,8 @@ class GetDistPlotSettings:
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
-        self.lab_fontsize = 5 + 3 * self.subplot_size_inch
-        self.axes_fontsize = 3 + 2 * self.subplot_size_inch
+        self.lab_fontsize = 3 + 5 * self.subplot_size_inch
+        self.axes_fontsize = 4 + 2 * self.subplot_size_inch
         self.lw1 = self.subplot_size_inch / 3.0
         self.lw_contour = self.lw1 * 0.4
         self.lw_likes = self.subplot_size_inch / 6.0
@@ -197,7 +197,8 @@ class GetDistPlotter():
             if ls is None: ls = self.get_linestyle(plotno, **kwargs)
             linestyles = [ls]
         kwargs = self.get_plot_args(plotno, **kwargs)
-        contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidth=self.settings.lw_contour, alpha=alpha, **kwargs)
+        kwargs['alpha'] = alpha
+        contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidth=self.settings.lw_contour, **kwargs)
 
         return density.bounds()
 
