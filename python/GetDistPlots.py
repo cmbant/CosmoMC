@@ -38,7 +38,7 @@ class GetDistPlotSettings:
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
-        self.lab_fontsize = 3 + 5 * self.subplot_size_inch
+        self.lab_fontsize = 1 + 5 * self.subplot_size_inch
         self.axes_fontsize = 4 + 2 * self.subplot_size_inch
         self.lw1 = self.subplot_size_inch / 3.0
         self.lw_contour = self.lw1 * 0.4

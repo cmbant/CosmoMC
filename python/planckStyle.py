@@ -24,7 +24,7 @@ rcParams.update(params)
 planck = r'\textit{Planck} TT'
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
-lensing = r'\textit{Planck}+lensing'
+lensing = r'\textit{Planck} TT+lensing'
 WPhighLlensing = r'\textit{Planck}+WP+highL+lensing'
 
 
