@@ -74,23 +74,26 @@
     XU = (Scales%PMax(params_used)-Scales%center(params_used)) / Scales%PWidth(params_used)  
 
     !Initial and final radius of region required (in normalized units)
-    rhobeg = 0.1*sqrt(real(num_params_used))
+    rhobeg = min(nint(minval(XU-XL)/3),1)
     rhoend = sigma_frac_err
     if (minimization_points_factor>2) then
-     npt = min(minimization_points_factor*num_params_used,((num_params_used +1)*(num_params_used +2))/2)
+        npt = min(minimization_points_factor*num_params_used,((num_params_used +1)*(num_params_used +2))/2)
     else
-     npt = 2*num_params_used +1 !have had some problems using just this
+        npt = 2*num_params_used +1 !have had some problems using just this
     end if
     FVAL_Converge_difference = minimize_loglike_tolerance
-
+    if (Feedback>0) then
+        print*,'minimizing with rhobeg, rhoend = ',rhobeg, rhoend
+        print*,'minimization points: ',npt, 'chi2 converge tol:',FVAL_Converge_difference
+    end if
     if (.not. BOBYQA (ffn, num_params_used ,npt, vect,XL,XU,rhobeg,rhoend,FeedBack+1, max_iterations)) then
-       !BOBYQA generally uses too few operations to get a Hessian estimate
-       !I have asked M Powell, and he indeed recommended calculating the Hessian sepratately afterwards
+        !BOBYQA generally uses too few operations to get a Hessian estimate
+        !I have asked M Powell, and he indeed recommended calculating the Hessian sepratately afterwards
         best_like = logZero
     else
         best_like = ffn(num_params_used,vect)
     end if
-    
+
     !back to real(mcp) units
     call AcceptReject(.true.,Params%Info, MinParams%Info)
     Params = MinParams
@@ -120,7 +123,7 @@
         do i=1, num_params
             if (isused==0 .and. Scales%PWidth(i)/=0 .or. isused==1 .and. Scales%PWidth(i)==0) then
                 write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-                              i, P%P(i), ParamNames_name(NameMapping,i)
+                i, P%P(i), ParamNames_name(NameMapping,i)
                 write (aunit,'(a)') trim(NameMapping%label(i))
             end if 
         end do
@@ -131,16 +134,16 @@
 
     numderived = Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
     do i=1, numderived
-         write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-             num_params+i, derived%P(i), ParamNames_name(NameMapping,num_params + i )
-         write (aunit,'(a)') trim(NameMapping%label(num_params+i))
+        write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
+        num_params+i, derived%P(i), ParamNames_name(NameMapping,num_params + i )
+        write (aunit,'(a)') trim(NameMapping%label(num_params+i))
     end do
     deallocate(derived%P)
 
     if (present(like)) then
-      write(aunit,*) ''
-      write(aunit,*) '-log(Like)     chi-sq   data'
-      call DataLikelihoods%WriteLikelihoodContribs(aunit, P%likelihoods)
+        write(aunit,*) ''
+        write(aunit,*) '-log(Like)     chi-sq   data'
+        call DataLikelihoods%WriteLikelihoodContribs(aunit, P%likelihoods)
     end if
 
     end  subroutine WriteParamsHumanText
@@ -154,7 +157,7 @@
     call WriteParamsHumanText(tmp_file_unit,Params, like)
     close(tmp_file_unit)
     if (Feedback>0) call WriteParamsHumanText(stdout,Params, like)
-   
+
     end subroutine WriteBestFitParams
 
 
