@@ -7,9 +7,9 @@
     private 
 
     Type(ParamSet), save :: MinParams
-    logical :: dense_minimization_points = .true.
-
-    public FindBestFit, WriteBestFitParams,dense_minimization_points
+    integer :: minimization_points_factor = 2
+    real(mcp) :: minimize_loglike_tolerance = 0.1
+    public FindBestFit, WriteBestFitParams,minimization_points_factor,minimize_loglike_tolerance
 
     contains
 
@@ -76,11 +76,13 @@
     !Initial and final radius of region required (in normalized units)
     rhobeg = 0.1*sqrt(real(num_params_used))
     rhoend = sigma_frac_err
-    if (dense_minimization_points) then
-     npt = min(6*num_params_used,((num_params_used +1)*(num_params_used +2))/2)
+    if (minimization_points_factor>2) then
+     npt = min(minimization_points_factor*num_params_used,((num_params_used +1)*(num_params_used +2))/2)
     else
      npt = 2*num_params_used +1 !have had some problems using just this
     end if
+    FVAL_Converge_difference = minimize_loglike_tolerance
+
     if (.not. BOBYQA (ffn, num_params_used ,npt, vect,XL,XU,rhobeg,rhoend,FeedBack+1, max_iterations)) then
        !BOBYQA generally uses too few operations to get a Hessian estimate
        !I have asked M Powell, and he indeed recommended calculating the Hessian sepratately afterwards
