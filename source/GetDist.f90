@@ -107,6 +107,7 @@
     logical isused(max_cols)
     logical force_twotail
     logical  plot_meanlikes
+    logical :: mean_loglikes = .false.
     logical shade_meanlikes, make_single_samples
     integer single_thin,cust2DPlots(max_cols**2)
     integer ix_min(max_cols),ix_max(max_cols)
@@ -1077,7 +1078,13 @@
         if (ix2<=ix_max(j) .and. ix2>= ix_min(j)) binsraw(ix2) = binsraw(ix2) + coldata(1,i)
         ix2=nint((coldata(ix,i)-center(j))/fine_width)
         finebins(ix2) = finebins(ix2) + coldata(1,i)
-        if (plot_meanlikes) finebinlikes(ix2) = finebinlikes(ix2) + coldata(1,i)*exp(meanlike - coldata(2,i))
+        if (plot_meanlikes) then
+            if (mean_loglikes) then
+                finebinlikes(ix2) = finebinlikes(ix2) + coldata(1,i)*coldata(2,i)
+            else
+                finebinlikes(ix2) = finebinlikes(ix2) + coldata(1,i)*exp(meanlike - coldata(2,i))
+            end if
+        end if
     end do
 
     if (ix_min(j) /= ix_max(j)) then
@@ -1139,6 +1146,7 @@
         if (plot_meanlikes ) then
             allocate(binLikes(ix_min(j):ix_max(j)))
             binlikes = 0
+            if (mean_loglikes) binlikes=logZero
         end if
         !Output values for plots
         do ix2=ix_min(j), ix_max(j)
@@ -1149,10 +1157,17 @@
                 !correct for normalization of window where it is cut by prior boundaries
                 edge_fac=1/sum(win*prior_mask(ix2*fine_fac-winw:ix2*fine_fac+winw))
                 bincounts(ix2) = bincounts(ix2)*edge_fac
-                if (plot_meanlikes) binlikes(ix2)=binlikes(ix2)*edge_fac
             end if
         end do
         bincounts=bincounts/maxbin
+        if (plot_meanlikes .and. mean_loglikes) then
+            maxbin = minval(binlikes)
+            where (binlikes - maxbin < 30)
+                binlikes = exp(-(binlikes- maxbin)) 
+            elsewhere
+                binlikes = 0
+            end where
+        endif
 
         fname = trim(dat_file_name(rootname,j))
         filename = trim(plot_data_dir)//trim(fname)
