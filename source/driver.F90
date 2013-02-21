@@ -198,6 +198,7 @@
             use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
         end if
     else
+        if (action == action_maxlike) use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
         Ini_fail_on_not_found = .false.
     end if
 
