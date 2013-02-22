@@ -27,6 +27,7 @@ planck_lowl_lowLike_BAO = [[planck, lowl, lowLike, BAO], ['CAMspec_defaults.ini'
 planck_lowl_lowLike_highL_BAO = [[planck, lowl, lowLike, highL, BAO], ['CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini', 'BAO.ini']]
 planck_lowl_lowLike_SNLS = [[planck, lowl, lowLike, SNLS], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'SNLS.ini']]
 planck_lowl_lowLike_Union = [[planck, lowl, lowLike, Union], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'Union.ini']]
+planck_lowl_lowLike_HST = [[planck, lowl, lowLike, HST], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'HST.ini']]
 
 
 skip = []
@@ -77,7 +78,7 @@ g2.groupName = 'ext'
 
 g3 = group()
 g3.params = [['omegak'], ['nnu'], ['mnu', 'omegak'], ['w'], ['w', 'wa'], ['nrun', 'r', 'omegak']]
-g3.datasets = [planck_lowl_lowLike_BAO, planck_lowl_lowLike_highL_BAO, planck_lowl_lowLike_SNLS, planck_lowl_lowLike_Union]
+g3.datasets = [planck_lowl_lowLike_BAO, planck_lowl_lowLike_highL_BAO, planck_lowl_lowLike_SNLS, planck_lowl_lowLike_Union, planck_lowl_lowLike_HST]
 g3.importanceRuns = [post_lensing , post_BAO, post_HST]
 g3.groupName = 'geom'
 
