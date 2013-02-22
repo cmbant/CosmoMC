@@ -33,10 +33,9 @@ if not hasattr(settings, 'params'):
     params['meffsterile'] = '0 0 5 0.1 0.03'
     settings.params = params
 
-batch.datasets = settings.datasets
-batch.extparams = settings.extparams
+
 batch.skip = settings.skip
-batch.makeItems(settings.importanceRuns)
+batch.makeItems(settings.groups)
 batch.makeDirectories()
 batch.save()
 
@@ -77,12 +76,14 @@ for jobItem in batch.items(wantSubItems=False):
         else:
             hasCov = False
             ini.params['MPI_Max_R_ProposeUpdate'] = 20
-            for new, old in settings.covrenames.items():
-                covmat = batch.basePath + 'planck_covmats/' + jobItem.name.replace(new, old) + '.covmat'
-                if os.path.exists(covmat):
-                    ini.params['propose_matrix'] = covmat
-                    hasCov = True
-                    break
+            for new1, old1 in settings.covrenames.items():
+                name = jobItem.name.replace(new1, old1)
+                for new, old in settings.covrenames.items():
+                    covmat = batch.basePath + 'planck_covmats/' + name.replace(new, old) + '.covmat'
+                    if os.path.exists(covmat):
+                        ini.params['propose_matrix'] = covmat
+                        hasCov = True
+                        break
 
         ini.params['start_at_bestfit'] = settings.start_at_bestfit
         ini.params['action'] = cosmomcAction
