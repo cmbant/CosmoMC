@@ -11,8 +11,8 @@ g.settings.legend_frac_subplot_margin=-0.1
 #g.settings.line_labels=False
 
 labels=[s.WP,s.WP+'+BAO',s.WP+'+SNLS',s.WP+'+Union2.1']
-roots=['base_w_planck_CAMspec_lowl_lowLike','base_w_planck_CAMspec_lowl_lowLike_BAO', 'base_w_planck_CAMspec_lowl_lowLike_SNLS','base_w_planck_CAMspec_lowl_lowLike_Union2']
-#roots=['base_w_planck_CAMspec_lowl_lowLike','base_w_planck_CAMspec_lowl_lowLike_BAO' ]
+roots=['base_w_planck_lowl_lowLike','base_w_planck_lowl_lowLike_BAO', 'base_w_planck_lowl_lowLike_SNLS','base_w_planck_lowl_lowLike_Union2']
+#roots=['base_w_planck_lowl_lowLike','base_w_planck_lowl_lowLike_BAO' ]
 #g.plots_1d(roots, legend_labels=labels)
 #g.export('planck_datasets_1d.pdf')
 #g.newPlot()

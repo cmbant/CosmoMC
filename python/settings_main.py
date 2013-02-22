@@ -77,7 +77,7 @@ g2.groupName = 'ext'
 
 
 g3 = group()
-g3.params = [['omegak'], ['nnu'], ['mnu', 'omegak'], ['w'], ['w', 'wa'], ['nrun', 'r', 'omegak']]
+g3.params = [['omegak'], ['nnu'], ['w'], ['w', 'wa'], ['nrun', 'r', 'omegak'], ['mnu', 'omegak']]
 g3.datasets = [planck_lowl_lowLike_BAO, planck_lowl_lowLike_highL_BAO, planck_lowl_lowLike_SNLS, planck_lowl_lowLike_Union, planck_lowl_lowLike_HST]
 g3.importanceRuns = [post_lensing , post_BAO, post_HST]
 g3.groupName = 'geom'

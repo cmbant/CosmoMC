@@ -2,7 +2,7 @@ import planckStyle as s
 
 g=s.plotter
 
-roots = ['base_w_wa_planck_CAMspec_lowl_lowLike_BAO','base_w_wa_planck_CAMspec_lowl_lowLike_SNLS','base_w_wa_planck_CAMspec_lowl_lowLike_Union2']
+roots = ['base_w_wa_planck_lowl_lowLike_BAO','base_w_wa_planck_lowl_lowLike_SNLS','base_w_wa_planck_lowl_lowLike_Union2']
 params = g.get_param_array(roots[0], ['w','wa'])
 g.settings.setWithSubplotSize(4)
 g.settings.lw_contour = 0.2
