@@ -33,6 +33,7 @@ class jobItem:
         self.isImportanceJob = False
         self.importanceItems = []
         self.result_converge = None
+        self.group = None
         self.makeIDs()
 
     def iniFile(self, variant=''):
@@ -43,7 +44,10 @@ class jobItem:
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
         for (imp, ini, arr) in [(x[0], x[1], x) for x in importanceRuns]:
-            if len(arr) > 2 and not arr[2].wantImportance(self) or len(set(imp).insertsection(self.dataname_set)) > 0: continue
+            if len(arr) > 2 and not arr[2].wantImportance(self): continue
+            if len(set(imp).intersection(self.dataname_set)) > 0:
+                print 'importance job duplicating parent data set:' + self.name
+                continue
             job = jobItem(self.batchPath, self.param_set, self.data_set)
             job.importanceTag = "_".join(imp)
             job.importanceSettings = ini
@@ -54,7 +58,8 @@ class jobItem:
             job.datatag = self.datatag + tag
             job.isImportanceJob = True
             job.parent = self
-            job.dataname_set += imp
+            job.dataname_set = imp + job.dataname_set
+            job.group = self.group
             job.makeIDs()
             self.importanceItems.append(job)
 
@@ -141,19 +146,20 @@ class batchJob:
                 for data_set in group.datasets:
                     for param_set in group.params:
                         item = jobItem(self.batchPath, param_set, data_set)
+                        if hasattr(group, 'groupName'): item.group = group.tag
                         if not item.name in self.skip:
                             item.makeImportance(group.importanceRuns)
                             self.jobItems.append(item)
-            for jobItem in self.items():
-                for x in [imp for imp in jobItem.importanceJobs()]:
+            for item in self.items():
+                for x in [imp for imp in item.importanceJobs()]:
                     if self.has_normed_name(x.normed_name):
-                        print 'replacing importance sampling run (not deleting files): ' + x.name
-                        jobItem.importanceItems.remove(x)
-            for jobItem in self.items():
-                for x in [imp for imp in jobItem.importanceJobs()]:
+                        print 'replacing importance sampling run with full run: ' + x.name
+                        item.importanceItems.remove(x)
+            for item in self.items():
+                for x in [imp for imp in item.importanceJobs()]:
                     if self.has_normed_name(x.normed_name, wantImportance=True, exclude=x):
                         print 'removing duplicate importance sampling run: ' + x.name
-                        jobItem.importanceItems.remove(x)
+                        item.importanceItems.remove(x)
 
 
     def items(self, wantSubItems=True, wantImportance=False):

@@ -54,33 +54,34 @@ post_Union = [[Union], ['Union.ini'], importanceFilterNotOmegakLowl()]
 # set up groups of parameters and data sets
 class group:pass
 
-groups = []
 
-g = groups.append(group())
-
+g1 = group()
 # sets of parameters to vary in addition to baseline
-g.params = [[], ['omegak'], ['mnu'], ['nrun', 'r'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['w'], ['yhe'], ['alpha1']]
+g1.params = [[], ['omegak'], ['mnu'], ['nrun', 'r'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['w'], ['yhe'], ['alpha1']]
 
 # lists of dataset names to combine, with corresponding sets of inis to include
-g.datasets = [planck_lowl_lowLike, planck_lowl_lowLike_highL, planck_lowl, WMAP9]
+g1.datasets = [planck_lowl_lowLike, planck_lowl_lowLike_highL, planck_lowl, WMAP9]
 
 # add importance name tags, and list of specific .ini files to include (in batch1/)
-g.importanceRuns = [post_lensing , post_BAO, post_HST, post_SNLS, post_Union]
+g1.importanceRuns = [post_lensing , post_BAO, post_HST, post_SNLS, post_Union]
+g1.groupName = 'main'
 
 
-g = groups.append(group())
+g2 = group()
 # lists of dataset names to combine, with corresponding sets of inis to include
-g.params = [['nnu', 'yhe'], ['nnu', 'mnu'], ['nnu', 'meffsterile'], ['mnu', 'omegak'], ['mnu', 'Alens'], ['nrun', 'r', 'omegak']]
-g.datasets = [planck_lowl_lowLike, planck_lowl_lowLike_highL]
-g.importanceRuns = [post_lensing , post_BAO, post_HST]
+g2.params = [['nnu', 'yhe'], ['nnu', 'mnu'], ['nnu', 'meffsterile'], ['mnu', 'omegak'], ['mnu', 'Alens'], ['nrun', 'r', 'omegak']]
+g2.datasets = [planck_lowl_lowLike, planck_lowl_lowLike_highL]
+g2.importanceRuns = [post_lensing , post_BAO, post_HST]
+g2.groupName = 'ext'
 
 
-g = groups.append(group())
-g.params = [['omegak'], ['nnu'], ['mnu', 'omegak'], ['w'], ['w', 'wa'], ['nrun', 'r', 'omegak']]
-g.datasets = [planck_lowl_lowLike_BAO, planck_lowl_lowLike_highL_BAO, planck_lowl_lowLike_SNLS, planck_lowl_lowLike_Union]
-g.importanceRuns = [post_lensing , post_BAO, post_HST]
+g3 = group()
+g3.params = [['omegak'], ['nnu'], ['mnu', 'omegak'], ['w'], ['w', 'wa'], ['nrun', 'r', 'omegak']]
+g3.datasets = [planck_lowl_lowLike_BAO, planck_lowl_lowLike_highL_BAO, planck_lowl_lowLike_SNLS, planck_lowl_lowLike_Union]
+g3.importanceRuns = [post_lensing , post_BAO, post_HST]
+g3.groupName = 'geom'
 
-
+groups = [g1, g2, g3]
 
 # try to match run to exisitng covmat
 covrenames = dict()
@@ -97,6 +98,7 @@ covrenames['lowl_BAO'] = 'lowl_lowLike_BAO'
 covrenames['SNLS'] = 'BAO'
 covrenames['Union2'] = 'SNLS'
 covrenames['Union2'] = 'BAO'
+covrenames['HST'] = 'BAO'
 covrenames['w_wa_'] = 'w_'
 covrenames['lowl_lowLike_highL_BAO'] = 'lowl_lowLike'
 covrenames['mnu_Alens'] = 'mnu'
