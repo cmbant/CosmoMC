@@ -146,7 +146,7 @@ class batchJob:
                 for data_set in group.datasets:
                     for param_set in group.params:
                         item = jobItem(self.batchPath, param_set, data_set)
-                        if hasattr(group, 'groupName'): item.group = group.tag
+                        if hasattr(group, 'groupName'): item.group = group.groupName
                         if not item.name in self.skip:
                             item.makeImportance(group.importanceRuns)
                             self.jobItems.append(item)
