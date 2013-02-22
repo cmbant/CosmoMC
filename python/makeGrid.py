@@ -19,9 +19,9 @@ settings = __import__(sys.argv[2])
 # priors and widths for parameters which are varied
 if not hasattr(settings, 'params'):
     params = dict()
-    params['mnu'] = '0 0 5 0.1 0.03'
+    params['mnu'] = '0.02 0 5 0.1 0.03'
     params['omegak'] = '-0.0008 -0.3 0.3 0.001 0.001'  # starting exactly on flat seems to confuse minimizer
-    params['w'] = '-1 -3 -0.3 0.02 0.02'
+    params['w'] = '-0.995 -3 -0.3 0.02 0.02'
     params['nnu'] = '3.046 0.05 10 0.05 0.05'
     params['nrun'] = '0 -1 1 0.001 0.001'
     params['r'] = '0 0 2 0.03 0.03'
@@ -30,7 +30,7 @@ if not hasattr(settings, 'params'):
     params['alpha1'] = '0 -1 1 0.0003 0.0003'
     params['deltazrei'] = '0.5 0.1 3 0.3 0.3'
     params['wa'] = '0 -2 2 0.3 0.3'
-    params['meffsterile'] = '0 0 5 0.1 0.03'
+    params['meffsterile'] = '0.1 0 5 0.1 0.03'
     settings.params = params
 
 
