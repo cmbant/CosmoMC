@@ -180,7 +180,6 @@
 
     allocate(beam_conditional_mean(marge_num, keep_num))
     beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(indices,keep_indices))
-    print *,'conditional mean vector', beam_conditional_mean(:,1)
     deallocate(beam_cov_inv)
     allocate(beam_cov_inv(keep_num,keep_num))
     beam_cov_inv = beam_cov_full(keep_indices,keep_indices)
