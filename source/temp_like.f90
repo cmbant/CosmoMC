@@ -32,7 +32,7 @@
     !   character*100 :: bestroot,bestnum,bestname
     character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.2-beammarge1'
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num
-    
+
     contains
 
     !!Does not seem to be actually faster
@@ -159,38 +159,39 @@
         marge_indices_reverse(i)=j
         keep_indices_reverse(i)=k
     end do
-    allocate(beam_cov(marge_num, marge_num))
-    beam_cov = beam_cov_inv(marge_indices,marge_indices)
-    call Matrix_Inverse(beam_cov)
+    if (marge_num>0) then
+        allocate(beam_cov(marge_num, marge_num))
+        beam_cov = beam_cov_inv(marge_indices,marge_indices)
+        call Matrix_Inverse(beam_cov)
 
-    do if2=1,beam_Nspec
-        do if1=1,beam_Nspec
-            do ie2=1,num_modes_per_beam
-                do ie1=1,num_modes_per_beam
-                    ii=ie1+num_modes_per_beam*(if1-1)
-                    jj=ie2+num_modes_per_beam*(if2-1)
-                    if (want_marge(ii) .and. want_marge(jj)) then
-                        do L2 = lminX(if2),lmaxX(if2)
-                            c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
-                            c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
-                            beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
-                            beam_cov(marge_indices_reverse(ii),marge_indices_reverse(jj)) * beam_modes(ie2,L2,if2) &
-                            *fid_cl(L2,if2)*fid_cl(lminX(if1):lmaxX(if1),if1)
-                        end do
-                    end if
+        do if2=1,beam_Nspec
+            do if1=1,beam_Nspec
+                do ie2=1,num_modes_per_beam
+                    do ie1=1,num_modes_per_beam
+                        ii=ie1+num_modes_per_beam*(if1-1)
+                        jj=ie2+num_modes_per_beam*(if2-1)
+                        if (want_marge(ii) .and. want_marge(jj)) then
+                            do L2 = lminX(if2),lmaxX(if2)
+                                c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
+                                c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
+                                beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
+                                beam_cov(marge_indices_reverse(ii),marge_indices_reverse(jj)) * beam_modes(ie2,L2,if2) &
+                                *fid_cl(L2,if2)*fid_cl(lminX(if1):lmaxX(if1),if1)
+                            end do
+                        end if
+                    enddo
                 enddo
             enddo
         enddo
-    enddo
-    ! print *,'after', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502),  c_inv(npt(4)-1002,npt(4)-1000)
+        ! print *,'after', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502),  c_inv(npt(4)-1002,npt(4)-1000)
 
-    allocate(beam_conditional_mean(marge_num, keep_num))
-    beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(marge_indices,keep_indices))
-    deallocate(beam_cov_inv)
-    allocate(beam_cov_inv(keep_num,keep_num))
-    beam_cov_inv = beam_cov_full(keep_indices,keep_indices)
-    call Matrix_inverse(beam_cov_inv)
-
+        allocate(beam_conditional_mean(marge_num, keep_num))
+        beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(marge_indices,keep_indices))
+        deallocate(beam_cov_inv)
+        allocate(beam_cov_inv(keep_num,keep_num))
+        beam_cov_inv = beam_cov_full(keep_indices,keep_indices)
+        call Matrix_inverse(beam_cov_inv)
+    end if
     call Matrix_inverse(c_inv)
 
     countnum=0
@@ -258,7 +259,7 @@
 
     beam_params = freq_params(num_non_beam+1:num_non_beam+cov_dim)
     !set marged beam parameters to their mean subject to fixed non-marged modes
-    beam_params(marge_indices) = matmul(beam_conditional_mean, beam_params(keep_indices))
+    if (marge_num>0) beam_params(marge_indices) = matmul(beam_conditional_mean, beam_params(keep_indices))
 
     do ii=1,beam_Nspec
         do jj=1,num_modes_per_beam
