@@ -4,6 +4,7 @@
 
     implicit none
 
+    private
     integer, parameter :: campc = KIND(1.d0)
 
     real(campc), dimension(:), allocatable :: X_data
@@ -32,8 +33,9 @@
     integer :: countnum
     !    character*100 storeroot,storename,storenumstring
     !   character*100 :: bestroot,bestnum,bestname
-    character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.2-11012013'
-
+    character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.2-beammarge1'
+    public like_init,calc_like,CAMSpec_like_version
+    
     contains
 
     !!Does not seem to be actually faster
