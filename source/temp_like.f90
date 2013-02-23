@@ -21,7 +21,6 @@
     logical :: writebest=.false.
     real(campc) :: bestlike = 1e30_campc
     integer :: tempinstance
-    logical :: beam_cov_marge = .true.
 
     integer, allocatable :: indices(:),indices_reverse(:),keep_indices(:),keep_indices_reverse(:)
     real(campc), allocatable :: beam_conditional_mean(:,:)
@@ -164,7 +163,6 @@
     beam_cov = beam_cov_inv(indices,indices)
     call Matrix_Inverse(beam_cov)
 
-    if (beam_cov_marge) then 
         do if2=1,beam_Nspec
             do if1=1,beam_Nspec
                 do ie2=1,num_modes_per_beam
@@ -184,7 +182,6 @@
                 enddo
             enddo
         enddo
-    end if
     ! print *,'after', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502),  c_inv(npt(4)-1002,npt(4)-1000)
 
     allocate(beam_conditional_mean(marge_num, keep_num))
@@ -267,7 +264,7 @@
 
 
     beam_params = freq_params(num_non_beam+1:num_non_beam+cov_dim)
-    !set marged beam parameters to their mean subjected to fixed non-marged modes
+    !set marged beam parameters to their mean subject to fixed non-marged modes
     beam_params(indices) = matmul(beam_conditional_mean, freq_params(num_non_beam+keep_indices))
 
     do ii=1,beam_Nspec
@@ -276,8 +273,6 @@
             beam_coeffs(ii,jj)=beam_params(ix)
         enddo
     enddo
-
-    if (beam_cov_marge) beam_coeffs= 0
 
     do l=1, CAMspec_lmax
         cl_cib(l) = (real(l,campc)/3000)**(ncib)
