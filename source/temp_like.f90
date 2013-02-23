@@ -135,7 +135,8 @@
     allocate(indices(marge_num))
     allocate(indices_reverse(cov_dim))
     allocate(keep_indices(keep_num))
-    allocate(keep_indices_reverse(keep_num))
+    allocate(keep_indices_reverse(cov_dim))
+    print *,'beam marginalizing:',marge_num,'keeping',keep_num
 
     j=0
     k=0
@@ -152,7 +153,7 @@
     end do
     allocate(beam_cov(marge_num, marge_num))
     beam_cov = beam_cov_inv(indices,indices)
-    call MatrixInverse(beam_cov)
+    call Matrix_Inverse(beam_cov)
 
     if (beam_cov_marge) then 
         do if2=1,beam_Nspec
@@ -179,6 +180,7 @@
 
     allocate(beam_conditional_mean(marge_num, keep_num))
     beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(indices,keep_indices))
+    print *,'conditional mean vector', beam_conditional_mean(:,1)
     deallocate(beam_cov_inv)
     allocate(beam_cov_inv(keep_num,keep_num))
     beam_cov_inv = beam_cov_full(keep_indices,keep_indices)
