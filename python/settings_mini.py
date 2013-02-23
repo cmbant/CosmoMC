@@ -1,8 +1,6 @@
 # sample settings for a particular grid run
 
 # sets of parameters to vary in addition to baseline
-extparams = [[], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
-
 
 newCovmats = True
 
@@ -19,12 +17,19 @@ HST = 'HST'
 SNLS = 'SNLS'
 Union = 'Union2'
 
-datasets = []
+# set up groups of parameters and data sets
+class group:pass
+
+
+g = group()
+g.params = [[], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+
+g.datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
-datasets.append([[planck, lowl, lowLike], ['CAMspec_lmax1000_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
-datasets.append([[planck, lowl], ['CAMspec_lmax1000_defaults.ini', 'lowl49.ini']])
-datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_lmax1000_ACTSPT_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
-datasets.append([[plik, lowl, lowLike], ['PLik_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
+g.datasets.append([[planck, lowl, lowLike], ['CAMspec_lmax1000_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
+g.datasets.append([[planck, lowl], ['CAMspec_lmax1000_defaults.ini', 'lowl49.ini']])
+g.datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_lmax1000_ACTSPT_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
+g.datasets.append([[plik, lowl, lowLike], ['PLik_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
 
 class importanceFilterPlanck:
     def wantImportance(self, jobItem):
@@ -35,9 +40,11 @@ class importanceFilterAcc:
         return lowLike in jobItem.data_set[0]
 
 # add importance name tags, and list of specific .ini files to include (in batch1/)
-importanceRuns = []
-importanceRuns.append([lensing, ['lensing.ini'], importanceFilterPlanck()])
-importanceRuns.append([BAO, ['BAO.ini']])
+g.importanceRuns = []
+g.importanceRuns.append([lensing, ['lensing.ini'], importanceFilterPlanck()])
+g.importanceRuns.append([BAO, ['BAO.ini']])
+
+groups = [g]
 
 skip = []
 

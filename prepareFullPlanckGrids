@@ -1,10 +1,15 @@
 python python/makeGrid.py main settings_main
+
+
+#for find possible failed scripts (that are not quick "minimize" runs):
+#ls scripts/*.e* | grep -v minimize
+
+
+---
+Old run
+
+python python/makeGrid.py main settings_main
 python python/makeGrid.py main/neutrinos settings_neutrinos
 python python/makeGrid.py main/bao settings_bao
 python python/addGridBatch.py main main/neutrinos
 python python/addGridBatch.py main main/bao
-
-python python/runbatch.py main --dryrun --noimportance
-
-#for find possible failed scripts (that are not quick "minimize" runs):
-#ls scripts/*.e* | grep -v minimize

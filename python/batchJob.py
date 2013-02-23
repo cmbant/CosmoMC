@@ -20,7 +20,8 @@ class jobItem:
         paramtag = 'base'
         for param in param_set:
             paramtag = paramtag + '_' + param
-        datatag = "_".join(data_set[0])
+        self.dataname_set = data_set[0]
+        datatag = "_".join(self.dataname_set)
         self.datatag = datatag
         self.paramtag = paramtag
         self.name = paramtag + '_' + datatag
@@ -32,6 +33,8 @@ class jobItem:
         self.isImportanceJob = False
         self.importanceItems = []
         self.result_converge = None
+        self.group = None
+        self.makeIDs()
 
     def iniFile(self, variant=''):
         if not self.isImportanceJob:
@@ -41,21 +44,33 @@ class jobItem:
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
         for (imp, ini, arr) in [(x[0], x[1], x) for x in importanceRuns]:
-            if len(arr) > 2 and not arr[2].wantImportance(self) or imp in self.data_set[0]: continue
+            if len(arr) > 2 and not arr[2].wantImportance(self): continue
+            if len(set(imp).intersection(self.dataname_set)) > 0:
+                print 'importance job duplicating parent data set:' + self.name
+                continue
             job = jobItem(self.batchPath, self.param_set, self.data_set)
-            job.importanceTag = imp
+            job.importanceTag = "_".join(imp)
             job.importanceSettings = ini
-            tag = '_post_' + imp
+            tag = '_post_' + job.importanceTag
             job.name = self.name + tag
             job.chainRoot = self.chainRoot + tag
             job.distRoot = self.distRoot + tag
             job.datatag = self.datatag + tag
             job.isImportanceJob = True
             job.parent = self
+            job.dataname_set = imp + job.dataname_set
+            job.group = self.group
+            job.makeIDs()
             self.importanceItems.append(job)
 
+    def makeIDs(self):
+        self.normed_params = "_".join(sorted(self.param_set))
+        self.normed_data = "_".join(sorted(self.dataname_set))
+        self.normed_name = self.normed_params + '_' + self.normed_data
+
+
     def matchesDatatag(self, tagList):
-        if self.datatag in tagList: return True
+        if self.datatag in tagList or self.normed_data in tagList: return True
         return self.datatag.replace('_post', '') in  [tag.replace('_post', '') for tag in tagList]
 
     def importanceJobs(self):
@@ -119,22 +134,32 @@ class batchJob:
 
     def __init__(self, path):
         self.batchPath = path
-        self.extparams = []
-        self.datasets = []
         self.skip = []
         self.basePath = os.path.dirname(sys.path[0]) + os.sep
         self.commonPath = self.basePath + 'batch1/'
         self.subBatches = []
         self.jobItems = None
 
-    def makeItems(self, importanceRuns=[]):
+    def makeItems(self, dataAndParams):
             self.jobItems = []
-            for data_set in self.datasets:
-                for param_set in self.extparams:
-                    item = jobItem(self.batchPath, param_set, data_set)
-                    if not item.name in self.skip:
-                        item.makeImportance(importanceRuns)
-                        self.jobItems.append(item)
+            for group in dataAndParams:
+                for data_set in group.datasets:
+                    for param_set in group.params:
+                        item = jobItem(self.batchPath, param_set, data_set)
+                        if hasattr(group, 'groupName'): item.group = group.groupName
+                        if not item.name in self.skip:
+                            item.makeImportance(group.importanceRuns)
+                            self.jobItems.append(item)
+            for item in self.items():
+                for x in [imp for imp in item.importanceJobs()]:
+                    if self.has_normed_name(x.normed_name):
+                        print 'replacing importance sampling run with full run: ' + x.name
+                        item.importanceItems.remove(x)
+            for item in self.items():
+                for x in [imp for imp in item.importanceJobs()]:
+                    if self.has_normed_name(x.normed_name, wantImportance=True, exclude=x):
+                        print 'removing duplicate importance sampling run: ' + x.name
+                        item.importanceItems.remove(x)
 
 
     def items(self, wantSubItems=True, wantImportance=False):
@@ -151,6 +176,11 @@ class batchJob:
     def hasName(self, name, wantSubItems=True):
         for jobItem in self.items(wantSubItems):
             if jobItem.name == name: return True
+        return False
+
+    def has_normed_name(self, name, wantSubItems=True, wantImportance=False, exclude=None):
+        for jobItem in self.items(wantSubItems, wantImportance):
+            if jobItem.normed_name == name and not jobItem is exclude: return True
         return False
 
     def save(self, filename=''):

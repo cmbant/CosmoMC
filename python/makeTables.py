@@ -81,8 +81,8 @@ def compareTable(jobItems, titles=None):
 
 def filterBatchData(batch, datatags):
     items = []
-    for tag in [data.replace('_post', '') for data in datatags]:
-        items += [jobItem for jobItem in batch if jobItem.datatag.replace('_post', '') == tag]
+    for tag in ["_".join(sorted(data.replace('_post', '').split('_'))) for data in datatags]:
+        items += [jobItem for jobItem in batch if jobItem.normed_data == tag]
     return items
 
 items = dict()

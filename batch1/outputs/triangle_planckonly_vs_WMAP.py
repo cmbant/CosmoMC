@@ -4,7 +4,7 @@
 import planckStyle as s
 g=s.plotter
 
-roots = ['base_planck_CAMspec_lowl_post_lensing', 'base_planck_CAMspec_lowl_lowLike','base_WMAP']
+roots = ['base_planck_lowl_post_lensing', 'base_planck_lowl_lowLike','base_WMAP']
 labs=[s.lensing, s.WP,'WMAP9']
 #labs=['Planck+lensing','Planck+WP','WMAP9']
 

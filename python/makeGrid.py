@@ -19,9 +19,9 @@ settings = __import__(sys.argv[2])
 # priors and widths for parameters which are varied
 if not hasattr(settings, 'params'):
     params = dict()
-    params['mnu'] = '0 0 5 0.1 0.03'
+    params['mnu'] = '0.02 0 5 0.1 0.03'
     params['omegak'] = '-0.0008 -0.3 0.3 0.001 0.001'  # starting exactly on flat seems to confuse minimizer
-    params['w'] = '-1 -3 -0.3 0.02 0.02'
+    params['w'] = '-0.995 -3 -0.3 0.02 0.02'
     params['nnu'] = '3.046 0.05 10 0.05 0.05'
     params['nrun'] = '0 -1 1 0.001 0.001'
     params['r'] = '0 0 2 0.03 0.03'
@@ -30,13 +30,12 @@ if not hasattr(settings, 'params'):
     params['alpha1'] = '0 -1 1 0.0003 0.0003'
     params['deltazrei'] = '0.5 0.1 3 0.3 0.3'
     params['wa'] = '0 -2 2 0.3 0.3'
-    params['meffsterile'] = '0 0 5 0.1 0.03'
+    params['meffsterile'] = '0.1 0 5 0.1 0.03'
     settings.params = params
 
-batch.datasets = settings.datasets
-batch.extparams = settings.extparams
+
 batch.skip = settings.skip
-batch.makeItems(settings.importanceRuns)
+batch.makeItems(settings.groups)
 batch.makeDirectories()
 batch.save()
 
@@ -77,12 +76,14 @@ for jobItem in batch.items(wantSubItems=False):
         else:
             hasCov = False
             ini.params['MPI_Max_R_ProposeUpdate'] = 20
-            for new, old in settings.covrenames.items():
-                covmat = batch.basePath + 'planck_covmats/' + jobItem.name.replace(new, old) + '.covmat'
-                if os.path.exists(covmat):
-                    ini.params['propose_matrix'] = covmat
-                    hasCov = True
-                    break
+            for new1, old1 in settings.covrenames.items():
+                name = jobItem.name.replace(new1, old1)
+                for new, old in settings.covrenames.items():
+                    covmat = batch.basePath + 'planck_covmats/' + name.replace(new, old) + '.covmat'
+                    if os.path.exists(covmat):
+                        ini.params['propose_matrix'] = covmat
+                        hasCov = True
+                        break
 
         ini.params['start_at_bestfit'] = settings.start_at_bestfit
         ini.params['action'] = cosmomcAction
