@@ -11,6 +11,7 @@ Opts.parser.add_argument('--noplots', action='store_true')
 Opts.parser.add_argument('--specific', action='store_true')
 Opts.parser.add_argument('--compare_only', action='store_true')
 Opts.parser.add_argument('--settings', default='getdist_settings')
+Opts.parser.add_argument('--plot_data', default=None)
 
 
 (batch, args) = Opts.parseForBatch()
@@ -23,7 +24,8 @@ plot_types = ['.m', '_2D.m', '_3D.m']
 # '_tri.m' is very slow for so many
 
 
-data_dir = batch.batchPath + 'plot_data' + os.sep
+if args.plot_data is None: data_dir = batch.batchPath + 'plot_data' + os.sep
+else: data_dir = os.path.abspath(args.plot_data) + os.sep
 ini_dir = batch.batchPath + 'getdist' + os.sep
 
 checkDir(data_dir)
