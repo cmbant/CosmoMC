@@ -75,8 +75,9 @@
     integer :: i, j,k,l
     character(LEN=1024), intent(in) :: like_file, sz143_file, ksz_file, tszxcib_file, beam_file
     logical, save :: needinit=.true.
-    real(campc) , allocatable:: fid_cl(:), beam_cov(:,:), beam_cov_full(:,:)
+    real(campc) , allocatable:: fid_cl(:,:), beam_cov(:,:), beam_cov_full(:,:)
     integer if1,if2, ie1, ie2, ii, jj, L2
+    real(campc) :: fid_theory
 
     ! cl_ksz_148_tbo.dat file is in D_l, format l D_l, from l=2 to 10000
     ! tsz_x_cib_template.txt is is (l D_l), from l=2 to 9999, normalized to unity
@@ -101,13 +102,21 @@
     close(48)
 
     CAMspec_lmax = maxval(lmaxX)
-    allocate(fid_cl(CAMspec_lmax))
+    allocate(fid_cl(CAMspec_lmax,4))
+ !   allocate(fid_theory(CAMspec_lmax))
 
-    open(48, file='./data/base_planck_CAMspec_lowl_lowLike_highL.bestfit_cl', form='formatted', status='unknown')
+    !open(48, file='./data/base_planck_CAMspec_lowl_lowLike_highL.bestfit_cl', form='formatted', status='unknown')
+    !do i=2,CAMspec_lmax
+    !    read(48,*) j,fid_theory(i)
+    !    if (j/=i) stop 'error reading fiducial C_l for beams'
+    !enddo
+    !close(48)
+
+    open(48, file='./data/camspec_foregrounds.dat', form='formatted', status='unknown')
     do i=2,CAMspec_lmax
-        read(48,*) j,fid_cl(i)
-        if (j/=i) stop 'error reading fiducial C_l for beams'
-        fid_cl(i) = fid_cl(i)/(i*(i+1))!want C_l/2Pi
+        read(48,*) j,fid_theory, fid_cl(i,:)
+        if (j/=i) stop 'error reading fiducial foreground C_l for beams'
+        fid_cl(i,:) = (fid_cl(i,:) + fid_theory)/(i*(i+1)) !want C_l/2Pi foregrounds+theory
     enddo
     close(48)
 
@@ -168,7 +177,7 @@
                                 c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
                                 beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
                                 beam_cov(indices_reverse(ii),indices_reverse(jj)) * beam_modes(ie2,L2,if2) &
-                                *fid_cl(L2)*fid_cl(lminX(if1):lmaxX(if1))
+                                *fid_cl(L2,if2)*fid_cl(lminX(if1):lmaxX(if1),if1)
                             end do
                         end if
                     enddo
@@ -420,7 +429,7 @@
 
     corrected_beam=1.d0
     do i=1,num_modes_per_beam
-            corrected_beam=corrected_beam+beam_coeffs(spec_num,i)*beam_modes(i,l,spec_num)
+        corrected_beam=corrected_beam+beam_coeffs(spec_num,i)*beam_modes(i,l,spec_num)
     enddo
     end function corrected_beam
 
