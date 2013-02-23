@@ -188,9 +188,11 @@
         allocate(beam_conditional_mean(marge_num, keep_num))
         beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(marge_indices,keep_indices))
         deallocate(beam_cov_inv)
-        allocate(beam_cov_inv(keep_num,keep_num))
-        beam_cov_inv = beam_cov_full(keep_indices,keep_indices)
-        call Matrix_inverse(beam_cov_inv)
+        if (keep_num>0) then
+            allocate(beam_cov_inv(keep_num,keep_num))
+            beam_cov_inv = beam_cov_full(keep_indices,keep_indices)
+            call Matrix_inverse(beam_cov_inv)
+        end if
     end if
     call Matrix_inverse(c_inv)
 
@@ -257,16 +259,20 @@
     xi = freq_params(13)
     A_ksz = freq_params(14)
 
-    beam_params = freq_params(num_non_beam+1:num_non_beam+cov_dim)
-    !set marged beam parameters to their mean subject to fixed non-marged modes
-    if (marge_num>0) beam_params(marge_indices) = matmul(beam_conditional_mean, beam_params(keep_indices))
+    if (keep_num>0) then
+        beam_params = freq_params(num_non_beam+1:num_non_beam+cov_dim)
+        !set marged beam parameters to their mean subject to fixed non-marged modes
+        if (marge_num>0) beam_params(marge_indices) = matmul(beam_conditional_mean, beam_params(keep_indices))
 
-    do ii=1,beam_Nspec
-        do jj=1,num_modes_per_beam
-            ix = jj+num_modes_per_beam*(ii-1)
-            beam_coeffs(ii,jj)=beam_params(ix)
+        do ii=1,beam_Nspec
+            do jj=1,num_modes_per_beam
+                ix = jj+num_modes_per_beam*(ii-1)
+                beam_coeffs(ii,jj)=beam_params(ix)
+            enddo
         enddo
-    enddo
+    else
+        bream_coeff=0
+    end if
 
     do l=1, CAMspec_lmax
         cl_cib(l) = (real(l,campc)/3000)**(ncib)
@@ -328,22 +334,24 @@
     !    end do
     !   zlike = CAMSpec_Quad(c_inv, Y)
 
-    do if2=1,beam_Nspec
-        do if1=1,beam_Nspec
-            do ie2=1,num_modes_per_beam
-                jj=ie2+num_modes_per_beam*(if2-1)
-                if (.not. want_marge(jj)) then
-                    do ie1=1,num_modes_per_beam
-                        ii=ie1+num_modes_per_beam*(if1-1)
-                        if (.not. want_marge(ii)) then
-                            zlike=zlike+beam_coeffs(if1,ie1)*&
-                            beam_cov_inv(keep_indices_reverse(ii),keep_indices_reverse(jj))*beam_coeffs(if2,ie2)
-                        end if
-                    enddo
-                end if
+    if (keep_num>0) then
+        do if2=1,beam_Nspec
+            do if1=1,beam_Nspec
+                do ie2=1,num_modes_per_beam
+                    jj=ie2+num_modes_per_beam*(if2-1)
+                    if (.not. want_marge(jj)) then
+                        do ie1=1,num_modes_per_beam
+                            ii=ie1+num_modes_per_beam*(if1-1)
+                            if (.not. want_marge(ii)) then
+                                zlike=zlike+beam_coeffs(if1,ie1)*&
+                                beam_cov_inv(keep_indices_reverse(ii),keep_indices_reverse(jj))*beam_coeffs(if2,ie2)
+                            end if
+                        enddo
+                    end if
+                enddo
             enddo
         enddo
-    enddo
+    end if
 
     zlike=zlike+((cal2/cal1-0.9966d0)/0.0015d0)**2  +((cal0/cal1-1.0006d0)/0.0004d0)**2
 
