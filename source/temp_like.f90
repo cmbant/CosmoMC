@@ -23,13 +23,16 @@
     integer :: tempinstance
     logical :: beam_cov_marge = .true.
 
+    integer, allocatable :: indices(:),indices_reverse(:),keep_indices(:),keep_indices_reverse(:)
+    real(campc), allocatable :: beam_conditional_mean(:,:)
+    logical, allocatable :: want_marge(:)
+    integer marge_num, keep_num
+
     logical :: storeall=.false.
     integer :: countnum
     !    character*100 storeroot,storename,storenumstring
     !   character*100 :: bestroot,bestnum,bestname
     character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.2-11012013'
-    real(campc) :: beam_factor = 3.d0
-
 
     contains
 
@@ -69,10 +72,10 @@
 
     subroutine like_init(like_file, sz143_file, tszxcib_file, ksz_file, beam_file)
     use MatrixUtils
-    integer :: i, j, l
+    integer :: i, j,k,l
     character(LEN=1024), intent(in) :: like_file, sz143_file, ksz_file, tszxcib_file, beam_file
     logical, save :: needinit=.true.
-    real(campc) , allocatable:: fid_cl(:)
+    real(campc) , allocatable:: fid_cl(:), beam_cov(:,:), beam_cov_full(:,:)
     integer if1,if2, ie1, ie2, ii, jj, L2
 
     ! cl_ksz_148_tbo.dat file is in D_l, format l D_l, from l=2 to 10000
@@ -118,18 +121,39 @@
     allocate(beam_modes(num_modes_per_beam,0:beam_lmax,beam_Nspec))
     cov_dim=beam_Nspec*num_modes_per_beam
     allocate(beam_cov_inv(cov_dim,cov_dim))
+    allocate(beam_cov_full(cov_dim,cov_dim))
     read(48) (((beam_modes(i,l,j),j=1,Nspec),l=0,beam_lmax),i=1,num_modes_per_beam)
-    read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim)  ! beam_cov
-    read(48) !((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
+    read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)  ! beam_cov
+    read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
     close(48)
 
-    !Here beam_cov_inv and c_inv are the covariances NOT the inv covariances as implied by name
-    beam_cov_inv = beam_cov_inv*beam_factor
-    !    do if2=2, 2000,20
-    !      print *,if2, beam_modes(1,if2,1),beam_modes(1,if2,3) 
-    !     end do
-    !   print *,'beamcov 11:',beam_cov_inv(1,1)
-    !  print *,'before', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502), c_inv(npt(4)-1002,npt(4)-1000)
+    allocate(want_marge(cov_dim))
+    want_marge=.true.
+    want_marge(1)=.false.
+    marge_num=count(want_marge)
+    keep_num=cov_dim-marge_num
+    allocate(indices(marge_num))
+    allocate(indices_reverse(cov_dim))
+    allocate(keep_indices(keep_num))
+    allocate(keep_indices_reverse(keep_num))
+
+    j=0
+    k=0
+    do i=1,cov_dim
+        if (want_marge(i)) then
+            j=j+1
+            indices(j) = i
+        else
+            k=k+1
+            keep_indices(k)=i
+        end if
+        indices_reverse(i)=j
+        keep_indices_reverse(i)=k
+    end do
+    allocate(beam_cov(marge_num, marge_num))
+    beam_cov = beam_cov_inv(indices,indices)
+    call MatrixInverse(beam_cov)
+
     if (beam_cov_marge) then 
         do if2=1,beam_Nspec
             do if1=1,beam_Nspec
@@ -137,22 +161,28 @@
                     do ie1=1,num_modes_per_beam
                         ii=ie1+num_modes_per_beam*(if1-1)
                         jj=ie2+num_modes_per_beam*(if2-1)
-                        do L2 = lminX(if2),lmaxX(if2)
-                            !if (ii==1) cycle
-                            !if (jj==1) cycle
-                            c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
-                            c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
-                            beam_modes(ie1,lminX(if1):lmaxX(if1),if1)*  beam_cov_inv(ii,jj) * beam_modes(ie2,L2,if2) &
-                            *fid_cl(L2)*fid_cl(lminX(if1):lmaxX(if1))
-                        end do
+                        if (want_marge(ii) .and. want_marge(jj)) then
+                            do L2 = lminX(if2),lmaxX(if2)
+                                c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
+                                c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
+                                beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
+                                beam_cov(indices_reverse(ii),indices_reverse(jj)) * beam_modes(ie2,L2,if2) &
+                                *fid_cl(L2)*fid_cl(lminX(if1):lmaxX(if1))
+                            end do
+                        end if
                     enddo
                 enddo
             enddo
         enddo
-    else
-        call Matrix_inverse(beam_cov_inv)
     end if
     ! print *,'after', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502),  c_inv(npt(4)-1002,npt(4)-1000)
+
+    allocate(beam_conditional_mean(marge_num, keep_num))
+    beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(indices,keep_indices))
+    deallocate(beam_cov_inv)
+    allocate(beam_cov_inv(keep_num,keep_num))
+    beam_cov_inv = beam_cov_full(keep_indices,keep_indices)
+    call Matrix_inverse(beam_cov_inv)
 
     call Matrix_inverse(c_inv)
 
@@ -178,8 +208,8 @@
     real(campc) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz, r_ps, r_cib, ncib, cal0, cal1, cal2, xi, A_ksz
     real(campc) zCIB
     real(campc) ztemp
-    real(campc) beam_coeffs(beam_Nspec,num_modes_per_beam)
-    integer :: ie1,ie2,if1,if2
+    real(campc) beam_params(cov_dim),beam_coeffs(beam_Nspec,num_modes_per_beam)
+    integer :: ie1,ie2,if1,if2, ix
     integer num_non_beam
     real(campc) cl_cib(CAMspec_lmax) !CIB
     real(campc), parameter :: sz_bandpass100_nom143 = 2.022d0
@@ -224,9 +254,16 @@
     cal2 = freq_params(12)
     xi = freq_params(13)
     A_ksz = freq_params(14)
+
+
+    beam_params = freq_params(num_non_beam+1:num_non_beam+cov_dim)
+    !set marged beam parameters to their mean subjected to fixed non-marged modes
+    beam_params(indices) = matmul(beam_conditional_mean, freq_params(num_non_beam+keep_indices))
+
     do ii=1,beam_Nspec
         do jj=1,num_modes_per_beam
-            beam_coeffs(ii,jj)=freq_params(num_non_beam+jj+num_modes_per_beam*(ii-1))
+            ix = jj+num_modes_per_beam*(ii-1)
+            beam_coeffs(ii,jj)=beam_params(ix)
         enddo
     enddo
 
@@ -295,11 +332,16 @@
     do if2=1,beam_Nspec
         do if1=1,beam_Nspec
             do ie2=1,num_modes_per_beam
-                do ie1=1,num_modes_per_beam
-                    ii=ie1+num_modes_per_beam*(if1-1)
-                    jj=ie2+num_modes_per_beam*(if2-1)
-                    zlike=zlike+beam_coeffs(if1,ie1)*beam_cov_inv(ii,jj)*beam_coeffs(if2,ie2)
-                enddo
+                jj=ie2+num_modes_per_beam*(if2-1)
+                if (.not. want_marge(jj)) then
+                    do ie1=1,num_modes_per_beam
+                        ii=ie1+num_modes_per_beam*(if1-1)
+                        if (.not. want_marge(ii)) then
+                            zlike=zlike+beam_coeffs(if1,ie1)*&
+                            beam_cov_inv(keep_indices_reverse(ii),keep_indices_reverse(jj))*beam_coeffs(if2,ie2)
+                        end if
+                    enddo
+                end if
             enddo
         enddo
     enddo
@@ -377,7 +419,7 @@
 
     corrected_beam=1.d0
     do i=1,num_modes_per_beam
-        corrected_beam=corrected_beam+beam_coeffs(spec_num,i)*beam_modes(i,l,spec_num)
+            corrected_beam=corrected_beam+beam_coeffs(spec_num,i)*beam_modes(i,l,spec_num)
     enddo
     end function corrected_beam
 
