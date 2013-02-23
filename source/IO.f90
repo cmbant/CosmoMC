@@ -247,7 +247,8 @@
     logical, optional, intent(out) :: ChainOK
     logical, optional, intent(in) :: samples_chains
     logical samples_are_chains
-    character(LEN=10000) InLine  
+    character(LEN=10000) InLine
+    real(mcp) invals(size(params_used))
 
     if (present(samples_chains)) then
         samples_are_chains=samples_chains
@@ -265,12 +266,13 @@
     end if
 
     if (samples_are_chains) then
-        read(InLine, *, end=100,err=110) mult, like, values(params_used)
+        read(InLine, *, end=100,err=110) mult, like, invals
     else
         mult=1
         like=1
-        read(InLine, *, end=100,err=110) values(params_used)
+        read(InLine, *, end=100,err=110) invals
     end if
+    values(params_used) =invals
     OK = .true.
     return   
 100 OK = .false. 
@@ -411,12 +413,12 @@
     end subroutine IO_WriteLeftTextNoAdvance
 
     subroutine IO_OutputMargeStats(Names, froot,num_vars,num_contours, contours,contours_str, &
-    cont_lines, colix, mean, sddev, has_limits_bot, has_limits_top, labels, force_twotail)
+    cont_lines, colix, mean, sddev, has_limits_bot, has_limits_top, labels)
     use ParamNames
     Type(TParamNames) :: Names
     character(LEN=*), intent(in) :: froot
     integer, intent(in) :: num_vars, num_contours
-    logical,intent(in) :: force_twotail, has_limits_bot(*),has_limits_top(*)
+    logical,intent(in) :: has_limits_bot(:,:),has_limits_top(:,:)
     real(mcp), intent(in) :: mean(*), sddev(*), contours(*), cont_lines(:,:,:)
     character(LEN=*), intent(in) :: contours_str
     integer,intent(in) :: colix(*)
@@ -438,8 +440,8 @@
     do j=1, num_contours
         call IO_WriteLeftTextNoAdvance(file_id,txtFormat,concat('lower',j))
         call IO_WriteLeftTextNoAdvance(file_id,txtFormat,concat('upper',j))
+        call IO_WriteLeftTextNoAdvance(file_id,'(1A7)',concat('limit',j))
     end do
-    call IO_WriteLeftTextNoAdvance(file_id,'(1A7)','limits')
     write(file_id,'(a)') ''
 
     do j=1, num_vars
@@ -447,21 +449,17 @@
         write(file_id,'(2E15.7)', advance='NO')  mean(j), sddev(j)
         do i=1, num_contours
             write(file_id,'(2E15.7)',advance='NO') cont_lines(j,1:2,i)
-        end do
-        if (.not. force_twotail) then
-            if (has_limits_bot(colix(j)).and. has_limits_top(colix(j))) then
+            if (has_limits_bot(i,colix(j)).and. has_limits_top(i,colix(j))) then
                 tag='none'
-            elseif (has_limits_bot(colix(j))) then
+            elseif (has_limits_bot(i,colix(j))) then
                 tag= '>'
-            elseif (has_limits_top(colix(j))) then 
+            elseif (has_limits_top(i,colix(j))) then 
                 tag = '<'
             else
                 tag = 'two'
             end if
-        else
-            tag='two'
-        end if
-        write(file_id,'(1A7)', advance='NO') '  '//tag
+            write(file_id,'(1A7)', advance='NO') '  '//tag
+        end do
         write(file_id,'(a)') '   '//trim(labels(colix(j)))
     end do
 

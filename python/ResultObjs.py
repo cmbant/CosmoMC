@@ -65,14 +65,15 @@ def numberFigs(number, sigfig):
 class numberFormatter():
     def __init__(self, sig_figs=4):
         self.sig_figs = sig_figs
+        self.separate_limit_tol = 0.1
 
-    def namesigFigs(self, value, limplus, limminus):
+    def namesigFigs(self, value, limplus, limminus, wantSign=True):
         frac = limplus / (abs(value) + limplus)
         err_sf = 2
         if value >= 20 and frac > 0.1 and limplus >= 2: err_sf = 1
 
-        plus_str = self.formatNumber(limplus, err_sf, True)
-        minus_str = self.formatNumber(limminus, err_sf, True)
+        plus_str = self.formatNumber(limplus, err_sf, wantSign)
+        minus_str = self.formatNumber(limminus, err_sf, wantSign)
         sf = self.sig_figs
         if frac > 0.1 and value < 100 and value >= 20: sf = 2
         elif frac > 0.01 and value < 1000: sf = 3
@@ -107,8 +108,11 @@ class numberFormatter():
         if i > 0: return len(s) - i - 1
         return 0
 
+    def plusMinusLimit(self, limit, upper, lower):
+        return limit != 1 or abs(abs(upper / lower) - 1) > self.separate_limit_tol
 
-class tableFormatter():
+
+class tableFormatter(object):
     def __init__(self):
         self.border = '|'
         self.endofrow = '\\\\'
@@ -119,12 +123,15 @@ class tableFormatter():
         self.minorDividor = '|'
         self.colDividor = '||'
         self.belowTitles = ''
+        self.headerWrapper = " %s"
+        self.noConstraint = '---'
+        self.numberFormatter = numberFormatter()
 
     def getLine(self, position=None):
         if position is not None and hasattr(self, position): return getattr(self, position)
         return self.hline
 
-    def belowTitleLine(self, colsPerParam):
+    def belowTitleLine(self, colsPerParam, numParams=None):
         return self.getLine("belowTitles")
 
     def startTable(self, ncol, colsPerResult, numResults):
@@ -140,7 +147,19 @@ class tableFormatter():
     def formatTitle(self, title):
         return '\\bf ' + texEscapeText(title)
 
-class planckTableFormatter(tableFormatter):
+    def textAsColumn(self, txt, latex=False, separator=False, bold=False):
+        wid = len(txt)
+        if latex:
+            wid += 2
+            if bold: wid += 11
+        res = txt + ' ' * max(0, 28 - wid)
+        if latex:
+            if bold: res = '{\\boldmath$' + res + '$}'
+            else:  res = '$' + res + '$'
+        if separator: res += ' & '
+        return res
+
+class openTableFormatter(tableFormatter):
 
     def __init__(self):
         tableFormatter.__init__(self)
@@ -155,10 +174,10 @@ class planckTableFormatter(tableFormatter):
     def titleSubColumn(self, colsPerResult, title):
         return ' \\multicolumn{' + str(colsPerResult) + '}{' + 'c' + '}{ ' + self.formatTitle(title) + '}'
 
-class planckNoLineTableFormatter(planckTableFormatter):
+class noLineTableFormatter(openTableFormatter):
 
     def __init__(self):
-        planckTableFormatter.__init__(self)
+        openTableFormatter.__init__(self)
         self.aboveHeader = ''
 #        self.belowHeader = r'\noalign{\vskip 5pt}'
         self.minorDividor = ''
@@ -168,29 +187,29 @@ class planckNoLineTableFormatter(planckTableFormatter):
         self.colDividor = '|'
         self.hline = ''
 
-    def belowTitleLine(self, colsPerParam):
+    def belowTitleLine(self, colsPerParam, numParams=None):
         return r'\noalign{\vskip 3pt}\cline{2-' + str(colsPerParam + 1) + r'}\noalign{\vskip 3pt}'
+
 
 class resultTable():
 
-    def __init__(self, ncol, results, sigma=2, tableParamNames=None, titles=None, formatter=None, numFormatter=None, blockEndParams=None, paramList=None):
+    def __init__(self, ncol, results, limit=2, tableParamNames=None, titles=None, formatter=None, numFormatter=None, blockEndParams=None, paramList=None):
 # results is a margeStats or bestFit table
         self.lines = []
-        if formatter is None: self.format = planckNoLineTableFormatter()
+        if formatter is None: self.format = noLineTableFormatter()
         else: self.format = formatter
         self.ncol = ncol
         if tableParamNames is None:
             self.tableParamNames = results[0]
         else: self.tableParamNames = tableParamNames
         if paramList is not None: self.tableParamNames = self.tableParamNames.filteredCopy(paramList)
-        if numFormatter is None: self.numberFormatter = numberFormatter()
-        else: self.numberFormatter = numFormatter
+        if numFormatter is not None: self.format.numFormatter = numFormatter
 
         self.results = results
         self.boldBaseParameters = True
-        self.colsPerResult = len(results[0].getColumLabels(sigma))
+        self.colsPerResult = len(results[0].getColumnLabels(limit))
         self.colsPerParam = len(results) * self.colsPerResult
-        self.sigma = sigma
+        self.limit = limit
 
         nparams = self.tableParamNames.numParams()
         numrow = nparams / ncol
@@ -221,19 +240,24 @@ class resultTable():
         self.lines.append(txt + self.format.endofrow)
 
     def addLine(self, position):
-        return self.lines.append(self.format.getLine(position))
+        if self.format.getLine(position) is None:  # no line is appended if the attribute is None
+            return self.lines
+        else:
+            return self.lines.append(self.format.getLine(position))
 
     def addTitlesRow(self, titles):
         self.addLine("aboveTitles")
         res = self.format.titleSubColumn(1, '') + ' & ' + " & ".join(self.format.titleSubColumn(self.colsPerResult, title) for title in titles)
         self.lines.append((('& ' + res) * self.ncol)[1:] + self.format.endofrow)
-        self.lines.append(self.format.belowTitleLine(self.colsPerParam))
+        belowTitleLine = self.format.belowTitleLine(self.colsPerResult, self.colsPerParam / self.colsPerResult)
+        if belowTitleLine:
+            self.lines.append(belowTitleLine)
 
     def addHeaderRow(self):
         self.addLine("aboveHeader")
-        res = '& ' + self.format.paramText
+        res = '& ' + self.format.headerWrapper % self.format.paramText
         for result in self.results:
-            res += ' & ' + " & ".join(result.getColumLabels(self.sigma))
+            res += ' & ' + " & ".join([self.format.headerWrapper % s for s in result.getColumnLabels(self.limit)])
         self.lines.append((res * self.ncol)[1:] + self.format.endofrow)
         self.addLine("belowHeader")
 
@@ -241,28 +265,16 @@ class resultTable():
         return " & ".join(self.paramResultTex(result, param) for result in self.results)
 
     def paramResultTex(self, result, p):
-        values = result.texValues(self.numberFormatter, p, self.sigma)
+        values = result.texValues(self.format, p, self.limit)
         if values is not None:
-            if len(values) > 1: txt = self.textAsColumn(values[1], True, separator=True)
+            if len(values) > 1: txt = self.format.textAsColumn(values[1], True, separator=True)
             else: txt = ''
-            txt += self.textAsColumn(values[0], values[0] != '---')
+            txt += self.format.textAsColumn(values[0], values[0] != self.format.noConstraint)
             return txt
-        else: return self.textAsColumn('') * len(result.getColumLabels(self.sigma))
-
-    def textAsColumn(self, txt, latex=False, separator=False, bold=False):
-        wid = len(txt)
-        if latex:
-            wid += 2
-            if bold: wid += 11
-        res = txt + ' ' * max(0, 28 - wid)
-        if latex:
-            if bold: res = '{\\boldmath$' + res + '$}'
-            else:  res = '$' + res + '$'
-        if separator: res += ' & '
-        return res
+        else: return self.format.textAsColumn('') * len(result.getColumnLabels(self.limit))
 
     def paramLabelColumn(self, param):
-        return  self.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
+        return  self.format.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
 
     def endTable(self):
         self.lines.append(self.format.endTable())
@@ -283,7 +295,7 @@ class bestFit(paramResults):
         if fileName is not None: self.loadFromFile(fileName, want_fixed=want_fixed)
         if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
 
-    def getColumLabels(self, sigma=None):
+    def getColumnLabels(self, limit=None):
         return ['Best fit']
 
     def loadFromFile(self, filename, want_fixed=False):
@@ -327,15 +339,23 @@ class bestFit(paramResults):
             likes[kind].append((name, chisq))
         return sorted(likes.iteritems())
 
-    def texValues(self, formatter, p, sigma=None):
+    def texValues(self, formatter, p, limit=None):
         param = self.parWithName(p.name)
-        if param is not None: return [formatter.formatNumber(param.best_fit)]
+        if param is not None: return [formatter.numberFormatter.formatNumber(param.best_fit)]
         else: return None
 
+class paramLimit():
+    def __init__(self, minmax, tag='two'):
+        self.lower = minmax[0]
+        self.upper = minmax[1]
+        self.twotail = tag == 'two'
+        self.onetail_upper = tag == '>'
+        self.onetail_lower = tag == '<'
 
 class margeStats(paramResults):
 
     def loadFromFile(self, filename):
+        print filename
         textFileLines = self.fileList(filename)
         lims = textFileLines[0].split(':')[1]
         self.limits = [float(s.strip()) for s in lims.split(';')]
@@ -343,18 +363,14 @@ class margeStats(paramResults):
         for line in textFileLines[3:]:
             if len(line.strip()) == 0: break
             param = paramNames.paramInfo()
-            items = [s.strip() for s in line.split(None, len(self.limits) * 2 + 4)]
+            items = [s.strip() for s in line.split(None, len(self.limits) * 3 + 3)]
             param.name = items[0]
             param.mean = float(items[1])
             param.err = float(items[2])
+            param.label = items[-1]
             param.limits = []
             for i in range(len(self.limits)):
-                param.limits.append([float(s) for s in items[3 + i * 2:5 + i * 2] ])
-            param.label = items[-1]
-            tag = items[-2]
-            param.twotail = tag == 'two'
-            param.lim_top = tag == '<' or tag == 'none'
-            param.lim_bot = tag == '>' or tag == 'none'
+                param.limits.append(paramLimit([float(s) for s in items[3 + i * 3:5 + i * 3] ], items[5 + i * 3]))
             self.names.append(param)
 
 
@@ -368,30 +384,35 @@ class margeStats(paramResults):
             par.best_fit = param.best_fit
             par.isDerived = param.isDerived
 
-    def getColumLabels(self, sigma=2):
+    def getColumnLabels(self, limit=2):
         if self.hasBestFit: res = ['Best fit']
         else: res = []
-        return res + [str(round(float(self.limits[sigma - 1]) * 100)) + '\\% limits']
+        number_string = str(round(float(self.limits[limit - 1]) * 100))
+        if number_string.endswith(".0"):  # e.g. 95.0 -> 95
+            number_string = number_string.split(".")[0]
+        return res + [number_string + '\\% limits']
 
-
-    def texValues(self, formatter, p, sigma=2):
+    def texValues(self, formatter, p, limit=2):
         if not isinstance(p, paramNames.paramInfo): param = self.parWithName(p)
         else: param = self.parWithName(p.name)
         if not param is None:
-            lims = param.limits[sigma - 1]
+            lim = param.limits[limit - 1]
             sf = 3
-            if param.twotail:
-                res, plus_str, minus_str = formatter.namesigFigs(param.mean, lims[1] - param.mean, lims[0] - param.mean)
-                if sigma == 1 and plus_str[1:] == minus_str[1:]: res += '\pm ' + plus_str[1:]
-                else: res += '^{' + plus_str + '}_{' + minus_str + '}'
-            elif param.lim_bot and not param.lim_top:
-                res = '< ' + formatter.formatNumber(lims[1], sf)
-            elif param.lim_top and not param.lim_bot:
-                res = '> ' + formatter.formatNumber(lims[0], sf)
-            else: res = '---'
+            if lim.twotail:
+                if not formatter.numberFormatter.plusMinusLimit(limit, lim.upper - param.mean, lim.lower - param.mean):
+                    res, plus_str, _ = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err, wantSign=False)
+                    res += '\pm ' + plus_str
+                else:
+                    res, plus_str, minus_str = formatter.numberFormatter.namesigFigs(param.mean, lim.upper - param.mean, lim.lower - param.mean)
+                    res += '^{' + plus_str + '}_{' + minus_str + '}'
+            elif lim.onetail_upper:
+                res = '< ' + formatter.numberFormatter.formatNumber(lim.upper, sf)
+            elif lim.onetail_lower:
+                res = '> ' + formatter.numberFormatter.formatNumber(lim.lower, sf)
+            else: res = formatter.noConstraint
             if self.hasBestFit:  # add best fit too
-                rangew = (lims[1] - lims[0]) / 10
-                bestfit = formatter.namesigFigs(param.best_fit, rangew, -rangew)[0]
+                rangew = (lim.upper - lim.lower) / 10
+                bestfit = formatter.numberFormatter.namesigFigs(param.best_fit, rangew, -rangew)[0]
                 return [res, bestfit]
             return [res]
         else: return None

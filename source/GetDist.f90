@@ -69,9 +69,11 @@
     integer, parameter :: max_intersections = 10 !JH: increase if posterior has more than five peaks
     integer, parameter :: max_contours = 5
 
+    Type(TDensity1D) :: Density1D
+
     integer chain_indices(max_chains), num_chains_used
 
-    integer nrows, ncols, nbins
+    integer nrows, ncols, num_bins, num_bins_2D
     real(mcp) numsamp
     integer ND_cont1, ND_cont2
     integer covmat_dimension
@@ -85,7 +87,7 @@
     character(LEN=128) pname(max_cols)
     logical has_limits(max_cols), has_limits_top(max_cols),has_limits_bot(max_cols)
     !has limits for plotting, to avoid underweighting at edges
-    logical marge_limits_top(max_cols),marge_limits_bot(max_cols)
+    logical marge_limits_top(max_contours, max_cols),marge_limits_bot(max_contours, max_cols)
     !has limits for 1 vs 2 tail outputs in margestats
     logical has_markers(max_cols)
     real(mcp) markers(max_cols)
@@ -98,17 +100,19 @@
     logical :: matlab_latex = .false.
     real(mcp) :: font_scale = 1.
     real(mcp) contours(max_contours)
+    real(mcp) :: max_frac_twotail(max_contours) !how small the end bin must be relative to max to use two tail
     real(mcp) mean_mult, max_mult
     integer :: indep_thin = 0
     integer chain_numbers(max_chains)
     logical isused(max_cols)
     logical force_twotail
     logical  plot_meanlikes
+    logical :: mean_loglikes = .false.
     logical shade_meanlikes, make_single_samples
     integer single_thin,cust2DPlots(max_cols**2)
     integer ix_min(max_cols),ix_max(max_cols)
-    real(mcp)  bincounts(-1000:1000) !normalized to be 1 at maximum
-    real(mcp) center(max_cols),width(max_cols), range_min(max_cols), range_max(max_cols)
+    real(mcp) limmin(max_cols),limmax(max_cols)
+    real(mcp) center(max_cols), param_min(max_cols), param_max(max_cols), range_min(max_cols), range_max(max_cols)
     real(mcp) meanlike, maxlike, maxmult
     logical BW,do_shading
     character(LEN=Ini_max_string_len), allocatable :: ComparePlots(:)
@@ -116,7 +120,6 @@
     logical :: prob_label = .false.
     logical :: plots_only, no_plots
     real(mcp) :: smooth_scale_1D=1.d0, smooth_scale_2D = 1.d0
-    real(mcp) :: max_frac_twotail = 0.15_mcp !how small the end bin must be relative to max to use two tail
 
     contains
 
@@ -458,123 +461,6 @@
 
     ConfidVal = try_t
     end function ConfidVal
-
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: beginning of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    ! Find intersection of counts = x with linearly interpolated marginalised posterior
-    subroutine GetZeros(botlim,toplim,minbin,maxbin,x,numzeros,zeros)
-    logical, intent(IN) :: botlim,toplim
-    integer, intent(IN) :: minbin,maxbin
-    real(mcp), intent(IN) :: x
-    real(mcp), intent(OUT), dimension(max_intersections) :: zeros
-    integer, intent(OUT) :: numzeros
-    integer i
-
-    zeros=0
-    numzeros=0
-
-    do i=-1000,999 ! identify intersections
-        if(((bincounts(i).lt.x).and.(bincounts(i+1).ge.x)) &
-        &.or.((bincounts(i).ge.x).and.(bincounts(i+1).lt.x))) then
-
-        numzeros = numzeros+1
-
-        if (toplim .and.(i.eq. maxbin)) then ! identify intersections at limits
-            zeros(numzeros)=i
-        else if (botlim .and. (i.eq. minbin-1)) then
-            zeros(numzeros)=i+1
-        else ! otherwise do linear interpolation
-            zeros(numzeros)=i+(x-bincounts(i))/(bincounts(i+1)-bincounts(i))
-        end if
-        end if
-    end do
-
-    end subroutine GetZeros
-
-
-
-    function MinInterval(conflev,width,center,botlim,toplim,minbin,maxbin)
-    ! find minimum length 1d confidence intervals
-    logical, intent(IN) :: botlim,toplim
-    integer, intent(IN) :: minbin,maxbin
-    integer i,lbin
-    real(mcp), intent(IN) :: conflev,width,center
-    real(mcp), dimension(max_intersections+1) :: MinInterval
-    real(mcp) :: try,try_t,try_b,try_last,try_sum,norm
-    real(mcp) :: waterlevel
-    real(mcp), dimension(max_intersections) :: zeros
-    integer :: numzeros
-
-    norm = sum(bincounts)
-    if (toplim) norm = norm - 0.5*bincounts(maxbin)
-    if (botlim) norm = norm - 0.5*bincounts(minbin)
-
-    try_t = maxval(bincounts)
-    try_b = 0
-    try_last = -1
-
-    ! Iteration to find the number of counts x, such that the integral over the interval where the marginalised posterior
-    ! is larger than x/norm gives the desired credibility level. Uses linear interpolation between bins.
-
-    do
-        try = (try_b + try_t)/2
-
-        call GetZeros(botlim,toplim,minbin,maxbin,try,numzeros,zeros) ! find integration limits
-
-        try_sum = sum(bincounts,mask = bincounts .ge. (try_b + try_t)/2) ! step function approximation of integral
-
-        do i=1,numzeros/2
-            if (zeros(2*i-1).gt.0) then
-                lbin = int(zeros(2*i-1))
-            else
-                lbin = int(zeros(2*i-1))-1
-            end if
-
-            ! corrections for left (odd) intersection(s) of posterior with trial number of counts
-            try_sum=try_sum-.5*bincounts(lbin+1)+(lbin+1-zeros(2*i-1))*(bincounts(lbin+1)-0.5* &
-            ((bincounts(lbin+1)-bincounts(lbin))*(lbin+1-zeros(2*i-1))))
-
-            if (zeros(2*i).gt.0) then
-                lbin = int(zeros(2*i))
-            else
-                lbin = int(zeros(2*i))-1
-            end if
-
-            ! corrections for right (even) intersection(s) of posterior with trial number of counts
-            try_sum=try_sum-.5*bincounts(lbin)+(zeros(2*i)-lbin)*(bincounts(lbin)-.5*((zeros(2*i)-lbin)* &
-            (bincounts(lbin)-bincounts(lbin+1))))
-        end do
-
-        if (try_sum < conflev*norm) then
-            try_t = (try_b+try_t)/2
-        else
-            try_b = (try_b+try_t)/2
-        end if
-        if (abs(try_sum/try_last - 1) .lt. 0.001) exit
-        try_last = try_sum
-
-    end do
-
-    waterlevel = (try_b+try_t)/2
-
-
-    call GetZeros(botlim,toplim,minbin,maxbin,waterlevel,numzeros,zeros)
-
-
-    MinInterval(max_intersections+1)=real(numzeros) ! store number of intersections in last entry of vector
-
-    do i=1,max_intersections
-        MinInterval(i) = zeros(i)*width+center ! translates bin # into parameter values
-        if (botlim .and.toplim .and.(zeros(i) .eq. minbin)) then
-            MinInterval(i) = nint(1.e5*MinInterval(i))/1.e5
-            ! takes care of rounding errors if parameter has both upper and lower limits
-        end if
-    end do
-
-    end function MinInterval
-
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: end of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 
     subroutine PCA(pars,n,param_map,normparam_num)
     !Perform principle component analysis
@@ -1127,19 +1013,39 @@
 
     subroutine Get1DDensity(j)
     integer j,i,ix2
-    real(mcp), allocatable :: binlikes(:), binsraw(:), win(:), prior_mask(:)
+    real(mcp), allocatable :: binlikes(:), bincounts(:), binsraw(:), win(:), prior_mask(:)
     real(mcp), allocatable :: finebins(:),finebinlikes(:)
     integer ix
-    integer imin, imax, winw
-    real(mcp) widthj,edge_fac, maxbin
+    integer imin, imax, winw, end_edge, fine_edge
+    real(mcp) width,fine_width, edge_fac, maxbin
     logical :: has_prior
     character(LEN=Ini_max_string_len) :: fname, filename
-    integer, parameter :: fine_fac = 5
+    integer, parameter :: fine_fac = 10
 
     ix = colix(j)
 
-    width(j) = (range_max(j)-range_min(j))/(nbins+1)
-    if (width(j)==0) return
+    width = (range_max(j)-range_min(j))/(num_bins+1)
+    if (width==0) return
+
+    end_edge = nint(smooth_scale_1D*2)
+
+    if (has_limits_bot(ix)) then
+        if ( range_min(j)-limmin(ix) > width*end_edge .and. param_min(j)-limmin(ix)>width) then
+            !long way from limit
+            has_limits_bot(ix) = .false.
+        else
+            range_min(j) = limmin(ix)
+        end if
+    end if
+
+    if (has_limits_top(ix)) then
+        if ( limmax(ix) - range_max(j) > width*end_edge .and. limmax(ix)-param_max(j)>width) then
+            has_limits_top(ix) = .false.
+        else
+            range_max(j) = limmax(ix)
+        end if
+    end if
+    has_limits(ix)= has_limits_top(ix) .or. has_limits_bot(ix)
 
     if (has_limits_top(ix)) then
         center(j) = range_max(j)
@@ -1147,39 +1053,53 @@
         center(j) = range_min(j)
     end if
 
-    ix_min(j) = nint((range_min(j) - center(j))/width(j))
-    ix_max(j) = nint((range_max(j) - center(j))/width(j))
+    ix_min(j) = nint((range_min(j) - center(j))/width)
+    ix_max(j) = nint((range_max(j) - center(j))/width)
 
-    if (.not. has_limits_bot(ix)) ix_min(j) = ix_min(j)-1
-    if (.not. has_limits_top(ix)) ix_max(j) = ix_max(j)+1
+    if (.not. has_limits_bot(ix)) ix_min(j) = ix_min(j)-end_edge
+    if (.not. has_limits_top(ix)) ix_max(j) = ix_max(j)+end_edge
 
-    allocate(binLikes(ix_min(j):ix_max(j)))
     allocate(binsraw(ix_min(j):ix_max(j)))
-    binlikes = 0
     binsraw = 0
-    bincounts=0
 
-    winw = nint(fine_fac*smooth_scale_1D)
-    imin = (ix_min(j)-3)*winw+1
-    imax = (ix_max(j)+3)*winw-1
-    allocate(finebins(imin:imax))
-    if (plot_meanlikes) allocate(finebinlikes(imin:imax))
+    winw = nint(2.5*fine_fac*smooth_scale_1D)
+    fine_edge = winw+fine_fac*end_edge
+    fine_width = width/fine_fac
+
+    imin = nint((param_min(j) - center(j))/fine_width)
+    imax = nint((param_max(j) - center(j))/fine_width)
+    allocate(finebins(imin-fine_edge:imax+fine_edge))
     finebins=0
+    if (plot_meanlikes) allocate(finebinlikes(imin-fine_edge:imax+fine_edge))
     if (plot_meanlikes) finebinlikes=0
 
-    widthj = width(j)/fine_fac
-
     do i = 0, nrows-1
-        ix2=nint((coldata(ix,i)-center(j))/width(j))
+        ix2=nint((coldata(ix,i)-center(j))/width)
         if (ix2<=ix_max(j) .and. ix2>= ix_min(j)) binsraw(ix2) = binsraw(ix2) + coldata(1,i)
-        ix2=nint((coldata(ix,i)-center(j))/widthj)
-        if (ix2>=imin .and. ix2<=imax) then
-            finebins(ix2) = finebins(ix2) + coldata(1,i)
-            if (plot_meanlikes) finebinlikes(ix2) = finebinlikes(ix2) + coldata(1,i)*exp(meanlike - coldata(2,i))
+        ix2=nint((coldata(ix,i)-center(j))/fine_width)
+        finebins(ix2) = finebins(ix2) + coldata(1,i)
+        if (plot_meanlikes) then
+            if (mean_loglikes) then
+                finebinlikes(ix2) = finebinlikes(ix2) + coldata(1,i)*coldata(2,i)
+            else
+                finebinlikes(ix2) = finebinlikes(ix2) + coldata(1,i)*exp(meanlike - coldata(2,i))
+            end if
         end if
     end do
 
-    winw = nint(2*fine_fac*smooth_scale_1D)
+    if (ix_min(j) /= ix_max(j)) then
+        !account for underweighting near edges
+        if (.not. has_limits_bot(ix) .and. binsraw(ix_min(j)+end_edge-1)==0  .and. &
+        binsraw(ix_min(j)+end_edge) >  maxval(binsraw)/15) then
+            call EdgeWarning(ix-2)
+        end if
+        if (.not. has_limits_top(ix) .and. binsraw(ix_max(j)-end_edge+1)==0  .and. &
+        binsraw(ix_max(j)-end_edge) >  maxval(binsraw)/15) then
+            call EdgeWarning(ix-2)
+        end if
+    end if
+    deallocate(binsraw)
+
     allocate(Win(-winw:winw))
     do i=-winw,winw
         Win(i)=exp(-i**2/(fine_fac*smooth_scale_1D)**2/2)
@@ -1187,65 +1107,82 @@
     Win=Win/sum(win)
     has_prior = has_limits_bot(ix) .or. has_limits_top(ix)
     if (has_prior) then
-        allocate(prior_mask(imin:imax))
+        allocate(prior_mask(imin-fine_edge:imax+fine_edge))
         prior_mask =1
         if (has_limits_bot(ix)) then
             prior_mask(ix_min(j)*fine_fac) = 0.5
-            prior_mask(imin:ix_min(j)*fine_fac-1) = 0
+            prior_mask(imin-fine_edge:ix_min(j)*fine_fac-1) = 0
         end if
         if (has_limits_top(ix)) then
             prior_mask(ix_max(j)*fine_fac) = 0.5
-            prior_mask(ix_max(j)*fine_fac+1:imax) = 0
+            prior_mask(ix_max(j)*fine_fac+1:imax+fine_edge) = 0
         end if
     end if
 
-    do ix2=ix_min(j), ix_max(j)
-        bincounts(ix2) = sum(win* finebins(ix2*fine_fac-winw:ix2*fine_fac+winw))
-        if (plot_meanlikes .and. bincounts(ix2)>0) &
-        binlikes(ix2)=  sum(win* finebinlikes(ix2*fine_fac-winw:ix2*fine_fac+winw))/bincounts(ix2)
-        if (has_prior) then
+    !High resolution density (sampled many times per smoothing scale)
+    if (has_limits_bot(ix)) imin=ix_min(j)*fine_fac
+    if (has_limits_top(ix)) imax=ix_max(j)*fine_fac
+    call Density1D%Init(imax-imin+1,fine_width)
+    do i = imin,imax
+        Density1D%P(i-imin+1) = sum(win* finebins(i-winw:i+winw))
+        Density1D%X(i-imin+1) = center(j) + i*fine_width
+        if (has_prior .and. Density1D%P(i-imin+1)>0) then
             !correct for normalization of window where it is cut by prior boundaries
-            edge_fac=1/sum(win*prior_mask(ix2*fine_fac-winw:ix2*fine_fac+winw))
-            bincounts(ix2) = bincounts(ix2)*edge_fac
-            if (plot_meanlikes) binlikes(ix2)=binlikes(ix2)*edge_fac
+            edge_fac=1/sum(win*prior_mask(i-winw:i+winw))
+            Density1D%P(i-imin+1)=Density1D%P(i-imin+1)*edge_fac
         end if
     end do
-
-    if (ix_min(j) /= ix_max(j)) then
-        !account for underweighting near edges
-        if (.not. has_limits_bot(ix) .and. binsraw(ix_min(j))==0  .and. &
-        binsraw(ix_min(j)+1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
-            call EdgeWarning(ix-2)
-        end if
-        if (.not. has_limits_top(ix) .and. binsraw(ix_max(j))==0  .and. &
-        binsraw(ix_max(j)-1) >  maxval(binsraw(ix_min(j):ix_max(j)))/15) then
-            call EdgeWarning(ix-2)
-        end if
-    end if
-
-    maxbin = maxval(bincounts(ix_min(j):ix_max(j)))
+    maxbin = maxval(Density1D%P)
     if (maxbin==0) then
         write (*,*) 'no samples in bin, param: '//trim(ParamNames_NameOrNumber(NameMapping, colix(j)-2))
         stop
-    else
-        bincounts(ix_min(j):ix_max(j))=bincounts(ix_min(j):ix_max(j))/maxbin
     end if
+    Density1D%P=Density1D%P/maxbin
+    call Density1D%InitSpline()
 
     if (.not. no_plots) then
+        allocate(binCounts(ix_min(j):ix_max(j)))
+        bincounts=0
+        if (plot_meanlikes ) then
+            allocate(binLikes(ix_min(j):ix_max(j)))
+            binlikes = 0
+            if (mean_loglikes) binlikes=logZero
+        end if
+        !Output values for plots
+        do ix2=ix_min(j), ix_max(j)
+            bincounts(ix2) = sum(win* finebins(ix2*fine_fac-winw:ix2*fine_fac+winw))
+            if (plot_meanlikes .and. bincounts(ix2)>0) &
+            binlikes(ix2)=  sum(win* finebinlikes(ix2*fine_fac-winw:ix2*fine_fac+winw))/bincounts(ix2)
+            if (has_prior) then
+                !correct for normalization of window where it is cut by prior boundaries
+                edge_fac=1/sum(win*prior_mask(ix2*fine_fac-winw:ix2*fine_fac+winw))
+                bincounts(ix2) = bincounts(ix2)*edge_fac
+            end if
+        end do
+        bincounts=bincounts/maxbin
+        if (plot_meanlikes .and. mean_loglikes) then
+            maxbin = minval(binlikes)
+            where (binlikes - maxbin < 30)
+                binlikes = exp(-(binlikes- maxbin)) 
+            elsewhere
+                binlikes = 0
+            end where
+        endif
+
         fname = trim(dat_file_name(rootname,j))
         filename = trim(plot_data_dir)//trim(fname)
         open(unit=49,file=trim(filename)//'.dat',form='formatted',status='replace')
         do i = ix_min(j), ix_max(j)
-            write (49,'(2E16.7)') center(j) + i*width(j), bincounts(i)
+            write (49,'(2E16.7)') center(j) + i*width, bincounts(i)
         end do
-        if (ix_min(j) == ix_max(j)) write (49,'(1E16.7,'' 0'')') center(j) + ix_min*width(j)
+        if (ix_min(j) == ix_max(j)) write (49,'(1E16.7,'' 0'')') center(j) + ix_min*width
         close(49)
 
         if (plot_meanlikes) then
             open(unit=49,file=trim(filename)//'.likes',form='formatted',status='replace')
             maxbin = maxval(binlikes(ix_min(j):ix_max(j)))
             do i = ix_min(j), ix_max(j)
-                write (49,'(2E16.7)') center(j) + i*width(j), binlikes(i)/maxbin
+                write (49,'(2E16.7)') center(j) + i*width, binlikes(i)/maxbin
             end do
             close(49)
         end if
@@ -1278,10 +1215,10 @@
     if (abs(corr)<0.3) corr=0._mcp !keep things simple unless obvious degeneracy
     corr=max(-0.95,corr)
     corr=min(0.95,corr)
-    nbin2D = min(4*nbins,nint(nbins/(1-abs(corr)))) !for tight degeneracies increase bin density
+    nbin2D = min(4*num_bins_2D,nint(num_bins_2D/(1-abs(corr)))) !for tight degeneracies increase bin density
     widthx =  (range_max(j)-range_min(j))/(nbin2D+1)
     widthy =  (range_max(j2)-range_min(j2))/(nbin2D+1)
-    smooth_scale = (smooth_scale_2D*nbin2D)/nbins
+    smooth_scale = (smooth_scale_2D*nbin2D)/num_bins_2D
     fine_fac = max(2,nint(fine_fac_base/smooth_scale))
 
     ixmin = nint((range_min(j) - center(j))/widthx)
@@ -1656,8 +1593,6 @@
     //'_'//trim(ParamNames_NameOrNumber(NameMapping, colix(j2)-2))
     end function dat_file_2D
 
-    end module MCSamples
-
     subroutine CheckMatlabAxes(afile)
     integer, intent(in) :: afile
 
@@ -1670,6 +1605,53 @@
 
     end subroutine CheckMatlabAxes
 
+    ! normal inverse translate from
+    !http://home.online.no/~pjacklam/notes/invnorm
+    ! a routine written by john herrero
+    function dinvnorm(p)
+    real(mcp) dinvnorm, p,p_low,p_high
+    real(mcp) a1,a2,a3,a4,a5,a6
+    real(mcp) b1,b2,b3,b4,b5
+    real(mcp) c1,c2,c3,c4,c5,c6
+    real(mcp) d1,d2,d3,d4
+    real(mcp) q,r
+    a1=-39.6968302866538
+    a2=220.946098424521
+    a3=-275.928510446969
+    a4=138.357751867269
+    a5=-30.6647980661472
+    a6=2.50662827745924
+    b1=-54.4760987982241
+    b2=161.585836858041
+    b3=-155.698979859887
+    b4=66.8013118877197
+    b5=-13.2806815528857
+    c1=-0.00778489400243029
+    c2=-0.322396458041136
+    c3=-2.40075827716184
+    c4=-2.54973253934373
+    c5=4.37466414146497
+    c6=2.93816398269878
+    d1=0.00778469570904146
+    d2=0.32246712907004
+    d3=2.445134137143
+    d4=3.75440866190742
+    p_low=0.02425
+    p_high=1-p_low
+    if(p < p_low) then
+        q=dsqrt(-2*dlog(p))
+        dinvnorm=(((((c1*q+c2)*q+c3)*q+c4)*q+c5)*q+c6)/((((d1*q+d2)*q+d3)*q+d4)*q+1)
+    else if((p.le.p_high)) then
+        q=p-0.5
+        r=q*q
+        dinvnorm=(((((a1*r+a2)*r+a3)*r+a4)*r+a5)*r+a6)*q/(((((b1*r+b2)*r+b3)*r+b4)*r+b5)*r+1)
+    else
+        q=dsqrt(-2*dlog(1-p))
+        dinvnorm=-(((((c1*q+c2)*q+c3)*q+c4)*q+c5)*q+c6)/ ((((d1*q+d2)*q+d3)*q+d4)*q+1)
+    end if
+    end function dinvnorm
+
+    end module MCSamples
 
     program GetDist
     use IniFile
@@ -1693,7 +1675,6 @@
     integer num_3D_plots
     character(LEN=80) contours_str, plot_3D(20), bin_limits
     integer thin_factor, outliers
-    real(mcp) limmin(max_cols),limmax(max_cols)
     integer plot_2D_param, j2min
     real(mcp) try_b, try_t
     real(mcp) LowerUpperLimits(max_cols,2,max_contours), limfrac
@@ -1724,6 +1705,7 @@
     character(LEN=Ini_max_string_len) :: finish_run_command
     integer chain_handle
     integer triangle_num, triangle_params(max_cols)
+    real(mcp) tail_limit_bot,tail_limit_top
 
     NameMapping%nnames = 0
 
@@ -1793,9 +1775,11 @@
 
     allocate(coldata(ncols,0:max_rows))
 
-    nbins = Ini_Read_Int('num_bins')
+    num_bins = Ini_Read_Int('num_bins')
+    num_bins_2D = Ini_Read_Int('num_bins_2D', num_bins)
     smooth_scale_1D = Ini_read_Double('smooth_scale_1D',smooth_scale_1D) 
     smooth_scale_2D = Ini_read_Double('smooth_scale_2D',smooth_scale_2D) !smoothing scale in terms of bin scale
+    if (smooth_scale_1D<1) write(*,*) 'WARNING: smooth_scale_1D<1 may be unreliable'
 
     ignorerows = Ini_Read_Double('ignore_rows',0.d0)
 
@@ -1898,8 +1882,6 @@
 
     end do
 
-    has_limits = has_limits_top .or. has_limits_bot
-
     if (Ini_HasKey('plotparams_num')) stop 'plotparams_num deprectated; just use plot_params'
     InLine = Ini_Read_String('plot_params')
     if (InLine/='') then
@@ -1992,12 +1974,12 @@
     num_contours = Ini_Read_Int('num_contours',2)
     contours_str = ''
     do i=1, num_contours
-        contours(i) = Ini_Read_Real(numcat('contour',i))
+        contours(i) = Ini_Read_Double(numcat('contour',i))
         if (i>1) contours_str = concat(contours_str,'; ')
         contours_str = concat(contours_str, Ini_Read_String(numcat('contour',i)))
+        max_frac_twotail(i) = Ini_Read_Double(numcat('max_frac_twotail',i), exp(-dinvnorm((1-contours(i))/2)**2/2))
     end do
 
-    max_frac_twotail = Ini_Read_Double('max_frac_twotail',max_frac_twotail)
     force_twotail = Ini_Read_Logical('force_twotail',.false.)
     if (force_twotail) write (*,*) 'Computing two tail limits'
 
@@ -2293,73 +2275,37 @@
     !Do 1D bins
     do j = 1,num_vars
         ix = colix(j)
-
+        param_min(j) = minval(coldata(ix,0:nrows-1))
+        param_max(j) = maxval(coldata(ix,0:nrows-1))
         range_min(j) = ConfidVal(ix,0.001_mcp,.false.)
         range_max(j) = ConfidVal(ix,0.001_mcp,.true.)
-        width(j) = (range_max(j)-range_min(j))/(nbins+1)
-
-        if (has_limits_bot(ix)) then
-            if ( range_min(j)-limmin(ix) > width(j)) then
-                !long way from limit
-                has_limits_bot(ix) = .false.
-            else
-                range_min(j) = limmin(ix)
-            end if
-        end if
-
-        if (has_limits_top(ix)) then
-            if ( limmax(ix) - range_max(j) > width(j)) then
-                has_limits_top(ix) = .false.
-            else
-                range_max(j) = limmax(ix)
-            end if
-        end if
-
-        has_limits(ix)= has_limits_top(ix) .or. has_limits_bot(ix)
 
         call Get1DDensity(j)
 
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: start of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        if (do_minimal_1d_intervals) then ! Calculate minimal credible intervals (see arXiv:0705.0440)
-            do ix1 = 1, num_contours ! get boundaries of minimal intervals
-                minimal_intervals(j,:,ix1) = MinInterval(contours(ix1),width(j),center(j), &
-                has_limits_bot(ix),has_limits_top(ix),ix_min(j),ix_max(j))
-
-                if (int(minimal_intervals(j,max_intersections+1,ix1)).ne.2) then ! if minimal region is not connected ...
-                    Write(*,*) 'Warning: the minimal '& ! ... spam screen with warning ...
-                    //trim(intToStr(nint(100*contours(ix1))))// '% credible region in parameter ' &
-                    //trim(intToStr(colix(j)-2))// &
-                    ' does not seem to be connected. Perhaps the posterior is multimodal?'// &
-                    'You might also want to try choosing a larger bin size and/or turn on smoothing to reduce noise.'
-                    Write(*,*) 'There are '//trim(intToStr(int(minimal_intervals(j,max_intersections+1,ix1))/2))//&
-                    'disconnected regions:' ! ... output intervals to screen and ...
-                    do i=1,int(minimal_intervals(j,max_intersections+1,ix1))/2
-                        Print*,minimal_intervals(j,2*i-1,ix1),' -> ',minimal_intervals(j,2*i,ix1)
-                        minimal_intervals(j,2*i-1,ix1)=0. ! ... set output in .minmarge file to zero to avoid confusion
-                        minimal_intervals(j,2*i,ix1)=0.
-                    end do
-                end if
-            end do
-        end if
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: end of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
         !Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
-        marge_limits_bot(ix) =  has_limits_bot(ix) .and. .not. force_twotail .and. bincounts(ix_min(j)) > max_frac_twotail
-        marge_limits_top(ix) =  has_limits_top(ix) .and. .not. force_twotail .and. bincounts(ix_max(j)) > max_frac_twotail
         do ix1 = 1, num_contours
-            limfrac = 1-contours(ix1)
-            if (.not. marge_limits_bot(ix) .and. .not. marge_limits_top(ix)) then
-                limfrac = limfrac/2 !two tail
-            end if
-            if (marge_limits_top(ix)) then
-                LowerUpperLimits(j,2,:) = range_max(j)
-            else
-                LowerUpperLimits(j,2,ix1) = ConfidVal(ix,limfrac,.true.)
-            end if
-            if (marge_limits_bot(ix)) then
-                LowerUpperLimits(j,1,:) = range_min(j)
-            else
-                LowerUpperLimits(j,1,ix1) = ConfidVal(ix,limfrac,.false.)
+            marge_limits_bot(ix1,ix) =  has_limits_bot(ix) .and. .not. force_twotail .and. Density1D%P(1) > max_frac_twotail(ix1)
+            marge_limits_top(ix1,ix) =  has_limits_top(ix) .and. .not. force_twotail .and. Density1D%P(Density1D%n) > max_frac_twotail(ix1)
+            if (.not. marge_limits_bot(ix1,ix) .or. .not. marge_limits_top(ix1,ix)) then
+                !give limit
+                call Density1D%Limits(contours(ix1), tail_limit_bot, tail_limit_top, marge_limits_bot(ix1,ix), marge_limits_top(ix1,ix))
+                limfrac = 1-contours(ix1)
+                if (marge_limits_bot(ix1,ix)) then
+                    tail_limit_bot = range_min(j)
+                elseif (marge_limits_top(ix1,ix)) then
+                    !this may be a bit more accurate for one tail
+                    tail_limit_bot = ConfidVal(ix,limfrac,.false.)
+                end if
+                if (marge_limits_top(ix1,ix)) then
+                    tail_limit_top = range_max(j)
+                elseif (marge_limits_bot(ix1,ix)) then
+                    tail_limit_top = ConfidVal(ix,limfrac,.true.)
+                end if
+                LowerUpperLimits(j,2,ix1) = tail_limit_top
+                LowerUpperLimits(j,1,ix1) = tail_limit_bot
+            else !no limit
+                LowerUpperLimits(j,1,ix1) = range_min(j)
+                LowerUpperLimits(j,2,ix1) = range_max(j)
             end if
         end do 
 
@@ -2593,7 +2539,7 @@
     !Marginalized
     if (.not. plots_only) &
     call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
-    LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels, force_twotail)
+    LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels)
 
     call ParamNames_WriteFile(NameMapping, trim(plot_data_dir)//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
     open(unit=51,file=trim(plot_data_dir)//trim(rootname)//'.paramnames',form='formatted',status='replace')

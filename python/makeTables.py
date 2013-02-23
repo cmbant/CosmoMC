@@ -1,9 +1,9 @@
-import os, batchJobArgs, ResultObjs, paramNames
+import os, batchJobArgs, ResultObjs, paramNames, planckStyle
 
 
 Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True, converge=True)
 Opts.parser.add_argument('latex_filename')
-Opts.parser.add_argument('--sigma', type=int, default=2)
+Opts.parser.add_argument('--limit', type=int, default=2)
 Opts.parser.add_argument('--bestfitonly', action='store_true')
 Opts.parser.add_argument('--nobestfit', action='store_true')
 
@@ -26,7 +26,7 @@ outfile = args.latex_filename
 
 if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
 
-if not args.forpaper: formatter = ResultObjs.planckNoLineTableFormatter()
+if args.forpaper: formatter = planckStyle.planckStyleTableFormatter()
 else: formatter = None
 
 lines = []
@@ -45,7 +45,7 @@ def texEscapeText(string):
 
 def getTableLines(content):
     return ResultObjs.resultTable(args.columns, [content], blockEndParams=args.blockEndParams,
-                         formatter=formatter, paramList=args.paramList, sigma=args.sigma).lines
+                         formatter=formatter, paramList=args.paramList, limit=args.limit).lines
 
 def paramResultTable(jobItem):
     tableLines = []
@@ -77,7 +77,7 @@ def compareTable(jobItems, titles=None):
     if titles is None: titles = [jobItem.datatag for jobItem in jobItems if jobItem.result_marge is not None]
     else: titles = titles.split(';')
     return ResultObjs.resultTable(1, [jobItem.result_marge for jobItem in jobItems if jobItem.result_marge is not None],
-               formatter=formatter, sigma=args.sigma, titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
+               formatter=formatter, limit=args.limit, titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
 
 def filterBatchData(batch, datatags):
     items = []
@@ -93,20 +93,22 @@ for jobItem in Opts.filteredBatchItems():
 items = sorted(items.iteritems())
 
 for paramtag, parambatch in items:
-    if not args.forpaper: lines.append('\\section{ ' + texEscapeText("+".join(parambatch[0].param_set)) + '}')
+    if not args.forpaper: section = '\\newpage\\section{ ' + texEscapeText("+".join(parambatch[0].param_set)) + '}'
+    else: section = ''
     if not args.compare is None:
         compares = filterBatchData(parambatch, args.compare)
-        if len(compares) > 0:
+        if len(compares) == len(args.compare):
+            lines.append(section)
             lines += compareTable(compares, args.titles)
-        else: print 'no matches for compare'
+        else: print 'no matches for compare: ' + paramtag
     else:
+        lines.append(section)
         for jobItem in parambatch:
             if os.path.exists(jobItem.distPath) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
                 if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
                 tableLines = paramResultTable(jobItem)
                 ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
                 lines += tableLines
-    if not args.forpaper: lines.append('\\newpage')
 
 if not args.forpaper: lines.append('\\end{document}')
 

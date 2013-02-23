@@ -4,7 +4,7 @@
 set the following in ~/.bashrc
 
 export PLANCKLIKE=cliklike
-export CLIKPATH=/scratch/aml1005/clik_7.0/clik-7.0b
+export CLIKPATH=/scratch/aml1005/clik_7.2/clik-7.2
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CLIKPATH/lib
 
 To make local datafiles for commander and lowLike when not using *.cldf.clik. see

@@ -232,12 +232,13 @@
     start_at_bestfit .and. new_chains
 
     if (want_minimize) then
-        max_like_radius = Ini_Read_Real('max_like_radius',0.01)
-        max_like_iterations = Ini_Read_Int('max_like_iterations',4000)
         !radius in normalized parameter space to converge
-        dense_minimization_points = &
-        Ini_Read_Logical('dense_minimization_points',dense_minimization_points)
-        !if true, use O(N^2) interpolation points; seems this is more robust if slower for high N
+        max_like_radius = Ini_Read_Real('max_like_radius',0.01)
+        max_like_iterations = Ini_Read_Int('max_like_iterations',6000)
+        !set points factor above 2 to use a denser sampling of space (may be more robust)
+        minimization_points_factor = Ini_Read_Int('minimization_points_factor',minimization_points_factor)
+        !will exit if function difference between iterations less than minimize_loglike_tolerance (even if radius criterion not met)
+        minimize_loglike_tolerance = Ini_Read_double('minimize_loglike_tolerance',minimize_loglike_tolerance)
     end if
 
     Ini_fail_on_not_found = .true.

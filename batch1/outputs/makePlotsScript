@@ -1,7 +1,1 @@
-python batch1/outputs/grid_1paramext.py
-python batch1/outputs/omegam-omegal.py
-python batch1/outputs/nuisance_1d_LCDM.py
-python batch1/outputs/planck_datasets_1d.py
-python batch1/outputs/Alens.py
-python batch1/outputs/triangle.py
-python batch1/outputs/omm-H0-ns.py
+for f in batch1/outputs/*.py; do echo "Processing $f file.."; python $f; done

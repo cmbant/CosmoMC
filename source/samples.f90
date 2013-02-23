@@ -10,32 +10,47 @@
     procedure :: ConfidVal => TSampleList_ConfidVal
     end Type TSampleList
 
+    !Spline interpolated density function
+    Type TDensity1D
+        integer n
+        real(mcp) :: spacing
+        real(mcp), dimension(:), allocatable :: X
+        real(mcp), dimension(:), allocatable :: P, ddP
     contains
-    
-    subroutine GelmanRubinEvalues(cov, meanscov, evals, num)
-     use MatrixUtils
-     integer, intent(in) :: num
-     real(sample_prec) :: cov(num,num), meanscov(num,num), evals(num)
-     integer jj
-     real(sample_prec) rot(num,num), rotmeans(num,num)
-     real(sample_prec) :: sc
-     
-     rot = cov
-     rotmeans = meanscov
-     do jj=1,num
-                sc = sqrt(cov(jj,jj))
-                rot(jj,:) = rot(jj,:) / sc
-                rot(:,jj) = rot(:,jj) / sc
-                rotmeans(jj,:) = rotmeans(jj,:) /sc
-                rotmeans(:,jj) = rotmeans(:,jj) /sc
-     end do
+    procedure :: Prob => Density1d_prob
+    procedure :: Init => Density1D_Init
+    procedure :: Free => Density1d_Free
+    procedure :: InitSpline => Density1D_initSpline
+    procedure :: Limits => Density1D_Limits
+    end Type TDensity1D
 
-     call Matrix_CholeskyRootInverse(rot)
-     rotmeans =  matmul(matmul(rot, rotmeans), transpose(rot))
-     call Matrix_Diagonalize(rotmeans, evals, num)
-    
+
+    contains
+
+    subroutine GelmanRubinEvalues(cov, meanscov, evals, num)
+    use MatrixUtils
+    integer, intent(in) :: num
+    real(sample_prec) :: cov(num,num), meanscov(num,num), evals(num)
+    integer jj
+    real(sample_prec) rot(num,num), rotmeans(num,num)
+    real(sample_prec) :: sc
+
+    rot = cov
+    rotmeans = meanscov
+    do jj=1,num
+        sc = sqrt(cov(jj,jj))
+        rot(jj,:) = rot(jj,:) / sc
+        rot(:,jj) = rot(:,jj) / sc
+        rotmeans(jj,:) = rotmeans(jj,:) /sc
+        rotmeans(:,jj) = rotmeans(:,jj) /sc
+    end do
+
+    call Matrix_CholeskyRootInverse(rot)
+    rotmeans =  matmul(matmul(rot, rotmeans), transpose(rot))
+    call Matrix_Diagonalize(rotmeans, evals, num)
+
     end subroutine GelmanRubinEvalues
-         
+
 
     subroutine TSampleList_ConfidVal(L, ix, limfrac, ix1, ix2, Lower, Upper)
     !Taking the ix'th entry in each array to be a sample, value for which
@@ -80,5 +95,121 @@
 
     end subroutine TSampleList_ConfidVal
 
+    function Density1D_prob(D, x)
+    Class(TDensity1D) :: D
+    real(sample_prec) :: Density1D_prob
+    real(sample_prec), intent(in) :: x
+    integer llo,lhi
+    real(sample_prec) a0,b0
+
+    if (x>D%X(D%n) - D%spacing/1d6) then
+        if (x > D%X(D%n) + D%spacing/1d6) then
+            write (*,*) 'Density: x too big ', x
+            stop 
+        end if
+        Density1D_prob=D%P(D%n)
+        return
+    end if
+    if (x< D%X(1)- D%spacing/1d6) then
+        write (*,*) 'Density: out of range ', x, D%X(1), D%X(D%n)
+        stop
+    else
+    end if
+    llo = 1 + max(0,int((x-D%X(1))/D%spacing))
+    lhi=llo+1
+    a0=(D%X(lhi)-x)/D%spacing
+    b0=(x-D%X(llo))/D%spacing
+    Density1D_prob = a0*D%P(llo)+ b0*D%P(lhi)+((a0**3-a0)* D%ddP(llo) +(b0**3-b0)*D%ddP(lhi))*D%spacing**2/6
+
+    end function Density1D_prob
+
+    subroutine Density1D_Init(D,n, spacing)
+    Class(TDensity1D) :: D
+    integer, intent(in) :: n
+    real(sample_prec), intent(in) :: spacing
+
+    call D%Free()
+    D%n=n
+    allocate(D%X(n))
+    allocate(D%P(n))
+    allocate(D%ddP(n))
+    D%spacing = spacing
+
+    end subroutine Density1D_Init
+
+    subroutine Density1D_Free(D)
+    Class(TDensity1D) :: D
+
+    if (allocated(D%X)) then
+        deallocate(D%X,D%P,D%ddP)
+    end if
+    end subroutine Density1D_Free
+
+    subroutine Density1D_initSpline(D)
+    Class(TDensity1D) :: D
+    
+    call spline_double(D%x,D%P,D%n,D%ddP)
+    
+    end subroutine Density1D_initSpline
+
+    subroutine Density1D_Limits(D, p, mn, mx, lim_bot,lim_top)
+    class(TDensity1D) :: D
+    integer i, bign
+    real(mcp), intent(in) :: p
+    logical,intent(out) :: lim_bot,lim_top
+    real(mcp), intent(out) :: mn,mx
+    integer, parameter :: factor = 100 
+    real(mcp) norm, try, try_sum, try_t,try_b,try_last
+    real(mcp), allocatable :: grid(:)
+
+    bign=(D%n-1)*factor + 1
+    allocate(grid(bign))
+    do i=1, bign
+        grid(i) = D%Prob(D%X(1) + (i-1)*D%spacing/factor)
+    end do
+    norm = sum(grid)
+    norm = norm - 0.5*D%P(D%n) - 0.5*D%P(1)
+
+    try_t = maxval(grid)
+    try_b = 0
+    try_last = -1
+    do
+        try = (try_b + try_t)/2
+        try_sum = sum(grid,mask = grid >=  try)
+        if (try_sum < p*norm) then
+            try_t = (try_b+try_t)/2
+        else
+            try_b = (try_b+try_t)/2
+        end if
+        if (abs(try_sum/try_last - 1) < 0.0001) exit
+        try_last = try_sum
+    end do
+    try = (try_b+try_t)/2
+    lim_bot = grid(1) >= try
+    if (lim_bot) then
+        mn = D%P(1)
+    else
+        do i=1, bign
+            if (grid(i) > try) then
+                mn = D%X(1) + (i-1)*D%spacing/factor
+                exit
+            end if
+        end do
+    end if
+    lim_top=grid(bign) >= try
+    if (lim_top) then
+        mx = D%P(D%n)
+    else
+        do i=bign,1,-1
+            if (grid(i) > try) then
+                mx = D%X(1) + (i-1)*D%spacing/factor
+                exit
+            end if
+        end do
+    end if
+
+    end subroutine Density1D_Limits
+
+    
     end module Samples
 

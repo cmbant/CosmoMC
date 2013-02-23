@@ -16,7 +16,6 @@ class GetDistPlotSettings:
         self.plot_args = None
         self.lineL = [':k', ':r', ':b', ':m', ':g', ':y']
         self.solid_colors = ['#009966', '#000866', '#336600', '#006633' , 'g', 'm', 'r']  # '#66CC99'
-        self.printex = 'pdf'
         self.line_labels = True
         self.x_label_rotation = 0
         self.num_shades = 80
@@ -33,16 +32,21 @@ class GetDistPlotSettings:
         self.xtick_prune = None  # 'lower' or 'upper'
         self.tight_gap_fraction = 0.13  # space between ticks and the edge
         self.num_contours = 2
+        self.legend_frac_subplot_margin = 0.2
+        self.legend_frac_subplot_line = 0.1
+        self.alpha_filled_add = 0.5
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
-        self.lab_fontsize = 5 + 3 * self.subplot_size_inch
-        self.axes_fontsize = 3 + 2 * self.subplot_size_inch
+        self.lab_fontsize = 1 + 5 * self.subplot_size_inch
+        self.axes_fontsize = 4 + 2 * self.subplot_size_inch
         self.lw1 = self.subplot_size_inch / 3.0
         self.lw_contour = self.lw1 * 0.4
         self.lw_likes = self.subplot_size_inch / 6.0
         self.scatter_size = 1 + self.subplot_size_inch
 
+
+defaultSettings = GetDistPlotSettings()
 
 class Density1D():
     def bounds(self): return min(self.x), max(self.x)
@@ -122,7 +126,7 @@ class SampleAnalysisGetDist():
 class GetDistPlotter():
 
     def __init__(self, plot_data, settings=None,):
-        if settings is None: self.settings = GetDistPlotSettings()
+        if settings is None: self.settings = defaultSettings
         else: self.settings = settings
         self.plot_data = plot_data
         self.sampleAnalyser = SampleAnalysisGetDist(plot_data)
@@ -150,6 +154,11 @@ class GetDistPlotter():
         args = self.get_plot_args(plotno, **kwargs)
         return args.get('ls', self.settings.lineM[plotno][:-1])
 
+    def get_alpha2D(self, plotno, filled, **kwargs):
+        args = self.get_plot_args(plotno, **kwargs)
+        if filled and plotno > 0: default = self.settings.alpha_filled_add
+        else: default = 1
+        return args.get('alpha', default)
 
     def paramNamesForRoot(self, root):
         if not root in self.param_name_sets: self.param_name_sets[root] = self.sampleAnalyser.paramsForRoot(root, labelParams=self.settings.param_names_for_labels)
@@ -167,11 +176,12 @@ class GetDistPlotter():
 
         return density.bounds()
 
-    def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, ls=None, cols=None, alpha=0.5, **kwargs):
+    def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, ls=None, cols=None, alpha=None, **kwargs):
         param1, param2 = self.get_param_array(root, [param1, param2])
 
         density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
         if density is None: return None
+        if alpha is None: alpha = self.get_alpha2D(plotno, filled, **kwargs)
 
         if filled:
             linestyles = ['-']
@@ -186,9 +196,9 @@ class GetDistPlotter():
             cols = [color]
             if ls is None: ls = self.get_linestyle(plotno, **kwargs)
             linestyles = [ls]
-
         kwargs = self.get_plot_args(plotno, **kwargs)
-        contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidth=self.settings.lw_contour, alpha=alpha, **kwargs)
+        kwargs['alpha'] = alpha
+        contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidth=self.settings.lw_contour, **kwargs)
 
         return density.bounds()
 
@@ -302,7 +312,7 @@ class GetDistPlotter():
             self.legend = self.fig.legend(lines, legend_labels, legend_loc, prop={'size':self.settings.lab_fontsize})
             self.extra_artists = [self.legend]
             if self.settings.tight_layout and not no_extra_legend_space:
-                frac = 0.2 + len(legend_labels) * 0.1
+                frac = self.settings.legend_frac_subplot_margin + len(legend_labels) * self.settings.legend_frac_subplot_line
                 if 'upper' in legend_loc: subplots_adjust(top=1 - frac / self.plot_row)
                 elif 'lower' in legend_loc: subplots_adjust(bottom=frac / self.plot_row)
 
