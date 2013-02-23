@@ -1,7 +1,7 @@
     module noncliklike
     use cmbtypes
     use settings
-    use temp_like
+    use temp_like_camspec
     use Likelihood
 #ifdef highL
     use HIGHELL_OPTIONS

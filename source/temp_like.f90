@@ -1,4 +1,4 @@
-    module temp_like
+    module temp_like_camspec
     !    use settings, only: MPIrank
     !use AMLutils
 
@@ -18,10 +18,6 @@
     real(campc), dimension(:,:), allocatable :: beam_cov,beam_cov_inv
     real(campc), dimension(:,:,:), allocatable :: beam_modes ! mode#, l, spec#
     integer :: num_modes_per_beam,beam_lmax,beam_Nspec,cov_dim
-
-    logical :: writebest=.false.
-    real(campc) :: bestlike = 1e30_campc
-    integer :: tempinstance
 
     integer, allocatable :: marge_indices(:),marge_indices_reverse(:)
     integer, allocatable :: keep_indices(:),keep_indices_reverse(:)
@@ -196,12 +192,6 @@
 
     call Matrix_inverse(c_inv)
 
-    !tempinstance=MPIrank+1
-    !
-    !write(bestnum,*) tempinstance
-    !bestroot='/home/stg20/src/cosmomc/chains/best'
-    !bestname=trim(bestroot)//'_'//trim(adjustl(bestnum))//'.txt'
-    !storeroot='/home/stg20/src/cosmomc/chains/store'
     countnum=0
 
     needinit=.false.
@@ -370,4 +360,4 @@
     end subroutine calc_like
 
 
-    end module temp_like
+    end module temp_like_camspec
