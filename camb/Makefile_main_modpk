@@ -85,6 +85,9 @@ camb_fits: writefits.f90 $(CAMBOBJ) $(DRIVER)
 powspec : $(MODPKOBJ) $(PKDRIVER)
 	$(F90C) $(F90FLAGS) $(MODPKOBJ) $(PKDRIVER) -o $@
 
+postproc : $(MODPKOBJ) driver_postproc.f90
+	$(F90C) $(F90FLAGS) $(MODPKOBJ) driver_postproc.f90 -o $@
+
 %.o: %.f90
 	$(F90C) $(F90FLAGS) -c $*.f90
 
