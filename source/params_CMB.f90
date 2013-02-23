@@ -405,7 +405,8 @@
       end if
 
 !MODIFIED P(K)
-      if (use_modpk) Cube(j+nuisance_params_used:nPar) = 0.d0 !zero out crud in the rest of Cube
+! THIS DOES NOT WORK, NEED TO DEBUG
+!      if (use_modpk) Cube(j+nuisance_params_used:nPar) = 0.d0 !zero out crud in the rest of Cube
 !END MODIFIED P(K)
  
       !call IO_OutputChainRow(outfile_handle, mult, like, output_array)
