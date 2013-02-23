@@ -1,4 +1,4 @@
-    module cliklike
+    module noncliklike
     use cmbtypes
     use settings
     use temp_like
@@ -9,13 +9,13 @@
 #endif
     implicit none
 
-    logical :: use_CAMspec = .true.
+    logical :: use_CAMspec = .false.
     logical :: use_highL = .false.
 
-   type, extends(CosmologyLikelihood) :: CamSpecLikelihood
+   type, extends(CosmologyLikelihood) :: CamSpeclikelihood
     contains
     procedure :: LogLike => CamSpecLogLike
-    end type CamSpecLikelihood
+    end type CamSpeclikelihood
 
 #ifdef highL
    type, extends(CosmologyLikelihood) :: highLLikelihood
@@ -27,12 +27,12 @@
     integer, parameter :: dp = kind(1.d0)
 
     private
-    public :: clik_readParams
+    public :: nonclik_readParams
 
     contains
 
     
-    subroutine clik_readParams(LikeLIst, Ini)
+    subroutine nonclik_readParams(LikeLIst, Ini)
     use settings
     Type(TIniFile) Ini
     class(LikelihoodList) :: LikeList
@@ -40,11 +40,11 @@
       beamfilename, kszfilename,tszxcibfilename
     Class(CosmologyLikelihood), pointer :: Like
 
-    print *,' using cliklike_CamSpec'
+    print *,' using noncliklike_CamSpec'
     use_CAMspec = Ini_Read_Logical_File(Ini,'use_CAMspec',.true.)
 
     if (use_CAMspec) then
-        allocate(CamSpecLikelihood::Like)
+        allocate(CamSpeclikelihood::Like)
         call LikeList%Add(Like) 
         Like%needs_powerspectra =.true.
         Like%LikelihoodType = 'CMB'
@@ -87,11 +87,11 @@
 #endif
     end if
     
-    end subroutine clik_readParams
+    end subroutine nonclik_readParams
 
 
   real(mcp) function CamspecLogLike(like, CMB, Theory, DataParams) 
-     Class(CamspecLikelihood) :: like
+     Class(CamSpeclikelihood) :: like
      Class (CMBParams) CMB
      Class(TheoryPredictions) Theory
      real(mcp) acl(lmax,num_cls_tot)
@@ -100,12 +100,12 @@
      call ClsFromTheoryData(Theory, acl)
 !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
 !freq_params(35:44), ACT/SPT as freq_params(45:65)
-      CamspecLogLike = clik_lnlike_camSpec(acl,DataParams)
+      CamspecLogLike = nonclik_lnlike_camSpec(acl,DataParams)
   end function CamspecLogLike
 
  
-    function clik_lnlike_camSpec(cl,freq_params)
-    real(dp) :: clik_lnlike_camSpec
+    function nonclik_lnlike_camSpec(cl,freq_params)
+    real(dp) :: nonclik_lnlike_camSpec
     real(mcp), intent(in) :: cl(lmax,num_cls_tot)
     real(mcp), intent(in)  :: freq_params(:)
     integer, parameter :: lmin=2
@@ -118,11 +118,11 @@
 
     call calc_like(zlike,  cell_cmb, freq_params)
 
-    clik_lnlike_camSpec = zlike/2
+    nonclik_lnlike_camSpec = zlike/2
 
-    if (Feedback>2) Print*,'CamSpec lnlike = ',clik_lnlike_camSpec
+    if (Feedback>2) Print*,'CamSpec lnlike = ',nonclik_lnlike_camSpec
 
-    end function clik_lnlike_camSpec
+    end function nonclik_lnlike_camSpec
 
 #ifdef highL
   real(mcp) function highLLogLike(like, CMB, Theory, DataParams) 
@@ -133,13 +133,13 @@
      real(mcp) DataParams(:)
 
      call ClsFromTheoryData(Theory, acl)
-     highLLogLike = clik_lnlike_highL(acl,DataParams)
+     highLLogLike = nonclik_lnlike_highL(acl,DataParams)
 
   end function highLLogLike
 
 
-  function clik_lnlike_highL(cl,freq_params)
-    real(dp) :: clik_lnlike_highL
+  function nonclik_lnlike_highL(cl,freq_params)
+    real(dp) :: nonclik_lnlike_highL
     real(mcp), intent(in) :: cl(lmax,num_cls_tot)
     real(mcp), intent(in)  :: freq_params(:)
     real(dp) like_tot
@@ -191,12 +191,12 @@
     call highell_likelihood_compute(cl_tt,A_sz_143,A_ksz,xi,a_ps_act_148,a_ps_act_217,a_ps_spt_95,a_ps_spt_150,a_ps_spt_220, &
        A_cib_143,A_cib_217, ncib, r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220,r_cib,act_dust_s,act_dust_e, &
        cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220,like_tot)
-    clik_lnlike_highL = like_tot
+    nonclik_lnlike_highL = like_tot
 
-    if (Feedback>2) Print*,'highL lnlike = ',clik_lnlike_highL
+    if (Feedback>2) Print*,'highL lnlike = ',nonclik_lnlike_highL
 
-    end function clik_lnlike_highL
+    end function nonclik_lnlike_highL
 #endif
 
-   end module cliklike
+   end module noncliklike
 

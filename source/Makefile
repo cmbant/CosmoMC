@@ -22,8 +22,8 @@ GSLPATH ?= /home/aml1005/libs/gsl
 
 #empty not to compile with CLIK, otherwise set to name of cliklike.f90 file
 PLANCKLIKE ?=
-#PLANCKLIKE =cliklike_CamSpec
-#PLANCKLIKE =cliklike
+
+NONCLIKLIKE ?=
 
 #set to build with ACT/SPT without CLIK
 highL ?=
@@ -130,6 +130,10 @@ ifneq ($(PLANCKLIKE),)
 FFLAGS += -DCLIK
 endif
 
+ifneq ($(NONCLIKLIKE),)
+FFLAGS += -DNONCLIK
+endif
+
 ifneq ($(highL),)
 FFLAGS += -DhighL
 LINKFLAGS += -L$(highL) -lhigh
@@ -138,13 +142,18 @@ endif
 
 PLANCKLIKEFILES=
 
-ifeq ($(PLANCKLIKE),cliklike_CamSpec)
-PLANCKLIKEFILES += temp_like.o
+ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
+PLANCKLIKEFILES +=  temp_like.o
 endif
 
 ifneq ($(PLANCKLIKE),)
 PLANCKLIKEFILES += $(PLANCKLIKE).o
 endif
+
+ifneq ($(NONCLIKLIKE),)
+PLANCKLIKEFILES += $(NONCLIKLIKE).o
+endif
+
 
 SUPERNOVAE = supernovae_Union2.o supernovae_SNLS.o
 
@@ -191,8 +200,8 @@ IO.o: ParamNames.o settings.o
 samples.o: ObjectLists.o settings.o
 likelihood.o: ObjectLists.o settings.o ParamNames.o
 DataLikelihoods.o: likelihood.o paramdef.o $(DATAMODULES)
-cliklike_CamSpec.o: temp_like.o
-$(PLANCKLIKE).o: cmbtypes.o
+cliklike_CamSpec.o: temp_like.o cmbtypes.o
+cliklike.o: cmbtypes.o
 settings.o: ../camb/libcamb_$(RECOMBINATION).a
 cmbtypes.o: settings.o likelihood.o GeneralTypes.o
 Planck_like.o: cmbtypes.o
@@ -216,6 +225,8 @@ minimize.o: PowellConstrainedMinimize.o calclike.o
 ifneq ($(highL),)
 cliklike_CamSpec.o: $(highL)/libhigh.a
 endif
+
+
 
 ifneq ($(WMAP),)
 cmbdata.o: $(WMAP)/libwmap9.a

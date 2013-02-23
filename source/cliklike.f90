@@ -48,6 +48,7 @@
         if (Ini%L%Items(i)%P%Name(1:10)=='clik_data_') then
             name =Ini%L%Items(i)%P%Name
             fname = ReadIniFileName(Ini,name, NotFoundFail = .false.)
+            if (fname=='') cycle
             if (MpiRank==0 .and. feedback > 0) &
             print*,'Using clik with likelihood file ',trim(fname)
             call clik_try_lensing(is_lensing, fname)
