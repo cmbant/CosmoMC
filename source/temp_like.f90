@@ -271,7 +271,7 @@
             enddo
         enddo
     else
-        bream_coeff=0
+        beam_coeffs=0
     end if
 
     do l=1, CAMspec_lmax
