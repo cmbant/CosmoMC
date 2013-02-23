@@ -9,19 +9,16 @@
 #endif
     implicit none
 
-    logical :: use_CAMspec = .false.
-    logical :: use_highL = .false.
-
-   type, extends(CosmologyLikelihood) :: CamSpeclikelihood
+    type, extends(CosmologyLikelihood) :: CamSpeclikelihood
     contains
     procedure :: LogLike => CamSpecLogLike
     end type CamSpeclikelihood
 
 #ifdef highL
-   type, extends(CosmologyLikelihood) :: highLLikelihood
+    type, extends(CosmologyLikelihood) :: highLLikelihood
     contains
     procedure :: LogLike => highLLogLike
-   end type highLLikelihood
+    end type highLLikelihood
 #endif
 
     integer, parameter :: dp = kind(1.d0)
@@ -31,17 +28,20 @@
 
     contains
 
-    
+
     subroutine nonclik_readParams(LikeLIst, Ini)
     use settings
     Type(TIniFile) Ini
     class(LikelihoodList) :: LikeList
     character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
-      beamfilename, kszfilename,tszxcibfilename
+    beamfilename, kszfilename,tszxcibfilename
     Class(CosmologyLikelihood), pointer :: Like
+    logical :: use_CAMspec
+    logical :: use_highL
+
 
     print *,' using noncliklike_CamSpec'
-    use_CAMspec = Ini_Read_Logical_File(Ini,'use_CAMspec',.true.)
+    use_CAMspec = Ini_Read_Logical_File(Ini,'use_CAMspec',.false.)
 
     if (use_CAMspec) then
         allocate(CamSpeclikelihood::Like)
@@ -75,35 +75,35 @@
         Like%needs_powerspectra =.true.
 
         call Like%loadParamNames(trim(DataDir)//'highL.paramnames')
-        
-      if (lmax < tt_lmax_mc) call MpiStop('set lmax>=tt_lmax_mc in settings to use highL data')
-      data_dir = CheckTrailingSlash(ReadIniFileName(Ini,'highL_data_dir'))
-      SPT_data_dir = trim(data_dir) // 'data_spt/' 
-      ACT_data_dir = trim(data_dir) // 'data_act/'
-      if (Feedback>0) write(*,*) 'reading High ell data'
-      call highell_likelihood_init
+
+        if (lmax < tt_lmax_mc) call MpiStop('set lmax>=tt_lmax_mc in settings to use highL data')
+        data_dir = CheckTrailingSlash(ReadIniFileName(Ini,'highL_data_dir'))
+        SPT_data_dir = trim(data_dir) // 'data_spt/' 
+        ACT_data_dir = trim(data_dir) // 'data_act/'
+        if (Feedback>0) write(*,*) 'reading High ell data'
+        call highell_likelihood_init
 #else
-      call MpiStop('must compile with -DhighL to use highL')
+        call MpiStop('must compile with -DhighL to use highL')
 #endif
     end if
-    
+
     end subroutine nonclik_readParams
 
 
-  real(mcp) function CamspecLogLike(like, CMB, Theory, DataParams) 
-     Class(CamSpeclikelihood) :: like
-     Class (CMBParams) CMB
-     Class(TheoryPredictions) Theory
-     real(mcp) acl(lmax,num_cls_tot)
-     real(mcp) DataParams(:)
+    real(mcp) function CamspecLogLike(like, CMB, Theory, DataParams) 
+    Class(CamSpeclikelihood) :: like
+    Class (CMBParams) CMB
+    Class(TheoryPredictions) Theory
+    real(mcp) acl(lmax,num_cls_tot)
+    real(mcp) DataParams(:)
 
-     call ClsFromTheoryData(Theory, acl)
-!Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
-!freq_params(35:44), ACT/SPT as freq_params(45:65)
-      CamspecLogLike = nonclik_lnlike_camSpec(acl,DataParams)
-  end function CamspecLogLike
+    call ClsFromTheoryData(Theory, acl)
+    !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
+    !freq_params(35:44), ACT/SPT as freq_params(45:65)
+    CamspecLogLike = nonclik_lnlike_camSpec(acl,DataParams)
+    end function CamspecLogLike
 
- 
+
     function nonclik_lnlike_camSpec(cl,freq_params)
     real(dp) :: nonclik_lnlike_camSpec
     real(mcp), intent(in) :: cl(lmax,num_cls_tot)
@@ -125,20 +125,20 @@
     end function nonclik_lnlike_camSpec
 
 #ifdef highL
-  real(mcp) function highLLogLike(like, CMB, Theory, DataParams) 
-     Class(highLLikelihood) :: like
-     Class (CMBParams) CMB
-     Class(TheoryPredictions) Theory
-     real(mcp) acl(lmax,num_cls_tot)
-     real(mcp) DataParams(:)
+    real(mcp) function highLLogLike(like, CMB, Theory, DataParams) 
+    Class(highLLikelihood) :: like
+    Class (CMBParams) CMB
+    Class(TheoryPredictions) Theory
+    real(mcp) acl(lmax,num_cls_tot)
+    real(mcp) DataParams(:)
 
-     call ClsFromTheoryData(Theory, acl)
-     highLLogLike = nonclik_lnlike_highL(acl,DataParams)
+    call ClsFromTheoryData(Theory, acl)
+    highLLogLike = nonclik_lnlike_highL(acl,DataParams)
 
-  end function highLLogLike
+    end function highLLogLike
 
 
-  function nonclik_lnlike_highL(cl,freq_params)
+    function nonclik_lnlike_highL(cl,freq_params)
     real(dp) :: nonclik_lnlike_highL
     real(mcp), intent(in) :: cl(lmax,num_cls_tot)
     real(mcp), intent(in)  :: freq_params(:)
@@ -147,12 +147,12 @@
     real(dp)  cl_tt(2:tt_lmax)
     integer L, offset
     real(dp) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz_143, r_ps, r_cib, &
-      cal0, cal1, cal2, xi, A_ksz, ncib
+    cal0, cal1, cal2, xi, A_ksz, ncib
     real(dp) a_ps_act_148,a_ps_act_217,a_ps_spt_95,a_ps_spt_150,a_ps_spt_220, &
-       r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220, &
-       cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220
+    r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220, &
+    cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220
     real(dp) act_dust_s,act_dust_e
-    
+
     !asz is already removed, start at second feq param
     A_sz_143=freq_params(1)
     A_ksz = freq_params(2)
@@ -180,17 +180,17 @@
     cal_spt_220 =freq_params(24)
 
     do l =2, tt_lmax
-     if (l.le.tt_lmax_mc) then
-         cl_tt(l) = cl(l,1)*l*(l+1)/twopi
-     else
-         cl_tt(l) = 0.0d0
-     endif
+        if (l.le.tt_lmax_mc) then
+            cl_tt(l) = cl(l,1)*l*(l+1)/twopi
+        else
+            cl_tt(l) = 0.0d0
+        endif
     enddo
 
     like_tot = 0.d0
     call highell_likelihood_compute(cl_tt,A_sz_143,A_ksz,xi,a_ps_act_148,a_ps_act_217,a_ps_spt_95,a_ps_spt_150,a_ps_spt_220, &
-       A_cib_143,A_cib_217, ncib, r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220,r_cib,act_dust_s,act_dust_e, &
-       cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220,like_tot)
+    A_cib_143,A_cib_217, ncib, r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220,r_cib,act_dust_s,act_dust_e, &
+    cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220,like_tot)
     nonclik_lnlike_highL = like_tot
 
     if (Feedback>2) Print*,'highL lnlike = ',nonclik_lnlike_highL
@@ -198,5 +198,5 @@
     end function nonclik_lnlike_highL
 #endif
 
-   end module noncliklike
+    end module noncliklike
 
