@@ -27,10 +27,11 @@
 
     logical :: storeall=.false.
     integer :: countnum
+    integer :: camspec_beam_mcmc_num = 1
     !    character*100 storeroot,storename,storenumstring
     !   character*100 :: bestroot,bestnum,bestname
     character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.2-beammarge1'
-    public like_init,calc_like,CAMSpec_like_version
+    public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num
     
     contains
 
@@ -136,7 +137,7 @@
 
     allocate(want_marge(cov_dim))
     want_marge=.true.
-    want_marge(1)=.false.
+    want_marge(1:camspec_beam_mcmc_num)=.false.
     marge_num=count(want_marge)
     keep_num=cov_dim-marge_num
     allocate(marge_indices(marge_num))

@@ -58,6 +58,7 @@
         tszxcibfilename=ReadIniFileName(Ini,'tszxcibfile',NotFoundFail = .true.)
         kszfilename=ReadIniFileName(Ini,'kszfile',NotFoundFail = .true.)
         beamfilename=ReadIniFileName(Ini,'beamfile',NotFoundFail = .true.)
+        camspec_beam_mcmc_num = Ini_Read_Int_File(Ini,'camspec_beam_mcmc_num',camspec_beam_mcmc_num)
         call like_init(likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename)
 
     end if 
