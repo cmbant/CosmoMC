@@ -39,8 +39,8 @@ class importanceFilterAcc:
 
 # add importance name tags, and list of specific .ini files to include (in batch1/)
 g.importanceRuns = []
-g.importanceRuns.append([lensing, ['lensing.ini'], importanceFilterPlanck()])
-g.importanceRuns.append([BAO, ['BAO.ini']])
+g.importanceRuns.append([[lensing], ['lensing.ini'], importanceFilterPlanck()])
+g.importanceRuns.append([[BAO], ['BAO.ini']])
 
 groups = [g]
 
