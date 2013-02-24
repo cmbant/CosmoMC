@@ -30,8 +30,6 @@ planck_lowl_lowLike_Union = [[planck, lowl, lowLike, Union], ['CAMspec_defaults.
 planck_lowl_lowLike_HST = [[planck, lowl, lowLike, HST], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'HST.ini']]
 
 
-skip = []
-
 start_at_bestfit = False
 newCovmats = True
 

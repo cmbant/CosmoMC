@@ -34,7 +34,7 @@ if not hasattr(settings, 'params'):
     settings.params = params
 
 
-batch.skip = settings.skip
+if hasattr(settings, 'skip'): batch.skip = settings.skip
 batch.makeItems(settings.groups)
 batch.makeDirectories()
 batch.save()
