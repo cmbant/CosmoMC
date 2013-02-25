@@ -239,7 +239,7 @@
         !Assume we just want Cls to higher l
         P%WantScalars = .true.
         P%WantTensors = compute_tensors 
-!!!not OK for non-linear lensing        if (.not. DoPk) P%WantTransfer = .false.
+        !!!not OK for non-linear lensing        if (.not. DoPk) P%WantTransfer = .false.
     end if
 
     call CAMB_GetResults(P)
@@ -511,6 +511,7 @@
     if (HighAccuracyDefault) then
         P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl*AccuracyLevel,P%Max_eta_k)
         if (CMB_Lensing .and. use_lensing_potential) P%Max_eta_k = max(P%Max_eta_k, 12000*AccuracyLevel)
+        if (CMB_Lensing .and. use_nonlinear_lensing) P%Max_eta_k = max(P%Max_eta_k, 11000*AccuracyLevel)
         !k_etamax=18000 give c_phi_phi accurate to sub-percent at L=1000, <4% at L=2000
         !k_etamax=10000 is just < 1% at L<=500
     end if
