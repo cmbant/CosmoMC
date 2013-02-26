@@ -114,7 +114,7 @@ if not args.forpaper: lines.append('\\end{document}')
 
 if outfile.find('.') < 0: outfile += '.tex'
 (outdir, outname) = os.path.split(outfile)
-if not os.path.exists(outdir): os.makedirs(outdir)
+if len(outdir) > 0 and not os.path.exists(outdir): os.makedirs(outdir)
 ResultObjs.textFile(lines).write(outfile)
 (root, _) = os.path.splitext(outfile)
 
