@@ -23,8 +23,7 @@
 
     logical bad
     integer nummpksets, i, numtoget, action
-    character(LEN=Ini_max_string_len) baseroot,  &
-    mpk_filename(100),  numstr, fname
+    character(LEN=Ini_max_string_len)  mpk_filename(100),  numstr, fname
     Type(ParamSet) Params, EstParams
     integer file_unit, status
     real(mcp) bestfit_loglike
