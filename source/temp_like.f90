@@ -24,7 +24,7 @@
     real(campc), allocatable :: beam_conditional_mean(:,:)
     logical, allocatable :: want_marge(:)
     integer marge_num, keep_num
-    real(campc) :: beam_factor = 2.7_mcp
+    real(campc) :: beam_factor = 2.7_campc
 
     logical :: storeall=.false.
     integer :: countnum
