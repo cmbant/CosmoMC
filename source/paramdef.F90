@@ -692,7 +692,7 @@
                     end if
                     call ConvergeStatus(.false., R)
                     flukecheck = R < MPI_R_Stop
-                    if (S%Count > 100000) then
+                    if (S%Count > 500000) then
                         !Try not to blow memory by storing too many samples
                         call S%Thin(2)
                         MPI_thin_fac = MPI_thin_fac*2
@@ -732,7 +732,7 @@
 
     subroutine ConvergeStatus(isDone, R, Msg)
     logical, intent(in) :: isDone
-    character(LEN=*), intent(in) :: Msg
+    character(LEN=*), intent(in), optional :: Msg
     real(mcp), intent(in) :: R
     
     if (MPiRank==0) then
