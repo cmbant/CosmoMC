@@ -736,7 +736,7 @@
     real(mcp), intent(in) :: R
     
     if (MPiRank==0) then
-        call CreateTxtFile(trim(baseroot)//.'converge_stat',tmp_file_unit)
+        call CreateTxtFile(trim(baseroot)//'.converge_stat',tmp_file_unit)
         write(tmp_file_unit,*) real(R)
         if (isDone) write(tmp_file_unit,'(a)') 'Done'
         call CloseFile(tmp_file_unit)
