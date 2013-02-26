@@ -18,16 +18,19 @@ HST = 'HST'
 SNLS = 'SNLS'
 Union = 'Union2'
 
-planck_lowl_lowLike = [[planck, lowl, lowLike], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini']]
-planck_lowl_lowLike_highL = [[planck, lowl, lowLike, highL], ['CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini']]
-planck_lowl = [[planck, lowl], ['CAMspec_defaults.ini', 'lowl.ini']]
+Camspec = 'CAMspec_nonclik.ini'
+CamspecHighL = 'CAMspec_ACTSPT_nonclik.ini'
+
+planck_lowl_lowLike = [[planck, lowl, lowLike], [Camspec, 'lowl.ini', 'lowLike.ini']]
+planck_lowl_lowLike_highL = [[planck, lowl, lowLike, highL], [CamspecHighL, 'lowl.ini', 'lowLike.ini']]
+planck_lowl = [[planck, lowl], [Camspec, 'lowl.ini']]
 WMAP9 = [[WMAP], ['WMAP.ini']]
 
-planck_lowl_lowLike_BAO = [[planck, lowl, lowLike, BAO], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'BAO.ini']]
-planck_lowl_lowLike_highL_BAO = [[planck, lowl, lowLike, highL, BAO], ['CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini', 'BAO.ini']]
-planck_lowl_lowLike_SNLS = [[planck, lowl, lowLike, SNLS], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'SNLS.ini']]
-planck_lowl_lowLike_Union = [[planck, lowl, lowLike, Union], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'Union.ini']]
-planck_lowl_lowLike_HST = [[planck, lowl, lowLike, HST], ['CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini', 'HST.ini']]
+planck_lowl_lowLike_BAO = [[planck, lowl, lowLike, BAO], [Camspec, 'lowl.ini', 'lowLike.ini', 'BAO.ini']]
+planck_lowl_lowLike_highL_BAO = [[planck, lowl, lowLike, highL, BAO], [CamspecHighL, 'lowl.ini', 'lowLike.ini', 'BAO.ini']]
+planck_lowl_lowLike_SNLS = [[planck, lowl, lowLike, SNLS], [Camspec, 'lowl.ini', 'lowLike.ini', 'SNLS.ini']]
+planck_lowl_lowLike_Union = [[planck, lowl, lowLike, Union], [Camspec, 'lowl.ini', 'lowLike.ini', 'Union.ini']]
+planck_lowl_lowLike_HST = [[planck, lowl, lowLike, HST], [Camspec, 'lowl.ini', 'lowLike.ini', 'HST.ini']]
 
 
 start_at_bestfit = False
