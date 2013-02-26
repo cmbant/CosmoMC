@@ -684,14 +684,15 @@
                     if (R < MPI_R_Stop .and. flukecheck) then
                         if (MPI_Check_Limit_Converge) then
                             !Now check if limits from different chains agree well enough
-                            call CheckLImitsConverge(S)
+                            if (CheckLImitsConverge(S)) call ConvergeStatus(.true., R, 'Requested limit convergence achieved')
                         else
                             !If not also checking limits, we are done
-                            call DoStop('Requested convergence R achieved')
+                            call ConvergeStatus(.true., R, 'Requested convergence R achieved')
                         end if
                     end if
+                    call ConvergeStatus(.false., R)
                     flukecheck = R < MPI_R_Stop
-                    if (S%Count > 100000) then
+                    if (S%Count > 500000) then
                         !Try not to blow memory by storing too many samples
                         call S%Thin(2)
                         MPI_thin_fac = MPI_thin_fac*2
@@ -729,13 +730,29 @@
 
 #ifdef MPI
 
-    subroutine CheckLimitsConverge(L)
+    subroutine ConvergeStatus(isDone, R, Msg)
+    logical, intent(in) :: isDone
+    character(LEN=*), intent(in), optional :: Msg
+    real(mcp), intent(in) :: R
+    
+    if (MPiRank==0) then
+        call CreateTxtFile(trim(baseroot)//'.converge_stat',tmp_file_unit)
+        write(tmp_file_unit,*) real(R)
+        if (isDone) write(tmp_file_unit,'(a)') 'Done'
+        call CloseFile(tmp_file_unit)
+    end if
+    if (isDone) call DoStop(Msg)
+
+    end subroutine COnvergeStatus
+
+    function CheckLimitsConverge(L)
     !Check limits from last half chains agree well enough across chains to be confident of result
     !Slowly explored tails will cause problems (long time till stops)
     Type(TSampleList), intent(in) :: L
     integer i,j, side, ierror, worsti
     real(mcp), allocatable, dimension(:,:,:) :: Limits
     real(mcp) MeanLimit, var, LimErr, WorstErr
+    logical :: CheckLimitsConverge
     logical :: AllOK
     integer numCheck
     integer, allocatable, dimension(:) :: params_check
@@ -792,11 +809,10 @@
         ' for '//trim(UsedParamNameOrNumber(Worsti))//'; samps = '//trim(IntToStr(L%Count*MPI_thin_fac))
         call IO_WriteLog(logfile_unit,logLine)
     end if
-    if (WorstErr < MPI_Limit_Converge_Err) call DoStop('Requested limit convergence achieved')
-
+    CheckLimitsConverge = (WorstErr < MPI_Limit_Converge_Err)
     deallocate(Limits)
     deallocate(params_check)
-    end subroutine CheckLimitsConverge
+    end function CheckLimitsConverge
 
 #endif
 

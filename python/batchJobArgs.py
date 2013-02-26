@@ -24,6 +24,8 @@ class batchArgs():
             self.parser.add_argument('--datatag', default=None)
             self.parser.add_argument('--skip_data', default=None)
             self.parser.add_argument('--skip_param', default=None)
+            self.parser.add_argument('--group', default=None)
+
             if self.notExist: self.parser.add_argument('--notexist', action='store_true')
 
             self.args = self.parser.parse_args()
@@ -41,6 +43,9 @@ class batchArgs():
             for pat in self.args.name:
                 if fnmatch.fnmatch(jobItem.name, pat): return True
             return False
+
+        def groupMatches(self, jobItem):
+            return self.args.group is None or (jobItem.group is not None and jobItem.group == self.args.group)
 
         def dataMatches(self, jobItem):
             if self.args.datatag is None:
@@ -62,7 +67,8 @@ class batchArgs():
 
         def filteredBatchItems(self, wantSubItems=True):
             for jobItem in self.batch.items(wantImportance=not self.args.noimportance, wantSubItems=wantSubItems):
-                if self.jobItemWanted(jobItem) and self.nameMatches(jobItem) and self.paramsMatch(jobItem)  and self.dataMatches(jobItem): yield(jobItem)
+                if (self.jobItemWanted(jobItem) and self.nameMatches(jobItem) and self.paramsMatch(jobItem)  and self.dataMatches(jobItem)
+                    and self.groupMatches(jobItem)): yield(jobItem)
 
 
 

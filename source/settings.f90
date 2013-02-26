@@ -84,6 +84,7 @@
 
     real(mcp), parameter :: logZero = 1e30_mcp
     character (LEN =1024) :: FileChangeIni = '', FileChangeIniAll = ''
+    character(LEN=Ini_max_string_len) baseroot
 
     integer, parameter :: stdout = output_unit
 

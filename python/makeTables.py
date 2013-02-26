@@ -81,8 +81,8 @@ def compareTable(jobItems, titles=None):
 
 def filterBatchData(batch, datatags):
     items = []
-    for tag in [data.replace('_post', '') for data in datatags]:
-        items += [jobItem for jobItem in batch if jobItem.datatag.replace('_post', '') == tag]
+    for tag in ["_".join(sorted(data.replace('_post', '').split('_'))) for data in datatags]:
+        items += [jobItem for jobItem in batch if jobItem.normed_data == tag]
     return items
 
 items = dict()
@@ -114,7 +114,7 @@ if not args.forpaper: lines.append('\\end{document}')
 
 if outfile.find('.') < 0: outfile += '.tex'
 (outdir, outname) = os.path.split(outfile)
-if not os.path.exists(outdir): os.makedirs(os.path.dirname(outdir))
+if len(outdir) > 0 and not os.path.exists(outdir): os.makedirs(outdir)
 ResultObjs.textFile(lines).write(outfile)
 (root, _) = os.path.splitext(outfile)
 

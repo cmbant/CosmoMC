@@ -1319,6 +1319,7 @@
         end do
     end if
 
+    bins2D=bins2D/maxval(bins2D)
     ! Get contour containing contours(:) of the probability
     norm = sum(bins2D)
 
@@ -1338,6 +1339,10 @@
         end do
         contour_levels(ix1) = (try_b+try_t)/2
     end do
+
+    where (bins2D < 1e-30)
+        bins2D=0
+    end where
 
     plotfile = dat_file_2D(rootname, j, j2)
     filename = trim(plot_data_dir)//trim(plotfile)

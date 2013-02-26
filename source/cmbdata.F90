@@ -1032,6 +1032,9 @@ contains
 #ifdef CLIK
     use cliklike
 #endif
+#ifdef NONCLIK
+    use noncliklike
+#endif
     class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
 
@@ -1080,6 +1083,10 @@ contains
 #else
          if (Ini_Read_Logical('use_clik',.false.)) call MpiStop('compile with CLIK to use clik - see Makefile')
 #endif
+#ifdef NONCLIK
+        call nonclik_readParams(LikeList, Ini)
+#endif
+
 
     end subroutine CMBDataLikelihoods_Add
 

@@ -1,15 +1,12 @@
 # sample settings for a particular grid run
 
-# sets of parameters to vary in addition to baseline
-extparams = [[], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
-
-
 newCovmats = True
+start_at_bestfit = False
 
 # dataset names
-planck = 'planck_CAMspec_lmax1000'
+planck = 'planck'
 plik = 'plik'
-lowl = 'lowl49'
+lowl = 'lowl'
 lowLike = 'lowLike'
 lensing = 'lensing'
 highL = 'highL'
@@ -19,12 +16,18 @@ HST = 'HST'
 SNLS = 'SNLS'
 Union = 'Union2'
 
-datasets = []
+# set up groups of parameters and data sets
+class group:pass
+
+
+g = group()
+g.params = [[], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+
+g.datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
-datasets.append([[planck, lowl, lowLike], ['CAMspec_lmax1000_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
-datasets.append([[planck, lowl], ['CAMspec_lmax1000_defaults.ini', 'lowl49.ini']])
-datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_lmax1000_ACTSPT_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
-datasets.append([[plik, lowl, lowLike], ['PLik_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
+g.datasets.append([[planck, lowl, lowLike], ['CAMspec_nonclik.ini', 'lowl.ini', 'lowLike.ini']])
+g.datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_ACTSPT_nonclik.ini', 'lowl.ini', 'lowLike.ini']])
+# g.datasets.append([[plik, lowl, lowLike], ['PLik_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
 
 class importanceFilterPlanck:
     def wantImportance(self, jobItem):
@@ -35,21 +38,15 @@ class importanceFilterAcc:
         return lowLike in jobItem.data_set[0]
 
 # add importance name tags, and list of specific .ini files to include (in batch1/)
-importanceRuns = []
-importanceRuns.append([lensing, ['lensing.ini'], importanceFilterPlanck()])
-importanceRuns.append([BAO, ['BAO.ini']])
+g.importanceRuns = []
+g.importanceRuns.append([[lensing], ['lensing.ini'], importanceFilterPlanck()])
+g.importanceRuns.append([[BAO], ['BAO.ini']])
 
-skip = []
-
-
-start_at_bestfit = False
+groups = [g]
 
 # try to match run to exisitng covmat
 covrenames = dict()
-covrenames['_lowl49'] = '_lowl'
-covrenames['_lmax1000'] = ''
-covrenames['_lmax1000_lowl49'] = '_lowl'
-
+covrenames['planck'] = 'planck_CAMspec'
 covrenames['_BAO'] = '_post_BAO'
 covrenames['_HST'] = '_post_HST'
 covrenames['_lowl'] = '_lowl_lowLike'
@@ -57,6 +54,16 @@ covrenames['_lowl_lowLike_highL'] = '_lowl_lowLike'
 covrenames['_lensing'] = ''
 covrenames['_alpha1'] = ''
 covrenames['_r'] = ''
+covrenames['lowl_lowLike_highL'] = 'lowl_lowLike'
+covrenames['lowl_BAO'] = 'lowl_lowLike_BAO'
+covrenames['SNLS'] = 'BAO'
+covrenames['Union2'] = 'SNLS'
+covrenames['Union2'] = 'BAO'
+covrenames['HST'] = 'BAO'
+covrenames['w_wa_'] = 'w_'
+covrenames['lowl_lowLike_highL_BAO'] = 'lowl_lowLike'
+covrenames['mnu_Alens'] = 'mnu'
+covrenames['_nrun_r'] = ''
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
