@@ -24,13 +24,14 @@
     real(campc), allocatable :: beam_conditional_mean(:,:)
     logical, allocatable :: want_marge(:)
     integer marge_num, keep_num
+    real(mcp) :: beam_factor = 2.7_mcp
 
     logical :: storeall=.false.
     integer :: countnum
     integer :: camspec_beam_mcmc_num = 1
     !    character*100 storeroot,storename,storenumstring
     !   character*100 :: bestroot,bestnum,bestname
-    character(LEN=*), parameter :: CAMSpec_like_version = '6.1/6.2-beammarge1'
+    character(LEN=*), parameter :: CAMSpec_like_version = 'CovSpec_v1'
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num
 
     contains
@@ -174,7 +175,7 @@
                             do L2 = lminX(if2),lmaxX(if2)
                                 c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
                                 c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
-                                beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
+                                beam_factor**2*beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
                                 beam_cov(marge_indices_reverse(ii),marge_indices_reverse(jj)) * beam_modes(ie2,L2,if2) &
                                 *fid_cl(L2,if2)*fid_cl(lminX(if1):lmaxX(if1),if1)
                             end do
@@ -363,7 +364,7 @@
 
     corrected_beam=1.d0
     do i=1,num_modes_per_beam
-        corrected_beam=corrected_beam+beam_coeffs(spec_num,i)*beam_modes(i,l,spec_num)
+        corrected_beam=corrected_beam+beam_coeffs(spec_num,i)*beam_modes(i,l,spec_num)*beam_factor
     enddo
     end function corrected_beam
 

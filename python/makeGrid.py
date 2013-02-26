@@ -84,6 +84,7 @@ for jobItem in batch.items(wantSubItems=False):
                         ini.params['propose_matrix'] = covmat
                         hasCov = True
                         break
+            if not hasCov: print 'WARNING: no matching specific covmat for ' + jobItem.name
 
         ini.params['start_at_bestfit'] = settings.start_at_bestfit
         ini.params['action'] = cosmomcAction
