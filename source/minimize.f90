@@ -9,29 +9,30 @@
     Type(ParamSet), save :: MinParams
     integer :: minimization_points_factor = 2
     real(mcp) :: minimize_loglike_tolerance = 0.1
+    integer, allocatable :: minimize_indices(:)
     public FindBestFit, WriteBestFitParams,minimization_points_factor,minimize_loglike_tolerance
 
     contains
 
     subroutine VectToParams(vect, P)
-    real(Powell_CO_prec) vect(num_params_used)
+    real(Powell_CO_prec) vect(:)
     Type(ParamSet) P
     integer i,ii
 
-    do i=1, num_params_used
-        ii=params_used(i)
+    do i=1, size(minimize_indices)
+        ii=minimize_indices(i)
         P%P(ii)=vect(i)*Scales%PWidth(ii) + Scales%center(ii)
     end do
 
     end subroutine VectToparams
 
     subroutine ParamsToVect(P,vect)
-    real(Powell_CO_prec) vect(num_params_used)
+    real(Powell_CO_prec) vect(:)
     Type(ParamSet) P
     integer i,ii
 
-    do i=1, num_params_used
-        ii=params_used(i)
+    do i=1, size(minimize_indices)
+        ii=minimize_indices(i)
         vect(i)=(P%P(ii)-Scales%center(ii))/Scales%PWidth(ii)
     end do
 
@@ -55,48 +56,73 @@
 
     end function ffn
 
+    function FindBestFit_indices(num_indices,vect,sigma_frac_err, max_iterations) result(best_like)
+    use ParamDef
+    integer, intent(in) :: max_iterations,num_indices
+    real(mcp), intent(in) :: sigma_frac_err
+    real(mcp) best_like
+    real(Powell_CO_prec) :: vect(num_indices), XL(num_indices), XU(num_indices)
+    real(Powell_CO_prec) rhobeg, rhoend
+    integer npt
+
+    XL = (Scales%PMin(minimize_indices)-Scales%center(minimize_indices)) / Scales%PWidth(minimize_indices)
+    XU = (Scales%PMax(minimize_indices)-Scales%center(minimize_indices)) / Scales%PWidth(minimize_indices)
+
+    !Initial and final radius of region required (in normalized units)
+    rhobeg = min(nint(minval(XU-XL)/3),1)
+    rhoend = sigma_frac_err
+    if (minimization_points_factor>2) then
+        npt = min(minimization_points_factor*num_indices,((num_indices +1)*(num_indices +2))/2)
+    else
+        npt = 2*num_indices +1 !have had some problems using just this
+    end if
+    FVAL_Converge_difference = minimize_loglike_tolerance
+    if (Feedback>0) then
+        print*,'minimizing ',num_indices, ' with rhobeg, rhoend = ',real(rhobeg), real(rhoend)
+        print*,'minimization points: ',npt, 'chi2 converge tol:',real(FVAL_Converge_difference)
+    end if
+    if (.not. BOBYQA (ffn, num_indices ,npt, vect,XL,XU,rhobeg,rhoend,FeedBack+1, max_iterations)) then
+        !BOBYQA generally uses too few operations to get a Hessian estimate
+        !I have asked M Powell, and he indeed recommended calculating the Hessian sepratately afterwards
+        best_like = logZero
+    else
+        best_like = ffn(num_indices,vect)
+    end if
+    end function FindBestFit_indices
+
+
     function FindBestFit(Params,sigma_frac_err, max_iterations) result(best_like)
     use ParamDef
     Type(ParamSet) Params
     integer, intent(in) :: max_iterations
     real(mcp), intent(in) :: sigma_frac_err
     real(mcp) best_like
-    real(Powell_CO_prec) :: vect(num_params_used), XL(num_params_used), XU(num_params_used)
-    real(Powell_CO_prec) rhobeg, rhoend
-    integer npt
+    real(Powell_CO_prec) :: vect(num_params_used), vect_fast(num_fast)
+
+    vect = 0 !start at zero by definition (from input center values)
 
     MinParams = Params
     ! scale the params so they are all roughly the same order of magnitude
     !call ParamsToVect(MinParams, vect)
-    vect = 0 !start at zero by definition (from input center values)
     !normalized parameter bounds
-    XL = (Scales%PMin(params_used)-Scales%center(params_used)) / Scales%PWidth(params_used)
-    XU = (Scales%PMax(params_used)-Scales%center(params_used)) / Scales%PWidth(params_used)  
+    if (num_fast>0 .and. num_slow /=0) then
+        if (Feedback>0) print*,'minmizing fast parameters'
+        vect_fast=0
+        allocate(minimize_indices(num_fast))
+        minimize_indices = params_used(Proposer%indices(Proposer%Slow%n+1:Proposer%All%n))
+        best_like = FindBestFit_indices(num_fast,vect_fast,sigma_frac_err, max_iterations)
+        if (Feedback>0) print *,'minmized fast parameter to logLike: ', best_like
+        vect(Proposer%indices(Proposer%Slow%n+1:Proposer%All%n)) = vect_fast
+        deallocate(minimize_indices)
+    end if
+    allocate(minimize_indices(num_params_used))
+    minimize_indices = params_used
+    best_like = FindBestFit_indices(num_params_used,vect,sigma_frac_err, max_iterations)
 
-    !Initial and final radius of region required (in normalized units)
-    rhobeg = min(nint(minval(XU-XL)/3),1)
-    rhoend = sigma_frac_err
-    if (minimization_points_factor>2) then
-        npt = min(minimization_points_factor*num_params_used,((num_params_used +1)*(num_params_used +2))/2)
-    else
-        npt = 2*num_params_used +1 !have had some problems using just this
-    end if
-    FVAL_Converge_difference = minimize_loglike_tolerance
-    if (Feedback>0) then
-        print*,'minimizing with rhobeg, rhoend = ',rhobeg, rhoend
-        print*,'minimization points: ',npt, 'chi2 converge tol:',FVAL_Converge_difference
-    end if
-    if (.not. BOBYQA (ffn, num_params_used ,npt, vect,XL,XU,rhobeg,rhoend,FeedBack+1, max_iterations)) then
-        !BOBYQA generally uses too few operations to get a Hessian estimate
-        !I have asked M Powell, and he indeed recommended calculating the Hessian sepratately afterwards
-        best_like = logZero
-    else
-        best_like = ffn(num_params_used,vect)
-    end if
-
-    !back to real(mcp) units
     call AcceptReject(.true.,Params%Info, MinParams%Info)
     Params = MinParams
+
+    deallocate(minimize_indices)
 
     end function FindBestFit
 
