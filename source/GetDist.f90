@@ -1032,7 +1032,7 @@
      !http://en.wikipedia.org/wiki/Kernel_density_estimation
      !1/5 power is insensitive so just use v crude estimate of effective number
         opt_width = 1.06/max(1.d0,numsamp/max_mult)**0.2d0 *sddev(j)
-        smooth_1D = opt_width/width
+        smooth_1D = opt_width/width*abs(smooth_scale_1D)
         if (smooth_1d<0.5) write(*,*) 'Warning: num_bins not large enough for optimal density'
         smooth_1D=max(1.d0, smooth_1d)
     else
