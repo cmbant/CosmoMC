@@ -1709,8 +1709,9 @@
     real(mcp) :: rtmp
     character(LEN=Ini_max_string_len) :: finish_run_command
     integer chain_handle
-    integer triangle_num, triangle_params(max_cols)
+    integer triangle_num, triangle_params(max_cols), max_scatter_points
     real(mcp) tail_limit_bot,tail_limit_top
+    logical make_scatter_samples
 
     NameMapping%nnames = 0
 
@@ -2025,6 +2026,8 @@
     do ix =1, num_3D_plots
         plot_3D(ix) = Ini_Read_String(numcat('3D_plot',ix))
     end do
+    make_scatter_samples = Ini_Read_Logical('make_scatter_samples',.false.)
+    max_scatter_points = Ini_Read_int('max_scatter_points',2000)
 
     BW = Ini_Read_Logical('B&W',.false.)
     do_shading = Ini_Read_Logical('do_shading',.true.)
@@ -2165,12 +2168,12 @@
 
     !Produce file of weight-1 samples if requested
 
-    if (num_3D_plots/=0 .and. .not. make_single_samples ) then
+    if ((num_3D_plots/=0 .and. .not. make_single_samples .or. make_scatter_samples) .and. .not. no_plots) then
         make_single_samples = .true.
-        single_thin = max(1,nint(numsamp/maxmult)/2000)
+        single_thin = max(1,nint(numsamp/maxmult)/max_scatter_points)
     end if
 
-    !Only use variables whose label's are not empty (and in list of plotparams if plotparams_num /= 0)
+    !Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
     num_vars = 0
 
     if (plotparams_num/=0) then
