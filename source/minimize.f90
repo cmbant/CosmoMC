@@ -136,7 +136,6 @@
         end if
         !Only finish if sanity check passes
         if (abs(last_like - best_like) < minimize_loglike_tolerance*2) exit
-        vect
     end do
 
     call AcceptReject(.true.,Params%Info, MinParams%Info)
