@@ -10,7 +10,7 @@
     INTEGER, PARAMETER  :: func_dp = dp  !SELECTED_REAL_KIND(12, 60)
     INTEGER, PARAMETER :: Powell_CO_prec = dp
     REAL(dp) Last_bestfit
-    REAL(dp) :: FVAL_Converge_difference = 0.2d0 
+    REAL(dp) :: FVAL_Converge_difference = 0.05d0 
 
     PRIVATE
     PUBLIC  :: BOBYQA , Powell_CO_prec, FVAL_Converge_difference
@@ -830,6 +830,7 @@
         F=FVAL(KOPT)
     END IF
     IF (IPRINT  >=  1) THEN
+        if (RHO  <  RHOEND) write(*,*) '    FVAL_Converge_difference reached'
         PRINT 740, NF
 740     FORMAT (/4X,'At the return from BOBYQA',5X,&
         &      'Number of function values =',I6)
