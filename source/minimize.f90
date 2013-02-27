@@ -116,6 +116,7 @@
 
     if (present(like)) then
         write (aunit,*) '-log(Like) = ',like
+        write (aunit,*) ' chi-sq    = ',like*2
         write (aunit,*) ''
     end if
 

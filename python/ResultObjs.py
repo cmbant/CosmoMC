@@ -306,6 +306,7 @@ class bestFit(paramResults):
         isDerived = False
         self.chiSquareds = []
         chunks = 0
+        if len(textFileLines[1].strip()) > 0: del(textFileLines[1])  # if it has chi2 line as well
         for ix in range(2, len(textFileLines)):
             line = textFileLines[ix]
             if len(line.strip()) == 0:
@@ -321,6 +322,7 @@ class bestFit(paramResults):
                             if len(name) > 1:
                                 (kind, name) = name
                             else: kind = ''
+                            name = name.replace('.clik', '').replace('.cldf', '')
                             self.chiSquareds.append((kind, name, float(chisq)))
                     break
                 continue
