@@ -74,7 +74,7 @@
     integer chain_indices(max_chains), num_chains_used
 
     integer nrows, ncols, num_bins, num_bins_2D
-    real(mcp) numsamp
+    real(mcp) numsamp, max_mult, mean_mult
     integer ND_cont1, ND_cont2
     integer covmat_dimension
     integer colix(max_cols), num_vars  !Parameters with non-blank labels
@@ -101,7 +101,6 @@
     real(mcp) :: font_scale = 1.
     real(mcp) contours(max_contours)
     real(mcp) :: max_frac_twotail(max_contours) !how small the end bin must be relative to max to use two tail
-    real(mcp) mean_mult, max_mult
     integer :: indep_thin = 0
     integer chain_numbers(max_chains)
     logical isused(max_cols)
@@ -113,13 +112,13 @@
     integer ix_min(max_cols),ix_max(max_cols)
     real(mcp) limmin(max_cols),limmax(max_cols)
     real(mcp) center(max_cols), param_min(max_cols), param_max(max_cols), range_min(max_cols), range_max(max_cols)
-    real(mcp) meanlike, maxlike, maxmult
+    real(mcp) meanlike, maxlike
     logical BW,do_shading
     character(LEN=Ini_max_string_len), allocatable :: ComparePlots(:)
     integer Num_ComparePlots
     logical :: prob_label = .false.
     logical :: plots_only, no_plots
-    real(mcp) :: smooth_scale_1D=1.d0, smooth_scale_2D = 1.d0
+    real(mcp) :: smooth_scale_1D=-1.d0, smooth_scale_2D = 1.d0
 
     contains
 
@@ -998,7 +997,7 @@
         (/(I, I=autocorr_thin, maxoff*autocorr_thin,autocorr_thin)/)
 
         do j = 3, ncols
-            if (isused(j)) then        
+            if (isused(j)) then
                 write (40,'(1I3,'//trim(IntToStr(maxoff)) // 'f8.3,"  ' &
                 //trim(labels(j))//'")') j-2, corrs(j,:)
             end if
@@ -1021,13 +1020,25 @@
     logical :: has_prior
     character(LEN=Ini_max_string_len) :: fname, filename
     integer, parameter :: fine_fac = 10
+    real(mcp) :: smooth_1D, opt_width
 
     ix = colix(j)
 
     width = (range_max(j)-range_min(j))/(num_bins+1)
     if (width==0) return
 
-    end_edge = nint(smooth_scale_1D*2)
+    if (smooth_scale_1D<=0._mcp) then
+     !Automatically set smoothing scale from rule of thumb for Gaussian, e.g. see
+     !http://en.wikipedia.org/wiki/Kernel_density_estimation
+     !1/5 power is insensitive so just use v crude estimate of effective number
+        opt_width = 1.06/max(1.d0,numsamp/max_mult)**0.2d0 *sddev(j)
+        smooth_1D = opt_width/width
+        if (smooth_1d<0.5) write(*,*) 'Warning: num_bins not large enough for optimal density'
+        smooth_1D=max(1.d0, smooth_1d)
+    else
+        smooth_1D=smooth_scale_1D
+    end if
+    end_edge = nint(smooth_1D*2)
 
     if (has_limits_bot(ix)) then
         if ( range_min(j)-limmin(ix) > width*end_edge .and. param_min(j)-limmin(ix)>width) then
@@ -1062,7 +1073,7 @@
     allocate(binsraw(ix_min(j):ix_max(j)))
     binsraw = 0
 
-    winw = nint(2.5*fine_fac*smooth_scale_1D)
+    winw = nint(2.5*fine_fac*smooth_1D)
     fine_edge = winw+fine_fac*end_edge
     fine_width = width/fine_fac
 
@@ -1102,7 +1113,7 @@
 
     allocate(Win(-winw:winw))
     do i=-winw,winw
-        Win(i)=exp(-i**2/(fine_fac*smooth_scale_1D)**2/2)
+        Win(i)=exp(-i**2/(fine_fac*smooth_1D)**2/2)
     end do
     Win=Win/sum(win)
     has_prior = has_limits_bot(ix) .or. has_limits_top(ix)
@@ -1785,7 +1796,7 @@
     num_bins_2D = Ini_Read_Int('num_bins_2D', num_bins)
     smooth_scale_1D = Ini_read_Double('smooth_scale_1D',smooth_scale_1D) 
     smooth_scale_2D = Ini_read_Double('smooth_scale_2D',smooth_scale_2D) !smoothing scale in terms of bin scale
-    if (smooth_scale_1D<1) write(*,*) 'WARNING: smooth_scale_1D<1 may be unreliable'
+    if (smooth_scale_1D>0 .and. smooth_scale_1D<1) write(*,*) 'WARNING: smooth_scale_1D<1 may be unreliable'
 
     ignorerows = Ini_Read_Double('ignore_rows',0.d0)
 
@@ -2151,7 +2162,7 @@
     outliers = count(coldata(1,0:nrows-1) > max_mult)
     if (outliers /=0) write (*,*) 'outlier fraction ', real(outliers)/nrows
 
-    maxmult = maxval(coldata(1,0:nrows-1))
+    max_mult = maxval(coldata(1,0:nrows-1))
     numsamp = sum(coldata(1,0:nrows-1))
 
     if (.not. no_tests) call DoConvergeTests
@@ -2170,7 +2181,7 @@
 
     if ((num_3D_plots/=0 .and. .not. make_single_samples .or. make_scatter_samples) .and. .not. no_plots) then
         make_single_samples = .true.
-        single_thin = max(1,nint(numsamp/maxmult)/max_scatter_points)
+        single_thin = max(1,nint(numsamp/max_mult)/max_scatter_points)
     end if
 
     !Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
@@ -2245,7 +2256,7 @@
     if (indep_thin/=0) then
         write (*,*) 'Approx indep samples: ', nint(numsamp/indep_thin)
     else
-        write (*,*) 'effective number of samples (assuming indep): ', nint(numsamp/maxmult)
+        write (*,*) 'effective number of samples (assuming indep): ', nint(numsamp/max_mult)
     end if
     !Get covariance matrix and correlation matrix
 
