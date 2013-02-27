@@ -14,7 +14,7 @@ Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')
 
 
 (batch, args) = Opts.parseForBatch()
-formatter = ResultObjs.numberFormatter()
+formatter = ResultObjs.tableFormatter()
 
 names = paramNames.paramNames(args.paramNameFile)
 
