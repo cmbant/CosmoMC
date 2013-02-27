@@ -41,4 +41,4 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
         if (not args.notexist or (args.importance_minimize or args.minimize) and not jobItem.chainMinimumExists()
        or not args.importance_minimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged()):
             if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
-                if not args.checkpoint_run or jobItem.wantCheckpointContinue(): submitJob(jobItem.iniFile(variant))
+                if not args.checkpoint_run or jobItem.wantCheckpointContinue() and jobItem.notRunning(): submitJob(jobItem.iniFile(variant))

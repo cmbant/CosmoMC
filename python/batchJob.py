@@ -1,5 +1,5 @@
 
-import os, sys, pickle, ResultObjs
+import os, sys, pickle, ResultObjs, time
 
 
 def readobject(directory=None):
@@ -88,6 +88,11 @@ class jobItem:
     def chainExists(self):
         fname = self.chainRoot + '_1.txt'
         return os.path.exists(fname) and os.path.getsize(fname) > 0
+
+    def notRunning(self):
+        if not self.chainExists(): return False  # might be in queue
+        lastWrite = os.path.getmtime(jobItem.chainRoot + '_1.txt')
+        return lastWrite < time.time() - 5 * 60
 
     def chainMinimumExists(self):
         fname = self.chainRoot + '.minimum'
