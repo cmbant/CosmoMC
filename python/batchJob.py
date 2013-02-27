@@ -91,7 +91,7 @@ class jobItem:
 
     def notRunning(self):
         if not self.chainExists(): return False  # might be in queue
-        lastWrite = os.path.getmtime(jobItem.chainRoot + '_1.txt')
+        lastWrite = os.path.getmtime(self.chainRoot + '_1.txt')
         return lastWrite < time.time() - 5 * 60
 
     def chainMinimumExists(self):
