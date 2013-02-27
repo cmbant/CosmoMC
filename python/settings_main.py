@@ -31,6 +31,8 @@ planck_lowl_lowLike_highL_BAO = [[planck, lowl, lowLike, highL, BAO], [CamspecHi
 planck_lowl_lowLike_SNLS = [[planck, lowl, lowLike, SNLS], [Camspec, 'lowl.ini', 'lowLike.ini', 'SNLS.ini']]
 planck_lowl_lowLike_Union = [[planck, lowl, lowLike, Union], [Camspec, 'lowl.ini', 'lowLike.ini', 'Union.ini']]
 planck_lowl_lowLike_HST = [[planck, lowl, lowLike, HST], [Camspec, 'lowl.ini', 'lowLike.ini', 'HST.ini']]
+planck_lowl_lowLike_lensing = [[planck, lowl, lowLike, lensing], [Camspec, 'lowl.ini', 'lowLike.ini', 'lensing.ini']]
+planck_lowl_lowLike_highL_lensing = [[planck, lowl, lowLike, highL, lensing], [CamspecHighL, 'lowl.ini', 'lowLike.ini', 'lensing.ini']]
 
 
 start_at_bestfit = False
@@ -83,7 +85,14 @@ g3.datasets = [planck_lowl_lowLike_BAO, planck_lowl_lowLike_highL_BAO, planck_lo
 g3.importanceRuns = [post_lensing , post_BAO, post_HST]
 g3.groupName = 'geom'
 
-groups = [g1, g2, g3]
+g4 = group()
+g4.params = [['mnu']]
+g4.datasets = [planck_lowl_lowLike_lensing, planck_lowl_lowLike_highL_lensing]
+g4.importanceRuns = [post_BAO, post_HST]
+g4.groupName = 'lensing'
+
+
+groups = [g1, g2, g3, g4]
 
 # try to match run to exisitng covmat
 covrenames = dict()
