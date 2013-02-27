@@ -10,6 +10,7 @@ Opts.parser.add_argument('--subitems', action='store_true')
 Opts.parser.add_argument('--minimize', action='store_true')
 Opts.parser.add_argument('--importance_minimize', action='store_true')
 Opts.parser.add_argument('--minimize_failed', action='store_true')
+Opts.parser.add_argument('--checkpoint_run', action='store_true')
 
 
 (batch, args) = Opts.parseForBatch()
@@ -31,11 +32,13 @@ if args.importance is None: args.noimportance = True
 
 def submitJob(ini):
         command = 'perl ' + args.script + ' ' + ini + ' ' + str(args.nodes)
-        print 'Submitting...' + command
-        if not args.dryrun: os.system(command)
-
+        if not args.dryrun:
+            print 'Submitting...' + command
+            os.system(command)
+        else: print '...' + command
 
 for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
         if (not args.notexist or (args.importance_minimize or args.minimize) and not jobItem.chainMinimumExists()
        or not args.importance_minimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged()):
-            if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge): submitJob(jobItem.iniFile(variant))
+            if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
+                if not args.checkpoint_run or jobItem.wantCheckpointContinue(): submitJob(jobItem.iniFile(variant))

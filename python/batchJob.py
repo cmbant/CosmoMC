@@ -99,6 +99,14 @@ class jobItem:
         bf = ResultObjs.bestFit(fname)
         return bf.logLike < 1e29
 
+    def wantCheckpointContinue(self):
+        fname = self.chainRoot + '.converge_stat'
+        if not os.path.exists(fname) or not os.path.exists(self.chainRoot + '_1.chk')  or os.path.getsize(fname) == 0: return False
+        textFileHandle = open(fname)
+        textFileLines = textFileHandle.readlines()
+        textFileHandle.close()
+        return len(textFileLines) < 2 or textFileLines[1].strip() != 'Done'
+
     def getDistExists(self):
         return os.path.exists(self.distRoot + '.margestats')
 
