@@ -111,18 +111,29 @@
         allocate(minimize_indices(num_fast))
         minimize_indices = params_used(Proposer%indices(Proposer%Slow%n+1:Proposer%All%n))
         best_like = FindBestFit_indices(num_fast,vect_fast,sigma_frac_err, max_iterations)
-        if (Feedback>0) print *,'minmized fast parameter to logLike: ', best_like
+        if (Feedback>0) print *,'initial fast parameter minimize logLike: ', best_like
         vect(Proposer%indices(Proposer%Slow%n+1:Proposer%All%n)) = vect_fast
         deallocate(minimize_indices)
+        if (Feedback>0) print*,'minmizing all parameters'
     end if
     allocate(minimize_indices(num_params_used))
     minimize_indices = params_used
     best_like = FindBestFit_indices(num_params_used,vect,sigma_frac_err, max_iterations)
+    deallocate(minimize_indices)
+
+    if (num_fast>0 .and. num_slow /=0) then
+        if (Feedback>0) print*,'minmizing fast parameters again'
+        vect_fast=vect(Proposer%indices(Proposer%Slow%n+1:Proposer%All%n))
+        allocate(minimize_indices(num_fast))
+        minimize_indices = params_used(Proposer%indices(Proposer%Slow%n+1:Proposer%All%n))
+        best_like = FindBestFit_indices(num_fast,vect_fast,sigma_frac_err, max_iterations)
+        if (Feedback>0) print *,'final fast parameter minimize logLike: ', best_like
+        vect(Proposer%indices(Proposer%Slow%n+1:Proposer%All%n)) = vect_fast
+        deallocate(minimize_indices)
+    end if
 
     call AcceptReject(.true.,Params%Info, MinParams%Info)
     Params = MinParams
-
-    deallocate(minimize_indices)
 
     end function FindBestFit
 
