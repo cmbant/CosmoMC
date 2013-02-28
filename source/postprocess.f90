@@ -9,7 +9,8 @@
 
     Type TPostParams
         logical  redo_like, redo_theory, redo_cls, redo_Pk
-        integer redo_skip, redo_thin
+        integer redo_thin
+        real(mcp) redo_skip 
         character(LEN=Ini_max_string_len) :: redo_datafile, redo_outroot
         real(mcp) redo_likeoffset 
         real(mcp) redo_temperature
@@ -45,7 +46,7 @@
     PostParams%redo_theory = Ini_read_Logical('redo_theory')
     PostParams%redo_cls= Ini_read_Logical('redo_cls')
     PostParams%redo_Pk= Ini_read_Logical('redo_pk')
-    PostParams%redo_skip = Ini_Read_Int('redo_skip',100)
+    PostParams%redo_skip = Ini_Read_Double('redo_skip',100.d0)
     PostParams%redo_thin = max(1,Ini_Read_Int('redo_thin',1))
     PostParams%redo_datafile = Ini_Read_String('redo_datafile')
     PostParams%redo_outroot = Ini_Read_String('redo_outroot')
@@ -59,6 +60,10 @@
 
     if (PostParams%redo_from_text .and. (PostParams%redo_add .or. PostParams%redo_like_name/='')) &
     call Mpistop('redo_new_likes requires .data files, not from text')
+
+    if (PostParams%redo_from_text  .and. PostParams%redo_skip>0 .and. PostParams%redo_skip<1) &
+    call Mpistop('redo_from_text currently requires redo_skip==0 or redo_skip>=1')
+
     txt_theory = Ini_Read_Logical('txt_theory',.false.)
 
     if (PostParams%redo_outroot == '') then
@@ -87,6 +92,7 @@
 
     subroutine postprocess(InputFile)
     use IO
+    USE IFPOSIX
     character(LEN=*), intent(INOUT):: InputFile
     Type(TheoryPredictions) newTheory
     real(mcp) truelike,mult,like
@@ -100,6 +106,8 @@
     logical :: has_likes(DataLikelihoods%Count)
     Type(DataLikelihood), pointer :: DataLike
     logical :: first = .false., has_chain = .true.
+    integer last_file_loc,file_loc, file_size
+    integer :: at_beginning=0, ierror
 
     flush_write = .false.
     weight_min= 1e30_mcp
@@ -181,6 +189,18 @@
                         end if
                     end do
                 end if
+                if (PostParams%redo_skip>0 .and. PostParams%redo_skip<1) then
+                    at_beginning=at_beginning+1
+                    if (at_beginning==1) then
+                        CALL PXFFTELL (infile_handle,last_file_loc,ierror)
+                        cycle
+                    elseif (at_beginning==2) then
+                        CALL PXFFTELL (infile_handle,file_loc,ierror)
+                        inquire(unit=infile_handle, size=file_size)
+                        PostParams%redo_skip = file_size/(file_loc-last_file_loc) * PostParams%redo_skip
+                        if (Feedback > 0) print *,'skipping ',nint(PostParams%redo_skip), ' models'
+                    end if
+                end if
             end if
 
             if (error ==1) then
@@ -188,7 +208,7 @@
                 exit
             end if
             num=num+1
-            if (num>PostParams%redo_skip .and. mod(num,PostParams%redo_thin) == 0) then
+            if (PostParams%redo_skip >1 .and. num>PostParams%redo_skip .and. mod(num,PostParams%redo_thin) == 0) then
                 if (PostParams%redo_theory) then
                     call GetTheoryForImportance(Params%P, newTheory, error, PostParams%redo_cls, PostParams%redo_pk)
 
