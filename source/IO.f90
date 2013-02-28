@@ -266,11 +266,11 @@
     end if
 
     if (samples_are_chains) then
-        read(InLine, *, end=100,err=110) mult, like, invals
+        read(InLine, *, end=110,err=110) mult, like, invals
     else
         mult=1
         like=1
-        read(InLine, *, end=100,err=110) invals
+        read(InLine, *, end=110,err=110) invals
     end if
     values(params_used) =invals
     OK = .true.

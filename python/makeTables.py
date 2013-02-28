@@ -85,12 +85,8 @@ def filterBatchData(batch, datatags):
         items += [jobItem for jobItem in batch if jobItem.normed_data == tag]
     return items
 
-items = dict()
-for jobItem in Opts.filteredBatchItems():
-    if jobItem.chainExists():
-        if not jobItem.paramtag in items: items[jobItem.paramtag] = []
-        items[jobItem.paramtag].append(jobItem)
-items = sorted(items.iteritems())
+
+items = Opts.sortedParamtagDict()
 
 for paramtag, parambatch in items:
     if not args.forpaper: section = '\\newpage\\section{ ' + texEscapeText("+".join(parambatch[0].param_set)) + '}'

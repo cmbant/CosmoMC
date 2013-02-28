@@ -70,5 +70,13 @@ class batchArgs():
                 if (self.jobItemWanted(jobItem) and self.nameMatches(jobItem) and self.paramsMatch(jobItem)  and self.dataMatches(jobItem)
                     and self.groupMatches(jobItem)): yield(jobItem)
 
+        def sortedParamtagDict(self):
+            items = dict()
+            for jobItem in self.filteredBatchItems():
+                if jobItem.chainExists():
+                    if not jobItem.paramtag in items: items[jobItem.paramtag] = []
+                    items[jobItem.paramtag].append(jobItem)
+            items = sorted(items.iteritems())
+
 
 
