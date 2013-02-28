@@ -61,7 +61,7 @@
     if (PostParams%redo_from_text .and. (PostParams%redo_add .or. PostParams%redo_like_name/='')) &
     call Mpistop('redo_new_likes requires .data files, not from text')
 
-    if (PostParams%redo_from_text  .and. PostParams%redo_skip>0 .and. PostParams%redo_skip<1) &
+    if (PostParams%redo_from_text  .and. PostParams%redo_skip>0.d0 .and. PostParams%redo_skip<1) &
     call Mpistop('redo_from_text currently requires redo_skip==0 or redo_skip>=1')
 
     txt_theory = Ini_Read_Logical('txt_theory',.false.)
@@ -189,7 +189,7 @@
                         end if
                     end do
                 end if
-                if (PostParams%redo_skip>0 .and. PostParams%redo_skip<1) then
+                if (PostParams%redo_skip>0.d0 .and. PostParams%redo_skip<1) then
                     at_beginning=at_beginning+1
                     if (at_beginning==1) then
                         CALL PXFFTELL (infile_handle,last_file_loc,ierror)
@@ -208,7 +208,7 @@
                 exit
             end if
             num=num+1
-            if (PostParams%redo_skip >1 .and. num>PostParams%redo_skip .and. mod(num,PostParams%redo_thin) == 0) then
+            if (num>PostParams%redo_skip .and. mod(num,PostParams%redo_thin) == 0) then
                 if (PostParams%redo_theory) then
                     call GetTheoryForImportance(Params%P, newTheory, error, PostParams%redo_cls, PostParams%redo_pk)
 

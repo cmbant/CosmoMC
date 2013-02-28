@@ -63,6 +63,7 @@ if not args.plots and not args.specific:
                     if not hasattr(jobItem, 'compareRoots'): jobItem.compareRoots = []
                     jobItem.compareRoots += [jobItem.distRoot + tag]
                 elif jobItem.isImportanceJob:
+                    ini.params['ignore_rows'] = 0
                     ini.params['compare_num'] = 1
                     ini.params['compare1'] = jobItem.parent.chainRoot
                 fname = ini_dir + jobItem.name + tag + '.ini'
