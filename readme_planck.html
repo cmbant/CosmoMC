@@ -8,10 +8,12 @@
 
 <h2>Planck Cosmomc Readme </h2>
 <h3>Compiling</h3>
-As usual, but now requires ifort 13+ (or other compiler with more complete Fortran 2003 coverage; this does not include gfortran). Edit the makefile, setting <b>PLANCKLIKE = cliklike</b> to run with clik (v6.0), or <b>PLANCKLIKE = cliklike_CamSpec</b> to run directly with CamSpec. Set <b>highL = ../highL</b> to build direct ACT/SPT support (for use with PLANCKLIKE = cliklike_CamSpec). To use clik you need of course to have clik installed, and set the CLIKPATH variable etc. appropriately [can set "export PLANCKLIKE=cliklike" in your .bashrc to automatically compile with clik].  You can either use clik or other likelihoods directly in an interchangeable way, parameter definitions etc are the same.
+As usual, but now requires ifort 13+ (or other compiler with more complete Fortran 2003 coverage; this does not include gfortran). 
+See clik_install.txt for details of how to set up with clik (no need to edit makefile other than usual compiler options).
+Set <b>highL = ../highL</b> to build direct ACT/SPT support (for use with PLANCKLIKE = cliklike_CamSpec). You can either use clik or other likelihoods directly in an interchangeable way, parameter definitions etc are the same.
 <p>
 <h3>Data files</h3>
-A set of .ini files are supplied in ./batch1 which set up standard for Planck runs. Location of data files is set in CAMspec_ACTSPT_defaults, CAMspec_defaults or PLik_ACTSPT_defaults depending on what you want to use. You can either edit these, or make symbolic links from ./data/clik and ./data/highL and ./data/camspec to the relevant actual file locations depending on what you want to use.
+A set of .ini files are supplied in ./batch1 which set up standard for Planck runs. Location of data files is set in CAMspec_ACTSPT_defaults, CAMspec_defaults depending on what you want to use. You can either edit these, or make symbolic links from ./data/clik to the relevant actual file locations depending on what you want to use (and ./data/highL and ./data/camspec if you want to run them outside clik).
 <p>
 Default settings for parameters in the baseline model are described in the P11 svn paper draft, and should be reflected in the batch1 ini files.
 <h3>Running</h3>
@@ -21,8 +23,6 @@ The runMPI_HPCS.pl sample script also supports best-fit runs, using last paramet
 <p>
 The <b>lmax_computed_cl</b> parameter is set up with defaults (hopefully) appropriate for the various data combinations (eg. in CAMspec_defaults.ini, CAMspec_ACTSPT_defaults.ini). The cmbtypes.f90 lmax is fixed, and set to a high value.
 <p>
-For initial explorations you can use settings in batch1/fast_approx.ini.
-<P>
 Clik is available <A HREF="http://hfilfi.planck.fr/index.php/PSAndLikelihood/TopClik">here</A>.
 The non-clik highL code is included with cosmomcplanck in the ./highL. The data files are available on Magique 3 at <br>
 <b>/home/ecalabrese/actse_sptkr_clean_lranges_fg_camspecmodel_v1/data</b>
@@ -43,9 +43,9 @@ To start copy and edit settings_testchain.py appropriately. Then if you saved it
 In practice I usually make a symlink to the grid path for convenience, e.g. <b>ln -s /scratch/aml1005/newgrid main</b> from the cosmomcplanck folder, so ./main then reference the output grid directory. This directory is used as input to most of the other scripts. See <b>prepareFullPlanckGrids</b> for commands to make the Planck parameter grid configuration (one main grid, plus a few subgrids that are then merged in).
 <P>
 Use runbatch.py to submit all the ini files produced to the queue; makeGrid will tell you what to do.
-You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge and is the default.  For brevity you can make a symbolic link in the cosmomcplanck directory to the actual scratch location of the (large) batch results.
+You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge and is the default.  For brevity you can make a symbolic link in the cosmomcplanck directory to the actual scratch location of the (large) batch results [ln -n /scratch/.../myscratch main].
 <P>
-Runs with the same data by default all use the same covmat unless an existing covmat exists in planck_covmats. Covmats can be a merged covmat that contains many parameters, defaults are provided from combining several different separate covmats for use where no planck_covmats file exists. Use the python/covcomb.py script if you want to make a new one.
+Covmats for Planck are in planck_covmats folder, linked by default for grid runs.
 <p>
 Grid run scripts include:
 <UL>
@@ -59,7 +59,7 @@ Grid run scripts include:
 <LI>makeTables.py: script for making latex (and hence PDF) tables from .margestats and .minimum files produced by grid runs.
 <BR>To make file of comparison plots do something like
 <pre>
- python python/makeTables.py main comp --compare planck_CAMspec_lowl planck_CAMspec_lowl_lowLike  planck_CAMspec_lowl_lowLike_highL --portrait
+ python python/makeTables.py main comp --compare planck_lowl planck_lowl_lowLike  planck_lowl_lowLike_highL --portrait
 </pre>
 <LI>runbatch.py: submit runs to a job submission script
 <LI>runGridGetdist.py: make getdist .ini files, run getdist over grid of models, and generate plots by running matlab.

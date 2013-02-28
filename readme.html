@@ -536,6 +536,12 @@ weighting function or parameter mapping.</ul>
 <UL>
 <LI><B>non-public Planck-only changes (for now)</B><BR>
 <UL>
+<LI>
+<LI>CAMB (and CosmoMC) updated fixes issues with larger neutrino masses (Mar 2013 version now)
+<LI>Minimizer uses fast and slow subspaces for speed and sanity check on convergence
+<LI>GetDist .margestats has new format, with separate limit type for each confidence
+<LI>GetDist applies 1D smoothing scale relative to standard deviation, or semi-optimal: smooth_scale_1D
+<LI>GetDist 2D plots use adaptive elliptical kernel density, smooth_scale_2D sets smoothing scale relative to bin size.
 <LI>Derived parameters now include r_s/D_v(0.57)
 <LI>Added <b>redo_like_name</b> for importance sampling when only one likelihood is changed
 <LI>Added <b>redo_no_new_data</b> option to redo only a specific likelihood when importance sampling
