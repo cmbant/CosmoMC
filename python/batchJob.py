@@ -112,6 +112,11 @@ class jobItem:
         textFileHandle.close()
         return float(textFileLines[0].strip()), len(textFileLines) > 1 and textFileLines[1].strip() == 'Done'
 
+    def chainFinished(self):
+        done = self.convergeStat()[1]
+        if done is None: return False
+        return done
+
     def wantCheckpointContinue(self):
         R, done = self.convergeStat()
         if R is None: return False

@@ -11,6 +11,7 @@ Opts.parser.add_argument('--minimize', action='store_true')
 Opts.parser.add_argument('--importance_minimize', action='store_true')
 Opts.parser.add_argument('--minimize_failed', action='store_true')
 Opts.parser.add_argument('--checkpoint_run', action='store_true')
+Opts.parser.add_argument('--importance_ready', action='store_true')
 
 
 (batch, args) = Opts.parseForBatch()
@@ -41,4 +42,6 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
         if (not args.notexist or (args.importance_minimize or args.minimize) and not jobItem.chainMinimumExists()
        or not args.importance_minimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged()):
             if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
-                if not args.checkpoint_run or jobItem.wantCheckpointContinue() and jobItem.notRunning(): submitJob(jobItem.iniFile(variant))
+                if not args.checkpoint_run or jobItem.wantCheckpointContinue() and jobItem.notRunning():
+                    if not args.importance_ready or not jobItem.isImportanceJob or jobItem.parent.chainFinished():
+                        submitJob(jobItem.iniFile(variant))
