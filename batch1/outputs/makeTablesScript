@@ -9,8 +9,9 @@ python python/makeParamCompare.py main --params omegak mnu nnu yhe nrun r w --co
 
 python python/makeTables.py main outputs/grid_limit68 --limit 1
 python python/makeTables.py main outputs/grid_limit95 --limit 2
+python python/makeTables.py main outputs/grid_limit99 --limit 3
 
 
-python python/makeTables.py main outputs/comparetables_limit95 --limit 2 --height 15in --width 13in --compare planck_lowl  planck_lowl_lowLike planck_lowl_lowLike_highL planck_lowl_lowLike_highL_BAO --paramList batch1/outputs/paper_table.paramnames
+python python/makeTables.py main outputs/comparetables_limit95 --limit 2 --height 8in --width 13in --compare planck_lowl  planck_lowl_lowLike planck_lowl_lowLike_highL planck_lowl_lowLike_highL_BAO --paramList batch1/outputs/paper_table.paramnames
 
-python python/makeTables.py main outputs/comparetables_limit68 --limit 1 --height 15in --width 13in --compare planck_lowl  planck_lowl_lowLike planck_lowl_lowLike_highL planck_lowl_lowLike_highL_BAO --paramList batch1/outputs/paper_table.paramnames
+python python/makeTables.py main outputs/comparetables_limit68 --limit 1 --height 8in --width 13in --compare planck_lowl  planck_lowl_lowLike planck_lowl_lowLike_highL planck_lowl_lowLike_highL_BAO --paramList batch1/outputs/paper_table.paramnames

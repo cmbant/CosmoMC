@@ -15,7 +15,7 @@ Opts.parser.add_argument('--columns', type=int, nargs=1, default=3)
 Opts.parser.add_argument('--compare', nargs='+', default=None)
 Opts.parser.add_argument('--titles', default=None)  # for compare plots
 Opts.parser.add_argument('--forpaper', action='store_true')
-Opts.parser.add_argument('--height', default="10in")
+Opts.parser.add_argument('--height', default="8in")
 Opts.parser.add_argument('--width', default="10in")
 
 
