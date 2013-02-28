@@ -337,7 +337,6 @@
             call SetStartPositions(Params)
         else
             call IO_ReadLastChainParams(fname, mult, StartLike, Params%P, params_used)
-            burn_in = 4
             call AddMPIParams(Params%P, StartLike, .true.)
         end if
         outfile_handle = IO_OutputOpenForWrite(fname, append = .not. new_chains)

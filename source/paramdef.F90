@@ -46,6 +46,7 @@
     !zero unless from checkpoint
     integer :: burn_in = 2 !Minimum to get sensible answers
     integer :: semislow_changes=0, slow_changes=0
+    integer :: checkpoint_burn = 0
 
     logical :: estimate_propose_matrix = .false.
     real(mcp), dimension(:,:), allocatable ::  propose_matrix
@@ -493,13 +494,14 @@
         allocate(req(MPIChains-1))
         allocate(MPIcovmat(num_params_used,num_params_used))
         allocate(MPIMean(0:num_params_used))
+        checkpoint_burn=checkpoint_freq/3
         return
     end if
 
     !Dump checkpoint info
     !Have to be careful if were to dump before burn
-    if (checkpoint .and. all_burn .and. (.not. done_check .or. &
-    mod(sample_num+1, checkpoint_freq)==0)) then
+    if (checkpoint .and. all_burn .and. checkpoint_burn==0 .and. &
+    (.not. done_check .or.  mod(sample_num+1, checkpoint_freq)==0)) then
         done_check=.true.
         if (Feedback > 1) write (*,*) instance, 'Writing checkpoint'
         call CreateFile(trim(rootname)//'.chk',tmp_file_unit,'unformatted')
@@ -734,7 +736,7 @@
     logical, intent(in) :: isDone
     character(LEN=*), intent(in), optional :: Msg
     real(mcp), intent(in) :: R
-    
+
     if (MPiRank==0) then
         call CreateTxtFile(trim(baseroot)//'.converge_stat',tmp_file_unit)
         write(tmp_file_unit,*) real(R)
@@ -983,16 +985,15 @@
     call IO_OutputChainRow(outfile_handle, mult, like, P%P(params_used), num_params_used)
 
     else
+        numderived = Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
 
-    numderived = Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
+        allocate(output_array(num_params_used + numderived))
+        output_array(1:num_params_used) =  P%P(params_used)
+        output_array(num_params_used+1:num_params_used+numderived) =  derived%P
+        deallocate(derived%P)
 
-    allocate(output_array(num_params_used + numderived))
-    output_array(1:num_params_used) =  P%P(params_used)
-    output_array(num_params_used+1:num_params_used+numderived) =  derived%P
-    deallocate(derived%P)
-
-    call IO_OutputChainRow(outfile_handle, mult, like, output_array)
-    deallocate(output_array) 
+        call IO_OutputChainRow(outfile_handle, mult, like, output_array)
+        deallocate(output_array) 
     end if
 
     end  subroutine WriteParams
