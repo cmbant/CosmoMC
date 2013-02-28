@@ -79,12 +79,6 @@ def compareTable(jobItems, titles=None):
     return ResultObjs.resultTable(1, [jobItem.result_marge for jobItem in jobItems if jobItem.result_marge is not None],
                formatter=formatter, limit=args.limit, titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
 
-def filterBatchData(batch, datatags):
-    items = []
-    for tag in ["_".join(sorted(data.replace('_post', '').split('_'))) for data in datatags]:
-        items += [jobItem for jobItem in batch if jobItem.normed_data == tag]
-    return items
-
 
 items = Opts.sortedParamtagDict()
 
@@ -92,7 +86,7 @@ for paramtag, parambatch in items:
     if not args.forpaper: section = '\\newpage\\section{ ' + texEscapeText("+".join(parambatch[0].param_set)) + '}'
     else: section = ''
     if not args.compare is None:
-        compares = filterBatchData(parambatch, args.compare)
+        compares = Opts.filterForDataCompare(parambatch, args.compare)
         if len(compares) == len(args.compare):
             lines.append(section)
             lines += compareTable(compares, args.titles)

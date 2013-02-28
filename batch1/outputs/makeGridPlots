@@ -1,0 +1,5 @@
+
+
+python python/makePlots.py main testplots --compare_data planck_lowl planck_lowl_lensing planck_lowl_lowLike  planck_lowl_lowLike_highL planck_lowl_lowLike_BAO
+
+python python/makePlots.py main testplots --compare_importanc

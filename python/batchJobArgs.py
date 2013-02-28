@@ -76,7 +76,12 @@ class batchArgs():
                 if jobItem.chainExists():
                     if not jobItem.paramtag in items: items[jobItem.paramtag] = []
                     items[jobItem.paramtag].append(jobItem)
-            items = sorted(items.iteritems())
+            return sorted(items.iteritems())
 
+        def filterForDataCompare(self, batch, datatags):
+            items = []
+            for tag in ["_".join(sorted(data.replace('_post', '').split('_'))) for data in datatags]:
+                items += [jobItem for jobItem in batch if jobItem.normed_data == tag]
+            return items
 
 
