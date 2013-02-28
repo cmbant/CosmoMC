@@ -46,6 +46,7 @@
     !Oct 12:  matlab_plot_output for pdf,eps,ps output support; matlab_subplot_size_inch
     !         fix for more than 100 parameters
     !Nov-Dec 12: removed sm support; use specific parameter in triangle plots; new R-1 definition, etc...
+    !.. Mar 13: numerous changes..
     module MCSamples
     use settings
     use MatrixUtils
@@ -1036,7 +1037,8 @@
         if (smooth_1d<0.5) write(*,*) 'Warning: num_bins not large enough for optimal density'
         smooth_1D=max(1.d0, smooth_1d)
     else
-        smooth_1D=smooth_scale_1D
+        smooth_1D=smooth_scale_1D*sddev(j)/width
+        if (smooth_1d< 1) write(*,*) 'Warning: num_bins not large enough to well sample smoothed density'
     end if
     end_edge = nint(smooth_1D*2)
 
@@ -1796,7 +1798,7 @@
     num_bins_2D = Ini_Read_Int('num_bins_2D', num_bins)
     smooth_scale_1D = Ini_read_Double('smooth_scale_1D',smooth_scale_1D) 
     smooth_scale_2D = Ini_read_Double('smooth_scale_2D',smooth_scale_2D) !smoothing scale in terms of bin scale
-    if (smooth_scale_1D>0 .and. smooth_scale_1D<1) write(*,*) 'WARNING: smooth_scale_1D<1 may be unreliable'
+    if (smooth_scale_1D>0 .and. smooth_scale_1D>1) write(*,*) 'WARNING: smooth_scale_1D>1 is oversmoothed'
 
     ignorerows = Ini_Read_Double('ignore_rows',0.d0)
 
