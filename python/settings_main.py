@@ -33,6 +33,7 @@ planck_lowl_lowLike_Union = [[planck, lowl, lowLike, Union], [Camspec, 'lowl.ini
 planck_lowl_lowLike_HST = [[planck, lowl, lowLike, HST], [Camspec, 'lowl.ini', 'lowLike.ini', 'HST.ini']]
 planck_lowl_lowLike_lensing = [[planck, lowl, lowLike, lensing], [Camspec, 'lowl.ini', 'lowLike.ini', 'lensing.ini']]
 planck_lowl_lowLike_highL_lensing = [[planck, lowl, lowLike, highL, lensing], [CamspecHighL, 'lowl.ini', 'lowLike.ini', 'lensing.ini']]
+planck_tauprior = [[planck, 'tauprior'], [Camspec, 'tauprior.ini']]
 planck_tauprior_highL = [[planck, 'tauprior', highL], [CamspecHighL, 'tauprior.ini']]
 
 
@@ -104,8 +105,8 @@ g.importanceRuns = []
 groups.append(g)
 
 g = group()
-g.params = [['mnu'], ['Alens']]
-g.datasets = [planck_tauprior_highL]
+g.params = [[], ['mnu'], ['Alens']]
+g.datasets = [planck_tauprior, planck_tauprior_highL]
 g.importanceRuns = [post_lensing]
 g.groupName = 'tauprior'
 groups.append(g)
