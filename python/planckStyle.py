@@ -21,10 +21,10 @@ rc('text.latex')
 
 rcParams.update(params)
 
-planck = r'\textit{Planck} TT'
+planck = r'\textit{Planck}'
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
-lensing = r'\textit{Planck} TT+lensing'
+lensing = r'\textit{Planck}+TT lensing'
 WPhighLlensing = r'\textit{Planck}+WP+highL+lensing'
 
 
