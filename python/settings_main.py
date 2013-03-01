@@ -114,6 +114,8 @@ groups.append(g)
 # try to match run to exisitng covmat
 covrenames = dict()
 covrenames['planck'] = 'planck_CAMspec'
+covrenames['tauprior'] = 'lowl_lowLike'
+covrenames['Aphiphi_'] = ''
 covrenames['_BAO'] = '_post_BAO'
 covrenames['_HST'] = '_post_HST'
 covrenames['_lowl'] = '_lowl_lowLike'
