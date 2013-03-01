@@ -80,7 +80,7 @@ class batchArgs():
 
         def filterForDataCompare(self, batch, datatags):
             items = []
-            for tag in ["_".join(sorted(data.replace('_post', '').split('_'))) for data in datatags]:
+            for tag in [self.batch.normalizeDataTag(data) for data in datatags]:
                 items += [jobItem for jobItem in batch if jobItem.normed_data == tag]
             return items
 

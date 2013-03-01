@@ -14,10 +14,11 @@ def saveobject(obj, filename):
 
 class jobItem:
 
-    def __init__(self, path, param_set, data_set):
+    def __init__(self, path, param_set, data_set, base='base'):
         self.param_set = param_set
         self.data_set = data_set
-        paramtag = 'base'
+        self.base = base
+        paramtag = self.base
         for param in param_set:
             paramtag = paramtag + '_' + param
         self.dataname_set = data_set[0]
@@ -66,7 +67,9 @@ class jobItem:
     def makeIDs(self):
         self.normed_params = "_".join(sorted(self.param_set))
         self.normed_data = "_".join(sorted(self.dataname_set))
-        self.normed_name = self.normed_params + '_' + self.normed_data
+        self.normed_name = self.base
+        if len(self.normed_params) > 0: self.normed_name += '_' + self.normed_params
+        self.normed_name += '_' + self.normed_data
 
 
     def matchesDatatag(self, tagList):
@@ -203,9 +206,15 @@ class batchJob:
         return False
 
     def has_normed_name(self, name, wantSubItems=True, wantImportance=False, exclude=None):
+        return self.normed_name_item(name, wantSubItems, wantImportance, exclude) is not None
+
+    def normed_name_item(self, name, wantSubItems=True, wantImportance=False, exclude=None):
         for jobItem in self.items(wantSubItems, wantImportance):
-            if jobItem.normed_name == name and not jobItem is exclude: return True
-        return False
+            if jobItem.normed_name == name and not jobItem is exclude: return jobItem
+        return None
+
+    def normalizeDataTag(self, tag):
+        return "_".join(sorted(tag.replace('_post', '').split('_')))
 
     def save(self, filename=''):
         saveobject(self, (self.batchPath + 'batch.pyobj', filename)[filename != ''])

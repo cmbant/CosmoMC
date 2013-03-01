@@ -7,7 +7,6 @@ def checkDir(fname):
 Opts = batchJobArgs.batchArgs('Run getdist over the grid of models', notExist=True)
 Opts.parser.add_argument('--plots', action='store_true')
 Opts.parser.add_argument('--norun', action='store_true')
-Opts.parser.add_argument('--noplots', action='store_true')
 Opts.parser.add_argument('--specific', action='store_true')
 Opts.parser.add_argument('--compare_only', action='store_true')
 Opts.parser.add_argument('--settings', default='getdist_settings')
@@ -15,6 +14,8 @@ Opts.parser.add_argument('--plot_data', default=None)
 
 
 (batch, args) = Opts.parseForBatch()
+
+args.plots = not args.plots
 
 base_ini = 'getdist_common_batch1.ini'
 
@@ -42,7 +43,6 @@ if not args.plots and not args.specific:
                 checkDir(jobItem.distPath)
                 ini.params['out_dir'] = jobItem.distPath
                 ini.params['plot_data_dir'] = data_dir
-                if 'meffsterile' in jobItem.param_set: ini.params['limits[nnu]'] = '3.046 N'
                 custom_plot = batch.commonPath + 'plots' + os.sep + jobItem.paramtag + '.ini'
                 custom_plot2 = batch.commonPath + 'plots' + os.sep + jobItem.name + '.ini'
                 if os.path.exists(custom_plot2):
