@@ -100,7 +100,7 @@ g = group()
 g.params = [['Aphiphi']]
 g.datasets = [planck_lowl_lowLike_highL_lensing]
 g.groupName = 'Aphiphi'
-g4.importanceRuns = []
+g.importanceRuns = []
 groups.append(g)
 
 g = group()
