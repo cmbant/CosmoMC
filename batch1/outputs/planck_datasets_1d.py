@@ -17,4 +17,4 @@ labels=[s.planck,s.lensing,s.WP]
 roots=['base_planck_lowl','base_planck_lowl_post_lensing','base_planck_lowl_lowLike']
 
 g.plots_1d(roots,['tau','zrei','A','sigma8'],nx=2, legend_labels=labels)
-g.export('reion_tau_1D')
+g.exportExtra('reion_tau_1D')
