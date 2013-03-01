@@ -91,7 +91,7 @@ g3.groupName = 'geom'
 groups.append(g3)
 
 g4 = group()
-g4.params = [['mnu'], ['omegak']]
+g4.params = [['mnu']]
 g4.datasets = [planck_lowl_lowLike_lensing, planck_lowl_lowLike_highL_lensing]
 g4.importanceRuns = [post_BAO, post_HST]
 g4.groupName = 'lensing'
