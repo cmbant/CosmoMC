@@ -15,7 +15,7 @@ for ext in args.file_extension:
     if not '.' in ext: pattern = '.' + ext
     else: pattern = ext
     for jobItem in Opts.filteredBatchItems():
-        if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
+        if os.path.exists(jobItem.distPath) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
             for f in os.listdir(jobItem.distPath):
                 if fnmatch.fnmatch(f, jobItem.name + pattern):
                     print jobItem.distPath + f
