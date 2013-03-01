@@ -1799,6 +1799,7 @@
     smooth_scale_1D = Ini_read_Double('smooth_scale_1D',smooth_scale_1D) 
     smooth_scale_2D = Ini_read_Double('smooth_scale_2D',smooth_scale_2D) !smoothing scale in terms of bin scale
     if (smooth_scale_1D>0 .and. smooth_scale_1D>1) write(*,*) 'WARNING: smooth_scale_1D>1 is oversmoothed'
+    if (smooth_scale_1D>0 .and. smooth_scale_1D>1.9) stop 'smooth_scale_1D>1 is now in stdev units'
 
     ignorerows = Ini_Read_Double('ignore_rows',0.d0)
 
@@ -2384,13 +2385,13 @@
     if (plot_2D_param == 0 .and. num_cust2D_plots==0 .and. .not. no_plots) then
         !In this case output the most correlated variable combinations
         write (*,*) 'doing 2D plots for most correlated variables'
-        try_t = 1e5
+        try_t = 1d5
 
         x=0;y=0;
 
         num_cust2D_plots = 12
         do j = 1, num_cust2D_plots
-            try_b = -1e5
+            try_b = -1d5
             do ix1 =1 ,num_vars
                 do ix2 = ix1+1,num_vars
                     if (abs(corrmatrix(colix(ix1)-2,colix(ix2)-2)) < try_t .and. &
@@ -2400,7 +2401,7 @@
                     end if
                 end do
             end do
-            if (try_b == -1e5) then
+            if (try_b == -1d5) then
                 num_cust2D_plots = j-1
                 exit
             end if

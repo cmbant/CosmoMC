@@ -15,7 +15,7 @@ Opts.parser.add_argument('--plot_data', default=None)
 
 (batch, args) = Opts.parseForBatch()
 
-args.plots = not args.plots
+args.noplots = not args.plots
 
 base_ini = 'getdist_common_batch1.ini'
 
