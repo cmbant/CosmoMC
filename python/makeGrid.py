@@ -78,14 +78,16 @@ for jobItem in batch.items(wantSubItems=False):
         else:
             hasCov = False
             ini.params['MPI_Max_R_ProposeUpdate'] = 20
+            covmat_try = [jobItem.name.replace(old, new) for old, new in settings.covrenames.items()]
             for new1, old1 in settings.covrenames.items():
                 name = jobItem.name.replace(new1, old1)
-                for new, old in settings.covrenames.items():
-                    covmat = batch.basePath + 'planck_covmats/' + name.replace(new, old) + '.covmat'
-                    if os.path.exists(covmat):
-                        ini.params['propose_matrix'] = covmat
-                        hasCov = True
-                        break
+                covmat_try += [name.replace(new, old) for new, old in settings.covrenames.items()]
+            for name in covmat_try:
+                covmat = batch.basePath + 'planck_covmats/' + name + '.covmat'
+                if os.path.exists(covmat):
+                    ini.params['propose_matrix'] = covmat
+                    hasCov = True
+                    break
             if not hasCov: print 'WARNING: no matching specific covmat for ' + jobItem.name
 
         ini.params['start_at_bestfit'] = settings.start_at_bestfit
