@@ -21,7 +21,7 @@
     end type ClikLikelihood
 
     type, extends(ClikLikelihood) :: ClikLensingLikelihood
-    integer(kind=4) lensing_lmax
+        integer(kind=4) lensing_lmax
     contains
     procedure :: LogLike => clik_lensing_LnLike
     procedure :: clik_likeinit => clik_lensing_likeinit
@@ -147,7 +147,13 @@
     !Not pretty. Oh well.     
     if (like%clik_nnuis > 0) then 
         do i=1,like%clik_nnuis
-            clik_cl_and_pars(j) = DataParams(i)
+            !silvia--------------------------------------------
+            if(i .eq. 6 .and. INDEX(trim(like%name),'plik').ne. 0)then
+                clik_cl_and_pars(j) = DataParams(i)-2
+            else
+                clik_cl_and_pars(j) = DataParams(i)
+            end if
+            !------------------------------------------------
             j = j+1
         end do
     end if   
@@ -213,24 +219,24 @@
 
     j = 1
     do l=0,like%lensing_lmax
-            !skip C_0 and C_1
-            if (l >= 2) then
-                clik_cl_and_pars(j) = acl(l,num_cls+1)/real(l*(l+1),mcp)**2*twopi
-            end if
-            j = j+1
+        !skip C_0 and C_1
+        if (l >= 2) then
+            clik_cl_and_pars(j) = acl(l,num_cls+1)/real(l*(l+1),mcp)**2*twopi
+        end if
+        j = j+1
     end do
 
     do l=0,like%lensing_lmax
-            !skip C_0 and C_1
-            if (l >= 2) then
-                clik_cl_and_pars(j) = acl(l,mapped_index(1))
-            end if
-            j = j+1
+        !skip C_0 and C_1
+        if (l >= 2) then
+            clik_cl_and_pars(j) = acl(l,mapped_index(1))
+        end if
+        j = j+1
     end do
 
     do i=1,like%clik_nnuis
-            clik_cl_and_pars(j) = DataParams(i)
-            j = j+1
+        clik_cl_and_pars(j) = DataParams(i)
+        j = j+1
     end do
 
     !Get - ln like needed by CosmoMC

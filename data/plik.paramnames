@@ -1,15 +1,15 @@
-A_cib_143      CIB_{143}
-A_cib_217      CIB_{217}
-r_cib  r_{cib}
-A_sz   A_{sz}
-xi_sz_cib      xi_{szcib}
-cib_index      cib index
-ps_pwfe_A_100_100      ps_{100}
-ps_pwfe_A_100_143      ps_{100x143}
-ps_pwfe_A_100_217      ps_{100x217}
-ps_pwfe_A_143_143      ps_{143}
-ps_pwfe_A_143_217      ps_{143x217}
-ps_pwfe_A_217_217      ps_{217}
+acib143       A^{CIB}_{143}     # CIB amplitude at 143 GHz
+acib217       A^{CIB}_{217}     # CIB amplitude at 217 GHz
+cibr          r^{CIB}_{143\times217}           # 143-217 correlation coefficient of CIB
+asz143        A^{tSZ}_{143}     # Thermal SZ amplitude at 143 GH
+xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
+ncib          \gamma^{CIB}            # spectral index of the CIB
+aps100        A^{PS}_{100}      # Point source amplitude at 100 GHz
+aps100143        A^{PS}_{100\times143}      # Point source amplitude at 100 GHz
+aps100217	 A^{PS}_{100\times217}      # Point source amplitude at 100 GHz
+aps143		 A^{PS}_{143}      # Point source amplitude at 143 GHz
+aps143217     A^{PS}_{143\times217}      # Point source amplitude at 143 GHz
+aps217        A^{PS}_{217}      # Point source amplitude at 217 GHz
 gal_norm       gal_{norm}
-ksz_norm       A_{ksz}
+aksz          A^{kSZ}
 

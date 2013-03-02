@@ -24,7 +24,7 @@ class batchArgs():
             self.parser.add_argument('--datatag', default=None)
             self.parser.add_argument('--skip_data', default=None)
             self.parser.add_argument('--skip_param', default=None)
-            self.parser.add_argument('--group', default=None)
+            self.parser.add_argument('--group', default=None, nargs='+')
 
             if self.notExist: self.parser.add_argument('--notexist', action='store_true')
 
@@ -45,7 +45,7 @@ class batchArgs():
             return False
 
         def groupMatches(self, jobItem):
-            return self.args.group is None or (jobItem.group is not None and jobItem.group == self.args.group)
+            return self.args.group is None or jobItem.group in self.args.group
 
         def dataMatches(self, jobItem):
             if self.args.datatag is None:
