@@ -46,27 +46,7 @@ g.importanceRuns = []
 groups = [g]
 
 # try to match run to exisitng covmat
-covrenames = dict()
-covrenames['planck'] = 'planck_CAMspec'
-covrenames['plik'] = 'planck'
-
-covrenames['_BAO'] = '_post_BAO'
-covrenames['_HST'] = '_post_HST'
-covrenames['_lowl'] = '_lowl_lowLike'
-covrenames['_lowl_lowLike_highL'] = '_lowl_lowLike'
-covrenames['_lensing'] = ''
-covrenames['_alpha1'] = ''
-covrenames['_r'] = ''
-covrenames['lowl_lowLike_highL'] = 'lowl_lowLike'
-covrenames['lowl_BAO'] = 'lowl_lowLike_BAO'
-covrenames['SNLS'] = 'BAO'
-covrenames['Union2'] = 'SNLS'
-covrenames['Union2'] = 'BAO'
-covrenames['HST'] = 'BAO'
-covrenames['w_wa_'] = 'w_'
-covrenames['lowl_lowLike_highL_BAO'] = 'lowl_lowLike'
-covrenames['mnu_Alens'] = 'mnu'
-covrenames['_nrun_r'] = ''
+covrenames = [['plik', 'planck']]
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
