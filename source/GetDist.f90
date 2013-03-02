@@ -32,7 +32,6 @@
     !Nov 07: uses Matrix_utils, fixed .ps file output filenames,
     !        added markerxxx for vertical lines in 1D matlabl plots
     !May 08: Option to process WMAP5-formatted chains (thanks to Mike Nolta)
-    !        Added do_minimal_1d_intervals for equal-likelihood 1D limits (thanks to Jan Hamann, see arXiv:0705.0440)
     !        Added font_scale to scale default font sizes, num_contours input parameter (allows more than 2)
     !Sept 09: use of .paramnames and parameter_names file for names and labels; referencing by name as alternative to number
     !         allowed map_params with 1-column input format
@@ -120,6 +119,7 @@
     logical :: prob_label = .false.
     logical :: plots_only, no_plots
     real(mcp) :: smooth_scale_1D=-1.d0, smooth_scale_2D = 1.d0
+    real(mcp) :: credible_interval_threshold = 0.1d0
 
     contains
 
@@ -1025,25 +1025,32 @@
 
     ix = colix(j)
 
+    param_min(j) = minval(coldata(ix,0:nrows-1))
+    param_max(j) = maxval(coldata(ix,0:nrows-1))
+    range_min(j) = ConfidVal(ix,0.0005_mcp,.false.)
+    range_max(j) = ConfidVal(ix,0.0005_mcp,.true.)
+
     width = (range_max(j)-range_min(j))/(num_bins+1)
     if (width==0) return
 
-    if (smooth_scale_1D<=0._mcp) then
-     !Automatically set smoothing scale from rule of thumb for Gaussian, e.g. see
-     !http://en.wikipedia.org/wiki/Kernel_density_estimation
-     !1/5 power is insensitive so just use v crude estimate of effective number
+    if (smooth_scale_1D<=0._mcp ) then
+        !Automatically set smoothing scale from rule of thumb for Gaussian, e.g. see
+        !http://en.wikipedia.org/wiki/Kernel_density_estimation
+        !1/5 power is insensitive so just use v crude estimate of effective number
         opt_width = 1.06/max(1.d0,numsamp/max_mult)**0.2d0 *sddev(j)
         smooth_1D = opt_width/width*abs(smooth_scale_1D)
         if (smooth_1d<0.5) write(*,*) 'Warning: num_bins not large enough for optimal density'
         smooth_1D=max(1.d0, smooth_1d)
-    else
+    elseif (smooth_scale_1D<1.0_mcp) then
         smooth_1D=smooth_scale_1D*sddev(j)/width
         if (smooth_1d< 1) write(*,*) 'Warning: num_bins not large enough to well sample smoothed density'
+    else
+        smooth_1d = smooth_scale_1D
     end if
     end_edge = nint(smooth_1D*2)
 
     if (has_limits_bot(ix)) then
-        if ( range_min(j)-limmin(ix) > width*end_edge .and. param_min(j)-limmin(ix)>width) then
+        if ( range_min(j)-limmin(ix) > width*end_edge .and. param_min(j)-limmin(ix)>width*smooth_1d) then
             !long way from limit
             has_limits_bot(ix) = .false.
         else
@@ -1052,7 +1059,7 @@
     end if
 
     if (has_limits_top(ix)) then
-        if ( limmax(ix) - range_max(j) > width*end_edge .and. limmax(ix)-param_max(j)>width) then
+        if ( limmax(ix) - range_max(j) > width*end_edge .and. limmax(ix)-param_max(j)>width*smooth_1d) then
             has_limits_top(ix) = .false.
         else
             range_max(j) = limmax(ix)
@@ -1697,7 +1704,6 @@
     real(mcp) try_b, try_t
     real(mcp) LowerUpperLimits(max_cols,2,max_contours), limfrac
     real(mcp) :: minimal_intervals(max_cols,max_intersections+1,max_contours) !JH
-    logical do_minimal_1d_intervals !JH
 
     integer bestfit_ix
     integer chain_exclude(max_chains), num_exclude
@@ -1723,7 +1729,7 @@
     character(LEN=Ini_max_string_len) :: finish_run_command
     integer chain_handle
     integer triangle_num, triangle_params(max_cols), max_scatter_points
-    real(mcp) tail_limit_bot,tail_limit_top
+    real(mcp) tail_limit_bot,tail_limit_top, tail_confid_bot, tail_confid_top
     logical make_scatter_samples
 
     NameMapping%nnames = 0
@@ -1800,6 +1806,7 @@
     smooth_scale_2D = Ini_read_Double('smooth_scale_2D',smooth_scale_2D) !smoothing scale in terms of bin scale
     if (smooth_scale_1D>0 .and. smooth_scale_1D>1) write(*,*) 'WARNING: smooth_scale_1D>1 is oversmoothed'
     if (smooth_scale_1D>0 .and. smooth_scale_1D>1.9) stop 'smooth_scale_1D>1 is now in stdev units'
+    credible_interval_threshold =Ini_Read_Double('credible_interval_threshold',credible_interval_threshold)
 
     ignorerows = Ini_Read_Double('ignore_rows',0.d0)
 
@@ -2012,7 +2019,8 @@
 
     plot_meanlikes = Ini_Read_Logical('plot_meanlikes',.false.)
 
-    do_minimal_1d_intervals = Ini_Read_Logical('do_minimal_1d_intervals',.false.) !JH
+    if (Ini_HasKey('do_minimal_1d_intervals')) &
+      stop 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
 
     PCA_num = Ini_Read_Int('PCA_num',0)
     if (PCA_num /= 0) then
@@ -2297,10 +2305,6 @@
     !Do 1D bins
     do j = 1,num_vars
         ix = colix(j)
-        param_min(j) = minval(coldata(ix,0:nrows-1))
-        param_max(j) = maxval(coldata(ix,0:nrows-1))
-        range_min(j) = ConfidVal(ix,0.001_mcp,.false.)
-        range_max(j) = ConfidVal(ix,0.001_mcp,.true.)
 
         call Get1DDensity(j)
 
@@ -2312,16 +2316,26 @@
                 !give limit
                 call Density1D%Limits(contours(ix1), tail_limit_bot, tail_limit_top, marge_limits_bot(ix1,ix), marge_limits_top(ix1,ix))
                 limfrac = 1-contours(ix1)
-                if (marge_limits_bot(ix1,ix)) then
+                if (marge_limits_bot(ix1,ix)) then !fix to end of prior range
                     tail_limit_bot = range_min(j)
-                elseif (marge_limits_top(ix1,ix)) then
-                    !this may be a bit more accurate for one tail
+                elseif (marge_limits_top(ix1,ix)) then !1 tail limit
                     tail_limit_bot = ConfidVal(ix,limfrac,.false.)
+                else !2 tail limit
+                    tail_confid_bot = ConfidVal(ix,limfrac/2,.false.)
                 end if
                 if (marge_limits_top(ix1,ix)) then
                     tail_limit_top = range_max(j)
                 elseif (marge_limits_bot(ix1,ix)) then
                     tail_limit_top = ConfidVal(ix,limfrac,.true.)
+                else
+                    tail_confid_top = ConfidVal(ix,limfrac/2,.true.)
+                end if
+                if (.not. marge_limits_bot(ix1,ix) .and. .not. marge_limits_top(ix1,ix)) then
+                    !Two tail, check if limits are at very differen density
+                    if (abs(Density1D%Prob(tail_confid_top) - Density1D%Prob(tail_confid_bot)) < credible_interval_threshold) then
+                        tail_limit_top=tail_confid_top
+                        tail_limit_bot=tail_confid_bot
+                    end if
                 end if
                 LowerUpperLimits(j,2,ix1) = tail_limit_top
                 LowerUpperLimits(j,1,ix1) = tail_limit_bot
@@ -2586,29 +2600,6 @@
         end do
         close(50)
     end if
-
-
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: beginning of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    if (do_minimal_1d_intervals .and. .not. plots_only) then ! write limits to .minmarge file
-        open(unit=50,file=trim(rootdirname)//'.minmarge',form='formatted',status='replace')
-        write(50,'(a)',advance='NO') 'param  '
-        do j=1, num_contours
-            write(50,'(a)',advance='NO') trim(concat('lower',j))//'         '//trim(concat('upper',j))//'         '
-        end do
-        write(50,'(a)') ''
-
-        do j=1, num_vars
-            write(50,'(1I5)', advance='NO') colix(j)-2
-            do i=1, num_contours
-                write(50,'(2E15.7)',advance='NO') minimal_intervals(j,1:2,i)
-            end do
-            write(50,'(a)') '   '//trim(labels(colix(j)))
-        end do
-        write (50,*) ''
-        write (50,'(a)') 'Limits are: ' // trim(contours_str)
-        close(50)
-    end if
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!! JH: end of MCI stuff !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     !Comment this out if your compiler doesn't support "system"
     if (finish_run_command /='') then
