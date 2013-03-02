@@ -18,13 +18,13 @@ if args.checkpoint:
     for jobItem in Opts.filteredBatchItems():
         R, done = jobItem.convergeStat()
         if R is not None and not done:
-            if not args.not_running or jobItem.notRunning(): print '...', jobItem.chainRoot, R
+            if (not args.not_running or jobItem.notRunning()) and (not args.running or not jobItem.notRunning()): print '...', jobItem.chainRoot, R
 else:
     for jobItem in Opts.filteredBatchItems():
         if not jobItem.chainExists():
             notExist.append(jobItem)
         elif args.converge == 0 or args.checkpoint or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
-            if (not args.not_running or jobItem.notRunning()) and (not args.running or not jobItem.notRunning()): converge.append(jobItem)
+            if (not args.not_running or jobItem.notRunning()): converge.append(jobItem)
 
     print 'Checking batch (from last runGridGetdist.py output):'
     if not args.exist and len(notExist) > 0:
