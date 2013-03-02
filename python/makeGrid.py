@@ -120,7 +120,7 @@ for jobItem in batch.items(wantSubItems=False):
                 if cosmomcAction != 0: break
 
 
-comment = 'Done... to run do: python python/runbatch.py ' + batchPath + ' --noimportance'
+comment = 'Done... to run do: python python/runbatch.py ' + batchPath
 print comment
 if not settings.start_at_bestfit:
     comment = '....... for best fits: python python/runbatch.py ' + batchPath + ' --minimize'
