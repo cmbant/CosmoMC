@@ -40,10 +40,10 @@
     logical :: use_highL
 
 
-    print *,' using noncliklike_CamSpec'
     use_CAMspec = Ini_Read_Logical_File(Ini,'use_CAMspec',.false.)
 
     if (use_CAMspec) then
+        print *,' using non-clik CamSpec'
         allocate(CamSpeclikelihood::Like)
         call LikeList%Add(Like) 
         Like%needs_powerspectra =.true.
@@ -67,6 +67,7 @@
 
     if (use_highL) then
 #ifdef highL
+        print *,' using non-clik highL'
         allocate(highLLikelihood::Like)
         call LikeList%Add(Like) 
         Like%LikelihoodType = 'CMB'
