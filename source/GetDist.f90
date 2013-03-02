@@ -119,7 +119,7 @@
     logical :: prob_label = .false.
     logical :: plots_only, no_plots
     real(mcp) :: smooth_scale_1D=-1.d0, smooth_scale_2D = 1.d0
-    real(mcp) :: credible_interval_threshold = 0.1d0
+    real(mcp) :: credible_interval_threshold = 0.05d0
 
     contains
 
