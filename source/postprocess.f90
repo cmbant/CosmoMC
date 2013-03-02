@@ -108,6 +108,7 @@
     logical :: first = .false., has_chain = .true.
     integer last_file_loc,file_loc, file_size
     integer :: at_beginning=0, ierror
+    real(mcp) :: priorlike
 
     flush_write = .false.
     weight_min= 1e30_mcp
@@ -208,8 +209,16 @@
                 exit
             end if
             num=num+1
-            if (num>PostParams%redo_skip .and. mod(num,PostParams%redo_thin) == 0) then
-                if (PostParams%redo_theory) then
+            if (PostParams%redo_like .or. PostParams%redo_add) then
+                !Check for new prior before calculating anything
+                priorlike = CheckPriorCuts(Params)
+                if (Feedback >1 .and. priorlike==logZero) write(*,*) 'Model outside new prior bounds: skipped' 
+            else 
+                priorlike=0
+            end if
+            
+            if (num>PostParams%redo_skip .and. mod(num,PostParams%redo_thin) == 0 .and. priorlike/=logZero) then
+                if (PostParams%redo_theory ) then
                     call GetTheoryForImportance(Params%P, newTheory, error, PostParams%redo_cls, PostParams%redo_pk)
 
                     if (PostParams%redo_cls) then

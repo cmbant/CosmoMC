@@ -51,6 +51,18 @@
 
     end function GenericLikelihoodFunction
 
+    function GetLogLikeBounds(Params)
+    type(ParamSet):: Params
+    real(mcp) :: GetLogLikeBounds
+
+    if (any(Params%P > Scales%PMax) .or. any(Params%P < Scales%PMin)) then
+        GetLogLikeBounds = logZero
+    else
+        GetLogLikeBounds=0
+    end if
+
+    end function GetLogLikeBounds
+
     function GetLogLike(Params) !Get -Ln(Likelihood) for chains
     type(ParamSet), target :: Params 
     Type (CMBParams), target :: CMB
@@ -58,12 +70,8 @@
     logical, save:: first=.true.
     Type(LikeCalculator) :: Calc
 
-    if (any(Params%P > Scales%PMax) .or. any(Params%P < Scales%PMin)) then
-        GetLogLike = logZero
-        return
-    end if
-
-    GetLogLike=0
+    GetLogLike = GetLogLikeBounds(Params)
+    if (GetLogLike==LogZero) return
 
     if (generic_mcmc .or. test_likelihood) then
         call AddLike(GetLogLike,GenericLikelihoodFunction(Params)) 
@@ -95,6 +103,19 @@
 
     end function GetLogLike
 
+    function CheckPriorCuts(Params)
+    real(mcp)  CheckPriorCuts
+    Type(ParamSet), target :: Params
+    Type (CMBParams), target :: CMB
+
+    CheckPriorCuts = GetLogLikeBounds(Params)
+    if (CheckPriorCuts==LogZero) return
+
+    call Parameterization%ParamArrayToTheoryParams(Params%P,CMB)
+    CheckPriorCuts = Parameterization%NonBaseParameterPriors(CMB)
+
+    end function CheckPriorCuts
+
     function GetLogLikePost(Params, do_like)
     !for importance sampling where theory may be pre-stored
     real(mcp)  GetLogLikePost
@@ -103,14 +124,11 @@
     Type(LikeCalculator) :: Calc
     logical, optional, intent(in) :: do_like(DataLikelihoods%count)
 
-    if (any(Params%P > Scales%PMax) .or. any(Params%P < Scales%PMin)) then
-        GetLogLikePost = logZero
-        return
-    end if
+    GetLogLikePost = GetLogLikeBounds(Params)
+    if (GetLogLikePost==LogZero) return
 
     Calc%slowChanged = .false.
     Calc%ChangeMask = .true.
-    GetLogLikePost = 0
 
     call Parameterization%ParamArrayToTheoryParams(Params%P,CMB)
     call AddLike(GetLogLikePost,Parameterization%NonBaseParameterPriors(CMB))

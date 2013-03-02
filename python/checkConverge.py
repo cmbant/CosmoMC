@@ -6,6 +6,7 @@ Opts.parser.add_argument('--exist', action='store_true')
 Opts.parser.add_argument('--checkpoint', action='store_true')
 Opts.parser.add_argument('--running', action='store_true')
 Opts.parser.add_argument('--not_running', action='store_true')
+Opts.parser.add_argument('--stuck', action='store_true')
 
 (batch, args) = Opts.parseForBatch()
 
@@ -14,7 +15,11 @@ converge = []
 
 if args.running:args.checkpoint = True
 
-if args.checkpoint:
+if args.stuck:
+        for jobItem in Opts.filteredBatchItems():
+            if jobItem.chainExists() and jobItem.chainsDodgy():
+                print 'Chain stuck?...' + jobItem.name
+elif args.checkpoint:
     for jobItem in Opts.filteredBatchItems():
         R, done = jobItem.convergeStat()
         if R is not None and not done:

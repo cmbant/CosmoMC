@@ -88,13 +88,27 @@ class jobItem:
         outfile.write("\n".join(f))
         outfile.close()
 
+    def chainName(self, chain=1):
+        return self.chainRoot + '_' + str(chain) + '.txt'
+
     def chainExists(self):
-        fname = self.chainRoot + '_1.txt'
+        fname = self.chainName()
         return os.path.exists(fname) and os.path.getsize(fname) > 0
+
+    def chainFileDate(self, name, chain=1):
+        os.path.getmtime(self.chainName(chain))
+
+    def chainsDodgy(self, interval=600):
+        dates = []
+        i = 1
+        while os.path.exists(self.chainName(i)):
+            dates.append(os.path.getmtime(self.chainName(i)))
+            i += 1
+        return os.path.exists(self.chainName(i + 1)) or max(dates) - min(dates) > interval
 
     def notRunning(self):
         if not self.chainExists(): return False  # might be in queue
-        lastWrite = os.path.getmtime(self.chainRoot + '_1.txt')
+        lastWrite = self.chainFileDate(self.chainName())
         return lastWrite < time.time() - 5 * 60
 
     def chainMinimumExists(self):
