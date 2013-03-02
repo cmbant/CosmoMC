@@ -4,6 +4,7 @@ Opts = batchJobArgs.batchArgs('Find chains which have failed or not converged.',
 
 Opts.parser.add_argument('--exist', action='store_true')
 Opts.parser.add_argument('--checkpoint', action='store_true')
+Opts.parser.add_argument('--running', action='store_true')
 Opts.parser.add_argument('--not_running', action='store_true')
 
 (batch, args) = Opts.parseForBatch()
@@ -21,7 +22,7 @@ else:
         if not jobItem.chainExists():
             notExist.append(jobItem)
         elif args.converge == 0 or args.checkpoint or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
-            if not args.not_running or jobItem.notRunning(): converge.append(jobItem)
+            if (not args.not_running or jobItem.notRunning()) and (not args.running or not jobItem.notRunning()): converge.append(jobItem)
 
     print 'Checking batch (from last runGridGetdist.py output):'
     if not args.exist and len(notExist) > 0:
