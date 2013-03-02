@@ -44,7 +44,7 @@ newCovmats = True
 
 class importanceFilterLensing:
     def wantImportance(self, jobItem):
-        return planck in jobItem.dataname_set and (not'omegak' in jobItem.param_set or len(jobItem.param_set) == 1)
+        return planck in jobItem.dataname_set and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
 
 class importanceFilterNotOmegakLowl:
     def wantImportance(self, jobItem):
@@ -91,7 +91,7 @@ g3.groupName = 'geom'
 groups.append(g3)
 
 g4 = group()
-g4.params = [['mnu'], ['omegak']]
+g4.params = [['mnu']]
 g4.datasets = [planck_lowl_lowLike_lensing, planck_lowl_lowLike_highL_lensing]
 g4.importanceRuns = [post_BAO, post_HST, post_SNLS]
 g4.groupName = 'lensing'

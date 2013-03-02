@@ -12,6 +12,8 @@ Opts.parser.add_argument('--not_running', action='store_true')
 notExist = []
 converge = []
 
+if args.running:args.checkpoint = True
+
 if args.checkpoint:
     for jobItem in Opts.filteredBatchItems():
         R, done = jobItem.convergeStat()
