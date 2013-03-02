@@ -3,10 +3,10 @@ from pylab import *
 import sys
 
 g=s.plotter
-
-g.settings.setWithSubplotSize(3)
-#g.settings.axes_fontsize +=2
-#g.settings.lab_fontsize +=6
+0
+g.settings.setWithSubplotSize(2)
+g.settings.axes_fontsize +=2
+g.settings.lab_fontsize +=5
 g.settings.solid_colors = ['#009966', '#000866', '#000866'] 
 
 bases=['omegabh2','omegach2','ns','H0','sigma8']

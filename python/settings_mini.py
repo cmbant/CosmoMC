@@ -21,13 +21,13 @@ class group:pass
 
 
 g = group()
-g.params = [[], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+g.params = [[], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
 
 g.datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
-g.datasets.append([[planck, lowl, lowLike], ['CAMspec_nonclik.ini', 'lowl.ini', 'lowLike.ini']])
-g.datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_ACTSPT_nonclik.ini', 'lowl.ini', 'lowLike.ini']])
-# g.datasets.append([[plik, lowl, lowLike], ['PLik_defaults.ini', 'lowl49.ini', 'lowLike.ini']])
+# g.datasets.append([[planck, lowl, lowLike], ['CAMspec_nonclik.ini', 'lowl.ini', 'lowLike.ini']])
+# g.datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_ACTSPT_nonclik.ini', 'lowl.ini', 'lowLike.ini']])
+g.datasets.append([[plik, lowl, lowLike], ['PLik_defaults.ini', 'lowl.ini', 'lowLike.ini']])
 
 class importanceFilterPlanck:
     def wantImportance(self, jobItem):
@@ -39,8 +39,8 @@ class importanceFilterAcc:
 
 # add importance name tags, and list of specific .ini files to include (in batch1/)
 g.importanceRuns = []
-g.importanceRuns.append([[lensing], ['lensing.ini'], importanceFilterPlanck()])
-g.importanceRuns.append([[BAO], ['BAO.ini']])
+# g.importanceRuns.append([[lensing], ['lensing.ini'], importanceFilterPlanck()])
+# g.importanceRuns.append([[BAO], ['BAO.ini']])
 
 groups = [g]
 
