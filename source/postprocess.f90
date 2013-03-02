@@ -108,7 +108,6 @@
     logical :: first = .false., has_chain = .true.
     integer last_file_loc,file_loc, file_size
     integer :: at_beginning=0, ierror
-    real(mcp) :: priorlike
 
     flush_write = .false.
     weight_min= 1e30_mcp
@@ -208,75 +207,76 @@
                 if (num==0) call MpiStop('Error reading data file.')
                 exit
             end if
+
             num=num+1
+            if (num<=PostParams%redo_skip .or. mod(num,PostParams%redo_thin) /= 0) cycle
+
             if (PostParams%redo_like .or. PostParams%redo_add) then
                 !Check for new prior before calculating anything
-                priorlike = CheckPriorCuts(Params)
-                if (Feedback >1 .and. priorlike==logZero) write(*,*) 'Model outside new prior bounds: skipped' 
-            else 
-                priorlike=0
+                if (CheckPriorCuts(Params)==logZero) then
+                    if (Feedback >1) write(*,*) 'Model outside new prior bounds: skipped' 
+                    cycle
+                end if
             end if
-            
-            if (num>PostParams%redo_skip .and. mod(num,PostParams%redo_thin) == 0 .and. priorlike/=logZero) then
-                if (PostParams%redo_theory ) then
-                    call GetTheoryForImportance(Params%P, newTheory, error, PostParams%redo_cls, PostParams%redo_pk)
 
-                    if (PostParams%redo_cls) then
-                        Params%Theory%cl = newTheory%cl
-                    end if
+            if (PostParams%redo_theory ) then
+                call GetTheoryForImportance(Params%P, newTheory, error, PostParams%redo_cls, PostParams%redo_pk)
 
-                    if (PostParams%redo_pk) then
-                        Params%Theory%sigma_8 = newTheory%sigma_8
-                        Params%Theory%Matter_Power = newTheory%Matter_Power
-                    end if
-
-                    Params%Theory%derived_parameters = newTheory%derived_parameters
-                    Params%Theory%numderived = newTheory%numderived
-                else
-                    error = 0
+                if (PostParams%redo_cls) then
+                    Params%Theory%cl = newTheory%cl
                 end if
 
-                if (error ==0) then
-                    if (PostParams%redo_like .or. PostParams%redo_add) then
-                        if (Use_LSS .and. Params%Theory%sigma_8==0) &
-                        call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
+                if (PostParams%redo_pk) then
+                    Params%Theory%sigma_8 = newTheory%sigma_8
+                    Params%Theory%Matter_Power = newTheory%Matter_Power
+                end if
 
-                        if (PostParams%redo_add) then
-                            truelike = GetLogLikePost(Params, .not. has_likes)
-                        else
-                            truelike = GetLogLikePost(Params)
-                        end if
-                        if (truelike == logZero) then
-                            weight = 0
-                        else
-                            weight = exp(like-truelike+PostParams%redo_likeoffset)
-                        end if
+                Params%Theory%derived_parameters = newTheory%derived_parameters
+                Params%Theory%numderived = newTheory%numderived
+            else
+                error = 0
+            end if
 
-                        if (.not. PostParams%redo_change_like_only)  mult = mult*weight
+            if (error ==0) then
+                if (PostParams%redo_like .or. PostParams%redo_add) then
+                    if (Use_LSS .and. Params%Theory%sigma_8==0) &
+                    call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
+
+                    if (PostParams%redo_add) then
+                        truelike = GetLogLikePost(Params, .not. has_likes)
                     else
-                        truelike = like
-                        weight = 1
+                        truelike = GetLogLikePost(Params)
+                    end if
+                    if (truelike == logZero) then
+                        weight = 0
+                    else
+                        weight = exp(like-truelike+PostParams%redo_likeoffset)
                     end if
 
-                    max_like = min(max_like,like)
-                    max_truelike = min(max_truelike,truelike)
-
-                    mult_ratio = mult_ratio + weight
-                    mult_sum = mult_sum + mult
-
-                    if (mult /= 0) then
-                        call WritePostParams(Params, mult, truelike,txt_theory)
-                        if (outdata_handle>=0) call Params%WriteModel(outdata_handle, truelike,mult)
-                    else 
-                        if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
-                    end if
-
-                    if (Feedback > 1) write (*,*) num, ' mult= ', real(mult), ' weight = ', real(weight)
-                    weight_max = max(weight,weight_max)
-                    weight_min = min(weight,weight_min)
-                    mult_max = max(mult_max,mult)
-
+                    if (.not. PostParams%redo_change_like_only)  mult = mult*weight
+                else
+                    truelike = like
+                    weight = 1
                 end if
+
+                max_like = min(max_like,like)
+                max_truelike = min(max_truelike,truelike)
+
+                mult_ratio = mult_ratio + weight
+                mult_sum = mult_sum + mult
+
+                if (mult /= 0) then
+                    call WritePostParams(Params, mult, truelike,txt_theory)
+                    if (outdata_handle>=0) call Params%WriteModel(outdata_handle, truelike,mult)
+                else 
+                    if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
+                end if
+
+                if (Feedback > 1) write (*,*) num, ' mult= ', real(mult), ' weight = ', real(weight)
+                weight_max = max(weight,weight_max)
+                weight_min = min(weight,weight_min)
+                mult_max = max(mult_max,mult)
+
             end if
 
         end do

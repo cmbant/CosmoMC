@@ -7,7 +7,7 @@ g=s.plotter
 g.settings.line_labels = False
 g.settings.setWithSubplotSize(6)
 
-roots=['base_Alens_planck_lowl_lowLike_highL','base_Alens_planck_lowl_lowLike_highL_post_lensing']
+roots=['base_Aphiphi_planck_lowl_lowLike_highL','base_Alens_planck_lowl_lowLike_highL_post_lensing']
 
 g.plots_1d(roots,['Alens'])
 g.add_1d_marker(1,color='k',ls='--')
