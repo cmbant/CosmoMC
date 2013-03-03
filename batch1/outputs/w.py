@@ -17,6 +17,7 @@ roots=['base_w_planck_lowl_lowLike','base_w_planck_lowl_lowLike_BAO', 'base_w_pl
 #g.export('planck_datasets_1d.pdf')
 #g.newPlot()
 g.plots_1d(roots,['w'],legend_labels=labels)
-g.add_line([-1., -1.], [-2., 2.], zorder=1)
+g.add_x_marker(-1)
+#g.add_line([-1., -1.], [-2., 2.], zorder=1)
 g.export('w_test2')
 
