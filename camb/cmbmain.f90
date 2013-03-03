@@ -441,7 +441,7 @@ contains
         else
          !Fixed spacing
           MT%num_q_trans=int((log(CP%Transfer%kmax)-log(qmin))*CP%Transfer%k_per_logint)+1
-          allocate(q_transfer(MT%num_q_tremcasans))
+          allocate(q_transfer(MT%num_q_trans))
           do q_ix=1, MT%num_q_trans
             q_transfer(q_ix) = qmin*exp(real(q_ix)/CP%Transfer%k_per_logint)
           end do
