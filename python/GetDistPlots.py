@@ -245,10 +245,10 @@ class GetDistPlotter():
         if x and self.settings.x_label_rotation != 0:setp(xticks()[1], rotation=self.settings.x_label_rotation)
         self.set_locator(axis, x)
 
-    def setAxes(self, params, lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False):
+    def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False):
         if lims is not None: axis(lims)
         self.setAxisProperties(gca().xaxis, True)
-        if do_xlabel:self.set_xlabel(params[0])
+        if do_xlabel and len(params) > 0:self.set_xlabel(params[0])
         elif no_label_no_numbers: gca().set_xticklabels([])
         if len(params) > 1:
             self.setAxisProperties(gca().yaxis, False)
