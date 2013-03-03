@@ -441,7 +441,7 @@ contains
         else
          !Fixed spacing
           MT%num_q_trans=int((log(CP%Transfer%kmax)-log(qmin))*CP%Transfer%k_per_logint)+1
-          allocate(q_transfer(MT%num_q_trans))
+          allocate(q_transfer(MT%num_q_tremcasans))
           do q_ix=1, MT%num_q_trans
             q_transfer(q_ix) = qmin*exp(real(q_ix)/CP%Transfer%k_per_logint)
           end do
@@ -465,7 +465,7 @@ contains
                ntodo = MT%num_q_trans
                first_i = ntodo+1
                do q_ix = 1,ntodo
-                if (q_transfer(q_ix) > Evolve_q%highest) then
+                if (q_transfer(q_ix) > Evolve_q%highest+1d-4) then
                 !Feb13 fix for case with closed universe where qmax is not neccessarily right quantized value
                  !   if (q_transfer(q_ix) > qmax) then
                       first_i=q_ix 
