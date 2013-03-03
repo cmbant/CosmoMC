@@ -18,14 +18,14 @@ Aphiphi = g.param_latex_label(roots[0], 'Aphiphi')
 Alens = g.param_latex_label(roots[1], 'Alens')
 
 #g.plots_1d(roots,['Alens'])
-g.add_1d_marker(1,color='k',ls='--')
+g.add_x_marker(1,color='k',ls='--')
 
 text(1.35,1, Aphiphi+' ('+s.WPhighLlensing+')' ,color='b')
 text(1.35,0.9, Alens +' ('+s.WPhighLlensing+')' ,color='r')
 text(1.35,0.8, Alens +' ('+s.WPhighL+')' ,color='c')
 #text(1.3,1,s.WPhighLlensing,color='r')
 #gca().set_xticks([0.9,1,1.1,1.2, 1.3, 1.4, 1.5, 1.6])
-xlabel('Amplitude relative to physical')
+xlabel('Amplitude relative to physical',fontsize=14)
 
 gca().set_yticks([])
 
