@@ -48,7 +48,10 @@ for paramtag, parambatch in items:
     if not args.compare_data is None:
         print 'comparing: ' + paramtag
         compares = Opts.filterForDataCompare(parambatch, args.compare_data)
-        comparePlot(compares)
+        if len(compares) == 0:
+            print '..None'
+            continue
+        else: comparePlot(compares)
         for ext in args.outputs: g.export(outdir + paramtag + '.' + ext)
     elif args.compare_importance is not None:
         for jobItem in parambatch:

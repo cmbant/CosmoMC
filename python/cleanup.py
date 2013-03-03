@@ -21,7 +21,7 @@ if args.chainnum is not None:
 else: args.ext = ['.' + ext for ext in args.ext] + ['_*.' + ext for ext in args.ext]
 
 for jobItem in Opts.filteredBatchItems():
-    if args.converge == 0 or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
+    if (args.converge == 0 or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True)) and os.path.exists(jobItem.chainPath):
         dirs = [jobItem.chainPath]
         if args.dist: dirs = []
         if os.path.exists(jobItem.distPath): dirs += [jobItem.distPath]
