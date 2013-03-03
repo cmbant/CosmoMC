@@ -296,6 +296,10 @@ class GetDistPlotter():
         if not isinstance(param, paramNames.paramInfo): return self.paramNamesForRoot(root).parWithName(param, error=True)
         return param
 
+    def param_latex_label(self, root, param):
+        p = self.check_param(root, param)
+        return r'$' + p.label + r'$'
+
     def finish_plot(self, legend_labels=[], legend_loc=None, line_offset=0, no_gap=False, no_extra_legend_space=False):
         has_legend = self.settings.line_labels and len(legend_labels) > 1
         if self.settings.tight_layout:
