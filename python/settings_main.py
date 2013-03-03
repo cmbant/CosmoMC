@@ -91,11 +91,12 @@ g3.groupName = 'geom'
 groups.append(g3)
 
 g4 = group()
-g4.params = [['mnu']]
+g4.params = [['mnu'], ['omegak']]
 g4.datasets = [planck_lowl_lowLike_lensing, planck_lowl_lowLike_highL_lensing]
 g4.importanceRuns = [post_BAO, post_HST, post_SNLS]
 g4.groupName = 'lensing'
 groups.append(g4)
+
 
 g = group()
 g.params = [['Aphiphi']]
@@ -111,7 +112,8 @@ g.importanceRuns = [post_lensing]
 g.groupName = 'tauprior'
 groups.append(g)
 
-skip = ['base_nnu_meffsterile_planck_lowl_lowLike']
+
+skip = ['base_nnu_meffsterile_planck_lowl_lowLike', 'base_omegak_planck_lowl_lowLike_lensing']
 
 # try to match run to exisitng covmat
 covrenames = []
