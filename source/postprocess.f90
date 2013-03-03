@@ -239,9 +239,11 @@
 
             if (error ==0) then
                 if (PostParams%redo_like .or. PostParams%redo_add) then
-                    if (Use_LSS .and. Params%Theory%sigma_8==0) &
-                    call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
-
+                    if (Use_LSS .and. Params%Theory%sigma_8==0) then
+                        write(*,*) 'ERROR: Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk'
+                        cycle !!!!cycle for now to save checkpointing bug
+!                        call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
+                    end if
                     if (PostParams%redo_add) then
                         truelike = GetLogLikePost(Params, .not. has_likes)
                     else
