@@ -9,8 +9,8 @@ g.settings.setWithSubplotSize(6)
 
 roots=['base_Aphiphi_planck_lowl_lowLike_highL','base_Alens_planck_lowl_lowLike_highL_post_lensing']
 
-g.add_add(root[0],['Aphiphi']);
-g.add_add(root[1],['Alens']);
+g.add_1d(root[0],['Aphiphi']);
+g.add_1d(root[1],['Alens']);
 #g.plots_1d(roots,['Alens'])
 g.add_1d_marker(1,color='k',ls='--')
 text(1.3,1,s.WPhighLlensing,color='r')
