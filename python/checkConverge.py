@@ -20,7 +20,7 @@ if args.stuck:
             if jobItem.chainExists() and jobItem.chainsDodgy():
                 print 'Chain stuck?...' + jobItem.name
 elif args.checkpoint:
-    print 'Conergence from checkpoint files...'
+    print 'Convergence from checkpoint files...'
     for jobItem in Opts.filteredBatchItems():
         R, done = jobItem.convergeStat()
         if R is not None and not done:

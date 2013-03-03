@@ -35,6 +35,8 @@ class GetDistPlotSettings:
         self.legend_frac_subplot_margin = 0.2
         self.legend_frac_subplot_line = 0.1
         self.alpha_filled_add = 0.5
+        self.axis_marker_color = 'gray'
+        self.axis_marker_ls = '--'
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
@@ -226,9 +228,18 @@ class GetDistPlotter():
         if not 'lims' in ax_args: ax_args['lims'] = [mins[0], maxs[0], mins[1], maxs[1]]
         self.setAxes(param_pair, **ax_args)
 
-    def add_1d_marker(self, marker, color='k', ls='-'):
-#        gca().add_line(Line2D([marker, marker], [0, 2], color=marker_color))
+    def add_1d_marker(self, marker, color=None, ls=None):
+        self.add_x_marker(marker, color, ls)
+
+    def add_x_marker(self, marker, color=None, ls=None):
+        if color is None: color = self.settings.axis_marker_color
+        if ls is None: ls = self.settings.axis_marker_ls
         axvline(marker, ls=ls, color=color)
+
+    def add_y_marker(self, marker, color=None, ls=None):
+        if color is None: color = self.settings.axis_marker_color
+        if ls is None: ls = self.settings.axis_marker_ls
+        axhline(marker, ls=ls, color=color)
 
     def set_locator(self, axis, x=False):
         if x: xmin, xmax = axis.get_view_interval()
@@ -261,7 +272,7 @@ class GetDistPlotter():
     def set_ylabel(self, param):
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
 
-    def plot_1d(self, roots, param, marker=None, marker_color='k', **ax_args):
+    def plot_1d(self, roots, param, marker=None, marker_color=None, **ax_args):
         param = self.check_param(roots[0], param)
         xmin, xmax = self.add_1d(roots[0], param, 0)
         for i, root in enumerate(roots[1:]):
@@ -270,7 +281,7 @@ class GetDistPlotter():
                 xmin = min(xmin, bounds[0])
                 xmax = max(xmax, bounds[1])
 
-        if marker is not None: self.add_1d_marker(marker, marker_color)
+        if marker is not None: self.add_x_marker(marker, marker_color)
         if not 'lims' in ax_args:ax_args['lims'] = [xmin, xmax, 0, 1.1]
         self.setAxes([param], **ax_args)
 
@@ -424,7 +435,7 @@ class GetDistPlotter():
 
         self.finish_plot([legend_labels, roots][legend_labels is None], legend_loc=None, no_gap=self.settings.no_triangle_axis_labels, no_extra_legend_space=True)
 
-    def rectangle_plot(self, xparams, yparams, yroots, filled=True, ymarkers=None, xmarkers=None, marker_ls='--', marker_color='gray'):
+    def rectangle_plot(self, xparams, yparams, yroots, filled=True, ymarkers=None, xmarkers=None, marker_ls=None, marker_color=None):
             self.make_figure(nx=len(xparams), ny=len(yparams))
 #            f, plots = subplots(len(yparams), len(xparams), sharex='col', sharey='row')
             sharey = None
@@ -438,8 +449,8 @@ class GetDistPlotter():
                     if y == 0: sharex = ax
                     if isinstance(roots, basestring): roots = [roots]
                     self.plot_2d(roots, param_pair=[xparam, yparam], filled=filled, do_xlabel=y == len(yparams) - 1, do_ylabel=x == 0)
-                    if ymarkers is not None and ymarkers[y] is not None: axhline(ymarkers[y], ls=marker_ls, color=marker_color)
-                    if xmarkers is not None and xmarkers[x] is not None: axvline(xmarkers[x], ls=marker_ls, color=marker_color)
+                    if ymarkers is not None and ymarkers[y] is not None: self.add_y_marker(ymarkers[y], ls=marker_ls, color=marker_color)
+                    if xmarkers is not None and xmarkers[x] is not None: self.add_x_marker(xmarkers[x], ls=marker_ls, color=marker_color)
                     if y == 0: lims = xlim()
                     else: lims = (min(xlim()[0], lims[0]), max(xlim()[1], lims[1]))
                     if y != len(yparams) - 1: setp(ax.get_xticklabels(), visible=False)
