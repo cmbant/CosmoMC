@@ -222,35 +222,37 @@
     type(CAMBParams)  P
 
     call Parameterization%ParamArrayToTheoryParams(Params,CMB)
-
     error = 0
-    Threadnum =num_threads
-    call CMBToCAMB(CMB, P)
-    P%OnlyTransfers = .false.
 
-    if (DoPk) then
-        P%WantTransfer = .true.
-        if (.not. DoCls) then
-            P%WantScalars = .false.
-            P%WantTensors = .false.
+    if (DoPk .or. DoCls) then
+        Threadnum =num_threads
+        call CMBToCAMB(CMB, P)
+        P%OnlyTransfers = .false.
+
+        if (DoPk) then
+            P%WantTransfer = .true.
+            if (.not. DoCls) then
+                P%WantScalars = .false.
+                P%WantTensors = .false.
+            end if
         end if
-    end if
-    if (DoCls) then
-        !Assume we just want Cls to higher l
-        P%WantScalars = .true.
-        P%WantTensors = compute_tensors 
-        !!!not OK for non-linear lensing        if (.not. DoPk) P%WantTransfer = .false.
-    end if
+        if (DoCls) then
+            !Assume we just want Cls to higher l
+            P%WantScalars = .true.
+            P%WantTensors = compute_tensors 
+            !!!not OK for non-linear lensing        if (.not. DoPk) P%WantTransfer = .false.
+        end if
 
-    call CAMB_GetResults(P)
-    error = global_error_flag !using error optional parameter gives seg faults on SGI
+        call CAMB_GetResults(P)
+
+        error = global_error_flag !using error optional parameter gives seg faults on SGI
+    else
+        call GetNewBackgroundData(CMB,Theory,error)
+    end if
     if (error==0) then
-
-    if (DoCls) call SetPowersFromCAMB(Theory)
-    if (DoPk) call SetPkFromCAMB(Theory,MT)
-
-    call SetDerived(Theory)
-
+        if (DoCls) call SetPowersFromCAMB(Theory)
+        if (DoPk) call SetPkFromCAMB(Theory,MT)
+        call SetDerived(Theory)
     end if
     end subroutine GetTheoryForImportance
 
