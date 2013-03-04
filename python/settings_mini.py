@@ -32,6 +32,7 @@ g.datasets.append([[plik, lowl, lowLike, highL], ['PLik_CAMspec_ACTSPT_defaults.
 g.datasets.append([['planck_lmax2000', lowl, lowLike], ['CAMspec_lmax2000.ini', 'lowl.ini', 'lowLike.ini']])
 g.datasets.append([['planck_no217auto', lowl, lowLike], ['CAMspec_no217auto.ini', 'lowl.ini', 'lowLike.ini']])
 g.datasets.append([['planck_lmin1200', lowl, lowLike], ['CAMspec_lmin1200.ini', 'lowl.ini', 'lowLike.ini']])
+g.datasets.append([['planck_v61N', lowl, lowLike], ['CAMspec_v61N.ini', 'lowl.ini', 'lowLike.ini']])
 
 
 class importanceFilterPlanck:
@@ -50,7 +51,7 @@ g.importanceRuns = []
 groups = [g]
 
 # try to match run to exisitng covmat
-covrenames = [['plik', 'planck'], ['planck_lmax2000', 'planck'], ['planck_no217auto', 'planck'], ['planck_lmin1200', 'planck']]
+covrenames = [['plik', 'planck'], ['planck_lmax2000', 'planck'], ['planck_no217auto', 'planck'], ['planck_lmin1200', 'planck'], ['planck_v61N', 'planck']]
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
