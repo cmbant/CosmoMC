@@ -29,6 +29,8 @@ g.datasets = []
 # g.datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_ACTSPT_nonclik.ini', 'lowl.ini', 'lowLike.ini']])
 g.datasets.append([[plik, lowl, lowLike], ['PLik_CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini']])
 g.datasets.append([[plik, lowl, lowLike, highL], ['PLik_CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini']])
+g.datasets.append([['planck_lmax2000', lowl, lowLike], ['CAMspec_lmax2000.ini', 'lowl.ini', 'lowLike.ini']])
+
 
 class importanceFilterPlanck:
     def wantImportance(self, jobItem):
