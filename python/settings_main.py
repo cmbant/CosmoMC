@@ -113,7 +113,7 @@ g.groupName = 'tauprior'
 groups.append(g)
 
 
-skip = ['base_nnu_meffsterile_planck_lowl_lowLike', 'base_omegak_planck_lowl_lowLike_lensing']
+skip = ['base_nnu_meffsterile_planck_lowl_lowLike']
 
 # try to match run to exisitng covmat
 covrenames = []
