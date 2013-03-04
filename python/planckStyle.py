@@ -24,8 +24,8 @@ rcParams.update(params)
 planck = r'\textit{Planck}'
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
-lensing = r'\textit{Planck}+TT lensing'
-WPhighLlensing = r'\textit{Planck}+WP+highL+lensing'
+lensing = r'\textit{Planck}+lensing'
+WPhighLlensing = r'\textit{Planck}+lensing+WP+highL'
 
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
