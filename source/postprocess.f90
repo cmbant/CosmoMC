@@ -107,7 +107,7 @@
     Type(DataLikelihood), pointer :: DataLike
     logical :: first = .false., has_chain = .true.
     integer last_file_loc,file_loc, file_size
-    integer :: at_beginning=0, ierror
+    integer :: at_beginning=0, ierror, num_used
 
     flush_write = .false.
     weight_min= 1e30_mcp
@@ -166,14 +166,17 @@
         outfile_handle = IO_OutputOpenForWrite(trim(post_root)//'.txt')
         if (.not. PostParams%redo_no_new_data) outdata_handle = IO_DataOpenForWrite(trim(post_root)//'.data')
         num = 0
+        num_used = 0
 
         do
             if (PostParams%redo_from_text) then
                 error = 0
                 Params%P= Scales%center
                 if (.not. IO_ReadChainRow(infile_handle, mult, like, Params%P, params_used)) exit
+                num=num+1
             else
                 call Params%ReadModel(infile_handle,has_likes, mult,like, error)
+                num=num+1
                 if (first .and. PostParams%redo_like_name/='') then
                     first=.false.
                     do i=1, DataLikelihoods%Count
@@ -208,8 +211,9 @@
                 exit
             end if
 
-            num=num+1
             if (num<=PostParams%redo_skip .or. mod(num,PostParams%redo_thin) /= 0) cycle
+
+            num_used=num_used+1
 
             if (PostParams%redo_like .or. PostParams%redo_add) then
                 !Check for new prior before calculating anything
@@ -242,7 +246,7 @@
                     if (Use_LSS .and. Params%Theory%sigma_8==0) then
                         write(*,*) 'ERROR: Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk'
                         cycle !!!!cycle for now to save checkpointing bug
-!                        call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
+                        !                        call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
                     end if
                     if (PostParams%redo_add) then
                         truelike = GetLogLikePost(Params, .not. has_likes)
@@ -287,12 +291,11 @@
         call IO_Close(outfile_handle)
         if (outdata_handle >=0) call IO_DataCloseWrite(outdata_handle)
 
-        num = (num - PostParams%redo_skip) / PostParams%redo_thin
         if (Feedback>0) then 
-            write(*,*) 'finished. Processed ',num,' models'
+            write(*,*) 'finished. Processed ',num_used,' models'
             write (*,*) 'max weight= ',weight_max, ' min weight = ',weight_min
-            write (*,*) 'mean mult  = ', mult_sum/num
-            write (*,*) 'mean importance weight (approx evidence ratio) = ',mult_ratio/num
+            write (*,*) 'mean mult  = ', mult_sum/num_used
+            write (*,*) 'mean importance weight (approx evidence ratio) = ',mult_ratio/num_used
             write (*,*) 'effective number of samples =',mult_sum/mult_max
             write (*,*) 'Best redo_likeoffset = ',max_truelike - max_like
         end if
