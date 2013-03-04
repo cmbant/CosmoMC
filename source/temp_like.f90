@@ -107,7 +107,7 @@
 
 
     read(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
-    read(48) X_data !(X_data(i), i=1, nX)
+    read(48) X_data_in !(X_data(i), i=1, nX)
     read(48) cov !((c_inv(i, j), j = 1, nX), i = 1,  nX) !covarianbce
     read(48) !((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
     close(48)
