@@ -37,6 +37,7 @@ class GetDistPlotSettings:
         self.alpha_filled_add = 0.5
         self.axis_marker_color = 'gray'
         self.axis_marker_ls = '--'
+        self.figure_legend_ncol = 1
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
@@ -311,7 +312,7 @@ class GetDistPlotter():
         p = self.check_param(root, param)
         return r'$' + p.label + r'$'
 
-    def finish_plot(self, legend_labels=[], legend_loc=None, line_offset=0, no_gap=False, no_extra_legend_space=False):
+    def finish_plot(self, legend_labels=[], legend_loc=None, line_offset=0, legend_ncol=None, no_gap=False, no_extra_legend_space=False):
         has_legend = self.settings.line_labels and len(legend_labels) > 1
         if self.settings.tight_layout:
             if no_gap: tight_layout(h_pad=0, w_pad=0)
@@ -319,12 +320,13 @@ class GetDistPlotter():
 
         if has_legend:
             if legend_loc is None: legend_loc = self.settings.figure_legend_loc
+            if legend_ncol is None: legend_ncol = self.settings.figure_legend_ncol
             lines = []
             for i in enumerate(legend_labels):
                 color = self.get_color(i[0] + line_offset)
                 ls = self.get_linestyle(i[0] + line_offset)
                 lines.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
-            self.legend = self.fig.legend(lines, legend_labels, legend_loc, prop={'size':self.settings.lab_fontsize})
+            self.legend = self.fig.legend(lines, legend_labels, legend_loc, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize})
             self.extra_artists = [self.legend]
             if self.settings.tight_layout and not no_extra_legend_space:
                 frac = self.settings.legend_frac_subplot_margin + len(legend_labels) * self.settings.legend_frac_subplot_line
@@ -332,7 +334,7 @@ class GetDistPlotter():
                 elif 'lower' in legend_loc: subplots_adjust(bottom=frac / self.plot_row)
 
 
-    def plots_1d(self, roots, params=None, legend_labels=None, nx=None, paramList=None):
+    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None, paramList=None):
         params = self.get_param_array(roots[0], params)
         if paramList is not None:
             wantedParams = self.paramNameListFromFile(paramList)
@@ -345,11 +347,11 @@ class GetDistPlotter():
             subplot(plot_row, plot_col, i + 1)
             self.plot_1d(roots, param)
 
-        self.finish_plot([legend_labels, roots][legend_labels is None])
+        self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
 
         return plot_col, plot_row
 
-    def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None, filled=False):
+    def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None, legend_ncol=None, filled=False):
         pairs = []
         if param_pairs is None:
             if param1 is not None:
@@ -368,7 +370,7 @@ class GetDistPlotter():
             subplot(plot_row, plot_col, i + 1)
             self.plot_2d(roots, param_pair=pair, filled=filled)
 
-        self.finish_plot([legend_labels, roots][legend_labels is None])
+        self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
 
         return plot_col, plot_row
 
