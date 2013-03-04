@@ -25,6 +25,8 @@ elif args.checkpoint:
         R, done = jobItem.convergeStat()
         if R is not None and not done:
             if (not args.not_running or jobItem.notRunning()) and (not args.running or not jobItem.notRunning()): print '...', jobItem.chainRoot, R
+            if args.running and jobItem.chainExists() and jobItem.chainsDodgy():
+                print 'Chain stuck?...' + jobItem.name
 else:
     for jobItem in Opts.filteredBatchItems():
         if not jobItem.chainExists():
