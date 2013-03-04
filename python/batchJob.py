@@ -96,7 +96,7 @@ class jobItem:
         return os.path.exists(fname) and os.path.getsize(fname) > 0
 
     def chainFileDate(self, name, chain=1):
-        os.path.getmtime(self.chainName(chain))
+        return os.path.getmtime(self.chainName(chain))
 
     def chainsDodgy(self, interval=600):
         dates = []
