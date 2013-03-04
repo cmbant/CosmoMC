@@ -981,9 +981,7 @@
     if (outfile_handle ==0) return
 
     if (generic_mcmc) then
-
-    call IO_OutputChainRow(outfile_handle, mult, like, P%P(params_used), num_params_used)
-
+        call IO_OutputChainRow(outfile_handle, mult, like, P%P(params_used), num_params_used)
     else
         numderived = Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
 
