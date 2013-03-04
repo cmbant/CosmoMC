@@ -85,8 +85,8 @@
     real(campc) :: fid_theory
     real(campc), dimension(:), allocatable :: X_data_in
     real(campc),  dimension(:,:), allocatable :: cov
-    integer, allocatable :: indices(:),np(:), ix
-
+    integer, allocatable :: indices(:),np(:)
+    integer ix
 
     ! cl_ksz_148_tbo.dat file is in D_l, format l D_l, from l=2 to 10000
     ! tsz_x_cib_template.txt is is (l D_l), from l=2 to 9999, normalized to unity
