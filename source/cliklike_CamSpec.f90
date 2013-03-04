@@ -34,11 +34,10 @@
     Type(TIniFile) Ini
     class(LikelihoodList) :: LikeList
     character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
-    beamfilename, kszfilename,tszxcibfilename
+    beamfilename, kszfilename,tszxcibfilename, tmp
     Class(CosmologyLikelihood), pointer :: Like
     logical :: use_CAMspec
     logical :: use_highL
-
 
     use_CAMspec = Ini_Read_Logical_File(Ini,'use_CAMspec',.false.)
 
@@ -59,6 +58,13 @@
         kszfilename=ReadIniFileName(Ini,'kszfile',NotFoundFail = .true.)
         beamfilename=ReadIniFileName(Ini,'beamfile',NotFoundFail = .true.)
         camspec_beam_mcmc_num = Ini_Read_Int_File(Ini,'camspec_beam_mcmc_num',camspec_beam_mcmc_num)
+        tmp = Ini_read_String_file(Ini,'want_spec')
+        if (tmp/='') read(tmp,*) want_spec
+        tmp = Ini_read_String_file(Ini,'camspec_lmin')
+        if (tmp/='') read(tmp,*) camspec_lmins
+        tmp = Ini_read_String_file(Ini,'camspec_lmax')
+        if (tmp/='') read(tmp,*) camspec_lmaxs
+
         call like_init(likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename)
 
     end if 
