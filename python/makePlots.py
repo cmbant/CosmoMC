@@ -12,7 +12,9 @@ Opts.parser.add_argument('--compare_importance', nargs='*', default=None)
 Opts.parser.add_argument('--compare_paramtag', nargs='+', default=None)
 Opts.parser.add_argument('--nx', default=None)
 Opts.parser.add_argument('--legend_labels', default=None)
+Opts.parser.add_argument('--D2_param', default=None)
 Opts.parser.add_argument('--outputs', nargs='+', default=['pdf'])
+Opts.parser.add_argument('--filled', action='store_true')
 
 (batch, args) = Opts.parseForBatch()
 
@@ -31,15 +33,20 @@ g = GetDistPlots.GetDistPlotter(data)
 def legendLabels(jobItems):
     return [jobItem.name for jobItem in jobItems]
 
-def plot1d(roots, legend_labels=None):
+def doplot(jobItem, roots, legend_labels=None):
     if legend_labels is None: legend_labels = args.legend_labels
     else: legend_labels = roots
-    g.plots_1d(roots, paramList=args.paramList, nx=args.nx, legend_labels=legend_labels)
+    if args.D2_param is not None:
+        g.plots_2d(roots, args.D2_param, nx=args.nx, legend_labels=legend_labels, filled=args.filled)
+    else:
+        g.plots_1d(roots, paramList=args.paramList, nx=args.nx, legend_labels=legend_labels)
 
 def comparePlot(jobItems, titles=None):
     roots = [jobItem.name for jobItem in jobItems]
-    plot1d(roots, legend_labels=legendLabels(jobItems))
+    doplot(jobItem, roots, legend_labels=legendLabels(jobItems))
 
+if args.D2_param is not None: tp = '_' + args.D2_param + '_2D'
+else: tp = ''
 
 items = Opts.sortedParamtagDict()
 
@@ -52,7 +59,7 @@ for paramtag, parambatch in items:
             print '..None'
             continue
         else: comparePlot(compares)
-        for ext in args.outputs: g.export(outdir + paramtag + '.' + ext)
+        for ext in args.outputs: g.export(outdir + paramtag + tp + '.' + ext)
     elif args.compare_importance is not None:
         for jobItem in parambatch:
             if not jobItem.isImportanceJob:
@@ -60,8 +67,8 @@ for paramtag, parambatch in items:
                 roots = [jobItem.name]
                 for imp in jobItem.importanceItems:
                     if len(args.compare_importance) == 0 or imp.importanceTag in args.compare_importance: roots.append(imp.name)
-                plot1d(roots)
-                for ext in args.outputs: g.export(outdir + jobItem.name + '.' + ext)
+                doplot(jobItem, roots)
+                for ext in args.outputs: g.export(outdir + jobItem.name + tp + '.' + ext)
     elif args.compare_paramtag is not None:
             for jobItem in parambatch:
                 if not jobItem.paramtag in args.compare_paramtag:
@@ -70,13 +77,13 @@ for paramtag, parambatch in items:
                     roots = [batch.normed_name_item(tag + '_' + jobItem.normed_data, wantImportance=True) for tag in args.compare_paramtag]
                     roots = [jobItem.name] + [root.name for root in roots if root is not None]
                     if len(roots) > 1:
-                        plot1d(roots)
-                        for ext in args.outputs: g.export(outdir + output + '.' + ext)
+                        doplot(jobItem, roots)
+                        for ext in args.outputs: g.export(outdir + output + tp + '.' + ext)
     else:
         for jobItem in parambatch:
             print 'plotting: ' + jobItem.name
-            plot1d(jobItem.name)
-            for ext in args.outputs: g.export(outdir + jobItem.name + '.' + ext)
+            doplot(jobItem, [jobItem.name])
+            for ext in args.outputs: g.export(outdir + jobItem.name + tp + '.' + ext)
 
 
 
