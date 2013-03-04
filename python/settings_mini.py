@@ -49,7 +49,7 @@ g.importanceRuns = []
 groups = [g]
 
 # try to match run to exisitng covmat
-covrenames = [['plik', 'planck'], ['planck_lmax2000', 'planck']]
+covrenames = [['plik', 'planck'], ['planck_lmax2000', 'planck'], ['planck__no217auto', 'planck']]
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
