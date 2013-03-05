@@ -80,7 +80,7 @@ def compareTable(jobItems, titles=None):
                formatter=formatter, limit=args.limit, titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
 
 
-items = Opts.sortedParamtagDict()
+items = Opts.sortedParamtagDict(chainExist=not args.bestfitonly)
 
 for paramtag, parambatch in items:
     if not args.forpaper: section = '\\newpage\\section{ ' + texEscapeText("+".join(parambatch[0].param_set)) + '}'
