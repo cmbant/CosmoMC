@@ -94,7 +94,7 @@ for paramtag, parambatch in items:
     else:
         lines.append(section)
         for jobItem in parambatch:
-            if os.path.exists(jobItem.distPath) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
+            if (os.path.exists(jobItem.distPath) or args.bestfitonly) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
                 if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
                 tableLines = paramResultTable(jobItem)
                 ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
