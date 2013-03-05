@@ -113,7 +113,7 @@ skip = ['base_nnu_meffsterile_planck_lowl_lowLike']
 
 # try to match run to exisitng covmat
 covrenames = []
-covrenames.append(['planck', 'planck_CAMspec'])
+covrenames.append(['testmin', 'planck'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
 covrenames.append(['_lensing', '_post_lensing'])
 covrenames.append(['_BAO', '_post_BAO'])
