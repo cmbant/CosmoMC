@@ -13,6 +13,10 @@ params['yhe'] = '0.26 0.1 0.5 0.006 0.006'
 params['wa'] = '-0.2 -2 2 0.3 0.3'
 params['meffsterile'] = '0.2 0 3 0.1 0.03'
 
+extra_opts = dict()
+extra_opts['param[omegabh2]'] = '0.022 0.005 0.1 0.001 0.001'
+extra_opts['param[tau]'] = '0.095 0.01 0.8 0.003 0.003'
+
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
 
@@ -76,7 +80,7 @@ groups = []
 
 g1 = group()
 # sets of parameters to vary in addition to baseline
-g1.params = [['omegak'], ['mnu'], ['nrun', 'r'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['w'], ['yhe']]
+g1.params = [[], ['omegak'], ['mnu'], ['nrun', 'r'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['w'], ['yhe']]
 
 # lists of dataset names to combine, with corresponding sets of inis to include
 g1.datasets = [planck_lowl_lowLike, planck_lowl_lowLike_highL, planck_lowl]

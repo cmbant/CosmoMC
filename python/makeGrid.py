@@ -69,6 +69,9 @@ for jobItem in batch.items(wantSubItems=False):
         if 'r' in jobItem.param_set:
             ini.params['compute_tensors'] = True
 
+        if hasattr(settings, 'extra_opts'):
+            ini.params.update(settings.extra_opts)
+
         ini.params['file_root'] = jobItem.chainRoot
 
         covmat = batch.basePath + 'planck_covmats/' + jobItem.name + '.covmat'
