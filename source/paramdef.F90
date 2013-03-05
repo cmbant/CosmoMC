@@ -221,20 +221,22 @@
 
     end subroutine SetStartPositions
 
-    subroutine InitializeUsedParams(Ini,Params)
+    subroutine InitializeUsedParams(Ini,Params, forMCMC)
     type (ParamSet) Params
     type (TIniFile) :: Ini
+    logical :: forMCMC
 
     num_params = max(num_theory_params, NameMapping%num_MCMC)
     num_data_params = num_params - num_theory_params
-    call Initalize(Ini,Params)
+    call Initalize(Ini,Params,forMCMC)
 
     end subroutine InitializeUsedParams
 
-    subroutine Initalize(Ini,Params)
+    subroutine Initalize(Ini,Params,forMCMC)
     implicit none
     type (ParamSet) Params
     type (TIniFile) :: Ini
+    logical :: forMCMC
     integer i, j, ix
     character(LEN=5000) fname,InLine
     character(LEN=1024) prop_mat
@@ -278,8 +280,12 @@
     end if
 
     Ini_fail_on_not_found = .false.
+    if (forMCMC) then
+        prop_mat = trim(Ini_Read_String_File(Ini,'propose_matrix'))
+    else
+        prop_mat=''
+    end if
 
-    prop_mat = trim(Ini_Read_String_File(Ini,'propose_matrix'))
     has_propose_matrix = prop_mat /= ''
     if (prop_mat(1:1) /= '/') prop_mat = concat(LocalDir,prop_mat)
 
