@@ -1,4 +1,4 @@
-import ResultObjs, GetDistPlots
+import os, ResultObjs, GetDistPlots
 from matplotlib import rcParams, rc
 
 # common setup for matplotlib
@@ -15,9 +15,9 @@ params = {'backend': 'pdf',
           # free font similar to Helvetica
           'font.sans-serif':'FreeSans'}
 
+sfmath = os.getcwd() + os.sep + 'python' + os.sep + 'sfmath'
 # use of Sans Serif also in math mode
-rc('text.latex')
-# , preamble='\usepackage{sfmath}')
+rc('text.latex', preamble=r'\usepackage{' + sfmath + '}')
 
 rcParams.update(params)
 
