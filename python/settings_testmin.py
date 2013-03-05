@@ -82,7 +82,7 @@ groups = []
 
 g1 = group()
 # sets of parameters to vary in addition to baseline
-g1.params = [[], ['omegak'], ['mnu'], ['nrun', 'r'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['w'], ['yhe']]
+g1.params = [[], ['omegak'], ['mnu'], ['nrun', 'r'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['w'], ['yhe'], ['alpha1']]
 
 # lists of dataset names to combine, with corresponding sets of inis to include
 g1.datasets = [planck_lowl_lowLike, planck_lowl_lowLike_highL, planck_lowl]
@@ -99,6 +99,14 @@ g2.datasets = [planck_lowl_lowLike, planck_lowl_lowLike_highL]
 g2.importanceRuns = [post_lensing , post_BAO, post_HST]
 g2.groupName = 'ext'
 groups.append(g2)
+
+g3 = group()
+g3.params = [['omegak'], ['nnu'], ['w'], ['w', 'wa'], ['nrun', 'r', 'omegak'], ['mnu', 'omegak']]
+g3.datasets = [planck_lowl_lowLike_BAO, planck_lowl_lowLike_highL_BAO, planck_lowl_lowLike_SNLS, planck_lowl_lowLike_Union, planck_lowl_lowLike_HST]
+g3.importanceRuns = [post_lensing , post_BAO, post_HST]
+g3.groupName = 'geom'
+groups.append(g3)
+
 
 g4 = group()
 g4.params = [['mnu'], ['omegak']]
