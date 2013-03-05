@@ -11,6 +11,7 @@ params['r'] = '0.1 0 2 0.03 0.03'
 params['Alens'] = '1.2 0 10 0.05 0.05'
 params['yhe'] = '0.26 0.1 0.5 0.006 0.006'
 params['wa'] = '-0.2 -2 2 0.3 0.3'
+params['alpha1'] = '0 -1 1 0.0003 0.0003'
 params['meffsterile'] = '0.2 0 3 0.1 0.03'
 
 extra_opts = dict()
