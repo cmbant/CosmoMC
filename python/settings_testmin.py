@@ -16,6 +16,7 @@ params['meffsterile'] = '0.2 0 3 0.1 0.03'
 extra_opts = dict()
 extra_opts['param[omegabh2]'] = '0.022 0.005 0.1 0.001 0.001'
 extra_opts['param[tau]'] = '0.095 0.01 0.8 0.003 0.003'
+extra_opts['param[logA]'] = '3.04 2.7 4 0.002 0.002'
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
