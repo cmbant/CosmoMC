@@ -27,12 +27,19 @@ g.datasets = []
 # lists of dataset names to combine, with corresponding sets of inis to include
 # g.datasets.append([[planck, lowl, lowLike], ['CAMspec_nonclik.ini', 'lowl.ini', 'lowLike.ini']])
 # g.datasets.append([[planck, lowl, lowLike, highL], ['CAMspec_ACTSPT_nonclik.ini', 'lowl.ini', 'lowLike.ini']])
+camSpec = ['CAMspec_nonclik.ini', 'lowl.ini', 'lowLike.ini']
+camSpechighL = ['CAMspec_ACTSPT_nonclik.ini', 'lowl.ini', 'lowLike.ini']
+
 g.datasets.append([[plik, lowl, lowLike], ['PLik_CAMspec_defaults.ini', 'lowl.ini', 'lowLike.ini']])
 g.datasets.append([[plik, lowl, lowLike, highL], ['PLik_CAMspec_ACTSPT_defaults.ini', 'lowl.ini', 'lowLike.ini']])
-g.datasets.append([['planck_lmax2000', lowl, lowLike], ['CAMspec_lmax2000.ini', 'lowl.ini', 'lowLike.ini']])
-g.datasets.append([['planck_no217auto', lowl, lowLike], ['CAMspec_no217auto.ini', 'lowl.ini', 'lowLike.ini']])
-g.datasets.append([['planck_lmin1200', lowl, lowLike], ['CAMspec_lmin1200.ini', 'lowl.ini', 'lowLike.ini']])
-g.datasets.append([['planck_v61N', lowl, lowLike], ['CAMspec_v61N.ini', 'lowl.ini', 'lowLike.ini']])
+g.datasets.append([[planck, 'lmax2000', lowl, lowLike], ['CAMspec_lmax2000.ini'] + camSpec])
+g.datasets.append([[planck, 'no217auto', lowl, lowLike], ['CAMspec_no217auto.ini'] + camSpec])
+g.datasets.append([[planck, 'lmin1200', lowl, lowLike], ['CAMspec_lmin1200.ini'] + camSpec])
+g.datasets.append([[planck, 'v61N', lowl, lowLike], ['CAMspec_v61N.ini'] + camSpec])
+g.datasets.append([[planck, 'lmax2000', lowl, lowLike, highL], ['CAMspec_lmax2000.ini'] + camSpechighL])
+g.datasets.append([[planck, 'no217auto', lowl, lowLike, highL], ['CAMspec_no217auto.ini'] + camSpechighL])
+g.datasets.append([[planck, 'lmin1200', lowl, lowLike, highL], ['CAMspec_lmin1200.ini'] + camSpechighL])
+g.datasets.append([[planck, 'v61N', lowl, lowLike, highL], ['CAMspec_v61N.ini'] + camSpechighL])
 
 
 class importanceFilterPlanck:
@@ -51,7 +58,7 @@ g.importanceRuns = []
 groups = [g]
 
 # try to match run to exisitng covmat
-covrenames = [['plik', 'planck'], ['planck_lmax2000', 'planck'], ['planck_no217auto', 'planck'], ['planck_lmin1200', 'planck'], ['planck_v61N', 'planck']]
+covrenames = [['plik', 'planck'], ['_lmax2000', ''], ['_no217auto', ''], ['_lmin1200', ''], ['_v61N', '']]
 
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
