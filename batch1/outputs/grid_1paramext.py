@@ -3,7 +3,7 @@ from pylab import *
 import sys
 
 g=s.plotter
-0
+
 g.settings.setWithSubplotSize(2)
 g.settings.axes_fontsize +=2
 g.settings.lab_fontsize +=5
