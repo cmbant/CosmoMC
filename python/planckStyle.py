@@ -15,7 +15,7 @@ params = {'backend': 'pdf',
           # free font similar to Helvetica
           'font.sans-serif':'FreeSans'}
 
-sfmath = os.getcwd() + os.sep + 'python' + os.sep + 'sfmath'
+sfmath = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'sfmath'
 # use of Sans Serif also in math mode
 rc('text.latex', preamble=r'\usepackage{' + sfmath + '}')
 
