@@ -15,6 +15,7 @@ Opts.parser.add_argument('--columns', type=int, nargs=1, default=3)
 Opts.parser.add_argument('--compare', nargs='+', default=None)
 Opts.parser.add_argument('--titles', default=None)  # for compare plots
 Opts.parser.add_argument('--forpaper', action='store_true')
+Opts.parser.add_argument('--separate_tex', action='store_true')
 Opts.parser.add_argument('--height', default="8in")
 Opts.parser.add_argument('--width', default="10in")
 
@@ -80,7 +81,7 @@ def compareTable(jobItems, titles=None):
                formatter=formatter, limit=args.limit, titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
 
 
-items = Opts.sortedParamtagDict()
+items = Opts.sortedParamtagDict(chainExist=not args.bestfitonly)
 
 for paramtag, parambatch in items:
     if not args.forpaper: section = '\\newpage\\section{ ' + texEscapeText("+".join(parambatch[0].param_set)) + '}'
@@ -94,10 +95,10 @@ for paramtag, parambatch in items:
     else:
         lines.append(section)
         for jobItem in parambatch:
-            if os.path.exists(jobItem.distPath) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
+            if (os.path.exists(jobItem.distPath) or args.bestfitonly) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
                 if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
                 tableLines = paramResultTable(jobItem)
-                ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
+                if args.separate_tex: ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
                 lines += tableLines
 
 if not args.forpaper: lines.append('\\end{document}')

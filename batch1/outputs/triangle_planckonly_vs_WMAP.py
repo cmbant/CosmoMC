@@ -4,6 +4,9 @@
 import planckStyle as s
 g=s.plotter
 
+g.settings.axes_fontsize +=1
+g.settings.lab_fontsize +=4
+
 roots = ['base_planck_lowl_post_lensing', 'base_planck_lowl_lowLike','base_WMAP']
 labs=[s.lensing, s.WP,'WMAP9']
 #labs=['Planck+lensing','Planck+WP','WMAP9']
