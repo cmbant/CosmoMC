@@ -334,8 +334,10 @@ class GetDistPlotter():
                 elif 'lower' in legend_loc: subplots_adjust(bottom=frac / self.plot_row)
 
 
-    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None, paramList=None):
-        params = self.get_param_array(roots[0], params)
+    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None, paramList=None, roots_per_param=False):
+        if roots_per_param:
+            params = [self.check_param(roots[i][0], param) for i, param in enumerate(params)]
+        else: params = self.get_param_array(roots[0], params)
         if paramList is not None:
             wantedParams = self.paramNameListFromFile(paramList)
             params = [param for param in params if param.name in wantedParams]
@@ -345,7 +347,8 @@ class GetDistPlotter():
 
         for i, param in enumerate(params):
             subplot(plot_row, plot_col, i + 1)
-            self.plot_1d(roots, param)
+            if roots_per_param:  self.plot_1d(roots[i], param)
+            else: self.plot_1d(roots, param)
 
         self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
 
