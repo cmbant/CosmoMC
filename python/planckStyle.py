@@ -27,7 +27,7 @@ WPhighL = r'\textit{Planck}+WP+highL'
 lensing = r'\textit{Planck}+lensing'
 WPhighLlensing = r'\textit{Planck}+lensing+WP+highL'
 
-GetDistPlots.defaultSettings.figure_legend_frame = False
+GetDistPlots.defaultSettings.legend_frame = False
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
     def export(self, fname):

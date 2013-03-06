@@ -28,6 +28,7 @@ class GetDistPlotSettings:
         self.colormap = cm.Blues
         self.colormap_scatter = cm.jet
         self.param_names_for_labels = 'clik_latex.paramnames'
+        self.legend_loc = 'best'
         self.figure_legend_loc = 'upper center'
         self.xtick_prune = None  # 'lower' or 'upper'
         self.tight_gap_fraction = 0.13  # space between ticks and the edge
@@ -38,8 +39,8 @@ class GetDistPlotSettings:
         self.axis_marker_color = 'gray'
         self.axis_marker_ls = '--'
         self.figure_legend_ncol = 1
-        self.figure_legend_frame = True
-        self.figure_legend_rect_border = False
+        self.legend_frame = True
+        self.legend_rect_border = False
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
@@ -317,14 +318,10 @@ class GetDistPlotter():
         p = self.check_param(root, param)
         return r'$' + p.label + r'$'
 
-    def finish_plot(self, legend_labels=[], legend_loc=None, line_offset=0, legend_ncol=None, no_gap=False, no_extra_legend_space=False):
-        has_legend = self.settings.line_labels and len(legend_labels) > 1
-        if self.settings.tight_layout:
-            if no_gap: tight_layout(h_pad=0, w_pad=0)
-            else: tight_layout()
-
-        if has_legend:
-            if legend_loc is None: legend_loc = self.settings.figure_legend_loc
+    def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, figure=False):
+            if legend_loc is None:
+                if figure: legend_loc = self.settings.figure_legend_loc
+                else: legend_loc = self.settings.legend_loc
             if legend_ncol is None: legend_ncol = self.settings.figure_legend_ncol
             lines = []
             if len(self.contours_added) == 0:
@@ -333,11 +330,25 @@ class GetDistPlotter():
                     ls = self.get_linestyle(i[0] + line_offset)
                     lines.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
             else: lines = self.contours_added
-            self.legend = self.fig.legend(lines, legend_labels, legend_loc, frameon=self.settings.figure_legend_frame, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize})
-            if not self.settings.figure_legend_rect_border:
+            if figure:
+                self.legend = self.fig.legend(lines, legend_labels, legend_loc, frameon=self.settings.legend_frame, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize})
+            else:
+                self.legend = gca().legend(lines, legend_labels, legend_loc, frameon=self.settings.legend_frame, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize})
+            if not self.settings.legend_rect_border:
                 for rect in self.legend.get_patches():
                     rect.set_edgecolor(rect.get_facecolor())
-            self.extra_artists = [self.legend]
+            return self.legend
+
+    def finish_plot(self, legend_labels=[], legend_loc=None, line_offset=0, legend_ncol=None, no_gap=False, no_extra_legend_space=False):
+        has_legend = self.settings.line_labels and len(legend_labels) > 1
+        if self.settings.tight_layout:
+            if no_gap: tight_layout(h_pad=0, w_pad=0)
+            else: tight_layout()
+
+        if has_legend:
+            if legend_ncol is None: legend_ncol = self.settings.figure_legend_ncol
+            if legend_loc is None: legend_loc = self.settings.figure_legend_loc
+            self.extra_artists = [self.add_legend(legend_labels, legend_loc, line_offset, legend_ncol, figure=True)]
             if self.settings.tight_layout and not no_extra_legend_space:
                 frac = self.settings.legend_frac_subplot_margin + (len(legend_labels) / legend_ncol) * self.settings.legend_frac_subplot_line
                 if 'upper' in legend_loc: subplots_adjust(top=1 - frac / self.plot_row)
