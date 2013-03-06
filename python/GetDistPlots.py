@@ -335,7 +335,7 @@ class GetDistPlotter():
             else: lines = self.contours_added
             self.legend = self.fig.legend(lines, legend_labels, legend_loc, frameon=self.settings.figure_legend_frame, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize})
             if not self.settings.figure_legend_rect_border:
-                for rect in legend.get_patches():
+                for rect in self.legend.get_patches():
                     rect.set_edgecolor(rect.get_facecolor())
             self.extra_artists = [self.legend]
             if self.settings.tight_layout and not no_extra_legend_space:
