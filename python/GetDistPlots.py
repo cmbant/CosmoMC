@@ -28,19 +28,20 @@ class GetDistPlotSettings:
         self.colormap = cm.Blues
         self.colormap_scatter = cm.jet
         self.param_names_for_labels = 'clik_latex.paramnames'
-        self.legend_loc = 'best'
-        self.figure_legend_loc = 'upper center'
         self.xtick_prune = None  # 'lower' or 'upper'
         self.tight_gap_fraction = 0.13  # space between ticks and the edge
         self.num_contours = 2
+        self.legend_loc = 'best'
+        self.figure_legend_loc = 'upper center'
+        self.legend_frame = True
+        self.figure_legend_frame = True
+        self.legend_rect_border = False
         self.legend_frac_subplot_margin = 0.2
         self.legend_frac_subplot_line = 0.1
         self.alpha_filled_add = 0.5
         self.axis_marker_color = 'gray'
         self.axis_marker_ls = '--'
         self.figure_legend_ncol = 1
-        self.legend_frame = True
-        self.legend_rect_border = False
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
@@ -221,12 +222,12 @@ class GetDistPlotter():
         contour(density.x1, density.x2, density.pts, self.settings.num_shades, cmap=self.settings.colormap)
 #        contour(cs, hold='on')
 
-    def plot_2d(self, roots, param_pair, shaded=True, filled=False, **ax_args):
+    def plot_2d(self, roots, param_pair, shaded=True, filled=False, add_legend_proxy=False, **ax_args):
         param_pair = self.get_param_array(roots[0], param_pair)
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
         if shaded and not filled: self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
         for i, root in enumerate(roots):
-            res = self.add_2d_contours(root, param_pair[0], param_pair[1], i, filled=filled, add_legend_proxy=False)
+            res = self.add_2d_contours(root, param_pair[0], param_pair[1], i, filled=filled, add_legend_proxy=add_legend_proxy)
             if res is None: continue
             if i == 0: mins, maxs = res
             elif not shaded:
@@ -331,7 +332,7 @@ class GetDistPlotter():
                     lines.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
             else: lines = self.contours_added
             if figure:
-                self.legend = self.fig.legend(lines, legend_labels, legend_loc, frameon=self.settings.legend_frame, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize})
+                self.legend = self.fig.legend(lines, legend_labels, legend_loc, frameon=self.settings.figure_legend_frame, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize})
             else:
                 self.legend = gca().legend(lines, legend_labels, legend_loc, frameon=self.settings.legend_frame, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize})
             if not self.settings.legend_rect_border:
@@ -389,7 +390,7 @@ class GetDistPlotter():
 
         for i, pair in enumerate(pairs):
             subplot(plot_row, plot_col, i + 1)
-            self.plot_2d(roots, param_pair=pair, filled=filled)
+            self.plot_2d(roots, param_pair=pair, filled=filled, add_legend_proxy=i == 0)
 
         self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
 
@@ -402,7 +403,7 @@ class GetDistPlotter():
         plot_col, plot_row = self.make_figure(len(root_params_triplets), nx=nx)
         for i, (root, param1, param2) in enumerate(root_params_triplets):
             subplot(plot_row, plot_col, i + 1)
-            self.plot_2d([root], param_pair=[param1, param2], filled=filled)
+            self.plot_2d([root], param_pair=[param1, param2], filled=filled, add_legend_proxy=i == 0)
             if x_lim is not None:xlim(x_lim)
         self.finish_plot()
         return plot_col, plot_row
@@ -445,7 +446,7 @@ class GetDistPlotter():
                       do_xlabel=i2 == plot_col - 1, do_ylabel=i == 0, filled=filled_compare, no_label_no_numbers=self.settings.no_triangle_axis_labels)
                 else:
                     self.plot_2d(roots, param_pair=[param, param2], do_xlabel=i2 == plot_col - 1, do_ylabel=i == 0,
-                                        no_label_no_numbers=self.settings.no_triangle_axis_labels, shaded=shaded)
+                                        no_label_no_numbers=self.settings.no_triangle_axis_labels, shaded=shaded, add_legend_proxy=i == 1 and i2 == i + 1)
                 gca().set_xticks(ticks[i])
                 gca().set_yticks(ticks[i2])
                 xlim(lims[i])
@@ -471,7 +472,7 @@ class GetDistPlotter():
                     ax = self.subplot(x + 1, y + 1, sharex=sharex, sharey=sharey)
                     if y == 0: sharex = ax
                     if isinstance(roots, basestring): roots = [roots]
-                    self.plot_2d(roots, param_pair=[xparam, yparam], filled=filled, do_xlabel=y == len(yparams) - 1, do_ylabel=x == 0)
+                    self.plot_2d(roots, param_pair=[xparam, yparam], filled=filled, do_xlabel=y == len(yparams) - 1, do_ylabel=x == 0, add_legend_proxy=x == 0 and y == 0)
                     if ymarkers is not None and ymarkers[y] is not None: self.add_y_marker(ymarkers[y], ls=marker_ls, color=marker_color)
                     if xmarkers is not None and xmarkers[x] is not None: self.add_x_marker(xmarkers[x], ls=marker_ls, color=marker_color)
                     if y == 0: lims = xlim()
