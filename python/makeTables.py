@@ -86,7 +86,10 @@ def compareTable(jobItems, titles=None):
 items = Opts.sortedParamtagDict(chainExist=not args.bestfitonly)
 
 for paramtag, parambatch in items:
-    if not args.forpaper: section = '\\newpage\\section{ ' + texEscapeText("+".join(parambatch[0].param_set)) + '}'
+    if not args.forpaper:
+        if len(parambatch[0].param_set) == 0: paramText = 'Baseline model'
+        else: paramText = texEscapeText("+".join(parambatch[0].param_set))
+        section = '\\newpage\\section{ ' + paramText + '}'
     else: section = ''
     if not args.compare is None:
         compares = Opts.filterForDataCompare(parambatch, args.compare)
