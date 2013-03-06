@@ -16,6 +16,7 @@ Opts.parser.add_argument('--compare', nargs='+', default=None)
 Opts.parser.add_argument('--titles', default=None)  # for compare plots
 Opts.parser.add_argument('--forpaper', action='store_true')
 Opts.parser.add_argument('--separate_tex', action='store_true')
+Opts.parser.add_argument('--header_tex', default=None)
 Opts.parser.add_argument('--height', default="8in")
 Opts.parser.add_argument('--width', default="10in")
 
@@ -36,9 +37,10 @@ if not args.forpaper:
     lines.append('\\usepackage{fullpage}')
     lines.append('\\usepackage[pdftex]{hyperref}')
     lines.append('\\usepackage[paperheight=' + args.height + ',paperwidth=' + args.width + ',margin=0.8in]{geometry}')
-
     lines.append('\\renewcommand{\\arraystretch}{1.5}')
     lines.append('\\begin{document}')
+    if args.header_tex is not None:
+        lines.append(open(args.header_tex, 'r').read())
     lines.append('\\tableofcontents')
 
 def texEscapeText(string):

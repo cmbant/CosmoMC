@@ -9,9 +9,9 @@ python python/makeTables.py main outputs/LCDM_cosmo_params.tex --limit 1 --compa
 python python/makeParamCompare.py main --params omegak mnu nnu yhe nrun r w --compare planck_lowl_lowLike planck_lowl_lowLike_BAO planck_lowl_lowLike_highL planck_lowl_lowLike_highL_BAO --single_extparam --latex_filename outputs/grid_1paramext
 
 
-python python/makeTables.py main outputs/grid_limit68 --limit 1
-python python/makeTables.py main outputs/grid_limit95 --limit 2
-python python/makeTables.py main outputs/grid_limit99 --limit 3
+python python/makeTables.py main outputs/grid_limit68 --limit 1 
+python python/makeTables.py main outputs/grid_limit95 --limit 2 --header_tex batch1/outputs/tableHeader.tex
+python python/makeTables.py main outputs/grid_limit99 --limit 3 
 
 
 python python/makeTables.py main outputs/comparetables_limit95 --limit 2 --height 8in --width 13in --compare planck_lowl  planck_lowl_lowLike planck_lowl_lowLike_highL planck_lowl_lowLike_highL_BAO --paramList batch1/outputs/paper_table.paramnames
