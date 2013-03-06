@@ -14,6 +14,6 @@ python python/makeTables.py main outputs/grid_limit95 --limit 2 --header_tex bat
 python python/makeTables.py main outputs/grid_limit99 --limit 3 --header_tex batch1/outputs/tableHeader.tex --paramList batch1/outputs/PLA.paramnames
 
 
-python python/makeTables.py main outputs/comparetables_limit95 --limit 2 --height 8in --width 13in --compare planck_lowl  planck_lowl_lowLike planck_lowl_lowLike_highL planck_lowl_lowLike_highL_BAO --paramList batch1/outputs/paper_table.paramnames
+python python/makeTables.py main outputs/comparetables_limit95 --limit 2 --height 10in --width 14in --compare planck_lowl planck_lowl_lensing planck_lowl_lowLike_lensing planck_lowl_lowLike_highL planck_lowl_lowLike_highL_BAO --paramList batch1/outputs/paper_table.paramnames
 
-python python/makeTables.py main outputs/comparetables_limit68 --limit 1 --height 8in --width 13in --compare planck_lowl  planck_lowl_lowLike planck_lowl_lowLike_highL planck_lowl_lowLike_highL_BAO --paramList batch1/outputs/paper_table.paramnames
+python python/makeTables.py main outputs/comparetables_limit68 --limit 1 --height 10in --width 14in --compare planck_lowl planck_lowl_lensing planck_lowl_lowLike_lensing planck_lowl_lowLike_highL planck_lowl_lowLike_highL_BAO --paramList batch1/outputs/paper_table.paramnames
