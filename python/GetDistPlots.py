@@ -200,6 +200,7 @@ class GetDistPlotter():
                     cols = [[c * (1 - self.settings.solid_contour_palefactor) + self.settings.solid_contour_palefactor for c in cols[0]]] + cols
             contourf(density.x1, density.x2, density.pts, sorted(np.append([density.pts.max() + 1], density.contours)), colors=cols, alpha=alpha)
             if add_legend_proxy: self.contours_added.append(Rectangle((0, 0), 1, 1, fc=color))
+            alpha = alpha / 2
         else:
             if color is None: color = self.get_color(plotno, **kwargs)
             cols = [color]
