@@ -38,6 +38,8 @@ class GetDistPlotSettings:
         self.axis_marker_color = 'gray'
         self.axis_marker_ls = '--'
         self.figure_legend_ncol = 1
+        self.figure_legend_frame = True
+        self.figure_legend_rect_border = False
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
@@ -138,6 +140,7 @@ class GetDistPlotter():
     def newPlot(self):
         clf()
         self.extra_artists = []
+        self.contours_added = []
         self.param_name_sets = dict()
         self.sampleAnalyser.newPlot()
 
@@ -179,7 +182,7 @@ class GetDistPlotter():
 
         return density.bounds()
 
-    def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, ls=None, cols=None, alpha=None, **kwargs):
+    def add_2d_contours(self, root, param1, param2, plotno=0, filled=False, color=None, ls=None, cols=None, alpha=None, add_legend_proxy=True, **kwargs):
         param1, param2 = self.get_param_array(root, [param1, param2])
 
         density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
@@ -194,10 +197,12 @@ class GetDistPlotter():
                 for _ in range(1, len(density.contours)):
                     cols = [[c * (1 - self.settings.solid_contour_palefactor) + self.settings.solid_contour_palefactor for c in cols[0]]] + cols
             contourf(density.x1, density.x2, density.pts, sorted(np.append([density.pts.max() + 1], density.contours)), colors=cols, alpha=alpha)
+            if add_legend_proxy: self.contours_added.append(Rectangle((0, 0), 1, 1, fc=color))
         else:
             if color is None: color = self.get_color(plotno, **kwargs)
             cols = [color]
             if ls is None: ls = self.get_linestyle(plotno, **kwargs)
+            if add_legend_proxy: self.contours_added.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
             linestyles = [ls]
         kwargs = self.get_plot_args(plotno, **kwargs)
         kwargs['alpha'] = alpha
@@ -220,7 +225,7 @@ class GetDistPlotter():
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
         if shaded and not filled: self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
         for i, root in enumerate(roots):
-            res = self.add_2d_contours(root, param_pair[0], param_pair[1], i, filled=filled)
+            res = self.add_2d_contours(root, param_pair[0], param_pair[1], i, filled=filled, add_legend_proxy=False)
             if res is None: continue
             if i == 0: mins, maxs = res
             elif not shaded:
@@ -322,11 +327,16 @@ class GetDistPlotter():
             if legend_loc is None: legend_loc = self.settings.figure_legend_loc
             if legend_ncol is None: legend_ncol = self.settings.figure_legend_ncol
             lines = []
-            for i in enumerate(legend_labels):
-                color = self.get_color(i[0] + line_offset)
-                ls = self.get_linestyle(i[0] + line_offset)
-                lines.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
-            self.legend = self.fig.legend(lines, legend_labels, legend_loc, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize})
+            if len(self.contours_added) == 0:
+                for i in enumerate(legend_labels):
+                    color = self.get_color(i[0] + line_offset)
+                    ls = self.get_linestyle(i[0] + line_offset)
+                    lines.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
+            else: lines = self.contours_added
+            self.legend = self.fig.legend(lines, legend_labels, legend_loc, frameon=self.settings.figure_legend_frame, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize})
+            if not self.settings.figure_legend_rect_border:
+                for rect in legend.get_patches():
+                    rect.set_edgecolor(rect.get_facecolor())
             self.extra_artists = [self.legend]
             if self.settings.tight_layout and not no_extra_legend_space:
                 frac = self.settings.legend_frac_subplot_margin + (len(legend_labels) / legend_ncol) * self.settings.legend_frac_subplot_line
@@ -495,7 +505,7 @@ class GetDistPlotter():
         params = self.get_param_array(roots[0], in_params)
         self.add_3d_scatter(roots[0], params, color_bar=color_bar)
         for i, root in enumerate(roots[1:]):
-            self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled)
+            self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled, add_legend_proxy=False)
         self.setAxes(params, **ax_args)
 
 
