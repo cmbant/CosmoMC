@@ -91,8 +91,8 @@ class jobItem:
     def chainName(self, chain=1):
         return self.chainRoot + '_' + str(chain) + '.txt'
 
-    def chainExists(self):
-        fname = self.chainName()
+    def chainExists(self, chain=1):
+        fname = self.chainName(chain)
         return os.path.exists(fname) and os.path.getsize(fname) > 0
 
     def chainFileDate(self, name, chain=1):
