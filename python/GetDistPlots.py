@@ -285,7 +285,7 @@ class GetDistPlotter():
     def set_ylabel(self, param):
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
 
-    def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False, **ax_args):
+    def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False, no_ylabel=False, **ax_args):
         param = self.check_param(roots[0], param)
         xmin, xmax = self.add_1d(roots[0], param, 0)
         for i, root in enumerate(roots[1:]):
@@ -298,7 +298,7 @@ class GetDistPlotter():
         if not 'lims' in ax_args:ax_args['lims'] = [xmin, xmax, 0, 1.1]
         ax = self.setAxes([param], **ax_args)
 
-        if self.settings.prob_label is not None:
+        if self.settings.prob_label is not None and not no_ylabel:
             if label_right:
                 ax.yaxis.set_label_position("right")
                 ax.yaxis.tick_right()
@@ -365,7 +365,7 @@ class GetDistPlotter():
                 elif 'lower' in legend_loc: subplots_adjust(bottom=frac / self.plot_row)
 
 
-    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None, paramList=None):
+    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None, paramList=None, share_y=False):
         params = self.get_param_array(roots[0], params)
         if paramList is not None:
             wantedParams = self.paramNameListFromFile(paramList)
@@ -376,9 +376,10 @@ class GetDistPlotter():
 
         for i, param in enumerate(params):
             subplot(plot_row, plot_col, i + 1)
-            self.plot_1d(roots, param)
+            self.plot_1d(roots, param, no_ylabel=not share_y or i > 0)
 
         self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
+        if share_y: subplots_adjust(wspace=0)
 
         return plot_col, plot_row
 

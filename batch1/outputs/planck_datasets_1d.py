@@ -14,8 +14,7 @@ g.exportExtra('planck_datasets_1d')
 #g.export('planck_datasets_1d_params')
 
 g.newPlot()
-g.plots_1d(roots,['omegabh2','thetastar','A','tau','omegam','omegach2','ns','sigma8','zrei','H0'],nx=5, legend_ncol=4,legend_labels=labels)
-subplots_adjust(wspace=0)
+g.plots_1d(roots,['omegabh2','thetastar','A','tau','omegam','omegach2','ns','sigma8','zrei','H0'],nx=5, legend_ncol=4,legend_labels=labels, share_y=True)
 g.export('planck_datasets_1d_params')
 
 g.newPlot()
