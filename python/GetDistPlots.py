@@ -266,9 +266,10 @@ class GetDistPlotter():
         if x and self.settings.x_label_rotation != 0:setp(xticks()[1], rotation=self.settings.x_label_rotation)
         self.set_locator(axis, x)
 
-    def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False):
+    def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None):
         if lims is not None: axis(lims)
         self.setAxisProperties(gca().xaxis, True)
+        if pos is not None: gca().set_position(pos)  ## set [left, bottom, width, height] for the figure
         if do_xlabel and len(params) > 0:self.set_xlabel(params[0])
         elif no_label_no_numbers: gca().set_xticklabels([])
         if len(params) > 1:
@@ -535,7 +536,7 @@ class GetDistPlotter():
         return plot_col, plot_row
 
     def export(self, fname):
-        savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
+        savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight', transparent=True)
 
     def paramNameListFromFile(self, fname):
         p = paramNames.paramNames(fname)
