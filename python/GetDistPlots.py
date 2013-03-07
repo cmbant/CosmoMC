@@ -302,11 +302,13 @@ class GetDistPlotter():
             if label_right:
                 ax.yaxis.set_label_position("right")
                 ax.yaxis.tick_right()
-            ylabel(self.settings.prob_label)
+                ylabel(self.settings.prob_label, rotation=180)
+            else: ylabel(self.settings.prob_label)
         if not self.settings.prob_y_ticks: ax.set_yticks([])
         elif no_ylabel: ax.set_yticklabels([])
         elif no_zero:
             ticks = ax.get_yticks()
+            if ticks[-1] > 1: ticks = ticks[:-1]
             ax.set_yticks(ticks[1:])
 
     def make_figure(self, nplot=1, nx=None, ny=None, xstretch=1):
@@ -380,7 +382,7 @@ class GetDistPlotter():
 
         for i, param in enumerate(params):
             subplot(plot_row, plot_col, i + 1)
-            self.plot_1d(roots, param, no_ylabel=not share_y or i > 0)
+            self.plot_1d(roots, param, no_ylabel=not share_y or  i % self.plot_col > 0)
 
         self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
         if share_y: subplots_adjust(wspace=0)
