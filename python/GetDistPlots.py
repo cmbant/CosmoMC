@@ -371,18 +371,22 @@ class GetDistPlotter():
                 elif 'lower' in legend_loc: subplots_adjust(bottom=frac / self.plot_row)
 
 
-    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None, paramList=None, share_y=False):
-        params = self.get_param_array(roots[0], params)
+    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None, paramList=None, roots_per_param=False, share_y=False):
+        if roots_per_param:
+            params = [self.check_param(roots[i][0], param) for i, param in enumerate(params)]
+        else: params = self.get_param_array(roots[0], params)
         if paramList is not None:
             wantedParams = self.paramNameListFromFile(paramList)
             params = [param for param in params if param.name in wantedParams]
 
         nparam = len(params)
         plot_col, plot_row = self.make_figure(nparam, nx=nx)
-
+        plot_roots = roots
         for i, param in enumerate(params):
             subplot(plot_row, plot_col, i + 1)
-            self.plot_1d(roots, param, no_ylabel=not share_y or  i % self.plot_col > 0)
+            if roots_per_param: plot_roots = roots[i]
+
+            self.plot_1d(plot_roots, param, no_ylabel=not share_y or  i % self.plot_col > 0)
 
         self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
         if share_y: subplots_adjust(wspace=0)
