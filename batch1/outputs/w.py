@@ -4,7 +4,6 @@ g=s.plotter
 g.settings.setWithSubplotSize(4)
 
 g.settings.tight_layout=True
-g.settings.prob_label='Probability'
 g.settings.lab_fontsize=10
 g.settings.legend_frac_subplot_margin=-0.02
 
