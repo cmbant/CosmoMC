@@ -27,8 +27,6 @@ text(1.35,0.8, Alens +' ('+s.WPhighL+')' ,color='c')
 #gca().set_xticks([0.9,1,1.1,1.2, 1.3, 1.4, 1.5, 1.6])
 xlabel('Amplitude relative to physical',fontsize=14)
 
-gca().set_yticks([])
-
 g.export('lensing_LCDM_alensphiphi')
 
 

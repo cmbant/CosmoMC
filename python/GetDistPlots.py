@@ -302,7 +302,7 @@ class GetDistPlotter():
             if label_right:
                 ax.yaxis.set_label_position("right")
                 ax.yaxis.tick_right()
-                ylabel(self.settings.prob_label, rotation=180)
+                ylabel(self.settings.prob_label)
             else: ylabel(self.settings.prob_label)
         if not self.settings.prob_y_ticks: ax.set_yticks([])
         elif no_ylabel: ax.set_yticklabels([])
@@ -448,7 +448,8 @@ class GetDistPlotter():
         ticks = dict()
         for i, param in enumerate(params):
             subplot(plot_col, plot_col, i * plot_col + i + 1)
-            self.plot_1d(roots, param, do_xlabel=i == plot_col - 1, no_label_no_numbers=self.settings.no_triangle_axis_labels, label_right=True, no_zero=True)
+            self.plot_1d(roots, param, do_xlabel=i == plot_col - 1, no_label_no_numbers=self.settings.no_triangle_axis_labels, label_right=True, no_zero=True, no_ylabel=True)
+            # set no_ylabel=True for now, can't see how to not screw up spacing with right-sided y label
             if self.settings.no_triangle_axis_labels: self.spaceTicks(gca().xaxis, expand=not shaded)
             lims[i] = xlim()
             ticks[i] = gca().get_xticks()
