@@ -268,14 +268,16 @@ class GetDistPlotter():
 
     def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None):
         if lims is not None: axis(lims)
-        self.setAxisProperties(gca().xaxis, True)
-        if pos is not None: gca().set_position(pos)  # # set [left, bottom, width, height] for the figure
+        ax = gca()
+        self.setAxisProperties(ax.xaxis, True)
+        if pos is not None: ax.set_position(pos)  # # set [left, bottom, width, height] for the figure
         if do_xlabel and len(params) > 0:self.set_xlabel(params[0])
-        elif no_label_no_numbers: gca().set_xticklabels([])
+        elif no_label_no_numbers: ax.set_xticklabels([])
         if len(params) > 1:
-            self.setAxisProperties(gca().yaxis, False)
+            self.setAxisProperties(ax.yaxis, False)
             if do_ylabel:self.set_ylabel(params[1])
-            elif no_label_no_numbers: gca().set_yticklabels([])
+            elif no_label_no_numbers: ax.set_yticklabels([])
+        return ax
 
     def set_xlabel(self, param):
         xlabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
@@ -294,10 +296,12 @@ class GetDistPlotter():
 
         if marker is not None: self.add_x_marker(marker, marker_color)
         if not 'lims' in ax_args:ax_args['lims'] = [xmin, xmax, 0, 1.1]
-        self.setAxes([param], **ax_args)
+        ax = self.setAxes([param], **ax_args)
 
         if self.settings.prob_label is not None:
-            if label_right: gca().yaxis.set_label_position("right")
+            if label_right:
+                ax.yaxis.set_label_position("right")
+                ax.yaxis.tick_right()
             ylabel(self.settings.prob_label)
         if not self.settings.prob_y_ticks: gca().set_yticks([])
 

@@ -4,7 +4,7 @@ theta         100\theta_{\mathrm{MC}}		#100 times the ratio of sound horizon to 
 tau           \tau
 omegak        \Omega_K
 mnu           \Sigma m_\nu [\mathrm{eV}]   #sum of physical masses of standard neutrinos
-meffsterile   m_{\nu,\,\mathrm{sterile}}^{\mathrm{eff}}  #effective mass of sterile neutrino (eV), \approx omeganuh2*94
+meffsterile   m_{\nu,\,\mathrm{sterile}}^{\mathrm{eff}} [\mathrm{eV}]  #effective mass of sterile neutrino (eV), \approx omeganuh2*94
 w             w			#equation of state parameter for scalar field dark energy today
 wa            w_a       #w_a variation
 nnu           N_{\mathrm{eff}}   #effective number of neutrinos (only clearly defined for massless)
