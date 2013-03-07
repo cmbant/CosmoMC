@@ -269,7 +269,7 @@ class GetDistPlotter():
     def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None):
         if lims is not None: axis(lims)
         self.setAxisProperties(gca().xaxis, True)
-        if pos is not None: gca().set_position(pos)  ## set [left, bottom, width, height] for the figure
+        if pos is not None: gca().set_position(pos)  # # set [left, bottom, width, height] for the figure
         if do_xlabel and len(params) > 0:self.set_xlabel(params[0])
         elif no_label_no_numbers: gca().set_xticklabels([])
         if len(params) > 1:
@@ -283,7 +283,7 @@ class GetDistPlotter():
     def set_ylabel(self, param):
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
 
-    def plot_1d(self, roots, param, marker=None, marker_color=None, **ax_args):
+    def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False, **ax_args):
         param = self.check_param(roots[0], param)
         xmin, xmax = self.add_1d(roots[0], param, 0)
         for i, root in enumerate(roots[1:]):
@@ -296,7 +296,9 @@ class GetDistPlotter():
         if not 'lims' in ax_args:ax_args['lims'] = [xmin, xmax, 0, 1.1]
         self.setAxes([param], **ax_args)
 
-        if self.settings.prob_label is not None: ylabel(self.settings.prob_label)
+        if self.settings.prob_label is not None:
+            if label_right: gca().yaxis.set_label_position("right")
+            ylabel(self.settings.prob_label)
         if not self.settings.prob_y_ticks: gca().set_yticks([])
 
     def make_figure(self, nplot=1, nx=None, ny=None, xstretch=1):
@@ -435,7 +437,7 @@ class GetDistPlotter():
         ticks = dict()
         for i, param in enumerate(params):
             subplot(plot_col, plot_col, i * plot_col + i + 1)
-            self.plot_1d(roots, param, do_xlabel=i == plot_col - 1, no_label_no_numbers=self.settings.no_triangle_axis_labels)
+            self.plot_1d(roots, param, do_xlabel=i == plot_col - 1, no_label_no_numbers=self.settings.no_triangle_axis_labels, label_right=True)
             if self.settings.no_triangle_axis_labels: self.spaceTicks(gca().xaxis, expand=not shaded)
             lims[i] = xlim()
             ticks[i] = gca().get_xticks()
