@@ -285,7 +285,7 @@ class GetDistPlotter():
     def set_ylabel(self, param):
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
 
-    def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False, no_ylabel=False, **ax_args):
+    def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False, no_ylabel=False, no_zero=False, **ax_args):
         param = self.check_param(roots[0], param)
         xmin, xmax = self.add_1d(roots[0], param, 0)
         for i, root in enumerate(roots[1:]):
@@ -303,7 +303,11 @@ class GetDistPlotter():
                 ax.yaxis.set_label_position("right")
                 ax.yaxis.tick_right()
             ylabel(self.settings.prob_label)
-        if not self.settings.prob_y_ticks: gca().set_yticks([])
+        if not self.settings.prob_y_ticks: ax.set_yticks([])
+        elif no_ylabel: ax.set_yticklabels([])
+        elif no_zero:
+            ticks = ax.get_yticks()
+            ax.set_yticks(ticks[1:])
 
     def make_figure(self, nplot=1, nx=None, ny=None, xstretch=1):
         self.newPlot()
@@ -442,7 +446,7 @@ class GetDistPlotter():
         ticks = dict()
         for i, param in enumerate(params):
             subplot(plot_col, plot_col, i * plot_col + i + 1)
-            self.plot_1d(roots, param, do_xlabel=i == plot_col - 1, no_label_no_numbers=self.settings.no_triangle_axis_labels, label_right=True)
+            self.plot_1d(roots, param, do_xlabel=i == plot_col - 1, no_label_no_numbers=self.settings.no_triangle_axis_labels, label_right=True, no_zero=True)
             if self.settings.no_triangle_axis_labels: self.spaceTicks(gca().xaxis, expand=not shaded)
             lims[i] = xlim()
             ticks[i] = gca().get_xticks()
