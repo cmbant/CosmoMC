@@ -104,7 +104,7 @@
     logical, intent(in), optional :: abort
     logical wantbort
 
-    call IO_Close(outfile_handle)
+    if (outfile_handle/=0) call IO_Close(outfile_handle)
 
     if (present(abort)) then
         wantbort = abort

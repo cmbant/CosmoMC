@@ -26,8 +26,16 @@ WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
 lensing = r'\textit{Planck}+lensing'
 WPhighLlensing = r'\textit{Planck}+lensing+WP+highL'
+NoLowL = r'\textit{Planck}$-$lowL'
+NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
+NoLowLtau = r'\textit{Planck}$-$lowL+$\tau$prior'
+NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
 
-GetDistPlots.defaultSettings.legend_frame = False
+s = GetDistPlots.defaultSettings
+s.legend_frame = False
+s.prob_label = r'$P/P_{\rm max}$'
+s.prob_y_ticks = True
+
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
     def export(self, fname):

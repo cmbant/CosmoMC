@@ -10,6 +10,7 @@ class GetDistPlotSettings:
         self.plot_meanlikes = False
         self.shade_meanlikes = False
         self.prob_label = None
+        self.prob_y_ticks = False
         # self.prob_label = 'Probability'
         self.lineM = ['-k', '-r', '-b', '-g', '-m', '-y']
         # elf.lineM = ['-k', '--r', '-.b', ':g', '--m', '-.y']
@@ -295,7 +296,7 @@ class GetDistPlotter():
         self.setAxes([param], **ax_args)
 
         if self.settings.prob_label is not None: ylabel(self.settings.prob_label)
-        gca().set_yticks([])
+        if not self.settings.prob_y_ticks: gca().set_yticks([])
 
     def make_figure(self, nplot=1, nx=None, ny=None, xstretch=1):
         self.newPlot()
