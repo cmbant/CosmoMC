@@ -3,7 +3,7 @@ omegach2      \Omega_{\mathrm{c}} h^2	#physical CDM matter density
 theta         100\theta_{\mathrm{MC}}		#100 times the ratio of sound horizon to angular-diameter distance to (CMB) last-scattering surface (approx)
 tau           \tau
 omegak        \Omega_K
-mnu           \Sigma m_\nu    #sum of physical masses of standard neutrinos
+mnu           \Sigma m_\nu\,[\mathrm{eV}]    #sum of physical masses of standard neutrinos
 meffsterile   m_{\nu,\,\mathrm{sterile}}^{\mathrm{eff}}  #effective mass of sterile neutrino (eV), \approx omeganuh2*94
 w             w			#equation of state parameter for scalar field dark energy today
 wa            w_a       #w_a variation
@@ -99,3 +99,4 @@ thetaeq*      100\theta_{\mathrm{eq}}
 rsDv057*       r_{\mathrm{drag}}/D_{\mathrm{V}}(0.57) 
 H057*          H(0.57) 
 DA057*         D_{\mathrm{A}}(0.57)
+cef           \alpha/\alpha_0
