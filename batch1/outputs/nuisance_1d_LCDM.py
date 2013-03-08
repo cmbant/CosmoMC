@@ -1,4 +1,5 @@
 import planckStyle as s
+from pylab import *
 
 g=s.plotter
 
@@ -8,14 +9,23 @@ roots=['base_planck_lowl_lowLike_highL','base_planck_lowl_lowLike']
 #g.export('nuisance_1d_LCDM')
 
 
-g.newPlot()
-g.plots_1d(roots,paramList='batch1/outputs/foregrounds.paramnames',nx=3, legend_labels=labels,legend_ncol=2)
-g.exportExtra('foregrounds_1d_LCDM')
+#g.newPlot()
+#g.plots_1d(roots,paramList='batch1/outputs/foregrounds.paramnames',nx=3, legend_labels=labels)
+#g.exportExtra('foregrounds_1d_LCDM')
+
+#g.newPlot()
+#g.plots_1d(roots,paramList='batch1/outputs/camspec.paramnames',nx=5, legend_labels=labels)
+#g.exportExtra('camspec_1d_LCDM')
 
 g.newPlot()
-g.plots_1d(roots,paramList='batch1/outputs/camspec.paramnames',nx=5, legend_labels=labels)
-g.exportExtra('camspec_1d_LCDM')
+g.settings.line_labels = False
+g.settings.figure_legend_frame =False
 
-g.newPlot()
-g.plots_1d(roots,paramList='batch1/outputs/camspec_foregrounds.paramnames',nx=3, legend_labels=labels, share_y=True)
+g.plots_1d(roots,paramList='batch1/outputs/camspec_foregrounds.paramnames',nx=3, share_y=True)
+
+g.settings.lab_fontsize-=2
+subplot(3,3,9)
+gca().axis('off')
+g.add_legend(labels,figure=False,legend_loc='right')
+
 g.export('camspec_foregrounds_1d_LCDM')
