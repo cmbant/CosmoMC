@@ -17,5 +17,5 @@ g.plots_1d(roots,paramList='batch1/outputs/camspec.paramnames',nx=5, legend_labe
 g.exportExtra('camspec_1d_LCDM')
 
 g.newPlot()
-g.plots_1d(roots,paramList='batch1/outputs/camspec_foregrounds.paramnames',nx=3, legend_labels=labels)
+g.plots_1d(roots,paramList='batch1/outputs/camspec_foregrounds.paramnames',nx=3, legend_labels=labels, share_y=True)
 g.export('camspec_foregrounds_1d_LCDM')
