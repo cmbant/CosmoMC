@@ -7,7 +7,10 @@ g=s.plotter
 g.settings.setWithSubplotSize(2)
 g.settings.axes_fontsize +=2
 g.settings.lab_fontsize +=5
-g.settings.solid_colors = ['#009966', '#000866', '#000866'] 
+
+g.settings.solid_colors = [g.settings.solid_colors[0]]+g.settings.solid_colors
+
+#g.settings.solid_colors = ['#009966', '#000866', '#000866'] 
 
 bases=['omegabh2','omegach2','ns','H0','sigma8']
 params=['omegak','mnu','nnu','yhe','nrun','r02','w']

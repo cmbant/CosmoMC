@@ -36,7 +36,12 @@ s.legend_frame = False
 s.prob_label = r'$P/P_{\rm max}$'
 s.prob_y_ticks = True
 s.param_names_for_labels = 'clik_units.paramnames'
+s.alpha_filled_add = 0.85
+# s.solid_colors = ['#006FED', '#E03424', 'gray', '#009966' ]
+s.solid_contour_palefactor = 0.6
 
+s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1')]
+s.axis_marker_lw = 0.6
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
     def export(self, fname):
@@ -49,6 +54,12 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
 
 
 plotter = planckPlotter('main/plot_data')
+
+def getSinglePlotter(ratio=3 / 4.):
+    s.setWithSubplotSize(3.46456693)
+    s.legend_font_size = 9
+    plotter.make_figure(1, ystretch=ratio)
+    return plotter
 
 
 class planckStyleTableFormatter(ResultObjs.noLineTableFormatter):

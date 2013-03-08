@@ -21,7 +21,7 @@ g.newPlot()
 g.settings.line_labels = False
 g.settings.figure_legend_frame =False
 
-g.plots_1d(roots,paramList='batch1/outputs/camspec_foregrounds.paramnames',nx=3, share_y=True)
+g.plots_1d(roots,paramList='batch1/outputs/camspec_foregrounds.paramnames',nx=3)
 
 g.settings.lab_fontsize-=2
 subplot(3,3,9)
