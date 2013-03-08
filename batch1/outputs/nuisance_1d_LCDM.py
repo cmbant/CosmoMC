@@ -9,7 +9,7 @@ roots=['base_planck_lowl_lowLike_highL','base_planck_lowl_lowLike']
 
 
 g.newPlot()
-g.plots_1d(roots,paramList='batch1/outputs/foregrounds.paramnames',nx=3, legend_labels=labels)
+g.plots_1d(roots,paramList='batch1/outputs/foregrounds.paramnames',nx=3, legend_labels=labels,legend_ncol=2)
 g.exportExtra('foregrounds_1d_LCDM')
 
 g.newPlot()
