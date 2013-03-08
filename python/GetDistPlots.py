@@ -40,6 +40,7 @@ class GetDistPlotSettings:
         self.legend_frac_subplot_margin = 0.2
         self.legend_frac_subplot_line = 0.1
         self.alpha_filled_add = 0.5
+        self.alpha_factor_contour_lines = 0.5
         self.axis_marker_color = 'gray'
         self.axis_marker_ls = '--'
         self.figure_legend_ncol = 1
@@ -201,7 +202,7 @@ class GetDistPlotter():
                     cols = [[c * (1 - self.settings.solid_contour_palefactor) + self.settings.solid_contour_palefactor for c in cols[0]]] + cols
             contourf(density.x1, density.x2, density.pts, sorted(np.append([density.pts.max() + 1], density.contours)), colors=cols, alpha=alpha)
             if add_legend_proxy: self.contours_added.append(Rectangle((0, 0), 1, 1, fc=color))
-            alpha = alpha / 2
+            alpha = alpha * self.settings.alpha_factor_contour_lines
         else:
             if color is None: color = self.get_color(plotno, **kwargs)
             cols = [color]
