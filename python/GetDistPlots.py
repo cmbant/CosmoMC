@@ -387,7 +387,7 @@ class GetDistPlotter():
             subplot(plot_row, plot_col, i + 1)
             if roots_per_param: plot_roots = roots[i]
 
-            self.plot_1d(plot_roots, param, no_ylabel=not share_y or  i % self.plot_col > 0)
+            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0)
 
         self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
         if share_y: subplots_adjust(wspace=0)
