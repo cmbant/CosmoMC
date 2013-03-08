@@ -2,7 +2,7 @@ import planckStyle as s
 
 g=s.plotter
 
-roots = ['base_omegak_planck_lowl_lowLike_highL','base_omegak_planck_lowl_lowLike_highL_lensing','base_omegak_planck_lowl_lowLike_highL_BAO_post_lensing']
+roots = ['base_omegak_planck_lowl_lowLike_highL','base_omegak_planck_lowl_lowLike_highL_lensing','base_omegak_planck_lowl_lowLike_highL_lensing_post_BAO']
 params = g.get_param_array(roots[0], ['omegam', 'omegal', 'H0'])
 g.settings.setWithSubplotSize(4)
 g.settings.lw_contour = 0.2

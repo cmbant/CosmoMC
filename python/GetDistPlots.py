@@ -337,7 +337,7 @@ class GetDistPlotter():
         p = self.check_param(root, param)
         return r'$' + p.label + r'$'
 
-    def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, figure=False, **legend_args):
+    def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, figure=False):
             if legend_loc is None:
                 if figure: legend_loc = self.settings.figure_legend_loc
                 else: legend_loc = self.settings.legend_loc
@@ -350,11 +350,9 @@ class GetDistPlotter():
                     lines.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
             else: lines = self.contours_added
             if figure:
-                self.legend = self.fig.legend(lines, legend_labels, legend_loc,
-                   frameon=self.settings.figure_legend_frame, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize}, **legend_args)
+                self.legend = self.fig.legend(lines, legend_labels, legend_loc, frameon=self.settings.figure_legend_frame, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize})
             else:
-                self.legend = gca().legend(lines, legend_labels, legend_loc, frameon=self.settings.legend_frame,
-                                           ncol=legend_ncol, prop={'size':self.settings.lab_fontsize}, **legend_args)
+                self.legend = gca().legend(lines, legend_labels, legend_loc, frameon=self.settings.legend_frame, ncol=legend_ncol, prop={'size':self.settings.lab_fontsize})
             if not self.settings.legend_rect_border:
                 for rect in self.legend.get_patches():
                     rect.set_edgecolor(rect.get_facecolor())
