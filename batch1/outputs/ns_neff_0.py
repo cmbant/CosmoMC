@@ -14,6 +14,4 @@ g.add_legend([s.WP,s.WPhighL,s.WPhighL+'+BAO'],legend_loc='upper left',colored_t
 
 xticks([0.92,0.94,0.96,0.98,1.00,1.02])
 
-g.export('test.pdf')
-
-#g.export('ns_nnu_0')
+g.export('ns_nnu_0')
