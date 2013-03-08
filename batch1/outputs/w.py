@@ -1,9 +1,9 @@
 import planckStyle as s
+from pylab import *
 
 g=s.plotter
 g.settings.setWithSubplotSize(4)
 
-g.settings.tight_layout=True
 g.settings.lab_fontsize=10
 g.settings.legend_frac_subplot_margin=-0.02
 
@@ -12,6 +12,7 @@ roots=['base_w_planck_lowl_lowLike','base_w_planck_lowl_lowLike_BAO', 'base_w_pl
 #roots=['base_w_planck_lowl_lowLike','base_w_planck_lowl_lowLike_BAO' ]
 
 g.plots_1d(roots,['w'],legend_labels=labels,legend_ncol=2)
+
 g.add_x_marker(-1)
 
 g.export('w_test2')

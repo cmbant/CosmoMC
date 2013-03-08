@@ -200,18 +200,20 @@ class GetDistPlotter():
                 cols = [matplotlib.colors.colorConverter.to_rgb(color)]
                 for _ in range(1, len(density.contours)):
                     cols = [[c * (1 - self.settings.solid_contour_palefactor) + self.settings.solid_contour_palefactor for c in cols[0]]] + cols
-            contourf(density.x1, density.x2, density.pts, sorted(np.append([density.pts.max() + 1], density.contours)), colors=cols, alpha=alpha)
+            levels = sorted(np.append([density.pts.max() + 1], density.contours))
+            CS = contourf(density.x1, density.x2, density.pts, levels, colors=cols, alpha=alpha)
             if add_legend_proxy: self.contours_added.append(Rectangle((0, 0), 1, 1, fc=color))
-            alpha = alpha * self.settings.alpha_factor_contour_lines
+            contour(density.x1, density.x2, density.pts, levels[:1], colors=CS.tcolors[1],
+                    linewidth=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines)
         else:
             if color is None: color = self.get_color(plotno, **kwargs)
             cols = [color]
             if ls is None: ls = self.get_linestyle(plotno, **kwargs)
             if add_legend_proxy: self.contours_added.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
             linestyles = [ls]
-        kwargs = self.get_plot_args(plotno, **kwargs)
-        kwargs['alpha'] = alpha
-        contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidth=self.settings.lw_contour, **kwargs)
+            kwargs = self.get_plot_args(plotno, **kwargs)
+            kwargs['alpha'] = alpha
+            contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidth=self.settings.lw_contour, **kwargs)
 
         return density.bounds()
 
