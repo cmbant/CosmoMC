@@ -3,6 +3,8 @@ import os , batchJobArgs, ResultObjs, paramNames
 
 Opts = batchJobArgs.batchArgs('Compare parameter constraints over set of models')
 Opts.parser.add_argument('--params', nargs='+')
+Opts.parser.add_argument('--chain_name_params', nargs='+')
+
 Opts.parser.add_argument('--compare', nargs='+', default=None)
 Opts.parser.add_argument('--nobestfits', action='store_true')
 Opts.parser.add_argument('--single_extparam', action='store_true')
@@ -18,6 +20,8 @@ formatter = ResultObjs.tableFormatter()
 
 names = paramNames.paramNames(args.paramNameFile)
 
+if args.chain_name_params is None: args.chain_name_params = args.params
+
 table = dict()
 paramtag_for_param = dict()
 for par in args.params:
@@ -25,7 +29,7 @@ for par in args.params:
 
 for jobItem in Opts.filteredBatchItems():
     if (args.compare is None or jobItem.matchesDatatag(args.compare)) and (not args.single_extparam or
-                                len(jobItem.param_set) == 1  and len(set(args.params).intersection(jobItem.param_set)) > 0):
+                                len(jobItem.param_set) == 1  and len(set(args.chain_name_params).intersection(jobItem.param_set)) > 0):
         jobItem.loadJobItemResults(paramNameFile=None, bestfit=not args.nobestfits, noconverge=True, silent=True)
         if jobItem.result_marge is not None:
             results = []
