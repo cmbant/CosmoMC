@@ -1,19 +1,19 @@
-import os, iniFile, paramNames, pickle
+import os, iniFile, paramNames, pickle, random
 import numpy as np
 
 
-def loadChains(root=None, chain_indices=None, ignore_rows=0, ignore_frac=0, no_cache=False, separate_chains=False):
+def loadChains(root=None, chain_indices=None, ignore_rows=0, ignore_frac=0, no_cache=False, separate_chains=False, no_stat=False, ext='.txt'):
     c = chains(root, ignore_rows=ignore_rows)
     if root is not None:
-        files = c.chainFiles(root, chain_indices)
-        c.cachefile = root + '.pysamples'
+        files = c.chainFiles(root, chain_indices, ext=ext)
+        c.cachefile = root + ext + '.pysamples'
         if not separate_chains and chain_indices is None and not no_cache and os.path.exists(c.cachefile) and c.lastModified(files) < os.path.getmtime(c.cachefile):
             with open(c.cachefile, 'rb') as inp:
                 return pickle.load(inp)
         elif c.loadChains(root, files):
             c.removeBurnFraction(ignore_frac)
             c.deleteFixedParams()
-            c.getChainStats()
+            if not no_stat: c.getChainsStats()
             if not separate_chains:
                 c.makeSingle()
                 with open(c.cachefile, 'wb') as output:
@@ -59,17 +59,18 @@ class chains():
         self.root = root
         self.chains = []
         self.samples = None
-        self.paramNames = paramNames.paramNames(root + '.paramnames')
+        self.hasNames = os.path.exists(root + '.paramnames')
+        if self.hasNames: self.paramNames = paramNames.paramNames(root + '.paramnames')
 
     def lastModified(self, files):
         return max([os.path.getmtime(fname) for fname in files])
 
-    def chainFiles(self, root, chain_indices=None):
+    def chainFiles(self, root, chain_indices=None, ext='.txt'):
         index = -1
         files = []
         while True:
             index += 1
-            fname = root + ('', '_' + str(index))[index > 0] + '.txt'
+            fname = root + ('', '_' + str(index))[index > 0] + ext
             if index > 0 and not os.path.exists(fname): break
             if (chain_indices is None or index in chain_indices) and os.path.exists(fname):
                 files.append(fname)
@@ -162,8 +163,9 @@ class chains():
                 if np.all(chain.coldata[:, i] == chain.coldata[0, i]): fixed.append(i)
             for chain in self.chains:
                 chain.setColData(np.delete(chain.coldata, fixed, 1))
-        self.paramNames.deleteIndices([fix - 2 for fix in fixed])
-        print 'Parameters: ', [name.name for name in self.paramNames.names[0:self.paramNames.numNonDerived()]]
+        if self.hasNames:
+            self.paramNames.deleteIndices([fix - 2 for fix in fixed])
+            print 'Non-derived parameters: ', [name.name for name in self.paramNames.names[0:self.paramNames.numNonDerived()]]
 
 
     def writeSingle(self, root):
@@ -193,6 +195,21 @@ class chains():
                     mult -= (factor - tot)
                 tot = 0
         return thin_ix
+
+    def singleSamples_indices(self):
+        max_weight = max(self.weights)
+        thin_ix = []
+        for i in range(self.numrows):
+            P = self.weights[i] / max_weight
+            if random.random() < P:
+                thin_ix.append(i)
+        return thin_ix
+
+    def makeSingleSamples(self):
+        thin_ix = self.singleSamples_indices()
+        self.samples = self.samples[thin_ix, :]
+        self.weights = np.ones(len(thin_ix))
+        self.loglikes = self.loglikes[thin_ix]
 
     def thin(self, factor):
         thin_ix = self.thin_indices(factor)
