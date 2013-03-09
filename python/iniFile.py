@@ -4,18 +4,18 @@ import os
 class iniFile:
 
 
-    def __init__(self, filename=''):
+    def __init__(self, filename='', keep_includes=False):
 
         self.params = dict()
         self.readOrder = []
-        if filename != '': self.readFile(filename)
         self.defaults = []
         self.includes = []
+        if filename != '': self.readFile(filename, keep_includes)
 
 
-    def readFile(self, filename):
+    def readFile(self, filename, keep_includes=False):
         fileincludes = []
-
+        filedefaults = []
         textFileHandle = open(filename)
         # Remove blanck lines and comment lines from the python list of lists.
         for line in textFileHandle:
@@ -25,7 +25,7 @@ class iniFile:
             elif s.startswith('INCLUDE('):
                 fileincludes.append(s[s.find('(') + 1:s.rfind(')')])
             elif s.startswith('DEFAULT('):
-                raise Exception('not added DEFAULT support yet here')
+                filedefaults.append(s[s.find('(') + 1:s.rfind(')')])
             elif s != '':
                 eq = s.find('=')
                 if eq >= 0:
@@ -37,11 +37,18 @@ class iniFile:
                     self.readOrder.append(key);
 
         textFileHandle.close()
-        for ffile in fileincludes:
-            if os.path.isabs(ffile):
-                self.readFile(ffile)
-            else:
-                self.readFile(os.path.join(os.path.dirname(filename), ffile))
+        if keep_includes:
+            self.includes += fileincludes
+            self.defaults += filedefaults
+        else:
+            if len(filedefaults) > 0:
+                    raise Exception('not added DEFAULT support yet here')
+
+            for ffile in fileincludes:
+                if os.path.isabs(ffile):
+                    self.readFile(ffile)
+                else:
+                    self.readFile(os.path.join(os.path.dirname(filename), ffile))
 
         return self.params
 
