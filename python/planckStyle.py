@@ -30,6 +30,7 @@ NoLowL = r'\textit{Planck}$-$lowL'
 NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
 NoLowLtau = r'\textit{Planck}$-$lowL+$\tau$prior'
 NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
+LCDM = r'$\Lambda$CDM'
 
 s = GetDistPlots.defaultSettings
 s.legend_frame = False
@@ -42,6 +43,7 @@ s.solid_contour_palefactor = 0.6
 
 s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1')]
 s.axis_marker_lw = 0.6
+s.lw_contour = 0.2
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
     def export(self, fname):
@@ -56,8 +58,13 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
 plotter = planckPlotter('main/plot_data')
 
 def getSinglePlotter(ratio=3 / 4.):
-    s.setWithSubplotSize(3.46456693)
+    s.setWithSubplotSize(3.5)
     s.legend_font_size = 9
+    s.colorbar_axes_fontsize = 8
+    s.scatter_size = 2
+    s.lab_fontsize = None
+    s.axes_fontsize = None
+
     plotter.make_figure(1, ystretch=ratio)
     return plotter
 

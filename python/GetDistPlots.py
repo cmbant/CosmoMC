@@ -24,37 +24,42 @@ class GetDistPlotSettings:
         self.progress = False
         self.tight_layout = True
         self.no_triangle_axis_labels = True
-        self.solid_contour_palefactor = 0.5
 # see http://www.scipy.org/Cookbook/Matplotlib/Show_colormaps
         self.colormap = cm.Blues
         self.colormap_scatter = cm.jet
         self.param_names_for_labels = 'clik_latex.paramnames'
         self.xtick_prune = None  # 'lower' or 'upper'
         self.tight_gap_fraction = 0.13  # space between ticks and the edge
-        self.num_contours = 2
+
         self.legend_loc = 'best'
         self.figure_legend_loc = 'upper center'
         self.legend_frame = True
         self.figure_legend_frame = True
+        self.figure_legend_ncol = 1
+
         self.legend_rect_border = False
         self.legend_frac_subplot_margin = 0.2
         self.legend_frac_subplot_line = 0.1
         self.legend_font_size = None
+
+        self.num_contours = 2
+        self.solid_contour_palefactor = 0.5
         self.alpha_filled_add = 0.5
         self.alpha_factor_contour_lines = 0.5
+
         self.axis_marker_color = 'gray'
         self.axis_marker_ls = '--'
         self.axis_marker_lw = None
-        self.figure_legend_ncol = 1
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
         self.lab_fontsize = 7 + 2 * self.subplot_size_inch
         self.axes_fontsize = 4 + 2 * self.subplot_size_inch
         self.lw1 = self.subplot_size_inch / 3.0
-        self.lw_contour = self.lw1 * 0.4
+        self.lw_contour = self.lw1 * 0.6
         self.lw_likes = self.subplot_size_inch / 6.0
-        self.scatter_size = 1 + self.subplot_size_inch
+        self.scatter_size = 3
+        self.colorbar_axes_fontsize = self.axes_fontsize
 
 
 defaultSettings = GetDistPlotSettings()
@@ -207,10 +212,10 @@ class GetDistPlotter():
                         cols = [[c * (1 - self.settings.solid_contour_palefactor) + self.settings.solid_contour_palefactor for c in cols[0]]] + cols
                 else: cols = color
             levels = sorted(np.append([density.pts.max() + 1], density.contours))
-            CS = contourf(density.x1, density.x2, density.pts, levels, colors=cols, alpha=alpha)
+            CS = contourf(density.x1, density.x2, density.pts, levels, colors=cols, alpha=alpha, **kwargs)
             if add_legend_proxy: self.contours_added.append(Rectangle((0, 0), 1, 1, fc=CS.tcolors[1][0]))
             contour(density.x1, density.x2, density.pts, levels[:1], colors=CS.tcolors[1],
-                    linewidth=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines)
+                    linewidth=[self.settings.lw_contour], alpha=alpha * self.settings.alpha_factor_contour_lines, **kwargs)
         else:
             if color is None: color = self.get_color(plotno, **kwargs)
             cols = [color]
@@ -219,7 +224,7 @@ class GetDistPlotter():
             linestyles = [ls]
             kwargs = self.get_plot_args(plotno, **kwargs)
             kwargs['alpha'] = alpha
-            contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidth=self.settings.lw_contour, **kwargs)
+            contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidths=[self.settings.lw_contour], **kwargs)
 
         return density.bounds()
 
@@ -401,8 +406,8 @@ class GetDistPlotter():
         if paramList is not None:
             wantedParams = self.paramNameListFromFile(paramList)
             params = [param for param in params if param.name in wantedParams]
-        if share_y is None: share_y = self.settings.prob_label is not None
         nparam = len(params)
+        if share_y is None: share_y = self.settings.prob_label is not None and nparam > 1
         plot_col, plot_row = self.make_figure(nparam, nx=nx)
         plot_roots = roots
         for i, param in enumerate(params):
@@ -541,12 +546,14 @@ class GetDistPlotter():
         self.add_colorbar_label(cb, param)
         return cb
 
-    def add_line(self, P1, P2, zorder=0, color='k', **kwargs):
-            gca().add_line(Line2D(P1, P2, color=color, zorder=zorder, **kwargs))
+    def add_line(self, P1, P2, zorder=0, color=None, ls=None, **kwargs):
+            if color is None: color = self.settings.axis_marker_color
+            if ls is None: ls = self.settings.axis_marker_ls
+            gca().add_line(Line2D(P1, P2, color=color, ls=ls, zorder=zorder, **kwargs))
 
     def add_colorbar_label(self, cb, param):
-        cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
-        setp(getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.axes_fontsize)
+        cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize, rotation= -90)
+        setp(getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.colorbar_axes_fontsize)
 
     def add_3d_scatter(self, root, in_params, color_bar=True):
         params = self.get_param_array(root, in_params)
