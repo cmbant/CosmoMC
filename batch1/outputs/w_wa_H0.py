@@ -2,6 +2,8 @@ import planckStyle as s
 
 g=s.plotter
 
+g.settings.param_names_for_labels = 'clik_units_for_w_wa.paramnames'
+
 roots = ['base_w_wa_planck_lowl_lowLike_BAO','base_w_wa_planck_lowl_lowLike_SNLS','base_w_wa_planck_lowl_lowLike_highL_BAO_post_HST']
 params = g.get_param_array(roots[0], ['w','wa','H0'])
 g.settings.setWithSubplotSize(4)
@@ -19,5 +21,5 @@ g.add_x_marker(-1)
 g.add_y_marker(0)
 
 #savefig('w_wa_H0_test.eps',transparent=True)
-g.export('w_wa_H0_test')
+g.export('w_wa_H0')
 

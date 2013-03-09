@@ -1,5 +1,4 @@
 import planckStyle as s
-from pylab import *
 
 g=s.plotter
 g.settings.setWithSubplotSize(4)
@@ -15,6 +14,6 @@ g.plots_1d(roots,['w'],legend_labels=labels,legend_ncol=2)
 
 g.add_x_marker(-1)
 
-g.export('w_test2')
+g.export('w')
 
 
