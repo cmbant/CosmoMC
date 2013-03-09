@@ -9,7 +9,6 @@ roots = ['base_w_wa_planck_lowl_lowLike_BAO','base_w_wa_planck_lowl_lowLike_Unio
 params = g.get_param_array(roots[0], ['w','wa'])
 
 
-
 g.plot_2d(roots, param_pair=params, filled=True,lims=[-2, -0.3 , -1.6, 2])
 
 #g.add_2d_contours(roots[0], params[0], params[1], filled=False, color='#ff0000')
