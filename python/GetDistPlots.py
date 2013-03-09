@@ -552,7 +552,7 @@ class GetDistPlotter():
             gca().add_line(Line2D(P1, P2, color=color, ls=ls, zorder=zorder, **kwargs))
 
     def add_colorbar_label(self, cb, param):
-        cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize, rotation=90)
+        cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize, rotation= -90)
         setp(getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.colorbar_axes_fontsize)
 
     def add_3d_scatter(self, root, in_params, color_bar=True):
