@@ -39,7 +39,8 @@ g.datasets.append([[planck, 'v61N', lowl, lowLike], ['CAMspec_v61N.ini'] + camSp
 g.datasets.append([[planck, 'lmax2000', lowl, lowLike, highL], ['CAMspec_lmax2000.ini'] + camSpechighL])
 g.datasets.append([[planck, 'no217auto', lowl, lowLike, highL], ['CAMspec_no217auto.ini'] + camSpechighL])
 g.datasets.append([[planck, 'lmin1200', lowl, lowLike, highL], ['CAMspec_lmin1200.ini'] + camSpechighL])
-g.datasets.append([[planck, 'v61N', lowl, lowLike, highL], ['CAMspec_v61N.ini'] + camSpechighL])
+
+# g.datasets.append([[planck, 'v61N', lowl, lowLike, highL], ['CAMspec_v61N.ini'] + camSpechighL])
 
 
 class importanceFilterPlanck:
