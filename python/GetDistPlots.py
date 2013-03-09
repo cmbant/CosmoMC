@@ -406,8 +406,8 @@ class GetDistPlotter():
         if paramList is not None:
             wantedParams = self.paramNameListFromFile(paramList)
             params = [param for param in params if param.name in wantedParams]
-        if share_y is None: share_y = self.settings.prob_label is not None
         nparam = len(params)
+        if share_y is None: share_y = self.settings.prob_label is not None and nparam > 1
         plot_col, plot_row = self.make_figure(nparam, nx=nx)
         plot_roots = roots
         for i, param in enumerate(params):
