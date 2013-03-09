@@ -30,6 +30,7 @@ NoLowL = r'\textit{Planck}$-$lowL'
 NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
 NoLowLtau = r'\textit{Planck}$-$lowL+$\tau$prior'
 NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
+LCDM = r'$\Lambda$CDM'
 
 s = GetDistPlots.defaultSettings
 s.legend_frame = False

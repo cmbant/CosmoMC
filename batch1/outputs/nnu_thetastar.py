@@ -8,7 +8,10 @@ roots = ['base_nnu_yhe_planck_lowl_lowLike_highL', 'base_nnu_planck_lowl_lowLike
 
 g.plot_2d(roots, param_pair=['nnu','thetastar'], filled=True,lims=[1.0, 6.0, 1.036, 1.047])
 
-g.add_legend([ r'${\Lambda}CDM+N_{\rm eff}+Y_p$',r'${\Lambda}CDM+N_{\rm eff}$'],legend_loc='upper right',colored_text=True);
+nnu = g.param_latex_label(roots[0], 'nnu')
+yhe = g.param_latex_label(roots[0], 'yheused')
+
+g.add_legend([ s.LCDM + ' + '+nnu+' + '+ yhe,s.LCDM+ ' + '+nnu],legend_loc='upper right',colored_text=True);
 
 text(1.2, 1.0365, s.WPhighL, color='#000000')
 
