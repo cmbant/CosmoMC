@@ -19,7 +19,7 @@ g.setAxes(params, lims=[0.2, 0.5, 0.5, 0.8])
 
 g.add_3d_scatter(roots[0], params)
 g.add_2d_contours(roots[2], params[0], params[1], filled=True)
-g.add_2d_contours(roots[1], params[0], params[1], filled=False, zorder=0)
+g.add_2d_contours(roots[1], params[0], params[1], filled=False, zorder=1)
 
 g.add_line([1, 0], [0, 1], zorder=0)
 
