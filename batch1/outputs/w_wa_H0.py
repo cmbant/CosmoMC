@@ -1,12 +1,12 @@
 import planckStyle as s
 
-g=s.plotter
+g=s.getSinglePlotter()
 
 g.settings.param_names_for_labels = 'clik_units_for_w_wa.paramnames'
 
 roots = ['base_w_wa_planck_lowl_lowLike_BAO','base_w_wa_planck_lowl_lowLike_SNLS','base_w_wa_planck_lowl_lowLike_highL_BAO_post_HST']
 params = g.get_param_array(roots[0], ['w','wa','H0'])
-g.settings.setWithSubplotSize(4)
+#g.settings.setWithSubplotSize(4)
 
 g.setAxes(params,lims=[-2, -0.3 , -1.6, 2])
 g.settings.lw_contour = 0.8
