@@ -8,7 +8,7 @@ meffsterile   m_{\nu,\,\mathrm{sterile}}^{\mathrm{eff}}\, [\mathrm{eV}]  #effect
 w             w			#equation of state parameter for scalar field dark energy today
 wa            w_a       #w_a variation
 nnu           N_{\mathrm{eff}}   #effective number of neutrinos (only clearly defined for massless)
-yhe           Y_{\mathrm{He}}    #Helium mass fraction (not used if bbn_consistency)    
+yhe           Y_{\mathrm{P}}    #Helium mass fraction (not used if bbn_consistency)    
 alpha1        \alpha_{-1} #correlated CDM isocurvature 
 deltazrei     \Delta z_{\mathrm{re}} #width of reionization
 Alens         A_{\mathrm{L}}     #lensing potential scaled by sqrt(A_lens)
