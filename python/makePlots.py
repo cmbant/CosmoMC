@@ -15,6 +15,7 @@ Opts.parser.add_argument('--legend_labels', default=None)
 Opts.parser.add_argument('--D2_param', default=None)
 Opts.parser.add_argument('--outputs', nargs='+', default=['pdf'])
 Opts.parser.add_argument('--filled', action='store_true')
+Opts.parser.add_argument('--allhave', action='store_true')
 
 (batch, args) = Opts.parseForBatch()
 
@@ -57,6 +58,9 @@ for paramtag, parambatch in items:
         compares = Opts.filterForDataCompare(parambatch, args.compare_data)
         if len(compares) == 0:
             print '..None'
+            continue
+        if args.allhave and len(compares) != len(args.compare_data):
+            print '..not all, skipping'
             continue
         else: comparePlot(compares)
         for ext in args.outputs: g.export(outdir + paramtag + tp + '.' + ext)
