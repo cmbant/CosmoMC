@@ -368,8 +368,11 @@ class GetDistPlotter():
                 args['handlelength'] = 0
                 args['handletextpad'] = 0
             if figure:
-                args['frameon'] = self.settings.figure_legend_frame
+#                args['frameon'] = self.settings.figure_legend_frame
                 self.legend = self.fig.legend(lines, legend_labels, legend_loc, **args)
+                if not self.settings.figure_legend_frame:
+                    # this works with tight_layout
+                    self.legend.get_frame().set_edgecolor('none')
             else:
                 args['frameon'] = self.settings.legend_frame
                 self.legend = gca().legend(lines, legend_labels, legend_loc, **args)

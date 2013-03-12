@@ -34,6 +34,7 @@ LCDM = r'$\Lambda$CDM'
 
 s = GetDistPlots.defaultSettings
 s.legend_frame = False
+s.figure_legend_frame = False
 s.prob_label = r'$P/P_{\rm max}$'
 s.prob_y_ticks = True
 s.param_names_for_labels = 'clik_units.paramnames'
