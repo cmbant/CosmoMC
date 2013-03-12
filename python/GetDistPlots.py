@@ -28,7 +28,7 @@ class GetDistPlotSettings:
         self.colormap = cm.Blues
         self.colormap_scatter = cm.jet
         self.param_names_for_labels = 'clik_latex.paramnames'
-        self.xtick_prune = None  # 'lower' or 'upper'
+        self.tick_prune = None  # 'lower' or 'upper'
         self.tight_gap_fraction = 0.13  # space between ticks and the edge
 
         self.legend_loc = 'best'
@@ -266,25 +266,26 @@ class GetDistPlotter():
         if ls is None: ls = self.settings.axis_marker_ls
         axhline(marker, ls=ls, color=color, lw=self.settings.axis_marker_lw)
 
-    def set_locator(self, axis, x=False):
+    def set_locator(self, axis, x=False, prune=None):
         if x: xmin, xmax = axis.get_view_interval()
         if (x and (abs(xmax - xmin) < 0.01 or max(abs(xmin), abs(xmax)) >= 1000)):
-            axis.set_major_locator(MaxNLocator(self.settings.subplot_size_inch / 2 + 3, prune=self.settings.xtick_prune))
+            axis.set_major_locator(MaxNLocator(self.settings.subplot_size_inch / 2 + 3, prune=prune))
         else:
-            axis.set_major_locator(MaxNLocator(self.settings.subplot_size_inch / 2 + 4, prune=self.settings.xtick_prune))
+            axis.set_major_locator(MaxNLocator(self.settings.subplot_size_inch / 2 + 4, prune=prune))
 
 
-    def setAxisProperties(self, axis, x):
+    def setAxisProperties(self, axis, x, prune):
         formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
         axis.set_major_formatter(formatter)
         tick_params(axis='both', which='major', labelsize=self.settings.axes_fontsize)
         if x and self.settings.x_label_rotation != 0:setp(xticks()[1], rotation=self.settings.x_label_rotation)
-        self.set_locator(axis, x)
+        self.set_locator(axis, x, prune=prune)
 
-    def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None):
+    def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None, prune=None):
         if lims is not None: axis(lims)
+        if prune is None: prune = self.settings.tick_prune
         ax = gca()
-        self.setAxisProperties(ax.xaxis, True)
+        self.setAxisProperties(ax.xaxis, True, prune)
         if pos is not None: ax.set_position(pos)  # # set [left, bottom, width, height] for the figure
         if do_xlabel and len(params) > 0:self.set_xlabel(params[0])
         elif no_label_no_numbers: ax.set_xticklabels([])
@@ -300,7 +301,8 @@ class GetDistPlotter():
     def set_ylabel(self, param):
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
 
-    def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False, no_ylabel=False, no_ytick=False, no_zero=False, **ax_args):
+    def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
+                no_ylabel=False, no_ytick=False, no_zero=False, **ax_args):
         if isinstance(roots, basestring):roots = [roots]
         param = self.check_param(roots[0], param)
         xmin, xmax = self.add_1d(roots[0], param, 0)
@@ -419,6 +421,7 @@ class GetDistPlotter():
             if roots_per_param: plot_roots = roots[i]
             if markers is not None: marker = markers[i]
             else: marker = None
+#            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, prune=(None, 'both')[share_y])
             self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker)
             if share_y: self.spaceTicks(gca().xaxis, expand=False)
 
