@@ -305,13 +305,15 @@ class GetDistPlotter():
                 no_ylabel=False, no_ytick=False, no_zero=False, **ax_args):
         if isinstance(roots, basestring):roots = [roots]
         param = self.check_param(roots[0], param)
-        xmin, xmax = self.add_1d(roots[0], param, 0)
-        for i, root in enumerate(roots[1:]):
-            bounds = self.add_1d(root, param, i + 1)
+        xmin = None
+        for i, root in enumerate(roots):
+            bounds = self.add_1d(root, param, i)
             if bounds is not None:
-                xmin = min(xmin, bounds[0])
-                xmax = max(xmax, bounds[1])
-
+                if xmin is None: xmin, xmax = bounds
+                else:
+                    xmin = min(xmin, bounds[0])
+                    xmax = max(xmax, bounds[1])
+        if xmin is None: Exception('No roots have parameter: ' + param.name)
         if marker is not None: self.add_x_marker(marker, marker_color)
         if not 'lims' in ax_args:ax_args['lims'] = [xmin, xmax, 0, 1.099]
         ax = self.setAxes([param], **ax_args)
