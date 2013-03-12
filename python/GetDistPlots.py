@@ -419,7 +419,7 @@ class GetDistPlotter():
         for i, param in enumerate(params):
             subplot(plot_row, plot_col, i + 1)
             if roots_per_param: plot_roots = roots[i]
-            if markers is not None: marker = markers[i]
+            if markers is not None and i < len(markers): marker = markers[i]
             else: marker = None
 #            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, prune=(None, 'both')[share_y])
             self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker)
