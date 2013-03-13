@@ -290,7 +290,7 @@ class GetDistPlotter():
         if do_xlabel and len(params) > 0:self.set_xlabel(params[0])
         elif no_label_no_numbers: ax.set_xticklabels([])
         if len(params) > 1:
-            self.setAxisProperties(ax.yaxis, False)
+            self.setAxisProperties(ax.yaxis, False, prune)
             if do_ylabel:self.set_ylabel(params[1])
             elif no_label_no_numbers: ax.set_yticklabels([])
         return ax
