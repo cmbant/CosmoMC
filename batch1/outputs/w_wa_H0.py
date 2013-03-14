@@ -10,7 +10,7 @@ params = g.get_param_array(roots[0], ['w','wa','H0'])
 
 g.setAxes(params,lims=[-2, -0.3 , -1.6, 2])
 g.settings.lw_contour = 0.8
-g.add_2d_contours(roots[0], params[0], params[1], filled=False, color='#ff0000')
+g.add_2d_contours(roots[0], params[0], params[1], filled=False, color='#000000')
 #g.add_2d_contours(roots[1], params[0], params[1], filled=False,color='#0000ff' )
 g.add_3d_scatter(roots[0],params)
 #g.add_2d_contours(roots[2], params[0], params[1], filled=False,color='#000000' )
