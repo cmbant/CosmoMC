@@ -1,4 +1,4 @@
-import os, iniFile, paramNames, pickle, random
+import os, paramNames, pickle, random
 import numpy as np
 
 
@@ -20,6 +20,13 @@ def loadChains(root=None, chain_indices=None, ignore_rows=0, ignore_frac=0, no_c
                     pickle.dump(c, output, pickle.HIGHEST_PROTOCOL)
             return c
         return None
+
+def loadGridChain(rootdir, model, data, importance=None):
+    tags = [model, data]
+    if importance is not None: tags += ['post', importance]
+    path = model + os.sep + data + os.sep + "_".join(tags)
+    print path
+    return loadChains(rootdir + os.sep + path, ignore_frac=0, separate_chains=False, no_stat=True)
 
 
 class chain():
@@ -60,10 +67,55 @@ class chains():
         self.chains = []
         self.samples = None
         self.hasNames = os.path.exists(root + '.paramnames')
-        if self.hasNames: self.paramNames = paramNames.paramNames(root + '.paramnames')
+        if self.hasNames:
+            self.paramNames = paramNames.paramNames(root + '.paramnames')
+            self.getParamIndices()
 
     def lastModified(self, files):
         return max([os.path.getmtime(fname) for fname in files])
+
+    def getParamIndices(self):
+        index = dict()
+        for i, name in enumerate(self.paramNames.names):
+            index[name.name] = i
+        self.index = index
+
+    def valuesForParam(self, param):
+        if isinstance(param, basestring): param = [param]
+        results = []
+        for par in param:
+            ix = self.index[par]
+            results.append(self.samples[:, ix])
+        if len(results) == 1: return results[0]
+        return results
+
+    def mean(self, paramVec):
+        return np.dot(paramVec , self.weights) / self.norm
+
+    def var(self, paramVec):
+        return np.dot((paramVec - self.mean(paramVec)) ** 2 , self.weights) / self.norm
+
+    def std(self, paramVec):
+        return np.sqrt(self.var(paramVec))
+
+    def cov(self, paramVecs):
+        diffs = [vec - self.mean(vec) for vec in paramVecs]
+        n = len(paramVecs)
+        cov = np.zeros((n, n))
+        for i, diff1 in enumerate(diffs):
+            for j, diff2 in enumerate(diffs[:i + 1]):
+                cov[i, j] = np.dot(diff1, diff2 * self.weights) / self.norm
+                cov[j, i] = cov[i, j]
+        return cov
+
+    def corr(self, paramVecs):
+        corr = self.cov(paramVecs)
+        diag = [np.sqrt(corr[i, i]) for i in range(len(paramVecs))]
+        for i, di in enumerate(diag):
+            corr[i, i] /= di
+            corr[:, i] /= di
+        return corr
+
 
     def chainFiles(self, root, chain_indices=None, ext='.txt'):
         index = -1
@@ -119,6 +171,7 @@ class chains():
         self.weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
         self.loglikes = np.hstack((chain.coldata[:, 1] for chain in self.chains))
         self.samples = np.vstack((chain.coldata[:, 2:] for chain in self.chains))
+        self.norm = np.sum(self.weights)
         self.numrows = self.samples.shape[0]
         del(self.chains)
         return self
@@ -165,6 +218,7 @@ class chains():
                 chain.setColData(np.delete(chain.coldata, fixed, 1))
         if self.hasNames:
             self.paramNames.deleteIndices([fix - 2 for fix in fixed])
+            self.getParamIndices()
             print 'Non-derived parameters: ', [name.name for name in self.paramNames.names[0:self.paramNames.numNonDerived()]]
 
 
