@@ -89,14 +89,50 @@ class chains():
         if len(results) == 1: return results[0]
         return results
 
-    def mean(self, paramVec):
-        return np.dot(paramVec , self.weights) / self.norm
+    def weigthed_sum(self, paramVec, where=None):
+        if where is None: return np.dot(paramVec, self.weights)
+        return np.dot(paramVec[where], self.weights[where])
 
-    def var(self, paramVec):
-        return np.dot((paramVec - self.mean(paramVec)) ** 2 , self.weights) / self.norm
+    def get_norm(self, where=None):
+        if where is None: return self.norm
+        else: return np.sum(self.weights[where])
 
-    def std(self, paramVec):
-        return np.sqrt(self.var(paramVec))
+    def mean(self, paramVec, where=None):
+        return self.weigthed_sum(paramVec, where) / self.get_norm(where)
+
+    def var(self, paramVec, where=None):
+        return self.weigthed_sum((paramVec - self.mean(paramVec, where)) ** 2 , where) / self.get_norm(where)
+
+    def std(self, paramVec, where=None):
+        return np.sqrt(self.var(paramVec, where))
+
+    def confidence(self, paramVec, limfrac, upper):
+
+        try_b = min(paramVec)
+        try_t = max(paramVec)
+
+        lasttry = -1
+        while True:
+            if upper:
+                    trial = self.get_norm(paramVec > (try_b + try_t) / 2)
+                    if trial > self.norm * limfrac:
+                        try_b = (try_b + try_t) / 2
+                    else:
+                        try_t = (try_b + try_t) / 2
+                    if trial == lasttry and (abs(try_b + try_t) < 1e-10
+                                or abs((try_b - try_t) / (try_b + try_t)) < 0.05): break
+                    lasttry = trial
+            else:
+                trial = self.get_norm(paramVec > (try_b + try_t) / 2)
+                if (trial > self.norm * limfrac):
+                    try_t = (try_b + try_t) / 2
+                else:
+                    try_b = (try_b + try_t) / 2
+                if trial == lasttry and (abs(try_b + try_t) < 1e-10 or
+                          abs((try_b - try_t) / (try_b + try_t)) < 0.05): break
+                lasttry = trial
+
+        return try_t
 
     def cov(self, paramVecs):
         diffs = [vec - self.mean(vec) for vec in paramVecs]
@@ -264,12 +300,20 @@ class chains():
         self.samples = self.samples[thin_ix, :]
         self.weights = np.ones(len(thin_ix))
         self.loglikes = self.loglikes[thin_ix]
+        self.norm = np.sum(self.weights)
 
     def thin(self, factor):
         thin_ix = self.thin_indices(factor)
         self.samples = self.samples[thin_ix, :]
         self.weights = np.ones(len(thin_ix))
         self.loglikes = self.loglikes[thin_ix]
+        self.norm = len(thin_ix)
+
+    def filter(self, where):
+        self.samples = self.samples[where, :]
+        self.weights = self.weights[where, :]
+        self.loglikes = self.loglikes[where]
+        self.norm = np.sum(self.weights)
 
 
 # c = loadChains('C:\\tmp\\Planck\\chains\\base_nrun_r_planck_CAMspec_lowl_lowLike', ignore_frac=0.3, separate_chains=False)

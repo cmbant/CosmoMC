@@ -256,15 +256,17 @@ class GetDistPlotter():
     def add_1d_marker(self, marker, color=None, ls=None):
         self.add_x_marker(marker, color, ls)
 
-    def add_x_marker(self, marker, color=None, ls=None):
+    def add_x_marker(self, marker, color=None, ls=None, lw=None):
         if color is None: color = self.settings.axis_marker_color
         if ls is None: ls = self.settings.axis_marker_ls
-        axvline(marker, ls=ls, color=color, lw=self.settings.axis_marker_lw)
+        if lw is None: lw = self.settings.axis_marker_lw
+        axvline(marker, ls=ls, color=color, lw=lw)
 
-    def add_y_marker(self, marker, color=None, ls=None):
+    def add_y_marker(self, marker, color=None, ls=None, lw=None):
         if color is None: color = self.settings.axis_marker_color
         if ls is None: ls = self.settings.axis_marker_ls
-        axhline(marker, ls=ls, color=color, lw=self.settings.axis_marker_lw)
+        if lw is None: lw = self.settings.axis_marker_lw
+        axhline(marker, ls=ls, color=color, lw=lw)
 
     def set_locator(self, axis, x=False, prune=None):
         if x: xmin, xmax = axis.get_view_interval()
@@ -407,7 +409,7 @@ class GetDistPlotter():
 
 
     def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None,
-                 paramList=None, roots_per_param=False, share_y=None, markers=None):
+                 paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None):
         if roots_per_param:
             params = [self.check_param(roots[i][0], param) for i, param in enumerate(params)]
         else: params = self.get_param_array(roots[0], params)
@@ -425,6 +427,7 @@ class GetDistPlotter():
             else: marker = None
 #            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, prune=(None, 'both')[share_y])
             self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker)
+            if xlims is not None: xlim(xlims[i][0], xlims[i][1])
             if share_y: self.spaceTicks(gca().xaxis, expand=False)
 
         self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
