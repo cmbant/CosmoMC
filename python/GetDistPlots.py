@@ -27,6 +27,8 @@ class GetDistPlotSettings:
 # see http://www.scipy.org/Cookbook/Matplotlib/Show_colormaps
         self.colormap = cm.Blues
         self.colormap_scatter = cm.jet
+        self.colorbar_rotation = None  # e.g. -90
+
         self.param_names_for_labels = 'clik_latex.paramnames'
         self.tick_prune = None  # 'lower' or 'upper'
         self.tight_gap_fraction = 0.13  # space between ticks and the edge
@@ -555,9 +557,19 @@ class GetDistPlotter():
             subplots_adjust(wspace=0, hspace=0)
             self.finish_plot(no_gap=True)
 
-    def add_colorbar(self, param):
-        cb = colorbar()
+    def rotate_yticklabels(self, ax=None, rotation= -90):
+        if ax is None: ax = gca()
+        for ticklabel in ax.get_yticklabels():
+            ticklabel.set_rotation(rotation)
+
+    def add_colorbar(self, param, orientation='vertical'):
+        cb = colorbar(orientation=orientation)
         self.add_colorbar_label(cb, param)
+        if self.settings.colorbar_rotation is not None:
+            self.rotate_yticklabels(cb.ax, self.settings.colorbar_rotation)
+            labels = [label.get_text() for label in cb.ax.yaxis.get_ticklabels()[::2]]
+            cb.ax.yaxis.set_ticks(cb.ax.yaxis.get_ticklocs()[::2])
+            cb.ax.yaxis.set_ticklabels(labels)
         return cb
 
     def add_line(self, P1, P2, zorder=0, color=None, ls=None, **kwargs):
