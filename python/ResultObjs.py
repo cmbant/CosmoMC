@@ -125,6 +125,8 @@ class tableFormatter(object):
         self.belowTitles = ''
         self.headerWrapper = " %s"
         self.noConstraint = '---'
+        self.spacer = ' '  # just to make output more readable
+        self.colSeparator = self.spacer + '&' + self.spacer
         self.numberFormatter = numberFormatter()
 
     def getLine(self, position=None):
@@ -152,11 +154,11 @@ class tableFormatter(object):
         if latex:
             wid += 2
             if bold: wid += 11
-        res = txt + ' ' * max(0, 28 - wid)
+        res = txt + self.spacer * max(0, 28 - wid)
         if latex:
             if bold: res = '{\\boldmath$' + res + '$}'
             else:  res = '$' + res + '$'
-        if separator: res += ' & '
+        if separator: res += self.colSeparator
         return res
 
 class openTableFormatter(tableFormatter):
@@ -172,7 +174,7 @@ class openTableFormatter(tableFormatter):
         self.belowFinalRow = ''
 
     def titleSubColumn(self, colsPerResult, title):
-        return ' \\multicolumn{' + str(colsPerResult) + '}{' + 'c' + '}{ ' + self.formatTitle(title) + '}'
+        return ' \\multicolumn{' + str(colsPerResult) + '}{' + 'c' + '}{' + self.formatTitle(title) + '}'
 
 class noLineTableFormatter(openTableFormatter):
 
@@ -234,9 +236,9 @@ class resultTable():
 
 
     def addFullTableRow(self, row):
-        txt = " & ".join(self.paramLabelColumn(param) + self.paramResultsTex(param) for param in row)
+        txt = self.format.colSeparator.join(self.paramLabelColumn(param) + self.paramResultsTex(param) for param in row)
         if not self.ncol == len(row):
-            txt += ' & ' * ((1 + self.colsPerParam) * (self.ncol - len(row)))
+            txt += self.format.colSeparator * ((1 + self.colsPerParam) * (self.ncol - len(row)))
         self.lines.append(txt + self.format.endofrow)
 
     def addLine(self, position):
@@ -247,22 +249,31 @@ class resultTable():
 
     def addTitlesRow(self, titles):
         self.addLine("aboveTitles")
-        res = self.format.titleSubColumn(1, '') + ' & ' + " & ".join(self.format.titleSubColumn(self.colsPerResult, title) for title in titles)
-        self.lines.append((('& ' + res) * self.ncol)[1:] + self.format.endofrow)
+        cols = [self.format.titleSubColumn(1, '')]
+        cols += [self.format.titleSubColumn(self.colsPerResult, title) for title in titles]
+        self.lines.append(self.format.colSeparator.join(cols * self.ncol) + self.format.endofrow)
+
+#        res = self.format.titleSubColumn(1, '') + self.format.colSeparator + self.format.colSeparator.join(self.format.titleSubColumn(self.colsPerResult, title) for title in titles)
+#        self.lines.append(((self.format.colSeparator + res) * self.ncol)[1:] + self.format.endofrow)
         belowTitleLine = self.format.belowTitleLine(self.colsPerResult, self.colsPerParam / self.colsPerResult)
         if belowTitleLine:
             self.lines.append(belowTitleLine)
 
     def addHeaderRow(self):
         self.addLine("aboveHeader")
-        res = '& ' + self.format.headerWrapper % self.format.paramText
+        cols = [self.format.headerWrapper % self.format.paramText]
         for result in self.results:
-            res += ' & ' + " & ".join([self.format.headerWrapper % s for s in result.getColumnLabels(self.limit)])
-        self.lines.append((res * self.ncol)[1:] + self.format.endofrow)
+            cols += [self.format.headerWrapper % s for s in result.getColumnLabels(self.limit)]
+        self.lines.append(self.format.colSeparator.join(cols * self.ncol) + self.format.endofrow)
+
+#        res = self.format.colSeparator + self.format.headerWrapper % self.format.paramText
+#        for result in self.results:
+#            res += self.format.colSeparator + self.format.colSeparator.join([self.format.headerWrapper % s for s in result.getColumnLabels(self.limit)])
+#        self.lines.append((res * self.ncol).replace(self.format.colSeparator,'',1) + self.format.endofrow)
         self.addLine("belowHeader")
 
     def paramResultsTex(self, param):
-        return " & ".join(self.paramResultTex(result, param) for result in self.results)
+        return self.format.colSeparator.join(self.paramResultTex(result, param) for result in self.results)
 
     def paramResultTex(self, result, p):
         values = result.texValues(self.format, p, self.limit)

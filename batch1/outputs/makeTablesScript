@@ -1,3 +1,5 @@
+python python/makeTables.py main outputs/missionTable --compare planck_lowl_post_lensing planck_lowl_lowLike_highL_post_BAO --paramtag='base' --forpaper --titles "\\plancklensing;\\Planck+\\WP+\\HighL+BAO" --blockEndParams "aksz;logA" --paramList batch1/outputs/paper_table.paramnames
+
 
 python python/makeTables.py main outputs/LCDM_highL.tex --limit 1 --compare planck_lowl_lowLike planck_lowl_lowLike_highL planck_lowl_lowLike_highL_post_lensing planck_lowl_lowLike_highL_post_BAO --paramtag='base' --forpaper --titles "\\planck+\\WP;\\Planck+\\WP+\\HighL;\\Planck+\\lensing+\\WP+\\HighL;\\Planck+\\WP+\\HighL+BAO" --blockEndParams "aksz;logA" --paramList batch1/outputs/paper_table.paramnames
 

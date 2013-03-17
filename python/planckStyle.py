@@ -119,6 +119,8 @@ class planckStyleTableFormatter(ResultObjs.noLineTableFormatter):
         self.colDividor = '|'
         self.headerWrapper = "\\omit\\hfil %s\\hfil"
         self.noConstraint = r'\dots'
+        self.colSeparator = '&'
+        self.spacer = ''
 
     def formatTitle(self, title):
         return ResultObjs.texEscapeText(title)
@@ -158,13 +160,13 @@ class planckStyleTableFormatter(ResultObjs.noLineTableFormatter):
             res = txt  # there should be NO SPACE after a number in latex AZ
         else:
             wid = len(txt)
-            res = txt + ' ' * max(0, 28 - wid)
+            res = txt + self.spacer * max(0, 28 - wid)
         if latex:
             if bold: res = '{\\boldmath$' + res + '$}'
             else:  res = res
         if separator:
             if latex:
-                res += '& '  # there should be NO SPACE after a number in latex AZ
+                res += self.colSeparator  # there should be NO SPACE after a number in latex AZ
             else:
-                res += ' & '
+                res += self.colSeparator
         return res
