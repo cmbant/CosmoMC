@@ -133,7 +133,7 @@ class tableFormatter(object):
         if position is not None and hasattr(self, position): return getattr(self, position)
         return self.hline
 
-    def belowTitleLine(self, colsPerParam, numParams=None):
+    def belowTitleLine(self, colsPerParam, numResults=None):
         return self.getLine("belowTitles")
 
     def startTable(self, ncol, colsPerResult, numResults):
@@ -189,8 +189,8 @@ class noLineTableFormatter(openTableFormatter):
         self.colDividor = '|'
         self.hline = ''
 
-    def belowTitleLine(self, colsPerParam, numParams=None):
-        return r'\noalign{\vskip 3pt}\cline{2-' + str(colsPerParam + 1) + r'}\noalign{\vskip 3pt}'
+    def belowTitleLine(self, colsPerParam, numResults=None):
+        return r'\noalign{\vskip 3pt}\cline{2-' + str(colsPerParam * numResults + 1) + r'}\noalign{\vskip 3pt}'
 
 
 class resultTable():

@@ -258,7 +258,7 @@
     call SetTheoryParameterization(DefIni, NameMapping)
     call DataLikelihoods%AddNuisanceParameters(NameMapping)
     call CMB_Initialize(Params%Info)
-    call InitializeUsedParams(DefIni,Params)
+    call InitializeUsedParams(DefIni,Params, action == action_MCMC)
 
     if (MpiRank==0) then
         do i=1, DataLikelihoods%Count

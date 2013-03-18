@@ -10,7 +10,7 @@
     real(campc), dimension(:), allocatable :: X_data
     real(campc),  dimension(:,:), allocatable :: c_inv
     integer :: Nspec,nX,num_ells,nXfromdiff, CAMspec_lmax
-    integer, dimension(:), allocatable  :: lminX, lmaxX, np, npt
+    integer, dimension(:), allocatable  :: lminX, lmaxX, npt
     integer, parameter :: lmax_sz = 5000
     real(campc) :: sz_143_temp(lmax_sz)
     real(campc) :: ksz_temp(lmax_sz), tszxcib_temp(lmax_sz)
@@ -26,13 +26,18 @@
     integer marge_num, keep_num
     real(campc) :: beam_factor = 2.7_campc
 
+    logical :: want_spec(4) = .true.
+    integer :: camspec_lmins(4) =0
+    integer :: camspec_lmaxs(4) =0
+
     logical :: storeall=.false.
     integer :: countnum
     integer :: camspec_beam_mcmc_num = 1
     !    character*100 storeroot,storename,storenumstring
     !   character*100 :: bestroot,bestnum,bestname
-    character(LEN=*), parameter :: CAMSpec_like_version = 'CovSpec_v1'
-    public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num
+    character(LEN=*), parameter :: CAMSpec_like_version = 'CovSpec_v1_cuts'
+    public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num, &
+    want_spec,camspec_lmins,camspec_lmaxs
 
     contains
 
@@ -78,6 +83,10 @@
     real(campc) , allocatable:: fid_cl(:,:), beam_cov(:,:), beam_cov_full(:,:)
     integer if1,if2, ie1, ie2, ii, jj, L2
     real(campc) :: fid_theory
+    real(campc), dimension(:), allocatable :: X_data_in
+    real(campc),  dimension(:,:), allocatable :: cov
+    integer, allocatable :: indices(:),np(:)
+    integer ix
 
     ! cl_ksz_148_tbo.dat file is in D_l, format l D_l, from l=2 to 10000
     ! tsz_x_cib_template.txt is is (l D_l), from l=2 to 9999, normalized to unity
@@ -92,14 +101,51 @@
     allocate(lmaxX(Nspec))
     allocate(np(Nspec))
     allocate(npt(Nspec))
-    allocate(X_data(nX))
-    allocate(c_inv(nX,nX))
+    allocate(X_data_in(nX))
+    allocate(cov(nX,nX))
+    allocate(indices(nX))
+
 
     read(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
-    read(48) (X_data(i), i=1, nX)
-    read(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX) !covarianbce
+    read(48) X_data_in !(X_data(i), i=1, nX)
+    read(48) cov !((c_inv(i, j), j = 1, nX), i = 1,  nX) !covarianbce
     read(48) !((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
     close(48)
+
+    !Cut on L ranges
+    print *,'Determining L ranges'
+    j=0
+    ix=0
+    npt(1)=1
+    if(.not. want_spec(1)) stop 'One beam mode my not be right here'
+    do i=1,Nspec
+        do l = lminX(i), lmaxX(i)
+            j =j+1
+            if (want_spec(i) .and. (camspec_lmins(i)==0 .or. l>=camspec_lmins(i)) &
+            .and. (camspec_lmaxs(i)==0 .or. l<=camspec_lmaxs(i)) ) then
+                ix =ix+1
+                indices(ix) = j
+            end if
+        end do
+        if (want_spec(i)) then
+            if (camspec_lmins(i)/=0) lminX(i) = max(camspec_lmins(i), lminX(i))
+            if (camspec_lmaxs(i)/=0) lmaxX(i) = min(camspec_lmaxs(i), lmaxX(i))
+        else
+            lmaxX(i) =0
+        end if
+        if (i<NSpec) npt(i+1) = ix+1
+        print *, 'spec ',i, 'lmin,lmax, start ix = ', lminX(i),lmaxX(i), npt(i)
+    end do
+    if (j/=nx) stop 'Error cutting camspec cov matrix'
+    nX = ix
+    allocate(X_data(nX))
+    allocate(c_inv(nX,nX))
+    do i=1, nX
+        c_inv(:,i) = cov(indices(1:nX),indices(i))
+        X_data(i) = X_data_in(indices(i))
+    end do
+    !    call Matrix_inverse(c_inv)
+    deallocate(cov)
 
     CAMspec_lmax = maxval(lmaxX)
     allocate(fid_cl(CAMspec_lmax,4))
@@ -166,23 +212,27 @@
         call Matrix_Inverse(beam_cov)
 
         do if2=1,beam_Nspec
-            do if1=1,beam_Nspec
-                do ie2=1,num_modes_per_beam
-                    do ie1=1,num_modes_per_beam
-                        ii=ie1+num_modes_per_beam*(if1-1)
-                        jj=ie2+num_modes_per_beam*(if2-1)
-                        if (want_marge(ii) .and. want_marge(jj)) then
-                            do L2 = lminX(if2),lmaxX(if2)
-                                c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
-                                c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
-                                beam_factor**2*beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
-                                beam_cov(marge_indices_reverse(ii),marge_indices_reverse(jj)) * beam_modes(ie2,L2,if2) &
-                                *fid_cl(L2,if2)*fid_cl(lminX(if1):lmaxX(if1),if1)
-                            end do
-                        end if
-                    enddo
+            if (want_spec(if2)) then
+                do if1=1,beam_Nspec
+                    if (want_spec(if1)) then
+                        do ie2=1,num_modes_per_beam
+                            do ie1=1,num_modes_per_beam
+                                ii=ie1+num_modes_per_beam*(if1-1)
+                                jj=ie2+num_modes_per_beam*(if2-1)
+                                if (want_marge(ii) .and. want_marge(jj)) then
+                                    do L2 = lminX(if2),lmaxX(if2)
+                                        c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
+                                        c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
+                                        beam_factor**2*beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
+                                        beam_cov(marge_indices_reverse(ii),marge_indices_reverse(jj)) * beam_modes(ie2,L2,if2) &
+                                        *fid_cl(L2,if2)*fid_cl(lminX(if1):lmaxX(if1),if1)
+                                    end do
+                                end if
+                            enddo
+                        enddo
+                    end if
                 enddo
-            enddo
+            end if
         enddo
         ! print *,'after', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502),  c_inv(npt(4)-1002,npt(4)-1000)
 
@@ -354,7 +404,8 @@
         enddo
     end if
 
-    zlike=zlike+((cal2/cal1-0.9966d0)/0.0015d0)**2  +((cal0/cal1-1.0006d0)/0.0004d0)**2
+    if (want_spec(1)) zlike=zlike+ ((cal0/cal1-1.0006d0)/0.0004d0)**2
+    if (any(want_spec(3:4))) zlike=zlike+ ((cal2/cal1-0.9966d0)/0.0015d0)**2
 
     contains
 

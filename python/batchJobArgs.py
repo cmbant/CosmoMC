@@ -65,9 +65,9 @@ class batchArgs():
             else:
                 return jobItem.paramtag == self.args.paramtag
 
-        def filteredBatchItems(self, wantSubItems=True):
+        def filteredBatchItems(self, wantSubItems=True, chainExist=False):
             for jobItem in self.batch.items(wantImportance=not self.args.noimportance, wantSubItems=wantSubItems):
-                if (self.jobItemWanted(jobItem) and self.nameMatches(jobItem) and self.paramsMatch(jobItem)  and self.dataMatches(jobItem)
+                if (not chainExist or jobItem.chainExists()) and (self.jobItemWanted(jobItem) and self.nameMatches(jobItem) and self.paramsMatch(jobItem)  and self.dataMatches(jobItem)
                     and self.groupMatches(jobItem)): yield(jobItem)
 
         def sortedParamtagDict(self, chainExist=True):

@@ -73,23 +73,6 @@
 
     end subroutine ReadPostParams
 
-    subroutine WritePostParams(P,mult,like, with_data)
-    real(mcp), intent(in) :: mult, like
-    logical, intent(in), optional :: with_data
-    Type(ParamSet) P
-
-    if (present(with_data)) then
-        if (with_data) then
-            call WriteParamsAndDat(P, mult,like)
-        else
-            call WriteParams(P, mult,like)
-        end if
-    else
-        call WriteParams(P, mult,like)
-    end if
-
-    end subroutine WritePostParams
-
     subroutine postprocess(InputFile)
     use IO
     USE IFPOSIX
@@ -272,7 +255,11 @@
                 mult_sum = mult_sum + mult
 
                 if (mult /= 0) then
-                    call WritePostParams(Params, mult, truelike,txt_theory)
+                    if (txt_theory) then
+                        call WriteParamsAndDat(Params, mult,like)
+                    else
+                        call WriteParams(Params, mult,like)
+                    end if
                     if (outdata_handle>=0) call Params%WriteModel(outdata_handle, truelike,mult)
                 else 
                     if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
