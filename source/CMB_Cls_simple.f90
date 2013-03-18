@@ -4,7 +4,7 @@
     use CAMB, only : CAMB_GetResults, CAMB_GetAge, CAMBParams, CAMB_SetDefParams,Transfer_GetMatterPower, &
     AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, wa_ppf,&
     CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Nonlinear_lens, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
-    CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, &
+    CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, Transfer_SetForNonlinearLensing, &
     initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
     HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs
     use Errors !CAMB
@@ -315,12 +315,6 @@
 
 
     subroutine SetPkFromCAMB(Theory,M)
-#ifdef DR71RG
-    use lrggettheory
-    real(dl) :: getabstransferscale
-    !! BR09: this variable is for renormalizing the power spectra to the z=0 value;
-    !this is the assumption of the LRG model.
-#endif
     use camb, only : MatterTransferData
     Type(TheoryPredictions) Theory
     Type(MatterTransferData) M
@@ -329,38 +323,14 @@
     Theory%sigma_8 = M%sigma_8(size(M%sigma_8,1),1)
     !redshifts are in increasing order, so last index is redshift zero
 
-#ifdef DR71RG
-    !! BR09 get lrgtheory info
-    if (num_matter_power /= 0 .and. use_dr7lrg) then
+    if (num_matter_power /= 0) then
         do zix = 1,matter_power_lnzsteps
-            if(zix .eq. iz0lrg .or. zix .eq. izNEARlrg .or. zix .eq. izMIDlrg .or. zix .eq. izFARlrg) then
-                call Transfer_GetMatterPowerAndNW(M,&
-                Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
-1               ,matter_power_minkh, matter_power_dlnkh,num_matter_power,&
-                kmindata,getabstransferscale, &
-                Theory%mpk_nw(:,zix),Theory%mpkrat_nw_nl(:,zix))
-                if(zix == iz0lrg) powerscaletoz0(1) = getabstransferscale**2.0d0
-                if(zix == izNEARlrg)   powerscaletoz0(2) = powerscaletoz0(1)/getabstransferscale**2.0d0
-                if(zix == izMIDlrg)   powerscaletoz0(3) = powerscaletoz0(1)/getabstransferscale**2.0d0
-                if(zix == izFARlrg)   powerscaletoz0(4) = powerscaletoz0(1)/getabstransferscale**2.0d0
-            else  !! not an LRG redshift, so call regular function.
-                call Transfer_GetMatterPower(M,&
-                Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
-1               ,matter_power_minkh, matter_power_dlnkh,num_matter_power)
-            end if
+            call Transfer_GetMatterPower(M,&
+            Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,1 &
+            ,matter_power_minkh, matter_power_dlnkh,num_matter_power)
         end do
-        if(zix == iz0lrg) powerscaletoz0(1) = 1.0d0
-    else if (num_matter_power /= 0) then
-        !! end BR09 get lrgtheory info
-#else
-        if (num_matter_power /= 0) then
-#endif
-            do zix = 1,matter_power_lnzsteps
-                call Transfer_GetMatterPower(M,&
-                Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,&
-1               ,matter_power_minkh, matter_power_dlnkh,num_matter_power)
-            end do
-        end if
+    end if
+    
     end subroutine SetPkFromCAMB
 
     subroutine InitCAMB(CMB,error, DoReion)
@@ -426,7 +396,7 @@
     subroutine InitCAMBParams(P)
     use lensing
     use ModelParams
-    use mpk
+!    use mpk
     type(CAMBParams)  P 
     integer zix
     real(mcp) redshifts(matter_power_lnzsteps)
@@ -456,6 +426,7 @@
     else
         P%Transfer%kmax = 0.8
     end if
+
     !        if (Use_Lya) P%Transfer%kmax = lya_kmax
     P%Transfer%num_redshifts = matter_power_lnzsteps
 
@@ -486,7 +457,7 @@
             end if
         end do
 
-        if (use_mpk) call mpk_SetTransferRedshifts(redshifts) !can modify to use specific redshifts
+!        if (use_mpk) call mpk_SetTransferRedshifts(redshifts) !can modify to use specific redshifts
         if (redshifts(1) > 0.0001) call MpiStop('mpk redshifts: lowest redshift must be zero')
         do zix=1, matter_power_lnzsteps 
             !CAMB's ordering is from highest to lowest
@@ -519,7 +490,7 @@
     end if
 
     if (CMB_Lensing .and. use_nonlinear_lensing) then
-        if (use_LSS  .and. (matter_power_lnzsteps>1 .or. use_mpk)) &
+        if (use_LSS  .and. (matter_power_lnzsteps>1)) & ! .or. use_mpk)) &
         call MpiStop('non-linear lensing and LSS data not supported currently')
         !Haven't sorted out how to use LSS data etc with linear/nonlinear/sigma8/non-linear CMB lensing...
         P%WantTransfer = .true.

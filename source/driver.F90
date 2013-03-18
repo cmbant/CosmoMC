@@ -22,8 +22,8 @@
     character(LEN=Ini_max_string_len) InputFile, LogFile
 
     logical bad
-    integer nummpksets, i, numtoget, action
-    character(LEN=Ini_max_string_len)  mpk_filename(100),  numstr, fname
+    integer  i, numtoget, action
+    character(LEN=Ini_max_string_len)  numstr, fname
     Type(ParamSet) Params, EstParams
     integer file_unit, status
     real(mcp) bestfit_loglike
@@ -243,14 +243,15 @@
 
     Ini_fail_on_not_found = .true.
 
-    nummpksets = Ini_Read_Int('mpk_numdatasets',0)
-    if (Use_mpk) then
-        do i= 1, nummpksets
-            mpk_filename(i) = ReadIniFileName(DefIni,numcat('mpk_dataset',i))
-            call ReadMpkDataset(mpk_filename(i))
-        end do
-        if (Feedback>1) write(*,*) 'read mpk datasets'
-    end if
+    !    'This version of CosmoMC does not currently have mpk implemented'
+    !    nummpksets = Ini_Read_Int('mpk_numdatasets',0)
+    !    if (Use_mpk) then
+    !do i= 1, nummpksets
+    !    mpk_filename(i) = ReadIniFileName(DefIni,numcat('mpk_dataset',i))
+    !    call ReadMpkDataset(mpk_filename(i))
+    !end do
+    !if (Feedback>1) write(*,*) 'read mpk datasets'
+    !    end if
 
     numtoget = Ini_Read_Int('samples')
 

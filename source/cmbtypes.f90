@@ -24,23 +24,14 @@
     !Note that by default everything is linear
 
     !Note these are the interpolated/extrapolated values. The k at which matter power is computed up to 
-    !by CAMB is set in CMB_Cls_xxx with, e.g. P%Transfer%kmax = 0.6 (which is enough for 2dF)
-
-    !Old mpk settings
-#ifdef DR71RG
-    !!! BR09: Reid et al 2009 settings for the LRG power spectrum.
-    integer, parameter :: num_matter_power = 300 !number of points computed in matter power spectrum
-    real(mcp), parameter    :: matter_power_minkh =  0.999e-4_mcp  !minimum value of k/h to store
-    real(mcp), parameter    :: matter_power_dlnkh = 0.03_mcp     !log spacing in k/h
-    real(mcp), parameter    :: matter_power_maxz = 1._mcp !Not used, but must be non-zero to avoid error when have 4 z steps and use_mpk=F
-    integer, parameter :: matter_power_lnzsteps = 4  ! z=0 to get sigma8 (this first entry appears to be coded in some spots in the code!!), plus 3 LRG redshifts.
-#else
+    !by CAMB is set in CMB_Cls_xxx with, e.g. P%Transfer%kmax = 0.6 
+    !Note that none of this probably works with non-linear lensing
     integer, parameter :: num_matter_power = 74 !number of points computed in matter power spectrum
     real(mcp), parameter    :: matter_power_minkh =  0.999e-4_mcp  !1e-4 !minimum value of k/h to store
     real(mcp), parameter    :: matter_power_dlnkh = 0.143911568_mcp     !log spacing in k/h
     real(mcp), parameter    :: matter_power_maxz = 0._mcp    !6.0
     integer, parameter :: matter_power_lnzsteps = 1 !20
-#endif
+
     !Only used in params_CMB
     real(mcp) :: pivot_k = 0.05_mcp !Point for defining primordial power spectra
     logical :: inflation_consistency = .false. !fix n_T or not
@@ -99,11 +90,6 @@
         !if custom_redshift_steps = false with equal spacing in
         !log(1+z) and matter_power_lnzsteps points
         !if custom_redshift_steps = true set in mpk.f90 
-        ! BR09 additions
-        real(mcp) mpk_nw(num_matter_power,matter_power_lnzsteps) !no wiggles fit to matter power spectrum
-        real(mcp) mpkrat_nw_nl(num_matter_power,matter_power_lnzsteps) !halofit run on mpk_nw
-        real(mcp) finalLRGtheoryPk(num_matter_power)  !! this is the quantity that enters the LRG likelihood calculation
-        ! end BR09 additions
     contains 
     procedure :: WriteTheory
     procedure :: ReadTheory
@@ -273,29 +259,6 @@
     !Assume matter_power_lnzsteps is at redshift zero
     end function
 
-
-
-    !BR09 this function is just a copy of the one above but with LRG theory put in instead of linear theory
-    function LRGPowerAt(T,kh)
-    !get LRG matter power spectrum today at kh = k/h by interpolation from stored values
-    real(mcp), intent(in) :: kh
-    Type(TheoryPredictions) T
-    real(mcp) LRGPowerAt
-    real(mcp) x, d
-    integer i
-
-    x = log(kh/matter_power_minkh) / matter_power_dlnkh
-    if (x < 0 .or. x >= num_matter_power-1) then
-        write (*,*) ' k/h out of bounds in MatterPowerAt (',kh,')'
-        call MpiStop('') 
-    end if
-    i = int(x)
-    d = x - i
-    LRGPowerAt = exp(log(T%finalLRGtheoryPk(i+1))*(1-d) + log(T%finalLRGtheoryPk(i+2))*d)
-    !Just do linear interpolation in logs for now..
-    !(since we already cublic-spline interpolated to get the stored values)
-    end function
-    !!BRO09 addition end
 
     function MatterPowerAt_Z(T,kh,z)
     !get matter power spectrum at z at kh = k/h by interpolation from stored values

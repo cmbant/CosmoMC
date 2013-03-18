@@ -59,7 +59,6 @@
 		<File RelativePath="..\source\cmbdata.F90"/>
 		<File RelativePath="..\source\HST.f90"/>
 		<File RelativePath="..\source\lrggettheory.f90"/>
-		<File RelativePath="..\source\mpk.f90"/>
 		<File RelativePath="..\source\Planck_like.f90"/>
 		<File RelativePath="..\source\supernovae.f90"/>
 		<File RelativePath="..\source\supernovae_SNLS.f90"/>

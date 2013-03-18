@@ -1,11 +1,13 @@
+
+#Intel MPI
+#these settings for ifort 13 and higher
+#Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
+F90C     = mpif90
+FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
+LAPACKL = -lmpi
+
+
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
-
-#You may need to edit the library paths for MKL for Intel
-
-##Uncomment the next line to include dr7 LRG
-EXTDATA =
-#EXTDATA = LRG
-
 RECOMBINATION ?=recfast
 
 #use PRECISION=SINGLE to use single precision
@@ -14,13 +16,10 @@ PRECISION ?=
 #set WMAP empty not to compile with WMAP, e.g. WMAP = /scratch/../WMAP9/likelihood_v5
 WMAP ?=
 
-#Only needed for WMAP
-cfitsio ?= /usr/local/cfitsio/intel10/64/3.040
+#Needed for WMAP; set from ~/.bashrc definition or edit here
+cfitsio ?= 
 
-#GSL only needed for DR7 LRG
-GSLPATH ?= /home/aml1005/libs/gsl
-
-#empty not to compile with CLIK, otherwise set to name of cliklike.f90 file
+#empty not to compile with CLIK, set from ~/.bashrc
 PLANCKLIKE ?=
 
 NONCLIKLIKE ?=
@@ -35,28 +34,9 @@ INCLUDE =
 
 #clik path and library
 ifeq ($(PLANCKLIKE),cliklike)
-CLIKPATH ?= /path/to/clik
 CLIKL = -L$(CLIKPATH)/lib -lclik_f90
 INCLUDE = $(IFLAG)$(CLIKPATH)/include
 endif
-
-
-
-#Intel MPI (assuming mpif77 set to point to ifort)
-#these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
-#Can add -xHost if your cluster is uniform, or specify specific processor optimizations -x...
-#If getdist gives segfaults remove openmp when compiling getdist
-F90C     = mpif90
-FFLAGS = -O3 -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
-LAPACKL = -lmpi
-
-#GFortran: defaults for v4.5; if pre v4.3 add -D__GFORTRAN__
-#F90C     = gfortran
-#in earlier versions use FFLAGS = -O2 -ffree-form -x f95-cpp-input -D__GFORTRAN__
-#FFLAGS =  -O3 -fopenmp -ffree-form -x f95-cpp-input -ffast-math -march=native -funroll-loops
-#LAPACKL = -Wl,-framework -Wl,accelerate
-#commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
-#LAPACKL = -lblas -llapack
 
 
 #COSMOS: use "module load cosmolib latest"
@@ -77,34 +57,6 @@ FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
 #FFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -DMPI -fpe0
 endif
 
-
-#G95; make sure LAPACK and MPI libs also compiled with g95
-#F90C     = mpif90
-#FFLAGS = -O2 -cpp -DMPI
-#LAPACKL = /LAPACK/lapack_LINUX.a /LAPACK/blas_LINUX.a
-
-#Absoft ProFortran, single processor, set -cpu:[type] for your local system
-#F90C     = f95
-#FFLAGS = -O2 -s -cpu:athlon -lU77 -w -YEXT_NAMES="LCS" -YEXT_SFX="_"
-#LAPACKL =  -llapack -lblas -lg2c
-#IFLAG = -p
-
-#NAGF95, single processor:
-#F90C     = f95
-#FFLAGS = -DNAGF95 -O3
-#LAPACKL = -llapack -lblas -lg2c
-
-#PGF90
-#F90C = pgf90
-#FFLAGS = -O2 -DESCAPEBACKSLASH -Mpreprocess
-#LAPACKL = -llapack -lblas
-
-#IBM XL Fortran, multi-processor (run "module load lapack" then run "gmake")
-# See also http://cosmocoffee.info/viewtopic.php?t=326
-#F90C     = xlf90_r $(LAPACK)
-#FFLAGS  = -WF,-DIBMXL -qsmp=omp -qsuffix=f=f90:cpp=F90 -O3 -qstrict -qarch=pwr3 -qtune=pwr3
-#INCLUDE = -lessl
-#LAPACKL =
 
 #would like to embed this somehow..
 #GIT_HASHTAG = "git log --pretty=format:'%H:%cd' -n 1"
@@ -157,7 +109,7 @@ endif
 
 SUPERNOVAE = supernovae_Union2.o supernovae_SNLS.o
 
-DATAMODULES = $(PLANCKLIKEFILES) lrggettheory.o mpk.o bao.o $(SUPERNOVAE) supernovae.o HST.o SDSSLy-a-v3.o
+DATAMODULES = $(PLANCKLIKEFILES) lrggettheory.o bao.o $(SUPERNOVAE) supernovae.o HST.o SDSSLy-a-v3.o
 
 LIKEFILES =  DataLikelihoods.o calclike.o
 
@@ -207,7 +159,6 @@ cmbtypes.o: settings.o likelihood.o GeneralTypes.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o
 bbn.o: settings.o likelihood.o
-mpk.o: cmbtypes.o lrggettheory.o
 bao.o: cmbtypes.o mpk.o
 HST.o: cmbtypes.o
 supernovae.o: cmbtypes.o
@@ -225,7 +176,6 @@ minimize.o: PowellConstrainedMinimize.o calclike.o
 ifneq ($(highL),)
 cliklike_CamSpec.o: $(highL)/libhigh.a
 endif
-
 
 
 ifneq ($(WMAP),)
