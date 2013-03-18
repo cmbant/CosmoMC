@@ -114,23 +114,20 @@ class chains():
         lasttry = -1
         while True:
             if upper:
-                    trial = self.get_norm(paramVec > (try_b + try_t) / 2)
-                    if trial > self.norm * limfrac:
-                        try_b = (try_b + try_t) / 2
-                    else:
-                        try_t = (try_b + try_t) / 2
-                    if trial == lasttry and (abs(try_b + try_t) < 1e-10
-                                or abs((try_b - try_t) / (try_b + try_t)) < 0.05): break
-                    lasttry = trial
-            else:
                 trial = self.get_norm(paramVec > (try_b + try_t) / 2)
+                if trial > self.norm * limfrac:
+                    try_b = (try_b + try_t) / 2
+                else:
+                    try_t = (try_b + try_t) / 2
+            else:
+                trial = self.get_norm(paramVec < (try_b + try_t) / 2)
                 if (trial > self.norm * limfrac):
                     try_t = (try_b + try_t) / 2
                 else:
                     try_b = (try_b + try_t) / 2
-                if trial == lasttry and (abs(try_b + try_t) < 1e-10 or
-                          abs((try_b - try_t) / (try_b + try_t)) < 0.05): break
-                lasttry = trial
+            if trial == lasttry and (abs(try_b + try_t) < 1e-10 or
+                      abs((try_b - try_t) / (try_b + try_t)) < 0.05): break
+            lasttry = trial
 
         return try_t
 
