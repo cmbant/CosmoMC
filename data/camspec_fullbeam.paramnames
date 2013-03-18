@@ -13,3 +13,22 @@ cal2          c_{217}       # relative calibration factor 217/143 (as for 100)
 xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
 aksz          A^{kSZ}
 bm_1_1        \beta^1_1 
+bm_1_2        \beta^1_2
+bm_1_3        \beta^1_3
+bm_1_4        \beta^1_4
+bm_1_5        \beta^1_5
+bm_2_1        \beta^2_1
+bm_2_2        \beta^2_2
+bm_2_3        \beta^2_3
+bm_2_4        \beta^2_4
+bm_2_5        \beta^2_5
+bm_3_1        \beta^3_1
+bm_3_2        \beta^3_2
+bm_3_3        \beta^3_3
+bm_3_4        \beta^3_4
+bm_3_5        \beta^3_5
+bm_4_1        \beta^4_1
+bm_4_2        \beta^4_2
+bm_4_3        \beta^4_3
+bm_4_4        \beta^4_4
+bm_4_5        \beta^4_5

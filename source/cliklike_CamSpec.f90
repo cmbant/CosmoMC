@@ -50,7 +50,7 @@
         Like%name='CamSpec'
         Like%version = CAMSpec_like_version
         Like%speed = 5
-        call Like%loadParamNames(trim(DataDir)//'camspec.paramnames')
+        call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
 
         likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
         sz143filename=ReadIniFileName(Ini,'sz143file',NotFoundFail = .true.)
