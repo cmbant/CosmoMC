@@ -2,6 +2,9 @@
 
 
 # ini files you want to base each set of runs on
+
+ini_dir = 'batch1/'
+
 defaults = ['common_batch1.ini']
 
 importanceDefaults = ['importance_sampling.ini']

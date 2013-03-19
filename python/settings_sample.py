@@ -36,6 +36,7 @@ groups = [g]
 # try to match run to exisitng covmat
 covrenames = [['_my_new_data', '']]
 
+ini_dir = 'batch1/'
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
 

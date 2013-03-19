@@ -3,7 +3,7 @@ import os, sys, batchJob, iniFile
 
 if len(sys.argv) < 2:
     print 'Usage: python/makeGrid.py new_directory_for_outputs grid_settings_python_file'
-    print 'e.g. python/makeGrid.py /scratch/aml1005/planckgrids/testchain settings_testchain'
+    print 'e.g. python/makeGrid.py /scratch/../testgrid settings_testgrid'
     sys.exit()
 
 
@@ -12,9 +12,9 @@ batchPath = os.path.abspath(sys.argv[1]) + os.sep
 # 0: chains, 1: importance sampling, 2: best-fit, 3: best-fit and Hessian
 cosmomcAction = 0
 
-batch = batchJob.batchJob(batchPath)
-
 settings = __import__(sys.argv[2])
+
+batch = batchJob.batchJob(batchPath, settings.ini_dir)
 
 # priors and widths for parameters which are varied
 if not hasattr(settings, 'params'):

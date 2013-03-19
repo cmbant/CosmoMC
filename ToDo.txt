@@ -1,8 +1,0 @@
-lensing
-
-BAO DR7 vs LRG7 joint exclusion
-
-lya
-mpk
-
-kmax, lmax (e.g. lya)

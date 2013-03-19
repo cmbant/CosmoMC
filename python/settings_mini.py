@@ -61,6 +61,8 @@ groups = [g]
 # try to match run to exisitng covmat
 covrenames = [['plik', 'planck'], ['_lmax2000', ''], ['_no217auto', ''], ['_lmin1200', ''], ['_v61N', '']]
 
+ini_dir = 'batch1/'
+
 # ini files you want to base each set of runs on
 defaults = ['common_batch1.ini']
 

@@ -1,5 +1,6 @@
 # sample settings for a particular grid run
 
+ini_dir = 'batch1/'
 
 params = dict()
 params['mnu'] = '0.7 0 5 0.1 0.03'

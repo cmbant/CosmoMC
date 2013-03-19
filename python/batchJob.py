@@ -173,11 +173,11 @@ class jobItem:
 
 class batchJob:
 
-    def __init__(self, path):
+    def __init__(self, path, iniDir):
         self.batchPath = path
         self.skip = []
         self.basePath = os.path.dirname(sys.path[0]) + os.sep
-        self.commonPath = self.basePath + 'batch1/'
+        self.commonPath = self.basePath + iniDir
         self.subBatches = []
         self.jobItems = None
 
