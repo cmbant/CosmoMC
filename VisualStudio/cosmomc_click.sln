@@ -16,6 +16,9 @@ Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "MatrixDouble", "..\..\..\..
 	EndProjectSection
 EndProject
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "CAMBLib_ppf", "..\camb\VisualStudio\CAMBLib_ppf.vfproj", "{6AA74278-8D4F-4F1B-81D2-F6988B6E578B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95} = {C7D790F6-3574-43A1-A5E1-1E6FC5478F95}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

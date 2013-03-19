@@ -10,10 +10,10 @@
     use CalcLike
     use EstCovmatModule
     use minimize
-    use mpk
     use MatrixUtils
     use IO
     use ParamNames
+    use camb
     use GaugeInterface, only : Eqns_name
     use DefineParameterization
 
