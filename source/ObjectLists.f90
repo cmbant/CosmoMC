@@ -28,7 +28,7 @@
     Type TObjectList
         integer :: Count =0
         integer :: Delta = 32
-        integer :: DeltaScale = 10 
+        integer :: DeltaScale = 10
         !expanding expanding Items, expand array by Delta + Count/DeltaScale
         integer :: Capacity = 0
         logical :: OwnsObjects = .true.
@@ -135,7 +135,7 @@
 
     end subroutine AssignPointers
 
-    integer function DeltaSize(L) 
+    integer function DeltaSize(L)
     Class(TObjectList) :: L
 
     DeltaSize= L%Delta + L%Count/L%DeltaScale
@@ -156,7 +156,7 @@
         deallocate(TmpItems)
     else
         allocate(L%Items(C))
-    end if  
+    end if
     L%Capacity = C
     end subroutine SetCapacity
 
@@ -263,19 +263,19 @@
             select type (Point=> P)
             Type is (real)
                 k=1
-                write(fid) size(P),k 
+                write(fid) size(P),k
                 write(fid) Point
             Type is (double precision)
                 k=2
-                write(fid) size(P),k 
+                write(fid) size(P),k
                 write(fid) Point
             Type is (integer)
                 k=3
-                write(fid) size(P),k 
+                write(fid) size(P),k
                 write(fid) Point
             Type is (logical)
                 k=4
-                write(fid) size(P),k 
+                write(fid) size(P),k
                 write(fid) Point
                 class default
                 stop 'TObjectList: Unknown type to save'
@@ -485,7 +485,7 @@
 
     integer function CompareReal(this, R1, R2) result(comp)
     Class(TObjectList) :: this
-    class(*) R1,R2 
+    class(*) R1,R2
     real(list_prec) R
 
     select type (RR1 => R1)
@@ -497,13 +497,13 @@
                 comp =-1
             elseif (R>0) then
                 comp = 1
-            else 
+            else
                 comp = 0
             end if
             return
         end select
         class default
-        stop 'TObjectList: Compare not defined for this type' 
+        stop 'TObjectList: Compare not defined for this type'
     end select
 
     end function CompareReal

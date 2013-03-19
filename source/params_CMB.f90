@@ -216,7 +216,7 @@
         CMB%w = Params(8)
         CMB%wa = Params(9)
         CMB%nnu = Params(10) !3.046
-        !Params(6) is now mnu, where mnu is physical standard neutrino mass and we assume standard heating 
+        !Params(6) is now mnu, where mnu is physical standard neutrino mass and we assume standard heating
         CMB%omnuh2=Params(6)/neutrino_mass_fac*(3.046_mcp/3)**0.75_mcp
         !Params(7) is mass_sterile*Neff_sterile
         CMB%omnuh2_sterile = Params(7)/neutrino_mass_fac

@@ -10,7 +10,7 @@ module MatrixUtils
  implicit none
 
  logical, parameter :: Matrix_runmsgs = .false.
-#ifdef MATRIX_SINGLE 
+#ifdef MATRIX_SINGLE
  integer, parameter :: dm = KIND(1.0)
 #else
  integer, parameter :: dm = KIND(1.d0)
@@ -36,11 +36,11 @@ contains
  function GetMatrixTime()
       real GetMatrixTime
       real atime
-       
+
       call cpu_time(atime)
 
-      GetMatrixTime = atime  
-       
+      GetMatrixTime = atime
+
 
  end function GetMatrixTime
 
@@ -66,7 +66,7 @@ contains
   integer, intent(in) :: n
   real(dm) :: vec(n)
   character(LEN=50) fmt
-  
+
    fmt = trim(numcat('(',n))//'E17.7)'
    write (aunit, fmt) vec(1:n)
 
@@ -74,7 +74,7 @@ contains
 
  subroutine Matrix_Write(aname, mat, forcetable, commentline)
    character(LEN=*), intent(in) :: aname
-   character(LEN=*), intent(in), optional :: commentline   
+   character(LEN=*), intent(in), optional :: commentline
    real(dm), intent(in) :: mat(:,:)
    logical, intent(in), optional :: forcetable
    integer i,k
@@ -145,7 +145,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    character(LEN=*), intent(in) :: aname
    real(dm), intent(in) :: mat(:,:)
    integer file_unit
-     
+
    file_unit = new_file_unit()
    call CreateFile(aname, file_unit,'unformatted')
    write (file_unit) mat
@@ -160,16 +160,16 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    integer i
    integer shp(2)
    integer file_unit
-   
+
    shp = shape(mat)
    if (shp(1) /= shp(2)) call MpiStop('MatrixSym_Write_Binary: Not square matrix')
    if (shp(1) == 0) return
-   
+
    file_unit = new_file_unit()
    call CreateFile(aname, file_unit,'unformatted')
-   do i=1,shp(1) 
+   do i=1,shp(1)
     write (file_unit) mat(i:shp(2),i)
-   end do 
+   end do
    call CloseFile(file_unit)
 
  end subroutine MatrixSym_Write_Binary
@@ -177,18 +177,18 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
  subroutine MatrixSym_Write_Binary_Single(aname, mat)
    character(LEN=*), intent(in) :: aname
    real(dm), intent(in) :: mat(:,:)
-   integer i,    file_unit 
+   integer i,    file_unit
    integer shp(2)
-  
+
    shp = shape(mat)
    if (shp(1) /= shp(2)) call MpiStop('MatrixSym_Write_Binary_Single: Not square matrix')
    if (shp(1) == 0) return
-   
+
    file_unit = new_file_unit()
    call CreateFile(aname, file_unit,'unformatted')
-   do i=1,shp(1) 
+   do i=1,shp(1)
     write (file_unit) real(mat(i:shp(2),i), kind(1.0))
-   end do 
+   end do
    call CloseFile(file_unit)
 
  end subroutine MatrixSym_Write_Binary_Single
@@ -198,8 +198,8 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
  subroutine Matrix_WriteVec(aname, vec)
    character(LEN=*), intent(in) :: aname
    real(dm), intent(in) :: vec(:)
-   integer i,   file_unit 
- 
+   integer i,   file_unit
+
    file_unit = new_file_unit()
    call CreateTxtFile(aname, file_unit)
    do i=1, size(vec)
@@ -214,7 +214,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    character(LEN=*), intent(in) :: aname
    real(dm), intent(out) :: mat(:,:)
    integer  file_unit
-     
+
    file_unit = new_file_unit()
    call OpenFile(aname, file_unit,'unformatted')
    read (file_unit) mat
@@ -232,7 +232,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    shp = shape(mat)
    if (shp(1) /= shp(2)) call MpiStop( 'MatrixSym_Read_Binary: Not square matrix')
    if (shp(1) == 0) return
- 
+
    file_unit = new_file_unit()
    call OpenFile(aname, file_unit,'unformatted')
    do i=1,shp(1)
@@ -252,7 +252,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    shp = shape(mat)
    if (shp(1) /= shp(2)) call MpiStop( 'MatrixSym_Read_Binary: Not square matrix')
    if (shp(1) == 0) return
- 
+
    file_unit = new_file_unit()
    call OpenFile(aname, file_unit,'unformatted')
    do i=1,shp(1)
@@ -275,7 +275,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    real(dm) tmp
 
    shp = shape(mat)
- 
+
    file_unit = new_file_unit()
    call OpenTxtFile(aname, file_unit)
 
@@ -285,7 +285,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    goto 120
 
 100 rewind(file_unit)  !Try other possible format
-   do j=1,shp(1) 
+   do j=1,shp(1)
     do k=1,shp(2)
       read (file_unit,*, end = 200) mat(j,k)
     end do
@@ -298,14 +298,14 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
     return
 
  200 call MpiStop('Matrix_Read: file '//trim(aname)//' is the wrong size')
-     
+
 
  end subroutine Matrix_Read
 
   subroutine Matrix_ReadSingle(aname, mat)
    character(LEN=*), intent(IN) :: aname
    real, intent(out) :: mat(:,:)
-   integer j,k,    file_unit 
+   integer j,k,    file_unit
    integer shp(2)
    real tmp
 
@@ -320,7 +320,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    goto 120
 
 100 rewind(file_unit)  !Try other possible format
-   do j=1,shp(1) 
+   do j=1,shp(1)
     do k=1,shp(2)
       read (file_unit,*, end = 200) mat(j,k)
     end do
@@ -333,7 +333,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
     return
 
  200 call MpiStop('Matrix_Read:Single file '//trim(aname)//' is the wrong size')
-     
+
 
  end subroutine Matrix_ReadSingle
 
@@ -345,7 +345,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
     integer i
 
     do i=1,n
-    
+
      Matrix_Diag(i) = M(i,i)
 
     end do
@@ -362,10 +362,10 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
   !that is a guess at the blocksize
 #ifdef MATRIX_SINGLE
     ILAENV_wrap = 16
-#else 
+#else
     ILAENV_wrap =  ILAENV(i,S1,S2,a,b,c,d)
 #endif
-!!!IFC 
+!!!IFC
   end  function ILAENV_wrap
 
 
@@ -376,9 +376,9 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       real(dm), intent(out) :: diag(n)
       integer ierr, tmpsize
       real(dm), allocatable, dimension(:) :: tmp
- 
-      call Matrix_Start('Diagonalize')      
-#ifdef MATRIX_SINGLE 
+
+      call Matrix_Start('Diagonalize')
+#ifdef MATRIX_SINGLE
       tmpsize =  max( (ILAENV_wrap(1,'SSYTRD','U',n,n,n,n)+2)*N,max(1,3*n-1))  !3*n**2
       allocate(tmp(tmpsize));
       call SSYEV('V','U',n,m,n,diag,tmp,tmpsize,ierr) !evalues and vectors of symmetric matrix
@@ -401,16 +401,16 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       integer ierr, tmpsize ,isize
       real(dm), allocatable, dimension(:) :: tmp
       integer, allocatable,dimension(:):: iwork
-      
+
       call Matrix_Start('Diagonalize')
 
       if (matrix_method == Mat_DC) then
         !Divide and conquer
-          tmpsize = 1 + 6*N + 2*N**2 
+          tmpsize = 1 + 6*N + 2*N**2
           isize = 3+5*N
           allocate(tmp(tmpsize))
           allocate(iwork(isize))
-#ifdef MATRIX_SINGLE 
+#ifdef MATRIX_SINGLE
           call SSYEVD('V','U',n,M,n,diag,tmp,tmpsize,iwork,isize,ierr) !evalues and vectors of hermitian matrix
 #else
           call DSYEVD('V','U',n,M,n,diag,tmp,tmpsize,iwork,isize,ierr) !evalues and vectors of hermitian matrix
@@ -420,11 +420,11 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       else
         call Matrix_Diagonalize(M, diag, n)
       end if
-    
+
       if (ierr /= 0) call MpiStop('Error in Matrix_Diagonalize')
-      
+
    call Matrix_End('Diagonalize')
-  
+
   end subroutine Matrix_Diagonalize_DC
 
 
@@ -439,7 +439,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 
       real(dm) :: diag(n)
       integer i
-      
+
       call Matrix_Diagonalize(M, diag, n)
       Tmp = M
       diag = diag**pow
@@ -474,17 +474,17 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 !Query
       WorkSize = -1
       LIWork = -1
-#ifdef MATRIX_SINGLE 
+#ifdef MATRIX_SINGLE
       call SSYEVR('V','V','U',n,M,Size(M,DIM=1),emin,emax,0,0,atol,nfound,diag,tmp,Size(TMP,DIM=1),&
                Supp,WSize,WorkSize,ISize,LIWork,ierr  )
-#else     
+#else
       call DSYEVR('V','V','U',n,M,Size(M,DIM=1),emin,emax,0,0,atol,nfound,diag,tmp,Size(TMP,DIM=1),&
                Supp,WSize,WorkSize,ISize,LIWork,ierr  )
 #endif
       WorkSize = Real(WSize(1))
       LIWork = ISize(1)
       allocate(Work(WorkSize),IWork(LIWork))
-#ifdef MATRIX_SINGLE 
+#ifdef MATRIX_SINGLE
       call SSYEVR('V','V','U',n,M,Size(M,DIM=1),emin,emax,0,0,atol,nfound,diag,tmp,Size(TMP,DIM=1),&
                Supp,Work,WorkSize,IWork,LIWork,ierr )
 #else
@@ -492,7 +492,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
                Supp,Work,WorkSize,IWork,LIWork,ierr )
 #endif
       deallocate(Supp,Work,IWork)
-      if (ierr /= 0) call MpiStop('Matrix_Diagonalize_Partial: Error') 
+      if (ierr /= 0) call MpiStop('Matrix_Diagonalize_Partial: Error')
       M(1:n,1:nfound) = tmp(1:n,1:nfound)  !nfound now different
       deallocate(tmp)
       call Matrix_End('Matrix_Diagonalize_Partial')
@@ -525,10 +525,10 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       WorkSize = -1
       LRWork = -1
       LIWork = -1
-#ifdef MATRIX_SINGLE 
+#ifdef MATRIX_SINGLE
       call CHEEVR('V','V','U',n,M,Size(M,DIM=1),emin,emax,0,0,atol,nfound,diag,tmp,Size(TMP,DIM=1),&
                Supp,WSize,WorkSize,RSize,LRWork,ISize,LIWork,ierr  )
-#else     
+#else
       call ZHEEVR('V','V','U',n,M,Size(M,DIM=1),emin,emax,0,0,atol,nfound,diag,tmp,Size(TMP,DIM=1),&
                Supp,WSize,WorkSize,RSize,LRWork,ISize,LIWork,ierr  )
 #endif
@@ -536,7 +536,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       LRWork = RSize(1)
       LIWork = ISize(1)
       allocate(Work(WorkSize),RWork(LRWork),IWork(LIWork))
-#ifdef MATRIX_SINGLE 
+#ifdef MATRIX_SINGLE
       call CHEEVR('V','V','U',n,M,Size(M,DIM=1),emin,emax,0,0,atol,nfound,diag,tmp,Size(TMP,DIM=1),&
                Supp,Work,WorkSize,RWork,LRWork,IWork,LIWork,ierr )
 #else
@@ -544,7 +544,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
                Supp,Work,WorkSize,RWork,LRWork,IWork,LIWork,ierr )
 #endif
       deallocate(Supp,Work,RWork,IWork)
-      if (ierr /= 0) call MpiStop('Matrix_CDiagonalize_Partial: Error') 
+      if (ierr /= 0) call MpiStop('Matrix_CDiagonalize_Partial: Error')
       M(1:n,1:nfound) = tmp(1:n,1:nfound)  !nfound now different
       deallocate(tmp)
       call Matrix_End('Matrix_CDiagonalize_Partial')
@@ -562,27 +562,27 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       real(dm), allocatable, dimension(:) :: Rwork
       complex(dm), allocatable, dimension(:) :: tmp
       integer, allocatable,dimension(:):: iwork
-      
+
       call Matrix_Start('CDiagonalize')
 
       if (matrix_method == Mat_DC) then
         !Divide and conquer
-          tmpsize = 2*N + N**2 
+          tmpsize = 2*N + N**2
           rworksize =  1 + 4*N + 2*N*int(log(real(N))/log(2.)+1) + 3*N**2
           isize =  (2 + 5*N)*4
           allocate(tmp(tmpsize),rwork(rworksize))
           allocate(iwork(isize))
-#ifdef MATRIX_SINGLE 
+#ifdef MATRIX_SINGLE
           call CHEEVD('V','U',n,M,n,diag,tmp,tmpsize,Rwork,rworksize,iwork,isize,ierr) !evalues and vectors of hermitian matrix
 #else
           call ZHEEVD('V','U',n,M,n,diag,tmp,tmpsize,Rwork,rworksize,iwork,isize,ierr) !evalues and vectors of hermitian matrix
 #endif
           deallocate(iwork)
-      
+
       else
-      
+
           rworksize =  max(1, 3*n-2)
-#ifdef MATRIX_SINGLE 
+#ifdef MATRIX_SINGLE
           tmpsize = max( (ILAENV_wrap(1,'CHETRD','U',n,n,n,n)+1)*N,max(1,2*n-1)) !   3*n**2
           allocate(tmp(tmpsize),rwork(rworksize));
           call CHEEV('V','U',n,m,n,diag,tmp,tmpsize,Rwork,ierr) !evalues and vectors of hermitian matrix
@@ -592,12 +592,12 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
           call ZHEEV('V','U',n,m,n,diag,tmp,tmpsize,Rwork,ierr) !evalues and vectors of hermitian matrix
 #endif
       end if
-    
+
       if (ierr /= 0) call MpiStop('Error in Matrix_CDiagonalize')
       deallocate(tmp,rwork)
-      
+
    call Matrix_End('CDiagonalize')
-  
+
   end subroutine Matrix_CDiagonalize
 
   function Matrix_CTrace(M)
@@ -608,12 +608,12 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
     if (size(M,dim=1) /= size(M,dim=2)) call MpiStop('Matrix_CTrace: non-square matrix')
     tmp =0
     do i=1,size(M,dim=1)
-     tmp = tmp + M(i,i)  
+     tmp = tmp + M(i,i)
     end do
     Matrix_CTrace = tmp
 
   end function Matrix_CTrace
-  
+
   function Matrix_Trace(M)
     real(dm), intent(in) :: M(:,:)
     real(dm) tmp,Matrix_Trace
@@ -622,7 +622,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
     if (size(M,dim=1) /= size(M,dim=2)) call mpiStop('Matrix_Trace: non-square matrix')
     tmp =0
     do i=1,size(M,dim=1)
-     tmp = tmp + M(i,i)  
+     tmp = tmp + M(i,i)
     end do
     Matrix_Trace = tmp
 
@@ -634,7 +634,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
   real(dm) logDet
   real(dm) Tmp(size(mat,dim=1),size(mat,dim=1))
   integer i
-  
+
   if (size(mat,dim=1) /= size(mat,dim=2)) call mpiStop('MatrixSym_LogDet: non-square matrix')
   Tmp = mat
   call Matrix_Cholesky(tmp)
@@ -643,28 +643,28 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    logDet = logDet  + log(tmp(i,i))
   end do
   logDet = 2._dm*logDet
-  
+
  end function MatrixSym_LogDet
 
-  
+
    subroutine Matrix_CRotateSymm(Mat,U,m,Out,triangular)
     !Gets U^dag Mat U
      integer, intent(in) ::m
      complex(dm), intent(in) :: Mat(:,:),U(:,:)
-     complex(dm) Out(:,:) 
+     complex(dm) Out(:,:)
      complex(dm), dimension(:,:), allocatable :: C
      integer n
      logical, intent(in), optional :: triangular
      logical :: triang
 
       call Matrix_Start('CRotateSymm')
-      
+
       if (present(triangular)) then
        triang=triangular
       else
        triang=.false.
       end if
-      
+
      n = Size(Mat,DIM=1)
      if (n /= Size(Mat,DIM=2)) call mpiStop('Matrix_CRotateSymm: Need square matrix')
      if (n /= Size(U,DIM=1)) call MpiStop('Matrix_CRotateSymm: Matrix size mismatch')
@@ -674,12 +674,12 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       if (matrix_method == Mat_F90) then
           Out = matmul(matmul(transpose(conjg(U(1:n,1:m))),Mat),U(1:n,1:m))
       else
-#ifdef MATRIX_SINGLE   
+#ifdef MATRIX_SINGLE
           if (triang) then
             if (m/=n) call MpiStop('Matrix_CRotateSymm: Matrices must be same size')
             call CHEMM('L','U',n,n,COne,Mat,Size(Mat,DIM=1),U,Size(U,DIM=1),CZero,Out,Size(Out,Dim=1))
             call CTRMM('Left','Upper','Complex-Transpose','Not-unit',n,n,COne,U,Size(U,DIM=1),Out,Size(Out,Dim=1))
-          else       
+          else
            allocate(C(n,m))
            call CHEMM('L','U',n,m,COne,Mat,Size(Mat,DIM=1),U,Size(U,DIM=1),CZero,C,n)
            call CGEMM('C','N',m,m,n,COne,U,Size(U,DIM=1),C,n,CZero,Out,Size(Out,Dim=1))
@@ -690,7 +690,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
             if (m/=n) call MpiStop('Matrix_CRotateSymm: Matrices must be same size')
             call ZHEMM('L','U',n,n,COne,Mat,Size(Mat,DIM=1),U,Size(U,DIM=1),CZero,Out,Size(Out,Dim=1))
             call ZTRMM('Left','Upper','Complex-Transpose','Not-unit',n,n,COne,U,Size(U,DIM=1),Out,Size(Out,Dim=1))
-          else 
+          else
            allocate(C(n,m))
            call ZHEMM('L','U',n,m,COne,Mat,Size(Mat,DIM=1),U,Size(U,DIM=1),CZero,C,n)
            call ZGEMM('C','N',m,m,n,COne,U,Size(U,DIM=1),C,n,CZero,Out,Size(Out,Dim=1))
@@ -700,7 +700,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       end if
    call Matrix_End('CRotateSymm')
 
-            
+
    end subroutine Matrix_CRotateSymm
 
    subroutine Matrix_RotateSymm(Mat,U,m,Out, triangular)
@@ -708,14 +708,14 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
     !If triangular U = Upper triangular (U^T lower triangular)
      integer, intent(in) ::m
      real(dm), intent(in) :: Mat(:,:),U(:,:)
-     real(dm) Out(:,:) 
+     real(dm) Out(:,:)
      real(dm), dimension(:,:), allocatable :: C
      logical, intent(in), optional :: triangular
      logical triang
      integer n
 
       call Matrix_Start('RotateSymm')
-      
+
       if (present(triangular)) then
        triang=triangular
       else
@@ -731,7 +731,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       if (matrix_method == Mat_F90) then
           Out = matmul(matmul(transpose(U(1:n,1:m)),Mat),U(1:n,1:m))
       else
-#ifdef MATRIX_SINGLE             
+#ifdef MATRIX_SINGLE
           if (triang) then
             if (m/=n) call MpiStop('Matrix_RotateSymm: Matrices must be same size')
             call SSYMM('L','U',n,n,ROne,Mat,Size(Mat,DIM=1),U,Size(U,DIM=1),RZero,Out,Size(Out,Dim=1))
@@ -757,7 +757,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       end if
    call Matrix_End('RotateSymm')
 
-            
+
    end subroutine Matrix_RotateSymm
 
 
@@ -766,12 +766,12 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
     !Where Mat = -Mat^T
      integer, intent(in) ::m
      real(dm), intent(in) :: Mat(:,:),U(:,:)
-     real(dm) Out(:,:) 
+     real(dm) Out(:,:)
      real(dm), dimension(:,:), allocatable :: C
      integer i,j,n
 
      call Matrix_Start('RotateAntiSymm')
-      
+
      n = Size(Mat,DIM=1)
      if (n /= Size(Mat,DIM=2)) call MpiStop('Matrix_RotateAntiSymm: Need square matrix')
      if (n /= Size(U,DIM=1)) call MpiStop('Matrix_RotateAntiSymm: Matrix size mismatch')
@@ -783,7 +783,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       else
            allocate(C(n,m))
            C = U(1:n,1:m)
-#ifdef MATRIX_SINGLE             
+#ifdef MATRIX_SINGLE
            call STRMM('Left','Lower','Not-Transpose','Not-unit',n,m,ROne,Mat,Size(Mat,DIM=1),C,Size(C,Dim=1))
            call SGEMM('T','N',m,m,n,ROne,U,Size(U,DIM=1),C,n,RZero,Out,Size(Out,Dim=1))
 #else
@@ -792,23 +792,23 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 #endif
            deallocate(C)
       end if
-           
+
     do i=1, m
      do j=1,i
       Out(j,i) = Out(j,i) - Out(i,j)
       out(i,j) = -Out(j,i)
      end do
-    end do  
-           
+    end do
+
    call Matrix_End('RotateAntiSymm')
-            
+
    end subroutine Matrix_RotateAntiSymm
 
   subroutine Matrix_CMult_SymmRight(Mat,U,Out,a,b)
    complex(dm), intent(in) :: Mat(:,:),U(:,:)
-   complex(dm) Out(:,:) 
+   complex(dm) Out(:,:)
    complex(dm), intent(in), optional :: a,b
-   complex(dm)  mult, beta 
+   complex(dm)  mult, beta
    integer n,m
 
     call Matrix_Start('CMult_SymmRight')
@@ -823,7 +823,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = COne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = CZero
      end if
@@ -833,11 +833,11 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       else
        out = MatMul(Mat,U)
        if (mult /= COne) Out = Out*mult
-      end if     
-     else 
-#ifdef MATRIX_SINGLE 
+      end if
+     else
+#ifdef MATRIX_SINGLE
       call CHEMM('R','U',m,n,mult,U,Size(U,DIM=1),Mat,Size(Mat,DIM=1),beta,Out,Size(Out,DIM=1))
-#else     
+#else
       call ZHEMM('R','U',m,n,mult,U,Size(U,DIM=1),Mat,Size(Mat,DIM=1),beta,Out,Size(Out,DIM=1))
 #endif
      end if
@@ -846,12 +846,12 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 
   end subroutine Matrix_CMult_SymmRight
 
- 
+
   subroutine Matrix_CMult_SymmLeft(Mat,U,Out,a,b)
    complex(dm), intent(in) :: Mat(:,:),U(:,:)
-   complex(dm) Out(:,:) 
+   complex(dm) Out(:,:)
    complex(dm), intent(in), optional :: a,b
-   complex(dm)  mult, beta 
+   complex(dm)  mult, beta
    integer n,m
 
     call Matrix_Start('CMult_SymmLeft')
@@ -866,7 +866,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = COne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = CZero
      end if
@@ -876,11 +876,11 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       else
        out = MatMul(Mat,U)
        if (mult /= COne) Out = Out*mult
-      end if     
-     else 
+      end if
+     else
 #ifdef MATRIX_SINGLE
       call CHEMM('L','U',m,n,mult,Mat,Size(Mat,DIM=1),U,Size(U,DIM=1),beta,Out,Size(Out,DIM=1))
-#else     
+#else
       call ZHEMM('L','U',m,n,mult,Mat,Size(Mat,DIM=1),U,Size(U,DIM=1),beta,Out,Size(Out,DIM=1))
 #endif
      end if
@@ -893,9 +893,9 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
   subroutine Matrix_CMult(Mat,U,Out,a,b)
    ! Out = a*Mat U + b*out
    complex(dm), intent(in) :: Mat(:,:),U(:,:)
-   complex(dm) Out(:,:) 
+   complex(dm) Out(:,:)
    complex(dm), intent(in), optional :: a,b
-   complex(dm)  mult, beta 
+   complex(dm)  mult, beta
    integer m,n,k
 
      call Matrix_Start('CMult')
@@ -910,18 +910,18 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = COne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = CZero
      end if
-  
+
      if (matrix_method == Mat_F90) then
       if (beta /= CZero) then
        out = a*MatMul(Mat,U) + beta*Out
       else
        out = MatMul(Mat,U)
        if (mult /= COne) Out = Out*mult
-      end if     
+      end if
      else
 #ifdef MATRIX_SINGLE
        call CGEMM('N','N',m,n,k,mult,Mat,m,U,k,beta,Out,Size(Out,Dim=1))
@@ -951,14 +951,14 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    m = Size(U,DIM=1)
    n = Size(U,DIM=2)
    if (m /= n) call MpiStop('Matrix_MultSq: Matrix size mismatch')
-   
+
    allocate(tmp(n,n))
    if (present(a)) then
     aa=a
    else
     aa=ROne
-   end if 
-   
+   end if
+
    call Matrix_Mult(Mat,U,tmp,aa)
    U = tmp
    deallocate(tmp)
@@ -968,15 +968,15 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
   subroutine Matrix_MultTri(Mat,L, side)
    ! Mat -> L Mat or Mat L where L is lower triangular
    real(dm), intent(inout) :: Mat(:,:)
-   real(dm), intent(in) :: L(:,:) 
+   real(dm), intent(in) :: L(:,:)
    character(LEN=*), intent(in) :: side
    integer m,n
 
      call Matrix_Start('Matrix_MultTri')
-    
+
      m = Size(Mat,DIM=1)
      n = Size(Mat,DIM=2)
-     
+
      if (side(1:1)=='L') then
       if (Size(L,DIM=2) /= m) call MpiStop('Matrix_MultTri: Matrix size mismatch')
      else
@@ -991,18 +991,18 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 
    end subroutine Matrix_MultTri
 
-     
+
 
   subroutine Matrix_Mult(Mat,U,Out,a,b)
    ! Out = a*Mat U + b*out
    real(dm), intent(in) :: Mat(:,:),U(:,:)
-   real(dm) :: Out(:,:) 
+   real(dm) :: Out(:,:)
    real(dm), intent(in), optional :: a,b
-   real(dm)  mult, beta 
+   real(dm)  mult, beta
    integer m,n,k
 
      call Matrix_Start('Mult')
-    
+
 
      m = Size(Mat,DIM=1)
      n = Size(U,DIM=2)
@@ -1016,22 +1016,22 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = ROne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = RZero
      end if
-  
+
      if (matrix_method == Mat_F90) then
       if (beta /= RZero) then
        out = a*MatMul(Mat,U) + beta*Out
       else
        out = MatMul(Mat,U)
        if (mult /= ROne) Out = Out*mult
-      end if     
+      end if
      else
 #ifdef MATRIX_SINGLE
        call SGEMM('N','N',m,n,k,mult,Mat,m,U,k,beta,Out,Size(Out,Dim=1))
-#else     
+#else
        call DGEMM('N','N',m,n,k,mult,Mat,m,U,k,beta,Out,Size(Out,Dim=1))
 #endif
      end if
@@ -1042,9 +1042,9 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 
   subroutine Matrix_Mult_SymmLeft(Mat,U,Out,a,b)
    real(dm), intent(in) :: Mat(:,:),U(:,:)
-   real(dm) Out(:,:) 
+   real(dm) Out(:,:)
    real(dm), intent(in), optional :: a,b
-   real(dm)  mult, beta 
+   real(dm)  mult, beta
    integer n,m
 
     call Matrix_Start('Mult_SymmLeft')
@@ -1059,7 +1059,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = ROne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = RZero
      end if
@@ -1069,11 +1069,11 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       else
        out = MatMul(Mat,U)
        if (mult /= COne) Out = Out*mult
-      end if     
-     else 
+      end if
+     else
 #ifdef MATRIX_SINGLE
       call SSYMM('L','U',m,n,mult,Mat,Size(Mat,DIM=1),U,Size(U,DIM=1),beta,Out,Size(Out,DIM=1))
-#else     
+#else
       call DSYMM('L','U',m,n,mult,Mat,Size(Mat,DIM=1),U,Size(U,DIM=1),beta,Out,Size(Out,DIM=1))
 #endif
      end if
@@ -1086,9 +1086,9 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
   subroutine Matrix_Mult_SymmRight(Mat,U,Out,a,b)
    ! Out = a*Mat U + b*out
     real(dm), intent(in) :: Mat(:,:),U(:,:)
-   real(dm) Out(:,:) 
+   real(dm) Out(:,:)
    real(dm), intent(in), optional :: a,b
-   real(dm)  mult, beta 
+   real(dm)  mult, beta
    integer n,m
 
     call Matrix_Start('Mult_SymmRight')
@@ -1103,7 +1103,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = ROne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = RZero
      end if
@@ -1113,11 +1113,11 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       else
        out = MatMul(Mat,U)
        if (mult /= ROne) Out = Out*mult
-      end if     
-     else 
+      end if
+     else
 #ifdef MATRIX_SINGLE
       call SSYMM('R','U',m,n,mult,U,Size(U,DIM=1),Mat,Size(Mat,DIM=1),beta,Out,Size(Out,DIM=1))
-#else     
+#else
       call DSYMM('R','U',m,n,mult,U,Size(U,DIM=1),Mat,Size(Mat,DIM=1),beta,Out,Size(Out,DIM=1))
 #endif
      end if
@@ -1131,12 +1131,12 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    !     out(1:m,1:n) = MatMul(Mat(1:m,1:k),U(1:k,1:n))
    integer, intent(in) :: m,k,n
    complex(dm), intent(in) :: Mat(:,:),U(:,:)
-   complex(dm) Out(:,:) 
- 
+   complex(dm) Out(:,:)
+
      call Matrix_Start('CMultGen')
 
      if (SIZE(Out,DIM=1) <m .or. Size(Out,Dim=2) < n) call MpiStop('Matrix_CMultGen: bad Out size')
-  
+
      if (matrix_method == Mat_F90) then
        out(1:m,1:n) = MatMul(Mat(1:m,1:k),U(1:k,1:n))
      else
@@ -1157,12 +1157,12 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    !     out(1:m,1:n) = MatMul(Mat(1:m,1:k),U(1:k,1:n))
    integer, intent(in) :: m,k,n
    real(dm), intent(in) :: Mat(:,:),U(:,:)
-   real(dm) Out(:,:) 
- 
+   real(dm) Out(:,:)
+
      call Matrix_Start('MultGen')
 
      if (SIZE(Out,DIM=1) <m .or. Size(Out,Dim=2) < n) call MpiStop('Matrix_MultGen: bad Out size')
-  
+
      if (matrix_method == Mat_F90) then
        out(1:m,1:n) = MatMul(Mat(1:m,1:k),U(1:k,1:n))
      else
@@ -1181,9 +1181,9 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
   subroutine Matrix_CMult_NT(Mat,U,Out,a,b)
    ! Out = a*Mat U^dag + b*out
    complex(dm), intent(in) :: Mat(:,:),U(:,:)
-   complex(dm) Out(:,:) 
+   complex(dm) Out(:,:)
    complex(dm), intent(in), optional :: a,b
-   complex(dm)  mult, beta 
+   complex(dm)  mult, beta
    integer m,n,k
 
      m = Size(Mat,DIM=1)
@@ -1197,22 +1197,22 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = COne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = CZero
      end if
-  
+
      if (matrix_method == Mat_F90) then
       if (beta /= CZero) then
-       Out = beta*Out + mult*matmul(Mat,conjg(transpose(U))) 
+       Out = beta*Out + mult*matmul(Mat,conjg(transpose(U)))
       else
-       Out = matmul(Mat,conjg(transpose(U))) 
+       Out = matmul(Mat,conjg(transpose(U)))
        if (mult/= COne) Out=Out*mult
       end if
      else
 #ifdef MATRIX_SINGLE
       call CGEMM('N','C',m,n,k,mult,Mat,m,U,n,beta,Out,Size(Out,Dim=1))
-#else     
+#else
       call ZGEMM('N','C',m,n,k,mult,Mat,m,U,n,beta,Out,Size(Out,Dim=1))
 #endif
      end if
@@ -1224,9 +1224,9 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
   subroutine Matrix_Mult_NT(Mat,U,Out,a,b)
    ! Out = a*Mat U^T + b*out
    real(dm), intent(in) :: Mat(:,:),U(:,:)
-   real(dm) Out(:,:) 
+   real(dm) Out(:,:)
    real(dm), intent(in), optional :: a,b
-   real(dm)  mult, beta 
+   real(dm)  mult, beta
    integer m,n,k
 
      m = Size(Mat,DIM=1)
@@ -1240,16 +1240,16 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = ROne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = RZero
      end if
-  
+
      if (matrix_method == Mat_F90) then
       if (beta /= RZero) then
-       Out = beta*Out + mult*matmul(Mat,transpose(U)) 
+       Out = beta*Out + mult*matmul(Mat,transpose(U))
       else
-       Out = matmul(Mat,transpose(U)) 
+       Out = matmul(Mat,transpose(U))
        if (mult/= ROne) Out=Out*mult
       end if
      else
@@ -1264,20 +1264,20 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 
  end subroutine Matrix_Mult_NT
 
- 
+
   subroutine Matrix_CMult_TN(Mat,U,Out,a,b)
    ! Out = a*Mat^dag U + b*Out
    complex(dm), intent(in) :: Mat(:,:),U(:,:)
    complex(dm) Out(:,:)
    complex(dm), intent(in), optional :: a,b
-   complex(dm)  mult, beta 
+   complex(dm)  mult, beta
    integer m,n,k
 
      m = Size(Mat,DIM=2)
      n = Size(U,DIM=2)
      k = Size(Mat,DIM=1)
      if (k /= Size(U,DIM=1)) call MpiStop('Matrix_CMult_TN: Matrix size mismatch')
- 
+
      call Matrix_Start('CMult_TN')
      if (present(a)) then
        mult = a
@@ -1285,7 +1285,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = COne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = CZero
      end if
@@ -1312,14 +1312,14 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    real(dm), intent(in) :: Mat(:,:),U(:,:)
    real(dm) Out(:,:)
    real(dm), intent(in), optional :: a,b
-   real(dm)  mult, beta 
+   real(dm)  mult, beta
    integer m,n,k
 
      m = Size(Mat,DIM=2)
      n = Size(U,DIM=2)
      k = Size(Mat,DIM=1)
      if (k /= Size(U,DIM=1)) call MpiStop('Matrix_Mult_TN: Matrix size mismatch')
- 
+
      call Matrix_Start('CMult_TN')
      if (present(a)) then
        mult = a
@@ -1327,7 +1327,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = ROne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = RZero
      end if
@@ -1356,7 +1356,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
      integer, optional :: err
      logical, intent(in), optional :: zeroed
      integer i
-      
+
      n=Size(M,DIM=1)
      if (Size(M,DIM=2)/=n) call MpiStop('Matrix_Cholesky: non-square matrix')
 
@@ -1370,22 +1370,22 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        err = info
      else
      if (info/=0) &
-       call MpiStop('Matrix_Cholesky: not positive definite '//trim(IntToStr(info))) 
+       call MpiStop('Matrix_Cholesky: not positive definite '//trim(IntToStr(info)))
      end if
-     
+
      if (info==0 .and. present(zeroed)) then
          do i=1,n
              M(1:i-1,i)=0
           end do
      end if
-     
+
   end subroutine Matrix_Cholesky
- 
+
   subroutine Matrix_CCholesky(M)
    !M = L L^\dag
      complex(dm), intent(inout):: M(:,:)
      integer n, info
-      
+
      n=Size(M,DIM=1)
      if (Size(M,DIM=2)/=n) call MpiStop('Matrix_CCholesky: non-square matrix')
 
@@ -1395,10 +1395,10 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
      call zpotrf ('L', n, M, n, info)
 #endif
 
-     if (info/=0) call MpiStop('Matrix_CCholesky: not positive definite '//trim(IntToStr(info))) 
-  
+     if (info/=0) call MpiStop('Matrix_CCholesky: not positive definite '//trim(IntToStr(info)))
+
   end subroutine Matrix_CCholesky
- 
+
 
 
   subroutine Matrix_CholeskyRootInverse(M,transpose)
@@ -1406,20 +1406,20 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
      real(dm), intent(inout):: M(:,:)
      integer n, info
      integer i,j
-     logical, intent(in), optional :: transpose 
+     logical, intent(in), optional :: transpose
      logical trans
-      
-     call Matrix_Cholesky(M) 
+
+     call Matrix_Cholesky(M)
      n=size(M,dim=1)
-   
+
 #ifdef MATRIX_SINGLE
      call STRTRI( 'L', 'N', n, M, n, INFO )
 #else
      call DTRTRI( 'L', 'N', n, M, n, INFO )
 #endif
 
-     if (info/=0) call MpiStop('Matrix_CholeskyRootInverse: not positive definite '//trim(IntToStr(info))) 
-     
+     if (info/=0) call MpiStop('Matrix_CholeskyRootInverse: not positive definite '//trim(IntToStr(info)))
+
      if (present(transpose)) then
      trans = transpose
      else
@@ -1433,7 +1433,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        M(j,i) = M(i,j)
        M(i,j) = 0
       end do
-     end do 
+     end do
 
      else
 
@@ -1441,7 +1441,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       do j=1,i-1
        M(j,i) = 0
       end do
-     end do 
+     end do
 
      end if
   end subroutine Matrix_CholeskyRootInverse
@@ -1451,20 +1451,20 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
      complex(dm), intent(inout):: M(:,:)
      integer n, info
      integer i,j
-     logical, intent(in), optional :: dagger 
+     logical, intent(in), optional :: dagger
      logical trans
-      
-     call Matrix_CCholesky(M) 
+
+     call Matrix_CCholesky(M)
      n=size(M,dim=1)
-   
+
 #ifdef MATRIX_SINGLE
      call CTRTRI( 'L', 'N', n, M, n, INFO )
 #else
      call ZTRTRI( 'L', 'N', n, M, n, INFO )
 #endif
 
-     if (info/=0) call MpiStop('Matrix_CCholeskyRootInverse: not positive definite '//trim(IntToStr(info))) 
-     
+     if (info/=0) call MpiStop('Matrix_CCholeskyRootInverse: not positive definite '//trim(IntToStr(info)))
+
      if (present(dagger)) then
      trans = dagger
      else
@@ -1478,7 +1478,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        M(j,i) = conjg(M(i,j))
        M(i,j) = 0
       end do
-     end do 
+     end do
 
      else
 
@@ -1486,18 +1486,18 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       do j=1,i-1
        M(j,i) = 0
       end do
-     end do 
+     end do
 
      end if
   end subroutine Matrix_CCholeskyRootInverse
 
-  
+
   subroutine Matrix_inverse_chol(M, err)
    !Inverse of symmetric matrix
    !This should not be used in real situations, but useful for quick testing
      real(dm), intent(inout):: M(:,:)
      integer i,j,n
-     integer info  
+     integer info
      integer, optional :: err
 
      n=Size(M,DIM=1)
@@ -1516,17 +1516,17 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 #endif
      if (present(err)) then
         err = info
-        if (err/=0) return    
+        if (err/=0) return
      else
-      if (info/=0) call MpiStop('Matrix_inverse: error '//trim(IntToStr(info))) 
+      if (info/=0) call MpiStop('Matrix_inverse: error '//trim(IntToStr(info)))
      end if
      do i=1,n
       do j=1,i-1
        M(j,i) = M(i,j)
       end do
-     end do 
+     end do
      call Matrix_End('Inverse')
-  
+
   end   subroutine Matrix_inverse_chol
 
   subroutine Matrix_Inverse(M)
@@ -1547,12 +1547,12 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       call Matrix_Inverse_Chol(M)
 !
 !     allocate(tmp(Size(M,DIM=1),Size(M,DIM=1)))
-!   
+!
 !     n=Size(M,DIM=1)
 !     if (n<=1) return
 !     if (Size(M,DIM=2)/=n) call MpiStop('Matrix_Inverse: non-square matrix')
 !     call Matrix_Start('Inverse')
-!          
+!
 !
 !     allocate(norm(n))
 !     do i=1, n
@@ -1563,23 +1563,23 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 !        M(:,i) = M(:,i)/norm(i)
 !     end do
 !
-!     call Matrix_Diagonalize(M,w,n)    
+!     call Matrix_Diagonalize(M,w,n)
 !     write (*,*), 'min/max eigenvalues = ', minval(w), maxval(w)
 !     if (any(w<=0)) then
 !          write (*,*), 'min/max eigenvalues = ', minval(w), maxval(w)
-!          call MpiStop('Matrix_Inverse: negative or zero eigenvalues')  
+!          call MpiStop('Matrix_Inverse: negative or zero eigenvalues')
 !     end if
 !     do i=1, n
 !        tmp(i,:) = M(:,i)/w(i)
 !     end do
 !     allocate(tmp2(Size(M,DIM=1),Size(M,DIM=1)))
-!     call Matrix_Mult(M,tmp,tmp2)     
+!     call Matrix_Mult(M,tmp,tmp2)
 !     M = tmp2
 !     do i=1, n
 !        M(i,:) = M(i,:)/norm(i)
 !        M(:,i) = M(:,i)/norm(i)
 !     end do
-!     deallocate(tmp, tmp2) 
+!     deallocate(tmp, tmp2)
 !     deallocate(norm)
 !     call Matrix_End('Inverse')
 
@@ -1593,33 +1593,33 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    real(dm), allocatable :: tmp(:)
    real(dm) :: LogLike
    integer info,i,n
-   
+
    call Matrix_Start('GaussianLogLike')
    n = size(COV,DIM=1)
    if (Size(COV,DIM=2)/=n) call MpiStop('Matrix_GaussianLogLike: non-square matrix')
    if (Size(d)/=n) call MpiStop('Matrix_GaussianLogLike: covariance and d different size')
-   
+
    call Matrix_Cholesky(Cov)
    LogLike = 0
   !Log Det term:
    do i=1, n
       LogLike = LogLike  + log(Cov(i,i))
    end do
-   
+
    !Solve for Cov^{-1}d [could use faster symmetric method]
    allocate(tmp(n))
    tmp = d
-#ifdef MATRIX_SINGLE  
+#ifdef MATRIX_SINGLE
    call SPOTRS('L', N, 1, Cov, n, tmp, n, INFO )
-#else 
+#else
    call DPOTRS('L', N, 1, Cov, n, tmp, n, INFO )
 #endif
    if (INFO/=0) call MpiStop('Matrix_GaussianLogLike: error in solving for cov^{-1}d')
-  
+
   !Add together
    LogLike = LogLike + dot_product(tmp,d)/2._dm
    deallocate(tmp)
-   
+
    call Matrix_End('GaussianLogLike')
 
   end function Matrix_GaussianLogLike
@@ -1632,31 +1632,31 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    double precision, allocatable :: tmp(:)
    double precision :: LogLike
    integer info,i,n
-   
+
    call Matrix_Start('GaussianLogLikeDouble')
    n = size(COV,DIM=1)
    if (Size(COV,DIM=2)/=n) call MpiStop('Matrix_GaussianLogLikeDouble: non-square matrix')
    if (Size(d)/=n) call MpiStop('Matrix_GaussianLogLikeDouble: covariance and d different size')
-   
+
    call dpotrf ('L', n, Cov, n, info)
-   if (info/=0) call MpiStop('Matrix_GaussianLogLikeDouble: not positive definite '//trim(IntToStr(info))) 
+   if (info/=0) call MpiStop('Matrix_GaussianLogLikeDouble: not positive definite '//trim(IntToStr(info)))
 
    LogLike = 0
   !Log Det term:
    do i=1, n
       LogLike = LogLike  + log(Cov(i,i))
    end do
-   
+
    !Solve for Cov^{-1}d [could use faster symmetric method]
    allocate(tmp(n))
    tmp = d
    call DPOTRS('L', N, 1, Cov, n, tmp, n, INFO )
    if (INFO/=0) call MpiStop('Matrix_GaussianLogLikeDouble: error in solving for cov^{-1}d')
-  
+
   !Add together
    LogLike = LogLike + dot_product(tmp,d)/2._dm
    deallocate(tmp)
-   
+
    call Matrix_End('GaussianLogLikeDouble')
 
   end function Matrix_GaussianLogLikeDouble
@@ -1674,39 +1674,39 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 
      allocate(tmp(n,n),VT(n,n))
 
-     call Matrix_SVD(M,n,n,w,VT)      
+     call Matrix_SVD(M,n,n,w,VT)
 
      do i=1, n
         tmp(i,:) = M(:,i)/w(i)
      end do
 
      call Matrix_Mult_TN(VT,tmp,M,1._dm,0._dm)
-   !  M = matmul(transpose(VT),tmp)   //Changed for HPCF prob Sept 07  
+   !  M = matmul(transpose(VT),tmp)   //Changed for HPCF prob Sept 07
 
-     deallocate(tmp,VT) 
-  
+     deallocate(tmp,VT)
+
   end subroutine Matrix_InverseAsymm
 
   subroutine Matrix_SVD(Mat,m, n, D, VT)
    !Do singular value decomposition of m x n matrix Mat
    !Mat =  U D V^T
-   !returns U in Mat, vector D of diagonal elements of, orthogonal matrix VT= V^T  
+   !returns U in Mat, vector D of diagonal elements of, orthogonal matrix VT= V^T
    integer, intent(in) :: m,n
    real(dm), intent(inout) :: Mat(m,n)
    real(dm), intent(out) :: D(n), VT(n,n)
 
    integer WorkSize, ierr
-   real(dm), allocatable, dimension (:) :: rv1 
-   
+   real(dm), allocatable, dimension (:) :: rv1
+
 
    WorkSize=3*n**2
 
    allocate(rv1(WorkSize))
    call Matrix_Start('SVD')
 #ifdef MATRIX_SINGLE
-    call SGESVD('O','A',m,n, Mat, m , D,Mat,m,VT,n,rv1,WorkSize,ierr) 
+    call SGESVD('O','A',m,n, Mat, m , D,Mat,m,VT,n,rv1,WorkSize,ierr)
 #else
-    call DGESVD('O','A',m,n, Mat, m , D,Mat,m,VT,n,rv1,WorkSize,ierr) 
+    call DGESVD('O','A',m,n, Mat, m , D,Mat,m,VT,n,rv1,WorkSize,ierr)
 #endif
     if (ierr/=0) call MpiStop('error in Matrix_SVD')
    call Matrix_End('SVD')
@@ -1718,7 +1718,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
  subroutine Matrix_SVD_VT(Mat,m, n, D, U)
    !Do singular value decomposition of m x n matrix Mat
    !Mat =  U D V^dag
-   !returns V^dag in Mat, vector D of diagonal elements of, unitary matrix U  
+   !returns V^dag in Mat, vector D of diagonal elements of, unitary matrix U
    integer, intent(in) :: m,n
    real(dm), intent(inout) :: Mat(m,n)
    real(dm), intent(out),optional :: U(m,m)
@@ -1727,33 +1727,33 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    integer WorkSize, ierr
    integer,allocatable, dimension (:) :: IWork
    real(dm), allocatable, dimension (:) :: rv1
-   real(dm) OptWk 
+   real(dm) OptWk
 
    if (n<=m) call MpiStop('Matrix_SVD_VT assumed n>m. ')
-  
+
    call Matrix_Start('SVD_VT')
- 
+
     if (present(U) .and. Matrix_method == Mat_DC) then
     !Use divide and conquer
-     allocate(IWork(8*MIN(M,N))) 
+     allocate(IWork(8*MIN(M,N)))
      WorkSize= -1 !3*min(M,N)*min(M,N) +max(max(M,N),5*min(M,N)*min(M,N)+4*min(M,N))
 #ifdef MATRIX_SINGLE
-     call SGESDD('O',m,n, Mat, m ,D,U,m,Mat,n,OptWk,WorkSize,IWork,ierr) 
-#else     
-     call DGESDD('O',m,n, Mat, m ,D,U,m,Mat,n,OptWk,WorkSize,IWork,ierr) 
+     call SGESDD('O',m,n, Mat, m ,D,U,m,Mat,n,OptWk,WorkSize,IWork,ierr)
+#else
+     call DGESDD('O',m,n, Mat, m ,D,U,m,Mat,n,OptWk,WorkSize,IWork,ierr)
 #endif
      WorkSize = nint(OptWk)
-     allocate(rv1(WorkSize))   
+     allocate(rv1(WorkSize))
 #ifdef MATRIX_SINGLE
-     call SGESDD('O',m,n, Mat, m ,D,U,m,Mat,n,rv1,WorkSize,IWork,ierr) 
-#else     
-     call DGESDD('O',m,n, Mat, m ,D,U,m,Mat,n,rv1,WorkSize,IWork,ierr) 
+     call SGESDD('O',m,n, Mat, m ,D,U,m,Mat,n,rv1,WorkSize,IWork,ierr)
+#else
+     call DGESDD('O',m,n, Mat, m ,D,U,m,Mat,n,rv1,WorkSize,IWork,ierr)
 #endif
      deallocate(IWOrk)
     else
        call MpiStop('Matrix_SVD_VT Not no-U non-DC case')
     end if
-   
+
    if (ierr/=0) call MpiStop('error in Matrix_SVD_VT')
    deallocate(rv1)
 
@@ -1761,11 +1761,11 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 
   end subroutine Matrix_SVD_VT
 
- 
+
   subroutine Matrix_CSVD_VT(Mat,m, n, D, U)
    !Do singular value decomposition of m x n matrix Mat
    !Mat =  U D V^dag
-   !returns V^dag in Mat, vector D of diagonal elements of, unitary matrix U  
+   !returns V^dag in Mat, vector D of diagonal elements of, unitary matrix U
    integer, intent(in) :: m,n
    complex(dm), intent(inout) :: Mat(m,n)
    complex(dm), intent(out),optional :: U(m,m)
@@ -1773,28 +1773,28 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 
    integer WorkSize, ierr
    integer,allocatable, dimension (:) :: IWork
-   complex(dm), allocatable, dimension (:) :: rv1 
+   complex(dm), allocatable, dimension (:) :: rv1
    real(dm), allocatable, dimension (:) :: rwork
 
    if (n<=m) call MpiStop('Matrix_CSVD_VT assumed n>m. If equal use SVD_U.')
-  
+
    call Matrix_Start('CSVD_VT')
-  
- 
+
+
     if (present(U) .and. Matrix_method == Mat_DC) then
     !Use divide and conquer
-     WorkSize= 2*min(M,N)*min(M,N)+2*min(M,N)+max(M,N) + 5*N !Add on 5N.. 
-     allocate(rv1(WorkSize))   
+     WorkSize= 2*min(M,N)*min(M,N)+2*min(M,N)+max(M,N) + 5*N !Add on 5N..
+     allocate(rv1(WorkSize))
      allocate(rwork(5*min(M,N)*min(M,N) + 5*min(M,N) ))
-     allocate(IWork(8*MIN(M,N))) 
+     allocate(IWork(8*MIN(M,N)))
 #ifdef MATRIX_SINGLE
-     call CGESDD('O',m,n, Mat, m ,D,U,m,Mat,n,rv1,WorkSize,rwork,IWork,ierr) 
-#else     
-     call ZGESDD('O',m,n, Mat, m ,D,U,m,Mat,n,rv1,WorkSize,rwork,IWork,ierr) 
+     call CGESDD('O',m,n, Mat, m ,D,U,m,Mat,n,rv1,WorkSize,rwork,IWork,ierr)
+#else
+     call ZGESDD('O',m,n, Mat, m ,D,U,m,Mat,n,rv1,WorkSize,rwork,IWork,ierr)
 #endif
      deallocate(IWOrk)
     else
- 
+
        allocate(rwork((max(3*min(m,n),5*min(m,n)-4))))
        WorkSize= 3*max(m,n)**2
        allocate(rv1(WorkSize), STAT = ierr)
@@ -1804,19 +1804,19 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        end if
 #ifdef MATRIX_SINGLE
        if (present(U)) then
-        call CGESVD('S','O',m,n, Mat, m , D,U,m,Mat,n,rv1,WorkSize,rwork,ierr) 
+        call CGESVD('S','O',m,n, Mat, m , D,U,m,Mat,n,rv1,WorkSize,rwork,ierr)
        else
-        call CGESVD('N','O',m,n, Mat, m , D,Mat,m,Mat,n,rv1,WorkSize,rwork,ierr) 
+        call CGESVD('N','O',m,n, Mat, m , D,Mat,m,Mat,n,rv1,WorkSize,rwork,ierr)
        end if
 #else
        if (present(U)) then
-        call ZGESVD('S','O',m,n, Mat, m , D,U,m,Mat,n,rv1,WorkSize,rwork,ierr) 
+        call ZGESVD('S','O',m,n, Mat, m , D,U,m,Mat,n,rv1,WorkSize,rwork,ierr)
        else
-        call ZGESVD('N','O',m,n, Mat, m , D,Mat,m,Mat,n,rv1,WorkSize,rwork,ierr) 
+        call ZGESVD('N','O',m,n, Mat, m , D,Mat,m,Mat,n,rv1,WorkSize,rwork,ierr)
        end if
-#endif       
+#endif
     end if
-  
+
    if (ierr/=0) call MpiStop('error in Matrix_SVD_VT')
    deallocate(rv1)
 
@@ -1827,29 +1827,29 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
     subroutine Matrix_CSVD_U(Mat,m, n, D, VT)
    !Do singular value decomposition of m x n matrix Mat
    !Mat =  U D VT
-   !returns U in Mat, vector D of diagonal elements of, unitary matrix V  
+   !returns U in Mat, vector D of diagonal elements of, unitary matrix V
    integer, intent(in) :: m,n
    complex(dm), intent(inout) :: Mat(m,n)
    complex(dm), intent(out),optional :: VT(n,n)
    real(dm), intent(out) :: D(*)
    integer WorkSize, ierr
    integer,allocatable, dimension (:) :: IWork
-   complex(dm), allocatable, dimension (:) :: rv1 
+   complex(dm), allocatable, dimension (:) :: rv1
    real(dm), allocatable, dimension (:) :: rwork
 
    call Matrix_Start('CSVD_U')
 
    if (m<n) call MpiStop('Matrix_CSVD_U assumed m>=n')
- 
+
     if (present(VT) .and. Matrix_method == Mat_DC) then
-     WorkSize= 2*min(M,N)*min(M,N)+2*min(M,N)+max(M,N) + 5*N !Add on 5N.. 
-     allocate(rv1(WorkSize))   
+     WorkSize= 2*min(M,N)*min(M,N)+2*min(M,N)+max(M,N) + 5*N !Add on 5N..
+     allocate(rv1(WorkSize))
      allocate(rwork(5*min(M,N)*min(M,N) + 5*min(M,N) ))
-     allocate(IWork(8*MIN(M,N))) 
+     allocate(IWork(8*MIN(M,N)))
 #ifdef MATRIX_SINGLE
-     call CGESDD('O',m,n, Mat, m ,D,Mat,m,VT,n,rv1,WorkSize,rwork,IWork,ierr) 
+     call CGESDD('O',m,n, Mat, m ,D,Mat,m,VT,n,rv1,WorkSize,rwork,IWork,ierr)
 #else
-     call ZGESDD('O',m,n, Mat, m ,D,Mat,m,VT,n,rv1,WorkSize,rwork,IWork,ierr) 
+     call ZGESDD('O',m,n, Mat, m ,D,Mat,m,VT,n,rv1,WorkSize,rwork,IWork,ierr)
 #endif
      deallocate(IWOrk)
     else
@@ -1863,17 +1863,17 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
       end if
 #ifdef MATRIX_SINGLE
      if (present(VT)) then
-      call CGESVD('O','S',m,n, Mat, m , D,Mat,m,VT,n,rv1,WorkSize,rwork,ierr) 
+      call CGESVD('O','S',m,n, Mat, m , D,Mat,m,VT,n,rv1,WorkSize,rwork,ierr)
      else
-      call CGESVD('O','N',m,n, Mat, m , D,Mat,m,Mat,n,rv1,WorkSize,rwork,ierr) 
+      call CGESVD('O','N',m,n, Mat, m , D,Mat,m,Mat,n,rv1,WorkSize,rwork,ierr)
      end if
 #else
      if (present(VT)) then
-      call ZGESVD('O','S',m,n, Mat, m , D,Mat,m,VT,n,rv1,WorkSize,rwork,ierr) 
+      call ZGESVD('O','S',m,n, Mat, m , D,Mat,m,VT,n,rv1,WorkSize,rwork,ierr)
      else
-      call ZGESVD('O','N',m,n, Mat, m , D,Mat,m,Mat,n,rv1,WorkSize,rwork,ierr) 
+      call ZGESVD('O','N',m,n, Mat, m , D,Mat,m,Mat,n,rv1,WorkSize,rwork,ierr)
      end if
-#endif  
+#endif
     end if
     if (ierr/=0) call MpiStop('error in Matrix_SVD_U')
     call Matrix_End('CSVD_U')
@@ -1892,27 +1892,27 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    complex(dm), intent(inout) :: Mat(m,n)
    complex(dm), intent(out):: VT(n,n)
    real(dm), intent(out) :: D(m)
-   
+
    integer WorkSize, ierr
-   complex(dm), allocatable, dimension (:) :: rv1 
+   complex(dm), allocatable, dimension (:) :: rv1
    complex(dm), allocatable, dimension (:,:) :: U
    integer, allocatable, dimension(:) :: IWork
    real(dm), allocatable, dimension (:) :: rwork
 
-  
+
    call Matrix_Start('CSVD_AllVT')
-   
+
    if (Matrix_method == Mat_DC) then
    !Divide and conquer doesn't seem to provide outputs we want here
-     WorkSize= 2*min(M,N)*min(M,N)+2*min(M,N)+max(M,N) + 5*N !Add on 5N.. 
-     allocate(rv1(WorkSize))   
+     WorkSize= 2*min(M,N)*min(M,N)+2*min(M,N)+max(M,N) + 5*N !Add on 5N..
+     allocate(rv1(WorkSize))
      allocate(rwork(5*min(M,N)*min(M,N) + 5*min(M,N) ))
-     allocate(IWork(8*MIN(M,N))) 
+     allocate(IWork(8*MIN(M,N)))
      allocate(U(m,m))
 #ifdef MATRIX_SINGLE
-     call CGESDD('A',m,n, Mat, m ,D,U,m,VT,n,rv1,WorkSize,rwork,IWork,ierr) 
-#else     
-     call ZGESDD('A',m,n, Mat, m ,D,U,m,VT,n,rv1,WorkSize,rwork,IWork,ierr) 
+     call CGESDD('A',m,n, Mat, m ,D,U,m,VT,n,rv1,WorkSize,rwork,IWork,ierr)
+#else
+     call ZGESDD('A',m,n, Mat, m ,D,U,m,VT,n,rv1,WorkSize,rwork,IWork,ierr)
 #endif
      deallocate(U)
      deallocate(IWork)
@@ -1926,12 +1926,12 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
      allocate(rv1(WorkSize))
     end if
 #ifdef MATRIX_SINGLE
-    call CGESVD('N','A',m,n, Mat, m , D,Mat,m,VT,n,rv1,WorkSize,rwork,ierr) 
-#else    
-    call ZGESVD('N','A',m,n, Mat, m , D,Mat,m,VT,n,rv1,WorkSize,rwork,ierr) 
-#endif    
+    call CGESVD('N','A',m,n, Mat, m , D,Mat,m,VT,n,rv1,WorkSize,rwork,ierr)
+#else
+    call ZGESVD('N','A',m,n, Mat, m , D,Mat,m,VT,n,rv1,WorkSize,rwork,ierr)
+#endif
     end if
-  
+
    if (ierr/=0) call MpiStop('error in Matrix_SVD_AllVT')
    deallocate(rv1,rwork)
 
@@ -1975,7 +1975,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
      tmp = M
 #ifdef MATRIX_SINGLE
      call SSYTRF('U',n,tmp,n,IPIV, work,WorkSize,info)
-#else     
+#else
      call DSYTRF('U',n,tmp,n,IPIV, work,WorkSize,info)
 #endif
      deallocate(work)
@@ -1988,13 +1988,13 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 #endif
      if (info/=0) call MpiStop('error (2) in SolveSymm')
      deallocate(tmp)
-      
+
      call Matrix_End('SolveSymm')
 
 
   end subroutine Matrix_SolveSymm
 
-  
+
   subroutine Matrix_SolveASymm(M,a,soln)
      real(dm), intent(out) :: soln(:)
      real(dm), intent(in):: M(:,:),a(:)
@@ -2023,7 +2023,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
      call DGETRS('N',n,1,tmp,n,IPIV,Soln,n,info)
 #endif
      if (info/=0) call MpiStop('error (2) in SolveASymm')
-     deallocate(tmp) 
+     deallocate(tmp)
 
      call Matrix_End('SolveASymm')
 
@@ -2036,7 +2036,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 #ifdef MATRIX_SINGLE
   real(dm) sdot
   external sdot
-#else  
+#else
   real(dm) ddot
   external ddot
 #endif
@@ -2069,9 +2069,9 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    ! Out = a*Mat*vec + b*out
    real(dm), intent(in) :: Mat(:,:)
    real(dm) vec(:)
-   real(dm) Out(:) 
+   real(dm) Out(:)
    real(dm), intent(in), optional :: a,b
-   real(dm)  mult, beta 
+   real(dm)  mult, beta
    integer m,n
 
     call Matrix_Start('MulVec')
@@ -2085,22 +2085,22 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = ROne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = RZero
      end if
-  
+
      if (matrix_method == Mat_F90) then
       if (beta /= RZero) then
        out = a*MatMul(Mat,Vec) + beta*Out
       else
        out = MatMul(Mat,Vec)
        if (mult /= ROne) Out = Out*mult
-      end if     
+      end if
      else
 #ifdef MATRIX_SINGLE
        call SGEMV('N',m,n,mult,Mat,m,vec, 1,beta, Out,1)
-#else     
+#else
        call DGEMV('N',m,n,mult,Mat,m,vec, 1,beta, Out,1)
 #endif
      end if
@@ -2112,9 +2112,9 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    ! Out = a*Mat*vec + b*out
    real, intent(in) :: Mat(:,:)
    real vec(:)
-   real Out(:) 
+   real Out(:)
    real, intent(in), optional :: a,b
-   real  mult, beta 
+   real  mult, beta
    integer m,n
 
     call Matrix_Start('MulVecSingle')
@@ -2128,18 +2128,18 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = SOne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = SZero
      end if
-  
+
      if (matrix_method == Mat_F90) then
       if (beta /= SZero) then
        out = a*MatMul(Mat,Vec) + beta*Out
       else
        out = MatMul(Mat,Vec)
        if (mult /= SOne) Out = Out*mult
-      end if     
+      end if
      else
        call SGEMV('N',m,n,mult,Mat,m,vec, 1,beta, Out,1)
      end if
@@ -2154,9 +2154,9 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    ! Out = a*Mat*vec + b*out
    real(dm), intent(in) :: Mat(:,:)
    real(dm) vec(:)
-   real(dm) Out(:) 
+   real(dm) Out(:)
    real(dm), intent(in), optional :: a,b
-   real(dm)  mult, beta 
+   real(dm)  mult, beta
    integer m,n
 
     call Matrix_Start('MulVecSymm')
@@ -2170,22 +2170,22 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = ROne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = RZero
      end if
-  
+
      if (matrix_method == Mat_F90) then
       if (beta /= RZero) then
        out = a*MatMul(Mat,Vec) + beta*Out
       else
        out = MatMul(Mat,Vec)
        if (mult /= ROne) Out = Out*mult
-      end if     
+      end if
      else
 #ifdef MATRIX_SINGLE
        call SSYMV('U',m,mult,Mat,m,vec, 1,beta, Out,1)
-#else     
+#else
        call DSYMV('U',m,mult,Mat,m,vec, 1,beta, Out,1)
 #endif
      end if
@@ -2197,9 +2197,9 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
    ! Out = a*Mat*vec + b*out
    real, intent(in) :: Mat(:,:)
    real vec(:)
-   real Out(:) 
+   real Out(:)
    real, intent(in), optional :: a,b
-   real  mult, beta 
+   real  mult, beta
    integer m,n
 
     call Matrix_Start('MulVecSymm')
@@ -2213,18 +2213,18 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
        mult = SOne
      end if
      if (present(b)) then
-       beta = b    
+       beta = b
      else
        beta = SZero
      end if
-  
+
      if (matrix_method == Mat_F90) then
       if (beta /= RZero) then
        out = a*MatMul(Mat,Vec) + beta*Out
       else
        out = MatMul(Mat,Vec)
        if (mult /= ROne) Out = Out*mult
-      end if     
+      end if
      else
        call SSYMV('U',m,mult,Mat,m,vec, 1,beta, Out,1)
      end if
@@ -2249,7 +2249,7 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
  subroutine Matrix_InverseArrayMPI(Arr,nmat)
    !Invert array of matrices by sending each to separate CPU
     integer, intent(in) :: nmat
-#ifdef __GFORTRAN__    
+#ifdef __GFORTRAN__
     Type(TMatrixType), target :: Arr(:)
 #else
     Type(TMatrixType), target :: Arr(*)
@@ -2258,16 +2258,16 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
     integer n
     integer i,MpiID, MpiSize
     integer sz
-#ifdef MPI        
+#ifdef MPI
     integer j, ierr, sid
     Type(TMatrixType), target :: tmp
-#endif     
+#endif
 
     call MpiStat(MpiID, MpiSize)
     if (MpiId==0) then
      n=nmat
      sz = Size(Arr(1)%M,DIM=1)
-    end if 
+    end if
 !    if (MpiID==0) then
 !     do i=1,nmat
 !      print *,'inverting',i
@@ -2275,61 +2275,61 @@ subroutine Matrix_Write_double(aname, mat, forcetable)
 !     end do
 !    end if
 !    return
-#ifdef MPI        
+#ifdef MPI
     if (MpiID==0) print *, 'MatrixInverseArray: starting'
-    call MPI_BCAST(n,1,MPI_INTEGER, 0, MPI_COMM_WORLD, ierr) 
-    call MPI_BCAST(sz,1,MPI_INTEGER, 0, MPI_COMM_WORLD, ierr) 
+    call MPI_BCAST(n,1,MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+    call MPI_BCAST(sz,1,MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
     if (MpiID/=0) then
-      allocate(tmp%M(sz,sz))           
+      allocate(tmp%M(sz,sz))
       AM => tmp
     end if
 #endif
-      
+
      do i= 1,n
          if (MpiID==0) AM => Arr(i)
-#ifdef MPI       
+#ifdef MPI
          if (mod(i,MpiSize)/=MpiID) then
           !Do nothing
           if (MpiId==0) then
            j=mod(i,MpiSize)
-           call MPI_SEND(AM%M,size(AM%M),MPI_DOUBLE_PRECISION, j, 1, MPI_COMM_WORLD, ierr) 
+           call MPI_SEND(AM%M,size(AM%M),MPI_DOUBLE_PRECISION, j, 1, MPI_COMM_WORLD, ierr)
           end if
          else
           if (MpiId/=0) then
             !Get from main thread
-            call MPI_RECV(AM%M,size(AM%M),MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD,MPI_STATUS_IGNORE, ierr) 
+            call MPI_RECV(AM%M,size(AM%M),MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD,MPI_STATUS_IGNORE, ierr)
 
           end if
-#endif         
+#endif
           call Matrix_Inverse(AM%M)
-      
+
 #ifdef MPI
            if (MpiID==0) then
-            do j = max(1,i-MpiSize+1),i-1 
+            do j = max(1,i-MpiSize+1),i-1
              sid = mod(j,MpiSize)
-             call MPI_RECV(Arr(j)%M,size(Arr(j)%M),MPI_DOUBLE_PRECISION, sid, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE, ierr) 
+             call MPI_RECV(Arr(j)%M,size(Arr(j)%M),MPI_DOUBLE_PRECISION, sid, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE, ierr)
             end do
            else
-            call MPI_SEND(AM%M,size(AM%M),MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, ierr) 
+            call MPI_SEND(AM%M,size(AM%M),MPI_DOUBLE_PRECISION, 0, 1, MPI_COMM_WORLD, ierr)
            end if
 
-         end if 
+         end if
 #endif
      end do
-   
-      
+
+
 #ifdef MPI
       if (MpiID==0) then
        do j=n - mod(n,MpiSize) +1 ,n
            sid= mod(j,MpiSize)
-           call MPI_RECV(ARr(j)%M,Size(ARr(j)%M),MPI_DOUBLE_PRECISION, sid, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE, ierr) 
+           call MPI_RECV(ARr(j)%M,Size(ARr(j)%M),MPI_DOUBLE_PRECISION, sid, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE, ierr)
        end do
       else
-        deallocate(tmp%M)           
+        deallocate(tmp%M)
       end if
-#endif   
+#endif
     if (MpiID==0) print *, 'MatrixInverseArray: Done'
-    
+
 
  end subroutine Matrix_InverseArrayMPI
 

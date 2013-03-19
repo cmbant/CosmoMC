@@ -27,17 +27,17 @@
     integer :: lmax_computed_cl = lmax !value used for CAMB
 
     integer, parameter :: ScalClOrder(5) = (/1,3,2,4,5/), TensClOrder(4) = (/1,4,2,3/)
-    !Mapping of CAMB CL array ordering to TT , TE, EE, BB, phi, phiT  
+    !Mapping of CAMB CL array ordering to TT , TE, EE, BB, phi, phiT
     integer :: ncalls = 0
     integer :: nerrors = 0
-    type(CAMBParams)  CAMBP 
+    type(CAMBParams)  CAMBP
 
     real(mcp), allocatable :: highL_lensedCL_template(:,:)
 
     contains
     subroutine CMBToCAMB(CMB,P)
     use LambdaGeneral
-    use CAMBmain, only : ALens 
+    use CAMBmain, only : ALens
     use constants, only : default_nnu
     type(CMBParams) CMB
     type(CAMBParams)  P
@@ -54,7 +54,7 @@
     w_lam = CMB%w
     wa_ppf = CMB%wa
     ALens = CMB%ALens
-    P%InitialConditionVector(initial_iso_CDM) = & 
+    P%InitialConditionVector(initial_iso_CDM) = &
     sign(sqrt(abs(CMB%iso_cdm_correlated) /(1-abs(CMB%iso_cdm_correlated))),CMB%iso_cdm_correlated)
     P%Num_Nu_Massive = 0
     P%Num_Nu_Massless = CMB%nnu
@@ -73,7 +73,7 @@
             end if
             P%Nu_mass_degeneracies(P%Nu_mass_eigenstates) = neff_massive_standard
             P%Nu_mass_fractions(P%Nu_mass_eigenstates) = (CMB%omnuh2-CMB%omnuh2_sterile)/CMB%omnuh2
-        else 
+        else
             neff_massive_standard=0
         end if
         if (CMB%omnuh2_sterile>0) then
@@ -94,15 +94,15 @@
     if (P%Recomb%fdm/=0._mcp) P%Recomb%runmode = 3
     P%Recomb%fdm = CMB%fdm * 1e-23_mcp
 #else
-    if (CMB%fdm/=0._mcp) call MpiStop('Compile with CosmoRec to use fdm') 
+    if (CMB%fdm/=0._mcp) call MpiStop('Compile with CosmoRec to use fdm')
 #endif
     call SetCAMBInitPower(P,CMB,1)
 
     end subroutine CMBToCAMB
 
 
-    subroutine SetTheoryForBackground(CMB) 
-    use Camb, only: CAMBParams_Set 
+    subroutine SetTheoryForBackground(CMB)
+    use Camb, only: CAMBParams_Set
     type(CMBParams) CMB
     type(CAMBParams)  P
     !set background dparameters, but don't calculate thermal history
@@ -125,7 +125,7 @@
             if (global_error_flag/=0) then
                 error=global_error_flag
                 return
-            end if 
+            end if
             call SetDerived(Theory)
         end if
         class default
@@ -161,7 +161,7 @@
     character(LEN=128) :: LogLine
 
     call CAMB_InitCAMBdata(Info%Transfers)
-    call CMBToCAMB(CMB, P) 
+    call CMBToCAMB(CMB, P)
 
     if (Feedback > 1) write (*,*) 'Calling CAMB'
     Threadnum =num_threads
@@ -178,7 +178,7 @@
     if (mod(ncalls,100)==0 .and. logfile_unit/=0) then
         write (logLine,*) 'CAMB called ',ncalls, ' times; ', nerrors,' errors'
         call IO_WriteLog(logfile_unit,logLine)
-    end if 
+    end if
     if (Feedback > 1) write (*,*) 'CAMB done'
 
     end subroutine GetNewTransferData
@@ -196,7 +196,7 @@
     if (global_error_flag/=0) then
         error=global_error_flag
         return
-    end if 
+    end if
 
     call SetPowersFromCAMB(Theory)
 
@@ -239,7 +239,7 @@
         if (DoCls) then
             !Assume we just want Cls to higher l
             P%WantScalars = .true.
-            P%WantTensors = compute_tensors 
+            P%WantTensors = compute_tensors
             !!!not OK for non-linear lensing        if (.not. DoPk) P%WantTransfer = .false.
         end if
 
@@ -271,11 +271,11 @@
     nm = cons/(l*(l+1))
     if (CMB_Lensing) then
         Theory%cl(l,1:num_clsS) =  nm*Cl_lensed(l,1, TensClOrder(1:num_clsS))
-    else 
+    else
         Theory%cl(l,1:num_clsS) =  nm*Cl_scalar(l,1, scalClOrder(1:num_clsS))
-    end if         
+    end if
 
-    if (num_cls>num_clsS) Theory%cl(l,num_clsS+1:num_cls) = 0 
+    if (num_cls>num_clsS) Theory%cl(l,num_clsS+1:num_cls) = 0
 
     if (compute_tensors .and. l<=lmax_tensor) then
         Theory%cl(l,1:num_cls) =  Theory%cl(l,1:num_cls) + nm*Cl_tensor(l,1, TensClOrder(1:num_cls))
@@ -293,7 +293,7 @@
         end if
     end if
 
-    end do 
+    end do
 
     if (compute_tensors) then
         Theory%tensor_ratio_02 = TensorPower(0.002d0,1)/ScalarPower(0.002d0,1)
@@ -308,7 +308,7 @@
         highL_norm = Theory%cl(lmax_computed_cl,1)/highL_lensedCL_template(lmax_computed_cl,1)
         do l = lmax_computed_cl+1, lmax
             Theory%cl(l,1:num_ClsS) =  highL_norm*highL_lensedCL_template(l,1:num_clsS)
-        end do 
+        end do
     end if
 
     end subroutine SetPowersFromCAMB
@@ -330,7 +330,7 @@
             ,matter_power_minkh, matter_power_dlnkh,num_matter_power)
         end do
     end if
-    
+
     end subroutine SetPkFromCAMB
 
     subroutine InitCAMB(CMB,error, DoReion)
@@ -361,9 +361,9 @@
     call CAMBParams_Set(P,error)
 
     if (error/= 0) then
-        GetOpticalDepth = -1 
+        GetOpticalDepth = -1
     else
-        GetOpticalDepth = Reionization_GetOptDepth(P%Reion, P%ReionHist) 
+        GetOpticalDepth = Reionization_GetOptDepth(P%Reion, P%ReionHist)
     end if
     end  function GetOpticalDepth
 
@@ -376,7 +376,7 @@
     call CMBToCAMB(CMB, P)
     GetZreFromTau = CAMB_GetZreFromTau(P,dble(tau))
 
-    end  function GetZreFromTau 
+    end  function GetZreFromTau
 
     function CMBToTheta(CMB)
     use ModelParams
@@ -397,7 +397,7 @@
     use lensing
     use ModelParams
 !    use mpk
-    type(CAMBParams)  P 
+    type(CAMBParams)  P
     integer zix
     real(mcp) redshifts(matter_power_lnzsteps)
 
@@ -450,7 +450,7 @@
             if (zix==1) then
                 redshifts(1) = 0
             else
-                !Default Linear spacing in log(z+1) if matter_power_lnzsteps > 1           
+                !Default Linear spacing in log(z+1) if matter_power_lnzsteps > 1
                 redshifts(zix) = exp( log(matter_power_maxz+1) * &
                 real(zix-1)/(max(2,matter_power_lnzsteps)-1) )-1
                 !put in max(2,) to stop compilers complaining of div by zero
@@ -459,26 +459,26 @@
 
 !        if (use_mpk) call mpk_SetTransferRedshifts(redshifts) !can modify to use specific redshifts
         if (redshifts(1) > 0.0001) call MpiStop('mpk redshifts: lowest redshift must be zero')
-        do zix=1, matter_power_lnzsteps 
+        do zix=1, matter_power_lnzsteps
             !CAMB's ordering is from highest to lowest
             P%Transfer%redshifts(zix) = redshifts(matter_power_lnzsteps-zix+1)
         end do
-    else 
+    else
         P%Transfer%num_redshifts = 1
         P%Transfer%redshifts(1) = 0
-    end if   
+    end if
 
     P%Num_Nu_Massive = 3
     P%Num_Nu_Massless = 0.046
     P%InitPower%nn = 1
-    P%AccuratePolarization = num_cls/=1 
+    P%AccuratePolarization = num_cls/=1
     P%Reion%use_optical_depth = .false.
     P%OnlyTransfers = .true.
 
     if (CMB_Lensing) then
         P%DoLensing = .true.
         P%Max_l = lmax_computed_cl +100 + 50 !+50 in case accuracyBoost>1 and so odd l spacing
-        P%Max_eta_k = P%Max_l*2 
+        P%Max_eta_k = P%Max_l*2
     end if
 
     if (HighAccuracyDefault) then
@@ -572,14 +572,14 @@
 
     subroutine CMB_Initialize(Info)
     Type(ParamSetInfo) Info
-    type(CAMBParams)  P 
+    type(CAMBParams)  P
     compute_tensors = Ini_Read_Logical('compute_tensors',.false.)
     if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
     CMB_lensing = Ini_Read_Logical('CMB_lensing',CMB_lensing)
     use_lensing_potential = Ini_Read_logical('use_lensing_potential',use_lensing_potential)
     use_nonlinear_lensing = Ini_Read_logical('use_nonlinear_lensing',use_nonlinear_lensing)
     if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
-    if (use_lensing_potential .and. num_cls_ext ==0) & 
+    if (use_lensing_potential .and. num_cls_ext ==0) &
     call MpiStop('num_cls_ext should be > 0 to use_lensing_potential')
     if (use_lensing_potential .and. .not. CMB_lensing) &
     call MpiStop('use_lensing_potential must have CMB_lensing=T')

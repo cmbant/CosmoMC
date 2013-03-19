@@ -318,7 +318,7 @@
             write (*,*) 'Estimating propose matrix from Hessian at bfp...'
             propose_matrix=EstCovmat(EstParams,4._mcp,status)
             ! By default the grid used to estimate the covariance matrix has spacings
-            ! such that deltaloglike ~ 4 for each parameter.          
+            ! such that deltaloglike ~ 4 for each parameter.
             call AcceptReject(.true., EstParams%Info, Params%Info)
             if (status==0) call DoAbort('estimate_propose_matrix: estimating propose matrix failed')
             if (Feedback>0) write (*,*) 'Estimated covariance matrix:'

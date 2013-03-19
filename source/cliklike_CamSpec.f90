@@ -44,7 +44,7 @@
     if (use_CAMspec) then
         print *,' using non-clik CamSpec'
         allocate(CamSpeclikelihood::Like)
-        call LikeList%Add(Like) 
+        call LikeList%Add(Like)
         Like%needs_powerspectra =.true.
         Like%LikelihoodType = 'CMB'
         Like%name='CamSpec'
@@ -67,7 +67,7 @@
 
         call like_init(likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename)
 
-    end if 
+    end if
 
     use_highL = Ini_Read_Logical_File(Ini,'use_highL',.false.)
 
@@ -75,7 +75,7 @@
 #ifdef highL
         print *,' using non-clik highL'
         allocate(highLLikelihood::Like)
-        call LikeList%Add(Like) 
+        call LikeList%Add(Like)
         Like%LikelihoodType = 'CMB'
         Like%name='highL'
         Like%version = CAMSpec_like_version
@@ -86,7 +86,7 @@
 
         if (lmax < tt_lmax_mc) call MpiStop('set lmax>=tt_lmax_mc in settings to use highL data')
         data_dir = CheckTrailingSlash(ReadIniFileName(Ini,'highL_data_dir'))
-        SPT_data_dir = trim(data_dir) // 'data_spt/' 
+        SPT_data_dir = trim(data_dir) // 'data_spt/'
         ACT_data_dir = trim(data_dir) // 'data_act/'
         if (Feedback>0) write(*,*) 'reading High ell data'
         call highell_likelihood_init
@@ -98,7 +98,7 @@
     end subroutine nonclik_readParams
 
 
-    real(mcp) function CamspecLogLike(like, CMB, Theory, DataParams) 
+    real(mcp) function CamspecLogLike(like, CMB, Theory, DataParams)
     Class(CamSpeclikelihood) :: like
     Class (CMBParams) CMB
     Class(TheoryPredictions) Theory
@@ -106,7 +106,7 @@
     real(mcp) DataParams(:)
 
     call ClsFromTheoryData(Theory, acl)
-    !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as 
+    !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as
     !freq_params(35:44), ACT/SPT as freq_params(45:65)
     CamspecLogLike = nonclik_lnlike_camSpec(acl,DataParams)
     end function CamspecLogLike
@@ -133,7 +133,7 @@
     end function nonclik_lnlike_camSpec
 
 #ifdef highL
-    real(mcp) function highLLogLike(like, CMB, Theory, DataParams) 
+    real(mcp) function highLLogLike(like, CMB, Theory, DataParams)
     Class(highLLikelihood) :: like
     Class (CMBParams) CMB
     Class(TheoryPredictions) Theory
@@ -173,7 +173,7 @@
     A_cib_143=freq_params(9)
     A_cib_217=freq_params(10)
     ncib = freq_params(11)
-    r_ps_spt_95x150=freq_params(12) 
+    r_ps_spt_95x150=freq_params(12)
     r_ps_spt_95x220=freq_params(13)
     r_ps_150x220=freq_params(14)
     r_cib=freq_params(15)

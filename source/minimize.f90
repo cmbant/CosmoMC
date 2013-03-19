@@ -4,7 +4,7 @@
     use CalcLike
     use Powell_ConstrainedOptimize
     implicit none
-    private 
+    private
 
     Type(ParamSet), save :: MinParams
     integer :: minimization_points_factor = 2
@@ -154,7 +154,7 @@
     real(mcp), intent(in), optional :: like
     integer, intent(in) :: aunit
     Type(mc_real_pointer) :: derived
-    integer numderived 
+    integer numderived
     integer isused,i
 
     if (present(like)) then
@@ -169,7 +169,7 @@
                 write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
                 i, P%P(i), ParamNames_name(NameMapping,i)
                 write (aunit,'(a)') trim(NameMapping%label(i))
-            end if 
+            end if
         end do
         write (aunit,*) ''
     end do
@@ -212,10 +212,10 @@
     ! real(mcp) M(num_params_used,num_params_used), diag(num_params_used)
     ! real(mcp) tol !tol is the smallest normalized eigenvalue to allow (e..g fraction of input width)
     ! integer i
-    ! 
+    !
     !  M = BOBYQA_Hessian
     !  !this may not be invertible, let's make sure all eigenvalues are positive
-    !  
+    !
     !  call  Matrix_Diagonalize(M, diag, num_params_used)
     !       !Does m = U diag U^T, returning U in M
     !  if (Feedback > 0) print *,  'Un-regularized Hessian evalues: ', diag

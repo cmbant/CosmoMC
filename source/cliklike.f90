@@ -57,7 +57,7 @@
             else
                 allocate(ClikLikelihood::like)
             end if
-            call LikeList%Add(Like) 
+            call LikeList%Add(Like)
             Like%needs_powerspectra =.true.
             Like%LikelihoodType = 'CMB'
             Like%name= ExtractFileName(fname)
@@ -104,7 +104,7 @@
         end if
     end do
 
-    like%clik_ncl = sum(like%clik_lmax) + 6 
+    like%clik_ncl = sum(like%clik_lmax) + 6
 
     like%clik_nnuis = clik_get_extra_parameter_names(like%clikid,like%names)
     call like%do_checks()
@@ -115,7 +115,7 @@
 
     end subroutine clik_likeinit
 
-    real(mcp) function clik_lnlike(like, CMB, Theory, DataParams) 
+    real(mcp) function clik_lnlike(like, CMB, Theory, DataParams)
     Class(ClikLikelihood) :: like
     Class (CMBParams) CMB
     Class(TheoryPredictions) Theory
@@ -144,8 +144,8 @@
     end do
 
     !Appending nuisance parameters
-    !Not pretty. Oh well.     
-    if (like%clik_nnuis > 0) then 
+    !Not pretty. Oh well.
+    if (like%clik_nnuis > 0) then
         do i=1,like%clik_nnuis
             !silvia--------------------------------------------
             if(i .eq. 6 .and. INDEX(trim(like%name),'plik').ne. 0)then
@@ -156,7 +156,7 @@
             !------------------------------------------------
             j = j+1
         end do
-    end if   
+    end if
 
     !Get - ln like needed by CosmoMC
     clik_lnlike = -1.d0*clik_compute(like%clikid,clik_cl_and_pars)
@@ -203,7 +203,7 @@
 
     end subroutine clik_lensing_likeinit
 
-    real(mcp) function clik_lensing_lnlike(like, CMB, Theory, DataParams) 
+    real(mcp) function clik_lensing_lnlike(like, CMB, Theory, DataParams)
     Class(ClikLensingLikelihood) :: like
     Class (CMBParams) CMB
     Class(TheoryPredictions) Theory

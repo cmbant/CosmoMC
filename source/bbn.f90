@@ -3,10 +3,10 @@
 module bbn
 
   use settings
-  
+
   implicit none
-  private  
-  
+  private
+
   integer, parameter :: dp = KIND(1.d0)
 
   type bbnstuff
@@ -16,7 +16,7 @@ module bbn
   end type
 
   type(bbnstuff) bbn_data
- 
+
   public bbnini,yp_bbn
 
 contains
@@ -39,7 +39,7 @@ contains
 
     bbn_data%n_ombh2 = num_ombh2
     bbn_data%n_deltan = num_deltan
-    
+
    file_id = new_file_unit()
    call OpenTxtFile(trim(DataDir)//'helium.dat', file_id)
 
@@ -52,9 +52,9 @@ contains
     do i = 1,num_ombh2*num_deltan
        read(file_id,*) bbn_tmp(i,1),bbn_tmp(i,2),bbn_tmp(i,3)
     end do
-   
+
     call CloseFile(file_id)
- 
+
     do i = 1,num_ombh2
        bbn_data%ombh2(i) = bbn_tmp(i,1)
 
@@ -82,11 +82,11 @@ contains
     real(dp) res
 
     if (.not. initialized) then
-     call bbnini   
+     call bbnini
      initialized = .true.
     end if
 
- 
+
 !Make sure ombh2 and deltan are within ranges covered by the data file
     if ((ombh2_in .gt. bbn_data%ombh2(size(bbn_data%ombh2))) .or. (ombh2_in .lt. bbn_data%ombh2(1))) then
        Print ('(A,F6.3,A,F6.3,A)'),' Baryon density must be between',bbn_data%ombh2(1) &
@@ -116,7 +116,7 @@ contains
     real(dp) :: yp1,ypn,x(n),y(n),y2(n)
     integer, parameter :: NMAX=500
     real(dp) :: p,qn,sig,un,u(NMAX)
-    
+
     if (yp1.gt..99e30) then
        y2(1)=0.
        u(1)=0.
@@ -149,7 +149,7 @@ contains
     real(dp) :: x1a(m),x2a(n),y2a(m,n),ya(m,n)
     integer, parameter :: NN=100
     real(dp) :: y2tmp(NN),ytmp(NN)
-    
+
     do j=1,m
        do k=1,n
           ytmp(k)=ya(j,k)
@@ -158,7 +158,7 @@ contains
        do k=1,n
              y2a(j,k)=y2tmp(k)
        end do
-    end do              
+    end do
   end subroutine bbn_splie2
 
 
@@ -166,36 +166,36 @@ contains
     integer :: n,k,khi,klo
     real(dp) :: x,y,xa(n),y2a(n),ya(n),a,b,h
 
-!safeguard against extrapolation added    
-    if (.not. (((x.ge.xa(n)) .and. (x.le.xa(1))) .or. ((x.ge.xa(1)) .and. (x.lt.xa(n))))) then 
+!safeguard against extrapolation added
+    if (.not. (((x.ge.xa(n)) .and. (x.le.xa(1))) .or. ((x.ge.xa(1)) .and. (x.lt.xa(n))))) then
        Print*,'Input of bbn_splint out of interpolation range.'
        Print*,xa(n),x,xa(1)
        stop
     end if
     klo=1
     khi=n
-    do while (khi-klo.gt.1) 
+    do while (khi-klo.gt.1)
        k=(khi+klo)/2
        if(xa(k).gt.x)then
           khi=k
        else
           klo=k
        endif
-    end do   
+    end do
     h=xa(khi)-xa(klo)
     if (h.eq.0.) call MpiStop('bad xa input in bbn_splint')
     a=(xa(khi)-x)/h
     b=(x-xa(klo))/h
     y=a*ya(klo)+b*ya(khi)+((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6.
   end subroutine bbn_splint
-    
-    
+
+
   subroutine bbn_splin2(x1a,x2a,ya,y2a,m,n,x1,x2,y)
     integer :: m,n,j,k
     real(dp) :: x1,x2,y,x1a(m),x2a(n),y2a(m,n),ya(m,n)
     integer, parameter :: NN=100
     real(dp) :: y2tmp(NN),ytmp(NN),yytmp(NN)
-      
+
     do j=1,m
        do k=1,n
           ytmp(k)=ya(j,k)
@@ -206,7 +206,7 @@ contains
     call bbn_spline(x1a,yytmp,m,1.d30,1.d30,y2tmp)
     call bbn_splint(x1a,yytmp,y2tmp,m,x1,y)
   end subroutine bbn_splin2
-        
-        
+
+
 end module bbn
-      
+

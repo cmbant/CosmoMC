@@ -15,7 +15,7 @@
         character(LEN=80) :: name = ''
         character(LEN=80) :: LikelihoodType= ''
         character(LEN=80) :: version = ''
-        Type(TParamNames) :: nuisance_params 
+        Type(TParamNames) :: nuisance_params
         !Internally calculated
         logical :: dependent_params(max_num_params) = .false.
         integer, allocatable :: nuisance_indices(:)
@@ -27,7 +27,7 @@
     end type DataLikelihood
 
     !This is the global list of likelihoods we will use
-    Type, extends(TObjectList) :: LikelihoodList 
+    Type, extends(TObjectList) :: LikelihoodList
     integer :: first_fast_param =0
     contains
     procedure :: Item => LikelihoodItem
@@ -47,7 +47,7 @@
 
     select type (like => L%Items(i)%P)
     class is (DataLikelihood)
-        P => like 
+        P => like
         class default
         stop 'List contains non-DataLikelihood item'
     end select
@@ -73,7 +73,7 @@
 
     integer function CompareLikes(this, R1, R2) result(comp)
     Class(LikelihoodList) :: this
-    class(*) R1,R2 
+    class(*) R1,R2
 
     select type (RR1 => R1)
     class is (DataLikelihood)
@@ -129,7 +129,7 @@
     logLikeTheory= logZero
     stop 'logLikeTheory or logLike should not be overridden'
     end function
-    
+
     function LogLike(like, CMB, Theory, DataParams)
     class(DataLikelihood) :: like
     class(*) :: CMB

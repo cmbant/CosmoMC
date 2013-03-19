@@ -18,7 +18,7 @@
     integer, parameter :: mcp= KIND(1.d0)
 #endif
     real(mcp) :: AccuracyLevel = 1.
-    !Set to >1 to use CAMB etc on higher accuracy settings. 
+    !Set to >1 to use CAMB etc on higher accuracy settings.
     !Does not affect MCMC (except making it all slower)
 
 #ifdef TESTLIKE
@@ -47,18 +47,18 @@
     integer :: sampling_method = sampling_metropolis
 
     !scale of the proposal distribution in units of the posterior standard deviation
-    real(mcp)    :: propose_scale  = 2.4_mcp 
+    real(mcp)    :: propose_scale  = 2.4_mcp
 
     !For fast dragging method, baseline number of intermediate drag steps
     real(mcp) :: dragging_steps = 4._mcp
 
     !The rest are set up automatically
-    logical, parameter ::  generic_mcmc= .false. 
+    logical, parameter ::  generic_mcmc= .false.
     !set to true to not call CAMB, etc.
-    !write GenericLikelihoodFunction in calclike.f90   
+    !write GenericLikelihoodFunction in calclike.f90
 
     character(LEN=Ini_max_string_len) :: DataDir='data/'
-    character(LEN=Ini_max_string_len) :: LocalDir='./'   
+    character(LEN=Ini_max_string_len) :: LocalDir='./'
 
     Type(TIniFile) :: CustomParams
 
@@ -77,7 +77,7 @@
     logical :: Use_CMB = .false.
 
     integer :: logfile_unit  = 0
-    integer :: outfile_handle = 0 
+    integer :: outfile_handle = 0
     integer :: indepfile_handle = 0
     integer :: slow_proposals = 0
     integer :: output_lines = 0
@@ -89,7 +89,7 @@
     integer, parameter :: stdout = output_unit
 
     type mc_real_pointer
-        real(mcp), dimension(:), pointer :: p 
+        real(mcp), dimension(:), pointer :: p
     end type mc_real_pointer
 
 
@@ -111,7 +111,7 @@
     character(LEN=*), optional, intent(in) :: ADir
     character(LEN=Ini_max_string_len) :: filename, repdir
     logical, optional :: NotFoundFail
-    integer i 
+    integer i
 
     if (present(NotFoundFail)) then
         filename = Ini_Read_String_File(Ini, key, NotFoundFail)
@@ -122,7 +122,7 @@
         repdir=ADir
     else
         repdir=DataDir
-    end if     
+    end if
     filename= ReplaceDirs(filename, repdir)
 
     do i=1, CustomParams%L%Count
@@ -141,7 +141,7 @@
     call Ini_Open(F, tmp_file_unit, bad, .false.)
     if (bad) return
     Ini_fail_on_not_found = .false.
-    doexit = (Ini_Read_Int('exit',0) == 1) 
+    doexit = (Ini_Read_Int('exit',0) == 1)
     FeedBack = Ini_Read_Int('feedback',Feedback)
     num_threads = Ini_Read_Int('num_threads',num_threads)
     call Ini_Close
@@ -216,7 +216,7 @@
     goto 120
 
 100 rewind(tmp_file_unit)  !Try other possible format
-    do j=1,m 
+    do j=1,m
         do k=1,n
             read (tmp_file_unit,*, end = 200) mat(j,k)
         end do

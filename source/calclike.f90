@@ -26,8 +26,8 @@
     end if
     end subroutine AddLike
 
-    function GenericLikelihoodFunction(Params) 
-    type(ParamSet)  Params 
+    function GenericLikelihoodFunction(Params)
+    type(ParamSet)  Params
     real(mcp) :: GenericLikelihoodFunction
     real(mcp), allocatable, save :: covInv(:,:)
     real(mcp) X(num_params_used)
@@ -45,7 +45,7 @@
     !Used when you want to plug in your own CMB-independent likelihood function:
     !set generic_mcmc=.true. in settings.f90, then write function here returning -Ln(Likelihood)
     !Parameter array is Params%P
-    GenericLikelihoodFunction = LogZero 
+    GenericLikelihoodFunction = LogZero
     call MpiStop('GenericLikelihoodFunction: need to write this function!')
     end if
 
@@ -64,7 +64,7 @@
     end function GetLogLikeBounds
 
     function GetLogLike(Params) !Get -Ln(Likelihood) for chains
-    type(ParamSet), target :: Params 
+    type(ParamSet), target :: Params
     Type (CMBParams), target :: CMB
     real(mcp) GetLogLike
     logical, save:: first=.true.
@@ -74,8 +74,8 @@
     if (GetLogLike==LogZero) return
 
     if (generic_mcmc .or. test_likelihood) then
-        call AddLike(GetLogLike,GenericLikelihoodFunction(Params)) 
-        call AddLike(GetLogLike,getLogPriors(Params%P)) 
+        call AddLike(GetLogLike,GenericLikelihoodFunction(Params))
+        call AddLike(GetLogLike,getLogPriors(Params%P))
     else
         Calc%Params => Params
         Calc%CMB=>CMB
@@ -194,7 +194,7 @@
     else
         do_like = .true.
     end if
-    backgroundSet = Calc%slowChanged 
+    backgroundSet = Calc%slowChanged
     logLike = logZero
     do i= 1, DataLikelihoods%count
         if (do_like(i)) then

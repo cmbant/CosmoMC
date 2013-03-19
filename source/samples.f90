@@ -74,7 +74,7 @@
     call SortItems%SortArr(ix)
 
     if (present(Lower)) then
-        pos = (samps-1)*limfrac + 1 
+        pos = (samps-1)*limfrac + 1
         b = max(int(pos),1)
         Lower = SortItems%Value(b, ix)
         if (b < samps .and. pos>b) then
@@ -88,7 +88,7 @@
         Upper = SortItems%Value(b,ix)
         if (b < samps .and. pos>b) then
             d = pos - b
-            Upper = Upper*(1 - d) + d * SortItems%Value(b+1,ix) 
+            Upper = Upper*(1 - d) + d * SortItems%Value(b+1,ix)
         end if
     end if
     call SortItems%Clear(itemsOnly=.true.)
@@ -105,7 +105,7 @@
     if (x>D%X(D%n) - D%spacing/1d6) then
         if (x > D%X(D%n) + D%spacing/1d6) then
             write (*,*) 'Density: x too big ', x
-            stop 
+            stop
         end if
         Density1D_prob=D%P(D%n)
         return
@@ -147,9 +147,9 @@
 
     subroutine Density1D_initSpline(D)
     Class(TDensity1D) :: D
-    
+
     call spline_double(D%x,D%P,D%n,D%ddP)
-    
+
     end subroutine Density1D_initSpline
 
     subroutine Density1D_Limits(D, p, mn, mx, lim_bot,lim_top)
@@ -158,7 +158,7 @@
     real(mcp), intent(in) :: p
     logical,intent(out) :: lim_bot,lim_top
     real(mcp), intent(out) :: mn,mx
-    integer, parameter :: factor = 100 
+    integer, parameter :: factor = 100
     real(mcp) norm, try, try_sum, try_t,try_b,try_last
     real(mcp), allocatable :: grid(:)
 
@@ -210,6 +210,6 @@
 
     end subroutine Density1D_Limits
 
-    
+
     end module Samples
 

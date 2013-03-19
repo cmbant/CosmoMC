@@ -14,7 +14,7 @@ module EstCovmatModule
  use settings
  use Matrixutils
  implicit none
- 
+
  integer, allocatable :: step_positions(:,:) !step, parameter
  !step is -1,0,1 for normal case, but one-sided e.g. 0,1,2 in case of hard prior boundary nearby
  logical, allocatable  :: is_weakly_constrained(:)
@@ -42,23 +42,23 @@ contains
    if (Feedback>1) write(*,*) 'Estimating the covariance matrix by finding likelihood values on a grid'
 
    ! Set up the grid position
-   CenterParams = Params 
+   CenterParams = Params
    allocate(step_positions(3,num_params_used))
    allocate(is_weakly_constrained(num_params_used))
    parsteps=Scales%PWidth(params_used)
    CenterLike = PlaceGrid(CenterParams,parsteps,bestdll)
-  
+
    ! Loop over attempts to find the covariance matrix
    do while (sucess.eq.0)
       itries = itries + 1
       call GetHess(CenterParams,CenterLike,parsteps,Hess)
 
       U=Hess
-      call Matrix_Diagonalize(U, D, num_params_used)  
+      call Matrix_Diagonalize(U, D, num_params_used)
       if (any(D <= 0)) then
-        write(*,*) 
+        write(*,*)
         write(*,*) '!!! -ve evals, so spreading the grid out by a factor of ~2'
-        bestdll=bestdll*2 ! try using a more spread out grid 
+        bestdll=bestdll*2 ! try using a more spread out grid
         CenterLike= PlaceGrid(CenterParams,parsteps,bestdll)
       else
              sucess=1
@@ -86,10 +86,10 @@ contains
 
  end function EstCovmat
 
- 
+
  function PlaceGrid(CenterParams,parsteps,bestdll) result(CenterLike)
    ! Takes the input CenterParams and parsteps values and improves on them
-   ! While doing so, fills the likelhood grid 
+   ! While doing so, fills the likelhood grid
    ! CenterParams and parsteps values
    Type(ParamSet) P, CenterParams
    real(mcp) parsteps(num_params_used),bestdll, CenterLike
@@ -130,11 +130,11 @@ contains
    real(mcp) step_limit
    integer asign
 
-   ! The center of the whole grid 
+   ! The center of the whole grid
    is_weakly_constrained = .false.
    !! Estimate some good step sizes to use by interating until dchisq~1
    do i=1, num_params_used
-      ii= params_used(i) 
+      ii= params_used(i)
 
       step_max = 0.
       step_min = 0.
@@ -161,23 +161,23 @@ contains
          StepParams=CenterParams ! reset back to original starting point
          StepParams%P(ii)=CenterParams%P(ii) + parsteps(i)*asign
          LStep=GetLogLike(StepParams)
-         call AcceptReject(.true., StepParams%Info, CenterParams%Info) 
+         call AcceptReject(.true., StepParams%Info, CenterParams%Info)
 
          dloglike=abs(LStep-LCenter)
          if (dloglike > 3*bestdll) then
            step_max = parsteps(i)
-           parsteps(i) = (parsteps(i) + step_min) / 2 
+           parsteps(i) = (parsteps(i) + step_min) / 2
          elseif (dloglike < bestdll/3) then
            step_min = parsteps(i)
            if (step_max==0.) then
-            parsteps(i) = parsteps(i) * 2 
+            parsteps(i) = parsteps(i) * 2
            else
-            parsteps(i) = (parsteps(i) + step_max) / 2 
+            parsteps(i) = (parsteps(i) + step_max) / 2
            end if
          else
           exit
-         end if       
-     
+         end if
+
          ! just give up if we have overrun the maximum no. of tries specified above
          if (tries == maxstepsizetries) then
             write(*,*) 'Couldn''t find a good stepsize for parameter ',ii,' with Delta chisq ~1 but continuing anyway'
@@ -191,7 +191,7 @@ contains
       else if (CenterParams%P(ii) + parsteps(i) > Scales%PMax(ii)) then
         !Is hard prior bound below, one sided steps below only
          step_positions(:,i) = (/-2,-1,0/)
-      else 
+      else
          step_positions(:,i)  = (/-1,0,1/)
       end if
    end do
@@ -199,10 +199,10 @@ contains
  end subroutine GetStepsForDChisq1
 
 
-   
+
  subroutine GetHess(CenterParams,CenterLike,parsteps,Hess)
    ! Get the curvature matrix (Hess) for the grid defined by CenterParams
-   ! and parsteps. 
+   ! and parsteps.
    ! Return the answer in Hess.
    ! Input only: CenterParams, parsteps
    ! Ouput only: Hess
@@ -217,7 +217,7 @@ contains
    if (Feedback>1) write(*,*) ' Finding curvature matrix ...'
    Hess = 0
    do i=1, num_params_used
-      ii= params_used(i) 
+      ii= params_used(i)
       if (Feedback>1) write(*,*)
       if (Feedback>1) write(*,*) ' Parameter '//trim(UsedParamNameOrNumber(i))
 
@@ -242,7 +242,7 @@ contains
           end do
           Hess(i,i)=1/(wii*wii) *(Lgrid(1) + Lgrid(3) - 2*LGrid(2))
       end if
-       do j=(i+1), num_params_used 
+       do j=(i+1), num_params_used
          jj=params_used(j)
          if (is_weakly_constrained(j)) cycle !just put zero in off diagonal for unconstrained
          if (Feedback>1) write(*,*) ' Parameter pair '//trim(UsedParamNameOrNumber(i))// &
@@ -272,7 +272,7 @@ contains
 
       end do
    end do
-               
+
  end subroutine GetHess
 
 end module EstCovmatModule

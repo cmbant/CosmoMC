@@ -1,10 +1,10 @@
-!Proposal density 
+!Proposal density
 !Using the covariance matrix to give the proposal directions typically
-!significantly increases the acceptance rate and gives faster movement 
+!significantly increases the acceptance rate and gives faster movement
 !around parameter space.
 !We generate a random basis in the eigenvectors, then cycle through them
 !proposing changes to each, then generate a new random basis
-!The distance proposal in the random direction is given by a two-D Gaussian 
+!The distance proposal in the random direction is given by a two-D Gaussian
 !radial function mixed with an exponential, which is quite robust to wrong width estimates
 !See http://cosmologist.info/notes/cosmomc.pdf
 
@@ -12,18 +12,18 @@ module propose
   use Random
   use settings
   implicit none
- 
+
   Type IndexCycler
       integer n
       integer :: loopix=0
   end Type IndexCycler
-  
+
   Type, extends(IndexCycler) :: CyclicIndexRandomizer
       integer, allocatable :: indices(:)
   contains
      procedure :: Next
   end Type CyclicIndexRandomizer
-  
+
   Type, extends(IndexCycler) :: RandDirectionProposer
     integer :: propose_count = 0
     real(mcp), allocatable, dimension(:,:) :: R
@@ -31,7 +31,7 @@ module propose
    procedure :: ProposeVec
    procedure :: Propose_r
   end type RandDirectionProposer
-  
+
   Type, extends(RandDirectionProposer) :: BlockProposer
       integer :: block_start
       integer, allocatable :: used_param_indices(:)
@@ -40,7 +40,7 @@ module propose
   contains
     procedure :: UpdateParams
   end Type BlockProposer
-  
+
   Type BlockedProposer
     integer :: nBlocks
     integer, allocatable :: indices(:), ProposerForIndex(:)
@@ -58,7 +58,7 @@ module propose
   end Type BlockedProposer
 
   type int_arr_pointer
-    integer, dimension(:), pointer :: p 
+    integer, dimension(:), pointer :: p
   end type int_arr_pointer
 
  logical :: propose_rand_directions = .true.
@@ -76,12 +76,12 @@ contains
    Next = this%indices(this%loopix)
 
  end function Next
-  
+
  subroutine RotMatrix(M,n)
   integer, intent(in) :: n
   real(mcp) M(n,n)
   integer i
-  
+
    if (propose_rand_directions .and. n > 1) then
       call RandRotation(M, n)
    else
@@ -90,22 +90,22 @@ contains
            M(i,i) = sign(1._mcp, real(ranmar(),mcp)-0.5_mcp)
       end do
    end if
- 
+
  end  subroutine RotMatrix
 
-    
+
   function ProposeVec(this, ascale) result(vec)
    Class(RandDirectionProposer) :: this
    real(mcp) :: vec(this%n)
    real(mcp), intent(in), optional :: ascale
-   real(mcp) ::  wid 
-   
+   real(mcp) ::  wid
+
    if (present(ascale)) then
     wid = ascale
    else
     wid = propose_scale
-   end if 
-   
+   end if
+
    if (mod(this%loopix,this%n)==0) then
        !Get a new random rotation
         if (.not. allocated(this%R)) allocate(this%R(this%n,this%n))
@@ -115,7 +115,7 @@ contains
    this%loopix = this%loopix + 1
    this%propose_count= this%propose_count + 1
    vec = this%R(:,this%loopix) * ( this%Propose_r() * wid )
-   
+
   end function ProposeVec
 
  function Propose_r(this) result(r_fac)
@@ -137,14 +137,14 @@ contains
 
  end function Propose_r
 
- 
+
  subroutine UpdateParams(this, P, vec)
   Class(BlockProposer) :: this
   real(mcp) :: P(:)
   real(mcp):: vec(this%n)
 
    P(this%params_changed) =  P(this%params_changed) + matmul(this%mapping_matrix, vec)
-  
+
  end subroutine UpdateParams
 
   subroutine Init(this, parameter_blocks, slow_block_max, oversample_fast)
@@ -156,11 +156,11 @@ contains
    real(mcp), intent(in), optional :: oversample_fast
    integer i, ix, n, np
    Type(BlockProposer), pointer :: BP
-   
+
    if (present(oversample_fast)) then
         this%oversample_fast = oversample_fast
    endif
-   this%nBlocks = size(parameter_blocks) 
+   this%nBlocks = size(parameter_blocks)
    n=0
    this%All%n=0
    this%Slow%n=0
@@ -204,8 +204,8 @@ contains
   end subroutine Init
 
     subroutine SetCovariance(this, propose_matrix)
-  !take covariance of used parameters (propose_matrix), and construct orthonormal parmeters 
-  !where orthonormal parameters are grouped in blocks by speed, so changes in slowest block 
+  !take covariance of used parameters (propose_matrix), and construct orthonormal parmeters
+  !where orthonormal parameters are grouped in blocks by speed, so changes in slowest block
   !changes slow and fast parameters, but changes in the fastest block only changes fast parameters
    use MatrixUtils
    Class(BlockedProposer), target :: this
@@ -229,25 +229,25 @@ contains
        if (.not. allocated(BP%mapping_matrix)) allocate(BP%mapping_matrix(size(BP%used_params_changed), BP%n))
        do j = 1, size(BP%used_params_changed)
            BP%mapping_matrix(j,:)  =  sigmas(BP%used_params_changed(j)) * &
-                        L(BP%block_start+j-1,BP%block_start:BP%block_start+BP%n-1) 
+                        L(BP%block_start+j-1,BP%block_start:BP%block_start+BP%n-1)
        end do
    end do
   end subroutine SetCovariance
 
-    
+
   subroutine GetBlockProposal(this, P, i)
   class(BlockedProposer) :: this
   real(mcp) :: P(:)
   integer, intent(in) :: i
 
-   call this%Proposer(i)%UpdateParams(P, this%Proposer(i)%Proposevec()) 
+   call this%Proposer(i)%UpdateParams(P, this%Proposer(i)%Proposevec())
 
   end subroutine GetBlockProposal
 
 
   subroutine GetProposal(this, P)
    class(BlockedProposer) :: this
-   real(mcp) :: P(:) 
+   real(mcp) :: P(:)
 
    if (this%FastOversampler%Next() > this%Slow%n) then
        call  GetProposalFast(this, P)
@@ -259,27 +259,27 @@ contains
 
   subroutine GetProposalSlow(this, P)
    class(BlockedProposer) :: this
-   real(mcp) :: P(:) 
+   real(mcp) :: P(:)
 
    call this%GetBlockProposal(P, this%ProposerForIndex(this%Slow%Next()))
 
   end subroutine GetProposalSlow
-  
+
   subroutine GetProposalFast(this, P)
    class(BlockedProposer) :: this
-   real(mcp) :: P(:) 
+   real(mcp) :: P(:)
 
    call this%GetBlockProposal(P, this%ProposerForIndex(this%Slow%n + this%Fast%Next()))
 
   end subroutine GetProposalFast
-  
+
   subroutine GetProposalFastDelta(this, P)
    class(BlockedProposer) :: this
-   real(mcp) :: P(:) 
+   real(mcp) :: P(:)
 
    P=0
-   call this%GetProposalFast(P) 
-  
+   call this%GetProposalFast(P)
+
   end subroutine GetProposalFastDelta
 
 end module propose

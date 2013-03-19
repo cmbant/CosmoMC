@@ -21,18 +21,18 @@
     !     because the 'arbitrary offset' depends on alpha and beta, so comparing
     !     fits with different alpha, beta using the 'relative chisq' would give
     !     you incorrect results.
-    ! 6) There is a provision for SN with absolute distances via 
+    ! 6) There is a provision for SN with absolute distances via
     !     absdist_file.  This should be a list of names and distances, in Mpc.
     !     These SN must be in the main data file, and it is up to the user
     !     to include the appropriate additional systematics in the covariance
     !     matrix.
     ! 7) A provision for fitting two scriptm models a-la Sullivan et al. 2010
     ! Model:
-    !  The model for SN magnitudes is 
+    !  The model for SN magnitudes is
     !   m_obs = 5*log10( D_L ) - alpha*(stretch-1) + beta*colour + scriptm
     !  scriptm is some combination of the absolute luminosity of SNe Ia and
-    !  the Hubble constant -- marginalizing over it is equivalent to 
-    !  marginalizing over the absolute magnitude.  Because the errors on the 
+    !  the Hubble constant -- marginalizing over it is equivalent to
+    !  marginalizing over the absolute magnitude.  Because the errors on the
     !  individual points don't depend on scriptm, we can do this.  Since they
     !  do depend on alpha and beta, we can't marginalize over them.    Because
     !  cosmomc returns D_L in Mpc, scriptm is M - 25, where M is the magnitude
@@ -41,7 +41,7 @@
     !  Note that the SN data is independend of H_0 -unless- you use
     !   the absdist file.
     ! Covariance matricies:
-    !  This code has support for SN-SN covariance matricies.  
+    !  This code has support for SN-SN covariance matricies.
     !   We write the final covariance
     !  matrix as:
     !     V = D + V_mm + alpha^2 * V_ss + beta^2 + V_cc + 2 alpha V_ms
@@ -50,11 +50,11 @@
     !  uncorrected magnitude and the stretch of the SN.  D are the diagonal
     !  terms calculated from
     !     D_ii = sigma_m^2 + alpha^2 sigma_s^2 + beta^2 * sigma_c^2
-    !                      + 2 alpha cov_m_s - 2 beta cov_m_c  
+    !                      + 2 alpha cov_m_s - 2 beta cov_m_c
     !                      - 2 alpha beta cov_s_c + intrinsicdisp^2 +
     !                      (5/log 10)^2 sigma_z^2 / z^2
     !  It may seem a little strange that the diagonal term is split off,
-    !  but it is convenient in some circumstances, as it allows for 
+    !  but it is convenient in some circumstances, as it allows for
     !  Sherman-Woodbury inversion.  However, we don't implement that here.
     ! Speed:
     !  One might wonder if it is really necessary to explicitly fit for
@@ -88,7 +88,7 @@
     !         actually works.  But, it turns out to be slower than the
     !         alternative.  To get a good result, you really need to have
     !         your grid be 60x60 or larger.  That means inverting the
-    !         systematics covariance matrix (which depends on alpha 
+    !         systematics covariance matrix (which depends on alpha
     !         and beta) > 60^2 times, and it's about
     !         500x500.  Without SNLS, the slowest step in the likelihood
     !         computation is usually the 3000x3000 inversion of the WMAP
@@ -98,7 +98,7 @@
     !         For comparison, fitting for alpha and beta explicitly
     !         slows the code down by about 20% for a typical fit.  So,
     !         you can use this method if you want, but it would be kinda
-    !         stupid. 
+    !         stupid.
     ! Modification History:
     !  Written by Alex Conley, Dec 2006
     !   aconley, Jan 2007: The OpenMP stuff was causing massive slowdowns on
@@ -133,9 +133,9 @@
 
     character(LEN=*), parameter :: SNLS_version =  'April_2012'
     logical, parameter :: allow_inv_cache = .false. !AL inverse cache does not work.. have not checked why.
-    
+
     !Constants
-    REAL(dl), PARAMETER, PRIVATE :: inv_twoPI = 1.0_dl / const_twopi  
+    REAL(dl), PARAMETER, PRIVATE :: inv_twoPI = 1.0_dl / const_twopi
     CHARACTER, PARAMETER, PRIVATE :: uplo = 'U' !For LAPACK
     INTEGER, PARAMETER, PRIVATE :: max_idisp_datasets = 10
     INTEGER, PARAMETER, PRIVATE :: snnamelen = 12
@@ -205,15 +205,15 @@
         REAL(dl) :: dl             !Distance in Mpc
         INTEGER :: index           !Index into sndata
     END TYPE supernova_absdist
-    TYPE( supernova_absdist ), ALLOCATABLE, PRIVATE :: snabsdist(:) 
+    TYPE( supernova_absdist ), ALLOCATABLE, PRIVATE :: snabsdist(:)
 
     !Other convenience variables
     REAL(dl), ALLOCATABLE, PRIVATE :: lumdists(:)
     REAL(dl), PRIVATE :: alpha_prev, beta_prev
 
-    LOGICAL, PRIVATE :: first_inversion 
+    LOGICAL, PRIVATE :: first_inversion
     LOGICAL, PUBLIC :: snls_read = .FALSE.
-    LOGICAL, PUBLIC :: snls_prepped = .FALSE. 
+    LOGICAL, PUBLIC :: snls_prepped = .FALSE.
 
     PRIVATE :: count_lines, read_snls_lc_data, get_free_lun, read_cov_matrix
     PRIVATE :: read_snls_absdist_data, match_snls_absdist_indices
@@ -241,7 +241,7 @@
     SNLS_marginalize = Ini_Read_Logical_File(Ini, 'SNLS_marginalize',.false.)
     if (SNLS_marginalize) then
         SNLS_marge_steps = Ini_Read_int_File(Ini,'SNLS_marge_steps',5)
-        SNLS_step_width = Ini_read_Double_File(ini,'SNLS_step_width',0.05d0) 
+        SNLS_step_width = Ini_read_Double_File(ini,'SNLS_step_width',0.05d0)
         SNLS_int_points=0
         allocate(alpha_grid((2*SNLS_marge_steps+1)**2))
         allocate(beta_grid((2*SNLS_marge_steps+1)**2))
@@ -251,7 +251,7 @@
                     SNLS_int_points=SNLS_int_points+1
                     alpha_grid(SNLS_int_points) = SNLS_alpha_center + alpha_i* SNLS_step_width
                     beta_grid(SNLS_int_points)  = SNLS_beta_center + beta_i* SNLS_step_width
-                end if 
+                end if
             end do
         end do
         allocate(SNLS_marge_grid(SNLS_int_points))
@@ -303,7 +303,7 @@
 
     !Make sure the file is open
     INQUIRE( lun, OPENED=opened )
-    IF (.NOT. opened) THEN 
+    IF (.NOT. opened) THEN
         WRITE(*,*) "File is not open in count_lines"
         STOP
     ENDIF
@@ -358,7 +358,7 @@
 
 100 REWIND(file_unit)  !Try other possible format
     READ (file_unit, '(I5)', END=200, ERR=100) nfile
-    DO j=1,n 
+    DO j=1,n
         DO k=1,n
             READ (file_unit,*, end = 200) mat(j,k)
         END DO
@@ -404,7 +404,7 @@
     INTRINSIC ADJUSTL
 
     INQUIRE( lun, OPENED=opened )
-    IF (.NOT. opened) THEN 
+    IF (.NOT. opened) THEN
         WRITE(*,*) "File is not open in count_lines"
         STOP
     ENDIF
@@ -536,7 +536,7 @@
     INTRINSIC ADJUSTL
 
     INQUIRE( lun, OPENED=opened )
-    IF (.NOT. opened) THEN 
+    IF (.NOT. opened) THEN
         WRITE(*,*) "File is not open in count_lines"
         STOP
     ENDIF
@@ -596,7 +596,7 @@
     oloop:    DO i = 1, nabsdist
         currname = snabsdist(i)%name
         DO j = 1, nsn
-            IF ( sndata(j)%name .EQ. currname ) THEN 
+            IF ( sndata(j)%name .EQ. currname ) THEN
                 sndata(j)%has_absdist = .TRUE.
                 snabsdist(i)%index = j
                 CYCLE oloop
@@ -741,7 +741,7 @@
             ALLOCATE( stretch_colour_covmat( nsn, nsn ) )
             CALL read_cov_matrix( covfile, stretch_colour_covmat, nsn )
         ENDIF
-    ELSE 
+    ELSE
         diag_errors = .TRUE.
     END IF
 
@@ -754,7 +754,7 @@
     ENDIF
 
     IF (Feedback > 2) THEN
-        WRITE(*,'(" SNLS pec z: ",F6.3)') pecz 
+        WRITE(*,'(" SNLS pec z: ",F6.3)') pecz
         WRITE(*,'(" SNLS default sigma int: ",F6.3)') idisp_zero
         DO i=1, max_idisp_datasets
             IF ( idispdataset(i)) &
@@ -842,9 +842,9 @@
     IF (diag_errors) STOP 'Error -- asking to invert with diagonal errors'
 
     !Build the covariance matrix, then invert it
-    IF (has_mag_covmat) THEN 
-        invcovmat = mag_covmat 
-    ELSE 
+    IF (has_mag_covmat) THEN
+        invcovmat = mag_covmat
+    ELSE
         invcovmat = 0.0_dl
     END IF
     IF (has_stretch_covmat) invcovmat = invcovmat + &
@@ -933,7 +933,7 @@
 
     !Pre-calculate errors as much as we can
     !The include the magnitude error, the peculiar velocity
-    ! error, and the intrinsic dispersion.  
+    ! error, and the intrinsic dispersion.
     !We don't treat the pec-z/redshift errors completely correctly,
     ! using the empty-universe expansion.  However, the redshift errors
     ! are really only important at low-z with current samples (where
@@ -1049,7 +1049,7 @@
     ! with the model you want to evaluate against.   It's assumed
     ! that you have called read_snls_dataset and snls_prep before
     ! trying this.
-    ! 
+    !
     ! Arguments:
     !  CMB             Has the values of alpha and beta
     ! Returns:
@@ -1072,7 +1072,7 @@
     REAL(dl) :: alphasq, betasq, alphabeta !More utility variables
     REAL(dl) :: amarg_A, amarg_B, amarg_C
     REAL(dl) :: amarg_D, amarg_E, amarg_F, tempG !Marginalization params
-    real(dl) :: diffmag(nsn),invvars(nsn) 
+    real(dl) :: diffmag(nsn),invvars(nsn)
     !    real(dl), allocatable :: invcovmat(:,:)
     real(dl) :: invcovmat(nsn,nsn)
 
@@ -1097,11 +1097,11 @@
     wtval = SUM( invvars )
     estimated_scriptm= SUM( (sndata%mag - lumdists)*invvars ) / wtval
     diffmag = sndata%mag - lumdists + alpha*( sndata%stretch - 1.0 ) &
-    - beta * sndata%colour - estimated_scriptm 
+    - beta * sndata%colour - estimated_scriptm
 
-    IF ( diag_errors ) THEN 
+    IF ( diag_errors ) THEN
         amarg_A = SUM( invvars * diffmag**2 )
-        IF ( twoscriptmfit ) THEN 
+        IF ( twoscriptmfit ) THEN
             amarg_B = SUM( invvars * diffmag * A1)
             amarg_C = SUM( invvars * diffmag * A2)
             amarg_D = 0.0
@@ -1111,13 +1111,13 @@
             amarg_B = SUM( invvars * diffmag )
             amarg_E = wtval
         ENDIF
-    ELSE 
+    ELSE
         !Unfortunately, we actually need the covariance matrix,
         ! and can't get away with evaluating terms like
         ! V^-1 * x = y by solving V * y = x.  This costs us in performance
         ! and accuracy, but such is life
         CALL invert_covariance_matrix(invcovmat, alpha,beta,status)
-        IF (status .NE. 0) THEN 
+        IF (status .NE. 0) THEN
             WRITE (*,invfmt) alpha,beta
             SNLS_alpha_beta_like = logZero
             !            IF (.NOT. diag_errors) THEN
@@ -1203,14 +1203,14 @@
     end FUNCTION  SNLS_alpha_beta_like
 
 
-    FUNCTION snls_LnLike(like, CMB, Theory, DataParams) 
+    FUNCTION snls_LnLike(like, CMB, Theory, DataParams)
     USE ModelParams, ONLY : AngularDiameterDistance !From CAMB
     Class(SNLSLikelihood) :: like
     Class (CMBParams) CMB
     Class(TheoryPredictions) Theory
     real(mcp) DataParams(:)
     ! norm_alpha, norm_beta are the positions of alpha/beta in norm
-    REAL(mcp) :: snls_LnLike 
+    REAL(mcp) :: snls_LnLike
     real(dl) grid_best, zhel, zcmb, alpha, beta
     integer grid_i, i
 
@@ -1226,7 +1226,7 @@
 
     !Get the luminosity distances.  CAMB doen't understand the
     ! difference between cmb and heliocentric frame redshifts.
-    ! Camb gives us the angular diameter distance 
+    ! Camb gives us the angular diameter distance
     ! D(zcmb)/(1+zcmb) we want (1+zhel)*D(zcmb)
     !These come out in Mpc
     DO i=1,nsn

@@ -31,7 +31,7 @@
     logical, optional, intent(out) :: OK
 
     handle = new_file_unit()
-    if (.not. present(OK)) then  
+    if (.not. present(OK)) then
         call OpenTxtFile(name,handle)
     else
 
@@ -40,7 +40,7 @@
     return
 28  OK=.false.
 
-    endif     
+    endif
 
     end function IO_OpenChainForRead
 
@@ -89,7 +89,7 @@
     handle = new_file_unit()
     call CreateOpenFile(name,handle,'unformatted',app)
 
-    end function IO_DataOpenForWrite      
+    end function IO_DataOpenForWrite
 
 
     subroutine IO_Close(handle, IsLogFile)
@@ -98,15 +98,15 @@
 
     call CloseFile(handle)
 
-    end subroutine IO_Close      
+    end subroutine IO_Close
 
     subroutine IO_DataCloseWrite(handle)
     integer, intent(in) :: handle
-    !modify e.g. to grab data from temporary file 
+    !modify e.g. to grab data from temporary file
 
     call CloseFile(handle)
 
-    end subroutine IO_DataCloseWrite      
+    end subroutine IO_DataCloseWrite
 
     function IO_Exists(name) result(res)
     logical res
@@ -125,7 +125,7 @@
         call Matrix_write(prop_mat,pmat,.true.,commentline=comment)
     else
         call Matrix_write(prop_mat,pmat,.true.)
-    endif 
+    endif
 
     end subroutine IO_WriteProposeMatrix
 
@@ -135,14 +135,14 @@
     character(LEN=1024), intent(in) :: prop_mat
     real(mcp), allocatable :: tmpMat(:,:)
     integer i,x,y
-    integer file_id 
+    integer file_id
     character(LEN=4096) :: InLine
-    integer num, cov_params(1024) 
+    integer num, cov_params(1024)
 
     file_id = new_file_unit()
     call OpenTxtFile(prop_mat, file_id)
     InLine=''
-    do while (InLine == '') 
+    do while (InLine == '')
         read(file_id,'(a)', end = 10) InLine
     end do
     InLine = adjustl(InLine)
@@ -161,7 +161,7 @@
                 read(InLine,*,end=20) tmpMat(:,y)
                 if (y==num) exit
             end if
-        end do 
+        end do
         call CloseFile(file_id)
         do y=1,num
             if (cov_params(y)/=0) then
@@ -175,7 +175,7 @@
 20      call mpiStop('ReadProposeMatrix: wrong number of rows/columns in .covmat')
 
     end if
-10  call CloseFile(file_id)  
+10  call CloseFile(file_id)
 
     i=TxtNumberColumns(InLine)
     if (i==num_params) then
@@ -204,7 +204,7 @@
         n = nvalues
     else
         n = size(values)
-    end if 
+    end if
 
     fmt = trim(numcat('(2E16.7,',n))//'E16.7)'
     write (handle,fmt) mult, like, values(1:n)
@@ -218,7 +218,7 @@
     character(LEN=*), intent(in) :: S
 
     write(handle,*) trim(S)
-    if (flush_write) call FlushFile(handle) 
+    if (flush_write) call FlushFile(handle)
 
     end subroutine IO_WriteLog
 
@@ -233,7 +233,7 @@
     end do
     OK = .true.
     return
-1   OK = .false.      
+1   OK = .false.
 
     end function IO_SkipChainRows
 
@@ -274,8 +274,8 @@
     end if
     values(params_used) =invals
     OK = .true.
-    return   
-100 OK = .false. 
+    return
+100 OK = .false.
     return
 110 OK = .false.
     if (present(ChainOK)) chainOK = .false.
@@ -366,11 +366,11 @@
         write (*,'(" chain ",1I4," missing")') chain_ix
         OK = .false.
         return
-    end if       
+    end if
 
     if (ignorerows >=1) then
         if (.not. IO_SkipChainRows(chain_handle,ignorerows)) then
-            call IO_Close(chain_handle) 
+            call IO_Close(chain_handle)
             OK = .false.
             return
         end if
@@ -385,21 +385,21 @@
             if (.not. chainOK) then
                 write (*,*) 'error reading line ', nrows -row_start + ignorerows ,' - skipping to next row'
                 cycle
-            endif 
-            call IO_Close(chain_handle)  
-            return 
+            endif
+            call IO_Close(chain_handle)
+            return
         else
             if (.not. chainOK) then
                 write (*,*) 'WARNING: skipping line with probable NaN'
-                cycle 
-            end if 
-        end if 
+                cycle
+            end if
+        end if
 
         coldata(1:ncols, nrows) = invars(1:ncols)
         nrows = nrows + 1
         if (nrows > max_rows) stop 'need to increase max_rows'
 
-    end do 
+    end do
 
     end function IO_ReadChainRows
 
@@ -454,7 +454,7 @@
                 tag='none'
             elseif (has_limits_bot(i,colix(j))) then
                 tag= '>'
-            elseif (has_limits_top(i,colix(j))) then 
+            elseif (has_limits_top(i,colix(j))) then
                 tag = '<'
             else
                 tag = 'two'

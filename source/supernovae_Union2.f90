@@ -1,8 +1,8 @@
     ! UNION 2.1 Supernovae Ia dataset
     !
-    ! This module uses the SCP (Supernova Cosmology Project) Union 2 
-    ! compilation. Please cite 
-    ! "Suzuki et al. (SCP) 2011, arXiv:1105.3470 (2011 ApJ Dec 20 issue)".  
+    ! This module uses the SCP (Supernova Cosmology Project) Union 2
+    ! compilation. Please cite
+    ! "Suzuki et al. (SCP) 2011, arXiv:1105.3470 (2011 ApJ Dec 20 issue)".
     ! and the references of other compiled supernovae data are in there.
     !
     ! Originally by A Slosar, heavily based on the original code by A Lewis, S Bridle
@@ -17,11 +17,11 @@
     !
     ! Update Note :
     !
-    ! Union1   (Kowalski et al 2008)  : 307 SNe with SALT1 fit (Guy et al 2005) 
+    ! Union1   (Kowalski et al 2008)  : 307 SNe with SALT1 fit (Guy et al 2005)
     ! Union2   (Amanullah et al 2010) : 557 SNe with SALT2 fit (Guy et al 2007)
     ! Union2.1 (Suzuki et al 2011)    : 580 SNe with SALT2 fit (Guy et al 2007)
     !
-    ! The following parameters are used to calculate distance moduli 
+    ! The following parameters are used to calculate distance moduli
     ! (see Suzuki et al. 2011 for complete description)
     !
     ! alpha 0.121851859725    ! Stretch Correction Factor
@@ -30,7 +30,7 @@
     ! M(h=0.7, statistical only) -19.3182761161 ! Absolute B Magnitue of SNIa
     ! M(h=0.7, with systematics) -19.3081547178 ! Absolute B Magnitue of SNIa
     !
-    !  Tips for running cosmomc with SCP UNION2.1 data 
+    !  Tips for running cosmomc with SCP UNION2.1 data
     !
     !  1) Place the following 3 data files in your cosmomc data dir (DataDir)
     !     a) sn_z_mu_dmu_plow_union2.1.txt : SN data
@@ -42,12 +42,12 @@
     !     character(LEN=1024) :: DataDir='yourdirpathto/cosmomc/data/'
     !     The default is 'data/' and if it works for you, just leave it as it is
     !
-    !  3) Pick SN data 'with' or 'without' systematic error 
+    !  3) Pick SN data 'with' or 'without' systematic error
     !     (default is 'with' systematic error)
-    !     Modify the folowing SN_syscovamat=.True. or .False.     
+    !     Modify the folowing SN_syscovamat=.True. or .False.
     !
     !  4) To make UNION2 as your default,
-    !     either rename supernovae_union2.1.f90 as supernovae.f90 and recompile it 
+    !     either rename supernovae_union2.1.f90 as supernovae.f90 and recompile it
     !     or change targets in your Makefile from supernova to supernovae_union2.1
     !
     !  Note: In your default params.ini, there is a line for 'SN_filename', but this
@@ -120,7 +120,7 @@
 
     end subroutine Union2Likelihood_Add
 
-    function SN_LnLike(like, CMB) 
+    function SN_LnLike(like, CMB)
     use camb
     !Assume this is called just after CAMB with the correct model  use camb
     Class(CMBParams) CMB
@@ -138,7 +138,7 @@
 
     chisq = dot_product(diffs,matmul(Like%sn_ninv,diffs))
 
-    !! H0 normalisation alla Bridle and co. 
+    !! H0 normalisation alla Bridle and co.
 
     if (Feedback > 1) write (*,*) 'SN chisq: ', chisq
 

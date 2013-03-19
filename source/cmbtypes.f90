@@ -11,20 +11,20 @@
 
     integer, parameter  :: num_cls_ext=1
     !number of other C_l
-    !e.g. 2 for CMB lensing potential and cross-correlation 
+    !e.g. 2 for CMB lensing potential and cross-correlation
 
     !l_max. Tensors are not computed unless compute_tensors = T in input file
     !Make these multiples of 50, should be 50 more than you need accurately
     integer, parameter :: lmax = 6500, lmax_tensor = 400 !note only lmax_computed_cl is actually calculated
 
-    !redshifts for output of BAO_dv background parameters 
+    !redshifts for output of BAO_dv background parameters
     real(mcp), target :: z_outputs(1) = [0.57_mcp]
 
     !Parameters for calculating/storing the matter power spectrum
     !Note that by default everything is linear
 
-    !Note these are the interpolated/extrapolated values. The k at which matter power is computed up to 
-    !by CAMB is set in CMB_Cls_xxx with, e.g. P%Transfer%kmax = 0.6 
+    !Note these are the interpolated/extrapolated values. The k at which matter power is computed up to
+    !by CAMB is set in CMB_Cls_xxx with, e.g. P%Transfer%kmax = 0.6
     !Note that none of this probably works with non-linear lensing
     integer, parameter :: num_matter_power = 74 !number of points computed in matter power spectrum
     real(mcp), parameter    :: matter_power_minkh =  0.999e-4_mcp  !1e-4 !minimum value of k/h to store
@@ -46,8 +46,8 @@
 
     integer, parameter :: num_cls_tot = num_cls + num_cls_ext
     !Number of scalar-only cls
-    !if num_cls=4 and CMB_lensing then increased to 4 
-    integer :: num_clsS=min(num_cls,3) 
+    !if num_cls=4 and CMB_lensing then increased to 4
+    integer :: num_clsS=min(num_cls,3)
 
     integer, parameter :: max_inipower_params = 10
     integer:: num_hard, num_initpower
@@ -89,15 +89,15 @@
         !second index is redshifts from 0 to matter_power_maxz
         !if custom_redshift_steps = false with equal spacing in
         !log(1+z) and matter_power_lnzsteps points
-        !if custom_redshift_steps = true set in mpk.f90 
-    contains 
+        !if custom_redshift_steps = true set in mpk.f90
+    contains
     procedure :: WriteTheory
     procedure :: ReadTheory
     procedure :: WriteBestFitData
     end Type TheoryPredictions
 
     Type, extends(TParameterization) :: CosmologyParameterization
-        logical :: late_time_only = .false. 
+        logical :: late_time_only = .false.
     end type
 
     integer, parameter :: As_index=4, amp_ratio_index = 5, Aphiphi_index = 6
@@ -146,7 +146,7 @@
     end if
 
     write(i) T%numderived
-    write(i) T%derived_parameters(1:T%numderived) 
+    write(i) T%derived_parameters(1:T%numderived)
     write(i) T%cl(2:lmax,1:num_cls)
     if (num_cls_ext>0) write(i) T%cl(2:lmax,num_cls+1:num_cls_tot)
 
@@ -220,7 +220,7 @@
     do l = 2, lmax
         nm = 2*pi/(l*(l+1))
         if (num_cls_ext > 0) then
-            write (tmp_file_unit,fmt) l, cls(l,1:num_cls)/nm, cls(l,num_cls+1:num_cls_tot) 
+            write (tmp_file_unit,fmt) l, cls(l,1:num_cls)/nm, cls(l,num_cls+1:num_cls_tot)
         else
             write (tmp_file_unit,fmt) l, cls(l,:)/nm
         end if
@@ -248,7 +248,7 @@
     x = log(kh/matter_power_minkh) / matter_power_dlnkh
     if (x < 0 .or. x >= num_matter_power-1) then
         write (*,*) ' k/h out of bounds in MatterPowerAt (',kh,')'
-        call MpiStop('') 
+        call MpiStop('')
     end if
     i = int(x)
     d = x - i
@@ -271,7 +271,7 @@
     integer i, iz
 
     matter_power_dlnz = log(matter_power_maxz+1) / (matter_power_lnzsteps -1 + 1e-13)
-    y = log(1.+ z) / matter_power_dlnz 
+    y = log(1.+ z) / matter_power_dlnz
 
     if (z > matter_power_maxz ) then
         write (*,*) ' z out of bounds in MatterPowerAt_Z (',z,')'

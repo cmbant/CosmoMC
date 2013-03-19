@@ -15,13 +15,13 @@
     !number of iterations between dumping full model data. If zero then skip.
 
 
-    integer :: directional_grid_steps = 20 
+    integer :: directional_grid_steps = 20
     !for sampling_method = sampling_slowgrid, number of steps per grid
 
     real(mcp), parameter    :: eps_1 = 1.00001
     real(mcp) :: MaxLike
 
-    logical :: fast_slicing = .false. !slice fast parameters when using Metropolis 
+    logical :: fast_slicing = .false. !slice fast parameters when using Metropolis
     logical :: slice_stepout = .true.
     logical :: slice_randomsize = .false.
 
@@ -39,7 +39,7 @@
     real(mcp) :: WL_flat_tol = 1.4 !factor by which smallest histogram can be smaller than mean
     contains
 
-    !function UpdateParamsLike(Params, fast, dist, i, freeNew, Lik) result(NewLik) 
+    !function UpdateParamsLike(Params, fast, dist, i, freeNew, Lik) result(NewLik)
     ! !For slice sampling movement and likelihood
     ! Type(ParamSet) tmp, Params
     ! integer, intent(in) :: i
@@ -56,7 +56,7 @@
     ! if (freeNew) then
     !   call AcceptReject(.true., tmp%Info, Params%Info)
     ! else
-    !    if (NewLik <= Lik*eps_1) then 
+    !    if (NewLik <= Lik*eps_1) then
     !      !accept move
     !      call AcceptReject(.false., tmp%Info, Params%Info)
     !      Params = tmp
@@ -77,17 +77,17 @@
     ! logical, intent(in) :: fast
     ! real(mcp), intent(inout) :: Like
     ! real(mcp) offset,  P
-    ! real(mcp) L, R 
+    ! real(mcp) L, R
     ! real(mcp) LikL, LikR, Range, LikT, w
     ! integer fevals
     !
     !
     !  w = propose_scale
     !  if (slice_randomsize) w =w * Gaussian1()
-    !  Like = Like + randexp1()  !New vertical position (likelihood)  
+    !  Like = Like + randexp1()  !New vertical position (likelihood)
     !  fevals = 0
     !
-    !  offset = ranmar() 
+    !  offset = ranmar()
     !
     !  L = -offset
     !  R = 1- offset
@@ -108,7 +108,7 @@
     !       R = R + 1
     !      end do
     !  end if
-    !    
+    !
     !  !stepping in
     !  do
     !   Range =  R - L
@@ -128,7 +128,7 @@
     !end subroutine SliceUpdate
     !
     !
-    !subroutine SliceSampleSlowParam(CurParams, CurLike) 
+    !subroutine SliceSampleSlowParam(CurParams, CurLike)
     ! Type(ParamSet) CurParams
     ! real(mcp) CurLike
     ! integer, save:: loopix = 0
@@ -139,22 +139,22 @@
     !       loopix = 0
     !  end if
     !  loopix = loopix + 1
-    !  call SliceUpdate(CurParams, .false., loopix,CurLike) 
+    !  call SliceUpdate(CurParams, .false., loopix,CurLike)
     !
     !end subroutine SliceSampleSlowParam
     !
     !subroutine SliceSampleFastParams(CurParams, CurLike)
     ! Type(ParamSet) CurParams
     ! real(mcp) CurLike
-    ! integer j 
+    ! integer j
     !
     !  if (.not. allocated(Rot_fast)) allocate(Rot_fast(num_fast,num_fast))
     !  call RotMatrix(Rot_fast,num_fast)
-    !  
+    !
     !  do j = 1, num_fast * max(1,oversample_fast)
-    !     call SliceUpdate(CurParams, .true., mod(j-1,num_fast)+1,CurLike) 
+    !     call SliceUpdate(CurParams, .true., mod(j-1,num_fast)+1,CurLike)
     !  end do
-    !  
+    !
     !end subroutine SliceSampleFastParams
     !
     function MetropolisAccept(Like, CurLike)
@@ -170,8 +170,8 @@
 
     end function MetropolisAccept
 
-    subroutine FastDragging(CurParams, CurLike, mult, MaxLike) 
-    !Make proposals in fast-marginalized slow parameters 
+    subroutine FastDragging(CurParams, CurLike, mult, MaxLike)
+    !Make proposals in fast-marginalized slow parameters
     !'drag' fast parameters using method of Neal
     Type(ParamSet) TrialEnd, TrialStart, CurParams, CurEndParams, CurStartParams
     real(mcp) CurLike, MaxLike
@@ -212,10 +212,10 @@
     do interp_step = 1, interp_steps-1
         call Proposer%GetProposalFastDelta(delta)
         TrialEnd = CurEndParams
-        TrialEnd%P(1:num_params) = TrialEnd%P(1:num_params) + delta 
+        TrialEnd%P(1:num_params) = TrialEnd%P(1:num_params) + delta
         EndLike = GetLogLike(TrialEnd)
         accpt = EndLike /= logZero
-        if (accpt) then 
+        if (accpt) then
             num_fast_calls = num_fast_calls + 1
             TrialStart = CurStartParams
             TrialStart%P(1:num_params) = TrialStart%P(1:num_params)  + delta
@@ -284,7 +284,7 @@
     end subroutine FastDragging
 
 
-    !subroutine SampleSlowGrid(CurParams, CurLike, mult, MaxLike, num, num_accept) 
+    !subroutine SampleSlowGrid(CurParams, CurLike, mult, MaxLike, num, num_accept)
     ! !sampling_method = method_slowgrid
     ! !Make proposals on a grid in each slow direction simultaneously with changes to
     ! !fast parameters. Allows fast paraters to 'adapt' to slow parameter values, thereby
@@ -311,7 +311,7 @@
     !
     !  allocate(grid(-directional_grid_steps:directional_grid_steps))
     !  grid(0) = CurParams
-    !  
+    !
     !  do i = 1, directional_grid_steps*oversample_fast
     !
     !   last_r = r
@@ -321,7 +321,7 @@
     !   else
     !    r =r  - 1
     !   end if
-    ! 
+    !
     !   Trial = Grid(last_r)
     !   call UpdateParamsDirection(Trial, .false., (r-last_r)*w, loopix)
     !
@@ -335,9 +335,9 @@
     !   end if
     !
     !   call GetProposalProjFast(grid(r), grid(r), propose_scale)
-    ! 
+    !
     !   Like = GetLogLike(grid(r))
-    !  
+    !
     !   if (Feedback > 1) write (*,*) r, 'Likelihood: ', Like, 'Current Like:', CurLike
     !
     !   if (MetropolisAccept(Like, CurLike)) then
@@ -347,7 +347,7 @@
     !         output_lines = output_lines +1
     !        call WriteParams(grid(last_r),real(mult,mcp),CurLike)
     !     end if
-    !  
+    !
     !     CurLike = Like
     !     accpt = accpt + 1
     !     if (Like < MaxLike) MaxLike = Like
@@ -357,24 +357,24 @@
     !   !Reject
     !     r = last_r
     !     mult=mult+1
-    !   end if  
+    !   end if
     !
-    !   call AddMPIParams(grid(r)%P,CurLike) 
+    !   call AddMPIParams(grid(r)%P,CurLike)
     !
     !  num = num + 1
     !
     !  end do
-    !  
+    !
     !  if (Feedback > 1) write(*,*) 'Done slow grid, direction', loopix
     !  if (Feedback > 1) write(*,*) 'grid steps moved:',abs(r), ' acc rate =',&
     !           real(accpt)/(directional_grid_steps*oversample_fast)
-    !  
+    !
     !  !Have to be careful freeing up here.. (logZero results don't allocate new)
     !  do last_r = r_max, r+1, -1
-    !     call AcceptReject(.true., grid(last_r)%Info,grid(last_r-1)%Info)  
+    !     call AcceptReject(.true., grid(last_r)%Info,grid(last_r-1)%Info)
     !  end do
     !  do last_r = r_min, r-1
-    !     call AcceptReject(.true., grid(last_r)%Info,grid(last_r+1)%Info)  
+    !     call AcceptReject(.true., grid(last_r)%Info,grid(last_r+1)%Info)
     !  end do
     !
     !  CurParams = grid(r)
@@ -435,7 +435,7 @@
 
     allocate(tmp(mc_mini:mc_maxi))
     tmp=0
-    tmp(LBOUND(mc_lnweights,DIM=1):UBOUND(mc_lnweights,DIM=1)) = mc_lnweights   
+    tmp(LBOUND(mc_lnweights,DIM=1):UBOUND(mc_lnweights,DIM=1)) = mc_lnweights
     if (allocated(mc_lnweights)) deallocate(mc_lnweights)
     allocate(mc_lnweights(mc_mini:mc_maxi))
     mc_lnweights = tmp
@@ -446,10 +446,10 @@
     end do
     do i = mc_mini+2 , mc_maxi-2
         tmp(i) = sum(mc_like_counts(i-2:i+2,1)*win)
-    end do 
+    end do
     !tmp=mc_like_counts
     tmp = max(tmp,1._mcp)
-    mc_lnweights = mc_lnweights + log(tmp/real(maxval(tmp))) 
+    mc_lnweights = mc_lnweights + log(tmp/real(maxval(tmp)))
     deallocate(tmp)
     mc_like_counts = 0
 
@@ -465,11 +465,11 @@
     else
         like_ix = int(L*mc_logspace/num_params_used)
         if (like_ix > UBound(mc_lnweights,dim=1)) then
-            MC_LnWeight = mc_lnweights(UBound(mc_lnweights,dim=1))    
+            MC_LnWeight = mc_lnweights(UBound(mc_lnweights,dim=1))
         elseif (like_ix < LBound(mc_lnweights,dim=1)) then
-            MC_LnWeight= mc_lnweights(LBound(mc_lnweights,dim=1))    
+            MC_LnWeight= mc_lnweights(LBound(mc_lnweights,dim=1))
         else
-            MC_LnWeight = mc_lnweights(like_ix)    
+            MC_LnWeight = mc_lnweights(like_ix)
         end if
     endif
 
@@ -512,19 +512,19 @@
     asum = 0
     n=0
     do i=mc_mini,mc_maxi
-        L = i*num_params_used/mc_logspace 
+        L = i*num_params_used/mc_logspace
         if (mc_like_counts(i,1) /= 0 .and. L <= MaxLike + WL_maxL*num_params_used) then
             n=n+1
             amin = min(amin,mc_like_counts(i,2))
             asum = asum + mc_like_counts(i,2)
         end if
     end do
-    WL_update_steps = WL_update_steps + 30*num_params_used 
+    WL_update_steps = WL_update_steps + 30*num_params_used
 
     if (amin > asum / (WL_flat_tol*n)) then
         WL_f = WL_f*0.5
         mc_like_counts(:,2)=0
-        WL_update_steps = WL_update_steps + 300*num_params_used  
+        WL_update_steps = WL_update_steps + 300*num_params_used
 
         if (WL_F < WL_min) then
             if (Feedback > 0) write(*,*) 'Outputting Markovian samples'
@@ -532,7 +532,7 @@
             WL_minW=LogZero
             !            call CreateTxtFile('density.txt',1)
             do i=mc_mini,mc_maxi
-                L = i*num_params_used/mc_logspace 
+                L = i*num_params_used/mc_logspace
                 if (mc_like_counts(i,1) /= 0 .and. L <= MaxLike + WL_maxL*num_params_used) then
                     WL_minW = min(WL_minW,L - mc_like_counts(i,1))
                     !                   write (1,*) L,mc_like_counts(i,1)
@@ -556,9 +556,9 @@
 
     like_ix = int(L*mc_logspace/num_params_used)
     if (like_ix >= mc_maxi .or. like_ix <= mc_mini) then
-        Like = 0     
+        Like = 0
     else
-        Like = mc_like_counts(like_ix,1)    
+        Like = mc_like_counts(like_ix,1)
     end if
 
     end function WL_WeightLike
@@ -576,9 +576,9 @@
 
     like_ix = int(L*mc_logspace/num_params_used)
     if (like_ix >= mc_maxi .or. like_ix <= mc_mini) then
-        W = 0     
+        W = 0
     else
-        W  = exp( -L + mc_like_counts(like_ix,1) + WL_minW)    
+        W  = exp( -L + mc_like_counts(like_ix,1) + WL_minW)
     end if
 
     end function WL_Weight
@@ -616,7 +616,7 @@
             end if
         end if
 
-        if (CurLike /= LogZero .and. sampling_method == sampling_slice) then 
+        if (CurLike /= LogZero .and. sampling_method == sampling_slice) then
             !Slice sampling
             !if (num_accept> burn_in) then
             ! output_lines = output_lines +1
@@ -624,17 +624,17 @@
             !end if
             !if (Feedback > 1) write (*,*) instance, 'Slicing, Current Like:', CurLike
             !mult = 1
-            !if (num_slow /=0) call SliceSampleSlowParam(CurParams, CurLike) 
-            !if (num_fast /=0) call SliceSampleFastParams(CurParams, CurLike) 
+            !if (num_slow /=0) call SliceSampleSlowParam(CurParams, CurLike)
+            !if (num_fast /=0) call SliceSampleFastParams(CurParams, CurLike)
             !num_accept = num_accept + 1
             !if (CurLike < MaxLike) MaxLike = CurLike
 
         elseif (sampling_method == sampling_slowgrid .and. CurLike /= LogZero .and. num_fast /= 0 .and. num_slow /=0) then
             if (Feedback > 1) write (*,*) instance, 'Directional gridding, Like: ', CurLike
-            !          call SampleSlowGrid(CurParams, CurLike,mult, MaxLike, num, num_accept) 
+            !          call SampleSlowGrid(CurParams, CurLike,mult, MaxLike, num, num_accept)
         elseif (sampling_method == sampling_fast_dragging .and. CurLike /= LogZero .and. num_fast/=0 .and. num_slow /=0) then
             if (Feedback > 1) write (*,*) instance, 'Fast dragging, Like: ', CurLike
-            call FastDragging(CurParams, CurLike,mult, MaxLike) 
+            call FastDragging(CurParams, CurLike,mult, MaxLike)
         else
 
         !Do metropolis, except for (optional) slice sampling on fast parameters
@@ -648,23 +648,23 @@
             !    end if
             !    call SliceSampleFastParams(CurParams, CurLike)
             !   if (CurLike < MaxLike) MaxLike = CurLike
-            !    mult = 1 
-            !end if 
+            !    mult = 1
+            !end if
             !call GetProposalProjSlow(CurParams, Trial)
         else
             Trial = CurParams
             call Proposer%GetProposal(Trial%P)
         end if
 
-        Like = GetLogLike(Trial) 
+        Like = GetLogLike(Trial)
 
         if (Feedback > 1) write (*,*) instance, 'Likelihood: ', Like, 'Current Like:', CurLike
 
         if (Like /= logZero) then
             if (sampling_method == sampling_multicanonical) then
-                testLike = MC_WeightLike(Like)   
+                testLike = MC_WeightLike(Like)
             elseif (sampling_method == sampling_wang_landau) then
-                testLike = WL_WeightLike(Like)   
+                testLike = WL_WeightLike(Like)
             else
                 testLike = Like
             end if
@@ -692,7 +692,7 @@
                     if (WL_f >= WL_min) then
                         rmult = 0.
                     else
-                        rmult = mult*WL_Weight(CurLike) 
+                        rmult = mult*WL_Weight(CurLike)
                     end if
                 end if
 
@@ -722,7 +722,7 @@
                 write (logLine,*) 'rat:',real(num_metropolis_accept)/num_metropolis, ' in ',num_metropolis, &
                 ', (M) best: ',real(MaxLike)
                 call IO_WriteLog(logfile_unit,logLine)
-                write (logLine,*) 'local acceptance ratio:', 50./(num_metropolis - last_num) 
+                write (logLine,*) 'local acceptance ratio:', 50./(num_metropolis - last_num)
                 call IO_WriteLog(logfile_unit,logLine)
                 last_num = num_metropolis
             end if
@@ -731,16 +731,16 @@
             if (Feedback > 1) write (*,*) num_metropolis,' rejecting. ratio:', real(num_metropolis_accept)/num_metropolis
         end if
 
-        end if !not slicing 
+        end if !not slicing
 
         if (CurLike /= logZero) then
-            if (sampling_method /= sampling_slowgrid) call AddMPIParams(CurParams%P,CurLike) 
+            if (sampling_method /= sampling_slowgrid) call AddMPIParams(CurParams%P,CurLike)
             if (mod(num,100)==0) call CheckParamChange
 
             if (sampling_method == sampling_multicanonical .and. &
             mod(num,mc_update_steps + mc_updates*mc_steps_inc)==0) then
                 call MC_UpdateWeights
-                Like=LogZero         
+                Like=LogZero
                 testCurLike = StartLike
                 mc_update_burn_num = num + mc_update_burn
                 mc_updates = mc_updates + 1
@@ -760,7 +760,7 @@
         else
             if (num > 1000) then
                 call DoAbort('MCMC.f90: Couldn''t start after 1000 tries - check starting ranges')
-            end if    
+            end if
         end if
 
     end do

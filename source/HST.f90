@@ -15,7 +15,7 @@
     end type HSTLikelihood
 
     ! angdistinveffh0 is the inverse of the angular diameter distance at z = 0.04 for H_0 = 74.2
-    ! and a fiducial cosmology (omega_k = 0, omega_lambda = 0.7, w = -1); this is proportional to 
+    ! and a fiducial cosmology (omega_k = 0, omega_lambda = 0.7, w = -1); this is proportional to
     !H_0 but includes the tiny cosmological dependence of the measurement (primarily on w) correctly.
     ! angdistinveffh0err = 3.6 / DL(0.04)
     !real(mcp), parameter :: angdistinvzeffh0 = 6.49405e-3, zeffh0 = 0.04, &

@@ -847,7 +847,7 @@
                             do i = 2, thin_rows-1
                                 tran(binchain(i-2),binchain(i-1),binchain(i)) = &
                                 tran(binchain(i-2),binchain(i-1),binchain(i)) +1
-                            end do 
+                            end do
                             deallocate(binchain)
 
                             !Test whether 2nd order is better than Markov using BIC statistic
@@ -909,7 +909,7 @@
                 do i = 1, thin_rows-1
                     tran2(binchain(i-1),binchain(i)) = &
                     tran2(binchain(i-1),binchain(i)) +1
-                end do 
+                end do
                 deallocate(binchain)
 
                 !Test whether independence is better than Markov using BIC statistic
@@ -979,7 +979,7 @@
         maxoff = min(15,thin_rows/(autocorr_thin*num_chains_used))
         allocate(Corrs(ncols,maxoff))
         corrs = 0
-        do off =1,maxoff 
+        do off =1,maxoff
             do i=off, thin_rows-1
                 do j = 3, ncols
                     if (isused(j)) &
@@ -1183,7 +1183,7 @@
         if (plot_meanlikes .and. mean_loglikes) then
             maxbin = minval(binlikes)
             where (binlikes - maxbin < 30)
-                binlikes = exp(-(binlikes- maxbin)) 
+                binlikes = exp(-(binlikes- maxbin))
             elsewhere
                 binlikes = 0
             end where
@@ -1802,7 +1802,7 @@
 
     num_bins = Ini_Read_Int('num_bins')
     num_bins_2D = Ini_Read_Int('num_bins_2D', num_bins)
-    smooth_scale_1D = Ini_read_Double('smooth_scale_1D',smooth_scale_1D) 
+    smooth_scale_1D = Ini_read_Double('smooth_scale_1D',smooth_scale_1D)
     smooth_scale_2D = Ini_read_Double('smooth_scale_2D',smooth_scale_2D) !smoothing scale in terms of bin scale
     if (smooth_scale_1D>0 .and. smooth_scale_1D>1) write(*,*) 'WARNING: smooth_scale_1D>1 is oversmoothed'
     if (smooth_scale_1D>0 .and. smooth_scale_1D>1.9) stop 'smooth_scale_1D>1 is now in stdev units'
@@ -2343,7 +2343,7 @@
                 LowerUpperLimits(j,1,ix1) = range_min(j)
                 LowerUpperLimits(j,2,ix1) = range_max(j)
             end if
-        end do 
+        end do
 
         if (.not. no_plots) then
             !filename = trim(plot_data_dir)//trim(rootname)//'.m'

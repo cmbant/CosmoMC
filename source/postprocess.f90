@@ -10,19 +10,19 @@
     Type TPostParams
         logical  redo_like, redo_theory, redo_cls, redo_Pk
         integer redo_thin
-        real(mcp) redo_skip 
+        real(mcp) redo_skip
         character(LEN=Ini_max_string_len) :: redo_datafile, redo_outroot
-        real(mcp) redo_likeoffset 
+        real(mcp) redo_likeoffset
         real(mcp) redo_temperature
-        logical redo_change_like_only 
+        logical redo_change_like_only
 
         !This last one is for comparing goodness of fit
         !After importance sampling, you can recompute the likelihoods without the new data, but
         !keeping the weights from the importance sampling, and thereby asses whether the mean
-        !likelihood wrt the original distribution of the parameter space after importance sampling 
+        !likelihood wrt the original distribution of the parameter space after importance sampling
         !is similar to that after, in which case the datasets intersect in a region of high likelihood
 
-        logical redo_add 
+        logical redo_add
         !if just want to add new datasets rather than re-computing the entire likelihood
 
         logical redo_from_text
@@ -105,7 +105,7 @@
     debug = 0
 
     infile_handle = 0
-    Temperature = PostParams%redo_temperature 
+    Temperature = PostParams%redo_temperature
 
     if (Feedback>0 .and. PostParams%redo_change_like_only) &
     write (*,*) 'Warning: only changing likelihoods not weights'
@@ -125,7 +125,7 @@
         end if
     end if
 
-    post_root = PostParams%redo_outroot 
+    post_root = PostParams%redo_outroot
 
     if (MpiRank==0 .and. NameMapping%nnames/=0) then
         call IO_OutputParamNames(NameMapping,trim(post_root),params_used, add_derived=.true.)
@@ -201,7 +201,7 @@
             if (PostParams%redo_like .or. PostParams%redo_add) then
                 !Check for new prior before calculating anything
                 if (CheckPriorCuts(Params)==logZero) then
-                    if (Feedback >1) write(*,*) 'Model outside new prior bounds: skipped' 
+                    if (Feedback >1) write(*,*) 'Model outside new prior bounds: skipped'
                     cycle
                 end if
             end if
@@ -261,7 +261,7 @@
                         call WriteParams(Params, mult,like)
                     end if
                     if (outdata_handle>=0) call Params%WriteModel(outdata_handle, truelike,mult)
-                else 
+                else
                     if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
                 end if
 
@@ -278,7 +278,7 @@
         call IO_Close(outfile_handle)
         if (outdata_handle >=0) call IO_DataCloseWrite(outdata_handle)
 
-        if (Feedback>0) then 
+        if (Feedback>0) then
             write(*,*) 'finished. Processed ',num_used,' models'
             write (*,*) 'max weight= ',weight_max, ' min weight = ',weight_min
             write (*,*) 'mean mult  = ', mult_sum/num_used

@@ -20,7 +20,7 @@
     character, intent(in) :: C
     logical IsWhiteSpace
 
-    IsWhiteSpace = (C==' ') .or. (C==char(9)) 
+    IsWhiteSpace = (C==' ') .or. (C==char(9))
 
     end function IsWhiteSpace
 
@@ -34,31 +34,31 @@
 
     len = len_trim(InLIne)
     pos =1
-    do while (pos < len .and. IsWhiteSpace(InLIne(pos:pos))) 
+    do while (pos < len .and. IsWhiteSpace(InLIne(pos:pos)))
         pos = pos+1
-    end do 
+    end do
     read(InLine(pos:), *, end=400, err=400) Names%name(n)
     pos = pos + len_trim(Names%name(n))
-    do while (pos < len .and. IsWhiteSpace(InLIne(pos:pos))) 
+    do while (pos < len .and. IsWhiteSpace(InLIne(pos:pos)))
         pos = pos+1
-    end do 
-    Names%label(n) = trim(adjustl(InLine(pos:len))) 
+    end do
+    Names%label(n) = trim(adjustl(InLine(pos:len)))
     pos = scan(Names%label(n),'#')
     if (pos/=0) then
-        Names%comment(n) = Names%label(n)(pos+1: len_trim(Names%label(n)))    
+        Names%comment(n) = Names%label(n)(pos+1: len_trim(Names%label(n)))
         Names%label(n) = Names%label(n)(1:pos-1)
     else
-        Names%comment(n) = ''         
-    endif 
+        Names%comment(n) = ''
+    endif
     pos = scan(Names%label(n),char(9))
-    if (pos/=0) Names%label(n) = Names%label(n)(1:pos-1)      
+    if (pos/=0) Names%label(n) = Names%label(n)(1:pos-1)
     Names%name(n) = trim(adjustl(Names%name(n)))
     len = len_trim( Names%name(n) )
-    if (Names%name(n)(len:len)=='*') then 
-        Names%name(n)(len:len)=' ' 
+    if (Names%name(n)(len:len)=='*') then
+        Names%name(n)(len:len)=' '
         Names%is_derived(n) = .true.
     else
-        Names%is_derived(n) = .false. 
+        Names%is_derived(n) = .false.
     end if
     res = .true.
     return
@@ -72,14 +72,14 @@
     integer,intent(in) :: n
 
     allocate(Names%name(n))
-    allocate(Names%label(n)) 
+    allocate(Names%label(n))
     allocate(Names%comment(n))
     allocate(Names%is_derived(n))
     Names%nnames = n
     Names%is_derived = .false.
     Names%num_MCMC = 0
     Names%num_derived = 0
-    Names%name = '' 
+    Names%name = ''
     Names%comment=''
     Names%label=''
 
@@ -104,7 +104,7 @@
     call ParamNames_Alloc(Names,n)
 
     n=0
-    do 
+    do
         read (handle,'(a)',end=500) InLine
         if (trim(InLine)=='') cycle
         n=n+1
@@ -113,11 +113,11 @@
         end if
     end do
 
-500 call CloseFile(handle) 
+500 call CloseFile(handle)
 
     Names%nnames = n
     Names%num_derived = count(Names%is_derived)
-    Names%num_MCMC = Names%nnames - Names%num_derived 
+    Names%num_MCMC = Names%nnames - Names%num_derived
 
 
     end subroutine ParamNames_Init
@@ -214,7 +214,7 @@
         lab = Names%label(ix)
     else
         lab = ''
-    end if 
+    end if
 
     end function ParamNames_label
 
@@ -227,7 +227,7 @@
         name = Names%name(ix)
     else
         name = ''
-    end if  
+    end if
 
     end function ParamNames_name
 
@@ -248,7 +248,7 @@
     len = len_trim(InLine)
     pos = 1
     if (num==-1) then
-        max_num = unknown_num 
+        max_num = unknown_num
     else
         max_num = num
     end if
@@ -256,7 +256,7 @@
     do param = 1, max_num
         do while (pos < len .and. IsWhiteSpace(InLine(pos:pos)))
             pos = pos+1
-        end do 
+        end do
         read(InLine(pos:), *, end=400, err=400) part
         pos = pos + len_trim(part)
         ix = ParamNames_index(Names,part)
@@ -281,7 +281,7 @@
         outparam = outparam +1
         if (max_num == unknown_num) num = outparam
         params(outparam) = outvalue
-    end do 
+    end do
     return
 400 if (skips/='') write(*,'(a)') ' skipped unused params:'//trim(skips)
     if (max_num==unknown_num) return
@@ -349,7 +349,7 @@
     character(len=ParamNames_maxlen)  :: name
     integer, intent(in) :: ix
 
-    name = ParamNames_name(Names,ix) 
+    name = ParamNames_name(Names,ix)
     if (name == '') name = IntToStr(ix)
 
     end function ParamNames_NameOrNumber
@@ -373,7 +373,7 @@
     integer i
 
     do i=1, Names%nnames
-        name = ParamNames_name(Names,i) 
+        name = ParamNames_name(Names,i)
         if (name /= '') then
             write(unit,'(a)', advance='NO') trim(headObj)//trim(name)//'= struct(''n'','''//trim(name) &
             //''',''i'','//trim(intToStr(i))//',''label'','''//trim(Names%label(i))//''',''isDerived'','
@@ -404,7 +404,7 @@
         input = Ini_Read_String_File(Ini,trim(Key)//trim(IntToStr(param)))
     end if
 
-    end function ParamNames_ReadIniForParam 
+    end function ParamNames_ReadIniForParam
 
     function ParamNames_HasReadIniForParam(Names,Ini,Key, param) result(B)
     ! read Key[name] or Keyn where n is the parameter number
@@ -423,7 +423,7 @@
         B = Ini_HasKey_File(Ini,trim(Key)//trim(IntToStr(param)))
     end if
 
-    end function ParamNames_HasReadIniForParam 
+    end function ParamNames_HasReadIniForParam
 
 
 

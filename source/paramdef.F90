@@ -544,7 +544,7 @@
         if (npoints > 200/MPI_thin_fac +1) then
             !We're not really after independent samples or all of burn in
             !Make sure all parameters are being explored
-            do i=1, num_params_used   
+            do i=1, num_params_used
                 if (S%Value(S%Count, i) /= S%Value(S%Count-1, i)) &
                 param_changes(i) =  param_changes(i) + 1
             end do
@@ -997,7 +997,7 @@
         deallocate(derived%P)
 
         call IO_OutputChainRow(outfile_handle, mult, like, output_array)
-        deallocate(output_array) 
+        deallocate(output_array)
     end if
 
     end  subroutine WriteParams

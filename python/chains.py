@@ -94,8 +94,11 @@ class chains():
         return np.dot(paramVec[where], self.weights[where])
 
     def get_norm(self, where=None):
-        if where is None: return self.norm
-        else: return np.sum(self.weights[where])
+        if where is None:
+            if not hasattr(self, 'norm'): self.norm = np.sum(self.weights)
+            return self.norm
+        else:
+            return np.sum(self.weights[where])
 
     def mean(self, paramVec, where=None):
         return self.weigthed_sum(paramVec, where) / self.get_norm(where)
@@ -312,6 +315,11 @@ class chains():
         self.loglikes = self.loglikes[where]
         self.norm = np.sum(self.weights)
 
+    def reweight_plus_logLike(self, logLikes):
+        scale = np.min(logLikes)
+        self.loglikes += logLikes
+        self.weights *= np.exp(-(logLikes - scale))
+        self.norm = np.sum(self.weights)
 
 # c = loadChains('C:\\tmp\\Planck\\chains\\base_nrun_r_planck_CAMspec_lowl_lowLike', ignore_frac=0.3, separate_chains=False)
 # c.getChainsStats()
