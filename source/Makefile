@@ -17,17 +17,15 @@ PRECISION ?=
 WMAP ?=
 
 #Needed for WMAP; set from ~/.bashrc definition or edit here
-cfitsio ?= 
+cfitsio ?=
 
 #empty not to compile with CLIK, set from ~/.bashrc
 PLANCKLIKE ?=
 
+#These is not used in public cosmomc
 NONCLIKLIKE ?=
-
-#set to build with ACT/SPT without CLIK
 highL ?=
 #highL = ../highL
-
 
 IFLAG = -I
 INCLUDE =
@@ -159,10 +157,9 @@ cmbtypes.o: settings.o likelihood.o GeneralTypes.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o
 bbn.o: settings.o likelihood.o
-bao.o: cmbtypes.o mpk.o
+bao.o: cmbtypes.o
 HST.o: cmbtypes.o
 supernovae.o: cmbtypes.o
-SDSSLy-a-v3.o: cmbtypes.o
 $(CLSFILE): cmbtypes.o IO.o
 paramdef.o: $(CLSFILE) propose.o samples.o
 $(PROPOSE): settings.o
