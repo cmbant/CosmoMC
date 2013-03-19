@@ -1,6 +1,0 @@
-python python/makeGrid.py main settings_main
-
-
-#for find possible failed scripts (that are not quick "minimize" runs):
-#ls scripts/*.e* | grep -v minimize
-
