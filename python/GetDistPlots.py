@@ -387,7 +387,7 @@ class GetDistPlotter():
                     # this works with tight_layout
                     self.legend.get_frame().set_edgecolor('none')
             else:
-                args['frameon'] = self.settings.legend_frame
+                args['frameon'] = self.settings.legend_frame and not colored_text
                 self.legend = gca().legend(lines, legend_labels, legend_loc, **args)
             if not self.settings.legend_rect_border:
                 for rect in self.legend.get_patches():
