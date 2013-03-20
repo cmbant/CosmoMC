@@ -96,12 +96,12 @@ As an example python script not using planckStyle you can do
 <pre>
 import GetDistPlots
 g=GetDistPlots.GetDistPlotter('PLA/plot_data')
-g.settings.setWithSubplotSize(2)
+g.settings.setWithSubplotSize(5)
 
 roots = ['base_nnu_mnu_planck_lowl_lowLike','base_nnu_mnu_planck_lowl_lowLike_highL','base_nnu_mnu_planck_lowl_lowLike_highL_post_BAO']
 g.plot_2d(roots, param_pair=['mnu','nnu'], filled=True)
 g.add_legend(['Planck+WP','Planck+WP+highL','Planck+WP+highL+BAO'],legend_loc='upper right');
-g.export('mnu_nnu.pdf')
+g.export('mnu_nnu.png')
 </pre>
 
 </body>
