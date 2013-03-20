@@ -16,7 +16,7 @@ class GetDistPlotSettings:
         # elf.lineM = ['-k', '--r', '-.b', ':g', '--m', '-.y']
         self.plot_args = None
         self.lineL = [':k', ':r', ':b', ':m', ':g', ':y']
-        self.solid_colors = ['#006FED', '#E03424', '#009966', '#000866', '#336600', '#006633' , 'g', 'm', 'r']  # '#66CC99'
+        self.solid_colors = ['#006FED', '#E03424', 'greay', '#009966', '#000866', '#336600', '#006633' , 'm', 'r']  # '#66CC99'
         self.line_labels = True
         self.x_label_rotation = 0
         self.num_shades = 80
@@ -613,7 +613,7 @@ class GetDistPlotter():
         return plot_col, plot_row
 
     def export(self, fname):
-        savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight', transparent=True)
+        savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
 
     def paramNameListFromFile(self, fname):
         p = paramNames.paramNames(fname)
