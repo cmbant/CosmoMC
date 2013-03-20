@@ -16,7 +16,7 @@ class GetDistPlotSettings:
         # elf.lineM = ['-k', '--r', '-.b', ':g', '--m', '-.y']
         self.plot_args = None
         self.lineL = [':k', ':r', ':b', ':m', ':g', ':y']
-        self.solid_colors = ['#006FED', '#E03424', 'greay', '#009966', '#000866', '#336600', '#006633' , 'm', 'r']  # '#66CC99'
+        self.solid_colors = ['#006FED', '#E03424', 'gray', '#009966', '#000866', '#336600', '#006633' , 'm', 'r']  # '#66CC99'
         self.line_labels = True
         self.x_label_rotation = 0
         self.num_shades = 80
