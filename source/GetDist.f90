@@ -783,7 +783,7 @@
             write (*,'(" var(mean)/mean(var), remaining chains, worst e-value: R-1 = ",f13.5)') R
             deallocate(cov,meanscov)
         else
-            write(*,'WARNING: Gelman-Rubin covariance not invertible')
+            write(*,*) 'WARNING: Gelman-Rubin covariance not invertible'
         end if
     end if
 
@@ -1708,7 +1708,6 @@
     integer plot_2D_param, j2min
     real(mcp) try_b, try_t
     real(mcp) LowerUpperLimits(max_cols,2,max_contours), limfrac
-    real(mcp) :: minimal_intervals(max_cols,max_intersections+1,max_contours) !JH
 
     integer bestfit_ix
     integer chain_exclude(max_chains), num_exclude
