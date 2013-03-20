@@ -58,7 +58,7 @@
 
     real  :: MPI_R_Stop = 0.05
 
-    integer  :: MPI_thin_fac = 3
+    integer  :: MPI_thin_fac = 1
     !following are numbers of samples / (number of parameters)
     !MPI_Min_Sample_Update*num_fast is min number of chain steps
     !before starting to update covmat and checking convergence

@@ -2582,6 +2582,7 @@
     LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels)
 
     call ParamNames_WriteFile(NameMapping, trim(plot_data_dir)//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
+    call IO_WriteRanges(NameMapping, limmin, limmax, trim(plot_data_dir)//trim(rootname)//'.ranges', colix(1:num_vars)-2)
 
     !Limits from global likelihood
     if (.not. plots_only) then

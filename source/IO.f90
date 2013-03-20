@@ -304,6 +304,25 @@
 
     end subroutine IO_OutputParamNames
 
+    subroutine  IO_WriteRanges(Names, limmin,limmax, fname, indices)
+    Type(TParamNames) :: Names
+    character(LEN=*), intent(in) :: fname
+    real(mcp), intent(in) :: limmin(:), limmax(:)
+    integer, intent(in) :: indices(:)
+    integer :: unit
+    integer i,ix
+
+    unit = new_file_unit()
+    call CreateTxtFile(fname,unit)
+    do i=1, size(indices)
+        ix = indices(i)
+        write(unit,'(1A22,2E17.7)') ParamNames_NameOrNumber(Names,i), limmin(i),limmax(i)
+    end do
+    call CloseFile(unit)
+
+    end subroutine IO_WriteRanges
+
+
     subroutine IO_ReadParamNames(Names, in_root, prior_ranges)
     use ParamNames
     Type(TParamNames) :: Names
@@ -331,7 +350,6 @@
     end if
 
     end subroutine IO_ReadParamNames
-
 
 
     function IO_ReadChainRows(in_root, chain_ix,chain_num, ignorerows, nrows, &
