@@ -17,7 +17,7 @@ Note you need to use ifort 13 or higher to build CosmoMC, so make sure you have 
 <pre>bzip2 -d plc-1.0.tar.bz2; tar -xf plc-1.0.tar</pre>
 <LI><pre>cd plc-1.0</pre>
 <LI><pre>./waf configure --lapack_mkl=${MKLROOT} --lapack_mkl_version=10.3 --install_all_deps</pre>
-  (you may need to change the options on this line depending on your installation; --install_all_deps may not be needed)
+  (you may need to change the options on this line depending on your installation; --install_all_deps may not be needed; see the .pdf document file in PLC..PATH/plc_1.0/plc_1.0 for options)
 <LI><pre>./waf install</pre>
 <LI>Edit your ~/.bashrc file to include
 <pre>
@@ -25,7 +25,8 @@ export PLANCKLIKE=cliklike
 export CLIKPATH=PLC..PATH/plc_1.0/plc_1.0
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CLIKPATH/lib
 </pre>
-While you're add it you can add CosmoMC's python plotting path
+Instead of the last item you can also use PLC's recommended <b>source PLC..PATH/plc_1.0/bin/clik_profile.sh</b>.
+While you're at it you can add CosmoMC's python path (for plotting and quite analysis of chains):
 <pre>
 export PYTHONPATH=COSMOMC..PATH/python:$PYTHONPATH
 </pre>
@@ -40,8 +41,10 @@ A set of .ini files are supplied in ./batch1 which set up standards for Planck r
 <pre>mpirun -np 2 ./cosmomc test.ini</pre>
 to see if things are being loaded and start running OK.
 <P>
+Note that the "highL" (ACT/SPT) likelihood file is not included in the first PLC download; hopefully it will be added soon. Meanwhile you can follow the instructions on the Planck likelihood download page for how to make it from the <A HREF="http://lambda.gsfc.nasa.gov/product/act/act_fulllikelihood_get.cfm">ACT/SPT</A> download.
+<P>
 <H3>Using Planck Chains</H3>
-Planck provide a set of parameter chains produced by CosmoMC. You can use CosmoMC's python scripts and getdist to analyse and make plots from them. First download and extract all the chain data. Make a symlink from ./cosmomc/PLA to the location of the chains, e.g.
+Planck provide a set of parameter chains produced by CosmoMC. You can use CosmoMC's python scripts and getdist to analyse and make plots from them. First download and extract all the chain data. Make a symbolic link from ./cosmomc/PLA to the location of the chains, e.g.
 <PRE>
 ln -s /scratch/planck/PLA ./PLA
 </PRE>
@@ -52,7 +55,7 @@ python python/makeGrid.py PLA settings_planck_nominal
 When done it will tell you the commands needed to be run  to reproduce the chains. But of course you don't need to do that, you have the chains already. You can now use the python/* scripts on the PLA directory, and they will know about the available data.
 Settings for the Planck parameter grid are in python/settings_planck_nominal.py.
 <H4>Calculating derived parameters</H4>
-For simple calculations like finding the mean and variance of new derived parameters you can use the functions in python/chains.py. For exmaple, if you want to calculate the posterior mean and limits for sigma8*Omegam^0.6 from Planck+WP+highL+lensing you could write a python script 
+For simple calculations like finding the mean and variance of new derived parameters you can use the functions in python/chains.py. For example, if you want to calculate the posterior mean and limits for sigma8*Omegam^0.6 from Planck+WP+highL+lensing you could write a python script 
 <blockquote>
 <pre>
 import chains
@@ -69,6 +72,8 @@ print 'mean, err = ', chains.mean(derived), chains.std(derived)
 print '95% limits: ', chains.twoTailLimits(derived, 0.95)
 </pre>
 </blockquote>
+Here p.omegam is a vector of parameter values, similar p.sigma8; chains.mean and chains.var sum the samples with the corresponding weights to calculate the result. The third argument of loadGridChain specifies any data added by importance sampling.
+<P>
 See python/chains.py for other simple functions you can use. Use GetDist if you want to reproduce Planck results: chains.py only does tail integrals, it does not check for skewness or calculate credible intervals for skewed distributions.
 <H4>Plotting</H4>
 To make plots from the grid you need to first run getdist over the grid. To do this make sure you have installed and compiled CosmoMC (with getdist) then run
