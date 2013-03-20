@@ -27,13 +27,14 @@
 
     contains
 
-    subroutine GelmanRubinEvalues(cov, meanscov, evals, num)
+    function GelmanRubinEvalues(cov, meanscov, evals, num) result(OK)
     use MatrixUtils
     integer, intent(in) :: num
     real(sample_prec) :: cov(num,num), meanscov(num,num), evals(num)
-    integer jj
+    integer jj, error
     real(sample_prec) rot(num,num), rotmeans(num,num)
     real(sample_prec) :: sc
+    logical OK
 
     rot = cov
     rotmeans = meanscov
@@ -45,11 +46,14 @@
         rotmeans(:,jj) = rotmeans(:,jj) /sc
     end do
 
-    call Matrix_CholeskyRootInverse(rot)
-    rotmeans =  matmul(matmul(rot, rotmeans), transpose(rot))
-    call Matrix_Diagonalize(rotmeans, evals, num)
+    call Matrix_CholeskyRootInverse(rot, error=error)
+    OK = error==0
+    if (OK) then
+        rotmeans =  matmul(matmul(rot, rotmeans), transpose(rot))
+        call Matrix_Diagonalize(rotmeans, evals, num)
+    end if
 
-    end subroutine GelmanRubinEvalues
+    end function GelmanRubinEvalues
 
 
     subroutine TSampleList_ConfidVal(L, ix, limfrac, ix1, ix2, Lower, Upper)

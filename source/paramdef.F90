@@ -473,7 +473,7 @@
     real(mcp) MeansCov(num_params_used,num_params_used), cov(num_params_used,num_params_used)
     real(mcp) evals(num_params_used), last_P, R
     integer ierror
-    logical DoCheckpoint
+    logical DoCheckpoint, invertible
 
     integer, allocatable, dimension(:), save :: req, buf
     integer,  allocatable, dimension(:), save :: param_changes
@@ -521,8 +521,7 @@
 
     !Do main adding samples functions
     sample_num = sample_num + 1
-    if (mod(sample_num, MPI_thin_fac) == 0) return
-
+    if (mod(sample_num, MPI_thin_fac) /= 0) return
 
     if (npoints == 0 .and. .not. Burn_done)then
         allocate(param_changes(num_params_used))
@@ -541,14 +540,13 @@
     npoints = npoints + 1
 
     if (.not. Burn_done) then
-        if (npoints > 200/MPI_thin_fac +1) then
+        if (npoints > 50/MPI_thin_fac +1) then
             !We're not really after independent samples or all of burn in
             !Make sure all parameters are being explored
             do i=1, num_params_used
-                if (S%Value(S%Count, i) /= S%Value(S%Count-1, i)) &
-                param_changes(i) =  param_changes(i) + 1
+                if (S%Value(S%Count, i) /= S%Value(S%Count-1, i)) param_changes(i) =  param_changes(i) + 1
             end do
-            Burn_done = all(param_changes > 100/MPI_thin_fac/slice_fac+2)
+            Burn_done = all(param_changes > 50/MPI_thin_fac/slice_fac+2)
             if (Burn_done) then
                 if (Feedback > 0) then
                     write (*,*) trim(concat('Chain',instance, ', MPI done ''burn'', Samples = ',sample_num))//', like = ',real(like)
@@ -571,8 +569,9 @@
                 end do
 
                 call S%Clear()
-                MPI_Min_Sample_Update = &
-                max((MPI_Min_Sample_Update*max(1,num_fast))/(MPI_thin_fac*slice_fac), npoints)
+                MPI_Min_Sample_Update =  50 + num_slow*4 + num_fast
+                !max((MPI_Min_Sample_Update)/(MPI_thin_fac*slice_fac), npoints)
+                if (sampling_method/= sampling_fast_dragging) MPI_Min_Sample_Update=MPI_Min_Sample_Update  + num_fast*4
                 npoints = 0
                 flukecheck = .false.
                 deallocate(param_changes)
@@ -677,33 +676,38 @@
                     end do
                     MPICovMat = Cov !+ meansCov !Estimate global covariance for proposal density
                     meansCov = meansCov * real(MPIChains,mcp)/(MPIChains-1)
-                    call GelmanRubinEvalues(cov, meanscov, evals, num_params_used)
-                    R = maxval(evals)
-                    if (Feedback > 1 .and. MPIRank==0) write (*,*) 'Convergence e-values: ', real(evals)
-                    if (Feedback > 0 .and. MPIRank==0) then
-                        write (*,*) 'Current convergence R-1 = ',real(R), ' chain steps =',sample_num
-                        if (use_fast_slow) write(*,*) 'slow changes', slow_changes, 'power changes', semislow_changes
-                    end if
-                    if (logfile_unit/=0) then
-                        write(logLine,*) 'Current convergence R-1 = ',real(R), ' chain steps =',sample_num
-                        if (use_fast_slow) write(logLine,*) 'slow changes', slow_changes, 'power changes', semislow_changes
-                        call IO_WriteLog(logfile_unit,logLine)
-                    end if
-                    if (R < MPI_R_Stop .and. flukecheck) then
-                        if (MPI_Check_Limit_Converge) then
-                            !Now check if limits from different chains agree well enough
-                            if (CheckLImitsConverge(S)) call ConvergeStatus(.true., R, 'Requested limit convergence achieved')
-                        else
-                            !If not also checking limits, we are done
-                            call ConvergeStatus(.true., R, 'Requested convergence R achieved')
+                    invertible= GelmanRubinEvalues(cov, meanscov, evals, num_params_used)
+                    if (invertible) then
+                        R = maxval(evals)
+                        if (Feedback > 1 .and. MPIRank==0) write (*,*) 'Convergence e-values: ', real(evals)
+                        if (Feedback > 0 .and. MPIRank==0) then
+                            write (*,*) 'Current convergence R-1 = ',real(R), ' chain steps =',sample_num
+                            if (use_fast_slow) write(*,*) 'slow changes', slow_changes, 'power changes', semislow_changes
                         end if
-                    end if
-                    call ConvergeStatus(.false., R)
-                    flukecheck = R < MPI_R_Stop
-                    if (S%Count > 500000) then
-                        !Try not to blow memory by storing too many samples
-                        call S%Thin(2)
-                        MPI_thin_fac = MPI_thin_fac*2
+                        if (logfile_unit/=0) then
+                            write(logLine,*) 'Current convergence R-1 = ',real(R), ' chain steps =',sample_num
+                            if (use_fast_slow) write(logLine,*) 'slow changes', slow_changes, 'power changes', semislow_changes
+                            call IO_WriteLog(logfile_unit,logLine)
+                        end if
+                        if (R < MPI_R_Stop .and. flukecheck) then
+                            if (MPI_Check_Limit_Converge) then
+                                !Now check if limits from different chains agree well enough
+                                if (CheckLImitsConverge(S)) call ConvergeStatus(.true., R, 'Requested limit convergence achieved')
+                            else
+                                !If not also checking limits, we are done
+                                call ConvergeStatus(.true., R, 'Requested convergence R achieved')
+                            end if
+                        end if
+                        call ConvergeStatus(.false., R)
+                        flukecheck = R < MPI_R_Stop
+                        if (S%Count > 500000) then
+                            !Try not to blow memory by storing too many samples
+                            call S%Thin(2)
+                            MPI_thin_fac = MPI_thin_fac*2
+                        end if
+                    else
+                        if (Feedback > 0 .and. MPIRank==0) write(*,*) 'Covariance not currently invertible'
+                        R=1e6
                     end if
 
                 end if !MPIChains >1

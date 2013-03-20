@@ -661,6 +661,7 @@
     double precision, dimension(:,:), allocatable :: corrs
     character(LEN=10) :: typestr
     integer autocorr_thin
+    logical :: invertible
 
     ! Get statistics for individual chains, and do split tests on the samples
 
@@ -769,17 +770,21 @@
         meanscov = meanscov/(num_chains_used-1) !(usedsamps/maxsamp -1)
         cov = cov / usedsamps
 
-        call GelmanRubinEvalues(cov, meanscov, evals, num)
-        write (40,*) ''
-        write (40,'(a)') 'var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters'
-        R = 0
-        do jj=1,num
-            write (40,'(1I3,f13.5)') jj,evals(jj)
-            R = max(R,evals(jj))
-        end do
-        !R is essentially the Gelman and Rubin statistic
-        write (*,'(" var(mean)/mean(var), remaining chains, worst e-value: R-1 = ",f13.5)') R
-        deallocate(cov,meanscov)
+        invertible = GelmanRubinEvalues(cov, meanscov, evals, num)
+        if (invertible) then
+            write (40,*) ''
+            write (40,'(a)') 'var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters'
+            R = 0
+            do jj=1,num
+                write (40,'(1I3,f13.5)') jj,evals(jj)
+                R = max(R,evals(jj))
+            end do
+            !R is essentially the Gelman and Rubin statistic
+            write (*,'(" var(mean)/mean(var), remaining chains, worst e-value: R-1 = ",f13.5)') R
+            deallocate(cov,meanscov)
+        else
+            write(*,'WARNING: Gelman-Rubin covariance not invertible')
+        end if
     end if
 
 
@@ -2020,7 +2025,7 @@
     plot_meanlikes = Ini_Read_Logical('plot_meanlikes',.false.)
 
     if (Ini_HasKey('do_minimal_1d_intervals')) &
-      stop 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
+    stop 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
 
     PCA_num = Ini_Read_Int('PCA_num',0)
     if (PCA_num /= 0) then
@@ -2578,11 +2583,6 @@
     LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels)
 
     call ParamNames_WriteFile(NameMapping, trim(plot_data_dir)//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
-    open(unit=51,file=trim(plot_data_dir)//trim(rootname)//'.paramnames',form='formatted',status='replace')
-    do j=1, num_vars
-        write(51,'(a)') trim(ParamNames_AsString(NameMapping,colix(j)-2))
-    end do
-    close(51)
 
     !Limits from global likelihood
     if (.not. plots_only) then
