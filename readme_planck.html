@@ -55,7 +55,7 @@ python python/makeGrid.py PLA settings_planck_nominal
 When done it will tell you the commands needed to be run  to reproduce the chains. But of course you don't need to do that, you have the chains already. You can now use the python/* scripts on the PLA directory, and they will know about the available data.
 Settings for the Planck parameter grid are in python/settings_planck_nominal.py.
 <H4>Calculating derived parameters</H4>
-For simple calculations like finding the mean and variance of new derived parameters you can use the functions in python/chains.py. For example, if you want to calculate the posterior mean and limits for sigma8*Omegam^0.6 from Planck+WP+highL+lensing you could write a python script 
+For simple calculations like finding the mean and variance of new derived parameters you can use the functions in python/chains.py. For example, if you want to calculate the posterior mean and limits for sigma8*Omegam^0.6 from Planck+WP+highL+lensing you could write a python script
 <blockquote>
 <pre>
 import chains
@@ -86,9 +86,41 @@ python python/runGridGetdist.py PLA --paramtag base_mnu --data planck
 </PRE>
 Getdist generates .m scripts in each PLA/../../dist subfolder, which you can run in matlab. Or, now usually recommended, use the python scripts. You can use <B>python python/makePlots.py PLA  ..</B> to make plots en masse. See <b>batch1/outputs/makeGridPlots</b> for examples.
 <P>
-You can also write your own short python scripts to plot things of interest; many examples are in <b>batch1/outputs/</b>. For example, assuming you've done runGridGetdist on the base planck and WMAP chains, you can do
+You can also write your own short python scripts to plot things of interest; many examples are in <b>batch1/outputs/</b> (note that these use planckStyle.py, which assumed your main grid directory is ./main not ./PLA, and needs output folders called outputs and plots). For example, assuming you've done runGridGetdist on the base planck and WMAP chains, you can do
 <pre>
 python batch1/outputs/triangle_planckonly_vs_WMAP.py
 </pre>
 to reproduce the figure in Section 3 of the Planck parameter paper.
+<P>
+As an example python script not using planckStyle you can do
+<blockquote>
+<pre>
+import GetDistPlots
+g=GetDistPlots.GetDistPlotter('PLA/plot_data')
+g.settings.setWithSubplotSize(4)
+
+roots = ['base_nnu_mnu_planck_lowl_lowLike','base_nnu_mnu_planck_lowl_lowLike_highL','base_nnu_mnu_planck_lowl_lowLike_highL_post_BAO']
+g.plot_2d(roots, param_pair=['mnu','nnu'], filled=True)
+g.add_legend(['Planck+WP','Planck+WP+highL','Planck+WP+highL+BAO'],legend_loc='upper right');
+g.export('mnu_nnu.png')
+</pre>
+</blockquote>
+The legend overlaps a bit. You can do "import pylab *" and use standard matplotlib commands. Or you can try things like this
+<blockquote>
+<pre>
+import GetDistPlots
+g=GetDistPlots.GetDistPlotter('PLA/plot_data')
+g.settings.setWithSubplotSize(4)
+g.make_figure(xstretch=1.3)
+
+roots = ['base_nnu_mnu_planck_lowl_lowLike','base_nnu_mnu_planck_lowl_lowLike_highL','base_nnu_mnu_planck_lowl_lowLike_highL_post_BAO']
+g.plot_2d(roots, param_pair=['mnu','nnu'], filled=True)
+g.add_legend(['Planck+WP','Planck+WP+highL','Planck+WP+highL+BAO'],legend_loc='upper right',colored_text=True);
+g.export('mnu_nnu2.png')
+</pre>
+</blockquote>
+Outputs of the two versions should look like this:<BR>
+<IMG SRC="http://cosmologist.info/cosmomc/pics/planck/mnu_nnu.png">
+<IMG SRC="http://cosmologist.info/cosmomc/pics/planck/mnu_nnu2.png">
+
 </body>

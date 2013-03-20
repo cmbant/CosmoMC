@@ -42,7 +42,7 @@ s.alpha_filled_add = 0.85
 # s.solid_colors = ['#006FED', '#E03424', 'gray', '#009966' ]
 s.solid_contour_palefactor = 0.6
 
-s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1')]
+s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1'), 'g', 'c']
 s.axis_marker_lw = 0.6
 s.lw_contour = 0.2
 

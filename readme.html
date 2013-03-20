@@ -112,8 +112,8 @@ CosmoMC can also be compiled to sample any function you like, without calling an
 <P>
 See the supplied <B>params.ini</B> file for a fairly self-explanatory list of
 input parameters and options. The <b>file_root</b> entry gives the root name for all files produced. Running using MPI on a cluster is recommended if possible as you can automatically handle convergence testing and stopping.
-<UL>
-<LI><B><FONT COLOR="blue">Running individual chains</FONT></B><BR>
+<!--<UL>
+<LI><B><FONT COLOR="blue">Running individual chains</FONT></B> (not recommended)<BR>
  <BR>
 
 Run the program using
@@ -129,18 +129,19 @@ etc.
 </BLOCKQUOTE>
 In this case samples will be in the files file_root_NN.txt, where NN labels the chain number.
 <BR><BR>
+-->
 <LI><B><FONT COLOR="blue">MPI runs on a cluster</FONT></B><BR><BR>
-If you edit the Makefile to run with MPI (compile with -DMPI), a number of chains will be run according to the number of nodes assigned by MPI when you run the program. Output file names will have "_1","_2" appended to the root name automatically. You may be able to run over 4 nodes using e.g.
+When you run with MPI (compiled with -DMPI, the default), a number of chains will be run according to the number of processes assigned by MPI when you run the program. Output file names will have "_1","_2" appended to the root name automatically. You may be able to run over 4 nodes using e.g.
 <BLOCKQUOTE>
 <B>mpirun -np 4 ./cosmomc params.ini</B>
 </BLOCKQUOTE>
-There is also a supplied perl script runMPI.pl that you may be able to adapt for submitting jobs to a PBS queue, running lamboot, etc,  e.g.
+There is also a supplied perl script runMPI.pl that you may be able to adapt for submitting jobs to a PBS queue, e.g.
 <BLOCKQUOTE>
   <B>perl runMPI.pl params 4</B>
 </BLOCKQUOTE>
  to run 4 chains over four nodes using the params.ini parameters file (the script is set up by default for the CITA cluster - edit ppn=2 to the number of CPUs per node you have). A couple of runMPI.pl variations are also supplied (specifically for a couple of Cambridge computers, but may be generally adaptable).<BR><BR>
  In the parameters file you can set <B>MPI_Converge_Stop</B> to a convergence criterion (see <A HREF="#Convergence">Convergence Diagnostics</A>. Small numbers are better convergence; generally need R-1 < 0.1, but may want much smaller especially for importance sampling or accurate confidence limits. You can also directly impose an error limit on confidence values - see the parameter input file for details). If you set <B>MPI_LearnPropose</B> = T, the proposal density will be updated using the covariance matrix of the last half of all samples (across chains) so far. <BR><BR>
-Using MPI_LearnPropose will significantly improve performance if you are adding new parameters for which you don't have a pre-computed covariance matrix. However adjusting the proposal density is not strictly Markov, though asymptotically it is as the covariance will converge. The burn in period should therefore be taken to be larger when learning the proposal density to allow for the time it takes the covariance matrix to converge sufficiently (though in practice it probably doesn't matter much in most cases). Note also that as the proposal density changes the number of steps between independent samples is not constant (i.e. the correlation length should decrease along the chain until the covariance has converged). The stopping criterion uses the last half of the samples in each chain, minus a (shortish) initial burn in period. If you don't have a starting covariance matrix a fairly safe thing to do is set <B>ignore_rows=0.5</B> in the <A HREF="#Analysing">GetDist</A> parameter file to skip the first half of each chain. <BR><BR>
+Using MPI_LearnPropose will significantly improve performance if you are adding new parameters for which you don't have a pre-computed covariance matrix. However adjusting the proposal density is not strictly Markovian, though asymptotically it is as the covariance will converge. The burn in period should therefore be taken to be larger when learning the proposal density to allow for the time it takes the covariance matrix to converge sufficiently (though in practice it probably doesn't matter much in most cases). Note also that as the proposal density changes the number of steps between independent samples is not constant (i.e. the correlation length should decrease along the chain until the covariance has converged). The stopping criterion uses the last half of the samples in each chain, minus a (shortish) initial burn in period. If you don't have a starting covariance matrix a fairly safe thing to do is set <B>ignore_rows=0.3</B> in the <A HREF="#Analysing">GetDist</A> parameter file to skip the first chunk of each chain. <BR><BR>
 You can also set the <B>MPI_R_StopProposeUpdate</B> parameter to stop updating the proposal density after it has converged to R-1 smaller than a specified number. After this point the chain will be strictly Markovian. The number of burn in rows can be calculated by looking at the params.log file for the number of output lines at which R-1 has reached the required value.
 <P>
 If things go wrong check the .log and any error files in your cosmomc/scripts directory.
@@ -152,7 +153,9 @@ If things go wrong check the .log and any error files in your cosmomc/scripts di
 <BR><BR>
 The input .ini files contain sets of name-value pairs, in the form <b>key = value</b>.
 <BR><BR>
-Keys setting input values for specific parameters can be set using numbered key values, e.g. param1=xx for parameter 1, or named reference, e.g. param[omegabh2]=xxx for omegabh2 (by default this is parameter 1, but may have a different number in other parameterizations). Named parameters are read by preference, the numbered parameter is read if the named parameter is not found.
+Keys setting input values for specific parameters can be set using numbered key values, param[omegabh2]=xxx yy... for omegabh2. The names of the various parameters are set in .paramnames files: for cosmology parameters see params_CMB.paramnames. Likelihoods may also have nuisance parameters that need to be varied: see the .paramnames files in the ./data/  directory.
+<BR><BR>
+.ini files can include other ini files using DEFAULT(xx.ini) or INCLUDE(yy.ini), so there's no need to repeat lots of settings when you do different similar runs. The sample test.ini file includes .ini files in the batch1/ directory, set up for Planck analysis runs. Using DEFAULT means you can include default settings, but override ones of interest for a particular run.
 <UL>
 
 <LI><B>Parameter limits and proposal density</B><BR>
@@ -168,15 +171,20 @@ The <em>start_width</em> entry determines the randomly chosen dispersion of the 
 parameter distribution widths are determined from its eigenvalues instead, and
 the proposal density changes the parameter eigenvectors. The covariance
 matrix can be computed using "getdist" once you have done one run - the file_root.covmat file.
-A .covmat file is supplied for some basic parameter sets. The covariance matrix does not have to include all the parameters that are used - zero entries will be updated from the input propose widths of new parameters (the propose width should be of the size of the conditional distribution of the parameter - typically quite a bit smaller than the marginalized posterior width; generally too small is better than too large).  The scale of the proposal density relative to the covariance is given by the <B>propose_scale</B> parameter. If your propose_matrix is significantly broader than the expected posterior, this number can be decreased.
+ The planck_covmats/ directory is supplied with many you can use. The covariance matrix does not have to include all the parameters that are used - zero entries will be updated from the input propose widths of new parameters (the propose width should be of the size of the conditional distribution of the parameter - typically quite a bit smaller than the marginalized posterior width; generally too small is better than too large).  The scale of the proposal density relative to the covariance is given by the <B>propose_scale</B> parameter. If your propose_matrix is significantly broader than the expected posterior, this number can be decreased.
 <p>
 If you don't have a propose_matrix, you can use <B>estimate_propose_matrix</B> = T to automatically estimate it by numerical fitting about the best fit point (with <b>action</b>=2 to stop, or <b>action</b>=0 to continue straight into an MCMC run).
 
 <BR><BR>
 <LI><A NAME="sampling"></A><B>Sampling method</B><BR>
-Set <B>sampling_method</B>=1 to use the default Metropolis algorithm (in the optimal fast/slow subspaces if <b>use_fast_slow</b> is true). Other options are slice sampling (2), slice sampling fast parameters (3), and directional gridding (4). These methods should work fine for most simple distributions; the temperature input parameter can be increased to probe further into the tails if required (e.g. to get better high-confidence limits). Further sampling_method options that you can try for nastier (e.g. multi-modal distributions) are multicanonical sampling (5) and Wang-Landau-like sampling (6). These latter methods could be modified to calculate the evidence, but at the moment are only implemented to sample nastier distributions via importance sampling. Multicanonical sampling probes into the tails a distance proportional to the running time, and all samples can be kept if the distribution turns out to be unimodal. The Wang-Landau-like sampling probes the full likelihood range from the word go, and produces no samples for the first 10,000 or so steps (thereafter all samples are strictly Markovian may be kept without burn in). Methods 5 and 6 can be used with MPI, but MPI stopping should probably be turned off; MPI proposal learning may work with method 6, though this is not extensively tested. Both are likely to require <B>samples = 100000</B> or larger, hence significantly slow than a basic MCMC run for simple distributions. Settings for methods 5 and 6 can be edited at the top of MCMC.f90. See the  <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A> for a more detailed explanation of sampling methods.
+Set <B>sampling_method</B>=1 to use a vanilla Metropolis algorithm (in the optimal fast/slow subspaces if <b>use_fast_slow</b> is true). 
+Set <B>sampling_method</B>=7 to use a fast-slow dragging algorithm (<A HREF="http://arxiv.org/math.ST/0502099">Neal 2005</A>), which allows fast nuisance parameters to be handled efficiently; this is the default for Planck runs.
+<P>
+Other sampling methods that were implemented in previous version have not currently been updated for the latest version.
+<!--
+Other options are slice sampling (2), slice sampling fast parameters (3), and directional gridding (4). These methods should work fine for most simple distributions; the temperature input parameter can be increased to probe further into the tails if required (e.g. to get better high-confidence limits). Further sampling_method options that you can try for nastier (e.g. multi-modal distributions) are multicanonical sampling (5) and Wang-Landau-like sampling (6). These latter methods could be modified to calculate the evidence, but at the moment are only implemented to sample nastier distributions via importance sampling. Multicanonical sampling probes into the tails a distance proportional to the running time, and all samples can be kept if the distribution turns out to be unimodal. The Wang-Landau-like sampling probes the full likelihood range from the word go, and produces no samples for the first 10,000 or so steps (thereafter all samples are strictly Markovian may be kept without burn in). Methods 5 and 6 can be used with MPI, but MPI stopping should probably be turned off; MPI proposal learning may work with method 6, though this is not extensively tested. Both are likely to require <B>samples = 100000</B> or larger, hence significantly slow than a basic MCMC run for simple distributions. Settings for methods 5 and 6 can be edited at the top of MCMC.f90. See the  <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A> for a more detailed explanation of sampling methods.
 <BR><BR>
-
+-->
 <LI><B>CAMB's numerical accuracy</B><BR>
 The default accuracy is aimed at WMAP. Set <B>high_accuracy_default = T</B> to target ~0.1% accuracy on the CMB power spectra from CAMB. This is sufficient for numerical biases to be small compared to the error bar for Planck; for an accuracy study see <A HREF="http://arxiv.org/abs/1201.3654">arXiv:1201.3654</A>. You can also use the <B>accuracy_level</b> parameter to increase accuracy further, however this is numerically inefficient and is best used mainly for numerical stability checks using importance sampling (<b>action=1</b>).
 <BR><BR>
@@ -184,7 +192,9 @@ The default accuracy is aimed at WMAP. Set <B>high_accuracy_default = T</B> to t
 <LI><B>Best-fit point</B><BR>
 
 Set <B>action</B> =2 to just calculate the best-fit point and stop (also outputting a .covmat estimate from the inverse Hessian if  <b>estimate_propose_matrix</b>=T). As of Oct 2012 this uses
-<A HREF="http://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf">Powell's  2009 BOBYQA</A> bounded minimization routine, which works from two parameters up to hundreds of parameters, but does require that the likelihood return a valid number at all points between the bounds given on the base parameters in the input .ini file. The algorithm starts at the point given by the <i>center</i> parameter values given in the .ini file, and iterates until the parameter values are converged to within a radius of  <b>max_like_radius</b> in units of the input parameter <i>propose width</i>s; by default <i>max_like_radius = 0.01</i> (the convergence criterion is a radius in nD space; <em>max_like_radius</em> is scaled by the root of the number of parameters so that on average each parameter is converged to a fraction <em>max_like_radius</em> of its <em>propose_width</em>). The best-fit values (and derived and nuisance parameters) are output to a file called <em>file_root</em>.minimum. The method works for parameters with hard bounds that truncate the posterior, e.g. for neutrino mass mnu>0. It does not use the propose_matrix, only the input parameter bounds, center and propose_width.
+<A HREF="http://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf">Powell's  2009 BOBYQA</A> bounded minimization routine, which works from two parameters up to hundreds of parameters, but does require that the likelihood return a valid number at all points between the bounds given on the base parameters in the input .ini file. The algorithm starts at the point given by the <i>center</i> parameter values given in the .ini file, and iterates until the parameter values are converged to within a radius of  <b>max_like_radius</b> in units of the input parameter <i>propose width</i>s; by default <i>max_like_radius = 0.01</i>.
+ <!--(the convergence criterion is a radius in nD space; <em>max_like_radius</em> is scaled by the root of the number of parameters so that on average each parameter is converged to a fraction <em>max_like_radius</em> of its <em>propose_width</em>). -->
+ The best-fit values (and derived and nuisance parameters) are output to a file called <em>file_root</em>.minimum. The method works for parameters with hard bounds that truncate the posterior, e.g. for neutrino mass mnu>0. It does not use the propose_matrix, only the input parameter bounds, center and propose_width.
 <BR><BR>
 action=2 only runs on one node, so compile without MPI or run only one MPI instance. Note that the minimizer appears not to be totally reliable for Planck (may stop not at the global minimum) - starting at different points can be a good check.
 <BR><BR>
@@ -249,8 +259,8 @@ program could be used completely independently of the cosmomc program.
 <P>
 Run <B>getdist distparams.ini</B> to process the chains specified in the
 parameter input file distparams.ini. This should be fairly self-explanatory,
-in the same format as the cosmomc parameter input file. Note that sigma_8 is only computed if you are including LSS data when generating the chain (as computing the matter power spectrum slows things down considerably; You can post-process to compute sigma8 if you like, see action=1 in the cosmomc input file).
-</P>
+in the same format as the cosmomc parameter input file.
+<P>
 
 <P>
 <A NAME="GetDistParams">
@@ -325,7 +335,7 @@ param1^a param2^b param3^c ...&nbsp; = x \pm y.
 <B><FONT COLOR="blue">Plotting</FONT></B><P>
 <UL>
 <LI><B>Python plots</B><BR>
-GetDist produces a set of files in the plot_data directory that can be used by the python scripts for plotting. Set your $PYTHONPATH to ./python and then you can use GetDistPlots to easily make a wide variety of plot from your python scripts.
+GetDist produces a set of files in the plot_data directory that can be used by the python scripts for plotting.  See the <A HREF="readme_python.html">CosmoMC python readme</A>
 
 <LI><B>Matlab plots</B><BR>
 GetDist produces Matlab '.m' files to do 1D, 2D and 3D plots. Matlab support is not likely to be developed further, but maintained from

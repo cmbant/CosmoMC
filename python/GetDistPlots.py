@@ -16,7 +16,7 @@ class GetDistPlotSettings:
         # elf.lineM = ['-k', '--r', '-.b', ':g', '--m', '-.y']
         self.plot_args = None
         self.lineL = [':k', ':r', ':b', ':m', ':g', ':y']
-        self.solid_colors = ['#009966', '#000866', '#336600', '#006633' , 'g', 'm', 'r']  # '#66CC99'
+        self.solid_colors = ['#006FED', '#E03424', 'gray', '#009966', '#000866', '#336600', '#006633' , 'm', 'r']  # '#66CC99'
         self.line_labels = True
         self.x_label_rotation = 0
         self.num_shades = 80
@@ -45,8 +45,8 @@ class GetDistPlotSettings:
         self.legend_font_size = None
 
         self.num_contours = 2
-        self.solid_contour_palefactor = 0.5
-        self.alpha_filled_add = 0.5
+        self.solid_contour_palefactor = 0.6
+        self.alpha_filled_add = 0.85
         self.alpha_factor_contour_lines = 0.5
 
         self.axis_marker_color = 'gray'
@@ -57,6 +57,8 @@ class GetDistPlotSettings:
         self.subplot_size_inch = size_inch
         self.lab_fontsize = 7 + 2 * self.subplot_size_inch
         self.axes_fontsize = 4 + 2 * self.subplot_size_inch
+        self.legend_font_size = self.axes_fontsize
+
         self.lw1 = self.subplot_size_inch / 3.0
         self.lw_contour = self.lw1 * 0.6
         self.lw_likes = self.subplot_size_inch / 6.0
@@ -156,6 +158,7 @@ class GetDistPlotter():
         self.contours_added = []
         self.param_name_sets = dict()
         self.sampleAnalyser.newPlot()
+        self.fig = None
 
     def get_plot_args(self, plotno, **kwargs):
         if not self.settings.plot_args is None and len(self.settings.plot_args) > plotno:
@@ -241,6 +244,7 @@ class GetDistPlotter():
 #        contour(cs, hold='on')
 
     def plot_2d(self, roots, param_pair, shaded=True, filled=False, add_legend_proxy=True, **ax_args):
+        if self.fig is None: self.make_figure()
         if isinstance(roots, basestring):roots = [roots]
         param_pair = self.get_param_array(roots[0], param_pair)
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
@@ -308,6 +312,7 @@ class GetDistPlotter():
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
                 no_ylabel=False, no_ytick=False, no_zero=False, **ax_args):
         if isinstance(roots, basestring):roots = [roots]
+        if self.fig is None: self.make_figure()
         param = self.check_param(roots[0], param)
         xmin = None
         for i, root in enumerate(roots):
@@ -382,7 +387,7 @@ class GetDistPlotter():
                     # this works with tight_layout
                     self.legend.get_frame().set_edgecolor('none')
             else:
-                args['frameon'] = self.settings.legend_frame
+                args['frameon'] = self.settings.legend_frame and not colored_text
                 self.legend = gca().legend(lines, legend_labels, legend_loc, **args)
             if not self.settings.legend_rect_border:
                 for rect in self.legend.get_patches():
@@ -595,6 +600,7 @@ class GetDistPlotter():
     def plot_3d(self, roots, in_params, color_bar=True, line_offset=0, filled=False, **ax_args):
         if isinstance(roots, basestring):roots = [roots]
         params = self.get_param_array(roots[0], in_params)
+        if self.fig is None: self.make_figure()
         self.add_3d_scatter(roots[0], params, color_bar=color_bar)
         for i, root in enumerate(roots[1:]):
             self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled, add_legend_proxy=False)
@@ -613,7 +619,7 @@ class GetDistPlotter():
         return plot_col, plot_row
 
     def export(self, fname):
-        savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight', transparent=True)
+        savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
 
     def paramNameListFromFile(self, fname):
         p = paramNames.paramNames(fname)
@@ -648,7 +654,7 @@ def sample_plots():
     g.export(roots[0] + '_2d.pdf')
 
     roots = ['base_omegak_planck_CAMspec_lowl_lowLike', 'base_omegak_planck_CAMspec_lowl_lowLike_post_lensing', 'base_omegak_planck_CAMspec_lowl_lowLike_BAO', 'base_planck_CAMspec_lowl_lowLike']
-    g.triangle_plot(roots, ['omegabh2', 'omegach2', 'ns', 'omegal', 'omegak', ], plot_3d_with_param='H0',
+    g.triangle_plot(roots, ['omegabh2', 'omegach2', 'ns', 'omegal', 'omegak'], plot_3d_with_param='H0',
                     legend_labels=['Planck', 'Planck+lensing', 'Planck+BAO', 'Planck (flat)'])
     g.export(roots[0] + '_tri.pdf')
 

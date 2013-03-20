@@ -25,7 +25,7 @@ A description for a grid of models is given in a python settings file.
 Use runbatch.py to submit all the ini files produced to the queue; makeGrid will tell you what to do.
 </UL>
 
-You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge and is the default. 
+You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge and is the default.
 Covmats for Planck are in planck_covmats folder, linked by default for grid runs.
 <p>
 Grid run scripts include:
@@ -36,10 +36,10 @@ Grid run scripts include:
 <LI>cleanup.py: for cleaning up files (e.g. before re-running a failed chain); can also just be used to list files for runs matching input parameters
 <LI>runbatch.py: submit runs to a job submission script
 <LI>settings_xx.py: sample settings files for use with makeGrid.py
-    <LI>addGridBatch.py: if you run multiple grids, e.g. a standard one and a separate small one for some parameter or test likelihood of interest, they can be combined using addGridBatch.py. 
+    <LI>addGridBatch.py: if you run multiple grids, e.g. a standard one and a separate small one for some parameter or test likelihood of interest, they can be combined using addGridBatch.py.
 </UL>
 Once you have generated the chains using CosmoMC you can analyse them. Run python/runGridGetdist.py to run getdist over grid of models, and generating parameter constraints and files for plotting. Other scripts include
-<UL> 
+<UL>
 <LI>makeTables.py: script for making latex (and hence PDF) tables from .margestats and .minimum files produced by grid runs.
 <BR>To make file of comparison plots do something like
 <pre>
@@ -56,8 +56,8 @@ GetDistPlots.py is used in your own scripts for plots from getdist outputs. Add 
 See <A HREF="readme_planck.html">Planck grid readme</A> for examples.
 
 <H3>Analysis scripts</H3>
-Currently most analysis is done by GetDist. You can however use chains.py to read in chain files and do simple calculations (e.g. mean and variance of derived parameters). 
-
+Currently most analysis is done by GetDist. You can however use chains.py to read in chain files and do simple calculations (e.g. mean and variance of derived parameters).
+See <A HREF="readme_planck.html">Planck grid readme</A> for a simple example.
 <H3>Other scripts</H3>
 
 Multi-purpose use and utility scripts include
