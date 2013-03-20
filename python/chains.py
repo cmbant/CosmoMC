@@ -58,6 +58,8 @@ class chain():
         self.means = np.asarray(means)
         return means
 
+class parSamples(): pass
+
 class chains():
 
     def __init__(self, root=None, ignore_rows=0):
@@ -79,6 +81,15 @@ class chains():
         for i, name in enumerate(self.paramNames.names):
             index[name.name] = i
         self.index = index
+
+    def setParams(self, obj):
+        for i, name in enumerate(self.paramNames.names):
+            setattr(obj, name.name, self.samples[:, i])
+
+    def getParams(self):
+        pars = parSamples()
+        self.setParams(pars)
+        return pars
 
     def valuesForParam(self, param):
         if isinstance(param, basestring): param = [param]
@@ -108,6 +119,10 @@ class chains():
 
     def std(self, paramVec, where=None):
         return np.sqrt(self.var(paramVec, where))
+
+    def twoTailLimits(self, paramVec, confidence):
+        return self.confidence(paramVec, (1 - confidence) / 2, upper=False) , self.confidence(paramVec, (1 - confidence) / 2, upper=True)
+
 
     def confidence(self, paramVec, limfrac, upper):
 
