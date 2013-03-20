@@ -16,7 +16,7 @@ class GetDistPlotSettings:
         # elf.lineM = ['-k', '--r', '-.b', ':g', '--m', '-.y']
         self.plot_args = None
         self.lineL = [':k', ':r', ':b', ':m', ':g', ':y']
-        self.solid_colors = ['#009966', '#000866', '#336600', '#006633' , 'g', 'm', 'r']  # '#66CC99'
+        self.solid_colors = ['#006FED', '#E03424', '#009966', '#000866', '#336600', '#006633' , 'g', 'm', 'r']  # '#66CC99'
         self.line_labels = True
         self.x_label_rotation = 0
         self.num_shades = 80
@@ -45,8 +45,8 @@ class GetDistPlotSettings:
         self.legend_font_size = None
 
         self.num_contours = 2
-        self.solid_contour_palefactor = 0.5
-        self.alpha_filled_add = 0.5
+        self.solid_contour_palefactor = 0.6
+        self.alpha_filled_add = 0.85
         self.alpha_factor_contour_lines = 0.5
 
         self.axis_marker_color = 'gray'
@@ -648,7 +648,7 @@ def sample_plots():
     g.export(roots[0] + '_2d.pdf')
 
     roots = ['base_omegak_planck_CAMspec_lowl_lowLike', 'base_omegak_planck_CAMspec_lowl_lowLike_post_lensing', 'base_omegak_planck_CAMspec_lowl_lowLike_BAO', 'base_planck_CAMspec_lowl_lowLike']
-    g.triangle_plot(roots, ['omegabh2', 'omegach2', 'ns', 'omegal', 'omegak', ], plot_3d_with_param='H0',
+    g.triangle_plot(roots, ['omegabh2', 'omegach2', 'ns', 'omegal', 'omegak'], plot_3d_with_param='H0',
                     legend_labels=['Planck', 'Planck+lensing', 'Planck+BAO', 'Planck (flat)'])
     g.export(roots[0] + '_tri.pdf')
 
