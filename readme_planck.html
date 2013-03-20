@@ -13,11 +13,11 @@ Here I assume you have installed CosmoMC in a directory called COSMOMC..PATH, an
 Note you need to use ifort 13 or higher to build CosmoMC, so make sure you have that configured before you start.
 <UL>
 <LI>Download and extract the plc_1.0 directories somewhere convenient, probably not under cosmomc.
-<LI>Change to the plc_1.0  directory and do 
+<LI>Change to the plc_1.0  directory and do
 <pre>bzip2 -d plc-1.0.tar.bz2; tar -xf plc-1.0.tar</pre>
 <LI><pre>cd plc-1.0</pre>
 <LI><pre>./waf configure --lapack_mkl=${MKLROOT} --lapack_mkl_version=10.3 --install_all_deps</pre>
-  (you may need to change the options on this line depending on your installation; --install_all_deps may not be needed)
+  (you may need to change the options on this line depending on your installation; --install_all_deps may not be needed; see the .pdf document file in PLC..PATH/plc_1.0/plc_1.0 for options)
 <LI><pre>./waf install</pre>
 <LI>Edit your ~/.bashrc file to include
 <pre>
@@ -25,7 +25,8 @@ export PLANCKLIKE=cliklike
 export CLIKPATH=PLC..PATH/plc_1.0/plc_1.0
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CLIKPATH/lib
 </pre>
-While you're add it you can add CosmoMC's python plotting path
+Instead of the last item you can also use PLC's recommended <b>source PLC..PATH/plc_1.0/bin/clik_profile.sh</b>.
+While you're at it you can add CosmoMC's python path (for plotting and quite analysis of chains):
 <pre>
 export PYTHONPATH=COSMOMC..PATH/python:$PYTHONPATH
 </pre>
@@ -36,12 +37,58 @@ ln -s PLC..PATH/plc_1.0 ./data/clik
 (CosmoMC will look for files in ./data/clik).
 <LI>Log out and in again to get the new settings,  then you can build cosmomc as described in the <A HREF="readme.html">ReadMe</A>.
 </UL>
-
-<h3>CosmoMC settings</h3>
-A set of .ini files are supplied in ./planck1 which set up standards for Planck runs. Location of data files is set in CAMspec_ACTSPT_defaults, CAMspec_defaults depending on what you want to use.
-You can either edit these, or make symbolic links from ./data/clik to the relevant actual file locations depending on what you want to use
+A set of .ini files are supplied in ./batch1 which set up standards for Planck runs. Location of data files is set in CAMspec_ACTSPT_defaults, CAMspec_defaults depending on what you want to use. You can try
+<pre>mpirun -np 2 ./cosmomc test.ini</pre>
+to see if things are being loaded and start running OK.
 <P>
+Note that the "highL" (ACT/SPT) likelihood file is not included in the first PLC download; hopefully it will be added soon. Meanwhile you can follow the instructions on the Planck likelihood download page for how to make it from the <A HREF="http://lambda.gsfc.nasa.gov/product/act/act_fulllikelihood_get.cfm">ACT/SPT</A> download.
+<P>
+<H3>Using Planck Chains</H3>
+Planck provide a set of parameter chains produced by CosmoMC. You can use CosmoMC's python scripts and getdist to analyse and make plots from them. First download and extract all the chain data. Make a symbolic link from ./cosmomc/PLA to the location of the chains, e.g.
+<PRE>
+ln -s /scratch/planck/PLA ./PLA
+</PRE>
+For the program to know about the structure of the grid you first need to initialize it for the location you have installed in. Do
+<PRE>
+python python/makeGrid.py PLA settings_planck_nominal
+</PRE>
+When done it will tell you the commands needed to be run  to reproduce the chains. But of course you don't need to do that, you have the chains already. You can now use the python/* scripts on the PLA directory, and they will know about the available data.
 Settings for the Planck parameter grid are in python/settings_planck_nominal.py.
+<H4>Calculating derived parameters</H4>
+For simple calculations like finding the mean and variance of new derived parameters you can use the functions in python/chains.py. For example, if you want to calculate the posterior mean and limits for sigma8*Omegam^0.6 from Planck+WP+highL+lensing you could write a python script 
+<blockquote>
+<pre>
+import chains
 
+rootdir = r'./PLA/'
 
+chains = chains.loadGridChain(rootdir, 'base', 'planck_lowl_lowLike_highL', 'lensing')
+
+p = chains.getParams()
+
+derived = p.sigma8 * p.omegam ** 0.6
+
+print 'mean, err = ', chains.mean(derived), chains.std(derived)
+print '95% limits: ', chains.twoTailLimits(derived, 0.95)
+</pre>
+</blockquote>
+Here p.omegam is a vector of parameter values, similar p.sigma8; chains.mean and chains.var sum the samples with the corresponding weights to calculate the result. The third argument of loadGridChain specifies any data added by importance sampling.
+<P>
+See python/chains.py for other simple functions you can use. Use GetDist if you want to reproduce Planck results: chains.py only does tail integrals, it does not check for skewness or calculate credible intervals for skewed distributions.
+<H4>Plotting</H4>
+To make plots from the grid you need to first run getdist over the grid. To do this make sure you have installed and compiled CosmoMC (with getdist) then run
+<PRE>
+python python/runGridGetdist.py PLA --burn_removed
+</PRE>
+This may take a while. It generates a VERY large number of plotting files in PLA/plot_data for the entire grid. You can use optional parameters for runGridGetdist.py if you want to restrict to specific models; run <b>python python/runGridGetdist.py</b> to see the full list of options. For example if you are only interested in models with massive neutrinos using Planck data you could do
+<PRE>
+python python/runGridGetdist.py PLA --paramtag base_mnu --data planck
+</PRE>
+Getdist generates .m scripts in each PLA/../../dist subfolder, which you can run in matlab. Or, now usually recommended, use the python scripts. You can use <B>python python/makePlots.py PLA  ..</B> to make plots en masse. See <b>batch1/outputs/makeGridPlots</b> for examples.
+<P>
+You can also write your own short python scripts to plot things of interest; many examples are in <b>batch1/outputs/</b>. For example, assuming you've done runGridGetdist on the base planck and WMAP chains, you can do
+<pre>
+python batch1/outputs/triangle_planckonly_vs_WMAP.py
+</pre>
+to reproduce the figure in Section 3 of the Planck parameter paper.
 </body>

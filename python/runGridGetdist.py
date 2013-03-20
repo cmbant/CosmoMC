@@ -7,10 +7,8 @@ def checkDir(fname):
 Opts = batchJobArgs.batchArgs('Run getdist over the grid of models', notExist=True)
 Opts.parser.add_argument('--plots', action='store_true')
 Opts.parser.add_argument('--norun', action='store_true')
-Opts.parser.add_argument('--specific', action='store_true')
-Opts.parser.add_argument('--compare_only', action='store_true')
-Opts.parser.add_argument('--settings', default='getdist_settings')
 Opts.parser.add_argument('--plot_data', default=None)
+Opts.parser.add_argument('--burn_removed', action='store_true')
 
 
 (batch, args) = Opts.parseForBatch()
@@ -21,7 +19,9 @@ base_ini = 'getdist_common_batch1.ini'
 
 matlab = 'matlab'
 
+
 plot_types = ['.m', '_2D.m', '_3D.m']
+# you don't need these for python plots
 # '_tri.m' is very slow for so many
 
 
@@ -32,12 +32,8 @@ ini_dir = batch.batchPath + 'getdist' + os.sep
 checkDir(data_dir)
 checkDir(ini_dir)
 
-settings = __import__(args.settings)
-
 if not args.plots and not args.specific:
-    for compare in (([None], [])[args.compare_only] + settings.compare_datatag):
         for jobItem in Opts.filteredBatchItems():
-            if compare is  None or jobItem.datatag == compare.datatag:
                 ini = iniFile.iniFile()
                 ini.params['file_root'] = jobItem.chainRoot
                 checkDir(jobItem.distPath)
@@ -53,17 +49,9 @@ if not args.plots and not args.specific:
                     ini.params['plot_2D_param'] = jobItem.param_set[0]
                 ini.defaults.append(batch.commonPath + base_ini)
                 tag = ''
-                if not compare is None:
-                    tag = compare.tag
-                    ini.params['plots_only'] = True
-                    ini.params['out_root'] = jobItem.name + tag
-                    ini.params['compare_num'] = len(compare.compares)
-                    for i in range(1, len(compare.compares) + 1):
-                        ini.params['compare' + str(i)] = jobItem.name.replace(compare.datatag, compare.compares[i - 1])
-                    if not hasattr(jobItem, 'compareRoots'): jobItem.compareRoots = []
-                    jobItem.compareRoots += [jobItem.distRoot + tag]
-                elif jobItem.isImportanceJob:
+                if jobItem.isImportanceJob or args.burn_removed:
                     ini.params['ignore_rows'] = 0
+                if jobItem.isImportanceJob:
                     ini.params['compare_num'] = 1
                     ini.params['compare1'] = jobItem.parent.chainRoot
                 fname = ini_dir + jobItem.name + tag + '.ini'
@@ -77,7 +65,6 @@ if not args.plots and not args.specific:
 
 
 if not args.norun and not args.noplots or args.compare_only:
-    if not args.specific:
         cat_cmd = 'cat '
         for jobItem in Opts.filteredBatchItems():
                 os.chdir(jobItem.distPath)

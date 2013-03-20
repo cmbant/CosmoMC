@@ -58,6 +58,8 @@ class chain():
         self.means = np.asarray(means)
         return means
 
+class parSamples(): pass
+
 class chains():
 
     def __init__(self, root=None, ignore_rows=0):
@@ -80,6 +82,15 @@ class chains():
             index[name.name] = i
         self.index = index
 
+    def setParams(self, obj):
+        for i, name in enumerate(self.paramNames.names):
+            setattr(obj, name.name, self.samples[:, i])
+
+    def getParams(self):
+        pars = parSamples()
+        self.setParams(pars)
+        return pars
+
     def valuesForParam(self, param):
         if isinstance(param, basestring): param = [param]
         results = []
@@ -89,7 +100,7 @@ class chains():
         if len(results) == 1: return results[0]
         return results
 
-    def weigthed_sum(self, paramVec, where=None):
+    def weighted_sum(self, paramVec, where=None):
         if where is None: return np.dot(paramVec, self.weights)
         return np.dot(paramVec[where], self.weights[where])
 
@@ -101,13 +112,17 @@ class chains():
             return np.sum(self.weights[where])
 
     def mean(self, paramVec, where=None):
-        return self.weigthed_sum(paramVec, where) / self.get_norm(where)
+        return self.weighted_sum(paramVec, where) / self.get_norm(where)
 
     def var(self, paramVec, where=None):
-        return self.weigthed_sum((paramVec - self.mean(paramVec, where)) ** 2 , where) / self.get_norm(where)
+        return self.weighted_sum((paramVec - self.mean(paramVec, where)) ** 2 , where) / self.get_norm(where)
 
     def std(self, paramVec, where=None):
         return np.sqrt(self.var(paramVec, where))
+
+    def twoTailLimits(self, paramVec, confidence):
+        return self.confidence(paramVec, (1 - confidence) / 2, upper=False) , self.confidence(paramVec, (1 - confidence) / 2, upper=True)
+
 
     def confidence(self, paramVec, limfrac, upper):
 
