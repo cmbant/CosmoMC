@@ -100,7 +100,7 @@ class chains():
         if len(results) == 1: return results[0]
         return results
 
-    def weigthed_sum(self, paramVec, where=None):
+    def weighted_sum(self, paramVec, where=None):
         if where is None: return np.dot(paramVec, self.weights)
         return np.dot(paramVec[where], self.weights[where])
 
@@ -112,10 +112,10 @@ class chains():
             return np.sum(self.weights[where])
 
     def mean(self, paramVec, where=None):
-        return self.weigthed_sum(paramVec, where) / self.get_norm(where)
+        return self.weighted_sum(paramVec, where) / self.get_norm(where)
 
     def var(self, paramVec, where=None):
-        return self.weigthed_sum((paramVec - self.mean(paramVec, where)) ** 2 , where) / self.get_norm(where)
+        return self.weighted_sum((paramVec - self.mean(paramVec, where)) ** 2 , where) / self.get_norm(where)
 
     def std(self, paramVec, where=None):
         return np.sqrt(self.var(paramVec, where))
