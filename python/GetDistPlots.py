@@ -156,6 +156,7 @@ class GetDistPlotter():
         self.contours_added = []
         self.param_name_sets = dict()
         self.sampleAnalyser.newPlot()
+        self.fig = None
 
     def get_plot_args(self, plotno, **kwargs):
         if not self.settings.plot_args is None and len(self.settings.plot_args) > plotno:
@@ -241,6 +242,7 @@ class GetDistPlotter():
 #        contour(cs, hold='on')
 
     def plot_2d(self, roots, param_pair, shaded=True, filled=False, add_legend_proxy=True, **ax_args):
+        if self.fig is None: self.make_figure()
         if isinstance(roots, basestring):roots = [roots]
         param_pair = self.get_param_array(roots[0], param_pair)
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
@@ -308,6 +310,7 @@ class GetDistPlotter():
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
                 no_ylabel=False, no_ytick=False, no_zero=False, **ax_args):
         if isinstance(roots, basestring):roots = [roots]
+        if self.fig is None: self.make_figure()
         param = self.check_param(roots[0], param)
         xmin = None
         for i, root in enumerate(roots):
@@ -595,6 +598,7 @@ class GetDistPlotter():
     def plot_3d(self, roots, in_params, color_bar=True, line_offset=0, filled=False, **ax_args):
         if isinstance(roots, basestring):roots = [roots]
         params = self.get_param_array(roots[0], in_params)
+        if self.fig is None: self.make_figure()
         self.add_3d_scatter(roots[0], params, color_bar=color_bar)
         for i, root in enumerate(roots[1:]):
             self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled, add_legend_proxy=False)
