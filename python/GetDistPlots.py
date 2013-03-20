@@ -57,7 +57,7 @@ class GetDistPlotSettings:
         self.subplot_size_inch = size_inch
         self.lab_fontsize = 7 + 2 * self.subplot_size_inch
         self.axes_fontsize = 4 + 2 * self.subplot_size_inch
-        self.legend_font_size = self.lab_fontsize - 2
+        self.legend_font_size = self.axes_fontsize
 
         self.lw1 = self.subplot_size_inch / 3.0
         self.lw_contour = self.lw1 * 0.6
