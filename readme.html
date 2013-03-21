@@ -88,6 +88,7 @@ and unzip and untar it (run "gunzip cosmomc.tar.gz", then "tar -xf cosmomc.tar")
 
 <li>
 Run "make"  (try "gmake" if you get an error)</li>
+<li>To output chains you might want to make a <b>chains</b> subdirectory, or (perhaps better) symlink to somewhere on your data disk.
 </ul>
 <P>
 <P>
@@ -176,7 +177,7 @@ If you don't have a propose_matrix, you can use <B>estimate_propose_matrix</B> =
 
 <BR><BR>
 <LI><A NAME="sampling"></A><B>Sampling method</B><BR>
-Set <B>sampling_method</B>=1 to use a vanilla Metropolis algorithm (in the optimal fast/slow subspaces if <b>use_fast_slow</b> is true). 
+Set <B>sampling_method</B>=1 to use a vanilla Metropolis algorithm (in the optimal fast/slow subspaces if <b>use_fast_slow</b> is true).
 Set <B>sampling_method</B>=7 to use a fast-slow dragging algorithm (<A HREF="http://arxiv.org/math.ST/0502099">Neal 2005</A>), which allows fast nuisance parameters to be handled efficiently; this is the default for Planck runs.
 <P>
 Other sampling methods that were implemented in previous version have not currently been updated for the latest version.
@@ -525,7 +526,7 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <UL>
 <LI><B>Sampling</B>
 <UL>
-<LI>New fast-slow <b>sampling_method=7</b>, using new fast/slow blocked decorrelation scheme and fast dragging following <A HREF="http://arxiv.org/math.ST/0502099">Neal 2005</A>. This is recommended for Planck.
+<LI>New fast-slow <b>sampling_method=7</b>, using new fast/slow blocked decorrelation scheme (<A HREF="http://cosmologist.info/notes/Dragging.pdf">notes</A>) and fast dragging following <A HREF="http://arxiv.org/math.ST/0502099">Neal 2005</A>. This is recommended for Planck.
     <UL>
     <LI><b>fast_param_index</b> specifies that all parameters with number greater or equal to fast_param_index should be treated as fast. Can alternatively use <B>fast_parameters</b> to set specific parameter to be treated as fast.
     <LI><b>dragging_steps</b> determines the number of fast steps per slow step. In total dragging_steps x num_fast metropolis steps are taken in the fast direction for each slow step. Does not need to be an integer, 2 works well for Planck.
