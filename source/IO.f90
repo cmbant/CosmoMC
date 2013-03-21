@@ -304,23 +304,37 @@
 
     end subroutine IO_OutputParamNames
 
-    subroutine  IO_WriteRanges(Names, limmin,limmax, fname, indices)
+    subroutine  IO_WriteBounds(Names, fname, limmin,limmax, limbot,limtop, indices)
     Type(TParamNames) :: Names
     character(LEN=*), intent(in) :: fname
     real(mcp), intent(in) :: limmin(:), limmax(:)
+    logical, intent(in) :: limbot(:), limtop(:)
     integer, intent(in) :: indices(:)
     integer :: unit
     integer i,ix
+    character(LEN=17) :: lim1,lim2
 
     unit = new_file_unit()
     call CreateTxtFile(fname,unit)
     do i=1, size(indices)
         ix = indices(i)
-        write(unit,'(1A22,2E17.7)') ParamNames_NameOrNumber(Names,i), limmin(i),limmax(i)
+        if (limbot(ix) .or. limtop(ix)) then
+            if (limbot(ix)) then
+                write(lim1, '(1E17.7)') limmin(ix)
+            else
+                lim1='    N'
+            end if
+            if (limtop(ix)) then
+                write(lim2, '(1E17.7)') limmax(ix)
+            else
+                lim2='    N'
+            end if
+            write(unit,'(1A22,2A17)') ParamNames_NameOrNumber(Names,i), lim1, lim2
+        end if
     end do
     call CloseFile(unit)
 
-    end subroutine IO_WriteRanges
+    end subroutine IO_WriteBounds
 
 
     subroutine IO_ReadParamNames(Names, in_root, prior_ranges)

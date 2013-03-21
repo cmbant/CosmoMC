@@ -1,7 +1,8 @@
     !Matrix utility routines. Uses BLAS/LAPACK. Mostly wrapper routines.
     !Generally (but not always) assumes that all matrix arrays are defined at exactly correct size
     !Not complete
-    !Antony Lewis
+    !Antony Lewis May 2003-2007
+    !http://cosmologist.info/utils/
 
 
     module MatrixUtils
@@ -1399,25 +1400,29 @@
     end subroutine Matrix_CCholesky
 
 
-
-    subroutine Matrix_CholeskyRootInverse(M,transpose)
+    subroutine Matrix_CholeskyRootInverse(M,transpose, error)
     !M = L L^T and return L^{-1} in M  ( or [L^(-1}]^T )
     real(dm), intent(inout):: M(:,:)
     integer n, info
     integer i,j
     logical, intent(in), optional :: transpose 
+    integer, intent(out), optional :: error
     logical trans
 
-    call Matrix_Cholesky(M) 
-    n=size(M,dim=1)
-
+    call Matrix_Cholesky(M, info) 
+    if (info==0) then
+        n=size(M,dim=1)
 #ifdef MATRIX_SINGLE
-    call STRTRI( 'L', 'N', n, M, n, INFO )
+        call STRTRI( 'L', 'N', n, M, n, INFO )
 #else
-    call DTRTRI( 'L', 'N', n, M, n, INFO )
+        call DTRTRI( 'L', 'N', n, M, n, INFO )
 #endif
-
-    if (info/=0) call MpiStop('Matrix_CholeskyRootInverse: not positive definite '//trim(IntToStr(info))) 
+    end if
+    if (present(error)) error=info
+    if (info/=0) then
+        if (present(error)) return
+        call MpiStop('Matrix_CholeskyRootInverse: not positive definite '//trim(IntToStr(info)))
+    end if
 
     if (present(transpose)) then
         trans = transpose
@@ -2331,6 +2336,7 @@
 
 
     end subroutine Matrix_InverseArrayMPI
+
 
 
     end module MatrixUtils

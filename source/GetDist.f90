@@ -2226,6 +2226,9 @@
     end do
 
     if (make_single_samples) call MakeSingleSamples(single_thin)
+    
+    call IO_WriteBounds(NameMapping, trim(plot_data_dir)//trim(rootname)//'.bounds', &
+    limmin,limmax,has_limits_bot,has_limits_top, colix(1:num_vars)-1)
 
     !Sort data in order of likelihood of points
 
@@ -2582,7 +2585,6 @@
     LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels)
 
     call ParamNames_WriteFile(NameMapping, trim(plot_data_dir)//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
-    call IO_WriteRanges(NameMapping, limmin, limmax, trim(plot_data_dir)//trim(rootname)//'.ranges', colix(1:num_vars)-2)
 
     !Limits from global likelihood
     if (.not. plots_only) then
