@@ -18,11 +18,11 @@ clabel(CS, CS.levels, inline=True,fmt='%1.1f',fontsize=7)
 
 z = m / (N - 3.046)
 CS = contour(m, N, z, origin='lower', levels=[0.5, 1, 2, 5, 10], colors='gray', linestyles=':',linewidths=0.3, extent=[0,3,3.046,4.9])
-clabel(CS, CS.levels, inline=True,fmt='%1.1f',fontsize=7)
+#clabel(CS, CS.levels, inline=True,fmt='%1.1f',fontsize=7)
 
 xlim([0, 3])
 ylim([3.046, 4.9])
-xlabel(meff+r'$(=\Omega_\nu h^2/94.1)$')
+#xlabel(meff+r'$(=\Omega_\nu h^2/94.1)$')
 
 g.export('msterile-nnu')
 
