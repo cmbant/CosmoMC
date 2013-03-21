@@ -294,9 +294,9 @@ class GetDistPlotter():
                 mins = min(res[0], mins)
                 maxs = max(res[1], maxs)
         if not 'lims' in ax_args:
-            mins[0], maxs[0] = self.checkBounds(roots[0], param_pair[0].name , mins[0], maxs[0])
-            mins[1], maxs[1] = self.checkBounds(roots[0], param_pair[1].name , mins[1], maxs[1])
-            ax_args['lims'] = [mins[0], maxs[0], mins[1], maxs[1]]
+            lim1 = self.checkBounds(roots[0], param_pair[0].name , mins[0], maxs[0])
+            lim2 = self.checkBounds(roots[0], param_pair[1].name , mins[1], maxs[1])
+            ax_args['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]
         self.setAxes(param_pair, **ax_args)
 
     def add_1d_marker(self, marker, color=None, ls=None):
