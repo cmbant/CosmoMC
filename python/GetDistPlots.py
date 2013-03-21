@@ -75,6 +75,27 @@ class Density2D():
     def bounds(self):
         return (self.x1.min(), self.x2.min()), (self.x1.max(), self.x2.max())
 
+class paramBounds():
+    def __init__(self, fileName):
+        self.upper = dict()
+        self.lower = dict()
+        if os.path.exists(fileName):
+            textFileHandle = open(fileName)
+            for line in textFileHandle:
+                name, low, high = [text.strip() for text in  line.split()]
+                if low != 'N': self.lower[name] = float(low)
+                if high != 'N': self.upper[name] = float(high)
+            textFileHandle.close()
+
+    def getUpper(self, name):
+        if name in self.upper: return self.upper[name]
+        else: return None
+
+    def getLower(self, name):
+        if name in self.lower: return self.lower[name]
+        else: return None
+
+
 class SampleAnalysisGetDist():
 
     def __init__(self, plot_data):
@@ -110,6 +131,9 @@ class SampleAnalysisGetDist():
         names = paramNames.paramNames(self.plot_data_file(root) + '.paramnames')
         if labelParams is not None: names.setLabelsAndDerivedFromParamNames(labelParams)
         return names
+
+    def boundsForRoot(self, root):
+        return paramBounds(self.plot_data_file(root) + '.bounds')
 
     def plot_data_file(self, root):
         return self.plot_data + os.sep + root
@@ -157,6 +181,7 @@ class GetDistPlotter():
         self.extra_artists = []
         self.contours_added = []
         self.param_name_sets = dict()
+        self.param_bounds_sets = dict()
         self.sampleAnalyser.newPlot()
         self.fig = None
 
@@ -185,6 +210,18 @@ class GetDistPlotter():
     def paramNamesForRoot(self, root):
         if not root in self.param_name_sets: self.param_name_sets[root] = self.sampleAnalyser.paramsForRoot(root, labelParams=self.settings.param_names_for_labels)
         return self.param_name_sets[root]
+
+    def paramBoundsForRoot(self, root):
+        if not root in self.param_bounds_sets: self.param_bounds_sets[root] = self.sampleAnalyser.boundsForRoot(root)
+        return self.param_bounds_sets[root]
+
+    def checkBounds(self, root, name, xmin, xmax):
+        d = self.paramBoundsForRoot(root)
+        low = d.getLower(name)
+        if low is not None: xmin = max(xmin, low)
+        up = d.getUpper(name)
+        if up is not None: xmax = min(xmax, up)
+        return xmin, xmax
 
     def add_1d(self, root, param, plotno=0, **kwargs):
         param = self.check_param(root, param)
@@ -256,7 +293,10 @@ class GetDistPlotter():
             elif not shaded:
                 mins = min(res[0], mins)
                 maxs = max(res[1], maxs)
-        if not 'lims' in ax_args: ax_args['lims'] = [mins[0], maxs[0], mins[1], maxs[1]]
+        if not 'lims' in ax_args:
+            lim1 = self.checkBounds(roots[0], param_pair[0].name , mins[0], maxs[0])
+            lim2 = self.checkBounds(roots[0], param_pair[1].name , mins[1], maxs[1])
+            ax_args['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]
         self.setAxes(param_pair, **ax_args)
 
     def add_1d_marker(self, marker, color=None, ls=None):
@@ -324,7 +364,9 @@ class GetDistPlotter():
                     xmax = max(xmax, bounds[1])
         if xmin is None: Exception('No roots have parameter: ' + param.name)
         if marker is not None: self.add_x_marker(marker, marker_color)
-        if not 'lims' in ax_args:ax_args['lims'] = [xmin, xmax, 0, 1.099]
+        if not 'lims' in ax_args:
+            xmin, xmax = self.checkBounds(roots[0], param.name, xmin, xmax)
+            ax_args['lims'] = [xmin, xmax, 0, 1.099]
         ax = self.setAxes([param], **ax_args)
 
         if self.settings.prob_label is not None and not no_ylabel:
@@ -477,7 +519,6 @@ class GetDistPlotter():
         self.finish_plot()
         return plot_col, plot_row
 
-
     def spaceTicks(self, axis, expand=True):
             lims = axis.get_view_interval()
             tick = [tick for tick in axis.get_ticklocs() if tick > lims[0] and tick < lims[1]]
@@ -605,7 +646,6 @@ class GetDistPlotter():
         for i, root in enumerate(roots[1:]):
             self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled, add_legend_proxy=False)
         self.setAxes(params, **ax_args)
-
 
     def plots_3d(self, roots, param_sets, nx=None, filled_compare=False, legend_labels=None):
         sets = [[self.check_param(roots[0], param) for param in param_group] for param_group in param_sets]

@@ -32,7 +32,7 @@ ini_dir = batch.batchPath + 'getdist' + os.sep
 checkDir(data_dir)
 checkDir(ini_dir)
 
-if not args.plots and not args.specific:
+if not args.plots:
         for jobItem in Opts.filteredBatchItems():
                 ini = iniFile.iniFile()
                 ini.params['file_root'] = jobItem.chainRoot
