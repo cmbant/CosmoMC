@@ -1,50 +1,40 @@
+
+#Intel MPI
+#these settings for ifort 13 and higher
+#Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
+F90C     = mpif90
+FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
+LAPACKL = -lmpi
+
+
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
-
-#You may need to edit the library paths for MKL for Intel
-
-##Uncomment the next line to include dr7 LRG
-EXTDATA =
-#EXTDATA = LRG
-
 RECOMBINATION ?=recfast
 
-#set WMAP empty not to compile with WMAP
-WMAP = /home/aml1005/WMAP7/likelihood_v4
+#use PRECISION=SINGLE to use single precision
+PRECISION ?=
 
-#Only needed for WMAP
-cfitsio = /usr/local/cfitsio/intel10/64/3.040
+#set WMAP empty not to compile with WMAP, e.g. WMAP = /scratch/../WMAP9/likelihood_v5
+WMAP ?=
 
-#GSL only needed for DR7 LRG
-GSLPATH ?= /home/aml1005/libs/gsl
+#Needed for WMAP; set from ~/.bashrc definition or edit here
+cfitsio ?=
 
+#empty not to compile with CLIK, set from ~/.bashrc
+PLANCKLIKE ?=
+
+#These is not used in public cosmomc
+highL ?=
+#highL = ../highL
 
 IFLAG = -I
 INCLUDE =
 
+#clik path and library
+ifeq ($(PLANCKLIKE),cliklike)
+CLIKL = -L$(CLIKPATH)/lib -lclik_f90
+INCLUDE = $(IFLAG)$(CLIKPATH)/include
+endif
 
-#Intel MPI (assuming mpif77 set to point to ifort)
-#these settings for ifort 11.1 and higher; may need to add explicit link directory otherwise
-#Can add -xHost if your cluster is uniform, or specify specific processor optimizations -x...
-#If getdist gives segfaults remove openmp when compiling getdist
-F90C     = mpif90
-FFLAGS = -O3 -W0 -WB -openmp -fpp -DMPI -vec_report0 -mkl=parallel
-LAPACKL = -lmpi
-
-#GFortran: defaults for v4.5; if pre v4.3 add -D__GFORTRAN__
-#F90C     = gfortran
-#in earlier versions use FFLAGS = -O2 -ffree-form -x f95-cpp-input -D__GFORTRAN__
-#FFLAGS =  -O3 -fopenmp -ffree-form -x f95-cpp-input -ffast-math -march=native -funroll-loops
-#LAPACKL = -Wl,-framework -Wl,accelerate
-#commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
-#LAPACKL = -lblas -llapack
-
-#HPCF settings. Use Intel 9 or 10.1+, not 10.0
-#F90C     = mpif90
-#FFLAGS = -O2 -Vaxlib -W0 -WB -openmp -fpp -DMPI -vec_report0
-#LAPACKL = -L/usr/local/Cluster-Apps/intel/mkl/10.2.2.025/lib/em64t -lmkl_lapack -lmkl -lguide -lpthread
-#GSLPATH = /usr/local/Cluster-Apps/gsl/1.9
-#cfitsio = /usr/local/Cluster-Users/cpac/cmb/2.1.0/cfitsio
-#INCLUDE=
 
 #COSMOS: use "module load cosmolib latest"
 #use "runCosmomc" (globally installed) to run, defining required memory usage
@@ -53,70 +43,20 @@ F90C = ifort
 FFLAGS = -openmp -fast -w -fpp2 -DMPI
 LAPACKL = -mkl=sequential -lmkl_lapack -lmpi
 cfitsio = $(CFITSIO)
-WMAP = $(COSMOLIB)/WMAP7
+WMAP = $(COSMOLIB)/WMAP9
 GSLPATH = $(GSL_ROOT)
 endif
 
-#G95; make sure LAPACK and MPI libs also compiled with g95
-#F90C     = mpif90
-#FFLAGS = -O2 -cpp -DMPI
-#LAPACKL = /LAPACK/lapack_LINUX.a /LAPACK/blas_LINUX.a
-
-#SGI, -mp toggles multi-processor. Use -O2 if -Ofast gives problems.
-#Not various versions of the compiler are buggy giving erroneous seg faults with -mp.
-#Version 7.3 is OK, currently version 7.4 is bugged, as are some earlier versions.
-#F90C     = f90
-#LAPACKL = -lcomplib.sgimath
-#FFLAGS  = -Ofast -mp
-
-#Digital/Compaq fortran, -omp toggles multi-processor
-#F90C    = f90
-#FFLAGS  = -omp -O4 -arch host -math_library fast -tune host -fpe1
-#LAPACKL  = -lcxml
-
-#Absoft ProFortran, single processor, set -cpu:[type] for your local system
-#F90C     = f95
-#FFLAGS = -O2 -s -cpu:athlon -lU77 -w -YEXT_NAMES="LCS" -YEXT_SFX="_"
-#LAPACKL =  -llapack -lblas -lg2c
-#IFLAG = -p
-
-#NAGF95, single processor:
-#F90C     = f95
-#FFLAGS = -DNAGF95 -O3
-#LAPACKL = -llapack -lblas -lg2c
-
-#PGF90
-#F90C = pgf90
-#FFLAGS = -O2 -DESCAPEBACKSLASH -Mpreprocess
-#LAPACKL = -llapack -lblas
+ifeq ($(COSMOHOST),darwin)
+WMAP = /scratch/aml1005/wmap_likelihood_v5
+cfitsio = /usr/local/Cluster-Apps/cfitsio/intel/3.300
+FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
+#FFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -DMPI -fpe0
+endif
 
 
-#Sun, single processor:
-#F90C     = f90
-#FFLAGS = -fast -ftrap=%none
-#LAPACKL = -lsunperf -lfsu
-#LAPACKL = -lsunperf -lfsu -lsocket -lm
-#IFLAG = -M
-
-#Sun MPI
-#F90C = mpf90
-#FFLAGS =  -O4 -openmp -ftrap=%none -dalign -DMPI
-#LAPACKL = -lsunperf -lfsu -lmpi_mt
-#IFLAG = -M
-
-#Sun parallel enterprise:
-#F90C     = f95
-#FFLAGS =  -O4 -xarch=native64 -openmp -ftrap=%none
-#LAPACKL = -lsunperf -lfsu
-#IFLAG = -M
-
-
-#IBM XL Fortran, multi-processor (run "module load lapack" then run "gmake")
-# See also http://cosmocoffee.info/viewtopic.php?t=326
-#F90C     = xlf90_r $(LAPACK)
-#FFLAGS  = -WF,-DIBMXL -qsmp=omp -qsuffix=f=f90:cpp=F90 -O3 -qstrict -qarch=pwr3 -qtune=pwr3
-#INCLUDE = -lessl
-#LAPACKL =
+#would like to embed this somehow..
+#GIT_HASHTAG = "git log --pretty=format:'%H:%cd' -n 1"
 
 PROPOSE = propose.o
 CLSFILE = CMB_Cls_simple.o
@@ -124,16 +64,43 @@ CLSFILE = CMB_Cls_simple.o
 #Can use params_H if you prefer more generic parameters
 PARAMETERIZATION = params_CMB.o
 
-F90FLAGS = -DMATRIX_SINGLE $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
-LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) 
+F90FLAGS = $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
+LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
-DISTFILES = ParamNames.o Matrix_utils.o settings.o IO.o GetDist.o
+DISTFILES = ParamNames.o Matrix_utils.o settings.o ObjectLists.o samples.o IO.o GetDist.o
 
-LIKEFILES= calclike.o
 
-OBJFILES = ParamNames.o Matrix_utils.o settings.o IO.o cmbtypes.o Planck_like.o  \
-	cmbdata.o WeakLen.o bbn.o lrggettheory.o mpk.o bao.o supernovae.o HST.o SDSSLy-a-v3.o \
-	$(CLSFILE) paramdef.o $(PROPOSE) $(PARAMETERIZATION) $(LIKEFILES) \
+
+ifneq ($(PRECISION),)
+FFLAGS += -D$(PRECISION) -DMATRIX_$(PRECISION)
+endif
+
+ifneq ($(PLANCKLIKE),)
+FFLAGS += -DCLIK
+endif
+
+ifneq ($(highL),)
+FFLAGS += -DhighL
+LINKFLAGS += -L$(highL) -lhigh
+INCLUDE += $(IFLAG)$(highL)
+endif
+
+PLANCKLIKEFILES=
+
+
+ifneq ($(PLANCKLIKE),)
+PLANCKLIKEFILES += $(PLANCKLIKE).o
+endif
+
+
+SUPERNOVAE = supernovae_Union2.o supernovae_SNLS.o
+
+DATAMODULES = $(PLANCKLIKEFILES) lrggettheory.o bao.o $(SUPERNOVAE) supernovae.o HST.o SDSSLy-a-v3.o
+
+LIKEFILES =  DataLikelihoods.o calclike.o
+
+OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o settings.o samples.o IO.o GeneralTypes.o cmbtypes.o Planck_like.o  \
+	likelihood.o bbn.o $(DATAMODULES) $(CLSFILE) cmbdata.o $(PROPOSE) paramdef.o  $(PARAMETERIZATION) $(LIKEFILES) \
 	EstCovmat.o PowellConstrainedMinimize.o minimize.o postprocess.o MCMC.o driver.o
 
 
@@ -150,7 +117,7 @@ ifeq ($(RECOMBINATION),cosmorec)
 ## This is flag is passed to the Fortran compiler allowing it to link C++ (uncomment the right one).
 # GCC (gfortran/g++)
 COSMOREC_PATH ?= ../CosmoRec/
-F90CRLINK = -lstdc++ -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas
+F90CRLINK = -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas -lstdc++
 # Intel Compilers (ifort/icpc)
 #F90CRLINK = -cxxlib -L$(COSMOREC_PATH) -lCosmoRec -L$(GSLPATH)/lib -lgsl -lgslcblas
 FFLAGS +=  -DCOSMOREC
@@ -161,49 +128,49 @@ HYREC_PATH ?= ../HyRec/
 F90CRLINK += -L$(HYREC_PATH) -lhyrec
 endif
 
-ifneq ($(WMAP),)
-F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
-LINKFLAGS +=  -L$(cfitsio)/lib -L$(WMAP) -lcfitsio
-
-OBJFILES += $(WMAP)/read_archive_map.o \
-	$(WMAP)/read_fits.o \
-	$(WMAP)/healpix_types.o \
-	$(WMAP)/WMAP_7yr_options.o \
-	$(WMAP)/WMAP_7yr_util.o \
-	$(WMAP)/WMAP_7yr_tt_pixlike.o \
-	$(WMAP)/WMAP_7yr_teeebb_pixlike.o \
-	$(WMAP)/WMAP_7yr_likelihood.o \
-	$(WMAP)/WMAP_7yr_gibbs.o \
-	$(WMAP)/WMAP_7yr_tt_beam_ptsrc_chisq.o \
-	$(WMAP)/br_mod_dist.o
-else
-F90FLAGS += -DNOWMAP
-endif
-
 default: cosmomc
 
 all : cosmomc getdist
 
+GetDist.o: IO.o samples.o
+supernovae.o: $(SUPERNOVAE)
+IO.o: ParamNames.o settings.o
+samples.o: ObjectLists.o settings.o
+likelihood.o: ObjectLists.o settings.o ParamNames.o
+DataLikelihoods.o: likelihood.o paramdef.o $(DATAMODULES)
+cliklike_CamSpec.o: temp_like.o cmbtypes.o
+cliklike.o: cmbtypes.o
 settings.o: ../camb/libcamb_$(RECOMBINATION).a
-cmbtypes.o: settings.o
+cmbtypes.o: settings.o likelihood.o GeneralTypes.o
 Planck_like.o: cmbtypes.o
-cmbdata.o: Planck_like.o  $(WMAPOBJS)
-WeakLen.o: cmbtypes.o
-bbn.o: settings.o
-mpk.o: cmbtypes.o lrggettheory.o
-bao.o: cmbtypes.o mpk.o
+cmbdata.o: Planck_like.o
+bbn.o: settings.o likelihood.o
+bao.o: cmbtypes.o
 HST.o: cmbtypes.o
 supernovae.o: cmbtypes.o
-SDSSLy-a-v3.o: cmbtypes.o
-$(CLSFILE): cmbtypes.o mpk.o HST.o bao.o IO.o
-paramdef.o: $(CLSFILE)
-$(PROPOSE): paramdef.o
+$(CLSFILE): cmbtypes.o IO.o
+paramdef.o: $(CLSFILE) propose.o samples.o
+$(PROPOSE): settings.o
 $(PARAMETERIZATION): paramdef.o
-calclike.o: $(PARAMETERIZATION)
+calclike.o: DataLikelihoods.o
 postprocess.o: calclike.o
 MCMC.o: calclike.o
-driver.o: EstCovmat.o MCMC.o minimize.o
+driver.o: EstCovmat.o MCMC.o minimize.o $(PARAMETERIZATION)
 minimize.o: PowellConstrainedMinimize.o calclike.o
+
+ifneq ($(highL),)
+cliklike_CamSpec.o: $(highL)/libhigh.a
+endif
+
+
+ifneq ($(WMAP),)
+cmbdata.o: $(WMAP)/libwmap9.a
+F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
+LINKFLAGS +=  -L$(cfitsio)/lib -L$(WMAP) -lcfitsio -lwmap9
+else
+F90FLAGS += -DNOWMAP
+endif
+
 
 export FFLAGS
 export F90C
@@ -236,4 +203,10 @@ getdist: camb $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS)
 
 camb:
-	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION)
+	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf
+
+$(highL)/libhigh.a:
+	cd $(highL); make libhigh.a;
+
+$(WMAP)/libwmap9.a:
+	cd $(WMAP); make libwmap9.a;

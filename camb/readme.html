@@ -13,7 +13,7 @@
 Code for Anisotropies in the Microwave Background by <A
 HREF="http://cosmologist.info/">Antony Lewis</A> and Anthony
 Challinor. <P>
-This version October 2012.
+This version March 2013.
 <P>
 <FONT SIZE=-1>
 Originally based on CMBFAST developed by Uros Seljak and Matias
@@ -47,7 +47,7 @@ The Makefile comes set up for Intel machines using Intel's ifort compiler. Just 
 </P>
 <P>
 You can also edit the Makefile's EQUATIONS, POWERSPECTRUM, RECOMBINATION and REIONIZATION
- variables , which determine which module is used to implement and model various parts of the calculation. The POWERSPECTRUM.f90  file contains a module giving the initial
+ variables , which determine which module is used to implement and model various parts of the calculation. The POWERSPECTRUM.f90  file7 contains a module giving the initial
  power spectrum, the EQUATIONS.f90 file contains the background evolution
  equations and sets of gauge-dependent perturbation
  equations (the alternative equations_ppf.f90 is provided to implement the common <i>w</i>, <i>w<sub>a</sub></i> varying dark energy parameterization). RECOMBINATION.f90 gives the background recombination history: recfast by default, but you can also compile to use <A HREF="http://www.cita.utoronto.ca/~jchluba/Science_Jens/Recombination/CosmoRec.html">CosmoRec</A> and <A HREF="http://www.sns.ias.edu/~yacine/hyrec/hyrec.html">HyRec</A>. REIONIZATION is by default a simple relatively fast single-step reionization model (following <A HREF="http://arxiv.org/abs/0804.3865">arXiv:0804.3865</A>).
@@ -113,6 +113,16 @@ where all quantities are in the synchronous gauge and evaluated at the requested
 <A NAME="version">
 <H3>Version history</H3>
 
+<B>March 2013</B><BR>
+<UL>
+<LI>Fix numerical accuracy for larger neutrino masses and bug in and non-linear lensing calculation in very closed models
+<LI>Read in AccuracyBoost parameters earlier so they are reflected e.g. in e.g. Transfer_SetForNonlinearLensing.
+<LI>Temperatures of massive neutrinos set from the degeneracy, e.g. 3.046, unless same_neutrino_Neff set (no degeneracies specific in .ini)
+<LI>Updated default T_CMB=2.7255 (does not change results for same input parameters)
+<LI>Derived sound horizon output parameter now uses more accurate sound speed using correct CMB temperature (power spectrum results and CosmoMC theta unchanged)
+<LI>Fixed bug calculating zstar with Feedback=0 and accurate_reionization (gave wrong results)
+<LI>Utility functions Hofz, DeltaPhysicalTimeGyr, and dsound_da_exact for getting H(z), age and the accurate sound speed
+</UL>
 
 <B>October 2012</B><BR>
 <UL>
@@ -122,7 +132,7 @@ where all quantities are in the synchronous gauge and evaluated at the requested
 <LI>Change to allow N<sub>eff</sub>&lt;1 to work (thanks Zhen Hou)
 <LI>Typo in approximation result in equations.f90 corrected (thanks Alex Hall; no effect on numerics)
 <LI>Switch off use_spline_template for non-adiabatic models (thanks Jo Dunkley)
-<LI>Support for compiling with and linking to <A HREF="http://www.cita.utoronto.ca/~jchluba/Science_Jens/Recombination/CosmoRec.html">CosmoRec</A> for recombination model (make RECOMBINATION=cosmorec) and HyRec <A HREF="http://www.sns.ias.edu/~yacine/hyrec/hyrec.html">HyRec</A> (make RECOMBINATION=hyrec) 
+<LI>Support for compiling with and linking to <A HREF="http://www.cita.utoronto.ca/~jchluba/Science_Jens/Recombination/CosmoRec.html">CosmoRec</A> for recombination model (make RECOMBINATION=cosmorec) and HyRec <A HREF="http://www.sns.ias.edu/~yacine/hyrec/hyrec.html">HyRec</A> (make RECOMBINATION=hyrec)
 <LI>IniFile module updated [supports overridden and common parameters via DEFAULT(name.ini) and INCLUDE(name.ini)].
 </UL>
 

@@ -1,0 +1,7 @@
+
+
+python python/makePlots.py main plots/compare_data --compare_data planck_lowl planck_lowl_lensing planck_lowl_lowLike  planck_lowl_lowLike_highL planck_lowl_lowLike_BAO
+
+python python/makePlots.py main plots/compare_model --compare_paramtag base --noimportance
+
+python python/makePlots.py main plots/compare_importance --compare_importance

@@ -1,0 +1,1 @@
+for f in batch1/outputs/*.py; do echo "Processing $f file.."; python $f; done

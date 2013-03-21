@@ -12,6 +12,7 @@
         use Transfer
         use constants
         use Bispectrum
+        use CAMBmain
 #ifdef NAGF95 
         use F90_UNIX
 #endif
@@ -25,7 +26,7 @@
         integer i
         character(LEN=Ini_max_string_len) TransferFileNames(max_transfer_redshifts), &
                MatterPowerFileNames(max_transfer_redshifts), outroot, version_check
-        real(dl) output_factor, Age, nmassive
+        real(dl) output_factor, nmassive
 
 #ifdef WRITE_FITS
        character(LEN=Ini_max_string_len) FITSfilename
@@ -57,6 +58,10 @@
         P%WantCls= P%WantScalars .or. P%WantTensors .or. P%WantVectors
 
         P%WantTransfer=Ini_Read_Logical('get_transfer')
+
+        AccuracyBoost  = Ini_Read_Double('accuracy_boost',AccuracyBoost)
+        lAccuracyBoost = Ini_Read_Real('l_accuracy_boost',lAccuracyBoost)
+        HighAccuracyDefault = Ini_Read_Logical('high_accuracy_default',HighAccuracyDefault)
         
         P%NonLinear = Ini_Read_Int('do_nonlinear',NonLinear_none)
    
@@ -126,7 +131,7 @@
        if (P%Nu_mass_eigenstates > max_nu) stop 'too many mass eigenstates'
        numstr = Ini_Read_String('nu_mass_degeneracies')
        if (numstr=='') then
-         P%Nu_mass_degeneracies(1)= P%Num_nu_massive
+         P%Nu_mass_degeneracies(1)= 0
        else
         read(numstr,*) P%Nu_mass_degeneracies(1:P%Nu_mass_eigenstates)
        end if
@@ -179,6 +184,8 @@
        endif
   
         Ini_fail_on_not_found = .false. 
+        
+        ALens = Ini_Read_Double('Alens',Alens)
   
         call Reionization_ReadParams(P%Reion, DefIni)
         call InitialPower_ReadParams(P%InitPower, DefIni, P%WantTensors) 
@@ -261,9 +268,6 @@
        P%MassiveNuMethod  = Ini_Read_Int('massive_nu_approx',Nu_best)
 
        ThreadNum      = Ini_Read_Int('number_of_threads',ThreadNum)
-       AccuracyBoost  = Ini_Read_Double('accuracy_boost',AccuracyBoost)
-       lAccuracyBoost = Ini_Read_Real('l_accuracy_boost',lAccuracyBoost)
-       HighAccuracyDefault = Ini_Read_Logical('high_accuracy_default',HighAccuracyDefault)
        use_spline_template = Ini_Read_Logical('use_spline_template',use_spline_template)
        if (HighAccuracyDefault) then
          P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl,P%Max_eta_k)
@@ -289,11 +293,6 @@
 #ifdef RUNIDLE
        call SetIdle
 #endif 
-
-       if (FeedbackLevel > 0) then
-         Age = CAMB_GetAge(P) 
-         write (*,'("Age of universe/GYr  = ",f7.3)') Age  
-       end if 
 
        if (global_error_flag==0) call CAMB_GetResults(P)
        if (global_error_flag/=0) then

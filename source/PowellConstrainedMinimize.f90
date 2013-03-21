@@ -9,9 +9,11 @@
     INTEGER, PARAMETER  :: dp = KIND(1.d0) !SELECTED_REAL_KIND(12, 60)
     INTEGER, PARAMETER  :: func_dp = dp  !SELECTED_REAL_KIND(12, 60)
     INTEGER, PARAMETER :: Powell_CO_prec = dp
+    REAL(dp) Last_bestfit
+    REAL(dp) :: FVAL_Converge_difference = 0.05d0
 
     PRIVATE
-    PUBLIC  :: BOBYQA , Powell_CO_prec
+    PUBLIC  :: BOBYQA , Powell_CO_prec, FVAL_Converge_difference
 
     CONTAINS
 
@@ -24,7 +26,7 @@
     real(dp), allocatable :: W(:)
     REAL(func_dp) funkk
     external funkk
-    integer I,J 
+    integer I,J
     !   This subroutine seeks the least value of a function of many variables,
     !   by applying a trust region method that forms quadratic models by
     !   interpolation. There is usually some freedom in the interpolation
@@ -69,7 +71,8 @@
     !   Return if the value of NPT is unacceptable.
 
     BOBYQA = .false.
-    
+    Last_bestfit = 1d30
+
     NP=N+1
     IF (NPT  <  N+2 .OR. NPT  >  ((N+2)*NP)/2) THEN
         PRINT 10
@@ -787,7 +790,7 @@
     !  The calculations with the current value of RHO are complete. Pick the
     !    next values of RHO and DELTA.
     !
-680 IF (RHO  >  RHOEND) THEN
+680 IF (RHO  >  RHOEND .and. abs(FVAL(KOPT)-Last_bestfit) > FVAL_Converge_difference) THEN
         DELTA=HALF*RHO
         RATIO=RHO/RHOEND
         IF (RATIO  <=  16.0D0) THEN
@@ -798,6 +801,7 @@
             RHO=TENTH*RHO
         END IF
         DELTA=DMAX1(DELTA,RHO)
+        Last_bestfit = FVAL(KOPT)
         IF (IPRINT  >=  2) THEN
             IF (IPRINT  >=  3) PRINT 690
 690         FORMAT (5X)
@@ -826,12 +830,13 @@
         F=FVAL(KOPT)
     END IF
     IF (IPRINT  >=  1) THEN
+        if (RHO  <  RHOEND) write(*,*) '    FVAL_Converge_difference reached'
         PRINT 740, NF
 740     FORMAT (/4X,'At the return from BOBYQA',5X,&
         &      'Number of function values =',I6)
         PRINT 710, F,(X(I),I=1,N)
     END IF
-    end function BOBYQB 
+    end function BOBYQB
 
 
     SUBROUTINE ALTMOV (N,NPT,XPT,XOPT,BMAT,ZMAT,NDIM,SL,SU,KOPT,&
@@ -915,7 +920,7 @@
         IUBD=0
         SUMIN=DMIN1(ONE,SUBD)
         !
-        !     Revise SLBD and SUBD if necessary because of the bounds in SL and 
+        !     Revise SLBD and SUBD if necessary because of the bounds in SL and
         !
         DO 70 I=1,N
             TEMP=XPT(K,I)-XOPT(I)
@@ -1257,7 +1262,7 @@
             ZMAT(NF-N,NFX)=-ZMAT(1,NFX)-ZMAT(NF,NFX)
         END IF
         !
-        !     Set the off-diagonal second derivatives of the Lagrange functions 
+        !     Set the off-diagonal second derivatives of the Lagrange functions
         !     the initial quadratic model.
         !
     ELSE
@@ -1271,7 +1276,7 @@
     END IF
     IF (NF  <  NPT .AND. NF  <  MAXFUN) GOTO 50
 
-    END SUBROUTINE PRELIM 
+    END SUBROUTINE PRELIM
 
 
     SUBROUTINE RESCUE (funkk,N,NPT,XL,XU,IPRINT,MAXFUN,XBASE,XPT,&
@@ -1312,7 +1317,7 @@
     !    interpolation point is PTSAUX(1,p)*e_p + PTSAUX(1,q)*e_q. Otherwise
     !    the step is PTSAUX(1,p)*e_p or PTSAUX(2,q)*e_q in the cases q=0 or
     !    p=0, respectively.
-    !  The first NDIM+NPT elements of the array W are used for working space. 
+    !  The first NDIM+NPT elements of the array W are used for working space.
     !  The final elements of BMAT and ZMAT are set in a well-conditioned way
     !    to the values that are appropriate for the new interpolation points.
     !  The elements of GOPT, HQ and PQ are also revised to the values that are
@@ -1494,7 +1499,7 @@
         END IF
 160 W(K)=HALF*SUM*SUM
     !
-    !     Calculate VLAG and BETA for the required updating of the H matrix 
+    !     Calculate VLAG and BETA for the required updating of the H matrix
     !     XPT(KNEW,.) is reinstated in the set of interpolation points.
     !
     DO 180 K=1,NPT
@@ -1818,7 +1823,7 @@
         IF (IACT .EQ. 0 .AND. TEMP  >  ZERO) THEN
             CRVMIN=DMIN1(CRVMIN,TEMP)
             IF (CRVMIN .EQ. ONEMIN) CRVMIN=TEMP
-        END IF 
+        END IF
         GGSAV=GREDSQ
         GREDSQ=ZERO
         DO 80 I=1,N
@@ -1872,7 +1877,7 @@
     ITCSAV=ITERC
     GOTO 210
     !
-    !     Let the search direction S be a linear combination of the reduced 
+    !     Let the search direction S be a linear combination of the reduced
     !     and the reduced G that is orthogonal to the reduced D.
     !
 120 ITERC=ITERC+1

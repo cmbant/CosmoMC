@@ -11,14 +11,14 @@ real(dl), parameter ::  z0 = 0.0d0, zNEAR = 0.235d0, zMID = 0.342d0, zFAR = 0.42
 real(dl), parameter ::  sigma2BAONEAR = 86.9988, sigma2BAOMID = 85.1374, sigma2BAOFAR = 84.5958
 real(dl), parameter :: zeffDR7 = 0.312782  !! effective redshift of the LRG sample
 real(dl), dimension(4) :: transferscalefid  !! this is set in LRGinfo_init
-real(dl), dimension(4) :: powerscaletoz0  
- !! this is to scale the amplitude of the redshift slices power spectra to the z=0 amplitude; 
+real(dl), dimension(4) :: powerscaletoz0
+ !! this is to scale the amplitude of the redshift slices power spectra to the z=0 amplitude;
  !this is the assumption of the model.
-real(dl), parameter :: kmindata = 0.02 
- !! in h/Mpc.  they are needed for normalizing nowiggs power spectrum. 
+real(dl), parameter :: kmindata = 0.02
+ !! in h/Mpc.  they are needed for normalizing nowiggs power spectrum.
 ! Hard coded for the SDSS DR7 values.
 integer :: iz0lrg, izNEARlrg, izMIDlrg, izFARlrg
-logical :: use_dr7lrg = .false.  
+logical :: use_dr7lrg = .false.
 
 contains
 
@@ -35,7 +35,7 @@ contains
           Type(MatterTransferData), intent(in) :: MTrans
           Type(MatterPowerData) :: PKnw
 
-          integer, intent(in) :: itf, in, npoints 
+          integer, intent(in) :: itf, in, npoints
           real, intent(out) :: outpower(npoints)
           real, intent(out) :: outpowernw(npoints), outpowerrationwhalofit(npoints)
           real, intent(in) :: minkh, dlnkh
@@ -171,7 +171,7 @@ contains
             do il = 1, npoints
                k = exp(logmink + dlnkh*(il-1))*h
                outpower(il) = outpower(il) * ScalarPower(k,in)
-               outpowerrationwhalofit(il) = outpowerrationwhalofit(il)/outpowernw(il) 
+               outpowerrationwhalofit(il) = outpowerrationwhalofit(il)/outpowernw(il)
                 !! do this first because the ScalarPower calls cancel.
                outpowernw(il) = outpowernw(il) * ScalarPower(k,in)
                !print *,k/h,outpower(il),outpowernw(il)

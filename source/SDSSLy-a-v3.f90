@@ -1,16 +1,16 @@
-! Module for using SDSS McDonald et al. (2004) Ly-alpha data 
+! Module for using SDSS McDonald et al. (2004) Ly-alpha data
 
-! NOTE:  Not valid in growth function calculation for dark matter equations 
-! of state away from -1; 
+! NOTE:  Not valid in growth function calculation for dark matter equations
+! of state away from -1;
 ! also, this does not use alpha (running) information from McDonald chi^2 table
 
-! If using SDSS Ly-alpha data:  cite  
+! If using SDSS Ly-alpha data:  cite
 !  P.~McDonald {\it et al.},
 !  %``The Linear Theory Power Spectrum from the Lyman-alpha Forest in the Sloan
 !  %Digital Sky Survey,''
 !  arXiv:astro-ph/0407377.
 
-! implemented for CosmoMC by Kevork Abazajian  
+! implemented for CosmoMC by Kevork Abazajian
 
 ! AL: note requires *linear* power spectrum input
 ! AL: April 2006: added assumption violation traps
@@ -27,9 +27,9 @@ implicit none
 
 
  integer, parameter :: c_lya_points = 12
- 
+
  logical, parameter :: use_sdsslyaP  = .true.
- 
+
  integer, parameter :: n_SDSSLya = 41
 
  real(dl) :: SDSSLya_delta(n_SDSSLya)
@@ -48,9 +48,9 @@ contains
   function dgrowth(zz)
     real(dl) dgrowth
     real(dl) zz
-    
+
     dgrowth = (1.d0+zz)/((ommpass*(1.d0+zz)**3+omlpass)**1.5d0)
-   
+
   end function dgrowth
 
 
@@ -58,7 +58,7 @@ contains
    integer i,j
    real temp
    if (Feedback > 0) write(*,*) 'reading: SDSS Ly-alpha data'
-   
+
     if(use_SDSSLyaP)then
       minSDSSPchi = 1.d30
       z_SDSSP = 3.d0
@@ -70,48 +70,48 @@ contains
             if(SDSSLya_chi2(i,j)>0.)minSDSSPchi = min(SDSSLya_chi2(i,j),minSDSSPchi)
          end do
       end do
-      
+
       if (Feedback > 0) write(*,*) 'done reading: SDSS Ly-alpha data'
-      
+
       call splie2(SDSSLya_delta,SDSSLya_neff,SDSSLya_chi2,n_SDSSLya,n_SDSSLya,SDSSLya_chi2a)
    end if
    if (Feedback > 0) write(*,*) 'done reading: SDSS Ly-alpha data'
-   
+
    do_lya_init = .false.
-   
+
  end subroutine lya_init
 
 
  function LSS_Lyalike(CMB, Theory)
    Type (CMBParams) CMB
-   Type (CosmoTheory) Theory
+   Type (TheoryPredictions) Theory
    real LSS_Lyalike
-   
+
    real hubz,h,omm,oml
    real logdelta,normf
-   real(dl) chi2   
+   real(dl) chi2
    real(dl) delta,neff
 
-   real D0,D2,khlya,pk0,lnkhlya1,lnkhlya2,lnpk1,lnpk2
+   real(mcp) D0,D2,khlya,pk0,lnkhlya1,lnkhlya2,lnpk1,lnpk2
 
    real(dl) rombint
    external rombint
 
    if (do_lya_init) then
       call lya_init
-   endif   
+   endif
 
     if (CMB%W /= -1. .or. CMB%omnu/=0. .or. CMB%InitPower(3)/= 0.) then
       write (*,*) 'This SDSS Lya module does not support extended models'
       write (*,*) 'for extensions see http://www.slosar.com/aslosar/lya.html'
       stop
     end if
-   
+
 
    omm = CMB%omc+CMB%omb+CMB%omnu
    oml = CMB%omv
    h   = CMB%H0/100.
-   
+
    ommpass = omm
    omlpass = oml
    D0 = rombint(dgrowth,0.d0,10000.d0,1.d-6) !5 omm / 2 not needed since only want ratio
@@ -122,7 +122,7 @@ contains
       normf = 1./(19.739209)  ! 1/(2*pi**2)
 
       hubz= CMB%H0*sqrt(omm*(1.+z_SDSSP)**3+oml)
-      
+
       D2 =  (hubz/CMB%H0*rombint(dgrowth,z_SDSSP,10000.d0,1.d-6)/D0)**2 ! Note: not valid for w.ne.-1
 
       khlya = kh_SDSSP * hubz/h/(1.+z_SDSSP)
@@ -134,7 +134,7 @@ contains
       neff  = (lnpk2-lnpk1)/(lnkhlya2-lnkhlya1)
 
       delta = (pk0*khlya**3*normf)
-         
+
       neff  = (lnpk2-lnpk1)/(lnkhlya2-lnkhlya1)
 
       call splin2(SDSSLya_delta,SDSSLya_neff,SDSSLya_chi2,SDSSLya_chi2a,n_SDSSLya,n_SDSSLya &
@@ -149,7 +149,7 @@ contains
 
  end function LSS_lyalike
 
- 
+
  SUBROUTINE splie2(x1a,x2a,ya,m,n,y2a)
    INTEGER m,n,NN
    real(dl) x1a(m),x2a(n),y2a(m,n),ya(m,n)
@@ -184,7 +184,7 @@ contains
    call spline(x1a,yytmp,m,1.d30,1.d30,y2tmp)
    y = splintt(x1a,yytmp,y2tmp,m,x1)
  END SUBROUTINE splin2
- 
+
 
  FUNCTION splintt(xa,ya,y2a,n,x)
    !  USE nrtype; USE nrutil, ONLY : assert_eq,nrerror

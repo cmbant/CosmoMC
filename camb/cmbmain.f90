@@ -1,6 +1,6 @@
 !     This this is the main CAMB program module.
 !
-!     Code for Anisotropies in the Microwave Background
+!     Code for Anisotropies in the Microwave Backgroundeqma
 !     by Antony lewis (http://cosmologist.info) and Anthony Challinor
 !     See readme.html for documentation. 
 
@@ -168,7 +168,7 @@ contains
          write (*,*) 'r = ',real(CP%r),' scale = ',real(scale), 'age = ', real(CP%tau0)  
       end if 
 
-       if (.not. CP%OnlyTransfers)  call InitializePowers(CP%InitPower,CP%curv)
+       if (.not. CP%OnlyTransfers .or. CP%NonLinear==NonLinear_Lens)  call InitializePowers(CP%InitPower,CP%curv)
        if (global_error_flag/=0) return
 
 !     Calculation of the CMB sources.
@@ -465,7 +465,9 @@ contains
                ntodo = MT%num_q_trans
                first_i = ntodo+1
                do q_ix = 1,ntodo
-                if (q_transfer(q_ix) > qmax) then
+                if (q_transfer(q_ix) > Evolve_q%highest+1d-4) then
+                !Feb13 fix for case with closed universe where qmax is not neccessarily right quantized value
+                 !   if (q_transfer(q_ix) > qmax) then
                       first_i=q_ix 
                       exit
                 end if

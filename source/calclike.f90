@@ -1,191 +1,220 @@
-module CalcLike
- use CMB_Cls
- use cmbtypes
- use cmbdata
- use mpk
- use Random
- use settings
- use ParamDef
- use snovae
- use WeakLen
- use Lya
- implicit none
+    module CalcLike
+    use cmbtypes
+    use DataLikelihoodList
+    implicit none
 
- logical :: Use_Age_Tophat_Prior = .true.
- logical :: Use_CMB = .true.
- logical :: Use_BBN = .false.
- logical :: Use_Clusters = .false.
-  
- integer :: H0_min = 40, H0_max = 100
- real :: Omk_min = -0.3, Omk_max = 0.3
- real :: Use_min_zre = 0
- integer :: Age_min = 10, Age_max = 20
- real :: Temperature  = 1
+    real(mcp) :: Temperature  = 1
 
-contains
+    Type LikeCalculator
+        type(ParamSet), pointer :: Params
+        type (CMBParams), pointer :: CMB
+        logical changeMask(max_num_params)
+        logical SlowChanged, PowerChanged
+    end Type LikeCalculator
 
-  function GenericLikelihoodFunction(Params) 
-    type(ParamSet)  Params 
-    real :: GenericLikelihoodFunction
-   
-  
-   !Used when you want to plug in your own CMB-independent likelihood function:
-   !set generic_mcmc=.true. in settings.f90, then write function here returning -Ln(Likelihood)
-   !Parameter array is Params%P
-    !!!!
-   ! GenericLikelihoodFunction = greatLike(Params%P)
-   ! GenericLikelihoodFunction = LogZero 
-    call MpiStop('GenericLikelihoodFunction: need to write this function!')
-    GenericLikelihoodFunction=0
+    contains
 
-  end function GenericLikelihoodFunction
-
-  
-  function GetLogPrior(CMB, Info) !Get -Ln(Prior)
-    real GetLogPrior
-    real Age
-    Type (CMBParams) CMB
-    Type(ParamSetInfo) Info
-
-    GetLogPrior = logZero
- 
-    if (.not. generic_mcmc) then
-     if (CMB%H0 < H0_min .or. CMB%H0 > H0_max) return
-     if (CMB%omk < Omk_min .or. CMB%omk > Omk_max .or. CMB%Omv < 0) return
-     if (CMB%zre < Use_min_zre) return
-
-     Age = GetAge(CMB, Info)
-      !This sets up parameters in CAMB, so do not delete unless you are careful!
- 
-     if (Use_Age_Tophat_Prior .and. (Age < Age_min .or. Age > Age_max) .or. Age < 0) return
-    
+    subroutine AddLike(CurrentLike, LikeToAdd)
+    real(mcp), intent(in) :: LikeToAdd
+    real(mcp) CurrentLike
+    if (CurrentLike/=LogZero) then
+        if (LikeToAdd == logZero) then
+            CurrentLike = LogZero
+        else
+            CurrentLike = CurrentLike + LikeToAdd/Temperature
+        end if
     end if
-    GetLogPrior = 0
- 
-  end function GetLogPrior
+    end subroutine AddLike
 
-  function GetLogLike(Params) !Get -Ln(Likelihood)
-    type(ParamSet)  Params 
-    Type (CMBParams) CMB
-    real GetLogLike
-    real dum(1,1)
- 
-    if (any(Params%P > Scales%PMax) .or. any(Params%P < Scales%PMin)) then
-       GetLogLike = logZero
-        return
-    end if
+    function GenericLikelihoodFunction(Params)
+    type(ParamSet)  Params
+    real(mcp) :: GenericLikelihoodFunction
+    real(mcp), allocatable, save :: covInv(:,:)
+    real(mcp) X(num_params_used)
 
-    if (generic_mcmc) then
-        GetLogLike = GenericLikelihoodFunction(Params) 
-        if (GetLogLike /= LogZero) GetLogLike = GetLogLike/Temperature
-
+    if (test_likelihood) then
+        if (.not. allocated(covInv)) then
+            allocate(covInv(num_params_used,num_params_used))
+            covInv = propose_matrix
+            call Matrix_Inverse(covInv)
+        end if
+        X = Params%P(params_used) - scales%Center(params_used)
+        GenericLikelihoodFunction= dot_product(X, matmul(covInv, X))/2
     else
 
-     call ParamsToCMBParams(Params%P,CMB)
-
-     GetLogLike = GetLogLikePost(CMB, Params%Info,dum,.false.)
-    end if 
-   end function GetLogLike
-
-    
-  function GetLogLikePost(CMB, Info, inCls, HasCls) 
-    use cambmain, only: initvars
-    use Camb, only: CAMBParams_Set 
-    type(CAMBParams)  P
-    real GetLogLikePost
-    Type (CMBParams) CMB
-    Type(ParamSetInfo) Info
-    real, intent(in):: inCls(:,:)
-    logical, intent(in) :: HasCls
-    real acl(lmax,num_cls_tot)
-    integer error
-
-    if (generic_mcmc) stop 'GetLogLikePost: not supported for generic'
-
-    GetLogLikePost  = GetLogPrior(CMB, Info)
-    if ( GetLogLikePost >= logZero) then
-       GetLogLikePost = logZero
-       
-    else 
-       GetLogLikePost = GetLogLikePost + sum(CMB%nuisance(1:nuisance_params_used)**2)/2
-          !Unit Gaussian prior on all nuisance parameters
-       if (Use_BBN) GetLogLikePost = GetLogLikePost + (CMB%ombh2 - 0.022)**2/(2*0.002**2) 
-          !I'm using increased error bars here
-   
-       if (Use_CMB .or. Use_LSS) then
-          if (HasCls) then
-           acl = inCls
-           error =0
-          else
-           call GetCls(CMB, Info, acl, error)
-          end if
-         if (error /= 0) then
-          GetLogLikePost = logZero 
-         else
-          if (Use_CMB) GetLogLikePost = &
-            CMBLnLike(acl, CMB%norm(norm_freq_ix:norm_freq_ix+num_freq_params-1),CMB%nuisance) + GetLogLikePost
-          if (Use_mpk) GetLogLikePost = GetLogLikePost + LSSLnLike(CMB, Info%theory)
-          if (Use_WeakLen) GetLogLikePost = GetLogLikePost + WeakLenLnLike(CMB, Info%theory)     
-          if (Use_Lya) GetLogLikePost = GetLogLikePost +  LSS_Lyalike(CMB, Info%Theory)
-          if ( GetLogLikePost >= logZero) then
-            GetLogLikePost = logZero
-          end if
-         end if
-         if (Use_SN .and. GetLogLikePost /= logZero ) then
-            if (Info%Theory%SN_loglike /= 0) then
-             GetLogLikePost = GetLogLikePost + Info%Theory%SN_loglike
-            else
-             GetLogLikePost = GetLogLikePost + SN_LnLike(CMB)
-            end if
-               !Assume computed only every time hard parameters change
-         end if
-         if (Use_BAO .and. GetLogLikePost /= logZero ) then
-            if (Info%Theory%BAO_loglike /= 0) then
-             GetLogLikePost = GetLogLikePost + Info%Theory%BAO_loglike
-            else
-             GetLogLikePost = GetLogLikePost + BAO_LnLike(CMB)
-            end if
-               !Assume computed only every time hard parameters change
-         end if
-         if (Use_HST .and. GetLogLikePost /= logZero) then
-            if (Info%Theory%HST_loglike /= 0) then
-             GetLogLikePost = GetLogLikePost + Info%Theory%HST_loglike
-            else
-             GetLogLikePost = GetLogLikePost + HST_LnLike(CMB)
-            end if
-           !!Old: GetLogLikePost = GetLogLikePost + (CMB%H0 - 72)**2/(2*8**2)  !HST 
-         end if  
-     
-         else
-           if (Use_SN) GetLogLikePost = GetLogLikePost + SN_LnLike(CMB)
-           if (Use_BAO)then
-                !From Jason Dosset           
-                !JD had to change below so new BAO will work without CMB
-                !previous way z_drag was not calculated without calling get_cls.
-                if (RecomputeTransfers(CMB, Info%LastParams))  then
-                    call CMBToCAMB(CMB, P)
-                    call CAMBParams_Set(P)
-                    call InitVars
-                    Info%Theory%BAO_loglike = Bao_lnLike(CMB)
-                    Info%LastParams = CMB
-                end if
-                GetLogLikePost = GetLogLikePost + Info%Theory%BAO_loglike
-           end if
-           if (Use_HST) GetLogLikePost = GetLogLikePost + HST_LnLike(CMB)
-         end if
-         
-     
-      if (Use_Clusters .and. GetLogLikePost /= LogZero) then
-          GetLogLikePost = GetLogLikePost + &
-                 (Info%Theory%Sigma_8-0.9)**2/(2*0.05**2)
-          stop 'Write your cluster prior in calclike.f90 first!'
-      end if
-
-     if (GetLogLikePost /= LogZero) GetLogLikePost = GetLogLikePost/Temperature
-   
-
+    !Used when you want to plug in your own CMB-independent likelihood function:
+    !set generic_mcmc=.true. in settings.f90, then write function here returning -Ln(Likelihood)
+    !Parameter array is Params%P
+    GenericLikelihoodFunction = LogZero
+    call MpiStop('GenericLikelihoodFunction: need to write this function!')
     end if
 
-  end function GetLogLikePost
+    end function GenericLikelihoodFunction
 
-end module CalcLike
+    function GetLogLikeBounds(Params)
+    type(ParamSet):: Params
+    real(mcp) :: GetLogLikeBounds
+
+    if (any(Params%P > Scales%PMax) .or. any(Params%P < Scales%PMin)) then
+        GetLogLikeBounds = logZero
+    else
+        GetLogLikeBounds=0
+    end if
+
+    end function GetLogLikeBounds
+
+    function GetLogLike(Params) !Get -Ln(Likelihood) for chains
+    type(ParamSet), target :: Params
+    Type (CMBParams), target :: CMB
+    real(mcp) GetLogLike
+    logical, save:: first=.true.
+    Type(LikeCalculator) :: Calc
+
+    GetLogLike = GetLogLikeBounds(Params)
+    if (GetLogLike==LogZero) return
+
+    if (generic_mcmc .or. test_likelihood) then
+        call AddLike(GetLogLike,GenericLikelihoodFunction(Params))
+        call AddLike(GetLogLike,getLogPriors(Params%P))
+    else
+        Calc%Params => Params
+        Calc%CMB=>CMB
+        call Parameterization%ParamArrayToTheoryParams(Params%P,CMB)
+        call AddLike(GetLogLike, Parameterization%NonBaseParameterPriors(CMB))
+        if (GetLogLike == logZero) return
+        if (first) then
+            Calc%changeMask(1:num_params) = .true.
+            first = .false.
+        else
+            Calc%changeMask(1:num_params) = Params%Info%lastParamArray(1:num_params)/=Params%P(1:num_params)
+        end if
+
+        if (CalculateRequiredTheoryChanges(Calc)) then
+            call AddLike(GetLogLike, GetLogLikeWithTheorySet(Calc))
+        else
+            GetLogLike = logZero
+        end if
+
+        if (GetLogLike/=logZero) Params%Info%lastParamArray(1:num_params) = Params%P(1:num_params)
+    end if
+
+    if (Feedback>2 .and. GetLogLike/=LogZero) &
+    call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%likelihoods)
+
+    end function GetLogLike
+
+    function CheckPriorCuts(Params)
+    real(mcp)  CheckPriorCuts
+    Type(ParamSet), target :: Params
+    Type (CMBParams), target :: CMB
+
+    CheckPriorCuts = GetLogLikeBounds(Params)
+    if (CheckPriorCuts==LogZero) return
+
+    call Parameterization%ParamArrayToTheoryParams(Params%P,CMB)
+    CheckPriorCuts = Parameterization%NonBaseParameterPriors(CMB)
+
+    end function CheckPriorCuts
+
+    function GetLogLikePost(Params, do_like)
+    !for importance sampling where theory may be pre-stored
+    real(mcp)  GetLogLikePost
+    Type(ParamSet), target :: Params
+    Type (CMBParams), target :: CMB
+    Type(LikeCalculator) :: Calc
+    logical, optional, intent(in) :: do_like(DataLikelihoods%count)
+
+    GetLogLikePost = GetLogLikeBounds(Params)
+    if (GetLogLikePost==LogZero) return
+
+    Calc%slowChanged = .false.
+    Calc%ChangeMask = .true.
+
+    call Parameterization%ParamArrayToTheoryParams(Params%P,CMB)
+    call AddLike(GetLogLikePost,Parameterization%NonBaseParameterPriors(CMB))
+    if (GetLogLikePost == logZero) return
+
+    Calc%Params => Params
+    Calc%CMB=>CMB
+    call AddLike(GetLogLikePost, GetLogLikeWithTheorySet(Calc, do_like))
+
+    end function GetLogLikePost
+
+    function getLogPriors(P) result(logLike)
+    integer i
+    real(mcp), intent(in) :: P(num_params)
+    real(mcp) logLike
+
+    logLike=0
+    do i=1,num_params
+        if (Scales%PWidth(i)/=0 .and. GaussPriors%std(i)/=0) then
+            logLike = logLike + ((P(i)-GaussPriors%mean(i))/GaussPriors%std(i))**2
+        end if
+    end do
+    logLike=logLike/2
+
+    end function getLogPriors
+
+    logical function CalculateRequiredTheoryChanges(Calc)
+    Type(LikeCalculator) :: Calc
+    integer error
+
+    Calc%SlowChanged = any(Calc%changeMask(1:num_hard))
+    Calc%PowerChanged = any(Calc%changeMask(index_initpower:index_initpower+num_initpower-1))
+    error=0
+    if (Use_CMB .or. Use_LSS) then
+        if (Calc%SlowChanged) then
+            slow_changes = slow_changes + 1
+            call GetNewTransferData(Calc%CMB, Calc%Params%Info,Calc%Params%Theory, error)
+        end if
+        if ((Calc%SlowChanged .or. Calc%PowerChanged) .and. error==0) then
+            if (.not. Calc%SlowChanged) semislow_changes = semislow_changes  + 1
+            call GetNewPowerData(Calc%CMB, Calc%Params%Info, Calc%Params%Theory,error)
+        end if
+    else
+        if (Calc%SlowChanged) call GetNewBackgroundData(Calc%CMB, Calc%Params%Theory, error)
+    end if
+    CalculateRequiredTheoryChanges = error==0
+
+    end function CalculateRequiredTheoryChanges
+
+
+    function GetLogLikeWithTheorySet(Calc, likelihood_mask) result(logLike)
+    real(mcp) logLike
+    Type(LikeCalculator) :: Calc
+    logical, intent(in), optional :: likelihood_mask(DataLikelihoods%count)
+    real(mcp) itemLike
+    Class(DataLikelihood), pointer :: like
+    integer i
+    logical backgroundSet
+    logical :: do_like(DataLikelihoods%count)
+
+    if (present(likelihood_Mask)) then
+        do_like = likelihood_mask
+    else
+        do_like = .true.
+    end if
+    backgroundSet = Calc%slowChanged
+    logLike = logZero
+    do i= 1, DataLikelihoods%count
+        if (do_like(i)) then
+            like => DataLikelihoods%Item(i)
+            if (any(like%dependent_params(1:num_params) .and. Calc%changeMask(1:num_params) )) then
+                if (any(like%dependent_params(1:num_hard)) .and. .not. backgroundSet) then
+                    call SetTheoryForBackground(Calc%CMB)
+                    backgroundSet = .true.
+                end if
+                itemLike = like%LogLike(Calc%CMB, Calc%Params%Theory, Calc%Params%P(like%nuisance_indices))
+
+                if (itemLike == logZero) return
+                Calc%Params%Likelihoods(i) = itemLike
+            end if
+        end if
+    end do
+    logLike = sum(Calc%Params%likelihoods(1:DataLikelihoods%Count))
+    logLike = logLike + getLogPriors(Calc%Params%P)
+
+    end function GetLogLikeWithTheorySet
+
+
+    end module CalcLike

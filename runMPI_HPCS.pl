@@ -1,10 +1,14 @@
 #!/usr/bin/perl -w
 
+# SG Now sets 4 MPI processes per node, 4 OMP threads per process
+
 # Example from Cambridge HPCS machine.
-#  Sets 2 MPI processes (chains) per node (see value of $chainspn)
-#  each generating 2 OpenMP threads (see value of $omp).
-#  E.g. perl runMPI_HPCS.pl params 3
-#  should run 6 chains, 2 per the three nodes (12 threads in total).
+#  Sets 4 MPI processes (chains) per node (see value of $chainspn)
+#  each generating 4 OpenMP threads (see value of $omp).
+#  E.g. perl runMPI_HPCS.pl params 2
+#  should run 8 chains, 4 per the two nodes (32 threads in total).
+# for action =2 runs in one mpi process (e.g. for minimization) use
+# E.g. perl runMPI_HPCS.pl params 0
 
 use Cwd;
 
@@ -14,25 +18,44 @@ $cosmomc = cwd;
 $params =  $ARGV[0];
 $numnodes = $ARGV[1];
 
-$chainspn = 2;  # number of chains per node
-$omp = 2;       # value of OMP_NUM_THREADS
-$ppn = ( $chainspn * $omp ) ; # NB this must be <= 4
+#if $numnodes=0 just run one MPI process (e.g. for action=2) using all cores
+if ($numnodes == 0){
+$chainspn=1;
+$omp=16;
+$numnodes=1;
+$walltime='08:00:00';
+} else
+{
+$chainspn = 4;  # number of chains per node
+$omp = 4;       # value of OMP_NUM_THREADS
+$walltime='24:00:00';
+}
+
+$ppn = ( $chainspn * $omp ) ; # NB this must be <= 16
 $nchains = $numnodes * $chainspn ;
-$mem = ( 7972 * $numnodes ) ;  # MB 
+$mem = ( 64000 * $numnodes ) ;  # MB 
 
 $ini = $params;
 if ($ini !~ m/\.ini/) {$ini= "$ini.ini"}
 
+$params =~ s/\//_/g;
+
 open(Fout,">./scripts/script_MPI");
 print Fout <<EMP;
 #!/bin/bash
-#PBS -q woodcrest
-#PBS -N cosmomc
-#PBS -l nodes=$numnodes:ppn=$ppn,mem=${mem}mb,walltime=10:00:00
-#PBS -m abe
-#PBS -r y
-##PBS -W x=NACCESSPOLICY:SINGLEJOB
+#PBS -q sandybridge
+#PBS -A PLANCK
+#PBS -N $params
+#PBS -l nodes=$numnodes:ppn=$ppn,mem=${mem}mb,walltime=$walltime
+#PBS -m n
+#PBS -r n
+
 cd $cosmomc
+
+. /etc/profile.d/modules.sh
+module purge
+module load default-impi
+module load cfitsio
 
 echo Running on host \`hostname\`
 echo Time is \`date\`
@@ -42,13 +65,14 @@ echo This jobs runs on the following machines:
 echo \`cat \$PBS_NODEFILE | uniq\`
 
 #! Create a machine file for MPI
-#cat \$PBS_NODEFILE | uniq > scripts/machine.file.\$PBS_JOBID
+cat \$PBS_NODEFILE | uniq > scripts/machine.file.\$PBS_JOBID
 
 export OMP_NUM_THREADS=$omp
-export IPATH_NO_CPUAFFINITY=1
-time mpiexec -npernode $chainspn ./cosmomc $ini > ./scripts/$params.log
+export I_MPI_PIN_DOMAIN=omp:compact
+export I_MPI_PIN_ORDER=scatter
+export I_MPI_CPUINFO=proc
 
-#time mpirun -np $nchains -machinefile scripts/machine.file.\$PBS_JOBID ./cosmomc $ini > ./scripts/$params.log
+time mpirun -ppn $chainspn -np $nchains ./cosmomc $ini > ./scripts/$params.log 2>&1
 
 EMP
 close(Fout);

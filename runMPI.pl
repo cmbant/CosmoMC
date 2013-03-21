@@ -11,6 +11,7 @@ $ini = $params;
 if ($ini !~ m/\.ini/) {$ini= "$ini.ini"}
 
 $path = $cosmomc;
+$params =~ s/\//_/g;
 
 open(Fout,">./scripts/script_MPI");
 print Fout <<EMP;
