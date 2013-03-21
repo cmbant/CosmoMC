@@ -5,7 +5,11 @@
 </head>
 <body bgcolor="#FFFFFF" link="#0000FF" vlink="#800080">
 
+<center>
+<IMG SRC="http://cosmologist.info/cosmomc/pics/planck/Planck_WMAP.png">
 <h2>CosmoMC and GetDist with Planck Likelihood and Chains</h2>
+
+</center>
 The Planck likelihood code (PLC/clik) and parameter chains are available from the <A HREF="http://www.sciops.esa.int/index.php?project=planck&page=Planck_Legacy_Archive">Planck Legacy Archive</A>.
 <P>
 <H3>Using the Planck likelihood with CosmoMC</H3>
@@ -14,10 +18,7 @@ Note you need to use ifort 13 or higher to build CosmoMC, so make sure you have 
 <UL>
 <LI>Download and and install the likelihood code and data files to somewhere convenient, probably not under cosmomc. These are the links (note things are likely to be updated and change, so apologies if not everything work exactly as stated here)
 <UL>
-<LI><A HREF="http://pla.esac.esa.int/pla/aio/product-action?COSMOLOGY.FILE_ID=COM_Code_Likelihood-v1.0_R1.10.tar.gz">Planck likelihood code</A>
-<LI><A HREF="http://pla.esac.esa.int/pla/aio/metadata-action?RESOURCE_CLASS=COSMOLOGY&SELECTED_FIELDS=COSMOLOGY.FILE_ID,COSMOLOGY.SIZE&COSMOLOGY_TYPE.NAME=Likelihood&RELEASE.NAME=PR1&QUERY=%28COSMOLOGY.FILE_ID%20LIKE%20%27%25Data%25%27%29&RETURN_TYPE=HTML">
-    Data Files</A>
-<LI><A HREf="http://www.sciops.esa.int/wikiSI/planckpla/index.php?title=CMB_spectrum_%26_Likelihood_Code&instance=Planck_Public_PLA">Description</A>
+<LI><A HREF="http://www.sciops.esa.int/wikiSI/planckpla/index.php?title=CMB_spectrum_%26_Likelihood_Code&instance=Planck_Public_PLA#Likelihood_4">Planck likelihood code and data download links</A>
 </UL>
 
 <LI>Change to the plc_1.0  directory and do
@@ -51,7 +52,7 @@ to see if things are being loaded and start running OK.
 Note that the "highL" (ACT/SPT) likelihood file is not included in the first PLC download; hopefully it will be added soon. Meanwhile you can follow the instructions on the Planck likelihood download page for how to make it from the <A HREF="http://lambda.gsfc.nasa.gov/product/act/act_fulllikelihood_get.cfm">ACT/SPT</A> download.
 <P>
 <H3>Using Planck Chains</H3>
-Planck provide a set of parameter chains produced by CosmoMC, available <A HREF="http://www.sciops.esa.int/wikiSI/planckpla/index.php?title=Cosmological_Parameters&instance=Planck_Public_PLA">here</a>. The full grid (2.8GB) download is also available from this <A HREF="http://irsa.ipac.caltech.edu/data/Planck/release_1/ancillary-data/COM_CosmoParams_FullGrid_R1.10.tar.gz">US links</A>.
+Planck provide a set of parameter chains produced by CosmoMC, available <A HREF="http://www.sciops.esa.int/wikiSI/planckpla/index.php?title=Cosmological_Parameters&instance=Planck_Public_PLA">here</a>. The full grid (2.8GB) download is also available from this <A HREF="http://irsa.ipac.caltech.edu/data/Planck/release_1/ancillary-data/COM_CosmoParams_FullGrid_R1.10.tar.gz">US link</A>.
 You can use CosmoMC's python scripts and getdist to analyse and make plots from them. First download and extract all the chain data. Make a symbolic link from ./cosmomc/PLA to the location of the chains, e.g.
 <PRE>
 ln -s /scratch/planck/PLA ./PLA
@@ -98,7 +99,7 @@ You can also write your own short python scripts to plot things of interest; man
 <pre>
 python batch1/outputs/triangle_planckonly_vs_WMAP.py
 </pre>
-to reproduce the figure in Section 3 of the Planck parameter paper.
+to reproduce the figure above.
 <P>
 As an example python script not using planckStyle you can do
 <blockquote>
