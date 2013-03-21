@@ -2228,7 +2228,7 @@
     if (make_single_samples) call MakeSingleSamples(single_thin)
     
     call IO_WriteBounds(NameMapping, trim(plot_data_dir)//trim(rootname)//'.bounds', &
-    limmin,limmax,has_limits_bot,has_limits_top, colix(1:num_vars)-1)
+    limmin,limmax,has_limits_bot,has_limits_top, colix(1:num_vars))
 
     !Sort data in order of likelihood of points
 
