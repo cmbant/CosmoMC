@@ -2518,11 +2518,10 @@
             write(52,*) 'set(h(i),''position'',p);'
             write(52,*) 'end;'
         end if
+        if (matlab_col/='') write (52,*) trim(matlab_col)
         call WriteMatLabPrint(52, '_tri', triangle_num+1, triangle_num+1)
         close(52)
-
     end if
-
 
     !Do 3D plots (i.e. 2D scatter plots with coloured points)
 
