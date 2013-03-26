@@ -641,7 +641,8 @@
     end do
     end subroutine GetUsedCols
 
-    subroutine DoConvergeTests
+    subroutine DoConvergeTests(limfrac)
+    real(mcp), intent(in) ::limfrac !the limit to use for split tests and Raftery-Lewis
     real(mcp) chain_means(max_chains,max_cols),chain_samp(max_chains)
     real(mcp) between_chain_var(max_cols), in_chain_var(max_cols)
     integer frac(max_split_tests+1), split_n, chain_start(max_chains)
@@ -803,10 +804,10 @@
                 do split_n = 2,max_split_tests
                     call GetFractionIndices(frac,split_n)
                     split_tests(split_n) = 0
-                    confid =  ConfidVal(j,(1-contours(num_contours))/2,endb==0,0,nrows-1)
+                    confid =  ConfidVal(j,(1-limfrac)/2,endb==0,0,nrows-1)
                     do i=1,split_n
                         split_tests(split_n) = split_tests(split_n) + &
-                        (ConfidVal(j,(1-contours(num_contours))/2,endb==0,frac(i),frac(i+1)-1)-confid)**2
+                        (ConfidVal(j,(1-limfrac)/2,endb==0,frac(i),frac(i+1)-1)-confid)**2
                     end do !i
                     split_tests(split_n) = sqrt(split_tests(split_n)/split_n/fullvar(j))
                 end do
@@ -836,7 +837,7 @@
                 if (isused(j) .and. (force_twotail .or. .not. has_limits(j))) then
                     do endb =0,1
                         !Get binary chain depending on whether above or below confidence value
-                        u = ConfidVal(j,(1-contours(num_contours))/2,endb==0,&
+                        u = ConfidVal(j,(1-limfrac)/2,endb==0,&
                         chain_indices(ix),chain_indices(ix+1)-1)
                         do !thin_fac
                             call ThinData(thin_fac(ix),chain_indices(ix),chain_indices(ix+1)-1)
@@ -898,7 +899,7 @@
 
             !Get thin factor to have independent samples rather than Markov
             hardest = max(hardest,1)
-            u = ConfidVal(hardest,(1-contours(num_contours))/2,hardestend==0)
+            u = ConfidVal(hardest,(1-limfrac)/2,hardestend==0)
             thin_fac(ix) = thin_fac(ix) + 1
             do !thin_fac
                 call ThinData(thin_fac(ix),chain_indices(ix),chain_indices(ix+1)-1)
@@ -996,7 +997,6 @@
                 if (isused(j)) &
                 corrs(j,off) = corrs(j,off)/(thin_rows-off)/fullvar(j)
             end do
-
         end do
 
         write (40,'("   ",'//trim(IntToStr(maxoff)) // 'I8)')  &
@@ -1735,6 +1735,7 @@
     integer triangle_num, triangle_params(max_cols), max_scatter_points
     real(mcp) tail_limit_bot,tail_limit_top, tail_confid_bot, tail_confid_top
     logical make_scatter_samples
+    real(mcp) :: converge_test_limit
 
     NameMapping%nnames = 0
 
@@ -2010,6 +2011,7 @@
         contours_str = concat(contours_str, Ini_Read_String(numcat('contour',i)))
         max_frac_twotail(i) = Ini_Read_Double(numcat('max_frac_twotail',i), exp(-dinvnorm((1-contours(i))/2)**2/2))
     end do
+    if (.not. no_tests) converge_test_limit = Ini_Read_Double('converge_test_limit',contours(num_contours))
 
     force_twotail = Ini_Read_Logical('force_twotail',.false.)
     if (force_twotail) write (*,*) 'Computing two tail limits'
@@ -2180,7 +2182,7 @@
     max_mult = maxval(coldata(1,0:nrows-1))
     numsamp = sum(coldata(1,0:nrows-1))
 
-    if (.not. no_tests) call DoConvergeTests
+    if (.not. no_tests) call DoConvergeTests(converge_test_limit)
     if (adjust_priors) call DeleteZeros
 
     write (*,*) 'mean input multiplicity = ',mean_mult

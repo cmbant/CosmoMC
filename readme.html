@@ -522,6 +522,11 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <A NAME="Version"><h2>Version History</h2></A>
 
 <UL>
+<LI><B>In progress</B><BR>
+<UL>
+<LI>Added getdist parameter <b>converge_test_limit</b> to set limit for convergence tests
+<LI>Various minor bug fixes
+</UL>
 <LI><B>March 2013</B><BR>
 <UL>
 <LI><B>Sampling</B>
@@ -529,7 +534,7 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <LI>New fast-slow <b>sampling_method=7</b>, using new fast/slow blocked decorrelation scheme (<A HREF="http://cosmologist.info/notes/Dragging.pdf">notes</A>) and fast dragging following <A HREF="http://arxiv.org/math.ST/0502099">Neal 2005</A>. This is recommended for Planck.
     <UL>
     <LI><b>fast_param_index</b> specifies that all parameters with number greater or equal to fast_param_index should be treated as fast. Can alternatively use <B>fast_parameters</b> to set specific parameter to be treated as fast.
-    <LI><b>dragging_steps</b> determines the number of fast steps per slow step. In total dragging_steps x num_fast metropolis steps are taken in the fast direction for each slow step. Does not need to be an integer, 2 works well for Planck.
+    <LI><b>dragging_steps</b> determines the number of fast steps per slow step. In total dragging_steps x num_fast metropolis steps are taken in the fast direction for each slow step. Does not need to be an integer, 2-3 works well for Planck.
      <LI>for fine-tuning <b>block_semi_fast</b> boolean defines whether initial power spectrum parameters are treated as separate blocks, <b>block_fast_likelihood_params</b> determines if fast parameters are blocked depending on likelihood dependencies. Both true (default) is usually fastest.
     </UL>
 </UL>
