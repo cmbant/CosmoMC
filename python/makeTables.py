@@ -119,7 +119,9 @@ if not args.forpaper:
     delext = ['aux', 'log', 'out', 'toc']
     os.system('cd ' + outdir + '; pdflatex ' + outname)
     # #again to get table of contents
-    os.system('cd ' + outdir + '; pdflatex ' + outname)  #
+    os.system('cd ' + outdir + '; pdflatex ' + outname)
+    # and again to get page numbers
+    os.system('cd ' + outdir + '; pdflatex ' + outname)
     for ext in delext:
         if os.path.exists(root + '.' + ext):
             os.remove(root + '.' + ext)

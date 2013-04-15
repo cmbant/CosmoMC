@@ -21,12 +21,7 @@
     !Set to >1 to use CAMB etc on higher accuracy settings.
     !Does not affect MCMC (except making it all slower)
 
-#ifdef TESTLIKE
-    !Just use a Gaussian given by the proposal matrix
-    logical, parameter :: test_likelihood= .true.
-#else
-    logical, parameter :: test_likelihood= .false.
-#endif
+    logical :: test_likelihood= .false.
 
     logical :: new_chains = .true.
 
@@ -50,7 +45,7 @@
     real(mcp)    :: propose_scale  = 2.4_mcp
 
     !For fast dragging method, baseline number of intermediate drag steps
-    real(mcp) :: dragging_steps = 4._mcp
+    real(mcp) :: dragging_steps = 3._mcp
 
     !The rest are set up automatically
     logical, parameter ::  generic_mcmc= .false.

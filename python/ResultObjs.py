@@ -438,9 +438,19 @@ class convergeStats(paramResults):
         for i in range(len(textFileLines)):
             if textFileLines[i].find('var(mean)') >= 0:
                 for line in textFileLines[i + 1:]:
-                    if len(line.strip()) == 0:return
+                    if len(line.strip()) == 0:break
                     try: self.R_eigs.append(line.split()[1])
                     except: self.R_eigs.append('1e30')
+            elif 'Parameter auto-correlations' in textFileLines[i]:
+                self.auto_correlation_steps = [int(s) for s in textFileLines[i + 2].split()]
+                self.auto_correlations = []
+                self.auto_correlation_pars = []
+                for line in textFileLines[i + 3:]:
+                    if len(line.strip()) == 0:break
+                    items = line.split(None, len(self.auto_correlation_steps) + 1)
+                    self.auto_correlation_pars.append(items[0])
+                    self.auto_correlations.append([float(s) for s in items[1:-1]])
+
 
     def worstR(self):
         return self.R_eigs[len(self.R_eigs) - 1]

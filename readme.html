@@ -524,6 +524,9 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <UL>
 <LI><B>In progress</B><BR>
 <UL>
+<LI>Automatic thinning by <b>oversample_fast</b> factor for sampling_method=1 (prevents files getting very large)
+<LI><b>oversample_fast</b> meaning slightly changed to give more regular fast updates in standard sampling, and generate <b>oversample_fast</b> standard fast metropolis samples per slow update in the dragging method.
+<LI>Tweaks to various internal convergence and update parameters
 <LI>Added getdist parameter <b>converge_test_limit</b> to set limit for convergence tests
 <LI>Various minor bug fixes
 </UL>

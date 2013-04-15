@@ -39,6 +39,7 @@
     procedure :: AddCopy
     procedure :: AssignPointers
     procedure :: DeleteItem
+    procedure :: DeleteRange
     procedure :: FreeItem
     procedure :: SetCapacity
     procedure :: ArrayItem
@@ -190,6 +191,24 @@
     L%Count = L%Count -1
 
     end subroutine DeleteItem
+
+    subroutine DeleteRange(L, i1,i2)
+    Class(TObjectList) :: L
+    integer, intent(in) :: i1,i2
+    integer i, dN
+
+    do i=i1,i2
+        call L%FreeItem(i)
+    end do
+    dN= i2-i1+1
+    if (i2<L%Count) L%Items(i1:L%Count-dN) = L%Items(i2+1:L%Count)
+    do i=L%Count-dN+1,L%Count
+        L%Items(i)%P => null()
+    end do
+    L%Count = L%Count - dN
+
+    end subroutine DeleteRange
+
 
     subroutine AddArray(L, P)
     Class (TObjectList) :: L

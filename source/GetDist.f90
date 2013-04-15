@@ -66,8 +66,9 @@
     integer, parameter :: max_cols = 500
     integer, parameter :: max_chains = 100
     integer, parameter :: max_split_tests = 4
-    integer, parameter :: max_intersections = 10 !JH: increase if posterior has more than five peaks
     integer, parameter :: max_contours = 5
+    integer :: corr_length_thin = 0
+    integer :: corr_length_steps = 15
 
     Type(TDensity1D) :: Density1D
 
@@ -799,8 +800,9 @@
     do j = 3, ncols
         if (isused(j)) then
             do endb =0,1
-                if (endb==0 .and. has_limits_top(j))cycle
-                if (endb==1 .and. has_limits_bot(j))cycle
+                !Just test all now
+                !               if (endb==0 .and. has_limits_top(j))cycle
+                !               if (endb==1 .and. has_limits_bot(j))cycle
                 do split_n = 2,max_split_tests
                     call GetFractionIndices(frac,split_n)
                     split_tests(split_n) = 0
@@ -973,16 +975,20 @@
         write (40,*) ''
         write (40,*) 'Parameter auto-correlations as function of step separation'
         write (40,*) ''
-        if (indep_thin ==0) then
-            autocorr_thin = 20
-        elseif (indep_thin <= 30) then
-            autocorr_thin =  5
+        if (corr_length_thin/=0) then
+            autocorr_thin = corr_length_thin
         else
-            autocorr_thin = 5* (indep_thin/30)
+            if (indep_thin ==0) then
+                autocorr_thin = 20
+            elseif (indep_thin <= 30) then
+                autocorr_thin =  5
+            else
+                autocorr_thin = 5* (indep_thin/30)
+            end if
         end if
 
         call ThinData(autocorr_thin,0,nrows-1)
-        maxoff = min(15,thin_rows/(autocorr_thin*num_chains_used))
+        maxoff = min(corr_length_steps,thin_rows/(autocorr_thin*num_chains_used))
         allocate(Corrs(ncols,maxoff))
         corrs = 0
         do off =1,maxoff
@@ -994,12 +1000,11 @@
                 end do
             end do
             do j = 3, ncols
-                if (isused(j)) &
-                corrs(j,off) = corrs(j,off)/(thin_rows-off)/fullvar(j)
+                if (isused(j)) corrs(j,off) = corrs(j,off)/(thin_rows-off)/fullvar(j)
             end do
         end do
 
-        write (40,'("   ",'//trim(IntToStr(maxoff)) // 'I8)')  &
+        if (maxoff>0) write (40,'("   ",'//trim(IntToStr(maxoff)) // 'I8)')  &
         (/(I, I=autocorr_thin, maxoff*autocorr_thin,autocorr_thin)/)
 
         do j = 3, ncols
@@ -2011,8 +2016,11 @@
         contours_str = concat(contours_str, Ini_Read_String(numcat('contour',i)))
         max_frac_twotail(i) = Ini_Read_Double(numcat('max_frac_twotail',i), exp(-dinvnorm((1-contours(i))/2)**2/2))
     end do
-    if (.not. no_tests) converge_test_limit = Ini_Read_Double('converge_test_limit',contours(num_contours))
-
+    if (.not. no_tests) then
+        converge_test_limit = Ini_Read_Double('converge_test_limit',contours(num_contours))
+        corr_length_thin = Ini_Read_Int('corr_length_thin',corr_length_thin)
+        corr_length_steps = Ini_Read_Int('corr_length_steps',corr_length_steps)
+    end if
     force_twotail = Ini_Read_Logical('force_twotail',.false.)
     if (force_twotail) write (*,*) 'Computing two tail limits'
 
@@ -2228,7 +2236,7 @@
     end do
 
     if (make_single_samples) call MakeSingleSamples(single_thin)
-    
+
     call IO_WriteBounds(NameMapping, trim(plot_data_dir)//trim(rootname)//'.bounds', &
     limmin,limmax,has_limits_bot,has_limits_top, colix(1:num_vars))
 
