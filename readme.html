@@ -335,10 +335,13 @@ param1^a param2^b param3^c ...&nbsp; = x \pm y.
 <B><FONT COLOR="blue">Plotting</FONT></B><P>
 <UL>
 <LI><B>Python plots</B><BR>
-GetDist produces a set of files in the plot_data directory that can be used by the python scripts for plotting.  See the <A HREF="readme_python.html">CosmoMC python readme</A>
+GetDist produces a set of files in the plot_data directory that can be used by the python scripts for plotting. 
+See the <A HREF="readme_python.html">CosmoMC python readme</A> for details. 
+<P>
+You can set <b>plot_ext=py</b> when running GetDist to produce .py script files to produce standard 1D, 2D, 3D and triangle plots in one line (similar to older MatLab outputs), without having to write scripts yourself. The outputs may also male a useful base for later customization.
 
 <LI><B>Matlab plots</B><BR>
-GetDist produces Matlab '.m' files to do 1D, 2D and 3D plots. Matlab support is not likely to be developed further, but maintained from
+If <b>plot_ext=m</b> GetDist produces Matlab '.m' files to do 1D, 2D and 3D plots. Matlab support is not likely to be developed further, but maintained from
 the previous version for convenience.  Type <B>file_root</B> into a Matlab
 window set to the directory containing the .m files to produce 1D marginalized plots. You can also do
 <UL>
@@ -527,7 +530,9 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <LI>Automatic thinning by <b>oversample_fast</b> factor for sampling_method=1 (prevents files getting very large)
 <LI><b>oversample_fast</b> meaning slightly changed to give more regular fast updates in standard sampling, and generate <b>oversample_fast</b> standard fast metropolis samples per slow update in the dragging method.
 <LI>Tweaks to various internal convergence and update parameters
+<LI>GetDist option <b>plot_ext</b> can be set to <b>m</b> for old matlab outputs or <b>py</b> for similar python plot outputs
 <LI>Added getdist parameter <b>converge_test_limit</b> to set limit for convergence tests
+<LI>Renamed matlab_subplot_xx etc to subplot_xxx
 <LI>Various minor bug fixes
 </UL>
 <LI><B>March 2013</B><BR>

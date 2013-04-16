@@ -42,10 +42,11 @@
     !          added no_triangle_axis_labels
     !Jan 11:  fix to confidence interval calcaultion for obscure cases with very empty tails (thanks Andrew Fowlie)
     !Jan 12:  increased precision of output files
-    !Oct 12:  matlab_plot_output for pdf,eps,ps output support; matlab_subplot_size_inch
+    !Oct 12:  plot_output for pdf,eps,ps output support; subplot_size_inch
     !         fix for more than 100 parameters
     !Nov-Dec 12: removed sm support; use specific parameter in triangle plots; new R-1 definition, etc...
     !.. Mar 13: numerous changes..
+    !   Apr 13: output .py files, converge_test_limit, etc.
     module MCSamples
     use settings
     use MatrixUtils
@@ -93,10 +94,11 @@
     logical has_markers(max_cols)
     real(mcp) markers(max_cols)
     integer num_contours
+    character(LEN=3) :: plot_ext = 'm'
     real(mcp) matlab_version
-    character(LEN=3) :: matlab_plot_output = 'eps'
-    real :: matlab_subplot_size_inch = 3.0
-    real :: matlab_subplot_size_inch2, matlab_subplot_size_inch3
+    character(LEN=3) :: plot_output = 'pdf'
+    real :: subplot_size_inch = 3.0
+    real :: subplot_size_inch2, subplot_size_inch3
 
     logical :: matlab_latex = .false.
     real(mcp) :: font_scale = 1.
@@ -1475,7 +1477,6 @@
         write (aunit,'(a)') '[C h] = contour(x1,x2,pts,cnt,lineM{1});'
         write (aunit,'(a)') 'set(h,''LineWidth'',lw1);'
         write (aunit,*) 'hold on; axis manual; '
-
         do i = 1, Num_ComparePlots
             fmt = trim(numcat('lineM{',i+1)) // '}'
             if (PlotContMATLAB(aunit,ComparePlots(i),j,j2,.false.)) &
@@ -1499,54 +1500,103 @@
     end subroutine  Write2DPlotMATLAB
 
 
-    subroutine WriteMatLabInit(unit,sm, subplot_size)
+    subroutine WritePlotFileInit(unit,sm, subplot_size)
     integer, intent(in) :: unit
     logical, intent(in) :: sm
     real, intent(in) :: subplot_size
-    integer sz
+    integer sz, i
 
-    write(unit,*) 'plot_size_inch = '//trim(RealToStr(subplot_size))//';'
-    write(unit,'(a)') 'plotdir='''//trim(plot_data_dir)//''';'
-    write(unit,'(a)') 'outdir='''//trim(out_dir)//''';'
-    sz = 12
-    if (sm .and. subplot_size < 4) sz=9
-    sz = nint(sz*font_scale)
-    write(unit,*) trim(concat('lab_fontsize = ',sz,'; axes_fontsize = ',sz,';'))
-    if (matlab_latex) write(unit,*) 'set(0,''DefaultTextInterpreter'',''Latex'');'
-    write(unit,*) 'clf'
-    if (BW) then
-        if (plot_meanlikes) then
-            write(unit,*) 'lineM = {''-k'',''-r'',''-b'',''-m'',''-g'',''-c'',''-y''};';
-            write(unit,*) 'lineL = {'':k'','':r'','':b'','':m'','':g'','':c'','':y''};';
-            write(unit,*) 'lw1=3;lw2=1;' !Line Widths
+    if (plot_ext=='py') then
+        write(unit,'(a)') 'import GetDistPlots, os'
+        write(unit,'(a)') 'g=GetDistPlots.GetDistPlotter('''// trim(plot_data_dir)//''')'
+        write(unit,'(a)') 'g.settings.setWithSubplotSize('//trim(RealToStr(subplot_size))//')'
+        write(unit,'(a)') 'outdir='''//trim(out_dir)//''''
+        write(unit,'(a)', advance='NO') 'roots=['''//trim(rootname)//''''
+        do i = 1, Num_ComparePlots
+            write(unit,'(a)', advance='NO') ','''//trim(ComparePlots(i))//''''
+        end do
+        write(unit,'(a)') ']'
+    else
+        write(unit,*) 'plot_size_inch = '//trim(RealToStr(subplot_size))//';'
+        write(unit,'(a)') 'plotdir='''//trim(plot_data_dir)//''';'
+        write(unit,'(a)') 'outdir='''//trim(out_dir)//''';'
+        sz = 12
+        if (sm .and. subplot_size < 4) sz=9
+        sz = nint(sz*font_scale)
+        write(unit,*) trim(concat('lab_fontsize = ',sz,'; axes_fontsize = ',sz,';'))
+        if (matlab_latex) write(unit,*) 'set(0,''DefaultTextInterpreter'',''Latex'');'
+        write(unit,*) 'clf'
+        if (BW) then
+            if (plot_meanlikes) then
+                write(unit,*) 'lineM = {''-k'',''-r'',''-b'',''-m'',''-g'',''-c'',''-y''};';
+                write(unit,*) 'lineL = {'':k'','':r'','':b'','':m'','':g'','':c'','':y''};';
+                write(unit,*) 'lw1=3;lw2=1;' !Line Widths
+            else
+                write(unit,*) 'lineM = {''-k'',''--r'',''-.b'','':m'',''--g'',''-.c'',''-y''};';
+                write(unit,*) 'lw1=1;lw2=1;' !Line Widths
+            end if
         else
-            write(unit,*) 'lineM = {''-k'',''--r'',''-.b'','':m'',''--g'',''-.c'',''-y''};';
+            write(unit,*) 'lineM = {''-k'',''-r'',''-b'',''-m'',''-g'',''-c'',''-y'',''--k'',''--r'',''--b''};';
+            write(unit,*) 'lineL = {'':k'','':r'','':b'','':m'','':g'','':c'','':y'',''-.k'',''-.r'',''-.b''};';
             write(unit,*) 'lw1=1;lw2=1;' !Line Widths
         end if
-    else
-        write(unit,*) 'lineM = {''-k'',''-r'',''-b'',''-m'',''-g'',''-c'',''-y'',''--k'',''--r'',''--b''};';
-        write(unit,*) 'lineL = {'':k'','':r'','':b'','':m'','':g'','':c'','':y'',''-.k'',''-.r'',''-.b''};';
-        write(unit,*) 'lw1=1;lw2=1;' !Line Widths
+        write(unit,*) 'colstr=''krbmgcykrb'';'
     end if
-    write(unit,*) 'colstr=''krbmgcykrb'';'
 
-    end subroutine WriteMatLabInit
+    end subroutine WritePlotFileInit
 
-    subroutine WriteMatLabPrint(unit, tag, plot_col, plot_row)
+    subroutine WritePlotFileExport(unit, tag, plot_col, plot_row)
     integer, intent(in) :: unit, plot_col, plot_row
     character(LEN=*), intent(in) :: tag
     character(LEN=10) command
+    character(LEN=256) outname
 
-    write(unit,*)  'set(gcf, ''PaperUnits'',''inches'');'
-    write(unit,*) 'x=',plot_col,'*plot_size_inch; y=',plot_row,'*plot_size_inch;'
-    write(unit,*) 'set(gcf, ''PaperPosition'',[0 0 x y]); set(gcf, ''PaperSize'',[x y]);'
-    if (matlab_plot_output == 'ps')  command='-dpsc2'
-    if (matlab_plot_output == 'pdf')  command='-dpdf'
-    if (matlab_plot_output == 'eps') command='-depsc2'
-    write (unit,'(a)') 'print('''//trim(command)//''',fullfile(outdir,''' &
-    // trim(rootname)//trim(tag)//'.'//trim(matlab_plot_output)//'''));'
+    outname=''''//trim(rootname)//trim(tag)//'.'//trim(plot_output)//''''
+    if (plot_ext=='m') then
+        write(unit,*)  'set(gcf, ''PaperUnits'',''inches'');'
+        write(unit,*) 'x=',plot_col,'*plot_size_inch; y=',plot_row,'*plot_size_inch;'
+        write(unit,*) 'set(gcf, ''PaperPosition'',[0 0 x y]); set(gcf, ''PaperSize'',[x y]);'
+        if (plot_output == 'ps')  command='-dpsc2'
+        if (plot_output == 'pdf')  command='-dpdf'
+        if (plot_output == 'eps') command='-depsc2'
+        write (unit,'(a)') 'print('''//trim(command)//''',fullfile(outdir,'//trim(outname)//'));'
+    elseif (plot_ext=='py') then
+        write (unit,'(a)') 'g.export(os.path.join(outdir,'//trim(outname)//'))'
+    end if
 
-    end subroutine WriteMatLabPrint
+    end subroutine WritePlotFileExport
+
+    function quoted_param_name(j) result(res)
+    integer, intent(in) :: j
+    character(LEN=1024) res
+
+    res=''''//trim(ParamNames_NameOrNumber(NameMapping, j))//''''
+
+    end function quoted_param_name
+
+    function quoted_param_name_used(j) result(res)
+    character(LEN=1024) res
+    integer, intent(in) :: j
+
+    res=quoted_param_name(colix(j)-2)
+
+    end function quoted_param_name_used
+
+    function python_param_array(params,num) result(res)
+    integer i,j
+    integer, intent(in) :: params(:), num
+    character(LEN=1024) res
+
+    res='['
+    do i=1, num
+        j= params(i)
+        if (i>1) res=trim(res)//','
+        res=trim(res)//trim(quoted_param_name_used(j))
+    end do
+    res=trim(res)//']'
+
+    end function python_param_array
+
 
     subroutine Write1DplotMatLab(aunit,j)
     integer, intent(in) :: aunit, j
@@ -1824,14 +1874,16 @@
 
     Ini_fail_on_not_found = .false.
 
-    matlab_version = Ini_Read_Real('matlab_version',8.)
-    matlab_plot_output = Ini_Read_String_Default('matlab_plot_output',matlab_plot_output)
-    matlab_subplot_size_inch = Ini_Read_Real('matlab_subplot_size_inch', &
-    matlab_subplot_size_inch)
-    matlab_subplot_size_inch2 = Ini_Read_Real('matlab_subplot_size_inch2', &
-    matlab_subplot_size_inch)
-    matlab_subplot_size_inch3 = Ini_Read_Real('matlab_subplot_size_inch3', &
-    matlab_subplot_size_inch)
+    plot_ext=Ini_Read_String_Default('plot_ext','py')
+    if (plot_ext=='m') matlab_version = Ini_Read_Real('matlab_version',8.)
+
+    plot_output = Ini_Read_String_Default('plot_output',plot_output)
+    subplot_size_inch = Ini_Read_Real('subplot_size_inch', &
+    subplot_size_inch)
+    subplot_size_inch2 = Ini_Read_Real('subplot_size_inch2', &
+    subplot_size_inch)
+    subplot_size_inch3 = Ini_Read_Real('subplot_size_inch3', &
+    subplot_size_inch)
 
     font_scale  = Ini_Read_Real('font_scale',1.)
     finish_run_command = Ini_Read_String('finish_run_command')
@@ -2312,9 +2364,9 @@
         !Output files for 1D plots
         plot_col =  nint(sqrt(num_vars/1.4))
         plot_row = (num_vars +plot_col-1)/plot_col
-        open(unit=51,file=trim(rootdirname) // '.m',form='formatted',status='replace')
+        open(unit=51,file=trim(rootdirname) // '.'//trim(plot_ext),form='formatted',status='replace')
         !MatLab file for 1D plots
-        call WriteMatLabInit(51,num_vars>3, matlab_subplot_size_inch)
+        call WritePlotFileInit(51,num_vars>3, subplot_size_inch)
     end if
 
     LowerUpperLimits = 0
@@ -2362,52 +2414,41 @@
             end if
         end do
 
-        if (.not. no_plots) then
-            !filename = trim(plot_data_dir)//trim(rootname)//'.m'
-            !call CreateTxtFile(trim(filename),49)
-            !write(49,'(a)') 'classdef '//trim(trim(rootname))//' < handle'
-            !write(49,'(a)') 'properties'
-            !write(49,'(a)') 'last=[];'
-            !write(49,'(a)') 'distroot='''//trim(rootdirname)//''';'
-            !write(49,'(a)') 'plotroot='''//trim(plot_data_dir)//trim(rootname)//''';'
-            !write(49,'(a)') 'root='''//trim(rootname)//''';'
-            !call ParamNames_WriteMatlab(NameMapping,  49,'')
-            !write(49,'(a)') 'end'
-            !write(49,'(a)') 'end'
-            !close(49)
-
+        if (.not. no_plots .and. plot_ext=='m') then
             call WriteFormatInts(51,'subplot(%u,%u,%u);',plot_row,plot_col,j)
             call Write1DplotMatLab(51,j);
             if (prob_label)  write (51,*) 'ylabel(''Probability'')'
             write(51,*)  'xlabel('''//   trim(matlabLabel(ix))//''',''FontSize'',lab_fontsize);'
             write (51,*) 'set(gca,''ytick'',[]);hold off;'
-
         end if !no plots
     end do
 
     if (.not. no_plots) then
-        if (line_labels) call WriteMatlabLineLabels(51)
-        call WriteMatLabPrint(51, '', plot_col, plot_row)
+        if (line_labels .and. plot_ext=='m') call WriteMatlabLineLabels(51)
+        if (plot_ext=='py') write(51,'(a)') 'g.plots_1d(roots)'
+        call WritePlotFileExport(51, '', plot_col, plot_row)
         close(51)
 
         if (triangle_plot) then
-            open(unit=52,file=trim(rootdirname) // '_tri.m',form='formatted',status='replace')
-            call WriteMatLabInit(52,num_vars>4, matlab_subplot_size_inch)
-            !    if (num_vars>6) write(52,*) 'axes_fontsize=axes_fontsize*2/3;lab_fontsize=lab_fontsize-1;'
-            do i=1, triangle_num
-                j=triangle_params(i)
-                call WriteFormatInts(52,'subplot(%u,%u,%u);',triangle_num,triangle_num,(i-1)*triangle_num+i)
-                call Write1DplotMatLab(52,j);
-                if (triangle_num > 2 .and. matlab_subplot_size_inch<3.5) call CheckMatlabAxes(52)
-                if (prob_label)  write (52,*) 'ylabel(''Probability'')'
-                if (j==num_vars) then
-                    write(52,*)  'xlabel('''//   trim(matlabLabel(colix(j)))//''',''FontSize'',lab_fontsize);'
-                else if (no_triangle_axis_labels) then
-                    write(52,*) 'set(gca,''xticklabel'',[]);'
-                end if
-                write (52,*) 'set(gca,''ytick'',[]);hold off;'
-            end do
-
+            open(unit=52,file=trim(rootdirname) // '_tri.'//trim(plot_ext),form='formatted',status='replace')
+            call WritePlotFileInit(52,num_vars>4, subplot_size_inch)
+            if (plot_ext=='py') then
+                write(52,'(a)') 'g.triangle_plot(roots, '//trim(python_param_array(triangle_params,triangle_num))//')'
+            elseif (plot_ext=='m') then
+                do i=1, triangle_num
+                    j=triangle_params(i)
+                    call WriteFormatInts(52,'subplot(%u,%u,%u);',triangle_num,triangle_num,(i-1)*triangle_num+i)
+                    call Write1DplotMatLab(52,j)
+                    if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(52)
+                    if (prob_label)  write (52,*) 'ylabel(''Probability'')'
+                    if (j==num_vars) then
+                        write(52,*)  'xlabel('''//   trim(matlabLabel(colix(j)))//''',''FontSize'',lab_fontsize);'
+                    else if (no_triangle_axis_labels) then
+                        write(52,*) 'set(gca,''xticklabel'',[]);'
+                    end if
+                    write (52,*) 'set(gca,''ytick'',[]);hold off;'
+                end do
+            end if
         end if
     end if
 
@@ -2464,14 +2505,14 @@
     done2D= .false.
     if (num_2D_plots > 0 .and. .not. no_plots) then
         write (*,*) 'Producing ',num_2D_plots,' 2D plots'
-        filename = trim(rootdirname)//'_2D.m'
+        filename = trim(rootdirname)//'_2D.'//trim(plot_ext)
         open(unit=50,file=filename,form='formatted',status='replace')
-        call WriteMatLabInit(50,num_2D_plots >=7,matlab_subplot_size_inch2)
+        call WritePlotFileInit(50,num_2D_plots >=7,subplot_size_inch2)
+        if (plot_ext=='py') write(50,'(a)') 'pairs=[]'
 
         plot_col = nint(sqrt(num_2D_plots/1.4))
         plot_row = (num_2D_plots +plot_col-1)/plot_col
         plot_num = 0
-
 
         do j= 1, num_vars
             if (ix_min(j) /= ix_max(j)) then
@@ -2491,45 +2532,54 @@
                         plot_num = plot_num + 1
                         done2D(j,j2) = .true.
                         if (.not. plots_only) call Get2DPlotData(j,j2)
-                        call WriteFormatInts(50,'subplot(%u,%u,%u);',plot_row,plot_col,plot_num)
-                        call Write2DPlotMATLAB(50,j,j2,.true.,.true.)
-                        if (plot_row*plot_col > 4 .and. matlab_subplot_size_inch<3.5) call CheckMatlabAxes(50)
+                        if (plot_ext=='m') then
+                            call WriteFormatInts(50,'subplot(%u,%u,%u);',plot_row,plot_col,plot_num)
+                            call Write2DPlotMATLAB(50,j,j2,.true.,.true.)
+                            if (plot_row*plot_col > 4 .and. subplot_size_inch<3.5) call CheckMatlabAxes(50)
+                        elseif (plot_ext=='py') then
+                            write(50,'(a)') 'pairs.append(['//trim(quoted_param_name_used(j))//','//trim(quoted_param_name_used(j2))//'])'
+                        end if
                     end if
                 end do
             end if
         end do
-
-        if (line_labels) call WriteMatlabLineLabels(50)
-        if (matlab_col/='') write (50,*) trim(matlab_col)
-        call WriteMatLabPrint(50, '_2D', plot_col, plot_row)
+        if (plot_ext=='m') then
+            if (line_labels) call WriteMatlabLineLabels(50)
+            if (matlab_col/='') write (50,*) trim(matlab_col)
+        elseif (plot_ext=='py') then
+            write(50,'(a)') 'g.plots_2d(roots,param_pairs=pairs)'
+        end if
+        call WritePlotFileExport(50, '_2D', plot_col, plot_row)
         close(50)
     end if
 
     if (triangle_plot .and. .not. no_plots) then
         !Add the off-diagonal 2D plots
-        do i = 1, triangle_num
-            do i2 = i+1, triangle_num
-                j= triangle_params(i)
-                j2=triangle_params(i2)
-                if (.not. Done2D(j2,j) .and. .not. plots_only) call Get2DPlotData(j2,j)
-                call WriteFormatInts(52,'subplot(%u,%u,%u);',triangle_num,triangle_num,(i2-1)*triangle_num + i)
-                call Write2DPlotMATLAB(52,j2,j,i2==triangle_num, i==1,no_triangle_axis_Labels)
-                if (triangle_num > 2 .and. matlab_subplot_size_inch<3.5) call CheckMatlabAxes(52)
+        if (plot_ext=='m') then
+            do i = 1, triangle_num
+                do i2 = i+1, triangle_num
+                    j= triangle_params(i)
+                    j2=triangle_params(i2)
+                    if (.not. Done2D(j2,j) .and. .not. plots_only) call Get2DPlotData(j2,j)
+                    call WriteFormatInts(52,'subplot(%u,%u,%u);',triangle_num,triangle_num,(i2-1)*triangle_num + i)
+                    call Write2DPlotMATLAB(52,j2,j,i2==triangle_num, i==1,no_triangle_axis_Labels)
+                    if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(52)
+                end do
             end do
-        end do
-        !  write (52,*)  'set(gcf, ''PaperUnits'',''inches'');'
-        !  write (52,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 8]);';
-        if (no_triangle_axis_labels) then
-            write(52,*) 'h = get(gcf,''Children'');'
-            write(52,*) 'for i=1:length(h)'
-            write(52,*) 'p=get(h(i),''position'');'
-            write(52,*) 'sc=1.2;w=max(p(3)*sc,p(4)*sc);'
-            write(52,*) 'p(1)=p(1)-(w-p(3))/2; p(2)=p(2)-(w-p(4))/2;p(3)=w;p(4)=w;'
-            write(52,*) 'set(h(i),''position'',p);'
-            write(52,*) 'end;'
+            !  write (52,*)  'set(gcf, ''PaperUnits'',''inches'');'
+            !  write (52,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 8]);';
+            if (no_triangle_axis_labels) then
+                write(52,*) 'h = get(gcf,''Children'');'
+                write(52,*) 'for i=1:length(h)'
+                write(52,*) 'p=get(h(i),''position'');'
+                write(52,*) 'sc=1.2;w=max(p(3)*sc,p(4)*sc);'
+                write(52,*) 'p(1)=p(1)-(w-p(3))/2; p(2)=p(2)-(w-p(4))/2;p(3)=w;p(4)=w;'
+                write(52,*) 'set(h(i),''position'',p);'
+                write(52,*) 'end;'
+            end if
+            if (matlab_col/='') write (52,*) trim(matlab_col)
         end if
-        if (matlab_col/='') write (52,*) trim(matlab_col)
-        call WriteMatLabPrint(52, '_tri', triangle_num+1, triangle_num+1)
+        call WritePlotFileExport(52, '_tri', triangle_num+1, triangle_num+1)
         close(52)
     end if
 
@@ -2537,20 +2587,22 @@
 
     if (num_3D_plots /=0 .and. .not. no_plots) then
         write (*,*) 'producing ',num_3D_plots, '2D colored scatter plots'
-        filename = trim(rootdirname)//'_3D.m'
+        filename = trim(rootdirname)//'_3D.'//trim(plot_ext)
         open(unit=50,file=filename,form='formatted',status='replace')
-        call WriteMatLabInit(50,num_3D_plots>1,matlab_subplot_size_inch3)
-        write (50,*) 'clf;colormap(''jet'');'
+        call WritePlotFileInit(50,num_3D_plots>1,subplot_size_inch3)
 
-        if (mod(num_3D_plots,2)==0 .and. num_3D_plots < 11) then
-            plot_col = num_3D_plots/2
-        else
-            plot_col =  nint(sqrt(1.*num_3D_plots))
+        if (plot_ext=='m') then
+            write (50,*) 'clf;colormap(''jet'');'
+            if (mod(num_3D_plots,2)==0 .and. num_3D_plots < 11) then
+                plot_col = num_3D_plots/2
+            else
+                plot_col =  nint(sqrt(1.*num_3D_plots))
+            end if
+            plot_row = (num_3D_plots +plot_col-1)/plot_col
+            write(50,'(a)') 'pts=load(fullfile(plotdir,''' // trim(rootname)//'_single.txt''));'
+        elseif (plot_ext=='py') then
+            write(50,'(a)') 'sets=[]'
         end if
-        plot_row = (num_3D_plots +plot_col-1)/plot_col
-
-        write(50,'(a)') 'pts=load(fullfile(plotdir,''' // trim(rootname)//'_single.txt''));'
-
         do j=1, num_3D_plots
             call ParamNames_ReadIndices(NameMapping,plot_3D(j), tmp_params, 3)
             !x, y, color
@@ -2562,28 +2614,34 @@
                 continue
             end if
             !            if (ix3<1) ix3 = MostCorrelated2D(ix1,ix2,ix3)
+            if (plot_ext=='m') then
+                call WriteFormatInts(50,'subplot(%u,%u,%u);', plot_row,plot_col,j)
+                write (50,*) '%Do params ',tmp_params(1:3)
+                call WriteFormatInts(50,'scatter(pts(:,%u),pts(:,%u),3,pts(:,%u));', ix1,ix2,ix3)
+                fmt = ''',''FontSize'',lab_fontsize);'
+                write (50,*) 'xlabel('''//trim(matlabLabel(tmp_params(1)+2))//trim(fmt)
+                write (50,*) 'ylabel('''//trim(matlabLabel(tmp_params(2)+2))//trim(fmt)
+                write (50,*) 'set(gca,''FontSize'',axes_fontsize); ax = gca;'
+                write (50,*) 'hbar = colorbar(''horiz'');axes(hbar);'
 
-            call WriteFormatInts(50,'subplot(%u,%u,%u);', plot_row,plot_col,j)
-            write (50,*) '%Do params ',tmp_params(1:3)
-            call WriteFormatInts(50,'scatter(pts(:,%u),pts(:,%u),3,pts(:,%u));', ix1,ix2,ix3)
-            fmt = ''',''FontSize'',lab_fontsize);'
-            write (50,*) 'xlabel('''//trim(matlabLabel(tmp_params(1)+2))//trim(fmt)
-            write (50,*) 'ylabel('''//trim(matlabLabel(tmp_params(2)+2))//trim(fmt)
-            write (50,*) 'set(gca,''FontSize'',axes_fontsize); ax = gca;'
-            write (50,*) 'hbar = colorbar(''horiz'');axes(hbar);'
-
-            write (50,*) 'xlabel('''//trim(matlabLabel(tmp_params(3)+2))//trim(fmt)
-            write (50,*) 'set(gca,''FontSize'',axes_fontsize);'
-            if (num_3D_plots > 2 .and. matlab_version < 7) then
-                write (50,*) ' p = get(ax,''Position'');'
-                write (50,*) 'set(ax,''Position'',[p(1) (p(2)+p(4)/8) p(3) p(4)]);'
-            elseif (matlab_version==7) then
-                !workaround for colorbar/label overlap bug
-                write (50,*) 'fix_colorbar(hbar,ax); axes(ax);'
+                write (50,*) 'xlabel('''//trim(matlabLabel(tmp_params(3)+2))//trim(fmt)
+                write (50,*) 'set(gca,''FontSize'',axes_fontsize);'
+                if (num_3D_plots > 2 .and. matlab_version < 7) then
+                    write (50,*) ' p = get(ax,''Position'');'
+                    write (50,*) 'set(ax,''Position'',[p(1) (p(2)+p(4)/8) p(3) p(4)]);'
+                elseif (matlab_version==7) then
+                    !workaround for colorbar/label overlap bug
+                    write (50,*) 'fix_colorbar(hbar,ax); axes(ax);'
+                end if
+            elseif (plot_ext=='py') then
+                write(50,'(a)') 'sets.append(['//trim(quoted_param_name(tmp_params(1))) &
+                //','//trim(quoted_param_name(tmp_params(2)))//','//trim(quoted_param_name(tmp_params(3)))//'])'
             end if
         end do
-
-        call WriteMatLabPrint(50, '_3D', plot_col, plot_row)
+        if (plot_ext=='py') then
+            write(50,'(a)') 'g.plots_3d(roots,sets)'
+        end if
+        call WritePlotFileExport(50, '_3D', plot_col, plot_row)
         close(50)
     end if
 

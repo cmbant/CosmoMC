@@ -19,7 +19,7 @@ base_ini = 'getdist_common_batch1.ini'
 
 matlab = 'matlab'
 
-
+# the plotting matlab run is optional and only if you are using plot_ext=m in getdist
 plot_types = ['.m', '_2D.m', '_3D.m']
 # you don't need these for python plots
 # '_tri.m' is very slow for so many
@@ -64,7 +64,7 @@ if not args.plots:
 
 
 
-if not args.norun and not args.noplots or args.compare_only:
+if not args.norun and not args.noplots:
         cat_cmd = 'cat '
         for jobItem in Opts.filteredBatchItems():
                 os.chdir(jobItem.distPath)
