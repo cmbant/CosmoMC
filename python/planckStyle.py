@@ -44,7 +44,7 @@ s.solid_contour_palefactor = 0.6
 
 s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1'), 'g', 'c']
 s.axis_marker_lw = 0.6
-s.lw_contour = 0.2
+s.lw_contour = 1
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
     def export(self, fname):

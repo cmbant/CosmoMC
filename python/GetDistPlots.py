@@ -257,7 +257,7 @@ class GetDistPlotter():
             CS = contourf(density.x1, density.x2, density.pts, levels, colors=cols, alpha=alpha, **kwargs)
             if add_legend_proxy: self.contours_added.append(Rectangle((0, 0), 1, 1, fc=CS.tcolors[1][0]))
             contour(density.x1, density.x2, density.pts, levels[:1], colors=CS.tcolors[1],
-                    linewidth=[self.settings.lw_contour], alpha=alpha * self.settings.alpha_factor_contour_lines, **kwargs)
+                    linewidths=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines, **kwargs)
         else:
             if color is None: color = self.get_color(plotno, **kwargs)
             cols = [color]
@@ -266,7 +266,7 @@ class GetDistPlotter():
             linestyles = [ls]
             kwargs = self.get_plot_args(plotno, **kwargs)
             kwargs['alpha'] = alpha
-            contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidths=[self.settings.lw_contour], **kwargs)
+            contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidths=self.settings.lw_contour, **kwargs)
 
         return density.bounds()
 
