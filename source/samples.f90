@@ -151,9 +151,11 @@
 
     subroutine Density1D_initSpline(D)
     Class(TDensity1D) :: D
-
+#ifdef SINGLE
+    call spline_real(D%x,D%P,D%n,D%ddP)
+#else
     call spline_double(D%x,D%P,D%n,D%ddP)
-
+#endif
     end subroutine Density1D_initSpline
 
     subroutine Density1D_Limits(D, p, mn, mx, lim_bot,lim_top)

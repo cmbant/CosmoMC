@@ -286,10 +286,11 @@ class GetDistPlotter():
         param_pair = self.get_param_array(roots[0], param_pair)
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
         if shaded and not filled: self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
+        mins = None
         for i, root in enumerate(roots):
             res = self.add_2d_contours(root, param_pair[0], param_pair[1], i, of=len(roots), filled=filled, add_legend_proxy=add_legend_proxy)
             if res is None: continue
-            if i == 0: mins, maxs = res
+            if mins is None: mins, maxs = res
             elif not shaded:
                 mins = min(res[0], mins)
                 maxs = max(res[1], maxs)
@@ -441,9 +442,9 @@ class GetDistPlotter():
 
             return self.legend
 
-    def finish_plot(self, legend_labels=[], legend_loc=None, line_offset=0, legend_ncol=None, no_gap=False, no_extra_legend_space=False):
+    def finish_plot(self, legend_labels=[], legend_loc=None, line_offset=0, legend_ncol=None, no_gap=False, no_extra_legend_space=False, no_tight=False):
         has_legend = self.settings.line_labels and len(legend_labels) > 1
-        if self.settings.tight_layout:
+        if self.settings.tight_layout and not no_tight:
             if no_gap: tight_layout(h_pad=0, w_pad=0)
             else: tight_layout()
 
@@ -655,7 +656,7 @@ class GetDistPlotter():
             subplot(plot_row, plot_col, i + 1)
             self.plot_3d(roots, triplet, filled=filled_compare)
 
-        self.finish_plot([legend_labels, roots[1:]][legend_labels is None])
+        self.finish_plot([legend_labels, roots[1:]][legend_labels is None], no_tight=True)
         return plot_col, plot_row
 
     def export(self, fname):

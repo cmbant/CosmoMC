@@ -49,7 +49,7 @@
     integer :: checkpoint_burn = 0
 
     logical :: estimate_propose_matrix = .false.
-    real(mcp), dimension(:,:), allocatable ::  propose_matrix
+    real(mcp), dimension(:,:), allocatable ::  initial_propose_matrix, test_cov_matrix
     Type(BlockedProposer), save :: Proposer
 
     logical :: checkpoint = .false.
@@ -62,7 +62,7 @@
     !following are numbers of samples / (number of parameters)
     !MPI_Min_Sample_Update*num_fast is min number of chain steps
     !before starting to update covmat and checking convergence
-    integer :: MPI_Min_Sample_Update = 200, MPI_Sample_update_freq = 50
+    integer :: MPI_Min_Sample_Update = 200, MPI_Sample_update_freq = 40
 
     logical :: MPI_Check_Limit_Converge = .false.
     !After given R_Stop is reached, can optionally check for limit convergence
@@ -243,8 +243,6 @@
     real(mcp) center
     integer fast_params(num_params)
     integer fast_number, fast_param_index
-    real(mcp) pmat(num_params,num_params)
-    logical has_propose_matrix
     integer param_type(num_params)
     integer speed, num_speed
     integer, parameter :: tp_unused = 0, tp_slow=1, tp_semislow=2, tp_semifast=3, tp_fast=4
@@ -252,7 +250,7 @@
     logical :: block_semi_fast =.false., block_fast_likelihood_params=.false.
     integer :: breaks(num_params), num_breaks
     Type(DataLikelihood), pointer :: DataLike
-    real(mcp) :: oversample_fast= 1._mcp
+    integer :: oversample_fast= 1
     logical first
 
     output_lines = 0
@@ -274,7 +272,11 @@
         end if
         block_semi_fast = Ini_Read_Logical_File(Ini,'block_semi_fast',.true.)
         block_fast_likelihood_params = Ini_Read_logical_File(Ini,'block_fast_likelihood_params',.true.)
-        oversample_fast = Ini_Read_Real('oversample_fast',1.)
+        oversample_fast = Ini_Read_Int('oversample_fast',1)
+        if (oversample_fast<1) call DoAbort('oversample_fast must be >= 1')
+        if (sampling_method /=sampling_fast_dragging) then
+            MPI_Thin_fac = MPI_Thin_fac*Proposer%Oversample_fast
+        end if
     else
         fast_number = 0
     end if
@@ -286,7 +288,6 @@
         prop_mat=''
     end if
 
-    has_propose_matrix = prop_mat /= ''
     if (prop_mat(1:1) /= '/') prop_mat = concat(LocalDir,prop_mat)
 
     fname = Ini_Read_String_File(Ini,'continue_from')
@@ -402,9 +403,36 @@
         num_params_used,num_slow, size(param_blocks(tp_semislow)%P), num_fast,size(param_blocks(tp_semifast)%P)
     end if
 
-    allocate(propose_matrix(num_params_used, num_params_used))
-    if (has_propose_matrix) then
-        StartCovMat = .true.
+    allocate(initial_propose_matrix(num_params_used, num_params_used))
+    StartCovMat  = prop_mat/=''
+    call ReadSetCovMatrix(prop_mat, initial_propose_matrix)
+    call Proposer%SetCovariance(initial_propose_matrix)
+
+    test_likelihood = Ini_read_Logical_file(Ini,'test_likelihood')
+    if (test_likelihood) then
+        print *,'** Using test Gaussian likelihood from covariance + hard priors **'
+        prop_mat = trim(Ini_Read_String_File(Ini,'test_covariance'))
+        allocate(test_cov_matrix(num_params_used, num_params_used))
+        if (prop_mat=='') then
+            test_cov_matrix = initial_propose_matrix
+        else
+            call ReadSetCovMatrix(prop_mat, test_cov_matrix)
+        end if
+    end if
+
+    return
+100 call DoAbort('Error reading param details: '//trim(InLIne))
+101 call DoAbort('Error reading prior mean and stdd dev: '//trim(InLIne))
+
+    end subroutine Initalize
+
+    subroutine ReadSetCovMatrix(prop_mat, matrix)
+    character(LEN=*), intent(in) :: prop_mat
+    real(mcp) :: matrix(num_params_used, num_params_used)
+    real(mcp) pmat(num_params,num_params)
+    integer i
+
+    if (prop_mat/='') then
         call IO_ReadProposeMatrix(pmat, prop_mat)
 
         !If generated with constrained parameters, assume diagonal in those parameters
@@ -420,28 +448,20 @@
             end if
         end do
 
-        propose_matrix = pmat(params_used, params_used)
+        matrix = pmat(params_used, params_used)
     else
-        propose_matrix = 0
+        matrix = 0
         do i=1,num_params_used
-            propose_matrix(i,i) = Scales%PWidth(params_used(i))**2
+            matrix(i,i) = Scales%PWidth(params_used(i))**2
         end do
     end if
+    end subroutine ReadSetCovMatrix
 
-    call Proposer%SetCovariance(propose_matrix)
-
-    return
-100 call DoAbort('Error reading param details: '//trim(InLIne))
-101 call DoAbort('Error reading prior mean and stdd dev: '//trim(InLIne))
-
-    end subroutine Initalize
-
-
-    subroutine WriteIndepSample(P, like)
+    subroutine WriteIndepSample(P, like, mult)
     Type(ParamSet) P
-    real(mcp) like
+    real(mcp) like, mult
     if (indepfile_handle ==0) return
-    call P%WriteModel(indepfile_handle, like, 1._mcp)
+    call P%WriteModel(indepfile_handle, like, mult)
     end subroutine WriteIndepSample
 
 
@@ -453,13 +473,12 @@
     !Then use second half of the samples to get convergence
     !Use R = worst eigenvalue (variance of chain means)/(mean of chain variances) statistic for
     !convergence test, followed optionally by (variance of limit)/(mean variance) statistic
-    !If MPI_LearnPropose then update proposal density using covariance matrix of last half of chains
+    !If MPI_LearnPropose then updates proposal density using covariance matrix of last half of chains
 #ifdef MPI
 
     integer, save :: sample_num = 0
     integer i,j,k
     logical, save :: Burn_done = .false.
-    integer, save :: npoints = 0
     integer index, STATUS(MPI_STATUS_SIZE),STATs(MPI_STATUS_SIZE*(MPIChains-1))
     logical flag
 
@@ -472,7 +491,7 @@
     integer ID
     real(mcp) MeansCov(num_params_used,num_params_used), cov(num_params_used,num_params_used)
     real(mcp) evals(num_params_used), last_P, R
-    integer ierror
+    integer ierror, dummy
     logical DoCheckpoint, invertible
 
     integer, allocatable, dimension(:), save :: req, buf
@@ -491,10 +510,10 @@
         call OpenFile(trim(rootname)//'.chk',tmp_file_unit,'unformatted')
         read (tmp_file_unit) ID
         if (ID/=chk_id) call DoAbort('invalid checkpoint files')
-        read(tmp_file_unit) num, sample_num, num_accept, MPI_thin_fac, npoints, Burn_done, all_burn,sampling_method, &
+        read(tmp_file_unit) num, sample_num, num_accept, MPI_thin_fac, dummy, Burn_done, all_burn,sampling_method, &
         slice_fac, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
-        read(tmp_file_unit) propose_matrix
-        call Proposer%SetCovariance(propose_matrix)
+        read(tmp_file_unit) cov
+        call Proposer%SetCovariance(cov)
         call S%ReadBinary(tmp_file_unit)
         close(tmp_file_unit)
         allocate(req(MPIChains-1))
@@ -507,14 +526,14 @@
     !Dump checkpoint info
     !Have to be careful if were to dump before burn
     if (checkpoint .and. all_burn .and. checkpoint_burn==0 .and. &
-    (.not. done_check .or.  mod(sample_num+1, checkpoint_freq)==0)) then
+    (.not. done_check .or.  mod(sample_num+1, checkpoint_freq*Proposer%Oversample_fast)==0)) then
         done_check=.true.
         if (Feedback > 1) write (*,*) instance, 'Writing checkpoint'
         call CreateFile(trim(rootname)//'.chk',tmp_file_unit,'unformatted')
         write (tmp_file_unit) chk_id
-        write(tmp_file_unit) num, sample_num, num_accept, MPI_thin_fac, npoints, Burn_done, all_burn, sampling_method, &
+        write(tmp_file_unit) num, sample_num, num_accept, MPI_thin_fac, S%Count, Burn_done, all_burn, sampling_method, &
         slice_fac, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
-        write(tmp_file_unit) propose_matrix
+        write(tmp_file_unit) Proposer%propose_matrix
         call S%SaveBinary(tmp_file_unit)
         close(tmp_file_unit)
     end if
@@ -523,7 +542,7 @@
     sample_num = sample_num + 1
     if (mod(sample_num, MPI_thin_fac) /= 0) return
 
-    if (npoints == 0 .and. .not. Burn_done)then
+    if (S%Count == 0 .and. .not. Burn_done)then
         allocate(param_changes(num_params_used))
         param_changes= 0
         if (MPI_StartSliceSampling) then
@@ -537,16 +556,15 @@
     end if
 
     call S%Add(P(params_used))
-    npoints = npoints + 1
 
     if (.not. Burn_done) then
-        if (npoints > 50/MPI_thin_fac +1) then
+        if (S%Count > 50 +1) then
             !We're not really after independent samples or all of burn in
             !Make sure all parameters are being explored
             do i=1, num_params_used
                 if (S%Value(S%Count, i) /= S%Value(S%Count-1, i)) param_changes(i) =  param_changes(i) + 1
             end do
-            Burn_done = all(param_changes > 50/MPI_thin_fac/slice_fac+2)
+            Burn_done = all(param_changes > 50/slice_fac+2)
             if (Burn_done) then
                 if (Feedback > 0) then
                     write (*,*) trim(concat('Chain',instance, ', MPI done ''burn'', Samples = ',sample_num))//', like = ',real(like)
@@ -568,11 +586,19 @@
                     end if
                 end do
 
-                call S%Clear()
                 MPI_Min_Sample_Update =  50 + num_slow*4 + num_fast
-                !max((MPI_Min_Sample_Update)/(MPI_thin_fac*slice_fac), npoints)
-                if (sampling_method/= sampling_fast_dragging) MPI_Min_Sample_Update=MPI_Min_Sample_Update  + num_fast*4
-                npoints = 0
+                if (sampling_method == sampling_fast_dragging) then
+                    MPI_Min_Sample_Update=MPI_Min_Sample_Update*Proposer%oversample_fast
+                else
+                    MPI_Min_Sample_Update=MPI_Min_Sample_Update  + num_fast*4
+                end if
+                print *,'MPI_Min_Sample_Update',MPI_Min_Sample_Update,S%Count
+                if (S%Count>MPI_Min_Sample_Update) call S%DeleteRange(1, S%Count-MPI_Min_Sample_Update)
+                if (sampling_method/= sampling_fast_dragging) then
+                    MPI_Sample_update_freq=MPI_Sample_update_freq*num_params_used
+                else
+                    MPI_Sample_update_freq=MPI_Sample_update_freq*num_slow*Proposer%oversample_fast
+                end if
                 flukecheck = .false.
                 deallocate(param_changes)
                 allocate(MPIcovmat(num_params_used,num_params_used))
@@ -592,7 +618,7 @@
         end if
 
 
-        if (.not. DoUpdates  .and. all_burn .and. npoints >= MPI_Min_Sample_Update+50/MPI_thin_fac/slice_fac+1) then
+        if (.not. DoUpdates  .and. all_burn .and. S%Count >= MPI_Min_Sample_Update+1) then
             DoUpdates = .true.
             if (Feedback>0) write(*,*) instance, 'DoUpdates'
         end if
@@ -602,7 +628,7 @@
                 if (Waiting) then
                     call MPI_TESTALL(MPIChains-1,req, flag, stats, ierror)
                     Waiting = .not. flag
-                elseif (mod(npoints,max(1,(MPI_Sample_update_freq*num_params_used)/(slice_fac*MPI_thin_fac)))==0) then
+                elseif (mod(S%Count,max(1,MPI_Sample_update_freq/(slice_fac)))==0) then
                     Waiting = .true.
                     do j=1, MPIChains-1
                         call MPI_ISSEND(MPIRank,1,MPI_INTEGER, j,0,MPI_COMM_WORLD,req(j),ierror)
@@ -720,23 +746,17 @@
                     if (MPI_StartSliceSampling .and. sampling_method == sampling_slice) then
                         if (Feedback > 0 .and. MPIRank==0) write (*,*) 'Switching from slicing to Metropolis'
                         sampling_method = sampling_metropolis
-
                     end if
 
-                    propose_matrix = MPICovMat
-                    call Proposer%SetCovariance(propose_matrix)
+                    call Proposer%SetCovariance(MPICovMat)
 
                 end if !update propose
             end if !all chains have enough
 
             deallocate(MPICovMats, MPIMeans)
         end if !flag
-
-
     end if
-
 #endif
-
 
     end subroutine AddMPIParams
 

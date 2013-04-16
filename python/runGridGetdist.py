@@ -13,17 +13,18 @@ Opts.parser.add_argument('--burn_removed', action='store_true')
 
 (batch, args) = Opts.parseForBatch()
 
-args.noplots = not args.plots
-
 base_ini = 'getdist_common_batch1.ini'
 
-matlab = 'matlab'
 
+plot_ext = 'py'
+plot_cmd = 'python'
 
-plot_types = ['.m', '_2D.m', '_3D.m']
-# you don't need these for python plots
+# plot_cmd = 'matlab'
+
+# the plotting matlab run is optional and only if you are using plot_ext=m in getdist
+plot_types = ['.', '_2D.']
+# you don't need these for python plots generated separately
 # '_tri.m' is very slow for so many
-
 
 if args.plot_data is None: data_dir = batch.batchPath + 'plot_data' + os.sep
 else: data_dir = os.path.abspath(args.plot_data) + os.sep
@@ -64,24 +65,23 @@ if not args.plots:
 
 
 
-if not args.norun and not args.noplots or args.compare_only:
+if not args.norun and args.plots:
         cat_cmd = 'cat '
         for jobItem in Opts.filteredBatchItems():
-                os.chdir(jobItem.distPath)
+                if plot_ext == 'm': os.chdir(jobItem.distPath)
                 for tp in plot_types:
-                    if not args.compare_only:
-                        fname = jobItem.distRoot + tp
-                        print fname
-                        if os.path.exists(fname):
-                            cat_cmd = cat_cmd + ' ' + fname
+                    fname = jobItem.distRoot + tp + plot_ext
+                    print fname
+                    if os.path.exists(fname):
+                        cat_cmd = cat_cmd + ' ' + fname
                     if hasattr(jobItem, 'compareRoots'):
                         for root in jobItem.compareRoots:
-                            fname = root + tp
+                            fname = root + tp + plot_ext
                             print fname
                             if os.path.exists(fname):
                                 cat_cmd = cat_cmd + ' ' + fname
 
-        if len(cat_cmd) > 5: os.system(cat_cmd + '|' + matlab)
+        if len(cat_cmd) > 5: os.system(cat_cmd + '|' + plot_cmd)
 
 #    if args.name is None and not args.compare_only:
 #        specficPath = batch.batchPath + 'specific_plots' + os.sep

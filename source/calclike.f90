@@ -35,7 +35,7 @@
     if (test_likelihood) then
         if (.not. allocated(covInv)) then
             allocate(covInv(num_params_used,num_params_used))
-            covInv = propose_matrix
+            covInv = test_cov_matrix
             call Matrix_Inverse(covInv)
         end if
         X = Params%P(params_used) - scales%Center(params_used)
@@ -55,7 +55,8 @@
     type(ParamSet):: Params
     real(mcp) :: GetLogLikeBounds
 
-    if (any(Params%P > Scales%PMax) .or. any(Params%P < Scales%PMin)) then
+    if (any(Params%P(:num_params) > Scales%PMax(:num_params)) .or. &
+    any(Params%P(:num_params) < Scales%PMin(:num_params))) then
         GetLogLikeBounds = logZero
     else
         GetLogLikeBounds=0
