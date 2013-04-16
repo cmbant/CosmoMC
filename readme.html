@@ -335,10 +335,10 @@ param1^a param2^b param3^c ...&nbsp; = x \pm y.
 <B><FONT COLOR="blue">Plotting</FONT></B><P>
 <UL>
 <LI><B>Python plots</B><BR>
-GetDist produces a set of files in the plot_data directory that can be used by the python scripts for plotting. 
-See the <A HREF="readme_python.html">CosmoMC python readme</A> for details. 
+GetDist produces a set of files in the plot_data directory that can be used by the python scripts for plotting.
+See the <A HREF="readme_python.html">CosmoMC python readme</A> for details.
 <P>
-You can set <b>plot_ext=py</b> when running GetDist to produce .py script files to produce standard 1D, 2D, 3D and triangle plots in one line (similar to older MatLab outputs), without having to write scripts yourself. The outputs may also male a useful base for later customization.
+You can set <b>plot_ext=py</b> when running GetDist to produce .py script files to produce standard 1D, 2D, 3D and triangle plots in one line (similar to older MatLab outputs), without having to write scripts yourself. The outputs may also make a useful base for later customization.
 
 <LI><B>Matlab plots</B><BR>
 If <b>plot_ext=m</b> GetDist produces Matlab '.m' files to do 1D, 2D and 3D plots. Matlab support is not likely to be developed further, but maintained from
@@ -369,8 +369,8 @@ But now the python scripts do this much better and more easily.
 Parameter labels are set in distparams.ini - if any are blank the parameter is ignored. You can also specify which parameters to plot, or if parameters are not specified for
 the 2D plots or the colour of the 3D plots getdist automatically works out
 the most correlated variables and uses them.
-The data files used by  SuperMongo and Matlab
-are output to the plot_data directory.
+The data files used by  python and Matlab are output to the plot_data directory.
+
 <A NAME="Convergence"><h2>Convergence diagnostics</h2></A>
 
 The <B>getdist</B> program will output convergence diagnostics, both short summary information when getdist is run, and also more detailed information in the file_root.converge file. When running with MPI the first two of the parameters below can also be calculated when running the chains for comparison with a stopping criterion (see the .ini input file).
@@ -381,7 +381,7 @@ If the numbers are much less than one then the second half of each chain probabl
 For MPI runs, in addition to specifying a stopping criterion as above, you can also give a convergence criterion for a confidence limit. In general it is much harder to get an accurate value for a small confidence value than for the mean, so imposing a tight limit may make your chains run for a very long time (though you can then be pretty confident in your confidence). The value computed is the variance of the chain percentiles from the last half of the different chains, in units of the standard deviation of each parameter. You can either specify a particular parameter to check, or do all of them. Any parameter with a slowly explored tail will only converge very slowly, in which case you may be able to improve things by generating chains at a higher temperature (so the tails are explored more readily; GetDist can adjust for the temperature automatically), or re-parameterizing.
 <BR><BR>
 <LI>
-For individual chains (before importance sampling) getdist computes the Raftery and Lewis convergence diagnostics. This uses a binary chain derived from each parameter depending on whether the parameter is above or below a given percentile of its distribution. The code works out how much the binary chain needs to be thinned to approximate a Markov process better than a second order process, and then uses analytical results for the convergence of binary Markov chains to assess the burn in period. It also assesses the thin factor needed for the binary chain to approximate an independence chain, which gives an idea of how much you need to thin the chain to obtain independent samples (i.e. how much you can get away with thinning it for importance sampling, though thinning isn't entirely lossless). The .converge file contains the numbers for each chain used, getdist writes out the worst case.  See this <A HREF="http://www.ee.duke.edu/~lcarin/raftery92how.pdf">reference</A> for details.<BR><BR>
+For individual chains (before importance sampling) getdist computes the Raftery and Lewis convergence diagnostics. This uses a binary chain derived from each parameter depending on whether the parameter is above or below a given percentile of its distribution (specified by the <b>converge_test_limit</b> input parameter). The code works out how much the binary chain needs to be thinned to approximate a Markov process better than a second order process, and then uses analytical results for the convergence of binary Markov chains to assess the burn in period. It also assesses the thin factor needed for the binary chain to approximate an independence chain, which gives an idea of how much you need to thin the chain to obtain independent samples (i.e. how much you can get away with thinning it for importance sampling, though thinning isn't entirely lossless). The .converge file contains the numbers for each chain used, getdist writes out the worst case.  See this <A HREF="http://www.ee.duke.edu/~lcarin/raftery92how.pdf">reference</A> for details.<BR><BR>
 <LI>
 A simpler way to assess the error on quantile limits is by computing them using subsets of the samples. GetDist produces the file_root.converge contains the 'split-test' rms change on the parameter quantiles in units of the standard deviation when the samples are split into 2,3 or 4 parts. Small numbers are clearly better. A number of 0.5 for a 2-way split indicates that the 95% confidence limit may in fact be off by the order of half a standard deviation (though probably better, as the limit is computed using all the samples). Large values in a particular parameter may indicate that there is a long tail that is only being explored slowly (in which case generating the chain at a higher temperature or changing parameters to the log might help).
 <BR><BR>
@@ -525,15 +525,16 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <A NAME="Version"><h2>Version History</h2></A>
 
 <UL>
-<LI><B>In progress</B><BR>
+<LI><B>April 2013</B><BR>
 <UL>
 <LI>Automatic thinning by <b>oversample_fast</b> factor for sampling_method=1 (prevents files getting very large)
 <LI><b>oversample_fast</b> meaning slightly changed to give more regular fast updates in standard sampling, and generate <b>oversample_fast</b> standard fast metropolis samples per slow update in the dragging method.
 <LI>Tweaks to various internal convergence and update parameters
 <LI>GetDist option <b>plot_ext</b> can be set to <b>m</b> for old matlab outputs or <b>py</b> for similar python plot outputs
 <LI>Added getdist parameter <b>converge_test_limit</b> to set limit for convergence tests
+<LI>Fixes for runGridGetdist.py, and default to producing .py python plot files in each dist folder rather than matlab .m.
 <LI>Renamed matlab_subplot_xx etc to subplot_xxx
-<LI>Various minor bug fixes
+<LI>Various other minor bug fixes, tidied up MCMC.f90 code (for the moment removing old un-updated sampling methods)
 </UL>
 <LI><B>March 2013</B><BR>
 <UL>
