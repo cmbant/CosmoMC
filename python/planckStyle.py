@@ -60,7 +60,7 @@ plotter = planckPlotter('main/plot_data')
 
 def getSinglePlotter(ratio=3 / 4.):
     s.setWithSubplotSize(3.5)
-    s.legend_font_size = 9
+    s.legend_fontsize = 9
     s.colorbar_axes_fontsize = 8
     s.scatter_size = 2
     s.lab_fontsize = 13
