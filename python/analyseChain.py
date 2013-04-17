@@ -3,14 +3,19 @@ import sys, numpy as np
 
 rootdir = r'C://tmp/Planck/final_nominal/PLA/'
 
-chains = chains.loadGridChain(rootdir, 'base', 'planck_lowl_lowLike_highL', 'lensing')
+chains = chains.loadGridChain(rootdir, 'base', 'planck_lowl_lowLike_highL', 'BAO')
 
 p = chains.getParams()
 
-derived = p.sigma8 * p.omegam ** 0.6
+# chains.reweight_plus_logLike((p.sigma8 - 0.786) ** 2 / 0.031 ** 2 / 2)
+p = chains.getParams()
+derived = p.H0 * p.age * 0.00102269032
+
+# derived = p.sigma8 * p.omegam ** 0.6
 print 'mean, err = ', chains.mean(derived), chains.std(derived)
 
 print '95% limits: ', chains.twoTailLimits(derived, 0.95)
+print '95% upper: ', chains.confidence(derived, 0.05, upper=True)
 
 # chain.setParams(sys.modules[__name__])
 

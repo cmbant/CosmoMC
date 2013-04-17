@@ -42,7 +42,7 @@ export PYTHONPATH=COSMOMC..PATH/python:$PYTHONPATH
 <pre>
 ln -s PLC..PATH/plc_1.0 ./data/clik
 </pre>
-(CosmoMC will look for files in ./data/clik).
+(CosmoMC will look for files in ./data/clik - e.g. "ls -d ./data/clik/*.clik" should show you the likelihood data you downloaded).
 <LI>Log out and in again to get the new settings,  then you can build cosmomc as described in the <A HREF="readme.html">ReadMe</A>.
 </UL>
 A set of .ini files are supplied in ./batch1 which set up standards for Planck runs. Location of data files is set in CAMspec_ACTSPT_defaults, CAMspec_defaults depending on what you want to use. You can try
@@ -57,6 +57,7 @@ You can use CosmoMC's python scripts and getdist to analyse and make plots from 
 <PRE>
 ln -s /scratch/planck/PLA ./PLA
 </PRE>
+so that ./PLA/base is for example the head directory with the baseline model chains.
 For the program to know about the structure of the grid you first need to initialize it for the location you have installed in. Do
 <PRE>
 python python/makeGrid.py PLA settings_planck_nominal

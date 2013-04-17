@@ -316,20 +316,20 @@
         if (MpiRank==0) then
             EstParams = Params
             write (*,*) 'Estimating propose matrix from Hessian at bfp...'
-            propose_matrix=EstCovmat(EstParams,4._mcp,status)
+            initial_propose_matrix=EstCovmat(EstParams,4._mcp,status)
             ! By default the grid used to estimate the covariance matrix has spacings
             ! such that deltaloglike ~ 4 for each parameter.
             call AcceptReject(.true., EstParams%Info, Params%Info)
             if (status==0) call DoAbort('estimate_propose_matrix: estimating propose matrix failed')
             if (Feedback>0) write (*,*) 'Estimated covariance matrix:'
-            call WriteCovMat(trim(baseroot) //'.hessian.covmat', propose_matrix)
+            call WriteCovMat(trim(baseroot) //'.hessian.covmat', initial_propose_matrix)
             write(*,*) 'Wrote the local inv Hessian to file ',trim(baseroot)//'.hessian.covmat'
             if (action==action_Hessian) call DoStop
         end if
 #ifdef MPI
-        CALL MPI_Bcast(propose_matrix, size(propose_matrix), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror)
+        CALL MPI_Bcast(initial_propose_matrix, size(initial_propose_matrix), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror)
 #endif
-        call Proposer%SetCovariance(propose_matrix)
+        call Proposer%SetCovariance(initial_propose_matrix)
     end if
 
     if (action == action_MCMC) then

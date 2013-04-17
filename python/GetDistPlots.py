@@ -42,7 +42,7 @@ class GetDistPlotSettings:
         self.legend_rect_border = False
         self.legend_frac_subplot_margin = 0.2
         self.legend_frac_subplot_line = 0.1
-        self.legend_font_size = None
+        self.legend_fontsize = None
 
         self.num_contours = 2
         self.solid_contour_palefactor = 0.6
@@ -57,7 +57,7 @@ class GetDistPlotSettings:
         self.subplot_size_inch = size_inch
         self.lab_fontsize = 7 + 2 * self.subplot_size_inch
         self.axes_fontsize = 4 + 2 * self.subplot_size_inch
-        self.legend_font_size = self.axes_fontsize
+        self.legend_fontsize = self.axes_fontsize
 
         self.lw1 = self.subplot_size_inch / 3.0
         self.lw_contour = self.lw1 * 0.6
@@ -257,7 +257,7 @@ class GetDistPlotter():
             CS = contourf(density.x1, density.x2, density.pts, levels, colors=cols, alpha=alpha, **kwargs)
             if add_legend_proxy: self.contours_added.append(Rectangle((0, 0), 1, 1, fc=CS.tcolors[1][0]))
             contour(density.x1, density.x2, density.pts, levels[:1], colors=CS.tcolors[1],
-                    linewidth=[self.settings.lw_contour], alpha=alpha * self.settings.alpha_factor_contour_lines, **kwargs)
+                    linewidths=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines, **kwargs)
         else:
             if color is None: color = self.get_color(plotno, **kwargs)
             cols = [color]
@@ -266,7 +266,7 @@ class GetDistPlotter():
             linestyles = [ls]
             kwargs = self.get_plot_args(plotno, **kwargs)
             kwargs['alpha'] = alpha
-            contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidths=[self.settings.lw_contour], **kwargs)
+            contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidths=self.settings.lw_contour, **kwargs)
 
         return density.bounds()
 
@@ -286,10 +286,11 @@ class GetDistPlotter():
         param_pair = self.get_param_array(roots[0], param_pair)
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
         if shaded and not filled: self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
+        mins = None
         for i, root in enumerate(roots):
             res = self.add_2d_contours(root, param_pair[0], param_pair[1], i, of=len(roots), filled=filled, add_legend_proxy=add_legend_proxy)
             if res is None: continue
-            if i == 0: mins, maxs = res
+            if mins is None: mins, maxs = res
             elif not shaded:
                 mins = min(res[0], mins)
                 maxs = max(res[1], maxs)
@@ -418,7 +419,7 @@ class GetDistPlotter():
                     lines.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
             else: lines = self.contours_added
             args = {'ncol':legend_ncol}
-            if self.settings.legend_font_size is not None: args['prop'] = {'size':self.settings.legend_font_size}
+            if self.settings.legend_fontsize is not None: args['prop'] = {'size':self.settings.legend_fontsize}
             if colored_text:
                 args['handlelength'] = 0
                 args['handletextpad'] = 0
@@ -441,9 +442,9 @@ class GetDistPlotter():
 
             return self.legend
 
-    def finish_plot(self, legend_labels=[], legend_loc=None, line_offset=0, legend_ncol=None, no_gap=False, no_extra_legend_space=False):
+    def finish_plot(self, legend_labels=[], legend_loc=None, line_offset=0, legend_ncol=None, no_gap=False, no_extra_legend_space=False, no_tight=False):
         has_legend = self.settings.line_labels and len(legend_labels) > 1
-        if self.settings.tight_layout:
+        if self.settings.tight_layout and not no_tight:
             if no_gap: tight_layout(h_pad=0, w_pad=0)
             else: tight_layout()
 
@@ -655,7 +656,7 @@ class GetDistPlotter():
             subplot(plot_row, plot_col, i + 1)
             self.plot_3d(roots, triplet, filled=filled_compare)
 
-        self.finish_plot([legend_labels, roots[1:]][legend_labels is None])
+        self.finish_plot([legend_labels, roots[1:]][legend_labels is None], no_tight=True)
         return plot_col, plot_row
 
     def export(self, fname):
