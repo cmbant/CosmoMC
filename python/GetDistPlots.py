@@ -42,7 +42,7 @@ class GetDistPlotSettings:
         self.legend_rect_border = False
         self.legend_frac_subplot_margin = 0.2
         self.legend_frac_subplot_line = 0.1
-        self.legend_font_size = None
+        self.legend_fontsize = None
 
         self.num_contours = 2
         self.solid_contour_palefactor = 0.6
@@ -57,7 +57,7 @@ class GetDistPlotSettings:
         self.subplot_size_inch = size_inch
         self.lab_fontsize = 7 + 2 * self.subplot_size_inch
         self.axes_fontsize = 4 + 2 * self.subplot_size_inch
-        self.legend_font_size = self.axes_fontsize
+        self.legend_fontsize = self.axes_fontsize
 
         self.lw1 = self.subplot_size_inch / 3.0
         self.lw_contour = self.lw1 * 0.6
@@ -257,7 +257,7 @@ class GetDistPlotter():
             CS = contourf(density.x1, density.x2, density.pts, levels, colors=cols, alpha=alpha, **kwargs)
             if add_legend_proxy: self.contours_added.append(Rectangle((0, 0), 1, 1, fc=CS.tcolors[1][0]))
             contour(density.x1, density.x2, density.pts, levels[:1], colors=CS.tcolors[1],
-                    linewidth=[self.settings.lw_contour], alpha=alpha * self.settings.alpha_factor_contour_lines, **kwargs)
+                    linewidths=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines, **kwargs)
         else:
             if color is None: color = self.get_color(plotno, **kwargs)
             cols = [color]
@@ -266,7 +266,7 @@ class GetDistPlotter():
             linestyles = [ls]
             kwargs = self.get_plot_args(plotno, **kwargs)
             kwargs['alpha'] = alpha
-            contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidths=[self.settings.lw_contour], **kwargs)
+            contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidths=self.settings.lw_contour, **kwargs)
 
         return density.bounds()
 
@@ -419,7 +419,7 @@ class GetDistPlotter():
                     lines.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
             else: lines = self.contours_added
             args = {'ncol':legend_ncol}
-            if self.settings.legend_font_size is not None: args['prop'] = {'size':self.settings.legend_font_size}
+            if self.settings.legend_fontsize is not None: args['prop'] = {'size':self.settings.legend_fontsize}
             if colored_text:
                 args['handlelength'] = 0
                 args['handletextpad'] = 0

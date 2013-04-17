@@ -44,7 +44,7 @@ s.solid_contour_palefactor = 0.6
 
 s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1'), 'g', 'c']
 s.axis_marker_lw = 0.6
-s.lw_contour = 0.2
+s.lw_contour = 1
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
     def export(self, fname):
@@ -60,7 +60,7 @@ plotter = planckPlotter('main/plot_data')
 
 def getSinglePlotter(ratio=3 / 4.):
     s.setWithSubplotSize(3.5)
-    s.legend_font_size = 9
+    s.legend_fontsize = 9
     s.colorbar_axes_fontsize = 8
     s.scatter_size = 2
     s.lab_fontsize = 13
