@@ -408,7 +408,7 @@
     call ReadSetCovMatrix(prop_mat, initial_propose_matrix)
     call Proposer%SetCovariance(initial_propose_matrix)
 
-    test_likelihood = Ini_read_Logical_file(Ini,'test_likelihood')
+    test_likelihood = Ini_read_Logical_file(Ini,'test_likelihood', .false.)
     if (test_likelihood) then
         print *,'** Using test Gaussian likelihood from covariance + hard priors **'
         prop_mat = trim(Ini_Read_String_File(Ini,'test_covariance'))

@@ -350,8 +350,8 @@ See the <A HREF="readme_python.html">CosmoMC python readme</A> for details of ho
 <LI><B>Matlab plots</B><BR>
 If <b>plot_ext=m</b> GetDist produces Matlab '.m' files. Matlab support is not likely to be developed further, but maintained from
 the previous version for convenience.  Type <B>file_root</B> into a Matlab
-window set to the directory containing the .m files to produce 1D marginalized plots. 
-You can use the <B>blue</B> Matlab script (in the <B>mscripts</B>) directory to change to a B&W-friendly colourmap (see also other colormaps in that directory). 
+window set to the directory containing the .m files to produce 1D marginalized plots.
+You can use the <B>blue</B> Matlab script (in the <B>mscripts</B>) directory to change to a B&W-friendly colourmap (see also other colormaps in that directory).
 <BR><BR>
 <A NAME="CustPlotting">
 <B>Custom Matlab plots</B><BR>
@@ -467,7 +467,7 @@ for the band powers, or to compute the likelihood from actual polarized data. Th
 <b>propose.f90</b></li>
 
 <br>This is the proposal density and related constants and subroutines. The efficiency
-of MCMC is quite dependent on the proposal. Fast+slow and fast parameter subspaces are proposed separately. See the <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A> for a discussion of the proposal density and use of fast and slow parameters.
+of MCMC is quite dependent on the proposal. Fast+slow and fast parameter subspaces are proposed separately. See the <A HREF="http://arxiv.org/abs/1304.4473">paper</A> for a discussion of the proposal density and use of fast and slow parameters.
 <li>
 <b>CMB_Cls_simple.f90</b></li>
 
@@ -526,7 +526,7 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <LI>Automatic thinning by <b>oversample_fast</b> factor for sampling_method=1 (prevents files getting very large)
 <LI><b>oversample_fast</b> meaning slightly changed to give more regular fast updates in standard sampling, and generate <b>oversample_fast</b> standard fast metropolis samples per slow update in the dragging method.
 <LI>Tweaks to various internal convergence and update parameters
-<LI>GetDist option <b>plot_ext</b> can be set to <b>m</b> for old matlab outputs or <b>py</b> for similar python plot outputs
+<LI>GetDist option <b></b> can be set to <b>m</b> for old matlab outputs or <b>py</b> for similar python plot outputs
 <LI>Added getdist parameter <b>converge_test_limit</b> to set limit for convergence tests
 <LI>Fixes for runGridGetdist.py, and default to producing .py python plot files in each dist folder rather than matlab .m.
 <LI>Renamed matlab_subplot_xx etc to subplot_xxx
@@ -776,7 +776,7 @@ Fixed bounds checking in MatterPowerAt (harmless with 2df). Added an exact likel
 See the  <A HREF="http://cosmologist.info/cosmomc/cosmomc.bib">BibTex file</A> of CosmoMC references you should cite (including data likelihoods), along with some references of potential interest. These are the two main CosmoMC papers and some general sampling references:
 <UL>
 <LI><a href="http://arxiv.org/abs/1304.4473">Efficient sampling of fast and slow cosmological parameters</a>
-<LI><a href="astro-ph/0205436">Cosmological parameters from CMB and other data: a Monte-Carlo approach</a>
+<LI><a href="http://arxiv.org/abs/astro-ph/0205436">Cosmological parameters from CMB and other data: a Monte-Carlo approach</a>
 <LI><a href="http://www.cs.toronto.edu/~radford/review.abstract.html">Probabilistic
 Inference Using Markov Chain Monte Carlo Methods</a>
 <LI><a href="http://www.inference.phy.cam.ac.uk/mackay/itprnn/book.html">Information
