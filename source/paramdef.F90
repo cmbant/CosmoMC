@@ -284,11 +284,10 @@
     Ini_fail_on_not_found = .false.
     if (forMCMC) then
         prop_mat = trim(Ini_Read_String_File(Ini,'propose_matrix'))
+        if (prop_mat /= '' .and. prop_mat(1:1) /= '/') prop_mat = concat(LocalDir,prop_mat)
     else
         prop_mat=''
     end if
-
-    if (prop_mat(1:1) /= '/') prop_mat = concat(LocalDir,prop_mat)
 
     fname = Ini_Read_String_File(Ini,'continue_from')
     if (fname /= '') call DoAbort('continue_from replaced by checkpoint')
