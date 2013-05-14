@@ -528,13 +528,15 @@
     (.not. done_check .or.  mod(sample_num+1, checkpoint_freq*Proposer%Oversample_fast)==0)) then
         done_check=.true.
         if (Feedback > 1) write (*,*) instance, 'Writing checkpoint'
-        call CreateFile(trim(rootname)//'.chk',tmp_file_unit,'unformatted')
+        call CreateFile(trim(rootname)//'.chk_tmp',tmp_file_unit,'unformatted')
         write (tmp_file_unit) chk_id
         write(tmp_file_unit) num, sample_num, num_accept, MPI_thin_fac, S%Count, Burn_done, all_burn, sampling_method, &
         slice_fac, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
         write(tmp_file_unit) Proposer%propose_matrix
         call S%SaveBinary(tmp_file_unit)
         close(tmp_file_unit)
+        call DeleteFile(trim(rootname)//'.chk')
+        call Rename(trim(rootname)//'.chk_tmp',trim(rootname)//'.chk')
     end if
 
     !Do main adding samples functions
