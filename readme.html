@@ -499,8 +499,10 @@ weighting function or parameter mapping.</ul>
 
 <A NAME="Addons"><h2>Add-ons and extra datasets</h2></A>
 Many old add-ons are unlikely to work with this version of CosmoMC. I will add ones here if and when they are updated.
-<!--
 <UL>
+<LI><A HREF="http://lakme.lbl.gov/~sheejong/cosmomcDR8/">SDSS DR8</a> BAO data
+</UL>
+<!--
 <LI><A HREF="http://www.utdallas.edu/~jdossett/isitgr/">Integrated Software in Testing General Relativity</a>
 <LI><A HREF="http://www.nhn.ou.edu/~wang/SNcode/index.html">Yun Wang's Supernova Flux-averaging Likelihood Code</a>
 <LI><A HREF="http://www.esnested.info">Evolutionary Strategies for Cosmology</a> (nested sampling)
@@ -523,6 +525,7 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <UL>
 <LI><B>April 2013</B><BR>
 <UL>
+<LI>[23 April] fix to work with default test_likelihood parameter (F)
 <LI>Automatic thinning by <b>oversample_fast</b> factor for sampling_method=1 (prevents files getting very large)
 <LI><b>oversample_fast</b> meaning slightly changed to give more regular fast updates in standard sampling, and generate <b>oversample_fast</b> standard fast metropolis samples per slow update in the dragging method.
 <LI>Tweaks to various internal convergence and update parameters

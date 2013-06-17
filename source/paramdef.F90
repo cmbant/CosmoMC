@@ -529,6 +529,7 @@
         done_check=.true.
         if (Feedback > 1) write (*,*) instance, 'Writing checkpoint'
         call CreateFile(trim(rootname)//'.chk_tmp',tmp_file_unit,'unformatted')
+        !Use temporary file in case crash/stop during write operation
         write (tmp_file_unit) chk_id
         write(tmp_file_unit) num, sample_num, num_accept, MPI_thin_fac, S%Count, Burn_done, all_burn, sampling_method, &
         slice_fac, S%Count, flukecheck, StartCovMat, MPI_Min_Sample_Update, DoUpdates
