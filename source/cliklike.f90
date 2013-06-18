@@ -41,7 +41,7 @@
     character (LEN=Ini_max_string_len) :: fname, params, name
     integer i
     Class(ClikLikelihood), pointer :: like
-    logical is_lensing
+    logical(KIND=4) is_lensing
 
 
     do i=1, Ini%L%Count

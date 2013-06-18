@@ -2555,19 +2555,19 @@
 
     if (triangle_plot .and. .not. no_plots) then
         !Add the off-diagonal 2D plots
-        if (plot_ext=='m') then
-            do i = 1, triangle_num
-                do i2 = i+1, triangle_num
-                    j= triangle_params(i)
-                    j2=triangle_params(i2)
-                    if (.not. Done2D(j2,j) .and. .not. plots_only) call Get2DPlotData(j2,j)
+        do i = 1, triangle_num
+            do i2 = i+1, triangle_num
+                j= triangle_params(i)
+                j2=triangle_params(i2)
+                if (.not. Done2D(j2,j) .and. .not. plots_only) call Get2DPlotData(j2,j)
+                if (plot_ext=='m') then
                     call WriteFormatInts(52,'subplot(%u,%u,%u);',triangle_num,triangle_num,(i2-1)*triangle_num + i)
                     call Write2DPlotMATLAB(52,j2,j,i2==triangle_num, i==1,no_triangle_axis_Labels)
                     if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(52)
-                end do
+                end if
             end do
-            !  write (52,*)  'set(gcf, ''PaperUnits'',''inches'');'
-            !  write (52,*) 'set(gcf, ''PaperPosition'',[ 0 0 8 8]);';
+        end do
+        if (plot_ext=='m') then
             if (no_triangle_axis_labels) then
                 write(52,*) 'h = get(gcf,''Children'');'
                 write(52,*) 'for i=1:length(h)'

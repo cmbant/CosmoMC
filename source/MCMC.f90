@@ -375,8 +375,8 @@
                 call WriteParams(CurParams,real(acc/thin,mcp),CurLike)
             end if
             acc = mod(acc, thin)
-            if (checkpoint_burn/=0) checkpoint_burn = checkpoint_burn-1
         end if
+        if (checkpoint_burn/=0) checkpoint_burn = checkpoint_burn-1
         if (indep_sample /= 0 .and. indep_acc >= indep_sample*thin .and. want) then
             call WriteIndepSample(CurParams, CurLike,real(indep_acc/(indep_sample*thin),mcp))
             indep_acc = mod(indep_acc, indep_sample*thin)
