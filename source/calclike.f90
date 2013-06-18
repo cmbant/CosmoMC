@@ -41,12 +41,11 @@
         X = Params%P(params_used) - scales%Center(params_used)
         GenericLikelihoodFunction= dot_product(X, matmul(covInv, X))/2
     else
-
-    !Used when you want to plug in your own CMB-independent likelihood function:
-    !set generic_mcmc=.true. in settings.f90, then write function here returning -Ln(Likelihood)
-    !Parameter array is Params%P
-    GenericLikelihoodFunction = LogZero
-    call MpiStop('GenericLikelihoodFunction: need to write this function!')
+        !Used when you want to plug in your own CMB-independent likelihood function:
+        !set generic_mcmc=.true. in settings.f90, then write function here returning -Ln(Likelihood)
+        !Parameter array is Params%P
+        GenericLikelihoodFunction = LogZero
+        call MpiStop('GenericLikelihoodFunction: need to write this function!')
     end if
 
     end function GenericLikelihoodFunction

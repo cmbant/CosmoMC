@@ -329,7 +329,7 @@
             else
                 lim2='    N'
             end if
-            write(unit,'(1A22,2A17)') ParamNames_NameOrNumber(Names,i), lim1, lim2
+            write(unit,'(1A22,2A17)') ParamNames_NameOrNumber(Names,ix-2), lim1, lim2
         end if
     end do
     call CloseFile(unit)
