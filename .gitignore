@@ -10,6 +10,7 @@ chains/
 .metadata
 .project
 .pydevproject
+.DS_Store
 x64/
 Debug/
 Release/
