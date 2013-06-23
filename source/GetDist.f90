@@ -1006,15 +1006,16 @@
             end do
         end do
 
-        if (maxoff>0) write (40,'("   ",'//trim(IntToStr(maxoff)) // 'I8)')  &
-        (/(I, I=autocorr_thin, maxoff*autocorr_thin,autocorr_thin)/)
-
-        do j = 3, ncols
-            if (isused(j)) then
-                write (40,'(1I3,'//trim(IntToStr(maxoff)) // 'f8.3,"  ' &
-                //trim(labels(j))//'")') j-2, corrs(j,:)
-            end if
-        end do
+        if (maxoff>0) then
+            write (40,'("   ",'//trim(IntToStr(maxoff)) // 'I8)')  &
+            (/(I, I=autocorr_thin, maxoff*autocorr_thin,autocorr_thin)/)
+            do j = 3, ncols
+                if (isused(j)) then
+                    write (40,'(1I3,'//trim(IntToStr(maxoff)) // 'f8.3,"  ' &
+                    //trim(labels(j))//'")') j-2, corrs(j,:)
+                end if
+            end do
+        end if
 
         deallocate(Corrs)
     end if
