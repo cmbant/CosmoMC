@@ -5,3 +5,4 @@ Makefile	text
 *.m             text
 *.paramnames    text
 *.ini           text
+*.dat           text
