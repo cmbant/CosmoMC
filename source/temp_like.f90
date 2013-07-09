@@ -77,10 +77,12 @@
     templt=templt*renorm
     end subroutine CAMspec_ReadNormSZ
 
-    subroutine like_init(like_file, sz143_file, tszxcib_file, ksz_file, beam_file)
+    subroutine like_init(pre_marged,like_file, sz143_file, tszxcib_file, ksz_file, beam_file, marge_modes)
     use MatrixUtils
     integer :: i, j,k,l
+    logical :: pre_marged
     character(LEN=1024), intent(in) :: like_file, sz143_file, ksz_file, tszxcib_file, beam_file
+    character(LEN=1024), intent(in), optional :: marge_modes
     logical, save :: needinit=.true.
     real(campc) , allocatable:: fid_cl(:,:), beam_cov(:,:), beam_cov_full(:,:)
     integer if1,if2, ie1, ie2, ii, jj, L2
@@ -104,70 +106,73 @@
     allocate(lmaxX(Nspec))
     allocate(np(Nspec))
     allocate(npt(Nspec))
-    allocate(X_data_in(nX))
-    allocate(cov(nX,nX))
-    allocate(indices(nX))
-
 
     read(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
-    read(48) X_data_in !(X_data(i), i=1, nX)
-    read(48) cov !((c_inv(i, j), j = 1, nX), i = 1,  nX) !covarianbce
-    read(48) !((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
-    close(48)
+    if (pre_marged) then
+        allocate(X_data(nX))
+        allocate(c_inv(nX,nX))
+        read(48) (X_data(i), i=1, nX)
+        read(48) !skip  covariance
+        read(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX) !inv covariance
+        close(48)
+    else
+        !Chop L ranges/frequencies if requested
+        allocate(indices(nX))
+        allocate(cov(nX,nX))
+        allocate(X_data_in(nX))
+        read(48) X_data_in !(X_data(i), i=1, nX)
+        read(48) cov !((c_inv(i, j), j = 1, nX), i = 1,  nX) !covarianbce
+        read(48) !((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
+        close(48)
 
-    !Cut on L ranges
-    print *,'Determining L ranges'
-    j=0
-    ix=0
-    npt(1)=1
-    if(.not. want_spec(1)) stop 'One beam mode may not be right here'
-    do i=1,Nspec
-        do l = lminX(i), lmaxX(i)
-            j =j+1
-            if (want_spec(i) .and. (camspec_lmins(i)==0 .or. l>=camspec_lmins(i)) &
-            .and. (camspec_lmaxs(i)==0 .or. l<=camspec_lmaxs(i)) ) then
-                ix =ix+1
-                indices(ix) = j
+        !Cut on L ranges
+        print *,'Determining L ranges'
+        j=0
+        ix=0
+        npt(1)=1
+        if(.not. want_spec(1)) stop 'One beam mode may not be right here'
+        do i=1,Nspec
+            do l = lminX(i), lmaxX(i)
+                j =j+1
+                if (want_spec(i) .and. (camspec_lmins(i)==0 .or. l>=camspec_lmins(i)) &
+                .and. (camspec_lmaxs(i)==0 .or. l<=camspec_lmaxs(i)) ) then
+                    ix =ix+1
+                    indices(ix) = j
+                end if
+            end do
+            if (want_spec(i)) then
+                if (camspec_lmins(i)/=0) lminX(i) = max(camspec_lmins(i), lminX(i))
+                if (camspec_lmaxs(i)/=0) lmaxX(i) = min(camspec_lmaxs(i), lmaxX(i))
+            else
+                lmaxX(i) =0
             end if
+            if (i<NSpec) npt(i+1) = ix+1
+            print *, 'spec ',i, 'lmin,lmax, start ix = ', lminX(i),lmaxX(i), npt(i)
         end do
-        if (want_spec(i)) then
-            if (camspec_lmins(i)/=0) lminX(i) = max(camspec_lmins(i), lminX(i))
-            if (camspec_lmaxs(i)/=0) lmaxX(i) = min(camspec_lmaxs(i), lmaxX(i))
-        else
-            lmaxX(i) =0
-        end if
-        if (i<NSpec) npt(i+1) = ix+1
-        print *, 'spec ',i, 'lmin,lmax, start ix = ', lminX(i),lmaxX(i), npt(i)
-    end do
-    if (j/=nx) stop 'Error cutting camspec cov matrix'
-    nX = ix
-    allocate(X_data(nX))
-    allocate(c_inv(nX,nX))
-    do i=1, nX
-        c_inv(:,i) = cov(indices(1:nX),indices(i))
-        X_data(i) = X_data_in(indices(i))
-    end do
-    !    call Matrix_inverse(c_inv)
-    deallocate(cov)
+        if (j/=nx) stop 'Error cutting camspec cov matrix'
+        nX = ix
+        allocate(X_data(nX))
+        allocate(c_inv(nX,nX))
+        do i=1, nX
+            c_inv(:,i) = cov(indices(1:nX),indices(i))
+            X_data(i) = X_data_in(indices(i))
+        end do
+        !    call Matrix_inverse(c_inv)
+        deallocate(cov)
+    end if
 
     CAMspec_lmax = maxval(lmaxX)
-    allocate(fid_cl(CAMspec_lmax,4))
-    !   allocate(fid_theory(CAMspec_lmax))
 
-    !open(48, file='./data/base_planck_CAMspec_lowl_lowLike_highL.bestfit_cl', form='formatted', status='unknown')
-    !do i=2,CAMspec_lmax
-    !    read(48,*) j,fid_theory(i)
-    !    if (j/=i) stop 'error reading fiducial C_l for beams'
-    !enddo
-    !close(48)
-
-    open(48, file='./data/camspec_foregrounds.dat', form='formatted', status='unknown')
-    do i=2,CAMspec_lmax
-        read(48,*) j,fid_theory, fid_cl(i,:)
-        if (j/=i) stop 'error reading fiducial foreground C_l for beams'
-        fid_cl(i,:) = (fid_cl(i,:) + fid_theory)/(i*(i+1)) !want C_l/2Pi foregrounds+theory
-    enddo
-    close(48)
+    if (.not. pre_marged) then
+        allocate(fid_cl(CAMspec_lmax,4))
+        open(48, file='./data/camspec_foregrounds.dat', form='formatted', status='unknown')
+        do i=2,CAMspec_lmax
+            read(48,*) j,fid_theory, fid_cl(i,:)
+            if (j/=i) stop 'error reading fiducial foreground C_l for beams'
+            fid_cl(i,:) = (fid_cl(i,:) + fid_theory)/(i*(i+1)) !want C_l/2Pi foregrounds+theory
+        enddo
+        close(48)
+    end if
 
     call CAMspec_ReadNormSZ(sz143_file, sz_143_temp)
     call CAMspec_ReadNormSZ(ksz_file, ksz_temp)
@@ -181,8 +186,13 @@
     allocate(beam_cov_inv(cov_dim,cov_dim))
     allocate(beam_cov_full(cov_dim,cov_dim))
     read(48) (((beam_modes(i,l,j),j=1,Nspec),l=0,beam_lmax),i=1,num_modes_per_beam)
-    read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)  ! beam_cov
-    read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
+    if (pre_marged) then
+        read(48) ! skip beam_cov
+        read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
+    else
+        read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)  ! beam_cov
+        read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
+    end if
     close(48)
 
     allocate(want_marge(cov_dim))
@@ -209,66 +219,80 @@
         marge_indices_reverse(i)=j
         keep_indices_reverse(i)=k
     end do
-    if (marge_num>0) then
-        allocate(beam_cov(marge_num, marge_num))
-        beam_cov = beam_cov_inv(marge_indices,marge_indices)
-        call Matrix_Inverse(beam_cov)
-
-        do if2=1,beam_Nspec
-            if (want_spec(if2)) then
-                do if1=1,beam_Nspec
-                    if (want_spec(if1)) then
-                        do ie2=1,num_modes_per_beam
-                            do ie1=1,num_modes_per_beam
-                                ii=ie1+num_modes_per_beam*(if1-1)
-                                jj=ie2+num_modes_per_beam*(if2-1)
-                                if (want_marge(ii) .and. want_marge(jj)) then
-                                    do L2 = lminX(if2),lmaxX(if2)
-                                        c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
-                                        c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
-                                        beam_factor**2*beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
-                                        beam_cov(marge_indices_reverse(ii),marge_indices_reverse(jj)) * beam_modes(ie2,L2,if2) &
-                                        *fid_cl(L2,if2)*fid_cl(lminX(if1):lmaxX(if1),if1)
-                                    end do
-                                end if
-                            enddo
-                        enddo
-                    end if
-                enddo
-            end if
-        enddo
-        ! print *,'after', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502),  c_inv(npt(4)-1002,npt(4)-1000)
-
-        allocate(beam_conditional_mean(marge_num, keep_num))
-        beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(marge_indices,keep_indices))
-
-        if (make_cov_marged .and. marge_num>0) then
-            if (beam_factor > 1) stop 'check you really want beam_factor>1 in output marged file'
-            call Matrix_inverse(c_inv)
-            open(48, file=trim(like_file)//'_beam_marged', form='unformatted', status='unknown')
-            write(48) Nspec,nX
-            write(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
-            write(48) (X_data(i), i=1, nX)
-            dummy=-1
-            write(48) dummy !inver covariance, assume not used
-            write(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
-            close(48)
-            open(48, file=trim(like_file)//'_conditionals', form='formatted', status='unknown')
-            do i=1, marge_num
-                write(48,*) beam_conditional_mean(i,:)
-            end do
-            close(48)
-            stop
-        end if
-
-        deallocate(beam_cov_inv)
+    if (pre_marged) then
+        !Use precomputed values
+        open(48, file=marge_modes, form='formatted', status='unknown')
+        do i=1, marge_num
+            read(48,*) beam_conditional_mean(i,:)
+        end do
+        close(48)
         if (keep_num>0) then
-            allocate(beam_cov_inv(keep_num,keep_num))
-            beam_cov_inv = beam_cov_full(keep_indices,keep_indices)
-            call Matrix_inverse(beam_cov_inv)
+            beam_cov_full = beam_cov_inv
+            call Matrix_inverse_internal(beam_cov_full)
         end if
+    else
+        if (marge_num>0) then
+            allocate(beam_cov(marge_num, marge_num))
+            beam_cov = beam_cov_inv(marge_indices,marge_indices)
+            call Matrix_Inverse(beam_cov)
+
+            do if2=1,beam_Nspec
+                if (want_spec(if2)) then
+                    do if1=1,beam_Nspec
+                        if (want_spec(if1)) then
+                            do ie2=1,num_modes_per_beam
+                                do ie1=1,num_modes_per_beam
+                                    ii=ie1+num_modes_per_beam*(if1-1)
+                                    jj=ie2+num_modes_per_beam*(if2-1)
+                                    if (want_marge(ii) .and. want_marge(jj)) then
+                                        do L2 = lminX(if2),lmaxX(if2)
+                                            c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
+                                            c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
+                                            beam_factor**2*beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
+                                            beam_cov(marge_indices_reverse(ii),marge_indices_reverse(jj)) * beam_modes(ie2,L2,if2) &
+                                            *fid_cl(L2,if2)*fid_cl(lminX(if1):lmaxX(if1),if1)
+                                        end do
+                                    end if
+                                enddo
+                            enddo
+                        end if
+                    enddo
+                end if
+            enddo
+            ! print *,'after', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502),  c_inv(npt(4)-1002,npt(4)-1000)
+
+            allocate(beam_conditional_mean(marge_num, keep_num))
+            beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(marge_indices,keep_indices))
+            call Matrix_inverse(c_inv)
+
+            if (make_cov_marged .and. marge_num>0) then
+                if (beam_factor > 1) stop 'check you really want beam_factor>1 in output marged file'
+                open(48, file=trim(like_file)//'_beam_marged', form='unformatted', status='unknown')
+                write(48) Nspec,nX
+                write(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
+                write(48) (X_data(i), i=1, nX)
+                dummy=-1
+                write(48) dummy !inver covariance, assume not used
+                write(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
+                close(48)
+                open(48, file=trim(like_file)//'_conditionals', form='formatted', status='unknown')
+                do i=1, marge_num
+                    write(48,*) beam_conditional_mean(i,:)
+                end do
+                close(48)
+                stop
+            end if
+        else
+            call Matrix_inverse(c_inv)
+        end if
+    end if !pre-marged
+
+    deallocate(beam_cov_inv)
+    if (keep_num>0) then
+        allocate(beam_cov_inv(keep_num,keep_num))
+        beam_cov_inv = beam_cov_full(keep_indices,keep_indices)
+        call Matrix_inverse(beam_cov_inv)
     end if
-    call Matrix_inverse(c_inv)
 
     countnum=0
 

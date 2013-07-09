@@ -34,10 +34,11 @@
     Type(TIniFile) Ini
     class(LikelihoodList) :: LikeList
     character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
-    beamfilename, kszfilename,tszxcibfilename, tmp
+    beamfilename, kszfilename,tszxcibfilename, tmp, marge_modes
     Class(CosmologyLikelihood), pointer :: Like
     logical :: use_CAMspec
     logical :: use_highL
+    logical :: pre_marged
 
     use_CAMspec = Ini_Read_Logical_File(Ini,'use_CAMspec',.false.)
 
@@ -53,6 +54,15 @@
         call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
 
         likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
+        pre_marged=Ini_Read_Logical(Ini,'pre_marged',.false.)
+        if (pre_marged) then
+            likefilename=ReadIniFileName(Ini,'margelikefile',NotFoundFail = .true.)
+            marge_modes=ReadIniFileName(Ini,'marge_modes',NotFoundFail = .true.)
+            if (camspec_beam_mcmc_num/=1) call MpiStop('camspec_beam_mcmc_num must be one for precomputed')
+        else
+            likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
+        end if
+
         sz143filename=ReadIniFileName(Ini,'sz143file',NotFoundFail = .true.)
         tszxcibfilename=ReadIniFileName(Ini,'tszxcibfile',NotFoundFail = .true.)
         kszfilename=ReadIniFileName(Ini,'kszfile',NotFoundFail = .true.)
@@ -65,7 +75,7 @@
         tmp = Ini_read_String_file(Ini,'camspec_lmax')
         if (tmp/='') read(tmp,*) camspec_lmaxs
 
-        call like_init(likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename)
+        call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename, marge_modes)
 
     end if
 
