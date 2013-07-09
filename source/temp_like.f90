@@ -228,7 +228,7 @@
         close(48)
         if (keep_num>0) then
             beam_cov_full = beam_cov_inv
-            call Matrix_inverse_internal(beam_cov_full)
+            call Matrix_inverse(beam_cov_full)
         end if
     else
         if (marge_num>0) then
