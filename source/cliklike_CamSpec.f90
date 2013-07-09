@@ -54,7 +54,7 @@
         call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
 
         likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
-        pre_marged=Ini_Read_Logical(Ini,'pre_marged',.false.)
+        pre_marged=Ini_Read_Logical_File(Ini,'pre_marged',.false.)
         if (pre_marged) then
             likefilename=ReadIniFileName(Ini,'margelikefile',NotFoundFail = .true.)
             marge_modes=ReadIniFileName(Ini,'marge_modes',NotFoundFail = .true.)
