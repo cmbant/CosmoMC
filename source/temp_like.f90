@@ -89,6 +89,7 @@
     real(campc),  dimension(:,:), allocatable :: cov
     integer, allocatable :: indices(:),np(:)
     integer ix
+    real(campc) dummy
 
     ! cl_ksz_148_tbo.dat file is in D_l, format l D_l, from l=2 to 10000
     ! tsz_x_cib_template.txt is is (l D_l), from l=2 to 9999, normalized to unity
