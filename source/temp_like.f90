@@ -24,6 +24,8 @@
     real(campc), allocatable :: beam_conditional_mean(:,:)
     logical, allocatable :: want_marge(:)
     integer marge_num, keep_num
+
+    logical :: make_cov_marged = .false.
     real(campc) :: beam_factor = 2.7_campc
 
     logical :: want_spec(4) = .true.
@@ -117,7 +119,7 @@
     j=0
     ix=0
     npt(1)=1
-    if(.not. want_spec(1)) stop 'One beam mode my not be right here'
+    if(.not. want_spec(1)) stop 'One beam mode may not be right here'
     do i=1,Nspec
         do l = lminX(i), lmaxX(i)
             j =j+1
@@ -238,6 +240,26 @@
 
         allocate(beam_conditional_mean(marge_num, keep_num))
         beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(marge_indices,keep_indices))
+
+        if (make_cov_marged .and. marge_num>0) then
+            if (beam_factor > 1) stop 'check you really want beam_factor>1 in output marged file'
+            call Matrix_inverse(c_inv)
+            open(48, file=trim(like_file)//'_beam_marged', form='unformatted', status='unknown')
+            write(48) Nspec,nX
+            write(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
+            write(48) (X_data(i), i=1, nX)
+            dummy=-1
+            write(48) dummy !inver covariance, assume not used
+            write(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
+            close(48)
+            open(48, file=trim(like_file)//'_conditionals', form='formatted', status='unknown')
+            do i=1, marge_num
+                write(48,*) beam_conditional_mean(i,:)
+            end do
+            close(48)
+            stop
+        end if
+
         deallocate(beam_cov_inv)
         if (keep_num>0) then
             allocate(beam_cov_inv(keep_num,keep_num))
