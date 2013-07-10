@@ -109,6 +109,7 @@
 
     read(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
     if (pre_marged) then
+        print *,'Using pre-beam-marged covariance; L ranges etc ignored'
         allocate(X_data(nX))
         allocate(c_inv(nX,nX))
         read(48) (X_data(i), i=1, nX)
@@ -266,7 +267,6 @@
             call Matrix_inverse(c_inv)
 
             if (make_cov_marged .and. marge_num>0) then
-                if (beam_factor > 1) stop 'check you really want beam_factor>1 in output marged file'
                 open(48, file=trim(like_file)//'_beam_marged', form='unformatted', status='unknown')
                 write(48) Nspec,nX
                 write(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
