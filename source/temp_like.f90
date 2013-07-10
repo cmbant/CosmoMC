@@ -116,6 +116,9 @@
         read(48) !skip  covariance
         read(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX) !inv covariance
         close(48)
+        do i=1,Nspec
+            print *, 'spec ',i, 'lmin,lmax, start ix = ', lminX(i),lmaxX(i), npt(i)
+        end do
     else
         !Chop L ranges/frequencies if requested
         allocate(indices(nX))
@@ -155,7 +158,7 @@
         allocate(X_data(nX))
         allocate(c_inv(nX,nX))
         do i=1, nX
-            c_inv(:,i) = cov(indices(1:nX),indices(i))
+            c_inv(:,i) = cov(indices(1:nX),indices(i)) !c_inv is covariance here
             X_data(i) = X_data_in(indices(i))
         end do
         !    call Matrix_inverse(c_inv)
@@ -184,13 +187,13 @@
     if(beam_Nspec.ne.Nspec) stop 'Problem: beam_Nspec != Nspec'
     allocate(beam_modes(num_modes_per_beam,0:beam_lmax,beam_Nspec))
     cov_dim=beam_Nspec*num_modes_per_beam
-    allocate(beam_cov_inv(cov_dim,cov_dim))
     allocate(beam_cov_full(cov_dim,cov_dim))
     read(48) (((beam_modes(i,l,j),j=1,Nspec),l=0,beam_lmax),i=1,num_modes_per_beam)
     if (pre_marged) then
-        read(48) ! skip beam_cov
-        read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
+        read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)  
+        read(48) !skip !((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
     else
+        allocate(beam_cov_inv(cov_dim,cov_dim))
         read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)  ! beam_cov
         read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
     end if
@@ -205,7 +208,6 @@
     allocate(marge_indices_reverse(cov_dim))
     allocate(keep_indices(keep_num))
     allocate(keep_indices_reverse(cov_dim))
-    print *,'beam marginalizing:',marge_num,'keeping',keep_num
 
     j=0
     k=0
@@ -220,18 +222,17 @@
         marge_indices_reverse(i)=j
         keep_indices_reverse(i)=k
     end do
+    allocate(beam_conditional_mean(marge_num, keep_num))
     if (pre_marged) then
+        print *,'using marginalizing modes:',marge_num,'keeping',keep_num
         !Use precomputed values
         open(48, file=marge_modes, form='formatted', status='unknown')
         do i=1, marge_num
             read(48,*) beam_conditional_mean(i,:)
         end do
         close(48)
-        if (keep_num>0) then
-            beam_cov_full = beam_cov_inv
-            call Matrix_inverse(beam_cov_full)
-        end if
     else
+        print *,'beam marginalizing:',marge_num,'keeping',keep_num
         if (marge_num>0) then
             allocate(beam_cov(marge_num, marge_num))
             beam_cov = beam_cov_inv(marge_indices,marge_indices)
@@ -247,6 +248,7 @@
                                     jj=ie2+num_modes_per_beam*(if2-1)
                                     if (want_marge(ii) .and. want_marge(jj)) then
                                         do L2 = lminX(if2),lmaxX(if2)
+                                            !c_inv is covariance here
                                             c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
                                             c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
                                             beam_factor**2*beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
@@ -262,10 +264,8 @@
             enddo
             ! print *,'after', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502),  c_inv(npt(4)-1002,npt(4)-1000)
 
-            allocate(beam_conditional_mean(marge_num, keep_num))
             beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(marge_indices,keep_indices))
-            call Matrix_inverse(c_inv)
-
+            call Matrix_inverse(c_inv) !now c_inv is the inverse covariance
             if (make_cov_marged .and. marge_num>0) then
                 open(48, file=trim(like_file)//'_beam_marged', form='unformatted', status='unknown')
                 write(48) Nspec,nX
@@ -285,15 +285,14 @@
         else
             call Matrix_inverse(c_inv)
         end if
+        deallocate(beam_cov_inv)
     end if !pre-marged
 
-    deallocate(beam_cov_inv)
     if (keep_num>0) then
         allocate(beam_cov_inv(keep_num,keep_num))
         beam_cov_inv = beam_cov_full(keep_indices,keep_indices)
         call Matrix_inverse(beam_cov_inv)
     end if
-
     countnum=0
 
     needinit=.false.
