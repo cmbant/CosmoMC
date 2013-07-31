@@ -1,0 +1,8 @@
+omegam        \Omega_m
+H0            H_0
+omegak        \Omega_K
+mnu           \Sigma m_\nu		
+w             w			#equation of state parameter for scalar field dark energy today
+wa            w_a       #w_a variation
+nnu           N_{eff}   #effective number of neutrinos (only clearly defined for massless)
+omegal*       \Omega_\Lambda

@@ -46,6 +46,7 @@ function contourf_col(varargin)
 for i=1:min(ncont,2)
   imh = findobj(h, 'type','patch','CData',c(i));
   set(imh,'FaceColor',cols(i,:));
+  set(imh,'UserData','confid2D');
  end 
 
 % for i=1:ncol

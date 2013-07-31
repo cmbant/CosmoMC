@@ -1,0 +1,24 @@
+asz143        A^{tSZ}_{143}     # Thermal SZ amplitude at 143 GHz
+aksz          A^{kSZ}
+xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
+a_ps_act_148     A^{PS,ACT}_{148}
+a_ps_act_217     A^{PS,ACT}_{218}
+a_ps_spt_95      A^{PS,SPT}_{95}
+a_ps_spt_150     A^{PS,SPT}_{150}
+a_ps_spt_220     A^{PS,SPT}_{220}
+acib143       A^{CIB}_{143}     # CIB amplitude at 143 GHz
+acib217       A^{CIB}_{217}     # CIB amplitude at 217 GHz
+ncib          \gamma^{CIB}           # spectral index of the CIB
+r_ps_spt_95x150  r^{PS}_{95\times150}
+r_ps_spt_95x220  r^{PS}_{95\times220}
+r_ps_150x220     r^{PS}_{150\times220}
+cibr          r^{CIB}_{143\times217}       # 143-217 correlation coefficient of CIB
+act_dust_s       A^{ACTs}_{\rm dust}
+act_dust_e       A^{ACTe}_{\rm dust}
+cal_acts_148     y_{ACTs}^{148}
+cal_acts_217     y_{ACTs}^{217}
+cal_acte_148     y_{ACTe}^{148}
+cal_acte_217     y_{ACTe}^{217}
+cal_spt_95       y_{SPT}^{95}
+cal_spt_150      y_{SPT}^{150}
+cal_spt_220      y_{SPT}^{220}

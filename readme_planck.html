@@ -1,0 +1,136 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>PlanckCosmomc ReadMe</title>
+</head>
+<body bgcolor="#FFFFFF" link="#0000FF" vlink="#800080">
+
+<center>
+<IMG SRC="http://cosmologist.info/cosmomc/pics/planck/Planck_WMAP.png">
+<h2>CosmoMC and GetDist with Planck Likelihood and Chains</h2>
+
+</center>
+The Planck likelihood code (PLC/clik) and parameter chains are available from the <A HREF="http://www.sciops.esa.int/index.php?project=planck&page=Planck_Legacy_Archive">Planck Legacy Archive</A>.
+<P>
+<H3>Using the Planck likelihood with CosmoMC</H3>
+Here I assume you have installed CosmoMC in a directory called COSMOMC..PATH, and will install the Planck likelihood code in a directory called PLC..PATH.
+Note you need to use ifort 13 or higher to build CosmoMC, so make sure you have that configured before you start.
+<UL>
+<LI>Download and and install the likelihood code and data files to somewhere convenient, probably not under cosmomc. These are the links (note things are likely to be updated and change, so apologies if not everything work exactly as stated here)
+<UL>
+<LI><A HREF="http://www.sciops.esa.int/wikiSI/planckpla/index.php?title=CMB_spectrum_%26_Likelihood_Code&instance=Planck_Public_PLA#Likelihood_4">Planck likelihood code and data download links</A>
+</UL>
+
+<LI>Change to the plc_1.0  directory and do
+<pre>bzip2 -d plc-1.0.tar.bz2; tar -xf plc-1.0.tar</pre>
+<LI><pre>cd plc-1.0</pre>
+<LI><pre>./waf configure --lapack_mkl=${MKLROOT} --lapack_mkl_version=10.3 --install_all_deps</pre>
+  (you may need to change the options on this line depending on your installation; --install_all_deps may not be needed; see the .pdf document file in PLC..PATH/plc_1.0/plc_1.0 for options)
+<LI><pre>./waf install</pre>
+<LI>Edit your ~/.bashrc file to include
+<pre>
+export PLANCKLIKE=cliklike
+export CLIKPATH=PLC..PATH/plc_1.0/plc_1.0
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CLIKPATH/lib
+</pre>
+Instead of the last item you can also use PLC's recommended <b>source PLC..PATH/plc_1.0/bin/clik_profile.sh</b>.
+While you're at it you can add CosmoMC's python path (for plotting and quite analysis of chains):
+<pre>
+export PYTHONPATH=COSMOMC..PATH/python:$PYTHONPATH
+</pre>
+<LI>Change to your COSMOMC..PATH root directory and make a symbolic link to your PLC installation
+<pre>
+ln -s PLC..PATH/plc_1.0 ./data/clik
+</pre>
+(CosmoMC will look for files in ./data/clik - e.g. "ls -d ./data/clik/*.clik" should show you the likelihood data you downloaded).
+<LI>Log out and in again to get the new settings,  then you can build cosmomc as described in the <A HREF="readme.html">ReadMe</A>.
+</UL>
+A set of .ini files are supplied in ./batch1 which set up standards for Planck runs. Location of data files is set in CAMspec_ACTSPT_defaults, CAMspec_defaults depending on what you want to use. You can try
+<pre>mpirun -np 2 ./cosmomc test.ini</pre>
+to see if things are being loaded and start running OK.
+<P>
+Note that the "highL" (ACT/SPT) likelihood file is not included in the first PLC download; hopefully it will be added soon. Meanwhile you can follow the instructions on the Planck likelihood download page for how to make it from the <A HREF="http://lambda.gsfc.nasa.gov/product/act/act_fulllikelihood_get.cfm">ACT/SPT</A> download.
+<P>
+<H3>Using Planck Chains</H3>
+Planck provide a set of parameter chains produced by CosmoMC, available <A HREF="http://www.sciops.esa.int/wikiSI/planckpla/index.php?title=Cosmological_Parameters&instance=Planck_Public_PLA">here</a>. The full grid (2.8GB) download is also available from this <A HREF="http://irsa.ipac.caltech.edu/data/Planck/release_1/ancillary-data/COM_CosmoParams_FullGrid_R1.10.tar.gz">US link</A>.
+You can use CosmoMC's python scripts and getdist to analyse and make plots from them. First download and extract all the chain data. Make a symbolic link from ./cosmomc/PLA to the location of the chains, e.g.
+<PRE>
+ln -s /scratch/planck/PLA ./PLA
+</PRE>
+so that ./PLA/base is for example the head directory with the baseline model chains.
+For the program to know about the structure of the grid you first need to initialize it for the location you have installed in. Do
+<PRE>
+python python/makeGrid.py PLA settings_planck_nominal
+</PRE>
+When done it will tell you the commands needed to be run  to reproduce the chains. But of course you don't need to do that, you have the chains already. You can now use the python/* scripts on the PLA directory, and they will know about the available data.
+Settings for the Planck parameter grid are in python/settings_planck_nominal.py.
+<H4>Calculating derived parameters</H4>
+For simple calculations like finding the mean and variance of new derived parameters you can use the functions in python/chains.py. For example, if you want to calculate the posterior mean and limits for sigma8*Omegam^0.6 from Planck+WP+highL+lensing you could write a python script
+<blockquote>
+<pre>
+import chains
+
+rootdir = r'./PLA/'
+
+chains = chains.loadGridChain(rootdir, 'base', 'planck_lowl_lowLike_highL', 'lensing')
+
+p = chains.getParams()
+
+derived = p.sigma8 * p.omegam ** 0.6
+
+print 'mean, err = ', chains.mean(derived), chains.std(derived)
+print '95% limits: ', chains.twoTailLimits(derived, 0.95)
+</pre>
+</blockquote>
+Here p.omegam is a vector of parameter values, similar p.sigma8; chains.mean and chains.var sum the samples with the corresponding weights to calculate the result. The third argument of loadGridChain specifies any data added by importance sampling.
+<P>
+See python/chains.py for other simple functions you can use. Use GetDist if you want to reproduce Planck results: chains.py only does tail integrals, it does not check for skewness or calculate credible intervals for skewed distributions.
+<H4>Plotting</H4>
+To make plots from the grid you need to first run getdist over the grid. To do this make sure you have installed and compiled CosmoMC (with getdist) then run
+<PRE>
+python python/runGridGetdist.py PLA --burn_removed
+</PRE>
+This may take a while. It generates a VERY large number of plotting files in PLA/plot_data for the entire grid. You can use optional parameters for runGridGetdist.py if you want to restrict to specific models; run <b>python python/runGridGetdist.py</b> to see the full list of options. For example if you are only interested in models with massive neutrinos using Planck data you could do
+<PRE>
+python python/runGridGetdist.py PLA --paramtag base_mnu --data planck
+</PRE>
+Getdist generates .m scripts in each PLA/../../dist subfolder, which you can run in matlab. Or, now usually recommended, use the python scripts. You can use <B>python python/makePlots.py PLA  ..</B> to make plots en masse. See <b>batch1/outputs/makeGridPlots</b> for examples.
+<P>
+You can also write your own short python scripts to plot things of interest; many examples are in <b>batch1/outputs/</b> (note that these use planckStyle.py, which assumed your main grid directory is ./main not ./PLA, and needs output folders called outputs and plots). For example, assuming you've done runGridGetdist on the base planck and WMAP chains, you can do
+<pre>
+python batch1/outputs/triangle_planckonly_vs_WMAP.py
+</pre>
+to reproduce the figure above.
+<P>
+As an example python script not using planckStyle you can do
+<blockquote>
+<pre>
+import GetDistPlots
+g=GetDistPlots.GetDistPlotter('PLA/plot_data')
+g.settings.setWithSubplotSize(4)
+
+roots = ['base_nnu_mnu_planck_lowl_lowLike','base_nnu_mnu_planck_lowl_lowLike_highL','base_nnu_mnu_planck_lowl_lowLike_highL_post_BAO']
+g.plot_2d(roots, param_pair=['mnu','nnu'], filled=True)
+g.add_legend(['Planck+WP','Planck+WP+highL','Planck+WP+highL+BAO'],legend_loc='upper right');
+g.export('mnu_nnu.png')
+</pre>
+</blockquote>
+The legend overlaps a bit. You can do "import pylab *" and use standard matplotlib commands. Or you can try things like this
+<blockquote>
+<pre>
+import GetDistPlots
+g=GetDistPlots.GetDistPlotter('PLA/plot_data')
+g.settings.setWithSubplotSize(4)
+g.make_figure(xstretch=1.3)
+
+roots = ['base_nnu_mnu_planck_lowl_lowLike','base_nnu_mnu_planck_lowl_lowLike_highL','base_nnu_mnu_planck_lowl_lowLike_highL_post_BAO']
+g.plot_2d(roots, param_pair=['mnu','nnu'], filled=True)
+g.add_legend(['Planck+WP','Planck+WP+highL','Planck+WP+highL+BAO'],legend_loc='upper right',colored_text=True);
+g.export('mnu_nnu2.png')
+</pre>
+</blockquote>
+Outputs of the two versions should look like this:<BR>
+<IMG SRC="http://cosmologist.info/cosmomc/pics/planck/mnu_nnu.png">
+<IMG SRC="http://cosmologist.info/cosmomc/pics/planck/mnu_nnu2.png">
+
+</body>

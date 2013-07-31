@@ -1,8 +1,8 @@
- !Module for using Viel et al. Lyman-alpha data 
+ !Module for using Viel et al. Lyman-alpha data
 !J.Lesgourgues,29/10/04
 !AL modification to integrate over calibration numerically,
 !   reject models with weird high om_m that probe v small scales
-!April 2006: Fixed major bug (introduced by AL) 
+!April 2006: Fixed major bug (introduced by AL)
 !            removed unsafe OPENMP; CROFT on by default
 
 module lya
@@ -15,11 +15,11 @@ implicit none
 
  ! for LUQAS:
  real :: lya_P1(lya_points), lya_dP1(lya_points)
- logical :: use_LUQAS = .true. 
+ logical :: use_LUQAS = .true.
 
  ! for CROFT:
  real :: lya_P2(lya_points), lya_dP2(lya_points)
- logical :: use_CROFT = .true. 
+ logical :: use_CROFT = .true.
 
  real :: lya_kmax = 6.
  logical :: do_lya_init  = .true.
@@ -29,7 +29,7 @@ contains
 
  subroutine lya_init
    integer i
-   
+
     if (Feedback > 0) write(*,*) 'reading: Lyman-alpha data'
     call OpenTxtFile('data/lyman_alpha.dat', tmp_file_unit)
 
@@ -44,7 +44,7 @@ contains
     goto 300
 
 200 stop 'Error reading Lyman-alpha file'
-     
+
 300 return
 
  end subroutine lya_init
@@ -61,14 +61,14 @@ contains
    real calweights(-ncal:ncal)
    real, parameter :: cal_sigma = 0.29
    integer i, ical
-   
+
     if (do_lya_init) call lya_init
 
     if (CMB%W /= -1. .or. CMB%omnu/=0.) then
       write (*,*) 'Lya.f90 not tested for extended models'
       stop
     end if
-   
+
 
     z1=2.125
     z2=2.72
@@ -83,7 +83,7 @@ contains
     if (use_LUQAS) then
 
        z=z1
-    
+
     ! coefficient from h/Mpc to s/km
        g2=omegam*(1.+z)**3+CMB%omk*(1.+z)**2+CMB%omv
        coef = 100. * sqrt(g2) / (1.+z)
@@ -100,22 +100,22 @@ contains
         exp(log(matter_power_minkh) + (num_matter_power-1)*matter_power_dlnkh)) then
          !Just thow out if way-off model
           LSS_lyalike = LogZero
-          return 
+          return
        end if
 
        do i=1, lya_points
-         
+
          th = MatterPowerAt(Theory,lya_k(i)*coef) *coef**3 &
                *(D_ratio)**2 &
                *(1.+1.4*exp(0.6*log(omegam_z)))/2.4
 
          do ical=-ncal,ncal
-           acal = 1+ical*cal_sigma*dcal 
+           acal = 1+ical*cal_sigma*dcal
 
            dif2(ical) = dif2(ical) +  ((th-lya_P1(i)*0.93*acal)**2/ &
                       (lya_dP1(i)*0.93*acal)**2)
          end do
- 
+
        end do
 
     end if
@@ -127,7 +127,7 @@ contains
     if (use_CROFT) then
 
        z=z2
-    
+
     ! coefficient from h/Mpc to s/km
        g2=omegam*(1.+z)**3+CMB%omk*(1.+z)**2+CMB%omv
        coef = 100. * sqrt(g2) / (1.+z)
@@ -141,18 +141,18 @@ contains
 
 
        do i=1, lya_points
-         
+
          th = MatterPowerAt(Theory,lya_k(i)*coef) *coef**3 &
                *(D_ratio)**2 &
                *(1.+1.4*exp(0.6*log(omegam_z)))/2.4
 
          do ical=-ncal,ncal
-           acal = 1+ical*cal_sigma*dcal 
+           acal = 1+ical*cal_sigma*dcal
 
            dif2(ical) = dif2(ical) +  ((th-lya_P2(i)*0.93*acal)**2/ &
                       (lya_dP2(i)*0.93*acal)**2)
          end do
- 
+
        end do
 
     end if
@@ -164,7 +164,7 @@ contains
       calweights(i) = exp(-(1-acal)**2/cal_sigma**2/2)
     end do
 
-    minchisq = minval(dif2) 
+    minchisq = minval(dif2)
     chisq = sum(exp(-(dif2-minchisq)/2)*calweights)/sum(calweights)
 
     if (chisq == 0) then
@@ -176,7 +176,7 @@ contains
     if (Feedback>1) write(*,*) 'Lyman-alpha chi-sq: ', chisq
 
     LSS_lyalike = chisq/2.
-   
+
  end function LSS_lyalike
 
 end module lya

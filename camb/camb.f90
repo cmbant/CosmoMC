@@ -109,6 +109,7 @@
         if (Params%DoLensing .and. Params%NonLinear==NonLinear_Lens) separate = .false.
         InReionization = Params%Reion%Reionization
         global_error_flag = 0
+        call_again = .false.
         
          if (Params%WantCls .and. Params%WantScalars) then
           P = Params
@@ -250,23 +251,14 @@
            use constants
            type(CAMBparams), intent(in) :: P
            real(dl) CAMB_GetAge
-           real(dl) atol,a1,a2, dtda, rombint
-!           real(dl), parameter :: Mpc = 3.085678e22_dl, &
-!                 c = 2.99792458e8_dl, Gyr=3.1556926e16
            integer error
-           external dtda,rombint
-
 
            call  CAMBParams_Set(P, error, .false.)
 
            if (error/=0) then
             CAMB_GetAge = -1
            else
-
-           atol = 1d-4
-           a1=0
-           a2=1
-           CAMB_GetAge = rombint(dtda,a1,a2,atol)*Mpc/c/Gyr
+            CAMB_GetAge = DeltaPhysicalTimeGyr(0.0_dl,1.0_dl)
            end if
     
          end function CAMB_GetAge
@@ -289,6 +281,7 @@
       
         subroutine CAMB_SetDefParams(P)
             use Bispectrum
+            use constants
             type(CAMBparams), intent(out) :: P
 
             P%WantTransfer= .false.
@@ -300,11 +293,12 @@
             P%omegan  = 0
             P%H0      = 65
 
-            P%TCMB    = 2.726
+            P%TCMB    = COBE_CMBTemp
             P%YHe     = 0.24
-            P%Num_Nu_massless =3.04
+            P%Num_Nu_massless =default_nnu
             P%Num_Nu_massive  =0
             P%Nu_mass_splittings = .false.
+            P%same_neutrino_Neff = .false.
             P%Nu_mass_eigenstates = 0
            
             P%Scalar_initial_condition =initial_adiabatic
@@ -445,15 +439,4 @@
 
   end module CAMB
 
-
-  function dtda(a)
-          use Precision
-          implicit none
-          real(dl) dtda,dtauda,a
-          external dtauda
-          
-          dtda= dtauda(a)*a
-  end function
-
-        
 

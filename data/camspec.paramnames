@@ -1,0 +1,14 @@
+aps100        A^{PS}_{100}      # Point source amplitude at 100 GHz
+aps143        A^{PS}_{143}      # Point source amplitude at 143 GHz
+aps217        A^{PS}_{217}      # Point source amplitude at 217 GHz
+acib143       A^{CIB}_{143}     # CIB amplitude at 143 GHz
+acib217       A^{CIB}_{217}     # CIB amplitude at 217 GHz
+asz143        A^{tSZ}_{143}     # Thermal SZ amplitude at 143 GHz
+psr           r^{PS}_{143\times217}  # 143-217 correlation coefficient of point source residuals
+cibr          r^{CIB}_{143\times217}       # 143-217 correlation coefficient of CIB
+ncib          \gamma^{CIB}           # spectral index of the CIB
+cal0          c_{100}       # relative power spectrum calibration factor 100/143 to rescale measured power with
+cal2          c_{217}       # relative calibration factor 217/143 (as for 100)
+xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
+aksz          A^{kSZ}
+bm_1_1        \beta^1_1 
