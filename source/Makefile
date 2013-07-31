@@ -1,14 +1,16 @@
-
 #Intel MPI
 #these settings for ifort 13 and higher
 #Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
-F90C     = mpif90
-FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
-LAPACKL = -lmpi
+F90C     = mpiifort 
+FFLAGS = -mkl -openmp -O3 -xHost -fpp -DMPI
+INCLUDE = 
+LAPACKL = -lmpi_mt
 
 
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
 RECOMBINATION ?=recfast
+
+EXTDATA=WIGZ
 
 #use PRECISION=SINGLE to use single precision
 PRECISION ?=
@@ -95,7 +97,7 @@ endif
 
 SUPERNOVAE = supernovae_Union2.o supernovae_SNLS.o
 
-DATAMODULES = $(PLANCKLIKEFILES) lrggettheory.o bao.o $(SUPERNOVAE) supernovae.o HST.o SDSSLy-a-v3.o
+DATAMODULES = $(PLANCKLIKEFILES) wigglez.o mpk.o bao.o $(SUPERNOVAE) supernovae.o HST.o SDSSLy-a-v3.o
 
 LIKEFILES =  DataLikelihoods.o calclike.o
 
@@ -104,11 +106,8 @@ OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o settings.o samples.o IO.o G
 	EstCovmat.o PowellConstrainedMinimize.o minimize.o postprocess.o MCMC.o driver.o
 
 
-ifeq ($(EXTDATA),LRG)
-F90FLAGS += -DDR71RG
-OBJFILES += bsplinepk.o
-GSLINC = -I$(GSLPATH)/include
-LINKFLAGS += -L$(GSLPATH)/lib -lgsl -lgslcblas
+ifeq ($(EXTDATA),WIGZ)
+F90FLAGS += -DWIGZ
 endif
 
 F90CRLINK =
@@ -145,6 +144,8 @@ cmbtypes.o: settings.o likelihood.o GeneralTypes.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o
 bbn.o: settings.o likelihood.o
+wigglez.o: cmbtypes.o
+mpk.o: cmbtypes.o
 bao.o: cmbtypes.o
 HST.o: cmbtypes.o
 supernovae.o: cmbtypes.o
@@ -203,7 +204,7 @@ getdist: camb $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS)
 
 camb:
-	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf
+	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations
 
 $(highL)/libhigh.a:
 	cd $(highL); make libhigh.a;
