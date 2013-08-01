@@ -70,7 +70,7 @@
 
     logical :: Use_LSS = .false.
     logical :: Use_CMB = .false.
-    logical :: use_wigglez_mpk = .false.
+    logical :: use_wigglez_mpk = .false.  !DP for WiggleZ MPK
 
     integer :: logfile_unit  = 0
     integer :: outfile_handle = 0

@@ -78,14 +78,12 @@ contains
    use wigglezinfo
    implicit none
    real(mcp), intent(inout) :: redshifts(matter_power_lnzsteps)
-   integer :: zix_dum,extra_iz
-   real red_dum
-   !input is default log z spacing; can change here; check for consistency with other (e.g. lya)
+    !input is default log z spacing; can change here; check for consistency with other (e.g. lya)
 
     !Note internal ordering in CAMB is the opposite to that used in cosmomc transfer arrays (as here)
     !first index here must be redshift zero
     if(use_wigglez_mpk .and. matter_power_lnzsteps < 5) &
-      call MpiStop('For combined LRGs and WiggleZ matter_power_lnzsteps should be set to at least 8 (hardcoded in cmbtypes)')
+      call MpiStop('For WiggleZ MPK, matter_power_lnzsteps should be set to at least 5 (hardcoded in cmbtypes)')
     !wigglez redshifts: z0 = 0.d0, za = 0.22d0, zb = 0.41d0, zc = 0.6d0, zd = 0.78d0
    
     if(matter_power_lnzsteps==1 .or. .not. use_wigglez_mpk) return
@@ -644,8 +642,5 @@ SUBROUTINE trapzd(func,a,b,s,n) ! From Numerical Recipes
   endif
   return
 END SUBROUTINE trapzd
-
-
-
 
 end module

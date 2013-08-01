@@ -10,6 +10,7 @@ LAPACKL = -lmpi_mt
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
 RECOMBINATION ?=recfast
 
+#set EXTDATA=WIGZ to use WiggleZ MPK module
 EXTDATA=WIGZ
 
 #use PRECISION=SINGLE to use single precision
