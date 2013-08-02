@@ -106,7 +106,10 @@
         logical :: separate = .true. !whether to do P_k in separate call or not
         logical :: InReionization
         
-        if (Params%DoLensing .and. Params%NonLinear==NonLinear_Lens) separate = .false.
+        !JD 08/13 for nonlinear lensing of CMB + LSS compatibility 
+        !changed below to include NonLinear_both
+        if (Params%DoLensing .and. (Params%NonLinear==NonLinear_Lens &
+            .or. Params%NonLinear==NonLinear_both)) separate = .false.
         InReionization = Params%Reion%Reionization
         global_error_flag = 0
         call_again = .false.
@@ -132,6 +135,9 @@
           CP%WantTensors = Params%WantTensors
           CP%WantVectors = Params%WantVectors
           CP%Transfer%num_redshifts = Params%Transfer%num_redshifts
+          !JD 08/13 for nonlinear lensing of CMB + LSS compatibility 
+          CP%Transfer%PK_redshifts_index=Params%Transfer%PK_redshifts_index
+          CP%Transfer%PK_num_redshifts = Params%Transfer%PK_num_redshifts      
           Params = CP            
          end if
  
@@ -153,6 +159,9 @@
            CP%WantScalars = Params%WantScalars
            CP%WantVectors = Params%WantVectors
            CP%Transfer%num_redshifts = Params%Transfer%num_redshifts
+           !JD 08/13 for nonlinear lensing of CMB + LSS compatibility 
+           CP%Transfer%PK_redshifts_index=Params%Transfer%PK_redshifts_index
+           CP%Transfer%PK_num_redshifts = Params%Transfer%PK_num_redshifts 
            Params = CP            
    
          end if
@@ -175,6 +184,9 @@
           CP%WantTensors = Params%WantTensors
           CP%WantScalars = Params%WantScalars
           CP%Transfer%num_redshifts = Params%Transfer%num_redshifts
+          !JD 08/13 for nonlinear lensing of CMB + LSS compatibility 
+          CP%Transfer%PK_redshifts_index=Params%Transfer%PK_redshifts_index
+          CP%Transfer%PK_num_redshifts = Params%Transfer%PK_num_redshifts
           Params = CP            
    
          end if

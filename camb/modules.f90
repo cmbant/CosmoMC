@@ -77,11 +77,20 @@
         real(dl)    ::  kmax         !these are acutally q values, but same as k for flat
         integer     ::  k_per_logint ! ..
         real(dl)    ::  redshifts(max_transfer_redshifts)
+        !JD 08/13 Added so both NL lensing and PK can be run at the same time
+        real(dl)    ::  PK_redshifts(max_transfer_redshifts)
+        real(dl)    ::  NLL_redshifts(max_transfer_redshifts)
+        integer     ::  PK_redshifts_index(max_transfer_redshifts)
+        integer     ::  NLL_redshifts_index(max_transfer_redshifts)
+        integer     ::  PK_num_redshifts
+        integer     ::  NLL_num_redshifts
+        
     end type TransferParams
 
     !other variables, options, derived variables, etc.
 
     integer, parameter :: NonLinear_none=0, NonLinear_Pk =1, NonLinear_Lens=2
+    integer, parameter :: NonLinear_both=3  !JD 08/13 added so both can be done
 
     ! Main parameters type
     type CAMBparams
@@ -398,7 +407,9 @@
         CP%tau0=last_tau0
     end if
 
-    if ( CP%NonLinear==NonLinear_Lens) then
+    !JD 08/13 Changes for nonlinear lensing of CMB + MPK compatibility  
+    !if ( CP%NonLinear==NonLinear_Lens) then
+    if (CP%NonLinear==NonLinear_Lens .or. CP%NonLinear==NonLinear_both ) then
         CP%Transfer%kmax = max(CP%Transfer%kmax, CP%Max_eta_k/CP%tau0)
         if (FeedbackLevel > 0 .and. CP%Transfer%kmax== CP%Max_eta_k/CP%tau0) &
         write (*,*) 'max_eta_k changed to ', CP%Max_eta_k
@@ -1873,7 +1884,13 @@
 
     end subroutine Transfer_GetMatterPowerS
 
-    subroutine Transfer_GetMatterPowerD(MTrans,outpower, itf, in, minkh, dlnkh, npoints)
+!JD 08/13 for nonlinear lensing of CMB + LSS compatibility
+!Changed input variable from itf to itf_PK because we are looking for the itf_PK'th
+!redshift in the PK_redshifts array.  The position of this redshift in the master redshift
+!array, itf, is given by itf = CP%Transfer%Pk_redshifts_index(itf_PK)
+!Also changed (CP%NonLinear/=NonLinear_None) to 
+!CP%NonLinear/=NonLinear_none .and. CP%NonLinear/=NonLinear_Lens)
+    subroutine Transfer_GetMatterPowerD(MTrans,outpower, itf_PK, in, minkh, dlnkh, npoints)
     !Allows for non-smooth priordial spectra
     !if CP%Nonlinear/ = NonLinear_none includes non-linear evolution
     !Get total matter power spectrum at logarithmically equal intervals dlnkh of k/h starting at minkh
@@ -1884,14 +1901,16 @@
     Type(MatterTransferData), intent(in) :: MTrans
     Type(MatterPowerData) :: PK
 
-    integer, intent(in) :: itf, in, npoints
+    integer, intent(in) :: itf_PK, in, npoints
     real(dl), intent(out) :: outpower(npoints)
     real(dl), intent(in) :: minkh, dlnkh
     real(dl), parameter :: cllo=1.e30_dl,clhi=1.e30_dl
     integer ik, llo,il,lhi,lastix
     real(dl) matpower(MTrans%num_q_trans), kh, kvals(MTrans%num_q_trans), ddmat(MTrans%num_q_trans)
     real(dl) atransfer,xi, a0, b0, ho, logmink,k, h
-
+    integer itf
+    
+    itf = CP%Transfer%PK_redshifts_index(itf_PK)
 
     if (npoints < 2) stop 'Need at least 2 points in Transfer_GetMatterPower'
 
@@ -1903,7 +1922,7 @@
     write(*,*) 'Warning: extrapolating matter power in Transfer_GetMatterPower'
 
 
-    if (CP%NonLinear/=NonLinear_None) then
+    if (CP%NonLinear/=NonLinear_none .and. CP%NonLinear/=NonLinear_Lens) then
         call Transfer_GetMatterPowerData(MTrans, PK, in, itf)
         call NonLinear_GetRatios(PK)
     end if
@@ -1915,7 +1934,7 @@
         k = kh*h
         kvals(ik) = log(kh)
         atransfer=MTrans%TransferData(transfer_power_var,ik,itf)
-        if (CP%NonLinear/=NonLinear_None) &
+        if (CP%NonLinear/=NonLinear_none .and. CP%NonLinear/=NonLinear_Lens) &
         atransfer = atransfer* PK%nonlin_ratio(ik,1) !only one element, this itf
         matpower(ik) = log(atransfer**2*k*pi*twopi*h**3)
         !Put in power spectrum later: transfer functions should be smooth, initial power may not be
@@ -1964,7 +1983,7 @@
         if (global_error_flag /= 0) exit
     end do
 
-    if (CP%NonLinear/=NonLinear_None) call MatterPowerdata_Free(PK)
+    if (CP%NonLinear/=NonLinear_none .and. CP%NonLinear/=NonLinear_Lens) call MatterPowerdata_Free(PK)
 
     end subroutine Transfer_GetMatterPowerD
 
@@ -2079,24 +2098,26 @@
 
     end subroutine Transfer_Free
 
+!JD 08/13 Changes for nonlinear lensing of CMB + MPK compatibility
+!Changed function below to write to only P%NLL_*redshifts* variables
     subroutine Transfer_SetForNonlinearLensing(P)
     Type(TransferParams) :: P
     integer i
     real maxRedshift
 
-    P%kmax = 5*AccuracyBoost
+    P%kmax = max(P%kmax,5*AccuracyBoost)
     P%k_per_logint  = 0
     maxRedshift = 10
-    P%num_redshifts =  nint(10*AccuracyBoost)
+    P%NLL_num_redshifts =  nint(10*AccuracyBoost)
     if (HighAccuracyDefault) then
         !only notionally more accuracy, more stable for RS
         maxRedshift =15
-        P%num_redshifts = P%num_redshifts *3
+        P%NLL_num_redshifts = P%NLL_num_redshifts *3
     end if
-    if (P%num_redshifts > max_transfer_redshifts) &
+    if (P%NLL_num_redshifts > max_transfer_redshifts) &
     stop 'Transfer_SetForNonlinearLensing: Too many redshifts'
-    do i=1,P%num_redshifts
-        P%redshifts(i) = real(P%num_redshifts-i)/(P%num_redshifts/maxRedshift)
+    do i=1,P%NLL_num_redshifts
+        P%NLL_redshifts(i) = real(P%NLL_num_redshifts-i)/(P%NLL_num_redshifts/maxRedshift)
 
     end do
 
@@ -2152,8 +2173,10 @@
         do in = 1, CP%InitPower%nn
 
         call Transfer_GetMatterPowerData(MTrans, PK_data, in, itf)
-
-        if (CP%NonLinear/=NonLinear_None) call MatterPowerdata_MakeNonlinear(PK_Data)
+        !JD 08/13 for nonlinear lensing of CMB + LSS compatibility
+        !Changed (CP%NonLinear/=NonLinear_None) to CP%NonLinear/=NonLinear_none .and. CP%NonLinear/=NonLinear_Lens)  
+        if(CP%NonLinear/=NonLinear_none .and. CP%NonLinear/=NonLinear_Lens)&
+        call MatterPowerdata_MakeNonlinear(PK_Data)
 
         outpower(:,in) = exp(PK_data%matpower(:,1))
         call MatterPowerdata_Free(PK_Data)
@@ -2198,6 +2221,45 @@
     end do
 
     end subroutine Transfer_SaveMatterPower
+
+!JD 08/13 New function for nonlinear lensing of CMB + MPK compatibility
+!Build master redshift array from array of desired Nonlinear lensing (NLL) 
+!redshifts and an array of desired Power spectrum (PK) redshifts. 
+!At the same time fill arrays for NLL and PK that indicate indices
+!of their desired redshifts in the master redshift array.  
+!Finally define number of redshifts in master array. This is usually given by:
+!P%num_redshifts = P%PK_num_redshifts + P%NLL_num_redshifts - 1.  The -1 comes
+!from the fact that z=0 is in both arrays 
+    subroutine Transfer_SortAndIndexRedshifts(P)
+    Type(TransferParams) :: P
+    integer i, iPK, iNLL
+      i=0
+      iPK=1
+      iNLL=1      
+      do while (iPk<=P%PK_num_redshifts .or. iNLL<=P%NLL_num_redshifts)
+        if(P%NLL_redshifts(iNLL)==P%PK_redshifts(iPK))then
+          i=i+1
+          P%redshifts(i)=P%PK_redshifts(iPK)
+          P%PK_redshifts_index(iPK)=i
+          P%NLL_redshifts_index(iNLL)=i
+          iPK=iPK+1
+          iNLL=iNLL+1
+        else if(P%NLL_redshifts(iNLL)>P%PK_redshifts(iPK))then
+          i=i+1
+          P%redshifts(i)=P%NLL_redshifts(iNLL)
+          P%NLL_redshifts_index(iNLL)=i
+          iNLL=iNLL+1
+        else
+          i=i+1
+          P%redshifts(i)=P%PK_redshifts(iPK)
+          P%PK_redshifts_index(iPK)=i
+          iPK=iPK+1
+        end if
+      end do
+      P%num_redshifts=i
+      if (P%num_redshifts > max_transfer_redshifts) &
+          call Mpistop('Transfer_SortAndIndexRedshifts: Too many redshifts')
+    end subroutine Transfer_SortAndIndexRedshifts
 
     end module Transfer
 

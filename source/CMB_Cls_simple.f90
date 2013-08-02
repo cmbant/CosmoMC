@@ -6,7 +6,8 @@
     CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Nonlinear_lens, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
     CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, Transfer_SetForNonlinearLensing, &
     initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
-    HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs
+    HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, &
+    Transfer_SortAndIndexRedshifts  !JD added for nonlinear lensing of CMB + MPK compatibility
     use Errors !CAMB
     use settings
     use IO
@@ -400,7 +401,9 @@
     type(CAMBParams)  P
     integer zix
     real(mcp) redshifts(matter_power_lnzsteps)
-
+    !JD Changed P%Transfer%redshifts and P%Transfer%num_redshifts to 
+    !P%Transfer%PK_redshifts and P%Transfer%PK_num_redshifts respectively
+    !for nonlinear lensing of CMB + LSS compatibility
     Threadnum =num_threads
     w_lam = -1
     !wa_ppf = 0._dl
@@ -428,7 +431,7 @@
     end if
 
     !        if (Use_Lya) P%Transfer%kmax = lya_kmax
-    P%Transfer%num_redshifts = matter_power_lnzsteps
+    P%Transfer%PK_num_redshifts = matter_power_lnzsteps
 
     if (AccuracyLevel > 1 .or. HighAccuracyDefault) then
         if (USE_LSS) then
@@ -461,11 +464,11 @@
         if (redshifts(1) > 0.0001) call MpiStop('mpk redshifts: lowest redshift must be zero')
         do zix=1, matter_power_lnzsteps
             !CAMB's ordering is from highest to lowest
-            P%Transfer%redshifts(zix) = redshifts(matter_power_lnzsteps-zix+1)
+            P%Transfer%PK_redshifts(zix) = redshifts(matter_power_lnzsteps-zix+1)
         end do
     else
-        P%Transfer%num_redshifts = 1
-        P%Transfer%redshifts(1) = 0
+        P%Transfer%PK_num_redshifts = 1
+        P%Transfer%PK_redshifts(1) = 0
     end if
 
     P%Num_Nu_Massive = 3
@@ -488,16 +491,21 @@
         !k_etamax=18000 give c_phi_phi accurate to sub-percent at L=1000, <4% at L=2000
         !k_etamax=10000 is just < 1% at L<=500
     end if
-
+!JD 08/13 for nonlinear lensing of CMB + LSS compatibility
     if (CMB_Lensing .and. use_nonlinear_lensing) then
-        if (use_LSS  .and. (matter_power_lnzsteps>1)) & ! .or. use_mpk)) &
-        call MpiStop('non-linear lensing and LSS data not supported currently')
-        !Haven't sorted out how to use LSS data etc with linear/nonlinear/sigma8/non-linear CMB lensing...
         P%WantTransfer = .true.
         P%NonLinear = NonLinear_lens
         call Transfer_SetForNonlinearLensing(P%Transfer)
+        if(use_nonlinear) P%NonLinear = NonLinear_both
+        call Transfer_SortAndIndexRedshifts(P%Transfer)
+    else
+        P%Transfer%num_redshifts=P%Transfer%PK_num_redshifts
+        P%Transfer%redshifts=P%Transfer%PK_redshifts
+        do zix=1,P%Transfer%num_redshifts
+          P%Transfer%PK_redshifts_index(zix) = zix
+        end do   
     end if
-
+!End JD modifications
     lensing_includes_tensors = .false.
 
     P%Scalar_initial_condition = initial_vector

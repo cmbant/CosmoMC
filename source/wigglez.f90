@@ -652,7 +652,7 @@ contains
 
     end if !not analytic over Q
    WiggleZ_LnLike=LnLike   
-   if (Feedback>1) write(*,*) 'WiggleZ mpk chi-sq:', LnLike*2
+   if (Feedback>1) write(*,'("WiggleZ bin ",I0," mpk chi-sq: ",EN14.5)')iz,LnLike*2
    
    if (LnLike > 1e8) then
       write(*,*) 'Chisq is huge, maybe there is a problem? chisq=',chisq
