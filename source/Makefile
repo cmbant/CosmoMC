@@ -204,8 +204,12 @@ cleancosmomc:
 getdist: camb $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS)
 
+#If you want to use the ppf module, change equations_ppf to equations
+#and halofit_ppf to halofit also comment out wa_ppf in CMB_Cls_simple.f90
 camb:
-	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations
+	cd ../camb && \
+	$(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a \
+	RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf NONLINEAR=halofit_ppf
 
 $(highL)/libhigh.a:
 	cd $(highL); make libhigh.a;

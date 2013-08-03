@@ -14,6 +14,8 @@
 !WiggleZ Matter power spectrum likelihood module.  Format is based upon mpk.f90
 !DP & JD 2013 For compatibility with the latest version of CosmoMC (March2013)
 
+!JD 03/08/2013 fixed compute_scaling_factor and associated functions
+!to work with w_a/=0 
 
 module wigglezinfo
 !David Parkinson 12th March 2012
@@ -499,7 +501,7 @@ contains
    real(mcp) calweights(-nQ:nQ)
    real(mcp) vec2(2),Mat(2,2)
    real(mcp) final_term, b_out
-   real(mcp) z,omk_fid, omv_fid,w_fid
+   real(mcp) z,omk_fid, omv_fid,w0_fid,wa_fid
    integer i_region
    character(len=32) fname
 
@@ -515,7 +517,7 @@ contains
 
    
    allocate(chisq(-nQ:nQ))
-   If(CMB%wa/=0) call MpiStop('WiggleZ MPK module not compatible with wa /= 0')
+   
    chisq = 0
 
    if (.not. like%use_set) then
@@ -526,10 +528,12 @@ contains
    ! won't actually want to do this multiple times for multiple galaxy pk data sets?..
    omk_fid = 0.d0
    omv_fid = 0.705d0
-   w_fid = -1.d0
+   w0_fid = -1.d0
+   wa_fid = 0.d0
    z = 1.d0*dble(like%redshift) ! accuracy issues
    if(like%use_scaling) then
-     call compute_scaling_factor_z(z,dble(CMB%omk),dble(CMB%omv),dble(CMB%w),omk_fid,omv_fid,w_fid,a_scl)
+     call compute_scaling_factor_z(z,dble(CMB%omk),dble(CMB%omv),dble(CMB%w),dble(CMB%wa),&
+     omk_fid,omv_fid,w0_fid,wa_fid,a_scl)
    else
      a_scl = 1
    end if
@@ -681,8 +685,9 @@ contains
 !-----------------------------------------------------------------------------
 !LV added to include lrg DR4
 
+!JD 08/13 fixed functions below to work with w_a
 !DP added an input zeff value to compute_scaling_factor
-subroutine compute_scaling_factor_z(z,Ok,Ol,w,Ok0,Ol0,w0,a)
+subroutine compute_scaling_factor_z(z,Ok,Ol,w0,wa,Ok0,Ol0,w00,wa0,a)
   ! a = dV for z=0.35 relative to its value for flat Om=0.25 model.
   ! This is the factor by which the P(k) measurement would shift 
   ! sideways relative to what we got for this fiducial flat model.
@@ -697,26 +702,23 @@ subroutine compute_scaling_factor_z(z,Ok,Ol,w,Ok0,Ol0,w0,a)
   !     accurate to within about 0.1% for 0.2<Om<0.3.
   ! * a_radial = 1/H(z) relative to its value for flat Om=0.25 model
   implicit none
-  real(mpk_d) Or, Om, Ok, Ol, w, Ok0, Om0, Ol0, w0, z, eta, eta0, Hrelinv, Hrelinv0, tmp
+  real(mpk_d) Or, Om, Ok, Ol, w0, wa, Ok0, Om0, Ol0, w00, wa0, z, eta, eta0, Hrelinv, Hrelinv0, tmp
+  real(mpk_d) Q,Q0
   real(mpk_d) a_radial, a_angular
   real(mcp) a
   !Or= 0.0000415996*(T_0/2.726)**4 / h**2
   Or= 0! Radiation density totally negligible at  z < 0.35
   Om= 1-Ok-Ol-Or
-  !!!z  = 0.35  !!edited by Beth 21-11-08: change to zeff of Will's LRG sample.
- 
-  Hrelinv= 1/sqrt(Ol*(1+z)**(3*(1+w)) + Ok*(1+z)**2 + Om*(1+z)**3 + Or*(1+z)**4)
-!  write(*,*) Ok,Ol,w  
-  call compute_z_eta(Or,Ok,Ol,w,z,eta)
+  Q = (1+z)**(3*(1+w0+wa))*dexp(-3*(z/(1+z))*wa) 
+  Hrelinv= 1/sqrt(Ol*Q + Ok*(1+z)**2 + Om*(1+z)**3 + Or*(1+z)**4)
+  call compute_z_eta(Or,Ok,Ol,w0,wa,z,eta)
   tmp = sqrt(abs(Ok))
   if (Ok.lt.-1.d-6) eta = sin(tmp*eta)/tmp
   if (Ok.gt.1d-6)   eta = (exp(tmp*eta)-exp(-tmp*eta))/(2*tmp) ! sinh(tmp*eta)/tmp
-!  Ok0= 0
-!  Ol0= 0.75
-!  w0= -1
   Om0= 1-Ok0-Ol0-Or
-  call compute_z_eta(Or,Ok0,Ol0,w0,z,eta0)
-  Hrelinv0= 1/sqrt(Ol0*(1+z)**(3*(1+w0)) + Ok0*(1+z)**2 + Om0*(1+z)**3 + Or*(1+z)**4)
+  call compute_z_eta(Or,Ok0,Ol0,w00,wa0,z,eta0)
+  Q0 = (1+z)**(3*(1+w00+wa0))*dexp(-3*(z/(1+z))*wa0) 
+  Hrelinv0= 1/sqrt(Ol0*Q0 + Ok0*(1+z)**2 + Om0*(1+z)**3 + Or*(1+z)**4)
   !a_angular = (Om/0.25)**(-0.065) * (-w*Otot)**0.14 ! Approximation based on Taylor expansion
   a_angular = eta/eta0
   a_radial= Hrelinv/Hrelinv0
@@ -729,81 +731,127 @@ end subroutine compute_scaling_factor_z
 
 subroutine eta_demo
   implicit none
-  real(mpk_d) Or, Ok, Ol, w, h, z, eta
+  real(mpk_d) Or, Ok, Ol, w0,wa , h, z, eta
   h  = 0.7
   Ok = 0
   Ol = 0.7
-  Or = 0.0000416/h**2 
-  w  = -1
+  Or = 0.0000416/h**2
+  w0 = -1
+  wa = 0
   z  = 1090
-  call compute_z_eta(Or,Ok,Ol,w,z,eta)
+  call compute_z_eta(Or,Ok,Ol,w0,wa,z,eta)
 !  print *,'eta.............',eta
 !  print *,'dlss in Gpc.....',(2.99792458/h)*eta
 end subroutine eta_demo
 
 !INTERFACE
-logical function nobigbang2(Ok,Ol,w)
+logical function nobigbang2(Ok,Ol,w0,wa)
   ! Test if we're in the forbidden zone where the integrand blows up
   ! (where's H^2 < 0 for some a between 0 and 1).
-  ! The function f(a) = Omega_m + Omega_k*a + Omega_l*a**(-3*w)
-  ! can have at most one local minimum, at (Ok/(3*w*Ol))**(-1/(1+3*w)), 
-  ! so simply check if f(a)<0 there or at the endpoints a=0, a=1.
-  ! g(0) = Omega_m - Omega_l*a**(-3*w) < 0 if w > 0 & Omega_k > 1
-  !                                     or if w = 0 & Omega_l < 1       
+  ! The function f(a) = Omega_m + Omega_k*a + Omega_l*Q(a)
+  ! with Q(a) = a**(-3*(w_0+w_a))*exp(-3*(1-a)*w_a).
+  ! can have at most one local minimum.
+  ! We use a golden ratio search to look for that minimum if it exists.
+  ! We then if f(a)<0 there or at the endpoints a=0, a=1.
+  ! g(0) = Omega_m + Omega_l*a**(-3*(w_0+w_a))*exp(-3*w_a) < 0 
+  !                               if w_0+w_a > 0 & Omega_k > 1
+  !                            or if w_0+w_a = 0 & Omega_l < 1
   ! g(1) = Omega_m + Omega_k + Omega_l = 1 > 0
   implicit none
-  real(mpk_d) Ok, Ol, w, Om, tmp, a, epsilon
+  real(mpk_d) Ok,Ol,w0,wa,Om,a,Q
   integer failure
-  failure = 0
-  epsilon = 0
-  !epsilon = 0.04  ! Numerical integration fails even before H^2 goes negative.
+  real(mpk_d) ratio  
+  real(mpk_d) alow,a1,a2,ahigh,Q1,Q2,tol,f1,f2
+  integer i
+  ratio = (sqrt(5.)-1)/2 !Golden ratio for min search search
+  tol = 1.e-6
   Om = 1.d0 - Ok - Ol
-  if (w*Ol.ne.0) then
-     tmp = Ok/(3*w*Ol)
-     if ((tmp.gt.0).and.(1+3*w.ne.0)) then ! f'(0)=0 for some a>0
-        a = tmp**(-1/(1+3*w))
-        if (a.lt.1) then
-           if (Om + Ok*a + Ol*a**(-3*w).lt.epsilon) failure = 1
-        end if
-     end if
-  end if
-  if ((w.eq.0).and.(Ok.gt.1)) failure = 2
-  if ((w.gt.0).and.(Ol.lt.0)) failure = 3
+  failure = 0
+  
+  !Test if f(0)<0
+  if (((w0+wa).eq.0).and.(Ok.gt.1)) failure = 2
+  if (((w0+wa).gt.0).and.(Ol.lt.0)) failure = 3
   nobigbang2 = (failure.gt.0)
-  if (failure.gt.0) print *,'Big Bang failure mode ',failure
-  return
-end function nobigbang2
+  if(nobigbang2) then
+    write(*,*)'Big Bang failure mode ',failure
+    return 
+  end if
+  
+  !Set up initial values for golden ratio search
+  alow = 0
+  ahigh = 1
+  a1 = alow+ratio
+  a2 = ahigh-ratio
+  failure = 0
+  i=0
+  do while ((ahigh-alow)>=tol .and. i<100)
+    Q1 = a1**(-3*(w0+wa))*dexp(3*(-1+a1)*wa) 
+    Q2 = a2**(-3*(w0+wa))*dexp(3*(-1+a2)*wa) 
+    f1 = Om+Ok*a1+Ol*Q1
+    f2 = Om+Ok*a2+Ol*Q2
+    !check if we have a negative value even before finding minimum
+    if(f1<0 .or. f2 <0)then 
+      failure=1
+      exit
+    end if
+    !Set up next search step
+    if(f1>f2)then
+      ahigh=a1
+      a1=a2
+      a2=ahigh-ratio*(ahigh-alow)
+    else
+      alow=a2
+      a2=a1
+      a1=alow+ratio*(ahigh-alow)
+    end if
+    !Test for convergence of Search
+    if((ahigh-alow)<tol)then
+      a=(ahigh+alow)/2
+      if(a>tol)then  !only test minimum if is not found at a=0
+        Q=a**(-3*(w0+wa))*dexp(3*(-1+a)*wa) 
+        if(Om+Ok*a+Ol*Q<0)failure=1
+      end if
+    end if
+    i = i+1
+  end do
+  if(i>99) write(*,*)'Warning golden ratio search failed to converge in nobigbang2'
+  nobigbang2 = (failure.gt.0)
+  if(nobigbang2) write(*,*)'Big Bang failure mode ',failure
+  end function nobigbang2
 !END INTERFACE
 
 real(mpk_d) function eta_integrand(a)
   implicit none
-  real(mpk_d) Or, Ok, Ox, w
-  common/eta/Or, Ok, Ox, w
-  real(mpk_d) a, Om
-  ! eta = int (H0/H)dz = int (H0/H)(1+z)dln(1+z) = int (H0/H)/a dlna = int (H0/H)/a^2 da = 
+  real(mpk_d) Or, Ok, Ox, w0,wa
+  common/eta/Or, Ok, Ox, w0,wa
+  real(mpk_d) a, Om,Q
+  ! eta = int (H0/H)dz = int (H0/H)(1+z)dln(1+z) = int (H0/H)/a dlna = int (H0/H)/a^2 da =
   ! Integrand = (H0/H)/a^2
-  ! (H/H0)**2 = Ox*a**(-3*(1+w)) + Ok/a**2 + Om/a**3 + Or/a**4 
-  if (a.eq.0.d0) then 
+  ! (H/H0)**2 = Ox*Q(a) + Ok/a**2 + Om/a**3 + Or/a**4
+  ! with Q(a) = a**(-3*(1+w_0+w_a))*exp(-3*(1-a)*w_a)
+  if (a.eq.0.d0) then
      eta_integrand = 0.d0
   else
      Om = 1.d0 - Or - Ok - Ox
-     eta_integrand = 1.d0/sqrt(Ox*a**(1-3*w) + Ok*a**2 + Om*a + Or)
+     Q = a**(1-3*(w0+wa))*dexp(3*(-1+a)*wa)
+     eta_integrand = 1.d0/sqrt(Ox*Q + Ok*a**2 + Om*a + Or)
   end if
   return
 end function eta_integrand
 
-subroutine eta_z_integral(Omega_r,Omega_k,Omega_x,w_eos,z,eta)
+subroutine eta_z_integral(Omega_r,Omega_k,Omega_x,w_eos0,w_eosa,z,eta)
   ! Computes eta as a function
   ! of the curvature Omega_k, the dark energy density Omega_x
   ! and its equation of state w.
   implicit none
-  real(mpk_d) Or, Ok, Ox, w
-  common/eta/Or, Ok, Ox, w
-  real(mpk_d) Omega_r, Omega_k,Omega_x,w_eos, z, eta, epsabs, epsrel, amin, amax!, eta_integrand
+  real(mpk_d) Or, Ok, Ox, w0,wa
+  common/eta/Or, Ok, Ox, w0,wa
+  real(mpk_d) Omega_r, Omega_k,Omega_x,w_eos0,w_eosa, z, eta, epsabs, epsrel, amin, amax!, eta_integrand
   Or = Omega_r
   Ok = Omega_k
   Ox = Omega_x
-  w  = w_eos
+  w0 = w_eos0
+  wa = w_eosa
   epsabs  = 0
   epsrel  = 1.d-10
   amin= 1/(1+z)
@@ -812,16 +860,16 @@ subroutine eta_z_integral(Omega_r,Omega_k,Omega_x,w_eos,z,eta)
   return
 end subroutine eta_z_integral
 
-subroutine compute_z_eta(Or,Ok,Ox,w,z,eta)
+subroutine compute_z_eta(Or,Ok,Ox,w0,wa,z,eta)
   ! Computes the conformal distance eta(z)
   implicit none
-  real(mpk_d) Or, Ok, Ox, w, z, eta
+  real(mpk_d) Or, Ok, Ox, w0,wa, z, eta
 !  logical nobigbang2
-  if (nobigbang2(Ok,Ox,w)) then
+  if (nobigbang2(Ok,Ox,w0,wa)) then
      print *,'No big bang, so eta undefined if z>zmax.'
-     eta = 99 
+     eta = 99
   else
-     call eta_z_integral(Or,Ok,Ox,w,z,eta) 
+     call eta_z_integral(Or,Ok,Ox,w0,wa,z,eta)
      ! print *,'Or, Ok, Ox, w, z, H_0 t_0...',Or, Ok, Ox, w, eta
   end if
   return

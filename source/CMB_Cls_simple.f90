@@ -2,7 +2,7 @@
     module CMB_Cls
     use cmbtypes
     use CAMB, only : CAMB_GetResults, CAMB_GetAge, CAMBParams, CAMB_SetDefParams,Transfer_GetMatterPower, &
-    AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, &! wa_ppf,&
+    AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, wa_ppf,&
     CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Nonlinear_lens, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
     CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, Transfer_SetForNonlinearLensing, &
     initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
@@ -53,7 +53,7 @@
     P%Reion%redshift= CMB%zre
     P%Reion%delta_redshift = CMB%zre_delta
     w_lam = CMB%w
-    !wa_ppf = CMB%wa
+    wa_ppf = CMB%wa
     ALens = CMB%ALens
     P%InitialConditionVector(initial_iso_CDM) = &
     sign(sqrt(abs(CMB%iso_cdm_correlated) /(1-abs(CMB%iso_cdm_correlated))),CMB%iso_cdm_correlated)
@@ -406,7 +406,7 @@
     !for nonlinear lensing of CMB + LSS compatibility
     Threadnum =num_threads
     w_lam = -1
-    !wa_ppf = 0._dl
+    wa_ppf = 0._dl
     call CAMB_SetDefParams(P)
 
     P%OutputNormalization = outNone
