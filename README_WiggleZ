@@ -1,0 +1,47 @@
+This module for the June 2013 version of CosmoMC includes the likelihood code and data
+necessary to incorporate the WiggleZ Dark Energy survey measurements of the galaxy power
+spectrum as described in, described in axiv:1003.5721, Blake et al (2010), and 
+arxiv:1210.2130, Parkinson et al (2012) (If you make use of the WiggleZ dataset, 
+please remember to cite both the Blake et al and Parkinson et al papers).  
+
+In order to run this code you will first have to download and install the June 2013
+version of CosmoMC, which can be found online at http://cosmologist.info/cosmomc.  
+Follow the instructions to install CosmoMC as given in the readme:
+http://cosmologist.info/cosmomc/readme.html.  
+
+Installing this module is then very straight forward.  Simply run the following command:
+tar -xzf wigglez_module_new.tar.gz -C pathtocosmomc.  
+
+Next go back into your CosmoMC directory and rebuild CosmoMC:
+cd pathtocosmomc
+make clean
+make all
+
+You should now be ready to run the with the WiggleZ MPK data.  To do so simply go into
+test.ini and make sure the following line is uncommented
+
+DEFAULT(batch1/MPK.ini)
+
+Then decide whether you want to include nonlinear corrections from the halofit
+module and go into batch1/MPK.ini to set the variable "nonlinear_pk" accordingly.  We 
+do recommend that you set nonlinear_pk = T.  
+
+You can also choose to include other matter power spectra in your analysis by setting
+the following variables in batch1/MPK.ini 
+
+mpk_numdatasets = 1
+mpk_dataset1 = data/sdss_lrgDR4.dataset
+
+We have included in this module the SDSS DR4 LRG power spectrum of 
+arXiv:astro-ph/0608632, Tegmark et al (2006).  Please do cite accordingly if you use that
+dataset.
+
+Finally run cosmomc:
+
+./cosmomc test.ini
+or
+mpiexec -n numofprocs cosmomc test.ini
+or 
+mpirun -n numofprocs cosmomc test.ini
+
+  
