@@ -14,6 +14,10 @@
 
 ! RT12 Oct: update some fitting parameters in the code to enhance
 !           the power spectrum at small scales (arXiv:1208.2701)
+
+!!JD 08/13: generalized expressions for om(z) and ol(z) to include 
+!           w_0 and w_a
+
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
       module NonLinear
@@ -237,7 +241,7 @@
       omega_v=omega_t*om_v0*Qa2/(om_v0*Qa2+om_m0/aa)
       end function omega_v
 
-!!BR09 end generalize to constant w
+!!JD end generalize to variable w
 
 end module NonLinear
 
