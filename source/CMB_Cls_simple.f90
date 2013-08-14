@@ -198,11 +198,17 @@
         error=global_error_flag
         return
     end if
+    !JD 08/13 added so we dont have to fill Cls unless using CMB
+    if(use_CMB)then 
+      call SetPowersFromCAMB(Theory)
 
-    call SetPowersFromCAMB(Theory)
-
-    if (any(Theory%cl(:,1) < 0 )) then
-        call MpiStop('CMB_cls_simple: negative C_l (could set error here)')
+      if (any(Theory%cl(:,1) < 0 )) then
+        error = 1 
+        return
+        !call MpiStop('CMB_cls_simple: negative C_l (could set error here)')
+      end if
+    else
+      Theory%cl(:,:)=0
     end if
 
     if (Use_LSS) then
@@ -410,6 +416,9 @@
     call CAMB_SetDefParams(P)
 
     P%OutputNormalization = outNone
+
+    !JD added to save computation time when only using MPK
+    if(.not. use_CMB) lmax_computed_cl = 10
 
     P%WantScalars = .true.
     P%WantTensors = compute_tensors

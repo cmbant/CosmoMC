@@ -105,7 +105,8 @@
     real(mcp)  D_b,D_t,D_try,try_b,try_t, lasttry
     integer, save :: cache=1
     integer i
-    Type(CMBParams), pointer :: CP
+   Type(CMBParams), pointer :: CP
+    integer error
 
     select type (CMB)
     class is (CMBParams)
@@ -121,9 +122,14 @@
         end do
         call this%CosmologyParameterization%ParamArrayToTheoryParams(Params, CMB)
 
+        error = 0   !JD to prevent stops when using bbn_consistency or m_sterile
         DA = Params(3)/100
         try_b = this%H0_min
-        call SetForH(Params,CMB,try_b, .true.)
+        call SetForH(Params,CMB,try_b, .true.,error)  !JD for bbn related errors
+        if(error/=0)then
+          cmb%H0=0
+          return
+        end if 
         D_b = CMBToTheta(CMB)
         try_t = this%H0_max
         call SetForH(Params,CMB,try_t, .false.)
@@ -200,13 +206,14 @@
 
     end subroutine SetFast
 
-    subroutine SetForH(Params,CMB,H0, firsttime)
+    subroutine SetForH(Params,CMB,H0, firsttime,error)
     use CMB_Cls
     use bbn
     real(mcp) Params(num_Params)
     logical, intent(in) :: firsttime
     Type(CMBParams) CMB
     real(mcp) h2,H0
+    integer, optional :: error
 
     CMB%H0=H0
     if (firsttime) then
@@ -223,14 +230,25 @@
         CMB%omnuh2_sterile = Params(7)/neutrino_mass_fac
         !we are using interpretation where there are degeneracy_factor neutrinos, each exactly thermal
         !So internally 3.046 or 3.046/3 massive neutrnos. But mnu is the physical integer mass sum.
-        if (CMB%omnuh2_sterile >0 .and. CMB%nnu < 3.0455) call MpiStop('sterile neutrino mass required Neff>3.046')
+        if (CMB%omnuh2_sterile >0 .and. CMB%nnu < 3.046) then  
+          if(present(error))then
+            error=-1 
+          else 
+            call MpiStop('sterile neutrino mass required Neff>3.046')
+          end if
+        end if
+        
         CMB%omnuh2 = CMB%omnuh2 + CMB%omnuh2_sterile
         CMB%omch2 = Params(2)
         CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
         CMB%nufrac=CMB%omnuh2/CMB%omdmh2
 
         if (bbn_consistency) then
-            CMB%YHe = yp_bbn(CMB%ombh2,CMB%nnu  - 3.046)
+            if(present(error))then
+              call yp_bbn(CMB%ombh2,CMB%nnu  - 3.046,CMB%YHe,error)
+            else
+              call yp_bbn(CMB%ombh2,CMB%nnu  - 3.046,CMB%YHe)
+            end if
         else
             !e.g. set from free parameter..
             CMB%YHe  =Params(11)
