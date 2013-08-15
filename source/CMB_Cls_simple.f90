@@ -16,7 +16,7 @@
 
     logical :: CMB_lensing = .false.
     logical :: use_lensing_potential = .false.
-    logical :: use_nonlinear = .false.
+    !logical :: use_nonlinear = .false.  !JD 08/13 moved to settings, needed  WiggleZ module
     logical :: use_nonlinear_lensing = .false.
     real(mcp) :: lens_recon_scale = 1._mcp
 

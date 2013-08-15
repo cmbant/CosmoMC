@@ -47,11 +47,6 @@ contains
     real(mcp) redshift
     logical save
 
-    zeval(1) = za
-    zeval(2) = zb
-    zeval(3) = zc
-    zeval(4) = zd
-    
     iz = 0
     do i=1,4
        if(abs(redshift-zeval(i)).le.0.001) iz = i
@@ -230,6 +225,11 @@ contains
     integer :: file_unit
     logical bad
     Type(TIniFile) :: Ini
+    
+    zeval(1) = za
+    zeval(2) = zb
+    zeval(3) = zc
+    zeval(4) = zd
     
     iopb = 0
     
@@ -415,8 +415,20 @@ contains
     wmset%use_gigglez = Ini_Read_Logical_File(Ini,'Use_gigglez',.false.)
 
     if(wmset%use_gigglez) then
+      if(.not. use_nonlinear) then
+        write(*,*) 'ERROR!:  GiggleZ non-linear prescription only available'
+        write(*,*) '         when setting nonlinear_pk = T in MPK.ini'
+        call MPIstop()
+      end if
       call GiggleZinfo_init(wmset%redshift)
     endif
+
+    if(.not. wmset%use_gigglez .and. use_nonlinear)then
+      write(*,*)'WARNING! Using non-linear model in WiggleZ module without'
+      write(*,*)'GiggleZ prescription.  This method may not be as accurate.'
+      write(*,*)'See arXiv:1210.2130 for details.'
+    end if
+
 
 !... IMPORTANT: need to talk to CB about Q marginalisation ...
     wmset%Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)

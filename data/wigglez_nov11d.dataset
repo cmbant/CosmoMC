@@ -12,7 +12,7 @@ use_scaling = T
 
 # decide which bandpowers to use, min to max
 min_mpk_points_use = 3
-max_mpk_points_use = 30 
+max_mpk_points_use = 20 
 min_mpk_kbands_use = 1
 max_mpk_kbands_use = 100 
 
