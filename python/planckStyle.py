@@ -63,7 +63,7 @@ def getSinglePlotter(ratio=3 / 4.):
     s.legend_fontsize = 9
     s.colorbar_axes_fontsize = 8
     s.scatter_size = 2
-    s.lab_fontsize = 13
+    s.lab_fontsize = 10
     s.axes_fontsize = 9
 
     plotter.make_figure(1, ystretch=ratio)
