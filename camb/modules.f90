@@ -99,7 +99,9 @@
     logical   :: WantScalars, WantTensors, WantVectors
     logical   :: DoLensing
     logical   :: want_zstar, want_zdrag     !!JH for updated BAO likelihood.
+    logical   :: PK_WantTransfer             !JD 08/13 Added so both NL lensing and PK can be run at the same time
     integer   :: NonLinear
+    
 
     integer   :: Max_l, Max_l_tensor
     real(dl)  :: Max_eta_k, Max_eta_k_tensor
@@ -1995,7 +1997,8 @@
     real(dl) lnk, dlnk, lnko
     real(dl) dsig8, dsig8o, sig8, sig8o, powers
     real(dl), intent(IN) :: sigr8
-
+    !JD 08/13 Changes in here to PK arrays and variables
+    integer itf_PK
     !Calculate MTrans%sigma_8^2 = int dk/k win**2 T_k**2 P(k), where win is the FT of a spherical top hat
     !of radius sigr8 h^{-1} Mpc
 
@@ -2003,7 +2006,8 @@
 
     H=CP%h0/100._dl
     do in = 1, CP%InitPower%nn
-        do itf=1,CP%Transfer%num_redshifts
+        do itf_PK=1,CP%Transfer%PK_num_redshifts
+            itf = CP%Transfer%PK_redshifts_index(itf_PK)
             lnko=0
             dsig8o=0
             sig8=0
@@ -2036,7 +2040,7 @@
 
             end do
 
-            MTrans%sigma_8(itf,in) = sqrt(sig8)
+            MTrans%sigma_8(itf_PK,in) = sqrt(sig8)
         end do
     end do
 
@@ -2044,13 +2048,15 @@
 
     subroutine Transfer_output_Sig8(MTrans)
     Type(MatterTransferData), intent(in) :: MTrans
-
     integer in, j
+    !JD 08/13 Changes in here to PK arrays and variables
+    integer j_PK
 
     do in=1, CP%InitPower%nn
         if (CP%InitPower%nn>1)  write(*,*) 'Power spectrum : ', in
-        do j = 1, CP%Transfer%num_redshifts
-            write(*,*) 'at z = ',real(CP%Transfer%redshifts(j)), ' sigma8 (all matter)=', real(MTrans%sigma_8(j,in))
+        do j_PK=1, CP%Transfer%PK_num_redshifts
+            j = CP%Transfer%PK_redshifts_index(j_PK)
+            write(*,*) 'at z = ',real(CP%Transfer%redshifts(j)), ' sigma8 (all matter)=', real(MTrans%sigma_8(j_PK,in))
         end do
     end do
 
@@ -2060,12 +2066,15 @@
     subroutine Transfer_output_Sig8AndNorm(MTrans)
     Type(MatterTransferData), intent(in) :: MTrans
     integer in, j
-
+    !JD 08/13 Changes in here to PK arrays and variables
+    integer j_PK
+    
     do in=1, CP%InitPower%nn
         write(*,*) 'Power spectrum ',in, ' COBE_scale = ',real(COBE_scales(in))
-        do j = 1, CP%Transfer%num_redshifts
+        do j_PK=1, CP%Transfer%PK_num_redshifts
+            j = CP%Transfer%PK_redshifts_index(j_PK)
             write(*,*) 'at z = ',real(CP%Transfer%redshifts(j)), ' sigma8(all matter) = ', &
-            real(MTrans%sigma_8(j,in)*sqrt(COBE_scales(in)))
+            real(MTrans%sigma_8(j_PK,in)*sqrt(COBE_scales(in)))
         end do
     end do
 
@@ -2081,7 +2090,8 @@
     deallocate(MTrans%sigma_8, STAT = st)
     allocate(MTrans%q_trans(MTrans%num_q_trans))
     allocate(MTrans%TransferData(Transfer_max,MTrans%num_q_trans,CP%Transfer%num_redshifts))
-    allocate(MTrans%sigma_8(CP%Transfer%num_redshifts, CP%InitPower%nn))
+    !JD 08/13 Changes in here to PK arrays and variables
+    allocate(MTrans%sigma_8(CP%Transfer%PK_num_redshifts, CP%InitPower%nn))
 
     end  subroutine Transfer_Allocate
 
@@ -2130,10 +2140,13 @@
     Type(MatterTransferData), intent(in) :: MTrans
     integer i,ik
     character(LEN=Ini_max_string_len), intent(IN) :: FileNames(*)
+    !JD 08/13 Changes in here to PK arrays and variables
+    integer i_PK
 
-    do i=1, CP%Transfer%num_redshifts
-        if (FileNames(i) /= '') then
-            open(unit=fileio_unit,file=FileNames(i),form='formatted',status='replace')
+    do i_PK=1, CP%Transfer%PK_num_redshifts
+        if (FileNames(i_PK) /= '') then
+            i = CP%Transfer%PK_redshifts_index(i_PK)
+            open(unit=fileio_unit,file=FileNames(i_PK),form='formatted',status='replace')
             do ik=1,MTrans%num_q_trans
                 if (MTrans%TransferData(Transfer_kh,ik,i)/=0) then
                     write(fileio_unit,'(7E14.6)') MTrans%TransferData(Transfer_kh:Transfer_max,ik,i)
@@ -2157,67 +2170,70 @@
     character(LEN=80) fmt
     real minkh,dlnkh
     Type(MatterPowerData) :: PK_data
+    !JD 08/13 Changes in here to PK arrays and variables
+    integer itf_PK
 
 
     write (fmt,*) CP%InitPower%nn+1
     fmt = '('//trim(adjustl(fmt))//'E15.5)'
-    do itf=1, CP%Transfer%num_redshifts
-        if (FileNames(itf) /= '') then
-
+    do itf=1, CP%Transfer%PK_num_redshifts
+      if (FileNames(itf) /= '') then
+        
 
         if (.not. transfer_interp_matterpower ) then
+          
+          itf_PK = CP%Transfer%PK_redshifts_index(itf)
+          
+          points = MTrans%num_q_trans
+          allocate(outpower(points,CP%InitPower%nn))
 
-        points = MTrans%num_q_trans
-        allocate(outpower(points,CP%InitPower%nn))
+          do in = 1, CP%InitPower%nn
 
-        do in = 1, CP%InitPower%nn
+            call Transfer_GetMatterPowerData(MTrans, PK_data, in, itf_PK)
+            !JD 08/13 for nonlinear lensing of CMB + LSS compatibility
+            !Changed (CP%NonLinear/=NonLinear_None) to CP%NonLinear/=NonLinear_none .and. CP%NonLinear/=NonLinear_Lens)  
+            if(CP%NonLinear/=NonLinear_none .and. CP%NonLinear/=NonLinear_Lens)&
+                call MatterPowerdata_MakeNonlinear(PK_Data)
 
-        call Transfer_GetMatterPowerData(MTrans, PK_data, in, itf)
-        !JD 08/13 for nonlinear lensing of CMB + LSS compatibility
-        !Changed (CP%NonLinear/=NonLinear_None) to CP%NonLinear/=NonLinear_none .and. CP%NonLinear/=NonLinear_Lens)  
-        if(CP%NonLinear/=NonLinear_none .and. CP%NonLinear/=NonLinear_Lens)&
-        call MatterPowerdata_MakeNonlinear(PK_Data)
+            outpower(:,in) = exp(PK_data%matpower(:,1))
+            call MatterPowerdata_Free(PK_Data)
+          end do
 
-        outpower(:,in) = exp(PK_data%matpower(:,1))
-        call MatterPowerdata_Free(PK_Data)
-        end do
-
-        open(unit=fileio_unit,file=FileNames(itf),form='formatted',status='replace')
-        do i=1,points
-            write (fileio_unit, fmt) MTrans%TransferData(Transfer_kh,i,1),outpower(i,1:CP%InitPower%nn)
-        end do
-        close(fileio_unit)
+          open(unit=fileio_unit,file=FileNames(itf),form='formatted',status='replace')
+          do i=1,points
+              write (fileio_unit, fmt) MTrans%TransferData(Transfer_kh,i,1),outpower(i,1:CP%InitPower%nn)
+          end do
+          close(fileio_unit)
 
         else
 
+          minkh = 1e-4
+          dlnkh = 0.02
+          points = log(MTrans%TransferData(Transfer_kh,MTrans%num_q_trans,itf)/minkh)/dlnkh+1
+          !             dlnkh = log(MTrans%TransferData(Transfer_kh,MTrans%num_q_trans,itf)/minkh)/(points-0.999)
+          allocate(outpower(points,CP%InitPower%nn))
+          do in = 1, CP%InitPower%nn
+              call Transfer_GetMatterPowerS(MTrans,outpower(1,in), itf, in, minkh,dlnkh, points)
+              if (CP%OutputNormalization == outCOBE) then
+                  if (allocated(COBE_scales)) then
+                      outpower(:,in) = outpower(:,in)*COBE_scales(in)
+                  else
+                      if (FeedbackLevel>0) write (*,*) 'Cannot COBE normalize - no Cls generated'
+                  end if
+              end if
+          end do
 
-        minkh = 1e-4
-        dlnkh = 0.02
-        points = log(MTrans%TransferData(Transfer_kh,MTrans%num_q_trans,itf)/minkh)/dlnkh+1
-        !             dlnkh = log(MTrans%TransferData(Transfer_kh,MTrans%num_q_trans,itf)/minkh)/(points-0.999)
-        allocate(outpower(points,CP%InitPower%nn))
-        do in = 1, CP%InitPower%nn
-            call Transfer_GetMatterPowerS(MTrans,outpower(1,in), itf, in, minkh,dlnkh, points)
-            if (CP%OutputNormalization == outCOBE) then
-                if (allocated(COBE_scales)) then
-                    outpower(:,in) = outpower(:,in)*COBE_scales(in)
-                else
-                    if (FeedbackLevel>0) write (*,*) 'Cannot COBE normalize - no Cls generated'
-                end if
-            end if
-        end do
-
-        open(unit=fileio_unit,file=FileNames(itf),form='formatted',status='replace')
-        do i=1,points
-            write (fileio_unit, fmt) minkh*exp((i-1)*dlnkh),outpower(i,1:CP%InitPower%nn)
-        end do
-        close(fileio_unit)
+          open(unit=fileio_unit,file=FileNames(itf),form='formatted',status='replace')
+          do i=1,points
+              write (fileio_unit, fmt) minkh*exp((i-1)*dlnkh),outpower(i,1:CP%InitPower%nn)
+          end do
+          close(fileio_unit)
 
         end if
 
         deallocate(outpower)
 
-        end if
+      end if
     end do
 
     end subroutine Transfer_SaveMatterPower
@@ -2237,7 +2253,8 @@
       iPK=1
       iNLL=1      
       do while (iPk<=P%PK_num_redshifts .or. iNLL<=P%NLL_num_redshifts)
-        if(P%NLL_redshifts(iNLL)==P%PK_redshifts(iPK))then
+        !JD write the next line like this to account for roundoff issues with ==. Preference given to PK_Redshift
+        if(max(P%NLL_redshifts(iNLL),P%PK_redshifts(iPK))-min(P%NLL_redshifts(iNLL),P%PK_redshifts(iPK))<1.d-5)then
           i=i+1
           P%redshifts(i)=P%PK_redshifts(iPK)
           P%PK_redshifts_index(iPK)=i

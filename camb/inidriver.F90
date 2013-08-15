@@ -57,7 +57,7 @@
 
         P%WantCls= P%WantScalars .or. P%WantTensors .or. P%WantVectors
 
-        P%WantTransfer=Ini_Read_Logical('get_transfer')
+        P%PK_WantTransfer=Ini_Read_Logical('get_transfer')
 
         AccuracyBoost  = Ini_Read_Double('accuracy_boost',AccuracyBoost)
         lAccuracyBoost = Ini_Read_Real('l_accuracy_boost',lAccuracyBoost)
@@ -143,24 +143,27 @@
         read(numstr,*) P%Nu_mass_fractions(1:P%Nu_mass_eigenstates)
        end if
 
-       if (P%NonLinear==NonLinear_lens .and. P%DoLensing) then
-          if (P%WantTransfer) &
-             write (*,*) 'overriding transfer settings to get non-linear lensing'
-          P%WantTransfer  = .true.
-          call Transfer_SetForNonlinearLensing(P%Transfer)
-          P%Transfer%high_precision=  Ini_Read_Logical('transfer_high_precision',.false.)
-       
-       else if (P%WantTransfer)  then
-        P%Transfer%high_precision=  Ini_Read_Logical('transfer_high_precision',.false.)
-        P%transfer%kmax          =  Ini_Read_Double('transfer_kmax')
-        P%transfer%k_per_logint  =  Ini_Read_Int('transfer_k_per_logint')
-        P%transfer%num_redshifts =  Ini_Read_Int('transfer_num_redshifts')
-        
-        transfer_interp_matterpower = Ini_Read_Logical('transfer_interp_matterpower ', transfer_interp_matterpower)
-        transfer_power_var = Ini_read_int('transfer_power_var',transfer_power_var)
-        if (P%transfer%num_redshifts > max_transfer_redshifts) stop 'Too many redshifts'
-        do i=1, P%transfer%num_redshifts
-             P%transfer%redshifts(i)  = Ini_Read_Double_Array('transfer_redshift',i,0._dl)
+       !JD 08/13 begin changes for nonlinear lensing of CMB + LSS compatibility
+       !P%Transfer%redshifts -> P%Transfer%PK_redshifts and P%Transfer%num_redshifts -> P%Transfer%PK_num_redshifts 
+       !in the P%WantTransfer loop.
+       if (((P%NonLinear==NonLinear_lens .or. P%NonLinear==NonLinear_both) .and. P%DoLensing) &
+          .or. P%PK_WantTransfer) then
+         P%Transfer%high_precision=  Ini_Read_Logical('transfer_high_precision',.false.)
+       else
+         P%transfer%high_precision = .false.
+       endif
+               
+       if (P%PK_WantTransfer)  then
+         P%WantTransfer  = .true.
+         P%transfer%kmax          =  Ini_Read_Double('transfer_kmax')
+         P%transfer%k_per_logint  =  Ini_Read_Int('transfer_k_per_logint')
+         P%transfer%PK_num_redshifts =  Ini_Read_Int('transfer_num_redshifts')
+         
+         transfer_interp_matterpower = Ini_Read_Logical('transfer_interp_matterpower ', transfer_interp_matterpower)
+         transfer_power_var = Ini_read_int('transfer_power_var',transfer_power_var)
+         if (P%transfer%PK_num_redshifts > max_transfer_redshifts) stop 'Too many redshifts'
+         do i=1, P%transfer%PK_num_redshifts
+             P%transfer%PK_redshifts(i)  = Ini_Read_Double_Array('transfer_redshift',i,0._dl)
              transferFileNames(i)     = Ini_Read_String_Array('transfer_filename',i)
              MatterPowerFilenames(i)  = Ini_Read_String_Array('transfer_matterpower',i)
              
@@ -174,16 +177,29 @@
                    TransferFileNames(i) = trim(outroot)//TransferFileNames(i)
              if (MatterPowerFilenames(i) /= '') &
                  MatterPowerFilenames(i)=trim(outroot)//MatterPowerFilenames(i)
-        end do
-
-
-        P%transfer%kmax=P%transfer%kmax*(P%h0/100._dl)
-                
+         end do
        else
-         P%transfer%high_precision = .false.
-       endif
-  
-        Ini_fail_on_not_found = .false. 
+         P%Transfer%PK_num_redshifts = 1
+         P%Transfer%PK_redshifts = 0
+       end if
+        
+       if ((P%NonLinear==NonLinear_lens .or. P%NonLinear==NonLinear_both) .and. P%DoLensing) then
+         P%WantTransfer  = .true.
+         call Transfer_SetForNonlinearLensing(P%Transfer)
+         call Transfer_SortAndIndexRedshifts(P%Transfer)
+       else
+         P%Transfer%num_redshifts=P%Transfer%PK_num_redshifts
+         P%Transfer%redshifts=P%Transfer%PK_redshifts
+         do i=1,P%Transfer%num_redshifts
+           P%Transfer%PK_redshifts_index(i) = i
+         end do   
+       end if
+       !JD 08/13 end changes
+       
+       P%transfer%kmax=P%transfer%kmax*(P%h0/100._dl)
+                
+         
+       Ini_fail_on_not_found = .false. 
         
         ALens = Ini_Read_Double('Alens',Alens)
   
@@ -300,7 +316,7 @@
         stop
        endif
     
-        if (P%WantTransfer .and. .not. (P%NonLinear==NonLinear_lens .and. P%DoLensing)) then
+        if (P%PK_WantTransfer) then
          call Transfer_SaveToFiles(MT,TransferFileNames)
          call Transfer_SaveMatterPower(MT,MatterPowerFileNames)
          if ((P%OutputNormalization /= outCOBE) .or. .not. P%WantCls)  call Transfer_output_sig8(MT)
@@ -310,7 +326,7 @@
   
          if (P%OutputNormalization == outCOBE) then
 
-            if (P%WantTransfer) call Transfer_output_Sig8AndNorm(MT)
+            if (P%PK_WantTransfer) call Transfer_output_Sig8AndNorm(MT)
            
           end if
 

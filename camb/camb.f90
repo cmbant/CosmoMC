@@ -103,23 +103,23 @@
         type(CAMBparams) :: Params
         integer, optional :: error !Zero if OK
         type(CAMBparams) P
-        logical :: separate = .true. !whether to do P_k in separate call or not
+        !JD no longer need to calculate separately PK and Cls separately just slows stuff down                                       
+        !logical :: separate = .true. !whether to do P_k in separate call or not 
         logical :: InReionization
         
-        !JD 08/13 for nonlinear lensing of CMB + LSS compatibility 
-        !changed below to include NonLinear_both
-        if (Params%DoLensing .and. (Params%NonLinear==NonLinear_Lens &
-            .or. Params%NonLinear==NonLinear_both)) separate = .false.
+        !JD no longer needed
+        !if (Params%DoLensing .and. (Params%NonLinear==NonLinear_Lens &
+        !    .or. Params%NonLinear==NonLinear_both)) separate = .false.
         InReionization = Params%Reion%Reionization
         global_error_flag = 0
         call_again = .false.
         
          if (Params%WantCls .and. Params%WantScalars) then
           P = Params
-          if (separate) then
-          P%WantTransfer = .false.
-          P%Transfer%high_precision = .false.
-          end if
+          !if (separate) then
+          !P%WantTransfer = .false.           !JD no longer need this block
+          !P%Transfer%high_precision = .false.
+          !end if
           P%WantTensors = .false.
           P%WantVectors = .false.
           call CAMBParams_Set(P)  
@@ -190,9 +190,9 @@
           Params = CP            
    
          end if
-
-         if (Params%WantTransfer .and. &
-          .not. (Params%WantCls .and. Params%WantScalars .and. .not. separate)) then
+         
+         if (Params%WantTransfer .and. &                        ! JD separate obsolete
+          .not. (Params%WantCls .and. Params%WantScalars)) then ! .and. .not. separate)) then
           P=Params
           P%WantCls = .false.
           P%WantScalars = .false.
@@ -341,6 +341,10 @@
             P%Transfer%k_per_logint=0
             P%Transfer%num_redshifts=1
             P%Transfer%redshifts=0
+            !JD 08/13 CAMB Fix for for nonlinear lensing of CMB + MPK compatibility
+            P%Transfer%num_redshifts=1
+            P%Transfer%redshifts=0
+            !End JD
 
             P%AccuratePolarization = .true.
             P%AccurateReionization = .false.
@@ -440,7 +444,7 @@
           use ModelData
           use Transfer
 
-            !Free memory
+           !Free memory
            call ThermoData_Free
            call Bessels_Free
            call ModelData_Free  
