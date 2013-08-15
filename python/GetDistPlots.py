@@ -478,7 +478,7 @@ class GetDistPlotter():
 #            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, prune=(None, 'both')[share_y])
             self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker)
             if xlims is not None: xlim(xlims[i][0], xlims[i][1])
-            if share_y: self.spaceTicks(gca().xaxis, expand=False)
+            if share_y: self.spaceTicks(gca().xaxis, expand=True)
 
         self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
         if share_y: subplots_adjust(wspace=0)

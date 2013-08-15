@@ -20,6 +20,7 @@ roots=['base_planck_lowl_lowLike_highL','base_planck_lowl_lowLike']
 g.newPlot()
 g.settings.line_labels = False
 g.settings.figure_legend_frame =False
+g.settings.axes_fontsize+=1
 
 g.plots_1d(roots,paramList='batch1/outputs/camspec_foregrounds.paramnames',nx=3)
 

@@ -58,6 +58,13 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
 
 plotter = planckPlotter('main/plot_data')
 
+def getSubplotPlotter():
+    s.setWithSubplotSize(2)
+    s.axes_fontsize += 2
+    s.lab_fontsize += 2
+    s.legend_fontsize = s.lab_fontsize + 1
+    return plotter
+
 def getSinglePlotter(ratio=3 / 4.):
     s.setWithSubplotSize(3.5)
     s.legend_fontsize = 9

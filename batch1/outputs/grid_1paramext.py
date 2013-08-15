@@ -2,11 +2,7 @@ import planckStyle as s
 from pylab import *
 import sys
 
-g=s.plotter
-
-g.settings.setWithSubplotSize(2)
-g.settings.axes_fontsize +=2
-g.settings.lab_fontsize +=5
+g=s.getSubplotPlotter()
 
 g.settings.solid_colors = [g.settings.solid_colors[0]]+g.settings.solid_colors
 
