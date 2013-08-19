@@ -27,8 +27,6 @@
     Type(ParamSet) Params, EstParams
     integer file_unit, status
     real(mcp) bestfit_loglike
-    real(mcp) max_like_radius
-    integer max_like_iterations
     integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2, &
     action_Hessian=3
     integer unit
@@ -231,16 +229,6 @@
     .or. action == action_MCMC .and. estimate_propose_matrix .or. &
     start_at_bestfit .and. new_chains
 
-    if (want_minimize) then
-        !radius in normalized parameter space to converge
-        max_like_radius = Ini_Read_Real('max_like_radius',0.01)
-        max_like_iterations = Ini_Read_Int('max_like_iterations',6000)
-        !set points factor above 2 to use a denser sampling of space (may be more robust)
-        minimization_points_factor = Ini_Read_Int('minimization_points_factor',minimization_points_factor)
-        !will exit if function difference between iterations less than minimize_loglike_tolerance (even if radius criterion not met)
-        minimize_loglike_tolerance = Ini_Read_double('minimize_loglike_tolerance',minimize_loglike_tolerance)
-    end if
-
     Ini_fail_on_not_found = .true.
 
     !    'This version of CosmoMC does not currently have mpk implemented'
@@ -258,7 +246,9 @@
     call SetTheoryParameterization(DefIni, NameMapping)
     call DataLikelihoods%AddNuisanceParameters(NameMapping)
     call CMB_Initialize(Params%Info)
-    call InitializeUsedParams(DefIni,Params, action == action_MCMC)
+    call InitializeUsedParams(DefIni,Params, action /= action_importance)
+
+    if (want_minimize)  call Minimize_ReadIni(DefIni)
 
     if (MpiRank==0) then
         do i=1, DataLikelihoods%Count
@@ -298,7 +288,7 @@
         if (MpiRank==0) then
             write(*,*) 'finding best fit point...'
             Params%P(1:num_params) = Scales%center(1:num_params)
-            bestfit_loglike = FindBestFit(Params,max_like_radius,max_like_iterations)
+            bestfit_loglike = FindBestFit(Params)
             if (bestfit_loglike==logZero) write(*,*) 'WARNING: FindBestFit did not converge'
             if (Feedback >0) write(*,*) 'Best-fit results: '
             call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
