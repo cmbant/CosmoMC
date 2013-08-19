@@ -13,7 +13,7 @@
     integer :: max_like_iterations  = 6000
     integer :: minimization_points_factor = 2
     real(mcp) :: minimize_loglike_tolerance = 0.02
-    logical :: separate_fast_mininize = .true.
+    logical :: separate_fast_minimize = .true.
 
     integer, allocatable  :: rotatable_params_used(:)
     integer :: num_rotatable = 0
@@ -82,7 +82,7 @@
     minimization_points_factor = Ini_Read_Int_File(Ini,'minimization_points_factor',minimization_points_factor)
     !will exit if function difference between iterations less than minimize_loglike_tolerance (even if radius criterion not met)
     minimize_loglike_tolerance = Ini_Read_double_File(Ini,'minimize_loglike_tolerance',minimize_loglike_tolerance)
-    separate_fast_mininize = Ini_Read_Logical_File(Ini,'separate_fast_mininize',separate_fast_mininize)
+    separate_fast_minimize = Ini_Read_Logical_File(Ini,'separate_fast_minimize',separate_fast_minimize)
 
     allocate(minimize_param_scales(num_params_used))
     do i=1,num_params_used
@@ -192,7 +192,7 @@
     MinParams = Params
     ! scale the params so they are all roughly the same order of magnitude
     !normalized parameter bounds
-    if (num_fast>0 .and. num_slow /=0 .and. separate_fast_mininize) then
+    if (num_fast>0 .and. num_slow /=0 .and. separate_fast_minimize) then
         if (Feedback>0) print*,'minmizing fast parameters'
         vect_fast=0
         allocate(minimize_indices(num_fast))
@@ -215,7 +215,7 @@
         deallocate(minimize_indices, minimize_indices_used)
         last_like = best_like
 
-        if (num_fast>0 .and. num_slow /=0 .and. separate_fast_mininize) then
+        if (num_fast>0 .and. num_slow /=0 .and. separate_fast_minimize) then
             if (Feedback>0) print*,'minmizing fast parameters again'
             vect_fast=vect(Proposer%indices(Proposer%Slow%n+1:Proposer%All%n))
             allocate(minimize_indices(num_fast), minimize_indices_used(num_fast))
