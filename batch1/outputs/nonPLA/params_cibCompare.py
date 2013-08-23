@@ -4,6 +4,8 @@ import sys
 g=s.getSubplotPlotter()
 
 g.settings.lineM = ['-k', '-r', '-b', '-g', '--m', '-y']
+g.settings.legend_frac_subplot_margin=0.3
+g.settings.param_names_for_labels = clik_cib.paramnames
 
 markers=[None, 1, 3.046,0,0.06,0.247816]
 
