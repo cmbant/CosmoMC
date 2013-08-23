@@ -17,6 +17,7 @@ class GetDistPlotSettings:
         self.plot_args = None
         self.lineL = [':k', ':r', ':b', ':m', ':g', ':y']
         self.solid_colors = ['#006FED', '#E03424', 'gray', '#009966', '#000866', '#336600', '#006633' , 'm', 'r']  # '#66CC99'
+        self.default_dash_styles = {'--':(3, 2)}
         self.line_labels = True
         self.x_label_rotation = 0
         self.num_shades = 80
@@ -193,13 +194,25 @@ class GetDistPlotter():
         args.update(kwargs)
         return args
 
-    def get_color(self, plotno, **kwargs):
+    def get_dashes_for_ls(self, ls):
+        return self.settings.default_dash_styles.get(ls, None)
+
+    def get_line_styles(self, plotno, **kwargs):
         args = self.get_plot_args(plotno, **kwargs)
-        return args.get('color', self.settings.lineM[plotno][-1])
+        if not 'ls' in args: args['ls'] = self.settings.lineM[plotno][:-1]
+        if not 'dashes' in args:
+            dashes = self.get_dashes_for_ls(args['ls'])
+            if dashes is not None: args['dashes'] = dashes
+        if not 'color' in args:
+            args['color'] = self.settings.lineM[plotno][-1]
+        if not 'lw' in args: args['lw'] = self.settings.lw1
+        return args
+
+    def get_color(self, plotno, **kwargs):
+        return self.get_line_styles(plotno, **kwargs)['color']
 
     def get_linestyle(self, plotno, **kwargs):
-        args = self.get_plot_args(plotno, **kwargs)
-        return args.get('ls', self.settings.lineM[plotno][:-1])
+        return self.get_line_styles(plotno, **kwargs)['ls']
 
     def get_alpha2D(self, plotno, filled, **kwargs):
         args = self.get_plot_args(plotno, **kwargs)
@@ -228,14 +241,16 @@ class GetDistPlotter():
         density = self.sampleAnalyser.get_density(root, param, likes=self.settings.plot_meanlikes)
         if density is None: return None;
 
-        kwargs = self.get_plot_args(plotno, **kwargs)
-        plot(density.x, density.pts, self.settings.lineM[plotno], linewidth=self.settings.lw1, **kwargs)
+        kwargs = self.get_line_styles(plotno, **kwargs)
+        plot(density.x, density.pts, **kwargs)
         if self.settings.plot_meanlikes:
-            plot(density.x, density.likes, self.settings.lineL[plotno], linewidth=self.settings.lw_likes, **kwargs)
+            kwargs['lw'] = self.settings.lw_likes
+            plot(density.x, density.likes, **kwargs)
 
         return density.bounds()
 
-    def add_2d_contours(self, root, param1, param2, plotno=0, of=None, filled=False, color=None, ls=None, cols=None, alpha=None, add_legend_proxy=True, **kwargs):
+    def add_2d_contours(self, root, param1, param2, plotno=0, of=None, filled=False, color=None, ls=None, cols=None,
+                        alpha=None, add_legend_proxy=True, **kwargs):
         param1, param2 = self.get_param_array(root, [param1, param2])
 
         density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
@@ -262,6 +277,8 @@ class GetDistPlotter():
             if color is None: color = self.get_color(plotno, **kwargs)
             cols = [color]
             if ls is None: ls = self.get_linestyle(plotno, **kwargs)
+            # not supported custom dashes here yet
+
             if add_legend_proxy: self.contours_added.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
             linestyles = [ls]
             kwargs = self.get_plot_args(plotno, **kwargs)
@@ -415,9 +432,8 @@ class GetDistPlotter():
             lines = []
             if len(self.contours_added) == 0:
                 for i in enumerate(legend_labels):
-                    color = self.get_color(i[0] + line_offset)
-                    ls = self.get_linestyle(i[0] + line_offset)
-                    lines.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
+                    args = self.get_line_styles(i[0] + line_offset)
+                    lines.append(Line2D([0, 1], [0, 1], **args))
             else: lines = self.contours_added
             args = {'ncol':legend_ncol}
             if self.settings.legend_fontsize is not None: args['prop'] = {'size':self.settings.legend_fontsize}
