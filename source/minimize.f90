@@ -4,28 +4,37 @@
     use CalcLike
     use Powell_ConstrainedOptimize
     use MatrixUtils
+    use MonteCarlo
     implicit none
     private
 
     Type(ParamSet), save :: MinParams
 
-    real(mcp) :: max_like_radius = 0.01d0
-    integer :: max_like_iterations  = 6000
+    real(mcp) :: max_like_radius = 0.01_mcp
+    integer :: max_like_iterations  = 10000
     integer :: minimization_points_factor = 2
-    real(mcp) :: minimize_loglike_tolerance = 0.02
+    real(mcp) :: minimize_loglike_tolerance = 0._mcp
     logical :: separate_fast_minimize = .true.
+    integer :: minimize_mcmc_refine_num = 20 
+    !MCMC steps per parameter to refine after provisional best fit
+    real(mcp) :: minimize_refine_temp = 0.01_mcp
+    real(mcp) :: minimize_temp_scale_factor = 10._mcp
+    real(mcp), parameter :: start_trust_radius = 3._mcp
+    logical :: minimize_random_start_pos = .false.
 
     integer, allocatable  :: rotatable_params_used(:)
     integer :: num_rotatable = 0
 
     integer :: num_rot = 0
     integer, allocatable :: minimize_indices(:), minimize_indices_used(:)
-    real(mcp), allocatable :: minimize_param_scales(:)
+    real(mcp), allocatable :: used_param_scales(:), inv_cov(:,:)
 
     real(mcp), allocatable :: paramRot(:,:)
     integer, allocatable :: min_params_rot(:)
 
-    public FindBestFit, WriteBestFitParams,Minimize_ReadIni
+    logical :: minimize_uses_MPI = .false.
+
+    public FindBestFit, WriteBestFitParams,Minimize_ReadIni,minimize_uses_MPI
 
     contains
 
@@ -34,20 +43,27 @@
     Type(ParamSet) P
     integer i,ii
 
-    P%P(minimize_indices(min_params_rot)) = matmul(paramRot,vect(min_params_rot)) &
-    + Scales%center(minimize_indices(min_params_rot))
+    if (num_rot>0) then
+        P%P(minimize_indices(min_params_rot)) = matmul(paramRot,vect(min_params_rot)) &
+        + Scales%center(minimize_indices(min_params_rot))
+    end if
 
     do i=1, size(minimize_indices)
         if (.not. any(min_params_rot==i)) then
             ii=minimize_indices(i)
-            P%P(ii)=vect(i)*minimize_param_scales(minimize_indices_used(i)) + Scales%center(ii)
+            P%P(ii)=vect(i)*used_param_scales(minimize_indices_used(i)) + Scales%center(ii)
         end if
     end do
 
-    if (any (P%P(minimize_indices) < Scales%PMin(minimize_indices))) &
-    call DoAbort('Minimize:Rotated parameter less than prior boundary')
-    if (any (P%P(minimize_indices) > Scales%PMax(minimize_indices))) &
-    call DoAbort('Minimize:Rotated parameter greater than prior boundary')
+    do i=1, size(minimize_indices)
+        if (P%P(minimize_indices(i)) < Scales%PMin(minimize_indices(i))-1d-13) &
+        call DoAbort(numcat('Minimize:Rotated parameter less than prior boundary:',i))
+        if (P%P(minimize_indices(i)) > Scales%PMax(minimize_indices(i))+1d-13) &
+        call DoAbort(numcat('Minimize:Rotated parameter greater than prior boundary:',i))
+        !Just fix up small rounding error
+    end do
+    P%P(minimize_indices) = max(Scales%PMin(minimize_indices),P%P(minimize_indices))
+    P%P(minimize_indices) = min(Scales%PMax(minimize_indices),P%P(minimize_indices))
 
     end subroutine VectToparams
 
@@ -73,7 +89,7 @@
     use IniFile
     Type(TIniFile), intent(in) :: Ini
     character(LEN=Ini_max_string_len) :: diag_params
-    integer num, params(num_params), i, rot_params_used(num_params)
+    integer num, rotparams(num_params), i, rot_params_used(num_params)
 
     !radius in normalized parameter space to converge
     max_like_radius = Ini_Read_Double_File(Ini,'max_like_radius',max_like_radius)
@@ -83,31 +99,42 @@
     !will exit if function difference between iterations less than minimize_loglike_tolerance (even if radius criterion not met)
     minimize_loglike_tolerance = Ini_Read_double_File(Ini,'minimize_loglike_tolerance',minimize_loglike_tolerance)
     separate_fast_minimize = Ini_Read_Logical_File(Ini,'separate_fast_minimize',separate_fast_minimize)
+    minimize_mcmc_refine_num = Ini_Read_Int_File(Ini,'minimize_mcmc_refine_num',minimize_mcmc_refine_num)
+    if (minimize_mcmc_refine_num>0) then
+        minimize_refine_temp = Ini_read_Double_File(Ini,'minimize_refine_temp',minimize_refine_temp)
+        minimize_temp_scale_factor = Ini_Read_Double_File(ini,'minimize_temp_scale_factor',minimize_temp_scale_factor)
+    end if
+    minimize_random_start_pos = Ini_Read_Logical_File(Ini,'minimize_random_start_pos',minimize_random_start_pos)
+    minimize_uses_MPI = minimize_random_start_pos
 
-    allocate(minimize_param_scales(num_params_used))
+    allocate(used_param_scales(num_params_used))
+    allocate(inv_cov(num_params_used, num_params_used))
+    inv_cov = Proposer%propose_matrix
+    call Matrix_Inverse(inv_cov)
     do i=1,num_params_used
-        minimize_param_scales(i) = sqrt( Proposer%propose_matrix(i,i))
+        used_param_scales(i) = min( sqrt( 1/inv_cov(i,i)) , &
+        (Scales%PMax(params_used(i))- Scales%PMin(params_used(i)))/start_trust_radius/3.)
     end do
 
     diag_params = Ini_Read_String_File(Ini,'minimize_diag_params')
     !Like the proposal for MCMC, but potentially a subset of parameters since can only diagonalize
     !parameters that do not have hard boundaries in the high likelihood region
     if (diag_params/='') then
-        num= num_params
-        call ParamNames_ReadIndices(NameMapping,diag_params, params, num)
+        num= -1
+        call ParamNames_ReadIndices(NameMapping,diag_params, rotparams, num)
     else 
         num = 0
     end if
 
     num_rotatable=0
     do i=1, num_params_used
-        if (any(params(1:num)==params_used(i))) then
+        if (any(rotparams(1:num)==params_used(i))) then
             num_rotatable=num_rotatable+1
             rot_params_used(num_rotatable) = i
         end if
     end do
+    allocate(rotatable_params_used(num_rotatable))
     if (num_rotatable>0) then
-        allocate(rotatable_params_used(num_rotatable))
         rotatable_params_used = rot_params_used(1:num_rotatable)
     end if
 
@@ -130,36 +157,36 @@
             num_rot=num_rot+1
             rot_params_used(num_rot) = i
             XL(i) = -1d10
-            XL(i) = 1d10
+            XU(i) = 1d10
         else
             XL(i) = (Scales%PMin(minimize_indices(i))-Scales%center(minimize_indices(i))) &
-            / minimize_param_scales(minimize_indices_used(i))
+            / used_param_scales(minimize_indices_used(i))
             XU(i) = (Scales%PMax(minimize_indices(i))-Scales%center(minimize_indices(i))) &
-            / minimize_param_scales(minimize_indices_used(i))
+            / used_param_scales(minimize_indices_used(i))
         end if
     end do
-    print *,'num_rot=',num_rot
-    print *,'XL,XU', XL, XU
+
+    if (allocated(min_params_rot)) deallocate(min_params_rot)
+    if (allocated(paramRot)) deallocate(paramRot)
+    allocate(min_params_rot(num_rot))
 
     if (num_rot > 0) then
-        if (allocated(min_params_rot)) deallocate(min_params_rot)
-        if (allocated(paramRot)) deallocate(paramRot)
-        allocate(min_params_rot(num_rot))
         min_params_rot = rot_params_used(1:num_rot)
         allocate(paramRot(num_rot,num_rot))
-        paramRot = Proposer%propose_matrix(minimize_indices_used(min_params_rot),minimize_indices_used(min_params_rot))
+        paramRot = inv_cov(minimize_indices_used(min_params_rot),minimize_indices_used(min_params_rot))
+        call Matrix_Inverse(paramRot)
         do i=1,num_rot
-            paramRot(:,i) = paramRot(:,i) / minimize_param_scales(minimize_indices_used(min_params_rot(i)))
-            paramRot(i,:) = paramRot(i,:) / minimize_param_scales(minimize_indices_used(min_params_rot(i)))
+            paramRot(:,i) = paramRot(:,i) / used_param_scales(minimize_indices_used(min_params_rot(i)))
+            paramRot(i,:) = paramRot(i,:) / used_param_scales(minimize_indices_used(min_params_rot(i)))
         end do
         call Matrix_Cholesky(paramRot,zeroed=.true.)
         do i=1,num_rot
-            paramRot(i,:) = paramRot(i,:) * minimize_param_scales(minimize_indices_used(min_params_rot(i)))
+            paramRot(i,:) = paramRot(i,:) * used_param_scales(minimize_indices_used(min_params_rot(i)))
         end do
     end if
 
     !Initial and final radius of region required (in normalized units)
-    rhobeg =  1   !min(nint(minval(XU-XL)/3),1)
+    rhobeg =  start_trust_radius   !min(nint(minval(XU-XL)/3),1)
     rhoend = max_like_radius
     if (minimization_points_factor>2) then
         npt = min(minimization_points_factor*num_indices,((num_indices +1)*(num_indices +2))/2)
@@ -181,14 +208,22 @@
     end function FindBestFit_indices
 
 
-    function FindBestFit(Params) result(best_like)
+    function FindBestFit(Params,is_best_bestfit) result(best_like)
     use ParamDef
     Type(ParamSet) Params
+    logical, intent(out) :: is_best_bestfit
     real(mcp) best_like, last_like
     real(Powell_CO_prec) :: vect(num_params_used), vect_fast(num_fast)
+    real(mcp) :: temp, scale, slike, last_best, checklike
+    real(mcp), allocatable :: bestfit_loglikes(:)
+    integer ierror,i
 
     vect = 0 !start at zero by definition (from input center values)
-
+    if (minimize_random_start_pos) then
+        call SetStartPositions(Params)
+    else
+        Params%P(1:num_params) = Scales%center(1:num_params)
+    end if
     MinParams = Params
     ! scale the params so they are all roughly the same order of magnitude
     !normalized parameter bounds
@@ -227,11 +262,71 @@
             deallocate(minimize_indices,minimize_indices_used)
         end if
         !Only finish if sanity check passes
-        if (abs(last_like - best_like) < minimize_loglike_tolerance*2) exit
+        if (abs(last_like - best_like) < minimize_loglike_tolerance*2 .or. minimize_mcmc_refine_num>0) exit
     end do
 
     call AcceptReject(.true.,Params%Info, MinParams%Info)
     Params = MinParams
+
+    if (minimize_mcmc_refine_num>0) then
+        if (Feedback > 0) print *, 'Refining minimimum using low temp MCMC'
+        if (Feedback > 0) print *,'Current logLike: ', best_like
+        temp = temperature
+        scale = propose_scale
+        slike = StartLike
+        MCMC_outputs = .false.
+
+        !BOBYQA can stop because of numerical errors, do some MCMC steps to do last bit of numerically noisy convergence
+        Temperature = minimize_refine_temp
+        do
+            if (Feedback > 0) print *,'Minimize MCMC with temp', temperature
+            last_best = best_like
+            propose_scale = scale*sqrt(temperature)
+            StartLike = best_like/temperature
+            num_accept=0
+            num=0
+            call MCMCSample(Params, minimize_mcmc_refine_num * num_params_used)
+            if (Feedback > 0) print *,MpiRank, 'MCMC MaxLike = ', MaxLike*temperature
+            if (MaxLike*temperature < best_like) then
+                Params%P  = MaxLikeParams
+                checkLike=GetLogLike(Params)*temperature
+                print *,MpiRank, 'check like, best_like:', checklike, best_like !avoid recursive IO
+                best_like = MaxLike*temperature
+            end if
+            if (last_best - best_like < minimize_loglike_tolerance &
+            .and. temperature < 4*minimize_loglike_tolerance/num_params_used) exit
+            if (last_best - best_like < 2*sqrt(num_params_used*temperature)) &
+            Temperature = Temperature/ minimize_temp_scale_factor
+        end do
+        temperature = temp
+        propose_scale = scale
+        StartLike = slike
+        MCMC_outputs = .true.
+    end if
+
+    is_best_bestfit=.true.
+#ifdef MPI
+    if (minimize_uses_MPI) then
+        allocate(bestfit_loglikes(MPIchains))
+        call MPI_Allgather(best_like, 1, MPI_real_mcp, &
+        bestfit_loglikes, 1,  MPI_real_mcp, MPI_COMM_WORLD, ierror)
+        if (MpiRank==0) then
+            print *,'synched bestfits:', bestfit_loglikes
+            if (maxval(bestfit_loglikes)-minval(bestfit_loglikes) >1) &
+            print *,'WARNING: big spread in log-likes'
+        end if
+        is_best_bestfit = minval(bestfit_loglikes)==best_like
+        deallocate(bestfit_loglikes)
+        do i=0, MpiChains-1
+            call MPI_Barrier(MPI_COMM_WORLD,ierror)
+            if (i==MpiRank .and. .not. is_best_bestfit .and. Feedback>0) then
+                print *,MpiRank, 'best_like params:'
+                call WriteParamsHumanText(stdout,Params, best_like)
+            end if
+        end do
+        call MPI_Barrier(MPI_COMM_WORLD,ierror)
+    end if
+#endif
 
     end function FindBestFit
 

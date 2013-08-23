@@ -669,19 +669,19 @@
             end do
             MPICovMat = MPICovMat / MPImean(0)
 
-            MPICovMats(:,:,instance) = MPICovMat
-            MPIMeans(:,instance) = MPIMean
-            do i=1, MPIChains
-                j = i-1
-                call MPI_BCAST(MPICovMats(:,:,i),Size(MPICovMat),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
-                call MPI_BCAST(MPIMeans(:,i),Size(MPIMean),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
-            end do
+            !Replace this with ALLGATHER
+            !MPICovMats(:,:,instance) = MPICovMat
+            !MPIMeans(:,instance) = MPIMean
+            !do i=1, MPIChains
+            !    j = i-1
+            !    call MPI_BCAST(MPICovMats(:,:,i),Size(MPICovMat),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
+            !    call MPI_BCAST(MPIMeans(:,i),Size(MPIMean),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
+            !end do
 
-            ! These should be better but don't work
-            !          call MPI_ALLGATHER(MPICovMat,Size(MPICovMat),MPI_real_mcp,MPICovmats,Size(MPICovmats), &
-            !               MPI_real_mcp, MPI_COMM_WORLD,ierror)
-            !          call MPI_ALLGATHER(MPIMean,Size(MPIMean),MPI_real_mcp,MPIMeans,Size(MPIMeans), &
-            !               MPI_real_mcp, MPI_COMM_WORLD,ierror)
+            call MPI_ALLGATHER(MPICovMat,Size(MPICovMat),MPI_real_mcp,MPICovmats,Size(MPICovmat), &
+            MPI_real_mcp, MPI_COMM_WORLD,ierror)
+            call MPI_ALLGATHER(MPIMean,Size(MPIMean),MPI_real_mcp,MPIMeans,Size(MPIMean), &
+            MPI_real_mcp, MPI_COMM_WORLD,ierror)
 
             if (all(MPIMeans(0,:)> MPI_Min_Sample_Update/2 + 2)) then
                 !check have reasonable number of samples in each)

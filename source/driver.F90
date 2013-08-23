@@ -34,6 +34,7 @@
     logical :: start_at_bestfit = .false.
     Class(DataLikelihood), pointer :: Like
     real(mcp) mult
+    logical is_best_bestfit
 #ifdef MPI
     double precision intime
     integer ierror
@@ -282,21 +283,26 @@
     call SetIdlePriority !If running on Windows
 
     if (want_minimize) then
-        !New Powell 2009 minimization, AL Sept 2012
-        if (action /= action_MCMC .and. MPIchains>1) call DoAbort( &
+        !New Powell 2009 minimization, AL Sept 2012, update Sept 2013
+        if (action /= action_MCMC .and. MPIchains>1 .and. .not. minimize_uses_MPI) call DoAbort( &
         'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
-        if (MpiRank==0) then
-            write(*,*) 'finding best fit point...'
-            Params%P(1:num_params) = Scales%center(1:num_params)
-            bestfit_loglike = FindBestFit(Params)
-            if (bestfit_loglike==logZero) write(*,*) 'WARNING: FindBestFit did not converge'
-            if (Feedback >0) write(*,*) 'Best-fit results: '
-            call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
-            if (use_CMB) call Params%Theory%WriteBestFitData(trim(baseroot))
-            if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
+        if (MpiRank==0) write(*,*) 'finding best fit point...'
+        if (minimize_uses_MPI .or. MpiRank==0) then
+            bestfit_loglike = FindBestFit(Params,is_best_bestfit)
+            if (is_best_bestfit) then
+                if (bestfit_loglike==logZero) write(*,*) MpiRank,'WARNING: FindBestFit did not converge'
+                if (Feedback >0) write(*,*) 'Best-fit results: '
+                call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
+                if (use_CMB) call Params%Theory%WriteBestFitData(trim(baseroot))
+                if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
+            else
+                if (action==action_maxlike) call DoStop() 
+            end if
         end if
 #ifdef MPI
-        CALL MPI_Bcast(Params%P, size(Params%P), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror)
+        if (.not. minimize_uses_MPI) then
+            CALL MPI_Bcast(Params%P, size(Params%P), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror)
+        end if
 #endif
         Scales%center(1:num_params) = Params%P(1:num_params)
     end if

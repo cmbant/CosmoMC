@@ -1,7 +1,7 @@
 import planckStyle as s
 
 g=s.plotter
-g.settings.setWithSubplotSize(4)
+g.settings.setWithSubplotSize(3.5)
 
 g.settings.lab_fontsize=10
 g.settings.legend_frac_subplot_margin=-0.02

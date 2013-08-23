@@ -33,7 +33,7 @@ $walltime='24:00:00';
 
 $ppn = ( $chainspn * $omp ) ; # NB this must be <= 16
 $nchains = $numnodes * $chainspn ;
-$mem = ( 64000 * $numnodes ) ;  # MB 
+$mem = ( 63900 * $numnodes ) ;  # MB 
 
 $ini = $params;
 if ($ini !~ m/\.ini/) {$ini= "$ini.ini"}

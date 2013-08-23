@@ -36,6 +36,9 @@
     integer :: WL_update_steps = 4000
     real(mcp) :: WL_flat_tol = 1.4 !factor by which smallest histogram can be smaller than mean
 
+    logical :: MCMC_outputs = .true.
+    real(mcp) :: MaxLikeParams(max_num_params) 
+
     contains
 
     !function UpdateParamsLike(Params, fast, dist, i, freeNew, Lik) result(NewLik)
@@ -364,7 +367,7 @@
         num_accept = num_accept + 1
         thin=1
         if (present(thin_fac)) thin=thin_fac
-        want= num_accept> burn_in .and. checkpoint_burn ==0  .and. CurLike /= LogZero
+        want= num_accept> burn_in .and. checkpoint_burn ==0  .and. CurLike /= LogZero .and. MCMC_outputs
         if (want) then
             acc = acc + mult
             indep_acc= indep_acc + mult
@@ -381,7 +384,10 @@
             call WriteIndepSample(CurParams, CurLike,real(indep_acc/(indep_sample*thin),mcp))
             indep_acc = mod(indep_acc, indep_sample*thin)
         end if
-        if (CurLike < MaxLike) MaxLike = CurLike
+        if (CurLike < MaxLike) then
+            MaxLike = CurLike
+            MaxLikeParams = CurParams%P
+        end if
         mult=1
     else
         mult = mult + 1
@@ -413,8 +419,8 @@
         end if
 
         if (CurLike /= logZero) then
-            call AddMPIParams(CurParams%P,CurLike)
-            if (mod(num*Proposer%Oversample_fast,100)==0) call CheckParamChange
+            if (MCMC_outputs) call AddMPIParams(CurParams%P,CurLike)
+            if (MCMC_outputs .and. mod(num*Proposer%Oversample_fast,100)==0) call CheckParamChange
         else
             if (num > 1000) then
                 call DoAbort('MCMC.f90: Couldn''t start after 1000 tries - check starting ranges')
