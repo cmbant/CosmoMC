@@ -345,8 +345,8 @@ class GetDistPlotter():
         return ax
 
     def set_xlabel(self, param):
-        xlabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize, verticalalignment='baseline')
-        gca().xaxis.labelpad = 15
+        xlabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize,
+                verticalalignment='baseline', labelpad=5 + self.settings.lab_fontsize)
 
     def set_ylabel(self, param):
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
