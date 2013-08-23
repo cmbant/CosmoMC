@@ -15,10 +15,10 @@
     integer :: minimization_points_factor = 2
     real(mcp) :: minimize_loglike_tolerance = 0._mcp
     logical :: separate_fast_minimize = .true.
-    integer :: minimize_mcmc_refine_num = 20 
+    integer :: minimize_mcmc_refine_num = 20
     !MCMC steps per parameter to refine after provisional best fit
     real(mcp) :: minimize_refine_temp = 0.01_mcp
-    real(mcp) :: minimize_temp_scale_factor = 10._mcp
+    real(mcp) :: minimize_temp_scale_factor = 5._mcp
     real(mcp), parameter :: start_trust_radius = 3._mcp
     logical :: minimize_random_start_pos = .false.
 

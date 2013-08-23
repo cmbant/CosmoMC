@@ -21,7 +21,7 @@ import planckStyleNG
 # rootparam = ['mnu_planck_lowl_lowLike_highL', 'mnu', [0, 0.74]]
 # rootparam = ['mnu_planck_lowl_lowLike_highL', 'mnu', r'$\sum m_\nu\ [\rm{eV}]$', None]
 
-rootparam = ['LCDM_base_planck_lowl_lowLike_highL', 'omegach2', None]  # [0.27, 0.35]
+rootparam = ['LCDM_base_planck_lowl_lowLike_highL', 'ns', None]  # [0.27, 0.35]
 # rootparam = ['LCDM_base_planck_lowl_lowLike_highL', 'tau', None]  # [0.27, 0.35]
 
 # rootparam = ['LCDM_base_planck_lowl', 'omegamh2', r'$\Omega_{\rm m} h^2$', [0.137, 0.146]]  # [0.27, 0.35]
@@ -294,8 +294,8 @@ def phi_plot():
 
 
 # phi_plot()
-bf_different()
-# lowL()
+# bf_different()
+lowL()
 show()
 
 # xlim([800, Lmax])

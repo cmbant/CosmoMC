@@ -62,7 +62,8 @@ def getSubplotPlotter():
     s.setWithSubplotSize(2)
     s.axes_fontsize += 2
     s.colorbar_axes_fontsize += 2
-    s.lab_fontsize += 2
+#    s.lab_fontsize += 2
+    s.axes_fontsize
     s.legend_fontsize = s.lab_fontsize + 1
     return plotter
 
