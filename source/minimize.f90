@@ -286,8 +286,15 @@
             num_accept=0
             num=0
             call MCMCSample(Params, minimize_mcmc_refine_num * num_params_used)
-            if (Feedback > 0) print *,MpiRank, 'MCMC MaxLike = ', MaxLike*temperature
-            if (MaxLike*temperature < best_like) then
+            if (Feedback > 0) then
+                if (MaxLike/=logZero) then
+                    print *,MpiRank, 'MCMC MaxLike = ', MaxLike*temperature
+                else
+                    print *,MpiRank, 'MCMC chain not moved'
+                end if
+            end if
+
+            if (MaxLike/=logZero .and. MaxLike*temperature < best_like) then
                 Params%P  = MaxLikeParams
                 checkLike=GetLogLike(Params)*temperature
                 print *,MpiRank, 'check like, best_like:', checklike, best_like !avoid recursive IO
