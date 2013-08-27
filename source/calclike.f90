@@ -67,7 +67,6 @@
     type(ParamSet), target :: Params
     Type (CMBParams), target :: CMB
     real(mcp) GetLogLike
-    logical, save:: first=.true.
     Type(LikeCalculator) :: Calc
 
     GetLogLike = GetLogLikeBounds(Params)
@@ -82,9 +81,8 @@
         call Parameterization%ParamArrayToTheoryParams(Params%P,CMB)
         call AddLike(GetLogLike, Parameterization%NonBaseParameterPriors(CMB))
         if (GetLogLike == logZero) return
-        if (first) then
+        if (.not. Params%Info%validInfo) then
             Calc%changeMask(1:num_params) = .true.
-            first = .false.
         else
             Calc%changeMask(1:num_params) = Params%Info%lastParamArray(1:num_params)/=Params%P(1:num_params)
         end if
@@ -174,6 +172,7 @@
     else
         if (Calc%SlowChanged) call GetNewBackgroundData(Calc%CMB, Calc%Params%Theory, error)
     end if
+    Calc%Params%Info%validInfo = .true.
     CalculateRequiredTheoryChanges = error==0
 
     end function CalculateRequiredTheoryChanges

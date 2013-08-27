@@ -395,15 +395,15 @@
 
     end subroutine MoveDone
 
-    subroutine MCMCsample(Params, samples_to_get)
+    subroutine MCMCsample(CurParams, samples_to_get)
     integer samples_to_get
-    Type(ParamSet) Params, CurParams
+    Type(ParamSet) CurParams
     real(mcp)  CurLike
     integer mult
 
     MaxLike = LogZero
     CurLike = StartLike
-    CurParams = Params
+
     mult= 1
 
     do while (num <= samples_to_get*Proposer%Oversample_fast)

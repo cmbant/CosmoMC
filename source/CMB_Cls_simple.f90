@@ -22,6 +22,7 @@
     Type ParamSetInfo
         Type (CAMBdata) :: Transfers
         real(mcp) lastParamArray(max_num_params)
+        logical :: validInfo = .false.
     end Type ParamSetInfo
 
     integer :: lmax_computed_cl = lmax !value used for CAMB
@@ -570,6 +571,14 @@
 
     end subroutine LoadFiducialHighLTemplate
 
+    subroutine ParamSetInfo_Clear(Info)
+    Type(ParamSetInfo) Info
+
+    call CAMB_InitCAMBdata(Info%Transfers)
+    Info%validInfo = .false.
+
+    end subroutine
+    
     subroutine CMB_Initialize(Info)
     Type(ParamSetInfo) Info
     type(CAMBParams)  P
@@ -605,7 +614,7 @@
         write(*,'(" Number of C_ls = ",1I4)') num_cls
     end if
 
-    call CAMB_InitCAMBdata(Info%Transfers)
+    call ParamSetInfo_Clear(Info)
 
     P%WantTensors = compute_tensors
     CAMBP = P
@@ -625,7 +634,6 @@
         else
             call CAMB_FreeCAMBdata(Trial%Transfers)
         end if
-
     end if
 
     end subroutine AcceptReject
