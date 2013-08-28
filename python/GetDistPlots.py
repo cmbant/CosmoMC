@@ -5,7 +5,9 @@ from pylab import *
 
 class GetDistPlotSettings:
 
-    def __init__(self, subplot_size_inch=2):
+    def __init__(self, subplot_size_inch=2, fig_width_inch=None):
+        # if fig_width_inch set, forces fixed size, subplot_size_inch then just determines font sizes etc
+        # otherwise width as wide as neccessary to show all subplots at specified size
 
         self.plot_meanlikes = False
         self.shade_meanlikes = False
@@ -21,6 +23,7 @@ class GetDistPlotSettings:
         self.line_labels = True
         self.x_label_rotation = 0
         self.num_shades = 80
+        self.fig_width_inch = fig_width_inch  # if you want to force specific fixed width
         self.setWithSubplotSize(subplot_size_inch)
         self.progress = False
         self.tight_layout = True
@@ -59,12 +62,19 @@ class GetDistPlotSettings:
         self.lab_fontsize = 7 + 2 * self.subplot_size_inch
         self.axes_fontsize = 4 + 2 * self.subplot_size_inch
         self.legend_fontsize = self.axes_fontsize
-
+        self.font_size = self.lab_fontsize
         self.lw1 = self.subplot_size_inch / 3.0
         self.lw_contour = self.lw1 * 0.6
         self.lw_likes = self.subplot_size_inch / 6.0
         self.scatter_size = 3
         self.colorbar_axes_fontsize = self.axes_fontsize
+
+    def rcSizes(self, axes_fontsize=None, lab_fontsize=None, legend_fontsize=None):
+        self.font_size = rcParams['font.size']
+        self.legend_fontsize = legend_fontsize or rcParams['legend.fontsize']
+        self.lab_fontsize = lab_fontsize  or rcParams['axes.labelsize']
+        self.axes_fontsize = axes_fontsize or rcParams['xtick.labelsize']
+        self.colorbar_axes_fontsize = self.axes_fontsize - 1
 
 
 defaultSettings = GetDistPlotSettings()
@@ -363,7 +373,7 @@ class GetDistPlotter():
 
     def set_xlabel(self, param):
         xlabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize,
-                verticalalignment='baseline', labelpad=5 + self.settings.lab_fontsize)
+                verticalalignment='baseline', labelpad=4 + self.settings.font_size)  # test_size because need a number not e.g. 'medium'
 
     def set_ylabel(self, param):
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
@@ -407,7 +417,10 @@ class GetDistPlotter():
         else: self.plot_col = nx
         if ny is None: self.plot_row = (nplot + self.plot_col - 1) / self.plot_col
         else: self.plot_row = ny
-        self.fig = figure(figsize=(self.settings.subplot_size_inch * self.plot_col * xstretch, self.settings.subplot_size_inch * self.plot_row * ystretch))
+        if self.settings.fig_width_inch is not None:
+            self.fig = figure(figsize=(self.settings.fig_width_inch, (self.settings.fig_width_inch * self.plot_row * ystretch) / (self.plot_col * xstretch)))
+        else:
+            self.fig = figure(figsize=(self.settings.subplot_size_inch * self.plot_col * xstretch, self.settings.subplot_size_inch * self.plot_row * ystretch))
         return self.plot_col, self.plot_row
 
     def get_param_array(self, root, in_params):
@@ -621,7 +634,7 @@ class GetDistPlotter():
             subplots_adjust(wspace=0, hspace=0)
             self.finish_plot(no_gap=True)
 
-    def rotate_yticklabels(self, ax=None, rotation= -90):
+    def rotate_yticklabels(self, ax=None, rotation=-90):
         if ax is None: ax = gca()
         for ticklabel in ax.get_yticklabels():
             ticklabel.set_rotation(rotation)
@@ -642,7 +655,7 @@ class GetDistPlotter():
             gca().add_line(Line2D(P1, P2, color=color, ls=ls, zorder=zorder, **kwargs))
 
     def add_colorbar_label(self, cb, param):
-        cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize, rotation= -90)
+        cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize, rotation=-90)
         setp(getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.colorbar_axes_fontsize)
 
     def add_3d_scatter(self, root, in_params, color_bar=True):
