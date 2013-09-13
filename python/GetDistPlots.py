@@ -3,7 +3,12 @@ import matplotlib
 matplotlib.use('Agg')
 from pylab import *
 
+"""Plotting scripts for GetDist outputs"""
+
+
 class GetDistPlotSettings:
+    """Default sizes, font, styles etc settings for use by plots"""
+
 
     def __init__(self, subplot_size_inch=2, fig_width_inch=None):
         # if fig_width_inch set, forces fixed size, subplot_size_inch then just determines font sizes etc
@@ -180,7 +185,7 @@ class SampleAnalysisGetDist():
 
 class GetDistPlotter():
 
-    def __init__(self, plot_data, settings=None,):
+    def __init__(self, plot_data, settings=None):
         if settings is None: self.settings = defaultSettings
         else: self.settings = settings
         self.plot_data = plot_data
