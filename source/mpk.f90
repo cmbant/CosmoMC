@@ -15,6 +15,10 @@
 !JD 03/08/2013 fixed compute_scaling_factor and associated functions
 !to work with w_a/=0 
 
+!JD 09/13: Replaced compute_scaling_factor routines with routines that use CAMB's
+!          built in D_V function.
+
+
 module mpk
 use precision
 use settings
@@ -32,7 +36,11 @@ implicit none
     real(mcp), pointer, dimension(:,:) :: mpk_W, mpk_invcov
     real(mcp), pointer, dimension(:) :: mpk_P, mpk_sdev, mpk_k
     logical :: use_scaling !as SDSS_lrgDR3
-   !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
+    !JD 09/13  New variables so we can use camb routines to calculate a_scl
+    real(mcp) DV_fid   !Fiducial D_V
+    real(mcp) redshift !effective redshift of the P(k) for computing a_scl
+    
+    !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
     logical :: Q_marge, Q_flat
     real(mcp) :: Q_mid, Q_sigma, Ag
     
@@ -123,6 +131,8 @@ contains
     integer :: min_mpk_kbands_use ! in case you don't want to calc P(k) on the largest scales (will truncate P(k) to zero here!)
     real(mcp), dimension(:,:), allocatable :: mpk_Wfull, mpk_covfull
     real(mcp), dimension(:), allocatable :: mpk_kfull, mpk_fiducial
+    !JD 09/13 Parameters for setting fiducial model to calculating DV_fid for a_scl   
+    real(mcp) omv_fid, omm_fid, w0_fid, wa_fid
 
     character(80) :: dummychar
     logical bad
@@ -209,6 +219,17 @@ contains
     end if
 
     mset%use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
+    
+    !JD 09/13 Calculate fiducial D_V for use when calculating a_scl
+    if(mset%use_scaling) then
+      !Set parameter values for fiducial D_V
+      mset%redshift = Ini_Read_Double_File(Ini,'redshift',0.35d0)
+      omv_fid = Ini_Read_Double_File(Ini,'omv_fid',0.75d0)
+      omm_fid = Ini_Read_Double_File(Ini,'omm_fid',0.25d0)
+      w0_fid = Ini_Read_Double_File(Ini,'w0_fid',-1.d0)
+      wa_fid = Ini_Read_Double_File(Ini,'wa_fid',0.d0)
+      call Set_DV_fid(mset%redshift,omm_fid,omv_fid,w0_fid,wa_fid,mset%DV_fid)
+    end if
 
     mset%Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)
     if (mset%Q_marge) then
@@ -264,14 +285,12 @@ contains
       return
    end if
 
-   ! won't actually want to do this multiple times for multiple galaxy pk data sets?..
-
-   IF(like%use_scaling) then
-      call compute_scaling_factor(dble(CMB%omk),dble(CMB%omv),dble(CMB%w),dble(CMB%wa),a_scl)
+   !JD 09/13 new compute_scaling_factor functions
+   if(like%use_scaling) then
+     call compute_scaling_factor(like%redshift,CMB,like%DV_fid,a_scl)
    else
      a_scl = 1
    end if
-
 
    do i=1, like%num_mpk_kbands_use
      !Errors from using matter_power_minkh at lower end should be negligible
@@ -397,305 +416,56 @@ contains
  end subroutine inv_mat22
 
 !-----------------------------------------------------------------------------
-!LV added to include lrg DR4
+! JD 09/13: Replaced compute_scaling_factor routines so we use
+!           D_V calculations from CAMB.  New routines below
 
-!JD 08/13 fixed functions below to work with w_a
-subroutine compute_scaling_factor(Ok,Ol,w0,wa,a)
-  ! a = dV for z=0.35 relative to its value for flat Om=0.25 model.
-  ! This is the factor by which the P(k) measurement would shift
-  ! sideways relative to what we got for this fiducial flat model.
-  ! * a = (a_angular**2 * a_radial)**(1/3)
-  ! * a_angular = comoving distance to z=0.35 in Mpc/h relative to its value for flat Om=0.25 model
-  !     dA = (c/H)*eta = (2997.92458 Mpc/h)*eta, so we care only about
-  !     eta scaling, not h scaling.
-  !     For flat w=-1 models, a ~ (Om/0.25)**(-0.065)
-  !     For the LRG mean redshift z=0.35, the power law fit
-  !    dA(z,Om= 0.3253 (Om/0.25)^{-0.065}c H_0^{-1} is quite good within
-  !    our range of interest,
-  !     accurate to within about 0.1% for 0.2<Om<0.3.
-  ! * a_radial = 1/H(z) relative to its value for flat Om=0.25 model
-  implicit none
-  real(mpk_d) Or, Om, Ok, Ol, w0, wa, Ok0, Om0, Ol0, w00, wa0, z, eta, eta0, Hrelinv, Hrelinv0, tmp
-  real(mpk_d) Q,Q0
-  real(mpk_d) a_radial, a_angular
-  real(mcp) a
-  !Or= 0.0000415996*(T_0/2.726)**4 / h**2
-  Or= 0! Radiation density totally negligible at  z < 0.35
-  Om= 1-Ok-Ol-Or
-  z  = 0.35  !!edited by Beth 21-11-08: change to zeff of Will's LRG sample.
-  !z = zeffDR7
-  Q = (1+z)**(3*(1+w0+wa))*exp(-3*(z/(1+z))*wa) 
-  Hrelinv= 1/sqrt(Ol*Q + Ok*(1+z)**2 + Om*(1+z)**3 + Or*(1+z)**4)
-!  write(*,*) Ok,Ol,w
-  call compute_z_eta(Or,Ok,Ol,w0,wa,z,eta)
-  tmp = sqrt(abs(Ok))
-  if (Ok.lt.-1.d-6) eta = sin(tmp*eta)/tmp
-  if (Ok.gt.1d-6)   eta = (exp(tmp*eta)-exp(-tmp*eta))/(2*tmp) ! sinh(tmp*eta)/tmp
-  Ok0= 0
-  Ol0= 0.75
-  w00= -1
-  wa0= 0
-  Om0= 1-Ok0-Ol0-Or
-  call compute_z_eta(Or,Ok0,Ol0,w00,wa0,z,eta0)
-  Q0 = (1+z)**(3*(1+w00+wa0))*exp(-3*(z/(1+z))*wa0) 
-  Hrelinv0= 1/sqrt(Ol0*Q0 + Ok0*(1+z)**2 + Om0*(1+z)**3 + Or*(1+z)**4)
-  !a_angular = (Om/0.25)**(-0.065) * (-w*Otot)**0.14 ! Approximation based on Taylor expansion
-  a_angular = eta/eta0
-  a_radial= Hrelinv/Hrelinv0
-  a=  (a_angular**2 * a_radial)**(1/3.d0)
-  !write(*,'(9f10.5)') Ok,Ol,w,a,a_radial,a_angular,(Om/0.25)**(-0.065) * (-w*(1-Ok))**0.14
-  !write(*,'(9f10.5)') Ok,Ol,w,a,a_radial**(2/3.d0),a_angular**(4/3.d0),((Om/0.25)**(-0.065) * (-w*(1-Ok))**0.14)**(4/3.d0)
-  !!! BR09 -- in previous version, scale factor is applied in the wrong direction!  So take a = 1/a to fix it.
-  a = 1.0/a
-end subroutine compute_scaling_factor
-
-subroutine eta_demo
-  implicit none
-  real(mpk_d) Or, Ok, Ol, w0,wa , h, z, eta
-  h  = 0.7
-  Ok = 0
-  Ol = 0.7
-  Or = 0.0000416/h**2
-  w0 = -1
-  wa = 0
-  z  = 1090
-  call compute_z_eta(Or,Ok,Ol,w0,wa,z,eta)
-!  print *,'eta.............',eta
-!  print *,'dlss in Gpc.....',(2.99792458/h)*eta
-end subroutine eta_demo
-
-!INTERFACE
-logical function nobigbang2(Ok,Ol,w0,wa)
-  ! Test if we're in the forbidden zone where the integrand blows up
-  ! (where's H^2 < 0 for some a between 0 and 1).
-  ! The function f(a) = Omega_m + Omega_k*a + Omega_l*Q(a)
-  ! with Q(a) = a**(-3*(w_0+w_a))*exp(-3*(1-a)*w_a).
-  ! can have at most one local minimum.
-  ! We use a golden ratio search to look for that minimum if it exists.
-  ! We then if f(a)<0 there or at the endpoints a=0, a=1.
-  ! g(0) = Omega_m + Omega_l*a**(-3*(w_0+w_a))*exp(-3*w_a) < 0 
-  !                               if w_0+w_a > 0 & Omega_k > 1
-  !                            or if w_0+w_a = 0 & Omega_l < 1
-  ! g(1) = Omega_m + Omega_k + Omega_l = 1 > 0
-  implicit none
-  real(mpk_d) Ok,Ol,w0,wa,Om,a,Q
-  integer failure
-  real(mpk_d) ratio  
-  real(mpk_d) alow,a1,a2,ahigh,Q1,Q2,tol,f1,f2
-  integer i
-  ratio = (sqrt(5.)-1)/2 !Golden ratio for min search search
-  tol = 1.e-6
-  Om = 1.d0 - Ok - Ol
-  failure = 0
+ subroutine compute_scaling_factor(z,CMB,DV_fid,a_scl)
+   implicit none
+   type(CMBParams) CMB
+   real(mcp), intent(in) :: z, DV_fid
+   real(mcp), intent(out) :: a_scl
+    
+   a_scl = DV_x_H0(z,CMB)/DV_fid
+   !Like in original code, we need to apply a_scl in the correct direction
+   a_scl = 1.0_mcp/a_scl
+ end subroutine compute_scaling_factor  
   
-  !Test if f(0)<0
-  if (((w0+wa).eq.0).and.(Ok.gt.1)) failure = 2
-  if (((w0+wa).gt.0).and.(Ol.lt.0)) failure = 3
-  nobigbang2 = (failure.gt.0)
-  if(nobigbang2) then
-    write(*,*)'Big Bang failure mode ',failure
-    return 
-  end if
+ function DV_x_H0(z,CMB)  !Want D_V*H_0
+   use CAMB, only : BAO_D_v
+   implicit none
+   type(CMBParams) CMB
+   real(mcp), intent(in) :: z
+   real(mcp):: DV_x_H0
+
+   !We calculate H_0*D_V because we dont care about scaling of h since 
+   !k is in units of h/Mpc
+   DV_x_H0 = CMB%H0*BAO_D_v(z)
+
+ end function DV_x_H0
+
+ subroutine Set_DV_fid(z,omm_fid,omv_fid,w0_fid,wa_fid,DV_fid)
+   use CAMB, only: BAO_D_v,CAMBParams,CAMBParams_set,CAMB_SetDefParams,w_lam,wa_ppf
+   implicit none
+   type(CAMBParams)  P
+   real(mcp), intent(in) :: z,omm_fid,omv_fid,w0_fid,wa_fid
+   real(mcp), intent(out) :: DV_fid
+   real(mcp), parameter :: ratio = 0.15_mcp   !omega_b/omega_m, value doesn't really matter.
+   integer error                              !We are just using it to set up CAMB
+   
+   !Initialize CAMB 
+   w_lam = w0_fid
+   wa_ppf = wa_fid
+   call CAMB_SetDefParams(P)
+   P%omegab = omm_fid*ratio
+   P%omegac = omm_fid*(1.0_mcp - ratio)
+   P%omegav = omv_fid
+   call CAMBParams_set(P,error,.false.)   !Don't need to run reionization
+   if(error /= 0) call Mpistop('Error in calculating D_V Set_DV_fid in wigglez.f90')
   
-  !Set up initial values for golden ratio search
-  alow = 0
-  ahigh = 1
-  a1 = alow+ratio
-  a2 = ahigh-ratio
-  failure = 0
-  i=0
-  do while ((ahigh-alow)>=tol .and. i<100)
-    Q1 = a1**(-3*(w0+wa))*exp(3*(-1+a1)*wa) 
-    Q2 = a2**(-3*(w0+wa))*exp(3*(-1+a2)*wa) 
-    f1 = Om+Ok*a1+Ol*Q1
-    f2 = Om+Ok*a2+Ol*Q2
-    !check if we have a negative value even before finding minimum
-    if(f1<0 .or. f2 <0)then 
-      failure=1
-      exit
-    end if
-    !Set up next search step
-    if(f1>f2)then
-      ahigh=a1
-      a1=a2
-      a2=ahigh-ratio*(ahigh-alow)
-    else
-      alow=a2
-      a2=a1
-      a1=alow+ratio*(ahigh-alow)
-    end if
-    !Test for convergence of Search
-    if((ahigh-alow)<tol)then
-      a=(ahigh+alow)/2
-      if(a>tol)then  !only test minimum if is not found at a=0
-        Q=a**(-3*(w0+wa))*exp(3*(-1+a)*wa) 
-        if(Om+Ok*a+Ol*Q<0)failure=1
-      end if
-    end if
-    i = i+1
-  end do
-  if(i>99) write(*,*)'Warning golden ratio search failed to converge in nobigbang2'
-  nobigbang2 = (failure.gt.0)
-  if(nobigbang2) then
-    write(*,*)'Big Bang failure mode ',failure
-    return 
-  end if
-  end function nobigbang2
-!END INTERFACE
+   !Calculating the fiducial D_V.  We multiply it by H_0 because we dont care about scaling 
+   !of h since k is in units of h/Mpc
+   DV_fid = P%H0*BAO_D_v(z)  
 
-real(mpk_d) function eta_integrand(a)
-  implicit none
-  real(mpk_d) Or, Ok, Ox, w0,wa
-  common/eta/Or, Ok, Ox, w0,wa
-  real(mpk_d) a, Om,Q
-  ! eta = int (H0/H)dz = int (H0/H)(1+z)dln(1+z) = int (H0/H)/a dlna = int (H0/H)/a^2 da =
-  ! Integrand = (H0/H)/a^2
-  ! (H/H0)**2 = Ox*Q(a) + Ok/a**2 + Om/a**3 + Or/a**4
-  ! with Q(a) = a**(-3*(1+w_0+w_a))*exp(-3*(1-a)*w_a)
-  if (a.eq.0.d0) then
-     eta_integrand = 0.d0
-  else
-     Om = 1.d0 - Or - Ok - Ox
-     Q = a**(1-3*(w0+wa))*exp(3*(-1+a)*wa)
-     eta_integrand = 1.d0/sqrt(Ox*Q + Ok*a**2 + Om*a + Or)
-  end if
-  return
-end function eta_integrand
-
-subroutine eta_z_integral(Omega_r,Omega_k,Omega_x,w_eos0,w_eosa,z,eta)
-  ! Computes eta as a function
-  ! of the curvature Omega_k, the dark energy density Omega_x
-  ! and its equation of state w.
-  implicit none
-  real(mpk_d) Or, Ok, Ox, w0,wa
-  common/eta/Or, Ok, Ox, w0,wa
-  real(mpk_d) Omega_r, Omega_k,Omega_x,w_eos0,w_eosa, z, eta, epsabs, epsrel, amin, amax!, eta_integrand
-  Or = Omega_r
-  Ok = Omega_k
-  Ox = Omega_x
-  w0 = w_eos0
-  wa = w_eosa
-  epsabs  = 0
-  epsrel  = 1.d-10
-  amin= 1/(1+z)
-  amax= 1
-  call qromb2(eta_integrand,amin,amax,epsabs,epsrel,eta)
-  return
-end subroutine eta_z_integral
-
-subroutine compute_z_eta(Or,Ok,Ox,w0,wa,z,eta)
-  ! Computes the conformal distance eta(z)
-  implicit none
-  real(mpk_d) Or, Ok, Ox, w0,wa, z, eta
-!  logical nobigbang2
-  if (nobigbang2(Ok,Ox,w0,wa)) then
-     print *,'No big bang, so eta undefined if z>zmax.'
-     eta = 99
-  else
-     call eta_z_integral(Or,Ok,Ox,w0,wa,z,eta)
-     ! print *,'Or, Ok, Ox, w, z, H_0 t_0...',Or, Ok, Ox, w, eta
-  end if
-  return
-end subroutine compute_z_eta
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!! num rec routines
-!!!!!!!!!!!!!!!!!!!!!!!!!!
-SUBROUTINE qromb2(func,a,b,epsabs,epsrel,ss)
-! The numerical recipes routine, but modified so that is decides
-! it's done when either the relative OR the absolute accuracy has been attained.
-! The old version used relative errors only, so it always failed when
-! when the integrand was near zero.
-! epsabs = epsrel = 1e-6 are canonical choices.
-  INTEGER JMAX,JMAXP,K,KM
-  real(mpk_d) a,b,func,ss,epsabs,epsrel
-  EXTERNAL func
-  PARAMETER (JMAX=20, JMAXP=JMAX+1, K=5, KM=K-1)
-                                !    USES polint,trapzd
-  INTEGER j
-  real(mpk_d) dss,h(JMAXP),s(JMAXP)
-  h(1)=1.d0
-  do j=1,JMAX
-     call trapzd(func,a,b,s(j),j)
-     if (j.ge.K) then
-        call polint(h(j-KM),s(j-KM),K,0.d0,ss,dss)
-        if (abs(dss).le.epsrel*abs(ss)) return
-        if (abs(dss).le.epsabs) return
-     endif
-     s(j+1)=s(j)
-     h(j+1)=0.25d0*h(j)
-  ENDDO
-  print *,'Too many steps in qromb'
-
-  RETURN
-END SUBROUTINE qromb2
-
-SUBROUTINE polint(xa,ya,n,x,y,dy) ! From Numerical Recipes
-  INTEGER n,NMAX
-  real(mpk_d) dy,x,y,xa(n),ya(n)
-  PARAMETER (NMAX=10)
-  INTEGER i,m,ns
-  real(mpk_d) den,dif,dift,ho,hp,w,c(NMAX),d(NMAX)
-  ns=1
-  dif=abs(x-xa(1))
-  do  i=1,n
-     dift=abs(x-xa(i))
-     if (dift.lt.dif) then
-        ns=i
-        dif=dift
-     endif
-     c(i)=ya(i)
-     d(i)=ya(i)
-  enddo
-  y=ya(ns)
-  ns=ns-1
-  do  m=1,n-1
-     do  i=1,n-m
-        ho=xa(i)-x
-        hp=xa(i+m)-x
-        w=c(i+1)-d(i)
-        den=ho-hp
-        if(den.eq.0.) then
-           print*, 'failure in polint'
-           stop
-        endif
-        den=w/den
-        d(i)=hp*den
-        c(i)=ho*den
-     enddo
-     if (2*ns.lt.n-m)then
-        dy=c(ns+1)
-     else
-        dy=d(ns)
-        ns=ns-1
-     endif
-     y=y+dy
-  enddo
-  return
-END SUBROUTINE polint
-
-SUBROUTINE trapzd(func,a,b,s,n) ! From Numerical Recipes
-  INTEGER n
-  real(mpk_d) a,b,s,func
-  EXTERNAL func
-  INTEGER it,j
-  real(mpk_d) del,sum,tnm,x
-  if (n.eq.1) then
-     s=0.5*(b-a)*(func(a)+func(b))
-  else
-     it=2**(n-2)
-     tnm=it
-     del=(b-a)/tnm
-     x=a+0.5*del
-     sum=0.
-     do  j=1,it
-        sum=sum+func(x)
-        x=x+del
-     enddo
-     s=0.5*(s+(b-a)*sum/tnm)
-  endif
-  return
-END SUBROUTINE trapzd
+ end subroutine Set_DV_fid
 
 end module

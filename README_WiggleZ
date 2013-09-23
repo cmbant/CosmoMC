@@ -23,14 +23,17 @@ make all
 You should now be ready to run the with the WiggleZ MPK data.  To do so simply go into
 test.ini and make sure the following line is uncommented
 
-DEFAULT(batch1/MPK.ini)
+DEFAULT(batch1/WiggleZ_MPK.ini)
 
 Then decide whether you want to include nonlinear corrections from the halofit
 module and go into batch1/MPK.ini to set the variable "nonlinear_pk" accordingly.  We 
 do recommend that you set nonlinear_pk = T 
 
-You can also choose to include other matter power spectra in your analysis by setting
-the following variables in batch1/MPK.ini 
+You can also choose to include other matter power spectra in your analysis by uncommenting
+
+DEFAULT(batch1/MPK.ini)
+
+and setting the following variables in batch1/MPK.ini 
 
 mpk_numdatasets = 1
 mpk_dataset1 = data/sdss_lrgDR4.dataset
@@ -47,8 +50,8 @@ mpiexec -n numofprocs cosmomc test.ini
 or 
 mpirun -n numofprocs cosmomc test.ini
 
-For testing purposes we also include some fiducial .ini files.  In order to check that your
-installation was successful, run the following command:
+For testing purposes we also include some fiducial .ini files.  In order to check that 
+your installation was successful, run the following command:
 
 ./cosmomc fid.ini
 
@@ -56,20 +59,20 @@ The end of your output should look something like this:
  
  Calling WiggleZ likelihood routines
  starting analytic marginalisation over bias
- Bias value:  0.925487853186449     
-WiggleZ bin 3 mpk chi-sq:  116.75846
+ Bias value:  0.925403105235173     
+WiggleZ bin 3 mpk chi-sq:  116.75736
  Calling WiggleZ likelihood routines
  starting analytic marginalisation over bias
- Bias value:  0.904191639473954     
-WiggleZ bin 4 mpk chi-sq:  126.44946
+ Bias value:  0.904102156447975     
+WiggleZ bin 4 mpk chi-sq:  126.44929
  Calling WiggleZ likelihood routines
  starting analytic marginalisation over bias
- Bias value:  0.983063486489037     
-WiggleZ bin 1 mpk chi-sq:  116.50274
+ Bias value:  0.983000150819525     
+WiggleZ bin 1 mpk chi-sq:  116.50245
  Calling WiggleZ likelihood routines
  starting analytic marginalisation over bias
- Bias value:  0.953392812169689     
-WiggleZ bin 2 mpk chi-sq:  106.80111
-           1 Likelihood:    233.255886268619
+ Bias value:  0.953317746679333     
+WiggleZ bin 2 mpk chi-sq:  106.80082
+           1 Likelihood:    233.254957941632
   
-If the values in thes lines match yours, the installation was successful.
+If the values in these lines match yours, the installation was successful.

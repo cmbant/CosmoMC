@@ -21,6 +21,16 @@ Ag = 1.4
 
 use_scaling = T
 
+#fiducial model settings when use_scaling = T
+redshift = 0.35
+#Omega_\Lambda
+omv_fid = 0.75
+#Omega_m
+omm_fid = 0.25
+w0_fid = -1
+wa_fid = 0
+
+
 min_mpk_kbands_use = 1
 max_mpk_kbands_use = 65
 

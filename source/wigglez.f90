@@ -17,6 +17,9 @@
 !JD 03/08/2013 fixed compute_scaling_factor and associated functions
 !to work with w_a/=0 
 
+!JD 09/13: Replaced compute_scaling_factor routines with routines that use CAMB's
+!          built in D_V function.
+
 module wigglezinfo
 !David Parkinson 12th March 2012
   use settings
@@ -29,16 +32,10 @@ module wigglezinfo
   integer, dimension(4) :: izwigglez
   real(dl), parameter :: z0 = 0.d0, za = 0.22d0, zb = 0.41d0, zc = 0.6d0, zd = 0.78d0
 
-!in CAMB: 5=now (z=0), 4=a, 3=b, 2=c, 1=d; opposite order in matter_power
-!! now generalized indices iz0, iza, izb, izc, izd
   real(dl), dimension(4) :: zeval, zweight, sigma2BAOfid, sigma2BAO
 
-  real(dl) om_val, ol_val, ok_check, wval  ! passed in from CMBparams CMB
-
- ! power spectra evaluated at GiggleZ fiducial cosmological theory 
- real, dimension(num_matter_power,4) :: power_hf_fid
- !make allocatable to avoid compile-time range errors when matter_power_lnzsteps<4
-
+  !power spectra evaluated at GiggleZ fiducial cosmological theory 
+  real, dimension(num_matter_power,4) :: power_hf_fid
 contains
 
   subroutine GiggleZinfo_init(redshift)
@@ -147,43 +144,66 @@ implicit none
 
 type, extends(CosmologyLikelihood) :: WiggleZLikelihood
   logical :: use_set
-  integer :: num_mpk_points_use ! total number of points used (ie. max-min+1)
-  integer :: num_mpk_kbands_use ! total number of kbands used (ie. max-min+1)
-  integer :: num_regions_used   ! total number of wigglez regions being used
 ! 1st index always refers to the region
 ! so mpk_P(1,:) is the Power spectrum in the first active region
   real(mcp), pointer, dimension(:,:,:) :: mpk_W, mpk_invcov
   real(mcp), pointer, dimension(:,:) :: mpk_P
   real(mcp), pointer, dimension(:) :: mpk_k
-  logical :: use_scaling !as SDSS_lrgDR3
+  !JD 09/13 added DV_fid so we can use camb routines to calculate a_scl
+  real(mcp):: DV_fid 
+  real(mcp):: redshift ! important to know
+  contains
+   procedure :: LogLike => WiggleZ_Lnlike
+end type WiggleZLikelihood
+
+  integer, parameter :: max_num_wigglez_regions = 7
+  !Note all units are in k/h here
+  integer, parameter :: mpk_d = kind(1.d0)
+  
+  !JD 09/13  Moved a bunch of stuff here so we only set it once and settings are 
+  !common across all used WiggleZ datasets
+  integer :: num_mpk_points_use ! total number of points used (ie. max-min+1)
+  integer :: num_mpk_kbands_use ! total number of kbands used (ie. max-min+1)
+  integer :: num_regions_used   ! total number of wigglez regions being used
+
+  integer :: num_mpk_points_full ! actual number of bandpowers in the infile
+  integer :: num_mpk_kbands_full ! actual number of k positions " in the infile
+  integer :: max_mpk_points_use ! in case you don't want the smallest scale modes (eg. sdss)
+  integer :: min_mpk_points_use ! in case you don't want the largest scale modes
+  integer :: max_mpk_kbands_use ! in case you don't want to calc P(k) on the smallest scales (will truncate P(k) to zero here!)
+  integer :: min_mpk_kbands_use ! in case you don't want to calc P(k) on the largest scales (will truncate P(k) to zero here!)
+  
   logical, pointer, dimension(:) :: regions_active
+  
+  logical :: use_scaling !as SDSS_lrgDR3 !JD 09/13 now using CAMB functions for a_scl 
+  
+  !JD 09/13 Parameters for setting fiducial model to calculating DV_fid for a_scl
+  real(mcp) omv_fid, omm_fid, w0_fid, wa_fid
+  
   logical use_gigglez
+  
   !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
   logical :: Q_marge, Q_flat
   real(mcp):: Q_mid, Q_sigma, Ag
-  real(mcp) :: redshift ! important to know
-  contains
-   procedure :: LogLike => WiggleZ_Lnlike
- end type WiggleZLikelihood
-
- integer, parameter :: max_num_wigglez_regions = 7
- !Note all units are in k/h here
- integer, parameter :: mpk_d = kind(1.d0)
 
 contains 
 
   subroutine WiggleZLikelihood_Add(LikeList, Ini)
     use IniFile
     use settings
+    use wigglezinfo
     class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
     Type(WiggleZLikelihood), pointer :: like
     integer nummpksets, i
-    
-    
+     
     use_wigglez_mpk = (Ini_Read_Logical_File(Ini, 'use_wigglez_mpk',.false.))
     
     if(.not. use_wigglez_mpk) return
+    
+    use_gigglez = Ini_Read_Logical('Use_gigglez',.false.)
+    
+    call ReadWiggleZCommon(ReadIniFileName(Ini,'wigglez_common_dataset'))
     
     nummpksets = Ini_Read_Int('mpk_wigglez_numdatasets',0)
     do i= 1, nummpksets
@@ -197,41 +217,14 @@ contains
       
   end subroutine WiggleZLikelihood_Add
   
-  subroutine ReadWiggleZDataset(wmset,gname)   
-! this will be called once for each redshift bin
+  subroutine ReadWiggleZCommon(gname)
+    use IniFile
     use wigglezinfo
-    use MatrixUtils
-    implicit none
-    type(WiggleZLikelihood) wmset
+    Type(TIniFile) :: ini
     character(LEN=*), intent(IN) :: gname
-    character(LEN=Ini_max_string_len) :: kbands_file, measurements_file, windows_file, cov_file
-
-
-    integer i,iopb,i_regions
-    real(mcp) keff,klo,khi,beff
-    integer :: num_mpk_points_full ! actual number of bandpowers in the infile
-    integer :: num_mpk_kbands_full ! actual number of k positions " in the infile
-    integer :: max_mpk_points_use ! in case you don't want the smallest scale modes (eg. sdss)
-    integer :: min_mpk_points_use ! in case you don't want the largest scale modes
-    integer :: max_mpk_kbands_use ! in case you don't want to calc P(k) on the smallest scales (will truncate P(k) to zero here!)
-    integer :: min_mpk_kbands_use ! in case you don't want to calc P(k) on the largest scales (will truncate P(k) to zero here!)
-    real(mcp), dimension(:,:,:), allocatable :: mpk_Wfull, mpk_covfull
-    real(mcp), dimension(:), allocatable :: mpk_kfull  
-    real(mcp), dimension(:,:), allocatable :: invcov_tmp
     character(len=64) region_string
-    character(80) :: dummychar
-    character z_char
-    integer iz,count
-    integer :: file_unit
+    integer i_regions, file_unit
     logical bad
-    Type(TIniFile) :: Ini
-    
-    zeval(1) = za
-    zeval(2) = zb
-    zeval(3) = zc
-    zeval(4) = zd
-    
-    iopb = 0
     
     file_unit = new_file_unit()
     call Ini_Open_File(Ini, gname, file_unit, bad, .false.)
@@ -239,43 +232,32 @@ contains
       write (*,*)  'Error opening dataset file '//trim(gname)
       stop
     end if
-
-#ifndef WIGZ
-       call MpiStop('mpk: edit makefile to have "EXTDATA = WIGZ" to inlude WiggleZ data')
-#endif
-
- 
-
-! we've opened the file, now we have to break it up ourselves
-
-
-    wmset%name = Ini_Read_String_File(Ini,'name') 
-    wmset%redshift = Ini_Read_Real_File(Ini,'redshift',0.0)
-    if(wmset%redshift.eq.0.0) then
-       call MpiStop('mpk: failed  to read in WiggleZ redshift')
-    end if
     
-    Ini_fail_on_not_found = .false.
-    wmset%use_set =.true.
-    if (Feedback > 0) write (*,*) 'reading: '//trim(wmset%name)
+    
+    zeval(1) = za
+    zeval(2) = zb
+    zeval(3) = zc
+    zeval(4) = zd
+  
     num_mpk_points_full = Ini_Read_Int_File(Ini,'num_mpk_points_full',0)
     if (num_mpk_points_full.eq.0) write(*,*) ' ERROR: parameter num_mpk_points_full not set'
     num_mpk_kbands_full = Ini_Read_Int_File(Ini,'num_mpk_kbands_full',0)
     if (num_mpk_kbands_full.eq.0) write(*,*) ' ERROR: parameter num_mpk_kbands_full not set'
+    
     min_mpk_points_use = Ini_Read_Int_File(Ini,'min_mpk_points_use',1)
     min_mpk_kbands_use = Ini_Read_Int_File(Ini,'min_mpk_kbands_use',1)
     max_mpk_points_use = Ini_Read_Int_File(Ini,'max_mpk_points_use',num_mpk_points_full)
     max_mpk_kbands_use = Ini_Read_Int_File(Ini,'max_mpk_kbands_use',num_mpk_kbands_full)
 
-! region 1 = 9h
-! region 2 = 11h
-! region 3 = 15h
-! region 4 = 22h
-! region 5 = 0h
-! region 6 = 1h
-! region 7 = 3h
+    ! region 1 = 9h
+    ! region 2 = 11h
+    ! region 3 = 15h
+    ! region 4 = 22h
+    ! region 5 = 0h
+    ! region 6 = 1h
+    ! region 7 = 3h
 
-    allocate(wmset%regions_active(max_num_wigglez_regions))
+    allocate(regions_active(max_num_wigglez_regions))
     do i_regions=1,7
        if(i_regions.eq.1) then
           region_string = 'Use_9-hr_region'
@@ -292,38 +274,120 @@ contains
        else if(i_regions.eq.7) then
           region_string = 'Use_0-hr_region'
        endif
-       wmset%regions_active(i_regions) =  Ini_Read_Logical_File(Ini,region_string,.false.)
+       regions_active(i_regions) =  Ini_Read_Logical_File(Ini,region_string,.false.)
     enddo
-
-!  ... work out how many regions are being used
-
-    wmset%num_regions_used = 0
+    
+    !  ... work out how many regions are being used
+    num_regions_used = 0
     do i_regions = 1,max_num_wigglez_regions
-       if(wmset%regions_active(i_regions)) wmset%num_regions_used = wmset%num_regions_used + 1
+       if(regions_active(i_regions)) num_regions_used = num_regions_used + 1
     enddo
-
-    if(wmset%num_regions_used.eq.0) then
-       print*, wmset%name
-       call MpiStop('mpk: no regions begin used in this data set')
+    
+    if(num_regions_used.eq.0) then
+       call MpiStop('WiggleZ_mpk: no regions being used in this data set')
     endif
+    
+    num_mpk_points_use = max_mpk_points_use - min_mpk_points_use +1
+    num_mpk_kbands_use = max_mpk_kbands_use - min_mpk_kbands_use +1
+    
+    use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
+    
+    if(use_scaling) then
+      !Set parameter values for fiducial D_V
+      omv_fid = Ini_Read_Double_File(Ini,'omv_fid',0.705d0)
+      omm_fid = Ini_Read_Double_File(Ini,'omm_fid',0.295d0)
+      w0_fid = Ini_Read_Double_File(Ini,'w0_fid',-1.d0)
+      wa_fid = Ini_Read_Double_File(Ini,'wa_fid',0.d0)
+    end if
+    
+    if(use_gigglez .and. (.not. use_nonlinear)) then
+      write(*,*) 'ERROR!:  GiggleZ non-linear prescription only available'
+      write(*,*) '         when setting nonlinear_pk = T in MPK.ini'
+      call MPIstop()
+    end if
 
-    wmset%num_mpk_points_use = max_mpk_points_use - min_mpk_points_use +1
-    wmset%num_mpk_kbands_use = max_mpk_kbands_use - min_mpk_kbands_use +1
+    if(.not. use_gigglez .and. use_nonlinear)then
+      write(*,*)'WARNING! Using non-linear model in WiggleZ module without'
+      write(*,*)'GiggleZ prescription.  This method may not be as accurate.'
+      write(*,*)'See arXiv:1210.2130 for details.'
+    end if
 
+
+!... IMPORTANT: need to talk to CB about Q marginalisation ...
+    Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)
+    if (Q_marge) then
+       Q_flat = Ini_Read_Logical_File(Ini,'Q_flat',.false.)
+       if (.not. Q_flat) then
+          !gaussian prior on Q
+          Q_mid = Ini_Read_Real_File(Ini,'Q_mid')
+          Q_sigma = Ini_Read_Real_File(Ini,'Q_sigma')
+       end if
+       Ag = Ini_Read_Real_File(Ini,'Ag', 1.4)
+    end if
+    
+    call Ini_Close_File(Ini)
+    call ClearFileUnit(file_unit)
+    
+  end subroutine ReadWiggleZCommon
+  
+  subroutine ReadWiggleZDataset(wmset,gname)   
+! this will be called once for each redshift bin
+    use wigglezinfo
+    use MatrixUtils
+    implicit none
+    type(WiggleZLikelihood) wmset
+    character(LEN=*), intent(IN) :: gname
+    character(LEN=Ini_max_string_len) :: kbands_file, measurements_file, windows_file, cov_file
+    integer i,iopb,i_regions
+    real(mcp) keff,klo,khi,beff
+    real(mcp), dimension(:,:,:), allocatable :: mpk_Wfull, mpk_covfull
+    real(mcp), dimension(:), allocatable :: mpk_kfull  
+    real(mcp), dimension(:,:), allocatable :: invcov_tmp
+    character(80) :: dummychar
+    character z_char
+    integer iz,count
+    integer :: file_unit
+    logical bad
+    Type(TIniFile) :: Ini
+    
+    iopb = 0
+    
+    file_unit = new_file_unit()
+    call Ini_Open_File(Ini, gname, file_unit, bad, .false.)
+    if (bad) then
+      write (*,*)  'Error opening dataset file '//trim(gname)
+      stop
+    end if
+
+#ifndef WIGZ
+       call MpiStop('mpk: edit makefile to have "EXTDATA = WIGZ" to inlude WiggleZ data')
+#endif
+
+! we've opened the file, now we have to break it up ourselves
+
+
+    wmset%name = Ini_Read_String_File(Ini,'name') 
+    wmset%redshift = Ini_Read_Double_File(Ini,'redshift',0.d0)
+    if(wmset%redshift.eq.0.0) then
+       call MpiStop('mpk: failed  to read in WiggleZ redshift')
+    end if
+    
+    Ini_fail_on_not_found = .false.
+    wmset%use_set =.true.
+    if (Feedback > 0) write (*,*) 'reading: '//trim(wmset%name)
+        
     if(allocated(mpk_kfull)) deallocate(mpk_kfull)
     allocate(mpk_kfull(num_mpk_kbands_full))
-    allocate(wmset%mpk_P(wmset%num_regions_used,wmset%num_mpk_points_use))
-    allocate(wmset%mpk_k(wmset%num_mpk_kbands_use))
-    allocate(wmset%mpk_W(wmset%num_regions_used,wmset%num_mpk_points_use,wmset%num_mpk_kbands_use))
-
-
+    allocate(wmset%mpk_P(num_regions_used,num_mpk_points_use))
+    allocate(wmset%mpk_k(num_mpk_kbands_use))
+    allocate(wmset%mpk_W(num_regions_used,num_mpk_points_use,num_mpk_kbands_use))
 
     kbands_file  = ReadIniFileName(Ini,'kbands_file')
     call ReadVector(kbands_file,mpk_kfull,num_mpk_kbands_full)
     wmset%mpk_k(:)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use) 
     if (Feedback > 1) then 
        write(*,*) 'reading: '//trim(wmset%name)//' data'
-       write(*,*) 'Using kbands windows between',real(wmset%mpk_k(1)),' < k/h < ',real(wmset%mpk_k(wmset%num_mpk_kbands_use))      
+       write(*,*) 'Using kbands windows between',real(wmset%mpk_k(1)),' < k/h < ',real(wmset%mpk_k(num_mpk_kbands_use))      
     endif
     if  (wmset%mpk_k(1) < matter_power_minkh) then
        write (*,*) 'WARNING: k_min in '//trim(wmset%name)//'less than setting in cmbtypes.f90'
@@ -335,7 +399,7 @@ contains
     wmset%mpk_P=0.
     count = 0
     do i_regions =1,7
-       if(wmset%regions_active(i_regions)) then
+       if(regions_active(i_regions)) then
           count = count+1
           read (tmp_file_unit,*) dummychar
           read (tmp_file_unit,*) dummychar
@@ -345,11 +409,11 @@ contains
 
           if (Feedback > 1 .and. min_mpk_points_use>1) write(*,*) 'Not using bands with keff=  ',real(keff),&
                ' or below in region', i_regions
-          do i =1, wmset%num_mpk_points_use
+          do i =1, num_mpk_points_use
              read (tmp_file_unit,*, iostat=iopb) keff,klo,khi,wmset%mpk_P(count,i),beff,beff
           end do
           ! NB do something to get to the end of the list
-          do i=1, num_mpk_points_full-wmset%num_mpk_points_use-min_mpk_points_use+1
+          do i=1, num_mpk_points_full-num_mpk_points_use-min_mpk_points_use+1
              read (tmp_file_unit,*, iostat=iopb) klo,klo,khi,beff,beff,beff
              if(iopb.ne.0) stop
           end do
@@ -371,9 +435,9 @@ contains
     call ReadWiggleZMatrices(windows_file,mpk_Wfull,max_num_wigglez_regions,num_mpk_points_full,num_mpk_kbands_full)
     count = 0
     do i_regions=1,max_num_wigglez_regions
-       if(wmset%regions_active(i_regions)) then
+       if(regions_active(i_regions)) then
           count = count + 1
-          wmset%mpk_W(count,1:wmset%num_mpk_points_use,1:wmset%num_mpk_kbands_use)= &
+          wmset%mpk_W(count,1:num_mpk_points_use,1:num_mpk_kbands_use)= &
                mpk_Wfull(i_regions,min_mpk_points_use:max_mpk_points_use,min_mpk_kbands_use:max_mpk_kbands_use)
        endif
     enddo
@@ -384,21 +448,21 @@ contains
     cov_file  = ReadIniFileName(Ini,'cov_file')
     if (cov_file /= '') then
        allocate(mpk_covfull(max_num_wigglez_regions,num_mpk_points_full,num_mpk_points_full))
-       allocate(invcov_tmp(wmset%num_mpk_points_use,wmset%num_mpk_points_use))
+       allocate(invcov_tmp(num_mpk_points_use,num_mpk_points_use))
 ! ... read the entire covraiance matrix in, then decide which regions we want...
        call ReadWiggleZMatrices(cov_file,mpk_covfull,max_num_wigglez_regions,num_mpk_points_full,num_mpk_points_full)
-       allocate(wmset%mpk_invcov(wmset%num_regions_used,wmset%num_mpk_points_use,wmset%num_mpk_points_use))
+       allocate(wmset%mpk_invcov(num_regions_used,num_mpk_points_use,num_mpk_points_use))
        count = 0
        do i_regions=1,max_num_wigglez_regions
-          if(wmset%regions_active(i_regions)) then
+          if(regions_active(i_regions)) then
              count = count + 1
 ! ... the covariance matrix has two indices for the different k-values, and another one for the region...       
-!             wmset%mpk_invcov(count,1:wmset%num_mpk_points_use,1:wmset%num_mpk_points_use)=  &
+!             wmset%mpk_invcov(count,1:num_mpk_points_use,1:num_mpk_points_use)=  &
              invcov_tmp(:,:) = &
                   mpk_covfull(i_regions,min_mpk_points_use:max_mpk_points_use,min_mpk_points_use:max_mpk_points_use)
 !             call Matrix_Inverse(wmset%mpk_invcov(count,:,:))
              call Matrix_Inverse(invcov_tmp)
-             wmset%mpk_invcov(count,1:wmset%num_mpk_points_use,1:wmset%num_mpk_points_use) = invcov_tmp(:,:)
+             wmset%mpk_invcov(count,1:num_mpk_points_use,1:num_mpk_points_use) = invcov_tmp(:,:)
           endif
        enddo
        deallocate(mpk_covfull)
@@ -409,38 +473,16 @@ contains
 
     if (iopb.ne.0) then
        stop 'Error reading WiggleZ mpk file'
-    endif
-
-    wmset%use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
-    wmset%use_gigglez = Ini_Read_Logical_File(Ini,'Use_gigglez',.false.)
-
-    if(wmset%use_gigglez) then
-      if(.not. use_nonlinear) then
-        write(*,*) 'ERROR!:  GiggleZ non-linear prescription only available'
-        write(*,*) '         when setting nonlinear_pk = T in MPK.ini'
-        call MPIstop()
-      end if
+    endif 
+    
+    !JD 09/13 Calculate fiducial D_V for use when calculating a_scl
+    if(use_scaling) then
+      call Set_DV_fid(wmset%redshift,omm_fid,omv_fid,w0_fid,wa_fid,wmset%DV_fid)
+    end if
+    
+    if(use_gigglez) then
       call GiggleZinfo_init(wmset%redshift)
     endif
-
-    if(.not. wmset%use_gigglez .and. use_nonlinear)then
-      write(*,*)'WARNING! Using non-linear model in WiggleZ module without'
-      write(*,*)'GiggleZ prescription.  This method may not be as accurate.'
-      write(*,*)'See arXiv:1210.2130 for details.'
-    end if
-
-
-!... IMPORTANT: need to talk to CB about Q marginalisation ...
-    wmset%Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)
-    if (wmset%Q_marge) then
-       wmset%Q_flat = Ini_Read_Logical_File(Ini,'Q_flat',.false.)
-       if (.not. wmset%Q_flat) then
-          !gaussian prior on Q
-          wmset%Q_mid = Ini_Read_Real_File(Ini,'Q_mid')
-          wmset%Q_sigma = Ini_Read_Real_File(Ini,'Q_sigma')
-       end if
-       wmset%Ag = Ini_Read_Real_File(Ini,'Ag', 1.4)
-    end if 
 
     call Ini_Close_File(Ini)
     call ClearFileUnit(file_unit)
@@ -496,9 +538,9 @@ contains
    real(mcp), dimension(:), allocatable :: diffs, step1
    real(mcp), dimension(:), allocatable :: Pk_delta_delta,Pk_delta_theta,Pk_theta_theta
    real(mcp), dimension(:), allocatable :: damp1, damp2, damp3
-   real(mcp) :: covdat(like%num_mpk_points_use)
-   real(mcp) :: covth(like%num_mpk_points_use)
-   real(mcp) :: covth_k2(like%num_mpk_points_use)
+   real(mcp) :: covdat(num_mpk_points_use)
+   real(mcp) :: covth(num_mpk_points_use)
+   real(mcp) :: covth_k2(num_mpk_points_use)
    real(mcp), dimension(:), allocatable :: mpk_WPth_large, covdat_large, covth_large, mpk_Pdata_large
    integer imin,imax
    real :: normV, Q, minchisq
@@ -518,14 +560,14 @@ contains
    character(len=32) fname
 
    If(Feedback > 1) print*, 'Calling WiggleZ likelihood routines'
-   allocate(mpk_lin(like%num_mpk_kbands_use),mpk_Pth(like%num_mpk_kbands_use))
-   allocate(mpk_WPth(like%num_mpk_points_use))
-   allocate(k_scaled(like%num_mpk_kbands_use))!LV_06 added for LRGDR4 !! IMPORTANT: need to check k-scaling
-!   allocate(like%num_mpk_points_use))
-   allocate(diffs(like%num_mpk_points_use),step1(like%num_mpk_points_use))
-   allocate(Pk_delta_delta(like%num_mpk_kbands_use),Pk_delta_theta(like%num_mpk_kbands_use))
-   allocate(Pk_theta_theta(like%num_mpk_kbands_use))
-   allocate(damp1(like%num_mpk_kbands_use),damp2(like%num_mpk_kbands_use),damp3(like%num_mpk_kbands_use))
+   allocate(mpk_lin(num_mpk_kbands_use),mpk_Pth(num_mpk_kbands_use))
+   allocate(mpk_WPth(num_mpk_points_use))
+   allocate(k_scaled(num_mpk_kbands_use))!LV_06 added for LRGDR4 !! IMPORTANT: need to check k-scaling
+!   allocate(num_mpk_points_use))
+   allocate(diffs(num_mpk_points_use),step1(num_mpk_points_use))
+   allocate(Pk_delta_delta(num_mpk_kbands_use),Pk_delta_theta(num_mpk_kbands_use))
+   allocate(Pk_theta_theta(num_mpk_kbands_use))
+   allocate(damp1(num_mpk_kbands_use),damp2(num_mpk_kbands_use),damp3(num_mpk_kbands_use))
 
    
    allocate(chisq(-nQ:nQ))
@@ -537,15 +579,11 @@ contains
       return
    end if
 
-   ! won't actually want to do this multiple times for multiple galaxy pk data sets?..
-   omk_fid = 0.d0
-   omv_fid = 0.705d0
-   w0_fid = -1.d0
-   wa_fid = 0.d0
    z = 1.d0*dble(like%redshift) ! accuracy issues
-   if(like%use_scaling) then
-     call compute_scaling_factor_z(z,dble(CMB%omk),dble(CMB%omv),dble(CMB%w),dble(CMB%wa),&
-     omk_fid,omv_fid,w0_fid,wa_fid,a_scl)
+   
+   !JD 09/13 new compute_scaling_factor functions
+   if(use_scaling) then
+     call compute_scaling_factor(z,CMB,like%DV_fid,a_scl)
    else
      a_scl = 1
    end if
@@ -556,33 +594,33 @@ contains
    enddo
    if(iz.eq.0) call MpiStop('could not indentify redshift')
 
-   if(like%use_gigglez) then
+   if(use_gigglez) then
       call fill_GiggleZTheory(Theory,matter_power_minkh,matter_power_dlnkh,z)
    endif
 
-   do i=1, like%num_mpk_kbands_use 
+   do i=1, num_mpk_kbands_use 
       ! It could be that when we scale the k-values, the lowest bin drops off the bottom edge
       !Errors from using matter_power_minkh at lower end should be negligible
          k_scaled(i)=max(matter_power_minkh,like%mpk_k(i)*a_scl)
-         if(like%use_gigglez) then
+         if(use_gigglez) then
             mpk_lin(i) = WiggleZPowerAt(Theory,k_scaled(i))/a_scl**3
          else
             mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),izwigglez(iz))/a_scl**3
          endif
    end do
    
-    do_marge = like%Q_Marge
-    if (do_marge .and. like%Q_flat) then
+    do_marge = Q_marge
+    if (do_marge .and. Q_flat) then
        !Marginalize analytically with flat prior on b^2 and b^2*Q
        !as recommended by Max Tegmark for SDSS
-       allocate(mpk_k2(like%num_mpk_kbands_use))
-       allocate(mpk_WPth_k2(like%num_mpk_points_use))
+       allocate(mpk_k2(num_mpk_kbands_use))
+       allocate(mpk_WPth_k2(num_mpk_points_use))
        
        Mat(:,:) = 0.d0
        vec2(:) = 0.d0
        final_term = 0.d0
-       do i_region=1,like%num_regions_used
-          mpk_Pth(:)=mpk_lin(:)/(1+like%Ag*k_scaled)
+       do i_region=1,num_regions_used
+          mpk_Pth(:)=mpk_lin(:)/(1+Ag*k_scaled)
           mpk_k2(:)=mpk_Pth(:)*k_scaled(:)**2
           
           
@@ -609,26 +647,26 @@ contains
 
        deallocate(mpk_k2,mpk_WPth_k2)      
     else
-       if (like%Q_sigma==0) do_marge = .false.
+       if (Q_sigma==0) do_marge = .false.
        ! ... sum the chi-squared contributions for all regions first
        chisq(:) = 0.d0
        old_chisq = 1.d30
        if(feedback > 1) print*, "starting analytic marginalisation over bias"
-       allocate(mpk_Pdata_large(like%num_mpk_points_use*like%num_regions_used))
-       allocate(mpk_WPth_large(like%num_mpk_points_use*like%num_regions_used))
-       allocate(covdat_large(like%num_mpk_points_use*like%num_regions_used))       
-       allocate(covth_large(like%num_mpk_points_use*like%num_regions_used))
+       allocate(mpk_Pdata_large(num_mpk_points_use*num_regions_used))
+       allocate(mpk_WPth_large(num_mpk_points_use*num_regions_used))
+       allocate(covdat_large(num_mpk_points_use*num_regions_used))       
+       allocate(covth_large(num_mpk_points_use*num_regions_used))
        normV = 0.d0
        do iQ=-nQ,nQ
-          Q = like%Q_mid +iQ*like%Q_sigma*dQ 
-          if (like%Q_marge) then
-             mpk_Pth(:)=mpk_lin(:)*(1+Q*k_scaled(:)**2)/(1+like%Ag*k_scaled(:))
+          Q = Q_mid +iQ*Q_sigma*dQ 
+          if (Q_marge) then
+             mpk_Pth(:)=mpk_lin(:)*(1+Q*k_scaled(:)**2)/(1+Ag*k_scaled(:))
           else 
              mpk_Pth(:) = mpk_lin(:)
           end if
-          do i_region=1,like%num_regions_used
-             imin = (i_region-1)*like%num_mpk_points_use+1
-             imax = i_region*like%num_mpk_points_use
+          do i_region=1,num_regions_used
+             imin = (i_region-1)*num_mpk_points_use+1
+             imax = i_region*num_mpk_points_use
              mpk_WPth(:) = matmul(like%mpk_W(i_region,:,:),mpk_Pth(:))
              mpk_Pdata_large(imin:imax) = like%mpk_P(i_region,:)
              mpk_WPth_large(imin:imax) = mpk_WPth(:) 
@@ -695,296 +733,56 @@ contains
  end subroutine inv_mat22
 
 !-----------------------------------------------------------------------------
-!LV added to include lrg DR4
+! JD 09/13: Replaced compute_scaling_factor routines so we use
+!           D_V calculations from CAMB.  New routines below
 
-!JD 08/13 fixed functions below to work with w_a
-!DP added an input zeff value to compute_scaling_factor
-subroutine compute_scaling_factor_z(z,Ok,Ol,w0,wa,Ok0,Ol0,w00,wa0,a)
-  ! a = dV for z=0.35 relative to its value for flat Om=0.25 model.
-  ! This is the factor by which the P(k) measurement would shift 
-  ! sideways relative to what we got for this fiducial flat model.
-  ! * a = (a_angular**2 * a_radial)**(1/3)
-  ! * a_angular = comoving distance to z=0.35 in Mpc/h relative to its value for flat Om=0.25 model
-  !     dA = (c/H)*eta = (2997.92458 Mpc/h)*eta, so we care only about 
-  !     eta scaling, not h scaling.
-  !     For flat w=-1 models, a ~ (Om/0.25)**(-0.065)
-  !     For the LRG mean redshift z=0.35, the power law fit 
-  !    dA(z,Om= 0.3253 (Om/0.25)^{-0.065}c H_0^{-1} is quite good within 
-  !    our range of interest,
-  !     accurate to within about 0.1% for 0.2<Om<0.3.
-  ! * a_radial = 1/H(z) relative to its value for flat Om=0.25 model
-  implicit none
-  real(mpk_d) Or, Om, Ok, Ol, w0, wa, Ok0, Om0, Ol0, w00, wa0, z, eta, eta0, Hrelinv, Hrelinv0, tmp
-  real(mpk_d) Q,Q0
-  real(mpk_d) a_radial, a_angular
-  real(mcp) a
-  !Or= 0.0000415996*(T_0/2.726)**4 / h**2
-  Or= 0! Radiation density totally negligible at  z < 0.35
-  Om= 1-Ok-Ol-Or
-  Q = (1+z)**(3*(1+w0+wa))*dexp(-3*(z/(1+z))*wa) 
-  Hrelinv= 1/sqrt(Ol*Q + Ok*(1+z)**2 + Om*(1+z)**3 + Or*(1+z)**4)
-  call compute_z_eta(Or,Ok,Ol,w0,wa,z,eta)
-  tmp = sqrt(abs(Ok))
-  if (Ok.lt.-1.d-6) eta = sin(tmp*eta)/tmp
-  if (Ok.gt.1d-6)   eta = (exp(tmp*eta)-exp(-tmp*eta))/(2*tmp) ! sinh(tmp*eta)/tmp
-  Om0= 1-Ok0-Ol0-Or
-  call compute_z_eta(Or,Ok0,Ol0,w00,wa0,z,eta0)
-  Q0 = (1+z)**(3*(1+w00+wa0))*dexp(-3*(z/(1+z))*wa0) 
-  Hrelinv0= 1/sqrt(Ol0*Q0 + Ok0*(1+z)**2 + Om0*(1+z)**3 + Or*(1+z)**4)
-  !a_angular = (Om/0.25)**(-0.065) * (-w*Otot)**0.14 ! Approximation based on Taylor expansion
-  a_angular = eta/eta0
-  a_radial= Hrelinv/Hrelinv0
-  a=  (a_angular**2 * a_radial)**(1/3.d0)
-  !write(*,'(9f10.5)') Ok,Ol,w,a,a_radial,a_angular,(Om/0.25)**(-0.065) * (-w*(1-Ok))**0.14
-  !write(*,'(9f10.5)') Ok,Ol,w,a,a_radial**(2/3.d0),a_angular**(4/3.d0),((Om/0.25)**(-0.065) * (-w*(1-Ok))**0.14)**(4/3.d0)
-  !!! BR09 -- in previous version, scale factor is applied in the wrong direction!  So take a = 1/a to fix it.
-  a = 1.0/a
-end subroutine compute_scaling_factor_z
-
-subroutine eta_demo
-  implicit none
-  real(mpk_d) Or, Ok, Ol, w0,wa , h, z, eta
-  h  = 0.7
-  Ok = 0
-  Ol = 0.7
-  Or = 0.0000416/h**2
-  w0 = -1
-  wa = 0
-  z  = 1090
-  call compute_z_eta(Or,Ok,Ol,w0,wa,z,eta)
-!  print *,'eta.............',eta
-!  print *,'dlss in Gpc.....',(2.99792458/h)*eta
-end subroutine eta_demo
-
-!INTERFACE
-logical function nobigbang2(Ok,Ol,w0,wa)
-  ! Test if we're in the forbidden zone where the integrand blows up
-  ! (where's H^2 < 0 for some a between 0 and 1).
-  ! The function f(a) = Omega_m + Omega_k*a + Omega_l*Q(a)
-  ! with Q(a) = a**(-3*(w_0+w_a))*exp(-3*(1-a)*w_a).
-  ! can have at most one local minimum.
-  ! We use a golden ratio search to look for that minimum if it exists.
-  ! We then if f(a)<0 there or at the endpoints a=0, a=1.
-  ! g(0) = Omega_m + Omega_l*a**(-3*(w_0+w_a))*exp(-3*w_a) < 0 
-  !                               if w_0+w_a > 0 & Omega_k > 1
-  !                            or if w_0+w_a = 0 & Omega_l < 1
-  ! g(1) = Omega_m + Omega_k + Omega_l = 1 > 0
-  implicit none
-  real(mpk_d) Ok,Ol,w0,wa,Om,a,Q
-  integer failure
-  real(mpk_d) ratio  
-  real(mpk_d) alow,a1,a2,ahigh,Q1,Q2,tol,f1,f2
-  integer i
-  ratio = (sqrt(5.)-1)/2 !Golden ratio for min search search
-  tol = 1.e-6
-  Om = 1.d0 - Ok - Ol
-  failure = 0
+ subroutine compute_scaling_factor(z,CMB,DV_fid,a_scl)
+   implicit none
+   type(CMBParams) CMB
+   real(mcp), intent(in) :: z, DV_fid
+   real(mcp), intent(out) :: a_scl
+    
+   a_scl = DV_x_H0(z,CMB)/DV_fid
+   !Like in original code, we need to apply a_scl in the correct direction
+   a_scl = 1.0_mcp/a_scl
+ end subroutine compute_scaling_factor  
   
-  !Test if f(0)<0
-  if (((w0+wa).eq.0).and.(Ok.gt.1)) failure = 2
-  if (((w0+wa).gt.0).and.(Ol.lt.0)) failure = 3
-  nobigbang2 = (failure.gt.0)
-  if(nobigbang2) then
-    write(*,*)'Big Bang failure mode ',failure
-    return 
-  end if
+ function DV_x_H0(z,CMB)  !Want D_V*H_0
+   use CAMB, only : BAO_D_v
+   implicit none
+   type(CMBParams) CMB
+   real(mcp), intent(in) :: z
+   real(mcp):: DV_x_H0
+
+   !We calculate H_0*D_V because we dont care about scaling of h since 
+   !k is in units of h/Mpc
+   DV_x_H0 = CMB%H0*BAO_D_v(z)
+
+ end function DV_x_H0
+
+ subroutine Set_DV_fid(z,omm_fid,omv_fid,w0_fid,wa_fid,DV_fid)
+   use CAMB, only: BAO_D_v,CAMBParams,CAMBParams_set,CAMB_SetDefParams,w_lam,wa_ppf
+   implicit none
+   type(CAMBParams)  P
+   real(mcp), intent(in) :: z,omm_fid,omv_fid,w0_fid,wa_fid
+   real(mcp), intent(out) :: DV_fid
+   real(mcp), parameter :: ratio = 0.15_mcp   !omega_b/omega_m, value doesn't really matter.
+   integer error                              !We are just using it to set up CAMB
+   
+   !Initialize CAMB 
+   w_lam = w0_fid
+   wa_ppf = wa_fid
+   call CAMB_SetDefParams(P)
+   P%omegab = omm_fid*ratio
+   P%omegac = omm_fid*(1.0_mcp - ratio)
+   P%omegav = omv_fid
+   call CAMBParams_set(P,error,.false.)   !Don't need to run reionization
+   if(error /= 0) call Mpistop('Error in calculating D_V Set_DV_fid in wigglez.f90')
   
-  !Set up initial values for golden ratio search
-  alow = 0
-  ahigh = 1
-  a1 = alow+ratio
-  a2 = ahigh-ratio
-  failure = 0
-  i=0
-  do while ((ahigh-alow)>=tol .and. i<100)
-    Q1 = a1**(-3*(w0+wa))*dexp(3*(-1+a1)*wa) 
-    Q2 = a2**(-3*(w0+wa))*dexp(3*(-1+a2)*wa) 
-    f1 = Om+Ok*a1+Ol*Q1
-    f2 = Om+Ok*a2+Ol*Q2
-    !check if we have a negative value even before finding minimum
-    if(f1<0 .or. f2 <0)then 
-      failure=1
-      exit
-    end if
-    !Set up next search step
-    if(f1>f2)then
-      ahigh=a1
-      a1=a2
-      a2=ahigh-ratio*(ahigh-alow)
-    else
-      alow=a2
-      a2=a1
-      a1=alow+ratio*(ahigh-alow)
-    end if
-    !Test for convergence of Search
-    if((ahigh-alow)<tol)then
-      a=(ahigh+alow)/2
-      if(a>tol)then  !only test minimum if is not found at a=0
-        Q=a**(-3*(w0+wa))*dexp(3*(-1+a)*wa) 
-        if(Om+Ok*a+Ol*Q<0)failure=1
-      end if
-    end if
-    i = i+1
-  end do
-  if(i>99) write(*,*)'Warning golden ratio search failed to converge in nobigbang2'
-  nobigbang2 = (failure.gt.0)
-  if(nobigbang2) write(*,*)'Big Bang failure mode ',failure
-  end function nobigbang2
-!END INTERFACE
+   !Calculating the fiducial D_V.  We multiply it by H_0 because we dont care about scaling 
+   !of h since k is in units of h/Mpc
+   DV_fid = P%H0*BAO_D_v(z)  
 
-real(mpk_d) function eta_integrand(a)
-  implicit none
-  real(mpk_d) Or, Ok, Ox, w0,wa
-  common/eta/Or, Ok, Ox, w0,wa
-  real(mpk_d) a, Om,Q
-  ! eta = int (H0/H)dz = int (H0/H)(1+z)dln(1+z) = int (H0/H)/a dlna = int (H0/H)/a^2 da =
-  ! Integrand = (H0/H)/a^2
-  ! (H/H0)**2 = Ox*Q(a) + Ok/a**2 + Om/a**3 + Or/a**4
-  ! with Q(a) = a**(-3*(1+w_0+w_a))*exp(-3*(1-a)*w_a)
-  if (a.eq.0.d0) then
-     eta_integrand = 0.d0
-  else
-     Om = 1.d0 - Or - Ok - Ox
-     Q = a**(1-3*(w0+wa))*dexp(3*(-1+a)*wa)
-     eta_integrand = 1.d0/sqrt(Ox*Q + Ok*a**2 + Om*a + Or)
-  end if
-  return
-end function eta_integrand
-
-subroutine eta_z_integral(Omega_r,Omega_k,Omega_x,w_eos0,w_eosa,z,eta)
-  ! Computes eta as a function
-  ! of the curvature Omega_k, the dark energy density Omega_x
-  ! and its equation of state w.
-  implicit none
-  real(mpk_d) Or, Ok, Ox, w0,wa
-  common/eta/Or, Ok, Ox, w0,wa
-  real(mpk_d) Omega_r, Omega_k,Omega_x,w_eos0,w_eosa, z, eta, epsabs, epsrel, amin, amax!, eta_integrand
-  Or = Omega_r
-  Ok = Omega_k
-  Ox = Omega_x
-  w0 = w_eos0
-  wa = w_eosa
-  epsabs  = 0
-  epsrel  = 1.d-10
-  amin= 1/(1+z)
-  amax= 1
-  call qromb2(eta_integrand,amin,amax,epsabs,epsrel,eta)
-  return
-end subroutine eta_z_integral
-
-subroutine compute_z_eta(Or,Ok,Ox,w0,wa,z,eta)
-  ! Computes the conformal distance eta(z)
-  implicit none
-  real(mpk_d) Or, Ok, Ox, w0,wa, z, eta
-!  logical nobigbang2
-  if (nobigbang2(Ok,Ox,w0,wa)) then
-     print *,'No big bang, so eta undefined if z>zmax.'
-     eta = 99
-  else
-     call eta_z_integral(Or,Ok,Ox,w0,wa,z,eta)
-     ! print *,'Or, Ok, Ox, w, z, H_0 t_0...',Or, Ok, Ox, w, eta
-  end if
-  return
-end subroutine compute_z_eta
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!! num rec routines
-!!!!!!!!!!!!!!!!!!!!!!!!!!
-SUBROUTINE qromb2(func,a,b,epsabs,epsrel,ss)
-! The numerical recipes routine, but modified so that is decides
-! it's done when either the relative OR the absolute accuracy has been attained.
-! The old version used relative errors only, so it always failed when
-! when the integrand was near zero.
-! epsabs = epsrel = 1e-6 are canonical choices.
-  INTEGER JMAX,JMAXP,K,KM
-  real(mpk_d) a,b,func,ss,epsabs,epsrel
-  EXTERNAL func
-  PARAMETER (JMAX=20, JMAXP=JMAX+1, K=5, KM=K-1)
-                                !    USES polint,trapzd
-  INTEGER j
-  real(mpk_d) dss,h(JMAXP),s(JMAXP)
-  h(1)=1.d0
-  do j=1,JMAX
-     call trapzd(func,a,b,s(j),j)
-     if (j.ge.K) then
-        call polint(h(j-KM),s(j-KM),K,0.d0,ss,dss)
-        if (abs(dss).le.epsrel*abs(ss)) return
-        if (abs(dss).le.epsabs) return
-     endif
-     s(j+1)=s(j)
-     h(j+1)=0.25d0*h(j)
-  ENDDO
-  print *,'Too many steps in qromb'
-      
-  RETURN 
-END SUBROUTINE qromb2
-  
-SUBROUTINE polint(xa,ya,n,x,y,dy) ! From Numerical Recipes
-  INTEGER n,NMAX
-  real(mpk_d) dy,x,y,xa(n),ya(n)
-  PARAMETER (NMAX=10)
-  INTEGER i,m,ns
-  real(mpk_d) den,dif,dift,ho,hp,w,c(NMAX),d(NMAX)
-  ns=1
-  dif=abs(x-xa(1))
-  do  i=1,n
-     dift=abs(x-xa(i))
-     if (dift.lt.dif) then
-        ns=i
-        dif=dift
-     endif
-     c(i)=ya(i)
-     d(i)=ya(i)
-  enddo
-  y=ya(ns)
-  ns=ns-1
-  do  m=1,n-1
-     do  i=1,n-m
-        ho=xa(i)-x
-        hp=xa(i+m)-x
-        w=c(i+1)-d(i)
-        den=ho-hp
-        if(den.eq.0.) then
-           print*, 'failure in polint'
-           stop
-        endif
-        den=w/den
-        d(i)=hp*den
-        c(i)=ho*den
-     enddo
-     if (2*ns.lt.n-m)then
-        dy=c(ns+1)
-     else
-        dy=d(ns)
-        ns=ns-1
-     endif
-     y=y+dy
-  enddo
-  return
-END SUBROUTINE polint
-      
-SUBROUTINE trapzd(func,a,b,s,n) ! From Numerical Recipes
-  INTEGER n
-  real(mpk_d) a,b,s,func
-  EXTERNAL func
-  INTEGER it,j
-  real(mpk_d) del,sum,tnm,x
-  if (n.eq.1) then
-     s=0.5*(b-a)*(func(a)+func(b))
-  else
-     it=2**(n-2)
-     tnm=it
-     del=(b-a)/tnm
-     x=a+0.5*del
-     sum=0.
-     do  j=1,it
-        sum=sum+func(x)
-        x=x+del
-     enddo
-     s=0.5*(s+(b-a)*sum/tnm)
-  endif
-  return
-END SUBROUTINE trapzd
-
-end module
+ end subroutine Set_DV_fid
+ 
+end module wigglez
