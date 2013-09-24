@@ -59,20 +59,20 @@ The end of your output should look something like this:
  
  Calling WiggleZ likelihood routines
  starting analytic marginalisation over bias
- Bias value:  0.925403105235173     
+ Bias value:  0.925403105235164     
 WiggleZ bin 3 mpk chi-sq:  116.75736
  Calling WiggleZ likelihood routines
  starting analytic marginalisation over bias
- Bias value:  0.904102156447975     
+ Bias value:  0.904102156447977     
 WiggleZ bin 4 mpk chi-sq:  126.44929
  Calling WiggleZ likelihood routines
  starting analytic marginalisation over bias
- Bias value:  0.983000150819525     
+ Bias value:  0.983000150819522     
 WiggleZ bin 1 mpk chi-sq:  116.50245
  Calling WiggleZ likelihood routines
  starting analytic marginalisation over bias
- Bias value:  0.953317746679333     
+ Bias value:  0.953317746679320     
 WiggleZ bin 2 mpk chi-sq:  106.80082
-           1 Likelihood:    233.254957941632
+           1 Likelihood:    233.254957941575
   
 If the values in these lines match yours, the installation was successful.

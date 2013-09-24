@@ -177,9 +177,6 @@ end type WiggleZLikelihood
   
   logical :: use_scaling !as SDSS_lrgDR3 !JD 09/13 now using CAMB functions for a_scl 
   
-  !JD 09/13 Parameters for setting fiducial model to calculating DV_fid for a_scl
-  real(mcp) omv_fid, omm_fid, w0_fid, wa_fid
-  
   logical use_gigglez
   
   !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
@@ -214,7 +211,7 @@ contains
       call LikeList%Add(like)
     end do
     if (Feedback>1) write(*,*) 'read WiggleZ MPK datasets'
-      
+
   end subroutine WiggleZLikelihood_Add
   
   subroutine ReadWiggleZCommon(gname)
@@ -291,15 +288,7 @@ contains
     num_mpk_kbands_use = max_mpk_kbands_use - min_mpk_kbands_use +1
     
     use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
-    
-    if(use_scaling) then
-      !Set parameter values for fiducial D_V
-      omv_fid = Ini_Read_Double_File(Ini,'omv_fid',0.705d0)
-      omm_fid = Ini_Read_Double_File(Ini,'omm_fid',0.295d0)
-      w0_fid = Ini_Read_Double_File(Ini,'w0_fid',-1.d0)
-      wa_fid = Ini_Read_Double_File(Ini,'wa_fid',0.d0)
-    end if
-    
+        
     if(use_gigglez .and. (.not. use_nonlinear)) then
       write(*,*) 'ERROR!:  GiggleZ non-linear prescription only available'
       write(*,*) '         when setting nonlinear_pk = T in MPK.ini'
@@ -475,11 +464,18 @@ contains
        stop 'Error reading WiggleZ mpk file'
     endif 
     
-    !JD 09/13 Calculate fiducial D_V for use when calculating a_scl
+    !JD 09/13 Read in fiducial D_V for use when calculating a_scl
     if(use_scaling) then
-      call Set_DV_fid(wmset%redshift,omm_fid,omv_fid,w0_fid,wa_fid,wmset%DV_fid)
+      wmset%DV_fid = Ini_Read_Double_File(Ini,'DV_fid',-1.d0)
+      if(wmset%DV_fid == -1.d0) then
+        write(*,*)'ERROR: use_scaling = T and no DV_fid given '
+        write(*,*)'       for dataset '//trim(wmset%name)//'.'
+        write(*,*)'       Please check your .dataset files.'
+        call MPIstop()      
+      end if
     end if
     
+ 
     if(use_gigglez) then
       call GiggleZinfo_init(wmset%redshift)
     endif
@@ -759,30 +755,5 @@ contains
    DV_x_H0 = CMB%H0*BAO_D_v(z)
 
  end function DV_x_H0
-
- subroutine Set_DV_fid(z,omm_fid,omv_fid,w0_fid,wa_fid,DV_fid)
-   use CAMB, only: BAO_D_v,CAMBParams,CAMBParams_set,CAMB_SetDefParams,w_lam,wa_ppf
-   implicit none
-   type(CAMBParams)  P
-   real(mcp), intent(in) :: z,omm_fid,omv_fid,w0_fid,wa_fid
-   real(mcp), intent(out) :: DV_fid
-   real(mcp), parameter :: ratio = 0.15_mcp   !omega_b/omega_m, value doesn't really matter.
-   integer error                              !We are just using it to set up CAMB
-   
-   !Initialize CAMB 
-   w_lam = w0_fid
-   wa_ppf = wa_fid
-   call CAMB_SetDefParams(P)
-   P%omegab = omm_fid*ratio
-   P%omegac = omm_fid*(1.0_mcp - ratio)
-   P%omegav = omv_fid
-   call CAMBParams_set(P,error,.false.)   !Don't need to run reionization
-   if(error /= 0) call Mpistop('Error in calculating D_V Set_DV_fid in wigglez.f90')
-  
-   !Calculating the fiducial D_V.  We multiply it by H_0 because we dont care about scaling 
-   !of h since k is in units of h/Mpc
-   DV_fid = P%H0*BAO_D_v(z)  
-
- end subroutine Set_DV_fid
  
 end module wigglez

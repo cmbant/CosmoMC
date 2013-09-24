@@ -8,15 +8,6 @@ num_mpk_kbands_full = 100
 # use scaling by dv/dv(fid) for Pk
 use_scaling = T
 
-#fiducial model settings when use_scaling = T
-#Omega_\Lambda
-omv_fid = 0.705
-#Omega_m
-omm_fid = 0.295
-w0_fid = -1
-wa_fid = 0
-
-
 # decide which bandpowers to use, min to max
 min_mpk_points_use = 3
 max_mpk_points_use = 20

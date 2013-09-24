@@ -131,8 +131,6 @@ contains
     integer :: min_mpk_kbands_use ! in case you don't want to calc P(k) on the largest scales (will truncate P(k) to zero here!)
     real(mcp), dimension(:,:), allocatable :: mpk_Wfull, mpk_covfull
     real(mcp), dimension(:), allocatable :: mpk_kfull, mpk_fiducial
-    !JD 09/13 Parameters for setting fiducial model to calculating DV_fid for a_scl   
-    real(mcp) omv_fid, omm_fid, w0_fid, wa_fid
 
     character(80) :: dummychar
     logical bad
@@ -220,15 +218,17 @@ contains
 
     mset%use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
     
-    !JD 09/13 Calculate fiducial D_V for use when calculating a_scl
+    !JD 09/13 Read in fiducial D_V and redshift for use when calculating a_scl
     if(mset%use_scaling) then
-      !Set parameter values for fiducial D_V
       mset%redshift = Ini_Read_Double_File(Ini,'redshift',0.35d0)
-      omv_fid = Ini_Read_Double_File(Ini,'omv_fid',0.75d0)
-      omm_fid = Ini_Read_Double_File(Ini,'omm_fid',0.25d0)
-      w0_fid = Ini_Read_Double_File(Ini,'w0_fid',-1.d0)
-      wa_fid = Ini_Read_Double_File(Ini,'wa_fid',0.d0)
-      call Set_DV_fid(mset%redshift,omm_fid,omv_fid,w0_fid,wa_fid,mset%DV_fid)
+      !DV_fid should be in units CMB%H0*BAO_D_v(z)
+      mset%DV_fid = Ini_Read_Double_File(Ini,'DV_fid',-1.d0)
+      if(mset%DV_fid == -1.d0) then
+        write(*,*)'ERROR: use_scaling = T and no DV_fid given '
+        write(*,*)'       for dataset '//trim(mset%name)//'.'
+        write(*,*)'       Please check your .dataset files.'
+        call MPIstop()      
+      end if
     end if
 
     mset%Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)
@@ -443,29 +443,4 @@ contains
 
  end function DV_x_H0
 
- subroutine Set_DV_fid(z,omm_fid,omv_fid,w0_fid,wa_fid,DV_fid)
-   use CAMB, only: BAO_D_v,CAMBParams,CAMBParams_set,CAMB_SetDefParams,w_lam,wa_ppf
-   implicit none
-   type(CAMBParams)  P
-   real(mcp), intent(in) :: z,omm_fid,omv_fid,w0_fid,wa_fid
-   real(mcp), intent(out) :: DV_fid
-   real(mcp), parameter :: ratio = 0.15_mcp   !omega_b/omega_m, value doesn't really matter.
-   integer error                              !We are just using it to set up CAMB
-   
-   !Initialize CAMB 
-   w_lam = w0_fid
-   wa_ppf = wa_fid
-   call CAMB_SetDefParams(P)
-   P%omegab = omm_fid*ratio
-   P%omegac = omm_fid*(1.0_mcp - ratio)
-   P%omegav = omv_fid
-   call CAMBParams_set(P,error,.false.)   !Don't need to run reionization
-   if(error /= 0) call Mpistop('Error in calculating D_V Set_DV_fid in wigglez.f90')
-  
-   !Calculating the fiducial D_V.  We multiply it by H_0 because we dont care about scaling 
-   !of h since k is in units of h/Mpc
-   DV_fid = P%H0*BAO_D_v(z)  
-
- end subroutine Set_DV_fid
-
-end module
+end module mpk
