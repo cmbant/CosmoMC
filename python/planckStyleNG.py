@@ -3,8 +3,8 @@ from matplotlib import rcParams, rc
 
 # common setup for matplotlib
 params = {'backend': 'pdf',
-          'axes.labelsize': 11,
-          'text.fontsize': 10,
+          'axes.labelsize': 10,
+          'font.size': 10,
           'legend.fontsize': 10,
           'xtick.labelsize': 9,
           'ytick.major.pad': 6,
