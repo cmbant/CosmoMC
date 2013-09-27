@@ -12,7 +12,7 @@
     use cmbtypes
     implicit none
 
-    real(mcp), parameter :: neutrino_mass_fac= 94.082 !conversion factor for thermal with Neff=3 TCMB-2.7255
+    real(mcp), parameter :: neutrino_mass_fac= 94.07 !conversion factor for thermal with Neff=3 TCMB-2.7255
     !93.014 for 3.046
 
     Type, extends(CosmologyParameterization) :: ThetaParameterization
