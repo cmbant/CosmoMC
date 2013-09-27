@@ -4,12 +4,12 @@ from matplotlib import rcParams, rc
 # common setup for matplotlib
 params = {'backend': 'pdf',
           'axes.labelsize': 10,
-          'text.fontsize': 10,
-          'legend.fontsize': 10,
-          'xtick.labelsize': 10,
+          'font.size': 10,
+          'legend.fontsize': 9,
+          'xtick.labelsize': 9,
+          'ytick.labelsize': 9,
           'ytick.major.pad': 6,
           'xtick.major.pad': 6,
-          'ytick.labelsize': 10,
           'text.usetex': True,
           'font.family':'sans-serif',
           # free font similar to Helvetica
@@ -58,14 +58,30 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
 
 plotter = planckPlotter('main/plot_data')
 
+
+def getSubplotPlotter():
+    s.setWithSubplotSize(2)
+    s.axes_fontsize += 2
+    s.colorbar_axes_fontsize += 2
+#    s.lab_fontsize += 2
+    s.legend_fontsize = s.lab_fontsize + 1
+    return plotter
+
+def getPlotterWidth(size=1, **kwargs):  # size in mm
+    inch_mm = 0.0393700787
+    if size == 1:
+        width = 88 * inch_mm
+    elif size == 2: width = 120 * inch_mm
+    elif size == 3: width = 180 * inch_mm
+    else: width = size * inch_mm
+    s.fig_width_inch = width
+    s.setWithSubplotSize(2)
+    s.rcSizes(**kwargs)
+    return plotter
+
 def getSinglePlotter(ratio=3 / 4.):
     s.setWithSubplotSize(3.5)
-    s.legend_fontsize = 9
-    s.colorbar_axes_fontsize = 8
-    s.scatter_size = 2
-    s.lab_fontsize = 13
-    s.axes_fontsize = 9
-
+    s.rcSizes()
     plotter.make_figure(1, ystretch=ratio)
     return plotter
 

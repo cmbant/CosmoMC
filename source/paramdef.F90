@@ -221,22 +221,22 @@
 
     end subroutine SetStartPositions
 
-    subroutine InitializeUsedParams(Ini,Params, forMCMC)
+    subroutine InitializeUsedParams(Ini,Params, use_propose_matrix)
     type (ParamSet) Params
     type (TIniFile) :: Ini
-    logical :: forMCMC
+    logical :: use_propose_matrix
 
     num_params = max(num_theory_params, NameMapping%num_MCMC)
     num_data_params = num_params - num_theory_params
-    call Initalize(Ini,Params,forMCMC)
+    call Initalize(Ini,Params,use_propose_matrix)
 
     end subroutine InitializeUsedParams
 
-    subroutine Initalize(Ini,Params,forMCMC)
+    subroutine Initalize(Ini,Params,use_propose_matrix)
     implicit none
     type (ParamSet) Params
     type (TIniFile) :: Ini
-    logical :: forMCMC
+    logical :: use_propose_matrix
     integer i, j, ix
     character(LEN=5000) fname,InLine
     character(LEN=1024) prop_mat
@@ -282,7 +282,7 @@
     end if
 
     Ini_fail_on_not_found = .false.
-    if (forMCMC) then
+    if (use_propose_matrix) then
         prop_mat = trim(Ini_Read_String_File(Ini,'propose_matrix'))
         if (prop_mat /= '' .and. prop_mat(1:1) /= '/') prop_mat = concat(LocalDir,prop_mat)
     else
@@ -669,19 +669,19 @@
             end do
             MPICovMat = MPICovMat / MPImean(0)
 
-            MPICovMats(:,:,instance) = MPICovMat
-            MPIMeans(:,instance) = MPIMean
-            do i=1, MPIChains
-                j = i-1
-                call MPI_BCAST(MPICovMats(:,:,i),Size(MPICovMat),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
-                call MPI_BCAST(MPIMeans(:,i),Size(MPIMean),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
-            end do
+            !Replace this with ALLGATHER
+            !MPICovMats(:,:,instance) = MPICovMat
+            !MPIMeans(:,instance) = MPIMean
+            !do i=1, MPIChains
+            !    j = i-1
+            !    call MPI_BCAST(MPICovMats(:,:,i),Size(MPICovMat),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
+            !    call MPI_BCAST(MPIMeans(:,i),Size(MPIMean),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
+            !end do
 
-            ! These should be better but don't work
-            !          call MPI_ALLGATHER(MPICovMat,Size(MPICovMat),MPI_real_mcp,MPICovmats,Size(MPICovmats), &
-            !               MPI_real_mcp, MPI_COMM_WORLD,ierror)
-            !          call MPI_ALLGATHER(MPIMean,Size(MPIMean),MPI_real_mcp,MPIMeans,Size(MPIMeans), &
-            !               MPI_real_mcp, MPI_COMM_WORLD,ierror)
+            call MPI_ALLGATHER(MPICovMat,Size(MPICovMat),MPI_real_mcp,MPICovmats,Size(MPICovmat), &
+            MPI_real_mcp, MPI_COMM_WORLD,ierror)
+            call MPI_ALLGATHER(MPIMean,Size(MPIMean),MPI_real_mcp,MPIMeans,Size(MPIMean), &
+            MPI_real_mcp, MPI_COMM_WORLD,ierror)
 
             if (all(MPIMeans(0,:)> MPI_Min_Sample_Update/2 + 2)) then
                 !check have reasonable number of samples in each)

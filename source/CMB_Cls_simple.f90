@@ -22,6 +22,7 @@
     Type ParamSetInfo
         Type (CAMBdata) :: Transfers
         real(mcp) lastParamArray(max_num_params)
+        logical :: validInfo = .false.
     end Type ParamSetInfo
 
     integer :: lmax_computed_cl = lmax !value used for CAMB
@@ -57,9 +58,9 @@
     P%InitialConditionVector(initial_iso_CDM) = &
     sign(sqrt(abs(CMB%iso_cdm_correlated) /(1-abs(CMB%iso_cdm_correlated))),CMB%iso_cdm_correlated)
     P%Num_Nu_Massive = 0
+    P%Nu_mass_numbers = 0
     P%Num_Nu_Massless = CMB%nnu
     if (CMB%omnuh2>0) then
-        P%Nu_mass_splittings = .true.
         P%Nu_mass_eigenstates=0
         if (CMB%omnuh2>CMB%omnuh2_sterile) then
             neff_massive_standard = num_massive_neutrinos*default_nnu/3
@@ -71,6 +72,7 @@
                 P%Num_Nu_Massless = 0
                 neff_massive_standard=CMB%nnu
             end if
+            P%Nu_mass_numbers(P%Nu_mass_eigenstates) = num_massive_neutrinos
             P%Nu_mass_degeneracies(P%Nu_mass_eigenstates) = neff_massive_standard
             P%Nu_mass_fractions(P%Nu_mass_eigenstates) = (CMB%omnuh2-CMB%omnuh2_sterile)/CMB%omnuh2
         else
@@ -81,12 +83,10 @@
             P%Num_Nu_Massless = default_nnu - neff_massive_standard
             P%Num_Nu_Massive=P%Num_Nu_Massive+1
             P%Nu_mass_eigenstates=P%Nu_mass_eigenstates+1
+            P%Nu_mass_numbers(P%Nu_mass_eigenstates) = 1
             P%Nu_mass_degeneracies(P%Nu_mass_eigenstates) = max(1d-6,CMB%nnu - default_nnu)
             P%Nu_mass_fractions(P%Nu_mass_eigenstates) = CMB%omnuh2_sterile/CMB%omnuh2
         end if
-        P%Num_Nu_Massive = max(1,nint(sum(P%Nu_mass_degeneracies(1:P%Nu_mass_eigenstates))))
-    else
-        P%Nu_mass_splittings = .false.
     end if
 
     P%YHe = CMB%YHe
@@ -570,6 +570,14 @@
 
     end subroutine LoadFiducialHighLTemplate
 
+    subroutine ParamSetInfo_Clear(Info)
+    Type(ParamSetInfo) Info
+
+    call CAMB_InitCAMBdata(Info%Transfers)
+    Info%validInfo = .false.
+
+    end subroutine
+    
     subroutine CMB_Initialize(Info)
     Type(ParamSetInfo) Info
     type(CAMBParams)  P
@@ -605,7 +613,7 @@
         write(*,'(" Number of C_ls = ",1I4)') num_cls
     end if
 
-    call CAMB_InitCAMBdata(Info%Transfers)
+    call ParamSetInfo_Clear(Info)
 
     P%WantTensors = compute_tensors
     CAMBP = P
@@ -625,7 +633,6 @@
         else
             call CAMB_FreeCAMBdata(Trial%Transfers)
         end if
-
     end if
 
     end subroutine AcceptReject

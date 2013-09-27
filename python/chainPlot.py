@@ -21,13 +21,13 @@ import planckStyleNG
 # rootparam = ['mnu_planck_lowl_lowLike_highL', 'mnu', [0, 0.74]]
 # rootparam = ['mnu_planck_lowl_lowLike_highL', 'mnu', r'$\sum m_\nu\ [\rm{eV}]$', None]
 
-rootparam = ['LCDM_base_planck_lowl_lowLike_highL', 'omegach2', None]  # [0.27, 0.35]
+rootparam = ['LCDM_base_planck_lowl_lowLike_highl', 'ns', None]  # [0.27, 0.35]
 # rootparam = ['LCDM_base_planck_lowl_lowLike_highL', 'tau', None]  # [0.27, 0.35]
 
 # rootparam = ['LCDM_base_planck_lowl', 'omegamh2', r'$\Omega_{\rm m} h^2$', [0.137, 0.146]]  # [0.27, 0.35]
 # rootparam = ['LCDM_base_planck_lowl', 'H0', r'$H_0$', [65, 70]]  # [0.27, 0.35]
 
-figsize = 7
+figsize = 3.5
 Lmax = 2500
 
 difference = False
@@ -106,7 +106,7 @@ def bf_different():
             plot(ls, samps[i, :] , linewidth=width, color=colorVal, alpha=alpha_add)
 
     cb = colorbar(scalarMap, norm=cNorm)
-    cb.set_label(colorlabel, rotation= -90)
+    cb.set_label(colorlabel, rotation=-90)
     axhline(0, color='k')
     xlabel(r'$\ell$')
     if difference: ylabel(r'$\ell\Delta D_\ell/\mu{\rm K}^2$')
@@ -147,7 +147,7 @@ def lowL():
     cb.ax.yaxis.set_ticks(cb.ax.yaxis.get_ticklocs()[::2])
     cb.ax.yaxis.set_ticklabels(labels)
 
-    cb.set_label(colorlabel, rotation= -90)
+    cb.set_label(colorlabel, rotation=-90)
     for ticklabel in cb.ax.get_yticklabels():
         ticklabel.set_rotation(-90)
 
@@ -270,7 +270,7 @@ def phi_plot():
     P.set_dashes(dashes)
 
     cb = colorbar(scalarMap, norm=cNorm)
-    cb.set_label(colorlabel, rotation= -90)
+    cb.set_label(colorlabel, rotation=-90)
 
     # hack for errors coming out transparent
 #    plot_data(dat[:,2],dat[:,3],dat[i,4]))
@@ -294,8 +294,8 @@ def phi_plot():
 
 
 # phi_plot()
-bf_different()
-# lowL()
+# bf_different()
+lowL()
 show()
 
 # xlim([800, Lmax])

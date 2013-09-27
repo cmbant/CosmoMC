@@ -3,9 +3,16 @@ import matplotlib
 matplotlib.use('Agg')
 from pylab import *
 
-class GetDistPlotSettings:
+"""Plotting scripts for GetDist outputs"""
 
-    def __init__(self, subplot_size_inch=2):
+
+class GetDistPlotSettings:
+    """Default sizes, font, styles etc settings for use by plots"""
+
+
+    def __init__(self, subplot_size_inch=2, fig_width_inch=None):
+        # if fig_width_inch set, forces fixed size, subplot_size_inch then just determines font sizes etc
+        # otherwise width as wide as neccessary to show all subplots at specified size
 
         self.plot_meanlikes = False
         self.shade_meanlikes = False
@@ -17,9 +24,11 @@ class GetDistPlotSettings:
         self.plot_args = None
         self.lineL = [':k', ':r', ':b', ':m', ':g', ':y']
         self.solid_colors = ['#006FED', '#E03424', 'gray', '#009966', '#000866', '#336600', '#006633' , 'm', 'r']  # '#66CC99'
+        self.default_dash_styles = {'--':(3, 2)}
         self.line_labels = True
         self.x_label_rotation = 0
         self.num_shades = 80
+        self.fig_width_inch = fig_width_inch  # if you want to force specific fixed width
         self.setWithSubplotSize(subplot_size_inch)
         self.progress = False
         self.tight_layout = True
@@ -58,12 +67,19 @@ class GetDistPlotSettings:
         self.lab_fontsize = 7 + 2 * self.subplot_size_inch
         self.axes_fontsize = 4 + 2 * self.subplot_size_inch
         self.legend_fontsize = self.axes_fontsize
-
+        self.font_size = self.lab_fontsize
         self.lw1 = self.subplot_size_inch / 3.0
         self.lw_contour = self.lw1 * 0.6
         self.lw_likes = self.subplot_size_inch / 6.0
         self.scatter_size = 3
         self.colorbar_axes_fontsize = self.axes_fontsize
+
+    def rcSizes(self, axes_fontsize=None, lab_fontsize=None, legend_fontsize=None):
+        self.font_size = rcParams['font.size']
+        self.legend_fontsize = legend_fontsize or rcParams['legend.fontsize']
+        self.lab_fontsize = lab_fontsize  or rcParams['axes.labelsize']
+        self.axes_fontsize = axes_fontsize or rcParams['xtick.labelsize']
+        self.colorbar_axes_fontsize = self.axes_fontsize - 1
 
 
 defaultSettings = GetDistPlotSettings()
@@ -169,7 +185,7 @@ class SampleAnalysisGetDist():
 
 class GetDistPlotter():
 
-    def __init__(self, plot_data, settings=None,):
+    def __init__(self, plot_data, settings=None):
         if settings is None: self.settings = defaultSettings
         else: self.settings = settings
         self.plot_data = plot_data
@@ -193,13 +209,25 @@ class GetDistPlotter():
         args.update(kwargs)
         return args
 
-    def get_color(self, plotno, **kwargs):
+    def get_dashes_for_ls(self, ls):
+        return self.settings.default_dash_styles.get(ls, None)
+
+    def get_line_styles(self, plotno, **kwargs):
         args = self.get_plot_args(plotno, **kwargs)
-        return args.get('color', self.settings.lineM[plotno][-1])
+        if not 'ls' in args: args['ls'] = self.settings.lineM[plotno][:-1]
+        if not 'dashes' in args:
+            dashes = self.get_dashes_for_ls(args['ls'])
+            if dashes is not None: args['dashes'] = dashes
+        if not 'color' in args:
+            args['color'] = self.settings.lineM[plotno][-1]
+        if not 'lw' in args: args['lw'] = self.settings.lw1
+        return args
+
+    def get_color(self, plotno, **kwargs):
+        return self.get_line_styles(plotno, **kwargs)['color']
 
     def get_linestyle(self, plotno, **kwargs):
-        args = self.get_plot_args(plotno, **kwargs)
-        return args.get('ls', self.settings.lineM[plotno][:-1])
+        return self.get_line_styles(plotno, **kwargs)['ls']
 
     def get_alpha2D(self, plotno, filled, **kwargs):
         args = self.get_plot_args(plotno, **kwargs)
@@ -228,14 +256,16 @@ class GetDistPlotter():
         density = self.sampleAnalyser.get_density(root, param, likes=self.settings.plot_meanlikes)
         if density is None: return None;
 
-        kwargs = self.get_plot_args(plotno, **kwargs)
-        plot(density.x, density.pts, self.settings.lineM[plotno], linewidth=self.settings.lw1, **kwargs)
+        kwargs = self.get_line_styles(plotno, **kwargs)
+        plot(density.x, density.pts, **kwargs)
         if self.settings.plot_meanlikes:
-            plot(density.x, density.likes, self.settings.lineL[plotno], linewidth=self.settings.lw_likes, **kwargs)
+            kwargs['lw'] = self.settings.lw_likes
+            plot(density.x, density.likes, **kwargs)
 
         return density.bounds()
 
-    def add_2d_contours(self, root, param1, param2, plotno=0, of=None, filled=False, color=None, ls=None, cols=None, alpha=None, add_legend_proxy=True, **kwargs):
+    def add_2d_contours(self, root, param1, param2, plotno=0, of=None, filled=False, color=None, ls=None, cols=None,
+                        alpha=None, add_legend_proxy=True, **kwargs):
         param1, param2 = self.get_param_array(root, [param1, param2])
 
         density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
@@ -262,6 +292,8 @@ class GetDistPlotter():
             if color is None: color = self.get_color(plotno, **kwargs)
             cols = [color]
             if ls is None: ls = self.get_linestyle(plotno, **kwargs)
+            # not supported custom dashes here yet
+
             if add_legend_proxy: self.contours_added.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
             linestyles = [ls]
             kwargs = self.get_plot_args(plotno, **kwargs)
@@ -345,7 +377,8 @@ class GetDistPlotter():
         return ax
 
     def set_xlabel(self, param):
-        xlabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
+        xlabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize,
+                verticalalignment='baseline', labelpad=4 + self.settings.font_size)  # test_size because need a number not e.g. 'medium'
 
     def set_ylabel(self, param):
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
@@ -389,7 +422,10 @@ class GetDistPlotter():
         else: self.plot_col = nx
         if ny is None: self.plot_row = (nplot + self.plot_col - 1) / self.plot_col
         else: self.plot_row = ny
-        self.fig = figure(figsize=(self.settings.subplot_size_inch * self.plot_col * xstretch, self.settings.subplot_size_inch * self.plot_row * ystretch))
+        if self.settings.fig_width_inch is not None:
+            self.fig = figure(figsize=(self.settings.fig_width_inch, (self.settings.fig_width_inch * self.plot_row * ystretch) / (self.plot_col * xstretch)))
+        else:
+            self.fig = figure(figsize=(self.settings.subplot_size_inch * self.plot_col * xstretch, self.settings.subplot_size_inch * self.plot_row * ystretch))
         return self.plot_col, self.plot_row
 
     def get_param_array(self, root, in_params):
@@ -414,9 +450,8 @@ class GetDistPlotter():
             lines = []
             if len(self.contours_added) == 0:
                 for i in enumerate(legend_labels):
-                    color = self.get_color(i[0] + line_offset)
-                    ls = self.get_linestyle(i[0] + line_offset)
-                    lines.append(Line2D([0, 1], [0, 1], color=color, ls=ls))
+                    args = self.get_line_styles(i[0] + line_offset)
+                    lines.append(Line2D([0, 1], [0, 1], **args))
             else: lines = self.contours_added
             args = {'ncol':legend_ncol}
             if self.settings.legend_fontsize is not None: args['prop'] = {'size':self.settings.legend_fontsize}
@@ -478,7 +513,7 @@ class GetDistPlotter():
 #            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, prune=(None, 'both')[share_y])
             self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker)
             if xlims is not None: xlim(xlims[i][0], xlims[i][1])
-            if share_y: self.spaceTicks(gca().xaxis, expand=False)
+            if share_y: self.spaceTicks(gca().xaxis, expand=True)
 
         self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
         if share_y: subplots_adjust(wspace=0)
@@ -604,7 +639,7 @@ class GetDistPlotter():
             subplots_adjust(wspace=0, hspace=0)
             self.finish_plot(no_gap=True)
 
-    def rotate_yticklabels(self, ax=None, rotation= -90):
+    def rotate_yticklabels(self, ax=None, rotation=-90):
         if ax is None: ax = gca()
         for ticklabel in ax.get_yticklabels():
             ticklabel.set_rotation(rotation)
@@ -625,7 +660,7 @@ class GetDistPlotter():
             gca().add_line(Line2D(P1, P2, color=color, ls=ls, zorder=zorder, **kwargs))
 
     def add_colorbar_label(self, cb, param):
-        cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize, rotation= -90)
+        cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize, rotation=-90)
         setp(getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.colorbar_axes_fontsize)
 
     def add_3d_scatter(self, root, in_params, color_bar=True):

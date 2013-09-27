@@ -35,13 +35,15 @@
     implicit none
     public
 
-    character(LEN=*), parameter :: version = 'Mar_13b'
+    character(LEN=*), parameter :: version = 'Sept13'
 
     integer :: FeedbackLevel = 0 !if >0 print out useful information about the model
 
     logical, parameter :: DebugMsgs=.false. !Set to true to view progress and timing
 
     logical, parameter :: DebugEvolution = .false. !Set to true to do all the evolution for all k
+
+    real(dl) :: DebugParam = 0._dl !not used but read in, useful for parameter-dependent tests
 
     logical ::  do_bispectrum  = .false.
     logical, parameter :: hard_bispectrum = .false. ! e.g. warm inflation where delicate cancellations
@@ -58,18 +60,15 @@
     integer, parameter :: max_Nu = 5 !Maximum number of neutrino species
     integer, parameter :: max_transfer_redshifts = 150
     integer, parameter :: fileio_unit = 13 !Any number not used elsewhere will do
-    integer, parameter :: outCOBE=0, outNone=1
+    integer, parameter :: outNone=1
 
     integer :: max_bessels_l_index  = 1000000
     real(dl) :: max_bessels_etak = 1000000*2
 
-
     real(dl), parameter ::  OutputDenominator =twopi
     !When using outNone the output is l(l+1)Cl/OutputDenominator
 
-
     Type(Regions) :: TimeSteps
-
 
     type TransferParams
         logical     ::  high_precision
@@ -91,6 +90,7 @@
     logical   :: DoLensing
     logical   :: want_zstar, want_zdrag     !!JH for updated BAO likelihood.
     integer   :: NonLinear
+    logical   :: Want_CMB
 
     integer   :: Max_l, Max_l_tensor
     real(dl)  :: Max_eta_k, Max_eta_k_tensor
@@ -100,19 +100,18 @@
     real(dl)  :: omegab, omegac, omegav, omegan
     !Omega baryon, CDM, Lambda and massive neutrino
     real(dl)  :: H0,TCMB,yhe,Num_Nu_massless
-    integer   :: Num_Nu_massive
-    logical :: Nu_mass_splittings
+    integer   :: Num_Nu_massive !sum of Nu_mass_numbers below
     integer   :: Nu_mass_eigenstates  !1 for degenerate masses
-    logical   :: same_neutrino_Neff !take fractional part to heat all eigenstates the same
+    logical   :: share_delta_neff !take fractional part to heat all eigenstates the same
     real(dl)  :: Nu_mass_degeneracies(max_nu)
-    real(dl)  :: Nu_mass_fractions(max_nu)
-    !The ratios of the masses
-
+    real(dl)  :: Nu_mass_fractions(max_nu) !The ratios of the total densities
+    integer   :: Nu_mass_numbers(max_nu) !physical number per eigenstate
+ 
     integer   :: Scalar_initial_condition
     !must be one of the initial_xxx values defined in GaugeInterface
 
     integer   :: OutputNormalization
-    !outNone, outCOBE, or C_OutputNormalization=1 if > 1
+    !outNone, or C_OutputNormalization=1 if > 1
 
     logical   :: AccuratePolarization
     !Do you care about the accuracy of the polarization Cls?
@@ -151,12 +150,10 @@
 
     type(CAMBparams) CP  !Global collection of parameters
 
-
     real(dl) scale !relative to CP%flat. e.g. for scaling lSamp%l sampling.
 
     logical ::call_again = .false.
     !if being called again with same parameters to get different thing
-
 
     !     grhom =kappa*a^2*rho_m0
     !     grhornomass=grhor*number of massless neutrino species
@@ -199,6 +196,10 @@
     real(sp) :: lAccuracyBoost=1.
     !Boost number of multipoles integrated in Boltzman heirarchy
 
+    integer :: limber_phiphi = 0 !for l>limber_phiphi use limber approx for lensing potential
+    integer :: num_redshiftwindows = 0
+    integer :: num_extra_redshiftwindows = 0
+
     integer, parameter :: lmin = 2
     !must be either 1 or 2
 
@@ -218,7 +219,7 @@
     !fiducial high-accuracy high-L C_L used for making small cosmology-independent numerical corrections
     !to lensing and C_L interpolation. Ideally close to models of interest, but dependence is weak.
     logical :: use_spline_template = .true.
-    integer, parameter :: lmax_extrap_highl = 6000
+    integer, parameter :: lmax_extrap_highl = 8000
     real(dl), allocatable :: highL_CL_template(:,:)
 
     integer, parameter :: derived_age=1, derived_zstar=2, derived_rstar=3, derived_thetastar=4,derived_zdrag=5, &
@@ -245,6 +246,7 @@
     logical, optional :: DoReion
     logical WantReion
     integer nu_i,actual_massless
+    real(dl) nu_massless_degeneracy, neff_i
     external GetOmegak
     real(dl), save :: last_tau0
     !Constants in SI units
@@ -279,30 +281,34 @@
         CP%transfer%num_redshifts=0
     end if
 
+    if (CP%Num_Nu_Massive /= sum(CP%Nu_mass_numbers(1:CP%Nu_mass_eigenstates))) then
+        if (sum(CP%Nu_mass_numbers(1:CP%Nu_mass_eigenstates))/=0) stop 'Num_Nu_Massive is not sum of Nu_mass_numbers'
+    end if
     if (CP%Omegan == 0 .and. CP%Num_Nu_Massive /=0) then
-        CP%Num_Nu_Massless = CP%Num_Nu_Massless + CP%Num_Nu_Massive
+        if (CP%share_delta_neff) then
+            CP%Num_Nu_Massless = CP%Num_Nu_Massless + CP%Num_Nu_Massive
+        else
+            CP%Num_Nu_Massless = CP%Num_Nu_Massless + sum(CP%Nu_mass_degeneracies(1:CP%Nu_mass_eigenstates))
+        end if
         CP%Num_Nu_Massive  = 0
+        CP%Nu_mass_numbers = 0
     end if
 
+    nu_massless_degeneracy = CP%Num_Nu_massless !N_eff for massless neutrinos
     if (CP%Num_nu_massive > 0) then
-        if (.not. CP%Nu_mass_splittings) then
-            !Default totally degenerate masses
-            CP%Nu_mass_eigenstates = 1
-            CP%Nu_mass_degeneracies(1) = CP%Num_Nu_Massive
-            CP%Nu_mass_fractions(1) = 1
-        else
-            if (CP%Nu_mass_degeneracies(1)==0) then
-                CP%Nu_mass_degeneracies(1) = CP%Num_Nu_Massive
-                CP%same_neutrino_Neff = .true.
-            end if
-            if (abs(sum(CP%Nu_mass_fractions(1:CP%Nu_mass_eigenstates))-1) > 1e-4) &
-            stop 'Nu_mass_fractions do not add up to 1'
-
-            !                 if (abs(sum(CP%Nu_mass_degeneracies(1:CP%Nu_mass_eigenstates))-CP%Num_nu_massive) >1e-4 ) &
-            !                   stop 'nu_mass_eigenstates do not add up to num_nu_massive'
-            if (CP%Nu_mass_eigenstates==0) stop 'Have Num_nu_massive>0 but no nu_mass_eigenstates'
-
+        if (CP%Nu_mass_eigenstates==0) stop 'Have Num_nu_massive>0 but no nu_mass_eigenstates'
+        if (CP%Nu_mass_eigenstates==1 .and. CP%Nu_mass_numbers(1)==0) CP%Nu_mass_numbers(1) = CP%Num_Nu_Massive
+        if (all(CP%Nu_mass_numbers(1:CP%Nu_mass_eigenstates)==0)) CP%Nu_mass_numbers=1 !just assume one for all
+        if (CP%share_delta_neff) then
+            !default case of equal heating of all neutrinos
+            fractional_number = CP%Num_Nu_massless + CP%Num_Nu_massive
+            actual_massless = int(CP%Num_Nu_massless + 1e-6_dl)
+            neff_i = fractional_number/(actual_massless + CP%Num_Nu_massive)
+            nu_massless_degeneracy = neff_i*actual_massless
+            CP%Nu_mass_degeneracies(1:CP%Nu_mass_eigenstates) = CP%Nu_mass_numbers(1:CP%Nu_mass_eigenstates)*neff_i
         end if
+        if (abs(sum(CP%Nu_mass_fractions(1:CP%Nu_mass_eigenstates))-1) > 1e-4) &
+        stop 'Nu_mass_fractions do not add up to 1'
     else
         CP%Nu_mass_eigenstates = 0
     end if
@@ -342,24 +348,11 @@
     ! grhog=1.4952d-13*tcmb**4
     grhor = 7._dl/8*(4._dl/11)**(4._dl/3)*grhog !7/8*(4/11)^(4/3)*grhog (per neutrino species)
     !grhor=3.3957d-14*tcmb**4
-    !correction for fractional number of neutrinos, e.g. 3.04 to give slightly higher T_nu hence rhor
-    !Num_Nu_massive is already integer, Num_Nu_massless can contain fraction
-    !We assume all eigenstates affected the same way
 
-    !With mass splitting=True, the Nu_mass_degeneracies parameters account for heating from grhor
-    !Otherwise we set from Neff
-    if (CP%same_neutrino_Neff) then
-        fractional_number = CP%Num_Nu_massless + CP%Num_Nu_massive
-        actual_massless = int(CP%Num_Nu_massless + 1e-6_dl)
-        if (actual_massless + CP%Num_Nu_massive /= 0) then
-            grhor = grhor * fractional_number/(actual_massless + CP%Num_Nu_massive)
-            grhornomass=grhor*actual_massless
-        else
-            grhornomass=grhor*CP%Num_Nu_massless
-        end if
-    else
-        grhornomass=grhor*CP%Num_Nu_massless
-    end if
+    !correction for fractional number of neutrinos, e.g. 3.04 to give slightly higher T_nu hence rhor
+    !for massive Nu_mass_degeneracies parameters account for heating from grhor
+
+    grhornomass=grhor*nu_massless_degeneracy
     grhormass=0
     do nu_i = 1, CP%Nu_mass_eigenstates
         grhormass(nu_i)=grhor*CP%Nu_mass_degeneracies(nu_i)
@@ -378,11 +371,6 @@
     !sigma_T * (number density of protons now)
 
     fHe = CP%YHe/(mass_ratio_He_H*(1.d0-CP%YHe))  !n_He_tot / n_H_tot
-
-    if (CP%omegan==0) then
-        CP%Num_nu_massless = CP%Num_nu_massless + CP%Num_nu_massive
-        CP%Num_nu_massive = 0
-    end if
 
     if (.not.call_again) then
 
@@ -424,10 +412,13 @@
         write(*,'("Om_m (1-Om_K-Om_L)   = ",f9.6)') 1-CP%omegak-CP%omegav
         write(*,'("100 theta (CosmoMC)  = ",f9.6)') 100*CosmomcTheta()
         if (CP%Num_Nu_Massive > 0) then
-            conv = k_B*(8*grhor/grhog/7)**0.25*CP%tcmb/eV !approx 1.68e-4
+            write(*,'("N_eff (total)        = ",f9.6)') nu_massless_degeneracy + &
+            sum(CP%Nu_mass_degeneracies(1:CP%Nu_mass_eigenstates))
             do nu_i=1, CP%Nu_mass_eigenstates
-                write(*,'(f7.4, " nu, m_nu*c^2/k_B/T_nu0   = ",f9.2," (m_nu = ",f6.3," eV)")') &
-                CP%nu_mass_degeneracies(nu_i), nu_masses(nu_i),conv*nu_masses(nu_i)
+                conv = k_B*(8*grhor/grhog/7)**0.25*CP%tcmb/eV * &
+                (CP%nu_mass_degeneracies(nu_i)/CP%nu_mass_numbers(nu_i))**0.25 !approx 1.68e-4
+                write(*,'(I2, " nu, g=",f7.4," m_nu*c^2/k_B/T_nu0= ",f9.2," (m_nu= ",f6.3," eV)")') &
+                CP%nu_mass_numbers(nu_i), CP%nu_mass_degeneracies(nu_i), nu_masses(nu_i),conv*nu_masses(nu_i)
             end do
         end if
     end if
@@ -672,9 +663,25 @@
     end Type lSamples
 
     Type(lSamples) :: lSamp
+    !Sources
+    logical :: Log_lvalues  = .false.
 
     contains
 
+    function lvalues_indexOf(lSet,l)
+    type(lSamples) :: lSet
+    integer, intent(in) :: l
+    integer lvalues_indexOf, i
+
+    do i=2,lSet%l0
+        if (l < lSet%l(i)) then
+            lvalues_indexOf = i-1
+            return
+        end if
+    end do
+    lvalues_indexOf = lSet%l0
+
+    end function  lvalues_indexOf
 
     subroutine initlval(lSet,max_l)
 
@@ -746,83 +753,93 @@
         ls(lind)=lvar
     end do
 
-    step=max(nint(20*Ascale),4)
-    bot=ls(lind)+step
-    top=bot+step*2
-
-    do lvar = bot,top,step
-        lind=lind+1
-        ls(lind)=lvar
-    end do
-
-    if (ls(lind)>=max_l) then
-        do lvar=lind,1,-1
-            if (ls(lvar)<=max_l) exit
-        end do
-        lind=lvar
-        if (ls(lind)<max_l) then
-            lind=lind+1
-            ls(lind)=max_l
-        end if
-    else
-
-    step=max(nint(25*Ascale),4)
-    !Get EE right around l=200 by putting extra point at 175
-    bot=ls(lind)+step
-    top=bot+step
-
-    do lvar = bot,top,step
-        lind=lind+1
-        ls(lind)=lvar
-    end do
-
-
-    if (ls(lind)>=max_l) then
-        do lvar=lind,1,-1
-            if (ls(lvar)<=max_l) exit
-        end do
-        lind=lvar
-        if (ls(lind)<max_l) then
-            lind=lind+1
-            ls(lind)=max_l
-        end if
-    else
-
-    if (HighAccuracyDefault .and. .not. use_spline_template) then
-        step=max(nint(42*Ascale),7)
-    else
-        step=max(nint(50*Ascale),7)
-    end if
-    bot=ls(lind)+step
-    top=min(5000,max_l)
-
-    do lvar = bot,top,step
-        lind=lind+1
-        ls(lind)=lvar
-    end do
-
-    if (max_l > 5000) then
-        !Should be pretty smooth or tiny out here
-        step=max(nint(400*Ascale),50)
-        lvar = ls(lind)
-
+    !Sources
+    if (Log_lvalues) then
+        !Useful for generating smooth things like 21cm to high l
+        step=max(nint(20*Ascale),4)
         do
             lvar = lvar + step
             if (lvar > max_l) exit
             lind=lind+1
             ls(lind)=lvar
-            step = nint(step*1.5) !log spacing
+            step = nint(step*1.2) !log spacing
+        end do
+    else
+        step=max(nint(20*Ascale),4)
+        bot=ls(lind)+step
+        top=bot+step*2
+
+        do lvar = bot,top,step
+            lind=lind+1
+            ls(lind)=lvar
         end do
 
-    end if
+        if (ls(lind)>=max_l) then
+            do lvar=lind,1,-1
+                if (ls(lvar)<=max_l) exit
+            end do
+            lind=lvar
+            if (ls(lind)<max_l) then
+                lind=lind+1
+                ls(lind)=max_l
+            end if
+        else
 
-    if (ls(lind) /=max_l) then
-        lind=lind+1
-        ls(lind)=max_l
-    end if
-    if (.not. CP%flat) ls(lind-1)=int(max_l+ls(lind-2))/2
-    !Not in CP%flat case so interpolation table is the same when using lower l_max
-    end if
+        step=max(nint(25*Ascale),4)
+        !Get EE right around l=200 by putting extra point at 175
+        bot=ls(lind)+step
+        top=bot+step
+
+        do lvar = bot,top,step
+            lind=lind+1
+            ls(lind)=lvar
+        end do
+
+        if (ls(lind)>=max_l) then
+            do lvar=lind,1,-1
+                if (ls(lvar)<=max_l) exit
+            end do
+            lind=lvar
+            if (ls(lind)<max_l) then
+                lind=lind+1
+                ls(lind)=max_l
+            end if
+        else
+            if (HighAccuracyDefault .and. .not. use_spline_template) then
+                step=max(nint(42*Ascale),7)
+            else
+                step=max(nint(50*Ascale),7)
+            end if
+            bot=ls(lind)+step
+            top=min(5000,max_l)
+
+            do lvar = bot,top,step
+                lind=lind+1
+                ls(lind)=lvar
+            end do
+
+            if (max_l > 5000) then
+                !Should be pretty smooth or tiny out here
+                step=max(nint(400*Ascale),50)
+                lvar = ls(lind)
+                do
+                    lvar = lvar + step
+                    if (lvar > max_l) exit
+                    lind=lind+1
+                    ls(lind)=lvar
+                    step = nint(step*1.5) !log spacing
+                end do
+            end if
+            !Sources
+        end if !log_lvalues
+
+        if (ls(lind) /=max_l) then
+            lind=lind+1
+            ls(lind)=max_l
+        end if
+        if (.not. CP%flat) ls(lind-1)=int(max_l+ls(lind-2))/2
+        !Not in CP%flat case so interpolation table is the same when using lower l_max
+        end if
     end if
     lSet%l0=lind
     lSet%l(1:lind) = ls(1:lind)
@@ -909,14 +926,7 @@
 
     end subroutine InterpolateClArrTemplated
 
-
-
-
-
-    !ccccccccccccccccccccccccccc
-
     end module lvalues
-
 
 
     !ccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -931,6 +941,12 @@
     implicit none
     public
 
+    Type LimberRec
+        integer n1,n2 !corresponding time step array indices
+        real(dl), dimension(:), pointer :: k
+        real(dl), dimension(:), pointer :: Source
+    end Type LimberRec
+
     Type ClTransferData
         !Cl transfer function variables
         !values of q for integration over q to get C_ls
@@ -940,8 +956,12 @@
         !- tensors: T and E and phi (for lensing), and T, E, B respectively
 
         Type (Regions) :: q
-
         real(dl), dimension(:,:,:), pointer :: Delta_p_l_k => NULL()
+
+        integer, dimension(:), pointer :: Limber_l_min => NULL()
+        !For each l, the set of k in each limber window
+        !indices LimberWindow(SourceNum,l)
+        Type(LimberRec), dimension(:,:), pointer :: Limber_windows => NULL()
 
     end Type ClTransferData
 
@@ -953,20 +973,22 @@
     integer :: C_last = C_PhiE
     integer, parameter :: CT_Temp =1, CT_E = 2, CT_B = 3, CT_Cross=  4
 
+    logical :: has_cl_2D_array = .false.
 
     real(dl), dimension (:,:,:), allocatable :: Cl_scalar, Cl_tensor, Cl_vector
     !Indices are Cl_xxx( l , intial_power_index, Cl_type)
     !where Cl_type is one of the above constants
+
+    real(dl), dimension (:,:,:,:), allocatable :: Cl_Scalar_Array
+    !Indices are Cl_xxx( l , intial_power_index, field1,field2)
+    !where ordering of fields is T, E, \psi (CMB lensing potential), window_1, window_2...
 
     !The following are set only if doing lensing
     integer lmax_lensed !Only accurate to rather less than this
     real(dl) , dimension (:,:,:), allocatable :: Cl_lensed
     !Cl_lensed(l, power_index, Cl_type) are the interpolated Cls
 
-    real(dl), dimension (:), allocatable ::  COBElikelihoods,COBE_scales
-    !Set by COBEnormalize if using outCOBE
     contains
-
 
     subroutine Init_ClTransfer(CTrans)
     !Need to set the Ranges array q before calling this
@@ -979,9 +1001,18 @@
     allocate(CTrans%Delta_p_l_k(CTrans%NumSources,min(max_bessels_l_index,CTrans%ls%l0), CTrans%q%npoints))
     CTrans%Delta_p_l_k = 0
 
-
     end subroutine Init_ClTransfer
 
+    subroutine Init_Limber(CTrans)
+    Type(ClTransferData) :: CTrans
+
+    allocate(CTrans%Limber_l_min(CTrans%NumSources))
+    CTrans%Limber_l_min = 0
+    if (num_redshiftwindows>0 .or. limber_phiphi>0) then
+        allocate(CTrans%Limber_windows(CTrans%NumSources,CTrans%ls%l0))
+    end if
+
+    end subroutine Init_Limber
 
     subroutine Free_ClTransfer(CTrans)
     Type(ClTransferData) :: CTrans
@@ -990,8 +1021,30 @@
     deallocate(CTrans%Delta_p_l_k, STAT = st)
     nullify(CTrans%Delta_p_l_k)
     call Ranges_Free(CTrans%q)
+    call Free_Limber(CTrans)
 
     end subroutine Free_ClTransfer
+
+    subroutine Free_Limber(CTrans)
+    Type(ClTransferData) :: CTrans
+    integer st,i,j
+
+    if (associated(CTrans%Limber_l_min)) then
+        do i=1, CTrans%NumSources
+            if (CTrans%Limber_l_min(i)/=0) then
+                do j=CTrans%Limber_l_min(i), CTrans%ls%l0
+                    deallocate(CTrans%Limber_windows(i, j)%k, STAT = st)
+                    deallocate(CTrans%Limber_windows(i, j)%Source, STAT = st)
+                end do
+            end if
+        end do
+        deallocate(CTrans%Limber_l_min, STAT = st)
+    end if
+    deallocate(CTrans%Limber_windows, STAT = st)
+    nullify(CTrans%Limber_l_min)
+    nullify(CTrans%Limber_windows)
+
+    end subroutine Free_Limber
 
     subroutine CheckLoadedHighLTemplate
     integer L
@@ -1010,11 +1063,12 @@
             highL_CL_template(L, C_Phi) =array(5)
         end do
 
-500     close(fileio_unit)
+500     if (L< lmax_extrap_highl) &
+        stop 'CheckLoadedHighLTemplate: template file does not go up to lmax_extrap_highl'
+        close(fileio_unit)
     end if
 
     end subroutine CheckLoadedHighLTemplate
-
 
 
     subroutine Init_Cls
@@ -1024,6 +1078,11 @@
         if (allocated(Cl_scalar)) deallocate(Cl_scalar)
         allocate(Cl_scalar(lmin:CP%Max_l, CP%InitPower%nn, C_Temp:C_last))
         Cl_scalar = 0
+        if (has_cl_2D_array) then
+            if (allocated(Cl_scalar_array)) deallocate(Cl_scalar_array)
+            allocate(Cl_scalar_Array(lmin:CP%Max_l, CP%InitPower%nn, 3+num_redshiftwindows,3+num_redshiftwindows))
+            Cl_scalar_array = 0
+        end if
     end if
 
     if (CP%WantVectors) then
@@ -1041,13 +1100,15 @@
 
     end subroutine Init_Cls
 
-    subroutine output_cl_files(ScalFile,TensFile, TotFile, LensFile, LensTotFile, factor)
+    subroutine output_cl_files(ScalFile,ScalCovFile,TensFile, TotFile, LensFile, LensTotFile, factor)
     implicit none
     integer in,il
-    character(LEN=*) ScalFile, TensFile, TotFile, LensFile, LensTotFile
+    character(LEN=*) ScalFile, TensFile, TotFile, LensFile, LensTotFile,ScalCovfile
     real(dl), intent(in), optional :: factor
     real(dl) fact
     integer last_C
+    real(dl), allocatable :: outarr(:,:)
+
 
     if (present(factor)) then
         fact = factor
@@ -1068,6 +1129,27 @@
             end do
         end do
         close(fileio_unit)
+    end if
+
+    if (CP%WantScalars .and. has_cl_2D_array .and. ScalCovFile /= '' .and. CTransScal%NumSources>2) then
+        allocate(outarr(1:3+num_redshiftwindows,1:3+num_redshiftwindows))
+        open(unit=fileio_unit,file=ScalCovFile,form='formatted',status='replace')
+        do in=1,CP%InitPower%nn
+            do il=lmin,min(10000,CP%Max_l)
+                outarr=Cl_scalar_array(il,in,1:3+num_redshiftwindows,1:3+num_redshiftwindows)
+                outarr(1:2,:)=sqrt(fact)*outarr(1:2,:)
+                outarr(:,1:2)=sqrt(fact)*outarr(:,1:2)
+                write(fileio_unit,trim(numcat('(1I6,',(3+num_redshiftwindows)**2))//'E15.5)') il, outarr
+            end do
+            do il=10100,CP%Max_l, 100
+                outarr=Cl_scalar_array(il,in,1:3+num_redshiftwindows,1:3+num_redshiftwindows)
+                outarr(1:2,:)=sqrt(fact)*outarr(1:2,:)
+                outarr(:,1:2)=sqrt(fact)*outarr(:,1:2)
+                write(fileio_unit,trim(numcat('(1E15.5,',(3+num_redshiftwindows)**2))//'E15.5)') real(il), outarr
+            end do
+        end do
+        close(fileio_unit)
+        deallocate(outarr)
     end if
 
     if (CP%WantTensors .and. TensFile /= '') then
@@ -1203,15 +1285,6 @@
 
     end subroutine output_veccl_files
 
-
-    subroutine output_COBElikelihood
-    integer in
-    do in=1, CP%InitPower%nn
-        write(*,*)'COBE Likelihood relative to CP%flat=',COBElikelihoods(in)
-    end do
-    end  subroutine output_COBElikelihood
-
-
     subroutine NormalizeClsAtL(lnorm)
     implicit none
     integer, intent(IN) :: lnorm
@@ -1235,103 +1308,6 @@
 
     end  subroutine NormalizeClsAtL
 
-    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-
-    subroutine COBEnormalize
-    use precision
-    use ModelParams
-
-
-    integer in
-    real(dl) xlog10
-    real(dl) c10, d1,d2,d3,d4,d5,d6,d7, xlogl, COBE_scale
-    real(dl) x1, x2,x3,x4,x5,x6,x7,sy,s,sx,sxy,sxx,delt,d1pr,d1ppr
-    real(dl) Ctot(lmin:20)
-
-
-    if (allocated(COBElikelihoods)) deallocate(COBElikelihoods)
-    if (allocated(COBE_scales)) deallocate(COBE_scales)
-    allocate(COBElikelihoods(CP%InitPower%nn))
-    allocate(COBE_scales(CP%InitPower%nn))
-
-
-
-    xlog10=log(10._dl)
-
-
-    ! COBE normalization
-    ! fit the spectrum to a quadratic around C_10 with equal weights in logl
-
-    do in=1,CP%InitPower%nn
-
-    if (CP%WantTensors) then
-        Ctot =  Cl_tensor(lmin:20, in, C_Temp)
-    else
-        Ctot = 0
-    end if
-    if (CP%WantScalars) then
-        Ctot=Ctot + Cl_scalar(lmin:20, in, C_Temp)
-
-    end if
-    c10=Ctot(10)
-
-    d1=(Ctot(3))/c10-1._dl
-    d2=(Ctot(4))/c10-1._dl
-    d3=(Ctot(6))/c10-1._dl
-    d4=(Ctot(8))/c10-1._dl
-    d5=(Ctot(12))/c10-1._dl
-    d6=(Ctot(15))/c10-1._dl
-    d7=(Ctot(20))/c10-1._dl
-
-
-    x1=log(3._dl)/xlog10-1._dl
-    x2=log(4._dl)/xlog10-1._dl
-    x3=log(6._dl)/xlog10-1._dl
-    x4=log(8._dl)/xlog10-1._dl
-    x5=log(12._dl)/xlog10-1._dl
-    x6=log(15._dl)/xlog10-1._dl
-    x7=log(20._dl)/xlog10-1._dl
-    sy=x1*d1+x2*d2+x3*d3+x4*d4+x5*d5+x6*d6+x7*d7
-    s=x1*x1+x2*x2+x3*x3+x4*x4+x5*x5+x6*x6+x7*x7
-    sx=x1**3+x2**3+x3**3+x4**3+x5**3+x6**3+x7**3
-    sxy=x1**2*d1+x2**2*d2+x3**2*d3+x4**2*d4+ &
-    x5**2*d5+x6**2*d6+x7**2*d7
-    sxx=x1**4+x2**4+x3**4+x4**4+x5**4+x6**4+x7**4
-    delt=s*sxx-sx*sx
-    d1pr=(sxx*sy-sx*sxy)/delt
-    d1ppr=2._dl*(s*sxy-sx*sy)/delt
-
-    ! Bunn and White fitting formula
-    c10=(0.64575d0+0.02282d0*d1pr+0.01391d0*d1pr*d1pr &
-    -0.01819d0*d1ppr-0.00646d0*d1pr*d1ppr &
-    +0.00103d0*d1ppr*d1ppr)/c10
-    ! logl
-    xlogl=-0.01669d0+1.19895d0*d1pr-0.83527d0*d1pr*d1pr &
-    -0.43541d0*d1ppr-0.03421d0*d1pr*d1ppr &
-    +0.01049d0*d1ppr*d1ppr
-    ! write(*,*)'COBE Likelihood relative to CP%flat=',exp(xlogl)
-    COBElikelihoods(in) = exp(xlogl)
-
-    ! density power spectrum normalization;
-
-    COBE_scale=c10/OutputDenominator*1.1d-9
-    COBE_scales(in)=COBE_scale
-
-    !!$!delta^2 = k^4*(tf)^2*ScalarPower(k,in)*COBE_scale where (tf) is output in the transfer function file
-    !!$!delta^2 = 4*pi*k^3 P(k)
-
-
-    ! C_l normalization; output l(l+1)C_l/twopi
-    c10=c10*2.2d-9/fourpi
-
-    if (CP%WantScalars) Cl_scalar(lmin:CP%Max_l, in, C_Temp:C_last) = &
-    Cl_scalar(lmin:CP%Max_l, in, C_Temp:C_last)*c10
-    if (CP%WantTensors) Cl_tensor(lmin:CP%Max_l_tensor, in, CT_Temp:CT_Cross) = &
-    Cl_tensor(lmin:CP%Max_l_tensor, in, CT_Temp:CT_Cross)*c10
-
-    end do !in
-    end subroutine COBEnormalize
-
     subroutine ModelData_Free
 
     call Free_ClTransfer(CTransScal)
@@ -1341,8 +1317,7 @@
     if (allocated(Cl_tensor)) deallocate(Cl_tensor)
     if (allocated(Cl_scalar)) deallocate(Cl_scalar)
     if (allocated(Cl_lensed)) deallocate(Cl_lensed)
-    if (allocated(COBElikelihoods)) deallocate(COBElikelihoods)
-    if (allocated(COBE_scales)) deallocate(COBE_scales)
+    if (allocated(Cl_scalar_array)) deallocate(Cl_scalar_array)
 
     end subroutine ModelData_Free
 
@@ -1782,9 +1757,8 @@
     real(dl), parameter :: cllo=1.e30_dl,clhi=1.e30_dl
 
     do i = 1,PK_Data%num_z
-
-    call spline(PK_data%log_kh,PK_data%matpower(1,i),PK_data%num_k,&
-    cllo,clhi,PK_data%ddmat(1,i))
+        call spline(PK_data%log_kh,PK_data%matpower(1,i),PK_data%num_k,&
+        cllo,clhi,PK_data%ddmat(1,i))
     end do
 
     end subroutine MatterPowerdata_getsplines
@@ -1807,10 +1781,18 @@
     deallocate(PK_data%ddmat,stat=i)
     deallocate(PK_data%nonlin_ratio,stat=i)
     deallocate(PK_data%redshifts,stat=i)
-    nullify(PK_data%log_kh, & !PK_data%matpower,PK_data%ddmat 
-    PK_data%nonlin_ratio,PK_data%redshifts)
+    call MatterPowerdata_Nullify(PK_data)
 
     end subroutine MatterPowerdata_Free
+
+    subroutine MatterPowerdata_Nullify(PK_data)
+    Type(MatterPowerData) :: PK_data
+
+    nullify(PK_data%log_kh)
+    nullify(PK_data%nonlin_ratio)
+    nullify(PK_data%redshifts)
+
+    end subroutine MatterPowerdata_Nullify
 
     function MatterPowerData_k(PK,  kh, itf) result(outpower)
     !Get matter power spectrum at particular k/h by interpolation
@@ -1835,24 +1817,22 @@
         ( PK%log_kh(PK%num_k)-PK%log_kh(PK%num_k-1) )
         outpower = PK%matpower(PK%num_k,itf) + dp*(logk - PK%log_kh(PK%num_k))
     else
+        llo=min(i_last,PK%num_k)
+        do while (PK%log_kh(llo) > logk)
+            llo=llo-1
+        end do
+        do while (PK%log_kh(llo+1)< logk)
+            llo=llo+1
+        end do
+        i_last =llo
+        lhi=llo+1
+        ho=PK%log_kh(lhi)-PK%log_kh(llo)
+        a0=(PK%log_kh(lhi)-logk)/ho
+        b0=1-a0
 
-    llo=min(i_last,PK%num_k)
-    do while (PK%log_kh(llo) > logk)
-        llo=llo-1
-    end do
-    do while (PK%log_kh(llo+1)< logk)
-        llo=llo+1
-    end do
-    i_last =llo
-    lhi=llo+1
-    ho=PK%log_kh(lhi)-PK%log_kh(llo)
-    a0=(PK%log_kh(lhi)-logk)/ho
-    b0=1-a0
-
-    outpower = a0*PK%matpower(llo,itf)+ b0*PK%matpower(lhi,itf)+&
-    ((a0**3-a0)* PK%ddmat(llo,itf) &
-    +(b0**3-b0)*PK%ddmat(lhi,itf))*ho**2/6
-
+        outpower = a0*PK%matpower(llo,itf)+ b0*PK%matpower(lhi,itf)+&
+        ((a0**3-a0)* PK%ddmat(llo,itf) &
+        +(b0**3-b0)*PK%ddmat(lhi,itf))*ho**2/6
     end if
 
     outpower = exp(max(-30._dl,outpower))
@@ -2037,22 +2017,6 @@
 
     end subroutine Transfer_output_Sig8
 
-
-    subroutine Transfer_output_Sig8AndNorm(MTrans)
-    Type(MatterTransferData), intent(in) :: MTrans
-    integer in, j
-
-    do in=1, CP%InitPower%nn
-        write(*,*) 'Power spectrum ',in, ' COBE_scale = ',real(COBE_scales(in))
-        do j = 1, CP%Transfer%num_redshifts
-            write(*,*) 'at z = ',real(CP%Transfer%redshifts(j)), ' sigma8(all matter) = ', &
-            real(MTrans%sigma_8(j,in)*sqrt(COBE_scales(in)))
-        end do
-    end do
-
-    end subroutine Transfer_output_Sig8AndNorm
-
-
     subroutine Transfer_Allocate(MTrans)
     Type(MatterTransferData) :: MTrans
     integer st
@@ -2097,7 +2061,6 @@
     stop 'Transfer_SetForNonlinearLensing: Too many redshifts'
     do i=1,P%num_redshifts
         P%redshifts(i) = real(P%num_redshifts-i)/(P%num_redshifts/maxRedshift)
-
     end do
 
     end subroutine Transfer_SetForNonlinearLensing
@@ -2132,68 +2095,52 @@
     character(LEN=Ini_max_string_len), intent(IN) :: FileNames(*)
     integer itf,in,i
     integer points
-    real, dimension(:,:), allocatable :: outpower
+    real, dimension(:,:,:), allocatable :: outpower
     character(LEN=80) fmt
     real minkh,dlnkh
     Type(MatterPowerData) :: PK_data
+    integer ncol
 
+    ncol=1
 
     write (fmt,*) CP%InitPower%nn+1
     fmt = '('//trim(adjustl(fmt))//'E15.5)'
     do itf=1, CP%Transfer%num_redshifts
         if (FileNames(itf) /= '') then
+            if (.not. transfer_interp_matterpower ) then
+                points = MTrans%num_q_trans
+                allocate(outpower(points,CP%InitPower%nn,ncol))
 
+                do in = 1, CP%InitPower%nn
+                    call Transfer_GetMatterPowerData(MTrans, PK_data, in, itf)
+                    if (CP%NonLinear/=NonLinear_None) call MatterPowerdata_MakeNonlinear(PK_Data)
+                    outpower(:,in,1) = exp(PK_data%matpower(:,1))
+                    call MatterPowerdata_Free(PK_Data)
+                end do
 
-        if (.not. transfer_interp_matterpower ) then
+                open(unit=fileio_unit,file=FileNames(itf),form='formatted',status='replace')
+                do i=1,points
+                    write (fileio_unit, fmt) MTrans%TransferData(Transfer_kh,i,1),outpower(i,1:CP%InitPower%nn,:)
+                end do
+                close(fileio_unit)
+            else
+                minkh = 1e-4
+                dlnkh = 0.02
+                points = log(MTrans%TransferData(Transfer_kh,MTrans%num_q_trans,itf)/minkh)/dlnkh+1
+                !             dlnkh = log(MTrans%TransferData(Transfer_kh,MTrans%num_q_trans,itf)/minkh)/(points-0.999)
+                allocate(outpower(points,CP%InitPower%nn,1))
+                do in = 1, CP%InitPower%nn
+                    call Transfer_GetMatterPowerS(MTrans,outpower(1,in,1), itf, in, minkh,dlnkh, points)
+                end do
 
-        points = MTrans%num_q_trans
-        allocate(outpower(points,CP%InitPower%nn))
-
-        do in = 1, CP%InitPower%nn
-
-        call Transfer_GetMatterPowerData(MTrans, PK_data, in, itf)
-
-        if (CP%NonLinear/=NonLinear_None) call MatterPowerdata_MakeNonlinear(PK_Data)
-
-        outpower(:,in) = exp(PK_data%matpower(:,1))
-        call MatterPowerdata_Free(PK_Data)
-        end do
-
-        open(unit=fileio_unit,file=FileNames(itf),form='formatted',status='replace')
-        do i=1,points
-            write (fileio_unit, fmt) MTrans%TransferData(Transfer_kh,i,1),outpower(i,1:CP%InitPower%nn)
-        end do
-        close(fileio_unit)
-
-        else
-
-
-        minkh = 1e-4
-        dlnkh = 0.02
-        points = log(MTrans%TransferData(Transfer_kh,MTrans%num_q_trans,itf)/minkh)/dlnkh+1
-        !             dlnkh = log(MTrans%TransferData(Transfer_kh,MTrans%num_q_trans,itf)/minkh)/(points-0.999)
-        allocate(outpower(points,CP%InitPower%nn))
-        do in = 1, CP%InitPower%nn
-            call Transfer_GetMatterPowerS(MTrans,outpower(1,in), itf, in, minkh,dlnkh, points)
-            if (CP%OutputNormalization == outCOBE) then
-                if (allocated(COBE_scales)) then
-                    outpower(:,in) = outpower(:,in)*COBE_scales(in)
-                else
-                    if (FeedbackLevel>0) write (*,*) 'Cannot COBE normalize - no Cls generated'
-                end if
+                open(unit=fileio_unit,file=FileNames(itf),form='formatted',status='replace')
+                do i=1,points
+                    write (fileio_unit, fmt) minkh*exp((i-1)*dlnkh),outpower(i,1:CP%InitPower%nn,1)
+                end do
+                close(fileio_unit)
             end if
-        end do
 
-        open(unit=fileio_unit,file=FileNames(itf),form='formatted',status='replace')
-        do i=1,points
-            write (fileio_unit, fmt) minkh*exp((i-1)*dlnkh),outpower(i,1:CP%InitPower%nn)
-        end do
-        close(fileio_unit)
-
-        end if
-
-        deallocate(outpower)
-
+            deallocate(outpower)
         end if
     end do
 
@@ -2267,15 +2214,12 @@
         +2*(dotmu(i)-dotmu(i+1)))))
 
         if (present(dopacity)) then
-
-        dopacity=(ddotmu(i)+d*(dddotmu(i)+d*(3*(ddotmu(i+1)  &
-        -ddotmu(i))-2*dddotmu(i)-dddotmu(i+1)+d*(dddotmu(i) &
-        +dddotmu(i+1)+2*(ddotmu(i)-ddotmu(i+1))))))/(tau*dlntau)
-
+            dopacity=(ddotmu(i)+d*(dddotmu(i)+d*(3*(ddotmu(i+1)  &
+            -ddotmu(i))-2*dddotmu(i)-dddotmu(i+1)+d*(dddotmu(i) &
+            +dddotmu(i+1)+2*(ddotmu(i)-ddotmu(i+1))))))/(tau*dlntau)
         end if
     end if
     end subroutine thermo
-
 
 
     function Thermo_OpacityToTime(opacity)
@@ -2314,7 +2258,7 @@
     real(dl) dtauda  !diff of tau w.CP%r.t a and integration
     external dtauda
     real(dl) a_verydom
-    real(dl) awin_lens1,awin_lens2,dwing_lens, rs, DA
+    real(dl) awin_lens1p,awin_lens2p,dwing_lens, rs, DA
     real(dl) rombint
     integer noutput
     external rombint
@@ -2396,7 +2340,6 @@
             if(ncount == 0) then
                 ncount=i-1
             end if
-
             xe(i) = Reionization_xe(a, tau, xe(ncount))
             !print *,1/a-1,xe(i)
             if (CP%AccurateReionization .and. CP%DerivedParameters) then
@@ -2407,11 +2350,9 @@
                 end if
                 last_dotmu = dotmu(i)
             end if
-
         else
             xe(i)=Recombination_xe(a)
         end if
-
 
         !  Baryon sound speed squared (over c**2).
         dtbdla=-2._dl*tb(i)-thomc*adothalf/adot*(a*tb(i)-CP%tcmb)
@@ -2504,8 +2445,8 @@
 
     if (dowinlens) then
         vfi=0
-        awin_lens1=0
-        awin_lens2=0
+        awin_lens1p=0
+        awin_lens2p=0
         winlens=0
         do j1=1,nthermo-1
             vis = emmu(j1)*dotmu(j1)
@@ -2514,10 +2455,10 @@
             if (vfi < 0.995) then
                 dwing_lens =  vis*cf1*dlntau*tau / 0.995
 
-                awin_lens1 = awin_lens1 + dwing_lens
-                awin_lens2 = awin_lens2 + dwing_lens/(CP%tau0-tau)
+                awin_lens1p = awin_lens1p + dwing_lens
+                awin_lens2p = awin_lens2p + dwing_lens/(CP%tau0-tau)
             end if
-            winlens(j1)= awin_lens1/(CP%tau0-tau) - awin_lens2
+            winlens(j1)= awin_lens1p/(CP%tau0-tau) - awin_lens2p
         end do
     end if
 
@@ -2586,20 +2527,19 @@
         end if
 
         if (FeedbackLevel > 0) then
+            write(*,'("Age of universe/GYr  = ",f7.3)') ThermoDerivedParams( derived_Age )
+            write(*,'("zstar                = ",f8.2)') ThermoDerivedParams( derived_zstar )
+            write(*,'("r_s(zstar)/Mpc       = ",f7.2)') ThermoDerivedParams( derived_rstar )
+            write(*,'("100*theta            = ",f9.6)') ThermoDerivedParams( derived_thetastar )
 
-        write(*,'("Age of universe/GYr  = ",f7.3)') ThermoDerivedParams( derived_Age )
-        write(*,'("zstar                = ",f8.2)') ThermoDerivedParams( derived_zstar )
-        write(*,'("r_s(zstar)/Mpc       = ",f7.2)') ThermoDerivedParams( derived_rstar )
-        write(*,'("100*theta            = ",f9.6)') ThermoDerivedParams( derived_thetastar )
+            write(*,'("zdrag                = ",f8.2)') ThermoDerivedParams( derived_zdrag )
+            write(*,'("r_s(zdrag)/Mpc       = ",f7.2)') ThermoDerivedParams( derived_rdrag )
 
-        write(*,'("zdrag                = ",f8.2)') ThermoDerivedParams( derived_zdrag )
-        write(*,'("r_s(zdrag)/Mpc       = ",f7.2)') ThermoDerivedParams( derived_rdrag )
+            write(*,'("k_D(zstar) Mpc       = ",f7.4)') ThermoDerivedParams( derived_kD )
+            write(*,'("100*theta_D          = ",f9.6)') ThermoDerivedParams( derived_thetaD )
 
-        write(*,'("k_D(zstar) Mpc       = ",f7.4)') ThermoDerivedParams( derived_kD )
-        write(*,'("100*theta_D          = ",f9.6)') ThermoDerivedParams( derived_thetaD )
-
-        write(*,'("z_EQ (if v_nu=1)     = ",f8.2)') ThermoDerivedParams( derived_zEQ )
-        write(*,'("100*theta_EQ         = ",f9.6)') ThermoDerivedParams( derived_thetaEQ )
+            write(*,'("z_EQ (if v_nu=1)     = ",f8.2)') ThermoDerivedParams( derived_zEQ )
+            write(*,'("100*theta_EQ         = ",f9.6)') ThermoDerivedParams( derived_thetaEQ )
         end if
     end if
 
@@ -2628,11 +2568,9 @@
     call Ranges_Add_delta(TimeSteps,taurend, CP%tau0, dtau0)
 
     if (CP%Reion%Reionization) then
-
-    nri0=int(Reionization_timesteps(CP%ReionHist)*AccuracyBoost)
-    !Steps while reionization going from zero to maximum
-    call Ranges_Add(TimeSteps,CP%ReionHist%tau_start,CP%ReionHist%tau_complete,nri0)
-
+        nri0=int(Reionization_timesteps(CP%ReionHist)*AccuracyBoost)
+        !Steps while reionization going from zero to maximum
+        call Ranges_Add(TimeSteps,CP%ReionHist%tau_start,CP%ReionHist%tau_complete,nri0)
     end if
 
     !Create arrays out of the region information.
