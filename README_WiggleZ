@@ -9,9 +9,6 @@ version of CosmoMC, which can be found online at http://cosmologist.info/cosmomc
 Follow the instructions to install CosmoMC as given in the readme:
 http://cosmologist.info/cosmomc/readme.html 
 
-Please note that at this time after the WiggleZ module has been installed, CAMB will
-no longer run as a standalone program.
-
 Installing this module is then very straight forward.  Simply run the following command:
 tar -xzf wigglez_module_new.tar.gz -C pathtocosmomc  
 

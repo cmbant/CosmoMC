@@ -342,8 +342,8 @@
             P%Transfer%num_redshifts=1
             P%Transfer%redshifts=0
             !JD 08/13 CAMB Fix for for nonlinear lensing of CMB + MPK compatibility
-            P%Transfer%num_redshifts=1
-            P%Transfer%redshifts=0
+            P%Transfer%PK_num_redshifts=1
+            P%Transfer%PK_redshifts=0
             !End JD
 
             P%AccuratePolarization = .true.
