@@ -6,3 +6,5 @@ Makefile	text
 *.paramnames    text
 *.ini           text
 *.dat           text
+*.py            text
+*.html          text
