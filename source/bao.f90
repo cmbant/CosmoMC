@@ -71,6 +71,7 @@
     !JD copied structure from mpk.f90
     subroutine ReadBaoDataset(bset, gname)
     use MatrixUtils
+    use settings
     type (BAOLikelihood) bset
     character(LEN=*), intent(IN) :: gname
     character(LEN=Ini_max_string_len) :: bao_measurements_file, bao_invcov_file
@@ -88,7 +89,10 @@
     end if
 
     bset%name = Ini_Read_String_File(Ini,'name')
-
+#ifdef WIGZ
+    if(bset%name == 'wigglez_2011' .and. use_wigglez_mpk) &
+      call MpiStop('Cannot use WiggleZ MPK and BAO at the same time')
+#endif
     Ini_fail_on_not_found = .false.
     if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(bset%name)
     bset%num_bao = Ini_Read_Int_File(Ini,'num_bao',0)
@@ -193,7 +197,6 @@
     BAO_LnLike=0
     if (like%name=='DR7') then
         BAO_LnLike = BAO_DR7_loglike(CMB,like%bao_z(1))
-        return
     else
         allocate(BAO_theory(like%num_bao))
 
@@ -219,8 +222,11 @@
             end do
         end do
         BAO_LnLike = BAO_LnLike/2.d0
+        
         deallocate(BAO_theory)
     end if
+    
+    if(feedback>1) write(*,*) trim(like%name)//' BAO likelihood = ', BAO_LnLike
 
     end function BAO_LnLike
 
