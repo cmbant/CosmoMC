@@ -188,14 +188,9 @@
     if ((P%NonLinear==NonLinear_lens .or. P%NonLinear==NonLinear_both) .and. P%DoLensing) then
         P%WantTransfer  = .true.
         call Transfer_SetForNonlinearLensing(P%Transfer)
-        call Transfer_SortAndIndexRedshifts(P%Transfer)
-    else
-        P%Transfer%num_redshifts=P%Transfer%PK_num_redshifts
-        P%Transfer%redshifts=P%Transfer%PK_redshifts
-        do i=1,P%Transfer%num_redshifts
-            P%Transfer%PK_redshifts_index(i) = i
-        end do   
     end if
+    
+    call Transfer_SortAndIndexRedshifts(P%Transfer)
     !JD 08/13 end changes
 
     P%transfer%kmax=P%transfer%kmax*(P%h0/100._dl)

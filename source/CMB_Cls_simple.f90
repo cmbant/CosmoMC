@@ -506,14 +506,8 @@
         P%NonLinear = NonLinear_lens
         call Transfer_SetForNonlinearLensing(P%Transfer)
         if(use_nonlinear) P%NonLinear = NonLinear_both
-        call Transfer_SortAndIndexRedshifts(P%Transfer)
-    else
-        P%Transfer%num_redshifts=P%Transfer%PK_num_redshifts
-        P%Transfer%redshifts=P%Transfer%PK_redshifts
-        do zix=1,P%Transfer%num_redshifts
-          P%Transfer%PK_redshifts_index(zix) = zix
-        end do   
     end if
+    call Transfer_SortAndIndexRedshifts(P%Transfer)
 !End JD modifications
     lensing_includes_tensors = .false.
 
