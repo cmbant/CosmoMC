@@ -210,11 +210,16 @@
     else
       Theory%cl(:,:)=0
     end if
-
-    if (Use_LSS) then
-        call SetPkFromCAMB(Theory,Info%Transfers%MTrans)
+    
+    !redshifts are in increasing order, so last index is redshift zero
+    if (Use_LSS .or. get_sigma8) then
+        Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(size(Info%Transfers%MTrans%sigma_8,1),1)
     else
         Theory%sigma_8 = 0
+    end if
+   
+    if (Use_LSS) then
+        call SetPkFromCAMB(Theory,Info%Transfers%MTrans)
     end if
 
     end subroutine GetNewPowerData
@@ -327,9 +332,6 @@
     Type(MatterTransferData) M
     integer zix
 
-    Theory%sigma_8 = M%sigma_8(size(M%sigma_8,1),1)
-    !redshifts are in increasing order, so last index is redshift zero
-
     if (num_matter_power /= 0) then
         do zix = 1,matter_power_lnzsteps
             call Transfer_GetMatterPower(M,&
@@ -422,7 +424,7 @@
 
     P%WantScalars = .true.
     P%WantTensors = compute_tensors
-    P%WantTransfer = Use_LSS
+    P%WantTransfer = Use_LSS .or. get_sigma8
 
     P%Max_l=lmax_computed_cl
     P%Max_eta_k=lmax_computed_cl*2
@@ -443,10 +445,8 @@
     P%Transfer%PK_num_redshifts = matter_power_lnzsteps
 
     if (AccuracyLevel > 1 .or. HighAccuracyDefault) then
-        if (USE_LSS) then
-            P%Transfer%high_precision=.true.
-            P%Transfer%kmax=P%Transfer%kmax + 0.2
-        end if
+        if (USE_LSS .or. get_sigma8) P%Transfer%high_precision=.true.
+        if (USE_LSS) P%Transfer%kmax=P%Transfer%kmax + 0.2
         AccuracyBoost = AccuracyLevel
         lAccuracyBoost = AccuracyLevel
         lSampleBoost = AccuracyLevel

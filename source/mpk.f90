@@ -48,12 +48,7 @@ implicit none
  procedure :: LogLike => MPK_Lnlike
  end type MPKLikelihood
  
-  !Note all units are in k/h here
-
-  integer, parameter :: mpk_d = kind(1.d0)
   logical :: use_mpk = .false.
-
-  integer, parameter :: wp = selected_real_kind(11,99)
 
 contains
 

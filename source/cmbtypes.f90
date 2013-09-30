@@ -153,7 +153,7 @@
 
     if (first .and. new_chains) then
         first = .false.
-        write(i) use_LSS, compute_tensors
+        write(i) get_sigma8, use_LSS, compute_tensors
         write(i) lmax, lmax_tensor, num_cls, num_cls_ext
         unused=0
         write(i) unused
@@ -167,8 +167,11 @@
     if (compute_tensors) then
         write(i) T%tensor_ratio_02, T%tensor_ratio_r10
     end if
+    
+    if (get_sigma8 .or. use_LSS) write(i) T%sigma_8
+    
     if (use_LSS) then
-        write(i) T%sigma_8, T%matter_power
+        write(i) T%matter_power
     end if
 
     end subroutine WriteTheory
@@ -178,12 +181,12 @@
     integer, intent(in) :: i
     integer unused
     logical, save :: first = .true.
-    logical, save :: has_LSS, has_tensors
+    logical, save :: has_sigma8, has_LSS, has_tensors
     integer, save :: almax, almaxtensor, anumcls, anumclsext, tmp(1)
 
     if (first) then
         first = .false.
-        read(i) has_LSS, has_tensors
+        read(i) has_sigma8, has_LSS, has_tensors
         read(i) almax, almaxtensor, anumcls, anumclsext
         if (almax > lmax) call MpiStop('ReadTheory: reading file with larger lmax')
         if (anumcls /= num_cls) call MpiStop('ReadTheory: reading file with different Cls')
@@ -203,8 +206,10 @@
         read(i) T%tensor_ratio_02, T%tensor_ratio_r10
     end if
 
+    if (has_sigma8 .or. has_LSS) read(i) T%sigma_8
+    
     if (has_LSS) then
-        read(i) T%sigma_8, T%matter_power
+        read(i) T%matter_power
     end if
 
     end subroutine ReadTheory

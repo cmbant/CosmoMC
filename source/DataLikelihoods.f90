@@ -14,7 +14,7 @@
     use mpk
     Type(TIniFile), intent(in) :: Ini
 
-    use_LSS = Ini_Read_Logical_File(Ini,'get_sigma8',.false.)
+    get_sigma8 = Ini_Read_Logical_File(Ini,'get_sigma8',.false.)
 
     call CMBDataLikelihoods_Add(DataLikelihoods, Ini)
 
@@ -26,7 +26,9 @@
    
     call BAOLikelihood_Add(DataLikelihoods, Ini)
     
-    use_LSS = use_LSS .or. use_mpk !.or. others
+    use_LSS = use_mpk !.or. others
+
+    get_sigma8 = get_sigma8 .or. use_CMB
 
     end subroutine SetDataLikelihoods
 

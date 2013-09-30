@@ -68,6 +68,7 @@
     integer :: instance = 0
     integer :: MPIchains = 1, MPIrank = 0
 
+    logical :: get_sigma8 = .true.
     logical :: Use_LSS = .false.
     logical :: Use_CMB = .false.
     logical :: use_wigglez_mpk = .false.  !DP for WiggleZ MPK

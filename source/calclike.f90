@@ -160,7 +160,7 @@
     Calc%SlowChanged = any(Calc%changeMask(1:num_hard))
     Calc%PowerChanged = any(Calc%changeMask(index_initpower:index_initpower+num_initpower-1))
     error=0
-    if (Use_CMB .or. Use_LSS) then
+    if (Use_CMB .or. Use_LSS .or. get_sigma8) then
         if (Calc%SlowChanged) then
             slow_changes = slow_changes + 1
             call GetNewTransferData(Calc%CMB, Calc%Params%Info,Calc%Params%Theory, error)
