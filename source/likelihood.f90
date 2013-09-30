@@ -24,16 +24,18 @@
     procedure :: LogLike
     procedure :: LogLikeTheory !same as above when extra info not needed
     procedure :: loadParamNames
+    procedure :: checkConflicts
     end type DataLikelihood
 
     !This is the global list of likelihoods we will use
     Type, extends(TObjectList) :: LikelihoodList
-    integer :: first_fast_param =0
+        integer :: first_fast_param =0
     contains
     procedure :: Item => LikelihoodItem
     procedure :: WriteLikelihoodContribs
     procedure :: AddNuisanceParameters
     procedure :: Compare => CompareLikes
+    procedure :: checkAllConflicts
     end type LikelihoodList
 
     Type(LikelihoodList), target, save :: DataLikelihoods
@@ -92,13 +94,13 @@
     use ParamNames
     Class(LikelihoodList) :: L
     Type(TParamNames) :: Names
-    Type(DataLikelihood), pointer :: DataLike
+    Class(DataLikelihood), pointer :: DataLike
     integer i,j
 
-    call DataLikelihoods%Sort
+    call L%Sort
     L%first_fast_param=0
-    do i=1,DataLikelihoods%Count
-        DataLike=>DataLikelihoods%Item(i)
+    do i=1,L%Count
+        DataLike=>L%Item(i)
         if (Feedback>0 .and. MPIrank==0) print *,'adding parameters for: '//trim(DataLIke%name)
         DataLike%new_param_block_start = Names%num_MCMC +1
         if (DataLike%nuisance_params%num_derived>0) call MpiStop('No support for likelihood derived params yet')
@@ -114,11 +116,24 @@
             DataLike%dependent_params(DataLike%nuisance_indices) = .true.
             if (Feedback>1 .and. MPIrank==0) print *,trim(DataLike%name)//' data param indices:', DataLike%nuisance_indices
             if (L%first_fast_param==0 .and. DataLike%speed >=0 .and. &
-                    DataLike%new_params>0) L%first_fast_param = DataLike%new_param_block_start
+            DataLike%new_params>0) L%first_fast_param = DataLike%new_param_block_start
         end if
     end do
 
     end subroutine AddNuisanceParameters
+
+    subroutine checkAllConflicts(L)
+    Class(LikelihoodList) :: L
+    Class(DataLikelihood), pointer :: DataLike
+    integer i
+
+    do i=1,L%Count
+        DataLike=>L%Item(i)
+        if (.not. DataLike%checkConflicts(L)) &
+        call MpiStop('Likelihood conflict reported by '//trim(DataLike%Name))
+    end do
+
+    end subroutine checkAllConflicts
 
     function logLikeTheory(like, CMB)
     !For likelihoods that don't need Theory or DataParams
@@ -137,7 +152,7 @@
     real(mcp) :: DataParams(:)
     real(mcp) LogLike
 
-     logLike = like%logLikeTheory(CMB)
+    logLike = like%logLikeTheory(CMB)
     end function
 
     subroutine loadParamNames(like, fname)
@@ -148,5 +163,15 @@
 
     end subroutine loadParamNames
 
+    function checkConflicts(like, full_list) result(OK)
+    !if for some reasons various likelihoods cannot be used at once
+    !check here for conflicts after full list of likelihoods has been read in
+    class(DataLikelihood) :: like
+    class(LikelihoodList) :: full_list
+    logical :: OK
+
+    OK=.true.
+
+    end function checkConflicts
 
     end module likelihood

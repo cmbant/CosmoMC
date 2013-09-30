@@ -71,7 +71,6 @@
     logical :: get_sigma8 = .true.
     logical :: Use_LSS = .false.
     logical :: Use_CMB = .false.
-    logical :: use_wigglez_mpk = .false.  !DP for WiggleZ MPK
     logical :: use_nonlinear = .false.    !JD for WiggleZ MPK
 
     integer :: logfile_unit  = 0

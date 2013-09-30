@@ -89,10 +89,6 @@
     end if
 
     bset%name = Ini_Read_String_File(Ini,'name')
-#ifdef WIGZ
-    if(bset%name == 'wigglez_2011' .and. use_wigglez_mpk) &
-      call MpiStop('Cannot use WiggleZ MPK and BAO at the same time')
-#endif
     Ini_fail_on_not_found = .false.
     if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(bset%name)
     bset%num_bao = Ini_Read_Int_File(Ini,'num_bao',0)

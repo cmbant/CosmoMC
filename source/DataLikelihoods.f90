@@ -21,14 +21,12 @@
     call HSTLikelihood_Add(DataLikelihoods, Ini)
 
     call SNLikelihood_Add(DataLikelihoods, Ini)
-    
-    call MPKLikelihood_Add(DataLikelihoods, Ini)
-   
-    call BAOLikelihood_Add(DataLikelihoods, Ini)
-    
-    use_LSS = use_mpk !.or. others
 
-    get_sigma8 = get_sigma8 .or. use_CMB
+    call MPKLikelihood_Add(DataLikelihoods, Ini)
+
+    call BAOLikelihood_Add(DataLikelihoods, Ini)
+
+    use_LSS = use_mpk !.or. others
 
     end subroutine SetDataLikelihoods
 

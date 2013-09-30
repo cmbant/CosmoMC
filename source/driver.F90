@@ -215,6 +215,7 @@
     num_massive_neutrinos = Ini_read_int('num_massive_neutrinos',-1)
 
     call SetDataLikelihoods(DefIni)
+    call DataLikelihoods%CheckAllConflicts
 
     Temperature = Ini_Read_Real('temperature',1.)
 
