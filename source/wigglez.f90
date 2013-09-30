@@ -176,6 +176,10 @@
     integer :: min_mpk_kbands_use ! in case you don't want to calc P(k) on the largest scales (will truncate P(k) to zero here!)
 
     logical, pointer, dimension(:) :: regions_active
+    
+    integer :: num_conflicts
+    character(LEN=80), pointer, dimension(:) :: conflict_type
+    character(LEN=80), pointer, dimension(:) :: conflict_name
 
     logical :: use_scaling !as SDSS_lrgDR3 !JD 09/13 now using CAMB functions for a_scl
 
@@ -223,12 +227,20 @@
     class(LikelihoodList) :: full_list
     logical :: OK
     Class(DataLikelihood), pointer :: like_other
-    integer i
+    integer i, i_conflict
 
     do i= 1, full_list%count
         like_other => full_list%Item(i)
-        if (like_other%LikelihoodType=='BAO' .and. like_other%name=='wigglez_2011') &
-        call MpiStop('Cannot use WiggleZ MPK and BAO at the same time')
+        do i_conflict=1, num_conflicts
+            if (like_other%LikelihoodType==trim(conflict_type(i_conflict)) &
+               .and. like_other%name==trim(conflict_name(i_conflict))) then
+                write(*,*) 'ERROR: Cannot use '//trim(like%LikelihoodType)//' dataset: '//trim(like%name)//&
+                ' and '//trim(conflict_type(i_conflict))//' dataset: '&
+                //trim(conflict_name(i_conflict))//' at the same time.'
+                OK = .false.
+                return
+            end if
+        end do
     end do
     OK=.true.
 
@@ -240,7 +252,7 @@
     Type(TIniFile) :: ini
     character(LEN=*), intent(IN) :: gname
     character(len=64) region_string
-    integer i_regions, file_unit
+    integer i_regions, file_unit, i_conflict
     logical bad
 
     file_unit = new_file_unit()
@@ -255,7 +267,15 @@
     zeval(2) = zb
     zeval(3) = zc
     zeval(4) = zd
-
+    
+    num_conflicts = Ini_Read_Int_File(Ini,'num_conflicts',0)
+    allocate(conflict_name(num_conflicts))
+    allocate(conflict_type(num_conflicts))
+    do i_conflict=1,num_conflicts
+        conflict_type(i_conflict) = Ini_Read_String_File(Ini,numcat('type_conflict',i_conflict))
+        conflict_name(i_conflict) = Ini_Read_String_File(Ini,numcat('name_conflict',i_conflict))
+    end do
+     
     num_mpk_points_full = Ini_Read_Int_File(Ini,'num_mpk_points_full',0)
     if (num_mpk_points_full.eq.0) write(*,*) ' ERROR: parameter num_mpk_points_full not set'
     num_mpk_kbands_full = Ini_Read_Int_File(Ini,'num_mpk_kbands_full',0)

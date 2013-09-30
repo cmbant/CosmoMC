@@ -445,8 +445,10 @@
     P%Transfer%PK_num_redshifts = matter_power_lnzsteps
 
     if (AccuracyLevel > 1 .or. HighAccuracyDefault) then
-        if (USE_LSS .or. get_sigma8) P%Transfer%high_precision=.true.
-        if (USE_LSS) P%Transfer%kmax=P%Transfer%kmax + 0.2
+        if (USE_LSS .or. get_sigma8) then
+            P%Transfer%high_precision=.true.
+            P%Transfer%kmax=P%Transfer%kmax + 0.2
+        end if
         AccuracyBoost = AccuracyLevel
         lAccuracyBoost = AccuracyLevel
         lSampleBoost = AccuracyLevel

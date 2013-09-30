@@ -39,12 +39,16 @@
         !JD 09/13  New variables so we can use camb routines to calculate a_scl
         real(mcp) DV_fid   !Fiducial D_V
         real(mcp) redshift !effective redshift of the P(k) for computing a_scl
-
+        !For checking conflicting datasets
+        integer :: num_conflicts
+        character(LEN=80), pointer, dimension(:) :: conflict_type
+        character(LEN=80), pointer, dimension(:) :: conflict_name
         !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
         logical :: Q_marge, Q_flat
         real(mcp) :: Q_mid, Q_sigma, Ag
     contains
     procedure :: LogLike => MPK_Lnlike
+    procedure :: checkConflicts =>MPK_checkConflicts
     end type MPKLikelihood
 
     logical :: use_mpk = .false.
@@ -77,6 +81,32 @@
     if (Feedback>1) write(*,*) 'read mpk datasets'
 
     end subroutine MPKLikelihood_Add
+    
+    function MPK_checkConflicts(like, full_list) result(OK)
+    !if for some reasons various likelihoods cannot be used at once
+    !check here for conflicts after full list of likelihoods has been read in
+    class(MPKLikelihood) :: like
+    class(LikelihoodList) :: full_list
+    logical :: OK
+    Class(DataLikelihood), pointer :: like_other
+    integer i, i_conflict
+
+    do i= 1, full_list%count
+        like_other => full_list%Item(i)
+        do i_conflict=1, like%num_conflicts
+            if (like_other%LikelihoodType==trim(like%conflict_type(i_conflict)) &
+               .and. like_other%name==trim(like%conflict_name(i_conflict))) then
+                write(*,*) 'ERROR: Cannot use '//trim(like%LikelihoodType)//' dataset: '//trim(like%name)//&
+                ' and '//trim(like%conflict_type(i_conflict))//' dataset: '&
+                //trim(like%conflict_name(i_conflict))//' at the same time.'
+                OK = .false.
+                return
+            end if
+        end do
+    end do
+    OK=.true.
+
+    end function MPK_checkConflicts
 
     subroutine mpk_SetTransferRedshifts(redshifts)
     use wigglezinfo
@@ -113,7 +143,7 @@
     character(LEN=*), intent(IN) :: gname
     character(LEN=Ini_max_string_len) :: kbands_file, measurements_file, windows_file, cov_file
 
-    integer i,iopb
+    integer i,iopb,i_conflict
     real(mcp) keff,klo,khi,beff
     integer :: num_mpk_points_full ! actual number of bandpowers in the infile
     integer :: num_mpk_kbands_full ! actual number of k positions " in the infile
@@ -233,10 +263,21 @@
         end if
         mset%Ag = Ini_Read_Real_File(Ini,'Ag', 1.4)
     end if
+    
+    mset%num_conflicts = Ini_Read_Int_File(Ini,'num_conflicts',0)
+    if(mset%num_conflicts>0)then
+        allocate(mset%conflict_name(mset%num_conflicts))
+        allocate(mset%conflict_type(mset%num_conflicts))
+        do i_conflict=1,mset%num_conflicts
+            mset%conflict_type(i_conflict) = Ini_Read_String_File(Ini,numcat('type_conflict',i_conflict))
+            mset%conflict_name(i_conflict) = Ini_Read_String_File(Ini,numcat('name_conflict',i_conflict))
+        end do
+    end if
+    
     if (iopb.ne.0) then
         stop 'Error reading mpk file'
     endif
-
+    
     call Ini_Close_File(Ini)
     call ClearFileUnit(file_unit)
 
