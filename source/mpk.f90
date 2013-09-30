@@ -374,10 +374,11 @@
         end if
     end if !not analytic over Q
 
-    if (Feedback>1) write(*,*) 'mpk chi-sq:', LnLike*2
+    if (Feedback>1) write(*,*)trim(like%name)//' MPK Likelihood = ', LnLike
 
     if (LnLike > 1e8) then
-        write(*,*) 'Chisq is huge, maybe there is a problem? chisq=',chisq
+        write(*,*)'WARNING: '//trim(like%name)//' MPK Likelihood is huge!'
+        write(*,*)'          Mmaybe there is a problem? Likelihood = ',LnLike
     end if
 
     deallocate(mpk_Pth,mpk_lin)

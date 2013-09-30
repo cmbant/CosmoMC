@@ -306,7 +306,6 @@
     end if
 
 
-    !... IMPORTANT: need to talk to CB about Q marginalisation ...
     Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)
     if (Q_marge) then
         Q_flat = Ini_Read_Logical_File(Ini,'Q_flat',.false.)
@@ -687,10 +686,11 @@
 
     end if !not analytic over Q
     WiggleZ_LnLike=LnLike
-    if (Feedback>1) write(*,'("WiggleZ bin ",I0," mpk chi-sq: ",F10.5)')iz,LnLike*2
+    if (Feedback>1) write(*,'("WiggleZ bin ",I0," MPK Likelihood = ",F10.5)')iz,LnLike
 
     if (LnLike > 1e8) then
-        write(*,*) 'Chisq is huge, maybe there is a problem? chisq=',chisq
+        write(*,'("WARNING: WiggleZ bin",I0," Likelihood is huge!")')iz
+        write(*,'("         Maybe there is a problem? Likelihood = ",F10.5)')LnLike
     end if
 
     deallocate(mpk_Pth,mpk_lin)

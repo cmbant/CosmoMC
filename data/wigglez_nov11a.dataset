@@ -1,6 +1,6 @@
 # WiggleZ data from Chris Blake
 # Based on supplied 2df_2005.dataset
-name = wigglez_nov11a
+name = WiggleZ_nov11a
 redshift = 0.22
 
 #Fiducial D_v below for when use_scaling = T 

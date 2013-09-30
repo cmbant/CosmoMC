@@ -6,7 +6,7 @@
 #
 # To use, simply uncomment: DEFAULT(batch1/WiggleZ_MPK.ini) in test.ini
 
-name = wigglez_common
+name = WiggleZ_nov11
 
 # number of points and kbands in the input files
 num_mpk_points_full = 50
@@ -15,7 +15,7 @@ num_mpk_kbands_full = 100
 # Conflicting datasets
 num_conflicts = 1
 type_conflict1 = BAO
-name_conflict1 = wigglez_2011
+name_conflict1 = WiggleZ
 
 # use scaling by dv/dv(fid) for Pk
 use_scaling = T

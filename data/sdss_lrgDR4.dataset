@@ -1,4 +1,4 @@
-name = sdss_lrgDR4
+name = SDSS_lrgDR4
 
 # number of points and kbands in the input files
 num_mpk_points_full = 20
