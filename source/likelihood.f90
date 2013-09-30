@@ -9,12 +9,13 @@
     implicit none
 
     integer, parameter :: max_likelihood_functions = 50
+    integer, parameter :: LikeNameLen = 80
 
     type :: DataLikelihood
         integer :: speed = 0  !negative for slow likelihoods, larger positive for faster
-        character(LEN=80) :: name = ''
-        character(LEN=80) :: LikelihoodType= ''
-        character(LEN=80) :: version = ''
+        character(LEN=LikeNameLen) :: name = ''
+        character(LEN=LikeNameLen) :: LikelihoodType= ''
+        character(LEN=LikeNameLen) :: version = ''
         Type(TParamNames) :: nuisance_params
         !Internally calculated
         logical :: dependent_params(max_num_params) = .false.
@@ -26,6 +27,19 @@
     procedure :: loadParamNames
     procedure :: checkConflicts
     end type DataLikelihood
+
+    type, extends(DataLikelihood) :: DatasetFileLikelihood
+        !likelihood that reads from a text file description, e.g. .dataset file
+        !conflict names read from file and matched by type and name
+        integer :: num_conflicts = 0
+        character(LEN=LikeNameLen), pointer, dimension(:) :: conflict_type
+        character(LEN=LikeNameLen), pointer, dimension(:) :: conflict_name
+        class(DatasetFileLikelihood), pointer :: CommonData => null()
+    contains
+    procedure :: ReadDatasetFile !open file, read standard things, call ReadIni
+    procedure :: ReadIni  !read custom settings
+    procedure :: checkConflicts => Dataset_CheckConflicts
+    end type DatasetFileLikelihood
 
     !This is the global list of likelihoods we will use
     Type, extends(TObjectList) :: LikelihoodList
@@ -173,5 +187,72 @@
     OK=.true.
 
     end function checkConflicts
+
+    !!!!!! DatasetFileLikelihood
+
+    subroutine ReadIni(like, Ini)
+    class(DatasetFileLikelihood) :: like
+    Type(TIniFile) :: ini
+
+    end subroutine ReadIni
+
+    subroutine ReadDatasetFile(like, fname)
+    class(DatasetFileLikelihood) :: like
+    character(LEN=*), intent(in) :: fname
+    logical bad
+    integer file_unit
+    Type(TIniFile) :: ini
+    integer i_conflict
+
+    file_unit = new_file_unit()
+    call Ini_Open_File(Ini, fname, file_unit, bad, .false.)
+    if (bad) then
+        call MpiStop('Error opening dataset file '//trim(fname))
+    end if
+
+    like%name = Ini_Read_String_File(Ini,'name')
+
+    like%num_conflicts = Ini_Read_Int_File(Ini,'num_conflicts',0)
+    allocate(like%conflict_name(like%num_conflicts))
+    allocate(like%conflict_type(like%num_conflicts))
+    do i_conflict=1,like%num_conflicts
+        like%conflict_type(i_conflict) = Ini_Read_String_File(Ini,numcat('type_conflict',i_conflict))
+        like%conflict_name(i_conflict) = Ini_Read_String_File(Ini,numcat('name_conflict',i_conflict))
+    end do
+
+    call like%ReadIni(Ini)
+
+    call Ini_Close_File(Ini)
+    call ClearFileUnit(file_unit)
+
+    end subroutine ReadDatasetFile
+
+    recursive function Dataset_CheckConflicts(like, full_list) result(OK)
+    !if for some reasons various likelihoods cannot be used at once
+    !check here for conflicts after full list of likelihoods has been read in
+    class(DatasetFileLikelihood) :: like
+    class(LikelihoodList) :: full_list
+    logical :: OK
+    class(DataLikelihood), pointer :: like_other
+    integer i, i_conflict
+
+    OK=.true.
+    do i_conflict=1, like%num_conflicts
+        do i= 1, full_list%count
+            like_other => full_list%Item(i)
+            if (like_other%LikelihoodType==trim(like%conflict_type(i_conflict)) &
+            .and. like_other%name==trim(like%conflict_name(i_conflict))) then
+                write(*,*) 'ERROR: Cannot use '//trim(like%LikelihoodType)//' dataset: '//trim(like%name)//&
+                ' and '//trim(like_other%LikelihoodType)//' dataset: '&
+                //trim(like_other%name)//' at the same time.'
+                OK = .false.
+            end if
+        end do
+    end do
+    if (associated(like%CommonData)) then
+        OK = like%CommonData%checkConflicts(full_list) .and. OK
+    end if
+
+    end function Dataset_CheckConflicts
 
     end module likelihood

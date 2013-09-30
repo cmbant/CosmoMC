@@ -39,16 +39,12 @@
         !JD 09/13  New variables so we can use camb routines to calculate a_scl
         real(mcp) DV_fid   !Fiducial D_V
         real(mcp) redshift !effective redshift of the P(k) for computing a_scl
-        !For checking conflicting datasets
-        integer :: num_conflicts
-        character(LEN=80), pointer, dimension(:) :: conflict_type
-        character(LEN=80), pointer, dimension(:) :: conflict_name
         !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
         logical :: Q_marge, Q_flat
         real(mcp) :: Q_mid, Q_sigma, Ag
     contains
     procedure :: LogLike => MPK_Lnlike
-    procedure :: checkConflicts =>MPK_checkConflicts
+    procedure :: ReadIni => MPK_ReadIni
     end type MPKLikelihood
 
     logical :: use_mpk = .false.
@@ -60,7 +56,7 @@
     use settings
     class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
-    Type(MPKLikelihood), pointer :: like
+    type(MPKLikelihood), pointer :: like
     integer nummpksets, i
 
 
@@ -73,7 +69,7 @@
     nummpksets = Ini_Read_Int('mpk_numdatasets',0)
     do i= 1, nummpksets
         allocate(like)
-        call ReadMpkDataset(like, ReadIniFileName(Ini,numcat('mpk_dataset',i)) )
+        call like%ReadDatasetFile(ReadIniFileName(Ini,numcat('mpk_dataset',i)) )
         like%LikelihoodType = 'MPK'
         like%needs_powerspectra = .true.
         call LikeList%Add(like)
@@ -81,32 +77,6 @@
     if (Feedback>1) write(*,*) 'read mpk datasets'
 
     end subroutine MPKLikelihood_Add
-    
-    function MPK_checkConflicts(like, full_list) result(OK)
-    !if for some reasons various likelihoods cannot be used at once
-    !check here for conflicts after full list of likelihoods has been read in
-    class(MPKLikelihood) :: like
-    class(LikelihoodList) :: full_list
-    logical :: OK
-    Class(DataLikelihood), pointer :: like_other
-    integer i, i_conflict
-
-    do i= 1, full_list%count
-        like_other => full_list%Item(i)
-        do i_conflict=1, like%num_conflicts
-            if (like_other%LikelihoodType==trim(like%conflict_type(i_conflict)) &
-               .and. like_other%name==trim(like%conflict_name(i_conflict))) then
-                write(*,*) 'ERROR: Cannot use '//trim(like%LikelihoodType)//' dataset: '//trim(like%name)//&
-                ' and '//trim(like%conflict_type(i_conflict))//' dataset: '&
-                //trim(like%conflict_name(i_conflict))//' at the same time.'
-                OK = .false.
-                return
-            end if
-        end do
-    end do
-    OK=.true.
-
-    end function MPK_checkConflicts
 
     subroutine mpk_SetTransferRedshifts(redshifts)
     use wigglezinfo
@@ -137,10 +107,10 @@
     return
     end subroutine mpk_SetTransferRedshifts
 
-    subroutine ReadmpkDataset(mset,gname)
+    subroutine MPK_ReadIni(like,Ini)
     use MatrixUtils
-    type(MPKLikelihood) mset
-    character(LEN=*), intent(IN) :: gname
+    class(MPKLikelihood) like
+    Type(TIniFile) :: Ini
     character(LEN=Ini_max_string_len) :: kbands_file, measurements_file, windows_file, cov_file
 
     integer i,iopb,i_conflict
@@ -155,24 +125,12 @@
     real(mcp), dimension(:), allocatable :: mpk_kfull, mpk_fiducial
 
     character(80) :: dummychar
-    logical bad
-    Type(TIniFile) :: Ini
-    integer file_unit
 
-
-    file_unit = new_file_unit()
-    call Ini_Open_File(Ini, gname, file_unit, bad, .false.)
-    if (bad) then
-        write (*,*)  'Error opening dataset file '//trim(gname)
-        stop
-    end if
-
-    mset%name = Ini_Read_String_File(Ini,'name')
-    if (mset%name == 'twodf') stop 'twodf no longer supported - use data/2df_2005.dataset'
-    if (mset%name == 'lrg_2009') stop 'lrg_2009 no longer supported'
+    if (like%name == 'twodf') stop 'twodf no longer supported - use data/2df_2005.dataset'
+    if (like%name == 'lrg_2009') stop 'lrg_2009 no longer supported'
     Ini_fail_on_not_found = .false.
-    mset%use_set =.true.
-    if (Feedback > 0) write (*,*) 'reading: '//trim(mset%name)
+    like%use_set =.true.
+    if (Feedback > 0) write (*,*) 'reading: '//trim(like%name)
     num_mpk_points_full = Ini_Read_Int_File(Ini,'num_mpk_points_full',0)
     if (num_mpk_points_full.eq.0) write(*,*) ' ERROR: parameter num_mpk_points_full not set'
     num_mpk_kbands_full = Ini_Read_Int_File(Ini,'num_mpk_kbands_full',0)
@@ -181,40 +139,40 @@
     min_mpk_kbands_use = Ini_Read_Int_File(Ini,'min_mpk_kbands_use',1)
     max_mpk_points_use = Ini_Read_Int_File(Ini,'max_mpk_points_use',num_mpk_points_full)
     max_mpk_kbands_use = Ini_Read_Int_File(Ini,'max_mpk_kbands_use',num_mpk_kbands_full)
-    mset%num_mpk_points_use = max_mpk_points_use - min_mpk_points_use +1
-    mset%num_mpk_kbands_use = max_mpk_kbands_use - min_mpk_kbands_use +1
+    like%num_mpk_points_use = max_mpk_points_use - min_mpk_points_use +1
+    like%num_mpk_kbands_use = max_mpk_kbands_use - min_mpk_kbands_use +1
 
     allocate(mpk_Wfull(num_mpk_points_full,num_mpk_kbands_full))
     allocate(mpk_kfull(num_mpk_kbands_full))
-    allocate(mset%mpk_P(mset%num_mpk_points_use))
-    allocate(mset%mpk_sdev(mset%num_mpk_points_use))  ! will need to replace with the covmat
-    allocate(mset%mpk_k(mset%num_mpk_kbands_use))
-    allocate(mset%mpk_W(mset%num_mpk_points_use,mset%num_mpk_kbands_use))
-    allocate(mpk_fiducial(mset%num_mpk_points_use))
+    allocate(like%mpk_P(like%num_mpk_points_use))
+    allocate(like%mpk_sdev(like%num_mpk_points_use))  ! will need to replace with the covmat
+    allocate(like%mpk_k(like%num_mpk_kbands_use))
+    allocate(like%mpk_W(like%num_mpk_points_use,like%num_mpk_kbands_use))
+    allocate(mpk_fiducial(like%num_mpk_points_use))
 
     kbands_file  = ReadIniFileName(Ini,'kbands_file')
     call ReadVector(kbands_file,mpk_kfull,num_mpk_kbands_full)
-    mset%mpk_k(1:mset%num_mpk_kbands_use)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
+    like%mpk_k(1:like%num_mpk_kbands_use)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
     if (Feedback > 1) then
-        write(*,*) 'reading: '//trim(mset%name)//' data'
-        write(*,*) 'Using kbands windows between',real(mset%mpk_k(1)),' < k/h < ',real(mset%mpk_k(mset%num_mpk_kbands_use))
+        write(*,*) 'reading: '//trim(like%name)//' data'
+        write(*,*) 'Using kbands windows between',real(like%mpk_k(1)),' < k/h < ',real(like%mpk_k(like%num_mpk_kbands_use))
     endif
-    if  (mset%mpk_k(1) < matter_power_minkh) then
-        write (*,*) 'WARNING: k_min in '//trim(mset%name)//'less than setting in cmbtypes.f90'
+    if  (like%mpk_k(1) < matter_power_minkh) then
+        write (*,*) 'WARNING: k_min in '//trim(like%name)//'less than setting in cmbtypes.f90'
         write (*,*) 'all k<matter_power_minkh will be set to matter_power_minkh'
     end if
 
     measurements_file  = ReadIniFileName(Ini,'measurements_file')
     call OpenTxtFile(measurements_file, tmp_file_unit)
-    mset%mpk_P=0.
+    like%mpk_P=0.
     read (tmp_file_unit,*) dummychar
     read (tmp_file_unit,*) dummychar
     do i= 1, (min_mpk_points_use-1)
         read (tmp_file_unit,*, iostat=iopb) keff,klo,khi,beff,beff,beff
     end do
     if (Feedback > 1 .and. min_mpk_points_use>1) write(*,*) 'Not using bands with keff=  ',real(keff),' or below'
-    do i =1, mset%num_mpk_points_use
-        read (tmp_file_unit,*, iostat=iopb) keff,klo,khi,mset%mpk_P(i),mset%mpk_sdev(i),mpk_fiducial(i)
+    do i =1, like%num_mpk_points_use
+        read (tmp_file_unit,*, iostat=iopb) keff,klo,khi,like%mpk_P(i),like%mpk_sdev(i),mpk_fiducial(i)
     end do
     close(tmp_file_unit)
     if (Feedback > 1) write(*,*) 'bands truncated at keff=  ',real(keff)
@@ -222,7 +180,7 @@
     windows_file  = ReadIniFileName(Ini,'windows_file')
     if (windows_file.eq.'') write(*,*) 'ERROR: mpk windows_file not specified'
     call ReadMatrix(windows_file,mpk_Wfull,num_mpk_points_full,num_mpk_kbands_full)
-    mset%mpk_W(1:mset%num_mpk_points_use,1:mset%num_mpk_kbands_use)= &
+    like%mpk_W(1:like%num_mpk_points_use,1:like%num_mpk_kbands_use)= &
     mpk_Wfull(min_mpk_points_use:max_mpk_points_use,min_mpk_kbands_use:max_mpk_kbands_use)
 
 
@@ -230,60 +188,57 @@
     if (cov_file /= '') then
         allocate(mpk_covfull(num_mpk_points_full,num_mpk_points_full))
         call ReadMatrix(cov_file,mpk_covfull,num_mpk_points_full,num_mpk_points_full)
-        allocate(mset%mpk_invcov(mset%num_mpk_points_use,mset%num_mpk_points_use))
-        mset%mpk_invcov=  mpk_covfull(min_mpk_points_use:max_mpk_points_use,min_mpk_points_use:max_mpk_points_use)
-        call Matrix_Inverse(mset%mpk_invcov)
+        allocate(like%mpk_invcov(like%num_mpk_points_use,like%num_mpk_points_use))
+        like%mpk_invcov=  mpk_covfull(min_mpk_points_use:max_mpk_points_use,min_mpk_points_use:max_mpk_points_use)
+        call Matrix_Inverse(like%mpk_invcov)
         deallocate(mpk_covfull)
     else
-        nullify(mset%mpk_invcov)
+        nullify(like%mpk_invcov)
     end if
 
-    mset%use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
+    like%use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
 
     !JD 09/13 Read in fiducial D_V and redshift for use when calculating a_scl
-    if(mset%use_scaling) then
-        mset%redshift = Ini_Read_Double_File(Ini,'redshift',0.35d0)
+    if(like%use_scaling) then
+        like%redshift = Ini_Read_Double_File(Ini,'redshift',0.35d0)
         !DV_fid should be in units CMB%H0*BAO_D_v(z)
-        mset%DV_fid = Ini_Read_Double_File(Ini,'DV_fid',-1.d0)
-        if(mset%DV_fid == -1.d0) then
+        like%DV_fid = Ini_Read_Double_File(Ini,'DV_fid',-1.d0)
+        if(like%DV_fid == -1.d0) then
             write(*,*)'ERROR: use_scaling = T and no DV_fid given '
-            write(*,*)'       for dataset '//trim(mset%name)//'.'
+            write(*,*)'       for dataset '//trim(like%name)//'.'
             write(*,*)'       Please check your .dataset files.'
             call MPIstop()
         end if
     end if
 
-    mset%Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)
-    if (mset%Q_marge) then
-        mset%Q_flat = Ini_Read_Logical_File(Ini,'Q_flat',.false.)
-        if (.not. mset%Q_flat) then
+    like%Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)
+    if (like%Q_marge) then
+        like%Q_flat = Ini_Read_Logical_File(Ini,'Q_flat',.false.)
+        if (.not. like%Q_flat) then
             !gaussian prior on Q
-            mset%Q_mid = Ini_Read_Real_File(Ini,'Q_mid')
-            mset%Q_sigma = Ini_Read_Real_File(Ini,'Q_sigma')
+            like%Q_mid = Ini_Read_Real_File(Ini,'Q_mid')
+            like%Q_sigma = Ini_Read_Real_File(Ini,'Q_sigma')
         end if
-        mset%Ag = Ini_Read_Real_File(Ini,'Ag', 1.4)
+        like%Ag = Ini_Read_Real_File(Ini,'Ag', 1.4)
     end if
     
-    mset%num_conflicts = Ini_Read_Int_File(Ini,'num_conflicts',0)
-    if(mset%num_conflicts>0)then
-        allocate(mset%conflict_name(mset%num_conflicts))
-        allocate(mset%conflict_type(mset%num_conflicts))
-        do i_conflict=1,mset%num_conflicts
-            mset%conflict_type(i_conflict) = Ini_Read_String_File(Ini,numcat('type_conflict',i_conflict))
-            mset%conflict_name(i_conflict) = Ini_Read_String_File(Ini,numcat('name_conflict',i_conflict))
+    like%num_conflicts = Ini_Read_Int_File(Ini,'num_conflicts',0)
+    if(like%num_conflicts>0)then
+        allocate(like%conflict_name(like%num_conflicts))
+        allocate(like%conflict_type(like%num_conflicts))
+        do i_conflict=1,like%num_conflicts
+            like%conflict_type(i_conflict) = Ini_Read_String_File(Ini,numcat('type_conflict',i_conflict))
+            like%conflict_name(i_conflict) = Ini_Read_String_File(Ini,numcat('name_conflict',i_conflict))
         end do
     end if
     
     if (iopb.ne.0) then
         stop 'Error reading mpk file'
     endif
-    
-    call Ini_Close_File(Ini)
-    call ClearFileUnit(file_unit)
-
+ 
     deallocate(mpk_Wfull, mpk_kfull,mpk_fiducial)
 
-    end subroutine ReadmpkDataset
+    end subroutine MPK_ReadIni
 
 
     function MPK_LnLike(like,CMB,Theory,DataParams) ! LV_06 added CMB here

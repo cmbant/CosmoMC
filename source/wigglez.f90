@@ -143,6 +143,11 @@
     use wigglezinfo
     implicit none
 
+    type, extends(DatasetFileLikelihood) :: TWiggleZCommon
+    contains
+    procedure :: ReadIni => TWiggleZCommon_ReadIni
+    end type TWiggleZCommon
+
     type, extends(CosmologyLikelihood) :: WiggleZLikelihood
         logical :: use_set
         ! 1st index always refers to the region
@@ -155,8 +160,10 @@
         real(mcp):: redshift ! important to know
     contains
     procedure :: LogLike => WiggleZ_Lnlike
-    procedure :: checkConflicts =>WiggleZ_checkConflicts
+    procedure :: ReadIni => WiggleZ_ReadIni
     end type WiggleZLikelihood
+
+    type(TWiggleZCommon), target :: WiggleZCommon
 
     integer, parameter :: max_num_wigglez_regions = 7
     !Note all units are in k/h here
@@ -176,10 +183,6 @@
     integer :: min_mpk_kbands_use ! in case you don't want to calc P(k) on the largest scales (will truncate P(k) to zero here!)
 
     logical, pointer, dimension(:) :: regions_active
-    
-    integer :: num_conflicts
-    character(LEN=80), pointer, dimension(:) :: conflict_type
-    character(LEN=80), pointer, dimension(:) :: conflict_name
 
     logical :: use_scaling !as SDSS_lrgDR3 !JD 09/13 now using CAMB functions for a_scl
 
@@ -206,76 +209,37 @@
 
     use_gigglez = Ini_Read_Logical('Use_gigglez',.false.)
 
-    call ReadWiggleZCommon(ReadIniFileName(Ini,'wigglez_common_dataset'))
+    call WiggleZCommon%ReadDatasetFile(ReadIniFileName(Ini,'wigglez_common_dataset'))
+    WiggleZCommon%LikelihoodType = 'MPK'
 
     nummpksets = Ini_Read_Int('mpk_wigglez_numdatasets',0)
     do i= 1, nummpksets
         allocate(like)
-        call ReadWiggleZDataset(like, ReadIniFileName(Ini,numcat('wigglez_dataset',i)) )
+        call like%ReadDatasetFile(ReadIniFileName(Ini,numcat('wigglez_dataset',i)))
         like%LikelihoodType = 'MPK'
         like%needs_powerspectra = .true.
+        like%CommonData=> WiggleZCommon
         call LikeList%Add(like)
     end do
     if (Feedback>1) write(*,*) 'read WiggleZ MPK datasets'
 
     end subroutine WiggleZLikelihood_Add
 
-    function WiggleZ_checkConflicts(like, full_list) result(OK)
-    !if for some reasons various likelihoods cannot be used at once
-    !check here for conflicts after full list of likelihoods has been read in
-    class(WiggleZLikelihood) :: like
-    class(LikelihoodList) :: full_list
-    logical :: OK
-    Class(DataLikelihood), pointer :: like_other
-    integer i, i_conflict
 
-    do i= 1, full_list%count
-        like_other => full_list%Item(i)
-        do i_conflict=1, num_conflicts
-            if (like_other%LikelihoodType==trim(conflict_type(i_conflict)) &
-               .and. like_other%name==trim(conflict_name(i_conflict))) then
-                write(*,*) 'ERROR: Cannot use '//trim(like%LikelihoodType)//' dataset: '//trim(like%name)//&
-                ' and '//trim(conflict_type(i_conflict))//' dataset: '&
-                //trim(conflict_name(i_conflict))//' at the same time.'
-                OK = .false.
-                return
-            end if
-        end do
-    end do
-    OK=.true.
-
-    end function WiggleZ_checkConflicts
-
-    subroutine ReadWiggleZCommon(gname)
+    subroutine TWiggleZCommon_ReadIni(like,Ini)
     use IniFile
     use wigglezinfo
+    class(TWiggleZCommon) :: like
     Type(TIniFile) :: ini
-    character(LEN=*), intent(IN) :: gname
     character(len=64) region_string
-    integer i_regions, file_unit, i_conflict
-    logical bad
-
-    file_unit = new_file_unit()
-    call Ini_Open_File(Ini, gname, file_unit, bad, .false.)
-    if (bad) then
-        write (*,*)  'Error opening dataset file '//trim(gname)
-        stop
-    end if
-
+    integer i_regions
 
     zeval(1) = za
     zeval(2) = zb
     zeval(3) = zc
     zeval(4) = zd
-    
-    num_conflicts = Ini_Read_Int_File(Ini,'num_conflicts',0)
-    allocate(conflict_name(num_conflicts))
-    allocate(conflict_type(num_conflicts))
-    do i_conflict=1,num_conflicts
-        conflict_type(i_conflict) = Ini_Read_String_File(Ini,numcat('type_conflict',i_conflict))
-        conflict_name(i_conflict) = Ini_Read_String_File(Ini,numcat('name_conflict',i_conflict))
-    end do
-     
+
+
     num_mpk_points_full = Ini_Read_Int_File(Ini,'num_mpk_points_full',0)
     if (num_mpk_points_full.eq.0) write(*,*) ' ERROR: parameter num_mpk_points_full not set'
     num_mpk_kbands_full = Ini_Read_Int_File(Ini,'num_mpk_kbands_full',0)
@@ -354,18 +318,15 @@
         Ag = Ini_Read_Real_File(Ini,'Ag', 1.4)
     end if
 
-    call Ini_Close_File(Ini)
-    call ClearFileUnit(file_unit)
+    end subroutine TWiggleZCommon_ReadIni
 
-    end subroutine ReadWiggleZCommon
-
-    subroutine ReadWiggleZDataset(wmset,gname)
+    subroutine WiggleZ_ReadIni(like,Ini)
     ! this will be called once for each redshift bin
     use wigglezinfo
     use MatrixUtils
     implicit none
-    type(WiggleZLikelihood) wmset
-    character(LEN=*), intent(IN) :: gname
+    class(WiggleZLikelihood) like
+    Type(TIniFile) :: Ini
     character(LEN=Ini_max_string_len) :: kbands_file, measurements_file, windows_file, cov_file
     integer i,iopb,i_regions
     real(mcp) keff,klo,khi,beff
@@ -375,57 +336,44 @@
     character(80) :: dummychar
     character z_char
     integer iz,count
-    integer :: file_unit
-    logical bad
-    Type(TIniFile) :: Ini
 
     iopb = 0
-
-    file_unit = new_file_unit()
-    call Ini_Open_File(Ini, gname, file_unit, bad, .false.)
-    if (bad) then
-        write (*,*)  'Error opening dataset file '//trim(gname)
-        stop
-    end if
 
 #ifndef WIGZ
     call MpiStop('mpk: edit makefile to have "EXTDATA = WIGZ" to inlude WiggleZ data')
 #endif
 
-    ! we've opened the file, now we have to break it up ourselves
 
-
-    wmset%name = Ini_Read_String_File(Ini,'name')
-    wmset%redshift = Ini_Read_Double_File(Ini,'redshift',0.d0)
-    if(wmset%redshift.eq.0.0) then
+    like%redshift = Ini_Read_Double_File(Ini,'redshift',0.d0)
+    if(like%redshift.eq.0.0) then
         call MpiStop('mpk: failed  to read in WiggleZ redshift')
     end if
 
     Ini_fail_on_not_found = .false.
-    wmset%use_set =.true.
-    if (Feedback > 0) write (*,*) 'reading: '//trim(wmset%name)
+    like%use_set =.true.
+    if (Feedback > 0) write (*,*) 'reading: '//trim(like%name)
 
     if(allocated(mpk_kfull)) deallocate(mpk_kfull)
     allocate(mpk_kfull(num_mpk_kbands_full))
-    allocate(wmset%mpk_P(num_regions_used,num_mpk_points_use))
-    allocate(wmset%mpk_k(num_mpk_kbands_use))
-    allocate(wmset%mpk_W(num_regions_used,num_mpk_points_use,num_mpk_kbands_use))
+    allocate(like%mpk_P(num_regions_used,num_mpk_points_use))
+    allocate(like%mpk_k(num_mpk_kbands_use))
+    allocate(like%mpk_W(num_regions_used,num_mpk_points_use,num_mpk_kbands_use))
 
     kbands_file  = ReadIniFileName(Ini,'kbands_file')
     call ReadVector(kbands_file,mpk_kfull,num_mpk_kbands_full)
-    wmset%mpk_k(:)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
+    like%mpk_k(:)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
     if (Feedback > 1) then
-        write(*,*) 'reading: '//trim(wmset%name)//' data'
-        write(*,*) 'Using kbands windows between',real(wmset%mpk_k(1)),' < k/h < ',real(wmset%mpk_k(num_mpk_kbands_use))
+        write(*,*) 'reading: '//trim(like%name)//' data'
+        write(*,*) 'Using kbands windows between',real(like%mpk_k(1)),' < k/h < ',real(like%mpk_k(num_mpk_kbands_use))
     endif
-    if  (wmset%mpk_k(1) < matter_power_minkh) then
-        write (*,*) 'WARNING: k_min in '//trim(wmset%name)//'less than setting in cmbtypes.f90'
+    if  (like%mpk_k(1) < matter_power_minkh) then
+        write (*,*) 'WARNING: k_min in '//trim(like%name)//'less than setting in cmbtypes.f90'
         write (*,*) 'all k<matter_power_minkh will be set to matter_power_minkh'
     end if
 
     measurements_file  = ReadIniFileName(Ini,'measurements_file')
     call OpenTxtFile(measurements_file, tmp_file_unit)
-    wmset%mpk_P=0.
+    like%mpk_P=0.
     count = 0
     do i_regions =1,7
         if(regions_active(i_regions)) then
@@ -439,7 +387,7 @@
             if (Feedback > 1 .and. min_mpk_points_use>1) write(*,*) 'Not using bands with keff=  ',real(keff),&
             ' or below in region', i_regions
             do i =1, num_mpk_points_use
-                read (tmp_file_unit,*, iostat=iopb) keff,klo,khi,wmset%mpk_P(count,i),beff,beff
+                read (tmp_file_unit,*, iostat=iopb) keff,klo,khi,like%mpk_P(count,i),beff,beff
             end do
             ! NB do something to get to the end of the list
             do i=1, num_mpk_points_full-num_mpk_points_use-min_mpk_points_use+1
@@ -466,7 +414,7 @@
     do i_regions=1,max_num_wigglez_regions
         if(regions_active(i_regions)) then
             count = count + 1
-            wmset%mpk_W(count,1:num_mpk_points_use,1:num_mpk_kbands_use)= &
+            like%mpk_W(count,1:num_mpk_points_use,1:num_mpk_kbands_use)= &
             mpk_Wfull(i_regions,min_mpk_points_use:max_mpk_points_use,min_mpk_kbands_use:max_mpk_kbands_use)
         endif
     enddo
@@ -480,24 +428,24 @@
         allocate(invcov_tmp(num_mpk_points_use,num_mpk_points_use))
         ! ... read the entire covraiance matrix in, then decide which regions we want...
         call ReadWiggleZMatrices(cov_file,mpk_covfull,max_num_wigglez_regions,num_mpk_points_full,num_mpk_points_full)
-        allocate(wmset%mpk_invcov(num_regions_used,num_mpk_points_use,num_mpk_points_use))
+        allocate(like%mpk_invcov(num_regions_used,num_mpk_points_use,num_mpk_points_use))
         count = 0
         do i_regions=1,max_num_wigglez_regions
             if(regions_active(i_regions)) then
                 count = count + 1
                 ! ... the covariance matrix has two indices for the different k-values, and another one for the region...
-                !             wmset%mpk_invcov(count,1:num_mpk_points_use,1:num_mpk_points_use)=  &
+                !             like%mpk_invcov(count,1:num_mpk_points_use,1:num_mpk_points_use)=  &
                 invcov_tmp(:,:) = &
                 mpk_covfull(i_regions,min_mpk_points_use:max_mpk_points_use,min_mpk_points_use:max_mpk_points_use)
-                !             call Matrix_Inverse(wmset%mpk_invcov(count,:,:))
+                !             call Matrix_Inverse(like%mpk_invcov(count,:,:))
                 call Matrix_Inverse(invcov_tmp)
-                wmset%mpk_invcov(count,1:num_mpk_points_use,1:num_mpk_points_use) = invcov_tmp(:,:)
+                like%mpk_invcov(count,1:num_mpk_points_use,1:num_mpk_points_use) = invcov_tmp(:,:)
             endif
         enddo
         deallocate(mpk_covfull)
         deallocate(invcov_tmp)
     else
-        nullify(wmset%mpk_invcov)
+        nullify(like%mpk_invcov)
     end if
 
     if (iopb.ne.0) then
@@ -506,10 +454,10 @@
 
     !JD 09/13 Read in fiducial D_V for use when calculating a_scl
     if(use_scaling) then
-        wmset%DV_fid = Ini_Read_Double_File(Ini,'DV_fid',-1.d0)
-        if(wmset%DV_fid == -1.d0) then
+        like%DV_fid = Ini_Read_Double_File(Ini,'DV_fid',-1.d0)
+        if(like%DV_fid == -1.d0) then
             write(*,*)'ERROR: use_scaling = T and no DV_fid given '
-            write(*,*)'       for dataset '//trim(wmset%name)//'.'
+            write(*,*)'       for dataset '//trim(like%name)//'.'
             write(*,*)'       Please check your .dataset files.'
             call MPIstop()
         end if
@@ -517,15 +465,12 @@
 
 
     if(use_gigglez) then
-        call GiggleZinfo_init(wmset%redshift)
+        call GiggleZinfo_init(like%redshift)
     endif
 
-    call Ini_Close_File(Ini)
-    call ClearFileUnit(file_unit)
+    if (Feedback > 1) write(*,*) 'read: '//trim(like%name)//' data'
 
-    if (Feedback > 1) write(*,*) 'read: '//trim(wmset%name)//' data'
-
-    end subroutine ReadWiggleZDataset
+    end subroutine WiggleZ_ReadIni
 
     subroutine ReadWiggleZMatrices(aname,mat,num_regions,m,n)
     ! suborutine to read all the matrices from each of the different regions, enclosed in one file

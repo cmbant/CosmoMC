@@ -63,7 +63,8 @@
     integer :: index_initpower
 
 
-    type, extends(DataLikelihood) :: CosmologyLikelihood
+    type, extends(DatasetFileLikelihood) :: CosmologyLikelihood
+        !Don't have to use extract features of DatasetFileLikelihood
         !not implemented yet..
         !        logical :: needs_linear_pk = .false.
         !        integer :: needs_cl_lmax = 0

@@ -48,7 +48,9 @@
 		<File RelativePath="..\source\bbn.f90"/>
 		<File RelativePath="..\source\CMB_Cls_simple.f90"/>
 		<File RelativePath="..\source\cmbtypes.f90"/>
-		<File RelativePath="..\source\params_CMB.f90"/></Filter>
+		<File RelativePath="..\source\mpk.f90"/>
+		<File RelativePath="..\source\params_CMB.f90"/>
+		<File RelativePath="..\source\wigglez.f90"/></Filter>
 		<Filter Name="Likelihood">
 		<File RelativePath="..\source\bao.f90"/>
 		<File RelativePath="..\source\cmbdata.F90"/>

@@ -6,6 +6,8 @@
 #
 # To use, simply uncomment: DEFAULT(batch1/WiggleZ_MPK.ini) in test.ini
 
+name = wigglez_common
+
 # number of points and kbands in the input files
 num_mpk_points_full = 50
 num_mpk_kbands_full = 100
