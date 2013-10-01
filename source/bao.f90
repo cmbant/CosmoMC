@@ -202,10 +202,10 @@
             end do
         end do
         BAO_LnLike = BAO_LnLike/2.d0
-        
+
         deallocate(BAO_theory)
     end if
-    
+
     if(feedback>1) write(*,*) trim(like%name)//' BAO likelihood = ', BAO_LnLike
 
     end function BAO_LnLike

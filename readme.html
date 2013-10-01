@@ -529,7 +529,7 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <LI>CAMB updated to Sept 2013 version  (inc. Jason Dossett changes to support non-linear lensing and non-linear MPK; numerical results change slightly)
 <LI>Added WiggleZ and MPK modules, and corresponding changes (Jason Dossett)
 <LI>Minimization now has more options, including high-temperature MCMC check, and uses existing .covmat for widths: best fits seems to be a lot more stable now; also MPI support to compare result from multiple minimizations (not usually required)
-<LI>Added checkConflicts to likelihood class, so new likelihoods can check full list for conflicts and abort if necessary (e.g. BAO/MPK)
+<LI>Added checkConflicts to likelihood class (so new likelihoods can check full list for conflicts and abort if necessary e.g. BAO/MPK) and added .dataset file-based likelihood ancestor class, with conflict specification input parameters
 <LI>New python plotting options and Planck default settings; sample Planck output scripts updated
 </UL>
 
