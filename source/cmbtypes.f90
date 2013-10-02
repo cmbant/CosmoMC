@@ -100,11 +100,11 @@
         !if custom_redshift_steps = false with equal spacing in
         !log(1+z) and matter_power_lnzsteps points
         !if custom_redshift_steps = true set in mpk.f90
-        
+
         !DP Additions
         !for WiggleZ Power spectrum
         real(mcp) WiggleZPk(num_matter_power)
-        
+
     contains
     procedure :: WriteTheory
     procedure :: ReadTheory
@@ -149,15 +149,21 @@
     subroutine WriteTheory(T, i)
     integer i
     Class(TheoryPredictions) T
-    integer unused
+    integer, parameter :: varcount = 1
+    integer tmp(varcount)
     logical, save :: first = .true.
 
     if (first .and. new_chains) then
         first = .false.
-        write(i) get_sigma8, use_LSS, compute_tensors
+        write(i) use_LSS, compute_tensors
         write(i) lmax, lmax_tensor, num_cls, num_cls_ext
-        unused=0
-        write(i) unused
+        write(i) varcount
+        if (get_sigma8) then
+            tmp(1)=1
+        else
+            tmp(1)=0
+        end if
+        write(i) tmp(1:varcount)
     end if
 
     write(i) T%numderived
@@ -168,9 +174,9 @@
     if (compute_tensors) then
         write(i) T%tensor_ratio_02, T%tensor_ratio_r10
     end if
-    
+
     if (get_sigma8 .or. use_LSS) write(i) T%sigma_8
-    
+
     if (use_LSS) then
         write(i) T%matter_power
     end if
@@ -184,16 +190,19 @@
     logical, save :: first = .true.
     logical, save :: has_sigma8, has_LSS, has_tensors
     integer, save :: almax, almaxtensor, anumcls, anumclsext, tmp(1)
+    logical, save :: planck1_format
 
     if (first) then
         first = .false.
-        read(i) has_sigma8, has_LSS, has_tensors
+        read(i) has_LSS, has_tensors
         read(i) almax, almaxtensor, anumcls, anumclsext
         if (almax > lmax) call MpiStop('ReadTheory: reading file with larger lmax')
         if (anumcls /= num_cls) call MpiStop('ReadTheory: reading file with different Cls')
         if (anumclsext /= num_cls_ext) call MpiStop('ReadTheory: reading file with different ext Cls')
         read(i) unused
+        planck1_format = unused==0
         if (unused>0) read(i) tmp(1:unused)
+        if (.not. planck1_format) has_sigma8 = tmp(1)==1
     end if
 
     T%cl = 0
@@ -207,10 +216,13 @@
         read(i) T%tensor_ratio_02, T%tensor_ratio_r10
     end if
 
-    if (has_sigma8 .or. has_LSS) read(i) T%sigma_8
-    
-    if (has_LSS) then
-        read(i) T%matter_power
+    if (planck1_format) then
+        if (has_LSS) then
+            read(i) T%sigma_8, T%matter_power
+        end if
+    else
+        if (has_sigma8 .or. has_LSS) read(i) T%sigma_8
+        if (has_LSS) read(i) T%matter_power
     end if
 
     end subroutine ReadTheory
@@ -316,7 +328,7 @@
 
     end function MatterPowerAt_Z
 
-!DP Additions for WiggleZ MPK    
+    !DP Additions for WiggleZ MPK    
     function MatterPowerAt_zbin(T,kh,iz)
     !get matter power spectrum in zbin, iz, at kh = k/h by interpolation from stored values
     real(mcp), intent(in) :: kh
@@ -324,40 +336,40 @@
     real(mcp) MatterPowerAt_zbin
     real(mcp) x, d
     integer i,iz
-   
+
     x = log(kh/matter_power_minkh) / matter_power_dlnkh
     if (x < 0 .or. x >= num_matter_power-1) then
-      write (*,*) ' k/h out of bounds in MatterPowerAt_zbin (',kh,')'
-      stop 
+        write (*,*) ' k/h out of bounds in MatterPowerAt_zbin (',kh,')'
+        stop 
     end if
     i = int(x)
     d = x - i
     MatterPowerAt_zbin = exp(log(T%matter_power(i+1,iz))*(1-d) &
-       + log(T%matter_power(i+2,iz))*d)
+    + log(T%matter_power(i+2,iz))*d)
     !Just do linear interpolation in logs for now..
     !(since we already cublic-spline interpolated to get the stored values)
     !Assume matter_power_lnzsteps is at redshift zero
     end function MatterPowerAt_zbin
-    
+
     function WiggleZPowerAt(T,kh)
-     !get LRG matter power spectrum today at kh = k/h by interpolation from stored values
-     real(mcp), intent(in) :: kh
-     Type(TheoryPredictions) T
-     real(mcp) WiggleZPowerAt
-     real(mcp) x, d
-     integer i
-   
-     x = log(kh/matter_power_minkh) / matter_power_dlnkh
-     if (x < 0 .or. x >= num_matter_power-1) then
+    !get LRG matter power spectrum today at kh = k/h by interpolation from stored values
+    real(mcp), intent(in) :: kh
+    Type(TheoryPredictions) T
+    real(mcp) WiggleZPowerAt
+    real(mcp) x, d
+    integer i
+
+    x = log(kh/matter_power_minkh) / matter_power_dlnkh
+    if (x < 0 .or. x >= num_matter_power-1) then
         write (*,*) ' k/h out of bounds in WiggleZPowerAt (',kh,')'
         call MpiStop('') 
-     end if
-     i = int(x)
-     d = x - i
-     WiggleZPowerAt = exp(log(T%WiggleZPk(i+1))*(1-d) + log(T%WiggleZPk(i+2))*d)
-     !Just do linear interpolation in logs for now..
-     !(since we already cublic-spline interpolated to get the stored values)
+    end if
+    i = int(x)
+    d = x - i
+    WiggleZPowerAt = exp(log(T%WiggleZPk(i+1))*(1-d) + log(T%WiggleZPk(i+2))*d)
+    !Just do linear interpolation in logs for now..
+    !(since we already cublic-spline interpolated to get the stored values)
     end function
-!End DP Additions for WiggleZ MPK
+    !End DP Additions for WiggleZ MPK
 
     end module cmbtypes
