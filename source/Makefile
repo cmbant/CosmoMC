@@ -11,7 +11,8 @@ LAPACKL = -lmpi
 RECOMBINATION ?=recfast
 
 #set EXTDATA=WIGZ to use WiggleZ MPK module
-EXTDATA=WIGZ
+EXTDATA=
+#WIGZ
 
 #use PRECISION=SINGLE to use single precision
 PRECISION ?=
@@ -26,6 +27,7 @@ cfitsio ?=
 PLANCKLIKE ?=
 
 #These is not used in public cosmomc
+NONCLIKLIKE ?=
 highL ?=
 #highL = ../highL
 
@@ -82,6 +84,9 @@ ifneq ($(PLANCKLIKE),)
 FFLAGS += -DCLIK
 endif
 
+ifneq ($(NONCLIKLIKE),)
+FFLAGS += -DNONCLIK
+endif
 ifneq ($(highL),)
 FFLAGS += -DhighL
 LINKFLAGS += -L$(highL) -lhigh
@@ -90,9 +95,16 @@ endif
 
 PLANCKLIKEFILES=
 
+ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
+PLANCKLIKEFILES +=  temp_like.o
+endif
 
 ifneq ($(PLANCKLIKE),)
 PLANCKLIKEFILES += $(PLANCKLIKE).o
+endif
+
+ifneq ($(NONCLIKLIKE),)
+PLANCKLIKEFILES += $(NONCLIKLIKE).o
 endif
 
 
