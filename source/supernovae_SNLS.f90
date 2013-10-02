@@ -129,6 +129,7 @@
     type, extends(CosmologyLikelihood) :: SNLSLikelihood
     contains
     procedure :: LogLike => snls_LnLike
+    procedure :: ReadIni => read_snls_dataset
     end type SNLSLikelihood
 
     character(LEN=*), parameter :: SNLS_version =  'April_2012'
@@ -217,7 +218,7 @@
 
     PRIVATE :: count_lines, read_snls_lc_data, get_free_lun, read_cov_matrix
     PRIVATE :: read_snls_absdist_data, match_snls_absdist_indices
-    PUBLIC :: snls_prep, snls_LnLike, snls_cleanup, read_snls_dataset,SNLSLikelihood_Add
+    PUBLIC :: snls_prep, snls_LnLike, snls_cleanup, SNLSLikelihood_Add
 
     CONTAINS
 
@@ -234,8 +235,6 @@
     if (.not. Ini_Read_Logical_File(Ini, 'use_SNLS',.false.)) return
 
     allocate(like)
-    Like%LikelihoodType = 'SN'
-    Like%name='SNLS'
     like%needs_background_functions = .true.
     Like%version = SNLS_version
     SNLS_marginalize = Ini_Read_Logical_File(Ini, 'SNLS_marginalize',.false.)
@@ -259,8 +258,9 @@
         call Like%loadParamNames(trim(DataDir)//'SNLS.paramnames')
     end if
     call LikeList%Add(like)
-    snls_filename = Ini_Read_String_Default_File(Ini,'snls_dataset',trim(DataDir)//'snls_3rdyear.dataset')
-    CALL read_snls_dataset( snls_filename )
+    call like%ReadDatasetFile(Ini_Read_String_Default_File(Ini,'snls_dataset',trim(DataDir)//'snls_3rdyear.dataset'))
+    Like%LikelihoodType = 'SN'
+    Like%name='SNLS'
     CALL snls_prep
     If (Feedback>0) WRITE(*,*) 'read snls dataset '//trim(snls_filename)
 
@@ -621,28 +621,19 @@
     ! Arguments:
     !  filename        The name of the .ini file specifying the SN dataset
     !------------------------------------------------------------
-    SUBROUTINE read_snls_dataset(filename )
+    SUBROUTINE read_snls_dataset(like,ini)
     USE AMLutils, ONLY : numcat
     use iniFile
     IMPLICIT NONE
-    CHARACTER(LEN=*), INTENT(in) :: filename
+    class(SNLSLikelihood) :: like
+    Type(TIniFile) :: Ini
     CHARACTER(LEN=60) :: covfile
     CHARACTER(LEN=100) :: data_file, absdist_file
-    INTEGER :: file_unit, nlines, i
-    LOGICAL :: bad_ini_open
+    INTEGER :: nlines, file_unit, i
     REAL(dl) :: idisp_zero !Value for unspecified dataset numbers
     LOGICAL, DIMENSION( max_idisp_datasets ) :: idispdataset
-    Type(TIniFile) :: Ini
 
     IF (snls_read) STOP 'Error -- SNLS data already read'
-
-    !Process the Ini file
-    CALL get_free_lun( file_unit )
-    CALL Ini_Open_File(Ini, filename, file_unit, bad_ini_open, .FALSE. )
-    IF (bad_ini_open) THEN
-        WRITE(*,*) 'Error opening SNLS dataset file ' // TRIM(filename)
-        STOP
-    ENDIF
 
     name = Ini_Read_String_File(Ini, 'name', .FALSE. )
     data_file = Ini_Read_String_Default_File(Ini,'data_file',trim(DataDir)//'snls_1styear_lcparams.txt')
@@ -744,8 +735,6 @@
     ELSE
         diag_errors = .TRUE.
     END IF
-
-    CALL Ini_Close_File(Ini)
 
     IF (Feedback > 1) THEN
         WRITE(*,'(" SNLS dataset name: ",A)') TRIM(name)

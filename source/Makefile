@@ -10,6 +10,9 @@ LAPACKL = -lmpi
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
 RECOMBINATION ?=recfast
 
+#set EXTDATA=WIGZ to use WiggleZ MPK module
+EXTDATA=WIGZ
+
 #use PRECISION=SINGLE to use single precision
 PRECISION ?=
 
@@ -23,7 +26,6 @@ cfitsio ?=
 PLANCKLIKE ?=
 
 #These is not used in public cosmomc
-NONCLIKLIKE ?=
 highL ?=
 #highL = ../highL
 
@@ -80,10 +82,6 @@ ifneq ($(PLANCKLIKE),)
 FFLAGS += -DCLIK
 endif
 
-ifneq ($(NONCLIKLIKE),)
-FFLAGS += -DNONCLIK
-endif
-
 ifneq ($(highL),)
 FFLAGS += -DhighL
 LINKFLAGS += -L$(highL) -lhigh
@@ -92,22 +90,15 @@ endif
 
 PLANCKLIKEFILES=
 
-ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
-PLANCKLIKEFILES +=  temp_like.o
-endif
 
 ifneq ($(PLANCKLIKE),)
 PLANCKLIKEFILES += $(PLANCKLIKE).o
 endif
 
-ifneq ($(NONCLIKLIKE),)
-PLANCKLIKEFILES += $(NONCLIKLIKE).o
-endif
-
 
 SUPERNOVAE = supernovae_Union2.o supernovae_SNLS.o
 
-DATAMODULES = $(PLANCKLIKEFILES) lrggettheory.o bao.o $(SUPERNOVAE) supernovae.o HST.o SDSSLy-a-v3.o
+DATAMODULES = $(PLANCKLIKEFILES) wigglez.o mpk.o bao.o $(SUPERNOVAE) supernovae.o HST.o SDSSLy-a-v3.o
 
 LIKEFILES =  DataLikelihoods.o calclike.o
 
@@ -116,11 +107,8 @@ OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o settings.o samples.o IO.o G
 	EstCovmat.o PowellConstrainedMinimize.o postprocess.o MCMC.o minimize.o driver.o
 
 
-ifeq ($(EXTDATA),LRG)
-F90FLAGS += -DDR71RG
-OBJFILES += bsplinepk.o
-GSLINC = -I$(GSLPATH)/include
-LINKFLAGS += -L$(GSLPATH)/lib -lgsl -lgslcblas
+ifeq ($(EXTDATA),WIGZ)
+F90FLAGS += -DWIGZ
 endif
 
 F90CRLINK =
@@ -157,6 +145,8 @@ cmbtypes.o: settings.o likelihood.o GeneralTypes.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o
 bbn.o: settings.o likelihood.o
+wigglez.o: cmbtypes.o
+mpk.o: cmbtypes.o
 bao.o: cmbtypes.o
 HST.o: cmbtypes.o
 supernovae.o: cmbtypes.o
@@ -214,8 +204,12 @@ cleancosmomc:
 getdist: camb $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS)
 
+#If you want to use the ppf module, change equations_ppf to equations
+#and halofit_ppf to halofit also comment out wa_ppf in CMB_Cls_simple.f90
 camb:
-	cd ../camb && $(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf
+	cd ../camb && \
+	$(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a \
+	RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf NONLINEAR=halofit_ppf
 
 $(highL)/libhigh.a:
 	cd $(highL); make libhigh.a;

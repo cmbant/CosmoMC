@@ -1,6 +1,6 @@
 #This is the WiggleZ BAO data set see  
 #Blake et al. arXiv:1108.2635 
-name = wigglez_2011
+name = WiggleZ
 
 #Type of measurement: rs/D_V = 1, A(z) = 2
 type_bao = 2

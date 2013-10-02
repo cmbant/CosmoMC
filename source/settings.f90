@@ -68,8 +68,10 @@
     integer :: instance = 0
     integer :: MPIchains = 1, MPIrank = 0
 
+    logical :: get_sigma8 = .true.
     logical :: Use_LSS = .false.
     logical :: Use_CMB = .false.
+    logical :: use_nonlinear = .false.    !JD for WiggleZ MPK
 
     integer :: logfile_unit  = 0
     integer :: outfile_handle = 0

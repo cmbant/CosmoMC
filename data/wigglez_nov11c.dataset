@@ -1,0 +1,15 @@
+# WiggleZ data from Chris Blake
+# Based on supplied 2df_2005.dataset
+name = WiggleZ_nov11c
+redshift = 0.60
+
+#Fiducial D_v below for when use_scaling = T 
+#This is in units of P%H0*BAO_D_v(z). 
+#We multiply it by H_0 because we dont care about 
+#scaling of h since k is in units of h/Mpc
+DV_fid = 146019.237235380 
+
+windows_file =data/wigglez_nov11c_windows.txt
+kbands_file = data/wigglez_nov11_kbands.txt
+measurements_file = data/wigglez_nov11c_measurements.txt
+cov_file = data/wigglez_nov11c_cov.txt

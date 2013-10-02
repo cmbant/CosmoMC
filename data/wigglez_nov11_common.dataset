@@ -1,0 +1,41 @@
+# Common Settings for WiggleZ data from Chris Blake
+# This dataset is for the WiggleZ Dark Energy survey measurements of the galaxy power
+# spectrum as described in arxiv:1003.5721, Blake et al (2010), and 
+# arxiv:1210.2130, Parkinson et al (2012) (If you make use of the WiggleZ dataset, 
+# please remember to cite both the Blake et al and Parkinson et al papers). 
+#
+# To use, simply uncomment: DEFAULT(batch1/WiggleZ_MPK.ini) in test.ini
+
+name = WiggleZ_nov11
+
+# number of points and kbands in the input files
+num_mpk_points_full = 50
+num_mpk_kbands_full = 100
+
+# Conflicting datasets
+num_conflicts = 1
+type_conflict1 = BAO
+name_conflict1 = WiggleZ
+
+# use scaling by dv/dv(fid) for Pk
+use_scaling = T
+
+# decide which bandpowers to use, min to max
+min_mpk_points_use = 3
+max_mpk_points_use = 20
+min_mpk_kbands_use = 1
+max_mpk_kbands_use = 100
+
+Q_marge = F
+Q_mid = 4.0
+Q_sigma = 1.5
+Ag = 1.4
+
+#Decide which regions to use
+Use_9-hr_region = T
+Use_11-hr_region = T
+Use_15-hr_region = T
+Use_22-hr_region = T
+Use_1-hr_region = T
+Use_3-hr_region = T
+Use_0-hr_region = T

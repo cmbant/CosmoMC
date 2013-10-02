@@ -215,6 +215,7 @@
     num_massive_neutrinos = Ini_read_int('num_massive_neutrinos',-1)
 
     call SetDataLikelihoods(DefIni)
+    call DataLikelihoods%CheckAllConflicts
 
     Temperature = Ini_Read_Real('temperature',1.)
 
@@ -231,16 +232,6 @@
     start_at_bestfit .and. new_chains
 
     Ini_fail_on_not_found = .true.
-
-    !    'This version of CosmoMC does not currently have mpk implemented'
-    !    nummpksets = Ini_Read_Int('mpk_numdatasets',0)
-    !    if (Use_mpk) then
-    !do i= 1, nummpksets
-    !    mpk_filename(i) = ReadIniFileName(DefIni,numcat('mpk_dataset',i))
-    !    call ReadMpkDataset(mpk_filename(i))
-    !end do
-    !if (Feedback>1) write(*,*) 'read mpk datasets'
-    !    end if
 
     numtoget = Ini_Read_Int('samples')
 

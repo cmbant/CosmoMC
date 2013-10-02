@@ -16,6 +16,7 @@
     use constants
     use Precision
     use likelihood
+    use IniFile
     implicit none
 
     type, extends(CosmologyLikelihood) :: BAOLikelihood
@@ -31,6 +32,7 @@
 
     contains
     procedure :: LogLike => BAO_LnLike
+    procedure :: ReadIni => BAO_ReadIni
     end type BAOLikelihood
 
     real(dl), dimension(10000) :: DR7_alpha_file, DR7_prob_file
@@ -42,12 +44,10 @@
     contains
 
     subroutine BAOLikelihood_Add(LikeList, Ini)
-    use IniFile
     use settings
     class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
     Type(BAOLikelihood), pointer :: like
-
     integer numbaosets, i
 
     if (Ini_Read_Logical_File(Ini, 'use_BAO',.false.)) then
@@ -58,7 +58,7 @@
         end if
         do i= 1, numbaosets
             allocate(like)
-            call ReadBaoDataset(like, ReadIniFileName(Ini,numcat('bao_dataset',i)) )
+            call like%ReadDatasetFile(ReadIniFileName(Ini,numcat('bao_dataset',i)))
             like%LikelihoodType = 'BAO'
             like%needs_background_functions = .true.
             call LikeList%Add(like)
@@ -68,61 +68,48 @@
 
     end subroutine BAOLikelihood_Add
 
-    !JD copied structure from mpk.f90
-    subroutine ReadBaoDataset(bset, gname)
+    subroutine BAO_ReadIni(like, Ini)
     use MatrixUtils
-    type (BAOLikelihood) bset
-    character(LEN=*), intent(IN) :: gname
+    use settings
+    class(BAOLikelihood) like
+    type(TIniFile) :: Ini
     character(LEN=Ini_max_string_len) :: bao_measurements_file, bao_invcov_file
     integer i,iopb
-    logical bad
-    Type(TIniFile) :: Ini
-    integer file_unit
-
-
-    file_unit = new_file_unit()
-    call Ini_Open_File(Ini, gname, file_unit, bad, .false.)
-    if (bad) then
-        write (*,*)  'Error opening data set file '//trim(gname)
-        stop
-    end if
-
-    bset%name = Ini_Read_String_File(Ini,'name')
 
     Ini_fail_on_not_found = .false.
-    if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(bset%name)
-    bset%num_bao = Ini_Read_Int_File(Ini,'num_bao',0)
-    if (bset%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
-    bset%type_bao = Ini_Read_Int_File(Ini,'type_bao',1)
-    if(bset%type_bao /= 3 .and. bset%type_bao /=2 .and. bset%type_bao /=4) then
-        write(*,*) bset%type_bao
-        write(*,*)'ERROR: Invalid bao type specified in BAO dataset: '//trim(bset%name)
+    if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(like%name)
+    like%num_bao = Ini_Read_Int_File(Ini,'num_bao',0)
+    if (like%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
+    like%type_bao = Ini_Read_Int_File(Ini,'type_bao',1)
+    if(like%type_bao /= 3 .and. like%type_bao /=2 .and. like%type_bao /=4) then
+        write(*,*) like%type_bao
+        write(*,*)'ERROR: Invalid bao type specified in BAO dataset: '//trim(like%name)
         call MPIStop()
     end if
 
-    allocate(bset%bao_z(bset%num_bao))
-    allocate(bset%bao_obs(bset%num_bao))
-    allocate(bset%bao_err(bset%num_bao))
+    allocate(like%bao_z(like%num_bao))
+    allocate(like%bao_obs(like%num_bao))
+    allocate(like%bao_err(like%num_bao))
 
     bao_measurements_file = ReadIniFileName(Ini,'bao_measurements_file')
     call OpenTxtFile(bao_measurements_file, tmp_file_unit)
-    do i=1,bset%num_bao
-        read (tmp_file_unit,*, iostat=iopb) bset%bao_z(i),bset%bao_obs(i),bset%bao_err(i)
+    do i=1,like%num_bao
+        read (tmp_file_unit,*, iostat=iopb) like%bao_z(i),like%bao_obs(i),like%bao_err(i)
     end do
     close(tmp_file_unit)
 
-    if (bset%name == 'DR7') then
+    if (like%name == 'DR7') then
         !don't used observed value, probabilty distribution instead
         call BAO_DR7_init(ReadIniFileName(Ini,'prob_dist'))
     else
-        allocate(bset%bao_invcov(bset%num_bao,bset%num_bao))
-        bset%bao_invcov=0
+        allocate(like%bao_invcov(like%num_bao,like%num_bao))
+        like%bao_invcov=0
 
         if (Ini_HasKey_File(Ini,bao_invcov_file)) then
             bao_invcov_file  = ReadIniFileName(Ini,'bao_invcov_file')
             call OpenTxtFile(bao_invcov_file, tmp_file_unit)
-            do i=1,bset%num_bao
-                read (tmp_file_unit,*, iostat=iopb) bset%bao_invcov(i,:)
+            do i=1,like%num_bao
+                read (tmp_file_unit,*, iostat=iopb) like%bao_invcov(i,:)
             end do
             close(tmp_file_unit)
 
@@ -130,18 +117,15 @@
                 call MpiStop('Error reading bao file '//trim(bao_invcov_file))
             endif
         else
-            do i=1,bset%num_bao
+            do i=1,like%num_bao
                 !diagonal, or actually just 1..
-                bset%bao_invcov(i,i) = 1/bset%bao_err(i)**2
+                like%bao_invcov(i,i) = 1/like%bao_err(i)**2
             end do
         end if
 
     end if
 
-    call Ini_Close_File(Ini)
-    call ClearFileUnit(file_unit)
-
-    end subroutine ReadBaoDataset
+    end subroutine BAO_ReadIni
 
     function Acoustic(CMB,z)
     Type(CMBParams) CMB
@@ -193,7 +177,6 @@
     BAO_LnLike=0
     if (like%name=='DR7') then
         BAO_LnLike = BAO_DR7_loglike(CMB,like%bao_z(1))
-        return
     else
         allocate(BAO_theory(like%num_bao))
 
@@ -219,8 +202,11 @@
             end do
         end do
         BAO_LnLike = BAO_LnLike/2.d0
+
         deallocate(BAO_theory)
     end if
+
+    if(feedback>1) write(*,*) trim(like%name)//' BAO likelihood = ', BAO_LnLike
 
     end function BAO_LnLike
 
