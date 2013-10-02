@@ -11,7 +11,8 @@ LAPACKL = -lmpi
 RECOMBINATION ?=recfast
 
 #set EXTDATA=WIGZ to use WiggleZ MPK module
-EXTDATA=WIGZ
+EXTDATA=
+#WIGZ
 
 #use PRECISION=SINGLE to use single precision
 PRECISION ?=
