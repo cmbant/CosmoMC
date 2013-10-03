@@ -378,7 +378,7 @@
 
     if (LnLike > 1e8) then
         write(*,*)'WARNING: '//trim(like%name)//' MPK Likelihood is huge!'
-        write(*,*)'          Mmaybe there is a problem? Likelihood = ',LnLike
+        write(*,*)'          Maybe there is a problem? Likelihood = ',LnLike
     end if
 
     deallocate(mpk_Pth,mpk_lin)
