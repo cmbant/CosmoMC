@@ -1,7 +1,7 @@
     !Use CAMB
     module CMB_Cls
     use cmbtypes
-    use CAMB, only : CAMB_GetResults, CAMB_GetAge, CAMBParams, CAMB_SetDefParams,Transfer_GetMatterPower, &
+    use CAMB, only : CAMB_GetResults, CAMB_GetAge, CAMBParams, CAMB_SetDefParams, &
     AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, wa_ppf,&
     CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Nonlinear_lens, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
     CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, Transfer_SetForNonlinearLensing, &
@@ -12,6 +12,7 @@
     use settings
     use IO
     use likelihood
+    use powerspec
     implicit none
 
     logical :: CMB_lensing = .false.
@@ -190,7 +191,7 @@
     integer error
     Type(ParamSetInfo) Info
     Type(TheoryPredictions) Theory
-
+    
     call SetCAMBInitPower(Info%Transfers%Params,CMB,1)
     call CAMB_TransfersToPowers(Info%Transfers)
     !this sets slow CAMB params correctly from value stored in Transfers
@@ -330,15 +331,10 @@
     use camb, only : MatterTransferData
     Type(TheoryPredictions) Theory
     Type(MatterTransferData) M
-    integer zix
+    
+    call InitPK(Theory)
 
-    if (num_matter_power /= 0) then
-        do zix = 1,matter_power_lnzsteps
-            call Transfer_GetMatterPower(M,&
-            Theory%matter_power(:,zix),matter_power_lnzsteps-zix+1,1 &
-            ,matter_power_minkh, matter_power_dlnkh,num_matter_power)
-        end do
-    end if
+    call Theory_GetMatterPowerData(M,Theory,1)
 
     end subroutine SetPkFromCAMB
 
@@ -408,7 +404,6 @@
     use mpk
     type(CAMBParams)  P
     integer zix
-    real(mcp) redshifts(matter_power_lnzsteps)
     !JD Changed P%Transfer%redshifts and P%Transfer%num_redshifts to 
     !P%Transfer%PK_redshifts and P%Transfer%PK_num_redshifts respectively
     !for nonlinear lensing of CMB + LSS compatibility
@@ -436,13 +431,12 @@
 
     if (use_nonlinear) then
         P%NonLinear = NonLinear_pk
-        P%Transfer%kmax = 1.2
+        P%Transfer%kmax = max(1.2,power_kmax)
     else
-        P%Transfer%kmax = 0.8
+        P%Transfer%kmax = max(0.8,power_kmax)
     end if
 
     !        if (Use_Lya) P%Transfer%kmax = lya_kmax
-    P%Transfer%PK_num_redshifts = matter_power_lnzsteps
 
     if (AccuracyLevel > 1 .or. HighAccuracyDefault) then
         if (USE_LSS .or. get_sigma8) then
@@ -455,27 +449,14 @@
         P%AccurateReionization = .true.
     end if
 
-    if (max_transfer_redshifts < matter_power_lnzsteps) then
+    if (max_transfer_redshifts < num_power_redshifts) then
         stop 'Need to manually set max_transfer_redshifts larger in CAMB''s modules.f90'
     end if
 
     if (use_LSS) then
-        do zix=1, matter_power_lnzsteps
-            if (zix==1) then
-                redshifts(1) = 0
-            else
-                !Default Linear spacing in log(z+1) if matter_power_lnzsteps > 1
-                redshifts(zix) = exp( log(matter_power_maxz+1) * &
-                real(zix-1)/(max(2,matter_power_lnzsteps)-1) )-1
-                !put in max(2,) to stop compilers complaining of div by zero
-            end if
-        end do
-
-        if (use_mpk) call mpk_SetTransferRedshifts(redshifts) !can modify to use specific redshifts
-        if (redshifts(1) > 0.0001) call MpiStop('mpk redshifts: lowest redshift must be zero')
-        do zix=1, matter_power_lnzsteps
+        do zix=1, num_power_redshifts
             !CAMB's ordering is from highest to lowest
-            P%Transfer%PK_redshifts(zix) = redshifts(matter_power_lnzsteps-zix+1)
+            P%Transfer%PK_redshifts(zix) = power_redshifts(num_power_redshifts-zix+1)
         end do
     else
         P%Transfer%PK_num_redshifts = 1

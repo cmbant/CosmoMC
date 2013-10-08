@@ -14,6 +14,7 @@
     use IO
     use ParamNames
     use camb
+    use cmbtypes
     use GaugeInterface, only : Eqns_name
     use DefineParameterization
 
@@ -208,7 +209,6 @@
         call InitRandom()
     end if
 
-    use_nonlinear = Ini_Read_Logical('nonlinear_pk',.false.)
     pivot_k = Ini_Read_Real('pivot_k',0.05)
     inflation_consistency = Ini_read_Logical('inflation_consistency',.false.)
     bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
@@ -216,7 +216,9 @@
 
     call SetDataLikelihoods(DefIni)
     call DataLikelihoods%CheckAllConflicts
-
+    
+    if(use_LSS) call Initialize_PKSettings()
+    
     Temperature = Ini_Read_Real('temperature',1.)
 
     num_threads = Ini_Read_Int('num_threads',0)
