@@ -60,17 +60,21 @@
     generic :: Add => AddItem, AddArray
     end Type TObjectList
 
-    Type, extends(TObjectList):: TRealList
+    Type, extends(TObjectList):: TRealCompareList
+    contains
+        procedure :: Compare => CompareReal
+    end Type TRealCompareList
+
+    Type, extends(TRealCompareList):: TRealList
     contains
     procedure :: RealItem
     procedure :: AddItem => RealAddItem
     procedure :: AddArrayItems
     procedure :: AsArray
-    procedure :: Compare => CompareReal
     generic :: Item => RealItem
     end Type TRealList
 
-    Type, extends(TObjectList):: TRealArrayList
+    Type, extends(TRealCompareList):: TRealArrayList
     contains
     procedure :: Value
     procedure :: RealArrItem
@@ -495,6 +499,32 @@
 
     end subroutine RemoveDuplicates
 
+    !TRealCompareList
+    integer function CompareReal(this, R1, R2) result(comp)
+    Class(TRealCompareList) :: this
+    class(*) R1,R2
+    real(list_prec) R
+
+    select type (RR1 => R1)
+    type is (real(list_prec))
+        select type (RR2 => R2)
+        type is (real(list_prec))
+            R = RR1-RR2
+            if (R< 0) then
+                comp =-1
+            elseif (R>0) then
+                comp = 1
+            else
+                comp = 0
+            end if
+            return
+        end select
+        class default
+        stop 'TRealList: Compare not defined for this type'
+    end select
+
+    end function CompareReal
+
 
     !TRealList: List of reals
     function RealItem(L,i) result(R)
@@ -546,31 +576,6 @@
     end do
 
     end function AsArray
-
-    integer function CompareReal(this, R1, R2) result(comp)
-    Class(TRealList) :: this
-    class(*) R1,R2
-    real(list_prec) R
-
-    select type (RR1 => R1)
-    type is (real(list_prec))
-        select type (RR2 => R2)
-        type is (real(list_prec))
-            R = RR1-RR2
-            if (R< 0) then
-                comp =-1
-            elseif (R>0) then
-                comp = 1
-            else
-                comp = 0
-            end if
-            return
-        end select
-        class default
-        stop 'TRealList: Compare not defined for this type'
-    end select
-
-    end function CompareReal
 
 
     !TRealArrayList: List of arrays of reals
