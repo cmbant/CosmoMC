@@ -59,11 +59,18 @@
     generic :: Add => AddItem, AddArray
     end Type TObjectList
 
+    Type, extends(TObjectList):: TRealList
+    contains
+    procedure :: RealItem
+    procedure :: AddItem => RealAddItem
+    generic :: Item => RealItem
+    end Type TRealList
+
     Type, extends(TObjectList):: TRealArrayList
     contains
     procedure :: Value
-    procedure :: RealItem
-    generic :: Item => Value, RealItem
+    procedure :: RealArrItem
+    generic :: Item => Value, RealArrItem
     end Type TRealArrayList
 
     contains
@@ -388,31 +395,29 @@
 
     L = Lin
     do
+        I = L
+        J = R
+        P => this%ArrayItemIndex((L + R)/2, index)
+        do
+            do while (this%Compare(this%ArrayItemIndex(I, Index),P) <  0)
+                I = I + 1
+            end do
 
-    I = L
-    J = R
-    P => this%ArrayItemIndex((L + R)/2, index)
+            do while (this%Compare(this%ArrayItemIndex(J,Index), P) > 0)
+                J = J - 1
+            end do
 
-    do
-        do while (this%Compare(this%ArrayItemIndex(I, Index),P) <  0)
-            I = I + 1
+            if (I <= J) then
+                call this%Swap(I,J)
+                I = I + 1
+                J = J - 1
+            end if
+            if (I > J) exit
+
         end do
-
-        do while (this%Compare(this%ArrayItemIndex(J,Index), P) > 0)
-            J = J - 1
-        end do
-
-        if (I <= J) then
-            call this%Swap(I,J)
-            I = I + 1
-            J = J - 1
-        end if
-        if (I > J) exit
-
-    end do
-    if (L < J) call this%QuickSortArr(L, J, index)
-    L = I
-    if (I >= R) exit
+        if (L < J) call this%QuickSortArr(L, J, index)
+        L = I
+        if (I >= R) exit
     end do
 
     end subroutine QuickSortArr
@@ -434,31 +439,28 @@
 
     L = Lin
     do
+        I = L
+        J = R
+        P => this%Items((L + R)/2)%P
+        do
+            do while (this%Compare(this%Items(I)%P,P) <  0)
+                I = I + 1
+            end do
 
-    I = L
-    J = R
-    P => this%Items((L + R)/2)%P
+            do while (this%Compare(this%Items(J)%P, P) > 0)
+                J = J - 1
+            end do
 
-    do
-        do while (this%Compare(this%Items(I)%P,P) <  0)
-            I = I + 1
+            if (I <= J) then
+                call this%Swap(I,J)
+                I = I + 1
+                J = J - 1
+            end if
+            if (I > J) exit
         end do
-
-        do while (this%Compare(this%Items(J)%P, P) > 0)
-            J = J - 1
-        end do
-
-        if (I <= J) then
-            call this%Swap(I,J)
-            I = I + 1
-            J = J - 1
-        end if
-        if (I > J) exit
-
-    end do
-    if (L < J) call this%QuickSort(L, J)
-    L = I
-    if (I >= R) exit
+        if (L < J) call this%QuickSort(L, J)
+        L = I
+        if (I >= R) exit
     end do
 
     end subroutine QuickSort
@@ -470,9 +472,38 @@
 
     end subroutine Sort
 
+    ! List of reals
+    function RealItem(L,i) result(R)
+    Class(TRealList) :: L
+    integer, intent(in) :: i
+    real(list_prec) R
+
+    select type (pt=>L%Items(i)%P)
+    type is (real(kind=list_prec))
+        R = pt
+        class default
+        stop 'TRealList: object of wrong type'
+    end select
+
+    end function RealItem
+
+    subroutine RealAddItem(L, C)
+    Class(TRealList) :: L
+    class(*), intent(in), target :: C
+    class(*), pointer :: P
+
+    if (L%OwnsObjects) then
+        allocate(P, source=C)
+        call L%TObjectList%AddItem(P)
+    else
+        stop 'TRealList: must have OwnsObjects = .true.'
+    end if
+
+    end subroutine RealAddItem
+
     ! List of arrays of reals
 
-    function RealItem(L, i) result(P)
+    function RealArrItem(L, i) result(P)
     Class(TRealArrayList) :: L
     integer, intent(in) :: i
     real(list_prec), pointer :: P(:)
@@ -486,7 +517,7 @@
         stop 'TRealArrayList: object of wrong type'
     end select
 
-    end function RealItem
+    end function RealArrItem
 
     function Value(L, i, j) result(P)
     Class(TRealArrayList) :: L
