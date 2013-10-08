@@ -50,11 +50,12 @@
     procedure :: Sort
     procedure :: SortArr
     procedure :: Swap
-    procedure :: Compare => CompareReal
+    procedure :: Compare
     procedure :: Clear
     procedure :: DeltaSize
     procedure :: QuickSort
     procedure :: QuickSortArr
+    procedure :: RemoveDuplicates
     FINAL :: finalize
     generic :: Add => AddItem, AddArray
     end Type TObjectList
@@ -63,6 +64,9 @@
     contains
     procedure :: RealItem
     procedure :: AddItem => RealAddItem
+    procedure :: AddArrayItems
+    procedure :: AsArray
+    procedure :: Compare => CompareReal
     generic :: Item => RealItem
     end Type TRealList
 
@@ -472,7 +476,27 @@
 
     end subroutine Sort
 
-    ! List of reals
+    integer function Compare(this, R1, R2) result(comp)
+    Class(TObjectList) :: this
+    class(*) R1,R2
+
+    comp=0 !equality
+    stop 'TObjectList: Compare must be defined for derived type'
+
+    end function Compare
+
+    subroutine RemoveDuplicates(L)
+    Class(TObjectList) :: L
+    integer i
+
+    do i=L%Count-1, 1, -1
+        if (L%Compare(L%Items(i+1)%P, L%Items(i)%P)==0) call L%DeleteItem(i+1)
+    end do
+
+    end subroutine RemoveDuplicates
+
+
+    !TRealList: List of reals
     function RealItem(L,i) result(R)
     Class(TRealList) :: L
     integer, intent(in) :: i
@@ -501,7 +525,55 @@
 
     end subroutine RealAddItem
 
-    ! List of arrays of reals
+    subroutine AddArrayItems(L, A)
+    Class(TRealList) :: L
+    real(kind=list_prec), intent(in) :: A(:)
+    integer i
+
+    do i=1, size(A)
+        call L%AddItem(A(i))
+    end do
+
+    end subroutine AddArrayItems
+
+    function AsArray(L) result(A)
+    Class(TRealList) :: L
+    real(kind=list_prec):: A(L%Count)
+    integer i
+
+    do i=1, size(A)
+        A(i) = L%Item(i)
+    end do
+
+    end function AsArray
+
+    integer function CompareReal(this, R1, R2) result(comp)
+    Class(TRealList) :: this
+    class(*) R1,R2
+    real(list_prec) R
+
+    select type (RR1 => R1)
+    type is (real(list_prec))
+        select type (RR2 => R2)
+        type is (real(list_prec))
+            R = RR1-RR2
+            if (R< 0) then
+                comp =-1
+            elseif (R>0) then
+                comp = 1
+            else
+                comp = 0
+            end if
+            return
+        end select
+        class default
+        stop 'TRealList: Compare not defined for this type'
+    end select
+
+    end function CompareReal
+
+
+    !TRealArrayList: List of arrays of reals
 
     function RealArrItem(L, i) result(P)
     Class(TRealArrayList) :: L
@@ -533,30 +605,6 @@
 
     end function Value
 
-    integer function CompareReal(this, R1, R2) result(comp)
-    Class(TObjectList) :: this
-    class(*) R1,R2
-    real(list_prec) R
-
-    select type (RR1 => R1)
-    type is (real(list_prec))
-        select type (RR2 => R2)
-        type is (real(list_prec))
-            R = RR1-RR2
-            if (R< 0) then
-                comp =-1
-            elseif (R>0) then
-                comp = 1
-            else
-                comp = 0
-            end if
-            return
-        end select
-        class default
-        stop 'TObjectList: Compare not defined for this type'
-    end select
-
-    end function CompareReal
 
     end module ObjectLists
 
