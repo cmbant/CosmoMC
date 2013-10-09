@@ -333,6 +333,7 @@
     logical, save :: has_sigma8, has_LSS, has_tensors
     integer, save :: almax, almaxtensor, anumcls, anumclsext, tmp(1)
     logical, save :: planck1_format
+    real(mcp) old_matterpower(74,1)
     !JD 10/13 new variables for handling new pk arrays
     integer :: num_z
 
@@ -362,8 +363,8 @@
 
     if (planck1_format) then
         if (has_LSS) then
-            read(i) T%sigma_8
-            read(i) !discard unused mpk array
+            read(i) T%sigma_8, old_matterpower
+            !discard unused mpk array
         end if
     else
         if (has_sigma8 .or. has_LSS) read(i) T%sigma_8
