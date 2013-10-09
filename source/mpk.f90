@@ -189,10 +189,9 @@
     end if
     
     !JD 10/13  New settings for new mpk array handling
-    like%redshift = Ini_Read_Double_File(Ini,'redshift',0.35d0)
-    allocate(like%exact_redshifts(like%num_z))
-    allocate(like%exact_redshift_index(like%num_z))
-    like%exact_redshifts(1) = like%redshift
+    allocate(like%exact_z(like%num_z))
+    allocate(like%exact_z_index(like%num_z))
+    like%exact_z(1) = Ini_Read_Double_File(Ini,'redshift',0.35d0)
     
     like%kmax = 0.8
     if(nonlinear_mpk) then
@@ -264,18 +263,24 @@
 
     !JD 09/13 new compute_scaling_factor functions
     if(like%use_scaling) then
-        call compute_scaling_factor(like%redshift,CMB,like%DV_fid,a_scl)
+        call compute_scaling_factor(like%exact_z(1),CMB,like%DV_fid,a_scl)
     else
         a_scl = 1
+    end if
+    
+    if(abs(like%exact_z(1)-Theory%redshifts(like%exact_z_index(1)))>1.d-3)then
+        write(*,*)'ERROR: MPK redshift does not match the value stored'
+        write(*,*)'       in the Theory%redshifts array.'
+        call MpiStop()
     end if
 
     do i=1, like%num_mpk_kbands_use
         !Errors from using matter_power_minkh at lower end should be negligible
         k_scaled(i)=max(exp(Theory%log_kh(1)),a_scl*like%mpk_k(i))
         if(nonlinear_mpk) then
-            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_redshift_index(1),.true.)/a_scl**3
+            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
         else       
-            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_redshift_index(1))/a_scl**3
+            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1))/a_scl**3
         end if
     end do
 

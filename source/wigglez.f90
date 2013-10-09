@@ -365,14 +365,13 @@
 
     iopb = 0
 
-    like%redshift = Ini_Read_Double_File(Ini,'redshift',0.d0)
-    if(like%redshift.eq.0.0) then
+    allocate(like%exact_z(like%num_z))
+    allocate(like%exact_z_index(like%num_z))
+    like%exact_z(1) = Ini_Read_Double_File(Ini,'redshift',0.d0)
+    
+    if(like%exact_z(1).eq.0.0) then
         call MpiStop('mpk: failed  to read in WiggleZ redshift')
     end if
-    
-    allocate(like%exact_redshifts(like%num_z))
-    allocate(like%exact_redshift_index(like%num_z))
-    like%exact_redshifts(1) = like%redshift
 
     Ini_fail_on_not_found = .false.
     like%use_set =.true.
@@ -485,7 +484,7 @@
     end if
 
     if(use_gigglez) then
-        call GiggleZinfo_init(like%redshift)
+        call GiggleZinfo_init(like%exact_z(1))
     endif
     
     like%kmax = 0.8
@@ -588,7 +587,7 @@
         return
     end if
 
-    z = 1.d0*dble(like%redshift) ! accuracy issues
+    z = 1.d0*dble(like%exact_z(1)) ! accuracy issues
 
     !JD 09/13 new compute_scaling_factor functions
     if(use_scaling) then
@@ -603,8 +602,14 @@
     enddo
     if(iz.eq.0) call MpiStop('could not indentify redshift')
 
+    if(abs(z-Theory%redshifts(like%exact_z_index(1)))>1.d-3)then
+        write(*,*)'ERROR: WiggleZ redshift does not match the value stored'
+        write(*,*)'       in the Theory%redshifts array.'
+        call MpiStop()
+    end if
+
     if(use_gigglez) then
-        call fill_GiggleZTheory(Theory, like%exact_redshift_index(1))
+        call fill_GiggleZTheory(Theory, like%exact_z_index(1))
     endif
 
     do i=1, num_mpk_kbands_use
@@ -614,9 +619,9 @@
         if(use_gigglez) then
             mpk_lin(i) = WiggleZPowerAt(k_scaled(i))/a_scl**3
         else if(nonlinear_wigglez)then    
-            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_redshift_index(1),.true.)/a_scl**3
+            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
         else
-            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_redshift_index(1))/a_scl**3
+            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1))/a_scl**3
         endif
     end do
 

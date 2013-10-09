@@ -21,7 +21,6 @@ contains
     integer nz,zix
                 
     Theory%num_k = MTrans%num_q_trans
-    num_matter_power = Theory%num_k
     nz = num_power_redshifts
 
     allocate(Theory%matter_power(Theory%num_k,nz))
@@ -47,30 +46,6 @@ contains
     
     end subroutine Theory_GetMatterPowerData
     
-    subroutine InitPK(Theory)
-    Type(TheoryPredictions) :: Theory
-    integer i
-
-    deallocate(Theory%log_kh,stat=i)
-    deallocate(Theory%matter_power,stat=i)
-    deallocate(Theory%ddmatter_power,stat=i)
-    deallocate(Theory%nlmatter_power,stat=i)
-    deallocate(Theory%ddnlmatter_power,stat=i)
-    deallocate(Theory%redshifts,stat=i)
-    call PK_Nullify(Theory)
-
-    end subroutine InitPK
-
-    subroutine PK_Nullify(Theory)
-    Type(TheoryPredictions) :: Theory
-
-    nullify(Theory%log_kh)
-    nullify(Theory%ddmatter_power, Theory%nlmatter_power)    
-    nullify(Theory%nlmatter_power, Theory%ddnlmatter_power)
-    nullify(Theory%redshifts)
-
-    end subroutine PK_Nullify
-
     function MatterPowerAt_zbin(PK, kh, itf, NNL) result(outpower)
     !Get matter power spectrum at particular k/h by interpolation
     Type(TheoryPredictions) :: PK
@@ -179,12 +154,12 @@ contains
         NL = .false.
     end if
     
-    if(z>PK%redshifts(num_power_redshifts)) then 
+    if(z>PK%redshifts(size(PK%redshifts))) then 
         write (*,*) ' z out of bounds in MatterPowerAt_Z (',z,')'
         call MPIstop()
     end if
     
-    zlo=min(zi_last,num_power_redshifts)
+    zlo=min(zi_last,size(PK%redshifts))
     do while (PK%redshifts(zlo) > z)
         zlo=zlo-1
     end do
@@ -222,7 +197,7 @@ contains
     outpower = exp(max(-30._dl,outpower))
     
     end function MatterPowerAt_Z
-    
+       
 end module powerspec
     
     
