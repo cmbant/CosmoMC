@@ -50,20 +50,35 @@
     procedure :: Sort
     procedure :: SortArr
     procedure :: Swap
-    procedure :: Compare => CompareReal
+    procedure :: Compare
     procedure :: Clear
     procedure :: DeltaSize
     procedure :: QuickSort
     procedure :: QuickSortArr
+    procedure :: RemoveDuplicates
     FINAL :: finalize
     generic :: Add => AddItem, AddArray
     end Type TObjectList
 
-    Type, extends(TObjectList):: TRealArrayList
+    Type, extends(TObjectList):: TRealCompareList
+    contains
+        procedure :: Compare => CompareReal
+    end Type TRealCompareList
+
+    Type, extends(TRealCompareList):: TRealList
+    contains
+    procedure :: RealItem
+    procedure :: AddItem => RealAddItem
+    procedure :: AddArrayItems
+    procedure :: AsArray
+    generic :: Item => RealItem
+    end Type TRealList
+
+    Type, extends(TRealCompareList):: TRealArrayList
     contains
     procedure :: Value
-    procedure :: RealItem
-    generic :: Item => Value, RealItem
+    procedure :: RealArrItem
+    generic :: Item => Value, RealArrItem
     end Type TRealArrayList
 
     contains
@@ -388,31 +403,29 @@
 
     L = Lin
     do
+        I = L
+        J = R
+        P => this%ArrayItemIndex((L + R)/2, index)
+        do
+            do while (this%Compare(this%ArrayItemIndex(I, Index),P) <  0)
+                I = I + 1
+            end do
 
-    I = L
-    J = R
-    P => this%ArrayItemIndex((L + R)/2, index)
+            do while (this%Compare(this%ArrayItemIndex(J,Index), P) > 0)
+                J = J - 1
+            end do
 
-    do
-        do while (this%Compare(this%ArrayItemIndex(I, Index),P) <  0)
-            I = I + 1
+            if (I <= J) then
+                call this%Swap(I,J)
+                I = I + 1
+                J = J - 1
+            end if
+            if (I > J) exit
+
         end do
-
-        do while (this%Compare(this%ArrayItemIndex(J,Index), P) > 0)
-            J = J - 1
-        end do
-
-        if (I <= J) then
-            call this%Swap(I,J)
-            I = I + 1
-            J = J - 1
-        end if
-        if (I > J) exit
-
-    end do
-    if (L < J) call this%QuickSortArr(L, J, index)
-    L = I
-    if (I >= R) exit
+        if (L < J) call this%QuickSortArr(L, J, index)
+        L = I
+        if (I >= R) exit
     end do
 
     end subroutine QuickSortArr
@@ -434,31 +447,28 @@
 
     L = Lin
     do
+        I = L
+        J = R
+        P => this%Items((L + R)/2)%P
+        do
+            do while (this%Compare(this%Items(I)%P,P) <  0)
+                I = I + 1
+            end do
 
-    I = L
-    J = R
-    P => this%Items((L + R)/2)%P
+            do while (this%Compare(this%Items(J)%P, P) > 0)
+                J = J - 1
+            end do
 
-    do
-        do while (this%Compare(this%Items(I)%P,P) <  0)
-            I = I + 1
+            if (I <= J) then
+                call this%Swap(I,J)
+                I = I + 1
+                J = J - 1
+            end if
+            if (I > J) exit
         end do
-
-        do while (this%Compare(this%Items(J)%P, P) > 0)
-            J = J - 1
-        end do
-
-        if (I <= J) then
-            call this%Swap(I,J)
-            I = I + 1
-            J = J - 1
-        end if
-        if (I > J) exit
-
-    end do
-    if (L < J) call this%QuickSort(L, J)
-    L = I
-    if (I >= R) exit
+        if (L < J) call this%QuickSort(L, J)
+        L = I
+        if (I >= R) exit
     end do
 
     end subroutine QuickSort
@@ -470,40 +480,28 @@
 
     end subroutine Sort
 
-    ! List of arrays of reals
-
-    function RealItem(L, i) result(P)
-    Class(TRealArrayList) :: L
-    integer, intent(in) :: i
-    real(list_prec), pointer :: P(:)
-    class(*), pointer :: Item(:)
-
-    Item => L%ArrayItem(i)
-    select type (pt=>Item)
-    type is (real(kind=list_prec))
-        P=> pt
-        class default
-        stop 'TRealArrayList: object of wrong type'
-    end select
-
-    end function RealItem
-
-    function Value(L, i, j) result(P)
-    Class(TRealArrayList) :: L
-    integer, intent(in) :: i, j
-    real(list_prec) :: P
-    class(*), pointer :: C
-
-    C => L%ArrayItemIndex(i,j)
-    select type (Arr=> C)
-    Type is (real(list_prec))
-        P = Arr
-    end select
-
-    end function Value
-
-    integer function CompareReal(this, R1, R2) result(comp)
+    integer function Compare(this, R1, R2) result(comp)
     Class(TObjectList) :: this
+    class(*) R1,R2
+
+    comp=0 !equality
+    stop 'TObjectList: Compare must be defined for derived type'
+
+    end function Compare
+
+    subroutine RemoveDuplicates(L)
+    Class(TObjectList) :: L
+    integer i
+
+    do i=L%Count-1, 1, -1
+        if (L%Compare(L%Items(i+1)%P, L%Items(i)%P)==0) call L%DeleteItem(i+1)
+    end do
+
+    end subroutine RemoveDuplicates
+
+    !TRealCompareList
+    integer function CompareReal(this, R1, R2) result(comp)
+    Class(TRealCompareList) :: this
     class(*) R1,R2
     real(list_prec) R
 
@@ -522,10 +520,96 @@
             return
         end select
         class default
-        stop 'TObjectList: Compare not defined for this type'
+        stop 'TRealList: Compare not defined for this type'
     end select
 
     end function CompareReal
+
+
+    !TRealList: List of reals
+    function RealItem(L,i) result(R)
+    Class(TRealList) :: L
+    integer, intent(in) :: i
+    real(list_prec) R
+
+    select type (pt=>L%Items(i)%P)
+    type is (real(kind=list_prec))
+        R = pt
+        class default
+        stop 'TRealList: object of wrong type'
+    end select
+
+    end function RealItem
+
+    subroutine RealAddItem(L, C)
+    Class(TRealList) :: L
+    class(*), intent(in), target :: C
+    class(*), pointer :: P
+
+    if (L%OwnsObjects) then
+        allocate(P, source=C)
+        call L%TObjectList%AddItem(P)
+    else
+        stop 'TRealList: must have OwnsObjects = .true.'
+    end if
+
+    end subroutine RealAddItem
+
+    subroutine AddArrayItems(L, A)
+    Class(TRealList) :: L
+    real(kind=list_prec), intent(in) :: A(:)
+    integer i
+
+    do i=1, size(A)
+        call L%AddItem(A(i))
+    end do
+
+    end subroutine AddArrayItems
+
+    function AsArray(L) result(A)
+    Class(TRealList) :: L
+    real(kind=list_prec):: A(L%Count)
+    integer i
+
+    do i=1, size(A)
+        A(i) = L%Item(i)
+    end do
+
+    end function AsArray
+
+
+    !TRealArrayList: List of arrays of reals
+
+    function RealArrItem(L, i) result(P)
+    Class(TRealArrayList) :: L
+    integer, intent(in) :: i
+    real(list_prec), pointer :: P(:)
+    class(*), pointer :: Item(:)
+
+    Item => L%ArrayItem(i)
+    select type (pt=>Item)
+    type is (real(kind=list_prec))
+        P=> pt
+        class default
+        stop 'TRealArrayList: object of wrong type'
+    end select
+
+    end function RealArrItem
+
+    function Value(L, i, j) result(P)
+    Class(TRealArrayList) :: L
+    integer, intent(in) :: i, j
+    real(list_prec) :: P
+    class(*), pointer :: C
+
+    C => L%ArrayItemIndex(i,j)
+    select type (Arr=> C)
+    Type is (real(list_prec))
+        P = Arr
+    end select
+
+    end function Value
+
 
     end module ObjectLists
 

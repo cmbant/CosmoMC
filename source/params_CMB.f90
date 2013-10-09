@@ -105,7 +105,7 @@
     real(mcp)  D_b,D_t,D_try,try_b,try_t, lasttry
     integer, save :: cache=1
     integer i
-    Type(CMBParams), pointer :: CP
+    Type(CMBParams), pointer :: CP2
     integer error
 
     select type (CMB)
@@ -113,8 +113,8 @@
         do i=1, ncache
             !want to save two slow positions for some fast-slow methods
             if (all(Params(1:num_hard) == LastCMB(i)%BaseParams(1:num_hard))) then
-                CP => CMB !needed to make next line work for some odd reason CMB=LastCMB(i) does not work
-                CP = LastCMB(i)
+                CP2 => CMB !needed to make next line work for some odd reason CMB=LastCMB(i) does not work
+                CP2 = LastCMB(i)
                 call this%CosmologyParameterization%ParamArrayToTheoryParams(Params, CMB)
                 call SetFast(Params,CMB)
                 return

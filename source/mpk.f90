@@ -24,6 +24,7 @@
     use settings
     use cmbtypes
     use likelihood
+    use powerspec
     use wigglezinfo
     use wigglez, only : WiggleZLikelihood_Add
     implicit none
@@ -48,6 +49,7 @@
     end type MPKLikelihood
 
     logical :: use_mpk = .false.
+    logical :: nonlinear_mpk = .false.
 
     contains
 
@@ -65,47 +67,22 @@
     if(.not. use_mpk) return
 
     call WiggleZLikelihood_Add(LikeList, Ini)
+    
+    nonlinear_mpk = Ini_Read_Logical('nonlinear_mpk',.false.)
 
     nummpksets = Ini_Read_Int('mpk_numdatasets',0)
     do i= 1, nummpksets
         allocate(like)
-        call like%ReadDatasetFile(ReadIniFileName(Ini,numcat('mpk_dataset',i)) )
         like%LikelihoodType = 'MPK'
         like%needs_powerspectra = .true.
+        like%needs_exact_z = .true.
+        like%num_z = 1
+        call like%ReadDatasetFile(ReadIniFileName(Ini,numcat('mpk_dataset',i)) )
         call LikeList%Add(like)
     end do
     if (Feedback>1) write(*,*) 'read mpk datasets'
 
     end subroutine MPKLikelihood_Add
-
-    subroutine mpk_SetTransferRedshifts(redshifts)
-    use wigglezinfo
-    implicit none
-    real(mcp), intent(inout) :: redshifts(matter_power_lnzsteps)
-    !input is default log z spacing; can change here; check for consistency with other (e.g. lya)
-
-    !Note internal ordering in CAMB is the opposite to that used in cosmomc transfer arrays (as here)
-    !first index here must be redshift zero
-    if(use_wigglez_mpk .and. matter_power_lnzsteps < 5) &
-    call MpiStop('For WiggleZ MPK, matter_power_lnzsteps should be set to at least 5 (hardcoded in cmbtypes)')
-    !wigglez redshifts: z0 = 0.d0, za = 0.22d0, zb = 0.41d0, zc = 0.6d0, zd = 0.78d0
-
-    if(matter_power_lnzsteps==1 .or. .not. use_wigglez_mpk) return
-
-    if(feedback>1) write(*,*) 'mpk_SetTransferRedshifts:  Reordering redshifts'
-
-    izwigglez(1) = 2
-    izwigglez(2) = 3
-    izwigglez(3) = 4
-    izwigglez(4) = 5
-    redshifts(izwigglez(1)) = za
-    redshifts(izwigglez(2)) = zb
-    redshifts(izwigglez(3)) = zc
-    redshifts(izwigglez(4)) = zd
-
-    if(redshifts(1) > 0.001) call MpiStop('redshifts(1) should be at z=0!')
-    return
-    end subroutine mpk_SetTransferRedshifts
 
     subroutine MPK_ReadIni(like,Ini)
     use MatrixUtils
@@ -157,10 +134,10 @@
         write(*,*) 'reading: '//trim(like%name)//' data'
         write(*,*) 'Using kbands windows between',real(like%mpk_k(1)),' < k/h < ',real(like%mpk_k(like%num_mpk_kbands_use))
     endif
-    if  (like%mpk_k(1) < matter_power_minkh) then
-        write (*,*) 'WARNING: k_min in '//trim(like%name)//'less than setting in cmbtypes.f90'
-        write (*,*) 'all k<matter_power_minkh will be set to matter_power_minkh'
-    end if
+    !if  (like%mpk_k(1) < matter_power_minkh) then
+    !    write (*,*) 'WARNING: k_min in '//trim(like%name)//'less than setting in cmbtypes.f90'
+    !    write (*,*) 'all k<matter_power_minkh will be set to matter_power_minkh'
+    !end if
 
     measurements_file  = ReadIniFileName(Ini,'measurements_file')
     call OpenTxtFile(measurements_file, tmp_file_unit)
@@ -198,9 +175,9 @@
 
     like%use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
 
+     
     !JD 09/13 Read in fiducial D_V and redshift for use when calculating a_scl
     if(like%use_scaling) then
-        like%redshift = Ini_Read_Double_File(Ini,'redshift',0.35d0)
         !DV_fid should be in units CMB%H0*BAO_D_v(z)
         like%DV_fid = Ini_Read_Double_File(Ini,'DV_fid',-1.d0)
         if(like%DV_fid == -1.d0) then
@@ -210,7 +187,18 @@
             call MPIstop()
         end if
     end if
-
+    
+    !JD 10/13  New settings for new mpk array handling
+    allocate(like%exact_z(like%num_z))
+    allocate(like%exact_z_index(like%num_z))
+    like%exact_z(1) = Ini_Read_Double_File(Ini,'redshift',0.35d0)
+    
+    like%kmax = 0.8
+    if(nonlinear_mpk) then
+        like%needs_nonlinear_pk = .true.
+        like%kmax=1.2
+    end if
+        
     like%Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)
     if (like%Q_marge) then
         like%Q_flat = Ini_Read_Logical_File(Ini,'Q_flat',.false.)
@@ -275,15 +263,25 @@
 
     !JD 09/13 new compute_scaling_factor functions
     if(like%use_scaling) then
-        call compute_scaling_factor(like%redshift,CMB,like%DV_fid,a_scl)
+        call compute_scaling_factor(like%exact_z(1),CMB,like%DV_fid,a_scl)
     else
         a_scl = 1
+    end if
+    
+    if(abs(like%exact_z(1)-Theory%redshifts(like%exact_z_index(1)))>1.d-3)then
+        write(*,*)'ERROR: MPK redshift does not match the value stored'
+        write(*,*)'       in the Theory%redshifts array.'
+        call MpiStop()
     end if
 
     do i=1, like%num_mpk_kbands_use
         !Errors from using matter_power_minkh at lower end should be negligible
-        k_scaled(i)=max(matter_power_minkh,a_scl*like%mpk_k(i))
-        mpk_lin(i)=MatterPowerAt(Theory,k_scaled(i))/a_scl**3
+        k_scaled(i)=max(exp(Theory%log_kh(1)),a_scl*like%mpk_k(i))
+        if(nonlinear_mpk) then
+            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
+        else       
+            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1))/a_scl**3
+        end if
     end do
 
 
@@ -378,7 +376,7 @@
 
     if (LnLike > 1e8) then
         write(*,*)'WARNING: '//trim(like%name)//' MPK Likelihood is huge!'
-        write(*,*)'          Mmaybe there is a problem? Likelihood = ',LnLike
+        write(*,*)'          Maybe there is a problem? Likelihood = ',LnLike
     end if
 
     deallocate(mpk_Pth,mpk_lin)
