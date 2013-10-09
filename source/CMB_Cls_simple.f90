@@ -589,6 +589,7 @@
         call LoadFiducialHighLTemplate
     end if
 
+    call InitCAMBParams(P)
 
     if (Feedback > 0 .and. MPIRank==0) then
         write (*,*) 'Computing tensors:', compute_tensors
