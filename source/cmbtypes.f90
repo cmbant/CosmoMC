@@ -335,7 +335,6 @@
     logical, save :: planck1_format
     !JD 10/13 new variables for handling new pk arrays
     integer :: num_z
-    real(mcp) dummy
 
     if (first) then
         first = .false.
@@ -364,7 +363,7 @@
     if (planck1_format) then
         if (has_LSS) then
             read(i) T%sigma_8 
-            read(i) dummy
+            read(i) !discard unused mpk array
         end if
     else
         if (has_sigma8 .or. has_LSS) read(i) T%sigma_8
