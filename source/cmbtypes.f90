@@ -1,4 +1,4 @@
-!Define the data types and read/writes them to disk. Also change l_max here.
+    !Define the data types and read/writes them to disk. Also change l_max here.
 
     module cmbtypes
     use settings
@@ -23,7 +23,7 @@
     !Parameters for calculating/storing the matter power spectrum
     real(mcp) :: power_kmax = 0.8
     integer :: num_power_redshifts
-    real(mcp), dimension(:), allocatable :: power_redshifts 
+    real(mcp), dimension(:), allocatable :: power_redshifts
     integer :: num_matter_power
 
     !Only used in params_CMB
@@ -51,11 +51,11 @@
     type, extends(DatasetFileLikelihood) :: CosmologyLikelihood
         !Don't have to use extract features of DatasetFileLikelihood
         !not implemented yet..
-        
+
         !        integer :: needs_cl_lmax = 0
         logical :: needs_background_functions = .true.
         logical :: needs_powerspectra = .false.
-        
+
         logical :: needs_nonlinear_pk = .false.
         logical :: needs_exact_z = .false.
         integer :: num_z = 0
@@ -95,7 +95,7 @@
         real(mcp), dimension(:,:), pointer :: matter_power => NULL(), ddmatter_power => NULL()
         real(mcp), dimension(:,:), pointer :: nlmatter_power => NULL(), ddnlmatter_power => NULL()
         real(mcp), dimension(:), pointer :: redshifts => NULL()
-       
+
     contains
     procedure :: WriteTheory
     procedure :: ReadTheory
@@ -136,24 +136,24 @@
     end do
 
     end subroutine SetTheoryParameterNumbers
-    
+
     subroutine Initialize_PKSettings()
     use likelihood
     class(DataLikelihood), pointer :: DataLike
-    real(mcp) :: dlnz, maxz 
+    real(mcp) :: dlnz, maxz
     integer :: i,izexact,izrange,iz,izprev
     real(mcp), dimension(:), allocatable :: exact_z,range_redshifts,tmp
     integer :: num_exact = 0
     integer :: num_range = 0
     maxz = 0.
     dlnz = 30.
-    
+
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
         select type (DataLike)
         class is (CosmologyLikelihood)
             if (DataLike%needs_powerspectra) then
-                power_kmax = max(power_kmax,DataLike%kmax) 
+                power_kmax = max(power_kmax,DataLike%kmax)
                 use_nonlinear = use_nonlinear .or. DataLike%needs_nonlinear_pk
                 if(DataLike%needs_exact_z) then
                     if(num_exact==0)then
@@ -183,7 +183,7 @@
                     else
                         cycle
                     end if
-                    
+
                 end if
             end if
         end select
@@ -197,7 +197,7 @@
             range_redshifts(i)=dexp(dlnz*i)-1._mcp
         end do
     end if
-    
+
     !Sort and remove duplicates of exact_z; add exact redshifts to master array
     if(num_exact>0)then
         call quick_sort(exact_z)
@@ -216,8 +216,8 @@
         exact_z=tmp(1:num_exact)
         deallocate(tmp)
     end if
-    
-    !Combine two redshift arrays    
+
+    !Combine two redshift arrays
     allocate(tmp(num_exact+num_range))
     tmp(1) = 0._mcp
     tmp(2:num_range+1) = range_redshifts(:)
@@ -234,31 +234,31 @@
         end if
         izprev=iz
     end do
-    
+
     if(tmp(num_range+1+i)< maxz) then
         i = i+1
         tmp(num_range+1+i) = maxz
     end if
-    
+
     num_power_redshifts = num_range+1+i
     allocate(power_redshifts(num_power_redshifts))
     power_redshifts= tmp(1:num_power_redshifts)
-    
-    deallocate(tmp)    
-    
-    call IndexExactRedshifts(power_redshifts)    
-    
+
+    deallocate(tmp)
+
+    call IndexExactRedshifts(power_redshifts)
+
     end subroutine Initialize_PKSettings
-    
+
     subroutine IndexExactRedshifts(A,error)
     use likelihood
     class(DataLikelihood), pointer :: DataLike
-    real(mcp), dimension(:) :: A 
-    integer, intent(out), optional :: error  
+    real(mcp), dimension(:) :: A
+    integer, intent(out), optional :: error
     integer :: i, iz, izprev, numz
-    
+
     numz = size(A)
-    
+
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
         select type (DataLike)
@@ -270,21 +270,21 @@
                         izprev=1
                         do while(abs(DataLike%exact_z(iz)-A(izprev))>1.d-4)
                             izprev=izprev+1
-                            if(izprev>numz)then 
+                            if(izprev>numz)then
                                 write(*,*) "ERROR, In IndexExactRedshifts: could not find redshift index"
                                 if(present(error))error=1
                                 return
                             end if
-                        end do    
+                        end do
                         DataLike%exact_z_index(iz) = izprev
                     end do
                 end if
             end if
         end select
     end do
-    
+
     end subroutine IndexExactRedshifts
-        
+
     subroutine WriteTheory(T, i)
     integer i
     Class(TheoryPredictions) T
@@ -362,7 +362,7 @@
 
     if (planck1_format) then
         if (has_LSS) then
-            read(i) T%sigma_8 
+            read(i) T%sigma_8
             read(i) !discard unused mpk array
         end if
     else
@@ -424,7 +424,7 @@
     call WriteTextCls(fnameroot //'.bestfit_cl', Theory)
 
     end subroutine WriteBestFitData
-    
+
     subroutine InitPK(Theory)
     Type(TheoryPredictions) :: Theory
     integer i
@@ -443,18 +443,18 @@
     Type(TheoryPredictions) :: Theory
 
     nullify(Theory%log_kh)
-    nullify(Theory%ddmatter_power, Theory%nlmatter_power)    
+    nullify(Theory%ddmatter_power, Theory%nlmatter_power)
     nullify(Theory%nlmatter_power, Theory%ddnlmatter_power)
     nullify(Theory%redshifts)
 
     end subroutine PK_Nullify
-    
+
     subroutine IOTheory_GetNLAndSplines(Theory)
     use Transfer
     Type(TheoryPredictions) Theory
     Type(MatterPowerData) :: Cosmo_PK
     integer :: nz, zix
-    
+
     Cosmo_PK%num_k = Theory%num_k
     Cosmo_PK%num_z = 1
     allocate(Cosmo_PK%matpower(Cosmo_PK%num_k,1))
@@ -463,7 +463,7 @@
     allocate(Cosmo_PK%log_kh(Cosmo_PK%num_k))
     allocate(Cosmo_PK%redshifts(1))
     Cosmo_PK%log_kh = Theory%log_kh
-    
+
     do zix=1, size(Theory%redshifts)
         Cosmo_PK%redshifts(1) = Theory%redshifts(zix)
         Cosmo_PK%matpower(:,1) = Theory%matter_power(:,zix)
@@ -475,17 +475,17 @@
             Theory%ddnlmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
         end if
     end do
-    
+
     call MatterPowerdata_Free(Cosmo_PK)
-    
+
     end subroutine IOTheory_GetNLAndSplines
-    
+
     recursive subroutine quick_sort(list)
     real(mcp), dimension(:), intent(in out) :: list
     integer :: i, j, n
     real(mcp) :: chosen, temp
     integer, parameter :: max_simple_sort_size = 6
-    
+
     n = size(list)
     if (n <= max_simple_sort_size) then
         ! Use interchange sort for small lists
@@ -513,19 +513,19 @@
                 temp = list(i)
                 list(i) = list(j)
                 list(j) = temp
-            else if (i == j) then 
+            else if (i == j) then
                 i=i+1
-                exit 
+                exit
             else
-                exit 
+                exit
             end if
         end do
         if (1 < j) call quick_sort(list(:j))
         if (i < n) call quick_sort(list(i:))
     end if  ! test for small array
-    
+
     end subroutine quick_sort
-    
+
     subroutine interchange_sort(list)
     real(mcp), dimension(:), intent(in out) :: list
     integer :: i, j
@@ -533,10 +533,10 @@
     do i = 1, size(list) - 1
         do j = i + 1, size(list)
             if (list(i) >  list(j)) then
-            temp = list(i)
-            list(i) = list(j)
-            list(j) = temp
-            end if 
+                temp = list(i)
+                list(i) = list(j)
+                list(j) = temp
+            end if
         end do
     end do
     end subroutine interchange_sort

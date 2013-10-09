@@ -436,8 +436,6 @@
         P%Transfer%kmax = max(0.8,power_kmax)
     end if
 
-    !        if (Use_Lya) P%Transfer%kmax = lya_kmax
-
     if (AccuracyLevel > 1 .or. HighAccuracyDefault) then
         if (USE_LSS .or. get_sigma8) then
             P%Transfer%high_precision=.true.
@@ -591,7 +589,6 @@
         call LoadFiducialHighLTemplate
     end if
 
-    call InitCAMBParams(P)
 
     if (Feedback > 0 .and. MPIRank==0) then
         write (*,*) 'Computing tensors:', compute_tensors

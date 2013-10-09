@@ -67,7 +67,7 @@
     if(.not. use_mpk) return
 
     call WiggleZLikelihood_Add(LikeList, Ini)
-    
+
     nonlinear_mpk = Ini_Read_Logical('nonlinear_mpk',.false.)
 
     nummpksets = Ini_Read_Int('mpk_numdatasets',0)
@@ -175,7 +175,7 @@
 
     like%use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
 
-     
+
     !JD 09/13 Read in fiducial D_V and redshift for use when calculating a_scl
     if(like%use_scaling) then
         !DV_fid should be in units CMB%H0*BAO_D_v(z)
@@ -187,18 +187,18 @@
             call MPIstop()
         end if
     end if
-    
+
     !JD 10/13  New settings for new mpk array handling
     allocate(like%exact_z(like%num_z))
     allocate(like%exact_z_index(like%num_z))
     like%exact_z(1) = Ini_Read_Double_File(Ini,'redshift',0.35d0)
-    
+
     like%kmax = 0.8
     if(nonlinear_mpk) then
         like%needs_nonlinear_pk = .true.
         like%kmax=1.2
     end if
-        
+
     like%Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)
     if (like%Q_marge) then
         like%Q_flat = Ini_Read_Logical_File(Ini,'Q_flat',.false.)
@@ -209,7 +209,7 @@
         end if
         like%Ag = Ini_Read_Real_File(Ini,'Ag', 1.4)
     end if
-    
+
     like%num_conflicts = Ini_Read_Int_File(Ini,'num_conflicts',0)
     if(like%num_conflicts>0)then
         allocate(like%conflict_name(like%num_conflicts))
@@ -219,11 +219,11 @@
             like%conflict_name(i_conflict) = Ini_Read_String_File(Ini,numcat('name_conflict',i_conflict))
         end do
     end if
-    
+
     if (iopb.ne.0) then
         stop 'Error reading mpk file'
     endif
- 
+
     deallocate(mpk_Wfull, mpk_kfull,mpk_fiducial)
 
     end subroutine MPK_ReadIni
@@ -267,7 +267,7 @@
     else
         a_scl = 1
     end if
-    
+
     if(abs(like%exact_z(1)-Theory%redshifts(like%exact_z_index(1)))>1.d-3)then
         write(*,*)'ERROR: MPK redshift does not match the value stored'
         write(*,*)'       in the Theory%redshifts array.'
@@ -355,7 +355,6 @@
                 LnLike = chisq(iQ)/2
                 exit
             end if
-
         end do
 
         !without analytic marginalization
