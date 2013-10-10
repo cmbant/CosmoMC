@@ -9,7 +9,7 @@
     implicit none
 
     Type TPostParams
-        logical  redo_like, redo_theory, redo_cls, redo_Pk
+        logical  redo_like, redo_theory, redo_cls, redo_pk
         integer redo_thin
         real(mcp) redo_skip
         character(LEN=Ini_max_string_len) :: redo_datafile, redo_outroot
@@ -46,7 +46,7 @@
     PostParams%redo_like = Ini_Read_Logical('redo_likelihoods')
     PostParams%redo_theory = Ini_read_Logical('redo_theory')
     PostParams%redo_cls= Ini_read_Logical('redo_cls')
-    PostParams%redo_Pk= Ini_read_Logical('redo_pk')
+    PostParams%redo_pk= Ini_read_Logical('redo_pk')
     PostParams%redo_skip = Ini_Read_Double('redo_skip',100.d0)
     PostParams%redo_thin = max(1,Ini_Read_Int('redo_thin',1))
     PostParams%redo_datafile = Ini_Read_String('redo_datafile')
@@ -238,29 +238,26 @@
             if (error ==0) then
                 if (PostParams%redo_like .or. PostParams%redo_add) then
                     if (Use_LSS) then
-                        if(Params%Theory%sigma_8==0) then
-                            write(*,*) 'ERROR: Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk'
-                            cycle !!!!cycle for now to save checkpointing bug
-                            !call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
-                        else if(num_power_redshifts /= size(Params%Theory%redshifts))then
-                            numz = size(Params%Theory%redshifts)
-                            if((power_redshifts(num_power_redshifts)-Params%Theory%redshifts(numz))>1.d-3)then
-                                write(*,*) 'ERROR: Theselected datasets call for a higher redshift than has been calculated'
-                                write(*,*) '       Use redo_theory and redo_pk'
-                                cycle
-                            end if
-                            if(num_power_redshifts > numz)then
-                                write(*,*) 'ERROR: The selected datasets call for more redshifts than are calculated'
-                                write(*,*) '       Use redo_theory and redo_pk'
-                            end if
-                            cycle
+                        if(Params%Theory%sigma_8==0) &
+                        call MpiStop('ERROR: Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk')
+
+                        numz = size(Params%Theory%redshifts)
+                        if((power_redshifts(num_power_redshifts)-Params%Theory%redshifts(numz))>1.d-3)then
+                            write(*,*) 'ERROR: Thes elected datasets call for a higher redshift than has been calculated'
+                            write(*,*) '       Use redo_theory and redo_pk'
+                            call MpiStop()
+                        end if
+                        if(num_power_redshifts > numz)then
+                            write(*,*) 'ERROR: The selected datasets call for more redshifts than are calculated'
+                            write(*,*) '       Use redo_theory and redo_pk'
+                            call MpiStop()
                         end if
                         index_error =0
                         call IndexExactRedshifts(Params%Theory%redshifts,index_error)
                         if(index_error>0)then
                             write(*,*) 'ERROR: One of the datasets needs an exact redshift that is not present '
                             write(*,*) '       Use redo_theory and redo_pk'
-                            cycle
+                            call MpiStop()
                         end if
                     end if
                     if (PostParams%redo_add) then
