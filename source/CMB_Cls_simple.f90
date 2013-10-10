@@ -264,7 +264,10 @@
     end if
     if (error==0) then
         if (DoCls) call SetPowersFromCAMB(Theory)
-        if (DoPk) call SetPkFromCAMB(Theory,MT)
+        if (DoPK) then
+            Theory%sigma_8 = MT%sigma_8(size(MT%sigma_8,1),1)
+            call SetPkFromCAMB(Theory,MT)
+        end if
         call SetDerived(Theory)
     end if
     end subroutine GetTheoryForImportance
