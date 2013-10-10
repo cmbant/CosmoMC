@@ -25,6 +25,7 @@
     logical bad
     integer  i, numtoget, action
     character(LEN=Ini_max_string_len)  numstr, fname
+    character(LEN=Ini_max_string_len) rootdir
     Type(ParamSet) Params, EstParams
     integer file_unit, status
     real(mcp) bestfit_loglike
@@ -143,7 +144,14 @@
 
     Ini_fail_on_not_found = .true.
 
+    !Begin JD modifications for output of filename in output file        
+    rootdir = ReadIniFileName(DefIni,'root_dir') 
     baseroot = ReadIniFileName(DefIni,'file_root')
+    if(instance<=1)then
+        write(*,*), trim(baseroot)
+    end if      
+    baseroot = trim(rootdir)//trim(baseroot)
+    !End JD modifications
 
     rootname = trim(baseroot)
 
@@ -160,6 +168,7 @@
         new_chains = .not. IO_Exists(trim(rootname) //'.chk')
 #else
         new_chains = .not. IO_Exists(trim(rootname) //'.txt')
+        if(.not. new_chains) new_chains = IO_Size(trim(rootname) //'.txt')<=0
 #endif
     end if
 

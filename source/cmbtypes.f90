@@ -90,11 +90,11 @@
 
         !everything is a function of k/h
         integer   ::  num_k
-        real(mcp), dimension(:), pointer :: log_kh => NULL()
+        real(mcp), dimension(:), allocatable :: log_kh
         !matpower is log(P_k)
-        real(mcp), dimension(:,:), pointer :: matter_power => NULL(), ddmatter_power => NULL()
-        real(mcp), dimension(:,:), pointer :: nlmatter_power => NULL(), ddnlmatter_power => NULL()
-        real(mcp), dimension(:), pointer :: redshifts => NULL()
+        real(mcp), dimension(:,:), allocatable :: matter_power, ddmatter_power
+        real(mcp), dimension(:,:), allocatable :: nlmatter_power, ddnlmatter_power
+        real(mcp), dimension(:), allocatable :: redshifts 
 
     contains
     procedure :: WriteTheory
@@ -139,32 +139,26 @@
 
     subroutine Initialize_PKSettings()
     use likelihood
+    use ObjectLists
     class(DataLikelihood), pointer :: DataLike
-    real(mcp) :: dlnz, maxz
-    integer :: i,izexact,izrange,iz,izprev
-    real(mcp), dimension(:), allocatable :: exact_z,range_redshifts,tmp
-    integer :: num_exact = 0
-    integer :: num_range = 0
+    Type(TRealList) :: exact_z, full_z
+    real(mcp) :: dlnz, maxz, zcur
+    integer :: i,iz,izprev
+    integer :: num_exact, num_range
     maxz = 0.
     dlnz = 30.
-
+    
+    call full_z%Add(0.d0)
+    
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
         select type (DataLike)
         class is (CosmologyLikelihood)
             if (DataLike%needs_powerspectra) then
-                power_kmax = max(power_kmax,DataLike%kmax)
+                power_kmax = max(power_kmax,DataLike%kmax) 
                 use_nonlinear = use_nonlinear .or. DataLike%needs_nonlinear_pk
                 if(DataLike%needs_exact_z) then
-                    if(num_exact==0)then
-                        allocate(exact_z(DataLike%num_z))
-                        exact_z = DataLike%exact_z
-                    else
-                        allocate(tmp(num_exact+DataLike%num_z))
-                        tmp = [exact_z,DataLike%exact_z]
-                        call move_alloc(tmp,exact_z)
-                    end if
-                    num_exact = num_exact+DataLike%num_z
+                    call exact_z%AddArrayItems(DataLike%exact_z)
                 else
                     num_range = DataLike%num_z
                     maxz = max(maxz,DataLike%max_z)
@@ -183,71 +177,52 @@
                     else
                         cycle
                     end if
-
                 end if
             end if
         end select
     end do
+    
     !Build array of redshifts where the redshift exact value doesn't matter
     if(maxz>0)then
         num_range = ceiling(log(maxz+1)/dlnz)
         dlnz = log(maxz+1)/(num_range)
-        allocate(range_redshifts(num_range))
         do i=1,num_range
-            range_redshifts(i)=dexp(dlnz*i)-1._mcp
+            zcur = dexp(dlnz*i)-1
+            call full_z%Add(zcur)
         end do
     end if
-
-    !Sort and remove duplicates of exact_z; add exact redshifts to master array
-    if(num_exact>0)then
-        call quick_sort(exact_z)
-        allocate(tmp(num_exact+1))
-        tmp(1) = 0._mcp
-        iz = 1
-        do i=1, num_exact
-            if(exact_z(i)/=tmp(iz)) then
-                iz = iz+1
-                tmp(iz)=exact_z(i)
-            end if
-        end do
-        num_exact = iz
-        deallocate(exact_z)
-        allocate(exact_z(num_exact))
-        exact_z=tmp(1:num_exact)
-        deallocate(tmp)
+    num_range = full_z%Count
+    
+    !Sort and remove duplicates of exact_z
+    if(exact_z%Count>0)then
+        call exact_z%sort()
+        call exact_z%RemoveDuplicates()
     end if
-
-    !Combine two redshift arrays
-    allocate(tmp(num_exact+num_range))
-    tmp(1) = 0._mcp
-    tmp(2:num_range+1) = range_redshifts(:)
-    i=0
+       
+    !Add exact redshifts to the full array
     izprev = 1
-    do izexact=2, num_exact
-        iz = nint(log(exact_z(izexact)+1)/dlnz)+1
+    do i=1, exact_z%count
+        if(exact_z%Item(i)==0.d0) cycle
+        iz = nint(log(exact_z%Item(i)+1)/dlnz)+1
         if(iz<=izprev) iz=izprev+1
-        if(iz<=num_range+1) then
-            tmp(iz)=exact_z(izexact)
-        else
-            i=i+1
-            tmp(num_range+1+i)=exact_z(izexact)
+        zcur = exact_z%Item(i) 
+        call full_z%Add(zcur)
+        if(iz<=num_range) then
+            call full_z%Swap(iz,full_z%Count)
+            call full_z%DeleteItem(full_z%Count)
         end if
-        izprev=iz
+        izprev = iz
     end do
-
-    if(tmp(num_range+1+i)< maxz) then
-        i = i+1
-        tmp(num_range+1+i) = maxz
-    end if
-
-    num_power_redshifts = num_range+1+i
+    
+    if(full_z%Item(full_z%Count)< maxz) call full_z%Add(maxz)
+    
+    num_power_redshifts = full_z%Count
     allocate(power_redshifts(num_power_redshifts))
-    power_redshifts= tmp(1:num_power_redshifts)
-
-    deallocate(tmp)
-
+    power_redshifts= full_z%AsArray()
+    call full_z%Clear()
+    call exact_z%Clear()
     call IndexExactRedshifts(power_redshifts)
-
+      
     end subroutine Initialize_PKSettings
 
     subroutine IndexExactRedshifts(A,error)
@@ -369,12 +344,8 @@
     else
         if (has_sigma8 .or. has_LSS) read(i) T%sigma_8
         if (has_LSS) then
-            call InitPK(T)
             read(i) T%num_k, num_z
-            allocate(T%matter_power(T%num_k,num_z))
-            allocate(T%ddmatter_power(T%num_k,num_z))
-            allocate(T%log_kh(T%num_k))
-            allocate(T%redshifts(num_z))
+            call InitPK(T,T%num_k,num_z)
             read(i) T%log_kh
             read(i) T%redshifts
             read(i) T%matter_power
@@ -426,29 +397,26 @@
 
     end subroutine WriteBestFitData
 
-    subroutine InitPK(Theory)
+    subroutine InitPK(Theory, num_k, num_z)
     Type(TheoryPredictions) :: Theory
-    integer i
-
-    deallocate(Theory%log_kh,stat=i)
-    deallocate(Theory%matter_power,stat=i)
-    deallocate(Theory%ddmatter_power,stat=i)
-    deallocate(Theory%nlmatter_power,stat=i)
-    deallocate(Theory%ddnlmatter_power,stat=i)
-    deallocate(Theory%redshifts,stat=i)
-    call PK_Nullify(Theory)
-
+    integer, intent(in) :: num_k, num_z
+    
+    if(allocated(Theory%log_kh))deallocate(Theory%log_kh)
+    if(allocated(Theory%matter_power))deallocate(Theory%matter_power)
+    if(allocated(Theory%ddmatter_power))deallocate(Theory%ddmatter_power)
+    if(allocated(Theory%redshifts))deallocate(Theory%redshifts)
+    allocate(Theory%log_kh(num_k))
+    allocate(Theory%matter_power(num_k,num_z))
+    allocate(Theory%ddmatter_power(num_k,num_z))
+    allocate(Theory%redshifts(num_z))
+    if(use_nonlinear) then
+        if(allocated(Theory%nlmatter_power))deallocate(Theory%nlmatter_power)
+        if(allocated(Theory%ddnlmatter_power))deallocate(Theory%ddnlmatter_power)
+        allocate(Theory%nlmatter_power(num_k,num_z))
+        allocate(Theory%ddnlmatter_power(num_k,num_z))
+    end if
+    
     end subroutine InitPK
-
-    subroutine PK_Nullify(Theory)
-    Type(TheoryPredictions) :: Theory
-
-    nullify(Theory%log_kh)
-    nullify(Theory%ddmatter_power, Theory%nlmatter_power)
-    nullify(Theory%nlmatter_power, Theory%ddnlmatter_power)
-    nullify(Theory%redshifts)
-
-    end subroutine PK_Nullify
 
     subroutine IOTheory_GetNLAndSplines(Theory)
     use Transfer
@@ -480,66 +448,5 @@
     call MatterPowerdata_Free(Cosmo_PK)
 
     end subroutine IOTheory_GetNLAndSplines
-
-    recursive subroutine quick_sort(list)
-    real(mcp), dimension(:), intent(in out) :: list
-    integer :: i, j, n
-    real(mcp) :: chosen, temp
-    integer, parameter :: max_simple_sort_size = 6
-
-    n = size(list)
-    if (n <= max_simple_sort_size) then
-        ! Use interchange sort for small lists
-        call interchange_sort(list)
-    else
-        ! Use partition (“quick”) sort chosen = list(n/2)
-        i=0
-        j=n+1
-        do
-            ! Scan list from left end
-            ! until element >= chosen is found
-            do
-                i=i+1
-                if (list(i) >= chosen) exit
-            end do
-            ! Scan list from right end
-            ! until element <= chosen is found
-            do
-                j=j-1
-                if (list(j) <= chosen) exit
-            end do
-
-            if (i < j) then
-                ! Swap two out of place elements
-                temp = list(i)
-                list(i) = list(j)
-                list(j) = temp
-            else if (i == j) then
-                i=i+1
-                exit
-            else
-                exit
-            end if
-        end do
-        if (1 < j) call quick_sort(list(:j))
-        if (i < n) call quick_sort(list(i:))
-    end if  ! test for small array
-
-    end subroutine quick_sort
-
-    subroutine interchange_sort(list)
-    real(mcp), dimension(:), intent(in out) :: list
-    integer :: i, j
-    real(mcp) :: temp
-    do i = 1, size(list) - 1
-        do j = i + 1, size(list)
-            if (list(i) >  list(j)) then
-                temp = list(i)
-                list(i) = list(j)
-                list(j) = temp
-            end if
-        end do
-    end do
-    end subroutine interchange_sort
 
     end module cmbtypes

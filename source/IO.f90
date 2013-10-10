@@ -115,6 +115,14 @@
     res = FileExists(name)
 
     end function IO_Exists
+    
+    function IO_Size(name) result(fsize)
+    integer fsize
+    character(LEN=*), intent(in)::name
+    
+    inquire(file=name, size=fsize )
+    
+    end function IO_Size
 
     subroutine IO_WriteProposeMatrix(pmat, prop_mat, comment)
     real(mcp) pmat(:,:)

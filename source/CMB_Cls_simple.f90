@@ -332,8 +332,6 @@
     Type(TheoryPredictions) Theory
     Type(MatterTransferData) M
     
-    call InitPK(Theory)
-
     call Theory_GetMatterPowerData(M,Theory,1)
 
     end subroutine SetPkFromCAMB

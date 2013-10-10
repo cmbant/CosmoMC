@@ -217,16 +217,15 @@
 
                 if (PostParams%redo_pk) then
                     Params%Theory%sigma_8 = newTheory%sigma_8
-                    call InitPK(Params%Theory)
-                    !JD = is now => these arrays are now pointers
+                    call InitPK(Params%Theory,newTheory%num_k, size(newTheory%redshifts))
                     Params%Theory%num_k = newTheory%num_k
-                    Params%Theory%log_kh => newTheory%log_kh
-                    Params%Theory%Matter_Power => newTheory%Matter_Power
-                    Params%Theory%ddmatter_power => newTheory%ddmatter_power
-                    Params%Theory%redshifts => newTheory%redshifts
+                    Params%Theory%log_kh = newTheory%log_kh
+                    Params%Theory%Matter_Power = newTheory%Matter_Power
+                    Params%Theory%ddmatter_power = newTheory%ddmatter_power
+                    Params%Theory%redshifts = newTheory%redshifts
                     if(use_nonlinear)then
-                        Params%Theory%nlMatter_Power => newTheory%nlMatter_Power
-                        Params%Theory%ddnlmatter_power => newTheory%ddnlmatter_power
+                        Params%Theory%nlMatter_Power = newTheory%nlMatter_Power
+                        Params%Theory%ddnlmatter_power = newTheory%ddnlmatter_power
                     end if
                 end if
 
