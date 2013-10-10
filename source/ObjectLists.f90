@@ -62,7 +62,7 @@
 
     Type, extends(TObjectList):: TRealCompareList
     contains
-        procedure :: Compare => CompareReal
+    procedure :: Compare => CompareReal
     end Type TRealCompareList
 
     Type, extends(TRealCompareList):: TRealList
