@@ -127,8 +127,8 @@
         try_b = this%H0_min
         call SetForH(Params,CMB,try_b, .true.,error)  !JD for bbn related errors
         if(error/=0)then
-          cmb%H0=0
-          return
+            cmb%H0=0
+            return
         end if 
         D_b = CMBToTheta(CMB)
         try_t = this%H0_max
@@ -231,13 +231,13 @@
         !we are using interpretation where there are degeneracy_factor neutrinos, each exactly thermal
         !So internally 3.046 or 3.046/3 massive neutrnos. But mnu is the physical integer mass sum.
         if (CMB%omnuh2_sterile >0 .and. CMB%nnu < 3.046) then  
-          if(present(error))then
-            error=-1 
-          else 
-            call MpiStop('sterile neutrino mass required Neff>3.046')
-          end if
+            if(present(error))then
+                error=-1 
+            else 
+                call MpiStop('sterile neutrino mass required Neff>3.046')
+            end if
         end if
-        
+
         CMB%omnuh2 = CMB%omnuh2 + CMB%omnuh2_sterile
         CMB%omch2 = Params(2)
         CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
@@ -245,9 +245,9 @@
 
         if (bbn_consistency) then
             if(present(error))then
-              call yp_bbn(CMB%ombh2,CMB%nnu  - 3.046,CMB%YHe,error)
+                call yp_bbn(CMB%ombh2,CMB%nnu  - 3.046,CMB%YHe,error)
             else
-              call yp_bbn(CMB%ombh2,CMB%nnu  - 3.046,CMB%YHe)
+                call yp_bbn(CMB%ombh2,CMB%nnu  - 3.046,CMB%YHe)
             end if
         else
             !e.g. set from free parameter..

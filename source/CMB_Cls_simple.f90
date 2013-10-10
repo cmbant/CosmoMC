@@ -332,8 +332,6 @@
     Type(TheoryPredictions) Theory
     Type(MatterTransferData) M
     
-    call InitPK(Theory)
-
     call Theory_GetMatterPowerData(M,Theory,1)
 
     end subroutine SetPkFromCAMB
@@ -435,8 +433,6 @@
     else
         P%Transfer%kmax = max(0.8,power_kmax)
     end if
-
-    !        if (Use_Lya) P%Transfer%kmax = lya_kmax
 
     if (AccuracyLevel > 1 .or. HighAccuracyDefault) then
         if (USE_LSS .or. get_sigma8) then

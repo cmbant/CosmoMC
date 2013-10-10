@@ -186,6 +186,8 @@
         class is (object_array_pointer)
             if (L%OwnsObjects .and. associated(Point%P)) deallocate(Point%P)
             want_Dealloc = .true.
+        type is (real(kind=list_prec))
+            want_Dealloc = .false.
         end select
         if (want_Dealloc) deallocate(L%Items(i)%P)
     end if
@@ -544,11 +546,17 @@
     subroutine RealAddItem(L, C)
     Class(TRealList) :: L
     class(*), intent(in), target :: C
-    class(*), pointer :: P
+    real(kind=list_prec), pointer :: P
 
     if (L%OwnsObjects) then
-        allocate(P, source=C)
-        call L%TObjectList%AddItem(P)
+        select type (pt=>C)
+        type is (real(kind=list_prec))
+            allocate(P)
+            P=pt
+            call L%TObjectList%AddItem(P)
+            class default
+            stop 'TRealList: only add real'
+        end select
     else
         stop 'TRealList: must have OwnsObjects = .true.'
     end if

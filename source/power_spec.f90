@@ -22,13 +22,8 @@ contains
                 
     Theory%num_k = MTrans%num_q_trans
     nz = num_power_redshifts
-
-    allocate(Theory%matter_power(Theory%num_k,nz))
-    allocate(Theory%ddmatter_power(Theory%num_k,nz))
-    allocate(Theory%nlmatter_power(Theory%num_k,nz))
-    allocate(Theory%ddnlmatter_power(Theory%num_k,nz))
-    allocate(Theory%log_kh(Theory%num_k))
-    allocate(Theory%redshifts(nz))
+    
+    call InitPK(Theory, Theory%num_k,nz)
     
     do zix=1,nz
         call Transfer_GetMatterPowerData(MTrans,Cosmo_PK,1,CP%Transfer%PK_redshifts_index(nz-zix+1))
