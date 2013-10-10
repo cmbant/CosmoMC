@@ -241,17 +241,15 @@
         Threadnum =num_threads
         call CMBToCAMB(CMB, P)
         P%OnlyTransfers = .false.
-
+        
         if (DoPk) then
             P%WantTransfer = .true.
             if (.not. DoCls) then
-                P%WantScalars = .false.
                 P%WantTensors = .false.
             end if
         end if
         if (DoCls) then
             !Assume we just want Cls to higher l
-            P%WantScalars = .true.
             P%WantTensors = compute_tensors
             !!!not OK for non-linear lensing        if (.not. DoPk) P%WantTransfer = .false.
         end if
