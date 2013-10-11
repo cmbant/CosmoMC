@@ -12,7 +12,6 @@ RECOMBINATION ?=recfast
 
 #set EXTDATA=WIGZ to use WiggleZ MPK module
 EXTDATA=
-#WIGZ
 
 #use PRECISION=SINGLE to use single precision
 PRECISION ?=
@@ -110,18 +109,13 @@ endif
 
 SUPERNOVAE = supernovae_Union2.o supernovae_SNLS.o
 
-DATAMODULES = $(PLANCKLIKEFILES) wigglez.o mpk.o bao.o $(SUPERNOVAE) supernovae.o HST.o SDSSLy-a-v3.o
+DATAMODULES = $(PLANCKLIKEFILES) power_spec.o wigglez.o mpk.o bao.o $(SUPERNOVAE) supernovae.o HST.o SDSSLy-a-v3.o
 
 LIKEFILES =  DataLikelihoods.o calclike.o
 
 OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o settings.o samples.o IO.o GeneralTypes.o cmbtypes.o Planck_like.o  \
 	likelihood.o bbn.o $(DATAMODULES) $(CLSFILE) cmbdata.o $(PROPOSE) paramdef.o  $(PARAMETERIZATION) $(LIKEFILES) \
 	EstCovmat.o PowellConstrainedMinimize.o postprocess.o MCMC.o minimize.o driver.o
-
-
-ifeq ($(EXTDATA),WIGZ)
-F90FLAGS += -DWIGZ
-endif
 
 F90CRLINK =
 
@@ -157,8 +151,9 @@ cmbtypes.o: settings.o likelihood.o GeneralTypes.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o
 bbn.o: settings.o likelihood.o
-wigglez.o: cmbtypes.o
-mpk.o: cmbtypes.o
+powerspec.o : cmbtypes.o
+wigglez.o: cmbtypes.o power_spec.o
+mpk.o: cmbtypes.o power_spec.o
 bao.o: cmbtypes.o
 HST.o: cmbtypes.o
 supernovae.o: cmbtypes.o
@@ -207,7 +202,7 @@ cosmomc: camb $(OBJFILES)
 
 
 clean: cleancosmomc
-	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod
+	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod ../camb/libcamb_$(RECOMBINATION).a
 
 cleancosmomc:
 	rm -f *.o *.mod *.d *.pc *.obj ../core

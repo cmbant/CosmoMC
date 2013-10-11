@@ -19,6 +19,7 @@
 module Lya
 use settings
 use cmbtypes
+use powerspec
 use Precision
 implicit none
 

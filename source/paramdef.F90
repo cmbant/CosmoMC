@@ -1040,12 +1040,12 @@
 
     numderived =Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
 
-    allocate(output_array(num_params_used + numderived + num_matter_power ))
+    allocate(output_array(num_params_used + numderived + P%Theory%num_k ))
     output_array(1:num_params_used) =  P%P(params_used)
     output_array(num_params_used+1:num_params_used+numderived) =  derived%P
     deallocate(derived%P)
 
-    output_array(num_params_used+numderived+1:num_params_used+numderived+num_matter_power) = &
+    output_array(num_params_used+numderived+1:num_params_used+numderived+P%Theory%num_k) = &
     P%Theory%matter_power(:,1)
 
     call IO_OutputChainRow(outfile_handle, mult, like, output_array)

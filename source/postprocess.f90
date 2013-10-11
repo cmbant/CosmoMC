@@ -5,10 +5,11 @@
     use settings
     use CMB_Cls
     use CalcLike
+    use powerspec
     implicit none
 
     Type TPostParams
-        logical  redo_like, redo_theory, redo_cls, redo_Pk
+        logical  redo_like, redo_theory, redo_cls, redo_pk
         integer redo_thin
         real(mcp) redo_skip
         character(LEN=Ini_max_string_len) :: redo_datafile, redo_outroot
@@ -45,7 +46,7 @@
     PostParams%redo_like = Ini_Read_Logical('redo_likelihoods')
     PostParams%redo_theory = Ini_read_Logical('redo_theory')
     PostParams%redo_cls= Ini_read_Logical('redo_cls')
-    PostParams%redo_Pk= Ini_read_Logical('redo_pk')
+    PostParams%redo_pk= Ini_read_Logical('redo_pk')
     PostParams%redo_skip = Ini_Read_Double('redo_skip',100.d0)
     PostParams%redo_thin = max(1,Ini_Read_Int('redo_thin',1))
     PostParams%redo_datafile = Ini_Read_String('redo_datafile')
@@ -91,6 +92,7 @@
     logical :: first = .false., has_chain = .true.
     integer last_file_loc,file_loc, file_size
     integer :: at_beginning=0, ierror, num_used
+    integer :: numz, index_error
 
     flush_write = .false.
     weight_min= 1e30_mcp
@@ -215,7 +217,16 @@
 
                 if (PostParams%redo_pk) then
                     Params%Theory%sigma_8 = newTheory%sigma_8
+                    call InitPK(Params%Theory,newTheory%num_k, size(newTheory%redshifts))
+                    Params%Theory%num_k = newTheory%num_k
+                    Params%Theory%log_kh = newTheory%log_kh
                     Params%Theory%Matter_Power = newTheory%Matter_Power
+                    Params%Theory%ddmatter_power = newTheory%ddmatter_power
+                    Params%Theory%redshifts = newTheory%redshifts
+                    if(use_nonlinear)then
+                        Params%Theory%nlMatter_Power = newTheory%nlMatter_Power
+                        Params%Theory%ddnlmatter_power = newTheory%ddnlmatter_power
+                    end if
                 end if
 
                 Params%Theory%derived_parameters = newTheory%derived_parameters
@@ -226,10 +237,28 @@
 
             if (error ==0) then
                 if (PostParams%redo_like .or. PostParams%redo_add) then
-                    if (Use_LSS .and. Params%Theory%sigma_8==0) then
-                        write(*,*) 'ERROR: Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk'
-                        cycle !!!!cycle for now to save checkpointing bug
-                        !                        call MpiStop('Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk.')
+                    if (Use_LSS) then
+                        if(Params%Theory%sigma_8==0) &
+                        call MpiStop('ERROR: Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk')
+
+                        numz = size(Params%Theory%redshifts)
+                        if((power_redshifts(num_power_redshifts)-Params%Theory%redshifts(numz))>1.d-3)then
+                            write(*,*) 'ERROR: Thes elected datasets call for a higher redshift than has been calculated'
+                            write(*,*) '       Use redo_theory and redo_pk'
+                            call MpiStop()
+                        end if
+                        if(num_power_redshifts > numz)then
+                            write(*,*) 'ERROR: The selected datasets call for more redshifts than are calculated'
+                            write(*,*) '       Use redo_theory and redo_pk'
+                            call MpiStop()
+                        end if
+                        index_error =0
+                        call IndexExactRedshifts(Params%Theory%redshifts,index_error)
+                        if(index_error>0)then
+                            write(*,*) 'ERROR: One of the datasets needs an exact redshift that is not present '
+                            write(*,*) '       Use redo_theory and redo_pk'
+                            call MpiStop()
+                        end if
                     end if
                     if (PostParams%redo_add) then
                         truelike = GetLogLikePost(Params, .not. has_likes)

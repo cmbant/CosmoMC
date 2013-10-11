@@ -14,6 +14,7 @@
     use IO
     use ParamNames
     use camb
+    use cmbtypes
     use GaugeInterface, only : Eqns_name
     use DefineParameterization
 
@@ -24,6 +25,7 @@
     logical bad
     integer  i, numtoget, action
     character(LEN=Ini_max_string_len)  numstr, fname
+    character(LEN=Ini_max_string_len) rootdir
     Type(ParamSet) Params, EstParams
     integer file_unit, status
     real(mcp) bestfit_loglike
@@ -143,6 +145,14 @@
     Ini_fail_on_not_found = .true.
 
     baseroot = ReadIniFileName(DefIni,'file_root')
+    if(instance<=1) then
+        write(*,*), 'file_root:'//trim(baseroot)
+    end if
+    if (Ini_HasKey('root_dir')) then
+        !Begin JD modifications for output of filename in output file
+        rootdir = ReadIniFileName(DefIni,'root_dir')
+        baseroot = trim(rootdir)//trim(baseroot)
+    end if
 
     rootname = trim(baseroot)
 
@@ -159,6 +169,7 @@
         new_chains = .not. IO_Exists(trim(rootname) //'.chk')
 #else
         new_chains = .not. IO_Exists(trim(rootname) //'.txt')
+        if(.not. new_chains) new_chains = IO_Size(trim(rootname) //'.txt')<=0
 #endif
     end if
 
@@ -208,7 +219,6 @@
         call InitRandom()
     end if
 
-    use_nonlinear = Ini_Read_Logical('nonlinear_pk',.false.)
     pivot_k = Ini_Read_Real('pivot_k',0.05)
     inflation_consistency = Ini_read_Logical('inflation_consistency',.false.)
     bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
@@ -217,83 +227,85 @@
     call SetDataLikelihoods(DefIni)
     call DataLikelihoods%CheckAllConflicts
 
+    if(use_LSS) call Initialize_PKSettings()
+
     Temperature = Ini_Read_Real('temperature',1.)
 
     num_threads = Ini_Read_Int('num_threads',0)
     !$ if (num_threads /=0) call OMP_SET_NUM_THREADS(num_threads)
 
-    estimate_propose_matrix = Ini_Read_Logical('estimate_propose_matrix',.false.)
-    if (estimate_propose_matrix) then
-        if (Ini_Read_String('propose_matrix') /= '') &
-        call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
-    end if
-    want_minimize = action == action_maxlike .or. action==action_Hessian &
-    .or. action == action_MCMC .and. estimate_propose_matrix .or. &
-    start_at_bestfit .and. new_chains
-
-    Ini_fail_on_not_found = .true.
-
-    numtoget = Ini_Read_Int('samples')
-
-    call SetTheoryParameterization(DefIni, NameMapping)
-    call DataLikelihoods%AddNuisanceParameters(NameMapping)
-    call CMB_Initialize(Params%Info)
-    call InitializeUsedParams(DefIni,Params, action /= action_importance)
-
-    if (want_minimize)  call Minimize_ReadIni(DefIni)
-
-    if (MpiRank==0) then
-        do i=1, DataLikelihoods%Count
-            like => DataLikelihoods%Item(i)
-            if (like%version/='')  call TNameValueList_Add(DefIni%ReadValues, &
-            concat('Compiled_data_',like%name),like%version)
-        end do
-        call TNameValueList_Add(DefIni%ReadValues, 'Compiled_CAMB_version', version)
-        call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Recombination', Recombination_Name)
-        call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Equations', Eqns_name)
-        call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Reionization', Reionization_Name)
-        call TNameValueList_Add(DefIni%ReadValues, 'Compiled_InitialPower', Power_Name)
-        unit = new_file_unit()
-        if (action==action_importance) then
-            call Ini_SaveReadValues(trim(PostParams%redo_outroot) //'.inputparams',unit)
-        else if (action==action_maxlike .or. action==action_Hessian) then
-            call Ini_SaveReadValues(trim(baseroot) //'.minimum.inputparams',unit)
-        else
-            call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
+        estimate_propose_matrix = Ini_Read_Logical('estimate_propose_matrix',.false.)
+        if (estimate_propose_matrix) then
+            if (Ini_Read_String('propose_matrix') /= '') &
+            call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
         end if
-        call ClearFileUnit(unit)
-    end if
+        want_minimize = action == action_maxlike .or. action==action_Hessian &
+        .or. action == action_MCMC .and. estimate_propose_matrix .or. &
+        start_at_bestfit .and. new_chains
 
-    call Ini_Close
+        Ini_fail_on_not_found = .true.
 
-    if (MpiRank==0 .and. action==action_MCMC .and. NameMapping%nnames/=0) then
-        call IO_OutputParamNames(NameMapping,trim(baseroot), params_used, add_derived = .true.)
-        call OutputParamRanges(NameMapping, trim(baseroot)//'.ranges')
-    end if
+        numtoget = Ini_Read_Int('samples')
 
-    call SetIdlePriority !If running on Windows
+        call SetTheoryParameterization(DefIni, NameMapping)
+        call DataLikelihoods%AddNuisanceParameters(NameMapping)
+        call CMB_Initialize(Params%Info)
+        call InitializeUsedParams(DefIni,Params, action /= action_importance)
 
-    if (want_minimize) then
-        !New Powell 2009 minimization, AL Sept 2012, update Sept 2013
-        if (action /= action_MCMC .and. MPIchains>1 .and. .not. minimize_uses_MPI) call DoAbort( &
-        'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
-        if (MpiRank==0) write(*,*) 'finding best fit point...'
-        if (minimize_uses_MPI .or. MpiRank==0) then
-            bestfit_loglike = FindBestFit(Params,is_best_bestfit)
-            if (is_best_bestfit) then
-                if (bestfit_loglike==logZero) write(*,*) MpiRank,'WARNING: FindBestFit did not converge'
-                if (Feedback >0) write(*,*) 'Best-fit results: '
-                call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
-                if (use_CMB) call Params%Theory%WriteBestFitData(trim(baseroot))
-                if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
+        if (want_minimize) call Minimize_ReadIni(DefIni)
+
+        if (MpiRank==0) then
+            do i=1, DataLikelihoods%Count
+                like => DataLikelihoods%Item(i)
+                if (like%version/='')  call TNameValueList_Add(DefIni%ReadValues, &
+                concat('Compiled_data_',like%name),like%version)
+            end do
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_CAMB_version', version)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Recombination', Recombination_Name)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Equations', Eqns_name)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Reionization', Reionization_Name)
+            call TNameValueList_Add(DefIni%ReadValues, 'Compiled_InitialPower', Power_Name)
+            unit = new_file_unit()
+            if (action==action_importance) then
+                call Ini_SaveReadValues(trim(PostParams%redo_outroot) //'.inputparams',unit)
+            else if (action==action_maxlike .or. action==action_Hessian) then
+                call Ini_SaveReadValues(trim(baseroot) //'.minimum.inputparams',unit)
             else
-                if (action==action_maxlike) call DoStop() 
+                call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
             end if
+            call ClearFileUnit(unit)
         end if
+
+        call Ini_Close
+
+        if (MpiRank==0 .and. action==action_MCMC .and. NameMapping%nnames/=0) then
+            call IO_OutputParamNames(NameMapping,trim(baseroot), params_used, add_derived = .true.)
+            call OutputParamRanges(NameMapping, trim(baseroot)//'.ranges')
+        end if
+
+        call SetIdlePriority !If running on Windows
+
+        if (want_minimize) then
+            !New Powell 2009 minimization, AL Sept 2012, update Sept 2013
+            if (action /= action_MCMC .and. MPIchains>1 .and. .not. minimize_uses_MPI) call DoAbort( &
+            'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
+            if (MpiRank==0) write(*,*) 'finding best fit point...'
+            if (minimize_uses_MPI .or. MpiRank==0) then
+                bestfit_loglike = FindBestFit(Params,is_best_bestfit)
+                if (is_best_bestfit) then
+                    if (bestfit_loglike==logZero) write(*,*) MpiRank,'WARNING: FindBestFit did not converge'
+                    if (Feedback >0) write(*,*) 'Best-fit results: '
+                    call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
+                    if (use_CMB) call Params%Theory%WriteBestFitData(trim(baseroot))
+                    if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
+                else
+                    if (action==action_maxlike) call DoStop() 
+                end if
+            end if
 #ifdef MPI
-        if (.not. minimize_uses_MPI) then
-            CALL MPI_Bcast(Params%P, size(Params%P), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror)
-        end if
+            if (.not. minimize_uses_MPI) then
+                CALL MPI_Bcast(Params%P, size(Params%P), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror)
+            end if
 #endif
         Scales%center(1:num_params) = Params%P(1:num_params)
     end if
@@ -316,6 +328,7 @@
 #ifdef MPI
         CALL MPI_Bcast(initial_propose_matrix, size(initial_propose_matrix), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror)
 #endif
+
         call Proposer%SetCovariance(initial_propose_matrix)
     end if
 
@@ -338,12 +351,10 @@
         if (indepfile_handle /=0) call IO_DataCloseWrite(indepfile_handle)
 
         call IO_Close(outfile_handle)
-
     else if (action==action_importance) then
         if (Feedback > 0 .and. MPIRank==0) write (*,*) 'starting post processing'
         call postprocess(rootname)
         call DoStop('Postprocesing done',.false.)
-
     else
         call DoAbort('undefined action')
     end if

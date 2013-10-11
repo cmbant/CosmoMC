@@ -21,25 +21,10 @@
     real(mcp), target :: z_outputs(1) = [0.57_mcp]
 
     !Parameters for calculating/storing the matter power spectrum
-    !Note that by default everything is linear
-
-    !Note these are the interpolated/extrapolated values. The k at which matter power is computed up to
-    !by CAMB is set in CMB_Cls_xxx with, e.g. P%Transfer%kmax = 0.6
-    !Note that none of this probably works with non-linear lensing
-#ifdef WIGZ 
-    !!! Settings for WiggleZ power spectrum.
-    integer, parameter :: num_matter_power = 500 !number of points computed in matter power spectrum
-    real(mcp), parameter    :: matter_power_minkh =  0.999e-4  !minimum value of k/h to store
-    real(mcp), parameter    :: matter_power_dlnkh = 0.024     !log spacing in k/h
-    real(mcp), parameter    :: matter_power_maxz = 1.
-    integer, parameter :: matter_power_lnzsteps = 5  ! z=0 to get sigma8 (this first entry appears to be coded in some spots in the code!!), plus 4 redshift bins.
-#else
-    integer, parameter :: num_matter_power = 74 !number of points computed in matter power spectrum
-    real(mcp), parameter    :: matter_power_minkh =  0.999e-4_mcp  !1e-4 !minimum value of k/h to store
-    real(mcp), parameter    :: matter_power_dlnkh = 0.143911568_mcp     !log spacing in k/h
-    real(mcp), parameter    :: matter_power_maxz = 0._mcp    !6.0
-    integer, parameter :: matter_power_lnzsteps = 1 !20
-#endif
+    real(mcp) :: power_kmax = 0.8
+    integer :: num_power_redshifts
+    real(mcp), dimension(:), allocatable :: power_redshifts
+    integer :: num_matter_power
 
     !Only used in params_CMB
     real(mcp) :: pivot_k = 0.05_mcp !Point for defining primordial power spectra
@@ -66,10 +51,18 @@
     type, extends(DatasetFileLikelihood) :: CosmologyLikelihood
         !Don't have to use extract features of DatasetFileLikelihood
         !not implemented yet..
-        !        logical :: needs_linear_pk = .false.
+
         !        integer :: needs_cl_lmax = 0
         logical :: needs_background_functions = .true.
         logical :: needs_powerspectra = .false.
+
+        logical :: needs_nonlinear_pk = .false.
+        logical :: needs_exact_z = .false.
+        integer :: num_z = 0
+        real(mcp), dimension(:), allocatable :: exact_z
+        integer, dimension(:), allocatable :: exact_z_index
+        real(mcp) :: max_z
+        real(mcp) :: kmax = 0.8
     contains
     end type CosmologyLikelihood
 
@@ -95,15 +88,13 @@
         integer numderived
         real(mcp) derived_parameters(max_derived_parameters)
 
-        real(mcp) matter_power(num_matter_power,matter_power_lnzsteps)
-        !second index is redshifts from 0 to matter_power_maxz
-        !if custom_redshift_steps = false with equal spacing in
-        !log(1+z) and matter_power_lnzsteps points
-        !if custom_redshift_steps = true set in mpk.f90
-
-        !DP Additions
-        !for WiggleZ Power spectrum
-        real(mcp) WiggleZPk(num_matter_power)
+        !everything is a function of k/h
+        integer   ::  num_k
+        real(mcp), dimension(:), allocatable :: log_kh
+        !matpower is log(P_k)
+        real(mcp), dimension(:,:), allocatable :: matter_power, ddmatter_power
+        real(mcp), dimension(:,:), allocatable :: nlmatter_power, ddnlmatter_power
+        real(mcp), dimension(:), allocatable :: redshifts 
 
     contains
     procedure :: WriteTheory
@@ -146,6 +137,129 @@
 
     end subroutine SetTheoryParameterNumbers
 
+    subroutine Initialize_PKSettings()
+    use likelihood
+    use ObjectLists
+    class(DataLikelihood), pointer :: DataLike
+    Type(TRealList) :: exact_z, full_z
+    real(mcp) :: dlnz, maxz, zcur
+    integer :: i,iz,izprev
+    integer :: num_exact, num_range
+    maxz = 0.
+    dlnz = 30.
+
+    call full_z%Add(0.d0)
+
+    do i=1,DataLikelihoods%Count
+        DataLike=>DataLikelihoods%Item(i)
+        select type (DataLike)
+        class is (CosmologyLikelihood)
+            if (DataLike%needs_powerspectra) then
+                power_kmax = max(power_kmax,DataLike%kmax) 
+                use_nonlinear = use_nonlinear .or. DataLike%needs_nonlinear_pk
+                if(DataLike%needs_exact_z) then
+                    call exact_z%AddArrayItems(DataLike%exact_z)
+                else
+                    num_range = DataLike%num_z
+                    maxz = max(maxz,DataLike%max_z)
+                    if(num_range >1 .and. maxz>0) then
+                        dlnz = min(dlnz,log(DataLike%max_z+1)/(num_range-1))
+                    else if(num_range==1 .and. maxz > 0)then
+                        write(*,'("ERROR: ",A," dataset: ",A, "wants only 1 redshift")')&
+                        trim(DataLike%LikelihoodType),trim(DataLike%name)
+                        write(*,'("       but wants a maximum redshift of ",F7.2,".  Check dataset settings!")')maxz
+                        call Mpistop()
+                    else if(num_range>1 .and. maxz==0.)then
+                        write(*,'("ERROR: ",A," dataset: ",A, "wants only ",I0," redshifts")')&
+                        trim(DataLike%LikelihoodType),trim(DataLike%name),num_range
+                        write(*,*)"       but wants a maximum redshift of 0.0.  Check dataset settings!"
+                        call Mpistop()
+                    else
+                        cycle
+                    end if
+                end if
+            end if
+        end select
+    end do
+
+    !Build array of redshifts where the redshift exact value doesn't matter
+    if(maxz>0)then
+        num_range = ceiling(log(maxz+1)/dlnz)
+        dlnz = log(maxz+1)/(num_range)
+        do i=1,num_range
+            zcur = dexp(dlnz*i)-1
+            call full_z%Add(zcur)
+        end do
+    end if
+    num_range = full_z%Count
+
+    !Sort and remove duplicates of exact_z
+    if(exact_z%Count>0)then
+        call exact_z%sort()
+        call exact_z%RemoveDuplicates()
+    end if
+
+    !Add exact redshifts to the full array
+    izprev = 1
+    do i=1, exact_z%count
+        if(exact_z%Item(i)==0.d0) cycle
+        iz = nint(log(exact_z%Item(i)+1)/dlnz)+1
+        if(iz<=izprev) iz=izprev+1
+        zcur = exact_z%Item(i) 
+        call full_z%Add(zcur)
+        if(iz<=num_range) then
+            call full_z%Swap(iz,full_z%Count)
+            call full_z%DeleteItem(full_z%Count)
+        end if
+        izprev = iz
+    end do
+
+    if(full_z%Item(full_z%Count)< maxz) call full_z%Add(maxz)
+
+    num_power_redshifts = full_z%Count
+    allocate(power_redshifts(num_power_redshifts))
+    power_redshifts= full_z%AsArray()
+    call full_z%Clear()
+    call exact_z%Clear()
+    call IndexExactRedshifts(power_redshifts)
+
+    end subroutine Initialize_PKSettings
+
+    subroutine IndexExactRedshifts(A,error)
+    use likelihood
+    class(DataLikelihood), pointer :: DataLike
+    real(mcp), dimension(:) :: A
+    integer, intent(out), optional :: error
+    integer :: i, iz, izprev, numz
+
+    numz = size(A)
+
+    do i=1,DataLikelihoods%Count
+        DataLike=>DataLikelihoods%Item(i)
+        select type (DataLike)
+        class is (CosmologyLikelihood)
+            if (DataLike%needs_powerspectra) then
+                if(DataLike%needs_exact_z) then
+                    DataLike%exact_z_index = 0
+                    do iz=1,DataLike%num_z
+                        izprev=1
+                        do while(abs(DataLike%exact_z(iz)-A(izprev))>1.d-4)
+                            izprev=izprev+1
+                            if(izprev>numz)then
+                                write(*,*) "ERROR, In IndexExactRedshifts: could not find redshift index"
+                                if(present(error))error=1
+                                return
+                            end if
+                        end do
+                        DataLike%exact_z_index(iz) = izprev
+                    end do
+                end if
+            end if
+        end select
+    end do
+
+    end subroutine IndexExactRedshifts
+
     subroutine WriteTheory(T, i)
     integer i
     Class(TheoryPredictions) T
@@ -178,6 +292,9 @@
     if (get_sigma8 .or. use_LSS) write(i) T%sigma_8
 
     if (use_LSS) then
+        write(i) T%num_k, size(T%redshifts)
+        write(i) T%log_kh
+        write(i) T%redshifts
         write(i) T%matter_power
     end if
 
@@ -191,6 +308,9 @@
     logical, save :: has_sigma8, has_LSS, has_tensors
     integer, save :: almax, almaxtensor, anumcls, anumclsext, tmp(1)
     logical, save :: planck1_format
+    real(mcp) old_matterpower(74,1)
+    !JD 10/13 new variables for handling new pk arrays
+    integer :: num_z
 
     if (first) then
         first = .false.
@@ -218,11 +338,19 @@
 
     if (planck1_format) then
         if (has_LSS) then
-            read(i) T%sigma_8, T%matter_power
+            read(i) T%sigma_8, old_matterpower
+            !discard unused mpk array
         end if
     else
         if (has_sigma8 .or. has_LSS) read(i) T%sigma_8
-        if (has_LSS) read(i) T%matter_power
+        if (has_LSS) then
+            read(i) T%num_k, num_z
+            call InitPK(T,T%num_k,num_z)
+            read(i) T%log_kh
+            read(i) T%redshifts
+            read(i) T%matter_power
+            call IOTheory_GetNLAndSplines(T)
+        end if
     end if
 
     end subroutine ReadTheory
@@ -269,107 +397,56 @@
 
     end subroutine WriteBestFitData
 
-    function MatterPowerAt(T,kh)
-    !get matter power spectrum today at kh = k/h by interpolation from stored values
-    real(mcp), intent(in) :: kh
-    Type(TheoryPredictions) T
-    real(mcp) MatterPowerAt
-    real(mcp) x, d
-    integer i
+    subroutine InitPK(Theory, num_k, num_z)
+    Type(TheoryPredictions) :: Theory
+    integer, intent(in) :: num_k, num_z
 
-    x = log(kh/matter_power_minkh) / matter_power_dlnkh
-    if (x < 0 .or. x >= num_matter_power-1) then
-        write (*,*) ' k/h out of bounds in MatterPowerAt (',kh,')'
-        call MpiStop('')
-    end if
-    i = int(x)
-    d = x - i
-    MatterPowerAt = exp(log(T%matter_power(i+1,1))*(1-d) &
-    + log(T%matter_power(i+2,1))*d)
-    !Just do linear interpolation in logs for now..
-    !(since we already cublic-spline interpolated to get the stored values)
-    !Assume matter_power_lnzsteps is at redshift zero
-    end function
-
-
-    function MatterPowerAt_Z(T,kh,z)
-    !get matter power spectrum at z at kh = k/h by interpolation from stored values
-
-    real(mcp), intent(in) :: kh
-    Type(TheoryPredictions) T
-    real(mcp) MatterPowerAt_Z
-    real(mcp) x, d, z, y, dz, mup, mdn
-    real(mcp) matter_power_dlnz
-    integer i, iz
-
-    matter_power_dlnz = log(matter_power_maxz+1) / (matter_power_lnzsteps -1 + 1e-13)
-    y = log(1.+ z) / matter_power_dlnz
-
-    if (z > matter_power_maxz ) then
-        write (*,*) ' z out of bounds in MatterPowerAt_Z (',z,')'
-        call MpiStop('')
-    end if
-    x = log(kh/matter_power_minkh) / matter_power_dlnkh
-    if (x < 0 .or. x >= num_matter_power-1) then
-        write (*,*) ' k/h out of bounds in MatterPowerAt_Z (',kh,')'
-        call MpiStop('')
+    if(allocated(Theory%log_kh))deallocate(Theory%log_kh)
+    if(allocated(Theory%matter_power))deallocate(Theory%matter_power)
+    if(allocated(Theory%ddmatter_power))deallocate(Theory%ddmatter_power)
+    if(allocated(Theory%redshifts))deallocate(Theory%redshifts)
+    allocate(Theory%log_kh(num_k))
+    allocate(Theory%matter_power(num_k,num_z))
+    allocate(Theory%ddmatter_power(num_k,num_z))
+    allocate(Theory%redshifts(num_z))
+    if(use_nonlinear) then
+        if(allocated(Theory%nlmatter_power))deallocate(Theory%nlmatter_power)
+        if(allocated(Theory%ddnlmatter_power))deallocate(Theory%ddnlmatter_power)
+        allocate(Theory%nlmatter_power(num_k,num_z))
+        allocate(Theory%ddnlmatter_power(num_k,num_z))
     end if
 
-    iz = int(y*0.99999999)
-    dz = y - iz
+    end subroutine InitPK
 
-    i = int(x)
-    d = x - i
+    subroutine IOTheory_GetNLAndSplines(Theory)
+    use Transfer
+    Type(TheoryPredictions) Theory
+    Type(MatterPowerData) :: Cosmo_PK
+    integer :: nz, zix
 
-    mup = log(T%matter_power(i+1,iz+2))*(1-d) + log(T%matter_power(i+2,iz+2))*d
-    mdn = log(T%matter_power(i+1,iz+1))*(1-d) + log(T%matter_power(i+2,iz+1))*d
+    Cosmo_PK%num_k = Theory%num_k
+    Cosmo_PK%num_z = 1
+    allocate(Cosmo_PK%matpower(Cosmo_PK%num_k,1))
+    allocate(Cosmo_PK%ddmat(Cosmo_PK%num_k,1))
+    allocate(Cosmo_PK%nonlin_ratio(Cosmo_PK%num_k,1))
+    allocate(Cosmo_PK%log_kh(Cosmo_PK%num_k))
+    allocate(Cosmo_PK%redshifts(1))
+    Cosmo_PK%log_kh = Theory%log_kh
 
-    MatterPowerAt_Z = exp(mdn*(1-dz) + mup*dz)
+    do zix=1, size(Theory%redshifts)
+        Cosmo_PK%redshifts(1) = Theory%redshifts(zix)
+        Cosmo_PK%matpower(:,1) = Theory%matter_power(:,zix)
+        call MatterPowerdata_getsplines(Cosmo_PK)
+        Theory%ddmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
+        if(use_nonlinear) then
+            call MatterPowerdata_MakeNonlinear(Cosmo_PK)
+            Theory%nlmatter_power(:,zix) = Cosmo_PK%matpower(:,1)
+            Theory%ddnlmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
+        end if
+    end do
 
-    end function MatterPowerAt_Z
+    call MatterPowerdata_Free(Cosmo_PK)
 
-    !DP Additions for WiggleZ MPK    
-    function MatterPowerAt_zbin(T,kh,iz)
-    !get matter power spectrum in zbin, iz, at kh = k/h by interpolation from stored values
-    real(mcp), intent(in) :: kh
-    Type(TheoryPredictions) T
-    real(mcp) MatterPowerAt_zbin
-    real(mcp) x, d
-    integer i,iz
-
-    x = log(kh/matter_power_minkh) / matter_power_dlnkh
-    if (x < 0 .or. x >= num_matter_power-1) then
-        write (*,*) ' k/h out of bounds in MatterPowerAt_zbin (',kh,')'
-        stop 
-    end if
-    i = int(x)
-    d = x - i
-    MatterPowerAt_zbin = exp(log(T%matter_power(i+1,iz))*(1-d) &
-    + log(T%matter_power(i+2,iz))*d)
-    !Just do linear interpolation in logs for now..
-    !(since we already cublic-spline interpolated to get the stored values)
-    !Assume matter_power_lnzsteps is at redshift zero
-    end function MatterPowerAt_zbin
-
-    function WiggleZPowerAt(T,kh)
-    !get LRG matter power spectrum today at kh = k/h by interpolation from stored values
-    real(mcp), intent(in) :: kh
-    Type(TheoryPredictions) T
-    real(mcp) WiggleZPowerAt
-    real(mcp) x, d
-    integer i
-
-    x = log(kh/matter_power_minkh) / matter_power_dlnkh
-    if (x < 0 .or. x >= num_matter_power-1) then
-        write (*,*) ' k/h out of bounds in WiggleZPowerAt (',kh,')'
-        call MpiStop('') 
-    end if
-    i = int(x)
-    d = x - i
-    WiggleZPowerAt = exp(log(T%WiggleZPk(i+1))*(1-d) + log(T%WiggleZPk(i+2))*d)
-    !Just do linear interpolation in logs for now..
-    !(since we already cublic-spline interpolated to get the stored values)
-    end function
-    !End DP Additions for WiggleZ MPK
+    end subroutine IOTheory_GetNLAndSplines
 
     end module cmbtypes

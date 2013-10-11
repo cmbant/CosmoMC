@@ -23,6 +23,7 @@
     module wigglezinfo
     !David Parkinson 12th March 2012
     use settings
+    use powerspec
     use cmbtypes
     use Precision
     !use CMB_Cls
@@ -30,19 +31,22 @@
     implicit none
 
     logical :: use_wigglez_mpk = .false.  !DP for WiggleZ MPK
-
-    integer, dimension(4) :: izwigglez
     real(dl), parameter :: z0 = 0.d0, za = 0.22d0, zb = 0.41d0, zc = 0.6d0, zd = 0.78d0
-
     real(dl), dimension(4) :: zeval, zweight, sigma2BAOfid, sigma2BAO
 
+    !settings power spectra evaluated at GiggleZ fiducial cosmological theory
+    integer, parameter :: gigglez_num_matter_power = 500
+    real(mcp), parameter :: gigglez_minkh =  0.999e-4
+    real(mcp), parameter :: gigglez_dlnkh =  0.024
     !power spectra evaluated at GiggleZ fiducial cosmological theory
-    real, dimension(num_matter_power,4) :: power_hf_fid
+    real(mcp), dimension(gigglez_num_matter_power,4) :: power_hf_fid
+    !for GiggleZ adjusted WiggleZ Power spectrum
+    real(mcp), dimension(gigglez_num_matter_power) :: WiggleZPk
     contains
 
     subroutine GiggleZinfo_init(redshift)
     integer :: iopb, i, ios, iz
-    real(dl) :: kval, power_nl
+    real(mcp) :: kval, power_nl
     real(mcp) redshift
     logical save
 
@@ -66,7 +70,7 @@
         call MpiStop('could not indentify redshift')
     endif
 
-    do i = 1, num_matter_power
+    do i = 1, gigglez_num_matter_power
         read (tmp_file_unit,*,iostat=iopb) kval, power_nl
         power_hf_fid(i,iz) = power_nl
     end do
@@ -99,38 +103,54 @@
 
     end subroutine GiggleZtoICsmooth
 
-    subroutine fill_GiggleZTheory(Theory, minkh, dlnkh,z)
+    subroutine fill_GiggleZTheory(Theory,zbin)
     Type(TheoryPredictions) Theory
-    real(mcp), intent(in) :: minkh, dlnkh
-    real(mcp), intent(in) :: z
-    real(mcp) :: logmink, xi, kval, expval,  nlrat
+    integer, intent(in) :: zbin
+    real(mcp) :: logmink, xi, kval
     real(mcp), dimension(4) :: fidpolys
-    real(mcp) y, dz, matter_power_dlnz
     real(mcp) pk_hf, holdval
-    integer :: i,iz, iz2, ik
-    character(len=32) fname
-    logmink = log(minkh)
+    integer :: i,iz,ik
 
     iz = 0
     do i=1,4
-        if(abs(z-zeval(i)).le.0.001) iz = i
-    enddo
-
-    do ik=1,num_matter_power
-        xi = logmink + dlnkh*(ik-1)
-        kval = exp(xi)
-        Theory%WiggleZPk(ik) = 0.
-        pk_hf = Theory%matter_power(ik,izwigglez(iz))
-
+        if(abs(Theory%redshifts(zbin)-zeval(i)).le.0.001) iz = i
+    end do
+    
+    WiggleZPk = 0.
+    
+    do ik=1,gigglez_num_matter_power
+        xi = log(gigglez_minkh) + gigglez_dlnkh*(ik-1)
+        kval = exp(xi)        
+        pk_hf = MatterPowerAt_zbin(Theory,kval,zbin,.true.)
+        
         call GiggleZtoICsmooth(kval,fidpolys)
-
+        
         holdval = pk_hf*fidpolys(iz)/power_hf_fid(ik,iz)
 
-        Theory%WiggleZPk(ik) = Theory%WiggleZPk(ik) + holdval
+        WiggleZPk(ik) = WiggleZPk(ik) + holdval
     end do
 
     end subroutine fill_GiggleZTheory
+    
+    function WiggleZPowerAt(kh)
+    !get WiggleZ matter power spectrum today at kh = k/h by interpolation from stored values
+    real(mcp), intent(in) :: kh
+    real(mcp) WiggleZPowerAt
+    real(mcp) x, d
+    integer i
 
+    x = log(kh/gigglez_minkh)/gigglez_dlnkh
+    if (x < 0 .or. x >= gigglez_num_matter_power-1) then
+        write (*,*) ' k/h out of bounds in WiggleZPowerAt (',kh,')'
+        call MpiStop('') 
+    end if
+        
+    i = int(x)
+    d = x - i
+    WiggleZPowerAt = exp(log(WiggleZPk(i+1))*(1-d) + log(WiggleZPk(i+2))*d)
+    !Just do linear interpolation in logs for now..
+    !(since we already cublic-spline interpolated to get the stored values)
+    end function WiggleZPowerAt
 
     end module wigglezinfo
 
@@ -140,6 +160,7 @@
     use settings
     use cmbtypes
     use likelihood
+    use powerspec
     use wigglezinfo
     implicit none
 
@@ -186,11 +207,14 @@
 
     logical :: use_scaling !as SDSS_lrgDR3 !JD 09/13 now using CAMB functions for a_scl
 
-    logical use_gigglez
+    logical :: use_gigglez = .false.
+    logical :: nonlinear_wigglez = .false.
 
     !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
     logical :: Q_marge, Q_flat
     real(mcp):: Q_mid, Q_sigma, Ag
+    
+    
 
     contains
 
@@ -208,16 +232,19 @@
     if(.not. use_wigglez_mpk) return
 
     use_gigglez = Ini_Read_Logical('Use_gigglez',.false.)
-
+    nonlinear_wigglez = Ini_Read_Logical('nonlinear_wigglez',.false.)
+    
     call WiggleZCommon%ReadDatasetFile(ReadIniFileName(Ini,'wigglez_common_dataset'))
     WiggleZCommon%LikelihoodType = 'MPK'
 
     nummpksets = Ini_Read_Int('mpk_wigglez_numdatasets',0)
     do i= 1, nummpksets
         allocate(like)
-        call like%ReadDatasetFile(ReadIniFileName(Ini,numcat('wigglez_dataset',i)))
         like%LikelihoodType = 'MPK'
         like%needs_powerspectra = .true.
+        like%needs_exact_z = .true.
+        like%num_z = 1
+        call like%ReadDatasetFile(ReadIniFileName(Ini,numcat('wigglez_dataset',i)))
         like%CommonData=> WiggleZCommon
         call LikeList%Add(like)
     end do
@@ -292,14 +319,14 @@
     num_mpk_kbands_use = max_mpk_kbands_use - min_mpk_kbands_use +1
 
     use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
-
-    if(use_gigglez .and. (.not. use_nonlinear)) then
+    
+    if(use_gigglez .and. .not. nonlinear_wigglez) then
         write(*,*) 'ERROR!:  GiggleZ non-linear prescription only available'
-        write(*,*) '         when setting nonlinear_pk = T in MPK.ini'
+        write(*,*) '         when setting nonlinear_wigglez = T in WiggleZ_MPK.ini'
         call MPIstop()
     end if
 
-    if(.not. use_gigglez .and. use_nonlinear)then
+    if(.not. use_gigglez .and. nonlinear_pk)then
         write(*,*)'WARNING! Using non-linear model in WiggleZ module without'
         write(*,*)'GiggleZ prescription.  This method may not be as accurate.'
         write(*,*)'See arXiv:1210.2130 for details.'
@@ -338,13 +365,11 @@
 
     iopb = 0
 
-#ifndef WIGZ
-    call MpiStop('mpk: edit makefile to have "EXTDATA = WIGZ" to inlude WiggleZ data')
-#endif
-
-
-    like%redshift = Ini_Read_Double_File(Ini,'redshift',0.d0)
-    if(like%redshift.eq.0.0) then
+    allocate(like%exact_z(like%num_z))
+    allocate(like%exact_z_index(like%num_z))
+    like%exact_z(1) = Ini_Read_Double_File(Ini,'redshift',0.d0)
+    
+    if(like%exact_z(1).eq.0.0) then
         call MpiStop('mpk: failed  to read in WiggleZ redshift')
     end if
 
@@ -365,10 +390,10 @@
         write(*,*) 'reading: '//trim(like%name)//' data'
         write(*,*) 'Using kbands windows between',real(like%mpk_k(1)),' < k/h < ',real(like%mpk_k(num_mpk_kbands_use))
     endif
-    if  (like%mpk_k(1) < matter_power_minkh) then
-        write (*,*) 'WARNING: k_min in '//trim(like%name)//'less than setting in cmbtypes.f90'
-        write (*,*) 'all k<matter_power_minkh will be set to matter_power_minkh'
-    end if
+    !if  (like%mpk_k(1) < matter_power_minkh) then
+    !    write (*,*) 'WARNING: k_min in '//trim(like%name)//'less than setting in cmbtypes.f90'
+    !    write (*,*) 'all k<matter_power_minkh will be set to matter_power_minkh'
+    !end if
 
     measurements_file  = ReadIniFileName(Ini,'measurements_file')
     call OpenTxtFile(measurements_file, tmp_file_unit)
@@ -447,10 +472,6 @@
         nullify(like%mpk_invcov)
     end if
 
-    if (iopb.ne.0) then
-        stop 'Error reading WiggleZ mpk file'
-    endif
-
     !JD 09/13 Read in fiducial D_V for use when calculating a_scl
     if(use_scaling) then
         like%DV_fid = Ini_Read_Double_File(Ini,'DV_fid',-1.d0)
@@ -462,12 +483,21 @@
         end if
     end if
 
-
     if(use_gigglez) then
-        call GiggleZinfo_init(like%redshift)
+        call GiggleZinfo_init(like%exact_z(1))
     endif
+    
+    like%kmax = 0.8
+    if(nonlinear_wigglez) then
+        like%needs_nonlinear_pk = .true.
+        like%kmax=1.2
+    end if
 
     if (Feedback > 1) write(*,*) 'read: '//trim(like%name)//' data'
+    
+    if (iopb.ne.0) then
+        stop 'Error reading WiggleZ mpk file'
+    endif
 
     end subroutine WiggleZ_ReadIni
 
@@ -481,8 +511,6 @@
     integer j,k,i_region
     real(mcp) tmp
     character(LEN=64) dummychar
-
-
 
     if (Feedback > 1) write(*,*) 'reading: '//trim(aname)
     call OpenTxtFile(aname, tmp_file_unit)
@@ -559,7 +587,7 @@
         return
     end if
 
-    z = 1.d0*dble(like%redshift) ! accuracy issues
+    z = 1.d0*dble(like%exact_z(1)) ! accuracy issues
 
     !JD 09/13 new compute_scaling_factor functions
     if(use_scaling) then
@@ -574,18 +602,26 @@
     enddo
     if(iz.eq.0) call MpiStop('could not indentify redshift')
 
+    if(abs(z-Theory%redshifts(like%exact_z_index(1)))>1.d-3)then
+        write(*,*)'ERROR: WiggleZ redshift does not match the value stored'
+        write(*,*)'       in the Theory%redshifts array.'
+        call MpiStop()
+    end if
+
     if(use_gigglez) then
-        call fill_GiggleZTheory(Theory,matter_power_minkh,matter_power_dlnkh,z)
+        call fill_GiggleZTheory(Theory, like%exact_z_index(1))
     endif
 
     do i=1, num_mpk_kbands_use
         ! It could be that when we scale the k-values, the lowest bin drops off the bottom edge
         !Errors from using matter_power_minkh at lower end should be negligible
-        k_scaled(i)=max(matter_power_minkh,like%mpk_k(i)*a_scl)
+        k_scaled(i)=max(exp(Theory%log_kh(1)),like%mpk_k(i)*a_scl)
         if(use_gigglez) then
-            mpk_lin(i) = WiggleZPowerAt(Theory,k_scaled(i))/a_scl**3
+            mpk_lin(i) = WiggleZPowerAt(k_scaled(i))/a_scl**3
+        else if(nonlinear_wigglez)then    
+            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
         else
-            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),izwigglez(iz))/a_scl**3
+            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1))/a_scl**3
         endif
     end do
 
