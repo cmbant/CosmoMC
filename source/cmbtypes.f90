@@ -147,9 +147,9 @@
     integer :: num_exact, num_range
     maxz = 0.
     dlnz = 30.
-    
+
     call full_z%Add(0.d0)
-    
+
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
         select type (DataLike)
@@ -181,7 +181,7 @@
             end if
         end select
     end do
-    
+
     !Build array of redshifts where the redshift exact value doesn't matter
     if(maxz>0)then
         num_range = ceiling(log(maxz+1)/dlnz)
@@ -192,13 +192,13 @@
         end do
     end if
     num_range = full_z%Count
-    
+
     !Sort and remove duplicates of exact_z
     if(exact_z%Count>0)then
         call exact_z%sort()
         call exact_z%RemoveDuplicates()
     end if
-       
+
     !Add exact redshifts to the full array
     izprev = 1
     do i=1, exact_z%count
@@ -213,16 +213,16 @@
         end if
         izprev = iz
     end do
-    
+
     if(full_z%Item(full_z%Count)< maxz) call full_z%Add(maxz)
-    
+
     num_power_redshifts = full_z%Count
     allocate(power_redshifts(num_power_redshifts))
     power_redshifts= full_z%AsArray()
     call full_z%Clear()
     call exact_z%Clear()
     call IndexExactRedshifts(power_redshifts)
-      
+
     end subroutine Initialize_PKSettings
 
     subroutine IndexExactRedshifts(A,error)
@@ -400,7 +400,7 @@
     subroutine InitPK(Theory, num_k, num_z)
     Type(TheoryPredictions) :: Theory
     integer, intent(in) :: num_k, num_z
-    
+
     if(allocated(Theory%log_kh))deallocate(Theory%log_kh)
     if(allocated(Theory%matter_power))deallocate(Theory%matter_power)
     if(allocated(Theory%ddmatter_power))deallocate(Theory%ddmatter_power)
@@ -415,7 +415,7 @@
         allocate(Theory%nlmatter_power(num_k,num_z))
         allocate(Theory%ddnlmatter_power(num_k,num_z))
     end if
-    
+
     end subroutine InitPK
 
     subroutine IOTheory_GetNLAndSplines(Theory)

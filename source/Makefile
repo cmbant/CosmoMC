@@ -202,7 +202,7 @@ cosmomc: camb $(OBJFILES)
 
 
 clean: cleancosmomc
-	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod
+	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod ../camb/libcamb_$(RECOMBINATION).a
 
 cleancosmomc:
 	rm -f *.o *.mod *.d *.pc *.obj ../core

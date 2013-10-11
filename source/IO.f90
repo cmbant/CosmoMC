@@ -8,10 +8,7 @@
     use MatrixUtils
     implicit none
 
-
-
     contains
-
 
     subroutine IO_Ini_Load(Ini,InputFile, bad)
     use IniFile
@@ -34,12 +31,10 @@
     if (.not. present(OK)) then
         call OpenTxtFile(name,handle)
     else
-
-    open(unit=handle,file=name,form='formatted',status='old', err=28)
-    OK=.true.
-    return
-28  OK=.false.
-
+        open(unit=handle,file=name,form='formatted',status='old', err=28)
+        OK=.true.
+        return
+28      OK=.false.
     endif
 
     end function IO_OpenChainForRead
@@ -115,13 +110,13 @@
     res = FileExists(name)
 
     end function IO_Exists
-    
+
     function IO_Size(name) result(fsize)
     integer fsize
     character(LEN=*), intent(in)::name
-    
+
     inquire(file=name, size=fsize )
-    
+
     end function IO_Size
 
     subroutine IO_WriteProposeMatrix(pmat, prop_mat, comment)
@@ -438,7 +433,6 @@
         coldata(1:ncols, nrows) = invars(1:ncols)
         nrows = nrows + 1
         if (nrows > max_rows) stop 'need to increase max_rows'
-
     end do
 
     end function IO_ReadChainRows

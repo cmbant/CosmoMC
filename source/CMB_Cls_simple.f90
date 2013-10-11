@@ -191,7 +191,7 @@
     integer error
     Type(ParamSetInfo) Info
     Type(TheoryPredictions) Theory
-    
+
     call SetCAMBInitPower(Info%Transfers%Params,CMB,1)
     call CAMB_TransfersToPowers(Info%Transfers)
     !this sets slow CAMB params correctly from value stored in Transfers
@@ -201,24 +201,24 @@
     end if
     !JD 08/13 added so we dont have to fill Cls unless using CMB
     if(use_CMB)then 
-    call SetPowersFromCAMB(Theory)
+        call SetPowersFromCAMB(Theory)
 
-    if (any(Theory%cl(:,1) < 0 )) then
-        error = 1 
-        return
-        !call MpiStop('CMB_cls_simple: negative C_l (could set error here)')
-      end if
+        if (any(Theory%cl(:,1) < 0 )) then
+            error = 1 
+            return
+            !call MpiStop('CMB_cls_simple: negative C_l (could set error here)')
+        end if
     else
-      Theory%cl(:,:)=0
+        Theory%cl(:,:)=0
     end if
-    
+
     !redshifts are in increasing order, so last index is redshift zero
     if (Use_LSS .or. get_sigma8) then
         Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(size(Info%Transfers%MTrans%sigma_8,1),1)
     else
         Theory%sigma_8 = 0
     end if
-   
+
     if (Use_LSS) then
         call SetPkFromCAMB(Theory,Info%Transfers%MTrans)
     end if
@@ -241,17 +241,15 @@
         Threadnum =num_threads
         call CMBToCAMB(CMB, P)
         P%OnlyTransfers = .false.
-
+        
         if (DoPk) then
             P%WantTransfer = .true.
             if (.not. DoCls) then
-                P%WantScalars = .false.
                 P%WantTensors = .false.
             end if
         end if
         if (DoCls) then
             !Assume we just want Cls to higher l
-            P%WantScalars = .true.
             P%WantTensors = compute_tensors
             !!!not OK for non-linear lensing        if (.not. DoPk) P%WantTransfer = .false.
         end if
@@ -264,7 +262,10 @@
     end if
     if (error==0) then
         if (DoCls) call SetPowersFromCAMB(Theory)
-        if (DoPk) call SetPkFromCAMB(Theory,MT)
+        if (DoPK) then
+            Theory%sigma_8 = MT%sigma_8(size(MT%sigma_8,1),1)
+            call SetPkFromCAMB(Theory,MT)
+        end if
         call SetDerived(Theory)
     end if
     end subroutine GetTheoryForImportance
@@ -331,7 +332,7 @@
     use camb, only : MatterTransferData
     Type(TheoryPredictions) Theory
     Type(MatterTransferData) M
-    
+
     call Theory_GetMatterPowerData(M,Theory,1)
 
     end subroutine SetPkFromCAMB
@@ -479,7 +480,7 @@
         !k_etamax=18000 give c_phi_phi accurate to sub-percent at L=1000, <4% at L=2000
         !k_etamax=10000 is just < 1% at L<=500
     end if
-!JD 08/13 for nonlinear lensing of CMB + LSS compatibility
+    !JD 08/13 for nonlinear lensing of CMB + LSS compatibility
     if (CMB_Lensing .and. use_nonlinear_lensing) then
         P%WantTransfer = .true.
         P%NonLinear = NonLinear_lens
@@ -487,7 +488,7 @@
         if(use_nonlinear) P%NonLinear = NonLinear_both
     end if
     call Transfer_SortAndIndexRedshifts(P%Transfer)
-!End JD modifications
+    !End JD modifications
     lensing_includes_tensors = .false.
 
     P%Scalar_initial_condition = initial_vector
@@ -567,7 +568,7 @@
     Info%validInfo = .false.
 
     end subroutine
-    
+
     subroutine CMB_Initialize(Info)
     Type(ParamSetInfo) Info
     type(CAMBParams)  P
