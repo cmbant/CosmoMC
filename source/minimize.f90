@@ -319,8 +319,11 @@
         bestfit_loglikes, 1,  MPI_real_mcp, MPI_COMM_WORLD, ierror)
         if (MpiRank==0 .and. MPIChains>1) then
             print *,'synched bestfits:', bestfit_loglikes
-            if (maxval(bestfit_loglikes)-minval(bestfit_loglikes) >1) &
-            print *,'WARNING: big spread in log-likes'
+            if (maxval(bestfit_loglikes)-minval(bestfit_loglikes) >1) then
+                print *,'WARNING: big spread in log-likes'
+            elseif (maxval(bestfit_loglikes)-minval(bestfit_loglikes) >0.2) then
+                print *,'WARNING: modest big spread in log-likes'
+            end if
         end if
         is_best_bestfit = minval(bestfit_loglikes)==best_like
         deallocate(bestfit_loglikes)

@@ -205,8 +205,8 @@
 
         if (any(Theory%cl(:,1) < 0 )) then
             error = 1 
+            call MpiStop('CMB_cls_simple: negative C_l (could edit to silent error here)')
             return
-            !call MpiStop('CMB_cls_simple: negative C_l (could set error here)')
         end if
     else
         Theory%cl(:,:)=0
