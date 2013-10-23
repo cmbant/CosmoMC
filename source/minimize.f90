@@ -262,7 +262,8 @@
             deallocate(minimize_indices,minimize_indices_used)
         end if
         !Only finish if sanity check passes
-        if (abs(last_like - best_like) < minimize_loglike_tolerance*2 .or. minimize_mcmc_refine_num>0) exit
+        if (abs(last_like - best_like) < minimize_loglike_tolerance*2 .or. &
+         minimize_mcmc_refine_num>0 .and. abs(last_like - best_like) < 0.5) exit
     end do
 
     call AcceptReject(.true.,Params%Info, MinParams%Info)
