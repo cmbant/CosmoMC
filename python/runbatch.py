@@ -30,6 +30,7 @@ if args.minimize:
 
 if args.importance is None: args.noimportance = True
 
+isMinimize = args.importance_minimize or args.minimize
 
 def submitJob(ini):
         command = 'perl ' + args.script + ' ' + ini + ' ' + str(args.nodes)
@@ -39,8 +40,8 @@ def submitJob(ini):
         else: print '...' + command
 
 for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
-        if (not args.notexist or (args.importance_minimize or args.minimize) and not jobItem.chainMinimumExists()
-       or not args.importance_minimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged()):
+        if (not args.notexist or isMinimize and not jobItem.chainMinimumExists()
+       or not isMinimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged()):
             if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
                 if not args.checkpoint_run or jobItem.wantCheckpointContinue() and jobItem.notRunning():
                     if not args.importance_ready or not jobItem.isImportanceJob or jobItem.parent.chainFinished():
