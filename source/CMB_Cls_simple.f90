@@ -557,7 +557,7 @@
 
     if (L<lmax) call MpiStop('highL_theory_cl_template does not go to lmax')
     if (num_cls_ext>0 .and. MpiRank==0) &
-    write(*,*) 'WARNING: zero padding ext cls in LoadFiducialHighLTemplate'
+    write(*,*) 'warning: zero padding ext cls in LoadFiducialHighLTemplate'
 
     end subroutine LoadFiducialHighLTemplate
 
