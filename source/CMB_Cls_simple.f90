@@ -258,7 +258,9 @@
             !!!not OK for non-linear lensing        if (.not. DoPk) P%WantTransfer = .false.
         end if
 
+        if (CAMB_timing) call Timer()
         call CAMB_GetResults(P)
+        if (CAMB_timing) call Timer('CAMB_GetResults')
 
         error = global_error_flag !using error optional parameter gives seg faults on SGI
     else
