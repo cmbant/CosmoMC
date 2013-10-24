@@ -263,7 +263,7 @@
         end if
         !Only finish if sanity check passes
         if (abs(last_like - best_like) < minimize_loglike_tolerance*2 .or. &
-         minimize_mcmc_refine_num>0 .and. abs(last_like - best_like) < 0.5) exit
+         minimize_mcmc_refine_num>0 .and. abs(last_like - best_like) < max(minimize_loglike_tolerance,0.5_mcp)) exit
     end do
 
     call AcceptReject(.true.,Params%Info, MinParams%Info)
@@ -323,7 +323,7 @@
             if (maxval(bestfit_loglikes)-minval(bestfit_loglikes) >1) then
                 print *,'WARNING: big spread in log-likes'
             elseif (maxval(bestfit_loglikes)-minval(bestfit_loglikes) >0.2) then
-                print *,'WARNING: modest big spread in log-likes'
+                print *,'WARNING: modest spread in log-likes'
             end if
         end if
         is_best_bestfit = minval(bestfit_loglikes)==best_like

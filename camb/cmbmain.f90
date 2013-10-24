@@ -401,9 +401,7 @@
 
     call Init_Limber(ThisCT)
 
-    if (num_redshiftwindows==0 .and. limber_phiphi==0) then
-        return
-    end if
+    if (num_redshiftwindows==0 .and. limber_phiphi==0) return
 
     if (ThisCT%ls%l(ThisCT%ls%l0) > 5000) then
         max_bessels_l_index = lvalues_indexOf(ThisCT%ls,5000)
@@ -967,7 +965,7 @@
         tauend=TimeSteps%points(j)
 
         if (.not. DebugEvolution .and. (EV%q*tauend > max_etak_scalar .and. tauend > taurend) &
-        .and. .not. CP%Dolensing .and. (.not.CP%WantTransfer.or.tau > tautf(CP%Transfer%num_redshifts))) then
+        .and. .not. WantLateTime .and. (.not.CP%WantTransfer.or.tau > tautf(CP%Transfer%num_redshifts))) then
             Src(EV%q_ix,1:SourceNum,j)=0
         else
             !Integrate over time, calulate end point derivs and calc output
@@ -1342,7 +1340,7 @@
         end if
 
         if (CP%WantScalars) then
-            if ((DebugEvolution .or. CP%Dolensing .or. IV%q*TimeSteps%points(i) < max_etak_scalar) &
+            if ((DebugEvolution .or. WantLateTime .or. IV%q*TimeSteps%points(i) < max_etak_scalar) &
             .and. xf > 1.e-8_dl) then
                 step=i
                 IV%Source_q(i,1:SourceNum)=a0*Src(klo,1:SourceNum,i)+ &
@@ -2150,8 +2148,7 @@
                                 if (w_ix == 2) Delta1=Delta1*ctnorm
 
                                 do w_ix2=1,3 + num_redshiftwindows
-                                    if ((w_ix2>3 .or. limber_phiphi>0 .and. w_ix2==3) .and. &
-                                    (w_ix>3 .or. limber_phiphi>0 .and. w_ix==3)) then
+                                    if (w_ix2>= 3.and. w_ix>=3) then
                                         !Skip if the auto or cross-correlation is included in direct Limber result
                                         !Otherwise we need to include the sources e.g. to get counts-Temperature correct
                                         if (CTrans%limber_l_min(w_ix2)/= 0 .and. j>=CTrans%limber_l_min(w_ix2) &

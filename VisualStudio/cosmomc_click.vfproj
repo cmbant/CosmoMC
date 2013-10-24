@@ -52,7 +52,8 @@
 		<File RelativePath="..\source\bbn.f90"/>
 		<File RelativePath="..\source\CMB_Cls_simple.f90"/>
 		<File RelativePath="..\source\cmbtypes.f90"/>
-		<File RelativePath="..\source\params_CMB.f90"/></Filter>
+		<File RelativePath="..\source\params_CMB.f90"/>
+		<File RelativePath="..\source\power_spec.f90"/></Filter>
 		<Filter Name="Likelihoods">
 		<File RelativePath="..\source\bao.f90"/>
 		<File RelativePath="..\source\cliklike_CamSpec.f90"/>

@@ -82,19 +82,10 @@
 
     logical    :: MPI_StartSliceSampling = .false.
 
-    integer,parameter :: time_dp = KIND(1.d0)
     real(time_dp) ::  MPI_StartTime
 
     real(mcp), private, allocatable, dimension(:,:) :: MPICovmat
     logical :: StartCovMat = .false.
-
-#ifdef MPI
-#ifdef SINGLE
-    integer, parameter :: MPI_real_mcp = MPI_REAL
-#else
-    integer, parameter :: MPI_real_mcp = MPI_DOUBLE_PRECISION
-#endif
-#endif
 
     contains
 
@@ -139,44 +130,6 @@
     stop
     end subroutine DoStop
 
-    function TimerTime()
-    real(mcp) time
-    real(time_dp) :: TimerTime
-#ifdef MPI
-    TimerTime = MPI_WTime()
-#else
-    call cpu_time(time)
-    TimerTime=  time
-#endif
-    end function TimerTime
-
-    subroutine Timer(Msg)
-    character(LEN=*), intent(in), optional :: Msg
-    real(time_dp), save :: timer_start
-
-    if (present(Msg)) then
-        write (*,*) trim(Msg)//': ', TimerTime() - timer_start
-    end if
-    timer_start= TimerTime()
-
-    end subroutine Timer
-
-    subroutine DoAbort(S)
-
-    character(LEN=*), intent(in), optional :: S
-#ifdef MPI
-    integer ierror
-#endif
-    if (present(S)) write (*,*) trim(S)
-#ifdef MPI
-    call MPI_Abort(MPI_COMM_WORLD,ierror,ierror)
-#endif
-
-#ifdef DECONLY
-    pause
-#endif
-    stop
-    end subroutine DoAbort
 
     subroutine ParamError(str,param)
     character(LEN=*), intent(in) :: str

@@ -17,6 +17,15 @@
 #else
     integer, parameter :: mcp= KIND(1.d0)
 #endif
+#ifdef MPI
+#ifdef SINGLE
+    integer, parameter :: MPI_real_mcp = MPI_REAL
+#else
+    integer, parameter :: MPI_real_mcp = MPI_DOUBLE_PRECISION
+#endif
+#endif
+    integer,parameter :: time_dp = KIND(1.d0)
+
     real(mcp) :: AccuracyLevel = 1.
     !Set to >1 to use CAMB etc on higher accuracy settings.
     !Does not affect MCMC (except making it all slower)
@@ -230,6 +239,52 @@
 
     end subroutine ReadMatrix
 
+
+    function TimerTime()
+    real(mcp) time
+    real(time_dp) :: TimerTime
+#ifdef MPI
+    TimerTime = MPI_WTime()
+#else
+    call cpu_time(time)
+    TimerTime=  time
+#endif
+    end function TimerTime
+
+    subroutine Timer(Msg, start)
+    character(LEN=*), intent(in), optional :: Msg
+    real(time_dp), save :: timer_start
+    real(time_dp), optional :: start
+    real(time_dp) T
+
+    if (present(start)) then
+        T=start
+    else
+        T=TimerTime()
+    end if
+
+    if (present(Msg)) then
+        write (*,*) trim(Msg)//': ', TimerTime() - T
+    end if
+    if (.not. present(start)) timer_start= TimerTime()
+
+    end subroutine Timer
+
+    subroutine DoAbort(S)
+    character(LEN=*), intent(in), optional :: S
+#ifdef MPI
+    integer ierror
+#endif
+    if (present(S)) write (*,*) trim(S)
+#ifdef MPI
+    call MPI_Abort(MPI_COMM_WORLD,ierror,ierror)
+#endif
+
+#ifdef DECONLY
+    pause
+#endif
+    stop
+    end subroutine DoAbort
 
 
     end module settings

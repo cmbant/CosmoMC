@@ -20,6 +20,7 @@
     !logical :: use_nonlinear = .false.  !JD 08/13 moved to settings, needed  WiggleZ module
     logical :: use_nonlinear_lensing = .false.
     real(mcp) :: lens_recon_scale = 1._mcp
+    logical :: CAMB_timing = .false.
 
     Type ParamSetInfo
         Type (CAMBdata) :: Transfers
@@ -161,6 +162,7 @@
     Type(TheoryPredictions) Theory
     type(CAMBParams)  P
     character(LEN=128) :: LogLine
+    real(mcp) time
 
     call CAMB_InitCAMBdata(Info%Transfers)
     call CMBToCAMB(CMB, P)
@@ -168,7 +170,9 @@
     if (Feedback > 1) write (*,*) 'Calling CAMB'
     Threadnum =num_threads
 
+    if (CAMB_timing) time = TimerTime()
     call CAMB_GetTransfers(P, Info%Transfers, error)
+    if (CAMB_timing) call Timer('GetTransfers', time)
     if (error==0) then
         call SetDerived(Theory)
     else
@@ -200,11 +204,11 @@
         return
     end if
     !JD 08/13 added so we dont have to fill Cls unless using CMB
-    if(use_CMB)then 
+    if(use_CMB)then
         call SetPowersFromCAMB(Theory)
 
         if (any(Theory%cl(:,1) < 0 )) then
-            error = 1 
+            error = 1
             call MpiStop('CMB_cls_simple: negative C_l (could edit to silent error here)')
             return
         end if
@@ -241,7 +245,7 @@
         Threadnum =num_threads
         call CMBToCAMB(CMB, P)
         P%OnlyTransfers = .false.
-        
+
         if (DoPk) then
             P%WantTransfer = .true.
             if (.not. DoCls) then
@@ -281,32 +285,30 @@
 
     Theory%cl=0
     do l = 2, lmax_computed_cl
-
-    nm = cons/(l*(l+1))
-    if (CMB_Lensing) then
-        Theory%cl(l,1:num_clsS) =  nm*Cl_lensed(l,1, TensClOrder(1:num_clsS))
-    else
-        Theory%cl(l,1:num_clsS) =  nm*Cl_scalar(l,1, scalClOrder(1:num_clsS))
-    end if
-
-    if (num_cls>num_clsS) Theory%cl(l,num_clsS+1:num_cls) = 0
-
-    if (compute_tensors .and. l<=lmax_tensor) then
-        Theory%cl(l,1:num_cls) =  Theory%cl(l,1:num_cls) + nm*Cl_tensor(l,1, TensClOrder(1:num_cls))
-    end if
-
-    if (num_cls_ext > 0) then
-        !CMB lensing potential
-        !in camb Cphi is l^4 C_l, we want [l(l+1)]^2Cphi/2pi
-        if (.not. CMB_lensing) call MpiStop('Must have lensing on to use lensing potential')
-        Theory%cl(l,num_clsS+1) =  Cl_scalar(l,1, scalClOrder(4))*(real(l+1)**2/l**2)/twopi * lens_recon_scale
-        if (num_cls_ext>1) then
-            !lensing-temp
-            if (num_cls_ext>1) call MpiStop('SetTheoryFromCAMB: check defs for num_cls_ext>1')
-            Theory%cl(l,num_clsS+2) =   Cl_scalar(l,1, scalClOrder(5))/real(l)**3 * sqrt(lens_recon_scale)
+        nm = cons/(l*(l+1))
+        if (CMB_Lensing) then
+            Theory%cl(l,1:num_clsS) =  nm*Cl_lensed(l,1, TensClOrder(1:num_clsS))
+        else
+            Theory%cl(l,1:num_clsS) =  nm*Cl_scalar(l,1, scalClOrder(1:num_clsS))
         end if
-    end if
 
+        if (num_cls>num_clsS) Theory%cl(l,num_clsS+1:num_cls) = 0
+
+        if (compute_tensors .and. l<=lmax_tensor) then
+            Theory%cl(l,1:num_cls) =  Theory%cl(l,1:num_cls) + nm*Cl_tensor(l,1, TensClOrder(1:num_cls))
+        end if
+
+        if (num_cls_ext > 0) then
+            !CMB lensing potential
+            !in camb Cphi is l^4 C_l, we want [l(l+1)]^2Cphi/2pi
+            if (.not. CMB_lensing) call MpiStop('Must have lensing on to use lensing potential')
+            Theory%cl(l,num_clsS+1) =  Cl_scalar(l,1, scalClOrder(4))*(real(l+1)**2/l**2)/twopi * lens_recon_scale
+            if (num_cls_ext>1) then
+                !lensing-temp
+                if (num_cls_ext>1) call MpiStop('SetTheoryFromCAMB: check defs for num_cls_ext>1')
+                Theory%cl(l,num_clsS+2) =   Cl_scalar(l,1, scalClOrder(5))/real(l)**3 * sqrt(lens_recon_scale)
+            end if
+        end if
     end do
 
     if (compute_tensors) then
@@ -403,7 +405,7 @@
     use mpk
     type(CAMBParams)  P
     integer zix
-    !JD Changed P%Transfer%redshifts and P%Transfer%num_redshifts to 
+    !JD Changed P%Transfer%redshifts and P%Transfer%num_redshifts to
     !P%Transfer%PK_redshifts and P%Transfer%PK_num_redshifts respectively
     !for nonlinear lensing of CMB + LSS compatibility
     Threadnum =num_threads
@@ -430,9 +432,9 @@
 
     if (use_nonlinear) then
         P%NonLinear = NonLinear_pk
-        P%Transfer%kmax = max(1.2,power_kmax)
+        P%Transfer%kmax = max(1.2_mcp,power_kmax)
     else
-        P%Transfer%kmax = max(0.8,power_kmax)
+        P%Transfer%kmax = max(0.8_mcp,power_kmax)
     end if
 
     if (AccuracyLevel > 1 .or. HighAccuracyDefault) then
@@ -573,6 +575,8 @@
     Type(ParamSetInfo) Info
     type(CAMBParams)  P
     compute_tensors = Ini_Read_Logical('compute_tensors',.false.)
+    CAMB_timing = Ini_Read_Logical('CAMB_timing',.false.)
+
     if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
     CMB_lensing = Ini_Read_Logical('CMB_lensing',CMB_lensing)
     use_lensing_potential = Ini_Read_logical('use_lensing_potential',use_lensing_potential)
@@ -629,4 +633,3 @@
     end subroutine AcceptReject
 
     end module CMB_Cls
-

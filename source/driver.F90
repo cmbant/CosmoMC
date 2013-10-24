@@ -146,7 +146,7 @@
 
     baseroot = ReadIniFileName(DefIni,'file_root')
     if(instance<=1) then
-        write(*,*), 'file_root:'//trim(baseroot)
+        write(*,*) 'file_root:'//trim(baseroot)
     end if
     if (Ini_HasKey('root_dir')) then
         !Begin JD modifications for output of filename in output file
