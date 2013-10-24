@@ -260,7 +260,7 @@
     if (present(start)) then
         T=start
     else
-        T=TimerTime()
+        T=timer_start
     end if
 
     if (present(Msg)) then
