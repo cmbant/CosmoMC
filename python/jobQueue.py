@@ -1,0 +1,29 @@
+import subprocess
+
+def queued_jobs():
+    res = subprocess.check_output('qstat -u $USER', shell=True)
+    res = res.split("\n")
+    names=[]
+    for line in res[4:]:
+        if 'master' in line:
+            items = line.split()
+            jobid = items[0].split('.')[0]
+            output = subprocess.check_output('qstat -f ' + str(jobid) , shell=True).split('\n')
+            pars = []
+            current = ''
+            for L in output:
+                if '=' in L:
+                    if len(current) > 0:
+                        pars.append(current)
+                    current = L.strip()
+                else: current += L.strip()
+            if len(current) > 0: pars.append(current)
+            props = dict()
+            for L in pars[1:]:
+                (key, val) = L.split('=', 1)
+                props[key.strip()] = val.strip()
+            names.append(props['Job_Name'])
+    return names
+
+
+

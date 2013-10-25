@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, batchJobArgs
+import os, batchJobArgs, jobQueue
 
 Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', notExist=True, converge=True)
 Opts.parser.add_argument('--nodes', type=int, default=2)
@@ -12,10 +12,22 @@ Opts.parser.add_argument('--importance_minimize', action='store_true')
 Opts.parser.add_argument('--minimize_failed', action='store_true')
 Opts.parser.add_argument('--checkpoint_run', action='store_true')
 Opts.parser.add_argument('--importance_ready', action='store_true')
+Opts.parser.add_argument('--not_queued', action='store_true')
 
 
 (batch, args) = Opts.parseForBatch()
 
+if args.not_queued: 
+    print 'Getting queued names...'
+    queued = jobQueue.queued_jobs()
+    
+def notQueued(name):
+    for job in queued:
+        if name in job: 
+#            print 'Already running:', name
+            return False
+    return True
+        
 
 variant = ''
 if args.importance_minimize:
@@ -45,4 +57,5 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
             if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
                 if not args.checkpoint_run or jobItem.wantCheckpointContinue() and jobItem.notRunning():
                     if not args.importance_ready or not jobItem.isImportanceJob or jobItem.parent.chainFinished():
-                        submitJob(jobItem.iniFile(variant))
+                        if not args.not_queued or notQueued(jobItem.name):
+                            submitJob(jobItem.iniFile(variant))
