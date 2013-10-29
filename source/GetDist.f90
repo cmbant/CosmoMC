@@ -47,6 +47,7 @@
     !Nov-Dec 12: removed sm support; use specific parameter in triangle plots; new R-1 definition, etc...
     !.. Mar 13: numerous changes..
     !   Apr 13: output .py files, converge_test_limit, etc.
+    !Oct 13: add other mean likelihoods to .likestats
     module MCSamples
     use settings
     use MatrixUtils

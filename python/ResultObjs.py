@@ -351,6 +351,12 @@ class bestFit(paramResults):
             if not kind in likes: likes[kind] = []
             likes[kind].append((name, chisq))
         return sorted(likes.iteritems())
+    
+    def chiSquareForKindName(self,kind,name):
+        for (akind, aname, chisq) in self.chiSquareds:
+            if akind == kind and aname == name: return chisq
+        return None
+            
 
     def texValues(self, formatter, p, limit=None):
         param = self.parWithName(p.name)
