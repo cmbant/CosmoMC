@@ -53,7 +53,7 @@
         Like%speed = 5
         call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
 
-        likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
+        make_cov_marged = Ini_read_Logical_file(Ini,'make_cov_marged',.false.)
         pre_marged=Ini_Read_Logical_File(Ini,'pre_marged',.false.)
         if (pre_marged) then
             likefilename=ReadIniFileName(Ini,'margelikefile',NotFoundFail = .true.)
