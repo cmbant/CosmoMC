@@ -39,7 +39,7 @@
     !   character*100 :: bestroot,bestnum,bestname
     character(LEN=*), parameter :: CAMSpec_like_version = 'CovSpec_v1_cuts'
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num, &
-    want_spec,camspec_lmins,camspec_lmaxs
+    want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged
 
     contains
 
