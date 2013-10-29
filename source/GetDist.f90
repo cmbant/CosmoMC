@@ -1749,14 +1749,14 @@
     if (coldata(2,nrows-1) - maxlike < 30) then
         meanlike = log(sum(exp((coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) &
         / numsamp) + maxlike
-        write (*,*) 'Ln(mean 1/like) = ', meanlike
+        write (unit,*) 'Ln(mean 1/like) = ', meanlike
     end if
 
     meanlike = sum(coldata(2,0:nrows-1)*coldata(1,0:nrows-1)) / numsamp
-    write (*,*) 'mean(-Ln(like)) = ', meanlike
+    write (unit,*) 'mean(-Ln(like)) = ', meanlike
 
     meanlike = -log(sum(exp(-(coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) / numsamp) + maxlike
-    write (*,*) '-Ln(mean like)  = ', meanlike
+    write (unit,*) '-Ln(mean like)  = ', meanlike
 
     end subroutine GetChainLikeSummary
 
