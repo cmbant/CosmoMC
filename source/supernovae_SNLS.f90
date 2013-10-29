@@ -229,7 +229,6 @@
     class(LikelihoodList) :: LikeList
     Type(TIniFile) :: ini
     Type(SNLSLikelihood), pointer :: like
-    character (LEN=Ini_max_string_len):: snls_filename
     integer alpha_i, beta_i
 
     if (.not. Ini_Read_Logical_File(Ini, 'use_SNLS',.false.)) return
@@ -262,7 +261,6 @@
     Like%LikelihoodType = 'SN'
     Like%name='SNLS'
     CALL snls_prep
-    If (Feedback>0) WRITE(*,*) 'read snls dataset '//trim(snls_filename)
 
     end subroutine SNLSLikelihood_Add
 

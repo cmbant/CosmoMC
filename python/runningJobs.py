@@ -1,4 +1,5 @@
-import subprocess
+import subprocess, jobQueue
+
 
 res = subprocess.check_output('qstat -u $USER', shell=True)
 

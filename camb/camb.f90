@@ -136,9 +136,9 @@
         CP%WantTensors = Params%WantTensors
         CP%WantVectors = Params%WantVectors
         CP%Transfer%num_redshifts = Params%Transfer%num_redshifts
-        !JD 08/13 for nonlinear lensing of CMB + LSS compatibility 
+        !JD 08/13 for nonlinear lensing of CMB + LSS compatibility
         CP%Transfer%PK_redshifts_index=Params%Transfer%PK_redshifts_index
-        CP%Transfer%PK_num_redshifts = Params%Transfer%PK_num_redshifts      
+        CP%Transfer%PK_num_redshifts = Params%Transfer%PK_num_redshifts
         Params = CP
     end if
 
@@ -160,9 +160,9 @@
         CP%WantScalars = Params%WantScalars
         CP%WantVectors = Params%WantVectors
         CP%Transfer%num_redshifts = Params%Transfer%num_redshifts
-        !JD 08/13 for nonlinear lensing of CMB + LSS compatibility 
+        !JD 08/13 for nonlinear lensing of CMB + LSS compatibility
         CP%Transfer%PK_redshifts_index=Params%Transfer%PK_redshifts_index
-        CP%Transfer%PK_num_redshifts = Params%Transfer%PK_num_redshifts 
+        CP%Transfer%PK_num_redshifts = Params%Transfer%PK_num_redshifts
         Params = CP
     end if
 
@@ -184,7 +184,7 @@
         CP%WantTensors = Params%WantTensors
         CP%WantScalars = Params%WantScalars
         CP%Transfer%num_redshifts = Params%Transfer%num_redshifts
-        !JD 08/13 for nonlinear lensing of CMB + LSS compatibility 
+        !JD 08/13 for nonlinear lensing of CMB + LSS compatibility
         CP%Transfer%PK_redshifts_index=Params%Transfer%PK_redshifts_index
         CP%Transfer%PK_num_redshifts = Params%Transfer%PK_num_redshifts
         Params = CP
@@ -237,8 +237,12 @@
     Cls = 0
     do l=2, lmax
         if (CP%WantScalars .and. l<= CP%Max_l) then
-            Cls(l,1:2) = Cl_scalar(l, in,  C_Temp:C_E)
-            Cls(l,4) = Cl_scalar(l, in,  C_Cross)
+            if (CP%DoLensing) then
+                if (l<=lmax_lensed) Cls(l,1:4) = Cl_lensed(l, in, CT_Temp:CT_Cross)
+            else
+                Cls(l,1:2) = Cl_scalar(l, in,  C_Temp:C_E)
+                Cls(l,4) = Cl_scalar(l, in,  C_Cross)
+            endif
         end if
         if (CP%WantTensors .and. l <= CP%Max_l_tensor) then
             Cls(l,1:4) = Cls(l,1:4) + Cl_tensor(l, in,  CT_Temp:CT_Cross)
@@ -446,5 +450,3 @@
     end subroutine CAMB_cleanup
 
     end module CAMB
-
-

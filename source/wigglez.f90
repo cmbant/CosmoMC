@@ -48,7 +48,6 @@
     integer :: iopb, i, ios, iz
     real(mcp) :: kval, power_nl
     real(mcp) redshift
-    logical save
 
     iz = 0
     do i=1,4
@@ -85,7 +84,7 @@
     ! HARD CODING OF POLYNOMIAL FITS TO FOUR REDSHIFT BINS.
     subroutine GiggleZtoICsmooth(k,fidpolys)
     real(mcp), intent(in) :: k
-    real(mcp) :: fidz_0, fidz_1, fidz_2, fidz_3, fidz_4
+    real(mcp) :: fidz_1, fidz_2, fidz_3, fidz_4
     real(mcp), dimension(4), intent(out) :: fidpolys
 
 
@@ -106,7 +105,7 @@
     subroutine fill_GiggleZTheory(Theory,zbin)
     Type(TheoryPredictions) Theory
     integer, intent(in) :: zbin
-    real(mcp) :: logmink, xi, kval
+    real(mcp) :: xi, kval
     real(mcp), dimension(4) :: fidpolys
     real(mcp) pk_hf, holdval
     integer :: i,iz,ik
@@ -115,23 +114,23 @@
     do i=1,4
         if(abs(Theory%redshifts(zbin)-zeval(i)).le.0.001) iz = i
     end do
-    
+
     WiggleZPk = 0.
-    
+
     do ik=1,gigglez_num_matter_power
         xi = log(gigglez_minkh) + gigglez_dlnkh*(ik-1)
-        kval = exp(xi)        
+        kval = exp(xi)
         pk_hf = MatterPowerAt_zbin(Theory,kval,zbin,.true.)
-        
+
         call GiggleZtoICsmooth(kval,fidpolys)
-        
+
         holdval = pk_hf*fidpolys(iz)/power_hf_fid(ik,iz)
 
         WiggleZPk(ik) = WiggleZPk(ik) + holdval
     end do
 
     end subroutine fill_GiggleZTheory
-    
+
     function WiggleZPowerAt(kh)
     !get WiggleZ matter power spectrum today at kh = k/h by interpolation from stored values
     real(mcp), intent(in) :: kh
@@ -142,9 +141,9 @@
     x = log(kh/gigglez_minkh)/gigglez_dlnkh
     if (x < 0 .or. x >= gigglez_num_matter_power-1) then
         write (*,*) ' k/h out of bounds in WiggleZPowerAt (',kh,')'
-        call MpiStop('') 
+        call MpiStop('')
     end if
-        
+
     i = int(x)
     d = x - i
     WiggleZPowerAt = exp(log(WiggleZPk(i+1))*(1-d) + log(WiggleZPk(i+2))*d)
@@ -184,7 +183,7 @@
     procedure :: ReadIni => WiggleZ_ReadIni
     end type WiggleZLikelihood
 
-    type(TWiggleZCommon), target :: WiggleZCommon
+    type(TWiggleZCommon), save, target :: WiggleZCommon
 
     integer, parameter :: max_num_wigglez_regions = 7
     !Note all units are in k/h here
@@ -213,8 +212,8 @@
     !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
     logical :: Q_marge, Q_flat
     real(mcp):: Q_mid, Q_sigma, Ag
-    
-    
+
+
 
     contains
 
@@ -233,7 +232,7 @@
 
     use_gigglez = Ini_Read_Logical('Use_gigglez',.false.)
     nonlinear_wigglez = Ini_Read_Logical('nonlinear_wigglez',.false.)
-    
+
     call WiggleZCommon%ReadDatasetFile(ReadIniFileName(Ini,'wigglez_common_dataset'))
     WiggleZCommon%LikelihoodType = 'MPK'
 
@@ -319,14 +318,14 @@
     num_mpk_kbands_use = max_mpk_kbands_use - min_mpk_kbands_use +1
 
     use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
-    
+
     if(use_gigglez .and. .not. nonlinear_wigglez) then
         write(*,*) 'ERROR!:  GiggleZ non-linear prescription only available'
         write(*,*) '         when setting nonlinear_wigglez = T in WiggleZ_MPK.ini'
         call MPIstop()
     end if
 
-    if(.not. use_gigglez .and. nonlinear_pk)then
+    if(.not. use_gigglez .and. nonlinear_pk/=Nonlinear_None)then
         write(*,*)'WARNING! Using non-linear model in WiggleZ module without'
         write(*,*)'GiggleZ prescription.  This method may not be as accurate.'
         write(*,*)'See arXiv:1210.2130 for details.'
@@ -360,15 +359,14 @@
     real(mcp), dimension(:), allocatable :: mpk_kfull
     real(mcp), dimension(:,:), allocatable :: invcov_tmp
     character(80) :: dummychar
-    character z_char
-    integer iz,count
+    integer count
 
     iopb = 0
 
     allocate(like%exact_z(like%num_z))
     allocate(like%exact_z_index(like%num_z))
     like%exact_z(1) = Ini_Read_Double_File(Ini,'redshift',0.d0)
-    
+
     if(like%exact_z(1).eq.0.0) then
         call MpiStop('mpk: failed  to read in WiggleZ redshift')
     end if
@@ -486,7 +484,7 @@
     if(use_gigglez) then
         call GiggleZinfo_init(like%exact_z(1))
     endif
-    
+
     like%kmax = 0.8
     if(nonlinear_wigglez) then
         like%needs_nonlinear_pk = .true.
@@ -494,7 +492,7 @@
     end if
 
     if (Feedback > 1) write(*,*) 'read: '//trim(like%name)//' data'
-    
+
     if (iopb.ne.0) then
         stop 'Error reading WiggleZ mpk file'
     endif
@@ -508,7 +506,7 @@
     character(LEN=*), intent(IN) :: aname
     integer, intent(in) :: m,n,num_regions
     real(mcp), intent(out) :: mat(num_regions,m,n)
-    integer j,k,i_region
+    integer j,i_region
     real(mcp) tmp
     character(LEN=64) dummychar
 
@@ -553,19 +551,18 @@
     integer imin,imax
     real :: normV, Q, minchisq
     real(mcp) :: a_scl  !LV_06 added for LRGDR4
-    integer :: i, iQ,ibias,ik,j,iz
+    integer :: i, iQ,iz
     logical :: do_marge
     integer, parameter :: nQ=6
     integer, parameter :: nbias = 100
-    real(mcp) b0, bias_max, bias_step,bias,old_chisq,beta_val,kval,xi
-    real(mcp) :: tmp, dQ = 0.4
+    real(mcp) old_chisq
+    real(mcp) :: dQ = 0.4
     real(mcp), dimension(:), allocatable :: chisq(:)
     real(mcp) calweights(-nQ:nQ)
     real(mcp) vec2(2),Mat(2,2)
     real(mcp) final_term, b_out
-    real(mcp) z,omk_fid, omv_fid,w0_fid,wa_fid
+    real(mcp) z
     integer i_region
-    character(len=32) fname
 
     If(Feedback > 1) print*, 'Calling WiggleZ likelihood routines'
     allocate(mpk_lin(num_mpk_kbands_use),mpk_Pth(num_mpk_kbands_use))
@@ -618,7 +615,7 @@
         k_scaled(i)=max(exp(Theory%log_kh(1)),like%mpk_k(i)*a_scl)
         if(use_gigglez) then
             mpk_lin(i) = WiggleZPowerAt(k_scaled(i))/a_scl**3
-        else if(nonlinear_wigglez)then    
+        else if(nonlinear_wigglez)then
             mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
         else
             mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1))/a_scl**3
@@ -704,7 +701,6 @@
                 LnLike = chisq(iQ)/2
                 exit
             end if
-
         end do
         deallocate(covdat_large,covth_large,mpk_Pdata_large,mpk_WPth_large)
 

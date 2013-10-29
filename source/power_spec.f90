@@ -115,7 +115,6 @@
     real (mcp), intent(in) :: kh
     logical, optional, intent(in) :: NNL
     logical :: NL
-    real(mcp) :: logk
     real(mcp) outpower
 
     if(present(NNL))then
@@ -134,7 +133,6 @@
     real (mcp), intent(in) :: kh, z
     logical, optional, intent(in) :: NNL
     logical :: NL
-    real(mcp) :: logk
     integer zlo, zhi, iz, itf
     real(mcp) outpower
     real(mcp) ho,a0,b0
