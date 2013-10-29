@@ -160,6 +160,7 @@ class jobItem:
         self.result_converge = None
         self.result_marge = None
         self.result_bestfit = None
+        self.result_likemarge = None
         bf_file = self.chainRoot + '.minimum'
         if os.path.exists(bf_file):
             self.result_bestfit = ResultObjs.bestFit(bf_file, paramNameFile)
@@ -167,6 +168,7 @@ class jobItem:
             if os.path.exists(marge_root + '.margestats'):
                 if not noconverge: self.result_converge = ResultObjs.convergeStats(marge_root + '.converge')
                 self.result_marge = ResultObjs.margeStats(marge_root + '.margestats', paramNameFile)
+                self.result_likemarge = ResultObjs.likeStats(marge_root + '.likestats')
                 if not self.result_bestfit is None and bestfit: self.result_marge.addBestFit(self.result_bestfit)
             elif not silent: print 'missing: ' + marge_root
 

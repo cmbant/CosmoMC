@@ -52,18 +52,21 @@ def getTableLines(content):
 
 def paramResultTable(jobItem):
     tableLines = []
-    caption = ''
+    caption = []
     jobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=not args.nobestfit, bestfitonly=args.bestfitonly)
     bf = jobItem.result_bestfit
     if not bf is None:
-        caption += ' Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % (bf.logLike * 2)) + '$'
+        caption.append(' Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % (bf.logLike * 2)) + '$')
     if args.bestfitonly:
         if bf is not None: tableLines += getTableLines(bf)
     else:
-        if jobItem.result_converge is not None: caption += '; R-1 =' + jobItem.result_converge.worstR()
+        likeMarge = jobItem.result_likemarge
+        if likeMarge is not None and likeMarge.meanLogLike is not None:
+                caption.append('$\\bar{\\chi}^2_{\\rm eff} = ' + ('%.2f' % (likeMarge.meanLogLike * 2)) + '$')  
+        if jobItem.result_converge is not None: caption.append('R-1 =' + jobItem.result_converge.worstR())
         if jobItem.result_marge is not None: tableLines += getTableLines(jobItem.result_marge)
     tableLines.append('')
-    if not args.forpaper: tableLines.append(caption)
+    if not args.forpaper: tableLines.append("; ".join(caption))
     if not bf is None and not args.forpaper:
         tableLines.append('')
         tableLines.append('$\chi^2_{\\rm eff}$:')

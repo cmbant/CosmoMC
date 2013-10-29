@@ -74,6 +74,8 @@
     Type(TDensity1D) :: Density1D
 
     integer chain_indices(max_chains), num_chains_used
+    integer bestfit_ix
+    real(mcp) meanlike, maxlike
 
     integer nrows, ncols, num_bins, num_bins_2D
     real(mcp) numsamp, max_mult, mean_mult
@@ -115,7 +117,6 @@
     integer ix_min(max_cols),ix_max(max_cols)
     real(mcp) limmin(max_cols),limmax(max_cols)
     real(mcp) center(max_cols), param_min(max_cols), param_max(max_cols), range_min(max_cols), range_max(max_cols)
-    real(mcp) meanlike, maxlike
     logical BW,do_shading
     character(LEN=Ini_max_string_len), allocatable :: ComparePlots(:)
     integer Num_ComparePlots
@@ -1737,12 +1738,36 @@
     end if
     end function dinvnorm
 
+    subroutine GetChainLikeSummary(unit)
+    integer unit
+
+    bestfit_ix = 0 !Since we have sorted the lines
+
+    maxlike = coldata(2,bestfit_ix)
+    write (unit,*) 'Best fit sample -log(Like) = ', maxlike
+
+    if (coldata(2,nrows-1) - maxlike < 30) then
+        meanlike = log(sum(exp((coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) &
+        / numsamp) + maxlike
+        write (*,*) 'Ln(mean 1/like) = ', meanlike
+    end if
+
+    meanlike = sum(coldata(2,0:nrows-1)*coldata(1,0:nrows-1)) / numsamp
+    write (*,*) 'mean(-Ln(like)) = ', meanlike
+
+    meanlike = -log(sum(exp(-(coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) / numsamp) + maxlike
+    write (*,*) '-Ln(mean like)  = ', meanlike
+
+    end subroutine GetChainLikeSummary
+
+
     end module MCSamples
 
     program GetDist
     use IniFile
     use MCSamples
     use IO
+    use settings
     implicit none
 
     character(LEN=Ini_max_string_len) InputFile, numstr
@@ -1765,7 +1790,6 @@
     real(mcp) try_b, try_t
     real(mcp) LowerUpperLimits(max_cols,2,max_contours), limfrac
 
-    integer bestfit_ix
     integer chain_exclude(max_chains), num_exclude
     logical map_params
     logical :: triangle_plot = .false.
@@ -2345,21 +2369,7 @@
     if (PCA_num>0 .and. .not. plots_only) call PCA(PCA_params,PCA_num,PCA_func, PCA_NormParam)
 
     !Find best fit, and mean likelihood
-    bestfit_ix = 0 !Since we have sorted the lines
-    maxlike = coldata(2,bestfit_ix)
-    write (*,*) 'Best fit -Ln(like) = ', maxlike
-
-    if (coldata(2,nrows-1) - maxlike < 30) then
-        meanlike = log(sum(exp((coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) &
-        / numsamp) + maxlike
-        write (*,*) 'Ln(mean 1/like) = ', meanlike
-    end if
-
-    meanlike = sum(coldata(2,0:nrows-1)*coldata(1,0:nrows-1)) / numsamp
-    write (*,*) 'mean(-Ln(like)) = ', meanlike
-
-    meanlike = -log(sum(exp(-(coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) / numsamp) + maxlike
-    write (*,*) '-Ln(mean like)  = ', meanlike
+    call GetChainLikeSummary(stdout)
 
     if (.not. no_plots) then
         !Output files for 1D plots
@@ -2657,7 +2667,7 @@
     !Limits from global likelihood
     if (.not. plots_only) then
         open(unit=50,file=trim(rootdirname)//'.likestats',form='formatted',status='replace')
-        write (50,*) 'Best fit sample -log(Like) = ',coldata(2,bestfit_ix)
+        call GetChainLikeSummary(50)
         write (50,*) ''
         write(50,'(a)') 'param  bestfit        lower1         upper1         lower2         upper2'
 
