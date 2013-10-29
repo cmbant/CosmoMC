@@ -89,6 +89,7 @@ g3.importanceRuns = [post_lensing , post_BAO, post_HST]
 g3.groupName = 'geom'
 groups.append(g3)
 
+g4 = group()
 g4.params = [[]]
 g4.datasets = [planck_lowl]
 g4.importanceRuns = [post_BAO, post_HST]
