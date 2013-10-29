@@ -13,7 +13,7 @@ Opts.parser.add_argument('--burn_removed', action='store_true')
 
 (batch, args) = Opts.parseForBatch()
 
-base_ini = 'getdist_common_batch1.ini'
+base_ini = 'getdist_common.ini'
 
 
 plot_ext = 'py'
