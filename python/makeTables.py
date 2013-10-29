@@ -63,7 +63,7 @@ def paramResultTable(jobItem):
         likeMarge = jobItem.result_likemarge
         if likeMarge is not None and likeMarge.meanLogLike is not None:
                 caption.append('$\\bar{\\chi}^2_{\\rm eff} = ' + ('%.2f' % (likeMarge.meanLogLike * 2)) + '$')  
-        if jobItem.result_converge is not None: caption.append('R-1 =' + jobItem.result_converge.worstR())
+        if jobItem.result_converge is not None: caption.append('$R-1 =' + jobItem.result_converge.worstR()+'$')
         if jobItem.result_marge is not None: tableLines += getTableLines(jobItem.result_marge)
     tableLines.append('')
     if not args.forpaper: tableLines.append("; ".join(caption))
