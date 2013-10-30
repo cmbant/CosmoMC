@@ -37,7 +37,7 @@
     integer :: camspec_beam_mcmc_num = 1
     !    character*100 storeroot,storename,storenumstring
     !   character*100 :: bestroot,bestnum,bestname
-    character(LEN=*), parameter :: CAMSpec_like_version = 'CovSpec_v1_cuts'
+    character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v1_cuts'
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num, &
     want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged
 

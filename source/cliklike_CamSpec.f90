@@ -49,7 +49,6 @@
         Like%needs_powerspectra =.true.
         Like%LikelihoodType = 'CMB'
         Like%name='CamSpec'
-        Like%version = CAMSpec_like_version
         Like%speed = 5
         call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
 
@@ -62,6 +61,7 @@
         else
             likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
         end if
+        Like%version = ExtractFileName(likefilename)
 
         sz143filename=ReadIniFileName(Ini,'sz143file',NotFoundFail = .true.)
         tszxcibfilename=ReadIniFileName(Ini,'tszxcibfile',NotFoundFail = .true.)
