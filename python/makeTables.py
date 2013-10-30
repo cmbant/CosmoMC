@@ -6,7 +6,7 @@ Opts.parser.add_argument('latex_filename')
 Opts.parser.add_argument('--limit', type=int, default=2)
 Opts.parser.add_argument('--bestfitonly', action='store_true')
 Opts.parser.add_argument('--nobestfit', action='store_true')
-Opts.parser.add_argument('--no_delta_chisq', action='store_true)
+Opts.parser.add_argument('--no_delta_chisq', action='store_true')
 
 # this is just for the latex labelsm set None to use those in chain .paramnames
 Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')

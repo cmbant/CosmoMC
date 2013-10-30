@@ -1,0 +1,31 @@
+#!/bin/bash
+#PBS -q sandybridge
+#PBS -A PLANCK
+#PBS -N ##JOBNAME##
+#PBS -l nodes=##NUMNODES##:ppn=##PPN##,mem=##MEM_MB##mb,walltime=##WALLTIME##
+#PBS -m n
+#PBS -r n
+
+cd ##ROOTDIR##
+
+. /etc/profile.d/modules.sh
+module purge
+module load default-impi
+module load cfitsio
+
+echo Running on host `hostname`
+echo Time is `date`
+echo Directory is `pwd`
+echo PBS job ID is $PBS_JOBID
+echo This jobs runs on the following machines:
+echo `cat $PBS_NODEFILE | uniq`
+
+#! Create a machine file for MPI
+#cat $PBS_NODEFILE | uniq > scripts/machine.file.$PBS_JOBID
+
+export OMP_NUM_THREADS=##OMP##
+export I_MPI_PIN_DOMAIN=omp:compact
+export I_MPI_PIN_ORDER=scatter
+export I_MPI_CPUINFO=proc
+
+##COMMAND##
