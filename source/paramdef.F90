@@ -204,7 +204,7 @@
     integer :: breaks(num_params), num_breaks
     Type(DataLikelihood), pointer :: DataLike
     integer :: oversample_fast= 1
-    logical first
+    logical first, ierr
 
     output_lines = 0
 
@@ -251,10 +251,22 @@
     do i=1,num_params
         InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'param',i)
         if (InLine=='') call ParamError('parameter ranges not found',i)
-        read(InLine, *, err = 100, end =100) center, Scales%PMin(i), Scales%PMax(i), Scales%StartWidth(i), Scales%PWidth(i)
+        if (TxtNumberColumns(InLine)==1) then
+            !One number means just fix the parameter
+            read(InLine, *, IOSTAT = ierr) center
+            if (ierr/=0) call ParamError('fixed parameter value not valid',i)
+            Scales%PMin(i)= center
+            Scales%PMax(i)= center
+            Scales%StartWidth(i)=0
+            Scales%PWidth(i)=0
+        else
+            read(InLine, *, IOSTAT = ierr) center, Scales%PMin(i), Scales%PMax(i), Scales%StartWidth(i), Scales%PWidth(i)
+            if (ierr/=0) call ParamError('Error reading param details',i) 
+        end if
         if (Scales%PWidth(i)/=0) then
             InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'prior',i)
-            if (InLine/='') read(InLine, *, err = 101, end=101) GaussPriors%mean(i), GaussPriors%std(i)
+            if (InLine/='') read(InLine, *, IOSTAT = ierr) GaussPriors%mean(i), GaussPriors%std(i)
+            if (ierr/=0) call DoAbort('Error reading prior mean and stdd dev: '//trim(InLIne))
         else
             scales%PMin(i) = center
             Scales%PMax(i) = center
@@ -371,10 +383,6 @@
             call ReadSetCovMatrix(prop_mat, test_cov_matrix)
         end if
     end if
-
-    return
-100 call DoAbort('Error reading param details: '//trim(InLIne))
-101 call DoAbort('Error reading prior mean and stdd dev: '//trim(InLIne))
 
     end subroutine Initalize
 

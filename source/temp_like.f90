@@ -1,7 +1,4 @@
     module temp_like_camspec
-    !    use settings, only: MPIrank
-    !use AMLutils
-
     implicit none
 
     private
@@ -27,6 +24,8 @@
 
     logical :: make_cov_marged = .false.
     real(campc) :: beam_factor = 2.7_campc
+    integer, parameter :: CamSpec_cib_pivot = 3000
+    integer, parameter :: CamSpec_sz_pivot = 3000
 
     logical :: want_spec(4) = .true.
     integer :: camspec_lmins(4) =0
@@ -73,7 +72,7 @@
     enddo
     close(48)
 
-    renorm=1.d0/templt(3000)
+    renorm=1.d0/templt(CamSpec_sz_pivot)
     templt=templt*renorm
     end subroutine CAMspec_ReadNormSZ
 
@@ -92,10 +91,6 @@
     integer, allocatable :: indices(:),np(:)
     integer ix
     real(campc) dummy
-
-    ! cl_ksz_148_tbo.dat file is in D_l, format l D_l, from l=2 to 10000
-    ! tsz_x_cib_template.txt is is (l D_l), from l=2 to 9999, normalized to unity
-    !    at l=3000
 
     if(.not. needinit) return
 
@@ -300,27 +295,103 @@
     end subroutine like_init
 
 
-    subroutine calc_like(zlike,  cell_cmb, freq_params)
-    real(campc), intent(in)  :: freq_params(:)
-    real(campc), dimension(0:) :: cell_cmb
-    integer ::  j, l, ii,jj
-    real(campc) , allocatable, save ::  X_beam_corr_model(:), Y(:),  C_foregrounds(:,:)
-    real(campc) zlike
-    real(campc) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz, r_ps, r_cib, ncib, cal0, cal1, cal2, xi, A_ksz
+    subroutine compute_fg(C_foregrounds,freq_params, all)
+    real(8), intent(in)  :: freq_params(:)
+    logical, intent(in) :: all
+    real(8), intent(inout)  ::  C_foregrounds(:,:)
+    real(campc) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, asz143, r_ps, r_cib, xi, A_ksz
+    real(campc) ncib217, ncib143
     real(campc) zCIB
-    real(campc) ztemp
-    real(campc) beam_params(cov_dim),beam_coeffs(beam_Nspec,num_modes_per_beam)
-    integer :: ie1,ie2,if1,if2, ix
-    integer num_non_beam
-    real(campc) cl_cib(CAMspec_lmax) !CIB
+    integer:: l
+    real(campc) cl_cib_143(CAMspec_lmax), cl_cib_217(CAMspec_lmax) !CIB
     real(campc), parameter :: sz_bandpass100_nom143 = 2.022d0
     real(campc), parameter :: cib_bandpass143_nom143 = 1.134d0
     real(campc), parameter :: sz_bandpass143_nom143 = 0.95d0
     real(campc), parameter :: cib_bandpass217_nom217 = 1.33d0
     real(campc), parameter :: ps_scale  = 1.d-6/9.d0
     real(campc) :: A_cib_217_bandpass, A_sz_143_bandpass, A_cib_143_bandpass
+    integer lmin(Nspec), lmax(Nspec)
+    real(campc) lnrat, nrun_cib
 
-    !    real(campc) atime
+    if (all) then
+        lmin=2
+        lmax = CAMspec_lmax
+    else
+        lmin = lminX
+        lmax=lmaxX
+    end if
+
+    A_ps_100=freq_params(1)
+    A_ps_143 = freq_params(2)
+    A_ps_217 = freq_params(3)
+    A_cib_143 =freq_params(4)
+    A_cib_217 =freq_params(5)
+    asz143 = freq_params(6)
+    r_ps = freq_params(7)
+    r_cib = freq_params(8)
+    ncib143 = freq_params(9)
+    ncib217 = freq_params(10)
+    nrun_cib = freq_params(11)
+    xi = freq_params(12)
+    A_ksz = freq_params(13)
+
+    do l=1, CAMspec_lmax
+        lnrat = log(real(l,campc)/CamSpec_cib_pivot)
+        cl_cib_217(l) = exp(ncib217*lnrat + nrun_cib/2*lnrat**2)
+        if (ncib143<-9) then
+            cl_cib_143(l) = cl_cib_217(l)
+        else
+            cl_cib_143(l)=exp(ncib143*lnrat + nrun_cib/2*lnrat**2)
+        end if
+    end do
+
+    !   100 foreground
+    !
+    do l = lmin(1), lmax(1)
+        C_foregrounds(l,1)= A_ps_100*ps_scale+  &
+        ( A_ksz*ksz_temp(l) + asz143*sz_bandpass100_nom143*sz_143_temp(l) )/(l*(l+1))
+    end do
+
+    !   143 foreground
+    !
+    A_sz_143_bandpass = asz143 * sz_bandpass143_nom143
+    A_cib_143_bandpass = A_cib_143 * cib_bandpass143_nom143
+    do l = lmin(2), lmax(2)
+        zCIB = A_cib_143_bandpass*cl_cib_143(l)
+        C_foregrounds(l,2)= A_ps_143*ps_scale + &
+        (zCIB +  A_ksz*ksz_temp(l) + A_sz_143_bandpass*sz_143_temp(l) &
+        -2.0*sqrt(A_cib_143_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )/(l*(l+1))
+    end do
+
+    !   217 foreground
+    !
+    A_cib_217_bandpass = A_cib_217 * cib_bandpass217_nom217
+    do l = lmin(3), lmax(3)
+        zCIB = A_cib_217_bandpass*cl_cib_217(l)
+        C_foregrounds(l,3) = A_ps_217*ps_scale + (zCIB + A_ksz*ksz_temp(l) )/(l*(l+1))
+    end do
+
+    !   143x217 foreground
+    !
+    do l = lmin(4), lmax(4)
+        zCIB = sqrt(A_cib_143_bandpass*A_cib_217_bandpass*cl_cib_143(l)*cl_cib_217(l))
+        C_foregrounds(l,4) = r_ps*sqrt(A_ps_143*A_ps_217)*ps_scale + &
+        ( r_cib*zCIB + A_ksz*ksz_temp(l) -sqrt(A_cib_217_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )/(l*(l+1))
+    end do
+
+    end subroutine compute_fg
+
+
+    subroutine calc_like(zlike,  cell_cmb, freq_params)
+    real(campc), intent(in)  :: freq_params(:)
+    real(campc), dimension(0:) :: cell_cmb
+    integer ::  j, l, ii,jj
+    real(campc) , allocatable, save ::  X_beam_corr_model(:), Y(:),  C_foregrounds(:,:)
+    real(campc) cal0, cal1, cal2
+    real(campc) zlike, ztemp
+    real(campc) beam_params(cov_dim),beam_coeffs(beam_Nspec,num_modes_per_beam)
+    integer :: ie1,ie2,if1,if2, ix
+    integer num_non_beam
 
     if (.not. allocated(lminX)) then
         print*, 'like_init should have been called before attempting to call calc_like.'
@@ -337,24 +408,14 @@
         C_foregrounds=0
     end if
 
-    ! atime = MPI_Wtime()
+    call compute_fg(C_foregrounds,freq_params, .false.)
 
-    num_non_beam = 14
+    cal0 = freq_params(14)
+    cal1 = freq_params(15)
+    cal2 = freq_params(16)
+
+    num_non_beam = 16
     if (size(freq_params) < num_non_beam +  beam_Nspec*num_modes_per_beam) stop 'CAMspec: not enough parameters'
-    A_ps_100=freq_params(1)
-    A_ps_143 = freq_params(2)
-    A_ps_217 = freq_params(3)
-    A_cib_143 =freq_params(4)
-    A_cib_217 =freq_params(5)
-    A_sz = freq_params(6)  !143
-    r_ps = freq_params(7)
-    r_cib = freq_params(8)
-    ncib = freq_params(9)
-    cal0 = freq_params(10)
-    cal1 = freq_params(11)
-    cal2 = freq_params(12)
-    xi = freq_params(13)
-    A_ksz = freq_params(14)
 
     if (keep_num>0) then
         beam_params = freq_params(num_non_beam+1:num_non_beam+cov_dim)
@@ -371,45 +432,19 @@
         beam_coeffs=0
     end if
 
-    do l=1, CAMspec_lmax
-        cl_cib(l) = (real(l,campc)/3000)**(ncib)
-    end do
-
-    !   100 foreground
-    !
     do l = lminX(1), lmaxX(1)
-        C_foregrounds(l,1)= A_ps_100*ps_scale+  &
-        ( A_ksz*ksz_temp(l) + A_sz*sz_bandpass100_nom143*sz_143_temp(l) )/(l*(l+1))
         X_beam_corr_model(l-lminX(1)+1) = ( cell_cmb(l) + C_foregrounds(l,1) )* corrected_beam(1,l)/cal0
     end do
 
-    !   143 foreground
-    !
-    A_sz_143_bandpass = A_sz * sz_bandpass143_nom143
-    A_cib_143_bandpass = A_cib_143 * cib_bandpass143_nom143
     do l = lminX(2), lmaxX(2)
-        zCIB = A_cib_143_bandpass*cl_cib(l)
-        C_foregrounds(l,2)= A_ps_143*ps_scale + &
-        (zCIB +  A_ksz*ksz_temp(l) + A_sz_143_bandpass*sz_143_temp(l) &
-        -2.0*sqrt(A_cib_143_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )/(l*(l+1))
         X_beam_corr_model(l-lminX(2)+npt(2)) =  (cell_cmb(l)+ C_foregrounds(l,2))*corrected_beam(2,l)/cal1
     end do
 
-    !   217 foreground
-    !
-    A_cib_217_bandpass = A_cib_217 * cib_bandpass217_nom217
     do l = lminX(3), lmaxX(3)
-        zCIB = A_cib_217_bandpass*cl_cib(l)
-        C_foregrounds(l,3) = A_ps_217*ps_scale + (zCIB + A_ksz*ksz_temp(l) )/(l*(l+1))
         X_beam_corr_model(l-lminX(3)+npt(3)) = (cell_cmb(l)+ C_foregrounds(l,3))* corrected_beam(3,l)/cal2
     end do
 
-    !   143x217 foreground
-    !
     do l = lminX(4), lmaxX(4)
-        zCIB = sqrt(A_cib_143_bandpass*A_cib_217_bandpass)*cl_cib(l)
-        C_foregrounds(l,4) = r_ps*sqrt(A_ps_143*A_ps_217)*ps_scale + &
-        ( r_cib*zCIB + A_ksz*ksz_temp(l) -sqrt(A_cib_217_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )/(l*(l+1))
         X_beam_corr_model(l-lminX(4)+npt(4)) =  ( cell_cmb(l) + C_foregrounds(l,4))*corrected_beam(4,l)/sqrt(cal1*cal2)
     end do
 
@@ -421,15 +456,6 @@
         ztemp= dot_product(Y(j+1:nX), c_inv(j+1:nX, j))
         zlike=zlike+ (ztemp*2 +c_inv(j, j)*Y(j))*Y(j)
     end do
-    !    zlike = 0
-    !    do  j = 1, nX
-    !       ztemp= 0
-    !       do  i = 1, nX
-    !          ztemp = ztemp + Y(i)*c_inv(i, j)
-    !       end do
-    !       zlike=zlike+ztemp*Y(j)
-    !    end do
-    !   zlike = CAMSpec_Quad(c_inv, Y)
 
     if (keep_num>0) then
         do if2=1,beam_Nspec
@@ -450,8 +476,9 @@
         enddo
     end if
 
-    if (want_spec(1)) zlike=zlike+ ((cal0/cal1-1.0006d0)/0.0004d0)**2
-    if (any(want_spec(3:4))) zlike=zlike+ ((cal2/cal1-0.9966d0)/0.0015d0)**2
+    !Moved these hard coded priors in prior[cal0] and prior[cal2] input parameters
+    !    if (want_spec(1)) zlike=zlike+ ((cal0/cal1-1.0006d0)/0.0004d0)**2
+    !    if (any(want_spec(3:4))) zlike=zlike+ ((cal2/cal1-0.9966d0)/0.0015d0)**2
 
     contains
 
