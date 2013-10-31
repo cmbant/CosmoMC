@@ -4,6 +4,8 @@ import os, batchJobArgs, ResultObjs, paramNames, planckStyle
 Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True, converge=True)
 Opts.parser.add_argument('latex_filename')
 Opts.parser.add_argument('--limit', type=int, default=2)
+Opts.parser.add_argument('--all_limits', action='store_true')
+
 Opts.parser.add_argument('--bestfitonly', action='store_true')
 Opts.parser.add_argument('--nobestfit', action='store_true')
 Opts.parser.add_argument('--no_delta_chisq', action='store_true')
@@ -25,24 +27,11 @@ Opts.parser.add_argument('--width', default="10in")
 (batch, args) = Opts.parseForBatch()
 
 if args.blockEndParams is not None: args.blockEndParams = args.blockEndParams.split(';')
-outfile = args.latex_filename
 
 if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
 
 if args.forpaper: formatter = planckStyle.planckStyleTableFormatter()
 else: formatter = None
-
-lines = []
-if not args.forpaper:
-    lines.append('\\documentclass[10pt]{article}')
-    lines.append('\\usepackage{fullpage}')
-    lines.append('\\usepackage[pdftex]{hyperref}')
-    lines.append('\\usepackage[paperheight=' + args.height + ',paperwidth=' + args.width + ',margin=0.8in]{geometry}')
-    lines.append('\\renewcommand{\\arraystretch}{1.5}')
-    lines.append('\\begin{document}')
-    if args.header_tex is not None:
-        lines.append(open(args.header_tex, 'r').read())
-    lines.append('\\tableofcontents')
 
 def texEscapeText(string):
     return string.replace('_', '{\\textunderscore}')
@@ -104,55 +93,78 @@ def compareTable(jobItems, titles=None):
 
 items = Opts.sortedParamtagDict(chainExist=not args.bestfitonly)
 
-# set of baseline results, e.g. for Delta chi^2
-baseJobItems = dict()
+if args.all_limits:
+    limits = [1, 2, 3]
+else: limits = [args.limit]
 
-for paramtag, parambatch in items:
-    isBase = len(parambatch[0].param_set) == 0
+
+for limit in limits:
+    args.limit = limit
+
+    outfile = args.latex_filename
+    if args.all_limits: outfile += '_limit' + str(limit)
+    if outfile[-4:] != '.tex': outfile += '.tex'
+
+    lines = []
     if not args.forpaper:
-        if isBase: paramText = 'Baseline model'
-        else: paramText = texEscapeText("+".join(parambatch[0].param_set))
-        section = '\\newpage\\section{ ' + paramText + '}'
-    else: section = ''
-    if args.compare is not None:
-        compares = Opts.filterForDataCompare(parambatch, args.compare)
-        if len(compares) == len(args.compare):
+        lines.append('\\documentclass[10pt]{article}')
+        lines.append('\\usepackage{fullpage}')
+        lines.append('\\usepackage[pdftex]{hyperref}')
+        lines.append('\\usepackage[paperheight=' + args.height + ',paperwidth=' + args.width + ',margin=0.8in]{geometry}')
+        lines.append('\\renewcommand{\\arraystretch}{1.5}')
+        lines.append('\\begin{document}')
+        if args.header_tex is not None:
+            lines.append(open(args.header_tex, 'r').read())
+        lines.append('\\tableofcontents')
+
+    # set of baseline results, e.g. for Delta chi^2
+    baseJobItems = dict()
+
+    for paramtag, parambatch in items:
+        isBase = len(parambatch[0].param_set) == 0
+        if not args.forpaper:
+            if isBase: paramText = 'Baseline model'
+            else: paramText = texEscapeText("+".join(parambatch[0].param_set))
+            section = '\\newpage\\section{ ' + paramText + '}'
+        else: section = ''
+        if args.compare is not None:
+            compares = Opts.filterForDataCompare(parambatch, args.compare)
+            if len(compares) == len(args.compare):
+                lines.append(section)
+                lines += compareTable(compares, args.titles)
+            else: print 'no matches for compare: ' + paramtag
+        else:
             lines.append(section)
-            lines += compareTable(compares, args.titles)
-        else: print 'no matches for compare: ' + paramtag
-    else:
-        lines.append(section)
-        for jobItem in parambatch:
-            if (os.path.exists(jobItem.distPath) or args.bestfitonly) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
-                if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
-                if isBase and not args.no_delta_chisq:
-                    baseJobItems[jobItem.normed_data] = jobItem
-                    referenceJobItem = None
-                else: referenceJobItem = baseJobItems.get(jobItem.normed_data, None)
-                tableLines = paramResultTable(jobItem, referenceJobItem)
-                if args.separate_tex: ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
-                lines += tableLines
+            for jobItem in parambatch:
+                if (os.path.exists(jobItem.distPath) or args.bestfitonly) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
+                    if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
+                    if isBase and not args.no_delta_chisq:
+                        baseJobItems[jobItem.normed_data] = jobItem
+                        referenceJobItem = None
+                    else: referenceJobItem = baseJobItems.get(jobItem.normed_data, None)
+                    tableLines = paramResultTable(jobItem, referenceJobItem)
+                    if args.separate_tex: ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
+                    lines += tableLines
 
-if not args.forpaper: lines.append('\\end{document}')
+    if not args.forpaper: lines.append('\\end{document}')
 
-if outfile.find('.') < 0: outfile += '.tex'
-(outdir, outname) = os.path.split(outfile)
-if len(outdir) > 0 and not os.path.exists(outdir): os.makedirs(outdir)
-ResultObjs.textFile(lines).write(outfile)
-(root, _) = os.path.splitext(outfile)
+    (outdir, outname) = os.path.split(outfile)
+    if len(outdir) > 0 and not os.path.exists(outdir): os.makedirs(outdir)
+    ResultObjs.textFile(lines).write(outfile)
+    (root, _) = os.path.splitext(outfile)
 
-if not args.forpaper:
-    print 'Now converting to PDF...'
-    delext = ['aux', 'log', 'out', 'toc']
-    if len(outdir) > 0: dodir = 'cd ' + outdir + '; '
-    else: dodir = '';
-    os.system(dodir + 'pdflatex ' + outname)
-    # #again to get table of contents
-    os.system(dodir + 'pdflatex ' + outname)
-    # and again to get page numbers
-    os.system(dodir + 'pdflatex ' + outname)
-    for ext in delext:
-        if os.path.exists(root + '.' + ext):
-            os.remove(root + '.' + ext)
+    if not args.forpaper:
+        print 'Now converting to PDF...'
+        delext = ['aux', 'log', 'out', 'toc']
+        if len(outdir) > 0: dodir = 'cd ' + outdir + '; '
+        else: dodir = '';
+        os.system(dodir + 'pdflatex ' + outname)
+        # #again to get table of contents
+        os.system(dodir + 'pdflatex ' + outname)
+        # and again to get page numbers
+        os.system(dodir + 'pdflatex ' + outname)
+        for ext in delext:
+            if os.path.exists(root + '.' + ext):
+                os.remove(root + '.' + ext)
 
 

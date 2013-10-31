@@ -117,6 +117,7 @@ class SampleAnalysisGetDist():
     def __init__(self, plot_data):
         self.plot_data = plot_data
         self.newPlot()
+        self.paths = dict()
 
     def newPlot(self):
         self.single_samples = dict()
@@ -152,7 +153,16 @@ class SampleAnalysisGetDist():
         return paramBounds(self.plot_data_file(root) + '.bounds')
 
     def plot_data_file(self, root):
-        return self.plot_data + os.sep + root
+        # find first match to roots that exist in list of plot_data paths
+        if os.sep in root: return root
+        path = self.paths.get(root, None)
+        if path is not None: return path
+        for datadir in self.plot_data:
+            path = datadir + os.sep + root
+            if os.path.exists(path + '.paramnames'):
+                self.paths[root] = path
+                return path
+        return self.plot_data[0] + os.sep + root
 
     def plot_data_file_1D(self, root, name):
         return self.plot_data_file(root) + '_p_' + name
@@ -188,8 +198,9 @@ class GetDistPlotter():
     def __init__(self, plot_data, settings=None):
         if settings is None: self.settings = defaultSettings
         else: self.settings = settings
-        self.plot_data = plot_data
-        self.sampleAnalyser = SampleAnalysisGetDist(plot_data)
+        if isinstance(plot_data, basestring): self.plot_data = [plot_data]
+        else: self.plot_data = plot_data
+        self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
         self.newPlot()
 
     def newPlot(self):

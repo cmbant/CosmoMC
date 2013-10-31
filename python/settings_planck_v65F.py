@@ -76,7 +76,7 @@ groups.append(g1)
 g2 = group()
 # lists of dataset names to combine, with corresponding sets of inis to include
 g2.params = [['nnu', 'yhe'], ['nnu', 'mnu'], ['mnu', 'Alens']]
-#todo: prior on m_phys for ['nnu', 'meffsterile'],  
+# todo: prior on m_phys for ['nnu', 'meffsterile'],
 g2.datasets = [planck_lowl_lowLike, planck_lowl_lowLike_highL]
 g2.importanceRuns = [post_BAO, post_HST]
 g2.groupName = 'ext'
@@ -101,7 +101,7 @@ skip = ['base_nnu_meffsterile_planck_lowl_lowLike']
 
 # try to match run to exisitng covmat
 covrenames = []
-covrenames.append([planck,'planck'])
+covrenames.append([planck, 'planck'])
 covrenames.append(['planck', 'planck_CAMspec'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
 covrenames.append(['_lensing', '_post_lensing'])
