@@ -51,7 +51,7 @@ def getTableLines(content):
     return ResultObjs.resultTable(args.columns, [content], blockEndParams=args.blockEndParams,
                          formatter=formatter, paramList=args.paramList, limit=args.limit).lines
 
-def paramResultTable(jobItem, referenceJobItem = None):
+def paramResultTable(jobItem, referenceJobItem=None):
     tableLines = []
     caption = []
     jobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=not args.nobestfit, bestfitonly=args.bestfitonly)
@@ -59,9 +59,9 @@ def paramResultTable(jobItem, referenceJobItem = None):
     if not bf is None:
         caption.append(' Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % (bf.logLike * 2)) + '$')
         if referenceJobItem is not None:
-             bf_ref = referenceJobItem.result_bestfit
-             if bf_ref is not None: caption.append('$\\Delta \\chi^2_{\\rm eff} = ' + ('%.2f' % ((bf.logLike-bf_ref.logLike) * 2)) + '$')
-            
+            bf_ref = referenceJobItem.result_bestfit
+            if bf_ref is not None: caption.append('$\\Delta \\chi^2_{\\rm eff} = ' + ('%.2f' % ((bf.logLike - bf_ref.logLike) * 2)) + '$')
+
     if args.bestfitonly:
         if bf is not None: tableLines += getTableLines(bf)
     else:
@@ -70,25 +70,25 @@ def paramResultTable(jobItem, referenceJobItem = None):
                 caption.append('$\\bar{\\chi}^2_{\\rm eff} = ' + ('%.2f' % (likeMarge.meanLogLike * 2)) + '$')
                 if referenceJobItem is not None:
                     likeMarge_ref = referenceJobItem.result_likemarge
-                    if likeMarge_ref is not None and likeMarge_ref.meanLogLike is not None: 
-                        delta= likeMarge.meanLogLike - likeMarge_ref.meanLogLike
-                        caption.append('$\\Delta\\bar{\\chi}^2_{\\rm eff} = ' + ('%.2f' % (delta* 2)) + '$')  
-        if jobItem.result_converge is not None: caption.append('$R-1 =' + jobItem.result_converge.worstR()+'$')
+                    if likeMarge_ref is not None and likeMarge_ref.meanLogLike is not None:
+                        delta = likeMarge.meanLogLike - likeMarge_ref.meanLogLike
+                        caption.append('$\\Delta\\bar{\\chi}^2_{\\rm eff} = ' + ('%.2f' % (delta * 2)) + '$')
+        if jobItem.result_converge is not None: caption.append('$R-1 =' + jobItem.result_converge.worstR() + '$')
         if jobItem.result_marge is not None: tableLines += getTableLines(jobItem.result_marge)
     tableLines.append('')
     if not args.forpaper: tableLines.append("; ".join(caption))
     if not bf is None and not args.forpaper:
         tableLines.append('')
         tableLines.append('$\\chi^2_{\\rm eff}$:')
-        if referenceJobItem is not None: compChiSq =  referenceJobItem.result_bestfit
+        if referenceJobItem is not None: compChiSq = referenceJobItem.result_bestfit
         else: compChiSq = None
         for kind, vals in bf.sortedChiSquareds():
             tableLines.append(kind + ' - ')
             for (name, chisq) in vals:
                 line = '  ' + texEscapeText(name) + ': ' + ('%.2f' % chisq) + ' '
-                if compChiSq is not None: 
-                    comp = compChiSq.chiSquareForKindName(kind,name)
-                    if comp is not None: line+= '($\Delta$ ' + ('%.2f' % (chisq-comp)) + ') '
+                if compChiSq is not None:
+                    comp = compChiSq.chiSquareForKindName(kind, name)
+                    if comp is not None: line += '($\Delta$ ' + ('%.2f' % (chisq - comp)) + ') '
                 tableLines.append(line)
     return tableLines
 
@@ -104,7 +104,7 @@ def compareTable(jobItems, titles=None):
 
 items = Opts.sortedParamtagDict(chainExist=not args.bestfitonly)
 
-#set of baseline results, e.g. for Delta chi^2
+# set of baseline results, e.g. for Delta chi^2
 baseJobItems = dict()
 
 for paramtag, parambatch in items:
@@ -126,9 +126,9 @@ for paramtag, parambatch in items:
             if (os.path.exists(jobItem.distPath) or args.bestfitonly) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
                 if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
                 if isBase and not args.no_delta_chisq:
-                    baseJobItems[jobItem.normed_data]=jobItem
+                    baseJobItems[jobItem.normed_data] = jobItem
                     referenceJobItem = None
-                else: referenceJobItem = baseJobItems.get(jobItem.normed_data,None)
+                else: referenceJobItem = baseJobItems.get(jobItem.normed_data, None)
                 tableLines = paramResultTable(jobItem, referenceJobItem)
                 if args.separate_tex: ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
                 lines += tableLines
@@ -144,13 +144,13 @@ ResultObjs.textFile(lines).write(outfile)
 if not args.forpaper:
     print 'Now converting to PDF...'
     delext = ['aux', 'log', 'out', 'toc']
-    if len(outdir)>0: dodir= 'cd ' + outdir + '; '
-    else: dodir='';
-    os.system(dodir+'pdflatex ' + outname)
+    if len(outdir) > 0: dodir = 'cd ' + outdir + '; '
+    else: dodir = '';
+    os.system(dodir + 'pdflatex ' + outname)
     # #again to get table of contents
     os.system(dodir + 'pdflatex ' + outname)
     # and again to get page numbers
-    os.system(dodir +'pdflatex ' + outname)
+    os.system(dodir + 'pdflatex ' + outname)
     for ext in delext:
         if os.path.exists(root + '.' + ext):
             os.remove(root + '.' + ext)

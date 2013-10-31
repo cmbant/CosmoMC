@@ -87,7 +87,7 @@ class jobItem:
         return self.importanceItems
 
     def makeChainPath(self):
-        makeaPath(self.chainPath)
+        makePath(self.chainPath)
         return self.chainPath
 
     def writeIniLines(self, f):
@@ -124,7 +124,7 @@ class jobItem:
 
     def chainBestfit(self, paramNameFile=None):
         bf_file = self.chainRoot + '.minimum'
-        if notEmptyFile(bf_file):
+        if nonEmptyFile(bf_file):
             return ResultObjs.bestFit(bf_file, paramNameFile)
         return None
 

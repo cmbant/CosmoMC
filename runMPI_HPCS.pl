@@ -10,6 +10,8 @@
 # for action =2 runs in one mpi process (e.g. for minimization) use
 # E.g. perl runMPI_HPCS.pl params 0
 
+# Note: the runbatch.py script now uses the job_script template instead
+
 use Cwd;
 
 # Use current directory as root
