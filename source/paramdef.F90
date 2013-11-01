@@ -107,12 +107,10 @@
 #ifdef MPI
     MPI_StartTime = MPI_WTime() - MPI_StartTime
     if (Feedback > 0 .and. MPIRank==0) then
+        write (*,*) 'Total time:', nint(MPI_StartTime), &
+        '(',MPI_StartTime/(60*60),' hours)'
 
-    write (*,*) 'Total time:', nint(MPI_StartTime), &
-    '(',MPI_StartTime/(60*60),' hours)'
-
-    if (slow_proposals/=0) write (*,*) 'Slow proposals: ', slow_proposals
-
+        if (slow_proposals/=0) write (*,*) 'Slow proposals: ', slow_proposals
     end if
     ierror =0
     if (wantbort) then
@@ -204,7 +202,8 @@
     integer :: breaks(num_params), num_breaks
     Type(DataLikelihood), pointer :: DataLike
     integer :: oversample_fast= 1
-    logical first, ierr
+    logical first
+    integer ierr
 
     output_lines = 0
 
@@ -261,7 +260,7 @@
             Scales%PWidth(i)=0
         else
             read(InLine, *, IOSTAT = ierr) center, Scales%PMin(i), Scales%PMax(i), Scales%StartWidth(i), Scales%PWidth(i)
-            if (ierr/=0) call ParamError('Error reading param details',i) 
+            if (ierr/=0) call ParamError('Error reading param details',i)
         end if
         if (Scales%PWidth(i)/=0) then
             InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'prior',i)
@@ -568,7 +567,6 @@
                 allocate(MPIMean(0:num_params_used))
             end if
         end if
-
     else
         flag = .false.
 
@@ -597,7 +595,6 @@
                         call MPI_ISSEND(MPIRank,1,MPI_INTEGER, j,0,MPI_COMM_WORLD,req(j),ierror)
                     end do
                 end if
-
             else
                 !See if notified by root chain that time to do stuff
                 call MPI_IPROBE(0,0,MPI_COMM_WORLD,flag, status,ierror)
@@ -606,7 +603,6 @@
                     !Just get rid of it. Must be neater way to do this...
                 end if
             end if
-
         end if
 
 

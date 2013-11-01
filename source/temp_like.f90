@@ -34,11 +34,11 @@
     logical :: storeall=.false.
     integer :: countnum
     integer :: camspec_beam_mcmc_num = 1
-    !    character*100 storeroot,storename,storenumstring
-    !   character*100 :: bestroot,bestnum,bestname
-    character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v1_cuts'
+
+    character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v2_cuts'
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num, &
-    want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged
+    want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged, &
+    compute_fg, Nspec
 
     contains
 
@@ -185,7 +185,7 @@
     allocate(beam_cov_full(cov_dim,cov_dim))
     read(48) (((beam_modes(i,l,j),j=1,Nspec),l=0,beam_lmax),i=1,num_modes_per_beam)
     if (pre_marged) then
-        read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)  
+        read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)
         read(48) !skip !((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
     else
         allocate(beam_cov_inv(cov_dim,cov_dim))
@@ -295,9 +295,9 @@
     end subroutine like_init
 
 
-    subroutine compute_fg(C_foregrounds,freq_params, all)
+    subroutine compute_fg(C_foregrounds,freq_params, lmax_compute)
     real(8), intent(in)  :: freq_params(:)
-    logical, intent(in) :: all
+    integer, intent(in) :: lmax_compute
     real(8), intent(inout)  ::  C_foregrounds(:,:)
     real(campc) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, asz143, r_ps, r_cib, xi, A_ksz
     real(campc) ncib217, ncib143
@@ -313,12 +313,12 @@
     integer lmin(Nspec), lmax(Nspec)
     real(campc) lnrat, nrun_cib
 
-    if (all) then
-        lmin=2
-        lmax = CAMspec_lmax
+    if (lmax_compute/=0) then
+        lmin = 2
+        lmax = lmax_compute
     else
         lmin = lminX
-        lmax=lmaxX
+        lmax = lmaxX
     end if
 
     A_ps_100=freq_params(1)
@@ -335,7 +335,7 @@
     xi = freq_params(12)
     A_ksz = freq_params(13)
 
-    do l=1, CAMspec_lmax
+    do l=1, maxval(lmax)
         lnrat = log(real(l,campc)/CamSpec_cib_pivot)
         cl_cib_217(l) = exp(ncib217*lnrat + nrun_cib/2*lnrat**2)
         if (ncib143<-9) then
@@ -381,7 +381,6 @@
 
     end subroutine compute_fg
 
-
     subroutine calc_like(zlike,  cell_cmb, freq_params)
     real(campc), intent(in)  :: freq_params(:)
     real(campc), dimension(0:) :: cell_cmb
@@ -408,7 +407,7 @@
         C_foregrounds=0
     end if
 
-    call compute_fg(C_foregrounds,freq_params, .false.)
+    call compute_fg(C_foregrounds,freq_params, 0)
 
     cal0 = freq_params(14)
     cal1 = freq_params(15)

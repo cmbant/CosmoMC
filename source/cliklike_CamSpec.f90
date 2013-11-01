@@ -12,6 +12,7 @@
     type, extends(CosmologyLikelihood) :: CamSpeclikelihood
     contains
     procedure :: LogLike => CamSpecLogLike
+    procedure :: WriteLikelihoodData => CamSpec_WriteLikelihoodData
     end type CamSpeclikelihood
 
 #ifdef highL
@@ -76,7 +77,6 @@
         if (tmp/='') read(tmp,*) camspec_lmaxs
 
         call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename, marge_modes)
-
     end if
 
     use_highL = Ini_Read_Logical_File(Ini,'use_highL',.false.)
@@ -141,6 +141,26 @@
     if (Feedback>2) Print*,'CamSpec lnlike = ',nonclik_lnlike_camSpec
 
     end function nonclik_lnlike_camSpec
+
+    subroutine CAMSpec_WriteLikelihoodData(like,Theory,DataParams, root)
+    Class(CamSpeclikelihood) :: like
+    class(*) :: Theory
+    real(mcp), intent(in) :: DataParams(:)
+    character(LEN=*), intent(in) :: root
+    real(mcp) , allocatable ::  C_foregrounds(:,:)
+    integer L
+    character(LEN=80) fmt
+
+    allocate(C_foregrounds(lmax,Nspec))
+    call compute_fg(C_foregrounds,DataParams, lmax)
+    call CreateTxtFile(trim(root)//'.camspec_foregrounds',tmp_file_unit)
+    fmt = concat('(1I6,',Nspec,'E15.5)')
+    do l = 2, lmax
+        write (tmp_file_unit,fmt) l, C_foregrounds(l,:)*twopi
+    end do
+    call CloseFile(tmp_file_unit)
+
+    end subroutine CAMSpec_WriteLikelihoodData
 
 #ifdef highL
     real(mcp) function highLLogLike(like, CMB, Theory, DataParams)
@@ -217,4 +237,3 @@
 #endif
 
     end module noncliklike
-

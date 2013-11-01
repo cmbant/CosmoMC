@@ -296,6 +296,7 @@
                     if (bestfit_loglike==logZero) write(*,*) MpiRank,'WARNING: FindBestFit did not converge'
                     if (Feedback >0) write(*,*) 'Best-fit results: '
                     call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
+                    call DataLikelihoods%WriteDataForLikelihoods(Params%P, Params%Theory, trim(baseroot))
                     if (use_CMB) call Params%Theory%WriteBestFitData(trim(baseroot))
                     if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
                 else

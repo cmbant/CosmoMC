@@ -26,6 +26,7 @@
     procedure :: LogLikeTheory !same as above when extra info not needed
     procedure :: loadParamNames
     procedure :: checkConflicts
+    procedure :: WriteLikelihoodData
     end type DataLikelihood
 
     type, extends(DataLikelihood) :: DatasetFileLikelihood
@@ -50,6 +51,7 @@
     procedure :: AddNuisanceParameters
     procedure :: Compare => CompareLikes
     procedure :: checkAllConflicts
+    procedure :: WriteDataForLikelihoods
     end type LikelihoodList
 
     Type(LikelihoodList), target, save :: DataLikelihoods
@@ -86,6 +88,21 @@
     end do
 
     end subroutine WriteLikelihoodContribs
+
+    subroutine WriteDataForLikelihoods(L, P, Theory, fileroot)
+    Class(LikelihoodList) :: L
+    real(mcp), intent(in) :: P(:)
+    character(LEN=*), intent(in) :: fileroot
+    class(*), intent(in) :: Theory
+    integer i
+    Class(DataLikelihood), pointer :: LikeItem
+
+    do i=1,L%Count
+        LikeItem => L%Item(i)
+        call LikeItem%WriteLikelihoodData(Theory,P(LikeItem%nuisance_indices),fileroot)
+    end do
+
+    end subroutine WriteDataForLikelihoods
 
     integer function CompareLikes(this, R1, R2) result(comp)
     Class(LikelihoodList) :: this
@@ -149,6 +166,7 @@
 
     end subroutine checkAllConflicts
 
+
     function logLikeTheory(like, CMB)
     !For likelihoods that don't need Theory or DataParams
     class(DataLikelihood) :: like
@@ -168,6 +186,18 @@
 
     logLike = like%logLikeTheory(CMB)
     end function
+
+
+    subroutine WriteLikelihoodData(like,Theory,DataParams, root)
+    class(DataLikelihood) :: like
+    class(*) :: Theory
+    real(mcp), intent(in) :: DataParams(:)
+    character(LEN=*), intent(in) :: root
+
+    !Write out any derived data that might be useful for the likelihood (e.g. foreground model)
+
+    end subroutine WriteLikelihoodData
+
 
     subroutine loadParamNames(like, fname)
     class(DataLikelihood) :: like
