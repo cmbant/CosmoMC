@@ -8,7 +8,8 @@
     real(campc),  dimension(:,:), allocatable :: c_inv
     integer :: Nspec,nX,num_ells,nXfromdiff, CAMspec_lmax
     integer, dimension(:), allocatable  :: lminX, lmaxX, npt
-    integer, parameter :: lmax_sz = 5000
+    integer, parameter :: lmax_max = 5000
+    integer, parameter :: lmax_sz = lmax_max
     real(campc) :: sz_143_temp(lmax_sz)
     real(campc) :: ksz_temp(lmax_sz), tszxcib_temp(lmax_sz)
 
@@ -31,8 +32,6 @@
     integer :: camspec_lmins(4) =0
     integer :: camspec_lmaxs(4) =0
 
-    logical :: storeall=.false.
-    integer :: countnum
     integer :: camspec_beam_mcmc_num = 1
 
     character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v2_cuts'
@@ -288,7 +287,6 @@
         beam_cov_inv = beam_cov_full(keep_indices,keep_indices)
         call Matrix_inverse(beam_cov_inv)
     end if
-    countnum=0
 
     needinit=.false.
 
@@ -303,7 +301,7 @@
     real(campc) ncib217, ncib143
     real(campc) zCIB
     integer:: l
-    real(campc) cl_cib_143(CAMspec_lmax), cl_cib_217(CAMspec_lmax) !CIB
+    real(campc) cl_cib_143(lmax_max), cl_cib_217(lmax_max) !CIB
     real(campc), parameter :: sz_bandpass100_nom143 = 2.022d0
     real(campc), parameter :: cib_bandpass143_nom143 = 1.134d0
     real(campc), parameter :: sz_bandpass143_nom143 = 0.95d0
