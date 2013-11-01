@@ -283,6 +283,7 @@
                 write(48) dummy !inver covariance, assume not used
                 write(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
                 close(48)
+                write(*,*) 'Marged file done: '//trim(like_file)//'_beam_marged'//trim(marge_file_variant)
                 stop
             end if
         else
@@ -394,7 +395,7 @@
     real(campc) , allocatable, save ::  X_beam_corr_model(:), Y(:),  C_foregrounds(:,:)
     real(campc) cal0, cal1, cal2
     real(campc) zlike, ztemp
-    real(campc) beam_params(cov_dim),beam_coeffs(beam_Nspec,num_modes_per_beam)
+    real(campc) beam_params(cov_dim),beam_coeffs(num_modes_per_beam,beam_Nspec)
     integer :: ie1,ie2,if1,if2, ix
     integer num_non_beam
 
@@ -430,7 +431,7 @@
         do ii=1,beam_Nspec
             do jj=1,num_modes_per_beam
                 ix = jj+num_modes_per_beam*(ii-1)
-                beam_coeffs(ii,jj)=beam_params(ix)
+                beam_coeffs(jj,ii)=beam_params(ix)
             enddo
         enddo
     else
@@ -471,8 +472,8 @@
                         do ie1=1,num_modes_per_beam
                             ii=ie1+num_modes_per_beam*(if1-1)
                             if (.not. want_marge(ii)) then
-                                zlike=zlike+beam_coeffs(if1,ie1)*&
-                                beam_cov_inv(keep_indices_reverse(ii),keep_indices_reverse(jj))*beam_coeffs(if2,ie2)
+                                zlike=zlike+beam_coeffs(ie1,if1)*&
+                                beam_cov_inv(keep_indices_reverse(ii),keep_indices_reverse(jj))*beam_coeffs(ie2,if2)
                             end if
                         enddo
                     end if
@@ -489,12 +490,9 @@
 
     real(campc) function corrected_beam(spec_num,l)
     integer, intent(in) :: spec_num,l
-    integer :: i
 
-    corrected_beam=1.d0
-    do i=1,num_modes_per_beam
-        corrected_beam=corrected_beam+beam_coeffs(spec_num,i)*beam_modes(i,l,spec_num)*beam_factor
-    enddo
+    corrected_beam=1.d0 + dot_product(beam_coeffs(:,spec_num),beam_modes(:,l,spec_num))*beam_factor
+
     end function corrected_beam
 
     end subroutine calc_like
