@@ -173,13 +173,15 @@
     real(mcp) :: derived(like%nuisance_params%num_derived)
     real(mcp) :: DataParams(:)
     real(mcp) , allocatable ::  C_foregrounds(:,:)
+    integer l
 
-    allocate(C_foregrounds(2000,Nspec))
+    l=2000
+    allocate(C_foregrounds(l,Nspec))
     C_foregrounds=0
-    call compute_fg(C_foregrounds,DataParams, 2000)
-    derived(1) = C_foregrounds(2000,2)
-    derived(2) = C_foregrounds(2000,3)
-    derived(3) = C_foregrounds(2000,4)
+    call compute_fg(C_foregrounds,DataParams, l)
+    derived(1) = C_foregrounds(2000,2)*l*(l+1)
+    derived(2) = C_foregrounds(2000,3)*l*(l+1)
+    derived(3) = C_foregrounds(2000,4)*l*(l+1)
 
     end function CamSpec_derivedParameters
 
