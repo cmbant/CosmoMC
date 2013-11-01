@@ -156,7 +156,7 @@
     call compute_fg(C_foregrounds,DataParams, CAMSpec_lmax_foreground)
     call CreateTxtFile(trim(root)//'.camspec_foregrounds',tmp_file_unit)
     fmt = concat('(1I6,',Nspec,'E15.5)')
-    do l = 2, lmax
+    do l = 2, CAMSpec_lmax_foreground
         write (tmp_file_unit,fmt) l, C_foregrounds(l,:)*twopi
     end do
     call CloseFile(tmp_file_unit)
