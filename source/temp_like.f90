@@ -301,7 +301,7 @@
     real(campc) ncib217, ncib143
     real(campc) zCIB
     integer:: l
-    real(campc) cl_cib_143(lmax_max), cl_cib_217(lmax_max) !CIB
+    real(campc) cl_cib_143(max(lmax_compute,CAMspec_lmax)), cl_cib_217(max(lmax_compute,CAMspec_lmax)) !CIB
     real(campc), parameter :: sz_bandpass100_nom143 = 2.022d0
     real(campc), parameter :: cib_bandpass143_nom143 = 1.134d0
     real(campc), parameter :: sz_bandpass143_nom143 = 0.95d0
