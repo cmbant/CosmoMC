@@ -166,7 +166,7 @@
             DataLike%derived_indices(j) = ParamNames_index(Names, NewNames%name(j+NewNames%num_MCMC)) - Names%num_MCMC
         end do
         if (Feedback>1 .and. MPIrank==0) print *,trim(DataLike%name)//' derived param indices:', DataLike%derived_indices
-        if (any(DataLike%derived_indices<= Names%num_MCMC)) &
+        if (any(DataLike%derived_indices<=0)) &
         call MpiStop('AddNuisanceParameters: unmatched derived param')
     end do
     L%num_derived_parameters = Names%num_derived - baseDerived
