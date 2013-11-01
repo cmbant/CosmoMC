@@ -8,8 +8,8 @@
     real(campc),  dimension(:,:), allocatable :: c_inv
     integer :: Nspec,nX,num_ells,nXfromdiff, CAMspec_lmax
     integer, dimension(:), allocatable  :: lminX, lmaxX, npt
-    integer, parameter :: lmax_max = 5000
-    integer, parameter :: lmax_sz = lmax_max
+    integer, parameter :: CAMSpec_lmax_foreground = 5000
+    integer, parameter :: lmax_sz = CAMSpec_lmax_foreground
     real(campc) :: sz_143_temp(lmax_sz)
     real(campc) :: ksz_temp(lmax_sz), tszxcib_temp(lmax_sz)
 
@@ -37,7 +37,7 @@
     character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v2_cuts'
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num, &
     want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged, &
-    compute_fg, Nspec
+    compute_fg, Nspec,CAMSpec_lmax_foreground
 
     contains
 
@@ -301,7 +301,7 @@
     real(campc) ncib217, ncib143
     real(campc) zCIB
     integer:: l
-    real(campc) cl_cib_143(max(lmax_compute,CAMspec_lmax)), cl_cib_217(max(lmax_compute,CAMspec_lmax)) !CIB
+    real(campc) cl_cib_143(CAMSpec_lmax_foreground), cl_cib_217(CAMSpec_lmax_foreground) !CIB
     real(campc), parameter :: sz_bandpass100_nom143 = 2.022d0
     real(campc), parameter :: cib_bandpass143_nom143 = 1.134d0
     real(campc), parameter :: sz_bandpass143_nom143 = 0.95d0
@@ -313,7 +313,7 @@
 
     if (lmax_compute/=0) then
         lmin = 2
-        lmax = lmax_compute
+        lmax = min(CAMSpec_lmax_foreground,lmax_compute)
     else
         lmin = lminX
         lmax = lmaxX

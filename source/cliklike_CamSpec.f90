@@ -151,8 +151,9 @@
     integer L
     character(LEN=80) fmt
 
-    allocate(C_foregrounds(lmax,Nspec))
-    call compute_fg(C_foregrounds,DataParams, lmax)
+    allocate(C_foregrounds(CAMSpec_lmax_foreground,Nspec))
+    C_foregrounds=0
+    call compute_fg(C_foregrounds,DataParams, CAMSpec_lmax_foreground)
     call CreateTxtFile(trim(root)//'.camspec_foregrounds',tmp_file_unit)
     fmt = concat('(1I6,',Nspec,'E15.5)')
     do l = 2, lmax
