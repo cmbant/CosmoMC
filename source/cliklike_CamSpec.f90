@@ -13,6 +13,7 @@
     contains
     procedure :: LogLike => CamSpecLogLike
     procedure :: WriteLikelihoodData => CamSpec_WriteLikelihoodData
+    procedure :: derivedParameters => CamSpec_DerivedParameters
     end type CamSpeclikelihood
 
 #ifdef highL
@@ -165,6 +166,23 @@
     call CloseFile(tmp_file_unit)
 
     end subroutine CAMSpec_WriteLikelihoodData
+
+    function CamSpec_derivedParameters(like, Theory, DataParams) result(derived)
+    class(CamSpeclikelihood) :: like
+    class(*) :: Theory
+    real(mcp) :: derived(like%nuisance_params%num_derived)
+    real(mcp) :: DataParams(:)
+    real(mcp) , allocatable ::  C_foregrounds(:,:)
+
+    allocate(C_foregrounds(2000,Nspec))
+    C_foregrounds=0
+    call compute_fg(C_foregrounds,DataParams, 2000)
+    derived(1) = C_foregrounds(2000,2)
+    derived(2) = C_foregrounds(2000,3)
+    derived(3) = C_foregrounds(2000,4)
+
+    end function CamSpec_derivedParameters
+
 
 #ifdef highL
     real(mcp) function highLLogLike(like, CMB, Theory, DataParams)
