@@ -68,7 +68,7 @@
     integer i, dummy
     real(campc) :: renorm
 
-    open(48, file=fname, form='formatted', status='unknown')
+    open(48, file=fname, form='formatted', status='old')
     do i=2,lmax_sz
         read(48,*) dummy,templt(i)
         if (dummy/=i) stop 'CAMspec_ReadNormSZ: inconsistency in file read'
@@ -84,13 +84,13 @@
     real(campc) :: fid_theory
     real(campc) :: fid_cl(:,:)
 
-    open(48, file=CAMspec_fiducial_foregrounds, form='formatted', status='unknown')
+    open(48, file=CAMspec_fiducial_foregrounds, form='formatted', status='old')
     do i=2,CAMspec_lmax
         read(48,*) j, fid_cl(i,:)
         if (j/=i) stop 'error reading fiducial foreground C_l for beams'
     enddo
     close(48)
-    open(48, file=CAMspec_fiducial_cl, form='formatted', status='unknown')
+    open(48, file=CAMspec_fiducial_cl, form='formatted', status='old')
     do i=2,CAMspec_lmax
         read(48,*, end=100) j,fid_theory
 100     if (j/=i) stop 'error reading fiducial C_l for beams'
@@ -120,7 +120,7 @@
         llp1(i) = 1/real(i*(i+1),campc)
     end do
 
-    open(48, file=like_file, form='unformatted', status='unknown')
+    open(48, file=like_file, form='unformatted', status='old')
 
     read(48) Nspec,nX
     allocate(lminX(Nspec))
@@ -146,8 +146,8 @@
         allocate(cov(nX,nX))
         allocate(X_data_in(nX))
         read(48) X_data_in !(X_data(i), i=1, nX)
-        read(48) cov !((c_inv(i, j), j = 1, nX), i = 1,  nX) !covarianbce
-        read(48) !((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
+        read(48) cov !((c_inv(i, j), j = 1, nX), i = 1,  nX) !covariance
+        read(48) !((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariance
         close(48)
 
         !Cut on L ranges

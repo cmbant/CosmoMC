@@ -960,6 +960,17 @@
 
     end subroutine ReadModel
 
+    function GetDerivedParameters(P, Theory, derived) result (num_derived)
+    real(mcp) :: P(:)
+    class(TTheoryPredictions) :: Theory
+    Type(mc_real_pointer) :: derived
+    integer num_derived
+
+    num_derived = Parameterization%CalcDerivedParams(P,Theory,derived)
+    num_derived = DataLikelihoods%addLikelihoodDerivedParams(P, Theory, derived)
+
+    end function GetDerivedParameters
+
     subroutine WriteParams(P, mult, like)
     Type(ParamSet) P
     real(mcp), intent(in) :: mult, like
@@ -972,7 +983,7 @@
     if (generic_mcmc) then
         call IO_OutputChainRow(outfile_handle, mult, like, P%P(params_used), num_params_used)
     else
-        numderived = Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
+        numderived =GetDerivedParameters(P%P,P%Theory, derived)
 
         allocate(output_array(num_params_used + numderived))
         output_array(1:num_params_used) =  P%P(params_used)
@@ -995,7 +1006,7 @@
 
     if (outfile_handle ==0) return
 
-    numderived =Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
+    numderived = GetDerivedParameters(P%P,P%Theory, derived) 
 
     allocate(output_array(num_params_used + numderived + P%Theory%num_k ))
     output_array(1:num_params_used) =  P%P(params_used)
