@@ -54,13 +54,15 @@
         call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
 
         make_cov_marged = Ini_read_Logical_file(Ini,'make_cov_marged',.false.)
-        pre_marged=Ini_Read_Logical_File(Ini,'pre_marged',.false.)
+        pre_marged= .not. make_cov_marged .and. Ini_Read_Logical_File(Ini,'pre_marged',.false.)
         if (pre_marged) then
             likefilename=ReadIniFileName(Ini,'margelikefile',NotFoundFail = .true.)
             marge_modes=ReadIniFileName(Ini,'marge_modes',NotFoundFail = .true.)
             if (camspec_beam_mcmc_num/=1) call MpiStop('camspec_beam_mcmc_num must be one for precomputed')
         else
             likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
+            camspec_fiducial_foregrounds = ReadIniFileName(Ini,'camspec_fiducial_foregrounds',NotFoundFail = .true.)
+            camspec_fiducial_cl = ReadIniFileName(Ini,'camspec_fiducial_cl',NotFoundFail = .true.)
         end if
         Like%version = ExtractFileName(likefilename)
 
@@ -157,7 +159,7 @@
     call CreateTxtFile(trim(root)//'.camspec_foregrounds',tmp_file_unit)
     fmt = concat('(1I6,',Nspec,'E15.5)')
     do l = 2, CAMSpec_lmax_foreground
-        write (tmp_file_unit,fmt) l, C_foregrounds(l,:)*twopi
+        write (tmp_file_unit,fmt) l, C_foregrounds(l,:)*l*(l+1)
     end do
     call CloseFile(tmp_file_unit)
 

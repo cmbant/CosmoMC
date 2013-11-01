@@ -31,13 +31,17 @@
     logical :: want_spec(4) = .true.
     integer :: camspec_lmins(4) =0
     integer :: camspec_lmaxs(4) =0
+    real(campc)  :: llp1(CAMSpec_lmax_foreground)
 
     integer :: camspec_beam_mcmc_num = 1
 
-    character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v2_cuts'
+    character(LEN=1024) camspec_fiducial_foregrounds
+    character(LEN=1024) camspec_fiducial_cl
+
+    character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v2'
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num, &
     want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged, &
-    compute_fg, Nspec,CAMSpec_lmax_foreground
+    compute_fg, Nspec,CAMSpec_lmax_foreground,camspec_fiducial_foregrounds,camspec_fiducial_cl
 
     contains
 
@@ -75,6 +79,27 @@
     templt=templt*renorm
     end subroutine CAMspec_ReadNormSZ
 
+    subroutine ReadFiducialCl(fid_cl)
+    integer i,j
+    real(campc) :: fid_theory
+    real(campc) :: fid_cl(:,:)
+
+    open(48, file=CAMspec_fiducial_foregrounds, form='formatted', status='unknown')
+    do i=2,CAMspec_lmax
+        read(48,*) j, fid_cl(i,:)
+        if (j/=i) stop 'error reading fiducial foreground C_l for beams'
+    enddo
+    close(48)
+    open(48, file=CAMspec_fiducial_cl, form='formatted', status='unknown')
+    do i=2,CAMspec_lmax
+        read(48,*, end=100) j,fid_theory
+100     if (j/=i) stop 'error reading fiducial C_l for beams'
+        fid_cl(i,:) = (fid_cl(i,:) + fid_theory)*llp1(i) !want C_l/2Pi foregrounds+theory
+    enddo
+    close(48)
+
+    end subroutine ReadFiducialCl
+
     subroutine like_init(pre_marged,like_file, sz143_file, tszxcib_file, ksz_file, beam_file, marge_modes)
     use MatrixUtils
     integer :: i, j,k,l
@@ -84,7 +109,6 @@
     logical, save :: needinit=.true.
     real(campc) , allocatable:: fid_cl(:,:), beam_cov(:,:), beam_cov_full(:,:)
     integer if1,if2, ie1, ie2, ii, jj, L2
-    real(campc) :: fid_theory
     real(campc), dimension(:), allocatable :: X_data_in
     real(campc),  dimension(:,:), allocatable :: cov
     integer, allocatable :: indices(:),np(:)
@@ -92,6 +116,10 @@
     real(campc) dummy
 
     if(.not. needinit) return
+
+    do i=1,CAMSpec_lmax_foreground
+        llp1(i) = 1/real(i*(i+1),campc)
+    end do
 
     open(48, file=like_file, form='unformatted', status='unknown')
 
@@ -163,13 +191,7 @@
 
     if (.not. pre_marged) then
         allocate(fid_cl(CAMspec_lmax,4))
-        open(48, file='./data/camspec_foregrounds.dat', form='formatted', status='unknown')
-        do i=2,CAMspec_lmax
-            read(48,*) j,fid_theory, fid_cl(i,:)
-            if (j/=i) stop 'error reading fiducial foreground C_l for beams'
-            fid_cl(i,:) = (fid_cl(i,:) + fid_theory)/(i*(i+1)) !want C_l/2Pi foregrounds+theory
-        enddo
-        close(48)
+        call ReadFiducialCl(fid_cl)
     end if
 
     call CAMspec_ReadNormSZ(sz143_file, sz_143_temp)
@@ -183,14 +205,9 @@
     cov_dim=beam_Nspec*num_modes_per_beam
     allocate(beam_cov_full(cov_dim,cov_dim))
     read(48) (((beam_modes(i,l,j),j=1,Nspec),l=0,beam_lmax),i=1,num_modes_per_beam)
-    if (pre_marged) then
-        read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)
-        read(48) !skip !((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
-    else
-        allocate(beam_cov_inv(cov_dim,cov_dim))
-        read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)  ! beam_cov
-        read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
-    end if
+    allocate(beam_cov_inv(cov_dim,cov_dim))
+    read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)  ! beam_cov
+    read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
     close(48)
 
     allocate(want_marge(cov_dim))
@@ -216,22 +233,21 @@
         marge_indices_reverse(i)=j
         keep_indices_reverse(i)=k
     end do
+
     allocate(beam_conditional_mean(marge_num, keep_num))
+    if (marge_num>0) then
+        allocate(beam_cov(marge_num, marge_num))
+        beam_cov = beam_cov_inv(marge_indices,marge_indices)
+        call Matrix_Inverse(beam_cov)
+        beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(marge_indices,keep_indices))
+    end if
+    deallocate(beam_cov_inv)
+
     if (pre_marged) then
         print *,'using marginalizing modes:',marge_num,'keeping',keep_num
-        !Use precomputed values
-        open(48, file=marge_modes, form='formatted', status='unknown')
-        do i=1, marge_num
-            read(48,*) beam_conditional_mean(i,:)
-        end do
-        close(48)
     else
         print *,'beam marginalizing:',marge_num,'keeping',keep_num
         if (marge_num>0) then
-            allocate(beam_cov(marge_num, marge_num))
-            beam_cov = beam_cov_inv(marge_indices,marge_indices)
-            call Matrix_Inverse(beam_cov)
-
             do if2=1,beam_Nspec
                 if (want_spec(if2)) then
                     do if1=1,beam_Nspec
@@ -258,7 +274,6 @@
             enddo
             ! print *,'after', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502),  c_inv(npt(4)-1002,npt(4)-1000)
 
-            beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(marge_indices,keep_indices))
             call Matrix_inverse(c_inv) !now c_inv is the inverse covariance
             if (make_cov_marged .and. marge_num>0) then
                 open(48, file=trim(like_file)//'_beam_marged', form='unformatted', status='unknown')
@@ -269,17 +284,11 @@
                 write(48) dummy !inver covariance, assume not used
                 write(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
                 close(48)
-                open(48, file=trim(like_file)//'_conditionals', form='formatted', status='unknown')
-                do i=1, marge_num
-                    write(48,*) beam_conditional_mean(i,:)
-                end do
-                close(48)
                 stop
             end if
         else
             call Matrix_inverse(c_inv)
         end if
-        deallocate(beam_cov_inv)
     end if !pre-marged
 
     if (keep_num>0) then
@@ -347,7 +356,7 @@
     !
     do l = lmin(1), lmax(1)
         C_foregrounds(l,1)= A_ps_100*ps_scale+  &
-        ( A_ksz*ksz_temp(l) + asz143*sz_bandpass100_nom143*sz_143_temp(l) )/(l*(l+1))
+        ( A_ksz*ksz_temp(l) + asz143*sz_bandpass100_nom143*sz_143_temp(l) )*llp1(l)
     end do
 
     !   143 foreground
@@ -358,7 +367,7 @@
         zCIB = A_cib_143_bandpass*cl_cib_143(l)
         C_foregrounds(l,2)= A_ps_143*ps_scale + &
         (zCIB +  A_ksz*ksz_temp(l) + A_sz_143_bandpass*sz_143_temp(l) &
-        -2.0*sqrt(A_cib_143_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )/(l*(l+1))
+        -2.0*sqrt(A_cib_143_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )*llp1(l)
     end do
 
     !   217 foreground
@@ -366,7 +375,7 @@
     A_cib_217_bandpass = A_cib_217 * cib_bandpass217_nom217
     do l = lmin(3), lmax(3)
         zCIB = A_cib_217_bandpass*cl_cib_217(l)
-        C_foregrounds(l,3) = A_ps_217*ps_scale + (zCIB + A_ksz*ksz_temp(l) )/(l*(l+1))
+        C_foregrounds(l,3) = A_ps_217*ps_scale + (zCIB + A_ksz*ksz_temp(l) )*llp1(l)
     end do
 
     !   143x217 foreground
@@ -374,7 +383,7 @@
     do l = lmin(4), lmax(4)
         zCIB = sqrt(A_cib_143_bandpass*A_cib_217_bandpass*cl_cib_143(l)*cl_cib_217(l))
         C_foregrounds(l,4) = r_ps*sqrt(A_ps_143*A_ps_217)*ps_scale + &
-        ( r_cib*zCIB + A_ksz*ksz_temp(l) -sqrt(A_cib_217_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )/(l*(l+1))
+        ( r_cib*zCIB + A_ksz*ksz_temp(l) -sqrt(A_cib_217_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )*llp1(l)
     end do
 
     end subroutine compute_fg
