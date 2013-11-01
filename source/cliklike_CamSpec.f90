@@ -35,7 +35,7 @@
     Type(TIniFile) Ini
     class(LikelihoodList) :: LikeList
     character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
-    beamfilename, kszfilename,tszxcibfilename, tmp, marge_modes
+    beamfilename, kszfilename,tszxcibfilename, tmp
     Class(CosmologyLikelihood), pointer :: Like
     logical :: use_CAMspec
     logical :: use_highL
@@ -57,7 +57,6 @@
         pre_marged= .not. make_cov_marged .and. Ini_Read_Logical_File(Ini,'pre_marged',.false.)
         if (pre_marged) then
             likefilename=ReadIniFileName(Ini,'margelikefile',NotFoundFail = .true.)
-            marge_modes=ReadIniFileName(Ini,'marge_modes',NotFoundFail = .true.)
             if (camspec_beam_mcmc_num/=1) call MpiStop('camspec_beam_mcmc_num must be one for precomputed')
         else
             likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
@@ -78,7 +77,7 @@
         tmp = Ini_read_String_file(Ini,'camspec_lmax')
         if (tmp/='') read(tmp,*) camspec_lmaxs
 
-        call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename, marge_modes)
+        call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename)
     end if
 
     use_highL = Ini_Read_Logical_File(Ini,'use_highL',.false.)
