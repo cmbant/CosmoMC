@@ -35,12 +35,12 @@
 
     integer :: camspec_beam_mcmc_num = 1
 
-    character(LEN=1024) camspec_fiducial_foregrounds
-    character(LEN=1024) camspec_fiducial_cl
+    character(LEN=1024) camspec_fiducial_foregrounds, camspec_fiducial_cl
+    character(LEN=80) :: marge_file_variant = ''
 
     character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v2'
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num, &
-    want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged, &
+    want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged, marge_file_variant,&
     compute_fg, Nspec,CAMSpec_lmax_foreground,camspec_fiducial_foregrounds,camspec_fiducial_cl
 
     contains
@@ -275,7 +275,7 @@
 
             call Matrix_inverse(c_inv) !now c_inv is the inverse covariance
             if (make_cov_marged .and. marge_num>0) then
-                open(48, file=trim(like_file)//'_beam_marged', form='unformatted', status='unknown')
+                open(48, file=trim(like_file)//'_beam_marged'//trim(marge_file_variant), form='unformatted', status='unknown')
                 write(48) Nspec,nX
                 write(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
                 write(48) (X_data(i), i=1, nX)

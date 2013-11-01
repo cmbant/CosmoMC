@@ -54,6 +54,7 @@
         call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
 
         make_cov_marged = Ini_read_Logical_file(Ini,'make_cov_marged',.false.)
+        if (make_cov_marged) marge_file_variant = Ini_read_string_file(Ini,'marge_file_variant')
         pre_marged= .not. make_cov_marged .and. Ini_Read_Logical_File(Ini,'pre_marged',.false.)
         if (pre_marged) then
             likefilename=ReadIniFileName(Ini,'margelikefile',NotFoundFail = .true.)
@@ -70,13 +71,14 @@
         kszfilename=ReadIniFileName(Ini,'kszfile',NotFoundFail = .true.)
         beamfilename=ReadIniFileName(Ini,'beamfile',NotFoundFail = .true.)
         camspec_beam_mcmc_num = Ini_Read_Int_File(Ini,'camspec_beam_mcmc_num',camspec_beam_mcmc_num)
-        tmp = Ini_read_String_file(Ini,'want_spec')
-        if (tmp/='') read(tmp,*) want_spec
-        tmp = Ini_read_String_file(Ini,'camspec_lmin')
-        if (tmp/='') read(tmp,*) camspec_lmins
-        tmp = Ini_read_String_file(Ini,'camspec_lmax')
-        if (tmp/='') read(tmp,*) camspec_lmaxs
-
+        if (.not. pre_marged) then
+            tmp = Ini_read_String_file(Ini,'want_spec')
+            if (tmp/='') read(tmp,*) want_spec
+            tmp = Ini_read_String_file(Ini,'camspec_lmin')
+            if (tmp/='') read(tmp,*) camspec_lmins
+            tmp = Ini_read_String_file(Ini,'camspec_lmax')
+            if (tmp/='') read(tmp,*) camspec_lmaxs
+        end if
         call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename)
     end if
 
