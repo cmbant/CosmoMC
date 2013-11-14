@@ -65,7 +65,7 @@
         if( NL ) then
             matpower=PK%nlmatter_power(1:2,itf)
         else
-            matpower=PK%nlmatter_power(1:2,itf)
+            matpower=PK%matter_power(1:2,itf)
         end if
         dp = (matpower(2)-matpower(1))/(PK%log_kh(2)-PK%log_kh(1))
         outpower = matpower(1) + dp*(logk-PK%log_kh(1))
@@ -74,7 +74,7 @@
         if( NL ) then
             matpower=PK%nlmatter_power(PK%num_k-1:PK%num_k,itf)
         else
-            matpower=PK%nlmatter_power(PK%num_k-1:PK%num_k,itf)
+            matpower=PK%matter_power(PK%num_k-1:PK%num_k,itf)
         end if
         dp = (matpower(2)-matpower(1))/(PK%log_kh(PK%num_k)-PK%log_kh(PK%num_k-1))
         outpower = matpower(2) + dp*(logk-PK%log_kh(PK%num_k))
