@@ -244,11 +244,7 @@
         CMB%nufrac=CMB%omnuh2/CMB%omdmh2
 
         if (bbn_consistency) then
-            if(present(error))then
-                call yp_bbn(CMB%ombh2,CMB%nnu  - 3.046,CMB%YHe,error)
-            else
-                call yp_bbn(CMB%ombh2,CMB%nnu  - 3.046,CMB%YHe)
-            end if
+            CMB%YHe = BBNPredictions%Value(CMB%ombh2,CMB%nnu  - 3.046,error)
         else
             !e.g. set from free parameter..
             CMB%YHe  =Params(11)

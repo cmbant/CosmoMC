@@ -75,5 +75,6 @@
 		<File RelativePath="..\source\propose.f90"/>
 		<File RelativePath="..\source\samples.f90"/>
 		<File RelativePath="..\source\settings.f90"/>
+		<File RelativePath="..\source\Interpolation.f90"/>
 		<File RelativePath="..\source\supernovae.f90"/></Filter></Files>
 	<Globals/></VisualStudioProject>
