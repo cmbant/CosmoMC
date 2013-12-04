@@ -20,11 +20,11 @@
     subroutine BBN_Init(W)
     class(TBBNPredictions):: W
 
-    if (feedback .ge. 1) print*,'Initialising BBN Helium data...'
+    if (feedback >= 1) print*,'Initialising BBN Helium data...'
 
     call W%InitFromFile(trim(DataDir)//'BBN_full_alterBBN_880.1.dat', xcol=1,ycol=3,zcol=5)
     
-    if (feedback .ge. 1) print*,'Done. Interpolation table is ', W%nx,' by ',W%ny
+    if (feedback >= 1) print*,'Done. Interpolation table is ', W%nx,' by ',W%ny
 
     end subroutine BBN_Init
 
@@ -35,7 +35,6 @@
     call MpiStop('BBN Error: '//trim(S))
 
     end subroutine BBNPredictions_error
-
 
 
     end module bbn
