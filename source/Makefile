@@ -109,11 +109,11 @@ endif
 
 SUPERNOVAE = supernovae_Union2.o supernovae_SNLS.o
 
-DATAMODULES = $(PLANCKLIKEFILES) power_spec.o wigglez.o mpk.o bao.o $(SUPERNOVAE) supernovae.o HST.o SDSSLy-a-v3.o
+DATAMODULES = $(PLANCKLIKEFILES) power_spec.o wigglez.o mpk.o bao.o $(SUPERNOVAE) supernovae.o HST.o
 
 LIKEFILES =  DataLikelihoods.o calclike.o
 
-OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o settings.o samples.o IO.o GeneralTypes.o cmbtypes.o Planck_like.o  \
+OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o Interpolation.o settings.o samples.o IO.o GeneralTypes.o cmbtypes.o Planck_like.o  \
 	likelihood.o bbn.o $(DATAMODULES) $(CLSFILE) cmbdata.o $(PROPOSE) paramdef.o  $(PARAMETERIZATION) $(LIKEFILES) \
 	EstCovmat.o PowellConstrainedMinimize.o postprocess.o MCMC.o minimize.o driver.o
 
@@ -150,7 +150,7 @@ settings.o: ../camb/libcamb_$(RECOMBINATION).a
 cmbtypes.o: settings.o likelihood.o GeneralTypes.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o
-bbn.o: settings.o likelihood.o
+bbn.o: settings.o likelihood.o Interpolation.o
 powerspec.o : cmbtypes.o
 wigglez.o: cmbtypes.o power_spec.o
 mpk.o: cmbtypes.o power_spec.o
@@ -160,7 +160,7 @@ supernovae.o: cmbtypes.o
 $(CLSFILE): cmbtypes.o IO.o
 paramdef.o: $(CLSFILE) propose.o samples.o
 $(PROPOSE): settings.o
-$(PARAMETERIZATION): paramdef.o
+$(PARAMETERIZATION): paramdef.o bbn.o
 calclike.o: DataLikelihoods.o
 postprocess.o: calclike.o
 MCMC.o: calclike.o
