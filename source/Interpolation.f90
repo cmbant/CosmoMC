@@ -8,6 +8,7 @@
     integer, parameter :: GI = sp_acc
 
     Type :: Interpolator
+        private
         logical :: initialized =.false.
     contains
      procedure FirstUse => Interpolator_FirstUse
