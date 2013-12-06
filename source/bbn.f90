@@ -8,12 +8,14 @@
     implicit none
 
     type, extends(InterpGrid2D) :: TBBNPredictions
+        integer col_index 
     contains
     procedure Error => BBNPredictions_error
     procedure FirstUse =>  BBN_Init
     end type TBBNPredictions
 
-    type(TBBNPredictions) BBNPredictions
+    type(TBBNPredictions) BBN_YHe(4) 
+    !Helium mass fraction (not Y_P^BBN nucleon fraction, which is column 5)
 
     contains
 
@@ -22,8 +24,8 @@
 
     if (feedback >= 1) print*,'Initialising BBN Helium data...'
 
-    call W%InitFromFile(trim(DataDir)//'BBN_full_alterBBN_880.1.dat', xcol=1,ycol=3,zcol=5)
-    
+    call W%InitFromFile(trim(DataDir)//'BBN_full_alterBBN_880.1.dat', xcol=1,ycol=3,zcol=W%col_index)
+
     if (feedback >= 1) print*,'Done. Interpolation table is ', W%nx,' by ',W%ny
 
     end subroutine BBN_Init

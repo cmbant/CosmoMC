@@ -244,7 +244,7 @@
         CMB%nufrac=CMB%omnuh2/CMB%omdmh2
 
         if (bbn_consistency) then
-            CMB%YHe = BBNPredictions%Value(CMB%ombh2,CMB%nnu  - 3.046,error)
+            CMB%YHe = BBN_YHe%Value(CMB%ombh2,CMB%nnu  - 3.046,error)
         else
             !e.g. set from free parameter..
             CMB%YHe  =Params(11)
