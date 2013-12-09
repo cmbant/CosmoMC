@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>November 2013</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>December 2013</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -523,6 +523,13 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <A NAME="Version"><h2>Version History</h2></A>
 
 <UL>
+<LI><B>December 2013</B><BR>
+<UL>
+<LI>Updated BBN module, using interpolation table (from <A HREF="http://superiso.in2p3.fr/relic/alterbbn/">AlterBBN</A>) with updated neutron decay constant and converting from BBN to total mass conventions for Y<sub>P</sub>. Uses new Interpolation module with reusable 2D bicubic interpolation class. Changes in Y<sub>P</sub> are O(1%) and hence have only tiny effect on other parameters.
+<LI>Fixed bugs when using LSS, including one giving wrong sigma8 (thanks Matteo Costanzi)
+<LI>CAMB updated to December 2013 version (minor changes)
+</UL>
+
 <LI><B>November 2013</B><BR>
 <UL>
 <LI>CAMB updated to November 2013 version (fixes problem with e.g. tensor runs)
