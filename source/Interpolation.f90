@@ -11,16 +11,16 @@
         private
         logical :: initialized =.false.
     contains
-     procedure FirstUse => Interpolator_FirstUse
+    procedure :: FirstUse => Interpolator_FirstUse
     end Type Interpolator
-    
+
     Type, extends(interpolator) :: CubicSpline
         integer n
         real(sp_acc), dimension(:), pointer :: X => NULL()
         real(sp_acc), dimension(:), pointer :: F => NULL(), ddF => NULL()
     contains
-    procedure Init => CubicSpline_Init
-    procedure Value => CubicSpline_Value
+    procedure :: Init => CubicSpline_Init
+    procedure :: Value => CubicSpline_Value
     FINAL :: CubicSpline_Free
     end Type
 
@@ -34,11 +34,11 @@
         integer nx, ny
         logical :: owns_z = .false.
     contains
-    procedure Init => InterpGrid2D_Init
-    procedure InitFromFile => InterpGrid2D_InitFromFile
-    procedure Value => InterpGrid2D_Value !one point
-    procedure Values => InterpGrid2D_Values !array of points
-    procedure Error => InterpGrid2D_error
+    procedure :: Init => InterpGrid2D_Init
+    procedure :: InitFromFile => InterpGrid2D_InitFromFile
+    procedure :: Value => InterpGrid2D_Value !one point
+    procedure :: Values => InterpGrid2D_Values !array of points
+    procedure :: Error => InterpGrid2D_error
     FINAL :: InterpGrid2D_Free
     end Type InterpGrid2D
 
@@ -52,7 +52,7 @@
 
     W%Initialized = .true.
     stop 'Interpolator not initialized'
-     
+
     end subroutine Interpolator_FirstUse
 
     subroutine CubicSpline_Init(D, Xarr,  values, n, End1, End2 )
@@ -216,7 +216,7 @@
     W%owns_z=.false.
     if (present(copyz)) W%owns_z = copyz
     if (W%owns_z) then
-        allocate(W%z, source = z)
+        allocate(W%z(size(z,1),size(z,2)), source = z)
     else
         W%z=>z
     end if
@@ -225,7 +225,7 @@
 
     end subroutine InterpGrid2D_Init
 
-    
+
     subroutine InterpGrid2D_error(W,S)
     class(InterpGrid2D):: W
     character(LEN=*), intent(in) :: S
@@ -256,7 +256,7 @@
 
     open(file=Filename, newunit = file_id, form='formatted', status='old', iostat=status)
     if (status/=0) call W%Error('error opening file '//trim(FileName))
-    
+
     do parse=1,2
         first = .true.
         InLine=''
