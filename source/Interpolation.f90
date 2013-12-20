@@ -12,6 +12,7 @@
         logical :: initialized =.false.
     contains
     procedure :: FirstUse => Interpolator_FirstUse
+    procedure :: Error => Interpolator_Error
     end Type Interpolator
 
     Type, extends(interpolator) :: CubicSpline
@@ -20,6 +21,8 @@
         real(sp_acc), dimension(:), pointer :: F => NULL(), ddF => NULL()
     contains
     procedure :: Init => CubicSpline_Init
+    procedure :: InitFromFile => CubicSpline_InitFromFile
+    procedure :: InitInterp => CubicSpline_InitInterp
     procedure :: Value => CubicSpline_Value
     FINAL :: CubicSpline_Free
     end Type
@@ -55,10 +58,38 @@
 
     end subroutine Interpolator_FirstUse
 
-    subroutine CubicSpline_Init(D, Xarr,  values, n, End1, End2 )
-    class(CubicSpline) :: D
+    subroutine Interpolator_error(W,S)
+    class(Interpolator):: W
+    character(LEN=*), intent(in) :: S
+
+    write(*,*), 'Interpolation error: '//trim(S)
+    stop
+
+    end subroutine Interpolator_error
+
+
+    subroutine CubicSpline_Init(W, Xarr,  values, n, End1, End2 )
+    class(CubicSpline) :: W
     real(sp_acc), intent(in) :: Xarr(:), values(:)
     integer, intent(in), optional :: n
+    real(sp_acc), intent(in), optional :: End1, End2
+
+    if (present(n)) then
+        W%n = n
+    else
+        W%n = size(Xarr)
+    end if
+
+    allocate(W%F(n))
+    W%F = values(1:n)
+    allocate(W%X(n))
+    W%X = Xarr(1:n)
+    call W%InitInterp(End1, End2)
+
+    end subroutine CubicSpline_Init
+
+    subroutine CubicSpline_InitInterp(W,End1,End2)
+    class(CubicSpline):: W
     real(sp_acc), intent(in), optional :: End1, End2
     real(sp_acc) :: e1,e2
 
@@ -74,46 +105,93 @@
         e2 = SPLINE_DANGLE
     end if
 
-    if (present(n)) then
-        D%n = n
-    else
-        D%n = size(Xarr)
-    end if
+    allocate(W%ddF(W%n))
+    call spline(W%X,W%F,W%n,e1,e2,W%ddF)
+    W%Initialized = .true.
 
-    allocate(D%F(n))
-    D%F = values(1:n)
-    allocate(D%X(n))
-    D%X = Xarr(1:n)
-    allocate(D%ddF(n))
-    call spline(Xarr,values,n,e1,e2,D%ddF)
-    D%Initialized = .true.
+    end subroutine CubicSpline_InitInterp
 
-    end subroutine CubicSpline_Init
+    subroutine CubicSpline_InitFromFile(W, Filename, xcol, ycol)
+    class(CubicSpline):: W
+    character(LEN=*), intent(in) :: Filename
+    integer, intent(in), optional :: xcol, ycol
+    integer :: ixcol=1,iycol=2
+    integer :: nx,ny
+    integer :: i,j, file_id, parse, status
+    real(sp_acc), allocatable :: tmp(:)
+    character(LEN=1024) :: InLine
 
-    subroutine CubicSpline_Free(D)
-    Type(CubicSpline) :: D
+    if (present(xcol)) ixcol=xcol
+    if (present(ycol)) iycol=ycol
 
-    deallocate(D%X)
-    nullify(D%X)
-    deallocate(D%F)
-    nullify(D%F)
-    deallocate(D%ddF)
-    nullify(D%ddF)
-    D%Initialized = .false.
+    allocate(tmp(max(ixcol,iycol)))
+
+    open(file=Filename, newunit = file_id, form='formatted', status='old', iostat=status)
+    if (status/=0) call W%Error('error opening file '//trim(FileName))
+
+    do parse=1,2
+        InLine=''
+        ny=0
+        nx=0
+        do
+            !skip data file header and blank lines
+            do while ((trim(InLine)=='' .or. InLine(1:1)=='#') .and. status==0) 
+                read(file_id,'(a)',iostat=status) InLine
+            end do
+            if (status/=0) exit
+
+            read(InLine,*, iostat=status) tmp
+            if (status/=0) call W%Error('Error reading line: '//trim(InLine))
+            InLine = ''
+
+            nx=nx+1
+            if (parse==2) then
+                W%X(nx) = tmp(ixcol)
+                W%F(nx) = tmp(iycol)
+            endif
+        end do
+
+        if (parse==2) exit
+
+        if (nx<2) call W%Error('not enough values to interpolate')
+        W%n = nx
+        allocate(W%X(W%n))
+        allocate(W%F(W%n))
+        status=0
+        rewind(file_id)
+    end do
+
+    close(file_id)
+
+    call W%InitInterp()
+
+    end subroutine CubicSpline_InitFromFile
+
+
+    subroutine CubicSpline_Free(W)
+    Type(CubicSpline) :: W
+
+    deallocate(W%X)
+    nullify(W%X)
+    deallocate(W%F)
+    nullify(W%F)
+    deallocate(W%ddF)
+    nullify(W%ddF)
+    W%Initialized = .false.
 
     end subroutine CubicSpline_Free
 
-    function CubicSpline_Value(D, x, error )
-    class(CubicSpline) :: D
+    function CubicSpline_Value(W, x, error )
+    class(CubicSpline) :: W
     real(sp_acc) :: CubicSpline_Value
     real(sp_acc), intent(in) :: x
     integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
     integer llo,lhi
     real(sp_acc) a0,b0,ho
 
-    if (.not. D%Initialized) call D%FirstUse
+    if (.not. W%Initialized) call W%FirstUse
 
-    if (x< D%X(1) .or. x> D%X(D%n)) then
+    if (x< W%X(1) .or. x> W%X(W%n)) then
         if (present(error)) then
             error = -1
             CubicSpline_Value=0
@@ -125,16 +203,16 @@
     end if
 
     llo=1
-    do while (D%X(llo+1) < x)  !could do binary search here if large
+    do while (W%X(llo+1) < x)  !could do binary search here if large
         llo = llo + 1
     end do
 
     lhi=llo+1
-    ho=D%X(lhi)-D%X(llo)
-    a0=(D%X(lhi)-x)/ho
-    b0=(x-D%X(llo))/ho
-    CubicSpline_Value = a0*D%F(llo)+ b0*D%F(lhi)+((a0**3-a0)* D%ddF(llo) &
-    +(b0**3-b0)*D%ddF(lhi))*ho**2/6.
+    ho=W%X(lhi)-W%X(llo)
+    a0=(W%X(lhi)-x)/ho
+    b0=(x-W%X(llo))/ho
+    CubicSpline_Value = a0*W%F(llo)+ b0*W%F(lhi)+((a0**3-a0)* W%ddF(llo) &
+    +(b0**3-b0)*W%ddF(lhi))*ho**2/6.
 
     end function CubicSpline_Value
 
@@ -146,7 +224,6 @@
 
     !Thanks Martin Reinecke
     subroutine spline(x,y,n,d11,d1n,d2)
-    use Precision
     integer, intent(in) :: n
     real(sp_acc), intent(in) :: x(n), y(n), d11, d1n
     real(sp_acc), intent(out) :: d2(n)
@@ -1440,7 +1517,7 @@
 
     !     ..
     !     .. Local Scalars ..
-    REAL(GI) :: a, b, c, d, dx, dxsq, dy, dysq, p00, p01, p02, p03, p10, p11,  &
+    REAL(GI) :: a, b, c, W, dx, dxsq, dy, dysq, p00, p01, p02, p03, p10, p11,  &
     p12, p13, p20, p21, p22, p23, p30, p31, p32, p33, q0, q1, q2,  &
     q3, u, v, x0, xii, y0, yii, z00, z01, z0dx, z0dy, z10, z11,  &
     z1dx, z1dy, zdxdy, zii, zx00, zx01, zx0dy, zx10, zx11,  &
@@ -1516,7 +1593,7 @@
                 a = zdxdy - zx0dy - zy0dx + zxy00
                 b = zx1dy - zx0dy - zxy10 + zxy00
                 c = zy1dx - zy0dx - zxy01 + zxy00
-                d = zxy11 - zxy10 - zxy01 + zxy00
+                W = zxy11 - zxy10 - zxy01 + zxy00
                 p00 = z00
                 p01 = zy00
                 p02 = (2.0* (z0dy-zy00)+z0dy-zy01)/dy
@@ -1527,12 +1604,12 @@
                 p13 = (-2.0*zx0dy+zxy01+zxy00)/dysq
                 p20 = (2.0* (z0dx-zx00)+z0dx-zx10)/dx
                 p21 = (2.0* (zy0dx-zxy00)+zy0dx-zxy10)/dx
-                p22 = (3.0* (3.0*a-b-c)+d)/ (dx*dy)
-                p23 = (-6.0*a+2.0*b+3.0*c-d)/ (dx*dysq)
+                p22 = (3.0* (3.0*a-b-c)+W)/ (dx*dy)
+                p23 = (-6.0*a+2.0*b+3.0*c-W)/ (dx*dysq)
                 p30 = (-2.0*z0dx+zx10+zx00)/dxsq
                 p31 = (-2.0*zy0dx+zxy10+zxy00)/dxsq
-                p32 = (-6.0*a+3.0*b+2.0*c-d)/ (dxsq*dy)
-                p33 = (2.0* (2.0*a-b-c)+d)/ (dxsq*dysq)
+                p32 = (-6.0*a+3.0*b+2.0*c-W)/ (dxsq*dy)
+                p33 = (2.0* (2.0*a-b-c)+W)/ (dxsq*dysq)
             END IF
 
             ! Evaluates the polynomial.
