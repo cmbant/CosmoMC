@@ -161,13 +161,27 @@
     zhi=zlo+1
 
     if(zlo==1)then
+        zvec = 0.
+        matpower = 0.
+        ddmat = 0.
         iz = 2
         zvec(2:4)=PK%redshifts(zlo:zhi+1)
         do itf=zlo, zhi+1
             matpower(iz) = log(MatterPowerAt_zbin(PK,kh,itf,NL))
             iz=iz+1
         end do
-        call spline_double(zvec(2:4),matpower(2:4),4,ddmat(2:4))
+        call spline_double(zvec(2:4),matpower(2:4),3,ddmat(2:4))
+    else if(zhi==num_power_redshifts)then
+        zvec = 0.
+        matpower = 0.
+        ddmat = 0.
+        iz = 1
+        zvec(1:3)=PK%redshifts(zlo-1:zhi)
+        do itf=zlo-1, zhi
+            matpower(iz) = log(MatterPowerAt_zbin(PK,kh,itf,NL))
+            iz=iz+1
+        end do
+        call spline_double(zvec(1:3),matpower(1:3),3,ddmat(1:3))
     else
         iz = 1
         zvec(:)=PK%redshifts(zlo-1:zhi+1)
