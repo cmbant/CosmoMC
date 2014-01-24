@@ -40,8 +40,12 @@
 
     if (ParamNamesFile /='') then
         call ParamNames_init(Names, ParamNamesFile)
+        if (generic_mcmc) then
+            num_theory_params= Names%num_MCMC
+        end if
     else
         if (generic_mcmc) then
+            num_theory_params= Ini_Read_Int_File(Ini, 'num_theory_params')
             Names%nnames=0
             if (Feedback>0) write (*,*) 'Change the Parameterization type implementation to use Parameter names'
         else

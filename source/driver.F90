@@ -218,15 +218,16 @@
         call InitRandom()
     end if
 
-    pivot_k = Ini_Read_Real('pivot_k',0.05)
-    inflation_consistency = Ini_read_Logical('inflation_consistency',.false.)
-    bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
-    num_massive_neutrinos = Ini_read_int('num_massive_neutrinos',-1)
+    if (.not. generic_mcmc) then
+        pivot_k = Ini_Read_Real('pivot_k',0.05)
+        inflation_consistency = Ini_read_Logical('inflation_consistency',.false.)
+        bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
+        num_massive_neutrinos = Ini_read_int('num_massive_neutrinos',-1)
 
-    call SetDataLikelihoods(DefIni)
-    call DataLikelihoods%CheckAllConflicts
-
-    if(use_LSS) call Initialize_PKSettings()
+        call SetDataLikelihoods(DefIni)
+        call DataLikelihoods%CheckAllConflicts
+        if(use_LSS) call Initialize_PKSettings()
+    end if
 
     Temperature = Ini_Read_Real('temperature',1.)
 
@@ -248,7 +249,7 @@
 
     call SetTheoryParameterization(DefIni, NameMapping)
     call DataLikelihoods%AddNuisanceParameters(NameMapping)
-    call CMB_Initialize(Params%Info)
+    if (.not. generic_mcmc) call CMB_Initialize(Params%Info)
     call InitializeUsedParams(DefIni,Params, action /= action_importance)
 
     if (want_minimize) call Minimize_ReadIni(DefIni)

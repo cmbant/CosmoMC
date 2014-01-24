@@ -41,9 +41,14 @@
     character(LEN=Ini_max_string_len) :: paramtxt
     Type(ThetaParameterization), pointer :: CMBParameterization
     Type(BackgroundParameterization), pointer :: BackgroundParam
+    Type(TParameterization), pointer :: SimpleParameterization
 
     paramtxt = Ini_Read_String_Default_File(Ini,'parameterization', 'theta')
-    if (paramtxt =='background') then
+    if (generic_mcmc .or. paramtxt =='generic') then
+        allocate(SimpleParameterization)
+        Parameterization => SimpleParameterization
+        call SimpleParameterization%Init(Ini,Names,'params_generic.paramnames')
+    else if (paramtxt =='background') then
         allocate(BackgroundParam)
         Parameterization => BackgroundParam
         call BackgroundParam%Initialize(Ini,Names)

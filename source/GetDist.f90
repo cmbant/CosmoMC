@@ -1780,7 +1780,7 @@
     logical line_labels
 
     real(mcp) thin_cool
-    logical no_tests, auto_label
+    logical no_tests, auto_label, no_names
 
     logical :: single_column_chain_files, samples_are_chains
     !for single_colum_chain_files
@@ -1879,12 +1879,9 @@
     if (plot_ext=='m') matlab_version = Ini_Read_Real('matlab_version',8.)
 
     plot_output = Ini_Read_String_Default('plot_output',plot_output)
-    subplot_size_inch = Ini_Read_Real('subplot_size_inch', &
-    subplot_size_inch)
-    subplot_size_inch2 = Ini_Read_Real('subplot_size_inch2', &
-    subplot_size_inch)
-    subplot_size_inch3 = Ini_Read_Real('subplot_size_inch3', &
-    subplot_size_inch)
+    subplot_size_inch = Ini_Read_Real('subplot_size_inch', subplot_size_inch)
+    subplot_size_inch2 = Ini_Read_Real('subplot_size_inch2', subplot_size_inch)
+    subplot_size_inch3 = Ini_Read_Real('subplot_size_inch3', subplot_size_inch)
 
     font_scale  = Ini_Read_Real('font_scale',1.)
     finish_run_command = Ini_Read_String('finish_run_command')
@@ -1892,16 +1889,22 @@
     labels(1) = 'mult'
     labels(2) = 'likelihood'
     auto_label = Ini_Read_Logical('auto_label',.false.)
+    no_names = NameMapping%nnames==0
+    if (auto_label .and. no_names) then
+        call ParamNames_Alloc(NameMapping,ncols-2)
+    end if
     do ix=3, ncols
         if (auto_label) then
             write (numstr,*) ix-2
             labels(ix) = trim(adjustl(numstr))
+            if (no_names) then
+                NameMapping%name(ix-2) = trim(labels(ix))
+                NameMapping%label(ix-2) = trim(labels(ix))
+            end if
         else
             if (NameMapping%nnames/=0 .and. .not. &
             ParamNames_HasReadIniForParam(NameMapping,DefIni, 'lab',ix-2)) then
-
-            labels(ix) = trim(NameMapping%label(ix-2))
-
+                labels(ix) = trim(NameMapping%label(ix-2))
             else
                 labels(ix) = ParamNames_ReadIniForParam(NameMapping,DefIni,'lab',ix-2)
             end if
