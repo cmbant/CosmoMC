@@ -41,14 +41,10 @@
     character(LEN=Ini_max_string_len) :: paramtxt
     Type(ThetaParameterization), pointer :: CMBParameterization
     Type(BackgroundParameterization), pointer :: BackgroundParam
-    Type(TParameterization), pointer :: SimpleParameterization
+    Type(GenericParameterization), pointer :: GenParam
 
     paramtxt = Ini_Read_String_Default_File(Ini,'parameterization', 'theta')
-    if (generic_mcmc .or. paramtxt =='generic') then
-        allocate(SimpleParameterization)
-        Parameterization => SimpleParameterization
-        call SimpleParameterization%Init(Ini,Names,'params_generic.paramnames')
-    else if (paramtxt =='background') then
+    if (paramtxt =='background') then
         allocate(BackgroundParam)
         Parameterization => BackgroundParam
         call BackgroundParam%Initialize(Ini,Names)
@@ -56,6 +52,10 @@
         allocate(CMBParameterization)
         Parameterization => CMBParameterization
         call CMBParameterization%Initialize(Ini,Names)
+    else if (paramtxt =='generic') then
+        allocate(GenParam)
+        Parameterization => GenParam
+        call GenParam%Initialize(Ini,Names)
     else
         call MpiStop('params_CMB: unknown parameterization :'//trim(paramtxt))
     end if
@@ -68,8 +68,6 @@
     Type(TParamNames) :: Names
     character(LEN=Ini_max_string_len) prior
 
-    call SetTheoryParameterNumbers(15,6)
-
     this%H0_min = Ini_Read_Double_File(Ini, 'H0_min',this%H0_min)
     this%H0_max = Ini_Read_Double_File(Ini, 'H0_max',this%H0_max)
     this%Use_min_zre = Ini_Read_Double_File(Ini,'use_min_zre',this%use_min_zre)
@@ -79,6 +77,7 @@
     end if
 
     call this%Init(Ini,Names, 'params_CMB.paramnames')
+    call SetTheoryParameterNumbers(15,6)
 
     end subroutine TP_Init
 
@@ -278,9 +277,9 @@
     Type(TIniFile) :: Ini
     Type(TParamNames) :: Names
 
-    call SetTheoryParameterNumbers(7,0)
     this%late_time_only = .true.
     call this%Init(Ini,Names, 'params_background.paramnames')
+    call SetTheoryParameterNumbers(Names%num_MCMC,0)
 
     end subroutine BK_Init
 

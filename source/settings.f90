@@ -57,7 +57,7 @@
     real(mcp) :: dragging_steps = 3._mcp
 
     !The rest are set up automatically
-    logical, parameter ::  generic_mcmc= .false.
+    logical  ::  generic_mcmc= .false.
     !set to true to not call CAMB, etc.
     !write GenericLikelihoodFunction in calclike.f90
 

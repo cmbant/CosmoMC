@@ -101,6 +101,8 @@
 
     action = Ini_Read_Int('action',action_MCMC)
 
+    generic_mcmc = Ini_Read_Logical('generic_mcmc',generic_mcmc)
+    
     propose_scale = Ini_Read_Real('propose_scale',2.4)
 
     HighAccuracyDefault = Ini_Read_Logical('high_accuracy_default',.false.)

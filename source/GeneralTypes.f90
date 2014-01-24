@@ -16,6 +16,11 @@
     procedure :: NonBaseParameterPriors => TParameterization_NonBaseParameterPriors
     end type TParameterization
 
+    Type, extends(TParameterization) :: GenericParameterization
+    contains
+    procedure :: Initialize => Generic_Initialize
+    end type GenericParameterization
+
     class(TParameterization), pointer :: Parameterization
 
     contains
@@ -40,18 +45,10 @@
 
     if (ParamNamesFile /='') then
         call ParamNames_init(Names, ParamNamesFile)
-        if (generic_mcmc) then
-            num_theory_params= Names%num_MCMC
-        end if
     else
-        if (generic_mcmc) then
-            num_theory_params= Ini_Read_Int_File(Ini, 'num_theory_params')
-            Names%nnames=0
-            if (Feedback>0) write (*,*) 'Change the Parameterization type implementation to use Parameter names'
-        else
-            call ParamNames_init(Names, trim(LocalDir)//trim(DefaultName))
-        end if
+        if (DefaultName/='') call ParamNames_init(Names, trim(LocalDir)//trim(DefaultName))
     end if
+
     end subroutine TParameterization_Init
 
     function TParameterization_NonBaseParameterPriors(this,CMB)
@@ -75,5 +72,23 @@
 
     end function TParameterization_CalcDerivedParams
 
+    !For generic sampler
+    subroutine Generic_Initialize(this, Ini, Names)
+    class(GenericParameterization) :: this
+    Type(TIniFile) :: Ini
+    Type(TParamNames) :: Names
+
+    Names%nnames=0
+    call this%TParameterization%Init(Ini,Names,'')
+    if (Names%nnames==0) then
+        num_theory_params= Ini_Read_Int_File(Ini, 'num_theory_params')
+        if (Feedback>0) write (*,*) 'Change the params_generic type implementation to use parameter names'
+    else
+        !unnamed parameters (just numered)
+        num_theory_params= Names%num_MCMC
+    end if
+    if (num_theory_params> max_theory_params) call MpiStop('see settings.f90: num_theory_params> max_theory_params')
+
+    end subroutine Generic_Initialize
 
     end module GeneralTypes
