@@ -6,9 +6,9 @@
     use IniFile
     use ObjectLists, only: TObjectList
     use ParamNames
+    use GeneralTypes
     implicit none
 
-    integer, parameter :: max_likelihood_functions = 50
     integer, parameter :: LikeNameLen = 80
 
     type :: DataLikelihood
@@ -23,7 +23,8 @@
         integer :: new_param_block_start, new_params
     contains
     procedure :: LogLike
-    procedure :: LogLikeTheory !same as above when extra info not needed
+    procedure :: LogLikeDataParams !same as above when extra theory info not needed
+    procedure :: LogLikeTheory !same as above when extra theory and nuisance info not needed
     procedure :: loadParamNames
     procedure :: checkConflicts
     end type DataLikelihood
@@ -149,7 +150,7 @@
 
     end subroutine checkAllConflicts
 
-    function logLikeTheory(like, CMB)
+    function logLikeTheory(like,CMB)
     !For likelihoods that don't need Theory or DataParams
     class(DataLikelihood) :: like
     class(*) :: CMB
@@ -159,14 +160,26 @@
     stop 'logLikeTheory or logLike should not be overridden'
     end function
 
+    function LogLikeDataParams(like, CMB, DataParams)
+    class(DataLikelihood) :: like
+    class(*) :: CMB
+    real(mcp) :: DataParams(:)
+    real(mcp) LogLikeDataParams
+
+    LogLikeDataParams = like%logLikeTheory(CMB)
+    end function LogLikeDataParams
+
     function LogLike(like, CMB, Theory, DataParams)
     class(DataLikelihood) :: like
+    !    class(TTheoryParams) :: CMB
+    !    class(TTheoryPredictions) :: Theory
+    !using generic types avoids need for explicit type casting in implementions
     class(*) :: CMB
     class(*) :: Theory
     real(mcp) :: DataParams(:)
     real(mcp) LogLike
 
-    logLike = like%logLikeTheory(CMB)
+    logLike = like%LogLikeDataParams(CMB, DataParams)
     end function
 
     subroutine loadParamNames(like, fname)

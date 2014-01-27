@@ -20,6 +20,14 @@
     !redshifts for output of BAO_dv background parameters
     real(mcp), target :: z_outputs(1) = [0.57_mcp]
 
+    logical :: CMB_lensing = .true.
+    logical :: use_lensing_potential = .false.
+    logical :: use_nonlinear_lensing = .false.
+    integer :: lmax_computed_cl = lmax !value used for CAMB
+    logical :: compute_tensors = .false.
+
+    integer, parameter :: As_index=4, amp_ratio_index = 5, Aphiphi_index = 6
+
     !Parameters for calculating/storing the matter power spectrum
     real(mcp) :: power_kmax = 0.8
     integer :: num_power_redshifts
@@ -80,7 +88,7 @@
         real(mcp) reserved(5)
     end Type CMBParams
 
-    Type, extends(TTheoryPredictions) :: TheoryPredictions
+    Type, extends(TTheoryPredictions) :: CosmoTheoryPredictions
         real(mcp) cl(lmax,num_cls_tot)
         !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
         real(mcp) sigma_8
@@ -94,37 +102,69 @@
         !matpower is log(P_k)
         real(mcp), dimension(:,:), allocatable :: matter_power, ddmatter_power
         real(mcp), dimension(:,:), allocatable :: nlmatter_power, ddnlmatter_power
-        real(mcp), dimension(:), allocatable :: redshifts 
-
+        real(mcp), dimension(:), allocatable :: redshifts
     contains
     procedure :: WriteTheory
     procedure :: ReadTheory
     procedure :: WriteBestFitData
-    end Type TheoryPredictions
+    end Type CosmoTheoryPredictions
 
-    Type, extends(TParameterization) :: CosmologyParameterization
+    Type, extends(TParameterization) :: TCosmologyParameterization
         logical :: late_time_only = .false.
+    contains
+    procedure :: NewTheoryParams => NewCMBParams
+    procedure :: SetTheoryParameterNumbers => CosmologyParameterization_SetNumbers
     end type
 
-    integer, parameter :: As_index=4, amp_ratio_index = 5, Aphiphi_index = 6
-    logical :: compute_tensors = .false.
-
     contains
+    
+    subroutine CosmoTheory_ReadParams(Ini)
+    class(TIniFile) :: Ini
 
-    subroutine SetTheoryParameterNumbers(slow_num, semi_slow_num)
+    compute_tensors = Ini_Read_Logical_File(Ini, 'compute_tensors',.false.)
+
+    if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
+    CMB_lensing = Ini_Read_Logical_File(Ini,'CMB_lensing',CMB_lensing)
+    use_lensing_potential = Ini_Read_logical_File(Ini,'use_lensing_potential',use_lensing_potential)
+    use_nonlinear_lensing = Ini_Read_logical_File(Ini,'use_nonlinear_lensing',use_nonlinear_lensing)
+
+    if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
+    if (use_lensing_potential .and. num_cls_ext ==0) &
+    call MpiStop('num_cls_ext should be > 0 to use_lensing_potential')
+    if (use_lensing_potential .and. .not. CMB_lensing) &
+    call MpiStop('use_lensing_potential must have CMB_lensing=T')
+    lmax_computed_cl = Ini_Read_Int_File(Ini,'lmax_computed_cl',lmax)
+
+    if (Feedback > 0 .and. MPIRank==0) then
+        write (*,*) 'Computing tensors:', compute_tensors
+        write (*,*) 'Doing CMB lensing:',CMB_lensing
+        write (*,*) 'Doing non-linear Pk:', use_nonlinear
+
+        write(*,'(" lmax              = ",1I4)') lmax
+        write(*,'(" lmax_computed_cl  = ",1I4)') lmax_computed_cl
+
+        if (compute_tensors) write(*,'(" lmax_tensor    = ",1I4)') lmax_tensor
+        write(*,'(" Number of C_ls = ",1I4)') num_cls
+    end if
+
+    end subroutine CosmoTheory_ReadParams
+
+    
+    subroutine CosmologyParameterization_SetNumbers(this, slow_num, semi_slow_num)
     use likelihood
+    class(TCosmologyParameterization) :: this
     integer, intent (in) :: slow_num, semi_slow_num
     integer i
     class(DataLikelihood), pointer :: DataLike
 
+    !Called after this%init
     num_hard = slow_num
     num_initpower = semi_slow_num
-    num_theory_params= num_hard + num_initpower
+    if (num_hard + num_initpower /= num_theory_params) &
+    call MpiStop('SetTheoryParameterNumbers: parameter numbers do not match')
     index_initpower = num_hard+1
     index_semislow = index_initpower
-    index_data =  num_theory_params+1
     if (num_initpower> max_inipower_params) call MpiStop('see cmbtypes.f90: num_initpower> max_inipower_params')
-    if (num_theory_params> max_theory_params) call MpiStop('see settings.f90: num_theory_params> max_theory_params')
 
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
@@ -135,7 +175,16 @@
         end select
     end do
 
-    end subroutine SetTheoryParameterNumbers
+    end subroutine CosmologyParameterization_SetNumbers
+
+    subroutine NewCMBParams(this,TheoryParams)
+    class(TCosmologyParameterization) :: this
+    class(TTheoryParams), allocatable :: TheoryParams
+
+    allocate(CMBParams::TheoryParams)
+
+    end subroutine NewCMBParams
+
 
     subroutine Initialize_PKSettings()
     use likelihood
@@ -262,7 +311,7 @@
 
     subroutine WriteTheory(T, i)
     integer i
-    Class(TheoryPredictions) T
+    Class(CosmoTheoryPredictions) T
     integer, parameter :: varcount = 1
     integer tmp(varcount)
     logical, save :: first = .true.
@@ -301,7 +350,7 @@
     end subroutine WriteTheory
 
     subroutine ReadTheory(T, i)
-    Class(TheoryPredictions) T
+    Class(CosmoTheoryPredictions) T
     integer, intent(in) :: i
     integer unused
     logical, save :: first = .true.
@@ -355,8 +404,9 @@
 
     end subroutine ReadTheory
 
+
     subroutine ClsFromTheoryData(T, Cls)
-    Type(TheoryPredictions) T
+    Type(CosmoTheoryPredictions) T
     real(mcp) Cls(lmax,num_cls_tot)
 
     Cls(2:lmax,1:num_clsS) =T%cl(2:lmax,1:num_clsS)
@@ -368,7 +418,7 @@
     end subroutine ClsFromTheoryData
 
     subroutine WriteTextCls(aname,T)
-    Type(TheoryPredictions) T
+    Type(CosmoTheoryPredictions) T
     character (LEN=*), intent(in) :: aname
     integer l
     real(mcp) Cls(lmax,num_cls_tot), nm
@@ -390,7 +440,7 @@
     end subroutine WriteTextCls
 
     subroutine WriteBestFitData(Theory,fnameroot)
-    class(TheoryPredictions) Theory
+    class(CosmoTheoryPredictions) Theory
     character(LEN=*), intent(in) :: fnameroot
 
     call WriteTextCls(fnameroot //'.bestfit_cl', Theory)
@@ -398,7 +448,7 @@
     end subroutine WriteBestFitData
 
     subroutine InitPK(Theory, num_k, num_z)
-    Type(TheoryPredictions) :: Theory
+    Type(CosmoTheoryPredictions) :: Theory
     integer, intent(in) :: num_k, num_z
 
     if(allocated(Theory%log_kh))deallocate(Theory%log_kh)
@@ -420,7 +470,7 @@
 
     subroutine IOTheory_GetNLAndSplines(Theory)
     use Transfer
-    Type(TheoryPredictions) Theory
+    Type(CosmoTheoryPredictions) Theory
     Type(MatterPowerData) :: Cosmo_PK
     integer :: nz, zix
 

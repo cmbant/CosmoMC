@@ -46,10 +46,13 @@
 		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
 		<Filter Name="Cosmology">
 		<File RelativePath="..\source\bbn.f90"/>
-		<File RelativePath="..\source\CMB_Cls_simple.f90"/>
+		<File RelativePath="..\source\CalcLike_Cosmology.f90"/>
+		<File RelativePath="..\source\Calculator_CAMB.f90"/>
+		<File RelativePath="..\source\Calculator_Cosmology.f90"/>
 		<File RelativePath="..\source\cmbtypes.f90"/>
+		<File RelativePath="..\source\CosmologyConfig.f90"/>
 		<File RelativePath="..\source\mpk.f90"/>
-		<File RelativePath="..\source\params_CMB.f90"/>
+		<File RelativePath="..\source\CosmologyParameterizations.f90"/>
 		<File RelativePath="..\source\power_spec.f90"/>
 		<File RelativePath="..\source\wigglez.f90"/></Filter>
 		<Filter Name="Likelihood">
@@ -59,22 +62,25 @@
 		<File RelativePath="..\source\HST.f90"/>
 		<File RelativePath="..\source\likelihood.f90"/>
 		<File RelativePath="..\source\Planck_like.f90"/>
+		<File RelativePath="..\source\supernovae.f90"/>
 		<File RelativePath="..\source\supernovae_SNLS.f90"/>
 		<File RelativePath="..\source\supernovae_Union2.f90"/></Filter>
+		<Filter Name="Utils">
+		<File RelativePath="..\source\FileUtils.f90"/>
+		<File RelativePath="..\source\IniObjects.f90"/>
+		<File RelativePath="..\source\Interpolation.f90"/>
+		<File RelativePath="..\source\ObjectLists.f90"/>
+		<File RelativePath="..\source\ObjectParamNames.f90"/>
+		<File RelativePath="..\source\PowellConstrainedMinimize.f90"/></Filter>
 		<File RelativePath="..\source\calclike.f90"/>
 		<File RelativePath="..\source\EstCovmat.f90"/>
 		<File RelativePath="..\source\GeneralTypes.f90"/>
 		<File RelativePath="..\source\IO.f90"/>
 		<File RelativePath="..\source\MCMC.f90"/>
 		<File RelativePath="..\source\minimize.f90"/>
-		<File RelativePath="..\source\ObjectLists.f90"/>
 		<File RelativePath="..\source\paramdef.F90"/>
-		<File RelativePath="..\source\ParamNames.f90"/>
 		<File RelativePath="..\source\postprocess.f90"/>
-		<File RelativePath="..\source\PowellConstrainedMinimize.f90"/>
 		<File RelativePath="..\source\propose.f90"/>
 		<File RelativePath="..\source\samples.f90"/>
-		<File RelativePath="..\source\settings.f90"/>
-		<File RelativePath="..\source\Interpolation.f90"/>
-		<File RelativePath="..\source\supernovae.f90"/></Filter></Files>
+		<File RelativePath="..\source\settings.f90"/></Filter></Files>
 	<Globals/></VisualStudioProject>

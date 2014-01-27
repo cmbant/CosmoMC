@@ -1,20 +1,41 @@
     module CalcLike
-    use cmbtypes
     use DataLikelihoodList
     implicit none
 
     real(mcp) :: Temperature  = 1
 
-    Type LikeCalculator
-        type(ParamSet), pointer :: Params
-        type (CMBParams), pointer :: CMB
+    Type BaseLikeCalculator
+    contains
+    procedure :: AddLike
+    procedure :: GetLogLikeBounds
+    procedure :: GetLogPriors
+    end type BaseLikeCalculator
+
+    type, extends(BaseLikeCalculator) :: GenericLikeCalculator
+    contains
+    procedure :: GetLogLike => Generic_GetLogLike
+    procedure, nopass :: GenericLikelihoodFunction
+    end type GenericLikeCalculator
+
+    type, extends(BaseLikeCalculator) :: TheoryLikeCalculator
+        class(TTheoryParams), allocatable :: TheoryParams
+        class(TCalculationAtParamPoint), pointer :: Params
         logical changeMask(max_num_params)
-        logical SlowChanged, PowerChanged
-    end Type LikeCalculator
+        logical SlowChanged, SemiSlowchanged
+    contains
+    procedure :: GetLogLikePost => TheoryLike_GetLogLikePost
+    procedure :: SetTheoryParams => TheoryLike_SetTheoryParams
+    procedure :: CheckProirCuts => TheoryLike_CheckPriorCuts
+    procedure :: CalculateRequiredTheoryChanges =>TheoryLike_CalculateRequiredTheoryChanges
+    procedure :: GetTheoryForLike=>TheoryLike_GetTheoryForLike
+    procedure :: GetLogLikeWithTheorySet => TheoryLike_LogLikeWithTheorySet
+    procedure :: TestLikelihoodFunction
+    end type TheoryLikeCalculator
 
     contains
 
-    subroutine AddLike(CurrentLike, LikeToAdd)
+    subroutine AddLike(this, CurrentLike, LikeToAdd)
+    class(BaseLikeCalculator) :: this
     real(mcp), intent(in) :: LikeToAdd
     real(mcp) CurrentLike
     if (CurrentLike/=LogZero) then
@@ -26,33 +47,9 @@
     end if
     end subroutine AddLike
 
-    function GenericLikelihoodFunction(Params)
-    type(ParamSet)  Params
-    real(mcp) :: GenericLikelihoodFunction
-    real(mcp), allocatable, save :: covInv(:,:)
-    real(mcp) X(num_params_used)
-
-    if (test_likelihood) then
-        if (.not. allocated(covInv)) then
-            allocate(covInv(num_params_used,num_params_used))
-            covInv = test_cov_matrix
-            call Matrix_Inverse(covInv)
-        end if
-        X = Params%P(params_used) - scales%Center(params_used)
-        GenericLikelihoodFunction= dot_product(X, matmul(covInv, X))/2
-    else
-        !Used when you want to plug in your own CMB-independent likelihood function:
-        !set generic_mcmc=.true. in settings.f90, then write function here returning -Ln(Likelihood)
-        !Parameter array is Params%P, so e.g. 2D unit Gaussian would be
-        !GenericLikelihoodFunction = (Params%P(1)**2+Params%P(2)**2)/2
-        GenericLikelihoodFunction = LogZero
-        call MpiStop('GenericLikelihoodFunction: need to write this function!')
-    end if
-
-    end function GenericLikelihoodFunction
-
-    function GetLogLikeBounds(Params)
-    type(ParamSet):: Params
+    function GetLogLikeBounds(this,Params)
+    class(BaseLikeCalculator) :: this
+    class(TCalculationAtParamPoint):: Params
     real(mcp) :: GetLogLikeBounds
 
     if (any(Params%P(:num_params) > Scales%PMax(:num_params)) .or. &
@@ -64,82 +61,8 @@
 
     end function GetLogLikeBounds
 
-    function GetLogLike(Params) !Get -Ln(Likelihood) for chains
-    type(ParamSet), target :: Params
-    Type (CMBParams), target :: CMB
-    real(mcp) GetLogLike
-    Type(LikeCalculator) :: Calc
-
-    GetLogLike = GetLogLikeBounds(Params)
-    if (GetLogLike==LogZero) return
-
-    if (generic_mcmc .or. test_likelihood) then
-        call AddLike(GetLogLike,GenericLikelihoodFunction(Params))
-        call AddLike(GetLogLike,getLogPriors(Params%P))
-    else
-        Calc%Params => Params
-        Calc%CMB=>CMB
-        call Parameterization%ParamArrayToTheoryParams(Params%P,CMB)
-        call AddLike(GetLogLike, Parameterization%NonBaseParameterPriors(CMB))
-        if (GetLogLike == logZero) return
-        if (.not. Params%Info%validInfo) then
-            Calc%changeMask(1:num_params) = .true.
-        else
-            Calc%changeMask(1:num_params) = Params%Info%lastParamArray(1:num_params)/=Params%P(1:num_params)
-        end if
-
-        if (CalculateRequiredTheoryChanges(Calc)) then
-            call AddLike(GetLogLike, GetLogLikeWithTheorySet(Calc))
-        else
-            GetLogLike = logZero
-        end if
-
-        if (GetLogLike/=logZero) Params%Info%lastParamArray(1:num_params) = Params%P(1:num_params)
-    end if
-
-    if (Feedback>2 .and. GetLogLike/=LogZero) &
-    call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%likelihoods)
-
-    end function GetLogLike
-
-    function CheckPriorCuts(Params)
-    real(mcp)  CheckPriorCuts
-    Type(ParamSet), target :: Params
-    Type (CMBParams), target :: CMB
-
-    CheckPriorCuts = GetLogLikeBounds(Params)
-    if (CheckPriorCuts==LogZero) return
-
-    call Parameterization%ParamArrayToTheoryParams(Params%P,CMB)
-    CheckPriorCuts = Parameterization%NonBaseParameterPriors(CMB)
-
-    end function CheckPriorCuts
-
-    function GetLogLikePost(Params, do_like)
-    !for importance sampling where theory may be pre-stored
-    real(mcp)  GetLogLikePost
-    Type(ParamSet), target :: Params
-    Type (CMBParams), target :: CMB
-    Type(LikeCalculator) :: Calc
-    logical, optional, intent(in) :: do_like(DataLikelihoods%count)
-
-    GetLogLikePost = GetLogLikeBounds(Params)
-    if (GetLogLikePost==LogZero) return
-
-    Calc%slowChanged = .false.
-    Calc%ChangeMask = .true.
-
-    call Parameterization%ParamArrayToTheoryParams(Params%P,CMB)
-    call AddLike(GetLogLikePost,Parameterization%NonBaseParameterPriors(CMB))
-    if (GetLogLikePost == logZero) return
-
-    Calc%Params => Params
-    Calc%CMB=>CMB
-    call AddLike(GetLogLikePost, GetLogLikeWithTheorySet(Calc, do_like))
-
-    end function GetLogLikePost
-
-    function getLogPriors(P) result(logLike)
+    function GetLogPriors(this, P) result(logLike)
+    class(BaseLikeCalculator) :: this
     integer i
     real(mcp), intent(in) :: P(num_params)
     real(mcp) logLike
@@ -152,41 +75,142 @@
     end do
     logLike=logLike/2
 
-    end function getLogPriors
+    end function GetLogPriors
 
-    logical function CalculateRequiredTheoryChanges(Calc)
-    Type(LikeCalculator) :: Calc
-    integer error
+    function GenericLikelihoodFunction(Params)
+    class(TCalculationAtParamPoint)  Params
+    real(mcp) :: GenericLikelihoodFunction
 
-    Calc%SlowChanged = any(Calc%changeMask(1:num_hard))
-    Calc%PowerChanged = any(Calc%changeMask(index_initpower:index_initpower+num_initpower-1))
-    error=0
-    if (Use_CMB .or. Use_LSS .or. get_sigma8) then
-        if (Calc%SlowChanged) then
-            slow_changes = slow_changes + 1
-            call GetNewTransferData(Calc%CMB, Calc%Params%Info,Calc%Params%Theory, error)
-        end if
-        if ((Calc%SlowChanged .or. Calc%PowerChanged) .and. error==0) then
-            if (.not. Calc%SlowChanged) semislow_changes = semislow_changes  + 1
-            call GetNewPowerData(Calc%CMB, Calc%Params%Info, Calc%Params%Theory,error)
-        end if
-    else
-        if (Calc%SlowChanged) call GetNewBackgroundData(Calc%CMB, Calc%Params%Theory, error)
+    !Used when you want to plug in your own CMB-independent likelihood function:
+    !set generic_mcmc=.true. in settings.f90, then write function here returning -Ln(Likelihood)
+    !Parameter array is Params%P, so e.g. 2D unit Gaussian would be
+    !GenericLikelihoodFunction = (Params%P(1)**2+Params%P(2)**2)/2
+    GenericLikelihoodFunction = LogZero
+    call MpiStop('GenericLikelihoodFunction: need to write this function!')
+
+    end function GenericLikelihoodFunction
+
+
+    function Generic_GetLogLike(this, Params) result(GetLogLike)!Get -Ln(Likelihood) for chains
+    class(GenericLikeCalculator) :: this
+    class(TCalculationAtParamPoint) :: Params
+    real(mcp) GetLogLike
+
+    GetLogLike = this%GetLogLikeBounds(Params)
+    if (GetLogLike==LogZero) return
+    call this%AddLike(GetLogLike,this%GenericLikelihoodFunction(Params))
+    if (GetLogLike==LogZero) return
+    call this%AddLike(GetLogLike,this%getLogPriors(Params%P))
+
+    end function Generic_GetLogLike
+
+
+    function TestLikelihoodFunction(this,Params)
+    class(TheoryLikeCalculator) :: this
+    class(TCalculationAtParamPoint) Params
+    real(mcp) :: TestLikelihoodFunction
+    real(mcp), allocatable, save :: covInv(:,:)
+    real(mcp) X(num_params_used)
+
+    if (.not. allocated(covInv)) then
+        allocate(covInv(num_params_used,num_params_used))
+        covInv = test_cov_matrix
+        call Matrix_Inverse(covInv)
     end if
-    Calc%Params%Info%validInfo = .true.
-    CalculateRequiredTheoryChanges = error==0
+    X = Params%P(params_used) - scales%Center(params_used)
+    TestLikelihoodFunction= dot_product(X, matmul(covInv, X))/2
 
-    end function CalculateRequiredTheoryChanges
+    end function TestLikelihoodFunction
+
+    subroutine TheoryLike_SetTheoryParams(this, Params)
+    class(TheoryLikeCalculator) :: this
+    class(TCalculationAtParamPoint), target :: Params
+
+    if (.not. allocated(this%TheoryParams)) call Parameterization%NewTheoryParams(this%TheoryParams)
+    call Parameterization%ParamArrayToTheoryParams(Params%P,this%TheoryParams)
+    this%Params => Params
+
+    end subroutine TheoryLike_SetTheoryParams
 
 
-    function GetLogLikeWithTheorySet(Calc, likelihood_mask) result(logLike)
-    real(mcp) logLike
-    Type(LikeCalculator) :: Calc
+    function TheoryLike_GetLogLike(this, Params) result(GetLogLike)!Get -Ln(Likelihood) for chains
+    class(TheoryLikeCalculator) :: this
+    class(TCalculationAtParamPoint) :: Params
+    real(mcp) GetLogLike
+
+    GetLogLike = this%GetLogLikeBounds(Params)
+    if (GetLogLike==LogZero) return
+
+    if (test_likelihood) then
+        call this%AddLike(GetLogLike,this%TestLikelihoodFunction(Params))
+        call this%AddLike(GetLogLike,this%GetLogPriors(Params%P))
+    else
+        call this%SetTheoryParams(Params)
+        call this%AddLike(GetLogLike, Parameterization%NonBaseParameterPriors(this%TheoryParams))
+        if (GetLogLike == logZero) return
+        if (.not. Params%Info%validInfo) then
+            this%changeMask(1:num_params) = .true.
+        else
+            this%changeMask(1:num_params) = Params%Info%lastParamArray(1:num_params)/=Params%P(1:num_params)
+        end if
+
+        if (this%CalculateRequiredTheoryChanges()) then
+            call this%AddLike(GetLogLike, this%GetLogLikeWithTheorySet())
+        else
+            GetLogLike = logZero
+        end if
+
+        if (GetLogLike/=logZero) Params%Info%lastParamArray(1:num_params) = Params%P(1:num_params)
+    end if
+
+    if (Feedback>2 .and. GetLogLike/=LogZero) &
+    call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%likelihoods)
+
+    end function TheoryLike_GetLogLike
+
+    function TheoryLike_CheckPriorCuts(this, Params) result(checkPriorCuts)
+    class(TheoryLikeCalculator) :: this
+    real(mcp)  CheckPriorCuts
+    class(TCalculationAtParamPoint) :: Params
+
+    CheckPriorCuts = this%GetLogLikeBounds(Params)
+    if (CheckPriorCuts==LogZero) return
+
+    call this%SetTheoryParams(Params)
+    CheckPriorCuts = Parameterization%NonBaseParameterPriors(this%TheoryParams)
+
+    end function TheoryLike_CheckPriorCuts
+
+
+    function TheoryLike_GetLogLikePost(this,Params, do_like) result(GetLogLikePost)
+    !for importance sampling where theory may be pre-stored
+    class(TheoryLikeCalculator) :: this
+    real(mcp)  GetLogLikePost
+    class(TCalculationAtParamPoint) :: Params
+    logical, optional, intent(in) :: do_like(DataLikelihoods%count)
+
+    GetLogLikePost = this%GetLogLikeBounds(Params)
+    if (GetLogLikePost==LogZero) return
+
+    this%SlowChanged = .false.
+    this%ChangeMask = .true.
+
+    call this%SetTheoryParams(Params)
+    call this%AddLike(GetLogLikePost,Parameterization%NonBaseParameterPriors(this%TheoryParams))
+    if (GetLogLikePost == logZero) return
+
+    call this%AddLike(GetLogLikePost, this%GetLogLikeWithTheorySet(do_like))
+
+    end function TheoryLike_GetLogLikePost
+
+    
+    function TheoryLike_LogLikeWithTheorySet(this, likelihood_mask) result(logLike)
+    class(TheoryLikeCalculator) :: this
     logical, intent(in), optional :: likelihood_mask(DataLikelihoods%count)
+    real(mcp) logLike
     real(mcp) itemLike
-    Class(DataLikelihood), pointer :: like
+    class(DataLikelihood), pointer :: like => null()
     integer i
-    logical backgroundSet
     logical :: do_like(DataLikelihoods%count)
 
     if (present(likelihood_Mask)) then
@@ -194,27 +218,41 @@
     else
         do_like = .true.
     end if
-    backgroundSet = Calc%slowChanged
     logLike = logZero
+    call GetTheoryForLike(like) !chance to initalize
     do i= 1, DataLikelihoods%count
         if (do_like(i)) then
             like => DataLikelihoods%Item(i)
-            if (any(like%dependent_params(1:num_params) .and. Calc%changeMask(1:num_params) )) then
-                if (any(like%dependent_params(1:num_hard)) .and. .not. backgroundSet) then
-                    call SetTheoryForBackground(Calc%CMB)
-                    backgroundSet = .true.
-                end if
-                itemLike = like%LogLike(Calc%CMB, Calc%Params%Theory, Calc%Params%P(like%nuisance_indices))
+            if (any(like%dependent_params(1:num_params) .and. this%changeMask(1:num_params) )) then
+                call this%GetTheoryForLike(like)
+                itemLike = like%LogLike(this%TheoryParams, this%Params%Theory, this%Params%P(like%nuisance_indices))
 
                 if (itemLike == logZero) return
-                Calc%Params%Likelihoods(i) = itemLike
+                this%Params%Likelihoods(i) = itemLike
             end if
         end if
     end do
-    logLike = sum(Calc%Params%likelihoods(1:DataLikelihoods%Count))
-    logLike = logLike + getLogPriors(Calc%Params%P)
+    logLike = sum(this%Params%likelihoods(1:DataLikelihoods%Count))
+    logLike = logLike + this%GetLogPriors(this%Params%P)
 
-    end function GetLogLikeWithTheorySet
+    end function TheoryLike_LogLikeWithTheorySet
+
+    
+    logical function TheoryLike_CalculateRequiredTheoryChanges(this) 
+    class(TheoryLikeCalculator) :: this
+
+    !Set this%Params theory entries (this%Params%Theory) as required for current this%changeMask and this%TheoryParams
+    this%Params%Info%validInfo = .true.
+    TheoryLike_CalculateRequiredTheoryChanges = .true.
+    
+    end function TheoryLike_CalculateRequiredTheoryChanges
+
+    subroutine TheoryLike_GetTheoryForLike(this,Like)
+    class(TheoryLikeCalculator) :: this
+    class(DataLikelihood), pointer :: like
+
+    !If needed, likelihood specific calculation/initalization
+    end subroutine TheoryLike_GetTheoryForLike
 
 
     end module CalcLike

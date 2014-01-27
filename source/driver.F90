@@ -1,6 +1,5 @@
     program SolveCosmology
     ! This is a driving routine that illustrates the use of the program.
-
     use IniFile
     use MonteCarlo
     use ParamDef
@@ -15,7 +14,6 @@
     use ParamNames
     use camb
     use cmbtypes
-    use GaugeInterface, only : Eqns_name
     use DefineParameterization
 
     implicit none
@@ -251,7 +249,7 @@
 
     call SetTheoryParameterization(DefIni, NameMapping)
     call DataLikelihoods%AddNuisanceParameters(NameMapping)
-    if (.not. generic_mcmc) call CMB_Initialize(Params%Info)
+    if (.not. generic_mcmc) call CosmoTheory_ReadParams(DefIni)
     call InitializeUsedParams(DefIni,Params, action /= action_importance)
 
     if (want_minimize) call Minimize_ReadIni(DefIni)
@@ -262,11 +260,7 @@
             if (like%version/='')  call TNameValueList_Add(DefIni%ReadValues, &
             concat('Compiled_data_',like%name),like%version)
         end do
-        call TNameValueList_Add(DefIni%ReadValues, 'Compiled_CAMB_version', version)
-        call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Recombination', Recombination_Name)
-        call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Equations', Eqns_name)
-        call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Reionization', Reionization_Name)
-        call TNameValueList_Add(DefIni%ReadValues, 'Compiled_InitialPower', Power_Name)
+        call TheoryCalculator%VersionTraceOutput(DefIni%ReadValues)
         unit = new_file_unit()
         if (action==action_importance) then
             call Ini_SaveReadValues(trim(PostParams%redo_outroot) //'.inputparams',unit)

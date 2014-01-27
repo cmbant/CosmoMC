@@ -1,5 +1,5 @@
     !Use CAMB
-    module CMB_Cls
+    module Calculator_CAMB
     use cmbtypes
     use CAMB, only : CAMB_GetResults, CAMB_GetAge, CAMBParams, CAMB_SetDefParams, &
     AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, wa_ppf,&
@@ -13,22 +13,43 @@
     use IO
     use likelihood
     use powerspec
+    use Calculator_Cosmology
+    use GeneralTypes
     implicit none
 
-    logical :: CMB_lensing = .false.
-    logical :: use_lensing_potential = .false.
-    !logical :: use_nonlinear = .false.  !JD 08/13 moved to settings, needed  WiggleZ module
-    logical :: use_nonlinear_lensing = .false.
-    real(mcp) :: lens_recon_scale = 1._mcp
-    logical :: CAMB_timing = .false.
+    private
 
-    Type ParamSetInfo
+    Type, extends(TTheoryIntermediateCache) :: CAMBTransferCache
         Type (CAMBdata) :: Transfers
-        real(mcp) lastParamArray(max_num_params)
-        logical :: validInfo = .false.
-    end Type ParamSetInfo
+    contains
+    procedure :: Clear => CAMBTransferCache_Clear
+    procedure :: Initialize => CAMBTransferCache_Initialize
+    end Type CAMBTransferCache
 
-    integer :: lmax_computed_cl = lmax !value used for CAMB
+    Type, extends(BaseCosmologyCalculator) :: CAMB_Calculator
+    contains
+    !New
+    procedure :: CMBToCAMB => CAMBCalc_CMBToCAMB
+    procedure :: SetDerived => CAMBCalc_SetDerived
+    procedure :: SetPowersFromCAMB => CAMBCalc_SetPowersFromCAMB
+    procedure :: InitCAMB => CAMBCalc_InitCAMB
+    procedure :: InitCAMBParams => CAMBCalc_InitCAMBParams
+    procedure :: SetCAMBInitPower => CAMBCalc_SetCAMBInitPower
+    procedure :: SetPkFromCAMB => CAMBCalc_SetPkFromCAMB
+    !Overridden inherited
+    procedure :: BAO_D_v => CAMBCalc_BAO_D_v
+    procedure :: CMBToTheta => CAMBCalc_CMBToTheta
+    procedure :: GetNewPowerData => CAMBCalc_GetNewPowerData
+    procedure :: GetNewTransferData => CAMBCalc_GetNewTransferData
+    procedure :: GetTheoryForImportance => CAMBCalc_GetTheoryForImportance
+    procedure :: GetZreFromTau  => CAMBCalc_GetZreFromTau
+    procedure :: GetOpticalDepth => CAMBCalc_GetOpticalDepth
+    procedure :: SetBackgroundTheoryData => CAMBCalc_SetBackgroundTheoryData
+    procedure :: SetParamsForBackground => CAMBCalc_SetParamsForBackground
+    procedure :: VersionTraceOutput => CAMBCalc_VersionTraceOutput
+    end type CAMB_Calculator
+
+    logical :: CAMB_timing = .false.
 
     integer, parameter :: ScalClOrder(5) = (/1,3,2,4,5/), TensClOrder(4) = (/1,4,2,3/)
     !Mapping of CAMB CL array ordering to TT , TE, EE, BB, phi, phiT
@@ -38,12 +59,15 @@
 
     real(mcp), allocatable :: highL_lensedCL_template(:,:)
 
+    public CAMB_Calculator
     contains
-    subroutine CMBToCAMB(CMB,P)
+
+    subroutine CAMBCalc_CMBToCAMB(this,CMB,P)
     use LambdaGeneral
     use CAMBmain, only : ALens
     use constants, only : default_nnu
-    type(CMBParams) CMB
+    class(CAMB_Calculator) :: this
+    class(CMBParams) CMB
     type(CAMBParams)  P
     real(dl) neff_massive_standard
 
@@ -101,44 +125,11 @@
 #endif
     call SetCAMBInitPower(P,CMB,1)
 
-    end subroutine CMBToCAMB
+    end subroutine CAMBCalc_CMBToCAMB
 
-
-    subroutine SetTheoryForBackground(CMB)
-    use Camb, only: CAMBParams_Set
-    type(CMBParams) CMB
-    type(CAMBParams)  P
-    !set background dparameters, but don't calculate thermal history
-    call CMBToCAMB(CMB, P)
-    call CAMBParams_Set(P)
-
-    end subroutine SetTheoryForBackground
-
-    subroutine GetNewBackgroundData(CMB,Theory,error)
-    use cambmain, only: initvars
-    type(CMBParams) CMB
-    integer error
-    Class(TheoryPredictions) Theory
-
-    call SetTheoryForBackground(CMB)
-    select type (Parameterization)
-    class is (CosmologyParameterization)
-        if (.not. Parameterization%late_time_only) then
-            call InitVars !calculate thermal history, e.g. z_drag etc.
-            if (global_error_flag/=0) then
-                error=global_error_flag
-                return
-            end if
-            call SetDerived(Theory)
-        end if
-        class default
-        call MpiStop('CMB_Cls_Simple: Must have CosmologyParameterization')
-    end select
-
-    end subroutine GetNewBackgroundData
-
-    subroutine SetDerived(Theory)
-    Class(TheoryPredictions) Theory
+    subroutine CAMBCalc_SetDerived(this,Theory)
+    class(CAMB_Calculator) :: this
+    Class(CosmoTheoryPredictions) Theory
     integer noutputs, i
 
     noutputs = size(BackgroundOutputs%z_outputs)
@@ -151,30 +142,72 @@
         Theory%derived_parameters(nthermo_derived+(i-1)*3+2) = BackgroundOutputs%H(i)
         Theory%derived_parameters(nthermo_derived+(i-1)*3+3) = BackgroundOutputs%DA(i)
     end do
-    end subroutine SetDerived
+    end subroutine CAMBCalc_SetDerived
 
-    subroutine GetNewTransferData(CMB,Info,Theory,error)
-    use ModelParams, only : ThreadNum
-    use InitialPower
-    type(CMBParams) CMB
+    !!!CAMB_Calcultator
+    subroutine CAMBCalc_SetParamsForBackground(this,CMB)
+    use Camb, only: CAMBParams_Set
+    class(CAMB_Calculator) :: this
+    class(CMBParams) CMB
+    Type(CAMBParams)  P
+
+    !set background dparameters, but don't calculate thermal history
+    call this%CMBToCAMB(CMB, P)
+    call CAMBParams_Set(P)
+
+    end subroutine CAMBCalc_SetParamsForBackground
+
+    subroutine CAMBCalc_SetBackgroundTheoryData(this, CMB,Theory,error)
+    use cambmain, only: initvars
+    class(CAMB_Calculator) :: this
+    class(CMBParams) CMB
+    Class(CosmoTheoryPredictions) Theory
     integer error
-    Type(ParamSetInfo) Info
-    Type(TheoryPredictions) Theory
+
+    call InitVars !calculate thermal history, e.g. z_drag etc.
+    if (global_error_flag/=0) then
+        error=global_error_flag
+        return
+    end if
+    call this%SetDerived(Theory)
+
+    end subroutine CAMBCalc_SetBackgroundTheoryData
+
+    subroutine CAMBCalc_GetNewTransferData(this, CMB,Info,Theory,error)
+    use InitialPower
+    class(CAMB_Calculator) :: this
+    class(CMBParams) CMB
+    class(TTheoryIntermediateCache), pointer :: Info
+    class(CosmoTheoryPredictions), pointer :: Theory
+    integer error
     type(CAMBParams)  P
     character(LEN=128) :: LogLine
     real(mcp) time
 
-    call CAMB_InitCAMBdata(Info%Transfers)
-    call CMBToCAMB(CMB, P)
+    allocate(CAMBTransferCache::Info)
+    if (.not. associated(Theory)) then
+        allocate(Theory)
+        call Theory%Init(this)
+    else
+        call Theory%AssignNew(Theory)
+    end if
+    
+    select type (Info)
+    class is (CAMBTransferCache)
+        call CAMB_InitCAMBdata(Info%Transfers)
+        call this%CMBToCAMB(CMB, P)
 
-    if (Feedback > 1) write (*,*) 'Calling CAMB'
-    Threadnum =num_threads
+        if (Feedback > 1) write (*,*) 'Calling CAMB'
+        Threadnum =num_threads
 
-    if (CAMB_timing) time = TimerTime()
-    call CAMB_GetTransfers(P, Info%Transfers, error)
-    if (CAMB_timing) call Timer('GetTransfers', time)
+        if (CAMB_timing) time = TimerTime()
+        call CAMB_GetTransfers(P, Info%Transfers, error)
+        if (CAMB_timing) call Timer('GetTransfers', time)
+        class default
+        call MpiStop('CAMB_GetNewTransferData with wrong TTheoryIntermediateCache type')
+    end select
     if (error==0) then
-        call SetDerived(Theory)
+        call this%SetDerived(Theory)
     else
         if (stop_on_error) call MpiStop('CAMB error '//trim(global_error_message))
         if (Feedback > 0) write(*,*) 'CAMB returned error '//trim(global_error_message)
@@ -187,63 +220,67 @@
     end if
     if (Feedback > 1) write (*,*) 'CAMB done'
 
-    end subroutine GetNewTransferData
+    end subroutine CAMBCalc_GetNewTransferData
 
-    subroutine GetNewPowerData(CMB, Info, Theory, error)
-    use ModelParams, only : ThreadNum
-    type(CMBParams) CMB
+    subroutine CAMBCalc_GetNewPowerData(this, CMB, Info, Theory, error)
+    class(CAMB_Calculator) :: this
+    class(CMBParams) :: CMB
+    class(TTheoryIntermediateCache), pointer :: Info
+    class(CosmoTheoryPredictions), pointer :: Theory
     integer error
-    Type(ParamSetInfo) Info
-    Type(TheoryPredictions) Theory
 
-    call SetCAMBInitPower(Info%Transfers%Params,CMB,1)
-    call CAMB_TransfersToPowers(Info%Transfers)
-    !this sets slow CAMB params correctly from value stored in Transfers
-    if (global_error_flag/=0) then
-        error=global_error_flag
-        return
-    end if
-    !JD 08/13 added so we dont have to fill Cls unless using CMB
-    if(use_CMB)then
-        call SetPowersFromCAMB(Theory)
+    call Theory%AssignNew(Theory)
 
-        if (any(Theory%cl(:,1) < 0 )) then
-            error = 1
-            call MpiStop('CMB_cls_simple: negative C_l (could edit to silent error here)')
+    select type (Info)
+    class is (CAMBTransferCache)
+        call this%SetCAMBInitPower(Info%Transfers%Params,CMB,1)
+        call CAMB_TransfersToPowers(Info%Transfers)
+        !this sets slow CAMB params correctly from value stored in Transfers
+        if (global_error_flag/=0) then
+            error=global_error_flag
             return
         end if
-    else
-        Theory%cl(:,:)=0
-    end if
+        !JD 08/13 added so we dont have to fill Cls unless using CMB
+        if(use_CMB)then
+            call this%SetPowersFromCAMB(CMB,Theory)
 
-    !redshifts are in increasing order, so last index is redshift zero
-    if (Use_LSS .or. get_sigma8) then
-        Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(size(Info%Transfers%MTrans%sigma_8,1),1)
-    else
-        Theory%sigma_8 = 0
-    end if
+            if (any(Theory%cl(:,1) < 0 )) then
+                error = 1
+                call MpiStop('CMB_cls_simple: negative C_l (could edit to silent error here)')
+                return
+            end if
+        else
+            Theory%cl(:,:)=0
+        end if
 
-    if (Use_LSS) then
-        call SetPkFromCAMB(Theory,Info%Transfers%MTrans)
-    end if
+        !redshifts are in increasing order, so last index is redshift zero
+        if (Use_LSS .or. get_sigma8) then
+            Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(size(Info%Transfers%MTrans%sigma_8,1),1)
+        else
+            Theory%sigma_8 = 0
+        end if
 
-    end subroutine GetNewPowerData
+        if (Use_LSS) then
+            call this%SetPkFromCAMB(Theory,Info%Transfers%MTrans)
+        end if
+    end select
 
-    subroutine GetTheoryForImportance(Params, Theory, error, DoCls, DoPk)
+    end subroutine CAMBCalc_GetNewPowerData
+
+    subroutine CAMBCalc_GetTheoryForImportance(this, CMB, Theory, error, DoCls, DoPk)
     use ModelParams, only : ThreadNum
-    type(CMBParams) CMB
-    Type(TheoryPredictions) Theory
+    class(CAMB_Calculator) :: this
+    class(CMBParams) CMB
+    class(CosmoTheoryPredictions) Theory
     integer error
     logical, intent(in) :: DoCls, DoPk
-    real(mcp):: Params(:)
     type(CAMBParams)  P
 
-    call Parameterization%ParamArrayToTheoryParams(Params,CMB)
     error = 0
 
     if (DoPk .or. DoCls) then
         Threadnum =num_threads
-        call CMBToCAMB(CMB, P)
+        call this%CMBToCAMB(CMB, P)
         P%OnlyTransfers = .false.
 
         if (DoPk) then
@@ -264,28 +301,32 @@
 
         error = global_error_flag !using error optional parameter gives seg faults on SGI
     else
-        call GetNewBackgroundData(CMB,Theory,error)
+        call this%GetNewBackgroundData(CMB,Theory,error)
     end if
     if (error==0) then
-        if (DoCls) call SetPowersFromCAMB(Theory)
+        if (DoCls) call this%SetPowersFromCAMB(CMB,Theory)
         if (DoPK) then
             Theory%sigma_8 = MT%sigma_8(size(MT%sigma_8,1),1)
-            call SetPkFromCAMB(Theory,MT)
+            call this%SetPkFromCAMB(Theory,MT)
         end if
-        call SetDerived(Theory)
+        call this%SetDerived(Theory)
     end if
-    end subroutine GetTheoryForImportance
+    end subroutine CAMBCalc_GetTheoryForImportance
 
-    subroutine SetPowersFromCAMB(Theory)
+    subroutine CAMBCalc_SetPowersFromCAMB(this,CMB,Theory)
     use constants
     use InitialPower
-    Type(TheoryPredictions) Theory
+    class(CAMB_Calculator) :: this
+    class(CMBParams) :: CMB
+    class(CosmoTheoryPredictions) Theory
     real(mcp), parameter :: cons =  (COBE_CMBTemp*1e6)**2*2*pi
     real(mcp) nm
     integer l
-    real(mcp) highL_norm
+    real(mcp) highL_norm, lens_recon_scale
 
     Theory%cl=0
+    lens_recon_scale = CMB%InitPower(Aphiphi_index)
+
     do l = 2, lmax_computed_cl
         nm = cons/(l*(l+1))
         if (CMB_Lensing) then
@@ -329,20 +370,22 @@
         end do
     end if
 
-    end subroutine SetPowersFromCAMB
+    end subroutine CAMBCalc_SetPowersFromCAMB
 
 
-    subroutine SetPkFromCAMB(Theory,M)
+    subroutine CAMBCalc_SetPkFromCAMB(this,Theory,M)
     use camb, only : MatterTransferData
-    Type(TheoryPredictions) Theory
+    class(CAMB_Calculator) :: this
+    class(CosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
 
     call Theory_GetMatterPowerData(M,Theory,1)
 
-    end subroutine SetPkFromCAMB
+    end subroutine CAMBCalc_SetPkFromCAMB
 
-    subroutine InitCAMB(CMB,error, DoReion)
-    type(CMBParams), intent(in) :: CMB
+    subroutine CAMBCalc_InitCAMB(this,CMB,error, DoReion)
+    class(CAMB_Calculator) :: this
+    class(CMBParams), intent(in) :: CMB
     logical, optional, intent(in) :: DoReion
     logical WantReion
     type(CAMBParams)  P
@@ -354,18 +397,19 @@
         WantReion = .true.
     end if
 
-    call CMBToCAMB(CMB, P)
+    call this%CMBToCAMB(CMB, P)
     call CAMBParams_Set(P,error,WantReion)
 
-    end subroutine InitCAMB
+    end subroutine CAMBCalc_InitCAMB
 
-    function GetOpticalDepth(CMB)
-    type(CMBParams) CMB
+    function CAMBCalc_GetOpticalDepth(this,CMB) result(GetOpticalDepth)
+    class(CAMB_Calculator) :: this
+    class(CMBParams) CMB
     real(mcp) GetOpticalDepth
     type(CAMBParams)  P
     integer error
 
-    call CMBToCAMB(CMB, P)
+    call this%CMBToCAMB(CMB, P)
     call CAMBParams_Set(P,error)
 
     if (error/= 0) then
@@ -373,38 +417,47 @@
     else
         GetOpticalDepth = Reionization_GetOptDepth(P%Reion, P%ReionHist)
     end if
-    end  function GetOpticalDepth
+    end function CAMBCalc_GetOpticalDepth
 
-    function GetZreFromTau(CMB, tau)
-    type(CMBParams) CMB
+    function CAMBCalc_GetZreFromTau(this,CMB, tau) result(GetZreFromTau)
+    class(CAMB_Calculator) :: this
+    class(CMBParams) CMB
     real(mcp), intent(in) :: tau
     real(mcp) GetZreFromTau
     type(CAMBParams)  P
 
-    call CMBToCAMB(CMB, P)
+    call this%CMBToCAMB(CMB, P)
     GetZreFromTau = CAMB_GetZreFromTau(P,dble(tau))
 
-    end  function GetZreFromTau
+    end function CAMBCalc_GetZreFromTau
 
-    function CMBToTheta(CMB)
+    function CAMBCalc_CMBToTheta(this,CMB) result(CMBToTheta)
     use ModelParams
-    implicit none
-    Type(CMBParams) CMB
+    class(CAMB_Calculator) :: this
+    class(CMBParams) CMB
     real(mcp) CMBToTheta
     integer error
 
-    call InitCAMB(CMB,error,.false.)
+    call this%InitCAMB(CMB,error,.false.)
     CMBToTheta = CosmomcTheta()
 
-    end function CMBToTheta
+    end function CAMBCalc_CMBToTheta
 
 
+    real(mcp) function CAMBCalc_BAO_D_v(this, z)
+    use CAMB, only : BAO_D_v  !!angular diam distance also in Mpc no h units
+    class(CAMB_Calculator) :: this
+    real(mcp), intent(IN) :: z
 
+    CAMBCalc_BAO_D_v = BAO_D_v(z)
 
-    subroutine InitCAMBParams(P)
+    end function CAMBCalc_BAO_D_v
+
+    subroutine CAMBCalc_InitCAMBParams(this,P)
     use lensing
     use ModelParams
     use mpk
+    class(CAMB_Calculator) :: this
     type(CAMBParams)  P
     integer zix
     !JD Changed P%Transfer%redshifts and P%Transfer%num_redshifts to
@@ -502,16 +555,16 @@
 
     BackgroundOutputs%z_outputs => z_outputs
 
-    end subroutine InitCAMBParams
+    end subroutine CAMBCalc_InitCAMBParams
 
     !Mapping between array of power spectrum parameters and CAMB
-    subroutine SetCAMBInitPower(P,CMB,in)
+    subroutine CAMBCalc_SetCAMBInitPower(this,P,CMB,in)
     use camb
     use settings
     use cmbtypes
-    implicit none
+    class(CAMB_Calculator) :: this
     type(CAMBParams)  P
-    Type(CMBParams) CMB
+    class(CMBParams) CMB
 
     integer, intent(in) :: in
 
@@ -532,12 +585,54 @@
             P%InitPower%ant(in) = - CMB%InitPower(amp_ratio_index)/8.
             !note input n_T is ignored, so should be fixed (to anything)
         end if
-        lens_recon_scale = CMB%InitPower(Aphiphi_index)
     else
         stop 'params_CMB:Wrong initial power spectrum'
     end if
 
-    end subroutine SetCAMBInitPower
+    end subroutine CAMBCalc_SetCAMBInitPower
+
+    subroutine CAMBCalc_ReadParams(this,Info,Ini)
+    class(CAMB_Calculator) :: this
+    class(TTheoryIntermediateCache) Info
+    class(TIniFile) :: Ini
+    type(CAMBParams)  P
+
+    call this%BaseCosmologyCalculator%ReadParams(Info,Ini)
+    this%calcName ='CAMB'
+
+    CAMB_timing = Ini_Read_Logical_File(Ini,'CAMB_timing',.false.)
+
+    if (lmax_computed_cl /= lmax) then
+        if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
+        call LoadFiducialHighLTemplate
+    end if
+
+    call this%InitCAMBParams(P)
+
+    if (Feedback > 0 .and. MPIRank==0) then
+        write(*,*) 'max_eta_k         = ', P%Max_eta_k
+        write(*,*) 'transfer kmax     = ', P%Transfer%kmax
+    end if
+
+    P%WantTensors = compute_tensors
+    CAMBP = P
+
+    end subroutine CAMBCalc_ReadParams
+
+    subroutine CAMBCalc_VersionTraceOutput(this, ReadValues)
+    use GaugeInterface, only : Eqns_name
+    class(CAMB_Calculator) :: this
+    class(TNameValueList) :: ReadValues
+
+    !Store for the record any useful info about version etc.
+    call TNameValueList_Add(DefIni%ReadValues, 'Compiled_CAMB_version', version)
+    call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Recombination', Recombination_Name)
+    call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Equations', Eqns_name)
+    call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Reionization', Reionization_Name)
+    call TNameValueList_Add(DefIni%ReadValues, 'Compiled_InitialPower', Power_Name)
+
+    end subroutine CAMBCalc_VersionTraceOutput
+
 
 
     subroutine LoadFiducialHighLTemplate
@@ -566,73 +661,23 @@
 
     end subroutine LoadFiducialHighLTemplate
 
-    subroutine ParamSetInfo_Clear(Info)
-    Type(ParamSetInfo) Info
+
+    !!! CAMBTransferCache
+
+    subroutine CAMBTransferCache_Clear(Info)
+    class(CAMBTransferCache) Info
+
+    call CAMB_FreeCAMBdata(Info%Transfers)
+    call Info%TTheoryIntermediateCache%Clear()
+
+    end subroutine CAMBTransferCache_Clear
+
+    subroutine CAMBTransferCache_Initialize(Info)
+    class(CAMBTransferCache) Info
 
     call CAMB_InitCAMBdata(Info%Transfers)
-    Info%validInfo = .false.
+    call Info%TTheoryIntermediateCache%Initialize()
 
-    end subroutine
+    end subroutine CAMBTransferCache_Initialize
 
-    subroutine CMB_Initialize(Info)
-    Type(ParamSetInfo) Info
-    type(CAMBParams)  P
-    compute_tensors = Ini_Read_Logical('compute_tensors',.false.)
-    CAMB_timing = Ini_Read_Logical('CAMB_timing',.false.)
-
-    if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
-    CMB_lensing = Ini_Read_Logical('CMB_lensing',CMB_lensing)
-    use_lensing_potential = Ini_Read_logical('use_lensing_potential',use_lensing_potential)
-    use_nonlinear_lensing = Ini_Read_logical('use_nonlinear_lensing',use_nonlinear_lensing)
-    if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
-    if (use_lensing_potential .and. num_cls_ext ==0) &
-    call MpiStop('num_cls_ext should be > 0 to use_lensing_potential')
-    if (use_lensing_potential .and. .not. CMB_lensing) &
-    call MpiStop('use_lensing_potential must have CMB_lensing=T')
-    lmax_computed_cl = Ini_Read_Int('lmax_computed_cl',lmax)
-    if (lmax_computed_cl /= lmax) then
-        if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
-        call LoadFiducialHighLTemplate
-    end if
-
-    call InitCAMBParams(P)
-
-    if (Feedback > 0 .and. MPIRank==0) then
-        write (*,*) 'Computing tensors:', compute_tensors
-        write (*,*) 'Doing CMB lensing:',CMB_lensing
-        write (*,*) 'Doing non-linear Pk:',P%NonLinear
-
-        write(*,'(" lmax              = ",1I4)') lmax
-        write(*,'(" lmax_computed_cl  = ",1I4)') lmax_computed_cl
-        write(*,*) 'max_eta_k         = ', P%Max_eta_k
-        write(*,*) 'transfer kmax     = ', P%Transfer%kmax
-
-        if (compute_tensors) write(*,'(" lmax_tensor    = ",1I4)') lmax_tensor
-        write(*,'(" Number of C_ls = ",1I4)') num_cls
-    end if
-
-    call ParamSetInfo_Clear(Info)
-
-    P%WantTensors = compute_tensors
-    CAMBP = P
-
-    end subroutine CMB_Initialize
-
-
-    subroutine AcceptReject(accpt, CurParams, Trial)
-    logical, intent(in) :: accpt
-    Type(ParamSetInfo) CurParams, Trial
-
-    if (.not. associated(CurParams%Transfers%ClTransScal%Delta_p_l_k,&
-    Trial%Transfers%ClTransScal%Delta_p_l_k)) then
-        !If they point to same memory don't need to free anything
-        if (accpt) then
-            call CAMB_FreeCAMBdata(CurParams%Transfers)
-        else
-            call CAMB_FreeCAMBdata(Trial%Transfers)
-        end if
-    end if
-
-    end subroutine AcceptReject
-
-    end module CMB_Cls
+    end module Calculator_CAMB

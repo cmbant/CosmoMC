@@ -1194,7 +1194,7 @@
     USE ModelParams, ONLY : AngularDiameterDistance !From CAMB
     Class(SNLSLikelihood) :: like
     Class (CMBParams) CMB
-    Class(TheoryPredictions) Theory
+    Class(TTheoryPredictions) Theory
     real(mcp) DataParams(:)
     ! norm_alpha, norm_beta are the positions of alpha/beta in norm
     REAL(mcp) :: snls_LnLike

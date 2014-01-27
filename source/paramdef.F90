@@ -18,11 +18,7 @@
 
     implicit none
 
-    Type :: ParamSet
-        real(mcp) :: P(max_num_params)
-        real(mcp) likelihoods(max_likelihood_functions)
-        Type(TheoryPredictions) :: Theory
-        Type(ParamSetInfo) Info
+    Type, extends(TCalculationAtParamPoint) :: ParamSet
     contains
     procedure :: ReadModel
     procedure :: WriteModel
@@ -202,7 +198,7 @@
     Type(int_arr_pointer), allocatable :: param_blocks(:)
     logical :: block_semi_fast =.false., block_fast_likelihood_params=.false.
     integer :: breaks(num_params), num_breaks
-    Type(DataLikelihood), pointer :: DataLike
+    class(DataLikelihood), pointer :: DataLike
     integer :: oversample_fast= 1
     logical first
 

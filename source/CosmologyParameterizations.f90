@@ -8,14 +8,16 @@
     !
     !Also a background-only parameterization, e.g. for use with just supernoave etc
 
-    module DefineParameterization
+    module CosmologyParameterizations
     use cmbtypes
+    use Calculator_Cosmology
     implicit none
+    private
 
     real(mcp), parameter :: neutrino_mass_fac= 94.07 !conversion factor for thermal with Neff=3 TCMB-2.7255
     !93.014 for 3.046
 
-    Type, extends(CosmologyParameterization) :: ThetaParameterization
+    Type, extends(TCosmologyParameterization) :: ThetaParameterization
         real(mcp) :: H0_min = 40, H0_max = 100
         real(mcp) :: H0_prior_mean = 0._mcp, H0_prior_std = 0._mcp
         real(mcp) :: use_min_zre = 0._mcp
@@ -23,49 +25,25 @@
     procedure :: ParamArrayToTheoryParams => TP_ParamArrayToTheoryParams
     procedure :: NonBaseParameterPriors => TP_NonBaseParameterPriors
     procedure :: CalcDerivedParams => TP_CalcDerivedParams
-    procedure :: Initialize => TP_Init
+    procedure :: InitWithSetNames => TP_Init
     end type ThetaParameterization
 
-    Type, extends(CosmologyParameterization) :: BackgroundParameterization
+    Type, extends(TCosmologyParameterization) :: BackgroundParameterization
     contains
     procedure :: ParamArrayToTheoryParams => BK_ParamArrayToTheoryParams
     procedure :: CalcDerivedParams => BK_CalcDerivedParams
-    procedure :: Initialize => BK_Init
+    procedure :: InitWithSetNames => BK_Init
     end type BackgroundParameterization
 
+    public BackgroundParameterization,ThetaParameterization
     contains
 
-    subroutine SetTheoryParameterization(Ini, Names)
-    Type(TIniFile) :: Ini
-    Type(TParamNames) :: Names
-    character(LEN=Ini_max_string_len) :: paramtxt
-    Type(ThetaParameterization), pointer :: CMBParameterization
-    Type(BackgroundParameterization), pointer :: BackgroundParam
-    Type(GenericParameterization), pointer :: GenParam
 
-    paramtxt = Ini_Read_String_Default_File(Ini,'parameterization', 'theta')
-    if (paramtxt =='background') then
-        allocate(BackgroundParam)
-        Parameterization => BackgroundParam
-        call BackgroundParam%Initialize(Ini,Names)
-    else if (paramtxt=='theta') then
-        allocate(CMBParameterization)
-        Parameterization => CMBParameterization
-        call CMBParameterization%Initialize(Ini,Names)
-    else if (paramtxt =='generic') then
-        allocate(GenParam)
-        Parameterization => GenParam
-        call GenParam%Initialize(Ini,Names)
-    else
-        call MpiStop('params_CMB: unknown parameterization :'//trim(paramtxt))
-    end if
-
-    end subroutine SetTheoryParameterization
-
-    subroutine TP_Init(this, Ini, Names)
-    Class(ThetaParameterization) :: this
-    Type(TIniFile) :: Ini
-    Type(TParamNames) :: Names
+    subroutine TP_Init(this, Ini, Names, Config)
+    class(ThetaParameterization) :: this
+    class(TIniFile) :: Ini
+    class(TParamNames) :: Names
+    class(TGeneralConfig), target :: Config
     character(LEN=Ini_max_string_len) prior
 
     this%H0_min = Ini_Read_Double_File(Ini, 'H0_min',this%H0_min)
@@ -76,8 +54,8 @@
         read(prior,*) this%H0_prior_mean, this%H0_prior_std
     end if
 
-    call this%Init(Ini,Names, 'params_CMB.paramnames')
-    call SetTheoryParameterNumbers(15,6)
+    call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
+    call this%SetTheoryParameterNumbers(15,6)
 
     end subroutine TP_Init
 
@@ -99,7 +77,6 @@
     end function TP_NonBaseParameterPriors
 
     subroutine TP_ParamArrayToTheoryParams(this, Params, CMB)
-    use CMB_Cls
     class(ThetaParameterization) :: this
     real(mcp) Params(:)
     integer, parameter :: ncache =2
@@ -112,60 +89,66 @@
     Type(CMBParams), pointer :: CP2
     integer error
 
-    select type (CMB)
-    class is (CMBParams)
-        do i=1, ncache
-            !want to save two slow positions for some fast-slow methods
-            if (all(Params(1:num_hard) == LastCMB(i)%BaseParams(1:num_hard))) then
-                CP2 => CMB !needed to make next line work for some odd reason CMB=LastCMB(i) does not work
-                CP2 = LastCMB(i)
-                call this%CosmologyParameterization%ParamArrayToTheoryParams(Params, CMB)
-                call SetFast(Params,CMB)
-                return
-            end if
-        end do
-        call this%CosmologyParameterization%ParamArrayToTheoryParams(Params, CMB)
-
-        error = 0   !JD to prevent stops when using bbn_consistency or m_sterile
-        DA = Params(3)/100
-        try_b = this%H0_min
-        call SetForH(Params,CMB,try_b, .true.,error)  !JD for bbn related errors
-        if(error/=0)then
-            cmb%H0=0
-            return
-        end if 
-        D_b = CMBToTheta(CMB)
-        try_t = this%H0_max
-        call SetForH(Params,CMB,try_t, .false.)
-        D_t = CMBToTheta(CMB)
-        if (DA < D_b .or. DA > D_t) then
-            if (Feedback>1) write(*,*) instance, 'Out of range finding H0: ', real(Params(3))
-            cmb%H0=0 !Reject it
-        else
-            lasttry = -1
-            do
-                call SetForH(Params,CMB,(try_b+try_t)/2, .false.)
-                D_try = CMBToTheta(CMB)
-                if (D_try < DA) then
-                    try_b = (try_b+try_t)/2
-                else
-                    try_t = (try_b+try_t)/2
+    select type(CosmoCalc=>this%Config%Calculator)
+    class is (BaseCosmologyCalculator)
+        select type (CMB)
+        class is (CMBParams)
+            do i=1, ncache
+                !want to save two slow positions for some fast-slow methods
+                if (all(Params(1:num_hard) == LastCMB(i)%BaseParams(1:num_hard))) then
+                    CP2 => CMB !needed to make next line work for some odd reason CMB=LastCMB(i) does not work
+                    CP2 = LastCMB(i)
+                    call this%TCosmologyParameterization%ParamArrayToTheoryParams(Params, CMB)
+                    call SetFast(Params,CMB)
+                    return
                 end if
-                if (abs(D_try - lasttry)< 1e-7) exit
-                lasttry = D_try
             end do
+            call this%TCosmologyParameterization%ParamArrayToTheoryParams(Params, CMB)
 
-            !!call InitCAMB(CMB,error)
-            if (CMB%tau==0._mcp) then
-                CMB%zre=0
+            error = 0   !JD to prevent stops when using bbn_consistency or m_sterile
+            DA = Params(3)/100
+            try_b = this%H0_min
+            call SetForH(Params,CMB,try_b, .true.,error)  !JD for bbn related errors
+            if(error/=0)then
+                cmb%H0=0
+                return
+            end if 
+            D_b = CosmoCalc%CMBToTheta(CMB)
+            try_t = this%H0_max
+            call SetForH(Params,CMB,try_t, .false.)
+            D_t = CosmoCalc%CMBToTheta(CMB)
+            if (DA < D_b .or. DA > D_t) then
+                if (Feedback>1) write(*,*) instance, 'Out of range finding H0: ', real(Params(3))
+                cmb%H0=0 !Reject it
             else
-                CMB%zre = GetZreFromTau(CMB, CMB%tau)
-            end if
+                lasttry = -1
+                do
+                    call SetForH(Params,CMB,(try_b+try_t)/2, .false.)
+                    D_try = CosmoCalc%CMBToTheta(CMB)
+                    if (D_try < DA) then
+                        try_b = (try_b+try_t)/2
+                    else
+                        try_t = (try_b+try_t)/2
+                    end if
+                    if (abs(D_try - lasttry)< 1e-7) exit
+                    lasttry = D_try
+                end do
 
-            LastCMB(cache) = CMB
-            cache = mod(cache,ncache)+1
-        end if
+                !!call InitCAMB(CMB,error)
+                if (CMB%tau==0._mcp) then
+                    CMB%zre=0
+                else
+                    CMB%zre = CosmoCalc%GetZreFromTau(CMB, CMB%tau)
+                end if
+
+                LastCMB(cache) = CMB
+                cache = mod(cache,ncache)+1
+            end if
+        end select
+        class default
+        call MpiStop('CosmologyParameterizations: Calculator is not BaseCosmologyCalculator')
     end select
+
     end subroutine TP_ParamArrayToTheoryParams
 
     function TP_CalcDerivedParams(this, P, Theory, derived) result (num_derived)
@@ -177,7 +160,7 @@
     integer num_derived
 
     select type (Theory)
-    class is (TheoryPredictions)
+    class is (CosmoTheoryPredictions)
         num_derived = 13 +  Theory%numderived
         allocate(Derived%P(num_derived))
 
@@ -211,7 +194,6 @@
     end subroutine SetFast
 
     subroutine SetForH(Params,CMB,H0, firsttime,error)
-    use CMB_Cls
     use bbn
     real(mcp) Params(num_Params)
     logical, intent(in) :: firsttime
@@ -272,14 +254,15 @@
     end subroutine SetForH
 
     !!! Simple parameterization for background data, e.g. Supernovae only (no thermal history)
-    subroutine BK_Init(this, Ini, Names)
-    Class(BackgroundParameterization) :: this
-    Type(TIniFile) :: Ini
-    Type(TParamNames) :: Names
+    subroutine BK_Init(this, Ini, Names, Config)
+    class(BackgroundParameterization) :: this
+    class(TIniFile) :: Ini
+    class(TParamNames) :: Names
+    class(TGeneralConfig), target :: Config
 
     this%late_time_only = .true.
-    call this%Init(Ini,Names, 'params_background.paramnames')
-    call SetTheoryParameterNumbers(Names%num_MCMC,0)
+    call this%Initialize(Ini,Names, 'params_background.paramnames', Config)
+    call this%SetTheoryParameterNumbers(Names%num_MCMC,0)
 
     end subroutine BK_Init
 
@@ -340,4 +323,4 @@
     end function BK_CalcDerivedParams
 
 
-    end module DefineParameterization
+    end module CosmologyParameterizations

@@ -168,7 +168,7 @@
     use ModelParams, only : derived_zdrag,derived_rdrag
     Class(CMBParams) CMB
     Class(BAOLikelihood) :: like
-    Class(TheoryPredictions) Theory
+    Class(CosmoTheoryPredictions) Theory
     real(mcp) :: DataParams(:)
     integer j,k
     real(mcp) BAO_LnLike

@@ -34,6 +34,8 @@
 
     logical :: new_chains = .true.
 
+    integer, parameter :: max_likelihood_functions = 50
+
     integer, parameter :: max_data_params = 100
     integer, parameter :: max_theory_params = 30
     integer, parameter :: max_num_params = max_theory_params + max_data_params
