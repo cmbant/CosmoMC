@@ -37,7 +37,7 @@
     subroutine clik_readParams(LikeList,Ini)
     class(LikelihoodList) :: LikeList
 
-    Type(TIniFile) Ini
+    class(TIniFile) Ini
     character (LEN=Ini_max_string_len) :: fname, params, name
     integer i
     Class(ClikLikelihood), pointer :: like
@@ -66,7 +66,7 @@
             params = ReadIniFileName(Ini,name, NotFoundFail = .false.)
             if (params/='') call Like%loadParamNames(params)
             call StringReplace('clik_params_','clik_speed_',name)
-            like%speed = Ini_Read_Int_File(Ini, name, 0)
+            like%speed = Ini%Read_Int(name, 0)
             call Like%clik_likeinit(fname)
         end if
     end do

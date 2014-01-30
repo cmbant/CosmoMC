@@ -104,8 +104,8 @@
         real(mcp), dimension(:,:), allocatable :: nlmatter_power, ddnlmatter_power
         real(mcp), dimension(:), allocatable :: redshifts
     contains
-    procedure :: WriteTheory
-    procedure :: ReadTheory
+    procedure :: WriteTheory => CosmoTheoryPredictions_WriteTheory
+    procedure :: ReadTheory => CosmoTheoryPredictions_ReadTheory
     procedure :: WriteBestFitData
     end Type CosmoTheoryPredictions
 
@@ -117,23 +117,23 @@
     end type
 
     contains
-    
+
     subroutine CosmoTheory_ReadParams(Ini)
     class(TIniFile) :: Ini
 
-    compute_tensors = Ini_Read_Logical_File(Ini, 'compute_tensors',.false.)
+    compute_tensors = Ini%Read_Logical('compute_tensors',.false.)
 
     if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
-    CMB_lensing = Ini_Read_Logical_File(Ini,'CMB_lensing',CMB_lensing)
-    use_lensing_potential = Ini_Read_logical_File(Ini,'use_lensing_potential',use_lensing_potential)
-    use_nonlinear_lensing = Ini_Read_logical_File(Ini,'use_nonlinear_lensing',use_nonlinear_lensing)
+    CMB_lensing = Ini%Read_Logical('CMB_lensing',CMB_lensing)
+    use_lensing_potential = Ini%Read_logical('use_lensing_potential',use_lensing_potential)
+    use_nonlinear_lensing = Ini%Read_logical('use_nonlinear_lensing',use_nonlinear_lensing)
 
     if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
     if (use_lensing_potential .and. num_cls_ext ==0) &
     call MpiStop('num_cls_ext should be > 0 to use_lensing_potential')
     if (use_lensing_potential .and. .not. CMB_lensing) &
     call MpiStop('use_lensing_potential must have CMB_lensing=T')
-    lmax_computed_cl = Ini_Read_Int_File(Ini,'lmax_computed_cl',lmax)
+    lmax_computed_cl = Ini%Read_Int('lmax_computed_cl',lmax)
 
     if (Feedback > 0 .and. MPIRank==0) then
         write (*,*) 'Computing tensors:', compute_tensors
@@ -149,7 +149,7 @@
 
     end subroutine CosmoTheory_ReadParams
 
-    
+
     subroutine CosmologyParameterization_SetNumbers(this, slow_num, semi_slow_num)
     use likelihood
     class(TCosmologyParameterization) :: this
@@ -204,7 +204,7 @@
         select type (DataLike)
         class is (CosmologyLikelihood)
             if (DataLike%needs_powerspectra) then
-                power_kmax = max(power_kmax,DataLike%kmax) 
+                power_kmax = max(power_kmax,DataLike%kmax)
                 use_nonlinear = use_nonlinear .or. DataLike%needs_nonlinear_pk
                 if(DataLike%needs_exact_z) then
                     call exact_z%AddArrayItems(DataLike%exact_z)
@@ -254,7 +254,7 @@
         if(exact_z%Item(i)==0.d0) cycle
         iz = nint(log(exact_z%Item(i)+1)/dlnz)+1
         if(iz<=izprev) iz=izprev+1
-        zcur = exact_z%Item(i) 
+        zcur = exact_z%Item(i)
         call full_z%Add(zcur)
         if(iz<=num_range) then
             call full_z%Swap(iz,full_z%Count)
@@ -309,7 +309,7 @@
 
     end subroutine IndexExactRedshifts
 
-    subroutine WriteTheory(T, i)
+    subroutine CosmoTheoryPredictions_WriteTheory(T, i)
     integer i
     Class(CosmoTheoryPredictions) T
     integer, parameter :: varcount = 1
@@ -347,9 +347,9 @@
         write(i) T%matter_power
     end if
 
-    end subroutine WriteTheory
+    end subroutine CosmoTheoryPredictions_WriteTheory
 
-    subroutine ReadTheory(T, i)
+    subroutine CosmoTheoryPredictions_ReadTheory(T, i)
     Class(CosmoTheoryPredictions) T
     integer, intent(in) :: i
     integer unused
@@ -402,7 +402,7 @@
         end if
     end if
 
-    end subroutine ReadTheory
+    end subroutine CosmoTheoryPredictions_ReadTheory
 
 
     subroutine ClsFromTheoryData(T, Cls)

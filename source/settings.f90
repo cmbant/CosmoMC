@@ -1,7 +1,7 @@
     module settings
     use AMLutils
     use Random
-    use IniFile
+    use IniObjects
     use ParamNames
 #ifdef f2003
     use, intrinsic :: iso_fortran_env, only : input_unit, output_unit,error_unit
@@ -29,8 +29,6 @@
     real(mcp) :: AccuracyLevel = 1.
     !Set to >1 to use CAMB etc on higher accuracy settings.
     !Does not affect MCMC (except making it all slower)
-
-    logical :: test_likelihood= .false.
 
     logical :: new_chains = .true.
 
@@ -97,7 +95,7 @@
     integer, parameter :: stdout = output_unit
 
     type mc_real_pointer
-        real(mcp), dimension(:), pointer :: p
+        real(mcp), dimension(:), pointer :: p => null()
     end type mc_real_pointer
 
 
@@ -114,7 +112,7 @@
     end function ReplaceDirs
 
     function ReadIniFileName(Ini,key, ADir, NotFoundFail) result (filename)
-    Type(TIniFile) :: Ini
+    class(TIniFile) :: Ini
     character(LEN=*), intent(in) :: Key
     character(LEN=*), optional, intent(in) :: ADir
     character(LEN=Ini_max_string_len) :: filename, repdir
@@ -122,9 +120,9 @@
     integer i
 
     if (present(NotFoundFail)) then
-        filename = Ini_Read_String_File(Ini, key, NotFoundFail)
+        filename = Ini%Read_String(key, NotFoundFail)
     else
-        filename = Ini_Read_String_File(Ini, key)
+        filename = Ini%Read_String(key)
     end if
     if (present(ADir)) then
         repdir=ADir
@@ -143,19 +141,18 @@
     subroutine CheckParamChangeF(F)
     character(LEN=*), intent(in) ::  F
     logical bad, doexit
+    Type(TIniFile) :: Ini
 
     if (F /= '') then
-
-    call Ini_Open(F, tmp_file_unit, bad, .false.)
-    if (bad) return
-    Ini_fail_on_not_found = .false.
-    doexit = (Ini_Read_Int('exit',0) == 1)
-    FeedBack = Ini_Read_Int('feedback',Feedback)
-    num_threads = Ini_Read_Int('num_threads',num_threads)
-    call Ini_Close
-    if (F== FileChangeIni) call DeleteFile(FileChangeini)
-    if (doexit) call MpiStop('exit requested')
-
+        call Ini%Open(F, bad, .false.)
+        if (bad) return
+        Ini_fail_on_not_found = .false.
+        doexit = (Ini%Read_Int('exit',0) == 1)
+        FeedBack = Ini%Read_Int('feedback',Feedback)
+        num_threads = Ini%Read_Int('num_threads',num_threads)
+        call Ini%Close()
+        if (F== FileChangeIni) call DeleteFile(FileChangeini)
+        if (doexit) call MpiStop('exit requested')
     end if
 
     end subroutine CheckParamChangeF
@@ -290,4 +287,3 @@
 
 
     end module settings
-

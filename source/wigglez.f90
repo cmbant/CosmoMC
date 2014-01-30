@@ -103,7 +103,7 @@
     end subroutine GiggleZtoICsmooth
 
     subroutine fill_GiggleZTheory(Theory,zbin)
-    Type(TheoryPredictions) Theory
+    class(CosmoTheoryPredictions) Theory
     integer, intent(in) :: zbin
     real(mcp) :: xi, kval
     real(mcp), dimension(4) :: fidpolys
@@ -218,25 +218,25 @@
     contains
 
     subroutine WiggleZLikelihood_Add(LikeList, Ini)
-    use IniFile
+    use IniObjects
     use settings
     use wigglezinfo
     class(LikelihoodList) :: LikeList
-    Type(TIniFile) :: ini
+    class(TIniFile) :: ini
     Type(WiggleZLikelihood), pointer :: like
     integer nummpksets, i
 
-    use_wigglez_mpk = (Ini_Read_Logical_File(Ini, 'use_wigglez_mpk',.false.))
+    use_wigglez_mpk = (Ini%Read_Logical('use_wigglez_mpk',.false.))
 
     if(.not. use_wigglez_mpk) return
 
-    use_gigglez = Ini_Read_Logical('Use_gigglez',.false.)
-    nonlinear_wigglez = Ini_Read_Logical('nonlinear_wigglez',.false.)
+    use_gigglez = Ini%Read_Logical('Use_gigglez',.false.)
+    nonlinear_wigglez = Ini%Read_Logical('nonlinear_wigglez',.false.)
 
     call WiggleZCommon%ReadDatasetFile(ReadIniFileName(Ini,'wigglez_common_dataset'))
     WiggleZCommon%LikelihoodType = 'MPK'
 
-    nummpksets = Ini_Read_Int('mpk_wigglez_numdatasets',0)
+    nummpksets = Ini%Read_Int('mpk_wigglez_numdatasets',0)
     do i= 1, nummpksets
         allocate(like)
         like%LikelihoodType = 'MPK'
@@ -253,10 +253,10 @@
 
 
     subroutine TWiggleZCommon_ReadIni(like,Ini)
-    use IniFile
+    use IniObjects
     use wigglezinfo
     class(TWiggleZCommon) :: like
-    Type(TIniFile) :: ini
+    class(TIniFile) :: ini
     character(len=64) region_string
     integer i_regions
 
@@ -266,15 +266,15 @@
     zeval(4) = zd
 
 
-    num_mpk_points_full = Ini_Read_Int_File(Ini,'num_mpk_points_full',0)
+    num_mpk_points_full = Ini%Read_Int('num_mpk_points_full',0)
     if (num_mpk_points_full.eq.0) write(*,*) ' ERROR: parameter num_mpk_points_full not set'
-    num_mpk_kbands_full = Ini_Read_Int_File(Ini,'num_mpk_kbands_full',0)
+    num_mpk_kbands_full = Ini%Read_Int('num_mpk_kbands_full',0)
     if (num_mpk_kbands_full.eq.0) write(*,*) ' ERROR: parameter num_mpk_kbands_full not set'
 
-    min_mpk_points_use = Ini_Read_Int_File(Ini,'min_mpk_points_use',1)
-    min_mpk_kbands_use = Ini_Read_Int_File(Ini,'min_mpk_kbands_use',1)
-    max_mpk_points_use = Ini_Read_Int_File(Ini,'max_mpk_points_use',num_mpk_points_full)
-    max_mpk_kbands_use = Ini_Read_Int_File(Ini,'max_mpk_kbands_use',num_mpk_kbands_full)
+    min_mpk_points_use = Ini%Read_Int('min_mpk_points_use',1)
+    min_mpk_kbands_use = Ini%Read_Int('min_mpk_kbands_use',1)
+    max_mpk_points_use = Ini%Read_Int('max_mpk_points_use',num_mpk_points_full)
+    max_mpk_kbands_use = Ini%Read_Int('max_mpk_kbands_use',num_mpk_kbands_full)
 
     ! region 1 = 9h
     ! region 2 = 11h
@@ -301,7 +301,7 @@
         else if(i_regions.eq.7) then
             region_string = 'Use_0-hr_region'
         endif
-        regions_active(i_regions) =  Ini_Read_Logical_File(Ini,region_string,.false.)
+        regions_active(i_regions) =  Ini%Read_Logical(region_string,.false.)
     enddo
 
     !  ... work out how many regions are being used
@@ -317,7 +317,7 @@
     num_mpk_points_use = max_mpk_points_use - min_mpk_points_use +1
     num_mpk_kbands_use = max_mpk_kbands_use - min_mpk_kbands_use +1
 
-    use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
+    use_scaling = Ini%Read_Logical('use_scaling',.false.)
 
     if(use_gigglez .and. .not. nonlinear_wigglez) then
         write(*,*) 'ERROR!:  GiggleZ non-linear prescription only available'
@@ -332,15 +332,15 @@
     end if
 
 
-    Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)
+    Q_marge = Ini%Read_Logical('Q_marge',.false.)
     if (Q_marge) then
-        Q_flat = Ini_Read_Logical_File(Ini,'Q_flat',.false.)
+        Q_flat = Ini%Read_Logical('Q_flat',.false.)
         if (.not. Q_flat) then
             !gaussian prior on Q
-            Q_mid = Ini_Read_Real_File(Ini,'Q_mid')
-            Q_sigma = Ini_Read_Real_File(Ini,'Q_sigma')
+            Q_mid = Ini%Read_Real('Q_mid')
+            Q_sigma = Ini%Read_Real('Q_sigma')
         end if
-        Ag = Ini_Read_Real_File(Ini,'Ag', 1.4)
+        Ag = Ini%Read_Real('Ag', 1.4)
     end if
 
     end subroutine TWiggleZCommon_ReadIni
@@ -351,7 +351,7 @@
     use MatrixUtils
     implicit none
     class(WiggleZLikelihood) like
-    Type(TIniFile) :: Ini
+    class(TIniFile) :: Ini
     character(LEN=Ini_max_string_len) :: kbands_file, measurements_file, windows_file, cov_file
     integer i,iopb,i_regions
     real(mcp) keff,klo,khi,beff
@@ -365,7 +365,7 @@
 
     allocate(like%exact_z(like%num_z))
     allocate(like%exact_z_index(like%num_z))
-    like%exact_z(1) = Ini_Read_Double_File(Ini,'redshift',0.d0)
+    like%exact_z(1) = Ini%Read_Double('redshift',0.d0)
 
     if(like%exact_z(1).eq.0.0) then
         call MpiStop('mpk: failed  to read in WiggleZ redshift')
@@ -472,7 +472,7 @@
 
     !JD 09/13 Read in fiducial D_V for use when calculating a_scl
     if(use_scaling) then
-        like%DV_fid = Ini_Read_Double_File(Ini,'DV_fid',-1.d0)
+        like%DV_fid = Ini%Read_Double('DV_fid',-1.d0)
         if(like%DV_fid == -1.d0) then
             write(*,*)'ERROR: use_scaling = T and no DV_fid given '
             write(*,*)'       for dataset '//trim(like%name)//'.'
@@ -536,7 +536,7 @@
     function WiggleZ_LnLike(like,CMB,Theory,DataParams) ! LV_06 added CMB here
     Class(CMBParams) CMB
     Class(WiggleZLikelihood) :: like
-    Class(TheoryPredictions) Theory
+    Class(CosmoTheoryPredictions) Theory
     real(mcp) :: DataParams(:)
     real(mcp) :: WiggleZ_LnLike, LnLike
     real(mcp), dimension(:), allocatable :: mpk_Pth, mpk_k2,mpk_lin,k_scaled !LV_06 added for LRGDR4

@@ -178,20 +178,14 @@
     class(CAMB_Calculator) :: this
     class(CMBParams) CMB
     class(TTheoryIntermediateCache), pointer :: Info
-    class(CosmoTheoryPredictions), pointer :: Theory
+    class(CosmoTheoryPredictions) :: Theory
     integer error
     type(CAMBParams)  P
     character(LEN=128) :: LogLine
     real(mcp) time
 
     allocate(CAMBTransferCache::Info)
-    if (.not. associated(Theory)) then
-        allocate(Theory)
-        call Theory%Init(this)
-    else
-        call Theory%AssignNew(Theory)
-    end if
-    
+
     select type (Info)
     class is (CAMBTransferCache)
         call CAMB_InitCAMBdata(Info%Transfers)
@@ -226,10 +220,8 @@
     class(CAMB_Calculator) :: this
     class(CMBParams) :: CMB
     class(TTheoryIntermediateCache), pointer :: Info
-    class(CosmoTheoryPredictions), pointer :: Theory
+    class(CosmoTheoryPredictions) :: Theory
     integer error
-
-    call Theory%AssignNew(Theory)
 
     select type (Info)
     class is (CAMBTransferCache)
@@ -600,11 +592,11 @@
     call this%BaseCosmologyCalculator%ReadParams(Info,Ini)
     this%calcName ='CAMB'
 
-    CAMB_timing = Ini_Read_Logical_File(Ini,'CAMB_timing',.false.)
+    CAMB_timing = Ini%Read_Logical('CAMB_timing',.false.)
 
     if (lmax_computed_cl /= lmax) then
         if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
-        call LoadFiducialHighLTemplate
+        call LoadFiducialHighLTemplate(Ini)
     end if
 
     call this%InitCAMBParams(P)
@@ -625,32 +617,33 @@
     class(TNameValueList) :: ReadValues
 
     !Store for the record any useful info about version etc.
-    call TNameValueList_Add(DefIni%ReadValues, 'Compiled_CAMB_version', version)
-    call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Recombination', Recombination_Name)
-    call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Equations', Eqns_name)
-    call TNameValueList_Add(DefIni%ReadValues, 'Compiled_Reionization', Reionization_Name)
-    call TNameValueList_Add(DefIni%ReadValues, 'Compiled_InitialPower', Power_Name)
+    call ReadValues%Add( 'Compiled_CAMB_version', version)
+    call ReadValues%Add('Compiled_Recombination', Recombination_Name)
+    call ReadValues%Add('Compiled_Equations', Eqns_name)
+    call ReadValues%Add('Compiled_Reionization', Reionization_Name)
+    call ReadValues%Add('Compiled_InitialPower', Power_Name)
 
     end subroutine CAMBCalc_VersionTraceOutput
 
 
 
-    subroutine LoadFiducialHighLTemplate
+    subroutine LoadFiducialHighLTemplate(Ini)
     !This should be a lensed scalar CMB power spectrum, e.g. for including at very high L where foregrounds etc. dominate anyway
-    integer L
+    class(TIniFile) :: Ini
+    integer L, aunit, status
     real(mcp) array(4), nm
     character(LEN=Ini_max_string_len) :: fname
 
-    fname = ReadIniFilename(DefIni,'highL_theory_cl_template',DataDir,.true.)
+    fname = ReadIniFilename(Ini,'highL_theory_cl_template',DataDir,.true.)
     allocate(highL_lensedCL_template(2:lmax, num_clsS))
-    call OpenTxtFile(fname,tmp_file_unit)
+    aunit = OpenNewTxtFile(fname)
     do
-        read(tmp_file_unit,*, end=500) L , array
-        if (L>lmax) exit
+        read(tmp_file_unit,*, iostat=status) L , array
+        if (status/=0 .or. L>lmax) exit
         nm = 2*pi/(l*(l+1))
         if (L>=2) highL_lensedCL_template(L,1:num_clsS) = nm*array(TensClOrder(1:num_clsS))
     end do
-500 close(tmp_file_unit)
+    close(tmp_file_unit)
 
     if (highL_lensedCL_template(2,1) < 100) &
     call MpiStop('highL_theory_cl_template must be in muK^2')

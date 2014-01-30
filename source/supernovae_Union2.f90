@@ -75,10 +75,10 @@
     contains
 
     subroutine Union2Likelihood_Add(LikeList, Ini)
-    use IniFile
+    use IniObjects
     use settings
     class(LikelihoodList) :: LikeList
-    Type(TIniFile) :: ini
+    class(TIniFile) :: ini
     Type(Union2Likelihood), pointer :: like
     character (LEN=20):: name
     integer i
@@ -87,7 +87,7 @@
     logical :: Union_syscovmat = .False.  !! Use covariance matrix with or without systematics
 
 
-    if (.not. Ini_Read_Logical_File(Ini, 'use_Union',.false.)) return
+    if (.not. Ini%Read_Logical('use_Union',.false.)) return
 
     allocate(like)
     Like%LikelihoodType = 'SN'
@@ -95,7 +95,7 @@
     like%needs_background_functions = .true.
     call LikeList%Add(like)
 
-    Union_syscovmat = Ini_read_Logical_File(Ini,'Union_syscovmat',Union_syscovmat)
+    Union_syscovmat = Ini%read_Logical('Union_syscovmat',Union_syscovmat)
 
     if (Feedback > 0) write (*,*) 'Reading: supernovae data'
     call OpenTxtFile(trim(DataDir)//'sn_z_mu_dmu_plow_union2.1.txt',tmp_file_unit)

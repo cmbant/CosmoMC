@@ -35,7 +35,7 @@
 
     Type(TPostParams) :: PostParams
 
-    logical :: txt_theory = .false. !True to put P_k in output chains
+    !not supported any more    logical :: txt_theory = .false. !True to put P_k in output chains
 
     contains
 
@@ -43,21 +43,21 @@
     character(LEN=*), intent(in):: baseroot
 
     Ini_Fail_On_Not_Found = .false.
-    PostParams%redo_like = Ini_Read_Logical('redo_likelihoods')
-    PostParams%redo_theory = Ini_read_Logical('redo_theory')
-    PostParams%redo_cls= Ini_read_Logical('redo_cls')
-    PostParams%redo_pk= Ini_read_Logical('redo_pk')
-    PostParams%redo_skip = Ini_Read_Double('redo_skip',100.d0)
-    PostParams%redo_thin = max(1,Ini_Read_Int('redo_thin',1))
-    PostParams%redo_datafile = Ini_Read_String('redo_datafile')
-    PostParams%redo_outroot = Ini_Read_String('redo_outroot')
-    PostParams%redo_likeoffset = Ini_Read_Double('redo_likeoffset',0.d0)
-    PostParams%redo_temperature = Ini_Read_Double('redo_temp',1.d0)
-    PostParams%redo_change_like_only = Ini_Read_Logical('redo_change_like_only',.false.)
-    PostParams%redo_add = Ini_Read_Logical('redo_add',.false.)
-    PostParams%redo_from_text = Ini_Read_Logical('redo_from_text',.false.)
-    PostParams%redo_no_new_data = Ini_Read_Logical('redo_no_new_data',.false.)
-    PostParams%redo_like_name = Ini_Read_String('redo_like_name')
+    PostParams%redo_like = Ini%Read_Logical('redo_likelihoods')
+    PostParams%redo_theory = Ini%read_Logical('redo_theory')
+    PostParams%redo_cls= Ini%read_Logical('redo_cls')
+    PostParams%redo_pk= Ini%read_Logical('redo_pk')
+    PostParams%redo_skip = Ini%Read_Double('redo_skip',100.d0)
+    PostParams%redo_thin = max(1,Ini%Read_Int('redo_thin',1))
+    PostParams%redo_datafile = Ini%Read_String('redo_datafile')
+    PostParams%redo_outroot = Ini%Read_String('redo_outroot')
+    PostParams%redo_likeoffset = Ini%Read_Double('redo_likeoffset',0.d0)
+    PostParams%redo_temperature = Ini%Read_Double('redo_temp',1.d0)
+    PostParams%redo_change_like_only = Ini%Read_Logical('redo_change_like_only',.false.)
+    PostParams%redo_add = Ini%Read_Logical('redo_add',.false.)
+    PostParams%redo_from_text = Ini%Read_Logical('redo_from_text',.false.)
+    PostParams%redo_no_new_data = Ini%Read_Logical('redo_no_new_data',.false.)
+    PostParams%redo_like_name = Ini%Read_String('redo_like_name')
 
     if (PostParams%redo_from_text .and. (PostParams%redo_add .or. PostParams%redo_like_name/='')) &
     call Mpistop('redo_new_likes requires .data files, not from text')
@@ -65,7 +65,7 @@
     if (PostParams%redo_from_text  .and. PostParams%redo_skip>0.d0 .and. PostParams%redo_skip<1) &
     call Mpistop('redo_from_text currently requires redo_skip==0 or redo_skip>=1')
 
-    txt_theory = Ini_Read_Logical('txt_theory',.false.)
+    !    txt_theory = Ini%Read_Logical('txt_theory',.false.)
 
     if (PostParams%redo_outroot == '') then
         PostParams%redo_outroot = trim(ExtractFilePath(baseroot))//'post_' &
@@ -131,7 +131,7 @@
 
     if (MpiRank==0 .and. NameMapping%nnames/=0) then
         call IO_OutputParamNames(NameMapping,trim(post_root),params_used, add_derived=.true.)
-        call OutputParamRanges(NameMapping, trim(post_root)//'.ranges')
+        call BaseParams%OutputParamRanges(NameMapping, trim(post_root)//'.ranges')
     end if
 
     if (has_chain) then
@@ -284,11 +284,11 @@
                 mult_sum = mult_sum + mult
 
                 if (mult /= 0) then
-                    if (txt_theory) then
-                        call WriteParamsAndDat(Params, mult,like)
-                    else
-                        call WriteParams(Params, mult,like)
-                    end if
+                    !                    if (txt_theory) then
+                    !                        call WriteParamsAndDat(Params, mult,like)
+                    !                    else
+                    call WriteParams(Params, mult,like)
+                    !                   end if
                     if (outdata_handle>=0) call Params%WriteModel(outdata_handle, truelike,mult)
                 else
                     if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike

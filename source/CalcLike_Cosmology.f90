@@ -2,7 +2,7 @@
     use CalcLike
     use DataLikelihoodList
     use cmbtypes
-    use CosmologyCalculator
+    use Calculator_Cosmology
     implicit none
 
     type, extends(TheoryLikeCalculator) :: CosmoLikeCalculator

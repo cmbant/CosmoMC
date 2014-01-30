@@ -11,15 +11,12 @@
     contains
 
     subroutine IO_Ini_Load(Ini,InputFile, bad)
-    use IniFile
-    Type(TIniFile) :: Ini
+    use IniObjects
+    class(TIniFile) :: Ini
     character(LEN=*), intent(in) :: InputFile
     logical bad
-    integer file_unit
 
-    file_unit = new_file_unit()
-    call Ini_Open_File(Ini,InputFile, file_unit, bad, .false.)
-    call ClearFileUnit(file_unit)
+    call Ini%Open(InputFile,  bad, .false.)
     end subroutine IO_Ini_Load
 
     function IO_OpenChainForRead(name, OK) result(handle)
@@ -153,7 +150,7 @@
         !Have paramnames to identify
         InLine = InLine(2:len_trim(InLine))
         num=-1
-        call ParamNames_ReadIndices(NameMapping,InLine, cov_params, num, unknown_value=0)
+        call NameMapping%ReadIndices(InLine, cov_params, num, unknown_value=0)
         allocate(tmpMat(num,num))
         pmat=0
         y=0
@@ -298,17 +295,17 @@
 
     subroutine IO_OutputParamNames(Names, fname, indices, add_derived)
     use ParamNames
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     character(len=*), intent(in) :: fname
     integer, intent(in), optional :: indices(:)
     logical, intent(in), optional :: add_derived
 
-    call ParamNames_WriteFile(Names,trim(fname)//'.paramnames', indices, add_derived)
+    call Names%WriteFile(trim(fname)//'.paramnames', indices, add_derived)
 
     end subroutine IO_OutputParamNames
 
     subroutine  IO_WriteBounds(Names, fname, limmin,limmax, limbot,limtop, indices)
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     character(LEN=*), intent(in) :: fname
     real(mcp), intent(in) :: limmin(:), limmax(:)
     logical, intent(in) :: limbot(:), limtop(:)
@@ -332,7 +329,7 @@
             else
                 lim2='    N'
             end if
-            write(unit,'(1A22,2A17)') ParamNames_NameOrNumber(Names,ix-2), lim1, lim2
+            write(unit,'(1A22,2A17)') Names%NameOrNumber(ix-2), lim1, lim2
         end if
     end do
     call CloseFile(unit)
@@ -342,7 +339,7 @@
 
     subroutine IO_ReadParamNames(Names, in_root, prior_ranges)
     use ParamNames
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     character(LEN=*), intent(in) :: in_root
     character(LEN=Ini_max_string_len) infile, name
     real(mcp) :: prior_ranges(:,:), minmax(2)
@@ -351,14 +348,14 @@
     prior_ranges=0
     infile = trim(in_root) // '.paramnames'
     if (FileExists(infile)) then
-        call ParamNames_Init(Names,infile)
+        call Names%Init(infile)
         infile = trim(in_root) // '.ranges'
         if (FileExists(infile)) then
             file_id = new_file_unit()
             call OpenTxtFile(infile, file_id)
             do
                 read(file_id, *, end=100,err=100) name, minmax
-                ix = ParamNames_index(Names, name)
+                ix = Names%index(name)
                 if (ix/=-1) prior_ranges(:,ix) = minmax
             end do
 
@@ -450,7 +447,7 @@
     subroutine IO_OutputMargeStats(Names, froot,num_vars,num_contours, contours,contours_str, &
     cont_lines, colix, mean, sddev, has_limits_bot, has_limits_top, labels)
     use ParamNames
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     character(LEN=*), intent(in) :: froot
     integer, intent(in) :: num_vars, num_contours
     logical,intent(in) :: has_limits_bot(:,:),has_limits_top(:,:)
@@ -480,7 +477,7 @@
     write(file_id,'(a)') ''
 
     do j=1, num_vars
-        call IO_WriteLeftTextNoAdvance(file_id,nameFormat,ParamNames_NameOrNumber(Names,colix(j)-2))
+        call IO_WriteLeftTextNoAdvance(file_id,nameFormat,Names%NameOrNumber(colix(j)-2))
         write(file_id,'(2E15.7)', advance='NO')  mean(j), sddev(j)
         do i=1, num_contours
             write(file_id,'(2E15.7)',advance='NO') cont_lines(j,1:2,i)

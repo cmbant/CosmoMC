@@ -224,22 +224,22 @@
 
 
     subroutine SNLSLikelihood_Add(LikeList, Ini)
-    use IniFile
+    use IniObjects
     use settings
     class(LikelihoodList) :: LikeList
-    Type(TIniFile) :: ini
+    class(TIniFile) :: ini
     Type(SNLSLikelihood), pointer :: like
     integer alpha_i, beta_i
 
-    if (.not. Ini_Read_Logical_File(Ini, 'use_SNLS',.false.)) return
+    if (.not. Ini%Read_Logical('use_SNLS',.false.)) return
 
     allocate(like)
     like%needs_background_functions = .true.
     Like%version = SNLS_version
-    SNLS_marginalize = Ini_Read_Logical_File(Ini, 'SNLS_marginalize',.false.)
+    SNLS_marginalize = Ini%Read_Logical('SNLS_marginalize',.false.)
     if (SNLS_marginalize) then
-        SNLS_marge_steps = Ini_Read_int_File(Ini,'SNLS_marge_steps',5)
-        SNLS_step_width = Ini_read_Double_File(ini,'SNLS_step_width',0.05d0)
+        SNLS_marge_steps = Ini%Read_int('SNLS_marge_steps',5)
+        SNLS_step_width = ini%read_Double('SNLS_step_width',0.05d0)
         SNLS_int_points=0
         allocate(alpha_grid((2*SNLS_marge_steps+1)**2))
         allocate(beta_grid((2*SNLS_marge_steps+1)**2))
@@ -257,7 +257,7 @@
         call Like%loadParamNames(trim(DataDir)//'SNLS.paramnames')
     end if
     call LikeList%Add(like)
-    call like%ReadDatasetFile(Ini_Read_String_Default_File(Ini,'snls_dataset',trim(DataDir)//'snls_3rdyear.dataset'))
+    call like%ReadDatasetFile(Ini%Read_String_Default('snls_dataset',trim(DataDir)//'snls_3rdyear.dataset'))
     Like%LikelihoodType = 'SN'
     Like%name='SNLS'
     CALL snls_prep
@@ -621,10 +621,10 @@
     !------------------------------------------------------------
     SUBROUTINE read_snls_dataset(like,ini)
     USE AMLutils, ONLY : numcat
-    use iniFile
+    use IniObjects
     IMPLICIT NONE
     class(SNLSLikelihood) :: like
-    Type(TIniFile) :: Ini
+    class(TIniFile) :: Ini
     CHARACTER(LEN=60) :: covfile
     CHARACTER(LEN=100) :: data_file, absdist_file
     INTEGER :: nlines, file_unit, i
@@ -633,21 +633,21 @@
 
     IF (snls_read) STOP 'Error -- SNLS data already read'
 
-    name = Ini_Read_String_File(Ini, 'name', .FALSE. )
-    data_file = Ini_Read_String_Default_File(Ini,'data_file',trim(DataDir)//'snls_1styear_lcparams.txt')
+    name = Ini%Read_String('name', .FALSE. )
+    data_file = Ini%Read_String_Default('data_file',trim(DataDir)//'snls_1styear_lcparams.txt')
 
-    has_absdist = Ini_Read_Logical_File(Ini, 'absdist_file',.FALSE.)
-    pecz = Ini_Read_Double_File(Ini, 'pecz', 0.001D0 )
+    has_absdist = Ini%Read_Logical('absdist_file',.FALSE.)
+    pecz = Ini%Read_Double('pecz', 0.001D0 )
 
-    twoscriptmfit = Ini_Read_Logical_File(Ini,'twoscriptmfit',.FALSE.)
-    IF ( twoscriptmfit ) scriptmcut = Ini_Read_Double_File(Ini,'scriptmcut',10.0d0)
+    twoscriptmfit = Ini%Read_Logical('twoscriptmfit',.FALSE.)
+    IF ( twoscriptmfit ) scriptmcut = Ini%Read_Double('scriptmcut',10.0d0)
 
     !Handle intrinsic dispersion
     !The individual values are intrinsicdisp0 -- intrinsicdisp9
-    idisp_zero = Ini_Read_Double_File(Ini, 'intrinsicdisp', 0.13_dl )
+    idisp_zero = Ini%Read_Double('intrinsicdisp', 0.13_dl )
     idispdataset = .FALSE.
     DO i=1, max_idisp_datasets
-        intrinsicdisp(i) = Ini_Read_Double_File(Ini,numcat('intrinsicdisp',i-1),&
+        intrinsicdisp(i) = Ini%Read_Double(numcat('intrinsicdisp',i-1),&
         idisp_zero)
         IF (intrinsicdisp(i) .NE. idisp_zero) idispdataset(i)=.TRUE.
     END DO
@@ -682,13 +682,13 @@
     ENDIF
 
     !Handle covariance matrix stuff
-    has_mag_covmat=Ini_Read_Logical_File(Ini, 'has_mag_covmat', .FALSE. )
-    has_stretch_covmat=Ini_Read_Logical_File(Ini, 'has_stretch_covmat', .FALSE. )
-    has_colour_covmat=Ini_Read_Logical_File(Ini, 'has_colour_covmat', .FALSE. )
-    has_mag_stretch_covmat=Ini_Read_Logical_File(Ini,'has_mag_stretch_covmat',.FALSE.)
-    has_mag_colour_covmat=Ini_Read_Logical_File(Ini, 'has_mag_colour_covmat',.FALSE. )
+    has_mag_covmat=Ini%Read_Logical('has_mag_covmat', .FALSE. )
+    has_stretch_covmat=Ini%Read_Logical('has_stretch_covmat', .FALSE. )
+    has_colour_covmat=Ini%Read_Logical('has_colour_covmat', .FALSE. )
+    has_mag_stretch_covmat=Ini%Read_Logical('has_mag_stretch_covmat',.FALSE.)
+    has_mag_colour_covmat=Ini%Read_Logical('has_mag_colour_covmat',.FALSE. )
     has_stretch_colour_covmat = &
-    Ini_Read_Logical_File(Ini, 'has_stretch_colour_covmat',.FALSE. )
+    Ini%Read_Logical('has_stretch_colour_covmat',.FALSE. )
     alphabeta_covmat = ( has_stretch_covmat .OR. has_colour_covmat .OR. &
     has_mag_stretch_covmat .OR. has_mag_colour_covmat .OR. &
     has_stretch_colour_covmat )
@@ -701,32 +701,32 @@
 
         !Now Read in the covariance matricies
         IF (has_mag_covmat) THEN
-            covfile = Ini_Read_String_File(Ini,'mag_covmat_file',.TRUE.)
+            covfile = Ini%Read_String('mag_covmat_file',.TRUE.)
             ALLOCATE( mag_covmat( nsn, nsn ) )
             CALL read_cov_matrix( covfile, mag_covmat, nsn )
         ENDIF
         IF (has_stretch_covmat) THEN
-            covfile = Ini_Read_String_File(Ini,'stretch_covmat_file',.TRUE.)
+            covfile = Ini%Read_String('stretch_covmat_file',.TRUE.)
             ALLOCATE( stretch_covmat( nsn, nsn ) )
             CALL read_cov_matrix( covfile, stretch_covmat, nsn )
         ENDIF
         IF (has_colour_covmat) THEN
-            covfile = Ini_Read_String_File(Ini,'colour_covmat_file',.TRUE.)
+            covfile = Ini%Read_String('colour_covmat_file',.TRUE.)
             ALLOCATE( colour_covmat( nsn, nsn ) )
             CALL read_cov_matrix( covfile, colour_covmat, nsn )
         ENDIF
         IF (has_mag_stretch_covmat) THEN
-            covfile = Ini_Read_String_File(Ini,'mag_stretch_covmat_file',.TRUE.)
+            covfile = Ini%Read_String('mag_stretch_covmat_file',.TRUE.)
             ALLOCATE( mag_stretch_covmat( nsn, nsn ) )
             CALL read_cov_matrix( covfile, mag_stretch_covmat, nsn )
         ENDIF
         IF (has_mag_colour_covmat) THEN
-            covfile = Ini_Read_String_File(Ini,'mag_colour_covmat_file',.TRUE.)
+            covfile = Ini%Read_String('mag_colour_covmat_file',.TRUE.)
             ALLOCATE( mag_colour_covmat( nsn, nsn ) )
             CALL read_cov_matrix( covfile, mag_colour_covmat, nsn )
         ENDIF
         IF (has_stretch_colour_covmat) THEN
-            covfile = Ini_Read_String_File(Ini,'stretch_colour_covmat_file',.TRUE.)
+            covfile = Ini%Read_String('stretch_colour_covmat_file',.TRUE.)
             ALLOCATE( stretch_colour_covmat( nsn, nsn ) )
             CALL read_cov_matrix( covfile, stretch_colour_covmat, nsn )
         ENDIF

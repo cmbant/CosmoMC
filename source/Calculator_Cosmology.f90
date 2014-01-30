@@ -1,10 +1,10 @@
     module Calculator_Cosmology
     use cmbtypes
     use settings
-    use IniFile
+    use IniObjects
     use GeneralTypes
     implicit none
-    private 
+    private
 
     Type, extends(TTheoryCalculator) :: BaseCosmologyCalculator
     contains
@@ -56,7 +56,7 @@
     class(CosmoTheoryPredictions) Theory
     integer error
 
-    !calculate thermal history, e.g. z_drag etc., 
+    !calculate thermal history, e.g. z_drag etc.,
     !save derived parameters in Theory%derived_parameters, Theory%numderived
     call this%ErrorNotImplemented('SetBackgroundTheoryData')
 
@@ -66,7 +66,7 @@
     class(BaseCosmologyCalculator) :: this
     class(CMBParams), intent(in) :: CMB
     class(TTheoryIntermediateCache), pointer :: Info
-    class(CosmoTheoryPredictions), pointer :: Theory
+    class(CosmoTheoryPredictions) :: Theory
     integer error
 
     !gets transfer functions in Info, and also set any derived parameters
@@ -78,7 +78,7 @@
     class(BaseCosmologyCalculator) :: this
     class(CMBParams) :: CMB
     class(TTheoryIntermediateCache), pointer :: Info
-    class(CosmoTheoryPredictions), pointer :: Theory
+    class(CosmoTheoryPredictions)  :: Theory
     integer error
 
     !calculate Theory power spectra from transfer functions in Info
@@ -148,5 +148,7 @@
     call Info%Initialize()
 
     end subroutine CosmoCalc_ReadParams
+
+
 
     end module Calculator_Cosmology

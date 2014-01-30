@@ -1,6 +1,7 @@
     module GeneralTypes
     use settings
-
+    use likelihood
+    
     Type TTheoryParams
         real(mcp) :: BaseParams(max_theory_params) = 0._mcp
     end Type TTheoryParams
@@ -22,16 +23,19 @@
         class(TTheoryIntermediateCache), pointer :: Info => null()
     contains
     procedure :: Clear => TCalculationAtParamPoint_Clear
+    procedure :: WriteParams => TCalculationAtParamPoint_WriteParams
     end Type TCalculationAtParamPoint
 
-    !Each descendant of the base TConfigClass below has a Config element which point to a TGeneralConfig instance taht determines 
+    !Each descendant of the base TConfigClass below has a Config element which point to a TGeneralConfig instance taht determines
     !which related class implementations are actually used
     Type TGeneralConfig
         class(TParameterization), pointer :: Parameterization => null()
         class(TTheoryCalculator), pointer :: Calculator => null()
     contains
-    procedure :: SetTheoryParameterization
-    procedure :: SetParameterizationName
+    procedure :: SetTheoryParameterization => TGeneralConfig_SetTheoryParameterization
+    procedure :: SetParameterizationName => TGeneralConfig_SetParameterizationName
+    procedure :: NewTheory => TGeneralConfig_NewTheory
+    procedure :: NewTheoryParams => TGeneralConfig_NewTheoryParams
     end Type
 
     Type :: TConfigClass
@@ -40,7 +44,7 @@
     procedure :: InitConfig  => TConfigClass_InitConfig
     procedure :: InitWithParams  => TConfigClass_InitWithParams
     generic:: Init => InitWithParams,InitConfig
-    end Type 
+    end Type
 
     Type, extends(TConfigClass) :: TTheoryPredictions
         !Actual computed theory predictions used by likelihoods
@@ -48,6 +52,8 @@
     contains
     procedure :: Clear => TTheoryPredictions_Clear
     procedure :: AssignNew => TTheoryPredictions_AssignNew
+    procedure :: WriteTheory => TTheoryPredictions_WriteTheory
+    procedure :: ReadTheory => TTheoryPredictions_ReadTheory
     end Type TTheoryPredictions
 
     Type, extends(TConfigClass) :: TTheoryCalculator
@@ -58,7 +64,6 @@
     procedure :: ErrorNotImplemented => TTheoryCalculator_ErrorNotImplemented
     procedure :: VersionTraceOutput => TTheoryCalculator_VersionTraceOutput
     contains
-
     end Type TTheoryCalculator
 
     type, extends(TConfigClass)  :: TParameterization
@@ -67,7 +72,6 @@
     procedure :: CalcDerivedParams=> TParameterization_CalcDerivedParams
     procedure :: Initialize => TParameterization_Initialize
     procedure :: NonBaseParameterPriors => TParameterization_NonBaseParameterPriors
-    procedure :: NewTheoryParams =>TParameterization_NewTheoryParams
     end type TParameterization
 
     Type, extends(TParameterization) :: GenericParameterization
@@ -99,24 +103,17 @@
     if (ParamNamesFile =='' .and. DefaultName/='') ParamNamesFile= trim(LocalDir)//trim(DefaultName)
 
     if (ParamNamesFile /='') then
-        call ParamNames_init(Names, ParamNamesFile)
+        call Names%init(ParamNamesFile)
         num_theory_params= Names%num_MCMC
     else
         Names%nnames=0
-        num_theory_params= Ini_Read_Int_File(Ini, 'num_theory_params')
+        num_theory_params= Ini%Read_Int('num_theory_params')
     end if
     if (num_theory_params> max_theory_params) call MpiStop('see settings.f90: num_theory_params> max_theory_params')
     index_data =  num_theory_params+1
 
     end subroutine TParameterization_Initialize
 
-    subroutine TParameterization_NewTheoryParams(this,TheoryParams)
-    class(TParameterization) :: this
-    class(TTheoryParams), allocatable :: TheoryParams
-
-    allocate(TTheoryParams::TheoryParams)
-
-    end subroutine TParameterization_NewTheoryParams
 
     function TParameterization_NonBaseParameterPriors(this,CMB)
     class(TParameterization) :: this
@@ -130,7 +127,7 @@
     function TParameterization_CalcDerivedParams(this, P, Theory, derived) result (num_derived)
     class(TParameterization) :: this
     Type(mc_real_pointer) :: derived
-    class(TTheoryPredictions) :: Theory
+    class(TTheoryPredictions), pointer :: Theory !can be null for simple cases (e.g. generic)
     real(mcp) :: P(:)
     integer num_derived
 
@@ -154,6 +151,24 @@
 
     end subroutine TTheoryPredictions_AssignNew
 
+
+    subroutine TTheoryPredictions_WriteTheory(T, i)
+    Class(TTheoryPredictions) T
+    integer i
+
+    !i is the file unit to write to
+
+    end subroutine TTheoryPredictions_WriteTheory
+
+    subroutine TTheoryPredictions_ReadTheory(T, i)
+    Class(TTheoryPredictions) T
+    integer, intent(in) :: i
+
+    !i is the file unit to write to
+
+    end subroutine TTheoryPredictions_ReadTheory
+
+
     !!! TCalculationAtParamPoint
 
     subroutine TCalculationAtParamPoint_Clear(this, Keep)
@@ -170,6 +185,43 @@
         nullify(This%Theory)
     end if
     end subroutine TCalculationAtParamPoint_Clear
+
+
+    function GetDerivedParameters(P, Theory, derived) result (num_derived)
+    real(mcp) :: P(:)
+    class(TTheoryPredictions) :: Theory
+    Type(mc_real_pointer) :: derived
+    integer num_derived
+
+
+    end function GetDerivedParameters
+
+
+    subroutine TCalculationAtParamPoint_WriteParams(this, Config, mult, like)
+    class(TCalculationAtParamPoint) this
+    class(TGeneralConfig) :: Config
+    real(mcp), intent(in) :: mult, like
+    real(mcp), allocatable :: output_array(:)
+    Type(mc_real_pointer) :: derived
+    integer numderived
+
+    if (outfile_handle ==0) return
+
+    num_derived = Config%Parameterization%CalcDerivedParams(this%P,this%Theory,derived)
+    num_derived = DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived)
+
+    if (numderived==0) then
+        call IO_OutputChainRow(outfile_handle, mult, like, this%P(params_used), num_params_used)
+    else
+        allocate(output_array(num_params_used + numderived))
+        output_array(1:num_params_used) =  this%P(params_used)
+        output_array(num_params_used+1:num_params_used+numderived) =  derived%P
+        call IO_OutputChainRow(outfile_handle, mult, like, output_array)
+        deallocate(output_array)
+    end if
+    deallocate(derived%P)
+
+    end subroutine TCalculationAtParamPoint_WriteParams
 
 
     !!! TTheoryIntermediateCache
@@ -254,21 +306,21 @@
 
 
     !!TGeneralConfig
-    subroutine SetTheoryParameterization(this, Ini, Names, defaultParam)
+    subroutine TGeneralConfig_SetTheoryParameterization(this, Ini, Names, defaultParam)
     class(TGeneralConfig) :: this
     class(TIniFile) :: Ini
     class(TParamNames) :: Names
     character(LEN=*), intent(in) :: defaultParam
     character(LEN=Ini_max_string_len) :: paramtxt
 
-    paramtxt = Ini_Read_String_Default_File(Ini,'parameterization', defaultParam)
+    paramtxt = Ini%Read_String_Default('parameterization', defaultParam)
     if (.not. this%SetParameterizationName(paramtxt,Ini, Names)) then
         call MpiStop('GeneralConfig: unknown parameterization :'//trim(paramtxt))
     end if
 
-    end subroutine SetTheoryParameterization
+    end subroutine TGeneralConfig_SetTheoryParameterization
 
-    function SetParameterizationName(this, nametag, Ini, Names) result(OK)
+    function TGeneralConfig_SetParameterizationName(this, nametag, Ini, Names) result(OK)
     class(TGeneralConfig) :: this
     character(LEN=*), intent(in) :: nametag
     class(TIniFile) :: Ini
@@ -283,11 +335,27 @@
         allocate(GenParam)
         this%Parameterization => GenParam
         call GenParam%Initialize(Ini,Names,'',this)
-    else 
+    else
         OK = .false.
     end if
 
-    end function SetParameterizationName
+    end function TGeneralConfig_SetParameterizationName
 
+    function TGeneralConfig_NewTheory(this) result(Theory)
+    class(TGeneralConfig) :: this
+    class(TTheoryPredictions), pointer :: Theory
+
+    allocate(TTheoryPredictions::Theory)
+    call Theory%Init(this)
+
+    end function TGeneralConfig_NewTheory
+
+    subroutine TGeneralConfig_NewTheoryParams(this,TheoryParams)
+    class(TGeneralConfig) :: this
+    class(TTheoryParams), allocatable :: TheoryParams
+
+    allocate(TTheoryParams::TheoryParams)
+
+    end subroutine TGeneralConfig_NewTheoryParams
 
     end module GeneralTypes

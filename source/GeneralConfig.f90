@@ -1,6 +1,6 @@
     module GeneralConfig
     use GeneralTypes
-    use IniFile
+    use IniObjects
     implicit none
 
     Type TGeneralConfig

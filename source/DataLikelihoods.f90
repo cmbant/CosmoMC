@@ -1,6 +1,6 @@
     module DataLikelihoodList
     use likelihood
-    use IniFile
+    use IniObjects
     use ParamDef
     implicit none
 
@@ -12,9 +12,9 @@
     use cmbdata
     use bao
     use mpk
-    Type(TIniFile), intent(in) :: Ini
+    class(TIniFile), intent(in) :: Ini
 
-    get_sigma8 = Ini_Read_Logical_File(Ini,'get_sigma8',.false.)
+    get_sigma8 = Ini%Read_Logical('get_sigma8',.false.)
 
     call CMBDataLikelihoods_Add(DataLikelihoods, Ini)
 

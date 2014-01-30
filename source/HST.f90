@@ -25,10 +25,10 @@
 
     subroutine HSTLikelihood_Add(LikeList, Ini)
     class(LikelihoodList) :: LikeList
-    Type(TIniFile) :: ini
+    class(TIniFile) :: ini
     Type(HSTLikelihood), pointer :: like
 
-    if (Ini_Read_Logical_File(Ini, 'use_HST',.false.)) then
+    if (Ini%Read_Logical('use_HST',.false.)) then
         allocate(like)
         like%LikelihoodType = 'Hubble'
         like%name='HST'

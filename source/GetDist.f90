@@ -339,7 +339,7 @@
     if (NameMapping%nnames/=0) then
         outline=''
         do i=1, nused
-            outline = trim(outline)//' '//trim(ParamNames_name(NameMapping,used_ix(i)))
+            outline = trim(outline)//' '//trim(NameMapping%name(used_ix(i)))
         end do
         allocate(covmatrix(nused,nused))
         covmatrix = corrmatrix(used_ix(1:nused),used_ix(1:nused))
@@ -1167,7 +1167,7 @@
     end do
     maxbin = maxval(Density1D%P)
     if (maxbin==0) then
-        write (*,*) 'no samples in bin, param: '//trim(ParamNames_NameOrNumber(NameMapping, colix(j)-2))
+        write (*,*) 'no samples in bin, param: '//trim(NameMapping%NameOrNumber(colix(j)-2))
         stop
     end if
     Density1D%P=Density1D%P/maxbin
@@ -1571,7 +1571,7 @@
     integer, intent(in) :: j
     character(LEN=1024) res
 
-    res=''''//trim(ParamNames_NameOrNumber(NameMapping, j))//''''
+    res=''''//trim(NameMapping%NameOrNumber(j))//''''
 
     end function quoted_param_name
 
@@ -1653,12 +1653,12 @@
     subroutine EdgeWarning(param)
     integer, intent(in) :: param
 
-    if (NameMapping%nnames==0 .or. ParamNames_name(NameMapping,param)=='') then
+    if (NameMapping%nnames==0 .or. NameMapping%name(param)=='') then
         call WriteS('Warning: sharp edge in parameter '//trim(intToStr(param))// &
         ' - check limits'//trim(intToStr(param)))
     else
-        call WriteS('Warning: sharp edge in parameter '//trim(ParamNames_name(NameMapping,param))// &
-        ' - check limits['//trim(ParamNames_name(NameMapping,param))//'] or limits'//trim(intToStr(param)))
+        call WriteS('Warning: sharp edge in parameter '//trim(NameMapping%name(param))// &
+        ' - check limits['//trim(NameMapping%name(param))//'] or limits'//trim(intToStr(param)))
 
     end if
 
@@ -1668,15 +1668,15 @@
     integer, intent(in) :: j
     character(LEN=*) :: rootname
     character(LEN= Ini_max_string_len) :: dat_file_name
-    dat_file_name =  trim(rootname)//'_p_'//trim(ParamNames_NameOrNumber(NameMapping, colix(j)-2))
+    dat_file_name =  trim(rootname)//'_p_'//trim(NameMapping%NameOrNumber(colix(j)-2))
     end function dat_file_name
 
     function dat_file_2D(rootname,j, j2)
     integer, intent(in) :: j, j2
     character(LEN=*) :: rootname
     character(LEN= Ini_max_string_len) :: dat_file_2D
-    dat_file_2D =  trim(rootname)//'_2D_'//trim(ParamNames_NameOrNumber(NameMapping, colix(j)-2)) &
-    //'_'//trim(ParamNames_NameOrNumber(NameMapping, colix(j2)-2))
+    dat_file_2D =  trim(rootname)//'_2D_'//trim(NameMapping%NameOrNumber(colix(j)-2)) &
+    //'_'//trim(NameMapping%NameOrNumber(colix(j2)-2))
     end function dat_file_2D
 
     subroutine CheckMatlabAxes(afile)
@@ -1740,7 +1740,7 @@
     end module MCSamples
 
     program GetDist
-    use IniFile
+    use IniObjects
     use MCSamples
     use IO
     implicit none
@@ -1802,16 +1802,16 @@
 
     if (bad) stop 'Error opening parameter file'
 
-    parameter_names_file = Ini_Read_String('parameter_names')
-    if (parameter_names_file/='') call ParamNames_Init(NameMapping,parameter_names_file)
-    parameter_names_labels = Ini_Read_String('parameter_names_labels')
-    matlab_latex = Ini_read_logical('matlab_latex',.false.)
+    parameter_names_file = Ini%Read_String('parameter_names')
+    if (parameter_names_file/='') call NameMapping%Init(parameter_names_file)
+    parameter_names_labels = Ini%Read_String('parameter_names_labels')
+    matlab_latex = Ini%read_logical('matlab_latex',.false.)
 
-    if (Ini_HasKey('nparams')) then
-        ncols = Ini_Read_Int('nparams') + 2
-        if (Ini_HasKey('columnnum')) stop 'specify only one of nparams or columnnum'
+    if (Ini%HasKey('nparams')) then
+        ncols = Ini%Read_Int('nparams') + 2
+        if (Ini%HasKey('columnnum')) stop 'specify only one of nparams or columnnum'
     else
-        ncols = Ini_Read_Int('columnnum',0)
+        ncols = Ini%Read_Int('columnnum',0)
     end if
 
     if (NameMapping%nnames/=0 .and. ncols==0) then
@@ -1820,11 +1820,11 @@
 
     Ini_fail_on_not_found = .true.
 
-    in_root = Ini_Read_String('file_root')
+    in_root = Ini%Read_String('file_root')
     rootname = ExtractFileName(in_root)
-    chain_num = Ini_Read_Int('chain_num')
+    chain_num = Ini%Read_Int('chain_num')
 
-    single_column_chain_files = Ini_Read_Logical( 'single_column_chain_files',.false.)
+    single_column_chain_files = Ini%Read_Logical( 'single_column_chain_files',.false.)
     prior_ranges = 0
 
     if ( single_column_chain_files ) then
@@ -1832,7 +1832,7 @@
         pname(2) = 'lnlike'
         Ini_fail_on_not_found = .false.
         do ix=3, ncols
-            pname(ix) = Ini_Read_String(concat('pname',ix-2))
+            pname(ix) = Ini%Read_String(concat('pname',ix-2))
             if (pname(ix)=='' .and. NameMapping%nnames/=0) then
                 pname(ix) = NameMapping%name(ix-2)
             end if
@@ -1844,7 +1844,7 @@
             call IO_ReadParamNames(NameMapping,in_root,prior_ranges)
             if (ncols==0 .and. NameMapping%nnames/=0) ncols = NameMapping%nnames+2
         end if
-        if (parameter_names_labels/='') call ParamNames_SetLabels(NameMapping,parameter_names_labels)
+        if (parameter_names_labels/='') call NameMapping%SetLabels(parameter_names_labels)
 
         if (ncols==0) then
             if (chain_num == 0) then
@@ -1861,37 +1861,37 @@
 
     allocate(coldata(ncols,0:max_rows))
 
-    num_bins = Ini_Read_Int('num_bins')
-    num_bins_2D = Ini_Read_Int('num_bins_2D', num_bins)
-    smooth_scale_1D = Ini_read_Double('smooth_scale_1D',smooth_scale_1D)
-    smooth_scale_2D = Ini_read_Double('smooth_scale_2D',smooth_scale_2D) !smoothing scale in terms of bin scale
+    num_bins = Ini%Read_Int('num_bins')
+    num_bins_2D = Ini%Read_Int('num_bins_2D', num_bins)
+    smooth_scale_1D = Ini%read_Double('smooth_scale_1D',smooth_scale_1D)
+    smooth_scale_2D = Ini%read_Double('smooth_scale_2D',smooth_scale_2D) !smoothing scale in terms of bin scale
     if (smooth_scale_1D>0 .and. smooth_scale_1D>1) write(*,*) 'WARNING: smooth_scale_1D>1 is oversmoothed'
     if (smooth_scale_1D>0 .and. smooth_scale_1D>1.9) stop 'smooth_scale_1D>1 is now in stdev units'
-    credible_interval_threshold =Ini_Read_Double('credible_interval_threshold',credible_interval_threshold)
+    credible_interval_threshold =Ini%Read_Double('credible_interval_threshold',credible_interval_threshold)
 
-    ignorerows = Ini_Read_Double('ignore_rows',0.d0)
+    ignorerows = Ini%Read_Double('ignore_rows',0.d0)
 
-    adjust_priors = Ini_Read_Logical('adjust_priors',.false.)
+    adjust_priors = Ini%Read_Logical('adjust_priors',.false.)
 
     Ini_fail_on_not_found = .false.
 
-    plot_ext=Ini_Read_String_Default('plot_ext','py')
-    if (plot_ext=='m') matlab_version = Ini_Read_Real('matlab_version',8.)
+    plot_ext=Ini%Read_String_Default('plot_ext','py')
+    if (plot_ext=='m') matlab_version = Ini%Read_Real('matlab_version',8.)
 
-    plot_output = Ini_Read_String_Default('plot_output',plot_output)
-    subplot_size_inch = Ini_Read_Real('subplot_size_inch', subplot_size_inch)
-    subplot_size_inch2 = Ini_Read_Real('subplot_size_inch2', subplot_size_inch)
-    subplot_size_inch3 = Ini_Read_Real('subplot_size_inch3', subplot_size_inch)
+    plot_output = Ini%Read_String_Default('plot_output',plot_output)
+    subplot_size_inch = Ini%Read_Real('subplot_size_inch', subplot_size_inch)
+    subplot_size_inch2 = Ini%Read_Real('subplot_size_inch2', subplot_size_inch)
+    subplot_size_inch3 = Ini%Read_Real('subplot_size_inch3', subplot_size_inch)
 
-    font_scale  = Ini_Read_Real('font_scale',1.)
-    finish_run_command = Ini_Read_String('finish_run_command')
+    font_scale  = Ini%Read_Real('font_scale',1.)
+    finish_run_command = Ini%Read_String('finish_run_command')
 
     labels(1) = 'mult'
     labels(2) = 'likelihood'
-    auto_label = Ini_Read_Logical('auto_label',.false.)
+    auto_label = Ini%Read_Logical('auto_label',.false.)
     no_names = NameMapping%nnames==0
     if (auto_label .and. no_names) then
-        call ParamNames_Alloc(NameMapping,ncols-2)
+        call NameMapping%Alloc(ncols-2)
     end if
     do ix=3, ncols
         if (auto_label) then
@@ -1903,43 +1903,43 @@
             end if
         else
             if (NameMapping%nnames/=0 .and. .not. &
-            ParamNames_HasReadIniForParam(NameMapping,DefIni, 'lab',ix-2)) then
+            NameMapping%HasReadIniForParam(DefIni, 'lab',ix-2)) then
                 labels(ix) = trim(NameMapping%label(ix-2))
             else
-                labels(ix) = ParamNames_ReadIniForParam(NameMapping,DefIni,'lab',ix-2)
+                labels(ix) = NameMapping%ReadIniForParam(DefIni,'lab',ix-2)
             end if
-            !Ini_Read_String('lab'//trim(adjustl(numstr)))
+            !Ini%Read_String('lab'//trim(adjustl(numstr)))
         end if
     end do
 
-    prob_label = Ini_Read_Logical('prob_label',.false.)
+    prob_label = Ini%Read_Logical('prob_label',.false.)
 
-    samples_are_chains = Ini_Read_Logical('samples_are_chains',.true.)
+    samples_are_chains = Ini%Read_Logical('samples_are_chains',.true.)
 
-    no_plots = Ini_Read_Logical('no_plots',.false.)
-    plots_only = Ini_Read_Logical('plots_only',.false.)
-    no_tests = plots_only .or. Ini_Read_Logical('no_tests',.false.)
-    line_labels = Ini_Read_Logical('line_labels',.false.)
+    no_plots = Ini%Read_Logical('no_plots',.false.)
+    plots_only = Ini%Read_Logical('plots_only',.false.)
+    no_tests = plots_only .or. Ini%Read_Logical('no_tests',.false.)
+    line_labels = Ini%Read_Logical('line_labels',.false.)
 
-    thin_factor = Ini_Read_Int('thin_factor',0)
-    thin_cool = Ini_read_Real('thin_cool',1.)
+    thin_factor = Ini%Read_Int('thin_factor',0)
+    thin_cool = Ini%read_Real('thin_cool',1.)
 
-    first_chain = Ini_Read_Int('first_chain',1)
+    first_chain = Ini%Read_Int('first_chain',1)
 
-    make_single_samples = Ini_Read_logical('make_single_samples',.false.)
-    single_thin = Ini_Read_Int('single_thin',1)
-    cool = Ini_Read_Real('cool',1.)
+    make_single_samples = Ini%Read_logical('make_single_samples',.false.)
+    single_thin = Ini%Read_Int('single_thin',1)
+    cool = Ini%Read_Real('cool',1.)
 
-    Num_ComparePlots = Ini_Read_Int('compare_num',0)
+    Num_ComparePlots = Ini%Read_Int('compare_num',0)
     allocate(ComparePlots(num_comparePlots))
     do ix = 1, Num_ComparePlots
-        ComparePlots(ix) = ExtractFileName(Ini_Read_String(numcat('compare',ix)))
+        ComparePlots(ix) = ExtractFileName(Ini%Read_String(numcat('compare',ix)))
     end do
 
     has_limits_top = .false.
     has_limits_bot = .false.
 
-    bin_limits = Ini_Read_String('all_limits')
+    bin_limits = Ini%Read_String('all_limits')
     markers=0
     has_markers=.false.
     do ix=3, ncols
@@ -1953,7 +1953,7 @@
         if (bin_limits /= '') then
             InLine = bin_limits
         else
-            InLine = ParamNames_ReadIniForParam(NameMapping,DefIni,'limits',ix-2)
+            InLine = NameMapping%ReadIniForParam(DefIni,'limits',ix-2)
         end if
         if (InLine /= '') then
             read (InLine,*) InS1, InS2
@@ -1967,7 +1967,7 @@
             end if
         end if
 
-        InLine = ParamNames_ReadIniForParam(NameMapping,DefIni,'marker',ix-2)
+        InLine = NameMapping%ReadIniForParam(DefIni,'marker',ix-2)
         if (InLine /= '') then
             has_markers(ix) = .true.
             read(InLine,*) markers(ix)
@@ -1975,20 +1975,20 @@
 
     end do
 
-    if (Ini_HasKey('plotparams_num')) stop 'plotparams_num deprectated; just use plot_params'
-    InLine = Ini_Read_String('plot_params')
+    if (Ini%HasKey('plotparams_num')) stop 'plotparams_num deprectated; just use plot_params'
+    InLine = Ini%Read_String('plot_params')
     if (InLine/='') then
         plotparams_num=-1
-        call ParamNames_ReadIndices(NameMapping,InLine, plotparams, plotparams_num, unknown_value=-1)
+        call NameMapping%ReadIndices(InLine, plotparams, plotparams_num, unknown_value=-1)
     else
         plotparams_num = 0
     end if
 
-    InLine = Ini_Read_String('plot_2D_param')
+    InLine = Ini%Read_String('plot_2D_param')
     if (InLine=='') then
         plot_2D_param = 0
     else
-        call ParamNames_ReadIndices(NameMapping,InLine, tmp_params, 1)
+        call NameMapping%ReadIndices(InLine, tmp_params, 1)
         plot_2D_param = tmp_params(1)
         if (plot_2D_param/=0 .and. plotparams_num/=0 .and. &
         count(plotparams(1:plotparams_num)==plot_2D_param)==0) &
@@ -2000,10 +2000,10 @@
         num_cust2D_plots = 0
     else
         !Use custom array of specific plots
-        num_cust2D_plots = Ini_Read_Int('plot_2D_num',0)
+        num_cust2D_plots = Ini%Read_Int('plot_2D_num',0)
         do ix = 1, num_cust2D_plots
-            InLine = Ini_Read_String(numcat('plot',ix))
-            call ParamNames_ReadIndices(NameMapping,InLine, tmp_params, 2)
+            InLine = Ini%Read_String(numcat('plot',ix))
+            call NameMapping%ReadIndices(InLine, tmp_params, 2)
             if (plotparams_num/=0 .and. (count(plotparams(1:plotparams_num)==tmp_params(1))==0 .or. &
             count(plotparams(1:plotparams_num)==tmp_params(2))==0)) then
                 write(*,*) trim(numcat('plot',ix)) //': parameter not in plotparams'
@@ -2013,18 +2013,18 @@
         end do
     end if
 
-    triangle_plot = Ini_Read_Logical('triangle_plot',.false.)
+    triangle_plot = Ini%Read_Logical('triangle_plot',.false.)
     if (triangle_plot) then
-        no_triangle_axis_labels = Ini_read_Logical('no_triangle_axis_labels',.false.)
-        InLine = Ini_Read_String('triangle_params')
+        no_triangle_axis_labels = Ini%read_Logical('no_triangle_axis_labels',.false.)
+        InLine = Ini%Read_String('triangle_params')
         triangle_num=-1
         if (InLine/='') then
-            call ParamNames_ReadIndices(NameMapping,InLine, triangle_params, triangle_num, unknown_value=-1)
+            call NameMapping%ReadIndices(InLine, triangle_params, triangle_num, unknown_value=-1)
         end if
     end if
 
 
-    InS1 =Ini_Read_String('exclude_chain')
+    InS1 =Ini%Read_String('exclude_chain')
     num_exclude = 0
     chain_exclude = 0
     read (InS1, *, end =20) chain_exclude
@@ -2034,23 +2034,23 @@
     end do
 
 
-    map_params = Ini_Read_Logical('map_params',.false.)
+    map_params = Ini%Read_Logical('map_params',.false.)
     if (map_params)  &
     write (*,*) 'WARNING: Mapping params - .covmat file is new params.'
 
-    shade_meanlikes = Ini_Read_Logical('shade_meanlikes',.false.)
+    shade_meanlikes = Ini%Read_Logical('shade_meanlikes',.false.)
 
-    matlab_col = Ini_Read_String('matlab_colscheme')
+    matlab_col = Ini%Read_String('matlab_colscheme')
 
-    out_dir = Ini_Read_String('out_dir')
+    out_dir = Ini%Read_String('out_dir')
 
-    out_root = Ini_Read_String('out_root')
+    out_root = Ini%Read_String('out_root')
     if (out_root /= '') then
         rootname = out_root
         write (*,*) 'producing files with with root '//trim(out_root)
     end if
 
-    plot_data_dir = Ini_Read_String( 'plot_data_dir' )
+    plot_data_dir = Ini%Read_String( 'plot_data_dir' )
     if ( plot_data_dir == '' ) then
         plot_data_dir = 'plot_data/'
     end if
@@ -2064,65 +2064,65 @@
 
     rootdirname = concat(out_dir,rootname)
 
-    num_contours = Ini_Read_Int('num_contours',2)
+    num_contours = Ini%Read_Int('num_contours',2)
     contours_str = ''
     do i=1, num_contours
-        contours(i) = Ini_Read_Double(numcat('contour',i))
+        contours(i) = Ini%Read_Double(numcat('contour',i))
         if (i>1) contours_str = concat(contours_str,'; ')
-        contours_str = concat(contours_str, Ini_Read_String(numcat('contour',i)))
-        max_frac_twotail(i) = Ini_Read_Double(numcat('max_frac_twotail',i), exp(-dinvnorm((1-contours(i))/2)**2/2))
+        contours_str = concat(contours_str, Ini%Read_String(numcat('contour',i)))
+        max_frac_twotail(i) = Ini%Read_Double(numcat('max_frac_twotail',i), exp(-dinvnorm((1-contours(i))/2)**2/2))
     end do
     if (.not. no_tests) then
-        converge_test_limit = Ini_Read_Double('converge_test_limit',contours(num_contours))
-        corr_length_thin = Ini_Read_Int('corr_length_thin',corr_length_thin)
-        corr_length_steps = Ini_Read_Int('corr_length_steps',corr_length_steps)
+        converge_test_limit = Ini%Read_Double('converge_test_limit',contours(num_contours))
+        corr_length_thin = Ini%Read_Int('corr_length_thin',corr_length_thin)
+        corr_length_steps = Ini%Read_Int('corr_length_steps',corr_length_steps)
     end if
-    force_twotail = Ini_Read_Logical('force_twotail',.false.)
+    force_twotail = Ini%Read_Logical('force_twotail',.false.)
     if (force_twotail) write (*,*) 'Computing two tail limits'
 
-    if (Ini_Read_String('cov_matrix_dimension')=='') then
+    if (Ini%Read_String('cov_matrix_dimension')=='') then
         if (NameMapping%nnames/=0) covmat_dimension = NameMapping%num_MCMC
     else
-        covmat_dimension = Ini_Read_Int('cov_matrix_dimension',0)
+        covmat_dimension = Ini%Read_Int('cov_matrix_dimension',0)
         if (covmat_dimension == -1) covmat_dimension = ncols-2
     end if
 
-    plot_meanlikes = Ini_Read_Logical('plot_meanlikes',.false.)
+    plot_meanlikes = Ini%Read_Logical('plot_meanlikes',.false.)
 
-    if (Ini_HasKey('do_minimal_1d_intervals')) &
+    if (Ini%HasKey('do_minimal_1d_intervals')) &
     stop 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
 
-    PCA_num = Ini_Read_Int('PCA_num',0)
+    PCA_num = Ini%Read_Int('PCA_num',0)
     if (PCA_num /= 0) then
         if (PCA_num <2) stop 'Can only do PCA for 2 or more parameters'
-        InLine = Ini_Read_String('PCA_params')
-        PCA_func =Ini_Read_String('PCA_func')
+        InLine = Ini%Read_String('PCA_params')
+        PCA_func =Ini%Read_String('PCA_func')
         !Characters representing functional mapping
         if (PCA_func == '') PCA_func(1:PCA_num) = 'N' !no mapping
         if (InLine == 'ALL' .or. InLine == 'all') then
             PCA_params(1:PCA_num) = (/ (i, i=1,PCA_num)/)
         else
-            call ParamNames_ReadIndices(NameMapping,InLine, PCA_params, PCA_num)
+            call NameMapping%ReadIndices(InLine, PCA_params, PCA_num)
         end if
-        InLIne = Ini_Read_String('PCA_normparam')
+        InLIne = Ini%Read_String('PCA_normparam')
         if (InLine=='') then
             PCA_NormParam = 0
         else
-            call ParamNames_ReadIndices(NameMapping,InLine, tmp_params, 1)
+            call NameMapping%ReadIndices(InLine, tmp_params, 1)
             PCA_NormParam = tmp_params(1)
         end if
 
     end if
 
-    num_3D_plots = Ini_Read_Int('num_3D_plots',0)
+    num_3D_plots = Ini%Read_Int('num_3D_plots',0)
     do ix =1, num_3D_plots
-        plot_3D(ix) = Ini_Read_String(numcat('3D_plot',ix))
+        plot_3D(ix) = Ini%Read_String(numcat('3D_plot',ix))
     end do
-    make_scatter_samples = Ini_Read_Logical('make_scatter_samples',.false.)
-    max_scatter_points = Ini_Read_int('max_scatter_points',2000)
+    make_scatter_samples = Ini%Read_Logical('make_scatter_samples',.false.)
+    max_scatter_points = Ini%Read_int('max_scatter_points',2000)
 
-    BW = Ini_Read_Logical('B&W',.false.)
-    do_shading = Ini_Read_Logical('do_shading',.true.)
+    BW = Ini%Read_Logical('B&W',.false.)
+    do_shading = Ini%Read_Logical('do_shading',.true.)
     call Ini_Close
 
     !Read in the chains
@@ -2608,7 +2608,7 @@
             write(50,'(a)') 'sets=[]'
         end if
         do j=1, num_3D_plots
-            call ParamNames_ReadIndices(NameMapping,plot_3D(j), tmp_params, 3)
+            call NameMapping%ReadIndices(plot_3D(j), tmp_params, 3)
             !x, y, color
             ix1 = indexOf(tmp_params(1)+2,colix,num_vars)+2
             ix2 = indexOf(tmp_params(2)+2,colix,num_vars)+2
@@ -2655,7 +2655,7 @@
     call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
     LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels)
 
-    call ParamNames_WriteFile(NameMapping, trim(plot_data_dir)//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
+    call NameMapping%WriteFile(trim(plot_data_dir)//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
 
     !Limits from global likelihood
     if (.not. plots_only) then

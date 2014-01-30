@@ -369,7 +369,7 @@
     character(len=ParamNames_maxlen)  :: name
     integer, intent(in) :: ix
 
-    name = ParamNames_name(Names,ix)
+    name = Names%name(ix)
     if (name == '') name = IntToStr(ix)
 
     end function ParamNames_NameOrNumber
@@ -393,7 +393,7 @@
     integer i
 
     do i=1, Names%nnames
-        name = ParamNames_name(Names,i)
+        name = Names%name(i)
         if (name /= '') then
             write(unit,'(a)', advance='NO') trim(headObj)//trim(name)//'= struct(''n'','''//trim(name) &
             //''',''i'','//trim(intToStr(i))//',''label'','''//trim(Names%label(i))//''',''isDerived'','

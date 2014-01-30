@@ -185,7 +185,7 @@ contains
  end subroutine ReadWindow
 
  subroutine ReadAllExact(Ini,aset)
-      Type(TIniFile) :: Ini
+      class(TIniFile) :: Ini
       Type (CMBdataset) :: aset
       character(LEN=Ini_max_string_len) :: fname
       integer l, idum, ncls, ncol
@@ -199,7 +199,7 @@ contains
         write(*,*) 'all_l_exact note: all fsky_eff^2 changed to fsky_eff in this version'
 
        aset%num_points = 0
-       aset%all_l_lmax = Ini_Read_Int_File(Ini,'all_l_lmax')
+       aset%all_l_lmax = Ini%Read_Int('all_l_lmax')
 
        if (aset%all_l_lmax > lmax) stop 'cmbdata.f90::ReadAllExact: all_l_lmax > lmax'
        if (aset%has_pol) then
@@ -337,7 +337,6 @@ contains
    real(mcp), pointer, dimension(:,:) :: tmp_mat
    real(mcp), pointer, dimension(:) :: tmp_arr
    character(LEN=Ini_max_string_len) :: data_format
-   integer file_unit
    Type(TIniFile) :: Ini
 
    aset=> like%dataset
@@ -358,16 +357,14 @@ contains
      return
    end if
 
-   file_unit = new_file_unit()
-
-   call Ini_Open_File(Ini,aname, file_unit, bad, .false.)
+   call Ini%Open(aname,  bad, .false.)
    if (bad) then
      write (*,*)  'Error opening dataset file '//trim(aname)
      stop
    end if
    Ini_fail_on_not_found = .true.
 
-   like%name = Ini_Read_String_File(Ini,'name')
+   like%name = Ini%Read_String('name')
    aset%use_set =.true.
    aset%num_points = 0
 
@@ -375,18 +372,18 @@ contains
 
    Ini_fail_on_not_found = .false.
 
-   data_format  = Ini_Read_String_File(Ini,'dataset_format')
+   data_format  = Ini%Read_String('dataset_format')
 
    aset%CMBlike = data_format == 'CMBLike'
 
    aset%all_l_exact = (data_format =='all_l_exact') &
-            .or. Ini_Read_Logical_File(Ini,'all_l_exact',.false.)
+            .or. Ini%Read_Logical('all_l_exact',.false.)
    if (aset%CMBLike) then
       allocate(aset%CMBLikes)
       call CMBLikes_ReadData(aset%CMBLikes, Ini, ExtractFilePath(aname))
 
    else if (aset%all_l_exact) then
-       aset%has_pol = Ini_Read_Logical_File(Ini,'has_pol',.false.)
+       aset%has_pol = Ini%Read_Logical('has_pol',.false.)
        call ReadAllExact(Ini,aset)
    else if (data_format/='') then
         write(*,*) 'Error in '//trim(aname)
@@ -395,21 +392,21 @@ contains
    else
     !Otherwise do usual guassian/offset lognormal stuff
 
-       aset%has_pol = Ini_Read_Logical_File(Ini,'has_pol',.false.)
+       aset%has_pol = Ini%Read_Logical('has_pol',.false.)
 
-       aset%num_points = Ini_Read_Int_File(Ini,'num_points')
+       aset%num_points = Ini%Read_Int('num_points')
 
-       aset%calib_uncertainty = Ini_Read_Double_File(Ini,'calib_uncertainty')
-       aset%beam_uncertain = Ini_Read_logical_File(Ini,'beam_uncertainty')
+       aset%calib_uncertainty = Ini%Read_Double('calib_uncertainty')
+       aset%beam_uncertain = Ini%Read_logical('beam_uncertainty')
 
        window_dir  = ReadIniFilename(Ini,'window_dir')
 
-       windows_are_bare = Ini_Read_Logical_File(Ini,'windows_are_bare',.false.)
-       aset%windows_are_bandpowers = Ini_Read_Logical_File(Ini,'windows_are_bandpowers',.true.)
-       aset%windows_are_normalized = Ini_Read_Logical_File(Ini,'windows_are_normalized',.false.)
+       windows_are_bare = Ini%Read_Logical('windows_are_bare',.false.)
+       aset%windows_are_bandpowers = Ini%Read_Logical('windows_are_bandpowers',.true.)
+       aset%windows_are_normalized = Ini%Read_Logical('windows_are_normalized',.false.)
 
-       aset%file_points = Ini_read_Int_File(Ini,'file_points',aset%num_points)
-       first_band = Ini_read_Int_File(Ini,'first_band',1)
+       aset%file_points = Ini%read_Int('file_points',aset%num_points)
+       first_band = Ini%read_Int('first_band',1)
        if (first_band + aset%num_points > aset%file_points+1) then
             write (*,*)  'Error with dataset file '//trim(aname)
             write (*,*) 'first_band + num_points > file_points'
@@ -417,14 +414,14 @@ contains
        end if
     !Read in the observed values, errors and beam uncertainties
        allocate(aset%points(aset%num_points))
-       band_file = Ini_Read_String_File(Ini,'bandpowers')
+       band_file = Ini%Read_String('bandpowers')
        if (band_file /= '') call OpenTxtFile(band_file, 51)
        Ini_fail_on_not_found = .true.
        do i=1, aset%num_points + first_band -1
           if (band_file /= '') then
             read(51,'(a)') InLine
           else
-            InLine = Ini_Read_String_File(Ini,numcat('data',i))
+            InLine = Ini%Read_String(numcat('data',i))
           end if
           if (i < first_band) cycle
           use_i = i - first_band + 1
@@ -446,7 +443,7 @@ contains
     !See if the inverse covariance matrix is given (otherwise assume diagonal)
        Ini_fail_on_not_found = .false.
 
-       Ninv_file = Ini_Read_String_File(Ini,'N_inv')
+       Ninv_file = Ini%Read_String('N_inv')
        aset%has_corr_errors = Ninv_file /= ''
        if (aset%has_corr_errors) then
           allocate(tmp_mat(aset%file_points,aset%file_points))
@@ -464,11 +461,11 @@ contains
           deallocate(tmp_mat)
        end if
 
-       if (Ini_Read_Logical_File(Ini,'use_hyperparameter',.false.)) stop 'Hyperparameters deprecated'
+       if (Ini%Read_Logical('use_hyperparameter',.false.)) stop 'Hyperparameters deprecated'
 
     !See if xfactors are given
 
-       xfact_file = Ini_Read_String_File(Ini,'xfactors')
+       xfact_file = Ini%Read_String('xfactors')
        aset%has_xfactors = xfact_file /= ''
 
        if (aset%has_xfactors) then
@@ -486,8 +483,7 @@ contains
 
    end if !not all_l_exact or cut sky unbinned
 
-   call Ini_Close_File(Ini)
-   call ClearFileUnit(file_unit)
+   call Ini%Close()
 
  end subroutine ReadDataset
 
@@ -947,10 +943,9 @@ contains
 
 
  function CMBLnLike(like, CMB, Theory, DataParams)
-    use CMB_Cls
     Class(CMBDataLikelihood) :: like
     Class (CMBParams) CMB
-    Class(TheoryPredictions) Theory
+    Class(CosmoTheoryPredictions) Theory
     real(mcp) :: DataParams(:)
     real(mcp) cl(lmax,num_cls_tot)
     real(mcp) CMBLnLike
@@ -1028,7 +1023,7 @@ contains
 #ifndef NOWMAP
         use WMAP_OPTIONS
 #endif
-   use IniFile
+   use IniObjects
 #ifdef CLIK
     use cliklike
 #endif
@@ -1036,23 +1031,23 @@ contains
     use noncliklike
 #endif
     class(LikelihoodList) :: LikeList
-    Type(TIniFile) :: ini
+    class(TIniFile) :: ini
 
     Type(CMBDataLikelihood), pointer  :: like
     integer numsets,  i
     character(LEN=Ini_max_string_len) filename,keyname,SZTemplate
     real(mcp) SZScale
 
-        Use_CMB = Use_CMB .or. Ini_Read_Logical_File(Ini, 'use_CMB',.true.)
+        Use_CMB = Use_CMB .or. Ini%Read_Logical('use_CMB',.true.)
 
 #ifndef NOWMAP
-        use_TT_beam_ptsrc = Ini_read_Logical_File(Ini,'use_WMAP_TT_beam_ptsrc', .true.)
-        use_TE = Ini_read_Logical_File(Ini,'use_WMAP_TE',.true.)
-        use_TT = Ini_read_Logical_File(Ini,'use_WMAP_TT',.true.)
+        use_TT_beam_ptsrc = Ini%read_Logical('use_WMAP_TT_beam_ptsrc', .true.)
+        use_TE = Ini%read_Logical('use_WMAP_TE',.true.)
+        use_TT = Ini%read_Logical('use_WMAP_TT',.true.)
         if (MPIRank==0) print *, 'WMAP options (beam TE TT)', use_TT_beam_ptsrc, use_TE, use_TT
 #endif
 
-        numsets = Ini_Read_Int_File(Ini,'cmb_numdatasets',0)
+        numsets = Ini%Read_Int('cmb_numdatasets',0)
          do i= 1, numsets
           allocate(like)
           call LikeList%Add(like)
@@ -1063,9 +1058,9 @@ contains
 
           keyname=numcat('cmb_dataset_SZ',i)
           SZTemplate = ''
-          if (Ini_HasKey_File(Ini,KeyName)) SZTemplate = Ini_Read_String_File(Ini,keyname, .false.)
+          if (Ini%HasKey(KeyName)) SZTemplate = Ini%Read_String(keyname, .false.)
           if (SZTemplate/='') then
-           SZScale = Ini_read_Real_File(Ini,numcat('cmb_dataset_SZ_scale',i),1.0)
+           SZScale = Ini%read_Real(numcat('cmb_dataset_SZ_scale',i),1.0)
            call ReadSZTemplate(like%dataset, SZTemplate,SZScale)
            call like%loadParamNames(trim(DataDir)//'WMAP.paramnames')
           end if
@@ -1074,14 +1069,14 @@ contains
          if (Feedback > 1) write (*,*) 'read CMB datasets'
 
 #ifdef CLIK
-        Use_clik = Ini_Read_Logical_File(Ini, 'use_clik',.false.)
+        Use_clik = Ini%Read_Logical('use_clik',.false.)
         if (use_clik .and. .not. use_CMB) &
          call MpiStop('must have use_CMB=.true. to have use_clik (cmb_numdatasets = 0 for only clik)')
         if (Use_clik) then
             call clik_readParams(LikeList, Ini)
         end if
 #else
-         if (Ini_Read_Logical('use_clik',.false.)) call MpiStop('compile with CLIK to use clik - see Makefile')
+         if (Ini%Read_Logical('use_clik',.false.)) call MpiStop('compile with CLIK to use clik - see Makefile')
 #endif
 #ifdef NONCLIK
         call nonclik_readParams(LikeList, Ini)
@@ -1091,5 +1086,3 @@ contains
     end subroutine CMBDataLikelihoods_Add
 
 end module cmbdata
-
-

@@ -86,25 +86,25 @@
     end function ffn
 
     subroutine Minimize_ReadIni(Ini)
-    use IniFile
-    Type(TIniFile), intent(in) :: Ini
+    use IniObjects
+    class(TIniFile), intent(in) :: Ini
     character(LEN=Ini_max_string_len) :: diag_params
     integer num, rotparams(num_params), i, rot_params_used(num_params)
 
     !radius in normalized parameter space to converge
-    max_like_radius = Ini_Read_Double_File(Ini,'max_like_radius',max_like_radius)
-    max_like_iterations = Ini_Read_Int_File(Ini,'max_like_iterations',max_like_iterations)
+    max_like_radius = Ini%Read_Double('max_like_radius',max_like_radius)
+    max_like_iterations = Ini%Read_Int('max_like_iterations',max_like_iterations)
     !set points factor above 2 to use a denser sampling of space (may be more robust)
-    minimization_points_factor = Ini_Read_Int_File(Ini,'minimization_points_factor',minimization_points_factor)
+    minimization_points_factor = Ini%Read_Int('minimization_points_factor',minimization_points_factor)
     !will exit if function difference between iterations less than minimize_loglike_tolerance (even if radius criterion not met)
-    minimize_loglike_tolerance = Ini_Read_double_File(Ini,'minimize_loglike_tolerance',minimize_loglike_tolerance)
-    minimize_separate_fast = Ini_Read_Logical_File(Ini,'minimize_separate_fast',minimize_separate_fast)
-    minimize_mcmc_refine_num = Ini_Read_Int_File(Ini,'minimize_mcmc_refine_num',minimize_mcmc_refine_num)
+    minimize_loglike_tolerance = Ini%Read_double('minimize_loglike_tolerance',minimize_loglike_tolerance)
+    minimize_separate_fast = Ini%Read_Logical('minimize_separate_fast',minimize_separate_fast)
+    minimize_mcmc_refine_num = Ini%Read_Int('minimize_mcmc_refine_num',minimize_mcmc_refine_num)
     if (minimize_mcmc_refine_num>0) then
-        minimize_refine_temp = Ini_read_Double_File(Ini,'minimize_refine_temp',minimize_refine_temp)
-        minimize_temp_scale_factor = Ini_Read_Double_File(ini,'minimize_temp_scale_factor',minimize_temp_scale_factor)
+        minimize_refine_temp = Ini%read_Double('minimize_refine_temp',minimize_refine_temp)
+        minimize_temp_scale_factor = ini%Read_Double('minimize_temp_scale_factor',minimize_temp_scale_factor)
     end if
-    minimize_random_start_pos = Ini_Read_Logical_File(Ini,'minimize_random_start_pos',minimize_random_start_pos)
+    minimize_random_start_pos = Ini%Read_Logical('minimize_random_start_pos',minimize_random_start_pos)
     minimize_uses_MPI = minimize_random_start_pos
 
     allocate(used_param_scales(num_params_used))
@@ -116,13 +116,13 @@
         (Scales%PMax(params_used(i))- Scales%PMin(params_used(i)))/start_trust_radius/3.)
     end do
 
-    diag_params = Ini_Read_String_File(Ini,'minimize_diag_params')
+    diag_params = Ini%Read_String('minimize_diag_params')
     !Like the proposal for MCMC, but potentially a subset of parameters since can only diagonalize
     !parameters that do not have hard boundaries in the high likelihood region
     if (diag_params/='') then
         num= -1
-        call ParamNames_ReadIndices(NameMapping,diag_params, rotparams, num)
-    else 
+        call NameMapping%ReadIndices(diag_params, rotparams, num)
+    else
         num = 0
     end if
 
@@ -365,7 +365,7 @@
         do i=1, num_params
             if (isused==0 .and. Scales%PWidth(i)/=0 .or. isused==1 .and. Scales%PWidth(i)==0) then
                 write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-                i, P%P(i), ParamNames_name(NameMapping,i)
+                i, P%P(i), NameMapping%name(i)
                 write (aunit,'(a)') trim(NameMapping%label(i))
             end if
         end do
@@ -375,9 +375,10 @@
     if (generic_mcmc) return
 
     numderived = Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
+    num_derived = DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived)
     do i=1, numderived
         write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-        num_params+i, derived%P(i), ParamNames_name(NameMapping,num_params + i )
+        num_params+i, derived%P(i), NameMapping%name(num_params + i )
         write (aunit,'(a)') trim(NameMapping%label(num_params+i))
     end do
     deallocate(derived%P)

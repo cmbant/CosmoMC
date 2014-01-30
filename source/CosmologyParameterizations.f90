@@ -46,10 +46,10 @@
     class(TGeneralConfig), target :: Config
     character(LEN=Ini_max_string_len) prior
 
-    this%H0_min = Ini_Read_Double_File(Ini, 'H0_min',this%H0_min)
-    this%H0_max = Ini_Read_Double_File(Ini, 'H0_max',this%H0_max)
-    this%Use_min_zre = Ini_Read_Double_File(Ini,'use_min_zre',this%use_min_zre)
-    prior = Ini_Read_String_File(Ini, 'H0_prior',NotFoundFail=.false.)
+    this%H0_min = Ini%Read_Double('H0_min',this%H0_min)
+    this%H0_max = Ini%Read_Double('H0_max',this%H0_max)
+    this%Use_min_zre = Ini%Read_Double('use_min_zre',this%use_min_zre)
+    prior = Ini%Read_String('H0_prior',NotFoundFail=.false.)
     if (prior/='') then
         read(prior,*) this%H0_prior_mean, this%H0_prior_std
     end if
@@ -112,7 +112,7 @@
             if(error/=0)then
                 cmb%H0=0
                 return
-            end if 
+            end if
             D_b = CosmoCalc%CMBToTheta(CMB)
             try_t = this%H0_max
             call SetForH(Params,CMB,try_t, .false.)
@@ -154,7 +154,7 @@
     function TP_CalcDerivedParams(this, P, Theory, derived) result (num_derived)
     class(ThetaParameterization) :: this
     Type(mc_real_pointer) :: derived
-    class(TTheoryPredictions) :: Theory
+    class(TTheoryPredictions), pointer :: Theory
     real(mcp) :: P(:)
     Type(CMBParams) CMB
     integer num_derived
@@ -216,10 +216,10 @@
         CMB%omnuh2_sterile = Params(7)/neutrino_mass_fac
         !we are using interpretation where there are degeneracy_factor neutrinos, each exactly thermal
         !So internally 3.046 or 3.046/3 massive neutrnos. But mnu is the physical integer mass sum.
-        if (CMB%omnuh2_sterile >0 .and. CMB%nnu < 3.046) then  
+        if (CMB%omnuh2_sterile >0 .and. CMB%nnu < 3.046) then
             if(present(error))then
-                error=-1 
-            else 
+                error=-1
+            else
                 call MpiStop('sterile neutrino mass required Neff>3.046')
             end if
         end if
@@ -307,7 +307,7 @@
     function BK_CalcDerivedParams(this, P, Theory, derived) result (num_derived)
     class(BackgroundParameterization) :: this
     Type(mc_real_pointer) :: derived
-    class(TTheoryPredictions) :: Theory
+    class(TTheoryPredictions), pointer :: Theory
     real(mcp) :: P(:)
     Type(CMBParams) CMB
     integer num_derived

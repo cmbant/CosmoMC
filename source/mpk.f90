@@ -54,23 +54,23 @@
     contains
 
     subroutine MPKLikelihood_Add(LikeList, Ini)
-    use IniFile
+    use IniObjects
     use settings
     class(LikelihoodList) :: LikeList
-    Type(TIniFile) :: ini
+    class(TIniFile) :: ini
     type(MPKLikelihood), pointer :: like
     integer nummpksets, i
 
 
-    use_mpk = (Ini_Read_Logical_File(Ini, 'use_mpk',.false.))
+    use_mpk = (Ini%Read_Logical('use_mpk',.false.))
 
     if(.not. use_mpk) return
 
     call WiggleZLikelihood_Add(LikeList, Ini)
 
-    nonlinear_mpk = Ini_Read_Logical('nonlinear_mpk',.false.)
+    nonlinear_mpk = Ini%Read_Logical('nonlinear_mpk',.false.)
 
-    nummpksets = Ini_Read_Int('mpk_numdatasets',0)
+    nummpksets = Ini%Read_Int('mpk_numdatasets',0)
     do i= 1, nummpksets
         allocate(like)
         like%LikelihoodType = 'MPK'
@@ -87,7 +87,7 @@
     subroutine MPK_ReadIni(like,Ini)
     use MatrixUtils
     class(MPKLikelihood) like
-    Type(TIniFile) :: Ini
+    class(TIniFile) :: Ini
     character(LEN=Ini_max_string_len) :: kbands_file, measurements_file, windows_file, cov_file
 
     integer i,iopb,i_conflict
@@ -108,14 +108,14 @@
     Ini_fail_on_not_found = .false.
     like%use_set =.true.
     if (Feedback > 0) write (*,*) 'reading: '//trim(like%name)
-    num_mpk_points_full = Ini_Read_Int_File(Ini,'num_mpk_points_full',0)
+    num_mpk_points_full = Ini%Read_Int('num_mpk_points_full',0)
     if (num_mpk_points_full.eq.0) write(*,*) ' ERROR: parameter num_mpk_points_full not set'
-    num_mpk_kbands_full = Ini_Read_Int_File(Ini,'num_mpk_kbands_full',0)
+    num_mpk_kbands_full = Ini%Read_Int('num_mpk_kbands_full',0)
     if (num_mpk_kbands_full.eq.0) write(*,*) ' ERROR: parameter num_mpk_kbands_full not set'
-    min_mpk_points_use = Ini_Read_Int_File(Ini,'min_mpk_points_use',1)
-    min_mpk_kbands_use = Ini_Read_Int_File(Ini,'min_mpk_kbands_use',1)
-    max_mpk_points_use = Ini_Read_Int_File(Ini,'max_mpk_points_use',num_mpk_points_full)
-    max_mpk_kbands_use = Ini_Read_Int_File(Ini,'max_mpk_kbands_use',num_mpk_kbands_full)
+    min_mpk_points_use = Ini%Read_Int('min_mpk_points_use',1)
+    min_mpk_kbands_use = Ini%Read_Int('min_mpk_kbands_use',1)
+    max_mpk_points_use = Ini%Read_Int('max_mpk_points_use',num_mpk_points_full)
+    max_mpk_kbands_use = Ini%Read_Int('max_mpk_kbands_use',num_mpk_kbands_full)
     like%num_mpk_points_use = max_mpk_points_use - min_mpk_points_use +1
     like%num_mpk_kbands_use = max_mpk_kbands_use - min_mpk_kbands_use +1
 
@@ -173,13 +173,13 @@
         nullify(like%mpk_invcov)
     end if
 
-    like%use_scaling = Ini_Read_Logical_File(Ini,'use_scaling',.false.)
+    like%use_scaling = Ini%Read_Logical('use_scaling',.false.)
 
 
     !JD 09/13 Read in fiducial D_V and redshift for use when calculating a_scl
     if(like%use_scaling) then
         !DV_fid should be in units CMB%H0*BAO_D_v(z)
-        like%DV_fid = Ini_Read_Double_File(Ini,'DV_fid',-1.d0)
+        like%DV_fid = Ini%Read_Double('DV_fid',-1.d0)
         if(like%DV_fid == -1.d0) then
             write(*,*)'ERROR: use_scaling = T and no DV_fid given '
             write(*,*)'       for dataset '//trim(like%name)//'.'
@@ -191,7 +191,7 @@
     !JD 10/13  New settings for new mpk array handling
     allocate(like%exact_z(like%num_z))
     allocate(like%exact_z_index(like%num_z))
-    like%exact_z(1) = Ini_Read_Double_File(Ini,'redshift',0.35d0)
+    like%exact_z(1) = Ini%Read_Double('redshift',0.35d0)
 
     like%kmax = 0.8
     if(nonlinear_mpk) then
@@ -199,24 +199,24 @@
         like%kmax=1.2
     end if
 
-    like%Q_marge = Ini_Read_Logical_File(Ini,'Q_marge',.false.)
+    like%Q_marge = Ini%Read_Logical('Q_marge',.false.)
     if (like%Q_marge) then
-        like%Q_flat = Ini_Read_Logical_File(Ini,'Q_flat',.false.)
+        like%Q_flat = Ini%Read_Logical('Q_flat',.false.)
         if (.not. like%Q_flat) then
             !gaussian prior on Q
-            like%Q_mid = Ini_Read_Real_File(Ini,'Q_mid')
-            like%Q_sigma = Ini_Read_Real_File(Ini,'Q_sigma')
+            like%Q_mid = Ini%Read_Real('Q_mid')
+            like%Q_sigma = Ini%Read_Real('Q_sigma')
         end if
-        like%Ag = Ini_Read_Real_File(Ini,'Ag', 1.4)
+        like%Ag = Ini%Read_Real('Ag', 1.4)
     end if
 
-    like%num_conflicts = Ini_Read_Int_File(Ini,'num_conflicts',0)
+    like%num_conflicts = Ini%Read_Int('num_conflicts',0)
     if(like%num_conflicts>0)then
         allocate(like%conflict_name(like%num_conflicts))
         allocate(like%conflict_type(like%num_conflicts))
         do i_conflict=1,like%num_conflicts
-            like%conflict_type(i_conflict) = Ini_Read_String_File(Ini,numcat('type_conflict',i_conflict))
-            like%conflict_name(i_conflict) = Ini_Read_String_File(Ini,numcat('name_conflict',i_conflict))
+            like%conflict_type(i_conflict) = Ini%Read_String(numcat('type_conflict',i_conflict))
+            like%conflict_name(i_conflict) = Ini%Read_String(numcat('name_conflict',i_conflict))
         end do
     end if
 
@@ -232,7 +232,7 @@
     function MPK_LnLike(like,CMB,Theory,DataParams) ! LV_06 added CMB here
     Class(CMBParams) CMB
     Class(MPKLikelihood) :: like
-    Class(TheoryPredictions) Theory
+    Class(CosmoTheoryPredictions) Theory
     real(mcp) :: DataParams(:)
     real(mcp) MPK_LnLike,LnLike
     real(mcp), dimension(:), allocatable :: mpk_Pth, mpk_k2,mpk_lin,k_scaled !LV_06 added for LRGDR4
@@ -279,7 +279,7 @@
         k_scaled(i)=max(exp(Theory%log_kh(1)),a_scl*like%mpk_k(i))
         if(nonlinear_mpk) then
             mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
-        else       
+        else
             mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1))/a_scl**3
         end if
     end do

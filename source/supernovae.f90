@@ -4,15 +4,15 @@
     contains
 
     subroutine SNLikelihood_Add(LikeList, Ini)
-    use IniFile
+    use IniObjects
     use likelihood
     use SNLS
     use Union2
     class(LikelihoodList) :: LikeList
-    Type(TIniFile) :: ini
+    class(TIniFile) :: ini
     integer count
 
-    if (.not. Ini_Read_Logical_File(Ini, 'use_SN',.false.)) return
+    if (.not. Ini%Read_Logical('use_SN',.false.)) return
 
     count = LikeList%Count
     call SNLSLikelihood_Add(LikeList, Ini)

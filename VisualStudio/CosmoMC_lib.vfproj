@@ -5,7 +5,7 @@
 		<Platform Name="x64"/></Platforms>
 	<Configurations>
 		<Configuration Name="Debug|Win32" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP" ErrorLimit="6" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
 				<Tool Name="VFLibrarianTool"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
@@ -51,8 +51,8 @@
 		<File RelativePath="..\source\Calculator_Cosmology.f90"/>
 		<File RelativePath="..\source\cmbtypes.f90"/>
 		<File RelativePath="..\source\CosmologyConfig.f90"/>
-		<File RelativePath="..\source\mpk.f90"/>
 		<File RelativePath="..\source\CosmologyParameterizations.f90"/>
+		<File RelativePath="..\source\mpk.f90"/>
 		<File RelativePath="..\source\power_spec.f90"/>
 		<File RelativePath="..\source\wigglez.f90"/></Filter>
 		<Filter Name="Likelihood">
@@ -72,13 +72,15 @@
 		<File RelativePath="..\source\ObjectLists.f90"/>
 		<File RelativePath="..\source\ObjectParamNames.f90"/>
 		<File RelativePath="..\source\PowellConstrainedMinimize.f90"/></Filter>
-		<File RelativePath="..\source\calclike.f90"/>
+		<File RelativePath="..\source\BaseParameters.f90"/>
+		<File RelativePath="..\source\CalcLike.f90"/>
 		<File RelativePath="..\source\EstCovmat.f90"/>
+		<File RelativePath="..\source\Sampler.f90"/>
 		<File RelativePath="..\source\GeneralTypes.f90"/>
 		<File RelativePath="..\source\IO.f90"/>
 		<File RelativePath="..\source\MCMC.f90"/>
 		<File RelativePath="..\source\minimize.f90"/>
-		<File RelativePath="..\source\paramdef.F90"/>
+		<File RelativePath="..\source\Outputs.f90"/>
 		<File RelativePath="..\source\postprocess.f90"/>
 		<File RelativePath="..\source\propose.f90"/>
 		<File RelativePath="..\source\samples.f90"/>

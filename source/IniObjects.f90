@@ -64,6 +64,7 @@
     procedure :: HasKey => Ini_HasKey
     procedure :: Key_To_Arraykey => Ini_Key_To_Arraykey
     procedure :: NameValue_Add => Ini_NameValue_Add
+    procedure, nopass :: ExtractFilePath => Ini_ExtractFilePath
     end Type TIniFile
 
     contains
@@ -312,7 +313,7 @@
         IncludeFile=IncudeFiles%Items(i)%P%Name
         inquire(file=IncludeFile, exist = FileExists)
         if (.not. FileExists) then
-            IncludeFile=trim(Ini_ExtractFilePath(filename))//trim(IncludeFile)
+            IncludeFile=trim(Ini%ExtractFilePath(filename))//trim(IncludeFile)
             inquire(file=IncludeFile, exist = FileExists)
             if (.not. FileExists) then
                 write(*,*) 'Ini_Open: INCLUDE file not found: '//trim(IncudeFiles%Items(i)%P%Name)
@@ -326,7 +327,7 @@
         IncludeFile=DefaultValueFiles%Items(i)%P%Name
         inquire(file=IncludeFile, exist = FileExists)
         if (.not. FileExists) then
-            IncludeFile=trim(Ini_ExtractFilePath(filename))//trim(IncludeFile)
+            IncludeFile=trim(Ini%ExtractFilePath(filename))//trim(IncludeFile)
             inquire(file=IncludeFile, exist = FileExists)
             if (.not. FileExists) then
                 write(*,*) 'Ini_Open: DEFAULT file not found:' //trim(DefaultValueFiles%Items(i)%P%Name)

@@ -1,21 +1,12 @@
-    !Defines a parameterization, computes likelihoods and defined proposal density
-    !Change this file to change these things, and MPI updating
-    !The Cls are computed using routines defined in the CMB_Cls module
 
-    module ParamDef
-    !module defines a parameterization, and works out power spectra
-    use CMB_Cls
+    module Outputs
     use cmbtypes
-    use cmbdata
     use Random
     use settings
     use Propose
     use Samples
     use likelihood
-    use IniFile
-    use ParamNames
-    use IO
-
+    use BaseParameters
     implicit none
 
     Type, extends(TCalculationAtParamPoint) :: ParamSet
@@ -24,17 +15,7 @@
     procedure :: WriteModel
     end Type
 
-    Type ParamScale
-        real(mcp) PMin(max_num_params), PMax(max_num_params), StartWidth(max_num_params), &
-        PWidth(max_num_params), center(max_num_params)
-    end Type ParamScale
-
-    Type(ParamScale) Scales
-
-    Type ParamGaussPrior
-        real(mcp) mean(max_num_params),std(max_num_params) !std=0 for no prior (default)
-    end Type ParamGaussPrior
-    Type(ParamGaussPrior) GaussPriors
+    logical :: estimate_propose_matrix = .false.
 
     real(mcp) :: StartLike = LogZero
     !bad, unless re-starting in which case it is set to last value in chain
@@ -43,10 +24,6 @@
     integer :: burn_in = 2 !Minimum to get sensible answers
     integer :: semislow_changes=0, slow_changes=0
     integer :: checkpoint_burn = 0
-
-    logical :: estimate_propose_matrix = .false.
-    real(mcp), dimension(:,:), allocatable ::  initial_propose_matrix, test_cov_matrix
-    Type(BlockedProposer), save :: Proposer
 
     logical :: checkpoint = .false.
     integer, parameter :: checkpoint_freq = 100
@@ -76,12 +53,11 @@
 
     real    :: MPI_R_StopProposeUpdate = 0.
 
-    logical    :: MPI_StartSliceSampling = .false.
+    logical  :: MPI_StartSliceSampling = .false.
 
     real(time_dp) ::  MPI_StartTime
 
     real(mcp), private, allocatable, dimension(:,:) :: MPICovmat
-    logical :: StartCovMat = .false.
 
     contains
 
@@ -125,285 +101,6 @@
 #endif
     stop
     end subroutine DoStop
-
-
-    subroutine ParamError(str,param)
-    character(LEN=*), intent(in) :: str
-    integer, intent(in) :: param
-
-    call DoAbort(trim(str)//': '//trim(ParamNames_NameOrNumber(NameMapping, param)))
-
-    end subroutine ParamError
-
-    subroutine orderIndices(arr,n)
-    integer, intent(in) :: n
-    integer arr(:), tmp(n),j, s, i
-
-    tmp=arr(1:n)
-    s=n
-    do i=1,n
-        arr(i) = minval(tmp(1:s))
-        j=indexOf(arr(i),tmp,s)
-        tmp(j:s-1)= tmp(j+1:s)
-        s=s-1
-    end do
-    end subroutine orderIndices
-
-    subroutine SetStartPositions(Params)
-    type (ParamSet) Params
-    integer ix,i
-
-    do ix=1,num_params_used
-        i = params_used(ix)
-        do
-            if (Scales%StartWidth(i) < 0) then
-                !This case we want half gaussian, width -Scales%StartWidth(i)
-                !e.g. for positive definite parameters
-                Params%P(i) = Scales%center(i) - abs(Gaussian1())*Scales%StartWidth(i)
-            else
-                Params%P(i) = Scales%center(i) + Gaussian1()*Scales%StartWidth(i)
-            end if
-            !Repeat until get acceptable values in range
-            if (Params%P(i)>=  Scales%PMin(i) .and. Params%P(i) <= Scales%PMax(i)) exit
-        end do
-    end do
-
-    end subroutine SetStartPositions
-
-    subroutine InitializeUsedParams(Ini,Params, use_propose_matrix)
-    type (ParamSet) Params
-    type (TIniFile) :: Ini
-    logical :: use_propose_matrix
-
-    num_params = max(num_theory_params, NameMapping%num_MCMC)
-    num_data_params = num_params - num_theory_params
-    call Initalize(Ini,Params,use_propose_matrix)
-
-    end subroutine InitializeUsedParams
-
-    subroutine Initalize(Ini,Params,use_propose_matrix)
-    implicit none
-    type (ParamSet) Params
-    type (TIniFile) :: Ini
-    logical :: use_propose_matrix
-    integer i, j, ix
-    character(LEN=5000) fname,InLine
-    character(LEN=1024) prop_mat
-    real(mcp) center
-    integer fast_params(num_params)
-    integer fast_number, fast_param_index
-    integer param_type(num_params)
-    integer speed, num_speed
-    integer, parameter :: tp_unused = 0, tp_slow=1, tp_semislow=2, tp_semifast=3, tp_fast=4
-    Type(int_arr_pointer), allocatable :: param_blocks(:)
-    logical :: block_semi_fast =.false., block_fast_likelihood_params=.false.
-    integer :: breaks(num_params), num_breaks
-    class(DataLikelihood), pointer :: DataLike
-    integer :: oversample_fast= 1
-    logical first
-
-    output_lines = 0
-
-    if (use_fast_slow) then
-        if (Ini_HasKey_File(Ini,'fast_parameters')) then
-            !List of parmeter names to treat as fast
-            fast_number = num_params
-            call ParamNames_ReadIndices(NameMapping,Ini_Read_String_File(Ini,'fast_parameters'), fast_params, fast_number)
-        else
-            fast_param_index = max(index_data,DataLikelihoods%first_fast_param)
-            !all parameters at and above fast_param_index
-            fast_param_index= Ini_Read_Int_File(Ini,'fast_param_index',fast_param_index)
-            fast_number = 0
-            do i=fast_param_index, num_params
-                fast_number = fast_number+1
-                fast_params(fast_number) = i
-            end do
-        end if
-        block_semi_fast = Ini_Read_Logical_File(Ini,'block_semi_fast',.true.)
-        block_fast_likelihood_params = Ini_Read_logical_File(Ini,'block_fast_likelihood_params',.true.)
-        oversample_fast = Ini_Read_Int('oversample_fast',1)
-        if (oversample_fast<1) call DoAbort('oversample_fast must be >= 1')
-        if (sampling_method /=sampling_fast_dragging) then
-            MPI_Thin_fac = MPI_Thin_fac*Proposer%Oversample_fast
-        end if
-    else
-        fast_number = 0
-    end if
-
-    Ini_fail_on_not_found = .false.
-    if (use_propose_matrix) then
-        prop_mat = trim(Ini_Read_String_File(Ini,'propose_matrix'))
-        if (prop_mat /= '' .and. prop_mat(1:1) /= '/') prop_mat = concat(LocalDir,prop_mat)
-    else
-        prop_mat=''
-    end if
-
-    fname = Ini_Read_String_File(Ini,'continue_from')
-    if (fname /= '') call DoAbort('continue_from replaced by checkpoint')
-
-    param_type = tp_unused
-
-    GaussPriors%std=0 !no priors by default
-    do i=1,num_params
-        InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'param',i)
-        if (InLine=='') call ParamError('parameter ranges not found',i)
-        read(InLine, *, err = 100, end =100) center, Scales%PMin(i), Scales%PMax(i), Scales%StartWidth(i), Scales%PWidth(i)
-        if (Scales%PWidth(i)/=0) then
-            InLine =  ParamNames_ReadIniForParam(NameMapping,Ini,'prior',i)
-            if (InLine/='') read(InLine, *, err = 101, end=101) GaussPriors%mean(i), GaussPriors%std(i)
-        else
-            scales%PMin(i) = center
-            Scales%PMax(i) = center
-        end if
-
-        Scales%center(i) = center
-        Params%P(i) = center
-        if (Scales%PMax(i) < Scales%PMin(i)) call ParamError('You have param Max < Min',i)
-        if (Scales%center(i) < Scales%PMin(i)) call ParamError('You have param center < Min',i)
-        if (Scales%center(i) > Scales%PMax(i)) call ParamError('You have param center > Max',i)
-        if (Scales%PWidth(i) /= 0) then !to get sizes for allocation arrays
-            if (use_fast_slow .and. any(i==fast_params(1:fast_number))) then
-                if (i >= index_data .or. .not. block_semi_fast) then
-                    param_type(i) = tp_fast
-                else
-                    param_type(i) = tp_semifast
-                end if
-            else
-                if (use_fast_slow .and. index_semislow >=0 .and. i >= index_semislow .and. block_semi_fast) then
-                    param_type(i) = tp_semislow
-                else
-                    param_type(i) = tp_slow
-                end if
-            end if
-        end if
-    end do
-
-    allocate(params_used( count(param_type /= tp_unused)))
-    num_params_used=0
-    do i=1,num_params
-        if (param_type(i)/=tp_unused) then
-            num_params_used=num_params_used+1
-            params_used(num_params_used)=i
-        end if
-    end do
-
-    num_breaks=0
-    if (block_fast_likelihood_params) then
-        !put parameters for different likelihoods in separate blocks,
-        !so not randomly mix them and hence don't all need to be recomputed
-        first=.true.
-        do i=1,DataLikelihoods%Count
-            DataLike=>DataLikelihoods%Item(i)
-            do j=1, num_params_used-1
-                if (param_type(params_used(j))==tp_fast .and. params_used(j) >= DataLike%new_param_block_start &
-                .and. params_used(j) < DataLike%new_param_block_start + DataLike%new_params) then
-                    if (first) then
-                        first = .false.
-                    else
-                        num_breaks = num_breaks+1
-                        breaks(num_breaks)=j
-                    end if
-                    exit
-                end if
-            end do
-        end do
-    end if
-    num_breaks = num_breaks + 1
-    breaks(num_breaks) = num_params_used
-    if (Feedback>0 .and. MpiRank==0) then
-        write(*,*) 'Fast divided into ',num_breaks,' blocks'
-        if (num_breaks>1) write(*,*) 'Block breaks at: ',breaks(1:num_breaks-1)
-    end if
-
-    call orderIndices(breaks, num_breaks)
-
-    allocate(param_blocks(tp_semifast+num_breaks))
-    do speed= tp_slow, tp_semifast
-        allocate(param_blocks(speed)%P(count(param_type == speed)))
-        num_speed=0
-        do i=1,num_params_used
-            if (param_type(params_used(i))==speed) then
-                num_speed=num_speed+1
-                param_blocks(speed)%P(num_speed) = i
-            end if
-        end do
-    end do
-    ix=1
-    do speed = tp_fast, tp_fast+num_breaks-1
-        j = breaks(speed-tp_fast+1)
-        allocate(param_blocks(speed)%P(count(param_type(params_used(ix:j)) == tp_fast)))
-        num_speed=0
-        do i=ix,j
-            if (param_type(params_used(i))==tp_fast) then
-                num_speed=num_speed+1
-                param_blocks(speed)%P(num_speed) = i
-            end if
-        end do
-        ix=j+1
-    end do
-
-    call Proposer%Init(param_blocks, slow_block_max= 2, oversample_fast=oversample_fast)
-    num_slow = Proposer%Slow%n
-    num_fast = Proposer%Fast%n
-
-    if (Feedback > 0 .and. MpiRank==0) then
-        write(*,'(" Varying ",1I2," parameters (",1I2," slow (",1I2," semi-slow), ",1I2," fast (",1I2," semi-fast))")') &
-        num_params_used,num_slow, size(param_blocks(tp_semislow)%P), num_fast,size(param_blocks(tp_semifast)%P)
-    end if
-
-    allocate(initial_propose_matrix(num_params_used, num_params_used))
-    StartCovMat  = prop_mat/=''
-    call ReadSetCovMatrix(prop_mat, initial_propose_matrix)
-    call Proposer%SetCovariance(initial_propose_matrix)
-
-    test_likelihood = Ini_read_Logical_file(Ini,'test_likelihood', .false.)
-    if (test_likelihood) then
-        print *,'** Using test Gaussian likelihood from covariance + hard priors **'
-        prop_mat = trim(Ini_Read_String_File(Ini,'test_covariance'))
-        allocate(test_cov_matrix(num_params_used, num_params_used))
-        if (prop_mat=='') then
-            test_cov_matrix = initial_propose_matrix
-        else
-            call ReadSetCovMatrix(prop_mat, test_cov_matrix)
-        end if
-    end if
-
-    return
-100 call DoAbort('Error reading param details: '//trim(InLIne))
-101 call DoAbort('Error reading prior mean and stdd dev: '//trim(InLIne))
-
-    end subroutine Initalize
-
-    subroutine ReadSetCovMatrix(prop_mat, matrix)
-    character(LEN=*), intent(in) :: prop_mat
-    real(mcp) :: matrix(num_params_used, num_params_used)
-    real(mcp) pmat(num_params,num_params)
-    integer i
-
-    if (prop_mat/='') then
-        call IO_ReadProposeMatrix(pmat, prop_mat)
-
-        !If generated with constrained parameters, assume diagonal in those parameters
-        do i=1,num_params
-            if (pmat(i,i) ==0 .and. Scales%PWidth(i)/=0) then
-                pmat(i,i) = Scales%PWidth(i)**2
-                MPI_Max_R_ProposeUpdate = MPI_Max_R_ProposeUpdateNew
-            end if
-            !Enforce new constraints (should really be fixing the inverse...)
-            if (Scales%PWidth(i)==0) then
-                pmat(i,:) = 0
-                pmat(:,i) = 0
-            end if
-        end do
-
-        matrix = pmat(params_used, params_used)
-    else
-        matrix = 0
-        do i=1,num_params_used
-            matrix(i,i) = Scales%PWidth(params_used(i))**2
-        end do
-    end if
-    end subroutine ReadSetCovMatrix
 
     subroutine WriteIndepSample(P, like, mult)
     Type(ParamSet) P
@@ -618,15 +315,6 @@
             end do
             MPICovMat = MPICovMat / MPImean(0)
 
-            !Replace this with ALLGATHER
-            !MPICovMats(:,:,instance) = MPICovMat
-            !MPIMeans(:,instance) = MPIMean
-            !do i=1, MPIChains
-            !    j = i-1
-            !    call MPI_BCAST(MPICovMats(:,:,i),Size(MPICovMat),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
-            !    call MPI_BCAST(MPIMeans(:,i),Size(MPIMean),MPI_real_mcp,j,MPI_COMM_WORLD,ierror)
-            !end do
-
             call MPI_ALLGATHER(MPICovMat,Size(MPICovMat),MPI_real_mcp,MPICovmats,Size(MPICovmat), &
             MPI_real_mcp, MPI_COMM_WORLD,ierror)
             call MPI_ALLGATHER(MPIMean,Size(MPIMean),MPI_real_mcp,MPIMeans,Size(MPIMean), &
@@ -717,12 +405,13 @@
     logical, intent(in) :: isDone
     character(LEN=*), intent(in), optional :: Msg
     real(mcp), intent(in) :: R
+    integer unit
 
     if (MPiRank==0) then
-        call CreateTxtFile(trim(baseroot)//'.converge_stat',tmp_file_unit)
-        write(tmp_file_unit,*) real(R)
-        if (isDone) write(tmp_file_unit,'(a)') 'Done'
-        call CloseFile(tmp_file_unit)
+        unit = CreateNewTxtFile(trim(baseroot)//'.converge_stat')
+        write(unit,*) real(R)
+        if (isDone) write(unit,'(a)') 'Done'
+        close(unit)
     end if
     if (isDone) call DoStop(Msg)
 
@@ -803,7 +492,7 @@
     character(len=ParamNames_maxlen)  :: name
     integer, intent(in) :: i
 
-    name = ParamNames_NameOrNumber(NameMapping, params_used(i))
+    name = NameMapping%NameOrNumber(params_used(i))
 
     end function UsedParamNameOrNumber
 
@@ -833,7 +522,7 @@
     real(mcp), intent(in) :: mult, like
     integer j , len, unused
     logical, save :: first = .true.
-    Type(DataLikelihood), pointer :: DataLike
+    class(DataLikelihood), pointer :: DataLike
 
     if (first .and. new_chains) then
         first = .false.
@@ -865,7 +554,6 @@
     end if
 
     write(i) mult, like
-    !  write(i) num_matter_power
     write(i) Params%Likelihoods(1:DataLikelihoods%Count)
     write(i) Params%P(params_used)
 
@@ -882,7 +570,7 @@
     real(mcp), intent(out) :: mult, like
     logical, intent(out) :: has_likes(:)
     real(mcp), allocatable, save :: likes(:)
-    integer j, k, np, len, unused
+    integer j, k, np, len, unused, status
     character(LEN=80) :: name
     logical, save :: first = .true.
     integer, save :: numlikes, tmp(1)
@@ -895,7 +583,11 @@
     error = 0
     if (first) then
         first = .false.
-        read(i,end=100,err=100) j, np
+        read(i,iostat=status) j, np
+        if (status/=0) then
+            error=1
+            return
+        end if
         if (j/=3 .and. mcp==kind(1.0) .or. j/=4 .and. mcp/=kind(1.0)) &
         call MpiStop('ReadModel: wrong file format (old cosmomc version?)')
         if (np/=num_params_used) call MpiStop('ReadModel: number of parameters changed')
@@ -907,7 +599,7 @@
                 read(i) len
                 pname=''
                 read(i) pname(1:len)
-                current_param_indices(j) = ParamNames_index(NameMapping, pname)
+                current_param_indices(j) = NameMapping%index(pname)
             end do
             if (any(current_param_indices==-1)) call MpiStop('ReadModel: parameters in .data files could not be matched')
         else
@@ -938,83 +630,45 @@
     end if
 
     Params%Likelihoods=0
-    read(i,end = 100, err=100) mult, like
+    read(i,iostat=status) mult, like
+    if (status/=0) then
+        error=1
+        return
+    end if
     read(i) likes(1:numlikes)
     do j=1,numlikes
         if (like_indices(j)/=0) Params%Likelihoods(like_indices(j)) = likes(j)
     end do
-    Params%P= Scales%center
+    Params%P= BaseParams%center
     read(i) Params%P(current_param_indices)
     call Params%Theory%ReadTheory(i)
 
-    return
-100 error = 1
-
     end subroutine ReadModel
 
-    subroutine WriteParams(P, mult, like)
-    Type(ParamSet) P
-    real(mcp), intent(in) :: mult, like
-    real(mcp), allocatable :: output_array(:)
-    Type(mc_real_pointer) :: derived
-    integer numderived
 
-    if (outfile_handle ==0) return
+    !subroutine WriteParamsAndDat(P, mult, like)
+    !Type(ParamSet) P
+    !real(mcp), intent(in) :: mult, like
+    !real(mcp),allocatable :: output_array(:)
+    !Type(mc_real_pointer) :: derived
+    !integer numderived
+    !
+    !if (outfile_handle ==0) return
+    !
+    !numderived =Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
+    !
+    !allocate(output_array(num_params_used + numderived + P%Theory%num_k ))
+    !output_array(1:num_params_used) =  P%P(params_used)
+    !output_array(num_params_used+1:num_params_used+numderived) =  derived%P
+    !deallocate(derived%P)
+    !
+    !output_array(num_params_used+numderived+1:num_params_used+numderived+P%Theory%num_k) = &
+    !P%Theory%matter_power(:,1)
+    !
+    !call IO_OutputChainRow(outfile_handle, mult, like, output_array)
+    !deallocate(output_array)
+    !
+    !end  subroutine WriteParamsAndDat
 
-    if (generic_mcmc) then
-        call IO_OutputChainRow(outfile_handle, mult, like, P%P(params_used), num_params_used)
-    else
-        numderived = Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
 
-        allocate(output_array(num_params_used + numderived))
-        output_array(1:num_params_used) =  P%P(params_used)
-        output_array(num_params_used+1:num_params_used+numderived) =  derived%P
-        deallocate(derived%P)
-
-        call IO_OutputChainRow(outfile_handle, mult, like, output_array)
-        deallocate(output_array)
-    end if
-
-    end  subroutine WriteParams
-
-
-    subroutine WriteParamsAndDat(P, mult, like)
-    Type(ParamSet) P
-    real(mcp), intent(in) :: mult, like
-    real(mcp),allocatable :: output_array(:)
-    Type(mc_real_pointer) :: derived
-    integer numderived
-
-    if (outfile_handle ==0) return
-
-    numderived =Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
-
-    allocate(output_array(num_params_used + numderived + P%Theory%num_k ))
-    output_array(1:num_params_used) =  P%P(params_used)
-    output_array(num_params_used+1:num_params_used+numderived) =  derived%P
-    deallocate(derived%P)
-
-    output_array(num_params_used+numderived+1:num_params_used+numderived+P%Theory%num_k) = &
-    P%Theory%matter_power(:,1)
-
-    call IO_OutputChainRow(outfile_handle, mult, like, output_array)
-    deallocate(output_array)
-
-    end  subroutine WriteParamsAndDat
-
-    subroutine OutputParamRanges(Names, fname)
-    use ParamNames
-    Type(TParamNames) :: Names
-    character(len=*), intent(in) :: fname
-    integer unit,i
-
-    unit = new_file_unit()
-    call CreateTxtFile(fname,unit)
-    do i=1, Names%num_MCMC
-        write(unit,'(1A22,2E17.7)') ParamNames_NameOrNumber(Names,i), Scales%PMin(i),Scales%PMax(i)
-    end do
-    call CloseFile(unit)
-
-    end subroutine OutputParamRanges
-
-    end module ParamDef
+    end module Outputs

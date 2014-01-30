@@ -1,6 +1,6 @@
     program SolveCosmology
     ! This is a driving routine that illustrates the use of the program.
-    use IniFile
+    use IniObjects
     use MonteCarlo
     use ParamDef
     use settings
@@ -84,63 +84,63 @@
     call TNameValueList_Init(CustomParams%L)
     call TNameValueList_Init(CustomParams%ReadValues)
 
-    if (Ini_HasKey('local_dir')) LocalDir=ReadIniFileName(DefIni,'local_dir')
-    if (Ini_HasKey('data_dir')) DataDir=ReadIniFileName(DefIni,'data_dir')
+    if (Ini%HasKey('local_dir')) LocalDir=ReadIniFileName(DefIni,'local_dir')
+    if (Ini%HasKey('data_dir')) DataDir=ReadIniFileName(DefIni,'data_dir')
 
-    if (Ini_HasKey('custom_params')) then
+    if (Ini%HasKey('custom_params')) then
         fname = ReadIniFileName(DefIni,'custom_params')
         if (fname/='') then
             file_unit = new_file_unit()
-            call  Ini_Open_File(CustomParams,  fname, file_unit, bad)
+            call  CustomParams%Open(fname, file_unit, bad)
             call ClearFileUnit(file_unit)
             if (bad) call DoAbort('Error reading custom_params parameter file')
         end if
     end if
 
-    action = Ini_Read_Int('action',action_MCMC)
+    action = Ini%Read_Int('action',action_MCMC)
 
-    generic_mcmc = Ini_Read_Logical('generic_mcmc',generic_mcmc)
-    
-    propose_scale = Ini_Read_Real('propose_scale',2.4)
+    generic_mcmc = Ini%Read_Logical('generic_mcmc',generic_mcmc)
 
-    HighAccuracyDefault = Ini_Read_Logical('high_accuracy_default',.false.)
-    AccuracyLevel = Ini_Read_Real('accuracy_level',1.)
+    propose_scale = Ini%Read_Real('propose_scale',2.4)
 
-    if (Ini_HasKey('highL_unlensed_cl_template')) then
+    HighAccuracyDefault = Ini%Read_Logical('high_accuracy_default',.false.)
+    AccuracyLevel = Ini%Read_Real('accuracy_level',1.)
+
+    if (Ini%HasKey('highL_unlensed_cl_template')) then
         highL_unlensed_cl_template=  ReadIniFilename(DefIni,'highL_unlensed_cl_template')
     else
         highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
     end if
 
     if (action==action_MCMC) then
-        checkpoint = Ini_Read_Logical('checkpoint',.false.)
+        checkpoint = Ini%Read_Logical('checkpoint',.false.)
         if (checkpoint) flush_write = .true.
-        start_at_bestfit= Ini_read_logical('start_at_bestfit',.false.)
+        start_at_bestfit= Ini%read_logical('start_at_bestfit',.false.)
     end if
 
 
 #ifdef MPI
     MPI_StartTime = MPI_WTime()
     if (action==action_MCMC) then
-        MPI_R_Stop = Ini_Read_Real('MPI_Converge_Stop',MPI_R_Stop)
-        MPI_LearnPropose = Ini_Read_Logical('MPI_LearnPropose',.true.)
+        MPI_R_Stop = Ini%Read_Real('MPI_Converge_Stop',MPI_R_Stop)
+        MPI_LearnPropose = Ini%Read_Logical('MPI_LearnPropose',.true.)
         if (MPI_LearnPropose) then
-            MPI_R_StopProposeUpdate=Ini_Read_Real('MPI_R_StopProposeUpdate',0.)
-            MPI_Max_R_ProposeUpdate=Ini_Read_Real('MPI_Max_R_ProposeUpdate',2.)
-            MPI_Max_R_ProposeUpdateNew=Ini_Read_Real('MPI_Max_R_ProposeUpdateNew',30.)
+            MPI_R_StopProposeUpdate=Ini%Read_Real('MPI_R_StopProposeUpdate',0.)
+            MPI_Max_R_ProposeUpdate=Ini%Read_Real('MPI_Max_R_ProposeUpdate',2.)
+            MPI_Max_R_ProposeUpdateNew=Ini%Read_Real('MPI_Max_R_ProposeUpdateNew',30.)
         end if
-        MPI_Check_Limit_Converge = Ini_Read_Logical('MPI_Check_Limit_Converge',.false.)
-        MPI_StartSliceSampling = Ini_Read_Logical('MPI_StartSliceSampling',.false.)
+        MPI_Check_Limit_Converge = Ini%Read_Logical('MPI_Check_Limit_Converge',.false.)
+        MPI_StartSliceSampling = Ini%Read_Logical('MPI_StartSliceSampling',.false.)
         if (MPI_Check_Limit_Converge) then
-            MPI_Limit_Converge = Ini_Read_Real('MPI_Limit_Converge',0.025)
-            MPI_Limit_Converge_Err = Ini_Read_Real('MPI_Limit_Converge_Err',0.3)
-            MPI_Limit_Param = Ini_Read_Int('MPI_Limit_Param',0)
+            MPI_Limit_Converge = Ini%Read_Real('MPI_Limit_Converge',0.025)
+            MPI_Limit_Converge_Err = Ini%Read_Real('MPI_Limit_Converge_Err',0.3)
+            MPI_Limit_Param = Ini%Read_Int('MPI_Limit_Param',0)
         end if
     end if
 
 #endif
 
-    stop_on_error = Ini_Read_logical('stop_on_error',stop_on_error)
+    stop_on_error = Ini%Read_logical('stop_on_error',stop_on_error)
 
     Ini_fail_on_not_found = .true.
 
@@ -148,7 +148,7 @@
     if(instance<=1) then
         write(*,*) 'file_root:'//trim(baseroot)
     end if
-    if (Ini_HasKey('root_dir')) then
+    if (Ini%HasKey('root_dir')) then
         !Begin JD modifications for output of filename in output file
         rootdir = ReadIniFileName(DefIni,'root_dir')
         baseroot = trim(rootdir)//trim(baseroot)
@@ -176,7 +176,7 @@
 
     if (action == action_importance) call ReadPostParams(baseroot)
 
-    FeedBack = Ini_Read_Int('feedback',0)
+    FeedBack = Ini%Read_Int('feedback',0)
     FileChangeIni = trim(rootname)//'.read'
 
     if (action == action_MCMC) then
@@ -188,29 +188,29 @@
             logfile_unit = 0
         end if
 
-        indep_sample = Ini_Read_Int('indep_sample')
+        indep_sample = Ini%Read_Int('indep_sample')
         if (indep_sample /=0) then
             fname = trim(rootname)//'.data'
             indepfile_handle = IO_DataOpenForWrite(fname, append = .not. new_chains)
         end if
 
         Ini_fail_on_not_found = .false.
-        burn_in = Ini_Read_Int('burn_in',0)
-        sampling_method = Ini_Read_Int('sampling_method',sampling_metropolis)
+        burn_in = Ini%Read_Int('burn_in',0)
+        sampling_method = Ini%Read_Int('sampling_method',sampling_metropolis)
         if (sampling_method > 7 .or. sampling_method<1) call DoAbort('Unknown sampling method')
-        if (sampling_method==sampling_slowgrid) directional_grid_steps = Ini_Read_Int('directional_grid_steps',20)
+        if (sampling_method==sampling_slowgrid) directional_grid_steps = Ini%Read_Int('directional_grid_steps',20)
         if (sampling_method==sampling_fast_dragging) then
-            dragging_steps = Ini_Read_Real('dragging_steps',2.)
+            dragging_steps = Ini%Read_Real('dragging_steps',2.)
             use_fast_slow = .true.
         else
-            use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
+            use_fast_slow = Ini%read_Logical('use_fast_slow',.true.)
         end if
     else
-        if (action == action_maxlike) use_fast_slow = Ini_read_Logical('use_fast_slow',.true.)
+        if (action == action_maxlike) use_fast_slow = Ini%read_Logical('use_fast_slow',.true.)
         Ini_fail_on_not_found = .false.
     end if
 
-    numstr = Ini_Read_String('rand_seed')
+    numstr = Ini%Read_String('rand_seed')
     if (numstr /= '') then
         read(numstr,*) i
         call InitRandom(i)
@@ -219,24 +219,24 @@
     end if
 
     if (.not. generic_mcmc) then
-        pivot_k = Ini_Read_Real('pivot_k',0.05)
-        inflation_consistency = Ini_read_Logical('inflation_consistency',.false.)
-        bbn_consistency = Ini_Read_Logical('bbn_consistency',.true.)
-        num_massive_neutrinos = Ini_read_int('num_massive_neutrinos',-1)
+        pivot_k = Ini%Read_Real('pivot_k',0.05)
+        inflation_consistency = Ini%read_Logical('inflation_consistency',.false.)
+        bbn_consistency = Ini%Read_Logical('bbn_consistency',.true.)
+        num_massive_neutrinos = Ini%read_int('num_massive_neutrinos',-1)
 
         call SetDataLikelihoods(DefIni)
         call DataLikelihoods%CheckAllConflicts
         if(use_LSS) call Initialize_PKSettings()
     end if
 
-    Temperature = Ini_Read_Real('temperature',1.)
+    Temperature = Ini%Read_Real('temperature',1.)
 
-    num_threads = Ini_Read_Int('num_threads',0)
+    num_threads = Ini%Read_Int('num_threads',0)
     !$ if (num_threads /=0) call OMP_SET_NUM_THREADS(num_threads)
 
-    estimate_propose_matrix = Ini_Read_Logical('estimate_propose_matrix',.false.)
+    estimate_propose_matrix = Ini%Read_Logical('estimate_propose_matrix',.false.)
     if (estimate_propose_matrix) then
-        if (Ini_Read_String('propose_matrix') /= '') &
+        if (Ini%Read_String('propose_matrix') /= '') &
         call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
     end if
     want_minimize = action == action_maxlike .or. action==action_Hessian &
@@ -245,13 +245,19 @@
 
     Ini_fail_on_not_found = .true.
 
-    numtoget = Ini_Read_Int('samples')
+    numtoget = Ini%Read_Int('samples')
 
     call SetTheoryParameterization(DefIni, NameMapping)
     call DataLikelihoods%AddNuisanceParameters(NameMapping)
     if (.not. generic_mcmc) call CosmoTheory_ReadParams(DefIni)
-    call InitializeUsedParams(DefIni,Params, action /= action_importance)
 
+    call BaseParams%InitializeUsedParams(DefIni,Params)
+    call Sampler%SetProposalParams(Ini)
+    call Sampler%ReadCovmat(Ini, action /= action_importance)
+    
+    call LikeCalculator%ReadParams(Ini, sampler%initial_propose_matrix)
+
+   
     if (want_minimize) call Minimize_ReadIni(DefIni)
 
     if (MpiRank==0) then
@@ -263,11 +269,11 @@
         call TheoryCalculator%VersionTraceOutput(DefIni%ReadValues)
         unit = new_file_unit()
         if (action==action_importance) then
-            call Ini_SaveReadValues(trim(PostParams%redo_outroot) //'.inputparams',unit)
+            call Ini%SaveReadValues(trim(PostParams%redo_outroot) //'.inputparams',unit)
         else if (action==action_maxlike .or. action==action_Hessian) then
-            call Ini_SaveReadValues(trim(baseroot) //'.minimum.inputparams',unit)
+            call Ini%SaveReadValues(trim(baseroot) //'.minimum.inputparams',unit)
         else
-            call Ini_SaveReadValues(trim(baseroot) //'.inputparams',unit)
+            call Ini%SaveReadValues(trim(baseroot) //'.inputparams',unit)
         end if
         call ClearFileUnit(unit)
     end if
@@ -276,7 +282,7 @@
 
     if (MpiRank==0 .and. action==action_MCMC .and. NameMapping%nnames/=0) then
         call IO_OutputParamNames(NameMapping,trim(baseroot), params_used, add_derived = .true.)
-        call OutputParamRanges(NameMapping, trim(baseroot)//'.ranges')
+        call BaseParams%OutputParamRanges(NameMapping, trim(baseroot)//'.ranges')
     end if
 
     call SetIdlePriority !If running on Windows
@@ -292,10 +298,11 @@
                 if (bestfit_loglike==logZero) write(*,*) MpiRank,'WARNING: FindBestFit did not converge'
                 if (Feedback >0) write(*,*) 'Best-fit results: '
                 call WriteBestFitParams(bestfit_loglike,Params, trim(baseroot)//'.minimum')
+                call DataLikelihoods%WriteDataForLikelihoods(Params%P, Params%Theory, trim(baseroot))
                 if (use_CMB) call Params%Theory%WriteBestFitData(trim(baseroot))
                 if (action==action_maxlike) call DoStop('Wrote the minimum to file '//trim(baseroot)//'.minimum')
             else
-                if (action==action_maxlike) call DoStop() 
+                if (action==action_maxlike) call DoStop()
             end if
         end if
 #ifdef MPI

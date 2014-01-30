@@ -16,7 +16,7 @@
     use constants
     use Precision
     use likelihood
-    use IniFile
+    use IniObjects
     implicit none
 
     type, extends(CosmologyLikelihood) :: BAOLikelihood
@@ -50,15 +50,15 @@
     subroutine BAOLikelihood_Add(LikeList, Ini)
     use settings
     class(LikelihoodList) :: LikeList
-    Type(TIniFile) :: ini
+    class(TIniFile) :: ini
     Type(BAOLikelihood), pointer :: like
     integer numbaosets, i
 
-    if (Ini_Read_Logical_File(Ini, 'use_BAO',.false.)) then
-        numbaosets = Ini_Read_Int_File(Ini,'bao_numdatasets',0)
+    if (Ini%Read_Logical('use_BAO',.false.)) then
+        numbaosets = Ini%Read_Int('bao_numdatasets',0)
         if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
-        if (Ini_Haskey_file(Ini,'BAO_fixed_rs')) then
-            BAO_fixed_rs= Ini_Read_Double_File(Ini,'BAO_fixed_rs',-1._dl)
+        if (Ini%Haskey('BAO_fixed_rs')) then
+            BAO_fixed_rs= Ini%Read_Double('BAO_fixed_rs',-1._dl)
         end if
         do i= 1, numbaosets
             allocate(like)
@@ -82,9 +82,9 @@
 
     Ini_fail_on_not_found = .false.
     if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(like%name)
-    like%num_bao = Ini_Read_Int_File(Ini,'num_bao',0)
+    like%num_bao = Ini%Read_Int('num_bao',0)
     if (like%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
-    like%type_bao = Ini_Read_Int_File(Ini,'type_bao',1)
+    like%type_bao = Ini%Read_Int('type_bao',1)
     if(like%type_bao /= 3 .and. like%type_bao /=2 .and. like%type_bao /=4) then
         write(*,*) like%type_bao
         write(*,*)'ERROR: Invalid bao type specified in BAO dataset: '//trim(like%name)
@@ -112,7 +112,7 @@
         allocate(like%bao_invcov(like%num_bao,like%num_bao))
         like%bao_invcov=0
 
-        if (Ini_HasKey_File(Ini,bao_invcov_file)) then
+        if (Ini%HasKey(bao_invcov_file)) then
             bao_invcov_file  = ReadIniFileName(Ini,'bao_invcov_file')
             call OpenTxtFile(bao_invcov_file, tmp_file_unit)
             do i=1,like%num_bao
