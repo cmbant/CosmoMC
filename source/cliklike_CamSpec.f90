@@ -2,6 +2,7 @@
     use cmbtypes
     use settings
     use temp_like_camspec
+    use pol_like_camspec
     use Likelihood
 #ifdef highL
     use HIGHELL_OPTIONS
@@ -13,6 +14,14 @@
     contains
     procedure :: LogLike => CamSpecLogLike
     end type CamSpeclikelihood
+
+    type, extends(CosmologyLikelihood) :: CamPollikelihood
+    contains
+    procedure :: LogLike => CamPolLogLike
+    end type CamPollikelihood
+
+
+
 
 #ifdef highL
     type, extends(CosmologyLikelihood) :: highLLikelihood
@@ -34,9 +43,9 @@
     Type(TIniFile) Ini
     class(LikelihoodList) :: LikeList
     character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
-    beamfilename, kszfilename,tszxcibfilename, tmp, marge_modes
+    beamfilename, kszfilename,tszxcibfilename, tmp, marge_modes, polfilename
     Class(CosmologyLikelihood), pointer :: Like
-    logical :: use_CAMspec
+    logical :: use_CAMspec, use_CAMpol
     logical :: use_highL
     logical :: pre_marged
 
@@ -105,8 +114,26 @@
 #endif
     end if
 
-    end subroutine nonclik_readParams
+    use_CAMpol=Ini_Read_Logical_File(Ini,'use_CAMpol',.false.)
 
+    if(use_CAMpol) then
+       print *,'using non-clik CAMpol likelihood'
+       allocate(campollikelihood::like)
+       call LikeList%Add(Like)
+       Like%LikelihoodType = 'CMB'
+       Like%name='campol'
+       Like%speed = 5
+       Like%needs_powerspectra=.true.
+
+       polfilename=ReadIniFileName(Ini,'pollikefile',NotFoundFail = .true. )
+       
+       Like%version= ExtractFileName(polfilename)
+
+       call pol_like_init(polfilename)
+
+    end if
+
+    end subroutine nonclik_readParams
 
     real(mcp) function CamspecLogLike(like, CMB, Theory, DataParams)
     Class(CamSpeclikelihood) :: like
@@ -141,6 +168,41 @@
     if (Feedback>2) Print*,'CamSpec lnlike = ',nonclik_lnlike_camSpec
 
     end function nonclik_lnlike_camSpec
+
+
+    real(mcp) function CampolLogLike(like, CMB, Theory, DataParams)
+    Class(CamPollikelihood) :: like
+    Class (CMBParams) CMB
+    Class(TheoryPredictions) Theory
+    real(mcp) acl(lmax,num_cls_tot)
+    real(mcp) DataParams(:)
+
+    call ClsFromTheoryData(Theory, acl)
+    !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as
+    !freq_params(35:44), ACT/SPT as freq_params(45:65)
+    CampolLogLike = nonclik_lnlike_campol(acl)
+    end function CampolLogLike
+
+
+    function nonclik_lnlike_campol(cl)
+    real(dp) :: nonclik_lnlike_campol
+    real(mcp), intent(in) :: cl(lmax,num_cls_tot)
+    integer, parameter :: lmin=2
+    real(dp) zlike, cell_cmbx(0:lmax), cell_cmbe(0:lmax)
+    integer L
+
+    do L=lmin,lmax
+        cell_cmbx(L)=cl(L,2)/twopi !this is a georgeism
+        cell_cmbe(L)=cl(L,3)/twopi !this is a georgeism
+    enddo
+
+    call pol_calc_like(zlike,  cell_cmbx, cell_cmbe)
+
+    nonclik_lnlike_campol = zlike/2
+
+    if (Feedback>2) Print*,'Campol lnlike = ',nonclik_lnlike_campol
+
+    end function nonclik_lnlike_campol
 
 #ifdef highL
     real(mcp) function highLLogLike(like, CMB, Theory, DataParams)

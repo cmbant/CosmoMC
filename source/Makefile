@@ -96,6 +96,7 @@ PLANCKLIKEFILES=
 
 ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
 PLANCKLIKEFILES +=  temp_like.o
+PLANCKLIKEFILES +=  pol_like.o
 endif
 
 ifneq ($(PLANCKLIKE),)
@@ -144,7 +145,7 @@ IO.o: ParamNames.o settings.o
 samples.o: ObjectLists.o settings.o
 likelihood.o: ObjectLists.o settings.o ParamNames.o
 DataLikelihoods.o: likelihood.o paramdef.o $(DATAMODULES)
-cliklike_CamSpec.o: temp_like.o cmbtypes.o
+cliklike_CamSpec.o: temp_like.o pol_like.o cmbtypes.o
 cliklike.o: cmbtypes.o
 settings.o: ../camb/libcamb_$(RECOMBINATION).a
 cmbtypes.o: settings.o likelihood.o GeneralTypes.o
