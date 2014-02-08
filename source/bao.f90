@@ -50,7 +50,7 @@
     subroutine BAOLikelihood_Add(LikeList, Ini)
     use settings
     class(LikelihoodList) :: LikeList
-    class(TIniFile) :: ini
+    class(TSettingIni) :: ini
     Type(BAOLikelihood), pointer :: like
     integer numbaosets, i
 
@@ -62,7 +62,7 @@
         end if
         do i= 1, numbaosets
             allocate(like)
-            call like%ReadDatasetFile(ReadIniFileName(Ini,numcat('bao_dataset',i)))
+            call like%ReadDatasetFile(Ini%ReadFileName(numcat('bao_dataset',i)))
             like%LikelihoodType = 'BAO'
             like%needs_background_functions = .true.
             call LikeList%Add(like)
@@ -76,11 +76,10 @@
     use MatrixUtils
     use settings
     class(BAOLikelihood) like
-    type(TIniFile) :: Ini
+    type(TSettingIni) :: Ini
     character(LEN=Ini_max_string_len) :: bao_measurements_file, bao_invcov_file
     integer i,iopb
 
-    Ini_fail_on_not_found = .false.
     if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(like%name)
     like%num_bao = Ini%Read_Int('num_bao',0)
     if (like%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
@@ -95,7 +94,7 @@
     allocate(like%bao_obs(like%num_bao))
     allocate(like%bao_err(like%num_bao))
 
-    bao_measurements_file = ReadIniFileName(Ini,'bao_measurements_file')
+    bao_measurements_file = Ini%ReadFileName('bao_measurements_file')
     call OpenTxtFile(bao_measurements_file, tmp_file_unit)
     do i=1,like%num_bao
         read (tmp_file_unit,*, iostat=iopb) like%bao_z(i),like%bao_obs(i),like%bao_err(i)
@@ -104,16 +103,16 @@
 
     if (like%name == 'DR7') then
         !don't used observed value, probabilty distribution instead
-        call BAO_DR7_init(ReadIniFileName(Ini,'prob_dist'))
+        call BAO_DR7_init(Ini%ReadFileName('prob_dist'))
     elseif (like%name == 'DR11CMASS') then
         !don't used observed value, probabilty distribution instead
-        call BAO_DR11_init(ReadIniFileName(Ini,'prob_dist'))
+        call BAO_DR11_init(Ini%ReadFileName('prob_dist'))
     else
         allocate(like%bao_invcov(like%num_bao,like%num_bao))
         like%bao_invcov=0
 
         if (Ini%HasKey(bao_invcov_file)) then
-            bao_invcov_file  = ReadIniFileName(Ini,'bao_invcov_file')
+            bao_invcov_file  = Ini%ReadFileName('bao_invcov_file')
             call OpenTxtFile(bao_invcov_file, tmp_file_unit)
             do i=1,like%num_bao
                 read (tmp_file_unit,*, iostat=iopb) like%bao_invcov(i,:)

@@ -1,29 +1,33 @@
     module GeneralTypes
     use settings
     use likelihood
-    
+    use ObjectLists
+
+    Type, extends(TSaveLoadStateObject) :: TCheckpointable
+    end Type
+
     Type TTheoryParams
         real(mcp) :: BaseParams(max_theory_params) = 0._mcp
     end Type TTheoryParams
 
     Type TTheoryIntermediateCache
         !Cache of intermediate steps in the theory calculation that may be (partly) reused for other points
-        real(mcp) lastParamArray(max_num_params)
-        logical :: validInfo = .false.
     contains
     procedure :: Clear => TTheoryIntermediateCache_Clear
-    procedure :: Initialize => TTheoryIntermediateCache_Initialize
     end Type TTheoryIntermediateCache
 
     Type TCalculationAtParamPoint
         !Parameter values, calculated theory and intermediates and likelihoods at a particular point in parameter space
         real(mcp) :: P(max_num_params)
         real(mcp) :: likelihoods(max_likelihood_functions)
+        real(mcp) :: lastParamArray(max_num_params)
+        logical :: validInfo = .false.
         class(TTheoryPredictions), pointer :: Theory => null()
         class(TTheoryIntermediateCache), pointer :: Info => null()
     contains
     procedure :: Clear => TCalculationAtParamPoint_Clear
     procedure :: WriteParams => TCalculationAtParamPoint_WriteParams
+    procedure :: AcceptReject => TCalculationAtParamPoint_AcceptReject
     end Type TCalculationAtParamPoint
 
     !Each descendant of the base TConfigClass below has a Config element which point to a TGeneralConfig instance taht determines
@@ -35,10 +39,9 @@
     procedure :: SetTheoryParameterization => TGeneralConfig_SetTheoryParameterization
     procedure :: SetParameterizationName => TGeneralConfig_SetParameterizationName
     procedure :: NewTheory => TGeneralConfig_NewTheory
-    procedure :: NewTheoryParams => TGeneralConfig_NewTheoryParams
     end Type
 
-    Type :: TConfigClass
+    Type, extends(TCheckpointable) :: TConfigClass
         class(TGeneralConfig), pointer :: Config
     contains
     procedure :: InitConfig  => TConfigClass_InitConfig
@@ -59,11 +62,12 @@
     Type, extends(TConfigClass) :: TTheoryCalculator
         character(LEN=128) :: calcName = 'TheoryCalculator'
     contains
-    procedure :: AcceptReject => TTheoryCalculator_AcceptReject
     procedure :: Error => TTheoryCalculator_Error
     procedure :: ErrorNotImplemented => TTheoryCalculator_ErrorNotImplemented
     procedure :: VersionTraceOutput => TTheoryCalculator_VersionTraceOutput
-    contains
+    procedure :: ReadImportanceParams => TTheoryCalculator_ReadImportanceParams
+    procedure :: ReadParams => TTheoryCalculator_ReadParams
+    procedure :: GetTheoryForImportance => TTheoryCalculator_GetTheoryForImportance
     end Type TTheoryCalculator
 
     type, extends(TConfigClass)  :: TParameterization
@@ -72,6 +76,7 @@
     procedure :: CalcDerivedParams=> TParameterization_CalcDerivedParams
     procedure :: Initialize => TParameterization_Initialize
     procedure :: NonBaseParameterPriors => TParameterization_NonBaseParameterPriors
+    procedure :: NewTheoryParams => TParameterization_NewTheoryParams
     end type TParameterization
 
     Type, extends(TParameterization) :: GenericParameterization
@@ -79,6 +84,7 @@
     end type GenericParameterization
 
     contains
+
 
     subroutine ParamArrayToTheoryParams(this, Params, CMB)
     class(TParameterization) :: this
@@ -91,15 +97,15 @@
 
     subroutine TParameterization_Initialize(this, Ini, Names, DefaultName, Config)
     class(TParameterization) :: this
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     class(TParamNames) :: Names
     character(LEN=*), intent(in) :: DefaultName
     class(TGeneralConfig), target :: Config
-    character(LEN=Ini_max_string_len) :: ParamNamesFile = ''
+    character(LEN=:), allocatable :: ParamNamesFile
 
     call this%TConfigClass%Init(Config)
 
-    ParamNamesFile = ReadIniFileName(Ini,'ParamNamesFile', NotFoundFail=.false.)
+    ParamNamesFile = Ini%ReadFileName('ParamNamesFile', NotFoundFail=.false.)
     if (ParamNamesFile =='' .and. DefaultName/='') ParamNamesFile= trim(LocalDir)//trim(DefaultName)
 
     if (ParamNamesFile /='') then
@@ -135,6 +141,15 @@
     allocate(Derived%P(num_derived))
 
     end function TParameterization_CalcDerivedParams
+
+    subroutine TParameterization_NewTheoryParams(this,TheoryParams)
+    class(TParameterization) :: this
+    class(TTheoryParams), allocatable :: TheoryParams
+
+    allocate(TTheoryParams::TheoryParams)
+
+    end subroutine TParameterization_NewTheoryParams
+
 
     !!!TTheoryPredictions
 
@@ -187,14 +202,22 @@
     end subroutine TCalculationAtParamPoint_Clear
 
 
-    function GetDerivedParameters(P, Theory, derived) result (num_derived)
-    real(mcp) :: P(:)
-    class(TTheoryPredictions) :: Theory
-    Type(mc_real_pointer) :: derived
-    integer num_derived
+    subroutine TCalculationAtParamPoint_AcceptReject(this, Trial, accpt)
+    !Handle freeing of memory of internal info: if accpt then clear this, otherwise clear Trial
+    class(TCalculationAtParamPoint) :: this
+    class(TCalculationAtParamPoint) :: Trial
+    logical, intent(in) :: accpt
 
+    if (.not. associated(this%Info, Trial%Info)) then
+        !If they point to same memory don't need to free anything
+        if (accpt) then
+            call this%Clear(keep = Trial)
+        else
+            call Trial%Clear(keep = this)
+        end if
+    end if
 
-    end function GetDerivedParameters
+    end subroutine TCalculationAtParamPoint_AcceptReject
 
 
     subroutine TCalculationAtParamPoint_WriteParams(this, Config, mult, like)
@@ -229,16 +252,34 @@
     subroutine TTheoryIntermediateCache_Clear(Info)
     class(TTheoryIntermediateCache) Info
 
-    call Info%Initialize()
-
     end subroutine TTheoryIntermediateCache_Clear
 
-    subroutine TTheoryIntermediateCache_Initialize(Info)
-    class(TTheoryIntermediateCache) Info
+    !!! TTheoryCalculator
 
-    Info%validInfo = .false.
+    subroutine TTheoryCalculator_ReadParams(this, Ini)
+    class(TTheoryCalculator) :: this
+    class(TSettingIni) :: Ini
 
-    end subroutine TTheoryIntermediateCache_Initialize
+    end subroutine TTheoryCalculator_ReadParams
+
+    subroutine TTheoryCalculator_ReadImportanceParams(this, Ini)
+    class(TTheoryCalculator) :: this
+    class(TSettingIni) :: Ini
+
+    end subroutine TTheoryCalculator_ReadImportanceParams
+
+    subroutine TTheoryCalculator_GetTheoryForImportance(this, CMB, Theory, error)
+    class(TTheoryCalculator) :: this
+    class(*) :: CMB
+    class(*) :: Theory
+    integer error
+
+    error=0
+    !calculate power spectra from scratch (for importance sampling)
+    !Theory may already be calculated, so only fill in missing bits (DoCls, DoPk) + derived
+    call this%ErrorNotImplemented('GetTheoryForImportance')
+
+    end subroutine TTheoryCalculator_GetTheoryForImportance
 
 
     subroutine TTheoryCalculator_VersionTraceOutput(this, ReadValues)
@@ -308,10 +349,10 @@
     !!TGeneralConfig
     subroutine TGeneralConfig_SetTheoryParameterization(this, Ini, Names, defaultParam)
     class(TGeneralConfig) :: this
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     class(TParamNames) :: Names
     character(LEN=*), intent(in) :: defaultParam
-    character(LEN=Ini_max_string_len) :: paramtxt
+    character(LEN=:), allocatable :: paramtxt
 
     paramtxt = Ini%Read_String_Default('parameterization', defaultParam)
     if (.not. this%SetParameterizationName(paramtxt,Ini, Names)) then
@@ -323,9 +364,8 @@
     function TGeneralConfig_SetParameterizationName(this, nametag, Ini, Names) result(OK)
     class(TGeneralConfig) :: this
     character(LEN=*), intent(in) :: nametag
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     class(TParamNames) :: Names
-    character(LEN=Ini_max_string_len) :: paramtxt
     logical OK
     Type(GenericParameterization), pointer :: GenParam
 
@@ -350,12 +390,5 @@
 
     end function TGeneralConfig_NewTheory
 
-    subroutine TGeneralConfig_NewTheoryParams(this,TheoryParams)
-    class(TGeneralConfig) :: this
-    class(TTheoryParams), allocatable :: TheoryParams
-
-    allocate(TTheoryParams::TheoryParams)
-
-    end subroutine TGeneralConfig_NewTheoryParams
 
     end module GeneralTypes

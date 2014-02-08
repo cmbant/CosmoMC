@@ -1,7 +1,6 @@
     module DataLikelihoodList
     use likelihood
-    use IniObjects
-    use ParamDef
+    use settings
     implicit none
 
     contains
@@ -12,7 +11,7 @@
     use cmbdata
     use bao
     use mpk
-    class(TIniFile), intent(in) :: Ini
+    class(TSettingIni), intent(in) :: Ini
 
     get_sigma8 = Ini%Read_Logical('get_sigma8',.false.)
 

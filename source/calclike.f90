@@ -3,10 +3,10 @@
     use GeneralTypes
     use BaseParameters
     implicit none
-
-    real(mcp) :: Temperature  = 1
+    private
 
     Type, extends(TConfigClass) :: TLikeCalculator
+        real(mcp) :: Temperature =1
         logical :: test_likelihood= .false.
         real(mcp), allocatable :: test_cov_matrix(:,:)
     contains
@@ -17,14 +17,15 @@
     procedure :: GetLogLikeMain
     procedure :: ReadParams => TLikeCalculator_ReadParams
     procedure :: TestLikelihoodFunction => TLikeCalculator_TestLikelihoodFunction
+    procedure :: WritePerformanceStats => TLikeCalculator_WritePerformanceStats
     end type TLikeCalculator
 
-    type, extends(TLikeCalculator) :: GenericLikeCalculator
+    type, extends(TLikeCalculator) :: TGenericLikeCalculator
     contains
     procedure :: GetLogLikeMain => Generic_GetLogLikeMain
-    end type GenericLikeCalculator
+    end type TGenericLikeCalculator
 
-    type, extends(TLikeCalculator) :: TheoryLikeCalculator
+    type, extends(TLikeCalculator) :: TTheoryLikeCalculator
         class(TTheoryParams), allocatable :: TheoryParams
         class(TCalculationAtParamPoint), pointer :: Params
         logical changeMask(max_num_params)
@@ -33,12 +34,25 @@
     procedure :: GetLogLikeMain => TheoryLike_GetLogLikeMain
     procedure :: GetLogLikePost => TheoryLike_GetLogLikePost
     procedure :: SetTheoryParams => TheoryLike_SetTheoryParams
-    procedure :: CheckProirCuts => TheoryLike_CheckPriorCuts
+    procedure :: CheckPriorCuts => TheoryLike_CheckPriorCuts
     procedure :: CalculateRequiredTheoryChanges =>TheoryLike_CalculateRequiredTheoryChanges
     procedure :: GetTheoryForLike=>TheoryLike_GetTheoryForLike
+    procedure :: GetTheoryForImportance=>TheoryLike_GetTheoryForImportance    
     procedure :: GetLogLikeWithTheorySet => TheoryLike_LogLikeWithTheorySet
-    end type TheoryLikeCalculator
+    procedure :: UpdateTheoryForLikelihoods => TheoryLike_UpdateTheoryForLikelihoods
+    end type TTheoryLikeCalculator
 
+    type, extends(TCheckpointable) :: TLikelihoodUser
+        class(TLikeCalculator), pointer :: LikeCalculator => null()
+    end type
+
+    type, extends(TCheckpointable) :: TTheoryLikelihoodUser
+        class(TTheoryLikeCalculator), pointer :: LikeCalculator => null()
+    contains
+       procedure :: ReadParams => TTheoryLikelihoodUser_ReadParams
+    end type
+
+    public TLikeCalculator, TGenericLikeCalculator, TTheoryLikeCalculator, TLikelihoodUser, TTheoryLikelihoodUser
     contains
 
     subroutine AddLike(this, CurrentLike, LikeToAdd)
@@ -50,7 +64,7 @@
         if (LikeToAdd == logZero) then
             CurrentLike = LogZero
         else
-            CurrentLike = CurrentLike + LikeToAdd/Temperature
+            CurrentLike = CurrentLike + LikeToAdd/this%Temperature
         end if
     end if
     end subroutine AddLike
@@ -110,24 +124,24 @@
     LogLike = LogZero !error - must be overridden
 
     end function GetLogLikeMain
-    
-    subroutine TLikeCalculator_ReadParams(this, Ini, initial_propose_matrix)
+
+    subroutine TLikeCalculator_ReadParams(this, Ini)
     class(TLikeCalculator) :: this
     class(TIniFile) :: Ini
-    real(mcp) :: initial_propose_matrix(:,:)
-    character(LEN=Ini_Max_String_Len) :: covMatrix
+    character(LEN=:), pointer :: covMatrix
 
     this%test_likelihood = Ini%Read_Logical('test_likelihood', .false.)
     if (this%test_likelihood) then
         print *,'** Using test Gaussian likelihood from covariance + hard priors **'
-        covMatrix = trim(Ini%Read_String('test_covariance'))
+        covMatrix => Ini%Read_String('test_covariance')
         allocate(this%test_cov_matrix(num_params_used, num_params_used))
         if (covMatrix=='') then
-            this%test_cov_matrix = initial_propose_matrix
+            this%test_cov_matrix = BaseParams%covariance_estimate
         else
             call BaseParams%ReadSetCovMatrix(covMatrix, this%test_cov_matrix)
         end if
     end if
+    this%Temperature = Ini%Read_Double('temperature',1.d0)
 
     end subroutine TLikeCalculator_ReadParams
 
@@ -148,8 +162,15 @@
 
     end function TLikeCalculator_TestLikelihoodFunction
 
+    subroutine TLikeCalculator_WritePerformanceStats(this, unit)
+    class(TLikeCalculator) :: this
+    integer, intent(in) :: unit
+
+    end subroutine TLikeCalculator_WritePerformanceStats
+
+
     function Generic_GetLogLikeMain(this, Params) result(LogLike)!Get -Ln(Likelihood) for chains
-    class(GenericLikeCalculator) :: this
+    class(TGenericLikeCalculator) :: this
     class(TCalculationAtParamPoint) :: Params
     real(mcp) LogLike
 
@@ -164,10 +185,10 @@
 
 
     subroutine TheoryLike_SetTheoryParams(this, Params)
-    class(TheoryLikeCalculator) :: this
+    class(TTheoryLikeCalculator) :: this
     class(TCalculationAtParamPoint), target :: Params
 
-    if (.not. allocated(this%TheoryParams)) call this%Config%NewTheoryParams(this%TheoryParams)
+    if (.not. allocated(this%TheoryParams)) call this%Config%Parameterization%NewTheoryParams(this%TheoryParams)
     call this%Config%Parameterization%ParamArrayToTheoryParams(Params%P,this%TheoryParams)
     this%Params => Params
 
@@ -175,22 +196,22 @@
 
 
     function TheoryLike_GetLogLikeMain(this, Params) result(LogLike)!Get -Ln(Likelihood) for chains
-    class(TheoryLikeCalculator) :: this
+    class(TTheoryLikeCalculator) :: this
     class(TCalculationAtParamPoint) :: Params
     real(mcp) LogLike
 
     call this%SetTheoryParams(Params)
     call this%AddLike(LogLike, this%Config%Parameterization%NonBaseParameterPriors(this%TheoryParams))
     if (LogLike == logZero) return
-    if (.not. Params%Info%validInfo) then
+    if (.not. Params%validInfo) then
         this%changeMask(1:num_params) = .true.
     else
-        this%changeMask(1:num_params) = Params%Info%lastParamArray(1:num_params)/=Params%P(1:num_params)
+        this%changeMask(1:num_params) = Params%lastParamArray(1:num_params)/=Params%P(1:num_params)
     end if
     call this%Params%Theory%AssignNew(this%Params%Theory)
     if (this%CalculateRequiredTheoryChanges()) then
-        Params%Info%lastParamArray(1:num_params) = Params%P(1:num_params)
         call this%AddLike(LogLike, this%GetLogLikeWithTheorySet())
+        Params%lastParamArray(1:num_params) = Params%P(1:num_params)
     else
         LogLike = logZero
     end if
@@ -201,7 +222,7 @@
     end function TheoryLike_GetLogLikeMain
 
     function TheoryLike_CheckPriorCuts(this, Params) result(checkPriorCuts)
-    class(TheoryLikeCalculator) :: this
+    class(TTheoryLikeCalculator) :: this
     real(mcp)  CheckPriorCuts
     class(TCalculationAtParamPoint) :: Params
 
@@ -216,7 +237,7 @@
 
     function TheoryLike_GetLogLikePost(this,Params, do_like) result(LogLike)
     !for importance sampling where theory may be pre-stored
-    class(TheoryLikeCalculator) :: this
+    class(TTheoryLikeCalculator) :: this
     real(mcp)  LogLike
     class(TCalculationAtParamPoint) :: Params
     logical, optional, intent(in) :: do_like(DataLikelihoods%count)
@@ -238,7 +259,7 @@
 
 
     function TheoryLike_LogLikeWithTheorySet(this, likelihood_mask) result(logLike)
-    class(TheoryLikeCalculator) :: this
+    class(TTheoryLikeCalculator) :: this
     logical, intent(in), optional :: likelihood_mask(DataLikelihoods%count)
     real(mcp) logLike
     real(mcp) itemLike
@@ -252,7 +273,7 @@
         do_like = .true.
     end if
     logLike = logZero
-    call GetTheoryForLike(like) !chance to initalize
+    call this%GetTheoryForLike(like) !chance to initalize
     do i= 1, DataLikelihoods%count
         if (do_like(i)) then
             like => DataLikelihoods%Item(i)
@@ -271,21 +292,41 @@
 
 
     logical function TheoryLike_CalculateRequiredTheoryChanges(this)
-    class(TheoryLikeCalculator) :: this
+    class(TTheoryLikeCalculator) :: this
 
     !Set this%Params theory entries (this%Params%Theory) as required for current this%changeMask and this%TheoryParams
-    this%Params%Info%validInfo = .true.
+    this%Params%validInfo = .true.
     TheoryLike_CalculateRequiredTheoryChanges = .true.
 
     end function TheoryLike_CalculateRequiredTheoryChanges
 
     subroutine TheoryLike_GetTheoryForLike(this,Like)
-    class(TheoryLikeCalculator) :: this
+    class(TTheoryLikeCalculator) :: this
     class(DataLikelihood), pointer :: like
 
-    !If needed, likelihood specific calculation/initalization
+    !If needed, likelihood specific calculation/initalization; like=null for first initial call
     end subroutine TheoryLike_GetTheoryForLike
 
+    subroutine TheoryLike_GetTheoryForImportance(this,Params, error)
+    class(TTheoryLikeCalculator) :: this
+    class(TCalculationAtParamPoint), target :: Params
+    integer error
+
+    call this%SetTheoryParams(Params)
+    call this%Config%Calculator%GetTheoryForImportance(this%Params, Params%Theory, error)
+
+    end subroutine TheoryLike_GetTheoryForImportance
 
 
+    subroutine TheoryLike_UpdateTheoryForLikelihoods(this, Params)
+    class(TTheoryLikeCalculator) :: this
+    class(TCalculationAtParamPoint) :: Params
+
+    end subroutine TheoryLike_UpdateTheoryForLikelihoods
+
+    subroutine TTheoryLikelihoodUser_ReadParams(this, Ini)
+    class(TTheoryLikelihoodUser) :: this
+    class(TSettingIni), intent(in) :: Ini
+    end subroutine TTheoryLikelihoodUser_ReadParams
+    
     end module CalcLike

@@ -23,10 +23,9 @@
         Type (CAMBdata) :: Transfers
     contains
     procedure :: Clear => CAMBTransferCache_Clear
-    procedure :: Initialize => CAMBTransferCache_Initialize
     end Type CAMBTransferCache
 
-    Type, extends(BaseCosmologyCalculator) :: CAMB_Calculator
+    Type, extends(TCosmologyCalculator) :: CAMB_Calculator
     contains
     !New
     procedure :: CMBToCAMB => CAMBCalc_CMBToCAMB
@@ -37,6 +36,7 @@
     procedure :: SetCAMBInitPower => CAMBCalc_SetCAMBInitPower
     procedure :: SetPkFromCAMB => CAMBCalc_SetPkFromCAMB
     !Overridden inherited
+    procedure :: ReadParams => CAMBCalc_ReadParams
     procedure :: BAO_D_v => CAMBCalc_BAO_D_v
     procedure :: CMBToTheta => CAMBCalc_CMBToTheta
     procedure :: GetNewPowerData => CAMBCalc_GetNewPowerData
@@ -259,18 +259,20 @@
 
     end subroutine CAMBCalc_GetNewPowerData
 
-    subroutine CAMBCalc_GetTheoryForImportance(this, CMB, Theory, error, DoCls, DoPk)
+    subroutine CAMBCalc_GetTheoryForImportance(this, CMB, Theory, error)
     use ModelParams, only : ThreadNum
     class(CAMB_Calculator) :: this
     class(CMBParams) CMB
     class(CosmoTheoryPredictions) Theory
     integer error
-    logical, intent(in) :: DoCls, DoPk
+    logical :: DoCls, DoPk
     type(CAMBParams)  P
 
     error = 0
+    DoCls = this%ImportanceOptions%redo_cls
+    DoPk = this%ImportanceOptions%redo_pk
 
-    if (DoPk .or. DoCls) then
+    if (DoCls .or. DoPk) then
         Threadnum =num_threads
         call this%CMBToCAMB(CMB, P)
         P%OnlyTransfers = .false.
@@ -460,6 +462,7 @@
     wa_ppf = 0._dl
     call CAMB_SetDefParams(P)
 
+    HighAccuracyDefault = .true.
     P%OutputNormalization = outNone
 
     !JD added to save computation time when only using MPK
@@ -583,13 +586,12 @@
 
     end subroutine CAMBCalc_SetCAMBInitPower
 
-    subroutine CAMBCalc_ReadParams(this,Info,Ini)
+    subroutine CAMBCalc_ReadParams(this,Ini)
     class(CAMB_Calculator) :: this
-    class(TTheoryIntermediateCache) Info
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     type(CAMBParams)  P
 
-    call this%BaseCosmologyCalculator%ReadParams(Info,Ini)
+    call this%TCosmologyCalculator%ReadParams(Ini)
     this%calcName ='CAMB'
 
     CAMB_timing = Ini%Read_Logical('CAMB_timing',.false.)
@@ -597,6 +599,12 @@
     if (lmax_computed_cl /= lmax) then
         if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
         call LoadFiducialHighLTemplate(Ini)
+    end if
+
+    if (Ini%HasKey('highL_unlensed_cl_template')) then
+        highL_unlensed_cl_template=  Ini%ReadFilename('highL_unlensed_cl_template')
+    else
+        highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
     end if
 
     call this%InitCAMBParams(P)
@@ -629,12 +637,12 @@
 
     subroutine LoadFiducialHighLTemplate(Ini)
     !This should be a lensed scalar CMB power spectrum, e.g. for including at very high L where foregrounds etc. dominate anyway
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     integer L, aunit, status
     real(mcp) array(4), nm
-    character(LEN=Ini_max_string_len) :: fname
+    character(LEN=:), allocatable :: fname
 
-    fname = ReadIniFilename(Ini,'highL_theory_cl_template',DataDir,.true.)
+    fname = Ini%ReadFilename('highL_theory_cl_template',DataDir,.true.)
     allocate(highL_lensedCL_template(2:lmax, num_clsS))
     aunit = OpenNewTxtFile(fname)
     do
@@ -664,13 +672,5 @@
     call Info%TTheoryIntermediateCache%Clear()
 
     end subroutine CAMBTransferCache_Clear
-
-    subroutine CAMBTransferCache_Initialize(Info)
-    class(CAMBTransferCache) Info
-
-    call CAMB_InitCAMBdata(Info%Transfers)
-    call Info%TTheoryIntermediateCache%Initialize()
-
-    end subroutine CAMBTransferCache_Initialize
 
     end module Calculator_CAMB

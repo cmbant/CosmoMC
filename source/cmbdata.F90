@@ -68,7 +68,7 @@ implicit none
     real(mcp) :: calib_uncertainty
     logical :: beam_uncertain, has_corr_errors, has_xfactors
     integer :: num_points, file_points
-    character(LEN=Ini_max_string_len) :: dataset_filename
+    character(LEN=:), allocatable :: dataset_filename
     Type(CMBdatapoint), pointer, dimension(:) :: points
     real(mcp), pointer, dimension(:,:) :: N_inv
     real(mcp), pointer, dimension(:) :: xfactors
@@ -185,7 +185,7 @@ contains
  end subroutine ReadWindow
 
  subroutine ReadAllExact(Ini,aset)
-      class(TIniFile) :: Ini
+      class(TSettingIni) :: Ini
       Type (CMBdataset) :: aset
       character(LEN=Ini_max_string_len) :: fname
       integer l, idum, ncls, ncol
@@ -210,7 +210,7 @@ contains
         allocate(aset%all_l_noise(2:aset%all_l_lmax,1))
        end if
        allocate(aset%all_l_fsky(2:aset%all_l_lmax))
-       fname = ReadIniFilename(Ini, 'all_l_file',ExtractFilePath(aset%dataset_filename))
+       fname = Ini%ReadFilename('all_l_file',ExtractFilePath(aset%dataset_filename))
        ncol = TxtFileColumns(fname)
        if (ncol==7) then
          ncls = 3
@@ -337,7 +337,7 @@ contains
    real(mcp), pointer, dimension(:,:) :: tmp_mat
    real(mcp), pointer, dimension(:) :: tmp_arr
    character(LEN=Ini_max_string_len) :: data_format
-   Type(TIniFile) :: Ini
+   Type(TSettingIni) :: Ini
 
    aset=> like%dataset
 
@@ -362,15 +362,12 @@ contains
      write (*,*)  'Error opening dataset file '//trim(aname)
      stop
    end if
-   Ini_fail_on_not_found = .true.
 
-   like%name = Ini%Read_String('name')
+   like%name = Ini%Read_String('name', .true.)
    aset%use_set =.true.
    aset%num_points = 0
 
    if (Feedback > 0) write (*,*) 'reading: '//trim(like%name)
-
-   Ini_fail_on_not_found = .false.
 
    data_format  = Ini%Read_String('dataset_format')
 
@@ -399,7 +396,7 @@ contains
        aset%calib_uncertainty = Ini%Read_Double('calib_uncertainty')
        aset%beam_uncertain = Ini%Read_logical('beam_uncertainty')
 
-       window_dir  = ReadIniFilename(Ini,'window_dir')
+       window_dir  = Ini%ReadFilename('window_dir')
 
        windows_are_bare = Ini%Read_Logical('windows_are_bare',.false.)
        aset%windows_are_bandpowers = Ini%Read_Logical('windows_are_bandpowers',.true.)
@@ -416,12 +413,11 @@ contains
        allocate(aset%points(aset%num_points))
        band_file = Ini%Read_String('bandpowers')
        if (band_file /= '') call OpenTxtFile(band_file, 51)
-       Ini_fail_on_not_found = .true.
        do i=1, aset%num_points + first_band -1
           if (band_file /= '') then
             read(51,'(a)') InLine
           else
-            InLine = Ini%Read_String(numcat('data',i))
+            InLine = Ini%Read_String(numcat('data',i), .true.)
           end if
           if (i < first_band) cycle
           use_i = i - first_band + 1
@@ -441,7 +437,6 @@ contains
 
 
     !See if the inverse covariance matrix is given (otherwise assume diagonal)
-       Ini_fail_on_not_found = .false.
 
        Ninv_file = Ini%Read_String('N_inv')
        aset%has_corr_errors = Ninv_file /= ''
@@ -1031,7 +1026,7 @@ contains
     use noncliklike
 #endif
     class(LikelihoodList) :: LikeList
-    class(TIniFile) :: ini
+    class(TSettingIni) :: ini
 
     Type(CMBDataLikelihood), pointer  :: like
     integer numsets,  i
@@ -1053,7 +1048,7 @@ contains
           call LikeList%Add(like)
           like%LikelihoodType = 'CMB'
           like%needs_powerspectra = .true.
-          filename = ReadIniFileName(Ini,numcat('cmb_dataset',i))
+          filename = Ini%ReadFileName(numcat('cmb_dataset',i))
           call ReadDataset(like, filename)
 
           keyname=numcat('cmb_dataset_SZ',i)

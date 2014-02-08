@@ -222,7 +222,7 @@
     use settings
     use wigglezinfo
     class(LikelihoodList) :: LikeList
-    class(TIniFile) :: ini
+    class(TSettingIni) :: ini
     Type(WiggleZLikelihood), pointer :: like
     integer nummpksets, i
 
@@ -233,7 +233,7 @@
     use_gigglez = Ini%Read_Logical('Use_gigglez',.false.)
     nonlinear_wigglez = Ini%Read_Logical('nonlinear_wigglez',.false.)
 
-    call WiggleZCommon%ReadDatasetFile(ReadIniFileName(Ini,'wigglez_common_dataset'))
+    call WiggleZCommon%ReadDatasetFile(Ini%ReadFileName('wigglez_common_dataset'))
     WiggleZCommon%LikelihoodType = 'MPK'
 
     nummpksets = Ini%Read_Int('mpk_wigglez_numdatasets',0)
@@ -243,7 +243,7 @@
         like%needs_powerspectra = .true.
         like%needs_exact_z = .true.
         like%num_z = 1
-        call like%ReadDatasetFile(ReadIniFileName(Ini,numcat('wigglez_dataset',i)))
+        call like%ReadDatasetFile(Ini%ReadFileName(numcat('wigglez_dataset',i)))
         like%CommonData=> WiggleZCommon
         call LikeList%Add(like)
     end do
@@ -256,7 +256,7 @@
     use IniObjects
     use wigglezinfo
     class(TWiggleZCommon) :: like
-    class(TIniFile) :: ini
+    class(TSettingIni) :: ini
     character(len=64) region_string
     integer i_regions
 
@@ -351,8 +351,8 @@
     use MatrixUtils
     implicit none
     class(WiggleZLikelihood) like
-    class(TIniFile) :: Ini
-    character(LEN=Ini_max_string_len) :: kbands_file, measurements_file, windows_file, cov_file
+    class(TSettingIni) :: Ini
+    character(LEN=:), allocatable :: kbands_file, measurements_file, windows_file, cov_file
     integer i,iopb,i_regions
     real(mcp) keff,klo,khi,beff
     real(mcp), dimension(:,:,:), allocatable :: mpk_Wfull, mpk_covfull
@@ -371,7 +371,6 @@
         call MpiStop('mpk: failed  to read in WiggleZ redshift')
     end if
 
-    Ini_fail_on_not_found = .false.
     like%use_set =.true.
     if (Feedback > 0) write (*,*) 'reading: '//trim(like%name)
 
@@ -381,7 +380,7 @@
     allocate(like%mpk_k(num_mpk_kbands_use))
     allocate(like%mpk_W(num_regions_used,num_mpk_points_use,num_mpk_kbands_use))
 
-    kbands_file  = ReadIniFileName(Ini,'kbands_file')
+    kbands_file  = Ini%ReadFileName('kbands_file')
     call ReadVector(kbands_file,mpk_kfull,num_mpk_kbands_full)
     like%mpk_k(:)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
     if (Feedback > 1) then
@@ -393,7 +392,7 @@
     !    write (*,*) 'all k<matter_power_minkh will be set to matter_power_minkh'
     !end if
 
-    measurements_file  = ReadIniFileName(Ini,'measurements_file')
+    measurements_file  = Ini%ReadFileName('measurements_file')
     call OpenTxtFile(measurements_file, tmp_file_unit)
     like%mpk_P=0.
     count = 0
@@ -429,7 +428,7 @@
     if (Feedback > 1) write(*,*) 'bands truncated at keff=  ',real(keff)
 
     allocate(mpk_Wfull(max_num_wigglez_regions,num_mpk_points_full,num_mpk_kbands_full))
-    windows_file  = ReadIniFileName(Ini,'windows_file')
+    windows_file  = Ini%ReadFileName('windows_file')
     if (windows_file.eq.'') write(*,*) 'ERROR: WiggleZ mpk windows_file not specified'
     call ReadWiggleZMatrices(windows_file,mpk_Wfull,max_num_wigglez_regions,num_mpk_points_full,num_mpk_kbands_full)
     count = 0
@@ -444,7 +443,7 @@
     deallocate(mpk_Wfull)
     !    deallocate(mpk_kfull)
 
-    cov_file  = ReadIniFileName(Ini,'cov_file')
+    cov_file  = Ini%ReadFileName('cov_file')
     if (cov_file /= '') then
         allocate(mpk_covfull(max_num_wigglez_regions,num_mpk_points_full,num_mpk_points_full))
         allocate(invcov_tmp(num_mpk_points_use,num_mpk_points_use))

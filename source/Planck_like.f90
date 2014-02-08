@@ -459,7 +459,7 @@
     subroutine CMBLikes_ReadDataFile(D, aname)
     Type(TCMBLikes) :: D
     character(LEN=*) :: aname
-    Type(TIniFile) :: Ini
+    Type(TSettingIni) :: Ini
     logical bad
 
     call Ini%Open(aname, bad, .false.)
@@ -496,11 +496,11 @@
 
     subroutine CMBLikes_ReadData(D, Ini,dataset_dir)
     Type(TCMBLikes) :: D
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     real(mcp), dimension(:,:), allocatable, target :: Cov, fullcov
     character(LEN=*), intent(in) :: dataset_dir
     integer ix, i
-    character(LEN=Ini_max_string_len) :: S, S_order
+    character(LEN=:), allocatable :: S, S_order
     integer l,j, x,y, clix
     integer l1,l2
     integer, dimension(:,:), allocatable :: indices
@@ -509,10 +509,8 @@
     real(mcp) covmat_scale
     double precision :: asum
     real(mcp), allocatable :: avec(:)
-    !  character(LEN=Ini_max_string_len) cache_name
-    Ini_fail_on_not_found = .true.
 
-    S = Ini%Read_String('fields_use')
+    S = Ini%Read_String('fields_use', .true.)
     D%use_field = .false.
     do i=1, len_trim(S)
         if (trim(S(i:i))/='') D%use_field(TypeIndex(S(i:i))) = .true.
@@ -569,19 +567,19 @@
     allocate(D%ClHat(D%ncl,D%cl_lmin:D%cl_lmax, D%ncl_hat))
     allocate(D%ClNoise(D%ncl,D%cl_lmin:D%cl_lmax))
 
-    S = ReadIniFileName(Ini,'cl_hat_file',dataset_dir)
-    S_order = Ini%read_String('cl_hat_order')
+    S = Ini%ReadFileName('cl_hat_file',dataset_dir)
+    S_order = Ini%read_String('cl_hat_order', .true.)
     call CMBLikes_ReadClArr(D, S,S_order,D%ClHat(:,:,1),D%cl_lmin)
     do j=2, D%ncl_hat
         !for simulated with multiple realizations with same covariance and noise
-        call CMBLikes_ReadClArr(D, ReadIniFileName(Ini,numcat('cl_hat_file',j),dataset_dir),&
+        call CMBLikes_ReadClArr(D, Ini%ReadFileName(numcat('cl_hat_file',j),dataset_dir),&
         S_order,D%ClHat(:,:,j),D%cl_lmin)
     end do
 
     if (D%like_approx /= like_approx_fullsky_exact) then
         allocate(D%ClFiducial(D%ncl,D%cl_lmin:D%cl_lmax))
-        S = ReadIniFileName(Ini,'cl_fiducial_file',dataset_dir)
-        S_order = Ini%read_String('cl_fiducial_order')
+        S =Ini% ReadFileName('cl_fiducial_file',dataset_dir)
+        S_order = Ini%read_String('cl_fiducial_order', .true.)
         call CMBLikes_ReadClArr(D, S,S_order,D%ClFiducial,D%cl_lmin)
     else
         !Exact like
@@ -589,8 +587,8 @@
         nullify(D%ClFiducial)
     end if
 
-    S = ReadIniFileName(Ini,'cl_noise_file',dataset_dir)
-    S_order = Ini%read_String('cl_noise_order')
+    S = Ini%ReadFileName('cl_noise_file',dataset_dir)
+    S_order = Ini%read_String('cl_noise_order', .true.)
     call CMBLikes_ReadClArr(D, S,S_order,D%ClNoise,D%cl_lmin)
 
     D%lensing_recon_ncl = Ini%Read_Int('lensing_recon_ncl', 0)
@@ -602,19 +600,19 @@
         end do
     end if
 
-    S = ReadIniFileName(Ini,'cl_offset_file', dataset_dir,.false.)
+    S = Ini%ReadFileName('cl_offset_file', dataset_dir,.false.)
     if (S/='') then
-        S_order = Ini%read_String('cl_offset_order')
+        S_order = Ini%read_String('cl_offset_order', .true.)
         allocate(D%ClOffset(D%ncl,D%cl_lmin:D%cl_lmax))
         call CMBLikes_ReadClArr(D, S,S_order,D%ClOffset,D%cl_lmin, .true.)
     else
         nullify(D%ClOffset)
     end if
 
-    S = ReadIniFileName(Ini,'point_source_cl', dataset_dir,.false.)
+    S = Ini%ReadFileName('point_source_cl', dataset_dir,.false.)
     if (S/='') then
         if (Feedback > 1 .and. IsMainMPI()) print *,'Using point source uncertainty'
-        S_order = Ini%read_String('point_source_cl_order')
+        S_order = Ini%read_String('point_source_cl_order',.true.)
         allocate(D%ClPointsources(D%ncl,D%cl_lmin:D%cl_lmax))
         call CMBLikes_ReadClArr(D, S,S_order,D%ClPointsources,D%cl_lmin)
         D%pointsource_MCMC_modes = Ini%Read_Int('pointsource_MCMC_modes');
@@ -638,7 +636,7 @@
         nullify(D%ClPointsources)
     end if
 
-    S = ReadIniFileName(Ini,'beam_modes_file', dataset_dir,.false.)
+    S = Ini%ReadFileName('beam_modes_file', dataset_dir,.false.)
     if (S/='') then
         if (Feedback > 1 .and. IsMainMPI()) print *,'Using beam uncertainty modes'
         if (D%ncl/=1) call MpiStop('Planck_like: beam modes currently only for temperature a la WMAP')
@@ -717,7 +715,7 @@
     if (lmin_covmat > D%cl_lmin) call MpiStop('lmin_covmat must be  <= cl_lmin')
     if (lmax_covmat < D%cl_lmax) call MpiStop('lmax_covmat must be  >= cl_lmax')
     covmat_scale = Ini%Read_Real('covmat_scale',1.0)
-    S = Ini%Read_String('covmat_cl')
+    S = Ini%Read_String('covmat_cl', .true.)
 
     allocate(indices(D%nfields,D%nfields))
     call UseString_to_colIx(D, S, indices, cov_num_cls)
@@ -728,8 +726,7 @@
 
     vecsize_in =  (lmax_covmat-lmin_covmat+1)
 
-
-    S = ReadIniFileName(Ini,'covmat_fiducial',dataset_dir)
+    S = Ini%ReadFileName('covmat_fiducial',dataset_dir)
 
     if (IsMainMPI()) then
         allocate(fullcov(D%vecsize*D%ncl_used, D%vecsize*D%ncl_used))
@@ -816,7 +813,7 @@
     D%lowl_exact = Ini%Read_Logical('lowl_exact')
     if (D%lowl_exact) then
         if (num_cls==3) call MpiStop('CMBLikes current untested for only 3 C_l')
-        S = ReadIniFileName(Ini,'lowl_datafile',dataset_dir)
+        S = Ini%ReadFileName('lowl_datafile',dataset_dir)
         D%Lowl%lexact = Ini%Read_Int('lowl_lexact')
         D%Lowl%lmax = Ini%Read_Int('lowl_lmax')
         call CMBLikes_ReadLowlFile(D,S)
@@ -827,7 +824,7 @@
 
     subroutine CMBLikes_ReadLensingReconData(D, Ini,dataset_dir)
     Type(TCMBLikes) :: D
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     character(LEN=*), intent(in) :: dataset_dir
     character(LEN=1024) fname
 
@@ -842,15 +839,15 @@
 
     allocate(D%ClPhiHat(D%lensing_recon_ncl,D%cl_phi_lmin:D%cl_phi_lmax))
     allocate(D%ClPhiNoise(D%lensing_recon_ncl,D%cl_phi_lmin:D%cl_phi_lmax))
-    call CMBLikes_ReadClPhiArr(D, ReadIniFileName(Ini,'cl_hat_phi_file',dataset_dir),D%ClPhiHat)
-    call CMBLikes_ReadClPhiArr(D, ReadIniFileName(Ini,'cl_noise_phi_file',dataset_dir),D%ClPhiNoise)
+    call CMBLikes_ReadClPhiArr(D, Ini%ReadFileName('cl_hat_phi_file',dataset_dir),D%ClPhiHat)
+    call CMBLikes_ReadClPhiArr(D, Ini%ReadFileName('cl_noise_phi_file',dataset_dir),D%ClPhiNoise)
 
     if (.not. Ini%Read_Logical('cl_hat_includes_noise')) then
         D%ClPhiHat = D%ClPhiHat + D%ClPhiNoise
     end if
 
     if (D%phi_like_approx /= like_approx_fullsky_exact) then
-        fname = ReadIniFileName(Ini,'covmat_phi_fiducial',dataset_dir)
+        fname = Ini%ReadFileName('covmat_phi_fiducial',dataset_dir)
         if (fname /='') then
             allocate(D%phi_inv_covariance(D%cl_phi_lmin:D%cl_phi_lmax,D%cl_phi_lmin:D%cl_phi_lmax))
             call MatrixSym_Read_Binary(fname, D%phi_inv_covariance)

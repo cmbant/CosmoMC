@@ -26,8 +26,14 @@
 #endif
     integer,parameter :: time_dp = KIND(1.d0)
 
+    Type, extends(TIniFile) :: TSettingIni
+    contains
+    procedure :: FailStop => TSettingIni_FailStop
+    procedure :: ReadFilename => TSettingIni_ReadFilename
+    end type
+
     real(mcp) :: AccuracyLevel = 1.
-    !Set to >1 to use CAMB etc on higher accuracy settings.
+    !Set to >1 to use theory calculation etc on higher accuracy settings.
     !Does not affect MCMC (except making it all slower)
 
     logical :: new_chains = .true.
@@ -38,7 +44,6 @@
     integer, parameter :: max_theory_params = 30
     integer, parameter :: max_num_params = max_theory_params + max_data_params
 
-    logical :: use_fast_slow = .false.
     !Set to false if using a slow likelihood function so no there's point is treating
     !'fast' parameters differently (in fact, doing so will make performance worse)
 
@@ -49,9 +54,6 @@
     sampling_fast_dragging = 7
 
     integer :: sampling_method = sampling_metropolis
-
-    !scale of the proposal distribution in units of the posterior standard deviation
-    real(mcp)    :: propose_scale  = 2.4_mcp
 
     !For fast dragging method, baseline number of intermediate drag steps
     real(mcp) :: dragging_steps = 3._mcp
@@ -64,7 +66,7 @@
     character(LEN=Ini_max_string_len) :: DataDir='data/'
     character(LEN=Ini_max_string_len) :: LocalDir='./'
 
-    Type(TIniFile) :: CustomParams
+    Type(TSettingIni) :: CustomParams
 
     logical :: stop_on_error = .true. !whether to stop with error, or continue ignoring point
 
@@ -77,10 +79,7 @@
     integer :: instance = 0
     integer :: MPIchains = 1, MPIrank = 0
 
-    logical :: get_sigma8 = .true.
-    logical :: Use_LSS = .false.
-    logical :: Use_CMB = .false.
-    logical :: use_nonlinear = .false.    !JD for WiggleZ MPK
+    logical :: checkpoint = .false.
 
     integer :: logfile_unit  = 0
     integer :: outfile_handle = 0
@@ -90,7 +89,7 @@
 
     real(mcp), parameter :: logZero = 1e30_mcp
     character (LEN =1024) :: FileChangeIni = '', FileChangeIniAll = ''
-    character(LEN=Ini_max_string_len) baseroot
+    character(LEN=:), allocatable :: baseroot
 
     integer, parameter :: stdout = output_unit
 
@@ -111,11 +110,19 @@
 
     end function ReplaceDirs
 
-    function ReadIniFileName(Ini,key, ADir, NotFoundFail) result (filename)
-    class(TIniFile) :: Ini
+    subroutine TSettingIni_FailStop(L)
+    class(TSettingIni) :: L
+
+    call MpiStop()
+
+    end subroutine TSettingIni_FailStop
+
+    function TSettingIni_ReadFilename(Ini,key, ADir, NotFoundFail) result (OutName)
+    class(TSettingIni) :: Ini
     character(LEN=*), intent(in) :: Key
     character(LEN=*), optional, intent(in) :: ADir
     character(LEN=Ini_max_string_len) :: filename, repdir
+    character(LEN=:), allocatable :: OutName
     logical, optional :: NotFoundFail
     integer i
 
@@ -131,22 +138,23 @@
     end if
     filename= ReplaceDirs(filename, repdir)
 
-    do i=1, CustomParams%L%Count
-        call StringReplace('%'//trim(CustomParams%L%Items(i)%P%Name)//'%',&
-        trim(ReplaceDirs(CustomParams%L%Items(i)%P%Value, repdir)) ,filename)
+    do i=1, CustomParams%Count
+        call StringReplace('%'//CustomParams%Items(i)%P%Name//'%',&
+        trim(ReplaceDirs(CustomParams%Items(i)%P%Value, repdir)) ,filename)
     end do
 
-    end function ReadIniFileName
+    OutName = trim(filename)
+
+    end function TSettingIni_ReadFilename
 
     subroutine CheckParamChangeF(F)
     character(LEN=*), intent(in) ::  F
     logical bad, doexit
-    Type(TIniFile) :: Ini
+    Type(TSettingIni) :: Ini
 
     if (F /= '') then
         call Ini%Open(F, bad, .false.)
         if (bad) return
-        Ini_fail_on_not_found = .false.
         doexit = (Ini%Read_Int('exit',0) == 1)
         FeedBack = Ini%Read_Int('feedback',Feedback)
         num_threads = Ini%Read_Int('num_threads',num_threads)

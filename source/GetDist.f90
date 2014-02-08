@@ -1740,11 +1740,10 @@
     end module MCSamples
 
     program GetDist
-    use IniObjects
     use MCSamples
     use IO
     implicit none
-
+    Type(TSettingIni) :: Ini
     character(LEN=Ini_max_string_len) InputFile, numstr
     character(LEN=Ini_max_string_len)  parameter_names_file, parameter_names_labels
     character(LEN=10000) InLine  ! ,LastL,OutLine
@@ -1798,7 +1797,7 @@
     InputFile = GetParam(1)
     if (InputFile == '') stop 'No parameter input file'
 
-    call IO_Ini_Load(DefIni,InputFile, bad)
+    call Ini%Open(InputFile,  bad, .false.)
 
     if (bad) stop 'Error opening parameter file'
 

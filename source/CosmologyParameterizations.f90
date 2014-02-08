@@ -41,15 +41,15 @@
 
     subroutine TP_Init(this, Ini, Names, Config)
     class(ThetaParameterization) :: this
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     class(TParamNames) :: Names
     class(TGeneralConfig), target :: Config
-    character(LEN=Ini_max_string_len) prior
+    character(LEN=:), pointer :: prior
 
     this%H0_min = Ini%Read_Double('H0_min',this%H0_min)
     this%H0_max = Ini%Read_Double('H0_max',this%H0_max)
     this%Use_min_zre = Ini%Read_Double('use_min_zre',this%use_min_zre)
-    prior = Ini%Read_String('H0_prior',NotFoundFail=.false.)
+    prior => Ini%Read_String('H0_prior',NotFoundFail=.false.)
     if (prior/='') then
         read(prior,*) this%H0_prior_mean, this%H0_prior_std
     end if
@@ -90,7 +90,7 @@
     integer error
 
     select type(CosmoCalc=>this%Config%Calculator)
-    class is (BaseCosmologyCalculator)
+    class is (TCosmologyCalculator)
         select type (CMB)
         class is (CMBParams)
             do i=1, ncache
@@ -256,7 +256,7 @@
     !!! Simple parameterization for background data, e.g. Supernovae only (no thermal history)
     subroutine BK_Init(this, Ini, Names, Config)
     class(BackgroundParameterization) :: this
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     class(TParamNames) :: Names
     class(TGeneralConfig), target :: Config
 

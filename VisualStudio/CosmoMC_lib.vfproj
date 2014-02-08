@@ -74,15 +74,15 @@
 		<File RelativePath="..\source\PowellConstrainedMinimize.f90"/></Filter>
 		<File RelativePath="..\source\BaseParameters.f90"/>
 		<File RelativePath="..\source\CalcLike.f90"/>
-		<File RelativePath="..\source\EstCovmat.f90"/>
-		<File RelativePath="..\source\Sampler.f90"/>
+		<File RelativePath="..\source\Configuration.f90"/>
 		<File RelativePath="..\source\GeneralTypes.f90"/>
 		<File RelativePath="..\source\IO.f90"/>
 		<File RelativePath="..\source\MCMC.f90"/>
 		<File RelativePath="..\source\minimize.f90"/>
-		<File RelativePath="..\source\Outputs.f90"/>
+		<File RelativePath="..\source\ParamSet.f90"/>
 		<File RelativePath="..\source\postprocess.f90"/>
 		<File RelativePath="..\source\propose.f90"/>
+		<File RelativePath="..\source\SampleCollector.f90"/>
 		<File RelativePath="..\source\samples.f90"/>
 		<File RelativePath="..\source\settings.f90"/></Filter></Files>
 	<Globals/></VisualStudioProject>

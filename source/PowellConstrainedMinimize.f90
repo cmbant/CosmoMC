@@ -5,27 +5,39 @@
     !AL Sept 2012: translated to F90, changed to input "funkk" function argument to minimize rather than calfun subroutine
 
     MODULE Powell_ConstrainedOptimize
-
     INTEGER, PARAMETER  :: dp = KIND(1.d0) !SELECTED_REAL_KIND(12, 60)
     INTEGER, PARAMETER  :: func_dp = dp  !SELECTED_REAL_KIND(12, 60)
     INTEGER, PARAMETER :: Powell_CO_prec = dp
-    REAL(dp) Last_bestfit
-    REAL(dp) :: FVAL_Converge_difference = 0._dp 
+
+    type TBOBYQA
+        REAL(dp) :: Last_bestfit
+        REAL(dp) :: FVAL_Converge_difference = 0._dp 
+    contains
+    procedure :: funkk
+    procedure :: BOBYQA
+    end type
 
     PRIVATE
-    PUBLIC  :: BOBYQA , Powell_CO_prec, FVAL_Converge_difference
+    PUBLIC  :: TBOBYQA , Powell_CO_prec
 
     CONTAINS
 
+    function funkk(this, n, X) result(res)
+    class(TBOBYQA) :: this
+    integer, intent(in) :: n
+    real(Powell_CO_prec) X(n)
+    real(Powell_CO_prec) :: res
 
-    function BOBYQA (funkk, N,NPT,X,XL,XU,RHOBEG,RHOEND,IPRINT,MAXFUN)
+    end function funkk
+
+
+    function BOBYQA (this, N,NPT,X,XL,XU,RHOBEG,RHOEND,IPRINT,MAXFUN)
     IMPLICIT REAL(dp) (A-H,O-Z)
     logical BOBYQA
+    class(TBOBYQA) this
     integer, intent(in)::n, npt, maxfun, iPrint
     REAL(dp) X(*),XL(*),XU(*)
     real(dp), allocatable :: W(:)
-    REAL(func_dp) funkk
-    external funkk
     integer I,J 
     !   This subroutine seeks the least value of a function of many variables,
     !   by applying a trust region method that forms quadratic models by
@@ -71,8 +83,8 @@
     !   Return if the value of NPT is unacceptable.
 
     BOBYQA = .false.
-    Last_bestfit = 1d30
-    
+    this%Last_bestfit = 1d30
+
     NP=N+1
     IF (NPT  <  N+2 .OR. NPT  >  ((N+2)*NP)/2) THEN
         PRINT 10
@@ -151,7 +163,7 @@
     !
     !     Make the call of BOBYQB.
     !
-    BOBYQA = BOBYQB (funkk, N,NPT,X,XL,XU,RHOBEG,RHOEND,IPRINT,MAXFUN,W(IXB),&
+    BOBYQA = BOBYQB (this,N,NPT,X,XL,XU,RHOBEG,RHOEND,IPRINT,MAXFUN,W(IXB),&
     &  W(IXP),W(IFV),W(IXO),W(IGO),W(IHQ),W(IPQ),W(IBMAT),W(IZMAT),&
     &  NDIM,W(ISL),W(ISU),W(IXN),W(IXA),W(ID),W(IVL),W(IW))
 
@@ -160,15 +172,14 @@
     end function BOBYQA
 
 
-    function BOBYQB (funkk, N,NPT,X,XL,XU,RHOBEG,RHOEND,IPRINT,&
+    function BOBYQB (this, N,NPT,X,XL,XU,RHOBEG,RHOEND,IPRINT,&
     &  MAXFUN,XBASE,XPT,FVAL,XOPT,GOPT,HQ,PQ,BMAT,ZMAT,NDIM,&
     &  SL,SU,XNEW,XALT,D,VLAG,W)
     IMPLICIT REAL(dp) (A-H,O-Z)
+    class(TBOBYQA) this
     DIMENSION X(*),XL(*),XU(*),XBASE(*),XPT(NPT,*),FVAL(*),&
     &  XOPT(*),GOPT(*),HQ(*),PQ(*),BMAT(NDIM,*),ZMAT(NPT,*),&
     &  SL(*),SU(*),XNEW(*),XALT(*),D(*),VLAG(*),W(*)
-    REAL(func_dp) funkk
-    external funkk
     logical BOBYQB
 
     !  The arguments N, NPT, X, XL, XU, RHOBEG, RHOEND, IPRINT and MAXFUN
@@ -223,7 +234,7 @@
     !  initial XOPT is set too. The branch to label 720 occurs if MAXFUN is
     !  less than NPT. GOPT will be updated if KOPT is different from KBASE.
     !
-    CALL PRELIM (funkk,N,NPT,X,XL,XU,RHOBEG,IPRINT,MAXFUN,XBASE,XPT,&
+    CALL PRELIM (this,N,NPT,X,XL,XU,RHOBEG,IPRINT,MAXFUN,XBASE,XPT,&
     &  FVAL,GOPT,HQ,PQ,BMAT,ZMAT,NDIM,SL,SU,NF,KOPT)
     XOPTSQ=ZERO
     DO 10 I=1,N
@@ -390,7 +401,7 @@
     !
 190 NFSAV=NF
     KBASE=KOPT
-    CALL RESCUE (funkk, N,NPT,XL,XU,IPRINT,MAXFUN,XBASE,XPT,FVAL,&
+    CALL RESCUE (this, N,NPT,XL,XU,IPRINT,MAXFUN,XBASE,XPT,FVAL,&
     &  XOPT,GOPT,HQ,PQ,BMAT,ZMAT,NDIM,SL,SU,NF,DELTA,KOPT,&
     &  VLAG,W,W(N+NP),W(NDIM+NP))
     !
@@ -549,7 +560,7 @@
         GOTO 720
     END IF
     NF=NF+1
-    F = funkk(N,X)
+    F = this%funkk(N,X)
     IF (IPRINT .EQ. 3) THEN
         PRINT 400, NF,F,(X(I),I=1,N)
 400     FORMAT (/4X,'Function number',I6,'    F =',1PD18.10,&
@@ -790,8 +801,8 @@
     !  The calculations with the current value of RHO are complete. Pick the
     !    next values of RHO and DELTA.
     !
-680 IF (RHO  >  RHOEND .and. (FVAL_Converge_difference==0._dp .or. &
-                 abs(FVAL(KOPT)-Last_bestfit) > FVAL_Converge_difference)) THEN
+680 IF (RHO  >  RHOEND .and. (this%FVAL_Converge_difference==0._dp .or. &
+    abs(FVAL(KOPT)-this%Last_bestfit) > this%FVAL_Converge_difference)) THEN
         DELTA=HALF*RHO
         RATIO=RHO/RHOEND
         IF (RATIO  <=  16.0D0) THEN
@@ -802,7 +813,7 @@
             RHO=TENTH*RHO
         END IF
         DELTA=DMAX1(DELTA,RHO)
-        Last_bestfit = FVAL(KOPT)
+        this%Last_bestfit = FVAL(KOPT)
         IF (IPRINT  >=  2) THEN
             IF (IPRINT  >=  3) PRINT 690
 690         FORMAT (5X)
@@ -1120,13 +1131,12 @@
     END SUBROUTINE ALTMOV
 
 
-    SUBROUTINE PRELIM (funkk,N,NPT,X,XL,XU,RHOBEG,IPRINT,MAXFUN,XBASE,&
+    SUBROUTINE PRELIM (this,N,NPT,X,XL,XU,RHOBEG,IPRINT,MAXFUN,XBASE,&
     &  XPT,FVAL,GOPT,HQ,PQ,BMAT,ZMAT,NDIM,SL,SU,NF,KOPT)
     IMPLICIT REAL(dp) (A-H,O-Z)
     DIMENSION X(*),XL(*),XU(*),XBASE(*),XPT(NPT,*),FVAL(*),GOPT(*),&
     &  HQ(*),PQ(*),BMAT(NDIM,*),ZMAT(NPT,*),SL(*),SU(*)
-    REAL(func_dp) funkk
-    external funkk
+    class(TBOBYQA) this
 
     !
     !  The arguments N, NPT, X, XL, XU, RHOBEG, IPRINT and MAXFUN are the
@@ -1212,7 +1222,7 @@
         IF (XPT(NF,J) .EQ. SL(J)) X(J)=XL(J)
         IF (XPT(NF,J) .EQ. SU(J)) X(J)=XU(J)
 60  CONTINUE
-    F = funkk(N,X)
+    F = this%funkk(N,X)
     IF (IPRINT .EQ. 3) THEN
         PRINT 70, NF,F,(X(I),I=1,N)
 70      FORMAT (/4X,'Function number',I6,'    F =',1PD18.10,&
@@ -1280,15 +1290,14 @@
     END SUBROUTINE PRELIM 
 
 
-    SUBROUTINE RESCUE (funkk,N,NPT,XL,XU,IPRINT,MAXFUN,XBASE,XPT,&
+    SUBROUTINE RESCUE (this,N,NPT,XL,XU,IPRINT,MAXFUN,XBASE,XPT,&
     &  FVAL,XOPT,GOPT,HQ,PQ,BMAT,ZMAT,NDIM,SL,SU,NF,DELTA,&
     &  KOPT,VLAG,PTSAUX,PTSID,W)
     IMPLICIT REAL(dp) (A-H,O-Z)
     DIMENSION XL(*),XU(*),XBASE(*),XPT(NPT,*),FVAL(*),XOPT(*),&
     &  GOPT(*),HQ(*),PQ(*),BMAT(NDIM,*),ZMAT(NPT,*),SL(*),SU(*),&
     &  VLAG(*),PTSAUX(2,*),PTSID(*),W(*)
-    REAL(func_dp) funkk
-    external funkk
+    class(TBOBYQA) this
     !  The arguments N, NPT, XL, XU, IPRINT, MAXFUN, XBASE, XPT, FVAL, XOPT,
     !    GOPT, HQ, PQ, BMAT, ZMAT, NDIM, SL and SU have the same meanings as
     !    the corresponding arguments of BOBYQB on the entry to RESCUE.
@@ -1623,7 +1632,7 @@
             IF (XPT(KPT,I) .EQ. SU(I)) W(I)=XU(I)
 290     CONTINUE
         NF=NF+1
-        F = funkk(N,W)
+        F = this%funkk(N,W)
         IF (IPRINT .EQ. 3) THEN
             PRINT 300, NF,F,(W(I),I=1,N)
 300         FORMAT (/4X,'Function number',I6,'    F =',1PD18.10,&

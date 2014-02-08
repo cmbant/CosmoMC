@@ -286,7 +286,7 @@
 
     subroutine ReadIni(like, Ini)
     class(DatasetFileLikelihood) :: like
-    class(TIniFile) :: ini
+    class(TSettingIni) :: ini
 
     end subroutine ReadIni
 
@@ -294,7 +294,7 @@
     class(DatasetFileLikelihood) :: like
     character(LEN=*), intent(in) :: fname
     logical bad
-    Type(TIniFile) :: ini
+    Type(TSettingIni) :: ini
     integer i_conflict
 
     call Ini%Open(fname,  bad, .false.)

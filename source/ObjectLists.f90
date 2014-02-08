@@ -25,6 +25,12 @@
     integer, parameter :: list_prec = Kind(1.d0)
 #endif
 
+    Type, abstract :: TSaveLoadStateObject
+    contains
+    procedure :: SaveState
+    procedure :: LoadState
+    end Type TSaveLoadStateObject
+
     Type TObjectList
         integer :: Count =0
         integer :: Delta = 32
@@ -56,6 +62,8 @@
     procedure :: QuickSort
     procedure :: QuickSortArr
     procedure :: RemoveDuplicates
+    procedure :: SaveState => TObjectList_SaveState
+    procedure :: LoadState => TObjectList_LoadState
     FINAL :: finalize
     generic :: Add => AddItem, AddArray
     end Type TObjectList
@@ -72,14 +80,33 @@
     procedure :: AddArrayItems
     procedure :: AsArray
     generic :: Item => RealItem
+    !could add read and save state here
     end Type TRealList
 
     Type, extends(TRealCompareList):: TRealArrayList
     contains
     procedure :: Value
     procedure :: RealArrItem
+    procedure :: SaveState => TRealArrayList_SaveState
+    procedure :: LoadState => TRealArrayList_LoadState
     generic :: Item => Value, RealArrItem
     end Type TRealArrayList
+
+
+    abstract interface
+    subroutine SaveState(this,unit)
+    import TSaveLoadStateObject
+    class(TSaveLoadStateObject) :: this
+    integer :: unit
+    end subroutine SaveState
+
+    subroutine LoadState(this,unit)
+    import TSaveLoadStateObject
+    class(TSaveLoadStateObject) :: this
+    integer :: unit
+    end subroutine LoadState
+    end interface
+
 
     contains
 
@@ -165,11 +192,9 @@
 
     if (L%Count > 0) then
         if (C < L%Count) stop 'SetCapacity: smaller than Count'
-        allocate(TmpItems(L%Count), source=L%Items(1:L%Count))
-        deallocate(L%Items)
-        allocate(L%Items(C))
-        L%Items(1:L%Count) = TmpItems
-        deallocate(TmpItems)
+        allocate(TmpItems(C))
+        TmpItems(:L%Count) = L%Items(:L%Count)
+        call move_alloc(TmpItems, L%Items)
     else
         allocate(L%Items(C))
     end if
@@ -501,6 +526,41 @@
 
     end subroutine RemoveDuplicates
 
+    subroutine TObjectList_SaveState(L,unit)
+    class(TObjectList) :: L
+    integer :: unit
+    integer i
+
+    write (unit) L%Count
+    do i=1,L%Count
+        select type (item => L%Items(i)%P)
+        class is (TSaveLoadStateObject)
+            call item%SaveState(unit)
+            class default
+            stop 'List contains non-TSaveLoadStateObject item'
+        end select
+    end do
+
+    end subroutine TObjectList_SaveState
+
+    subroutine TObjectList_LoadState(L,unit)
+    class(TObjectList) :: L
+    integer :: unit
+    integer i, count
+
+    read(unit) count
+    if (count/=L%Count) stop 'TObjectList_LoadState count mismatch (objects must exist before load)'
+    do i=1,L%Count
+        select type (item => L%Items(i)%P)
+        class is (TSaveLoadStateObject)
+            call item%LoadState(unit)
+            class default
+            stop 'List contains non-TSaveLoadStateObject item'
+        end select
+    end do
+
+    end subroutine TObjectList_LoadState
+
     !TRealCompareList
     integer function CompareReal(this, R1, R2) result(comp)
     Class(TRealCompareList) :: this
@@ -617,6 +677,18 @@
     end select
 
     end function Value
+
+    subroutine TRealArrayList_LoadState(L,unit)
+    class(TRealArrayList) :: L
+    integer :: unit
+    call L%ReadBinary(unit)
+    end subroutine TRealArrayList_LoadState
+
+    subroutine TRealArrayList_SaveState(L,unit)
+    class(TRealArrayList) :: L
+    integer :: unit
+    call L%SaveBinary(unit)
+    end subroutine TRealArrayList_SaveState
 
 
     end module ObjectLists

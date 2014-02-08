@@ -1226,7 +1226,7 @@
     write (*,*) trim(S)
  
   end subroutine WriteS
-
+  
   subroutine StringReplace(FindS, RepS, S)
    character(LEN=*), intent(in) :: FindS, RepS
    character(LEN=*), intent(inout) :: S

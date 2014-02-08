@@ -2,7 +2,7 @@
     use AmlUtils
     use FileUtils
     implicit none
-
+    private
     integer, parameter :: ParamNames_maxlen = 128
 
     Type TParamNames
@@ -33,6 +33,7 @@
     procedure :: WriteFile => ParamNames_WriteFile
     end Type TParamNames
 
+    public TParamNames, ParamNames_maxlen
     contains
 
     function IsWhiteSpace(C)
@@ -47,42 +48,43 @@
     function ParamNames_ParseLine(Names,InLine,n) result(res)
     class(TParamNames) :: Names
     character(LEN=*) :: InLine
+    character(LEN=ParamNames_maxlen*3) :: name, label
     integer n
     logical res
-    integer pos, len
+    integer pos, alen,status
 
-    len = len_trim(InLIne)
+    alen = len_trim(InLIne)
     pos =1
-    do while (pos < len .and. IsWhiteSpace(InLIne(pos:pos)))
+    do while (pos < alen .and. IsWhiteSpace(InLIne(pos:pos)))
         pos = pos+1
     end do
-    read(InLine(pos:), *, end=400, err=400) Names%name(n)
-    pos = pos + len_trim(Names%name(n))
-    do while (pos < len .and. IsWhiteSpace(InLIne(pos:pos)))
+    read(InLine(pos:), *, iostat=status) name
+    res= (status==0)
+    if (.not. res) return
+    pos = pos + len_trim(name)
+    do while (pos < alen .and. IsWhiteSpace(InLIne(pos:pos)))
         pos = pos+1
     end do
-    Names%label(n) = trim(adjustl(InLine(pos:len)))
-    pos = scan(Names%label(n),'#')
+    label = trim(adjustl(InLine(pos:alen)))
+    pos = scan(label,'#')
     if (pos/=0) then
-        Names%comment(n) = Names%label(n)(pos+1: len_trim(Names%label(n)))
-        Names%label(n) = Names%label(n)(1:pos-1)
+        Names%comment(n) = label(pos+1: len_trim(label))
+        label = label(1:pos-1)
     else
         Names%comment(n) = ''
     endif
-    pos = scan(Names%label(n),char(9))
-    if (pos/=0) Names%label(n) = Names%label(n)(1:pos-1)
-    Names%name(n) = trim(adjustl(Names%name(n)))
-    len = len_trim( Names%name(n) )
-    if (Names%name(n)(len:len)=='*') then
-        Names%name(n)(len:len)=' '
+    pos = scan(label,char(9))
+    if (pos/=0) label = label(1:pos-1)
+    name = trim(adjustl(name))
+    alen = len_trim(name)
+    if (name(alen:alen)=='*') then
+        name(alen:alen)=' '
         Names%is_derived(n) = .true.
     else
         Names%is_derived(n) = .false.
     end if
-    res = .true.
-    return
-400 res=.false.
-    return
+    Names%name(n) = trim(name)
+    Names%label(n) = trim(label)
 
     end function ParamNames_ParseLine
 
@@ -136,7 +138,6 @@
     Names%nnames = n
     Names%num_derived = count(Names%is_derived)
     Names%num_MCMC = Names%nnames - Names%num_derived
-
 
     end subroutine ParamNames_Init
 
@@ -227,12 +228,12 @@
     function ParamNames_label(Names,name) result(lab)
     class(TParamNames) :: Names
     character(len=*), intent(in) :: name
-    character(len = ParamNames_maxlen) lab
+    character(len = :), allocatable :: lab
     integer ix
 
     ix = Names%index(name)
     if (ix>0) then
-        lab = Names%label(ix)
+        lab = trim(Names%label(ix))
     else
         lab = ''
     end if
@@ -241,11 +242,11 @@
 
     function ParamNames_name(Names,ix) result(name)
     class(TParamNames) :: Names
-    character(len=ParamNames_maxlen)  :: name
+    character(len=:), allocatable  :: name
     integer, intent(in) :: ix
 
     if (ix <= Names%nnames) then
-        name = Names%name(ix)
+        name = trim(Names%name(ix))
     else
         name = ''
     end if
@@ -314,7 +315,7 @@
     class(TParamNames) :: Names
     integer, intent(in) :: i
     logical ,intent(in), optional :: want_comment
-    character(LEN=ParamNames_maxlen*3) Line
+    character(LEN=:), allocatable :: Line
     logical wantCom
 
     if (present(want_comment)) then
@@ -325,10 +326,10 @@
 
     if (i> Names%nnames) call MpiStop('ParamNames_AsString: index out of range')
     Line = trim(Names%name(i))
-    if (Names%is_derived(i))Line = concat(Line,'*')
-    Line =  trim(Line)//char(9)//trim(Names%label(i))
+    if (Names%is_derived(i)) Line = Line // '*'
+    Line =  Line//char(9)//trim(Names%label(i))
     if (wantCom .and. Names%comment(i)/='') then
-        Line = trim(Line)//char(9)//'#'//trim(Names%comment(i))
+        Line = Line//char(9)//'#'//trim(Names%comment(i))
     end if
 
     end function ParamNames_AsString
@@ -366,21 +367,21 @@
 
     function ParamNames_NameOrNumber(Names,ix) result(name)
     class(TParamNames) :: Names
-    character(len=ParamNames_maxlen)  :: name
+    character(len=:), allocatable  :: name
     integer, intent(in) :: ix
 
-    name = Names%name(ix)
-    if (name == '') name = IntToStr(ix)
+    name = trim(Names%name(ix))
+    if (name == '') name = trim(IntToStr(ix))
 
     end function ParamNames_NameOrNumber
 
-    function ParamNames_MaxNameLen(Names) result(len)
+    function ParamNames_MaxNameLen(Names) result(alen)
     class(TParamNames) :: Names
-    integer len, i
+    integer alen, i
 
-    len = 0
+    alen = 0
     do i=1, Names%nnames
-        len = max(len, len_trim(Names%NameOrNumber(i)))
+        alen = max(alen, len_trim(Names%NameOrNumber(i)))
     end do
 
     end function ParamNames_MaxNameLen
@@ -414,7 +415,7 @@
     class(TIniFile) :: Ini
     character(LEN=*), intent(in) :: Key
     integer, intent(in) :: param
-    character(LEN=128) input
+    character(LEN=:), allocatable :: input
 
     input = ''
     if (Names%nnames>0) then

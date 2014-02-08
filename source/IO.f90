@@ -10,25 +10,16 @@
 
     contains
 
-    subroutine IO_Ini_Load(Ini,InputFile, bad)
-    use IniObjects
-    class(TIniFile) :: Ini
-    character(LEN=*), intent(in) :: InputFile
-    logical bad
-
-    call Ini%Open(InputFile,  bad, .false.)
-    end subroutine IO_Ini_Load
 
     function IO_OpenChainForRead(name, OK) result(handle)
     character(len=*), intent(in) :: name
     integer handle
     logical, optional, intent(out) :: OK
 
-    handle = new_file_unit()
     if (.not. present(OK)) then
-        call OpenTxtFile(name,handle)
+        handle = OpenNewTxtFile(name)
     else
-        open(unit=handle,file=name,form='formatted',status='old', err=28)
+        open(newunit=handle,file=name,form='formatted',status='old', err=28)
         OK=.true.
         return
 28      OK=.false.
@@ -42,8 +33,7 @@
 
     !assumes handle is a fortran unit; If want to get from database then probably to file here
 
-    handle = new_file_unit()
-    call OpenFile(name,handle,'unformatted')
+    handle = OpenNewFile(name,'unformatted')
 
     end function IO_OpenDataForRead
 
@@ -59,8 +49,7 @@
         app = .false.
     end if
 
-    handle = new_file_unit()
-    call CreateOpenTxtFile(name,handle,app)
+    handle = CreateOpenNewTxtFile(name,app)
 
     end function IO_OutputOpenForWrite
 
@@ -78,8 +67,7 @@
         app = .false.
     end if
 
-    handle = new_file_unit()
-    call CreateOpenFile(name,handle,'unformatted',app)
+    handle = CreateOpenNewFile(name,'unformatted',app)
 
     end function IO_DataOpenForWrite
 
@@ -88,7 +76,7 @@
     integer, intent(in) :: handle
     logical, intent(in), optional :: isLogFile
 
-    call CloseFile(handle)
+    close(handle)
 
     end subroutine IO_Close
 
@@ -96,7 +84,7 @@
     integer, intent(in) :: handle
     !modify e.g. to grab data from temporary file
 
-    call CloseFile(handle)
+    close(handle)
 
     end subroutine IO_DataCloseWrite
 
@@ -139,8 +127,7 @@
     character(LEN=4096) :: InLine
     integer num, cov_params(1024)
 
-    file_id = new_file_unit()
-    call OpenTxtFile(prop_mat, file_id)
+    file_id = OpenNewTxtFile(prop_mat)
     InLine=''
     do while (InLine == '')
         read(file_id,'(a)', end = 10) InLine
@@ -175,7 +162,7 @@
 20      call mpiStop('ReadProposeMatrix: wrong number of rows/columns in .covmat')
 
     end if
-10  call CloseFile(file_id)
+10  close(file_id)
 
     i=TxtNumberColumns(InLine)
     if (i==num_params) then
@@ -314,8 +301,7 @@
     integer i,ix
     character(LEN=17) :: lim1,lim2
 
-    unit = new_file_unit()
-    call CreateTxtFile(fname,unit)
+    unit = CreateNewTxtFile(fname)
     do i=1, size(indices)
         ix = indices(i)
         if (limbot(ix) .or. limtop(ix)) then
@@ -351,8 +337,7 @@
         call Names%Init(infile)
         infile = trim(in_root) // '.ranges'
         if (FileExists(infile)) then
-            file_id = new_file_unit()
-            call OpenTxtFile(infile, file_id)
+            file_id=OpenNewTxtFile(infile)
             do
                 read(file_id, *, end=100,err=100) name, minmax
                 ix = Names%index(name)
@@ -381,7 +366,8 @@
     logical chainOK
     integer chain_handle, row_start
     integer, allocatable :: indices(:)
-    character(LEN=Ini_max_string_len) infile, numstr
+    character(LEN=:), allocatable :: infile
+    character(LEN=20) :: numstr
 
     row_start=nrows
     if (chain_num == 0) then
@@ -458,11 +444,10 @@
     integer i,j,file_id
     character(LEN=*), parameter :: txtFormat = '(1A15)'
 
-    j = max(9,ParamNames_MaxNameLen(Names))
+    j = max(9,Names%MaxNameLen())
     nameFormat = concat('(1A',j+1,')')
 
-    file_id = new_file_unit()
-    open(unit=file_id,file=trim(froot)//'.margestats',form='formatted',status='replace')
+    open(newunit=file_id,file=trim(froot)//'.margestats',form='formatted',status='replace')
     write (file_id,'(a)') 'Marginalized limits: ' // trim(contours_str)
     write (file_id,*) ''
     call IO_WriteLeftTextNoAdvance(file_id,nameFormat,'parameter')
@@ -499,4 +484,5 @@
 
     end subroutine IO_OutputMargeStats
 
+    
     end module IO

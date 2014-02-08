@@ -13,6 +13,13 @@
     !number of other C_l
     !e.g. 2 for CMB lensing potential and cross-correlation
 
+
+    logical :: get_sigma8 = .true.
+    logical :: Use_LSS = .false.
+    logical :: Use_CMB = .false.
+    logical :: use_nonlinear = .false.    !JD for WiggleZ MPK
+
+
     !l_max. Tensors are not computed unless compute_tensors = T in input file
     !Make these multiples of 50, should be 50 more than you need accurately
     integer, parameter :: lmax = 6500, lmax_tensor = 400 !note only lmax_computed_cl is actually calculated
@@ -127,6 +134,11 @@
     CMB_lensing = Ini%Read_Logical('CMB_lensing',CMB_lensing)
     use_lensing_potential = Ini%Read_logical('use_lensing_potential',use_lensing_potential)
     use_nonlinear_lensing = Ini%Read_logical('use_nonlinear_lensing',use_nonlinear_lensing)
+
+    pivot_k = Ini%Read_Real('pivot_k',0.05)
+    inflation_consistency = Ini%read_Logical('inflation_consistency',.false.)
+    bbn_consistency = Ini%Read_Logical('bbn_consistency',.true.)
+    num_massive_neutrinos = Ini%read_int('num_massive_neutrinos',-1)
 
     if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
     if (use_lensing_potential .and. num_cls_ext ==0) &

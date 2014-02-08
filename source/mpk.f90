@@ -57,7 +57,7 @@
     use IniObjects
     use settings
     class(LikelihoodList) :: LikeList
-    class(TIniFile) :: ini
+    class(TSettingIni) :: ini
     type(MPKLikelihood), pointer :: like
     integer nummpksets, i
 
@@ -77,7 +77,7 @@
         like%needs_powerspectra = .true.
         like%needs_exact_z = .true.
         like%num_z = 1
-        call like%ReadDatasetFile(ReadIniFileName(Ini,numcat('mpk_dataset',i)) )
+        call like%ReadDatasetFile(Ini%ReadFileName(numcat('mpk_dataset',i)) )
         call LikeList%Add(like)
     end do
     if (Feedback>1) write(*,*) 'read mpk datasets'
@@ -87,8 +87,8 @@
     subroutine MPK_ReadIni(like,Ini)
     use MatrixUtils
     class(MPKLikelihood) like
-    class(TIniFile) :: Ini
-    character(LEN=Ini_max_string_len) :: kbands_file, measurements_file, windows_file, cov_file
+    class(TSettingIni) :: Ini
+    character(LEN=:), allocatable :: kbands_file, measurements_file, windows_file, cov_file
 
     integer i,iopb,i_conflict
     real(mcp) keff,klo,khi,beff
@@ -105,7 +105,6 @@
 
     if (like%name == 'twodf') stop 'twodf no longer supported - use data/2df_2005.dataset'
     if (like%name == 'lrg_2009') stop 'lrg_2009 no longer supported'
-    Ini_fail_on_not_found = .false.
     like%use_set =.true.
     if (Feedback > 0) write (*,*) 'reading: '//trim(like%name)
     num_mpk_points_full = Ini%Read_Int('num_mpk_points_full',0)
@@ -127,7 +126,7 @@
     allocate(like%mpk_W(like%num_mpk_points_use,like%num_mpk_kbands_use))
     allocate(mpk_fiducial(like%num_mpk_points_use))
 
-    kbands_file  = ReadIniFileName(Ini,'kbands_file')
+    kbands_file  = Ini%ReadFileName('kbands_file')
     call ReadVector(kbands_file,mpk_kfull,num_mpk_kbands_full)
     like%mpk_k(1:like%num_mpk_kbands_use)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
     if (Feedback > 1) then
@@ -139,7 +138,7 @@
     !    write (*,*) 'all k<matter_power_minkh will be set to matter_power_minkh'
     !end if
 
-    measurements_file  = ReadIniFileName(Ini,'measurements_file')
+    measurements_file  = Ini%ReadFileName('measurements_file')
     call OpenTxtFile(measurements_file, tmp_file_unit)
     like%mpk_P=0.
     read (tmp_file_unit,*) dummychar
@@ -154,14 +153,14 @@
     close(tmp_file_unit)
     if (Feedback > 1) write(*,*) 'bands truncated at keff=  ',real(keff)
 
-    windows_file  = ReadIniFileName(Ini,'windows_file')
+    windows_file  = Ini%ReadFileName('windows_file')
     if (windows_file.eq.'') write(*,*) 'ERROR: mpk windows_file not specified'
     call ReadMatrix(windows_file,mpk_Wfull,num_mpk_points_full,num_mpk_kbands_full)
     like%mpk_W(1:like%num_mpk_points_use,1:like%num_mpk_kbands_use)= &
     mpk_Wfull(min_mpk_points_use:max_mpk_points_use,min_mpk_kbands_use:max_mpk_kbands_use)
 
 
-    cov_file  = ReadIniFileName(Ini,'cov_file')
+    cov_file  = Ini%ReadFileName('cov_file')
     if (cov_file /= '') then
         allocate(mpk_covfull(num_mpk_points_full,num_mpk_points_full))
         call ReadMatrix(cov_file,mpk_covfull,num_mpk_points_full,num_mpk_points_full)

@@ -6,7 +6,12 @@
     implicit none
     private
 
-    Type, extends(TTheoryCalculator) :: BaseCosmologyCalculator
+    Type TCosmologyImportanceOptions
+        logical :: redo_cls, redo_pk
+    end Type TCosmologyImportanceOptions
+
+    Type, extends(TTheoryCalculator) :: TCosmologyCalculator
+        Type(TCosmologyImportanceOptions) :: ImportanceOptions
     contains
     procedure :: BAO_D_v
     procedure :: CMBToTheta
@@ -18,14 +23,23 @@
     procedure :: GetOpticalDepth
     procedure :: SetBackgroundTheoryData
     procedure :: SetParamsForBackground
-    procedure :: ReadParams => CosmoCalc_ReadParams
-    end Type BaseCosmologyCalculator
+    procedure :: ReadImportanceParams => TCosmologyCalculator_ReadImportanceParams
+    end Type TCosmologyCalculator
 
-    public BaseCosmologyCalculator
+    public TCosmologyCalculator, TCosmologyImportanceOptions
     contains
 
+    subroutine TCosmologyCalculator_ReadImportanceParams(this, Ini)
+    class(TCosmologyCalculator) :: this
+    class(TSettingIni) :: Ini
+
+    this%ImportanceOptions%redo_cls= Ini%read_Logical('redo_cls')
+    this%ImportanceOptions%redo_pk= Ini%read_Logical('redo_pk')
+
+    end subroutine TCosmologyCalculator_ReadImportanceParams
+
     subroutine GetNewBackgroundData(this, CMB,Theory,error)
-    class(BaseCosmologyCalculator) :: this
+    class(TCosmologyCalculator) :: this
     class(CMBParams), intent(in) :: CMB
     class(CosmoTheoryPredictions) Theory
     integer error
@@ -37,13 +51,13 @@
             call this%SetBackgroundTheoryData(CMB, Theory, error)
         end if
         class default
-        call MpiStop('BaseCosmologyCalculator: Must have CosmologyParameterization')
+        call MpiStop('TCosmologyCalculator: Must have CosmologyParameterization')
     end select
 
     end subroutine GetNewBackgroundData
 
     subroutine SetParamsForBackground(this,CMB)
-    class(BaseCosmologyCalculator) :: this
+    class(TCosmologyCalculator) :: this
     class(CMBParams) CMB
 
     call this%ErrorNotImplemented('SetParamsForBackground')
@@ -51,7 +65,7 @@
     end subroutine SetParamsForBackground
 
     subroutine SetBackgroundTheoryData(this, CMB,Theory,error)
-    class(BaseCosmologyCalculator) :: this
+    class(TCosmologyCalculator) :: this
     class(CMBParams), intent(in) :: CMB
     class(CosmoTheoryPredictions) Theory
     integer error
@@ -63,7 +77,7 @@
     end subroutine SetBackgroundTheoryData
 
     subroutine GetNewTransferData(this, CMB, Info,Theory,error)
-    class(BaseCosmologyCalculator) :: this
+    class(TCosmologyCalculator) :: this
     class(CMBParams), intent(in) :: CMB
     class(TTheoryIntermediateCache), pointer :: Info
     class(CosmoTheoryPredictions) :: Theory
@@ -75,7 +89,7 @@
     end subroutine GetNewTransferData
 
     subroutine GetNewPowerData(this, CMB, Info, Theory, error)
-    class(BaseCosmologyCalculator) :: this
+    class(TCosmologyCalculator) :: this
     class(CMBParams) :: CMB
     class(TTheoryIntermediateCache), pointer :: Info
     class(CosmoTheoryPredictions)  :: Theory
@@ -87,12 +101,11 @@
     end subroutine GetNewPowerData
 
 
-    subroutine GetTheoryForImportance(this, CMB, Theory, error, DoCls, DoPk)
-    class(BaseCosmologyCalculator) :: this
+    subroutine GetTheoryForImportance(this, CMB, Theory, error)
+    class(TCosmologyCalculator) :: this
     class(CMBParams) :: CMB
     class(CosmoTheoryPredictions) :: Theory
     integer error
-    logical, intent(in) :: DoCls, DoPk
 
     error=0
     !calculate power spectra from scratch (for importance sampling)
@@ -102,7 +115,7 @@
     end subroutine GetTheoryForImportance
 
     function GetOpticalDepth(this,CMB)
-    class(BaseCosmologyCalculator) :: this
+    class(TCosmologyCalculator) :: this
     type(CMBParams) CMB
     real(mcp) GetOpticalDepth
 
@@ -112,7 +125,7 @@
     end  function GetOpticalDepth
 
     function GetZreFromTau(this, CMB, tau)
-    class(BaseCosmologyCalculator) :: this
+    class(TCosmologyCalculator) :: this
     class(CMBParams) CMB
     real(mcp), intent(in) :: tau
     real(mcp) GetZreFromTau
@@ -123,7 +136,7 @@
     end function GetZreFromTau
 
     real(mcp) function CMBToTheta(this, CMB)
-    class(BaseCosmologyCalculator) :: this
+    class(TCosmologyCalculator) :: this
     class(CMBParams) CMB
 
     call this%ErrorNotImplemented('CMBToTheta')
@@ -132,7 +145,7 @@
     end function CMBToTheta
 
     real(mcp) function BAO_D_v(this, z)
-    class(BaseCosmologyCalculator) :: this
+    class(TCosmologyCalculator) :: this
     real(mcp), intent(IN) :: z
 
     call this%ErrorNotImplemented('BAO_D_v')
@@ -140,14 +153,6 @@
 
     end function BAO_D_v
 
-    subroutine CosmoCalc_ReadParams(this, Info, Ini)
-    class(BaseCosmologyCalculator) :: this
-    class(TTheoryIntermediateCache) Info
-    class(TIniFile) :: Ini
-
-    call Info%Initialize()
-
-    end subroutine CosmoCalc_ReadParams
 
 
 

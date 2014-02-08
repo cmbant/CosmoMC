@@ -58,6 +58,45 @@
     end function CreateNewFile
 
 
+    function  CreateOpenNewTxtFile(aname, append) result(aunit)
+    character(LEN=*), intent(IN) :: aname
+    integer :: aunit
+    logical, optional, intent(in) :: append
+    logical A
+
+    if (present(append)) then
+        A=append
+    else
+        A = .false.
+    endif
+
+    aunit = CreateOpenNewFile(aname,'formatted',A)
+
+    end function CreateOpenNewTxtFile
+
+    function CreateOpenNewFile(aname, mode, append) result(aunit)
+    character(LEN=*), intent(IN) :: aname,mode
+    integer :: aunit
+    logical, optional, intent(in) :: append
+    logical A
+    integer status
+
+    if (present(append)) then
+        A=append
+    else
+        A = .false.
+    endif
+
+    if (A) then
+        open(newunit=aunit,file=aname,form=mode,status='unknown', iostat=status, position='append')
+    else
+        open(newunit=aunit,file=aname,form=mode,status='replace', iostat=status)
+    end if
+    if (status/=0) call MpiStop('Error creatinging or opening '//trim(aname))
+
+    end function CreateOpenNewFile
+
+
     function ReadLine(aunit, InLine) result(OK)
     integer, intent(IN) :: aunit
     character(LEN=*) :: InLine

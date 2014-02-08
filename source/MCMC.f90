@@ -3,163 +3,113 @@
     !Provisional implementation of Wang-Landau and Multicanonical methods
 
     module MonteCarlo
-    use ParamDef
     use CalcLike
     use Random
     use propose
-    use IO
+    use ParamPointSet
     implicit none
-
-    integer :: indep_sample = 0
-    !number of iterations between dumping full model data. If zero then skip.
-
-    integer :: directional_grid_steps = 20
-    !for sampling_method = sampling_slowgrid, number of steps per grid
+    private
 
     real(mcp), parameter    :: eps_1 = 1.00001
-    real(mcp) :: MaxLike
 
-    logical :: fast_slicing = .false. !slice fast parameters when using Metropolis
-    logical :: slice_stepout = .true.
-    logical :: slice_randomsize = .false.
+    Type, extends(TConfigClass) :: TSampleCollector
+    contains
+    procedure :: AddNewPoint => TSampleCollector_AddNewPoint
+    procedure :: AddNewWeightedPoint => TSampleCollector_AddNewWeightedPoint
+    end Type
 
-    !Multicanonical/W-L sampling parameters
-    real(mcp), parameter :: mc_logspace =  6. !1/ steps to use in log-likelihood * number of parameter
-    integer :: mc_mini = 0, mc_maxi = 0
-    integer :: mc_update_steps = 7000, mc_update_burn = 50
-    integer :: mc_steps_inc = 1000
-    real(mcp), dimension(:,:), allocatable :: mc_like_counts
-    real(mcp), dimension(:), allocatable :: mc_lnweights
-    !Wang-Landau parameter
-    real(mcp) :: WL_f = 1, WL_min = 0.1, WL_minW
-    real(mcp) :: WL_maxL=8. !WL_maxL is log like from best to use, in units of number of parameters
-    integer :: WL_update_steps = 4000
-    real(mcp) :: WL_flat_tol = 1.4 !factor by which smallest histogram can be smaller than mean
+    Type, extends(TLikelihoodUser) :: TSamplingAlgorithm
+        integer :: logfile_unit = 0
+        integer :: num_sample = 0
+        real(mcp) :: MaxLike = LogZero
+        real(mcp) :: MaxLikeParams(max_num_params)
+        class(TSampleCollector), pointer :: SampleCollector => null()
+    contains
+    procedure :: Init => TSamplingAlgorithm_Init
+    procedure :: LogLike => TSamplingAlgorithm_LogLike
+    procedure :: SaveState => TSamplingAlgorithm_SaveState
+    procedure :: LoadState => TSamplingAlgorithm_LoadState
+    end Type TSamplingAlgorithm
 
-    logical :: MCMC_outputs = .true.
-    real(mcp) :: MaxLikeParams(max_num_params) 
+    Type, extends(TSamplingAlgorithm) :: TChainSampler
+        integer :: oversample_fast =1
+        integer :: num_accept = 0
+        real(mcp) :: propose_scale = 2.4_mcp
+        integer :: burn_in = 2 !Minimum to get sensible answers
+        class(BlockedProposer), pointer :: Proposer => null()
+    contains
+    procedure :: MetropolisAccept => TChainSampler_MetropolisAccept
+    procedure :: MoveDone => TChainSampler_MoveDone
+    procedure :: SampleFrom =>  TChainSampler_SampleFrom
+    procedure :: GetNewSample =>  TChainSampler_GetNewSample
+    procedure :: SetCovariance => TChainSampler_SetCovariance
+    procedure :: SaveState => TChainSampler_SaveState
+    procedure :: LoadState => TChainSampler_LoadState
+    procedure :: ReadParams => TChainSampler_ReadParams
+    procedure :: Init=> TChainSampler_Init
+    procedure :: InitWithPropose=> TChainSampler_InitWithPropose
+    end Type
 
+    Type, extends(TChainSampler) :: TMetropolisSampler
+        integer :: num_metropolis_accept=0, num_metropolis=0, last_num=0
+    contains
+    procedure :: GetNewSample => TMetropolisSampler_GetNewMetropolisSample
+    procedure :: GetNewMetropolisSample => TMetropolisSampler_GetNewMetropolisSample
+    procedure :: FastParameterSample => TMetropolisSampler_FastParameterSample
+    end Type
+
+    Type, extends(TMetropolisSampler) :: TFastDraggingSampler
+        integer :: num_fast_calls = 0, num_slow_calls = 0, drag_accpt=0
+        integer :: num_drag=0
+    contains
+    procedure :: GetNewSample => TFastDraggingSampler_GetNewSample
+    end Type
+
+    public TSampleCollector, TSamplingAlgorithm, TChainSampler, TMetropolisSampler, TFastDraggingSampler
     contains
 
-    !function UpdateParamsLike(Params, fast, dist, i, freeNew, Lik) result(NewLik)
-    ! !For slice sampling movement and likelihood
-    ! Type(ParamSet) tmp, Params
-    ! integer, intent(in) :: i
-    ! real(mcp), intent(in), optional :: Lik
-    ! real(mcp) NewLik
-    ! logical, intent(in) :: fast, freeNew
-    ! real(mcp), intent(in) :: dist
-    !
-    ! tmp = Params
-    !
-    ! call UpdateParamsDirection(tmp, fast, dist, i)
-    !
-    ! NewLik = GetLogLike(tmp)
-    ! if (freeNew) then
-    !   call AcceptReject(.true., tmp%Info, Params%Info)
-    ! else
-    !    if (NewLik <= Lik*eps_1) then
-    !      !accept move
-    !      call AcceptReject(.false., tmp%Info, Params%Info)
-    !      Params = tmp
-    !    else
-    !      call AcceptReject(.true., tmp%Info, Params%Info)
-    !    endif
-    ! endif
-    !
-    !end function UpdateParamsLike
-    !
-    !
-    !subroutine SliceUpdate(Params, fast, i, Like)
-    !!Do slice sampling, see http://www.cs.toronto.edu/~radford/slice-aos.abstract.html
-    !!update parameter i, input Like updated to new value.
-    !!Use linear stepping for the moment
-    ! Type(ParamSet) Params
-    ! integer, intent(in) :: i
-    ! logical, intent(in) :: fast
-    ! real(mcp), intent(inout) :: Like
-    ! real(mcp) offset,  P
-    ! real(mcp) L, R
-    ! real(mcp) LikL, LikR, Range, LikT, w
-    ! integer fevals
-    !
-    !
-    !  w = propose_scale
-    !  if (slice_randomsize) w =w * Gaussian1()
-    !  Like = Like + randexp1()  !New vertical position (likelihood)
-    !  fevals = 0
-    !
-    !  offset = ranmar()
-    !
-    !  L = -offset
-    !  R = 1- offset
-    !
-    !  !step out
-    !  if (slice_stepout) then
-    !      do
-    !       LikL = UpdateParamsLike(Params, fast, w*L, i, .true.)
-    !       fevals = fevals + 1
-    !       if (LikL*eps_1 > Like) exit
-    !       L = L  - 1
-    !      end do
-    !
-    !      do
-    !       LikR = UpdateParamsLike(Params, fast, w*R, i,.true.)
-    !       fevals = fevals + 1
-    !       if (LikR*eps_1 > Like) exit
-    !       R = R + 1
-    !      end do
-    !  end if
-    !
-    !  !stepping in
-    !  do
-    !   Range =  R - L
-    !   P  =  ranmar() * Range + L
-    !   LikT = UpdateParamsLike(Params, fast, w*P, i, .false., Like)
-    !   fevals = fevals + 1
-    !   if (LikT < Like*eps_1) exit
-    !   if (P > 0) then
-    !       R = P
-    !   else
-    !       L = P
-    !   end if
-    !  end do
-    !  Like = LikT
-    !  if (.not. fast) slow_proposals = slow_proposals + fevals
-    !
-    !end subroutine SliceUpdate
-    !
-    !
-    !subroutine SliceSampleSlowParam(CurParams, CurLike)
-    ! Type(ParamSet) CurParams
-    ! real(mcp) CurLike
-    ! integer, save:: loopix = 0
-    !
-    !  if (mod(loopix,num_slow)==0) then
-    !       if (.not. allocated(Rot_slow)) allocate(Rot_slow(num_slow,num_slow))
-    !       call RotMatrix(Rot_slow,num_slow)
-    !       loopix = 0
-    !  end if
-    !  loopix = loopix + 1
-    !  call SliceUpdate(CurParams, .false., loopix,CurLike)
-    !
-    !end subroutine SliceSampleSlowParam
-    !
-    !subroutine SliceSampleFastParams(CurParams, CurLike)
-    ! Type(ParamSet) CurParams
-    ! real(mcp) CurLike
-    ! integer j
-    !
-    !  if (.not. allocated(Rot_fast)) allocate(Rot_fast(num_fast,num_fast))
-    !  call RotMatrix(Rot_fast,num_fast)
-    !
-    !  do j = 1, num_fast * max(1,oversample_fast)
-    !     call SliceUpdate(CurParams, .true., mod(j-1,num_fast)+1,CurLike)
-    !  end do
-    !
-    !end subroutine SliceSampleFastParams
-    !
-    function MetropolisAccept(Like, CurLike)
+    subroutine TSamplingAlgorithm_Init(this, LikeCalculator, SampleCollector)
+    class(TSamplingAlgorithm) :: this
+    class(TLikeCalculator), target:: LikeCalculator
+    class(TSampleCollector), pointer :: SampleCollector
+
+    this%SampleCollector => SampleCollector
+    this%LikeCalculator => LikeCalculator
+    this%num_sample = 0
+    this%MaxLike = LogZero
+
+    end subroutine TSamplingAlgorithm_Init
+
+    function TSamplingAlgorithm_LogLike(this, Params) result(logLike)
+    class(TSamplingAlgorithm) :: this
+    class(ParamSet) Params
+    real(mcp) :: logLike
+
+    logLike = this%LikeCalculator%GetLogLike(Params)
+
+    end function TSamplingAlgorithm_LogLike
+
+    subroutine TSamplingAlgorithm_LoadState(this,unit)
+    class(TSamplingAlgorithm) :: this
+    integer :: unit
+
+    read(unit) this%num_sample, this%MaxLike, this%MaxLikeParams
+
+    end subroutine TSamplingAlgorithm_LoadState
+
+    subroutine TSamplingAlgorithm_SaveState(this,unit)
+    class(TSamplingAlgorithm) :: this
+    integer :: unit
+
+    write(unit) this%num_sample, this%MaxLike, this%MaxLikeParams
+
+    end subroutine TSamplingAlgorithm_SaveState
+
+
+    !!!TChainSampler
+
+    function TChainSampler_MetropolisAccept(this, Like, CurLike) result(MetropolisAccept)
+    class(TChainSampler) :: this
     real(mcp) Like, CurLike
     logical MetropolisAccept
 
@@ -170,14 +120,215 @@
         MetropolisAccept = .false.
     end if
 
-    end function MetropolisAccept
+    end function TChainSampler_MetropolisAccept
 
-    subroutine FastDragging(CurParams, CurLike, mult)
+
+    subroutine TChainSampler_SampleFrom(this,CurParams, CurLike, samples_to_get)
+    class(TChainSampler) :: this
+    Type(ParamSet) CurParams
+    integer samples_to_get
+    real(mcp)  CurLike
+    real(mcp) :: mult
+
+    mult= 1
+
+    do while (this%num_sample <= samples_to_get*this%Oversample_fast)
+        call this%GetNewSample(CurParams, CurLike, mult)
+
+        if (CurLike /= logZero) then
+            if (associated(this%SampleCollector)) then
+                call this%SampleCollector%AddNewPoint(CurParams%P, CurLike)
+                if (mod(this%num_sample*this%Oversample_fast,100)==0) call CheckParamChange
+            end if
+        else
+            if (this%num_sample > 1000) then
+                call DoAbort('MCMC.f90: Couldn''t start after 1000 tries - check starting ranges')
+            end if
+        end if
+    end do
+
+    if (Feedback > 0) then
+        write(*,*) MPIRank, 'Stopping as have ',samples_to_get ,' samples. '
+        call this%LikeCalculator%WritePerformanceStats(stdout)
+    end if
+
+    end subroutine TChainSampler_SampleFrom
+
+
+    subroutine TChainSampler_MoveDone(this,accpt, CurParams, CurLike, mult, thin_fac)
+    class(TChainSampler) :: this
+    logical, intent(in) :: accpt
+    class(TCalculationAtParamPoint), intent(in) :: CurParams
+    real(mcp) CurLike
+    real(mcp), intent(inout):: mult
+    integer, intent(in), optional :: thin_fac
+
+    this%num_sample = this%num_sample + 1
+    if (accpt) then
+        if (associated(this%SampleCollector) .and. CurLike /= LogZero .and. this%num_accept> this%burn_in) &
+        call this%SampleCollector%AddNewWeightedPoint(CurParams, CurLike, mult, thin_fac)
+        this%num_accept = this%num_accept + 1
+        mult=1
+        if (CurLike < this%MaxLike) then
+            this%MaxLike = CurLike
+            this%MaxLikeParams = CurParams%P
+        end if
+    else
+        mult = mult + 1
+    end if
+
+    end subroutine TChainSampler_MoveDone
+
+    subroutine TChainSampler_GetNewSample(this, CurParams, CurLike, mult)
+    class(TChainSampler) :: this
+    Type(ParamSet) CurParams
+    real(mcp) CurLike, mult
+    end subroutine TChainSampler_GetNewSample
+
+
+    subroutine TChainSampler_LoadState(this,unit)
+    class(TChainSampler) :: this
+    integer :: unit
+
+    call this%TSamplingAlgorithm%LoadState(unit)
+    read(unit) this%num_accept
+    call this%Proposer%LoadState(unit)
+
+    end subroutine TChainSampler_LoadState
+
+
+    subroutine TChainSampler_SaveState(this,unit)
+    class(TChainSampler) :: this
+    integer :: unit
+
+    call this%TSamplingAlgorithm%SaveState(unit)
+    write(unit) this%num_accept
+    call this%Proposer%SaveState(unit)
+
+    end subroutine TChainSampler_SaveState
+
+    subroutine TChainSampler_SetCovariance(this, cov)
+    class(TChainSampler) :: this
+    real(mcp) :: cov(:,:)
+
+    call this%Proposer%SetCovariance(cov)
+
+    end subroutine TChainSampler_SetCovariance
+
+
+    subroutine TChainSampler_ReadParams(this, Ini)
+    class(TChainSampler) :: this
+    class(TIniFile) :: Ini
+
+    if (BaseParams%use_fast_slow) then
+        this%oversample_fast = Ini%Read_Int('oversample_fast',1)
+        if (this%oversample_fast<1) call DoAbort('oversample_fast must be >= 1')
+    end if
+
+    end subroutine TChainSampler_ReadParams
+
+    subroutine TChainSampler_Init(this, LikeCalculator, SampleCollector)
+    class(TChainSampler) :: this
+    class(TLikeCalculator), target:: LikeCalculator 
+    class(TSampleCollector), pointer :: SampleCollector
+    call this%InitWithPropose(LikeCalculator, SampleCollector)
+    end subroutine TChainSampler_Init
+
+    subroutine TChainSampler_InitWithPropose(this, LikeCalculator, SampleCollector, propose_scale)
+    class(TChainSampler) :: this
+    class(TLikeCalculator), target:: LikeCalculator 
+    class(TSampleCollector), pointer :: SampleCollector
+    real(mcp), intent(in), optional :: propose_scale
+
+    if (present(propose_scale)) this%propose_scale = propose_scale
+    
+    call this%TSamplingAlgorithm%Init(LikeCalculator,SampleCollector)
+    allocate(BlockedProposer::this%Proposer)
+    call this%Proposer%Init(BaseParams%param_blocks, slow_block_max= slow_tp_max, &
+    oversample_fast=this%oversample_fast, propose_scale=this%propose_scale)
+    this%num_accept=0
+    
+    end subroutine TChainSampler_InitWithPropose
+
+    !!! TMetropolisSampler
+
+    subroutine TMetropolisSampler_GetNewMetropolisSample(this, CurParams, CurLike, mult)
+    !Standard metropolis hastings
+    class(TMetropolisSampler) :: this
+    Type(ParamSet) CurParams, Trial
+    real(mcp) CurLike, mult, Like 
+    logical :: accpt
+    character(LEN=128) logLine
+
+    Trial = CurParams
+    call this%Proposer%GetProposal(Trial%P)
+
+    Like = this%LogLike(Trial)
+    if (Feedback > 1) write (*,*) instance, 'Likelihood: ', Like, 'Current Like:', CurLike
+
+    if (Like /= logZero) then
+        accpt = this%MetropolisAccept(Like, CurLike)
+    else
+        accpt = .false.
+    end if
+
+    call CurParams%AcceptReject(Trial, accpt)
+    this%num_metropolis = this%num_metropolis + 1
+
+    call this%MoveDone(accpt, CurParams, CurLike, mult, this%Oversample_fast)
+
+    if (accpt) then
+        CurParams = Trial
+        CurLike = Like
+        this%num_metropolis_accept = this%num_metropolis_accept + 1
+        if (Feedback > 1) write (*,*) this%num_metropolis, ' metropolis accept. ratio:', real(this%num_metropolis_accept)/this%num_metropolis
+        if (this%logfile_unit /=0 .and. mod(this%num_metropolis_accept,50*this%Oversample_fast) ==0) then
+            write (logLine,*) 'metropolis rat:',real(this%num_metropolis_accept)/this%num_metropolis, ' in ',this%num_metropolis, &
+            ', best: ',real(this%MaxLike)
+            call IO_WriteLog(logfile_unit,logLine)
+            write (logLine,*) 'local acceptance ratio:', 50./(this%num_metropolis - this%last_num)
+            call IO_WriteLog(logfile_unit,logLine)
+            this%last_num = this%num_metropolis
+        end if
+    end if
+
+    end subroutine TMetropolisSampler_GetNewMetropolisSample
+
+    subroutine TMetropolisSampler_FastParameterSample(this, CurParams, CurLike, mult)
+    !Metropolis hastings on fast parameters
+    class(TMetropolisSampler) :: this
+    Type(ParamSet) CurParams, Trial
+    real(mcp) CurLike, Like
+    real(mcp) mult
+    logical :: accpt
+
+    Trial = CurParams
+    call this%Proposer%GetProposalFast(Trial%P)
+
+    Like = this%LogLike(Trial)
+    if (Like /= logZero) then
+        accpt = this%MetropolisAccept(Like, CurLike)
+    else
+        accpt = .false.
+    end if
+
+    call CurParams%AcceptReject(Trial,accpt)
+    call this%MoveDone(accpt, CurParams, CurLike, mult)
+
+    if (accpt) then
+        CurParams = Trial
+        CurLike = Like
+    end if
+
+    end subroutine TMetropolisSampler_FastParameterSample
+
+
+    subroutine TFastDraggingSampler_GetNewSample(this,CurParams, CurLike, mult)
     !Make proposals in fast-marginalized slow parameters
     !'drag' fast parameters using method of Neal
+    class(TFastDraggingSampler) :: this
     Type(ParamSet) TrialEnd, TrialStart, CurParams, CurEndParams, CurStartParams
-    real(mcp) CurLike
-    integer mult
+    real(mcp) CurLike, mult
     integer numaccpt
     real(mcp) CurIntLike, IntLike, CurEndLike, CurStartLike, EndLike, StartLike
     real(mcp) CurDragLike, DragLike
@@ -185,29 +336,34 @@
     real(mcp)  :: likes_start_sum, likes_end_sum
     integer interp_step, interp_steps
     real(mcp) frac, delta(num_params)
-    integer, save :: num_fast_calls = 0, num_slow_calls = 0, drag_accpt=0
-    integer, save :: counter=0
 
-    counter=counter+1
-    if (mod(counter, Proposer%oversample_fast)/=0) then 
-        call FastMetropolisHastings(CurParams, CurLike, mult)
+    if (CurLike == LogZero .or. BaseParams%num_fast==0 .or. BaseParams%num_slow ==0) then
+        call this%GetNewMetropolisSample(CurParams, CurLike, mult)
         return
     end if
 
+    this%num_drag=this%num_drag+1
+    if (mod(this%num_drag, this%oversample_fast)/=0) then 
+        call this%TMetropolisSampler%FastParameterSample(CurParams, CurLike, mult)
+        return
+    end if
+
+    if (Feedback > 1) write (*,*) instance, 'Fast dragging, Like: ', CurLike
+
     call Timer()
     TrialEnd = CurParams
-    call Proposer%GetProposalSlow(TrialEnd%P)
+    call this%Proposer%GetProposalSlow(TrialEnd%P)
 
-    CurEndLike = GetLogLike(TrialEnd)
+    CurEndLike = this%LogLike(TrialEnd)
     if (CurEndLike==logZero) then
-        call AcceptReject(.false., CurParams%Info, TrialEnd%Info)
+        call TrialEnd%Clear(keep=CurParams)
         mult = mult + 1
         return
     end if
     CurStartLike = CurLike
     if (Feedback > 1) call Timer('Dragging Slow time')
 
-    num_slow_calls = num_slow_calls + 1
+    this%num_slow_calls = this%num_slow_calls + 1
 
     likes_end_sum = CurEndLike
     likes_start_sum = CurStartLike
@@ -219,30 +375,30 @@
 
     numaccpt = 0
     do interp_step = 1, interp_steps-1
-        call Proposer%GetProposalFastDelta(delta)
+        call this%Proposer%GetProposalFastDelta(delta)
         TrialEnd = CurEndParams
         TrialEnd%P(1:num_params) = TrialEnd%P(1:num_params) + delta
-        EndLike = GetLogLike(TrialEnd)
+        EndLike = this%LogLike(TrialEnd)
         accpt = EndLike /= logZero
         if (accpt) then
-            num_fast_calls = num_fast_calls + 1
+            this%num_fast_calls = this%num_fast_calls + 1
             TrialStart = CurStartParams
             TrialStart%P(1:num_params) = TrialStart%P(1:num_params)  + delta
-            StartLike = GetLogLike(TrialStart)
+            StartLike = this%LogLike(TrialStart)
             accpt = StartLike/=logZero
             if (accpt) then
-                num_fast_calls = num_fast_calls + 1
+                this%num_fast_calls = this%num_fast_calls + 1
                 if (Feedback > 2) print *,'End,start drag: ', interp_step, EndLike, StartLike
 
                 frac = real(interp_step, mcp)/interp_steps
                 CurIntLike = CurStartLike*(1-frac) + frac*CurEndLike
                 IntLike = StartLike*(1-frac) + frac*EndLike
-                accpt = MetropolisAccept(IntLike, CurIntLike)
+                accpt = this%MetropolisAccept(IntLike, CurIntLike)
             end if
         end if
 
-        call AcceptReject(accpt, CurEndParams%Info, TrialEnd%Info)
-        call AcceptReject(accpt, CurStartParams%Info, TrialStart%Info)
+        call CurEndParams%AcceptReject(TrialEnd, accpt)
+        call CurStartParams%AcceptReject(TrialStart, accpt)
 
         if (accpt) then
             CurEndParams = TrialEnd
@@ -260,180 +416,44 @@
 
     if (Feedback > 1) call Timer('Dragging time')
 
-    if (Feedback > 1) print *,'drag steps accept ratio:', &
-    real(numaccpt)/(interp_steps)
+    if (Feedback > 1) print *,'drag steps accept ratio:', real(numaccpt)/(interp_steps)
 
     CurDragLike = likes_start_sum/interp_steps !old slow
     DragLike = likes_end_sum/interp_steps !proposed new slow
     if (Feedback > 2) print *,'CurDragLike, DragLike: ', CurDragLike, DragLike
 
-    accpt = MetropolisAccept(DragLike, CurDragLike)
+    accpt = this%MetropolisAccept(DragLike, CurDragLike)
 
-    call AcceptReject(accpt, CurParams%Info, CurEndParams%Info)
+    call CurParams%AcceptReject(CurEndParams, accpt)
 
-    call MoveDone(accpt, CurParams, CurLike, mult)
+    call this%MoveDone(accpt, CurParams, CurLike, mult)
     if (accpt) then
         CurParams = CurEndParams
         CurLike = CurEndLike
-        drag_accpt=drag_accpt+1
-        if (Feedback > 0 .and. mod(drag_accpt,30)==0 .or. Feedback>1) &
-        write (*,*) trim(concat('Chain:',MpiRank,' drag accpt:')), real(drag_accpt)/(counter/Proposer%oversample_fast), &
-        'fast/slow',real(num_fast_calls)/num_slow_calls, 'slow:', num_slow_calls
+        this%drag_accpt=this%drag_accpt+1
+        if (Feedback > 0 .and. mod(this%drag_accpt,30)==0 .or. Feedback>1) &
+        write (*,*) trim(concat('Chain:',MpiRank,' drag accpt:')), real(this%drag_accpt)/(this%num_drag/this%oversample_fast), &
+        'fast/slow',real(this%num_fast_calls)/this%num_slow_calls, 'slow:', this%num_slow_calls
     end if
 
-    end subroutine FastDragging
+    end subroutine TFastDraggingSampler_GetNewSample
 
-    subroutine MetropolisHastings(CurParams, CurLike, mult)
-    !Standard metropolis hastings
-    Type(ParamSet) CurParams, Trial
-    real(mcp) CurLike, Like
-    integer mult
-    logical :: accpt
-    character(LEN=128) logLine
-    integer, save :: num_metropolis_accept=0, num_metropolis=0, last_num=0
 
-    Trial = CurParams
-    call Proposer%GetProposal(Trial%P)
+    subroutine TSampleCollector_AddNewPoint(this,P,like)
+    class(TSampleCollector) :: this
+    real(mcp), intent(in) ::like
+    real(mcp) P(:)
+    !Add each point (duplicated if chain does not move)
+    end subroutine TSampleCollector_AddNewPoint
 
-    Like = GetLogLike(Trial)
-    if (Feedback > 1) write (*,*) instance, 'Likelihood: ', Like, 'Current Like:', CurLike
-
-    if (Like /= logZero) then
-        accpt = MetropolisAccept(Like, CurLike)
-    else
-        accpt = .false.
-    end if
-
-    call AcceptReject(accpt, CurParams%Info, Trial%Info)
-    num_metropolis = num_metropolis + 1
-
-    call MoveDone(accpt, CurParams, CurLike, mult, Proposer%Oversample_fast)
-
-    if (accpt) then
-        CurParams = Trial
-        CurLike = Like
-        num_metropolis_accept = num_metropolis_accept + 1
-        if (Feedback > 1) write (*,*) num_metropolis, ' metropolis accept. ratio:', real(num_metropolis_accept)/num_metropolis
-        if (logfile_unit /=0 .and. mod(num_metropolis_accept,50*Proposer%Oversample_fast) ==0) then
-            write (logLine,*) 'metropolis rat:',real(num_metropolis_accept)/num_metropolis, ' in ',num_metropolis, &
-            ', best: ',real(MaxLike)
-            call IO_WriteLog(logfile_unit,logLine)
-            write (logLine,*) 'local acceptance ratio:', 50./(num_metropolis - last_num)
-            call IO_WriteLog(logfile_unit,logLine)
-            last_num = num_metropolis
-        end if
-    end if
-
-    end subroutine MetropolisHastings
-
-    subroutine FastMetropolisHastings(CurParams, CurLike, mult)
-    !Metropolis hastings on fast parameters
-    Type(ParamSet) CurParams, Trial
-    real(mcp) CurLike, Like
-    integer mult
-    logical :: accpt
-
-    Trial = CurParams
-    call Proposer%GetProposalFast(Trial%P)
-
-    Like = GetLogLike(Trial)
-    if (Like /= logZero) then
-        accpt = MetropolisAccept(Like, CurLike)
-    else
-        accpt = .false.
-    end if
-
-    call AcceptReject(accpt, CurParams%Info, Trial%Info)
-    call MoveDone(accpt, CurParams, CurLike, mult)
-
-    if (accpt) then
-        CurParams = Trial
-        CurLike = Like
-    end if
-
-    end subroutine FastMetropolisHastings
-
-    subroutine MoveDone(accpt, CurParams, CurLike, mult, thin_fac)
-    logical, intent(in) :: accpt
-    Type(ParamSet), intent(in) :: CurParams
+    subroutine TSampleCollector_AddNewWeightedPoint(this, CurParams, CurLike, mult, thin_fac)
+    class(TSampleCollector) :: this
+    class(TCalculationAtParamPoint), intent(in) :: CurParams
     real(mcp) CurLike
-    integer, intent(inout):: mult
+    real(mcp), intent(in):: mult !tbe weight, usually integer for standard chains
     integer, intent(in), optional :: thin_fac
-    integer, save :: acc = 0, indep_acc=0
-    integer thin
-    logical want 
 
-    if (accpt) then
-        num_accept = num_accept + 1
-        thin=1
-        if (present(thin_fac)) thin=thin_fac
-        want= num_accept> burn_in .and. checkpoint_burn ==0  .and. CurLike /= LogZero .and. MCMC_outputs
-        if (want) then
-            acc = acc + mult
-            indep_acc= indep_acc + mult
-        end if
-        if (acc >= thin) then
-            if (want) then
-                output_lines = output_lines +1
-                call WriteParams(CurParams,real(acc/thin,mcp),CurLike)
-            end if
-            acc = mod(acc, thin)
-        end if
-        if (checkpoint_burn/=0) checkpoint_burn = checkpoint_burn-1
-        if (indep_sample /= 0 .and. indep_acc >= indep_sample*thin .and. want) then
-            call WriteIndepSample(CurParams, CurLike,real(indep_acc/(indep_sample*thin),mcp))
-            indep_acc = mod(indep_acc, indep_sample*thin)
-        end if
-        if (CurLike < MaxLike) then
-            MaxLike = CurLike
-            MaxLikeParams = CurParams%P
-        end if
-        mult=1
-    else
-        mult = mult + 1
-    end if
-
-    end subroutine MoveDone
-
-    subroutine MCMCsample(CurParams, samples_to_get)
-    integer samples_to_get
-    Type(ParamSet) CurParams
-    real(mcp)  CurLike
-    integer mult
-
-    MaxLike = LogZero
-    CurLike = StartLike
-
-    mult= 1
-
-    do while (num <= samples_to_get*Proposer%Oversample_fast)
-        num = num + 1
-
-        if (sampling_method == sampling_fast_dragging .and. CurLike /= LogZero .and. num_fast/=0 .and. num_slow /=0) then
-            if (Feedback > 1) write (*,*) instance, 'Fast dragging, Like: ', CurLike
-            call FastDragging(CurParams, CurLike, mult)
-        else
-            if(sampling_method/=sampling_metropolis .and. sampling_method /=sampling_fast_dragging) &
-            call MpiStop('Sampling method not currently updated to this CosmoMC version')
-            call MetropolisHastings(CurParams, CurLike, mult)
-        end if
-
-        if (CurLike /= logZero) then
-            if (MCMC_outputs) call AddMPIParams(CurParams%P,CurLike)
-            if (MCMC_outputs .and. mod(num*Proposer%Oversample_fast,100)==0) call CheckParamChange
-        else
-            if (num > 1000) then
-                call DoAbort('MCMC.f90: Couldn''t start after 1000 tries - check starting ranges')
-            end if
-        end if
-    end do
-
-    if (Feedback > 0) then
-        write(*,*) MPIRank, 'Stopping as have ',samples_to_get ,' samples. '
-        if (use_fast_slow) write(*,*) 'slow changes', slow_changes, 'semi-slow changes', semislow_changes
-    end if
-
-    end subroutine MCMCsample
-
+    !Add samples accumulated into weighted sample
+    end subroutine TSampleCollector_AddNewWeightedPoint
 
     end module MonteCarlo
