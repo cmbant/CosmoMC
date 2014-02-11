@@ -1,6 +1,8 @@
     module settings
-    use AMLutils
     use Random
+    use FileUtils
+    use StringUtils
+    use MpiUtils
     use IniObjects
     use ParamNames
 #ifdef f2003
@@ -26,6 +28,17 @@
 #endif
     integer,parameter :: time_dp = KIND(1.d0)
 
+
+    double precision, parameter :: pi=3.14159265358979323846264338328d0, &
+    twopi=2*pi, fourpi=4*pi
+    double precision, parameter :: root2 = 1.41421356237309504880168872421d0, sqrt2 = root2
+    double precision, parameter :: log2 = 0.693147180559945309417232121458d0
+
+    real, parameter :: pi_r = 3.141592653, twopi_r = 2*pi_r, fourpi_r = twopi_r*2
+
+
+    character(LEN=*), parameter :: CosmoMC_Version = 'Feb2014_oop'
+
     Type, extends(TIniFile) :: TSettingIni
     contains
     procedure :: FailStop => TSettingIni_FailStop
@@ -36,8 +49,11 @@
     !Set to >1 to use theory calculation etc on higher accuracy settings.
     !Does not affect MCMC (except making it all slower)
 
+    logical :: flush_write = .true.
+
     logical :: new_chains = .true.
 
+    integer, parameter :: max_string_len = Ini_max_string_len
     integer, parameter :: max_likelihood_functions = 50
 
     integer, parameter :: max_data_params = 100
@@ -46,8 +62,6 @@
 
     !Set to false if using a slow likelihood function so no there's point is treating
     !'fast' parameters differently (in fact, doing so will make performance worse)
-
-    Type(TParamNames), save :: NameMapping
 
     integer, parameter :: sampling_metropolis = 1, sampling_slice = 2, sampling_fastslice =3, &
     sampling_slowgrid = 4,  sampling_multicanonical = 5,  sampling_wang_landau = 6, &
@@ -63,8 +77,7 @@
     !set to true to not call CAMB, etc.
     !write GenericLikelihoodFunction in calclike.f90
 
-    character(LEN=Ini_max_string_len) :: DataDir='data/'
-    character(LEN=Ini_max_string_len) :: LocalDir='./'
+    character(LEN=:), allocatable :: DataDir, LocalDir
 
     Type(TSettingIni) :: CustomParams
 
@@ -84,8 +97,9 @@
     integer :: logfile_unit  = 0
     integer :: outfile_handle = 0
     integer :: indepfile_handle = 0
-    integer :: slow_proposals = 0
     integer :: output_lines = 0
+
+    integer :: Feedback = 0
 
     real(mcp), parameter :: logZero = 1e30_mcp
     character (LEN =1024) :: FileChangeIni = '', FileChangeIniAll = ''
@@ -99,6 +113,13 @@
 
 
     contains
+
+    subroutine InitializeGlobalSettingDefaults
+
+    DataDir='data/'
+    LocalDir='./'
+
+    end subroutine InitializeGlobalSettingDefaults
 
     function ReplaceDirs(S, repdir) result (filename)
     character(LEN=*), intent(in) :: S, repdir
@@ -176,22 +197,19 @@
     character(LEN=*), intent(IN) :: aname
     integer, intent(in) :: n
     real(mcp), intent(out) :: vec(n)
-    integer j
+    integer j, unit, status
 
     if (Feedback > 0) write(*,*) 'reading: '//trim(aname)
 
-    call OpenTxtFile(aname, tmp_file_unit)
-
+    unit = OpenNewTxtFile(aname)
     do j=1,n
-        read (tmp_file_unit,*, end = 200) vec(j)
+        read (unit,*, iostat=status) vec(j)
+        if (status/=0) then 
+            write (*,*) 'vector file '//trim(aname)//' is the wrong size'
+            stop
+        end if
     end do
-
-
-    close(tmp_file_unit)
-    return
-
-200 write (*,*) 'vector file '//trim(aname)//' is the wrong size'
-    stop
+    close(unit)
 
     end subroutine ReadVector
 
@@ -199,15 +217,13 @@
     character(LEN=*), intent(IN) :: aname
     integer, intent(in) :: n
     real(mcp), intent(in) :: vec(n)
-    integer j
+    integer j, unit
 
-    call CreateTxtFile(aname, tmp_file_unit)
-
+    unit = CreateNewTxtFile(aname)
     do j=1,n
-        write (tmp_file_unit,'(1E15.6)') vec(j)
+        write (unit,'(1E15.6)') vec(j)
     end do
-
-    close(tmp_file_unit)
+    close(unit)
 
     end subroutine WriteVector
 
@@ -217,28 +233,28 @@
     character(LEN=*), intent(IN) :: aname
     integer, intent(in) :: m,n
     real(mcp), intent(out) :: mat(m,n)
-    integer j,k
+    integer j,k, unit
     real(mcp) tmp
 
     if (Feedback > 0) write(*,*) 'reading: '//trim(aname)
-    call OpenTxtFile(aname, tmp_file_unit)
+    unit = OpenNewTxtFile(aname)
 
     do j=1,m
-        read (tmp_file_unit,*, end = 200, err=100) mat(j,1:n)
+        read (unit,*, end = 200, err=100) mat(j,1:n)
     end do
     goto 120
 
-100 rewind(tmp_file_unit)  !Try other possible format
+100 rewind(unit)  !Try other possible format
     do j=1,m
         do k=1,n
-            read (tmp_file_unit,*, end = 200) mat(j,k)
+            read (unit,*, end = 200) mat(j,k)
         end do
     end do
 
-120 read (tmp_file_unit,*, err = 150, end =150) tmp
+120 read (unit,*, err = 150, end =150) tmp
     goto 200
 
-150 close(tmp_file_unit)
+150 close(unit)
     return
 
 200 write (*,*) 'matrix file '//trim(aname)//' is the wrong size'

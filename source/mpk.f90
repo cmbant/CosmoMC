@@ -100,6 +100,7 @@
     integer :: min_mpk_kbands_use ! in case you don't want to calc P(k) on the largest scales (will truncate P(k) to zero here!)
     real(mcp), dimension(:,:), allocatable :: mpk_Wfull, mpk_covfull
     real(mcp), dimension(:), allocatable :: mpk_kfull, mpk_fiducial
+    integer unit
 
     character(80) :: dummychar
 
@@ -139,18 +140,18 @@
     !end if
 
     measurements_file  = Ini%ReadFileName('measurements_file')
-    call OpenTxtFile(measurements_file, tmp_file_unit)
+    unit = OpenNewTxtFile(measurements_file)
     like%mpk_P=0.
-    read (tmp_file_unit,*) dummychar
-    read (tmp_file_unit,*) dummychar
+    read (unit,*) dummychar
+    read (unit,*) dummychar
     do i= 1, (min_mpk_points_use-1)
-        read (tmp_file_unit,*, iostat=iopb) keff,klo,khi,beff,beff,beff
+        read (unit,*, iostat=iopb) keff,klo,khi,beff,beff,beff
     end do
     if (Feedback > 1 .and. min_mpk_points_use>1) write(*,*) 'Not using bands with keff=  ',real(keff),' or below'
     do i =1, like%num_mpk_points_use
-        read (tmp_file_unit,*, iostat=iopb) keff,klo,khi,like%mpk_P(i),like%mpk_sdev(i),mpk_fiducial(i)
+        read (unit,*, iostat=iopb) keff,klo,khi,like%mpk_P(i),like%mpk_sdev(i),mpk_fiducial(i)
     end do
-    close(tmp_file_unit)
+    close(unit)
     if (Feedback > 1) write(*,*) 'bands truncated at keff=  ',real(keff)
 
     windows_file  = Ini%ReadFileName('windows_file')

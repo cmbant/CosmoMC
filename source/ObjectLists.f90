@@ -3,6 +3,8 @@
     !Implement lists of arbitrary objects
     !AL Oct 2012
     implicit none
+    
+    private
 
     !type ReadWriteObject
     !!Ancestor for list items that can be read and written
@@ -75,22 +77,32 @@
 
     Type, extends(TRealCompareList):: TRealList
     contains
-    procedure :: RealItem
-    procedure :: AddItem => RealAddItem
-    procedure :: AddArrayItems
-    procedure :: AsArray
-    generic :: Item => RealItem
+    procedure :: TRealList_Item
+    procedure :: AddItem => TRealList_AddItem
+    procedure :: AddArrayItems => TRealList_AddArrayItems
+    procedure :: AsArray =>TRealList_AsArray
+    generic :: Item => TRealList_Item
     !could add read and save state here
     end Type TRealList
 
     Type, extends(TRealCompareList):: TRealArrayList
     contains
-    procedure :: Value
-    procedure :: RealArrItem
+    procedure :: Value => TRealArrayList_Value
+    procedure :: RealArrItem => TRealArrayList_Item
     procedure :: SaveState => TRealArrayList_SaveState
     procedure :: LoadState => TRealArrayList_LoadState
     generic :: Item => Value, RealArrItem
     end Type TRealArrayList
+
+    Type, extends(TObjectList) :: TStringList
+    contains
+    procedure :: CharAt => TStringList_CharAt
+    procedure :: StringItem  => TStringList_Item
+    procedure :: AddItem => TStringList_AddItem
+    procedure :: SetFromString => TStringList_SetFromString
+    procedure :: IndexOf => TStringList_IndexOf
+    generic :: Item => StringItem
+    end Type TStringList
 
 
     abstract interface
@@ -107,7 +119,7 @@
     end subroutine LoadState
     end interface
 
-
+    public list_prec, TSaveLoadStateObject, TObjectList, TRealArrayList, TRealList, TStringList
     contains
 
     subroutine Clear(L, itemsOnly)
@@ -589,7 +601,7 @@
 
 
     !TRealList: List of reals
-    function RealItem(L,i) result(R)
+    function TRealList_Item(L,i) result(R)
     Class(TRealList) :: L
     integer, intent(in) :: i
     real(list_prec) R
@@ -601,9 +613,9 @@
         stop 'TRealList: object of wrong type'
     end select
 
-    end function RealItem
+    end function TRealList_Item
 
-    subroutine RealAddItem(L, C)
+    subroutine TRealList_AddItem(L, C)
     Class(TRealList) :: L
     class(*), intent(in), target :: C
     real(kind=list_prec), pointer :: P
@@ -621,9 +633,9 @@
         stop 'TRealList: must have OwnsObjects = .true.'
     end if
 
-    end subroutine RealAddItem
+    end subroutine TRealList_AddItem
 
-    subroutine AddArrayItems(L, A)
+    subroutine TRealList_AddArrayItems(L, A)
     Class(TRealList) :: L
     real(kind=list_prec), intent(in) :: A(:)
     integer i
@@ -632,9 +644,9 @@
         call L%AddItem(A(i))
     end do
 
-    end subroutine AddArrayItems
+    end subroutine TRealList_AddArrayItems
 
-    function AsArray(L) result(A)
+    function TRealList_AsArray(L) result(A)
     Class(TRealList) :: L
     real(kind=list_prec):: A(L%Count)
     integer i
@@ -643,12 +655,12 @@
         A(i) = L%Item(i)
     end do
 
-    end function AsArray
+    end function TRealList_AsArray
 
 
     !TRealArrayList: List of arrays of reals
 
-    function RealArrItem(L, i) result(P)
+    function TRealArrayList_Item(L, i) result(P)
     Class(TRealArrayList) :: L
     integer, intent(in) :: i
     real(list_prec), pointer :: P(:)
@@ -662,9 +674,9 @@
         stop 'TRealArrayList: object of wrong type'
     end select
 
-    end function RealArrItem
+    end function TRealArrayList_Item
 
-    function Value(L, i, j) result(P)
+    function TRealArrayList_Value(L, i, j) result(P)
     Class(TRealArrayList) :: L
     integer, intent(in) :: i, j
     real(list_prec) :: P
@@ -676,7 +688,7 @@
         P = Arr
     end select
 
-    end function Value
+    end function TRealArrayList_Value
 
     subroutine TRealArrayList_LoadState(L,unit)
     class(TRealArrayList) :: L
@@ -689,6 +701,95 @@
     integer :: unit
     call L%SaveBinary(unit)
     end subroutine TRealArrayList_SaveState
+
+    !!! TStringList
+    subroutine TStringList_AddItem(L, C)
+    Class(TStringList) :: L
+    class(*), intent(in), target :: C
+
+    select type (C)
+    type is (character(LEN=*))
+        call L%AddCopy(C)
+        class default
+        stop 'TStringList: can only add character strings'
+    end select
+
+    end subroutine TStringList_AddItem
+
+    function TStringList_Item(L,i) result(S)
+    Class(TStringList) :: L
+    integer, intent(in) :: i
+    character(LEN=:), pointer :: S
+
+    select type (pt=>L%Items(i)%P)
+    type is (character(LEN=*))
+        S => pt
+        class default
+        stop 'TStringList: object of wrong type'
+    end select
+
+    end function TStringList_Item
+
+    subroutine TStringList_SetFromString(L, S, valid_chars_in)
+    class(TStringList) :: L
+    character(Len=*), intent(in) :: S
+    character(Len=*), intent(in), optional :: valid_chars_in
+    character(LEN=:), allocatable :: item
+    integer i,j
+    character(LEN=256) valid_chars
+
+    if (present(valid_chars_in)) then
+        valid_chars = valid_chars_in
+    else
+        valid_chars='abcdefghijklmopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ0123456789_-.'
+    endif
+
+    call L%Clear()
+    allocate(item, source=S)
+    j=0
+    do i=1, len_trim(S)
+        if (verify(S(i:i),trim(valid_chars)) == 0) then
+            j=j+1
+            item(j:j) = S(i:i)
+        else
+            if (trim(S(i:i))/='') then
+                write (*,*) 'Invalid character in: '//trim(S)
+            end if 
+            if (j>0) call L%Add(item(1:j))
+            j=0
+        end if
+    end do
+    if (j>0) call L%Add(item(1:j))
+
+    end subroutine TStringList_SetFromString
+
+
+    function TStringList_IndexOf(L, S) result(index)
+    class(TStringList) :: L
+    character(LEN=*), intent(in) :: S
+    integer index, i
+
+    do i=1,L%Count
+        if (L%Item(i)==S) then
+            index = i
+            return
+        end if
+    end do
+    index=-1
+
+    end function TStringList_IndexOf
+
+    function TStringList_CharAt(L, i, j) result(C)
+    Class(TStringList) :: L
+    integer, intent(in) :: i, j
+    character :: C
+    character(LEN=:), pointer :: P
+
+    P => L%Item(i)
+    C = P(j:j)
+
+    end function TStringList_CharAt
+
 
 
     end module ObjectLists

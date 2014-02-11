@@ -38,12 +38,8 @@
 #ifdef MPI
     MPI_StartTime = MPI_WTime() - MPI_StartTime
     if (Feedback > 0 .and. MPIRank==0) then
-
-    write (*,*) 'Total time:', nint(MPI_StartTime), &
-    '(',MPI_StartTime/(60*60),' hours)'
-
-    if (slow_proposals/=0) write (*,*) 'Slow proposals: ', slow_proposals
-
+        write (*,*) 'Total time:', nint(MPI_StartTime), &
+        '(',MPI_StartTime/(60*60),' hours)'
     end if
     ierror =0
     if (wantbort) then
@@ -70,23 +66,22 @@
     end subroutine WriteIndepSample
 
 
-
-    subroutine IO_WriteCovMat(fname, matrix)
-    integer i
-    character(LEN=*), intent(in) :: fname
-    character(LEN=4096) outline
-    real(mcp), intent(in) :: matrix(:,:)
-
-    if (NameMapping%nnames/=0) then
-        outline=''
-        do i=1, num_params_used
-            outline = trim(outline)//' '//trim(BaseParams%UsedParamNameOrNumber(i))
-        end do
-        call IO_WriteProposeMatrix(matrix ,fname, outline)
-    else
-        call Matrix_write(fname,matrix,forcetable=.true.)
-    end if
-    end subroutine IO_WriteCovMat
+    !subroutine IO_WriteCovMat(fname, matrix)
+    !integer i
+    !character(LEN=*), intent(in) :: fname
+    !character(LEN=4096) outline
+    !real(mcp), intent(in) :: matrix(:,:)
+    !
+    !if (NameMapping%nnames/=0) then
+    !    outline=''
+    !    do i=1, num_params_used
+    !        outline = trim(outline)//' '//trim(BaseParams%UsedParamNameOrNumber(i))
+    !    end do
+    !    call IO_WriteProposeMatrix(matrix ,fname, outline)
+    !else
+    !    call Matrix_write(fname,matrix,forcetable=.true.)
+    !end if
+    !end subroutine IO_WriteCovMat
 
     subroutine WriteModel(Params, i, like, mult)
     Class(ParamSet) :: Params
@@ -104,12 +99,12 @@
             j=4
         end if
         write(i) j, num_params_used
-        if (.not. any (NameMapping%Name=='')) then
+        if (.not. any (BaseParams%NameMapping%Name=='')) then
             write(i) .true.
             do j=1,num_params_used
-                len=len_trim(NameMapping%name(params_used(j)))
+                len=len_trim(BaseParams%NameMapping%name(params_used(j)))
                 write(i) len
-                write(i) NameMapping%name(params_used(j))(1:len)
+                write(i) BaseParams%NameMapping%name(params_used(j))(1:len)
             end do
         else
             write(i) .false.
@@ -171,7 +166,7 @@
                 read(i) len
                 pname=''
                 read(i) pname(1:len)
-                current_param_indices(j) = NameMapping%index(pname)
+                current_param_indices(j) = BaseParams%NameMapping%index(pname)
             end do
             if (any(current_param_indices==-1)) call MpiStop('ReadModel: parameters in .data files could not be matched')
         else

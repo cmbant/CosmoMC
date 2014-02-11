@@ -23,6 +23,7 @@
         Type(int_arr_pointer), allocatable :: param_blocks(:)
         real(mcp), dimension(:,:), allocatable ::  covariance_estimate
         logical :: covariance_is_diagonal, covariance_has_new
+        Type(TParamNames) :: NameMapping
     contains
     procedure :: ParamError => TBaseParameters_ParamError
     procedure :: SetStartPositions => TBaseParameters_SetStartPositions
@@ -30,7 +31,8 @@
     procedure :: ReadPriors => TBaseParameters_ReadPriors
     procedure :: ReadSetCovMatrix => TBaseParameters_ReadSetCovMatrix
     procedure :: InitializeUsedParams => TBaseParameters_InitializeUsedParams
-    procedure :: OutputParamRanges => TBaseParameters_OutputParamRanges 
+    procedure :: OutputParamRanges => TBaseParameters_OutputParamRanges
+    procedure :: OutputParamNames => TBaseParameters_OutputParamNames
     procedure :: SetFastSlowParams => TBaseParameters_SetFastSlowParams
     procedure :: UsedParamNameOrNumber => TBaseParameters_UsedParamNameOrNumber
     procedure :: SetCovmat => TBaseParameters_SetCovmat
@@ -47,7 +49,7 @@
     class(TIniFile) :: Ini
     class(TCalculationAtParamPoint) Params
 
-    num_params = max(num_theory_params, NameMapping%num_MCMC)
+    num_params = max(num_theory_params, this%NameMapping%num_MCMC)
     num_data_params = num_params - num_theory_params
     output_lines = 0
 
@@ -64,7 +66,7 @@
     character(LEN=*), intent(in) :: str
     integer, intent(in) :: param
 
-    call DoAbort(trim(str)//': '//trim(NameMapping%NameOrNumber(param)))
+    call DoAbort(trim(str)//': '//trim(this%NameMapping%NameOrNumber(param)))
 
     end subroutine TBaseParameters_ParamError
 
@@ -105,7 +107,7 @@
     allocate(this%varying(num_params))
 
     do i=1,num_params
-        InLine =  NameMapping%ReadIniForParam(Ini,'param',i)
+        InLine =  this%NameMapping%ReadIniForParam(Ini,'param',i)
         if (InLine=='') call this%ParamError('parameter ranges not found',i)
         if (TxtNumberColumns(InLine)==1) then
             !One number means just fix the parameter
@@ -117,7 +119,7 @@
             this%PWidth(i)=0
         else
             read(InLine, *, iostat=status) center, this%PMin(i), this%PMax(i), this%StartWidth(i), this%PWidth(i)
-            if (status/=0) call DoAbort('Error reading param details: '//trim(InLIne))
+            if (status/=0) call this%ParamError('Error reading param details: '//trim(InLIne),i)
         end if
 
         this%varying(i) = this%PWidth(i)/=0
@@ -156,9 +158,9 @@
     this%GaussPriors%std=0 !no priors by default
     do i=1,num_params
         if (this%varying(i)) then
-            InLine =  NameMapping%ReadIniForParam(Ini,'prior',i)
+            InLine =  this%NameMapping%ReadIniForParam(Ini,'prior',i)
             if (InLine/='') read(InLine, *, iostat=status) this%GaussPriors%mean(i), this%GaussPriors%std(i)
-            if (status/=0) call DoAbort('Error reading prior mean and stdd dev: '//trim(InLIne))
+            if (status/=0) call this%ParamError('Error reading prior mean and stdd dev: '//trim(InLIne),i)
         end if
     end do
 
@@ -189,7 +191,7 @@
     integer i
 
     if (prop_mat/='') then
-        call IO_ReadProposeMatrix(pmat, prop_mat)
+        call IO_ReadProposeMatrix(this%NameMapping,pmat, prop_mat)
         HasNewParams = .false.
         !If generated with constrained parameters, assume diagonal in those parameters
         do i=1,num_params
@@ -216,20 +218,44 @@
 
     end subroutine TBaseParameters_ReadSetCovMatrix
 
-    subroutine TBaseParameters_OutputParamRanges(this,Names, fname)
+
+    subroutine TBaseParameters_OutputParamNames(this,fname, indices, add_derived)
     class(TBaseParameters) :: this
-    class(TParamNames) :: Names
+    character(len=*), intent(in) :: fname
+    integer, intent(in), optional :: indices(:)
+    logical, intent(in), optional :: add_derived
+
+    call this%NameMapping%WriteFile(trim(fname)//'.paramnames', indices, add_derived)
+
+    end subroutine TBaseParameters_OutputParamNames
+
+    subroutine TBaseParameters_OutputParamRanges(this,fname)
+    class(TBaseParameters) :: this
     character(len=*), intent(in) :: fname
     integer unit,i
 
     unit = CreateNewTxtFile(fname)
-    do i=1, Names%num_MCMC
-        write(unit,'(1A22,2E17.7)') Names%NameOrNumber(i), this%PMin(i),this%PMax(i)
+    do i=1, this%NameMapping%num_MCMC
+        write(unit,'(1A22,2E17.7)') this%NameMapping%NameOrNumber(i), this%PMin(i),this%PMax(i)
     end do
     close(unit)
 
     end subroutine TBaseParameters_OutputParamRanges
 
+
+    function IndexOf(aval,arr, n)
+    integer, intent(in) :: n, arr(n), aval
+    integer IndexOf, i
+
+    do i=1,n
+        if (arr(i)==aval) then
+            IndexOf= i
+            return
+        end if
+    end do
+    IndexOf = 0
+
+    end function IndexOf
 
     subroutine orderIndices(arr,n)
     integer, intent(in) :: n
@@ -266,7 +292,7 @@
         if (Ini%HasKey('fast_parameters')) then
             !List of parmeter names to treat as fast
             fast_number = num_params
-            call NameMapping%ReadIndices(Ini%Read_String('fast_parameters'), fast_params, fast_number)
+            call this%NameMapping%ReadIndices(Ini%Read_String('fast_parameters'), fast_params, fast_number)
         else
             fast_param_index = max(index_data,DataLikelihoods%first_fast_param)
             !all parameters at and above fast_param_index
@@ -381,7 +407,7 @@
     character(len=:), allocatable  :: name
     integer, intent(in) :: i
 
-    name = NameMapping%NameOrNumber(params_used(i))
+    name = this%NameMapping%NameOrNumber(params_used(i))
 
     end function TBaseParameters_UsedParamNameOrNumber
 

@@ -7,10 +7,10 @@
     CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, Transfer_SetForNonlinearLensing, &
     initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
     HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, &
-    Transfer_SortAndIndexRedshifts  !JD added for nonlinear lensing of CMB + MPK compatibility
+    Transfer_SortAndIndexRedshifts, & !JD added for nonlinear lensing of CMB + MPK compatibility
+    Recombination_Name, reionization_name, power_name, threadnum, version
     use Errors !CAMB
     use settings
-    use IO
     use likelihood
     use powerspec
     use Calculator_Cosmology
@@ -450,7 +450,6 @@
     subroutine CAMBCalc_InitCAMBParams(this,P)
     use lensing
     use ModelParams
-    use mpk
     class(CAMB_Calculator) :: this
     type(CAMBParams)  P
     integer zix
@@ -554,9 +553,6 @@
 
     !Mapping between array of power spectrum parameters and CAMB
     subroutine CAMBCalc_SetCAMBInitPower(this,P,CMB,in)
-    use camb
-    use settings
-    use cmbtypes
     class(CAMB_Calculator) :: this
     type(CAMBParams)  P
     class(CMBParams) CMB
@@ -646,12 +642,12 @@
     allocate(highL_lensedCL_template(2:lmax, num_clsS))
     aunit = OpenNewTxtFile(fname)
     do
-        read(tmp_file_unit,*, iostat=status) L , array
+        read(aunit,*, iostat=status) L , array
         if (status/=0 .or. L>lmax) exit
         nm = 2*pi/(l*(l+1))
         if (L>=2) highL_lensedCL_template(L,1:num_clsS) = nm*array(TensClOrder(1:num_clsS))
     end do
-    close(tmp_file_unit)
+    close(aunit)
 
     if (highL_lensedCL_template(2,1) < 100) &
     call MpiStop('highL_theory_cl_template must be in muK^2')

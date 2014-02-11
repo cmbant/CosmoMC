@@ -3,7 +3,6 @@
     !Module to wrap output functions
     !Replace file e.g. to store output in a pipline database (indexed by filename)
     !Valid handles must be /=0
-    use AmlUtils
     use settings
     use MatrixUtils
     implicit none
@@ -117,15 +116,15 @@
 
     end subroutine IO_WriteProposeMatrix
 
-    subroutine IO_ReadProposeMatrix(pmat, prop_mat)
-    use ParamNames
+    subroutine IO_ReadProposeMatrix(NameMapping,pmat, prop_mat)
+    class(TParamNames) :: NameMapping
     real(mcp) pmat(:,:)
-    character(LEN=1024), intent(in) :: prop_mat
+    character(LEN=*), intent(in) :: prop_mat
     real(mcp), allocatable :: tmpMat(:,:)
     integer i,x,y
     integer file_id
-    character(LEN=4096) :: InLine
-    integer num, cov_params(1024)
+    character(LEN=max_num_params*(ParamNames_maxlen+1)) :: InLine
+    integer num, cov_params(max_num_params)
 
     file_id = OpenNewTxtFile(prop_mat)
     InLine=''
@@ -149,7 +148,7 @@
                 if (y==num) exit
             end if
         end do
-        call CloseFile(file_id)
+        close(file_id)
         do y=1,num
             if (cov_params(y)/=0) then
                 do x=1,num
@@ -318,7 +317,7 @@
             write(unit,'(1A22,2A17)') Names%NameOrNumber(ix-2), lim1, lim2
         end if
     end do
-    call CloseFile(unit)
+    close(unit)
 
     end subroutine IO_WriteBounds
 
@@ -344,7 +343,7 @@
                 if (ix/=-1) prior_ranges(:,ix) = minmax
             end do
 
-100         call CloseFile(file_id)
+100         close(file_id)
         end if
     end if
 
@@ -480,7 +479,7 @@
         write(file_id,'(a)') '   '//trim(labels(colix(j)))
     end do
 
-    call CloseFile(file_id)
+    close(file_id)
 
     end subroutine IO_OutputMargeStats
 

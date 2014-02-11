@@ -129,9 +129,9 @@
 
     post_root = this%redo_outroot
 
-    if (MpiRank==0 .and. NameMapping%nnames/=0) then
-        call IO_OutputParamNames(NameMapping,trim(post_root),params_used, add_derived=.true.)
-        call BaseParams%OutputParamRanges(NameMapping, trim(post_root)//'.ranges')
+    if (MpiRank==0 .and.BaseParams%NameMapping%nnames/=0) then
+        call BaseParams%OutputParamNames(trim(post_root),params_used, add_derived=.true.)
+        call BaseParams%OutputParamRanges(trim(post_root)//'.ranges')
     end if
 
     if (has_chain) then

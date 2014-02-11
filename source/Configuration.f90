@@ -2,6 +2,7 @@
     use CalcLike
     use MonteCarlo
     use GeneralTypes
+    implicit none
 
     Type TConfiguration
         class(TGeneralConfig), allocatable :: Config

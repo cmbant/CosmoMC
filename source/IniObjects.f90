@@ -23,11 +23,11 @@
     end type TNameValue_pointer
 
     Type TNameValueList
-        integer Count
-        integer Delta
-        integer Capacity
-        logical ignoreDuplicates
-        logical :: Ini_AllowDuplicateKeys = .false.
+        integer :: Count = 0
+        integer :: Delta = 128
+        integer :: Capacity = 0
+        logical :: ignoreDuplicates = .false.
+        logical :: AllowDuplicateKeys = .false.
         type(TNameValue_pointer), dimension(:), allocatable :: Items
     contains
     procedure :: Init => TNameValueList_Init
@@ -147,7 +147,7 @@
     else
         isDefault = .true.
     end if
-    if ((.not. L%Ini_AllowDuplicateKeys .or. isDefault) .and. L%HasKey(AName)) then
+    if ((.not. L%AllowDuplicateKeys .or. isDefault) .and. L%HasKey(AName)) then
         if (L%ignoreDuplicates .or. isDefault) return
         call L%Error('duplicate key name',AName)
     end if
@@ -276,7 +276,8 @@
     logical, intent(OUT), optional :: error
     logical, optional, intent(IN) :: slash_comments
     logical, optional, intent(in) :: append, only_if_undefined
-    character (LEN=Ini_max_string_len) :: InLine, IncludeFile
+    character (LEN=Ini_max_string_len) :: IncludeFile
+    character(LEN=:), allocatable :: InLine
     integer lastpos, i, status
     Type(TNameValueList) IncudeFiles, DefaultValueFiles
     logical doappend, FileExists, isDefault
@@ -345,7 +346,7 @@
 
     do i=1, IncudeFiles%Count
         if (error) exit
-        IncludeFile=trim(IncudeFiles%Items(i)%P%Name)
+        IncludeFile= IncudeFiles%Items(i)%P%Name
         inquire(file=IncludeFile, exist = FileExists)
         if (.not. FileExists) then
             IncludeFile= Ini%ExtractFilePath(filename)//trim(IncludeFile)

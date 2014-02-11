@@ -1,6 +1,6 @@
     module ParamNames
-    use AmlUtils
     use FileUtils
+    use StringUtils
     implicit none
     private
     integer, parameter :: ParamNames_maxlen = 128
@@ -117,16 +117,15 @@
     class(TParamNames) :: Names
     character(Len=*), intent(in) :: filename
     integer handle,n, status
-    character (LEN=ParamNames_maxlen*3) :: InLine
+    character(LEN=:), allocatable :: InLine
 
     handle = OpenNewTxtFile(filename)
     n = FileLines(handle)
     call Names%Alloc(n)
 
     n=0
-    do
-        if (.not. ReadLine(handle, Inline)) exit
-        if (trim(InLine)=='') cycle
+    do while (ReadLine(Handle, InLine))
+        if (InLine=='') cycle
         n=n+1
         if (.not. Names%ParseLine(InLine,n)) then
             call MpiStop(concat('ParamNames_Init: error parsing line: ',n))

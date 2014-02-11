@@ -1,14 +1,12 @@
     program SolveCosmology
     ! This is a driving routine that illustrates the use of the program.
-    use MonteCarlo
     use settings
+    use MonteCarlo
     use ImportanceSampling
     use CalcLike
-    use EstCovmatModule
+    !    use EstCovmatModule
     use minimize
-    use MatrixUtils
-    use IO
-    use DefineParameterization
+    use CosmologyConfig
     implicit none
 
     character(LEN=:), allocatable :: InputFile, LogFile,  numstr, fname, rootdir
@@ -46,6 +44,7 @@
         read(numstr,*) instance
         rand_inst = instance
     end if
+    call InitializeGlobalSettingDefaults()
 
 #ifdef MPI
 
@@ -70,15 +69,12 @@
 #endif
     call Ini%Open(InputFile)
 
-    call CustomParams%L%Init()
-    call CustomParams%ReadValues%Init()
 
-    
     if (Ini%HasKey('local_dir')) LocalDir=Ini%ReadFileName('local_dir')
     if (Ini%HasKey('data_dir')) DataDir=Ini%ReadFileName('data_dir')
 
     if (Ini%HasKey('custom_params')) then
-        fname = ReadIniFileName(Ini,'custom_params')
+        fname = Ini%ReadFileName('custom_params')
         if (fname/='') then
             call CustomParams%Open(fname, bad)
             if (bad) call DoAbort('Error reading custom_params parameter file')
@@ -89,27 +85,27 @@
 
     generic_mcmc = Ini%Read_Logical('generic_mcmc',generic_mcmc)
 
-    propose_scale = Ini%Read_Real('propose_scale',2.4)
-
     AccuracyLevel = Ini%Read_Real('accuracy_level',1.)
 
     if (action==action_MCMC) then
         checkpoint = Ini%Read_Logical('checkpoint',.false.)
         if (checkpoint) flush_write = .true.
         start_at_bestfit= Ini%read_logical('start_at_bestfit',.false.)
+        propose_scale = Ini%Read_Real('propose_scale',2.4)
+
+
     end if
 
-    call Sampler%ReadSamplingParams(Ini,action==action_MCMC)
 
     stop_on_error = Ini%Read_logical('stop_on_error',stop_on_error)
 
-    baseroot = ReadIniFileName(Ini,'file_root', NotFoundFail = .true.)
+    baseroot = Ini%ReadFileName(Ini,'file_root', NotFoundFail = .true.)
     if(instance<=1) then
         write(*,*) 'file_root:'//trim(baseroot)
     end if
     if (Ini%HasKey('root_dir')) then
         !Begin JD modifications for output of filename in output file
-        rootdir = ReadIniFileName(Ini,'root_dir')
+        rootdir = Ini%ReadFileName(Ini,'root_dir')
         baseroot = trim(rootdir)//trim(baseroot)
     end if
 
@@ -179,9 +175,9 @@
 
     if (.not. generic_mcmc) then
 
-        call SetDataLikelihoods(Ini)
-        call DataLikelihoods%CheckAllConflicts
-        if(use_LSS) call Initialize_PKSettings()
+    call SetDataLikelihoods(Ini)
+    call DataLikelihoods%CheckAllConflicts
+    if(use_LSS) call Initialize_PKSettings()
     end if
 
 
@@ -197,8 +193,6 @@
     .or. action == action_MCMC .and. estimate_propose_matrix .or. &
     start_at_bestfit .and. new_chains
 
-    Ini_fail_on_not_found = .true.
-
     numtoget = Ini%Read_Int('samples')
 
     call SetTheoryParameterization(Ini, NameMapping)
@@ -207,7 +201,8 @@
 
     call BaseParams%InitializeUsedParams(Ini,Params)
     call BaseParams%SetFastSlowParams(Ini, use_fast_slow)
-    call Sampler%SetSamplerParams(Ini)
+    call SampleCollector%ReadParams(Ini,action==action_MCMC)
+
 
     if (action /= action_importance) then
         prop_mat = Ini%Read_String('propose_matrix',.false.)
@@ -232,6 +227,7 @@
     if (want_minimize) call Minimize_ReadIni(Ini)
 
     if (MpiRank==0) then
+        call Ini%ReadValues%Add('CosmoMC_Version',CosmoMC_Version)
         do i=1, DataLikelihoods%Count
             like => DataLikelihoods%Item(i)
             if (like%version/='')  call Ini%ReadValues%Add( &
@@ -245,10 +241,9 @@
         else
             call Ini%SaveReadValues(trim(baseroot) //'.inputparams')
         end if
-        call ClearFileUnit(unit)
     end if
 
-    call Ini_Close
+    call Ini%Close()
 
     if (MpiRank==0 .and. action==action_MCMC .and. NameMapping%nnames/=0) then
         call IO_OutputParamNames(NameMapping,trim(baseroot), params_used, add_derived = .true.)
@@ -263,7 +258,7 @@
         'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
         if (MpiRank==0) write(*,*) 'finding best fit point...'
         if (minimize_uses_MPI .or. MpiRank==0) then
-            bestfit_loglike = FindBestFit(Params,is_best_bestfit)
+            bestfit_loglike = Minimize%FindBestFit(Params,is_best_bestfit)
             if (is_best_bestfit) then
                 if (bestfit_loglike==logZero) write(*,*) MpiRank,'WARNING: FindBestFit did not converge'
                 if (Feedback >0) write(*,*) 'Best-fit results: '
@@ -316,14 +311,14 @@
         outfile_handle = IO_OutputOpenForWrite(fname, append = .not. new_chains)
 
         if (Feedback > 0 .and. MPIRank==0) write (*,*) 'starting Monte-Carlo'
-        call MCMCSample(Params, numtoget)
+        call MCMC%Sample_From(Params, numtoget)
 
         if (Feedback > 0) write (*,*) 'finished'
 
         if (logfile_unit /=0) call IO_Close(logfile_unit, isLogFile=  .true.)
         if (indepfile_handle /=0) call IO_DataCloseWrite(indepfile_handle)
 
-        call IO_Close(outfile_handle)
+        close(outfile_handle)
     else if (action==action_importance) then
         if (Feedback > 0 .and. MPIRank==0) write (*,*) 'starting post processing'
         call postprocess(rootname)

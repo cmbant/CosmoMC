@@ -6,6 +6,8 @@
 
 
     module MatrixUtils
+    use FileUtils
+    use StringUtils
     implicit none
 
     logical, parameter :: Matrix_runmsgs = .false.
@@ -87,8 +89,7 @@
     if (present(forcetable)) then
         if (forcetable) WriteTab = .true.
     end if
-    file_unit = new_file_unit()
-    call CreateTxtFile(aname, file_unit)
+    file_unit = CreateNewTxtFile(aname)
     if (present(commentline)) then
         write(file_unit,'(a)') '#'//trim(commentline)
     end if
@@ -102,8 +103,7 @@
             write (file_unit, fmt) mat(i,1:shp(2))
         end if
     end do
-
-    call CloseFile(file_unit)
+    close(file_unit)
 
     end subroutine Matrix_Write
 
@@ -122,8 +122,7 @@
     if (present(forcetable)) then
         if (forcetable) WriteTab = .true.
     end if
-    file_unit = new_file_unit()
-    call CreateTxtFile(aname, file_unit)
+    file_unit =  CreateNewTxtFile(aname)
     fmt = trim(numcat('(',shp(2)))//'E15.5)'
     do i=1, shp(1)
         if (.not. WriteTab) then
@@ -134,8 +133,7 @@
             write (file_unit, fmt) mat(i,1:shp(2))
         end if
     end do
-
-    call CloseFile(file_unit)
+    close(file_unit)
 
     end subroutine Matrix_Write_double
 
@@ -145,10 +143,9 @@
     real(dm), intent(in) :: mat(:,:)
     integer file_unit
 
-    file_unit = new_file_unit()
-    call CreateFile(aname, file_unit,'unformatted')
+    file_unit = CreateNewFile(aname,'unformatted')
     write (file_unit) mat
-    call CloseFile(file_unit)
+    close(file_unit)
 
     end subroutine Matrix_Write_Binary
 
@@ -164,12 +161,11 @@
     if (shp(1) /= shp(2)) call MpiStop('MatrixSym_Write_Binary: Not square matrix')
     if (shp(1) == 0) return
 
-    file_unit = new_file_unit()
-    call CreateFile(aname, file_unit,'unformatted')
+    file_unit = CreateNewFile(aname)
     do i=1,shp(1) 
         write (file_unit) mat(i:shp(2),i)
     end do 
-    call CloseFile(file_unit)
+    close(file_unit)
 
     end subroutine MatrixSym_Write_Binary
 
@@ -183,12 +179,11 @@
     if (shp(1) /= shp(2)) call MpiStop('MatrixSym_Write_Binary_Single: Not square matrix')
     if (shp(1) == 0) return
 
-    file_unit = new_file_unit()
-    call CreateFile(aname, file_unit,'unformatted')
+    file_unit = CreateNewFile(aname)
     do i=1,shp(1) 
         write (file_unit) real(mat(i:shp(2),i), kind(1.0))
     end do 
-    call CloseFile(file_unit)
+    close(file_unit)
 
     end subroutine MatrixSym_Write_Binary_Single
 
@@ -199,12 +194,11 @@
     real(dm), intent(in) :: vec(:)
     integer i,   file_unit 
 
-    file_unit = new_file_unit()
-    call CreateTxtFile(aname, file_unit)
+    file_unit =  CreateNewTxtFile(aname)
     do i=1, size(vec)
         write (file_unit, '(1E17.7)') vec(i)
     end do
-    call CloseFile(file_unit)
+    close(file_unit)
 
     end subroutine Matrix_WriteVec
 
@@ -214,10 +208,9 @@
     real(dm), intent(out) :: mat(:,:)
     integer  file_unit
 
-    file_unit = new_file_unit()
-    call OpenFile(aname, file_unit,'unformatted')
+    file_unit =  OpenNewFile(aname)
     read (file_unit) mat
-    call CloseFile(file_unit)
+    close(file_unit)
 
     end subroutine Matrix_Read_Binary
 
@@ -232,13 +225,12 @@
     if (shp(1) /= shp(2)) call MpiStop( 'MatrixSym_Read_Binary: Not square matrix')
     if (shp(1) == 0) return
 
-    file_unit = new_file_unit()
-    call OpenFile(aname, file_unit,'unformatted')
+    file_unit = OpenNewFile(aname)
     do i=1,shp(1)
         read (file_unit) mat(i:shp(1),i)
         mat(i,i:shp(1)) = mat(i:shp(1),i)
     end do
-    call CloseFile(file_unit)
+    close(file_unit)
 
     end subroutine MatrixSym_Read_Binary
 
@@ -252,13 +244,12 @@
     if (shp(1) /= shp(2)) call MpiStop( 'MatrixSym_Read_Binary: Not square matrix')
     if (shp(1) == 0) return
 
-    file_unit = new_file_unit()
-    call OpenFile(aname, file_unit,'unformatted')
+    file_unit =  OpenNewFile(aname)
     do i=1,shp(1)
         read (file_unit) mat(i:shp(1),i)
         mat(i,i:shp(1)) = mat(i:shp(1),i)
     end do
-    call CloseFile(file_unit)
+    close(file_unit)
 
     end subroutine MatrixSym_Read_Binary_Single
 
@@ -275,8 +266,7 @@
 
     shp = shape(mat)
 
-    file_unit = new_file_unit()
-    call OpenTxtFile(aname, file_unit)
+    file_unit = OpenNewTxtFile(aname)
 
     do j=1,shp(1)
         read (file_unit,*, end = 200, err=100) mat(j,1:shp(2))
@@ -293,7 +283,7 @@
 120 read (file_unit,*, err = 150, end =150) tmp
     goto 200
 
-150 call CloseFile(file_unit)
+150 close(file_unit)
     return
 
 200 call MpiStop('Matrix_Read: file '//trim(aname)//' is the wrong size')
@@ -310,8 +300,7 @@
 
     shp = shape(mat)
 
-    file_unit = new_file_unit()
-    call OpenTxtFile(aname, file_unit)
+    file_unit =  OpenNewTxtFile(aname)
 
     do j=1,shp(1)
         read (file_unit,*, end = 200, err=100) mat(j,1:shp(2))
@@ -328,7 +317,7 @@
 120 read (file_unit,*, err = 150, end =150) tmp
     goto 200
 
-150 call CloseFile(file_unit)
+150 close(file_unit)
     return
 
 200 call MpiStop('Matrix_Read:Single file '//trim(aname)//' is the wrong size')

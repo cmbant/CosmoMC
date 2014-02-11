@@ -435,19 +435,20 @@
     integer l
     real(mcp) Cls(lmax,num_cls_tot), nm
     character(LEN=80) fmt
+    integer unit
 
-    call CreateTxtFile(aname,tmp_file_unit)
+    unit=CreateNewTxtFile(aname)
     call ClsFromTheoryData(T, Cls)
     fmt = concat('(1I6,',num_cls_tot,'E15.5)')
     do l = 2, lmax
         nm = 2*pi/(l*(l+1))
         if (num_cls_ext > 0) then
-            write (tmp_file_unit,fmt) l, cls(l,1:num_cls)/nm, cls(l,num_cls+1:num_cls_tot)
+            write (unit,fmt) l, cls(l,1:num_cls)/nm, cls(l,num_cls+1:num_cls_tot)
         else
-            write (tmp_file_unit,fmt) l, cls(l,:)/nm
+            write (unit,fmt) l, cls(l,:)/nm
         end if
     end do
-    call CloseFile(tmp_file_unit)
+    close(unit)
 
     end subroutine WriteTextCls
 

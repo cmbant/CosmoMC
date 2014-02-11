@@ -106,7 +106,7 @@ contains
    character(LEN=*), intent(IN) :: aname
    logical, intent(IN) :: are_bare
    Type (CMBdataset) :: aset
-   integer l, ncls
+   integer l, ncls, unit
    real(mcp) wpol(1:num_cls-1),ll, IW,w
    character(LEN=200) tmp
 
@@ -121,14 +121,14 @@ contains
 
    AP%window = 0
 
-   call OpenTxtFile(aname, tmp_file_unit)
+   unit = OpenNewTxtFile(aname)
 
      do
      if (aset%has_pol) then
-       read(tmp_file_unit,'(a)',end=1) tmp
+       read(unit,'(a)',end=1) tmp
        read(tmp,*, end=1) ll, w, wpol
      else
-       read(tmp_file_unit,*, end=1) ll, w
+       read(unit,*, end=1) ll, w
      end if
 
      l=nint(ll)
@@ -148,7 +148,7 @@ contains
      end if
 
      end do
-1  close(tmp_file_unit)
+1  close(unit)
 
    do l=2, lmax
       if (any(AP%window(:,l)/=0)) then
@@ -223,9 +223,7 @@ contains
           stop 'cmbdata.f90::ReadAllExact: wrong number of columns'
        end if
 
-       file_unit =  new_file_unit()
-
-       call OpenTxtFile(fname,file_unit)
+       file_unit =  OpenNewTxtFile(fname)
 !File format:
 !l C_TT (C_TE C_EE [C_BB]) N_T (N_P) fsky_eff
 !Must have num_cls set to correct value for file
@@ -236,7 +234,7 @@ contains
           if (aset%has_pol .and. ncls < num_cls) inobs(num_cls) = aset%all_l_noise(l,2)
           aset%all_l_obs(l,:) = inobs(1:num_cls)
         end do
-       call CloseFile(file_unit)
+       close(file_unit)
 
        return
 100    stop 'Error reading all_l_file file'
@@ -486,18 +484,18 @@ contains
     Type (CMBdataset) :: aset
     real(mcp), intent(in) :: ascale
     character(LEN=*), intent(IN) :: aname
-    integer l
+    integer l, unit
     real(mcp) sz
      allocate(aset%sz_template(2:lmax))
      aset%sz_template = 0
      aset%has_sz_template = .true.
-     call OpenTxtFile(aname, tmp_file_unit)
+     unit= OpenNewTxtFile(aname)
      do
-       read(tmp_file_unit,*,end=2) l, sz
+       read(unit,*,end=2) l, sz
        if (l>=2 .and. l<=lmax) aset%sz_template(l) = ascale * sz/(l*(l+1)/twopi)
      end do
 
-2    Close(tmp_file_unit)
+2    Close(unit)
  end subroutine ReadSZTemplate
 
  function GetWinBandPower(AP, cl)
@@ -630,8 +628,7 @@ contains
    integer file_unit
 
    aset=>like%dataset
-   file_unit = new_file_unit()
-   CALL OpenTxtFile(aname, file_unit)
+   file_unit = OpenNewTxtFile(aname)
 
    READ(file_unit,'(a)') instr
    FISHER_T_CMB = .FALSE.
@@ -787,7 +784,7 @@ contains
 
    !READ(file_unit,*,err=101,end=101) instr
    !stop 'ReadDataset_bcp:Should be at end of file after reading matrix'
-101 call CloseFile(file_unit)
+101 close(file_unit)
 
    !recalibrate and change units as required
    !some older output had final fisher matrix in

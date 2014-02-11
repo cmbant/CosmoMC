@@ -8,7 +8,6 @@
     use settings
     use cmbtypes
     use IniObjects
-    use AMLutils
     use MatrixUtils
     implicit none
 
@@ -48,25 +47,25 @@
         integer like_approx
         real(mcp) fullsky_exact_fksy ! only used for testing with exactly fullsky
         integer ncl_hat !1, or more if using multiple simulations
-        real(mcp), dimension(:,:), pointer :: ClFiducial, ClNoise, ClPointsources, ClOffset
-        real(mcp), dimension(:,:,:), pointer :: ClHat
+        real(mcp), dimension(:,:), allocatable :: ClFiducial, ClNoise, ClPointsources, ClOffset
+        real(mcp), dimension(:,:,:), allocatable :: ClHat
         !ClOffset is the alpha parameter determining skewness
 
         integer cl_phi_lmin, cl_phi_lmax !lmax for the lensing reconstruction
         integer lensing_recon_ncl !0 for no lensing recon, 1 for phi-phi spectru, 2 phi-phi and phi-T
         integer phi_like_approx
-        real(mcp), dimension(:,:), pointer :: ClPhiHat, ClPhiNoise, phi_inv_covariance
+        real(mcp), dimension(:,:), allocatable :: ClPhiHat, ClPhiNoise, phi_inv_covariance
         !for lensing reconstruction
         !note these are [l(l+1)]^4C_l/2pi
 
-        real(mcp), dimension(:,:), pointer :: inv_covariance
-        real(mcp), dimension(:,:), pointer :: binWindows, beammodes
+        real(mcp), dimension(:,:), allocatable :: inv_covariance
+        real(mcp), dimension(:,:), allocatable :: binWindows, beammodes
         integer beam_MCMC_modes
         real(mcp) point_source_error !fractional error in A
         integer pointsource_MCMC_modes
         integer num_nuisance_parameters
-        Type(TSqMatrix) ,dimension(:), pointer :: sqrt_fiducial, NoiseM, OffsetM
-        Type(TSqMatrix) ,dimension(:,:), pointer :: ChatM
+        Type(TSqMatrix) ,dimension(:), allocatable :: sqrt_fiducial, NoiseM, OffsetM
+        Type(TSqMatrix) ,dimension(:,:), allocatable :: ChatM
         Type(TLowlLike) :: LowL
     end Type TCMBLikes
 
@@ -89,9 +88,8 @@
 
     !Note this doesn't currently support chopping to requested fields - always uses TEB
     !Also uses binary fortran files rather than e.g. FITS or other endian-independent standard
-    file_unit = new_file_unit()
 
-    call OpenFile(aname,file_unit,'unformatted')
+    file_unit= OpenNewFile(aname,'unformatted')
 
     read (file_unit) filemodes, D%LowL%tmodes
     if (filemodes /= (D%Lowl%lmax+1)**2) call MpiStop('lowl likelihood lmax mismatch')
@@ -148,7 +146,7 @@
     read(file_unit) i
     if (i/=252353) call MpiStop('Bad low l likelihood data file')
 
-    call CloseFile(file_unit)
+    close(file_unit)
 
     allocate( D%LowL%ModeDataVector(nmodes))
     D%LowL%ModeDataVector(1:D%LowL%tmodes) = TModeData
@@ -370,40 +368,38 @@
     logical, intent(in), optional :: keepnorm
     integer, intent(in) :: lmin
     real(mcp) :: Cl(:,lmin:)
-    character(LEN=1024) :: tmp
+    character(LEN=:), allocatable :: tmp
     integer ix, i, j,i1,l,ll
     integer cols(6)
     logical donorm
     real(mcp) norm,tmp_ar(6)
-    Type (TStringList) :: Li
-    integer file_unit
+    Type(TStringList) :: Li
+    integer file_unit, status
 
     if (present(keepnorm)) then
         donorm = .not. keepnorm
     else
         donorm = .true.
     end if
-    call TStringList_Init(Li)
-    call TStringList_SetFromString(Li,order,field_names)
+    call Li%SetFromString(order,field_names)
     ix=0
     cols=0
     do i=1,D%nfields
         do j=1,i
             ix = ix +1
-            i1 = TStringList_IndexOf(Li, D%field_order(i)//D%field_order(j))
-            if (i1==-1) i1 = TStringList_IndexOf(Li, D%field_order(j)//D%field_order(i))
+            i1 =Li%IndexOf(D%field_order(i)//D%field_order(j))
+            if (i1==-1) i1 = Li%IndexOf(D%field_order(j)//D%field_order(i))
             if (i1/=-1) then
                 cols(ix) = i1
             end if
         end do
     end do
 
-    file_unit = new_file_unit()
-    call OpenTxtFile(aname, file_unit)
+    file_unit = OpenNewTxtFile(aname)
     Cl=0
-    do
-        read(file_unit,'(a)',end=1) tmp
-        read(tmp,*, end=1) l, tmp_ar(1:Li%Count)
+    do while (ReadLine(file_unit, tmp))
+        read(tmp,*, iostat=status) l, tmp_ar(1:Li%Count)
+        if (status/=0) call MpiStop('CMBLikes_ReadClArr: error reading line '//trim(aname))
         ll=l
         if (l>=D%cl_lmin .and. l <=D%cl_lmax) then
             if (donorm) then
@@ -421,9 +417,9 @@
         write (*,*) trim(aname)
         call MpiStop()
     end if
-1   call CloseFile(file_unit)
+     close(file_unit)
 
-    call TStringList_Clear(Li)
+    call Li%Clear()
 
     end subroutine CMBLikes_ReadClArr
 
@@ -435,15 +431,16 @@
     integer :: C(:,:)
     Type(TStringList) :: L
     integer i,i1,i2
+    character(LEN=:), pointer :: P
 
-    call TStringList_Init(L)
-    call TStringList_SetFromString(L, S, 'TEB')
+    call L%SetFromString(S, 'TEB')
     C=0
 
     do i=1, L%Count
-        if (size(L%Items(i)%P)/=2) call mpiStop('Invalid C_l order')
-        i1= D%field_index(TypeIndex(L%Items(i)%P(1)))
-        i2= D%field_index(TypeIndex(L%Items(i)%P(2)))
+        P=> L%Item(i)
+        if (len(P)/=2) call mpiStop('Invalid C_l order')
+        i1= D%field_index(TypeIndex(L%CharAt(i,1)))
+        i2= D%field_index(TypeIndex(L%CharAt(i,2)))
         if (i1/=0 .and. i2/=0) then
             C(i1,i2) = i
             C(i2,i1)= i
@@ -451,7 +448,7 @@
     end do
 
     if (present(totnum)) totnum = L%Count
-    call TStringList_Clear(L)
+    call L%Clear()
 
     end subroutine UseString_to_colIx
 
@@ -480,8 +477,7 @@
     real(mcp) x, modes(D%cl_lmin:D%cl_lmax,nmodes)
     integer stat, file_unit, l, i
 
-    file_unit = new_file_unit()
-    call OpenTxtFile(fname,file_unit)
+    file_unit=OpenNewTxtFile(fname)
     do
         read(file_unit,*,iostat=stat) i, l, x
         if ( stat /= 0 ) exit
@@ -490,7 +486,7 @@
         end if
     end do
 
-    call CloseFile(file_unit)
+    close(file_unit)
 
     end subroutine CMBLike_ReadModes
 
@@ -584,7 +580,6 @@
     else
         !Exact like
         D%fullsky_exact_fksy = Ini%Read_Real('fullsky_exact_fksy', 1.)
-        nullify(D%ClFiducial)
     end if
 
     S = Ini%ReadFileName('cl_noise_file',dataset_dir)
@@ -605,8 +600,6 @@
         S_order = Ini%read_String('cl_offset_order', .true.)
         allocate(D%ClOffset(D%ncl,D%cl_lmin:D%cl_lmax))
         call CMBLikes_ReadClArr(D, S,S_order,D%ClOffset,D%cl_lmin, .true.)
-    else
-        nullify(D%ClOffset)
     end if
 
     S = Ini%ReadFileName('point_source_cl', dataset_dir,.false.)
@@ -632,8 +625,6 @@
                 D%ClHat(:,:,j) =  D%ClHat(:,:,j) - D%ClPointsources
             end do
         end if
-    else
-        nullify(D%ClPointsources)
     end if
 
     S = Ini%ReadFileName('beam_modes_file', dataset_dir,.false.)
@@ -646,11 +637,8 @@
         D%beam_MCMC_modes = Ini%Read_Int('beam_MCMC_modes');
         if (D%beam_MCMC_modes > nmodes) call MpiStop('Planck_like: beam_MCMC_modes > beam_modes number')
         D%num_nuisance_parameters = D%num_nuisance_parameters + D%beam_MCMC_modes
-    else
-        nullify(D%beammodes)
     end if
 
-    nullify(D%OffsetM)
     if (D%bin_width/=1 .or. bin_test) then
         allocate(D%ChatM(D%nbins, D%ncl_hat))
         allocate(D%NoiseM(D%nbins))
@@ -663,7 +651,7 @@
             end do
             call ElementsToMatrix(D, avec, D%NoiseM(i)%M)
 
-            if (associated(D%ClFiducial)) then
+            if (allocated(D%ClFiducial)) then
                 allocate(D%sqrt_fiducial(i)%M(D%nfields,D%nfields))
                 do j=1,D%ncl
                     avec(j) = sum(D%binWindows(:,i)*D%ClFiducial(j,:))
@@ -682,11 +670,10 @@
         end do
         deallocate(avec)
     else
-        nullify(D%NoiseM)
         allocate(D%sqrt_fiducial(D%cl_lmin:D%cl_lmax))
         allocate(D%ChatM(D%cl_lmin:D%cl_lmax,D%ncl_hat))
         allocate(D%NoiseM(D%cl_lmin:D%cl_lmax))
-        if (associated(D%ClOffset)) allocate(D%OffsetM(D%cl_lmin:D%cl_lmax))
+        if (allocated(D%ClOffset)) allocate(D%OffsetM(D%cl_lmin:D%cl_lmax))
         do l=D%cl_lmin,D%cl_lmax
             do clix = 1, D%ncl_hat
                 allocate(D%ChatM(l,clix)%M(D%nfields,D%nfields))
@@ -694,11 +681,11 @@
             end do
             allocate(D%NoiseM(l)%M(D%nfields,D%nfields))
             call ElementsToMatrix(D, D%ClNoise(:,l), D%NoiseM(l)%M)
-            if (associated(D%ClOffset)) then
+            if (allocated(D%ClOffset)) then
                 allocate(D%OffsetM(l)%M(D%nfields,D%nfields))
                 call ElementsToMatrix(D, D%ClOffset(:,l), D%OffsetM(l)%M)
             end if
-            if (associated(D%ClFiducial)) then
+            if (allocated(D%ClFiducial)) then
                 allocate(D%sqrt_fiducial(l)%M(D%nfields,D%nfields))
                 call ElementsToMatrix(D, D%ClFiducial(:,l)+D%ClNoise(:,l), D%sqrt_fiducial(l)%M)
                 call Matrix_Root(D%sqrt_fiducial(l)%M, D%nfields, 0.5_mcp)
@@ -740,7 +727,7 @@
             end do
         end do
         deallocate(Cov)
-        if (associated(D%ClPointsources) .and. D%pointsource_MCMC_modes==0) then
+        if (allocated(D%ClPointsources) .and. D%pointsource_MCMC_modes==0) then
             do i=1, D%ncl_used
                 do j=1,D%ncl_used
                     do l1= D%cl_lmin, D%cl_lmax
@@ -753,7 +740,7 @@
                 end do
             end do
         end if
-        if (associated(D%beammodes)) then
+        if (allocated(D%beammodes)) then
             do i=D%beam_MCMC_modes+1, nmodes
                 D%BeamModes(D%cl_lmin:D%cl_lmax,i)=D%BeamModes(D%cl_lmin:D%cl_lmax,i)*D%ClFiducial(1,D%cl_lmin:D%cl_lmax)
             end do
@@ -867,8 +854,7 @@
     character(LEN=1024) :: tmp
     integer l, ll
 
-    file_unit = new_file_unit()
-    call OpenTxtFile(aname, file_unit)
+    file_unit= OpenNewTxtFile(aname)
     Cl=0
     do
         read(file_unit,'(a)',end=1) tmp
@@ -884,7 +870,7 @@
         write (*,*) trim(aname)
         call MpiStop()
     end if
-1   call CloseFile(file_unit)
+1   Close(file_unit)
 
 
     end subroutine CMBLikes_ReadClPhiArr
@@ -1150,7 +1136,7 @@
         C =C + D%NoiseM(l)%M
 
         if (D%like_approx == like_approx_diag) then
-            if (Associated(D%OffsetM)) then
+            if (allocated(D%OffsetM)) then
                 chisq = chisq +2*log( (D%ChatM(l,clix)%M(1,1)+D%OffsetM(l)%M(1,1)*C(1,1))/D%ChatM(l,clix)%M(1,1)/(1+D%OffsetM(l)%M(1,1)))
                 call CMBLikes_Transform(D, C, D%ChatM(l,clix)%M, D%sqrt_fiducial(l)%M, D%OffsetM(l)%M )
             else

@@ -151,7 +151,7 @@
     !parameters that do not have hard boundaries in the high likelihood region
     if (diag_params/='') then
         num= -1
-        call NameMapping%ReadIndices(diag_params, rotparams, num)
+        call BaseParams%NameMapping%ReadIndices(diag_params, rotparams, num)
     else
         num = 0
     end if
@@ -395,8 +395,8 @@
         do i=1, num_params
             if (isused==0 .and. BaseParams%PWidth(i)/=0 .or. isused==1 .and. BaseParams%PWidth(i)==0) then
                 write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-                i, P%P(i), NameMapping%name(i)
-                write (aunit,'(a)') trim(NameMapping%label(i))
+                i, P%P(i), BaseParams%NameMapping%name(i)
+                write (aunit,'(a)') trim(BaseParams%NameMapping%label(i))
             end if
         end do
         write (aunit,*) ''
@@ -408,8 +408,8 @@
     numderived = DataLikelihoods%addLikelihoodDerivedParams(P%P, P%Theory, derived)
     do i=1, numderived
         write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-        num_params+i, derived%P(i), NameMapping%name(num_params + i )
-        write (aunit,'(a)') trim(NameMapping%label(num_params+i))
+        num_params+i, derived%P(i), BaseParams%NameMapping%name(num_params + i )
+        write (aunit,'(a)') trim(BaseParams%NameMapping%label(num_params+i))
     end do
     deallocate(derived%P)
 
@@ -419,7 +419,7 @@
         call DataLikelihoods%WriteLikelihoodContribs(aunit, P%likelihoods)
     end if
 
-    end  subroutine WriteParamsHumanText
+    end subroutine WriteParamsHumanText
 
     subroutine WriteBestFitParams(this, like, Params, fname)
     class(TMinimizer) :: this

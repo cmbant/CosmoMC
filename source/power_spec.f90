@@ -2,8 +2,8 @@
     use settings
     use cmbtypes
     use precision
-    use ModelData
-    use Transfer
+    use ModelData, only : CP
+    use Transfer, only : MatterTransferData, MatterPowerData
     implicit none
 
     contains

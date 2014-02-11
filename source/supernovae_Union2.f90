@@ -81,7 +81,7 @@
     class(TIniFile) :: ini
     Type(Union2Likelihood), pointer :: like
     character (LEN=20):: name
-    integer i
+    integer i, unit
     ! The following line selects which error estimate to use
     ! default .True. = with systematic errors
     logical :: Union_syscovmat = .False.  !! Use covariance matrix with or without systematics
@@ -98,25 +98,25 @@
     Union_syscovmat = Ini%read_Logical('Union_syscovmat',Union_syscovmat)
 
     if (Feedback > 0) write (*,*) 'Reading: supernovae data'
-    call OpenTxtFile(trim(DataDir)//'sn_z_mu_dmu_plow_union2.1.txt',tmp_file_unit)
+    unit = OpenNewTxtFile(trim(DataDir)//'sn_z_mu_dmu_plow_union2.1.txt')
     do i=1,  sn_num
-        read(tmp_file_unit, *) name, Like%SN_z(i),Like%SN_moduli(i), &
+        read(unit, *) name, Like%SN_z(i),Like%SN_moduli(i), &
         Like%SN_modulierr(i),Like%SN_plow(i)
-        !     read(tmp_file_unit, *) name, SN_z(i),SN_moduli(i)
+        !     read(unit, *) name, SN_z(i),SN_moduli(i)
     end do
-    close(tmp_file_unit)
+    close(unit)
 
     if (Union_syscovmat) then
-        call OpenTxtFile(trim(DataDir)//'sn_wmat_sys_union2.1.txt',tmp_file_unit)
+        unit= OpenNewTxtFile(trim(DataDir)//'sn_wmat_sys_union2.1.txt')
     else
-        call OpenTxtFile(trim(DataDir)//'sn_wmat_nosys_union2.1.txt',tmp_file_unit)
+        unit= OpenNewTxtFile(trim(DataDir)//'sn_wmat_nosys_union2.1.txt')
     end if
 
     do i=1, sn_num
-        read (tmp_file_unit,*) Like%sn_ninv (i,1:sn_num)
+        read (unit,*) Like%sn_ninv (i,1:sn_num)
     end do
 
-    close (tmp_file_unit)
+    close(unit)
 
     end subroutine Union2Likelihood_Add
 

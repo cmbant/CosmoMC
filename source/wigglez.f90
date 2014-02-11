@@ -26,8 +26,8 @@
     use powerspec
     use cmbtypes
     use Precision
-    !use CMB_Cls
-
+    use camb, only: nonlinear_pk, nonlinear_none
+    
     implicit none
 
     logical :: use_wigglez_mpk = .false.  !DP for WiggleZ MPK
@@ -48,6 +48,8 @@
     integer :: iopb, i, ios, iz
     real(mcp) :: kval, power_nl
     real(mcp) redshift
+    integer tmp_file_unit
+    character(LEN=:), allocatable :: fname
 
     iz = 0
     do i=1,4
@@ -58,26 +60,23 @@
     iopb = 0 !! check later if there was an error
 
     if(iz.eq.1) then
-        open(unit=tmp_file_unit,file=trim(DataDir)//'gigglezfiducialmodel_matterpower_a.dat',form='formatted',err=500, iostat=ios)
+        fname = 'gigglezfiducialmodel_matterpower_a.dat'
     else if(iz.eq.2) then
-        open(unit=tmp_file_unit,file=trim(DataDir)//'gigglezfiducialmodel_matterpower_b.dat',form='formatted',err=500, iostat=ios)
+        fname = 'gigglezfiducialmodel_matterpower_b.dat'
     else if(iz.eq.3) then
-        open(unit=tmp_file_unit,file=trim(DataDir)//'gigglezfiducialmodel_matterpower_c.dat',form='formatted',err=500, iostat=ios)
+        fname = 'gigglezfiducialmodel_matterpower_c.dat'
     else if(iz.eq.4) then
-        open(unit=tmp_file_unit,file=trim(DataDir)//'gigglezfiducialmodel_matterpower_d.dat',form='formatted',err=500, iostat=ios)
+        fname = 'gigglezfiducialmodel_matterpower_d.dat'
     else
         call MpiStop('could not indentify redshift')
     endif
-
+    tmp_file_unit= OpenNewTxtFile(DataDir//fname)
     do i = 1, gigglez_num_matter_power
         read (tmp_file_unit,*,iostat=iopb) kval, power_nl
+        if(iopb .ne. 0) stop 'Error reading model or fiducial theory files.'
         power_hf_fid(i,iz) = power_nl
     end do
     close(tmp_file_unit)
-
-
-500 if(ios .ne. 0) stop 'Unable to open file'
-    if(iopb .ne. 0) stop 'Error reading model or fiducial theory files.'
 
     end subroutine GiggleZinfo_init
 
@@ -331,7 +330,6 @@
         write(*,*)'See arXiv:1210.2130 for details.'
     end if
 
-
     Q_marge = Ini%Read_Logical('Q_marge',.false.)
     if (Q_marge) then
         Q_flat = Ini%Read_Logical('Q_flat',.false.)
@@ -359,7 +357,7 @@
     real(mcp), dimension(:), allocatable :: mpk_kfull
     real(mcp), dimension(:,:), allocatable :: invcov_tmp
     character(80) :: dummychar
-    integer count
+    integer count,tmp_file_unit
 
     iopb = 0
 
@@ -393,7 +391,7 @@
     !end if
 
     measurements_file  = Ini%ReadFileName('measurements_file')
-    call OpenTxtFile(measurements_file, tmp_file_unit)
+    tmp_file_unit = OpenNewTxtFile(measurements_file)
     like%mpk_P=0.
     count = 0
     do i_regions =1,7
@@ -505,12 +503,12 @@
     character(LEN=*), intent(IN) :: aname
     integer, intent(in) :: m,n,num_regions
     real(mcp), intent(out) :: mat(num_regions,m,n)
-    integer j,i_region
+    integer j,i_region,tmp_file_unit
     real(mcp) tmp
     character(LEN=64) dummychar
 
     if (Feedback > 1) write(*,*) 'reading: '//trim(aname)
-    call OpenTxtFile(aname, tmp_file_unit)
+    tmp_file_unit= OpenNewTxtFile(aname)
     do i_region=1,num_regions
         read (tmp_file_unit,*, end = 200, err=100) dummychar
         do j=1,m

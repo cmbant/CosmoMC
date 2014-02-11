@@ -66,6 +66,7 @@
     procedure :: AddNewWeightedPoint => TMpiChainCollector_AddNewWeightedPoint
     procedure :: UpdateCovAndCheckConverge => TMpiChainCollector_UpdateCovAndCheckConverge
     procedure :: CheckLimitsConverge
+    procedure :: ReadParams => TMpiChainCollector_ReadParams
     end Type
 
     integer, parameter :: chk_id = 3252359
@@ -105,7 +106,7 @@
 
     end subroutine TMpiChainCollector_AddNewWeightedPoint
 
-    subroutine TMpiChainCollector_ReadSamplingParams(this,Ini, mcmc)
+    subroutine TMpiChainCollector_ReadParams(this,Ini, mcmc)
     class(TMpiChainCollector) :: this
     class(TIniFile) :: Ini
     logical :: mcmc
@@ -129,7 +130,7 @@
     end if
 #endif
 
-    end subroutine TMpiChainCollector_ReadSamplingParams
+    end subroutine TMpiChainCollector_ReadParams
 
 
     subroutine TMpiChainCollector_SaveState(this,unit)
