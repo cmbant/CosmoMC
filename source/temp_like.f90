@@ -450,8 +450,11 @@
         enddo
     end if
 
-    if (want_spec(1)) zlike=zlike+ ((cal0/cal1-1.0006d0)/0.0004d0)**2
-    if (any(want_spec(3:4))) zlike=zlike+ ((cal2/cal1-0.9966d0)/0.0015d0)**2
+!    if (want_spec(1)) zlike=zlike+ ((cal0/cal1-1.0006d0)/0.0004d0)**2
+!    if (any(want_spec(3:4))) zlike=zlike+ ((cal2/cal1-0.9966d0)/0.0015d0)**2
+! below is temporary testing for dx11...
+    if (want_spec(1)) zlike=zlike+ ((cal0/cal1-1.00d0)/0.001d0)**2
+    if (any(want_spec(3:4))) zlike=zlike+ ((cal2/cal1-0.991d0)/0.003d0)**2
 
     contains
 
