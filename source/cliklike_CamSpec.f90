@@ -50,6 +50,7 @@
     logical :: pre_marged
 
     use_CAMspec = Ini_Read_Logical_File(Ini,'use_CAMspec',.false.)
+    
 
     if (use_CAMspec) then
         print *,' using non-clik CamSpec'

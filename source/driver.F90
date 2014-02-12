@@ -78,7 +78,8 @@
 
 #endif
     call IO_Ini_Load(DefIni,InputFile, bad)
-
+    
+!    print *,'just tried to ini_load ', InputFile, ' and got ',bad
     if (bad) call DoAbort('Error opening parameter file')
 
     Ini_fail_on_not_found = .false.

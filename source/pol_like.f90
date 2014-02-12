@@ -25,22 +25,36 @@
     
     if(.not. needinit) return
 
+    print *,'about to open ',trim(like_file)
     open(48, file=like_file, form='unformatted', status='unknown')
 
     read(48) Nspec,nX
+    print *,Nspec,nX
     allocate(lminX(Nspec))
     allocate(lmaxX(Nspec))
     allocate(np(Nspec))
     allocate(npt(Nspec))
-
+    print *,'allocated bits'
     read(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
+
+    print *, (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
         allocate(X_data(nX))
         allocate(X_theory(nX))
         allocate(Y(nX))
+    print *,'allocated vectors'
+    print *,'nX=',nX
         allocate(c_inv(nX,nX))
+        if(allocated(c_inv))then
+ print*,'c_inv allocated and shape is ', shape(c_inv)
+endif
+
         read(48) (X_data(i), i=1, nX)
+    print *,'read X_data'
         read(48) !skip  covariance
-        read(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX) !inv covariance
+    print *,'skipped cov'
+        read(48) ((c_inv(i, j), i = 1, nX), j = 1,  nX) !inv covariance
+    print *,'read inv_cov'
+    call flush
         close(48)
         print *,' nX ',nX
         do i=1,Nspec
@@ -89,6 +103,8 @@
            zlike = zlike + Y(i)*Y(j)*c_inv(j, i)
          end do
        end do
+
+     !  print*, zlike
 
     end subroutine pol_calc_like
 
