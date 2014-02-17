@@ -4,6 +4,7 @@
     use settings
     use likelihood
     use GeneralTypes
+    use ObjectLists
     implicit none
 
     !Number of CMB Cls, 1 for just temperature, 3 (4) for polarization (with B)
@@ -95,7 +96,7 @@
         real(mcp) reserved(5)
     end Type CMBParams
 
-    Type, extends(TTheoryPredictions) :: CosmoTheoryPredictions
+    Type, extends(TTheoryPredictions) :: TCosmoTheoryPredictions
         real(mcp) cl(lmax,num_cls_tot)
         !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
         real(mcp) sigma_8
@@ -111,58 +112,21 @@
         real(mcp), dimension(:,:), allocatable :: nlmatter_power, ddnlmatter_power
         real(mcp), dimension(:), allocatable :: redshifts
     contains
-    procedure :: WriteTheory => CosmoTheoryPredictions_WriteTheory
-    procedure :: ReadTheory => CosmoTheoryPredictions_ReadTheory
-    procedure :: WriteBestFitData
-    end Type CosmoTheoryPredictions
+    procedure :: WriteTheory => TCosmoTheoryPredictions_WriteTheory
+    procedure :: ReadTheory => TCosmoTheoryPredictions_ReadTheory
+    procedure :: WriteBestFitData => TCosmoTheoryPredictions_WriteBestFitData
+    end Type TCosmoTheoryPredictions
 
     Type, extends(TParameterization) :: TCosmologyParameterization
         logical :: late_time_only = .false.
     contains
-    procedure :: NewTheoryParams => NewCMBParams
-    procedure :: SetTheoryParameterNumbers => CosmologyParameterization_SetNumbers
+    procedure :: NewTheoryParams => TCosmologyParameterization_NewTheoryParams
+    procedure :: SetTheoryParameterNumbers => TCosmologyParameterization_SetNumbers
     end type
 
     contains
 
-    subroutine CosmoTheory_ReadParams(Ini)
-    class(TIniFile) :: Ini
-
-    compute_tensors = Ini%Read_Logical('compute_tensors',.false.)
-
-    if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
-    CMB_lensing = Ini%Read_Logical('CMB_lensing',CMB_lensing)
-    use_lensing_potential = Ini%Read_logical('use_lensing_potential',use_lensing_potential)
-    use_nonlinear_lensing = Ini%Read_logical('use_nonlinear_lensing',use_nonlinear_lensing)
-
-    pivot_k = Ini%Read_Real('pivot_k',0.05)
-    inflation_consistency = Ini%read_Logical('inflation_consistency',.false.)
-    bbn_consistency = Ini%Read_Logical('bbn_consistency',.true.)
-    num_massive_neutrinos = Ini%read_int('num_massive_neutrinos',-1)
-
-    if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
-    if (use_lensing_potential .and. num_cls_ext ==0) &
-    call MpiStop('num_cls_ext should be > 0 to use_lensing_potential')
-    if (use_lensing_potential .and. .not. CMB_lensing) &
-    call MpiStop('use_lensing_potential must have CMB_lensing=T')
-    lmax_computed_cl = Ini%Read_Int('lmax_computed_cl',lmax)
-
-    if (Feedback > 0 .and. MPIRank==0) then
-        write (*,*) 'Computing tensors:', compute_tensors
-        write (*,*) 'Doing CMB lensing:',CMB_lensing
-        write (*,*) 'Doing non-linear Pk:', use_nonlinear
-
-        write(*,'(" lmax              = ",1I4)') lmax
-        write(*,'(" lmax_computed_cl  = ",1I4)') lmax_computed_cl
-
-        if (compute_tensors) write(*,'(" lmax_tensor    = ",1I4)') lmax_tensor
-        write(*,'(" Number of C_ls = ",1I4)') num_cls
-    end if
-
-    end subroutine CosmoTheory_ReadParams
-
-
-    subroutine CosmologyParameterization_SetNumbers(this, slow_num, semi_slow_num)
+    subroutine TCosmologyParameterization_SetNumbers(this, slow_num, semi_slow_num)
     use likelihood
     class(TCosmologyParameterization) :: this
     integer, intent (in) :: slow_num, semi_slow_num
@@ -187,25 +151,24 @@
         end select
     end do
 
-    end subroutine CosmologyParameterization_SetNumbers
+    end subroutine TCosmologyParameterization_SetNumbers
 
-    subroutine NewCMBParams(this,TheoryParams)
+    subroutine TCosmologyParameterization_NewTheoryParams(this,TheoryParams)
     class(TCosmologyParameterization) :: this
     class(TTheoryParams), allocatable :: TheoryParams
 
     allocate(CMBParams::TheoryParams)
 
-    end subroutine NewCMBParams
+    end subroutine TCosmologyParameterization_NewTheoryParams
 
 
     subroutine Initialize_PKSettings()
     use likelihood
-    use ObjectLists
     class(DataLikelihood), pointer :: DataLike
     Type(TRealList) :: exact_z, full_z
     real(mcp) :: dlnz, maxz, zcur
     integer :: i,iz,izprev
-    integer :: num_exact, num_range
+    integer :: num_range
     maxz = 0.
     dlnz = 30.
 
@@ -321,49 +284,49 @@
 
     end subroutine IndexExactRedshifts
 
-    subroutine CosmoTheoryPredictions_WriteTheory(T, i)
-    integer i
-    Class(CosmoTheoryPredictions) T
+    subroutine TCosmoTheoryPredictions_WriteTheory(T, unit)
+    integer unit
+    Class(TCosmoTheoryPredictions) T
     integer, parameter :: varcount = 1
     integer tmp(varcount)
     logical, save :: first = .true.
 
     if (first .and. new_chains) then
         first = .false.
-        write(i) use_LSS, compute_tensors
-        write(i) lmax, lmax_tensor, num_cls, num_cls_ext
-        write(i) varcount
+        write(unit) use_LSS, compute_tensors
+        write(unit) lmax, lmax_tensor, num_cls, num_cls_ext
+        write(unit) varcount
         if (get_sigma8) then
             tmp(1)=1
         else
             tmp(1)=0
         end if
-        write(i) tmp(1:varcount)
+        write(unit) tmp(1:varcount)
     end if
 
-    write(i) T%numderived
-    write(i) T%derived_parameters(1:T%numderived)
-    write(i) T%cl(2:lmax,1:num_cls)
-    if (num_cls_ext>0) write(i) T%cl(2:lmax,num_cls+1:num_cls_tot)
+    write(unit) T%numderived
+    write(unit) T%derived_parameters(1:T%numderived)
+    write(unit) T%cl(2:lmax,1:num_cls)
+    if (num_cls_ext>0) write(unit) T%cl(2:lmax,num_cls+1:num_cls_tot)
 
     if (compute_tensors) then
-        write(i) T%tensor_ratio_02, T%tensor_ratio_r10
+        write(unit) T%tensor_ratio_02, T%tensor_ratio_r10
     end if
 
-    if (get_sigma8 .or. use_LSS) write(i) T%sigma_8
+    if (get_sigma8 .or. use_LSS) write(unit) T%sigma_8
 
     if (use_LSS) then
-        write(i) T%num_k, size(T%redshifts)
-        write(i) T%log_kh
-        write(i) T%redshifts
-        write(i) T%matter_power
+        write(unit) T%num_k, size(T%redshifts)
+        write(unit) T%log_kh
+        write(unit) T%redshifts
+        write(unit) T%matter_power
     end if
 
-    end subroutine CosmoTheoryPredictions_WriteTheory
+    end subroutine TCosmoTheoryPredictions_WriteTheory
 
-    subroutine CosmoTheoryPredictions_ReadTheory(T, i)
-    Class(CosmoTheoryPredictions) T
-    integer, intent(in) :: i
+    subroutine TCosmoTheoryPredictions_ReadTheory(T, unit)
+    Class(TCosmoTheoryPredictions) T
+    integer, intent(in) :: unit
     integer unused
     logical, save :: first = .true.
     logical, save :: has_sigma8, has_LSS, has_tensors
@@ -375,50 +338,50 @@
 
     if (first) then
         first = .false.
-        read(i) has_LSS, has_tensors
-        read(i) almax, almaxtensor, anumcls, anumclsext
+        read(unit) has_LSS, has_tensors
+        read(unit) almax, almaxtensor, anumcls, anumclsext
         if (almax > lmax) call MpiStop('ReadTheory: reading file with larger lmax')
         if (anumcls /= num_cls) call MpiStop('ReadTheory: reading file with different Cls')
         if (anumclsext /= num_cls_ext) call MpiStop('ReadTheory: reading file with different ext Cls')
-        read(i) unused
+        read(unit) unused
         planck1_format = unused==0
-        if (unused>0) read(i) tmp(1:unused)
+        if (unused>0) read(unit) tmp(1:unused)
         if (.not. planck1_format) has_sigma8 = tmp(1)==1
     end if
 
     T%cl = 0
     T%derived_parameters=0
-    read(i) T%numderived
-    read(i) T%derived_parameters(1:T%numderived)
-    read(i) T%cl(2:almax,1:anumcls)
-    if (anumclsext >0) read(i) T%cl(2:almax,num_cls+1:num_cls+anumclsext)
+    read(unit) T%numderived
+    read(unit) T%derived_parameters(1:T%numderived)
+    read(unit) T%cl(2:almax,1:anumcls)
+    if (anumclsext >0) read(unit) T%cl(2:almax,num_cls+1:num_cls+anumclsext)
 
     if (has_tensors) then
-        read(i) T%tensor_ratio_02, T%tensor_ratio_r10
+        read(unit) T%tensor_ratio_02, T%tensor_ratio_r10
     end if
 
     if (planck1_format) then
         if (has_LSS) then
-            read(i) T%sigma_8, old_matterpower
+            read(unit) T%sigma_8, old_matterpower
             !discard unused mpk array
         end if
     else
-        if (has_sigma8 .or. has_LSS) read(i) T%sigma_8
+        if (has_sigma8 .or. has_LSS) read(unit) T%sigma_8
         if (has_LSS) then
-            read(i) T%num_k, num_z
+            read(unit) T%num_k, num_z
             call InitPK(T,T%num_k,num_z)
-            read(i) T%log_kh
-            read(i) T%redshifts
-            read(i) T%matter_power
+            read(unit) T%log_kh
+            read(unit) T%redshifts
+            read(unit) T%matter_power
             call IOTheory_GetNLAndSplines(T)
         end if
     end if
 
-    end subroutine CosmoTheoryPredictions_ReadTheory
+    end subroutine TCosmoTheoryPredictions_ReadTheory
 
 
     subroutine ClsFromTheoryData(T, Cls)
-    Type(CosmoTheoryPredictions) T
+    Type(TCosmoTheoryPredictions) T
     real(mcp) Cls(lmax,num_cls_tot)
 
     Cls(2:lmax,1:num_clsS) =T%cl(2:lmax,1:num_clsS)
@@ -430,7 +393,7 @@
     end subroutine ClsFromTheoryData
 
     subroutine WriteTextCls(aname,T)
-    Type(CosmoTheoryPredictions) T
+    Type(TCosmoTheoryPredictions) T
     character (LEN=*), intent(in) :: aname
     integer l
     real(mcp) Cls(lmax,num_cls_tot), nm
@@ -452,16 +415,16 @@
 
     end subroutine WriteTextCls
 
-    subroutine WriteBestFitData(Theory,fnameroot)
-    class(CosmoTheoryPredictions) Theory
+    subroutine TCosmoTheoryPredictions_WriteBestFitData(Theory,fnameroot)
+    class(TCosmoTheoryPredictions) Theory
     character(LEN=*), intent(in) :: fnameroot
 
-    call WriteTextCls(fnameroot //'.bestfit_cl', Theory)
+    if (use_CMB) call WriteTextCls(fnameroot //'.bestfit_cl', Theory)
 
-    end subroutine WriteBestFitData
+    end subroutine TCosmoTheoryPredictions_WriteBestFitData
 
     subroutine InitPK(Theory, num_k, num_z)
-    Type(CosmoTheoryPredictions) :: Theory
+    Type(TCosmoTheoryPredictions) :: Theory
     integer, intent(in) :: num_k, num_z
 
     if(allocated(Theory%log_kh))deallocate(Theory%log_kh)
@@ -483,9 +446,9 @@
 
     subroutine IOTheory_GetNLAndSplines(Theory)
     use Transfer
-    Type(CosmoTheoryPredictions) Theory
+    Type(TCosmoTheoryPredictions) Theory
     Type(MatterPowerData) :: Cosmo_PK
-    integer :: nz, zix
+    integer :: zix
 
     Cosmo_PK%num_k = Theory%num_k
     Cosmo_PK%num_z = 1

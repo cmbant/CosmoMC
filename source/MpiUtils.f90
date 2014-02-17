@@ -1,5 +1,10 @@
     module MpiUtils
     implicit none
+
+#ifdef MPI
+    include "mpif.h"
+#endif
+
     contains
 
     function GetMpiRank()

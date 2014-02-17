@@ -16,10 +16,18 @@
     contains
     procedure :: AddNewPoint => TSampleCollector_AddNewPoint
     procedure :: AddNewWeightedPoint => TSampleCollector_AddNewWeightedPoint
+    procedure :: ReadCheckpoint
     end Type
 
+    abstract interface
+    subroutine ReadCheckpoint(this)
+    import TSampleCollector
+    class(TSampleCollector) :: this
+    end subroutine ReadCheckpoint
+    end interface
+
+    !TSaveLoadStateObject->TCheckpointable->TLikelihoodUser->TSamplingAlgorithm
     Type, extends(TLikelihoodUser) :: TSamplingAlgorithm
-        integer :: logfile_unit = 0
         integer :: num_sample = 0
         real(mcp) :: MaxLike = LogZero
         real(mcp) :: MaxLikeParams(max_num_params)
@@ -33,9 +41,10 @@
 
     Type, extends(TSamplingAlgorithm) :: TChainSampler
         integer :: oversample_fast =1
+        integer :: output_thin =1
         integer :: num_accept = 0
         real(mcp) :: propose_scale = 2.4_mcp
-        integer :: burn_in = 2 !Minimum to get sensible answers
+        integer :: burn_in = 2
         class(BlockedProposer), pointer :: Proposer => null()
     contains
     procedure :: MetropolisAccept => TChainSampler_MetropolisAccept
@@ -46,15 +55,14 @@
     procedure :: SaveState => TChainSampler_SaveState
     procedure :: LoadState => TChainSampler_LoadState
     procedure :: ReadParams => TChainSampler_ReadParams
-    procedure :: Init=> TChainSampler_Init
     procedure :: InitWithPropose=> TChainSampler_InitWithPropose
     end Type
 
     Type, extends(TChainSampler) :: TMetropolisSampler
         integer :: num_metropolis_accept=0, num_metropolis=0, last_num=0
     contains
-    procedure :: GetNewSample => TMetropolisSampler_GetNewMetropolisSample
-    procedure :: GetNewMetropolisSample => TMetropolisSampler_GetNewMetropolisSample
+    procedure :: GetNewSample => TMetropolisSampler_GetNewSample
+    procedure :: GetNewMetropolisSample => TMetropolisSampler_GetNewSample
     procedure :: FastParameterSample => TMetropolisSampler_FastParameterSample
     end Type
 
@@ -63,6 +71,7 @@
         integer :: num_drag=0
     contains
     procedure :: GetNewSample => TFastDraggingSampler_GetNewSample
+    procedure :: ReadParams => TFastDraggingSampler_ReadParams
     end Type
 
     public TSampleCollector, TSamplingAlgorithm, TChainSampler, TMetropolisSampler, TFastDraggingSampler
@@ -71,9 +80,13 @@
     subroutine TSamplingAlgorithm_Init(this, LikeCalculator, SampleCollector)
     class(TSamplingAlgorithm) :: this
     class(TLikeCalculator), target:: LikeCalculator
-    class(TSampleCollector), pointer :: SampleCollector
+    class(TSampleCollector), target, optional :: SampleCollector
 
-    this%SampleCollector => SampleCollector
+    if (present(SampleCollector)) then
+        this%SampleCollector => SampleCollector
+    else
+        this%SampleCollector => null()
+    end if
     this%LikeCalculator => LikeCalculator
     this%num_sample = 0
     this%MaxLike = LogZero
@@ -130,15 +143,15 @@
     real(mcp)  CurLike
     real(mcp) :: mult
 
-    mult= 1
+    mult= 0
 
     do while (this%num_sample <= samples_to_get*this%Oversample_fast)
         call this%GetNewSample(CurParams, CurLike, mult)
 
         if (CurLike /= logZero) then
-            if (associated(this%SampleCollector)) then
+            if (associated(this%SampleCollector) .and. mod(this%num_sample, this%output_thin)==0 .and. mult>0) then
                 call this%SampleCollector%AddNewPoint(CurParams%P, CurLike)
-                if (mod(this%num_sample*this%Oversample_fast,100)==0) call CheckParamChange
+                if (mod(this%num_sample,100*this%Oversample_fast)==0) call CheckParamChange
             end if
         else
             if (this%num_sample > 1000) then
@@ -165,9 +178,11 @@
 
     this%num_sample = this%num_sample + 1
     if (accpt) then
-        if (associated(this%SampleCollector) .and. CurLike /= LogZero .and. this%num_accept> this%burn_in) &
-        call this%SampleCollector%AddNewWeightedPoint(CurParams, CurLike, mult, thin_fac)
-        this%num_accept = this%num_accept + 1
+        if (mult>0) then
+            if (associated(this%SampleCollector) .and. CurLike /= LogZero .and. this%num_accept> this%burn_in) &
+            & call this%SampleCollector%AddNewWeightedPoint(CurParams, CurLike, mult, thin_fac)
+            this%num_accept = this%num_accept + 1
+        end if
         mult=1
         if (CurLike < this%MaxLike) then
             this%MaxLike = CurLike
@@ -220,45 +235,39 @@
     class(TChainSampler) :: this
     class(TIniFile) :: Ini
 
-    if (BaseParams%use_fast_slow) then
-        this%oversample_fast = Ini%Read_Int('oversample_fast',1)
-        if (this%oversample_fast<1) call DoAbort('oversample_fast must be >= 1')
+    if (use_fast_slow) then
+        this%oversample_fast = Ini%Read_Int('oversample_fast',1, min=1)
+        this%output_thin =  this%oversample_fast
     end if
+    call Ini%Read('propose_scale',this%propose_scale, min=0.d0)
+    call Ini%Read('burn_in',this%burn_in)
 
     end subroutine TChainSampler_ReadParams
 
-    subroutine TChainSampler_Init(this, LikeCalculator, SampleCollector)
-    class(TChainSampler) :: this
-    class(TLikeCalculator), target:: LikeCalculator 
-    class(TSampleCollector), pointer :: SampleCollector
-    call this%InitWithPropose(LikeCalculator, SampleCollector)
-    end subroutine TChainSampler_Init
-
-    subroutine TChainSampler_InitWithPropose(this, LikeCalculator, SampleCollector, propose_scale)
+    subroutine TChainSampler_InitWithPropose(this,LikeCalculator, SampleCollector, propose_scale)
     class(TChainSampler) :: this
     class(TLikeCalculator), target:: LikeCalculator 
     class(TSampleCollector), pointer :: SampleCollector
     real(mcp), intent(in), optional :: propose_scale
 
     if (present(propose_scale)) this%propose_scale = propose_scale
-    
+
     call this%TSamplingAlgorithm%Init(LikeCalculator,SampleCollector)
     allocate(BlockedProposer::this%Proposer)
     call this%Proposer%Init(BaseParams%param_blocks, slow_block_max= slow_tp_max, &
     oversample_fast=this%oversample_fast, propose_scale=this%propose_scale)
     this%num_accept=0
-    
+
     end subroutine TChainSampler_InitWithPropose
 
     !!! TMetropolisSampler
 
-    subroutine TMetropolisSampler_GetNewMetropolisSample(this, CurParams, CurLike, mult)
+    subroutine TMetropolisSampler_GetNewSample(this, CurParams, CurLike, mult)
     !Standard metropolis hastings
     class(TMetropolisSampler) :: this
     Type(ParamSet) CurParams, Trial
     real(mcp) CurLike, mult, Like 
     logical :: accpt
-    character(LEN=128) logLine
 
     Trial = CurParams
     call this%Proposer%GetProposal(Trial%P)
@@ -281,18 +290,17 @@
         CurParams = Trial
         CurLike = Like
         this%num_metropolis_accept = this%num_metropolis_accept + 1
-        if (Feedback > 1) write (*,*) this%num_metropolis, ' metropolis accept. ratio:', real(this%num_metropolis_accept)/this%num_metropolis
-        if (this%logfile_unit /=0 .and. mod(this%num_metropolis_accept,50*this%Oversample_fast) ==0) then
-            write (logLine,*) 'metropolis rat:',real(this%num_metropolis_accept)/this%num_metropolis, ' in ',this%num_metropolis, &
-            ', best: ',real(this%MaxLike)
-            call IO_WriteLog(logfile_unit,logLine)
-            write (logLine,*) 'local acceptance ratio:', 50./(this%num_metropolis - this%last_num)
-            call IO_WriteLog(logfile_unit,logLine)
+        if (Feedback > 1) write (*,*) this%num_metropolis, ' metropolis accept. ratio:', &
+        & real(this%num_metropolis_accept)/this%num_metropolis
+        if (logfile_unit /=0 .and. mod(this%num_metropolis_accept,50*this%Oversample_fast) ==0) then
+            write (logfile_unit,*) 'metropolis rat:',real(this%num_metropolis_accept)/this%num_metropolis,  &
+            & ' in ',this%num_metropolis, ', best: ',real(this%MaxLike)
+            write (logfile_unit,*) 'local acceptance ratio:', 50./(this%num_metropolis - this%last_num)
             this%last_num = this%num_metropolis
         end if
     end if
 
-    end subroutine TMetropolisSampler_GetNewMetropolisSample
+    end subroutine TMetropolisSampler_GetNewSample
 
     subroutine TMetropolisSampler_FastParameterSample(this, CurParams, CurLike, mult)
     !Metropolis hastings on fast parameters
@@ -371,7 +379,7 @@
     CurStartParams = CurParams
     CurEndParams = TrialEnd
 
-    interp_steps = max(2,nint(dragging_steps * num_fast) + 1)
+    interp_steps = max(2,nint(dragging_steps * BaseParams%num_fast) + 1)
 
     numaccpt = 0
     do interp_step = 1, interp_steps-1
@@ -437,6 +445,16 @@
     end if
 
     end subroutine TFastDraggingSampler_GetNewSample
+
+
+    subroutine TFastDraggingSampler_ReadParams(this, Ini)
+    class(TFastDraggingSampler) :: this
+    class(TIniFile) :: Ini
+
+    call this%TMetropolisSampler%ReadParams(Ini)
+    this%output_thin = 1
+
+    end subroutine TFastDraggingSampler_ReadParams
 
 
     subroutine TSampleCollector_AddNewPoint(this,P,like)

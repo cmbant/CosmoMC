@@ -6,16 +6,18 @@
     use GeneralTypes
     use CalcLike
     use ParamPointSet
+    use IO
     implicit none
-
+    private
+    
     Type, extends(TTheoryLikelihoodUser) :: TImportanceSampler
         logical  redo_like, redo_theory
-        integer redo_thin
-        real(mcp) redo_skip
+        real(mcp) :: redo_skip = 100
         character(LEN=:), allocatable :: redo_datafile, redo_outroot,redo_like_name
-        real(mcp) redo_likeoffset
-        real(mcp) redo_temperature
-        logical redo_change_like_only
+        real(mcp) :: redo_likeoffset = 0
+        real(mcp) :: redo_temperature = 1
+        integer :: redo_thin = 1
+        logical :: redo_change_like_only = .false.
 
         !This last one is for comparing goodness of fit
         !After importance sampling, you can recompute the likelihoods without the new data, but
@@ -23,13 +25,13 @@
         !likelihood wrt the original distribution of the parameter space after importance sampling
         !is similar to that after, in which case the datasets intersect in a region of high likelihood
 
-        logical redo_add
+        logical :: redo_add = .false.
         !if just want to add new datasets rather than re-computing the entire likelihood
 
-        logical redo_from_text
+        logical :: redo_from_text = .false.
         !Redo from text files if .data files not available
 
-        logical redo_no_new_data !true to make no new .data files to save space
+        logical :: redo_no_new_data  = .false. !true to make no new .data files to save space
     contains
     procedure :: ReadParams => TImportanceSampler_ReadParams
     procedure :: ImportanceSample => TImportanceSampler_ImportanceSample
@@ -37,6 +39,7 @@
 
     !not supported any more    logical :: txt_theory = .false. !True to put P_k in output chains
 
+    public TImportanceSampler
     contains
 
     subroutine TImportanceSampler_ReadParams(this, Ini)
@@ -45,21 +48,21 @@
 
     this%redo_like = Ini%Read_Logical('redo_likelihoods')
     this%redo_theory = Ini%read_Logical('redo_theory')
-    this%redo_skip = Ini%Read_Double('redo_skip',100.d0)
-    this%redo_thin = max(1,Ini%Read_Int('redo_thin',1))
     this%redo_datafile = Ini%Read_String('redo_datafile')
     this%redo_outroot = Ini%Read_String('redo_outroot')
-    this%redo_likeoffset = Ini%Read_Double('redo_likeoffset',0.d0)
-    this%redo_temperature = Ini%Read_Double('redo_temp',1.d0)
-    this%redo_change_like_only = Ini%Read_Logical('redo_change_like_only',.false.)
-    this%redo_add = Ini%Read_Logical('redo_add',.false.)
-    this%redo_from_text = Ini%Read_Logical('redo_from_text',.false.)
-    this%redo_no_new_data = Ini%Read_Logical('redo_no_new_data',.false.)
     this%redo_like_name = Ini%Read_String('redo_like_name')
 
+    call Ini%Read('redo_likeoffset',this%redo_likeoffset)
+    call Ini%Read('redo_temp',this%redo_temperature)
+    call Ini%Read('redo_change_like_only',this%redo_change_like_only)
+    call Ini%Read('redo_add',this%redo_add)
+    call Ini%Read('redo_from_text',this%redo_from_text)
+    call Ini%Read('redo_no_new_data',this%redo_no_new_data)
+    call Ini%Read('redo_skip',this%redo_skip)
+    call Ini%Read('redo_thin',this%redo_thin,min=1)
+
     if (this%redo_theory) call this%LikeCalculator%Config%Calculator%ReadImportanceParams(Ini)
-    
-    
+
     if (this%redo_from_text .and. (this%redo_add .or. this%redo_like_name/='')) &
     call Mpistop('redo_new_likes requires .data files, not from text')
 
@@ -76,7 +79,6 @@
     end subroutine TImportanceSampler_ReadParams
 
     subroutine TImportanceSampler_ImportanceSample(this,InputFile)
-    use IO
     USE IFPOSIX
     class(TImportanceSampler) :: this
     character(LEN=*), intent(INOUT):: InputFile
@@ -93,7 +95,7 @@
     logical :: first = .false., has_chain = .true.
     integer last_file_loc,file_loc, file_size
     integer :: at_beginning=0, ierror, num_used
- 
+
     flush_write = .false.
     weight_min= 1e30_mcp
     weight_max = -1e30_mcp
@@ -246,7 +248,7 @@
                     !                    if (txt_theory) then
                     !                        call WriteParamsAndDat(Params, mult,like)
                     !                    else
-                    call WriteParams(Params, mult,like)
+                    call Params%WriteParams(this%LikeCalculator%Config,mult,like)
                     !                   end if
                     if (outdata_handle>=0) call Params%WriteModel(outdata_handle, truelike,mult)
                 else
@@ -262,8 +264,8 @@
 
         end do
 
-        call IO_Close(infile_handle)
-        call IO_Close(outfile_handle)
+        close(infile_handle)
+        close(outfile_handle)
         if (outdata_handle >=0) call IO_DataCloseWrite(outdata_handle)
 
         if (Feedback>0) then

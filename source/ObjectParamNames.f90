@@ -116,7 +116,7 @@
     subroutine ParamNames_Init(Names, filename)
     class(TParamNames) :: Names
     character(Len=*), intent(in) :: filename
-    integer handle,n, status
+    integer handle,n
     character(LEN=:), allocatable :: InLine
 
     handle = OpenNewTxtFile(filename)

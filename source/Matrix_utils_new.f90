@@ -1,7 +1,7 @@
     !Matrix utility routines. Uses BLAS/LAPACK. Mostly wrapper routines.
     !Generally (but not always) assumes that all matrix arrays are defined at exactly correct size
     !Not complete
-    !Antony Lewis May 2003-2007
+    !Antony Lewis May 2003-2014
     !http://cosmologist.info/utils/
 
 

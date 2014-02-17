@@ -1,9 +1,10 @@
     module BaseParameters
     use settings
     use GeneralTypes
-    use propose
+    use likelihood
+    use ObjectLists
+    use IO
     implicit none
-
     private
 
     integer, parameter :: tp_unused = 0, tp_slow=1, tp_semislow=2, tp_semifast=3, tp_fast=4
@@ -38,16 +39,15 @@
     procedure :: SetCovmat => TBaseParameters_SetCovmat
     end Type
 
-    Type(TBaseParameters) :: BaseParams
+    Type(TBaseParameters), save :: BaseParams
 
     public TBaseParameters, BaseParams, slow_tp_max
 
     contains
 
-    subroutine TBaseParameters_InitializeUsedParams(this, Ini, Params)
+    subroutine TBaseParameters_InitializeUsedParams(this, Ini)
     class(TBaseParameters) :: this
-    class(TIniFile) :: Ini
-    class(TCalculationAtParamPoint) Params
+    class(TSettingIni) :: Ini
 
     num_params = max(num_theory_params, this%NameMapping%num_MCMC)
     num_data_params = num_params - num_theory_params
@@ -55,8 +55,6 @@
 
     call this%ReadParams(Ini)
     call this%ReadPriors(Ini)
-
-    Params%P(1:num_params) = this%Center(1:num_params)
 
     end subroutine TBaseParameters_InitializeUsedParams
 
@@ -95,7 +93,7 @@
 
     subroutine TBaseParameters_ReadParams(this,Ini)
     class(TBaseParameters) :: this
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     integer i, j, status
     character(LEN=:), allocatable :: InLine
     real(mcp) center
@@ -234,7 +232,7 @@
     character(len=*), intent(in) :: fname
     integer unit,i
 
-    unit = CreateNewTxtFile(fname)
+    unit = CreateNewTxtFile(fname//'.ranges')
     do i=1, this%NameMapping%num_MCMC
         write(unit,'(1A22,2E17.7)') this%NameMapping%NameOrNumber(i), this%PMin(i),this%PMax(i)
     end do
@@ -242,22 +240,8 @@
 
     end subroutine TBaseParameters_OutputParamRanges
 
-
-    function IndexOf(aval,arr, n)
-    integer, intent(in) :: n, arr(n), aval
-    integer IndexOf, i
-
-    do i=1,n
-        if (arr(i)==aval) then
-            IndexOf= i
-            return
-        end if
-    end do
-    IndexOf = 0
-
-    end function IndexOf
-
     subroutine orderIndices(arr,n)
+    use ArrayUtils
     integer, intent(in) :: n
     integer arr(:), tmp(n),j, s, i
 
@@ -393,7 +377,8 @@
     if (Feedback > 0 .and. MpiRank==0) then
         if (use_fast_slow) then
             write(*,'(1I3," parameters (",1I2," slow (",1I2," semi-slow), ",1I2," fast (",1I2," semi-fast))")') &
-            num_params_used,this%num_slow, size(this%param_blocks(tp_semislow)%P), this%num_fast,size(this%param_blocks(tp_semifast+1)%P)
+            & num_params_used,this%num_slow, size(this%param_blocks(tp_semislow)%P), &
+            & this%num_fast,size(this%param_blocks(tp_semifast+1)%P)
         else
             write(*,'(1I3," parameters")') num_params_used
         end if

@@ -67,10 +67,6 @@
     procedure :: GetProposalFastDelta
     end Type BlockedProposer
 
-    type int_arr_pointer
-        integer, dimension(:), pointer :: p
-    end type int_arr_pointer
-
     logical :: propose_rand_directions = .true.
 
     contains

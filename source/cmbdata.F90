@@ -336,6 +336,7 @@ contains
    real(mcp), pointer, dimension(:) :: tmp_arr
    character(LEN=Ini_max_string_len) :: data_format
    Type(TSettingIni) :: Ini
+   integer unit
 
    aset=> like%dataset
 
@@ -410,10 +411,10 @@ contains
     !Read in the observed values, errors and beam uncertainties
        allocate(aset%points(aset%num_points))
        band_file = Ini%Read_String('bandpowers')
-       if (band_file /= '') call OpenTxtFile(band_file, 51)
+       if (band_file /= '') unit= OpenNewTxtFile(band_file)
        do i=1, aset%num_points + first_band -1
           if (band_file /= '') then
-            read(51,'(a)') InLine
+            read(unit,'(a)') InLine
           else
             InLine = Ini%Read_String(numcat('data',i), .true.)
           end if
@@ -431,7 +432,7 @@ contains
           aset%points(use_i)%var = aset%points(use_i)%sigma**2
           call ReadWindow(aset%points(use_i),trim(window_dir)//'/'//trim(numcat(like%name,i)),windows_are_bare,aset)
        end do
-       if (band_file /= '') Close(51)
+       if (band_file /= '') Close(unit)
 
 
     !See if the inverse covariance matrix is given (otherwise assume diagonal)
@@ -937,7 +938,7 @@ contains
  function CMBLnLike(like, CMB, Theory, DataParams)
     Class(CMBDataLikelihood) :: like
     Class (CMBParams) CMB
-    Class(CosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions) Theory
     real(mcp) :: DataParams(:)
     real(mcp) cl(lmax,num_cls_tot)
     real(mcp) CMBLnLike

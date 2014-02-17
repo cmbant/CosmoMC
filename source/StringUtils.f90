@@ -12,6 +12,29 @@
 
     contains
 
+    function GetParamCount()
+    integer GetParamCount
+
+    GetParamCount = command_argument_count() 
+
+    end function GetParamCount
+
+    function GetParam(i)
+    character(LEN=:), allocatable :: GetParam
+    integer, intent(in) :: i
+    character(LEN=1024*16) tmp
+    integer l, err
+
+    if (GetParamCount() < i) then
+        GetParam = ''
+    else
+        call get_command_argument(i,tmp,l,err)
+        GetParam = trim(tmp)
+    end if
+
+    end function GetParam
+
+
     subroutine StringReplace(FindS, RepS, S)
     character(LEN=*), intent(in) :: FindS, RepS
     character(LEN=*), intent(inout) :: S
@@ -54,6 +77,14 @@
     end if
 
     end function IntToStr
+
+    function StrToInt(S)
+    integer :: StrToInt
+    character(LEN=*), intent(in) :: S
+
+    read(S,*) StrToInt
+
+    end function StrToInt
 
     function concat_s(S1,S2,S3,S4,S5,S6,S7,S8) result(outstr)
     character(LEN=*), intent(in) :: S1, S2
@@ -159,5 +190,23 @@
     end if
 
     end function SingleToStr
+
+    subroutine WriteFormatInts(unit, formatst, i1,i2,i3,i4)
+    integer, intent(in) :: unit
+    character(LEN=*), intent(in) :: formatst
+    integer, intent(in) :: i1
+    integer, intent(in),optional :: i2,i3,i4
+    character(LEN=1024*16) S
+
+    S = formatst
+    call StringReplace('%u', IntToStr(i1), S)
+    if (present(i2)) call StringReplace('%u', IntToStr(i2), S)
+    if (present(i3)) call StringReplace('%u', IntToStr(i3), S)
+    if (present(i4)) call StringReplace('%u', IntToStr(i4), S)
+
+    write(unit,'(a)') trim(S)
+
+    end subroutine WriteFormatInts
+
 
     end module StringUtils

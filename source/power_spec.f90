@@ -3,7 +3,8 @@
     use cmbtypes
     use precision
     use ModelData, only : CP
-    use Transfer, only : MatterTransferData, MatterPowerData
+    use Transfer, only : MatterTransferData, MatterPowerData, MatterPowerData_Free, MatterPowerData_Makenonlinear, &
+    & spline_double, Transfer_GetMatterPowerData
     implicit none
 
     contains
@@ -14,7 +15,7 @@
     !We are assuming that Cls are generated so any baryonic wiggles are well sampled and that matter power
     !sepctrum is generated to beyond the CMB k_max
     Type(MatterTransferData), intent(in) :: MTrans
-    Class(CosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions) Theory
     Type(MatterPowerData) :: Cosmo_PK
     integer, intent(in) :: in
     integer nz,zix
@@ -42,7 +43,7 @@
 
     function MatterPowerAt_zbin(PK, kh, itf, NNL) result(outpower)
     !Get matter power spectrum at particular k/h by interpolation
-    class(CosmoTheoryPredictions) :: PK
+    class(TCosmoTheoryPredictions) :: PK
     integer, intent(in) :: itf
     real (mcp), intent(in) :: kh
     logical, optional, intent(in) :: NNL
@@ -111,7 +112,7 @@
 
     function MatterPowerAt(PK, kh, NNL) result(outpower)
     !Get matter power spectrum at particular k/h by interpolation
-    class(CosmoTheoryPredictions) :: PK
+    class(TCosmoTheoryPredictions) :: PK
     real (mcp), intent(in) :: kh
     logical, optional, intent(in) :: NNL
     logical :: NL
@@ -129,7 +130,7 @@
 
     function MatterPowerAt_Z(PK, kh, z, NNL) result(outpower)
     !Get matter power spectrum at particular k/h by interpolation
-    class(CosmoTheoryPredictions) :: PK
+    class(TCosmoTheoryPredictions) :: PK
     real (mcp), intent(in) :: kh, z
     logical, optional, intent(in) :: NNL
     logical :: NL

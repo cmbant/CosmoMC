@@ -45,7 +45,7 @@
     contains
 
     subroutine GiggleZinfo_init(redshift)
-    integer :: iopb, i, ios, iz
+    integer :: iopb, i, iz
     real(mcp) :: kval, power_nl
     real(mcp) redshift
     integer tmp_file_unit
@@ -102,7 +102,7 @@
     end subroutine GiggleZtoICsmooth
 
     subroutine fill_GiggleZTheory(Theory,zbin)
-    class(CosmoTheoryPredictions) Theory
+    class(TCosmoTheoryPredictions) Theory
     integer, intent(in) :: zbin
     real(mcp) :: xi, kval
     real(mcp), dimension(4) :: fidpolys
@@ -533,7 +533,7 @@
     function WiggleZ_LnLike(like,CMB,Theory,DataParams) ! LV_06 added CMB here
     Class(CMBParams) CMB
     Class(WiggleZLikelihood) :: like
-    Class(CosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions) Theory
     real(mcp) :: DataParams(:)
     real(mcp) :: WiggleZ_LnLike, LnLike
     real(mcp), dimension(:), allocatable :: mpk_Pth, mpk_k2,mpk_lin,k_scaled !LV_06 added for LRGDR4

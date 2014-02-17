@@ -1137,7 +1137,8 @@
 
         if (D%like_approx == like_approx_diag) then
             if (allocated(D%OffsetM)) then
-                chisq = chisq +2*log( (D%ChatM(l,clix)%M(1,1)+D%OffsetM(l)%M(1,1)*C(1,1))/D%ChatM(l,clix)%M(1,1)/(1+D%OffsetM(l)%M(1,1)))
+                chisq = chisq +2*log( (D%ChatM(l,clix)%M(1,1)+D%OffsetM(l)%M(1,1)*C(1,1)) &
+                & /D%ChatM(l,clix)%M(1,1)/(1+D%OffsetM(l)%M(1,1)))
                 call CMBLikes_Transform(D, C, D%ChatM(l,clix)%M, D%sqrt_fiducial(l)%M, D%OffsetM(l)%M )
             else
                 call CMBLikes_Transform(D, C, D%ChatM(l,clix)%M, D%sqrt_fiducial(l)%M)

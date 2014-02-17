@@ -62,7 +62,7 @@
     class(Interpolator):: W
     character(LEN=*), intent(in) :: S
 
-    write(*,*), 'Interpolation error: '//trim(S)
+    write(*,*) 'Interpolation error: '//trim(S)
     stop
 
     end subroutine Interpolator_error
@@ -117,7 +117,7 @@
     integer, intent(in), optional :: xcol, ycol
     integer :: ixcol=1,iycol=2
     integer :: nx,ny
-    integer :: i,j, file_id, parse, status
+    integer :: i,file_id, parse, status
     real(sp_acc), allocatable :: tmp(:)
     character(LEN=1024) :: InLine
 
@@ -307,7 +307,7 @@
     class(InterpGrid2D):: W
     character(LEN=*), intent(in) :: S
 
-    write(*,*), 'InterGrid2D Error: '//trim(S)
+    write(*,*) 'InterGrid2D Error: '//trim(S)
     stop
 
     end subroutine InterpGrid2D_error
@@ -319,9 +319,9 @@
     integer, intent(in), optional :: xcol, ycol, zcol
     integer :: ixcol=1,iycol=2,izcol=3
     integer :: nx,ny
-    integer :: i,j, file_id, parse, status
+    integer :: j, file_id, parse, status
     real(sp_acc), allocatable :: tmp(:)
-    real(sp_acc) lastx,lasty
+    real(sp_acc) lasty
     logical :: first
     character(LEN=1024) :: InLine
 

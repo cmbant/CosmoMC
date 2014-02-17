@@ -7,9 +7,10 @@
     use MonteCarlo
     implicit none
     private
-#define MPI !for test compilation
-    integer :: MPI_WTIME, Mpi_REAL_MCP, MPI_COMM_WORLD, Mpi_Integer,MPI_STATUS_SIZE
-    external MPI_WTIME
+
+    !#define MPI !for test compilation
+    !   integer :: MPI_WTIME, Mpi_REAL_MCP, MPI_COMM_WORLD, Mpi_Integer,MPI_STATUS_SIZE
+    !    external MPI_WTIME
 
     Type TMPIData
         real  :: MPI_R_Stop = 0.05
@@ -45,6 +46,7 @@
         logical :: DoUpdates = .false.
         logical :: flukecheck = .false.
         integer :: indep_sample = 0
+        integer :: indepfile_handle = 0
         real(mcp) :: acc = 0, indep_acc=0 !counting numbers of samples added
         !number of iterations between dumping full model data. If zero then skip.
         integer :: checkpoint_burn = 0
@@ -55,23 +57,26 @@
         logical :: done_check = .false.
 
         Type(TMPIData) :: Mpi
-        character(len=:), allocatable :: rootname
         class(TSampleList), allocatable :: Samples
         class(TChainSampler), pointer :: Sampler
     contains
     procedure :: SaveState => TMpiChainCollector_SaveState
     procedure :: ReadState => TMpiChainCollector_ReadState
     procedure :: WriteCheckpoint => TMpiChainCollector_WriteCheckpoint
+    procedure :: ReadCheckpoint => TMpiChainCollector_ReadCheckpoint
     procedure :: AddNewPoint => TMpiChainCollector_AddNewPoint
     procedure :: AddNewWeightedPoint => TMpiChainCollector_AddNewWeightedPoint
     procedure :: UpdateCovAndCheckConverge => TMpiChainCollector_UpdateCovAndCheckConverge
-    procedure :: CheckLimitsConverge
     procedure :: ReadParams => TMpiChainCollector_ReadParams
+    FINAL :: TMpiChainCollector_Clear 
+#ifdef MPI
+    procedure :: CheckLimitsConverge
+#endif
     end Type
 
     integer, parameter :: chk_id = 3252359
 
-    public TMpiChainCollector
+    public TMpiChainCollector, TMPIData
     contains
 
 
@@ -100,35 +105,39 @@
     end if
     if (this%checkpoint_burn/=0) this%checkpoint_burn = this%checkpoint_burn-1
     if (this%indep_sample /= 0 .and. this%indep_acc >= this%indep_sample*thin .and. want) then
-        call WriteIndepSample(CurParams, CurLike,real(this%indep_acc/(this%indep_sample*thin),mcp))
+        if (this%indepfile_handle /=0) then
+            call CurParams%WriteModel(this%indepfile_handle, CurLike, real(this%indep_acc/(this%indep_sample*thin),mcp))
+        end if
+        !    call WriteIndepSample(CurParams, CurLike,real(this%indep_acc/(this%indep_sample*thin),mcp))
         this%indep_acc = mod(this%indep_acc, real(this%indep_sample*thin,mcp))
     end if
 
     end subroutine TMpiChainCollector_AddNewWeightedPoint
 
-    subroutine TMpiChainCollector_ReadParams(this,Ini, mcmc)
+    subroutine TMpiChainCollector_ReadParams(this,Ini)
     class(TMpiChainCollector) :: this
     class(TIniFile) :: Ini
-    logical :: mcmc
 
 #ifdef MPI
     this%Mpi%MPI_StartTime = MPI_WTime()
-    if (mcmc) then
-        this%Mpi%MPI_R_Stop = Ini%Read_Real('MPI_Converge_Stop',this%Mpi%MPI_R_Stop)
-        this%Mpi%MPI_LearnPropose = Ini%Read_Logical('MPI_LearnPropose',.true.)
-        if (this%Mpi%MPI_LearnPropose) then
-            this%Mpi%MPI_R_StopProposeUpdate=Ini%Read_Real('MPI_R_StopProposeUpdate',0.)
-            this%Mpi%MPI_Max_R_ProposeUpdate=Ini%Read_Real('MPI_Max_R_ProposeUpdate',2.)
-            this%Mpi%MPI_Max_R_ProposeUpdateNew=Ini%Read_Real('MPI_Max_R_ProposeUpdateNew',30.)
-        end if
-        this%Mpi%MPI_Check_Limit_Converge = Ini%Read_Logical('MPI_Check_Limit_Converge',.false.)
-        if (this%Mpi%MPI_Check_Limit_Converge) then
-            this%Mpi%MPI_Limit_Converge = Ini%Read_Real('MPI_Limit_Converge',0.025)
-            this%Mpi%MPI_Limit_Converge_Err = Ini%Read_Real('MPI_Limit_Converge_Err',0.3)
-            this%Mpi%MPI_Limit_Param = Ini%Read_Int('MPI_Limit_Param',0)
-        end if
+    call Ini%Read('MPI_Converge_Stop',this%Mpi%MPI_R_Stop)
+    call Ini%Read('MPI_LearnPropose',this%Mpi%MPI_LearnPropose)
+    if (this%Mpi%MPI_LearnPropose) then
+        call Ini%Read('MPI_R_StopProposeUpdate',this%Mpi%MPI_R_StopProposeUpdate)
+        call Ini%Read('MPI_Max_R_ProposeUpdate',this%Mpi%MPI_Max_R_ProposeUpdate)
+        call Ini%Read('MPI_Max_R_ProposeUpdateNew',this%Mpi%MPI_Max_R_ProposeUpdateNew)
+    end if
+    call Ini%Read('MPI_Check_Limit_Converge',this%Mpi%MPI_Check_Limit_Converge)
+    if (this%Mpi%MPI_Check_Limit_Converge) then
+        call Ini%Read('MPI_Limit_Converge',this%Mpi%MPI_Limit_Converge)
+        call Ini%Read('MPI_Limit_Converge_Err',this%Mpi%MPI_Limit_Converge_Err)
+        call Ini%Read('MPI_Limit_Param',this%Mpi%MPI_Limit_Param)
     end if
 #endif
+    this%indep_sample = Ini%Read_Int('indep_sample')
+    if (this%indep_sample /=0) then
+        this%indepfile_handle =   CreateOpenNewFile(rootname//'.data',append=.not. new_chains)
+    end if
 
     end subroutine TMpiChainCollector_ReadParams
 
@@ -140,6 +149,7 @@
     write(unit) this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn,  &
     this%flukecheck,  this%Mpi%MPI_Min_Sample_Update, this%DoUpdates
     call this%Samples%SaveState(unit)
+    call this%Sampler%SaveState(unit)
 
     end subroutine TMpiChainCollector_SaveState
 
@@ -154,6 +164,7 @@
     this%flukecheck, this%Mpi%MPI_Min_Sample_Update, this%DoUpdates
     call this%Samples%LoadState(unit)
     this%checkpoint_burn=this%checkpoint_freq/3
+    call this%Sampler%LoadState(unit)
 
     end subroutine TMpiChainCollector_ReadState
 
@@ -162,13 +173,13 @@
     class(TMpiChainCollector) :: this
     integer unit
     if (Feedback > 1) write (*,*) instance, 'Writing checkpoint'
-    unit = CreateNewFile(this%rootname//'.chk_tmp', 'unformatted')
+    unit = CreateNewFile(rootname//'.chk_tmp')
     !Use temporary file in case crash/stop during write operation
     write (unit) chk_id
     call this%SaveState(unit)
     close(unit)
-    call DeleteFile(this%rootname//'.chk')
-    call Rename(this%rootname//'.chk_tmp',trim(this%rootname)//'.chk')
+    call DeleteFile(rootname//'.chk')
+    call Rename(rootname//'.chk_tmp',rootname//'.chk')
 
     end subroutine TMpiChainCollector_WriteCheckpoint
 
@@ -177,8 +188,8 @@
     class(TMpiChainCollector) :: this
     integer :: ID, unit
 
-    if (Feedback > 0) write (*,*) instance, 'Reading checkpoint from '//this%rootname//'.chk'
-    unit = OpenNewFile(this%rootname//'.chk', 'unformatted')
+    if (Feedback > 0) write (*,*) instance, 'Reading checkpoint from '//rootname//'.chk'
+    unit = OpenNewFile(rootname//'.chk')
     read (unit) ID
     if (ID/=chk_id) call DoAbort('invalid checkpoint files')
     call this%ReadState(unit)
@@ -186,20 +197,27 @@
 
     end subroutine TMpiChainCollector_ReadCheckpoint
 
+    subroutine TMpiChainCollector_Clear(this)
+    Type(TMpiChainCollector) :: this
+
+    if (this%indepfile_handle/=0) close(this%indepfile_handle)
+    this%indepfile_handle=0
+
+    end subroutine TMpiChainCollector_Clear
+
 
     subroutine TMpiChainCollector_UpdateCovAndCheckConverge(this)
     class(TMpiChainCollector) :: this
-    integer i,j
 #ifdef MPI
+    integer i,j
     real(mcp), allocatable, dimension(:,:,:) ::MPICovmats
     real(mcp), allocatable, dimension(:,:)   ::MPIMeans, MpiCovmat
     real(mcp), allocatable, dimension(:)     ::MPIMean
     real(mcp) delta(num_params_used)
-    integer ierror, dummy
+    integer ierror
     real(mcp) norm, mean(num_params_used), chain_means(MPIChains,num_params_used)
-    integer ID
     real(mcp) MeansCov(num_params_used,num_params_used), cov(num_params_used,num_params_used)
-    real(mcp) evals(num_params_used), last_P, R
+    real(mcp) evals(num_params_used), R
     logical :: invertible
     character(LEN=128) logLine
 
@@ -309,16 +327,14 @@
     !convergence test, followed optionally by (variance of limit)/(mean variance) statistic
     !If MPI_LearnPropose then updates proposal density using covariance matrix of last half of chains
 #ifdef MPI
-    integer i,j,k
-    integer index, STATUS(MPI_STATUS_SIZE),STATs(MPI_STATUS_SIZE*(MPIChains-1))
-    logical flag, dummy, ierror
-    logical DoCheckpoint
-
+    integer i,j
+    integer STATUS(MPI_STATUS_SIZE),STATs(MPI_STATUS_SIZE*(MPIChains-1))
+    logical flag, ierror
 
     !Dump checkpoint info
     !Have to be careful if were to dump before burn
     if (checkpoint .and. this%all_burn .and. this%checkpoint_burn==0 .and. &
-    (.not. this%done_check .or.  mod(this%sample_num+1, this%checkpoint_freq*this%Sampler%Oversample_fast)==0)) then
+    (.not. this%done_check .or.  mod(this%sample_num+1, this%checkpoint_freq)==0)) then
         this%done_check=.true.
         call this%WriteCheckpoint()
     end if
@@ -333,7 +349,7 @@
     if (.not. this%Burn_done) then
         if (this%Samples%Count > 50 +1) then
             !We're not really after independent samples or all of burn in
-            !Makenot sure all parameters are being explored
+            !Make sure all parameters are being explored
             if (.not. allocated(this%param_changes)) then
                 allocate(this%param_changes(num_params_used))
                 this%param_changes= 0
@@ -367,14 +383,14 @@
                 if (sampling_method == sampling_fast_dragging) then
                     this%Mpi%MPI_Min_Sample_Update=this%Mpi%MPI_Min_Sample_Update*this%Sampler%oversample_fast
                 else
-                    this%Mpi%MPI_Min_Sample_Update=this%Mpi%MPI_Min_Sample_Update  + num_fast*4
+                    this%Mpi%MPI_Min_Sample_Update=this%Mpi%MPI_Min_Sample_Update  + BaseParams%num_fast*4
                 end if
                 print *,'MPI_Min_Sample_Update',this%Mpi%MPI_Min_Sample_Update,this%Samples%Count
                 if (this%Samples%Count>this%Mpi%MPI_Min_Sample_Update) call this%Samples%DeleteRange(1, this%Samples%Count-this%Mpi%MPI_Min_Sample_Update)
                 if (sampling_method/= sampling_fast_dragging) then
                     this%Mpi%MPI_Sample_update_freq=this%Mpi%MPI_Sample_update_freq*num_params_used
                 else
-                    this%Mpi%MPI_Sample_update_freq=this%Mpi%MPI_Sample_update_freq*num_slow*this%Sampler%oversample_fast
+                    this%Mpi%MPI_Sample_update_freq=this%Mpi%MPI_Sample_update_freq*BaseParams%num_slow
                 end if
                 this%flukecheck = .false.
                 deallocate(this%param_changes)
@@ -457,13 +473,11 @@
     real(mcp), intent(in) :: MpiCovmat(:,:)
     integer i,j, side, ierror, worsti
     real(mcp), allocatable, dimension(:,:,:) :: Limits
-    real(mcp) MeanLimit, var, LimErr, WorstErr
     logical :: CheckLimitsConverge
-    logical :: AllOK
     integer numCheck
     integer, allocatable, dimension(:) :: params_check
     character(LEN=128) logLine
-
+    real(mcp) MeanLimit, var, LimErr, WorstErr
 
     if (this%Mpi%MPI_Limit_Param/=0) then
         numCheck = 1
@@ -520,5 +534,7 @@
     end function CheckLimitsConverge
 
 #endif
+
+
 
     end module SampleCollector

@@ -5,10 +5,13 @@
     use MatrixUtils
     use MonteCarlo
     use ParamPointSet
+    use propose
     implicit none
     private
 
-    Type, extends(TTheoryLikelihoodUser) :: TMinimizer
+    !TSaveLoadStateObject->TCheckpointable->TLikelihoodUser->TMinimizer
+    Type, extends(TLikelihoodUser) :: TMinimizer
+        logical :: uses_MPI = .false.
         Type(ParamSet) :: MinParams
         integer, allocatable :: minimize_indices(:), minimize_indices_used(:)
         real(mcp), allocatable :: used_param_scales(:), inv_cov(:,:)
@@ -19,10 +22,21 @@
         integer, allocatable :: min_params_rot(:)
     contains
     procedure :: ffn
+    procedure :: FindBestFit
     procedure :: VectToParams
     procedure :: WriteParamsHumanText
     procedure :: WriteBestFitParams
     end type
+
+    abstract interface
+    function FindBestFit(this,Params,is_best_bestfit) result(best_like)
+    import TMinimizer,ParamSet, mcp
+    class(TMinimizer) :: this
+    Type(ParamSet) Params
+    logical, intent(out) :: is_best_bestfit
+    real(mcp) best_like
+    end function FindBestFit
+    end interface
 
     Type, extends(TBOBYQA) ::TBOBYQAMin
         class(TMinimizer), pointer :: Minimizer
@@ -44,11 +58,10 @@
         real(mcp)  :: start_trust_radius = 3._mcp
         logical :: minimize_random_start_pos = .false.
 
-        logical :: minimize_uses_MPI = .false.
     contains
     procedure :: ReadParams => TPowellMinimizer_ReadParams
-    procedure :: FindBestFit
-    procedure :: FindBestFit_indices
+    procedure :: FindBestFit => TPowellMinimizer_FindBestFit
+    procedure :: FindBestFit_indices => TPowellMinimizer_FindBestFit_indices
     end type
 
 
@@ -117,25 +130,25 @@
 
     subroutine TPowellMinimizer_ReadParams(this,Ini)
     class(TPowellMinimizer) :: this
-    class(TSettingIni), intent(in) :: Ini
+    class(TSettingIni) :: Ini
     character(LEN=:), pointer :: diag_params
     integer num, rotparams(num_params), i, rot_params_used(num_params)
 
     !radius in normalized parameter space to converge
-    this%max_like_radius = Ini%Read_Double('max_like_radius',this%max_like_radius)
-    this%max_like_iterations = Ini%Read_Int('max_like_iterations',this%max_like_iterations)
+    call Ini%Read('max_like_radius',this%max_like_radius)
+    call Ini%Read('max_like_iterations',this%max_like_iterations)
     !set points factor above 2 to use a denser sampling of space (may be more robust)
-    this%minimization_points_factor = Ini%Read_Int('minimization_points_factor',this%minimization_points_factor)
+    call Ini%Read('minimization_points_factor',this%minimization_points_factor)
     !will exit if function difference between iterations less than minimize_loglike_tolerance (even if radius criterion not met)
-    this%minimize_loglike_tolerance = Ini%Read_double('minimize_loglike_tolerance',this%minimize_loglike_tolerance, min=0.d0)
-    this%minimize_separate_fast = Ini%Read_Logical('minimize_separate_fast',this%minimize_separate_fast)
-    this%minimize_mcmc_refine_num = Ini%Read_Int('minimize_mcmc_refine_num',this%minimize_mcmc_refine_num)
+    call Ini%Read('minimize_loglike_tolerance',this%minimize_loglike_tolerance, min=0.d0)
+    call Ini%Read('minimize_separate_fast',this%minimize_separate_fast)
+    call Ini%Read('minimize_mcmc_refine_num',this%minimize_mcmc_refine_num)
     if (this%minimize_mcmc_refine_num>0) then
-        this%minimize_refine_temp = Ini%read_Double('minimize_refine_temp',this%minimize_refine_temp)
-        this%minimize_temp_scale_factor = ini%Read_Double('minimize_temp_scale_factor',this%minimize_temp_scale_factor)
+        call Ini%Read('minimize_refine_temp',this%minimize_refine_temp)
+        call Ini%Read('minimize_temp_scale_factor',this%minimize_temp_scale_factor)
     end if
-    this%minimize_random_start_pos = Ini%Read_Logical('minimize_random_start_pos',this%minimize_random_start_pos)
-    this%minimize_uses_MPI = this%minimize_random_start_pos
+    call Ini%Read('minimize_random_start_pos',this%minimize_random_start_pos)
+    this%uses_MPI = this%minimize_random_start_pos
 
     allocate(this%used_param_scales(num_params_used))
     allocate(this%inv_cov(num_params_used, num_params_used))
@@ -171,7 +184,7 @@
     end subroutine TPowellMinimizer_ReadParams
 
 
-    function FindBestFit_indices(this,num_indices,vect) result(best_like)
+    function TPowellMinimizer_FindBestFit_indices(this,num_indices,vect) result(best_like)
     class(TPowellMinimizer) :: this
     integer, intent(in) ::  num_indices
     real(mcp) best_like
@@ -203,7 +216,8 @@
     if (this%num_rot > 0) then
         this%min_params_rot = rot_params_used(1:this%num_rot)
         allocate(this%paramRot(this%num_rot,this%num_rot))
-        this%paramRot = this%inv_cov(this%minimize_indices_used(this%min_params_rot),this%minimize_indices_used(this%min_params_rot))
+        this%paramRot = this%inv_cov(this%minimize_indices_used(this%min_params_rot),&
+        & this%minimize_indices_used(this%min_params_rot))
         call Matrix_Inverse(this%paramRot)
         associate(scales => this%used_param_scales(this%minimize_indices_used(this%min_params_rot)))
             do i=1,this%num_rot
@@ -237,15 +251,15 @@
     else
         best_like = this%ffn(num_indices,vect)
     end if
-    end function FindBestFit_indices
+    end function TPowellMinimizer_FindBestFit_indices
 
 
-    function FindBestFit(this,Params,is_best_bestfit) result(best_like)
+    function TPowellMinimizer_FindBestFit(this,Params,is_best_bestfit) result(best_like)
     class(TPowellMinimizer) :: this
     Type(ParamSet) Params
     logical, intent(out) :: is_best_bestfit
     real(mcp) best_like, last_like
-    real(Powell_CO_prec) :: vect(num_params_used), vect_fast(num_fast)
+    real(Powell_CO_prec) :: vect(num_params_used), vect_fast(BaseParams%num_fast)
     real(mcp) :: temperature, scale, slike, last_best, checklike
     real(mcp), allocatable :: bestfit_loglikes(:)
     integer ierror,i
@@ -267,10 +281,10 @@
         if (Feedback>0) print*,'minmizing fast parameters'
         vect_fast=0
         call Proposer%Init(BaseParams%param_blocks, slow_block_max= slow_tp_max, oversample_fast=1)
-        allocate(this%minimize_indices_used(num_fast), source=Proposer%indices(Proposer%Slow%n+1:Proposer%All%n))
-        allocate(this%minimize_indices(num_fast))
+        allocate(this%minimize_indices_used(BaseParams%num_fast), source=Proposer%indices(Proposer%Slow%n+1:Proposer%All%n))
+        allocate(this%minimize_indices(BaseParams%num_fast))
         this%minimize_indices=params_used(this%minimize_indices_used)
-        best_like = this%FindBestFit_indices(num_fast,vect_fast)
+        best_like = this%FindBestFit_indices(BaseParams%num_fast,vect_fast)
         if (Feedback>0) print *,'initial fast parameter minimize logLike: ', best_like
         vect(Proposer%indices(Proposer%Slow%n+1:Proposer%All%n)) = vect_fast
         deallocate(this%minimize_indices,this%minimize_indices_used)
@@ -284,13 +298,13 @@
         deallocate(this%minimize_indices, this%minimize_indices_used)
         last_like = best_like
 
-        if (num_fast>0 .and. num_slow /=0 .and. this%minimize_separate_fast) then
+        if (BaseParams%num_fast>0 .and. BaseParams%num_slow /=0 .and. this%minimize_separate_fast) then
             if (Feedback>0) print*,'minmizing fast parameters again'
             vect_fast=vect(Proposer%indices(Proposer%Slow%n+1:Proposer%All%n))
-            allocate(this%minimize_indices(num_fast), this%minimize_indices_used(num_fast))
+            allocate(this%minimize_indices(BaseParams%num_fast), this%minimize_indices_used(BaseParams%num_fast))
             this%minimize_indices_used = Proposer%indices(Proposer%Slow%n+1:Proposer%All%n)
             this%minimize_indices = params_used(this%minimize_indices_used)
-            best_like = this%FindBestFit_indices(num_fast,vect_fast)
+            best_like = this%FindBestFit_indices(BaseParams%num_fast,vect_fast)
             if (Feedback>0) print *,'fast parameter minimize logLike: ', best_like
             vect(Proposer%indices(Proposer%Slow%n+1:Proposer%All%n)) = vect_fast
             deallocate(this%minimize_indices,this%minimize_indices_used)
@@ -319,7 +333,7 @@
             last_best = best_like
             StartLike = best_like/temperature
             LikeCalcMCMC%temperature = temperature
-            
+
             call MCMC%InitWithPropose(LikecalcMCMC,null(), propose_scale=scale*sqrt(temperature))
             call MCMC%SampleFrom(Params, StartLike, this%minimize_mcmc_refine_num * num_params_used)
 
@@ -348,7 +362,7 @@
 
     is_best_bestfit=.true.
 #ifdef MPI
-    if (minimize_uses_MPI) then
+    if (this%uses_MPI) then
         allocate(bestfit_loglikes(MPIchains))
         call MPI_Allgather(best_like, 1, MPI_real_mcp, &
         bestfit_loglikes, 1,  MPI_real_mcp, MPI_COMM_WORLD, ierror)
@@ -373,7 +387,7 @@
     end if
 #endif
 
-    end function FindBestFit
+    end function TPowellMinimizer_FindBestFit
 
 
     subroutine WriteParamsHumanText(this, aunit, P, like)
@@ -427,7 +441,7 @@
     Type(ParamSet) Params
     character(LEN=*), intent(in) :: fname
     integer unit
-    
+
     unit = CreateNewTxtFile(fname)
     call this%WriteParamsHumanText(unit,Params, like)
     close(unit)

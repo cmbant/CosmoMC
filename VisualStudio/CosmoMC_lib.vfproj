@@ -5,7 +5,7 @@
 		<Platform Name="x64"/></Platforms>
 	<Configurations>
 		<Configuration Name="Debug|Win32" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP" ErrorLimit="6" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP" ErrorLimit="6" StandardWarnings="standardWarningsF08" WarnDeclarations="true" WarnUncalled="true" WarnInterfaces="true" Traceback="true" BoundsCheck="true" UninitializedVariablesCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
 				<Tool Name="VFLibrarianTool"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
@@ -66,6 +66,7 @@
 		<File RelativePath="..\source\supernovae_SNLS.f90"/>
 		<File RelativePath="..\source\supernovae_Union2.f90"/></Filter>
 		<Filter Name="Utils">
+		<File RelativePath="..\source\ArrayUtils.f90"/>
 		<File RelativePath="..\source\FileUtils.f90"/>
 		<File RelativePath="..\source\IniObjects.f90"/>
 		<File RelativePath="..\source\Interpolation.f90"/>
@@ -73,17 +74,20 @@
 		<File RelativePath="..\source\MpiUtils.f90"/>
 		<File RelativePath="..\source\ObjectLists.f90"/>
 		<File RelativePath="..\source\ObjectParamNames.f90"/>
-		<File RelativePath="..\source\PowellConstrainedMinimize.f90"/>
+		<File RelativePath="..\source\PowellConstrainedMinimize.f90">
+			<FileConfiguration Name="Debug|Win32">
+				<Tool Name="VFFortranCompilerTool" StandardWarnings="standardWarningsNone" WarnDeclarations="false"/></FileConfiguration></File>
+		<File RelativePath="..\source\Random.f90"/>
 		<File RelativePath="..\source\StringUtils.f90"/></Filter>
 		<File RelativePath="..\source\BaseParameters.f90"/>
 		<File RelativePath="..\source\CalcLike.f90"/>
-		<File RelativePath="..\source\Configuration.f90"/>
+		<File RelativePath="..\source\GeneralSetup.f90"/>
 		<File RelativePath="..\source\GeneralTypes.f90"/>
+		<File RelativePath="..\source\ImportanceSampling.f90"/>
 		<File RelativePath="..\source\IO.f90"/>
 		<File RelativePath="..\source\MCMC.f90"/>
 		<File RelativePath="..\source\minimize.f90"/>
 		<File RelativePath="..\source\ParamSet.f90"/>
-		<File RelativePath="..\source\postprocess.f90"/>
 		<File RelativePath="..\source\propose.f90"/>
 		<File RelativePath="..\source\SampleCollector.f90"/>
 		<File RelativePath="..\source\samples.f90"/>

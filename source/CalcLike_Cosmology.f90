@@ -64,7 +64,7 @@
     error=0
 
     select type (Theory=>this%Params%Theory)
-    class is (CosmoTheoryPredictions)
+    class is (TCosmoTheoryPredictions)
         select type (CMB=>this%TheoryParams)
         class is (CMBParams)
             if (Use_CMB .or. Use_LSS .or. get_sigma8) then
@@ -102,7 +102,7 @@
     integer :: numz, index_error
 
     select type (Theory=>Params%Theory)
-    class is (CosmoTheoryPredictions)
+    class is (TCosmoTheoryPredictions)
         if (Use_LSS) then
             if(Theory%sigma_8==0) &
             call MpiStop('ERROR: Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk')

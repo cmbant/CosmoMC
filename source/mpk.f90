@@ -232,7 +232,7 @@
     function MPK_LnLike(like,CMB,Theory,DataParams) ! LV_06 added CMB here
     Class(CMBParams) CMB
     Class(MPKLikelihood) :: like
-    Class(CosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions) Theory
     real(mcp) :: DataParams(:)
     real(mcp) MPK_LnLike,LnLike
     real(mcp), dimension(:), allocatable :: mpk_Pth, mpk_k2,mpk_lin,k_scaled !LV_06 added for LRGDR4

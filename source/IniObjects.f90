@@ -66,6 +66,11 @@
     procedure :: NameValue_Add => Ini_NameValue_Add
     procedure :: EmptyCheckDefault => Ini_EmptyCheckDefault
     procedure, nopass :: ExtractFilePath => Ini_ExtractFilePath
+    procedure :: Ini_Read_Real_Change
+    procedure :: Ini_Read_Double_Change
+    procedure :: Ini_Read_Int_Change
+    procedure :: Ini_Read_Logical_Change
+    generic :: Read => Ini_Read_Real_Change, Ini_Read_Double_Change, Ini_Read_Int_Change, Ini_Read_Logical_Change
     end Type TIniFile
 
     contains
@@ -377,8 +382,8 @@
 
     subroutine Ini_Open_Fromlines(Ini, Lines, NumLines, slash_comments)
     class(TIniFile) :: Ini
-    character (LEN=*), dimension(NumLines), intent(IN) :: Lines
     integer, intent(IN) :: NumLines
+    character (LEN=*), dimension(NumLines), intent(IN) :: Lines
     logical, intent(IN) :: slash_comments
     integer i
 
@@ -450,8 +455,8 @@
     integer, intent(in) :: index
     character(LEN=:), allocatable :: AValue
     character(LEN=32) :: numstr
-    write (numstr,*) index
 
+    write (numstr,*) index
     numstr=adjustl(numstr)
     AValue = trim(Key) // '(' // trim(numStr) // ')'
 
@@ -476,9 +481,8 @@
     integer Ini_Read_Int_Array
     integer, optional, intent(IN) :: Default
     integer, intent(in) :: index
-    character (LEN=*), intent(IN) :: Key
+    character(LEN=*), intent(IN) :: Key
     character(LEN=:), allocatable :: ArrayKey
-    integer status
 
     ArrayKey = Ini%Key_To_Arraykey(Key,index)
     Ini_Read_Int_Array = Ini%Read_Int(ArrayKey, Default)
@@ -489,7 +493,7 @@
     class(TIniFile) :: Ini
     integer Ini_Read_Int
     integer, optional, intent(IN) :: Default, min, max
-    character  (LEN=*), intent(IN) :: Key
+    character(LEN=*), intent(IN) :: Key
     character(LEN=:), pointer :: S
     integer status
 
@@ -549,7 +553,7 @@
     double precision Ini_Read_Double_Array
     double precision, optional, intent(IN) :: Default, min, max
     integer, intent(in) :: index
-    character (LEN=*), intent(IN) :: Key
+    character(LEN=*), intent(IN) :: Key
     character(LEN=:), allocatable :: ArrayKey
 
     ArrayKey = Ini%Key_To_Arraykey(Key,index)
@@ -562,7 +566,7 @@
     class(TIniFile) :: Ini
     real Ini_Read_Real
     real, optional, intent(IN) :: Default, min, max
-    character (LEN=*), intent(IN) :: Key
+    character(LEN=*), intent(IN) :: Key
     character(LEN=:), pointer :: S
     integer status
 
@@ -642,5 +646,37 @@
     close(unit_id)
 
     end subroutine Ini_SaveReadValues
+
+
+    subroutine Ini_Read_Int_Change(Ini, Key, Current, min, max)
+    class(TIniFile) :: Ini
+    character(LEN=*), intent(IN) :: Key
+    integer, intent(inout) :: Current
+    integer, optional, intent(IN) :: min, max
+    Current = Ini%Read_Int(Key,Current,min,max)
+    end subroutine Ini_Read_Int_Change
+
+    subroutine Ini_Read_Double_Change(Ini,Key, Current, min, max)
+    class(TIniFile) :: Ini
+    character(LEN=*), intent(IN) :: Key
+    double precision, intent(inout) :: Current
+    double precision, optional, intent(IN) :: min,max
+    Current = Ini%Read_Double(Key, Current, min, max)
+    end subroutine Ini_Read_Double_Change
+
+    subroutine Ini_Read_Real_Change(Ini,Key, Current, min, max)
+    class(TIniFile) :: Ini
+    character(LEN=*), intent(IN) :: Key
+    real, intent(inout) :: Current
+    real, optional, intent(IN) :: min,max
+    Current = Ini%Read_Real(Key, Current, min, max)
+    end subroutine Ini_Read_Real_Change
+
+    subroutine Ini_Read_Logical_Change(Ini,Key, Current)
+    class(TIniFile) :: Ini
+    character(LEN=*), intent(IN) :: Key
+    logical, intent(inout) :: Current
+    Current = Ini%Read_Logical(Key, Current)
+    end subroutine Ini_Read_Logical_Change
 
     end module IniObjects

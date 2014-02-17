@@ -160,7 +160,7 @@
     integer num_derived
 
     select type (Theory)
-    class is (CosmoTheoryPredictions)
+    class is (TCosmoTheoryPredictions)
         num_derived = 13 +  Theory%numderived
         allocate(Derived%P(num_derived))
 

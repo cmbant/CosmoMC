@@ -36,6 +36,7 @@
 
     real, parameter :: pi_r = 3.141592653, twopi_r = 2*pi_r, fourpi_r = twopi_r*2
 
+    logical :: use_fast_slow = .false.
 
     character(LEN=*), parameter :: CosmoMC_Version = 'Feb2014_oop'
 
@@ -79,14 +80,14 @@
 
     character(LEN=:), allocatable :: DataDir, LocalDir
 
-    Type(TSettingIni) :: CustomParams
+    Type(TSettingIni), save :: CustomParams
 
     logical :: stop_on_error = .true. !whether to stop with error, or continue ignoring point
 
     integer :: num_theory_params, index_data, index_semislow=-1 !set later depending on datasets and theory parameterization
 
     integer, dimension(:), allocatable :: params_used
-    integer num_params, num_params_used, num_data_params, num_fast, num_slow
+    integer num_params, num_params_used, num_data_params
 
     integer :: num_threads = 0
     integer :: instance = 0
@@ -96,14 +97,13 @@
 
     integer :: logfile_unit  = 0
     integer :: outfile_handle = 0
-    integer :: indepfile_handle = 0
     integer :: output_lines = 0
 
     integer :: Feedback = 0
 
     real(mcp), parameter :: logZero = 1e30_mcp
     character (LEN =1024) :: FileChangeIni = '', FileChangeIniAll = ''
-    character(LEN=:), allocatable :: baseroot
+    character(LEN=:), allocatable :: baseroot, rootname
 
     integer, parameter :: stdout = output_unit
 

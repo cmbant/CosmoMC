@@ -13,7 +13,7 @@
     procedure FirstUse =>  BBN_Init
     end type TBBNPredictions
 
-    type(TBBNPredictions) :: BBN_YHe
+    type(TBBNPredictions), save :: BBN_YHe
     !Helium mass fraction (not Y_P^BBN nucleon fraction, which is column 5)
 
     contains

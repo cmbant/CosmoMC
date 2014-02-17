@@ -1,9 +1,19 @@
+
     module GeneralTypes
     use settings
     use likelihood
     use ObjectLists
+    use IO
+    implicit none
+    private
 
-    Type, extends(TSaveLoadStateObject) :: TCheckpointable
+    type int_arr_pointer
+        integer, dimension(:), pointer :: p
+    end type int_arr_pointer
+
+    type, extends(TSaveLoadStateObject) :: TCheckpointable
+    contains
+    procedure :: ReadParams
     end Type
 
     Type TTheoryParams
@@ -28,6 +38,8 @@
     procedure :: Clear => TCalculationAtParamPoint_Clear
     procedure :: WriteParams => TCalculationAtParamPoint_WriteParams
     procedure :: AcceptReject => TCalculationAtParamPoint_AcceptReject
+    procedure :: ReadModel
+    procedure :: WriteModel
     end Type TCalculationAtParamPoint
 
     !Each descendant of the base TConfigClass below has a Config element which point to a TGeneralConfig instance taht determines
@@ -39,6 +51,7 @@
     procedure :: SetTheoryParameterization => TGeneralConfig_SetTheoryParameterization
     procedure :: SetParameterizationName => TGeneralConfig_SetParameterizationName
     procedure :: NewTheory => TGeneralConfig_NewTheory
+    procedure :: InitForLikelihoods => TGeneralConfig_InitForLikelihoods
     end Type
 
     Type, extends(TCheckpointable) :: TConfigClass
@@ -53,11 +66,38 @@
         !Actual computed theory predictions used by likelihoods
         !Config%Calculator can in some cases be used to provide theory functions
     contains
-    procedure :: Clear => TTheoryPredictions_Clear
     procedure :: AssignNew => TTheoryPredictions_AssignNew
-    procedure :: WriteTheory => TTheoryPredictions_WriteTheory
-    procedure :: ReadTheory => TTheoryPredictions_ReadTheory
+    procedure :: Clear
+    procedure :: WriteTheory
+    procedure :: ReadTheory
+    procedure :: WriteBestFitData
     end Type TTheoryPredictions
+
+    abstract interface
+    subroutine Clear(this)
+    import TTheoryPredictions
+    class(TTheoryPredictions) :: this
+    end subroutine Clear
+
+    subroutine WriteTheory(T, unit)
+    import TTheoryPredictions
+    class(TTheoryPredictions) T
+    integer, intent(in) :: unit
+    end subroutine WriteTheory
+
+    subroutine ReadTheory(T, unit)
+    import TTheoryPredictions
+    class(TTheoryPredictions) T
+    integer, intent(in) :: unit
+    end subroutine ReadTheory
+
+    subroutine WriteBestFitData(Theory,fnameroot)
+    import TTheoryPredictions
+    class(TTheoryPredictions) Theory
+    character(LEN=*), intent(in) :: fnameroot
+    end subroutine WriteBestFitData
+    end interface
+
 
     Type, extends(TConfigClass) :: TTheoryCalculator
         character(LEN=128) :: calcName = 'TheoryCalculator'
@@ -66,7 +106,6 @@
     procedure :: ErrorNotImplemented => TTheoryCalculator_ErrorNotImplemented
     procedure :: VersionTraceOutput => TTheoryCalculator_VersionTraceOutput
     procedure :: ReadImportanceParams => TTheoryCalculator_ReadImportanceParams
-    procedure :: ReadParams => TTheoryCalculator_ReadParams
     procedure :: GetTheoryForImportance => TTheoryCalculator_GetTheoryForImportance
     end Type TTheoryCalculator
 
@@ -82,6 +121,29 @@
     Type, extends(TParameterization) :: GenericParameterization
     contains
     end type GenericParameterization
+
+
+    abstract interface
+    subroutine WriteModel(this, unit, like, mult)
+    import TCalculationAtParamPoint, mcp
+    Class(TCalculationAtParamPoint) :: this
+    integer unit
+    real(mcp), intent(in) :: mult, like
+    end subroutine WriteModel
+
+    subroutine ReadModel(this,  unit, has_likes, mult, like, error)
+    import TCalculationAtParamPoint, mcp
+    Class(TCalculationAtParamPoint) :: this
+    integer, intent(in) :: unit
+    integer, intent(out) :: error
+    real(mcp), intent(out) :: mult, like
+    logical, intent(out) :: has_likes(:)
+    end subroutine ReadModel
+
+    end interface
+
+    public int_arr_pointer,TCheckpointable, TTheoryParams, TTheoryIntermediateCache, TCalculationAtParamPoint, TGeneralConfig, &
+    & TConfigClass, TTheoryPredictions, TTheoryCalculator, TParameterization, GenericParameterization
 
     contains
 
@@ -153,11 +215,6 @@
 
     !!!TTheoryPredictions
 
-    subroutine TTheoryPredictions_Clear(this)
-    class(TTheoryPredictions) :: this
-
-    end subroutine TTheoryPredictions_Clear
-
     subroutine TTheoryPredictions_AssignNew(this, NewTheory)
     class(TTheoryPredictions) :: this
     class(TTheoryPredictions), pointer :: NewTheory
@@ -165,23 +222,6 @@
     allocate(NewTheory, source = this)
 
     end subroutine TTheoryPredictions_AssignNew
-
-
-    subroutine TTheoryPredictions_WriteTheory(T, i)
-    Class(TTheoryPredictions) T
-    integer i
-
-    !i is the file unit to write to
-
-    end subroutine TTheoryPredictions_WriteTheory
-
-    subroutine TTheoryPredictions_ReadTheory(T, i)
-    Class(TTheoryPredictions) T
-    integer, intent(in) :: i
-
-    !i is the file unit to write to
-
-    end subroutine TTheoryPredictions_ReadTheory
 
 
     !!! TCalculationAtParamPoint
@@ -230,8 +270,8 @@
 
     if (outfile_handle ==0) return
 
-    num_derived = Config%Parameterization%CalcDerivedParams(this%P,this%Theory,derived)
-    num_derived = DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived)
+    numderived = Config%Parameterization%CalcDerivedParams(this%P, this%Theory, derived)
+    numderived = DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived)
 
     if (numderived==0) then
         call IO_OutputChainRow(outfile_handle, mult, like, this%P(params_used), num_params_used)
@@ -255,12 +295,6 @@
     end subroutine TTheoryIntermediateCache_Clear
 
     !!! TTheoryCalculator
-
-    subroutine TTheoryCalculator_ReadParams(this, Ini)
-    class(TTheoryCalculator) :: this
-    class(TSettingIni) :: Ini
-
-    end subroutine TTheoryCalculator_ReadParams
 
     subroutine TTheoryCalculator_ReadImportanceParams(this, Ini)
     class(TTheoryCalculator) :: this
@@ -338,10 +372,11 @@
 
     subroutine TConfigClass_InitWithParams(this, Ini, Config)
     class(TConfigClass) :: this
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     class(TGeneralConfig), target :: Config
 
     call this%InitConfig(Config)
+    call this%ReadParams(Ini)
 
     end subroutine TConfigClass_InitWithParams
 
@@ -389,6 +424,17 @@
     call Theory%Init(this)
 
     end function TGeneralConfig_NewTheory
+
+    subroutine TGeneralConfig_InitForLikelihoods(this)
+    class(TGeneralConfig) :: this
+    end subroutine TGeneralConfig_InitForLikelihoods
+
+    !!!TCheckpointable
+
+    subroutine ReadParams(this, Ini)
+    class(TCheckpointable) :: this
+    class(TSettingIni) :: Ini
+    end subroutine ReadParams
 
 
     end module GeneralTypes

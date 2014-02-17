@@ -2,6 +2,7 @@
     use DataLikelihoodList
     use GeneralTypes
     use BaseParameters
+    use MatrixUtils
     implicit none
     private
 
@@ -37,7 +38,7 @@
     procedure :: CheckPriorCuts => TheoryLike_CheckPriorCuts
     procedure :: CalculateRequiredTheoryChanges =>TheoryLike_CalculateRequiredTheoryChanges
     procedure :: GetTheoryForLike=>TheoryLike_GetTheoryForLike
-    procedure :: GetTheoryForImportance=>TheoryLike_GetTheoryForImportance    
+    procedure :: GetTheoryForImportance=>TheoryLike_GetTheoryForImportance
     procedure :: GetLogLikeWithTheorySet => TheoryLike_LogLikeWithTheorySet
     procedure :: UpdateTheoryForLikelihoods => TheoryLike_UpdateTheoryForLikelihoods
     end type TTheoryLikeCalculator
@@ -48,8 +49,6 @@
 
     type, extends(TCheckpointable) :: TTheoryLikelihoodUser
         class(TTheoryLikeCalculator), pointer :: LikeCalculator => null()
-    contains
-       procedure :: ReadParams => TTheoryLikelihoodUser_ReadParams
     end type
 
     public TLikeCalculator, TGenericLikeCalculator, TTheoryLikeCalculator, TLikelihoodUser, TTheoryLikelihoodUser
@@ -127,7 +126,7 @@
 
     subroutine TLikeCalculator_ReadParams(this, Ini)
     class(TLikeCalculator) :: this
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     character(LEN=:), pointer :: covMatrix
 
     this%test_likelihood = Ini%Read_Logical('test_likelihood', .false.)
@@ -141,7 +140,7 @@
             call BaseParams%ReadSetCovMatrix(covMatrix, this%test_cov_matrix)
         end if
     end if
-    this%Temperature = Ini%Read_Double('temperature',1.d0)
+    call Ini%Read('temperature',this%Temperature)
 
     end subroutine TLikeCalculator_ReadParams
 
@@ -323,9 +322,5 @@
 
     end subroutine TheoryLike_UpdateTheoryForLikelihoods
 
-    subroutine TTheoryLikelihoodUser_ReadParams(this, Ini)
-    class(TTheoryLikelihoodUser) :: this
-    class(TSettingIni), intent(in) :: Ini
-    end subroutine TTheoryLikelihoodUser_ReadParams
-    
+
     end module CalcLike

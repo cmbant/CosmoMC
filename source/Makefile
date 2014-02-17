@@ -6,6 +6,11 @@ F90C     = mpif90
 FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
 LAPACKL = -lmpi
 
+#gfortran; does not yet work yet, open GCC 4.9 compiler bugs are
+#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60232
+#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60234
+#F90C = gfortran
+#FFLAGS = -cpp
 
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
 RECOMBINATION ?=recfast

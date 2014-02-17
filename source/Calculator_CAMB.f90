@@ -26,6 +26,11 @@
     end Type CAMBTransferCache
 
     Type, extends(TCosmologyCalculator) :: CAMB_Calculator
+        integer :: ncalls = 0
+        integer :: nerrors = 0
+        logical :: CAMB_timing = .false.
+        type(CAMBParams)  CAMBP
+        real(mcp), allocatable :: highL_lensedCL_template(:,:)
     contains
     !New
     procedure :: CMBToCAMB => CAMBCalc_CMBToCAMB
@@ -47,17 +52,13 @@
     procedure :: SetBackgroundTheoryData => CAMBCalc_SetBackgroundTheoryData
     procedure :: SetParamsForBackground => CAMBCalc_SetParamsForBackground
     procedure :: VersionTraceOutput => CAMBCalc_VersionTraceOutput
+    procedure, private :: LoadFiducialHighLTemplate
     end type CAMB_Calculator
 
-    logical :: CAMB_timing = .false.
 
     integer, parameter :: ScalClOrder(5) = (/1,3,2,4,5/), TensClOrder(4) = (/1,4,2,3/)
     !Mapping of CAMB CL array ordering to TT , TE, EE, BB, phi, phiT
-    integer :: ncalls = 0
-    integer :: nerrors = 0
-    type(CAMBParams)  CAMBP
 
-    real(mcp), allocatable :: highL_lensedCL_template(:,:)
 
     public CAMB_Calculator
     contains
@@ -71,7 +72,7 @@
     type(CAMBParams)  P
     real(dl) neff_massive_standard
 
-    P = CAMBP
+    P = this%CAMBP
     P%omegab = CMB%omb
     P%omegan = CMB%omnu
     P%omegac = CMB%omc
@@ -123,13 +124,13 @@
 #else
     if (CMB%fdm/=0._mcp) call MpiStop('Compile with CosmoRec to use fdm')
 #endif
-    call SetCAMBInitPower(P,CMB,1)
+    call this%SetCAMBInitPower(P,CMB,1)
 
     end subroutine CAMBCalc_CMBToCAMB
 
     subroutine CAMBCalc_SetDerived(this,Theory)
     class(CAMB_Calculator) :: this
-    Class(CosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions) Theory
     integer noutputs, i
 
     noutputs = size(BackgroundOutputs%z_outputs)
@@ -161,7 +162,7 @@
     use cambmain, only: initvars
     class(CAMB_Calculator) :: this
     class(CMBParams) CMB
-    Class(CosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions) Theory
     integer error
 
     call InitVars !calculate thermal history, e.g. z_drag etc.
@@ -178,10 +179,9 @@
     class(CAMB_Calculator) :: this
     class(CMBParams) CMB
     class(TTheoryIntermediateCache), pointer :: Info
-    class(CosmoTheoryPredictions) :: Theory
+    class(TCosmoTheoryPredictions) :: Theory
     integer error
     type(CAMBParams)  P
-    character(LEN=128) :: LogLine
     real(mcp) time
 
     allocate(CAMBTransferCache::Info)
@@ -194,9 +194,9 @@
         if (Feedback > 1) write (*,*) 'Calling CAMB'
         Threadnum =num_threads
 
-        if (CAMB_timing) time = TimerTime()
+        if (this%CAMB_timing) time = TimerTime()
         call CAMB_GetTransfers(P, Info%Transfers, error)
-        if (CAMB_timing) call Timer('GetTransfers', time)
+        if (this%CAMB_timing) call Timer('GetTransfers', time)
         class default
         call MpiStop('CAMB_GetNewTransferData with wrong TTheoryIntermediateCache type')
     end select
@@ -205,12 +205,11 @@
     else
         if (stop_on_error) call MpiStop('CAMB error '//trim(global_error_message))
         if (Feedback > 0) write(*,*) 'CAMB returned error '//trim(global_error_message)
-        nerrors=nerrors+1
+        this%nerrors=this%nerrors+1
     end if
-    ncalls=ncalls+1
-    if (mod(ncalls,100)==0 .and. logfile_unit/=0) then
-        write (logLine,*) 'CAMB called ',ncalls, ' times; ', nerrors,' errors'
-        call IO_WriteLog(logfile_unit,logLine)
+    this%ncalls=this%ncalls+1
+    if (mod(this%ncalls,100)==0 .and. logfile_unit/=0) then
+        write(logfile_unit,'(a)') 'CAMB called ',this%ncalls, ' times; ', this%nerrors,' errors'
     end if
     if (Feedback > 1) write (*,*) 'CAMB done'
 
@@ -220,7 +219,7 @@
     class(CAMB_Calculator) :: this
     class(CMBParams) :: CMB
     class(TTheoryIntermediateCache), pointer :: Info
-    class(CosmoTheoryPredictions) :: Theory
+    class(TCosmoTheoryPredictions) :: Theory
     integer error
 
     select type (Info)
@@ -263,7 +262,7 @@
     use ModelParams, only : ThreadNum
     class(CAMB_Calculator) :: this
     class(CMBParams) CMB
-    class(CosmoTheoryPredictions) Theory
+    class(TCosmoTheoryPredictions) Theory
     integer error
     logical :: DoCls, DoPk
     type(CAMBParams)  P
@@ -289,9 +288,9 @@
             !!!not OK for non-linear lensing        if (.not. DoPk) P%WantTransfer = .false.
         end if
 
-        if (CAMB_timing) call Timer()
+        if (this%CAMB_timing) call Timer()
         call CAMB_GetResults(P)
-        if (CAMB_timing) call Timer('CAMB_GetResults')
+        if (this%CAMB_timing) call Timer('CAMB_GetResults')
 
         error = global_error_flag !using error optional parameter gives seg faults on SGI
     else
@@ -312,7 +311,7 @@
     use InitialPower
     class(CAMB_Calculator) :: this
     class(CMBParams) :: CMB
-    class(CosmoTheoryPredictions) Theory
+    class(TCosmoTheoryPredictions) Theory
     real(mcp), parameter :: cons =  (COBE_CMBTemp*1e6)**2*2*pi
     real(mcp) nm
     integer l
@@ -358,9 +357,9 @@
 
     if (lmax_computed_cl/=lmax) then
         !use template for very high L theory tail, scaled not to be discontinuous
-        highL_norm = Theory%cl(lmax_computed_cl,1)/highL_lensedCL_template(lmax_computed_cl,1)
+        highL_norm = Theory%cl(lmax_computed_cl,1)/this%highL_lensedCL_template(lmax_computed_cl,1)
         do l = lmax_computed_cl+1, lmax
-            Theory%cl(l,1:num_ClsS) =  highL_norm*highL_lensedCL_template(l,1:num_clsS)
+            Theory%cl(l,1:num_ClsS) =  highL_norm*this%highL_lensedCL_template(l,1:num_clsS)
         end do
     end if
 
@@ -370,7 +369,7 @@
     subroutine CAMBCalc_SetPkFromCAMB(this,Theory,M)
     use camb, only : MatterTransferData
     class(CAMB_Calculator) :: this
-    class(CosmoTheoryPredictions) Theory
+    class(TCosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
 
     call Theory_GetMatterPowerData(M,Theory,1)
@@ -590,11 +589,11 @@
     call this%TCosmologyCalculator%ReadParams(Ini)
     this%calcName ='CAMB'
 
-    CAMB_timing = Ini%Read_Logical('CAMB_timing',.false.)
+    this%CAMB_timing = Ini%Read_Logical('CAMB_timing',.false.)
 
     if (lmax_computed_cl /= lmax) then
         if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
-        call LoadFiducialHighLTemplate(Ini)
+        call this%LoadFiducialHighLTemplate(Ini)
     end if
 
     if (Ini%HasKey('highL_unlensed_cl_template')) then
@@ -611,7 +610,7 @@
     end if
 
     P%WantTensors = compute_tensors
-    CAMBP = P
+    this%CAMBP = P
 
     end subroutine CAMBCalc_ReadParams
 
@@ -631,7 +630,8 @@
 
 
 
-    subroutine LoadFiducialHighLTemplate(Ini)
+    subroutine LoadFiducialHighLTemplate(this, Ini)
+    class(CAMB_Calculator) :: this
     !This should be a lensed scalar CMB power spectrum, e.g. for including at very high L where foregrounds etc. dominate anyway
     class(TSettingIni) :: Ini
     integer L, aunit, status
@@ -639,17 +639,17 @@
     character(LEN=:), allocatable :: fname
 
     fname = Ini%ReadFilename('highL_theory_cl_template',DataDir,.true.)
-    allocate(highL_lensedCL_template(2:lmax, num_clsS))
+    allocate(this%highL_lensedCL_template(2:lmax, num_clsS))
     aunit = OpenNewTxtFile(fname)
     do
         read(aunit,*, iostat=status) L , array
         if (status/=0 .or. L>lmax) exit
         nm = 2*pi/(l*(l+1))
-        if (L>=2) highL_lensedCL_template(L,1:num_clsS) = nm*array(TensClOrder(1:num_clsS))
+        if (L>=2) this%highL_lensedCL_template(L,1:num_clsS) = nm*array(TensClOrder(1:num_clsS))
     end do
     close(aunit)
 
-    if (highL_lensedCL_template(2,1) < 100) &
+    if (this%highL_lensedCL_template(2,1) < 100) &
     call MpiStop('highL_theory_cl_template must be in muK^2')
 
     if (L<lmax) call MpiStop('highL_theory_cl_template does not go to lmax')

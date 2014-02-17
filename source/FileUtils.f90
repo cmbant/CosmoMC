@@ -1,4 +1,5 @@
     module FileUtils
+    use MpiUtils
     implicit none
     !Utils using F2008 features
 
@@ -18,7 +19,6 @@
 
     end subroutine 
 
-
     function FileExists(aname)
     character(LEN=*), intent(IN) :: aname
     logical FileExists
@@ -27,6 +27,13 @@
 
     end function FileExists
 
+    function FileSize(name) result(fsize)
+    integer fsize
+    character(LEN=*), intent(in)::name
+
+    inquire(file=name, size=fsize)
+
+    end function FileSize
 
     function OpenNewTxtFile(aname, errormsg) result(aunit)
     character(LEN=*), intent(IN) :: aname
@@ -315,5 +322,42 @@
     ChangeFileExt = trim(aname) // '.' // trim(ext)
 
     end function ChangeFileExt
+
+
+    function CheckTrailingSlash(aname)
+    character(LEN=*), intent(in) :: aname
+    character(LEN=:), allocatable :: CheckTrailingSlash
+    integer alen
+    character, parameter :: win_slash = char(92)
+
+    alen = len_trim(aname)
+    if (aname(alen:alen) /= win_slash .and. aname(alen:alen) /= '/') then
+        CheckTrailingSlash = trim(aname)//'/'
+    else
+        CheckTrailingSlash = aname(1:alen)
+    end if
+
+    end function CheckTrailingSlash
+
+
+    subroutine DeleteFile(aname)
+    character(LEN=*), intent(IN) :: aname
+    integer file_id, status
+
+    if (FileExists(aname)) then
+        open(newunit = file_id, file = aname, iostat=status)
+        if (status/=0) return
+        close(unit = file_id, status = 'DELETE')
+    end if
+
+    end subroutine DeleteFile
+
+
+    subroutine FlushFile(aunit)
+    integer, intent(IN) :: aunit
+
+    flush(aunit)
+
+    end subroutine FlushFile
 
     end module FileUtils

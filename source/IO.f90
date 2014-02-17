@@ -9,7 +9,11 @@
 
     contains
 
-
+    subroutine IO_Close(unit)
+    integer, intent (in) :: unit
+    close(unit)
+    end subroutine IO_Close
+    
     function IO_OpenChainForRead(name, OK) result(handle)
     character(len=*), intent(in) :: name
     integer handle
@@ -32,7 +36,7 @@
 
     !assumes handle is a fortran unit; If want to get from database then probably to file here
 
-    handle = OpenNewFile(name,'unformatted')
+    handle = OpenNewFile(name)
 
     end function IO_OpenDataForRead
 
@@ -66,18 +70,9 @@
         app = .false.
     end if
 
-    handle = CreateOpenNewFile(name,'unformatted',app)
+    handle = CreateOpenNewFile(name,append=app)
 
     end function IO_DataOpenForWrite
-
-
-    subroutine IO_Close(handle, IsLogFile)
-    integer, intent(in) :: handle
-    logical, intent(in), optional :: isLogFile
-
-    close(handle)
-
-    end subroutine IO_Close
 
     subroutine IO_DataCloseWrite(handle)
     integer, intent(in) :: handle
@@ -272,7 +267,7 @@
     character(LEN=*), intent(in) :: name
     real(mcp), intent(out) :: mult, like, values(:)
     integer, intent(in) :: params_used(:)
-    character(LEN=5000) :: InLine
+    character(LEN=:), allocatable :: InLine
 
     InLine = LastFileLine(name)
     read(InLine, *) mult, like, values(params_used)
@@ -349,7 +344,6 @@
 
     end subroutine IO_ReadParamNames
 
-
     function IO_ReadChainRows(in_root, chain_ix,chain_num, ignorerows, nrows, &
     ncols,max_rows,coldata,samples_are_chains) result(OK)
     !OK = false if chain not found or not enough samples
@@ -367,6 +361,7 @@
     integer, allocatable :: indices(:)
     character(LEN=:), allocatable :: infile
     character(LEN=20) :: numstr
+    integer i
 
     row_start=nrows
     if (chain_num == 0) then
@@ -394,7 +389,7 @@
     end if
 
     allocate(indices(ncols-2))
-    indices=[3:ncols]
+    indices=(/ (I, I=3, ncols) /) ! [3:ncols]
     OK = .true.
     do
         if (.not. IO_ReadChainRow(chain_handle, invars(1), invars(2), &
@@ -483,5 +478,5 @@
 
     end subroutine IO_OutputMargeStats
 
-    
+
     end module IO

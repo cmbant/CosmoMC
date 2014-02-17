@@ -3,15 +3,8 @@
     !Implement lists of arbitrary objects
     !AL Oct 2012
     implicit none
-    
-    private
 
-    !type ReadWriteObject
-    !!Ancestor for list items that can be read and written
-    !contains
-    ! procedure, abstract :: WriteBinary
-    ! procedure, abstract :: ReadBinary
-    !end type ReadWriteObject
+    private
 
     type Object_pointer
         class(*), pointer :: p => null()
@@ -262,7 +255,6 @@
     L%Count = L%Count - dN
 
     end subroutine DeleteRange
-
 
     subroutine AddArray(L, P)
     Class (TObjectList) :: L

@@ -33,15 +33,15 @@
     class(TCosmologyCalculator) :: this
     class(TSettingIni) :: Ini
 
-    this%ImportanceOptions%redo_cls= Ini%read_Logical('redo_cls')
-    this%ImportanceOptions%redo_pk= Ini%read_Logical('redo_pk')
+    this%ImportanceOptions%redo_cls= Ini%Read_Logical('redo_cls')
+    this%ImportanceOptions%redo_pk= Ini%Read_Logical('redo_pk')
 
     end subroutine TCosmologyCalculator_ReadImportanceParams
 
     subroutine GetNewBackgroundData(this, CMB,Theory,error)
     class(TCosmologyCalculator) :: this
     class(CMBParams), intent(in) :: CMB
-    class(CosmoTheoryPredictions) Theory
+    class(TCosmoTheoryPredictions) Theory
     integer error
 
     call this%SetParamsForBackground(CMB)
@@ -67,7 +67,7 @@
     subroutine SetBackgroundTheoryData(this, CMB,Theory,error)
     class(TCosmologyCalculator) :: this
     class(CMBParams), intent(in) :: CMB
-    class(CosmoTheoryPredictions) Theory
+    class(TCosmoTheoryPredictions) Theory
     integer error
 
     !calculate thermal history, e.g. z_drag etc.,
@@ -80,7 +80,7 @@
     class(TCosmologyCalculator) :: this
     class(CMBParams), intent(in) :: CMB
     class(TTheoryIntermediateCache), pointer :: Info
-    class(CosmoTheoryPredictions) :: Theory
+    class(TCosmoTheoryPredictions) :: Theory
     integer error
 
     !gets transfer functions in Info, and also set any derived parameters
@@ -92,7 +92,7 @@
     class(TCosmologyCalculator) :: this
     class(CMBParams) :: CMB
     class(TTheoryIntermediateCache), pointer :: Info
-    class(CosmoTheoryPredictions)  :: Theory
+    class(TCosmoTheoryPredictions)  :: Theory
     integer error
 
     !calculate Theory power spectra from transfer functions in Info
@@ -104,7 +104,7 @@
     subroutine GetTheoryForImportance(this, CMB, Theory, error)
     class(TCosmologyCalculator) :: this
     class(CMBParams) :: CMB
-    class(CosmoTheoryPredictions) :: Theory
+    class(TCosmoTheoryPredictions) :: Theory
     integer error
 
     error=0

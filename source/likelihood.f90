@@ -267,7 +267,7 @@
     class(DataLikelihood) :: like
     character(LEN=*), intent(in) :: fname
 
-    call ParamNames_init(like%nuisance_params, fname)
+    call like%nuisance_params%init(fname)
 
     end subroutine loadParamNames
 
