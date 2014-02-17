@@ -9,7 +9,7 @@
     use IO
     use ParamPointSet
     implicit none
-
+    
     integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2, action_hessian=3
 
     Type TSetup

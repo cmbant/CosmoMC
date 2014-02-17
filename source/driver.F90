@@ -26,6 +26,7 @@
     integer mult
     character(LEN=:), allocatable :: prop_mat
     class(TMinimizer), allocatable :: Minimizer
+
 #ifdef MPI
     double precision intime
     integer ierror
@@ -130,7 +131,7 @@
     FeedBack = Ini%Read_Int('feedback',0)
     FileChangeIni = rootname//'.read'
 
-    if (Setup%action == action_MCMC .and. .not. Ini%Read_Logical('no_log')) then
+    if (Setup%action == action_MCMC .and. .not. Ini%Read_Logical('no_log', .false.)) then
         LogFile = rootname//'.log'
         logfile_unit = CreateOpenNewTxtFile(LogFile,.not. new_chains)
     end if

@@ -35,11 +35,16 @@
     procedure :: ValueOf => TNameValueList_ValueOf
     procedure :: IndexOf => TNameValueList_IndexOf
     procedure :: HasKey => TNameValueList_HasKey
-    procedure :: Add => TNameValueList_Add
     procedure :: SetCapacity => TNameValueList_SetCapacity
     procedure :: Delete => TNameValueList_Delete
     procedure :: Error => TNameValueList_Error
     procedure :: FailStop => TNameValueList_FailStop
+    procedure :: AddString => TNameValueList_Add
+    procedure :: TNameValueList_AddDouble
+    procedure :: TNameValueList_AddReal
+    procedure :: TNameValueList_AddInt
+    procedure :: TNameValueList_AddLogical
+    generic :: Add => AddString, TNameValueList_AddDouble, TNameValueList_AddReal, TNameValueList_AddInt, TNameValueList_AddLogical
     end Type TNameValueList
 
     Type, extends(TNameValueList) :: TIniFile
@@ -164,6 +169,53 @@
 
     end subroutine TNameValueList_Add
 
+    subroutine TNameValueList_AddReal(L, AName, AValue)
+    class(TNameValueList) :: L
+    character(LEN=*), intent(in) :: AName
+    real, intent(in) :: AValue
+    character(LEN=32) tmp
+
+    write(tmp,*) AValue
+    call L%AddString(AName, Tmp)
+
+    end subroutine TNameValueList_AddReal
+
+    subroutine TNameValueList_AddDouble(L, AName, AValue)
+    class(TNameValueList) :: L
+    character(LEN=*), intent(in) :: AName
+    double precision, intent(in) :: AValue
+    character(LEN=32) tmp
+
+    write(tmp,*) AValue
+    call L%AddString(AName, Tmp)
+
+    end subroutine TNameValueList_AddDouble
+
+    
+    subroutine TNameValueList_AddInt(L, AName, AValue)
+    class(TNameValueList) :: L
+    character(LEN=*), intent(in) :: AName
+    integer, intent(in) :: AValue
+    character(LEN=32) tmp
+
+    write(tmp,*) AValue
+    call L%AddString(AName, Tmp)
+
+    end subroutine TNameValueList_AddInt
+
+    
+    subroutine TNameValueList_AddLogical(L, AName, AValue)
+    class(TNameValueList) :: L
+    character(LEN=*), intent(in) :: AName
+    logical, intent(in) :: AValue
+    character(LEN=32) tmp
+
+    write(tmp,*) AValue
+    call L%AddString(AName, Tmp)
+
+    end subroutine TNameValueList_AddLogical
+
+
     subroutine TNameValueList_SetCapacity(L, C)
     class(TNameValueList) :: L
     integer C
@@ -253,7 +305,7 @@
                 S = S(2:lastpos-1)
             end if
         end if
-        call Ini%TNameValueList%Add(AName, S,only_if_undefined = isDefault )
+        call Ini%TNameValueList%Add(AName, S,only_if_undefined = isDefault)
     end if
 
     end subroutine Ini_NameValue_Add
@@ -326,14 +378,14 @@
     do
         if (.not. ReadLine(unit_id,InLine)) exit
         if (InLine == 'END') exit
-        if (InLine(1:8) == 'INCLUDE(') then
+        if (InLine(1:min(8,len(InLine))) == 'INCLUDE(') then
             lastpos = scan(InLine,')')
             if (lastpos/=0) then
                 call IncudeFiles%Add(trim(adjustl(InLine(9:lastpos-1))),'')
             else
                 call Ini%Error('Ini_Open, error in INCLUDE line: '//trim(filename))
             end if
-        elseif (InLine(1:8) == 'DEFAULT(') then
+        elseif (InLine(1:min(8,len(InLine))) == 'DEFAULT(') then
             !Settings to read in as defaults, overridden by subsequent re-definitions
             lastpos = scan(InLine,')')
             if (lastpos/=0) then
@@ -501,8 +553,7 @@
     if (S == '') then
         call Ini%EmptyCheckDefault(Key,Default)
         Ini_Read_Int = Default
-        write (S,*) Default
-        call  Ini%ReadValues%Add(Key, S)
+        call  Ini%ReadValues%Add(Key, Default)
     else
         if (verify(trim(S),'-+0123456789') /= 0) then
             status=1
@@ -532,8 +583,7 @@
     if (S == '') then
         call Ini%EmptyCheckDefault(Key,Default)
         Ini_Read_Double = Default
-        write (S,*) Default
-        call  Ini%ReadValues%Add(Key, S)
+        call  Ini%ReadValues%Add(Key, Default)
     else
         read (S,*, iostat=status) Ini_Read_Double
         if (status/=0) call Ini%Error('error reading double',Key)
@@ -574,8 +624,7 @@
     if (S == '') then
         call Ini%EmptyCheckDefault(Key,Default)
         Ini_Read_Real = Default
-        write (S,*) Default
-        call  Ini%ReadValues%Add(Key, S)
+        call  Ini%ReadValues%Add(Key, Default)
     else
         read (S,*, iostat=status) Ini_Read_Real
         if (status/=0) call Ini%Error('error reading real',Key)
@@ -616,8 +665,7 @@
     if (S == '') then
         call Ini%EmptyCheckDefault(Key,Default)
         Ini_Read_Logical = Default
-        write (S,*) Default
-        call  Ini%ReadValues%Add(Key, S)
+        call  Ini%ReadValues%Add(Key, Default)
     else
         if (verify(trim(S),'10TF') /= 0) then
             status=1

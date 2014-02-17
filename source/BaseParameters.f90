@@ -98,6 +98,7 @@
     character(LEN=:), allocatable :: InLine
     real(mcp) center
 
+    allocate(this%center(num_params))
     allocate(this%PMin(num_params))
     allocate(this%PMax(num_params))
     allocate(this%StartWidth(num_params))
