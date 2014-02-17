@@ -13,19 +13,16 @@
     character(LEN=:), allocatable :: LogFile,  numstr, fname, rootdir
     character(LEN=1024) :: InputFile !fixed length because of MPI share
     Type(TSettingIni) :: Ini
-    logical bad
-    integer  i, numtoget
-    Type(ParamSet) Params, EstParams
-    integer file_unit, status
+    integer  i
+    Type(ParamSet) Params !, EstParams
     real(mcp) bestfit_loglike
     logical want_minimize
+    logical is_best_bestfit
     logical :: start_at_bestfit = .false.
     Class(DataLikelihood), pointer :: Like
-    logical is_best_bestfit
-    real(mcp) StartLike
-    integer mult
     character(LEN=:), allocatable :: prop_mat
     class(TMinimizer), allocatable :: Minimizer
+
 
 #ifdef MPI
     double precision intime
@@ -199,7 +196,7 @@
 
     call Setup%DoneInitialize()
 
-    
+
     if (MpiRank==0 .and. Setup%action==action_MCMC .and. BaseParams%NameMapping%nnames/=0) then
         call BaseParams%OutputParamNames(baseroot, params_used, add_derived = .true.)
         call BaseParams%OutputParamRanges(baseroot)
@@ -284,5 +281,5 @@
     CheckPriority = SetPriorityClass(GetCurrentProcess(), dwPriority)
 #endif
     end subroutine SetIdlePriority
-    
+
     end program CosmoMC

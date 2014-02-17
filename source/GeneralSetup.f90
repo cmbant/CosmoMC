@@ -126,12 +126,12 @@
 
         if (Feedback > 0 .and. MPIRank==0) write (*,*) 'starting Monte-Carlo'
         call Sampler%SampleFrom(Params, StartLike, this%samples)
+        close(outfile_handle)
+        outfile_handle=0
         class default
         call MpiStop('Sampling not implemented')
     end select
     if (Feedback > 0) write (*,*) 'finished'
-
-    close(outfile_handle)
 
     end subroutine TSetup_DoSampling
 

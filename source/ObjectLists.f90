@@ -90,10 +90,12 @@
     Type, extends(TObjectList) :: TStringList
     contains
     procedure :: CharAt => TStringList_CharAt
+    procedure :: Compare => TStringList_Compare
     procedure :: StringItem  => TStringList_Item
     procedure :: AddItem => TStringList_AddItem
     procedure :: SetFromString => TStringList_SetFromString
     procedure :: IndexOf => TStringList_IndexOf
+    procedure :: WriteItems
     generic :: Item => StringItem
     end Type TStringList
 
@@ -345,6 +347,13 @@
                 class default
                 stop 'TObjectList: Unknown type to save'
             end select
+        class is (object_pointer)
+            select type (P=>Item%P)
+            Type is (character(LEN=*))
+                k=5
+                write(fid) len(P), k
+                write(fid) P
+            end select
             class default
             stop 'TObjectList: not implemented non-array save'
         end select
@@ -360,6 +369,7 @@
     double precision, pointer :: ArrD(:)
     integer, pointer :: ArrI(:)
     logical, pointer :: ArrL(:)
+    character(LEN=:), pointer :: St
 
     call L%Clear()
     L%OwnsObjects = .false.
@@ -383,6 +393,11 @@
             allocate(ArrL(sz))
             read(fid) ArrL
             call L%AddArray(ArrL)
+        else if (k==5) then
+            allocate(character(sz)::St)
+            call L%Add(St)
+        else
+            stop 'TObjectList ReadBinary - unknown object type'
         end if
     end do
     L%Count = num
@@ -698,10 +713,12 @@
     subroutine TStringList_AddItem(L, C)
     Class(TStringList) :: L
     class(*), intent(in), target :: C
+    character(LEN=:), pointer :: P
 
     select type (C)
     type is (character(LEN=*))
-        call L%AddCopy(C)
+        allocate(P, source=C)
+        call L%TObjectList%AddItem(P)
         class default
         stop 'TStringList: can only add character strings'
     end select
@@ -782,7 +799,39 @@
 
     end function TStringList_CharAt
 
+    integer function TStringList_Compare(this, R1, R2) result(comp)
+    Class(TStringList) :: this
+    class(*) R1,R2
 
+    select type (RR1 => R1)
+    type is (character(LEN=*))
+        select type (RR2 => R2)
+        type is (character(LEN=*))
+            if (RR1 < RR2) then
+                comp =-1
+            elseif (RR1>RR2) then
+                comp = 1
+            else
+                comp = 0
+            end if
+            return
+        end select
+        class default
+        stop 'TStringList_Compare: not defined for this type'
+    end select
 
+    end function TStringList_Compare
+
+   subroutine WriteItems(this, unit)
+    Class(TStringList) :: this
+    integer, intent(in) :: unit
+    integer i
+    
+    do i=1, this%Count
+     write(unit,*) this%Item(i)
+    end do
+   
+   end subroutine WriteItems
+    
     end module ObjectLists
 
