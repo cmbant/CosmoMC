@@ -22,8 +22,8 @@
 
     Type, abstract :: TSaveLoadStateObject
     contains
-    procedure :: SaveState
-    procedure :: LoadState
+    procedure(IOFunction), deferred :: SaveState
+    procedure(IOFunction), deferred :: LoadState
     end Type TSaveLoadStateObject
 
     Type TObjectList
@@ -63,7 +63,14 @@
     generic :: Add => AddItem, AddArray
     end Type TObjectList
 
-    Type, extends(TObjectList):: TRealCompareList
+    Type, extends(TObjectList) :: TOwnedIntrinsicList
+    contains
+    procedure :: AddItem => TOwnedIntrinsicList_AddItem
+    procedure :: LoadState => TOwnedIntrinsicList_LoadState
+    procedure :: SaveState => TOwnedIntrinsicList_SaveState
+    end type
+
+    Type, extends(TOwnedIntrinsicList):: TRealCompareList
     contains
     procedure :: Compare => CompareReal
     end Type TRealCompareList
@@ -71,7 +78,6 @@
     Type, extends(TRealCompareList):: TRealList
     contains
     procedure :: TRealList_Item
-    procedure :: AddItem => TRealList_AddItem
     procedure :: AddArrayItems => TRealList_AddArrayItems
     procedure :: AsArray =>TRealList_AsArray
     generic :: Item => TRealList_Item
@@ -82,17 +88,14 @@
     contains
     procedure :: Value => TRealArrayList_Value
     procedure :: RealArrItem => TRealArrayList_Item
-    procedure :: SaveState => TRealArrayList_SaveState
-    procedure :: LoadState => TRealArrayList_LoadState
     generic :: Item => Value, RealArrItem
     end Type TRealArrayList
 
-    Type, extends(TObjectList) :: TStringList
+    Type, extends(TOwnedIntrinsicList) :: TStringList
     contains
     procedure :: CharAt => TStringList_CharAt
     procedure :: Compare => TStringList_Compare
     procedure :: StringItem  => TStringList_Item
-    procedure :: AddItem => TStringList_AddItem
     procedure :: SetFromString => TStringList_SetFromString
     procedure :: IndexOf => TStringList_IndexOf
     procedure :: WriteItems
@@ -101,17 +104,12 @@
 
 
     abstract interface
-    subroutine SaveState(this,unit)
+    subroutine IOFunction(this,unit)
     import TSaveLoadStateObject
     class(TSaveLoadStateObject) :: this
-    integer :: unit
-    end subroutine SaveState
+    integer, intent(in) :: unit
+    end subroutine IOFunction
 
-    subroutine LoadState(this,unit)
-    import TSaveLoadStateObject
-    class(TSaveLoadStateObject) :: this
-    integer :: unit
-    end subroutine LoadState
     end interface
 
     public list_prec, TSaveLoadStateObject, TObjectList, TRealArrayList, TRealList, TStringList
@@ -580,6 +578,36 @@
 
     end subroutine TObjectList_LoadState
 
+
+    !TOwnedIntrinsicList
+
+    subroutine TOwnedIntrinsicList_LoadState(L,unit)
+    class(TOwnedIntrinsicList) :: L
+    integer :: unit
+    call L%ReadBinary(unit)
+    end subroutine TOwnedIntrinsicList_LoadState
+
+    subroutine TOwnedIntrinsicList_SaveState(L,unit)
+    class(TOwnedIntrinsicList) :: L
+    integer :: unit
+    call L%SaveBinary(unit)
+    end subroutine TOwnedIntrinsicList_SaveState
+
+
+    subroutine TOwnedIntrinsicList_AddItem(L, C)
+    Class(TOwnedIntrinsicList) :: L
+    class(*), intent(in), target :: C
+    class(*), pointer :: P
+
+    if (L%OwnsObjects) then
+        allocate(P, source = C)
+        call L%TObjectList%AddItem(P)
+    else
+        stop 'TOwnedIntrinsicList: must have OwnsObjects = .true.'
+    end if
+
+    end subroutine TOwnedIntrinsicList_AddItem
+
     !TRealCompareList
     integer function CompareReal(this, R1, R2) result(comp)
     Class(TRealCompareList) :: this
@@ -621,26 +649,6 @@
     end select
 
     end function TRealList_Item
-
-    subroutine TRealList_AddItem(L, C)
-    Class(TRealList) :: L
-    class(*), intent(in), target :: C
-    real(kind=list_prec), pointer :: P
-
-    if (L%OwnsObjects) then
-        select type (pt=>C)
-        type is (real(kind=list_prec))
-            allocate(P)
-            P=pt
-            call L%TObjectList%AddItem(P)
-            class default
-            stop 'TRealList: only add real'
-        end select
-    else
-        stop 'TRealList: must have OwnsObjects = .true.'
-    end if
-
-    end subroutine TRealList_AddItem
 
     subroutine TRealList_AddArrayItems(L, A)
     Class(TRealList) :: L
@@ -697,33 +705,7 @@
 
     end function TRealArrayList_Value
 
-    subroutine TRealArrayList_LoadState(L,unit)
-    class(TRealArrayList) :: L
-    integer :: unit
-    call L%ReadBinary(unit)
-    end subroutine TRealArrayList_LoadState
-
-    subroutine TRealArrayList_SaveState(L,unit)
-    class(TRealArrayList) :: L
-    integer :: unit
-    call L%SaveBinary(unit)
-    end subroutine TRealArrayList_SaveState
-
     !!! TStringList
-    subroutine TStringList_AddItem(L, C)
-    Class(TStringList) :: L
-    class(*), intent(in), target :: C
-    character(LEN=:), pointer :: P
-
-    select type (C)
-    type is (character(LEN=*))
-        allocate(P, source=C)
-        call L%TObjectList%AddItem(P)
-        class default
-        stop 'TStringList: can only add character strings'
-    end select
-
-    end subroutine TStringList_AddItem
 
     function TStringList_Item(L,i) result(S)
     Class(TStringList) :: L
@@ -822,16 +804,16 @@
 
     end function TStringList_Compare
 
-   subroutine WriteItems(this, unit)
+    subroutine WriteItems(this, unit)
     Class(TStringList) :: this
     integer, intent(in) :: unit
     integer i
-    
+
     do i=1, this%Count
-     write(unit,*) this%Item(i)
+        write(unit,*) this%Item(i)
     end do
-   
-   end subroutine WriteItems
-    
+
+    end subroutine WriteItems
+
     end module ObjectLists
 

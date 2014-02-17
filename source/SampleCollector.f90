@@ -148,7 +148,7 @@
 
     write(unit) this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn,  &
     this%flukecheck,  this%Mpi%MPI_Min_Sample_Update, this%DoUpdates
-    call this%Samples%SaveBinary(unit)
+    call this%Samples%SaveState(unit)
     call this%Sampler%SaveState(unit)
 
     end subroutine TMpiChainCollector_SaveState
@@ -162,7 +162,7 @@
 
     read(unit) this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn, &
     this%flukecheck, this%Mpi%MPI_Min_Sample_Update, this%DoUpdates
-    call this%Samples%ReadBinary(unit)
+    call this%Samples%ReadState(unit)
     this%checkpoint_burn=this%checkpoint_freq/3
     call this%Sampler%LoadState(unit)
 
