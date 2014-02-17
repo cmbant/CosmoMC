@@ -46,9 +46,9 @@
     class(TGeneralConfig), target :: Config
     character(LEN=:), pointer :: prior
 
-    this%H0_min = Ini%Read_Double('H0_min',this%H0_min)
-    this%H0_max = Ini%Read_Double('H0_max',this%H0_max)
-    this%Use_min_zre = Ini%Read_Double('use_min_zre',this%use_min_zre)
+    call Ini%Read('H0_min',this%H0_min)
+    call Ini%Read('H0_max',this%H0_max)
+    call Ini%Read('use_min_zre',this%use_min_zre)
     prior => Ini%Read_String('H0_prior',NotFoundFail=.false.)
     if (prior/='') then
         read(prior,*) this%H0_prior_mean, this%H0_prior_std

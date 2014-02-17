@@ -9,7 +9,7 @@
     use IO
     use ParamPointSet
     implicit none
-    
+
     integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2, action_hessian=3
 
     Type TSetup
@@ -62,7 +62,6 @@
         else
             call MpiStop('Sampling method not currently supported')
         end if
-        call this%SamplingAlgorithm%Init(this%LikeCalculator, this%SampleCollector)
         call this%SamplingAlgorithm%ReadParams(Ini)
         this%samples = Ini%Read_Int('samples')
     else if (this%action == action_importance) then
@@ -85,10 +84,13 @@
             Collector%MPi%MPI_Max_R_ProposeUpdate = Collector%Mpi%MPI_Max_R_ProposeUpdateNew
         end select
     end if
-    select type (Sampler=>this%SamplingAlgorithm)
-    class is (TChainSampler)
-        call Sampler%SetCovariance(BaseParams%covariance_estimate)
-    end select
+    if (allocated(this%SamplingAlgorithm)) then
+        call this%SamplingAlgorithm%Init(this%LikeCalculator, this%SampleCollector)
+        select type (Sampler=>this%SamplingAlgorithm)
+        class is (TChainSampler)
+            call Sampler%SetCovariance(BaseParams%covariance_estimate)
+        end select
+    end if
 
     end subroutine TSetup_DoneInitialize
 

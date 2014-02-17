@@ -13,7 +13,6 @@
     character(LEN=0), target :: Empty_String = ''
 
     type TNameValue
-        !no known way to make character string pointers..
         character(LEN=:), allocatable  :: Name
         character(LEN=:), allocatable :: Value
     end type TNameValue
@@ -688,7 +687,7 @@
 
     do i=1, Ini%ReadValues%Count
         write (unit_id,'(a)') Ini%ReadValues%Items(i)%P%Name // ' = ' &
-        //Ini%ReadValues%Items(i)%P%Value
+        & //Ini%ReadValues%Items(i)%P%Value
     end do
 
     close(unit_id)

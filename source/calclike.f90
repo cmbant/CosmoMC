@@ -175,9 +175,9 @@
 
     !Used when you want to plug in your own CMB-independent likelihood function:
     !Parameter array is Params%P, so e.g. 2D unit Gaussian would be
-    !GenericLikelihoodFunction = (Params%P(1)**2+Params%P(2)**2)/2
-    LogLike = LogZero
-    call MpiStop('Generic_GetLogLikeMain: need to write this function!')
+    LogLike = (Params%P(1)**2+Params%P(2)**2)/2
+    !LogLike = LogZero
+    !call MpiStop('Generic_GetLogLikeMain: need to write this function!')
 
     end function Generic_GetLogLikeMain
 

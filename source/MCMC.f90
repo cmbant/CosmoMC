@@ -55,6 +55,7 @@
     procedure :: SaveState => TChainSampler_SaveState
     procedure :: LoadState => TChainSampler_LoadState
     procedure :: ReadParams => TChainSampler_ReadParams
+    procedure :: Init => TChainSampler_Init
     procedure :: InitWithPropose=> TChainSampler_InitWithPropose
     end Type
 
@@ -244,10 +245,19 @@
 
     end subroutine TChainSampler_ReadParams
 
+    subroutine TChainSampler_Init(this, LikeCalculator, SampleCollector)
+    class(TChainSampler) :: this
+    class(TLikeCalculator), target:: LikeCalculator
+    class(TSampleCollector), target, optional :: SampleCollector
+    
+    call this%InitWithPropose(LikeCalculator, SampleCollector)
+    
+    end subroutine TChainSampler_Init
+    
     subroutine TChainSampler_InitWithPropose(this,LikeCalculator, SampleCollector, propose_scale)
     class(TChainSampler) :: this
     class(TLikeCalculator), target:: LikeCalculator 
-    class(TSampleCollector), pointer :: SampleCollector
+    class(TSampleCollector), target, optional :: SampleCollector
     real(mcp), intent(in), optional :: propose_scale
 
     if (present(propose_scale)) this%propose_scale = propose_scale

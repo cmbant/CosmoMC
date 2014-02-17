@@ -79,9 +79,8 @@
         end if
     end if
 
-    AccuracyLevel = Ini%Read_Double('accuracy_level',AccuracyLevel)
-
-    stop_on_error = Ini%Read_Logical('stop_on_error',stop_on_error)
+    call Ini%Read('accuracy_level',AccuracyLevel)
+    call Ini%Read('stop_on_error',stop_on_error)
 
     baseroot = Ini%ReadFileName('file_root', NotFoundFail = .true.)
     if(instance<=1) then
@@ -170,7 +169,7 @@
     Params%P(1:num_params) = BaseParams%Center(1:num_params)
     if (Setup%action /= action_importance) then
         prop_mat = Ini%Read_String('propose_matrix',.false.)
-        if (prop_mat /= '' .and. prop_mat(1:1) /= '/') prop_mat = concat(LocalDir,prop_mat)
+        if (prop_mat /= '' .and. prop_mat(1:min(len(prop_mat),1)) /= '/') prop_mat = concat(LocalDir,prop_mat)
     else
         prop_mat=''
     end if
@@ -186,7 +185,7 @@
             like => DataLikelihoods%Item(i)
             if (like%version/='') call Ini%ReadValues%Add(concat('Compiled_data_',like%name),like%version)
         end do
-        call Setup%Config%Calculator%VersionTraceOutput(Ini%ReadValues)
+        if (associated(Setup%Config%Calculator)) call Setup%Config%Calculator%VersionTraceOutput(Ini%ReadValues)
         if (Setup%action==action_importance) then
             call Ini%SaveReadValues(trim(Setup%ImportanceSampler%redo_outroot) //'.inputparams')
         else if (Setup%action==action_maxlike .or. Setup%action==action_Hessian) then

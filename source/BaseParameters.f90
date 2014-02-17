@@ -158,8 +158,10 @@
     do i=1,num_params
         if (this%varying(i)) then
             InLine =  this%NameMapping%ReadIniForParam(Ini,'prior',i)
-            if (InLine/='') read(InLine, *, iostat=status) this%GaussPriors%mean(i), this%GaussPriors%std(i)
-            if (status/=0) call this%ParamError('Error reading prior mean and stdd dev: '//trim(InLIne),i)
+            if (InLine/='') then
+                read(InLine, *, iostat=status) this%GaussPriors%mean(i), this%GaussPriors%std(i)
+                if (status/=0) call this%ParamError('Error reading prior mean and stdd dev: '//trim(InLIne),i)
+            end if
         end if
     end do
 
