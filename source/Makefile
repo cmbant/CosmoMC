@@ -233,7 +233,7 @@ cosmomc: directories camb $(OBJFILES)
 	$(F90C) -o ../cosmomc $(OBJFILES) $(LINKFLAGS) $(F90FLAGS)
 
 cosmomc_debug: directories camb $(OBJFILES)
-	$(F90C) -o ../cosmomc_debug $(OBJFILES) $(LINKFLAGS) $(F90FLAGS) 
+	$(F90C) -o ../cosmomc_debug $(OBJFILES) $(LINKFLAGS) $(F90FLAGS)
 
 clean: cleancosmomc
 	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod ../camb/libcamb_$(RECOMBINATION).a

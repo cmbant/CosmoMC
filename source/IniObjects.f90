@@ -401,7 +401,9 @@
     if (present(error)) error=.false.
 
     do i=1, IncudeFiles%Count
-        if (error) exit
+        if (present(error)) then
+            if (error) exit
+        end if
         IncludeFile= IncudeFiles%Items(i)%P%Name
         inquire(file=IncludeFile, exist = FileExists)
         if (.not. FileExists) then
@@ -414,7 +416,9 @@
         call Ini%Open(IncludeFile, error, slash_comments, append=.true.,only_if_undefined=isDefault)
     end do
     do i=1, DefaultValueFiles%Count
-        if (error) exit
+        if (present(error)) then
+            if (error) exit
+        end if
         IncludeFile=DefaultValueFiles%Items(i)%P%Name
         inquire(file=IncludeFile, exist = FileExists)
         if (.not. FileExists) then
