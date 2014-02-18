@@ -376,7 +376,7 @@
             read(unit) T%log_kh
             read(unit) T%redshifts
             read(unit, iostat=stat) T%matter_power
-            if (stat==iostat_end .and. use_nonlinear) then
+            if (IS_IOSTAT_END(stat) .and. use_nonlinear) then
                 deallocate(T%nlmatter_power,T%ddnlmatter_power)
                 write(*,*)"ReadTheory:  You want a nonlinear MPK but but your datafile is "
                 write(*,*)"in an old format does not include one."
@@ -477,7 +477,6 @@
 
     num_k = Theory%num_k
     nz = size(Theory%redshifts)
-    Theory%log_kh
     
     do zix=1, nz
         call spline(Theory%log_kh,Theory%matter_power(:,zix),num_k,SPLINE_DANGLE,&
@@ -486,7 +485,6 @@
         if(use_nonlinear .and. allocated(Theory%nlmatter_power))&
         call spline(Theory%log_kh,Theory%nlmatter_power(:,zix),num_k,SPLINE_DANGLE,&
         SPLINE_DANGLE,Theory%ddnlmatter_power(:,zix))
-        
     end do
 
     end subroutine IOTheory_GetSplines
