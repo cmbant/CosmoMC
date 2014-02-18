@@ -1,11 +1,10 @@
 
-OUTPUT_DIR ?= Release
-
 #Files containing evolution equations initial power spectrum module
 EQUATIONS     ?= equations
 POWERSPECTRUM ?= power_tilt
 REIONIZATION ?= reionization
 RECOMBINATION ?= recfast
+
 
 
 BISPECTRUM ?= SeparableBispectrum
@@ -26,10 +25,8 @@ CAMBLIB       = libcamb_$(RECOMBINATION).a
 F90FLAGS      = $(FFLAGS)
 HEALPIXLD     = -L$(HEALPIXDIR)/lib -lhealpix -L$(FITSDIR) -l$(FITSLIB)
 
-CAMBOBJ       = $(OUTPUT_DIR)/constants.o $(OUTPUT_DIR)/utils.o $(EXTCAMBFILES) $(OUTPUT_DIR)/subroutines.o $(OUTPUT_DIR)/inifile.o \
-    $(OUTPUT_DIR)/$(POWERSPECTRUM).o $(OUTPUT_DIR)/$(RECOMBINATION).o \
-	$(OUTPUT_DIR)/$(REIONIZATION).o $(OUTPUT_DIR)/modules.o $(OUTPUT_DIR)/bessels.o $(OUTPUT_DIR)/$(EQUATIONS).o \
-    $(OUTPUT_DIR)/$(NONLINEAR).o $(OUTPUT_DIR)/lensing.o $(OUTPUT_DIR)/$(BISPECTRUM).o $(OUTPUT_DIR)/cmbmain.o $(OUTPUT_DIR)/camb.o
+CAMBOBJ       = constants.o utils.o $(EXTCAMBFILES) subroutines.o inifile.o $(POWERSPECTRUM).o $(RECOMBINATION).o \
+	$(REIONIZATION).o modules.o bessels.o $(EQUATIONS).o $(NONLINEAR).o lensing.o $(BISPECTRUM).o cmbmain.o camb.o
 
 F90CRLINK ?= -lstdc++
 
@@ -50,40 +47,39 @@ $(CAMBLIB): libhyrec.a
 F90CRLINK += -L$(HYREC_PATH) -lhyrec
 endif
 
+
 default: camb
 
 all: camb $(CAMBLIB)
 
-directories:
-	mkdir -p $(OUTPUT_DIR)
 
-$(OUTPUT_DIR)/subroutines.o: $(OUTPUT_DIR)/constants.o $(OUTPUT_DIR)/utils.o
-$(OUTPUT_DIR)/$(POWERSPECTRUM).o: $(OUTPUT_DIR)/subroutines.o  $(OUTPUT_DIR)/inifile.o
-$(OUTPUT_DIR)/$(RECOMBINATION).o: $(OUTPUT_DIR)/subroutines.o $(OUTPUT_DIR)/inifile.o
-$(OUTPUT_DIR)/$(REIONIZATION).o: $(OUTPUT_DIR)/constants.o $(OUTPUT_DIR)/inifile.o
-$(OUTPUT_DIR)/modules.o: $(OUTPUT_DIR)/$(REIONIZATION).o $(OUTPUT_DIR)/$(POWERSPECTRUM).o $(OUTPUT_DIR)/$(RECOMBINATION).o
-$(OUTPUT_DIR)/bessels.o: $(OUTPUT_DIR)/modules.o
-$(OUTPUT_DIR)/$(EQUATIONS).o: $(OUTPUT_DIR)/bessels.o
-$(OUTPUT_DIR)/$(NONLINEAR).o:  $(OUTPUT_DIR)/modules.o
-$(OUTPUT_DIR)/lensing.o: $(OUTPUT_DIR)/bessels.o
-$(OUTPUT_DIR)/$(BISPECTRUM).o: $(OUTPUT_DIR)/lensing.o $(OUTPUT_DIR)/modules.o
-$(OUTPUT_DIR)/cmbmain.o: $(OUTPUT_DIR)/lensing.o $(OUTPUT_DIR)/$(NONLINEAR).o $(OUTPUT_DIR)/$(EQUATIONS).o $(OUTPUT_DIR)/$(BISPECTRUM).o
-$(OUTPUT_DIR)/camb.o: $(OUTPUT_DIR)/cmbmain.o
-$(OUTPUT_DIR)/Matrix_utils.o: $(OUTPUT_DIR)/utils.o
-camb: directories $(CAMBOBJ) $(DRIVER)
+subroutines.o: constants.o utils.o
+$(POWERSPECTRUM).o: subroutines.o  inifile.o
+$(RECOMBINATION).o: subroutines.o inifile.o
+$(REIONIZATION).o: constants.o inifile.o
+modules.o: $(REIONIZATION).o $(POWERSPECTRUM).o $(RECOMBINATION).o
+bessels.o: modules.o
+$(EQUATIONS).o: bessels.o
+$(NONLINEAR).o:  modules.o
+lensing.o: bessels.o
+$(BISPECTRUM).o: lensing.o modules.o
+cmbmain.o: lensing.o $(NONLINEAR).o $(EQUATIONS).o $(BISPECTRUM).o
+camb.o: cmbmain.o
+Matrix_utils.o: utils.o
+camb: $(CAMBOBJ) $(DRIVER)
 	$(F90C) $(F90FLAGS) $(CAMBOBJ) $(DRIVER) $(F90CRLINK) -o $@
 
 $(CAMBLIB): $(CAMBOBJ)
 	ar -r $@ $(CAMBOBJ)
 
-camb_fits: directories writefits.f90 $(CAMBOBJ) $(DRIVER)
+camb_fits: writefits.f90 $(CAMBOBJ) $(DRIVER)
 	$(F90C) $(F90FLAGS) -I$(HEALPIXDIR)/include $(CAMBOBJ) writefits.f90 $(DRIVER) $(HEALPIXLD) -DWRITE_FITS -o $@
 
 %.o: %.f90
-	$(F90C) $(F90FLAGS) -c $*.f90 -o $(OUTPUT_DIR)/$*.o
+	$(F90C) $(F90FLAGS) -c $*.f90
 
 %.o: %.F90
-	$(F90C) $(F90FLAGS) -c $*.F90 -o $(OUTPUT_DIR)/$*.o
+	$(F90C) $(F90FLAGS) -c $*.F90
 
 
 clean:
