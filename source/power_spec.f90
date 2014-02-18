@@ -2,7 +2,7 @@
     use settings
     use cmbtypes
     use precision
-    use Transfer, only : spline_double
+    use Interpolation, only : spline, SPLINE_DANGLE
     implicit none
 
     contains
@@ -31,6 +31,12 @@
         NL = NNL
     else
         NL = .false.
+    end if
+    
+    if(NL .and. .not allocated(Theory%nlmatter_power)) then
+        write(*,*)"You are asking for a nonlinear MPK without having initialized nlmatter_power"
+        write(*,*)"Most likely you are doing importance sampling and need to turn on redo_pk"
+        call MPIstop()
     end if
 
     logk = log(kh)
@@ -106,7 +112,7 @@
     real (mcp), intent(in) :: kh, z
     logical, optional, intent(in) :: NNL
     logical :: NL
-    integer zlo, zhi, iz, itf
+    integer zlo, zhi, iz, itf, nz
     real(mcp) outpower
     real(mcp) ho,a0,b0
     real(mcp), dimension(4) :: matpower, ddmat, zvec
@@ -118,13 +124,15 @@
         call MPIstop()
     end if
 
+    nz = size(PK%redshifts)
+    
     if(present(NNL))then
         NL = NNL
     else
         NL = .false.
     end if
 
-    if(z>PK%redshifts(size(PK%redshifts))) then
+    if(z>PK%redshifts(nz)) then
         write (*,*) ' z out of bounds in MatterPowerAt_Z (',z,')'
         call MPIstop()
     end if
@@ -149,8 +157,8 @@
             matpower(iz) = log(MatterPowerAt_zbin(PK,kh,itf,NL))
             iz=iz+1
         end do
-        call spline_double(zvec(2:4),matpower(2:4),3,ddmat(2:4))
-    else if(zhi==num_power_redshifts)then
+        call spline(zvec(2:4),matpower(2:4),3,SPLINE_DANGLE,SPLINE_DANGLE,ddmat(2:4))
+    else if(zhi==nz)then
         zvec = 0
         matpower = 0
         ddmat = 0
@@ -160,7 +168,7 @@
             matpower(iz) = log(MatterPowerAt_zbin(PK,kh,itf,NL))
             iz=iz+1
         end do
-        call spline_double(zvec(1:3),matpower(1:3),3,ddmat(1:3))
+        call spline(zvec(1:3),matpower(1:3),3,SPLINE_DANGLE,SPLINE_DANGLE,ddmat(1:3))
     else
         iz = 1
         zvec(:)=PK%redshifts(zlo-1:zhi+1)
@@ -168,7 +176,7 @@
             matpower(iz) = log(MatterPowerAt_zbin(PK,kh,itf,NL))
             iz=iz+1
         end do
-        call spline_double(zvec,matpower,4,ddmat)
+        call spline(zvec,matpower,4,SPLINE_DANGLE,SPLINE_DANGLE,ddmat)
     end if
 
     ho=zvec(3)-zvec(2)
