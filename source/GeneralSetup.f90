@@ -47,6 +47,7 @@
     class(TSetup) :: this
     class(TSettingIni) :: Ini
 
+    call this%Config%ReadParams(Ini)
     this%action = Ini%Read_Int('action',action_MCMC)
     if (this%action/=action_importance) use_fast_slow = Ini%Read_Logical('use_fast_slow',.true.)
 

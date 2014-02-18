@@ -146,7 +146,7 @@
             end if
         end select
         class default
-        call MpiStop('CosmologyParameterizations: Calculator is not BaseCosmologyCalculator')
+        call MpiStop('CosmologyParameterizations: Calculator is not TCosmologyCalculator')
     end select
 
     end subroutine TP_ParamArrayToTheoryParams

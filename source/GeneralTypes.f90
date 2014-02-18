@@ -44,7 +44,7 @@
 
     !Each descendant of the base TConfigClass below has a Config element which point to a TGeneralConfig instance taht determines
     !which related class implementations are actually used
-    Type TGeneralConfig
+    Type, extends(TCheckpointable) :: TGeneralConfig
         class(TParameterization), pointer :: Parameterization => null()
         class(TTheoryCalculator), pointer :: Calculator => null()
     contains
