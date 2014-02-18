@@ -15,6 +15,7 @@
     procedure :: SetParameterizationName => TCosmologyConfig_SetParameterizationName
     procedure :: NewTheory => TCosmologyConfig_NewTheory
     procedure :: InitForLikelihoods => TCosmologyConfig_InitForLikelihoods
+    procedure :: ReadParams => TCosmologyConfig_ReadParams
     end Type
 
     type, extends(TSetup) :: TCosmologySetup

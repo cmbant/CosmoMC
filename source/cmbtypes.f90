@@ -67,7 +67,6 @@
     type, extends(DatasetFileLikelihood) :: CosmologyLikelihood
         !Don't have to use extract features of DatasetFileLikelihood
         !not implemented yet..
-
         !        integer :: needs_cl_lmax = 0
         logical :: needs_background_functions = .true.
         logical :: needs_powerspectra = .false.
@@ -79,7 +78,6 @@
         integer, dimension(:), allocatable :: exact_z_index
         real(mcp) :: max_z
         real(mcp) :: kmax = 0.8
-    contains
     end type CosmologyLikelihood
 
     Type, extends(TTheoryParams) :: CMBParams
@@ -477,11 +475,11 @@
 
     num_k = Theory%num_k
     nz = size(Theory%redshifts)
-    
+
     do zix=1, nz
         call spline(Theory%log_kh,Theory%matter_power(:,zix),num_k,SPLINE_DANGLE,&
         SPLINE_DANGLE,Theory%ddmatter_power(:,zix))
-        
+
         if(use_nonlinear .and. allocated(Theory%nlmatter_power))&
         call spline(Theory%log_kh,Theory%nlmatter_power(:,zix),num_k,SPLINE_DANGLE,&
         SPLINE_DANGLE,Theory%ddnlmatter_power(:,zix))

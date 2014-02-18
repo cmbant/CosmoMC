@@ -4,11 +4,13 @@
 #Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
 F90C     = mpif90
 FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
-LAPACKL = 
+LAPACKL =
 
 #gfortran; does not yet work yet, open GCC 4.9 compiler bugs are
+#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60255
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60232
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60234
+#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51976
 #F90C = gfortran
 #FFLAGS = -cpp
 
@@ -143,7 +145,7 @@ likelihood.o: ObjectLists.o settings.o ObjectParamNames.o
 DataLikelihoods.o: likelihood.o ParamSet.o $(DATAMODULES)
 cliklike_CamSpec.o: temp_like.o cmbtypes.o
 cliklike.o: IniObjects.o cmbtypes.o
-settings.o: ObjectParamNames.o 
+settings.o: ObjectParamNames.o
 cmbtypes.o: settings.o likelihood.o GeneralTypes.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o
@@ -157,7 +159,7 @@ supernovae.o: cmbtypes.o
 Calculator_Cosmology.o: cmbtypes.o
 $(CALCFILE): Calculator_Cosmology.o
 $(PROPOSE): settings.o
-BaseParameters: setings.o 
+BaseParameters: setings.o
 ParamSet.o: $(CALCFILE) $(PROPOSE) samples.o
 $(PARAMETERIZATION): ParamSet.o bbn.o
 calclike.o: DataLikelihoods.o

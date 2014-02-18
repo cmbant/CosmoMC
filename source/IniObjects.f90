@@ -13,7 +13,7 @@
     character(LEN=0), target :: Empty_String = ''
 
     type TNameValue
-        character(LEN=:), allocatable  :: Name
+        character(LEN=:), allocatable :: Name
         character(LEN=:), allocatable :: Value
     end type TNameValue
 

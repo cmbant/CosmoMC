@@ -2,6 +2,7 @@
     module Samples
     use ObjectLists
     use settings
+    implicit none
 
     integer, parameter :: sample_prec = mcp
 

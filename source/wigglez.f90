@@ -25,12 +25,12 @@
     use settings
     use powerspec
     use cmbtypes
-    
+
     implicit none
 
     logical :: use_wigglez_mpk = .false.  !DP for WiggleZ MPK
-    real(dl), parameter :: z0 = 0.d0, za = 0.22d0, zb = 0.41d0, zc = 0.6d0, zd = 0.78d0
-    real(dl), dimension(4) :: zeval, zweight, sigma2BAOfid, sigma2BAO
+    real(mcp), parameter :: z0 = 0.d0, za = 0.22d0, zb = 0.41d0, zc = 0.6d0, zd = 0.78d0
+    real(mcp), dimension(4) :: zeval, zweight, sigma2BAOfid, sigma2BAO
 
     !settings power spectra evaluated at GiggleZ fiducial cosmological theory
     integer, parameter :: gigglez_num_matter_power = 500

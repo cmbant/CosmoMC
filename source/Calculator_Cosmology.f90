@@ -153,7 +153,4 @@
 
     end function BAO_D_v
 
-
-
-
     end module Calculator_Cosmology

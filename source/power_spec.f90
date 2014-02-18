@@ -20,7 +20,7 @@
     real(mcp), dimension(2) :: matpower, ddmat
     integer, save :: i_last = 1
 
-    if(.not. allocated(Pk%log_kh) then
+    if(.not. allocated(Pk%log_kh)) then
         write(*,*) 'MPK arrays are not initialized:' 
         write(*,*) 'Make sure you are calling SetPk and filling your power spectra'
         call MPIstop()
@@ -31,12 +31,13 @@
     else
         NL = .false.
     end if
-    
-    if(NL .and. .not allocated(Theory%nlmatter_power)) then
-        write(*,*)"You are asking for a nonlinear MPK without having initialized nlmatter_power"
-        write(*,*)"Most likely you are doing importance sampling and need to turn on redo_pk"
-        call MPIstop()
-    end if
+
+    !AL commenting as not currrently defined
+    !if(NL .and. .not. allocated(Theory%nlmatter_power)) then
+    !    write(*,*)"You are asking for a nonlinear MPK without having initialized nlmatter_power"
+    !    write(*,*)"Most likely you are doing importance sampling and need to turn on redo_pk"
+    !    call MPIstop()
+    !end if
 
     logk = log(kh)
     if (logk < PK%log_kh(1)) then
@@ -83,7 +84,7 @@
         + (b0**3-b0)*ddmat(2))*ho**2/6
     end if
 
-    outpower = exp(max(-30._dl,outpower))
+    outpower = exp(max(-30._mcp,outpower))
 
     end function MatterPowerAt_zbin
 
@@ -117,7 +118,7 @@
     real(mcp), dimension(4) :: matpower, ddmat, zvec
     integer, save :: zi_last = 1
     
-    if(.not. allocated(Pk%log_kh) then
+    if(.not. allocated(Pk%log_kh)) then
         write(*,*) 'MPK arrays are not initialized:' 
         write(*,*) 'Make sure you are calling SetPk and filling your power spectra'
         call MPIstop()
@@ -185,7 +186,7 @@
     outpower = a0*matpower(2)+b0*matpower(3)+((a0**3-a0)*ddmat(2) &
     +(b0**3-b0)*ddmat(3))*ho**2/6
 
-    outpower = exp(max(-30._dl,outpower))
+    outpower = exp(max(-30._mcp,outpower))
 
     end function MatterPowerAt_Z
         
