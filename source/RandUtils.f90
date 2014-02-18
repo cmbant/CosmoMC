@@ -1,5 +1,6 @@
 
-    module Random
+    module RandUtils
+    use MpiUtils
     implicit none
 
     integer :: rand_inst = 0 
@@ -371,5 +372,5 @@
     end function RANMAR
 
 
-    end module Random
+    end module RandUtils
 

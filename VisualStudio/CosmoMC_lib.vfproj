@@ -77,7 +77,7 @@
 		<File RelativePath="..\source\PowellConstrainedMinimize.f90">
 			<FileConfiguration Name="Debug|Win32">
 				<Tool Name="VFFortranCompilerTool" StandardWarnings="standardWarningsNone" WarnDeclarations="false"/></FileConfiguration></File>
-		<File RelativePath="..\source\Random.f90"/>
+		<File RelativePath="..\source\RandUtils.f90"/>
 		<File RelativePath="..\source\StringUtils.f90"/></Filter>
 		<File RelativePath="..\source\BaseParameters.f90"/>
 		<File RelativePath="..\source\CalcLike.f90"/>

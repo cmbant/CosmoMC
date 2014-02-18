@@ -1,8 +1,6 @@
     module Interpolation
     implicit none
 
-    !private
-
 #ifdef SINGLE
     integer, parameter :: sp_acc = KIND(1.0)
 #else

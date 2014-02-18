@@ -36,18 +36,16 @@
 
     subroutine clik_readParams(LikeList,Ini)
     class(LikelihoodList) :: LikeList
-
-    class(TIniFile) Ini
-    character (LEN=Ini_max_string_len) :: fname, params, name
+    class(TSettingIni) Ini
+    character (LEN=Ini_max_string_len) ::  name,fname,params
     integer i
     Class(ClikLikelihood), pointer :: like
     logical(KIND=4) is_lensing
 
-
-    do i=1, Ini%L%Count
-        if (Ini%L%Items(i)%P%Name(1:10)=='clik_data_') then
-            name =Ini%L%Items(i)%P%Name
-            fname = ReadIniFileName(Ini,name, NotFoundFail = .false.)
+    do i=1, Ini%Count
+        name = Ini%Items(i)%P%Name
+        if (name(1:10)=='clik_data_') then
+            fname = Ini%ReadFileName(name, NotFoundFail = .false.)
             if (fname=='') cycle
             if (MpiRank==0 .and. feedback > 0) &
             print*,'Using clik with likelihood file ',trim(fname)
@@ -63,7 +61,7 @@
             Like%name= ExtractFileName(fname)
             !                Like%version = CAMSpec_like_version
             call StringReplace('clik_data_','clik_params_',name)
-            params = ReadIniFileName(Ini,name, NotFoundFail = .false.)
+            params = Ini%ReadFileName(name, NotFoundFail = .false.)
             if (params/='') call Like%loadParamNames(params)
             call StringReplace('clik_params_','clik_speed_',name)
             like%speed = Ini%Read_Int(name, 0)
@@ -118,7 +116,7 @@
     real(mcp) function clik_lnlike(like, CMB, Theory, DataParams)
     Class(ClikLikelihood) :: like
     Class (CMBParams) CMB
-    Class(TheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions) Theory
     real(mcp) DataParams(:)
     integer :: i,j ,l
     real(mcp) acl(lmax,num_cls_tot)
@@ -206,7 +204,7 @@
     real(mcp) function clik_lensing_lnlike(like, CMB, Theory, DataParams)
     Class(ClikLensingLikelihood) :: like
     Class (CMBParams) CMB
-    Class(TheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions) Theory
     real(mcp) DataParams(:)
     integer :: i,j ,l
     real(mcp) acl(lmax,num_cls_tot)

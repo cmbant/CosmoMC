@@ -380,7 +380,7 @@
             call MPI_Barrier(MPI_COMM_WORLD,ierror)
             if (i==MpiRank .and. .not. is_best_bestfit .and. Feedback>0) then
                 print *,MpiRank, 'best_like params:'
-                call WriteParamsHumanText(stdout,Params, best_like)
+                call this%WriteParamsHumanText(stdout,Params, best_like)
             end if
         end do
         call MPI_Barrier(MPI_COMM_WORLD,ierror)

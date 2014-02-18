@@ -225,7 +225,7 @@
             end if
         end if
 #ifdef MPI
-        if (.not. minimize_uses_MPI) then
+        if (.not. Minimizer%uses_MPI) then
             CALL MPI_Bcast(Params%P, size(Params%P), MPI_real_mcp, 0, MPI_COMM_WORLD, ierror)
         end if
 #endif

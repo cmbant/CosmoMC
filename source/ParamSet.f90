@@ -24,44 +24,6 @@
 
     contains
 
-    subroutine DoStop(S, abort)
-    character(LEN=*), intent(in), optional :: S
-    integer ierror
-    logical, intent(in), optional :: abort
-    logical wantbort
-
-    if (outfile_handle/=0) close(outfile_handle)
-
-    if (present(abort)) then
-        wantbort = abort
-    else
-        wantbort = .false.
-    end if
-
-    if (present(S) .and. (wantbort .or. MPIRank==0)) write (*,*) trim(S)
-#ifdef MPI
-    MPI_StartTime = MPI_WTime() - MPI_StartTime
-    if (Feedback > 0 .and. MPIRank==0) then
-        write (*,*) 'Total time:', nint(MPI_StartTime), &
-        '(',MPI_StartTime/(60*60),' hours)'
-    end if
-    ierror =0
-    if (wantbort) then
-        !Abort all in case other continuing chains want to communicate with us
-        !in the case when max number of samples is reached
-        call MPI_Abort(MPI_COMM_WORLD,ierror,ierror)
-    else
-        call mpi_finalize(ierror)
-    end if
-#endif
-
-#ifdef DECONLY
-    pause
-#endif
-    stop
-    end subroutine DoStop
-
-
     !subroutine IO_WriteCovMat(fname, matrix)
     !integer unit
     !character(LEN=*), intent(in) :: fname

@@ -2,6 +2,7 @@
     module Samples
     use ObjectLists
     use settings
+    use Interpolation
     implicit none
 
     integer, parameter :: sample_prec = mcp
@@ -152,11 +153,8 @@
 
     subroutine Density1D_initSpline(D)
     Class(TDensity1D) :: D
-#ifdef SINGLE
-    call spline_real(D%x,D%P,D%n,D%ddP)
-#else
-    call spline_double(D%x,D%P,D%n,D%ddP)
-#endif
+
+    call spline(D%x,D%P,D%n,SPLINE_DANGLE,SPLINE_DANGLE,D%ddP)
     end subroutine Density1D_initSpline
 
     subroutine Density1D_Limits(D, p, mn, mx, lim_bot,lim_top)
