@@ -6,6 +6,9 @@ getdist: ./source/*.*90
 cosmomc: ./source/*.*90
 	cd ./source && make
 
+cosmomc_debug: ./source/*.*90
+	cd ./source && make cosmomc_debug OUTPUT_DIR=Debug
+
 camspec: ./source/*.*90
 	cd ./source && make highL=../highL PLANCKLIKE=cliklike_CamSpec
 

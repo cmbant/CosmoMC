@@ -1,9 +1,5 @@
 
-ifdef (DEBUG)
-OUTPUT_DIR ?= Debug
-else
 OUTPUT_DIR ?= Release
-endif
 
 ifortErr = $(shell which ifort >/dev/null; echo $$?)
 
@@ -11,8 +7,9 @@ ifortErr = $(shell which ifort >/dev/null; echo $$?)
 ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
 F90C     = mpif90
-FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI -module=$(OUTPUT_DIR)
-DEBUGFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -DMPI -fpe0 -module=$(OUTPUT_DIR)
+FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
+DEBUGFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -DMPI -fpe0
+MODOUT = -module $(OUTPUT_DIR)
 LAPACKL =
 else
 #gfortran does not yet work yet, open GCC 4.9 compiler bugs are
@@ -21,8 +18,9 @@ else
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60234
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51976
 F90C = gfortran
-FFLAGS = -cpp -O3 -ffast-math -J$(OUTPUT_DIR)
-DEBUGFLAGS = -cpp -Og -g -fbounds-check -fbacktrace -J$(OUTPUT_DIR)
+FFLAGS = -cpp -O3 -ffast-math
+DEBUGFLAGS = -cpp -Og -g -fbounds-check -fbacktrace
+MODOUT =  -J$(OUTPUT_DIR)
 #LAPACKL = -Wl,-framework -Wl,accelerate
 #commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
 LAPACKL = -lblas -llapack
@@ -77,8 +75,8 @@ FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
 #FFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -DMPI -fpe0
 endif
 
-ifdef (DEBUG)
-FFLAGS=DEBUGFLAGS
+ifeq ($(OUTPUT_DIR),Debug)
+FFLAGS=$(DEBUGFLAGS)
 endif
 
 #would like to embed this somehow..
@@ -212,8 +210,11 @@ else
 F90FLAGS += -DNOWMAP
 endif
 
+F90FLAGS += $(MODOUT) $(IFLAG)$(OUTPUT_DIR)/
+
 export FFLAGS
 export F90C
+export OUTPUT_DIR
 
 directories:
 	mkdir -p $(OUTPUT_DIR)
@@ -231,12 +232,14 @@ $(OUTPUT_DIR)/%.o: %.F90
 cosmomc: directories camb $(OBJFILES)
 	$(F90C) -o ../cosmomc $(OBJFILES) $(LINKFLAGS) $(F90FLAGS)
 
+cosmomc_debug: directories camb $(OBJFILES)
+	$(F90C) -o ../cosmomc_debug $(OBJFILES) $(LINKFLAGS) $(F90FLAGS) 
 
 clean: cleancosmomc
 	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod ../camb/libcamb_$(RECOMBINATION).a
 
 cleancosmomc:
-	rm -f $(OUTPUT_DIR)/*.o $(OUTPUT_DIR)/*.mod $(OUTPUT_DIR)/*.d $(OUTPUT_DIR)/*.pc $(OUTPUT_DIR)/*.obj ../core
+	rm -f $(OUTPUT_DIR)/*.o $(OUTPUT_DIR)/*.mod ./Debug/* /Release/* ../core
 
 
 getdist: directories camb $(DISTFILES)
