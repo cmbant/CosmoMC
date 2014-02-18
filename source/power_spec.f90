@@ -1,7 +1,6 @@
     module powerspec
     use settings
     use cmbtypes
-    use precision
     use Interpolation, only : spline, SPLINE_DANGLE
     implicit none
 
@@ -189,6 +188,34 @@
     outpower = exp(max(-30._dl,outpower))
 
     end function MatterPowerAt_Z
+        
+    !-----------------------------------------------------------------------------
+    ! JD 09/13: Replaced compute_scaling_factor routines so we use
+    !           D_V calculations from CAMB.  New routines below
+    
+    subroutine compute_scaling_factor(z,CMB,DV_fid,a_scl)
+    implicit none
+    type(CMBParams) CMB
+    real(mcp), intent(in) :: z, DV_fid
+    real(mcp), intent(out) :: a_scl
+
+    a_scl = DV_x_H0(z,CMB)/DV_fid
+    !Like in original code, we need to apply a_scl in the correct direction
+    a_scl = 1.0_mcp/a_scl
+    end subroutine compute_scaling_factor
+
+    function DV_x_H0(z,CMB)  !Want D_V*H_0
+    use CAMB, only : BAO_D_v
+    implicit none
+    type(CMBParams) CMB
+    real(mcp), intent(in) :: z
+    real(mcp):: DV_x_H0
+
+    !We calculate H_0*D_V because we dont care about scaling of h since
+    !k is in units of h/Mpc
+    DV_x_H0 = CMB%H0*BAO_D_v(z)
+
+    end function DV_x_H0
 
     end module powerspec
 

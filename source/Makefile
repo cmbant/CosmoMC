@@ -4,7 +4,7 @@
 #Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
 F90C     = mpif90
 FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
-LAPACKL = -lmpi
+LAPACKL = 
 
 #gfortran; does not yet work yet, open GCC 4.9 compiler bugs are
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60232
@@ -66,15 +66,17 @@ endif
 #GIT_HASHTAG = "git log --pretty=format:'%H:%cd' -n 1"
 
 PROPOSE = propose.o
-CLSFILE = CMB_Cls_simple.o
+
+CALCFILE = Calculator_CAMB.o
 
 #Can use params_H if you prefer more generic parameters
-PARAMETERIZATION = params_CMB.o
+PARAMETERIZATION = CosmologyParameterizations.o
 
 F90FLAGS = $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
 LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
-DISTFILES = ParamNames.o Matrix_utils.o settings.o ObjectLists.o samples.o IO.o GetDist.o
+DISTFILES = StringUtils.o MpiUtils.o FileUtils.o IniObjects.o ObjectLists.o ObjectParamNames.o \
+    Matrix_utils_new.o Random.o settings.o samples.o IO.o GetDist.o
 
 
 
@@ -104,11 +106,13 @@ SUPERNOVAE = supernovae_Union2.o supernovae_SNLS.o
 
 DATAMODULES = $(PLANCKLIKEFILES) power_spec.o wigglez.o mpk.o bao.o $(SUPERNOVAE) supernovae.o HST.o
 
-LIKEFILES =  DataLikelihoods.o calclike.o
+LIKEFILES =  DataLikelihoods.o calclike.o CalcLike_Cosmology.o
 
-OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o Interpolation.o settings.o samples.o IO.o GeneralTypes.o cmbtypes.o Planck_like.o  \
-	likelihood.o bbn.o $(DATAMODULES) $(CLSFILE) cmbdata.o $(PROPOSE) paramdef.o  $(PARAMETERIZATION) $(LIKEFILES) \
-	EstCovmat.o PowellConstrainedMinimize.o postprocess.o MCMC.o minimize.o driver.o
+OBJFILES = ArrayUtils.o StringUtils.o MpiUtils.o FileUtils.o IniObjects.o ObjectLists.o ObjectParamNames.o \
+    Matrix_utils_new.o Interpolation.o Random.o settings.o samples.o IO.o likelihood.o GeneralTypes.o cmbtypes.o \
+	Planck_like.o bbn.o Calculator_Cosmology.o $(CALCFILE) $(DATAMODULES) cmbdata.o $(PROPOSE) BaseParameters.o \
+	ParamSet.o $(PARAMETERIZATION) $(LIKEFILES) EstCovmat.o PowellConstrainedMinimize.o ImportanceSampling.o \
+	MCMC.o minimize.o SampleCollector.o GeneralSetup.o CosmologyConfig.o driver.o
 
 F90CRLINK =
 
@@ -133,27 +137,29 @@ all : cosmomc getdist
 
 GetDist.o: IO.o samples.o
 supernovae.o: $(SUPERNOVAE)
-IO.o: ParamNames.o settings.o
+IO.o: ObjectParamNames.o settings.o
 samples.o: ObjectLists.o settings.o
-likelihood.o: ObjectLists.o settings.o ParamNames.o
-DataLikelihoods.o: likelihood.o paramdef.o $(DATAMODULES)
+likelihood.o: ObjectLists.o settings.o ObjectParamNames.o
+DataLikelihoods.o: likelihood.o ParamSet.o $(DATAMODULES)
 cliklike_CamSpec.o: temp_like.o cmbtypes.o
-cliklike.o: cmbtypes.o
-settings.o: ../camb/libcamb_$(RECOMBINATION).a
+cliklike.o: IniObjects.o cmbtypes.o
+settings.o: ObjectParamNames.o 
 cmbtypes.o: settings.o likelihood.o GeneralTypes.o
 Planck_like.o: cmbtypes.o
 cmbdata.o: Planck_like.o
 bbn.o: settings.o likelihood.o Interpolation.o
-powerspec.o : cmbtypes.o
+powerspec.o: cmbtypes.o
 wigglez.o: cmbtypes.o power_spec.o
 mpk.o: cmbtypes.o power_spec.o
 bao.o: cmbtypes.o
 HST.o: cmbtypes.o
 supernovae.o: cmbtypes.o
-$(CLSFILE): cmbtypes.o IO.o
-paramdef.o: $(CLSFILE) propose.o samples.o
+Calculator_Cosmology.o: cmbtypes.o
+$(CALCFILE): Calculator_Cosmology.o
 $(PROPOSE): settings.o
-$(PARAMETERIZATION): paramdef.o bbn.o
+BaseParameters: setings.o 
+ParamSet.o: $(CALCFILE) $(PROPOSE) samples.o
+$(PARAMETERIZATION): ParamSet.o bbn.o
 calclike.o: DataLikelihoods.o
 postprocess.o: calclike.o
 MCMC.o: calclike.o
