@@ -365,14 +365,32 @@
 
     end subroutine CAMBCalc_SetPowersFromCAMB
 
-
     subroutine CAMBCalc_SetPkFromCAMB(this,Theory,M)
-    use camb, only : MatterTransferData
+    use Transfer
+    use camb, only : CP
     class(CAMB_Calculator) :: this
     class(TCosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
-
-    call Theory_GetMatterPowerData(M,Theory,1)
+    Type(MatterPowerData) :: Cosmo_PK
+    integer nz, zix
+    
+    Theory%num_k = M%num_q_trans
+    nz = num_power_redshifts
+    call InitPK(Theory,Theory%num_k,nz)    
+    Theory%log_kh = log(M%TransferData(Transfer_kh,:,1))
+    Theory%redshifts = power_redshifts
+    
+    do zix=1,nz
+        call Transfer_GetMatterPowerData(M,Cosmo_PK,1,CP%Transfer%PK_redshifts_index(nz-zix+1))
+        Theory%matter_power(:,zix) = Cosmo_PK%matpower(:,1)
+        Theory%ddmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
+        if(use_nonlinear) then
+            call MatterPowerdata_MakeNonlinear(Cosmo_PK)
+            Theory%nlmatter_power(:,zix) = Cosmo_PK%matpower(:,1)
+            Theory%ddnlmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
+        end if
+        call MatterPowerdata_Free(Cosmo_PK)
+    end do
 
     end subroutine CAMBCalc_SetPkFromCAMB
 

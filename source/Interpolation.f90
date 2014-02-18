@@ -1,9 +1,13 @@
     module Interpolation
     implicit none
 
-    private
+    !private
 
+#ifdef SINGLE
+    integer, parameter :: sp_acc = KIND(1.0)
+#else
     integer, parameter :: sp_acc = KIND(1.d0)
+#endif
     real(sp_acc), parameter :: SPLINE_DANGLE=1.e30_sp_acc
     integer, parameter :: GI = sp_acc
 

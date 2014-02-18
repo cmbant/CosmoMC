@@ -320,6 +320,8 @@
         write(unit) T%log_kh
         write(unit) T%redshifts
         write(unit) T%matter_power
+        write(unit) use_nonlinear
+        if(use_nonlinear) write(unit) T%nlmatter_power
     end if
 
     end subroutine TCosmoTheoryPredictions_WriteTheory
@@ -334,7 +336,8 @@
     logical, save :: planck1_format
     real(mcp) old_matterpower(74,1)
     !JD 10/13 new variables for handling new pk arrays
-    integer :: num_z
+    integer :: num_z, stat
+    logical  has_nonlinear
 
     if (first) then
         first = .false.
@@ -372,8 +375,31 @@
             call InitPK(T,T%num_k,num_z)
             read(unit) T%log_kh
             read(unit) T%redshifts
-            read(unit) T%matter_power
-            call IOTheory_GetNLAndSplines(T)
+            read(unit, iostat=stat) T%matter_power
+            if (stat==iostat_end .and. use_nonlinear) then
+                deallocate(T%nlmatter_power,T%ddnlmatter_power)
+                write(*,*)"ReadTheory:  You want a nonlinear MPK but but your datafile is "
+                write(*,*)"in an old format does not include one."
+                write(*,*)"Make sure you set redo_pk = T or the program will fail"
+            else
+                read(unit)has_nonlinear
+                if(has_nonlinear .and. use_nonlinear) then
+                    read(unit)T%nlmatter_power
+                else if(has_nonlinear .and. .not. use_nonlinear) then
+                    if(allocated(T%nlmatter_power))deallocate(T%nlmatter_power)
+                    if(allocated(T%ddnlmatter_power))deallocate(T%ddnlmatter_power)
+                    allocate(T%nlmatter_power(T%num_k,num_z))
+                    allocate(T%ddnlmatter_power(T%num_k,num_z))
+                    write(*,*)"Your data files have nonlinear power spectra, but you are not using"
+                    write(*,*)"nonlinear power spectra.  Be careful that this is what you intended"
+                    read(unit)T%nlmatter_power
+                else 
+                    deallocate(T%nlmatter_power,T%ddnlmatter_power)
+                    write(*,*)"ReadTheory:  You want a nonlinear MPK but but your datafile does not include one."
+                    write(*,*)"Make sure you set redo_pk = T or the program will fail"
+                end if
+            end if
+            call IOTheory_GetSplines(T)
         end if
     end if
 
@@ -444,35 +470,25 @@
 
     end subroutine InitPK
 
-    subroutine IOTheory_GetNLAndSplines(Theory)
-    use Transfer
+    subroutine IOTheory_GetSplines(Theory)
+    use Interpolation, only : spline, SPLINE_DANGLE
     Type(TCosmoTheoryPredictions) Theory
-    Type(MatterPowerData) :: Cosmo_PK
-    integer :: zix
+    integer :: zix,num_k,nz
 
-    Cosmo_PK%num_k = Theory%num_k
-    Cosmo_PK%num_z = 1
-    allocate(Cosmo_PK%matpower(Cosmo_PK%num_k,1))
-    allocate(Cosmo_PK%ddmat(Cosmo_PK%num_k,1))
-    allocate(Cosmo_PK%nonlin_ratio(Cosmo_PK%num_k,1))
-    allocate(Cosmo_PK%log_kh(Cosmo_PK%num_k))
-    allocate(Cosmo_PK%redshifts(1))
-    Cosmo_PK%log_kh = Theory%log_kh
-
-    do zix=1, size(Theory%redshifts)
-        Cosmo_PK%redshifts(1) = Theory%redshifts(zix)
-        Cosmo_PK%matpower(:,1) = Theory%matter_power(:,zix)
-        call MatterPowerdata_getsplines(Cosmo_PK)
-        Theory%ddmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
-        if(use_nonlinear) then
-            call MatterPowerdata_MakeNonlinear(Cosmo_PK)
-            Theory%nlmatter_power(:,zix) = Cosmo_PK%matpower(:,1)
-            Theory%ddnlmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
-        end if
+    num_k = Theory%num_k
+    nz = size(Theory%redshifts)
+    Theory%log_kh
+    
+    do zix=1, nz
+        call spline(Theory%log_kh,Theory%matter_power(:,zix),num_k,SPLINE_DANGLE,&
+        SPLINE_DANGLE,Theory%ddmatter_power(:,zix))
+        
+        if(use_nonlinear .and. allocated(Theory%nlmatter_power))&
+        call spline(Theory%log_kh,Theory%nlmatter_power(:,zix),num_k,SPLINE_DANGLE,&
+        SPLINE_DANGLE,Theory%ddnlmatter_power(:,zix))
+        
     end do
 
-    call MatterPowerdata_Free(Cosmo_PK)
-
-    end subroutine IOTheory_GetNLAndSplines
+    end subroutine IOTheory_GetSplines
 
     end module cmbtypes
