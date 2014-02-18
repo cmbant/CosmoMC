@@ -2,44 +2,10 @@
     use settings
     use cmbtypes
     use precision
-    use ModelData, only : CP
-    use Transfer, only : MatterTransferData, MatterPowerData, MatterPowerData_Free, MatterPowerData_Makenonlinear, &
-    & spline_double, Transfer_GetMatterPowerData
+    use Transfer, only : spline_double
     implicit none
 
     contains
-
-    subroutine Theory_GetMatterPowerData(MTrans, Theory, in)
-    !Get total matter power spectrum in units of (h Mpc^{-1})^3 ready for interpolation.
-    !Here there definition is < Delta^2(x) > = 1/(2 pi)^3 int d^3k P_k(k)
-    !We are assuming that Cls are generated so any baryonic wiggles are well sampled and that matter power
-    !sepctrum is generated to beyond the CMB k_max
-    Type(MatterTransferData), intent(in) :: MTrans
-    Class(TCosmoTheoryPredictions) Theory
-    Type(MatterPowerData) :: Cosmo_PK
-    integer, intent(in) :: in
-    integer nz,zix
-
-    Theory%num_k = MTrans%num_q_trans
-    nz = num_power_redshifts
-
-    call InitPK(Theory, Theory%num_k,nz)
-
-    do zix=1,nz
-        call Transfer_GetMatterPowerData(MTrans,Cosmo_PK,1,CP%Transfer%PK_redshifts_index(nz-zix+1))
-        if(zix==1) Theory%log_kh=Cosmo_Pk%log_kh
-        Theory%redshifts(zix) = CP%Transfer%PK_redshifts(nz-zix+1)
-        Theory%matter_power(:,zix) = Cosmo_PK%matpower(:,1)
-        Theory%ddmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
-        if(use_nonlinear) then
-            call MatterPowerdata_MakeNonlinear(Cosmo_PK)
-            Theory%nlmatter_power(:,zix) = Cosmo_PK%matpower(:,1)
-            Theory%ddnlmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
-        end if
-        call MatterPowerdata_Free(Cosmo_PK)
-    end do
-
-    end subroutine Theory_GetMatterPowerData
 
     function MatterPowerAt_zbin(PK, kh, itf, NNL) result(outpower)
     !Get matter power spectrum at particular k/h by interpolation
@@ -55,6 +21,12 @@
     real(mcp), dimension(2) :: matpower, ddmat
     integer, save :: i_last = 1
 
+    if(.not. allocated(Pk%log_kh) then
+        write(*,*) 'MPK arrays are not initialized:' 
+        write(*,*) 'Make sure you are calling SetPk and filling your power spectra'
+        call MPIstop()
+    end if
+    
     if(present(NNL))then
         NL = NNL
     else
@@ -139,6 +111,12 @@
     real(mcp) ho,a0,b0
     real(mcp), dimension(4) :: matpower, ddmat, zvec
     integer, save :: zi_last = 1
+    
+    if(.not. allocated(Pk%log_kh) then
+        write(*,*) 'MPK arrays are not initialized:' 
+        write(*,*) 'Make sure you are calling SetPk and filling your power spectra'
+        call MPIstop()
+    end if
 
     if(present(NNL))then
         NL = NNL
