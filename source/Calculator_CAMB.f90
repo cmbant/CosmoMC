@@ -12,7 +12,6 @@
     use Errors !CAMB
     use settings
     use likelihood
-    use powerspec
     use Calculator_Cosmology
     use GeneralTypes
     implicit none
