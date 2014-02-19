@@ -59,9 +59,11 @@
     procedure :: QuickSort
     procedure :: QuickSortArr
     procedure :: RemoveDuplicates
+    procedure :: CheckIndex
     procedure :: Error
     procedure :: SaveState => TObjectList_SaveState
     procedure :: LoadState => TObjectList_LoadState
+    procedure :: Object => TObjectList_Object !Secondary object associated with index
     FINAL :: finalize
     generic :: Add => AddItem, AddArray
     end Type TObjectList
@@ -101,6 +103,7 @@
     procedure :: StringItem  => TStringList_Item
     procedure :: SetFromString => TStringList_SetFromString
     procedure :: IndexOf => TStringList_IndexOf
+    procedure :: ValueOf => TStringList_ValueOf
     procedure :: WriteItems
     generic :: Item => StringItem
     end Type TStringList
@@ -161,6 +164,9 @@
     class(*), intent(in), target, optional :: Object
     class(*), pointer :: CP
     class(*), pointer :: ObjectP => null()
+
+    !This all looks a bit unneccessary, just trying to avoid ifort bugs, c.f.
+    !http://software.intel.com/en-us/forums/topic/390944
 
     CP=> C
     if (present(Object)) ObjectP=>Object
@@ -308,6 +314,14 @@
     end select
     end subroutine AddArray
 
+    subroutine CheckIndex(this,i)
+    Class(TObjectList) :: this
+    integer, intent(in) :: i
+
+    if (i>this%Count .or. i<1) call this%Error('Item out of range')
+
+    end subroutine CheckIndex
+
     !why this crashes in ifort 13 I do not know..
     !subroutine AddArray(this, P)
     !Class (TObjectList) :: this
@@ -328,7 +342,7 @@
     integer, intent(in) :: i
     Class(*), pointer :: P(:)
 
-    if (i> this%Count) call this%Error('ArrayItem out of bounds')
+    call this%CheckIndex(i)
     select type (Point=> this%Items(i)%P)
     class is (object_array_pointer)
         P => Point%P
@@ -349,6 +363,15 @@
 
     end function ArrayItemIndex
 
+    function TObjectList_Object(this, i)
+    class(TObjectList) :: this
+    integer, intent(in) :: i
+    class(*), pointer :: TObjectList_Object
+
+    call this%CheckIndex(i)
+    TObjectList_Object => this%Items(i)%Object
+
+    end function TObjectList_Object
 
     subroutine SaveBinary(this,fid)
     Class(TObjectList) :: this
@@ -633,7 +656,7 @@
     Class(TOwnedIntrinsicList) :: this
     class(*), intent(in), target :: C
     class(*), intent(in), target, optional :: Object
-    
+
     call this%TObjectList%AddCopy(C, Object)
 
     end subroutine TOwnedIntrinsicList_AddItem
@@ -671,6 +694,7 @@
     integer, intent(in) :: i
     real(list_prec) R
 
+    call this%CheckIndex(i)
     select type (pt=>this%Items(i)%P)
     type is (real(kind=list_prec))
         R = pt
@@ -742,7 +766,7 @@
     integer, intent(in) :: i
     character(LEN=:), pointer :: S
 
-    if (i>this%Count) call this%Error('TStringList_Item out of range')
+    call this%CheckIndex(i)
     select type (pt=>this%Items(i)%P)
     type is (character(LEN=*))
         S => pt
@@ -751,6 +775,24 @@
     end select
 
     end function TStringList_Item
+
+    function TStringList_ValueOf(this, key)
+    class(TStringList) :: this
+    character(LEN=*), intent(in) :: key
+    integer :: i
+    character(LEN=:), pointer :: TStringList_ValueOf
+
+    i = this%IndexOf(key)
+    if (i==-1) call this%Error('TStringList_ValueOf key not found:'//key)
+    select type (value=>this%Items(i)%Object)
+    type is (character(LEN=*))
+        TStringList_ValueOf=> value
+        class default
+        call this%Error('TStringList_ValueOf Object is not a string')
+    end select
+
+    end function TStringList_ValueOf
+
 
     subroutine TStringList_SetFromString(this, S, valid_chars_in)
     class(TStringList) :: this
@@ -807,6 +849,7 @@
     character :: C
     character(LEN=:), pointer :: P
 
+    call this%CheckIndex(i)
     P => this%Item(i)
     C = P(j:j)
 
