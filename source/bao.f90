@@ -11,16 +11,19 @@
     !Dec 2013: merged in DR11 patch (Antonio J. Cuesta, for the BOSS collaboration)
 
     module bao
+    use MatrixUtils
+    use settings
     use cmbtypes
     use CosmoTheory
-    use CAMB, only : AngularDiameterDistance, Hofz, BAO_D_v  !!angular diam distance also in Mpc no h units
-    use constants
-    use Precision
+    use Calculator_Cosmology
     use likelihood
     use IniObjects
     implicit none
 
+    private
+
     type, extends(CosmologyLikelihood) :: BAOLikelihood
+        class(TCosmologyCalculator), pointer :: Calculator
         integer :: num_bao ! total number of points used
         integer :: type_bao
         !what type of bao data is used
@@ -28,28 +31,31 @@
         !2: A(z) =2 ie WiggleZ
         !3 D_V/rs in fitting forumla appox (DR9)
         !4: D_v - 6DF
-        real(dl), allocatable, dimension(:) :: bao_z, bao_obs, bao_err
-        real(dl), allocatable, dimension(:,:) :: bao_invcov
-
+        real(mcp), allocatable, dimension(:) :: bao_z, bao_obs, bao_err
+        real(mcp), allocatable, dimension(:,:) :: bao_invcov
     contains
     procedure :: LogLike => BAO_LnLike
     procedure :: ReadIni => BAO_ReadIni
+    procedure, private :: SDSS_dvtors
+    procedure, private :: Acoustic
+    procedure, private :: BAO_DR7_loglike
+    procedure, private :: BAO_DR11_loglike
     end type BAOLikelihood
 
     integer,parameter :: DR11_alpha_npoints=280
-    real(dl), dimension (DR11_alpha_npoints) :: DR11_alpha_perp_file,DR11_alpha_plel_file
-    real(dl), dimension (DR11_alpha_npoints,DR11_alpha_npoints) ::   DR11_prob_file
-    real(dl) DR11_dalpha_perp, DR11_dalpha_plel
-    real(dl), dimension (10000) :: DR7_alpha_file, DR7_prob_file
-    real(dl) DR7_dalpha
+    real(mcp), dimension (DR11_alpha_npoints) :: DR11_alpha_perp_file,DR11_alpha_plel_file
+    real(mcp), dimension (DR11_alpha_npoints,DR11_alpha_npoints) ::   DR11_prob_file
+    real(mcp) DR11_dalpha_perp, DR11_dalpha_plel
+    real(mcp), dimension (10000) :: DR7_alpha_file, DR7_prob_file
+    real(mcp) DR7_dalpha
     real rsdrag_theory
-    real(dl) :: BAO_fixed_rs = -1._dl
+    real(mcp) :: BAO_fixed_rs = -1._mcp
     integer DR7_alpha_npoints
 
+    public BAOLikelihood, BAOLikelihood_Add
     contains
 
     subroutine BAOLikelihood_Add(LikeList, Ini)
-    use settings
     class(LikelihoodList) :: LikeList
     class(TSettingIni) :: ini
     Type(BAOLikelihood), pointer :: like
@@ -59,7 +65,7 @@
         numbaosets = Ini%Read_Int('bao_numdatasets',0)
         if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
         if (Ini%Haskey('BAO_fixed_rs')) then
-            BAO_fixed_rs= Ini%Read_Double('BAO_fixed_rs',-1._dl)
+            BAO_fixed_rs= Ini%Read_Double('BAO_fixed_rs',-1._mcp)
         end if
         do i= 1, numbaosets
             allocate(like)
@@ -74,8 +80,6 @@
     end subroutine BAOLikelihood_Add
 
     subroutine BAO_ReadIni(like, Ini)
-    use MatrixUtils
-    use settings
     class(BAOLikelihood) like
     class(TSettingIni) :: Ini
     character(LEN=Ini_max_string_len) :: bao_measurements_file, bao_invcov_file
@@ -133,31 +137,34 @@
 
     end subroutine BAO_ReadIni
 
-    function Acoustic(CMB,z)
-    Type(CMBParams) CMB
-    real(dl) Acoustic
-    real(dl), intent(IN) :: z
-    real(dl) omh2,ckm,omegam,h
+    function Acoustic(like,CMB,z)
+    class(BAOLikelihood) :: like
+    class(CMBParams) CMB
+    real(mcp) Acoustic
+    real(mcp), intent(IN) :: z
+    real(mcp) omh2,ckm,omegam,h
+
     omegam = 1.d0 - CMB%omv - CMB%omk
     h = CMB%h0/100
-    ckm = c/1e3_dl !JD c in km/s
+    ckm = const_c/1e3_mcp !JD c in km/s
 
     omh2 = omegam*h**2.d0
-    Acoustic = 100*BAO_D_v(z)*sqrt(omh2)/(ckm*z)
+    Acoustic = 100*like%Calculator%BAO_D_v(z)*sqrt(omh2)/(ckm*z)
     end function Acoustic
 
-    function SDSS_dvtors(CMB,z)
+    function SDSS_dvtors(like, CMB,z)
     !This uses numerical value of D_v/r_s, but re-scales it to match definition of SDSS
     !paper fitting at the fiducial model. Idea being it is also valid for e.g. varying N_eff
-    Type(CMBParams) CMB
-    real(dl) SDSS_dvtors
-    real(dl), intent(IN)::z
-    real(dl) rs
-    real(dl), parameter :: rs_rescale = 153.017d0/148.92 !149.0808
+    class(BAOLikelihood) :: like
+    class(CMBParams) CMB
+    real(mcp) SDSS_dvtors
+    real(mcp), intent(IN)::z
+    real(mcp) rs
+    real(mcp), parameter :: rs_rescale = 153.017d0/148.92 !149.0808
 
     !    rs = SDSS_CMBToBAOrs(CMB)
     rs = rsdrag_theory*rs_rescale !rescaled to match fitting formula for LCDM
-    SDSS_dvtors = BAO_D_v(z)/rs
+    SDSS_dvtors = like%Calculator%BAO_D_v(z)/rs
 
     end function SDSS_dvtors
 
@@ -165,15 +172,20 @@
     !===================================================================================
 
     function BAO_LnLike(like, CMB, Theory, DataParams)
-    use ModelParams, only : derived_zdrag,derived_rdrag
-    Class(CMBParams) CMB
     Class(BAOLikelihood) :: like
+    Class(CMBParams) CMB
     Class(TCosmoTheoryPredictions) Theory
     real(mcp) :: DataParams(:)
     integer j,k
     real(mcp) BAO_LnLike
-    real(dl), allocatable :: BAO_theory(:)
+    real(mcp), allocatable :: BAO_theory(:)
 
+    select type (Calc=>Theory%Config%Calculator)
+    class is(TCosmologyCalculator)
+        like%Calculator=>Calc
+        class default 
+        call MpiStop('BAO need TCosmologyCalculator')
+    end select
     if (BAO_fixed_rs>0) then
         !this is just for use for e.g. BAO 'only' constraints
         rsdrag_theory =  BAO_fixed_rs
@@ -182,23 +194,23 @@
     end if
     BAO_LnLike=0
     if (like%name=='DR7') then
-        BAO_LnLike = BAO_DR7_loglike(CMB,like%bao_z(1))
+        BAO_LnLike = like%BAO_DR7_loglike(CMB,like%bao_z(1))
     elseif (like%name=='DR11CMASS') then
-        BAO_LnLike = BAO_DR11_loglike(CMB,like%bao_z(1))
+        BAO_LnLike = like%BAO_DR11_loglike(CMB,like%bao_z(1))
     else
         allocate(BAO_theory(like%num_bao))
 
         if(like%type_bao ==3)then
             do j=1, like%num_bao
-                BAO_theory(j) = SDSS_dvtors(CMB,like%bao_z(j))
+                BAO_theory(j) = like%SDSS_dvtors(CMB,like%bao_z(j))
             end do
         else if(like%type_bao ==2)then
             do j=1, like%num_bao
-                BAO_theory(j) = Acoustic(CMB,like%bao_z(j))
+                BAO_theory(j) = like%Acoustic(CMB,like%bao_z(j))
             end do
         else if(like%type_bao ==4)then
             do j=1, like%num_bao
-                BAO_theory(j) = BAO_D_v(like%bao_z(j))
+                BAO_theory(j) = like%Calculator%BAO_D_v(like%bao_z(j))
             end do
         end if
 
@@ -221,8 +233,8 @@
 
     subroutine BAO_DR7_init(fname)
     character(LEN=*), intent(in) :: fname
-    real(dl) :: tmp0,tmp1
-    real(dl) :: DR7_alpha =0
+    real(mcp) :: tmp0,tmp1
+    real(mcp) :: DR7_alpha =0
     integer ios,ii
 
     open(unit=7,file=fname,status='old')
@@ -255,12 +267,13 @@
 
     end subroutine BAO_DR7_init
 
-    function BAO_DR7_loglike(CMB,z)
+    function BAO_DR7_loglike(like,CMB,z)
+    Class(BAOLikelihood) :: like
     Class(CMBParams) CMB
-    real (dl) z, BAO_DR7_loglike, alpha_chain, prob
+    real (mcp) z, BAO_DR7_loglike, alpha_chain, prob
     real,parameter :: rs_wmap7=152.7934d0,dv1_wmap7=1340.177  !r_s and D_V computed for wmap7 cosmology
     integer ii
-    alpha_chain = (SDSS_dvtors(CMB,z))/(dv1_wmap7/rs_wmap7)
+    alpha_chain = (like%SDSS_dvtors(CMB,z))/(dv1_wmap7/rs_wmap7)
     if ((alpha_chain.gt.DR7_alpha_file(DR7_alpha_npoints-1)).or.(alpha_chain.lt.DR7_alpha_file(1))) then
         BAO_DR7_loglike = logZero
     else
@@ -274,7 +287,7 @@
 
     subroutine BAO_DR11_init(fname)
     character(LEN=*), intent(in) :: fname
-    real(dl) :: tmp0,tmp1,tmp2
+    real(mcp) :: tmp0,tmp1,tmp2
     integer ios,ii,jj,nn
 
     open(unit=7,file=fname,status='old')
@@ -306,13 +319,14 @@
 
     end subroutine BAO_DR11_init
 
-    function BAO_DR11_loglike(CMB,z)
+    function BAO_DR11_loglike(like,CMB,z)
+    Class(BAOLikelihood) :: like
     Class(CMBParams) CMB
-    real (dl) z, BAO_DR11_loglike, alpha_perp, alpha_plel, prob
+    real (mcp) z, BAO_DR11_loglike, alpha_perp, alpha_plel, prob
     real,parameter :: rd_fid=149.28,H_fid=93.558,DA_fid=1359.72 !fiducial parameters
     integer ii,jj
-    alpha_perp=(AngularDiameterDistance(z)/rsdrag_theory)/(DA_fid/rd_fid)
-    alpha_plel=(H_fid*rd_fid)/((c*Hofz(z)/1.d3)*rsdrag_theory)
+    alpha_perp=(like%Calculator%AngularDiameterDistance(z)/rsdrag_theory)/(DA_fid/rd_fid)
+    alpha_plel=(H_fid*rd_fid)/((const_c*like%Calculator%Hofz(z)/1.d3)*rsdrag_theory)
     if ((alpha_perp.lt.DR11_alpha_perp_file(1)).or.(alpha_perp.gt.DR11_alpha_perp_file(DR11_alpha_npoints-1)).or. &
     &   (alpha_plel.lt.DR11_alpha_plel_file(1)).or.(alpha_plel.gt.DR11_alpha_plel_file(DR11_alpha_npoints-1))) then
         BAO_DR11_loglike = logZero
@@ -334,16 +348,11 @@
     end function BAO_DR11_loglike
 
     function SDSS_CMBToBAOrs(CMB)
-    use settings
-    use cmbtypes
-    use ModelParams
-    use Precision
-    implicit none
     Type(CMBParams) CMB
-    real(dl) ::  rsdrag
-    real(dl) :: SDSS_CMBToBAOrs
-    real(dl) :: zeq,zdrag,omh2,obh2,b1,b2
-    real(dl) :: rd,req,wkeq
+    real(mcp) ::  rsdrag
+    real(mcp) :: SDSS_CMBToBAOrs
+    real(mcp) :: zeq,zdrag,omh2,obh2,b1,b2
+    real(mcp) :: rd,req,wkeq
 
     obh2=CMB%ombh2
     omh2=CMB%ombh2+CMB%omdmh2

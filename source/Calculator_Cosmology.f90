@@ -15,6 +15,8 @@
         Type(TCosmologyImportanceOptions) :: ImportanceOptions
     contains
     procedure :: BAO_D_v
+    procedure :: Hofz
+    procedure :: AngularDiameterDistance
     procedure :: CMBToTheta
     procedure :: GetNewBackgroundData
     procedure :: GetNewPowerData
@@ -153,5 +155,23 @@
     BAO_D_v = 0
 
     end function BAO_D_v
+
+    real(mcp) function AngularDiameterDistance(this, z)
+    class(TCosmologyCalculator) :: this
+    real(mcp), intent(IN) :: z
+
+    call this%ErrorNotImplemented('AngularDiameterDistance')
+    AngularDiameterDistance = 0
+
+    end function AngularDiameterDistance
+
+    real(mcp) function Hofz(this, z)
+    class(TCosmologyCalculator) :: this
+    real(mcp), intent(IN) :: z
+
+    call this%ErrorNotImplemented('Hofz')
+    Hofz = 0
+
+    end function Hofz
 
     end module Calculator_Cosmology

@@ -43,6 +43,8 @@
     !Overridden inherited
     procedure :: ReadParams => CAMBCalc_ReadParams
     procedure :: BAO_D_v => CAMBCalc_BAO_D_v
+    procedure :: AngularDiameterDistance => CAMBCalc_AngularDiameterDistance
+    procedure :: Hofz => CAMBCalc_Hofz
     procedure :: CMBToTheta => CAMBCalc_CMBToTheta
     procedure :: GetNewPowerData => CAMBCalc_GetNewPowerData
     procedure :: GetNewTransferData => CAMBCalc_GetNewTransferData
@@ -456,13 +458,33 @@
 
 
     real(mcp) function CAMBCalc_BAO_D_v(this, z)
-    use CAMB, only : BAO_D_v  !!angular diam distance also in Mpc no h units
+    use CAMB, only : BAO_D_v 
     class(CAMB_Calculator) :: this
     real(mcp), intent(IN) :: z
 
     CAMBCalc_BAO_D_v = BAO_D_v(z)
 
     end function CAMBCalc_BAO_D_v
+    
+    
+    real(mcp) function CAMBCalc_AngularDiameterDistance(this, z)
+    use CAMB, only : AngularDiameterDistance  !!angular diam distance also in Mpc no h units
+    class(CAMB_Calculator) :: this
+    real(mcp), intent(IN) :: z
+
+    CAMBCalc_AngularDiameterDistance = AngularDiameterDistance(z) 
+
+    end function CAMBCalc_AngularDiameterDistance
+
+    real(mcp) function CAMBCalc_Hofz(this, z)
+    use CAMB, only : Hofz  !!angular diam distance also in Mpc no h units
+    class(CAMB_Calculator) :: this
+    real(mcp), intent(IN) :: z
+
+    CAMBCalc_Hofz = Hofz(z)
+
+    end function CAMBCalc_Hofz
+
 
     subroutine CAMBCalc_InitCAMBParams(this,P)
     use lensing

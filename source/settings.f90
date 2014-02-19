@@ -36,6 +36,8 @@
 
     real, parameter :: pi_r = 3.141592653, twopi_r = 2*pi_r, fourpi_r = twopi_r*2
 
+    real(mcp), parameter :: const_c = 2.99792458e8_mcp
+
     logical :: use_fast_slow = .false.
 
     character(LEN=*), parameter :: CosmoMC_Version = 'Feb2014_oop'

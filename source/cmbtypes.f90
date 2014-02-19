@@ -28,6 +28,9 @@
     !redshifts for output of BAO_dv background parameters
     real(mcp), target :: z_outputs(1) = [0.57_mcp]
 
+    integer, parameter  :: derived_age=1, derived_zstar=2, derived_rstar=3, derived_thetastar=4,derived_zdrag=5, &
+    derived_rdrag=6,derived_kD=7,derived_thetaD=8 , derived_zEQ =9, derived_thetaEQ=10 !index in derived parameters array
+
     logical :: CMB_lensing = .true.
     logical :: use_lensing_potential = .false.
     logical :: use_nonlinear_lensing = .false.
