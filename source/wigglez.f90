@@ -19,6 +19,9 @@
 
     !JD 09/13: Replaced compute_scaling_factor routines with routines that use CAMB's
     !          built in D_V function.
+    
+    !JD 02/14  Moved common MPK functions to power_spec.f90 implemented AL's 
+    !          Calculator_Cosmology functions.
 
     module wigglezinfo
     !David Parkinson 12th March 2012
@@ -117,7 +120,7 @@
     do ik=1,gigglez_num_matter_power
         xi = log(gigglez_minkh) + gigglez_dlnkh*(ik-1)
         kval = exp(xi)
-        pk_hf = MatterPowerAt_zbin(Theory,kval,zbin,.true.)
+        pk_hf = Theory%MatterPowerAt_zbin(kval,zbin,.true.)
 
         call GiggleZtoICsmooth(kval,fidpolys)
 
@@ -582,7 +585,7 @@
 
     !JD 09/13 new compute_scaling_factor functions
     if(use_scaling) then
-        call compute_scaling_factor(z,CMB,like%DV_fid,a_scl)
+        call Theory%compute_scaling_factor(z,CMB,like%DV_fid,a_scl)
     else
         a_scl = 1
     end if
@@ -610,9 +613,9 @@
         if(use_gigglez) then
             mpk_lin(i) = WiggleZPowerAt(k_scaled(i))/a_scl**3
         else if(nonlinear_wigglez)then
-            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
+            mpk_lin(i)=Theory%MatterPowerAt_zbin(k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
         else
-            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1))/a_scl**3
+            mpk_lin(i)=Theory%MatterPowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
         endif
     end do
 

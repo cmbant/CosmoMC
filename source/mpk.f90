@@ -17,6 +17,9 @@
 
     !JD 09/13: Replaced compute_scaling_factor routines with routines that use CAMB's
     !          built in D_V function.
+    
+    !JD 02/14  Moved common MPK functions to power_spec.f90 implemented AL's 
+    !          Calculator_Cosmology functions.
 
 
     module mpk
@@ -262,7 +265,7 @@
 
     !JD 09/13 new compute_scaling_factor functions
     if(like%use_scaling) then
-        call compute_scaling_factor(like%exact_z(1),CMB,like%DV_fid,a_scl)
+        call Theory%compute_scaling_factor(like%exact_z(1),CMB,like%DV_fid,a_scl)
     else
         a_scl = 1
     end if
@@ -277,9 +280,9 @@
         !Errors from using matter_power_minkh at lower end should be negligible
         k_scaled(i)=max(exp(Theory%log_kh(1)),a_scl*like%mpk_k(i))
         if(nonlinear_mpk) then
-            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
+            mpk_lin(i)=Theory%MatterPowerAt_zbin(k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
         else
-            mpk_lin(i)=MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1))/a_scl**3
+            mpk_lin(i)=Theory%MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1))/a_scl**3
         end if
     end do
 
