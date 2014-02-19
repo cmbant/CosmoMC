@@ -56,7 +56,7 @@
     contains
 
     subroutine BAOLikelihood_Add(LikeList, Ini)
-    class(LikelihoodList) :: LikeList
+    class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
     Type(BAOLikelihood), pointer :: like
     integer numbaosets, i

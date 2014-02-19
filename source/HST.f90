@@ -26,7 +26,7 @@
     contains
 
     subroutine HSTLikelihood_Add(LikeList, Ini)
-    class(LikelihoodList) :: LikeList
+    class(TLikelihoodList) :: LikeList
     class(TIniFile) :: ini
     Type(HSTLikelihood), pointer :: like
 

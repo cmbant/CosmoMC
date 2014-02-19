@@ -270,7 +270,7 @@
     integer speed, num_speed
     logical :: block_semi_fast =.false., block_fast_likelihood_params=.false.
     integer :: breaks(num_params), num_breaks
-    class(DataLikelihood), pointer :: DataLike
+    class(TDataLikelihood), pointer :: DataLike
     logical first
     integer status
 

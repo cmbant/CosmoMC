@@ -111,7 +111,7 @@
 
     subroutine TCosmologyConfig_InitForLikelihoods(this)
     class(TCosmologyConfig) :: this
-    class(DataLikelihood), pointer :: DataLike
+    class(TDataLikelihood), pointer :: DataLike
     integer i
 
     if(use_LSS) call Initialize_PKSettings()

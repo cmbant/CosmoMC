@@ -19,7 +19,7 @@
     logical want_minimize
     logical is_best_bestfit
     logical :: start_at_bestfit = .false.
-    Class(DataLikelihood), pointer :: Like
+    Class(TDataLikelihood), pointer :: Like
     character(LEN=:), allocatable :: prop_mat
     class(TMinimizer), allocatable :: Minimizer
 

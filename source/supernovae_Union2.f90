@@ -81,9 +81,7 @@
     contains
 
     subroutine Union2Likelihood_Add(LikeList, Ini)
-    use IniObjects
-    use settings
-    class(LikelihoodList) :: LikeList
+    class(TLikelihoodList) :: LikeList
     class(TIniFile) :: ini
     Type(Union2Likelihood), pointer :: like
     character (LEN=20):: name

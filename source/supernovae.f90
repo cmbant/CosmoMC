@@ -8,8 +8,9 @@
     use likelihood
     use SNLS
     use Union2
-    class(LikelihoodList) :: LikeList
-    class(TIniFile) :: ini
+    use settings
+    class(TLikelihoodList) :: LikeList
+    class(TSettingIni) :: ini
     integer count
 
     if (.not. Ini%Read_Logical('use_SN',.false.)) return

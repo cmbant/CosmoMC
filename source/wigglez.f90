@@ -162,12 +162,12 @@
     use wigglezinfo
     implicit none
 
-    type, extends(DatasetFileLikelihood) :: TWiggleZCommon
+    type, extends(TDatasetFileLikelihood) :: TWiggleZCommon
     contains
     procedure :: ReadIni => TWiggleZCommon_ReadIni
     end type TWiggleZCommon
 
-    type, extends(CosmologyLikelihood) :: WiggleZLikelihood
+    type, extends(TCosmologyLikelihood) :: WiggleZLikelihood
         logical :: use_set
         ! 1st index always refers to the region
         ! so mpk_P(1,:) is the Power spectrum in the first active region
@@ -217,7 +217,7 @@
     contains
 
     subroutine WiggleZLikelihood_Add(LikeList, Ini)
-    class(LikelihoodList) :: LikeList
+    class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
     Type(WiggleZLikelihood), pointer :: like
     integer nummpksets, i

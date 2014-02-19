@@ -91,7 +91,7 @@
     integer :: outdata_handle=-1
     Type (ParamSet) :: Params
     logical :: has_likes(DataLikelihoods%Count)
-    class(DataLikelihood), pointer :: DataLike
+    class(TDataLikelihood), pointer :: DataLike
     logical :: first = .false., has_chain = .true.
     integer last_file_loc,file_loc, file_size
     integer :: at_beginning=0, ierror, num_used

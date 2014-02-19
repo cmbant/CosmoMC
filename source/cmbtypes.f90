@@ -67,7 +67,7 @@
     integer :: index_initpower
 
 
-    type, extends(DatasetFileLikelihood) :: CosmologyLikelihood
+    type, extends(TDatasetFileLikelihood) :: TCosmologyLikelihood
         !Don't have to use extract features of DatasetFileLikelihood
         !not implemented yet..
         !        integer :: needs_cl_lmax = 0
@@ -81,7 +81,7 @@
         integer, dimension(:), allocatable :: exact_z_index
         real(mcp) :: max_z
         real(mcp) :: kmax = 0.8
-    end type CosmologyLikelihood
+    end type TCosmologyLikelihood
 
     Type, extends(TTheoryParams) :: CMBParams
         real(mcp) InitPower(max_inipower_params)
@@ -111,7 +111,7 @@
     class(TCosmologyParameterization) :: this
     integer, intent (in) :: slow_num, semi_slow_num
     integer i
-    class(DataLikelihood), pointer :: DataLike
+    class(TDataLikelihood), pointer :: DataLike
 
     !Called after this%init
     num_hard = slow_num
@@ -125,7 +125,7 @@
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
         select type (DataLike)
-        class is (CosmologyLikelihood)
+        class is (TCosmologyLikelihood)
             if (DataLike%needs_background_functions) DataLike%dependent_params(1:num_hard)=.true.
             if (DataLike%needs_powerspectra) DataLike%dependent_params(1:num_theory_params)=.true.
         end select
@@ -144,7 +144,7 @@
 
     subroutine Initialize_PKSettings()
     use likelihood
-    class(DataLikelihood), pointer :: DataLike
+    class(TDataLikelihood), pointer :: DataLike
     Type(TRealList) :: exact_z, full_z
     real(mcp) :: dlnz, maxz, zcur
     integer :: i,iz,izprev
@@ -157,7 +157,7 @@
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
         select type (DataLike)
-        class is (CosmologyLikelihood)
+        class is (TCosmologyLikelihood)
             if (DataLike%needs_powerspectra) then
                 power_kmax = max(power_kmax,DataLike%kmax)
                 use_nonlinear = use_nonlinear .or. DataLike%needs_nonlinear_pk
@@ -231,7 +231,7 @@
 
     subroutine IndexExactRedshifts(A,error)
     use likelihood
-    class(DataLikelihood), pointer :: DataLike
+    class(TDataLikelihood), pointer :: DataLike
     real(mcp), dimension(:) :: A
     integer, intent(out), optional :: error
     integer :: i, iz, izprev, numz
@@ -241,7 +241,7 @@
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
         select type (DataLike)
-        class is (CosmologyLikelihood)
+        class is (TCosmologyLikelihood)
             if (DataLike%needs_powerspectra) then
                 if(DataLike%needs_exact_z) then
                     DataLike%exact_z_index = 0

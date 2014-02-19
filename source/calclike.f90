@@ -265,7 +265,7 @@
     logical, intent(in), optional :: likelihood_mask(DataLikelihoods%count)
     real(mcp) logLike
     real(mcp) itemLike
-    class(DataLikelihood), pointer :: like => null()
+    class(TDataLikelihood), pointer :: like => null()
     integer i
     logical :: do_like(DataLikelihoods%count)
 
@@ -304,7 +304,7 @@
 
     subroutine TheoryLike_GetTheoryForLike(this,Like)
     class(TTheoryLikeCalculator) :: this
-    class(DataLikelihood), pointer :: like
+    class(TDataLikelihood), pointer :: like
 
     !If needed, likelihood specific calculation/initalization; like=null for first initial call
     end subroutine TheoryLike_GetTheoryForLike

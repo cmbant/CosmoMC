@@ -36,7 +36,7 @@
 
     subroutine Cosmo_GetTheoryForLike(this,Like)
     class(TCosmoLikeCalculator) :: this
-    class(DataLikelihood), pointer :: like
+    class(TDataLikelihood), pointer :: like
     logical, save :: backgroundSet 
 
     if (.not. associated(like)) then

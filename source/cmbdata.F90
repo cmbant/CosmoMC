@@ -82,7 +82,7 @@ implicit none
     Type (TCMBLikes), pointer :: CMBLikes
   end Type CMBdataset
 
-    type, extends(CosmologyLikelihood) :: CMBDataLikelihood
+    type, extends(TCosmologyLikelihood) :: CMBDataLikelihood
      Type(CMBdataset) dataset
     contains
     procedure :: LogLike => CMBLnLike
@@ -1023,7 +1023,7 @@ contains
 #ifdef NONCLIK
     use noncliklike
 #endif
-    class(LikelihoodList) :: LikeList
+    class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
 
     Type(CMBDataLikelihood), pointer  :: like

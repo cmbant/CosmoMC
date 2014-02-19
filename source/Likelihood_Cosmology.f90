@@ -4,7 +4,7 @@
     implicit none
     private
     
-    Type, extends(CosmologyLikelihood) :: TCosmoCalcLikelihood
+    Type, extends(TCosmologyLikelihood) :: TCosmoCalcLikelihood
         class(TCosmologyCalculator), pointer :: Calculator => null()
     end type
 

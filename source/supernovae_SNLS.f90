@@ -224,9 +224,7 @@
 
 
     subroutine SNLSLikelihood_Add(LikeList, Ini)
-    use IniObjects
-    use settings
-    class(LikelihoodList) :: LikeList
+    class(TLikelihoodList) :: LikeList
     class(TIniFile) :: ini
     Type(SNLSLikelihood), pointer :: like
     integer alpha_i, beta_i

@@ -31,7 +31,7 @@
     use wigglez, only : WiggleZLikelihood_Add
     implicit none
 
-    type, extends(CosmologyLikelihood) :: MPKLikelihood
+    type, extends(TCosmologyLikelihood) :: MPKLikelihood
         logical :: use_set
         integer :: num_mpk_points_use ! total number of points used (ie. max-min+1)
         integer :: num_mpk_kbands_use ! total number of kbands used (ie. max-min+1)
@@ -58,7 +58,7 @@
     subroutine MPKLikelihood_Add(LikeList, Ini)
     use IniObjects
     use settings
-    class(LikelihoodList) :: LikeList
+    class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
     type(MPKLikelihood), pointer :: like
     integer nummpksets, i

@@ -47,7 +47,7 @@
     real(mcp), intent(in) :: mult, like
     integer j , alen, unused
     logical, save :: first = .true.
-    class(DataLikelihood), pointer :: DataLike
+    class(TDataLikelihood), pointer :: DataLike
 
     if (first .and. new_chains) then
         first = .false.
@@ -97,7 +97,7 @@
     integer j, k, np, alen, unused, status
     character(LEN=:), allocatable :: name
     logical :: has_names
-    Type(DataLikelihood), pointer :: DataLike
+    class(TDataLikelihood), pointer :: DataLike
     integer tmp(1)
     
     error = 0
