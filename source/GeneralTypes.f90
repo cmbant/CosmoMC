@@ -67,17 +67,13 @@
         !Config%Calculator can in some cases be used to provide theory functions
     contains
     procedure :: AssignNew => TTheoryPredictions_AssignNew
-    procedure :: Clear
+    procedure :: Clear => TTheoryPredictions_Clear
     procedure :: WriteTheory
     procedure :: ReadTheory
     procedure :: WriteBestFitData
     end Type TTheoryPredictions
 
     abstract interface
-    subroutine Clear(this)
-    import TTheoryPredictions
-    class(TTheoryPredictions) :: this
-    end subroutine Clear
 
     subroutine WriteTheory(T, unit)
     import TTheoryPredictions
@@ -223,6 +219,9 @@
 
     end subroutine TTheoryPredictions_AssignNew
 
+    subroutine TTheoryPredictions_Clear(this)
+    class(TTheoryPredictions) :: this
+    end subroutine TTheoryPredictions_Clear
 
     !!! TCalculationAtParamPoint
 
