@@ -157,8 +157,8 @@
     module wigglez
     use settings
     use cmbtypes
+    use CosmoTheory
     use likelihood
-    use powerspec
     use wigglezinfo
     implicit none
 
@@ -585,7 +585,7 @@
 
     !JD 09/13 new compute_scaling_factor functions
     if(use_scaling) then
-        call Theory%compute_scaling_factor(z,CMB,like%DV_fid,a_scl)
+        call compute_scaling_factor(z,CMB,Theory,like%DV_fid,a_scl)
     else
         a_scl = 1
     end if
@@ -739,5 +739,24 @@
     M = Minv/det
 
     end subroutine inv_mat22
+    
+    !-----------------------------------------------------------------------------
+    ! JD 09/13: Replaced compute_scaling_factor routines so we use
+    !           D_V calculations from CAMB.  New routines below
+    
+    subroutine compute_scaling_factor(z,CMB,Theory,DV_fid,a_scl)
+    implicit none
+    Class(TCosmoTheoryPredictions) Theory
+    Class(CMBParams) CMB
+    real(mcp), intent(in) :: z, DV_fid
+    real(mcp), intent(out) :: a_scl
 
+    !We use H_0*D_V because we dont care about scaling of h since
+    !k is in units of h/Mpc
+    !a_scl = CMB%H0*Theory%Config%Calculator%BAO_D_v(z)/DV_fid
+    call MPIstop('Need to get BAO_D_V passed properly')
+    !Like in original code, we need to apply a_scl in the correct direction
+    a_scl = 1.0_mcp/a_scl
+    end subroutine compute_scaling_factor
+    
     end module wigglez

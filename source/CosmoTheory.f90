@@ -5,6 +5,22 @@
     use Interpolation, only : spline, SPLINE_DANGLE
     implicit none
     
+    !JD work in progress
+    !Type TCosmoTheoryPK
+    !    integer   ::  num_k
+    !    real(mcp), dimension(:), allocatable :: log_kh
+    !    real(mcp), dimension(:), allocatable :: redshifts
+    !    real(mcp), dimension(:,:), allocatable :: PK, ddPK
+    !    logical :: islog
+    !contains
+    !MPK stuff
+    !procedure :: IOTheory_GetSplines
+    !procedure :: InitPK
+    !procedure :: MatterPowerAt_zbin
+    !procedure :: MatterPowerAt
+    !procedure :: MatterPowerAt_Z
+    !end Type TCosmoTheoryPK
+    
     Type, extends(TTheoryPredictions) :: TCosmoTheoryPredictions
         real(mcp) cl(lmax,num_cls_tot)
         !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
@@ -16,20 +32,24 @@
         !everything is a function of k/h
         integer   ::  num_k
         real(mcp), dimension(:), allocatable :: log_kh
+        real(mcp), dimension(:), allocatable :: redshifts
         !matpower is log(P_k)
         real(mcp), dimension(:,:), allocatable :: matter_power, ddmatter_power
         real(mcp), dimension(:,:), allocatable :: nlmatter_power, ddnlmatter_power
-        real(mcp), dimension(:), allocatable :: redshifts
+        !JD work in progress
+        !type(TCosmoTheoryPK) MPK
+        !type(TCosmoTheoryPK) NL_MPK
+        
+        
     contains
     procedure :: ClsFromTheoryData
     procedure :: WriteTextCls
     !MPK stuff
+    procedure :: IOTheory_GetSplines
     procedure :: InitPK
     procedure :: MatterPowerAt_zbin
     procedure :: MatterPowerAt
     procedure :: MatterPowerAt_Z
-    procedure :: compute_scaling_factor
-    procedure :: DV_x_H0
     !Inherited overrides
     procedure :: WriteTheory => TCosmoTheoryPredictions_WriteTheory
     procedure :: ReadTheory => TCosmoTheoryPredictions_ReadTheory
@@ -39,7 +59,7 @@
     contains
     
     subroutine ClsFromTheoryData(T, Cls)
-    Type(TCosmoTheoryPredictions) T
+    class(TCosmoTheoryPredictions) T
     real(mcp) Cls(lmax,num_cls_tot)
 
     Cls(2:lmax,1:num_clsS) =T%cl(2:lmax,1:num_clsS)
@@ -51,7 +71,7 @@
     end subroutine ClsFromTheoryData
 
     subroutine WriteTextCls(T,aname)
-    Type(TCosmoTheoryPredictions) T
+    class(TCosmoTheoryPredictions) T
     character (LEN=*), intent(in) :: aname
     integer l
     real(mcp) Cls(lmax,num_cls_tot), nm
@@ -74,7 +94,7 @@
     end subroutine WriteTextCls
 
     subroutine InitPK(Theory, num_k, num_z)
-    Type(TCosmoTheoryPredictions) :: Theory
+    class(TCosmoTheoryPredictions) :: Theory
     integer, intent(in) :: num_k, num_z
 
     if(allocated(Theory%log_kh))deallocate(Theory%log_kh)
@@ -208,7 +228,7 @@
         NL = .false.
     end if
 
-    outpower = Theory%MatterPowerAt_zbin(PK,kh,1,NL)
+    outpower = Theory%MatterPowerAt_zbin(kh,1,NL)
 
     end function MatterPowerAt
 
@@ -260,7 +280,7 @@
         iz = 2
         zvec(2:4)=Theory%redshifts(zlo:zhi+1)
         do itf=zlo, zhi+1
-            matpower(iz) = log(Theory%MatterPowerAt_zbin(PK,kh,itf,NL))
+            matpower(iz) = log(Theory%MatterPowerAt_zbin(kh,itf,NL))
             iz=iz+1
         end do
         call spline(zvec(2:4),matpower(2:4),3,SPLINE_DANGLE,SPLINE_DANGLE,ddmat(2:4))
@@ -271,7 +291,7 @@
         iz = 1
         zvec(1:3)=Theory%redshifts(zlo-1:zhi)
         do itf=zlo-1, zhi
-            matpower(iz) = log(Theory%MatterPowerAt_zbin(PK,kh,itf,NL))
+            matpower(iz) = log(Theory%MatterPowerAt_zbin(kh,itf,NL))
             iz=iz+1
         end do
         call spline(zvec(1:3),matpower(1:3),3,SPLINE_DANGLE,SPLINE_DANGLE,ddmat(1:3))
@@ -279,7 +299,7 @@
         iz = 1
         zvec(:)=Theory%redshifts(zlo-1:zhi+1)
         do itf=zlo-1, zhi+1
-            matpower(iz) = log(Theory%MatterPowerAt_zbin(PK,kh,itf,NL))
+            matpower(iz) = log(Theory%MatterPowerAt_zbin(kh,itf,NL))
             iz=iz+1
         end do
         call spline(zvec,matpower,4,SPLINE_DANGLE,SPLINE_DANGLE,ddmat)
@@ -296,35 +316,6 @@
 
     end function MatterPowerAt_Z
         
-    !-----------------------------------------------------------------------------
-    ! JD 09/13: Replaced compute_scaling_factor routines so we use
-    !           D_V calculations from CAMB.  New routines below
-    
-    subroutine compute_scaling_factor(Theory,z,CMB,DV_fid,a_scl)
-    implicit none
-    Class(TCosmoTheoryPredictions) Theory
-    Class(CMBParams) CMB
-    real(mcp), intent(in) :: z, DV_fid
-    real(mcp), intent(out) :: a_scl
-
-    a_scl = Theory%DV_x_H0(z,CMB)/DV_fid
-    !Like in original code, we need to apply a_scl in the correct direction
-    a_scl = 1.0_mcp/a_scl
-    end subroutine compute_scaling_factor
-
-    function DV_x_H0(Theory,z,CMB)  !Want D_V*H_0
-    implicit none
-    Class(TCosmoTheoryPredictions) Theory
-    Class(CMBParams) CMB
-    real(mcp), intent(in) :: z
-    real(mcp):: DV_x_H0
-
-    !We calculate H_0*D_V because we dont care about scaling of h since
-    !k is in units of h/Mpc
-    DV_x_H0 = CMB%H0*Theory%Config%Calculator%BAO_D_v(z)
-
-    end function DV_x_H0
-    
     subroutine TCosmoTheoryPredictions_WriteTheory(T, unit)
     Class(TCosmoTheoryPredictions) T
     integer unit

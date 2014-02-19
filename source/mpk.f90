@@ -265,7 +265,7 @@
 
     !JD 09/13 new compute_scaling_factor functions
     if(like%use_scaling) then
-        call Theory%compute_scaling_factor(like%exact_z(1),CMB,like%DV_fid,a_scl)
+        call compute_scaling_factor(like%exact_z(1),CMB,Theory,like%DV_fid,a_scl)
     else
         a_scl = 1
     end if
@@ -282,7 +282,7 @@
         if(nonlinear_mpk) then
             mpk_lin(i)=Theory%MatterPowerAt_zbin(k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
         else
-            mpk_lin(i)=Theory%MatterPowerAt_zbin(Theory,k_scaled(i),like%exact_z_index(1))/a_scl**3
+            mpk_lin(i)=Theory%MatterPowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
         end if
     end do
 
@@ -398,5 +398,24 @@
     M = Minv/det
 
     end subroutine inv_mat22
+    
+    !-----------------------------------------------------------------------------
+    ! JD 09/13: Replaced compute_scaling_factor routines so we use
+    !           D_V calculations from CAMB.  New routines below
+    
+    subroutine compute_scaling_factor(z,CMB,Theory,DV_fid,a_scl)
+    implicit none
+    Class(TCosmoTheoryPredictions) Theory
+    Class(CMBParams) CMB
+    real(mcp), intent(in) :: z, DV_fid
+    real(mcp), intent(out) :: a_scl
 
+    !We use H_0*D_V because we dont care about scaling of h since
+    !k is in units of h/Mpc
+    !a_scl = CMB%H0*Theory%Config%Calculator%BAO_D_v(z)/DV_fid
+    call MPIstop('Need to get BAO_D_V passed properly')
+    !Like in original code, we need to apply a_scl in the correct direction
+    a_scl = 1.0_mcp/a_scl
+    end subroutine compute_scaling_factor
+    
     end module mpk
