@@ -170,7 +170,7 @@ $(OUTPUT_DIR)/likelihood.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o
 $(OUTPUT_DIR)/DataLikelihoods.o: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/ParamSet.o $(DATAMODULES)
 $(OUTPUT_DIR)/settings.o: $(OUTPUT_DIR)/ObjectParamNames.o $(UTILS)
 $(OUTPUT_DIR)/$(PROPOSE): $(OUTPUT_DIR)/settings.o
-$(OUTPUT_DIR)/BaseParameters: $(OUTPUT_DIR)/setings.o
+$(OUTPUT_DIR)/BaseParameters: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/IO.o
 $(OUTPUT_DIR)/ParamSet.o: $(CALCFILES) $(PROPOSE) $(OUTPUT_DIR)/samples.o
 $(PARAMETERIZATION): $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/bbn.o
 $(OUTPUT_DIR)/calclike.o: $(OUTPUT_DIR)/DataLikelihoods.o

@@ -36,7 +36,7 @@
     contains
 
     subroutine clik_readParams(LikeList,Ini)
-    class(LikelihoodList) :: LikeList
+    class(TLikelihoodList) :: LikeList
     class(TSettingIni) Ini
     character (LEN=Ini_max_string_len) ::  name,fname,params
     integer i
