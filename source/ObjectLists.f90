@@ -8,6 +8,7 @@
 
     type Object_pointer
         class(*), pointer :: p => null()
+        class(*), pointer :: Object => null()
     end type Object_pointer
 
     type Object_array_pointer
@@ -37,6 +38,7 @@
     contains
     procedure :: AddArray
     procedure :: AddItem
+    procedure :: AddItemPointer
     procedure :: AddCopy
     procedure :: AssignPointers
     procedure :: DeleteItem
@@ -57,6 +59,7 @@
     procedure :: QuickSort
     procedure :: QuickSortArr
     procedure :: RemoveDuplicates
+    procedure :: Error
     procedure :: SaveState => TObjectList_SaveState
     procedure :: LoadState => TObjectList_LoadState
     FINAL :: finalize
@@ -143,28 +146,55 @@
     call this%Clear()
     end subroutine finalize
 
+    subroutine Error(this, msg)
+    Class(TObjectList) :: this
+    character(LEN=*), intent(in) :: msg
 
-    subroutine AddItem(this, C)
+    write(*,*) msg
+    stop
+
+    end subroutine Error 
+
+    subroutine AddItem(this, C, Object)
     Class(TObjectList) :: this
     class(*), intent(in), target :: C
+    class(*), intent(in), target, optional :: Object
+    class(*), pointer :: CP
+    class(*), pointer :: ObjectP => null()
+
+    CP=> C
+    if (present(Object)) ObjectP=>Object
+    call this%AddItemPointer(CP, ObjectP)
+
+    end subroutine AddItem
+
+
+    subroutine AddItemPointer(this, C, Object)
+    Class(TObjectList) :: this
+    class(*), intent(in), pointer :: C
+    class(*), intent(in), pointer, optional :: Object
 
     if (this%Count == this%Capacity) call this%SetCapacity(this%Capacity + this%DeltaSize())
     this%Count = this%Count + 1
     this%Items(this%Count)%P=>C
+    if (present(Object)) this%Items(this%Count)%Object=> Object
 
-    end subroutine AddItem
+    end subroutine AddItemPointer
 
-    subroutine AddCopy(this, C)
+    subroutine AddCopy(this, C, Object)
     Class(TObjectList) :: this
     class(*), intent(in) :: C
+    class(*), intent(in), optional :: Object
     class(*), pointer :: P
+    class(*), pointer :: PO=>null()
 
     if (this%OwnsObjects) then
         allocate(P, source=C)
+        if (present(Object)) allocate(PO, source=Object)
     else
-        stop 'ObjectLists: Cannot add copy to un-owned list'
+        call this%Error('ObjectLists: Cannot add copy to un-owned list')
     end if
-    call this%AddItem(P)
+    call this%AddItemPointer(P, PO)
 
     end subroutine AddCopy
 
@@ -198,7 +228,7 @@
     Type(Object_pointer), dimension(:), allocatable :: TmpItems
 
     if (this%Count > 0) then
-        if (C < this%Count) stop 'SetCapacity: smaller than Count'
+        if (C < this%Count) call this%Error('ObjectLists: SetCapacity: smaller than Count')
         allocate(TmpItems(C))
         TmpItems(:this%Count) = this%Items(:this%Count)
         call move_alloc(TmpItems, this%Items)
@@ -212,21 +242,22 @@
     Class(TObjectList) :: this
     integer, intent(in) :: i
     logical want_Dealloc
+
     if (associated(this%Items(i)%P)) then
         want_Dealloc =  this%OwnsObjects
         select type (point => this%Items(i)%P)
         class is (object_array_pointer)
             if (this%OwnsObjects .and. associated(Point%P)) deallocate(Point%P)
             want_Dealloc = .true.
-        type is (real(kind=list_prec))
-            want_Dealloc = .false.
+            !type is (real(kind=list_prec))
+            !         want_Dealloc = .false.
         end select
         if (want_Dealloc) deallocate(this%Items(i)%P)
+        this%Items(i)%P=> null()
     end if
 
-    this%Items(i)%P=> null()
-    !    if (associated(this%Items(i)%tag)) deallocate(this%Items(i)%tag)
-    !    this%Items(i)%tag=> null()
+    if (associated(this%Items(i)%Object) .and. this%OwnsObjects) deallocate(this%Items(i)%Object)
+    this%Items(i)%Object=> null()
 
     end subroutine FreeItem
 
@@ -237,6 +268,7 @@
     call this%FreeItem(i)
     if (this%Count > 1) this%Items(i:this%Count-1) = this%Items(i+1:this%Count)
     this%Items(this%Count)%P => null()
+    this%Items(this%Count)%Object => null()
     this%Count = this%Count -1
 
     end subroutine DeleteItem
@@ -253,6 +285,7 @@
     if (i2<this%Count) this%Items(i1:this%Count-dN) = this%Items(i2+1:this%Count)
     do i=this%Count-dN+1,this%Count
         this%Items(i)%P => null()
+        this%Items(i)%Object => null()
     end do
     this%Count = this%Count - dN
 
@@ -264,7 +297,7 @@
     class(*), pointer :: Pt
 
     allocate(object_array_pointer::Pt)
-    call this%AddItem(Pt)
+    call this%AddItemPointer(Pt)
     select type (Pt)
     class is (object_array_pointer)
         if (this%ownsObjects) then
@@ -295,11 +328,12 @@
     integer, intent(in) :: i
     Class(*), pointer :: P(:)
 
+    if (i> this%Count) call this%Error('ArrayItem out of bounds')
     select type (Point=> this%Items(i)%P)
     class is (object_array_pointer)
         P => Point%P
         class default
-        stop 'TObjectList: item is not array item'
+        call this%Error('ObjectLists: item is not array item')
     end select
 
     end function ArrayItem
@@ -345,14 +379,14 @@
                 write(fid) size(P),k
                 write(fid) Point
                 class default
-                stop 'TObjectList: Unknown type to save'
+                call this%Error('TObjectList: Unknown type to save')
             end select
         Type is (character(LEN=*))
             k=5
             write(fid) len(Item), k
             write(fid) Item
             class default
-            stop 'TObjectList: not implemented non-array save'
+            call this%Error('TObjectList: not implemented non-array save')
         end select
     end do
 
@@ -366,7 +400,8 @@
     double precision, pointer :: ArrD(:)
     integer, pointer :: ArrI(:)
     logical, pointer :: ArrL(:)
-    character(LEN=:), pointer :: St
+    character(LEN=:), allocatable:: Sin
+    class(*), pointer :: St
 
     call this%Clear()
     this%OwnsObjects = .false.
@@ -393,9 +428,9 @@
         else if (k==5) then
             allocate(character(sz)::St)
             read(fid) St
-            call this%Add(St)
+            call this%AddItemPointer(St)
         else
-            stop 'TObjectList ReadBinary - unknown object type'
+            call this%Error('TObjectList ReadBinary - unknown object type')
         end if
     end do
     this%Count = num
@@ -529,7 +564,7 @@
     class(*) R1,R2
 
     comp=0 !equality
-    stop 'TObjectList: Compare must be defined for derived type'
+    call this%Error('TObjectList: Compare must be defined for derived type')
 
     end function Compare
 
@@ -554,7 +589,7 @@
         class is (TSaveLoadStateObject)
             call item%SaveState(unit)
             class default
-            stop 'List contains non-TSaveLoadStateObject item'
+            call this%Error('TObjectList_SaveState: List contains non-TSaveLoadStateObject item')
         end select
     end do
 
@@ -566,13 +601,13 @@
     integer i, count
 
     read(unit) count
-    if (count/=this%Count) stop 'TObjectList_LoadState count mismatch (objects must exist before load)'
+    if (count/=this%Count) call this%Error('TObjectList_LoadState count mismatch (objects must exist before load)')
     do i=1,this%Count
         select type (item => this%Items(i)%P)
         class is (TSaveLoadStateObject)
             call item%LoadState(unit)
             class default
-            stop 'List contains non-TSaveLoadStateObject item'
+            call this%Error('List contains non-TSaveLoadStateObject item')
         end select
     end do
 
@@ -594,17 +629,12 @@
     end subroutine TOwnedIntrinsicList_SaveState
 
 
-    subroutine TOwnedIntrinsicList_AddItem(this, C)
+    subroutine TOwnedIntrinsicList_AddItem(this, C, Object)
     Class(TOwnedIntrinsicList) :: this
     class(*), intent(in), target :: C
-    class(*), pointer :: P
-
-    if (this%OwnsObjects) then
-        allocate(P, source = C)
-        call this%TObjectList%AddItem(P)
-    else
-        call this%TObjectList%AddItem(C)
-    end if
+    class(*), intent(in), target, optional :: Object
+    
+    call this%TObjectList%AddCopy(C, Object)
 
     end subroutine TOwnedIntrinsicList_AddItem
 
@@ -629,7 +659,7 @@
             return
         end select
         class default
-        stop 'TRealList: Compare not defined for this type'
+        call this%Error('TRealList: Compare not defined for this type')
     end select
 
     end function CompareReal
@@ -645,7 +675,7 @@
     type is (real(kind=list_prec))
         R = pt
         class default
-        stop 'TRealList: object of wrong type'
+        call this%Error('TRealList: object of wrong type')
     end select
 
     end function TRealList_Item
@@ -686,7 +716,7 @@
     type is (real(kind=list_prec))
         P=> pt
         class default
-        stop 'TRealArrayList: object of wrong type'
+        call this%Error('TRealArrayList: object of wrong type')
     end select
 
     end function TRealArrayList_Item
@@ -712,11 +742,12 @@
     integer, intent(in) :: i
     character(LEN=:), pointer :: S
 
+    if (i>this%Count) call this%Error('TStringList_Item out of range')
     select type (pt=>this%Items(i)%P)
     type is (character(LEN=*))
         S => pt
         class default
-        stop 'TStringList: object of wrong type'
+        call this%Error('TStringList: object of wrong type')
     end select
 
     end function TStringList_Item
@@ -799,7 +830,7 @@
             return
         end select
         class default
-        stop 'TStringList_Compare: not defined for this type'
+        call this%Error('TStringList_Compare: not defined for this type')
     end select
 
     end function TStringList_Compare

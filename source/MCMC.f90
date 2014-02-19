@@ -26,7 +26,6 @@
     end subroutine ReadCheckpoint
     end interface
 
-    !TSaveLoadStateObject->TCheckpointable->TLikelihoodUser->TSamplingAlgorithm
     Type, extends(TLikelihoodUser) :: TSamplingAlgorithm
         integer :: num_sample = 0
         real(mcp) :: MaxLike = LogZero

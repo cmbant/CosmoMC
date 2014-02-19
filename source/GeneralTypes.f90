@@ -13,7 +13,12 @@
 
     type, extends(TSaveLoadStateObject) :: TCheckpointable
     contains
-    procedure :: ReadParams
+    procedure :: ReadParams => TCheckpointable_ReadParams
+    end Type
+
+    type TObjectWithParams
+    contains
+    procedure :: ReadParams => TObjectWithParams_ReadParams
     end Type
 
     Type TTheoryParams
@@ -44,7 +49,7 @@
 
     !Each descendant of the base TConfigClass below has a Config element which point to a TGeneralConfig instance taht determines
     !which related class implementations are actually used
-    Type, extends(TCheckpointable) :: TGeneralConfig
+    Type, extends(TObjectWithParams) :: TGeneralConfig
         class(TParameterization), pointer :: Parameterization => null()
         class(TTheoryCalculator), pointer :: Calculator => null()
     contains
@@ -430,10 +435,16 @@
 
     !!!TCheckpointable
 
-    subroutine ReadParams(this, Ini)
+    subroutine TCheckpointable_ReadParams(this, Ini)
     class(TCheckpointable) :: this
     class(TSettingIni) :: Ini
-    end subroutine ReadParams
+    end subroutine TCheckpointable_ReadParams
 
+    !!!TObjectWithParams
+
+    subroutine TObjectWithParams_ReadParams(this, Ini)
+    class(TObjectWithParams) :: this
+    class(TSettingIni) :: Ini
+    end subroutine TObjectWithParams_ReadParams
 
     end module GeneralTypes

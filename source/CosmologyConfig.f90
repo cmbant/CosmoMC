@@ -45,13 +45,13 @@
     compute_tensors = Ini%Read_Logical('compute_tensors',.false.)
 
     if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
-    CMB_lensing = Ini%Read_Logical('CMB_lensing',CMB_lensing)
-    use_lensing_potential = Ini%Read_logical('use_lensing_potential',use_lensing_potential)
-    use_nonlinear_lensing = Ini%Read_logical('use_nonlinear_lensing',use_nonlinear_lensing)
+    call Ini%Read('CMB_lensing',CMB_lensing)
+    call Ini%Read('use_lensing_potential',use_lensing_potential)
+    call Ini%Read('use_nonlinear_lensing',use_nonlinear_lensing)
 
-    pivot_k = Ini%Read_Real('pivot_k',0.05)
-    inflation_consistency = Ini%read_Logical('inflation_consistency',.false.)
-    bbn_consistency = Ini%Read_Logical('bbn_consistency',.true.)
+    call Ini%Read('pivot_k',pivot_k)
+    call Ini%read('inflation_consistency',inflation_consistency)
+    call Ini%Read('bbn_consistency',bbn_consistency)
     num_massive_neutrinos = Ini%read_int('num_massive_neutrinos',-1)
 
     if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case

@@ -22,34 +22,6 @@
     Class(DataLikelihood), pointer :: Like
     character(LEN=:), allocatable :: prop_mat
     class(TMinimizer), allocatable :: Minimizer
-    
-!    use, intrinsic :: iso_fortran_env, only : output_unit
-  
-!    use ObjectLists
-!    Type(TStringList) :: T
-!    integer unit
-!    
-!    call T%Add('here')
-!    call T%Add('there')
-!    call T%Add('alpha')
-!    call T%sort()
-!    do i=1,2
-!    if (T%Item(1) /= 'alpha' .or. T%Item(3) /='there') then
-!        print *, 'Error'
-!!        call T%WriteItems(stdout)
-!    else
-!        print *, 'OK'
-!    end if
-!    if (i==2) stop
-!    open (newunit=unit,file='test.bin',status='replace', form='unformatted')
-!    call T%SaveBinary(unit)
-!    close(unit)
-!    open (newunit=unit,file='test.bin',status='old', form='unformatted')
-!    call T%ReadBinary(unit)
-!    close(unit)
-!    end do
-!    stop
-    
 
 #ifdef MPI
     double precision intime

@@ -36,6 +36,11 @@ Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "MatrixDouble", "..\camb\Vis
 		{F371D52E-C2C8-4F56-83D2-4ED9E26F5F32} = {F371D52E-C2C8-4F56-83D2-4ED9E26F5F32}
 	EndProjectSection
 EndProject
+Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "tests", "tests.vfproj", "{E4DB04A5-F3D2-4B40-9002-B5B656E38FFE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{30BB4525-ADB5-4FD8-B169-4E5FCD579B53} = {30BB4525-ADB5-4FD8-B169-4E5FCD579B53}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -89,6 +94,14 @@ Global
 		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Release|Win32.Build.0 = Release|Win32
 		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Release|x64.ActiveCfg = Release|x64
 		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Release|x64.Build.0 = Release|x64
+		{E4DB04A5-F3D2-4B40-9002-B5B656E38FFE}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E4DB04A5-F3D2-4B40-9002-B5B656E38FFE}.Debug|Win32.Build.0 = Debug|Win32
+		{E4DB04A5-F3D2-4B40-9002-B5B656E38FFE}.Debug|x64.ActiveCfg = Debug|x64
+		{E4DB04A5-F3D2-4B40-9002-B5B656E38FFE}.Debug|x64.Build.0 = Debug|x64
+		{E4DB04A5-F3D2-4B40-9002-B5B656E38FFE}.Release|Win32.ActiveCfg = Release|Win32
+		{E4DB04A5-F3D2-4B40-9002-B5B656E38FFE}.Release|Win32.Build.0 = Release|Win32
+		{E4DB04A5-F3D2-4B40-9002-B5B656E38FFE}.Release|x64.ActiveCfg = Release|x64
+		{E4DB04A5-F3D2-4B40-9002-B5B656E38FFE}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

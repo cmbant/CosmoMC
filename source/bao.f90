@@ -184,7 +184,7 @@
     class is(TCosmologyCalculator)
         like%Calculator=>Calc
         class default 
-        call MpiStop('BAO need TCosmologyCalculator')
+        call MpiStop('BAO needs TCosmologyCalculator')
     end select
     if (BAO_fixed_rs>0) then
         !this is just for use for e.g. BAO 'only' constraints
