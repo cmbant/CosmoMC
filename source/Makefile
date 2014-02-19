@@ -132,11 +132,11 @@ OBJFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectLists.o $(OUT
 
 SUPERNOVAE = $(OUTPUT_DIR)/supernovae_Union2.o $(OUTPUT_DIR)/supernovae_SNLS.o
 
-DATAMODULES = $(PLANCKLIKEFILES) $(OUTPUT_DIR)/power_spec.o $(OUTPUT_DIR)/wigglez.o $(OUTPUT_DIR)/mpk.o \
+DATAMODULES = $(PLANCKLIKEFILES) $(OUTPUT_DIR)/wigglez.o $(OUTPUT_DIR)/mpk.o \
 	$(OUTPUT_DIR)/bao.o $(SUPERNOVAE) $(OUTPUT_DIR)/supernovae.o $(OUTPUT_DIR)/HST.o $(OUTPUT_DIR)/cmbdata.o
 
 
-COSMOFILES = $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/Planck_like.o $(OUTPUT_DIR)/bbn.o $(OUTPUT_DIR)/Calculator_Cosmology.o \
+COSMOFILES = $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Planck_like.o $(OUTPUT_DIR)/bbn.o $(OUTPUT_DIR)/Calculator_Cosmology.o \
 	$(CALCFILES) $(OUTPUT_DIR)/CalcLike_Cosmology.o $(DATAMODULES) $(PARAMETERIZATION) $(LIKEFILES) \
 	$(OUTPUT_DIR)/CosmologyConfig.o
 
@@ -182,20 +182,20 @@ $(OUTPUT_DIR)/driver.o: $(OUTPUT_DIR)/MCMC.o $(OUTPUT_DIR)/minimize.o $(PARAMETE
 $(OUTPUT_DIR)/minimize.o: $(OUTPUT_DIR)/PowellConstrainedMinimize.o $(OUTPUT_DIR)/calclike.o
 $(OUTPUT_DIR)/ImportanceSampling.o: $(OUTPUT_DIR)/calclike.o $(OUTPUT_DIR)/IO.o
 
-$(OUTPUT_DIR)/Calculator_Cosmology.o: $(OUTPUT_DIR)/cmbtypes.o
+$(OUTPUT_DIR)/Calculator_Cosmology.o: $(OUTPUT_DIR)/CosmoTheory.o
+$(OUTPUT_DIR)/CosmoTheory.o: $(OUTPUT_DIR)/cmbtypes.o
 $(OUTPUT_DIR)/supernovae.o:  $(OUTPUT_DIR)/cmbtypes.o $(SUPERNOVAE)
 $(OUTPUT_DIR)/Calculator_CAMB.o: $(OUTPUT_DIR)/Calculator_Cosmology.o
 $(OUTPUT_DIR)/cmbtypes.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/Planck_like.o: $(OUTPUT_DIR)/cmbtypes.o
 $(OUTPUT_DIR)/cmbdata.o: $(OUTPUT_DIR)/Planck_like.o
 $(OUTPUT_DIR)/bbn.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/Interpolation.o
-$(OUTPUT_DIR)/powerspec.o: $(OUTPUT_DIR)/cmbtypes.o
-$(OUTPUT_DIR)/wigglez.o: $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/power_spec.o
-$(OUTPUT_DIR)/mpk.o: $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/power_spec.o
+$(OUTPUT_DIR)/wigglez.o: $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/CosmoTheory.o
+$(OUTPUT_DIR)/mpk.o: $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/CosmoTheory.o
 $(OUTPUT_DIR)/bao.o: $(OUTPUT_DIR)/cmbtypes.o
 $(OUTPUT_DIR)/HST.o: $(OUTPUT_DIR)/cmbtypes.o
 $(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/cmbtypes.o
-$(OUTPUT_DIR)/cliklike.o: $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/cmbtypes.o
+$(OUTPUT_DIR)/cliklike.o: $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/CosmoTheory.o
 
 ifneq ($(highL),)
 $(OUTPUT_DIR)/cliklike_CamSpec.o: $(highL)/libhigh.a

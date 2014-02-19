@@ -1,6 +1,7 @@
     module cliklike
     use clik
     use cmbtypes
+    use CosmoTheory
     use settings
     use Likelihood
     implicit none
@@ -122,7 +123,7 @@
     real(mcp) acl(lmax,num_cls_tot)
     real(dp) clik_cl_and_pars(like%clik_n)
 
-    call ClsFromTheoryData(Theory, acl)
+    call Theory%ClsFromTheoryData(acl)
 
     !set C_l and parameter vector to zero initially
     clik_cl_and_pars = 0.d0
@@ -210,7 +211,7 @@
     real(mcp) acl(lmax,num_cls_tot)
     real(dp) clik_cl_and_pars(like%clik_n)
 
-    call ClsFromTheoryData(Theory, acl)
+    call Theory%ClsFromTheoryData(acl)
 
     !set C_l and parameter vector to zero initially
     clik_cl_and_pars = 0.d0

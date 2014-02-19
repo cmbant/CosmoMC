@@ -1,5 +1,6 @@
     module Calculator_Cosmology
     use cmbtypes
+    use CosmoTheory
     use settings
     use IniObjects
     use GeneralTypes

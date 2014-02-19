@@ -39,6 +39,7 @@
 module cmbdata
 use settings
 use cmbtypes
+use CosmoTheory
 use MatrixUtils
 use CMBLikes
 use constants
@@ -944,7 +945,7 @@ contains
     real(mcp) CMBLnLike
     real(mcp) sznorm, szcl(lmax,num_cls_tot)
 
-    call ClsFromTheoryData(Theory, cl)
+    call Theory%ClsFromTheoryData(cl)
 
      szcl= cl
      if (like%dataset%has_sz_template) then

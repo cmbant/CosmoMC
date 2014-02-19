@@ -2,6 +2,7 @@
     use GeneralTypes
     use CalcLike
     use cmbtypes
+    use CosmoTheory
     use Calculator_Cosmology
     use CosmologyParameterizations
     use CalcLike_Cosmology

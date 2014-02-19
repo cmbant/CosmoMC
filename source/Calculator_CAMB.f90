@@ -1,6 +1,7 @@
     !Use CAMB
     module Calculator_CAMB
     use cmbtypes
+    use CosmoTheory
     use CAMB, only : CAMB_GetResults, CAMB_GetAge, CAMBParams, CAMB_SetDefParams, &
     AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, wa_ppf,&
     CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Nonlinear_lens, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
@@ -375,7 +376,7 @@
     
     Theory%num_k = M%num_q_trans
     nz = num_power_redshifts
-    call InitPK(Theory,Theory%num_k,nz)    
+    call Theory%InitPK(Theory%num_k,nz)    
     Theory%log_kh = log(M%TransferData(Transfer_kh,:,1))
     Theory%redshifts = power_redshifts
     

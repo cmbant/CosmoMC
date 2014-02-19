@@ -2,6 +2,7 @@
     use CalcLike
     use DataLikelihoodList
     use cmbtypes
+    use CosmoTheory
     use Calculator_Cosmology
     use ParamPointSet
     implicit none
