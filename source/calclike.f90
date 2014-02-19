@@ -206,7 +206,11 @@
     else
         this%changeMask(1:num_params) = Params%lastParamArray(1:num_params)/=Params%P(1:num_params)
     end if
-    call this%Params%Theory%AssignNew(this%Params%Theory)
+    if (.not. associated(this%Params%Theory)) then
+        this%Params%Theory=>this%Config%NewTheory()
+    else
+        call this%Params%Theory%AssignNew(this%Params%Theory)
+    end if
     if (this%CalculateRequiredTheoryChanges()) then
         call this%AddLike(LogLike, this%GetLogLikeWithTheorySet())
         Params%lastParamArray(1:num_params) = Params%P(1:num_params)

@@ -1,5 +1,5 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
+Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2010
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "CosmoMC", "CosmoMC.vfproj", "{207BF71A-E457-49F3-BEC8-B2F9E85F74BA}"
 	ProjectSection(ProjectDependencies) = postProject

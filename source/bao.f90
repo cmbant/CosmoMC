@@ -76,7 +76,7 @@
     use MatrixUtils
     use settings
     class(BAOLikelihood) like
-    type(TSettingIni) :: Ini
+    class(TSettingIni) :: Ini
     character(LEN=Ini_max_string_len) :: bao_measurements_file, bao_invcov_file
     integer i,iopb, unit
 

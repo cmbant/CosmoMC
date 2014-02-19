@@ -6,6 +6,7 @@
 
 
     module MatrixUtils
+    use AmlUtils
     implicit none
 
     logical, parameter :: Matrix_runmsgs = .false.
