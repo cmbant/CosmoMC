@@ -10,7 +10,7 @@
 
     integer, parameter :: dp = kind(1.d0)
 
-    type, extends(CosmologyLikelihood) :: ClikLikelihood
+    type, extends(TCosmologyLikelihood) :: ClikLikelihood
         type(clik_object) :: clikid
         integer(kind=4),dimension(6) :: clik_has_cl, clik_lmax
         integer :: clik_n,clik_ncl,clik_nnuis
