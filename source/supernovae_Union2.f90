@@ -61,17 +61,23 @@
     use cmbtypes
     use MatrixUtils
     use likelihood
+    use CosmoTheory
+    use Calculator_Cosmology
+    use Likelihood_Cosmology
     implicit none
+
+    private
 
     integer, parameter :: SN_num = 580
 
-    type, extends(CosmologyLikelihood) :: Union2Likelihood
+    type, extends(TCosmoCalcLikelihood) :: Union2Likelihood
         double precision :: SN_z(SN_num), SN_moduli(SN_num), SN_modulierr(SN_num), SN_plow(SN_num)
         double precision :: SN_Ninv(SN_num,SN_Num)
     contains
-    procedure :: LogLikeTheory => SN_LnLike
+    procedure :: logLikeTheory => SN_LnLike
     end type Union2Likelihood
 
+    public Union2Likelihood,Union2Likelihood_Add
     contains
 
     subroutine Union2Likelihood_Add(LikeList, Ini)
@@ -121,7 +127,6 @@
     end subroutine Union2Likelihood_Add
 
     function SN_LnLike(like, CMB)
-    use camb
     !Assume this is called just after CAMB with the correct model  use camb
     Class(CMBParams) CMB
     Class(Union2Likelihood) :: like
@@ -131,9 +136,10 @@
     real(mcp) diffs(SN_num), chisq
 
     !! This is actually seems to be faster without OMP
+
     do i=1, SN_num
         z= Like%SN_z(i)
-        diffs(i) = 5*log10((1+z)**2*AngularDiameterDistance(z))+25 -Like%sn_moduli(i)
+        diffs(i) = 5*log10((1+z)**2*like%Calculator%AngularDiameterDistance(z))+25 -Like%sn_moduli(i)
     end do
 
     chisq = dot_product(diffs,matmul(Like%sn_ninv,diffs))

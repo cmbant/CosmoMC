@@ -16,14 +16,14 @@
     use cmbtypes
     use CosmoTheory
     use Calculator_Cosmology
-    use likelihood
+    use Likelihood_Cosmology
     use IniObjects
     implicit none
 
     private
 
-    type, extends(CosmologyLikelihood) :: BAOLikelihood
-        class(TCosmologyCalculator), pointer :: Calculator
+    type, extends(TCosmoCalcLikelihood) :: BAOLikelihood
+ !    type, extends(TCosmoCalcLikelihood) :: BAOLikelihood
         integer :: num_bao ! total number of points used
         integer :: type_bao
         !what type of bao data is used
@@ -180,12 +180,6 @@
     real(mcp) BAO_LnLike
     real(mcp), allocatable :: BAO_theory(:)
 
-    select type (Calc=>Theory%Config%Calculator)
-    class is(TCosmologyCalculator)
-        like%Calculator=>Calc
-        class default 
-        call MpiStop('BAO needs TCosmologyCalculator')
-    end select
     if (BAO_fixed_rs>0) then
         !this is just for use for e.g. BAO 'only' constraints
         rsdrag_theory =  BAO_fixed_rs

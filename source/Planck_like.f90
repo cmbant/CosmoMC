@@ -10,6 +10,7 @@
     use IniObjects
     use MatrixUtils
     implicit none
+    private
 
     integer :: cl_E = 3, cl_B=4 ! stop compile time errors with num_cls=3
     logical, parameter :: bin_test = .false.
@@ -67,6 +68,9 @@
         Type(TSqMatrix) ,dimension(:), allocatable :: sqrt_fiducial, NoiseM, OffsetM
         Type(TSqMatrix) ,dimension(:,:), allocatable :: ChatM
         Type(TLowlLike) :: LowL
+    contains
+     procedure :: CMBLike => CMBLikes_CMBLike
+     procedure :: ReadData => CMBLikes_ReadData
     end Type TCMBLikes
 
     character(LEN=3), parameter :: field_names = 'TEB'
@@ -75,7 +79,7 @@
     integer, parameter :: like_approx_fullsky_exact=3 !ignore all correlations, use exact full sky likelihood function
     integer, parameter :: like_approx_gaussian=4 !includes theory dependent determinant
 
-
+    public TCMBLikes
     contains
 
 
@@ -464,7 +468,7 @@
         call MpiStop('Error opening dataset file '//trim(aname))
     end if
 
-    call CMBLikes_ReadData(D, Ini, ExtractFilePath(aname))
+    call D%ReadData(Ini, ExtractFilePath(aname))
 
     call Ini%Close()
 
@@ -491,7 +495,7 @@
     end subroutine CMBLike_ReadModes
 
     subroutine CMBLikes_ReadData(D, Ini,dataset_dir)
-    Type(TCMBLikes) :: D
+    class(TCMBLikes) :: D
     class(TSettingIni) :: Ini
     real(mcp), dimension(:,:), allocatable, target :: Cov, fullcov
     character(LEN=*), intent(in) :: dataset_dir
@@ -1030,7 +1034,7 @@
     end function CMBLikes_LensRecon_Like
 
     function CMBLikes_CMBLike(D, cl_in) result (chisq)
-    Type(TCMBLikes) :: D
+    class(TCMBLikes) :: D
     real(mcp), intent(in) :: cl_in(lmax,num_cls_tot)
     real(mcp)  :: cl(lmax,num_cls)
 

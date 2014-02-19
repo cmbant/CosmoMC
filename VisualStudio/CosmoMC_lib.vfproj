@@ -53,6 +53,7 @@
 		<File RelativePath="..\source\CosmologyConfig.f90"/>
 		<File RelativePath="..\source\CosmologyParameterizations.f90"/>
 		<File RelativePath="..\source\CosmoTheory.f90"/>
+		<File RelativePath="..\source\Likelihood_Cosmology.f90"/>
 		<File RelativePath="..\source\mpk.f90"/>
 		<File RelativePath="..\source\wigglez.f90"/></Filter>
 		<Filter Name="Likelihood">

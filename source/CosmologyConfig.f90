@@ -8,6 +8,7 @@
     use CalcLike_Cosmology
     use SampleCollector
     use GeneralSetup
+    use Likelihood_Cosmology
     implicit none
     private
 
@@ -110,8 +111,23 @@
 
     subroutine TCosmologyConfig_InitForLikelihoods(this)
     class(TCosmologyConfig) :: this
+    class(DataLikelihood), pointer :: DataLike
+    integer i
 
     if(use_LSS) call Initialize_PKSettings()
+
+    select type (Calc => this%Calculator)
+    class is (TCosmologyCalculator)
+        do i=1,DataLikelihoods%Count
+            DataLike=>DataLikelihoods%Item(i)
+            select type (DataLike)
+            class is (TCosmoCalcLikelihood)
+                DataLike%Calculator => Calc
+            end select
+        end do
+        class default 
+        call MpiStop('TCosmologyConfig needs TCosmologyCalculator')
+    end select
 
     end subroutine TCosmologyConfig_InitForLikelihoods
 

@@ -42,7 +42,6 @@ use cmbtypes
 use CosmoTheory
 use MatrixUtils
 use CMBLikes
-use constants
 use likelihood
 implicit none
 
@@ -377,7 +376,7 @@ contains
             .or. Ini%Read_Logical('all_l_exact',.false.)
    if (aset%CMBLike) then
       allocate(aset%CMBLikes)
-      call CMBLikes_ReadData(aset%CMBLikes, Ini, ExtractFilePath(aname))
+      call aset%CMBLikes%ReadData(Ini, ExtractFilePath(aname))
 
    else if (aset%all_l_exact) then
        aset%has_pol = Ini%Read_Logical('has_pol',.false.)
@@ -846,7 +845,7 @@ contains
 
    if (aset%CMBLike) then
 
-     chisq =  CMBLikes_CMBLike(aset%CMBLikes, clall)
+     chisq =  aset%CMBLikes%CMBLike(clall)
 
    else if (aset%all_l_exact) then
 

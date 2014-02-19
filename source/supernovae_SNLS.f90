@@ -112,10 +112,10 @@
 
     USE cmbtypes
     USE settings, ONLY: logZero
-    USE Precision, ONLY: sp, dl !In CAMB directory
-    USE constants, ONLY: const_twopi
-    use likelihood
+    use Calculator_Cosmology
+    use Likelihood_Cosmology
     IMPLICIT NONE
+    private
 
     !Modified by AL to have option of internal alpha, beta marginalization
     logical :: SNLS_marginalize = .false.
@@ -126,7 +126,7 @@
     real(mcp), parameter :: SNLS_beta_center = 3.262
     integer :: SNLS_int_points = 1
 
-    type, extends(CosmologyLikelihood) :: SNLSLikelihood
+    type, extends(TCosmoCalcLikelihood) :: SNLSLikelihood
     contains
     procedure :: LogLike => snls_LnLike
     procedure :: ReadIni => read_snls_dataset
@@ -136,40 +136,40 @@
     logical, parameter :: allow_inv_cache = .false. !AL inverse cache does not work.. have not checked why.
 
     !Constants
-    REAL(dl), PARAMETER, PRIVATE :: inv_twoPI = 1.0_dl / const_twopi
+    REAL(mcp), PARAMETER, PRIVATE :: inv_twoPI = 1.0_mcp / twopi
     CHARACTER, PARAMETER, PRIVATE :: uplo = 'U' !For LAPACK
     INTEGER, PARAMETER, PRIVATE :: max_idisp_datasets = 10
     INTEGER, PARAMETER, PRIVATE :: snnamelen = 12
-    REAL(dl), PARAMETER, PRIVATE :: h0cfac = 5*LOG10( 100.0/299792.458 )
-    REAL(dl), PARAMETER, PRIVATE :: alphatol = 1E-10_dl, betatol = 1E-10_dl
+    REAL(mcp), PARAMETER, PRIVATE :: h0cfac = 5*LOG10( 100.0/299792.458 )
+    REAL(mcp), PARAMETER, PRIVATE :: alphatol = 1E-10_mcp, betatol = 1E-10_mcp
 
     !Variables we will try to get from the ini file
     CHARACTER(LEN=30), PRIVATE :: name !Name of data set
-    REAL(dl), PRIVATE :: pecz !Peculiar velocity error in z
-    REAL(dl), DIMENSION( max_idisp_datasets ) :: intrinsicdisp !In magnitudes
+    REAL(mcp), PRIVATE :: pecz !Peculiar velocity error in z
+    REAL(mcp), DIMENSION( max_idisp_datasets ) :: intrinsicdisp !In magnitudes
 
     !Variables having to do with optional two-scripmt fit based
     ! on thirdvar cut
     LOGICAL, PRIVATE :: twoscriptmfit !Carry out two scriptm fit
     LOGICAL, PRIVATE :: has_thirdvar  !Data has third variable
-    REAL(dl), PRIVATE :: scriptmcut !Cut in thirdvar between two scriptms
+    REAL(mcp), PRIVATE :: scriptmcut !Cut in thirdvar between two scriptms
 
     !Supernova data type
     TYPE, PRIVATE :: supernova
         CHARACTER(LEN=snnamelen) :: name  !The name of the SN
-        REAL(dl) :: zhel, zcmb    !The heliocentric and CMB frame redshifts
-        REAL(dl) :: z_var         !The variance of the redshift
-        REAL(dl) :: mag           !The K-corrected peak magnitude
-        REAL(dl) :: mag_var       !The variance of mag
-        REAL(dl) :: stretch       !The light-curve fit stretch parameter
-        REAL(dl) :: stretch_var   !The variance in the stretch
-        REAL(dl) :: colour        !The colour of the SN
-        REAL(dl) :: colour_var    !The variance of colour
-        REAL(dl) :: thirdvar      !Third variable for scripm split
-        REAL(dl) :: thirdvar_var  !Variance in thirdvar
-        REAL(dl) :: cov_mag_stretch !Covariance between mag and stretch
-        REAL(dl) :: cov_mag_colour  !Covariance between mag and colour
-        REAL(dl) :: cov_stretch_colour !Covariance between stretch and colour
+        REAL(mcp) :: zhel, zcmb    !The heliocentric and CMB frame redshifts
+        REAL(mcp) :: z_var         !The variance of the redshift
+        REAL(mcp) :: mag           !The K-corrected peak magnitude
+        REAL(mcp) :: mag_var       !The variance of mag
+        REAL(mcp) :: stretch       !The light-curve fit stretch parameter
+        REAL(mcp) :: stretch_var   !The variance in the stretch
+        REAL(mcp) :: colour        !The colour of the SN
+        REAL(mcp) :: colour_var    !The variance of colour
+        REAL(mcp) :: thirdvar      !Third variable for scripm split
+        REAL(mcp) :: thirdvar_var  !Variance in thirdvar
+        REAL(mcp) :: cov_mag_stretch !Covariance between mag and stretch
+        REAL(mcp) :: cov_mag_colour  !Covariance between mag and colour
+        REAL(mcp) :: cov_stretch_colour !Covariance between stretch and colour
         LOGICAL :: has_absdist    !This SN has an absolute distance
         INTEGER  :: dataset       !Subset identifier if subset dependent intrinsic disp is used
     END TYPE supernova
@@ -177,9 +177,9 @@
     INTEGER, PUBLIC :: nsn  !Number of supernovae
     TYPE( supernova ), ALLOCATABLE, PRIVATE :: sndata(:)  !Supernova data
     !Stores the parts of the error that can be pre-calculated
-    REAL(dl), ALLOCATABLE, PRIVATE :: pre_vars(:)
+    REAL(mcp), ALLOCATABLE, PRIVATE :: pre_vars(:)
     !Arrays which have 1 for SN in set 1 (A1) or 2 (A2).  For twoscriptm fit
-    REAL(dl), ALLOCATABLE, PRIVATE :: A1(:), A2(:)
+    REAL(mcp), ALLOCATABLE, PRIVATE :: A1(:), A2(:)
 
     !Covariance matrix stuff
     ! If we have no covariance matrix at all, diag_errors is .TRUE.
@@ -193,33 +193,33 @@
     LOGICAL, PRIVATE :: has_mag_colour_covmat =     .FALSE.
     LOGICAL, PRIVATE :: has_stretch_colour_covmat = .FALSE.
     LOGICAL, PRIVATE :: alphabeta_covmat =          .FALSE.
-    REAL(dl), ALLOCATABLE, PRIVATE :: mag_covmat(:,:), stretch_covmat(:,:)
-    REAL(dl), ALLOCATABLE, PRIVATE :: colour_covmat(:,:), mag_stretch_covmat(:,:)
-    REAL(dl), ALLOCATABLE, PRIVATE :: mag_colour_covmat(:,:)
-    REAL(dl), ALLOCATABLE, PRIVATE :: stretch_colour_covmat(:,:)
+    REAL(mcp), ALLOCATABLE, PRIVATE :: mag_covmat(:,:), stretch_covmat(:,:)
+    REAL(mcp), ALLOCATABLE, PRIVATE :: colour_covmat(:,:), mag_stretch_covmat(:,:)
+    REAL(mcp), ALLOCATABLE, PRIVATE :: mag_colour_covmat(:,:)
+    REAL(mcp), ALLOCATABLE, PRIVATE :: stretch_colour_covmat(:,:)
 
     !Structure for holding absolute distance information for SN
     LOGICAL, PRIVATE :: has_absdist =     .FALSE.
     INTEGER, PRIVATE :: nabsdist =         0
     TYPE, PRIVATE :: supernova_absdist
         CHARACTER(LEN=snnamelen) :: name  !The name of the SN
-        REAL(dl) :: dl             !Distance in Mpc
+        REAL(mcp) :: dl             !Distance in Mpc
         INTEGER :: index           !Index into sndata
     END TYPE supernova_absdist
     TYPE( supernova_absdist ), ALLOCATABLE, PRIVATE :: snabsdist(:)
 
     !Other convenience variables
-    REAL(dl), ALLOCATABLE, PRIVATE :: lumdists(:)
-    REAL(dl), PRIVATE :: alpha_prev, beta_prev
+    REAL(mcp), ALLOCATABLE, PRIVATE :: lumdists(:)
+    REAL(mcp), PRIVATE :: alpha_prev, beta_prev
 
-    LOGICAL, PRIVATE :: first_inversion
-    LOGICAL, PUBLIC :: snls_read = .FALSE.
-    LOGICAL, PUBLIC :: snls_prepped = .FALSE.
+    LOGICAL :: first_inversion
+    LOGICAL  :: snls_read = .FALSE.
+    LOGICAL :: snls_prepped = .FALSE.
 
     PRIVATE :: count_lines, read_snls_lc_data, get_free_lun, read_cov_matrix
     PRIVATE :: read_snls_absdist_data, match_snls_absdist_indices
-    PUBLIC :: snls_prep, snls_LnLike, snls_cleanup, SNLSLikelihood_Add
 
+    PUBLIC :: SNLSLikelihood_Add, SNLSLikelihood
     CONTAINS
 
 
@@ -333,9 +333,9 @@
     SUBROUTINE read_cov_matrix(filename, mat, n)
     CHARACTER(LEN=*), INTENT(IN) :: filename
     INTEGER, INTENT(IN) :: n
-    REAL(dl), INTENT(OUT) :: mat(n,n)
+    REAL(mcp), INTENT(OUT) :: mat(n,n)
     INTEGER :: j,k, file_unit, nfile
-    REAL(dl) :: tmp
+    REAL(mcp) :: tmp
 
     IF (Feedback > 2) WRITE(*,*) 'reading: '//trim(filename)
     CALL get_free_lun( file_unit )
@@ -628,7 +628,7 @@
     CHARACTER(LEN=60) :: covfile
     CHARACTER(LEN=100) :: data_file, absdist_file
     INTEGER :: nlines, file_unit, i
-    REAL(dl) :: idisp_zero !Value for unspecified dataset numbers
+    REAL(mcp) :: idisp_zero !Value for unspecified dataset numbers
     LOGICAL, DIMENSION( max_idisp_datasets ) :: idispdataset
 
     IF (snls_read) STOP 'Error -- SNLS data already read'
@@ -644,7 +644,7 @@
 
     !Handle intrinsic dispersion
     !The individual values are intrinsicdisp0 -- intrinsicdisp9
-    idisp_zero = Ini%Read_Double('intrinsicdisp', 0.13_dl )
+    idisp_zero = Ini%Read_Double('intrinsicdisp', 0.13_mcp )
     idispdataset = .FALSE.
     DO i=1, max_idisp_datasets
         intrinsicdisp(i) = Ini%Read_Double(numcat('intrinsicdisp',i-1),&
@@ -797,13 +797,13 @@
     CHARACTER(LEN=*), PARAMETER :: cholsolfmt = &
     '("Error forming inv matrix product for ",F6.3,2X,F6.3)'
 
-    REAL(dl), INTENT(IN) :: alpha, beta
+    REAL(mcp), INTENT(IN) :: alpha, beta
     INTEGER, INTENT(INOUT) :: status
-    REAL(dl) :: invcovmat(:,:)
+    REAL(mcp) :: invcovmat(:,:)
 
 
     INTEGER :: I
-    REAL(dl) :: alphasq, betasq, alphabeta
+    REAL(mcp) :: alphasq, betasq, alphabeta
 
     !Quick exit check
     !Note that first_inversion can't be true if the first one
@@ -832,7 +832,7 @@
     IF (has_mag_covmat) THEN
         invcovmat = mag_covmat
     ELSE
-        invcovmat = 0.0_dl
+        invcovmat = 0.0_mcp
     END IF
     IF (has_stretch_covmat) invcovmat = invcovmat + &
     alphasq * stretch_covmat
@@ -898,9 +898,9 @@
     CHARACTER(LEN=*), PARAMETER :: sndatfmt2 = '(1X,A10,11(1X,F8.4))'
     CHARACTER(LEN=*), PARAMETER :: datafile = 'data/snls_data.dat'
     ! dz multiplicative factor
-    REAL(dl), PARAMETER :: zfacsq = 25.0/(LOG(10.0))**2
+    REAL(mcp), PARAMETER :: zfacsq = 25.0/(LOG(10.0))**2
 
-    REAL(dl) ::  intrinsicsq(max_idisp_datasets)
+    REAL(mcp) ::  intrinsicsq(max_idisp_datasets)
     INTEGER ::  i
     LOGICAL :: has_A1, has_A2
 
@@ -947,12 +947,12 @@
         !Assign A1 and A2 as needed
         DO i=1, nsn
             IF (sndata(i)%thirdvar .LE. scriptmcut ) THEN
-                A1(i) = 1.0_dl
-                A2(i) = 0.0_dl
+                A1(i) = 1.0_mcp
+                A2(i) = 0.0_mcp
                 has_A1 = .TRUE.
             ELSE
-                A1(i) = 0.0_dl
-                A2(i) = 1.0_dl
+                A1(i) = 0.0_mcp
+                A2(i) = 1.0_mcp
                 has_A2 = .TRUE.
             END IF
         END DO
@@ -960,7 +960,7 @@
         IF (.NOT. has_A1) THEN
             !Swap
             A1 = A2
-            A2(:) = 0.0_dl
+            A2(:) = 0.0_mcp
             twoscriptmfit = .FALSE.
             has_A1 = .TRUE.
             has_A2 = .FALSE.
@@ -1050,18 +1050,18 @@
     '("Error inverting cov matrix for ",F6.3,2X,F6.3)'
 
     INTEGER :: i, status
-    real(dl) :: lumdists(nsn)
-    REAL(dl) :: alpha, beta
+    real(mcp) :: lumdists(nsn)
+    REAL(mcp) :: alpha, beta
     !We form an estimate for scriptm to improve numerical
     ! accuracy in our marginaliztion
-    REAL(dl) :: estimated_scriptm, wtval
-    REAL(dl) :: chisq !Utility variables
-    REAL(dl) :: alphasq, betasq, alphabeta !More utility variables
-    REAL(dl) :: amarg_A, amarg_B, amarg_C
-    REAL(dl) :: amarg_D, amarg_E, amarg_F, tempG !Marginalization params
-    real(dl) :: diffmag(nsn),invvars(nsn)
-    !    real(dl), allocatable :: invcovmat(:,:)
-    real(dl) :: invcovmat(nsn,nsn)
+    REAL(mcp) :: estimated_scriptm, wtval
+    REAL(mcp) :: chisq !Utility variables
+    REAL(mcp) :: alphasq, betasq, alphabeta !More utility variables
+    REAL(mcp) :: amarg_A, amarg_B, amarg_C
+    REAL(mcp) :: amarg_D, amarg_E, amarg_F, tempG !Marginalization params
+    real(mcp) :: diffmag(nsn),invvars(nsn)
+    !    real(mcp), allocatable :: invcovmat(:,:)
+    real(mcp) :: invcovmat(nsn,nsn)
 
     !    IF (.NOT. diag_errors) THEN
     !        ALLOCATE( invcovmat(nsn,nsn) )
@@ -1138,17 +1138,17 @@
             !matrix is correct if we used the full covariance matrix
             ! (which half depends on UPLO)
             !GE = 1 * V^-1 * 1
-            amarg_C = 0.0_dl
-            amarg_D = 0.0_dl
-            amarg_E = 0.0_dl
-            amarg_F = 0.0_dl
+            amarg_C = 0.0_mcp
+            amarg_D = 0.0_mcp
+            amarg_E = 0.0_mcp
+            amarg_F = 0.0_mcp
             IF ( uplo .EQ. 'U' ) THEN
                 DO I=1,nsn
-                    amarg_E = amarg_E + invcovmat(I,I) + 2.0_dl*SUM( invcovmat( 1:I-1, I ) )
+                    amarg_E = amarg_E + invcovmat(I,I) + 2.0_mcp*SUM( invcovmat( 1:I-1, I ) )
                 END DO
             ELSE
                 DO I=1,nsn
-                    amarg_E = amarg_E + invcovmat(I,I) + 2.0_dl*SUM( invcovmat( I+1:nsn, I ) )
+                    amarg_E = amarg_E + invcovmat(I,I) + 2.0_mcp*SUM( invcovmat( I+1:nsn, I ) )
                 END DO
             END IF
         ENDIF
@@ -1191,14 +1191,13 @@
 
 
     FUNCTION snls_LnLike(like, CMB, Theory, DataParams)
-    USE ModelParams, ONLY : AngularDiameterDistance !From CAMB
     Class(SNLSLikelihood) :: like
     Class (CMBParams) CMB
     Class(TTheoryPredictions) Theory
     real(mcp) DataParams(:)
     ! norm_alpha, norm_beta are the positions of alpha/beta in norm
     REAL(mcp) :: snls_LnLike
-    real(dl) grid_best, zhel, zcmb, alpha, beta
+    real(mcp) grid_best, zhel, zcmb, alpha, beta
     integer grid_i, i
 
     snls_LnLike = logZero
@@ -1219,7 +1218,7 @@
     DO i=1,nsn
         zhel = sndata(i)%zhel
         zcmb = sndata(i)%zcmb
-        lumdists(i) = 5.0* LOG10( (1.0+zhel)*(1.0+zcmb) * AngularDiameterDistance(zcmb) )
+        lumdists(i) = 5.0* LOG10( (1.0+zhel)*(1.0+zcmb) * like%Calculator%AngularDiameterDistance(zcmb) )
     ENDDO
 
     !Handle SN with absolute distances

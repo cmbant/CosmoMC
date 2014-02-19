@@ -217,9 +217,6 @@
     contains
 
     subroutine WiggleZLikelihood_Add(LikeList, Ini)
-    use IniObjects
-    use settings
-    use wigglezinfo
     class(LikelihoodList) :: LikeList
     class(TSettingIni) :: ini
     Type(WiggleZLikelihood), pointer :: like
@@ -252,8 +249,6 @@
 
 
     subroutine TWiggleZCommon_ReadIni(like,Ini)
-    use IniObjects
-    use wigglezinfo
     class(TWiggleZCommon) :: like
     class(TSettingIni) :: ini
     character(len=64) region_string
@@ -345,9 +340,7 @@
 
     subroutine WiggleZ_ReadIni(like,Ini)
     ! this will be called once for each redshift bin
-    use wigglezinfo
     use MatrixUtils
-    implicit none
     class(WiggleZLikelihood) like
     class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: kbands_file, measurements_file, windows_file, cov_file
@@ -745,7 +738,6 @@
     !           D_V calculations from CAMB.  New routines below
     
     subroutine compute_scaling_factor(z,CMB,Theory,DV_fid,a_scl)
-    implicit none
     Class(TCosmoTheoryPredictions) Theory
     Class(CMBParams) CMB
     real(mcp), intent(in) :: z, DV_fid
