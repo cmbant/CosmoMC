@@ -132,11 +132,11 @@ OBJFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectLists.o $(OUT
 
 SUPERNOVAE = $(OUTPUT_DIR)/supernovae_Union2.o $(OUTPUT_DIR)/supernovae_SNLS.o
 
-DATAMODULES = $(PLANCKLIKEFILES) $(OUTPUT_DIR)/power_spec.o $(OUTPUT_DIR)/wigglez.o $(OUTPUT_DIR)/mpk.o \
+DATAMODULES = $(PLANCKLIKEFILES) $(OUTPUT_DIR)/wigglez.o $(OUTPUT_DIR)/mpk.o \
 	$(OUTPUT_DIR)/bao.o $(SUPERNOVAE) $(OUTPUT_DIR)/supernovae.o $(OUTPUT_DIR)/HST.o $(OUTPUT_DIR)/cmbdata.o
 
 
-COSMOFILES = $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/Planck_like.o $(OUTPUT_DIR)/bbn.o $(OUTPUT_DIR)/Calculator_Cosmology.o \
+COSMOFILES = $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Planck_like.o $(OUTPUT_DIR)/bbn.o $(OUTPUT_DIR)/Calculator_Cosmology.o \
 	$(CALCFILES) $(OUTPUT_DIR)/CalcLike_Cosmology.o $(DATAMODULES) $(PARAMETERIZATION) $(LIKEFILES) \
 	$(OUTPUT_DIR)/CosmologyConfig.o
 

@@ -12,6 +12,7 @@
 
     module bao
     use cmbtypes
+    use CosmoTheory
     use CAMB, only : AngularDiameterDistance, Hofz, BAO_D_v  !!angular diam distance also in Mpc no h units
     use constants
     use Precision

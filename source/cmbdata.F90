@@ -39,6 +39,7 @@
 module cmbdata
 use settings
 use cmbtypes
+use CosmoTheory
 use MatrixUtils
 use CMBLikes
 use constants

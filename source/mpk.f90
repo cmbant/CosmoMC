@@ -25,8 +25,8 @@
     module mpk
     use settings
     use cmbtypes
+    use CosmoTheory
     use likelihood
-    use powerspec
     use wigglezinfo
     use wigglez, only : WiggleZLikelihood_Add
     implicit none

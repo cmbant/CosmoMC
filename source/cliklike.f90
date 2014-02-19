@@ -1,6 +1,7 @@
     module cliklike
     use clik
     use cmbtypes
+    use CosmoTheory
     use settings
     use Likelihood
     implicit none

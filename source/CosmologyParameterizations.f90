@@ -10,6 +10,7 @@
 
     module CosmologyParameterizations
     use cmbtypes
+    use CosmoTheory
     use Calculator_Cosmology
     implicit none
     private

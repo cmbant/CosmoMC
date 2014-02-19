@@ -26,8 +26,8 @@
     module wigglezinfo
     !David Parkinson 12th March 2012
     use settings
-    use powerspec
     use cmbtypes
+    use CosmoTheory
 
     implicit none
 
