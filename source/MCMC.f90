@@ -105,7 +105,7 @@
 
     subroutine TSamplingAlgorithm_LoadState(this,unit)
     class(TSamplingAlgorithm) :: this
-    integer :: unit
+    integer, intent(in) :: unit
 
     read(unit) this%num_sample, this%MaxLike, this%MaxLikeParams
 
@@ -113,7 +113,7 @@
 
     subroutine TSamplingAlgorithm_SaveState(this,unit)
     class(TSamplingAlgorithm) :: this
-    integer :: unit
+    integer, intent(in) :: unit
 
     write(unit) this%num_sample, this%MaxLike, this%MaxLikeParams
 
@@ -204,7 +204,7 @@
 
     subroutine TChainSampler_LoadState(this,unit)
     class(TChainSampler) :: this
-    integer :: unit
+    integer, intent(in) :: unit
 
     call this%TSamplingAlgorithm%LoadState(unit)
     read(unit) this%num_accept
@@ -215,7 +215,7 @@
 
     subroutine TChainSampler_SaveState(this,unit)
     class(TChainSampler) :: this
-    integer :: unit
+    integer, intent(in) :: unit
 
     call this%TSamplingAlgorithm%SaveState(unit)
     write(unit) this%num_accept

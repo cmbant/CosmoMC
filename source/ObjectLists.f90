@@ -59,7 +59,7 @@
     procedure :: RemoveDuplicates
     procedure :: SaveState => TObjectList_SaveState
     procedure :: LoadState => TObjectList_LoadState
-    !    FINAL :: finalize
+    FINAL :: finalize
     generic :: Add => AddItem, AddArray
     end Type TObjectList
 
@@ -347,13 +347,10 @@
                 class default
                 stop 'TObjectList: Unknown type to save'
             end select
-        class is (object_pointer)
-            select type (P=>Item%P)
-            Type is (character(LEN=*))
-                k=5
-                write(fid) len(P), k
-                write(fid) P
-            end select
+        Type is (character(LEN=*))
+            k=5
+            write(fid) len(Item), k
+            write(fid) Item
             class default
             stop 'TObjectList: not implemented non-array save'
         end select
@@ -395,6 +392,7 @@
             call this%AddArray(ArrL)
         else if (k==5) then
             allocate(character(sz)::St)
+            read(fid) St
             call this%Add(St)
         else
             stop 'TObjectList ReadBinary - unknown object type'
@@ -547,7 +545,7 @@
 
     subroutine TObjectList_SaveState(this,unit)
     class(TObjectList) :: this
-    integer :: unit
+    integer, intent(in) :: unit
     integer i
 
     write (unit) this%Count
@@ -564,7 +562,7 @@
 
     subroutine TObjectList_LoadState(this,unit)
     class(TObjectList) :: this
-    integer :: unit
+    integer, intent(in) :: unit
     integer i, count
 
     read(unit) count
@@ -585,13 +583,13 @@
 
     subroutine TOwnedIntrinsicList_LoadState(this,unit)
     class(TOwnedIntrinsicList) :: this
-    integer :: unit
+    integer, intent(in) :: unit
     call this%ReadBinary(unit)
     end subroutine TOwnedIntrinsicList_LoadState
 
     subroutine TOwnedIntrinsicList_SaveState(this,unit)
     class(TOwnedIntrinsicList) :: this
-    integer :: unit
+    integer, intent(in) :: unit
     call this%SaveBinary(unit)
     end subroutine TOwnedIntrinsicList_SaveState
 
@@ -605,7 +603,7 @@
         allocate(P, source = C)
         call this%TObjectList%AddItem(P)
     else
-        stop 'TOwnedIntrinsicList: must have OwnsObjects = .true.'
+        call this%TObjectList%AddItem(C)
     end if
 
     end subroutine TOwnedIntrinsicList_AddItem
@@ -729,10 +727,10 @@
     character(Len=*), intent(in), optional :: valid_chars_in
     character(LEN=:), allocatable :: item
     integer i,j
-    character(LEN=256) valid_chars
+    character(LEN=:), allocatable :: valid_chars
 
     if (present(valid_chars_in)) then
-        valid_chars = valid_chars_in
+        valid_chars = trim(valid_chars_in)
     else
         valid_chars='abcdefghijklmopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ0123456789_-.'
     endif
@@ -741,7 +739,7 @@
     allocate(item, source=S)
     j=0
     do i=1, len_trim(S)
-        if (verify(S(i:i),trim(valid_chars)) == 0) then
+        if (verify(S(i:i),valid_chars) == 0) then
             j=j+1
             item(j:j) = S(i:i)
         else
@@ -807,12 +805,18 @@
     end function TStringList_Compare
 
     subroutine WriteItems(this, unit)
+    use, intrinsic :: iso_fortran_env, only : output_unit
     Class(TStringList) :: this
-    integer, intent(in) :: unit
-    integer i
+    integer, optional, intent(in) :: unit
+    integer i, aunit
 
+    if (present(unit)) then
+        aunit = unit
+    else
+        aunit = output_unit
+    end if
     do i=1, this%Count
-        write(unit,*) this%Item(i)
+        write(aunit,*) this%Item(i)
     end do
 
     end subroutine WriteItems

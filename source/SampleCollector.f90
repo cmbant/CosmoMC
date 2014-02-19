@@ -145,7 +145,7 @@
 
     subroutine TMpiChainCollector_SaveState(this,unit)
     class(TMpiChainCollector) :: this
-    integer :: unit
+    integer, intent(in) :: unit
 
     write(unit) this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn,  &
     this%flukecheck,  this%Mpi%MPI_Min_Sample_Update, this%DoUpdates
@@ -156,7 +156,7 @@
 
     subroutine TMpiChainCollector_ReadState(this,unit)
     class(TMpiChainCollector) :: this
-    integer :: unit
+    integer, intent(in) :: unit
 
     !Read in checkpoing stuff at restart
     !    if (checkpoint .and. present(checkpoint_start)) then

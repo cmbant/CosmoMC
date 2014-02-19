@@ -307,7 +307,7 @@
 
     subroutine TCovmatProposer_LoadState(this,unit)
     class(TCovmatProposer) :: this
-    integer :: unit
+    integer, intent(in) :: unit
     real(mcp) :: cov(num_params_used,num_params_used)
 
     read(unit) cov
@@ -318,7 +318,7 @@
 
     subroutine TCovmatProposer_SaveState(this,unit)
     class(TCovmatProposer) :: this
-    integer :: unit
+    integer, intent(in) :: unit
     real(mcp) :: cov(num_params_used,num_params_used)
 
     read(unit) cov
