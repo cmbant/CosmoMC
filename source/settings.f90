@@ -1,5 +1,5 @@
     module settings
-    use Random
+    use RandUtils
     use FileUtils
     use StringUtils
     use MpiUtils

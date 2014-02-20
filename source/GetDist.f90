@@ -52,7 +52,11 @@
     use MatrixUtils
     use ParamNames
     use Samples
+    use ArrayUtils
+    use RandUtils
     implicit none
+
+    Type(TParamNames) :: NameMapping
 
     integer, parameter :: gp = KIND(1.d0)
 
@@ -83,7 +87,7 @@
     real(mcp) prior_ranges(2,max_cols)
     real(mcp) mean(max_cols), sddev(max_cols)
     real(mcp), dimension(:,:), allocatable :: corrmatrix
-    character(LEN=Ini_max_string_len) rootname, plot_data_dir, out_dir, &
+    character(LEN=Ini_max_string_len) plot_data_dir, out_dir, &
     rootdirname, in_root
     character(LEN=128) labels(max_cols)
     character(LEN=128) pname(max_cols)
@@ -207,7 +211,6 @@
 
     subroutine MakeSingleSamples(single_thin)
     !Make file of weight-1 samples by choosing samples with probability given by their weight
-    use Random
     integer i, single_thin
     character(LEN=20) :: fmt
 
@@ -480,11 +483,11 @@
     real(mcp), dimension(:,:), allocatable :: PCdata
     character(LEN=100) PClabs(n), div, expo
     logical doexp
-
+    integer unit
 
     write (*,*) 'Doing PCA for ',n,' parameters'
-    call CreateTxtFile(trim(rootdirname) //'.PCA', 40)
-    write (40,*) 'PCA for parameters: '
+    unit = CreateNewTxtFile(trim(rootdirname) //'.PCA')
+    write (unit,*) 'PCA for parameters: '
 
     if (normparam_num /=0) then
         normparam = IndexOf(normparam_num,pars,n)
@@ -511,7 +514,7 @@
         else
             PClabs(i) = trim(labels(pars(i)+2))
         end if
-        write (40,*) pars(i),':',trim(PClabs(i))
+        write (unit,*) pars(i),':',trim(PClabs(i))
         PCmean(i) = sum(coldata(1,0:nrows-1)*PCdata(i,:))/numsamp
         PCdata(i,:) = PCdata(i,:) - PCmean(i)
         sd(i) = sqrt(sum(coldata(1,0:nrows-1)*PCdata(i,:)**2)/numsamp)
@@ -519,30 +522,30 @@
         corrmatrix(i,i) = 1
     end do
 
-    write (40,*) ''
-    write (40,*) 'Correlation matrix for reduced parameters'
+    write (unit,*) ''
+    write (unit,*) 'Correlation matrix for reduced parameters'
     do i = 1, n
         do j = i, n
             corrmatrix(i,j) = sum(coldata(1,0:nrows-1)*PCdata(i,:)*PCdata(j,:))/numsamp
             corrmatrix(j,i) = corrmatrix(i,j)
         end do
-        write (40,'(1I4,'': '','//trim(fmt)) pars(i), corrmatrix(i,:)
+        write (unit,'(1I4,'': '','//trim(fmt)) pars(i), corrmatrix(i,:)
     end do
 
     u = corrmatrix
     call Matrix_Diagonalize(u, evals, n)
 
-    write (40,*) ''
-    write (40,*) 'e-values of correlation matrix'
+    write (unit,*) ''
+    write (unit,*) 'e-values of correlation matrix'
     do i = 1, n
-        write (40,'(''PC'',1I2,'': '','//trim(fmt)) i, evals(i)
+        write (unit,'(''PC'',1I2,'': '','//trim(fmt)) i, evals(i)
     end do
 
-    write (40,*) ''
-    write (40,*) 'e-vectors'
+    write (unit,*) ''
+    write (unit,*) 'e-vectors'
 
     do i = 1, n
-        write (40,'(1I3,'': '','//trim(fmt)) pars(i), u(i,:)
+        write (unit,'(1I3,'': '','//trim(fmt)) pars(i), u(i,:)
     end do
 
 
@@ -564,14 +567,14 @@
         if (doexp) PCdata(:,i) = exp(PCdata(:,i))
     end do
 
-    write (40,*) ''
-    write (40,*) 'Principle components'
+    write (unit,*) ''
+    write (unit,*) 'Principle components'
 
     do i = 1, n
         tmpS = trim(numcat('PC',i))//' (e-value: '//trim(RealToStr(evals(i)))//')'
         !ifc gives recursive IO error if you use a write within a write,
         !even if separate or internal files
-        write (40,*) trim(tmpS)
+        write (unit,*) trim(tmpS)
         do j=1,n
             if (param_map(j:j)=='L' .or. param_map(j:j)=='M' ) then
                 expo = RealToStr(1/sd(j)*u(j,i) )
@@ -580,15 +583,15 @@
                 else
                     div = RealToStr( exp(PCmean(j)))
                 end if
-                write(40,*) '['//trim(RealToStr(u(j,i)))//']   ('//trim(labels(pars(j)+2)) &
+                write(unit,*) '['//trim(RealToStr(u(j,i)))//']   ('//trim(labels(pars(j)+2)) &
                 //'/'//trim(div)//')^{'//trim(expo)//'}'
             else
                 expo = RealToStr(sd(j)/u(j,i))
                 if (doexp) then
-                    write(40,*) '['//trim(RealToStr(u(j,i)))//']    exp(('// &
+                    write(unit,*) '['//trim(RealToStr(u(j,i)))//']    exp(('// &
                     trim(labels(pars(j)+2))//'-'//trim(RealToStr(PCmean(j)))// ')/'// trim(expo)//')'
                 else
-                    write(40,*) '['//trim(RealToStr(u(j,i)))//']   ('// &
+                    write(unit,*) '['//trim(RealToStr(u(j,i)))//']   ('// &
                     trim(labels(pars(j)+2))//'-'//trim(RealToStr(PCmean(j)))// ')/'// trim(expo)
                 end if
             end if
@@ -596,42 +599,41 @@
         end do
         newmean(i) = sum(coldata(1,0:nrows-1)*PCdata(i,:))/numsamp
         newsd(i) = sqrt(sum(coldata(1,0:nrows-1)*(PCdata(i,:)-newmean(i))**2)/numsamp)
-        write (40,*) '          = '//trim(RealToStr(newmean(i)))// ' +- '//trim(RealToStr(newsd(i)))
-        write (40,'('' ND limits: '',4f9.3)') minval(PCdata(i,0:ND_cont1)),maxval(PCdata(i,0:ND_cont1)), &
+        write (unit,*) '          = '//trim(RealToStr(newmean(i)))// ' +- '//trim(RealToStr(newsd(i)))
+        write (unit,'('' ND limits: '',4f9.3)') minval(PCdata(i,0:ND_cont1)),maxval(PCdata(i,0:ND_cont1)), &
         minval(PCdata(i,0:ND_cont2)),maxval(PCdata(i,0:ND_cont2))
-        write (40,*) ''
+        write (unit,*) ''
 
     end do
 
     !Find out how correlated these components are with other parameters
-    write (40,*) 'Correlations of principle components'
+    write (unit,*) 'Correlations of principle components'
 
-    write (40,trim(numcat('(''    '',',n))//'I8)') (I, I=1, n)
+    write (unit,trim(numcat('(''    '',',n))//'I8)') (I, I=1, n)
 
     do i=1, n
         PCdata(i,:) = (PCdata(i,:) - newmean(i)) /newsd(i)
     end do
 
     do j=1,n
-        write (40,'(''PC'',1I2)', advance = 'no') j
+        write (unit,'(''PC'',1I2)', advance = 'no') j
         do i=1,n
-            write (40,'(1f8.3)', advance ='no') sum(coldata(1,0:nrows-1)*PCdata(i,:)* &
+            write (unit,'(1f8.3)', advance ='no') sum(coldata(1,0:nrows-1)*PCdata(i,:)* &
             PCdata(j,:))/numsamp
         end do
-        write (40,*) ''
+        write (unit,*) ''
     end do
 
     do j=1, num_vars
-        write (40,'(1I4)', advance = 'no') colix(j)-2
+        write (unit,'(1I4)', advance = 'no') colix(j)-2
         do i=1,n
-            write (40,'(1f8.3)', advance ='no') sum(coldata(1,0:nrows-1)*PCdata(i,:)* &
+            write (unit,'(1f8.3)', advance ='no') sum(coldata(1,0:nrows-1)*PCdata(i,:)* &
             (coldata(colix(j),0:nrows-1)-mean(j))/sddev(j))/numsamp
         end do
-        write (40,*) '  ('//trim(labels(colix(j)))//')'
+        write (unit,*) '  ('//trim(labels(colix(j)))//')'
     end do
 
-
-    close(40)
+    close(unit)
     deallocate(PCdata)
 
     end subroutine PCA
@@ -666,10 +668,10 @@
     character(LEN=10) :: typestr
     integer autocorr_thin
     logical :: invertible
-
+    integer unit
     ! Get statistics for individual chains, and do split tests on the samples
 
-    call CreateTxtFile(trim(rootdirname) //'.converge', 40)
+    unit = CreateNewTxtFile(trim(rootdirname) //'.converge')
 
     if (num_chains_used > 1) write (*,*) 'Number of chains used =  ',num_chains_used
 
@@ -705,10 +707,10 @@
 
 
     if (num_chains_used > 1) then
-        write (40,*) ''
-        write(40,*)  'Variance test convergence stats using remaining chains'
-        write (40,*) 'param var(chain mean)/mean(chain var)'
-        write (40,*) ''
+        write (unit,*) ''
+        write(unit,*)  'Variance test convergence stats using remaining chains'
+        write (unit,*) 'param var(chain mean)/mean(chain var)'
+        write (unit,*) ''
 
         do j = 3, ncols
             between_chain_var(j) = 0
@@ -732,7 +734,7 @@
                     end do
                     between_chain_var(j) = between_chain_var(j)/(num_chains_used-1) !(usedsamps/maxsamp -1)
                     in_chain_var(j) = in_chain_var(j)/usedsamps
-                    write (40,'(1I3,f13.5,"  '//trim(labels(j))//'")') j-2, &
+                    write (unit,'(1I3,f13.5,"  '//trim(labels(j))//'")') j-2, &
                     between_chain_var(j) /in_chain_var(j)
                 end if
             end if
@@ -776,11 +778,11 @@
 
         invertible = GelmanRubinEvalues(cov, meanscov, evals, num)
         if (invertible) then
-            write (40,*) ''
-            write (40,'(a)') 'var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters'
+            write (unit,*) ''
+            write (unit,'(a)') 'var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters'
             R = 0
             do jj=1,num
-                write (40,'(1I3,f13.5)') jj,evals(jj)
+                write (unit,'(1I3,f13.5)') jj,evals(jj)
                 R = max(R,evals(jj))
             end do
             !R is essentially the Gelman and Rubin statistic
@@ -795,10 +797,10 @@
     !Do tests for robustness under using splits of the samples
     !Return the rms ([change in upper/lower quantile]/[standard deviation])
     !when data split into 2, 3,.. sets
-    write (40,*) ''
-    write (40,*)  'Split tests: rms_n([delta(upper/lower quantile)]/sd) n={2,3,4}:'
-    write(40,*) 'i.e. mean sample splitting change in the quantiles in units of the st. dev.'
-    write (40,*) ''
+    write (unit,*) ''
+    write (unit,*)  'Split tests: rms_n([delta(upper/lower quantile)]/sd) n={2,3,4}:'
+    write(unit,*) 'i.e. mean sample splitting change in the quantiles in units of the st. dev.'
+    write (unit,*) ''
     do j = 3, ncols
         if (isused(j)) then
             do endb =0,1
@@ -820,7 +822,7 @@
                 else
                     typestr = 'lower'
                 end if
-                write (40,'(1I3,'//trim(IntToStr(max_split_tests-1)) // 'f9.4,"  ' &
+                write (unit,'(1I3,'//trim(IntToStr(max_split_tests-1)) // 'f9.4,"  ' &
                 //trim(labels(j))//' '//trim(typestr)//'")') j-2, split_tests(2:max_split_tests)
 
             end do !endb
@@ -947,15 +949,15 @@
 203         if (thin_rows < 2) thin_fac(ix) = 0
         end do !chains
 
-        write (40,*) ''
-        write (40,*) 'Raftery&Lewis statistics'
-        write (40,*) ''
-        write (40,*) 'chain  markov_thin  indep_thin    nburn'
+        write (unit,*) ''
+        write (unit,*) 'Raftery&Lewis statistics'
+        write (unit,*) ''
+        write (unit,*) 'chain  markov_thin  indep_thin    nburn'
         do ix = 1, num_chains_used
             if (thin_fac(ix)==0) then
-                write (40,'(1I4,"      Not enough samples")') chain_numbers(ix)
+                write (unit,'(1I4,"      Not enough samples")') chain_numbers(ix)
             else
-                write (40,'(1I4,3I12)') chain_numbers(ix), markov_thin(ix), &
+                write (unit,'(1I4,3I12)') chain_numbers(ix), markov_thin(ix), &
                 thin_fac(ix), nburn(ix)
             end if
         end do
@@ -974,9 +976,9 @@
         end if
 
         !!Get correlation lengths
-        write (40,*) ''
-        write (40,*) 'Parameter auto-correlations as function of step separation'
-        write (40,*) ''
+        write (unit,*) ''
+        write (unit,*) 'Parameter auto-correlations as function of step separation'
+        write (unit,*) ''
         if (corr_length_thin/=0) then
             autocorr_thin = corr_length_thin
         else
@@ -1007,11 +1009,11 @@
         end do
 
         if (maxoff>0) then
-            write (40,'("   ",'//trim(IntToStr(maxoff)) // 'I8)')  &
+            write (unit,'("   ",'//trim(IntToStr(maxoff)) // 'I8)')  &
             (/(I, I=autocorr_thin, maxoff*autocorr_thin,autocorr_thin)/)
             do j = 3, ncols
                 if (isused(j)) then
-                    write (40,'(1I3,'//trim(IntToStr(maxoff)) // 'f8.3,"  ' &
+                    write (unit,'(1I3,'//trim(IntToStr(maxoff)) // 'f8.3,"  ' &
                     //trim(labels(j))//'")') j-2, corrs(j,:)
                 end if
             end do
@@ -1020,7 +1022,7 @@
         deallocate(Corrs)
     end if
 
-    close(40)
+    close(unit)
 
     end subroutine DoConvergeTests
 
@@ -1241,6 +1243,7 @@
     integer winw, nbin2D
     logical has_prior
     real(mcp) smooth_scale
+    integer unit
 
     has_prior=has_limits(colix(j)) .or. has_limits(colix(j2))
 
@@ -1379,37 +1382,37 @@
 
     plotfile = dat_file_2D(rootname, j, j2)
     filename = trim(plot_data_dir)//trim(plotfile)
-    call CreateTxtFile(filename,49)
+    unit = CreateNewTxtFile(filename)
     do ix1 = ixmin, ixmax
-        write (49,trim(numcat('(',iymax-iymin+1))//'E16.7)') bins2D(ix1,iymin:iymax)
+        write (unit,trim(numcat('(',iymax-iymin+1))//'E16.7)') bins2D(ix1,iymin:iymax)
     end do
-    close(49)
+    close(unit)
 
-    call CreateTxtFile(trim(filename)//'_y',49)
+    unit = CreateNewTxtFile(trim(filename)//'_y')
     do i = ixmin, ixmax
-        write (49,'(1E16.7)') center(j) + i*widthx
+        write (unit,'(1E16.7)') center(j) + i*widthx
     end do
-    close(49)
+    close(unit)
 
-    call CreateTxtFile(trim(filename)//'_x',49)
+    unit = CreateNewTxtFile(trim(filename)//'_x')
     do i = iymin, iymax
-        write (49,'(1E16.7)') center(j2) + i*widthy
+        write (unit,'(1E16.7)') center(j2) + i*widthy
     end do
-    close(49)
+    close(unit)
 
-    call CreateTxtFile(trim(filename)//'_cont',49)
+    unit = CreateNewTxtFile(trim(filename)//'_cont')
     write(numstr,*) contour_levels(1:num_contours)
     if (num_contours==1) numstr = trim(numstr)//' '//trim(numstr)
-    write (49,*) trim(numstr)
-    close(49)
+    write (unit,*) trim(numstr)
+    close(unit)
 
     if (shade_meanlikes) then
-        call CreateTxtFile(trim(filename)//'_likes',49)
+        unit = CreateNewTxtFile(trim(filename)//'_likes')
         maxbin = maxval(bin2Dlikes(ixmin:ixmax,iymin:iymax))
         do ix1 = ixmin, ixmax
-            write (49,trim(numcat('(',iymax-iymin+1))//'E16.7)')  bin2Dlikes(ix1,iymin:iymax)/maxbin
+            write (unit,trim(numcat('(',iymax-iymin+1))//'E16.7)')  bin2Dlikes(ix1,iymin:iymax)/maxbin
         end do
-        close(49)
+        close(unit)
     end if
 
     end subroutine Get2DPlotData
@@ -1737,6 +1740,13 @@
     end if
     end function dinvnorm
 
+    subroutine WriteS(S)
+    character(LEN=*), intent(in) :: S
+
+    write (*,*) trim(S)
+
+    end subroutine WriteS
+
     end module MCSamples
 
     program GetDist
@@ -1817,9 +1827,7 @@
         ncols = NameMapping%nnames+2
     end if
 
-    Ini_fail_on_not_found = .true.
-
-    in_root = Ini%Read_String('file_root')
+    in_root = Ini%Read_String('file_root', notFoundFail=.true.)
     rootname = ExtractFileName(in_root)
     chain_num = Ini%Read_Int('chain_num')
 
@@ -1829,15 +1837,12 @@
     if ( single_column_chain_files ) then
         pname(1) = 'weight'
         pname(2) = 'lnlike'
-        Ini_fail_on_not_found = .false.
         do ix=3, ncols
             pname(ix) = Ini%Read_String(concat('pname',ix-2))
             if (pname(ix)=='' .and. NameMapping%nnames/=0) then
                 pname(ix) = NameMapping%name(ix-2)
             end if
         end do
-        Ini_fail_on_not_found = .true.
-
     else
         if (parameter_names_file=='') then
             call IO_ReadParamNames(NameMapping,in_root,prior_ranges)
@@ -1872,13 +1877,11 @@
 
     adjust_priors = Ini%Read_Logical('adjust_priors',.false.)
 
-    Ini_fail_on_not_found = .false.
-
     plot_ext=Ini%Read_String_Default('plot_ext','py')
     if (plot_ext=='m') matlab_version = Ini%Read_Real('matlab_version',8.)
 
     plot_output = Ini%Read_String_Default('plot_output',plot_output)
-    subplot_size_inch = Ini%Read_Real('subplot_size_inch', subplot_size_inch)
+    call Ini%Read('subplot_size_inch', subplot_size_inch)
     subplot_size_inch2 = Ini%Read_Real('subplot_size_inch2', subplot_size_inch)
     subplot_size_inch3 = Ini%Read_Real('subplot_size_inch3', subplot_size_inch)
 
@@ -1902,10 +1905,10 @@
             end if
         else
             if (NameMapping%nnames/=0 .and. .not. &
-            NameMapping%HasReadIniForParam(DefIni, 'lab',ix-2)) then
+            NameMapping%HasReadIniForParam(Ini, 'lab',ix-2)) then
                 labels(ix) = trim(NameMapping%label(ix-2))
             else
-                labels(ix) = NameMapping%ReadIniForParam(DefIni,'lab',ix-2)
+                labels(ix) = NameMapping%ReadIniForParam(Ini,'lab',ix-2)
             end if
             !Ini%Read_String('lab'//trim(adjustl(numstr)))
         end if
@@ -1952,7 +1955,7 @@
         if (bin_limits /= '') then
             InLine = bin_limits
         else
-            InLine = NameMapping%ReadIniForParam(DefIni,'limits',ix-2)
+            InLine = NameMapping%ReadIniForParam(Ini,'limits',ix-2)
         end if
         if (InLine /= '') then
             read (InLine,*) InS1, InS2
@@ -1966,7 +1969,7 @@
             end if
         end if
 
-        InLine = NameMapping%ReadIniForParam(DefIni,'marker',ix-2)
+        InLine = NameMapping%ReadIniForParam(Ini,'marker',ix-2)
         if (InLine /= '') then
             has_markers(ix) = .true.
             read(InLine,*) markers(ix)
@@ -2122,7 +2125,7 @@
 
     BW = Ini%Read_Logical('B&W',.false.)
     do_shading = Ini%Read_Logical('do_shading',.true.)
-    call Ini_Close
+    call Ini%Close()
 
     !Read in the chains
     nrows = 0

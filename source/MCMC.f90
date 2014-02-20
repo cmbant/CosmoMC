@@ -4,7 +4,7 @@
 
     module MonteCarlo
     use CalcLike
-    use Random
+    use RandUtils
     use propose
     use ParamPointSet
     implicit none

@@ -9,7 +9,7 @@
     !See http://cosmologist.info/notes/cosmomc.pdf
 
     module propose
-    use Random
+    use RandUtils
     use settings
     use GeneralTypes
     implicit none

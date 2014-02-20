@@ -6,7 +6,7 @@
     use ObjectLists, only: TObjectList
     use ParamNames
     implicit none
-    
+
     private
 
     integer, parameter :: LikeNameLen = 80
@@ -36,8 +36,8 @@
         !likelihood that reads from a text file description, e.g. .dataset file
         !conflict names read from file and matched by type and name
         integer :: num_conflicts = 0
-        character(LEN=LikeNameLen), pointer, dimension(:) :: conflict_type
-        character(LEN=LikeNameLen), pointer, dimension(:) :: conflict_name
+        character(LEN=LikeNameLen), allocatable, dimension(:) :: conflict_type
+        character(LEN=LikeNameLen), allocatable, dimension(:) :: conflict_name
         class(TDatasetFileLikelihood), pointer :: CommonData => null()
     contains
     procedure :: ReadDatasetFile !open file, read standard things, call ReadIni

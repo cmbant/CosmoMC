@@ -1058,8 +1058,9 @@
     REAL(mcp) :: amarg_A, amarg_B, amarg_C
     REAL(mcp) :: amarg_D, amarg_E, amarg_F, tempG !Marginalization params
     real(mcp) :: diffmag(nsn),invvars(nsn)
-    !    real(mcp), allocatable :: invcovmat(:,:)
-    real(mcp) :: invcovmat(nsn,nsn)
+    real(mcp), allocatable :: invcovmat(:,:)
+    
+    allocate(invcovmat(nsn,nsn))
 
     !    IF (.NOT. diag_errors) THEN
     !        ALLOCATE( invcovmat(nsn,nsn) )
