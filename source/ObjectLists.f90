@@ -424,7 +424,7 @@
     double precision, pointer :: ArrD(:)
     integer, pointer :: ArrI(:)
     logical, pointer :: ArrL(:)
-    character(LEN=:), allocatable:: Sin
+    character(LEN=:), pointer:: Sin
     class(*), pointer :: St
 
     call this%Clear()
@@ -451,7 +451,8 @@
             call this%AddArray(ArrL)
         else if (k==5) then
             allocate(character(sz)::St)
-            read(fid) St
+            Sin => St
+            read(fid) Sin
             call this%AddItemPointer(St)
         else
             call this%Error('TObjectList ReadBinary - unknown object type')
