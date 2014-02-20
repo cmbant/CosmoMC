@@ -4,7 +4,7 @@
 
     module MonteCarlo
     use CalcLike
-    use Random
+    use RandUtils
     use propose
     use ParamPointSet
     implicit none
@@ -98,7 +98,7 @@
     class(ParamSet) Params
     real(mcp) :: logLike
 
-    logLike = this%LikeCalculator%GetLogLike(Params)
+     logLike = this%LikeCalculator%GetLogLike(Params)
 
     end function TSamplingAlgorithm_LogLike
 

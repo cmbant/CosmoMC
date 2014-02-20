@@ -1,14 +1,23 @@
 
 OUTPUT_DIR ?= Release
 
+BUILD ?= MPI
+#set BUILD to MPI to force MPI, should be set in ../Makefile
+
+ifeq ($(BUILD),MPI)
+OUTPUT_DIR := $(OUTPUT_DIR)MPI
+endif
+
+
 ifortErr = $(shell which ifort >/dev/null; echo $$?)
 
 #these settings for ifort 13 and higher
 ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
-F90C     = mpif90
-FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
-DEBUGFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -DMPI -fpe0
+F90C     = ifort
+MPIF90C = mpif90
+FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp
+DEBUGFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -fpe0
 MODOUT = -module $(OUTPUT_DIR)
 LAPACKL =
 else
@@ -18,6 +27,7 @@ else
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60234
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51976
 F90C = gfortran
+MPIF90C = mpif90
 FFLAGS = -cpp -O3 -ffast-math
 DEBUGFLAGS = -cpp -Og -g -fbounds-check -fbacktrace
 MODOUT =  -J$(OUTPUT_DIR)
@@ -61,8 +71,9 @@ endif
 #use "runCosmomc" (globally installed) to run, defining required memory usage
 ifeq ($(COSMOHOST),cosmos)
 F90C = ifort
-FFLAGS = -openmp -fast -w -fpp2 -DMPI
-LAPACKL = -mkl=sequential -lmkl_lapack -lmpi
+FFLAGS = -openmp -fast -w -fpp2
+LINKMPI = -lmpi
+LAPACKL = -mkl=sequential -lmkl_lapack
 cfitsio = $(CFITSIO)
 WMAP = $(COSMOLIB)/WMAP9
 GSLPATH = $(GSL_ROOT)
@@ -71,12 +82,16 @@ endif
 ifeq ($(COSMOHOST),darwin)
 WMAP = /scratch/aml1005/wmap_likelihood_v5
 cfitsio = /usr/local/Cluster-Apps/cfitsio/intel/3.300
-FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
-#FFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -DMPI -fpe0
 endif
 
 ifeq ($(OUTPUT_DIR),Debug)
 FFLAGS=$(DEBUGFLAGS)
+endif
+
+ifeq ($(BUILD),MPI)
+FFLAGS +=  -DMPI
+LAPACKL +=  $(LINKMPI)
+F90C = $(MPIF90C)
 endif
 
 #would like to embed this somehow..
@@ -89,10 +104,12 @@ CALCFILES = $(OUTPUT_DIR)/Calculator_CAMB.o
 #Can use params_H if you prefer more generic parameters
 PARAMETERIZATION = $(OUTPUT_DIR)/CosmologyParameterizations.o
 
+GETDISTFLAGS = $(FFLAGS)
 F90FLAGS = $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
 LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
-UTILS = $(OUTPUT_DIR)/ArrayUtils.o $(OUTPUT_DIR)/StringUtils.o $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/FileUtils.o $(OUTPUT_DIR)/RandUtils.o
+UTILS = $(OUTPUT_DIR)/ArrayUtils.o $(OUTPUT_DIR)/StringUtils.o $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/FileUtils.o \
+    $(OUTPUT_DIR)/RandUtils.o $(OUTPUT_DIR)/Interpolation.o
 
 DISTFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o \
     $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/ObjectParamNames.o $(OUTPUT_DIR)/Matrix_utils_new.o \
@@ -124,7 +141,7 @@ endif
 LIKEFILES =  $(OUTPUT_DIR)/DataLikelihoods.o $(OUTPUT_DIR)/calclike.o
 
 OBJFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/ObjectParamNames.o \
-	$(OUTPUT_DIR)/Matrix_utils_new.o $(OUTPUT_DIR)/Interpolation.o $(OUTPUT_DIR)/settings.o \
+	$(OUTPUT_DIR)/Matrix_utils_new.o  $(OUTPUT_DIR)/settings.o \
 	$(OUTPUT_DIR)/samples.o $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/BaseParameters.o \
 	$(PROPOSE) $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/PowellConstrainedMinimize.o $(OUTPUT_DIR)/ImportanceSampling.o \
 	$(OUTPUT_DIR)/MCMC.o $(OUTPUT_DIR)/minimize.o $(OUTPUT_DIR)/SampleCollector.o $(OUTPUT_DIR)/GeneralSetup.o
@@ -160,8 +177,6 @@ F90CRLINK += -L$(HYREC_PATH) -lhyrec
 endif
 
 default: cosmomc
-
-all : cosmomc getdist
 
 $(OUTPUT_DIR)/GetDist.o: $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/samples.o
 $(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/ObjectParamNames.o $(OUTPUT_DIR)/settings.o
@@ -240,11 +255,11 @@ clean: cleancosmomc
 	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod ../camb/libcamb_$(RECOMBINATION).a
 
 cleancosmomc:
-	rm -f $(OUTPUT_DIR)/*.o $(OUTPUT_DIR)/*.mod ./Debug/* /Release/* ../core
+	rm -f $(OUTPUT_DIR)/*.o $(OUTPUT_DIR)/*.mod ./Debug/* /Release/*  ./DebugMPI/* /ReleaseMPI/* ../core
 
 
-getdist: directories camb $(DISTFILES)
-	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS)
+getdist: directories $(DISTFILES)
+	$(F90C) -o ../getdist $(DISTFILES) $(GETDISTFLAGS)
 
 #If you want to use the ppf module, change equations_ppf to equations
 #and halofit_ppf to halofit also comment out wa_ppf in CMB_Cls_simple.f90

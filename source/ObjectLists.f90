@@ -167,6 +167,7 @@
 
     !This all looks a bit unneccessary, just trying to avoid ifort bugs, c.f.
     !http://software.intel.com/en-us/forums/topic/390944
+    !This subroutine does *not* help directly, but derived types can use AddItemPointer which is OK.
 
     CP=> C
     if (present(Object)) ObjectP=>Object
@@ -423,8 +424,6 @@
     double precision, pointer :: ArrD(:)
     integer, pointer :: ArrI(:)
     logical, pointer :: ArrL(:)
-    character(LEN=:), pointer:: Sin
-    !character(LEN=:), pointer :: St
     class(*), pointer :: St
 
     call this%Clear()
@@ -450,9 +449,11 @@
             read(fid) ArrL
             call this%AddArray(ArrL)
         else if (k==5) then
-            allocate(character(sz)::Sin)
-            read(fid) Sin
-            allocate(St, source=Sin)
+            allocate(character(sz)::St) !Ifort required class(*) pointer
+            select type (St)
+            type is (character(LEN=*))
+                read(fid) St
+            end select
             call this%AddItemPointer(St)
         else
             call this%Error('TObjectList ReadBinary - unknown object type')

@@ -13,7 +13,7 @@
         integer :: semislow_changes=0, slow_changes=0
         class(TCosmologyCalculator), pointer :: CosmoCalc
     contains
-    procedure :: CalulateRequiredTheoryChanges =>Cosmo_CalculateRequiredTheoryChanges
+    procedure :: CalculateRequiredTheoryChanges =>Cosmo_CalculateRequiredTheoryChanges
     procedure :: GetTheoryForLike=>Cosmo_GetTheoryForLike
     procedure :: WritePerformanceStats => Cosmo_WritePerformanceStats
     procedure :: InitConfig => TCosmoLikeCalculator_InitConfig

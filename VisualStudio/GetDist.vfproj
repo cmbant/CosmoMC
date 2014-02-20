@@ -48,9 +48,13 @@
 		<Filter Name="Header Files" Filter="fi;fd"/>
 		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
 		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<Filter Name="Utils">
+		<File RelativePath="..\source\ArrayUtils.f90"/>
+		<File RelativePath="..\source\Interpolation.f90"/>
+		<File RelativePath="..\source\ObjectLists.f90"/>
+		<File RelativePath="..\source\RandUtils.f90"/></Filter>
 		<File RelativePath="..\source\GetDist.f90"/>
 		<File RelativePath="..\source\IO.f90"/>
-		<File RelativePath="..\source\ObjectLists.f90"/>
 		<File RelativePath="..\source\samples.f90"/>
 		<File RelativePath="..\source\settings.f90"/></Filter></Files>
 	<Globals/></VisualStudioProject>

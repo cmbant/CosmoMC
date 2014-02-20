@@ -234,16 +234,6 @@
         like%Ag = Ini%Read_Real('Ag', 1.4)
     end if
 
-    like%num_conflicts = Ini%Read_Int('num_conflicts',0)
-    if(like%num_conflicts>0)then
-        allocate(like%conflict_name(like%num_conflicts))
-        allocate(like%conflict_type(like%num_conflicts))
-        do i_conflict=1,like%num_conflicts
-            like%conflict_type(i_conflict) = Ini%Read_String(numcat('type_conflict',i_conflict))
-            like%conflict_name(i_conflict) = Ini%Read_String(numcat('name_conflict',i_conflict))
-        end do
-    end if
-
     if (iopb.ne.0) then
         stop 'Error reading mpk file'
     endif
