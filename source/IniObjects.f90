@@ -288,7 +288,7 @@
     end if
     InLine=trim(adjustl(AInLine))
     EqPos = scan(InLine,'=')
-    if (EqPos/=0 .and. InLine(1:1)/='#' .and. InLine(1:7) /= 'COMMENT' ) then
+    if (EqPos/=0 .and. InLine(1:1)/='#' .and. InLine(1:min(len(InLine),7)) /= 'COMMENT' ) then
         AName = trim(InLine(1:EqPos-1))
 
         S = adjustl(InLine(EqPos+1:))
