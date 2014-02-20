@@ -449,7 +449,7 @@
             read(fid) ArrL
             call this%AddArray(ArrL)
         else if (k==5) then
-            allocate(character(LEN=sz)::St) !Ifort required class(*) pointer
+            allocate(character(sz)::St) !Ifort required class(*) pointer
             select type (St)
             type is (character(LEN=*))
                 read(fid) St

@@ -199,7 +199,7 @@
     real(mcp) LogLike
 
     call this%SetTheoryParams(Params)
-    call this%AddLike(LogLike, this%Config%Parameterization%NonBaseParameterPriors(this%TheoryParams))
+    LogLike = this%Config%Parameterization%NonBaseParameterPriors(this%TheoryParams)
     if (LogLike == logZero) return
     if (.not. Params%validInfo) then
         this%changeMask(1:num_params) = .true.

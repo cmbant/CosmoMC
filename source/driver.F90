@@ -96,7 +96,7 @@
         rootname = rootname//'_'//trim(adjustl(numstr))
     end if
 
-    generic_mcmc = Ini%Read_Logical('generic_mcmc',generic_mcmc)
+    call Ini%Read('generic_mcmc',generic_mcmc)
     if (generic_mcmc) then
         allocate(TSetup::Setup)
     else
@@ -118,10 +118,10 @@
 #ifdef MPI
         new_chains = .not. FileExists(rootname //'.chk')
 #else
-        new_chains = FileSize(rootname //'.txt')<=0
+        stop 'Checkpointing without MPI not supported'
+        !new_chains = FileSize(rootname //'.txt')<=0
 #endif
     end if
-
 
     FeedBack = Ini%Read_Int('feedback',0)
     FileChangeIni = rootname//'.read'
