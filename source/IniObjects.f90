@@ -163,8 +163,8 @@
     if (L%Count == L%Capacity) call L%SetCapacity(L%Capacity + L%Delta)
     L%Count = L%Count + 1
     allocate(L%Items(L%Count)%P)
-    L%Items(L%Count)%P%Name = trim(AName)
-    L%Items(L%Count)%P%Value = trim(AValue)
+    L%Items(L%Count)%P%Name = trim(adjustl(AName))
+    L%Items(L%Count)%P%Value = trim(adjustl(AValue))
 
     end subroutine TNameValueList_Add
 
@@ -380,7 +380,7 @@
         if (InLine(1:min(8,len(InLine))) == 'INCLUDE(') then
             lastpos = scan(InLine,')')
             if (lastpos/=0) then
-                call IncudeFiles%Add(trim(adjustl(InLine(9:lastpos-1))),'')
+                call IncudeFiles%Add(InLine(9:lastpos-1),'')
             else
                 call Ini%Error('Ini_Open, error in INCLUDE line: '//trim(filename))
             end if
@@ -388,7 +388,7 @@
             !Settings to read in as defaults, overridden by subsequent re-definitions
             lastpos = scan(InLine,')')
             if (lastpos/=0) then
-                call DefaultValueFiles%Add(trim(adjustl(InLine(9:lastpos-1))),'')
+                call DefaultValueFiles%Add(InLine(9:lastpos-1),'')
             else
                 call Ini%Error('Ini_Open, error in DEFAULT line: '//trim(filename))
             end if

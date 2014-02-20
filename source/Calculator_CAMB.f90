@@ -30,6 +30,7 @@
         integer :: nerrors = 0
         logical :: CAMB_timing = .false.
         type(CAMBParams)  CAMBP
+        character(LEN=:), allocatable :: highL_theory_cl_template_file
         real(mcp), allocatable :: highL_lensedCL_template(:,:)
     contains
     !New
@@ -631,10 +632,7 @@
 
     this%CAMB_timing = Ini%Read_Logical('CAMB_timing',.false.)
 
-    if (lmax_computed_cl /= lmax) then
-        if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
-        call this%LoadFiducialHighLTemplate(Ini)
-    end if
+    this%highL_theory_cl_template_file = Ini%ReadFilename('highL_theory_cl_template',DataDir,.true.)
 
     if (Ini%HasKey('highL_unlensed_cl_template')) then
         highL_unlensed_cl_template=  Ini%ReadFilename('highL_unlensed_cl_template')
@@ -648,6 +646,11 @@
     subroutine CAMBCalc_InitForLikelihoods(this)
     !Called later after likelihoods etc loaded
     class(CAMB_Calculator) :: this
+
+    if (lmax_computed_cl /= lmax) then
+        if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
+        call this%LoadFiducialHighLTemplate()
+    end if
 
     call this%InitCAMBParams(this%CAMBP)
 
@@ -677,17 +680,14 @@
 
 
 
-    subroutine LoadFiducialHighLTemplate(this, Ini)
+    subroutine LoadFiducialHighLTemplate(this)
     class(CAMB_Calculator) :: this
     !This should be a lensed scalar CMB power spectrum, e.g. for including at very high L where foregrounds etc. dominate anyway
-    class(TSettingIni) :: Ini
     integer L, aunit, status
     real(mcp) array(4), nm
-    character(LEN=:), allocatable :: fname
 
-    fname = Ini%ReadFilename('highL_theory_cl_template',DataDir,.true.)
     allocate(this%highL_lensedCL_template(2:lmax, num_clsS))
-    aunit = OpenNewTxtFile(fname)
+    aunit = OpenNewTxtFile(this%highL_theory_cl_template_file)
     do
         read(aunit,*, iostat=status) L , array
         if (status/=0 .or. L>lmax) exit
