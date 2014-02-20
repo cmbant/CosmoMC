@@ -42,7 +42,6 @@
     end if
     call this%Calculator%InitWithParams(Ini,this)
 
-
     compute_tensors = Ini%Read_Logical('compute_tensors',.false.)
 
     if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
@@ -111,23 +110,9 @@
 
     subroutine TCosmologyConfig_InitForLikelihoods(this)
     class(TCosmologyConfig) :: this
-    class(TDataLikelihood), pointer :: DataLike
-    integer i
 
+    call this%TGeneralConfig%InitForLikelihoods()
     if(use_LSS) call Initialize_PKSettings()
-
-    select type (Calc => this%Calculator)
-    class is (TCosmologyCalculator)
-        do i=1,DataLikelihoods%Count
-            DataLike=>DataLikelihoods%Item(i)
-            select type (DataLike)
-            class is (TCosmoCalcLikelihood)
-                DataLike%Calculator => Calc
-            end select
-        end do
-        class default 
-        call MpiStop('TCosmologyConfig needs TCosmologyCalculator')
-    end select
 
     end subroutine TCosmologyConfig_InitForLikelihoods
 

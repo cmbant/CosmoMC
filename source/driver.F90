@@ -49,7 +49,6 @@
     call mpi_comm_rank(mpi_comm_world,MPIrank,ierror)
 
     instance = MPIrank +1 !start at 1 for chains
-    write (numstr,*) instance
     rand_inst = instance
     if (ierror/=MPI_SUCCESS) call DoAbort('MPI fail')
 
@@ -93,7 +92,7 @@
     FileChangeIniAll = rootname//'.read'
 
     if (instance /= 0) then
-        rootname = rootname//'_'//trim(adjustl(numstr))
+        rootname = rootname//'_'//IntToStr(Instance)
     end if
 
     call Ini%Read('generic_mcmc',generic_mcmc)

@@ -3,7 +3,7 @@
     !Can be multiple of same type
     use settings
     use IniObjects
-    use ObjectLists, only: TObjectList
+    use ObjectLists
     use ParamNames
     implicit none
 
@@ -29,7 +29,8 @@
     procedure :: loadParamNames
     procedure :: checkConflicts
     procedure :: derivedParameters  !derived parameters calculated by likelihood function
-    procedure  :: WriteLikelihoodData
+    procedure :: WriteLikelihoodData
+    procedure :: InitWithCalculator
     end type TDataLikelihood
 
     type, extends(TDataLikelihood) :: TDatasetFileLikelihood
@@ -163,12 +164,14 @@
         !Add likelihood-derived parameters, after full set numbering has been dermined above
         DataLike=>L%Item(i)
         NewNames => DataLike%nuisance_params
-        if (NewNames%num_derived>0) allocate(DataLike%derived_indices(NewNames%num_derived))
-        do j=1, NewNames%num_derived
-            DataLike%derived_indices(j) = Names%index(NewNames%name(j+NewNames%num_MCMC)) - Names%num_MCMC
-        end do
-        if (Feedback>1 .and. MPIrank==0) print *,trim(DataLike%name)//' derived param indices:', DataLike%derived_indices
-        if (any(DataLike%derived_indices<=0)) call MpiStop('AddNuisanceParameters: unmatched derived param')
+        if (NewNames%num_derived>0) then
+            allocate(DataLike%derived_indices(NewNames%num_derived))
+            do j=1, NewNames%num_derived
+                DataLike%derived_indices(j) = Names%index(NewNames%name(j+NewNames%num_MCMC)) - Names%num_MCMC
+            end do
+            if (Feedback>1 .and. MPIrank==0) print *,trim(DataLike%name)//' derived param indices:', DataLike%derived_indices
+            if (any(DataLike%derived_indices<=0)) call MpiStop('AddNuisanceParameters: unmatched derived param')
+        end if
     end do
     L%num_derived_parameters = Names%num_derived - baseDerived
 
@@ -233,6 +236,13 @@
     !Write out any derived data that might be useful for the likelihood (e.g. foreground model)
     end subroutine WriteLikelihoodData
 
+    subroutine InitWithCalculator(this, Calc)
+    class(TDataLikelihood) :: this
+    class(*), target :: Calc
+
+    !Called with configuration after all likelihoods loaded and parameters read
+
+    end subroutine InitWithCalculator
 
     function logLikeTheory(like,CMB)
     !For likelihoods that don't need Theory or DataParams

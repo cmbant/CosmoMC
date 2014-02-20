@@ -103,6 +103,7 @@
     Type, extends(TConfigClass) :: TTheoryCalculator
         character(LEN=128) :: calcName = 'TheoryCalculator'
     contains
+    procedure :: InitForLikelihoods => TTheoryCalculator_InitForLikelihoods
     procedure :: Error => TTheoryCalculator_Error
     procedure :: ErrorNotImplemented => TTheoryCalculator_ErrorNotImplemented
     procedure :: VersionTraceOutput => TTheoryCalculator_VersionTraceOutput
@@ -300,6 +301,13 @@
 
     !!! TTheoryCalculator
 
+    subroutine TTheoryCalculator_InitForLikelihoods(this)
+    class(TTheoryCalculator) :: this
+
+    !Called after likelihoods etc loaded
+    end subroutine TTheoryCalculator_InitForLikelihoods
+
+
     subroutine TTheoryCalculator_ReadImportanceParams(this, Ini)
     class(TTheoryCalculator) :: this
     class(TSettingIni) :: Ini
@@ -431,6 +439,17 @@
 
     subroutine TGeneralConfig_InitForLikelihoods(this)
     class(TGeneralConfig) :: this
+    class(TDataLikelihood), pointer :: DataLike
+    integer i
+
+    if (associated(this%Calculator)) then
+        call this%Calculator%InitForLikelihoods()
+        do i=1,DataLikelihoods%Count
+            DataLike=>DataLikelihoods%Item(i)
+            call DataLike%InitWithCalculator(this%Calculator)
+        end do
+    end if
+
     end subroutine TGeneralConfig_InitForLikelihoods
 
     !!!TCheckpointable

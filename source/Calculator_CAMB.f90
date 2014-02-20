@@ -42,6 +42,7 @@
     procedure :: SetPkFromCAMB => CAMBCalc_SetPkFromCAMB
     !Overridden inherited
     procedure :: ReadParams => CAMBCalc_ReadParams
+    procedure :: InitForLikelihoods => CAMBCalc_InitForLikelihoods
     procedure :: BAO_D_v => CAMBCalc_BAO_D_v
     procedure :: AngularDiameterDistance => CAMBCalc_AngularDiameterDistance
     procedure :: Hofz => CAMBCalc_Hofz
@@ -375,13 +376,13 @@
     Type(MatterTransferData) M
     Type(MatterPowerData) :: Cosmo_PK
     integer nz, zix
-    
+
     Theory%num_k = M%num_q_trans
     nz = num_power_redshifts
     call Theory%InitPK(Theory%num_k,nz)    
     Theory%log_kh = log(M%TransferData(Transfer_kh,:,1))
     Theory%redshifts = power_redshifts
-    
+
     do zix=1,nz
         call Transfer_GetMatterPowerData(M,Cosmo_PK,1,CP%Transfer%PK_redshifts_index(nz-zix+1))
         Theory%matter_power(:,zix) = Cosmo_PK%matpower(:,1)
@@ -465,8 +466,8 @@
     CAMBCalc_BAO_D_v = BAO_D_v(z)
 
     end function CAMBCalc_BAO_D_v
-    
-    
+
+
     real(mcp) function CAMBCalc_AngularDiameterDistance(this, z)
     use CAMB, only : AngularDiameterDistance  !!angular diam distance also in Mpc no h units
     class(CAMB_Calculator) :: this
@@ -624,7 +625,6 @@
     subroutine CAMBCalc_ReadParams(this,Ini)
     class(CAMB_Calculator) :: this
     class(TSettingIni) :: Ini
-    type(CAMBParams)  P
 
     call this%TCosmologyCalculator%ReadParams(Ini)
     this%calcName ='CAMB'
@@ -642,17 +642,24 @@
         highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
     end if
 
-    call this%InitCAMBParams(P)
+    end subroutine CAMBCalc_ReadParams
+
+
+    subroutine CAMBCalc_InitForLikelihoods(this)
+    !Called later after likelihoods etc loaded
+    class(CAMB_Calculator) :: this
+
+    call this%InitCAMBParams(this%CAMBP)
 
     if (Feedback > 0 .and. MPIRank==0) then
-        write(*,*) 'max_eta_k         = ', P%Max_eta_k
-        write(*,*) 'transfer kmax     = ', P%Transfer%kmax
+        write(*,*) 'max_eta_k         = ', this%CAMBP%Max_eta_k
+        write(*,*) 'transfer kmax     = ', this%CAMBP%Transfer%kmax
     end if
 
-    P%WantTensors = compute_tensors
-    this%CAMBP = P
+    this%CAMBP%WantTensors = compute_tensors
 
-    end subroutine CAMBCalc_ReadParams
+    end subroutine CAMBCalc_InitForLikelihoods
+
 
     subroutine CAMBCalc_VersionTraceOutput(this, ReadValues)
     use GaugeInterface, only : Eqns_name

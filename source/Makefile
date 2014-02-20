@@ -4,11 +4,6 @@ OUTPUT_DIR ?= Release
 BUILD ?= MPI
 #set BUILD to MPI to force MPI, should be set in ../Makefile
 
-ifeq ($(BUILD),MPI)
-OUTPUT_DIR := $(OUTPUT_DIR)MPI
-endif
-
-
 ifortErr = $(shell which ifort >/dev/null; echo $$?)
 
 #these settings for ifort 13 and higher
@@ -41,7 +36,7 @@ RECOMBINATION ?=recfast
 
 EXTDATA=
 
-#use PRECISION=SINGLE to use single precision
+#use PRECISION=SINGLE to use single precision (probably doesn't work)
 PRECISION ?=
 
 #set WMAP empty not to compile with WMAP, e.g. WMAP = /scratch/../WMAP9/likelihood_v5
@@ -88,7 +83,9 @@ ifeq ($(OUTPUT_DIR),Debug)
 FFLAGS=$(DEBUGFLAGS)
 endif
 
+
 ifeq ($(BUILD),MPI)
+override OUTPUT_DIR :=$(OUTPUT_DIR)MPI
 FFLAGS +=  -DMPI
 LAPACKL +=  $(LINKMPI)
 F90C = $(MPIF90C)
@@ -259,7 +256,7 @@ cleancosmomc:
 
 
 getdist: directories $(DISTFILES)
-	$(F90C) -o ../getdist $(DISTFILES) $(GETDISTFLAGS)
+	$(F90C) -o ../getdist $(DISTFILES) $(LAPACKL) $(GETDISTFLAGS)
 
 #If you want to use the ppf module, change equations_ppf to equations
 #and halofit_ppf to halofit also comment out wa_ppf in CMB_Cls_simple.f90
