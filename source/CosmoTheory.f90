@@ -2,6 +2,7 @@
     use settings
     use cmbtypes
     use GeneralTypes
+    use likelihood
     use Interpolation, only : spline, SPLINE_DANGLE
     implicit none
     
@@ -446,5 +447,3 @@
     end subroutine TCosmoTheoryPredictions_WriteBestFitData
 
     end module CosmoTheory
-
-

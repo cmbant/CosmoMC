@@ -160,6 +160,8 @@
     use CosmoTheory
     use likelihood
     use wigglezinfo
+    use MPK_Common
+    use MatrixUtils
     implicit none
 
     type, extends(TDatasetFileLikelihood) :: TWiggleZCommon
@@ -167,16 +169,11 @@
     procedure :: ReadIni => TWiggleZCommon_ReadIni
     end type TWiggleZCommon
 
-    type, extends(TCosmologyLikelihood) :: WiggleZLikelihood
-        logical :: use_set
+    type, extends(TCosmologyPKLikelihood) :: WiggleZLikelihood
         ! 1st index always refers to the region
         ! so mpk_P(1,:) is the Power spectrum in the first active region
         real(mcp), pointer, dimension(:,:,:) :: mpk_W, mpk_invcov
         real(mcp), pointer, dimension(:,:) :: mpk_P
-        real(mcp), pointer, dimension(:) :: mpk_k
-        !JD 09/13 added DV_fid so we can use camb routines to calculate a_scl
-        real(mcp):: DV_fid
-        real(mcp):: redshift ! important to know
     contains
     procedure :: LogLike => WiggleZ_Lnlike
     procedure :: ReadIni => WiggleZ_ReadIni
@@ -185,8 +182,6 @@
     type(TWiggleZCommon), save, target :: WiggleZCommon
 
     integer, parameter :: max_num_wigglez_regions = 7
-    !Note all units are in k/h here
-    integer, parameter :: mpk_d = kind(1.d0)
 
     !JD 09/13  Moved a bunch of stuff here so we only set it once and settings are
     !common across all used WiggleZ datasets
@@ -340,7 +335,6 @@
 
     subroutine WiggleZ_ReadIni(like,Ini)
     ! this will be called once for each redshift bin
-    use MatrixUtils
     class(WiggleZLikelihood) like
     class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: kbands_file, measurements_file, windows_file, cov_file
@@ -520,7 +514,6 @@
 200 close(tmp_file_unit)
     return
 
-
     end subroutine ReadWiggleZMatrices
 
     function WiggleZ_LnLike(like,CMB,Theory,DataParams) ! LV_06 added CMB here
@@ -578,7 +571,7 @@
 
     !JD 09/13 new compute_scaling_factor functions
     if(use_scaling) then
-        call compute_scaling_factor(z,CMB,Theory,like%DV_fid,a_scl)
+        a_scl = like%compute_scaling_factor(z,CMB)
     else
         a_scl = 1
     end if
@@ -644,7 +637,7 @@
             final_term = final_term + sum(like%mpk_P(i_region,:)*covdat(:))
         enddo
         LnLike = log( Mat(1,1)*Mat(2,2)-Mat(1,2)**2)
-        call inv_mat22(Mat)
+        call Matrix_Inverse(Mat)
         !          LnLike = (sum(mset%mpk_P*covdat) - sum(vec2*matmul(Mat,vec2)) + LnLike ) /2
         LnLike = (final_term - sum(vec2*matmul(Mat,vec2)) + LnLike ) /2
 
@@ -720,35 +713,5 @@
     deallocate(chisq)
 
     end function WiggleZ_LnLike
-
-    subroutine inv_mat22(M)
-    real(mcp) M(2,2), Minv(2,2), det
-
-    det = M(1,1)*M(2,2)-M(1,2)*M(2,1)
-    Minv(1,1)=M(2,2)
-    Minv(2,2) = M(1,1)
-    Minv(1,2) = - M(2,1)
-    Minv(2,1) = - M(1,2)
-    M = Minv/det
-
-    end subroutine inv_mat22
-    
-    !-----------------------------------------------------------------------------
-    ! JD 09/13: Replaced compute_scaling_factor routines so we use
-    !           D_V calculations from CAMB.  New routines below
-    
-    subroutine compute_scaling_factor(z,CMB,Theory,DV_fid,a_scl)
-    Class(TCosmoTheoryPredictions) Theory
-    Class(CMBParams) CMB
-    real(mcp), intent(in) :: z, DV_fid
-    real(mcp), intent(out) :: a_scl
-
-    !We use H_0*D_V because we dont care about scaling of h since
-    !k is in units of h/Mpc
-    !a_scl = CMB%H0*Theory%Config%Calculator%BAO_D_v(z)/DV_fid
-    call MPIstop('Need to get BAO_D_V passed properly')
-    !Like in original code, we need to apply a_scl in the correct direction
-    a_scl = 1.0_mcp/a_scl
-    end subroutine compute_scaling_factor
-    
+       
     end module wigglez

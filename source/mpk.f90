@@ -18,30 +18,55 @@
     !JD 09/13: Replaced compute_scaling_factor routines with routines that use CAMB's
     !          built in D_V function.
     
-    !JD 02/14  Moved common MPK functions to power_spec.f90 implemented AL's 
-    !          Calculator_Cosmology functions.
+    !JD 02/14  CosmoTheory changes;  Added MPK_Common
+    
+    module MPK_Common
+    use settings
+    use cmbtypes
+    use CosmoTheory
+    use Calculator_Cosmology
+    use Likelihood_Cosmology   
+     
+    type, extends(TCosmoCalcLikelihood) :: TCosmologyPKLikelihood
+        logical :: use_set
+        real(mcp), pointer, dimension(:) :: mpk_k
+        real(mcp) DV_fid   !Fiducial D_V
+    contains
+    procedure :: compute_scaling_factor
+    end type TCosmologyPKLikelihood
+    
+    contains
+    
+    function compute_scaling_factor(like,z,CMB)
+    Class(TCosmologyPKLikelihood) like
+    Class(CMBParams) CMB
+    real(mcp), intent(in) :: z
+    real(mcp) :: compute_scaling_factor
 
+    !We use H_0*D_V because we dont care about scaling of h since
+    !k is in units of h/Mpc
+    compute_scaling_factor = like%DV_fid/CMB%H0*like%Calculator%BAO_D_v(z)
+    
+    end function compute_scaling_factor
+    
+    end module MPK_Common    
 
     module mpk
     use settings
     use cmbtypes
     use CosmoTheory
     use likelihood
-    use wigglezinfo
-    use wigglez, only : WiggleZLikelihood_Add
+    use MatrixUtils
+    use MPK_Common
     implicit none
 
-    type, extends(TCosmologyLikelihood) :: MPKLikelihood
-        logical :: use_set
+    type, extends(TCosmologyPKLikelihood) :: MPKLikelihood
         integer :: num_mpk_points_use ! total number of points used (ie. max-min+1)
         integer :: num_mpk_kbands_use ! total number of kbands used (ie. max-min+1)
         real(mcp), pointer, dimension(:,:) :: N_inv
         real(mcp), pointer, dimension(:,:) :: mpk_W, mpk_invcov
-        real(mcp), pointer, dimension(:) :: mpk_P, mpk_sdev, mpk_k
+        real(mcp), pointer, dimension(:) :: mpk_P, mpk_sdev
         logical :: use_scaling !as SDSS_lrgDR3
-        !JD 09/13  New variables so we can use camb routines to calculate a_scl
-        real(mcp) DV_fid   !Fiducial D_V
-        real(mcp) redshift !effective redshift of the P(k) for computing a_scl
         !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
         logical :: Q_marge, Q_flat
         real(mcp) :: Q_mid, Q_sigma, Ag
@@ -63,12 +88,9 @@
     type(MPKLikelihood), pointer :: like
     integer nummpksets, i
 
-
     use_mpk = (Ini%Read_Logical('use_mpk',.false.))
 
     if(.not. use_mpk) return
-
-    call WiggleZLikelihood_Add(LikeList, Ini)
 
     nonlinear_mpk = Ini%Read_Logical('nonlinear_mpk',.false.)
 
@@ -265,7 +287,7 @@
 
     !JD 09/13 new compute_scaling_factor functions
     if(like%use_scaling) then
-        call compute_scaling_factor(like%exact_z(1),CMB,Theory,like%DV_fid,a_scl)
+        a_scl = like%compute_scaling_factor(like%exact_z(1),CMB)
     else
         a_scl = 1
     end if
@@ -315,7 +337,7 @@
         Mat(1,2) = sum(covth*mpk_WPth_k2)
         Mat(2,1) = Mat(1,2)
         LnLike = log( Mat(1,1)*Mat(2,2)-Mat(1,2)**2)
-        call inv_mat22(Mat)
+        call Matrix_Inverse(Mat)
         vec2(1) = sum(covdat*mpk_WPth)
         vec2(2) = sum(covdat*mpk_WPth_k2)
         LnLike = (sum(like%mpk_P*covdat) - sum(vec2*matmul(Mat,vec2)) + LnLike ) /2
@@ -386,36 +408,5 @@
     MPK_LnLike=LnLike
 
     end function MPK_LnLike
-
-    subroutine inv_mat22(M)
-    real(mcp) M(2,2), Minv(2,2), det
-
-    det = M(1,1)*M(2,2)-M(1,2)*M(2,1)
-    Minv(1,1)=M(2,2)
-    Minv(2,2) = M(1,1)
-    Minv(1,2) = - M(2,1)
-    Minv(2,1) = - M(1,2)
-    M = Minv/det
-
-    end subroutine inv_mat22
-    
-    !-----------------------------------------------------------------------------
-    ! JD 09/13: Replaced compute_scaling_factor routines so we use
-    !           D_V calculations from CAMB.  New routines below
-    
-    subroutine compute_scaling_factor(z,CMB,Theory,DV_fid,a_scl)
-    implicit none
-    Class(TCosmoTheoryPredictions) Theory
-    Class(CMBParams) CMB
-    real(mcp), intent(in) :: z, DV_fid
-    real(mcp), intent(out) :: a_scl
-
-    !We use H_0*D_V because we dont care about scaling of h since
-    !k is in units of h/Mpc
-    !a_scl = CMB%H0*Theory%Config%Calculator%BAO_D_v(z)/DV_fid
-    call MPIstop('Need to get BAO_D_V passed properly')
-    !Like in original code, we need to apply a_scl in the correct direction
-    a_scl = 1.0_mcp/a_scl
-    end subroutine compute_scaling_factor
     
     end module mpk

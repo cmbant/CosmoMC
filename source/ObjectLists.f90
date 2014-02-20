@@ -423,7 +423,8 @@
     double precision, pointer :: ArrD(:)
     integer, pointer :: ArrI(:)
     logical, pointer :: ArrL(:)
-    character(LEN=:), allocatable:: Sin
+    character(LEN=:), pointer:: Sin
+    !character(LEN=:), pointer :: St
     class(*), pointer :: St
 
     call this%Clear()
@@ -449,8 +450,9 @@
             read(fid) ArrL
             call this%AddArray(ArrL)
         else if (k==5) then
-            allocate(character(sz)::St)
-            read(fid) St
+            allocate(character(sz)::Sin)
+            read(fid) Sin
+            allocate(St, source=Sin)
             call this%AddItemPointer(St)
         else
             call this%Error('TObjectList ReadBinary - unknown object type')
@@ -896,4 +898,3 @@
     end subroutine WriteItems
 
     end module ObjectLists
-

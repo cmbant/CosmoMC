@@ -11,6 +11,7 @@
     use cmbdata
     use bao
     use mpk
+    use wigglez
     class(TSettingIni), intent(in) :: Ini
 
     get_sigma8 = Ini%Read_Logical('get_sigma8',.false.)
@@ -22,6 +23,8 @@
     call SNLikelihood_Add(DataLikelihoods, Ini)
 
     call MPKLikelihood_Add(DataLikelihoods, Ini)
+    
+    if(use_mpk) call WiggleZLikelihood_Add(DataLikelihoods, Ini)
 
     call BAOLikelihood_Add(DataLikelihoods, Ini)
 
