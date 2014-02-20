@@ -167,6 +167,7 @@
 
     !This all looks a bit unneccessary, just trying to avoid ifort bugs, c.f.
     !http://software.intel.com/en-us/forums/topic/390944
+    !This subroutine does *not* help directly, but derived types can use AddItemPointer which is OK.
 
     CP=> C
     if (present(Object)) ObjectP=>Object

@@ -98,7 +98,7 @@
     class(ParamSet) Params
     real(mcp) :: logLike
 
-    logLike = this%LikeCalculator%GetLogLike(Params)
+     logLike = this%LikeCalculator%GetLogLike(Params)
 
     end function TSamplingAlgorithm_LogLike
 
