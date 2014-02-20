@@ -12,7 +12,7 @@
 
     integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2, action_hessian=3
 
-    Type TSetup
+    Type :: TSetup
         integer :: action = action_MCMC
         integer :: sampling_method = sampling_metropolis
         integer :: samples
@@ -77,18 +77,20 @@
 
     subroutine TSetup_DoneInitialize(this)
     !Called after likelihoods, base parameters, etc initialized
-    class(TSetup) :: this
+    class(TSetup), target :: this
 
-    if (BaseParams%covariance_has_new .and. allocated(this%SampleCollector)) then
-        select type (Collector=>this%SampleCollector)
-        class is (TMpiChainCollector)
-            Collector%MPi%MPI_Max_R_ProposeUpdate = Collector%Mpi%MPI_Max_R_ProposeUpdateNew
-        end select
-    end if
     if (allocated(this%SamplingAlgorithm)) then
         call this%SamplingAlgorithm%Init(this%LikeCalculator, this%SampleCollector)
         select type (Sampler=>this%SamplingAlgorithm)
         class is (TChainSampler)
+            if (allocated(this%SampleCollector)) then
+                select type (Collector=>this%SampleCollector)
+                class is (TMpiChainCollector)
+                    Collector%Sampler => Sampler
+                    if (BaseParams%covariance_has_new) &
+                    & Collector%MPi%MPI_Max_R_ProposeUpdate = Collector%Mpi%MPI_Max_R_ProposeUpdateNew
+                end select
+            end if
             call Sampler%SetCovariance(BaseParams%covariance_estimate)
         end select
     end if

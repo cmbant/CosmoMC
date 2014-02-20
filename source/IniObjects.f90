@@ -109,13 +109,12 @@
     character(LEN=:), pointer :: AValue
     integer i
 
-    do i=1, L%Count
-        if (L%Items(i)%P%Name == AName) then
-            AValue => L%Items(i)%P%Value
-            return
-        end if
-    end do
-    AValue => Empty_String
+    i = L%IndexOf(AName)
+    if (i/=-1) then
+        AValue => L%Items(i)%P%Value
+    else
+        AValue => Empty_String
+    end if
 
     end function TNameValueList_ValueOf
 
@@ -190,7 +189,7 @@
 
     end subroutine TNameValueList_AddDouble
 
-    
+
     subroutine TNameValueList_AddInt(L, AName, AValue)
     class(TNameValueList) :: L
     character(LEN=*), intent(in) :: AName
@@ -202,7 +201,7 @@
 
     end subroutine TNameValueList_AddInt
 
-    
+
     subroutine TNameValueList_AddLogical(L, AName, AValue)
     class(TNameValueList) :: L
     character(LEN=*), intent(in) :: AName

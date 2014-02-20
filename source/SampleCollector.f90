@@ -58,7 +58,7 @@
         logical :: done_check = .false.
 
         Type(TMPIData) :: Mpi
-        class(TSampleList), allocatable :: Samples
+        Type(TSampleList) :: Samples
         class(TChainSampler), pointer :: Sampler
     contains
     procedure :: SaveState => TMpiChainCollector_SaveState
@@ -146,7 +146,9 @@
     subroutine TMpiChainCollector_SaveState(this,unit)
     class(TMpiChainCollector) :: this
     integer, intent(in) :: unit
+    integer :: version=1
 
+    write(unit) version
     write(unit) this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn,  &
     this%flukecheck,  this%Mpi%MPI_Min_Sample_Update, this%DoUpdates
     call this%Samples%SaveState(unit)
@@ -157,10 +159,10 @@
     subroutine TMpiChainCollector_ReadState(this,unit)
     class(TMpiChainCollector) :: this
     integer, intent(in) :: unit
+    integer version
 
-    !Read in checkpoing stuff at restart
-    !    if (checkpoint .and. present(checkpoint_start)) then
-
+    read(unit) version
+    if (version/=1) stop 'unknown checkpoint format'
     read(unit) this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn, &
     this%flukecheck, this%Mpi%MPI_Min_Sample_Update, this%DoUpdates
     call this%Samples%LoadState(unit)
