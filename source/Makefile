@@ -216,7 +216,7 @@ getdist: camb $(DISTFILES)
 #and halofit_ppf to halofit also comment out wa_ppf in CMB_Cls_simple.f90
 camb:
 	cd ../camb && \
-	$(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a \
+	$(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a camb \
 	RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf NONLINEAR=halofit_ppf
 
 $(highL)/libhigh.a:
