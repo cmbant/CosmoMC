@@ -256,12 +256,19 @@
     real(mcp), intent(in) :: mult, like
     end subroutine WriteModel
 
-    subroutine ReadModel(this,  unit, has_likes, mult, like, error)
+    subroutine  ReadModel(this,  unit, has_likes, mult, like, error)
     Class(TCalculationAtParamPoint) :: this
     integer, intent(in) :: unit
     integer, intent(out) :: error
     real(mcp), intent(out) :: mult, like
     logical, intent(out) :: has_likes(:)
+
+    mult=0
+    like=0
+    error=0
+    has_likes=.false.
+    call MpiStop('ReadModel not implemented')
+
     end subroutine ReadModel
 
 

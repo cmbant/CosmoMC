@@ -57,6 +57,7 @@
         Type(BlockProposer), allocatable :: Proposer(:)
         integer :: oversample_fast = 1
         real(mcp) :: propose_scale = 2.4_mcp
+        integer, private  :: fast_ix = 0
     contains
     procedure :: Init
     procedure :: SetCovariance => BlockedProposer_SetCovariance
@@ -256,15 +257,14 @@
     subroutine GetProposal(this, P)
     class(BlockedProposer) :: this
     real(mcp) :: P(:)
-    integer, save :: fast_ix = 0
 
-    if (fast_ix/=0) then
+    if (this%fast_ix/=0) then
         call  GetProposalFast(this, P)
-        fast_ix=fast_ix-1
+        this%fast_ix=this%fast_ix-1
     else
         if (this%All%Next() > this%Slow%n) then
             call  GetProposalFast(this, P)
-            fast_ix = this%oversample_fast-1
+            this%fast_ix = this%oversample_fast-1
         else
             call  GetProposalSlow(this, P)
         end if
@@ -319,10 +319,8 @@
     subroutine TCovmatProposer_SaveState(this,unit)
     class(TCovmatProposer) :: this
     integer, intent(in) :: unit
-    real(mcp) :: cov(num_params_used,num_params_used)
 
-    read(unit) cov
-    call this%SetCovariance(cov)
+    write(unit) this%propose_matrix
 
     end subroutine TCovmatProposer_SaveState
 
