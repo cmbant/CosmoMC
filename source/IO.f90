@@ -16,16 +16,14 @@
 
     function IO_OpenChainForRead(name, OK) result(handle)
     character(len=*), intent(in) :: name
-    integer handle
+    integer handle, status
     logical, optional, intent(out) :: OK
 
     if (.not. present(OK)) then
         handle = OpenNewTxtFile(name)
     else
-        open(newunit=handle,file=name,form='formatted',status='old', err=28)
-        OK=.true.
-        return
-28      OK=.false.
+        open(newunit=handle,file=name,form='formatted',status='old', iostat=status)
+        OK=status==0
     endif
 
     end function IO_OpenChainForRead
@@ -389,7 +387,7 @@
     end if
 
     allocate(indices(ncols-2))
-    indices=(/ (I, I=3, ncols) /) ! [3:ncols]
+    indices=[ (I, I=3, ncols) ] ! [3:ncols]
     OK = .true.
     do
         if (.not. IO_ReadChainRow(chain_handle, invars(1), invars(2), &
