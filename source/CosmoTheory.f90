@@ -319,7 +319,7 @@
         
     subroutine TCosmoTheoryPredictions_WriteTheory(T, unit)
     Class(TCosmoTheoryPredictions) T
-    integer unit
+    integer, intent(in) :: unit
     integer, parameter :: varcount = 1
     integer tmp(varcount)
     logical, save :: first = .true.
