@@ -125,25 +125,6 @@
     end type GenericParameterization
 
 
-    abstract interface
-    subroutine WriteModel(this, unit, like, mult)
-    import TCalculationAtParamPoint, mcp
-    Class(TCalculationAtParamPoint) :: this
-    integer unit
-    real(mcp), intent(in) :: mult, like
-    end subroutine WriteModel
-
-    subroutine ReadModel(this,  unit, has_likes, mult, like, error)
-    import TCalculationAtParamPoint, mcp
-    Class(TCalculationAtParamPoint) :: this
-    integer, intent(in) :: unit
-    integer, intent(out) :: error
-    real(mcp), intent(out) :: mult, like
-    logical, intent(out) :: has_likes(:)
-    end subroutine ReadModel
-
-    end interface
-
     public int_arr_pointer,TCheckpointable, TTheoryParams, TTheoryIntermediateCache, TCalculationAtParamPoint, TGeneralConfig, &
     & TConfigClass, TTheoryPredictions, TTheoryCalculator, TParameterization, GenericParameterization
 
@@ -290,6 +271,20 @@
     deallocate(derived%P)
 
     end subroutine TCalculationAtParamPoint_WriteParams
+
+    subroutine WriteModel(this, unit, like, mult)
+    Class(TCalculationAtParamPoint) :: this
+    integer unit
+    real(mcp), intent(in) :: mult, like
+    end subroutine WriteModel
+
+    subroutine ReadModel(this,  unit, has_likes, mult, like, error)
+    Class(TCalculationAtParamPoint) :: this
+    integer, intent(in) :: unit
+    integer, intent(out) :: error
+    real(mcp), intent(out) :: mult, like
+    logical, intent(out) :: has_likes(:)
+    end subroutine ReadModel
 
 
     !!! TTheoryIntermediateCache
