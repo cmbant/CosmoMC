@@ -133,7 +133,7 @@
 
     if (MpiRank==0 .and.BaseParams%NameMapping%nnames/=0) then
         call BaseParams%OutputParamNames(trim(post_root),params_used, add_derived=.true.)
-        call BaseParams%OutputParamRanges(trim(post_root)//'.ranges')
+        call BaseParams%OutputParamRanges(trim(post_root))
     end if
 
     if (has_chain) then

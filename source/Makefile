@@ -254,7 +254,7 @@ clean: cleancosmomc
 	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod ../camb/libcamb_$(RECOMBINATION).a
 
 cleancosmomc:
-	rm -f $(OUTPUT_DIR)/*.o $(OUTPUT_DIR)/*.mod ./Debug/* /Release/*  ./DebugMPI/* /ReleaseMPI/* ../core
+	rm -f $(OUTPUT_DIR)/*.o $(OUTPUT_DIR)/*.mod ./Debug/* ./Release/*  ./DebugMPI/* ./ReleaseMPI/* ../core
 
 
 getdist: directories $(DISTFILES)

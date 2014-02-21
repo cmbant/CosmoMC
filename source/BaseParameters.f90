@@ -237,7 +237,8 @@
 
     unit = CreateNewTxtFile(fname//'.ranges')
     do i=1, this%NameMapping%num_MCMC
-        write(unit,'(1A22,2E17.7)') this%NameMapping%NameOrNumber(i), this%PMin(i),this%PMax(i)
+        call IO_WriteLeftTextNoAdvance(unit, '(1A22)', this%NameMapping%NameOrNumber(i))
+        write(unit,'(2E17.7)') this%NameMapping%NameOrNumber(i), this%PMin(i),this%PMax(i)
     end do
     close(unit)
 
