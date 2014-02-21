@@ -263,7 +263,7 @@
         end if
         !Only finish if sanity check passes
         if (abs(last_like - best_like) < minimize_loglike_tolerance*2 .or. &
-         minimize_mcmc_refine_num>0 .and. abs(last_like - best_like) < max(minimize_loglike_tolerance,0.5_mcp)) exit
+        minimize_mcmc_refine_num>0 .and. abs(last_like - best_like) < max(minimize_loglike_tolerance,0.5_mcp)) exit
     end do
 
     call AcceptReject(.true.,Params%Info, MinParams%Info)
@@ -374,7 +374,7 @@
 
     if (generic_mcmc) return
 
-    numderived = Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
+    numderived = GetDerivedParameters(P%P,P%Theory, derived)
     do i=1, numderived
         write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
         num_params+i, derived%P(i), ParamNames_name(NameMapping,num_params + i )

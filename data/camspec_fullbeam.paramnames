@@ -6,12 +6,14 @@ acib217       A^{CIB}_{217}     # CIB amplitude at 217 GHz
 asz143        A^{tSZ}_{143}     # Thermal SZ amplitude at 143 GHz
 psr           r^{PS}_{143\times217}  # 143-217 correlation coefficient of point source residuals
 cibr          r^{CIB}_{143\times217}       # 143-217 correlation coefficient of CIB
-ncib          \gamma^{CIB}           # spectral index of the CIB
+ncib143       \gamma^{CIB}_{143}     # spectral index of the CIB 143
+ncib          \gamma^{CIB}           # spectral index of the CIB 217
+cibrun        d\ln\gamma^{CIB}/d\ln l  # running of the CIB
+xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
+aksz          A^{kSZ}
 cal0          c_{100}       # relative power spectrum calibration factor 100/143 to rescale measured power with
 cal1          c_{143}       # calibration factor 143
 cal2          c_{217}       # relative calibration factor 217/143 (as for 100)
-xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
-aksz          A^{kSZ}
 bm_1_1        \beta^1_1 
 bm_1_2        \beta^1_2
 bm_1_3        \beta^1_3
@@ -32,3 +34,6 @@ bm_4_2        \beta^4_2
 bm_4_3        \beta^4_3
 bm_4_4        \beta^4_4
 bm_4_5        \beta^4_5
+f2000_143*    f_{2000}^{143}
+f2000_217*    f_{2000}^{217}
+f2000_x*      f_{2000}^{143\cross217}

@@ -1,7 +1,4 @@
     module temp_like_camspec
-    !    use settings, only: MPIrank
-    !use AMLutils
-
     implicit none
 
     private
@@ -11,7 +8,8 @@
     real(campc),  dimension(:,:), allocatable :: c_inv
     integer :: Nspec,nX,num_ells,nXfromdiff, CAMspec_lmax
     integer, dimension(:), allocatable  :: lminX, lmaxX, npt
-    integer, parameter :: lmax_sz = 5000
+    integer, parameter :: CAMSpec_lmax_foreground = 5000
+    integer, parameter :: lmax_sz = CAMSpec_lmax_foreground
     real(campc) :: sz_143_temp(lmax_sz)
     real(campc) :: ksz_temp(lmax_sz), tszxcib_temp(lmax_sz)
 
@@ -27,19 +25,23 @@
 
     logical :: make_cov_marged = .false.
     real(campc) :: beam_factor = 2.7_campc
+    integer, parameter :: CamSpec_cib_pivot = 3000
+    integer, parameter :: CamSpec_sz_pivot = 3000
 
     logical :: want_spec(4) = .true.
     integer :: camspec_lmins(4) =0
     integer :: camspec_lmaxs(4) =0
+    real(campc)  :: llp1(CAMSpec_lmax_foreground)
 
-    logical :: storeall=.false.
-    integer :: countnum
     integer :: camspec_beam_mcmc_num = 1
-    !    character*100 storeroot,storename,storenumstring
-    !   character*100 :: bestroot,bestnum,bestname
-    character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v1_cuts'
+
+    character(LEN=1024) camspec_fiducial_foregrounds, camspec_fiducial_cl
+    character(LEN=80) :: marge_file_variant = ''
+
+    character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v2'
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num, &
-    want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged
+    want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged, marge_file_variant,&
+    compute_fg, Nspec,CAMSpec_lmax_foreground,camspec_fiducial_foregrounds,camspec_fiducial_cl
 
     contains
 
@@ -66,40 +68,59 @@
     integer i, dummy
     real(campc) :: renorm
 
-    open(48, file=fname, form='formatted', status='unknown')
+    open(48, file=fname, form='formatted', status='old')
     do i=2,lmax_sz
         read(48,*) dummy,templt(i)
         if (dummy/=i) stop 'CAMspec_ReadNormSZ: inconsistency in file read'
     enddo
     close(48)
 
-    renorm=1.d0/templt(3000)
+    renorm=1.d0/templt(CamSpec_sz_pivot)
     templt=templt*renorm
     end subroutine CAMspec_ReadNormSZ
 
-    subroutine like_init(pre_marged,like_file, sz143_file, tszxcib_file, ksz_file, beam_file, marge_modes)
+    subroutine ReadFiducialCl(fid_cl)
+    integer i,j
+    real(campc) :: fid_theory
+    real(campc) :: fid_cl(:,:)
+
+    open(48, file=CAMspec_fiducial_foregrounds, form='formatted', status='old')
+    do i=2,CAMspec_lmax
+        read(48,*) j, fid_cl(i,:)
+        if (j/=i) stop 'error reading fiducial foreground C_l for beams'
+    enddo
+    close(48)
+    open(48, file=CAMspec_fiducial_cl, form='formatted', status='old')
+    do i=2,CAMspec_lmax
+        read(48,*, end=100) j,fid_theory
+100     if (j/=i) stop 'error reading fiducial C_l for beams'
+        fid_cl(i,:) = (fid_cl(i,:) + fid_theory)*llp1(i) !want C_l/2Pi foregrounds+theory
+    enddo
+    close(48)
+
+    end subroutine ReadFiducialCl
+
+    subroutine like_init(pre_marged,like_file, sz143_file, tszxcib_file, ksz_file, beam_file)
     use MatrixUtils
     integer :: i, j,k,l
     logical :: pre_marged
     character(LEN=1024), intent(in) :: like_file, sz143_file, ksz_file, tszxcib_file, beam_file
-    character(LEN=1024), intent(in), optional :: marge_modes
     logical, save :: needinit=.true.
     real(campc) , allocatable:: fid_cl(:,:), beam_cov(:,:), beam_cov_full(:,:)
     integer if1,if2, ie1, ie2, ii, jj, L2
-    real(campc) :: fid_theory
     real(campc), dimension(:), allocatable :: X_data_in
     real(campc),  dimension(:,:), allocatable :: cov
     integer, allocatable :: indices(:),np(:)
     integer ix
     real(campc) dummy
 
-    ! cl_ksz_148_tbo.dat file is in D_l, format l D_l, from l=2 to 10000
-    ! tsz_x_cib_template.txt is is (l D_l), from l=2 to 9999, normalized to unity
-    !    at l=3000
-
     if(.not. needinit) return
 
-    open(48, file=like_file, form='unformatted', status='unknown')
+    do i=1,CAMSpec_lmax_foreground
+        llp1(i) = 1/real(i*(i+1),campc)
+    end do
+
+    open(48, file=like_file, form='unformatted', status='old')
 
     read(48) Nspec,nX
     allocate(lminX(Nspec))
@@ -125,8 +146,8 @@
         allocate(cov(nX,nX))
         allocate(X_data_in(nX))
         read(48) X_data_in !(X_data(i), i=1, nX)
-        read(48) cov !((c_inv(i, j), j = 1, nX), i = 1,  nX) !covarianbce
-        read(48) !((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
+        read(48) cov !((c_inv(i, j), j = 1, nX), i = 1,  nX) !covariance
+        read(48) !((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariance
         close(48)
 
         !Cut on L ranges
@@ -169,13 +190,7 @@
 
     if (.not. pre_marged) then
         allocate(fid_cl(CAMspec_lmax,4))
-        open(48, file='./data/camspec_foregrounds.dat', form='formatted', status='unknown')
-        do i=2,CAMspec_lmax
-            read(48,*) j,fid_theory, fid_cl(i,:)
-            if (j/=i) stop 'error reading fiducial foreground C_l for beams'
-            fid_cl(i,:) = (fid_cl(i,:) + fid_theory)/(i*(i+1)) !want C_l/2Pi foregrounds+theory
-        enddo
-        close(48)
+        call ReadFiducialCl(fid_cl)
     end if
 
     call CAMspec_ReadNormSZ(sz143_file, sz_143_temp)
@@ -189,14 +204,9 @@
     cov_dim=beam_Nspec*num_modes_per_beam
     allocate(beam_cov_full(cov_dim,cov_dim))
     read(48) (((beam_modes(i,l,j),j=1,Nspec),l=0,beam_lmax),i=1,num_modes_per_beam)
-    if (pre_marged) then
-        read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)  
-        read(48) !skip !((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
-    else
-        allocate(beam_cov_inv(cov_dim,cov_dim))
-        read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)  ! beam_cov
-        read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
-    end if
+    allocate(beam_cov_inv(cov_dim,cov_dim))
+    read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)  ! beam_cov
+    read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
     close(48)
 
     allocate(want_marge(cov_dim))
@@ -222,22 +232,21 @@
         marge_indices_reverse(i)=j
         keep_indices_reverse(i)=k
     end do
+
     allocate(beam_conditional_mean(marge_num, keep_num))
+    if (marge_num>0) then
+        allocate(beam_cov(marge_num, marge_num))
+        beam_cov = beam_cov_inv(marge_indices,marge_indices)
+        call Matrix_Inverse(beam_cov)
+        beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(marge_indices,keep_indices))
+    end if
+    deallocate(beam_cov_inv)
+
     if (pre_marged) then
         print *,'using marginalizing modes:',marge_num,'keeping',keep_num
-        !Use precomputed values
-        open(48, file=marge_modes, form='formatted', status='unknown')
-        do i=1, marge_num
-            read(48,*) beam_conditional_mean(i,:)
-        end do
-        close(48)
     else
         print *,'beam marginalizing:',marge_num,'keeping',keep_num
         if (marge_num>0) then
-            allocate(beam_cov(marge_num, marge_num))
-            beam_cov = beam_cov_inv(marge_indices,marge_indices)
-            call Matrix_Inverse(beam_cov)
-
             do if2=1,beam_Nspec
                 if (want_spec(if2)) then
                     do if1=1,beam_Nspec
@@ -264,10 +273,9 @@
             enddo
             ! print *,'after', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502),  c_inv(npt(4)-1002,npt(4)-1000)
 
-            beam_conditional_mean=-matmul(beam_cov, beam_cov_inv(marge_indices,keep_indices))
             call Matrix_inverse(c_inv) !now c_inv is the inverse covariance
             if (make_cov_marged .and. marge_num>0) then
-                open(48, file=trim(like_file)//'_beam_marged', form='unformatted', status='unknown')
+                open(48, file=trim(like_file)//'_beam_marged'//trim(marge_file_variant), form='unformatted', status='unknown')
                 write(48) Nspec,nX
                 write(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
                 write(48) (X_data(i), i=1, nX)
@@ -275,17 +283,12 @@
                 write(48) dummy !inver covariance, assume not used
                 write(48) ((c_inv(i, j), j = 1, nX), i = 1,  nX) !inver covariuance
                 close(48)
-                open(48, file=trim(like_file)//'_conditionals', form='formatted', status='unknown')
-                do i=1, marge_num
-                    write(48,*) beam_conditional_mean(i,:)
-                end do
-                close(48)
+                write(*,*) 'Marged file done: '//trim(like_file)//'_beam_marged'//trim(marge_file_variant)
                 stop
             end if
         else
             call Matrix_inverse(c_inv)
         end if
-        deallocate(beam_cov_inv)
     end if !pre-marged
 
     if (keep_num>0) then
@@ -293,34 +296,108 @@
         beam_cov_inv = beam_cov_full(keep_indices,keep_indices)
         call Matrix_inverse(beam_cov_inv)
     end if
-    countnum=0
 
     needinit=.false.
 
     end subroutine like_init
 
 
-    subroutine calc_like(zlike,  cell_cmb, freq_params)
-    real(campc), intent(in)  :: freq_params(:)
-    real(campc), dimension(0:) :: cell_cmb
-    integer ::  j, l, ii,jj
-    real(campc) , allocatable, save ::  X_beam_corr_model(:), Y(:),  C_foregrounds(:,:)
-    real(campc) zlike
-    real(campc) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz, r_ps, r_cib, ncib, cal0, cal1, cal2, xi, A_ksz
+    subroutine compute_fg(C_foregrounds,freq_params, lmax_compute)
+    real(8), intent(in)  :: freq_params(:)
+    integer, intent(in) :: lmax_compute
+    real(8), intent(inout)  ::  C_foregrounds(:,:)
+    real(campc) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, asz143, r_ps, r_cib, xi, A_ksz
+    real(campc) ncib217, ncib143
     real(campc) zCIB
-    real(campc) ztemp
-    real(campc) beam_params(cov_dim),beam_coeffs(beam_Nspec,num_modes_per_beam)
-    integer :: ie1,ie2,if1,if2, ix
-    integer num_non_beam
-    real(campc) cl_cib(CAMspec_lmax) !CIB
+    integer:: l
+    real(campc) cl_cib_143(CAMSpec_lmax_foreground), cl_cib_217(CAMSpec_lmax_foreground) !CIB
     real(campc), parameter :: sz_bandpass100_nom143 = 2.022d0
     real(campc), parameter :: cib_bandpass143_nom143 = 1.134d0
     real(campc), parameter :: sz_bandpass143_nom143 = 0.95d0
     real(campc), parameter :: cib_bandpass217_nom217 = 1.33d0
     real(campc), parameter :: ps_scale  = 1.d-6/9.d0
     real(campc) :: A_cib_217_bandpass, A_sz_143_bandpass, A_cib_143_bandpass
+    integer lmin(Nspec), lmax(Nspec)
+    real(campc) lnrat, nrun_cib
 
-    !    real(campc) atime
+    if (lmax_compute/=0) then
+        lmin = 2
+        lmax = min(CAMSpec_lmax_foreground,lmax_compute)
+    else
+        lmin = lminX
+        lmax = lmaxX
+    end if
+
+    A_ps_100=freq_params(1)
+    A_ps_143 = freq_params(2)
+    A_ps_217 = freq_params(3)
+    A_cib_143 =freq_params(4)
+    A_cib_217 =freq_params(5)
+    asz143 = freq_params(6)
+    r_ps = freq_params(7)
+    r_cib = freq_params(8)
+    ncib143 = freq_params(9)
+    ncib217 = freq_params(10)
+    nrun_cib = freq_params(11)
+    xi = freq_params(12)
+    A_ksz = freq_params(13)
+
+    do l=1, maxval(lmax)
+        lnrat = log(real(l,campc)/CamSpec_cib_pivot)
+        cl_cib_217(l) = exp(ncib217*lnrat + nrun_cib/2*lnrat**2)
+        if (ncib143<-9) then
+            cl_cib_143(l) = cl_cib_217(l)
+        else
+            cl_cib_143(l)=exp(ncib143*lnrat + nrun_cib/2*lnrat**2)
+        end if
+    end do
+
+    !   100 foreground
+    !
+    do l = lmin(1), lmax(1)
+        C_foregrounds(l,1)= A_ps_100*ps_scale+  &
+        ( A_ksz*ksz_temp(l) + asz143*sz_bandpass100_nom143*sz_143_temp(l) )*llp1(l)
+    end do
+
+    !   143 foreground
+    !
+    A_sz_143_bandpass = asz143 * sz_bandpass143_nom143
+    A_cib_143_bandpass = A_cib_143 * cib_bandpass143_nom143
+    do l = lmin(2), lmax(2)
+        zCIB = A_cib_143_bandpass*cl_cib_143(l)
+        C_foregrounds(l,2)= A_ps_143*ps_scale + &
+        (zCIB +  A_ksz*ksz_temp(l) + A_sz_143_bandpass*sz_143_temp(l) &
+        -2.0*sqrt(A_cib_143_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )*llp1(l)
+    end do
+
+    !   217 foreground
+    !
+    A_cib_217_bandpass = A_cib_217 * cib_bandpass217_nom217
+    do l = lmin(3), lmax(3)
+        zCIB = A_cib_217_bandpass*cl_cib_217(l)
+        C_foregrounds(l,3) = A_ps_217*ps_scale + (zCIB + A_ksz*ksz_temp(l) )*llp1(l)
+    end do
+
+    !   143x217 foreground
+    !
+    do l = lmin(4), lmax(4)
+        zCIB = sqrt(A_cib_143_bandpass*A_cib_217_bandpass*cl_cib_143(l)*cl_cib_217(l))
+        C_foregrounds(l,4) = r_ps*sqrt(A_ps_143*A_ps_217)*ps_scale + &
+        ( r_cib*zCIB + A_ksz*ksz_temp(l) -sqrt(A_cib_217_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )*llp1(l)
+    end do
+
+    end subroutine compute_fg
+
+    subroutine calc_like(zlike,  cell_cmb, freq_params)
+    real(campc), intent(in)  :: freq_params(:)
+    real(campc), dimension(0:) :: cell_cmb
+    integer ::  j, l, ii,jj
+    real(campc) , allocatable, save ::  X_beam_corr_model(:), Y(:),  C_foregrounds(:,:)
+    real(campc) cal0, cal1, cal2
+    real(campc) zlike, ztemp
+    real(campc) beam_params(cov_dim),beam_coeffs(num_modes_per_beam,beam_Nspec)
+    integer :: ie1,ie2,if1,if2, ix
+    integer num_non_beam
 
     if (.not. allocated(lminX)) then
         print*, 'like_init should have been called before attempting to call calc_like.'
@@ -337,24 +414,14 @@
         C_foregrounds=0
     end if
 
-    ! atime = MPI_Wtime()
+    call compute_fg(C_foregrounds,freq_params, 0)
 
-    num_non_beam = 14
+    cal0 = freq_params(14)
+    cal1 = freq_params(15)
+    cal2 = freq_params(16)
+
+    num_non_beam = 16
     if (size(freq_params) < num_non_beam +  beam_Nspec*num_modes_per_beam) stop 'CAMspec: not enough parameters'
-    A_ps_100=freq_params(1)
-    A_ps_143 = freq_params(2)
-    A_ps_217 = freq_params(3)
-    A_cib_143 =freq_params(4)
-    A_cib_217 =freq_params(5)
-    A_sz = freq_params(6)  !143
-    r_ps = freq_params(7)
-    r_cib = freq_params(8)
-    ncib = freq_params(9)
-    cal0 = freq_params(10)
-    cal1 = freq_params(11)
-    cal2 = freq_params(12)
-    xi = freq_params(13)
-    A_ksz = freq_params(14)
 
     if (keep_num>0) then
         beam_params = freq_params(num_non_beam+1:num_non_beam+cov_dim)
@@ -364,52 +431,26 @@
         do ii=1,beam_Nspec
             do jj=1,num_modes_per_beam
                 ix = jj+num_modes_per_beam*(ii-1)
-                beam_coeffs(ii,jj)=beam_params(ix)
+                beam_coeffs(jj,ii)=beam_params(ix)
             enddo
         enddo
     else
         beam_coeffs=0
     end if
 
-    do l=1, CAMspec_lmax
-        cl_cib(l) = (real(l,campc)/3000)**(ncib)
-    end do
-
-    !   100 foreground
-    !
     do l = lminX(1), lmaxX(1)
-        C_foregrounds(l,1)= A_ps_100*ps_scale+  &
-        ( A_ksz*ksz_temp(l) + A_sz*sz_bandpass100_nom143*sz_143_temp(l) )/(l*(l+1))
         X_beam_corr_model(l-lminX(1)+1) = ( cell_cmb(l) + C_foregrounds(l,1) )* corrected_beam(1,l)/cal0
     end do
 
-    !   143 foreground
-    !
-    A_sz_143_bandpass = A_sz * sz_bandpass143_nom143
-    A_cib_143_bandpass = A_cib_143 * cib_bandpass143_nom143
     do l = lminX(2), lmaxX(2)
-        zCIB = A_cib_143_bandpass*cl_cib(l)
-        C_foregrounds(l,2)= A_ps_143*ps_scale + &
-        (zCIB +  A_ksz*ksz_temp(l) + A_sz_143_bandpass*sz_143_temp(l) &
-        -2.0*sqrt(A_cib_143_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )/(l*(l+1))
         X_beam_corr_model(l-lminX(2)+npt(2)) =  (cell_cmb(l)+ C_foregrounds(l,2))*corrected_beam(2,l)/cal1
     end do
 
-    !   217 foreground
-    !
-    A_cib_217_bandpass = A_cib_217 * cib_bandpass217_nom217
     do l = lminX(3), lmaxX(3)
-        zCIB = A_cib_217_bandpass*cl_cib(l)
-        C_foregrounds(l,3) = A_ps_217*ps_scale + (zCIB + A_ksz*ksz_temp(l) )/(l*(l+1))
         X_beam_corr_model(l-lminX(3)+npt(3)) = (cell_cmb(l)+ C_foregrounds(l,3))* corrected_beam(3,l)/cal2
     end do
 
-    !   143x217 foreground
-    !
     do l = lminX(4), lmaxX(4)
-        zCIB = sqrt(A_cib_143_bandpass*A_cib_217_bandpass)*cl_cib(l)
-        C_foregrounds(l,4) = r_ps*sqrt(A_ps_143*A_ps_217)*ps_scale + &
-        ( r_cib*zCIB + A_ksz*ksz_temp(l) -sqrt(A_cib_217_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )/(l*(l+1))
         X_beam_corr_model(l-lminX(4)+npt(4)) =  ( cell_cmb(l) + C_foregrounds(l,4))*corrected_beam(4,l)/sqrt(cal1*cal2)
     end do
 
@@ -421,15 +462,6 @@
         ztemp= dot_product(Y(j+1:nX), c_inv(j+1:nX, j))
         zlike=zlike+ (ztemp*2 +c_inv(j, j)*Y(j))*Y(j)
     end do
-    !    zlike = 0
-    !    do  j = 1, nX
-    !       ztemp= 0
-    !       do  i = 1, nX
-    !          ztemp = ztemp + Y(i)*c_inv(i, j)
-    !       end do
-    !       zlike=zlike+ztemp*Y(j)
-    !    end do
-    !   zlike = CAMSpec_Quad(c_inv, Y)
 
     if (keep_num>0) then
         do if2=1,beam_Nspec
@@ -440,8 +472,8 @@
                         do ie1=1,num_modes_per_beam
                             ii=ie1+num_modes_per_beam*(if1-1)
                             if (.not. want_marge(ii)) then
-                                zlike=zlike+beam_coeffs(if1,ie1)*&
-                                beam_cov_inv(keep_indices_reverse(ii),keep_indices_reverse(jj))*beam_coeffs(if2,ie2)
+                                zlike=zlike+beam_coeffs(ie1,if1)*&
+                                beam_cov_inv(keep_indices_reverse(ii),keep_indices_reverse(jj))*beam_coeffs(ie2,if2)
                             end if
                         enddo
                     end if
@@ -450,22 +482,17 @@
         enddo
     end if
 
-!    if (want_spec(1)) zlike=zlike+ ((cal0/cal1-1.0006d0)/0.0004d0)**2
-!    if (any(want_spec(3:4))) zlike=zlike+ ((cal2/cal1-0.9966d0)/0.0015d0)**2
-! below is temporary testing for dx11...
-    if (want_spec(1)) zlike=zlike+ ((cal0/cal1-1.00d0)/0.001d0)**2
-    if (any(want_spec(3:4))) zlike=zlike+ ((cal2/cal1-0.991d0)/0.003d0)**2
+    !Moved these hard coded priors in prior[cal0] and prior[cal2] input parameters
+    !    if (want_spec(1)) zlike=zlike+ ((cal0/cal1-1.0006d0)/0.0004d0)**2
+    !    if (any(want_spec(3:4))) zlike=zlike+ ((cal2/cal1-0.9966d0)/0.0015d0)**2
 
     contains
 
     real(campc) function corrected_beam(spec_num,l)
     integer, intent(in) :: spec_num,l
-    integer :: i
 
-    corrected_beam=1.d0
-    do i=1,num_modes_per_beam
-        corrected_beam=corrected_beam+beam_coeffs(spec_num,i)*beam_modes(i,l,spec_num)*beam_factor
-    enddo
+    corrected_beam=1.d0 + dot_product(beam_coeffs(:,spec_num),beam_modes(:,l,spec_num))*beam_factor
+
     end function corrected_beam
 
     end subroutine calc_like

@@ -1,0 +1,10 @@
+name = DR11CMASS
+
+#Type of measurement: A(z) = 2, D_V/rs=3
+type_bao = 3
+
+#number of bao data points 
+num_bao = 1
+
+bao_measurements_file = %DATASETDIR%sdss_DR11CMASS_bao.txt
+prob_dist = %DATASETDIR%sdss_DR11CMASS_consensus.dat

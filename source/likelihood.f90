@@ -20,12 +20,15 @@
         !Internally calculated
         logical :: dependent_params(max_num_params) = .false.
         integer, allocatable :: nuisance_indices(:)
+        integer, allocatable :: derived_indices(:)
         integer :: new_param_block_start, new_params
     contains
     procedure :: LogLike
     procedure :: LogLikeTheory !same as above when extra info not needed
     procedure :: loadParamNames
     procedure :: checkConflicts
+    procedure :: derivedParameters  !derived parameters calculated by likelihood function
+    procedure  :: WriteLikelihoodData
     end type DataLikelihood
 
     type, extends(DataLikelihood) :: DatasetFileLikelihood
@@ -44,12 +47,15 @@
     !This is the global list of likelihoods we will use
     Type, extends(TObjectList) :: LikelihoodList
         integer :: first_fast_param =0
+        integer :: num_derived_parameters = 0
     contains
     procedure :: Item => LikelihoodItem
     procedure :: WriteLikelihoodContribs
     procedure :: AddNuisanceParameters
     procedure :: Compare => CompareLikes
     procedure :: checkAllConflicts
+    procedure :: WriteDataForLikelihoods
+    procedure :: addLikelihoodDerivedParams
     end type LikelihoodList
 
     Type(LikelihoodList), target, save :: DataLikelihoods
@@ -87,6 +93,21 @@
 
     end subroutine WriteLikelihoodContribs
 
+    subroutine WriteDataForLikelihoods(L, P, Theory, fileroot)
+    Class(LikelihoodList) :: L
+    real(mcp), intent(in) :: P(:)
+    character(LEN=*), intent(in) :: fileroot
+    class(*), intent(in) :: Theory
+    integer i
+    Class(DataLikelihood), pointer :: LikeItem
+
+    do i=1,L%Count
+        LikeItem => L%Item(i)
+        call LikeItem%WriteLikelihoodData(Theory,P(LikeItem%nuisance_indices),fileroot)
+    end do
+
+    end subroutine WriteDataForLikelihoods
+
     integer function CompareLikes(this, R1, R2) result(comp)
     Class(LikelihoodList) :: this
     class(*) R1,R2
@@ -108,23 +129,26 @@
     use ParamNames
     Class(LikelihoodList) :: L
     Type(TParamNames) :: Names
+    Type(TParamNames), pointer :: NewNames
     Class(DataLikelihood), pointer :: DataLike
-    integer i,j
+    integer i,j, baseDerived
 
     call L%Sort
     L%first_fast_param=0
+    baseDerived = Names%num_derived
     do i=1,L%Count
         DataLike=>L%Item(i)
+        NewNames => DataLike%nuisance_params
         if (Feedback>0 .and. MPIrank==0) print *,'adding parameters for: '//trim(DataLIke%name)
         DataLike%new_param_block_start = Names%num_MCMC +1
-        if (DataLike%nuisance_params%num_derived>0) call MpiStop('No support for likelihood derived params yet')
-        call ParamNames_Add(Names, DataLike%nuisance_params)
+        !        if (DataLike%nuisance_params%num_derived>0) call MpiStop('No support for likelihood derived params yet')
+        call ParamNames_Add(Names, NewNames)
         if (Names%num_MCMC > max_num_params) call MpiStop('increase max_data_params in settings.f90')
         DataLike%new_params = Names%num_MCMC - DataLike%new_param_block_start + 1
-        allocate(DataLike%nuisance_indices(DataLike%nuisance_params%num_MCMC))
-        if (DataLike%nuisance_params%num_MCMC/=0) then
-            do j=1, DataLike%nuisance_params%num_MCMC
-                DataLike%nuisance_indices(j) = ParamNames_index(Names,DataLike%nuisance_params%name(j))
+        allocate(DataLike%nuisance_indices(NewNames%num_MCMC))
+        if (NewNames%num_MCMC/=0) then
+            do j=1, NewNames%num_MCMC
+                DataLike%nuisance_indices(j) = ParamNames_index(Names,NewNames%name(j))
             end do
             if (any(DataLike%nuisance_indices==-1)) call MpiStop('AddNuisanceParameters: unmatched data param')
             DataLike%dependent_params(DataLike%nuisance_indices) = .true.
@@ -133,6 +157,18 @@
             DataLike%new_params>0) L%first_fast_param = DataLike%new_param_block_start
         end if
     end do
+    do i=1,L%Count
+        !Add likelihood-derived parameters, after full set numbering has been dermined above
+        DataLike=>L%Item(i)
+        NewNames => DataLike%nuisance_params
+        if (NewNames%num_derived>0) allocate(DataLike%derived_indices(NewNames%num_derived))
+        do j=1, NewNames%num_derived
+            DataLike%derived_indices(j) = ParamNames_index(Names, NewNames%name(j+NewNames%num_MCMC)) - Names%num_MCMC
+        end do
+        if (Feedback>1 .and. MPIrank==0) print *,trim(DataLike%name)//' derived param indices:', DataLike%derived_indices
+        if (any(DataLike%derived_indices<=0)) call MpiStop('AddNuisanceParameters: unmatched derived param')
+    end do
+    L%num_derived_parameters = Names%num_derived - baseDerived
 
     end subroutine AddNuisanceParameters
 
@@ -148,6 +184,51 @@
     end do
 
     end subroutine checkAllConflicts
+
+    function addLikelihoodDerivedParams(L, P, Theory, derived) result(num_derived)
+    Class(LikelihoodList) :: L
+    Type(mc_real_pointer) :: derived
+    class(*) :: Theory
+    real(mcp) :: P(:)
+    real(mcp), pointer :: allDerived(:)
+    integer num_derived
+    Class(DataLikelihood), pointer :: DataLike
+    integer i
+
+    num_derived = L%num_derived_parameters + size(derived%P)
+    if (L%num_derived_parameters==0) return
+
+    allocate(allDerived(num_derived))
+    allDerived(1:size(derived%P)) = derived%P
+    deallocate(derived%P)
+    derived%P => allDerived
+
+    do i=1,L%Count
+        DataLike=>L%Item(i)
+        if (allocated(DataLike%derived_indices)) then
+            Derived%P(DataLike%derived_indices) = DataLike%derivedParameters(Theory, P(DataLike%nuisance_indices))
+        end if
+    end do
+
+    end function addLikelihoodDerivedParams
+
+    function derivedParameters(like, Theory, DataParams) result(derived)
+    class(DataLikelihood) :: like
+    class(*) :: Theory
+    real(mcp) :: derived(like%nuisance_params%num_derived)
+    real(mcp) :: DataParams(:)
+    !Calculate any derived parameters internal to the likelihood that should be output
+    !Number matches derived names defined in nuisance_params .paramnames file
+    derived=0
+    end function derivedParameters
+
+    subroutine WriteLikelihoodData(like,Theory,DataParams, root)
+    class(DataLikelihood) :: like
+    class(*) :: Theory
+    real(mcp), intent(in) :: DataParams(:)
+    character(LEN=*), intent(in) :: root
+    !Write out any derived data that might be useful for the likelihood (e.g. foreground model)
+    end subroutine WriteLikelihoodData
 
     function logLikeTheory(like, CMB)
     !For likelihoods that don't need Theory or DataParams
@@ -168,6 +249,7 @@
 
     logLike = like%logLikeTheory(CMB)
     end function
+
 
     subroutine loadParamNames(like, fname)
     class(DataLikelihood) :: like

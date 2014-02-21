@@ -72,6 +72,7 @@
 		<File RelativePath="..\source\driver.F90"/>
 		<File RelativePath="..\source\EstCovmat.f90"/>
 		<File RelativePath="..\source\GeneralTypes.f90"/>
+		<File RelativePath="..\source\Interpolation.f90"/>
 		<File RelativePath="..\source\IO.f90"/>
 		<File RelativePath="..\source\likelihood.f90"/>
 		<File RelativePath="..\source\MCMC.f90"/>

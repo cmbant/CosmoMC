@@ -2,13 +2,13 @@
     ! Copied structure from mpk.f90 and Reid BAO code
     !
     ! When using WiggleZ data set cite Blake et al. arXiv:1108.2635
-    !!!!!!!!
-    !for SDSS data set: http://www.sdss3.org/science/boss_dr9_final_results/README_sdssbaodr9iso
-    !! for explanation of the changes to the rs expression, see Hamann et al,
-    !! http://arxiv.org/abs/1003.3999
-    !
-    !AL/JH Oct 2012: encorporate DR9 data into something close to new cosmomc format
 
+    !for SDSS data set: http://www.sdss3.org/science/boss_publications.php
+
+    ! For rescaling method see Hamann et al, http://arxiv.org/abs/1003.3999
+
+    !AL/JH Oct 2012: encorporate DR9 data into something close to new cosmomc format
+    !Dec 2013: merged in DR11 patch (Antonio J. Cuesta, for the BOSS collaboration)
 
     module bao
     use cmbtypes
@@ -35,7 +35,11 @@
     procedure :: ReadIni => BAO_ReadIni
     end type BAOLikelihood
 
-    real(dl), dimension(10000) :: DR7_alpha_file, DR7_prob_file
+    integer,parameter :: DR11_alpha_npoints=280
+    real(dl), dimension (DR11_alpha_npoints) :: DR11_alpha_perp_file,DR11_alpha_plel_file
+    real(dl), dimension (DR11_alpha_npoints,DR11_alpha_npoints) ::   DR11_prob_file
+    real(dl) DR11_dalpha_perp, DR11_dalpha_plel
+    real(dl), dimension (10000) :: DR7_alpha_file, DR7_prob_file
     real(dl) DR7_dalpha
     real rsdrag_theory
     real(dl) :: BAO_fixed_rs = -1._dl
@@ -101,6 +105,9 @@
     if (like%name == 'DR7') then
         !don't used observed value, probabilty distribution instead
         call BAO_DR7_init(ReadIniFileName(Ini,'prob_dist'))
+    elseif (like%name == 'DR11CMASS') then
+        !don't used observed value, probabilty distribution instead
+        call BAO_DR11_init(ReadIniFileName(Ini,'prob_dist'))
     else
         allocate(like%bao_invcov(like%num_bao,like%num_bao))
         like%bao_invcov=0
@@ -122,7 +129,6 @@
                 like%bao_invcov(i,i) = 1/like%bao_err(i)**2
             end do
         end if
-
     end if
 
     end subroutine BAO_ReadIni
@@ -177,6 +183,8 @@
     BAO_LnLike=0
     if (like%name=='DR7') then
         BAO_LnLike = BAO_DR7_loglike(CMB,like%bao_z(1))
+    elseif (like%name=='DR11CMASS') then
+        BAO_LnLike = BAO_DR11_loglike(CMB,like%bao_z(1))
     else
         allocate(BAO_theory(like%num_bao))
 
@@ -263,6 +271,67 @@
     endif
 
     end function BAO_DR7_loglike
+
+    subroutine BAO_DR11_init(fname)
+    character(LEN=*), intent(in) :: fname
+    real(dl) :: tmp0,tmp1,tmp2
+    integer ios,ii,jj,nn
+
+    open(unit=7,file=fname,status='old')
+    ios = 0
+    nn=0
+    do while (ios.eq.0)
+        read (7,*,iostat=ios) tmp0,tmp1,tmp2
+        if (ios .ne. 0) cycle
+        nn = nn + 1
+        ii = 1 +     (nn-1)/DR11_alpha_npoints
+        jj = 1 + mod((nn-1),DR11_alpha_npoints)
+        DR11_alpha_perp_file(ii)   = tmp0
+        DR11_alpha_plel_file(jj)   = tmp1
+        DR11_prob_file(ii,jj)      = tmp2
+    enddo
+    close(7)
+    DR11_dalpha_perp=DR11_alpha_perp_file(2)-DR11_alpha_perp_file(1)
+    DR11_dalpha_plel=DR11_alpha_plel_file(2)-DR11_alpha_plel_file(1)
+    !Normalize distribution (so that the peak value is 1.0)
+    tmp0=0.0
+    do ii=1,DR11_alpha_npoints
+        do jj=1,DR11_alpha_npoints
+            if(DR11_prob_file(ii,jj).gt.tmp0) then
+                tmp0=DR11_prob_file(ii,jj)
+            endif
+        enddo
+    enddo
+    DR11_prob_file=DR11_prob_file/tmp0
+
+    end subroutine BAO_DR11_init
+
+    function BAO_DR11_loglike(CMB,z)
+    Class(CMBParams) CMB
+    real (dl) z, BAO_DR11_loglike, alpha_perp, alpha_plel, prob
+    real,parameter :: rd_fid=149.28,H_fid=93.558,DA_fid=1359.72 !fiducial parameters
+    integer ii,jj
+    alpha_perp=(AngularDiameterDistance(z)/rsdrag_theory)/(DA_fid/rd_fid)
+    alpha_plel=(H_fid*rd_fid)/((c*Hofz(z)/1.d3)*rsdrag_theory)
+    if ((alpha_perp.lt.DR11_alpha_perp_file(1)).or.(alpha_perp.gt.DR11_alpha_perp_file(DR11_alpha_npoints-1)).or. &
+    &   (alpha_plel.lt.DR11_alpha_plel_file(1)).or.(alpha_plel.gt.DR11_alpha_plel_file(DR11_alpha_npoints-1))) then
+        BAO_DR11_loglike = logZero
+    else
+        ii=1+floor((alpha_perp-DR11_alpha_perp_file(1))/DR11_dalpha_perp)
+        jj=1+floor((alpha_plel-DR11_alpha_plel_file(1))/DR11_dalpha_plel)
+        prob=(1./((DR11_alpha_perp_file(ii+1)-DR11_alpha_perp_file(ii))*(DR11_alpha_plel_file(jj+1)-DR11_alpha_plel_file(jj))))*  &
+        &       (DR11_prob_file(ii,jj)*(DR11_alpha_perp_file(ii+1)-alpha_perp)*(DR11_alpha_plel_file(jj+1)-alpha_plel) &
+        &       -DR11_prob_file(ii+1,jj)*(DR11_alpha_perp_file(ii)-alpha_perp)*(DR11_alpha_plel_file(jj+1)-alpha_plel) &
+        &       -DR11_prob_file(ii,jj+1)*(DR11_alpha_perp_file(ii+1)-alpha_perp)*(DR11_alpha_plel_file(jj)-alpha_plel) &
+        &       +DR11_prob_file(ii+1,jj+1)*(DR11_alpha_perp_file(ii)-alpha_perp)*(DR11_alpha_plel_file(jj)-alpha_plel))
+        if  (prob.gt.0.) then
+            BAO_DR11_loglike = -log( prob )
+        else
+            BAO_DR11_loglike = logZero
+        endif
+    endif
+
+    end function BAO_DR11_loglike
 
     function SDSS_CMBToBAOrs(CMB)
     use settings

@@ -455,6 +455,7 @@
     end if
 
     if (use_LSS) then
+        P%Transfer%PK_num_redshifts = num_power_redshifts
         do zix=1, num_power_redshifts
             !CAMB's ordering is from highest to lowest
             P%Transfer%PK_redshifts(zix) = power_redshifts(num_power_redshifts-zix+1)
