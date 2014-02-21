@@ -64,6 +64,7 @@
 		<File RelativePath="..\source\calclike.f90"/>
 		<File RelativePath="..\source\EstCovmat.f90"/>
 		<File RelativePath="..\source\GeneralTypes.f90"/>
+		<File RelativePath="..\source\Interpolation.f90"/>
 		<File RelativePath="..\source\IO.f90"/>
 		<File RelativePath="..\source\MCMC.f90"/>
 		<File RelativePath="..\source\minimize.f90"/>
@@ -75,6 +76,5 @@
 		<File RelativePath="..\source\propose.f90"/>
 		<File RelativePath="..\source\samples.f90"/>
 		<File RelativePath="..\source\settings.f90"/>
-		<File RelativePath="..\source\Interpolation.f90"/>
 		<File RelativePath="..\source\supernovae.f90"/></Filter></Files>
 	<Globals/></VisualStudioProject>

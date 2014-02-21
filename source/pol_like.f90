@@ -3,8 +3,8 @@
     !use AMLutils
 
     implicit none
-
     private
+
     integer, parameter :: campc = KIND(1.d0)
 
     real(campc), dimension(:), allocatable :: X_data, X_theory, Y
@@ -22,7 +22,7 @@
     logical :: pre_marged
     character(LEN=1024), intent(in) :: like_file
     logical, save :: needinit=.true.
-    
+
     if(.not. needinit) return
 
     print *,'about to open ',trim(like_file)
@@ -38,28 +38,28 @@
     read(48) (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
 
     print *, (lminX(i), lmaxX(i), np(i), npt(i), i = 1, Nspec)
-        allocate(X_data(nX))
-        allocate(X_theory(nX))
-        allocate(Y(nX))
+    allocate(X_data(nX))
+    allocate(X_theory(nX))
+    allocate(Y(nX))
     print *,'allocated vectors'
     print *,'nX=',nX
-        allocate(c_inv(nX,nX))
-        if(allocated(c_inv))then
- print*,'c_inv allocated and shape is ', shape(c_inv)
-endif
+    allocate(c_inv(nX,nX))
+    if(allocated(c_inv))then
+        print*,'c_inv allocated and shape is ', shape(c_inv)
+    endif
 
-        read(48) (X_data(i), i=1, nX)
+    read(48) (X_data(i), i=1, nX)
     print *,'read X_data'
-        read(48) !skip  covariance
+    read(48) !skip  covariance
     print *,'skipped cov'
-        read(48) ((c_inv(i, j), i = 1, nX), j = 1,  nX) !inv covariance
+    read(48) ((c_inv(i, j), i = 1, nX), j = 1,  nX) !inv covariance
     print *,'read inv_cov'
     call flush
-        close(48)
-        print *,' nX ',nX
-        do i=1,Nspec
-            print *, 'spec ',i, 'lmin,lmax, start ix = ', lminX(i),lmaxX(i), npt(i)
-        end do
+    close(48)
+    print *,' nX ',nX
+    do i=1,Nspec
+        print *, 'spec ',i, 'lmin,lmax, start ix = ', lminX(i),lmaxX(i), npt(i)
+    end do
 
     needinit=.false.
 
@@ -82,29 +82,29 @@ endif
 
     X_theory=0.d0
 
-      do kk = 1, Nspec
-      do l = lminX(kk), lmaxX(kk)
-       if(kk.eq.1) then
-       X_theory(l - lminX(kk) + npt(kk)) = cell_cmbx(l)
-       end if
-       if(kk.eq.2) then
-       X_theory(l - lminX(kk) + npt(kk)) = cell_cmbe(l)
-       end if
+    do kk = 1, Nspec
+        do l = lminX(kk), lmaxX(kk)
+            if(kk.eq.1) then
+                X_theory(l - lminX(kk) + npt(kk)) = cell_cmbx(l)
+            end if
+            if(kk.eq.2) then
+                X_theory(l - lminX(kk) + npt(kk)) = cell_cmbe(l)
+            end if
 
-      end do
-      end do
+        end do
+    end do
 
 
     Y = X_data - X_theory
 
-      zlike = 0.d+00
-       do  i = 1, nX
-         do  j = 1, nX
-           zlike = zlike + Y(i)*Y(j)*c_inv(j, i)
-         end do
-       end do
+    zlike = 0.d+00
+    do  i = 1, nX
+        do  j = 1, nX
+            zlike = zlike + Y(i)*Y(j)*c_inv(j, i)
+        end do
+    end do
 
-     !  print*, zlike
+    !  print*, zlike
 
     end subroutine pol_calc_like
 
