@@ -78,28 +78,6 @@
     procedure :: WriteBestFitData
     end Type TTheoryPredictions
 
-    abstract interface
-
-    subroutine WriteTheory(T, unit)
-    import TTheoryPredictions
-    class(TTheoryPredictions) T
-    integer, intent(in) :: unit
-    end subroutine WriteTheory
-
-    subroutine ReadTheory(T, unit)
-    import TTheoryPredictions
-    class(TTheoryPredictions) T
-    integer, intent(in) :: unit
-    end subroutine ReadTheory
-
-    subroutine WriteBestFitData(Theory,fnameroot)
-    import TTheoryPredictions
-    class(TTheoryPredictions) Theory
-    character(LEN=*), intent(in) :: fnameroot
-    end subroutine WriteBestFitData
-    end interface
-
-
     Type, extends(TConfigClass) :: TTheoryCalculator
         character(LEN=128) :: calcName = 'TheoryCalculator'
     contains
@@ -386,6 +364,21 @@
     call this%ReadParams(Ini)
 
     end subroutine TConfigClass_InitWithParams
+
+    subroutine WriteTheory(T, unit)
+    class(TTheoryPredictions) T
+    integer, intent(in) :: unit
+    end subroutine WriteTheory
+
+    subroutine ReadTheory(T, unit)
+    class(TTheoryPredictions) T
+    integer, intent(in) :: unit
+    end subroutine ReadTheory
+
+    subroutine WriteBestFitData(Theory,fnameroot)
+    class(TTheoryPredictions) Theory
+    character(LEN=*), intent(in) :: fnameroot
+    end subroutine WriteBestFitData
 
 
     !!TGeneralConfig
