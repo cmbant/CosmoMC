@@ -162,7 +162,7 @@
     integer version
 
     read(unit) version
-    if (version/=1) stop 'unknown checkpoint format'
+    if (version/=1) call MpiStop('unknown checkpoint format')
     read(unit) this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn, &
     this%flukecheck, this%Mpi%MPI_Min_Sample_Update, this%DoUpdates
     call this%Samples%LoadState(unit)
@@ -175,6 +175,7 @@
     subroutine TMpiChainCollector_WriteCheckpoint(this)
     class(TMpiChainCollector) :: this
     integer unit
+
     if (Feedback > 1) write (*,*) instance, 'Writing checkpoint'
     unit = CreateNewFile(rootname//'.chk_tmp')
     !Use temporary file in case crash/stop during write operation

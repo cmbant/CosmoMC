@@ -370,6 +370,7 @@
         num_speed=0
         do i=ix,j
             if (param_type(params_used(i))==tp_fast) then
+                this%num_fast = this%num_fast+1
                 num_speed=num_speed+1
                 this%param_blocks(speed)%P(num_speed) = i
             end if
@@ -381,7 +382,7 @@
         if (use_fast_slow) then
             write(*,'(1I3," parameters (",1I2," slow (",1I2," semi-slow), ",1I2," fast (",1I2," semi-fast))")') &
             & num_params_used,this%num_slow, size(this%param_blocks(tp_semislow)%P), &
-            & this%num_fast,size(this%param_blocks(tp_semifast+1)%P)
+            & this%num_fast,size(this%param_blocks(tp_semifast)%P)
         else
             write(*,'(1I3," parameters")') num_params_used
         end if
