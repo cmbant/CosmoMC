@@ -271,7 +271,7 @@
     real(mcp), intent(in) :: mult, like
     real(mcp), allocatable :: output_array(:)
     Type(mc_real_pointer) :: derived
-    integer numderived
+    integer :: numderived = 0
 
     if (outfile_handle ==0) return
 

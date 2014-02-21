@@ -13,7 +13,7 @@
     integer, intent (in) :: unit
     close(unit)
     end subroutine IO_Close
-    
+
     function IO_OpenChainForRead(name, OK) result(handle)
     character(len=*), intent(in) :: name
     integer handle
@@ -178,7 +178,7 @@
     integer, intent(in) :: handle
     real(mcp) mult, like, values(:)
     integer, intent(in), optional :: nvalues
-    character(LEN =128) fmt
+    !    character(LEN =128) fmt
     integer n
 
     if (present(nvalues)) then
@@ -187,8 +187,8 @@
         n = size(values)
     end if
 
-    fmt = trim(numcat('(2E16.7,',n))//'E16.7)'
-    write (handle,fmt) mult, like, values(1:n)
+    !    fmt = trim(numcat('(2E16.7,',n))//'E16.7)'
+    write (handle,'(*(E16.7))') mult, like, values(1:n)
 
     if (flush_write) call FlushFile(handle)
 

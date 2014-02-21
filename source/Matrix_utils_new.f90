@@ -66,11 +66,11 @@
     integer, intent(in) :: aunit
     integer, intent(in) :: n
     real(dm) :: vec(n)
-    character(LEN=50) fmt
+  !  character(LEN=50) fmt
 
-    fmt = trim(numcat('(',n))//'E17.7)'
-    write (aunit, fmt) vec(1:n)
-
+!    fmt = trim(numcat('(',n))//'E17.7)'
+ !   write (aunit, fmt) vec(1:n)
+    write (aunit, '(*(E17.7))') vec(1:n)
     end subroutine Matrix_WriteFileRow
 
     subroutine Matrix_Write(aname, mat, forcetable, commentline)

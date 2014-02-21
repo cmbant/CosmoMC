@@ -41,6 +41,8 @@
     procedure :: GetTheoryForImportance=>TheoryLike_GetTheoryForImportance
     procedure :: GetLogLikeWithTheorySet => TheoryLike_LogLikeWithTheorySet
     procedure :: UpdateTheoryForLikelihoods => TheoryLike_UpdateTheoryForLikelihoods
+    procedure :: SetNewTheoryResults => TheoryLike_SetNewTheoryResults
+    procedure :: TestLikelihoodFunction => TheoryLike_TestLikelihoodFunction
     end type TTheoryLikeCalculator
 
     type, extends(TCheckpointable) :: TLikelihoodUser
@@ -133,10 +135,8 @@
     if (this%test_likelihood) then
         print *,'** Using test Gaussian likelihood from covariance + hard priors **'
         covMatrix => Ini%Read_String('test_covariance')
-        allocate(this%test_cov_matrix(num_params_used, num_params_used))
-        if (covMatrix=='') then
-            this%test_cov_matrix = BaseParams%covariance_estimate
-        else
+        if (covMatrix/='') then
+            allocate(this%test_cov_matrix(num_params_used, num_params_used))
             call BaseParams%ReadSetCovMatrix(covMatrix, this%test_cov_matrix)
         end if
     end if
@@ -153,7 +153,11 @@
 
     if (.not. allocated(covInv)) then
         allocate(covInv(num_params_used,num_params_used))
-        covInv = this%test_cov_matrix
+        if (.not. allocated(this%test_cov_matrix)) then
+            covInv = BaseParams%covariance_estimate
+        else
+            covInv = this%test_cov_matrix
+        endif
         call Matrix_Inverse(covInv)
     end if
     X = Params%P(params_used) - BaseParams%Center(params_used)
@@ -192,6 +196,19 @@
 
     end subroutine TheoryLike_SetTheoryParams
 
+    subroutine TheoryLike_SetNewTheoryResults(this, Params)
+    class(TTheoryLikeCalculator) :: this
+    class(TCalculationAtParamPoint), target :: Params
+
+    if (.not. associated(Params%Theory)) then
+        Params%Theory=>this%Config%NewTheory()
+    else
+        call Params%Theory%AssignNew(Params%Theory)
+    end if
+    
+    end subroutine TheoryLike_SetNewTheoryResults
+
+
 
     function TheoryLike_GetLogLikeMain(this, Params) result(LogLike)!Get -Ln(Likelihood) for chains
     class(TTheoryLikeCalculator) :: this
@@ -206,11 +223,7 @@
     else
         this%changeMask(1:num_params) = Params%lastParamArray(1:num_params)/=Params%P(1:num_params)
     end if
-    if (.not. associated(this%Params%Theory)) then
-        this%Params%Theory=>this%Config%NewTheory()
-    else
-        call this%Params%Theory%AssignNew(this%Params%Theory)
-    end if
+    call this%SetNewTheoryResults(Params)
     if (this%CalculateRequiredTheoryChanges()) then
         call this%AddLike(LogLike, this%GetLogLikeWithTheorySet())
         Params%lastParamArray(1:num_params) = Params%P(1:num_params)
@@ -326,5 +339,14 @@
 
     end subroutine TheoryLike_UpdateTheoryForLikelihoods
 
+    function TheoryLike_TestLikelihoodFunction(this,Params) result(LogLike)
+    class(TTheoryLikeCalculator) :: this
+    class(TCalculationAtParamPoint) Params
+    real(mcp) :: LogLike
+
+    call this%SetNewTheoryResults(Params) !so derived parameters can be output OK
+    LogLike = this%TLikeCalculator%TestLikelihoodFunction(Params)
+
+    end function TheoryLike_TestLikelihoodFunction
 
     end module CalcLike

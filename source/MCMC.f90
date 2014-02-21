@@ -282,7 +282,7 @@
     call this%Proposer%GetProposal(Trial%P)
 
     Like = this%LogLike(Trial)
-    if (Feedback > 1) write (*,*) instance, 'Likelihood: ', Like, 'Current Like:', CurLike
+    if (Feedback > 1) write (*,*) instance, 'Likelihood: ', real(Like), 'Current Like:', real(CurLike)
 
     if (Like /= logZero) then
         accpt = this%MetropolisAccept(Like, CurLike)
