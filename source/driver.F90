@@ -24,7 +24,6 @@
     class(TMinimizer), allocatable :: Minimizer
 
 #ifdef MPI
-    double precision intime
     integer ierror
 
     call mpi_init(ierror)

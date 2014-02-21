@@ -94,8 +94,6 @@ endif
 #would like to embed this somehow..
 #GIT_HASHTAG = "git log --pretty=format:'%H:%cd' -n 1"
 
-PROPOSE = $(OUTPUT_DIR)/propose.o
-
 CALCFILES = $(OUTPUT_DIR)/Calculator_CAMB.o
 
 #Can use params_H if you prefer more generic parameters
@@ -140,7 +138,7 @@ LIKEFILES =  $(OUTPUT_DIR)/DataLikelihoods.o $(OUTPUT_DIR)/calclike.o
 OBJFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/ObjectParamNames.o \
 	$(OUTPUT_DIR)/Matrix_utils_new.o  $(OUTPUT_DIR)/settings.o \
 	$(OUTPUT_DIR)/samples.o $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/BaseParameters.o \
-	$(PROPOSE) $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/PowellConstrainedMinimize.o $(OUTPUT_DIR)/ImportanceSampling.o \
+	$(OUTPUT_DIR)/propose.o $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/PowellConstrainedMinimize.o $(OUTPUT_DIR)/ImportanceSampling.o \
 	$(OUTPUT_DIR)/MCMC.o $(OUTPUT_DIR)/minimize.o $(OUTPUT_DIR)/SampleCollector.o $(OUTPUT_DIR)/GeneralSetup.o
 
 
@@ -175,27 +173,31 @@ endif
 
 default: cosmomc
 
-$(OUTPUT_DIR)/GetDist.o: $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/samples.o
-$(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/settings.o
-$(OUTPUT_DIR)/samples.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o
-$(OUTPUT_DIR)/likelihood.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/ObjectParamNames.o
-$(OUTPUT_DIR)/DataLikelihoods.o: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/ParamSet.o $(DATAMODULES)
-$(OUTPUT_DIR)/settings.o: $(OUTPUT_DIR)/ObjectParamNames.o 
-$(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS)
-$(OUTPUT_DIR)/$(PROPOSE): $(OUTPUT_DIR)/settings.o
-$(OUTPUT_DIR)/BaseParameters: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/IO.o
-$(OUTPUT_DIR)/ParamSet.o: $(CALCFILES) $(PROPOSE) $(OUTPUT_DIR)/samples.o
-$(PARAMETERIZATION): $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/bbn.o
-$(OUTPUT_DIR)/calclike.o: $(OUTPUT_DIR)/DataLikelihoods.o
-$(OUTPUT_DIR)/postprocess.o: $(OUTPUT_DIR)/calclike.o
 $(OUTPUT_DIR)/RandUtils.o: $(OUTPUT_DIR)/MpiUtils.o
 $(OUTPUT_DIR)/FileUtils.o: $(OUTPUT_DIR)/MpiUtils.o
-$(OUTPUT_DIR)/MCMC.o: $(OUTPUT_DIR)/calclike.o $(OUTPUT_DIR)/RandUtils.o
-$(OUTPUT_DIR)/driver.o: $(OUTPUT_DIR)/MCMC.o $(OUTPUT_DIR)/minimize.o $(PARAMETERIZATION)
-$(OUTPUT_DIR)/minimize.o: $(OUTPUT_DIR)/PowellConstrainedMinimize.o $(OUTPUT_DIR)/calclike.o
-$(OUTPUT_DIR)/ImportanceSampling.o: $(OUTPUT_DIR)/calclike.o $(OUTPUT_DIR)/IO.o
-$(OUTPUT_DIR)/GeneralTypes.o: $(OUTPUT_DIR)/likelihood.o
+$(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS)
+$(OUTPUT_DIR)/settings.o: $(OUTPUT_DIR)/ObjectParamNames.o
+$(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o   $(OUTPUT_DIR)/Matrix_utils_new.o
+$(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/settings.o
+$(OUTPUT_DIR)/samples.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o
+$(OUTPUT_DIR)/GetDist.o: $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/samples.o
 
+$(OUTPUT_DIR)/likelihood.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o
+$(OUTPUT_DIR)/GeneralTypes.o: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/IO.o
+$(OUTPUT_DIR)/BaseParameters: $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/IO.o
+$(OUTPUT_DIR)/ParamSet.o: $(OUTPUT_DIR)/BaseParameters.o $(OUTPUT_DIR)/samples.o
+$(OUTPUT_DIR)/DataLikelihoods.o: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/ParamSet.o $(DATAMODULES)
+$(OUTPUT_DIR)/calclike.o: $(OUTPUT_DIR)/DataLikelihoods.o
+$(OUTPUT_DIR)/ImportanceSampling.o: $(OUTPUT_DIR)/calclike.o $(OUTPUT_DIR)/IO.o
+$(OUTPUT_DIR)/MCMC.o: $(OUTPUT_DIR)/calclike.o $(OUTPUT_DIR)/RandUtils.o  $(OUTPUT_DIR)/propose.o $(OUTPUT_DIR)/ParamSet.o:
+$(OUTPUT_DIR)/minimize.o: $(OUTPUT_DIR)/PowellConstrainedMinimize.o $(OUTPUT_DIR)/MCMC.o
+$(OUTPUT_DIR)/SampleCollector.o: $(OUTPUT_DIR)/MCMC.o
+$(OUTPUT_DIR)/GeneralSetup.o: $(OUTPUT_DIR)/SampleCollector.o $(OUTPUT_DIR)/ImportanceSampling.o  $(OUTPUT_DIR)/minimize.o
+
+$(OUTPUT_DIR)/driver.o: $(OUTPUT_DIR)/GeneralSetup.o $(OUTPUT_DIR)/CosmologyConfig.o
+
+
+$(PARAMETERIZATION): $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/bbn.o
 $(OUTPUT_DIR)/Calculator_Cosmology.o: $(OUTPUT_DIR)/CosmoTheory.o
 $(OUTPUT_DIR)/CosmoTheory.o: $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/likelihood.o
 $(OUTPUT_DIR)/supernovae.o:  $(OUTPUT_DIR)/Likelihood_Cosmology.o $(SUPERNOVAE)
@@ -211,6 +213,7 @@ $(OUTPUT_DIR)/bao.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/HST.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/cmbtypes.o
 $(OUTPUT_DIR)/cliklike.o: $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/CosmoTheory.o
+$(OUTPUT_DIR)/CosmologyConfig.o: $(PARAMETERIZATION) $(OUTPUT_DIR)/GeneralSetup.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
 
 ifneq ($(highL),)
 $(OUTPUT_DIR)/cliklike_CamSpec.o: $(highL)/libhigh.a

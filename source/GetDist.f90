@@ -54,6 +54,7 @@
     use Samples
     use ArrayUtils
     use RandUtils
+    use FileUtils
     implicit none
 
     Type(TParamNames) :: NameMapping
@@ -211,20 +212,18 @@
 
     subroutine MakeSingleSamples(single_thin)
     !Make file of weight-1 samples by choosing samples with probability given by their weight
-    integer i, single_thin
-    character(LEN=20) :: fmt
-
+    integer unit, i, single_thin
     real(mcp) maxmult
+
     Feedback = 0
     call initRandom()
-    fmt = trim(numcat('(',num_vars+2))//'E16.7)'
 
-    open(unit=50,file=trim(plot_data_dir)//trim(rootname)//'_single.txt',form='formatted',status='replace')
+    unit = CreateNewTxtFile(trim(plot_data_dir)//trim(rootname)//'_single.txt')
     maxmult = maxval(coldata(1,0:nrows-1))
     do i= 0, nrows -1
-        if (ranmar() <= coldata(1,i)/maxmult/single_thin) write (50,fmt) 1.0, coldata(2,i), coldata(colix(1:num_vars),i)
+        if (ranmar() <= coldata(1,i)/maxmult/single_thin) write (unit,'(*(E16.7))') 1.0, coldata(2,i), coldata(colix(1:num_vars),i)
     end do
-    close(50)
+    close(unit)
 
     end subroutine MakeSingleSamples
 
@@ -2059,6 +2058,9 @@
 
     plot_data_dir = CheckTrailingSlash(plot_data_dir)
 
+    if (.not. no_plots .and. .not. DirectoryExists(plot_data_dir)) &
+     stop 'plot_data directory does not exist'
+    
     if (out_dir /= '') then
         out_dir = CheckTrailingSlash(out_dir)
         write (*,*) 'producing files in directory '//trim(out_dir)
