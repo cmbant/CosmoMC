@@ -7,7 +7,7 @@
     use Interpolation
     implicit none
 
-    type, extends(InterpGrid2D) :: TBBNPredictions
+    type, extends(TInterpGrid2D) :: TBBNPredictions
     contains
     procedure Error => BBNPredictions_error
     procedure FirstUse =>  BBN_Init

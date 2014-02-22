@@ -176,6 +176,27 @@
     end function ReadLine
 
 
+    function ReadLineSkipEmptyAndComments(aunit, InLine, comment) result(OK)
+    integer, intent(in) :: aunit
+    logical :: OK
+    character(LEN=:), allocatable :: InLine
+    character(LEN=:), allocatable, optional, intent(out) :: comment
+
+    if (present(comment)) comment=''
+    do
+        OK = ReadLine(aunit, InLine, trimmed=.true.)
+        if (.not. OK) return
+        if (InLine=='') cycle
+        if (InLine(1:1)/='#') then
+            return
+        else
+            if (present(comment)) comment = trim(InLine(2:))
+        end if
+    end do
+
+    end function ReadLineSkipEmptyAndComments
+
+
     function TxtNumberColumns(InLine) result(n)
     character(LEN=*) :: InLine
     integer n,i

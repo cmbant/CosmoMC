@@ -161,7 +161,7 @@
     do j=1,this%numlikes
         if (this%like_indices(j)/=0) this%Likelihoods(this%like_indices(j)) = this%likes(j)
     end do
-    this%P= BaseParams%center
+    this%P(1:num_params)= BaseParams%center
     read(unit) this%P(this%current_param_indices)
     call this%Theory%ReadTheory(unit)
 

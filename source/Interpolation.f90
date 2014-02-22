@@ -1,4 +1,5 @@
     module Interpolation
+    use FileUtils
     implicit none
 
 #ifdef SINGLE
@@ -9,27 +10,27 @@
     real(sp_acc), parameter :: SPLINE_DANGLE=1.e30_sp_acc
     integer, parameter :: GI = sp_acc
 
-    Type :: Interpolator
+    Type :: TInterpolator
         private
         logical :: initialized =.false.
     contains
-    procedure :: FirstUse => Interpolator_FirstUse
-    procedure :: Error => Interpolator_Error
-    end Type Interpolator
+    procedure :: FirstUse => TInterpolator_FirstUse
+    procedure :: Error => TInterpolator_Error
+    end Type TInterpolator
 
-    Type, extends(interpolator) :: CubicSpline
+    Type, extends(TInterpolator) :: TCubicSpline
         integer n
         real(sp_acc), dimension(:), pointer :: X => NULL()
         real(sp_acc), dimension(:), pointer :: F => NULL(), ddF => NULL()
     contains
-    procedure :: Init => CubicSpline_Init
-    procedure :: InitFromFile => CubicSpline_InitFromFile
-    procedure :: InitInterp => CubicSpline_InitInterp
-    procedure :: Value => CubicSpline_Value
-    FINAL :: CubicSpline_Free
+    procedure :: Init => TCubicSpline_Init
+    procedure :: InitFromFile => TCubicSpline_InitFromFile
+    procedure :: InitInterp => TCubicSpline_InitInterp
+    procedure :: Value => TCubicSpline_Value
+    FINAL :: TCubicSpline_Free
     end Type
 
-    Type, extends(interpolator) :: InterpGrid2D
+    Type, extends(TInterpolator) :: TInterpGrid2D
         !      ALGORITHM 760, COLLECTED ALGORITHMS FROM ACM.
         !      THIS WORK PUBLISHED IN TRANSACTIONS ON MATHEMATICAL SOFTWARE,
         !      VOL. 22, NO. 3, September, 1996, P.  357--361.
@@ -39,39 +40,39 @@
         integer nx, ny
         logical :: owns_z = .false.
     contains
-    procedure :: Init => InterpGrid2D_Init
-    procedure :: InitFromFile => InterpGrid2D_InitFromFile
-    procedure :: Value => InterpGrid2D_Value !one point
-    procedure :: Values => InterpGrid2D_Values !array of points
-    procedure :: Error => InterpGrid2D_error
-    FINAL :: InterpGrid2D_Free
-    end Type InterpGrid2D
+    procedure :: Init => TInterpGrid2D_Init
+    procedure :: InitFromFile => TInterpGrid2D_InitFromFile
+    procedure :: Value => TInterpGrid2D_Value !one point
+    procedure :: Values => TInterpGrid2D_Values !array of points
+    procedure :: Error => TInterpGrid2D_error
+    FINAL :: TInterpGrid2D_Free
+    end Type TInterpGrid2D
 
 
-    public CubicSpline, InterpGrid2D, SPLINE_DANGLE
+    public TCubicSpline, TInterpGrid2D, SPLINE_DANGLE
 
     contains
 
-    subroutine Interpolator_FirstUse(W)
-    class(Interpolator) W
+    subroutine TInterpolator_FirstUse(W)
+    class(TInterpolator) W
 
     W%Initialized = .true.
-    stop 'Interpolator not initialized'
+    stop 'TInterpolator not initialized'
 
-    end subroutine Interpolator_FirstUse
+    end subroutine TInterpolator_FirstUse
 
-    subroutine Interpolator_error(W,S)
-    class(Interpolator):: W
+    subroutine TInterpolator_error(W,S)
+    class(TInterpolator):: W
     character(LEN=*), intent(in) :: S
 
     write(*,*) 'Interpolation error: '//trim(S)
     stop
 
-    end subroutine Interpolator_error
+    end subroutine TInterpolator_error
 
 
-    subroutine CubicSpline_Init(W, Xarr,  values, n, End1, End2 )
-    class(CubicSpline) :: W
+    subroutine TCubicSpline_Init(W, Xarr,  values, n, End1, End2 )
+    class(TCubicSpline) :: W
     real(sp_acc), intent(in) :: Xarr(:), values(:)
     integer, intent(in), optional :: n
     real(sp_acc), intent(in), optional :: End1, End2
@@ -88,10 +89,10 @@
     W%X = Xarr(1:n)
     call W%InitInterp(End1, End2)
 
-    end subroutine CubicSpline_Init
+    end subroutine TCubicSpline_Init
 
-    subroutine CubicSpline_InitInterp(W,End1,End2)
-    class(CubicSpline):: W
+    subroutine TCubicSpline_InitInterp(W,End1,End2)
+    class(TCubicSpline):: W
     real(sp_acc), intent(in), optional :: End1, End2
     real(sp_acc) :: e1,e2
 
@@ -111,40 +112,33 @@
     call spline(W%X,W%F,W%n,e1,e2,W%ddF)
     W%Initialized = .true.
 
-    end subroutine CubicSpline_InitInterp
+    end subroutine TCubicSpline_InitInterp
 
-    subroutine CubicSpline_InitFromFile(W, Filename, xcol, ycol)
-    class(CubicSpline):: W
+    subroutine TCubicSpline_InitFromFile(W, Filename, xcol, ycol)
+    class(TCubicSpline):: W
     character(LEN=*), intent(in) :: Filename
     integer, intent(in), optional :: xcol, ycol
     integer :: ixcol=1,iycol=2
     integer :: nx,ny
     integer :: i,file_id, parse, status
     real(sp_acc), allocatable :: tmp(:)
-    character(LEN=1024) :: InLine
+    character(LEN=:), allocatable :: InLine
 
     if (present(xcol)) ixcol=xcol
     if (present(ycol)) iycol=ycol
 
     allocate(tmp(max(ixcol,iycol)))
 
-    open(file=Filename, newunit = file_id, form='formatted', status='old', iostat=status)
-    if (status/=0) call W%Error('error opening file '//trim(FileName))
+    file_id = CreateNewTxtFile(filename)
 
     do parse=1,2
-        InLine=''
         ny=0
         nx=0
         do
-            !skip data file header and blank lines
-            do while ((trim(InLine)=='' .or. InLine(1:1)=='#') .and. status==0) 
-                read(file_id,'(a)',iostat=status) InLine
-            end do
-            if (status/=0) exit
+            if (.not. ReadLineSkipEmptyAndComments(file_id, InLine)) exit
 
             read(InLine,*, iostat=status) tmp
             if (status/=0) call W%Error('Error reading line: '//trim(InLine))
-            InLine = ''
 
             nx=nx+1
             if (parse==2) then
@@ -167,11 +161,11 @@
 
     call W%InitInterp()
 
-    end subroutine CubicSpline_InitFromFile
+    end subroutine TCubicSpline_InitFromFile
 
 
-    subroutine CubicSpline_Free(W)
-    Type(CubicSpline) :: W
+    subroutine TCubicSpline_Free(W)
+    Type(TCubicSpline) :: W
 
     deallocate(W%X)
     nullify(W%X)
@@ -181,11 +175,11 @@
     nullify(W%ddF)
     W%Initialized = .false.
 
-    end subroutine CubicSpline_Free
+    end subroutine TCubicSpline_Free
 
-    function CubicSpline_Value(W, x, error )
-    class(CubicSpline) :: W
-    real(sp_acc) :: CubicSpline_Value
+    function TCubicSpline_Value(W, x, error )
+    class(TCubicSpline) :: W
+    real(sp_acc) :: TCubicSpline_Value
     real(sp_acc), intent(in) :: x
     integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
     integer llo,lhi
@@ -196,10 +190,10 @@
     if (x< W%X(1) .or. x> W%X(W%n)) then
         if (present(error)) then
             error = -1
-            CubicSpline_Value=0
+            TCubicSpline_Value=0
             return
         else
-            write (*,*) 'CubicSpline_Value: out of range ', x
+            write (*,*) 'TCubicSpline_Value: out of range ', x
             stop
         end if
     end if
@@ -213,10 +207,10 @@
     ho=W%X(lhi)-W%X(llo)
     a0=(W%X(lhi)-x)/ho
     b0=(x-W%X(llo))/ho
-    CubicSpline_Value = a0*W%F(llo)+ b0*W%F(lhi)+((a0**3-a0)* W%ddF(llo) &
+    TCubicSpline_Value = a0*W%F(llo)+ b0*W%F(lhi)+((a0**3-a0)* W%ddF(llo) &
     +(b0**3-b0)*W%ddF(lhi))*ho**2/6.
 
-    end function CubicSpline_Value
+    end function TCubicSpline_Value
 
 
     !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -269,18 +263,18 @@
     end subroutine spline
 
 
-    subroutine InterpGrid2D_InitInterp(W)
-    class(InterpGrid2D):: W
+    subroutine TInterpGrid2D_InitInterp(W)
+    class(TInterpGrid2D):: W
 
     allocate(W%Wk(3,W%NX,W%NY))
     CALL rgpd3p(W%nx, W%ny, W%x, W%y, W%z, W%wk)
     W%Initialized = .true.
 
-    end subroutine InterpGrid2D_InitInterp
+    end subroutine TInterpGrid2D_InitInterp
 
     !F2003 wrappers by AL, 2013
-    subroutine InterpGrid2D_Init(W, x, y, z, copyz)
-    class(InterpGrid2D):: W
+    subroutine TInterpGrid2D_Init(W, x, y, z, copyz)
+    class(TInterpGrid2D):: W
     REAL(GI), INTENT(IN)      :: x(:)
     REAL(GI), INTENT(IN)      :: y(:)
     REAL(GI), INTENT(IN), pointer :: z(:,:)
@@ -300,23 +294,23 @@
         W%z=>z
     end if
 
-    call InterpGrid2D_InitInterp(W)
+    call W%InitInterp()
 
-    end subroutine InterpGrid2D_Init
+    end subroutine TInterpGrid2D_Init
 
 
-    subroutine InterpGrid2D_error(W,S)
-    class(InterpGrid2D):: W
+    subroutine TInterpGrid2D_error(W,S)
+    class(TInterpGrid2D):: W
     character(LEN=*), intent(in) :: S
 
     write(*,*) 'InterGrid2D Error: '//trim(S)
     stop
 
-    end subroutine InterpGrid2D_error
+    end subroutine TInterpGrid2D_error
 
 
-    subroutine InterpGrid2D_InitFromFile(W, Filename, xcol, ycol, zcol)
-    class(InterpGrid2D):: W
+    subroutine TInterpGrid2D_InitFromFile(W, Filename, xcol, ycol, zcol)
+    class(TInterpGrid2D):: W
     character(LEN=*), intent(in) :: Filename
     integer, intent(in), optional :: xcol, ycol, zcol
     integer :: ixcol=1,iycol=2,izcol=3
@@ -325,7 +319,7 @@
     real(sp_acc), allocatable :: tmp(:)
     real(sp_acc) lasty
     logical :: first
-    character(LEN=1024) :: InLine
+    character(LEN=:), allocatable :: InLine
 
     if (present(xcol)) ixcol=xcol
     if (present(ycol)) iycol=ycol
@@ -333,24 +327,17 @@
 
     allocate(tmp(max(ixcol,iycol,izcol)))
 
-    open(file=Filename, newunit = file_id, form='formatted', status='old', iostat=status)
-    if (status/=0) call W%Error('error opening file '//trim(FileName))
+    file_id = CreateNewTxtFile(FileName)
 
     do parse=1,2
         first = .true.
-        InLine=''
         ny=0
         nx=0
         do
-            !skip data file header and blank lines
-            do while ((trim(InLine)=='' .or. InLine(1:1)=='#') .and. status==0) 
-                read(file_id,'(a)',iostat=status) InLine
-            end do
-            if (status/=0) exit
+            if (.not. ReadLineSkipEmptyAndComments(file_id, InLine)) exit
 
             read(InLine,*, iostat=status) tmp
             if (status/=0) call W%Error('Error reading line: '//trim(InLine))
-            InLine = ''
 
             if (first .or. tmp(iycol)/=lasty) then
                 lasty=tmp(iycol)
@@ -390,12 +377,12 @@
 
     close(file_id)
 
-    call InterpGrid2D_InitInterp(W)
+    call TInterpGrid2D_InitInterp(W)
 
-    end subroutine InterpGrid2D_InitFromFile
+    end subroutine TInterpGrid2D_InitFromFile
 
-    subroutine InterpGrid2D_Free(W)
-    Type(InterpGrid2D):: W
+    subroutine TInterpGrid2D_Free(W)
+    Type(TInterpGrid2D):: W
 
     if (associated(W%Wk)) then
         deallocate(W%x)
@@ -405,11 +392,11 @@
     if (W%owns_z) deallocate(W%z)
     W%Initialized = .false.
 
-    end subroutine InterpGrid2D_Free
+    end subroutine TInterpGrid2D_Free
 
-    function InterpGrid2D_Value(W,x,y,error) result (res)
+    function TInterpGrid2D_Value(W,x,y,error) result (res)
     !Z matrix not stored internally to save mem, so must pass again
-    class(InterpGrid2D) :: W
+    class(TInterpGrid2D) :: W
     real(GI) res, z(1), xx(1),yy(1)
     real(GI), intent(in) :: x,y
     integer, intent(inout), optional :: error
@@ -419,11 +406,11 @@
     call W%Values(1,xx,yy,z,error)
     res = z(1)
 
-    end function InterpGrid2D_Value
+    end function TInterpGrid2D_Value
 
-    subroutine InterpGrid2D_Values(W, nip, x,y,z, error) 
+    subroutine TInterpGrid2D_Values(W, nip, x,y,z, error) 
     !Z matrix not stored internally to save mem, so must pass again
-    class(InterpGrid2D) :: W
+    class(TInterpGrid2D) :: W
     integer, intent(in) :: nip
     real(GI), intent(out):: z(*)
     real(GI), intent(in) :: x(*),y(*)
@@ -440,7 +427,7 @@
         call W%Error('error interpolating value')
     end if
 
-    end subroutine InterpGrid2D_Values
+    end subroutine TInterpGrid2D_Values
 
 
     SUBROUTINE rgbi3p(Wk,md, nxd, nyd, xd, yd, zd, nip, xi, yi, zi, ier)

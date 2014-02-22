@@ -110,28 +110,24 @@
     real(mcp), allocatable :: tmpMat(:,:)
     integer i,x,y
     integer file_id, status
-    character(LEN=:), allocatable :: InLine
+    character(LEN=:), allocatable :: InLine, comment
     integer num, cov_params(max_num_params)
 
     file_id = OpenNewTxtFile(prop_mat)
-    do while (ReadLine(file_id,InLine,trimmed=.true.))
-        if (InLine /= '') exit
-    end do
-    If (InLine(1:1)=='#') then
+    comment=''
+    if (ReadLineSkipEmptyAndComments(file_id, InLine, comment=comment) .and. comment/='') then
         !Have paramnames to identify
-        InLine = InLine(2:len(InLine))
         num=-1
-        call NameMapping%ReadIndices(InLine, cov_params, num, unknown_value=0)
+        call NameMapping%ReadIndices(comment, cov_params, num, unknown_value=0)
         allocate(tmpMat(num,num))
         pmat=0
         y=0
-        do while (ReadLine(file_id, InLine))
-            if (InLine/='') then
-                read(InLine,*,iostat=status) tmpMat(:,y+1)
-                if (status/=0) exit
-                y=y+1
-                if (y==num) exit
-            end if
+        do
+            read(InLine,*,iostat=status) tmpMat(:,y+1)
+            if (status/=0) exit
+            y=y+1
+            if (y==num) exit
+            if (.not. ReadLineSkipEmptyAndComments(file_id, InLine)) exit
         end do
         if (y/=num) call mpiStop('ReadProposeMatrix: wrong number of rows/columns in .covmat')
         close(file_id)

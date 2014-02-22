@@ -373,7 +373,7 @@
     call DefaultValueFiles%Init()
 
     do
-        if (.not. ReadLine(unit_id,InLine)) exit
+        if (.not. ReadLineSkipEmptyAndComments(unit_id,InLine)) exit
         if (InLine == 'END') exit
         if (StringStarts(InLine,'INCLUDE(')) then
             lastpos = scan(InLine,')')
