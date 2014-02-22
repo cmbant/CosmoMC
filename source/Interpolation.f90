@@ -328,7 +328,7 @@
 
     allocate(tmp(max(ixcol,iycol,izcol)))
 
-    file_id = CreateNewTxtFile(FileName)
+    file_id = OpenNewTxtFile(FileName)
 
     do parse=1,2
         first = .true.
