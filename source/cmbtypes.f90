@@ -43,7 +43,6 @@
     real(mcp) :: power_kmax = 0.8
     integer :: num_power_redshifts
     real(mcp), dimension(:), allocatable :: power_redshifts
-    integer :: num_matter_power
 
     !Only used in params_CMB
     real(mcp) :: pivot_k = 0.05_mcp !Point for defining primordial power spectra

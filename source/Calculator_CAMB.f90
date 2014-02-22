@@ -377,20 +377,22 @@
     Type(MatterPowerData) :: Cosmo_PK
     integer nz, zix
 
-    Theory%num_k = M%num_q_trans
     nz = num_power_redshifts
-    call Theory%InitPK(Theory%num_k,nz)    
-    Theory%log_kh = log(M%TransferData(Transfer_kh,:,1))
-    Theory%redshifts = power_redshifts
+    call Theory%MPK%InitPK(M%num_q_trans,nz,.true.)
+    Theory%MPK%log_kh = log(M%TransferData(Transfer_kh,:,1))
+    Theory%MPK%redshifts = power_redshifts  
+    if(use_nonlinear)then
+        Theory%NL_MPK=Theory%MPK
+    end if
 
     do zix=1,nz
         call Transfer_GetMatterPowerData(M,Cosmo_PK,1,CP%Transfer%PK_redshifts_index(nz-zix+1))
-        Theory%matter_power(:,zix) = Cosmo_PK%matpower(:,1)
-        Theory%ddmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
+        Theory%MPK%matter_power(:,zix) = Cosmo_PK%matpower(:,1)
+        Theory%MPK%ddmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
         if(use_nonlinear) then
             call MatterPowerdata_MakeNonlinear(Cosmo_PK)
-            Theory%nlmatter_power(:,zix) = Cosmo_PK%matpower(:,1)
-            Theory%ddnlmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
+            Theory%NL_MPK%matter_power(:,zix) = Cosmo_PK%matpower(:,1)
+            Theory%NL_MPK%ddmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
         end if
         call MatterPowerdata_Free(Cosmo_PK)
     end do

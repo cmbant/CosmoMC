@@ -45,7 +45,7 @@
 
     !We use H_0*D_V because we dont care about scaling of h since
     !k is in units of h/Mpc
-    compute_scaling_factor = like%DV_fid/CMB%H0*like%Calculator%BAO_D_v(z)
+    compute_scaling_factor = like%DV_fid/(CMB%H0*like%Calculator%BAO_D_v(z))
     
     end function compute_scaling_factor
     
@@ -76,7 +76,6 @@
     end type MPKLikelihood
 
     logical :: use_mpk = .false.
-    logical :: nonlinear_mpk = .false.
 
     contains
 
@@ -92,8 +91,6 @@
 
     if(.not. use_mpk) return
 
-    nonlinear_mpk = Ini%Read_Logical('nonlinear_mpk',.false.)
-
     nummpksets = Ini%Read_Int('mpk_numdatasets',0)
     do i= 1, nummpksets
         allocate(like)
@@ -101,6 +98,7 @@
         like%needs_powerspectra = .true.
         like%needs_exact_z = .true.
         like%num_z = 1
+        like%needs_nonlinear_pk = Ini%Read_Logical(numcat('mpk_dataset_nonlinear',i),.false.)
         call like%ReadDatasetFile(Ini%ReadFileName(numcat('mpk_dataset',i)) )
         call LikeList%Add(like)
     end do
@@ -217,12 +215,12 @@
     allocate(like%exact_z_index(like%num_z))
     like%exact_z(1) = Ini%Read_Double('redshift',0.35d0)
 
-    like%kmax = 0.8
-    if(nonlinear_mpk) then
-        like%needs_nonlinear_pk = .true.
+    if(like%needs_nonlinear_pk) then
         like%kmax=1.2
-    end if
-
+    else
+        like%kmax=0.8
+    end if    
+        
     like%Q_marge = Ini%Read_Logical('Q_marge',.false.)
     if (like%Q_marge) then
         like%Q_flat = Ini%Read_Logical('Q_flat',.false.)
@@ -247,6 +245,7 @@
     Class(CMBParams) CMB
     Class(MPKLikelihood) :: like
     Class(TCosmoTheoryPredictions) Theory
+    Type(TCosmoTheoryPK) :: PK
     real(mcp) :: DataParams(:)
     real(mcp) MPK_LnLike,LnLike
     real(mcp), dimension(:), allocatable :: mpk_Pth, mpk_k2,mpk_lin,k_scaled !LV_06 added for LRGDR4
@@ -267,6 +266,12 @@
     allocate(mpk_WPth(like%num_mpk_points_use))
     allocate(k_scaled(like%num_mpk_kbands_use))!LV_06 added for LRGDR4
     allocate(w(like%num_mpk_points_use))
+    
+    if (like%needs_nonlinear_pk) then
+        PK = Theory%NL_MPK
+    else
+        PK = Theory%MPK
+    end if
 
     chisq = 0
 
@@ -282,20 +287,16 @@
         a_scl = 1
     end if
 
-    if(abs(like%exact_z(1)-Theory%redshifts(like%exact_z_index(1)))>1.d-3)then
+    if(abs(like%exact_z(1)-PK%redshifts(like%exact_z_index(1)))>1.d-3)then
         write(*,*)'ERROR: MPK redshift does not match the value stored'
-        write(*,*)'       in the Theory%redshifts array.'
+        write(*,*)'       in the PK%redshifts array.'
         call MpiStop()
     end if
 
     do i=1, like%num_mpk_kbands_use
         !Errors from using matter_power_minkh at lower end should be negligible
-        k_scaled(i)=max(exp(Theory%log_kh(1)),a_scl*like%mpk_k(i))
-        if(nonlinear_mpk) then
-            mpk_lin(i)=Theory%MatterPowerAt_zbin(k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
-        else
-            mpk_lin(i)=Theory%MatterPowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
-        end if
+        k_scaled(i)=max(exp(PK%log_kh(1)),a_scl*like%mpk_k(i))
+        mpk_lin(i)=PK%PowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
     end do
 
 
@@ -394,6 +395,8 @@
 
     deallocate(mpk_Pth,mpk_lin)
     deallocate(mpk_WPth,k_scaled,w)
+    
+    call PK%ClearPK()
 
     MPK_LnLike=LnLike
 

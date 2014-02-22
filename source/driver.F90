@@ -98,6 +98,8 @@
         rootname = rootname//'_'//IntToStr(Instance)
     end if
 
+    FeedBack = Ini%Read_Int('feedback',0)
+
     call Ini%Read('generic_mcmc',generic_mcmc)
     if (generic_mcmc) then
         allocate(TSetup::Setup)
@@ -106,7 +108,6 @@
     end if
     call Setup%Init()
     call Setup%ReadParams(Ini)
-
 
     if (Setup%action==action_MCMC) then
         checkpoint = Ini%Read_Logical('checkpoint',.false.)
@@ -125,7 +126,6 @@
 #endif
     end if
 
-    FeedBack = Ini%Read_Int('feedback',0)
     FileChangeIni = rootname//'.read'
 
     if (Setup%action == action_MCMC .and. .not. Ini%Read_Logical('no_log', .false.)) then

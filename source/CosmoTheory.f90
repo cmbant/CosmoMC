@@ -6,21 +6,23 @@
     use Interpolation, only : spline, SPLINE_DANGLE
     implicit none
     
-    !JD work in progress
-    !Type TCosmoTheoryPK
-    !    integer   ::  num_k
-    !    real(mcp), dimension(:), allocatable :: log_kh
-    !    real(mcp), dimension(:), allocatable :: redshifts
-    !    real(mcp), dimension(:,:), allocatable :: PK, ddPK
-    !    logical :: islog
-    !contains
+    Type TCosmoTheoryPK
+        !everything is a function of k/h
+        integer   ::  num_k, num_z
+        real(mcp), dimension(:), allocatable :: log_kh
+        real(mcp), dimension(:), allocatable :: redshifts
+        real(mcp), dimension(:,:), allocatable :: matter_power, ddmatter_power
+        !whether power is stored as log(P_k)
+        logical :: islog
+    contains
     !MPK stuff
-    !procedure :: IOTheory_GetSplines
-    !procedure :: InitPK
-    !procedure :: MatterPowerAt_zbin
-    !procedure :: MatterPowerAt
-    !procedure :: MatterPowerAt_Z
-    !end Type TCosmoTheoryPK
+    procedure :: IOPK_GetSplines
+    procedure :: InitPK
+    procedure :: ClearPK
+    procedure :: PowerAt_zbin
+    procedure :: PowerAt
+    procedure :: PowerAt_Z
+    end Type TCosmoTheoryPK
     
     Type, extends(TTheoryPredictions) :: TCosmoTheoryPredictions
         real(mcp) cl(lmax,num_cls_tot)
@@ -30,27 +32,13 @@
         integer numderived
         real(mcp) derived_parameters(max_derived_parameters)
 
-        !everything is a function of k/h
-        integer   ::  num_k
-        real(mcp), dimension(:), allocatable :: log_kh
-        real(mcp), dimension(:), allocatable :: redshifts
-        !matpower is log(P_k)
-        real(mcp), dimension(:,:), allocatable :: matter_power, ddmatter_power
-        real(mcp), dimension(:,:), allocatable :: nlmatter_power, ddnlmatter_power
-        !JD work in progress
-        !type(TCosmoTheoryPK) MPK
-        !type(TCosmoTheoryPK) NL_MPK
+        type(TCosmoTheoryPK) MPK
+        type(TCosmoTheoryPK) NL_MPK
         
         
     contains
     procedure :: ClsFromTheoryData
     procedure :: WriteTextCls
-    !MPK stuff
-    procedure :: IOTheory_GetSplines
-    procedure :: InitPK
-    procedure :: MatterPowerAt_zbin
-    procedure :: MatterPowerAt
-    procedure :: MatterPowerAt_Z
     !Inherited overrides
     procedure :: WriteTheory => TCosmoTheoryPredictions_WriteTheory
     procedure :: ReadTheory => TCosmoTheoryPredictions_ReadTheory
@@ -58,6 +46,193 @@
     end Type TCosmoTheoryPredictions
 
     contains
+
+    subroutine InitPK(PK,num_k,num_z,islog)
+    class(TCosmoTheoryPK) :: PK
+    integer, intent(in) :: num_k, num_z
+    logical, intent(in) :: islog
+    
+    PK%num_k = num_k
+    PK%num_z = num_z
+    PK%islog = islog
+    call PK%ClearPK()
+    allocate(PK%log_kh(num_k))
+    allocate(PK%matter_power(num_k,num_z))
+    allocate(PK%ddmatter_power(num_k,num_z))
+    allocate(PK%redshifts(num_z))
+
+    end subroutine InitPK
+    
+    subroutine ClearPK(PK)
+    class(TCosmoTheoryPK) :: PK
+    
+    if(allocated(PK%log_kh))deallocate(PK%log_kh)
+    if(allocated(PK%matter_power))deallocate(PK%matter_power)
+    if(allocated(PK%ddmatter_power))deallocate(PK%ddmatter_power)
+    if(allocated(PK%redshifts))deallocate(PK%redshifts)
+    
+    end subroutine ClearPK
+
+    subroutine IOPK_GetSplines(PK)
+    class(TCosmoTheoryPK) PK
+    integer :: zix
+
+    do zix=1, PK%num_z
+        call spline(PK%log_kh,PK%matter_power(:,zix),PK%num_k,SPLINE_DANGLE,&
+        SPLINE_DANGLE,PK%ddmatter_power(:,zix))
+    end do
+
+    end subroutine IOPK_GetSplines
+    
+    function PowerAt_zbin(PK, kh, itf, isAt_z) result(outpower)
+    !Get matter power spectrum at particular k/h by interpolation
+    class(TCosmoTheoryPK) :: PK
+    integer, intent(in) :: itf
+    real (mcp), intent(in) :: kh
+    logical, optional, intent(in) :: isAt_z
+    logical :: wantforAt_z
+    real(mcp) :: logk
+    integer klo,khi
+    real(mcp) outpower, dp
+    real(mcp) ho,a0,b0
+    real(mcp), dimension(2) :: matpower, ddmat
+    integer, save :: i_last = 1
+
+    if(.not. allocated(PK%log_kh)) then
+        write(*,*) 'At least one of your MPK arrays is not initialized:' 
+        write(*,*) 'Make sure you are calling a SetPk and filling your power spectra.'
+        write(*,*) 'This error could also mean you are doing importance sampling'
+        write(*,*) 'and need to turn on redo_pk.' 
+        call MPIstop()
+    end if
+    
+    if(present(isAt_z)) then
+        wantforAt_z = isAt_z
+    else
+        wantforAt_z = .false.
+    end if
+
+    logk = log(kh)
+    if (logk < PK%log_kh(1)) then
+        matpower=PK%matter_power(1:2,itf)
+        dp = (matpower(2)-matpower(1))/(PK%log_kh(2)-PK%log_kh(1))
+        outpower = matpower(1) + dp*(logk-PK%log_kh(1))
+    else if (logk > PK%log_kh(PK%num_k)) then
+        !Do dodgy linear extrapolation on assumption accuracy of result won't matter
+        matpower=PK%matter_power(PK%num_k-1:PK%num_k,itf)
+        dp = (matpower(2)-matpower(1))/(PK%log_kh(PK%num_k)-PK%log_kh(PK%num_k-1))
+        outpower = matpower(2) + dp*(logk-PK%log_kh(PK%num_k))
+    else
+        klo=min(i_last,PK%num_k)
+        do while (PK%log_kh(klo) > logk)
+            klo=klo-1
+        end do
+        do while (PK%log_kh(klo+1)< logk)
+            klo=klo+1
+        end do
+        i_last =klo
+        khi=klo+1
+
+        matpower=PK%matter_power(klo:khi,itf)
+        ddmat = PK%ddmatter_power(klo:khi,itf)
+
+        ho=PK%log_kh(khi)-PK%log_kh(klo)
+        a0=(PK%log_kh(khi)-logk)/ho
+        b0=(logk-PK%log_kh(klo))/ho
+
+        outpower = a0*matpower(1)+b0*matpower(2)+((a0**3-a0)*ddmat(1) &
+        + (b0**3-b0)*ddmat(2))*ho**2/6
+    end if
+    
+    if (PK%islog .and. .not. wantforAt_z) outpower = exp(outpower)
+
+    end function PowerAt_zbin
+
+    function PowerAt(PK, kh) result(outpower)
+    !Get matter power spectrum at particular k/h by interpolation
+    class(TCosmoTheoryPK) :: PK
+    real (mcp), intent(in) :: kh
+    real(mcp) outpower
+
+    outpower = PK%PowerAt_zbin(kh,1)
+
+    end function PowerAt
+
+    function PowerAt_Z(PK, kh, z) result(outpower)
+    !Get matter power spectrum at particular k/h by interpolation
+    class(TCosmoTheoryPK) :: PK
+    real (mcp), intent(in) :: kh, z
+    integer zlo, zhi, iz, itf
+    real(mcp) outpower
+    real(mcp) ho,a0,b0
+    real(mcp), dimension(4) :: matpower, ddmat, zvec
+    integer, save :: zi_last = 1
+    
+    if(.not. allocated(PK%log_kh)) then
+        write(*,*) 'At least one of your MPK arrays is not initialized:' 
+        write(*,*) 'Make sure you are calling a SetPk and filling your power spectra.'
+        write(*,*) 'This error could also mean you are doing importance sampling'
+        write(*,*) 'and need to turn on redo_pk.' 
+        call MPIstop()
+    end if
+
+    if(z>PK%redshifts(PK%num_z)) then
+        write (*,*) ' z out of bounds in PowerAt_Z (',z,')'
+        call MPIstop()
+    end if
+
+    zlo=min(zi_last,PK%num_z)
+    do while (PK%redshifts(zlo) > z)
+        zlo=zlo-1
+    end do
+    do while (PK%redshifts(zlo+1)< z)
+        zlo=zlo+1
+    end do
+    zi_last=zlo
+    zhi=zlo+1
+
+    if(zlo==1)then
+        zvec = 0
+        matpower = 0
+        ddmat = 0
+        iz = 2
+        zvec(2:4)=PK%redshifts(zlo:zhi+1)
+        do itf=zlo, zhi+1
+            matpower(iz) = PK%PowerAt_zbin(kh,itf,.true.)
+            iz=iz+1
+        end do
+        call spline(zvec(2:4),matpower(2:4),3,SPLINE_DANGLE,SPLINE_DANGLE,ddmat(2:4))
+    else if(zhi==PK%num_z)then
+        zvec = 0
+        matpower = 0
+        ddmat = 0
+        iz = 1
+        zvec(1:3)=PK%redshifts(zlo-1:zhi)
+        do itf=zlo-1, zhi
+            matpower(iz) = PK%PowerAt_zbin(kh,itf,.true.)
+            iz=iz+1
+        end do
+        call spline(zvec(1:3),matpower(1:3),3,SPLINE_DANGLE,SPLINE_DANGLE,ddmat(1:3))
+    else
+        iz = 1
+        zvec(:)=PK%redshifts(zlo-1:zhi+1)
+        do itf=zlo-1, zhi+1
+            matpower(iz) = PK%PowerAt_zbin(kh,itf,.true.)
+            iz=iz+1
+        end do
+        call spline(zvec,matpower,4,SPLINE_DANGLE,SPLINE_DANGLE,ddmat)
+    end if
+
+    ho=zvec(3)-zvec(2)
+    a0=(zvec(3)-z)/ho
+    b0=(z-zvec(2))/ho
+
+    outpower = a0*matpower(2)+b0*matpower(3)+((a0**3-a0)*ddmat(2) &
+    +(b0**3-b0)*ddmat(3))*ho**2/6
+
+    if(PK%islog) outpower = exp(outpower)
+
+    end function PowerAt_Z
     
     subroutine ClsFromTheoryData(T, Cls)
     class(TCosmoTheoryPredictions) T
@@ -93,229 +268,6 @@
     close(unit)
 
     end subroutine WriteTextCls
-
-    subroutine InitPK(Theory, num_k, num_z)
-    class(TCosmoTheoryPredictions) :: Theory
-    integer, intent(in) :: num_k, num_z
-
-    if(allocated(Theory%log_kh))deallocate(Theory%log_kh)
-    if(allocated(Theory%matter_power))deallocate(Theory%matter_power)
-    if(allocated(Theory%ddmatter_power))deallocate(Theory%ddmatter_power)
-    if(allocated(Theory%redshifts))deallocate(Theory%redshifts)
-    allocate(Theory%log_kh(num_k))
-    allocate(Theory%matter_power(num_k,num_z))
-    allocate(Theory%ddmatter_power(num_k,num_z))
-    allocate(Theory%redshifts(num_z))
-    if(use_nonlinear) then
-        if(allocated(Theory%nlmatter_power))deallocate(Theory%nlmatter_power)
-        if(allocated(Theory%ddnlmatter_power))deallocate(Theory%ddnlmatter_power)
-        allocate(Theory%nlmatter_power(num_k,num_z))
-        allocate(Theory%ddnlmatter_power(num_k,num_z))
-    end if
-
-    end subroutine InitPK
-
-    subroutine IOTheory_GetSplines(Theory)
-    class(TCosmoTheoryPredictions) Theory
-    integer :: zix,num_k,nz
-
-    num_k = Theory%num_k
-    nz = size(Theory%redshifts)
-
-    do zix=1, nz
-        call spline(Theory%log_kh,Theory%matter_power(:,zix),num_k,SPLINE_DANGLE,&
-        SPLINE_DANGLE,Theory%ddmatter_power(:,zix))
-
-        if(use_nonlinear .and. allocated(Theory%nlmatter_power))&
-        call spline(Theory%log_kh,Theory%nlmatter_power(:,zix),num_k,SPLINE_DANGLE,&
-        SPLINE_DANGLE,Theory%ddnlmatter_power(:,zix))
-    end do
-
-    end subroutine IOTheory_GetSplines
-    
-    function MatterPowerAt_zbin(Theory, kh, itf, NNL) result(outpower)
-    !Get matter power spectrum at particular k/h by interpolation
-    class(TCosmoTheoryPredictions) :: Theory
-    integer, intent(in) :: itf
-    real (mcp), intent(in) :: kh
-    logical, optional, intent(in) :: NNL
-    logical :: NL
-    real(mcp) :: logk
-    integer klo,khi
-    real(mcp) outpower, dp
-    real(mcp) ho,a0,b0
-    real(mcp), dimension(2) :: matpower, ddmat
-    integer, save :: i_last = 1
-
-    if(.not. allocated(Theory%log_kh)) then
-        write(*,*) 'MPK arrays are not initialized:' 
-        write(*,*) 'Make sure you are calling SetPk and filling your power spectra'
-        call MPIstop()
-    end if
-    
-    if(present(NNL))then
-        NL = NNL
-    else
-        NL = .false.
-    end if
-
-    !AL commenting as not currrently defined
-    !if(NL .and. .not. allocated(Theory%nlmatter_power)) then
-    !    write(*,*)"You are asking for a nonlinear MPK without having initialized nlmatter_power"
-    !    write(*,*)"Most likely you are doing importance sampling and need to turn on redo_pk"
-    !    call MPIstop()
-    !end if
-
-    logk = log(kh)
-    if (logk < Theory%log_kh(1)) then
-        if( NL ) then
-            matpower=Theory%nlmatter_power(1:2,itf)
-        else
-            matpower=Theory%matter_power(1:2,itf)
-        end if
-        dp = (matpower(2)-matpower(1))/(Theory%log_kh(2)-Theory%log_kh(1))
-        outpower = matpower(1) + dp*(logk-Theory%log_kh(1))
-    else if (logk > Theory%log_kh(Theory%num_k)) then
-        !Do dodgy linear extrapolation on assumption accuracy of result won't matter
-        if( NL ) then
-            matpower=Theory%nlmatter_power(Theory%num_k-1:Theory%num_k,itf)
-        else
-            matpower=Theory%matter_power(Theory%num_k-1:Theory%num_k,itf)
-        end if
-        dp = (matpower(2)-matpower(1))/(Theory%log_kh(Theory%num_k)-Theory%log_kh(Theory%num_k-1))
-        outpower = matpower(2) + dp*(logk-Theory%log_kh(Theory%num_k))
-    else
-        klo=min(i_last,Theory%num_k)
-        do while (Theory%log_kh(klo) > logk)
-            klo=klo-1
-        end do
-        do while (Theory%log_kh(klo+1)< logk)
-            klo=klo+1
-        end do
-        i_last =klo
-        khi=klo+1
-
-        if( NL ) then
-            matpower=Theory%nlmatter_power(klo:khi,itf)
-            ddmat = Theory%ddnlmatter_power(klo:khi,itf)
-        else
-            matpower=Theory%matter_power(klo:khi,itf)
-            ddmat = Theory%ddmatter_power(klo:khi,itf)
-        end if
-
-        ho=Theory%log_kh(khi)-Theory%log_kh(klo)
-        a0=(Theory%log_kh(khi)-logk)/ho
-        b0=1-a0
-
-        outpower = a0*matpower(1)+b0*matpower(2)+((a0**3-a0)*ddmat(1) &
-        + (b0**3-b0)*ddmat(2))*ho**2/6
-    end if
-
-    outpower = exp(max(-30._mcp,outpower))
-
-    end function MatterPowerAt_zbin
-
-    function MatterPowerAt(Theory, kh, NNL) result(outpower)
-    !Get matter power spectrum at particular k/h by interpolation
-    class(TCosmoTheoryPredictions) :: Theory
-    real (mcp), intent(in) :: kh
-    logical, optional, intent(in) :: NNL
-    logical :: NL
-    real(mcp) outpower
-
-    if(present(NNL))then
-        NL = NNL
-    else
-        NL = .false.
-    end if
-
-    outpower = Theory%MatterPowerAt_zbin(kh,1,NL)
-
-    end function MatterPowerAt
-
-    function MatterPowerAt_Z(Theory, kh, z, NNL) result(outpower)
-    !Get matter power spectrum at particular k/h by interpolation
-    class(TCosmoTheoryPredictions) :: Theory
-    real (mcp), intent(in) :: kh, z
-    logical, optional, intent(in) :: NNL
-    logical :: NL
-    integer zlo, zhi, iz, itf, nz
-    real(mcp) outpower
-    real(mcp) ho,a0,b0
-    real(mcp), dimension(4) :: matpower, ddmat, zvec
-    integer, save :: zi_last = 1
-    
-    if(.not. allocated(Theory%log_kh)) then
-        write(*,*) 'MPK arrays are not initialized:' 
-        write(*,*) 'Make sure you are calling SetPk and filling your power spectra'
-        call MPIstop()
-    end if
-
-    nz = size(Theory%redshifts)
-    
-    if(present(NNL))then
-        NL = NNL
-    else
-        NL = .false.
-    end if
-
-    if(z>Theory%redshifts(nz)) then
-        write (*,*) ' z out of bounds in MatterPowerAt_Z (',z,')'
-        call MPIstop()
-    end if
-
-    zlo=min(zi_last,size(Theory%redshifts))
-    do while (Theory%redshifts(zlo) > z)
-        zlo=zlo-1
-    end do
-    do while (Theory%redshifts(zlo+1)< z)
-        zlo=zlo+1
-    end do
-    zi_last=zlo
-    zhi=zlo+1
-
-    if(zlo==1)then
-        zvec = 0
-        matpower = 0
-        ddmat = 0
-        iz = 2
-        zvec(2:4)=Theory%redshifts(zlo:zhi+1)
-        do itf=zlo, zhi+1
-            matpower(iz) = log(Theory%MatterPowerAt_zbin(kh,itf,NL))
-            iz=iz+1
-        end do
-        call spline(zvec(2:4),matpower(2:4),3,SPLINE_DANGLE,SPLINE_DANGLE,ddmat(2:4))
-    else if(zhi==nz)then
-        zvec = 0
-        matpower = 0
-        ddmat = 0
-        iz = 1
-        zvec(1:3)=Theory%redshifts(zlo-1:zhi)
-        do itf=zlo-1, zhi
-            matpower(iz) = log(Theory%MatterPowerAt_zbin(kh,itf,NL))
-            iz=iz+1
-        end do
-        call spline(zvec(1:3),matpower(1:3),3,SPLINE_DANGLE,SPLINE_DANGLE,ddmat(1:3))
-    else
-        iz = 1
-        zvec(:)=Theory%redshifts(zlo-1:zhi+1)
-        do itf=zlo-1, zhi+1
-            matpower(iz) = log(Theory%MatterPowerAt_zbin(kh,itf,NL))
-            iz=iz+1
-        end do
-        call spline(zvec,matpower,4,SPLINE_DANGLE,SPLINE_DANGLE,ddmat)
-    end if
-
-    ho=zvec(3)-zvec(2)
-    a0=(zvec(3)-z)/ho
-    b0=(z-zvec(2))/ho
-
-    outpower = a0*matpower(2)+b0*matpower(3)+((a0**3-a0)*ddmat(2) &
-    +(b0**3-b0)*ddmat(3))*ho**2/6
-
-    outpower = exp(max(-30._mcp,outpower))
-
-    end function MatterPowerAt_Z
         
     subroutine TCosmoTheoryPredictions_WriteTheory(T, unit)
     Class(TCosmoTheoryPredictions) T
@@ -349,12 +301,12 @@
     if (get_sigma8 .or. use_LSS) write(unit) T%sigma_8
 
     if (use_LSS) then
-        write(unit) T%num_k, size(T%redshifts)
-        write(unit) T%log_kh
-        write(unit) T%redshifts
-        write(unit) T%matter_power
+        write(unit) T%MPK%num_k, T%MPK%num_z
+        write(unit) T%MPK%log_kh
+        write(unit) T%MPK%redshifts
+        write(unit) T%MPK%matter_power
         write(unit) use_nonlinear
-        if(use_nonlinear) write(unit) T%nlmatter_power
+        if(use_nonlinear) write(unit) T%NL_MPK%matter_power
     end if
 
     end subroutine TCosmoTheoryPredictions_WriteTheory
@@ -368,8 +320,8 @@
     integer, save :: almax, almaxtensor, anumcls, anumclsext, tmp(1)
     logical, save :: planck1_format
     real(mcp) old_matterpower(74,1)
-    !JD 10/13 new variables for handling new pk arrays
-    integer :: num_z, stat
+    !JD 02/14 new variables for handling new pk arrays
+    integer :: num_k, num_z, stat
     logical  has_nonlinear
 
     if (first) then
@@ -404,35 +356,32 @@
     else
         if (has_sigma8 .or. has_LSS) read(unit) T%sigma_8
         if (has_LSS) then
-            read(unit) T%num_k, num_z
-            call T%InitPK(T%num_k,num_z)
-            read(unit) T%log_kh
-            read(unit) T%redshifts
-            read(unit, iostat=stat) T%matter_power
-            if (IS_IOSTAT_END(stat) .and. use_nonlinear) then
-                deallocate(T%nlmatter_power,T%ddnlmatter_power)
-                write(*,*)"ReadTheory:  You want a nonlinear MPK but but your datafile is "
-                write(*,*)"in an old format does not include one."
-                write(*,*)"Make sure you set redo_pk = T or the program will fail"
+            read(unit) num_k, num_z
+            call T%MPK%InitPK(num_k,num_z,.true.)
+            read(unit) T%MPK%log_kh
+            read(unit) T%MPK%redshifts
+            read(unit, iostat=stat) T%MPK%matter_power
+            call T%MPK%IOPK_GetSplines()
+            if (IS_IOSTAT_END(stat)) then
+                has_nonlinear = .false.
             else
                 read(unit)has_nonlinear
-                if(has_nonlinear .and. use_nonlinear) then
-                    read(unit)T%nlmatter_power
-                else if(has_nonlinear .and. .not. use_nonlinear) then
-                    if(allocated(T%nlmatter_power))deallocate(T%nlmatter_power)
-                    if(allocated(T%ddnlmatter_power))deallocate(T%ddnlmatter_power)
-                    allocate(T%nlmatter_power(T%num_k,num_z))
-                    allocate(T%ddnlmatter_power(T%num_k,num_z))
+            end if
+            if(has_nonlinear) then
+                T%NL_MPK=T%MPK
+                read(unit)T%NL_MPK%matter_power
+                call T%NL_MPK%IOPK_GetSplines()
+                if(.not. use_nonlinear) then
                     write(*,*)"Your data files have nonlinear power spectra, but you are not using"
-                    write(*,*)"nonlinear power spectra.  Be careful that this is what you intended"
-                    read(unit)T%nlmatter_power
-                else 
-                    deallocate(T%nlmatter_power,T%ddnlmatter_power)
-                    write(*,*)"ReadTheory:  You want a nonlinear MPK but but your datafile does not include one."
-                    write(*,*)"Make sure you set redo_pk = T or the program will fail"
+                    write(*,*)"nonlinear power spectra.  Be careful that this is what you intended."
+                end if
+            else 
+                if(use_nonlinear) then    
+                    write(*,*)"Warning! ReadTheory: You want a nonlinear MPK" 
+                    write(*,*)"but your data file does not include one."
+                    write(*,*)"Make sure you set redo_pk = T or the program will fail."
                 end if
             end if
-            call T%IOTheory_GetSplines()
         end if
     end if
 
@@ -447,3 +396,4 @@
     end subroutine TCosmoTheoryPredictions_WriteBestFitData
 
     end module CosmoTheory
+    

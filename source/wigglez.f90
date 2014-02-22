@@ -102,8 +102,8 @@
 
     end subroutine GiggleZtoICsmooth
 
-    subroutine fill_GiggleZTheory(Theory,zbin)
-    class(TCosmoTheoryPredictions) Theory
+    subroutine fill_GiggleZTheory(PK,zbin)
+    class(TCosmoTheoryPK) PK
     integer, intent(in) :: zbin
     real(mcp) :: xi, kval
     real(mcp), dimension(4) :: fidpolys
@@ -112,7 +112,7 @@
 
     iz = 0
     do i=1,4
-        if(abs(Theory%redshifts(zbin)-zeval(i)).le.0.001) iz = i
+        if(abs(PK%redshifts(zbin)-zeval(i)).le.0.001) iz = i
     end do
 
     WiggleZPk = 0.
@@ -120,7 +120,7 @@
     do ik=1,gigglez_num_matter_power
         xi = log(gigglez_minkh) + gigglez_dlnkh*(ik-1)
         kval = exp(xi)
-        pk_hf = Theory%MatterPowerAt_zbin(kval,zbin,.true.)
+        pk_hf = PK%PowerAt_zbin(kval,zbin)
 
         call GiggleZtoICsmooth(kval,fidpolys)
 
@@ -234,6 +234,7 @@
         like%needs_powerspectra = .true.
         like%needs_exact_z = .true.
         like%num_z = 1
+        like%needs_nonlinear_pk = nonlinear_wigglez
         call like%ReadDatasetFile(Ini%ReadFileName(numcat('wigglez_dataset',i)))
         like%CommonData=> WiggleZCommon
         call LikeList%Add(like)
@@ -469,10 +470,10 @@
         call GiggleZinfo_init(like%exact_z(1))
     endif
 
-    like%kmax = 0.8
-    if(nonlinear_wigglez) then
-        like%needs_nonlinear_pk = .true.
+    if(like%needs_nonlinear_pk) then
         like%kmax=1.2
+    else
+        like%kmax=0.8
     end if
 
     if (Feedback > 1) write(*,*) 'read: '//trim(like%name)//' data'
@@ -520,6 +521,7 @@
     Class(CMBParams) CMB
     Class(WiggleZLikelihood) :: like
     Class(TCosmoTheoryPredictions) Theory
+    Type (TCosmoTheoryPK) PK
     real(mcp) :: DataParams(:)
     real(mcp) :: WiggleZ_LnLike, LnLike
     real(mcp), dimension(:), allocatable :: mpk_Pth, mpk_k2,mpk_lin,k_scaled !LV_06 added for LRGDR4
@@ -559,6 +561,12 @@
 
 
     allocate(chisq(-nQ:nQ))
+    
+    if (like%needs_nonlinear_pk) then
+        PK = Theory%NL_MPK
+    else
+        PK = Theory%MPK
+    end if
 
     chisq = 0
 
@@ -582,26 +590,24 @@
     enddo
     if(iz.eq.0) call MpiStop('could not indentify redshift')
 
-    if(abs(z-Theory%redshifts(like%exact_z_index(1)))>1.d-3)then
+    if(abs(z-PK%redshifts(like%exact_z_index(1)))>1.d-3)then
         write(*,*)'ERROR: WiggleZ redshift does not match the value stored'
-        write(*,*)'       in the Theory%redshifts array.'
+        write(*,*)'       in the PK%redshifts array.'
         call MpiStop()
     end if
 
     if(use_gigglez) then
-        call fill_GiggleZTheory(Theory, like%exact_z_index(1))
+        call fill_GiggleZTheory(PK, like%exact_z_index(1))
     endif
 
     do i=1, num_mpk_kbands_use
         ! It could be that when we scale the k-values, the lowest bin drops off the bottom edge
         !Errors from using matter_power_minkh at lower end should be negligible
-        k_scaled(i)=max(exp(Theory%log_kh(1)),like%mpk_k(i)*a_scl)
+        k_scaled(i)=max(exp(PK%log_kh(1)),like%mpk_k(i)*a_scl)
         if(use_gigglez) then
             mpk_lin(i) = WiggleZPowerAt(k_scaled(i))/a_scl**3
-        else if(nonlinear_wigglez)then
-            mpk_lin(i)=Theory%MatterPowerAt_zbin(k_scaled(i),like%exact_z_index(1),.true.)/a_scl**3
         else
-            mpk_lin(i)=Theory%MatterPowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
+            mpk_lin(i) = PK%PowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
         endif
     end do
 
@@ -711,6 +717,8 @@
     deallocate(mpk_Pth,mpk_lin)
     deallocate(mpk_WPth,k_scaled)!,w)
     deallocate(chisq)
+    
+    call PK%ClearPK()
 
     end function WiggleZ_LnLike
        

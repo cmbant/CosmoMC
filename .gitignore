@@ -20,3 +20,5 @@ Release/
 *.u2d
 *.user
 data/clik
+cosmomc*
+getdist*

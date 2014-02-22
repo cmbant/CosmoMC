@@ -61,18 +61,6 @@
     call MpiStop('use_lensing_potential must have CMB_lensing=T')
     lmax_computed_cl = Ini%Read_Int('lmax_computed_cl',lmax)
 
-    if (Feedback > 0 .and. MPIRank==0) then
-        write (*,*) 'Computing tensors:', compute_tensors
-        write (*,*) 'Doing CMB lensing:',CMB_lensing
-        write (*,*) 'Doing non-linear Pk:', use_nonlinear
-
-        write(*,'(" lmax              = ",1I4)') lmax
-        write(*,'(" lmax_computed_cl  = ",1I4)') lmax_computed_cl
-
-        if (compute_tensors) write(*,'(" lmax_tensor    = ",1I4)') lmax_tensor
-        write(*,'(" Number of C_ls = ",1I4)') num_cls
-    end if
-
     end subroutine TCosmologyConfig_ReadParams
 
     function TCosmologyConfig_SetParameterizationName(this, nametag, Ini, Names) result(OK)
@@ -111,8 +99,20 @@
     subroutine TCosmologyConfig_InitForLikelihoods(this)
     class(TCosmologyConfig) :: this
 
-    call this%TGeneralConfig%InitForLikelihoods()
     if(use_LSS) call Initialize_PKSettings()
+    call this%TGeneralConfig%InitForLikelihoods()
+
+    if (Feedback > 0 .and. MPIRank==0) then
+        write (*,*) 'Computing tensors:', compute_tensors
+        write (*,*) 'Doing CMB lensing:',CMB_lensing
+        write (*,*) 'Doing non-linear Pk:', use_nonlinear
+
+        write(*,'(" lmax              = ",1I4)') lmax
+        write(*,'(" lmax_computed_cl  = ",1I4)') lmax_computed_cl
+
+        if (compute_tensors) write(*,'(" lmax_tensor    = ",1I4)') lmax_tensor
+        write(*,'(" Number of C_ls = ",1I4)') num_cls
+    end if
 
     end subroutine TCosmologyConfig_InitForLikelihoods
 
