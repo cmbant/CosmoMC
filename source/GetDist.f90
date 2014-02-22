@@ -60,6 +60,8 @@
     Type(TParamNames) :: NameMapping
 
     integer, parameter :: gp = KIND(1.d0)
+    character(LEN=*), parameter :: float_format = '(*(E16.7))'
+
 
     ! #define coldata(a, b) coldata(b, a)
     !uncomment to switch order for compilation so confid_val is faster - suggested by Reijo Keskitalo March07
@@ -88,8 +90,7 @@
     real(mcp) prior_ranges(2,max_cols)
     real(mcp) mean(max_cols), sddev(max_cols)
     real(mcp), dimension(:,:), allocatable :: corrmatrix
-    character(LEN=Ini_max_string_len) plot_data_dir, out_dir, &
-    rootdirname, in_root
+    character(LEN=:), allocatable :: plot_data_dir, out_dir, rootdirname, in_root
     character(LEN=128) labels(max_cols)
     character(LEN=128) pname(max_cols)
     logical has_limits(max_cols), has_limits_top(max_cols),has_limits_bot(max_cols)
@@ -218,10 +219,10 @@
     Feedback = 0
     call initRandom()
 
-    unit = CreateNewTxtFile(trim(plot_data_dir)//trim(rootname)//'_single.txt')
+    unit = CreateNewTxtFile(plot_data_dir//trim(rootname)//'_single.txt')
     maxmult = maxval(coldata(1,0:nrows-1))
     do i= 0, nrows -1
-        if (ranmar() <= coldata(1,i)/maxmult/single_thin) write (unit,'(*(E16.7))') 1.0, coldata(2,i), coldata(colix(1:num_vars),i)
+        if (ranmar() <= coldata(1,i)/maxmult/single_thin) write (unit,float_format) 1.0, coldata(2,i), coldata(colix(1:num_vars),i)
     end do
     close(unit)
 
@@ -230,29 +231,25 @@
     subroutine WriteThinData(fname,cool)
     character(LEN=*), intent(in) :: fname
     real(mcp),intent(in) :: cool
-
-    character(LEN=20) :: fmt
-    integer i
+    integer i, aunit
     real(mcp) MaxL, NewL
 
     if (cool /= 1) write (*,*) 'Cooled thinned output with temp: ', cool
 
     MaxL = minval(coldata(2,0:nrows-1))
 
-    fmt = trim(numcat('(',ncols))//'E16.7)'
-    open(unit=50,file=fname,form='formatted',status='replace')
+    aunit = CreateNewTxtFile(fname)
 
     do i=0, thin_rows -1
         if (cool/=1) then
             newL = coldata(2,thin_ix(i))*cool
-            write (50,fmt) exp(-(newL - coldata(2,thin_ix(i))) - MaxL*(1-cool) ), newL, &
-            coldata(3:ncols,thin_ix(i))
+            write (aunit,float_format) exp(-(newL - coldata(2,thin_ix(i))) - MaxL*(1-cool) ), newL, coldata(3:ncols,thin_ix(i))
         else
-            write (50,fmt) 1., coldata(2:ncols,thin_ix(i))
+            write (aunit,float_format) 1., coldata(2:ncols,thin_ix(i))
         end if
     end do
     write (*,*) 'Wrote ',thin_rows, 'thinned samples'
-    close(50)
+    close(aunit)
 
     end subroutine WriteThinData
 
@@ -310,7 +307,7 @@
     real(mcp) scale
     real(mcp), dimension(:,:), allocatable :: covmatrix
     integer used_ix(max_cols)
-    character(LEN=4096) outline
+    character(LEN=:), allocatable :: outline
 
     allocate(corrmatrix(ncols-2,ncols-2))
 
@@ -341,7 +338,7 @@
     if (NameMapping%nnames/=0) then
         outline=''
         do i=1, nused
-            outline = trim(outline)//' '//trim(NameMapping%name(used_ix(i)))
+            outline = outline//' '//NameMapping%NameAtIndex(used_ix(i))
         end do
         allocate(covmatrix(nused,nused))
         covmatrix = corrmatrix(used_ix(1:nused),used_ix(1:nused))
@@ -594,7 +591,6 @@
                     trim(labels(pars(j)+2))//'-'//trim(RealToStr(PCmean(j)))// ')/'// trim(expo)
                 end if
             end if
-
         end do
         newmean(i) = sum(coldata(1,0:nrows-1)*PCdata(i,:))/numsamp
         newsd(i) = sqrt(sum(coldata(1,0:nrows-1)*(PCdata(i,:)-newmean(i))**2)/numsamp)
@@ -602,7 +598,6 @@
         write (unit,'('' ND limits: '',4f9.3)') minval(PCdata(i,0:ND_cont1)),maxval(PCdata(i,0:ND_cont1)), &
         minval(PCdata(i,0:ND_cont2)),maxval(PCdata(i,0:ND_cont2))
         write (unit,*) ''
-
     end do
 
     !Find out how correlated these components are with other parameters
@@ -729,7 +724,6 @@
                         in_chain_var(j) = in_chain_var(j) +  & !chain_samp(i)/maxsamp *&
                         sum(coldata(1,chain_start(i):chain_indices(i+1)-1)* &
                         (coldata(j,chain_start(i):chain_indices(i+1)-1)-chain_means(i,j))**2)
-
                     end do
                     between_chain_var(j) = between_chain_var(j)/(num_chains_used-1) !(usedsamps/maxsamp -1)
                     in_chain_var(j) = in_chain_var(j)/usedsamps
@@ -769,7 +763,6 @@
                 end do
                 meanscov(kk,jj) = meanscov(jj,kk)
                 cov(kk,jj) = cov(jj,kk)
-
             end do
         end do
         meanscov = meanscov/(num_chains_used-1) !(usedsamps/maxsamp -1)
@@ -872,7 +865,6 @@
                                             tran(1,i2,2) + tran(2,i2,1) + tran(2,i2,2) )
                                             focus = dble( tran(i1,i2,i3) )
                                             g2 = g2 + log( focus / fitted ) * focus
-
                                         end if
                                     end do !i1
                                 end do !i2
@@ -1033,9 +1025,10 @@
     integer imin, imax, winw, end_edge, fine_edge
     real(mcp) width,fine_width, edge_fac, maxbin
     logical :: has_prior
-    character(LEN=Ini_max_string_len) :: fname, filename
+    character(LEN=:), allocatable :: fname, filename
     integer, parameter :: fine_fac = 10
     real(mcp) :: smooth_1D, opt_width
+    integer aunit
 
     ix = colix(j)
 
@@ -1204,21 +1197,21 @@
         endif
 
         fname = trim(dat_file_name(rootname,j))
-        filename = trim(plot_data_dir)//trim(fname)
-        open(unit=49,file=trim(filename)//'.dat',form='formatted',status='replace')
+        filename = plot_data_dir// fname
+        aunit = CreateNewTxtFile(Filename//'.dat')
         do i = ix_min(j), ix_max(j)
-            write (49,'(2E16.7)') center(j) + i*width, bincounts(i)
+            write (aunit,float_format) center(j) + i*width, bincounts(i)
         end do
         if (ix_min(j) == ix_max(j)) write (49,'(1E16.7,'' 0'')') center(j) + ix_min*width
-        close(49)
+        close(aunit)
 
         if (plot_meanlikes) then
-            open(unit=49,file=trim(filename)//'.likes',form='formatted',status='replace')
+            aunit = CreateNewTxtFile(filename//'.likes')
             maxbin = maxval(binlikes(ix_min(j):ix_max(j)))
             do i = ix_min(j), ix_max(j)
-                write (49,'(2E16.7)') center(j) + i*width, binlikes(i)/maxbin
+                write (aunit,float_format) center(j) + i*width, binlikes(i)/maxbin
             end do
-            close(49)
+            close(aunit)
         end if
     end if
 
@@ -1229,7 +1222,8 @@
     integer i,ix1,ix2
     real(mcp) norm, maxbin
     real(mcp) try_b, try_t,try_sum, try_last
-    character(LEN=Ini_max_string_len) :: plotfile, filename,numstr
+    character(LEN=:), allocatable :: plotfile, filename
+    character(LEN=Ini_max_string_len) :: numstr
     real(mcp), dimension(:,:), allocatable :: finebins, finebinlikes, Win
     integer :: fine_fac_base = 5, fine_fac
     real(mcp) widthj,widthj2, contour_levels(max_contours)
@@ -1380,36 +1374,36 @@
     end where
 
     plotfile = dat_file_2D(rootname, j, j2)
-    filename = trim(plot_data_dir)//trim(plotfile)
+    filename = plot_data_dir//trim(plotfile)
     unit = CreateNewTxtFile(filename)
     do ix1 = ixmin, ixmax
-        write (unit,trim(numcat('(',iymax-iymin+1))//'E16.7)') bins2D(ix1,iymin:iymax)
+        write (unit,float_format) bins2D(ix1,iymin:iymax)
     end do
     close(unit)
 
-    unit = CreateNewTxtFile(trim(filename)//'_y')
+    unit = CreateNewTxtFile( filename //'_y')
     do i = ixmin, ixmax
-        write (unit,'(1E16.7)') center(j) + i*widthx
+        write (unit,float_format) center(j) + i*widthx
     end do
     close(unit)
 
-    unit = CreateNewTxtFile(trim(filename)//'_x')
+    unit = CreateNewTxtFile( filename//'_x')
     do i = iymin, iymax
-        write (unit,'(1E16.7)') center(j2) + i*widthy
+        write (unit,float_format) center(j2) + i*widthy
     end do
     close(unit)
 
-    unit = CreateNewTxtFile(trim(filename)//'_cont')
+    unit = CreateNewTxtFile( filename//'_cont')
     write(numstr,*) contour_levels(1:num_contours)
     if (num_contours==1) numstr = trim(numstr)//' '//trim(numstr)
     write (unit,*) trim(numstr)
     close(unit)
 
     if (shade_meanlikes) then
-        unit = CreateNewTxtFile(trim(filename)//'_likes')
+        unit = CreateNewTxtFile( filename //'_likes')
         maxbin = maxval(bin2Dlikes(ixmin:ixmax,iymin:iymax))
         do ix1 = ixmin, ixmax
-            write (unit,trim(numcat('(',iymax-iymin+1))//'E16.7)')  bin2Dlikes(ix1,iymin:iymax)/maxbin
+            write (unit,float_format)  bin2Dlikes(ix1,iymin:iymax)/maxbin
         end do
         close(unit)
     end if
@@ -1420,12 +1414,12 @@
     character(LEN=*), intent(in) :: aroot
     integer, intent(in) :: j, j2,aunit
     logical, intent(in) :: DoShade
-    character(LEN=Ini_max_string_len) plotfile
+    character(LEN=:), allocatable :: plotfile
     logical PlotContMATLAB
 
     PlotContMATLAB= .false.
     plotfile = dat_file_2D(aroot, j, j2)
-    if (.not. FileExists(trim(plot_data_dir)//trim(plotfile))) return
+    if (.not. FileExists(plot_data_dir//trim(plotfile))) return
     PlotContMATLAB= .true.
     write (aunit,'(a)') "pts=load(fullfile(plotdir,'" // trim(plotfile) //"'));"
 
@@ -1453,7 +1447,7 @@
 
     function matlabLabel(i)
     integer, intent(in) :: i
-    character(LEN=120) matlabLabel
+    character(LEN=:), allocatable :: matlabLabel
 
     if (matlab_latex) then
         matlabLabel = '$$'//trim(labels(i))//'$$'
@@ -1511,9 +1505,9 @@
 
     if (plot_ext=='py') then
         write(unit,'(a)') 'import GetDistPlots, os'
-        write(unit,'(a)') 'g=GetDistPlots.GetDistPlotter('''// trim(plot_data_dir)//''')'
+        write(unit,'(a)') 'g=GetDistPlots.GetDistPlotter('''// plot_data_dir//''')'
         write(unit,'(a)') 'g.settings.setWithSubplotSize('//trim(RealToStr(subplot_size))//')'
-        write(unit,'(a)') 'outdir='''//trim(out_dir)//''''
+        write(unit,'(a)') 'outdir='''//out_dir//''''
         write(unit,'(a)', advance='NO') 'roots=['''//trim(rootname)//''''
         do i = 1, Num_ComparePlots
             write(unit,'(a)', advance='NO') ','''//trim(ComparePlots(i))//''''
@@ -1521,8 +1515,8 @@
         write(unit,'(a)') ']'
     else
         write(unit,*) 'plot_size_inch = '//trim(RealToStr(subplot_size))//';'
-        write(unit,'(a)') 'plotdir='''//trim(plot_data_dir)//''';'
-        write(unit,'(a)') 'outdir='''//trim(out_dir)//''';'
+        write(unit,'(a)') 'plotdir='''//plot_data_dir//''';'
+        write(unit,'(a)') 'outdir='''//out_dir//''';'
         sz = 12
         if (sm .and. subplot_size < 4) sz=9
         sz = nint(sz*font_scale)
@@ -1552,7 +1546,7 @@
     integer, intent(in) :: unit, plot_col, plot_row
     character(LEN=*), intent(in) :: tag
     character(LEN=10) command
-    character(LEN=256) outname
+    character(LEN=:), allocatable:: outname
 
     outname=''''//trim(rootname)//trim(tag)//'.'//trim(plot_output)//''''
     if (plot_ext=='m') then
@@ -1562,23 +1556,23 @@
         if (plot_output == 'ps')  command='-dpsc2'
         if (plot_output == 'pdf')  command='-dpdf'
         if (plot_output == 'eps') command='-depsc2'
-        write (unit,'(a)') 'print('''//trim(command)//''',fullfile(outdir,'//trim(outname)//'));'
+        write (unit,'(a)') 'print('''//trim(command)//''',fullfile(outdir,'// outname //'));'
     elseif (plot_ext=='py') then
-        write (unit,'(a)') 'g.export(os.path.join(outdir,'//trim(outname)//'))'
+        write (unit,'(a)') 'g.export(os.path.join(outdir,'// outname //'))'
     end if
 
     end subroutine WritePlotFileExport
 
     function quoted_param_name(j) result(res)
     integer, intent(in) :: j
-    character(LEN=1024) res
+    character(LEN=:), allocatable :: res
 
     res=''''//trim(NameMapping%NameOrNumber(j))//''''
 
     end function quoted_param_name
 
     function quoted_param_name_used(j) result(res)
-    character(LEN=1024) res
+    character(LEN=:), allocatable :: res
     integer, intent(in) :: j
 
     res=quoted_param_name(colix(j)-2)
@@ -1588,22 +1582,22 @@
     function python_param_array(params,num) result(res)
     integer i,j
     integer, intent(in) :: params(:), num
-    character(LEN=1024) res
+    character(LEN=:), allocatable :: res
 
     res='['
     do i=1, num
         j= params(i)
-        if (i>1) res=trim(res)//','
-        res=trim(res)//trim(quoted_param_name_used(j))
+        if (i>1) res=res//','
+        res=res // quoted_param_name_used(j)
     end do
-    res=trim(res)//']'
+    res= res //']'
 
     end function python_param_array
 
 
     subroutine Write1DplotMatLab(aunit,j)
     integer, intent(in) :: aunit, j
-    character(LEN=Ini_max_string_len) fname
+    character(LEN=:), allocatable :: fname
     character(LEN=60) fmt
     integer ix1
 
@@ -1624,7 +1618,7 @@
 
     do ix1 = 1, Num_ComparePlots
         fname = dat_file_name(ComparePlots(ix1),j)
-        if (FileExists(trim(plot_data_dir)// trim(fname)//'.dat')) then
+        if (FileExists(plot_data_dir// trim(fname)//'.dat')) then
             write (aunit,'(a)') "pts = load(fullfile(plotdir,'" // trim(fname)// '.dat''));'
             fmt = trim(numcat('lineM{',ix1+1)) // '}'
             write (aunit,'(a)') 'plot(pts(:,1),pts(:,2),'//trim(fmt)//',''LineWidth'',lw2);'
@@ -1661,7 +1655,6 @@
     else
         call WriteS('Warning: sharp edge in parameter '//trim(NameMapping%name(param))// &
         ' - check limits['//trim(NameMapping%name(param))//'] or limits'//trim(intToStr(param)))
-
     end if
 
     end subroutine EdgeWarning
@@ -1669,14 +1662,14 @@
     function dat_file_name(rootname,j)
     integer, intent(in) :: j
     character(LEN=*) :: rootname
-    character(LEN= Ini_max_string_len) :: dat_file_name
+    character(LEN= :), allocatable :: dat_file_name
     dat_file_name =  trim(rootname)//'_p_'//trim(NameMapping%NameOrNumber(colix(j)-2))
     end function dat_file_name
 
     function dat_file_2D(rootname,j, j2)
     integer, intent(in) :: j, j2
     character(LEN=*) :: rootname
-    character(LEN= Ini_max_string_len) :: dat_file_2D
+    character(LEN=:), allocatable :: dat_file_2D
     dat_file_2D =  trim(rootname)//'_2D_'//trim(NameMapping%NameOrNumber(colix(j)-2)) &
     //'_'//trim(NameMapping%NameOrNumber(colix(j2)-2))
     end function dat_file_2D
@@ -1753,15 +1746,14 @@
     use IO
     implicit none
     Type(TSettingIni) :: Ini
-    character(LEN=Ini_max_string_len) InputFile, numstr
-    character(LEN=Ini_max_string_len)  parameter_names_file, parameter_names_labels
-    character(LEN=10000) InLine  ! ,LastL,OutLine
+    character(LEN=:), allocatable ::  InputFile, parameter_names_file, parameter_names_labels
+    character(LEN=:) ,allocatable :: InLine
     integer ix, ix1,i,ix2,ix3
     real(mcp) ignorerows
 
     logical bad, adjust_priors
 
-    character(LEN=Ini_max_string_len) filename, infile, out_root
+    character(LEN=:), allocatable :: filename, infile, out_root
     character(LEN=120) matlab_col, InS1,InS2,fmt
     integer plot_row, plot_col, chain_num, first_chain,chain_ix, plot_num
 
@@ -1794,12 +1786,13 @@
     !for single_colum_chain_files
     integer :: first_haschain, stat, ip, itmp, idx, nrows2(max_cols), tmp_params(max_cols)
     real(mcp) :: rtmp
-    character(LEN=Ini_max_string_len) :: finish_run_command
+    character(LEN=:), allocatable :: finish_run_command
     integer chain_handle
     integer triangle_num, triangle_params(max_cols), max_scatter_points
     real(mcp) tail_limit_bot,tail_limit_top, tail_confid_bot, tail_confid_top
     logical make_scatter_samples
     real(mcp) :: converge_test_limit
+    integer matlab_unit, unit_2d, unit_3d, unit_tri, aunit
 
     NameMapping%nnames = 0
 
@@ -1851,15 +1844,14 @@
 
         if (ncols==0) then
             if (chain_num == 0) then
-                infile = trim(in_root) // '.txt'
+                infile = in_root // '.txt'
             else
-                infile = trim(in_root) //'_1.txt'
+                infile = in_root //'_1.txt'
             end if
 
             ncols = TxtFileColumns(infile)
             write (*,*) 'Reading ',ncols, 'columns'
         end if
-
     end if
 
     allocate(coldata(ncols,0:max_rows))
@@ -1896,8 +1888,7 @@
     end if
     do ix=3, ncols
         if (auto_label) then
-            write (numstr,*) ix-2
-            labels(ix) = trim(adjustl(numstr))
+            labels(ix) = IntToStr(ix-2) 
             if (no_names) then
                 NameMapping%name(ix-2) = trim(labels(ix))
                 NameMapping%label(ix-2) = trim(labels(ix))
@@ -1909,7 +1900,6 @@
             else
                 labels(ix) = NameMapping%ReadIniForParam(Ini,'lab',ix-2)
             end if
-            !Ini%Read_String('lab'//trim(adjustl(numstr)))
         end if
     end do
 
@@ -1973,7 +1963,6 @@
             has_markers(ix) = .true.
             read(InLine,*) markers(ix)
         end if
-
     end do
 
     if (Ini%HasKey('plotparams_num')) stop 'plotparams_num deprectated; just use plot_params'
@@ -2058,12 +2047,12 @@
 
     plot_data_dir = CheckTrailingSlash(plot_data_dir)
 
-    if (.not. no_plots .and. .not. DirectoryExists(plot_data_dir)) &
-     stop 'plot_data directory does not exist'
-    
+    !    if (.not. no_plots .and. .not. DirectoryExists(plot_data_dir)) &
+    !    stop 'plot_data directory does not exist'
+
     if (out_dir /= '') then
         out_dir = CheckTrailingSlash(out_dir)
-        write (*,*) 'producing files in directory '//trim(out_dir)
+        write (*,*) 'producing files in directory '//out_dir
     end if
 
     rootdirname = concat(out_dir,rootname)
@@ -2115,7 +2104,6 @@
             call NameMapping%ReadIndices(InLine, tmp_params, 1)
             PCA_NormParam = tmp_params(1)
         end if
-
     end if
 
     num_3D_plots = Ini%Read_Int('num_3D_plots',0)
@@ -2153,44 +2141,40 @@
                     coldata(ip,:) = 0
                     nrows2(ip) = -1
                 else
+                    write (*,'(a)') 'reading ' // trim(infile)
+                    ! call OpenTxtFile(infile,50)
+                    chain_handle = IO_OpenChainForRead(infile)
+                    if (first_haschain==0) first_haschain=ip
+                    nrows2(ip) = 0
+                    idx = 0 !Jo -1
+                    do while (ReadLine(chain_handle, InLine))
+                        idx = idx + 1
 
-                write (*,'(a)') 'reading ' // trim(infile)
-                ! call OpenTxtFile(infile,50)
-                chain_handle = IO_OpenChainForRead(infile)
-                if (first_haschain==0) first_haschain=ip
-                nrows2(ip) = 0
-                idx = 0 !Jo -1
-                do
-                    read (chain_handle,'(a)',iostat=stat) InLine
-                    if ( stat /= 0 ) exit
-                    idx = idx + 1
+                        if ( ignorerows >= 1 .and. idx <= nint(ignorerows) ) then
+                            print *, 'ignoring row'
+                            cycle
+                        end if
 
-                    if ( ignorerows >= 1 .and. idx <= nint(ignorerows) ) then
-                        print *, 'ignoring row'
-                        cycle
-                    end if
+                        if (SCAN (InLine, 'N') /=0) then
+                            write (*,*) 'WARNING: skipping line with probable NaN'
+                            cycle
+                        end if
 
-                    if (SCAN (InLine, 'N') /=0) then
-                        write (*,*) 'WARNING: skipping line with probable NaN'
-                        cycle
-                    end if
+                        read(InLine,*,iostat=stat) itmp, rtmp
+                        if ( stat /= 0 ) then
+                            write (*,*) 'error reading line ', nrows2(ip) + int(ignorerows), ' - skipping rest of file'
+                            exit
+                        end if
+                        if ( idx /= itmp ) then
+                            print *, "*** out of sync", idx, itmp
+                            stop
+                        end if
 
-                    read(InLine,*,iostat=stat) itmp, rtmp
-                    if ( stat /= 0 ) then
-                        write (*,*) 'error reading line ', nrows2(ip) + int(ignorerows), ' - skipping rest of file'
-                        exit
-                    end if
-                    if ( idx /= itmp ) then
-                        print *, "*** out of sync", idx, itmp
-                        stop
-                    end if
-
-                    coldata(ip,nrows2(ip)) = rtmp
-                    nrows2(ip) = nrows2(ip) + 1
-                    if (nrows2(ip) > max_rows) stop 'need to increase max_rows'
-
-                end do
-                call IO_Close(chain_handle)
+                        coldata(ip,nrows2(ip)) = rtmp
+                        nrows2(ip) = nrows2(ip) + 1
+                        if (nrows2(ip) > max_rows) stop 'need to increase max_rows'
+                    end do
+                    call IO_Close(chain_handle)
                 end if
             end do
             if (first_haschain==0) stop 'no chain parameter files read!'
@@ -2227,7 +2211,6 @@
             end do
             nrows = nrows - j
         end if
-
     end do
 
     if (nrows == 0) stop 'No un-ignored rows! (check number of chains/burn in)'
@@ -2297,7 +2280,7 @@
 
     if (make_single_samples) call MakeSingleSamples(single_thin)
 
-    call IO_WriteBounds(NameMapping, trim(plot_data_dir)//trim(rootname)//'.bounds', &
+    call IO_WriteBounds(NameMapping, plot_data_dir//trim(rootname)//'.bounds', &
     limmin,limmax,has_limits_bot,has_limits_top, colix(1:num_vars))
 
     !Sort data in order of likelihood of points
@@ -2372,9 +2355,9 @@
         !Output files for 1D plots
         plot_col =  nint(sqrt(num_vars/1.4))
         plot_row = (num_vars +plot_col-1)/plot_col
-        open(unit=51,file=trim(rootdirname) // '.'//trim(plot_ext),form='formatted',status='replace')
+        matlab_unit = CreateNewTxtFile(trim(rootdirname) // '.'//trim(plot_ext))
         !MatLab file for 1D plots
-        call WritePlotFileInit(51,num_vars>3, subplot_size_inch)
+        call WritePlotFileInit(matlab_unit,num_vars>3, subplot_size_inch)
     end if
 
     LowerUpperLimits = 0
@@ -2423,38 +2406,38 @@
         end do
 
         if (.not. no_plots .and. plot_ext=='m') then
-            call WriteFormatInts(51,'subplot(%u,%u,%u);',plot_row,plot_col,j)
-            call Write1DplotMatLab(51,j);
-            if (prob_label)  write (51,*) 'ylabel(''Probability'')'
-            write(51,*)  'xlabel('''//   trim(matlabLabel(ix))//''',''FontSize'',lab_fontsize);'
-            write (51,*) 'set(gca,''ytick'',[]);hold off;'
+            call WriteFormatInts(matlab_unit,'subplot(%u,%u,%u);',plot_row,plot_col,j)
+            call Write1DplotMatLab(matlab_unit,j);
+            if (prob_label)  write (matlab_unit,*) 'ylabel(''Probability'')'
+            write(matlab_unit,*)  'xlabel('''//   trim(matlabLabel(ix))//''',''FontSize'',lab_fontsize);'
+            write (matlab_unit,*) 'set(gca,''ytick'',[]);hold off;'
         end if !no plots
     end do
 
     if (.not. no_plots) then
-        if (line_labels .and. plot_ext=='m') call WriteMatlabLineLabels(51)
-        if (plot_ext=='py') write(51,'(a)') 'g.plots_1d(roots)'
-        call WritePlotFileExport(51, '', plot_col, plot_row)
-        close(51)
+        if (line_labels .and. plot_ext=='m') call WriteMatlabLineLabels(matlab_unit)
+        if (plot_ext=='py') write(matlab_unit,'(a)') 'g.plots_1d(roots)'
+        call WritePlotFileExport(matlab_unit, '', plot_col, plot_row)
+        close(matlab_unit)
 
         if (triangle_plot) then
-            open(unit=52,file=trim(rootdirname) // '_tri.'//trim(plot_ext),form='formatted',status='replace')
-            call WritePlotFileInit(52,num_vars>4, subplot_size_inch)
+            unit_tri = CreateNewTxtFile(trim(rootdirname) // '_tri.'//trim(plot_ext))
+            call WritePlotFileInit(unit_tri,num_vars>4, subplot_size_inch)
             if (plot_ext=='py') then
-                write(52,'(a)') 'g.triangle_plot(roots, '//trim(python_param_array(triangle_params,triangle_num))//')'
+                write(unit_tri,'(a)') 'g.triangle_plot(roots, '//trim(python_param_array(triangle_params,triangle_num))//')'
             elseif (plot_ext=='m') then
                 do i=1, triangle_num
                     j=triangle_params(i)
-                    call WriteFormatInts(52,'subplot(%u,%u,%u);',triangle_num,triangle_num,(i-1)*triangle_num+i)
-                    call Write1DplotMatLab(52,j)
-                    if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(52)
-                    if (prob_label)  write (52,*) 'ylabel(''Probability'')'
+                    call WriteFormatInts(unit_tri,'subplot(%u,%u,%u);',triangle_num,triangle_num,(i-1)*triangle_num+i)
+                    call Write1DplotMatLab(unit_tri,j)
+                    if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(unit_tri)
+                    if (prob_label)  write (unit_tri,*) 'ylabel(''Probability'')'
                     if (j==num_vars) then
-                        write(52,*)  'xlabel('''//   trim(matlabLabel(colix(j)))//''',''FontSize'',lab_fontsize);'
+                        write(unit_tri,*)  'xlabel('''//   trim(matlabLabel(colix(j)))//''',''FontSize'',lab_fontsize);'
                     else if (no_triangle_axis_labels) then
-                        write(52,*) 'set(gca,''xticklabel'',[]);'
+                        write(unit_tri,*) 'set(gca,''xticklabel'',[]);'
                     end if
-                    write (52,*) 'set(gca,''ytick'',[]);hold off;'
+                    write (unit_tri,*) 'set(gca,''ytick'',[]);hold off;'
                 end do
             end if
         end if
@@ -2489,7 +2472,6 @@
 
             cust2Dplots(j) = colix(x) + colix(y)*1000
         end do
-
     end if
 
 
@@ -2514,9 +2496,9 @@
     if (num_2D_plots > 0 .and. .not. no_plots) then
         write (*,*) 'Producing ',num_2D_plots,' 2D plots'
         filename = trim(rootdirname)//'_2D.'//trim(plot_ext)
-        open(unit=50,file=filename,form='formatted',status='replace')
-        call WritePlotFileInit(50,num_2D_plots >=7,subplot_size_inch2)
-        if (plot_ext=='py') write(50,'(a)') 'pairs=[]'
+        unit_2d = CreateNewTxtFile(filename)
+        call WritePlotFileInit(unit_2d,num_2D_plots >=7,subplot_size_inch2)
+        if (plot_ext=='py') write(unit_2d,'(a)') 'pairs=[]'
 
         plot_col = nint(sqrt(num_2D_plots/1.4))
         plot_row = (num_2D_plots +plot_col-1)/plot_col
@@ -2541,24 +2523,24 @@
                         done2D(j,j2) = .true.
                         if (.not. plots_only) call Get2DPlotData(j,j2)
                         if (plot_ext=='m') then
-                            call WriteFormatInts(50,'subplot(%u,%u,%u);',plot_row,plot_col,plot_num)
-                            call Write2DPlotMATLAB(50,j,j2,.true.,.true.)
-                            if (plot_row*plot_col > 4 .and. subplot_size_inch<3.5) call CheckMatlabAxes(50)
+                            call WriteFormatInts(unit_2d,'subplot(%u,%u,%u);',plot_row,plot_col,plot_num)
+                            call Write2DPlotMATLAB(unit_2d,j,j2,.true.,.true.)
+                            if (plot_row*plot_col > 4 .and. subplot_size_inch<3.5) call CheckMatlabAxes(unit_2d)
                         elseif (plot_ext=='py') then
-                            write(50,'(a)') 'pairs.append(['//trim(quoted_param_name_used(j))//','//trim(quoted_param_name_used(j2))//'])'
+                            write(unit_2d,'(a)') 'pairs.append(['//trim(quoted_param_name_used(j))//','//trim(quoted_param_name_used(j2))//'])'
                         end if
                     end if
                 end do
             end if
         end do
         if (plot_ext=='m') then
-            if (line_labels) call WriteMatlabLineLabels(50)
-            if (matlab_col/='') write (50,*) trim(matlab_col)
+            if (line_labels) call WriteMatlabLineLabels(unit_2d)
+            if (matlab_col/='') write (unit_2d,*) trim(matlab_col)
         elseif (plot_ext=='py') then
-            write(50,'(a)') 'g.plots_2d(roots,param_pairs=pairs)'
+            write(unit_2d,'(a)') 'g.plots_2d(roots,param_pairs=pairs)'
         end if
-        call WritePlotFileExport(50, '_2D', plot_col, plot_row)
-        close(50)
+        call WritePlotFileExport(unit_2d, '_2D', plot_col, plot_row)
+        close(unit_2d)
     end if
 
     if (triangle_plot .and. .not. no_plots) then
@@ -2569,26 +2551,26 @@
                 j2=triangle_params(i2)
                 if (.not. Done2D(j2,j) .and. .not. plots_only) call Get2DPlotData(j2,j)
                 if (plot_ext=='m') then
-                    call WriteFormatInts(52,'subplot(%u,%u,%u);',triangle_num,triangle_num,(i2-1)*triangle_num + i)
-                    call Write2DPlotMATLAB(52,j2,j,i2==triangle_num, i==1,no_triangle_axis_Labels)
-                    if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(52)
+                    call WriteFormatInts(unit_tri,'subplot(%u,%u,%u);',triangle_num,triangle_num,(i2-1)*triangle_num + i)
+                    call Write2DPlotMATLAB(unit_tri,j2,j,i2==triangle_num, i==1,no_triangle_axis_Labels)
+                    if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(unit_tri)
                 end if
             end do
         end do
         if (plot_ext=='m') then
             if (no_triangle_axis_labels) then
-                write(52,*) 'h = get(gcf,''Children'');'
-                write(52,*) 'for i=1:length(h)'
-                write(52,*) 'p=get(h(i),''position'');'
-                write(52,*) 'sc=1.2;w=max(p(3)*sc,p(4)*sc);'
-                write(52,*) 'p(1)=p(1)-(w-p(3))/2; p(2)=p(2)-(w-p(4))/2;p(3)=w;p(4)=w;'
-                write(52,*) 'set(h(i),''position'',p);'
-                write(52,*) 'end;'
+                write(unit_tri,*) 'h = get(gcf,''Children'');'
+                write(unit_tri,*) 'for i=1:length(h)'
+                write(unit_tri,*) 'p=get(h(i),''position'');'
+                write(unit_tri,*) 'sc=1.2;w=max(p(3)*sc,p(4)*sc);'
+                write(unit_tri,*) 'p(1)=p(1)-(w-p(3))/2; p(2)=p(2)-(w-p(4))/2;p(3)=w;p(4)=w;'
+                write(unit_tri,*) 'set(h(i),''position'',p);'
+                write(unit_tri,*) 'end;'
             end if
-            if (matlab_col/='') write (52,*) trim(matlab_col)
+            if (matlab_col/='') write (unit_tri,*) trim(matlab_col)
         end if
-        call WritePlotFileExport(52, '_tri', triangle_num+1, triangle_num+1)
-        close(52)
+        call WritePlotFileExport(unit_tri, '_tri', triangle_num+1, triangle_num+1)
+        close(unit_tri)
     end if
 
     !Do 3D plots (i.e. 2D scatter plots with coloured points)
@@ -2596,20 +2578,20 @@
     if (num_3D_plots /=0 .and. .not. no_plots) then
         write (*,*) 'producing ',num_3D_plots, '2D colored scatter plots'
         filename = trim(rootdirname)//'_3D.'//trim(plot_ext)
-        open(unit=50,file=filename,form='formatted',status='replace')
-        call WritePlotFileInit(50,num_3D_plots>1,subplot_size_inch3)
+        unit_3D = CreatenewTxtFile(filename)
+        call WritePlotFileInit(unit_3D,num_3D_plots>1,subplot_size_inch3)
 
         if (plot_ext=='m') then
-            write (50,*) 'clf;colormap(''jet'');'
+            write (unit_3D,*) 'clf;colormap(''jet'');'
             if (mod(num_3D_plots,2)==0 .and. num_3D_plots < 11) then
                 plot_col = num_3D_plots/2
             else
                 plot_col =  nint(sqrt(1.*num_3D_plots))
             end if
             plot_row = (num_3D_plots +plot_col-1)/plot_col
-            write(50,'(a)') 'pts=load(fullfile(plotdir,''' // trim(rootname)//'_single.txt''));'
+            write(unit_3D,'(a)') 'pts=load(fullfile(plotdir,''' // trim(rootname)//'_single.txt''));'
         elseif (plot_ext=='py') then
-            write(50,'(a)') 'sets=[]'
+            write(unit_3D,'(a)') 'sets=[]'
         end if
         do j=1, num_3D_plots
             call NameMapping%ReadIndices(plot_3D(j), tmp_params, 3)
@@ -2623,34 +2605,34 @@
             end if
             !            if (ix3<1) ix3 = MostCorrelated2D(ix1,ix2,ix3)
             if (plot_ext=='m') then
-                call WriteFormatInts(50,'subplot(%u,%u,%u);', plot_row,plot_col,j)
-                write (50,*) '%Do params ',tmp_params(1:3)
-                call WriteFormatInts(50,'scatter(pts(:,%u),pts(:,%u),3,pts(:,%u));', ix1,ix2,ix3)
+                call WriteFormatInts(unit_3D,'subplot(%u,%u,%u);', plot_row,plot_col,j)
+                write (unit_3D,*) '%Do params ',tmp_params(1:3)
+                call WriteFormatInts(unit_3D,'scatter(pts(:,%u),pts(:,%u),3,pts(:,%u));', ix1,ix2,ix3)
                 fmt = ''',''FontSize'',lab_fontsize);'
-                write (50,*) 'xlabel('''//trim(matlabLabel(tmp_params(1)+2))//trim(fmt)
-                write (50,*) 'ylabel('''//trim(matlabLabel(tmp_params(2)+2))//trim(fmt)
-                write (50,*) 'set(gca,''FontSize'',axes_fontsize); ax = gca;'
-                write (50,*) 'hbar = colorbar(''horiz'');axes(hbar);'
+                write (unit_3D,*) 'xlabel('''//trim(matlabLabel(tmp_params(1)+2))//trim(fmt)
+                write (unit_3D,*) 'ylabel('''//trim(matlabLabel(tmp_params(2)+2))//trim(fmt)
+                write (unit_3D,*) 'set(gca,''FontSize'',axes_fontsize); ax = gca;'
+                write (unit_3D,*) 'hbar = colorbar(''horiz'');axes(hbar);'
 
-                write (50,*) 'xlabel('''//trim(matlabLabel(tmp_params(3)+2))//trim(fmt)
-                write (50,*) 'set(gca,''FontSize'',axes_fontsize);'
+                write (unit_3D,*) 'xlabel('''//trim(matlabLabel(tmp_params(3)+2))//trim(fmt)
+                write (unit_3D,*) 'set(gca,''FontSize'',axes_fontsize);'
                 if (num_3D_plots > 2 .and. matlab_version < 7) then
-                    write (50,*) ' p = get(ax,''Position'');'
-                    write (50,*) 'set(ax,''Position'',[p(1) (p(2)+p(4)/8) p(3) p(4)]);'
+                    write (unit_3D,*) ' p = get(ax,''Position'');'
+                    write (unit_3D,*) 'set(ax,''Position'',[p(1) (p(2)+p(4)/8) p(3) p(4)]);'
                 elseif (matlab_version==7) then
                     !workaround for colorbar/label overlap bug
-                    write (50,*) 'fix_colorbar(hbar,ax); axes(ax);'
+                    write (unit_3D,*) 'fix_colorbar(hbar,ax); axes(ax);'
                 end if
             elseif (plot_ext=='py') then
-                write(50,'(a)') 'sets.append(['//trim(quoted_param_name(tmp_params(1))) &
+                write(unit_3D,'(a)') 'sets.append(['//trim(quoted_param_name(tmp_params(1))) &
                 //','//trim(quoted_param_name(tmp_params(2)))//','//trim(quoted_param_name(tmp_params(3)))//'])'
             end if
         end do
         if (plot_ext=='py') then
-            write(50,'(a)') 'g.plots_3d(roots,sets)'
+            write(unit_3D,'(a)') 'g.plots_3d(roots,sets)'
         end if
-        call WritePlotFileExport(50, '_3D', plot_col, plot_row)
-        close(50)
+        call WritePlotFileExport(unit_3D, '_3D', plot_col, plot_row)
+        close(unit_3D)
     end if
 
     !write out stats
@@ -2659,30 +2641,30 @@
     call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
     LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels)
 
-    call NameMapping%WriteFile(trim(plot_data_dir)//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
+    call NameMapping%WriteFile(plot_data_dir//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
 
     !Limits from global likelihood
     if (.not. plots_only) then
-        open(unit=50,file=trim(rootdirname)//'.likestats',form='formatted',status='replace')
-        write (50,*) 'Best fit sample -log(Like) = ',coldata(2,bestfit_ix)
-        write (50,*) ''
-        write(50,'(a)') 'param  bestfit        lower1         upper1         lower2         upper2'
+        aunit=CreateNewTxtFile(trim(rootdirname)//'.likestats')
+        write (aunit,*) 'Best fit sample -log(Like) = ',coldata(2,bestfit_ix)
+        write (aunit,*) ''
+        write(aunit,'(a)') 'param  bestfit        lower1         upper1         lower2         upper2'
 
         do j=1, num_vars
-            write(50,'(1I5,5E15.7,"   '//trim(labels(colix(j)))//'")') colix(j)-2, coldata(colix(j),bestfit_ix),&
+            write(aunit,'(1I5,5E15.7,"   '//trim(labels(colix(j)))//'")') colix(j)-2, coldata(colix(j),bestfit_ix),&
             minval(coldata(colix(j),0:ND_cont1)), &
             maxval(coldata(colix(j),0:ND_cont1)), &
             minval(coldata(colix(j),0:ND_cont2)), &
             maxval(coldata(colix(j),0:ND_cont2))
         end do
-        close(50)
+        close(aunit)
     end if
 
     !Comment this out if your compiler doesn't support "system"
     if (finish_run_command /='') then
         call StringReplace('%ROOTNAME%',rootname,finish_run_command)
-        call StringReplace('%PLOTDIR%',trim(plot_data_dir),finish_run_command)
-        call StringReplace('%PLOTROOT%',trim(plot_data_dir)//rootname,finish_run_command)
+        call StringReplace('%PLOTDIR%',plot_data_dir,finish_run_command)
+        call StringReplace('%PLOTROOT%',plot_data_dir//rootname,finish_run_command)
         call system(finish_run_command)
     end if
 

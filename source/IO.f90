@@ -4,7 +4,8 @@
     !Replace file e.g. to store output in a pipline database (indexed by filename)
     !Valid handles must be /=0
     use settings
-    use MatrixUtils
+    use FileUtils
+    use ParamNames
     implicit none
 
     contains
@@ -88,15 +89,8 @@
 
     end function IO_Exists
 
-    function IO_Size(name) result(fsize)
-    integer fsize
-    character(LEN=*), intent(in)::name
-
-    inquire(file=name, size=fsize )
-
-    end function IO_Size
-
     subroutine IO_WriteProposeMatrix(pmat, prop_mat, comment)
+    use MatrixUtils
     real(mcp) pmat(:,:)
     character(LEN=*), intent(in) :: prop_mat
     character(LEN=*), optional, intent(in) :: comment
@@ -115,32 +109,31 @@
     character(LEN=*), intent(in) :: prop_mat
     real(mcp), allocatable :: tmpMat(:,:)
     integer i,x,y
-    integer file_id
-    character(LEN=max_num_params*(ParamNames_maxlen+1)) :: InLine
+    integer file_id, status
+    character(LEN=:), allocatable :: InLine
     integer num, cov_params(max_num_params)
 
     file_id = OpenNewTxtFile(prop_mat)
-    InLine=''
-    do while (InLine == '')
-        read(file_id,'(a)', end = 10) InLine
+    do while (ReadLine(file_id,InLine,trimmed=.true.))
+        if (InLine /= '') exit
     end do
-    InLine = adjustl(InLine)
     If (InLine(1:1)=='#') then
         !Have paramnames to identify
-        InLine = InLine(2:len_trim(InLine))
+        InLine = InLine(2:len(InLine))
         num=-1
         call NameMapping%ReadIndices(InLine, cov_params, num, unknown_value=0)
         allocate(tmpMat(num,num))
         pmat=0
         y=0
-        do
-            read(file_id,'(a)', end = 20) InLine
+        do while (ReadLine(file_id, InLine))
             if (InLine/='') then
+                read(InLine,*,iostat=status) tmpMat(:,y+1)
+                if (status/=0) exit
                 y=y+1
-                read(InLine,*,end=20) tmpMat(:,y)
                 if (y==num) exit
             end if
         end do
+        if (y/=num) call mpiStop('ReadProposeMatrix: wrong number of rows/columns in .covmat')
         close(file_id)
         do y=1,num
             if (cov_params(y)/=0) then
@@ -151,10 +144,9 @@
         end do
         deallocate(tmpMat)
         return
-20      call mpiStop('ReadProposeMatrix: wrong number of rows/columns in .covmat')
 
     end if
-10  close(file_id)
+    close(file_id)
 
     i=TxtNumberColumns(InLine)
     if (i==num_params) then
@@ -176,7 +168,6 @@
     integer, intent(in) :: handle
     real(mcp) mult, like, values(:)
     integer, intent(in), optional :: nvalues
-    !    character(LEN =128) fmt
     integer n
 
     if (present(nvalues)) then
@@ -185,7 +176,6 @@
         n = size(values)
     end if
 
-    !    fmt = trim(numcat('(2E16.7,',n))//'E16.7)'
     write (handle,'(*(E16.7))') mult, like, values(1:n)
 
     if (flush_write) call FlushFile(handle)
@@ -205,14 +195,14 @@
     integer, intent(in):: handle,nrows
     logical OK
     integer ix
-    character(LEN=10000) InLine
 
     do ix = 1, nrows
-        read (handle,'(a)',end=1) InLine
+        if (.not. ReadLine(handle)) then
+            OK = .false.
+            return 
+        end if
     end do
     OK = .true.
-    return
-1   OK = .false.
 
     end function IO_SkipChainRows
 
@@ -226,8 +216,9 @@
     logical, optional, intent(out) :: ChainOK
     logical, optional, intent(in) :: samples_chains
     logical samples_are_chains
-    character(LEN=10000) InLine
+    character(LEN=:), allocatable :: InLine
     real(mcp) invals(size(params_used))
+    integer status
 
     if (present(samples_chains)) then
         samples_are_chains=samples_chains
@@ -237,27 +228,23 @@
 
     if (present(ChainOK)) chainOK = .true.
 
-    read (handle,'(a)',end=100) InLine
+    OK = ReadLine(handle, InLine)
+    if (.not. OK) return
     if (SCAN (InLine, 'N') /=0) then
-        OK = .true.
         if (present(ChainOK)) chainOK = .false.
         return
     end if
 
     if (samples_are_chains) then
-        read(InLine, *, end=110,err=110) mult, like, invals
+        read(InLine, *, iostat=status) mult, like, invals
     else
         mult=1
         like=1
-        read(InLine, *, end=110,err=110) invals
+        read(InLine, *, iostat=status) invals
     end if
-    values(params_used) =invals
-    OK = .true.
-    return
-100 OK = .false.
-    return
-110 OK = .false.
-    if (present(ChainOK)) chainOK = .false.
+    OK = status==0
+    if (present(ChainOK)) chainOK = OK
+    if (OK) values(params_used) =invals
 
     end function IO_ReadChainRow
 
@@ -273,7 +260,6 @@
     end subroutine IO_ReadLastChainParams
 
     subroutine IO_OutputParamNames(Names, fname, indices, add_derived)
-    use ParamNames
     class(TParamNames) :: Names
     character(len=*), intent(in) :: fname
     integer, intent(in), optional :: indices(:)
@@ -316,10 +302,10 @@
 
 
     subroutine IO_ReadParamNames(Names, in_root, prior_ranges)
-    use ParamNames
     class(TParamNames) :: Names
     character(LEN=*), intent(in) :: in_root
-    character(LEN=Ini_max_string_len) infile, name
+    character(LEN=Ini_max_string_len) name
+    character(LEN=:), allocatable :: infile
     real(mcp) :: prior_ranges(:,:), minmax(2)
     integer file_id, ix
 
@@ -358,15 +344,13 @@
     integer chain_handle, row_start
     integer, allocatable :: indices(:)
     character(LEN=:), allocatable :: infile
-    character(LEN=20) :: numstr
     integer i
 
     row_start=nrows
     if (chain_num == 0) then
         infile = trim(in_root) // '.txt'
     else
-        write (numstr,*) chain_ix
-        infile = trim(in_root) //'_'//trim(adjustl(numstr))// '.txt'
+        infile = trim(in_root) //'_'//IntToStr(chain_ix)// '.txt'
     end if
 
     write (*,*) 'reading ' // trim(infile)
@@ -439,7 +423,7 @@
     j = max(9,Names%MaxNameLen())
     nameFormat = concat('(1A',j+1,')')
 
-    open(newunit=file_id,file=trim(froot)//'.margestats',form='formatted',status='replace')
+    file_id = CreateNewTxtFile(trim(froot)//'.margestats')
     write (file_id,'(a)') 'Marginalized limits: ' // trim(contours_str)
     write (file_id,*) ''
     call IO_WriteLeftTextNoAdvance(file_id,nameFormat,'parameter')

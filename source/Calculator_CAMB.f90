@@ -149,7 +149,6 @@
     end do
     end subroutine CAMBCalc_SetDerived
 
-    !!!CAMB_Calcultator
     subroutine CAMBCalc_SetParamsForBackground(this,CMB)
     use Camb, only: CAMBParams_Set
     class(CAMB_Calculator) :: this

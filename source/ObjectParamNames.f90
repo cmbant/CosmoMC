@@ -258,11 +258,11 @@
     character(LEN=*), intent(in) :: InLine
     integer, intent(out) :: params(*)
     integer, intent(in), optional :: unknown_value
-    integer  :: num
+    integer  :: num, status
     character(LEN=ParamNames_maxlen) part
     integer param,len,ix, pos, max_num, outparam, outvalue
     integer, parameter :: unknown_num = 1024
-    character(LEN=1024) :: skips
+    character(LEN=:), allocatable :: skips
 
     skips=''
     if (num==0) return
@@ -275,10 +275,15 @@
     end if
     outparam=0
     do param = 1, max_num
-        do while (pos < len .and. IsWhiteSpace(InLine(pos:pos)))
-            pos = pos+1
+        do while (pos <= len)
+            if (IsWhiteSpace(InLine(pos:pos))) then
+                pos = pos+1
+            else
+                exit
+            endif
         end do
-        read(InLine(pos:), *, end=400, err=400) part
+        read(InLine(pos:), *, iostat=status) part
+        if (status/=0) exit
         pos = pos + len_trim(part)
         ix = Names%index(part)
         if (ix>0) then
@@ -286,7 +291,7 @@
         else
             if (verify(trim(part),'0123456789') /= 0) then
                 if (present(unknown_value)) then
-                    skips = trim(skips)//' '//trim(part)
+                    skips = skips //' '//trim(part)
                     if (unknown_value/=-1) then
                         outvalue = unknown_value
                     else
@@ -303,8 +308,9 @@
         if (max_num == unknown_num) num = outparam
         params(outparam) = outvalue
     end do
-    return
-400 if (skips/='') write(*,'(a)') ' skipped unused params:'//trim(skips)
+    if (status==0) return
+
+    if (skips/='') write(*,'(a)') ' skipped unused params:'// skips
     if (max_num==unknown_num) return
     call MpiStop('ParamNames: Not enough names or numbers - '//trim(InLine))
 
