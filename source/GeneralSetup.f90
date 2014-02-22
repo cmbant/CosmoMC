@@ -95,6 +95,10 @@
         end select
     end if
 
+    if (allocated(this%ImportanceSampler)) then
+        call this%ImportanceSampler%Init(this%LikeCalculator)
+    end if
+
     end subroutine TSetup_DoneInitialize
 
     subroutine TSetup_GetMinimizer(this, Minimizer)

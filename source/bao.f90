@@ -23,7 +23,7 @@
     private
 
     type, extends(TCosmoCalcLikelihood) :: BAOLikelihood
- !    type, extends(TCosmoCalcLikelihood) :: BAOLikelihood
+        !    type, extends(TCosmoCalcLikelihood) :: BAOLikelihood
         integer :: num_bao ! total number of points used
         integer :: type_bao
         !what type of bao data is used
@@ -121,12 +121,11 @@
             unit= OpenNewTxtFile(bao_invcov_file)
             do i=1,like%num_bao
                 read (unit,*, iostat=iopb) like%bao_invcov(i,:)
+                if (iopb /= 0) then
+                    call MpiStop('Error reading bao file '// bao_invcov_file)
+                endif
             end do
             close(unit)
-
-            if (iopb.ne.0) then
-                call MpiStop('Error reading bao file '// bao_invcov_file)
-            endif
         else
             do i=1,like%num_bao
                 !diagonal, or actually just 1..
