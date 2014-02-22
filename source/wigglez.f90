@@ -20,8 +20,8 @@
     !JD 09/13: Replaced compute_scaling_factor routines with routines that use CAMB's
     !          built in D_V function.
     
-    !JD 02/14  Moved common MPK functions to power_spec.f90 implemented AL's 
-    !          Calculator_Cosmology functions.
+    !JD 02/14  Moved common MPK functions to CosmoTheory.f90 implemented AL's 
+    !          Calculator_Cosmology functions. Implemented MPK_Common routines
 
     module wigglezinfo
     !David Parkinson 12th March 2012
@@ -31,129 +31,84 @@
 
     implicit none
 
-    logical :: use_wigglez_mpk = .false.  !DP for WiggleZ MPK
-    real(mcp), parameter :: z0 = 0.d0, za = 0.22d0, zb = 0.41d0, zc = 0.6d0, zd = 0.78d0
-    real(mcp), dimension(4) :: zeval, zweight, sigma2BAOfid, sigma2BAO
+    real(mcp), parameter :: za = 0.22d0, zb = 0.41d0, zc = 0.6d0, zd = 0.78d0
+    real(mcp), dimension(4) :: zeval
 
     !settings power spectra evaluated at GiggleZ fiducial cosmological theory
-    integer, parameter :: gigglez_num_matter_power = 500
-    real(mcp), parameter :: gigglez_minkh =  0.999e-4
-    real(mcp), parameter :: gigglez_dlnkh =  0.024
     !power spectra evaluated at GiggleZ fiducial cosmological theory
-    real(mcp), dimension(gigglez_num_matter_power,4) :: power_hf_fid
-    !for GiggleZ adjusted WiggleZ Power spectrum
-    real(mcp), dimension(gigglez_num_matter_power) :: WiggleZPk
+    Type(TCosmoTheoryPK) GiggleZPK
+    integer, parameter :: GiggleZ_numk = 500
+    integer, parameter :: GiggleZ_numz = 4
     contains
 
-    subroutine GiggleZinfo_init(redshift)
-    integer :: iopb, i, iz
+    subroutine GiggleZinfo_init()
+    integer :: iopb, ik, iz
     real(mcp) :: kval, power_nl
-    real(mcp) redshift
     integer tmp_file_unit
     character(LEN=:), allocatable :: fname
-
-    iz = 0
-    do i=1,4
-        if(abs(redshift-zeval(i)).le.0.001) iz = i
-    enddo
-
-    !! first read in everything needed from the CAMB output files.
-    iopb = 0 !! check later if there was an error
-
-    if(iz.eq.1) then
-        fname = 'gigglezfiducialmodel_matterpower_a.dat'
-    else if(iz.eq.2) then
-        fname = 'gigglezfiducialmodel_matterpower_b.dat'
-    else if(iz.eq.3) then
-        fname = 'gigglezfiducialmodel_matterpower_c.dat'
-    else if(iz.eq.4) then
-        fname = 'gigglezfiducialmodel_matterpower_d.dat'
-    else
-        call MpiStop('could not indentify redshift')
-    endif
-    tmp_file_unit= OpenNewTxtFile(DataDir//fname)
-    do i = 1, gigglez_num_matter_power
-        read (tmp_file_unit,*,iostat=iopb) kval, power_nl
-        if(iopb .ne. 0) stop 'Error reading model or fiducial theory files.'
-        power_hf_fid(i,iz) = power_nl
+    
+    call GiggleZPK%InitPK(GiggleZ_numk,GiggleZ_numz,.true.)
+    GiggleZPK%redshifts = zeval
+    
+    do iz=1,GiggleZPK%num_z
+        !! first read in everything needed from the CAMB output files.
+        iopb = 0 !! check later if there was an error
+        if(iz.eq.1) then
+            fname = 'gigglezfiducialmodel_matterpower_a.dat'
+        else if(iz.eq.2) then
+            fname = 'gigglezfiducialmodel_matterpower_b.dat'
+        else if(iz.eq.3) then
+            fname = 'gigglezfiducialmodel_matterpower_c.dat'
+        else if(iz.eq.4) then
+            fname = 'gigglezfiducialmodel_matterpower_d.dat'
+        end if
+        tmp_file_unit= OpenNewTxtFile(DataDir//fname)
+        do ik=1, GiggleZPK%num_k
+            read (tmp_file_unit,*,iostat=iopb)kval,power_nl
+            if(iopb .ne. 0) stop 'Error reading model or fiducial theory files.'
+            !JD PK arrays store log(k); we choose to store log(PK) for interpolation
+            if(iz==1) GiggleZPK%log_kh(ik) = log(kval)
+            GiggleZPK%matter_power(ik,iz) = log(power_nl)
+        end do
+        close(tmp_file_unit)
     end do
-    close(tmp_file_unit)
+    call GiggleZPK%IOPK_Getsplines()
 
     end subroutine GiggleZinfo_init
 
     ! HARD CODING OF POLYNOMIAL FITS TO FOUR REDSHIFT BINS.
-    subroutine GiggleZtoICsmooth(k,fidpolys)
+    function GiggleZtoICsmooth(k,zbin)
     real(mcp), intent(in) :: k
-    real(mcp) :: fidz_1, fidz_2, fidz_3, fidz_4
-    real(mcp), dimension(4), intent(out) :: fidpolys
-
-
-    fidz_1 = (4.619d0 - 13.7787d0*k + 58.941d0*k**2 - 175.24d0*k**3 + 284.321d0*k**4 - 187.284d0*k**5)
-    fidz_2 = (4.63079d0 - 12.6293d0*k + 42.9265d0*k**2 - 91.8068d0*k**3 + 97.808d0*k**4 - 37.633d0*k**5)
-    fidz_3 = (4.69659d0 - 12.7287d0*k + 42.5681d0*k**2 - 89.5578d0*k**3 + 96.664d0*k**4 - 41.2564*k**5)
-    fidz_4 = (4.6849d0 - 13.4747d0*k + 53.7172d0*k**2 - 145.832d0*k**3 + 216.638d0*k**4 - 132.782*k**5)
-
-
-    fidpolys(1) = 10**fidz_1
-    fidpolys(2) = 10**fidz_2
-    fidpolys(3) = 10**fidz_3
-    fidpolys(4) = 10**fidz_4
-    return
-
-    end subroutine GiggleZtoICsmooth
-
-    subroutine fill_GiggleZTheory(PK,zbin)
-    class(TCosmoTheoryPK) PK
     integer, intent(in) :: zbin
-    real(mcp) :: xi, kval
-    real(mcp), dimension(4) :: fidpolys
-    real(mcp) pk_hf, holdval
-    integer :: i,iz,ik
+    real(mcp) :: GiggleZtoICsmooth
+    real(mcp) :: fidz
 
-    iz = 0
-    do i=1,4
-        if(abs(PK%redshifts(zbin)-zeval(i)).le.0.001) iz = i
-    end do
-
-    WiggleZPk = 0.
-
-    do ik=1,gigglez_num_matter_power
-        xi = log(gigglez_minkh) + gigglez_dlnkh*(ik-1)
-        kval = exp(xi)
-        pk_hf = PK%PowerAt_zbin(kval,zbin)
-
-        call GiggleZtoICsmooth(kval,fidpolys)
-
-        holdval = pk_hf*fidpolys(iz)/power_hf_fid(ik,iz)
-
-        WiggleZPk(ik) = WiggleZPk(ik) + holdval
-    end do
-
-    end subroutine fill_GiggleZTheory
-
-    function WiggleZPowerAt(kh)
-    !get WiggleZ matter power spectrum today at kh = k/h by interpolation from stored values
-    real(mcp), intent(in) :: kh
-    real(mcp) WiggleZPowerAt
-    real(mcp) x, d
-    integer i
-
-    x = log(kh/gigglez_minkh)/gigglez_dlnkh
-    if (x < 0 .or. x >= gigglez_num_matter_power-1) then
-        write (*,*) ' k/h out of bounds in WiggleZPowerAt (',kh,')'
-        call MpiStop('')
+    if(zbin==1)then
+        fidz = (4.619d0 - 13.7787d0*k + 58.941d0*k**2 - 175.24d0*k**3 + 284.321d0*k**4 - 187.284d0*k**5)
+    else if(zbin==2)then
+        fidz = (4.63079d0 - 12.6293d0*k + 42.9265d0*k**2 - 91.8068d0*k**3 + 97.808d0*k**4 - 37.633d0*k**5)
+    else if(zbin==3)then  
+        fidz = (4.69659d0 - 12.7287d0*k + 42.5681d0*k**2 - 89.5578d0*k**3 + 96.664d0*k**4 - 41.2564*k**5)      
+    else if(zbin==4)then
+        fidz = (4.6849d0 - 13.4747d0*k + 53.7172d0*k**2 - 145.832d0*k**3 + 216.638d0*k**4 - 132.782*k**5)
     end if
+    GiggleZtoICsmooth = 10._mcp**fidz
 
-    i = int(x)
-    d = x - i
-    WiggleZPowerAt = exp(log(WiggleZPk(i+1))*(1-d) + log(WiggleZPk(i+2))*d)
-    !Just do linear interpolation in logs for now..
-    !(since we already cublic-spline interpolated to get the stored values)
-    end function WiggleZPowerAt
-
+    end function GiggleZtoICsmooth
+    
+    !Calculate GiggleZ adjusted WiggleZ Power spectrum
+    subroutine WiggleZPowerAt(kh,zbin,PK)
+    real(mcp), intent(in) :: kh
+    integer, intent(in) :: zbin
+    real(mcp), intent(inout) :: PK
+        
+    PK = PK*GiggleZtoICsmooth(kh,zbin)/GiggleZPK%PowerAt_zbin(kh,zbin)
+    
+    end subroutine WiggleZPowerAt
+    
     end module wigglezinfo
 
-
+    
     module wigglez
     use settings
     use cmbtypes
@@ -168,7 +123,7 @@
     contains
     procedure :: ReadIni => TWiggleZCommon_ReadIni
     end type TWiggleZCommon
-
+    
     type, extends(TCosmologyPKLikelihood) :: WiggleZLikelihood
         ! 1st index always refers to the region
         ! so mpk_P(1,:) is the Power spectrum in the first active region
@@ -202,6 +157,7 @@
 
     logical :: use_gigglez = .false.
     logical :: nonlinear_wigglez = .false.
+    logical :: use_wigglez_mpk = .false.  !DP for WiggleZ MPK
 
     !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
     logical :: Q_marge, Q_flat
@@ -320,6 +276,10 @@
         write(*,*)'GiggleZ prescription.  This method may not be as accurate.'
         write(*,*)'See arXiv:1210.2130 for details.'
     end if
+    
+    if(use_gigglez) then
+        call GiggleZinfo_init()
+    endif
 
     Q_marge = Ini%Read_Logical('Q_marge',.false.)
     if (Q_marge) then
@@ -466,10 +426,6 @@
         end if
     end if
 
-    if(use_gigglez) then
-        call GiggleZinfo_init(like%exact_z(1))
-    endif
-
     if(like%needs_nonlinear_pk) then
         like%kmax=1.2
     else
@@ -596,19 +552,12 @@
         call MpiStop()
     end if
 
-    if(use_gigglez) then
-        call fill_GiggleZTheory(PK, like%exact_z_index(1))
-    endif
-
     do i=1, num_mpk_kbands_use
         ! It could be that when we scale the k-values, the lowest bin drops off the bottom edge
         !Errors from using matter_power_minkh at lower end should be negligible
         k_scaled(i)=max(exp(PK%log_kh(1)),like%mpk_k(i)*a_scl)
-        if(use_gigglez) then
-            mpk_lin(i) = WiggleZPowerAt(k_scaled(i))/a_scl**3
-        else
-            mpk_lin(i) = PK%PowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
-        endif
+        mpk_lin(i) = PK%PowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
+        if(use_gigglez) call WiggleZPowerAt(k_scaled(i),iz,mpk_lin(i))
     end do
 
     do_marge = Q_marge
