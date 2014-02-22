@@ -17,26 +17,29 @@
 
     !JD 09/13: Replaced compute_scaling_factor routines with routines that use CAMB's
     !          built in D_V function.
-    
+
     !JD 02/14  CosmoTheory changes;  Added MPK_Common
-    
+
     module MPK_Common
     use settings
     use cmbtypes
     use CosmoTheory
     use Calculator_Cosmology
-    use Likelihood_Cosmology   
-     
+    use Likelihood_Cosmology
+    implicit none
+    private
+
     type, extends(TCosmoCalcLikelihood) :: TCosmologyPKLikelihood
         logical :: use_set
-        real(mcp), pointer, dimension(:) :: mpk_k
+        real(mcp), allocatable, dimension(:) :: mpk_k
         real(mcp) DV_fid   !Fiducial D_V
     contains
     procedure :: compute_scaling_factor
     end type TCosmologyPKLikelihood
-    
+
+    public TCosmologyPKLikelihood
     contains
-    
+
     function compute_scaling_factor(like,z,CMB)
     Class(TCosmologyPKLikelihood) like
     Class(CMBParams) CMB
@@ -46,10 +49,10 @@
     !We use H_0*D_V because we dont care about scaling of h since
     !k is in units of h/Mpc
     compute_scaling_factor = like%DV_fid/(CMB%H0*like%Calculator%BAO_D_v(z))
-    
+
     end function compute_scaling_factor
-    
-    end module MPK_Common    
+
+    end module MPK_Common
 
     module mpk
     use settings
@@ -59,13 +62,14 @@
     use MatrixUtils
     use MPK_Common
     implicit none
+    private
 
     type, extends(TCosmologyPKLikelihood) :: MPKLikelihood
         integer :: num_mpk_points_use ! total number of points used (ie. max-min+1)
         integer :: num_mpk_kbands_use ! total number of kbands used (ie. max-min+1)
-        real(mcp), pointer, dimension(:,:) :: N_inv
-        real(mcp), pointer, dimension(:,:) :: mpk_W, mpk_invcov
-        real(mcp), pointer, dimension(:) :: mpk_P, mpk_sdev
+        real(mcp), allocatable, dimension(:,:) :: N_inv
+        real(mcp), allocatable, dimension(:,:) :: mpk_W, mpk_invcov
+        real(mcp), allocatable, dimension(:) :: mpk_P, mpk_sdev
         logical :: use_scaling !as SDSS_lrgDR3
         !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
         logical :: Q_marge, Q_flat
@@ -76,6 +80,8 @@
     end type MPKLikelihood
 
     logical :: use_mpk = .false.
+
+    public use_mpk, MPKLikelihood, MPKLikelihood_Add
 
     contains
 
@@ -191,8 +197,6 @@
         like%mpk_invcov=  mpk_covfull(min_mpk_points_use:max_mpk_points_use,min_mpk_points_use:max_mpk_points_use)
         call Matrix_Inverse(like%mpk_invcov)
         deallocate(mpk_covfull)
-    else
-        nullify(like%mpk_invcov)
     end if
 
     like%use_scaling = Ini%Read_Logical('use_scaling',.false.)
@@ -219,8 +223,8 @@
         like%kmax=1.2
     else
         like%kmax=0.8
-    end if    
-        
+    end if
+
     like%Q_marge = Ini%Read_Logical('Q_marge',.false.)
     if (like%Q_marge) then
         like%Q_flat = Ini%Read_Logical('Q_flat',.false.)
@@ -266,7 +270,7 @@
     allocate(mpk_WPth(like%num_mpk_points_use))
     allocate(k_scaled(like%num_mpk_kbands_use))!LV_06 added for LRGDR4
     allocate(w(like%num_mpk_points_use))
-    
+
     if (like%needs_nonlinear_pk) then
         PK = Theory%NL_MPK
     else
@@ -312,7 +316,7 @@
         mpk_WPth = matmul(like%mpk_W,mpk_Pth)
         mpk_WPth_k2 = matmul(like%mpk_W,mpk_k2)
 
-        if (associated(like%mpk_invcov)) then
+        if (allocated(like%mpk_invcov)) then
             covdat = matmul(like%mpk_invcov,like%mpk_P)
             covth = matmul(like%mpk_invcov,mpk_WPth)
             covth_k2 = matmul(like%mpk_invcov,mpk_WPth_k2)
@@ -351,7 +355,7 @@
             !with analytic marginalization over normalization nuisance (flat prior on b^2)
             !See appendix F of cosmomc paper
 
-            if (associated(like%mpk_invcov)) then
+            if (allocated(like%mpk_invcov)) then
                 covdat = matmul(like%mpk_invcov,like%mpk_P)
                 covth = matmul(like%mpk_invcov,mpk_WPth)
                 normV = sum(mpk_WPth*covth)
@@ -395,11 +399,11 @@
 
     deallocate(mpk_Pth,mpk_lin)
     deallocate(mpk_WPth,k_scaled,w)
-    
+
     call PK%ClearPK()
 
     MPK_LnLike=LnLike
 
     end function MPK_LnLike
-    
+
     end module mpk
