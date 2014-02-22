@@ -286,7 +286,7 @@
     end if
     InLine=trim(adjustl(AInLine))
     EqPos = scan(InLine,'=')
-    if (EqPos/=0 .and. InLine(1:1)/='#' .and. StringStarts(InLine,'COMMENT')) then
+    if (EqPos/=0 .and. InLine(1:1)/='#' .and. .not. StringStarts(InLine,'COMMENT')) then
         AName = trim(InLine(1:EqPos-1))
 
         S = adjustl(InLine(EqPos+1:))

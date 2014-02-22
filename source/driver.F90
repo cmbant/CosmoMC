@@ -11,7 +11,7 @@
     implicit none
 
     character(LEN=:), allocatable :: LogFile,  numstr, fname, rootdir
-    character(LEN=1024) :: InputFile !fixed length because of MPI share
+    character(LEN=:), allocatable :: InputFile 
     Type(TSettingIni) :: Ini
     integer  i
     Type(ParamSet) Params !, EstParams
@@ -25,6 +25,7 @@
 
 #ifdef MPI
     integer ierror
+    integer inlen
 
     call mpi_init(ierror)
     if (ierror/=MPI_SUCCESS) stop 'MPI fail: rank'
@@ -56,7 +57,10 @@
     if (instance == 1) then
         print *, 'Number of MPI processes:',mpichains
         InputFile=GetParam(1)
+        inlen=len(InputFile)
     end if
+    CALL MPI_Bcast(inlen, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierror)
+    if (instance/=1) allocate(character(inlen)::InputFile)
 
     CALL MPI_Bcast(InputFile, LEN(InputFile), MPI_CHARACTER, 0, MPI_COMM_WORLD, ierror)
 
