@@ -45,6 +45,7 @@
     procedure :: Value => TInterpGrid2D_Value !one point
     procedure :: Values => TInterpGrid2D_Values !array of points
     procedure :: Error => TInterpGrid2D_error
+    procedure, private :: InitInterp => TInterpGrid2D_InitInterp
     FINAL :: TInterpGrid2D_Free
     end Type TInterpGrid2D
 
@@ -377,7 +378,7 @@
 
     close(file_id)
 
-    call TInterpGrid2D_InitInterp(W)
+    call W%InitInterp()
 
     end subroutine TInterpGrid2D_InitFromFile
 
