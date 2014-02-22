@@ -116,7 +116,7 @@
         allocate(like%bao_invcov(like%num_bao,like%num_bao))
         like%bao_invcov=0
 
-        if (Ini%HasKey(bao_invcov_file)) then
+        if (Ini%HasKey('bao_invcov_file')) then
             bao_invcov_file  = Ini%ReadFileName('bao_invcov_file')
             unit= OpenNewTxtFile(bao_invcov_file)
             do i=1,like%num_bao
@@ -125,7 +125,7 @@
             close(unit)
 
             if (iopb.ne.0) then
-                call MpiStop('Error reading bao file '//trim(bao_invcov_file))
+                call MpiStop('Error reading bao file '// bao_invcov_file)
             endif
         else
             do i=1,like%num_bao
