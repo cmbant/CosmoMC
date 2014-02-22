@@ -177,9 +177,9 @@ $(OUTPUT_DIR)/RandUtils.o: $(OUTPUT_DIR)/MpiUtils.o
 $(OUTPUT_DIR)/FileUtils.o: $(OUTPUT_DIR)/MpiUtils.o
 $(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS)
 $(OUTPUT_DIR)/settings.o: $(OUTPUT_DIR)/ObjectParamNames.o
-$(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o   $(OUTPUT_DIR)/Matrix_utils_new.o
+$(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o
 $(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/settings.o
-$(OUTPUT_DIR)/samples.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o
+$(OUTPUT_DIR)/samples.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o
 $(OUTPUT_DIR)/GetDist.o: $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/samples.o
 
 $(OUTPUT_DIR)/likelihood.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o
@@ -189,7 +189,7 @@ $(OUTPUT_DIR)/ParamSet.o: $(OUTPUT_DIR)/BaseParameters.o $(OUTPUT_DIR)/samples.o
 $(OUTPUT_DIR)/DataLikelihoods.o: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/ParamSet.o $(DATAMODULES)
 $(OUTPUT_DIR)/calclike.o: $(OUTPUT_DIR)/DataLikelihoods.o
 $(OUTPUT_DIR)/ImportanceSampling.o: $(OUTPUT_DIR)/calclike.o $(OUTPUT_DIR)/IO.o
-$(OUTPUT_DIR)/MCMC.o: $(OUTPUT_DIR)/calclike.o $(OUTPUT_DIR)/RandUtils.o  $(OUTPUT_DIR)/propose.o $(OUTPUT_DIR)/ParamSet.o:
+$(OUTPUT_DIR)/MCMC.o: $(OUTPUT_DIR)/calclike.o $(OUTPUT_DIR)/RandUtils.o  $(OUTPUT_DIR)/propose.o $(OUTPUT_DIR)/ParamSet.o
 $(OUTPUT_DIR)/minimize.o: $(OUTPUT_DIR)/PowellConstrainedMinimize.o $(OUTPUT_DIR)/MCMC.o
 $(OUTPUT_DIR)/SampleCollector.o: $(OUTPUT_DIR)/MCMC.o
 $(OUTPUT_DIR)/GeneralSetup.o: $(OUTPUT_DIR)/SampleCollector.o $(OUTPUT_DIR)/ImportanceSampling.o  $(OUTPUT_DIR)/minimize.o
