@@ -618,7 +618,6 @@
     !  filename        The name of the .ini file specifying the SN dataset
     !------------------------------------------------------------
     SUBROUTINE read_snls_dataset(like,ini)
-    USE AMLutils, ONLY : numcat
     use IniObjects
     IMPLICIT NONE
     class(SNLSLikelihood) :: like

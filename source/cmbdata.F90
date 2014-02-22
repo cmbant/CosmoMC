@@ -187,7 +187,7 @@ contains
  subroutine ReadAllExact(Ini,aset)
       class(TSettingIni) :: Ini
       Type (CMBdataset) :: aset
-      character(LEN=Ini_max_string_len) :: fname
+      character(LEN=:), allocatable :: fname
       integer l, idum, ncls, ncol
       real(mcp) inobs(4)
       integer file_unit
@@ -328,13 +328,13 @@ contains
    use CMBLikes
    Type(CMBDataLikelihood), target :: like
    character(LEN=*), intent(IN) :: aname
-   character(LEN=Ini_max_string_len) :: InLine, window_dir, Ninv_file, xfact_file, band_file
+   character(LEN=:), allocatable :: InLine, window_dir, Ninv_file, xfact_file, band_file
    logical bad, windows_are_bare
    Type (CMBdataset), pointer :: aset
    integer i, first_band, use_i
    real(mcp), pointer, dimension(:,:) :: tmp_mat
    real(mcp), pointer, dimension(:) :: tmp_arr
-   character(LEN=Ini_max_string_len) :: data_format
+   character(LEN=:), allocatable :: data_format
    Type(TSettingIni) :: Ini
    integer unit
 
@@ -414,7 +414,7 @@ contains
        if (band_file /= '') unit= OpenNewTxtFile(band_file)
        do i=1, aset%num_points + first_band -1
           if (band_file /= '') then
-            read(unit,'(a)') InLine
+              if (.not. ReadLine(unit, InLine)) stop 'error reading bandpowers'
           else
             InLine = Ini%Read_String(numcat('data',i), .true.)
           end if
@@ -1028,7 +1028,7 @@ contains
 
     Type(CMBDataLikelihood), pointer  :: like
     integer numsets,  i
-    character(LEN=Ini_max_string_len) filename,keyname,SZTemplate
+    character(LEN=:), allocatable :: filename,keyname,SZTemplate
     real(mcp) SZScale
 
         Use_CMB = Use_CMB .or. Ini%Read_Logical('use_CMB',.true.)

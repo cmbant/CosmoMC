@@ -82,7 +82,7 @@
     subroutine BAO_ReadIni(like, Ini)
     class(BAOLikelihood) like
     class(TSettingIni) :: Ini
-    character(LEN=Ini_max_string_len) :: bao_measurements_file, bao_invcov_file
+    character(LEN=:), allocatable :: bao_measurements_file, bao_invcov_file
     integer i,iopb, unit
 
     if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(like%name)

@@ -5,10 +5,9 @@
 
     module IniObjects
     use FileUtils
+    use StringUtils
     implicit none
     public
-
-    integer, parameter :: Ini_max_string_len = 1024*4
 
     character(LEN=0), target :: Empty_String = ''
 
@@ -287,7 +286,7 @@
     end if
     InLine=trim(adjustl(AInLine))
     EqPos = scan(InLine,'=')
-    if (EqPos/=0 .and. InLine(1:1)/='#' .and. InLine(1:min(len(InLine),7)) /= 'COMMENT' ) then
+    if (EqPos/=0 .and. InLine(1:1)/='#' .and. StringStarts(InLine,'COMMENT')) then
         AName = trim(InLine(1:EqPos-1))
 
         S = adjustl(InLine(EqPos+1:))
@@ -331,7 +330,7 @@
     logical, intent(OUT), optional :: error
     logical, optional, intent(IN) :: slash_comments
     logical, optional, intent(in) :: append, only_if_undefined
-    character (LEN=Ini_max_string_len) :: IncludeFile
+    character (LEN=:), allocatable :: IncludeFile
     character(LEN=:), allocatable :: InLine
     integer lastpos, i, status
     Type(TNameValueList) IncudeFiles, DefaultValueFiles
@@ -376,14 +375,14 @@
     do
         if (.not. ReadLine(unit_id,InLine)) exit
         if (InLine == 'END') exit
-        if (InLine(1:min(8,len(InLine))) == 'INCLUDE(') then
+        if (StringStarts(InLine,'INCLUDE(')) then
             lastpos = scan(InLine,')')
             if (lastpos/=0) then
                 call IncudeFiles%Add(InLine(9:lastpos-1),'')
             else
                 call Ini%Error('Ini_Open, error in INCLUDE line: '//trim(filename))
             end if
-        elseif (InLine(1:min(8,len(InLine))) == 'DEFAULT(') then
+        elseif (StringStarts(InLine,'DEFAULT(')) then
             !Settings to read in as defaults, overridden by subsequent re-definitions
             lastpos = scan(InLine,')')
             if (lastpos/=0) then

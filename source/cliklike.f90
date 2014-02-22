@@ -38,14 +38,14 @@
     subroutine clik_readParams(LikeList,Ini)
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) Ini
-    character (LEN=Ini_max_string_len) ::  name,fname,params
+    character (LEN=:), allocatable ::  name,fname,params
     integer i
     Class(ClikLikelihood), pointer :: like
     logical(KIND=4) is_lensing
 
     do i=1, Ini%Count
         name = Ini%Items(i)%P%Name
-        if (name(1:10)=='clik_data_') then
+        if (StringStarts(name,'clik_data_')) then
             fname = Ini%ReadFileName(name, NotFoundFail = .false.)
             if (fname=='') cycle
             if (MpiRank==0 .and. feedback > 0) &

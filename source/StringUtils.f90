@@ -22,22 +22,31 @@
     function GetParam(i)
     character(LEN=:), allocatable :: GetParam
     integer, intent(in) :: i
-    character(LEN=1024*16) tmp
-    integer l, err
+    character(LEN=:), allocatable :: tmp
+    integer l
 
     if (GetParamCount() < i) then
         GetParam = ''
     else
-        call get_command_argument(i,tmp,l,err)
+        call get_command_argument(i,length=l)
+        allocate(character(l)::tmp)
+        call get_command_argument(i,value=tmp)
         GetParam = trim(tmp)
     end if
 
     end function GetParam
 
+    function StringStarts(S, substring) result(OK)
+    character(LEN=*), intent(in) :: S, substring
+    logical OK
+
+    OK = S(1:min(len(S),len_trim(substring)))==substring
+
+    end function
 
     subroutine StringReplace(FindS, RepS, S)
     character(LEN=*), intent(in) :: FindS, RepS
-    character(LEN=*), intent(inout) :: S
+    character(LEN=:), allocatable, intent(inout) :: S
     integer i
 
     i = index(S,FindS)
@@ -196,7 +205,7 @@
     character(LEN=*), intent(in) :: formatst
     integer, intent(in) :: i1
     integer, intent(in),optional :: i2,i3,i4
-    character(LEN=1024*16) S
+    character(LEN=:), allocatable :: S
 
     S = formatst
     call StringReplace('%u', IntToStr(i1), S)

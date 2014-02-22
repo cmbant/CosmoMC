@@ -304,10 +304,10 @@
     subroutine IO_ReadParamNames(Names, in_root, prior_ranges)
     class(TParamNames) :: Names
     character(LEN=*), intent(in) :: in_root
-    character(LEN=Ini_max_string_len) name
+    character(LEN=ParamNames_maxlen) name
     character(LEN=:), allocatable :: infile
     real(mcp) :: prior_ranges(:,:), minmax(2)
-    integer file_id, ix
+    integer file_id, ix, status
 
     prior_ranges=0
     infile = trim(in_root) // '.paramnames'
@@ -317,12 +317,12 @@
         if (FileExists(infile)) then
             file_id=OpenNewTxtFile(infile)
             do
-                read(file_id, *, end=100,err=100) name, minmax
+                read(file_id, *, iostat=status) name, minmax
+                if (status/=0) exit
                 ix = Names%index(name)
                 if (ix/=-1) prior_ranges(:,ix) = minmax
             end do
-
-100         close(file_id)
+            close(file_id)
         end if
     end if
 

@@ -55,6 +55,7 @@
     use ArrayUtils
     use RandUtils
     use FileUtils
+    use ObjectLists
     implicit none
 
     Type(TParamNames) :: NameMapping
@@ -123,8 +124,7 @@
     real(mcp) center(max_cols), param_min(max_cols), param_max(max_cols), range_min(max_cols), range_max(max_cols)
     real(mcp) meanlike, maxlike
     logical BW,do_shading
-    character(LEN=Ini_max_string_len), allocatable :: ComparePlots(:)
-    integer Num_ComparePlots
+    Type(TStringList) :: ComparePlots
     logical :: prob_label = .false.
     logical :: plots_only, no_plots
     real(mcp) :: smooth_scale_1D=-1.d0, smooth_scale_2D = 1.d0
@@ -1223,7 +1223,7 @@
     real(mcp) norm, maxbin
     real(mcp) try_b, try_t,try_sum, try_last
     character(LEN=:), allocatable :: plotfile, filename
-    character(LEN=Ini_max_string_len) :: numstr
+    character(LEN=256) :: numstr
     real(mcp), dimension(:,:), allocatable :: finebins, finebinlikes, Win
     integer :: fine_fac_base = 5, fine_fac
     real(mcp) widthj,widthj2, contour_levels(max_contours)
@@ -1474,9 +1474,9 @@
         write (aunit,'(a)') '[C h] = contour(x1,x2,pts,cnt,lineM{1});'
         write (aunit,'(a)') 'set(h,''LineWidth'',lw1);'
         write (aunit,*) 'hold on; axis manual; '
-        do i = 1, Num_ComparePlots
+        do i = 1, ComparePlots%Count
             fmt = trim(numcat('lineM{',i+1)) // '}'
-            if (PlotContMATLAB(aunit,ComparePlots(i),j,j2,.false.)) &
+            if (PlotContMATLAB(aunit,ComparePlots%Item(i),j,j2,.false.)) &
             write (aunit,'(a)') '[C h] = contour(x1,x2,pts,cnt,'//trim(fmt)//');'
             write (aunit,'(a)') 'set(h,''LineWidth'',lw2);'
         end do
@@ -1509,8 +1509,8 @@
         write(unit,'(a)') 'g.settings.setWithSubplotSize('//trim(RealToStr(subplot_size))//')'
         write(unit,'(a)') 'outdir='''//out_dir//''''
         write(unit,'(a)', advance='NO') 'roots=['''//trim(rootname)//''''
-        do i = 1, Num_ComparePlots
-            write(unit,'(a)', advance='NO') ','''//trim(ComparePlots(i))//''''
+        do i = 1, ComparePlots%Count
+            write(unit,'(a)', advance='NO') ','''// ComparePlots%Item(i)//''''
         end do
         write(unit,'(a)') ']'
     else
@@ -1616,8 +1616,8 @@
         write (aunit,'("line([",1e15.6," ",1e15.6,"],[0 2],''Color'',''k'');")') markers(colix(j)),markers(colix(j))
     end if
 
-    do ix1 = 1, Num_ComparePlots
-        fname = dat_file_name(ComparePlots(ix1),j)
+    do ix1 = 1, ComparePlots%Count
+        fname = dat_file_name(ComparePlots%Item(ix1),j)
         if (FileExists(plot_data_dir// trim(fname)//'.dat')) then
             write (aunit,'(a)') "pts = load(fullfile(plotdir,'" // trim(fname)// '.dat''));'
             fmt = trim(numcat('lineM{',ix1+1)) // '}'
@@ -1636,11 +1636,11 @@
     subroutine WriteMatlabLineLabels(aunit)
     integer, intent(in) :: aunit
     integer ix1
-    call WriteFormatInts(aunit,'set(gcf,''Units'',''Normal''); frac=1/%u;',Num_ComparePlots+1)
+    call WriteFormatInts(aunit,'set(gcf,''Units'',''Normal''); frac=1/%u;',ComparePlots%Count+1)
     write(aunit,'(a)') 'ax=axes(''Units'',''Normal'',''Position'',[0.1,0.95,0.85,0.05],''Visible'',''off'');'
     write(aunit,'(a)') 'text(0,0,'''//trim(rootname)//''',''color'', colstr(1),''Interpreter'',''none'');'
-    do ix1 = 1, Num_ComparePlots
-        call WriteFormatInts(aunit, 'text(frac*%u,0,''' //trim(ComparePlots(ix1)) // &
+    do ix1 = 1, ComparePlots%Count
+        call WriteFormatInts(aunit, 'text(frac*%u,0,''' // ComparePlots%Item(ix1) // &
         ''',''Interpreter'',''none'',''color'',colstr(%u));', ix1, ix1+1)
     end do
 
@@ -1921,10 +1921,8 @@
     single_thin = Ini%Read_Int('single_thin',1)
     cool = Ini%Read_Real('cool',1.)
 
-    Num_ComparePlots = Ini%Read_Int('compare_num',0)
-    allocate(ComparePlots(num_comparePlots))
-    do ix = 1, Num_ComparePlots
-        ComparePlots(ix) = ExtractFileName(Ini%Read_String(numcat('compare',ix)))
+    do ix = 1, Ini%Read_Int('compare_num',0)
+        call ComparePlots%Add(ExtractFileName(Ini%Read_String(numcat('compare',ix))))
     end do
 
     has_limits_top = .false.

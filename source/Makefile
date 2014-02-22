@@ -175,6 +175,7 @@ default: cosmomc
 
 $(OUTPUT_DIR)/RandUtils.o: $(OUTPUT_DIR)/MpiUtils.o
 $(OUTPUT_DIR)/FileUtils.o: $(OUTPUT_DIR)/MpiUtils.o
+$(OUTPUT_DIR)/IniObjects.o: $(OUTPUT_DIR)/FileUtils.o $(OUTPUT_DIR)/StringUtils.o
 $(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS)
 $(OUTPUT_DIR)/settings.o: $(OUTPUT_DIR)/ObjectParamNames.o
 $(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o

@@ -56,7 +56,6 @@
 
     logical :: new_chains = .true.
 
-    integer, parameter :: max_string_len = Ini_max_string_len
     integer, parameter :: max_likelihood_functions = 50
 
     integer, parameter :: max_data_params = 100
@@ -125,7 +124,7 @@
 
     function ReplaceDirs(S, repdir) result (filename)
     character(LEN=*), intent(in) :: S, repdir
-    character(LEN=Ini_max_string_len) :: filename
+    character(LEN=:), allocatable :: filename
 
     filename=S
     call StringReplace('%DATASETDIR%',repdir,filename)
@@ -183,7 +182,7 @@
     class(TSettingIni) :: Ini
     character(LEN=*), intent(in) :: Key
     character(LEN=*), optional, intent(in) :: ADir
-    character(LEN=Ini_max_string_len) :: filename, repdir
+    character(LEN=:), allocatable :: filename, repdir
     character(LEN=:), allocatable :: OutName
     logical, optional :: NotFoundFail
     integer i
