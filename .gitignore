@@ -19,6 +19,7 @@ Release/
 *.asv
 *.u2d
 *.user
+*.pdb
 data/clik
 cosmomc*
 getdist*

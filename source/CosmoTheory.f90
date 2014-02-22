@@ -5,7 +5,8 @@
     use likelihood
     use Interpolation, only : spline, SPLINE_DANGLE
     implicit none
-    
+    private
+
     Type TCosmoTheoryPK
         !everything is a function of k/h
         integer   ::  num_k, num_z
@@ -23,7 +24,7 @@
     procedure :: PowerAt
     procedure :: PowerAt_Z
     end Type TCosmoTheoryPK
-    
+
     Type, extends(TTheoryPredictions) :: TCosmoTheoryPredictions
         real(mcp) cl(lmax,num_cls_tot)
         !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
@@ -34,8 +35,6 @@
 
         type(TCosmoTheoryPK) MPK
         type(TCosmoTheoryPK) NL_MPK
-        
-        
     contains
     procedure :: ClsFromTheoryData
     procedure :: WriteTextCls
@@ -45,13 +44,14 @@
     procedure :: WriteBestFitData => TCosmoTheoryPredictions_WriteBestFitData
     end Type TCosmoTheoryPredictions
 
+    public TCosmoTheoryPredictions, TCosmoTheoryPK
     contains
 
     subroutine InitPK(PK,num_k,num_z,islog)
     class(TCosmoTheoryPK) :: PK
     integer, intent(in) :: num_k, num_z
     logical, intent(in) :: islog
-    
+
     PK%num_k = num_k
     PK%num_z = num_z
     PK%islog = islog
@@ -62,15 +62,15 @@
     allocate(PK%redshifts(num_z))
 
     end subroutine InitPK
-    
+
     subroutine ClearPK(PK)
     class(TCosmoTheoryPK) :: PK
-    
+
     if(allocated(PK%log_kh))deallocate(PK%log_kh)
     if(allocated(PK%matter_power))deallocate(PK%matter_power)
     if(allocated(PK%ddmatter_power))deallocate(PK%ddmatter_power)
     if(allocated(PK%redshifts))deallocate(PK%redshifts)
-    
+
     end subroutine ClearPK
 
     subroutine IOPK_GetSplines(PK)
@@ -83,7 +83,7 @@
     end do
 
     end subroutine IOPK_GetSplines
-    
+
     function PowerAt_zbin(PK, kh, itf, isAt_z) result(outpower)
     !Get matter power spectrum at particular k/h by interpolation
     class(TCosmoTheoryPK) :: PK
@@ -99,13 +99,13 @@
     integer, save :: i_last = 1
 
     if(.not. allocated(PK%log_kh)) then
-        write(*,*) 'At least one of your MPK arrays is not initialized:' 
+        write(*,*) 'At least one of your MPK arrays is not initialized:'
         write(*,*) 'Make sure you are calling a SetPk and filling your power spectra.'
         write(*,*) 'This error could also mean you are doing importance sampling'
-        write(*,*) 'and need to turn on redo_pk.' 
+        write(*,*) 'and need to turn on redo_pk.'
         call MPIstop()
     end if
-    
+
     if(present(isAt_z)) then
         wantforAt_z = isAt_z
     else
@@ -143,7 +143,7 @@
         outpower = a0*matpower(1)+b0*matpower(2)+((a0**3-a0)*ddmat(1) &
         + (b0**3-b0)*ddmat(2))*ho**2/6
     end if
-    
+
     if (PK%islog .and. .not. wantforAt_z) outpower = exp(outpower)
 
     end function PowerAt_zbin
@@ -167,12 +167,12 @@
     real(mcp) ho,a0,b0
     real(mcp), dimension(4) :: matpower, ddmat, zvec
     integer, save :: zi_last = 1
-    
+
     if(.not. allocated(PK%log_kh)) then
-        write(*,*) 'At least one of your MPK arrays is not initialized:' 
+        write(*,*) 'At least one of your MPK arrays is not initialized:'
         write(*,*) 'Make sure you are calling a SetPk and filling your power spectra.'
         write(*,*) 'This error could also mean you are doing importance sampling'
-        write(*,*) 'and need to turn on redo_pk.' 
+        write(*,*) 'and need to turn on redo_pk.'
         call MPIstop()
     end if
 
@@ -233,7 +233,7 @@
     if(PK%islog) outpower = exp(outpower)
 
     end function PowerAt_Z
-    
+
     subroutine ClsFromTheoryData(T, Cls)
     class(TCosmoTheoryPredictions) T
     real(mcp) Cls(lmax,num_cls_tot)
@@ -268,7 +268,7 @@
     close(unit)
 
     end subroutine WriteTextCls
-        
+
     subroutine TCosmoTheoryPredictions_WriteTheory(T, unit)
     Class(TCosmoTheoryPredictions) T
     integer, intent(in) :: unit
@@ -375,9 +375,9 @@
                     write(*,*)"Your data files have nonlinear power spectra, but you are not using"
                     write(*,*)"nonlinear power spectra.  Be careful that this is what you intended."
                 end if
-            else 
-                if(use_nonlinear) then    
-                    write(*,*)"Warning! ReadTheory: You want a nonlinear MPK" 
+            else
+                if(use_nonlinear) then
+                    write(*,*)"Warning! ReadTheory: You want a nonlinear MPK"
                     write(*,*)"but your data file does not include one."
                     write(*,*)"Make sure you set redo_pk = T or the program will fail."
                 end if
@@ -396,4 +396,3 @@
     end subroutine TCosmoTheoryPredictions_WriteBestFitData
 
     end module CosmoTheory
-    

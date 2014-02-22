@@ -19,8 +19,8 @@
 
     !JD 09/13: Replaced compute_scaling_factor routines with routines that use CAMB's
     !          built in D_V function.
-    
-    !JD 02/14  Moved common MPK functions to power_spec.f90 implemented AL's 
+
+    !JD 02/14  Moved common MPK functions to power_spec.f90 implemented AL's
     !          Calculator_Cosmology functions.
 
     module wigglezinfo
@@ -561,7 +561,7 @@
 
 
     allocate(chisq(-nQ:nQ))
-    
+
     if (like%needs_nonlinear_pk) then
         PK = Theory%NL_MPK
     else
@@ -717,9 +717,9 @@
     deallocate(mpk_Pth,mpk_lin)
     deallocate(mpk_WPth,k_scaled)!,w)
     deallocate(chisq)
-    
+
     call PK%ClearPK()
 
     end function WiggleZ_LnLike
-       
+
     end module wigglez
