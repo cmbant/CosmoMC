@@ -28,16 +28,19 @@
     use Likelihood_Cosmology
     implicit none
     private
-
+    
+    Type TPKLikelihoodCommon
+        real(mcp), allocatable, dimension(:,:) :: mpk_W, mpk_invcov
+        real(mcp), allocatable, dimension(:) :: mpk_P, mpk_sdev, mpk_k 
+    end type TPKLikelihoodCommon
+        
     type, extends(TCosmoCalcLikelihood) :: TCosmologyPKLikelihood
-        logical :: use_set
-        real(mcp), allocatable, dimension(:) :: mpk_k
         real(mcp) DV_fid   !Fiducial D_V
     contains
     procedure :: compute_scaling_factor
     end type TCosmologyPKLikelihood
 
-    public TCosmologyPKLikelihood
+    public TCosmologyPKLikelihood, TPKLikelihoodCommon
     contains
 
     function compute_scaling_factor(like,z,CMB)
@@ -65,15 +68,14 @@
     private
 
     type, extends(TCosmologyPKLikelihood) :: MPKLikelihood
+        logical :: use_set
         integer :: num_mpk_points_use ! total number of points used (ie. max-min+1)
         integer :: num_mpk_kbands_use ! total number of kbands used (ie. max-min+1)
-        real(mcp), allocatable, dimension(:,:) :: N_inv
-        real(mcp), allocatable, dimension(:,:) :: mpk_W, mpk_invcov
-        real(mcp), allocatable, dimension(:) :: mpk_P, mpk_sdev
         logical :: use_scaling !as SDSS_lrgDR3
         !for Q and A see e.g. astro-ph/0501174, astro-ph/0604335
         logical :: Q_marge, Q_flat
         real(mcp) :: Q_mid, Q_sigma, Ag
+        Type(TPKLikelihoodCommon) :: PKData
     contains
     procedure :: LogLike => MPK_Lnlike
     procedure :: ReadIni => MPK_ReadIni
@@ -149,27 +151,27 @@
 
     allocate(mpk_Wfull(num_mpk_points_full,num_mpk_kbands_full))
     allocate(mpk_kfull(num_mpk_kbands_full))
-    allocate(like%mpk_P(like%num_mpk_points_use))
-    allocate(like%mpk_sdev(like%num_mpk_points_use))  ! will need to replace with the covmat
-    allocate(like%mpk_k(like%num_mpk_kbands_use))
-    allocate(like%mpk_W(like%num_mpk_points_use,like%num_mpk_kbands_use))
+    allocate(like%PKData%mpk_P(like%num_mpk_points_use))
+    allocate(like%PKData%mpk_sdev(like%num_mpk_points_use))  ! will need to replace with the covmat
+    allocate(like%PKData%mpk_k(like%num_mpk_kbands_use))
+    allocate(like%PKData%mpk_W(like%num_mpk_points_use,like%num_mpk_kbands_use))
     allocate(mpk_fiducial(like%num_mpk_points_use))
 
     kbands_file  = Ini%ReadFileName('kbands_file')
     call ReadVector(kbands_file,mpk_kfull,num_mpk_kbands_full)
-    like%mpk_k(1:like%num_mpk_kbands_use)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
+    like%PKData%mpk_k(1:like%num_mpk_kbands_use)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
     if (Feedback > 1) then
         write(*,*) 'reading: '//trim(like%name)//' data'
-        write(*,*) 'Using kbands windows between',real(like%mpk_k(1)),' < k/h < ',real(like%mpk_k(like%num_mpk_kbands_use))
+        write(*,*) 'Using kbands windows between',real(like%PKData%mpk_k(1)),' < k/h < ',real(like%PKData%mpk_k(like%num_mpk_kbands_use))
     endif
-    !if  (like%mpk_k(1) < matter_power_minkh) then
+    !if  (like%PKData%mpk_k(1) < matter_power_minkh) then
     !    write (*,*) 'WARNING: k_min in '//trim(like%name)//'less than setting in cmbtypes.f90'
     !    write (*,*) 'all k<matter_power_minkh will be set to matter_power_minkh'
     !end if
 
     measurements_file  = Ini%ReadFileName('measurements_file')
     unit = OpenNewTxtFile(measurements_file)
-    like%mpk_P=0.
+    like%PKData%mpk_P=0.
     read (unit,*) dummychar
     read (unit,*) dummychar
     do i= 1, (min_mpk_points_use-1)
@@ -177,7 +179,7 @@
     end do
     if (Feedback > 1 .and. min_mpk_points_use>1) write(*,*) 'Not using bands with keff=  ',real(keff),' or below'
     do i =1, like%num_mpk_points_use
-        read (unit,*, iostat=iopb) keff,klo,khi,like%mpk_P(i),like%mpk_sdev(i),mpk_fiducial(i)
+        read (unit,*, iostat=iopb) keff,klo,khi,like%PKData%mpk_P(i),like%PKData%mpk_sdev(i),mpk_fiducial(i)
     end do
     close(unit)
     if (Feedback > 1) write(*,*) 'bands truncated at keff=  ',real(keff)
@@ -185,7 +187,7 @@
     windows_file  = Ini%ReadFileName('windows_file')
     if (windows_file.eq.'') write(*,*) 'ERROR: mpk windows_file not specified'
     call ReadMatrix(windows_file,mpk_Wfull,num_mpk_points_full,num_mpk_kbands_full)
-    like%mpk_W(1:like%num_mpk_points_use,1:like%num_mpk_kbands_use)= &
+    like%PKData%mpk_W(1:like%num_mpk_points_use,1:like%num_mpk_kbands_use)= &
     mpk_Wfull(min_mpk_points_use:max_mpk_points_use,min_mpk_kbands_use:max_mpk_kbands_use)
 
 
@@ -193,9 +195,9 @@
     if (cov_file /= '') then
         allocate(mpk_covfull(num_mpk_points_full,num_mpk_points_full))
         call ReadMatrix(cov_file,mpk_covfull,num_mpk_points_full,num_mpk_points_full)
-        allocate(like%mpk_invcov(like%num_mpk_points_use,like%num_mpk_points_use))
-        like%mpk_invcov=  mpk_covfull(min_mpk_points_use:max_mpk_points_use,min_mpk_points_use:max_mpk_points_use)
-        call Matrix_Inverse(like%mpk_invcov)
+        allocate(like%PKData%mpk_invcov(like%num_mpk_points_use,like%num_mpk_points_use))
+        like%PKData%mpk_invcov=  mpk_covfull(min_mpk_points_use:max_mpk_points_use,min_mpk_points_use:max_mpk_points_use)
+        call Matrix_Inverse(like%PKData%mpk_invcov)
         deallocate(mpk_covfull)
     end if
 
@@ -249,7 +251,7 @@
     Class(CMBParams) CMB
     Class(MPKLikelihood) :: like
     Class(TCosmoTheoryPredictions) Theory
-    Type(TCosmoTheoryPK) :: PK
+    Type(TCosmoTheoryPK), pointer :: PK
     real(mcp) :: DataParams(:)
     real(mcp) MPK_LnLike,LnLike
     real(mcp), dimension(:), allocatable :: mpk_Pth, mpk_k2,mpk_lin,k_scaled !LV_06 added for LRGDR4
@@ -272,9 +274,9 @@
     allocate(w(like%num_mpk_points_use))
 
     if (like%needs_nonlinear_pk) then
-        PK = Theory%NL_MPK
+        PK => Theory%NL_MPK
     else
-        PK = Theory%MPK
+        PK => Theory%MPK
     end if
 
     chisq = 0
@@ -299,7 +301,7 @@
 
     do i=1, like%num_mpk_kbands_use
         !Errors from using matter_power_minkh at lower end should be negligible
-        k_scaled(i)=max(exp(PK%log_kh(1)),a_scl*like%mpk_k(i))
+        k_scaled(i)=max(exp(PK%log_kh(1)),a_scl*like%PKData%mpk_k(i))
         mpk_lin(i)=PK%PowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
     end do
 
@@ -313,16 +315,16 @@
 
         mpk_Pth=mpk_lin/(1+like%Ag*k_scaled)
         mpk_k2=mpk_Pth*k_scaled**2
-        mpk_WPth = matmul(like%mpk_W,mpk_Pth)
-        mpk_WPth_k2 = matmul(like%mpk_W,mpk_k2)
+        mpk_WPth = matmul(like%PKData%mpk_W,mpk_Pth)
+        mpk_WPth_k2 = matmul(like%PKData%mpk_W,mpk_k2)
 
-        if (allocated(like%mpk_invcov)) then
-            covdat = matmul(like%mpk_invcov,like%mpk_P)
-            covth = matmul(like%mpk_invcov,mpk_WPth)
-            covth_k2 = matmul(like%mpk_invcov,mpk_WPth_k2)
+        if (allocated(like%PKData%mpk_invcov)) then
+            covdat = matmul(like%PKData%mpk_invcov,like%PKData%mpk_P)
+            covth = matmul(like%PKData%mpk_invcov,mpk_WPth)
+            covth_k2 = matmul(like%PKData%mpk_invcov,mpk_WPth_k2)
         else
-            w=1/(like%mpk_sdev**2)
-            covdat = like%mpk_P*w
+            w=1/(like%PKData%mpk_sdev**2)
+            covdat = like%PKData%mpk_P*w
             covth = mpk_WPth*w
             covth_k2 = mpk_WPth_k2*w
         end if
@@ -335,7 +337,7 @@
         call Matrix_Inverse(Mat)
         vec2(1) = sum(covdat*mpk_WPth)
         vec2(2) = sum(covdat*mpk_WPth_k2)
-        LnLike = (sum(like%mpk_P*covdat) - sum(vec2*matmul(Mat,vec2)) + LnLike ) /2
+        LnLike = (sum(like%PKData%mpk_P*covdat) - sum(vec2*matmul(Mat,vec2)) + LnLike ) /2
 
         deallocate(mpk_k2,mpk_WPth_k2)
     else
@@ -350,22 +352,22 @@
                 mpk_Pth = mpk_lin
             end if
 
-            mpk_WPth = matmul(like%mpk_W,mpk_Pth)
+            mpk_WPth = matmul(like%PKData%mpk_W,mpk_Pth)
 
             !with analytic marginalization over normalization nuisance (flat prior on b^2)
             !See appendix F of cosmomc paper
 
-            if (allocated(like%mpk_invcov)) then
-                covdat = matmul(like%mpk_invcov,like%mpk_P)
-                covth = matmul(like%mpk_invcov,mpk_WPth)
+            if (allocated(like%PKData%mpk_invcov)) then
+                covdat = matmul(like%PKData%mpk_invcov,like%PKData%mpk_P)
+                covth = matmul(like%PKData%mpk_invcov,mpk_WPth)
                 normV = sum(mpk_WPth*covth)
-                chisq(iQ) = sum(like%mpk_P*covdat)  - sum(mpk_WPth*covdat)**2/normV  + log(normV)
+                chisq(iQ) = sum(like%PKData%mpk_P*covdat)  - sum(mpk_WPth*covdat)**2/normV  + log(normV)
             else
                 !with analytic marginalization over normalization nuisance (flat prior on b^2)
-                w=1/(like%mpk_sdev**2)
+                w=1/(like%PKData%mpk_sdev**2)
                 normV = sum(mpk_WPth*mpk_WPth*w)
-                tmp=sum(mpk_WPth*like%mpk_P*w)/normV ! avoid subtracting one large number from another
-                chisq(iQ) = sum(like%mpk_P*(like%mpk_P - mpk_WPth*tmp)*w)  + log(normV)
+                tmp=sum(mpk_WPth*like%PKData%mpk_P*w)/normV ! avoid subtracting one large number from another
+                chisq(iQ) = sum(like%PKData%mpk_P*(like%PKData%mpk_P - mpk_WPth*tmp)*w)  + log(normV)
             end if
 
             if (do_marge) then
@@ -377,7 +379,7 @@
         end do
 
         !without analytic marginalization
-        !! chisq = sum((like%mpk_P(:) - mpk_WPth(:))**2*w) ! uncommented for debugging purposes
+        !! chisq = sum((like%PKData%mpk_P(:) - mpk_WPth(:))**2*w) ! uncommented for debugging purposes
 
         if (do_marge) then
             minchisq=minval(chisq)
@@ -400,10 +402,12 @@
     deallocate(mpk_Pth,mpk_lin)
     deallocate(mpk_WPth,k_scaled,w)
 
-    call PK%ClearPK()
-
+    nullify(PK)
+    
     MPK_LnLike=LnLike
 
     end function MPK_LnLike
-
+    
     end module mpk
+
+    

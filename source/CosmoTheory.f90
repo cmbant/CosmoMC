@@ -33,8 +33,8 @@
         integer numderived
         real(mcp) derived_parameters(max_derived_parameters)
 
-        type(TCosmoTheoryPK) MPK
-        type(TCosmoTheoryPK) NL_MPK
+        type(TCosmoTheoryPK), pointer :: MPK
+        type(TCosmoTheoryPK), pointer :: NL_MPK
     contains
     procedure :: ClsFromTheoryData
     procedure :: WriteTextCls

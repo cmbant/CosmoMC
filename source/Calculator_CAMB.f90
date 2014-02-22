@@ -377,11 +377,13 @@
     Type(MatterPowerData) :: Cosmo_PK
     integer nz, zix
 
+    if(.not. associated(Theory%MPK)) allocate(Theory%MPK)
     nz = num_power_redshifts
     call Theory%MPK%InitPK(M%num_q_trans,nz,.true.)
     Theory%MPK%log_kh = log(M%TransferData(Transfer_kh,:,1))
     Theory%MPK%redshifts = power_redshifts  
     if(use_nonlinear)then
+        if(.not. associated(Theory%NL_MPK)) allocate(Theory%NL_MPK)
         Theory%NL_MPK=Theory%MPK
     end if
 
