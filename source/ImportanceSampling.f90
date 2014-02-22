@@ -9,7 +9,7 @@
     use IO
     implicit none
     private
-    
+
     Type, extends(TTheoryLikelihoodUser) :: TImportanceSampler
         logical  redo_like, redo_theory
         real(mcp) :: redo_skip = 100
@@ -34,6 +34,7 @@
         logical :: redo_no_new_data  = .false. !true to make no new .data files to save space
     contains
     procedure :: ReadParams => TImportanceSampler_ReadParams
+    procedure :: Init => TImportanceSampler_Init
     procedure :: ImportanceSample => TImportanceSampler_ImportanceSample
     end Type TImportanceSampler
 
@@ -77,6 +78,21 @@
     end if
 
     end subroutine TImportanceSampler_ReadParams
+
+
+    subroutine TImportanceSampler_Init(this, LikeCalculator)
+    class(TImportanceSampler) :: this
+    class(TLikeCalculator), target:: LikeCalculator
+
+    select type (LikeCalculator)
+    class is (TTheoryLikeCalculator)
+        this%LikeCalculator => LikeCalculator
+        class default
+        call MpiStop('Importance sampling requires TTheoryLikeCalculator')
+    end select
+
+    end subroutine TImportanceSampler_Init
+
 
     subroutine TImportanceSampler_ImportanceSample(this,InputFile)
     USE IFPOSIX
