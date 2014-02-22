@@ -205,7 +205,7 @@
     else
         call Params%Theory%AssignNew(Params%Theory)
     end if
-    
+
     end subroutine TheoryLike_SetNewTheoryResults
 
 
@@ -328,7 +328,7 @@
     integer error
 
     call this%SetTheoryParams(Params)
-    call this%Config%Calculator%GetTheoryForImportance(this%Params, Params%Theory, error)
+    call this%Config%Calculator%GetTheoryForImportance(this%TheoryParams, Params%Theory, error)
 
     end subroutine TheoryLike_GetTheoryForImportance
 

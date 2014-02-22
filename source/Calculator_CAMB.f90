@@ -16,7 +16,6 @@
     use Calculator_Cosmology
     use GeneralTypes
     implicit none
-
     private
 
     Type, extends(TTheoryIntermediateCache) :: CAMBTransferCache
@@ -381,7 +380,7 @@
     nz = num_power_redshifts
     call Theory%MPK%InitPK(M%num_q_trans,nz,.true.)
     Theory%MPK%log_kh = log(M%TransferData(Transfer_kh,:,1))
-    Theory%MPK%redshifts = power_redshifts  
+    Theory%MPK%redshifts = power_redshifts
     if(use_nonlinear)then
         if(.not. associated(Theory%NL_MPK)) allocate(Theory%NL_MPK)
         Theory%NL_MPK=Theory%MPK
@@ -463,7 +462,7 @@
 
 
     real(mcp) function CAMBCalc_BAO_D_v(this, z)
-    use CAMB, only : BAO_D_v 
+    use CAMB, only : BAO_D_v
     class(CAMB_Calculator) :: this
     real(mcp), intent(IN) :: z
 
@@ -477,7 +476,7 @@
     class(CAMB_Calculator) :: this
     real(mcp), intent(IN) :: z
 
-    CAMBCalc_AngularDiameterDistance = AngularDiameterDistance(z) 
+    CAMBCalc_AngularDiameterDistance = AngularDiameterDistance(z)
 
     end function CAMBCalc_AngularDiameterDistance
 
@@ -600,7 +599,6 @@
     class(CAMB_Calculator) :: this
     type(CAMBParams)  P
     class(CMBParams) CMB
-
     integer, intent(in) :: in
 
     if (Power_Name == 'power_tilt') then
@@ -609,7 +607,6 @@
 
         P%InitPower%ScalarPowerAmp(in) = cl_norm*CMB%InitPower(As_index)
         P%InitPower%rat(in) = CMB%InitPower(amp_ratio_index)
-
 
         P%InitPower%an(in) = CMB%InitPower(1)
         P%InitPower%ant(in) = CMB%InitPower(2)
