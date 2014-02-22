@@ -62,8 +62,6 @@
     call Ini%Read('redo_skip',this%redo_skip)
     call Ini%Read('redo_thin',this%redo_thin,min=1)
 
-    if (this%redo_theory) call this%LikeCalculator%Config%Calculator%ReadImportanceParams(Ini)
-
     if (this%redo_from_text .and. (this%redo_add .or. this%redo_like_name/='')) &
     call Mpistop('redo_new_likes requires .data files, not from text')
 

@@ -51,6 +51,8 @@
     this%action = Ini%Read_Int('action',action_MCMC)
     if (this%action/=action_importance) use_fast_slow = Ini%Read_Logical('use_fast_slow',.true.)
 
+    call this%LikeCalculator%InitWithParams(Ini, this%Config)
+
     if (this%action==action_MCMC) then
         allocate(TMpiChainCollector::this%SampleCollector)
         call this%SampleCollector%InitWithParams(Ini, this%Config)
@@ -68,9 +70,8 @@
     else if (this%action == action_importance) then
         allocate(TImportanceSampler::this%ImportanceSampler)
         call this%ImportanceSampler%ReadParams(Ini)
+        if (this%ImportanceSampler%redo_theory) call this%Config%Calculator%ReadImportanceParams(Ini)
     end if
-
-    call this%LikeCalculator%InitWithParams(Ini, this%Config)
 
     end subroutine TSetup_ReadParams
 

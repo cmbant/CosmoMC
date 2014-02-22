@@ -246,10 +246,11 @@
 
     subroutine GetBlockProposal(this, P, i)
     class(BlockedProposer) :: this
-    real(mcp) :: P(:)
+    real(mcp) :: P(:), vec(this%Proposer(i)%n)
     integer, intent(in) :: i
 
-    call this%Proposer(i)%UpdateParams(P, this%Proposer(i)%Proposevec(this%propose_scale))
+    vec = this%Proposer(i)%Proposevec(this%propose_scale) !just stop annoying temp variable warnings..
+    call this%Proposer(i)%UpdateParams(P, vec)
 
     end subroutine GetBlockProposal
 

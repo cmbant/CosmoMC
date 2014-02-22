@@ -20,8 +20,8 @@
 
     Type, extends(TInterpolator) :: TCubicSpline
         integer n
-        real(sp_acc), dimension(:), pointer :: X => NULL()
-        real(sp_acc), dimension(:), pointer :: F => NULL(), ddF => NULL()
+        real(sp_acc), dimension(:), allocatable :: X
+        real(sp_acc), dimension(:), allocatable :: F,  ddF
     contains
     procedure :: Init => TCubicSpline_Init
     procedure :: InitFromFile => TCubicSpline_InitFromFile
@@ -34,8 +34,8 @@
         !      ALGORITHM 760, COLLECTED ALGORITHMS FROM ACM.
         !      THIS WORK PUBLISHED IN TRANSACTIONS ON MATHEMATICAL SOFTWARE,
         !      VOL. 22, NO. 3, September, 1996, P.  357--361.
-        REAL(GI), pointer :: wk(:,:,:) => NULL()
-        REAL(GI), pointer :: x(:), y(:)
+        REAL(GI), private, allocatable :: wk(:,:,:)
+        REAL(GI), allocatable :: x(:), y(:)
         REAL(GI), pointer :: z(:,:) => NULL()
         integer nx, ny
         logical :: owns_z = .false.
@@ -169,11 +169,8 @@
     Type(TCubicSpline) :: W
 
     deallocate(W%X)
-    nullify(W%X)
     deallocate(W%F)
-    nullify(W%F)
     deallocate(W%ddF)
-    nullify(W%ddF)
     W%Initialized = .false.
 
     end subroutine TCubicSpline_Free
@@ -385,7 +382,7 @@
     subroutine TInterpGrid2D_Free(W)
     Type(TInterpGrid2D):: W
 
-    if (associated(W%Wk)) then
+    if (allocated(W%Wk)) then
         deallocate(W%x)
         deallocate(W%y)
         deallocate(W%Wk)
