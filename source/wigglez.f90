@@ -28,7 +28,6 @@
     use settings
     use cmbtypes
     use CosmoTheory
-
     implicit none
 
     real(mcp), parameter :: za = 0.22d0, zb = 0.41d0, zc = 0.6d0, zd = 0.78d0
@@ -46,10 +45,10 @@
     real(mcp) :: kval, power_nl
     integer tmp_file_unit
     character(LEN=:), allocatable :: fname
-    
+
     call GiggleZPK%InitPK(GiggleZ_numk,GiggleZ_numz,.true.)
     GiggleZPK%redshifts = zeval
-    
+
     do iz=1,GiggleZPK%num_z
         !! first read in everything needed from the CAMB output files.
         iopb = 0 !! check later if there was an error
@@ -87,28 +86,28 @@
         fidz = (4.619d0 - 13.7787d0*k + 58.941d0*k**2 - 175.24d0*k**3 + 284.321d0*k**4 - 187.284d0*k**5)
     else if(zbin==2)then
         fidz = (4.63079d0 - 12.6293d0*k + 42.9265d0*k**2 - 91.8068d0*k**3 + 97.808d0*k**4 - 37.633d0*k**5)
-    else if(zbin==3)then  
-        fidz = (4.69659d0 - 12.7287d0*k + 42.5681d0*k**2 - 89.5578d0*k**3 + 96.664d0*k**4 - 41.2564*k**5)      
+    else if(zbin==3)then
+        fidz = (4.69659d0 - 12.7287d0*k + 42.5681d0*k**2 - 89.5578d0*k**3 + 96.664d0*k**4 - 41.2564*k**5)
     else if(zbin==4)then
         fidz = (4.6849d0 - 13.4747d0*k + 53.7172d0*k**2 - 145.832d0*k**3 + 216.638d0*k**4 - 132.782*k**5)
     end if
     GiggleZtoICsmooth = 10._mcp**fidz
 
     end function GiggleZtoICsmooth
-    
+
     !Calculate GiggleZ adjusted WiggleZ Power spectrum
     subroutine WiggleZPowerAt(kh,zbin,PK)
     real(mcp), intent(in) :: kh
     integer, intent(in) :: zbin
     real(mcp), intent(inout) :: PK
-        
+
     PK = PK*GiggleZtoICsmooth(kh,zbin)/GiggleZPK%PowerAt_zbin(kh,zbin)
-    
+
     end subroutine WiggleZPowerAt
-    
+
     end module wigglezinfo
 
-    
+
     module wigglez
     use settings
     use cmbtypes
@@ -118,12 +117,13 @@
     use MPK_Common
     use MatrixUtils
     implicit none
-
+    private
+    
     type, extends(TDatasetFileLikelihood) :: TWiggleZCommon
     contains
     procedure :: ReadIni => TWiggleZCommon_ReadIni
     end type TWiggleZCommon
-    
+
     type, extends(TCosmologyPKLikelihood) :: WiggleZLikelihood
         logical :: use_set
         ! 1st index always refers to the region
@@ -163,8 +163,7 @@
     logical :: Q_marge, Q_flat
     real(mcp):: Q_mid, Q_sigma, Ag
 
-
-
+    public TWiggleZCommon, WiggleZLikelihood_Add
     contains
 
     subroutine WiggleZLikelihood_Add(LikeList, Ini)
@@ -276,7 +275,7 @@
         write(*,*)'GiggleZ prescription.  This method may not be as accurate.'
         write(*,*)'See arXiv:1210.2130 for details.'
     end if
-    
+
     if(use_gigglez) then
         call GiggleZinfo_init()
     endif
@@ -319,7 +318,7 @@
 
     like%use_set =.true.
     if (Feedback > 0) write (*,*) 'reading: '//trim(like%name)
-    
+
     allocate(like%PKdata(num_regions_used))
 
     if(allocated(mpk_kfull)) deallocate(mpk_kfull)
@@ -344,7 +343,7 @@
             allocate(like%PKdata(count)%mpk_W(num_mpk_points_use,num_mpk_kbands_use))
             like%PKdata(count)%mpk_k(:)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
             like%PKdata(count)%mpk_P=0.
-            
+
             read (tmp_file_unit,*) dummychar
             read (tmp_file_unit,*) dummychar
             do i= 1, (min_mpk_points_use-1)
@@ -510,7 +509,6 @@
     allocate(Pk_theta_theta(num_mpk_kbands_use))
     allocate(damp1(num_mpk_kbands_use),damp2(num_mpk_kbands_use),damp3(num_mpk_kbands_use))
 
-
     allocate(chisq(-nQ:nQ))
 
     if (like%needs_nonlinear_pk) then
@@ -661,8 +659,6 @@
     deallocate(mpk_Pth,mpk_lin)
     deallocate(mpk_WPth,k_scaled)!,w)
     deallocate(chisq)
-
-    Nullify(PK)
 
     end function WiggleZ_LnLike
 

@@ -28,12 +28,12 @@
     use Likelihood_Cosmology
     implicit none
     private
-    
+
     Type TPKLikelihoodCommon
         real(mcp), allocatable, dimension(:,:) :: mpk_W, mpk_invcov
-        real(mcp), allocatable, dimension(:) :: mpk_P, mpk_sdev, mpk_k 
+        real(mcp), allocatable, dimension(:) :: mpk_P, mpk_sdev, mpk_k
     end type TPKLikelihoodCommon
-        
+
     type, extends(TCosmoCalcLikelihood) :: TCosmologyPKLikelihood
         real(mcp) DV_fid   !Fiducial D_V
     contains
@@ -402,12 +402,8 @@
     deallocate(mpk_Pth,mpk_lin)
     deallocate(mpk_WPth,k_scaled,w)
 
-    nullify(PK)
-    
     MPK_LnLike=LnLike
 
     end function MPK_LnLike
-    
-    end module mpk
 
-    
+    end module mpk
