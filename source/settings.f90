@@ -141,7 +141,7 @@
     logical wantbort
     real(time_dp) runTime
 
-    if (outfile_handle>0) close(outfile_handle)
+    if (outfile_handle/=0) close(outfile_handle)
 
     if (present(abort)) then
         wantbort = abort

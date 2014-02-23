@@ -185,7 +185,7 @@
 
 
     function TPowellMinimizer_FindBestFit_indices(this,num_indices,vect) result(best_like)
-    class(TPowellMinimizer) :: this
+    class(TPowellMinimizer), target :: this
     integer, intent(in) ::  num_indices
     real(mcp) best_like
     real(Powell_CO_prec) :: vect(num_indices), XL(num_indices), XU(num_indices)
@@ -193,6 +193,7 @@
     integer npt,i
     integer rot_params_used(num_indices)
 
+    this%BOBYQA%Minimizer => this
     this%num_rot=0
     do i=1, num_indices
         if (any(this%rotatable_params_used(1:this%num_rotatable)==this%minimize_indices_used(i))) then
@@ -335,6 +336,7 @@
             LikeCalcMCMC%temperature = temperature
 
             call MCMC%InitWithPropose(LikecalcMCMC,null(), propose_scale=scale*sqrt(temperature))
+            call MCMC%SetCovariance(BaseParams%covariance_estimate)
             call MCMC%SampleFrom(Params, StartLike, this%minimize_mcmc_refine_num * num_params_used)
 
             if (Feedback > 0) then

@@ -1,3 +1,4 @@
+
     module SampleCollector
     use propose
     use BaseParameters
@@ -8,10 +9,6 @@
     use IO
     implicit none
     private
-
-    !#define MPI !for test compilation
-    !   integer :: MPI_WTIME, Mpi_REAL_MCP, MPI_COMM_WORLD, Mpi_Integer,MPI_STATUS_SIZE
-    !    external MPI_WTIME
 
     Type TMPIData
         real  :: MPI_R_Stop = 0.05

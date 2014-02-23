@@ -5,6 +5,8 @@
     !AL Sept 2012: translated to F90, changed to input "funkk" function argument to minimize rather than calfun subroutine
 
     MODULE Powell_ConstrainedOptimize
+    private
+
     INTEGER, PARAMETER  :: dp = KIND(1.d0) !SELECTED_REAL_KIND(12, 60)
     INTEGER, PARAMETER  :: func_dp = dp  !SELECTED_REAL_KIND(12, 60)
     INTEGER, PARAMETER :: Powell_CO_prec = dp
@@ -17,9 +19,7 @@
     procedure :: BOBYQA
     end type
 
-    PRIVATE
     PUBLIC  :: TBOBYQA , Powell_CO_prec
-
     CONTAINS
 
     function funkk(this, n, X) result(res)

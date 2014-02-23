@@ -10,7 +10,7 @@
     implicit none
     private
 
-    real(mcp), parameter    :: eps_1 = 1.00001
+    real(mcp), parameter :: eps_1 = 1.00001
 
     Type, extends(TConfigClass) :: TSampleCollector
     contains
@@ -98,7 +98,7 @@
     class(ParamSet) Params
     real(mcp) :: logLike
 
-     logLike = this%LikeCalculator%GetLogLike(Params)
+    logLike = this%LikeCalculator%GetLogLike(Params)
 
     end function TSamplingAlgorithm_LogLike
 
@@ -248,14 +248,14 @@
     class(TChainSampler) :: this
     class(TLikeCalculator), target:: LikeCalculator
     class(TSampleCollector), target, optional :: SampleCollector
-    
+
     call this%InitWithPropose(LikeCalculator, SampleCollector)
-    
+
     end subroutine TChainSampler_Init
-    
+
     subroutine TChainSampler_InitWithPropose(this,LikeCalculator, SampleCollector, propose_scale)
     class(TChainSampler) :: this
-    class(TLikeCalculator), target:: LikeCalculator 
+    class(TLikeCalculator), target:: LikeCalculator
     class(TSampleCollector), target, optional :: SampleCollector
     real(mcp), intent(in), optional :: propose_scale
 
@@ -275,7 +275,7 @@
     !Standard metropolis hastings
     class(TMetropolisSampler) :: this
     Type(ParamSet) CurParams, Trial
-    real(mcp) CurLike, mult, Like 
+    real(mcp) CurLike, mult, Like
     logical :: accpt
 
     Trial = CurParams
@@ -360,7 +360,7 @@
     end if
 
     this%num_drag=this%num_drag+1
-    if (mod(this%num_drag, this%oversample_fast)/=0) then 
+    if (mod(this%num_drag, this%oversample_fast)/=0) then
         call this%TMetropolisSampler%FastParameterSample(CurParams, CurLike, mult)
         return
     end if
@@ -428,7 +428,6 @@
 
         likes_start_sum = likes_start_sum + CurStartLike
         likes_end_sum = likes_end_sum + CurEndLike
-
     end do
 
     if (Feedback > 1) call Timer('Dragging time')
