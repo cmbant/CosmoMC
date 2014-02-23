@@ -7,9 +7,9 @@
     integer, parameter :: krand = KIND(1.d0)
     integer :: Rand_Feedback = 1
 
-    INTERFACE RandRotation
-    MODULE PROCEDURE RandRotationS, RandRotationD
-    END INTERFACE
+    interface RandRotation
+    module procedure RandRotationS, RandRotationD
+    end interface
 
     contains
 
@@ -58,8 +58,8 @@
 
     subroutine initRandom(i, i2)
     implicit none
-    integer, optional, intent(IN) :: i
-    integer, optional, intent(IN) :: i2
+    integer, optional, intent(in) :: i
+    integer, optional, intent(in) :: i2
     integer seed_in,kl,ij
     character(len=10) :: fred
     real(krand) :: klr
@@ -186,7 +186,7 @@
     end function CAUCHY1
 
 
-    real FUNCTION RANDEXP1()
+    real function RANDEXP1()
     !
     !     Random-number generator for the exponential distribution
     !     Algorithm EA from J. H. Ahrens and U. Dieter,
@@ -206,17 +206,17 @@
     real, parameter ::     dd = 0.0857864376269050
 
     u = ranmar()
-    do while (u.le.0)                 ! Comment out this block 
+    do while (u<=0)                 ! Comment out this block 
         u = ranmar()                    ! if your RNG can never
     enddo                             ! return exact zero
     g = c
     u = u+u
-    do while (u.lt.1.0)
+    do while (u<1.0)
         g = g + alog2
         u = u+u
     enddo
     u = u-1.0
-    if (u.le.p) then
+    if (u<=p) then
         randexp1 = g + aa/(bb-u)
         return
     endif
@@ -224,13 +224,13 @@
         u = ranmar()
         y = a/(b-u)
         up = ranmar()
-        if ((up*hh+dd)*(b-u)**2 .le. exp(-(y+c))) then
+        if ((up*hh+dd)*(b-u)**2 <= exp(-(y+c))) then
             randexp1 = g+y
             return
         endif
     enddo
 
-    end function randexp1
+    end function RANDEXP1
 
 
     ! This random number generator originally appeared in ''Toward a Universal 
@@ -311,8 +311,8 @@
     !      INTEGER IRM(103)
 
     common /RASET1/ U, C, CD, CM, I97, J97
-    if( IJ .lt. 0  .or.  IJ .gt. 31328  .or. &
-    KL .lt. 0  .or.  KL .gt. 30081 ) then
+    if( IJ < 0  .or.  IJ > 31328  .or. &
+    KL < 0  .or.  KL > 30081 ) then
         print '(A)', ' The first random number seed must have a value  between 0 and 31328'
         print '(A)',' The second seed must have a value between 0 and   30081'
         stop
@@ -321,22 +321,24 @@
     J = mod(IJ    , 177) + 2
     K = mod(KL/169, 178) + 1
     L = mod(KL,     169) 
-    do 2 II = 1, 97
+    do II = 1, 97
         S = 0.0
         T = 0.5
-        do 3 JJ = 1, 24
+        do JJ = 1, 24
             M = mod(mod(I*J, 179)*K, 179)
             I = J
             J = K
             K = M
             L = mod(53*L+1, 169)
-            if (mod(L*M, 64) .ge. 32) then
+            if (mod(L*M, 64) >= 32) then
                 S = S + T
             endif
             T = 0.5 * T
 3       continue
+        end do
         U(II) = S
 2   continue
+    end do
     C = 362436.0 / 16777216.0
     CD = 7654321.0 / 16777216.0
     CM = 16777213.0 /16777216.0
@@ -357,16 +359,16 @@
     common /RASET1/ U, C, CD, CM, I97, J97
     !      INTEGER IVEC
     UNI = U(I97) - U(J97)
-    if( UNI .lt. 0.0 ) UNI = UNI + 1.0
+    if( UNI < 0.0 ) UNI = UNI + 1.0
     U(I97) = UNI
     I97 = I97 - 1
-    if(I97 .eq. 0) I97 = 97
+    if(I97 == 0) I97 = 97
     J97 = J97 - 1
-    if(J97 .eq. 0) J97 = 97
+    if(J97 == 0) J97 = 97
     C = C - CD
-    if( C .lt. 0.d0 ) C = C + CM
+    if( C < 0.d0 ) C = C + CM
     UNI = UNI - C
-    if( UNI .lt. 0.d0 ) UNI = UNI + 1.0 ! bug?
+    if( UNI < 0.d0 ) UNI = UNI + 1.0 ! bug?
     RANMAR = UNI
 
     end function RANMAR

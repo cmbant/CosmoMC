@@ -99,7 +99,6 @@
     end type TParameterization
 
     Type, extends(TParameterization) :: GenericParameterization
-    contains
     end type GenericParameterization
 
 
