@@ -198,7 +198,6 @@
         allocate(like%PKData%mpk_invcov(like%num_mpk_points_use,like%num_mpk_points_use))
         like%PKData%mpk_invcov=  mpk_covfull(min_mpk_points_use:max_mpk_points_use,min_mpk_points_use:max_mpk_points_use)
         call Matrix_Inverse(like%PKData%mpk_invcov)
-        deallocate(mpk_covfull)
     end if
 
     like%use_scaling = Ini%Read_Logical('use_scaling',.false.)
@@ -241,8 +240,6 @@
     if (iopb.ne.0) then
         stop 'Error reading mpk file'
     endif
-
-    deallocate(mpk_Wfull, mpk_kfull,mpk_fiducial)
 
     end subroutine MPK_ReadIni
 
@@ -338,8 +335,6 @@
         vec2(1) = sum(covdat*mpk_WPth)
         vec2(2) = sum(covdat*mpk_WPth_k2)
         LnLike = (sum(like%PKData%mpk_P*covdat) - sum(vec2*matmul(Mat,vec2)) + LnLike ) /2
-
-        deallocate(mpk_k2,mpk_WPth_k2)
     else
         if (like%Q_sigma==0) do_marge = .false.
 
@@ -398,9 +393,6 @@
         write(*,*)'WARNING: '//trim(like%name)//' MPK Likelihood is huge!'
         write(*,*)'          Maybe there is a problem? Likelihood = ',LnLike
     end if
-
-    deallocate(mpk_Pth,mpk_lin)
-    deallocate(mpk_WPth,k_scaled,w)
 
     MPK_LnLike=LnLike
 

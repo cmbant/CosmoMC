@@ -165,12 +165,14 @@
                 else
                     num_range = DataLike%num_z
                     maxz = max(maxz,DataLike%max_z)
-                    if(num_range >1 .and. maxz>0) then
+                    if(num_range >2 .and. maxz>0) then
                         dlnz = min(dlnz,log(DataLike%max_z+1)/(num_range-1))
-                    else if(num_range==1 .and. maxz > 0)then
-                        write(*,'("ERROR: ",A," dataset: ",A, "wants only 1 redshift")')&
+                    else if(num_range<3 .and. maxz > 0)then
+                        write(*,'("ERROR: ",A," dataset: ",A, "wants less than 3 redshifts")')&
                         trim(DataLike%LikelihoodType),trim(DataLike%name)
-                        write(*,'("       but wants a maximum redshift of ",F7.2,".  Check dataset settings!")')maxz
+                        write(*,'("       but wants a maximum redshift of ",F7.2,". A minimum ")')maxz
+                        write(*,*)"       of 3 redshifts is required or PowerAtZ will fail."
+                        write(*,*)"       Check dataset settings!"
                         call Mpistop()
                     else if(num_range>1 .and. maxz==0.)then
                         write(*,'("ERROR: ",A," dataset: ",A, "wants only ",I0," redshifts")')&

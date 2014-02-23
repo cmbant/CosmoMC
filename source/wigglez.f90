@@ -125,10 +125,11 @@
     end type TWiggleZCommon
 
     type, extends(TCosmologyPKLikelihood) :: WiggleZLikelihood
-        logical :: use_set
         ! 1st index always refers to the region
         ! so mpk_P(1,:) is the Power spectrum in the first active region
         Type(TPKLikelihoodCommon), dimension(:), allocatable :: PKData
+        !Redshift bin that is being probed by a particular call
+        integer :: zbin
     contains
     procedure :: LogLike => WiggleZ_Lnlike
     procedure :: ReadIni => WiggleZ_ReadIni
@@ -313,10 +314,16 @@
     like%exact_z(1) = Ini%Read_Double('redshift',0.d0)
 
     if(like%exact_z(1).eq.0.0) then
-        call MpiStop('mpk: failed  to read in WiggleZ redshift')
+        call MpiStop('WiggleZMPK: failed to read in WiggleZ redshift')
     end if
-
-    like%use_set =.true.
+    
+    like%zbin = 0
+    do i=1,4
+        if(abs(like%exact_z(1)-zeval(i)).le.0.001) like%zbin = i
+    enddo
+    
+    if(like%zbin.eq.0) call MpiStop('WiggleZMPK: could not indentify redshift')
+    
     if (Feedback > 0) write (*,*) 'reading: '//trim(like%name)
 
     allocate(like%PKdata(num_regions_used))
@@ -385,9 +392,6 @@
         endif
     enddo
 
-    deallocate(mpk_Wfull)
-    !    deallocate(mpk_kfull)
-
     cov_file  = Ini%ReadFileName('cov_file')
     if (cov_file /= '') then
         allocate(mpk_covfull(max_num_wigglez_regions,num_mpk_points_full,num_mpk_points_full))
@@ -405,8 +409,6 @@
                 like%PKdata(count)%mpk_invcov(1:num_mpk_points_use,1:num_mpk_points_use) = invcov_tmp(:,:)
             endif
         enddo
-        deallocate(mpk_covfull)
-        deallocate(invcov_tmp)
     end if
 
     !JD 09/13 Read in fiducial D_V for use when calculating a_scl
@@ -476,9 +478,6 @@
     real(mcp) :: WiggleZ_LnLike, LnLike
     real(mcp), dimension(:), allocatable :: mpk_Pth, mpk_k2,mpk_lin,k_scaled !LV_06 added for LRGDR4
     real(mcp), dimension(:), allocatable :: mpk_WPth, mpk_WPth_k2
-    real(mcp), dimension(:), allocatable :: diffs, step1
-    real(mcp), dimension(:), allocatable :: Pk_delta_delta,Pk_delta_theta,Pk_theta_theta
-    real(mcp), dimension(:), allocatable :: damp1, damp2, damp3
     real(mcp) :: covdat(num_mpk_points_use)
     real(mcp) :: covth(num_mpk_points_use)
     real(mcp) :: covth_k2(num_mpk_points_use)
@@ -489,7 +488,6 @@
     integer :: i, iQ,iz
     logical :: do_marge
     integer, parameter :: nQ=6
-    integer, parameter :: nbias = 100
     real(mcp) old_chisq
     real(mcp) :: dQ = 0.4
     real(mcp), dimension(:), allocatable :: chisq(:)
@@ -503,11 +501,6 @@
     allocate(mpk_lin(num_mpk_kbands_use),mpk_Pth(num_mpk_kbands_use))
     allocate(mpk_WPth(num_mpk_points_use))
     allocate(k_scaled(num_mpk_kbands_use))!LV_06 added for LRGDR4 !! IMPORTANT: need to check k-scaling
-    !   allocate(num_mpk_points_use))
-    allocate(diffs(num_mpk_points_use),step1(num_mpk_points_use))
-    allocate(Pk_delta_delta(num_mpk_kbands_use),Pk_delta_theta(num_mpk_kbands_use))
-    allocate(Pk_theta_theta(num_mpk_kbands_use))
-    allocate(damp1(num_mpk_kbands_use),damp2(num_mpk_kbands_use),damp3(num_mpk_kbands_use))
 
     allocate(chisq(-nQ:nQ))
 
@@ -519,12 +512,13 @@
 
     chisq = 0
 
-    if (.not. like%use_set) then
-        LnLike = 0
-        return
+    z = like%exact_z(1)
+    
+    if(abs(z-PK%redshifts(like%exact_z_index(1)))>1.d-3)then
+        write(*,*)'ERROR: WiggleZ redshift does not match the value stored'
+        write(*,*)'       in the PK%redshifts array.'
+        call MpiStop()
     end if
-
-    z = 1.d0*dble(like%exact_z(1)) ! accuracy issues
 
     !JD 09/13 new compute_scaling_factor functions
     if(use_scaling) then
@@ -533,24 +527,12 @@
         a_scl = 1
     end if
 
-    iz = 0
-    do i=1,4
-        if(abs(z-zeval(i)).le.0.001) iz = i
-    enddo
-    if(iz.eq.0) call MpiStop('could not indentify redshift')
-
-    if(abs(z-PK%redshifts(like%exact_z_index(1)))>1.d-3)then
-        write(*,*)'ERROR: WiggleZ redshift does not match the value stored'
-        write(*,*)'       in the PK%redshifts array.'
-        call MpiStop()
-    end if
-
     do i=1, num_mpk_kbands_use
         ! It could be that when we scale the k-values, the lowest bin drops off the bottom edge
         !Errors from using matter_power_minkh at lower end should be negligible
         k_scaled(i)=max(exp(PK%log_kh(1)),like%PKdata(1)%mpk_k(i)*a_scl)
         mpk_lin(i) = PK%PowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
-        if(use_gigglez) call WiggleZPowerAt(k_scaled(i),iz,mpk_lin(i))
+        if(use_gigglez) call WiggleZPowerAt(k_scaled(i),like%zbin,mpk_lin(i))
     end do
 
     do_marge = Q_marge
@@ -588,8 +570,6 @@
         call Matrix_Inverse(Mat)
         !          LnLike = (sum(mset%mpk_P*covdat) - sum(vec2*matmul(Mat,vec2)) + LnLike ) /2
         LnLike = (final_term - sum(vec2*matmul(Mat,vec2)) + LnLike ) /2
-
-        deallocate(mpk_k2,mpk_WPth_k2)
     else
         if (Q_sigma==0) do_marge = .false.
         ! ... sum the chi-squared contributions for all regions first
@@ -633,7 +613,6 @@
                 exit
             end if
         end do
-        deallocate(covdat_large,covth_large,mpk_Pdata_large,mpk_WPth_large)
 
         !without analytic marginalization
         !! chisq = sum((mset%mpk_P(:) - mpk_WPth(:))**2*w) ! uncommented for debugging purposes
@@ -649,16 +628,12 @@
 
     end if !not analytic over Q
     WiggleZ_LnLike=LnLike
-    if (Feedback>1) write(*,'("WiggleZ bin ",I0," MPK Likelihood = ",F10.5)')iz,LnLike
+    if (Feedback>1) write(*,'("WiggleZ bin ",I0," MPK Likelihood = ",F10.5)')like%zbin,LnLike
 
     if (LnLike > 1e8) then
-        write(*,'("WARNING: WiggleZ bin",I0," Likelihood is huge!")')iz
+        write(*,'("WARNING: WiggleZ bin",I0," Likelihood is huge!")')like%zbin
         write(*,'("         Maybe there is a problem? Likelihood = ",F10.5)')LnLike
     end if
-
-    deallocate(mpk_Pth,mpk_lin)
-    deallocate(mpk_WPth,k_scaled)!,w)
-    deallocate(chisq)
 
     end function WiggleZ_LnLike
 
