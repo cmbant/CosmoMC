@@ -211,7 +211,7 @@
     end if
     this%ncalls=this%ncalls+1
     if (mod(this%ncalls,100)==0 .and. logfile_unit/=0) then
-        write(logfile_unit,'(a)') 'CAMB called ',this%ncalls, ' times; ', this%nerrors,' errors'
+        write(logfile_unit,'("CAMB called ",I0," times; ",I0," errors")')this%ncalls, this%nerrors
     end if
     if (Feedback > 1) write (*,*) 'CAMB done'
 
@@ -291,7 +291,9 @@
         end if
 
         if (this%CAMB_timing) call Timer()
+        if (Feedback > 1) write (*,*) 'Calling CAMB'
         call CAMB_GetResults(P)
+        if (Feedback > 1) write (*,*) 'CAMB Done'
         if (this%CAMB_timing) call Timer('CAMB_GetResults')
 
         error = global_error_flag !using error optional parameter gives seg faults on SGI
@@ -648,7 +650,7 @@
     class(CAMB_Calculator) :: this
 
     if (lmax_computed_cl /= lmax) then
-        if (lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
+        if (compute_tensors .and. lmax_tensor > lmax_computed_cl) call MpiStop('lmax_tensor > lmax_computed_cl')
         call this%LoadFiducialHighLTemplate()
     end if
 

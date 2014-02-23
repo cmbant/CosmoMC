@@ -325,7 +325,7 @@
         if (anumcls /= num_cls) call MpiStop('ReadTheory: reading file with different Cls')
         if (anumclsext /= num_cls_ext) call MpiStop('ReadTheory: reading file with different ext Cls')
         read(unit) unused
-        if (unused>0) read(unit) tmp(1:unused)
+        read(unit) tmp(1:unused)
     end if
 
     T%cl = 0
@@ -342,6 +342,7 @@
     if (has_sigma8 .or. has_LSS) read(unit) T%sigma_8
     if (has_LSS) then
         read(unit) num_k, num_z
+        if(.not. associated(T%MPK)) allocate(T%MPK)
         call T%MPK%InitPK(num_k,num_z,.true.)
         read(unit) T%MPK%log_kh
         read(unit) T%MPK%redshifts
@@ -353,6 +354,7 @@
             read(unit)has_nonlinear
         end if
         if(has_nonlinear) then
+            if(.not. associated(T%NL_MPK)) allocate(T%NL_MPK)
             T%NL_MPK=T%MPK
             read(unit)T%NL_MPK%matter_power
             call T%NL_MPK%IOPK_GetSplines()
