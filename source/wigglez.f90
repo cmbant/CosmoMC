@@ -505,8 +505,18 @@
     allocate(chisq(-nQ:nQ))
 
     if (like%needs_nonlinear_pk) then
+        if(.not. associated(Theory%NL_MPK))then
+            write(*,*) 'ERROR: Your Theory%NL_MPK derived type is not initialized. Make sure you are'
+            write(*,*) '       calling a SetPk routine and filling your power spectra.'
+            call MPIstop()
+        end if
         PK => Theory%NL_MPK
     else
+        if(.not. associated(Theory%MPK))then
+            write(*,*) 'ERROR: Your Theory%MPK derived type is not initialized. Make sure you are'
+            write(*,*) '       calling a SetPk routine and filling your power spectra.'
+            call MPIstop()
+        end if
         PK => Theory%MPK
     end if
 

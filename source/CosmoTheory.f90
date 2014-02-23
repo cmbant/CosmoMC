@@ -99,10 +99,10 @@
     integer, save :: i_last = 1
 
     if(.not. allocated(PK%log_kh)) then
-        write(*,*) 'At least one of your MPK arrays is not initialized:'
-        write(*,*) 'Make sure you are calling a SetPk and filling your power spectra.'
-        write(*,*) 'This error could also mean you are doing importance sampling'
-        write(*,*) 'and need to turn on redo_pk.'
+        write(*,*) 'ERROR:  PowerAt_zbin least one of your MPK arrays is not initialized:'
+        write(*,*) '        Make sure you are calling a SetPk and filling your power spectra.'
+        write(*,*) '        This error could also mean you are doing importance sampling'
+        write(*,*) '        and need to turn on redo_pk.'
         call MPIstop()
     end if
 
@@ -169,10 +169,10 @@
     integer, save :: zi_last = 1
 
     if(.not. allocated(PK%log_kh)) then
-        write(*,*) 'At least one of your MPK arrays is not initialized:'
-        write(*,*) 'Make sure you are calling a SetPk and filling your power spectra.'
-        write(*,*) 'This error could also mean you are doing importance sampling'
-        write(*,*) 'and need to turn on redo_pk.'
+        write(*,*) 'ERROR:  PowerAt_Z least one of your MPK arrays is not initialized:'
+        write(*,*) '        Make sure you are calling a SetPk and filling your power spectra.'
+        write(*,*) '        This error could also mean you are doing importance sampling'
+        write(*,*) '        and need to turn on redo_pk.'
         call MPIstop()
     end if
 
@@ -359,14 +359,9 @@
             read(unit)T%NL_MPK%matter_power
             call T%NL_MPK%IOPK_GetSplines()
             if(.not. use_nonlinear) then
-                write(*,*)"Your data files have nonlinear power spectra, but you are not using"
-                write(*,*)"nonlinear power spectra.  Be careful that this is what you intended."
-            end if
-        else
-            if(use_nonlinear) then
-                write(*,*)"Warning! ReadTheory: You want a nonlinear MPK"
-                write(*,*)"but your data file does not include one."
-                write(*,*)"Make sure you set redo_pk = T or the program will fail."
+                write(*,*)"WARNING:  ReadTheory - Your data files have nonlinear power spectra,"
+                write(*,*)"          but you are not using them. Be careful that this"
+                write(*,*)"          is what you intended."
             end if
         end if
     end if

@@ -125,7 +125,7 @@
                 write(*,*) '       Use redo_theory and redo_pk'
                 call MpiStop()
             end if
-            if(use_nonlinear .and. .not. allocated(Theory%NL_MPK%matter_power))then
+            if(use_nonlinear .and. .not. associated(Theory%NL_MPK))then
                 write(*,*) 'ERROR: One of the datasets wants a non-linear MPK which is not present '
                 write(*,*) '       Use redo_theory and redo_pk or turn off non-linear'
                 call MpiStop() 

@@ -1031,7 +1031,7 @@ contains
     character(LEN=:), allocatable :: filename,keyname,SZTemplate
     real(mcp) SZScale
 
-        Use_CMB = Use_CMB .or. Ini%Read_Logical('use_CMB',.true.)
+        Use_CMB = Use_CMB .or. Ini%Read_Logical('use_CMB',.false.)
 
 #ifndef NOWMAP
         use_TT_beam_ptsrc = Ini%read_Logical('use_WMAP_TT_beam_ptsrc', .true.)
