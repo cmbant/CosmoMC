@@ -93,6 +93,7 @@
     integer :: num_threads = 0
     integer :: instance = 0
     integer :: MPIchains = 1, MPIrank = 0
+    real(time_dp) :: MPIRun_start_time
 
     logical :: checkpoint = .false.
 
@@ -138,7 +139,7 @@
     integer ierror
     logical, intent(in), optional :: abort
     logical wantbort
-    real MPI_StartTime
+    real(time_dp) runTime
 
     if (outfile_handle/=0) close(outfile_handle)
 
@@ -150,11 +151,9 @@
 
     if (present(S) .and. (wantbort .or. MPIRank==0)) write (*,*) trim(S)
 #ifdef MPI
-    MPI_StartTime = MPI_WTime() - MPI_StartTime
-    if (Feedback > 0 .and. MPIRank==0) then
-        write (*,*) 'Total time:', nint(MPI_StartTime), &
-        '(',MPI_StartTime/(60*60),' hours)'
-    end if
+    runTime = MPI_WTime() - MPIrun_Start_Time
+    if (Feedback > 0 .and. MPIRank==0) &
+    write (*,'("Total time:  ",I0,"  (",F10.5," hours  )")')nint(runTime),runTime/(60*60)
     ierror =0
     if (wantbort) then
         !Abort all in case other continuing chains want to communicate with us

@@ -29,8 +29,10 @@
 
     call mpi_init(ierror)
     if (ierror/=MPI_SUCCESS) stop 'MPI fail: rank'
+    MPIRun_start_time = MPI_WTime()
 #endif
-
+    
+    
     instance = 0
 #ifndef MPI
     InputFile = GetParam(1)
