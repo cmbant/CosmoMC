@@ -279,6 +279,7 @@
 
         close(infile_handle)
         close(outfile_handle)
+        outfile_handle = 0
         if (.not. this%redo_no_new_data) close(outdata_handle)
 
         if (Feedback>0) then
