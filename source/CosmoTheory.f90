@@ -272,20 +272,15 @@
     subroutine TCosmoTheoryPredictions_WriteTheory(T, unit)
     Class(TCosmoTheoryPredictions) T
     integer, intent(in) :: unit
-    integer, parameter :: varcount = 1
+    integer, parameter :: varcount = 0
     integer tmp(varcount)
     logical, save :: first = .true.
 
     if (first .and. new_chains) then
         first = .false.
-        write(unit) use_LSS, compute_tensors
+        write(unit) use_LSS, compute_tensors, get_sigma8
         write(unit) lmax, lmax_tensor, num_cls, num_cls_ext
         write(unit) varcount
-        if (get_sigma8) then
-            tmp(1)=1
-        else
-            tmp(1)=0
-        end if
         write(unit) tmp(1:varcount)
     end if
 
@@ -318,23 +313,19 @@
     logical, save :: first = .true.
     logical, save :: has_sigma8, has_LSS, has_tensors
     integer, save :: almax, almaxtensor, anumcls, anumclsext, tmp(1)
-    logical, save :: planck1_format
-    real(mcp) old_matterpower(74,1)
     !JD 02/14 new variables for handling new pk arrays
     integer :: num_k, num_z, stat
     logical  has_nonlinear
 
     if (first) then
         first = .false.
-        read(unit) has_LSS, has_tensors
+        read(unit) has_LSS, has_tensors, has_sigma8
         read(unit) almax, almaxtensor, anumcls, anumclsext
         if (almax > lmax) call MpiStop('ReadTheory: reading file with larger lmax')
         if (anumcls /= num_cls) call MpiStop('ReadTheory: reading file with different Cls')
         if (anumclsext /= num_cls_ext) call MpiStop('ReadTheory: reading file with different ext Cls')
         read(unit) unused
-        planck1_format = unused==0
         if (unused>0) read(unit) tmp(1:unused)
-        if (.not. planck1_format) has_sigma8 = tmp(1)==1
     end if
 
     T%cl = 0
@@ -348,39 +339,32 @@
         read(unit) T%tensor_ratio_02, T%tensor_ratio_r10
     end if
 
-    if (planck1_format) then
-        if (has_LSS) then
-            read(unit) T%sigma_8, old_matterpower
-            !discard unused mpk array
+    if (has_sigma8 .or. has_LSS) read(unit) T%sigma_8
+    if (has_LSS) then
+        read(unit) num_k, num_z
+        call T%MPK%InitPK(num_k,num_z,.true.)
+        read(unit) T%MPK%log_kh
+        read(unit) T%MPK%redshifts
+        read(unit, iostat=stat) T%MPK%matter_power
+        call T%MPK%IOPK_GetSplines()
+        if (IS_IOSTAT_END(stat)) then
+            has_nonlinear = .false.
+        else
+            read(unit)has_nonlinear
         end if
-    else
-        if (has_sigma8 .or. has_LSS) read(unit) T%sigma_8
-        if (has_LSS) then
-            read(unit) num_k, num_z
-            call T%MPK%InitPK(num_k,num_z,.true.)
-            read(unit) T%MPK%log_kh
-            read(unit) T%MPK%redshifts
-            read(unit, iostat=stat) T%MPK%matter_power
-            call T%MPK%IOPK_GetSplines()
-            if (IS_IOSTAT_END(stat)) then
-                has_nonlinear = .false.
-            else
-                read(unit)has_nonlinear
+        if(has_nonlinear) then
+            T%NL_MPK=T%MPK
+            read(unit)T%NL_MPK%matter_power
+            call T%NL_MPK%IOPK_GetSplines()
+            if(.not. use_nonlinear) then
+                write(*,*)"Your data files have nonlinear power spectra, but you are not using"
+                write(*,*)"nonlinear power spectra.  Be careful that this is what you intended."
             end if
-            if(has_nonlinear) then
-                T%NL_MPK=T%MPK
-                read(unit)T%NL_MPK%matter_power
-                call T%NL_MPK%IOPK_GetSplines()
-                if(.not. use_nonlinear) then
-                    write(*,*)"Your data files have nonlinear power spectra, but you are not using"
-                    write(*,*)"nonlinear power spectra.  Be careful that this is what you intended."
-                end if
-            else
-                if(use_nonlinear) then
-                    write(*,*)"Warning! ReadTheory: You want a nonlinear MPK"
-                    write(*,*)"but your data file does not include one."
-                    write(*,*)"Make sure you set redo_pk = T or the program will fail."
-                end if
+        else
+            if(use_nonlinear) then
+                write(*,*)"Warning! ReadTheory: You want a nonlinear MPK"
+                write(*,*)"but your data file does not include one."
+                write(*,*)"Make sure you set redo_pk = T or the program will fail."
             end if
         end if
     end if

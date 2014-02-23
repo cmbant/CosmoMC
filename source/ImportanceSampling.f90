@@ -264,7 +264,7 @@
                     !                    else
                     call Params%WriteParams(this%LikeCalculator%Config,mult,like)
                     !                   end if
-                    if (outdata_handle>=0) call Params%WriteModel(outdata_handle, truelike,mult)
+                    if (.not. this%redo_no_new_data) call Params%WriteModel(outdata_handle, truelike,mult)
                 else
                     if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
                 end if
@@ -280,7 +280,7 @@
 
         close(infile_handle)
         close(outfile_handle)
-        if (outdata_handle >=0) call IO_DataCloseWrite(outdata_handle)
+        if (.not. this%redo_no_new_data) close(outdata_handle)
 
         if (Feedback>0) then
             write(*,*) 'finished. Processed ',num_used,' models'

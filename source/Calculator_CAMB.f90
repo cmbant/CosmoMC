@@ -618,7 +618,7 @@
             !note input n_T is ignored, so should be fixed (to anything)
         end if
     else
-        stop 'params_CMB:Wrong initial power spectrum'
+        stop 'CAMB_Calculator:Wrong initial power spectrum'
     end if
 
     end subroutine CAMBCalc_SetCAMBInitPower
