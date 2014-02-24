@@ -9,8 +9,8 @@
 
     type, extends(TInterpGrid2D) :: TBBNPredictions
     contains
-    procedure Error => BBNPredictions_error
-    procedure FirstUse =>  BBN_Init
+    procedure :: Error => BBNPredictions_error
+    procedure :: FirstUse =>  BBN_Init
     end type TBBNPredictions
 
     type(TBBNPredictions), save :: BBN_YHe

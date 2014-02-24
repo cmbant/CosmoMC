@@ -1,3 +1,40 @@
+    module classes
+    implicit none
+
+    Type AData
+    end Type
+
+    Type, extends(AData) :: BData
+    end Type
+
+    Type A
+    contains
+    procedure :: Work
+    end type
+
+
+    Type, extends(A) :: B
+    contains
+    procedure :: Work => Work2
+    end type
+
+    contains
+
+    subroutine Work(this, D)
+    class(A) :: this
+    class(AData)  :: D
+
+    end subroutine
+
+    subroutine Work2(this, D)
+    class(B) :: this
+    Type(AData) :: D
+
+    end subroutine
+
+    end module classes
+
+
     module tests
     use ObjectLists
     implicit none

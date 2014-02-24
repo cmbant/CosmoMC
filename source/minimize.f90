@@ -10,7 +10,7 @@
     private
 
     !TSaveLoadStateObject->TCheckpointable->TLikelihoodUser->TMinimizer
-    Type, extends(TLikelihoodUser) :: TMinimizer
+    Type, abstract, extends(TLikelihoodUser) :: TMinimizer
         logical :: uses_MPI = .false.
         Type(ParamSet) :: MinParams
         integer, allocatable :: minimize_indices(:), minimize_indices_used(:)
@@ -22,7 +22,7 @@
         integer, allocatable :: min_params_rot(:)
     contains
     procedure :: ffn
-    procedure :: FindBestFit
+    procedure(FindBestFit), deferred :: FindBestFit
     procedure :: VectToParams
     procedure :: WriteParamsHumanText
     procedure :: WriteBestFitParams
@@ -294,7 +294,8 @@
     do
         if (Feedback>0) print*,'minmizing all parameters'
         allocate(this%minimize_indices(num_params_used), source=params_used)
-        allocate(this%minimize_indices_used(num_params_used), source=[1:num_params_used])
+        allocate(this%minimize_indices_used(num_params_used), source=[(I, I=1, num_params_used)])
+        
         best_like = this%FindBestFit_indices(num_params_used,vect)
         deallocate(this%minimize_indices, this%minimize_indices_used)
         last_like = best_like

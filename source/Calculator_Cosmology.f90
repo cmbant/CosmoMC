@@ -44,7 +44,7 @@
 
     subroutine GetNewBackgroundData(this, CMB,Theory,error)
     class(TCosmologyCalculator) :: this
-    class(CMBParams), intent(in) :: CMB
+    class(CMBParams) :: CMB
     class(TCosmoTheoryPredictions) Theory
     integer error
 
@@ -70,7 +70,7 @@
 
     subroutine SetBackgroundTheoryData(this, CMB,Theory,error)
     class(TCosmologyCalculator) :: this
-    class(CMBParams), intent(in) :: CMB
+    class(CMBParams) :: CMB
     class(TCosmoTheoryPredictions) Theory
     integer error
 
@@ -82,7 +82,7 @@
 
     subroutine GetNewTransferData(this, CMB, Info,Theory,error)
     class(TCosmologyCalculator) :: this
-    class(CMBParams), intent(in) :: CMB
+    class(CMBParams) :: CMB
     class(TTheoryIntermediateCache), pointer :: Info
     class(TCosmoTheoryPredictions) :: Theory
     integer error
@@ -135,7 +135,7 @@
 
     function GetOpticalDepth(this,CMB)
     class(TCosmologyCalculator) :: this
-    type(CMBParams) CMB
+    class(CMBParams) CMB
     real(mcp) GetOpticalDepth
 
     call this%ErrorNotImplemented('GetOpticalDepth')
