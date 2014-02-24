@@ -111,24 +111,27 @@
     logical, optional, intent(in) :: append
     logical A
     integer status
-    character(LEN=:), allocatable :: amode
+    character(LEN=:), allocatable :: amode, pos, state
 
     if (present(append)) then
         A=append
     else
         A = .false.
     endif
+    if (A .and. FileExists(aname)) then
+        pos = 'append'
+        state = 'old'
+    else
+        pos = 'asis'
+        state='replace'
+    end if
     if (present(mode)) then
         amode=mode
     else
         amode='unformatted'
     end if
 
-    if (A) then
-        open(newunit=aunit,file=aname,form=amode,status='unknown', iostat=status, position='append')
-    else
-        open(newunit=aunit,file=aname,form=amode,status='replace', iostat=status)
-    end if
+    open(newunit=aunit,file=aname,form=amode,status=state, iostat=status, position=pos, access="stream")
     if (status/=0) call MpiStop('Error creatinging or opening '//trim(aname))
 
     end function CreateOpenNewFile

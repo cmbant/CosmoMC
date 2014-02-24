@@ -93,7 +93,6 @@
 
 
     subroutine TImportanceSampler_ImportanceSample(this,InputFile)
-    USE IFPOSIX
     class(TImportanceSampler) :: this
     character(LEN=*), intent(INOUT):: InputFile
     real(mcp) truelike,mult,like
@@ -197,10 +196,10 @@
                 if (this%redo_skip>0.d0 .and. this%redo_skip<1) then
                     at_beginning=at_beginning+1
                     if (at_beginning==1) then
-                        CALL PXFFTELL (infile_handle,last_file_loc,ierror)
+                        inquire(infile_handle, pos=last_file_loc)
                         cycle
                     elseif (at_beginning==2) then
-                        CALL PXFFTELL (infile_handle,file_loc,ierror)
+                        inquire(infile_handle, pos=file_loc)
                         inquire(unit=infile_handle, size=file_size)
                         this%redo_skip = file_size/(file_loc-last_file_loc) * this%redo_skip
                         if (Feedback > 0) print *,'skipping ',nint(this%redo_skip), ' models'

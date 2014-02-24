@@ -134,7 +134,7 @@
 #endif
     this%indep_sample = Ini%Read_Int('indep_sample')
     if (this%indep_sample /=0) then
-        this%indepfile_handle =   CreateOpenNewFile(rootname//'.data',append=.not. new_chains)
+        this%indepfile_handle =  CreateOpenNewFile(rootname//'.data',append=.not. new_chains)
     end if
 
     end subroutine TMpiChainCollector_ReadParams
