@@ -177,7 +177,7 @@ $(OUTPUT_DIR)/RandUtils.o: $(OUTPUT_DIR)/MpiUtils.o
 $(OUTPUT_DIR)/FileUtils.o: $(OUTPUT_DIR)/MpiUtils.o
 $(OUTPUT_DIR)/IniObjects.o: $(OUTPUT_DIR)/FileUtils.o $(OUTPUT_DIR)/StringUtils.o
 $(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS)
-$(OUTPUT_DIR)/settings.o: $(OUTPUT_DIR)/ObjectParamNames.o
+$(OUTPUT_DIR)/settings.o:  $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o
 $(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o
 $(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/settings.o
 $(OUTPUT_DIR)/samples.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o
@@ -204,17 +204,20 @@ $(OUTPUT_DIR)/CosmoTheory.o: $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/likelihood.o
 $(OUTPUT_DIR)/supernovae.o:  $(OUTPUT_DIR)/Likelihood_Cosmology.o $(SUPERNOVAE)
 $(OUTPUT_DIR)/Calculator_CAMB.o: $(OUTPUT_DIR)/Calculator_Cosmology.o
 $(OUTPUT_DIR)/cmbtypes.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o
-$(OUTPUT_DIR)/Likelihood_Cosmology.o: $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/Calculator_Cosmology.o
+$(OUTPUT_DIR)/Likelihood_Cosmology.o: $(OUTPUT_DIR)/Calculator_Cosmology.o $(OUTPUT_DIR)/CosmoTheory.o
 $(OUTPUT_DIR)/Planck_like.o: $(OUTPUT_DIR)/cmbtypes.o
 $(OUTPUT_DIR)/cmbdata.o: $(OUTPUT_DIR)/Planck_like.o
 $(OUTPUT_DIR)/bbn.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/Interpolation.o
-$(OUTPUT_DIR)/mpk.o: $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
-$(OUTPUT_DIR)/wigglez.o: $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/mpk.o
+$(OUTPUT_DIR)/mpk.o: $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/wigglez.o: $(OUTPUT_DIR)/mpk.o
 $(OUTPUT_DIR)/bao.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/HST.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
-$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/cmbtypes.o
-$(OUTPUT_DIR)/cliklike.o: $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/CosmoTheory.o
+$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/cliklike.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/CosmologyConfig.o: $(PARAMETERIZATION) $(OUTPUT_DIR)/GeneralSetup.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
+
+$(OUTPUT_DIR)/supernovae_Union2.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/supernovae_SNLS.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 
 ifneq ($(highL),)
 $(OUTPUT_DIR)/cliklike_CamSpec.o: $(highL)/libhigh.a
