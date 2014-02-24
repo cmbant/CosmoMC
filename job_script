@@ -1,10 +1,14 @@
 #!/bin/bash
-#PBS -q sandybridge
-#PBS -A PLANCK
-#PBS -N ##JOBNAME##
-#PBS -l nodes=##NUMNODES##:ppn=##PPN##,mem=##MEM_MB##mb,walltime=##WALLTIME##
-#PBS -m n
-#PBS -r n
+
+##Example for Darwin in Cambridge (adapted from STG python)
+
+#SBATCH -p sandybridge
+#SBATCH -A PLANCK
+#SBATCH --nodes=##NUMNODES##
+#SBATCH --ntasks=##NUMMPI##
+#SBATCH --time=##WALLTIME##
+#SBATCH --mail-type=FAIL
+#SBATCH --mem=##MEM_MB##
 
 cd ##ROOTDIR##
 
@@ -13,19 +17,22 @@ module purge
 module load default-impi
 module load cfitsio
 
-echo Running on host `hostname`
-echo Time is `date`
-echo Directory is `pwd`
-echo PBS job ID is $PBS_JOBID
+
+echo Running on host \`hostname\`
+echo Time is \`date\`
+echo Directory is \`pwd\`
+echo Slurm job ID is \$SLURM_JOBID
 echo This jobs runs on the following machines:
-echo `cat $PBS_NODEFILE | uniq`
+export NODEFILE=`generate_pbs_nodefile`
+echo \`cat \$NODEFILE | uniq\`
 
-#! Create a machine file for MPI
-#cat $PBS_NODEFILE | uniq > scripts/machine.file.$PBS_JOBID
+cat \$NODEFILE | uniq > scripts/machine.file.\$SLURM_JOBID
 
-export OMP_NUM_THREADS=##OMP##
+export OMP_NUM_THREADS=$omp
 export I_MPI_PIN_DOMAIN=omp:compact
 export I_MPI_PIN_ORDER=scatter
 export I_MPI_CPUINFO=proc
 
 ##COMMAND##
+
+

@@ -4,6 +4,9 @@ except:
     print 'use "module load" to load python 2.7'
     sys.exit()
 
+def argParser(desc=''):
+    return argparse.ArgumentParser(description=desc)
+
 class batchArgs():
 
         def __init__(self, desc='', importance=True, noBatchPath=False, notExist=False, converge=False):
