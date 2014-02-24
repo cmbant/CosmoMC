@@ -3,7 +3,7 @@
     use cmbtypes
     use CosmoTheory
     use settings
-    use Likelihood
+    use Likelihood_Cosmology
     implicit none
 
     logical :: use_clik = .false.

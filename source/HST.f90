@@ -41,7 +41,6 @@
     end subroutine HSTLikelihood_Add
 
     real(mcp) function HST_LnLike(like, CMB)
-    use constants
     Class(HSTLikelihood) :: like
     Class(CMBParams) CMB
     real(mcp) :: theoryval
@@ -49,7 +48,7 @@
     real(mcp), parameter :: angdistinvzeffh0 = 6.45904e-3, zeffh0 = 0.04, &
     angdistinvzeffh0errsqr = 4.412e-8
 
-    theoryval = 1.0/like%Calculator%AngularDiameterDistance(real(zeffh0,dl))
+    theoryval = 1.0/like%Calculator%AngularDiameterDistance(zeffh0)
     HST_LnLike = (theoryval - angdistinvzeffh0)**2/(2*angdistinvzeffh0errsqr)
 
     end function  HST_LnLike

@@ -49,7 +49,7 @@
     procedure :: CMBToTheta => CAMBCalc_CMBToTheta
     procedure :: GetNewPowerData => CAMBCalc_GetNewPowerData
     procedure :: GetNewTransferData => CAMBCalc_GetNewTransferData
-    procedure :: GetTheoryForImportance => CAMBCalc_GetTheoryForImportance
+    procedure :: GetCosmoTheoryForImportance => CAMBCalc_GetTheoryForImportance
     procedure :: GetZreFromTau  => CAMBCalc_GetZreFromTau
     procedure :: GetOpticalDepth => CAMBCalc_GetOpticalDepth
     procedure :: SetBackgroundTheoryData => CAMBCalc_SetBackgroundTheoryData

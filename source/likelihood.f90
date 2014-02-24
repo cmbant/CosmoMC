@@ -23,9 +23,7 @@
         integer, allocatable :: derived_indices(:)
         integer :: new_param_block_start, new_params
     contains
-    procedure :: LogLike
-    procedure :: LogLikeDataParams !same as above when extra theory info not needed
-    procedure :: LogLikeTheory !same as above when extra theory and nuisance info not needed
+    procedure :: GetLogLike
     procedure :: loadParamNames
     procedure :: checkConflicts
     procedure :: derivedParameters  !derived parameters calculated by likelihood function
@@ -129,7 +127,6 @@
     end function CompareLikes
 
     subroutine AddNuisanceParameters(L, Names)
-    use ParamNames
     Class(TLikelihoodList) :: L
     Type(TParamNames) :: Names
     Type(TParamNames), pointer :: NewNames
@@ -244,37 +241,17 @@
 
     end subroutine InitWithCalculator
 
-    function logLikeTheory(like,CMB)
-    !For likelihoods that don't need Theory or DataParams
+    function GetLogLike(like, Params, Theory, DataParams) result(LogLike)
     class(TDataLikelihood) :: like
-    class(*) :: CMB
-    real(mcp) LogLikeTheory
-
-    logLikeTheory= logZero
-    stop 'logLikeTheory or logLike should not be overridden'
-    end function
-
-    function LogLikeDataParams(like, CMB, DataParams)
-    class(TDataLikelihood) :: like
-    class(*) :: CMB
-    real(mcp) :: DataParams(:)
-    real(mcp) LogLikeDataParams
-
-    LogLikeDataParams = like%logLikeTheory(CMB)
-    end function LogLikeDataParams
-
-    function LogLike(like, CMB, Theory, DataParams)
-    class(TDataLikelihood) :: like
-    !    class(TTheoryParams) :: CMB
-    !    class(TTheoryPredictions) :: Theory
-    !using generic types avoids need for explicit type casting in implementions
-    class(*) :: CMB
+    class(*) :: Params
     class(*) :: Theory
     real(mcp) :: DataParams(:)
     real(mcp) LogLike
 
-    logLike = like%LogLikeDataParams(CMB, DataParams)
-    end function
+    stop 'GetLogLike should not be overridden'
+    logLike = LogZero
+
+    end function GetLogLike
 
     subroutine loadParamNames(like, fname)
     class(TDataLikelihood) :: like

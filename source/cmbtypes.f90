@@ -66,7 +66,7 @@
     integer :: index_initpower
 
 
-    type, extends(TDatasetFileLikelihood) :: TCosmologyLikelihood
+    type, extends(TDatasetFileLikelihood) :: TCosmologyRequirementsLikelihood
         !Don't have to use extract features of DatasetFileLikelihood
         !not implemented yet..
         !        integer :: needs_cl_lmax = 0
@@ -80,7 +80,7 @@
         integer, dimension(:), allocatable :: exact_z_index
         real(mcp) :: max_z
         real(mcp) :: kmax = 0.8
-    end type TCosmologyLikelihood
+    end type TCosmologyRequirementsLikelihood
 
     Type, extends(TTheoryParams) :: CMBParams
         real(mcp) InitPower(max_inipower_params)
@@ -124,7 +124,7 @@
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
         select type (DataLike)
-        class is (TCosmologyLikelihood)
+        class is (TCosmologyRequirementsLikelihood)
             if (DataLike%needs_background_functions) DataLike%dependent_params(1:num_hard)=.true.
             if (DataLike%needs_powerspectra) DataLike%dependent_params(1:num_theory_params)=.true.
         end select
@@ -139,7 +139,6 @@
     allocate(CMBParams::TheoryParams)
 
     end subroutine TCosmologyParameterization_NewTheoryParams
-
 
     subroutine Initialize_PKSettings()
     use likelihood
@@ -156,7 +155,7 @@
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
         select type (DataLike)
-        class is (TCosmologyLikelihood)
+        class is (TCosmologyRequirementsLikelihood)
             if (DataLike%needs_powerspectra) then
                 power_kmax = max(power_kmax,DataLike%kmax)
                 use_nonlinear = use_nonlinear .or. DataLike%needs_nonlinear_pk
@@ -242,7 +241,7 @@
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
         select type (DataLike)
-        class is (TCosmologyLikelihood)
+        class is (TCosmologyRequirementsLikelihood)
             if (DataLike%needs_powerspectra) then
                 if(DataLike%needs_exact_z) then
                     DataLike%exact_z_index = 0

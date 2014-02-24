@@ -42,7 +42,7 @@ use cmbtypes
 use CosmoTheory
 use MatrixUtils
 use CMBLikes
-use likelihood
+use Likelihood_Cosmology
 implicit none
 
     logical :: Use_clik= .false.
@@ -605,7 +605,6 @@ contains
   ! correlation-matrix (ignored)
   ! }
   ! covariance matrix
-   use constants
    Type(CMBDataLikelihood), target :: like
    CHARACTER(LEN=*), INTENT(IN) :: aname
    TYPE (CMBdataset), pointer :: aset
@@ -792,7 +791,8 @@ contains
    !in units of T_CMB whitle bandpowers are in units
    !of \microK^2
    IF(FISHER_T_CMB) THEN
-      aset%N_inv = cal**4 * aset%N_inv *COBE_CMBTemp**4 * 1.e24
+!      aset%N_inv = cal**4 * aset%N_inv *COBE_CMBTemp**4 * 1.e24
+    call MpiStop('FISHER_T_CMB deprecated')
    ELSE
       aset%N_inv = cal**4 * aset%N_inv
    ENDIF

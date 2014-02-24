@@ -22,6 +22,7 @@
     procedure :: GetNewPowerData
     procedure :: GetNewTransferData
     procedure :: GetTheoryForImportance
+    procedure :: GetCosmoTheoryForImportance
     procedure :: GetZreFromTau
     procedure :: GetOpticalDepth
     procedure :: SetBackgroundTheoryData
@@ -103,8 +104,23 @@
 
     end subroutine GetNewPowerData
 
-
     subroutine GetTheoryForImportance(this, CMB, Theory, error)
+    class(TCosmologyCalculator) :: this
+    class(TTheoryParams) :: CMB
+    class(TTheoryPredictions) :: Theory
+    integer error
+
+    select type (CMB)
+    class is (CMBParams)
+        select type (Theory)
+        class is (TCosmoTheoryPredictions)
+            call this%GetCosmoTheoryForImportance(CMB, Theory, error)
+        end select
+    end select
+
+    end subroutine GetTheoryForImportance
+
+    subroutine GetCosmoTheoryForImportance(this, CMB, Theory, error)
     class(TCosmologyCalculator) :: this
     class(CMBParams) :: CMB
     class(TCosmoTheoryPredictions) :: Theory
@@ -115,7 +131,7 @@
     !Theory may already be calculated, so only fill in missing bits (DoCls, DoPk) + derived
     call this%ErrorNotImplemented('GetTheoryForImportance')
 
-    end subroutine GetTheoryForImportance
+    end subroutine GetCosmoTheoryForImportance
 
     function GetOpticalDepth(this,CMB)
     class(TCosmologyCalculator) :: this

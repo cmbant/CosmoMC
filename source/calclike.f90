@@ -294,7 +294,7 @@
             like => DataLikelihoods%Item(i)
             if (any(like%dependent_params(1:num_params) .and. this%changeMask(1:num_params) )) then
                 call this%GetTheoryForLike(like)
-                itemLike = like%LogLike(this%TheoryParams, this%Params%Theory, this%Params%P(like%nuisance_indices))
+                itemLike = like%GetLogLike(this%TheoryParams, this%Params%Theory, this%Params%P(like%nuisance_indices))
 
                 if (itemLike == logZero) return
                 this%Params%Likelihoods(i) = itemLike

@@ -295,8 +295,8 @@
 
     subroutine TTheoryCalculator_GetTheoryForImportance(this, CMB, Theory, error)
     class(TTheoryCalculator) :: this
-    class(*) :: CMB
-    class(*) :: Theory
+    class(TTheoryParams) :: CMB
+    class(TTheoryPredictions) :: Theory
     integer error
 
     error=0

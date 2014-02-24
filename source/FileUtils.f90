@@ -25,16 +25,6 @@
 
     end function FileExists
 
-    function DirectoryExists(aname)
-    character(LEN=*), intent(IN) :: aname
-    logical DirectoryExists
-
-    !Does not work in some cases
-    inquire(file=CheckTrailingSlash(aname)//'/.', exist=DirectoryExists)
-
-    end function DirectoryExists
-
-
     function FileSize(name) result(fsize)
     integer fsize
     character(LEN=*), intent(in)::name

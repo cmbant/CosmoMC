@@ -1,3 +1,46 @@
+    module classes
+    implicit none
+    Type AData
+    end Type
+
+    Type A
+        integer :: aa =1
+    contains
+    procedure :: Work
+    end type
+
+    Type, extends(AData) :: BData
+    end Type
+
+    Type, extends(A) :: B
+    contains
+    procedure :: Work => Work2
+    end type
+
+    contains
+
+    subroutine Work(this, D)
+    class(A) :: this
+    class(*), target :: D
+
+    associate (F => A())
+        print *,F.aa
+    end associate
+    end subroutine
+
+    subroutine Work2(this, D)
+    class(B) :: this
+    class(*), target :: D
+    class(BData), pointer :: B
+
+    B=>D	
+
+    end subroutine
+
+
+    end module classes
+
+
     module tests
     use ObjectLists
     implicit none
@@ -10,6 +53,7 @@
     contains
 
     subroutine RunTests
+
     call test_TRealArrayList
     call test_TRealLIst
     call test_TStringLIst
