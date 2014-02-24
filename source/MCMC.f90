@@ -16,15 +16,8 @@
     contains
     procedure :: AddNewPoint => TSampleCollector_AddNewPoint
     procedure :: AddNewWeightedPoint => TSampleCollector_AddNewWeightedPoint
-    procedure :: ReadCheckpoint
+    procedure :: ReadCheckpoint => TSampleCollector_ReadCheckpoint
     end Type
-
-    abstract interface
-    subroutine ReadCheckpoint(this)
-    import TSampleCollector
-    class(TSampleCollector) :: this
-    end subroutine ReadCheckpoint
-    end interface
 
     Type, extends(TLikelihoodUser) :: TSamplingAlgorithm
         integer :: num_sample = 0
@@ -478,8 +471,12 @@
     real(mcp) CurLike
     real(mcp), intent(in):: mult !tbe weight, usually integer for standard chains
     integer, intent(in), optional :: thin_fac
-
     !Add samples accumulated into weighted sample
     end subroutine TSampleCollector_AddNewWeightedPoint
+
+    subroutine TSampleCollector_ReadCheckpoint(this)
+    class(TSampleCollector) :: this
+    end subroutine TSampleCollector_ReadCheckpoint
+
 
     end module MonteCarlo
