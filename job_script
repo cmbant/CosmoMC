@@ -1,6 +1,6 @@
 #!/bin/bash
 
-##Example for Darwin in Cambridge (adapted from STG python)
+##Example for Darwin in Cambridge (adapted from STG perl script)
 
 #SBATCH -p sandybridge
 #SBATCH -A PLANCK
@@ -18,17 +18,17 @@ module load default-impi
 module load cfitsio
 
 
-echo Running on host \`hostname\`
-echo Time is \`date\`
-echo Directory is \`pwd\`
-echo Slurm job ID is \$SLURM_JOBID
+echo Running on host `hostname`
+echo Time is `date`
+echo Directory is `pwd`
+echo Slurm job ID is $SLURM_JOBID
 echo This jobs runs on the following machines:
 export NODEFILE=`generate_pbs_nodefile`
-echo \`cat \$NODEFILE | uniq\`
+echo `cat $NODEFILE | uniq`
 
-cat \$NODEFILE | uniq > scripts/machine.file.\$SLURM_JOBID
+cat $NODEFILE | uniq > scripts/machine.file.$SLURM_JOBID
 
-export OMP_NUM_THREADS=$omp
+export OMP_NUM_THREADS=##OMP##
 export I_MPI_PIN_DOMAIN=omp:compact
 export I_MPI_PIN_ORDER=scatter
 export I_MPI_CPUINFO=proc
