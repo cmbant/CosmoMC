@@ -233,7 +233,7 @@
 
     subroutine TChainSampler_ReadParams(this, Ini)
     class(TChainSampler) :: this
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
 
     if (use_fast_slow) then
         this%oversample_fast = Ini%Read_Int('oversample_fast',1, min=1)
@@ -457,7 +457,7 @@
 
     subroutine TFastDraggingSampler_ReadParams(this, Ini)
     class(TFastDraggingSampler) :: this
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
 
     call this%TMetropolisSampler%ReadParams(Ini)
     this%output_thin = 1

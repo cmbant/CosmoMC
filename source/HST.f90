@@ -27,7 +27,7 @@
 
     subroutine HSTLikelihood_Add(LikeList, Ini)
     class(TLikelihoodList) :: LikeList
-    class(TIniFile) :: ini
+    class(TSettingIni) :: ini
     Type(HSTLikelihood), pointer :: like
 
     if (Ini%Read_Logical('use_HST',.false.)) then

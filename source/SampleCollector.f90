@@ -114,7 +114,7 @@
 
     subroutine TMpiChainCollector_ReadParams(this,Ini)
     class(TMpiChainCollector) :: this
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
 
 #ifdef MPI
     this%Mpi%MPI_StartTime = MPI_WTime()

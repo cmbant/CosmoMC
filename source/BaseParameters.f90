@@ -148,7 +148,7 @@
 
     subroutine TBaseParameters_ReadPriors(this,Ini)
     class(TBaseParameters) :: this
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     integer i, status
     character(LEN=:), allocatable :: InLine
 
@@ -262,7 +262,7 @@
 
     subroutine TBaseParameters_SetFastSlowParams(this,Ini, use_fast_slow)
     class(TBaseParameters) :: this
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     logical, intent(in) :: use_fast_slow
     integer i, j, ix
     integer fast_params(num_params)

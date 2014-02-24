@@ -620,7 +620,7 @@
     !------------------------------------------------------------
     SUBROUTINE read_snls_dataset(like,ini)
     class(SNLSLikelihood) :: like
-    class(TIniFile) :: Ini
+    class(TSettingIni) :: Ini
     CHARACTER(LEN=60) :: covfile
     CHARACTER(LEN=100) :: data_file, absdist_file
     INTEGER :: nlines, file_unit, i

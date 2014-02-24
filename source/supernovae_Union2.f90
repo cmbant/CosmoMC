@@ -65,7 +65,6 @@
     use Calculator_Cosmology
     use Likelihood_Cosmology
     implicit none
-
     private
 
     integer, parameter :: SN_num = 580
@@ -82,7 +81,7 @@
 
     subroutine Union2Likelihood_Add(LikeList, Ini)
     class(TLikelihoodList) :: LikeList
-    class(TIniFile) :: ini
+    class(TSettingIni) :: ini
     Type(Union2Likelihood), pointer :: like
     character (LEN=20):: name
     integer i, unit
