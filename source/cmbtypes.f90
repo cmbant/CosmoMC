@@ -141,7 +141,6 @@
     end subroutine TCosmologyParameterization_NewTheoryParams
 
     subroutine Initialize_PKSettings()
-    use likelihood
     class(TDataLikelihood), pointer :: DataLike
     Type(TRealList) :: exact_z, full_z
     real(mcp) :: dlnz, maxz, zcur
@@ -230,7 +229,6 @@
     end subroutine Initialize_PKSettings
 
     subroutine IndexExactRedshifts(A,error)
-    use likelihood
     class(TDataLikelihood), pointer :: DataLike
     real(mcp), dimension(:) :: A
     integer, intent(out), optional :: error

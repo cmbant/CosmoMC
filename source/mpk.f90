@@ -162,7 +162,8 @@
     like%PKData%mpk_k(1:like%num_mpk_kbands_use)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
     if (Feedback > 1) then
         write(*,*) 'reading: '//trim(like%name)//' data'
-        write(*,*) 'Using kbands windows between',real(like%PKData%mpk_k(1)),' < k/h < ',real(like%PKData%mpk_k(like%num_mpk_kbands_use))
+        write(*,*) 'Using kbands windows between',real(like%PKData%mpk_k(1)),' < k/h < ', &
+        & real(like%PKData%mpk_k(like%num_mpk_kbands_use))
     endif
     !if  (like%PKData%mpk_k(1) < matter_power_minkh) then
     !    write (*,*) 'WARNING: k_min in '//trim(like%name)//'less than setting in cmbtypes.f90'

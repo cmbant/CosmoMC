@@ -111,7 +111,8 @@
     !                       Xiao Dong-Li and Shuang Wang for catching this
 
     USE cmbtypes
-    USE settings, ONLY: logZero
+    USE settings
+    use CosmoTheory
     use Calculator_Cosmology
     use Likelihood_Cosmology
     IMPLICIT NONE
@@ -225,7 +226,7 @@
 
     subroutine SNLSLikelihood_Add(LikeList, Ini)
     class(TLikelihoodList) :: LikeList
-    class(TIniFile) :: ini
+    class(TSettingIni) :: ini
     Type(SNLSLikelihood), pointer :: like
     integer alpha_i, beta_i
 
@@ -618,8 +619,6 @@
     !  filename        The name of the .ini file specifying the SN dataset
     !------------------------------------------------------------
     SUBROUTINE read_snls_dataset(like,ini)
-    use IniObjects
-    IMPLICIT NONE
     class(SNLSLikelihood) :: like
     class(TIniFile) :: Ini
     CHARACTER(LEN=60) :: covfile
@@ -1191,7 +1190,7 @@
     FUNCTION snls_LnLike(like, CMB, Theory, DataParams)
     Class(SNLSLikelihood) :: like
     Class (CMBParams) CMB
-    Class(TTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions) Theory
     real(mcp) DataParams(:)
     ! norm_alpha, norm_beta are the positions of alpha/beta in norm
     REAL(mcp) :: snls_LnLike
