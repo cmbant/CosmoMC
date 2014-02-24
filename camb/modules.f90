@@ -2185,7 +2185,7 @@
     iNLL=1
     do while (iPk<=P%PK_num_redshifts .or. iNLL<=P%NLL_num_redshifts)
         !JD write the next line like this to account for roundoff issues with ==. Preference given to PK_Redshift
-            i=i+1
+        i=i+1
         if (i > max_transfer_redshifts) &
         call Mpistop('Transfer_SortAndIndexRedshifts: Too many redshifts')
 

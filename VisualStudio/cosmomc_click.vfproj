@@ -62,6 +62,7 @@
 		<File RelativePath="..\source\lrggettheory.f90"/>
 		<File RelativePath="..\source\mpk.f90"/>
 		<File RelativePath="..\source\Planck_like.f90"/>
+		<File RelativePath="..\source\pol_like.f90"/>
 		<File RelativePath="..\source\supernovae.f90"/>
 		<File RelativePath="..\source\supernovae_SNLS.f90"/>
 		<File RelativePath="..\source\supernovae_Union2.f90"/>
