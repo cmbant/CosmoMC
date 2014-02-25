@@ -28,6 +28,7 @@
     use settings
     use cmbtypes
     use CosmoTheory
+    use Interpolation
     implicit none
 
     real(mcp), parameter :: za = 0.22d0, zb = 0.41d0, zc = 0.6d0, zd = 0.78d0
@@ -35,21 +36,22 @@
 
     !settings power spectra evaluated at GiggleZ fiducial cosmological theory
     !power spectra evaluated at GiggleZ fiducial cosmological theory
-    Type(TCosmoTheoryPK) GiggleZPK
+    Type(TCubicSpline), allocatable ::  GiggleZPK(:)
     integer, parameter :: GiggleZ_numk = 500
     integer, parameter :: GiggleZ_numz = 4
     contains
 
     subroutine GiggleZinfo_init()
     integer :: iopb, ik, iz
-    real(mcp) :: kval, power_nl
+    real(mcp),allocatable :: kval(:), power_nl(:)
     character(LEN=:), allocatable :: fname
     Type(TTextFile) :: F
     
-    call GiggleZPK%InitPK(GiggleZ_numk,GiggleZ_numz,.true.)
-    GiggleZPK%redshifts = zeval
+    allocate(GiggleZPK(GiggleZ_numz))
+    allocate(kval(GiggleZ_numk))
+    allocate(power_nl(GiggleZ_numk))
 
-    do iz=1,GiggleZPK%num_z
+    do iz=1,GiggleZ_numz
         !! first read in everything needed from the CAMB output files.
         iopb = 0 !! check later if there was an error
         if(iz.eq.1) then
@@ -62,17 +64,15 @@
             fname = 'gigglezfiducialmodel_matterpower_d.dat'
         end if
         call F%Open(DataDir//fname)
-        do ik=1, GiggleZPK%num_k
-            read (F%unit,*,iostat=iopb)kval,power_nl
+        do ik=1, GiggleZ_numk
+            read (F%unit,*,iostat=iopb)kval(ik),power_nl(ik)
             if(iopb .ne. 0) stop 'Error reading model or fiducial theory files.'
-            !JD PK arrays store log(k); we choose to store log(PK) for interpolation
-            if(iz==1) GiggleZPK%log_kh(ik) = log(kval)
-            GiggleZPK%matter_power(ik,iz) = log(power_nl)
+            !JD PK arrays store log(k); we choose to store log(PK) for interpolation    
         end do
         call F%Close()
+        call GiggleZPK(iz)%Init(kval,log(power_nl),GiggleZ_numk )
     end do
-    call GiggleZPK%IOPK_Getsplines()
-
+    
     end subroutine GiggleZinfo_init
 
     ! HARD CODING OF POLYNOMIAL FITS TO FOUR REDSHIFT BINS.
@@ -101,7 +101,7 @@
     integer, intent(in) :: zbin
     real(mcp), intent(inout) :: PK
 
-    PK = PK*GiggleZtoICsmooth(kh,zbin)/GiggleZPK%PowerAt_zbin(kh,zbin)
+    PK = PK*GiggleZtoICsmooth(kh,zbin)/exp(GiggleZPK(zbin)%value(kh))
 
     end subroutine WiggleZPowerAt
 
@@ -526,9 +526,9 @@
 
     z = like%exact_z(1)
     
-    if(abs(z-PK%redshifts(like%exact_z_index(1)))>1.d-3)then
+    if(abs(z-PK%y(like%exact_z_index(1)))>1.d-3)then
         write(*,*)'ERROR: WiggleZ redshift does not match the value stored'
-        write(*,*)'       in the PK%redshifts array.'
+        write(*,*)'       in the PK%y array.'
         call MpiStop()
     end if
 
@@ -542,8 +542,8 @@
     do i=1, num_mpk_kbands_use
         ! It could be that when we scale the k-values, the lowest bin drops off the bottom edge
         !Errors from using matter_power_minkh at lower end should be negligible
-        k_scaled(i)=max(exp(PK%log_kh(1)),like%PKdata(1)%mpk_k(i)*a_scl)
-        mpk_lin(i) = PK%PowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
+        k_scaled(i)=max(exp(PK%x(1)),like%PKdata(1)%mpk_k(i)*a_scl)
+        mpk_lin(i) = PK%PowerAt(k_scaled(i),like%exact_z(1))/a_scl**3
         if(use_gigglez) call WiggleZPowerAt(k_scaled(i),like%zbin,mpk_lin(i))
     end do
 

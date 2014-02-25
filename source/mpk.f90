@@ -301,16 +301,16 @@
         a_scl = 1
     end if
 
-    if(abs(like%exact_z(1)-PK%redshifts(like%exact_z_index(1)))>1.d-3)then
+    if(abs(like%exact_z(1)-PK%y(like%exact_z_index(1)))>1.d-3)then
         write(*,*)'ERROR: MPK redshift does not match the value stored'
-        write(*,*)'       in the PK%redshifts array.'
+        write(*,*)'       in the PK%y array.'
         call MpiStop()
     end if
 
     do i=1, like%num_mpk_kbands_use
         !Errors from using matter_power_minkh at lower end should be negligible
-        k_scaled(i)=max(exp(PK%log_kh(1)),a_scl*like%PKData%mpk_k(i))
-        mpk_lin(i)=PK%PowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
+        k_scaled(i)=max(exp(PK%x(1)),a_scl*like%PKData%mpk_k(i))
+        mpk_lin(i)=PK%PowerAt(k_scaled(i),like%exact_z(1))/a_scl**3
     end do
 
 

@@ -108,18 +108,18 @@
             if(Theory%sigma_8==0) &
             call MpiStop('ERROR: Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk')
 
-            if((power_redshifts(num_power_redshifts)-Theory%MPK%redshifts(Theory%MPK%num_z))>1.d-3)then
+            if((power_redshifts(num_power_redshifts)-Theory%MPK%y(Theory%MPK%ny))>1.d-3)then
                 write(*,*) 'ERROR: Thes elected datasets call for a higher redshift than has been calculated'
                 write(*,*) '       Use redo_theory and redo_pk'
                 call MpiStop()
             end if
-            if(num_power_redshifts > Theory%MPK%num_z)then
+            if(num_power_redshifts > Theory%MPK%ny)then
                 write(*,*) 'ERROR: The selected datasets call for more redshifts than are calculated'
                 write(*,*) '       Use redo_theory and redo_pk'
                 call MpiStop()
             end if
             index_error =0
-            call IndexExactRedshifts(Theory%MPK%redshifts,index_error)
+            call IndexExactRedshifts(Theory%MPK%y,index_error)
             if(index_error>0)then
                 write(*,*) 'ERROR: One of the datasets needs an exact redshift that is not present '
                 write(*,*) '       Use redo_theory and redo_pk'
