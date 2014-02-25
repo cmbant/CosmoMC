@@ -55,7 +55,7 @@
     else
         amode = 'unformatted'
     end if
-    open(file=aname,form=amode,status='old', action='read', newunit=aunit, iostat=status)
+    open(file=aname,form=amode,status='old', action='read', newunit=aunit, iostat=status, access="stream")
     if (status/=0) call FileUtils_Error(aname, 'File not found', errormsg)
 
     end function OpenNewFile
@@ -82,7 +82,7 @@
     else
         amode = 'unformatted'
     end if
-    open(file=aname,form=amode,status='replace', newunit=aunit, iostat=status)
+    open(file=aname,form=amode,status='replace', newunit=aunit, iostat=status, access="stream")
     if (status/=0) call FileUtils_Error(aname, 'Error creating file', errormsg)
 
     end function CreateNewFile
@@ -92,15 +92,8 @@
     character(LEN=*), intent(IN) :: aname
     integer :: aunit
     logical, optional, intent(in) :: append
-    logical A
 
-    if (present(append)) then
-        A=append
-    else
-        A = .false.
-    endif
-
-    aunit = CreateOpenNewFile(aname,'formatted',A)
+    aunit = CreateOpenNewFile(aname,'formatted',append)
 
     end function CreateOpenNewTxtFile
 
@@ -114,7 +107,7 @@
     character(LEN=:), allocatable :: amode, pos, state
 
     if (present(append)) then
-        A=append
+        A=append 
     else
         A = .false.
     endif
