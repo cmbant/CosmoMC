@@ -152,17 +152,14 @@
 
     end function TParameterization_NonBaseParameterPriors
 
-    function TParameterization_CalcDerivedParams(this, P, Theory, derived) result (num_derived)
+    subroutine TParameterization_CalcDerivedParams(this, P, Theory, derived) 
     class(TParameterization) :: this
-    Type(mc_real_pointer) :: derived
+    real(mcp), allocatable :: derived(:)
     class(TTheoryPredictions), pointer :: Theory !can be null for simple cases (e.g. generic)
     real(mcp) :: P(:)
-    integer num_derived
 
-    num_derived = 0
-    allocate(Derived%P(num_derived))
 
-    end function TParameterization_CalcDerivedParams
+    end subroutine TParameterization_CalcDerivedParams
 
     subroutine TParameterization_NewTheoryParams(this,TheoryParams)
     class(TParameterization) :: this
@@ -228,24 +225,24 @@
     class(TGeneralConfig) :: Config
     real(mcp), intent(in) :: mult, like
     real(mcp), allocatable :: output_array(:)
-    Type(mc_real_pointer) :: derived
+    real(mcp), allocatable :: derived(:)
     integer :: numderived = 0
 
     if (outfile_handle ==0) return
 
-    numderived = Config%Parameterization%CalcDerivedParams(this%P, this%Theory, derived)
-    numderived = DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived)
+    call Config%Parameterization%CalcDerivedParams(this%P, this%Theory, derived)
+    call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived)
 
-    if (numderived==0) then
+    if (allocated(derived)) numderived = size(derived)
+    if (numderived > 0) then
         call IO_OutputChainRow(outfile_handle, mult, like, this%P(params_used), num_params_used)
     else
         allocate(output_array(num_params_used + numderived))
         output_array(1:num_params_used) =  this%P(params_used)
-        output_array(num_params_used+1:num_params_used+numderived) =  derived%P
+        output_array(num_params_used+1:num_params_used+numderived) =  derived
         call IO_OutputChainRow(outfile_handle, mult, like, output_array)
         deallocate(output_array)
     end if
-    deallocate(derived%P)
 
     end subroutine TCalculationAtParamPoint_WriteParams
 

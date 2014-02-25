@@ -398,8 +398,8 @@
     Type(ParamSet) P
     real(mcp), intent(in), optional :: like
     integer, intent(in) :: aunit
-    Type(mc_real_pointer) :: derived
-    integer numderived
+    real(mcp), allocatable :: derived(:)
+    integer :: numderived = 0
     integer isused,i
 
     if (present(like)) then
@@ -421,14 +421,14 @@
 
     if (generic_mcmc) return
 
-    numderived = this%LikeCalculator%Config%Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
-    numderived = DataLikelihoods%addLikelihoodDerivedParams(P%P, P%Theory, derived)
+    call this%LikeCalculator%Config%Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
+    call DataLikelihoods%addLikelihoodDerivedParams(P%P, P%Theory, derived)
+    if (allocated(derived)) numderived = size(derived)
     do i=1, numderived
         write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-        num_params+i, derived%P(i), BaseParams%NameMapping%name(num_params + i )
+        num_params+i, derived(i), BaseParams%NameMapping%name(num_params + i )
         write (aunit,'(a)') trim(BaseParams%NameMapping%label(num_params+i))
     end do
-    deallocate(derived%P)
 
     if (present(like)) then
         write(aunit,*) ''

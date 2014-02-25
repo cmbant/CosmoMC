@@ -4,6 +4,7 @@
     use likelihood
     use ObjectLists
     use IO
+    use RandUtils
     implicit none
     private
 

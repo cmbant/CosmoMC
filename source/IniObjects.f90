@@ -7,7 +7,7 @@
     use FileUtils
     use StringUtils
     implicit none
-    public
+    private
 
     character(LEN=0), target :: Empty_String = ''
 
@@ -76,6 +76,7 @@
     generic :: Read => Ini_Read_Real_Change, Ini_Read_Double_Change, Ini_Read_Int_Change, Ini_Read_Logical_Change
     end Type TIniFile
 
+    public TNameValueList, TIniFile
     contains
 
     subroutine TNameValueList_Init(L, ignoreDuplicates)
@@ -252,7 +253,7 @@
     character(LEN=*), optional :: Key
 
     if (present(Key)) then
-        write(*,*) 'Error for key '//trim(Key)//' : '//Msg
+        write(*,*) 'Error for key "'//trim(Key)//'" : '//Msg
     else
         write(*,*) 'Error :'//Msg
     end if

@@ -8,10 +8,11 @@
     use CosmologyConfig
     use GeneralSetup
     use DataLikelihoodList
+    use RandUtils
     implicit none
 
     character(LEN=:), allocatable :: LogFile,  numstr, fname, rootdir
-    character(LEN=:), allocatable :: InputFile 
+    character(LEN=:), allocatable :: InputFile
     Type(TSettingIni) :: Ini
     integer  i
     Type(ParamSet) Params !, EstParams
@@ -31,8 +32,7 @@
     if (ierror/=MPI_SUCCESS) stop 'MPI fail: rank'
     MPIRun_start_time = MPI_WTime()
 #endif
-    
-    
+
     instance = 0
 #ifndef MPI
     InputFile = GetParam(1)
@@ -267,7 +267,7 @@
     else
         call DoAbort('undefined action')
     end if
-    if (logfile_unit /=0) close(logfile_unit) 
+    if (logfile_unit /=0) close(logfile_unit)
 
     call DoStop('Total requested samples obtained',.true.)
 
@@ -277,7 +277,7 @@
     subroutine SetIdlePriority
 #ifdef RUNIDLE
     USE DFWIN
-    Integer dwPriority 
+    Integer dwPriority
     Integer CheckPriority
 
     dwPriority = 64 ! idle priority

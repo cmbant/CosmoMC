@@ -1,17 +1,10 @@
     module settings
-    use RandUtils
     use FileUtils
     use StringUtils
     use MpiUtils
     use IniObjects
     use ParamNames
-#ifdef f2003
     use, intrinsic :: iso_fortran_env, only : input_unit, output_unit,error_unit
-#else
-#define input_unit  5
-#define output_unit 6
-#define error_unit 0
-#endif
     implicit none
 
 #ifdef SINGLE
@@ -48,7 +41,7 @@
     procedure :: ReadFilename => TSettingIni_ReadFilename
     end type
 
-    real(mcp) :: AccuracyLevel = 1.
+    real(mcp) :: AccuracyLevel = 1
     !Set to >1 to use theory calculation etc on higher accuracy settings.
     !Does not affect MCMC (except making it all slower)
 
@@ -108,11 +101,6 @@
     character(LEN=:), allocatable :: baseroot, rootname
 
     integer, parameter :: stdout = output_unit
-
-    type mc_real_pointer
-        real(mcp), dimension(:), pointer :: p => null()
-    end type mc_real_pointer
-
 
     contains
 
@@ -186,11 +174,7 @@
     logical, optional :: NotFoundFail
     integer i
 
-    if (present(NotFoundFail)) then
-        filename = Ini%Read_String(key, NotFoundFail)
-    else
-        filename = Ini%Read_String(key)
-    end if
+    filename = Ini%Read_String(key, NotFoundFail)
     if (present(ADir)) then
         repdir=ADir
     else

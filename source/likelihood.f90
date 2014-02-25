@@ -188,32 +188,33 @@
 
     end subroutine checkAllConflicts
 
-    function addLikelihoodDerivedParams(L, P, Theory, derived) result(num_derived)
+    subroutine addLikelihoodDerivedParams(L, P, Theory, derived)
     class(TLikelihoodList) :: L
-    Type(mc_real_pointer) :: derived
+    real(mcp), allocatable :: derived(:)
     class(*) :: Theory
     real(mcp) :: P(:)
-    real(mcp), pointer :: allDerived(:)
-    integer num_derived
+    real(mcp), allocatable :: allDerived(:)
     Class(TDataLikelihood), pointer :: DataLike
     integer i, stat
+    integer :: num_in = 0
+    integer :: num_derived = 0
 
-    num_derived = L%num_derived_parameters + size(derived%P)
     if (L%num_derived_parameters==0) return
 
+    if (allocated(derived)) num_in = size(derived)
+    num_derived = L%num_derived_parameters + num_in
     allocate(allDerived(num_derived))
-    allDerived(1:size(derived%P)) = derived%P
-    deallocate(derived%P)
-    derived%P => allDerived
+    if (num_in >= 0) allDerived(1:num_in) = derived
+    call move_alloc(allDerived, derived)
 
     do i=1,L%Count
         DataLike=>L%Item(i)
         if (allocated(DataLike%derived_indices)) then
-            Derived%P(DataLike%derived_indices) = DataLike%derivedParameters(Theory, P(DataLike%nuisance_indices))
+            Derived(DataLike%derived_indices) = DataLike%derivedParameters(Theory, P(DataLike%nuisance_indices))
         end if
     end do
 
-    end function addLikelihoodDerivedParams
+    end subroutine addLikelihoodDerivedParams
 
     function derivedParameters(like, Theory, DataParams) result(derived)
     class(TDataLikelihood) :: like

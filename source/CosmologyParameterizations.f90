@@ -152,9 +152,9 @@
 
     end subroutine TP_ParamArrayToTheoryParams
 
-    function TP_CalcDerivedParams(this, P, Theory, derived) result (num_derived)
+    subroutine TP_CalcDerivedParams(this, P, Theory, derived) 
     class(ThetaParameterization) :: this
-    Type(mc_real_pointer) :: derived
+    real(mcp), allocatable :: derived(:)
     class(TTheoryPredictions), pointer :: Theory
     real(mcp) :: P(:)
     Type(CMBParams) CMB
@@ -163,27 +163,27 @@
     select type (Theory)
     class is (TCosmoTheoryPredictions)
         num_derived = 13 +  Theory%numderived
-        allocate(Derived%P(num_derived))
+        allocate(Derived(num_derived))
 
         call this%ParamArrayToTheoryParams(P,CMB)
 
-        derived%P(1) = CMB%omv
-        derived%P(2) = CMB%omdm+CMB%omb
-        derived%P(3) = Theory%Sigma_8
-        derived%P(4) = CMB%zre
-        derived%P(5) = Theory%tensor_ratio_r10
-        derived%P(6) = CMB%H0
-        derived%P(7) = Theory%tensor_ratio_02
-        derived%P(8) = cl_norm*CMB%InitPower(As_index)*1e9
-        derived%P(9) = CMB%omdmh2 + CMB%ombh2
-        derived%P(10)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
-        derived%P(11)= CMB%Yhe !value actually used, may be set from bbn consistency
-        derived%P(12)= derived%P(8)*exp(-2*CMB%tau)  !A e^{-2 tau}
-        derived%P(13) = CMB%omnuh2
-        derived%P(14:num_derived) = Theory%derived_parameters(1: Theory%numderived)
+        derived(1) = CMB%omv
+        derived(2) = CMB%omdm+CMB%omb
+        derived(3) = Theory%Sigma_8
+        derived(4) = CMB%zre
+        derived(5) = Theory%tensor_ratio_r10
+        derived(6) = CMB%H0
+        derived(7) = Theory%tensor_ratio_02
+        derived(8) = cl_norm*CMB%InitPower(As_index)*1e9
+        derived(9) = CMB%omdmh2 + CMB%ombh2
+        derived(10)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
+        derived(11)= CMB%Yhe !value actually used, may be set from bbn consistency
+        derived(12)= derived(8)*exp(-2*CMB%tau)  !A e^{-2 tau}
+        derived(13) = CMB%omnuh2
+        derived(14:num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
-    end function TP_CalcDerivedParams
+    end subroutine TP_CalcDerivedParams
 
     subroutine SetFast(Params,CMB)
     real(mcp) Params(num_Params)
@@ -305,23 +305,20 @@
     end subroutine BK_ParamArrayToTheoryParams
 
 
-    function BK_CalcDerivedParams(this, P, Theory, derived) result (num_derived)
+    subroutine BK_CalcDerivedParams(this, P, Theory, derived) 
     class(BackgroundParameterization) :: this
-    Type(mc_real_pointer) :: derived
+    real(mcp), allocatable :: derived(:)
     class(TTheoryPredictions), pointer :: Theory
     real(mcp) :: P(:)
     Type(CMBParams) CMB
-    integer num_derived
 
-    num_derived = 1
-
-    allocate(Derived%P(num_derived))
+    allocate(Derived(1))
 
     call this%ParamArrayToTheoryParams(P,CMB)
 
-    derived%P(1) = CMB%omv
+    derived(1) = CMB%omv
 
-    end function BK_CalcDerivedParams
+    end subroutine BK_CalcDerivedParams
 
 
     end module CosmologyParameterizations
