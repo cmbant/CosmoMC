@@ -24,11 +24,12 @@
         !MPK's are interpolator objects now
         !MPK%x = logkh, MPK%y = z (redshift), MPK%z =>actual data array
         !MPK%nx = num_k, MPK%ny = num_z
-        type(TCosmoTheoryPK), pointer :: MPK
-        type(TCosmoTheoryPK), pointer :: NL_MPK
+        type(TCosmoTheoryPK), pointer :: MPK => Null()
+        type(TCosmoTheoryPK), pointer :: NL_MPK => Null()
         !For use with for example WL PK's
         real(mcp), allocatable :: NL_Ratios(:,:)
     contains
+    procedure :: PKFree
     procedure :: ClsFromTheoryData
     procedure :: WriteTextCls
     !Inherited overrides
@@ -43,9 +44,11 @@
     function PowerAt(PK,k,z) result(outpower)
     class(TCosmoTheoryPK) PK
     real(mcp), intent(in) :: k,z
+    real(mcp) :: logk
     real(mcp) :: outpower
     integer :: error
     
+    logk=log(k)
     if(.not. allocated(PK%x)) then
         write(*,*) 'ERROR:  PowerAt least one of your PK arrays is not initialized:'
         write(*,*) '        Make sure you are calling a SetPk and filling your power spectra.'
@@ -55,12 +58,25 @@
     end if
     
     if(PK%islog) then 
-        outpower = exp(PK%Value(k,z))
+        outpower = exp(PK%Value(logk,z))
     else
-        outpower = PK%Value(k,z)
+        outpower = PK%Value(logk,z)
     end if
     
     end function PowerAt    
+
+    subroutine PKFree(T)
+    class(TCosmoTheoryPredictions) T
+    
+    if(associated(T%MPK))then
+        call T%MPK%Free()
+    end if
+    if(associated(T%NL_MPK))then
+        call T%NL_MPK%Free()
+    end if
+    if(allocated(T%NL_Ratios))deallocate(T%NL_Ratios)
+    
+    end subroutine PKFree    
 
     subroutine ClsFromTheoryData(T, Cls)
     class(TCosmoTheoryPredictions) T
@@ -123,10 +139,10 @@
     if (get_sigma8 .or. use_LSS) write(F%unit) T%sigma_8
 
     if (use_LSS) then
-        write(F%unit) T%MPK%num_k, T%MPK%num_z
-        write(F%unit) T%MPK%log_kh
-        write(F%unit) T%MPK%redshifts
-        write(F%unit) T%MPK%matter_power
+        write(F%unit) T%MPK%nx, T%MPK%ny
+        write(F%unit) T%MPK%x
+        write(F%unit) T%MPK%y
+        write(F%unit) T%MPK%z
         write(F%unit) use_nonlinear
         if(use_nonlinear) write(F%unit) T%NL_MPK%z
     end if

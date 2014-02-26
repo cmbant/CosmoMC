@@ -10,11 +10,11 @@ ifortErr = $(shell which ifort >/dev/null; echo $$?)
 ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
 F90C     = ifort
-MPIF90C = mpiifort
-FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -g -traceback
+MPIF90C = mpif90
+FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp
 DEBUGFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -fpe0
 MODOUT = -module $(OUTPUT_DIR)
-LAPACKL = -lmpi_mt
+LAPACKL =
 else
 #gfortran does not yet work yet, open GCC 4.9 compiler bugs are
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60334

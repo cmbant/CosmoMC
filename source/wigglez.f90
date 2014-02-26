@@ -70,7 +70,7 @@
             !JD PK arrays store log(k); we choose to store log(PK) for interpolation    
         end do
         call F%Close()
-        call GiggleZPK(iz)%Init(kval,log(power_nl),GiggleZ_numk )
+        call GiggleZPK(iz)%Init(kval,log(power_nl),GiggleZ_numk)
     end do
     
     end subroutine GiggleZinfo_init
