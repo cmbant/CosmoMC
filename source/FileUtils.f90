@@ -1,6 +1,7 @@
     module FileUtils
     use MpiUtils
     use MiscUtils
+    use StringUtils
     use, intrinsic :: ISO_FORTRAN_ENV, only : INT64
     implicit none
     !Utils using F2008 features
@@ -27,20 +28,38 @@
     procedure :: Rewind => TFileStream_Rewind
     procedure :: Error
     procedure :: Opened
-    procedure :: ReadString
-    procedure, private :: ReadItem
+    procedure :: WriteTrim
+    procedure, private :: ReadStringFunc
+    procedure, private :: ReadStringSub
+    procedure, private :: ReadItemSub
+    procedure, private :: ReadItemFunc
+    procedure, private :: ReadItems
     procedure, private :: ReadArray
+    procedure, private :: ReadArray2
+    procedure, private :: ReadArray2Func
+    procedure, private :: ReadArrayFunc
     procedure, private :: WriteItem
     procedure, private :: WriteArray
+    procedure, private :: WriteArray2
     procedure, private :: WriteItems
-    generic :: Write => WriteItem, WriteArray, WriteItems
-    generic :: Read => ReadItem, ReadArray
+    procedure, private  :: WriteSizedArray1
+    procedure, private  :: WriteSizedArray2
+    procedure, private  :: ReadSizedArray_R
+    procedure, private  :: ReadSizedArray_D
+    procedure, private  :: ReadSizedArray_I
+    generic :: Write => WriteItem, WriteArray, WriteArray2, WriteItems
+    generic :: Read => ReadItemSub, ReadItems, ReadArray, ReadArray2
+    generic :: ReadItem => ReadItemFunc, ReadArrayFunc, ReadArray2Func
+    generic :: ReadString => ReadStringSub
+    generic :: ReadStringItem => ReadStringFunc
+    generic :: WriteSizedArray => WriteSizedArray1,WriteSizedArray2
+    generic :: ReadSizedArray => ReadSizedArray_R,ReadSizedArray_D,ReadSizedArray_I 
     final :: TFileStream_Free
     end type
 
     Type, extends(TFileStream) :: TBinaryFile
-    contains
     end type
+
 
     Type, extends(TFileStream) :: TTextFile
         character(LEN=20) :: RealFormat = '(*(E17.7))'
@@ -60,8 +79,10 @@
     procedure :: WriteItemTxt
     procedure :: WriteArrayTxt
     procedure :: WriteInLineItems
-    procedure :: WriteTrim
-    procedure :: ReadString => ReadStringTxt
+    procedure :: WriteInLineTrim
+    procedure :: WriteFormat
+    procedure :: WriteTrim => WriteTrimTxt
+    procedure, private :: ReadStringSub => ReadStringTxt
     procedure, private :: ReadItemTxt
     procedure, private :: ReadArrayTxt
     procedure, private :: WriteInLineItem
@@ -69,8 +90,10 @@
     procedure, private :: DefaultAdvance
     procedure, private :: WriteItem => TTextFile_WriteItem
     procedure, private :: WriteArray => TTextFile_WriteArray
-    procedure, private :: ReadItem => ReadItemTxt
+    procedure, private :: WriteArray2 => WriteArray2Txt
+    procedure, private :: ReadItemSub => ReadItemTxt
     procedure, private :: ReadArray => ReadArrayTxt
+    procedure, private :: ReadArray2 => ReadArray2Txt
     procedure, private :: WriteItems => WriteItemsTxt
     generic :: WriteInLine => WriteInLineItem, WriteInLineArray
     end type
@@ -301,26 +324,37 @@
 
     end subroutine CreateOpenFile
 
-    function ReadString(this, S) result(OK)
+
+    subroutine ReadStringSub(this, S, OK) 
     class(TFileStream) :: this
     character(LEN=:), allocatable :: S
-    logical OK
+    logical, optional :: OK
+    logical isOK
     integer i, status
 
     read(this%unit, iostat=status) i
-    OK = status==0
-    if (.not. OK) return
-    allocate(character(LEN=i)::S)
-    read(this%unit, iostat=status) S
-    OK = status==0
+    isOK = status==0
+    if (isOK) then
+        if (allocated(S)) deallocate(S)
+        allocate(character(LEN=i)::S)
+        read(this%unit, iostat=status) S
+        isOK = status==0
+    end if
+    if (present(OK)) OK = isOK
+    end subroutine ReadStringSub
 
-    end function ReadString
+    function ReadStringFunc(this) result(S)
+    class(TFileStream) :: this
+    character(LEN=:), allocatable :: S
+    call this%ReadString(S)
+    end function ReadStringFunc
 
-    function ReadItem(this, R) result(res)
+    subroutine ReadItemSub(this, R, OK)
     class(TFileStream) :: this
     class(*), intent(out) :: R
+    logical, optional :: OK
+    logical res
     integer status
-    logical :: res
 
     select type(R)
     type is (real)
@@ -328,6 +362,8 @@
     type is (double precision)
         read(this%unit, iostat=status) R
     type is (integer)
+        read(this%unit, iostat=status) R
+    type is (logical)
         read(this%unit, iostat=status) R
     type is (character(LEN=*))
         read(this%unit, iostat=status) R
@@ -336,15 +372,26 @@
     end select
 
     res = status==0
-    if (status/=0 .and. .not. IS_IOSTAT_END(status)) call this%Error('Error reading item')
-    end function ReadItem
+    if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
+    & call this%Error('Error reading item')
+    if (present(OK)) OK = res
+    end subroutine ReadItemSub
 
-    function ReadArray(this, R, n) result(res)
+
+    function ReadItemFunc(this, R) result(res)
+    class(TFileStream) :: this
+    class(*), intent(out) :: R
+    logical :: res
+
+    call this%ReadItemSub(R, res)
+    end function ReadItemFunc
+
+    subroutine ReadArray(this, R, n, OK)
     class(TFileStream) :: this
     class(*) :: R(1:)
     integer, intent(in), optional :: n
+    logical, optional :: OK
     integer status
-    logical :: res
 
     select type(R)
     type is (real)
@@ -353,13 +400,135 @@
         read(this%unit, iostat=status) R(1:PresentDefault(size(R),n))
     type is (integer)
         read(this%unit, iostat=status) R(1:PresentDefault(size(R),n))
+    type is (logical)
+        read(this%unit, iostat=status) R(1:PresentDefault(size(R),n))
         class default
         call this%Error('Unknown type to read')
     end select
-    res = status==0
-    if (status/=0 .and. .not. IS_IOSTAT_END(status)) call this%Error('Error reading item')
+    if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
+    & call this%Error('Error reading item')
+    if (present(OK)) OK = status==0
+    end subroutine ReadArray
 
-    end function ReadArray
+
+    function ReadArrayFunc(this, R, n) result(res)
+    class(TFileStream) :: this
+    class(*) :: R(1:)
+    integer, intent(in), optional :: n
+    logical :: res
+
+    call this%ReadArray(R,n,res)
+
+    end function ReadArrayFunc
+
+
+    function ReadArray2Func(this, R) result(res)
+    class(TFileStream) :: this
+    class(*) :: R(:,:)
+    logical :: res
+    call this%ReadArray2(R,res)
+    end function ReadArray2Func
+
+
+    subroutine ReadArray2(this, R, OK)
+    class(TFileStream) :: this
+    class(*) :: R(:,:)
+    logical, optional :: OK
+    integer status
+
+    select type(R)
+    type is (real)
+        read(this%unit, iostat=status) R
+    type is (double precision)
+        read(this%unit, iostat=status) R
+    type is (integer)
+        read(this%unit, iostat=status) R
+    type is (logical)
+        read(this%unit, iostat=status) R
+        class default
+        call this%Error('Unknown type to read')
+    end select
+    if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
+    & call this%Error('Error reading item')
+    if (present(OK)) OK = status==0
+    end subroutine ReadArray2
+
+
+    subroutine ReadSizedArray_R(this, R) 
+    class(TFileStream) :: this
+    Real, allocatable :: R(:)
+    integer sz
+
+    call this%Read(sz)
+    if (allocated(R)) deallocate(R)
+    allocate(R(sz))
+    call this%ReadArray(R)
+
+    end subroutine ReadSizedArray_R
+
+
+    subroutine ReadSizedArray_D(this, R) 
+    class(TFileStream) :: this
+    double precision, allocatable :: R(:)
+    integer sz
+
+    call this%Read(sz)
+    if (allocated(R)) deallocate(R)
+    allocate(R(sz))
+    call this%ReadArray(R)
+
+    end subroutine ReadSizedArray_D
+
+    subroutine ReadSizedArray_I(this, R) 
+    class(TFileStream) :: this
+    integer, allocatable :: R(:)
+    integer sz
+
+    call this%Read(sz)
+    if (allocated(R)) deallocate(R)
+    allocate(R(sz))
+    call this%ReadArray(R)
+
+    end subroutine ReadSizedArray_I
+
+    subroutine ReadSizedArray2_R(this, R) 
+    class(TFileStream) :: this
+    real, allocatable :: R(:,:)
+    integer sz1, sz2
+
+    call this%Read(sz1)
+    call this%Read(sz2)
+    if (allocated(R)) deallocate(R)
+    allocate(R(sz1,sz2))
+    call this%ReadArray2(R)
+
+    end subroutine ReadSizedArray2_R
+
+    subroutine ReadSizedArray2_D(this, R) 
+    class(TFileStream) :: this
+    double precision, allocatable :: R(:,:)
+    integer sz1, sz2
+
+    call this%Read(sz1)
+    call this%Read(sz2)
+    if (allocated(R)) deallocate(R)
+    allocate(R(sz1,sz2))
+    call this%ReadArray2(R)
+
+    end subroutine ReadSizedArray2_D
+
+    subroutine ReadSizedArray2_I(this, R) 
+    class(TFileStream) :: this
+    integer, allocatable :: R(:,:)
+    integer sz1, sz2
+
+    call this%Read(sz1)
+    call this%Read(sz2)
+    if (allocated(R)) deallocate(R)
+    allocate(R(sz1,sz2))
+    call this%ReadArray2(R)
+
+    end subroutine ReadSizedArray2_I
 
     subroutine WriteItem(this, R)
     class(TFileStream) :: this
@@ -372,6 +541,8 @@
         Write(this%unit) R
     type is (integer)
         Write(this%unit) R
+    type is (logical)
+        Write(this%unit) R
     type is (character(LEN=*))
         Write(this%unit) len(R)
         Write(this%unit) R
@@ -381,30 +552,81 @@
 
     end subroutine WriteItem
 
+    subroutine WriteTrim(this, S)
+    class(TFileStream) :: this
+    character(LEN=*), intent(in) :: S
+    call this%WriteItem(trim(S))
+    end subroutine WriteTrim
+
+    subroutine WriteSizedArray1(this, R, n) 
+    class(TFileStream) :: this
+    class(*), intent(in) :: R(1:)
+    integer, intent(in), optional :: n
+    integer sz
+
+    sz=PresentDefault(size(R),n)
+    call this%Write(sz)
+    call this%WriteArray(R,n)
+
+    end subroutine WriteSizedArray1
+
+    subroutine WriteSizedArray2(this, R) 
+    class(TFileStream) :: this
+    class(*), intent(in) :: R(:,:)
+
+    call this%Write(size(R,dim=1))
+    call this%Write(size(R,dim=2))
+    call this%WriteArray2(R)
+
+    end subroutine WriteSizedArray2
+
     subroutine WriteArray(this, R, n) 
     class(TFileStream) :: this
     class(*), intent(in) :: R(1:)
     integer, intent(in), optional :: n
+    integer sz
 
+    sz=PresentDefault(size(R),n)
     select type(R)
     type is (real)
-        Write(this%unit) R(1:PresentDefault(size(R),n))
+        Write(this%unit) R(1:sz)
     type is (double precision)
-        Write(this%unit) R(1:PresentDefault(size(R),n))
+        Write(this%unit) R(1:sz)
     type is (integer)
-        Write(this%unit) R(1:PresentDefault(size(R),n))
+        Write(this%unit) R(1:sz)
+    type is (logical)
+        Write(this%unit) R(1:sz)
         class default
         call this%Error('Unknown type to Write')
     end select
 
     end subroutine WriteArray
 
-    subroutine WriteItems(this, string, S2,S3,S4,S5,S6)
+    subroutine WriteArray2(this, R) 
     class(TFileStream) :: this
-    class(*), intent(in) :: string, S2
+    class(*), intent(in) :: R(:,:)
+
+    select type(R)
+    type is (real)
+        Write(this%unit) R
+    type is (double precision)
+        Write(this%unit) R
+    type is (integer)
+        Write(this%unit) R
+    type is (logical)
+        Write(this%unit) R
+        class default
+        call this%Error('Unknown type to Write')
+    end select
+
+    end subroutine WriteArray2
+
+    subroutine WriteItems(this, S1, S2,S3,S4,S5,S6)
+    class(TFileStream) :: this
+    class(*), intent(in) :: S1, S2
     class(*), intent(in), optional :: S3,S4,S5,S6
 
-    call this%WriteItem(string)
+    call this%WriteItem(S1)
     call this%WriteItem(S2)
     if (present(S3)) call this%WriteItem(S3)
     if (present(S4)) call this%WriteItem(S4)
@@ -412,6 +634,20 @@
     if (present(S6)) call this%WriteItem(S6)
 
     end subroutine WriteItems
+
+    subroutine ReadItems(this, S1, S2,S3,S4,S5,S6)
+    class(TFileStream) :: this
+    class(*) S1, S2
+    class(*), optional :: S3,S4,S5,S6
+
+    call this%ReadItemSub(S1)
+    call this%ReadItemSub(S2)
+    if (present(S3)) call this%ReadItemSub(S3)
+    if (present(S4)) call this%ReadItemSub(S4)
+    if (present(S5)) call this%ReadItemSub(S5)
+    if (present(S6)) call this%ReadItemSub(S6)
+
+    end subroutine ReadItems
 
     !Text unformatted files
 
@@ -580,12 +816,12 @@
 
     end subroutine WriteInLineItems
 
-    subroutine WriteItemsTxt(this, string, S2,S3,S4,S5,S6)
+    subroutine WriteItemsTxt(this, S1, S2,S3,S4,S5,S6)
     class(TTextFile) :: this
-    class(*), intent(in) :: string, S2
+    class(*), intent(in) :: S1, S2
     class(*), intent(in), optional :: S3,S4,S5,S6
 
-    call this%WriteInLineItems(string, S2,S3,S4,S5,S6)
+    call this%WriteInLineItems(S1, S2,S3,S4,S5,S6)
     call this%NewLine()
 
     end subroutine WriteItemsTxt
@@ -672,19 +908,55 @@
 
     end subroutine WriteArrayTxt
 
-    subroutine WriteTrim(this, string, advance)
+    subroutine WriteArray2Txt(this, R)
+    class(TTextFile) :: this
+    class(*), intent(in) :: R(:,:)
+    integer i
+
+    do i=1, size(R,1)
+        call this%WriteArrayTxt(R(i,:))
+    end do
+
+    end subroutine WriteArray2Txt
+
+
+    subroutine WriteTrimTxt(this, S)
+    class(TTextFile) :: this
+    character(LEN=*), intent(in) :: S
+
+    call this%WriteItemTxt(S, advance=.true.)
+
+    end subroutine WriteTrimTxt
+
+    subroutine WriteInLineTrim(this, string)
     class(TTextFile) :: this
     character(LEN=*), intent(in) :: string
-    logical, intent(in), optional :: advance
 
-    write(this%unit, '(a)', advance=this%DefaultAdvance(advance)) trim(string)
+    call this%WriteItemTxt(trim(string), advance=.false.)
+    end subroutine WriteInLineTrim
 
-    end subroutine WriteTrim
 
-    function ReadItemTxt(this, R) result(OK)
+    subroutine ReadArray2Txt(this, R, OK)
+    class(TTextFile) :: this
+    class(*) ::  R(:,:)
+    logical, optional :: OK
+    integer i
+
+    do i=1, size(R,1)
+        call this%ReadArrayTxt(R(i,:), OK=OK)
+        if (present(OK)) then
+            if (.not. OK) return
+        end if
+    end do
+
+    end subroutine ReadArray2Txt
+
+
+    subroutine ReadItemTxt(this, R, OK)
     class(TTextFile) :: this
     class(*), intent(out) :: R
-    logical OK
+    logical, optional :: OK
+
     integer status
     select type(R)
     type is (character(LEN=*))
@@ -698,16 +970,17 @@
         class default
         call this%Error('unknown type to Read')
     end select
-    OK = status==0
-    if (.not. OK .and. .not. IS_IOSTAT_END(status)) call this%Error('Error reading item')
+    if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
+    & call this%Error('Error reading item')
+    if (present(OK)) OK = status==0
 
-    end function ReadItemTxt
+    end subroutine ReadItemTxt
 
-    function ReadArrayTxt(this, R, n) result(OK)
+    subroutine ReadArrayTxt(this, R, n, OK)
     class(TTextFile) :: this
     class(*) :: R(1:)
     integer, intent(in), optional :: n
-    logical OK
+    logical, optional :: OK
     integer status
 
     select type(R)
@@ -721,18 +994,34 @@
         call this%Error('unknown type to Read')
     end select
 
-    OK = status==0
-    if (.not. OK .and. .not. IS_IOSTAT_END(status)) call this%Error('Error reading item')
-    end function ReadArrayTxt
+    if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
+    & call this%Error('Error reading item')
+    if (present(OK)) OK = status==0
 
-    function ReadStringTxt(this, S) result(OK)
+    end subroutine ReadArrayTxt
+
+    subroutine ReadStringTxt(this, S, OK)
     class(TTextFile) :: this
     character(LEN=:), allocatable :: S
-    logical OK
+    logical, optional :: OK
+    logical isOK
 
-    OK = this%ReadLine(S)
+    isOK = this%ReadLine(S)
+    if (present(OK)) OK = isOK
 
-    end function ReadStringTxt
+    end subroutine  ReadStringTxt
+
+    subroutine WriteFormat(this, formatst, i1,i2,i3,i4)
+    class(TTextFile) :: this
+    character(LEN=*), intent(in) :: formatst
+    class(*), intent(in) :: i1
+    class(*), intent(in),optional :: i2,i3,i4
+
+    write(this%unit,'(a)') FormatString(formatst,i1,i2,i3,i4)
+
+    end subroutine WriteFormat
+
+    !Misc functions
 
     function TopCommentLine(aname) result(res)
     character(LEN=*), intent(IN) :: aname
@@ -885,9 +1174,9 @@
     do j=1,n
         select type(vec)
         type is (real)
-            if (.not. F%Read(vec(j))) call F%Error('vector file is the wrong size')
+            if (.not. F%ReadItem(vec(j))) call F%Error('vector file is the wrong size')
         type is (double precision)
-            if (.not. F%Read(vec(j))) call F%Error('vector file is the wrong size')
+            if (.not. F%ReadItem(vec(j))) call F%Error('vector file is the wrong size')
             class default
             stop 'wrong type for vector'
         end select

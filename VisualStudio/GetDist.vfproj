@@ -54,6 +54,7 @@
 		<File RelativePath="..\source\IniObjects.f90"/>
 		<File RelativePath="..\source\Interpolation.f90"/>
 		<File RelativePath="..\source\Matrix_utils_new.f90"/>
+		<File RelativePath="..\source\MiscUtils.f90"/>
 		<File RelativePath="..\source\MpiUtils.f90"/>
 		<File RelativePath="..\source\ObjectLists.f90"/>
 		<File RelativePath="..\source\ObjectParamNames.f90"/>

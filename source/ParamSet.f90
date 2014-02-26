@@ -19,33 +19,13 @@
     procedure :: WriteModel => ParamSet_WriteModel
     end Type
 
-
-    logical :: estimate_propose_matrix = .false.
-
     contains
-
-    !subroutine IO_WriteCovMat(fname, matrix)
-    !integer unit
-    !character(LEN=*), intent(in) :: fname
-    !character(LEN=4096) outline
-    !real(mcp), intent(in) :: matrix(:,:)
-    !
-    !if (NameMapping%nnames/=0) then
-    !    outline=''
-    !    do unit=1, num_params_used
-    !        outline = trim(outline)//' '//trim(BaseParams%UsedParamNameOrNumber(unit))
-    !    end do
-    !    call IO_WriteProposeMatrix(matrix ,fname, outline)
-    !else
-    !    call Matrix_write(fname,matrix,forcetable=.true.)
-    !end if
-    !end subroutine IO_WriteCovMat
 
     subroutine ParamSet_WriteModel(this, F, like, mult)
     Class(ParamSet) :: this
     class(TFileStream) :: F
     real(mcp), intent(in) :: mult, like
-    integer j , alen, unused
+    integer j , unused
     logical, save :: first = .true.
     class(TDataLikelihood), pointer :: DataLike
 
@@ -60,9 +40,7 @@
         if (.not. any (BaseParams%NameMapping%Name=='')) then
             write(F%unit) .true.
             do j=1,num_params_used
-                alen=len_trim(BaseParams%NameMapping%name(params_used(j)))
-                write(F%unit) alen
-                write(F%unit) BaseParams%NameMapping%name(params_used(j))(1:alen)
+                call F%WriteTrim(BaseParams%NameMapping%name(params_used(j)))
             end do
         else
             write(F%unit) .false.
@@ -70,9 +48,7 @@
         write(F%unit) DataLikelihoods%Count
         do j=1, DataLikelihoods%Count
             DataLike => DataLikelihoods%Item(j)
-            alen = len_trim(dataLIke%name)
-            write(F%unit) alen
-            write(F%unit) dataLIke%name(1:alen)
+            call F%WriteTrim(dataLIke%name)
         end do
         unused=0
         write(F%unit) unused
@@ -94,7 +70,7 @@
     integer, intent(out) :: error
     real(mcp), intent(out) :: mult, like
     logical, intent(out) :: has_likes(:)
-    integer j, k, np, alen, unused, status
+    integer j, k, np, unused, status
     character(LEN=:), allocatable :: name
     logical :: has_names
     class(TDataLikelihood), pointer :: DataLike
@@ -116,11 +92,8 @@
         this%current_param_indices=-1
         if (has_names) then
             do j=1,num_params_used
-                read(F%unit) alen
-                allocate(character(alen)::name)
-                read(F%unit) name
+                name = F%ReadStringItem()
                 this%current_param_indices(j) = BaseParams%NameMapping%index(name)
-                deallocate(name)
             end do
             if (any(this%current_param_indices==-1)) call MpiStop('ReadModel: parameters in .data files could not be matched')
         else
@@ -131,9 +104,7 @@
         allocate(this%like_indices(this%numlikes))
         this%like_indices=0
         do j=1, this%numlikes
-            read(F%unit) alen
-            allocate(character(alen)::name)
-            read(F%unit) name
+            name = F%ReadStringItem()
             do k=1, DataLikelihoods%Count
                 DataLike => DataLikelihoods%Item(k)
                 if (DataLike%name==name) then
@@ -141,7 +112,6 @@
                     exit
                 end if
             end do
-            deallocate(name)
         end do
         do j=1, DataLikelihoods%Count
             has_likes(j) = any(this%like_indices==j)

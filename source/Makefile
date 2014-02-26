@@ -103,10 +103,10 @@ F90FLAGS = $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
 LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 UTILS = $(OUTPUT_DIR)/MiscUtils.o $(OUTPUT_DIR)/ArrayUtils.o $(OUTPUT_DIR)/StringUtils.o $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/FileUtils.o \
-    $(OUTPUT_DIR)/RandUtils.o $(OUTPUT_DIR)/Interpolation.o
+    $(OUTPUT_DIR)/RandUtils.o $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/Interpolation.o
 
 DISTFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o \
-    $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/ObjectParamNames.o $(OUTPUT_DIR)/Matrix_utils_new.o \
+    $(OUTPUT_DIR)/ObjectParamNames.o $(OUTPUT_DIR)/Matrix_utils_new.o \
     $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/samples.o $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/GetDist.o
 
 
@@ -134,7 +134,7 @@ endif
 
 LIKEFILES =  $(OUTPUT_DIR)/DataLikelihoods.o $(OUTPUT_DIR)/calclike.o
 
-OBJFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/ObjectParamNames.o \
+OBJFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o \
 	$(OUTPUT_DIR)/Matrix_utils_new.o  $(OUTPUT_DIR)/settings.o \
 	$(OUTPUT_DIR)/samples.o $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/BaseParameters.o \
 	$(OUTPUT_DIR)/propose.o $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/PowellConstrainedMinimize.o $(OUTPUT_DIR)/ImportanceSampling.o \
@@ -173,8 +173,9 @@ endif
 default: cosmomc
 
 $(OUTPUT_DIR)/RandUtils.o: $(OUTPUT_DIR)/MpiUtils.o
-$(OUTPUT_DIR)/FileUtils.o: $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/MiscUtils.o
-$(OUTPUT_DIR)/IniObjects.o: $(OUTPUT_DIR)/FileUtils.o $(OUTPUT_DIR)/StringUtils.o
+$(OUTPUT_DIR)/FileUtils.o: $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/MiscUtils.o $(OUTPUT_DIR)/StringUtils.o
+$(OUTPUT_DIR)/ObjectLists.o: $(OUTPUT_DIR)/FileUtils.o
+$(OUTPUT_DIR)/IniObjects.o: $(OUTPUT_DIR)/FileUtils.o
 $(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS)
 $(OUTPUT_DIR)/settings.o:  $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o
 $(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o

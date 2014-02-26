@@ -306,22 +306,22 @@
     end subroutine TCovmatProposer_SetCovariance
 
 
-    subroutine TCovmatProposer_LoadState(this,unit)
+    subroutine TCovmatProposer_LoadState(this,F)
     class(TCovmatProposer) :: this
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
     real(mcp) :: cov(num_params_used,num_params_used)
 
-    read(unit) cov
+    if (.not. F%ReadItem(cov)) call MpiStop('error reading proposal covariance')
     call this%SetCovariance(cov)
 
     end subroutine TCovmatProposer_LoadState
 
 
-    subroutine TCovmatProposer_SaveState(this,unit)
+    subroutine TCovmatProposer_SaveState(this,F)
     class(TCovmatProposer) :: this
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
 
-    write(unit) this%propose_matrix
+    call F%Write(this%propose_matrix)
 
     end subroutine TCovmatProposer_SaveState
 

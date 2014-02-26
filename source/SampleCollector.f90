@@ -140,31 +140,30 @@
     end subroutine TMpiChainCollector_ReadParams
 
 
-    subroutine TMpiChainCollector_SaveState(this,unit)
+    subroutine TMpiChainCollector_SaveState(this,F)
     class(TMpiChainCollector) :: this
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
     integer :: version=1
 
-    write(unit) version
-    write(unit) this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn,  &
-    this%flukecheck,  this%Mpi%MPI_Min_Sample_Update, this%DoUpdates
-    call this%Samples%SaveState(unit)
-    call this%Sampler%SaveState(unit)
+    call F%Write(version)
+    call F%Write(this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn,  &
+    & this%flukecheck,  this%Mpi%MPI_Min_Sample_Update, this%DoUpdates)
+    call this%Samples%SaveState(F)
+    call this%Sampler%SaveState(F)
 
     end subroutine TMpiChainCollector_SaveState
 
-    subroutine TMpiChainCollector_ReadState(this,unit)
+    subroutine TMpiChainCollector_ReadState(this,F)
     class(TMpiChainCollector) :: this
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
     integer version
 
-    read(unit) version
-    if (version/=1) call MpiStop('unknown checkpoint format')
-    read(unit) this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn, &
-    this%flukecheck, this%Mpi%MPI_Min_Sample_Update, this%DoUpdates
-    call this%Samples%LoadState(unit)
+    if (.not. F%ReadItem(version) .or. version/=1) call MpiStop('unknown checkpoint format')
+    call F%Read(this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn, &
+    & this%flukecheck, this%Mpi%MPI_Min_Sample_Update, this%DoUpdates)
+    call this%Samples%LoadState(F)
     this%checkpoint_burn=this%checkpoint_freq/3
-    call this%Sampler%LoadState(unit)
+    call this%Sampler%LoadState(F)
 
     end subroutine TMpiChainCollector_ReadState
 
@@ -176,8 +175,8 @@
     if (Feedback > 1) write (*,*) instance, 'Writing checkpoint'
     call F%CreateFile(rootname//'.chk_tmp')
     !Use temporary file in case crash/stop during write operation
-    write (F%unit) chk_id
-    call this%SaveState(F%unit)
+    call F%Write(chk_id)
+    call this%SaveState(F)
     call F%Close()
     call File%Delete(rootname//'.chk')
     call Rename(rootname//'.chk_tmp',rootname//'.chk')
@@ -192,9 +191,8 @@
 
     if (Feedback > 0) write (*,*) instance, 'Reading checkpoint from '//rootname//'.chk'
     call F%Open(rootname//'.chk')
-    read (F%unit) ID
-    if (ID/=chk_id) call DoAbort('invalid checkpoint files')
-    call this%ReadState(F%unit)
+    if (.not. F%ReadItem(ID) .or. ID/=chk_id) call DoAbort('invalid checkpoint files')
+    call this%ReadState(F)
     call F%Close()
 
     end subroutine TMpiChainCollector_ReadCheckpoint
@@ -455,7 +453,7 @@
     character(LEN=*), intent(in), optional :: Msg
     real(mcp), intent(in) :: R
     Type(TTextFile) :: F
-    
+
     if (MPiRank==0) then
         call F%CreateFile(trim(baseroot)//'.converge_stat')
         call F%Write(R)

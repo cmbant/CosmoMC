@@ -2,6 +2,7 @@
     module ObjectLists
     !Implement lists of arbitrary objects
     !AL Feb 2014
+    use FileUtils
     implicit none
 
     private
@@ -112,14 +113,14 @@
     public list_prec, TSaveLoadStateObject, TObjectList, TRealArrayList, TRealList, TStringList
     contains
 
-    subroutine LoadState(this,unit)
+    subroutine LoadState(this,F)
     class(TSaveLoadStateObject) :: this
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
     end subroutine LoadState
 
-    subroutine SaveState(this,unit)
+    subroutine SaveState(this,F)
     class(TSaveLoadStateObject) :: this
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
     end subroutine SaveState
 
 
@@ -604,16 +605,16 @@
 
     end subroutine RemoveDuplicates
 
-    subroutine TObjectList_SaveState(this,unit)
+    subroutine TObjectList_SaveState(this,F)
     class(TObjectList) :: this
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
     integer i
 
-    write (unit) this%Count
+    call F%Write(this%Count)
     do i=1,this%Count
         select type (item => this%Items(i)%P)
         class is (TSaveLoadStateObject)
-            call item%SaveState(unit)
+            call item%SaveState(F)
             class default
             call this%Error('TObjectList_SaveState: List contains non-TSaveLoadStateObject item')
         end select
@@ -621,17 +622,17 @@
 
     end subroutine TObjectList_SaveState
 
-    subroutine TObjectList_LoadState(this,unit)
+    subroutine TObjectList_LoadState(this,F)
     class(TObjectList) :: this
-    integer, intent(in) :: unit
-    integer i, count
+     class(TFileStream) :: F
+   integer i, count
 
-    read(unit) count
-    if (count/=this%Count) call this%Error('TObjectList_LoadState count mismatch (objects must exist before load)')
+    if (.not. F%ReadItem(count) .or. count/=this%Count) &
+    & call this%Error('TObjectList_LoadState count mismatch (objects must exist before load)')
     do i=1,this%Count
         select type (item => this%Items(i)%P)
         class is (TSaveLoadStateObject)
-            call item%LoadState(unit)
+            call item%LoadState(F)
             class default
             call this%Error('List contains non-TSaveLoadStateObject item')
         end select
@@ -642,16 +643,16 @@
 
     !TOwnedIntrinsicList
 
-    subroutine TOwnedIntrinsicList_LoadState(this,unit)
+    subroutine TOwnedIntrinsicList_LoadState(this,F)
     class(TOwnedIntrinsicList) :: this
-    integer, intent(in) :: unit
-    call this%ReadBinary(unit)
+    class(TFileStream) :: F
+    call this%ReadBinary(F%unit)
     end subroutine TOwnedIntrinsicList_LoadState
 
-    subroutine TOwnedIntrinsicList_SaveState(this,unit)
+    subroutine TOwnedIntrinsicList_SaveState(this,F)
     class(TOwnedIntrinsicList) :: this
-    integer, intent(in) :: unit
-    call this%SaveBinary(unit)
+    class(TFileStream) :: F
+    call this%SaveBinary(F%unit)
     end subroutine TOwnedIntrinsicList_SaveState
 
 

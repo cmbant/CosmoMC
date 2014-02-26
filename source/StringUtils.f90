@@ -1,10 +1,6 @@
     module StringUtils
     implicit none
 
-    INTERFACE CONCAT
-    module procedure concat_s, concat_s_n
-    END INTERFACE
-
 
     INTERFACE RealToStr
     module procedure SingleToStr, DoubleToStr
@@ -96,74 +92,53 @@
 
     end function StrToInt
 
-    function concat_s(S1,S2,S3,S4,S5,S6,S7,S8) result(outstr)
-    character(LEN=*), intent(in) :: S1, S2
-    character(LEN=*), intent(in) , optional :: S3, S4, S5, S6,S7,S8
-    character(LEN = 1000) concat
+    subroutine StringAppend(S,X)
+    character(LEN=:), allocatable :: S
+    class(*) X
+
+    if (.not. allocated(S)) S=''
+    select type (X)
+    type is (character(LEN=*))
+        S = S // trim(X)
+    type is (integer)
+        S = S // IntToStr(X)
+    type is (real)
+        S = S // RealToStr(X)
+    type is (double precision)
+        S=S //RealToStr(X)
+        class default
+        stop 'StringAppend: Unknown type'
+    end select
+    end subroutine
+
+    function concat(S1,S2,S3,S4,S5,S6,S7,S8) result(outstr)
+    character(LEN=*), intent(in) :: S1
+    class(*), intent(in) :: S2
+    class(*), intent(in) , optional :: S3, S4, S5, S6,S7,S8
     character(LEN=:), allocatable :: outstr
 
-    concat = trim(S1) // S2
+    outstr=S1
+    call StringAppend(outstr,S2)
     if (present(S3)) then
-        concat = trim(concat) // S3
+        call StringAppend(outstr,S3)
         if (present(S4)) then
-            concat = trim(concat) // S4
+            call StringAppend(outstr,S4)
             if (present(S5)) then
-                concat = trim(concat) // S5
+                call StringAppend(outstr,S5)
                 if (present(S6)) then
-                    concat = trim(concat) // S6
+                    call StringAppend(outstr,S6)
                     if (present(S7)) then
-                        concat = trim(concat) // S7
+                        call StringAppend(outstr,S7)
                         if (present(S8)) then
-                            concat = trim(concat) // S8
+                            call StringAppend(outstr,S8)
                         end if
                     end if    
                 end if
             end if
         end if
     end if
-    outstr = trim(concat)
 
-    end function concat_s
-
-    function concat_s_n(SS1,N2,SS3,N4,SS5,N6,SS7,N8,SS9,N10,SS11) result(outstr)
-    character(LEN=*), intent(in) :: SS1
-    integer, intent(in) :: N2
-    character(LEN=*), intent(in) , optional :: SS3, SS5, SS7, SS9,SS11
-    integer, intent(in), optional ::N4,N6,N8, N10
-    character(LEN = 1000) concat
-    character(LEN=:), allocatable :: outstr
-
-    concat = trim(SS1) //trim(IntToStr(N2))
-    if (present(SS3)) then
-        concat = trim(concat) // SS3
-        if (present(N4)) then
-            concat = trim(concat) // trim(IntToStr(N4))
-            if (present(SS5)) then
-                concat = trim(concat) // SS5
-                if (present(N6)) then
-                    concat = trim(concat) // trim(intToStr(N6))
-                    if (present(SS7)) then
-                        concat = trim(concat) // SS7
-                        if (present(N8)) then
-                            concat = trim(concat) // trim(intToStr(N8))
-                            if (present(SS9)) then
-                                concat = trim(concat) // SS9
-                                if (present(N10)) then
-                                    concat = trim(concat) // trim(intToStr(N10))
-                                    if (present(SS11)) then
-                                        concat = trim(concat) // SS11
-                                    end if
-                                end if
-                            end if       
-                        end if
-                    end if
-                end if
-            end if
-        end if
-    end if
-    outstr = trim(concat)
-
-    end function concat_s_n
+    end function concat
 
 
     function DoubleToStr(R, figs)
@@ -201,22 +176,55 @@
 
     end function SingleToStr
 
-    subroutine WriteFormatInts(unit, formatst, i1,i2,i3,i4)
-    integer, intent(in) :: unit
-    character(LEN=*), intent(in) :: formatst
-    integer, intent(in) :: i1
-    integer, intent(in),optional :: i2,i3,i4
+    function SubNextFormat(S, X) result(OK)
     character(LEN=:), allocatable :: S
+    class(*) X
+    logical OK
+    integer ix
+    character c
+
+    do
+        ix=scan(S,'%')
+        OK = ix/=0 .and. ix < len(S)
+        if (.not. OK) return
+        c = S(ix+1:ix+1)
+        if (c=='%') then
+            call StringReplace('%%', '%', S)
+        else
+            exit
+        end if
+    end do
+
+    select type (X)
+    type is (integer)
+        if (c/='u') stop 'Wrong format for type'
+        call StringReplace('%u', IntToStr(X), S)
+    type is (Character(LEN=*))
+        if (c/='s') stop 'Wrong format for type'
+        call StringReplace('%s', X, S)
+        class default
+        stop 'Unsupported format type'
+    end select
+
+    end function SubNextFormat
+
+    function FormatString(formatst, i1,i2,i3,i4,i5,i6) result(S)
+    character(LEN=*), intent(in) :: formatst
+    class(*), intent(in) :: i1
+    class(*), intent(in),optional :: i2,i3,i4,i5,i6
+    character(LEN=:), allocatable :: S
+    logical OK
 
     S = formatst
-    call StringReplace('%u', IntToStr(i1), S)
-    if (present(i2)) call StringReplace('%u', IntToStr(i2), S)
-    if (present(i3)) call StringReplace('%u', IntToStr(i3), S)
-    if (present(i4)) call StringReplace('%u', IntToStr(i4), S)
+    OK = SubNextFormat(S, i1)
+    if (OK .and. present(i2)) OK = SubNextFormat(S, i2)
+    if (OK .and. present(i3)) OK = SubNextFormat(S, i3)
+    if (OK .and. present(i4)) OK = SubNextFormat(S, i4)
+    if (OK .and. present(i5)) OK = SubNextFormat(S, i5)
+    if (OK .and. present(i6)) OK = SubNextFormat(S, i6)
+    if (.not. OK) stop 'FormatString: Wrong number or kind of formats in string'
 
-    write(unit,'(a)') trim(S)
-
-    end subroutine WriteFormatInts
+    end function FormatString
 
 
     end module StringUtils

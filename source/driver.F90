@@ -23,10 +23,10 @@
     Class(TDataLikelihood), pointer :: Like
     character(LEN=:), allocatable :: prop_mat
     class(TMinimizer), allocatable :: Minimizer
+    logical :: estimate_propose_matrix = .false.
 
 #ifdef MPI
     integer ierror
-    integer inlen
 
     call mpi_init(ierror)
     if (ierror/=MPI_SUCCESS) stop 'MPI fail: rank'
@@ -48,23 +48,16 @@
 #ifdef MPI
 
     if (instance /= 0) call DoAbort('With MPI should not have second parameter')
-    call mpi_comm_rank(mpi_comm_world,MPIrank,ierror)
+    call MpiStat(MpiRank, Mpichains)
 
     instance = MPIrank +1 !start at 1 for chains
     rand_inst = instance
-    if (ierror/=MPI_SUCCESS) call DoAbort('MPI fail')
-
-    call mpi_comm_size(mpi_comm_world,MPIchains,ierror)
 
     if (instance == 1) then
         print *, 'Number of MPI processes:',mpichains
         InputFile=GetParam(1)
-        inlen=len(InputFile)
     end if
-    CALL MPI_Bcast(inlen, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierror)
-    if (instance/=1) allocate(character(inlen)::InputFile)
-
-    CALL MPI_Bcast(InputFile, LEN(InputFile), MPI_CHARACTER, 0, MPI_COMM_WORLD, ierror)
+    call MpiShareString(InputFile,0)
 
 #endif
     call Ini%Open(InputFile)

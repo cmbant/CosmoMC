@@ -95,19 +95,21 @@
 
     end function TSamplingAlgorithm_LogLike
 
-    subroutine TSamplingAlgorithm_LoadState(this,unit)
+    subroutine TSamplingAlgorithm_LoadState(this,F)
     class(TSamplingAlgorithm) :: this
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
 
-    read(unit) this%num_sample, this%MaxLike, this%MaxLikeParams
+    call F%Read(this%num_sample, this%MaxLike)
+    call F%Read(this%MaxLikeParams)
 
     end subroutine TSamplingAlgorithm_LoadState
 
-    subroutine TSamplingAlgorithm_SaveState(this,unit)
+    subroutine TSamplingAlgorithm_SaveState(this,F)
     class(TSamplingAlgorithm) :: this
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
 
-    write(unit) this%num_sample, this%MaxLike, this%MaxLikeParams
+    call F%Write(this%num_sample, this%MaxLike)
+    call F%Write(this%MaxLikeParams)
 
     end subroutine TSamplingAlgorithm_SaveState
 
@@ -194,24 +196,24 @@
     end subroutine TChainSampler_GetNewSample
 
 
-    subroutine TChainSampler_LoadState(this,unit)
+    subroutine TChainSampler_LoadState(this,F)
     class(TChainSampler) :: this
-    integer, intent(in) :: unit
-
-    call this%TSamplingAlgorithm%LoadState(unit)
-    read(unit) this%num_accept
-    call this%Proposer%LoadState(unit)
+    class(TFileStream) F
+    
+    call this%TSamplingAlgorithm%LoadState(F)
+    call F%Read(this%num_accept)
+    call this%Proposer%LoadState(F)
 
     end subroutine TChainSampler_LoadState
 
 
-    subroutine TChainSampler_SaveState(this,unit)
+    subroutine TChainSampler_SaveState(this,F)
     class(TChainSampler) :: this
-    integer, intent(in) :: unit
-
-    call this%TSamplingAlgorithm%SaveState(unit)
-    write(unit) this%num_accept
-    call this%Proposer%SaveState(unit)
+    class(TFileStream) F
+    
+    call this%TSamplingAlgorithm%SaveState(F)
+    call F%Write(this%num_accept)
+    call this%Proposer%SaveState(F)
 
     end subroutine TChainSampler_SaveState
 

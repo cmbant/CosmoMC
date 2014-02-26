@@ -1628,14 +1628,14 @@
 
     end subroutine Write1DplotMatLab
 
-    subroutine WriteMatlabLineLabels(aunit)
-    integer, intent(in) :: aunit
+    subroutine WriteMatlabLineLabels(F)
+    class(TTextFile) :: F
     integer ix1
-    call WriteFormatInts(aunit,'set(gcf,''Units'',''Normal''); frac=1/%u;',ComparePlots%Count+1)
-    write(aunit,'(a)') 'ax=axes(''Units'',''Normal'',''Position'',[0.1,0.95,0.85,0.05],''Visible'',''off'');'
-    write(aunit,'(a)') 'text(0,0,'''//trim(rootname)//''',''color'', colstr(1),''Interpreter'',''none'');'
+    call F%WriteFormat('set(gcf,''Units'',''Normal''); frac=1/%u;',ComparePlots%Count+1)
+    call F%Write('ax=axes(''Units'',''Normal'',''Position'',[0.1,0.95,0.85,0.05],''Visible'',''off'');')
+    call F%Write('text(0,0,'''//trim(rootname)//''',''color'', colstr(1),''Interpreter'',''none'');')
     do ix1 = 1, ComparePlots%Count
-        call WriteFormatInts(aunit, 'text(frac*%u,0,''' // ComparePlots%Item(ix1) // &
+        call F%WriteFormat('text(frac*%u,0,''' // ComparePlots%Item(ix1) // &
         ''',''Interpreter'',''none'',''color'',colstr(%u));', ix1, ix1+1)
     end do
 
@@ -2398,7 +2398,7 @@
         end do
 
         if (.not. no_plots .and. plot_ext=='m') then
-            call WriteFormatInts(FileMatlab%unit,'subplot(%u,%u,%u);',plot_row,plot_col,j)
+            call FileMatlab%WriteFormat('subplot(%u,%u,%u);',plot_row,plot_col,j)
             call Write1DplotMatLab(FileMatlab%unit,j);
             if (prob_label)  write (FileMatlab%unit,*) 'ylabel(''Probability'')'
             write(FileMatlab%unit,*)  'xlabel('''//   trim(matlabLabel(ix))//''',''FontSize'',lab_fontsize);'
@@ -2407,7 +2407,7 @@
     end do
 
     if (.not. no_plots) then
-        if (line_labels .and. plot_ext=='m') call WriteMatlabLineLabels(FileMatlab%unit)
+        if (line_labels .and. plot_ext=='m') call WriteMatlabLineLabels(FileMatlab)
         if (plot_ext=='py') write(FileMatlab%unit,'(a)') 'g.plots_1d(roots)'
         call WritePlotFileExport(FileMatlab%unit, '', plot_col, plot_row)
         call FileMatlab%close()
@@ -2420,7 +2420,7 @@
             elseif (plot_ext=='m') then
                 do i=1, triangle_num
                     j=triangle_params(i)
-                    call WriteFormatInts(FileTri%unit,'subplot(%u,%u,%u);',triangle_num,triangle_num,(i-1)*triangle_num+i)
+                    call FileTri%WriteFormat('subplot(%u,%u,%u);',triangle_num,triangle_num,(i-1)*triangle_num+i)
                     call Write1DplotMatLab(FileTri%unit,j)
                     if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(FileTri%unit)
                     if (prob_label)  write (FileTri%unit,*) 'ylabel(''Probability'')'
@@ -2515,24 +2515,24 @@
                         done2D(j,j2) = .true.
                         if (.not. plots_only) call Get2DPlotData(j,j2)
                         if (plot_ext=='m') then
-                            call WriteFormatInts(File2d%unit,'subplot(%u,%u,%u);',plot_row,plot_col,plot_num)
+                            call File2d%WriteFormat('subplot(%u,%u,%u);',plot_row,plot_col,plot_num)
                             call Write2DPlotMATLAB(File2d%unit,j,j2,.true.,.true.)
                             if (plot_row*plot_col > 4 .and. subplot_size_inch<3.5) call CheckMatlabAxes(File2d%unit)
                         elseif (plot_ext=='py') then
-                            write(File2d%unit,'(a)') 'pairs.append(['//trim(quoted_param_name_used(j))//','//trim(quoted_param_name_used(j2))//'])'
+                            call File2d%WriteFormat('pairs.append([%s,%s])',quoted_param_name_used(j),quoted_param_name_used(j2))
                         end if
                     end if
                 end do
             end if
         end do
         if (plot_ext=='m') then
-            if (line_labels) call WriteMatlabLineLabels(File2d%unit)
-            if (matlab_col/='') write (File2d%unit,*) trim(matlab_col)
+            if (line_labels) call WriteMatlabLineLabels(File2d)
+            if (matlab_col/='') call File2D%Write(matlab_col)
         elseif (plot_ext=='py') then
-            write(File2d%unit,'(a)') 'g.plots_2d(roots,param_pairs=pairs)'
+            call File2D%Write('g.plots_2d(roots,param_pairs=pairs)')
         end if
         call WritePlotFileExport(File2d%unit, '_2D', plot_col, plot_row)
-        close(File2d%unit)
+        call File2D%Close()
     end if
 
     if (triangle_plot .and. .not. no_plots) then
@@ -2543,7 +2543,7 @@
                 j2=triangle_params(i2)
                 if (.not. Done2D(j2,j) .and. .not. plots_only) call Get2DPlotData(j2,j)
                 if (plot_ext=='m') then
-                    call WriteFormatInts(FileTri%unit,'subplot(%u,%u,%u);',triangle_num,triangle_num,(i2-1)*triangle_num + i)
+                    call FileTri%WriteFormat('subplot(%u,%u,%u);',triangle_num,triangle_num,(i2-1)*triangle_num + i)
                     call Write2DPlotMATLAB(FileTri%unit,j2,j,i2==triangle_num, i==1,no_triangle_axis_Labels)
                     if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(FileTri%unit)
                 end if
@@ -2562,7 +2562,7 @@
             if (matlab_col/='') write (FileTri%unit,*) trim(matlab_col)
         end if
         call WritePlotFileExport(FileTri%unit, '_tri', triangle_num+1, triangle_num+1)
-        close(FileTri%unit)
+        call FileTri%Close()
     end if
 
     !Do 3D plots (i.e. 2D scatter plots with coloured points)
@@ -2597,9 +2597,9 @@
             end if
             !            if (ix3<1) ix3 = MostCorrelated2D(ix1,ix2,ix3)
             if (plot_ext=='m') then
-                call WriteFormatInts(File3D%unit,'subplot(%u,%u,%u);', plot_row,plot_col,j)
+                call File3D%WriteFormat('subplot(%u,%u,%u);', plot_row,plot_col,j)
                 write (File3D%unit,*) '%Do params ',tmp_params(1:3)
-                call WriteFormatInts(File3D%unit,'scatter(pts(:,%u),pts(:,%u),3,pts(:,%u));', ix1,ix2,ix3)
+                call File3D%WriteFormat('scatter(pts(:,%u),pts(:,%u),3,pts(:,%u));', ix1,ix2,ix3)
                 fmt = ''',''FontSize'',lab_fontsize);'
                 write (File3D%unit,*) 'xlabel('''//trim(matlabLabel(tmp_params(1)+2))//trim(fmt)
                 write (File3D%unit,*) 'ylabel('''//trim(matlabLabel(tmp_params(2)+2))//trim(fmt)
@@ -2616,15 +2616,14 @@
                     write (File3D%unit,*) 'fix_colorbar(hbar,ax); axes(ax);'
                 end if
             elseif (plot_ext=='py') then
-                write(File3D%unit,'(a)') 'sets.append(['//trim(quoted_param_name(tmp_params(1))) &
-                //','//trim(quoted_param_name(tmp_params(2)))//','//trim(quoted_param_name(tmp_params(3)))//'])'
+                call File3D%WriteFormat('sets.append([''%s'',''%s'',''%s''])',tmp_params(1),tmp_params(2),tmp_params(3))
             end if
         end do
         if (plot_ext=='py') then
             write(File3D%unit,'(a)') 'g.plots_3d(roots,sets)'
         end if
         call WritePlotFileExport(File3D%unit, '_3D', plot_col, plot_row)
-        close(File3D%unit)
+        call File3D%close()
     end if
 
     !write out stats
