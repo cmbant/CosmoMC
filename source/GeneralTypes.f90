@@ -228,7 +228,7 @@
     real(mcp), allocatable :: derived(:)
     integer :: numderived = 0
 
-    if (ChainOutFile%unit/=0) return
+    if (ChainOutFile%unit==0) return
 
     call Config%Parameterization%CalcDerivedParams(this%P, this%Theory, derived)
     call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived)
