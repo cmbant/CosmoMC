@@ -277,7 +277,7 @@
                     write (*,*) 'Current convergence R-1 = ',real(R), ' chain steps =',this%sample_num
                     call this%Sampler%LikeCalculator%WritePerformanceStats(stdout)
                 end if
-                if (logfile_unit/=0) then
+                if (LogFile%Opened()) then
                     write(LogFile%unit,*) 'Current convergence R-1 = ',real(R), ' chain steps =',this%sample_num
                     if (flush_write) call LogFile%Flush()
                     call this%Sampler%LikeCalculator%WritePerformanceStats(LogFile%unit)
@@ -454,13 +454,13 @@
     logical, intent(in) :: isDone
     character(LEN=*), intent(in), optional :: Msg
     real(mcp), intent(in) :: R
-    integer unit
-
+    Type(TTextFile) :: F
+    
     if (MPiRank==0) then
-        unit = CreateNewTxtFile(trim(baseroot)//'.converge_stat')
-        write(unit,*) real(R)
-        if (isDone) write(unit,'(a)') 'Done'
-        close(unit)
+        call F%CreateFile(trim(baseroot)//'.converge_stat')
+        call F%Write(R)
+        if (isDone) call F%Write('Done')
+        call F%Close()
     end if
     if (isDone) call DoStop(Msg)
 
@@ -525,10 +525,11 @@
         write (*,'(a)')  'Current limit err = '//trim(RealToStr(WorstErr))// &
         ' for '//trim(BaseParams%UsedParamNameOrNumber(Worsti))//'; samps = '//trim(IntToStr(L%Count*this%Mpi%MPI_thin_fac))
     end if
-    if (logfile_unit/=0) then
+    if (LogFile%Opened()) then
         write (logLine,'(a)') 'Current limit err = '//trim(RealToStr(WorstErr))// &
         ' for '//trim(BaseParams%UsedParamNameOrNumber(Worsti))//'; samps = '//trim(IntToStr(L%Count*this%Mpi%MPI_thin_fac))
-        call IO_WriteLog(logfile_unit,logLine)
+        call LogFile%Write(logLine)
+        if (flush_write) call LogFile%Flush()
     end if
     CheckLimitsConverge = (WorstErr < this%Mpi%MPI_Limit_Converge_Err)
 
