@@ -43,9 +43,9 @@
     subroutine GiggleZinfo_init()
     integer :: iopb, ik, iz
     real(mcp) :: kval, power_nl
-    integer tmp_file_unit
     character(LEN=:), allocatable :: fname
-
+    Type(TTextFile) :: F
+    
     call GiggleZPK%InitPK(GiggleZ_numk,GiggleZ_numz,.true.)
     GiggleZPK%redshifts = zeval
 
@@ -61,15 +61,15 @@
         else if(iz.eq.4) then
             fname = 'gigglezfiducialmodel_matterpower_d.dat'
         end if
-        tmp_file_unit= OpenNewTxtFile(DataDir//fname)
+        call F%Open(DataDir//fname)
         do ik=1, GiggleZPK%num_k
-            read (tmp_file_unit,*,iostat=iopb)kval,power_nl
+            read (F%unit,*,iostat=iopb)kval,power_nl
             if(iopb .ne. 0) stop 'Error reading model or fiducial theory files.'
             !JD PK arrays store log(k); we choose to store log(PK) for interpolation
             if(iz==1) GiggleZPK%log_kh(ik) = log(kval)
             GiggleZPK%matter_power(ik,iz) = log(power_nl)
         end do
-        close(tmp_file_unit)
+        call F%Close()
     end do
     call GiggleZPK%IOPK_Getsplines()
 
@@ -305,7 +305,8 @@
     real(mcp), dimension(:), allocatable :: mpk_kfull
     real(mcp), dimension(:,:), allocatable :: invcov_tmp
     character(80) :: dummychar
-    integer count,tmp_file_unit
+    integer count
+    Type(TTextFile) :: F
 
     iopb = 0
 
@@ -332,7 +333,7 @@
     allocate(mpk_kfull(num_mpk_kbands_full))
 
     kbands_file  = Ini%ReadFileName('kbands_file')
-    call ReadVector(kbands_file,mpk_kfull,num_mpk_kbands_full)
+    call File%ReadTextVector(kbands_file,mpk_kfull,num_mpk_kbands_full)
     if (Feedback > 1) then
         write(*,*) 'reading: '//trim(like%name)//' data'
         write(*,*) 'Using kbands windows between',real(mpk_kfull(min_mpk_kbands_use)),&
@@ -340,7 +341,7 @@
     endif
 
     measurements_file  = Ini%ReadFileName('measurements_file')
-    tmp_file_unit = OpenNewTxtFile(measurements_file)
+    call F%Open(measurements_file)
     count = 0
     do i_regions =1,7
         if(regions_active(i_regions)) then
@@ -351,32 +352,32 @@
             like%PKdata(count)%mpk_k(:)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
             like%PKdata(count)%mpk_P=0.
 
-            read (tmp_file_unit,*) dummychar
-            read (tmp_file_unit,*) dummychar
+            read (F%unit,*) dummychar
+            read (F%unit,*) dummychar
             do i= 1, (min_mpk_points_use-1)
-                read (tmp_file_unit,*, iostat=iopb) keff,klo,khi,beff,beff,beff
+                read (F%unit,*, iostat=iopb) keff,klo,khi,beff,beff,beff
             end do
 
             if (Feedback > 1 .and. min_mpk_points_use>1) write(*,*) 'Not using bands with keff=  ',real(keff),&
             ' or below in region', i_regions
             do i =1, num_mpk_points_use
-                read (tmp_file_unit,*, iostat=iopb) keff,klo,khi,like%PKdata(count)%mpk_P(i),beff,beff
+                read (F%unit,*, iostat=iopb) keff,klo,khi,like%PKdata(count)%mpk_P(i),beff,beff
             end do
             ! NB do something to get to the end of the list
             do i=1, num_mpk_points_full-num_mpk_points_use-min_mpk_points_use+1
-                read (tmp_file_unit,*, iostat=iopb) klo,klo,khi,beff,beff,beff
+                read (F%unit,*, iostat=iopb) klo,klo,khi,beff,beff,beff
                 if(iopb.ne.0) stop
             end do
         else
-            read (tmp_file_unit,*) dummychar
-            read (tmp_file_unit,*) dummychar
+            read (F%unit,*) dummychar
+            read (F%unit,*) dummychar
             do i=1,50
-                read (tmp_file_unit,*, iostat=iopb) klo,klo,khi,beff,beff,beff
+                read (F%unit,*, iostat=iopb) klo,klo,khi,beff,beff,beff
                 if(iopb.ne.0) stop
             enddo
         endif
     enddo
-    close(tmp_file_unit)
+    call F%Close()
     if (Feedback > 1) write(*,*) 'bands truncated at keff=  ',real(keff)
 
     allocate(mpk_Wfull(max_num_wigglez_regions,num_mpk_points_full,num_mpk_kbands_full))
@@ -443,16 +444,17 @@
     character(LEN=*), intent(IN) :: aname
     integer, intent(in) :: m,n,num_regions
     real(mcp), intent(out) :: mat(num_regions,m,n)
-    integer j,i_region,tmp_file_unit
+    integer j,i_region
     real(mcp) tmp
     character(LEN=64) dummychar
+    type(TTextFile) :: F
 
     if (Feedback > 1) write(*,*) 'reading: '//trim(aname)
-    tmp_file_unit= OpenNewTxtFile(aname)
+    call F%Open(aname)
     do i_region=1,num_regions
-        read (tmp_file_unit,*, end = 200, err=100) dummychar
+        read (F%unit,*, end = 200, err=100) dummychar
         do j=1,m
-            read (tmp_file_unit,*, end = 200, err=100) mat(i_region,j,1:n)
+            read (F%unit,*, end = 200, err=100) mat(i_region,j,1:n)
         enddo
     enddo
     goto 120
@@ -460,11 +462,11 @@
 100 write(*,*) 'matrix file '//trim(aname)//' is the wrong size',i_region,j,n,mat(num_regions,m,n)
     stop
 
-120 read (tmp_file_unit,*, err = 200, end =200) tmp
+120 read (F%unit,*, err = 200, end =200) tmp
     goto 200
 
 
-200 close(tmp_file_unit)
+200 call F%Close()
     return
 
     end subroutine ReadWiggleZMatrices

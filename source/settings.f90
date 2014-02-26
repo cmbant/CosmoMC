@@ -1,4 +1,5 @@
     module settings
+    use MiscUtils
     use FileUtils
     use StringUtils
     use MpiUtils
@@ -90,9 +91,10 @@
 
     logical :: checkpoint = .false.
 
-    integer :: logfile_unit  = 0
-    integer :: outfile_handle = 0
+    
     integer :: output_lines = 0
+    Type(TTextFile), save :: ChainOutFile = TTextFile(RealFormat='(*(E16.7))')
+    Type(TTextFile), save :: LogFile
 
     integer :: Feedback = 0
 
@@ -129,7 +131,7 @@
     logical wantbort
     real(time_dp) runTime
 
-    if (outfile_handle/=0) close(outfile_handle)
+    call ChainOutFile%Close()
 
     if (present(abort)) then
         wantbort = abort
@@ -203,7 +205,7 @@
         FeedBack = Ini%Read_Int('feedback',Feedback)
         num_threads = Ini%Read_Int('num_threads',num_threads)
         call Ini%Close()
-        if (F== FileChangeIni) call DeleteFile(FileChangeini)
+        if (F== FileChangeIni) call File%Delete(FileChangeini)
         if (doexit) call MpiStop('exit requested')
     end if
 
@@ -215,75 +217,6 @@
     if (FileChangeIni/=FileChangeIniAll) call CheckParamChangeF(FileChangeIniAll)
 
     end subroutine CheckParamChange
-
-    subroutine ReadVector(aname, vec, n)
-    character(LEN=*), intent(IN) :: aname
-    integer, intent(in) :: n
-    real(mcp), intent(out) :: vec(n)
-    integer j, unit, status
-
-    if (Feedback > 0) write(*,*) 'reading: '//trim(aname)
-
-    unit = OpenNewTxtFile(aname)
-    do j=1,n
-        read (unit,*, iostat=status) vec(j)
-        if (status/=0) then 
-            write (*,*) 'vector file '//trim(aname)//' is the wrong size'
-            stop
-        end if
-    end do
-    close(unit)
-
-    end subroutine ReadVector
-
-    subroutine WriteVector(aname, vec, n)
-    character(LEN=*), intent(IN) :: aname
-    integer, intent(in) :: n
-    real(mcp), intent(in) :: vec(n)
-    integer j, unit
-
-    unit = CreateNewTxtFile(aname)
-    do j=1,n
-        write (unit,'(1E15.6)') vec(j)
-    end do
-    close(unit)
-
-    end subroutine WriteVector
-
-
-
-    subroutine ReadMatrix(aname, mat, m,n)
-    character(LEN=*), intent(IN) :: aname
-    integer, intent(in) :: m,n
-    real(mcp), intent(out) :: mat(m,n)
-    integer j,k, unit
-    real(mcp) tmp
-
-    if (Feedback > 0) write(*,*) 'reading: '//trim(aname)
-    unit = OpenNewTxtFile(aname)
-
-    do j=1,m
-        read (unit,*, end = 200, err=100) mat(j,1:n)
-    end do
-    goto 120
-
-100 rewind(unit)  !Try other possible format
-    do j=1,m
-        do k=1,n
-            read (unit,*, end = 200) mat(j,k)
-        end do
-    end do
-
-120 read (unit,*, err = 150, end =150) tmp
-    goto 200
-
-150 close(unit)
-    return
-
-200 write (*,*) 'matrix file '//trim(aname)//' is the wrong size'
-    stop
-
-    end subroutine ReadMatrix
 
 
     function TimerTime()

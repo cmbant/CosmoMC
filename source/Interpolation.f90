@@ -121,22 +121,22 @@
     integer, intent(in), optional :: xcol, ycol
     integer :: ixcol=1,iycol=2
     integer :: nx,ny
-    integer :: i,file_id, parse, status
+    integer :: i, parse, status
     real(sp_acc), allocatable :: tmp(:)
     character(LEN=:), allocatable :: InLine
-
+    Type(TTextFile) :: F
     if (present(xcol)) ixcol=xcol
     if (present(ycol)) iycol=ycol
 
     allocate(tmp(max(ixcol,iycol)))
 
-    file_id = OpenNewTxtFile(filename)
+    call F%Open(Filename)
 
     do parse=1,2
         ny=0
         nx=0
         do
-            if (.not. ReadLineSkipEmptyAndComments(file_id, InLine)) exit
+            if (.not. F%ReadLineSkipEmptyAndComments(InLine)) exit
 
             read(InLine,*, iostat=status) tmp
             if (status/=0) call W%Error('Error reading line: '//trim(InLine))
@@ -155,10 +155,10 @@
         allocate(W%X(W%n))
         allocate(W%F(W%n))
         status=0
-        rewind(file_id)
+        call F%Rewind()
     end do
 
-    close(file_id)
+    call F%Close()
 
     call W%InitInterp()
 
@@ -313,11 +313,12 @@
     integer, intent(in), optional :: xcol, ycol, zcol
     integer :: ixcol=1,iycol=2,izcol=3
     integer :: nx,ny
-    integer :: j, file_id, parse, status
+    integer :: j, parse, status
     real(sp_acc), allocatable :: tmp(:)
     real(sp_acc) lasty
     logical :: first
     character(LEN=:), allocatable :: InLine
+    Type(TTextFile) :: F
 
     if (present(xcol)) ixcol=xcol
     if (present(ycol)) iycol=ycol
@@ -325,14 +326,14 @@
 
     allocate(tmp(max(ixcol,iycol,izcol)))
 
-    file_id = OpenNewTxtFile(FileName)
+    call F%Open(FileName)
 
     do parse=1,2
         first = .true.
         ny=0
         nx=0
         do
-            if (.not. ReadLineSkipEmptyAndComments(file_id, InLine)) exit
+            if (.not. F%ReadLineSkipEmptyAndComments(InLine)) exit
 
             read(InLine,*, iostat=status) tmp
             if (status/=0) call W%Error('Error reading line: '//trim(InLine))
@@ -370,10 +371,10 @@
         W%owns_z = .true.
         allocate(W%z(nx,ny))
         status=0
-        rewind(file_id)
+        call F%Rewind()
     end do
 
-    close(file_id)
+    call F%Close()
 
     call W%InitInterp()
 

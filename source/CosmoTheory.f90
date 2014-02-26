@@ -251,64 +251,63 @@
     character (LEN=*), intent(in) :: aname
     integer l
     real(mcp) Cls(lmax,num_cls_tot), nm
-    character(LEN=80) fmt
-    integer unit
+    character(LEN=*), parameter :: fmt = '(1I6,*(E15.5))'
+    Type(TTextFile) :: F
 
-    unit=CreateNewTxtFile(aname)
+    call F%CreateFile(aname)
     call T%ClsFromTheoryData(Cls)
-    fmt = concat('(1I6,',num_cls_tot,'E15.5)')
     do l = 2, lmax
         nm = 2*pi/(l*(l+1))
         if (num_cls_ext > 0) then
-            write (unit,fmt) l, cls(l,1:num_cls)/nm, cls(l,num_cls+1:num_cls_tot)
+            write (F%unit,fmt) l, cls(l,1:num_cls)/nm, cls(l,num_cls+1:num_cls_tot)
         else
-            write (unit,fmt) l, cls(l,:)/nm
+            write (F%unit,fmt) l, cls(l,:)/nm
         end if
     end do
-    close(unit)
+    call F%Close()
 
     end subroutine WriteTextCls
 
-    subroutine TCosmoTheoryPredictions_WriteTheory(T, unit)
+    subroutine TCosmoTheoryPredictions_WriteTheory(T, F)
     Class(TCosmoTheoryPredictions) T
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
     integer, parameter :: varcount = 0
     integer tmp(varcount)
     logical, save :: first = .true.
 
     if (first .and. new_chains) then
         first = .false.
-        write(unit) use_LSS, compute_tensors, get_sigma8
-        write(unit) lmax, lmax_tensor, num_cls, num_cls_ext
-        write(unit) varcount
-        write(unit) tmp(1:varcount)
+        write(F%unit) use_LSS, compute_tensors, get_sigma8
+        write(F%unit) lmax, lmax_tensor, num_cls, num_cls_ext
+        write(F%unit) varcount
+        write(F%unit) tmp(1:varcount)
     end if
 
-    write(unit) T%numderived
-    write(unit) T%derived_parameters(1:T%numderived)
-    write(unit) T%cl(2:lmax,1:num_cls)
-    if (num_cls_ext>0) write(unit) T%cl(2:lmax,num_cls+1:num_cls_tot)
+    write(F%unit) T%numderived
+    write(F%unit) T%derived_parameters(1:T%numderived)
+    write(F%unit) T%cl(2:lmax,1:num_cls)
+    if (num_cls_ext>0) write(F%unit) T%cl(2:lmax,num_cls+1:num_cls_tot)
 
     if (compute_tensors) then
-        write(unit) T%tensor_ratio_02, T%tensor_ratio_r10
+        write(F%unit) T%tensor_ratio_02, T%tensor_ratio_r10
     end if
 
-    if (get_sigma8 .or. use_LSS) write(unit) T%sigma_8
+    if (get_sigma8 .or. use_LSS) write(F%unit) T%sigma_8
 
     if (use_LSS) then
-        write(unit) T%MPK%num_k, T%MPK%num_z
-        write(unit) T%MPK%log_kh
-        write(unit) T%MPK%redshifts
-        write(unit) T%MPK%matter_power
-        write(unit) use_nonlinear
-        if(use_nonlinear) write(unit) T%NL_MPK%matter_power
+        write(F%unit) T%MPK%num_k, T%MPK%num_z
+        write(F%unit) T%MPK%log_kh
+        write(F%unit) T%MPK%redshifts
+        write(F%unit) T%MPK%matter_power
+        write(F%unit) use_nonlinear
+        if(use_nonlinear) write(F%unit) T%NL_MPK%matter_power
     end if
 
     end subroutine TCosmoTheoryPredictions_WriteTheory
 
-    subroutine TCosmoTheoryPredictions_ReadTheory(T, unit)
+    subroutine TCosmoTheoryPredictions_ReadTheory(T, F)
     Class(TCosmoTheoryPredictions) T
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
     integer unused
     logical, save :: first = .true.
     logical, save :: has_sigma8, has_LSS, has_tensors
@@ -319,44 +318,44 @@
 
     if (first) then
         first = .false.
-        read(unit) has_LSS, has_tensors, has_sigma8
-        read(unit) almax, almaxtensor, anumcls, anumclsext
+        read(F%unit) has_LSS, has_tensors, has_sigma8
+        read(F%unit) almax, almaxtensor, anumcls, anumclsext
         if (almax > lmax) call MpiStop('ReadTheory: reading file with larger lmax')
         if (anumcls /= num_cls) call MpiStop('ReadTheory: reading file with different Cls')
         if (anumclsext /= num_cls_ext) call MpiStop('ReadTheory: reading file with different ext Cls')
-        read(unit) unused
-        read(unit) tmp(1:unused)
+        read(F%unit) unused
+        read(F%unit) tmp(1:unused)
     end if
 
     T%cl = 0
     T%derived_parameters=0
-    read(unit) T%numderived
-    read(unit) T%derived_parameters(1:T%numderived)
-    read(unit) T%cl(2:almax,1:anumcls)
-    if (anumclsext >0) read(unit) T%cl(2:almax,num_cls+1:num_cls+anumclsext)
+    read(F%unit) T%numderived
+    read(F%unit) T%derived_parameters(1:T%numderived)
+    read(F%unit) T%cl(2:almax,1:anumcls)
+    if (anumclsext >0) read(F%unit) T%cl(2:almax,num_cls+1:num_cls+anumclsext)
 
     if (has_tensors) then
-        read(unit) T%tensor_ratio_02, T%tensor_ratio_r10
+        read(F%unit) T%tensor_ratio_02, T%tensor_ratio_r10
     end if
 
-    if (has_sigma8 .or. has_LSS) read(unit) T%sigma_8
+    if (has_sigma8 .or. has_LSS) read(F%unit) T%sigma_8
     if (has_LSS) then
-        read(unit) num_k, num_z
+        read(F%unit) num_k, num_z
         if(.not. associated(T%MPK)) allocate(T%MPK)
         call T%MPK%InitPK(num_k,num_z,.true.)
-        read(unit) T%MPK%log_kh
-        read(unit) T%MPK%redshifts
-        read(unit, iostat=stat) T%MPK%matter_power
+        read(F%unit) T%MPK%log_kh
+        read(F%unit) T%MPK%redshifts
+        read(F%unit, iostat=stat) T%MPK%matter_power
         call T%MPK%IOPK_GetSplines()
         if (IS_IOSTAT_END(stat)) then
             has_nonlinear = .false.
         else
-            read(unit)has_nonlinear
+            read(F%unit)has_nonlinear
         end if
         if(has_nonlinear) then
             if(.not. associated(T%NL_MPK)) allocate(T%NL_MPK)
             T%NL_MPK=T%MPK
-            read(unit)T%NL_MPK%matter_power
+            read(F%unit)T%NL_MPK%matter_power
             call T%NL_MPK%IOPK_GetSplines()
             if(.not. use_nonlinear) then
                 write(*,*)"WARNING:  ReadTheory - Your data files have nonlinear power spectra,"

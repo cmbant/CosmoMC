@@ -71,8 +71,8 @@
     !    txt_theory = Ini%Read_Logical('txt_theory',.false.)
 
     if (this%redo_outroot == '') then
-        this%redo_outroot = trim(ExtractFilePath(baseroot))//'post_' &
-        // trim(ExtractFileName(baseroot))
+        this%redo_outroot = trim(File%ExtractPath(baseroot))//'post_' &
+        // trim(File%ExtractName(baseroot))
     end if
 
     end subroutine TImportanceSampler_ReadParams
@@ -100,14 +100,16 @@
     real(mcp) max_like, max_truelike
     integer error,num, debug
     character (LEN=:), allocatable :: post_root
-    integer i, infile_handle
-    integer :: outdata_handle=-1
+    integer i
     Type (ParamSet) :: Params
     logical :: has_likes(DataLikelihoods%Count)
     class(TDataLikelihood), pointer :: DataLike
     logical :: first = .false., has_chain = .true.
-    integer last_file_loc,file_loc, file_size
+    integer(File_size_int)  last_file_loc
     integer :: at_beginning=0, ierror, num_used
+    class(TFileStream), pointer :: InF
+    Type(TTextFile), target :: InChain
+    Type(TBinaryFile), target :: OutData, InData
 
     flush_write = .false.
     weight_min= 1e30_mcp
@@ -121,7 +123,6 @@
 
     debug = 0
 
-    infile_handle = 0
     this%LikeCalculator%Temperature = this%redo_temperature
 
     if (Feedback>0 .and. this%redo_change_like_only) &
@@ -130,12 +131,14 @@
     if (this%redo_datafile /= '') InputFile = this%redo_datafile
 
     if (this%redo_from_text) then
-        infile_handle = IO_OpenChainForRead(trim(InputFile)//'.txt')
+        call InChain%Open(trim(InputFile)//'.txt')
+        InF => InChain
         if (.not. this%redo_theory) write (*,*) '**You probably want to set redo_theory**'
         if (this%redo_thin>1) write (*,*) 'redo_thin only OK with redo_from_text if input weights are 1'
     else
-        if (FileExists(trim(InputFile)//'.data')) then
-            infile_handle = IO_OpenDataForRead(trim(InputFile)//'.data')
+        if (File%Exists(trim(InputFile)//'.data')) then
+            call InData%Open(trim(InputFile)//'.data')
+            InF => InData
         else
             write(*,*) 'Chain .data files does not exist: ', MpiRank+1
             has_chain =.false.
@@ -163,8 +166,8 @@
 
         write (*,*) 'Using temperature: ', this%LikeCalculator%Temperature
 
-        outfile_handle = IO_OutputOpenForWrite(trim(post_root)//'.txt')
-        if (.not. this%redo_no_new_data) outdata_handle = IO_DataOpenForWrite(trim(post_root)//'.data')
+        call ChainOutFile%CreateFile(trim(post_root)//'.txt')
+        if (.not. this%redo_no_new_data) call OutData%CreateFile(trim(post_root)//'.data')
         num = 0
         num_used = 0
         Params%Theory => this%LikeCalculator%Config%NewTheory()
@@ -173,10 +176,10 @@
             if (this%redo_from_text) then
                 error = 0
                 Params%P= BaseParams%center
-                if (.not. IO_ReadChainRow(infile_handle, mult, like, Params%P, params_used)) exit
+                if (.not. IO_ReadChainRow(InChain, mult, like, Params%P, params_used)) exit
                 num=num+1
             else
-                call Params%ReadModel(infile_handle,has_likes, mult,like, error)
+                call Params%ReadModel(InF,has_likes, mult,like, error)
                 num=num+1
                 if (first .and. this%redo_like_name/='') then
                     first=.false.
@@ -196,12 +199,10 @@
                 if (this%redo_skip>0.d0 .and. this%redo_skip<1) then
                     at_beginning=at_beginning+1
                     if (at_beginning==1) then
-                        inquire(infile_handle, pos=last_file_loc)
+                        last_file_loc = InF%Position()
                         cycle
                     elseif (at_beginning==2) then
-                        inquire(infile_handle, pos=file_loc)
-                        inquire(unit=infile_handle, size=file_size)
-                        this%redo_skip = file_size/(file_loc-last_file_loc) * this%redo_skip
+                        this%redo_skip = InF%Size()/(InF%Position() -last_file_loc) * this%redo_skip
                         if (Feedback > 0) print *,'skipping ',nint(this%redo_skip), ' models'
                     end if
                 end if
@@ -262,8 +263,7 @@
                     !                        call WriteParamsAndDat(Params, mult,like)
                     !                    else
                     call Params%WriteParams(this%LikeCalculator%Config,mult,like)
-                    !                   end if
-                    if (.not. this%redo_no_new_data) call Params%WriteModel(outdata_handle, truelike,mult)
+                    if (.not. this%redo_no_new_data) call Params%WriteModel(OutData, truelike,mult)
                 else
                     if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
                 end if
@@ -277,10 +277,9 @@
 
         end do
 
-        close(infile_handle)
-        close(outfile_handle)
-        outfile_handle = 0
-        if (.not. this%redo_no_new_data) close(outdata_handle)
+        call InF%Close()
+        call OutData%Close()
+        call ChainOutFile%Close()
 
         if (Feedback>0) then
             write(*,*) 'finished. Processed ',num_used,' models'

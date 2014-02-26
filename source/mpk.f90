@@ -130,7 +130,7 @@
     integer :: min_mpk_kbands_use ! in case you don't want to calc P(k) on the largest scales (will truncate P(k) to zero here!)
     real(mcp), dimension(:,:), allocatable :: mpk_Wfull, mpk_covfull
     real(mcp), dimension(:), allocatable :: mpk_kfull, mpk_fiducial
-    integer unit
+    Type(TTextFile) :: F
 
     character(80) :: dummychar
 
@@ -158,7 +158,7 @@
     allocate(mpk_fiducial(like%num_mpk_points_use))
 
     kbands_file  = Ini%ReadFileName('kbands_file')
-    call ReadVector(kbands_file,mpk_kfull,num_mpk_kbands_full)
+    call File%ReadTextVector(kbands_file,mpk_kfull,num_mpk_kbands_full)
     like%PKData%mpk_k(1:like%num_mpk_kbands_use)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
     if (Feedback > 1) then
         write(*,*) 'reading: '//trim(like%name)//' data'
@@ -171,23 +171,23 @@
     !end if
 
     measurements_file  = Ini%ReadFileName('measurements_file')
-    unit = OpenNewTxtFile(measurements_file)
+    call F%Open(measurements_file)
     like%PKData%mpk_P=0.
-    read (unit,*) dummychar
-    read (unit,*) dummychar
+    read (F%unit,*) dummychar
+    read (F%unit,*) dummychar
     do i= 1, (min_mpk_points_use-1)
-        read (unit,*, iostat=iopb) keff,klo,khi,beff,beff,beff
+        read (F%unit,*, iostat=iopb) keff,klo,khi,beff,beff,beff
     end do
     if (Feedback > 1 .and. min_mpk_points_use>1) write(*,*) 'Not using bands with keff=  ',real(keff),' or below'
     do i =1, like%num_mpk_points_use
-        read (unit,*, iostat=iopb) keff,klo,khi,like%PKData%mpk_P(i),like%PKData%mpk_sdev(i),mpk_fiducial(i)
+        read (F%unit,*, iostat=iopb) keff,klo,khi,like%PKData%mpk_P(i),like%PKData%mpk_sdev(i),mpk_fiducial(i)
     end do
-    close(unit)
+    call F%Close()
     if (Feedback > 1) write(*,*) 'bands truncated at keff=  ',real(keff)
 
     windows_file  = Ini%ReadFileName('windows_file')
     if (windows_file.eq.'') write(*,*) 'ERROR: mpk windows_file not specified'
-    call ReadMatrix(windows_file,mpk_Wfull,num_mpk_points_full,num_mpk_kbands_full)
+    call File%ReadTextMatrix(windows_file,mpk_Wfull,num_mpk_points_full,num_mpk_kbands_full)
     like%PKData%mpk_W(1:like%num_mpk_points_use,1:like%num_mpk_kbands_use)= &
     mpk_Wfull(min_mpk_points_use:max_mpk_points_use,min_mpk_kbands_use:max_mpk_kbands_use)
 
@@ -195,7 +195,7 @@
     cov_file  = Ini%ReadFileName('cov_file')
     if (cov_file /= '') then
         allocate(mpk_covfull(num_mpk_points_full,num_mpk_points_full))
-        call ReadMatrix(cov_file,mpk_covfull,num_mpk_points_full,num_mpk_points_full)
+        call File%ReadTextMatrix(cov_file,mpk_covfull,num_mpk_points_full,num_mpk_points_full)
         allocate(like%PKData%mpk_invcov(like%num_mpk_points_use,like%num_mpk_points_use))
         like%PKData%mpk_invcov=  mpk_covfull(min_mpk_points_use:max_mpk_points_use,min_mpk_points_use:max_mpk_points_use)
         call Matrix_Inverse(like%PKData%mpk_invcov)

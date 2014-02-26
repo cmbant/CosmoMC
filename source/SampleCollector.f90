@@ -44,7 +44,7 @@
         logical :: DoUpdates = .false.
         logical :: flukecheck = .false.
         integer :: indep_sample = 0
-        integer :: indepfile_handle = 0
+        Type(TBinaryFile) :: OutDataFile
         real(mcp) :: acc = 0, indep_acc=0 !counting numbers of samples added
         !number of iterations between dumping full model data. If zero then skip.
         integer :: checkpoint_burn = 0
@@ -103,8 +103,8 @@
     end if
     if (this%checkpoint_burn/=0) this%checkpoint_burn = this%checkpoint_burn-1
     if (this%indep_sample /= 0 .and. this%indep_acc >= this%indep_sample*thin .and. want) then
-        if (this%indepfile_handle /=0) then
-            call CurParams%WriteModel(this%indepfile_handle, CurLike, real(this%indep_acc/(this%indep_sample*thin),mcp))
+        if (this%OutDataFile%Opened()) then
+            call CurParams%WriteModel(this%OutDataFile, CurLike, real(this%indep_acc/(this%indep_sample*thin),mcp))
         end if
         !    call WriteIndepSample(CurParams, CurLike,real(this%indep_acc/(this%indep_sample*thin),mcp))
         this%indep_acc = mod(this%indep_acc, real(this%indep_sample*thin,mcp))
@@ -134,7 +134,7 @@
 #endif
     this%indep_sample = Ini%Read_Int('indep_sample')
     if (this%indep_sample /=0) then
-        this%indepfile_handle =  CreateOpenNewFile(rootname//'.data',append=.not. new_chains)
+        call this%OutDataFile%CreateOpenFile(rootname//'.data',append=.not. new_chains)
     end if
 
     end subroutine TMpiChainCollector_ReadParams
@@ -171,15 +171,15 @@
 
     subroutine TMpiChainCollector_WriteCheckpoint(this)
     class(TMpiChainCollector) :: this
-    integer unit
+    Type(TBinaryFile) F
 
     if (Feedback > 1) write (*,*) instance, 'Writing checkpoint'
-    unit = CreateNewFile(rootname//'.chk_tmp')
+    call F%CreateFile(rootname//'.chk_tmp')
     !Use temporary file in case crash/stop during write operation
-    write (unit) chk_id
-    call this%SaveState(unit)
-    close(unit)
-    call DeleteFile(rootname//'.chk')
+    write (F%unit) chk_id
+    call this%SaveState(F%unit)
+    call F%Close()
+    call File%Delete(rootname//'.chk')
     call Rename(rootname//'.chk_tmp',rootname//'.chk')
 
     end subroutine TMpiChainCollector_WriteCheckpoint
@@ -187,22 +187,22 @@
 
     subroutine TMpiChainCollector_ReadCheckpoint(this)
     class(TMpiChainCollector) :: this
-    integer :: ID, unit
+    integer :: ID
+    Type(TBinaryFile) F
 
     if (Feedback > 0) write (*,*) instance, 'Reading checkpoint from '//rootname//'.chk'
-    unit = OpenNewFile(rootname//'.chk')
-    read (unit) ID
+    call F%Open(rootname//'.chk')
+    read (F%unit) ID
     if (ID/=chk_id) call DoAbort('invalid checkpoint files')
-    call this%ReadState(unit)
-    close(unit)
+    call this%ReadState(F%unit)
+    call F%Close()
 
     end subroutine TMpiChainCollector_ReadCheckpoint
 
     subroutine TMpiChainCollector_Clear(this)
     Type(TMpiChainCollector) :: this
 
-    if (this%indepfile_handle/=0) close(this%indepfile_handle)
-    this%indepfile_handle=0
+    call this%OutDataFile%Close()
 
     end subroutine TMpiChainCollector_Clear
 
@@ -278,9 +278,9 @@
                     call this%Sampler%LikeCalculator%WritePerformanceStats(stdout)
                 end if
                 if (logfile_unit/=0) then
-                    write(logLine,*) 'Current convergence R-1 = ',real(R), ' chain steps =',this%sample_num
-                    call IO_WriteLog(logfile_unit,logLine)
-                    call this%Sampler%LikeCalculator%WritePerformanceStats(logfile_unit)
+                    write(LogFile%unit,*) 'Current convergence R-1 = ',real(R), ' chain steps =',this%sample_num
+                    if (flush_write) call LogFile%Flush()
+                    call this%Sampler%LikeCalculator%WritePerformanceStats(LogFile%unit)
                 end if
                 if (R < this%Mpi%MPI_R_Stop .and. this%flukecheck) then
                     if (this%Mpi%MPI_Check_Limit_Converge) then

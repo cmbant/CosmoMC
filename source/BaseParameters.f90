@@ -109,7 +109,7 @@
     do i=1,num_params
         InLine =  this%NameMapping%ReadIniForParam(Ini,'param',i)
         if (InLine=='') call this%ParamError('parameter ranges not found',i)
-        if (TxtNumberColumns(InLine)==1) then
+        if (File%TxtNumberColumns(InLine)==1) then
             !One number means just fix the parameter
             read(InLine, *, IOSTAT = status) center
             if (status/=0) call this%ParamError('fixed parameter value not valid',i)
@@ -234,14 +234,15 @@
     subroutine TBaseParameters_OutputParamRanges(this,fname)
     class(TBaseParameters) :: this
     character(len=*), intent(in) :: fname
-    integer unit,i
+    integer i
+    Type(TTextFile) :: F
 
-    unit = CreateNewTxtFile(fname//'.ranges')
+    call F%CreateFile(fname//'.ranges')
     do i=1, this%NameMapping%num_MCMC
-        call IO_WriteLeftTextNoAdvance(unit, '(1A22)', this%NameMapping%NameOrNumber(i))
-        write(unit,'(2E17.7)') this%PMin(i),this%PMax(i)
+        call F%WriteLeftAligned('(1A22)', this%NameMapping%NameOrNumber(i))
+        call F%Write([this%PMin(i),this%PMax(i)])
     end do
-    close(unit)
+    call F%Close()
 
     end subroutine TBaseParameters_OutputParamRanges
 

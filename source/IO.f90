@@ -10,85 +10,6 @@
 
     contains
 
-    subroutine IO_Close(unit)
-    integer, intent (in) :: unit
-    close(unit)
-    end subroutine IO_Close
-
-    function IO_OpenChainForRead(name, OK) result(handle)
-    character(len=*), intent(in) :: name
-    integer handle, status
-    logical, optional, intent(out) :: OK
-
-    if (.not. present(OK)) then
-        handle = OpenNewTxtFile(name)
-    else
-        open(newunit=handle,file=name,form='formatted',status='old', iostat=status)
-        OK=status==0
-    endif
-
-    end function IO_OpenChainForRead
-
-    function IO_OpenDataForRead(name) result(handle)
-    character(len=*), intent(in) :: name
-    integer handle
-
-    !assumes handle is a fortran unit; If want to get from database then probably to file here
-
-    handle = OpenNewFile(name)
-
-    end function IO_OpenDataForRead
-
-    function IO_OutputOpenForWrite(name, append, isLogFile) result(handle)
-    character(len=*), intent(in) :: name
-    logical, intent(in), optional :: append, isLogFile
-    logical app
-    integer handle
-
-    if (present(append)) then
-        app = append
-    else
-        app = .false.
-    end if
-
-    handle = CreateOpenNewTxtFile(name,app)
-
-    end function IO_OutputOpenForWrite
-
-    function IO_DataOpenForWrite(name, append) result(handle)
-    !e.g. cached C_l data
-    character(len=*), intent(in) :: name
-    logical, intent(in), optional :: append
-    logical app
-    integer handle
-    !assumes handle is a fortran unit; If want to put in database then probably convert file when handle closed
-
-    if (present(append)) then
-        app = append
-    else
-        app = .false.
-    end if
-
-    handle = CreateOpenNewFile(name,append=app)
-
-    end function IO_DataOpenForWrite
-
-    subroutine IO_DataCloseWrite(handle)
-    integer, intent(in) :: handle
-    !modify e.g. to grab data from temporary file
-
-    close(handle)
-
-    end subroutine IO_DataCloseWrite
-
-    function IO_Exists(name) result(res)
-    logical res
-    character(LEN=*), intent(in)::name
-
-    res = FileExists(name)
-
-    end function IO_Exists
-
     subroutine IO_WriteProposeMatrix(pmat, prop_mat, comment)
     use MatrixUtils
     real(mcp) pmat(:,:)
@@ -109,13 +30,14 @@
     character(LEN=*), intent(in) :: prop_mat
     real(mcp), allocatable :: tmpMat(:,:)
     integer i,x,y
-    integer file_id, status
+    integer status
     character(LEN=:), allocatable :: InLine, comment
     integer num, cov_params(max_num_params)
+    Type(TTextFile) :: F
 
-    file_id = OpenNewTxtFile(prop_mat)
+    call F%Open(prop_mat)
     comment=''
-    if (ReadLineSkipEmptyAndComments(file_id, InLine, comment=comment) .and. comment/='') then
+    if (F%ReadLineSkipEmptyAndComments(InLine, comment=comment) .and. comment/='') then
         !Have paramnames to identify
         num=-1
         call NameMapping%ReadIndices(comment, cov_params, num, unknown_value=0)
@@ -127,10 +49,10 @@
             if (status/=0) exit
             y=y+1
             if (y==num) exit
-            if (.not. ReadLineSkipEmptyAndComments(file_id, InLine)) exit
+            if (.not. F%ReadLineSkipEmptyAndComments(InLine)) exit
         end do
         if (y/=num) call mpiStop('ReadProposeMatrix: wrong number of rows/columns in .covmat')
-        close(file_id)
+        call F%Close()
         do y=1,num
             if (cov_params(y)/=0) then
                 do x=1,num
@@ -142,14 +64,14 @@
         return
 
     end if
-    close(file_id)
+    call F%Close()
 
-    i=TxtNumberColumns(InLine)
+    i=File%TxtNumberColumns(InLine)
     if (i==num_params) then
-        call ReadMatrix(prop_mat,pmat, num_params, num_params)
+        call File%ReadTextMatrix(prop_mat,pmat, num_params, num_params)
     else if (i==num_theory_params) then
         allocate(tmpMat(num_theory_params,num_theory_params))
-        call ReadMatrix(prop_mat,tmpmat, num_theory_params, num_theory_params)
+        call File%ReadTextMatrix(prop_mat,tmpmat, num_theory_params, num_theory_params)
         pmat=0
         pmat(1:num_theory_params,1:num_theory_params) = tmpMat
         deallocate(tmpMat)
@@ -160,53 +82,21 @@
     end subroutine IO_ReadProposeMatrix
 
 
-    subroutine IO_OutputChainRow(handle, mult, like, values, nvalues)
-    integer, intent(in) :: handle
+    subroutine IO_OutputChainRow(F, mult, like, values)
+    class(TFileStream) :: F
     real(mcp) mult, like, values(:)
-    integer, intent(in), optional :: nvalues
-    integer n
 
-    if (present(nvalues)) then
-        n = nvalues
-    else
-        n = size(values)
-    end if
+    call F%Write( [mult, like, values])
 
-    write (handle,'(*(E16.7))') mult, like, values(1:n)
-
-    if (flush_write) call FlushFile(handle)
+    if (flush_write) call F%Flush()
 
     end subroutine IO_OutputChainRow
 
-    subroutine IO_WriteLog(handle, S)
-    integer, intent(in) :: handle
-    character(LEN=*), intent(in) :: S
-
-    write(handle,*) trim(S)
-    if (flush_write) call FlushFile(handle)
-
-    end subroutine IO_WriteLog
-
-    function IO_SkipChainRows(handle,nrows) result(OK)
-    integer, intent(in):: handle,nrows
-    logical OK
-    integer ix
-
-    do ix = 1, nrows
-        if (.not. ReadLine(handle)) then
-            OK = .false.
-            return 
-        end if
-    end do
-    OK = .true.
-
-    end function IO_SkipChainRows
-
-    function IO_ReadChainRow(handle, mult, like, values, params_used, chainOK, samples_chains) result(OK)
+    function IO_ReadChainRow(F, mult, like, values, params_used, chainOK, samples_chains) result(OK)
     !Returns OK=false if end of file or if not enough values on each line, otherwise OK = true
     !Returns chainOK = false if bad line or NaN, chainOK=false and OK=true for NaN (continue reading)
     logical OK
-    integer, intent(in) :: handle
+    class(TTextFile) :: F
     real(mcp), intent(out) :: mult, like, values(:)
     integer, intent(in) :: params_used(:)
     logical, optional, intent(out) :: ChainOK
@@ -224,7 +114,7 @@
 
     if (present(ChainOK)) chainOK = .true.
 
-    OK = ReadLine(handle, InLine)
+    OK = F%ReadLine(InLine)
     if (.not. OK) return
     if (SCAN (InLine, 'N') /=0) then
         if (present(ChainOK)) chainOK = .false.
@@ -250,7 +140,7 @@
     integer, intent(in) :: params_used(:)
     character(LEN=:), allocatable :: InLine
 
-    InLine = LastFileLine(name)
+    InLine = File%LastLine(name)
     read(InLine, *) mult, like, values(params_used)
 
     end subroutine IO_ReadLastChainParams
@@ -271,28 +161,28 @@
     real(mcp), intent(in) :: limmin(:), limmax(:)
     logical, intent(in) :: limbot(:), limtop(:)
     integer, intent(in) :: indices(:)
-    integer :: unit
     integer i,ix
+    Type(TTextFile) :: F
     character(LEN=17) :: lim1,lim2
 
-    unit = CreateNewTxtFile(fname)
+    call F%CreateFile(fname)
     do i=1, size(indices)
         ix = indices(i)
         if (limbot(ix) .or. limtop(ix)) then
             if (limbot(ix)) then
-                write(lim1, '(1E17.7)') limmin(ix)
+                write(lim1, F%RealFormat) limmin(ix)
             else
                 lim1='    N'
             end if
             if (limtop(ix)) then
-                write(lim2, '(1E17.7)') limmax(ix)
+                write(lim2, F%RealFormat) limmax(ix)
             else
                 lim2='    N'
             end if
-            write(unit,'(1A22,2A17)') Names%NameOrNumber(ix-2), lim1, lim2
+            write(F%unit,'(1A22,2A17)') Names%NameOrNumber(ix-2), lim1, lim2
         end if
     end do
-    close(unit)
+    call F%Close()
 
     end subroutine IO_WriteBounds
 
@@ -303,22 +193,23 @@
     character(LEN=ParamNames_maxlen) name
     character(LEN=:), allocatable :: infile
     real(mcp) :: prior_ranges(:,:), minmax(2)
-    integer file_id, ix, status
+    integer ix, status
+    Type(TTextFile) :: F
 
     prior_ranges=0
     infile = trim(in_root) // '.paramnames'
-    if (FileExists(infile)) then
+    if (File%Exists(infile)) then
         call Names%Init(infile)
         infile = trim(in_root) // '.ranges'
-        if (FileExists(infile)) then
-            file_id=OpenNewTxtFile(infile)
+        if (File%Exists(infile)) then
+            call F%Open(infile)
             do
-                read(file_id, *, iostat=status) name, minmax
+                read(F%unit, *, iostat=status) name, minmax
                 if (status/=0) exit
                 ix = Names%index(name)
                 if (ix/=-1) prior_ranges(:,ix) = minmax
             end do
-            close(file_id)
+            call F%Close()
         end if
     end if
 
@@ -334,13 +225,14 @@
     real(KIND(1.d0)), intent(inout) :: coldata(ncols,0:max_rows) !(col_index, row_index)
     logical, intent(in) :: samples_are_chains
     integer, intent(inout) :: nrows
-    logical OK
+    logical OK, ChainOK
     real(mcp) invars(1:ncols)
-    logical chainOK
-    integer chain_handle, row_start
+    integer status
+    integer row_start
     integer, allocatable :: indices(:)
     character(LEN=:), allocatable :: infile
     integer i
+    Type(TTextFile) :: F
 
     row_start=nrows
     if (chain_num == 0) then
@@ -351,16 +243,15 @@
 
     write (*,*) 'reading ' // trim(infile)
 
-    chain_handle = IO_OpenChainForRead(infile, chainOK)
-    if (.not. chainOK) then
+    call F%Open(infile, status=status)
+    if (status/=0) then
         write (*,'(" chain ",1I4," missing")') chain_ix
         OK = .false.
         return
     end if
 
     if (ignorerows >=1) then
-        if (.not. IO_SkipChainRows(chain_handle,ignorerows)) then
-            call IO_Close(chain_handle)
+        if (.not. F%SkipLines(ignorerows)) then
             OK = .false.
             return
         end if
@@ -370,13 +261,12 @@
     indices=[ (I, I=3, ncols) ] ! [3:ncols]
     OK = .true.
     do
-        if (.not. IO_ReadChainRow(chain_handle, invars(1), invars(2), &
+        if (.not. IO_ReadChainRow(F, invars(1), invars(2), &
         invars,indices,chainOK,samples_are_chains)) then
             if (.not. chainOK) then
                 write (*,*) 'error reading line ', nrows -row_start + ignorerows ,' - skipping to next row'
                 cycle
             endif
-            call IO_Close(chain_handle)
             return
         else
             if (.not. chainOK) then
@@ -392,15 +282,6 @@
 
     end function IO_ReadChainRows
 
-    subroutine IO_WriteLeftTextNoAdvance(file_id, Form, str)
-    integer file_id
-    character(LEN=*) str, Form
-    Character(LEN=128) tmp
-
-    tmp = str
-    write(file_id,form, advance='NO') tmp
-
-    end subroutine IO_WriteLeftTextNoAdvance
 
     subroutine IO_OutputMargeStats(Names, froot,num_vars,num_contours, contours,contours_str, &
     cont_lines, colix, mean, sddev, has_limits_bot, has_limits_top, labels)
@@ -413,31 +294,33 @@
     character(LEN=*), intent(in) :: contours_str
     integer,intent(in) :: colix(*)
     character(LEN=128) labels(*), tag, nameFormat
-    integer i,j,file_id
+    integer i,j
     character(LEN=*), parameter :: txtFormat = '(1A15)'
+    Type(TTextFile) F
 
     j = max(9,Names%MaxNameLen())
     nameFormat = concat('(1A',j+1,')')
 
-    file_id = CreateNewTxtFile(trim(froot)//'.margestats')
-    write (file_id,'(a)') 'Marginalized limits: ' // trim(contours_str)
-    write (file_id,*) ''
-    call IO_WriteLeftTextNoAdvance(file_id,nameFormat,'parameter')
-    write(file_id,'(a)', advance='NO') '  '
-    call IO_WriteLeftTextNoAdvance(file_id,txtFormat,'mean')
-    call IO_WriteLeftTextNoAdvance(file_id,txtFormat,'sddev')
+    call F%CreateFile(trim(froot)//'.margestats')
+    F%RealFormat = '(*(1E15.7))'
+    call F%Write('Marginalized limits: ' // contours_str)
+    call F%NewLine()
+    call F%WriteLeftAligned(nameFormat,'parameter')
+    call F%WriteInLine('  ')
+    call F%WriteLeftAligned(txtFormat,'mean')
+    call F%WriteLeftAligned(txtFormat,'sddev')
     do j=1, num_contours
-        call IO_WriteLeftTextNoAdvance(file_id,txtFormat,concat('lower',j))
-        call IO_WriteLeftTextNoAdvance(file_id,txtFormat,concat('upper',j))
-        call IO_WriteLeftTextNoAdvance(file_id,'(1A7)',concat('limit',j))
+        call F%WriteLeftAligned(txtFormat,concat('lower',j))
+        call F%WriteLeftAligned(txtFormat,concat('upper',j))
+        call F%WriteLeftAligned('(1A7)',concat('limit',j))
     end do
-    write(file_id,'(a)') ''
+    call F%NewLine()
 
     do j=1, num_vars
-        call IO_WriteLeftTextNoAdvance(file_id,nameFormat,Names%NameOrNumber(colix(j)-2))
-        write(file_id,'(2E15.7)', advance='NO')  mean(j), sddev(j)
+        call F%WriteLeftAligned(nameFormat,Names%NameOrNumber(colix(j)-2))
+        call F%WriteInLineItems(mean(j), sddev(j))
         do i=1, num_contours
-            write(file_id,'(2E15.7)',advance='NO') cont_lines(j,1:2,i)
+            call F%WriteInLine(cont_lines(j,1:2,i))
             if (has_limits_bot(i,colix(j)).and. has_limits_top(i,colix(j))) then
                 tag='none'
             elseif (has_limits_bot(i,colix(j))) then
@@ -447,12 +330,11 @@
             else
                 tag = 'two'
             end if
-            write(file_id,'(1A7)', advance='NO') '  '//tag
+            call F%WriteInLine('  '//tag, '(1A7)')
         end do
-        write(file_id,'(a)') '   '//trim(labels(colix(j)))
+        call F%Write('   '//labels(colix(j)))
     end do
-
-    close(file_id)
+    call F%Close()
 
     end subroutine IO_OutputMargeStats
 

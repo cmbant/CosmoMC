@@ -327,7 +327,6 @@
     recursive subroutine Ini_Open(Ini, filename, error, slash_comments, append,only_if_undefined)
     class(TIniFile) :: Ini
     character (LEN=*), intent(IN) :: filename
-    integer :: unit_id
     logical, intent(OUT), optional :: error
     logical, optional, intent(IN) :: slash_comments
     logical, optional, intent(in) :: append, only_if_undefined
@@ -336,6 +335,7 @@
     integer lastpos, i, status
     Type(TNameValueList) IncudeFiles, DefaultValueFiles
     logical doappend, FileExists, isDefault
+    Type(TTextFile) :: F
 
     if (present(append)) then
         doappend=append
@@ -360,7 +360,7 @@
         Ini%SlashComments = .false.
     end if
 
-    open(newunit=unit_id,file=filename,form='formatted',status='old', iostat=status)
+    call F%Open(filename, status=status)
     if (status/=0) then
         if (present(error)) then
             error=.true.
@@ -374,7 +374,7 @@
     call DefaultValueFiles%Init()
 
     do
-        if (.not. ReadLineSkipEmptyAndComments(unit_id,InLine)) exit
+        if (.not. F%ReadLineSkipEmptyAndComments(InLine)) exit
         if (InLine == 'END') exit
         if (StringStarts(InLine,'INCLUDE(')) then
             lastpos = scan(InLine,')')
@@ -396,7 +396,7 @@
         end if
     end do
 
-    close(unit_id)
+    call F%Close()
     if (present(error)) error=.false.
 
     do i=1, IncudeFiles%Count
@@ -683,17 +683,16 @@
     subroutine Ini_SaveReadValues(Ini, afile)
     class(TIniFile) :: Ini
     character(LEN=*), intent(in) :: afile
-    integer :: unit_id
     integer i
+    Type(TTextFile) :: F
 
-    unit_id = CreateNewTxtFile(afile)
+    call F%CreateFile(afile)
 
     do i=1, Ini%ReadValues%Count
-        write (unit_id,'(a)') Ini%ReadValues%Items(i)%P%Name // ' = ' &
-        & //Ini%ReadValues%Items(i)%P%Value
+        call F%Write(Ini%ReadValues%Items(i)%P%Name, ' = ', Ini%ReadValues%Items(i)%P%Value)
     end do
 
-    close(unit_id)
+    call F%Close()
 
     end subroutine Ini_SaveReadValues
 

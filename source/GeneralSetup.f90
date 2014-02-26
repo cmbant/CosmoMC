@@ -130,12 +130,11 @@
             end if
         end if
         fname = rootname//'.txt'
-        outfile_handle = IO_OutputOpenForWrite( fname, append = .not. new_chains)
+        call ChainOutFile%CreateOpenFile(fname, append = .not. new_chains)
 
         if (Feedback > 0 .and. MPIRank==0) write (*,*) 'starting Monte-Carlo'
         call Sampler%SampleFrom(Params, StartLike, this%samples)
-        close(outfile_handle)
-        outfile_handle=0
+        call ChainOutFile%Close()
         class default
         call MpiStop('Sampling not implemented')
     end select

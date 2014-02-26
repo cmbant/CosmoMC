@@ -443,11 +443,11 @@
     real(mcp) like
     Type(ParamSet) Params
     character(LEN=*), intent(in) :: fname
-    integer unit
+    Type(TTExtFile) :: F
 
-    unit = CreateNewTxtFile(fname)
-    call this%WriteParamsHumanText(unit,Params, like)
-    close(unit)
+    call F%CreateFile(fname)
+    call this%WriteParamsHumanText(F%unit,Params, like)
+    call F%Close()
     if (Feedback>0) call this%WriteParamsHumanText(stdout,Params, like)
 
     end subroutine WriteBestFitParams

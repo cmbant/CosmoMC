@@ -294,10 +294,10 @@
         this%num_metropolis_accept = this%num_metropolis_accept + 1
         if (Feedback > 1) write (*,*) this%num_metropolis, ' metropolis accept. ratio:', &
         & real(this%num_metropolis_accept)/this%num_metropolis
-        if (logfile_unit /=0 .and. mod(this%num_metropolis_accept,50*this%Oversample_fast) ==0) then
-            write (logfile_unit,*) 'metropolis rat:',real(this%num_metropolis_accept)/this%num_metropolis,  &
+        if (LogFile%Opened() .and. mod(this%num_metropolis_accept,50*this%Oversample_fast) ==0) then
+            write (LogFile%unit,*) 'metropolis rat:',real(this%num_metropolis_accept)/this%num_metropolis,  &
             & ' in ',this%num_metropolis, ', best: ',real(this%MaxLike)
-            write (logfile_unit,*) 'local acceptance ratio:', 50./(this%num_metropolis - this%last_num)
+            write (LogFile%unit,*) 'local acceptance ratio:', 50./(this%num_metropolis - this%last_num)
             this%last_num = this%num_metropolis
         end if
     end if

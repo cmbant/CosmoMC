@@ -1,4 +1,5 @@
     module ParamNames
+    use MpiUtils
     use FileUtils
     use StringUtils
     implicit none
@@ -116,23 +117,23 @@
     subroutine ParamNames_Init(Names, filename)
     class(TParamNames) :: Names
     character(Len=*), intent(in) :: filename
-    integer handle,n
+    integer n
     character(LEN=:), allocatable :: InLine
-
-    handle = OpenNewTxtFile(filename)
-    n = FileLines(handle)
+    Type(TTextFile) :: F
+    
+    call F%Open(filename)
+    n = F%Lines()
     call Names%Alloc(n)
 
     n=0
-    do while (ReadLine(Handle, InLine))
+    do while (F%ReadLine(InLine))
         if (InLine=='') cycle
         n=n+1
         if (.not. Names%ParseLine(InLine,n)) then
             call MpiStop(concat('ParamNames_Init: error parsing line: ',n))
         end if
     end do
-
-    close(handle)
+    call F%Close()
 
     Names%nnames = n
     Names%num_derived = count(Names%is_derived)
@@ -344,28 +345,28 @@
     character(LEN=*), intent(in) :: fname
     integer, intent(in), optional :: indices(:)
     logical, intent(in), optional :: add_derived
-    integer :: unit
     integer i
-
-    unit = CreateNewTxtFile(fname)
+    Type(TTextFile) :: F
+    
+    call F%CreateFile(fname)
     if (present(indices)) then
         do i=1, size(indices)
-            write(unit,*) trim(Names%AsString(indices(i)))
+            call F%Write(Names%AsString(indices(i)))
         end do
         if (present(add_derived)) then
             if (add_derived) then
                 do i=1,Names%num_derived
-                    write(unit,*) trim(Names%AsString(Names%num_mcmc+i))
+                    call F%Write(Names%AsString(Names%num_mcmc+i))
                 end do
             end if
         end if
     else
         do i=1, Names%nnames
-            write(unit,*) trim(Names%AsString(i))
+            call F%Write(Names%AsString(i))
         end do
     end if
 
-    close(unit)
+    call F%Close()
 
     end subroutine ParamNames_WriteFile
 

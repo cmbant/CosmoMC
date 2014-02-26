@@ -41,9 +41,9 @@
     !end if
     !end subroutine IO_WriteCovMat
 
-    subroutine ParamSet_WriteModel(this, unit, like, mult)
+    subroutine ParamSet_WriteModel(this, F, like, mult)
     Class(ParamSet) :: this
-    integer unit
+    class(TFileStream) :: F
     real(mcp), intent(in) :: mult, like
     integer j , alen, unused
     logical, save :: first = .true.
@@ -56,41 +56,41 @@
         else
             j=4
         end if
-        write(unit) j, num_params_used
+        write(F%unit) j, num_params_used
         if (.not. any (BaseParams%NameMapping%Name=='')) then
-            write(unit) .true.
+            write(F%unit) .true.
             do j=1,num_params_used
                 alen=len_trim(BaseParams%NameMapping%name(params_used(j)))
-                write(unit) alen
-                write(unit) BaseParams%NameMapping%name(params_used(j))(1:alen)
+                write(F%unit) alen
+                write(F%unit) BaseParams%NameMapping%name(params_used(j))(1:alen)
             end do
         else
-            write(unit) .false.
+            write(F%unit) .false.
         end if
-        write(unit) DataLikelihoods%Count
+        write(F%unit) DataLikelihoods%Count
         do j=1, DataLikelihoods%Count
             DataLike => DataLikelihoods%Item(j)
             alen = len_trim(dataLIke%name)
-            write(unit) alen
-            write(unit) dataLIke%name(1:alen)
+            write(F%unit) alen
+            write(F%unit) dataLIke%name(1:alen)
         end do
         unused=0
-        write(unit) unused
+        write(F%unit) unused
     end if
 
-    write(unit) mult, like
-    write(unit) this%Likelihoods(1:DataLikelihoods%Count)
-    write(unit) this%P(params_used)
+    write(F%unit) mult, like
+    write(F%unit) this%Likelihoods(1:DataLikelihoods%Count)
+    write(F%unit) this%P(params_used)
 
-    call this%Theory%WriteTheory(unit)
+    call this%Theory%WriteTheory(F)
 
-    if (flush_write) call FlushFile(unit)
+    if (flush_write) call F%Flush()
 
     end subroutine ParamSet_WriteModel
 
-    subroutine ParamSet_ReadModel(this,  unit, has_likes, mult, like, error)
+    subroutine ParamSet_ReadModel(this,  F, has_likes, mult, like, error)
     Class (ParamSet) :: this
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
     integer, intent(out) :: error
     real(mcp), intent(out) :: mult, like
     logical, intent(out) :: has_likes(:)
@@ -99,11 +99,11 @@
     logical :: has_names
     class(TDataLikelihood), pointer :: DataLike
     integer tmp(1)
-    
+
     error = 0
     if (this%first) then
         this%first = .false.
-        read(unit,iostat=status) j, np
+        read(F%unit,iostat=status) j, np
         if (status/=0) then
             error=1
             return
@@ -111,14 +111,14 @@
         if (j/=3 .and. mcp==kind(1.0) .or. j/=4 .and. mcp/=kind(1.0)) &
         call MpiStop('ReadModel: wrong file format (old cosmomc version?)')
         if (np/=num_params_used) call MpiStop('ReadModel: number of parameters changed')
-        read(unit) has_names
+        read(F%unit) has_names
         allocate(this%current_param_indices(num_params_used))
         this%current_param_indices=-1
         if (has_names) then
             do j=1,num_params_used
-                read(unit) alen
+                read(F%unit) alen
                 allocate(character(alen)::name)
-                read(unit) name
+                read(F%unit) name
                 this%current_param_indices(j) = BaseParams%NameMapping%index(name)
                 deallocate(name)
             end do
@@ -126,14 +126,14 @@
         else
             this%current_param_indices = params_used
         end if
-        read(unit) this%numlikes
+        read(F%unit) this%numlikes
         allocate(this%likes(this%numlikes))
         allocate(this%like_indices(this%numlikes))
         this%like_indices=0
         do j=1, this%numlikes
-            read(unit) alen
+            read(F%unit) alen
             allocate(character(alen)::name)
-            read(unit) name
+            read(F%unit) name
             do k=1, DataLikelihoods%Count
                 DataLike => DataLikelihoods%Item(k)
                 if (DataLike%name==name) then
@@ -146,24 +146,24 @@
         do j=1, DataLikelihoods%Count
             has_likes(j) = any(this%like_indices==j)
         end do
-        read(unit) unused
+        read(F%unit) unused
         if (unused/=0) call MpiStop('ReadModel: Don''t know what extra info is')
-        if (unused>0) read(unit) tmp(1:unused)
+        if (unused>0) read(F%unit) tmp(1:unused)
     end if
 
     this%Likelihoods=0
-    read(unit,iostat=status) mult, like
+    read(F%unit,iostat=status) mult, like
     if (status/=0) then
         error=1
         return
     end if
-    read(unit) this%likes(1:this%numlikes)
+    read(F%unit) this%likes(1:this%numlikes)
     do j=1,this%numlikes
         if (this%like_indices(j)/=0) this%Likelihoods(this%like_indices(j)) = this%likes(j)
     end do
     this%P(1:num_params)= BaseParams%center
-    read(unit) this%P(this%current_param_indices)
-    call this%Theory%ReadTheory(unit)
+    read(F%unit) this%P(this%current_param_indices)
+    call this%Theory%ReadTheory(F)
 
     end subroutine ParamSet_ReadModel
 

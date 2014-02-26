@@ -83,7 +83,8 @@
     class(BAOLikelihood) like
     class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: bao_measurements_file, bao_invcov_file
-    integer i,iopb, unit
+    integer i,iopb
+    Type(TTextFile) :: F
 
     if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(like%name)
     like%num_bao = Ini%Read_Int('num_bao',0)
@@ -100,11 +101,11 @@
     allocate(like%bao_err(like%num_bao))
 
     bao_measurements_file = Ini%ReadFileName('bao_measurements_file')
-    unit = OpenNewTxtFile(bao_measurements_file)
+    call F%Open(bao_measurements_file)
     do i=1,like%num_bao
-        read (unit,*, iostat=iopb) like%bao_z(i),like%bao_obs(i),like%bao_err(i)
+        read (F%unit,*, iostat=iopb) like%bao_z(i),like%bao_obs(i),like%bao_err(i)
     end do
-    close(unit)
+    call F%Close()
 
     if (like%name == 'DR7') then
         !don't used observed value, probabilty distribution instead
@@ -118,14 +119,7 @@
 
         if (Ini%HasKey('bao_invcov_file')) then
             bao_invcov_file  = Ini%ReadFileName('bao_invcov_file')
-            unit= OpenNewTxtFile(bao_invcov_file)
-            do i=1,like%num_bao
-                read (unit,*, iostat=iopb) like%bao_invcov(i,:)
-                if (iopb /= 0) then
-                    call MpiStop('Error reading bao file '// bao_invcov_file)
-                endif
-            end do
-            close(unit)
+            call File%ReadTextMatrix(bao_invcov_file, like%bao_invcov)
         else
             do i=1,like%num_bao
                 !diagonal, or actually just 1..

@@ -102,7 +102,7 @@ GETDISTFLAGS = $(FFLAGS)
 F90FLAGS = $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
 LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
-UTILS = $(OUTPUT_DIR)/ArrayUtils.o $(OUTPUT_DIR)/StringUtils.o $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/FileUtils.o \
+UTILS = $(OUTPUT_DIR)/MiscUtils.o $(OUTPUT_DIR)/ArrayUtils.o $(OUTPUT_DIR)/StringUtils.o $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/FileUtils.o \
     $(OUTPUT_DIR)/RandUtils.o $(OUTPUT_DIR)/Interpolation.o
 
 DISTFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o \
@@ -173,7 +173,7 @@ endif
 default: cosmomc
 
 $(OUTPUT_DIR)/RandUtils.o: $(OUTPUT_DIR)/MpiUtils.o
-$(OUTPUT_DIR)/FileUtils.o: $(OUTPUT_DIR)/MpiUtils.o
+$(OUTPUT_DIR)/FileUtils.o: $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/MiscUtils.o
 $(OUTPUT_DIR)/IniObjects.o: $(OUTPUT_DIR)/FileUtils.o $(OUTPUT_DIR)/StringUtils.o
 $(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS)
 $(OUTPUT_DIR)/settings.o:  $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o

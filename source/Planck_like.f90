@@ -86,48 +86,48 @@
     subroutine CMBLikes_ReadLowlFile(D,aname)
     Type(TCMBLikes) :: D
     character(LEN=*), intent(in) :: aname
-    integer  filemodes, nmodes, file_unit,i,j
+    integer  filemodes, nmodes, i,j
     double precision, allocatable :: coupling_row(:)
     double precision, dimension(:), allocatable :: TModeData, EModeData, BModeData
+    Type(TBinaryFile) :: F
 
     !Note this doesn't currently support chopping to requested fields - always uses TEB
     !Also uses binary fortran files rather than e.g. FITS or other endian-independent standard
 
-    file_unit= OpenNewFile(aname,'unformatted')
+    call F%Open(aname)
 
-    read (file_unit) filemodes, D%LowL%tmodes
+    read (F%unit) filemodes, D%LowL%tmodes
     if (filemodes /= (D%Lowl%lmax+1)**2) call MpiStop('lowl likelihood lmax mismatch')
     D%LowL%almmodes = (D%Lowl%lexact+1)**2
     allocate(TModeData(D%LowL%tmodes))
-    read(file_unit) TModeData
+    read(F%unit) TModeData
     allocate(coupling_row(filemodes))
     allocate(D%Lowl%TheoryProj(D%Lowl%almmodes , D%LowL%tmodes))
     do i=1, D%LowL%tmodes
-        read(file_unit) coupling_row
+        read(F%unit) coupling_row
         D%Lowl%TheoryProj(1:D%Lowl%almmodes,i) = coupling_row(1:D%Lowl%almmodes)
     end do
     deallocate(coupling_row)
 
-    Read(file_unit) D%LowL%highlScaleT
+    Read(F%unit) D%LowL%highlScaleT
     nmodes = D%LowL%tmodes
 
+    read(F%unit) D%Lowl%highlScaleE, D%Lowl%highlScaleC, D%Lowl%highlScaleB
 
-    read(file_unit) D%Lowl%highlScaleE, D%Lowl%highlScaleC, D%Lowl%highlScaleB
-
-    read(file_unit) filemodes, D%LowL%EBmodes
+    read(F%unit) filemodes, D%LowL%EBmodes
     D%Lowl%polalmmodes  =  (D%Lowl%lexact+1)**2-4
 
     allocate(EModeData(D%LowL%EBmodes))
     allocate(BModeData(D%LowL%EBmodes))
-    read(file_unit) EModeData, BModeData
+    read(F%unit) EModeData, BModeData
 
     allocate(D%Lowl%ReProj(D%Lowl%polalmmodes, D%LowL%EBmodes))
     allocate(D%Lowl%ImProj(D%Lowl%polalmmodes, D%LowL%EBmodes))
     allocate(coupling_row(filemodes))
     do i=1, D%LowL%EBmodes
-        read(file_unit) coupling_row
+        read(F%unit) coupling_row
         D%Lowl%ReProj(1:D%Lowl%polalmmodes,i) = coupling_row(1:D%Lowl%polalmmodes)
-        read(file_unit) coupling_row
+        read(F%unit) coupling_row
         D%Lowl%ImProj(1:D%Lowl%polalmmodes,i) = coupling_row(1:D%Lowl%polalmmodes)
     end do
     deallocate(coupling_row)
@@ -137,8 +137,8 @@
     allocate(D%LowL%NoiseCov(nmodes,nmodes))
     allocate(D%LowL%HighlCov(nmodes,nmodes))
     do i=1,nmodes
-        read(file_unit) D%LowL%NoiseCov(1:i,i)
-        read(file_unit) D%LowL%HighlCov(1:i,i)
+        read(F%unit) D%LowL%NoiseCov(1:i,i)
+        read(F%unit) D%LowL%HighlCov(1:i,i)
     end do
     do i=1,nmodes
         do j=i+1, nmodes
@@ -147,10 +147,10 @@
         end do
     end do
 
-    read(file_unit) i
+    read(F%unit) i
     if (i/=252353) call MpiStop('Bad low l likelihood data file')
 
-    close(file_unit)
+    close(F%unit)
 
     allocate( D%LowL%ModeDataVector(nmodes))
     D%LowL%ModeDataVector(1:D%LowL%tmodes) = TModeData
@@ -378,7 +378,8 @@
     logical donorm
     real(mcp) norm,tmp_ar(6)
     Type(TStringList) :: Li
-    integer file_unit, status
+    integer status
+    Type(TTextFile) :: F
 
     if (present(keepnorm)) then
         donorm = .not. keepnorm
@@ -399,9 +400,9 @@
         end do
     end do
 
-    file_unit = OpenNewTxtFile(aname)
+    call F%Open(aname)
     Cl=0
-    do while (ReadLine(file_unit, tmp))
+    do while (F%ReadLine(tmp))
         read(tmp,*, iostat=status) l, tmp_ar(1:Li%Count)
         if (status/=0) call MpiStop('CMBLikes_ReadClArr: error reading line '//trim(aname))
         ll=l
@@ -421,7 +422,7 @@
         write (*,*) trim(aname)
         call MpiStop()
     end if
-     close(file_unit)
+    call F%Close()
 
     call Li%Clear()
 
@@ -468,7 +469,7 @@
         call MpiStop('Error opening dataset file '//trim(aname))
     end if
 
-    call D%ReadData(Ini, ExtractFilePath(aname))
+    call D%ReadData(Ini, File%ExtractPath(aname))
 
     call Ini%Close()
 
@@ -479,18 +480,18 @@
     character(LEN=*), intent(in) :: fname
     integer nmodes
     real(mcp) x, modes(D%cl_lmin:D%cl_lmax,nmodes)
-    integer stat, file_unit, l, i
+    integer stat, l, i
+    Type(TTextFile) :: F
 
-    file_unit=OpenNewTxtFile(fname)
+    call F%Open(fname)
     do
-        read(file_unit,*,iostat=stat) i, l, x
+        read(F%unit,*,iostat=stat) i, l, x
         if ( stat /= 0 ) exit
         if ( i <= nmodes .and. l>= D%cl_lmin .and. l<=D%cl_lmax ) then
             modes(l,i) = x
         end if
     end do
-
-    close(file_unit)
+    call F%Close()
 
     end subroutine CMBLike_ReadModes
 
@@ -854,15 +855,16 @@
     Type(TCMBLikes) :: D
     character(LEN=*), intent(in) :: aname
     real(mcp) :: Cl(:,D%cl_phi_lmin:), tmp_arr(D%lensing_recon_ncl)
-    integer file_unit
-    character(LEN=1024) :: tmp
-    integer l, ll
-
-    file_unit= OpenNewTxtFile(aname)
+    character(LEN=:), allocatable :: tmp
+    integer l, ll, status
+    Type(TTextFile) :: F
+    
+    call F%Open(aname)
     Cl=0
-    do
-        read(file_unit,'(a)',end=1) tmp
-        read(tmp,*, end=1) l, tmp_arr
+    ll=0
+    do while(F%ReadLine(tmp))
+        read(tmp,*, iostat=status) l, tmp_arr
+        if (status/=0) exit
         if (l>=D%cl_phi_lmin .and. l <=D%cl_phi_lmax) then
             ll=l
             Cl(1,l) = tmp_arr(1)
@@ -874,8 +876,7 @@
         write (*,*) trim(aname)
         call MpiStop()
     end if
-1   Close(file_unit)
-
+    call F%Close()
 
     end subroutine CMBLikes_ReadClPhiArr
 

@@ -228,33 +228,33 @@
     real(mcp), allocatable :: derived(:)
     integer :: numderived = 0
 
-    if (outfile_handle ==0) return
+    if (ChainOutFile%unit/=0) return
 
     call Config%Parameterization%CalcDerivedParams(this%P, this%Theory, derived)
     call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived)
 
     if (allocated(derived)) numderived = size(derived)
     if (numderived > 0) then
-        call IO_OutputChainRow(outfile_handle, mult, like, this%P(params_used), num_params_used)
+        call IO_OutputChainRow(ChainOutFile,mult, like, this%P(params_used))
     else
         allocate(output_array(num_params_used + numderived))
         output_array(1:num_params_used) =  this%P(params_used)
         output_array(num_params_used+1:num_params_used+numderived) =  derived
-        call IO_OutputChainRow(outfile_handle, mult, like, output_array)
+        call IO_OutputChainRow(ChainOutFile, mult, like, output_array)
         deallocate(output_array)
     end if
 
     end subroutine TCalculationAtParamPoint_WriteParams
 
-    subroutine WriteModel(this, unit, like, mult)
+    subroutine WriteModel(this, F, like, mult)
     Class(TCalculationAtParamPoint) :: this
-    integer unit
+    class(TFileStream) :: F
     real(mcp), intent(in) :: mult, like
     end subroutine WriteModel
 
-    subroutine  ReadModel(this,  unit, has_likes, mult, like, error)
+    subroutine  ReadModel(this,  F, has_likes, mult, like, error)
     Class(TCalculationAtParamPoint) :: this
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
     integer, intent(out) :: error
     real(mcp), intent(out) :: mult, like
     logical, intent(out) :: has_likes(:)
@@ -368,14 +368,14 @@
 
     end subroutine TConfigClass_InitWithParams
 
-    subroutine WriteTheory(T, unit)
+    subroutine WriteTheory(T, F)
     class(TTheoryPredictions) T
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
     end subroutine WriteTheory
 
-    subroutine ReadTheory(T, unit)
+    subroutine ReadTheory(T, F)
     class(TTheoryPredictions) T
-    integer, intent(in) :: unit
+    class(TFileStream) :: F
     end subroutine ReadTheory
 
     subroutine WriteBestFitData(Theory,fnameroot)

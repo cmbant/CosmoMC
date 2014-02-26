@@ -6,6 +6,7 @@
 
 
     module MatrixUtils
+    use MpiUtils
     use FileUtils
     use StringUtils
     implicit none
@@ -81,27 +82,27 @@
     integer i,k
     integer shp(2)
     logical WriteTab
-    integer file_unit
+    Type(TTextFile) :: F
 
     shp = shape(mat)
     WriteTab = shp(2)<=50
     if (present(forcetable)) then
         if (forcetable) WriteTab = .true.
     end if
-    file_unit = CreateNewTxtFile(aname)
+    call F%CreateFile(aname)
     if (present(commentline)) then
-        write(file_unit,'(a)') '#'//trim(commentline)
+        call F%Write('#'//commentline)
     end if
     do i=1, shp(1)
         if (.not. WriteTab) then
             do k=1, shp(2)
-                write (file_unit, Matrix_IO_fmt) mat(i,k)
+                call F%Write(mat(i,k))
             end do
         else
-            write (file_unit, Matrix_IO_fmt) mat(i,1:shp(2))
+                call F%Write(mat(i,1:shp(2)))
         end if
     end do
-    close(file_unit)
+    call F%Close()
 
     end subroutine Matrix_Write
 
@@ -112,24 +113,24 @@
     integer i,k
     integer shp(2)
     logical WriteTab
-    integer file_unit
+    Type(TTextFile) F
 
     shp = shape(mat)
     WriteTab = shp(2)<=50
     if (present(forcetable)) then
         if (forcetable) WriteTab = .true.
     end if
-    file_unit =  CreateNewTxtFile(aname)
+    call F%CreateFile(aname)
     do i=1, shp(1)
         if (.not. WriteTab) then
             do k=1, shp(2)
-                write (file_unit, Matrix_IO_fmt) mat(i,k)
+               call F%Write(mat(i,k))
             end do
         else
-            write (file_unit, Matrix_IO_fmt) mat(i,1:shp(2))
+               call F%Write(mat(i,1:shp(2)))
         end if
     end do
-    close(file_unit)
+    call F%Close()
 
     end subroutine Matrix_Write_double
 
@@ -137,11 +138,11 @@
     subroutine Matrix_Write_Binary(aname, mat)
     character(LEN=*), intent(in) :: aname
     real(dm), intent(in) :: mat(:,:)
-    integer file_unit
+    Type(TBinaryFile) F
 
-    file_unit = CreateNewFile(aname)
-    write (file_unit) mat
-    close(file_unit)
+    call F%CreateFile(aname)
+    Write(F%unit) mat
+    call F%Close()
 
     end subroutine Matrix_Write_Binary
 
@@ -151,17 +152,17 @@
     real(dm), intent(in) :: mat(:,:)
     integer i
     integer shp(2)
-    integer file_unit
+    Type(TBinaryFile) F
 
     shp = shape(mat)
     if (shp(1) /= shp(2)) call MpiStop('MatrixSym_Write_Binary: Not square matrix')
     if (shp(1) == 0) return
 
-    file_unit = CreateNewFile(aname)
+    call F%CreateFile(aname)
     do i=1,shp(1)
-        write (file_unit) mat(i:shp(2),i)
+        write(F%unit) mat(i:shp(2),i)
     end do
-    close(file_unit)
+    call F%Close()
 
     end subroutine MatrixSym_Write_Binary
 
@@ -170,17 +171,18 @@
     real(dm), intent(in) :: mat(:,:)
     integer i,    file_unit
     integer shp(2)
+    Type(TBinaryFile) F
 
     shp = shape(mat)
     if (shp(1) /= shp(2)) call MpiStop('MatrixSym_Write_Binary_Single: Not square matrix')
     if (shp(1) == 0) return
 
-    file_unit = CreateNewFile(aname)
+    call F%CreateFile(aname)
     do i=1,shp(1)
-        write (file_unit) real(mat(i:shp(2),i), kind(1.0))
+        write(F%unit) real(mat(i:shp(2),i), kind(1.0))
     end do
-    close(file_unit)
-
+    call F%Close()
+    
     end subroutine MatrixSym_Write_Binary_Single
 
 
@@ -189,12 +191,13 @@
     character(LEN=*), intent(in) :: aname
     real(dm), intent(in) :: vec(:)
     integer i,   file_unit
+    Type(TTextFile) F
 
-    file_unit =  CreateNewTxtFile(aname)
+    call F%CreateFile(aname)
     do i=1, size(vec)
-        write (file_unit, Matrix_IO_fmt) vec(i)
+        call F%Write(vec(i))
     end do
-    close(file_unit)
+    call F%Close()
 
     end subroutine Matrix_WriteVec
 
@@ -203,10 +206,11 @@
     character(LEN=*), intent(in) :: aname
     real(dm), intent(out) :: mat(:,:)
     integer  file_unit
+    Type(TBinaryFile) F
 
-    file_unit =  OpenNewFile(aname)
-    read (file_unit) mat
-    close(file_unit)
+    call F%Open(aname)
+    read (F%unit) mat
+    call F%Close()
 
     end subroutine Matrix_Read_Binary
 
@@ -216,70 +220,71 @@
     real(dm), intent(out) :: mat(:,:)
     integer i,    file_unit
     integer shp(2)
+    Type(TBinaryFile) F
 
     shp = shape(mat)
     if (shp(1) /= shp(2)) call MpiStop( 'MatrixSym_Read_Binary: Not square matrix')
     if (shp(1) == 0) return
 
-    file_unit = OpenNewFile(aname)
+    call F%Open(aname)
     do i=1,shp(1)
-        read (file_unit) mat(i:shp(1),i)
+        read (F%unit) mat(i:shp(1),i)
         mat(i,i:shp(1)) = mat(i:shp(1),i)
     end do
-    close(file_unit)
+    call F%Close()
 
     end subroutine MatrixSym_Read_Binary
 
     subroutine MatrixSym_Read_Binary_Single(aname, mat)
     character(LEN=*), intent(in) :: aname
     real, intent(out) :: mat(:,:)
-    integer i,    file_unit
+    integer i
     integer shp(2)
+    Type(TBinaryFile) F
 
     shp = shape(mat)
     if (shp(1) /= shp(2)) call MpiStop( 'MatrixSym_Read_Binary: Not square matrix')
     if (shp(1) == 0) return
 
-    file_unit =  OpenNewFile(aname)
+    call F%Open(aname)
     do i=1,shp(1)
-        read (file_unit) mat(i:shp(1),i)
+        read (F%unit) mat(i:shp(1),i)
         mat(i,i:shp(1)) = mat(i:shp(1),i)
     end do
-    close(file_unit)
+    call F%Close()
 
     end subroutine MatrixSym_Read_Binary_Single
-
-
 
 
 
     subroutine Matrix_Read(aname, mat)
     character(LEN=*), intent(IN) :: aname
     real(dm), intent(out) :: mat(:,:)
-    integer j,k,    file_unit
+    integer j,k
     integer shp(2)
     real(dm) tmp
+    Type(TTextFile) :: F
 
     shp = shape(mat)
 
-    file_unit = OpenNewTxtFile(aname)
+    call F%Open(aname)
 
     do j=1,shp(1)
-        read (file_unit,*, end = 200, err=100) mat(j,1:shp(2))
+        read (F%unit,*, end = 200, err=100) mat(j,1:shp(2))
     end do
     goto 120
 
-100 rewind(file_unit)  !Try other possible format
+100 rewind(F%unit)  !Try other possible format
     do j=1,shp(1)
         do k=1,shp(2)
-            read (file_unit,*, end = 200) mat(j,k)
+            read (F%unit,*, end = 200) mat(j,k)
         end do
     end do
 
-120 read (file_unit,*, err = 150, end =150) tmp
+120 read (F%unit,*, err = 150, end =150) tmp
     goto 200
 
-150 close(file_unit)
+150 call F%Close()
     return
 
 200 call MpiStop('Matrix_Read: file '//trim(aname)//' is the wrong size')
@@ -290,30 +295,31 @@
     subroutine Matrix_ReadSingle(aname, mat)
     character(LEN=*), intent(IN) :: aname
     real, intent(out) :: mat(:,:)
-    integer j,k,    file_unit
+    integer j,k
     integer shp(2)
     real tmp
+    Type(TTextFile) :: F
 
     shp = shape(mat)
 
-    file_unit =  OpenNewTxtFile(aname)
+    call F%Open(aname)
 
     do j=1,shp(1)
-        read (file_unit,*, end = 200, err=100) mat(j,1:shp(2))
+        read (F%unit,*, end = 200, err=100) mat(j,1:shp(2))
     end do
     goto 120
 
-100 rewind(file_unit)  !Try other possible format
+100 rewind(F%unit)  !Try other possible format
     do j=1,shp(1)
         do k=1,shp(2)
-            read (file_unit,*, end = 200) mat(j,k)
+            read (F%unit,*, end = 200) mat(j,k)
         end do
     end do
 
-120 read (file_unit,*, err = 150, end =150) tmp
+120 read (F%unit,*, err = 150, end =150) tmp
     goto 200
 
-150 close(file_unit)
+150 call F%Close()
     return
 
 200 call MpiStop('Matrix_Read:Single file '//trim(aname)//' is the wrong size')

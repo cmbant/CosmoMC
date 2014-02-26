@@ -11,7 +11,7 @@
     use RandUtils
     implicit none
 
-    character(LEN=:), allocatable :: LogFile,  numstr, fname, rootdir
+    character(LEN=:), allocatable :: LogFileName,  numstr, fname, rootdir
     character(LEN=:), allocatable :: InputFile
     Type(TSettingIni) :: Ini
     integer  i
@@ -131,8 +131,8 @@
     FileChangeIni = rootname//'.read'
 
     if (Setup%action == action_MCMC .and. .not. Ini%Read_Logical('no_log', .false.)) then
-        LogFile = rootname//'.log'
-        logfile_unit = CreateOpenNewTxtFile(LogFile,.not. new_chains)
+        LogFileName = rootname//'.log'
+        call LogFile%CreateOpenFile(LogFileName,append=.not. new_chains)
     end if
 
     i = Ini%Read_Int('rand_seed',-1)
@@ -267,7 +267,7 @@
     else
         call DoAbort('undefined action')
     end if
-    if (logfile_unit /=0) close(logfile_unit)
+    call LogFile%Close()
 
     call DoStop('Total requested samples obtained',.true.)
 

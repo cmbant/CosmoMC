@@ -1,21 +1,105 @@
     module FileUtils
     use MpiUtils
+    use MiscUtils
+    use, intrinsic :: ISO_FORTRAN_ENV, only : INT64
     implicit none
     !Utils using F2008 features
+    private
 
+    integer, parameter :: File_size_int = KIND(INT64)
+    character(LEN=*), parameter :: mode_formatted = 'formatted'
+    character(LEN=*), parameter :: mode_binary = 'unformatted'
+    character(LEN=*), parameter :: access_formatted = 'sequential'
+    character(LEN=*), parameter :: access_binary = 'stream'
+
+    Type :: TFileStream
+        integer :: unit = 0
+        character(LEN=:), allocatable :: FileName
     contains
+    procedure :: Open => TFileStream_Open
+    procedure :: OpenFile => TFileStream_OpenFile
+    procedure :: Flush => TFileStream_Flush
+    procedure :: CreateFile
+    procedure :: CreateOpenFile
+    procedure :: Position => TFileStream_Position
+    procedure :: Size => TFileStream_Size
+    procedure :: Close => TFileStream_Close
+    procedure :: Rewind => TFileStream_Rewind
+    procedure :: Error
+    procedure :: Opened
+    procedure :: ReadString
+    procedure, private :: ReadItem
+    procedure, private :: ReadArray
+    procedure, private :: WriteItem
+    procedure, private :: WriteArray
+    procedure, private :: WriteItems
+    generic :: Write => WriteItem, WriteArray, WriteItems
+    generic :: Read => ReadItem, ReadArray
+    final :: TFileStream_Free
+    end type
 
-    subroutine FileUtils_Error(aname, msg, errormsg)
-    character(LEN=*), intent(IN) :: aname, msg
-    character(LEN=*), intent(IN), optional :: errormsg
+    Type, extends(TFileStream) :: TBinaryFile
+    contains
+    end type
 
-    if (present(errormsg)) then
-        call MpiStop(trim(errormsg)//' : '//trim(aname))
-    else
-        call MpiStop(trim(msg)//' : '//trim(aname))
-    end if
+    Type, extends(TFileStream) :: TTextFile
+        character(LEN=20) :: RealFormat = '(*(E17.7))'
+        character(LEN=20) :: IntegerFormat = '(*(I10))'
+        logical :: AdvanceDefault = .true.
+    contains
+    procedure :: Open => OpenTxtFile
+    procedure :: CreateFile => CreateTxtFile
+    procedure :: CreateOpenFile => CreateOpenTxtFile
+    procedure :: ReadLine
+    procedure :: ReadLineSkipEmptyAndComments
+    procedure :: NewLine
+    procedure :: SkipLines
+    procedure :: Lines
+    procedure :: Columns
+    procedure :: WriteLeftAligned
+    procedure :: WriteItemTxt
+    procedure :: WriteArrayTxt
+    procedure :: WriteInLineItems
+    procedure :: WriteTrim
+    procedure :: ReadString => ReadStringTxt
+    procedure, private :: ReadItemTxt
+    procedure, private :: ReadArrayTxt
+    procedure, private :: WriteInLineItem
+    procedure, private :: WriteInLineArray
+    procedure, private :: DefaultAdvance
+    procedure, private :: WriteItem => TTextFile_WriteItem
+    procedure, private :: WriteArray => TTextFile_WriteArray
+    procedure, private :: ReadItem => ReadItemTxt
+    procedure, private :: ReadArray => ReadArrayTxt
+    procedure, private :: WriteItems => WriteItemsTxt
+    generic :: WriteInLine => WriteInLineItem, WriteInLineArray
+    end type
 
-    end subroutine 
+    !Functions on filenames and text
+    !File instance below acts as a namespace
+    Type TFile
+    contains
+    procedure, nopass :: TxtNumberColumns
+    procedure, nopass :: TxtColumns
+    procedure, nopass :: TxtFileColumns
+    procedure, nopass :: LastLine => LastFileLine
+    procedure, nopass :: Size => FileSize
+    procedure, nopass :: Exists => FileExists
+    procedure, nopass :: ExtractName => ExtractFileName
+    procedure, nopass :: ExtractPath => ExtractFilePath
+    procedure, nopass :: ChangeExt => ChangeFileExt
+    procedure, nopass :: CheckTrailingSlash
+    procedure, nopass :: ExtractExt => ExtractFileExt
+    procedure, nopass :: Delete => DeleteFile
+    procedure, nopass :: ReadTextMatrix
+    procedure, nopass :: ReadTextVector
+    procedure, nopass :: WriteTextVector
+    end type
+
+    type(TFile), save :: File
+
+    public TFileStream, TBinaryFile, TTextFile, File, File_size_int
+    contains
 
     function FileExists(aname)
     character(LEN=*), intent(IN) :: aname
@@ -26,167 +110,17 @@
     end function FileExists
 
     function FileSize(name) result(fsize)
-    integer fsize
+    integer(file_size_int) fsize
     character(LEN=*), intent(in)::name
 
     inquire(file=name, size=fsize)
 
     end function FileSize
 
-    function OpenNewTxtFile(aname, errormsg) result(aunit)
-    character(LEN=*), intent(IN) :: aname
-    character(LEN=*), intent(IN), optional :: errormsg
-
-    integer :: aunit
-
-    aunit = OpenNewFile(aname,'formatted',errormsg)
-
-    end function OpenNewTxtFile
-
-    function OpenNewFile(aname, mode,errormsg) result(aunit)
-    character(LEN=*), intent(IN) :: aname
-    character(LEN=*), intent(IN), optional :: mode
-    integer status,aunit
-    character(LEN=*), intent(IN), optional :: errormsg
-    character(LEN=:), allocatable :: amode
-
-    if (present(mode)) then
-        amode=mode
-    else
-        amode = 'unformatted'
-    end if
-    open(file=aname,form=amode,status='old', action='read', newunit=aunit, iostat=status, access="stream")
-    if (status/=0) call FileUtils_Error(aname, 'File not found', errormsg)
-
-    end function OpenNewFile
-
-    function CreateNewTxtFile(aname,errormsg) result(aunit)
-    character(LEN=*), intent(IN) :: aname
-    integer :: aunit
-    character(LEN=*), intent(IN), optional :: errormsg
-
-    aunit = CreateNewFile(aname,'formatted', errormsg)
-
-    end function CreateNewTxtFile
-
-
-    function CreateNewFile(aname, mode,errormsg) result(aunit)
-    character(LEN=*), intent(IN) :: aname
-    character(LEN=*), intent(in), optional :: mode
-    character(LEN=*), intent(IN), optional :: errormsg
-    integer :: aunit, status
-    character(LEN=:), allocatable :: amode
-
-    if (present(mode)) then
-        amode=mode
-    else
-        amode = 'unformatted'
-    end if
-    open(file=aname,form=amode,status='replace', newunit=aunit, iostat=status, access="stream")
-    if (status/=0) call FileUtils_Error(aname, 'Error creating file', errormsg)
-
-    end function CreateNewFile
-
-
-    function  CreateOpenNewTxtFile(aname, append) result(aunit)
-    character(LEN=*), intent(IN) :: aname
-    integer :: aunit
-    logical, optional, intent(in) :: append
-
-    aunit = CreateOpenNewFile(aname,'formatted',append)
-
-    end function CreateOpenNewTxtFile
-
-    function CreateOpenNewFile(aname, mode, append) result(aunit)
-    character(LEN=*), intent(IN) :: aname
-    character(LEN=*), intent(IN), optional :: mode
-    integer :: aunit
-    logical, optional, intent(in) :: append
-    logical A
-    integer status
-    character(LEN=:), allocatable :: amode, pos, state
-
-    if (present(append)) then
-        A=append 
-    else
-        A = .false.
-    endif
-    if (A .and. FileExists(aname)) then
-        pos = 'append'
-        state = 'old'
-    else
-        pos = 'asis'
-        state='replace'
-    end if
-    if (present(mode)) then
-        amode=mode
-    else
-        amode='unformatted'
-    end if
-
-    open(newunit=aunit,file=aname,form=amode,status=state, iostat=status, position=pos, access="stream")
-    if (status/=0) call MpiStop('Error creatinging or opening '//trim(aname))
-
-    end function CreateOpenNewFile
-
-
-    function ReadLine(aunit, InLine, trimmed) result(OK)
-    integer, intent(IN) :: aunit
-    character(LEN=:), allocatable, optional :: InLine
-    logical, intent(in), optional :: trimmed
-    integer, parameter :: line_buf_len= 1024*4
-    character(LEN=line_buf_len) :: InS
-    logical :: OK, set
-    integer status, size
-
-    OK = .false.
-    set = .true.
-    do
-        read (aunit,'(a)',advance='NO',iostat=status, size=size) InS
-        OK = .not. IS_IOSTAT_END(status)
-        if (.not. OK) return
-        if (present(InLine)) then
-            if (set) then
-                InLine = InS(1:size)
-                set=.false.
-            else
-                InLine = InLine // InS(1:size)
-            end if
-        end if
-        if (IS_IOSTAT_EOR(status)) exit
-    end do
-    if (present(trimmed) .and. present(InLine)) then
-        if (trimmed) InLine = trim(adjustl(InLine))
-    end if
-
-    end function ReadLine
-
-
-    function ReadLineSkipEmptyAndComments(aunit, InLine, comment) result(OK)
-    integer, intent(in) :: aunit
-    logical :: OK
-    character(LEN=:), allocatable :: InLine
-    character(LEN=:), allocatable, optional, intent(out) :: comment
-
-    if (present(comment)) comment=''
-    do
-        OK = ReadLine(aunit, InLine, trimmed=.true.)
-        if (.not. OK) return
-        if (InLine=='') cycle
-        if (InLine(1:1)/='#') then
-            return
-        else
-            if (present(comment)) comment = trim(InLine(2:))
-        end if
-    end do
-
-    end function ReadLineSkipEmptyAndComments
-
-
     function TxtNumberColumns(InLine) result(n)
     character(LEN=*) :: InLine
     integer n,i
-    logical isNum    
+    logical isNum
 
     n=0
     isNum=.false.
@@ -195,7 +129,7 @@
             if (.not. IsNum) n=n+1
             IsNum=.true.
         else
-            IsNum=.false.     
+            IsNum=.false.
         end if
     end do
 
@@ -219,57 +153,612 @@
 
     end function TxtColumns
 
-    function FileColumns(aunit) result(n)
-    integer, intent(in) :: aunit
+
+    function Opened(this)
+    class(TFileStream) :: this
+    logical Opened
+    Opened = this%unit /=0
+    end function Opened
+
+    subroutine Error(this, msg, errormsg)
+    class(TFileStream) :: this
+    character(LEN=*), intent(IN) :: msg
+    character(LEN=*), intent(IN), optional :: errormsg
+
+    if (present(errormsg)) then
+        call MpiStop(trim(errormsg)//' : '//this%FileName )
+    else
+        call MpiStop(trim(msg)//' : '// this%FileName )
+    end if
+
+    end subroutine
+
+    subroutine TFileStream_Close(this)
+    class(TFileStream) :: this
+    if (this%unit/=0) close(this%unit)
+    this%unit=0
+    end subroutine TFileStream_Close
+
+    subroutine TFileStream_Free(this)
+    Type(TFileStream) :: this
+
+    call this%Close()
+
+    end subroutine TFileStream_Free
+
+    subroutine TFileStream_Flush(this)
+    class(TFileStream) :: this
+    flush(this%unit)
+
+    end subroutine TFileStream_Flush
+
+    subroutine TFileStream_Rewind(this)
+    class(TFileStream) :: this
+    rewind(this%unit)
+    end subroutine TFileStream_Rewind
+
+    function TFileStream_Position(this)
+    class(TFileStream) :: this
+    integer(file_size_int) TFileStream_Position
+
+    inquire(this%unit, pos=TFileStream_Position)
+
+    end function TFileStream_Position
+
+
+    function TFileStream_Size(this)
+    class(TFileStream) :: this
+    integer(file_size_int) TFileStream_Size
+
+    if (this%unit /=0) then
+        inquire(this%unit, size=TFileStream_Size)
+    else if (allocated(this%FileName)) then
+        TFileStream_Size = File%Size(this%FileName)
+    else
+        call this%Error('File not defined for size')
+    end if
+
+    end function TFileStream_Size
+
+    subroutine TFileStream_Open(this, aname, errormsg, status)
+    class(TFileStream) :: this
+    character(LEN=*), intent(IN) :: aname
+    character(LEN=*), intent(IN), optional :: errormsg
+    integer, intent(out), optional :: status
+
+    call this%OpenFile(aname,errormsg=errormsg, status=status)
+
+    end subroutine TFileStream_Open
+
+    subroutine TFileStream_OpenFile(this, aname, mode, errormsg, forwrite, append, status)
+    class(TFileStream) :: this
+    character(LEN=*), intent(IN) :: aname
+    character(LEN=*), intent(IN), optional :: mode
+    character(LEN=*), intent(IN), optional :: errormsg
+    integer, intent(out), optional :: status
+    logical, intent(in), optional :: forwrite, append
+    character(LEN=:), allocatable :: amode, access, state, action, pos
+    integer out_status
+
+    call this%Close()
+
+    this%FileName = trim(aname)
+
+    amode = PresentDefault(mode_binary, mode)
+    if (amode == mode_formatted) then
+        access = access_formatted
+    else
+        access = access_binary
+    end if
+    if (PresentDefault(.false., forwrite)) then
+        state = 'replace'
+        action = 'readwrite'
+    else
+        state = 'old'
+        action = 'read'
+    end if
+    if (PresentDefault(.false., append) .and. FileExists(aname)) then
+        pos = 'append'
+        state = 'old'
+        action = 'readwrite'
+    else
+        pos='asis'
+    end if
+
+    open(file=aname,form=amode,status=state, action=action, newunit=this%unit, &
+    & iostat=out_status, position =pos,  access=access)
+    if (present(status)) then
+        status=out_status
+        if (out_status/=0) this%unit = 0
+    else
+        if (out_status/=0) then
+            if (state == 'replace') then
+                call this%Error('Error creating file', errormsg)
+            else
+                call this%Error('File not found', errormsg)
+            end if
+            this%unit = 0
+        end if
+    end if
+    end subroutine TFileStream_OpenFile
+
+    subroutine CreateFile(this,aname, errormsg)
+    class(TFileStream) :: this
+    character(LEN=*), intent(IN) :: aname
+    character(LEN=*), intent(IN), optional :: errormsg
+
+    call this%OpenFile(aname, errormsg=errormsg, forwrite =.true.)
+
+    end subroutine CreateFile
+
+    subroutine CreateOpenFile(this, aname, append, errormsg)
+    class(TFileStream) :: this
+    character(LEN=*), intent(IN) :: aname
+    logical, optional, intent(in) :: append
+    character(LEN=*), intent(IN), optional :: errormsg
+
+    call this%OpenFile(aname, forwrite =.true., append=append, errormsg=errormsg)
+
+    end subroutine CreateOpenFile
+
+    function ReadString(this, S) result(OK)
+    class(TFileStream) :: this
+    character(LEN=:), allocatable :: S
+    logical OK
+    integer i, status
+
+    read(this%unit, iostat=status) i
+    OK = status==0
+    if (.not. OK) return
+    allocate(character(LEN=i)::S)
+    read(this%unit, iostat=status) S
+    OK = status==0
+
+    end function ReadString
+
+    function ReadItem(this, R) result(res)
+    class(TFileStream) :: this
+    class(*), intent(out) :: R
+    integer status
+    logical :: res
+
+    select type(R)
+    type is (real)
+        read(this%unit, iostat=status) R
+    type is (double precision)
+        read(this%unit, iostat=status) R
+    type is (integer)
+        read(this%unit, iostat=status) R
+    type is (character(LEN=*))
+        read(this%unit, iostat=status) R
+        class default
+        call this%Error('Unknown type to read')
+    end select
+
+    res = status==0
+    if (status/=0 .and. .not. IS_IOSTAT_END(status)) call this%Error('Error reading item')
+    end function ReadItem
+
+    function ReadArray(this, R, n) result(res)
+    class(TFileStream) :: this
+    class(*) :: R(1:)
+    integer, intent(in), optional :: n
+    integer status
+    logical :: res
+
+    select type(R)
+    type is (real)
+        read(this%unit, iostat=status) R(1:PresentDefault(size(R),n))
+    type is (double precision)
+        read(this%unit, iostat=status) R(1:PresentDefault(size(R),n))
+    type is (integer)
+        read(this%unit, iostat=status) R(1:PresentDefault(size(R),n))
+        class default
+        call this%Error('Unknown type to read')
+    end select
+    res = status==0
+    if (status/=0 .and. .not. IS_IOSTAT_END(status)) call this%Error('Error reading item')
+
+    end function ReadArray
+
+    subroutine WriteItem(this, R)
+    class(TFileStream) :: this
+    class(*), intent(in) :: R
+
+    select type(R)
+    type is (real)
+        Write(this%unit) R
+    type is (double precision)
+        Write(this%unit) R
+    type is (integer)
+        Write(this%unit) R
+    type is (character(LEN=*))
+        Write(this%unit) len(R)
+        Write(this%unit) R
+        class default
+        call this%Error('Unknown type to Write')
+    end select
+
+    end subroutine WriteItem
+
+    subroutine WriteArray(this, R, n) 
+    class(TFileStream) :: this
+    class(*), intent(in) :: R(1:)
+    integer, intent(in), optional :: n
+
+    select type(R)
+    type is (real)
+        Write(this%unit) R(1:PresentDefault(size(R),n))
+    type is (double precision)
+        Write(this%unit) R(1:PresentDefault(size(R),n))
+    type is (integer)
+        Write(this%unit) R(1:PresentDefault(size(R),n))
+        class default
+        call this%Error('Unknown type to Write')
+    end select
+
+    end subroutine WriteArray
+
+    subroutine WriteItems(this, string, S2,S3,S4,S5,S6)
+    class(TFileStream) :: this
+    class(*), intent(in) :: string, S2
+    class(*), intent(in), optional :: S3,S4,S5,S6
+
+    call this%WriteItem(string)
+    call this%WriteItem(S2)
+    if (present(S3)) call this%WriteItem(S3)
+    if (present(S4)) call this%WriteItem(S4)
+    if (present(S5)) call this%WriteItem(S5)
+    if (present(S6)) call this%WriteItem(S6)
+
+    end subroutine WriteItems
+
+    !Text unformatted files
+
+    subroutine OpenTxtFile(this, aname, errormsg, status)
+    class(TTextFile) :: this
+    character(LEN=*), intent(IN) :: aname
+    character(LEN=*), intent(IN), optional :: errormsg
+    integer, intent(out), optional :: status
+
+    call this%TFileStream%OpenFile(aname,'formatted',errormsg, status=status)
+
+    end subroutine OpenTxtFile
+
+    subroutine CreateTxtFile(this, aname,errormsg)
+    class(TTextFile) :: this
+    character(LEN=*), intent(IN) :: aname
+    character(LEN=*), intent(IN), optional :: errormsg
+
+    call this%OpenFile(aname, mode='formatted', forwrite =.true., errormsg=errormsg)
+
+    end subroutine CreateTxtFile
+
+    subroutine CreateOpenTxtFile(this,aname, append, errormsg)
+    class(TTextFile) :: this
+    character(LEN=*), intent(IN) :: aname
+    logical, optional, intent(in) :: append
+    character(LEN=*), intent(IN), optional :: errormsg
+
+    call this%OpenFile(aname, mode='formatted', forwrite =.true., append=append, errormsg=errormsg)
+
+    end subroutine CreateOpenTxtFile
+
+    function ReadLine(this, InLine, trimmed) result(OK)
+    class(TTextFile) :: this
+    character(LEN=:), allocatable, optional :: InLine
+    logical, intent(in), optional :: trimmed
+    integer, parameter :: line_buf_len= 1024*4
+    character(LEN=line_buf_len) :: InS
+    logical :: OK, set
+    integer status, size
+
+    OK = .false.
+    set = .true.
+    do
+        read (this%unit,'(a)',advance='NO',iostat=status, size=size) InS
+        OK = .not. IS_IOSTAT_END(status)
+        if (.not. OK) return
+        if (present(InLine)) then
+            if (set) then
+                InLine = InS(1:size)
+                set=.false.
+            else
+                InLine = InLine // InS(1:size)
+            end if
+        end if
+        if (IS_IOSTAT_EOR(status)) exit
+    end do
+    if (present(trimmed) .and. present(InLine)) then
+        if (trimmed) InLine = trim(adjustl(InLine))
+    end if
+
+    end function ReadLine
+
+    function ReadLineSkipEmptyAndComments(this, InLine, comment) result(OK)
+    class(TTextFile) :: this
+    logical :: OK
+    character(LEN=:), allocatable :: InLine
+    character(LEN=:), allocatable, optional, intent(out) :: comment
+
+    if (present(comment)) comment=''
+    do
+        OK = this%ReadLine(InLine, trimmed=.true.)
+        if (.not. OK) return
+        if (InLine=='') cycle
+        if (InLine(1:1)/='#') then
+            return
+        else
+            if (present(comment)) comment = trim(InLine(2:))
+        end if
+    end do
+
+    end function ReadLineSkipEmptyAndComments
+
+    function SkipLines(this, n) result(OK)
+    class(TTextFile) :: this
+    integer, intent(in) :: n
+    logical OK
+    integer ix
+
+    do ix = 1, n
+        if (.not. this%ReadLine()) then
+            OK = .false.
+            return
+        end if
+    end do
+    OK = .true.
+
+    end function SkipLines
+
+    function Columns(this) result(n)
+    class(TTextFile) :: this
     integer n
     character(LEN=:), allocatable :: InLine
 
-    if (ReadLine(aunit, InLine)) then
-        n = TxtNumberColumns(InLine)
+    if (this%ReadLine(InLine)) then
+        n = File%TxtNumberColumns(InLine)
     else
         n=0
     end if
-    rewind aunit
+    call this%Rewind()
 
-    end function FileColumns
+    end function Columns
 
-    function FileLines(aunit) result(n)
-    integer, intent(in) :: aunit
+    function Lines(this) result(n)
+    class(TTextFile) :: this
     integer n
 
     n=0
-    do while (ReadLine(aunit))
+    do while (this%ReadLine())
         n = n+1
     end do
-    rewind aunit
+    call this%Rewind()
 
-    end function FileLines
+    end function Lines
 
+    function DefaultAdvance(this,advance)
+    class(TTextFile) :: this
+    logical, intent(in), optional :: advance
+    character(3) :: DefaultAdvance
+
+    if (PresentDefault(this%AdvanceDefault,advance)) then
+        DefaultAdvance='YES'
+    else
+        DefaultAdvance='NO'
+    end if
+
+    end function
+
+    subroutine NewLine(this)
+    class(TTextFile) :: this
+    call this%Write('')
+    end subroutine
+
+    subroutine WriteLeftAligned(this, Form, str)
+    class(TTextFile) :: this
+    character(LEN=*) str, Form
+    Character(LEN=max(len(str),128)) tmp
+
+    tmp = str
+    write(this%unit,form, advance='NO') tmp
+
+    end subroutine WriteLeftAligned
+
+
+    subroutine WriteInLineItems(this, string, S2,S3,S4,S5,S6)
+    class(TTextFile) :: this
+    class(*), intent(in) :: string, S2
+    class(*), intent(in), optional :: S3,S4,S5,S6
+
+    call this%WriteInLine(string)
+    call this%WriteInLine(S2)
+    if (present(S3)) call this%WriteInLine(S3)
+    if (present(S4)) call this%WriteInLine(S4)
+    if (present(S5)) call this%WriteInLine(S5)
+    if (present(S6)) call this%WriteInLine(S6)
+
+    end subroutine WriteInLineItems
+
+    subroutine WriteItemsTxt(this, string, S2,S3,S4,S5,S6)
+    class(TTextFile) :: this
+    class(*), intent(in) :: string, S2
+    class(*), intent(in), optional :: S3,S4,S5,S6
+
+    call this%WriteInLineItems(string, S2,S3,S4,S5,S6)
+    call this%NewLine()
+
+    end subroutine WriteItemsTxt
+
+    subroutine WriteInLineItem(this,str,form)
+    class(TTextFile) :: this
+    class(*), intent(in) :: str
+    character(LEN=*), intent(in), optional :: form
+    call this%WriteItemTxt(str,form,.false.)
+    end subroutine WriteInLineItem
+
+    subroutine WriteInLineArray(this,str,form,n)
+    class(TTextFile) :: this
+    class(*), intent(in) :: str(:)
+    character(LEN=*), intent(in), optional :: form
+    integer, intent(in), optional :: n
+
+    call this%WriteArrayTxt(str,form,.false.,number=n)
+    end subroutine WriteInLineArray
+
+    subroutine TTextFile_WriteItem(this,R)
+    class(TTextFile) :: this
+    class(*), intent(in) :: R
+    call this%WriteItemTxt(R,advance=.true.)
+    end subroutine TTextFile_WriteItem
+
+    subroutine TTextFile_WriteArray(this,R,n)
+    class(TTextFile) :: this
+    class(*), intent(in) :: R(:)
+    integer, intent(in), optional :: n
+    call this%WriteArrayTxt(R,number=n,advance=.true.)
+    end subroutine TTextFile_WriteArray
+
+    subroutine WriteItemTxt(this, str, form, advance)
+    class(TTextFile) :: this
+    class(*), intent(in) :: str
+    character(LEN=*), intent(in), optional :: form
+    logical, intent(in), optional :: advance
+    character(LEN=3) :: Ad
+
+    Ad = this%DefaultAdvance(advance)
+    select type(str)
+    type is (character(LEN=*))
+        if (Ad=='YES') then
+            write(this%unit,PresentDefault('(a)',form)) trim(str)
+        else
+            write(this%unit,PresentDefault('(a)',form), advance=Ad) str
+        end if
+    type is (real)
+        write(this%unit,PresentDefault(this%RealFormat,form), advance=Ad) str
+    type is (double precision)
+        write(this%unit,PresentDefault(this%RealFormat,form), advance=Ad) str
+    type is (integer)
+        write(this%unit,PresentDefault(this%IntegerFormat,form), advance=Ad) str
+        class default
+        call this%Error('unknown type to write')
+    end select
+
+    end subroutine WriteItemTxt
+
+    subroutine WriteArrayTxt(this, str, form, advance, number)
+    class(TTextFile) :: this
+    class(*), intent(in) :: str(:)
+    character(LEN=*), intent(in), optional :: form
+    logical, intent(in), optional :: advance
+    integer, intent(in), optional :: number
+    integer n
+    character(LEN=3) :: Ad
+
+    Ad = this%DefaultAdvance(advance)
+    n = PresentDefault(size(str),number)
+    select type(str)
+    type is (character(LEN=*))
+        write(this%unit,PresentDefault('(a)',form), advance=Ad) str(1:n)
+    type is (real)
+        write(this%unit,PresentDefault(this%RealFormat,form), advance=Ad) str(1:n)
+    type is (double precision)
+        write(this%unit,PresentDefault(this%RealFormat,form), advance=Ad) str(1:n)
+    type is (integer)
+        write(this%unit,PresentDefault(this%IntegerFormat,form), advance=Ad) str(1:n)
+        class default
+        call this%Error('unknown type to write')
+    end select
+
+    end subroutine WriteArrayTxt
+
+    subroutine WriteTrim(this, string, advance)
+    class(TTextFile) :: this
+    character(LEN=*), intent(in) :: string
+    logical, intent(in), optional :: advance
+
+    write(this%unit, '(a)', advance=this%DefaultAdvance(advance)) trim(string)
+
+    end subroutine WriteTrim
+
+    function ReadItemTxt(this, R) result(OK)
+    class(TTextFile) :: this
+    class(*), intent(out) :: R
+    logical OK
+    integer status
+    select type(R)
+    type is (character(LEN=*))
+        Read(this%unit,'(a)', iostat=status) R
+    type is (real)
+        Read(this%unit,*, iostat=status) R
+    type is (double precision)
+        Read(this%unit,*, iostat=status) R
+    type is (integer)
+        Read(this%unit,*, iostat=status) R
+        class default
+        call this%Error('unknown type to Read')
+    end select
+    OK = status==0
+    if (.not. OK .and. .not. IS_IOSTAT_END(status)) call this%Error('Error reading item')
+
+    end function ReadItemTxt
+
+    function ReadArrayTxt(this, R, n) result(OK)
+    class(TTextFile) :: this
+    class(*) :: R(1:)
+    integer, intent(in), optional :: n
+    logical OK
+    integer status
+
+    select type(R)
+    type is (real)
+        Read(this%unit,*, iostat=status) R(1:PresentDefault(size(R),n))
+    type is (double precision)
+        Read(this%unit,*, iostat=status) R(1:PresentDefault(size(R),n))
+    type is (integer)
+        Read(this%unit,*, iostat=status) R(1:PresentDefault(size(R),n))
+        class default
+        call this%Error('unknown type to Read')
+    end select
+
+    OK = status==0
+    if (.not. OK .and. .not. IS_IOSTAT_END(status)) call this%Error('Error reading item')
+    end function ReadArrayTxt
+
+    function ReadStringTxt(this, S) result(OK)
+    class(TTextFile) :: this
+    character(LEN=:), allocatable :: S
+    logical OK
+
+    OK = this%ReadLine(S)
+
+    end function ReadStringTxt
 
     function TopCommentLine(aname) result(res)
     character(LEN=*), intent(IN) :: aname
-    integer file_id 
     character(LEN=:), allocatable :: res
+    Type(TTextFile) :: F
 
-    file_id = OpenNewTxtFile(aname)
+    call F%Open(aname)
     res=''
-    do while (res == '' .and. ReadLine(file_id,res))
+    do while (res == '' .and. F%ReadLine(res))
     end do
     If (res(1:1)/='#') then
         res = ''
     end if
-    close(file_id)
+    call F%Close()
 
     end function TopCommentLine
 
 
     function TxtFileColumns(aname) result(n)
     character(LEN=*), intent(IN) :: aname
-    integer n, file_id 
+    integer n
+    Type(TTextFile) :: F
 
-    file_id = OpenNewTxtFile(aname)
-    n = FileColumns(file_id)
-    close(file_id)
+    call F%Open(aname)
+    n = F%Columns()
+    call F%Close()
 
     end function TxtFileColumns
 
@@ -277,14 +766,13 @@
     function LastFileLine(aname)
     character(LEN=*), intent(IN) :: aname
     character(LEN=:), allocatable :: LastFileLine
-    integer file_id
+    Type(TTextFile) :: F
 
     LastFileLine = ''
-    file_id= OpenNewTxtFile(aname)
-    do while (ReadLine(file_id, LastFileLine))
+    call F%Open(aname)
+    do while (F%ReadLine(LastFileLine))
     end do
-    close(file_id)
-
+    call F%Close()
     end function LastFileLine
 
 
@@ -386,11 +874,81 @@
     end subroutine DeleteFile
 
 
-    subroutine FlushFile(aunit)
-    integer, intent(IN) :: aunit
+    subroutine ReadTextVector(aname, vec, n)
+    character(LEN=*), intent(IN) :: aname
+    integer, intent(in) :: n
+    class(*), intent(out) :: vec(n)
+    integer j
+    Type(TTextFile) :: F
 
-    flush(aunit)
+    call F%Open(aname)
+    do j=1,n
+        select type(vec)
+        type is (real)
+            if (.not. F%Read(vec(j))) call F%Error('vector file is the wrong size')
+        type is (double precision)
+            if (.not. F%Read(vec(j))) call F%Error('vector file is the wrong size')
+            class default
+            stop 'wrong type for vector'
+        end select
+    end do
+    call F%Close()
 
-    end subroutine FlushFile
+    end subroutine ReadTextVector
+
+    subroutine WriteTextVector(aname, vec, n)
+    character(LEN=*), intent(IN) :: aname
+    integer, intent(in) :: n
+    class(*), intent(in) :: vec(n)
+    integer j
+    Type(TTextFile) :: F
+
+    call F%CreateFile(aname)
+    do j=1,n
+        select type(vec)
+        type is (real)
+            call F%Write(vec(j))
+        type is (double precision)
+            call F%Write(vec(j))
+            class default
+            stop 'wrong type for vector'
+        end select
+    end do
+    call F%Close()
+
+    end subroutine WriteTextVector
+
+    subroutine ReadTextMatrix(aname, mat, inm,inn)
+    character(LEN=*), intent(IN) :: aname
+    integer, intent(in), optional :: inm,inn
+    real(kind(1.d0)), intent(out) :: mat(:,:)
+    integer j,k, status, n,m
+    real tmp
+    Type(TTextFile) :: F
+
+    m = PresentDefault(size(mat,dim=1),inm)
+    n = PresentDefault(size(mat,dim=2),inn)
+    call F%Open(aname)
+
+    do j=1,m
+        read (F%unit,*, iostat=status) mat(j,1:n)
+        if (status/=0) exit
+    end do
+    if (status/=0) then
+        call F%Rewind()  !Try other possible format
+        do j=1,m
+            do k=1,n
+                read (F%unit,*, iostat=status) mat(j,k)
+                if (status/=0) call F%Error( 'matrix file is the wrong size')
+            end do
+        end do
+    end if
+
+    read (F%unit,*, iostat=status) tmp
+    if (status==0) call F%Error( 'matrix file is the wrong size (too big)')
+
+    call F%Close()
+
+    end subroutine ReadTextMatrix
 
     end module FileUtils

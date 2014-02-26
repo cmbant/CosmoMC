@@ -210,8 +210,8 @@
         this%nerrors=this%nerrors+1
     end if
     this%ncalls=this%ncalls+1
-    if (mod(this%ncalls,100)==0 .and. logfile_unit/=0) then
-        write(logfile_unit,'("CAMB called ",I0," times; ",I0," errors")')this%ncalls, this%nerrors
+    if (mod(this%ncalls,100)==0 .and. LogFile%Opened()) then
+        write(LogFile%unit,'("CAMB called ",I0," times; ",I0," errors")')this%ncalls, this%nerrors
     end if
     if (Feedback > 1) write (*,*) 'CAMB done'
 
@@ -685,18 +685,19 @@
     subroutine LoadFiducialHighLTemplate(this)
     class(CAMB_Calculator) :: this
     !This should be a lensed scalar CMB power spectrum, e.g. for including at very high L where foregrounds etc. dominate anyway
-    integer L, aunit, status
+    integer L,  status
     real(mcp) array(4), nm
+    Type(TTextFile) :: F
 
     allocate(this%highL_lensedCL_template(2:lmax, num_clsS))
-    aunit = OpenNewTxtFile(this%highL_theory_cl_template_file)
+    call F%Open(this%highL_theory_cl_template_file)
     do
-        read(aunit,*, iostat=status) L , array
+        read(F%unit,*, iostat=status) L , array
         if (status/=0 .or. L>lmax) exit
         nm = 2*pi/(l*(l+1))
         if (L>=2) this%highL_lensedCL_template(L,1:num_clsS) = nm*array(TensClOrder(1:num_clsS))
     end do
-    close(aunit)
+    call F%Close()
 
     if (this%highL_lensedCL_template(2,1) < 100) &
     call MpiStop('highL_theory_cl_template must be in muK^2')
