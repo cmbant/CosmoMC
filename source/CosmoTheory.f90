@@ -347,11 +347,7 @@
         read(F%unit) T%MPK%redshifts
         read(F%unit, iostat=stat) T%MPK%matter_power
         call T%MPK%IOPK_GetSplines()
-        if (IS_IOSTAT_END(stat)) then
-            has_nonlinear = .false.
-        else
-            read(F%unit)has_nonlinear
-        end if
+        read(F%unit)has_nonlinear
         if(has_nonlinear) then
             if(.not. associated(T%NL_MPK)) allocate(T%NL_MPK)
             T%NL_MPK=T%MPK
