@@ -121,7 +121,7 @@
 
     if (checkpoint) then
 #ifdef MPI
-        new_chains = .not. FileExists(rootname //'.chk')
+        new_chains = .not. File%Exists(rootname //'.chk')
 #else
         stop 'Checkpointing without MPI not supported'
         !new_chains = FileSize(rootname //'.txt')<=0
