@@ -59,7 +59,7 @@
             call LikeList%Add(Like)
             Like%needs_powerspectra =.true.
             Like%LikelihoodType = 'CMB'
-            Like%name= ExtractFileName(fname)
+            Like%name= File%ExtractName(fname)
             !                Like%version = CAMSpec_like_version
             call StringReplace('clik_data_','clik_params_',name)
             params = Ini%ReadFileName(name, NotFoundFail = .false.)
