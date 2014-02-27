@@ -303,7 +303,7 @@
     class(TTheoryCalculator) :: this
     character(LEN=*), intent(in) :: S
 
-    call MpiStop(trim(this%CalcName)//': Not implemented: '//trim(S))
+    call this%Error('Not implemented: '//trim(S))
 
     end subroutine TTheoryCalculator_ErrorNotImplemented
 

@@ -38,7 +38,7 @@
     procedure, private :: ReadArray2
     procedure, private :: ReadArray2Func
     procedure, private :: ReadArrayFunc
-    procedure, private :: WriteItem
+    procedure, private :: WriteItemSub
     procedure, private :: WriteArray
     procedure, private :: WriteArray2
     procedure, private :: WriteItems
@@ -47,8 +47,8 @@
     procedure, private  :: ReadSizedArray_R
     procedure, private  :: ReadSizedArray_D
     procedure, private  :: ReadSizedArray_I
-    generic :: Write => WriteItem, WriteArray, WriteArray2, WriteItems
-    generic :: Read => ReadItemSub, ReadItems, ReadArray, ReadArray2
+    generic :: Write => WriteItems, WriteArray, WriteArray2
+    generic :: Read => ReadItems, ReadArray, ReadArray2
     generic :: ReadItem => ReadItemFunc, ReadArrayFunc, ReadArray2Func
     generic :: ReadString => ReadStringSub
     generic :: ReadStringItem => ReadStringFunc
@@ -530,7 +530,7 @@
 
     end subroutine ReadSizedArray2_I
 
-    subroutine WriteItem(this, R)
+    subroutine WriteItemSub(this, R)
     class(TFileStream) :: this
     class(*), intent(in) :: R
 
@@ -550,12 +550,12 @@
         call this%Error('Unknown type to Write')
     end select
 
-    end subroutine WriteItem
+    end subroutine WriteItemSub
 
     subroutine WriteTrim(this, S)
     class(TFileStream) :: this
     character(LEN=*), intent(in) :: S
-    call this%WriteItem(trim(S))
+    call this%WriteItemSub(trim(S))
     end subroutine WriteTrim
 
     subroutine WriteSizedArray1(this, R, n) 
@@ -623,25 +623,26 @@
 
     subroutine WriteItems(this, S1, S2,S3,S4,S5,S6)
     class(TFileStream) :: this
-    class(*), intent(in) :: S1, S2
-    class(*), intent(in), optional :: S3,S4,S5,S6
+    class(*), intent(in) :: S1
+    class(*), intent(in), optional :: S2, S3,S4,S5,S6
 
-    call this%WriteItem(S1)
-    call this%WriteItem(S2)
-    if (present(S3)) call this%WriteItem(S3)
-    if (present(S4)) call this%WriteItem(S4)
-    if (present(S5)) call this%WriteItem(S5)
-    if (present(S6)) call this%WriteItem(S6)
+    call this%WriteItemSub(S1)
+    if (present(S2)) call this%WriteItemSub(S2)
+    if (present(S3)) call this%WriteItemSub(S3)
+    if (present(S4)) call this%WriteItemSub(S4)
+    if (present(S5)) call this%WriteItemSub(S5)
+    if (present(S6)) call this%WriteItemSub(S6)
 
     end subroutine WriteItems
 
-    subroutine ReadItems(this, S1, S2,S3,S4,S5,S6)
+    subroutine ReadItems(this, S1, S2,S3,S4,S5,S6,OK)
     class(TFileStream) :: this
-    class(*) S1, S2
-    class(*), optional :: S3,S4,S5,S6
+    class(*) S1
+    class(*), optional :: S2,S3,S4,S5,S6
+    logical, optional :: OK
 
     call this%ReadItemSub(S1)
-    call this%ReadItemSub(S2)
+    if (present(S2)) call this%ReadItemSub(S2)
     if (present(S3)) call this%ReadItemSub(S3)
     if (present(S4)) call this%ReadItemSub(S4)
     if (present(S5)) call this%ReadItemSub(S5)
@@ -802,13 +803,13 @@
     end subroutine WriteLeftAligned
 
 
-    subroutine WriteInLineItems(this, string, S2,S3,S4,S5,S6)
+    subroutine WriteInLineItems(this, S1, S2,S3,S4,S5,S6)
     class(TTextFile) :: this
-    class(*), intent(in) :: string, S2
-    class(*), intent(in), optional :: S3,S4,S5,S6
+    class(*), intent(in) :: S1
+    class(*), intent(in), optional :: S2, S3,S4,S5,S6
 
-    call this%WriteInLine(string)
-    call this%WriteInLine(S2)
+    call this%WriteInLine(S1)
+    if (present(S2)) call this%WriteInLine(S2)
     if (present(S3)) call this%WriteInLine(S3)
     if (present(S4)) call this%WriteInLine(S4)
     if (present(S5)) call this%WriteInLine(S5)
@@ -818,8 +819,8 @@
 
     subroutine WriteItemsTxt(this, S1, S2,S3,S4,S5,S6)
     class(TTextFile) :: this
-    class(*), intent(in) :: S1, S2
-    class(*), intent(in), optional :: S3,S4,S5,S6
+    class(*), intent(in) :: S1
+    class(*), intent(in), optional :: S2, S3,S4,S5,S6
 
     call this%WriteInLineItems(S1, S2,S3,S4,S5,S6)
     call this%NewLine()
