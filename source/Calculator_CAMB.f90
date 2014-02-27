@@ -473,6 +473,8 @@
     CPK%redshifts = Theory%MPK%y
     CPK%matpower = PK
 
+    !need splines to get nonlinear ratios
+    call MatterPowerdata_getsplines(CPK)
     call NonLinear_GetRatios(CPK)
     Theory%NL_Ratios = CPK%nonlin_ratio
     call MatterPowerdata_Free(CPK)

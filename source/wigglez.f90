@@ -512,14 +512,14 @@
             write(*,*) '       calling a SetPk routine and filling your power spectra.'
             call MPIstop()
         end if
-        allocate(PK,source=Theory%NL_MPK)
+        PK=>Theory%NL_MPK
     else
         if(.not. allocated(Theory%MPK))then
             write(*,*) 'ERROR: Your Theory%MPK derived type is not initialized. Make sure you are'
             write(*,*) '       calling a SetPk routine and filling your power spectra.'
             call MPIstop()
         end if
-        allocate(PK,source=Theory%MPK)
+        PK=>Theory%MPK
     end if
 
     chisq = 0

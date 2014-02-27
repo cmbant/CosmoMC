@@ -68,14 +68,8 @@
     subroutine FreePK(T)
     class(TCosmoTheoryPredictions) T
     
-    if(allocated(T%MPK))then
-        call T%MPK%Free()
-        deallocate(T%MPK)
-    end if
-    if(allocated(T%NL_MPK))then
-        call T%NL_MPK%Free()
-        deallocate(T%NL_MPK)
-    end if
+    if(allocated(T%MPK))deallocate(T%MPK)
+    if(allocated(T%NL_MPK)) deallocate(T%NL_MPK)
     if(allocated(T%NL_Ratios))deallocate(T%NL_Ratios)
     
     end subroutine FreePK   
