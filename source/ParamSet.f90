@@ -17,9 +17,17 @@
     contains
     procedure :: ReadModel => ParamSet_ReadModel
     procedure :: WriteModel => ParamSet_WriteModel
+    final :: FreeParams
     end Type
 
     contains
+
+    subroutine FreeParams(this)
+    Type(ParamSet) this
+    !This should not be needed? but does solve memory leak in ifort compilation..
+    if (allocated(this%Theory)) deallocate(this%Theory)
+    end subroutine
+
 
     subroutine ParamSet_WriteModel(this, F, like, mult)
     Class(ParamSet) :: this

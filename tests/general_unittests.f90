@@ -1,3 +1,41 @@
+    module memory
+    implicit none
+
+    Type :: MyType
+        real X(50000)
+    end type
+
+    type M
+        class(MyType), allocatable :: mem
+    contains 
+    !    final :: testfree
+    end type
+    contains
+
+    !    subroutine testfree(this)
+    !    Type(M) this
+    !    if (allocated(this%mem)) deallocate(this%mem)
+    !    end subroutine testfree
+
+    subroutine local(A)
+    Type (M) :: A, B
+
+    B=A
+
+    end subroutine local
+
+    subroutine testmem
+    Type(M) :: X
+    integer i
+
+    allocate(MyType::X%mem)
+    do i=1, 1000
+        call local(X)
+    end do
+
+    end subroutine testmem
+
+    end module memory
 
     module tests
     use ObjectLists
@@ -143,10 +181,9 @@
 
     program tester
     use tests
-    character(LEN=:), pointer :: Y
+    use memory
 
-    Y => test()
-    print *, Y
+    !    call testmem
 
     call RunTests
     end program
