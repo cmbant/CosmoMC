@@ -1,7 +1,7 @@
     !Module to read in name/value pairs from a file, with each line of the form line 'name = value'
     !Should correctly interpret FITS headers
     !Antony Lewis (http://cosmologist.info/). Released to the public domain.
-    !2014 using Fortran 2003
+    !2014 using Fortran 2003/2008
 
     module IniObjects
     use FileUtils
@@ -26,6 +26,7 @@
         integer :: Capacity = 0
         logical :: ignoreDuplicates = .false.
         logical :: AllowDuplicateKeys = .false.
+        !Use pointer so arrays can be moved around quickly without deep copies
         type(TNameValue_pointer), dimension(:), allocatable :: Items
     contains
     procedure :: Init => TNameValueList_Init
@@ -43,6 +44,7 @@
     procedure :: TNameValueList_AddInt
     procedure :: TNameValueList_AddLogical
     generic :: Add => AddString, TNameValueList_AddDouble, TNameValueList_AddReal, TNameValueList_AddInt, TNameValueList_AddLogical
+    final :: TNameValueList_Free
     end Type TNameValueList
 
     Type, extends(TNameValueList) :: TIniFile
@@ -102,6 +104,11 @@
     call L%Init()
 
     end subroutine TNameValueList_Clear
+
+    subroutine TNameValueList_Free(L)
+    Type(TNameValueList) :: L
+    call L%Clear()
+    end subroutine TNameValueList_Free
 
     function TNameValueList_ValueOf(L, AName) result(AValue)
     class(TNameValueList), intent(in) :: L
