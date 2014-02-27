@@ -382,8 +382,8 @@
     integer zix,nz,nk
 
     !Free theory arrays as they may resize between samples
-    call Theory%PKFree()
-    if(.not. associated(Theory%MPK)) allocate(Theory%MPK)
+    call Theory%FreePK()
+    allocate(Theory%MPK)
 
     nk=M%num_q_trans
     nz=CP%Transfer%PK_num_redshifts
@@ -403,6 +403,9 @@
     if(use_nonlinear)then
         call this%GetNLandRatios(M,Theory)
     end if
+
+    deallocate(PK)
+    nullify(PK)
 
     end subroutine CAMBCalc_SetPkFromCAMB
     
@@ -454,7 +457,7 @@
     CPK%num_z = Theory%MPK%ny
 
     !Allocate Theory arrays
-    if(.not. associated(Theory%NL_MPK)) allocate(Theory%NL_MPK)
+    allocate(Theory%NL_MPK)
     allocate(Theory%NL_Ratios(CPK%num_k,CPK%num_z))
 
     !Allocate Dummy Pointer and fill with Linear MPK
@@ -476,6 +479,9 @@
 
     PK = PK+2*log(Theory%NL_Ratios)
     call Theory%NL_MPK%Init(Theory%MPK%x,Theory%MPK%y,PK,.true.)
+
+    deallocate(PK)
+    nullify(PK)
 
     end subroutine CAMBCalc_GetNLandRatios
 

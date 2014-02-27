@@ -24,12 +24,12 @@
         !MPK's are interpolator objects now
         !MPK%x = logkh, MPK%y = z (redshift), MPK%z =>actual data array
         !MPK%nx = num_k, MPK%ny = num_z
-        type(TCosmoTheoryPK), pointer :: MPK => Null()
-        type(TCosmoTheoryPK), pointer :: NL_MPK => Null()
+        type(TCosmoTheoryPK), allocatable :: MPK
+        type(TCosmoTheoryPK), allocatable :: NL_MPK
         !For use with for example WL PK's
         real(mcp), allocatable :: NL_Ratios(:,:)
     contains
-    procedure :: PKFree
+    procedure :: FreePK
     procedure :: ClsFromTheoryData
     procedure :: WriteTextCls
     !Inherited overrides
@@ -65,18 +65,20 @@
     
     end function PowerAt    
 
-    subroutine PKFree(T)
+    subroutine FreePK(T)
     class(TCosmoTheoryPredictions) T
     
-    if(associated(T%MPK))then
+    if(allocated(T%MPK))then
         call T%MPK%Free()
+        deallocate(T%MPK)
     end if
-    if(associated(T%NL_MPK))then
+    if(allocated(T%NL_MPK))then
         call T%NL_MPK%Free()
+        deallocate(T%NL_MPK)
     end if
     if(allocated(T%NL_Ratios))deallocate(T%NL_Ratios)
     
-    end subroutine PKFree    
+    end subroutine FreePK   
 
     subroutine ClsFromTheoryData(T, Cls)
     class(TCosmoTheoryPredictions) T
@@ -186,18 +188,19 @@
 
     if (has_sigma8 .or. has_LSS) read(F%unit) T%sigma_8
     if (has_LSS) then
+        call T%FreePK()
+        allocate(T%MPK)
         read(F%unit) num_k, num_z
         allocate(temp(num_k,num_z))
         allocate(k(num_k))
-        allocate(z(num_z))
-        if(.not. associated(T%MPK)) allocate(T%MPK)
+        allocate(z(num_z)) 
         read(F%unit) k
         read(F%unit) z
         read(F%unit) temp
         call T%MPK%Init(k,z,temp,.true.)
         read(F%unit)has_nonlinear
         if(has_nonlinear) then
-            if(.not. associated(T%NL_MPK)) allocate(T%NL_MPK)
+            allocate(T%NL_MPK)
             read(F%unit)temp
             call T%NL_MPK%Init(k,z,temp,.true.)
             if(.not. use_nonlinear) then
