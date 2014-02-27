@@ -220,7 +220,7 @@
     call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived)
 
     if (allocated(derived)) numderived = size(derived)
-    if (numderived > 0) then
+    if (numderived == 0) then
         call IO_OutputChainRow(ChainOutFile,mult, like, this%P(params_used))
     else
         allocate(output_array(num_params_used + numderived))

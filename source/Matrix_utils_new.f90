@@ -190,7 +190,7 @@
     subroutine Matrix_WriteVec(aname, vec)
     character(LEN=*), intent(in) :: aname
     real(dm), intent(in) :: vec(:)
-    integer i,   file_unit
+    integer i
     Type(TTextFile) F
 
     call F%CreateFile(aname)
@@ -205,7 +205,6 @@
     subroutine Matrix_Read_Binary(aname, mat)
     character(LEN=*), intent(in) :: aname
     real(dm), intent(out) :: mat(:,:)
-    integer  file_unit
     Type(TBinaryFile) F
 
     call F%Open(aname)
@@ -218,7 +217,7 @@
     subroutine MatrixSym_Read_Binary(aname, mat)
     character(LEN=*), intent(in) :: aname
     real(dm), intent(out) :: mat(:,:)
-    integer i,    file_unit
+    integer i
     integer shp(2)
     Type(TBinaryFile) F
 
