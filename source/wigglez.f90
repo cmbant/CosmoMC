@@ -474,7 +474,7 @@
     function WiggleZ_LnLike(like,CMB,Theory,DataParams) ! LV_06 added CMB here
     Class(CMBParams) CMB
     Class(WiggleZLikelihood) :: like
-    Class(TCosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions), target :: Theory
     Type (TCosmoTheoryPK), pointer :: PK
     real(mcp) :: DataParams(:)
     real(mcp) :: WiggleZ_LnLike, LnLike

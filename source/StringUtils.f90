@@ -55,13 +55,10 @@
 
     function numcat(S, num)
     character(LEN=*) S
-    character(LEN=1024) numstr
     character(LEN=:), allocatable :: numcat
     integer num
 
-    write (numstr, *) num
-    numcat = trim(S) // trim(adjustl(numstr))
-    !OK, so can probably do with with a format statement too... 
+    numcat = concat(S,num)
     end function numcat
 
     function IntToStr(I, minlen)
@@ -180,16 +177,17 @@
     character(LEN=:), allocatable :: S
     class(*) X
     logical OK
-    integer ix
+    integer ix, P
     character c
 
+    P=1 
     do
-        ix=scan(S,'%')
+        ix=scan(S(P:),'%')
         OK = ix/=0 .and. ix < len(S)
         if (.not. OK) return
-        c = S(ix+1:ix+1)
+        c = S(ix+P:ix+P)
         if (c=='%') then
-            call StringReplace('%%', '%', S)
+            P=P+Ix+1
         else
             exit
         end if
@@ -214,6 +212,8 @@
     class(*), intent(in),optional :: i2,i3,i4,i5,i6
     character(LEN=:), allocatable :: S
     logical OK
+    !Note that this routine is incomplete and very simple (so buggy in complex cases)
+    !(should not substitute on the previously substituted string, etc, etc..)
 
     S = formatst
     OK = SubNextFormat(S, i1)
@@ -223,6 +223,7 @@
     if (OK .and. present(i5)) OK = SubNextFormat(S, i5)
     if (OK .and. present(i6)) OK = SubNextFormat(S, i6)
     if (.not. OK) stop 'FormatString: Wrong number or kind of formats in string'
+    call StringReplace('%%', '%', S)
 
     end function FormatString
 

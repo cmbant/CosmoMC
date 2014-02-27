@@ -1190,7 +1190,7 @@
     FUNCTION snls_LnLike(like, CMB, Theory, DataParams)
     Class(SNLSLikelihood) :: like
     Class (CMBParams) CMB
-    Class(TCosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
     ! norm_alpha, norm_beta are the positions of alpha/beta in norm
     REAL(mcp) :: snls_LnLike

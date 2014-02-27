@@ -167,7 +167,7 @@
     function BAO_LnLike(like, CMB, Theory, DataParams)
     Class(BAOLikelihood) :: like
     Class(CMBParams) CMB
-    Class(TCosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) :: DataParams(:)
     integer j,k
     real(mcp) BAO_LnLike

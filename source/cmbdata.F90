@@ -941,7 +941,7 @@
     function CMBLnLike(like, CMB, Theory, DataParams)
     Class(CMBDataLikelihood) :: like
     Class (CMBParams) CMB
-    Class(TCosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) :: DataParams(:)
     real(mcp) cl(lmax,num_cls_tot)
     real(mcp) CMBLnLike

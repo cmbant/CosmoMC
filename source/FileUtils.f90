@@ -1016,13 +1016,13 @@
 
     end subroutine  ReadStringTxt
 
-    subroutine WriteFormat(this, formatst, i1,i2,i3,i4)
+    subroutine WriteFormat(this, formatst, i1,i2,i3,i4,i5,i6)
     class(TTextFile) :: this
     character(LEN=*), intent(in) :: formatst
     class(*), intent(in) :: i1
-    class(*), intent(in),optional :: i2,i3,i4
+    class(*), intent(in),optional :: i2,i3,i4,i5,i6
 
-    write(this%unit,'(a)') FormatString(formatst,i1,i2,i3,i4)
+    write(this%unit,'(a)') FormatString(formatst,i1,i2,i3,i4,i5,i6)
 
     end subroutine WriteFormat
 

@@ -248,7 +248,7 @@
     function MPK_LnLike(like,CMB,Theory,DataParams) ! LV_06 added CMB here
     Class(CMBParams) CMB
     Class(MPKLikelihood) :: like
-    Class(TCosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions), target :: Theory
     Type(TCosmoTheoryPK), pointer :: PK
     real(mcp) :: DataParams(:)
     real(mcp) MPK_LnLike,LnLike

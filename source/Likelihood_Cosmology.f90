@@ -71,7 +71,7 @@
     function LogLike(like, CMB, Theory, DataParams)
     class(TCosmologyLikelihood) :: like
     class(CMBParams) :: CMB
-    class(TCosmoTheoryPredictions) :: Theory
+    class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) :: DataParams(:)
     real(mcp) LogLike
 

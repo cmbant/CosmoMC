@@ -117,7 +117,7 @@
     real(mcp) function clik_lnlike(like, CMB, Theory, DataParams)
     Class(ClikLikelihood) :: like
     Class (CMBParams) CMB
-    Class(TCosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
     integer :: i,j ,l
     real(mcp) acl(lmax,num_cls_tot)
@@ -205,7 +205,7 @@
     real(mcp) function clik_lensing_lnlike(like, CMB, Theory, DataParams)
     Class(ClikLensingLikelihood) :: like
     Class (CMBParams) CMB
-    Class(TCosmoTheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
     integer :: i,j ,l
     real(mcp) acl(lmax,num_cls_tot)
