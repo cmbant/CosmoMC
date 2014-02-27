@@ -18,6 +18,7 @@ LAPACKL =
 else
 #gfortran does not yet work yet, open GCC 4.9 compiler bugs are
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60334
+#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60289
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60255
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51976
 F90C = gfortran

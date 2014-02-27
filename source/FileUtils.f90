@@ -1177,14 +1177,7 @@
 
     call F%Open(aname)
     do j=1,n
-        select type(vec)
-        type is (real)
-            if (.not. F%ReadItem(vec(j))) call F%Error('vector file is the wrong size')
-        type is (double precision)
-            if (.not. F%ReadItem(vec(j))) call F%Error('vector file is the wrong size')
-            class default
-            stop 'wrong type for vector'
-        end select
+        call F%Read(vec(j))
     end do
     call F%Close()
 
@@ -1199,14 +1192,7 @@
 
     call F%CreateFile(aname)
     do j=1,n
-        select type(vec)
-        type is (real)
-            call F%Write(vec(j))
-        type is (double precision)
-            call F%Write(vec(j))
-            class default
-            stop 'wrong type for vector'
-        end select
+        call F%Write(vec(j))
     end do
     call F%Close()
 
