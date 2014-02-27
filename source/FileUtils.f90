@@ -789,7 +789,7 @@
 
     subroutine NewLine(this)
     class(TTextFile) :: this
-    call this%Write('')
+    call this%WriteItemTxt('')
     end subroutine
 
     subroutine WriteLeftAligned(this, Form, str)
