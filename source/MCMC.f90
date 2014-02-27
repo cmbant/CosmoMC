@@ -199,7 +199,7 @@
     subroutine TChainSampler_LoadState(this,F)
     class(TChainSampler) :: this
     class(TFileStream) F
-    
+
     call this%TSamplingAlgorithm%LoadState(F)
     call F%Read(this%num_accept)
     call this%Proposer%LoadState(F)
@@ -210,7 +210,7 @@
     subroutine TChainSampler_SaveState(this,F)
     class(TChainSampler) :: this
     class(TFileStream) F
-    
+
     call this%TSamplingAlgorithm%SaveState(F)
     call F%Write(this%num_accept)
     call this%Proposer%SaveState(F)
@@ -285,10 +285,10 @@
         accpt = .false.
     end if
 
-    call CurParams%AcceptReject(Trial, accpt)
     this%num_metropolis = this%num_metropolis + 1
 
     call this%MoveDone(accpt, CurParams, CurLike, mult, this%Oversample_fast)
+    call CurParams%AcceptReject(Trial, accpt)
 
     if (accpt) then
         CurParams = Trial
@@ -324,8 +324,8 @@
         accpt = .false.
     end if
 
-    call CurParams%AcceptReject(Trial,accpt)
     call this%MoveDone(accpt, CurParams, CurLike, mult)
+    call CurParams%AcceptReject(Trial,accpt)
 
     if (accpt) then
         CurParams = Trial
@@ -392,12 +392,14 @@
         TrialEnd%P(1:num_params) = TrialEnd%P(1:num_params) + delta
         EndLike = this%LogLike(TrialEnd)
         accpt = EndLike /= logZero
+
         if (accpt) then
             this%num_fast_calls = this%num_fast_calls + 1
             TrialStart = CurStartParams
             TrialStart%P(1:num_params) = TrialStart%P(1:num_params)  + delta
             StartLike = this%LogLike(TrialStart)
             accpt = StartLike/=logZero
+
             if (accpt) then
                 this%num_fast_calls = this%num_fast_calls + 1
                 if (Feedback > 2) print *,'End,start drag: ', interp_step, EndLike, StartLike
@@ -435,9 +437,9 @@
 
     accpt = this%MetropolisAccept(DragLike, CurDragLike)
 
+    call this%MoveDone(accpt, CurParams, CurLike, mult)
     call CurParams%AcceptReject(CurEndParams, accpt)
 
-    call this%MoveDone(accpt, CurParams, CurLike, mult)
     if (accpt) then
         CurParams = CurEndParams
         CurLike = CurEndLike

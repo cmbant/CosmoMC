@@ -155,11 +155,12 @@
     subroutine TP_CalcDerivedParams(this, P, Theory, derived) 
     class(ThetaParameterization) :: this
     real(mcp), allocatable :: derived(:)
-    class(TTheoryPredictions), pointer :: Theory
+    class(TTheoryPredictions), allocatable :: Theory
     real(mcp) :: P(:)
     Type(CMBParams) CMB
     integer num_derived
 
+    if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)
     class is (TCosmoTheoryPredictions)
         num_derived = 13 +  Theory%numderived
@@ -308,7 +309,7 @@
     subroutine BK_CalcDerivedParams(this, P, Theory, derived) 
     class(BackgroundParameterization) :: this
     real(mcp), allocatable :: derived(:)
-    class(TTheoryPredictions), pointer :: Theory
+    class(TTheoryPredictions), allocatable :: Theory
     real(mcp) :: P(:)
     Type(CMBParams) CMB
 

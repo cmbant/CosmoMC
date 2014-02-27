@@ -87,14 +87,23 @@
 
     end function TCosmologyConfig_SetParameterizationName
 
-    function TCosmologyConfig_NewTheory(this) result(Theory)
+    !function TCosmologyConfig_NewTheory(this) result(Theory)
+    !class(TCosmologyConfig) :: this
+    !class(TTheoryPredictions), pointer :: Theory
+    !
+    !allocate(TCosmoTheoryPredictions::Theory)
+    !call Theory%Init(this)
+    !
+    !end function TCosmologyConfig_NewTheory
+    !
+    subroutine TCosmologyConfig_NewTheory(this, Theory)
     class(TCosmologyConfig) :: this
-    class(TTheoryPredictions), pointer :: Theory
+    class(TTheoryPredictions), allocatable :: Theory
 
     allocate(TCosmoTheoryPredictions::Theory)
     call Theory%Init(this)
 
-    end function TCosmologyConfig_NewTheory
+    end subroutine TCosmologyConfig_NewTheory
 
     subroutine TCosmologyConfig_InitForLikelihoods(this)
     class(TCosmologyConfig) :: this

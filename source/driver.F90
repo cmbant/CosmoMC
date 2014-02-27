@@ -106,7 +106,7 @@
 
     if (Setup%action==action_MCMC) then
         checkpoint = Ini%Read_Logical('checkpoint',.false.)
-        if (checkpoint) flush_write = .true.
+        flush_write =  Ini%Read_Logical('flush_write',checkpoint)
         start_at_bestfit= Ini%read_logical('start_at_bestfit',.false.)
     end if
 
@@ -211,7 +211,7 @@
                 if (bestfit_loglike==logZero) write(*,*) MpiRank,'WARNING: FindBestFit did not converge'
                 if (Feedback >0) write(*,*) 'Best-fit results: '
                 call Minimizer%WriteBestFitParams(bestfit_loglike,Params, baseroot//'.minimum')
-                if (associated(Params%Theory)) then
+                if (allocated(Params%Theory)) then
                     call DataLikelihoods%WriteDataForLikelihoods(Params%P, Params%Theory, baseroot)
                     call Params%Theory%WriteBestFitData(baseroot)
                 end if

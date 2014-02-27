@@ -32,6 +32,7 @@
         real(mcp) tensor_ratio_r10, tensor_ratio_02
         integer numderived
         real(mcp) derived_parameters(max_derived_parameters)
+        real(mcp) test(10000)
 
         type(TCosmoTheoryPK), pointer :: MPK
         type(TCosmoTheoryPK), pointer :: NL_MPK

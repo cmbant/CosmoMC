@@ -876,6 +876,8 @@
         write(this%unit,PresentDefault(this%RealFormat,form), advance=Ad) str
     type is (integer)
         write(this%unit,PresentDefault(this%IntegerFormat,form), advance=Ad) str
+    type is (logical)
+        write(this%unit,PresentDefault('(L2)',form), advance=Ad) str
         class default
         call this%Error('unknown type to write')
     end select
@@ -902,6 +904,8 @@
         write(this%unit,PresentDefault(this%RealFormat,form), advance=Ad) str(1:n)
     type is (integer)
         write(this%unit,PresentDefault(this%IntegerFormat,form), advance=Ad) str(1:n)
+    type is (logical)
+        write(this%unit,PresentDefault('(*(L2))',form), advance=Ad) str(1:n)
         class default
         call this%Error('unknown type to write')
     end select

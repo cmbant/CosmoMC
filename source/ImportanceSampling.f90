@@ -170,7 +170,7 @@
         if (.not. this%redo_no_new_data) call OutData%CreateFile(trim(post_root)//'.data')
         num = 0
         num_used = 0
-        Params%Theory => this%LikeCalculator%Config%NewTheory()
+        call this%LikeCalculator%Config%NewTheory(Params%Theory)
 
         do
             if (this%redo_from_text) then

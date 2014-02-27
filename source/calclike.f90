@@ -198,13 +198,14 @@
 
     subroutine TheoryLike_SetNewTheoryResults(this, Params)
     class(TTheoryLikeCalculator) :: this
-    class(TCalculationAtParamPoint), target :: Params
+    class(TCalculationAtParamPoint) :: Params
 
-    if (.not. associated(Params%Theory)) then
-        Params%Theory=>this%Config%NewTheory()
-    else
-        call Params%Theory%AssignNew(Params%Theory)
-    end if
+    if (.not. allocated(Params%Theory)) call this%Config%NewTheory(Params%Theory)
+    !if (.not. associated(Params%Theory)) then
+    !    Params%Theory=>this%Config%NewTheory()
+    !else
+    !    call Params%Theory%AssignNew(Params%Theory)
+    !end if
 
     end subroutine TheoryLike_SetNewTheoryResults
 
@@ -216,6 +217,7 @@
     real(mcp) LogLike
 
     call this%SetTheoryParams(Params)
+ !   nullify(Params%Theory)
     LogLike = this%Config%Parameterization%NonBaseParameterPriors(this%TheoryParams)
     if (LogLike == logZero) return
     if (.not. Params%validInfo) then

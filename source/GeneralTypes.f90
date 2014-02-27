@@ -31,22 +31,6 @@
     procedure :: Clear => TTheoryIntermediateCache_Clear
     end Type TTheoryIntermediateCache
 
-    Type TCalculationAtParamPoint
-        !Parameter values, calculated theory and intermediates and likelihoods at a particular point in parameter space
-        real(mcp) :: P(max_num_params)
-        real(mcp) :: likelihoods(max_likelihood_functions)
-        real(mcp) :: lastParamArray(max_num_params)
-        logical :: validInfo = .false.
-        class(TTheoryPredictions), pointer :: Theory => null()
-        class(TTheoryIntermediateCache), pointer :: Info => null()
-    contains
-    procedure :: Clear => TCalculationAtParamPoint_Clear
-    procedure :: WriteParams => TCalculationAtParamPoint_WriteParams
-    procedure :: AcceptReject => TCalculationAtParamPoint_AcceptReject
-    procedure :: ReadModel
-    procedure :: WriteModel
-    end Type TCalculationAtParamPoint
-
     !Each descendant of the base TConfigClass below has a Config element which point to a TGeneralConfig instance taht determines
     !which related class implementations are actually used
     Type, extends(TObjectWithParams) :: TGeneralConfig
@@ -71,7 +55,6 @@
         !Actual computed theory predictions used by likelihoods
         !Config%Calculator can in some cases be used to provide theory functions
     contains
-    procedure :: AssignNew => TTheoryPredictions_AssignNew
     procedure :: Clear => TTheoryPredictions_Clear
     procedure :: WriteTheory
     procedure :: ReadTheory
@@ -100,6 +83,22 @@
 
     Type, extends(TParameterization) :: GenericParameterization
     end type GenericParameterization
+
+    Type TCalculationAtParamPoint
+        !Parameter values, calculated theory and intermediates and likelihoods at a particular point in parameter space
+        real(mcp) :: P(max_num_params)
+        real(mcp) :: likelihoods(max_likelihood_functions)
+        real(mcp) :: lastParamArray(max_num_params)
+        logical :: validInfo = .false.
+        class(TTheoryPredictions), allocatable :: Theory
+        class(TTheoryIntermediateCache), pointer :: Info => null()
+    contains
+    procedure :: Clear => TCalculationAtParamPoint_Clear
+    procedure :: WriteParams => TCalculationAtParamPoint_WriteParams
+    procedure :: AcceptReject => TCalculationAtParamPoint_AcceptReject
+    procedure :: ReadModel
+    procedure :: WriteModel
+    end Type TCalculationAtParamPoint
 
 
     public int_arr_pointer,TCheckpointable, TTheoryParams, TTheoryIntermediateCache, TCalculationAtParamPoint, TGeneralConfig, &
@@ -155,7 +154,7 @@
     subroutine TParameterization_CalcDerivedParams(this, P, Theory, derived) 
     class(TParameterization) :: this
     real(mcp), allocatable :: derived(:)
-    class(TTheoryPredictions), pointer :: Theory !can be null for simple cases (e.g. generic)
+    class(TTheoryPredictions), allocatable :: Theory !can be null for simple cases (e.g. generic)
     real(mcp) :: P(:)
 
 
@@ -172,14 +171,6 @@
 
     !!!TTheoryPredictions
 
-    subroutine TTheoryPredictions_AssignNew(this, NewTheory)
-    class(TTheoryPredictions) :: this
-    class(TTheoryPredictions), pointer :: NewTheory
-
-    allocate(NewTheory, source = this)
-
-    end subroutine TTheoryPredictions_AssignNew
-
     subroutine TTheoryPredictions_Clear(this)
     class(TTheoryPredictions) :: this
     end subroutine TTheoryPredictions_Clear
@@ -194,10 +185,9 @@
         deallocate(this%Info)
         nullify(This%Info)
     end if
-    if (associated(this%Theory).and. .not. associated(this%Theory, Keep%Theory)) then
+    if (allocated(this%Theory)) then
         call this%Theory%Clear()
         deallocate(this%Theory)
-        nullify(This%Theory)
     end if
     end subroutine TCalculationAtParamPoint_Clear
 
@@ -208,17 +198,13 @@
     class(TCalculationAtParamPoint) :: Trial
     logical, intent(in) :: accpt
 
-    if (.not. associated(this%Info, Trial%Info)) then
-        !If they point to same memory don't need to free anything
-        if (accpt) then
-            call this%Clear(keep = Trial)
-        else
-            call Trial%Clear(keep = this)
-        end if
+    if (accpt) then
+        call this%Clear(keep = Trial)
+    else
+        call Trial%Clear(keep = this)
     end if
 
     end subroutine TCalculationAtParamPoint_AcceptReject
-
 
     subroutine TCalculationAtParamPoint_WriteParams(this, Config, mult, like)
     class(TCalculationAtParamPoint) this
@@ -313,23 +299,6 @@
     end subroutine TTheoryCalculator_VersionTraceOutput
 
 
-    subroutine TTheoryCalculator_AcceptReject(this, accpt, CurParams, Trial)
-    !Handle freeing of memory of internal info: if accpt then clear CurParams, otherwise clear Trial
-    class(TTheoryCalculator) :: this
-    logical, intent(in) :: accpt
-    class(TCalculationAtParamPoint), pointer :: CurParams, Trial
-
-    if (.not. associated(CurParams%Info, Trial%Info)) then
-        !If they point to same memory don't need to free anything
-        if (accpt) then
-            call CurParams%Clear(keep = Trial)
-        else
-            call Trial%Clear(keep = CurParams)
-        end if
-    end if
-
-    end subroutine TTheoryCalculator_AcceptReject
-
     subroutine TTheoryCalculator_ErrorNotImplemented(this,S)
     class(TTheoryCalculator) :: this
     character(LEN=*), intent(in) :: S
@@ -419,14 +388,14 @@
 
     end function TGeneralConfig_SetParameterizationName
 
-    function TGeneralConfig_NewTheory(this) result(Theory)
+    subroutine TGeneralConfig_NewTheory(this, Theory)
     class(TGeneralConfig) :: this
-    class(TTheoryPredictions), pointer :: Theory
+    class(TTheoryPredictions), allocatable :: Theory
 
     allocate(TTheoryPredictions::Theory)
     call Theory%Init(this)
 
-    end function TGeneralConfig_NewTheory
+    end subroutine TGeneralConfig_NewTheory
 
     subroutine TGeneralConfig_InitForLikelihoods(this)
     class(TGeneralConfig) :: this
