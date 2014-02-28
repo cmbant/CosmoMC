@@ -47,6 +47,7 @@
     !Nov-Dec 12: removed sm support; use specific parameter in triangle plots; new R-1 definition, etc...
     !.. Mar 13: numerous changes..
     !   Apr 13: output .py files, converge_test_limit, etc.
+    !Oct 13: add other mean likelihoods to .likestats
     module MCSamples
     use settings
     use MatrixUtils
@@ -82,6 +83,8 @@
     Type(TDensity1D) :: Density1D
 
     integer chain_indices(max_chains), num_chains_used
+    integer bestfit_ix
+    real(mcp) meanlike, maxlike
 
     integer nrows, ncols, num_bins, num_bins_2D
     real(mcp) numsamp, max_mult, mean_mult
@@ -122,7 +125,6 @@
     integer ix_min(max_cols),ix_max(max_cols)
     real(mcp) limmin(max_cols),limmax(max_cols)
     real(mcp) center(max_cols), param_min(max_cols), param_max(max_cols), range_min(max_cols), range_max(max_cols)
-    real(mcp) meanlike, maxlike
     logical BW,do_shading
     Type(TStringList) :: ComparePlots
     logical :: prob_label = .false.
@@ -463,6 +465,13 @@
 
     ConfidVal = try_t
     end function ConfidVal
+
+    subroutine WriteS(S)
+    character(LEN=*), intent(in) :: S
+
+    write (*,*) trim(S)
+
+    end subroutine WriteS
 
     subroutine PCA(pars,n,param_map,normparam_num)
     !Perform principle component analysis
@@ -1727,18 +1736,35 @@
     end if
     end function dinvnorm
 
-    subroutine WriteS(S)
-    character(LEN=*), intent(in) :: S
+    subroutine GetChainLikeSummary(unit)
+    integer unit
 
-    write (*,*) trim(S)
+    bestfit_ix = 0 !Since we have sorted the lines
 
-    end subroutine WriteS
+    maxlike = coldata(2,bestfit_ix)
+    write (unit,*) 'Best fit sample -log(Like) = ', maxlike
+
+    if (coldata(2,nrows-1) - maxlike < 30) then
+        meanlike = log(sum(exp((coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) &
+        / numsamp) + maxlike
+        write (unit,*) 'Ln(mean 1/like) = ', meanlike
+    end if
+
+    meanlike = sum(coldata(2,0:nrows-1)*coldata(1,0:nrows-1)) / numsamp
+    write (unit,*) 'mean(-Ln(like)) = ', meanlike
+
+    meanlike = -log(sum(exp(-(coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) / numsamp) + maxlike
+    write (unit,*) '-Ln(mean like)  = ', meanlike
+
+    end subroutine GetChainLikeSummary
+
 
     end module MCSamples
 
     program GetDist
     use MCSamples
     use IO
+    use settings
     implicit none
     Type(TSettingIni) :: Ini
     character(LEN=:), allocatable ::  InputFile, parameter_names_file, parameter_names_labels
@@ -1760,7 +1786,6 @@
     real(mcp) try_b, try_t
     real(mcp) LowerUpperLimits(max_cols,2,max_contours), limfrac
 
-    integer bestfit_ix
     integer chain_exclude(max_chains), num_exclude
     logical map_params
     logical :: triangle_plot = .false.
@@ -2327,21 +2352,7 @@
     if (PCA_num>0 .and. .not. plots_only) call PCA(PCA_params,PCA_num,PCA_func, PCA_NormParam)
 
     !Find best fit, and mean likelihood
-    bestfit_ix = 0 !Since we have sorted the lines
-    maxlike = coldata(2,bestfit_ix)
-    write (*,*) 'Best fit -Ln(like) = ', maxlike
-
-    if (coldata(2,nrows-1) - maxlike < 30) then
-        meanlike = log(sum(exp((coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) &
-        / numsamp) + maxlike
-        write (*,*) 'Ln(mean 1/like) = ', meanlike
-    end if
-
-    meanlike = sum(coldata(2,0:nrows-1)*coldata(1,0:nrows-1)) / numsamp
-    write (*,*) 'mean(-Ln(like)) = ', meanlike
-
-    meanlike = -log(sum(exp(-(coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) / numsamp) + maxlike
-    write (*,*) '-Ln(mean like)  = ', meanlike
+    call GetChainLikeSummary(stdout)
 
     if (.not. no_plots) then
         !Output files for 1D plots
@@ -2637,10 +2648,8 @@
     !Limits from global likelihood
     if (.not. plots_only) then
         call LikeFile%CreateFile(trim(rootdirname)//'.likestats')
-        write (LikeFile%unit,*) 'Best fit sample -log(Like) = ',coldata(2,bestfit_ix)
-        write (LikeFile%unit,*) ''
+        call GetChainLikeSummary(LikeFile%unit)
         write(LikeFile%unit,'(a)') 'param  bestfit        lower1         upper1         lower2         upper2'
-
         do j=1, num_vars
             write(LikeFile%unit,'(1I5,5E15.7,"   '//trim(labels(colix(j)))//'")') colix(j)-2, coldata(colix(j),bestfit_ix),&
             minval(coldata(colix(j),0:ND_cont1)), &

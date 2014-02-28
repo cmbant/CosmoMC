@@ -1,11 +1,11 @@
-import subprocess, jobQueue
+import subprocess
 
 
 res = subprocess.check_output('qstat -u $USER', shell=True)
 
 res = res.split("\n")
 for line in res[4:]:
-    if 'master' in line:
+    if ' R ' in line:
         items = line.split()
         jobid = items[0].split('.')[0]
         output = subprocess.check_output('qstat -f ' + str(jobid) , shell=True).split('\n')

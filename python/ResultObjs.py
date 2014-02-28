@@ -352,6 +352,12 @@ class bestFit(paramResults):
             likes[kind].append((name, chisq))
         return sorted(likes.iteritems())
 
+    def chiSquareForKindName(self, kind, name):
+        for (akind, aname, chisq) in self.chiSquareds:
+            if akind == kind and aname == name: return chisq
+        return None
+
+
     def texValues(self, formatter, p, limit=None):
         param = self.parWithName(p.name)
         if param is not None: return [formatter.numberFormatter.formatNumber(param.best_fit)]
@@ -429,6 +435,20 @@ class margeStats(paramResults):
                 return [res, bestfit]
             return [res]
         else: return None
+
+
+class likeStats(paramResults):
+    def loadFromFile(self, filename):
+        textFileLines = self.fileList(filename)
+        results = dict()
+        for line in textFileLines:
+            if len(line.strip()) == 0: break
+            name, value = [x.strip() for x in line.split('=')]
+            results[name] = float(value)
+        self.logLike_sample = results.get('Best fit sample -log(Like)', None)
+        self.logMeanInvLike = results.get('Ln(mean 1/like)', None)
+        self.meanLogLike = results.get('mean(-Ln(like))', None)
+        self.logMeanLike = results.get('-Ln(mean like)', None)
 
 
 class convergeStats(paramResults):

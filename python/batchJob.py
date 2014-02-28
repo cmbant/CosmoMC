@@ -12,6 +12,13 @@ def saveobject(obj, filename):
         with open(filename, 'wb') as output:
             pickle.dump(obj, output, pickle.HIGHEST_PROTOCOL)
 
+def makePath(s):
+    if not os.path.exists(s): os.makedirs(s)
+
+def nonEmptyFile(fname):
+    return os.path.exists(fname) and os.path.getsize(fname) > 0
+
+
 class jobItem:
 
     def __init__(self, path, param_set, data_set, base='base'):
@@ -80,7 +87,7 @@ class jobItem:
         return self.importanceItems
 
     def makeChainPath(self):
-        if not os.path.exists(self.chainPath): os.makedirs(self.chainPath)
+        makePath(self.chainPath)
         return self.chainPath
 
     def writeIniLines(self, f):
@@ -93,7 +100,7 @@ class jobItem:
 
     def chainExists(self, chain=1):
         fname = self.chainName(chain)
-        return os.path.exists(fname) and os.path.getsize(fname) > 0
+        return nonEmptyFile(fname)
 
     def chainFileDate(self, name, chain=1):
         return os.path.getmtime(self.chainName(chain))
@@ -113,12 +120,17 @@ class jobItem:
 
     def chainMinimumExists(self):
         fname = self.chainRoot + '.minimum'
-        return os.path.exists(fname) and os.path.getsize(fname) > 0
+        return nonEmptyFile(fname)
+
+    def chainBestfit(self, paramNameFile=None):
+        bf_file = self.chainRoot + '.minimum'
+        if nonEmptyFile(bf_file):
+            return ResultObjs.bestFit(bf_file, paramNameFile)
+        return None
 
     def chainMinimumConverged(self):
-        fname = self.chainRoot + '.minimum'
-        if not os.path.exists(fname) or os.path.getsize(fname) == 0: return False
-        bf = ResultObjs.bestFit(fname)
+        bf = self.chainBestfit()
+        if bf is None: return False
         return bf.logLike < 1e29
 
     def convergeStat(self):
@@ -146,7 +158,7 @@ class jobItem:
     def R(self):
         if self.result_converge is None:
             fname = self.distRoot + '.converge'
-            if not os.path.exists(fname) or os.path.getsize(fname) == 0: return None
+            if not nonEmptyFile(fname): return None
             self.result_converge = ResultObjs.convergeStats(fname)
         return float(self.result_converge.worstR())
 
@@ -156,18 +168,17 @@ class jobItem:
         return chainR <= R
 
     def loadJobItemResults(self, paramNameFile=None, bestfit=True, bestfitonly=False, noconverge=False, silent=False):
-        marge_root = self.distRoot
         self.result_converge = None
         self.result_marge = None
-        self.result_bestfit = None
-        bf_file = self.chainRoot + '.minimum'
-        if os.path.exists(bf_file):
-            self.result_bestfit = ResultObjs.bestFit(bf_file, paramNameFile)
+        self.result_likemarge = None
+        self.result_bestfit = self.chainBestfit(paramNameFile)
         if not bestfitonly:
-            if os.path.exists(marge_root + '.margestats'):
+            marge_root = self.distRoot
+            if self.getDistExists():
                 if not noconverge: self.result_converge = ResultObjs.convergeStats(marge_root + '.converge')
                 self.result_marge = ResultObjs.margeStats(marge_root + '.margestats', paramNameFile)
-                if not self.result_bestfit is None and bestfit: self.result_marge.addBestFit(self.result_bestfit)
+                self.result_likemarge = ResultObjs.likeStats(marge_root + '.likestats')
+                if self.result_bestfit is not None and bestfit: self.result_marge.addBestFit(self.result_bestfit)
             elif not silent: print 'missing: ' + marge_root
 
 
@@ -235,12 +246,7 @@ class batchJob:
 
 
     def makeDirectories(self):
-            if not os.path.exists(self.batchPath):
-                os.makedirs(self.batchPath)
-
-            if not os.path.exists(self.batchPath + 'iniFiles'):
-                os.makedirs(self.batchPath + 'iniFiles')
-
-            if not os.path.exists(self.batchPath + 'postIniFiles'):
-                os.makedirs(self.batchPath + 'postIniFiles')
+            makePath(self.batchPath)
+            makePath(self.batchPath + 'iniFiles')
+            makePath(self.batchPath + 'postIniFiles')
 

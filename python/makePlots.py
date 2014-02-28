@@ -4,7 +4,7 @@ import os, batchJobArgs, paramNames, GetDistPlots
 Opts = batchJobArgs.batchArgs('Make plots from getdist outputs', importance=True, converge=True)
 Opts.parser.add_argument('out_dir')
 
-Opts.parser.add_argument('--plot_data', default=None)
+Opts.parser.add_argument('--plot_data', nargs='*', default=None)
 Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')
 Opts.parser.add_argument('--paramList', default=None)
 Opts.parser.add_argument('--compare_data', nargs='+', default=None)
@@ -25,7 +25,7 @@ outdir = args.out_dir
 if not os.path.exists(outdir): os.makedirs(outdir)
 outdir = os.path.abspath(outdir) + os.sep
 
-if args.plot_data is None: data = batch.batchPath + '/plot_data'
+if args.plot_data is None: data = batch.batchPath + os.sep + 'plot_data'
 else: data = args.plot_data
 
 g = GetDistPlots.GetDistPlotter(data)
