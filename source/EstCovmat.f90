@@ -9,10 +9,11 @@
 
 module EstCovmatModule
  use Random
- use ParamDef
  use CalcLike
+ use ParamPointSet
  use settings
  use Matrixutils
+ use BaseParameters
  implicit none
 
  integer, allocatable :: step_positions(:,:) !step, parameter
@@ -45,7 +46,7 @@ contains
    CenterParams = Params
    allocate(step_positions(3,num_params_used))
    allocate(is_weakly_constrained(num_params_used))
-   parsteps=Scales%PWidth(params_used)
+   parsteps=BaseParams%PWidth(params_used)
    CenterLike = PlaceGrid(CenterParams,parsteps,bestdll)
 
    ! Loop over attempts to find the covariance matrix
@@ -80,7 +81,7 @@ contains
       EstCovmat(1:num_params_used,1:num_params_used)=U
     end if
 
-   call AcceptReject(.true.,CenterParams%Info,Params%Info)
+   call CenterParams%Clear(keep=Params)
 
    deallocate(step_positions,is_weakly_constrained)
 
@@ -98,7 +99,7 @@ contains
    if (Feedback>1) write(*,*) 'Improving the grid spacings'
    P = CenterParams
    CenterLike = GetLogLike(CenterParams)
-   call AcceptReject(.true., P%Info, CenterParams%Info)
+   call P%Clear(keep=CenterParams)
    if (CenterLike == LogZero) then
          write(*,*) 'ERROR: Trial parameters excluded by prior or bad likelihood'
          write(*,*) 'Try starting further away from problem regions?'
@@ -139,12 +140,12 @@ contains
       step_max = 0.
       step_min = 0.
 
-      if (CenterParams%P(ii)- Scales%PMin(ii) < Scales%PMax(ii) - CenterParams%P(ii)) then
+      if (CenterParams%P(ii)- BaseParams%PMin(ii) < BaseParams%PMax(ii) - CenterParams%P(ii)) then
           asign=1
-          step_limit = (Scales%PMax(ii) - CenterParams%P(ii))/2
+          step_limit = (BaseParams%PMax(ii) - CenterParams%P(ii))/2
       else
           asign = -1
-          step_limit = (CenterParams%P(ii)- Scales%PMin(ii))/2
+          step_limit = (CenterParams%P(ii)- BaseParams%PMin(ii))/2
       end if
       parsteps(i) = min(parsteps(i), step_limit * 0.8)
 
@@ -155,13 +156,13 @@ contains
            is_weakly_constrained(i) = .true.
            parsteps(i) = step_limit
            if (Feedback >1 ) write(*,*) &
-            ' Parameter '//trim(UsedParamNameOrNumber(i))//' is weakly constrained, neglect correlations'
+            ' Parameter '//trim(BaseParams%UsedParamNameOrNumber(i))//' is weakly constrained, neglect correlations'
            exit
          end if
          StepParams=CenterParams ! reset back to original starting point
          StepParams%P(ii)=CenterParams%P(ii) + parsteps(i)*asign
          LStep=GetLogLike(StepParams)
-         call AcceptReject(.true., StepParams%Info, CenterParams%Info)
+         call StepParams%Clear(keep=CenterParams)
 
          dloglike=abs(LStep-LCenter)
          if (dloglike > 3*bestdll) then
@@ -183,12 +184,12 @@ contains
             write(*,*) 'Couldn''t find a good stepsize for parameter ',ii,' with Delta chisq ~1 but continuing anyway'
          end if
       end do
-      if (Feedback>1) write(*,*) ' Decided on stepsize ',parsteps(i),' for parameter '//trim(UsedParamNameOrNumber(i))
+      if (Feedback>1) write(*,*) ' Decided on stepsize ',parsteps(i),' for parameter '//trim(BaseParams%UsedParamNameOrNumber(i))
 
-      if (CenterParams%P(ii) - parsteps(i) < Scales%PMin(ii)) then
+      if (CenterParams%P(ii) - parsteps(i) < BaseParams%PMin(ii)) then
         !Is hard prior bound below, one sided steps above only
          step_positions(:,i) = (/0,1,2/)
-      else if (CenterParams%P(ii) + parsteps(i) > Scales%PMax(ii)) then
+      else if (CenterParams%P(ii) + parsteps(i) > BaseParams%PMax(ii)) then
         !Is hard prior bound below, one sided steps below only
          step_positions(:,i) = (/-2,-1,0/)
       else
@@ -219,10 +220,10 @@ contains
    do i=1, num_params_used
       ii= params_used(i)
       if (Feedback>1) write(*,*)
-      if (Feedback>1) write(*,*) ' Parameter '//trim(UsedParamNameOrNumber(i))
+      if (Feedback>1) write(*,*) ' Parameter '//trim(BaseParams%UsedParamNameOrNumber(i))
 
       if (is_weakly_constrained(i)) then
-         Hess(i,i) = 1/((Scales%PMax(ii) - Scales%PMin(ii))/2)
+         Hess(i,i) = 1/((BaseParams%PMax(ii) - BaseParams%PMin(ii))/2)
       else
           wii=parsteps(i)
           do istep=1,3
@@ -233,7 +234,7 @@ contains
             StepParams=CenterParams ! rest back to original starting point
             StepParams%P(ii)=CenterParams%P(ii) + step_positions(istep,i)*wii
             Lgrid(istep) = GetLogLike(StepParams)
-            call AcceptReject(.true., StepParams%Info, CenterParams%Info)
+            call StepParams%Clear(keep=CenterParams)
             if (Lgrid(istep) == LogZero) then
               write(*,*) 'ERROR: Trial parameters hit prior or error in function evaluation'
               write(*,*) 'Try starting further away from problem regions?'
@@ -255,7 +256,7 @@ contains
                StepParams%P(jj)=CenterParams%P(jj) + step_positions(jstep,j)*wjj
                StepParams%P(ii)=CenterParams%P(ii) + step_positions(istep,i)*wii
                LGrid2(istep,jstep) = GetLogLike(StepParams)
-               call AcceptReject(.true., StepParams%Info, CenterParams%Info)
+               call StepParams%Clear(keep=CenterParams)
                if (LGrid2(istep,jstep) == LogZero) then
                 write(*,*) 'ERROR: Trial parameters hit prior or error in function evaluation'
                      write(*,*) 'Try starting further away from problem regions?'

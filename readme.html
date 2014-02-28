@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>December 2013</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>January 2014</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -33,6 +33,7 @@ See also the <A HREF="http://www.sarahbridle.net/cosmologui/">CosmoloGUI</A> rea
 <LI><A HREF="#Convergence">Convergence statistics</A>
 <LI><A HREF="#Kosowsky">Parameterizations</A>
 <LI><A HREF="#Data">Data</A>
+<LI><A HREF="#Generic">CosmoMC as a generic sampler</A>
 <LI><A HREF="#Programming">Programming</A>
 <LI><A HREF="#Addons">Add-ons and datasets</A>
 <LI><A HREF="#Version">Version history</A>
@@ -45,7 +46,7 @@ CosmoMC is a Fortran 2003 Markov-Chain Monte-Carlo (MCMC) engine for exploring c
 parameter space, together with code for analysing Monte-Carlo samples and importance sampling (plus a suite of python scripts for building grids of runs and plotting and presenting results).
 The code does brute force (but accurate) theoretical matter power spectrum and <I>C<sub>l</sub></I> calculations with
 <a href="http://camb.info/">CAMB</a>. See the <a href="http://arxiv.org/abs/astro-ph/0205436">paper</a>
-for an introduction, descriptions, and typical results from some pre-WMAP data. It can also be compiled as a generic sampler without using any cosmology codes.
+for an introduction, descriptions, and typical results from some pre-WMAP data. It can also be compiled as a <A HREF="#Generic">generic sampler</A> without using any cosmology codes.
 <P>
 On a multi-processor machine you can start to get good results in a few of hours. On single processors
 you'll need to set aside rather longer. You can also run on a cluster.
@@ -424,7 +425,17 @@ To change parameterization make a new .paramnames file, then change sources/para
 <P>
 Likelihoods that you use may also have their own nuisance parameters.
 
-<!--<A NAME="Programming"><h2>Programming</h2></A>
+<A NAME="Generic"><h2>Using CosmoMC as a generic sampler</h2></A>
+You can use CosmoMC to sample any custom function that you want to provide. To do this
+<UL>
+<LI>Write your own likelihood in GenericLikelihoodFunction in calclike.f90 
+<LI>Adapt params_generic.ini appropriately for your parameter numbers and settings (see comments there)
+<LI>Run using your .ini file as normal
+</UL>
+You can use named or un-named parameters. Making your own .paramnames file to name your parameters usually makes things easier (except possibly if you have a very large number of parameters where number labels make sense). 
+
+<A NAME="Programming"><h2>Programming</h2></A>
+<!--
 <P>
 The most likely reason to modify the code is to change l_max, num_cls, or matter_power_lnzsteps, all specified in cmbtypes.f90. To change the numbers of parameters you'll need to change the constants in settings.f90. Run "make clean" after changing settings before re-compiling. You'll also need to change the SetParamNames function in params_CMB.f90 if you change the parameterization, and maybe add code in params_CMB to do the mapping of new parameters to MCMC array indices. When adding just one additional parameter it's often easiest to re-interpret one of the default parameters rather than adding in new parameters; don't forget to change the .paramnames file though.
 </P>
@@ -523,10 +534,13 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <A NAME="Version"><h2>Version History</h2></A>
 
 <UL>
-<LI><B>xxx 2013</B><BR>
+<LI><B>xxx 2014</B><BR>
 <UL>
 <LI>Added DR11 BAO module changes and data from <A HREF="http://www.sdss3.org/science/boss_publications.php">SDSS</A>
+<LI>Functioning support for using CosmoMC as a generic sampler
+<LI>MatterPowerAt_Z interpolation bug fix
 </UL>
+
 
 <LI><B>December 2013</B><BR>
 <UL>

@@ -7,13 +7,13 @@
     use Interpolation
     implicit none
 
-    type, extends(InterpGrid2D) :: TBBNPredictions
+    type, extends(TInterpGrid2D) :: TBBNPredictions
     contains
-    procedure Error => BBNPredictions_error
-    procedure FirstUse =>  BBN_Init
+    procedure :: Error => BBNPredictions_error
+    procedure :: FirstUse =>  BBN_Init
     end type TBBNPredictions
 
-    type(TBBNPredictions) :: BBN_YHe
+    type(TBBNPredictions), save :: BBN_YHe
     !Helium mass fraction (not Y_P^BBN nucleon fraction, which is column 5)
 
     contains

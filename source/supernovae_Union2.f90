@@ -61,33 +61,36 @@
     use cmbtypes
     use MatrixUtils
     use likelihood
+    use CosmoTheory
+    use Calculator_Cosmology
+    use Likelihood_Cosmology
     implicit none
+    private
 
     integer, parameter :: SN_num = 580
 
-    type, extends(CosmologyLikelihood) :: Union2Likelihood
+    type, extends(TCosmoCalcLikelihood) :: Union2Likelihood
         double precision :: SN_z(SN_num), SN_moduli(SN_num), SN_modulierr(SN_num), SN_plow(SN_num)
         double precision :: SN_Ninv(SN_num,SN_Num)
     contains
-    procedure :: LogLikeTheory => SN_LnLike
+    procedure :: logLikeTheory => SN_LnLike
     end type Union2Likelihood
 
+    public Union2Likelihood,Union2Likelihood_Add
     contains
 
     subroutine Union2Likelihood_Add(LikeList, Ini)
-    use IniFile
-    use settings
-    class(LikelihoodList) :: LikeList
-    Type(TIniFile) :: ini
+    class(TLikelihoodList) :: LikeList
+    class(TSettingIni) :: ini
     Type(Union2Likelihood), pointer :: like
     character (LEN=20):: name
     integer i
     ! The following line selects which error estimate to use
     ! default .True. = with systematic errors
     logical :: Union_syscovmat = .False.  !! Use covariance matrix with or without systematics
+    Type(TTextFile) :: F
 
-
-    if (.not. Ini_Read_Logical_File(Ini, 'use_Union',.false.)) return
+    if (.not. Ini%Read_Logical('use_Union',.false.)) return
 
     allocate(like)
     Like%LikelihoodType = 'SN'
@@ -95,33 +98,32 @@
     like%needs_background_functions = .true.
     call LikeList%Add(like)
 
-    Union_syscovmat = Ini_read_Logical_File(Ini,'Union_syscovmat',Union_syscovmat)
+    Union_syscovmat = Ini%read_Logical('Union_syscovmat',Union_syscovmat)
 
     if (Feedback > 0) write (*,*) 'Reading: supernovae data'
-    call OpenTxtFile(trim(DataDir)//'sn_z_mu_dmu_plow_union2.1.txt',tmp_file_unit)
+    call F%Open(trim(DataDir)//'sn_z_mu_dmu_plow_union2.1.txt')
     do i=1,  sn_num
-        read(tmp_file_unit, *) name, Like%SN_z(i),Like%SN_moduli(i), &
+        read(F%unit, *) name, Like%SN_z(i),Like%SN_moduli(i), &
         Like%SN_modulierr(i),Like%SN_plow(i)
-        !     read(tmp_file_unit, *) name, SN_z(i),SN_moduli(i)
+        !     read(unit, *) name, SN_z(i),SN_moduli(i)
     end do
-    close(tmp_file_unit)
+    call F%Close()
 
     if (Union_syscovmat) then
-        call OpenTxtFile(trim(DataDir)//'sn_wmat_sys_union2.1.txt',tmp_file_unit)
+        call F%Open(trim(DataDir)//'sn_wmat_sys_union2.1.txt')
     else
-        call OpenTxtFile(trim(DataDir)//'sn_wmat_nosys_union2.1.txt',tmp_file_unit)
+        call F%Open(trim(DataDir)//'sn_wmat_nosys_union2.1.txt')
     end if
 
     do i=1, sn_num
-        read (tmp_file_unit,*) Like%sn_ninv (i,1:sn_num)
+        read (F%unit,*) Like%sn_ninv (i,1:sn_num)
     end do
 
-    close (tmp_file_unit)
+    call F%Close()
 
     end subroutine Union2Likelihood_Add
 
     function SN_LnLike(like, CMB)
-    use camb
     !Assume this is called just after CAMB with the correct model  use camb
     Class(CMBParams) CMB
     Class(Union2Likelihood) :: like
@@ -131,9 +133,10 @@
     real(mcp) diffs(SN_num), chisq
 
     !! This is actually seems to be faster without OMP
+
     do i=1, SN_num
         z= Like%SN_z(i)
-        diffs(i) = 5*log10((1+z)**2*AngularDiameterDistance(z))+25 -Like%sn_moduli(i)
+        diffs(i) = 5*log10((1+z)**2*like%Calculator%AngularDiameterDistance(z))+25 -Like%sn_moduli(i)
     end do
 
     chisq = dot_product(diffs,matmul(Like%sn_ninv,diffs))

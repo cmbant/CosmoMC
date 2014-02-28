@@ -1,17 +1,17 @@
     module likelihood
-    !DataLikelihood is an instance of data of a particular kind, CMB, BOA, etc.
+    !TDataLikelihood is an instance of data of a particular kind, CMB, BOA, etc.
     !Can be multiple of same type
-    use AMLUtils
     use settings
-    use IniFile
-    use ObjectLists, only: TObjectList
+    use IniObjects
+    use ObjectLists
     use ParamNames
     implicit none
 
-    integer, parameter :: max_likelihood_functions = 50
+    private
+
     integer, parameter :: LikeNameLen = 80
 
-    type :: DataLikelihood
+    type :: TDataLikelihood
         integer :: speed = 0  !negative for slow likelihoods, larger positive for faster
         character(LEN=LikeNameLen) :: name = ''
         character(LEN=LikeNameLen) :: LikelihoodType= ''
@@ -23,29 +23,29 @@
         integer, allocatable :: derived_indices(:)
         integer :: new_param_block_start, new_params
     contains
-    procedure :: LogLike
-    procedure :: LogLikeTheory !same as above when extra info not needed
+    procedure :: GetLogLike
     procedure :: loadParamNames
     procedure :: checkConflicts
     procedure :: derivedParameters  !derived parameters calculated by likelihood function
-    procedure  :: WriteLikelihoodData
-    end type DataLikelihood
+    procedure :: WriteLikelihoodData
+    procedure :: InitWithCalculator
+    end type TDataLikelihood
 
-    type, extends(DataLikelihood) :: DatasetFileLikelihood
+    type, extends(TDataLikelihood) :: TDatasetFileLikelihood
         !likelihood that reads from a text file description, e.g. .dataset file
         !conflict names read from file and matched by type and name
         integer :: num_conflicts = 0
-        character(LEN=LikeNameLen), pointer, dimension(:) :: conflict_type
-        character(LEN=LikeNameLen), pointer, dimension(:) :: conflict_name
-        class(DatasetFileLikelihood), pointer :: CommonData => null()
+        character(LEN=LikeNameLen), allocatable, dimension(:) :: conflict_type
+        character(LEN=LikeNameLen), allocatable, dimension(:) :: conflict_name
+        class(TDatasetFileLikelihood), pointer :: CommonData => null()
     contains
     procedure :: ReadDatasetFile !open file, read standard things, call ReadIni
     procedure :: ReadIni  !read custom settings
     procedure :: checkConflicts => Dataset_CheckConflicts
-    end type DatasetFileLikelihood
+    end type TDatasetFileLikelihood
 
     !This is the global list of likelihoods we will use
-    Type, extends(TObjectList) :: LikelihoodList
+    Type, extends(TObjectList) :: TLikelihoodList
         integer :: first_fast_param =0
         integer :: num_derived_parameters = 0
     contains
@@ -56,32 +56,33 @@
     procedure :: checkAllConflicts
     procedure :: WriteDataForLikelihoods
     procedure :: addLikelihoodDerivedParams
-    end type LikelihoodList
+    end type TLikelihoodList
 
-    Type(LikelihoodList), target, save :: DataLikelihoods
+    Type(TLikelihoodList), target, save :: DataLikelihoods
 
+    public TDataLikelihood, TLikelihoodList, TDatasetFileLikelihood, LikeNameLen, DataLikelihoods
     contains
 
     function LikelihoodItem(L, i) result(P)
-    Class(LikelihoodList) :: L
+    Class(TLikelihoodList) :: L
     integer, intent(in) :: i
-    Class(DataLikelihood), pointer :: P
+    Class(TDataLikelihood), pointer :: P
 
     select type (like => L%Items(i)%P)
-    class is (DataLikelihood)
+    class is (TDataLikelihood)
         P => like
         class default
-        stop 'List contains non-DataLikelihood item'
+        stop 'List contains non-TDataLikelihood item'
     end select
 
     end function LikelihoodItem
 
     subroutine WriteLikelihoodContribs(L, aunit, likelihoods)
-    Class(LikelihoodList) :: L
+    Class(TLikelihoodList) :: L
     integer, intent(in) :: aunit
     real(mcp), intent(in) :: likelihoods(*)
     integer i
-    Class(DataLikelihood), pointer :: LikeItem
+    Class(TDataLikelihood), pointer :: LikeItem
 
     do i=1,L%Count
         LikeItem =>  L%Item(i)
@@ -93,13 +94,14 @@
 
     end subroutine WriteLikelihoodContribs
 
+
     subroutine WriteDataForLikelihoods(L, P, Theory, fileroot)
-    Class(LikelihoodList) :: L
+    Class(TLikelihoodList) :: L
     real(mcp), intent(in) :: P(:)
     character(LEN=*), intent(in) :: fileroot
     class(*), intent(in) :: Theory
     integer i
-    Class(DataLikelihood), pointer :: LikeItem
+    Class(TDataLikelihood), pointer :: LikeItem
 
     do i=1,L%Count
         LikeItem => L%Item(i)
@@ -108,14 +110,15 @@
 
     end subroutine WriteDataForLikelihoods
 
+
     integer function CompareLikes(this, R1, R2) result(comp)
-    Class(LikelihoodList) :: this
+    Class(TLikelihoodList) :: this
     class(*) R1,R2
 
     select type (RR1 => R1)
-    class is (DataLikelihood)
+    class is (TDataLikelihood)
         select type (RR2 => R2)
-        class is (DataLikelihood)
+        class is (TDataLikelihood)
             comp = RR1%speed - RR2%speed
             return
         end select
@@ -123,14 +126,11 @@
 
     end function CompareLikes
 
-
-
     subroutine AddNuisanceParameters(L, Names)
-    use ParamNames
-    Class(LikelihoodList) :: L
+    Class(TLikelihoodList) :: L
     Type(TParamNames) :: Names
     Type(TParamNames), pointer :: NewNames
-    Class(DataLikelihood), pointer :: DataLike
+    Class(TDataLikelihood), pointer :: DataLike
     integer i,j, baseDerived
 
     call L%Sort
@@ -142,13 +142,13 @@
         if (Feedback>0 .and. MPIrank==0) print *,'adding parameters for: '//trim(DataLIke%name)
         DataLike%new_param_block_start = Names%num_MCMC +1
         !        if (DataLike%nuisance_params%num_derived>0) call MpiStop('No support for likelihood derived params yet')
-        call ParamNames_Add(Names, NewNames)
+        call Names%Add(NewNames)
         if (Names%num_MCMC > max_num_params) call MpiStop('increase max_data_params in settings.f90')
         DataLike%new_params = Names%num_MCMC - DataLike%new_param_block_start + 1
         allocate(DataLike%nuisance_indices(NewNames%num_MCMC))
         if (NewNames%num_MCMC/=0) then
             do j=1, NewNames%num_MCMC
-                DataLike%nuisance_indices(j) = ParamNames_index(Names,NewNames%name(j))
+                DataLike%nuisance_indices(j) = Names%index(NewNames%name(j))
             end do
             if (any(DataLike%nuisance_indices==-1)) call MpiStop('AddNuisanceParameters: unmatched data param')
             DataLike%dependent_params(DataLike%nuisance_indices) = .true.
@@ -161,20 +161,23 @@
         !Add likelihood-derived parameters, after full set numbering has been dermined above
         DataLike=>L%Item(i)
         NewNames => DataLike%nuisance_params
-        if (NewNames%num_derived>0) allocate(DataLike%derived_indices(NewNames%num_derived))
-        do j=1, NewNames%num_derived
-            DataLike%derived_indices(j) = ParamNames_index(Names, NewNames%name(j+NewNames%num_MCMC)) - Names%num_MCMC
-        end do
-        if (Feedback>1 .and. MPIrank==0) print *,trim(DataLike%name)//' derived param indices:', DataLike%derived_indices
-        if (any(DataLike%derived_indices<=0)) call MpiStop('AddNuisanceParameters: unmatched derived param')
+        if (NewNames%num_derived>0) then
+            allocate(DataLike%derived_indices(NewNames%num_derived))
+            do j=1, NewNames%num_derived
+                DataLike%derived_indices(j) = Names%index(NewNames%name(j+NewNames%num_MCMC)) - Names%num_MCMC
+            end do
+            if (Feedback>1 .and. MPIrank==0) print *,trim(DataLike%name)//' derived param indices:', DataLike%derived_indices
+            if (any(DataLike%derived_indices<=0)) call MpiStop('AddNuisanceParameters: unmatched derived param')
+        end if
     end do
     L%num_derived_parameters = Names%num_derived - baseDerived
 
     end subroutine AddNuisanceParameters
 
+
     subroutine checkAllConflicts(L)
-    Class(LikelihoodList) :: L
-    Class(DataLikelihood), pointer :: DataLike
+    Class(TLikelihoodList) :: L
+    Class(TDataLikelihood), pointer :: DataLike
     integer i
 
     do i=1,L%Count
@@ -185,35 +188,36 @@
 
     end subroutine checkAllConflicts
 
-    function addLikelihoodDerivedParams(L, P, Theory, derived) result(num_derived)
-    Class(LikelihoodList) :: L
-    Type(mc_real_pointer) :: derived
+    subroutine addLikelihoodDerivedParams(L, P, Theory, derived)
+    class(TLikelihoodList) :: L
+    real(mcp), allocatable :: derived(:)
     class(*) :: Theory
     real(mcp) :: P(:)
-    real(mcp), pointer :: allDerived(:)
-    integer num_derived
-    Class(DataLikelihood), pointer :: DataLike
-    integer i
+    real(mcp), allocatable :: allDerived(:)
+    Class(TDataLikelihood), pointer :: DataLike
+    integer i, stat
+    integer :: num_in = 0
+    integer :: num_derived = 0
 
-    num_derived = L%num_derived_parameters + size(derived%P)
     if (L%num_derived_parameters==0) return
 
+    if (allocated(derived)) num_in = size(derived)
+    num_derived = L%num_derived_parameters + num_in
     allocate(allDerived(num_derived))
-    allDerived(1:size(derived%P)) = derived%P
-    deallocate(derived%P)
-    derived%P => allDerived
+    if (num_in >= 0) allDerived(1:num_in) = derived
+    call move_alloc(allDerived, derived)
 
     do i=1,L%Count
         DataLike=>L%Item(i)
         if (allocated(DataLike%derived_indices)) then
-            Derived%P(DataLike%derived_indices) = DataLike%derivedParameters(Theory, P(DataLike%nuisance_indices))
+            Derived(DataLike%derived_indices) = DataLike%derivedParameters(Theory, P(DataLike%nuisance_indices))
         end if
     end do
 
-    end function addLikelihoodDerivedParams
+    end subroutine addLikelihoodDerivedParams
 
     function derivedParameters(like, Theory, DataParams) result(derived)
-    class(DataLikelihood) :: like
+    class(TDataLikelihood) :: like
     class(*) :: Theory
     real(mcp) :: derived(like%nuisance_params%num_derived)
     real(mcp) :: DataParams(:)
@@ -223,99 +227,95 @@
     end function derivedParameters
 
     subroutine WriteLikelihoodData(like,Theory,DataParams, root)
-    class(DataLikelihood) :: like
+    class(TDataLikelihood) :: like
     class(*) :: Theory
     real(mcp), intent(in) :: DataParams(:)
     character(LEN=*), intent(in) :: root
     !Write out any derived data that might be useful for the likelihood (e.g. foreground model)
     end subroutine WriteLikelihoodData
 
-    function logLikeTheory(like, CMB)
-    !For likelihoods that don't need Theory or DataParams
-    class(DataLikelihood) :: like
-    class(*) :: CMB
-    real(mcp) LogLikeTheory
+    subroutine InitWithCalculator(this, Calc)
+    class(TDataLikelihood) :: this
+    class(*), target :: Calc
 
-    logLikeTheory= logZero
-    stop 'logLikeTheory or logLike should not be overridden'
-    end function
+    !Called with configuration after all likelihoods loaded and parameters read
 
-    function LogLike(like, CMB, Theory, DataParams)
-    class(DataLikelihood) :: like
-    class(*) :: CMB
+    end subroutine InitWithCalculator
+
+    function GetLogLike(like, Params, Theory, DataParams) result(LogLike)
+    class(TDataLikelihood) :: like
+    class(*) :: Params
     class(*) :: Theory
     real(mcp) :: DataParams(:)
     real(mcp) LogLike
 
-    logLike = like%logLikeTheory(CMB)
-    end function
+    stop 'GetLogLike should not be overridden'
+    logLike = LogZero
 
+    end function GetLogLike
 
     subroutine loadParamNames(like, fname)
-    class(DataLikelihood) :: like
+    class(TDataLikelihood) :: like
     character(LEN=*), intent(in) :: fname
 
-    call ParamNames_init(like%nuisance_params, fname)
+    call like%nuisance_params%init(fname)
 
     end subroutine loadParamNames
 
     function checkConflicts(like, full_list) result(OK)
     !if for some reasons various likelihoods cannot be used at once
     !check here for conflicts after full list of likelihoods has been read in
-    class(DataLikelihood) :: like
-    class(LikelihoodList) :: full_list
+    class(TDataLikelihood) :: like
+    class(TLikelihoodList) :: full_list
     logical :: OK
 
     OK=.true.
 
     end function checkConflicts
 
-    !!!!!! DatasetFileLikelihood
+    !!!!!! TDatasetFileLikelihood
 
     subroutine ReadIni(like, Ini)
-    class(DatasetFileLikelihood) :: like
-    Type(TIniFile) :: ini
+    class(TDatasetFileLikelihood) :: like
+    class(TSettingIni) :: ini
 
     end subroutine ReadIni
 
     subroutine ReadDatasetFile(like, fname)
-    class(DatasetFileLikelihood) :: like
+    class(TDatasetFileLikelihood) :: like
     character(LEN=*), intent(in) :: fname
     logical bad
-    integer file_unit
-    Type(TIniFile) :: ini
+    Type(TSettingIni) :: ini
     integer i_conflict
 
-    file_unit = new_file_unit()
-    call Ini_Open_File(Ini, fname, file_unit, bad, .false.)
+    call Ini%Open(fname,  bad, .false.)
     if (bad) then
         call MpiStop('Error opening dataset file '//trim(fname))
     end if
 
-    like%name = Ini_Read_String_File(Ini,'name')
+    like%name = Ini%Read_String('name')
 
-    like%num_conflicts = Ini_Read_Int_File(Ini,'num_conflicts',0)
+    like%num_conflicts = Ini%Read_Int('num_conflicts',0)
     allocate(like%conflict_name(like%num_conflicts))
     allocate(like%conflict_type(like%num_conflicts))
     do i_conflict=1,like%num_conflicts
-        like%conflict_type(i_conflict) = Ini_Read_String_File(Ini,numcat('type_conflict',i_conflict))
-        like%conflict_name(i_conflict) = Ini_Read_String_File(Ini,numcat('name_conflict',i_conflict))
+        like%conflict_type(i_conflict) = Ini%Read_String(numcat('type_conflict',i_conflict))
+        like%conflict_name(i_conflict) = Ini%Read_String(numcat('name_conflict',i_conflict))
     end do
 
     call like%ReadIni(Ini)
 
-    call Ini_Close_File(Ini)
-    call ClearFileUnit(file_unit)
+    call Ini%Close()
 
     end subroutine ReadDatasetFile
 
     recursive function Dataset_CheckConflicts(like, full_list) result(OK)
     !if for some reasons various likelihoods cannot be used at once
     !check here for conflicts after full list of likelihoods has been read in
-    class(DatasetFileLikelihood) :: like
-    class(LikelihoodList) :: full_list
+    class(TDatasetFileLikelihood) :: like
+    class(TLikelihoodList) :: full_list
     logical :: OK
-    class(DataLikelihood), pointer :: like_other
+    class(TDataLikelihood), pointer :: like_other
     integer i, i_conflict
 
     OK=.true.

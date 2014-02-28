@@ -54,7 +54,6 @@
     print *,'skipped cov'
     read(48) ((c_inv(i, j), i = 1, nX), j = 1,  nX) !inv covariance
     print *,'read inv_cov'
-    call flush
     close(48)
     print *,' nX ',nX
     do i=1,Nspec

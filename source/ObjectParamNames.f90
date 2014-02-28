@@ -1,7 +1,9 @@
     module ParamNames
-    use AMlUtils
+    use MpiUtils
+    use FileUtils
+    use StringUtils
     implicit none
-
+    private
     integer, parameter :: ParamNames_maxlen = 128
 
     Type TParamNames
@@ -12,8 +14,27 @@
         character(LEN=ParamNames_maxlen), dimension(:), pointer ::  label => null()
         character(LEN=ParamNames_maxlen), dimension(:), pointer ::  comment => null()
         logical, dimension(:), pointer ::  is_derived
+    contains
+    procedure :: Add => ParamNames_Add
+    procedure :: Alloc => ParamNames_Alloc
+    procedure :: AssignItem => ParamNames_AssignItem
+    procedure :: AsString => ParamNames_AsString
+    procedure :: Dealloc => ParamNames_Dealloc
+    procedure :: HasReadIniForParam => ParamNames_HasReadIniForParam
+    procedure :: Index => ParamNames_Index
+    procedure :: Init => ParamNames_Init
+    procedure :: LabelForName => ParamNames_label
+    procedure :: MaxNameLen => ParamNames_MaxNameLen
+    procedure :: NameAtIndex => ParamNames_name
+    procedure :: NameOrNumber => ParamNames_NameOrNumber
+    procedure :: ParseLine => ParamNames_ParseLine
+    procedure :: ReadIndices => ParamNames_ReadIndices
+    procedure :: ReadIniForParam => ParamNames_ReadIniForParam
+    procedure :: SetLabels => ParamNames_SetLabels
+    procedure :: WriteFile => ParamNames_WriteFile
     end Type TParamNames
 
+    public TParamNames, ParamNames_maxlen
     contains
 
     function IsWhiteSpace(C)
@@ -26,49 +47,50 @@
 
 
     function ParamNames_ParseLine(Names,InLine,n) result(res)
-    type(TParamNames) :: Names
+    class(TParamNames) :: Names
     character(LEN=*) :: InLine
+    character(LEN=ParamNames_maxlen*3) :: name, label
     integer n
     logical res
-    integer pos, len
+    integer pos, alen,status
 
-    len = len_trim(InLIne)
+    alen = len_trim(InLIne)
     pos =1
-    do while (pos < len .and. IsWhiteSpace(InLIne(pos:pos)))
+    do while (pos < alen .and. IsWhiteSpace(InLIne(pos:pos)))
         pos = pos+1
     end do
-    read(InLine(pos:), *, end=400, err=400) Names%name(n)
-    pos = pos + len_trim(Names%name(n))
-    do while (pos < len .and. IsWhiteSpace(InLIne(pos:pos)))
+    read(InLine(pos:), *, iostat=status) name
+    res= (status==0)
+    if (.not. res) return
+    pos = pos + len_trim(name)
+    do while (pos < alen .and. IsWhiteSpace(InLIne(pos:pos)))
         pos = pos+1
     end do
-    Names%label(n) = trim(adjustl(InLine(pos:len)))
-    pos = scan(Names%label(n),'#')
+    label = trim(adjustl(InLine(pos:alen)))
+    pos = scan(label,'#')
     if (pos/=0) then
-        Names%comment(n) = Names%label(n)(pos+1: len_trim(Names%label(n)))
-        Names%label(n) = Names%label(n)(1:pos-1)
+        Names%comment(n) = label(pos+1: len_trim(label))
+        label = label(1:pos-1)
     else
         Names%comment(n) = ''
     endif
-    pos = scan(Names%label(n),char(9))
-    if (pos/=0) Names%label(n) = Names%label(n)(1:pos-1)
-    Names%name(n) = trim(adjustl(Names%name(n)))
-    len = len_trim( Names%name(n) )
-    if (Names%name(n)(len:len)=='*') then
-        Names%name(n)(len:len)=' '
+    pos = scan(label,char(9))
+    if (pos/=0) label = label(1:pos-1)
+    name = trim(adjustl(name))
+    alen = len_trim(name)
+    if (name(alen:alen)=='*') then
+        name(alen:alen)=' '
         Names%is_derived(n) = .true.
     else
         Names%is_derived(n) = .false.
     end if
-    res = .true.
-    return
-400 res=.false.
-    return
+    Names%name(n) = trim(name)
+    Names%label(n) = trim(label)
 
     end function ParamNames_ParseLine
 
     subroutine ParamNames_Alloc(Names,n)
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     integer,intent(in) :: n
 
     allocate(Names%name(n))
@@ -86,44 +108,41 @@
     end subroutine ParamNames_Alloc
 
     subroutine ParamNames_dealloc(Names)
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     if (associated(Names%name)) &
     deallocate(Names%name,Names%label,Names%comment,Names%is_derived)
 
     end subroutine ParamNames_dealloc
 
     subroutine ParamNames_Init(Names, filename)
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     character(Len=*), intent(in) :: filename
-    integer handle,n
-    character (LEN=ParamNames_maxlen*3) :: InLine
-
-    handle = new_file_unit()
-    call OpenTxtFile(filename,handle)
-    n = FileLines(handle)
-    call ParamNames_Alloc(Names,n)
+    integer n
+    character(LEN=:), allocatable :: InLine
+    Type(TTextFile) :: F
+    
+    call F%Open(filename)
+    n = F%Lines()
+    call Names%Alloc(n)
 
     n=0
-    do
-        read (handle,'(a)',end=500) InLine
-        if (trim(InLine)=='') cycle
+    do while (F%ReadLine(InLine))
+        if (InLine=='') cycle
         n=n+1
-        if (.not. ParamNames_ParseLine(Names,InLine,n)) then
+        if (.not. Names%ParseLine(InLine,n)) then
             call MpiStop(concat('ParamNames_Init: error parsing line: ',n))
         end if
     end do
-
-500 call CloseFile(handle)
+    call F%Close()
 
     Names%nnames = n
     Names%num_derived = count(Names%is_derived)
     Names%num_MCMC = Names%nnames - Names%num_derived
 
-
     end subroutine ParamNames_Init
 
     subroutine ParamNames_AssignItem(Names, Names2,n,i)
-    Type(TParamNames), target :: Names, Names2
+    class(TParamNames), target :: Names, Names2
     integer n, i
 
     Names%name(n) = Names2%name(i)
@@ -133,53 +152,56 @@
 
     end subroutine ParamNames_AssignItem
 
-
     subroutine ParamNames_Add(Names, Names2)
-    Type(TParamNames), target :: Names, Names2, Tmp
+    class(TParamNames), target :: Names, Names2
     integer n,i, newold, derived
-    Type(TParamNames),pointer :: P
+    class(TParamNames),pointer :: P, NamesOrig
+
+    allocate(NamesOrig, source = Names)
 
     n=0
     do i=1, names2%nnames
-        if (ParamNames_index(Names,Names2%name(i))==-1) then
+        if (NamesOrig%index(Names2%name(i))==-1) then
             n=n+1
         end if
     end do
     if (n==0) return
 
-    call ParamNames_Alloc(Tmp,Names%nnames + n)
-    Tmp%nnames = 0
+    call Names%Alloc(NamesOrig%nnames + n)
+    Names%nnames = 0
     do derived=0,1
-        P=> Names
+        P=> NamesOrig
         do newold=0,1
             do i=1, P%nnames
-                if (ParamNames_index(Tmp,P%name(i))==-1) then
+                if (Names%index(P%name(i))==-1) then
                     if (derived==0 .and. .not. P%is_derived(i) .or.derived==1 .and. P%is_derived(i) ) then
-                        Tmp%nnames = Tmp%nnames + 1
-                        call ParamNames_AssignItem(Tmp, P, Tmp%nnames , i)
+                        Names%nnames = Names%nnames + 1
+                        call Names%AssignItem(P, Names%nnames , i)
                     end if
                 end if
             end do
             P=> Names2
         enddo
     end do
-    if (Tmp%nnames/= Names%nnames + n) stop 'ParamNames_Add: duplicate parameters?'
+    if (Names%nnames/= NamesOrig%nnames + n) stop 'ParamNames_Add: duplicate parameters?'
 
-    Tmp%num_derived = count(Tmp%is_derived)
-    Tmp%num_MCMC= Tmp%nnames-Tmp%num_derived
-    call ParamNames_dealloc(Names)
-    Names=Tmp
+    Names%num_derived = count(Names%is_derived)
+    Names%num_MCMC= Names%nnames-Names%num_derived
+
+    call NamesOrig%Dealloc()
+    deallocate(NamesOrig)
 
     end subroutine ParamNames_Add
 
     subroutine ParamNames_SetLabels(Names,filename)
-    Type(TParamNames) :: Names, LabNames
+    class(TParamNames) :: Names
+    Type(TParamNames) :: LabNames
     character(Len=*), intent(in) :: filename
     integer i,ix
 
-    call ParamNames_init(LabNames,filename)
+    call LabNames%init(filename)
     do i=1, LabNames%nnames
-        ix = ParamNames_index(Names, LabNames%name(i))
+        ix = Names%index(LabNames%name(i))
         if (ix/=-1) then
             Names%label(ix) = LabNames%label(i)
         end if
@@ -188,7 +210,7 @@
     end subroutine ParamNames_SetLabels
 
     function ParamNames_index(Names,name) result(ix)
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     character(len=*), intent(in) :: name
     integer ix,i
 
@@ -204,14 +226,14 @@
 
 
     function ParamNames_label(Names,name) result(lab)
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     character(len=*), intent(in) :: name
-    character(len = ParamNames_maxlen) lab
+    character(len = :), allocatable :: lab
     integer ix
 
-    ix = ParamNames_index(Names,name)
+    ix = Names%index(name)
     if (ix>0) then
-        lab = Names%label(ix)
+        lab = trim(Names%label(ix))
     else
         lab = ''
     end if
@@ -219,12 +241,12 @@
     end function ParamNames_label
 
     function ParamNames_name(Names,ix) result(name)
-    Type(TParamNames) :: Names
-    character(len=ParamNames_maxlen)  :: name
+    class(TParamNames) :: Names
+    character(len=:), allocatable  :: name
     integer, intent(in) :: ix
 
     if (ix <= Names%nnames) then
-        name = Names%name(ix)
+        name = trim(Names%name(ix))
     else
         name = ''
     end if
@@ -233,15 +255,15 @@
 
 
     subroutine ParamNames_ReadIndices(Names,InLine, params, num, unknown_value)
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     character(LEN=*), intent(in) :: InLine
     integer, intent(out) :: params(*)
     integer, intent(in), optional :: unknown_value
-    integer  :: num
+    integer  :: num, status
     character(LEN=ParamNames_maxlen) part
     integer param,len,ix, pos, max_num, outparam, outvalue
     integer, parameter :: unknown_num = 1024
-    character(LEN=1024) :: skips
+    character(LEN=:), allocatable :: skips
 
     skips=''
     if (num==0) return
@@ -254,18 +276,23 @@
     end if
     outparam=0
     do param = 1, max_num
-        do while (pos < len .and. IsWhiteSpace(InLine(pos:pos)))
-            pos = pos+1
+        do while (pos <= len)
+            if (IsWhiteSpace(InLine(pos:pos))) then
+                pos = pos+1
+            else
+                exit
+            endif
         end do
-        read(InLine(pos:), *, end=400, err=400) part
+        read(InLine(pos:), *, iostat=status) part
+        if (status/=0) exit
         pos = pos + len_trim(part)
-        ix = ParamNames_index(Names,part)
+        ix = Names%index(part)
         if (ix>0) then
             outvalue = ix
         else
             if (verify(trim(part),'0123456789') /= 0) then
                 if (present(unknown_value)) then
-                    skips = trim(skips)//' '//trim(part)
+                    skips = skips //' '//trim(part)
                     if (unknown_value/=-1) then
                         outvalue = unknown_value
                     else
@@ -282,18 +309,19 @@
         if (max_num == unknown_num) num = outparam
         params(outparam) = outvalue
     end do
-    return
-400 if (skips/='') write(*,'(a)') ' skipped unused params:'//trim(skips)
+    if (status==0) return
+
+    if (skips/='') write(*,'(a)') ' skipped unused params:'// skips
     if (max_num==unknown_num) return
     call MpiStop('ParamNames: Not enough names or numbers - '//trim(InLine))
 
     end subroutine ParamNames_ReadIndices
 
     function ParamNames_AsString(Names, i, want_comment) result(line)
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     integer, intent(in) :: i
     logical ,intent(in), optional :: want_comment
-    character(LEN=ParamNames_maxlen*3) Line
+    character(LEN=:), allocatable :: Line
     logical wantCom
 
     if (present(want_comment)) then
@@ -304,76 +332,75 @@
 
     if (i> Names%nnames) call MpiStop('ParamNames_AsString: index out of range')
     Line = trim(Names%name(i))
-    if (Names%is_derived(i))Line = concat(Line,'*')
-    Line =  trim(Line)//char(9)//trim(Names%label(i))
+    if (Names%is_derived(i)) Line = Line // '*'
+    Line =  Line//char(9)//trim(Names%label(i))
     if (wantCom .and. Names%comment(i)/='') then
-        Line = trim(Line)//char(9)//'#'//trim(Names%comment(i))
+        Line = Line//char(9)//'#'//trim(Names%comment(i))
     end if
 
     end function ParamNames_AsString
 
     subroutine ParamNames_WriteFile(Names, fname, indices, add_derived)
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     character(LEN=*), intent(in) :: fname
     integer, intent(in), optional :: indices(:)
     logical, intent(in), optional :: add_derived
-    integer :: unit
     integer i
-
-    unit = new_file_unit()
-    call CreateTxtFile(fname,unit)
+    Type(TTextFile) :: F
+    
+    call F%CreateFile(fname)
     if (present(indices)) then
         do i=1, size(indices)
-            write(unit,*) trim(ParamNames_AsString(Names,indices(i)))
+            call F%Write(Names%AsString(indices(i)))
         end do
         if (present(add_derived)) then
             if (add_derived) then
                 do i=1,Names%num_derived
-                    write(unit,*) trim(ParamNames_AsString(Names,Names%num_mcmc+i))
+                    call F%Write(Names%AsString(Names%num_mcmc+i))
                 end do
             end if
         end if
     else
         do i=1, Names%nnames
-            write(unit,*) trim(ParamNames_AsString(Names,i))
+            call F%Write(Names%AsString(i))
         end do
     end if
 
-    call CloseFile(unit)
+    call F%Close()
 
     end subroutine ParamNames_WriteFile
 
 
     function ParamNames_NameOrNumber(Names,ix) result(name)
-    Type(TParamNames) :: Names
-    character(len=ParamNames_maxlen)  :: name
+    class(TParamNames) :: Names
+    character(len=:), allocatable  :: name
     integer, intent(in) :: ix
 
-    name = ParamNames_name(Names,ix)
-    if (name == '') name = IntToStr(ix)
+    name = trim(Names%name(ix))
+    if (name == '') name = trim(IntToStr(ix))
 
     end function ParamNames_NameOrNumber
 
-    function ParamNames_MaxNameLen(Names) result(len)
-    Type(TParamNames) :: Names
-    integer len, i
+    function ParamNames_MaxNameLen(Names) result(alen)
+    class(TParamNames) :: Names
+    integer alen, i
 
-    len = 0
+    alen = 0
     do i=1, Names%nnames
-        len = max(len, len_trim(ParamNames_NameOrNumber(Names,i)))
+        alen = max(alen, len_trim(Names%NameOrNumber(i)))
     end do
 
     end function ParamNames_MaxNameLen
 
     subroutine ParamNames_WriteMatlab(Names,  unit, headObj)
-    Type(TParamNames) :: Names
+    class(TParamNames) :: Names
     character(len=ParamNames_maxlen) name
     character(len=*), intent(in) :: headObj
     integer :: unit
     integer i
 
     do i=1, Names%nnames
-        name = ParamNames_name(Names,i)
+        name = Names%name(i)
         if (name /= '') then
             write(unit,'(a)', advance='NO') trim(headObj)//trim(name)//'= struct(''n'','''//trim(name) &
             //''',''i'','//trim(intToStr(i))//',''label'','''//trim(Names%label(i))//''',''isDerived'','
@@ -389,38 +416,38 @@
 
     function ParamNames_ReadIniForParam(Names,Ini,Key, param) result(input)
     ! read Key[name] or Keyn where n is the parameter number
-    use IniFile
-    Type(TParamNames) :: Names
-    Type(TIniFile) :: Ini
+    use IniObjects
+    class(TParamNames) :: Names
+    class(TIniFile) :: Ini
     character(LEN=*), intent(in) :: Key
     integer, intent(in) :: param
-    character(LEN=128) input
+    character(LEN=:), allocatable :: input
 
     input = ''
     if (Names%nnames>0) then
-        input = Ini_Read_String_File(Ini,trim(key)//'['//trim(Names%name(param))//']')
+        input = Ini%Read_String(trim(key)//'['//trim(Names%name(param))//']')
     end if
     if (input=='') then
-        input = Ini_Read_String_File(Ini,trim(Key)//trim(IntToStr(param)))
+        input = Ini%Read_String(trim(Key)//trim(IntToStr(param)))
     end if
 
     end function ParamNames_ReadIniForParam
 
     function ParamNames_HasReadIniForParam(Names,Ini,Key, param) result(B)
     ! read Key[name] or Keyn where n is the parameter number
-    use IniFile
-    Type(TParamNames) :: Names
-    Type(TIniFile) :: Ini
+    use IniObjects
+    class(TParamNames) :: Names
+    class(TIniFile) :: Ini
     character(LEN=*), intent(in) :: Key
     integer, intent(in) :: param
     logical B
 
     B = .false.
     if (Names%nnames>0) then
-        B = Ini_HasKey_File(Ini,trim(key)//'['//trim(Names%name(param))//']')
+        B = Ini%HasKey(trim(key)//'['//trim(Names%name(param))//']')
     end if
     if (.not. B) then
-        B = Ini_HasKey_File(Ini,trim(Key)//trim(IntToStr(param)))
+        B = Ini%HasKey(trim(Key)//trim(IntToStr(param)))
     end if
 
     end function ParamNames_HasReadIniForParam

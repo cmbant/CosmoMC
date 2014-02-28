@@ -1,15 +1,16 @@
     module cliklike
     use clik
     use cmbtypes
+    use CosmoTheory
     use settings
-    use Likelihood
+    use Likelihood_Cosmology
     implicit none
 
     logical :: use_clik = .false.
 
     integer, parameter :: dp = kind(1.d0)
 
-    type, extends(CosmologyLikelihood) :: ClikLikelihood
+    type, extends(TCosmologyLikelihood) :: ClikLikelihood
         type(clik_object) :: clikid
         integer(kind=4),dimension(6) :: clik_has_cl, clik_lmax
         integer :: clik_n,clik_ncl,clik_nnuis
@@ -35,19 +36,17 @@
     contains
 
     subroutine clik_readParams(LikeList,Ini)
-    class(LikelihoodList) :: LikeList
-
-    Type(TIniFile) Ini
-    character (LEN=Ini_max_string_len) :: fname, params, name
+    class(TLikelihoodList) :: LikeList
+    class(TSettingIni) Ini
+    character (LEN=:), allocatable ::  name,fname,params
     integer i
     Class(ClikLikelihood), pointer :: like
     logical(KIND=4) is_lensing
 
-
-    do i=1, Ini%L%Count
-        if (Ini%L%Items(i)%P%Name(1:10)=='clik_data_') then
-            name =Ini%L%Items(i)%P%Name
-            fname = ReadIniFileName(Ini,name, NotFoundFail = .false.)
+    do i=1, Ini%Count
+        name = Ini%Items(i)%P%Name
+        if (StringStarts(name,'clik_data_')) then
+            fname = Ini%ReadFileName(name, NotFoundFail = .false.)
             if (fname=='') cycle
             if (MpiRank==0 .and. feedback > 0) &
             print*,'Using clik with likelihood file ',trim(fname)
@@ -60,13 +59,13 @@
             call LikeList%Add(Like)
             Like%needs_powerspectra =.true.
             Like%LikelihoodType = 'CMB'
-            Like%name= ExtractFileName(fname)
+            Like%name= File%ExtractName(fname)
             !                Like%version = CAMSpec_like_version
             call StringReplace('clik_data_','clik_params_',name)
-            params = ReadIniFileName(Ini,name, NotFoundFail = .false.)
+            params = Ini%ReadFileName(name, NotFoundFail = .false.)
             if (params/='') call Like%loadParamNames(params)
             call StringReplace('clik_params_','clik_speed_',name)
-            like%speed = Ini_Read_Int_File(Ini, name, 0)
+            like%speed = Ini%Read_Int(name, 0)
             call Like%clik_likeinit(fname)
         end if
     end do
@@ -118,13 +117,13 @@
     real(mcp) function clik_lnlike(like, CMB, Theory, DataParams)
     Class(ClikLikelihood) :: like
     Class (CMBParams) CMB
-    Class(TheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
     integer :: i,j ,l
     real(mcp) acl(lmax,num_cls_tot)
     real(dp) clik_cl_and_pars(like%clik_n)
 
-    call ClsFromTheoryData(Theory, acl)
+    call Theory%ClsFromTheoryData(acl)
 
     !set C_l and parameter vector to zero initially
     clik_cl_and_pars = 0.d0
@@ -206,13 +205,13 @@
     real(mcp) function clik_lensing_lnlike(like, CMB, Theory, DataParams)
     Class(ClikLensingLikelihood) :: like
     Class (CMBParams) CMB
-    Class(TheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
     integer :: i,j ,l
     real(mcp) acl(lmax,num_cls_tot)
     real(dp) clik_cl_and_pars(like%clik_n)
 
-    call ClsFromTheoryData(Theory, acl)
+    call Theory%ClsFromTheoryData(acl)
 
     !set C_l and parameter vector to zero initially
     clik_cl_and_pars = 0.d0

@@ -1,18 +1,15 @@
 
     module ObjectLists
     !Implement lists of arbitrary objects
-    !AL Oct 2012
+    !AL Feb 2014
+    use FileUtils
     implicit none
 
-    !type ReadWriteObject
-    !!Ancestor for list items that can be read and written
-    !contains
-    ! procedure, abstract :: WriteBinary
-    ! procedure, abstract :: ReadBinary
-    !end type ReadWriteObject
+    private
 
     type Object_pointer
         class(*), pointer :: p => null()
+        class(*), pointer :: Object => null()
     end type Object_pointer
 
     type Object_array_pointer
@@ -25,7 +22,13 @@
     integer, parameter :: list_prec = Kind(1.d0)
 #endif
 
-    Type TObjectList
+    Type, abstract :: TSaveLoadStateObject
+    contains
+    procedure :: SaveState
+    procedure :: LoadState
+    end Type TSaveLoadStateObject
+
+    Type, extends(TSaveLoadStateObject) :: TObjectList
         integer :: Count =0
         integer :: Delta = 32
         integer :: DeltaScale = 10
@@ -36,6 +39,7 @@
     contains
     procedure :: AddArray
     procedure :: AddItem
+    procedure :: AddItemPointer
     procedure :: AddCopy
     procedure :: AssignPointers
     procedure :: DeleteItem
@@ -56,187 +60,255 @@
     procedure :: QuickSort
     procedure :: QuickSortArr
     procedure :: RemoveDuplicates
+    procedure :: CheckIndex
+    procedure :: Error
+    procedure :: SaveState => TObjectList_SaveState
+    procedure :: LoadState => TObjectList_LoadState
+    procedure :: Object => TObjectList_Object !Secondary object associated with index
     FINAL :: finalize
     generic :: Add => AddItem, AddArray
     end Type TObjectList
 
-    Type, extends(TObjectList):: TRealCompareList
+    Type, extends(TObjectList) :: TOwnedIntrinsicList
+    contains
+    procedure :: AddItem => TOwnedIntrinsicList_AddItem
+    procedure :: LoadState => TOwnedIntrinsicList_LoadState
+    procedure :: SaveState => TOwnedIntrinsicList_SaveState
+    end type
+
+    Type, extends(TOwnedIntrinsicList):: TRealCompareList
     contains
     procedure :: Compare => CompareReal
     end Type TRealCompareList
 
     Type, extends(TRealCompareList):: TRealList
     contains
-    procedure :: RealItem
-    procedure :: AddItem => RealAddItem
-    procedure :: AddArrayItems
-    procedure :: AsArray
-    generic :: Item => RealItem
+    procedure :: TRealList_Item
+    procedure :: AddArrayItems => TRealList_AddArrayItems
+    procedure :: AsArray =>TRealList_AsArray
+    generic :: Item => TRealList_Item
+    !could add read and save state here
     end Type TRealList
 
     Type, extends(TRealCompareList):: TRealArrayList
     contains
-    procedure :: Value
-    procedure :: RealArrItem
+    procedure :: Value => TRealArrayList_Value
+    procedure :: RealArrItem => TRealArrayList_Item
     generic :: Item => Value, RealArrItem
     end Type TRealArrayList
 
+    Type, extends(TOwnedIntrinsicList) :: TStringList
+    contains
+    procedure :: CharAt => TStringList_CharAt
+    procedure :: Compare => TStringList_Compare
+    procedure :: StringItem  => TStringList_Item
+    procedure :: SetFromString => TStringList_SetFromString
+    procedure :: IndexOf => TStringList_IndexOf
+    procedure :: ValueOf => TStringList_ValueOf
+    procedure :: WriteItems
+    generic :: Item => StringItem
+    end Type TStringList
+
+
+    public list_prec, TSaveLoadStateObject, TObjectList, TRealArrayList, TRealList, TStringList
     contains
 
-    subroutine Clear(L, itemsOnly)
-    Class(TObjectList) :: L
+    subroutine LoadState(this,F)
+    class(TSaveLoadStateObject) :: this
+    class(TFileStream) :: F
+    end subroutine LoadState
+
+    subroutine SaveState(this,F)
+    class(TSaveLoadStateObject) :: this
+    class(TFileStream) :: F
+    end subroutine SaveState
+
+
+    subroutine Clear(this, itemsOnly)
+    Class(TObjectList) :: this
     integer i
     logical, intent(in), optional :: itemsOnly
     logical eachItem
 
-    if (allocated(L%Items)) then
+    if (allocated(this%Items)) then
         eachItem = .true.
         if (present(itemsOnly)) eachItem=.not. itemsOnly
         if (eachItem) then
-            do i=1,L%count
-                call L%FreeItem(i)
+            do i=1,this%count
+                call this%FreeItem(i)
             end do
         end if
-        deallocate (L%Items)
+        deallocate (this%Items)
     end if
-    L%Count = 0
-    L%Capacity = 0
+    this%Count = 0
+    this%Capacity = 0
 
     end subroutine Clear
 
-    subroutine finalize(L)
-    Type(TObjectList) :: L
-    call L%Clear()
+    subroutine finalize(this)
+    Type(TObjectList) :: this
+    call this%Clear()
     end subroutine finalize
 
+    subroutine Error(this, msg)
+    Class(TObjectList) :: this
+    character(LEN=*), intent(in) :: msg
 
-    subroutine AddItem(L, C)
-    Class(TObjectList) :: L
+    write(*,*) msg
+    stop
+
+    end subroutine Error 
+
+    subroutine AddItem(this, C, Object)
+    Class(TObjectList) :: this
     class(*), intent(in), target :: C
+    class(*), intent(in), target, optional :: Object
+    class(*), pointer :: CP
+    class(*), pointer :: ObjectP => null()
 
-    if (L%Count == L%Capacity) call L%SetCapacity(L%Capacity + L%DeltaSize())
-    L%Count = L%Count + 1
-    L%Items(L%Count)%P=>C
+    !This all looks a bit unneccessary, just trying to avoid ifort bugs, c.f.
+    !http://software.intel.com/en-us/forums/topic/390944
+    !This subroutine does *not* help directly, but derived types can use AddItemPointer which is OK.
+
+    CP=> C
+    if (present(Object)) ObjectP=>Object
+    call this%AddItemPointer(CP, ObjectP)
 
     end subroutine AddItem
 
-    subroutine AddCopy(L, C)
-    Class(TObjectList) :: L
-    class(*), intent(in) :: C
-    class(*), pointer :: P
 
-    if (L%OwnsObjects) then
+    subroutine AddItemPointer(this, C, Object)
+    Class(TObjectList) :: this
+    class(*), intent(in), pointer :: C
+    class(*), intent(in), pointer, optional :: Object
+
+    if (this%Count == this%Capacity) call this%SetCapacity(this%Capacity + this%DeltaSize())
+    this%Count = this%Count + 1
+    this%Items(this%Count)%P=>C
+    if (present(Object)) this%Items(this%Count)%Object=> Object
+
+    end subroutine AddItemPointer
+
+    subroutine AddCopy(this, C, Object)
+    Class(TObjectList) :: this
+    class(*), intent(in) :: C
+    class(*), intent(in), optional :: Object
+    class(*), pointer :: P
+    class(*), pointer :: PO=>null()
+
+    if (this%OwnsObjects) then
         allocate(P, source=C)
+        if (present(Object)) allocate(PO, source=Object)
     else
-        stop 'ObjectLists: Cannot add copy to un-owned list'
+        call this%Error('ObjectLists: Cannot add copy to un-owned list')
     end if
-    call L%AddItem(P)
+    call this%AddItemPointer(P, PO)
 
     end subroutine AddCopy
 
-    subroutine AssignPointers(L, L2, ixmin, ixmax)
-    Class(TObjectList) :: L, L2
+    subroutine AssignPointers(this, L2, ixmin, ixmax)
+    Class(TObjectList) :: this, L2
     integer, intent(in), optional :: ixmin, ixmax
     integer i1,i2
 
-    call L%Clear()
+    call this%Clear()
     i1=1
     i2=L2%Count
     if (present(ixmin)) i1=ixmin
     if (present(ixmax)) i2=ixmax
-    call L%SetCapacity(i2-i1+1)
-    L%Items = L2%Items(i1:i2)
-    L%Count = i2-i1+1
-    L%OwnsObjects = .false.
+    call this%SetCapacity(i2-i1+1)
+    this%Items = L2%Items(i1:i2)
+    this%Count = i2-i1+1
+    this%OwnsObjects = .false.
 
     end subroutine AssignPointers
 
-    integer function DeltaSize(L)
-    Class(TObjectList) :: L
+    integer function DeltaSize(this)
+    Class(TObjectList) :: this
 
-    DeltaSize= L%Delta + L%Count/L%DeltaScale
+    DeltaSize= this%Delta + this%Count/this%DeltaScale
 
     end  function
 
-    subroutine SetCapacity(L, C)
-    Class(TObjectList) :: L
+    subroutine SetCapacity(this, C)
+    Class(TObjectList) :: this
     integer C
     Type(Object_pointer), dimension(:), allocatable :: TmpItems
 
-    if (L%Count > 0) then
-        if (C < L%Count) stop 'SetCapacity: smaller than Count'
-        allocate(TmpItems(L%Count), source=L%Items(1:L%Count))
-        deallocate(L%Items)
-        allocate(L%Items(C))
-        L%Items(1:L%Count) = TmpItems
-        deallocate(TmpItems)
+    if (this%Count > 0) then
+        if (C < this%Count) call this%Error('ObjectLists: SetCapacity: smaller than Count')
+        allocate(TmpItems(C))
+        TmpItems(:this%Count) = this%Items(:this%Count)
+        call move_alloc(TmpItems, this%Items)
     else
-        allocate(L%Items(C))
+        allocate(this%Items(C))
     end if
-    L%Capacity = C
+    this%Capacity = C
     end subroutine SetCapacity
 
-    subroutine FreeItem(L, i)
-    Class(TObjectList) :: L
+    subroutine FreeItem(this, i)
+    Class(TObjectList) :: this
     integer, intent(in) :: i
     logical want_Dealloc
-    if (associated(L%Items(i)%P)) then
-        want_Dealloc =  L%OwnsObjects
-        select type (point => L%Items(i)%P)
+
+    if (associated(this%Items(i)%P)) then
+        want_Dealloc =  this%OwnsObjects
+        select type (point => this%Items(i)%P)
         class is (object_array_pointer)
-            if (L%OwnsObjects .and. associated(Point%P)) deallocate(Point%P)
+            if (this%OwnsObjects .and. associated(Point%P)) deallocate(Point%P)
             want_Dealloc = .true.
-        type is (real(kind=list_prec))
-            want_Dealloc = .false.
+            !type is (real(kind=list_prec))
+            !         want_Dealloc = .false.
         end select
-        if (want_Dealloc) deallocate(L%Items(i)%P)
+        if (want_Dealloc) deallocate(this%Items(i)%P)
+        this%Items(i)%P=> null()
     end if
 
-    L%Items(i)%P=> null()
-    !    if (associated(L%Items(i)%tag)) deallocate(L%Items(i)%tag)
-    !    L%Items(i)%tag=> null()
+    if (associated(this%Items(i)%Object) .and. this%OwnsObjects) deallocate(this%Items(i)%Object)
+    this%Items(i)%Object=> null()
 
     end subroutine FreeItem
 
-    subroutine DeleteItem(L, i)
-    Class(TObjectList) :: L
+    subroutine DeleteItem(this, i)
+    Class(TObjectList) :: this
     integer, intent(in) :: i
 
-    call L%FreeItem(i)
-    if (L%Count > 1) L%Items(i:L%Count-1) = L%Items(i+1:L%Count)
-    L%Items(L%Count)%P => null()
-    L%Count = L%Count -1
+    call this%FreeItem(i)
+    if (this%Count > 1) this%Items(i:this%Count-1) = this%Items(i+1:this%Count)
+    this%Items(this%Count)%P => null()
+    this%Items(this%Count)%Object => null()
+    this%Count = this%Count -1
 
     end subroutine DeleteItem
 
-    subroutine DeleteRange(L, i1,i2)
-    Class(TObjectList) :: L
+    subroutine DeleteRange(this, i1,i2)
+    Class(TObjectList) :: this
     integer, intent(in) :: i1,i2
     integer i, dN
 
     do i=i1,i2
-        call L%FreeItem(i)
+        call this%FreeItem(i)
     end do
     dN= i2-i1+1
-    if (i2<L%Count) L%Items(i1:L%Count-dN) = L%Items(i2+1:L%Count)
-    do i=L%Count-dN+1,L%Count
-        L%Items(i)%P => null()
+    if (i2<this%Count) this%Items(i1:this%Count-dN) = this%Items(i2+1:this%Count)
+    do i=this%Count-dN+1,this%Count
+        this%Items(i)%P => null()
+        this%Items(i)%Object => null()
     end do
-    L%Count = L%Count - dN
+    this%Count = this%Count - dN
 
     end subroutine DeleteRange
 
-
-    subroutine AddArray(L, P)
-    Class (TObjectList) :: L
+    subroutine AddArray(this, P)
+    Class (TObjectList) :: this
     class(*), target, intent(in) :: P(:)
     class(*), pointer :: Pt
 
     allocate(object_array_pointer::Pt)
-    call L%AddItem(Pt)
+    call this%AddItemPointer(Pt)
     select type (Pt)
     class is (object_array_pointer)
-        if (L%ownsObjects) then
+        if (this%ownsObjects) then
             allocate(Pt%P(1:SIZE(P)), source= P)
         else
             Pt%P => P
@@ -244,58 +316,76 @@
     end select
     end subroutine AddArray
 
+    subroutine CheckIndex(this,i)
+    Class(TObjectList) :: this
+    integer, intent(in) :: i
+
+    if (i>this%Count .or. i<1) call this%Error('Item out of range')
+
+    end subroutine CheckIndex
+
     !why this crashes in ifort 13 I do not know..
-    !subroutine AddArray(L, P)
-    !Class (TObjectList) :: L
+    !subroutine AddArray(this, P)
+    !Class (TObjectList) :: this
     !class(*), target, intent(in) :: P(:)
     !Type(object_array_pointer), pointer :: Pt
     !
     !allocate(Pt)
-    !call L%AddItem(Pt)
-    !if (L%ownsObjects) then
+    !call this%AddItem(Pt)
+    !if (this%ownsObjects) then
     !    allocate(Pt%P(1:SIZE(P)), source= P)
     !else
     !    Pt%P => P
     !end if
     !end subroutine AddArray
 
-    function ArrayItem(L, i) result(P)
-    Class(TObjectList) :: L
+    function ArrayItem(this, i) result(P)
+    Class(TObjectList) :: this
     integer, intent(in) :: i
     Class(*), pointer :: P(:)
 
-    select type (Point=> L%Items(i)%P)
+    call this%CheckIndex(i)
+    select type (Point=> this%Items(i)%P)
     class is (object_array_pointer)
         P => Point%P
         class default
-        stop 'TObjectList: item is not array item'
+        call this%Error('ObjectLists: item is not array item')
     end select
 
     end function ArrayItem
 
-    function ArrayItemIndex(L, i, j) result(P)
-    Class(TObjectList) :: L
+    function ArrayItemIndex(this, i, j) result(P)
+    Class(TObjectList) :: this
     integer, intent(in) :: i, j
     Class(*), pointer :: P
     Class(*), pointer :: Arr(:)
 
-    Arr => L%ArrayItem(i)
+    Arr => this%ArrayItem(i)
     P => Arr(j)
 
     end function ArrayItemIndex
 
+    function TObjectList_Object(this, i)
+    class(TObjectList) :: this
+    integer, intent(in) :: i
+    class(*), pointer :: TObjectList_Object
 
-    subroutine SaveBinary(L,fid)
-    Class(TObjectList) :: L
+    call this%CheckIndex(i)
+    TObjectList_Object => this%Items(i)%Object
+
+    end function TObjectList_Object
+
+    subroutine SaveBinary(this,fid)
+    Class(TObjectList) :: this
     integer, intent(in) :: fid
     integer i,k
     class(*), pointer :: P(:)
 
-    write (fid) L%Count
-    do i=1,L%Count
-        select type (Item=> L%Items(i)%P)
+    write (fid) this%Count
+    do i=1,this%Count
+        select type (Item=> this%Items(i)%P)
         class is (object_array_pointer)
-            P => L%ArrayItem(i)
+            P => this%ArrayItem(i)
             select type (Point=> P)
             Type is (real)
                 k=1
@@ -314,85 +404,99 @@
                 write(fid) size(P),k
                 write(fid) Point
                 class default
-                stop 'TObjectList: Unknown type to save'
+                call this%Error('TObjectList: Unknown type to save')
             end select
+        Type is (character(LEN=*))
+            k=5
+            write(fid) len(Item), k
+            write(fid) Item
             class default
-            stop 'TObjectList: not implemented non-array save'
+            call this%Error('TObjectList: not implemented non-array save')
         end select
     end do
 
     end subroutine SaveBinary
 
-    subroutine ReadBinary(L,fid)
-    Class(TObjectList) :: L
+    subroutine ReadBinary(this,fid)
+    Class(TObjectList) :: this
     integer, intent(in) :: fid
     integer num,i,sz, k
     real, pointer :: ArrR(:)
     double precision, pointer :: ArrD(:)
     integer, pointer :: ArrI(:)
     logical, pointer :: ArrL(:)
+    class(*), pointer :: St
 
-    call L%Clear()
-    L%OwnsObjects = .false.
+    call this%Clear()
+    this%OwnsObjects = .false.
     read (fid) num
-    call L%SetCapacity(num)
+    call this%SetCapacity(num)
     do i=1,num
         read(fid) sz, k
         if (k==1) then
             allocate(ArrR(sz))
             read(fid) ArrR
-            call L%AddArray(ArrR)
+            call this%AddArray(ArrR)
         else if (k==2) then
             allocate(ArrD(sz))
             read(fid) ArrD
-            call L%AddArray(ArrD)
+            call this%AddArray(ArrD)
         else if (k==3) then
             allocate(ArrI(sz))
             read(fid) ArrI
-            call L%AddArray(ArrI)
+            call this%AddArray(ArrI)
         else if (k==4) then
             allocate(ArrL(sz))
             read(fid) ArrL
-            call L%AddArray(ArrL)
+            call this%AddArray(ArrL)
+        else if (k==5) then
+            allocate(character(sz)::St) !Ifort required class(*) pointer
+            select type (St)
+            type is (character(LEN=*))
+                read(fid) St
+            end select
+            call this%AddItemPointer(St)
+        else
+            call this%Error('TObjectList ReadBinary - unknown object type')
         end if
     end do
-    L%Count = num
-    L%OwnsObjects = .true.
+    this%Count = num
+    this%OwnsObjects = .true.
 
     end subroutine ReadBinary
 
-    subroutine Thin(L, i)
-    Class(TObjectList):: L
+    subroutine Thin(this, i)
+    Class(TObjectList):: this
     integer, intent(in) :: i
     integer newCount, j
     Type(Object_pointer), dimension(:), pointer :: TmpItems
 
-    if (L%Count > 1) then
-        newCount = (L%Count-1)/i+1
+    if (this%Count > 1) then
+        newCount = (this%Count-1)/i+1
         allocate(TmpItems(newCount))
-        TmpItems= L%Items(1:L%Count:i)
-        if (L%OwnsObjects) then
-            do j=1,L%count
-                if (mod(j-1,i)/=0) call L%FreeItem(j)
+        TmpItems= this%Items(1:this%Count:i)
+        if (this%OwnsObjects) then
+            do j=1,this%count
+                if (mod(j-1,i)/=0) call this%FreeItem(j)
             end do
         end if
-        deallocate(L%Items)
-        L%Capacity = newCount
-        allocate(L%Items(L%Capacity), source = TmpItems)
-        L%Count = newCount
+        deallocate(this%Items)
+        this%Capacity = newCount
+        allocate(this%Items(this%Capacity), source = TmpItems)
+        this%Count = newCount
         deallocate(TmpItems)
     end if
 
     end subroutine Thin
 
-    subroutine Swap(L, i, j)
-    Class(TObjectList) :: L
+    subroutine Swap(this, i, j)
+    Class(TObjectList) :: this
     integer, intent(in) :: i, j
     type(Object_pointer) :: temp
 
-    temp = L%Items(i)
-    L%Items(i) = L%Items(j)
-    L%Items(j) = temp
+    temp = this%Items(i)
+    this%Items(i) = this%Items(j)
+    this%Items(j) = temp
 
     end subroutine Swap
 
@@ -426,17 +530,17 @@
 
         end do
         if (L < J) call this%QuickSortArr(L, J, index)
-        L = I
+        L  = I
         if (I >= R) exit
     end do
 
     end subroutine QuickSortArr
 
-    subroutine SortArr(L, index)
-    Class(TObjectList) :: L
+    subroutine SortArr(this, index)
+    Class(TObjectList) :: this
     integer, intent(in) :: index
 
-    if (L%Count>1) call L%QuickSortArr(1, L%Count, index)
+    if (this%Count>1) call this%QuickSortArr(1, this%Count, index)
 
     end subroutine SortArr
 
@@ -447,7 +551,7 @@
     integer I, J, L
     class(*), pointer :: P
 
-    L = Lin
+    L= Lin
     do
         I = L
         J = R
@@ -475,10 +579,10 @@
 
     end subroutine QuickSort
 
-    subroutine Sort(L)
-    Class(TObjectList) :: L
+    subroutine Sort(this)
+    Class(TObjectList) :: this
 
-    if (L%Count>1) call L%QuickSort(1, L%Count)
+    if (this%Count>1) call this%QuickSort(1, this%Count)
 
     end subroutine Sort
 
@@ -487,19 +591,79 @@
     class(*) R1,R2
 
     comp=0 !equality
-    stop 'TObjectList: Compare must be defined for derived type'
+    call this%Error('TObjectList: Compare must be defined for derived type')
 
     end function Compare
 
-    subroutine RemoveDuplicates(L)
-    Class(TObjectList) :: L
+    subroutine RemoveDuplicates(this)
+    Class(TObjectList) :: this
     integer i
 
-    do i=L%Count-1, 1, -1
-        if (L%Compare(L%Items(i+1)%P, L%Items(i)%P)==0) call L%DeleteItem(i+1)
+    do i=this%Count-1, 1, -1
+        if (this%Compare(this%Items(i+1)%P, this%Items(i)%P)==0) call this%DeleteItem(i+1)
     end do
 
     end subroutine RemoveDuplicates
+
+    subroutine TObjectList_SaveState(this,F)
+    class(TObjectList) :: this
+    class(TFileStream) :: F
+    integer i
+
+    call F%Write(this%Count)
+    do i=1,this%Count
+        select type (item => this%Items(i)%P)
+        class is (TSaveLoadStateObject)
+            call item%SaveState(F)
+            class default
+            call this%Error('TObjectList_SaveState: List contains non-TSaveLoadStateObject item')
+        end select
+    end do
+
+    end subroutine TObjectList_SaveState
+
+    subroutine TObjectList_LoadState(this,F)
+    class(TObjectList) :: this
+     class(TFileStream) :: F
+   integer i, count
+
+    if (.not. F%ReadItem(count) .or. count/=this%Count) &
+    & call this%Error('TObjectList_LoadState count mismatch (objects must exist before load)')
+    do i=1,this%Count
+        select type (item => this%Items(i)%P)
+        class is (TSaveLoadStateObject)
+            call item%LoadState(F)
+            class default
+            call this%Error('List contains non-TSaveLoadStateObject item')
+        end select
+    end do
+
+    end subroutine TObjectList_LoadState
+
+
+    !TOwnedIntrinsicList
+
+    subroutine TOwnedIntrinsicList_LoadState(this,F)
+    class(TOwnedIntrinsicList) :: this
+    class(TFileStream) :: F
+    call this%ReadBinary(F%unit)
+    end subroutine TOwnedIntrinsicList_LoadState
+
+    subroutine TOwnedIntrinsicList_SaveState(this,F)
+    class(TOwnedIntrinsicList) :: this
+    class(TFileStream) :: F
+    call this%SaveBinary(F%unit)
+    end subroutine TOwnedIntrinsicList_SaveState
+
+
+    subroutine TOwnedIntrinsicList_AddItem(this, C, Object)
+    Class(TOwnedIntrinsicList) :: this
+    class(*), intent(in), target :: C
+    class(*), intent(in), target, optional :: Object
+
+    call this%TObjectList%AddCopy(C, Object)
+
+    end subroutine TOwnedIntrinsicList_AddItem
 
     !TRealCompareList
     integer function CompareReal(this, R1, R2) result(comp)
@@ -522,102 +686,217 @@
             return
         end select
         class default
-        stop 'TRealList: Compare not defined for this type'
+        call this%Error('TRealList: Compare not defined for this type')
     end select
 
     end function CompareReal
 
 
     !TRealList: List of reals
-    function RealItem(L,i) result(R)
-    Class(TRealList) :: L
+    function TRealList_Item(this,i) result(R)
+    Class(TRealList) :: this
     integer, intent(in) :: i
     real(list_prec) R
 
-    select type (pt=>L%Items(i)%P)
+    call this%CheckIndex(i)
+    select type (pt=>this%Items(i)%P)
     type is (real(kind=list_prec))
         R = pt
         class default
-        stop 'TRealList: object of wrong type'
+        call this%Error('TRealList: object of wrong type')
     end select
 
-    end function RealItem
+    end function TRealList_Item
 
-    subroutine RealAddItem(L, C)
-    Class(TRealList) :: L
-    class(*), intent(in), target :: C
-    real(kind=list_prec), pointer :: P
-
-    if (L%OwnsObjects) then
-        select type (pt=>C)
-        type is (real(kind=list_prec))
-            allocate(P)
-            P=pt
-            call L%TObjectList%AddItem(P)
-            class default
-            stop 'TRealList: only add real'
-        end select
-    else
-        stop 'TRealList: must have OwnsObjects = .true.'
-    end if
-
-    end subroutine RealAddItem
-
-    subroutine AddArrayItems(L, A)
-    Class(TRealList) :: L
+    subroutine TRealList_AddArrayItems(this, A)
+    Class(TRealList) :: this
     real(kind=list_prec), intent(in) :: A(:)
     integer i
 
     do i=1, size(A)
-        call L%AddItem(A(i))
+        call this%AddItem(A(i))
     end do
 
-    end subroutine AddArrayItems
+    end subroutine TRealList_AddArrayItems
 
-    function AsArray(L) result(A)
-    Class(TRealList) :: L
-    real(kind=list_prec):: A(L%Count)
+    function TRealList_AsArray(this) result(A)
+    Class(TRealList) :: this
+    real(kind=list_prec):: A(this%Count)
     integer i
 
     do i=1, size(A)
-        A(i) = L%Item(i)
+        A(i) = this%Item(i)
     end do
 
-    end function AsArray
+    end function TRealList_AsArray
 
 
     !TRealArrayList: List of arrays of reals
 
-    function RealArrItem(L, i) result(P)
-    Class(TRealArrayList) :: L
+    function TRealArrayList_Item(this, i) result(P)
+    Class(TRealArrayList) :: this
     integer, intent(in) :: i
     real(list_prec), pointer :: P(:)
     class(*), pointer :: Item(:)
 
-    Item => L%ArrayItem(i)
+    Item => this%ArrayItem(i)
     select type (pt=>Item)
     type is (real(kind=list_prec))
         P=> pt
         class default
-        stop 'TRealArrayList: object of wrong type'
+        call this%Error('TRealArrayList: object of wrong type')
     end select
 
-    end function RealArrItem
+    end function TRealArrayList_Item
 
-    function Value(L, i, j) result(P)
-    Class(TRealArrayList) :: L
+    function TRealArrayList_Value(this, i, j) result(P)
+    Class(TRealArrayList) :: this
     integer, intent(in) :: i, j
     real(list_prec) :: P
     class(*), pointer :: C
 
-    C => L%ArrayItemIndex(i,j)
+    C => this%ArrayItemIndex(i,j)
     select type (Arr=> C)
     Type is (real(list_prec))
         P = Arr
     end select
 
-    end function Value
+    end function TRealArrayList_Value
 
+    !!! TStringList
+
+    function TStringList_Item(this,i) result(S)
+    Class(TStringList) :: this
+    integer, intent(in) :: i
+    character(LEN=:), pointer :: S
+
+    call this%CheckIndex(i)
+    select type (pt=>this%Items(i)%P)
+    type is (character(LEN=*))
+        S => pt
+        class default
+        call this%Error('TStringList: object of wrong type')
+    end select
+
+    end function TStringList_Item
+
+    function TStringList_ValueOf(this, key)
+    class(TStringList) :: this
+    character(LEN=*), intent(in) :: key
+    integer :: i
+    character(LEN=:), pointer :: TStringList_ValueOf
+
+    i = this%IndexOf(key)
+    if (i==-1) call this%Error('TStringList_ValueOf key not found:'//key)
+    select type (value=>this%Items(i)%Object)
+    type is (character(LEN=*))
+        TStringList_ValueOf=> value
+        class default
+        call this%Error('TStringList_ValueOf Object is not a string')
+    end select
+
+    end function TStringList_ValueOf
+
+
+    subroutine TStringList_SetFromString(this, S, valid_chars_in)
+    class(TStringList) :: this
+    character(Len=*), intent(in) :: S
+    character(Len=*), intent(in), optional :: valid_chars_in
+    character(LEN=:), allocatable :: item
+    integer i,j
+    character(LEN=:), allocatable :: valid_chars
+
+    if (present(valid_chars_in)) then
+        valid_chars = trim(valid_chars_in)
+    else
+        valid_chars='abcdefghijklmopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ0123456789_-.'
+    endif
+
+    call this%Clear()
+    allocate(item, source=S)
+    j=0
+    do i=1, len_trim(S)
+        if (verify(S(i:i),valid_chars) == 0) then
+            j=j+1
+            item(j:j) = S(i:i)
+        else
+            if (trim(S(i:i))/='') then
+                write (*,*) 'Invalid character in: '//trim(S)
+            end if 
+            if (j>0) call this%Add(item(1:j))
+            j=0
+        end if
+    end do
+    if (j>0) call this%Add(item(1:j))
+
+    end subroutine TStringList_SetFromString
+
+
+    function TStringList_IndexOf(this, S) result(index)
+    class(TStringList) :: this
+    character(LEN=*), intent(in) :: S
+    integer index, i
+
+    do i=1,this%Count
+        if (this%Item(i)==S) then
+            index = i
+            return
+        end if
+    end do
+    index=-1
+
+    end function TStringList_IndexOf
+
+    function TStringList_CharAt(this, i, j) result(C)
+    Class(TStringList) :: this
+    integer, intent(in) :: i, j
+    character :: C
+    character(LEN=:), pointer :: P
+
+    call this%CheckIndex(i)
+    P => this%Item(i)
+    C = P(j:j)
+
+    end function TStringList_CharAt
+
+    integer function TStringList_Compare(this, R1, R2) result(comp)
+    Class(TStringList) :: this
+    class(*) R1,R2
+
+    select type (RR1 => R1)
+    type is (character(LEN=*))
+        select type (RR2 => R2)
+        type is (character(LEN=*))
+            if (RR1 < RR2) then
+                comp =-1
+            elseif (RR1>RR2) then
+                comp = 1
+            else
+                comp = 0
+            end if
+            return
+        end select
+        class default
+        call this%Error('TStringList_Compare: not defined for this type')
+    end select
+
+    end function TStringList_Compare
+
+    subroutine WriteItems(this, unit)
+    use, intrinsic :: iso_fortran_env, only : output_unit
+    Class(TStringList) :: this
+    integer, optional, intent(in) :: unit
+    integer i, aunit
+
+    if (present(unit)) then
+        aunit = unit
+    else
+        aunit = output_unit
+    end if
+    do i=1, this%Count
+        write(aunit,*) this%Item(i)
+    end do
+
+    end subroutine WriteItems
 
     end module ObjectLists
-

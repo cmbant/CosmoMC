@@ -1226,7 +1226,7 @@
     write (*,*) trim(S)
  
   end subroutine WriteS
-
+  
   subroutine StringReplace(FindS, RepS, S)
    character(LEN=*), intent(in) :: FindS, RepS
    character(LEN=*), intent(inout) :: S
@@ -1520,82 +1520,80 @@
 
 
 #ifdef IBMXL
-     call flush_(aunit)
+    call flush_(aunit)
 #else
-     call flush(aunit)
+    call flush(aunit)
 #endif
-    
+
   end subroutine FlushFile
 
 
   function FileExists(aname)
-    character(LEN=*), intent(IN) :: aname
-    logical FileExists
-        
-        inquire(file=aname, exist = FileExists)
+  character(LEN=*), intent(IN) :: aname
+  logical FileExists
+
+  inquire(file=aname, exist = FileExists)
 
   end function FileExists
 
- subroutine OpenFile(aname, aunit,mode)
-   character(LEN=*), intent(IN) :: aname,mode
-   integer, intent(in) :: aunit
+  subroutine OpenFile(aname, aunit,mode)
+  character(LEN=*), intent(IN) :: aname,mode
+  integer, intent(in) :: aunit
 
 
-   open(unit=aunit,file=aname,form=mode,status='old', action='read', err=500)
-   return
+  open(unit=aunit,file=aname,form=mode,status='old', action='read', err=500)
+  return
 
 500 call MpiStop('File not found: '//trim(aname))
-    
 
- end subroutine OpenFile
- 
- 
- subroutine OpenTxtFile(aname, aunit)
-   character(LEN=*), intent(IN) :: aname
-   integer, intent(in) :: aunit
+  end subroutine OpenFile
 
-   call OpenFile(aname,aunit,'formatted')
- 
- end subroutine OpenTxtFile
+  subroutine OpenTxtFile(aname, aunit)
+  character(LEN=*), intent(IN) :: aname
+  integer, intent(in) :: aunit
 
-subroutine CreateOpenTxtFile(aname, aunit, append)
-   character(LEN=*), intent(IN) :: aname
-   integer, intent(in) :: aunit
-   logical, optional, intent(in) :: append
-   logical A
+  call OpenFile(aname,aunit,'formatted')
 
-   if (present(append)) then
+  end subroutine OpenTxtFile
+
+  subroutine CreateOpenTxtFile(aname, aunit, append)
+  character(LEN=*), intent(IN) :: aname
+  integer, intent(in) :: aunit
+  logical, optional, intent(in) :: append
+  logical A
+
+  if (present(append)) then
       A=append
-   else
+  else
       A = .false.
-   endif
+  endif
 
-   call CreateOpenFile(aname,aunit,'formatted',A)
+  call CreateOpenFile(aname,aunit,'formatted',A)
 
- end subroutine CreateOpenTxtFile
+  end subroutine CreateOpenTxtFile
 
 
- subroutine CreateTxtFile(aname, aunit)
-    character(LEN=*), intent(IN) :: aname
-   integer, intent(in) :: aunit
+  subroutine CreateTxtFile(aname, aunit)
+  character(LEN=*), intent(IN) :: aname
+  integer, intent(in) :: aunit
 
-   call CreateFile(aname,aunit,'formatted')
+  call CreateFile(aname,aunit,'formatted')
 
- end subroutine CreateTxtFile
+  end subroutine CreateTxtFile
 
- 
- subroutine CreateFile(aname, aunit,mode)
-    character(LEN=*), intent(IN) :: aname,mode
-   integer, intent(in) :: aunit
 
-     open(unit=aunit,file=aname,form=mode,status='replace', err=500)
+  subroutine CreateFile(aname, aunit,mode)
+  character(LEN=*), intent(IN) :: aname,mode
+  integer, intent(in) :: aunit
 
-   return
+  open(unit=aunit,file=aname,form=mode,status='replace', err=500)
+
+  return
 
 500 call MpiStop('Error creating file '//trim(aname))
-    
 
- end subroutine CreateFile
+
+  end subroutine CreateFile
 
  subroutine CreateOpenFile(aname, aunit,mode, append)
     character(LEN=*), intent(IN) :: aname,mode

@@ -1,19 +1,42 @@
 
-#Intel MPI
-#these settings for ifort 13 and higher
-#Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
-F90C     = mpif90
-FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
-LAPACKL = -lmpi
+OUTPUT_DIR ?= Release
 
+BUILD ?= MPI
+#set BUILD to MPI to force MPI, should be set in ../Makefile
+
+ifortErr = $(shell which ifort >/dev/null; echo $$?)
+
+#these settings for ifort 13 and higher
+ifeq "$(ifortErr)" "0"
+#ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
+F90C     = ifort
+MPIF90C = mpif90
+FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp
+DEBUGFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -fpe0
+MODOUT = -module $(OUTPUT_DIR)
+LAPACKL =
+else
+#gfortran does not yet work yet, open GCC 4.9 compiler bugs are
+#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60334
+#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60289
+#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60255
+#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51976
+F90C = gfortran
+MPIF90C = mpif90
+FFLAGS = -cpp -O3 -ffast-math
+DEBUGFLAGS = -cpp -Og -g -fbounds-check -fbacktrace
+MODOUT =  -J$(OUTPUT_DIR)
+#LAPACKL = -Wl,-framework -Wl,accelerate
+#commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
+LAPACKL = -lblas -llapack
+endif
 
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
 RECOMBINATION ?=recfast
 
-#set EXTDATA=WIGZ to use WiggleZ MPK module
 EXTDATA=
 
-#use PRECISION=SINGLE to use single precision
+#use PRECISION=SINGLE to use single precision (probably doesn't work)
 PRECISION ?=
 
 #set WMAP empty not to compile with WMAP, e.g. WMAP = /scratch/../WMAP9/likelihood_v5
@@ -44,8 +67,9 @@ endif
 #use "runCosmomc" (globally installed) to run, defining required memory usage
 ifeq ($(COSMOHOST),cosmos)
 F90C = ifort
-FFLAGS = -openmp -fast -w -fpp2 -DMPI
-LAPACKL = -mkl=sequential -lmkl_lapack -lmpi
+FFLAGS = -openmp -fast -w -fpp2
+LINKMPI = -lmpi
+LAPACKL = -mkl=sequential -lmkl_lapack
 cfitsio = $(CFITSIO)
 WMAP = $(COSMOLIB)/WMAP9
 GSLPATH = $(GSL_ROOT)
@@ -54,38 +78,52 @@ endif
 ifeq ($(COSMOHOST),darwin)
 WMAP = /scratch/aml1005/wmap_likelihood_v5
 cfitsio = /usr/local/Cluster-Apps/cfitsio/intel/3.300
-FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp -DMPI
-#FFLAGS = -mkl -openmp -g -check all -traceback -no-prec-div -fpp -DMPI -fpe0
 endif
 
+ifeq ($(OUTPUT_DIR),Debug)
+FFLAGS=$(DEBUGFLAGS)
+endif
+
+
+ifeq ($(BUILD),MPI)
+override OUTPUT_DIR :=$(OUTPUT_DIR)MPI
+FFLAGS +=  -DMPI
+LAPACKL +=  $(LINKMPI)
+F90C = $(MPIF90C)
+endif
 
 #would like to embed this somehow..
 #GIT_HASHTAG = "git log --pretty=format:'%H:%cd' -n 1"
 
-PROPOSE = propose.o
-CLSFILE = CMB_Cls_simple.o
+CALCFILES = $(OUTPUT_DIR)/Calculator_CAMB.o
 
 #Can use params_H if you prefer more generic parameters
-PARAMETERIZATION = params_CMB.o
+PARAMETERIZATION = $(OUTPUT_DIR)/CosmologyParameterizations.o
 
+GETDISTFLAGS = $(FFLAGS)
 F90FLAGS = $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
 LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
-DISTFILES = ParamNames.o Matrix_utils.o settings.o ObjectLists.o samples.o IO.o GetDist.o
+UTILS = $(OUTPUT_DIR)/MiscUtils.o $(OUTPUT_DIR)/ArrayUtils.o $(OUTPUT_DIR)/StringUtils.o $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/FileUtils.o \
+    $(OUTPUT_DIR)/RandUtils.o $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/Interpolation.o
 
+DISTFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o \
+    $(OUTPUT_DIR)/ObjectParamNames.o $(OUTPUT_DIR)/Matrix_utils_new.o \
+    $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/samples.o $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/GetDist.o
 
 
 ifneq ($(PRECISION),)
 FFLAGS += -D$(PRECISION) -DMATRIX_$(PRECISION)
 endif
 
+ifneq ($(NONCLIKLIKE),)
+FFLAGS += -DNONCLIK
+endif
+
 ifneq ($(PLANCKLIKE),)
 FFLAGS += -DCLIK
 endif
 
-ifneq ($(NONCLIKLIKE),)
-FFLAGS += -DNONCLIK
-endif
 ifneq ($(highL),)
 FFLAGS += -DhighL
 LINKFLAGS += -L$(highL) -lhigh
@@ -94,29 +132,36 @@ endif
 
 PLANCKLIKEFILES=
 
-ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
-PLANCKLIKEFILES +=  temp_like.o
-PLANCKLIKEFILES +=  pol_like.o
-endif
 
 ifneq ($(PLANCKLIKE),)
-PLANCKLIKEFILES += $(PLANCKLIKE).o
+PLANCKLIKEFILES += $(OUTPUT_DIR)/$(PLANCKLIKE).o
 endif
 
-ifneq ($(NONCLIKLIKE),)
-PLANCKLIKEFILES += $(NONCLIKLIKE).o
+ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
+PLANCKLIKEFILES +=  $(OUTPUT_DIR)/temp_like.o
+PLANCKLIKEFILES +=  $(OUTPUT_DIR)/pol_like.o
 endif
 
+LIKEFILES =  $(OUTPUT_DIR)/DataLikelihoods.o $(OUTPUT_DIR)/calclike.o
 
-SUPERNOVAE = supernovae_Union2.o supernovae_SNLS.o
+OBJFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o \
+	$(OUTPUT_DIR)/Matrix_utils_new.o  $(OUTPUT_DIR)/settings.o \
+	$(OUTPUT_DIR)/samples.o $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/BaseParameters.o \
+	$(OUTPUT_DIR)/propose.o $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/PowellConstrainedMinimize.o $(OUTPUT_DIR)/ImportanceSampling.o \
+	$(OUTPUT_DIR)/MCMC.o $(OUTPUT_DIR)/minimize.o $(OUTPUT_DIR)/SampleCollector.o $(OUTPUT_DIR)/GeneralSetup.o
 
-DATAMODULES = $(PLANCKLIKEFILES) power_spec.o wigglez.o mpk.o bao.o $(SUPERNOVAE) supernovae.o HST.o
 
-LIKEFILES =  DataLikelihoods.o calclike.o
+SUPERNOVAE = $(OUTPUT_DIR)/supernovae_Union2.o $(OUTPUT_DIR)/supernovae_SNLS.o
 
-OBJFILES = ObjectLists.o ParamNames.o Matrix_utils.o Interpolation.o settings.o samples.o IO.o GeneralTypes.o cmbtypes.o Planck_like.o  \
-	likelihood.o bbn.o $(DATAMODULES) $(CLSFILE) cmbdata.o $(PROPOSE) paramdef.o  $(PARAMETERIZATION) $(LIKEFILES) \
-	EstCovmat.o PowellConstrainedMinimize.o postprocess.o MCMC.o minimize.o driver.o
+DATAMODULES = $(PLANCKLIKEFILES) $(OUTPUT_DIR)/mpk.o $(OUTPUT_DIR)/wigglez.o \
+	$(OUTPUT_DIR)/bao.o $(SUPERNOVAE) $(OUTPUT_DIR)/supernovae.o $(OUTPUT_DIR)/HST.o $(OUTPUT_DIR)/cmbdata.o
+
+
+COSMOFILES = $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Planck_like.o $(OUTPUT_DIR)/bbn.o $(OUTPUT_DIR)/Calculator_Cosmology.o \
+	$(OUTPUT_DIR)/CalcLike_Cosmology.o $(OUTPUT_DIR)/Likelihood_Cosmology.o $(CALCFILES) $(DATAMODULES) $(PARAMETERIZATION) $(LIKEFILES) \
+	$(OUTPUT_DIR)/CosmologyConfig.o
+
+OBJFILES += $(COSMOFILES) $(OUTPUT_DIR)/driver.o
 
 F90CRLINK =
 
@@ -137,86 +182,109 @@ endif
 
 default: cosmomc
 
-all : cosmomc getdist
+$(OUTPUT_DIR)/RandUtils.o: $(OUTPUT_DIR)/MpiUtils.o
+$(OUTPUT_DIR)/FileUtils.o: $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/MiscUtils.o $(OUTPUT_DIR)/StringUtils.o
+$(OUTPUT_DIR)/ObjectLists.o: $(OUTPUT_DIR)/FileUtils.o
+$(OUTPUT_DIR)/IniObjects.o: $(OUTPUT_DIR)/FileUtils.o
+$(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS)
+$(OUTPUT_DIR)/settings.o:  $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o
+$(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o
+$(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/settings.o
+$(OUTPUT_DIR)/samples.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o
+$(OUTPUT_DIR)/GetDist.o: $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/samples.o
 
-GetDist.o: IO.o samples.o
-supernovae.o: $(SUPERNOVAE)
-IO.o: ParamNames.o settings.o
-samples.o: ObjectLists.o settings.o
-likelihood.o: ObjectLists.o settings.o ParamNames.o
-DataLikelihoods.o: likelihood.o paramdef.o $(DATAMODULES)
-cliklike_CamSpec.o: temp_like.o pol_like.o cmbtypes.o
-cliklike.o: cmbtypes.o
-settings.o: ../camb/libcamb_$(RECOMBINATION).a
-cmbtypes.o: settings.o likelihood.o GeneralTypes.o
-Planck_like.o: cmbtypes.o
-cmbdata.o: Planck_like.o
-bbn.o: settings.o likelihood.o Interpolation.o
-powerspec.o : cmbtypes.o
-wigglez.o: cmbtypes.o power_spec.o
-mpk.o: cmbtypes.o power_spec.o
-bao.o: cmbtypes.o
-HST.o: cmbtypes.o
-supernovae.o: cmbtypes.o
-$(CLSFILE): cmbtypes.o IO.o
-paramdef.o: $(CLSFILE) propose.o samples.o
-$(PROPOSE): settings.o
-$(PARAMETERIZATION): paramdef.o bbn.o
-calclike.o: DataLikelihoods.o
-postprocess.o: calclike.o
-MCMC.o: calclike.o
-driver.o: EstCovmat.o MCMC.o minimize.o $(PARAMETERIZATION)
-minimize.o: PowellConstrainedMinimize.o calclike.o
+$(OUTPUT_DIR)/likelihood.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o
+$(OUTPUT_DIR)/GeneralTypes.o: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/IO.o
+$(OUTPUT_DIR)/BaseParameters: $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/IO.o
+$(OUTPUT_DIR)/ParamSet.o: $(OUTPUT_DIR)/BaseParameters.o $(OUTPUT_DIR)/samples.o
+$(OUTPUT_DIR)/DataLikelihoods.o: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/ParamSet.o $(DATAMODULES)
+$(OUTPUT_DIR)/calclike.o: $(OUTPUT_DIR)/DataLikelihoods.o
+$(OUTPUT_DIR)/ImportanceSampling.o: $(OUTPUT_DIR)/calclike.o $(OUTPUT_DIR)/IO.o
+$(OUTPUT_DIR)/MCMC.o: $(OUTPUT_DIR)/calclike.o $(OUTPUT_DIR)/RandUtils.o  $(OUTPUT_DIR)/propose.o $(OUTPUT_DIR)/ParamSet.o
+$(OUTPUT_DIR)/minimize.o: $(OUTPUT_DIR)/PowellConstrainedMinimize.o $(OUTPUT_DIR)/MCMC.o
+$(OUTPUT_DIR)/SampleCollector.o: $(OUTPUT_DIR)/MCMC.o
+$(OUTPUT_DIR)/GeneralSetup.o: $(OUTPUT_DIR)/SampleCollector.o $(OUTPUT_DIR)/ImportanceSampling.o  $(OUTPUT_DIR)/minimize.o
+
+$(OUTPUT_DIR)/driver.o: $(OUTPUT_DIR)/GeneralSetup.o $(OUTPUT_DIR)/CosmologyConfig.o
+
+
+$(PARAMETERIZATION): $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/bbn.o
+$(OUTPUT_DIR)/Calculator_Cosmology.o: $(OUTPUT_DIR)/CosmoTheory.o
+$(OUTPUT_DIR)/CosmoTheory.o: $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/likelihood.o
+$(OUTPUT_DIR)/supernovae.o:  $(OUTPUT_DIR)/Likelihood_Cosmology.o $(SUPERNOVAE)
+$(OUTPUT_DIR)/Calculator_CAMB.o: $(OUTPUT_DIR)/Calculator_Cosmology.o
+$(OUTPUT_DIR)/cmbtypes.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o
+$(OUTPUT_DIR)/Likelihood_Cosmology.o: $(OUTPUT_DIR)/Calculator_Cosmology.o $(OUTPUT_DIR)/CosmoTheory.o
+$(OUTPUT_DIR)/Planck_like.o: $(OUTPUT_DIR)/cmbtypes.o
+$(OUTPUT_DIR)/cmbdata.o: $(OUTPUT_DIR)/Planck_like.o
+$(OUTPUT_DIR)/bbn.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/Interpolation.o
+$(OUTPUT_DIR)/mpk.o: $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/wigglez.o: $(OUTPUT_DIR)/mpk.o
+$(OUTPUT_DIR)/bao.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/HST.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/cliklike.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/CosmologyConfig.o: $(PARAMETERIZATION) $(OUTPUT_DIR)/GeneralSetup.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
+
+$(OUTPUT_DIR)/supernovae_Union2.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/supernovae_SNLS.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
+
+$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/pol_like.o $(OUTPUT_DIR)/cmbtypes.o
+$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
+
 
 ifneq ($(highL),)
-cliklike_CamSpec.o: $(highL)/libhigh.a
+$(OUTPUT_DIR)/cliklike_CamSpec.o: $(highL)/libhigh.a
 endif
 
 
 ifneq ($(WMAP),)
-cmbdata.o: $(WMAP)/libwmap9.a
+$(OUTPUT_DIR)/cmbdata.o: $(WMAP)/libwmap9.a
 F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
 LINKFLAGS +=  -L$(cfitsio)/lib -L$(WMAP) -lcfitsio -lwmap9
 else
 F90FLAGS += -DNOWMAP
 endif
 
+F90FLAGS += $(MODOUT) $(IFLAG)$(OUTPUT_DIR)/
 
 export FFLAGS
 export F90C
+export OUTPUT_DIR
 
-.f.o:
-	f77 $(F90FLAGS) -c $<
+directories:
+	mkdir -p $(OUTPUT_DIR)
 
-%.o: %.c
-	$(CC) $(GSLINC) -c $*.c
+$(OUTPUT_DIR)/%.o: %.c
+	$(CC) $(GSLINC) -c $*.c -o $(OUTPUT_DIR)/$*.o
 
-%.o: %.f90
-	$(F90C) $(F90FLAGS) -c $*.f90
+$(OUTPUT_DIR)/%.o: %.f90
+	$(F90C) $(F90FLAGS) -c $*.f90 -o $(OUTPUT_DIR)/$*.o
 
-%.o: %.F90
-	$(F90C) $(F90FLAGS) -c $*.F90
+$(OUTPUT_DIR)/%.o: %.F90
+	$(F90C) $(F90FLAGS) -c $*.F90 -o $(OUTPUT_DIR)/$*.o
 
 
-cosmomc: camb $(OBJFILES)
+cosmomc: directories camb $(OBJFILES)
 	$(F90C) -o ../cosmomc $(OBJFILES) $(LINKFLAGS) $(F90FLAGS)
 
+cosmomc_debug: directories camb $(OBJFILES)
+	$(F90C) -o ../cosmomc_debug $(OBJFILES) $(LINKFLAGS) $(F90FLAGS)
 
 clean: cleancosmomc
 	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod ../camb/libcamb_$(RECOMBINATION).a
 
 cleancosmomc:
-	rm -f *.o *.mod *.d *.pc *.obj ../core
+	rm -f $(OUTPUT_DIR)/*.o $(OUTPUT_DIR)/*.mod ./Debug/* ./Release/*  ./DebugMPI/* ./ReleaseMPI/* ../core
 
 
-getdist: camb $(DISTFILES)
-	$(F90C) -o ../getdist $(DISTFILES) $(LINKFLAGS) $(F90FLAGS)
+getdist: directories $(DISTFILES)
+	$(F90C) -o ../getdist $(DISTFILES) $(LAPACKL) $(GETDISTFLAGS)
 
 #If you want to use the ppf module, change equations_ppf to equations
 #and halofit_ppf to halofit also comment out wa_ppf in CMB_Cls_simple.f90
 camb:
 	cd ../camb && \
-	$(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a camb \
+	$(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a \
 	RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf NONLINEAR=halofit_ppf
 
 $(highL)/libhigh.a:

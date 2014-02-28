@@ -6,10 +6,11 @@
 
     module HST
     use cmbtypes
-    use likelihood
+    use Likelihood_Cosmology
     implicit none
+    private
 
-    type, extends(CosmologyLikelihood) :: HSTLikelihood
+    type, extends(TCosmoCalcLikelihood) :: HSTLikelihood
     contains
     procedure :: LogLikeTheory => HST_LnLike
     end type HSTLikelihood
@@ -21,14 +22,15 @@
     !real(mcp), parameter :: angdistinvzeffh0 = 6.49405e-3, zeffh0 = 0.04, &
     !                       angdistinvzeffh0errsqr = 9.93e-8
 
+    public HSTLikelihood, HSTLikelihood_Add
     contains
 
     subroutine HSTLikelihood_Add(LikeList, Ini)
-    class(LikelihoodList) :: LikeList
-    Type(TIniFile) :: ini
+    class(TLikelihoodList) :: LikeList
+    class(TSettingIni) :: ini
     Type(HSTLikelihood), pointer :: like
 
-    if (Ini_Read_Logical_File(Ini, 'use_HST',.false.)) then
+    if (Ini%Read_Logical('use_HST',.false.)) then
         allocate(like)
         like%LikelihoodType = 'Hubble'
         like%name='HST'
@@ -39,8 +41,6 @@
     end subroutine HSTLikelihood_Add
 
     real(mcp) function HST_LnLike(like, CMB)
-    use CAMB, only : AngularDiameterDistance  !!physical angular diam distance also in Mpc no h units
-    use constants
     Class(HSTLikelihood) :: like
     Class(CMBParams) CMB
     real(mcp) :: theoryval
@@ -48,7 +48,7 @@
     real(mcp), parameter :: angdistinvzeffh0 = 6.45904e-3, zeffh0 = 0.04, &
     angdistinvzeffh0errsqr = 4.412e-8
 
-    theoryval = 1.0/AngularDiameterDistance(real(zeffh0,dl))
+    theoryval = 1.0/like%Calculator%AngularDiameterDistance(zeffh0)
     HST_LnLike = (theoryval - angdistinvzeffh0)**2/(2*angdistinvzeffh0errsqr)
 
     end function  HST_LnLike

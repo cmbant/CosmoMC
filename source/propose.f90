@@ -9,8 +9,9 @@
     !See http://cosmologist.info/notes/cosmomc.pdf
 
     module propose
-    use Random
+    use RandUtils
     use settings
+    use GeneralTypes
     implicit none
 
     Type IndexCycler
@@ -41,26 +42,31 @@
     procedure :: UpdateParams
     end Type BlockProposer
 
-    Type BlockedProposer
+    Type, extends(TCheckpointable) :: TCovmatProposer
+        real(mcp), allocatable :: propose_matrix(:,:)
+    contains
+    procedure :: SetCovariance => TCovmatProposer_SetCovariance
+    procedure :: SaveState => TCovmatProposer_SaveState
+    procedure :: LoadState => TCovmatProposer_LoadState
+    end type
+
+    Type, extends(TCovmatProposer) :: BlockedProposer
         integer :: nBlocks
         integer, allocatable :: indices(:), ProposerForIndex(:)
         Type(CyclicIndexRandomizer) :: Slow, Fast, All
         Type(BlockProposer), allocatable :: Proposer(:)
         integer :: oversample_fast = 1
-        real(mcp), allocatable :: propose_matrix(:,:)
+        real(mcp) :: propose_scale = 2.4_mcp
+        integer, private  :: fast_ix = 0
     contains
     procedure :: Init
-    procedure :: SetCovariance
+    procedure :: SetCovariance => BlockedProposer_SetCovariance
     procedure :: GetBlockProposal
     procedure :: GetProposal
     procedure :: GetProposalSlow
     procedure :: GetProposalFast
     procedure :: GetProposalFastDelta
     end Type BlockedProposer
-
-    type int_arr_pointer
-        integer, dimension(:), pointer :: p
-    end type int_arr_pointer
 
     logical :: propose_rand_directions = .true.
 
@@ -69,6 +75,7 @@
     function Next(this)
     Class(CyclicIndexRandomizer) :: this
     integer Next
+
     this%loopix = mod(this%loopix, this%n) + 1
     if (this%loopix == 1) then
         if (.not. allocated(this%indices)) allocate(this%indices(this%n))
@@ -92,20 +99,13 @@
         end do
     end if
 
-    end  subroutine RotMatrix
+    end subroutine RotMatrix
 
 
-    function ProposeVec(this, ascale) result(vec)
+    function ProposeVec(this, wid) result(vec)
     Class(RandDirectionProposer) :: this
     real(mcp) :: vec(this%n)
-    real(mcp), intent(in), optional :: ascale
-    real(mcp) ::  wid
-
-    if (present(ascale)) then
-        wid = ascale
-    else
-        wid = propose_scale
-    end if
+    real(mcp) :: wid
 
     if (mod(this%loopix,this%n)==0) then
         !Get a new random rotation
@@ -148,19 +148,23 @@
 
     end subroutine UpdateParams
 
-    subroutine Init(this, parameter_blocks, slow_block_max, oversample_fast)
+    subroutine Init(this, parameter_blocks, slow_block_max, oversample_fast, propose_scale)
     !slow_block_max determines which parameter blocks are grouped together as being 'slow'
     Class(BlockedProposer), target :: this
     type(int_arr_pointer) :: parameter_blocks(:)
     integer, intent(in) :: slow_block_max
     integer used_blocks(size(parameter_blocks))
     integer, intent(in), optional :: oversample_fast
+    real(mcp), intent(in), optional :: propose_scale
     integer i, ix, n, np
     Type(BlockProposer), pointer :: BP
 
     if (present(oversample_fast)) then
         this%oversample_fast = oversample_fast
     endif
+    if (present(propose_scale)) then
+        this%propose_scale = propose_scale
+    end if
     this%nBlocks = size(parameter_blocks)
     n=0
     this%All%n=0
@@ -203,20 +207,23 @@
 
     end subroutine Init
 
-    subroutine SetCovariance(this, propose_matrix)
+    subroutine BlockedProposer_SetCovariance(this, propose_matrix)
     !take covariance of used parameters (propose_matrix), and construct orthonormal parmeters
     !where orthonormal parameters are grouped in blocks by speed, so changes in slowest block
     !changes slow and fast parameters, but changes in the fastest block only changes fast parameters
     use MatrixUtils
     Class(BlockedProposer), target :: this
-    real(mcp), intent(in) :: propose_matrix(num_params_used,num_params_used)
+    real(mcp), intent(in) :: propose_matrix(:,:)
     real(mcp) corr(num_params_used,num_params_used)
     real(mcp) :: sigmas(num_params_used), L(num_params_used,num_params_used)
     integer i, j
     Type(BlockProposer), pointer :: BP
 
-    if (.not. allocated(this%propose_matrix)) allocate(this%propose_matrix(num_params_used,num_params_used))
-    this%propose_matrix=propose_matrix
+    if (.not. allocated(this%propose_matrix)) then
+        allocate(this%propose_matrix(num_params_used,num_params_used), source=propose_matrix)
+    else
+        this%propose_matrix=propose_matrix
+    end if
     do i = 1, num_params_used
         sigmas(i) = sqrt(propose_matrix(i,i))
         corr(i,:) = propose_matrix(i,:) / sigmas(i)
@@ -234,15 +241,16 @@
             L(BP%block_start+j-1,BP%block_start:BP%block_start+BP%n-1)
         end do
     end do
-    end subroutine SetCovariance
+    end subroutine BlockedProposer_SetCovariance
 
 
     subroutine GetBlockProposal(this, P, i)
     class(BlockedProposer) :: this
-    real(mcp) :: P(:)
-    integer, intent(in) :: i
+    integer, intent(in) :: i !i must be first in gfortran
+    real(mcp) :: P(:), vec(this%Proposer(i)%n)
 
-    call this%Proposer(i)%UpdateParams(P, this%Proposer(i)%Proposevec())
+    vec = this%Proposer(i)%Proposevec(this%propose_scale) !just stop annoying temp variable warnings..
+    call this%Proposer(i)%UpdateParams(P, vec)
 
     end subroutine GetBlockProposal
 
@@ -250,15 +258,14 @@
     subroutine GetProposal(this, P)
     class(BlockedProposer) :: this
     real(mcp) :: P(:)
-    integer, save :: fast_ix = 0
 
-    if (fast_ix/=0) then
+    if (this%fast_ix/=0) then
         call  GetProposalFast(this, P)
-        fast_ix=fast_ix-1
+        this%fast_ix=this%fast_ix-1
     else
         if (this%All%Next() > this%Slow%n) then
             call  GetProposalFast(this, P)
-            fast_ix = this%oversample_fast-1
+            this%fast_ix = this%oversample_fast-1
         else
             call  GetProposalSlow(this, P)
         end if
@@ -290,5 +297,34 @@
     call this%GetProposalFast(P)
 
     end subroutine GetProposalFastDelta
+
+
+    subroutine TCovmatProposer_SetCovariance(this, propose_matrix)
+    class(TCovmatProposer), target :: this
+    real(mcp), intent(in) :: propose_matrix(:,:)
+    !only inherited otherwise do nothing
+    end subroutine TCovmatProposer_SetCovariance
+
+
+    subroutine TCovmatProposer_LoadState(this,F)
+    class(TCovmatProposer) :: this
+    class(TFileStream) :: F
+    real(mcp) :: cov(num_params_used,num_params_used)
+
+    if (.not. F%ReadItem(cov)) call MpiStop('error reading proposal covariance')
+    call this%SetCovariance(cov)
+
+    end subroutine TCovmatProposer_LoadState
+
+
+    subroutine TCovmatProposer_SaveState(this,F)
+    class(TCovmatProposer) :: this
+    class(TFileStream) :: F
+
+    call F%Write(this%propose_matrix)
+
+    end subroutine TCovmatProposer_SaveState
+
+
 
     end module propose

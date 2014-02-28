@@ -3,21 +3,22 @@
     use settings
     use temp_like_camspec
     use pol_like_camspec
-    use Likelihood
+    use Likelihood_Cosmology
+    use CosmoTheory
 #ifdef highL
     use HIGHELL_OPTIONS
     use highell_likelihood
 #endif
     implicit none
 
-    type, extends(CosmologyLikelihood) :: CamSpeclikelihood
+    type, extends(TCosmologyLikelihood) :: CamSpeclikelihood
     contains
     procedure :: LogLike => CamSpecLogLike
     procedure :: WriteLikelihoodData => CamSpec_WriteLikelihoodData
     procedure :: derivedParameters => CamSpec_DerivedParameters
     end type CamSpeclikelihood
 
-    type, extends(CosmologyLikelihood) :: CamPollikelihood
+    type, extends(TCosmologyLikelihood) :: CamPollikelihood
     contains
     procedure :: LogLike => CamPolLogLike
     end type CamPollikelihood
@@ -26,7 +27,7 @@
 
 
 #ifdef highL
-    type, extends(CosmologyLikelihood) :: highLLikelihood
+    type, extends(TCosmologyLikelihood) :: highLLikelihood
     contains
     procedure :: LogLike => highLLogLike
     end type highLLikelihood
@@ -41,18 +42,16 @@
 
 
     subroutine nonclik_readParams(LikeLIst, Ini)
-    use settings
-    Type(TIniFile) Ini
-    class(LikelihoodList) :: LikeList
-    character (LEN=Ini_max_string_len) :: likefilename,sz143filename,&
+    class(TSettingIni) Ini
+    class(TLikelihoodList) :: LikeList
+    character (LEN=:), allocatable :: likefilename,sz143filename,&
     beamfilename, kszfilename,tszxcibfilename, tmp, polfilename
-    Class(CosmologyLikelihood), pointer :: Like
+    Class(TCosmologyLikelihood), pointer :: Like
     logical :: use_CAMspec, use_CAMpol
     logical :: use_highL
     logical :: pre_marged
 
-    use_CAMspec = Ini_Read_Logical_File(Ini,'use_CAMspec',.false.)
-    
+    use_CAMspec = Ini%Read_Logical('use_CAMspec',.false.)
 
     if (use_CAMspec) then
         print *,' using non-clik CamSpec'
@@ -64,36 +63,36 @@
         Like%speed = 5
         call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
 
-        make_cov_marged = Ini_read_Logical_file(Ini,'make_cov_marged',.false.)
-        if (make_cov_marged) marge_file_variant = Ini_read_string_file(Ini,'marge_file_variant')
-        pre_marged= .not. make_cov_marged .and. Ini_Read_Logical_File(Ini,'pre_marged',.false.)
+        make_cov_marged = Ini%Read_Logical('make_cov_marged',.false.)
+        if (make_cov_marged) marge_file_variant = Ini%Read_string('marge_file_variant')
+        pre_marged= .not. make_cov_marged .and. Ini%Read_Logical('pre_marged',.false.)
         if (pre_marged) then
-            likefilename=ReadIniFileName(Ini,'margelikefile',NotFoundFail = .true.)
+            likefilename=Ini%ReadFileName('margelikefile',NotFoundFail = .true.)
             if (camspec_beam_mcmc_num/=1) call MpiStop('camspec_beam_mcmc_num must be one for precomputed')
         else
-            likefilename=ReadIniFileName(Ini,'likefile',NotFoundFail = .true.)
-            camspec_fiducial_foregrounds = ReadIniFileName(Ini,'camspec_fiducial_foregrounds',NotFoundFail = .true.)
-            camspec_fiducial_cl = ReadIniFileName(Ini,'camspec_fiducial_cl',NotFoundFail = .true.)
+            likefilename=Ini%ReadFileName('likefile',NotFoundFail = .true.)
+            camspec_fiducial_foregrounds = Ini%ReadFileName('camspec_fiducial_foregrounds',NotFoundFail = .true.)
+            camspec_fiducial_cl = Ini%ReadFileName('camspec_fiducial_cl',NotFoundFail = .true.)
         end if
-        Like%version = ExtractFileName(likefilename)
+        Like%version = File%ExtractName(likefilename)
 
-        sz143filename=ReadIniFileName(Ini,'sz143file',NotFoundFail = .true.)
-        tszxcibfilename=ReadIniFileName(Ini,'tszxcibfile',NotFoundFail = .true.)
-        kszfilename=ReadIniFileName(Ini,'kszfile',NotFoundFail = .true.)
-        beamfilename=ReadIniFileName(Ini,'beamfile',NotFoundFail = .true.)
-        camspec_beam_mcmc_num = Ini_Read_Int_File(Ini,'camspec_beam_mcmc_num',camspec_beam_mcmc_num)
+        sz143filename=Ini%ReadFileName('sz143file',NotFoundFail = .true.)
+        tszxcibfilename=Ini%ReadFileName('tszxcibfile',NotFoundFail = .true.)
+        kszfilename=Ini%ReadFileName('kszfile',NotFoundFail = .true.)
+        beamfilename=Ini%ReadFileName('beamfile',NotFoundFail = .true.)
+        call Ini%Read('camspec_beam_mcmc_num',camspec_beam_mcmc_num)
         if (.not. pre_marged) then
-            tmp = Ini_read_String_file(Ini,'want_spec')
+            tmp = Ini%Read_String('want_spec')
             if (tmp/='') read(tmp,*) want_spec
-            tmp = Ini_read_String_file(Ini,'camspec_lmin')
+            tmp = Ini%Read_String('camspec_lmin')
             if (tmp/='') read(tmp,*) camspec_lmins
-            tmp = Ini_read_String_file(Ini,'camspec_lmax')
+            tmp = Ini%Read_String('camspec_lmax')
             if (tmp/='') read(tmp,*) camspec_lmaxs
         end if
         call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename)
     end if
 
-    use_highL = Ini_Read_Logical_File(Ini,'use_highL',.false.)
+    use_highL = Ini%Read_Logical('use_highL',.false.)
 
     if (use_highL) then
 #ifdef highL
@@ -119,22 +118,22 @@
 #endif
     end if
 
-    use_CAMpol=Ini_Read_Logical_File(Ini,'use_CAMpol',.false.)
+    use_CAMpol=Ini%Read_Logical('use_CAMpol',.false.)
 
     if(use_CAMpol) then
-       print *,'using non-clik CAMpol likelihood'
-       allocate(campollikelihood::like)
-       call LikeList%Add(Like)
-       Like%LikelihoodType = 'CMB'
-       Like%name='campol'
-       Like%speed = 5
-       Like%needs_powerspectra=.true.
+        print *,'using non-clik CAMpol likelihood'
+        allocate(campollikelihood::like)
+        call LikeList%Add(Like)
+        Like%LikelihoodType = 'CMB'
+        Like%name='campol'
+        Like%speed = 5
+        Like%needs_powerspectra=.true.
 
-       polfilename=ReadIniFileName(Ini,'pollikefile',NotFoundFail = .true. )
-       
-       Like%version= ExtractFileName(polfilename)
+        polfilename=Ini%ReadFileName('pollikefile',NotFoundFail = .true. )
 
-       call pol_like_init(polfilename)
+        Like%version= File%ExtractName(polfilename)
+
+        call pol_like_init(polfilename)
 
     end if
 
@@ -143,11 +142,11 @@
     real(mcp) function CamspecLogLike(like, CMB, Theory, DataParams)
     Class(CamSpeclikelihood) :: like
     Class (CMBParams) CMB
-    Class(TheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) acl(lmax,num_cls_tot)
     real(mcp) DataParams(:)
 
-    call ClsFromTheoryData(Theory, acl)
+    call Theory%ClsFromTheoryData(acl)
     !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as
     !freq_params(35:44), ACT/SPT as freq_params(45:65)
     CamspecLogLike = nonclik_lnlike_camSpec(acl,DataParams)
@@ -177,11 +176,11 @@
     real(mcp) function CampolLogLike(like, CMB, Theory, DataParams)
     Class(CamPollikelihood) :: like
     Class (CMBParams) CMB
-    Class(TheoryPredictions) Theory
+    Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) acl(lmax,num_cls_tot)
     real(mcp) DataParams(:)
 
-    call ClsFromTheoryData(Theory, acl)
+    call Theory%ClsFromTheoryData(acl)
     !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as
     !freq_params(35:44), ACT/SPT as freq_params(45:65)
     CampolLogLike = nonclik_lnlike_campol(acl)
@@ -218,16 +217,18 @@
     real(mcp) , allocatable ::  C_foregrounds(:,:)
     integer L
     character(LEN=80) fmt
+    Type(TTextFile) F
 
     allocate(C_foregrounds(CAMSpec_lmax_foreground,Nspec))
     C_foregrounds=0
+    
     call compute_fg(C_foregrounds,DataParams, CAMSpec_lmax_foreground)
-    call CreateTxtFile(trim(root)//'.camspec_foregrounds',tmp_file_unit)
+    call F%Open(trim(root)//'.camspec_foregrounds')
     fmt = concat('(1I6,',Nspec,'E15.5)')
     do l = 2, CAMSpec_lmax_foreground
-        write (tmp_file_unit,fmt) l, C_foregrounds(l,:)*l*(l+1)
+        write (F%unit,fmt) l, C_foregrounds(l,:)*l*(l+1)
     end do
-    call CloseFile(tmp_file_unit)
+    call F%Close()
 
     end subroutine CAMSpec_WriteLikelihoodData
 
