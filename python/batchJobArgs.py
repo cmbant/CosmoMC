@@ -53,8 +53,8 @@ class batchArgs():
         def dataMatches(self, jobItem):
             if self.args.datatag is None:
                 if self.args.data is None:
-                    return self.args.skip_data is None or not self.args.skip_data in jobItem.data_set[0]
-                return self.args.data in jobItem.data_set[0]
+                    return self.args.skip_data is None or not self.args.skip_data in jobItem.data_set.names
+                return self.args.data in jobItem.data_set.names
             else:
                 return jobItem.datatag == self.args.datatag
 

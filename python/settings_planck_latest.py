@@ -1,6 +1,6 @@
-#provisional updated (reduced) grid settings for full mission
-#New BBN fitting built in
-#New BAO -> DR11
+# provisional updated (reduced) grid settings for full mission
+# New BBN fitting built in
+# New BAO -> DR11
 
 ini_dir = 'batch2/'
 
@@ -29,7 +29,7 @@ planck_lowl_lowLike_highL = [[planck, lowl, lowLike, highL], [CamspecHighL, 'low
 planck_lowl = [[planck, lowl], [Camspec, 'lowl.ini']]
 WMAP9 = [[WMAP], ['WMAP.ini']]
 
-planck_lowl_lowLike_BAO = [[planck, lowl, lowLike, BAO], [Camspec, 'lowl.ini', 'lowLike.ini', BAOdata]]
+planck_lowl_lowLike_BAO = [[planck, lowl, lowLike, BAO], [ Camspec, 'lowl.ini', 'lowLike.ini', BAOdata]]
 planck_lowl_lowLike_highL_BAO = [[planck, lowl, lowLike, highL, BAO], [CamspecHighL, 'lowl.ini', 'lowLike.ini', BAOdata]]
 planck_lowl_lowLike_SNLS = [[planck, lowl, lowLike, SNLS], [Camspec, 'lowl.ini', 'lowLike.ini', 'SNLS.ini']]
 planck_lowl_lowLike_HST = [[planck, lowl, lowLike, HST], [Camspec, 'lowl.ini', 'lowLike.ini', 'HST.ini']]
@@ -46,7 +46,7 @@ newCovmats = True
 
 class importanceFilterLensing:
     def wantImportance(self, jobItem):
-        return planck in jobItem.dataname_set and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
+        return planck in jobItem.data_set.names and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
 
 class importanceFilterNotOmegakLowl:
     def wantImportance(self, jobItem):
@@ -86,7 +86,7 @@ groups.append(g2)
 g3 = group()
 g3.params = [['omegak']]
 g3.datasets = [planck_lowl_lowLike_BAO, planck_lowl_lowLike_highL_BAO]
-g3.importanceRuns = [post_lensing , post_BAO, post_HST]
+g3.importanceRuns = [post_lensing , post_HST]
 g3.groupName = 'geom'
 groups.append(g3)
 

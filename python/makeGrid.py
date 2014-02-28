@@ -52,10 +52,6 @@ for jobItem in batch.items(wantSubItems=False):
 
         for param in jobItem.param_set:
             ini.params['param[' + param + ']'] = settings.params[param]
-        for iniitem in jobItem.data_set[1]:
-            ini.defaults.append(batch.commonPath + iniitem)
-        for deffile in settings.defaults:
-            ini.defaults.append(batch.commonPath + deffile)
 
         if 'mnu' in jobItem.param_set:
             ini.params['num_massive_neutrinos'] = 3
@@ -96,6 +92,12 @@ for jobItem in batch.items(wantSubItems=False):
             if not hasCov: print 'WARNING: no matching specific covmat for ' + jobItem.name
 
         ini.params['start_at_bestfit'] = settings.start_at_bestfit
+        for iniitem in jobItem.data_set.params:
+            if isinstance(iniitem, dict): ini.params.update(iniitem)
+            else: ini.defaults.append(batch.commonPath + iniitem)
+        for deffile in settings.defaults:
+            ini.defaults.append(batch.commonPath + deffile)
+
         ini.params['action'] = cosmomcAction
         ini.saveFile(jobItem.iniFile())
         if not settings.start_at_bestfit:
@@ -110,7 +112,8 @@ for jobItem in batch.items(wantSubItems=False):
             for minimize in (False, True):
                 ini = iniFile.iniFile()
                 for inc in imp.importanceSettings:
-                    ini.includes.append(batch.commonPath + inc)
+                    if isinstance(inc, dict):  ini.params.update(inc)
+                    else: ini.includes.append(batch.commonPath + inc)
                 if cosmomcAction == 0 and not minimize:
                     for deffile in settings.importanceDefaults:
                         ini.defaults.append(batch.commonPath + deffile)

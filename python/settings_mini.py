@@ -45,11 +45,11 @@ g.datasets.append([[planck, 'lmin1200', lowl, lowLike, highL], ['CAMspec_lmin120
 
 class importanceFilterPlanck:
     def wantImportance(self, jobItem):
-        return planck in jobItem.data_set[0]
+        return planck in jobItem.data_set.names
 
 class importanceFilterAcc:
     def wantImportance(self, jobItem):
-        return lowLike in jobItem.data_set[0]
+        return lowLike in jobItem.data_set.names
 
 # add importance name tags, and list of specific .ini files to include (in batch1/)
 g.importanceRuns = []
