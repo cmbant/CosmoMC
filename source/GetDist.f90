@@ -466,6 +466,13 @@
     ConfidVal = try_t
     end function ConfidVal
 
+    subroutine WriteS(S)
+    character(LEN=*), intent(in) :: S
+
+    write (*,*) trim(S)
+
+    end subroutine WriteS
+
     subroutine PCA(pars,n,param_map,normparam_num)
     !Perform principle component analysis
     !In other words, get eigenvectors and eigenvalues for normalized variables
