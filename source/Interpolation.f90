@@ -28,7 +28,7 @@
     procedure :: InitFromFile => TCubicSpline_InitFromFile
     procedure :: InitInterp => TCubicSpline_InitInterp
     procedure :: Value => TCubicSpline_Value
-    procedure :: Free =>TCubicSpline_Free
+    FINAL :: TCubicSpline_Free
     end Type
 
     Type, extends(TInterpolator) :: TInterpGrid2D
@@ -37,9 +37,8 @@
         !      VOL. 22, NO. 3, September, 1996, P.  357--361.
         REAL(GI), private, allocatable :: wk(:,:,:)
         REAL(GI), allocatable :: x(:), y(:)
-        REAL(GI), pointer :: z(:,:) => NULL()
+        REAL(GI), allocatable :: z(:,:)
         integer nx, ny
-        logical :: owns_z = .false.
     contains
     procedure :: Init => TInterpGrid2D_Init
     procedure :: InitFromFile => TInterpGrid2D_InitFromFile
@@ -47,7 +46,7 @@
     procedure :: Values => TInterpGrid2D_Values !array of points
     procedure :: Error => TInterpGrid2D_error
     procedure, private :: InitInterp => TInterpGrid2D_InitInterp
-    procedure :: Free =>TInterpGrid2D_Free
+    FINAL :: TInterpGrid2D_Free
     end Type TInterpGrid2D
 
 
@@ -67,8 +66,7 @@
     class(TInterpolator):: W
     character(LEN=*), intent(in) :: S
 
-    write(*,*) 'Interpolation error: '//trim(S)
-    call Mpistop()
+    call MpiStop('Interpolation error: '//trim(S))
 
     end subroutine TInterpolator_error
 
@@ -167,7 +165,7 @@
 
 
     subroutine TCubicSpline_Free(W)
-    class (TCubicSpline) :: W
+    Type(TCubicSpline) :: W
 
     deallocate(W%X)
     deallocate(W%F)
@@ -272,12 +270,11 @@
     end subroutine TInterpGrid2D_InitInterp
 
     !F2003 wrappers by AL, 2013
-    subroutine TInterpGrid2D_Init(W, x, y, z, copyz)
+    subroutine TInterpGrid2D_Init(W, x, y, z)
     class(TInterpGrid2D):: W
     REAL(GI), INTENT(IN)      :: x(:)
     REAL(GI), INTENT(IN)      :: y(:)
-    REAL(GI), INTENT(IN), pointer :: z(:,:)
-    logical, intent(in), optional :: copyz 
+    REAL(GI), INTENT(IN)      :: z(:,:)
 
     W%nx = size(x)
     W%ny = size(y) 
@@ -285,13 +282,7 @@
     allocate(W%y(W%ny))
     W%x = x
     W%y = y
-    W%owns_z=.false.
-    if (present(copyz)) W%owns_z = copyz
-    if (W%owns_z) then
-        allocate(W%z(size(z,1),size(z,2)), source = z)
-    else
-        W%z=>z
-    end if
+    allocate(W%z,source = z)
 
     call W%InitInterp()
 
@@ -369,7 +360,6 @@
         W%ny = ny 
         allocate(W%x(W%nx))
         allocate(W%y(W%ny))
-        W%owns_z = .true.
         allocate(W%z(nx,ny))
         status=0
         call F%Rewind()
@@ -382,14 +372,14 @@
     end subroutine TInterpGrid2D_InitFromFile
 
     subroutine TInterpGrid2D_Free(W)
-    Class(TInterpGrid2D):: W
+    Type(TInterpGrid2D):: W
 
     if (allocated(W%Wk)) then
         deallocate(W%x)
         deallocate(W%y)
         deallocate(W%Wk)
+        deallocate(W%z)
     end if
-    if (W%owns_z) deallocate(W%z)
     W%Initialized = .false.
 
     end subroutine TInterpGrid2D_Free
