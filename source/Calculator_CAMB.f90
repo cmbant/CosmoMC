@@ -377,9 +377,10 @@
     class(CAMB_Calculator) :: this
     class(TCosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
-    real(mcp), pointer :: PK(:,:) => Null()
-    real(mcp), allocatable :: k(:), z(:)
+    real(mcp), allocatable :: k(:), z(:), PK(:,:)
     integer zix,nz,nk
+    !For use with for example WL PK's
+    real(mcp), allocatable :: NL_Ratios(:,:)
 
     !Free theory arrays as they may resize between samples
     call Theory%FreePK()
@@ -398,23 +399,20 @@
 
     call this%TransfersOrPowers(M,PK,transfer_power_var,transfer_power_var)
     PK = Log(PK)
-    call Theory%MPK%Init(k,z,PK,.true.)
+    call Theory%MPK%Init(k,z,PK)
 
     if(use_nonlinear)then
-        call this%GetNLandRatios(M,Theory)
+        call this%GetNLandRatios(M,Theory,NL_Ratios)
     end if
 
-    deallocate(PK)
-    nullify(PK)
-
     end subroutine CAMBCalc_SetPkFromCAMB
-    
+
     subroutine CAMBCalc_TransfersOrPowers(this,M,PK,t1,t2)
     use Transfer
     use camb, only : CP, ScalarPower
     class(CAMB_Calculator) :: this
     Type(MatterTransferData) :: M
-    real(mcp), pointer, intent(out):: PK(:,:)
+    real(mcp), intent(inout):: PK(:,:)
     integer, intent(in) :: t1
     integer, optional, intent(in) :: t2
     real(mcp), allocatable :: temp(:,:)
@@ -444,13 +442,14 @@
 
     end subroutine CAMBCalc_TransfersOrPowers
 
-    subroutine CAMBCalc_GetNLandRatios(this,M,Theory)
+    subroutine CAMBCalc_GetNLandRatios(this,M,Theory,Ratios)
     use Transfer
     class(CAMB_Calculator) :: this
     class(TCosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
+    real(mcp), allocatable, intent(out) :: Ratios(:,:)
     Type(MatterPowerData) :: CPK
-    real(mcp), pointer :: PK(:,:)=>Null()
+    real(mcp), allocatable :: PK(:,:)
     integer nk,nz
 
     CPK%num_k = Theory%MPK%nx
@@ -458,7 +457,7 @@
 
     !Allocate Theory arrays
     allocate(Theory%NL_MPK)
-    allocate(Theory%NL_Ratios(CPK%num_k,CPK%num_z))
+    allocate(Ratios(CPK%num_k,CPK%num_z))
 
     !Allocate Dummy Pointer and fill with Linear MPK
     allocate(PK(CPK%num_k,CPK%num_z))
@@ -476,14 +475,11 @@
     !need splines to get nonlinear ratios
     call MatterPowerdata_getsplines(CPK)
     call NonLinear_GetRatios(CPK)
-    Theory%NL_Ratios = CPK%nonlin_ratio
+    Ratios = CPK%nonlin_ratio
     call MatterPowerdata_Free(CPK)
 
-    PK = PK+2*log(Theory%NL_Ratios)
-    call Theory%NL_MPK%Init(Theory%MPK%x,Theory%MPK%y,PK,.true.)
-
-    deallocate(PK)
-    nullify(PK)
+    PK = PK+2*log(Ratios)
+    call Theory%NL_MPK%Init(Theory%MPK%x,Theory%MPK%y,PK)
 
     end subroutine CAMBCalc_GetNLandRatios
 

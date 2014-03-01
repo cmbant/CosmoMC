@@ -26,8 +26,6 @@
         !MPK%nx = num_k, MPK%ny = num_z
         type(TCosmoTheoryPK), allocatable :: MPK
         type(TCosmoTheoryPK), allocatable :: NL_MPK
-        !For use with for example WL PK's
-        real(mcp), allocatable :: NL_Ratios(:,:)
     contains
     procedure :: FreePK
     procedure :: ClsFromTheoryData
@@ -70,7 +68,6 @@
     
     if(allocated(T%MPK))deallocate(T%MPK)
     if(allocated(T%NL_MPK)) deallocate(T%NL_MPK)
-    if(allocated(T%NL_Ratios))deallocate(T%NL_Ratios)
     
     end subroutine FreePK   
 
@@ -191,12 +188,12 @@
         read(F%unit) k
         read(F%unit) z
         read(F%unit) temp
-        call T%MPK%Init(k,z,temp,.true.)
+        call T%MPK%Init(k,z,temp)
         read(F%unit)has_nonlinear
         if(has_nonlinear) then
             allocate(T%NL_MPK)
             read(F%unit)temp
-            call T%NL_MPK%Init(k,z,temp,.true.)
+            call T%NL_MPK%Init(k,z,temp)
             if(.not. use_nonlinear) then
                 write(*,*)"WARNING:  ReadTheory - Your data files have nonlinear power spectra,"
                 write(*,*)"          but you are not using them. Be careful that this"
