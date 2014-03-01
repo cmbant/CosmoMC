@@ -40,6 +40,8 @@
     procedure :: InitCAMBParams => CAMBCalc_InitCAMBParams
     procedure :: SetCAMBInitPower => CAMBCalc_SetCAMBInitPower
     procedure :: SetPkFromCAMB => CAMBCalc_SetPkFromCAMB
+    procedure :: TransfersOrPowers => CAMBCalc_TransfersOrPowers
+    procedure :: GetNLandRatios => CAMBCalc_GetNLandRatios
     !Overridden inherited
     procedure :: ReadParams => CAMBCalc_ReadParams
     procedure :: InitForLikelihoods => CAMBCalc_InitForLikelihoods
@@ -254,7 +256,7 @@
         end if
 
         if (Use_LSS) then
-            call this%SetPkFromCAMB(Theory,Info%Transfers%MTrans)
+            call this%SetPkFromCAMB(Info%Transfers%MTrans,Theory)
         end if
     end select
 
@@ -304,7 +306,7 @@
         if (DoCls) call this%SetPowersFromCAMB(CMB,Theory)
         if (DoPK) then
             Theory%sigma_8 = MT%sigma_8(size(MT%sigma_8,1),1)
-            call this%SetPkFromCAMB(Theory,MT)
+            call this%SetPkFromCAMB(MT,Theory)
         end if
         call this%SetDerived(Theory)
     end if
@@ -369,38 +371,121 @@
 
     end subroutine CAMBCalc_SetPowersFromCAMB
 
-    subroutine CAMBCalc_SetPkFromCAMB(this,Theory,M)
+    subroutine CAMBCalc_SetPkFromCAMB(this,M,Theory)
     use Transfer
     use camb, only : CP
     class(CAMB_Calculator) :: this
     class(TCosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
-    Type(MatterPowerData) :: Cosmo_PK
-    integer nz, zix
+    real(mcp), pointer :: PK(:,:) => Null()
+    real(mcp), allocatable :: k(:), z(:)
+    integer zix,nz,nk
 
-    if(.not. associated(Theory%MPK)) allocate(Theory%MPK)
-    nz = num_power_redshifts
-    call Theory%MPK%InitPK(M%num_q_trans,nz,.true.)
-    Theory%MPK%log_kh = log(M%TransferData(Transfer_kh,:,1))
-    Theory%MPK%redshifts = power_redshifts
+    !Free theory arrays as they may resize between samples
+    call Theory%FreePK()
+    allocate(Theory%MPK)
+
+    nk=M%num_q_trans
+    nz=CP%Transfer%PK_num_redshifts
+    allocate(PK(nk,nz))
+    allocate(k(nk))
+    allocate(z(nz))
+
+    k = log(M%TransferData(Transfer_kh,:,1))
+    do zix=1,nz
+        z(zix) = CP%Transfer%PK_redshifts(nz-zix+1)
+    end do
+
+    call this%TransfersOrPowers(M,PK,transfer_power_var,transfer_power_var)
+    PK = Log(PK)
+    call Theory%MPK%Init(k,z,PK,.true.)
+
     if(use_nonlinear)then
-        if(.not. associated(Theory%NL_MPK)) allocate(Theory%NL_MPK)
-        Theory%NL_MPK=Theory%MPK
+        call this%GetNLandRatios(M,Theory)
+    end if
+
+    deallocate(PK)
+    nullify(PK)
+
+    end subroutine CAMBCalc_SetPkFromCAMB
+    
+    subroutine CAMBCalc_TransfersOrPowers(this,M,PK,t1,t2)
+    use Transfer
+    use camb, only : CP, ScalarPower
+    class(CAMB_Calculator) :: this
+    Type(MatterTransferData) :: M
+    real(mcp), pointer, intent(out):: PK(:,:)
+    integer, intent(in) :: t1
+    integer, optional, intent(in) :: t2
+    real(mcp), allocatable :: temp(:,:)
+    real(mcp) h, k
+    integer nz, nk, zix, ik
+
+    nk=size(PK,1)
+    nz=size(PK,2)
+
+    allocate(temp(nk,nz))
+
+    h = CP%H0/100
+
+    if(present(t2)) then
+        do ik=1,nk
+            k = M%TransferData(Transfer_kh,ik,1)*h
+            temp(ik,:) = M%TransferData(t1,ik,:)*&
+            M%TransferData(t2,ik,:)*k*pi*twopi*h**3*scalarPower(k,1)
+        end do
+    else
+        temp = M%TransferData(t1,:,:)
     end if
 
     do zix=1,nz
-        call Transfer_GetMatterPowerData(M,Cosmo_PK,1,CP%Transfer%PK_redshifts_index(nz-zix+1))
-        Theory%MPK%matter_power(:,zix) = Cosmo_PK%matpower(:,1)
-        Theory%MPK%ddmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
-        if(use_nonlinear) then
-            call MatterPowerdata_MakeNonlinear(Cosmo_PK)
-            Theory%NL_MPK%matter_power(:,zix) = Cosmo_PK%matpower(:,1)
-            Theory%NL_MPK%ddmatter_power(:,zix) = Cosmo_PK%ddmat(:,1)
-        end if
-        call MatterPowerdata_Free(Cosmo_PK)
+        PK(:,zix) = temp(:,nz-zix+1)
     end do
 
-    end subroutine CAMBCalc_SetPkFromCAMB
+    end subroutine CAMBCalc_TransfersOrPowers
+
+    subroutine CAMBCalc_GetNLandRatios(this,M,Theory)
+    use Transfer
+    class(CAMB_Calculator) :: this
+    class(TCosmoTheoryPredictions) Theory
+    Type(MatterTransferData) M
+    Type(MatterPowerData) :: CPK
+    real(mcp), pointer :: PK(:,:)=>Null()
+    integer nk,nz
+
+    CPK%num_k = Theory%MPK%nx
+    CPK%num_z = Theory%MPK%ny
+
+    !Allocate Theory arrays
+    allocate(Theory%NL_MPK)
+    allocate(Theory%NL_Ratios(CPK%num_k,CPK%num_z))
+
+    !Allocate Dummy Pointer and fill with Linear MPK
+    allocate(PK(CPK%num_k,CPK%num_z))
+    PK=Theory%MPK%z
+
+    allocate(CPK%matpower(CPK%num_k,CPK%num_z))
+    allocate(CPK%ddmat(CPK%num_k,CPK%num_z))
+    allocate(CPK%nonlin_ratio(CPK%num_k,CPK%num_z))
+    allocate(CPK%log_kh(CPK%num_k))
+    allocate(CPK%redshifts(CPK%num_z))
+    CPK%log_kh = Theory%MPK%x
+    CPK%redshifts = Theory%MPK%y
+    CPK%matpower = PK
+
+    !need splines to get nonlinear ratios
+    call MatterPowerdata_getsplines(CPK)
+    call NonLinear_GetRatios(CPK)
+    Theory%NL_Ratios = CPK%nonlin_ratio
+    call MatterPowerdata_Free(CPK)
+
+    PK = PK+2*log(Theory%NL_Ratios)
+    call Theory%NL_MPK%Init(Theory%MPK%x,Theory%MPK%y,PK,.true.)
+
+    deallocate(PK)
+    nullify(PK)
+
+    end subroutine CAMBCalc_GetNLandRatios
 
     subroutine CAMBCalc_InitCAMB(this,CMB,error, DoReion)
     class(CAMB_Calculator) :: this

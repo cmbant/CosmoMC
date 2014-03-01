@@ -1,5 +1,6 @@
     module Interpolation
     use FileUtils
+    use MpiUtils
     implicit none
 
 #ifdef SINGLE
@@ -27,7 +28,7 @@
     procedure :: InitFromFile => TCubicSpline_InitFromFile
     procedure :: InitInterp => TCubicSpline_InitInterp
     procedure :: Value => TCubicSpline_Value
-    FINAL :: TCubicSpline_Free
+    procedure :: Free =>TCubicSpline_Free
     end Type
 
     Type, extends(TInterpolator) :: TInterpGrid2D
@@ -46,7 +47,7 @@
     procedure :: Values => TInterpGrid2D_Values !array of points
     procedure :: Error => TInterpGrid2D_error
     procedure, private :: InitInterp => TInterpGrid2D_InitInterp
-    FINAL :: TInterpGrid2D_Free
+    procedure :: Free =>TInterpGrid2D_Free
     end Type TInterpGrid2D
 
 
@@ -58,7 +59,7 @@
     class(TInterpolator) W
 
     W%Initialized = .true.
-    stop 'TInterpolator not initialized'
+    call W%error('TInterpolator not initialized')
 
     end subroutine TInterpolator_FirstUse
 
@@ -67,7 +68,7 @@
     character(LEN=*), intent(in) :: S
 
     write(*,*) 'Interpolation error: '//trim(S)
-    stop
+    call Mpistop()
 
     end subroutine TInterpolator_error
 
@@ -166,7 +167,7 @@
 
 
     subroutine TCubicSpline_Free(W)
-    Type(TCubicSpline) :: W
+    class (TCubicSpline) :: W
 
     deallocate(W%X)
     deallocate(W%F)
@@ -381,7 +382,7 @@
     end subroutine TInterpGrid2D_InitFromFile
 
     subroutine TInterpGrid2D_Free(W)
-    Type(TInterpGrid2D):: W
+    Class(TInterpGrid2D):: W
 
     if (allocated(W%Wk)) then
         deallocate(W%x)
