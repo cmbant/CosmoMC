@@ -104,7 +104,7 @@
     use MatrixUtils
     integer :: i, j,k,l
     logical :: pre_marged
-    character(LEN=1024), intent(in) :: like_file, sz143_file, ksz_file, tszxcib_file, beam_file
+    character(LEN=*), intent(in) :: like_file, sz143_file, ksz_file, tszxcib_file, beam_file
     logical, save :: needinit=.true.
     real(campc) , allocatable:: fid_cl(:,:), beam_cov(:,:), beam_cov_full(:,:)
     integer if1,if2, ie1, ie2, ii, jj, L2
