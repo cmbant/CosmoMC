@@ -140,6 +140,7 @@ endif
 ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
 PLANCKLIKEFILES +=  $(OUTPUT_DIR)/temp_like.o
 PLANCKLIKEFILES +=  $(OUTPUT_DIR)/pol_like.o
+PLANCKLIKEFILES += $(OUTPUT_DIR)/cliklike_CamSpec.o
 endif
 
 LIKEFILES =  $(OUTPUT_DIR)/DataLikelihoods.o $(OUTPUT_DIR)/calclike.o
@@ -216,7 +217,7 @@ $(OUTPUT_DIR)/Calculator_CAMB.o: $(OUTPUT_DIR)/Calculator_Cosmology.o
 $(OUTPUT_DIR)/cmbtypes.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/Likelihood_Cosmology.o: $(OUTPUT_DIR)/Calculator_Cosmology.o $(OUTPUT_DIR)/CosmoTheory.o
 $(OUTPUT_DIR)/Planck_like.o: $(OUTPUT_DIR)/cmbtypes.o
-$(OUTPUT_DIR)/cmbdata.o: $(OUTPUT_DIR)/Planck_like.o
+$(OUTPUT_DIR)/cmbdata.o: $(OUTPUT_DIR)/Planck_like.o $(PLANCKLIKEFILES)
 $(OUTPUT_DIR)/bbn.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/Interpolation.o
 $(OUTPUT_DIR)/mpk.o: $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/wigglez.o: $(OUTPUT_DIR)/mpk.o
@@ -228,8 +229,7 @@ $(OUTPUT_DIR)/CosmologyConfig.o: $(PARAMETERIZATION) $(OUTPUT_DIR)/GeneralSetup.
 $(OUTPUT_DIR)/supernovae_Union2.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_SNLS.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 
-$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/pol_like.o $(OUTPUT_DIR)/cmbtypes.o
-$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/pol_like.o 
 
 
 ifneq ($(highL),)
