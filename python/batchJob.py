@@ -22,7 +22,7 @@ def nonEmptyFile(fname):
 class dataSet:
     def __init__(self, names, params=None):
         if params is None: params = [(name + '.ini') for name in names]
-        elif: params = self.standardizeParams(params)
+        else: params = self.standardizeParams(params)
         if isinstance(names, basestring): names = [names]
         self.names = names
         self.params = params  # can be an array of items, either ini file name or dictionaries of parameters
@@ -32,17 +32,17 @@ class dataSet:
         data = copy.deepcopy(self)
         data.tag += '_post_' + "_".join(names)
         data.importanceNames = names
-        data.importanceParams = params
-        data.names += names
-        data.params += params
+        data.importanceParams = data.standardizeParams(params)
+        data.names += data.importanceNames
+        data.params += data.importanceParams
         return data
-    
-    def standardizeParams(self,params):
+
+    def standardizeParams(self, params):
         if isinstance(params, dict): params = [params]
         for i in range(len(params)):
-            if isinstance(params[i],basestring) and not '.ini' in params[i]: params[i] +='.ini'
+            if isinstance(params[i], basestring) and not '.ini' in params[i]: params[i] += '.ini'
         return params
-    
+
     def hasName(self, name):
         return name in self.names
 

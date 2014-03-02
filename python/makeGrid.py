@@ -44,6 +44,13 @@ def setMinimize(jobItem, ini):
     ini.params['action'] = 2
     if 'omegak' in jobItem.param_set: ini.params['accuracy_level'] = 1.3
 
+def updateIniParams(ini, params, path):
+        for iniitem in params:
+            if isinstance(iniitem, dict): ini.params.update(iniitem)
+            elif isinstance(iniitem, basestring): ini.defaults.append(path + iniitem)
+            elif isinstance(iniitem, (list, tuple)): updateIniParams(ini, iniitem, path)
+            else: raise Exception('Unknown item in setting .ini/param list')
+
 
 for jobItem in batch.items(wantSubItems=False):
 
@@ -73,15 +80,19 @@ for jobItem in batch.items(wantSubItems=False):
         covmat = batch.basePath + 'planck_covmats/' + jobItem.name + '.covmat'
         if os.path.exists(covmat):
             ini.params['propose_matrix'] = covmat
-            if  settings.newCovmats: ini.params['MPI_Max_R_ProposeUpdate'] = 20
+            if settings.newCovmats: ini.params['MPI_Max_R_ProposeUpdate'] = 20
         else:
             hasCov = False
             ini.params['MPI_Max_R_ProposeUpdate'] = 20
-            covmat_try = [jobItem.name.replace(old, new, 1) for old, new in settings.covrenames if old in jobItem.name]
-            for new1, old1 in settings.covrenames:
-                if old1 in jobItem.name:
-                    name = jobItem.name.replace(old1, new1, 1)
-                    covmat_try += [name.replace(old, new, 1) for old, new in settings.covrenames if old in name]
+            covmat_try = []
+            if 'covRenamer' in dir(settings): covmat_try += settings.covRenamer(jobItem.name)
+            if hasattr(settings, 'covrenames'):
+                covmat_try += [jobItem.name.replace(old, new, 1) for old, new in settings.covrenames if old in jobItem.name]
+                for new1, old1 in settings.covrenames:
+                    if old1 in jobItem.name:
+                        name = jobItem.name.replace(old1, new1, 1)
+                        covmat_try += [name.replace(old, new, 1) for old, new in settings.covrenames if old in name]
+
             for name in covmat_try:
                 covmat = batch.basePath + 'planck_covmats/' + name + '.covmat'
                 if os.path.exists(covmat):
@@ -92,9 +103,7 @@ for jobItem in batch.items(wantSubItems=False):
             if not hasCov: print 'WARNING: no matching specific covmat for ' + jobItem.name
 
         ini.params['start_at_bestfit'] = settings.start_at_bestfit
-        for iniitem in jobItem.data_set.params:
-            if isinstance(iniitem, dict): ini.params.update(iniitem)
-            else: ini.defaults.append(batch.commonPath + iniitem)
+        updateIniParams(ini, jobItem.data_set.params, batch.commonPath)
         for deffile in settings.defaults:
             ini.defaults.append(batch.commonPath + deffile)
 
@@ -111,9 +120,7 @@ for jobItem in batch.items(wantSubItems=False):
             if batch.hasName(imp.name.replace('_post', '')): raise Exception('importance sampling something you already have?')
             for minimize in (False, True):
                 ini = iniFile.iniFile()
-                for inc in imp.importanceSettings:
-                    if isinstance(inc, dict):  ini.params.update(inc)
-                    else: ini.includes.append(batch.commonPath + inc)
+                updateIniParams(ini, imp.importanceSettings, batch.commonPath)
                 if cosmomcAction == 0 and not minimize:
                     for deffile in settings.importanceDefaults:
                         ini.defaults.append(batch.commonPath + deffile)

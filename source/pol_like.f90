@@ -68,7 +68,7 @@
     subroutine pol_calc_like(zlike,  cell_cmbx,cell_cmbe)
     real(campc), dimension(0:) :: cell_cmbx, cell_cmbe
     integer ::  i, j, l, ii,jj,kk
-    real(campc) zlike
+    real(campc) zlike, ztemp
 
     if (.not. allocated(lminX)) then
         print*, 'like_init should have been called before attempting to call calc_like.'
@@ -96,11 +96,11 @@
 
     Y = X_data - X_theory
 
-    zlike = 0.d+00
-    do  i = 1, nX
-        do  j = 1, nX
-            zlike = zlike + Y(i)*Y(j)*c_inv(j, i)
-        end do
+    zlike = 0
+    !$OMP parallel do private(j,ztemp) reduction(+:zlike) schedule(static,16)
+    do  j = 1, nX
+        ztemp= dot_product(Y(j+1:nX), c_inv(j+1:nX, j))
+        zlike=zlike+ (ztemp*2 +c_inv(j, j)*Y(j))*Y(j)
     end do
 
     !  print*, zlike
