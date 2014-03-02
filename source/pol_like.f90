@@ -20,7 +20,7 @@
     use MatrixUtils
     integer :: i, j,k,l
     logical :: pre_marged
-    character(LEN=1024), intent(in) :: like_file
+    character(LEN=*), intent(in) :: like_file
     logical, save :: needinit=.true.
 
     if(.not. needinit) return
