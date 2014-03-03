@@ -83,8 +83,8 @@ class batchArgs():
 
         def filterForDataCompare(self, batch, datatags):
             items = []
-            for tag in [self.batch.normalizeDataTag(data) for data in datatags]:
-                items += [jobItem for jobItem in batch if jobItem.normed_data == tag]
+            for tag, data in zip([self.batch.normalizeDataTag(data) for data in datatags], datatags):
+                items += [jobItem for jobItem in batch if jobItem.datatag == data or jobItem.normed_data == tag]
             return items
 
 
