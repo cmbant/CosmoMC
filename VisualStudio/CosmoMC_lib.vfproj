@@ -81,6 +81,7 @@
 		<File RelativePath="..\source\mpk.f90"/>
 		<File RelativePath="..\source\Planck_like.f90"/>
 		<File RelativePath="..\source\supernovae.f90"/>
+		<File RelativePath="..\source\supernovae_JLA.f90"/>
 		<File RelativePath="..\source\supernovae_SNLS.f90"/>
 		<File RelativePath="..\source\supernovae_Union2.f90"/>
 		<File RelativePath="..\source\wigglez.f90"/></Filter>

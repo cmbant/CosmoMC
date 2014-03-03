@@ -247,10 +247,9 @@
     subroutine GetBlockProposal(this, P, i)
     class(BlockedProposer) :: this
     integer, intent(in) :: i !i must be first in gfortran
-    real(mcp) :: P(:), vec(this%Proposer(i)%n)
+    real(mcp) :: P(:)
 
-    vec = this%Proposer(i)%Proposevec(this%propose_scale) !just stop annoying temp variable warnings..
-    call this%Proposer(i)%UpdateParams(P, vec)
+    call this%Proposer(i)%UpdateParams(P, this%Proposer(i)%Proposevec(this%propose_scale))
 
     end subroutine GetBlockProposal
 

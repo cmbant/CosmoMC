@@ -217,7 +217,7 @@
     LOGICAL  :: snls_read = .FALSE.
     LOGICAL :: snls_prepped = .FALSE.
 
-    PRIVATE :: count_lines, read_snls_lc_data, get_free_lun, read_cov_matrix
+    PRIVATE :: count_lines, read_snls_lc_data, read_cov_matrix
     PRIVATE :: read_snls_absdist_data, match_snls_absdist_indices
 
     PUBLIC :: SNLSLikelihood_Add, SNLSLikelihood
@@ -262,25 +262,6 @@
     CALL snls_prep
 
     end subroutine SNLSLikelihood_Add
-
-
-    !Gets a free lun number, keeping track of those it has already tried
-    SUBROUTINE get_free_lun( lun )
-    IMPLICIT NONE
-    INTEGER, INTENT(out) :: lun
-
-    INTEGER, SAVE :: last_lun = 19
-    LOGICAL :: used
-
-    lun = last_lun
-    DO
-        INQUIRE( unit=lun, opened=used )
-        IF ( .NOT. used ) EXIT
-        lun = lun + 1
-    END DO
-    last_lun = lun
-
-    END SUBROUTINE get_free_lun
 
     !Counts the number of lines in an open file attached to lun,
     ! returning the number of lines in lines and the number of
@@ -337,8 +318,7 @@
     REAL(mcp) :: tmp
 
     IF (Feedback > 2) WRITE(*,*) 'reading: '//trim(filename)
-    CALL get_free_lun( file_unit )
-    OPEN( UNIT=file_unit, FILE=TRIM(filename), FORM='formatted', &
+    OPEN( newunit=file_unit, FILE=TRIM(filename), FORM='formatted', &
     STATUS='old', ERR = 500 )
 
     READ (file_unit, '(I5)', END=200, ERR=100) nfile
@@ -649,8 +629,7 @@
     END DO
 
     !Now read the actual SN data
-    CALL get_free_lun( file_unit )
-    OPEN( UNIT=file_unit, FILE=TRIM(data_file), FORM='formatted', &
+    OPEN( newunit=file_unit, FILE=TRIM(data_file), FORM='formatted', &
     STATUS='old', ERR = 500 )
     !Find the number of lines
     CALL count_lines( file_unit, nlines, nsn )
@@ -666,8 +645,7 @@
 
     !Absolute distance
     IF ( has_absdist ) THEN
-        CALL get_free_lun(file_unit)
-        OPEN( UNIT=file_unit, FILE=TRIM(absdist_file), FORM='formatted', &
+        OPEN( newunit=file_unit, FILE=TRIM(absdist_file), FORM='formatted', &
         STATUS='old', ERR = 500 )
         !Find the number of lines
         CALL count_lines( file_unit, nlines, nabsdist )

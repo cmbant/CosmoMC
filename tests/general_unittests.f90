@@ -132,20 +132,9 @@
 
     end subroutine ifortbug
 
-    function test() result(P)
-    character(LEN=:), pointer :: P
-    P=> Empty_String
-
-    end function
-
-    end module tests
-
 
     program tester
     use tests
-    use memory
-
-    !    call testmem
 
     call RunTests
     end program

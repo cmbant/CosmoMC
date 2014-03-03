@@ -2359,62 +2359,62 @@
         plot_col =  nint(sqrt(num_vars/1.4))
         plot_row = (num_vars +plot_col-1)/plot_col
         call FileMatlab%CreateFile(trim(rootdirname) // '.'//trim(plot_ext))
-        !MatLab file for 1D plots
-        call WritePlotFileInit(FileMatlab%unit,num_vars>3, subplot_size_inch)
-    end if
+            !MatLab file for 1D plots
+            call WritePlotFileInit(FileMatlab%unit,num_vars>3, subplot_size_inch)
+        end if
 
-    LowerUpperLimits = 0
+        LowerUpperLimits = 0
 
-    !Do 1D bins
-    do j = 1,num_vars
-        ix = colix(j)
+        !Do 1D bins
+        do j = 1,num_vars
+            ix = colix(j)
 
-        call Get1DDensity(j)
+            call Get1DDensity(j)
 
-        !Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
-        do ix1 = 1, num_contours
-            marge_limits_bot(ix1,ix) =  has_limits_bot(ix) .and. .not. force_twotail .and. Density1D%P(1) > max_frac_twotail(ix1)
-            marge_limits_top(ix1,ix) =  has_limits_top(ix) .and. .not. force_twotail .and. Density1D%P(Density1D%n) > max_frac_twotail(ix1)
-            if (.not. marge_limits_bot(ix1,ix) .or. .not. marge_limits_top(ix1,ix)) then
+            !Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
+            do ix1 = 1, num_contours
+                marge_limits_bot(ix1,ix) =  has_limits_bot(ix) .and. .not. force_twotail .and. Density1D%P(1) > max_frac_twotail(ix1)
+                marge_limits_top(ix1,ix) =  has_limits_top(ix) .and. .not. force_twotail .and. Density1D%P(Density1D%n) > max_frac_twotail(ix1)
+                if (.not. marge_limits_bot(ix1,ix) .or. .not. marge_limits_top(ix1,ix)) then
                 !give limit
-                call Density1D%Limits(contours(ix1), tail_limit_bot, tail_limit_top, marge_limits_bot(ix1,ix), marge_limits_top(ix1,ix))
+                    call Density1D%Limits(contours(ix1), tail_limit_bot, tail_limit_top, marge_limits_bot(ix1,ix), marge_limits_top(ix1,ix))
                 limfrac = 1-contours(ix1)
                 if (marge_limits_bot(ix1,ix)) then !fix to end of prior range
                     tail_limit_bot = range_min(j)
                 elseif (marge_limits_top(ix1,ix)) then !1 tail limit
                     tail_limit_bot = ConfidVal(ix,limfrac,.false.)
                 else !2 tail limit
-                    tail_confid_bot = ConfidVal(ix,limfrac/2,.false.)
-                end if
-                if (marge_limits_top(ix1,ix)) then
-                    tail_limit_top = range_max(j)
-                elseif (marge_limits_bot(ix1,ix)) then
-                    tail_limit_top = ConfidVal(ix,limfrac,.true.)
-                else
-                    tail_confid_top = ConfidVal(ix,limfrac/2,.true.)
-                end if
-                if (.not. marge_limits_bot(ix1,ix) .and. .not. marge_limits_top(ix1,ix)) then
-                    !Two tail, check if limits are at very differen density
-                    if (abs(Density1D%Prob(tail_confid_top) - Density1D%Prob(tail_confid_bot)) < credible_interval_threshold) then
-                        tail_limit_top=tail_confid_top
-                        tail_limit_bot=tail_confid_bot
-                    end if
-                end if
-                LowerUpperLimits(j,2,ix1) = tail_limit_top
-                LowerUpperLimits(j,1,ix1) = tail_limit_bot
-            else !no limit
-                LowerUpperLimits(j,1,ix1) = range_min(j)
-                LowerUpperLimits(j,2,ix1) = range_max(j)
+                tail_confid_bot = ConfidVal(ix,limfrac/2,.false.)
             end if
-        end do
+            if (marge_limits_top(ix1,ix)) then
+            tail_limit_top = range_max(j)
+        elseif (marge_limits_bot(ix1,ix)) then
+            tail_limit_top = ConfidVal(ix,limfrac,.true.)
+            else
+            tail_confid_top = ConfidVal(ix,limfrac/2,.true.)
+        end if
+        if (.not. marge_limits_bot(ix1,ix) .and. .not. marge_limits_top(ix1,ix)) then
+            !Two tail, check if limits are at very differen density
+            if (abs(Density1D%Prob(tail_confid_top) - Density1D%Prob(tail_confid_bot)) < credible_interval_threshold) then
+                tail_limit_top=tail_confid_top
+                tail_limit_bot=tail_confid_bot
+            end if
+        end if
+        LowerUpperLimits(j,2,ix1) = tail_limit_top
+        LowerUpperLimits(j,1,ix1) = tail_limit_bot
+    else !no limit
+        LowerUpperLimits(j,1,ix1) = range_min(j)
+        LowerUpperLimits(j,2,ix1) = range_max(j)
+    end if
+    end do
 
-        if (.not. no_plots .and. plot_ext=='m') then
-            call FileMatlab%WriteFormat('subplot(%u,%u,%u);',plot_row,plot_col,j)
-            call Write1DplotMatLab(FileMatlab%unit,j);
-            if (prob_label)  write (FileMatlab%unit,*) 'ylabel(''Probability'')'
-            write(FileMatlab%unit,*)  'xlabel('''//   trim(matlabLabel(ix))//''',''FontSize'',lab_fontsize);'
-            write (FileMatlab%unit,*) 'set(gca,''ytick'',[]);hold off;'
-        end if !no plots
+    if (.not. no_plots .and. plot_ext=='m') then
+    call FileMatlab%WriteFormat('subplot(%u,%u,%u);',plot_row,plot_col,j)
+    call Write1DplotMatLab(FileMatlab%unit,j);
+    if (prob_label)  write (FileMatlab%unit,*) 'ylabel(''Probability'')'
+    write(FileMatlab%unit,*)  'xlabel('''//   trim(matlabLabel(ix))//''',''FontSize'',lab_fontsize);'
+        write (FileMatlab%unit,*) 'set(gca,''ytick'',[]);hold off;'
+    end if !no plots
     end do
 
     if (.not. no_plots) then
@@ -2427,237 +2427,237 @@
             call FileTri%CreateFile(trim(rootdirname) // '_tri.'//trim(plot_ext))
             call WritePlotFileInit(FileTri%unit,num_vars>4, subplot_size_inch)
             if (plot_ext=='py') then
-                write(FileTri%unit,'(a)') 'g.triangle_plot(roots, '//trim(python_param_array(triangle_params,triangle_num))//')'
-            elseif (plot_ext=='m') then
-                do i=1, triangle_num
-                    j=triangle_params(i)
-                    call FileTri%WriteFormat('subplot(%u,%u,%u);',triangle_num,triangle_num,(i-1)*triangle_num+i)
-                    call Write1DplotMatLab(FileTri%unit,j)
-                    if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(FileTri%unit)
-                    if (prob_label)  write (FileTri%unit,*) 'ylabel(''Probability'')'
-                    if (j==num_vars) then
-                        write(FileTri%unit,*)  'xlabel('''//   trim(matlabLabel(colix(j)))//''',''FontSize'',lab_fontsize);'
-                    else if (no_triangle_axis_labels) then
-                        write(FileTri%unit,*) 'set(gca,''xticklabel'',[]);'
-                    end if
-                    write (FileTri%unit,*) 'set(gca,''ytick'',[]);hold off;'
-                end do
+            write(FileTri%unit,'(a)') 'g.triangle_plot(roots, '//trim(python_param_array(triangle_params,triangle_num))//')'
+        elseif (plot_ext=='m') then
+        do i=1, triangle_num
+            j=triangle_params(i)
+            call FileTri%WriteFormat('subplot(%u,%u,%u);',triangle_num,triangle_num,(i-1)*triangle_num+i)
+            call Write1DplotMatLab(FileTri%unit,j)
+            if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(FileTri%unit)
+            if (prob_label)  write (FileTri%unit,*) 'ylabel(''Probability'')'
+            if (j==num_vars) then
+                write(FileTri%unit,*)  'xlabel('''//   trim(matlabLabel(colix(j)))//''',''FontSize'',lab_fontsize);'
+            else if (no_triangle_axis_labels) then
+                write(FileTri%unit,*) 'set(gca,''xticklabel'',[]);'
             end if
-        end if
+            write (FileTri%unit,*) 'set(gca,''ytick'',[]);hold off;'
+        end do
+    end if
+    end if
     end if
 
 
-    !do 2D bins and produce matlab file
-    if (plot_2D_param == 0 .and. num_cust2D_plots==0 .and. .not. no_plots) then
+        !do 2D bins and produce matlab file
+        if (plot_2D_param == 0 .and. num_cust2D_plots==0 .and. .not. no_plots) then
         !In this case output the most correlated variable combinations
         write (*,*) 'doing 2D plots for most correlated variables'
         try_t = 1d5
 
-        x=0;y=0;
+    x=0;y=0;
 
-        num_cust2D_plots = 12
-        do j = 1, num_cust2D_plots
-            try_b = -1d5
-            do ix1 =1 ,num_vars
-                do ix2 = ix1+1,num_vars
-                    if (abs(corrmatrix(colix(ix1)-2,colix(ix2)-2)) < try_t .and. &
-                    abs(corrmatrix(colix(ix1)-2,colix(ix2)-2)) > try_b) then
-                        try_b = abs(corrmatrix(colix(ix1)-2,colix(ix2)-2))
-                        x = ix1; y = ix2;
-                    end if
-                end do
-            end do
-            if (try_b == -1d5) then
-                num_cust2D_plots = j-1
-                exit
+    num_cust2D_plots = 12
+    do j = 1, num_cust2D_plots
+        try_b = -1d5
+        do ix1 =1 ,num_vars
+        do ix2 = ix1+1,num_vars
+            if (abs(corrmatrix(colix(ix1)-2,colix(ix2)-2)) < try_t .and. &
+            abs(corrmatrix(colix(ix1)-2,colix(ix2)-2)) > try_b) then
+                try_b = abs(corrmatrix(colix(ix1)-2,colix(ix2)-2))
+                x = ix1; y = ix2;
             end if
-            try_t = try_b
-
-            cust2Dplots(j) = colix(x) + colix(y)*1000
         end do
+    end do
+    if (try_b == -1d5) then
+        num_cust2D_plots = j-1
+        exit
+        end if
+        try_t = try_b
+
+        cust2Dplots(j) = colix(x) + colix(y)*1000
+    end do
     end if
 
 
-    if (num_cust2D_plots == 0) then
-        num_2D_plots = 0
+        if (num_cust2D_plots == 0) then
+            num_2D_plots = 0
 
-        do j= 1, num_vars
-            if (ix_min(j) /= ix_max(j)) then
-                do j2 = j+1, num_vars
-                    if (ix_min(j2) /= ix_max(j2)) then
-                        if (plot_2D_param==0 .or. plot_2D_param == colix(j) .or. plot_2D_param == colix(j2)) &
-                        num_2D_plots = num_2D_plots + 1
-                    end if
-                end do
-            end if
-        end do
-    else
-        num_2D_plots = num_cust2D_plots
-    end if
-
-    done2D= .false.
-    if (num_2D_plots > 0 .and. .not. no_plots) then
-        write (*,*) 'Producing ',num_2D_plots,' 2D plots'
-        filename = trim(rootdirname)//'_2D.'//trim(plot_ext)
-        call File2d%CreateFile(filename)
-        call WritePlotFileInit(File2d%unit,num_2D_plots >=7,subplot_size_inch2)
-        if (plot_ext=='py') write(File2d%unit,'(a)') 'pairs=[]'
-
-        plot_col = nint(sqrt(num_2D_plots/1.4))
-        plot_row = (num_2D_plots +plot_col-1)/plot_col
-        plot_num = 0
-
-        do j= 1, num_vars
-            if (ix_min(j) /= ix_max(j)) then
-                if (plot_2D_param/=0 .or. num_cust2D_plots /= 0) then
-                    if (colix(j) == plot_2D_param) cycle
-                    j2min = 1
-                else
-                    j2min = j+1
-                end if
-
-                do j2 = j2min, num_vars
-                    if (ix_min(j2) /= ix_max(j2)) then
-                        if (plot_2D_param/=0 .and. colix(j2) /= plot_2D_param) cycle
-                        if (num_cust2D_plots /= 0 .and.  &
-                        count(cust2Dplots(1:num_cust2D_plots) == colix(j)*1000 + colix(j2))==0) cycle
-
-                        plot_num = plot_num + 1
-                        done2D(j,j2) = .true.
-                        if (.not. plots_only) call Get2DPlotData(j,j2)
-                        if (plot_ext=='m') then
-                            call File2d%WriteFormat('subplot(%u,%u,%u);',plot_row,plot_col,plot_num)
-                            call Write2DPlotMATLAB(File2d%unit,j,j2,.true.,.true.)
-                            if (plot_row*plot_col > 4 .and. subplot_size_inch<3.5) call CheckMatlabAxes(File2d%unit)
-                        elseif (plot_ext=='py') then
-                            call File2d%WriteFormat('pairs.append([%s,%s])',quoted_param_name_used(j),quoted_param_name_used(j2))
+            do j= 1, num_vars
+                if (ix_min(j) /= ix_max(j)) then
+                    do j2 = j+1, num_vars
+                        if (ix_min(j2) /= ix_max(j2)) then
+                            if (plot_2D_param==0 .or. plot_2D_param == colix(j) .or. plot_2D_param == colix(j2)) &
+                            num_2D_plots = num_2D_plots + 1
                         end if
+                    end do
+                end if
+                end do
+            else
+            num_2D_plots = num_cust2D_plots
+            end if
+
+                done2D= .false.
+                if (num_2D_plots > 0 .and. .not. no_plots) then
+                    write (*,*) 'Producing ',num_2D_plots,' 2D plots'
+                    filename = trim(rootdirname)//'_2D.'//trim(plot_ext)
+                    call File2d%CreateFile(filename)
+                    call WritePlotFileInit(File2d%unit,num_2D_plots >=7,subplot_size_inch2)
+                    if (plot_ext=='py') write(File2d%unit,'(a)') 'pairs=[]'
+
+                        plot_col = nint(sqrt(num_2D_plots/1.4))
+                        plot_row = (num_2D_plots +plot_col-1)/plot_col
+                        plot_num = 0
+
+                        do j= 1, num_vars
+                            if (ix_min(j) /= ix_max(j)) then
+                                if (plot_2D_param/=0 .or. num_cust2D_plots /= 0) then
+                                    if (colix(j) == plot_2D_param) cycle
+                                    j2min = 1
+                                else
+                                    j2min = j+1
+                                end if
+
+                                do j2 = j2min, num_vars
+                                    if (ix_min(j2) /= ix_max(j2)) then
+                                        if (plot_2D_param/=0 .and. colix(j2) /= plot_2D_param) cycle
+                                        if (num_cust2D_plots /= 0 .and.  &
+                                        count(cust2Dplots(1:num_cust2D_plots) == colix(j)*1000 + colix(j2))==0) cycle
+
+                                    plot_num = plot_num + 1
+                                    done2D(j,j2) = .true.
+                                    if (.not. plots_only) call Get2DPlotData(j,j2)
+                                    if (plot_ext=='m') then
+                                        call File2d%WriteFormat('subplot(%u,%u,%u);',plot_row,plot_col,plot_num)
+                                        call Write2DPlotMATLAB(File2d%unit,j,j2,.true.,.true.)
+                                        if (plot_row*plot_col > 4 .and. subplot_size_inch<3.5) call CheckMatlabAxes(File2d%unit)
+                                    elseif (plot_ext=='py') then
+                                        call File2d%WriteFormat('pairs.append([%s,%s])',quoted_param_name_used(j),quoted_param_name_used(j2))
+                                    end if
+                                end if
+                            end do
+                        end if
+                    end do
+                    if (plot_ext=='m') then
+                        if (line_labels) call WriteMatlabLineLabels(File2d)
+                        if (matlab_col/='') call File2D%Write(matlab_col)
+                    elseif (plot_ext=='py') then
+                        call File2D%Write('g.plots_2d(roots,param_pairs=pairs)')
+                    end if
+                    call WritePlotFileExport(File2d%unit, '_2D', plot_col, plot_row)
+                    call File2D%Close()
+                end if
+
+            if (triangle_plot .and. .not. no_plots) then
+                !Add the off-diagonal 2D plots
+                do i = 1, triangle_num
+                    do i2 = i+1, triangle_num
+                        j= triangle_params(i)
+                        j2=triangle_params(i2)
+                        if (.not. Done2D(j2,j) .and. .not. plots_only) call Get2DPlotData(j2,j)
+                        if (plot_ext=='m') then
+                        call FileTri%WriteFormat('subplot(%u,%u,%u);',triangle_num,triangle_num,(i2-1)*triangle_num + i)
+                        call Write2DPlotMATLAB(FileTri%unit,j2,j,i2==triangle_num, i==1,no_triangle_axis_Labels)
+                        if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(FileTri%unit)
                     end if
                 end do
-            end if
-        end do
-        if (plot_ext=='m') then
-            if (line_labels) call WriteMatlabLineLabels(File2d)
-            if (matlab_col/='') call File2D%Write(matlab_col)
-        elseif (plot_ext=='py') then
-            call File2D%Write('g.plots_2d(roots,param_pairs=pairs)')
-        end if
-        call WritePlotFileExport(File2d%unit, '_2D', plot_col, plot_row)
-        call File2D%Close()
-    end if
-
-    if (triangle_plot .and. .not. no_plots) then
-        !Add the off-diagonal 2D plots
-        do i = 1, triangle_num
-            do i2 = i+1, triangle_num
-                j= triangle_params(i)
-                j2=triangle_params(i2)
-                if (.not. Done2D(j2,j) .and. .not. plots_only) call Get2DPlotData(j2,j)
+                end do
                 if (plot_ext=='m') then
-                    call FileTri%WriteFormat('subplot(%u,%u,%u);',triangle_num,triangle_num,(i2-1)*triangle_num + i)
-                    call Write2DPlotMATLAB(FileTri%unit,j2,j,i2==triangle_num, i==1,no_triangle_axis_Labels)
-                    if (triangle_num > 2 .and. subplot_size_inch<3.5) call CheckMatlabAxes(FileTri%unit)
+                    if (no_triangle_axis_labels) then
+                        write(FileTri%unit,*) 'h = get(gcf,''Children'');'
+                        write(FileTri%unit,*) 'for i=1:length(h)'
+                        write(FileTri%unit,*) 'p=get(h(i),''position'');'
+                        write(FileTri%unit,*) 'sc=1.2;w=max(p(3)*sc,p(4)*sc);'
+                        write(FileTri%unit,*) 'p(1)=p(1)-(w-p(3))/2; p(2)=p(2)-(w-p(4))/2;p(3)=w;p(4)=w;'
+                        write(FileTri%unit,*) 'set(h(i),''position'',p);'
+                        write(FileTri%unit,*) 'end;'
+                    end if
+                    if (matlab_col/='') write (FileTri%unit,*) trim(matlab_col)
                 end if
-            end do
-        end do
-        if (plot_ext=='m') then
-            if (no_triangle_axis_labels) then
-                write(FileTri%unit,*) 'h = get(gcf,''Children'');'
-                write(FileTri%unit,*) 'for i=1:length(h)'
-                write(FileTri%unit,*) 'p=get(h(i),''position'');'
-                write(FileTri%unit,*) 'sc=1.2;w=max(p(3)*sc,p(4)*sc);'
-                write(FileTri%unit,*) 'p(1)=p(1)-(w-p(3))/2; p(2)=p(2)-(w-p(4))/2;p(3)=w;p(4)=w;'
-                write(FileTri%unit,*) 'set(h(i),''position'',p);'
-                write(FileTri%unit,*) 'end;'
+                call WritePlotFileExport(FileTri%unit, '_tri', triangle_num+1, triangle_num+1)
+                call FileTri%Close()
             end if
-            if (matlab_col/='') write (FileTri%unit,*) trim(matlab_col)
-        end if
-        call WritePlotFileExport(FileTri%unit, '_tri', triangle_num+1, triangle_num+1)
-        call FileTri%Close()
-    end if
 
-    !Do 3D plots (i.e. 2D scatter plots with coloured points)
+            !Do 3D plots (i.e. 2D scatter plots with coloured points)
 
-    if (num_3D_plots /=0 .and. .not. no_plots) then
-        write (*,*) 'producing ',num_3D_plots, '2D colored scatter plots'
-        filename = trim(rootdirname)//'_3D.'//trim(plot_ext)
-        call File3D%CreateFile(filename)
-        call WritePlotFileInit(File3D%unit,num_3D_plots>1,subplot_size_inch3)
+            if (num_3D_plots /=0 .and. .not. no_plots) then
+            write (*,*) 'producing ',num_3D_plots, '2D colored scatter plots'
+                filename = trim(rootdirname)//'_3D.'//trim(plot_ext)
+            call File3D%CreateFile(filename)
+            call WritePlotFileInit(File3D%unit,num_3D_plots>1,subplot_size_inch3)
 
-        if (plot_ext=='m') then
-            write (File3D%unit,*) 'clf;colormap(''jet'');'
-            if (mod(num_3D_plots,2)==0 .and. num_3D_plots < 11) then
-                plot_col = num_3D_plots/2
-            else
-                plot_col =  nint(sqrt(1.*num_3D_plots))
+                if (plot_ext=='m') then
+                    write (File3D%unit,*) 'clf;colormap(''jet'');'
+                    if (mod(num_3D_plots,2)==0 .and. num_3D_plots < 11) then
+                    plot_col = num_3D_plots/2
+                    else
+                        plot_col =  nint(sqrt(1.*num_3D_plots))
+                    end if
+                plot_row = (num_3D_plots +plot_col-1)/plot_col
+                write(File3D%unit,'(a)') 'pts=load(fullfile(plotdir,''' // trim(rootname)//'_single.txt''));'
+            elseif (plot_ext=='py') then
+                write(File3D%unit,'(a)') 'sets=[]'
             end if
-            plot_row = (num_3D_plots +plot_col-1)/plot_col
-            write(File3D%unit,'(a)') 'pts=load(fullfile(plotdir,''' // trim(rootname)//'_single.txt''));'
-        elseif (plot_ext=='py') then
-            write(File3D%unit,'(a)') 'sets=[]'
-        end if
-        do j=1, num_3D_plots
-            call NameMapping%ReadIndices(plot_3D(j), tmp_params, 3)
-            !x, y, color
-            ix1 = indexOf(tmp_params(1)+2,colix,num_vars)+2
-            ix2 = indexOf(tmp_params(2)+2,colix,num_vars)+2
-            ix3 = indexOf(tmp_params(3)+2,colix,num_vars)+2
-            if (any([ix1,ix2,ix3]<=0)) then
-                write (*,*) 'Warning: 3D plot parameters not in used parameters'
-                continue
-            end if
-            !            if (ix3<1) ix3 = MostCorrelated2D(ix1,ix2,ix3)
-            if (plot_ext=='m') then
+            do j=1, num_3D_plots
+                call NameMapping%ReadIndices(plot_3D(j), tmp_params, 3)
+                !x, y, color
+                ix1 = indexOf(tmp_params(1)+2,colix,num_vars)+2
+                ix2 = indexOf(tmp_params(2)+2,colix,num_vars)+2
+                ix3 = indexOf(tmp_params(3)+2,colix,num_vars)+2
+                if (any([ix1,ix2,ix3]<=0)) then
+                    write (*,*) 'Warning: 3D plot parameters not in used parameters'
+                    continue
+                end if
+                !            if (ix3<1) ix3 = MostCorrelated2D(ix1,ix2,ix3)
+                if (plot_ext=='m') then
                 call File3D%WriteFormat('subplot(%u,%u,%u);', plot_row,plot_col,j)
-                write (File3D%unit,*) '%Do params ',tmp_params(1:3)
-                call File3D%WriteFormat('scatter(pts(:,%u),pts(:,%u),3,pts(:,%u));', ix1,ix2,ix3)
+                    write (File3D%unit,*) '%Do params ',tmp_params(1:3)
+                    call File3D%WriteFormat('scatter(pts(:,%u),pts(:,%u),3,pts(:,%u));', ix1,ix2,ix3)
                 fmt = ''',''FontSize'',lab_fontsize);'
                 write (File3D%unit,*) 'xlabel('''//trim(matlabLabel(tmp_params(1)+2))//trim(fmt)
                 write (File3D%unit,*) 'ylabel('''//trim(matlabLabel(tmp_params(2)+2))//trim(fmt)
                 write (File3D%unit,*) 'set(gca,''FontSize'',axes_fontsize); ax = gca;'
                 write (File3D%unit,*) 'hbar = colorbar(''horiz'');axes(hbar);'
 
-                write (File3D%unit,*) 'xlabel('''//trim(matlabLabel(tmp_params(3)+2))//trim(fmt)
-                write (File3D%unit,*) 'set(gca,''FontSize'',axes_fontsize);'
-                if (num_3D_plots > 2 .and. matlab_version < 7) then
-                    write (File3D%unit,*) ' p = get(ax,''Position'');'
-                    write (File3D%unit,*) 'set(ax,''Position'',[p(1) (p(2)+p(4)/8) p(3) p(4)]);'
-                elseif (matlab_version==7) then
-                    !workaround for colorbar/label overlap bug
-                    write (File3D%unit,*) 'fix_colorbar(hbar,ax); axes(ax);'
+                    write (File3D%unit,*) 'xlabel('''//trim(matlabLabel(tmp_params(3)+2))//trim(fmt)
+                    write (File3D%unit,*) 'set(gca,''FontSize'',axes_fontsize);'
+                    if (num_3D_plots > 2 .and. matlab_version < 7) then
+                        write (File3D%unit,*) ' p = get(ax,''Position'');'
+                        write (File3D%unit,*) 'set(ax,''Position'',[p(1) (p(2)+p(4)/8) p(3) p(4)]);'
+                    elseif (matlab_version==7) then
+                        !workaround for colorbar/label overlap bug
+                        write (File3D%unit,*) 'fix_colorbar(hbar,ax); axes(ax);'
+                    end if
+                elseif (plot_ext=='py') then
+                    call File3D%WriteFormat('sets.append([''%s'',''%s'',''%s''])',tmp_params(1),tmp_params(2),tmp_params(3))
                 end if
-            elseif (plot_ext=='py') then
-                call File3D%WriteFormat('sets.append([''%s'',''%s'',''%s''])',tmp_params(1),tmp_params(2),tmp_params(3))
+            end do
+            if (plot_ext=='py') then
+                write(File3D%unit,'(a)') 'g.plots_3d(roots,sets)'
             end if
-        end do
-        if (plot_ext=='py') then
-            write(File3D%unit,'(a)') 'g.plots_3d(roots,sets)'
+            call WritePlotFileExport(File3D%unit, '_3D', plot_col, plot_row)
+            call File3D%close()
         end if
-        call WritePlotFileExport(File3D%unit, '_3D', plot_col, plot_row)
-        call File3D%close()
-    end if
 
-    !write out stats
-    !Marginalized
-    if (.not. plots_only) &
-    call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
-    LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels)
+            !write out stats
+            !Marginalized
+            if (.not. plots_only) &
+            call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
+            LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels)
 
-    call NameMapping%WriteFile(plot_data_dir//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
+        call NameMapping%WriteFile(plot_data_dir//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
 
     !Limits from global likelihood
     if (.not. plots_only) then
-        call LikeFile%CreateFile(trim(rootdirname)//'.likestats')
-        call GetChainLikeSummary(LikeFile%unit)
-        write(LikeFile%unit,'(a)') 'param  bestfit        lower1         upper1         lower2         upper2'
-        do j=1, num_vars
-            write(LikeFile%unit,'(1I5,5E15.7,"   '//trim(labels(colix(j)))//'")') colix(j)-2, coldata(colix(j),bestfit_ix),&
-            minval(coldata(colix(j),0:ND_cont1)), &
-            maxval(coldata(colix(j),0:ND_cont1)), &
-            minval(coldata(colix(j),0:ND_cont2)), &
-            maxval(coldata(colix(j),0:ND_cont2))
-        end do
-        call LikeFile%Close()
+    call LikeFile%CreateFile(trim(rootdirname)//'.likestats')
+    call GetChainLikeSummary(LikeFile%unit)
+    write(LikeFile%unit,'(a)') 'param  bestfit        lower1         upper1         lower2         upper2'
+    do j=1, num_vars
+        write(LikeFile%unit,'(1I5,5E15.7,"   '//trim(labels(colix(j)))//'")') colix(j)-2, coldata(colix(j),bestfit_ix),&
+        minval(coldata(colix(j),0:ND_cont1)), &
+        maxval(coldata(colix(j),0:ND_cont1)), &
+        minval(coldata(colix(j),0:ND_cont2)), &
+        maxval(coldata(colix(j),0:ND_cont2))
+    end do
+    call LikeFile%Close()
     end if
 
     !Comment this out if your compiler doesn't support "system"

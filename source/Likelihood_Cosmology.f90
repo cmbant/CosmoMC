@@ -85,8 +85,9 @@
 
     call this%TCosmologyLikelihood%InitConfig(Config)
 
-    select type (Calc => this%Calculator)
+    select type (Calc => Config%Calculator)
     class is (TCosmologyCalculator)
+        !Just store for convenient also pointer type cast to the right thing
         this%Calculator => Calc
         class default 
         call MpiStop('TCosmoCalcLikelihood requires TCosmologyCalculator')

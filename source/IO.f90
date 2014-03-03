@@ -320,7 +320,7 @@
         call F%WriteLeftAligned(nameFormat,Names%NameOrNumber(colix(j)-2))
         call F%WriteInLineItems(mean(j), sddev(j))
         do i=1, num_contours
-            call F%WriteInLine(cont_lines(j,1:2,i))
+            call F%WriteInLineItems(cont_lines(j,1,i),cont_lines(j,2,i)) !don't send array section to avoid ifort 14 bug
             if (has_limits_bot(i,colix(j)).and. has_limits_top(i,colix(j))) then
                 tag='none'
             elseif (has_limits_bot(i,colix(j))) then
@@ -332,7 +332,7 @@
             end if
             call F%WriteInLine('  '//tag, '(1A7)')
         end do
-        call F%Write('   '//labels(colix(j)))
+        call F%WriteTrim('   '//labels(colix(j)))
     end do
     call F%Close()
 
