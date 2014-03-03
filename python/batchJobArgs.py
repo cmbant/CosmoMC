@@ -53,8 +53,8 @@ class batchArgs():
         def dataMatches(self, jobItem):
             if self.args.datatag is None:
                 if self.args.data is None:
-                    return self.args.skip_data is None or not self.args.skip_data in jobItem.data_set[0]
-                return self.args.data in jobItem.data_set[0]
+                    return self.args.skip_data is None or not self.args.skip_data in jobItem.data_set.names
+                return self.args.data in jobItem.data_set.names
             else:
                 return jobItem.datatag == self.args.datatag
 
@@ -83,8 +83,8 @@ class batchArgs():
 
         def filterForDataCompare(self, batch, datatags):
             items = []
-            for tag in [self.batch.normalizeDataTag(data) for data in datatags]:
-                items += [jobItem for jobItem in batch if jobItem.normed_data == tag]
+            for tag, data in zip([self.batch.normalizeDataTag(data) for data in datatags], datatags):
+                items += [jobItem for jobItem in batch if jobItem.datatag == data or jobItem.normed_data == tag]
             return items
 
 

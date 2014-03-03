@@ -1,5 +1,5 @@
 
-import os, sys, pickle, ResultObjs, time
+import os, sys, pickle, ResultObjs, time, copy
 
 
 def readobject(directory=None):
@@ -19,22 +19,46 @@ def nonEmptyFile(fname):
     return os.path.exists(fname) and os.path.getsize(fname) > 0
 
 
+class dataSet:
+    def __init__(self, names, params=None):
+        if params is None: params = [(name + '.ini') for name in names]
+        else: params = self.standardizeParams(params)
+        if isinstance(names, basestring): names = [names]
+        self.names = names
+        self.params = params  # can be an array of items, either ini file name or dictionaries of parameters
+        self.tag = "_".join(self.names)
+
+    def extendForImportance(self, names, params):
+        data = copy.deepcopy(self)
+        data.tag += '_post_' + "_".join(names)
+        data.importanceNames = names
+        data.importanceParams = data.standardizeParams(params)
+        data.names += data.importanceNames
+        data.params += data.importanceParams
+        return data
+
+    def standardizeParams(self, params):
+        if isinstance(params, dict): params = [params]
+        for i in range(len(params)):
+            if isinstance(params[i], basestring) and not '.ini' in params[i]: params[i] += '.ini'
+        return params
+
+    def hasName(self, name):
+        return name in self.names
+
+
 class jobItem:
 
     def __init__(self, path, param_set, data_set, base='base'):
         self.param_set = param_set
+        if not isinstance(data_set, dataSet): data_set = dataSet(data_set[0], data_set[1])
         self.data_set = data_set
         self.base = base
-        paramtag = self.base
-        for param in param_set:
-            paramtag = paramtag + '_' + param
-        self.dataname_set = data_set[0]
-        datatag = "_".join(self.dataname_set)
-        self.datatag = datatag
-        self.paramtag = paramtag
-        self.name = paramtag + '_' + datatag
+        self.paramtag = "_".join([base] + param_set)
+        self.datatag = data_set.tag
+        self.name = self.paramtag + '_' + self.datatag
         self.batchPath = path
-        self.chainPath = path + paramtag + os.sep + datatag + os.sep
+        self.chainPath = path + self.paramtag + os.sep + self.datatag + os.sep
         self.chainRoot = self.chainPath + self.name
         self.distPath = self.chainPath + 'dist' + os.sep
         self.distRoot = self.distPath + self.name
@@ -53,10 +77,11 @@ class jobItem:
         self.importanceItems = []
         for (imp, ini, arr) in [(x[0], x[1], x) for x in importanceRuns]:
             if len(arr) > 2 and not arr[2].wantImportance(self): continue
-            if len(set(imp).intersection(self.dataname_set)) > 0:
+            if len(set(imp).intersection(self.data_set.names)) > 0:
                 print 'importance job duplicating parent data set:' + self.name
                 continue
-            job = jobItem(self.batchPath, self.param_set, self.data_set)
+            data = self.data_set.extendForImportance(imp, ini)
+            job = jobItem(self.batchPath, self.param_set, data)
             job.importanceTag = "_".join(imp)
             job.importanceSettings = ini
             tag = '_post_' + job.importanceTag
@@ -66,14 +91,13 @@ class jobItem:
             job.datatag = self.datatag + tag
             job.isImportanceJob = True
             job.parent = self
-            job.dataname_set = imp + job.dataname_set
             job.group = self.group
             job.makeIDs()
             self.importanceItems.append(job)
 
     def makeIDs(self):
         self.normed_params = "_".join(sorted(self.param_set))
-        self.normed_data = "_".join(sorted(self.dataname_set))
+        self.normed_data = "_".join(sorted(self.data_set.names))
         self.normed_name = self.base
         if len(self.normed_params) > 0: self.normed_name += '_' + self.normed_params
         self.normed_name += '_' + self.normed_data

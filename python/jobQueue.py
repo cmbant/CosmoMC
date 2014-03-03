@@ -93,7 +93,7 @@ def submitJob(jobName, paramFiles, pbs_template='job_script', numnodes=1, omp=4,
     for param in paramFiles:
         ini = param
         if ini[-4:] != '.ini': ini += '.ini'
-        commands.append('time mpirun -ppn %i -np %i ./cosmomc %s > ./scripts/%s.log 2>&1' % (ppn, nchains, ini, jobName))
+        commands.append('time mpirun -ppn %i -np %i ./cosmomc %s > ./scripts/%s.log 2>&1' % (chainsPerNode, nchains, ini, jobName))
     vals['COMMAND'] = "\n".join(commands)
     script = replacePlaceholders(open(pbs_template, 'r').read(), vals)
     scriptName = './scripts/' + jobName + '_subscript'

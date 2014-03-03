@@ -1,4 +1,4 @@
-import os, fnmatch, batchJobArgs
+import batchJobArgs
 
 Opts = batchJobArgs.batchArgs('Find chains which have failed or not converged.', importance=True, converge=True)
 
