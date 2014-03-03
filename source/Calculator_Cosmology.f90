@@ -2,7 +2,6 @@
     use cmbtypes
     use CosmoTheory
     use settings
-    use IniObjects
     use GeneralTypes
     implicit none
     private

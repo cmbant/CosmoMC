@@ -184,8 +184,8 @@ $(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/settings.o
 $(OUTPUT_DIR)/samples.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o
 $(OUTPUT_DIR)/GetDist.o: $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/samples.o
 
-$(OUTPUT_DIR)/likelihood.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o
-$(OUTPUT_DIR)/GeneralTypes.o: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/IO.o
+$(OUTPUT_DIR)/likelihood.o: $(OUTPUT_DIR)/GeneralTypes.o 
+$(OUTPUT_DIR)/GeneralTypes.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/IO.o
 $(OUTPUT_DIR)/BaseParameters: $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/IO.o
 $(OUTPUT_DIR)/ParamSet.o: $(OUTPUT_DIR)/BaseParameters.o $(OUTPUT_DIR)/samples.o
 $(OUTPUT_DIR)/DataLikelihoods.o: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/ParamSet.o $(DATAMODULES)
@@ -207,7 +207,7 @@ $(OUTPUT_DIR)/Calculator_CAMB.o: $(OUTPUT_DIR)/Calculator_Cosmology.o
 $(OUTPUT_DIR)/cmbtypes.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/Likelihood_Cosmology.o: $(OUTPUT_DIR)/Calculator_Cosmology.o $(OUTPUT_DIR)/CosmoTheory.o
 $(OUTPUT_DIR)/Planck_like.o: $(OUTPUT_DIR)/cmbtypes.o
-$(OUTPUT_DIR)/cmbdata.o: $(OUTPUT_DIR)/Planck_like.o
+$(OUTPUT_DIR)/cmbdata.o: $(OUTPUT_DIR)/Planck_like.o $(PLANCKLIKEFILES)
 $(OUTPUT_DIR)/bbn.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/Interpolation.o
 $(OUTPUT_DIR)/mpk.o: $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/wigglez.o: $(OUTPUT_DIR)/mpk.o

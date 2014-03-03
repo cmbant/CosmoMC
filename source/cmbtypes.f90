@@ -106,7 +106,6 @@
     contains
 
     subroutine TCosmologyParameterization_SetNumbers(this, slow_num, semi_slow_num)
-    use likelihood
     class(TCosmologyParameterization) :: this
     integer, intent (in) :: slow_num, semi_slow_num
     integer i

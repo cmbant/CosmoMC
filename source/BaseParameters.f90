@@ -22,7 +22,7 @@
         real(mcp), allocatable :: PMin(:), PMax(:), StartWidth(:), PWidth(:), center(:)
         logical(mcp), allocatable :: varying(:)
         Type(ParamGaussPrior) :: GaussPriors
-        Type(int_arr_pointer), allocatable :: param_blocks(:)
+        Type(int_arr), allocatable :: param_blocks(:)
         real(mcp), dimension(:,:), allocatable ::  covariance_estimate
         logical :: covariance_is_diagonal, covariance_has_new
         Type(TParamNames) :: NameMapping

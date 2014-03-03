@@ -4,10 +4,9 @@
     contains
 
     subroutine SNLikelihood_Add(LikeList, Ini)
-    use IniObjects
-    use likelihood
     use SNLS
     use Union2
+    use likelihood
     use settings
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
