@@ -272,19 +272,19 @@
     allocate(w(like%num_mpk_points_use))
 
     if (like%needs_nonlinear_pk) then
-        if(.not. associated(Theory%NL_MPK))then
+        if(.not. allocated(Theory%NL_MPK))then
             write(*,*) 'ERROR: Your Theory%NL_MPK derived type is not initialized. Make sure you are'
             write(*,*) '       calling a SetPk routine and filling your power spectra.'
             call MPIstop()
         end if
-        PK => Theory%NL_MPK
+        PK=>Theory%NL_MPK
     else
-        if(.not. associated(Theory%MPK))then
+        if(.not. allocated(Theory%MPK))then
             write(*,*) 'ERROR: Your Theory%MPK derived type is not initialized. Make sure you are'
             write(*,*) '       calling a SetPk routine and filling your power spectra.'
             call MPIstop()
         end if
-        PK => Theory%MPK
+        PK=>Theory%MPK
     end if
 
     chisq = 0
@@ -301,16 +301,16 @@
         a_scl = 1
     end if
 
-    if(abs(like%exact_z(1)-PK%redshifts(like%exact_z_index(1)))>1.d-3)then
+    if(abs(like%exact_z(1)-PK%y(like%exact_z_index(1)))>1.d-3)then
         write(*,*)'ERROR: MPK redshift does not match the value stored'
-        write(*,*)'       in the PK%redshifts array.'
+        write(*,*)'       in the PK%y array.'
         call MpiStop()
     end if
 
     do i=1, like%num_mpk_kbands_use
         !Errors from using matter_power_minkh at lower end should be negligible
-        k_scaled(i)=max(exp(PK%log_kh(1)),a_scl*like%PKData%mpk_k(i))
-        mpk_lin(i)=PK%PowerAt_zbin(k_scaled(i),like%exact_z_index(1))/a_scl**3
+        k_scaled(i)=max(exp(PK%x(1)),a_scl*like%PKData%mpk_k(i))
+        mpk_lin(i)=PK%PowerAt(k_scaled(i),like%exact_z(1))/a_scl**3
     end do
 
 
@@ -410,3 +410,4 @@
     end function MPK_LnLike
 
     end module mpk
+

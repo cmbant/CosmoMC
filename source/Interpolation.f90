@@ -1,5 +1,6 @@
     module Interpolation
     use FileUtils
+    use MpiUtils
     implicit none
 
 #ifdef SINGLE
@@ -36,9 +37,8 @@
         !      VOL. 22, NO. 3, September, 1996, P.  357--361.
         REAL(GI), private, allocatable :: wk(:,:,:)
         REAL(GI), allocatable :: x(:), y(:)
-        REAL(GI), pointer :: z(:,:) => NULL()
+        REAL(GI), allocatable :: z(:,:)
         integer nx, ny
-        logical :: owns_z = .false.
     contains
     procedure :: Init => TInterpGrid2D_Init
     procedure :: InitFromFile => TInterpGrid2D_InitFromFile
@@ -58,7 +58,7 @@
     class(TInterpolator) W
 
     W%Initialized = .true.
-    stop 'TInterpolator not initialized'
+    call W%error('TInterpolator not initialized')
 
     end subroutine TInterpolator_FirstUse
 
@@ -66,8 +66,7 @@
     class(TInterpolator):: W
     character(LEN=*), intent(in) :: S
 
-    write(*,*) 'Interpolation error: '//trim(S)
-    stop
+    call MpiStop('Interpolation error: '//trim(S))
 
     end subroutine TInterpolator_error
 
@@ -271,12 +270,11 @@
     end subroutine TInterpGrid2D_InitInterp
 
     !F2003 wrappers by AL, 2013
-    subroutine TInterpGrid2D_Init(W, x, y, z, copyz)
+    subroutine TInterpGrid2D_Init(W, x, y, z)
     class(TInterpGrid2D):: W
     REAL(GI), INTENT(IN)      :: x(:)
     REAL(GI), INTENT(IN)      :: y(:)
-    REAL(GI), INTENT(IN), pointer :: z(:,:)
-    logical, intent(in), optional :: copyz 
+    REAL(GI), INTENT(IN)      :: z(:,:)
 
     W%nx = size(x)
     W%ny = size(y) 
@@ -284,13 +282,7 @@
     allocate(W%y(W%ny))
     W%x = x
     W%y = y
-    W%owns_z=.false.
-    if (present(copyz)) W%owns_z = copyz
-    if (W%owns_z) then
-        allocate(W%z(size(z,1),size(z,2)), source = z)
-    else
-        W%z=>z
-    end if
+    allocate(W%z,source = z)
 
     call W%InitInterp()
 
@@ -368,7 +360,6 @@
         W%ny = ny 
         allocate(W%x(W%nx))
         allocate(W%y(W%ny))
-        W%owns_z = .true.
         allocate(W%z(nx,ny))
         status=0
         call F%Rewind()
@@ -387,8 +378,8 @@
         deallocate(W%x)
         deallocate(W%y)
         deallocate(W%Wk)
+        deallocate(W%z)
     end if
-    if (W%owns_z) deallocate(W%z)
     W%Initialized = .false.
 
     end subroutine TInterpGrid2D_Free

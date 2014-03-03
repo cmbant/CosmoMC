@@ -19,7 +19,7 @@
         !Just convenience class for likelihoods which use a CosmologyCalculator
         class(TCosmologyCalculator), pointer :: Calculator => null()
     contains
-    procedure :: InitWithCalculator => TCosmoCalcLikelihood_InitWithCalculator
+    procedure :: InitConfig => TCosmoCalcLikelihood_InitConfig
     end type
 
     public TCosmoCalcLikelihood, TCosmologyLikelihood
@@ -28,8 +28,8 @@
 
     function GetLogLike(like, Params, Theory, DataParams) result(LogLike)
     class(TCosmologyLikelihood) :: like
-    class(*) :: Params
-    class(*) :: Theory
+    class(TTheoryParams) :: Params
+    class(TTheoryPredictions) :: Theory
     real(mcp) :: DataParams(:)
     real(mcp) LogLike
 
@@ -79,17 +79,20 @@
     end function LogLike
 
 
-    subroutine TCosmoCalcLikelihood_InitWithCalculator(this, Calc)
+    subroutine TCosmoCalcLikelihood_InitConfig(this, Config)
     class(TCosmoCalcLikelihood) :: this
-    class(*), target :: Calc
+    class(TGeneralConfig), target :: Config
 
-    select type (Calc)
+    call this%TCosmologyLikelihood%InitConfig(Config)
+
+    select type (Calc => Config%Calculator)
     class is (TCosmologyCalculator)
+        !Just store for convenient also pointer type cast to the right thing
         this%Calculator => Calc
         class default 
         call MpiStop('TCosmoCalcLikelihood requires TCosmologyCalculator')
     end select
 
-    end subroutine TCosmoCalcLikelihood_InitWithCalculator
+    end subroutine TCosmoCalcLikelihood_InitConfig
 
     end module Likelihood_Cosmology

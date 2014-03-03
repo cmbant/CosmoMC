@@ -1,15 +1,14 @@
 
     module GeneralTypes
     use settings
-    use likelihood
     use ObjectLists
     use IO
     implicit none
     private
 
-    type int_arr_pointer
-        integer, dimension(:), pointer :: p
-    end type int_arr_pointer
+    type int_arr
+        integer, dimension(:), allocatable :: p
+    end type int_arr
 
     type, extends(TSaveLoadStateObject) :: TCheckpointable
     contains
@@ -100,9 +99,48 @@
     procedure :: WriteModel
     end Type TCalculationAtParamPoint
 
+    integer, parameter :: LikeNameLen = 80
 
-    public int_arr_pointer,TCheckpointable, TTheoryParams, TTheoryIntermediateCache, TCalculationAtParamPoint, TGeneralConfig, &
-    & TConfigClass, TTheoryPredictions, TTheoryCalculator, TParameterization, GenericParameterization
+    !Would like to have likelihood stuff in separate file, but fortran module dependency rules make that very difficult.
+    type, extends(TConfigClass) :: TDataLikelihood
+        integer :: speed = 0  !negative for slow likelihoods, larger positive for faster
+        character(LEN=LikeNameLen) :: name = ''
+        character(LEN=LikeNameLen) :: LikelihoodType= ''
+        character(LEN=LikeNameLen) :: version = ''
+        Type(TParamNames) :: nuisance_params
+        !Internally calculated
+        logical :: dependent_params(max_num_params) = .false.
+        integer, allocatable :: nuisance_indices(:)
+        integer, allocatable :: derived_indices(:)
+        integer :: new_param_block_start, new_params
+    contains
+    procedure :: InitConfig => TDataLikelihood_InitConfig
+    procedure :: GetLogLike => TDataLikelihood_GetLogLike
+    procedure :: WriteLikelihoodData => TDataLikelihood_WriteLikelihoodData
+    procedure :: derivedParameters  => TDataLikelihood_derivedParameters
+    procedure :: loadParamNames => TDataLikelihood_loadParamNames
+    procedure :: checkConflicts => TDataLikelihood_checkConflicts
+    end type TDataLikelihood
+
+    !This is the global list of likelihoods we will use
+    Type, extends(TObjectList) :: TLikelihoodList
+        integer :: first_fast_param =0
+        integer :: num_derived_parameters = 0
+    contains
+    procedure :: Item => LikelihoodItem
+    procedure :: WriteLikelihoodContribs
+    procedure :: AddNuisanceParameters
+    procedure :: Compare => CompareLikes
+    procedure :: checkAllConflicts
+    procedure :: WriteDataForLikelihoods
+    procedure :: addLikelihoodDerivedParams
+    end type TLikelihoodList
+
+    Type(TLikelihoodList), target, save :: DataLikelihoods
+
+    public int_arr,TCheckpointable, TTheoryParams, TTheoryIntermediateCache, TCalculationAtParamPoint, TGeneralConfig, &
+    & TConfigClass, TTheoryPredictions, TTheoryCalculator, TParameterization, GenericParameterization, &
+    & TDataLikelihood, TLikelihoodList, DataLikelihoods, LikeNameLen
 
     contains
 
@@ -402,13 +440,11 @@
     class(TDataLikelihood), pointer :: DataLike
     integer i
 
-    if (associated(this%Calculator)) then
-        call this%Calculator%InitForLikelihoods()
-        do i=1,DataLikelihoods%Count
-            DataLike=>DataLikelihoods%Item(i)
-            call DataLike%InitWithCalculator(this%Calculator)
-        end do
-    end if
+    if (associated(this%Calculator)) call this%Calculator%InitForLikelihoods()
+    do i=1,DataLikelihoods%Count
+        DataLike=>DataLikelihoods%Item(i)
+        call DataLike%InitConfig(this)
+    end do
 
     end subroutine TGeneralConfig_InitForLikelihoods
 
@@ -426,4 +462,223 @@
     class(TSettingIni) :: Ini
     end subroutine TObjectWithParams_ReadParams
 
-    end module GeneralTypes
+
+    !!!TDataLikelihood
+
+    function TDataLikelihood_GetLogLike(like, Params, Theory, DataParams) result(LogLike)
+    class(TDataLikelihood) :: like
+    class(TTheoryParams) :: Params
+    class(TTheoryPredictions) :: Theory
+    real(mcp) :: DataParams(:)
+    real(mcp) LogLike
+
+    stop 'GetLogLike should not be overridden'
+    logLike = LogZero
+
+    end function TDataLikelihood_GetLogLike
+
+
+    subroutine TDataLikelihood_WriteLikelihoodData(like,Theory,DataParams, root)
+    class(TDataLikelihood) :: like
+    class(TTheoryPredictions) :: Theory
+    real(mcp), intent(in) :: DataParams(:)
+    character(LEN=*), intent(in) :: root
+    !Write out any derived data that might be useful for the likelihood (e.g. foreground model)
+    end subroutine TDataLikelihood_WriteLikelihoodData
+
+
+    subroutine TDataLikelihood_InitConfig(this, Config)
+    class(TDataLikelihood) :: this
+    class(TGeneralConfig), target :: config
+
+    call this%TConfigClass%InitConfig(Config)
+
+    end subroutine TDataLikelihood_InitConfig
+
+
+    function TDataLikelihood_derivedParameters(like, Theory, DataParams) result(derived)
+    class(TDataLikelihood) :: like
+    class(TTheoryPredictions) :: Theory
+    real(mcp) :: derived(like%nuisance_params%num_derived)
+    real(mcp) :: DataParams(:)
+    !Calculate any derived parameters internal to the likelihood that should be output
+    !Number matches derived names defined in nuisance_params .paramnames file
+    derived=0
+    end function TDataLikelihood_derivedParameters
+
+    subroutine TDataLikelihood_loadParamNames(like, fname)
+    class(TDataLikelihood) :: like
+    character(LEN=*), intent(in) :: fname
+
+    call like%nuisance_params%init(fname)
+
+    end subroutine TDataLikelihood_loadParamNames
+
+    function TDataLikelihood_checkConflicts(like, full_list) result(OK)
+    !if for some reasons various likelihoods cannot be used at once
+    !check here for conflicts after full list of likelihoods has been read in
+    class(TDataLikelihood) :: like
+    class(TLikelihoodList) :: full_list
+    logical :: OK
+
+    OK=.true.
+
+    end function TDataLikelihood_checkConflicts
+
+
+    !!!TLikelihoodList
+
+    function LikelihoodItem(L, i) result(P)
+    Class(TLikelihoodList) :: L
+    integer, intent(in) :: i
+    Class(TDataLikelihood), pointer :: P
+
+    select type (like => L%Items(i)%P)
+    class is (TDataLikelihood)
+        P => like
+        class default
+        stop 'List contains non-TDataLikelihood item'
+    end select
+
+    end function LikelihoodItem
+
+    subroutine WriteLikelihoodContribs(L, aunit, likelihoods)
+    Class(TLikelihoodList) :: L
+    integer, intent(in) :: aunit
+    real(mcp), intent(in) :: likelihoods(*)
+    integer i
+    Class(TDataLikelihood), pointer :: LikeItem
+
+    do i=1,L%Count
+        LikeItem =>  L%Item(i)
+        write (aunit,'(2f11.3)',advance='NO') likelihoods(i),likelihoods(i)*2
+        write(aunit,'(a)',advance='NO') '   '//trim(LikeItem%LikelihoodType)//': '//trim(LikeItem%name)
+        if (LikeItem%Version/='') write(aunit,'(a)',advance='NO') ' '//trim(LikeItem%Version)
+        write(aunit,'(a)') ''
+    end do
+
+    end subroutine WriteLikelihoodContribs
+
+
+    subroutine WriteDataForLikelihoods(L, P, Theory, fileroot)
+    Class(TLikelihoodList) :: L
+    real(mcp), intent(in) :: P(:)
+    character(LEN=*), intent(in) :: fileroot
+    class(TTheoryPredictions), intent(in) :: Theory
+    integer i
+    Class(TDataLikelihood), pointer :: LikeItem
+
+    do i=1,L%Count
+        LikeItem => L%Item(i)
+        call LikeItem%WriteLikelihoodData(Theory,P(LikeItem%nuisance_indices),fileroot)
+    end do
+
+    end subroutine WriteDataForLikelihoods
+
+
+    integer function CompareLikes(this, R1, R2) result(comp)
+    Class(TLikelihoodList) :: this
+    class(*) R1,R2
+
+    select type (RR1 => R1)
+    class is (TDataLikelihood)
+        select type (RR2 => R2)
+        class is (TDataLikelihood)
+            comp = RR1%speed - RR2%speed
+            return
+        end select
+    end select
+
+    end function CompareLikes
+
+
+    subroutine AddNuisanceParameters(L, Names)
+    Class(TLikelihoodList) :: L
+    Type(TParamNames) :: Names
+    Type(TParamNames), pointer :: NewNames
+    Class(TDataLikelihood), pointer :: DataLike
+    integer i,j, baseDerived
+
+    call L%Sort
+    L%first_fast_param=0
+    baseDerived = Names%num_derived
+    do i=1,L%Count
+        DataLike=>L%Item(i)
+        NewNames => DataLike%nuisance_params
+        if (Feedback>0 .and. MPIrank==0) print *,'adding parameters for: '//trim(DataLIke%name)
+        DataLike%new_param_block_start = Names%num_MCMC +1
+        !        if (DataLike%nuisance_params%num_derived>0) call MpiStop('No support for likelihood derived params yet')
+        call Names%Add(NewNames)
+        if (Names%num_MCMC > max_num_params) call MpiStop('increase max_data_params in settings.f90')
+        DataLike%new_params = Names%num_MCMC - DataLike%new_param_block_start + 1
+        allocate(DataLike%nuisance_indices(NewNames%num_MCMC))
+        if (NewNames%num_MCMC/=0) then
+            do j=1, NewNames%num_MCMC
+                DataLike%nuisance_indices(j) = Names%index(NewNames%name(j))
+            end do
+            if (any(DataLike%nuisance_indices==-1)) call MpiStop('AddNuisanceParameters: unmatched data param')
+            DataLike%dependent_params(DataLike%nuisance_indices) = .true.
+            if (Feedback>1 .and. MPIrank==0) print *,trim(DataLike%name)//' data param indices:', DataLike%nuisance_indices
+            if (L%first_fast_param==0 .and. DataLike%speed >=0 .and. &
+            DataLike%new_params>0) L%first_fast_param = DataLike%new_param_block_start
+        end if
+    end do
+    do i=1,L%Count
+        !Add likelihood-derived parameters, after full set numbering has been dermined above
+        DataLike=>L%Item(i)
+        NewNames => DataLike%nuisance_params
+        if (NewNames%num_derived>0) then
+            allocate(DataLike%derived_indices(NewNames%num_derived))
+            do j=1, NewNames%num_derived
+                DataLike%derived_indices(j) = Names%index(NewNames%name(j+NewNames%num_MCMC)) - Names%num_MCMC
+            end do
+            if (Feedback>1 .and. MPIrank==0) print *,trim(DataLike%name)//' derived param indices:', DataLike%derived_indices
+            if (any(DataLike%derived_indices<=0)) call MpiStop('AddNuisanceParameters: unmatched derived param')
+        end if
+    end do
+    L%num_derived_parameters = Names%num_derived - baseDerived
+
+    end subroutine AddNuisanceParameters
+
+
+    subroutine checkAllConflicts(L)
+    Class(TLikelihoodList) :: L
+    Class(TDataLikelihood), pointer :: DataLike
+    integer i
+
+    do i=1,L%Count
+        DataLike=>L%Item(i)
+        if (.not. DataLike%checkConflicts(L)) &
+        call MpiStop('Likelihood conflict reported by '//trim(DataLike%Name))
+    end do
+
+    end subroutine checkAllConflicts
+
+    subroutine addLikelihoodDerivedParams(L, P, Theory, derived)
+    class(TLikelihoodList) :: L
+    real(mcp), allocatable :: derived(:)
+    class(TTheoryPredictions) :: Theory
+    real(mcp) :: P(:)
+    real(mcp), allocatable :: allDerived(:)
+    Class(TDataLikelihood), pointer :: DataLike
+    integer i, stat
+    integer :: num_in = 0
+    integer :: num_derived = 0
+
+    if (L%num_derived_parameters==0) return
+
+    if (allocated(derived)) num_in = size(derived)
+    num_derived = L%num_derived_parameters + num_in
+    allocate(allDerived(num_derived))
+    if (num_in >= 0) allDerived(1:num_in) = derived
+    call move_alloc(allDerived, derived)
+
+    do i=1,L%Count
+        DataLike=>L%Item(i)
+        if (allocated(DataLike%derived_indices)) then
+            Derived(DataLike%derived_indices) = DataLike%derivedParameters(Theory, P(DataLike%nuisance_indices))
+        end if
+    end do
+
+    end subroutine addLikelihoodDerivedParams
+    end module

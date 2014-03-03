@@ -151,7 +151,7 @@
     subroutine Init(this, parameter_blocks, slow_block_max, oversample_fast, propose_scale)
     !slow_block_max determines which parameter blocks are grouped together as being 'slow'
     Class(BlockedProposer), target :: this
-    type(int_arr_pointer) :: parameter_blocks(:)
+    type(int_arr) :: parameter_blocks(:)
     integer, intent(in) :: slow_block_max
     integer used_blocks(size(parameter_blocks))
     integer, intent(in), optional :: oversample_fast
@@ -247,10 +247,9 @@
     subroutine GetBlockProposal(this, P, i)
     class(BlockedProposer) :: this
     integer, intent(in) :: i !i must be first in gfortran
-    real(mcp) :: P(:), vec(this%Proposer(i)%n)
+    real(mcp) :: P(:)
 
-    vec = this%Proposer(i)%Proposevec(this%propose_scale) !just stop annoying temp variable warnings..
-    call this%Proposer(i)%UpdateParams(P, vec)
+    call this%Proposer(i)%UpdateParams(P, this%Proposer(i)%Proposevec(this%propose_scale))
 
     end subroutine GetBlockProposal
 

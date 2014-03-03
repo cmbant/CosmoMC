@@ -1780,7 +1780,8 @@
 
     integer x,y,j,j2, i2, num_2D_plots, num_cust2D_plots
     integer num_3D_plots
-    character(LEN=80) contours_str, plot_3D(20), bin_limits
+    character(LEN=:), allocatable :: contours_str
+    character(LEN=80) plot_3D(20), bin_limits
     integer thin_factor, outliers
     integer plot_2D_param, j2min
     real(mcp) try_b, try_t
@@ -1908,7 +1909,7 @@
     end if
     do ix=3, ncols
         if (auto_label) then
-            labels(ix) = IntToStr(ix-2) 
+            labels(ix) = IntToStr(ix-2)
             if (no_names) then
                 NameMapping%name(ix-2) = trim(labels(ix))
                 NameMapping%label(ix-2) = trim(labels(ix))
@@ -2079,8 +2080,8 @@
     contours_str = ''
     do i=1, num_contours
         contours(i) = Ini%Read_Double(numcat('contour',i))
-        if (i>1) contours_str = concat(contours_str,'; ')
-        contours_str = concat(contours_str, Ini%Read_String(numcat('contour',i)))
+        if (i>1) contours_str = contours_str // '; '
+        contours_str = contours_str // Ini%Read_String(numcat('contour',i))
         max_frac_twotail(i) = Ini%Read_Double(numcat('max_frac_twotail',i), exp(-dinvnorm((1-contours(i))/2)**2/2))
     end do
     if (.not. no_tests) then
@@ -2649,6 +2650,7 @@
     if (.not. plots_only) then
         call LikeFile%CreateFile(trim(rootdirname)//'.likestats')
         call GetChainLikeSummary(LikeFile%unit)
+        call LikeFile%NewLine()
         write(LikeFile%unit,'(a)') 'param  bestfit        lower1         upper1         lower2         upper2'
         do j=1, num_vars
             write(LikeFile%unit,'(1I5,5E15.7,"   '//trim(labels(colix(j)))//'")') colix(j)-2, coldata(colix(j),bestfit_ix),&

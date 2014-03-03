@@ -511,6 +511,7 @@ weighting function or parameter mapping.</ul>
 <A NAME="Addons"><h2>Add-ons and extra datasets</h2></A>
 Many old add-ons are unlikely to work with this version of CosmoMC. I will add ones here if and when they are updated.
 <UL>
+<LI><A HREF="http://www.slac.stanford.edu/~amantz/work/fgas14/">fgas</A> (Relaxed Galaxy Clusters)
 <LI><A HREF="http://lakme.lbl.gov/~sheejong/cosmomcDR8/">SDSS DR8</a> BAO data
 </UL>
 <!--
@@ -537,8 +538,10 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <LI><B>xxx 2014</B><BR>
 <UL>
 <LI>Major restructuring of main code using Fortran 2008: structure supports additional cosmology calculator codes, etc.
+<LI>New JLA supernovae likelihood module (<a href="http://arxiv.org/abs/1401.4064">arXiv:1401.4064</A>)
 <LI>Added DR11 BAO module changes and data from <A HREF="http://www.sdss3.org/science/boss_publications.php">SDSS</A>
 <LI>Functioning support for using CosmoMC as a generic sampler
+<LI>Mpk functions now use 2D bicupic interpolation (thanks Jason Dossett)
 <LI>MatterPowerAt_Z interpolation bug fix
 <LI>.likestats files include mean likelihood numbers; python tables updated accordingly
 <LI>python/runMPI.py added to replace perl scripts; based on a templated queue submission script, e.g. provided job_script.
