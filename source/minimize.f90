@@ -338,7 +338,6 @@
             last_best = best_like
             StartLike = best_like/temperature
             LikeCalcMCMC%temperature = temperature
-            print *, 'StartLike', StartLike
 
             call MCMC%InitWithPropose(LikecalcMCMC,null(), propose_scale=scale*sqrt(temperature))
             call MCMC%SetCovariance(BaseParams%covariance_estimate)

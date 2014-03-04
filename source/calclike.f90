@@ -227,7 +227,6 @@
     class(TTheoryLikeCalculator) :: this
     class(TCalculationAtParamPoint) :: Params
     real(mcp) LogLike
-    
 
     call this%SetTheoryParams(Params)
     LogLike = this%Config%Parameterization%NonBaseParameterPriors(this%TheoryParams)
