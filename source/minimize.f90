@@ -323,8 +323,8 @@
     Params = this%MinParams
 
     if (this%minimize_mcmc_refine_num>0) then
-        if (Feedback > 0) print *, 'Refining minimimum using low temp MCMC'
-        if (Feedback > 0) print *,'Current logLike: ', best_like
+        if (Feedback > 0) print *,MpiRank,'Refining minimimum using low temp MCMC'
+        if (Feedback > 0) print *,MpiRank, 'Current logLike: ', best_like
 
         scale = 2
         temperature = this%minimize_refine_temp
@@ -334,10 +334,11 @@
         do
             allocate(TMetropolisSampler::MCMC)
 
-            if (Feedback > 0) print *,'Minimize MCMC with temp', temperature
+            if (Feedback > 0) print *,MpiRank,'Minimize MCMC with temp', temperature
             last_best = best_like
             StartLike = best_like/temperature
             LikeCalcMCMC%temperature = temperature
+            print *, 'StartLike', StartLike
 
             call MCMC%InitWithPropose(LikecalcMCMC,null(), propose_scale=scale*sqrt(temperature))
             call MCMC%SetCovariance(BaseParams%covariance_estimate)
@@ -347,7 +348,7 @@
                 if (MCMC%MaxLike/=logZero) then
                     print *,MpiRank, 'MCMC MaxLike = ', MCMC%MaxLike*temperature
                 else
-                    print *,MpiRank, 'MCMC chain not moved, chain best:', MCMC%MaxLike*temperature
+                    print *,MpiRank, 'MCMC chain not moved'
                 end if
             end if
 
@@ -356,18 +357,18 @@
                 checkLike=LikeCalcMCMC%GetLogLike(this%MinParams)*temperature
                 !same as MCMC%MaxLike*temperature but want to get everything computed
                 if (Feedback>0) print *,MpiRank, 'check likes, best_like:', &
-                & real([checklike, MCMC%MaxLike*temperature, best_like]) !avoid recursive IO
-            best_like = MCMC%MaxLike*temperature
-            call Params%Clear(keep=this%MinParams)
-            Params = this%MinParams
-        end if
-        deallocate(MCMC)
-        if (last_best - best_like < this%minimize_loglike_tolerance &
-        .and. temperature < 4*this%minimize_loglike_tolerance/num_params_used) exit
-        if (last_best - best_like < 2*sqrt(num_params_used*temperature)) &
-        Temperature = Temperature/ this%minimize_temp_scale_factor
-    end do
-    deallocate(LikeCalcMCMC)
+                & real([checklike, MCMC%MaxLike*temperature, best_like]) !this
+                best_like = MCMC%MaxLike*temperature
+                call Params%Clear(keep=this%MinParams)
+                Params = this%MinParams
+            end if
+            deallocate(MCMC)
+            if (last_best - best_like < this%minimize_loglike_tolerance &
+            .and. temperature < 4*this%minimize_loglike_tolerance/num_params_used) exit
+            if (last_best - best_like < 2*sqrt(num_params_used*temperature)) &
+            Temperature = Temperature/ this%minimize_temp_scale_factor
+        end do
+        deallocate(LikeCalcMCMC)
     end if
 
     is_best_bestfit=.true.
