@@ -161,7 +161,7 @@
         call Matrix_Inverse(covInv)
     end if
     X = Params%P(params_used) - BaseParams%Center(params_used)
-    LogLike = dot_product(X, matmul(covInv, X))2/2
+    LogLike = dot_product(X, matmul(covInv, X))/2
 
     end function TLikeCalculator_TestLikelihoodFunction
 
