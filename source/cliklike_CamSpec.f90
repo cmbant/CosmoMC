@@ -216,17 +216,15 @@
     character(LEN=*), intent(in) :: root
     real(mcp) , allocatable ::  C_foregrounds(:,:)
     integer L
-    character(LEN=80) fmt
     Type(TTextFile) F
 
     allocate(C_foregrounds(CAMSpec_lmax_foreground,Nspec))
     C_foregrounds=0
-    
+
     call compute_fg(C_foregrounds,DataParams, CAMSpec_lmax_foreground)
-    call F%CreateFilke(trim(root)//'.camspec_foregrounds')
-    fmt = concat('(1I6,',Nspec,'E15.5)')
+    call F%CreateFile(trim(root)//'.camspec_foregrounds')
     do l = 2, CAMSpec_lmax_foreground
-        write (F%unit,fmt) l, C_foregrounds(l,:)*l*(l+1)
+        write (F%unit,'(1I6,*(E15.5))') l, C_foregrounds(l,:)*l*(l+1)
     end do
     call F%Close()
 
