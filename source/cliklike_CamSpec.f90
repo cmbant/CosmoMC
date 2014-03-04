@@ -211,7 +211,7 @@
 
     subroutine CAMSpec_WriteLikelihoodData(like,Theory,DataParams, root)
     Class(CamSpeclikelihood) :: like
-    class(*) :: Theory
+    class(TTheoryPredictions) :: Theory
     real(mcp), intent(in) :: DataParams(:)
     character(LEN=*), intent(in) :: root
     real(mcp) , allocatable ::  C_foregrounds(:,:)
@@ -220,7 +220,6 @@
 
     allocate(C_foregrounds(CAMSpec_lmax_foreground,Nspec))
     C_foregrounds=0
-
     call compute_fg(C_foregrounds,DataParams, CAMSpec_lmax_foreground)
     call F%CreateFile(trim(root)//'.camspec_foregrounds')
     do l = 2, CAMSpec_lmax_foreground
@@ -232,7 +231,7 @@
 
     function CamSpec_derivedParameters(like, Theory, DataParams) result(derived)
     class(CamSpeclikelihood) :: like
-    class(*) :: Theory
+    class(TTheoryPredictions) :: Theory
     real(mcp) :: derived(like%nuisance_params%num_derived)
     real(mcp) :: DataParams(:)
     real(mcp) , allocatable ::  C_foregrounds(:,:)
