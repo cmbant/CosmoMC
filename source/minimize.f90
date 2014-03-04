@@ -347,7 +347,6 @@
                 if (MCMC%MaxLike/=logZero) then
                     print *,MpiRank, 'MCMC MaxLike = ', MCMC%MaxLike*temperature
                 else
-                    print *,MpiRank, 'MCMC chain not moved'
                 end if
             end if
 

@@ -145,7 +145,6 @@
     end subroutine TLikeCalculator_ReadParams
 
     function TLikeCalculator_TestLikelihoodFunction(this,Params) result(LogLike)
-    use RandUtils
     class(TLikeCalculator) :: this
     class(TCalculationAtParamPoint) Params
     real(mcp) :: LogLike
@@ -162,7 +161,7 @@
         call Matrix_Inverse(covInv)
     end if
     X = Params%P(params_used) - BaseParams%Center(params_used)
-    LogLike = dot_product(X, matmul(covInv, X))**2/2! + Gaussian1()*0.1
+    LogLike = dot_product(X, matmul(covInv, X))2/2
 
     end function TLikeCalculator_TestLikelihoodFunction
 
