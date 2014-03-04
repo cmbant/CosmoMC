@@ -278,11 +278,9 @@
 
     W%nx = size(x)
     W%ny = size(y) 
-    allocate(W%x(W%nx))
-    allocate(W%y(W%ny))
-    W%x = x
-    W%y = y
-    allocate(W%z,source = z)
+    allocate(W%x(W%nx), source = x)
+    allocate(W%y(W%ny), source = y)
+    allocate(W%z(size(z,1),size(z,2)), source = z)
 
     call W%InitInterp()
 

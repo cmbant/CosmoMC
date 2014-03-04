@@ -933,8 +933,6 @@
     end if
     CalcLnLike = chisq/2
 
-
-
     end function CalcLnLike
 
 

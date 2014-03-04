@@ -12,6 +12,7 @@
         real(mcp), allocatable :: test_cov_matrix(:,:)
     contains
     procedure :: AddLike
+    procedure :: AddLikeTemp
     procedure :: GetLogLikeBounds
     procedure :: GetLogPriors
     procedure :: GetLogLike
@@ -65,10 +66,25 @@
         if (LikeToAdd == logZero) then
             CurrentLike = LogZero
         else
-            CurrentLike = CurrentLike + LikeToAdd/this%Temperature
+            CurrentLike = CurrentLike + LikeToAdd
         end if
     end if
     end subroutine AddLike
+
+    subroutine AddLikeTemp(this, CurrentLike, LikeToAdd)
+    class(TLikeCalculator) :: this
+    real(mcp), intent(in) :: LikeToAdd
+    real(mcp) CurrentLike
+
+    if (CurrentLike/=LogZero) then
+        if (LikeToAdd == logZero) then
+            CurrentLike = LogZero
+        else
+            CurrentLike = CurrentLike + LikeToAdd/this%Temperature
+        end if
+    end if
+    end subroutine AddLikeTemp
+
 
     function GetLogLikeBounds(this,Params)
     class(TLikeCalculator) :: this
@@ -108,12 +124,12 @@
     GetLogLike = this%GetLogLikeBounds(Params)
     if (GetLogLike==LogZero) return
     if (this%test_likelihood) then
-        call this%AddLike(GetLogLike,this%TestLikelihoodFunction(Params))
+        call this%AddLikeTemp(GetLogLike,this%TestLikelihoodFunction(Params))
     else
-        call this%AddLike(GetLogLike,this%GetLogLikeMain(Params))
+        call this%AddLikeTemp(GetLogLike,this%GetLogLikeMain(Params))
     end if
     if (GetLogLike==LogZero) return
-    call this%AddLike(GetLogLike,this%getLogPriors(Params%P))
+    call this%AddLikeTemp(GetLogLike,this%getLogPriors(Params%P))
 
     end function GetLogLike
 
@@ -145,7 +161,6 @@
     end subroutine TLikeCalculator_ReadParams
 
     function TLikeCalculator_TestLikelihoodFunction(this,Params) result(LogLike)
-    use RandUtils
     class(TLikeCalculator) :: this
     class(TCalculationAtParamPoint) Params
     real(mcp) :: LogLike
@@ -162,7 +177,7 @@
         call Matrix_Inverse(covInv)
     end if
     X = Params%P(params_used) - BaseParams%Center(params_used)
-    LogLike = dot_product(X, matmul(covInv, X))**2/2! + Gaussian1()*0.1
+    LogLike = dot_product(X, matmul(covInv, X))/2
 
     end function TLikeCalculator_TestLikelihoodFunction
 
@@ -207,10 +222,12 @@
 
 
 
-    function TheoryLike_GetLogLikeMain(this, Params) result(LogLike)!Get -Ln(Likelihood) for chains
+    function TheoryLike_GetLogLikeMain(this, Params) result(LogLike)
+    !Get -Ln(Likelihood), not accounting for temperature
     class(TTheoryLikeCalculator) :: this
     class(TCalculationAtParamPoint) :: Params
     real(mcp) LogLike
+    
 
     call this%SetTheoryParams(Params)
     LogLike = this%Config%Parameterization%NonBaseParameterPriors(this%TheoryParams)
@@ -261,11 +278,11 @@
     this%ChangeMask = .true.
 
     call this%SetTheoryParams(Params)
-    call this%AddLike(LogLike,this%Config%Parameterization%NonBaseParameterPriors(this%TheoryParams))
+    call this%AddLikeTemp(LogLike,this%Config%Parameterization%NonBaseParameterPriors(this%TheoryParams))
     if (LogLike == logZero) return
-    call this%AddLike(LogLike, this%GetLogLikeWithTheorySet(do_like))
+    call this%AddLikeTemp(LogLike, this%GetLogLikeWithTheorySet(do_like))
     if (LogLike == logZero) return
-    call this%AddLike(LogLike, this%GetLogPriors(Params%P))
+    call this%AddLikeTemp(LogLike, this%GetLogPriors(Params%P))
 
     end function TheoryLike_GetLogLikePost
 
