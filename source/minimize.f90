@@ -204,9 +204,9 @@
             XL(i) = -1d10
             XU(i) = 1d10
         else
-            XL(i) = (BaseParams%PMin(this%minimize_indices(i))-BaseParams%center(this%minimize_indices(i))) &
+            XL(i) = (BaseParams%PMin(this%minimize_indices(i))-this%origin(this%minimize_indices(i))) &
             / this%used_param_scales(this%minimize_indices_used(i))
-            XU(i) = (BaseParams%PMax(this%minimize_indices(i))-BaseParams%center(this%minimize_indices(i))) &
+            XU(i) = (BaseParams%PMax(this%minimize_indices(i))-this%origin(this%minimize_indices(i))) &
             / this%used_param_scales(this%minimize_indices_used(i))
         end if
     end do
@@ -353,19 +353,21 @@
 
             if (MCMC%MaxLike/=logZero .and. MCMC%MaxLike*temperature < best_like) then
                 this%MinParams%P  = MCMC%MaxLikeParams
-                checkLike=LikeCalcMCMC%GetLogLike(this%MinParams)*temperature !same as MCMC%MaxLike*temperature but want to get everything computed
-                if (Feedback>0) print *,MpiRank, 'check likes, best_like:', real([checklike, MCMC%MaxLike*temperature, best_like]) !avoid recursive IO
-                best_like = MCMC%MaxLike*temperature
-                call Params%Clear(keep=this%MinParams)
-                Params = this%MinParams
-            end if
-            deallocate(MCMC)
-            if (last_best - best_like < this%minimize_loglike_tolerance &
-            .and. temperature < 4*this%minimize_loglike_tolerance/num_params_used) exit
-            if (last_best - best_like < 2*sqrt(num_params_used*temperature)) &
-            Temperature = Temperature/ this%minimize_temp_scale_factor
-        end do
-        deallocate(LikeCalcMCMC)
+                checkLike=LikeCalcMCMC%GetLogLike(this%MinParams)*temperature
+                !same as MCMC%MaxLike*temperature but want to get everything computed
+                if (Feedback>0) print *,MpiRank, 'check likes, best_like:', &
+                & real([checklike, MCMC%MaxLike*temperature, best_like]) !avoid recursive IO
+            best_like = MCMC%MaxLike*temperature
+            call Params%Clear(keep=this%MinParams)
+            Params = this%MinParams
+        end if
+        deallocate(MCMC)
+        if (last_best - best_like < this%minimize_loglike_tolerance &
+        .and. temperature < 4*this%minimize_loglike_tolerance/num_params_used) exit
+        if (last_best - best_like < 2*sqrt(num_params_used*temperature)) &
+        Temperature = Temperature/ this%minimize_temp_scale_factor
+    end do
+    deallocate(LikeCalcMCMC)
     end if
 
     is_best_bestfit=.true.
