@@ -40,6 +40,7 @@
     procedure, private :: ReadArrayFunc
     procedure, private :: WriteItemSub
     procedure, private :: WriteArray
+    procedure, private :: WriteOneAndArray
     procedure, private :: WriteArray2
     procedure, private :: WriteItems
     procedure, private  :: WriteSizedArray1
@@ -47,7 +48,7 @@
     procedure, private  :: ReadSizedArray_R
     procedure, private  :: ReadSizedArray_D
     procedure, private  :: ReadSizedArray_I
-    generic :: Write => WriteItems, WriteArray, WriteArray2
+    generic :: Write => WriteItems, WriteArray, WriteArray2, WriteOneAndArray
     generic :: Read => ReadItems, ReadArray, ReadArray2
     generic :: ReadItem => ReadItemFunc, ReadArrayFunc, ReadArray2Func
     generic :: ReadString => ReadStringSub
@@ -90,6 +91,7 @@
     procedure, private :: DefaultAdvance
     procedure, private :: WriteItem => TTextFile_WriteItem
     procedure, private :: WriteArray => TTextFile_WriteArray
+    procedure, private :: WriteOneAndArray => TTextFile_WriteOneAndArray
     procedure, private :: WriteArray2 => WriteArray2Txt
     procedure, private :: ReadItemSub => ReadItemTxt
     procedure, private :: ReadArray => ReadArrayTxt
@@ -580,6 +582,16 @@
 
     end subroutine WriteSizedArray2
 
+    subroutine WriteOneAndArray(this, I, R)
+    class(TFileStream) :: this
+    class(*), intent(in) :: I
+    class(*), intent(in) :: R(:)
+
+    call this%WriteItemSub(I)
+    call this%WriteArray(R)
+
+    end subroutine WriteOneAndArray
+
     subroutine WriteArray(this, R, n) 
     class(TFileStream) :: this
     class(*), intent(in) :: R(1:)
@@ -855,6 +867,17 @@
     integer, intent(in), optional :: n
     call this%WriteArrayTxt(R,number=n,advance=.true.)
     end subroutine TTextFile_WriteArray
+
+
+    subroutine TTextFile_WriteOneAndArray(this, I, R)
+    class(TTextFile) :: this
+    class(*), intent(in) :: I
+    class(*), intent(in) :: R(:)
+
+    call this%WriteInlineItem(I)
+    call this%WriteArrayTxt(R)
+
+    end subroutine TTextFile_WriteOneAndArray
 
     subroutine WriteItemTxt(this, str, form, advance)
     class(TTextFile) :: this

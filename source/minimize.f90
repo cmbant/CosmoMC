@@ -18,6 +18,7 @@
         integer, allocatable  :: rotatable_params_used(:)
         integer :: num_rotatable = 0
         integer :: num_rot = 0
+        real(mcp), allocatable :: origin(:)
         real(mcp), allocatable :: paramRot(:,:)
         integer, allocatable :: min_params_rot(:)
     contains
@@ -88,13 +89,13 @@
     associate (minimize_indices => this%minimize_indices)
         if (this%num_rot>0) then
             P%P(minimize_indices(this%min_params_rot)) = matmul(this%paramRot,vect(this%min_params_rot)) &
-            + BaseParams%center(this%minimize_indices(this%min_params_rot))
+            + this%origin(this%minimize_indices(this%min_params_rot))
         end if
 
         do i=1, size(minimize_indices)
             if (.not. any(this%min_params_rot==i)) then
                 ii=minimize_indices(i)
-                P%P(ii)=vect(i)*this%used_param_scales(this%minimize_indices_used(i)) + BaseParams%center(ii)
+                P%P(ii)=vect(i)*this%used_param_scales(this%minimize_indices_used(i)) + this%origin(ii)
             end if
         end do
 
@@ -275,6 +276,8 @@
     else
         Params%P(1:num_params) = BaseParams%center(1:num_params)
     end if
+    if (.not. allocated(this%origin)) allocate(this%Origin(num_params))
+    this%origin = Params%P(1:num_params)
     this%MinParams = Params
     ! scale the params so they are all roughly the same order of magnitude
     !normalized parameter bounds
@@ -295,7 +298,7 @@
         if (Feedback>0) print*,'minmizing all parameters'
         allocate(this%minimize_indices(num_params_used), source=params_used)
         allocate(this%minimize_indices_used(num_params_used), source=[(I, I=1, num_params_used)])
-        
+
         best_like = this%FindBestFit_indices(num_params_used,vect)
         deallocate(this%minimize_indices, this%minimize_indices_used)
         last_like = best_like
@@ -349,10 +352,12 @@
             end if
 
             if (MCMC%MaxLike/=logZero .and. MCMC%MaxLike*temperature < best_like) then
-                Params%P  = MCMC%MaxLikeParams
-                checkLike=LikeCalcMCMC%GetLogLike(Params)*temperature
-                print *,MpiRank, 'check like, best_like:', checklike, best_like !avoid recursive IO
+                this%MinParams%P  = MCMC%MaxLikeParams
+                checkLike=LikeCalcMCMC%GetLogLike(this%MinParams)*temperature !same as MCMC%MaxLike*temperature but want to get everything computed
+                if (Feedback>0) print *,MpiRank, 'check likes, best_like:', real([checklike, MCMC%MaxLike*temperature, best_like]) !avoid recursive IO
                 best_like = MCMC%MaxLike*temperature
+                call Params%Clear(keep=this%MinParams)
+                Params = this%MinParams
             end if
             deallocate(MCMC)
             if (last_best - best_like < this%minimize_loglike_tolerance &
