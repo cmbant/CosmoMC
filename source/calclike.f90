@@ -145,6 +145,7 @@
     end subroutine TLikeCalculator_ReadParams
 
     function TLikeCalculator_TestLikelihoodFunction(this,Params) result(LogLike)
+    use RandUtils
     class(TLikeCalculator) :: this
     class(TCalculationAtParamPoint) Params
     real(mcp) :: LogLike
@@ -161,7 +162,7 @@
         call Matrix_Inverse(covInv)
     end if
     X = Params%P(params_used) - BaseParams%Center(params_used)
-    LogLike = dot_product(X, matmul(covInv, X))/2
+    LogLike = dot_product(X, matmul(covInv, X))**2/2! + Gaussian1()*0.1
 
     end function TLikeCalculator_TestLikelihoodFunction
 
@@ -201,11 +202,6 @@
     class(TCalculationAtParamPoint) :: Params
 
     if (.not. allocated(Params%Theory)) call this%Config%NewTheory(Params%Theory)
-    !if (.not. associated(Params%Theory)) then
-    !    Params%Theory=>this%Config%NewTheory()
-    !else
-    !    call Params%Theory%AssignNew(Params%Theory)
-    !end if
 
     end subroutine TheoryLike_SetNewTheoryResults
 
@@ -217,7 +213,6 @@
     real(mcp) LogLike
 
     call this%SetTheoryParams(Params)
- !   nullify(Params%Theory)
     LogLike = this%Config%Parameterization%NonBaseParameterPriors(this%TheoryParams)
     if (LogLike == logZero) return
     if (.not. Params%validInfo) then
