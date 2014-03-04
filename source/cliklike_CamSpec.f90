@@ -223,7 +223,7 @@
     C_foregrounds=0
     
     call compute_fg(C_foregrounds,DataParams, CAMSpec_lmax_foreground)
-    call F%Open(trim(root)//'.camspec_foregrounds')
+    call F%CreateFilke(trim(root)//'.camspec_foregrounds')
     fmt = concat('(1I6,',Nspec,'E15.5)')
     do l = 2, CAMSpec_lmax_foreground
         write (F%unit,fmt) l, C_foregrounds(l,:)*l*(l+1)

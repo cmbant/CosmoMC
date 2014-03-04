@@ -22,7 +22,7 @@ highL = 'highL'
 WMAP = 'WMAP'
 BAO = 'BAO'
 HST = 'HST'
-SNLS = 'SNLS'
+JLA = 'JLA'
 
 BAOdata = 'BAODR11.ini'
 
@@ -55,7 +55,7 @@ class importanceFilterNotOmegakLowl:
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
 post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegakLowl()]
 post_HST = [[HST], ['HST.ini'], importanceFilterNotOmegakLowl()]
-post_SNLS = [[SNLS], ['SNLS_marge.ini'], importanceFilterNotOmegakLowl()]
+post_SN = [[JLA], ['JLA_marge.ini'], importanceFilterNotOmegakLowl()]
 # set up groups of parameters and data sets
 class group:pass
 
@@ -69,7 +69,7 @@ g.params = [[], ['nnu'], ['Alens']]
 g.datasets = planck_sets
 
 # add importance name tags, and list of specific .ini files to include (in batch1/)
-g.importanceRuns = []
+g.importanceRuns = [post_BAO, post_SN]
 g.groupName = 'main'
 groups.append(g)
 
