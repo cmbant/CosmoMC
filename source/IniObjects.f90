@@ -431,7 +431,7 @@
             IncludeFile=trim(Ini%ExtractFilePath(filename))//trim(IncludeFile)
             inquire(file=IncludeFile, exist = FileExists)
             if (.not. FileExists) then
-                call Ini%Error('Ini_Open, error in DEFAULT file not found: '//trim(IncudeFiles%Items(i)%P%Name))
+                call Ini%Error('Ini_Open, error in DEFAULT file not found: '//trim(DefaultValueFiles%Items(i)%P%Name))
             end if
         end if
         call Ini%Open(IncludeFile, error, slash_comments, append=.true., only_if_undefined=.true.)

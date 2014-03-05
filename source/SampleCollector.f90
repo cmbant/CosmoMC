@@ -82,7 +82,7 @@
     class(TMpiChainCollector) :: this
     class(TCalculationAtParamPoint), intent(in) :: CurParams
     real(mcp) CurLike
-    real(mcp), intent(in):: mult !tbe weight, usually integer for standard chains
+    real(mcp), intent(in):: mult !the weight, usually integer for standard chains
     integer, intent(in), optional :: thin_fac
     integer thin
     logical want 
@@ -104,9 +104,8 @@
     if (this%checkpoint_burn/=0) this%checkpoint_burn = this%checkpoint_burn-1
     if (this%indep_sample /= 0 .and. this%indep_acc >= this%indep_sample*thin .and. want) then
         if (this%OutDataFile%Opened()) then
-            call CurParams%WriteModel(this%OutDataFile, CurLike, real(this%indep_acc/(this%indep_sample*thin),mcp))
+            call CurParams%WriteModel(this%OutDataFile, CurLike, real(floor(this%indep_acc/(this%indep_sample*thin)),mcp))
         end if
-        !    call WriteIndepSample(CurParams, CurLike,real(this%indep_acc/(this%indep_sample*thin),mcp))
         this%indep_acc = mod(this%indep_acc, real(this%indep_sample*thin,mcp))
     end if
 
