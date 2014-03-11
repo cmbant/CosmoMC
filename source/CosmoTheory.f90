@@ -38,14 +38,14 @@
 
     public TCosmoTheoryPredictions, TCosmoTheoryPK
     contains
-    
+
     function PowerAt(PK,k,z) result(outpower)
     class(TCosmoTheoryPK) PK
     real(mcp), intent(in) :: k,z
     real(mcp) :: logk
     real(mcp) :: outpower
     integer :: error
-    
+
     logk=log(k)
     if(.not. allocated(PK%x)) then
         write(*,*) 'ERROR:  PowerAt least one of your PK arrays is not initialized:'
@@ -54,22 +54,22 @@
         write(*,*) '        and need to turn on redo_pk.'
         call MPIstop()
     end if
-    
-    if(PK%islog) then 
+
+    if(PK%islog) then
         outpower = exp(PK%Value(logk,z))
     else
         outpower = PK%Value(logk,z)
     end if
-    
-    end function PowerAt    
+
+    end function PowerAt
 
     subroutine FreePK(T)
     class(TCosmoTheoryPredictions) T
-    
+
     if(allocated(T%MPK))deallocate(T%MPK)
     if(allocated(T%NL_MPK)) deallocate(T%NL_MPK)
-    
-    end subroutine FreePK   
+
+    end subroutine FreePK
 
     subroutine ClsFromTheoryData(T, Cls)
     class(TCosmoTheoryPredictions) T
@@ -184,7 +184,7 @@
         read(F%unit) num_k, num_z
         allocate(temp(num_k,num_z))
         allocate(k(num_k))
-        allocate(z(num_z)) 
+        allocate(z(num_z))
         read(F%unit) k
         read(F%unit) z
         read(F%unit) temp

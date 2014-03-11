@@ -10,8 +10,8 @@
 
     contains
 
-    subroutine RunTests
 
+    subroutine RunTests
     call test_TRealArrayList
     call test_TRealLIst
     call test_TStringLIst
@@ -131,9 +131,12 @@
 
     end subroutine ifortbug
 
+    end module tests
+
 
     program tester
     use tests
-
+    
     call RunTests
+    
     end program

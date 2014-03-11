@@ -487,18 +487,11 @@
     class(CAMB_Calculator) :: this
     class(CMBParams), intent(in) :: CMB
     logical, optional, intent(in) :: DoReion
-    logical WantReion
     type(CAMBParams)  P
     integer error
 
-    if (present(DoReion)) then
-        WantReion = DoReion
-    else
-        WantReion = .true.
-    end if
-
     call this%CMBToCAMB(CMB, P)
-    call CAMBParams_Set(P,error,WantReion)
+    call CAMBParams_Set(P,error,PresentDefault(.true.,DoReion))
 
     end subroutine CAMBCalc_InitCAMB
 
