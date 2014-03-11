@@ -257,6 +257,8 @@
         if (Feedback > 0 .and. MPIRank==0) write (*,*) 'starting post processing'
         call Setup%ImportanceSampler%ImportanceSample(rootname)
         call DoStop('Postprocesing done',.false.)
+    else if (Setup%action == action_tests) then
+        call Setup%DoTests()
     else
         call DoAbort('undefined action')
     end if

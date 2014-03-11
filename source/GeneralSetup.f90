@@ -10,7 +10,7 @@
     use ParamPointSet
     implicit none
 
-    integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2, action_hessian=3
+    integer, parameter :: action_MCMC=0, action_importance=1, action_maxlike=2, action_hessian=3, action_tests=4
 
     Type :: TSetup
         integer :: action = action_MCMC
@@ -27,6 +27,7 @@
     procedure :: DoneInitialize => TSetup_DoneInitialize !Called again after other things configured
     procedure :: GetMinimizer => TSetup_GetMinimizer
     procedure :: DoSampling => TSetup_DoSampling
+    procedure :: DoTests => TSetup_DoTests
     end type
 
     class(TSetup), allocatable :: Setup
@@ -141,5 +142,19 @@
     if (Feedback > 0) write (*,*) 'finished'
 
     end subroutine TSetup_DoSampling
+
+    subroutine TSetup_DoTests(this)
+    !This runs likelihoods for fixed central values of parameters and outputs the likelihoods
+    ! - e.g. for likelihood testing between versions, etc.
+    class(TSetup), target :: this
+    Type(ParamSet) :: Params
+    real(mcp) :: logLike
+
+    Params%P(:num_params) = BaseParams%Center(:num_params)
+    logLike = this%LikeCalculator%GetLogLike(Params)
+    if (Feedback <=2) call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%likelihoods)
+    call DoStop('Test likelihoods done, total logLike = '//RealToStr(logLike))
+
+    end subroutine TSetup_DoTests
 
     end module GeneralSetup
