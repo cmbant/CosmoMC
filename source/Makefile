@@ -119,6 +119,9 @@ ifneq ($(PRECISION),)
 FFLAGS += -D$(PRECISION) -DMATRIX_$(PRECISION)
 endif
 
+ifneq ($(NONCLIKLIKE),)
+FFLAGS += -DNONCLIK
+endif
 
 ifneq ($(PLANCKLIKE),)
 FFLAGS += -DCLIK
@@ -135,6 +138,12 @@ PLANCKLIKEFILES=
 
 ifneq ($(PLANCKLIKE),)
 PLANCKLIKEFILES += $(OUTPUT_DIR)/$(PLANCKLIKE).o
+endif
+
+ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
+PLANCKLIKEFILES +=  $(OUTPUT_DIR)/temp_like.o
+PLANCKLIKEFILES +=  $(OUTPUT_DIR)/pol_like.o
+PLANCKLIKEFILES += $(OUTPUT_DIR)/cliklike_CamSpec.o
 endif
 
 LIKEFILES =  $(OUTPUT_DIR)/DataLikelihoods.o $(OUTPUT_DIR)/calclike.o
@@ -224,6 +233,7 @@ $(OUTPUT_DIR)/supernovae_Union2.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_SNLS.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_JLA.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 
+$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/pol_like.o
 
 
 ifneq ($(highL),)
