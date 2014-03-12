@@ -229,7 +229,7 @@
 
     j = 1
     associate(Cls=> Theory%Cls(CL_Phi,CL_Phi))
-        do l=0,like%lensing_lmax)
+        do l=0,like%lensing_lmax
             !skip C_0 and C_1
             if (l >= 2) then
                 clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)**2*twopi
@@ -241,7 +241,7 @@
     !TB and EB assumed to be zero
     !If your model predicts otherwise, this function will need to be updated
     associate(Cls=> Theory%Cls(1,1))
-            do l=0,like%lensing_lmax)
+            do l=0,like%lensing_lmax
                 !skip C_0 and C_1
                 if (l >= 2) then
                     clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)*twopi
