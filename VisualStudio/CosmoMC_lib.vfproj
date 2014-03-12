@@ -23,7 +23,7 @@
 				<Tool Name="VFPreBuildEventTool"/>
 				<Tool Name="VFPostBuildEventTool"/></Configuration>
 		<Configuration Name="Debug|x64" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP;NONCLIK" F2003Semantics="true" StandardWarnings="standardWarningsF08" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP;NONCLIK" F2003Semantics="true" ErrorLimit="4" StandardWarnings="standardWarningsF08" DebugParameter="debugParameterAll" WarnDeclarations="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
 				<Tool Name="VFLibrarianTool"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
@@ -72,13 +72,12 @@
 		<File RelativePath="..\source\CosmologyTypes.f90"/>
 		<File RelativePath="..\source\CosmoTheory.f90"/>
 		<File RelativePath="..\source\Likelihood_Cosmology.f90"/></Filter>
-		<Filter Name="Likelihood">
+		<Filter Name="Likelihoods">
 		<File RelativePath="..\source\bao.f90"/>
 		<File RelativePath="..\source\CMB_custom.f90"/>
 		<File RelativePath="..\source\CMBlikes.f90"/>
 		<File RelativePath="..\source\DataLikelihoods.f90"/>
 		<File RelativePath="..\source\HST.f90"/>
-		<File RelativePath="..\source\likelihood.f90"/>
 		<File RelativePath="..\source\mpk.f90"/>
 		<File RelativePath="..\source\supernovae.f90"/>
 		<File RelativePath="..\source\supernovae_JLA.f90"/>
@@ -114,6 +113,7 @@
 		<File RelativePath="..\source\GeneralTypes.f90"/>
 		<File RelativePath="..\source\ImportanceSampling.f90"/>
 		<File RelativePath="..\source\IO.f90"/>
+		<File RelativePath="..\source\likelihood.f90"/>
 		<File RelativePath="..\source\MCMC.f90"/>
 		<File RelativePath="..\source\minimize.f90"/>
 		<File RelativePath="..\source\ParamSet.f90"/>

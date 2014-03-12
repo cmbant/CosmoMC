@@ -69,7 +69,7 @@ g.params = [[], ['nnu'], ['Alens']]
 g.datasets = planck_sets
 
 # add importance name tags, and list of specific .ini files to include (in batch1/)
-g.importanceRuns = [post_BAO, post_SN]
+g.importanceRuns = [post_lensing, post_BAO, post_SN]
 g.groupName = 'main'
 groups.append(g)
 

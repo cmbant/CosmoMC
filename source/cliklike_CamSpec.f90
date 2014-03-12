@@ -1,5 +1,5 @@
     module noncliklike
-    use cmbtypes
+    use CosmologyTypes
     use settings
     use temp_like_camspec
     use pol_like_camspec
@@ -61,6 +61,8 @@
         Like%LikelihoodType = 'CMB'
         Like%name='CamSpec'
         Like%speed = 5
+        allocate(like%cl_lmax(CL_T,CL_T))
+        like%cl_lmax=2500
         call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
 
         make_cov_marged = Ini%Read_Logical('make_cov_marged',.false.)
@@ -104,7 +106,9 @@
         Like%version = CAMSpec_like_version
         Like%speed = 6
         Like%needs_powerspectra =.true.
-
+        allocate(like%cl_lmax(1,1))
+        Like%cl_lmax(CL_T,CL_T) = 6000
+ 
         call Like%loadParamNames(trim(DataDir)//'highL.paramnames')
 
         if (lmax < tt_lmax_mc) call MpiStop('set lmax>=tt_lmax_mc in settings to use highL data')
@@ -128,6 +132,9 @@
         Like%name='campol'
         Like%speed = 5
         Like%needs_powerspectra=.true.
+        allocate(like%cl_lmax(2,2),source=0)
+        Like%cl_lmax(CL_E,CL_T) = 2500
+        Like%cl_lmax(CL_E,CL_E) = 2500
 
         polfilename=Ini%ReadFileName('pollikefile',NotFoundFail = .true. )
 
@@ -143,69 +150,47 @@
     Class(CamSpeclikelihood) :: like
     Class (CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
-    real(mcp) acl(lmax,num_cls_tot)
     real(mcp) DataParams(:)
-
-    call Theory%ClsFromTheoryData(acl)
-    !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as
-    !freq_params(35:44), ACT/SPT as freq_params(45:65)
-    CamspecLogLike = nonclik_lnlike_camSpec(acl,DataParams)
-    end function CamspecLogLike
-
-
-    function nonclik_lnlike_camSpec(cl,freq_params)
-    real(dp) :: nonclik_lnlike_camSpec
-    real(mcp), intent(in) :: cl(lmax,num_cls_tot)
-    real(mcp), intent(in)  :: freq_params(:)
-    integer, parameter :: lmin=2
-    real(dp) zlike, cell_cmb(0:lmax)
+    real(dp) zlike, cell_cmb(0:like%cl_lmax(CL_T,CL_T))
     integer L
 
-    do L=lmin,lmax
-        cell_cmb(L)=cl(L,1)/twopi !this is a georgeism
+    !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as
+    !freq_params(35:44), ACT/SPT as freq_params(45:65)
+
+    do L=2,like%cl_lmax(CL_T,CL_T)
+        cell_cmb(L)=Theory%Cls(CL_T,CL_T)%Cl(L)/(L*(L+1)) !normalization is a georgeism
     enddo
 
-    call calc_like(zlike,  cell_cmb, freq_params)
+    call calc_like(zlike,  cell_cmb, DataParams)
 
-    nonclik_lnlike_camSpec = zlike/2
+    CamspecLogLike = zlike/2
 
-    if (Feedback>2) Print*,'CamSpec lnlike = ',nonclik_lnlike_camSpec
+    if (Feedback>2) Print*,'CamSpec lnlike = ',CamspecLogLike
 
-    end function nonclik_lnlike_camSpec
+    end function CamspecLogLike
 
     real(mcp) function CampolLogLike(like, CMB, Theory, DataParams)
     Class(CamPollikelihood) :: like
     Class (CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
-    real(mcp) acl(lmax,num_cls_tot)
     real(mcp) DataParams(:)
-
-    call Theory%ClsFromTheoryData(acl)
-    !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as
-    !freq_params(35:44), ACT/SPT as freq_params(45:65)
-    CampolLogLike = nonclik_lnlike_campol(acl)
-    end function CampolLogLike
-
-
-    function nonclik_lnlike_campol(cl)
-    real(dp) :: nonclik_lnlike_campol
-    real(mcp), intent(in) :: cl(lmax,num_cls_tot)
-    integer, parameter :: lmin=2
-    real(dp) zlike, cell_cmbx(0:lmax), cell_cmbe(0:lmax)
+    real(dp) zlike, cell_cmbx(0:like%cl_lmax(CL_E,CL_T)), cell_cmbe(0:like%cl_lmax(CL_E,CL_E))
     integer L
 
-    do L=lmin,lmax
-        cell_cmbx(L)=cl(L,2)/twopi !this is a georgeism
-        cell_cmbe(L)=cl(L,3)/twopi !this is a georgeism
+    do L=2,like%cl_lmax(CL_E,CL_T)
+        cell_cmbx(L)=Theory%Cls(2,1)%Cl(L)/(L*(L+1)) !this is a georgeism
+    enddo
+    do L=2,like%cl_lmax(CL_E,CL_E)
+        cell_cmbe(L)=Theory%Cls(2,2)%Cl(L)/(L*(L+1)) !this is a georgeism
     enddo
 
     call pol_calc_like(zlike,  cell_cmbx, cell_cmbe)
 
-    nonclik_lnlike_campol = zlike/2
+    CampolLogLike = zlike/2
 
-    if (Feedback>2) Print*,'Campol lnlike = ',nonclik_lnlike_campol
+    if (Feedback>2) Print*,'Campol lnlike = ',CampolLogLike
 
-    end function nonclik_lnlike_campol
+    end function CampolLogLike
 
 
 
