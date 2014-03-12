@@ -49,7 +49,7 @@
     class(TSettingIni) :: Ini
 
     call this%Config%ReadParams(Ini)
-    this%action = Ini%Read_Int('action',action_MCMC)
+    this%action = Ini%Read_Int('action',action_MCMC,min=0,max=action_tests)
     if (this%action/=action_importance) use_fast_slow = Ini%Read_Logical('use_fast_slow',.true.)
 
     call this%LikeCalculator%InitWithParams(Ini, this%Config)
@@ -146,14 +146,17 @@
     subroutine TSetup_DoTests(this)
     !This runs likelihoods for fixed central values of parameters and outputs the likelihoods
     ! - e.g. for likelihood testing between versions, etc.
-    class(TSetup), target :: this
+    class(TSetup) :: this
     Type(ParamSet) :: Params
-    real(mcp) :: logLike
+    real(mcp) :: logLike, time
 
+    time = TimerTime()
     Params%P(:num_params) = BaseParams%Center(:num_params)
     logLike = this%LikeCalculator%GetLogLike(Params)
     if (Feedback <=2) call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%likelihoods)
-    call DoStop('Test likelihoods done, total logLike = '//RealToStr(logLike))
+    write(*,*) 'Test likelihoods done, total logLike = '//RealToStr(logLike)
+    write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(TimerTime()-time)
+    call DoStop()
 
     end subroutine TSetup_DoTests
 

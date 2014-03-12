@@ -5,7 +5,7 @@
     !Riess et al: 1103.2976
 
     module HST
-    use cmbtypes
+    use CosmologyTypes
     use Likelihood_Cosmology
     implicit none
     private

@@ -110,7 +110,7 @@
     !   aconley, April 2011: zhel, zcmb read in wrong order.  Thanks to
     !                       Xiao Dong-Li and Shuang Wang for catching this
 
-    USE cmbtypes
+    USE CosmologyTypes
     USE settings
     use CosmoTheory
     use Calculator_Cosmology

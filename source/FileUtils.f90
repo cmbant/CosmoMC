@@ -8,15 +8,15 @@
     private
 
     integer, parameter :: File_size_int = KIND(INT64)
-    character(LEN=*), parameter :: mode_formatted = 'formatted'
-    character(LEN=*), parameter :: mode_binary = 'unformatted'
-    character(LEN=*), parameter :: access_formatted = 'sequential'
-    character(LEN=*), parameter :: access_binary = 'stream'
 
     Type :: TFileStream
         integer :: unit = 0
+        logical :: ReadOnly = .true.
+        character(LEN=:), allocatable :: mode
+        character(LEN=:), allocatable :: access !sequential (fortran or text) or stream (binary, with file position)
         character(LEN=:), allocatable :: FileName
     contains
+    procedure :: SetDefaultModes
     procedure :: Open => TFileStream_Open
     procedure :: OpenFile => TFileStream_OpenFile
     procedure :: Flush => TFileStream_Flush
@@ -29,6 +29,7 @@
     procedure :: Error
     procedure :: Opened
     procedure :: WriteTrim
+    procedure :: CheckOpen
     procedure, private :: ReadStringFunc
     procedure, private :: ReadStringSub
     procedure, private :: ReadItemSub
@@ -48,28 +49,34 @@
     procedure, private  :: ReadSizedArray_R
     procedure, private  :: ReadSizedArray_D
     procedure, private  :: ReadSizedArray_I
+    procedure, private  :: ReadSizedArray2_I
+    procedure, private  :: ReadSizedArray2_D
+    procedure, private  :: ReadSizedArray2_R
     generic :: Write => WriteItems, WriteArray, WriteArray2, WriteOneAndArray
     generic :: Read => ReadItems, ReadArray, ReadArray2
     generic :: ReadItem => ReadItemFunc, ReadArrayFunc, ReadArray2Func
     generic :: ReadString => ReadStringSub
     generic :: ReadStringItem => ReadStringFunc
     generic :: WriteSizedArray => WriteSizedArray1,WriteSizedArray2
-    generic :: ReadSizedArray => ReadSizedArray_R,ReadSizedArray_D,ReadSizedArray_I 
+    generic :: ReadSizedArray => ReadSizedArray_R,ReadSizedArray_D,ReadSizedArray_I, &
+    & ReadSizedArray2_I, ReadSizedArray2_R, ReadSizedArray2_D
     final :: TFileStream_Free
     end type
 
     Type, extends(TFileStream) :: TBinaryFile
     end type
 
+    Type, extends(TFileStream) :: TSequentialFile
+    contains
+    procedure :: SetDefaultModes => TSequentialFile_SetDefaultModes
+    end type TSequentialFile
 
-    Type, extends(TFileStream) :: TTextFile
+    Type, extends(TSequentialFile) :: TTextFile
         character(LEN=20) :: RealFormat = '(*(E17.7))'
         character(LEN=20) :: IntegerFormat = '(*(I10))'
         logical :: AdvanceDefault = .true.
     contains
-    procedure :: Open => OpenTxtFile
-    procedure :: CreateFile => CreateTxtFile
-    procedure :: CreateOpenFile => CreateOpenTxtFile
+    procedure :: SetDefaultModes => TTextFile_SetDefaultModes
     procedure :: ReadLine
     procedure :: ReadLineSkipEmptyAndComments
     procedure :: NewLine
@@ -119,6 +126,8 @@
     procedure, nopass :: ReadTextMatrix
     procedure, nopass :: ReadTextVector
     procedure, nopass :: WriteTextVector
+    procedure, nopass :: OpenTextFile
+    procedure, nopass :: CreateTextFile
     end type
 
     type(TFile), save :: File
@@ -179,6 +188,44 @@
     end function TxtColumns
 
 
+    subroutine SetDefaultModes(this)
+    class(TFileStream) :: this
+
+    if (.not. allocated(this%mode)) this%mode = 'unformatted'
+    if (.not. allocated(this%access)) this%access = 'stream'
+
+    end subroutine SetDefaultModes
+
+    subroutine TSequentialFile_SetDefaultModes(this)
+    class(TSequentialFile) :: this
+
+    if (.not. allocated(this%access)) this%access= 'sequential'
+    call this%TFileStream%SetDefaultModes
+
+    end subroutine TSequentialFile_SetDefaultModes
+
+    subroutine TTextFile_SetDefaultModes(this)
+    class(TTextFile) :: this
+
+    if (.not. allocated(this%mode)) this%mode = 'formatted'
+    call this%TSequentialFile%SetDefaultModes
+
+    end subroutine TTextFile_SetDefaultModes
+
+
+    subroutine CheckOpen(this, forWrite)
+    class(TFileStream) :: this
+    logical, intent(in), optional :: forWrite
+
+    if (this%unit/=0) return
+    if (PresentDefault(.false.,forWrite) .and. this%ReadOnly) then
+        call this%Error('File not open for write')
+    else
+        call this%Error('File not opened')
+    end if
+
+    end subroutine
+
     function Opened(this)
     class(TFileStream) :: this
     logical Opened
@@ -189,11 +236,17 @@
     class(TFileStream) :: this
     character(LEN=*), intent(IN) :: msg
     character(LEN=*), intent(IN), optional :: errormsg
+    character(LEN=:), allocatable :: Filename
 
-    if (present(errormsg)) then
-        call MpiStop(trim(errormsg)//' : '//this%FileName )
+    if (.not. allocated(this%FileName)) then
+        FileName = '(no filename set)'
     else
-        call MpiStop(trim(msg)//' : '// this%FileName )
+        FileName = this%FileName
+    end if
+    if (present(errormsg)) then
+        call MpiStop(trim(errormsg)//' : '//FileName )
+    else
+        call MpiStop(trim(msg)//' : '// FileName )
     end if
 
     end subroutine
@@ -208,24 +261,29 @@
     Type(TFileStream) :: this
 
     call this%Close()
-
     end subroutine TFileStream_Free
 
     subroutine TFileStream_Flush(this)
     class(TFileStream) :: this
+
+    call this%CheckOpen
     flush(this%unit)
 
     end subroutine TFileStream_Flush
 
     subroutine TFileStream_Rewind(this)
     class(TFileStream) :: this
-    rewind(this%unit)
+
+    if (this%Opened()) rewind(this%unit)
+
     end subroutine TFileStream_Rewind
 
     function TFileStream_Position(this)
     class(TFileStream) :: this
     integer(file_size_int) TFileStream_Position
 
+    call this%CheckOpen
+    if (this%access /= 'stream') call this%Error('Position requires access=stream')
     inquire(this%unit, pos=TFileStream_Position)
 
     end function TFileStream_Position
@@ -235,7 +293,7 @@
     class(TFileStream) :: this
     integer(file_size_int) TFileStream_Size
 
-    if (this%unit /=0) then
+    if (this%Opened()) then
         inquire(this%unit, size=TFileStream_Size)
     else if (allocated(this%FileName)) then
         TFileStream_Size = File%Size(this%FileName)
@@ -262,36 +320,35 @@
     character(LEN=*), intent(IN), optional :: errormsg
     integer, intent(out), optional :: status
     logical, intent(in), optional :: forwrite, append
-    character(LEN=:), allocatable :: amode, access, state, action, pos
+    character(LEN=:), allocatable :: amode, state, action, pos
     integer out_status
 
     call this%Close()
+    call this%SetDefaultModes()
 
     this%FileName = trim(aname)
 
-    amode = PresentDefault(mode_binary, mode)
-    if (amode == mode_formatted) then
-        access = access_formatted
-    else
-        access = access_binary
-    end if
+    amode = PresentDefault(this%mode, mode)
     if (PresentDefault(.false., forwrite)) then
         state = 'replace'
         action = 'readwrite'
+        this%ReadOnly = .false.
     else
         state = 'old'
         action = 'read'
+        this%ReadOnly = .true.
     end if
     if (PresentDefault(.false., append) .and. FileExists(aname)) then
         pos = 'append'
         state = 'old'
         action = 'readwrite'
+        this%ReadOnly = .false.
     else
         pos='asis'
     end if
 
     open(file=aname,form=amode,status=state, action=action, newunit=this%unit, &
-    & iostat=out_status, position =pos,  access=access)
+    & iostat=out_status, position =pos,  access=this%access)
     if (present(status)) then
         status=out_status
         if (out_status/=0) this%unit = 0
@@ -334,6 +391,7 @@
     logical isOK
     integer i, status
 
+    call this%CheckOpen
     read(this%unit, iostat=status) i
     isOK = status==0
     if (isOK) then
@@ -358,6 +416,7 @@
     logical res
     integer status
 
+    call this%CheckOpen
     select type(R)
     type is (real)
         read(this%unit, iostat=status) R
@@ -395,6 +454,7 @@
     logical, optional :: OK
     integer status
 
+    call this%CheckOpen
     select type(R)
     type is (real)
         read(this%unit, iostat=status) R(1:PresentDefault(size(R),n))
@@ -438,6 +498,7 @@
     logical, optional :: OK
     integer status
 
+    call this%CheckOpen
     select type(R)
     type is (real)
         read(this%unit, iostat=status) R
@@ -454,7 +515,6 @@
     & call this%Error('Error reading item')
     if (present(OK)) OK = status==0
     end subroutine ReadArray2
-
 
     subroutine ReadSizedArray_R(this, R) 
     class(TFileStream) :: this
@@ -536,6 +596,7 @@
     class(TFileStream) :: this
     class(*), intent(in) :: R
 
+    call this%CheckOpen(.true.)
     select type(R)
     type is (real)
         Write(this%unit) R
@@ -599,6 +660,7 @@
     integer sz
 
     sz=PresentDefault(size(R),n)
+    call this%CheckOpen(.true.)
     select type(R)
     type is (real)
         Write(this%unit) R(1:sz)
@@ -618,6 +680,7 @@
     class(TFileStream) :: this
     class(*), intent(in) :: R(:,:)
 
+    call this%CheckOpen(.true.)
     select type(R)
     type is (real)
         Write(this%unit) R
@@ -664,35 +727,6 @@
 
     !Text unformatted files
 
-    subroutine OpenTxtFile(this, aname, errormsg, status)
-    class(TTextFile) :: this
-    character(LEN=*), intent(IN) :: aname
-    character(LEN=*), intent(IN), optional :: errormsg
-    integer, intent(out), optional :: status
-
-    call this%TFileStream%OpenFile(aname,'formatted',errormsg, status=status)
-
-    end subroutine OpenTxtFile
-
-    subroutine CreateTxtFile(this, aname,errormsg)
-    class(TTextFile) :: this
-    character(LEN=*), intent(IN) :: aname
-    character(LEN=*), intent(IN), optional :: errormsg
-
-    call this%OpenFile(aname, mode='formatted', forwrite =.true., errormsg=errormsg)
-
-    end subroutine CreateTxtFile
-
-    subroutine CreateOpenTxtFile(this,aname, append, errormsg)
-    class(TTextFile) :: this
-    character(LEN=*), intent(IN) :: aname
-    logical, optional, intent(in) :: append
-    character(LEN=*), intent(IN), optional :: errormsg
-
-    call this%OpenFile(aname, mode='formatted', forwrite =.true., append=append, errormsg=errormsg)
-
-    end subroutine CreateOpenTxtFile
-
     function ReadLine(this, InLine, trimmed) result(OK)
     class(TTextFile) :: this
     character(LEN=:), allocatable, optional :: InLine
@@ -702,6 +736,7 @@
     logical :: OK, set
     integer status, size
 
+    call this%CheckOpen
     OK = .false.
     set = .true.
     do
@@ -809,6 +844,7 @@
     character(LEN=*) str, Form
     Character(LEN=max(len(str),128)) tmp
 
+    call this%CheckOpen(.true.)
     tmp = str
     write(this%unit,form, advance='NO') tmp
 
@@ -886,6 +922,7 @@
     logical, intent(in), optional :: advance
     character(LEN=3) :: Ad
 
+    call this%CheckOpen(.true.)
     Ad = this%DefaultAdvance(advance)
     select type(str)
     type is (character(LEN=*))
@@ -919,6 +956,7 @@
 
     Ad = this%DefaultAdvance(advance)
     n = PresentDefault(size(str),number)
+    call this%CheckOpen(.true.)
     select type(str)
     type is (character(LEN=*))
         write(this%unit,PresentDefault('(a)',form), advance=Ad) str(1:n)
@@ -984,8 +1022,9 @@
     class(TTextFile) :: this
     class(*), intent(out) :: R
     logical, optional :: OK
-
     integer status
+
+    call this%CheckOpen
     select type(R)
     type is (character(LEN=*))
         Read(this%unit,'(a)', iostat=status) R
@@ -1011,6 +1050,7 @@
     logical, optional :: OK
     integer status
 
+    call this%CheckOpen
     select type(R)
     type is (real)
         Read(this%unit,*, iostat=status) R(1:PresentDefault(size(R),n))
@@ -1045,6 +1085,7 @@
     class(*), intent(in) :: i1
     class(*), intent(in),optional :: i2,i3,i4,i5,i6
 
+    call this%CheckOpen(.true.)
     write(this%unit,'(a)') FormatString(formatst,i1,i2,i3,i4,i5,i6)
 
     end subroutine WriteFormat
@@ -1253,5 +1294,22 @@
     call F%Close()
 
     end subroutine ReadTextMatrix
+
+    function CreateTextFile(fname)
+    character(LEN=*), intent(in) :: fname
+    Type(TTextFile) :: CreateTextFile
+
+    call CreateTextFile%CreateFile(fname)
+
+    end function CreateTextFile
+
+    function OpenTextFile(fname)
+    character(LEN=*), intent(in) :: fname
+    Type(TTextFile) :: OpenTextFile
+
+    call OpenTextFile%OpenFile(fname)
+
+    end function OpenTextFile
+
 
     end module FileUtils

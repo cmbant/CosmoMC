@@ -52,6 +52,7 @@ cfitsio ?=
 PLANCKLIKE ?=
 
 #These is not used in public cosmomc
+NONCLIKLIKE ?=
 highL ?=
 #highL = ../highL
 
@@ -118,6 +119,10 @@ ifneq ($(PRECISION),)
 FFLAGS += -D$(PRECISION) -DMATRIX_$(PRECISION)
 endif
 
+ifneq ($(NONCLIKLIKE),)
+FFLAGS += -DNONCLIK
+endif
+
 ifneq ($(PLANCKLIKE),)
 FFLAGS += -DCLIK
 endif
@@ -135,6 +140,11 @@ ifneq ($(PLANCKLIKE),)
 PLANCKLIKEFILES += $(OUTPUT_DIR)/$(PLANCKLIKE).o
 endif
 
+ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
+PLANCKLIKEFILES +=  $(OUTPUT_DIR)/temp_like.o
+PLANCKLIKEFILES +=  $(OUTPUT_DIR)/pol_like.o
+PLANCKLIKEFILES += $(OUTPUT_DIR)/cliklike_CamSpec.o
+endif
 
 LIKEFILES =  $(OUTPUT_DIR)/DataLikelihoods.o $(OUTPUT_DIR)/calclike.o
 
@@ -148,10 +158,10 @@ OBJFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o 
 SUPERNOVAE = $(OUTPUT_DIR)/supernovae_Union2.o $(OUTPUT_DIR)/supernovae_SNLS.o $(OUTPUT_DIR)/supernovae_JLA.o
 
 DATAMODULES = $(PLANCKLIKEFILES) $(OUTPUT_DIR)/mpk.o $(OUTPUT_DIR)/wigglez.o \
-	$(OUTPUT_DIR)/bao.o $(SUPERNOVAE) $(OUTPUT_DIR)/supernovae.o $(OUTPUT_DIR)/HST.o $(OUTPUT_DIR)/cmbdata.o
+	$(OUTPUT_DIR)/bao.o $(SUPERNOVAE) $(OUTPUT_DIR)/supernovae.o $(OUTPUT_DIR)/HST.o  $(OUTPUT_DIR)/CMB_custom.o $(OUTPUT_DIR)/CMBlikes.o
 
 
-COSMOFILES = $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Planck_like.o $(OUTPUT_DIR)/bbn.o $(OUTPUT_DIR)/Calculator_Cosmology.o \
+COSMOFILES = $(OUTPUT_DIR)/CosmologyTypes.o $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/bbn.o $(OUTPUT_DIR)/Calculator_Cosmology.o \
 	$(OUTPUT_DIR)/CalcLike_Cosmology.o $(OUTPUT_DIR)/Likelihood_Cosmology.o $(CALCFILES) $(DATAMODULES) $(PARAMETERIZATION) $(LIKEFILES) \
 	$(OUTPUT_DIR)/CosmologyConfig.o
 
@@ -204,19 +214,18 @@ $(OUTPUT_DIR)/driver.o: $(OUTPUT_DIR)/GeneralSetup.o $(OUTPUT_DIR)/CosmologyConf
 
 $(PARAMETERIZATION): $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/bbn.o
 $(OUTPUT_DIR)/Calculator_Cosmology.o: $(OUTPUT_DIR)/CosmoTheory.o
-$(OUTPUT_DIR)/CosmoTheory.o: $(OUTPUT_DIR)/cmbtypes.o $(OUTPUT_DIR)/likelihood.o
+$(OUTPUT_DIR)/CosmoTheory.o: $(OUTPUT_DIR)/CosmologyTypes.o $(OUTPUT_DIR)/likelihood.o
 $(OUTPUT_DIR)/supernovae.o:  $(OUTPUT_DIR)/Likelihood_Cosmology.o $(SUPERNOVAE)
 $(OUTPUT_DIR)/Calculator_CAMB.o: $(OUTPUT_DIR)/Calculator_Cosmology.o
-$(OUTPUT_DIR)/cmbtypes.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o
+$(OUTPUT_DIR)/CosmologyTypes.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/Likelihood_Cosmology.o: $(OUTPUT_DIR)/Calculator_Cosmology.o $(OUTPUT_DIR)/CosmoTheory.o
-$(OUTPUT_DIR)/Planck_like.o: $(OUTPUT_DIR)/cmbtypes.o
-$(OUTPUT_DIR)/cmbdata.o: $(OUTPUT_DIR)/Planck_like.o $(PLANCKLIKEFILES)
+$(OUTPUT_DIR)/CMBlikes.o: $(OUTPUT_DIR)/CosmologyTypes.o
+$(OUTPUT_DIR)/CMB_custom.o: $(OUTPUT_DIR)/CosmologyTypes.o $(PLANCKLIKEFILES)
 $(OUTPUT_DIR)/bbn.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/Interpolation.o
 $(OUTPUT_DIR)/mpk.o: $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/wigglez.o: $(OUTPUT_DIR)/mpk.o
 $(OUTPUT_DIR)/bao.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/HST.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
-$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/cliklike.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/CosmologyConfig.o: $(PARAMETERIZATION) $(OUTPUT_DIR)/GeneralSetup.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
 
@@ -224,17 +233,18 @@ $(OUTPUT_DIR)/supernovae_Union2.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_SNLS.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_JLA.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 
+$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/pol_like.o
+
+
 ifneq ($(highL),)
 $(OUTPUT_DIR)/cliklike_CamSpec.o: $(highL)/libhigh.a
 endif
 
 
 ifneq ($(WMAP),)
-$(OUTPUT_DIR)/cmbdata.o: $(WMAP)/libwmap9.a
-F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP)
+$(OUTPUT_DIR)/CMB_custom: $(WMAP)/libwmap9.a
+F90FLAGS += $(IFLAG)$(cfitsio)/include $(IFLAG)$(WMAP) -DWMAP
 LINKFLAGS +=  -L$(cfitsio)/lib -L$(WMAP) -lcfitsio -lwmap9
-else
-F90FLAGS += -DNOWMAP
 endif
 
 F90FLAGS += $(MODOUT) $(IFLAG)$(OUTPUT_DIR)/

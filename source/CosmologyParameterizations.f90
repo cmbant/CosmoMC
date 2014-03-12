@@ -9,7 +9,7 @@
     !Also a background-only parameterization, e.g. for use with just supernoave etc
 
     module CosmologyParameterizations
-    use cmbtypes
+    use CosmologyTypes
     use CosmoTheory
     use Calculator_Cosmology
     implicit none
@@ -231,7 +231,7 @@
         CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
         CMB%nufrac=CMB%omnuh2/CMB%omdmh2
 
-        if (bbn_consistency) then
+        if (CosmoSettings%bbn_consistency) then
             CMB%YHe = BBN_YHe%Value(CMB%ombh2,CMB%nnu  - 3.046,error)
         else
             !e.g. set from free parameter..

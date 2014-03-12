@@ -58,7 +58,7 @@
     !   Update Note by Nao Suzuki (LBNL)
 
     module Union2
-    use cmbtypes
+    use CosmologyTypes
     use MatrixUtils
     use likelihood
     use CosmoTheory

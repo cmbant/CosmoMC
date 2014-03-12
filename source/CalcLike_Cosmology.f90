@@ -1,7 +1,7 @@
     module CalcLike_Cosmology
     use CalcLike
     use DataLikelihoodList
-    use cmbtypes
+    use CosmologyTypes
     use CosmoTheory
     use Calculator_Cosmology
     use ParamPointSet
@@ -68,7 +68,7 @@
     class is (TCosmoTheoryPredictions)
         select type (CMB=>this%TheoryParams)
         class is (CMBParams)
-            if (Use_CMB .or. Use_LSS .or. get_sigma8) then
+            if (CosmoSettings%Use_CMB .or. CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
                 if (this%SlowChanged) then
                     this%slow_changes = this%slow_changes + 1
                     this%Params%validInfo = .false.
@@ -104,28 +104,29 @@
 
     select type (Theory=>Params%Theory)
     class is (TCosmoTheoryPredictions)
-        if (Use_LSS) then
+        if (CosmoSettings%Use_LSS) then
             if(Theory%sigma_8==0) &
             call MpiStop('ERROR: Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk')
 
-            if((power_redshifts(num_power_redshifts)-Theory%MPK%y(Theory%MPK%ny))>1.d-3)then
+            if((CosmoSettings%power_redshifts(CosmoSettings%num_power_redshifts)-Theory%MPK%y(Theory%MPK%ny))>1.d-3)then
                 write(*,*) 'ERROR: Thes elected datasets call for a higher redshift than has been calculated'
                 write(*,*) '       Use redo_theory and redo_pk'
                 call MpiStop()
             end if
-            if(num_power_redshifts > Theory%MPK%ny)then
+            if(CosmoSettings%num_power_redshifts > Theory%MPK%ny)then
                 write(*,*) 'ERROR: The selected datasets call for more redshifts than are calculated'
                 write(*,*) '       Use redo_theory and redo_pk'
                 call MpiStop()
             end if
             index_error =0
-            call IndexExactRedshifts(Theory%MPK%y,index_error)
-            if(index_error>0)then
-                write(*,*) 'ERROR: One of the datasets needs an exact redshift that is not present '
-                write(*,*) '       Use redo_theory and redo_pk'
-                call MpiStop()
-            end if
-            if(use_nonlinear .and. .not. allocated(Theory%NL_MPK))then
+            !AL for the moment only allow reading with matching mpk
+            !call IndexExactRedshifts(Theory%MPK%y,index_error)
+            !if(index_error>0)then
+            !    write(*,*) 'ERROR: One of the datasets needs an exact redshift that is not present '
+            !    write(*,*) '       Use redo_theory and redo_pk'
+            !    call MpiStop()
+            !end if
+            if(CosmoSettings%use_nonlinear .and. .not. allocated(Theory%NL_MPK))then
                 write(*,*) 'ERROR: One of the datasets wants a non-linear MPK which is not present '
                 write(*,*) '       Use redo_theory and redo_pk or turn off non-linear'
                 call MpiStop() 

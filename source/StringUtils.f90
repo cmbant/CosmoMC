@@ -33,11 +33,19 @@
 
     end function GetParam
 
-    function StringStarts(S, substring) result(OK)
+    function StringStarts(S, substring, index) result(OK)
     character(LEN=*), intent(in) :: S, substring
+    integer, intent(in), optional :: index
     logical OK
+    integer start
 
-    OK = S(1:min(len(S),len_trim(substring)))==substring
+    if (present(index)) then
+        start = index
+    else
+        start =1
+    end if
+
+    OK = S(start:min(len(S),start+len_trim(substring)-1))==substring
 
     end function
 

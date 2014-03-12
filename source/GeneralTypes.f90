@@ -375,18 +375,18 @@
 
     end subroutine TConfigClass_InitWithParams
 
-    subroutine WriteTheory(T, F)
-    class(TTheoryPredictions) T
+    subroutine WriteTheory(this, F)
+    class(TTheoryPredictions) this
     class(TFileStream) :: F
     end subroutine WriteTheory
 
-    subroutine ReadTheory(T, F)
-    class(TTheoryPredictions) T
+    subroutine ReadTheory(this, F)
+    class(TTheoryPredictions) this
     class(TFileStream) :: F
     end subroutine ReadTheory
 
-    subroutine WriteBestFitData(Theory,fnameroot)
-    class(TTheoryPredictions) Theory
+    subroutine WriteBestFitData(this,fnameroot)
+    class(TTheoryPredictions) this
     character(LEN=*), intent(in) :: fnameroot
     end subroutine WriteBestFitData
 
