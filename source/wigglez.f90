@@ -170,7 +170,7 @@
     subroutine WiggleZLikelihood_Add(LikeList, Ini)
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
-    Type(WiggleZLikelihood), pointer :: like
+    Type(WiggleZLikelihood), pointer :: this
     integer nummpksets, i
 
     use_wigglez_mpk = (Ini%Read_Logical('use_wigglez_mpk',.false.))
@@ -185,23 +185,23 @@
 
     nummpksets = Ini%Read_Int('mpk_wigglez_numdatasets',0)
     do i= 1, nummpksets
-        allocate(like)
-        like%LikelihoodType = 'MPK'
-        like%needs_powerspectra = .true.
-        like%needs_exact_z = .true.
-        like%num_z = 1
-        like%needs_nonlinear_pk = nonlinear_wigglez
-        call like%ReadDatasetFile(Ini%ReadFileName(numcat('wigglez_dataset',i)))
-        like%CommonData=> WiggleZCommon
-        call LikeList%Add(like)
+        allocate(this)
+        this%LikelihoodType = 'MPK'
+        this%needs_powerspectra = .true.
+        this%needs_exact_z = .true.
+        this%num_z = 1
+        this%needs_nonlinear_pk = nonlinear_wigglez
+        call this%ReadDatasetFile(Ini%ReadFileName(numcat('wigglez_dataset',i)))
+        this%CommonData=> WiggleZCommon
+        call LikeList%Add(this)
     end do
     if (Feedback>1) write(*,*) 'read WiggleZ MPK datasets'
 
     end subroutine WiggleZLikelihood_Add
 
 
-    subroutine TWiggleZCommon_ReadIni(like,Ini)
-    class(TWiggleZCommon) :: like
+    subroutine TWiggleZCommon_ReadIni(this,Ini)
+    class(TWiggleZCommon) :: this
     class(TSettingIni) :: ini
     character(len=64) region_string
     integer i_regions
@@ -294,9 +294,9 @@
 
     end subroutine TWiggleZCommon_ReadIni
 
-    subroutine WiggleZ_ReadIni(like,Ini)
+    subroutine WiggleZ_ReadIni(this,Ini)
     ! this will be called once for each redshift bin
-    class(WiggleZLikelihood) like
+    class(WiggleZLikelihood) this
     class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: kbands_file, measurements_file, windows_file, cov_file
     integer i,iopb,i_regions
@@ -310,24 +310,24 @@
 
     iopb = 0
 
-    allocate(like%exact_z(like%num_z))
-    allocate(like%exact_z_index(like%num_z))
-    like%exact_z(1) = Ini%Read_Double('redshift',0.d0)
+    allocate(this%exact_z(this%num_z))
+    allocate(this%exact_z_index(this%num_z))
+    this%exact_z(1) = Ini%Read_Double('redshift',0.d0)
 
-    if(like%exact_z(1).eq.0.0) then
+    if(this%exact_z(1).eq.0.0) then
         call MpiStop('WiggleZMPK: failed to read in WiggleZ redshift')
     end if
     
-    like%zbin = 0
+    this%zbin = 0
     do i=1,4
-        if(abs(like%exact_z(1)-zeval(i)).le.0.001) like%zbin = i
+        if(abs(this%exact_z(1)-zeval(i)).le.0.001) this%zbin = i
     enddo
     
-    if(like%zbin.eq.0) call MpiStop('WiggleZMPK: could not indentify redshift')
+    if(this%zbin.eq.0) call MpiStop('WiggleZMPK: could not indentify redshift')
     
-    if (Feedback > 0) write (*,*) 'reading: '//trim(like%name)
+    if (Feedback > 0) write (*,*) 'reading: '//trim(this%name)
 
-    allocate(like%PKdata(num_regions_used))
+    allocate(this%PKdata(num_regions_used))
 
     if(allocated(mpk_kfull)) deallocate(mpk_kfull)
     allocate(mpk_kfull(num_mpk_kbands_full))
@@ -335,7 +335,7 @@
     kbands_file  = Ini%ReadFileName('kbands_file')
     call File%ReadTextVector(kbands_file,mpk_kfull,num_mpk_kbands_full)
     if (Feedback > 1) then
-        write(*,*) 'reading: '//trim(like%name)//' data'
+        write(*,*) 'reading: '//trim(this%name)//' data'
         write(*,*) 'Using kbands windows between',real(mpk_kfull(min_mpk_kbands_use)),&
         ' < k/h < ',real(mpk_kfull(max_mpk_kbands_use))
     endif
@@ -346,11 +346,11 @@
     do i_regions =1,7
         if(regions_active(i_regions)) then
             count = count+1
-            allocate(like%PKdata(count)%mpk_P(num_mpk_points_use))
-            allocate(like%PKdata(count)%mpk_k(num_mpk_kbands_use))
-            allocate(like%PKdata(count)%mpk_W(num_mpk_points_use,num_mpk_kbands_use))
-            like%PKdata(count)%mpk_k(:)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
-            like%PKdata(count)%mpk_P=0.
+            allocate(this%PKdata(count)%mpk_P(num_mpk_points_use))
+            allocate(this%PKdata(count)%mpk_k(num_mpk_kbands_use))
+            allocate(this%PKdata(count)%mpk_W(num_mpk_points_use,num_mpk_kbands_use))
+            this%PKdata(count)%mpk_k(:)=mpk_kfull(min_mpk_kbands_use:max_mpk_kbands_use)
+            this%PKdata(count)%mpk_P=0.
 
             read (F%unit,*) dummychar
             read (F%unit,*) dummychar
@@ -361,7 +361,7 @@
             if (Feedback > 1 .and. min_mpk_points_use>1) write(*,*) 'Not using bands with keff=  ',real(keff),&
             ' or below in region', i_regions
             do i =1, num_mpk_points_use
-                read (F%unit,*, iostat=iopb) keff,klo,khi,like%PKdata(count)%mpk_P(i),beff,beff
+                read (F%unit,*, iostat=iopb) keff,klo,khi,this%PKdata(count)%mpk_P(i),beff,beff
             end do
             ! NB do something to get to the end of the list
             do i=1, num_mpk_points_full-num_mpk_points_use-min_mpk_points_use+1
@@ -388,7 +388,7 @@
     do i_regions=1,max_num_wigglez_regions
         if(regions_active(i_regions)) then
             count = count + 1
-            like%PKdata(count)%mpk_W(1:num_mpk_points_use,1:num_mpk_kbands_use)= &
+            this%PKdata(count)%mpk_W(1:num_mpk_points_use,1:num_mpk_kbands_use)= &
             mpk_Wfull(i_regions,min_mpk_points_use:max_mpk_points_use,min_mpk_kbands_use:max_mpk_kbands_use)
         endif
     enddo
@@ -403,33 +403,33 @@
         do i_regions=1,max_num_wigglez_regions
             if(regions_active(i_regions)) then
                 count = count + 1
-                allocate(like%PKdata(count)%mpk_invcov(num_mpk_points_use,num_mpk_points_use))
+                allocate(this%PKdata(count)%mpk_invcov(num_mpk_points_use,num_mpk_points_use))
                 invcov_tmp(:,:) = &
                 mpk_covfull(i_regions,min_mpk_points_use:max_mpk_points_use,min_mpk_points_use:max_mpk_points_use)
                 call Matrix_Inverse(invcov_tmp)
-                like%PKdata(count)%mpk_invcov(1:num_mpk_points_use,1:num_mpk_points_use) = invcov_tmp(:,:)
+                this%PKdata(count)%mpk_invcov(1:num_mpk_points_use,1:num_mpk_points_use) = invcov_tmp(:,:)
             endif
         enddo
     end if
 
     !JD 09/13 Read in fiducial D_V for use when calculating a_scl
     if(use_scaling) then
-        like%DV_fid = Ini%Read_Double('DV_fid',-1.d0)
-        if(like%DV_fid == -1.d0) then
+        this%DV_fid = Ini%Read_Double('DV_fid',-1.d0)
+        if(this%DV_fid == -1.d0) then
             write(*,*)'ERROR: use_scaling = T and no DV_fid given '
-            write(*,*)'       for dataset '//trim(like%name)//'.'
+            write(*,*)'       for dataset '//trim(this%name)//'.'
             write(*,*)'       Please check your .dataset files.'
             call MPIstop()
         end if
     end if
 
-    if(like%needs_nonlinear_pk) then
-        like%kmax=1.2
+    if(this%needs_nonlinear_pk) then
+        this%kmax=1.2
     else
-        like%kmax=0.8
+        this%kmax=0.8
     end if
 
-    if (Feedback > 1) write(*,*) 'read: '//trim(like%name)//' data'
+    if (Feedback > 1) write(*,*) 'read: '//trim(this%name)//' data'
 
     if (iopb.ne.0) then
         stop 'Error reading WiggleZ mpk file'
@@ -471,9 +471,9 @@
 
     end subroutine ReadWiggleZMatrices
 
-    function WiggleZ_LnLike(like,CMB,Theory,DataParams) ! LV_06 added CMB here
+    function WiggleZ_LnLike(this,CMB,Theory,DataParams) ! LV_06 added CMB here
     Class(CMBParams) CMB
-    Class(WiggleZLikelihood) :: like
+    Class(WiggleZLikelihood) :: this
     Class(TCosmoTheoryPredictions), target :: Theory
     Type (TCosmoTheoryPK), pointer :: PK
     real(mcp) :: DataParams(:)
@@ -506,7 +506,7 @@
 
     allocate(chisq(-nQ:nQ))
 
-    if (like%needs_nonlinear_pk) then
+    if (this%needs_nonlinear_pk) then
         if(.not. allocated(Theory%NL_MPK))then
             write(*,*) 'ERROR: Your Theory%NL_MPK derived type is not initialized. Make sure you are'
             write(*,*) '       calling a SetPk routine and filling your power spectra.'
@@ -524,9 +524,9 @@
 
     chisq = 0
 
-    z = like%exact_z(1)
+    z = this%exact_z(1)
     
-    if(abs(z-PK%y(like%exact_z_index(1)))>1.d-3)then
+    if(abs(z-PK%y(this%exact_z_index(1)))>1.d-3)then
         write(*,*)'ERROR: WiggleZ redshift does not match the value stored'
         write(*,*)'       in the PK%y array.'
         call MpiStop()
@@ -534,7 +534,7 @@
 
     !JD 09/13 new compute_scaling_factor functions
     if(use_scaling) then
-        a_scl = like%compute_scaling_factor(z,CMB)
+        a_scl = this%compute_scaling_factor(z,CMB)
     else
         a_scl = 1
     end if
@@ -542,9 +542,9 @@
     do i=1, num_mpk_kbands_use
         ! It could be that when we scale the k-values, the lowest bin drops off the bottom edge
         !Errors from using matter_power_minkh at lower end should be negligible
-        k_scaled(i)=max(exp(PK%x(1)),like%PKdata(1)%mpk_k(i)*a_scl)
-        mpk_lin(i) = PK%PowerAt(k_scaled(i),like%exact_z(1))/a_scl**3
-        if(use_gigglez) call WiggleZPowerAt(k_scaled(i),like%zbin,mpk_lin(i))
+        k_scaled(i)=max(exp(PK%x(1)),this%PKdata(1)%mpk_k(i)*a_scl)
+        mpk_lin(i) = PK%PowerAt(k_scaled(i),this%exact_z(1))/a_scl**3
+        if(use_gigglez) call WiggleZPowerAt(k_scaled(i),this%zbin,mpk_lin(i))
     end do
 
     do_marge = Q_marge
@@ -562,12 +562,12 @@
             mpk_k2(:)=mpk_Pth(:)*k_scaled(:)**2
 
 
-            mpk_WPth(:) = matmul(like%PKdata(i_region)%mpk_w(:,:),mpk_Pth(:))
-            mpk_WPth_k2(:) = matmul(like%PKdata(i_region)%mpk_w(:,:),mpk_k2(:))
+            mpk_WPth(:) = matmul(this%PKdata(i_region)%mpk_w(:,:),mpk_Pth(:))
+            mpk_WPth_k2(:) = matmul(this%PKdata(i_region)%mpk_w(:,:),mpk_k2(:))
 
-            covdat(:) = matmul(like%PKdata(i_region)%mpk_invcov(:,:),like%PKdata(i_region)%mpk_p(:))
-            covth(:) = matmul(like%PKdata(i_region)%mpk_invcov(:,:),mpk_WPth(:))
-            covth_k2(:) = matmul(like%PKdata(i_region)%mpk_invcov(:,:),mpk_WPth_k2(:))
+            covdat(:) = matmul(this%PKdata(i_region)%mpk_invcov(:,:),this%PKdata(i_region)%mpk_p(:))
+            covth(:) = matmul(this%PKdata(i_region)%mpk_invcov(:,:),mpk_WPth(:))
+            covth_k2(:) = matmul(this%PKdata(i_region)%mpk_invcov(:,:),mpk_WPth_k2(:))
 
             Mat(1,1) = Mat(1,1) + sum(covth(:)*mpk_WPth(:))
             Mat(2,2) = Mat(2,2) + sum(covth_k2(:)*mpk_WPth_k2(:))
@@ -576,7 +576,7 @@
 
             vec2(1) = vec2(1) + sum(covdat(:)*mpk_WPth(:))
             vec2(2) = vec2(2) + sum(covdat(:)*mpk_WPth_k2(:))
-            final_term = final_term + sum(like%PKdata(i_region)%mpk_p(:)*covdat(:))
+            final_term = final_term + sum(this%PKdata(i_region)%mpk_p(:)*covdat(:))
         enddo
         LnLike = log( Mat(1,1)*Mat(2,2)-Mat(1,2)**2)
         call Matrix_Inverse(Mat)
@@ -603,15 +603,15 @@
             do i_region=1,num_regions_used
                 imin = (i_region-1)*num_mpk_points_use+1
                 imax = i_region*num_mpk_points_use
-                mpk_WPth(:) = matmul(like%PKdata(i_region)%mpk_w(:,:),mpk_Pth(:))
-                mpk_Pdata_large(imin:imax) = like%PKdata(i_region)%mpk_p(:)
+                mpk_WPth(:) = matmul(this%PKdata(i_region)%mpk_w(:,:),mpk_Pth(:))
+                mpk_Pdata_large(imin:imax) = this%PKdata(i_region)%mpk_p(:)
                 mpk_WPth_large(imin:imax) = mpk_WPth(:)
 
                 !with analytic marginalization over normalization nuisance (flat prior on b^2)
                 !See appendix F of cosmomc paper
 
-                covdat_large(imin:imax) = matmul(like%PKdata(i_region)%mpk_invcov(:,:),like%PKdata(i_region)%mpk_p(:))
-                covth_large(imin:imax) = matmul(like%PKdata(i_region)%mpk_invcov(:,:),mpk_WPth(:))
+                covdat_large(imin:imax) = matmul(this%PKdata(i_region)%mpk_invcov(:,:),this%PKdata(i_region)%mpk_p(:))
+                covth_large(imin:imax) = matmul(this%PKdata(i_region)%mpk_invcov(:,:),mpk_WPth(:))
             enddo
             normV = normV + sum(mpk_WPth_large*covth_large)
             b_out =  sum(mpk_WPth_large*covdat_large)/sum(mpk_WPth_large*covth_large)
@@ -640,10 +640,10 @@
 
     end if !not analytic over Q
     WiggleZ_LnLike=LnLike
-    if (Feedback>1) write(*,'("WiggleZ bin ",I0," MPK Likelihood = ",F10.5)')like%zbin,LnLike
+    if (Feedback>1) write(*,'("WiggleZ bin ",I0," MPK Likelihood = ",F10.5)')this%zbin,LnLike
 
     if (LnLike > 1e8) then
-        write(*,'("WARNING: WiggleZ bin",I0," Likelihood is huge!")')like%zbin
+        write(*,'("WARNING: WiggleZ bin",I0," Likelihood is huge!")')this%zbin
         write(*,'("         Maybe there is a problem? Likelihood = ",F10.5)')LnLike
     end if
 

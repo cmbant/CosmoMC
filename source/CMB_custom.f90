@@ -36,7 +36,7 @@
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
 
-    class(TCMBDatasetLikelihood), pointer  :: like
+    class(TCMBDatasetLikelihood), pointer  :: this
     integer  i
     character(LEN=:), allocatable :: tag, SZTemplate
     real(mcp) SZScale
@@ -47,19 +47,19 @@
     do i= 1, DataSets%Count
         if (DataSets%Name(i) == 'WMAP') then
 #ifdef WMAP
-            allocate(TWMAPLikelihood::like)
-            like%name = Datasets%Value(i)
+            allocate(TWMAPLikelihood::this)
+            this%name = Datasets%Value(i)
 #else
             call MpiStop('Set WMAP directory in Makefile to compile with WMAP')
 #endif
         else
             call MpiStop('Support for general CMB data sets not added yet')
-            allocate(TCMBDatasetLikelihood::like)
-            call like%ReadDatasetFile(Datasets%Value(i))
+            allocate(TCMBDatasetLikelihood::this)
+            call this%ReadDatasetFile(Datasets%Value(i))
         end if
-        like%Tag = DataSets%Name(i)
-        call like%ReadParams(Ini)
-        call LikeList%Add(like)
+        this%Tag = DataSets%Name(i)
+        call this%ReadParams(Ini)
+        call LikeList%Add(this)
     end do
     if (Feedback > 1) write (*,*) 'CMB datasets read'
 
@@ -138,19 +138,19 @@
 
     end subroutine TWMAPLikelihood_ReadParams
 
-    function TWMAPLikelihood_LogLike(like, CMB, Theory, DataParams) result(logLike)
+    function TWMAPLikelihood_LogLike(this, CMB, Theory, DataParams) result(logLike)
     use wmap_likelihood_9yr
     use WMAP_OPTIONS
     use WMAP_UTIL
-    Class(TWMAPLikelihood) :: like
+    Class(TWMAPLikelihood) :: this
     Class (CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
     real(mcp) logLike
     real(8)                     :: likes(num_WMAP),like_tot
-    real(mcp) CLTT(2:like%cl_lmax(1,1))
+    real(mcp) CLTT(2:this%cl_lmax(1,1))
 
-    CLTT = Theory%Cls(1,1)%CL(2:like%cl_lmax(1,1)) + DataParams(1)*like%sz_template
+    CLTT = Theory%Cls(1,1)%CL(2:this%cl_lmax(1,1)) + DataParams(1)*this%sz_template
     likes=0
     call wmap_likelihood_compute(CLTT,Theory%Cls(2,1)%CL(2:),Theory%Cls(2,2)%CL(2:),Theory%Cls(3,3)%CL(2:),likes)
     !call wmap_likelihood_error_report

@@ -465,8 +465,8 @@
 
     !!!TDataLikelihood
 
-    function TDataLikelihood_GetLogLike(like, Params, Theory, DataParams) result(LogLike)
-    class(TDataLikelihood) :: like
+    function TDataLikelihood_GetLogLike(this, Params, Theory, DataParams) result(LogLike)
+    class(TDataLikelihood) :: this
     class(TTheoryParams) :: Params
     class(TTheoryPredictions) :: Theory
     real(mcp) :: DataParams(:)
@@ -478,8 +478,8 @@
     end function TDataLikelihood_GetLogLike
 
 
-    subroutine TDataLikelihood_WriteLikelihoodData(like,Theory,DataParams, root)
-    class(TDataLikelihood) :: like
+    subroutine TDataLikelihood_WriteLikelihoodData(this,Theory,DataParams, root)
+    class(TDataLikelihood) :: this
     class(TTheoryPredictions) :: Theory
     real(mcp), intent(in) :: DataParams(:)
     character(LEN=*), intent(in) :: root
@@ -496,28 +496,28 @@
     end subroutine TDataLikelihood_InitConfig
 
 
-    function TDataLikelihood_derivedParameters(like, Theory, DataParams) result(derived)
-    class(TDataLikelihood) :: like
+    function TDataLikelihood_derivedParameters(this, Theory, DataParams) result(derived)
+    class(TDataLikelihood) :: this
     class(TTheoryPredictions) :: Theory
-    real(mcp) :: derived(like%nuisance_params%num_derived)
+    real(mcp) :: derived(this%nuisance_params%num_derived)
     real(mcp) :: DataParams(:)
     !Calculate any derived parameters internal to the likelihood that should be output
     !Number matches derived names defined in nuisance_params .paramnames file
     derived=0
     end function TDataLikelihood_derivedParameters
 
-    subroutine TDataLikelihood_loadParamNames(like, fname)
-    class(TDataLikelihood) :: like
+    subroutine TDataLikelihood_loadParamNames(this, fname)
+    class(TDataLikelihood) :: this
     character(LEN=*), intent(in) :: fname
 
-    call like%nuisance_params%init(fname)
+    call this%nuisance_params%init(fname)
 
     end subroutine TDataLikelihood_loadParamNames
 
-    function TDataLikelihood_checkConflicts(like, full_list) result(OK)
+    function TDataLikelihood_checkConflicts(this, full_list) result(OK)
     !if for some reasons various likelihoods cannot be used at once
     !check here for conflicts after full list of likelihoods has been read in
-    class(TDataLikelihood) :: like
+    class(TDataLikelihood) :: this
     class(TLikelihoodList) :: full_list
     logical :: OK
 

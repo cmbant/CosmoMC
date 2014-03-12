@@ -13,7 +13,7 @@
     !     the CMB frame and heliocentric frame redshifts, which is important
     !     for some of the nearby SNe
     ! 4) There is a .ini file that controls how the SN data is handled.
-    !     This is where things like the assumed peculiar velocities, etc.
+    !     This is where things this the assumed peculiar velocities, etc.
     !     are handled, and how one fits different data sets.
     ! 5) The true marginalized chisquare is always reported; there is no more
     !     option to return a relative chisquare by simply evaluating around the
@@ -227,14 +227,14 @@
     subroutine SNLSLikelihood_Add(LikeList, Ini)
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
-    Type(SNLSLikelihood), pointer :: like
+    Type(SNLSLikelihood), pointer :: this
     integer alpha_i, beta_i
 
     if (.not. Ini%Read_Logical('use_SNLS',.false.)) return
 
-    allocate(like)
-    like%needs_background_functions = .true.
-    Like%version = SNLS_version
+    allocate(this)
+    this%needs_background_functions = .true.
+    this%version = SNLS_version
     SNLS_marginalize = Ini%Read_Logical('SNLS_marginalize',.false.)
     if (SNLS_marginalize) then
         SNLS_marge_steps = Ini%Read_int('SNLS_marge_steps',5)
@@ -253,12 +253,12 @@
         end do
         allocate(SNLS_marge_grid(SNLS_int_points))
     else
-        call Like%loadParamNames(trim(DataDir)//'SNLS.paramnames')
+        call this%loadParamNames(trim(DataDir)//'SNLS.paramnames')
     end if
-    call LikeList%Add(like)
-    call like%ReadDatasetFile(Ini%Read_String_Default('snls_dataset',trim(DataDir)//'snls_3rdyear.dataset'))
-    Like%LikelihoodType = 'SN'
-    Like%name='SNLS'
+    call LikeList%Add(this)
+    call this%ReadDatasetFile(Ini%Read_String_Default('snls_dataset',trim(DataDir)//'snls_3rdyear.dataset'))
+    this%LikelihoodType = 'SN'
+    this%name='SNLS'
     CALL snls_prep
 
     end subroutine SNLSLikelihood_Add
@@ -598,8 +598,8 @@
     ! Arguments:
     !  filename        The name of the .ini file specifying the SN dataset
     !------------------------------------------------------------
-    SUBROUTINE read_snls_dataset(like,ini)
-    class(SNLSLikelihood) :: like
+    SUBROUTINE read_snls_dataset(this,ini)
+    class(SNLSLikelihood) :: this
     class(TSettingIni) :: Ini
     CHARACTER(LEN=60) :: covfile
     CHARACTER(LEN=100) :: data_file, absdist_file
@@ -1075,7 +1075,7 @@
         ENDIF
     ELSE
         !Unfortunately, we actually need the covariance matrix,
-        ! and can't get away with evaluating terms like
+        ! and can't get away with evaluating terms this
         ! V^-1 * x = y by solving V * y = x.  This costs us in performance
         ! and accuracy, but such is life
         CALL invert_covariance_matrix(invcovmat, alpha,beta,status)
@@ -1165,8 +1165,8 @@
     end FUNCTION  SNLS_alpha_beta_like
 
 
-    FUNCTION snls_LnLike(like, CMB, Theory, DataParams)
-    Class(SNLSLikelihood) :: like
+    FUNCTION snls_LnLike(this, CMB, Theory, DataParams)
+    Class(SNLSLikelihood) :: this
     Class (CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
@@ -1193,7 +1193,7 @@
     DO i=1,nsn
         zhel = sndata(i)%zhel
         zcmb = sndata(i)%zcmb
-        lumdists(i) = 5.0* LOG10( (1.0+zhel)*(1.0+zcmb) * like%Calculator%AngularDiameterDistance(zcmb) )
+        lumdists(i) = 5.0* LOG10( (1.0+zhel)*(1.0+zcmb) * this%Calculator%AngularDiameterDistance(zcmb) )
     ENDDO
 
     !Handle SN with absolute distances
