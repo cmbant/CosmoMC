@@ -1,7 +1,7 @@
     module CosmologyConfig
     use GeneralTypes
     use CalcLike
-    use cmbtypes
+    use CosmologyTypes
     use CosmoTheory
     use Calculator_Cosmology
     use CosmologyParameterizations
@@ -42,24 +42,7 @@
     end if
     call this%Calculator%InitWithParams(Ini,this)
 
-    compute_tensors = Ini%Read_Logical('compute_tensors',.false.)
-
-    if (num_cls==3 .and. compute_tensors) write (*,*) 'WARNING: computing tensors with num_cls=3 (BB=0)'
-    call Ini%Read('CMB_lensing',CMB_lensing)
-    call Ini%Read('use_lensing_potential',use_lensing_potential)
-    call Ini%Read('use_nonlinear_lensing',use_nonlinear_lensing)
-
-    call Ini%Read('pivot_k',pivot_k)
-    call Ini%read('inflation_consistency',inflation_consistency)
-    call Ini%Read('bbn_consistency',bbn_consistency)
-    num_massive_neutrinos = Ini%read_int('num_massive_neutrinos',-1)
-
-    if (CMB_lensing) num_clsS = num_cls   !Also scalar B in this case
-    if (use_lensing_potential .and. num_cls_ext ==0) &
-    call MpiStop('num_cls_ext should be > 0 to use_lensing_potential')
-    if (use_lensing_potential .and. .not. CMB_lensing) &
-    call MpiStop('use_lensing_potential must have CMB_lensing=T')
-    lmax_computed_cl = Ini%Read_Int('lmax_computed_cl',lmax)
+    call CosmoSettings%ReadParams(Ini)
 
     end subroutine TCosmologyConfig_ReadParams
 
@@ -94,26 +77,18 @@
 
     allocate(TCosmoTheoryPredictions::Theory)
     call Theory%Init(this)
+    select type(Theory)
+    class is (TCosmoTheoryPredictions)
+        call Theory%AllocateForSettings(CosmoSettings)
+    end select
 
     end subroutine TCosmologyConfig_NewTheory
 
     subroutine TCosmologyConfig_InitForLikelihoods(this)
     class(TCosmologyConfig) :: this
 
-    if(use_LSS) call Initialize_PKSettings()
+    call CosmoSettings%InitForLikelihoods()
     call this%TGeneralConfig%InitForLikelihoods()
-
-    if (Feedback > 0 .and. MPIRank==0) then
-        write (*,*) 'Computing tensors:', compute_tensors
-        write (*,*) 'Doing CMB lensing:',CMB_lensing
-        write (*,*) 'Doing non-linear Pk:', use_nonlinear
-
-        write(*,'(" lmax              = ",1I4)') lmax
-        write(*,'(" lmax_computed_cl  = ",1I4)') lmax_computed_cl
-
-        if (compute_tensors) write(*,'(" lmax_tensor    = ",1I4)') lmax_tensor
-        write(*,'(" Number of C_ls = ",1I4)') num_cls
-    end if
 
     end subroutine TCosmologyConfig_InitForLikelihoods
 

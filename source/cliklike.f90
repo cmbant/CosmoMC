@@ -1,6 +1,6 @@
     module cliklike
     use clik
-    use cmbtypes
+    use CosmologyTypes
     use CosmoTheory
     use settings
     use Likelihood_Cosmology
@@ -10,10 +10,11 @@
 
     integer, parameter :: dp = kind(1.d0)
 
-    type, extends(TCosmologyLikelihood) :: ClikLikelihood
+    type, extends(TCMBLikelihood) :: ClikLikelihood
         type(clik_object) :: clikid
         integer(kind=4),dimension(6) :: clik_has_cl, clik_lmax
         integer :: clik_n,clik_ncl,clik_nnuis
+        integer, allocatable :: clik_index(:,:)
         character (len=256), dimension(:), pointer :: names
     contains
     procedure :: LogLike => clik_LnLike
@@ -30,7 +31,6 @@
     end type ClikLensingLikelihood
 
     private
-    integer, dimension(4) :: mapped_index
 
     public :: clik_readParams, use_clik
 
@@ -61,6 +61,14 @@
             Like%needs_powerspectra =.true.
             Like%LikelihoodType = 'CMB'
             Like%name= File%ExtractName(fname)
+            allocate(Like%clik_index(2,6), source=0)
+            Like%clik_index(:,1) = [1,1]
+            Like%clik_index(:,2) = [2,2]
+            Like%clik_index(:,3) = [3,3]
+            Like%clik_index(:,4) = [2,1]
+            Like%clik_index(:,5) = [3,1]
+            Like%clik_index(:,6) = [3,2]
+
             !                Like%version = CAMSpec_like_version
             call StringReplace('clik_data_','clik_params_',name)
             params = Ini%ReadFileName(name, NotFoundFail = .false.)
@@ -70,12 +78,6 @@
             call Like%clik_likeinit(fname)
         end if
     end do
-
-    !Mapping CosmoMC's power spectrum indices to clik's
-    mapped_index(1) = 1
-    mapped_index(2) = 3
-    mapped_index(3) = 4
-    mapped_index(4) = 2
 
     end subroutine clik_readParams
 
@@ -106,6 +108,15 @@
 
     like%clik_ncl = sum(like%clik_lmax) + 6
 
+    allocate(like%cl_lmax(CL_B,CL_B), source=0)
+    like%cl_lmax(CL_T,CL_T) = like%clik_lmax(1)
+    like%cl_lmax(CL_E,CL_T) = like%clik_lmax(4)
+    like%cl_lmax(CL_E,CL_E) = like%clik_lmax(2)
+    like%cl_lmax(CL_B,CL_B) = like%clik_lmax(3)
+    where (like%cl_lmax<0)
+        like%cl_lmax=0
+    end where
+
     like%clik_nnuis = clik_get_extra_parameter_names(like%clikid,like%names)
     call like%do_checks()
 
@@ -121,10 +132,7 @@
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
     integer :: i,j ,l
-    real(mcp) acl(lmax,num_cls_tot)
     real(dp) clik_cl_and_pars(like%clik_n)
-
-    call Theory%ClsFromTheoryData(acl)
 
     !set C_l and parameter vector to zero initially
     clik_cl_and_pars = 0.d0
@@ -134,13 +142,15 @@
     !TB and EB assumed to be zero
     !If your model predicts otherwise, this function will need to be updated
     do i=1,4
-        do l=0,like%clik_lmax(i)
-            !skip C_0 and C_1
-            if (l >= 2) then
-                clik_cl_and_pars(j) = acl(l,mapped_index(i))
-            end if
-            j = j+1
-        end do
+        associate(Cls=> Theory%Cls(Like%clik_index(1,i),Like%clik_index(2,i)))
+            do l=0,like%clik_lmax(i)
+                !skip C_0 and C_1
+                if (l >= 2) then
+                    clik_cl_and_pars(j) = CLs%CL(L)/real(l*(l+1),mcp)*twopi
+                end if
+                j = j+1
+            end do
+            end associate
     end do
 
     !Appending nuisance parameters
@@ -170,11 +180,6 @@
     integer i
 
     !Safeguard
-    if ((lmax < maxval(like%clik_lmax)+500) .and. (lmax < 4500)) then
-        print*,'lmax too low: it should at least be set to',min(4500,(maxval(like%clik_lmax)+500))
-        call MPIstop
-    end if
-
     if (like%clik_nnuis/= like%nuisance_params%nnames) &
     call MpiStop('clik_nnuis has different number of nuisance parameters than .paramnames')
     if (like%clik_nnuis /= 0 .and. MPIRank==0 .and. Feedback>0) then
@@ -202,6 +207,15 @@
     call clik_lensing_get_lmaxs(like%clikid,like%lensing_lmaxs)
 
     like%clik_nnuis = 0 !clik_lensing_get_extra_parameter_names(like%clikid,like%names)
+    allocate(like%cl_lmax(CL_phi,CL_phi), source=0)
+    like%cl_lmax(CL_T,CL_T) = like%lensing_lmaxs(2)
+    like%cl_lmax(CL_E,CL_T) = like%lensing_lmaxs(5)
+    like%cl_lmax(CL_E,CL_E) = like%lensing_lmaxs(3)
+    like%cl_lmax(CL_B,CL_B) = like%lensing_lmaxs(4)
+    like%cl_lmax(CL_Phi,CL_Phi) = like%lensing_lmaxs(1)
+    where (like%cl_lmax<0)
+        like%cl_lmax=0
+    end where
     call like%do_checks()
     print *,'lensing lmax: ', like%lensing_lmaxs
     like%clik_n = sum(like%lensing_lmaxs(1:7)+1) !2*(like%lensing_lmax+1) + like%clik_nnuis
@@ -214,42 +228,36 @@
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
     integer :: i,j,l
-    real(mcp) acl(lmax,num_cls_tot)
     real(dp) clik_cl_and_pars(like%clik_n)
 
-    call Theory%ClsFromTheoryData(acl)
 
     !set C_l and parameter vector to zero initially
     clik_cl_and_pars = 0.d0
 
     j = 1
-    do l=0,like%lensing_lmaxs(1)
-        !skip C_0 and C_1
-        if (l >= 2) then
-            clik_cl_and_pars(j) = acl(l,num_cls+1)/real(l*(l+1),mcp)**2*twopi
-        end if
-        j = j+1
-    end do
+    associate(Cls=> Theory%Cls(CL_Phi,CL_Phi))
+        do l=0,like%lensing_lmaxs(1)
+            !skip C_0 and C_1
+            if (l >= 2) then
+                clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)**2*twopi
+            end if
+            j = j+1
+        end do
+    end associate
 
     !TB and EB assumed to be zero
     !If your model predicts otherwise, this function will need to be updated
     do i=1,4
-        do l=0,like%lensing_lmaxs(i+1)
-            !skip C_0 and C_1
-            if (l >= 2) then
-                clik_cl_and_pars(j) = acl(l,mapped_index(i))
-            end if
-            j = j+1
-        end do
+        associate(Cls=> Theory%Cls(Like%clik_index(1,i),Like%clik_index(2,i)))
+            do l=0,like%lensing_lmaxs(i+1)
+                !skip C_0 and C_1
+                if (l >= 2) then
+                    clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)*twopi
+                end if
+                j = j+1
+            end do
+            end associate
     end do
-
-    !do l=0,like%lensing_lmax
-    !    !skip C_0 and C_1
-    !    if (l >= 2) then
-    !        clik_cl_and_pars(j) = acl(l,mapped_index(1))
-    !    end if
-    !    j = j+1
-    !end do
 
     do i=1,like%clik_nnuis
         clik_cl_and_pars(j) = DataParams(i)

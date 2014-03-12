@@ -1,5 +1,5 @@
     module Calculator_Cosmology
-    use cmbtypes
+    use CosmologyTypes
     use CosmoTheory
     use settings
     use GeneralTypes

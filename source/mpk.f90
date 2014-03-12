@@ -22,7 +22,7 @@
 
     module MPK_Common
     use settings
-    use cmbtypes
+    use CosmologyTypes
     use CosmoTheory
     use Calculator_Cosmology
     use Likelihood_Cosmology
@@ -59,7 +59,7 @@
 
     module mpk
     use settings
-    use cmbtypes
+    use CosmologyTypes
     use CosmoTheory
     use likelihood
     use MatrixUtils
@@ -166,7 +166,7 @@
         & real(like%PKData%mpk_k(like%num_mpk_kbands_use))
     endif
     !if  (like%PKData%mpk_k(1) < matter_power_minkh) then
-    !    write (*,*) 'WARNING: k_min in '//trim(like%name)//'less than setting in cmbtypes.f90'
+    !    write (*,*) 'WARNING: k_min in '//trim(like%name)//'less than setting in CosmologyTypes.f90'
     !    write (*,*) 'all k<matter_power_minkh will be set to matter_power_minkh'
     !end if
 

@@ -39,6 +39,8 @@
     procedure :: Error => TNameValueList_Error
     procedure :: FailStop => TNameValueList_FailStop
     procedure :: AddString => TNameValueList_Add
+    procedure :: Name => TNameValueList_Name
+    procedure :: Value => TNameValueList_Value
     procedure :: TNameValueList_AddDouble
     procedure :: TNameValueList_AddReal
     procedure :: TNameValueList_AddInt
@@ -68,15 +70,18 @@
     procedure :: Read_Logical => Ini_Read_Logical
     procedure :: SaveReadValues => Ini_SaveReadValues
     procedure :: Key_To_Arraykey => Ini_Key_To_Arraykey
-    procedure :: NameValue_Add => Ini_NameValue_Add
-    procedure :: EmptyCheckDefault => Ini_EmptyCheckDefault
-    procedure, nopass :: ExtractFilePath => Ini_ExtractFilePath
-    procedure :: Ini_Read_Real_Change
-    procedure :: Ini_Read_Double_Change
-    procedure :: Ini_Read_Int_Change
-    procedure :: Ini_Read_Logical_Change
-    generic :: Read => Ini_Read_Real_Change, Ini_Read_Double_Change, Ini_Read_Int_Change, Ini_Read_Logical_Change
+    procedure, private :: NameValue_AddLine => Ini_NameValue_AddLine
+    procedure, private :: EmptyCheckDefault => Ini_EmptyCheckDefault
+    procedure, private, nopass :: ExtractFilePath => Ini_ExtractFilePath
+    procedure, private :: Ini_Read_Real_Change
+    procedure, private :: Ini_Read_Double_Change
+    procedure, private :: Ini_Read_Int_Change
+    procedure, private :: Ini_Read_Logical_Change
+    procedure, private :: Ini_Read_String_Change
+    generic :: Read => Ini_Read_Real_Change, Ini_Read_Double_Change, Ini_Read_Int_Change, &
+    & Ini_Read_Logical_Change,Ini_Read_String_Change
     end Type TIniFile
+
 
     public TNameValueList, TIniFile
     contains
@@ -124,6 +129,24 @@
     end if
 
     end function TNameValueList_ValueOf
+
+    function TNameValueList_Name(L, i) result(Name)
+    class(TNameValueList), intent(in) :: L
+    integer i
+    character(LEN=:), pointer :: Name
+
+    Name => L%Items(i)%P%Name
+
+    end function TNameValueList_Name
+
+    function TNameValueList_Value(L, i) result(Value)
+    class(TNameValueList), intent(in) :: L
+    integer i
+    character(LEN=:), pointer :: Value
+
+    Value => L%Items(i)%P%Value
+
+    end function TNameValueList_Value
 
 
     function TNameValueList_IndexOf(L, AName) result (AValue)
@@ -279,7 +302,7 @@
 
 
 
-    subroutine Ini_NameValue_Add(Ini,AInLine,only_if_undefined)
+    subroutine Ini_NameValue_AddLine(Ini,AInLine,only_if_undefined)
     class(TIniFile) :: Ini
     character (LEN=*), intent(IN) :: AInLine
     integer EqPos, slashpos, lastpos
@@ -310,10 +333,10 @@
                 S = S(2:lastpos-1)
             end if
         end if
-        call Ini%TNameValueList%Add(AName, S,only_if_undefined = isDefault)
+        call Ini%Add(AName, S,only_if_undefined = isDefault)
     end if
 
-    end subroutine Ini_NameValue_Add
+    end subroutine Ini_NameValue_AddLine
 
     function Ini_ExtractFilePath(aname)
     character(LEN=*), intent(IN) :: aname
@@ -399,7 +422,7 @@
                 call Ini%Error('Ini_Open, error in DEFAULT line: '//trim(filename))
             end if
         elseif (InLine /= '') then
-            call Ini%NameValue_Add(InLine, only_if_undefined=isDefault)
+            call Ini%NameValue_AddLine(InLine, only_if_undefined=isDefault)
         end if
     end do
 
@@ -454,7 +477,7 @@
     Ini%SlashComments = slash_comments
 
     do i=1,NumLines
-        call Ini%NameValue_Add(Lines(i))
+        call Ini%NameValue_AddLine(Lines(i))
     end do
 
     end  subroutine Ini_Open_Fromlines
@@ -734,5 +757,14 @@
     logical, intent(inout) :: Current
     Current = Ini%Read_Logical(Key, Current)
     end subroutine Ini_Read_Logical_Change
+
+    subroutine Ini_Read_String_Change(Ini,Key, Current)
+    class(TIniFile) :: Ini
+    character(LEN=*), intent(IN) :: Key
+    character(LEN=:), allocatable, intent(inout) :: Current
+
+    Current = Ini%Read_String_Default(Key, Current)
+
+    end subroutine Ini_Read_String_Change
 
     end module IniObjects

@@ -26,7 +26,7 @@
     module wigglezinfo
     !David Parkinson 12th March 2012
     use settings
-    use cmbtypes
+    use CosmologyTypes
     use CosmoTheory
     use Interpolation
     implicit none
@@ -110,7 +110,7 @@
 
     module wigglez
     use settings
-    use cmbtypes
+    use CosmologyTypes
     use CosmoTheory
     use likelihood
     use wigglezinfo

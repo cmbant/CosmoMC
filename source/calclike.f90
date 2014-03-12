@@ -92,7 +92,7 @@
     real(mcp) :: GetLogLikeBounds
 
     if (any(Params%P(:num_params) > BaseParams%PMax(:num_params)) .or. &
-    any(Params%P(:num_params) < BaseParams%PMin(:num_params))) then
+    & any(Params%P(:num_params) < BaseParams%PMin(:num_params))) then
         GetLogLikeBounds = logZero
     else
         GetLogLikeBounds=0

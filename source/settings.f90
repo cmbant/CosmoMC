@@ -34,9 +34,18 @@
 
     logical :: use_fast_slow = .false.
 
-    character(LEN=*), parameter :: CosmoMC_Version = 'Feb2014_oop'
+    character(LEN=*), parameter :: CosmoMC_Version = 'Mar2014_oop'
 
-    Type, extends(TIniFile) :: TSettingIni
+
+    Type, extends(TIniFile) :: TNameKeyIniFile
+        !Allowing things like param[name] = 
+    contains
+    procedure :: NamedKey => TNameKeyIniFile_NamedKey
+    procedure :: TagValuesForName => TNameKeyIniFile_TagValuesForName
+    end type TNameKeyIniFile
+
+
+    Type, extends(TNameKeyIniFile) :: TSettingIni
     contains
     procedure :: FailStop => TSettingIni_FailStop
     procedure :: ReadFilename => TSettingIni_ReadFilename
@@ -91,7 +100,7 @@
 
     logical :: checkpoint = .false.
 
-    
+
     integer :: output_lines = 0
     Type(TTextFile), save :: ChainOutFile = TTextFile(RealFormat='(*(E16.7))')
     Type(TTextFile), save :: LogFile
@@ -185,13 +194,46 @@
     filename= ReplaceDirs(filename, repdir)
 
     do i=1, CustomParams%Count
-        call StringReplace('%'//CustomParams%Items(i)%P%Name//'%',&
-        trim(ReplaceDirs(CustomParams%Items(i)%P%Value, repdir)) ,filename)
+        call StringReplace('%'//CustomParams%Name(i)//'%',&
+        trim(ReplaceDirs(CustomParams%Value(i), repdir)) ,filename)
     end do
 
     OutName = trim(filename)
 
     end function TSettingIni_ReadFilename
+
+    function TNameKeyIniFile_NamedKey(Ini, Key, Name) result(NamedKey)
+    class(TNameKeyIniFile) :: Ini
+    character(LEN=*), intent(in) :: Key, Name
+    character(LEN=:), allocatable :: NamedKey
+
+    NamedKey = trim(key)//'['//trim(Name)//']'
+
+    end function TNameKeyIniFile_NamedKey
+
+    subroutine TNameKeyIniFile_TagValuesForName(Ini, name, OutList)
+    !Reads all entries of the form "name[tag] = value", storing tag=value in OutList
+    class(TNameKeyIniFile) :: Ini
+    character(LEN=*), intent(in) :: name
+    character(LEN=:), allocatable :: tag
+    class(TNameValueList) :: OutList
+    integer count, i, ix
+    character(LEN=:), pointer :: KeyName
+
+    call OutList%Clear()
+    tag = trim(name) //'['
+
+    do i=1, Ini%Count
+        KeyName=>Ini%Name(i)
+        if (StringStarts(KeyName, tag) .and. Ini%Value(i)/='') then
+            ix = index(KeyName, ']')
+            if (ix /= len(KeyName)) call Ini%Error('Error readding tagged key', name)
+            call OutList%Add(KeyName(len(tag)+1:len(KeyName)-1), Ini%Read_String(KeyName))
+            !!Note: Use Read_String so read values are stored
+        end if
+    end do
+
+    end subroutine TNameKeyIniFile_TagValuesForName
 
     subroutine CheckParamChangeF(F)
     character(LEN=*), intent(in) ::  F

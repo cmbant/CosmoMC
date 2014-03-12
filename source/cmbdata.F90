@@ -92,6 +92,8 @@
     logical :: init_MAP = .true.
 
     integer :: cl_bin_width =1
+    
+    integer, private :: num_cls = 4
 
 
     integer, parameter :: halfsteps = 5 !do 2*halfsteps+1 steps in numerical marginalization
@@ -107,14 +109,14 @@
     logical, intent(IN) :: are_bare
     Type (CMBdataset) :: aset
     integer l, ncls
-    real(mcp) wpol(1:num_cls-1),ll, IW,w
+    real(mcp) wpol(1:3),ll, IW,w
     character(LEN=200) tmp
     Type(TTExtFile) :: F
 
     if (Feedback > 1) write (*,*) 'reading window: '//trim(aname)
 
     if (aset%has_pol) then
-        ncls = num_cls
+        ncls = 4
     else
         ncls = 1
     endif
@@ -137,7 +139,7 @@
         if (l>=2 .and. l<=lmax) then
             AP%window(1,l) = w
             if(aset%has_pol) then
-                AP%window(2:num_cls,l) = wpol
+                AP%window(2:4,l) = wpol
             end if
             if (.not. are_bare) AP%window(:,l) = AP%window(:,l)*l
         else
@@ -147,7 +149,6 @@
                 exit
             end if
         end if
-
     end do
 1   call F%Close()
 
@@ -246,7 +247,7 @@
 
     function ChiSqExact(cl, aset)
     !Compute -ln(Likelihood)
-    real(mcp) cl(lmax,num_cls)
+    real(mcp) cl(CosmoSettings%lmax,num_cls)
     Type(CMBdataset) :: aset
     integer l
     real(mcp) ChiSqExact, chisq, term, CT, CE, CB, CC
@@ -378,7 +379,6 @@
     if (aset%CMBLike) then
         allocate(aset%CMBLikes)
         call aset%CMBLikes%ReadData(Ini, File%ExtractPath(aname))
-
     else if (aset%all_l_exact) then
         aset%has_pol = Ini%Read_Logical('has_pol',.false.)
         call ReadAllExact(Ini,aset)
@@ -473,7 +473,6 @@
             deallocate(tmp_arr)
             aset%points(:)%var = aset%points(:)%var/(aset%points(:)%obs +aset%xfactors)**2
             aset%points(:)%obs = log(aset%points(:)%obs +aset%xfactors)
-
         end if
 
     end if !not all_l_exact or cut sky unbinned
@@ -489,7 +488,7 @@
     integer l
     real(mcp) sz
     Type(TTextFile) :: F
-    
+
     allocate(aset%sz_template(2:lmax))
     aset%sz_template = 0
     aset%has_sz_template = .true.
@@ -504,7 +503,7 @@
 
     function GetWinBandPower(AP, cl)
     real(mcp)  GetWinBandPower
-    real(mcp) cl(lmax,num_cls)
+    real(mcp) cl(CosmoSettings%lmax,num_cls)
     Type(CMBdatapoint) AP
     integer l
     real(mcp) bandpower
@@ -544,45 +543,42 @@
     if (margenorm == 0) call InitNumericalMarge
 
     do ibeam= -halfsteps, halfsteps
+        if (aset%beam_uncertain) then
+            beambandpowers = bandpowers*(1 + aset%points(:)%beam_err*ibeam*3/real(halfsteps))!Go out to 3 sigma
+        else
+            beambandpowers = bandpowers
+        end if
 
-    if (aset%beam_uncertain) then
-        beambandpowers = bandpowers*(1 + aset%points(:)%beam_err*ibeam*3/real(halfsteps))!Go out to 3 sigma
-    else
-        beambandpowers = bandpowers
-    end if
+        do i=-halfsteps,halfsteps
+            calib = 1 + aset%calib_uncertainty*i*3./halfsteps !Go out to 3 sigma
 
-    do i=-halfsteps,halfsteps
-
-    calib = 1 + aset%calib_uncertainty*i*3./halfsteps !Go out to 3 sigma
-
-    if (aset%has_xfactors) then
-        do j=1, aset%num_points
-            if (aset%has_xfactor(j)) then
-                diffs(j) = aset%points(j)%obs- log(calib*beambandpowers(j) + aset%xfactors(j))
+            if (aset%has_xfactors) then
+                do j=1, aset%num_points
+                    if (aset%has_xfactor(j)) then
+                        diffs(j) = aset%points(j)%obs- log(calib*beambandpowers(j) + aset%xfactors(j))
+                    else
+                        diffs(j) = aset%points(j)%obs - calib*beambandpowers(j)
+                    endif
+                end do
             else
-                diffs(j) = aset%points(j)%obs - calib*beambandpowers(j)
-            endif
+                diffs = aset%points(:)%obs - calib*beambandpowers
+            end if
+
+            if (aset%has_corr_errors) then
+                chisq(i) = SUM(diffs*MATMUL(aset%N_inv,diffs))
+            else
+                chisq(i) = SUM(diffs**2/aset%points(:)%var)
+            end if
         end do
-    else
-        diffs = aset%points(:)%obs - calib*beambandpowers
-    end if
 
-    if (aset%has_corr_errors) then
-        chisq(i) = SUM(diffs*MATMUL(aset%N_inv,diffs))
-    else
-        chisq(i) = SUM(diffs**2/aset%points(:)%var)
-    end if
-    end do
+        minchisq = minval(chisq)
 
-    minchisq = minval(chisq)
+        chisqcalib(ibeam) = -2*log(sum(margeweights*exp(max(-30._mcp,-(chisq-minchisq)/2)))/margenorm) + minchisq
 
-    chisqcalib(ibeam) = -2*log(sum(margeweights*exp(max(-30._mcp,-(chisq-minchisq)/2)))/margenorm) + minchisq
-
-    if (.not. aset%beam_uncertain) then
-        GetCalibMargexChisq = chisqcalib(ibeam)
-        return
-    end if
-
+        if (.not. aset%beam_uncertain) then
+            GetCalibMargexChisq = chisqcalib(ibeam)
+            return
+        end if
     end do
 
     minchisq = minval(chisqcalib)
@@ -766,7 +762,6 @@
                 !AL: Oct 08, changed to set path from the dataset path
                 CALL ReadWindow(aset%points(use_i), trim(concat(File%ExtractPath(aname),'windows/')) // &
                 TRIM(numcat(like%name,file_i)),windows_are_bare,aset)
-
             else
                 !discard band
                 READ(F%unit,'(a)') instr
@@ -847,89 +842,77 @@
     cl = clall(:,1:num_cls) !without lensing power spectrum or other extra CL
 
     if (aset%CMBLike) then
-
-    chisq =  aset%CMBLikes%CMBLike(clall)
-
+        chisq =  aset%CMBLikes%CMBLike(clall)
     else if (aset%all_l_exact) then
-
-    chisq = ChiSqExact(cl,aset)
-
+        chisq = ChiSqExact(cl,aset)
     else
+        denom = 1 !Assume Prob \propto exp(-chisq/2)/sqrt(denom)
 
-    denom = 1 !Assume Prob \propto exp(-chisq/2)/sqrt(denom)
-
-    do i=1, aset%num_points
-        bandpowers(i) = GetWinBandPower(aset%points(i), cl)
-    end do
-
-    if (aset%has_xfactors .and. (aset%calib_uncertainty > 1e-4 .or. aset%beam_uncertain))  then
-
-    chisq = GetCalibMargexChisq(bandpowers,aset)
-
-    else
-
-    if (aset%has_xfactors) then
         do i=1, aset%num_points
-            if (aset%has_xfactor(i)) then
-                !obs in this case is Z = log(observed + x)
-                diffs(i) = aset%points(i)%obs- log(bandpowers(i) + aset%xfactors(i))
-            else
-                diffs(i) = aset%points(i)%obs - bandpowers(i)
-            end if
+            bandpowers(i) = GetWinBandPower(aset%points(i), cl)
         end do
-    else
-        diffs = aset%points(:)%obs - bandpowers
-    end if
 
-    if (aset%has_corr_errors) then
-        chisq = SUM(diffs*MATMUL(aset%N_inv,diffs))
-    else
-        chisq = SUM(diffs**2/aset%points(:)%var)
-    end if
-
-    if (aset%calib_uncertainty > 1e-4 .or. aset%beam_uncertain) then
-
-    if (aset%has_corr_errors) then
-        tmp = MATMUL(aset%N_inv,bandpowers)
-    else
-        tmp = bandpowers/aset%points(:)%var
-    end if
-    chi2op = SUM(diffs*tmp)
-    chi2pp = SUM(bandpowers*tmp)
-    if (aset%beam_uncertain) then
-        beam = aset%points(:)%beam_err*bandpowers
-        if (aset%has_corr_errors) then
-            tmp = MATMUL(aset%N_inv,beam)
+        if (aset%has_xfactors .and. (aset%calib_uncertainty > 1e-4 .or. aset%beam_uncertain))  then
+            chisq = GetCalibMargexChisq(bandpowers,aset)
         else
-            tmp = beam/aset%points(:)%var
+            if (aset%has_xfactors) then
+                do i=1, aset%num_points
+                    if (aset%has_xfactor(i)) then
+                        !obs in this case is Z = log(observed + x)
+                        diffs(i) = aset%points(i)%obs- log(bandpowers(i) + aset%xfactors(i))
+                    else
+                        diffs(i) = aset%points(i)%obs - bandpowers(i)
+                    end if
+                end do
+            else
+                diffs = aset%points(:)%obs - bandpowers
+            end if
+
+            if (aset%has_corr_errors) then
+                chisq = SUM(diffs*MATMUL(aset%N_inv,diffs))
+            else
+                chisq = SUM(diffs**2/aset%points(:)%var)
+            end if
+
+            if (aset%calib_uncertainty > 1e-4 .or. aset%beam_uncertain) then
+                if (aset%has_corr_errors) then
+                    tmp = MATMUL(aset%N_inv,bandpowers)
+                else
+                    tmp = bandpowers/aset%points(:)%var
+                end if
+                chi2op = SUM(diffs*tmp)
+                chi2pp = SUM(bandpowers*tmp)
+                if (aset%beam_uncertain) then
+                    beam = aset%points(:)%beam_err*bandpowers
+                    if (aset%has_corr_errors) then
+                        tmp = MATMUL(aset%N_inv,beam)
+                    else
+                        tmp = beam/aset%points(:)%var
+                    end if
+                    chi2dd = SUM(beam*tmp)
+                    chi2pd = SUM(bandpowers*tmp)
+                    chi2od = SUM(diffs*tmp)
+                end if
+
+                if (aset%calib_uncertainty > 1e-4) then
+                    !analytic marginalization over calibration uncertainty
+                    wpp = 1/(chi2pp+1/aset%calib_uncertainty**2)
+                    chisq = chisq - wpp*chi2op**2
+                    denom = denom/wpp*aset%calib_uncertainty**2
+                else
+                    wpp = 0
+                end if
+
+                if (aset%beam_uncertain) then
+                    !analytic marginalization over beam uncertainty
+                    wdd=1/(chi2dd-wpp*chi2pd**2+1)
+                    chisq = chisq - wdd*(chi2od-wpp*chi2op*chi2pd)**2
+                    denom = denom/wdd
+                end if
+            end if
         end if
-        chi2dd = SUM(beam*tmp)
-        chi2pd = SUM(bandpowers*tmp)
-        chi2od = SUM(diffs*tmp)
-    end if
 
-    if (aset%calib_uncertainty > 1e-4) then
-        !analytic marginalization over calibration uncertainty
-        wpp = 1/(chi2pp+1/aset%calib_uncertainty**2)
-        chisq = chisq - wpp*chi2op**2
-        denom = denom/wpp*aset%calib_uncertainty**2
-    else
-        wpp = 0
-    end if
-
-    if (aset%beam_uncertain) then
-        !analytic marginalization over beam uncertainty
-        wdd=1/(chi2dd-wpp*chi2pd**2+1)
-        chisq = chisq - wdd*(chi2od-wpp*chi2op*chi2pd)**2
-        denom = denom/wdd
-    end if
-
-    end if
-
-    end if
-
-    if (denom /= 1) chisq = chisq + log(denom)
-
+        if (denom /= 1) chisq = chisq + log(denom)
     end if
     CalcLnLike = chisq/2
 
@@ -941,10 +924,15 @@
     Class (CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) :: DataParams(:)
-    real(mcp) cl(lmax,num_cls_tot)
+    real(mcp) cl(CosmoSettings%lmax,num_cls_tot)
     real(mcp) CMBLnLike
     real(mcp) sznorm, szcl(lmax,num_cls_tot)
 
+    call Theory%ClArray(cl(:,1),1,1)
+    call Theory%ClArray(cl(:,2),2,1)
+    call Theory%ClArray(cl(:,3),2,2)
+    call Theory%ClArray(cl(:,4),3,3)
+    
     call Theory%ClsFromTheoryData(cl)
 
     szcl= cl
@@ -960,123 +948,5 @@
 
     end function
 
-
-    function MAPLnLike(cl)
-#ifndef NOWMAP
-    use wmap_likelihood_9yr
-    use WMAP_OPTIONS
-    use WMAP_UTIL
-#endif
-    real(mcp) cl(lmax,num_cls_tot), MAPLnLike
-#ifndef NOWMAP
-
-    real(8), dimension(2:ttmax) :: cl_tt,cl_te,cl_ee,cl_bb
-    real(8)                     :: like(num_WMAP),like_tot
-    integer  l
-
-    if (Init_MAP) then
-#ifdef WMAPNOHIGHLTT
-        use_TT = .false.
-        use_TT_beam_ptsrc = .false.
-#endif
-        if (lmax<ttmax) stop 'lmax not large enough for WMAP'
-        if (Feedback>0) write(*,*) 'reading WMAP9 data'
-        Init_MAP = .false.
-    end if
-
-
-    do l = 2, ttmax
-        cl_tt(l) = cl(l,1)*l*(l+1)/twopi
-        cl_te(l) = cl(l,2)*l*(l+1)/twopi
-        cl_ee(l) = cl(l,3)*l*(l+1)/twopi
-        if(num_cls == 4) then
-            cl_bb(l) = cl(l,num_cls)*l*(l+1)/twopi
-        else
-            cl_bb(l) = 0.0d0
-        end if
-    end do
-
-    like=0.0d0
-    call wmap_likelihood_compute(cl_tt,cl_te,cl_ee,cl_bb,like)
-    !call wmap_likelihood_error_report
-
-    if (wmap_likelihood_ok) then
-        MAPLnLike = sum(like)
-    else
-        MAPLnLike = LogZero
-    endif
-#else
-    MAPLnLike=cl(2,1) !just stop unused symbol warnings
-    stop 'Compiled without WMAP'
-#endif
-    end function
-
-
-
-    subroutine CMBDataLikelihoods_Add(LikeList, Ini)
-#ifndef NOWMAP
-    use WMAP_OPTIONS
-#endif
-    use IniObjects
-#ifdef CLIK
-    use cliklike
-#endif
-#ifdef NONCLIK
-    use noncliklike
-#endif
-    class(TLikelihoodList) :: LikeList
-    class(TSettingIni) :: ini
-
-    Type(CMBDataLikelihood), pointer  :: like
-    integer numsets,  i
-    character(LEN=:), allocatable :: filename,keyname,SZTemplate
-    real(mcp) SZScale
-
-    Use_CMB = Use_CMB .or. Ini%Read_Logical('use_CMB',.false.)
-
-#ifndef NOWMAP
-    use_TT_beam_ptsrc = Ini%read_Logical('use_WMAP_TT_beam_ptsrc', .true.)
-    use_TE = Ini%read_Logical('use_WMAP_TE',.true.)
-    use_TT = Ini%read_Logical('use_WMAP_TT',.true.)
-    if (MPIRank==0) print *, 'WMAP options (beam TE TT)', use_TT_beam_ptsrc, use_TE, use_TT
-#endif
-
-    numsets = Ini%Read_Int('cmb_numdatasets',0)
-    do i= 1, numsets
-        allocate(like)
-        call LikeList%Add(like)
-        like%LikelihoodType = 'CMB'
-        like%needs_powerspectra = .true.
-        filename = Ini%ReadFileName(numcat('cmb_dataset',i))
-        call ReadDataset(like, filename)
-
-        keyname=numcat('cmb_dataset_SZ',i)
-        SZTemplate = ''
-        if (Ini%HasKey(KeyName)) SZTemplate = Ini%Read_String(keyname, .false.)
-        if (SZTemplate/='') then
-            SZScale = Ini%read_Real(numcat('cmb_dataset_SZ_scale',i),1.0)
-            call ReadSZTemplate(like%dataset, SZTemplate,SZScale)
-            call like%loadParamNames(trim(DataDir)//'WMAP.paramnames')
-        end if
-
-    end do
-    if (Feedback > 1) write (*,*) 'read CMB datasets'
-
-#ifdef CLIK
-    Use_clik = Ini%Read_Logical('use_clik',.false.)
-    if (use_clik .and. .not. use_CMB) &
-    call MpiStop('must have use_CMB=.true. to have use_clik (cmb_numdatasets = 0 for only clik)')
-    if (Use_clik) then
-        call clik_readParams(LikeList, Ini)
-    end if
-#else
-    if (Ini%Read_Logical('use_clik',.false.)) call MpiStop('compile with CLIK to use clik - see Makefile')
-#endif
-#ifdef NONCLIK
-    call nonclik_readParams(LikeList, Ini)
-#endif
-
-
-    end subroutine CMBDataLikelihoods_Add
 
     end module cmbdata

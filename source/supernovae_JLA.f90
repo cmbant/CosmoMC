@@ -103,7 +103,7 @@
     !                       Xiao Dong-Li and Shuang Wang for catching this
     !   mbetoule, Dec 2013: adaptation to the JLA sample
     !   AL, Mar 2014: updates for latest CosmoMC structure
-    USE cmbtypes
+    USE CosmologyTypes
     USE settings
     use CosmoTheory
     use Calculator_Cosmology

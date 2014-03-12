@@ -13,7 +13,7 @@
     module bao
     use MatrixUtils
     use settings
-    use cmbtypes
+    use CosmologyTypes
     use CosmoTheory
     use Calculator_Cosmology
     use Likelihood_Cosmology

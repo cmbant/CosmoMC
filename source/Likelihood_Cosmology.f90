@@ -1,5 +1,5 @@
     module Likelihood_Cosmology
-    use cmbtypes
+    use CosmologyTypes
     use Calculator_Cosmology
     use CosmoTheory
     implicit none
@@ -22,7 +22,13 @@
     procedure :: InitConfig => TCosmoCalcLikelihood_InitConfig
     end type
 
-    public TCosmoCalcLikelihood, TCosmologyLikelihood
+    type, extends(TCosmologyLikelihood) :: TCMBLikelihood
+    contains
+    procedure :: ReadParams => TCMBLikelihood_ReadParams
+    end type TCMBLikelihood
+
+
+    public TCosmoCalcLikelihood, TCosmologyLikelihood, TCMBLikelihood
     contains
 
 
@@ -95,4 +101,15 @@
 
     end subroutine TCosmoCalcLikelihood_InitConfig
 
+    
+    subroutine TCMBLikelihood_ReadParams(this, Ini)
+    class(TCMBLikelihood) :: this
+    class(TSettingIni) :: ini
+
+    this%needs_powerspectra = .true.
+    this%LikelihoodType = 'CMB'
+    call this%TCosmologyLikelihood%ReadParams(Ini)
+    end subroutine TCMBLikelihood_ReadParams
+
+    
     end module Likelihood_Cosmology

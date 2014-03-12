@@ -277,7 +277,7 @@
     REAL(GI), INTENT(IN)      :: z(:,:)
 
     W%nx = size(x)
-    W%ny = size(y) 
+    W%ny = size(y)
     allocate(W%x(W%nx), source = x)
     allocate(W%y(W%ny), source = y)
     allocate(W%z(size(z,1),size(z,2)), source = z)
@@ -322,8 +322,7 @@
         first = .true.
         ny=0
         nx=0
-        do
-            if (.not. F%ReadLineSkipEmptyAndComments(InLine)) exit
+        do while(F%ReadLineSkipEmptyAndComments(InLine))
 
             read(InLine,*, iostat=status) tmp
             if (status/=0) call W%Error('Error reading line: '//trim(InLine))
@@ -355,7 +354,7 @@
 
         if (nx<2 .or. ny<2) call W%Error('not enough values to interpolate')
         W%nx = nx
-        W%ny = ny 
+        W%ny = ny
         allocate(W%x(W%nx))
         allocate(W%y(W%ny))
         allocate(W%z(nx,ny))
@@ -396,7 +395,7 @@
 
     end function TInterpGrid2D_Value
 
-    subroutine TInterpGrid2D_Values(W, nip, x,y,z, error) 
+    subroutine TInterpGrid2D_Values(W, nip, x,y,z, error)
     !Z matrix not stored internally to save mem, so must pass again
     class(TInterpGrid2D) :: W
     integer, intent(in) :: nip

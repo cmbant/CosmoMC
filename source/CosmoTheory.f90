@@ -1,6 +1,6 @@
     module CosmoTheory
     use settings
-    use cmbtypes
+    use CosmologyTypes
     use GeneralTypes
     use likelihood
     use Interpolation
@@ -14,9 +14,13 @@
     procedure :: PowerAt
     end Type TCosmoTheoryPK
 
+    Type TSkyPowerSpectrum
+        real(mcp), allocatable :: CL(:)
+    end Type TSkyPowerSpectrum
+
     Type, extends(TTheoryPredictions) :: TCosmoTheoryPredictions
-        real(mcp) cl(lmax,num_cls_tot)
-        !TT, TE, EE (BB) + other C_l (e.g. lensing)  in that order
+        Type(TSkyPowerSpectrum), allocatable :: Cls(:,:)
+        !(this, E, B, Phi) x (this, E, B, Phi), with L(L+1)/2pi factor, in muK for CMB components
         real(mcp) sigma_8
         real(mcp) tensor_ratio_r10, tensor_ratio_02
         integer numderived
@@ -28,8 +32,10 @@
         type(TCosmoTheoryPK), allocatable :: NL_MPK
     contains
     procedure :: FreePK
-    procedure :: ClsFromTheoryData
+    procedure :: ClArray
+    procedure :: ClsAtL
     procedure :: WriteTextCls
+    procedure :: AllocateForSettings => TCosmoTheoryPredictions_AllocateForSettings
     !Inherited overrides
     procedure :: WriteTheory => TCosmoTheoryPredictions_WriteTheory
     procedure :: ReadTheory => TCosmoTheoryPredictions_ReadTheory
@@ -38,14 +44,14 @@
 
     public TCosmoTheoryPredictions, TCosmoTheoryPK
     contains
-    
+
     function PowerAt(PK,k,z) result(outpower)
     class(TCosmoTheoryPK) PK
     real(mcp), intent(in) :: k,z
     real(mcp) :: logk
     real(mcp) :: outpower
     integer :: error
-    
+
     logk=log(k)
     if(.not. allocated(PK%x)) then
         write(*,*) 'ERROR:  PowerAt least one of your PK arrays is not initialized:'
@@ -54,133 +60,211 @@
         write(*,*) '        and need to turn on redo_pk.'
         call MPIstop()
     end if
-    
+
     if(PK%islog) then 
         outpower = exp(PK%Value(logk,z))
     else
         outpower = PK%Value(logk,z)
     end if
-    
-    end function PowerAt    
 
-    subroutine FreePK(T)
-    class(TCosmoTheoryPredictions) T
-    
-    if(allocated(T%MPK))deallocate(T%MPK)
-    if(allocated(T%NL_MPK)) deallocate(T%NL_MPK)
-    
-    end subroutine FreePK   
+    end function PowerAt
 
-    subroutine ClsFromTheoryData(T, Cls)
-    class(TCosmoTheoryPredictions) T
-    real(mcp) Cls(lmax,num_cls_tot)
+    subroutine FreePK(this)
+    class(TCosmoTheoryPredictions) this
 
-    Cls(2:lmax,1:num_clsS) =T%cl(2:lmax,1:num_clsS)
-    if (num_cls>3 .and. num_ClsS==3) Cls(2:lmax,num_cls)=0
-    if (num_cls_ext>0) then
-        Cls(2:lmax,num_cls+1:num_cls_tot) =T%cl(2:lmax,num_clsS+1:num_clsS+num_cls_ext)
+    if(allocated(this%MPK))deallocate(this%MPK)
+    if(allocated(this%NL_MPK)) deallocate(this%NL_MPK)
+
+    end subroutine FreePK
+
+    subroutine ClArray(this, cl, i, j)
+    class(TCosmoTheoryPredictions) this
+    real(mcp) :: cl(1:)
+    integer i, j, ii,jj,outmax, inmax,mx
+
+    if (j>i) then
+        jj=i
+        ii=j
+    else
+        ii=i
+        jj=j
     end if
+    if (allocated(this%Cls(ii,jj))) then
+        outmax = size(cl)
+        inmax = size(this%Cls(ii,jj)%Cl)
+        mx = min(outmax,inmax)
+        cl(1:mx) = this%Cls(ii,jj)%Cl(1:mx)
+        cl(mx+1:outmax)=0
+    else
+        call MpiStop('CosmoTheory: ClArray not calcualated')
+    end if
+    end subroutine ClArray
 
-    end subroutine ClsFromTheoryData
 
-    subroutine WriteTextCls(T,aname)
-    class(TCosmoTheoryPredictions) T
+    subroutine ClsAtL(this, L, cl, max_ix_out) 
+    !TT EE TE BB BE BT PP.. order
+    class(TCosmoTheoryPredictions) this
+    real(mcp):: cl(:)
+    integer, intent(in) :: L
+    integer, intent(in), optional ::max_ix_out
+    integer imax,ix,i,j, inmax, ii,jj
+    logical symm
+
+    imax = PresentDefault(size(this%Cls,2),max_ix_out)
+    ix=0
+    do i=1,min(size(this%Cls,2),imax)
+        do j= i, 1, -1
+            ix = ix+1
+            if (allocated(this%Cls(i,j))) then
+                inmax = size(this%Cls(i,j)%Cl)
+                if (inmax >= L) then
+                    cl(ix) = this%Cls(i,j)%Cl(L)
+                else
+                    cl(ix)=0
+                end if
+            else
+                cl(ix) = 0
+            end if
+        end do
+    end do
+
+    end subroutine ClsAtL
+
+
+    subroutine WriteTextCls(this,aname)
+    class(TCosmoTheoryPredictions) this
     character (LEN=*), intent(in) :: aname
     integer l
-    real(mcp) Cls(lmax,num_cls_tot), nm
-    character(LEN=*), parameter :: fmt = '(1I6,*(E15.5))'
+    real(mcp), allocatable :: cl(:,:)
     Type(TTextFile) :: F
+    logical :: hasPhi
+    character(LEN=*), parameter :: fmt = '(1I6,*(E15.5))'
+
+    hasPhi = size(this%Cls,2) > 3
+    allocate(cl(CosmoSettings%lmax,IfThenElse(hasPhi,5,4)))
+    call this%ClArray(cl(:,1),1,1) !TT
+    call this%ClArray(cl(:,2),1,2) !TE
+    call this%ClArray(cl(:,3),2,2) !EE
+    call this%ClArray(cl(:,4),3,3) !BB
+    if (hasPhi) call this%ClArray(cl(:,5),4,4) !PP
 
     call F%CreateFile(aname)
-    call T%ClsFromTheoryData(Cls)
-    do l = 2, lmax
-        nm = 2*pi/(l*(l+1))
-        if (num_cls_ext > 0) then
-            write (F%unit,fmt) l, cls(l,1:num_cls)/nm, cls(l,num_cls+1:num_cls_tot)
-        else
-            write (F%unit,fmt) l, cls(l,:)/nm
-        end if
+    do l = 2, CosmoSettings%lmax
+        write(F%unit,fmt) L,cl(L,:)
     end do
     call F%Close()
 
     end subroutine WriteTextCls
 
-    subroutine TCosmoTheoryPredictions_WriteTheory(T, F)
-    Class(TCosmoTheoryPredictions) T
+    subroutine TCosmoTheoryPredictions_WriteTheory(this, F)
+    Class(TCosmoTheoryPredictions) this
     class(TFileStream) :: F
-    integer, parameter :: varcount = 0
-    integer tmp(varcount)
+    integer tmp(0)
     logical, save :: first = .true.
+    integer i,j
 
     if (first .and. new_chains) then
         first = .false.
-        write(F%unit) use_LSS, compute_tensors, get_sigma8
-        write(F%unit) lmax, lmax_tensor, num_cls, num_cls_ext
-        write(F%unit) varcount
-        write(F%unit) tmp(1:varcount)
+        Write(F%Unit) CosmoSettings%TCosmoTheoryParams
+        if (CosmoSettings%use_LSS) call F%WriteSizedArray(CosmoSettings%power_redshifts)
+        if (CosmoSettings%use_CMB) call F%WriteSizedArray(CosmoSettings%cl_lmax)
+        call F%WriteSizedArray(tmp)
     end if
 
-    write(F%unit) T%numderived
-    write(F%unit) T%derived_parameters(1:T%numderived)
-    write(F%unit) T%cl(2:lmax,1:num_cls)
-    if (num_cls_ext>0) write(F%unit) T%cl(2:lmax,num_cls+1:num_cls_tot)
+    write(F%unit) this%numderived
+    write(F%unit) this%derived_parameters(1:this%numderived)
+    do i=1,CosmoSettings%num_cls
+        do j= i, 1, -1
+            if (CosmoSettings%cl_lmax(i,j)>0) then
+                call F%WriteSizedArray(this%Cls(i,j)%Cl)
+            end if
+        end do
+    end do
 
-    if (compute_tensors) then
-        write(F%unit) T%tensor_ratio_02, T%tensor_ratio_r10
+    if (CosmoSettings%compute_tensors) then
+        write(F%unit) this%tensor_ratio_02, this%tensor_ratio_r10
     end if
 
-    if (get_sigma8 .or. use_LSS) write(F%unit) T%sigma_8
+    if (CosmoSettings%get_sigma8 .or. CosmoSettings%use_LSS) write(F%unit) this%sigma_8
 
-    if (use_LSS) then
-        write(F%unit) T%MPK%nx, T%MPK%ny
-        write(F%unit) T%MPK%x
-        write(F%unit) T%MPK%y
-        write(F%unit) T%MPK%z
-        write(F%unit) use_nonlinear
-        if(use_nonlinear) write(F%unit) T%NL_MPK%z
+    if (CosmoSettings%use_LSS) then
+        write(F%unit) this%MPK%nx, this%MPK%ny
+        write(F%unit) this%MPK%x
+        write(F%unit) this%MPK%y
+        write(F%unit) this%MPK%z
+        if(CosmoSettings%use_nonlinear) write(F%unit) this%NL_MPK%z
     end if
 
     end subroutine TCosmoTheoryPredictions_WriteTheory
 
-    subroutine TCosmoTheoryPredictions_ReadTheory(T, F)
-    Class(TCosmoTheoryPredictions) T
+    subroutine TCosmoTheoryPredictions_AllocateForSettings(this, Settings)
+    Class(TCosmoTheoryPredictions) this
+    class(TCosmoTheorySettings):: Settings
+    integer i,j
+
+    if (allocated(this%Cls)) deallocate(this%Cls)
+    allocate(this%Cls(Settings%num_cls,Settings%num_cls))
+    do i=1,Settings%num_cls
+        do j= i, 1, -1
+            if (Settings%cl_lmax(i,j) >0) &
+            & allocate(this%Cls(i,j)%Cl(Settings%cl_lmax(i,j)), source=0._mcp)
+        end do
+    end do
+    end subroutine TCosmoTheoryPredictions_AllocateForSettings
+
+
+    subroutine TCosmoTheoryPredictions_ReadTheory(this, F)
+    Class(TCosmoTheoryPredictions) this
     class(TFileStream) :: F
-    integer unused
     logical, save :: first = .true.
-    logical, save :: has_sigma8, has_LSS, has_tensors
-    integer, save :: almax, almaxtensor, anumcls, anumclsext, tmp(1)
+    type(TCosmoTheorySettings), save :: FileSettings
     !JD 02/14 new variables for handling new pk arrays
     integer :: num_k, num_z, stat
-    logical  has_nonlinear
-    real(mcp), pointer :: temp(:,:) =>null()
+    real(mcp), allocatable :: temp(:,:)
     real(mcp), allocatable :: k(:), z(:)
+    real(mcp), allocatable :: cl(:)
+    integer, allocatable :: tmp(:)
+    integer i,j
 
     if (first) then
         first = .false.
-        read(F%unit) has_LSS, has_tensors, has_sigma8
-        read(F%unit) almax, almaxtensor, anumcls, anumclsext
-        if (almax > lmax) call MpiStop('ReadTheory: reading file with larger lmax')
-        if (anumcls /= num_cls) call MpiStop('ReadTheory: reading file with different Cls')
-        if (anumclsext /= num_cls_ext) call MpiStop('ReadTheory: reading file with different ext Cls')
-        read(F%unit) unused
-        read(F%unit) tmp(1:unused)
+        read(F%Unit) FileSettings%TCosmoTheoryParams
+        if (FileSettings%use_CMB) call F%ReadSizedArray(FileSettings%cl_lmax)
+        if (FileSettings%use_LSS) call F%ReadSizedArray(FileSettings%power_redshifts)
+        call F%ReadSizedArray(tmp) !not used
     end if
 
-    T%cl = 0
-    T%derived_parameters=0
-    read(F%unit) T%numderived
-    read(F%unit) T%derived_parameters(1:T%numderived)
-    read(F%unit) T%cl(2:almax,1:anumcls)
-    if (anumclsext >0) read(F%unit) T%cl(2:almax,num_cls+1:num_cls+anumclsext)
+    call this%AllocateForSettings(CosmoSettings)
+    this%derived_parameters=0
+    read(F%unit) this%numderived
+    read(F%unit) this%derived_parameters(1:this%numderived)
 
-    if (has_tensors) then
-        read(F%unit) T%tensor_ratio_02, T%tensor_ratio_r10
+    do i=1,FileSettings%num_cls
+        do j= i, 1, -1
+            if (FileSettings%cl_lmax(i,j)>0) then
+                call F%ReadSizedArray(cl)
+                if (CosmoSettings%cl_lmax(i,j)>0) then
+                    associate (Sz => min(FileSettings%cl_lmax(i,j),CosmoSettings%cl_lmax(i,j)))
+                        this%Cls(i,j)%Cl(1:Sz) = Cl(1:sz)
+                        end associate
+                end if
+                deallocate(cl)
+            end if
+        end do
+    end do
+
+    if (FileSettings%compute_tensors) then
+        read(F%unit) this%tensor_ratio_02, this%tensor_ratio_r10
     end if
 
-    if (has_sigma8 .or. has_LSS) read(F%unit) T%sigma_8
-    if (has_LSS) then
-        call T%FreePK()
-        allocate(T%MPK)
+    if (FileSettings%get_sigma8 .or. FileSettings%use_LSS) read(F%unit) this%sigma_8
+    if (FileSettings%use_LSS) then
+        if (CosmoSettings%use_LSS) then
+            if (any(FileSettings%power_redshifts/=CosmoSettings%power_redshifts)) &
+            & call MpiStop('TCosmoTheoryPredictions_ReadTheory: power_redshifts differ - check')
+        end if
+        call this%FreePK()
+        allocate(this%MPK)
         read(F%unit) num_k, num_z
         allocate(temp(num_k,num_z))
         allocate(k(num_k))
@@ -188,13 +272,12 @@
         read(F%unit) k
         read(F%unit) z
         read(F%unit) temp
-        call T%MPK%Init(k,z,temp)
-        read(F%unit)has_nonlinear
-        if(has_nonlinear) then
-            allocate(T%NL_MPK)
+        call this%MPK%Init(k,z,temp)
+        if(FileSettings%use_nonlinear) then
+            allocate(this%NL_MPK)
             read(F%unit)temp
-            call T%NL_MPK%Init(k,z,temp)
-            if(.not. use_nonlinear) then
+            call this%NL_MPK%Init(k,z,temp)
+            if(.not. CosmoSettings%use_nonlinear) then
                 write(*,*)"WARNING:  ReadTheory - Your data files have nonlinear power spectra,"
                 write(*,*)"          but you are not using them. Be careful that this"
                 write(*,*)"          is what you intended."
@@ -204,11 +287,11 @@
 
     end subroutine TCosmoTheoryPredictions_ReadTheory
 
-    subroutine TCosmoTheoryPredictions_WriteBestFitData(Theory,fnameroot)
-    class(TCosmoTheoryPredictions) Theory
+    subroutine TCosmoTheoryPredictions_WriteBestFitData(this,fnameroot)
+    class(TCosmoTheoryPredictions) this
     character(LEN=*), intent(in) :: fnameroot
 
-    if (use_CMB) call Theory%WriteTextCls(fnameroot //'.bestfit_cl')
+    if (CosmoSettings%use_CMB) call this%WriteTextCls(fnameroot //'.bestfit_cl')
 
     end subroutine TCosmoTheoryPredictions_WriteBestFitData
 
