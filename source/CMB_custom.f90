@@ -61,7 +61,7 @@
         call this%ReadParams(Ini)
         call LikeList%Add(this)
     end do
-    if (Feedback > 1) write (*,*) 'CMB datasets read'
+    if (Feedback > 1 .and. DataSets%Count>0 ) write (*,*) 'read CMB data sets'
 
 #ifdef CLIK
     Use_clik = Ini%Read_Logical('use_clik',.false.)

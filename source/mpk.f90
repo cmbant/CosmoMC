@@ -110,7 +110,7 @@
         call this%ReadDatasetFile(Ini%ReadFileName(numcat('mpk_dataset',i)) )
         call LikeList%Add(this)
     end do
-    if (Feedback>1) write(*,*) 'read mpk datasets'
+    if (Feedback>1 .and. nummpksets>0) write(*,*) 'read MPK data sets'
 
     end subroutine MPKLikelihood_Add
 
