@@ -74,7 +74,7 @@
             like%needs_background_functions = .true.
             call LikeList%Add(like)
         end do
-        if (Feedback>1) write(*,*) 'read bao datasets'
+        if (Feedback>1) write(*,*) 'read BAO data sets'
     end if
 
     end subroutine BAOLikelihood_Add

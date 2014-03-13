@@ -449,7 +449,7 @@
     nk=size(PK,1)
     nz=size(PK,2)
 
-    allocate(temp(nk,nz))
+    allocate(temp(nk,CP%Transfer%num_redshifts))
 
     h = CP%H0/100
 
@@ -464,7 +464,7 @@
     end if
 
     do zix=1,nz
-        PK(:,zix) = temp(:,nz-zix+1)
+        PK(:,zix) = temp(:,CP%Transfer%PK_redshifts_index(nz-zix+1))
     end do
 
     end subroutine CAMBCalc_TransfersOrPowers
@@ -617,19 +617,19 @@
     HighAccuracyDefault = .true.
     P%OutputNormalization = outNone
 
-    !JD added to save computation time when only using MPK
-    if(.not. CosmoSettings%use_CMB) CosmoSettings%lmax_computed_cl = 10
+    !JD Modified to save computation time when only using MPK
+    if(CosmoSettings%use_CMB) then
+        P%WantScalars = .true.
+        P%WantTensors = CosmoSettings%compute_tensors
+        P%Max_l=CosmoSettings%lmax_computed_cl
+        P%Max_eta_k=CosmoSettings%lmax_computed_cl*2
+        P%Max_l_tensor=CosmoSettings%lmax_tensor
+        P%Max_eta_k_tensor=CosmoSettings%lmax_tensor*5./2
+    else
+        P%WantCls = .false.
+    end if
 
-    P%WantScalars = .true.
-    P%WantTensors = CosmoSettings%compute_tensors
     P%WantTransfer = CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8
-
-    P%Max_l=CosmoSettings%lmax_computed_cl
-    P%Max_eta_k=CosmoSettings%lmax_computed_cl*2
-
-    P%Max_l_tensor=CosmoSettings%lmax_tensor
-    P%Max_eta_k_tensor=CosmoSettings%lmax_tensor*5./2
-
     P%Transfer%k_per_logint=0
 
     if (CosmoSettings%use_nonlinear) then
@@ -757,7 +757,7 @@
     !Called later after likelihoods etc loaded
     class(CAMB_Calculator) :: this
 
-    if (CosmoSettings%lmax_computed_cl /= CosmoSettings%lmax) then
+    if (CosmoSettings%use_CMB .and. CosmoSettings%lmax_computed_cl /= CosmoSettings%lmax) then
         if (CosmoSettings%compute_tensors .and. CosmoSettings%lmax_tensor > CosmoSettings%lmax_computed_cl) &
         & call MpiStop('lmax_tensor > lmax_computed_cl')
         call this%LoadFiducialHighLTemplate()
@@ -766,7 +766,7 @@
     call this%InitCAMBParams(this%CAMBP)
 
     if (Feedback > 0 .and. MPIRank==0) then
-        write(*,*) 'max_eta_k         = ', this%CAMBP%Max_eta_k
+        if(CosmoSettings%use_CMB) write(*,*) 'max_eta_k         = ', this%CAMBP%Max_eta_k
         write(*,*) 'transfer kmax     = ', this%CAMBP%Transfer%kmax
     end if
 

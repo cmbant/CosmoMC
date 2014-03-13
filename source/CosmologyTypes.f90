@@ -185,20 +185,22 @@
     & call MpiStop('use_lensing_potential must have CMB_lensing=T')
 
     if (Feedback > 0 .and. MPIRank==0) then
-        write (*,*) 'Doing CMB lensing:', this%CMB_lensing
-        if (this%CMB_lensing) write (*,*) 'Doing non-linear lensing:', this%use_nonlinear_lensing
         write (*,*) 'Doing non-linear Pk:', this%use_nonlinear
 
-        if (allocated(this%cl_lmax)) then
-            do i=1, this%num_cls
-                do j= i, 1, -1
-                    if (this%cl_lmax(i,j) >0) &
-                    write(*,'(" '//CMB_CL_Fields(i:i)//CMB_CL_Fields(j:j)//' lmax = ",(I5))') this%cl_lmax(i,j)
+        if(this%use_CMB)then
+            write (*,*) 'Doing CMB lensing:', this%CMB_lensing
+            if (this%CMB_lensing) write (*,*) 'Doing non-linear lensing:', this%use_nonlinear_lensing
+            if (allocated(this%cl_lmax)) then
+                do i=1, this%num_cls
+                    do j= i, 1, -1
+                        if (this%cl_lmax(i,j) >0) &
+                        write(*,'(" '//CMB_CL_Fields(i:i)//CMB_CL_Fields(j:j)//' lmax = ",(I5))') this%cl_lmax(i,j)
+                    end do
                 end do
-            end do
-            write(*,'(" lmax_computed_cl  = ",1I5)') this%lmax_computed_cl
-            write (*,*) 'Computing tensors:', this%compute_tensors
-            if (this%compute_tensors) write(*,'(" lmax_tensor    = ",1I5)') this%lmax_tensor
+                write(*,'(" lmax_computed_cl  = ",1I5)') this%lmax_computed_cl
+                write (*,*) 'Computing tensors:', this%compute_tensors
+                if (this%compute_tensors) write(*,'(" lmax_tensor    = ",1I5)') this%lmax_tensor
+            end if
         end if
     end if
 

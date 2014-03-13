@@ -195,7 +195,7 @@
         like%CommonData=> WiggleZCommon
         call LikeList%Add(like)
     end do
-    if (Feedback>1) write(*,*) 'read WiggleZ MPK datasets'
+    if (Feedback>1) write(*,*) 'read WiggleZ MPK data sets'
 
     end subroutine WiggleZLikelihood_Add
 
