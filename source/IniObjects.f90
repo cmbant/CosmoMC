@@ -10,6 +10,7 @@
     private
 
     character(LEN=0), target :: Empty_String = ''
+    integer, parameter :: Ini_Enumeration_Len = 64
 
     type TNameValue
         character(LEN=:), allocatable :: Name
@@ -53,6 +54,7 @@
         logical :: SlashComments = .false.
         logical :: Echo_Read = .false.
         logical :: Fail_on_not_found = .false.
+        character(LEN=:), allocatable :: Original_filename
         Type(TNameValueList) :: ReadValues
     contains
     procedure :: Open => Ini_Open
@@ -68,11 +70,12 @@
     procedure :: Read_Real => Ini_Read_Real
     procedure :: Read_Real_Array => Ini_Read_Real_Array
     procedure :: Read_Logical => Ini_Read_Logical
+    procedure :: Read_Enumeration => Ini_Read_Enumeration
+    procedure :: TestEqual => Ini_TestEqual
     procedure :: SaveReadValues => Ini_SaveReadValues
     procedure :: Key_To_Arraykey => Ini_Key_To_Arraykey
     procedure, private :: NameValue_AddLine => Ini_NameValue_AddLine
     procedure, private :: EmptyCheckDefault => Ini_EmptyCheckDefault
-    procedure, private, nopass :: ExtractFilePath => Ini_ExtractFilePath
     procedure, private :: Ini_Read_Real_Change
     procedure, private :: Ini_Read_Double_Change
     procedure, private :: Ini_Read_Int_Change
@@ -83,7 +86,7 @@
     end Type TIniFile
 
 
-    public TNameValueList, TIniFile
+    public TNameValueList, TIniFile, Ini_Enumeration_Len
     contains
 
     subroutine TNameValueList_Init(L, ignoreDuplicates)
@@ -338,22 +341,6 @@
 
     end subroutine Ini_NameValue_AddLine
 
-    function Ini_ExtractFilePath(aname)
-    character(LEN=*), intent(IN) :: aname
-    character(LEN=:), allocatable :: Ini_ExtractFilePath
-    integer len, i
-
-    len = len_trim(aname)
-    do i = len, 1, -1
-        if (aname(i:i)=='/') then
-            Ini_ExtractFilePath = aname(1:i)
-            return
-        end if
-    end do
-    Ini_ExtractFilePath = ''
-
-    end function Ini_ExtractFilePath
-
     recursive subroutine Ini_Open(Ini, filename, error, slash_comments, append,only_if_undefined)
     class(TIniFile) :: Ini
     character (LEN=*), intent(IN) :: filename
@@ -382,6 +369,7 @@
     if (.not. doappend) then
         call Ini%TNameValueList%Init()
         call Ini%ReadValues%Init(.true.)
+        Ini%Original_filename = filename
     end if
 
     if (present(slash_comments)) then
@@ -436,7 +424,7 @@
         IncludeFile= IncudeFiles%Items(i)%P%Name
         inquire(file=IncludeFile, exist = FileExists)
         if (.not. FileExists) then
-            IncludeFile= Ini%ExtractFilePath(filename)//trim(IncludeFile)
+            IncludeFile= File%ExtractPath(filename)//trim(IncludeFile)
             inquire(file=IncludeFile, exist = FileExists)
             if (.not. FileExists) then
                 call Ini%Error('Ini_Open, error in INCLUDE file not found: '//trim(IncudeFiles%Items(i)%P%Name))
@@ -451,7 +439,7 @@
         IncludeFile=DefaultValueFiles%Items(i)%P%Name
         inquire(file=IncludeFile, exist = FileExists)
         if (.not. FileExists) then
-            IncludeFile=trim(Ini%ExtractFilePath(filename))//trim(IncludeFile)
+            IncludeFile=trim(File%ExtractPath(filename))//trim(IncludeFile)
             inquire(file=IncludeFile, exist = FileExists)
             if (.not. FileExists) then
                 call Ini%Error('Ini_Open, error in DEFAULT file not found: '//trim(DefaultValueFiles%Items(i)%P%Name))
@@ -532,6 +520,20 @@
 
     end function Ini_Read_String_Default
 
+    function Ini_TestEqual(Ini, Key, value, EmptyOK) result(OK)
+    class(TIniFile) :: Ini
+    character (LEN=*), intent(IN) :: Key, value
+    logical, intent(in), optional :: EmptyOK
+    character(LEN=:), pointer :: val
+    logical :: OK
+
+    val = Ini%ValueOf(Key)
+    OK = val == value
+    if (.not. OK .and. present(EmptyOK)) then
+        OK = EmptyOK .and. val==''
+    end if
+
+    end function Ini_TestEqual
 
     function Ini_Key_To_Arraykey(Ini,Key, index)  result(AValue)
     class(TIniFile), intent(in) :: Ini
@@ -573,10 +575,11 @@
 
     end function Ini_Read_Int_Array
 
-    function Ini_Read_Int(Ini, Key, Default, min, max)
+    function Ini_Read_Int(Ini, Key, Default, min, max, OK)
     class(TIniFile) :: Ini
     integer Ini_Read_Int
     integer, optional, intent(IN) :: Default, min, max
+    logical, intent(out), optional :: OK
     character(LEN=*), intent(IN) :: Key
     character(LEN=:), pointer :: S
     integer status
@@ -589,6 +592,11 @@
     else
         if (verify(trim(S),'-+0123456789') /= 0) then
             status=1
+            if (present(OK)) then
+                Ini_Read_Int=-1
+                OK = .false.
+                return
+            end if
         else
             read (S,*, iostat=status) Ini_Read_Int
         end if
@@ -600,8 +608,36 @@
             if (Ini_Read_Int < min) call Ini%Error('value < min',Key)
         end if
     end if
+    if (present(OK)) OK = .true.
 
     end function Ini_Read_Int
+
+    function Ini_Read_Enumeration(Ini, Key, Names, Default)
+    class(TIniFile) :: Ini
+    character(LEN=*), intent(in) :: Key
+    character(LEN=Ini_Enumeration_Len), intent(in) :: Names(:)
+    integer, optional, intent(in) :: Default
+    integer Ini_Read_Enumeration
+    character(LEN=:), pointer :: S 
+    logical OK
+    integer i
+
+    Ini_Read_Enumeration = Ini%Read_Int(Key, Default, OK = OK)
+    if (OK) then
+        if (Ini_Read_Enumeration<1 .or. Ini_Read_Enumeration> size(Names)) &
+        & call Ini%Error('enumeration value not valid',Key)
+    else
+        S => Ini%ValueOf(Key)
+        do i=1, size(Names)
+            if (S==Names(i)) then
+                Ini_Read_Enumeration = i
+                return
+            end if
+        end do
+        call Ini%Error('"'//S//'" enumeration name not recognised',Key)
+    end if
+
+    end function Ini_Read_Enumeration
 
     function Ini_Read_Double(Ini,Key, Default, min, max)
     class(TIniFile) :: Ini

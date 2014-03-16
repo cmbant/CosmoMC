@@ -1,8 +1,9 @@
     !Things that used to be in CMBdata, for dated likelihoods
-    module CMBCustom
+    module CMBLikelihoods
     use Likelihood_Cosmology
     use CosmologyTypes
     use CosmoTheory
+    use CMBLikes
     implicit none
     private
 
@@ -22,11 +23,11 @@
     end type TWMAPLikelihood
 #endif
 
-    public CMBCustomLikelihoods_Add
+    public CMBLikelihood_Add
     contains
 
 
-    subroutine CMBCustomLikelihoods_Add(LikeList, Ini)
+    subroutine CMBLikelihood_Add(LikeList, Ini)
 #ifdef CLIK
     use cliklike
 #endif
@@ -36,10 +37,8 @@
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
 
-    class(TCMBDatasetLikelihood), pointer  :: this
+    class(TCMBLikelihood), pointer  :: like
     integer  i
-    character(LEN=:), allocatable :: tag, SZTemplate
-    real(mcp) SZScale
     Type(TSettingIni) :: DataSets
 
     call Ini%TagValuesForName('cmb_dataset', DataSets)
@@ -47,19 +46,21 @@
     do i= 1, DataSets%Count
         if (DataSets%Name(i) == 'WMAP') then
 #ifdef WMAP
-            allocate(TWMAPLikelihood::this)
-            this%name = Datasets%Value(i)
+            allocate(TWMAPLikelihood::like)
+            like%name = Datasets%Value(i)
+            like%Tag = DataSets%Name(i)
 #else
             call MpiStop('Set WMAP directory in Makefile to compile with WMAP')
 #endif
         else
-            call MpiStop('Support for general CMB data sets not added yet')
-            allocate(TCMBDatasetLikelihood::this)
-            call this%ReadDatasetFile(Datasets%Value(i))
+            allocate(TCMBLikes::like)
+            like%name = Datasets%Name(i)
+            call like%ReadDatasetFile(Datasets%Value(i))
         end if
-        this%Tag = DataSets%Name(i)
-        call this%ReadParams(Ini)
-        call LikeList%Add(this)
+        call like%ReadParams(Ini)
+        call Ini%Read(Ini%NamedKey('cmb_dataset_speed',DataSets%Name(i)),like%speed)
+
+        call LikeList%Add(like)
     end do
     if (Feedback > 1 .and. DataSets%Count>0 ) write (*,*) 'read CMB data sets'
 
@@ -76,13 +77,12 @@
 #endif
 
 
-    end subroutine CMBCustomLikelihoods_Add
+    end subroutine CMBLikelihood_Add
 
 
     subroutine TCMBDatasetLikelihood_ReadParams(this, Ini)
     class(TCMBDatasetLikelihood) :: this
-    class(TSettingIni) :: ini
-    integer i
+    class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: SZTemplate
     real(mcp) :: SZscale = 1
 
@@ -113,7 +113,6 @@
         if (status/=0) exit
         if (l>=2 .and. l<=this%cl_lmax(CL_T,CL_T)) this%sz_template(l) = ascale * sz
     end do
-
     call F%Close()
 
     end subroutine ReadSZTemplate
@@ -165,4 +164,4 @@
 
 
 
-    end module CMBCustom
+    end module CMBLikelihoods

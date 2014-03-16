@@ -108,6 +108,7 @@
 
     this%needs_powerspectra = .true.
     this%LikelihoodType = 'CMB'
+    this%speed = -1
     call this%TCosmologyLikelihood%ReadParams(Ini)
     end subroutine TCMBLikelihood_ReadParams
 

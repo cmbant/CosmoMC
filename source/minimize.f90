@@ -262,13 +262,16 @@
     logical, intent(out) :: is_best_bestfit
     real(mcp) best_like, last_like
     real(Powell_CO_prec) :: vect(num_params_used), vect_fast(BaseParams%num_fast)
-    real(mcp) :: temperature, scale, slike, last_best, checklike
-    real(mcp), allocatable :: bestfit_loglikes(:)
-    integer ierror,i
+    real(mcp) :: temperature, scale, last_best, checklike
+    integer i
     Type(BlockedProposer) :: Proposer
     Class(TLikeCalculator), allocatable :: LikeCalcMCMC
     class(TMetropolisSampler), allocatable :: MCMC
     real(mcp) StartLike
+#ifdef MPI
+    real(mcp), allocatable :: bestfit_loglikes(:)
+    integer ierror
+#endif
 
     vect = 0 !start at zero by definition (from input center values)
     if (this%minimize_random_start_pos) then
