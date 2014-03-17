@@ -49,7 +49,7 @@
             allocate(TWMAPLikelihood::like)
             like%name = Datasets%Value(i)
             select type(like)
-            class is (TWMAPLikleihood)
+            class is (TWMAPLikelihood)
             like%Tag = DataSets%Name(i)
             end select
 #else
