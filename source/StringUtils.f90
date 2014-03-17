@@ -218,10 +218,8 @@
         else
             rep = IntToStr(X)
         end if
-        if (c=='d') then
-            call StringReplace('%d', rep, S)
-        else if (c=='u') then
-            call StringReplace('%u', rep, S)
+        if (c=='d' .or. c=='u') then
+            call StringReplace('%'//form//c, rep, S)
         else
             write(*,*) 'Wrong format for type: '//trim(S)
             stop
