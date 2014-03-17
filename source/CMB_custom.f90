@@ -7,16 +7,16 @@
     implicit none
     private
 
-    type, extends(TCMBLikelihood) :: TCMBDatasetLikelihood
+    type, extends(TCMBLikelihood) :: TCMBSZLikelihood
         character(LEN=:), allocatable :: tag ! from "cmb_dataset[tag] =" in input file
         real(mcp), pointer, dimension(:) :: sz_template
     contains
     procedure :: ReadSZTemplate
-    procedure :: ReadParams => TCMBDatasetLikelihood_ReadParams
-    end type TCMBDatasetLikelihood
+    procedure :: ReadParams => TCMBSZLikelihood_ReadParams
+    end type TCMBSZLikelihood
 
 #ifdef WMAP
-    type, extends(TCMBDatasetLikelihood) :: TWMAPLikelihood
+    type, extends(TCMBSZLikelihood) :: TWMAPLikelihood
     contains
     procedure :: ReadParams => TWMAPLikelihood_ReadParams
     procedure :: LogLike => TWMAPLikelihood_LogLike
@@ -48,13 +48,15 @@
 #ifdef WMAP
             allocate(TWMAPLikelihood::like)
             like%name = Datasets%Value(i)
+            select type(like)
+            class is (TWMAPLikleihood)
             like%Tag = DataSets%Name(i)
+            end select
 #else
             call MpiStop('Set WMAP directory in Makefile to compile with WMAP')
 #endif
         else
             allocate(TCMBLikes::like)
-            like%name = Datasets%Name(i)
             call like%ReadDatasetFile(Datasets%Value(i))
         end if
         call like%ReadParams(Ini)
@@ -80,8 +82,8 @@
     end subroutine CMBLikelihood_Add
 
 
-    subroutine TCMBDatasetLikelihood_ReadParams(this, Ini)
-    class(TCMBDatasetLikelihood) :: this
+    subroutine TCMBSZLikelihood_ReadParams(this, Ini)
+    class(TCMBSZLikelihood) :: this
     class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: SZTemplate
     real(mcp) :: SZscale = 1
@@ -95,10 +97,10 @@
 
     call this%TCMBLikelihood%ReadParams(Ini)
 
-    end subroutine TCMBDatasetLikelihood_ReadParams
+    end subroutine TCMBSZLikelihood_ReadParams
 
     subroutine ReadSZTemplate(this, aname, ascale)
-    class(TCMBDatasetLikelihood) :: this
+    class(TCMBSZLikelihood) :: this
     character(LEN=*), intent(IN) :: aname
     real(mcp), intent(in) :: ascale
     integer l, status
@@ -133,7 +135,7 @@
     this%cl_lmax(CL_E,CL_E) = max(gibbs_ell_max,lowl_max)
     this%cl_lmax(CL_B,CL_B) = max(gibbs_ell_max,lowl_max)
 
-    call this%TCMBDatasetLikelihood%ReadParams(Ini)
+    call this%TCMBSZLikelihood%ReadParams(Ini)
 
     end subroutine TWMAPLikelihood_ReadParams
 
