@@ -25,7 +25,6 @@
         integer field_index(3) !mapping from 1,2,3 to index actually used
         integer fields(3) !indices (1=T,2=E,3=B) of fields to use
         character field_order(3)
-        integer, allocatable :: clix_to_TEBxTEB(:,:) !TEB indices of the ith power spectrum
         integer ncl !calculated from above = nfields*(nfields+1)/2
         integer ncl_used !Number of C_l actually used in covariance matrix (others assumed zero)
         integer, allocatable :: cl_use_index(:)
@@ -48,7 +47,7 @@
         integer vecsize
         logical binned
         integer nbins
-        integer, allocatable :: bin_cols_in(:), bin_cols_out(:)
+        integer, allocatable :: bin_cols_in(:,:), bin_cols_out(:)
         integer bin_min, bin_max
         integer, allocatable :: cov_cl_used(:)
         real(mcp), dimension(:,:), allocatable :: inv_covariance
@@ -63,6 +62,7 @@
     procedure, private :: ReadLensingReconData=> CMBLikes_ReadLensingReconData
     procedure, private :: ReadClPhiArr => CMBLikes_ReadClPhiArr
     procedure, private :: UseString_to_cols
+    procedure, private :: UseString_to_TEB
     procedure, private :: Transform => CMBLikes_Transform
     procedure, private :: LensRecon_Like => CMBLikes_LensRecon_Like
     procedure, private :: ExactChisq
@@ -153,10 +153,7 @@
         if (len(P)/=2) call mpiStop('Invalid C_l order')
         i1= this%field_index(TypeIndex(L%CharAt(i,1)))
         i2= this%field_index(TypeIndex(L%CharAt(i,2)))
-        if (i1==0 .or. i2==0) then
-            cols(i)=0
-            cycle
-        end if
+        if (i1==0 .or. i2==0) cycle
         if (i2>i1) then
             tmp=i1
             i1=i2
@@ -177,6 +174,33 @@
     call L%Clear()
 
     end subroutine UseString_to_cols
+
+    subroutine UseString_to_TEB(this, S, TEB)
+    class(TCMBLikes) :: this
+    character(LEN=*), intent(in) :: S
+    integer, allocatable, intent(out) :: TEB(:,:)
+    Type(TStringList) :: L
+    integer tmp,i,i1,i2,ii,jj,ix
+    character(LEN=:), pointer :: P
+
+    call L%SetFromString(S,field_names)
+    allocate(TEB(2,L%Count), source=0)
+
+    do i=1, L%Count
+        P=> L%Item(i)
+        if (len(P)/=2) call mpiStop('Invalid C_l order')
+        i1= TypeIndex(L%CharAt(i,1))
+        i2= TypeIndex(L%CharAt(i,2))
+        if (i2>i1) then
+            tmp=i1
+            i1=i2
+            i2=tmp
+        end if
+        TEB(:,i) = [i1,i2]
+    end do
+    call L%Clear()
+
+    end subroutine UseString_to_TEB
 
     subroutine SetTopHatWindows(this)
     class(TCMBLikes) :: this
@@ -237,9 +261,9 @@
     Order1 = Ini%Read_String('bin_window_in_order', .true.)
     Order2 = Ini%Read_String_Default('bin_window_out_order', Order1)
 
-    call this%UseString_to_cols(Order1, this%bin_cols_in)
+    call this%UseString_to_TEB(Order1, this%bin_cols_in)
     call this%UseString_to_cols(Order2, this%bin_cols_out)
-    norder = size(this%bin_cols_in)
+    norder = size(this%bin_cols_in,2)
     if (norder/=size(this%bin_cols_out)) &
     & call MpiStop('bin_window_in_order and bin_window_out_order must have same numebr of CL')
 
@@ -300,15 +324,6 @@
     end do
     this%ncl = (this%nfields*(this%nfields+1))/2
 
-    allocate(this%clix_to_TEBxTEB(2,this%ncl))
-    ix=0
-    do i=1,this%nfields
-        do j=1,i
-            ix = ix +1
-            this%clix_to_TEBxTEB(:,ix)= [max(this%fields(i),this%fields(j)),min(this%fields(i),this%fields(j))]
-        end do
-    end do
-
     this%pcl_lmin = Ini%Read_Int('cl_lmin')
     this%pcl_lmax = Ini%Read_Int('cl_lmax')
     this%binned = Ini%Read_Logical('binned')
@@ -320,13 +335,11 @@
         Write(*,*) 'WARNING: Unbinned likelihoods untested in this version'
     end if
 
-    this%vecsize = (this%pcl_lmax-this%pcl_lmin+1)
-
     if (bin_test) then
         call MpiStop('bin_test not updated/tested yet')
         if (this%binned) call MpiStop('nbins/=0 with bin_test')
         this%bin_width = Ini%Read_Int('bin_width')
-        this%nbins = this%vecsize/this%bin_width !Make last bin bigger if not exact multiple
+        this%nbins = (this%pcl_lmax-this%pcl_lmin+1)/this%bin_width !Make last bin bigger if not exact multiple
     end if
 
     if (this%binned) then
@@ -341,6 +354,8 @@
         this%bin_min=this%pcl_lmin
         this%bin_max=this%pcl_lmax
     end if
+
+    this%vecsize = (this%bin_max-this%bin_min+1)
 
     this%ncl_hat = Ini%Read_Int('ncl_hat', 1) !only >1 if multiple sims for testing
 
@@ -464,11 +479,11 @@
     integer, allocatable :: cl_in_index(:)
     integer lmin_covmat,lmax_covmat, vecsize_in
     integer i, j
-    real(mcp) covmat_scale
+    real(mcp) :: covmat_scale = 1
 
     covmat_cl = Ini%Read_String('covmat_cl', .true.)
     filename = Ini%ReadFileName('covmat_fiducial', NotFoundFail=.true.,relative=.true.)
-    covmat_scale = Ini%Read_Double('covmat_scale',1.0_mcp)
+    call Ini%Read('covmat_scale',covmat_scale)
 
     call this%UseString_to_cols(covmat_cl, cl_in_index)
     num_in = size(cl_in_index)
@@ -492,7 +507,7 @@
         do binx=1, this%nbins
             do biny=1, this%nbins
                 this%inv_covariance( (binx-1)*this%ncl_used+1:binx*this%ncl_used, (biny-1)*this%ncl_used+1:biny*this%ncl_used) = &
-                & covmat_scale*Cov( (binx-1)*this%ncl_used+this%cov_cl_used, (biny-1)*this%ncl_used+this%cov_cl_used)
+                & covmat_scale*Cov( (binx-1)*num_in+this%cov_cl_used, (biny-1)*num_in+this%cov_cl_used)
             end do
         end do
         call Matrix_Inverse(this%inv_covariance)
@@ -778,8 +793,8 @@
     integer win_ix,ix_in(2), ix_out
 
     cls=0
-    do win_ix = 1, size(this%bin_cols_in)
-        ix_in = this%clix_to_TEBxTEB(:,this%bin_cols_in(win_ix))
+    do win_ix = 1, size(this%bin_cols_in,2)
+        ix_in = this%bin_cols_in(:,win_ix)
         if (this%cl_lmax(ix_in(1),ix_in(2))>0) then
             ix_out = this%bin_cols_out(win_ix)
             if (ix_out>0) Cls(ix_out) = Cls(ix_out) + &
