@@ -2628,7 +2628,7 @@
                     write (File3D%unit,*) 'fix_colorbar(hbar,ax); axes(ax);'
                 end if
             elseif (plot_ext=='py') then
-                call File3D%WriteFormat('sets.append([''%s'',''%s'',''%s''])',tmp_params(1),tmp_params(2),tmp_params(3))
+                call File3D%WriteFormat('sets.append([''%u'',''%u'',''%u''])',tmp_params(1),tmp_params(2),tmp_params(3))
             end if
         end do
         if (plot_ext=='py') then
