@@ -71,7 +71,8 @@ for jobItem in batch.items(wantSubItems=False):
             ini.params['bbn_consistency'] = False
         if 'r' in jobItem.param_set:
             ini.params['compute_tensors'] = True
-
+        if 'nt' in jobItem.param_set:
+            ini.params['inflation_consistency'] = False
         if hasattr(settings, 'extra_opts'):
             ini.params.update(settings.extra_opts)
 
