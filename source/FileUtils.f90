@@ -1203,19 +1203,27 @@
     end function ExtractFileExt
 
 
-    function ExtractFileName(aname)
+    function ExtractFileName(aname, no_ext)
     character(LEN=*), intent(IN) :: aname
     character(LEN=:), allocatable :: ExtractFileName
-    integer len, i
+    logical, intent(in), optional :: no_ext
+    integer alen, i
 
-    len = len_trim(aname)
-    do i = len, 1, -1
+    alen = len_trim(aname)
+    do i = alen, 1, -1
         if (CharIsSlash(aname(i:i))) then
-            ExtractFileName = aname(i+1:len)
-            return
+            ExtractFileName = aname(i+1:alen)
+            exit
         end if
     end do
-    ExtractFileName = trim(aname)
+    if (.not. allocated(ExtractFileName)) ExtractFileName = trim(aname)
+    if (PresentDefault(.false.,no_ext)) then
+        do i = len(ExtractFileName), 1, -1
+            if (ExtractFileName(i:i)=='.') then
+                ExtractFileName = ExtractFileName(1:i-1)
+            end if
+        end do
+    end if
 
     end function ExtractFileName
 
