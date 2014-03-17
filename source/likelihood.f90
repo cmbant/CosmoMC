@@ -47,7 +47,7 @@
     end if
 
     this%name = Ini%Read_String('name')
-    if (this%name=='') this%name = File%ChangeFileExt(File%ExtractName(fname),'')
+    if (this%name=='') this%name = File%ChangeExt(File%ExtractName(fname),'')
 
     this%num_conflicts = Ini%Read_Int('num_conflicts',0)
     allocate(this%conflict_name(this%num_conflicts))
