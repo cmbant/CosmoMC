@@ -233,7 +233,7 @@
     integer L, status, norder
     Type(TTextFile) :: F
 
-    filename = Ini%ReadFileName('bin_window_files', NotFoundFail=.true.)
+    filename = Ini%ReadFileName('bin_window_files', NotFoundFail=.true.,relative=.true.)
     Order1 = Ini%Read_String('bin_window_in_order', .true.)
     Order2 = Ini%Read_String_Default('bin_window_out_order', Order1)
 
@@ -345,17 +345,17 @@
     this%ncl_hat = Ini%Read_Int('ncl_hat', 1) !only >1 if multiple sims for testing
 
     allocate(this%ClHat(this%ncl,this%bin_min:this%bin_max, this%ncl_hat))
-    S = Ini%ReadFileName('cl_hat_file')
+    S = Ini%ReadFileName('cl_hat_file',NotFoundFail=.true., relative=.true.)
     S_order = Ini%read_String('cl_hat_order', .true.)
     call this%ReadClArr(S, S_order,this%ClHat(:,:,1),this%bin_min)
     do j=2, this%ncl_hat
         !for simulated with multiple realizations with same covariance and noise
-        call this%ReadClArr(Ini%ReadFileName(numcat('cl_hat_file',j)), S_order,this%ClHat(:,:,j),this%bin_min)
+        call this%ReadClArr(Ini%ReadFileName(numcat('cl_hat_file',j), relative=.true.), S_order,this%ClHat(:,:,j),this%bin_min)
     end do
 
     if (this%like_approx /= like_approx_fullsky_exact) then
         allocate(this%ClFiducial(this%ncl,this%bin_min:this%bin_max))
-        S =Ini%ReadFileName('cl_fiducial_file',NotFoundFail=.true.)
+        S =Ini%ReadFileName('cl_fiducial_file',NotFoundFail=.true.,relative=.true.)
         S_order = Ini%Read_String('cl_fiducial_order', .true.)
         call this%ReadClArr(S, S_order,this%ClFiducial,this%bin_min)
     else
@@ -364,7 +364,7 @@
     end if
 
     allocate(this%ClNoise(this%ncl,this%bin_min:this%bin_max))
-    S = Ini%ReadFileName('cl_noise_file')
+    S = Ini%ReadFileName('cl_noise_file',relative=.true.)
     S_order = Ini%read_String('cl_noise_order', .true.)
     call this%ReadClArr(S, S_order,this%ClNoise,this%bin_min)
 
@@ -467,7 +467,7 @@
     real(mcp) covmat_scale
 
     covmat_cl = Ini%Read_String('covmat_cl', .true.)
-    filename = Ini%ReadFileName('covmat_fiducial', NotFoundFail=.true.)
+    filename = Ini%ReadFileName('covmat_fiducial', NotFoundFail=.true.,relative=.true.)
     covmat_scale = Ini%Read_Double('covmat_scale',1.0_mcp)
 
     call this%UseString_to_cols(covmat_cl, cl_in_index)
@@ -568,15 +568,15 @@
 
     allocate(this%ClPhiHat(this%lensing_recon_ncl,this%cl_phi_lmin:this%cl_phi_lmax))
     allocate(this%ClPhiNoise(this%lensing_recon_ncl,this%cl_phi_lmin:this%cl_phi_lmax))
-    call this%ReadClPhiArr(Ini%ReadFileName('cl_hat_phi_file'),this%ClPhiHat)
-    call this%ReadClPhiArr(Ini%ReadFileName('cl_noise_phi_file'),this%ClPhiNoise)
+    call this%ReadClPhiArr(Ini%ReadFileName('cl_hat_phi_file',relative=.true.),this%ClPhiHat)
+    call this%ReadClPhiArr(Ini%ReadFileName('cl_noise_phi_file',relative=.true.),this%ClPhiNoise)
 
     if (.not. Ini%Read_Logical('cl_hat_includes_noise')) then
         this%ClPhiHat = this%ClPhiHat + this%ClPhiNoise
     end if
 
     if (this%phi_like_approx /= like_approx_fullsky_exact) then
-        fname = Ini%ReadFileName('covmat_phi_fiducial')
+        fname = Ini%ReadFileName('covmat_phi_fiducial',relative=.true.)
         if (fname /='') then
             allocate(this%phi_inv_covariance(this%cl_phi_lmin:this%cl_phi_lmax,this%cl_phi_lmin:this%cl_phi_lmax))
             call MatrixSym_Read_Binary(fname, this%phi_inv_covariance)

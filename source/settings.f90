@@ -180,12 +180,12 @@
 
     end function TSettingIni_ReplaceDirs
 
-    function TSettingIni_ReadFilename(Ini,key, ADir, NotFoundFail) result (filename)
+    function TSettingIni_ReadFilename(Ini,key, ADir, NotFoundFail, relative) result (filename)
     class(TSettingIni) :: Ini
     character(LEN=*), intent(in) :: Key
     character(LEN=*), optional, intent(in) :: ADir
     character(LEN=:), allocatable :: filename
-    logical, optional :: NotFoundFail
+    logical, optional :: NotFoundFail, relative
     integer i
 
     filename = Ini%Read_String(key, NotFoundFail)
@@ -197,6 +197,9 @@
         call StringReplace('%'//CustomParams%Name(i)//'%',&
         trim(Ini%ReplaceDirs(CustomParams%Value(i), ADir)) ,filename)
     end do
+    if (PresentDefault(.false., relative) .and. .not. File%IsFullPath(filename)) then
+        filename =  File%ExtractPath(Ini%Original_filename)//filename
+    end if
 
     end function TSettingIni_ReadFilename
 

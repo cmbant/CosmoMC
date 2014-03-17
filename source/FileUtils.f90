@@ -122,6 +122,7 @@
     procedure, nopass :: ExtractPath => ExtractFilePath
     procedure, nopass :: ChangeExt => ChangeFileExt
     procedure, nopass :: CheckTrailingSlash
+    procedure, nopass :: IsFullPath
     procedure, nopass :: ExtractExt => ExtractFileExt
     procedure, nopass :: Delete => DeleteFile
     procedure, nopass :: ReadTextMatrix
@@ -1153,18 +1154,26 @@
     logical CharIsSlash
     character, parameter :: win_slash = char(92)
 
-
     CharIsSlash = C == win_slash .or. C == '/'
 
     end function CharIsSlash
 
+    function IsFullPath(aname)
+    character(LEN=*), intent(IN) :: aname
+    logical IsFullPath
+
+    IsFullPath = aname/=''
+    if (.not. IsFullPath) return
+    IsFullPath = CharIsSlash(aname(1:1))    
+
+    end function IsFullpath
+
     function ExtractFilePath(aname)
     character(LEN=*), intent(IN) :: aname
     character(LEN=:), allocatable :: ExtractFilePath
-    integer len, i
+    integer i
 
-    len = len_trim(aname)
-    do i = len, 1, -1
+    do i = len_trim(aname), 1, -1
         if (CharIsSlash(aname(i:i))) then
             ExtractFilePath = aname(1:i)
             return
