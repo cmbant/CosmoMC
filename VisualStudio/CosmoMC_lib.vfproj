@@ -74,7 +74,7 @@
 		<File RelativePath="..\source\Likelihood_Cosmology.f90"/></Filter>
 		<Filter Name="Likelihood">
 		<File RelativePath="..\source\bao.f90"/>
-		<File RelativePath="..\source\CMB_custom.f90"/>
+		<File RelativePath="..\source\CMB.f90"/>
 		<File RelativePath="..\source\CMBlikes.f90"/>
 		<File RelativePath="..\source\DataLikelihoods.f90"/>
 		<File RelativePath="..\source\HST.f90"/>

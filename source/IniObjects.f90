@@ -527,7 +527,7 @@
     character(LEN=:), pointer :: val
     logical :: OK
 
-    val = Ini%ValueOf(Key)
+    val => Ini%ValueOf(Key)
     OK = val == value
     if (.not. OK .and. present(EmptyOK)) then
         OK = EmptyOK .and. val==''
