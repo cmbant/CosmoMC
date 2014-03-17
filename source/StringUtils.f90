@@ -223,10 +223,14 @@
         else if (c=='u') then
             call StringReplace('%u', rep, S)
         else
-            stop 'Wrong format for type'
+            write(*,*) 'Wrong format for type: '//trim(S)
+            stop
         end if
     type is (Character(LEN=*))
-        if (c/='s') stop 'Wrong format for type'
+        if (c/='s') then
+            write(*,*) 'Wrong format for type: '//trim(S)
+            stop
+        end if
         call StringReplace('%s', X, S)
         class default
         stop 'Unsupported format type'

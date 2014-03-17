@@ -36,7 +36,6 @@
 #endif
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
-
     class(TCMBLikelihood), pointer  :: like
     integer  i
     Type(TSettingIni) :: DataSets
@@ -77,7 +76,6 @@
 #ifdef NONCLIK
     call nonclik_readParams(LikeList, Ini)
 #endif
-
 
     end subroutine CMBLikelihood_Add
 
