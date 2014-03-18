@@ -782,8 +782,8 @@
     call this%InitCAMBParams(this%CAMBP)
 
     if (Feedback > 0 .and. MPIRank==0) then
-        if(CosmoSettings%use_CMB) write(*,*) 'max_eta_k         = ', this%CAMBP%Max_eta_k
-        write(*,*) 'transfer kmax     = ', this%CAMBP%Transfer%kmax
+        if(CosmoSettings%use_CMB) write(*,*) 'max_eta_k         = ', real(this%CAMBP%Max_eta_k)
+        write(*,*) 'transfer kmax     = ', real(this%CAMBP%Transfer%kmax)
     end if
 
     this%CAMBP%WantTensors = CosmoSettings%compute_tensors
