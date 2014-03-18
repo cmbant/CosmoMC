@@ -12,7 +12,7 @@
     function GetParamCount()
     integer GetParamCount
 
-    GetParamCount = command_argument_count() 
+    GetParamCount = command_argument_count()
 
     end function GetParamCount
 
@@ -137,7 +137,7 @@
                         if (present(S8)) then
                             call StringAppend(outstr,S8)
                         end if
-                    end if    
+                    end if
                 end if
             end if
         end if
@@ -185,10 +185,12 @@
     character(LEN=:), allocatable :: S
     class(*) X
     logical OK
-    integer ix, P
-    character c
+    integer ix, P, n
+    character c, fillc
+    character(LEN=:), allocatable :: form, fform, rep
+    character(LEN=128) output
 
-    P=1 
+    P=1
     do
         ix=scan(S(P:),'%')
         OK = ix/=0 .and. ix < len(S)
@@ -200,13 +202,33 @@
             exit
         end if
     end do
-
+    do while( verify(c,'0123456789') == 0)
+        form = form // c
+        P=P+1
+        c= S(ix+P:ix+P)
+    end do
     select type (X)
     type is (integer)
-        if (c/='u') stop 'Wrong format for type'
-        call StringReplace('%u', IntToStr(X), S)
+        if (len(form)>0) then
+            n= StrToInt(form)
+            fform = 'I'//IntToStr(n)
+            if (form(1:1)=='0') fform=fform//'.'//IntToStr(n)
+            allocate(character(n)::rep)
+            write(rep,'('//fform//')') X
+        else
+            rep = IntToStr(X)
+        end if
+        if (c=='d' .or. c=='u') then
+            call StringReplace('%'//form//c, rep, S)
+        else
+            write(*,*) 'Wrong format for type: '//trim(S)
+            stop
+        end if
     type is (Character(LEN=*))
-        if (c/='s') stop 'Wrong format for type'
+        if (c/='s') then
+            write(*,*) 'Wrong format for type: '//trim(S)
+            stop
+        end if
         call StringReplace('%s', X, S)
         class default
         stop 'Unsupported format type'
@@ -222,7 +244,7 @@
     logical OK
     !Note that this routine is incomplete and very simple (so buggy in complex cases)
     !(should not substitute on the previously substituted string, etc, etc..)
-
+    !Can do things like FormatString('case %d, ans = %03d%%',i,percent)
     S = formatst
     OK = SubNextFormat(S, i1)
     if (OK .and. present(i2)) OK = SubNextFormat(S, i2)

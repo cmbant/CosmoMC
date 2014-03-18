@@ -3,7 +3,7 @@
     use MpiUtils
     implicit none
 
-    integer :: rand_inst = 0 
+    integer :: rand_inst = 0
     integer, parameter :: krand = KIND(1.d0)
     integer :: Rand_Feedback = 1
 
@@ -82,7 +82,7 @@
         ij = mod(ij + rand_inst*100, 31328)
         call date_and_time(time=fred)
         read (fred,'(e10.3)') klr
-        kl = mod(int(klr*1000), 30081)       
+        kl = mod(int(klr*1000), 30081)
     end if
 
     if (Rand_Feedback > 0 ) write(*,'(" Random seeds:",1I6,",",1I6," rand_inst:",1I4)') ij,kl,rand_inst
@@ -206,7 +206,7 @@
     real, parameter ::     dd = 0.0857864376269050
 
     u = ranmar()
-    do while (u<=0)                 ! Comment out this block 
+    do while (u<=0)                 ! Comment out this block
         u = ranmar()                    ! if your RNG can never
     enddo                             ! return exact zero
     g = c
@@ -233,29 +233,29 @@
     end function RANDEXP1
 
 
-    ! This random number generator originally appeared in ''Toward a Universal 
-    ! Random Number Generator'' by George Marsaglia and Arif Zaman. 
+    ! This random number generator originally appeared in ''Toward a Universal
+    ! Random Number Generator'' by George Marsaglia and Arif Zaman.
     ! Florida State University Report: FSU-SCRI-87-50 (1987)
-    ! 
+    !
     ! It was later modified by F. James and published in ''A Review of Pseudo-
-    ! random Number Generators'' 
-    ! 
+    ! random Number Generators''
+    !
     ! THIS IS THE BEST KNOWN RANDOM NUMBER GENERATOR AVAILABLE.
-    !    (However, a newly discovered technique can yield 
+    !    (However, a newly discovered technique can yield
     !        a period of 10^600. But that is still in the development stage.)
     !
-    ! It passes ALL of the tests for random number generators and has a period 
-    !   of 2^144, is completely portable (gives bit identical results on all 
-    !   machines with at least 24-bit mantissas in the floating point 
-    !   representation). 
-    ! 
+    ! It passes ALL of the tests for random number generators and has a period
+    !   of 2^144, is completely portable (gives bit identical results on all
+    !   machines with at least 24-bit mantissas in the floating point
+    !   representation).
+    !
     ! The algorithm is a combination of a Fibonacci sequence (with lags of 97
-    !   and 33, and operation "subtraction plus one, modulo one") and an 
+    !   and 33, and operation "subtraction plus one, modulo one") and an
     !   "arithmetic sequence" (using subtraction).
     !
-    ! On a Vax 11/780, this random number generator can produce a number in 
-    !    13 microseconds. 
-    !======================================================================== 
+    ! On a Vax 11/780, this random number generator can produce a number in
+    !    13 microseconds.
+    !========================================================================
     !
     !      PROGRAM TstRAN
     !     INTEGER IJ, KL, I
@@ -276,9 +276,9 @@
     !    numbers should be:
     !          6533892.0  14220222.0  7275067.0
     !    6172232.0  8354498.0   10633180.0
-    !           
-    !           
-    !        
+    !
+    !
+    !
     !      write(6,20) (4096.0*4096.0*RANMAR(), I=1,6)
     !20    format (3f12.1)
     !      end
@@ -287,12 +287,12 @@
     ! This is the initialization routine for the random number generator RANMAR()
     ! NOTE: The seed variables can have values between:    0 <= IJ <= 31328
     !                                                      0 <= KL <= 30081
-    !The random number sequences created by these two seeds are of sufficient 
-    ! length to complete an entire calculation with. For example, if sveral 
+    !The random number sequences created by these two seeds are of sufficient
+    ! length to complete an entire calculation with. For example, if sveral
     ! different groups are working on different parts of the same calculation,
     ! each group could be assigned its own IJ seed. This would leave each group
-    ! with 30000 choices for the second seed. That is to say, this random 
-    ! number generator can create 900 million different subsequences -- with 
+    ! with 30000 choices for the second seed. That is to say, this random
+    ! number generator can create 900 million different subsequences -- with
     ! each subsequence having a length of approximately 10^30.
     !
     ! Use IJ = 1802 & KL = 9373 to test the random number generator. The
@@ -320,7 +320,7 @@
     I = mod(IJ/177, 177) + 2
     J = mod(IJ    , 177) + 2
     K = mod(KL/169, 178) + 1
-    L = mod(KL,     169) 
+    L = mod(KL,     169)
     do II = 1, 97
         S = 0.0
         T = 0.5
@@ -348,7 +348,7 @@
     end subroutine RMARIN
 
     double precision function RANMAR()
-    ! This is the random number generator proposed by George Marsaglia in 
+    ! This is the random number generator proposed by George Marsaglia in
     ! Florida State University Report: FSU-SCRI-87-50
     ! It was slightly modified by F. James to produce an array of pseudorandom
     ! numbers.
@@ -375,4 +375,3 @@
 
 
     end module RandUtils
-

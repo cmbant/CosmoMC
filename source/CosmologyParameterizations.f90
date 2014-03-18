@@ -152,7 +152,7 @@
 
     end subroutine TP_ParamArrayToTheoryParams
 
-    subroutine TP_CalcDerivedParams(this, P, Theory, derived) 
+    subroutine TP_CalcDerivedParams(this, P, Theory, derived)
     class(ThetaParameterization) :: this
     real(mcp), allocatable :: derived(:)
     class(TTheoryPredictions), allocatable :: Theory
@@ -306,7 +306,7 @@
     end subroutine BK_ParamArrayToTheoryParams
 
 
-    subroutine BK_CalcDerivedParams(this, P, Theory, derived) 
+    subroutine BK_CalcDerivedParams(this, P, Theory, derived)
     class(BackgroundParameterization) :: this
     real(mcp), allocatable :: derived(:)
     class(TTheoryPredictions), allocatable :: Theory

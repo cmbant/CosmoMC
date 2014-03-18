@@ -28,27 +28,27 @@
     subroutine HSTLikelihood_Add(LikeList, Ini)
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
-    Type(HSTLikelihood), pointer :: like
+    Type(HSTLikelihood), pointer :: this
 
     if (Ini%Read_Logical('use_HST',.false.)) then
-        allocate(like)
-        like%LikelihoodType = 'Hubble'
-        like%name='HST'
-        like%needs_background_functions = .true.
-        call LikeList%Add(like)
+        allocate(this)
+        this%LikelihoodType = 'Hubble'
+        this%name='HST'
+        this%needs_background_functions = .true.
+        call LikeList%Add(this)
     end if
 
     end subroutine HSTLikelihood_Add
 
-    real(mcp) function HST_LnLike(like, CMB)
-    Class(HSTLikelihood) :: like
+    real(mcp) function HST_LnLike(this, CMB)
+    Class(HSTLikelihood) :: this
     Class(CMBParams) CMB
     real(mcp) :: theoryval
 
     real(mcp), parameter :: angdistinvzeffh0 = 6.45904e-3, zeffh0 = 0.04, &
     angdistinvzeffh0errsqr = 4.412e-8
 
-    theoryval = 1.0/like%Calculator%AngularDiameterDistance(zeffh0)
+    theoryval = 1.0/this%Calculator%AngularDiameterDistance(zeffh0)
     HST_LnLike = (theoryval - angdistinvzeffh0)**2/(2*angdistinvzeffh0errsqr)
 
     end function  HST_LnLike

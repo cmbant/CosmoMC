@@ -120,7 +120,7 @@
     integer n
     character(LEN=:), allocatable :: InLine
     Type(TTextFile) :: F
-    
+
     call F%Open(filename)
     n = F%Lines()
     call Names%Alloc(n)
@@ -347,7 +347,7 @@
     logical, intent(in), optional :: add_derived
     integer i
     Type(TTextFile) :: F
-    
+
     call F%CreateFile(fname)
     if (present(indices)) then
         do i=1, size(indices)

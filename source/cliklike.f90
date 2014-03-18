@@ -23,7 +23,8 @@
     end type ClikLikelihood
 
     type, extends(ClikLikelihood) :: ClikLensingLikelihood
-        integer(kind=4) lensing_lmax
+        !integer(kind=4) lensing_lmax
+        integer(kind=4), dimension(7) :: lensing_lmaxs
     contains
     procedure :: LogLike => clik_lensing_LnLike
     procedure :: clik_likeinit => clik_lensing_likeinit
@@ -198,20 +199,26 @@
 
     if (Feedback > 1) Print*,'Initialising clik lensing...'
     call clik_lensing_init(like%clikid,fname)
-    call clik_lensing_get_lmax(like%clikid,like%lensing_lmax)
+    !    call clik_lensing_get_lmax(like%clikid,like%lensing_lmax)
 
+    ! fill the lmaxs array. It contains (in that order) lmax for cl_phiphi, cl_TT, cl_EE, cl_BB, cl_TE, cl_TB, cl_EB
+    ! -1 means that a particular spectrum is not used.
+    ! lmaxs(1) will never be -1, but all the other can be is the likelihood is set not to include renormalization
+    call clik_lensing_get_lmaxs(like%clikid,like%lensing_lmaxs)
 
     like%clik_nnuis = 0 !clik_lensing_get_extra_parameter_names(like%clikid,like%names)
     allocate(like%cl_lmax(CL_phi,CL_phi), source=0)
-    like%cl_lmax(CL_T,CL_T) = like%lensing_lmax
-    like%cl_lmax(CL_Phi,CL_Phi) = like%lensing_lmax
+    like%cl_lmax(CL_T,CL_T) = like%lensing_lmaxs(2)
+    like%cl_lmax(CL_E,CL_T) = like%lensing_lmaxs(5)
+    like%cl_lmax(CL_E,CL_E) = like%lensing_lmaxs(3)
+    like%cl_lmax(CL_B,CL_B) = like%lensing_lmaxs(4)
+    like%cl_lmax(CL_Phi,CL_Phi) = like%lensing_lmaxs(1)
     where (like%cl_lmax<0)
         like%cl_lmax=0
     end where
     call like%do_checks()
-    print *,'lensing lmax: ', like%lensing_lmax
-   
-    like%clik_n = 2*(like%lensing_lmax+1) + like%clik_nnuis
+    print *,'lensing lmax: ', like%lensing_lmaxs
+    like%clik_n = sum(like%lensing_lmaxs(1:7)+1) !2*(like%lensing_lmax+1) + like%clik_nnuis
 
     end subroutine clik_lensing_likeinit
 
@@ -229,7 +236,7 @@
 
     j = 1
     associate(Cls=> Theory%Cls(CL_Phi,CL_Phi))
-        do l=0,like%lensing_lmax)
+        do l=0,like%lensing_lmaxs(1)
             !skip C_0 and C_1
             if (l >= 2) then
                 clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)**2*twopi
@@ -240,15 +247,17 @@
 
     !TB and EB assumed to be zero
     !If your model predicts otherwise, this function will need to be updated
-    associate(Cls=> Theory%Cls(1,1))
-            do l=0,like%lensing_lmax)
+    do i=1,4
+        associate(Cls=> Theory%Cls(Like%clik_index(1,i),Like%clik_index(2,i)))
+            do l=0,like%lensing_lmaxs(i+1)
                 !skip C_0 and C_1
                 if (l >= 2) then
                     clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)*twopi
                 end if
                 j = j+1
             end do
-    end associate
+            end associate
+    end do
 
     do i=1,like%clik_nnuis
         clik_cl_and_pars(j) = DataParams(i)

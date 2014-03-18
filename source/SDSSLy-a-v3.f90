@@ -247,33 +247,3 @@ FUNCTION locate(xx,x)
 END FUNCTION locate
 
 end module Lya
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

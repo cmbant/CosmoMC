@@ -32,8 +32,8 @@
     contains
 
 
-    function GetLogLike(like, Params, Theory, DataParams) result(LogLike)
-    class(TCosmologyLikelihood) :: like
+    function GetLogLike(this, Params, Theory, DataParams) result(LogLike)
+    class(TCosmologyLikelihood) :: this
     class(TTheoryParams) :: Params
     class(TTheoryPredictions) :: Theory
     real(mcp) :: DataParams(:)
@@ -43,20 +43,20 @@
     class is (CMBParams)
         select type(Theory)
         class is (TCosmoTheoryPredictions)
-            logLike = like%LogLike(Params,Theory,DataParams)
-            class default 
+            logLike = this%LogLike(Params,Theory,DataParams)
+            class default
             call MpiStop('TCosmologyLikelihood requires TCosmoTheoryPredictions')
         end select
-        class default 
+        class default
         call MpiStop('TCosmologyLikelihood requires CMBParams')
     end select
 
     end function GetLogLike
 
 
-    function logLikeTheory(like,CMB) result(LogLike)
+    function logLikeTheory(this,CMB) result(LogLike)
     !For likelihoods that don't need Theory or DataParams
-    class(TCosmologyLikelihood) :: like
+    class(TCosmologyLikelihood) :: this
     class(CMBParams) :: CMB
     real(mcp) LogLike
 
@@ -65,23 +65,23 @@
 
     end function logLikeTheory
 
-    function LogLikeDataParams(like, CMB, DataParams) result(LogLike)
-    class(TCosmologyLikelihood) :: like
+    function LogLikeDataParams(this, CMB, DataParams) result(LogLike)
+    class(TCosmologyLikelihood) :: this
     class(CMBParams) :: CMB
     real(mcp) :: DataParams(:)
     real(mcp) LogLike
 
-    LogLike = like%logLikeTheory(CMB)
+    LogLike = this%logLikeTheory(CMB)
     end function LogLikeDataParams
 
-    function LogLike(like, CMB, Theory, DataParams)
-    class(TCosmologyLikelihood) :: like
+    function LogLike(this, CMB, Theory, DataParams)
+    class(TCosmologyLikelihood) :: this
     class(CMBParams) :: CMB
     class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) :: DataParams(:)
     real(mcp) LogLike
 
-    logLike = like%LogLikeDataParams(CMB, DataParams)
+    logLike = this%LogLikeDataParams(CMB, DataParams)
     end function LogLike
 
 
@@ -95,21 +95,22 @@
     class is (TCosmologyCalculator)
         !Just store for convenient also pointer type cast to the right thing
         this%Calculator => Calc
-        class default 
+        class default
         call MpiStop('TCosmoCalcLikelihood requires TCosmologyCalculator')
     end select
 
     end subroutine TCosmoCalcLikelihood_InitConfig
 
-    
+
     subroutine TCMBLikelihood_ReadParams(this, Ini)
     class(TCMBLikelihood) :: this
     class(TSettingIni) :: ini
 
     this%needs_powerspectra = .true.
     this%LikelihoodType = 'CMB'
+    this%speed = -1
     call this%TCosmologyLikelihood%ReadParams(Ini)
     end subroutine TCMBLikelihood_ReadParams
 
-    
+
     end module Likelihood_Cosmology

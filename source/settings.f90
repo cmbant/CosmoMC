@@ -38,7 +38,7 @@
 
 
     Type, extends(TIniFile) :: TNameKeyIniFile
-        !Allowing things like param[name] = 
+        !Allowing things like param[name] =
     contains
     procedure :: NamedKey => TNameKeyIniFile_NamedKey
     procedure :: TagValuesForName => TNameKeyIniFile_TagValuesForName
@@ -49,6 +49,7 @@
     contains
     procedure :: FailStop => TSettingIni_FailStop
     procedure :: ReadFilename => TSettingIni_ReadFilename
+    procedure :: ReplaceDirs => TSettingIni_ReplaceDirs
     end type
 
     real(mcp) :: AccuracyLevel = 1
@@ -122,17 +123,6 @@
 
     end subroutine InitializeGlobalSettingDefaults
 
-    function ReplaceDirs(S, repdir) result (filename)
-    character(LEN=*), intent(in) :: S, repdir
-    character(LEN=:), allocatable :: filename
-
-    filename=S
-    call StringReplace('%DATASETDIR%',repdir,filename)
-    call StringReplace('%LOCALDIR%',LocalDir,filename)
-
-    end function ReplaceDirs
-
-
     subroutine DoStop(S, abort)
     character(LEN=*), intent(in), optional :: S
     integer ierror
@@ -176,29 +166,40 @@
 
     end subroutine TSettingIni_FailStop
 
-    function TSettingIni_ReadFilename(Ini,key, ADir, NotFoundFail) result (OutName)
+    function TSettingIni_ReplaceDirs(Ini,inname, ADir) result(filename)
+    class(TSettingIni) :: Ini
+    character(LEN=*) :: inname
+    character(LEN=:), allocatable :: filename
+    character(LEN=*), optional, intent(in) :: ADir
+
+    filename = inname
+    call StringReplace('%DATASETDIR%',PresentDefault(DataDir,ADir),filename)
+    call StringReplace('%LOCALDIR%',LocalDir,filename)
+    if (allocated(Ini%Original_filename)) &
+    & call StringReplace('%THISDIR%',File%ExtractPath(Ini%Original_filename),filename)
+
+    end function TSettingIni_ReplaceDirs
+
+    function TSettingIni_ReadFilename(Ini,key, ADir, NotFoundFail, relative) result (filename)
     class(TSettingIni) :: Ini
     character(LEN=*), intent(in) :: Key
     character(LEN=*), optional, intent(in) :: ADir
-    character(LEN=:), allocatable :: filename, repdir
-    character(LEN=:), allocatable :: OutName
-    logical, optional :: NotFoundFail
+    character(LEN=:), allocatable :: filename
+    logical, optional :: NotFoundFail, relative
     integer i
 
     filename = Ini%Read_String(key, NotFoundFail)
-    if (present(ADir)) then
-        repdir=ADir
-    else
-        repdir=DataDir
-    end if
-    filename= ReplaceDirs(filename, repdir)
+    if (filename=='') return
+
+    filename = Ini%ReplaceDirs(filename, ADir)
 
     do i=1, CustomParams%Count
         call StringReplace('%'//CustomParams%Name(i)//'%',&
-        trim(ReplaceDirs(CustomParams%Value(i), repdir)) ,filename)
+        trim(Ini%ReplaceDirs(CustomParams%Value(i), ADir)) ,filename)
     end do
-
-    OutName = trim(filename)
+    if (PresentDefault(.false., relative) .and. .not. File%IsFullPath(filename)) then
+        filename =  File%ExtractPath(Ini%Original_filename)//filename
+    end if
 
     end function TSettingIni_ReadFilename
 

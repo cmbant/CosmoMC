@@ -79,6 +79,7 @@
     procedure :: SetDefaultModes => TTextFile_SetDefaultModes
     procedure :: ReadLine
     procedure :: ReadLineSkipEmptyAndComments
+    procedure :: ReadNextContentLine !as above, but opens and closes file
     procedure :: NewLine
     procedure :: SkipLines
     procedure :: Lines
@@ -121,6 +122,7 @@
     procedure, nopass :: ExtractPath => ExtractFilePath
     procedure, nopass :: ChangeExt => ChangeFileExt
     procedure, nopass :: CheckTrailingSlash
+    procedure, nopass :: IsFullPath
     procedure, nopass :: ExtractExt => ExtractFileExt
     procedure, nopass :: Delete => DeleteFile
     procedure, nopass :: ReadTextMatrix
@@ -128,6 +130,7 @@
     procedure, nopass :: WriteTextVector
     procedure, nopass :: OpenTextFile
     procedure, nopass :: CreateTextFile
+    procedure, nopass :: CharIsSlash
     end type
 
     type(TFile), save :: File
@@ -384,7 +387,7 @@
     end subroutine CreateOpenFile
 
 
-    subroutine ReadStringSub(this, S, OK) 
+    subroutine ReadStringSub(this, S, OK)
     class(TFileStream) :: this
     character(LEN=:), allocatable :: S
     logical, optional :: OK
@@ -516,7 +519,7 @@
     if (present(OK)) OK = status==0
     end subroutine ReadArray2
 
-    subroutine ReadSizedArray_R(this, R) 
+    subroutine ReadSizedArray_R(this, R)
     class(TFileStream) :: this
     Real, allocatable :: R(:)
     integer sz
@@ -529,7 +532,7 @@
     end subroutine ReadSizedArray_R
 
 
-    subroutine ReadSizedArray_D(this, R) 
+    subroutine ReadSizedArray_D(this, R)
     class(TFileStream) :: this
     double precision, allocatable :: R(:)
     integer sz
@@ -541,7 +544,7 @@
 
     end subroutine ReadSizedArray_D
 
-    subroutine ReadSizedArray_I(this, R) 
+    subroutine ReadSizedArray_I(this, R)
     class(TFileStream) :: this
     integer, allocatable :: R(:)
     integer sz
@@ -553,7 +556,7 @@
 
     end subroutine ReadSizedArray_I
 
-    subroutine ReadSizedArray2_R(this, R) 
+    subroutine ReadSizedArray2_R(this, R)
     class(TFileStream) :: this
     real, allocatable :: R(:,:)
     integer sz1, sz2
@@ -566,7 +569,7 @@
 
     end subroutine ReadSizedArray2_R
 
-    subroutine ReadSizedArray2_D(this, R) 
+    subroutine ReadSizedArray2_D(this, R)
     class(TFileStream) :: this
     double precision, allocatable :: R(:,:)
     integer sz1, sz2
@@ -579,7 +582,7 @@
 
     end subroutine ReadSizedArray2_D
 
-    subroutine ReadSizedArray2_I(this, R) 
+    subroutine ReadSizedArray2_I(this, R)
     class(TFileStream) :: this
     integer, allocatable :: R(:,:)
     integer sz1, sz2
@@ -621,7 +624,7 @@
     call this%WriteItemSub(trim(S))
     end subroutine WriteTrim
 
-    subroutine WriteSizedArray1(this, R, n) 
+    subroutine WriteSizedArray1(this, R, n)
     class(TFileStream) :: this
     class(*), intent(in) :: R(1:)
     integer, intent(in), optional :: n
@@ -633,7 +636,7 @@
 
     end subroutine WriteSizedArray1
 
-    subroutine WriteSizedArray2(this, R) 
+    subroutine WriteSizedArray2(this, R)
     class(TFileStream) :: this
     class(*), intent(in) :: R(:,:)
 
@@ -653,7 +656,7 @@
 
     end subroutine WriteOneAndArray
 
-    subroutine WriteArray(this, R, n) 
+    subroutine WriteArray(this, R, n)
     class(TFileStream) :: this
     class(*), intent(in) :: R(1:)
     integer, intent(in), optional :: n
@@ -676,7 +679,7 @@
 
     end subroutine WriteArray
 
-    subroutine WriteArray2(this, R) 
+    subroutine WriteArray2(this, R)
     class(TFileStream) :: this
     class(*), intent(in) :: R(:,:)
 
@@ -778,6 +781,18 @@
     end do
 
     end function ReadLineSkipEmptyAndComments
+
+    function ReadNextContentLine(this, filename, InLine) result(OK)
+    class(TTextFile) :: this
+    character(LEN=*), intent(in) :: filename
+    character(LEN=:), intent(out), allocatable :: InLine
+    logical :: OK
+
+    if (.not. this%Opened()) call this%Open(filename)
+    OK = this%ReadLineSkipEmptyAndComments(InLine)
+    if (.not. OK) call this%Close()
+
+    end function ReadNextContentLine
 
     function SkipLines(this, n) result(OK)
     class(TTextFile) :: this
@@ -1134,14 +1149,32 @@
     end function LastFileLine
 
 
+    function CharIsSlash(C)
+    character, intent(in) :: C
+    logical CharIsSlash
+    character, parameter :: win_slash = char(92)
+
+    CharIsSlash = C == win_slash .or. C == '/'
+
+    end function CharIsSlash
+
+    function IsFullPath(aname)
+    character(LEN=*), intent(IN) :: aname
+    logical IsFullPath
+
+    IsFullPath = aname/=''
+    if (.not. IsFullPath) return
+    IsFullPath = CharIsSlash(aname(1:1))
+
+    end function IsFullpath
+
     function ExtractFilePath(aname)
     character(LEN=*), intent(IN) :: aname
     character(LEN=:), allocatable :: ExtractFilePath
-    integer len, i
+    integer i
 
-    len = len_trim(aname)
-    do i = len, 1, -1
-        if (aname(i:i)=='/') then
+    do i = len_trim(aname), 1, -1
+        if (CharIsSlash(aname(i:i))) then
             ExtractFilePath = aname(1:i)
             return
         end if
@@ -1157,7 +1190,7 @@
 
     len = len_trim(aname)
     do i = len, 1, -1
-        if (aname(i:i)=='/') then
+        if (CharIsSlash(aname(i:i))) then
             ExtractFileExt = ''
             return
         else if (aname(i:i)=='.') then
@@ -1170,19 +1203,27 @@
     end function ExtractFileExt
 
 
-    function ExtractFileName(aname)
+    function ExtractFileName(aname, no_ext)
     character(LEN=*), intent(IN) :: aname
     character(LEN=:), allocatable :: ExtractFileName
-    integer len, i
+    logical, intent(in), optional :: no_ext
+    integer alen, i
 
-    len = len_trim(aname)
-    do i = len, 1, -1
-        if (aname(i:i)=='/') then
-            ExtractFileName = aname(i+1:len)
-            return
+    alen = len_trim(aname)
+    do i = alen, 1, -1
+        if (CharIsSlash(aname(i:i))) then
+            ExtractFileName = aname(i+1:alen)
+            exit
         end if
     end do
-    ExtractFileName = trim(aname)
+    if (.not. allocated(ExtractFileName)) ExtractFileName = trim(aname)
+    if (PresentDefault(.false.,no_ext)) then
+        do i = len(ExtractFileName), 1, -1
+            if (ExtractFileName(i:i)=='.') then
+                ExtractFileName = ExtractFileName(1:i-1)
+            end if
+        end do
+    end if
 
     end function ExtractFileName
 
@@ -1202,18 +1243,16 @@
 
     end function ChangeFileExt
 
-
     function CheckTrailingSlash(aname)
     character(LEN=*), intent(in) :: aname
     character(LEN=:), allocatable :: CheckTrailingSlash
     integer alen
-    character, parameter :: win_slash = char(92)
 
     alen = len_trim(aname)
-    if (aname(alen:alen) /= win_slash .and. aname(alen:alen) /= '/') then
-        CheckTrailingSlash = trim(aname)//'/'
-    else
+    if (CharIsSlash(aname(alen:alen))) then
         CheckTrailingSlash = aname(1:alen)
+    else
+        CheckTrailingSlash = trim(aname)//'/'
     end if
 
     end function CheckTrailingSlash
@@ -1266,6 +1305,7 @@
     character(LEN=*), intent(IN) :: aname
     integer, intent(in), optional :: inm,inn
     real(kind(1.d0)), intent(out) :: mat(:,:)
+    character(LEN=:), allocatable :: InLine
     integer j,k, status, n,m
     real tmp
     Type(TTextFile) :: F
@@ -1275,21 +1315,24 @@
     call F%Open(aname)
 
     do j=1,m
-        read (F%unit,*, iostat=status) mat(j,1:n)
+        status = 1
+        if (.not. F%ReadLineSkipEmptyAndComments(InLine)) exit
+        read (InLine,*, iostat=status) mat(j,1:n)
         if (status/=0) exit
     end do
     if (status/=0) then
         call F%Rewind()  !Try other possible format
         do j=1,m
             do k=1,n
-                read (F%unit,*, iostat=status) mat(j,k)
+                status = 1
+                if (.not. F%ReadLineSkipEmptyAndComments(InLine)) exit
+                read (InLine,*, iostat=status) mat(j,k)
                 if (status/=0) call F%Error( 'matrix file is the wrong size')
             end do
         end do
     end if
 
-    read (F%unit,*, iostat=status) tmp
-    if (status==0) call F%Error( 'matrix file is the wrong size (too big)')
+    if (F%ReadLineSkipEmptyAndComments(InLine)) call F%Error( 'matrix file is the wrong size (too big)')
 
     call F%Close()
 

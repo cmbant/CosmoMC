@@ -82,7 +82,7 @@
     subroutine Union2Likelihood_Add(LikeList, Ini)
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
-    Type(Union2Likelihood), pointer :: like
+    Type(Union2Likelihood), pointer :: this
     character (LEN=20):: name
     integer i
     ! The following line selects which error estimate to use
@@ -92,19 +92,19 @@
 
     if (.not. Ini%Read_Logical('use_Union',.false.)) return
 
-    allocate(like)
-    Like%LikelihoodType = 'SN'
-    Like%name='Union2.1'
-    like%needs_background_functions = .true.
-    call LikeList%Add(like)
+    allocate(this)
+    this%LikelihoodType = 'SN'
+    this%name='Union2.1'
+    this%needs_background_functions = .true.
+    call LikeList%Add(this)
 
     Union_syscovmat = Ini%read_Logical('Union_syscovmat',Union_syscovmat)
 
     if (Feedback > 0) write (*,*) 'Reading: supernovae data'
     call F%Open(trim(DataDir)//'sn_z_mu_dmu_plow_union2.1.txt')
     do i=1,  sn_num
-        read(F%unit, *) name, Like%SN_z(i),Like%SN_moduli(i), &
-        Like%SN_modulierr(i),Like%SN_plow(i)
+        read(F%unit, *) name, this%SN_z(i),this%SN_moduli(i), &
+        this%SN_modulierr(i),this%SN_plow(i)
         !     read(unit, *) name, SN_z(i),SN_moduli(i)
     end do
     call F%Close()
@@ -116,17 +116,17 @@
     end if
 
     do i=1, sn_num
-        read (F%unit,*) Like%sn_ninv (i,1:sn_num)
+        read (F%unit,*) this%sn_ninv (i,1:sn_num)
     end do
 
     call F%Close()
 
     end subroutine Union2Likelihood_Add
 
-    function SN_LnLike(like, CMB)
+    function SN_LnLike(this, CMB)
     !Assume this is called just after CAMB with the correct model  use camb
     Class(CMBParams) CMB
-    Class(Union2Likelihood) :: like
+    Class(Union2Likelihood) :: this
     real(mcp) SN_LnLike
     integer i
     double precision z
@@ -135,11 +135,11 @@
     !! This is actually seems to be faster without OMP
 
     do i=1, SN_num
-        z= Like%SN_z(i)
-        diffs(i) = 5*log10((1+z)**2*like%Calculator%AngularDiameterDistance(z))+25 -Like%sn_moduli(i)
+        z= this%SN_z(i)
+        diffs(i) = 5*log10((1+z)**2*this%Calculator%AngularDiameterDistance(z))+25 -this%sn_moduli(i)
     end do
 
-    chisq = dot_product(diffs,matmul(Like%sn_ninv,diffs))
+    chisq = dot_product(diffs,matmul(this%sn_ninv,diffs))
 
     !! H0 normalisation alla Bridle and co.
 

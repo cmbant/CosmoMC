@@ -31,7 +31,7 @@
         !Make these multiples of 50, should be 50 more than you need accurately
         integer :: lmax = 0
         integer :: num_cls = 0
-        integer :: lmax_tensor = 400 !note only lmax_computed_cl is actually calculated
+        integer :: lmax_tensor = 600 !note only lmax_computed_cl is actually calculated
         integer :: lmax_computed_cl = 4500 !Never compute primordial above this, just fit
         integer :: lmin_computed_cl = 2000 !if cl needed, calculate to at least this
 
@@ -168,6 +168,7 @@
     call Ini%Read('num_massive_neutrinos',this%num_massive_neutrinos)
     call Ini%Read('lmax_computed_cl',this%lmax_computed_cl)
     call Ini%Read('lmin_computed_cl',this%lmin_computed_cl)
+    call Ini%Read('lmax_tensor',this%lmax_tensor)
 
     end subroutine TCosmoTheorySettings_ReadParams
 
@@ -185,20 +186,22 @@
     & call MpiStop('use_lensing_potential must have CMB_lensing=T')
 
     if (Feedback > 0 .and. MPIRank==0) then
-        write (*,*) 'Doing CMB lensing:', this%CMB_lensing
-        if (this%CMB_lensing) write (*,*) 'Doing non-linear lensing:', this%use_nonlinear_lensing
         write (*,*) 'Doing non-linear Pk:', this%use_nonlinear
 
-        if (allocated(this%cl_lmax)) then
-            do i=1, this%num_cls
-                do j= i, 1, -1
-                    if (this%cl_lmax(i,j) >0) &
-                    write(*,'(" '//CMB_CL_Fields(i:i)//CMB_CL_Fields(j:j)//' lmax = ",(I5))') this%cl_lmax(i,j)
+        if(this%use_CMB)then
+            write (*,*) 'Doing CMB lensing:', this%CMB_lensing
+            if (this%CMB_lensing) write (*,*) 'Doing non-linear lensing:', this%use_nonlinear_lensing
+            if (allocated(this%cl_lmax)) then
+                do i=1, this%num_cls
+                    do j= i, 1, -1
+                        if (this%cl_lmax(i,j) >0) &
+                        write(*,'(" '//CMB_CL_Fields(i:i)//CMB_CL_Fields(j:j)//' lmax = ",(I5))') this%cl_lmax(i,j)
+                    end do
                 end do
-            end do
-            write(*,'(" lmax_computed_cl  = ",1I5)') this%lmax_computed_cl
-            write (*,*) 'Computing tensors:', this%compute_tensors
-            if (this%compute_tensors) write(*,'(" lmax_tensor    = ",1I5)') this%lmax_tensor
+                write(*,'(" lmax_computed_cl  = ",1I5)') this%lmax_computed_cl
+                write (*,*) 'Computing tensors:', this%compute_tensors
+                if (this%compute_tensors) write(*,'(" lmax_tensor    = ",1I5)') this%lmax_tensor
+            end if
         end if
     end if
 

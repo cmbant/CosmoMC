@@ -220,17 +220,17 @@
     subroutine JLALikelihood_Add(LikeList, Ini)
     class(TLikelihoodList) :: LikeList
     class(TIniFile) :: ini
-    Type(JLALikelihood), pointer :: like
+    Type(JLALikelihood), pointer :: this
     character (LEN=:), allocatable:: jla_filename
     integer alpha_i, beta_i
 
     if (.not. Ini%Read_Logical('use_JLA',.false.)) return
 
-    allocate(like)
-    Like%LikelihoodType = 'SN'
-    Like%name='JLA'
-    like%needs_background_functions = .true.
-    Like%version = JLA_version
+    allocate(this)
+    this%LikelihoodType = 'SN'
+    this%name='JLA'
+    this%needs_background_functions = .true.
+    this%version = JLA_version
     JLA_marginalize = Ini%Read_Logical('JLA_marginalize',.false.)
     if (JLA_marginalize) then
         WRITE(*,*) 'WE have a problem: should never get here.'
@@ -250,9 +250,9 @@
         end do
         allocate(JLA_marge_grid(JLA_int_points))
     else
-        call Like%loadParamNames(trim(DataDir)//'JLA.paramnames')
+        call this%loadParamNames(trim(DataDir)//'JLA.paramnames')
     end if
-    call LikeList%Add(like)
+    call LikeList%Add(this)
     jla_filename = Ini%Read_String_Default('jla_dataset',trim(DataDir)//'jla.dataset')
     CALL read_jla_dataset( jla_filename )
     CALL jla_prep
@@ -1077,7 +1077,7 @@
         ENDIF
     ELSE
         !Unfortunately, we actually need the covariance matrix,
-        ! and can't get away with evaluating terms like
+        ! and can't get away with evaluating terms this
         ! V^-1 * x = y by solving V * y = x.  This costs us in performance
         ! and accuracy, but such is life
         CALL invert_covariance_matrix(invcovmat, alpha,beta,status)
@@ -1166,8 +1166,8 @@
 
     end FUNCTION  JLA_alpha_beta_like
 
-    FUNCTION jla_LnLike(like, CMB, Theory, DataParams)
-    Class(JLALikelihood) :: like
+    FUNCTION jla_LnLike(this, CMB, Theory, DataParams)
+    Class(JLALikelihood) :: this
     Class(CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
@@ -1194,7 +1194,7 @@
     DO i=1,nsn
         zhel = sndata(i)%zhel
         zcmb = sndata(i)%zcmb
-        lumdists(i) = 5.0* LOG10( (1.0+zhel)*(1.0+zcmb) * like%Calculator%AngularDiameterDistance(zcmb) )
+        lumdists(i) = 5.0* LOG10( (1.0+zhel)*(1.0+zcmb) * this%Calculator%AngularDiameterDistance(zcmb) )
     ENDDO
 
     !Handle SN with absolute distances

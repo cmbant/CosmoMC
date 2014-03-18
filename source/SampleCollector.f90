@@ -66,7 +66,7 @@
     procedure :: AddNewWeightedPoint => TMpiChainCollector_AddNewWeightedPoint
     procedure :: UpdateCovAndCheckConverge => TMpiChainCollector_UpdateCovAndCheckConverge
     procedure :: ReadParams => TMpiChainCollector_ReadParams
-    FINAL :: TMpiChainCollector_Clear 
+    FINAL :: TMpiChainCollector_Clear
 #ifdef MPI
     procedure :: CheckLimitsConverge
 #endif
@@ -85,7 +85,7 @@
     real(mcp), intent(in):: mult !the weight, usually integer for standard chains
     integer, intent(in), optional :: thin_fac
     integer thin
-    logical want 
+    logical want
 
     thin=1
     if (present(thin_fac)) thin=thin_fac

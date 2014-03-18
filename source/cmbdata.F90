@@ -92,7 +92,7 @@
     logical :: init_MAP = .true.
 
     integer :: cl_bin_width =1
-    
+
     integer, private :: num_cls = 4
 
 
@@ -932,7 +932,7 @@
     call Theory%ClArray(cl(:,2),2,1)
     call Theory%ClArray(cl(:,3),2,2)
     call Theory%ClArray(cl(:,4),3,3)
-    
+
     call Theory%ClsFromTheoryData(cl)
 
     szcl= cl

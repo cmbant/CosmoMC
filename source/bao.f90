@@ -58,7 +58,7 @@
     subroutine BAOLikelihood_Add(LikeList, Ini)
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
-    Type(BAOLikelihood), pointer :: like
+    Type(BAOLikelihood), pointer :: this
     integer numbaosets, i
 
     if (Ini%Read_Logical('use_BAO',.false.)) then
@@ -68,70 +68,70 @@
             BAO_fixed_rs= Ini%Read_Double('BAO_fixed_rs',-1._mcp)
         end if
         do i= 1, numbaosets
-            allocate(like)
-            call like%ReadDatasetFile(Ini%ReadFileName(numcat('bao_dataset',i)))
-            like%LikelihoodType = 'BAO'
-            like%needs_background_functions = .true.
-            call LikeList%Add(like)
+            allocate(this)
+            call this%ReadDatasetFile(Ini%ReadFileName(numcat('bao_dataset',i)))
+            this%LikelihoodType = 'BAO'
+            this%needs_background_functions = .true.
+            call LikeList%Add(this)
         end do
-        if (Feedback>1) write(*,*) 'read bao datasets'
+        if (Feedback>1) write(*,*) 'read BAO data sets'
     end if
 
     end subroutine BAOLikelihood_Add
 
-    subroutine BAO_ReadIni(like, Ini)
-    class(BAOLikelihood) like
+    subroutine BAO_ReadIni(this, Ini)
+    class(BAOLikelihood) this
     class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: bao_measurements_file, bao_invcov_file
     integer i,iopb
     Type(TTextFile) :: F
 
-    if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(like%name)
-    like%num_bao = Ini%Read_Int('num_bao',0)
-    if (like%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
-    like%type_bao = Ini%Read_Int('type_bao',1)
-    if(like%type_bao /= 3 .and. like%type_bao /=2 .and. like%type_bao /=4) then
-        write(*,*) like%type_bao
-        write(*,*)'ERROR: Invalid bao type specified in BAO dataset: '//trim(like%name)
+    if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(this%name)
+    this%num_bao = Ini%Read_Int('num_bao',0)
+    if (this%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
+    this%type_bao = Ini%Read_Int('type_bao',1)
+    if(this%type_bao /= 3 .and. this%type_bao /=2 .and. this%type_bao /=4) then
+        write(*,*) this%type_bao
+        write(*,*)'ERROR: Invalid bao type specified in BAO dataset: '//trim(this%name)
         call MPIStop()
     end if
 
-    allocate(like%bao_z(like%num_bao))
-    allocate(like%bao_obs(like%num_bao))
-    allocate(like%bao_err(like%num_bao))
+    allocate(this%bao_z(this%num_bao))
+    allocate(this%bao_obs(this%num_bao))
+    allocate(this%bao_err(this%num_bao))
 
     bao_measurements_file = Ini%ReadFileName('bao_measurements_file')
     call F%Open(bao_measurements_file)
-    do i=1,like%num_bao
-        read (F%unit,*, iostat=iopb) like%bao_z(i),like%bao_obs(i),like%bao_err(i)
+    do i=1,this%num_bao
+        read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
     end do
     call F%Close()
 
-    if (like%name == 'DR7') then
+    if (this%name == 'DR7') then
         !don't used observed value, probabilty distribution instead
         call BAO_DR7_init(Ini%ReadFileName('prob_dist'))
-    elseif (like%name == 'DR11CMASS') then
+    elseif (this%name == 'DR11CMASS') then
         !don't used observed value, probabilty distribution instead
         call BAO_DR11_init(Ini%ReadFileName('prob_dist'))
     else
-        allocate(like%bao_invcov(like%num_bao,like%num_bao))
-        like%bao_invcov=0
+        allocate(this%bao_invcov(this%num_bao,this%num_bao))
+        this%bao_invcov=0
 
         if (Ini%HasKey('bao_invcov_file')) then
             bao_invcov_file  = Ini%ReadFileName('bao_invcov_file')
-            call File%ReadTextMatrix(bao_invcov_file, like%bao_invcov)
+            call File%ReadTextMatrix(bao_invcov_file, this%bao_invcov)
         else
-            do i=1,like%num_bao
+            do i=1,this%num_bao
                 !diagonal, or actually just 1..
-                like%bao_invcov(i,i) = 1/like%bao_err(i)**2
+                this%bao_invcov(i,i) = 1/this%bao_err(i)**2
             end do
         end if
     end if
 
     end subroutine BAO_ReadIni
 
-    function Acoustic(like,CMB,z)
-    class(BAOLikelihood) :: like
+    function Acoustic(this,CMB,z)
+    class(BAOLikelihood) :: this
     class(CMBParams) CMB
     real(mcp) Acoustic
     real(mcp), intent(IN) :: z
@@ -142,13 +142,13 @@
     ckm = const_c/1e3_mcp !JD c in km/s
 
     omh2 = omegam*h**2.d0
-    Acoustic = 100*like%Calculator%BAO_D_v(z)*sqrt(omh2)/(ckm*z)
+    Acoustic = 100*this%Calculator%BAO_D_v(z)*sqrt(omh2)/(ckm*z)
     end function Acoustic
 
-    function SDSS_dvtors(like, CMB,z)
+    function SDSS_dvtors(this, CMB,z)
     !This uses numerical value of D_v/r_s, but re-scales it to match definition of SDSS
     !paper fitting at the fiducial model. Idea being it is also valid for e.g. varying N_eff
-    class(BAOLikelihood) :: like
+    class(BAOLikelihood) :: this
     class(CMBParams) CMB
     real(mcp) SDSS_dvtors
     real(mcp), intent(IN)::z
@@ -157,15 +157,15 @@
 
     !    rs = SDSS_CMBToBAOrs(CMB)
     rs = rsdrag_theory*rs_rescale !rescaled to match fitting formula for LCDM
-    SDSS_dvtors = like%Calculator%BAO_D_v(z)/rs
+    SDSS_dvtors = this%Calculator%BAO_D_v(z)/rs
 
     end function SDSS_dvtors
 
 
     !===================================================================================
 
-    function BAO_LnLike(like, CMB, Theory, DataParams)
-    Class(BAOLikelihood) :: like
+    function BAO_LnLike(this, CMB, Theory, DataParams)
+    Class(BAOLikelihood) :: this
     Class(CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) :: DataParams(:)
@@ -180,32 +180,32 @@
         rsdrag_theory =  Theory%derived_parameters( derived_rdrag )
     end if
     BAO_LnLike=0
-    if (like%name=='DR7') then
-        BAO_LnLike = like%BAO_DR7_loglike(CMB,like%bao_z(1))
-    elseif (like%name=='DR11CMASS') then
-        BAO_LnLike = like%BAO_DR11_loglike(CMB,like%bao_z(1))
+    if (this%name=='DR7') then
+        BAO_LnLike = this%BAO_DR7_loglike(CMB,this%bao_z(1))
+    elseif (this%name=='DR11CMASS') then
+        BAO_LnLike = this%BAO_DR11_loglike(CMB,this%bao_z(1))
     else
-        allocate(BAO_theory(like%num_bao))
+        allocate(BAO_theory(this%num_bao))
 
-        if(like%type_bao ==3)then
-            do j=1, like%num_bao
-                BAO_theory(j) = like%SDSS_dvtors(CMB,like%bao_z(j))
+        if(this%type_bao ==3)then
+            do j=1, this%num_bao
+                BAO_theory(j) = this%SDSS_dvtors(CMB,this%bao_z(j))
             end do
-        else if(like%type_bao ==2)then
-            do j=1, like%num_bao
-                BAO_theory(j) = like%Acoustic(CMB,like%bao_z(j))
+        else if(this%type_bao ==2)then
+            do j=1, this%num_bao
+                BAO_theory(j) = this%Acoustic(CMB,this%bao_z(j))
             end do
-        else if(like%type_bao ==4)then
-            do j=1, like%num_bao
-                BAO_theory(j) = like%Calculator%BAO_D_v(like%bao_z(j))
+        else if(this%type_bao ==4)then
+            do j=1, this%num_bao
+                BAO_theory(j) = this%Calculator%BAO_D_v(this%bao_z(j))
             end do
         end if
 
-        do j=1, like%num_bao
-            do k=1, like%num_bao
+        do j=1, this%num_bao
+            do k=1, this%num_bao
                 BAO_LnLike = BAO_LnLike +&
-                (BAO_theory(j)-like%bao_obs(j))*like%bao_invcov(j,k)*&
-                (BAO_theory(k)-like%bao_obs(k))
+                (BAO_theory(j)-this%bao_obs(j))*this%bao_invcov(j,k)*&
+                (BAO_theory(k)-this%bao_obs(k))
             end do
         end do
         BAO_LnLike = BAO_LnLike/2.d0
@@ -213,7 +213,7 @@
         deallocate(BAO_theory)
     end if
 
-    if(feedback>1) write(*,*) trim(like%name)//' BAO likelihood = ', BAO_LnLike
+    if(feedback>1) write(*,*) trim(this%name)//' BAO likelihood = ', BAO_LnLike
 
     end function BAO_LnLike
 
@@ -254,13 +254,13 @@
 
     end subroutine BAO_DR7_init
 
-    function BAO_DR7_loglike(like,CMB,z)
-    Class(BAOLikelihood) :: like
+    function BAO_DR7_loglike(this,CMB,z)
+    Class(BAOLikelihood) :: this
     Class(CMBParams) CMB
     real (mcp) z, BAO_DR7_loglike, alpha_chain, prob
     real,parameter :: rs_wmap7=152.7934d0,dv1_wmap7=1340.177  !r_s and D_V computed for wmap7 cosmology
     integer ii
-    alpha_chain = (like%SDSS_dvtors(CMB,z))/(dv1_wmap7/rs_wmap7)
+    alpha_chain = (this%SDSS_dvtors(CMB,z))/(dv1_wmap7/rs_wmap7)
     if ((alpha_chain.gt.DR7_alpha_file(DR7_alpha_npoints-1)).or.(alpha_chain.lt.DR7_alpha_file(1))) then
         BAO_DR7_loglike = logZero
     else
@@ -306,14 +306,14 @@
 
     end subroutine BAO_DR11_init
 
-    function BAO_DR11_loglike(like,CMB,z)
-    Class(BAOLikelihood) :: like
+    function BAO_DR11_loglike(this,CMB,z)
+    Class(BAOLikelihood) :: this
     Class(CMBParams) CMB
     real (mcp) z, BAO_DR11_loglike, alpha_perp, alpha_plel, prob
     real,parameter :: rd_fid=149.28,H_fid=93.558,DA_fid=1359.72 !fiducial parameters
     integer ii,jj
-    alpha_perp=(like%Calculator%AngularDiameterDistance(z)/rsdrag_theory)/(DA_fid/rd_fid)
-    alpha_plel=(H_fid*rd_fid)/((const_c*like%Calculator%Hofz(z)/1.d3)*rsdrag_theory)
+    alpha_perp=(this%Calculator%AngularDiameterDistance(z)/rsdrag_theory)/(DA_fid/rd_fid)
+    alpha_plel=(H_fid*rd_fid)/((const_c*this%Calculator%Hofz(z)/1.d3)*rsdrag_theory)
     if ((alpha_perp.lt.DR11_alpha_perp_file(1)).or.(alpha_perp.gt.DR11_alpha_perp_file(DR11_alpha_npoints-1)).or. &
     &   (alpha_plel.lt.DR11_alpha_plel_file(1)).or.(alpha_plel.gt.DR11_alpha_plel_file(DR11_alpha_npoints-1))) then
         BAO_DR11_loglike = logZero

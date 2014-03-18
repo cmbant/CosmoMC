@@ -1,32 +1,33 @@
-    !Things that used to be in CMBdata, for dated likelihoods
-    module CMBCustom
+
+    module CMBLikelihoods
     use Likelihood_Cosmology
     use CosmologyTypes
     use CosmoTheory
+    use CMBLikes
     implicit none
     private
 
-    type, extends(TCMBLikelihood) :: TCMBDatasetLikelihood
+    type, extends(TCMBLikelihood) :: TCMBSZLikelihood
         character(LEN=:), allocatable :: tag ! from "cmb_dataset[tag] =" in input file
         real(mcp), pointer, dimension(:) :: sz_template
     contains
     procedure :: ReadSZTemplate
-    procedure :: ReadParams => TCMBDatasetLikelihood_ReadParams
-    end type TCMBDatasetLikelihood
+    procedure :: ReadParams => TCMBSZLikelihood_ReadParams
+    end type TCMBSZLikelihood
 
 #ifdef WMAP
-    type, extends(TCMBDatasetLikelihood) :: TWMAPLikelihood
+    type, extends(TCMBSZLikelihood) :: TWMAPLikelihood
     contains
     procedure :: ReadParams => TWMAPLikelihood_ReadParams
     procedure :: LogLike => TWMAPLikelihood_LogLike
     end type TWMAPLikelihood
 #endif
 
-    public CMBCustomLikelihoods_Add
+    public CMBLikelihood_Add
     contains
 
 
-    subroutine CMBCustomLikelihoods_Add(LikeList, Ini)
+    subroutine CMBLikelihood_Add(LikeList, Ini)
 #ifdef CLIK
     use cliklike
 #endif
@@ -35,11 +36,8 @@
 #endif
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
-
-    class(TCMBDatasetLikelihood), pointer  :: like
+    class(TCMBLikelihood), pointer  :: like
     integer  i
-    character(LEN=:), allocatable :: tag, SZTemplate
-    real(mcp) SZScale
     Type(TSettingIni) :: DataSets
 
     call Ini%TagValuesForName('cmb_dataset', DataSets)
@@ -49,19 +47,23 @@
 #ifdef WMAP
             allocate(TWMAPLikelihood::like)
             like%name = Datasets%Value(i)
+            select type(like)
+            class is (TWMAPLikelihood)
+            like%Tag = DataSets%Name(i)
+            end select
 #else
             call MpiStop('Set WMAP directory in Makefile to compile with WMAP')
 #endif
         else
-            call MpiStop('Support for general CMB data sets not added yet')
-            allocate(TCMBDatasetLikelihood::like)
+            allocate(TCMBLikes::like)
             call like%ReadDatasetFile(Datasets%Value(i))
         end if
-        like%Tag = DataSets%Name(i)
         call like%ReadParams(Ini)
+        call Ini%Read(Ini%NamedKey('cmb_dataset_speed',DataSets%Name(i)),like%speed)
+
         call LikeList%Add(like)
     end do
-    if (Feedback > 1) write (*,*) 'CMB datasets read'
+    if (Feedback > 1 .and. DataSets%Count>0 ) write (*,*) 'read CMB data sets'
 
 #ifdef CLIK
     Use_clik = Ini%Read_Logical('use_clik',.false.)
@@ -75,14 +77,12 @@
     call nonclik_readParams(LikeList, Ini)
 #endif
 
+    end subroutine CMBLikelihood_Add
 
-    end subroutine CMBCustomLikelihoods_Add
 
-
-    subroutine TCMBDatasetLikelihood_ReadParams(this, Ini)
-    class(TCMBDatasetLikelihood) :: this
-    class(TSettingIni) :: ini
-    integer i
+    subroutine TCMBSZLikelihood_ReadParams(this, Ini)
+    class(TCMBSZLikelihood) :: this
+    class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: SZTemplate
     real(mcp) :: SZscale = 1
 
@@ -95,10 +95,10 @@
 
     call this%TCMBLikelihood%ReadParams(Ini)
 
-    end subroutine TCMBDatasetLikelihood_ReadParams
+    end subroutine TCMBSZLikelihood_ReadParams
 
     subroutine ReadSZTemplate(this, aname, ascale)
-    class(TCMBDatasetLikelihood) :: this
+    class(TCMBSZLikelihood) :: this
     character(LEN=*), intent(IN) :: aname
     real(mcp), intent(in) :: ascale
     integer l, status
@@ -113,7 +113,6 @@
         if (status/=0) exit
         if (l>=2 .and. l<=this%cl_lmax(CL_T,CL_T)) this%sz_template(l) = ascale * sz
     end do
-
     call F%Close()
 
     end subroutine ReadSZTemplate
@@ -134,23 +133,23 @@
     this%cl_lmax(CL_E,CL_E) = max(gibbs_ell_max,lowl_max)
     this%cl_lmax(CL_B,CL_B) = max(gibbs_ell_max,lowl_max)
 
-    call this%TCMBDatasetLikelihood%ReadParams(Ini)
+    call this%TCMBSZLikelihood%ReadParams(Ini)
 
     end subroutine TWMAPLikelihood_ReadParams
 
-    function TWMAPLikelihood_LogLike(like, CMB, Theory, DataParams) result(logLike)
+    function TWMAPLikelihood_LogLike(this, CMB, Theory, DataParams) result(logLike)
     use wmap_likelihood_9yr
     use WMAP_OPTIONS
     use WMAP_UTIL
-    Class(TWMAPLikelihood) :: like
+    Class(TWMAPLikelihood) :: this
     Class (CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
     real(mcp) logLike
-    real(8)                     :: likes(num_WMAP),like_tot
-    real(mcp) CLTT(2:like%cl_lmax(1,1))
+    real(8) :: likes(num_WMAP),like_tot
+    real(mcp) CLTT(2:this%cl_lmax(1,1))
 
-    CLTT = Theory%Cls(1,1)%CL(2:like%cl_lmax(1,1)) + DataParams(1)*like%sz_template
+    CLTT = Theory%Cls(1,1)%CL(2:this%cl_lmax(1,1)) + DataParams(1)*this%sz_template
     likes=0
     call wmap_likelihood_compute(CLTT,Theory%Cls(2,1)%CL(2:),Theory%Cls(2,2)%CL(2:),Theory%Cls(3,3)%CL(2:),likes)
     !call wmap_likelihood_error_report
@@ -165,4 +164,4 @@
 
 
 
-    end module CMBCustom
+    end module CMBLikelihoods

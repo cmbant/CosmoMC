@@ -9,7 +9,7 @@
     subroutine SetDataLikelihoods(Ini)
     use HST
     use snovae
-    use CMBCustom
+    use CMBLikelihoods
     use bao
     use mpk
     use wigglez
@@ -17,7 +17,7 @@
 
     CosmoSettings%get_sigma8 = Ini%Read_Logical('get_sigma8',.false.)
 
-    call CMBCustomLikelihoods_Add(DataLikelihoods, Ini)
+    call CMBLikelihood_Add(DataLikelihoods, Ini)
 
     call HSTLikelihood_Add(DataLikelihoods, Ini)
 
