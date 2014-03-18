@@ -74,6 +74,7 @@ for jobItem in batch.items(wantSubItems=False):
             ini.params['compute_tensors'] = True
         if 'nt' in jobItem.param_set:
             ini.params['inflation_consistency'] = False
+            ini.params['lmax_tensor'] = 1000
 #            ini.params['pivot_k'] = 0.002
         if hasattr(settings, 'extra_opts'):
             ini.params.update(settings.extra_opts)

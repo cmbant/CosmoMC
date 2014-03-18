@@ -44,7 +44,8 @@ outRoot = root + '_exactsim'
 NoiseOut = []
 for l in range(lmax + 1):
     NoiseCl = l * (l + 1) / 2 / pi * NoiseVar * exp(l * (l + 1) * sigma2)
-    NoiseOut.append([NoiseCl, ENoiseFac * NoiseCl, ENoiseFac * NoiseCl])
+    NoiseO
+    ut.append([NoiseCl, ENoiseFac * NoiseCl, ENoiseFac * NoiseCl])
 
 
 outfile = open(outDir + outRoot + '_Noise.dat', 'w')
