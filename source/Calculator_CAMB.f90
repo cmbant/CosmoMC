@@ -213,7 +213,7 @@
     end if
     this%ncalls=this%ncalls+1
     if (mod(this%ncalls,100)==0 .and. LogFile%Opened()) then
-        write(LogFile%unit,'("CAMB called ",I0," times; ",I0," errors")')this%ncalls, this%nerrors
+        write(LogFile%unit,'("CAMB called ",I0," times; ",I0," errors")') this%ncalls, this%nerrors
     end if
     if (Feedback > 1) write (*,*) 'CAMB done'
 

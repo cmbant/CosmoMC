@@ -168,6 +168,7 @@
     call Ini%Read('num_massive_neutrinos',this%num_massive_neutrinos)
     call Ini%Read('lmax_computed_cl',this%lmax_computed_cl)
     call Ini%Read('lmin_computed_cl',this%lmin_computed_cl)
+    call Ini%Read('lmax_tensor',this%lmax_tensor)
 
     end subroutine TCosmoTheorySettings_ReadParams
 

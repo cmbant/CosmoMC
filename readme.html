@@ -42,7 +42,7 @@ See also the <A HREF="http://www.sarahbridle.net/cosmologui/">CosmoloGUI</A> rea
 </UL>
 
 <A NAME="Intro"><h2>Introduction</h2></A>
-CosmoMC is a Fortran 2003 Markov-Chain Monte-Carlo (MCMC) engine for exploring cosmological
+CosmoMC is a Fortran 2003/2008 Markov-Chain Monte-Carlo (MCMC) engine for exploring cosmological
 parameter space, together with code for analysing Monte-Carlo samples and importance sampling (plus a suite of python scripts for building grids of runs and plotting and presenting results).
 The code does brute force (but accurate) theoretical matter power spectrum and <I>C<sub>l</sub></I> calculations with
 <a href="http://camb.info/">CAMB</a>. See the <a href="http://arxiv.org/abs/astro-ph/0205436">paper</a>
@@ -67,7 +67,7 @@ Please e-mail details of any bugs or enhancements to <a href="http://cosmologist
 
 
 <A NAME="Compiling"><h2>Downloading and Compiling</h2></A>
-You will need a Fortran 2003 (or higher) compiler - Intel Fortran 13 or higher works (earlier versions probably will not). Others may, but gfortran <i>does not</i> support Fortran 2003 well enough at the moment.
+You will need a Fortran 2003 (or higher) compiler - Intel Fortran 14 or higher works (earlier versions probably will not). Others may, but gfortran <i>does not</i> support Fortran 2003 well enough at the moment (see <A HREF="http://gcc.gnu.org/bugzilla/buglist.cgi?cf_known_to_fail_type=allwords&cf_known_to_work_type=allwords&chfield=[Bug%20creation]&chfieldfrom=-7y&chfieldto=Now&email1=antony%40cosmologist.info&emailreporter1=1&emailtype1=substring&list_id=82881&query_format=advanced">bug list</A> if you'd like to help).
 <!--
 Two options:
 <UL>
@@ -535,18 +535,18 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <A NAME="Version"><h2>Version History</h2></A>
 
 <UL>
-<LI><B>xxx 2014</B><BR>
+<LI><B>March 2014</B><BR>
 <UL>
-<LI>Major restructuring of main code using Fortran 2008: structure supports additional cosmology calculator codes, etc.
+<LI>Major restructuring of main code using Fortran 2008: structure supports additional cosmology calculator codes, etc. Use ifort 14+.
+<LI>Re-written CMB likelihoods; new CMBlikes module replaces the (mis-named) Planck_like, with support for exact forecasting and binned HL likelihoods (e.g. BICEP2); runtime determination of L-ranges and fields needed. (.data format changed); old CMB data format support removed for now.
 <LI>New JLA supernovae likelihood module (<a href="http://arxiv.org/abs/1401.4064">arXiv:1401.4064</A>)
 <LI>Added DR11 BAO module changes and data from <A HREF="http://www.sdss3.org/science/boss_publications.php">SDSS</A>
-<LI>Functioning support for using CosmoMC as a generic sampler
 <LI>Mpk functions now use 2D bicupic interpolation (thanks Jason Dossett)
 <LI>MatterPowerAt_Z interpolation bug fix
 <LI>.likestats files include mean likelihood numbers; python tables updated accordingly
 <LI>python/runMPI.py added to replace perl scripts; based on a templated queue submission script, e.g. provided job_script.
 <LI>python makeGrid settings: lists of .ini files can now be, or include, python dictionaries of parameters rather than .ini files; job data_set can be a dataSet() item
-<LI>CAMB update: updated halofit fitting parameters for neutrino models (thanks Simeon Bird)
+<LI>CAMB update: updated halofit fitting parameters for neutrino models (thanks Simeon Bird); DoTensorNeutrinos is now on by default.
 </UL>
 
 
