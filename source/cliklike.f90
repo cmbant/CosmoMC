@@ -81,8 +81,8 @@
 
     end subroutine clik_readParams
 
-    subroutine clik_likeinit(like, fname)
-    class (ClikLikelihood) :: like
+    subroutine clik_likeinit(this, fname)
+    class (ClikLikelihood) :: this
     character(LEN=*), intent(in) :: fname
     character (len=2),dimension(6) :: clnames
     integer i
