@@ -24,7 +24,7 @@ if not hasattr(settings, 'params'):
     params['w'] = '-0.995 -3 -0.3 0.02 0.02'
     params['nnu'] = '3.046 0.05 10 0.05 0.05'
     params['nrun'] = '0 -1 1 0.001 0.001'
-    params['r'] = '0 0 2 0.03 0.03'
+    params['r'] = '0 0 3 0.03 0.03'
     params['Alens'] = '1 0 10 0.05 0.05'
     params['yhe'] = '0.245 0.1 0.5 0.006 0.006'
     params['alpha1'] = '0 -1 1 0.0003 0.0003'
@@ -74,6 +74,8 @@ for jobItem in batch.items(wantSubItems=False):
             ini.params['compute_tensors'] = True
         if 'nt' in jobItem.param_set:
             ini.params['inflation_consistency'] = False
+            ini.params['lmax_tensor'] = 1000
+#            ini.params['pivot_k'] = 0.002
         if hasattr(settings, 'extra_opts'):
             ini.params.update(settings.extra_opts)
 
