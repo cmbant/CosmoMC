@@ -127,12 +127,12 @@
     end subroutine clik_likeinit
 
     real(mcp) function clik_lnlike(like, CMB, Theory, DataParams)
-    Class(ClikLikelihood) :: like
+    Class(ClikLikelihood) :: this
     Class (CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
     integer :: i,j ,l
-    real(dp) clik_cl_and_pars(like%clik_n)
+    real(dp) clik_cl_and_pars(this%clik_n)
 
     !set C_l and parameter vector to zero initially
     clik_cl_and_pars = 0.d0
@@ -142,8 +142,8 @@
     !TB and EB assumed to be zero
     !If your model predicts otherwise, this function will need to be updated
     do i=1,4
-        associate(Cls=> Theory%Cls(Like%clik_index(1,i),Like%clik_index(2,i)))
-            do l=0,like%clik_lmax(i)
+        associate(Cls=> Theory%Cls(this%clik_index(1,i),this%clik_index(2,i)))
+            do l=0,this%clik_lmax(i)
                 !skip C_0 and C_1
                 if (l >= 2) then
                     clik_cl_and_pars(j) = CLs%CL(L)/real(l*(l+1),mcp)*twopi
@@ -155,10 +155,10 @@
 
     !Appending nuisance parameters
     !Not pretty. Oh well.
-    if (like%clik_nnuis > 0) then
-        do i=1,like%clik_nnuis
+    if (this%clik_nnuis > 0) then
+        do i=1,this%clik_nnuis
             !silvia--------------------------------------------
-            if(i .eq. 6 .and. INDEX(trim(like%name),'plik').ne. 0)then
+            if(i .eq. 6 .and. INDEX(trim(this%name),'plik').ne. 0)then
                 clik_cl_and_pars(j) = DataParams(i)-2
             else
                 clik_cl_and_pars(j) = DataParams(i)
@@ -168,10 +168,10 @@
         end do
     end if
 
-    !Get - ln like needed by CosmoMC
-    clik_lnlike = -1.d0*clik_compute(like%clikid,clik_cl_and_pars)
+    !Get - ln this needed by CosmoMC
+    clik_lnlike = -1.d0*clik_compute(this%clikid,clik_cl_and_pars)
 
-    if (Feedback>1) Print*,trim(like%name)//' lnlike = ',clik_lnlike
+    if (Feedback>1) Print*,trim(this%name)//' lnlike = ',clik_lnlike
 
     end function clik_lnlike
 
@@ -192,43 +192,43 @@
 
     end subroutine do_checks
 
-    subroutine clik_lensing_likeinit(like, fname)
-    class (ClikLensingLikelihood) :: like
+    subroutine clik_lensing_likeinit(this, fname)
+    class (ClikLensingLikelihood) :: this
     character(LEN=*), intent(in) :: fname
     integer i
 
     if (Feedback > 1) Print*,'Initialising clik lensing...'
-    call clik_lensing_init(like%clikid,fname)
-    !    call clik_lensing_get_lmax(like%clikid,like%lensing_lmax)
+    call clik_lensing_init(this%clikid,fname)
+    !    call clik_lensing_get_lmax(this%clikid,this%lensing_lmax)
 
     ! fill the lmaxs array. It contains (in that order) lmax for cl_phiphi, cl_TT, cl_EE, cl_BB, cl_TE, cl_TB, cl_EB
     ! -1 means that a particular spectrum is not used.
     ! lmaxs(1) will never be -1, but all the other can be is the likelihood is set not to include renormalization
-    call clik_lensing_get_lmaxs(like%clikid,like%lensing_lmaxs)
+    call clik_lensing_get_lmaxs(this%clikid,this%lensing_lmaxs)
 
-    like%clik_nnuis = 0 !clik_lensing_get_extra_parameter_names(like%clikid,like%names)
-    allocate(like%cl_lmax(CL_phi,CL_phi), source=0)
-    like%cl_lmax(CL_T,CL_T) = like%lensing_lmaxs(2)
-    like%cl_lmax(CL_E,CL_T) = like%lensing_lmaxs(5)
-    like%cl_lmax(CL_E,CL_E) = like%lensing_lmaxs(3)
-    like%cl_lmax(CL_B,CL_B) = like%lensing_lmaxs(4)
-    like%cl_lmax(CL_Phi,CL_Phi) = like%lensing_lmaxs(1)
-    where (like%cl_lmax<0)
-        like%cl_lmax=0
+    this%clik_nnuis = 0 !clik_lensing_get_extra_parameter_names(this%clikid,this%names)
+    allocate(this%cl_lmax(CL_phi,CL_phi), source=0)
+    this%cl_lmax(CL_T,CL_T) = this%lensing_lmaxs(2)
+    this%cl_lmax(CL_E,CL_T) = this%lensing_lmaxs(5)
+    this%cl_lmax(CL_E,CL_E) = this%lensing_lmaxs(3)
+    this%cl_lmax(CL_B,CL_B) = this%lensing_lmaxs(4)
+    this%cl_lmax(CL_Phi,CL_Phi) = this%lensing_lmaxs(1)
+    where (this%cl_lmax<0)
+        this%cl_lmax=0
     end where
-    call like%do_checks()
-    print *,'lensing lmax: ', like%lensing_lmaxs
-    like%clik_n = sum(like%lensing_lmaxs(1:7)+1) !2*(like%lensing_lmax+1) + like%clik_nnuis
+    call this%do_checks()
+    print *,'lensing lmax: ', this%lensing_lmaxs
+    this%clik_n = sum(this%lensing_lmaxs(1:7)+1) !2*(this%lensing_lmax+1) + this%clik_nnuis
 
     end subroutine clik_lensing_likeinit
 
-    real(mcp) function clik_lensing_lnlike(like, CMB, Theory, DataParams)
-    Class(ClikLensingLikelihood) :: like
+    real(mcp) function clik_lensing_lnlike(this, CMB, Theory, DataParams)
+    Class(ClikLensingLikelihood) :: this
     Class (CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
     integer :: i,j,l
-    real(dp) clik_cl_and_pars(like%clik_n)
+    real(dp) clik_cl_and_pars(this%clik_n)
 
 
     !set C_l and parameter vector to zero initially
@@ -236,7 +236,7 @@
 
     j = 1
     associate(Cls=> Theory%Cls(CL_Phi,CL_Phi))
-        do l=0,like%lensing_lmaxs(1)
+        do l=0,this%lensing_lmaxs(1)
             !skip C_0 and C_1
             if (l >= 2) then
                 clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)**2*twopi
@@ -248,8 +248,8 @@
     !TB and EB assumed to be zero
     !If your model predicts otherwise, this function will need to be updated
     do i=1,4
-        associate(Cls=> Theory%Cls(Like%clik_index(1,i),Like%clik_index(2,i)))
-            do l=0,like%lensing_lmaxs(i+1)
+        associate(Cls=> Theory%Cls(this%clik_index(1,i),this%clik_index(2,i)))
+            do l=0,this%lensing_lmaxs(i+1)
                 !skip C_0 and C_1
                 if (l >= 2) then
                     clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)*twopi
@@ -259,15 +259,15 @@
             end associate
     end do
 
-    do i=1,like%clik_nnuis
+    do i=1,this%clik_nnuis
         clik_cl_and_pars(j) = DataParams(i)
         j = j+1
     end do
 
-    !Get - ln like needed by CosmoMC
-    clik_lensing_lnlike = -1.d0*clik_lensing_compute(like%clikid,clik_cl_and_pars)
+    !Get - ln this needed by CosmoMC
+    clik_lensing_lnlike = -1.d0*clik_lensing_compute(this%clikid,clik_cl_and_pars)
 
-    if (Feedback>1) Print*,trim(like%name)//' lnlike = ',clik_lensing_lnlike
+    if (Feedback>1) Print*,trim(this%name)//' lnlike = ',clik_lensing_lnlike
 
     end function clik_lensing_lnlike
 
