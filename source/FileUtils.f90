@@ -387,7 +387,7 @@
     end subroutine CreateOpenFile
 
 
-    subroutine ReadStringSub(this, S, OK) 
+    subroutine ReadStringSub(this, S, OK)
     class(TFileStream) :: this
     character(LEN=:), allocatable :: S
     logical, optional :: OK
@@ -519,7 +519,7 @@
     if (present(OK)) OK = status==0
     end subroutine ReadArray2
 
-    subroutine ReadSizedArray_R(this, R) 
+    subroutine ReadSizedArray_R(this, R)
     class(TFileStream) :: this
     Real, allocatable :: R(:)
     integer sz
@@ -532,7 +532,7 @@
     end subroutine ReadSizedArray_R
 
 
-    subroutine ReadSizedArray_D(this, R) 
+    subroutine ReadSizedArray_D(this, R)
     class(TFileStream) :: this
     double precision, allocatable :: R(:)
     integer sz
@@ -544,7 +544,7 @@
 
     end subroutine ReadSizedArray_D
 
-    subroutine ReadSizedArray_I(this, R) 
+    subroutine ReadSizedArray_I(this, R)
     class(TFileStream) :: this
     integer, allocatable :: R(:)
     integer sz
@@ -556,7 +556,7 @@
 
     end subroutine ReadSizedArray_I
 
-    subroutine ReadSizedArray2_R(this, R) 
+    subroutine ReadSizedArray2_R(this, R)
     class(TFileStream) :: this
     real, allocatable :: R(:,:)
     integer sz1, sz2
@@ -569,7 +569,7 @@
 
     end subroutine ReadSizedArray2_R
 
-    subroutine ReadSizedArray2_D(this, R) 
+    subroutine ReadSizedArray2_D(this, R)
     class(TFileStream) :: this
     double precision, allocatable :: R(:,:)
     integer sz1, sz2
@@ -582,7 +582,7 @@
 
     end subroutine ReadSizedArray2_D
 
-    subroutine ReadSizedArray2_I(this, R) 
+    subroutine ReadSizedArray2_I(this, R)
     class(TFileStream) :: this
     integer, allocatable :: R(:,:)
     integer sz1, sz2
@@ -624,7 +624,7 @@
     call this%WriteItemSub(trim(S))
     end subroutine WriteTrim
 
-    subroutine WriteSizedArray1(this, R, n) 
+    subroutine WriteSizedArray1(this, R, n)
     class(TFileStream) :: this
     class(*), intent(in) :: R(1:)
     integer, intent(in), optional :: n
@@ -636,7 +636,7 @@
 
     end subroutine WriteSizedArray1
 
-    subroutine WriteSizedArray2(this, R) 
+    subroutine WriteSizedArray2(this, R)
     class(TFileStream) :: this
     class(*), intent(in) :: R(:,:)
 
@@ -656,7 +656,7 @@
 
     end subroutine WriteOneAndArray
 
-    subroutine WriteArray(this, R, n) 
+    subroutine WriteArray(this, R, n)
     class(TFileStream) :: this
     class(*), intent(in) :: R(1:)
     integer, intent(in), optional :: n
@@ -679,7 +679,7 @@
 
     end subroutine WriteArray
 
-    subroutine WriteArray2(this, R) 
+    subroutine WriteArray2(this, R)
     class(TFileStream) :: this
     class(*), intent(in) :: R(:,:)
 
@@ -1164,7 +1164,7 @@
 
     IsFullPath = aname/=''
     if (.not. IsFullPath) return
-    IsFullPath = CharIsSlash(aname(1:1))    
+    IsFullPath = CharIsSlash(aname(1:1))
 
     end function IsFullpath
 

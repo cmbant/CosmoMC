@@ -46,7 +46,7 @@
     real(mcp),allocatable :: kval(:), power_nl(:)
     character(LEN=:), allocatable :: fname
     Type(TTextFile) :: F
-    
+
     allocate(GiggleZPK(GiggleZ_numz))
     allocate(kval(GiggleZ_numk))
     allocate(power_nl(GiggleZ_numk))
@@ -67,12 +67,12 @@
         do ik=1, GiggleZ_numk
             read (F%unit,*,iostat=iopb)kval(ik),power_nl(ik)
             if(iopb .ne. 0) stop 'Error reading model or fiducial theory files.'
-            !JD PK arrays store log(k); we choose to store log(PK) for interpolation    
+            !JD PK arrays store log(k); we choose to store log(PK) for interpolation
         end do
         call F%Close()
         call GiggleZPK(iz)%Init(kval,log(power_nl),GiggleZ_numk)
     end do
-    
+
     end subroutine GiggleZinfo_init
 
     ! HARD CODING OF POLYNOMIAL FITS TO FOUR REDSHIFT BINS.
@@ -118,7 +118,7 @@
     use MatrixUtils
     implicit none
     private
-    
+
     type, extends(TDatasetFileLikelihood) :: TWiggleZCommon
     contains
     procedure :: ReadIni => TWiggleZCommon_ReadIni
@@ -317,14 +317,14 @@
     if(this%exact_z(1).eq.0.0) then
         call MpiStop('WiggleZMPK: failed to read in WiggleZ redshift')
     end if
-    
+
     this%zbin = 0
     do i=1,4
         if(abs(this%exact_z(1)-zeval(i)).le.0.001) this%zbin = i
     enddo
-    
+
     if(this%zbin.eq.0) call MpiStop('WiggleZMPK: could not indentify redshift')
-    
+
     if (Feedback > 0) write (*,*) 'reading: '//trim(this%name)
 
     allocate(this%PKdata(num_regions_used))
@@ -525,7 +525,7 @@
     chisq = 0
 
     z = this%exact_z(1)
-    
+
     if(abs(z-PK%y(this%exact_z_index(1)))>1.d-3)then
         write(*,*)'ERROR: WiggleZ redshift does not match the value stored'
         write(*,*)'       in the PK%y array.'
@@ -650,4 +650,3 @@
     end function WiggleZ_LnLike
 
     end module wigglez
-

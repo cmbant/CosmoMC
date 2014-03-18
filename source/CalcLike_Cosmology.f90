@@ -37,7 +37,7 @@
     subroutine Cosmo_GetTheoryForLike(this,Like)
     class(TCosmoLikeCalculator) :: this
     class(TDataLikelihood), pointer :: like
-    logical, save :: backgroundSet 
+    logical, save :: backgroundSet
 
     if (.not. associated(like)) then
         !initialize
@@ -129,7 +129,7 @@
             if(CosmoSettings%use_nonlinear .and. .not. allocated(Theory%NL_MPK))then
                 write(*,*) 'ERROR: One of the datasets wants a non-linear MPK which is not present '
                 write(*,*) '       Use redo_theory and redo_pk or turn off non-linear'
-                call MpiStop() 
+                call MpiStop()
             end if
         end if
     end select
@@ -138,4 +138,3 @@
 
 
     end module CalcLike_Cosmology
-

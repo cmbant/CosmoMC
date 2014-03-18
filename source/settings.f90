@@ -38,7 +38,7 @@
 
 
     Type, extends(TIniFile) :: TNameKeyIniFile
-        !Allowing things like param[name] = 
+        !Allowing things like param[name] =
     contains
     procedure :: NamedKey => TNameKeyIniFile_NamedKey
     procedure :: TagValuesForName => TNameKeyIniFile_TagValuesForName

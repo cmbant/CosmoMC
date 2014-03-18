@@ -189,7 +189,7 @@
 
     end function TParameterization_NonBaseParameterPriors
 
-    subroutine TParameterization_CalcDerivedParams(this, P, Theory, derived) 
+    subroutine TParameterization_CalcDerivedParams(this, P, Theory, derived)
     class(TParameterization) :: this
     real(mcp), allocatable :: derived(:)
     class(TTheoryPredictions), allocatable :: Theory !can be null for simple cases (e.g. generic)

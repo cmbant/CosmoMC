@@ -157,7 +157,7 @@
     write(*,*) msg
     stop
 
-    end subroutine Error 
+    end subroutine Error
 
     subroutine AddItem(this, C, Object)
     Class(TObjectList) :: this
@@ -822,7 +822,7 @@
         else
             if (trim(S(i:i))/='') then
                 write (*,*) 'Invalid character in: '//trim(S)
-            end if 
+            end if
             if (j>0) call this%Add(item(1:j))
             j=0
         end if

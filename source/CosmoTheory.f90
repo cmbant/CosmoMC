@@ -61,7 +61,7 @@
         call MPIstop()
     end if
 
-    if(PK%islog) then 
+    if(PK%islog) then
         outpower = exp(PK%Value(logk,z))
     else
         outpower = PK%Value(logk,z)
@@ -101,7 +101,7 @@
     end subroutine ClArray
 
 
-    subroutine ClsAtL(this, L, cl, max_ix_out) 
+    subroutine ClsAtL(this, L, cl, max_ix_out)
     !TT EE TE BB BE BT PP.. order
     class(TCosmoTheoryPredictions) this
     real(mcp):: cl(:)
@@ -268,7 +268,7 @@
         read(F%unit) num_k, num_z
         allocate(temp(num_k,num_z))
         allocate(k(num_k))
-        allocate(z(num_z)) 
+        allocate(z(num_z))
         read(F%unit) k
         read(F%unit) z
         read(F%unit) temp

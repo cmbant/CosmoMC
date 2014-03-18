@@ -210,7 +210,7 @@
     end where
     call this%do_checks()
     print *,'lensing lmax: ', this%lensing_lmax
-   
+
     this%clik_n = 2*(this%lensing_lmax+1) + this%clik_nnuis
 
     end subroutine clik_lensing_likeinit

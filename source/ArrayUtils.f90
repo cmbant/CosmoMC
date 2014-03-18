@@ -37,5 +37,5 @@
     MinIndex = locs(1)
 
     end function MinIndex
-    
+
     end module ArrayUtils

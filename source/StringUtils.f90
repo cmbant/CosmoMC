@@ -12,7 +12,7 @@
     function GetParamCount()
     integer GetParamCount
 
-    GetParamCount = command_argument_count() 
+    GetParamCount = command_argument_count()
 
     end function GetParamCount
 
@@ -137,7 +137,7 @@
                         if (present(S8)) then
                             call StringAppend(outstr,S8)
                         end if
-                    end if    
+                    end if
                 end if
             end if
         end if
@@ -190,7 +190,7 @@
     character(LEN=:), allocatable :: form, fform, rep
     character(LEN=128) output
 
-    P=1 
+    P=1
     do
         ix=scan(S(P:),'%')
         OK = ix/=0 .and. ix < len(S)

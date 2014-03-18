@@ -182,7 +182,7 @@
         write(F%unit) real(mat(i:shp(2),i), kind(1.0))
     end do
     call F%Close()
-    
+
     end subroutine MatrixSym_Write_Binary_Single
 
 

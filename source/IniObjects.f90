@@ -618,7 +618,7 @@
     character(LEN=Ini_Enumeration_Len), intent(in) :: Names(:)
     integer, optional, intent(in) :: Default
     integer Ini_Read_Enumeration
-    character(LEN=:), pointer :: S 
+    character(LEN=:), pointer :: S
     logical OK
     integer i
 
