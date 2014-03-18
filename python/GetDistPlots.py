@@ -60,7 +60,7 @@ class GetDistPlotSettings:
 
         self.axis_marker_color = 'gray'
         self.axis_marker_ls = '--'
-        self.axis_marker_lw = None
+        self.axis_marker_lw = 0.5
 
     def setWithSubplotSize(self, size_inch):
         self.subplot_size_inch = size_inch
@@ -316,6 +316,7 @@ class GetDistPlotter():
     def add_2d_shading(self, root, param1, param2):
         param1, param2 = self.get_param_array(root, [param1, param2])
         density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=0, likes=self.settings.shade_meanlikes)
+        if density is None: return
 
 #        pcolor(x1, x2, shade_dat, cmap=self.settings.colormap, vmax=shade_dat.max(), vmin=shade_dat.min())
         contourf(density.x1, density.x2, density.pts, self.settings.num_shades, cmap=self.settings.colormap)
@@ -337,6 +338,7 @@ class GetDistPlotter():
             elif not shaded:
                 mins = min(res[0], mins)
                 maxs = max(res[1], maxs)
+        if mins is None: return
         if not 'lims' in ax_args:
             lim1 = self.checkBounds(roots[0], param_pair[0].name , mins[0], maxs[0])
             lim2 = self.checkBounds(roots[0], param_pair[1].name , mins[1], maxs[1])
