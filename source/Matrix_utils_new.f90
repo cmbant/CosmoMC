@@ -99,7 +99,9 @@
                 call F%Write(mat(i,k))
             end do
         else
-                call F%Write(mat(i,1:shp(2)))
+                write(F%unit,F%RealFormat) mat(i,1:shp(2))
+                !workaround for ifort 14 bug
+                !call F%Write(mat(i,1:shp(2)))
         end if
     end do
     call F%Close()
