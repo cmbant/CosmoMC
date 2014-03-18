@@ -126,7 +126,7 @@
 
     end subroutine clik_likeinit
 
-    real(mcp) function clik_lnlike(like, CMB, Theory, DataParams)
+    real(mcp) function clik_lnlike(this, CMB, Theory, DataParams)
     Class(ClikLikelihood) :: this
     Class (CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
