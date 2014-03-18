@@ -48,7 +48,7 @@ def runGetDist():
             ini = iniFile.iniFile()
             outroot = name + '_' + tag
             ini.params['file_root'] = 'chains/' + outroot
-            ini.defaults.append('batch1/getdist_common_batch1.ini')
+            ini.defaults.append('batch1/getdist_common.ini')
             ini.params['out_dir'] = 'lensing_jobs/dist/'
             ini.params['plot_data_dir'] = 'main/plot_data/'
             ini.params['ignore_rows'] = 0

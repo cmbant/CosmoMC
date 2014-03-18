@@ -8,7 +8,10 @@ import sys, os
 
 # # Edit parameters you want to change here
 
-lensedTotClFileRoot = 'flatLCDM_lensedCls'
+
+root = r'test_lensedCls'
+
+lensedTotClFileRoot = r'c:\work\dist\git\camb\test_lensedCls'
 reconNoise = 'reconNoise.dat'
 lensPotential = 'flatLCDM_lenspotentialCls.dat'
 fwhm_arcmin = 7.
@@ -19,10 +22,10 @@ lmin = 2
 lmax = 2000
 fsky = 1
 
-DoLensing = True
+DoLensing = False
 
 
-outDir = 'data/'
+outDir = 'z:\\data\\'
 # os.path.dirname(sys.path[0])+'/data/'
 ini = iniFile.iniFile()
 dataset = ini.params
@@ -36,8 +39,8 @@ fwhm = fwhm_arcmin / 60
 xlc = 180 * sqrt(8.*log(2.)) / pi
 sigma2 = (fwhm / xlc) ** 2
 
-outPath = '%DATASETDIR%'
-outRoot = lensedTotClFileRoot + '_exactsim'
+outPath = ''
+outRoot = root + '_exactsim'
 NoiseOut = []
 for l in range(lmax + 1):
     NoiseCl = l * (l + 1) / 2 / pi * NoiseVar * exp(l * (l + 1) * sigma2)
@@ -52,24 +55,18 @@ outfile.close()
 dataset['fullsky_exact_fksy'] = fsky
 dataset['name'] = outRoot
 dataset['dataset_format'] = 'CMBLike'
-dataset['lowl_exact'] = False
-dataset['highl_cl'] = True
 dataset['like_approx'] = 3
 
 
-dataset['bin_width'] = 1
 dataset['cl_lmin'] = lmin
 dataset['cl_lmax'] = lmax
 
 dataset['cl_hat_includes_noise'] = False
-dataset['cl_hat_includes_pointsources'] = False
+
 dataset['cl_hat_file'] = outPath + outRoot + '.dat'
 dataset['cl_hat_order'] = 'TT EE BB TE'
 dataset['cl_noise_file '] = outPath + outRoot + '_Noise.dat'
 dataset['cl_noise_order'] = 'TT EE BB'
-dataset['cl_noise_includes_pointsources'] = False
-dataset['point_source_cl'] = ''
-dataset['beam_modes_number'] = 0
 
 if DoLensing:
     dataset['lensing_recon_ncl'] = 1
