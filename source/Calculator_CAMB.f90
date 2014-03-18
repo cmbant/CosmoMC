@@ -224,7 +224,7 @@
     class(CMBParams) :: CMB
     class(TTheoryIntermediateCache), pointer :: Info
     class(TCosmoTheoryPredictions) :: Theory
-    integer error
+    integer error,i,j
 
     select type (Info)
     class is (CAMBTransferCache)
@@ -243,6 +243,13 @@
                 call MpiStop('CMB_cls_simple: negative C_l (could edit to silent error here)')
                 return
             end if
+            do i=1, min(3,CosmoSettings%num_cls)
+                do j= i, 1, -1
+                    if (any(Theory%cls(i,j)%Cl(:) /= Theory%cls(i,j)%CL(:))) then
+                        error=1
+                        return
+                end do
+            end do
         end if
 
         !redshifts are in increasing order, so last index is redshift zero
@@ -254,6 +261,11 @@
 
         if (CosmoSettings%Use_LSS) then
             call this%SetPkFromCAMB(Info%Transfers%MTrans,Theory)
+            if (any(Theory%MPK%z(:,:)/=Theory%MPK%z(:,:)) .or. &
+            any(Theory%NL_MPK%z(:,:)/=Theory%NL_MPK%z(:,:))) then
+                error=1
+                return
+            end if
         end if
     end select
 
