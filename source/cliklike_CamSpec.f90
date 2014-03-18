@@ -146,18 +146,18 @@
 
     end subroutine nonclik_readParams
 
-    real(mcp) function CamspecLogLike(like, CMB, Theory, DataParams)
-    Class(CamSpeclikelihood) :: like
+    real(mcp) function CamspecLogLike(this, CMB, Theory, DataParams)
+    Class(CamSpeclikelihood) :: this
     Class (CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
-    real(dp) zlike, cell_cmb(0:like%cl_lmax(CL_T,CL_T))
+    real(dp) zlike, cell_cmb(0:this%cl_lmax(CL_T,CL_T))
     integer L
 
     !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as
     !freq_params(35:44), ACT/SPT as freq_params(45:65)
 
-    do L=2,like%cl_lmax(CL_T,CL_T)
+    do L=2,this%cl_lmax(CL_T,CL_T)
         cell_cmb(L)=Theory%Cls(CL_T,CL_T)%Cl(L)/(L*(L+1)) !normalization is a georgeism
     enddo
 
@@ -169,18 +169,18 @@
 
     end function CamspecLogLike
 
-    real(mcp) function CampolLogLike(like, CMB, Theory, DataParams)
-    Class(CamPollikelihood) :: like
+    real(mcp) function CampolLogLike(this, CMB, Theory, DataParams)
+    Class(CamPollikelihood) :: this
     Class (CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
-    real(dp) zlike, cell_cmbx(0:like%cl_lmax(CL_E,CL_T)), cell_cmbe(0:like%cl_lmax(CL_E,CL_E))
+    real(dp) zlike, cell_cmbx(0:this%cl_lmax(CL_E,CL_T)), cell_cmbe(0:this%cl_lmax(CL_E,CL_E))
     integer L
 
-    do L=2,like%cl_lmax(CL_E,CL_T)
+    do L=2,this%cl_lmax(CL_E,CL_T)
         cell_cmbx(L)=Theory%Cls(2,1)%Cl(L)/(L*(L+1)) !this is a georgeism
     enddo
-    do L=2,like%cl_lmax(CL_E,CL_E)
+    do L=2,this%cl_lmax(CL_E,CL_E)
         cell_cmbe(L)=Theory%Cls(2,2)%Cl(L)/(L*(L+1)) !this is a georgeism
     enddo
 
@@ -194,8 +194,8 @@
 
 
 
-    subroutine CAMSpec_WriteLikelihoodData(like,Theory,DataParams, root)
-    Class(CamSpeclikelihood) :: like
+    subroutine CAMSpec_WriteLikelihoodData(this,Theory,DataParams, root)
+    Class(CamSpeclikelihood) :: this
     class(TTheoryPredictions) :: Theory
     real(mcp), intent(in) :: DataParams(:)
     character(LEN=*), intent(in) :: root
@@ -214,10 +214,10 @@
 
     end subroutine CAMSpec_WriteLikelihoodData
 
-    function CamSpec_derivedParameters(like, Theory, DataParams) result(derived)
-    class(CamSpeclikelihood) :: like
+    function CamSpec_derivedParameters(this, Theory, DataParams) result(derived)
+    class(CamSpeclikelihood) :: this
     class(TTheoryPredictions) :: Theory
-    real(mcp) :: derived(like%nuisance_params%num_derived)
+    real(mcp) :: derived(this%nuisance_params%num_derived)
     real(mcp) :: DataParams(:)
     real(mcp) , allocatable ::  C_foregrounds(:,:)
     integer l
@@ -234,8 +234,8 @@
 
 
 #ifdef highL
-    real(mcp) function highLLogLike(like, CMB, Theory, DataParams)
-    Class(highLLikelihood) :: like
+    real(mcp) function highLLogLike(this, CMB, Theory, DataParams)
+    Class(highLLikelihood) :: this
     Class (CMBParams) CMB
     Class(TheoryPredictions) Theory
     real(mcp) acl(lmax,num_cls_tot)
