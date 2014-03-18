@@ -245,9 +245,13 @@
             end if
             do i=1, min(3,CosmoSettings%num_cls)
                 do j= i, 1, -1
-                    if (any(Theory%cls(i,j)%Cl(:) /= Theory%cls(i,j)%CL(:))) then
-                        error=1
-                        return
+                    if (CosmoSettings%cl_lmax(i,j)>0) then
+                        if ( any(isNan(Theory%cls(i,j)%Cl))) then
+                            error=1
+                            write(*,*) 'WARNING: NaN CL?'
+                            return
+                        end if
+                    end if
                 end do
             end do
         end if
