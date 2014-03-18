@@ -21,6 +21,7 @@ Release/
 *.user
 *.pdb
 data/clik
-cosmomc*
-getdist*
+cosmomc
+cosmomc_debug
+getdist
 CosmoMC/
