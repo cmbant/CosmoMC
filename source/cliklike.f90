@@ -88,9 +88,9 @@
     integer i
 
     if (Feedback > 1 .and. MPIRank==0) Print*,'Initialising clik...'
-    call clik_init(like%clikid,fname)
-    call clik_get_has_cl(like%clikid,like%clik_has_cl)
-    call clik_get_lmax(like%clikid,like%clik_lmax)
+    call clik_init(this%clikid,fname)
+    call clik_get_has_cl(this%clikid,this%clik_has_cl)
+    call clik_get_lmax(this%clikid,this%clik_lmax)
 
     !output Cls used
     clnames(1)='TT'
@@ -101,28 +101,28 @@
     clnames(6)='EB'
     if (Feedback > 1 .and. MPIRank==0) print*,'Likelihood uses the following Cls:'
     do i=1,6
-        if (like%clik_has_cl(i) .eq. 1) then
-            print*,'  ',trim(clnames(i)),' from l=0 to l=',like%clik_lmax(i)
+        if (this%clik_has_cl(i) .eq. 1) then
+            print*,'  ',trim(clnames(i)),' from l=0 to l=',this%clik_lmax(i)
         end if
     end do
 
-    like%clik_ncl = sum(like%clik_lmax) + 6
+    this%clik_ncl = sum(this%clik_lmax) + 6
 
-    allocate(like%cl_lmax(CL_B,CL_B), source=0)
-    like%cl_lmax(CL_T,CL_T) = like%clik_lmax(1)
-    like%cl_lmax(CL_E,CL_T) = like%clik_lmax(4)
-    like%cl_lmax(CL_E,CL_E) = like%clik_lmax(2)
-    like%cl_lmax(CL_B,CL_B) = like%clik_lmax(3)
-    where (like%cl_lmax<0)
-        like%cl_lmax=0
+    allocate(this%cl_lmax(CL_B,CL_B), source=0)
+    this%cl_lmax(CL_T,CL_T) = this%clik_lmax(1)
+    this%cl_lmax(CL_E,CL_T) = this%clik_lmax(4)
+    this%cl_lmax(CL_E,CL_E) = this%clik_lmax(2)
+    this%cl_lmax(CL_B,CL_B) = this%clik_lmax(3)
+    where (this%cl_lmax<0)
+        this%cl_lmax=0
     end where
 
-    like%clik_nnuis = clik_get_extra_parameter_names(like%clikid,like%names)
-    call like%do_checks()
+    this%clik_nnuis = clik_get_extra_parameter_names(this%clikid,this%names)
+    call this%do_checks()
 
     !tidying up
 
-    like%clik_n = like%clik_ncl + like%clik_nnuis
+    this%clik_n = this%clik_ncl + this%clik_nnuis
 
     end subroutine clik_likeinit
 
@@ -175,20 +175,20 @@
 
     end function clik_lnlike
 
-    subroutine do_checks(like)
-    class (ClikLikelihood) :: like
+    subroutine do_checks(this)
+    class (ClikLikelihood) :: this
     integer i
 
     !Safeguard
-    if (like%clik_nnuis/= like%nuisance_params%nnames) &
+    if (this%clik_nnuis/= this%nuisance_params%nnames) &
     call MpiStop('clik_nnuis has different number of nuisance parameters than .paramnames')
-    if (like%clik_nnuis /= 0 .and. MPIRank==0 .and. Feedback>0) then
+    if (this%clik_nnuis /= 0 .and. MPIRank==0 .and. Feedback>0) then
         Print*,'Clik will run with the following nuisance parameters:'
-        do i=1,like%clik_nnuis
-            Print*,trim(like%names(i))
+        do i=1,this%clik_nnuis
+            Print*,trim(this%names(i))
         end do
     end if
-    if (like%clik_nnuis >0) deallocate(like%names)
+    if (this%clik_nnuis >0) deallocate(this%names)
 
     end subroutine do_checks
 
