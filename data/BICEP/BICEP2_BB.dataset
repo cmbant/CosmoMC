@@ -1,0 +1,34 @@
+#Bicep2 data from bicepkeck.org, changed to CMBlikes format (and removing NaN T spectra)
+#Modified by AL 17 March 2014 - not much tested, use at own risk!!
+
+like_approx = HL
+
+fields_use = B
+
+binned = T
+
+nbins=9
+
+use_min=1
+use_max=9
+
+cl_lmin = 2
+cl_lmax = 600
+
+cl_fiducial_file = B2_3yr_likelihood_fiducial.dat
+cl_fiducial_order = EE EB BB
+cl_fiducial_includes_noise = T
+
+cl_hat_file = B2_3yr_likelihood_cl_hat.dat
+cl_hat_order = EE EB BB
+cl_hat_includes_noise = T
+
+cl_noise_file =  B2_3yr_likelihood_noise.dat
+cl_noise_order = EE EB BB
+
+bin_window_files = windows/B2_3yr_bpwf_bin%u_20140314.txt
+bin_window_in_order = TT TE EE BB
+bin_window_out_order = TT TE EE BB
+
+covmat_cl = TT EE BB TE EB TB
+covmat_fiducial = B2_3yr_likelihood_covmat.dat
