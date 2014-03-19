@@ -15,12 +15,14 @@
     implicit none
     private
 
-    real(mcp), parameter :: neutrino_mass_fac= 94.07 !conversion factor for thermal with Neff=3 TCMB-2.7255
+    real(mcp), parameter :: neutrino_mass_fac= 94.07_mcp !conversion factor for thermal with Neff=3 TCMB-2.7255
     !93.014 for 3.046
+    real(mcp), parameter :: standard_neutrino_neff = 3.046_mcp
 
     Type, extends(TCosmologyParameterization) :: ThetaParameterization
         real(mcp) :: H0_min = 40, H0_max = 100
         real(mcp) :: H0_prior_mean = 0._mcp, H0_prior_std = 0._mcp
+        real(mcp) :: sterile_mphys_max = 10 !maximum allowed physical mass of thermal sterile neutrino in eV
         real(mcp) :: use_min_zre = 0._mcp
     contains
     procedure :: ParamArrayToTheoryParams => TP_ParamArrayToTheoryParams
@@ -50,6 +52,7 @@
     call Ini%Read('H0_min',this%H0_min)
     call Ini%Read('H0_max',this%H0_max)
     call Ini%Read('use_min_zre',this%use_min_zre)
+    call Ini%Read('sterile_mphys_max',this%sterile_mphys_max)
     prior => Ini%Read_String('H0_prior',NotFoundFail=.false.)
     if (prior/='') then
         read(prior,*) this%H0_prior_mean, this%H0_prior_std
@@ -70,6 +73,10 @@
         TP_NonBaseParameterPriors = logZero
         if (CMB%H0 < this%H0_min .or. CMB%H0 > this%H0_max) return
         if (CMB%zre < this%Use_min_zre) return
+        if (CMB%omnuh2_sterile > 0 .and. CMB%nnu > standard_neutrino_neff) then
+            !Check if physical mass of thermal massive sterile too big (look like CDM, so don't need to model separately)
+            if (CMB%omnuh2_sterile*neutrino_mass_fac/(CMB%nnu-standard_neutrino_neff)**0.75_mcp > this%sterile_mphys_max) return
+        end if
         TP_NonBaseParameterPriors = 0
         if (this%H0_prior_mean/=0._mcp) then
             TP_NonBaseParameterPriors = ((CMB%H0 - this%H0_prior_mean)/this%H0_prior_std)**2/2
@@ -213,12 +220,12 @@
         CMB%wa = Params(9)
         CMB%nnu = Params(10) !3.046
         !Params(6) is now mnu, where mnu is physical standard neutrino mass and we assume standard heating
-        CMB%omnuh2=Params(6)/neutrino_mass_fac*(3.046_mcp/3)**0.75_mcp
+        CMB%omnuh2=Params(6)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
         !Params(7) is mass_sterile*Neff_sterile
         CMB%omnuh2_sterile = Params(7)/neutrino_mass_fac
         !we are using interpretation where there are degeneracy_factor neutrinos, each exactly thermal
         !So internally 3.046 or 3.046/3 massive neutrnos. But mnu is the physical integer mass sum.
-        if (CMB%omnuh2_sterile >0 .and. CMB%nnu < 3.046) then
+        if (CMB%omnuh2_sterile >0 .and. CMB%nnu < standard_neutrino_neff) then
             if(present(error))then
                 error=-1
             else
@@ -232,7 +239,7 @@
         CMB%nufrac=CMB%omnuh2/CMB%omdmh2
 
         if (CosmoSettings%bbn_consistency) then
-            CMB%YHe = BBN_YHe%Value(CMB%ombh2,CMB%nnu  - 3.046,error)
+            CMB%YHe = BBN_YHe%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff,error)
         else
             !e.g. set from free parameter..
             CMB%YHe  =Params(11)
@@ -279,7 +286,7 @@
         omegam = Params(1)
         CMB%H0 = Params(2)
         CMB%omk = Params(3)
-        CMB%omnuh2=Params(4)/neutrino_mass_fac*(3.046_mcp/3)**0.75_mcp
+        CMB%omnuh2=Params(4)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
         CMB%w =    Params(5)
         CMB%wa =    Params(6)
         CMB%nnu =    Params(7)

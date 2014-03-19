@@ -822,7 +822,7 @@
     class(TNameValueList) :: ReadValues
 
     !Store for the record any useful info about version etc.
-    call ReadValues%Add( 'Compiled_CAMB_version', version)
+    call ReadValues%Add('Compiled_CAMB_version', version)
     call ReadValues%Add('Compiled_Recombination', Recombination_Name)
     call ReadValues%Add('Compiled_Equations', Eqns_name)
     call ReadValues%Add('Compiled_Reionization', Reionization_Name)
