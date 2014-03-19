@@ -265,8 +265,8 @@
 
         if (CosmoSettings%Use_LSS) then
             call this%SetPkFromCAMB(Info%Transfers%MTrans,Theory)
-            if (any(Theory%MPK%z(:,:)/=Theory%MPK%z(:,:)) .or. &
-            any(Theory%NL_MPK%z(:,:)/=Theory%NL_MPK%z(:,:))) then
+            if (any(isNan(Theory%MPK%z)) .or. any(isNan(Theory%NL_MPK%z))) then
+                write(*,*) 'WARNING: NaN MPK?'
                 error=1
                 return
             end if
@@ -280,7 +280,8 @@
     class(CAMB_Calculator) :: this
     class(CMBParams) CMB
     class(TCosmoTheoryPredictions) Theory
-    integer error
+    class(CAMBTransferCache), allocatable :: Info
+    integer error,i,j
     logical :: DoCls, DoPk
     type(CAMBParams)  P
 
@@ -289,40 +290,64 @@
     DoPk = this%ImportanceOptions%redo_pk
 
     if (DoCls .or. DoPk) then
-        Threadnum =num_threads
+        allocate(Info)
+        call CAMB_InitCAMBdata(Info%Transfers)
         call this%CMBToCAMB(CMB, P)
-        P%OnlyTransfers = .false.
+        Threadnum =num_threads
 
-        if (DoPk) then
-            P%WantTransfer = .true.
-            if (.not. DoCls) then
-                P%WantTensors = .false.
-            end if
-        end if
-        if (DoCls) then
-            !Assume we just want Cls to higher l
-            P%WantTensors = CosmoSettings%compute_tensors
-            !!!not OK for non-linear lensing        if (.not. DoPk) P%WantTransfer = .false.
-        end if
+        P%WantCls = DoCls
+
+        if (.not. DoPk .and. .not. (CosmoSettings%CMB_Lensing .and. &
+        CosmoSettings%use_nonlinear_lensing)) P%WantTransfer = .false.
 
         if (this%CAMB_timing) call Timer()
         if (Feedback > 1) write (*,*) 'Calling CAMB'
-        call CAMB_GetResults(P)
+        call CAMB_GetTransfers(P, Info%Transfers, error)
         if (Feedback > 1) write (*,*) 'CAMB Done'
-        if (this%CAMB_timing) call Timer('CAMB_GetResults')
+        if (this%CAMB_timing) call Timer('CAMB_GetTransfers')
 
-        error = global_error_flag !using error optional parameter gives seg faults on SGI
+        if (error==0) then
+            call this%SetCAMBInitPower(Info%Transfers%Params,CMB,1)
+            call CAMB_TransfersToPowers(Info%Transfers)
+            error=global_error_flag
+        end if
     else
         call this%GetNewBackgroundData(CMB,Theory,error)
     end if
-    if (error==0) then
-        if (DoCls) call this%SetPowersFromCAMB(CMB,Theory)
-        if (DoPK) then
-            Theory%sigma_8 = MT%sigma_8(size(MT%sigma_8,1),1)
-            call this%SetPkFromCAMB(MT,Theory)
+
+    if (DoCls .and. error==0) then
+        call this%SetPowersFromCAMB(CMB,Theory)
+        if (any(Theory%cls(1,1)%Cl(:) < 0 )) then
+            error = 1
+            call MpiStop('CMB_cls_simple: negative C_l (could edit to silent error here)')
         end if
-        call this%SetDerived(Theory)
+        do i=1, min(3,CosmoSettings%num_cls)
+            if(error/=0) exit
+            do j= i, 1, -1
+                if (CosmoSettings%cl_lmax(i,j)>0) then
+                    if ( any(isNan(Theory%cls(i,j)%Cl))) then
+                        error=1
+                        write(*,*) 'WARNING: NaN CL?'
+                        exit
+                    end if
+                end if
+            end do
+        end do
     end if
+
+    if (DoPK .and. error==0) then
+        Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(size(Info%Transfers%MTrans%sigma_8,1),1)
+        call this%SetPkFromCAMB(Info%Transfers%MTrans,Theory)
+        if (any(isNan(Theory%MPK%z)) .or. any(isNan(Theory%NL_MPK%z))) then
+            write(*,*) 'WARNING: NaN MPK?'
+            error=1
+        end if
+    end if
+
+    if (error==0) call this%SetDerived(Theory)
+
+    if (DoCls .or. DoPk) call Info%Clear()
+
     end subroutine CAMBCalc_GetTheoryForImportance
 
     subroutine CAMBCalc_SetPowersFromCAMB(this,CMB,Theory)
@@ -782,8 +807,8 @@
     call this%InitCAMBParams(this%CAMBP)
 
     if (Feedback > 0 .and. MPIRank==0) then
-        if(CosmoSettings%use_CMB) write(*,*) 'max_eta_k         = ', this%CAMBP%Max_eta_k
-        write(*,*) 'transfer kmax     = ', this%CAMBP%Transfer%kmax
+        if(CosmoSettings%use_CMB) write(*,*) 'max_eta_k         = ', real(this%CAMBP%Max_eta_k)
+        write(*,*) 'transfer kmax     = ', real(this%CAMBP%Transfer%kmax)
     end if
 
     this%CAMBP%WantTensors = CosmoSettings%compute_tensors
@@ -797,7 +822,7 @@
     class(TNameValueList) :: ReadValues
 
     !Store for the record any useful info about version etc.
-    call ReadValues%Add( 'Compiled_CAMB_version', version)
+    call ReadValues%Add('Compiled_CAMB_version', version)
     call ReadValues%Add('Compiled_Recombination', Recombination_Name)
     call ReadValues%Add('Compiled_Equations', Eqns_name)
     call ReadValues%Add('Compiled_Reionization', Reionization_Name)

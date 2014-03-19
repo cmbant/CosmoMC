@@ -156,7 +156,7 @@ The input .ini files contain sets of name-value pairs, in the form <b>key = valu
 <BR><BR>
 Keys setting input values for specific parameters can be set using numbered key values, param[omegabh2]=xxx yy... for omegabh2. The names of the various parameters are set in .paramnames files: for cosmology parameters see params_CMB.paramnames. Likelihoods may also have nuisance parameters that need to be varied: see the .paramnames files in the ./data/  directory.
 <BR><BR>
-.ini files can include other ini files using DEFAULT(xx.ini) or INCLUDE(yy.ini), so there's no need to repeat lots of settings when you do different similar runs. The sample test.ini file includes .ini files in the batch1/ directory, set up for Planck analysis runs. Using DEFAULT means you can include default settings, but override ones of interest for a particular run.
+.ini files can include other ini files using DEFAULT(xx.ini) or INCLUDE(yy.ini), so there's no need to repeat lots of settings when you do different similar runs. The sample test.ini file includes .ini files in the batch1/ directory, set up for Planck/BICEP analysis runs. The <b>action=4</b> setting just calculates test likelihoods for one model (the central value of your parameter ranges) and writes out the result. Set <b>action=0</b> to run a test chain. Using DEFAULT in a .ini files means you can include default settings, but override ones of interest for a particular run.
 <UL>
 
 <LI><B>Parameter limits and proposal density</B><BR>
@@ -448,56 +448,26 @@ source code files you may want to modify are
 </P>
 <ul>
 <li>
-<b>params_CMB.f90</b></li>
-
-<br>This defines what the input variables mean. Change this to use different
-variables. You can change which parameterization file to use in the Makefile.
-<!--
-<B>params_H.f90</B> is also supplied for using z_re, A_s and H_0 instead of tau, log(A_s) and theta.
--->
-<li>
-<b>cmbtypes.f90</b></li>
-
-<br>You can also change the num_cls number of (temperature plus polarization) Cls to compute and store, power spectrum parameter, etc.
-<li>
 <b>settings.f90</b></li>
 
 <br>This defines the maximum number of parameters and their types.
-<li>
-<b>cmbdata.f90</b></li>
-
-<br>This reads in the CMB .dataset information and computes likelihoods.
-You may wish to edit this, for example to use likelihood distributions
-for the band powers, or to compute the likelihood from actual polarized data. This version assumes polarized data points are an arbitrary combination of the raw TT, TE, EE, and BB Cls, as specified in the window  files in data/windows. WMAP data is handled as a special case.
-<!--
-<li>
-<b>mpk.f90</b></li>
-<BR>Analogous to cmbdata, but for matter power spectrum measurements. Reads in generic dataset files, supported (fixed) covariance matrices. Used for the <A HREF="http://arxiv.org/abs/0907.1659">SDSS LRG</A> data.
--->
 <li>
 <b>propose.f90</b></li>
 
 <br>This is the proposal density and related constants and subroutines. The efficiency
 of MCMC is quite dependent on the proposal. Fast+slow and fast parameter subspaces are proposed separately. See the <A HREF="http://arxiv.org/abs/1304.4473">paper</A> for a discussion of the proposal density and use of fast and slow parameters.
 <li>
-<b>CMB_Cls_simple.f90</b></li>
+<b>Calculator_Cosmology.f90 and Calculator_CAMB.f90</b></li>
 
 <br>Routines for generating Cls, matter power spectra and sigma8 from CAMB.
-Replace this file to use other generators, e.g. a fast approximator like
-CMBfit, DASH, PICO, etc.
+Override the calcualtor class in Calculator_Cosmology.f90  to implement cosmology using other calculatorse.g. a fast approximator like PICO,
+or other Boltzmann code.
+etc.
 
 <li>
 <b>DataLikelihoods.f90</b>
 <br> This is where you can add in new likelihood functions
 
-<li>
-<b>postprocess.f90</b></li>
-
-<br>Reads in .data files and re-calculates likelihoods or theory predictions. Unused in MCMC runs.
-<li>
-<b>calclike.f90</b></li>
-
-<br>Calls the data likelihood functions, etc.
 <li>
 <b>driver.F90</b></li>
 
@@ -538,10 +508,12 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <LI><B>March 2014</B><BR>
 <UL>
 <LI>Major restructuring of main code using Fortran 2008: structure supports additional cosmology calculator codes, etc. Use ifort 14+.
-<LI>Re-written CMB likelihoods; new CMBlikes module replaces the (mis-named) Planck_like, with support for exact forecasting and binned HL likelihoods (e.g. BICEP2); runtime determination of L-ranges and fields needed. (.data format changed); old CMB data format support removed for now.
+<LI>Re-written CMB likelihoods; new CMBlikes module replaces the (mis-named) Planck_like, with support for exact forecasting and binned HL likelihoods (e.g. <A HREF="http://bicepkeck.org/">BICEP2</A>); runtime determination of L-ranges and fields needed. (.data format changed); old CMB data format support removed for now.
+<LI>Added <A HREF="http://bicepkeck.org/">BICEP2</A> data likelihood files (in ./data/BICEP/)
 <LI>New JLA supernovae likelihood module (<a href="http://arxiv.org/abs/1401.4064">arXiv:1401.4064</A>)
 <LI>Added DR11 BAO module changes and data from <A HREF="http://www.sdss3.org/science/boss_publications.php">SDSS</A>
 <LI>Mpk functions now use 2D bicupic interpolation (thanks Jason Dossett)
+<LI>Added <b>sterile_mphys_max</b> parameter to set prior on maximum physical mass (in eV) of a thermal massive sterile neutrino, 10eV by default.
 <LI>MatterPowerAt_Z interpolation bug fix
 <LI>.likestats files include mean likelihood numbers; python tables updated accordingly
 <LI>python/runMPI.py added to replace perl scripts; based on a templated queue submission script, e.g. provided job_script.

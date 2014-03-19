@@ -34,7 +34,7 @@
 
     logical :: use_fast_slow = .false.
 
-    character(LEN=*), parameter :: CosmoMC_Version = 'Mar2014_oop'
+    character(LEN=*), parameter :: CosmoMC_Version = 'Mar2014_newHL'
 
 
     Type, extends(TIniFile) :: TNameKeyIniFile

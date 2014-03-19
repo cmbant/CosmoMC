@@ -424,9 +424,9 @@
     end if
 
     if(this%needs_nonlinear_pk) then
-        this%kmax=1.2
+        this%kmax=1.2_mcp
     else
-        this%kmax=0.8
+        this%kmax=0.8_mcp
     end if
 
     if (Feedback > 1) write(*,*) 'read: '//trim(this%name)//' data'

@@ -222,9 +222,9 @@
     this%exact_z(1) = Ini%Read_Double('redshift',0.35d0)
 
     if(this%needs_nonlinear_pk) then
-        this%kmax=1.2
+        this%kmax=1.2_mcp
     else
-        this%kmax=0.8
+        this%kmax=0.8_mcp
     end if
 
     this%Q_marge = Ini%Read_Logical('Q_marge',.false.)

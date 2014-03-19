@@ -229,8 +229,8 @@
     if (first) then
         first = .false.
         read(F%Unit) FileSettings%TCosmoTheoryParams
-        if (FileSettings%use_CMB) call F%ReadSizedArray(FileSettings%cl_lmax)
         if (FileSettings%use_LSS) call F%ReadSizedArray(FileSettings%power_redshifts)
+        if (FileSettings%use_CMB) call F%ReadSizedArray(FileSettings%cl_lmax)
         call F%ReadSizedArray(tmp) !not used
     end if
 
