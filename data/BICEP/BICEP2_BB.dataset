@@ -3,7 +3,7 @@
 
 like_approx = HL
 
-fields_use = EB
+fields_use = B
 
 binned = T
 

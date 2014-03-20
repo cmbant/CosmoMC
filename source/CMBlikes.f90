@@ -29,7 +29,7 @@
         integer ncl !calculated from above = nfields*(nfields+1)/2
         integer ncl_used !Number of C_l actually used in covariance matrix (others assumed zero)
         integer, allocatable :: cl_use_index(:)
-        integer pcl_lmin, pcl_lmax !The range of l to use psuedo-cl-based likelihood
+        integer pcl_lmin, pcl_lmax !The range of l in data files (esp. covmat and/or window files)
         integer like_approx
         real(mcp) :: fullsky_exact_fksy = 1 ! only used for testing with exactly fullsky
         integer ncl_hat !1, or more if using multiple simulations
@@ -45,9 +45,8 @@
         !note these are [l(l+1)]^4C_l/2pi
 
         integer bin_width
-        integer vecsize
         logical binned
-        integer nbins
+        integer nbins, nbins_used
         integer, allocatable :: bin_cols_in(:,:), bin_cols_out(:)
         integer bin_min, bin_max
         integer, allocatable :: cov_cl_used(:)
@@ -131,7 +130,7 @@
         end if
     end do
     if (ll < this%bin_max) then
-        write(*,*) 'CMBLikes_ReadClArr: C_l file does not go up to lmax:', this%pcl_lmax
+        write(*,*) 'CMBLikes_ReadClArr: C_l file does not go up to maximum used:', this%bin_max
         write (*,*) trim(filename)
         call MpiStop()
     end if
@@ -206,7 +205,7 @@
     subroutine SetTopHatWindows(this)
     class(TCMBLikes) :: this
     integer i
-
+    !Untested
     allocate(this%binWindows(this%pcl_lmin:this%pcl_lmax,1,this%nbins), source=0._mcp)
     !Internal CL are now L(L+1)C_L
     do i=this%pcl_lmin,this%pcl_lmin+this%nbins*this%bin_width -1
@@ -269,8 +268,8 @@
     & call MpiStop('bin_window_in_order and bin_window_out_order must have same numebr of CL')
 
     allocate(tmp_ar(norder))
-    allocate(this%binWindows(this%pcl_lmin:this%pcl_lmax,norder,this%nbins), source=0._mcp)
-    do i=1, this%nbins
+    allocate(this%binWindows(this%pcl_lmin:this%pcl_lmax,norder,this%bin_min:this%bin_max), source=0._mcp)
+    do i=this%bin_min, this%bin_max
         S = FormatString(filename, i)
         do while (F%ReadNextContentLine(S,InLine))
             read(InLine,*, iostat=status) l, tmp_ar
@@ -307,7 +306,6 @@
     end do
 
     this%nfields=0
-    this%vecsize =0
     this%ncl=0
     this%ncl_used=0
 
@@ -344,19 +342,18 @@
     end if
 
     if (this%binned) then
+        this%bin_min=Ini%Read_Int('use_min',1,min=1,max=this%nbins)
+        this%bin_max=Ini%Read_Int('use_max',this%nbins,min=this%bin_min,max=this%nbins)
         if (bin_test) then
             call this%SetTopHatWindows()
         else
             call this%ReadBinWindows(Ini)
         end if
-        this%bin_min=1
-        this%bin_max=this%nbins
     else
-        this%bin_min=this%pcl_lmin
-        this%bin_max=this%pcl_lmax
+        this%bin_min=Ini%Read_Int('use_min',this%pcl_lmin,min=this%pcl_lmin,max=this%pcl_lmax) 
+        this%bin_max=Ini%Read_Int('use_max',this%pcl_lmax,min=this%bin_min,max=this%pcl_lmax)
     end if
-
-    this%vecsize = (this%bin_max-this%bin_min+1)
+    this%nbins_used = this%bin_max - this%bin_min + 1
 
     this%ncl_hat = Ini%Read_Int('ncl_hat', 1) !only >1 if multiple sims for testing
 
@@ -389,8 +386,8 @@
 
     if (this%lensing_recon_ncl >0) then
         allocate(this%cl_lmax(CL_Phi,CL_Phi), source=0)
-        this%cl_lmax(CL_Phi,CL_Phi) =  this%pcl_lmax
-        this%cl_lmax(CL_Phi,1:this%lensing_recon_ncl) =  this%pcl_lmax
+        this%cl_lmax(CL_Phi,CL_Phi) = this%pcl_lmax
+        this%cl_lmax(CL_Phi,1:this%lensing_recon_ncl) = this%pcl_lmax
     else
         allocate(this%cl_lmax(CL_B,CL_B), source=0)
     end if
@@ -478,8 +475,8 @@
     integer num_in, ix, binx, biny
     real(mcp), allocatable :: Cov(:,:)
     integer, allocatable :: cl_in_index(:)
-    integer lmin_covmat,lmax_covmat, vecsize_in
-    integer i, j
+    integer vecsize_in
+    integer i, j, L1, L2
     real(mcp) :: covmat_scale = 1
 
     covmat_cl = Ini%Read_String('covmat_cl', .true.)
@@ -504,31 +501,31 @@
     if (this%binned) then
         allocate(Cov(num_in*this%nbins,num_in*this%nbins))
         call File%ReadTextMatrix(filename, Cov)
-        allocate(this%inv_covariance(this%nbins*this%ncl_used,this%nbins*this%ncl_used))
-        do binx=1, this%nbins
-            do biny=1, this%nbins
-                this%inv_covariance( (binx-1)*this%ncl_used+1:binx*this%ncl_used, (biny-1)*this%ncl_used+1:biny*this%ncl_used) = &
+        allocate(this%inv_covariance(this%nbins_used*this%ncl_used,this%nbins_used*this%ncl_used))
+        do binx=this%bin_min, this%bin_max
+            do biny=this%bin_min, this%bin_max
+                this%inv_covariance( (binx-this%bin_min)*this%ncl_used+1:(binx-this%bin_min+1)*this%ncl_used, &
+                & (biny-this%bin_min)*this%ncl_used+1:(biny-this%bin_min+1)*this%ncl_used) = &
                 & covmat_scale*Cov( (binx-1)*num_in+this%cov_cl_used, (biny-1)*num_in+this%cov_cl_used)
             end do
         end do
         call Matrix_Inverse(this%inv_covariance)
     else
-        lmax_covmat = Ini%Read_Int('covmat_lmax')
-        lmin_covmat = Ini%Read_Int('covmat_lmin')
-        if (lmin_covmat > this%pcl_lmin) call MpiStop('lmin_covmat must be  <= cl_lmin')
-        if (lmax_covmat < this%pcl_lmax) call MpiStop('lmax_covmat must be  >= cl_lmax')
-
-        vecsize_in =  (lmax_covmat-lmin_covmat+1)
+        vecsize_in =  (this%pcl_lmax-this%pcl_lmin+1)
         if (IsMainMPI()) then
             allocate(Cov(vecsize_in*num_in,vecsize_in*num_in))
             call MatrixSym_Read_Binary(filename, Cov)
-            allocate(this%inv_covariance(this%vecsize*this%ncl_used, this%vecsize*this%ncl_used))
+            allocate(this%inv_covariance(this%nbins_used*this%ncl_used, this%nbins_used*this%ncl_used))
             do i=1, this%ncl_used
                 do j=1,this%ncl_used
-                    this%inv_covariance((i-1)*this%vecsize+1:i*this%vecsize,(j-1)*this%vecsize+1:j*this%vecsize)= covmat_scale &
-                    *Cov((this%cov_cl_used(i)-1)*vecsize_in+(this%pcl_lmin-lmin_covmat+1):(this%cov_cl_used(i)-1)*vecsize_in + &
-                    (this%pcl_lmax-lmin_covmat+1),  (this%cov_cl_used(j)-1)*vecsize_in+(this%pcl_lmin-lmin_covmat+1): &
-                    (this%cov_cl_used(j)-1)*vecsize_in +(this%pcl_lmax-lmin_covmat+1))
+                    do L1=this%bin_min, this%bin_max
+                        do L2 = this%bin_min, this%bin_max
+                            !Assume L matrices are ordered the other way in blocks of different L for each CL type
+                            this%inv_covariance( (L1-this%bin_min)*this%ncl_used+i, (L2-this%bin_min)*this%ncl_used+j) = &
+                            & covmat_scale*Cov((this%cov_cl_used(i)-1)*vecsize_in + L1 - this%pcl_lmin+1, &
+                            & (this%cov_cl_used(j)-1)*vecsize_in + L2 - this%pcl_lmin+1)
+                        end do
+                    end do
                 end do
             end do
             deallocate(Cov)
@@ -562,7 +559,7 @@
 
             call Matrix_inverse(this%inv_covariance)
         else !Not mainMPI
-            allocate(this%inv_covariance(this%vecsize*this%ncl_used, this%vecsize*this%ncl_used))
+            allocate(this%inv_covariance(this%nbins_used*this%ncl_used, this%nbins_used*this%ncl_used))
         end if !MainMPI
 #ifdef MPI
         call MPI_BCAST(this%inv_covariance,Size(this%inv_covariance),MPI_real, 0, MPI_COMM_WORLD, i)
@@ -815,7 +812,7 @@
     real(mcp) C(this%nfields,this%nfields)
     real(mcp) vecp(this%ncl)
     real(mcp) bigX((this%bin_max-this%bin_min+1)*this%ncl_used)
-    integer  i, Ti,Ei,Bi, bin,clix
+    integer  i, Ti,Ei,Bi, bin,clix, bin_ix
     logical :: quadratic
 
     chisq =0
@@ -841,7 +838,6 @@
         !   cl(this%pcl_lmin:this%pcl_lmax,1) = cl(this%pcl_lmin:this%pcl_lmax,1) + beamC
         !
         ! end if
-
         do bin = this%bin_min, this%bin_max
             if (this%binned .or. bin_test) then
                 if (this%like_approx == like_approx_fullsky_exact) call mpiStop('CMBLikes: exact like cannot be binned!')
@@ -877,19 +873,11 @@
             end if
 
             if (quadratic) then
-                if (this%binned) then
-                    bigX( (bin-1)*this%ncl_used + 1:bin*this%ncl_used) = vecp(this%cl_use_index)
-                else
-                    bigX( (this%cl_use_index-1)*this%vecsize + bin-this%pcl_lmin+1) = vecp(this%cl_use_index)
-                end if
+                bigX( (bin-this%bin_min)*this%ncl_used + 1:(bin-this%bin_min+1)*this%ncl_used) = vecp(this%cl_use_index)
             end if
         end do
 
         if (quadratic) chisq = chisq + Matrix_QuadForm(this%inv_covariance,BigX)
-
-        !        if (this%lowl_exact) then
-        !            chisq = chisq + CMBLikes_lowl_CMBLike(this, cl)
-        !        end if
 
         if (this%lensing_recon_ncl>0) then
             chisq = chisq + this%LensRecon_Like(Theory)
