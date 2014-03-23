@@ -8,7 +8,7 @@
     private
 
     type, extends(TCMBLikelihood) :: TCMBSZLikelihood
-        character(LEN=:), allocatable :: tag ! from "cmb_dataset[tag] =" in input file
+     ! (inherited) tag set from "cmb_dataset[tag] =" in input file
         real(mcp), pointer, dimension(:) :: sz_template
     contains
     procedure :: ReadSZTemplate

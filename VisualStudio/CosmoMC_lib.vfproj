@@ -101,7 +101,7 @@
 			<FileConfiguration Name="DebugMPI|Win32">
 				<Tool Name="VFFortranCompilerTool" StandardWarnings="standardWarningsNone" WarnDeclarations="false"/></FileConfiguration>
 			<FileConfiguration Name="Debug|x64">
-				<Tool Name="VFFortranCompilerTool" StandardWarnings="standardWarningsNone"/></FileConfiguration></File>
+				<Tool Name="VFFortranCompilerTool" StandardWarnings="standardWarningsNone" WarnDeclarations="false"/></FileConfiguration></File>
 		<File RelativePath="..\source\RandUtils.f90"/>
 		<File RelativePath="..\source\StringUtils.f90"/></Filter>
 		<File RelativePath="..\source\BaseParameters.f90"/>

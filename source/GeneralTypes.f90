@@ -100,11 +100,13 @@
     end Type TCalculationAtParamPoint
 
     integer, parameter :: LikeNameLen = 80
+    integer, parameter :: LikeTagLen = 20
 
     !Would like to have likelihood stuff in separate file, but fortran module dependency rules make that very difficult.
     type, extends(TConfigClass) :: TDataLikelihood
         integer :: speed = 0  !negative for slow likelihoods, larger positive for faster
         character(LEN=LikeNameLen) :: name = ''
+        character(LEN=:), allocatable :: tag !Short name used to tag output likelihoods
         character(LEN=LikeNameLen) :: LikelihoodType= ''
         character(LEN=LikeNameLen) :: version = ''
         Type(TParamNames) :: nuisance_params
@@ -130,6 +132,7 @@
     procedure :: Item => LikelihoodItem
     procedure :: WriteLikelihoodContribs
     procedure :: AddNuisanceParameters
+    procedure :: AddOutputLikelihoodParams
     procedure :: Compare => CompareLikes
     procedure :: checkAllConflicts
     procedure :: WriteDataForLikelihoods
@@ -258,15 +261,11 @@
     call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived)
 
     if (allocated(derived)) numderived = size(derived)
-    if (numderived == 0) then
-        call IO_OutputChainRow(ChainOutFile,mult, like, this%P(params_used))
-    else
-        allocate(output_array(num_params_used + numderived))
-        output_array(1:num_params_used) =  this%P(params_used)
-        output_array(num_params_used+1:num_params_used+numderived) =  derived
-        call IO_OutputChainRow(ChainOutFile, mult, like, output_array)
-        deallocate(output_array)
-    end if
+    allocate(output_array(num_params_used + numderived + DataLikelihoods%Count))
+    output_array(1:num_params_used) =  this%P(params_used)
+    if (numderived>0) output_array(num_params_used+1:num_params_used+numderived) =  derived
+    output_array(num_params_used+numderived+1:) = this%Likelihoods(1:DataLikelihoods%Count)*2
+    call IO_OutputChainRow(ChainOutFile, mult, like, output_array)
 
     end subroutine TCalculationAtParamPoint_WriteParams
 
@@ -607,7 +606,6 @@
         NewNames => DataLike%nuisance_params
         if (Feedback>0 .and. MPIrank==0) print *,'adding parameters for: '//trim(DataLIke%name)
         DataLike%new_param_block_start = Names%num_MCMC +1
-        !        if (DataLike%nuisance_params%num_derived>0) call MpiStop('No support for likelihood derived params yet')
         call Names%Add(NewNames)
         if (Names%num_MCMC > max_num_params) call MpiStop('increase max_data_params in settings.f90')
         DataLike%new_params = Names%num_MCMC - DataLike%new_param_block_start + 1
@@ -640,6 +638,28 @@
 
     end subroutine AddNuisanceParameters
 
+    subroutine AddOutputLikelihoodParams(L, Names)
+    Class(TLikelihoodList) :: L
+    Type(TParamNames) :: Names, LikeNames
+    integer i
+    class(TDataLikelihood), pointer :: Like
+    character(LEN=:), pointer :: tag
+
+    call LikeNames%Alloc(L%Count)
+    do i=1, L%Count
+        Like => L%Item(i)
+        if (allocated(Like%Tag)) then
+            tag => Like%tag
+        else
+            tag => Like%Name
+        end if
+        LikeNames%name(i) = tag
+        LikeNames%label(i) = FormatString(trim(chisq_label), trim(tag)) 
+        LikeNames%is_derived(i) = .true.
+    end do
+    call Names%Add(LikeNames)
+
+    end subroutine AddOutputLikelihoodParams
 
     subroutine checkAllConflicts(L)
     Class(TLikelihoodList) :: L
@@ -681,4 +701,5 @@
     end do
 
     end subroutine addLikelihoodDerivedParams
+
     end module
