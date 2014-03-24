@@ -264,10 +264,9 @@
         end if
 
         if (CosmoSettings%Use_LSS) then
-            call this%SetPkFromCAMB(Info%Transfers%MTrans,Theory)
-            if (any(isNan(Theory%MPK%z)) .or. any(isNan(Theory%NL_MPK%z))) then
-                write(*,*) 'WARNING: NaN MPK?'
-                error=1
+            call this%SetPkFromCAMB(Info%Transfers%MTrans,Theory,error)
+            if (error/=0) then
+                write(*,*) 'WARNING: NaN PK?'
                 return
             end if
         end if
@@ -337,11 +336,8 @@
 
     if (DoPK .and. error==0) then
         Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(size(Info%Transfers%MTrans%sigma_8,1),1)
-        call this%SetPkFromCAMB(Info%Transfers%MTrans,Theory)
-        if (any(isNan(Theory%MPK%z)) .or. any(isNan(Theory%NL_MPK%z))) then
-            write(*,*) 'WARNING: NaN MPK?'
-            error=1
-        end if
+        call this%SetPkFromCAMB(Info%Transfers%MTrans,Theory,error)
+        if (error/=0) write(*,*) 'WARNING: NaN PK?'
     end if
 
     if (error==0) call this%SetDerived(Theory)
@@ -439,12 +435,13 @@
 
     end subroutine CAMBCalc_SetPowersFromCAMB
 
-    subroutine CAMBCalc_SetPkFromCAMB(this,M,Theory)
+    subroutine CAMBCalc_SetPkFromCAMB(this,M,Theory,error)
     use Transfer
     use camb, only : CP
     class(CAMB_Calculator) :: this
     class(TCosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
+    integer :: error
     real(mcp), allocatable :: k(:), z(:), PK(:,:)
     integer zix,nz,nk
     !For use with for example WL PK's
@@ -467,10 +464,15 @@
 
     call this%TransfersOrPowers(M,PK,transfer_power_var,transfer_power_var)
     PK = Log(PK)
+    if (any(isNan(PK))) then
+        error = 1
+        return
+    end if
     call Theory%MPK%Init(k,z,PK)
 
     if(CosmoSettings%use_nonlinear)then
-        call this%GetNLandRatios(M,Theory,NL_Ratios)
+        call this%GetNLandRatios(M,Theory,NL_Ratios,error)
+        if(error/=0) return
     end if
 
     end subroutine CAMBCalc_SetPkFromCAMB
@@ -510,7 +512,7 @@
 
     end subroutine CAMBCalc_TransfersOrPowers
 
-    subroutine CAMBCalc_GetNLandRatios(this,M,Theory,Ratios)
+    subroutine CAMBCalc_GetNLandRatios(this,M,Theory,Ratios,error)
     use Transfer
     class(CAMB_Calculator) :: this
     class(TCosmoTheoryPredictions) Theory
@@ -518,7 +520,7 @@
     real(mcp), allocatable, intent(out) :: Ratios(:,:)
     Type(MatterPowerData) :: CPK
     real(mcp), allocatable :: PK(:,:)
-    integer nk,nz
+    integer error,nk,nz
 
     CPK%num_k = Theory%MPK%nx
     CPK%num_z = Theory%MPK%ny
@@ -547,6 +549,10 @@
     call MatterPowerdata_Free(CPK)
 
     PK = PK+2*log(Ratios)
+    if (any(isNan(PK))) then
+        error = 1
+        return
+    end if
     call Theory%NL_MPK%Init(Theory%MPK%x,Theory%MPK%y,PK)
 
     end subroutine CAMBCalc_GetNLandRatios
