@@ -350,7 +350,7 @@
             call this%ReadBinWindows(Ini)
         end if
     else
-        this%bin_min=Ini%Read_Int('use_min',this%pcl_lmin,min=this%pcl_lmin,max=this%pcl_lmax) 
+        this%bin_min=Ini%Read_Int('use_min',this%pcl_lmin,min=this%pcl_lmin,max=this%pcl_lmax)
         this%bin_max=Ini%Read_Int('use_max',this%pcl_lmax,min=this%bin_min,max=this%pcl_lmax)
     end if
     this%nbins_used = this%bin_max - this%bin_min + 1

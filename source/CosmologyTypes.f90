@@ -315,10 +315,11 @@
     if(maxz>0)then
         num_range = ceiling(log(maxz+1)/dlnz)
         dlnz = log(maxz+1)/(num_range)
-        do i=1,num_range
+        do i=1,num_range-1
             zcur = dexp(dlnz*i)-1
             call full_z%Add(zcur)
         end do
+        call full_z%Add(maxz)
     end if
     num_range = full_z%Count
 
