@@ -221,7 +221,7 @@
     character(LEN=*), intent(in) :: name
     character(LEN=:), allocatable :: tag
     class(TNameValueList) :: OutList
-    integer count, i, ix
+    integer i, ix
     character(LEN=:), pointer :: KeyName
 
     call OutList%Clear()
