@@ -826,27 +826,29 @@ These are values for the best-fit sample, and projections of the n-Dimensional c
 <LI><B>I'm writing a paper "constraints on X". How do I add X to cosmomc?</B><BR>
 To add new <b>theory</b> parameters
 <UL>
-<LI>add the definition of the physical parameter to CMBParams in cmbtypes.f90
- <LI>Change params_CMB.f90 to add a new parameterization or modify an existing one (with a corresponding .paramnames file with the new parameter names in). In particular the <b>_Init</b> routine does
+<LI>add the definition of the physical parameter to CMBParams in CosmologyTypes.f90
+ <LI>Change CosmologyParameterizations.f90 to add a new parameterization or modify an existing one. In particular the <b>InitWithSetNames</b>  (<b>_Init</b>) procedure has
 <pre>
 call SetTheoryParameterNumbers(num_slow_params,num_semi_slow_params)
 </pre>
-which sets the number of hard and semi-hard parameters (the latter being things like initial power spectrum parameters) and then
+which sets the number of hard and semi-hard parameters (the latter being things like initial power spectrum parameters).
+Make a new .paramnames file with the new parameter names in and change
+ and then
 <pre>
-call this%Init(Ini,Names, 'params_CMB.paramnames')
+call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
 </pre>
-to set the parameter names file.
-<LI>Modify CMB_Cls_Simple.f90 to pass your new CMBParams parameters to CAMB to actually change the result
-<LI> Edit your .ini files to to add range and width settings for the new parameter names
+to set your new parameter names file.
+<LI>Modify Calculator_CAMB.f90 (the CAMBCalc_CMBToCAMB procedure) to pass your new CMBParams parameters to CAMB to actually change the result
+<LI>Edit your .ini files to to add range and width settings for the new parameter names
 </UL>
 <BR>
-If instead your parameter is a <b>likelihood</b> parameter (nuisance parameter), the new parameter can be handled entirely inside your likelihood function code (see supernovae_SNLS.f90 for a simple example that has two nuisance parameters): you just set the .paramnames file (which determimes the number of new parameters), and then use them when passed in to your likelihood function.
+If instead your parameter is a <b>likelihood</b> parameter (nuisance parameter), the new parameter can be handled entirely inside your likelihood function code (see supernovae_JLA.f90 for a simple example that has two nuisance parameters): you just set the .paramnames file (which determimes the number of new parameters), and then use them when passed in to your likelihood function. See Likelihood_Cosmology.f90 for likelihood classes that your likelihood can extend.
 <BR>&nbsp;
 <LI><B>Why do some chains sometimes appear to get stuck?</B><BR>
 Usually this is because the starting position for the chain is a long way from the best fit region. Since the marginal distributions of e.q. A_s are rather narrow, it can take a while for chains to move from into an acceptable region of A_s exp(-2&tau;). The cure is to check your starting parameter values and start widths (especially make sure the widths are not too wide-- too small is better than too wide when running with MPI), or to use a sampling method that is more robust (e.g. use <B>sampling_method</B> = 7). If you are patient, stuck chains should eventually find a sensible region of parameter space anyway. Occasionally the staring position may be in a corner of parameter space so that prior ranges prevent any reasonable proposed moves. In this case check your starting values and ranges, or just try re-starting the chain (a different random starting position will possibly be OK).
 <BR>&nbsp;
 <LI><B>How to I simulate futuristic CMB data?</B>
-See <A HREF="http://cosmocoffee.info/viewtopic.php?t=231">CosmoCoffee</A>. Also if you want to include lensing potential reconstruction, see <A HREF="http://lappweb.in2p3.fr/~perotto/FUTURCMB/home.html">this page</A>.
+See <A HREF="http://cosmocoffee.info/viewtopic.php?t=231">CosmoCoffee</A>.
 </OL>
 <P>
 Feel free to ask questions (and read answers to other people's) on the <A HREF="http://cosmocoffee.info">CosmoCoffee</A> software forum. There is also a FAQ in the <A HREF="http://www.sarahbridle.net/cosmologui/">CosmoloGUI readme</A>.
