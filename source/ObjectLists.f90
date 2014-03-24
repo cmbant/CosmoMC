@@ -97,6 +97,14 @@
     generic :: Item => Value, RealArrItem
     end Type TRealArrayList
 
+    Type, extends(TObjectList):: TIntegerArrayList
+    contains
+    procedure :: Value => TIntegerArrayList_Value
+    procedure :: IntegerArrItem => TIntegerArrayList_Item
+    generic :: Item => Value, IntegerArrItem
+    end Type TIntegerArrayList
+    
+    
     Type, extends(TOwnedIntrinsicList) :: TStringList
     contains
     procedure :: CharAt => TStringList_CharAt
@@ -110,7 +118,7 @@
     end Type TStringList
 
 
-    public list_prec, TSaveLoadStateObject, TObjectList, TRealArrayList, TRealList, TStringList
+    public list_prec, TSaveLoadStateObject, TObjectList, TRealArrayList, TRealList, TIntegerArrayList, TStringList
     contains
 
     subroutine LoadState(this,F)
@@ -730,7 +738,6 @@
 
     end function TRealList_AsArray
 
-
     !TRealArrayList: List of arrays of reals
 
     function TRealArrayList_Item(this, i) result(P)
@@ -762,6 +769,38 @@
     end select
 
     end function TRealArrayList_Value
+
+    !TIntegerArrayList: List of arrays of reals
+
+    function TIntegerArrayList_Item(this, i) result(P)
+    Class(TIntegerArrayList) :: this
+    integer, intent(in) :: i
+    integer, pointer :: P(:)
+    class(*), pointer :: Item(:)
+
+    Item => this%ArrayItem(i)
+    select type (pt=>Item)
+    type is (integer)
+        P=> pt
+        class default
+        call this%Error('TIntegerArrayList: object of wrong type')
+    end select
+
+    end function TIntegerArrayList_Item
+
+    function TIntegerArrayList_Value(this, i, j) result(P)
+    Class(TIntegerArrayList) :: this
+    integer, intent(in) :: i, j
+    Integer :: P
+    class(*), pointer :: C
+
+    C => this%ArrayItemIndex(i,j)
+    select type (Arr=> C)
+    Type is (integer)
+        P = Arr
+    end select
+
+    end function TIntegerArrayList_Value
 
     !!! TStringList
 
