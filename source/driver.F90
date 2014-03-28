@@ -156,6 +156,7 @@
     call Setup%Config%SetTheoryParameterization(Ini, BaseParams%NameMapping,'theta')
 
     call DataLikelihoods%AddNuisanceParameters(BaseParams%NameMapping)
+    call DataLikelihoods%AddOutputLikelihoodParams(BaseParams%NameMapping)
 
     call BaseParams%InitializeUsedParams(Ini)
     call BaseParams%SetFastSlowParams(Ini, use_fast_slow)

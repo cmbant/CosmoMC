@@ -2,6 +2,7 @@
     use MpiUtils
     use FileUtils
     use StringUtils
+    use MiscUtils
     implicit none
     private
     integer, parameter :: ParamNames_maxlen = 128
@@ -10,10 +11,10 @@
         integer :: nnames =0
         integer :: num_MCMC = 0
         integer :: num_derived = 0
-        character(LEN=ParamNames_maxlen), dimension(:), pointer ::  name=> null()
-        character(LEN=ParamNames_maxlen), dimension(:), pointer ::  label => null()
-        character(LEN=ParamNames_maxlen), dimension(:), pointer ::  comment => null()
-        logical, dimension(:), pointer ::  is_derived
+        character(LEN=ParamNames_maxlen), dimension(:), allocatable ::  name
+        character(LEN=ParamNames_maxlen), dimension(:), allocatable ::  label
+        character(LEN=ParamNames_maxlen), dimension(:), allocatable ::  comment
+        logical, dimension(:), allocatable ::  is_derived
     contains
     procedure :: Add => ParamNames_Add
     procedure :: Alloc => ParamNames_Alloc
@@ -93,6 +94,7 @@
     class(TParamNames) :: Names
     integer,intent(in) :: n
 
+    call Names%Dealloc()
     allocate(Names%name(n))
     allocate(Names%label(n))
     allocate(Names%comment(n))
@@ -109,7 +111,7 @@
 
     subroutine ParamNames_dealloc(Names)
     class(TParamNames) :: Names
-    if (associated(Names%name)) &
+    if (allocated(Names%name)) &
     deallocate(Names%name,Names%label,Names%comment,Names%is_derived)
 
     end subroutine ParamNames_dealloc
@@ -152,8 +154,9 @@
 
     end subroutine ParamNames_AssignItem
 
-    subroutine ParamNames_Add(Names, Names2)
+    subroutine ParamNames_Add(Names, Names2, check_duplicates)
     class(TParamNames), target :: Names, Names2
+    logical, intent(in), optional :: check_duplicates
     integer n,i, newold, derived
     class(TParamNames),pointer :: P, NamesOrig
 
@@ -163,6 +166,9 @@
     do i=1, names2%nnames
         if (NamesOrig%index(Names2%name(i))==-1) then
             n=n+1
+        else
+            if (.not. PresentDefault(.false., check_duplicates)) &
+            & call MpiStop('ParamNames_Add: Duplicate name tag'//trim(Names2%name(i)))
         end if
     end do
     if (n==0) return

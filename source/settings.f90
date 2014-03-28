@@ -36,6 +36,7 @@
 
     character(LEN=*), parameter :: CosmoMC_Version = 'Mar2014'
 
+    character(LEN=:), allocatable :: chisq_label
 
     Type, extends(TIniFile) :: TNameKeyIniFile
         !Allowing things like param[name] =
@@ -117,9 +118,11 @@
     contains
 
     subroutine InitializeGlobalSettingDefaults
+    character, parameter :: backslash = char(92)
 
     DataDir='data/'
     LocalDir='./'
+    chisq_label = backslash//'chi^2_{'//backslash//'rm %s}'
 
     end subroutine InitializeGlobalSettingDefaults
 
@@ -218,7 +221,7 @@
     character(LEN=*), intent(in) :: name
     character(LEN=:), allocatable :: tag
     class(TNameValueList) :: OutList
-    integer count, i, ix
+    integer i, ix
     character(LEN=:), pointer :: KeyName
 
     call OutList%Clear()
