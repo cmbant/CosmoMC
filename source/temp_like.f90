@@ -191,7 +191,8 @@
     if (data_vector/='') then
         !!override data vector in the main camspec file
         !The input file is in comprehensible L, L(L+1)C_L^i/2pi format
-        open(48, file=data_vector, form='unformatted', status='old')
+        open(48, file=data_vector, form='formatted', status='old', iostat=status)
+        if (status/=0) stop 'Error opening camspec data_vector override'
         print *,'Using CamSpec data vector : '//data_vector
         allocate(CL_in(CAMspec_lmax, 4))
         L=0
