@@ -194,12 +194,13 @@
         open(48, file=data_vector, form='unformatted', status='old')
         print *,'Using CamSpec data vector : '//data_vector
         allocate(CL_in(CAMspec_lmax, 4))
+        L=0
         do
             read(48,iostat = status) L, in_data
-            if (status/=0) stop 'Error reading camspec data_vector override'
-            if (L>CAMspec_lmax) exit
+            if (status/=0) exit
             CL_in(L,:) = in_data
         end do
+        if (L< CAMspec_lmax) stop 'Error reading camspec data_vector override'
         close(48)
         ix = 0
         do i=1,NSpec
