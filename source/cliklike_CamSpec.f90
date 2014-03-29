@@ -83,6 +83,7 @@
         kszfilename=Ini%ReadFileName('kszfile',NotFoundFail = .true.)
         beamfilename=Ini%ReadFileName('beamfile',NotFoundFail = .true.)
         data_vector = Ini%ReadFileName('camspec_data_vector')
+        if (data_vector/='') Like%version = File%ExtractName(data_vector)
         call Ini%Read('camspec_beam_mcmc_num',camspec_beam_mcmc_num)
         if (.not. pre_marged) then
             tmp = Ini%Read_String('want_spec')
@@ -109,7 +110,7 @@
         Like%needs_powerspectra =.true.
         allocate(like%cl_lmax(1,1))
         Like%cl_lmax(CL_T,CL_T) = 6000
- 
+
         call Like%loadParamNames(trim(DataDir)//'highL.paramnames')
 
         if (lmax < tt_lmax_mc) call MpiStop('set lmax>=tt_lmax_mc in settings to use highL data')
