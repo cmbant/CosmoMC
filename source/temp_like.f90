@@ -197,7 +197,7 @@
         allocate(CL_in(CAMspec_lmax, 4))
         L=0
         do
-            read(48,iostat = status) L, in_data
+            read(48,*,iostat = status) L, in_data
             if (status/=0) exit
             CL_in(L,:) = in_data
         end do
