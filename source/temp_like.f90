@@ -100,19 +100,20 @@
 
     end subroutine ReadFiducialCl
 
-    subroutine like_init(pre_marged,like_file, sz143_file, tszxcib_file, ksz_file, beam_file)
+    subroutine like_init(pre_marged,like_file, sz143_file, tszxcib_file, ksz_file, beam_file,data_vector)
     use MatrixUtils
     integer :: i, j,k,l
     logical :: pre_marged
-    character(LEN=*), intent(in) :: like_file, sz143_file, ksz_file, tszxcib_file, beam_file
+    character(LEN=*), intent(in) :: like_file, sz143_file, ksz_file, tszxcib_file, beam_file,data_vector
     logical, save :: needinit=.true.
     real(campc) , allocatable:: fid_cl(:,:), beam_cov(:,:), beam_cov_full(:,:)
     integer if1,if2, ie1, ie2, ii, jj, L2
     real(campc), dimension(:), allocatable :: X_data_in
     real(campc),  dimension(:,:), allocatable :: cov
     integer, allocatable :: indices(:),np(:)
-    integer ix
-    real(campc) dummy
+    integer ix, status
+    real(campc) dummy, in_data(4)
+    real(campc), allocatable :: CL_in(:,:)
 
     if(.not. needinit) return
 
@@ -185,8 +186,29 @@
         !    call Matrix_inverse(c_inv)
         deallocate(cov)
     end if
-
     CAMspec_lmax = maxval(lmaxX)
+
+    if (data_vector/='') then
+        !!override data vector in the main camspec file
+        !The input file is in comprehensible L, L(L+1)C_L^i/2pi format
+        open(48, file=data_vector, form='unformatted', status='old')
+        print *,'Using CamSpec data vector : '//data_vector
+        allocate(CL_in(CAMspec_lmax, 4))
+        do
+            read(48,iostat = status) L, in_data
+            if (status/=0) stop 'Error reading camspec data_vector override'
+            if (L>CAMspec_lmax) exit
+            CL_in(L,:) = in_data
+        end do
+        close(48)
+        ix = 0
+        do i=1,NSpec
+            do L=lminX(i), lmaxX(i)
+                ix=ix+1
+                X_data(ix) = CL_in(L,i)/(L*(L+1))
+            end do
+        end do
+    end if
 
     if (.not. pre_marged) then
         allocate(fid_cl(CAMspec_lmax,4))

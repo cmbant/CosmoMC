@@ -45,7 +45,7 @@
     class(TSettingIni) Ini
     class(TLikelihoodList) :: LikeList
     character (LEN=:), allocatable :: likefilename,sz143filename,&
-    beamfilename, kszfilename,tszxcibfilename, tmp, polfilename
+    beamfilename, kszfilename,tszxcibfilename, tmp, polfilename, data_vector
     Class(TCosmologyLikelihood), pointer :: Like
     logical :: use_CAMspec, use_CAMpol
     logical :: use_highL
@@ -82,6 +82,7 @@
         tszxcibfilename=Ini%ReadFileName('tszxcibfile',NotFoundFail = .true.)
         kszfilename=Ini%ReadFileName('kszfile',NotFoundFail = .true.)
         beamfilename=Ini%ReadFileName('beamfile',NotFoundFail = .true.)
+        data_vector = Ini%ReadFileName('camspec_data_vector')
         call Ini%Read('camspec_beam_mcmc_num',camspec_beam_mcmc_num)
         if (.not. pre_marged) then
             tmp = Ini%Read_String('want_spec')
@@ -91,7 +92,7 @@
             tmp = Ini%Read_String('camspec_lmax')
             if (tmp/='') read(tmp,*) camspec_lmaxs
         end if
-        call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename)
+        call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector)
     end if
 
     use_highL = Ini%Read_Logical('use_highL',.false.)
