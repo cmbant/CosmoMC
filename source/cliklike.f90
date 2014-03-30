@@ -43,6 +43,7 @@
     integer i
     Class(ClikLikelihood), pointer :: like
     logical(KIND=4) is_lensing
+    character(LEN=:), allocatable :: tag
 
     do i=1, Ini%Count
         name = Ini%Items(i)%P%Name
@@ -60,7 +61,9 @@
             call LikeList%Add(Like)
             Like%needs_powerspectra =.true.
             Like%LikelihoodType = 'CMB'
-            Like%name= File%ExtractName(fname)
+            tag = trim(name(len('clik_data_')+1:))
+            Like%Tag = tag
+            Like%name= File%ExtractName(fname, no_ext = .true.)
             allocate(Like%clik_index(2,6), source=0)
             Like%clik_index(:,1) = [1,1]
             Like%clik_index(:,2) = [2,2]
@@ -69,12 +72,9 @@
             Like%clik_index(:,5) = [3,1]
             Like%clik_index(:,6) = [3,2]
 
-            !                Like%version = CAMSpec_like_version
-            call StringReplace('clik_data_','clik_params_',name)
-            params = Ini%ReadFileName(name, NotFoundFail = .false.)
+            params = Ini%ReadFileName('clik_params_'//tag, NotFoundFail = .false.)
             if (params/='') call Like%loadParamNames(params)
-            call StringReplace('clik_params_','clik_speed_',name)
-            like%speed = Ini%Read_Int(name, 0)
+            like%speed = Ini%Read_Int('clik_speed_'//tag, 0)
             call Like%clik_likeinit(fname)
         end if
     end do
@@ -243,31 +243,31 @@
             end if
             j = j+1
         end do
-    end associate
+        end associate
 
-    !TB and EB assumed to be zero
-    !If your model predicts otherwise, this function will need to be updated
-    do i=1,4
-        associate(Cls=> Theory%Cls(this%clik_index(1,i),this%clik_index(2,i)))
-            do l=0,this%lensing_lmaxs(i+1)
-                !skip C_0 and C_1
-                if (l >= 2) then
-                    clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)*twopi
-                end if
-                j = j+1
-            end do
-            end associate
-    end do
+        !TB and EB assumed to be zero
+        !If your model predicts otherwise, this function will need to be updated
+        do i=1,4
+            associate(Cls=> Theory%Cls(this%clik_index(1,i),this%clik_index(2,i)))
+                do l=0,this%lensing_lmaxs(i+1)
+                    !skip C_0 and C_1
+                    if (l >= 2) then
+                        clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)*twopi
+                    end if
+                    j = j+1
+                end do
+                end associate
+        end do
 
-    do i=1,this%clik_nnuis
-        clik_cl_and_pars(j) = DataParams(i)
-        j = j+1
-    end do
+        do i=1,this%clik_nnuis
+            clik_cl_and_pars(j) = DataParams(i)
+            j = j+1
+        end do
 
-    !Get - ln this needed by CosmoMC
-    clik_lensing_lnlike = -1.d0*clik_lensing_compute(this%clikid,clik_cl_and_pars)
+        !Get - ln this needed by CosmoMC
+        clik_lensing_lnlike = -1.d0*clik_lensing_compute(this%clikid,clik_cl_and_pars)
 
-    if (Feedback>1) Print*,trim(this%name)//' lnlike = ',clik_lensing_lnlike
+        if (Feedback>1) Print*,trim(this%name)//' lnlike = ',clik_lensing_lnlike
 
     end function clik_lensing_lnlike
 
