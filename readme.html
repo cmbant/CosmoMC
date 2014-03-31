@@ -505,6 +505,12 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <A NAME="Version"><h2>Version History</h2></A>
 
 <UL>
+<LI><B>April 2014</B><BR>
+<UL>
+<LI>Chains include "derived parameters" giving the &chi;<sup>2</sup> [-2Ln(Likelioood)] for each likelihood used, and where more than one of a given type, the sum for each type (e.g. CMB, BAO).
+<LI>GetDist has new optional second parameter to specify file_root, e,g <I>getdist distparams.ini chains/test</i>
+</UL>
+
 <LI><B>March 2014</B><BR>
 <UL>
 <LI>Major restructuring of main code using Fortran 2008: structure supports additional cosmology calculator codes, etc. Use ifort 14+.
