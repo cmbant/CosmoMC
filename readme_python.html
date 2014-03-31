@@ -8,7 +8,7 @@
 
 <h2>Cosmomc Grids and Plotting with Python</h2>
 
-The March 2013 CosmoMC version adds a set of tools for generating and analysing grids of parameter runs using CosmoMC and GetDist, plus a variety of utility scripts and plotting functions.
+The latest CosmoMC versions add a set of tools for generating and analysing grids of parameter runs using CosmoMC and GetDist, plus a variety of utility scripts and plotting functions.
 <P>
 See the ./python directory for scripts (python 2.7+). Most can be run without arguments to show a list of possible input parameters.
 
@@ -25,7 +25,7 @@ A description for a grid of models is given in a python settings file.
 Use runbatch.py to submit all the ini files produced to the queue; makeGrid will tell you what to do.
 </UL>
 
-You will also need to produce a runMPI_xxx script for your machine, runMPI_HPCS.pl works on Darwin in Cambridge and is the default.
+You will also need to produce a submission script for your machine. Edit the <b>job_script</b> file as appropriate for your machine, and if necessary the <b>submitJob</b> function in <b>python/jobQueue.py</b>.
 Covmats for Planck are in planck_covmats folder, linked by default for grid runs.
 <p>
 Grid run scripts include:
@@ -63,7 +63,6 @@ See <A HREF="readme_planck.html">Planck grid readme</A> for a simple example.
 Multi-purpose use and utility scripts include
 <UL>
 <LI>bestFitCAMB.py: for converting .minimum best-fit file to CAMB input .ini file (not all parameter combinations)
-<LI>covcomb.py: for combining covariance matrices (thanks Steven!)
 <LI>covscale.py: for modifying .covmat files if parameters are re-scaled
 <LI>covMat.py: object for covariance matrix and reading .covmat
 <LI>iniFile.py: for reading and writing .ini files (does not support reading fully at the moment, but not needed as yet)
@@ -74,4 +73,4 @@ Multi-purpose use and utility scripts include
 </UL>
 
 
-</body>
+</body> 

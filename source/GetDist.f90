@@ -1840,7 +1840,8 @@
         ncols = NameMapping%nnames+2
     end if
 
-    in_root = Ini%Read_String('file_root', notFoundFail=.true.)
+    in_root = GetParam(2)
+    if (in_root=='') in_root = Ini%Read_String('file_root', notFoundFail=.true.)
     rootname = File%ExtractName(in_root)
     chain_num = Ini%Read_Int('chain_num')
 
