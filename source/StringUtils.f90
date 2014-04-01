@@ -202,6 +202,7 @@
             exit
         end if
     end do
+    form = ''
     do while( verify(c,'0123456789') == 0)
         form = form // c
         P=P+1
