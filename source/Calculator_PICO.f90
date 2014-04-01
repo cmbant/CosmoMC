@@ -111,6 +111,7 @@
     call fpico_set_param("omvh2", CMB%omv*CMB%h**2)
     call fpico_set_param("omk", CMB%omk)
     call fpico_set_param("hubble", CMB%H0)
+    call fpico_set_param("Alens", CMB%Alens)
     call fpico_set_param("w", CMB%w)
     call fpico_set_param("theta", CosmomcTheta())
     call fpico_set_param("helium_fraction", p%yhe)
