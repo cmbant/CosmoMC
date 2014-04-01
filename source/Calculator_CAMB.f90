@@ -388,7 +388,7 @@
                         else
                             if (indicesS(i,j)/=0) CL(2:lmx) = cons*Cl_Scalar(2:lmx,1, indicesS(i,j))
                         end if
-                        if (CosmoSettings%lmax_computed_cl < CosmoSettings%cl_lmax(i,j)) then
+                        if (CosmoSettings%lmax_computed_cl < lmaxCL) then
                             if (highL_norm ==0) & !normally normalize off TT
                             & highL_norm = CL(lmx)/this%highL_lensedCL_template(lmx,indicesT(i,j))
                             CL(lmx+1:lmaxCL) =  highL_norm*this%highL_lensedCL_template(lmx+1:lmaxCL,indicesT(i,j))
