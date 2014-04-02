@@ -9,7 +9,8 @@
     integer, parameter  :: derived_age=1, derived_zstar=2, derived_rstar=3, derived_thetastar=4,derived_zdrag=5, &
     derived_rdrag=6,derived_kD=7,derived_thetaD=8 , derived_zEQ =9, derived_thetaEQ=10 !index in derived parameters array
 
-    integer, parameter :: As_index=4, amp_ratio_index = 5, Aphiphi_index = 6
+    integer, parameter :: As_index=1, ns_index =1, nrun_index=3, nrunrun_index=4, amp_ratio_index = 5, nt_index= 6, ntrun_index = 7, &
+    Aphiphi_index = 8, last_power_index = Aphiphi_index
 
     integer, parameter :: max_inipower_params = 10
 
@@ -31,7 +32,8 @@
         !Make these multiples of 50, should be 50 more than you need accurately
         integer :: lmax = 0
         integer :: num_cls = 0
-        integer :: lmax_tensor = 600 !note only lmax_computed_cl is actually calculated
+        integer :: lmax_tensor = 600 
+        !note only lmax_computed_cl is actually calculated
         integer :: lmax_computed_cl = 4500 !Never compute primordial above this, just fit
         integer :: lmin_computed_cl = 2000 !if cl needed, calculate to at least this
 
@@ -49,7 +51,8 @@
 
         !Only used in params_CMB
         real(mcp) :: pivot_k = 0.05_mcp !Point for defining primordial power spectra
-        logical :: inflation_consistency = .false. !fix n_T or not
+        real(mcp) :: tensor_pivot_k = 0.05_mcp !Point for defining tensor power spectra
+        logical :: inflation_consistency = .true. !fix n_T or not
 
         logical :: bbn_consistency = .true. !JH
 
@@ -163,6 +166,9 @@
     & write(*,*) 'NOTE: use_CMB now set internally from likelihoods'
 
     call Ini%Read('pivot_k',this%pivot_k)
+    this%tensor_pivot_k = this%pivot_k
+    call Ini%Read('tensor_pivot_k',this%tensor_pivot_k)
+
     call Ini%Read('inflation_consistency',this%inflation_consistency)
     call Ini%Read('bbn_consistency',this%bbn_consistency)
     call Ini%Read('num_massive_neutrinos',this%num_massive_neutrinos)

@@ -63,20 +63,6 @@
 
     end subroutine PICO_GetOutputArray
 
-    subroutine PICO_AddTensorOutputArray(Theory,i,j, name)
-    class(TCosmoTheoryPredictions) :: Theory
-    integer i,j, lmx
-    character(LEN=*) :: name
-    real(mcp) tmp(lmin:CosmoSettings%lmax_tensor)
-
-    lmx=min(CosmoSettings%lmax_tensor,CosmoSettings%cl_lmax(i,j))
-    if (lmx>0) then
-        call fpico_read_output(name,tmp(lmin:),lmin,lmx)
-        Theory%Cls(i,j)%CL(lmin:lmx) = Theory%Cls(i,j)%CL(lmin:lmx) + tmp(lmin:lmx)
-    end if
-
-    end subroutine PICO_AddTensorOutputArray
-
     subroutine PICO_GetNewPowerData(this, CMB, Info, Theory, error)
     use ModelParams
     use ModelData
@@ -126,19 +112,15 @@
     call fpico_set_param("scalar_amp(1)",p%InitPower%ScalarPowerAmp(1))
     call fpico_set_param("pivot_scalar",p%InitPower%k_0_scalar)
     call fpico_set_param("re_optical_depth",p%Reion%optical_depth)
+    if (p%InitPower%n_runrun(1)/=0 .or. p%InitPower%nt_run(1)/=0) &
+    & call MpiStop('PICO: unsupposed initial power parameter')
 
     call fpico_reset_requested_outputs()
     if (P%WantCls) then
-        call fpico_request_output("lensed_TT")
-        call fpico_request_output("lensed_TE")
-        call fpico_request_output("lensed_EE")
-        call fpico_request_output("lensed_BB")
-        if (P%WantTensors) then
-            call fpico_request_output("tensor_TT")
-            call fpico_request_output("tensor_TE")
-            call fpico_request_output("tensor_EE")
-            call fpico_request_output("tensor_BB")
-        end if
+        call fpico_request_output("cl_TT")
+        call fpico_request_output("cl_TE")
+        call fpico_request_output("cl_EE")
+        call fpico_request_output("cl_BB")
         if (P%WantTransfer) then
             call fpico_request_output("k")
             call fpico_request_output("pk")
@@ -147,10 +129,10 @@
 
     call fpico_compute_result(success)
     if (.not. success) call mpiStop('PICO failed to get result')
-    call PICO_GetOutputArray(Theory,1,1, "lensed_TT")
-    call PICO_GetOutputArray(Theory,2,1, "lensed_TE")
-    call PICO_GetOutputArray(Theory,2,2, "lensed_EE")
-    call PICO_GetOutputArray(Theory,3,3, "lensed_BB")
+    call PICO_GetOutputArray(Theory,1,1, "cl_TT")
+    call PICO_GetOutputArray(Theory,2,1, "cl_TE")
+    call PICO_GetOutputArray(Theory,2,2, "cl_EE")
+    call PICO_GetOutputArray(Theory,3,3, "cl_BB")
 
     do i=1, min(3,CosmoSettings%num_cls)
         do j= i, 1, -1
@@ -162,12 +144,6 @@
                         if (highL_norm ==0) & !normally normalize off TT
                         & highL_norm = CL(lmx)/this%highL_lensedCL_template(lmx,indicesT(i,j))
                         CL(lmx+1:lmaxCL) =  highL_norm*this%highL_lensedCL_template(lmx+1:lmaxCL,indicesT(i,j))
-                    end if
-                    if (CosmoSettings%compute_tensors) then
-                        call PICO_AddTensorOutputArray(Theory,1,1, "tensor_TT")
-                        call PICO_AddTensorOutputArray(Theory,2,1, "tensor_TE")
-                        call PICO_AddTensorOutputArray(Theory,2,2, "tensor_EE")
-                        call PICO_AddTensorOutputArray(Theory,3,3, "tensor_BB")
                     end if
                     end associate
             end if

@@ -72,7 +72,6 @@ cal_acte_148     y^{\mathrm{ACTe}}_{148}
 cal_acte_217     y^{\mathrm{ACTe}}_{217}
 cal_spt_95       y^{\mathrm{SPT}}_{95}
 cal_spt_150      y^{\mathrm{SPT}}_{150}
-cal_spt_220      y^{\mathrm{SPT}}_{220}
 omegal*       \Omega_\Lambda
 omegam*       \Omega_{\mathrm{m}}
 sigma8*       \sigma_8
@@ -80,11 +79,16 @@ zrei*         z_{\mathrm{re}}
 r10*          r_{10}	#tensor-scalar C_l amplitude at l=10
 H0*           H_0		#hubble parameter is H0 km/s/Mpc
 r02*          r_{0.002}         #r at k=0.002
+rBB*          r_{0.01}         #r at k=0.01 (roughly peak of tensor BB)
+logAT*        {\rm{ln}}(10^{10} A_{\mathrm{t}}) 
+AT*           10^9 A_{\mathrm{t}}
 A*            10^9 A_{\mathrm{s}}
 omegamh2*     \Omega_{\mathrm{m}} h^2 #includes massive neutrinos
 omegamh3*     \Omega_{\mathrm{m}} h^3 #well determined orthogonal to degeneracy for 6-param model
+S8_47*        \sigma_8 (\Omega_{\mathrm{m}}/0.25)^{0.47} 
 yheused*      Y_{\mathrm{P}} #MCMC value or from bbn consistency
 clamp*        10^9 A_{\mathrm{s}} e^{-2\tau}   #parameter determining C_l amplitude
+ctlamp*       10^9 A_t e^{-2\tau}   #parameter determining L~100 tensor C_l amplitude
 omeganuh2*    \Omega_\nu h^2 
 age*          \mathrm{Age}/\mathrm{Gyr}
 zstar*        z_\ast
@@ -99,3 +103,4 @@ thetaeq*      100\theta_{\mathrm{eq}}
 rsDv057*       r_{\mathrm{drag}}/D_{\mathrm{V}}(0.57) 
 H057*          H(0.57) 
 DA057*         D_{\mathrm{A}}(0.57)
+cef           \alpha/\alpha_0

@@ -22,7 +22,7 @@
         Type(TSkyPowerSpectrum), allocatable :: Cls(:,:)
         !(this, E, B, Phi) x (this, E, B, Phi), with L(L+1)/2pi factor, in muK for CMB components
         real(mcp) sigma_8
-        real(mcp) tensor_ratio_r10, tensor_ratio_02
+        real(mcp) tensor_ratio_C10, tensor_ratio_02, tensor_ratio_BB, tensor_AT
         integer numderived
         real(mcp) derived_parameters(max_derived_parameters)
         !MPK's are interpolator objects now
@@ -182,7 +182,7 @@
     end do
 
     if (CosmoSettings%compute_tensors) then
-        write(F%unit) this%tensor_ratio_02, this%tensor_ratio_r10
+        write(F%unit) this%tensor_ratio_02, this%tensor_ratio_C10, this%tensor_ratio_BB, this%tensor_AT
     end if
 
     if (CosmoSettings%get_sigma8 .or. CosmoSettings%use_LSS) write(F%unit) this%sigma_8
@@ -254,7 +254,7 @@
     end do
 
     if (FileSettings%compute_tensors) then
-        read(F%unit) this%tensor_ratio_02, this%tensor_ratio_r10
+        read(F%unit) this%tensor_ratio_02, this%tensor_ratio_C10, this%tensor_ratio_BB, this%tensor_AT
     end if
 
     if (FileSettings%get_sigma8 .or. FileSettings%use_LSS) read(F%unit) this%sigma_8
