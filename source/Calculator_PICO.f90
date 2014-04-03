@@ -1,4 +1,4 @@
-    !Use CAMB
+#ifdef PICO
     module Calculator_PICO
     use CosmologyTypes
     use CosmoTheory
@@ -191,3 +191,4 @@
 
 
     end module Calculator_PICO
+#endif

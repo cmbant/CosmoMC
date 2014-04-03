@@ -270,7 +270,7 @@
     & this%Likelihoods(1:DataLikelihoods%Count)*2
     do i=1, DataLikelihoods%LikelihoodTypeIndices%Count
         output_array(num_params_used+numderived+DataLikelihoods%Count+i) = &
-         sum(this%Likelihoods(DataLikelihoods%LikelihoodTypeIndices%Item(i)))
+         sum(this%Likelihoods(DataLikelihoods%LikelihoodTypeIndices%Item(i)))*2
     end do
     call IO_OutputChainRow(ChainOutFile, mult, like, output_array)
 

@@ -1,4 +1,3 @@
-
     module CosmologyTypes
     use settings
     use likelihood

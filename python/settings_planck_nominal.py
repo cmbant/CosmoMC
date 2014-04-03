@@ -47,7 +47,7 @@ newCovmats = True
 
 class importanceFilterLensing:
     def wantImportance(self, jobItem):
-        return planck in jobItem.dataname_set and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
+        return planck in jobItem.data_set.names and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
 
 class importanceFilterNotOmegakLowl:
     def wantImportance(self, jobItem):

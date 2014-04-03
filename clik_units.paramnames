@@ -13,11 +13,13 @@ alpha1        \alpha_{-1} #correlated CDM isocurvature
 deltazrei     \Delta z_{\mathrm{re}} #width of reionization
 Alens         A_{\mathrm{L}}     #lensing potential scaled by sqrt(A_lens)
 fdm           \epsilon_0 f_d    #CosmoRec dark matter annihilation parameter, 0910.3663
-ns            n_\mathrm{s}	    #beware that pivot scale can change in .ini file
-nt            n_\mathrm{t}
-nrun          dn_{\mathrm{s}}/d\ln k               # d n_\mathrm{s} / d\ln k
 logA          \ln(10^{10} A_\mathrm{s})
-r             r_{0.05} #ratio of tensor to scalar primordial power at pivot scale 0.05 Mpc^{-1}
+ns            n_\mathrm{s}	    #beware that pivot scale can change in .ini file
+nrun          \mathrm{d}n_{\mathrm{s}}/\mathrm{d}\ln k               # d n_\mathrm{s} / d\ln k
+nrunrun       \mathrm{d}^2n_{\mathrm{s}}/\mathrm{d}\ln k^2
+r             r #ratio of tensor to scalar primordial power at pivot scale 0.05 Mpc^{-1}
+nt            n_\mathrm{t}
+ntrun         \mathrm{d}n_\mathrm{t}/\mathrm{d}\ln k
 Aphiphi       A^{\phi\phi}_{\mathrm{L}} #scaling of lensing potential power (lensed power spectra unchanged)
 alpha_SNLS    \alpha_{\mathrm{SNLS}}
 beta_SNLS     \beta_{\mathrm{SNLS}}
