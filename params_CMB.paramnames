@@ -10,28 +10,35 @@ wa            w_a       #w_a variation
 nnu           N_{eff}   #effective number of neutrinos (only clearly defined for massless)
 yhe           Y_{He}    #Helium mass fraction (not used if bbn_consistency)    
 alpha1        \alpha_{-1} #correlated CDM isocurvature 
-deltazrei     {\Delta}z_{re} #width of reionization
+deltazrei     {\Delta}z_{\rm re} #width of reionization
 Alens         A_{L}     #lensing potential scaled by sqrt(A_lens)
 fdm           \epsilon_0 f_d    #CosmoRec dark matter annihilation parameter, 0910.3663
-ns            n_s	    #beware that pivot scale can change in .ini file
-nt            n_t
-nrun          n_{run}
 logA          {\rm{ln}}(10^{10} A_s)
-r             r_{0.05} #ratio of tensor to scalar primordial amplitudes at pivot scale
+ns            n_s	    #beware that pivot scale can change in .ini file
+nrun          n_{\rm run}
+nrunrun       n_{\rm run, run}
+r             r #ratio of tensor to scalar primordial amplitudes at pivot scale
+nt            n_t
+ntrun         n_{t,{\rm run}}
 Aphiphi       A^{\phi\phi}_L #scaling of lensing potential power (lensed power spectra unchanged)
+H0*           H_0		#hubble parameter is H0 km/s/Mpc
 omegal*       \Omega_\Lambda
 omegam*       \Omega_m
-sigma8*       \sigma_8
-zrei*         z_{re}
-r10*          r_{10}	#tensor-scalar C_l amplitude at l=10
-H0*           H_0		#hubble parameter is H0 km/s/Mpc
-r02*          r         #r at k=0.002
-A*            10^9 A_s
 omegamh2*     \Omega_m h^2 #includes massive neutrinos
-omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
-yheused*      Y_P #MCMC value or from bbn consistency
-clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
 omeganuh2*    \Omega_\nu h^2 
+sigma8*       \sigma_8
+zrei*         z_{\rm re}
+r02*          r_{0.002}        #r at k=0.002
+rBB*          r_{0.01}         #r at k=0.01 (roughly peak of tensor BB)
+logAT*        {\rm{ln}}(10^{10} A_t) 
+r10*          r_{L=10}	#tensor-scalar temperature C_l amplitude at l=10
+A*            10^9 A_s
+AT*           10^9 A_t
+clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
+ctlamp*       10^9 A_t e^{-2\tau}   #parameter determining L~100 tensor C_l amplitude
+yheused*      Y_P #MCMC value or from bbn consistency
+omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
+S8_47*        \sigma_8 (\Omega_m/0.25)^{0.47} 
 age*          {\rm{Age}}/{\rm{Gyr}}
 zstar*        z_*
 rstar*        r_*

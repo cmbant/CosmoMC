@@ -59,7 +59,8 @@
     end if
 
     call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
-    call this%SetTheoryParameterNumbers(15,6)
+    !set number of hard parameters, number of initial power specturm parameters
+    call this%SetTheoryParameterNumbers(15,last_power_index)
 
     end subroutine TP_Init
 
@@ -170,25 +171,36 @@
     if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)
     class is (TCosmoTheoryPredictions)
-        num_derived = 13 +  Theory%numderived
+        num_derived = 18 +  Theory%numderived
         allocate(Derived(num_derived))
 
         call this%ParamArrayToTheoryParams(P,CMB)
 
-        derived(1) = CMB%omv
-        derived(2) = CMB%omdm+CMB%omb
-        derived(3) = Theory%Sigma_8
-        derived(4) = CMB%zre
-        derived(5) = Theory%tensor_ratio_r10
-        derived(6) = CMB%H0
-        derived(7) = Theory%tensor_ratio_02
-        derived(8) = cl_norm*CMB%InitPower(As_index)*1e9
-        derived(9) = CMB%omdmh2 + CMB%ombh2
-        derived(10)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
-        derived(11)= CMB%Yhe !value actually used, may be set from bbn consistency
-        derived(12)= derived(8)*exp(-2*CMB%tau)  !A e^{-2 tau}
-        derived(13) = CMB%omnuh2
-        derived(14:num_derived) = Theory%derived_parameters(1: Theory%numderived)
+        derived(1) = CMB%H0
+        derived(2) = CMB%omv
+        derived(3) = CMB%omdm+CMB%omb
+        derived(4) = CMB%omdmh2 + CMB%ombh2
+        derived(5) = CMB%omnuh2
+
+        derived(6) = Theory%Sigma_8
+        derived(7) = CMB%zre
+
+        derived(8) = Theory%tensor_ratio_02
+        derived(9) = Theory%tensor_ratio_BB
+        derived(10) = log(Theory%tensor_AT*1e10)
+        derived(11) = Theory%tensor_ratio_C10
+
+        derived(12) = cl_norm*CMB%InitPower(As_index)*1e9
+        derived(13) = Theory%tensor_AT*1e9
+
+        derived(14)= derived(12)*exp(-2*CMB%tau)  !A e^{-2 tau}
+        derived(15)= derived(13)*exp(-2*CMB%tau)  !At e^{-2 tau}
+
+        derived(16)= CMB%Yhe !value actually used, may be set from bbn consistency
+        derived(17)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
+        derived(18)=  Theory%Sigma_8*((CMB%omdm+CMB%omb)/0.25_mcp)**0.47_mcp
+
+        derived(19:num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
     end subroutine TP_CalcDerivedParams

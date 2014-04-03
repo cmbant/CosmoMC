@@ -9,7 +9,7 @@
     initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
     HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, &
     Transfer_SortAndIndexRedshifts, & !JD added for nonlinear lensing of CMB + MPK compatibility
-    Recombination_Name, reionization_name, power_name, threadnum, version
+    Recombination_Name, reionization_name, power_name, threadnum, version, tensor_param_rpivot
     use Errors !CAMB
     use settings
     use likelihood
@@ -388,7 +388,7 @@
                         else
                             if (indicesS(i,j)/=0) CL(2:lmx) = cons*Cl_Scalar(2:lmx,1, indicesS(i,j))
                         end if
-                        if (CosmoSettings%lmax_computed_cl < CosmoSettings%cl_lmax(i,j)) then
+                        if (CosmoSettings%lmax_computed_cl < lmaxCL) then
                             if (highL_norm ==0) & !normally normalize off TT
                             & highL_norm = CL(lmx)/this%highL_lensedCL_template(lmx,indicesT(i,j))
                             CL(lmx+1:lmaxCL) =  highL_norm*this%highL_lensedCL_template(lmx+1:lmaxCL,indicesT(i,j))
@@ -427,10 +427,14 @@
 
     if (CosmoSettings%compute_tensors) then
         Theory%tensor_ratio_02 = TensorPower(0.002d0,1)/ScalarPower(0.002d0,1)
-        Theory%tensor_ratio_r10 = Cl_tensor(10, 1, 1)/Cl_scalar(10,1, 1)
+        Theory%tensor_AT = TensorPower(CosmoSettings%tensor_pivot_k,1)
+        Theory%tensor_ratio_BB = TensorPower(0.01d0,1)/ScalarPower(0.01d0,1)
+        Theory%tensor_ratio_C10 = Cl_tensor(10, 1, 1)/Cl_scalar(10,1, 1)
     else
         Theory%tensor_ratio_02 = 0
-        Theory%tensor_ratio_r10 = 0
+        Theory%tensor_ratio_BB = 0
+        Theory%tensor_ratio_C10 = 0
+        Theory%tensor_AT = 0
     end if
 
     end subroutine CAMBCalc_SetPowersFromCAMB
@@ -752,28 +756,35 @@
     end subroutine CAMBCalc_InitCAMBParams
 
     !Mapping between array of power spectrum parameters and CAMB
-    subroutine CAMBCalc_SetCAMBInitPower(this,P,CMB,in)
+    subroutine CAMBCalc_SetCAMBInitPower(this,P,CMB,ix)
     class(CAMB_Calculator) :: this
     type(CAMBParams)  P
     class(CMBParams) CMB
-    integer, intent(in) :: in
+    integer, intent(in) :: ix
 
     if (Power_Name == 'power_tilt') then
         P%InitPower%k_0_scalar = CosmoSettings%pivot_k
-        P%InitPower%k_0_tensor = CosmoSettings%pivot_k
+        P%InitPower%k_0_tensor = CosmoSettings%tensor_pivot_k
+        if (P%InitPower%k_0_tensor/=P%InitPower%k_0_scalar) P%InitPower%tensor_parameterization = tensor_param_rpivot
+        P%InitPower%ScalarPowerAmp(ix) = cl_norm*CMB%InitPower(As_index)
+        P%InitPower%rat(ix) = CMB%InitPower(amp_ratio_index)
 
-        P%InitPower%ScalarPowerAmp(in) = cl_norm*CMB%InitPower(As_index)
-        P%InitPower%rat(in) = CMB%InitPower(amp_ratio_index)
+        P%InitPower%an(ix) = CMB%InitPower(ns_index)
 
-        P%InitPower%an(in) = CMB%InitPower(1)
-        P%InitPower%ant(in) = CMB%InitPower(2)
-        if (P%InitPower%rat(in)>0 .and. .not. CosmoSettings%compute_tensors) &
+        if (P%InitPower%rat(ix)>0 .and. .not. CosmoSettings%compute_tensors) &
         call MpiStop('computing r>0 but compute_tensors=F')
-        P%InitPower%n_run(in) = CMB%InitPower(3)
+        P%InitPower%n_run(ix) = CMB%InitPower(nrun_index)
+        P%InitPower%n_runrun(ix) = CMB%InitPower(nrunrun_index)
+
         if (CosmoSettings%inflation_consistency) then
-            P%InitPower%ant(in) = - CMB%InitPower(amp_ratio_index)/8.
-            !note input n_T is ignored, so should be fixed (to anything)
+            if (CMB%InitPower(nt_index)/=0) call MpiStop('Error: inflation_consistency but n_t not set to zero')
+            P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8
+            !note input n_T is ignored, so should be fixed 
+            !note, only using first-order consistency relation
+        else
+            P%InitPower%ant(ix) = CMB%InitPower(nt_index)
         end if
+        P%InitPower%nt_run(ix) = CMB%InitPower(ntrun_index)
     else
         stop 'CAMB_Calculator:Wrong initial power spectrum'
     end if

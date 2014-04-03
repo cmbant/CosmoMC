@@ -270,7 +270,7 @@
     & this%Likelihoods(1:DataLikelihoods%Count)*2
     do i=1, DataLikelihoods%LikelihoodTypeIndices%Count
         output_array(num_params_used+numderived+DataLikelihoods%Count+i) = &
-         sum(this%Likelihoods(DataLikelihoods%LikelihoodTypeIndices%Item(i)))
+         sum(this%Likelihoods(DataLikelihoods%LikelihoodTypeIndices%Item(i)))*2
     end do
     call IO_OutputChainRow(ChainOutFile, mult, like, output_array)
 
@@ -664,7 +664,7 @@
             tag => Like%Name
         end if
         LikeNames%name(i) = tag
-        LikeNames%label(i) = FormatString(trim(chisq_label), trim(tag))
+        LikeNames%label(i) = FormatString(trim(chisq_label), StringEscape(trim(tag),'_'))
         LikeNames%is_derived(i) = .true.
         if (Like%LikelihoodType/='') then
             ix = LikelihoodTypes%IndexOf(Like%LikelihoodType)
@@ -694,7 +694,7 @@
             end do
             call L%LikelihoodTypeIndices%Add(indices)
             LikeNames%name(i) = atype
-            LikeNames%label(i) = FormatString(trim(chisq_label), trim(atype))
+            LikeNames%label(i) = FormatString(trim(chisq_label), StringEscape(trim(atype),'_'))
             LikeNames%is_derived(i) = .true.
             deallocate(indices)
         end if

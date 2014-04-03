@@ -30,6 +30,9 @@
 
     subroutine TCosmologyConfig_ReadParams(this, Ini)
     use Calculator_CAMB
+#ifdef PICO
+    use Calculator_PICO
+#endif
     class(TCosmologyConfig) :: this
     class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: CalcName
@@ -37,8 +40,14 @@
     CalcName = Ini%Read_String_Default('cosmology_calculator', 'CAMB')
     if (calcName=='CAMB') then
         allocate(CAMB_Calculator::this%Calculator)
+    else if (calcName=='PICO') then
+#ifdef PICO
+        allocate(PICO_Calculator::this%Calculator)
+#else
+        call MpiStop('Compile with -DPICO to use PICO calculator')
+#endif
     else
-        call MpiStop('only CAMB currently supported')
+        call MpiStop('Calculator not supported')
     end if
     call this%Calculator%InitWithParams(Ini,this)
 
