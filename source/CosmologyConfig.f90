@@ -44,7 +44,7 @@
 #ifdef PICO
         allocate(PICO_Calculator::this%Calculator)
 #else
-        call MpiStop('Compile with -DIPICO to use PICO calculator')
+        call MpiStop('Compile with -DPICO to use PICO calculator')
 #endif
     else
         call MpiStop('Calculator not supported')
