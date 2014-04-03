@@ -102,16 +102,18 @@
     call fpico_set_param("theta", CosmomcTheta())
     call fpico_set_param("helium_fraction", p%yhe)
 
-    call fpico_set_param("massless_neutrinos", p%Num_Nu_massless)
+    !    call fpico_set_param("massless_neutrinos", )
     !!!Check what's going on with neutrinos
     call fpico_set_param("massive_neutrinos", p%Num_Nu_massless+p%Num_Nu_massive)
     call fpico_set_param("scalar_spectral_index(1)",p%InitPower%an(1))
-    call fpico_set_param("tensor_spectral_index(1)",p%InitPower%ant(1))
+    ! call fpico_set_param("tensor_spectral_index(1)",p%InitPower%ant(1))
     call fpico_set_param("scalar_nrun(1)",p%InitPower%n_run(1))
     call fpico_set_param("initial_ratio(1)",p%InitPower%rat(1))
     call fpico_set_param("scalar_amp(1)",p%InitPower%ScalarPowerAmp(1))
     call fpico_set_param("pivot_scalar",p%InitPower%k_0_scalar)
-    call fpico_set_param("re_optical_depth",p%Reion%optical_depth)
+    call fpico_set_param("re_optical_depth",CMB%tau)
+    call fpico_set_param("force",1.d0)
+
     if (p%InitPower%n_runrun(1)/=0 .or. p%InitPower%nt_run(1)/=0) &
     & call MpiStop('PICO: unsupposed initial power parameter')
 
