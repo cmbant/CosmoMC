@@ -47,7 +47,7 @@
 
     OK = S(start:min(len(S),start+len_trim(substring)-1))==substring
 
-    end function
+    end function StringStarts
 
     subroutine StringReplace(FindS, RepS, S)
     character(LEN=*), intent(in) :: FindS, RepS
@@ -60,6 +60,30 @@
     end if
 
     end subroutine StringReplace
+
+    function StringEscape(S, C, escape) result(newS)
+    character(LEN=*), intent(in) :: S
+    character, intent(in) :: C
+    character, intent(in), optional :: escape
+    character(LEN=:), allocatable :: newS, esc
+    integer i
+    character, parameter :: backslash = char(92)
+
+    if (present(escape)) then
+        esc= escape
+    else
+        esc = backslash
+    end if
+    newS = ''
+    do i=1, len_trim(S)
+        if (S(i:i)==C) then
+            newS = newS //esc// C
+        else
+            newS = newS //S(i:i)
+        end if
+    end do
+
+    end function StringEscape
 
     function numcat(S, num)
     character(LEN=*) S
