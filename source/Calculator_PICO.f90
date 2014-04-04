@@ -131,6 +131,7 @@
 
     call fpico_compute_result(success)
     if (.not. success) call mpiStop('PICO failed to get result')
+    error = 0
     call PICO_GetOutputArray(Theory,1,1, "cl_TT")
     call PICO_GetOutputArray(Theory,2,1, "cl_TE")
     call PICO_GetOutputArray(Theory,2,2, "cl_EE")
