@@ -45,6 +45,10 @@ PRECISION ?=
 #set WMAP empty not to compile with WMAP, e.g. WMAP = /scratch/../WMAP9/likelihood_v5
 WMAP ?=
 
+#set PICO directory to build with pico support, e.g. PICO= ../../../pypico/pypico
+#should be able to get $(PICO)/fpico_interface.f90
+PICO ?=
+
 #Needed for WMAP; set from ~/.bashrc definition or edit here
 cfitsio ?=
 
@@ -108,7 +112,7 @@ F90FLAGS = $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
 LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 ifneq ($(PICO),)
-CALCFILES += $(OUTPUT_DIR)/Calculator_PICO.o
+CALCFILES += $(OUTPUT_DIR)/fpico_interface.o $(OUTPUT_DIR)/Calculator_PICO.o
 LINKFLAGS +=  $(shell python -c "import pypico; print pypico.get_link()")
 F90FLAGS += -DPICO $(shell python -c "import pypico; print pypico.get_include()")
 endif
@@ -230,7 +234,7 @@ $(OUTPUT_DIR)/supernovae_Union2.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_SNLS.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_JLA.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 
-$(OUTPUT_DIR)/Calculator_PICO.o: $(OUTPUT_DIR)/Calculator_CAMB.o
+$(OUTPUT_DIR)/Calculator_PICO.o: $(OUTPUT_DIR)/Calculator_CAMB.o $(OUTPUT_DIR)/fpico_interface.o
 
 
 ifneq ($(highL),)
@@ -256,18 +260,21 @@ directories:
 $(OUTPUT_DIR)/%.o: %.c
 	$(CC) $(GSLINC) -c $*.c -o $(OUTPUT_DIR)/$*.o
 
-$(OUTPUT_DIR)/%.o: %.f90
+$(OUTPUT_DIR)/%.o: %.f90 Makefile
 	$(F90C) $(F90FLAGS) -c $*.f90 -o $(OUTPUT_DIR)/$*.o
 
-$(OUTPUT_DIR)/%.o: %.F90
+$(OUTPUT_DIR)/%.o: %.F90 Makefile
 	$(F90C) $(F90FLAGS) -c $*.F90 -o $(OUTPUT_DIR)/$*.o
 
+$(OUTPUT_DIR)/fpico_interface.o: $(PICO)/fpico_interface.f90 Makefile
+	$(F90C) $(F90FLAGS) -c $(PICO)/fpico_interface.f90 -o $(OUTPUT_DIR)/fpico_interface.o
 
 cosmomc: directories camb $(OBJFILES)
 	$(F90C) -o ../cosmomc $(OBJFILES) $(LINKFLAGS) $(F90FLAGS)
 
 cosmomc_debug: directories camb $(OBJFILES)
 	$(F90C) -o ../cosmomc_debug $(OBJFILES) $(LINKFLAGS) $(F90FLAGS)
+
 
 clean: cleancosmomc
 	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod ../camb/libcamb_$(RECOMBINATION).a

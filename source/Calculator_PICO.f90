@@ -1,21 +1,16 @@
 #ifdef PICO
+
     module Calculator_PICO
     use CosmologyTypes
     use CosmoTheory
     use Calculator_CAMB
-    use CAMB, only : CAMB_GetResults, CAMB_GetAge, CAMBParams, CAMB_SetDefParams, &
-    AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, wa_ppf,&
-    CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Nonlinear_lens, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
-    CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, Transfer_SetForNonlinearLensing, &
-    initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
-    HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, &
-    Transfer_SortAndIndexRedshifts, & !JD added for nonlinear lensing of CMB + MPK compatibility
-    Recombination_Name, reionization_name, power_name, threadnum, version, lmin
+    use CAMB, only : CAMBParams_Set, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, lmin
     use Errors !CAMB
     use settings
     use likelihood
     use Calculator_Cosmology
     use GeneralTypes
+    use fpico
     implicit none
     private
 
@@ -57,10 +52,12 @@
     class(TCosmoTheoryPredictions) :: Theory
     integer i,j
     character(LEN=*) :: name
+    integer(fpint) lmax
 
-    if (CosmoSettings%cl_lmax(i,j)>0) &
-    & call fpico_read_output(name,Theory%Cls(i,j)%CL(lmin:),lmin,min(CosmoSettings%lmax_computed_cl,CosmoSettings%cl_lmax(i,j)))
-
+    if (CosmoSettings%cl_lmax(i,j)>0) then
+        lmax = min(CosmoSettings%lmax_computed_cl,CosmoSettings%cl_lmax(i,j))
+        call fpico_read_output(name,Theory%Cls(i,j)%CL(lmin:),lmin,lmax)
+    end if
     end subroutine PICO_GetOutputArray
 
     subroutine PICO_GetNewPowerData(this, CMB, Info, Theory, error)
@@ -72,8 +69,7 @@
     class(TCosmoTheoryPredictions) :: Theory
     integer error,i,j, lmaxCL,lmx
     type(CAMBParams) P
-    logical :: success
-    real(mcp) :: silviamassive
+    integer(fpint) :: success
     real(mcp) :: highL_norm = 0
     integer, save, allocatable :: indicesT(:,:)
 
@@ -188,7 +184,7 @@
     this%calcName ='PICO'
 
     call fpico_load(Ini%Read_String("pico_datafile"))
-    call fpico_set_verbose(Ini%Read_Logical("pico_verbose",.false.))
+    call fpico_set_verbose(int(IfThenElse(Ini%Read_Logical("pico_verbose",.false.),1,0),fpint))
 
     end subroutine PICO_ReadParams
 
