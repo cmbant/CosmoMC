@@ -105,7 +105,7 @@
 
     end subroutine ReadFiducialCl
 
-    subroutine MakeSystaticTemplates
+    subroutine CamSpec_MakeSystaticTemplates
     integer i, L
 
     allocate(wiggle_cl(CAMspec_lmax,camspec_nwiggles),source=0._campc)
@@ -116,7 +116,7 @@
         end do
     end do
 
-    end subroutine MakeSystaticTemplates
+    end subroutine CamSpec_MakeSystaticTemplates
 
     subroutine like_init(pre_marged,like_file, sz143_file, tszxcib_file, ksz_file, beam_file,data_vector)
     use MatrixUtils
@@ -238,7 +238,7 @@
     call CAMspec_ReadNormSZ(sz143_file, sz_143_temp)
     call CAMspec_ReadNormSZ(ksz_file, ksz_temp)
     call CAMspec_ReadNormSZ(tszxcib_file, tszxcib_temp)
-    call CAMBspec_MakeSystematicTemplates()
+    call CamSpec_MakeSystaticTemplates()
 
     open(48, file=beam_file, form='unformatted', status='unknown')
     read(48) beam_Nspec,num_modes_per_beam,beam_lmax
