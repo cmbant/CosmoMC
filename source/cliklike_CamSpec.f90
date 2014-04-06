@@ -50,6 +50,7 @@
     logical :: use_CAMspec, use_CAMpol
     logical :: use_highL
     logical :: pre_marged
+    integer i
 
     use_CAMspec = Ini%Read_Logical('use_CAMspec',.false.)
 
@@ -93,6 +94,17 @@
             tmp = Ini%Read_String('camspec_lmax')
             if (tmp/='') read(tmp,*) camspec_lmaxs
         end if
+        !Tests
+        call Ini%Read('camspec_nwiggles',camspec_nwiggles)
+        if (camspec_nwiggles>0) then
+            allocate(wiggle_centers(camspec_nwiggles))
+            allocate(wiggle_widths(camspec_nwiggles))
+            do i=1, camspec_nwiggles
+                wiggle_centers(i) = Ini%Read_Int_Array('camspec_wiggle_center',i)
+                wiggle_widths(i) = Ini%Read_Int_Array('camspec_wiggle_width',i)
+            end do
+        end if
+
         call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector)
     end if
 

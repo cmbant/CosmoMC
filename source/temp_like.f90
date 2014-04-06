@@ -33,16 +33,21 @@
     integer :: camspec_lmaxs(4) =0
     real(campc)  :: llp1(CAMSpec_lmax_foreground)
 
+    !paramters for systematics testing
+    integer :: camspec_nwiggles = 0
+    integer, allocatable :: wiggle_centers(:), wiggle_widths(:)
+    real(campc), allocatable :: wiggle_cl(:,:)
+
     integer :: camspec_beam_mcmc_num = 1
 
     character(LEN=1024) camspec_fiducial_foregrounds, camspec_fiducial_cl
     character(LEN=80) :: marge_file_variant = ''
 
-    character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v2'
+    character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v2_wig'
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num, &
     want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged, marge_file_variant,&
-    compute_fg, Nspec,CAMSpec_lmax_foreground,camspec_fiducial_foregrounds,camspec_fiducial_cl
-
+    compute_fg, Nspec,CAMSpec_lmax_foreground,camspec_fiducial_foregrounds,camspec_fiducial_cl,&
+    camspec_nwiggles, wiggle_centers, wiggle_widths
     contains
 
     !!Does not seem to be actually faster
@@ -99,6 +104,19 @@
     close(48)
 
     end subroutine ReadFiducialCl
+
+    subroutine MakeSystaticTemplates
+    integer i, L
+
+    allocate(wiggle_cl(CAMspec_lmax,camspec_nwiggles),source=0._campc)
+    if (camspec_nwiggles>2) stop 'add more wiggle parameters'
+    do i=1, camspec_nwiggles
+        do L=2, CAMspec_lmax
+            wiggle_cl(L,i) = exp(-(L-wiggle_centers(i))**2/real(2*wiggle_widths(i)**2,campc))/(L*(L+1))
+        end do
+    end do
+
+    end subroutine MakeSystaticTemplates
 
     subroutine like_init(pre_marged,like_file, sz143_file, tszxcib_file, ksz_file, beam_file,data_vector)
     use MatrixUtils
@@ -220,6 +238,7 @@
     call CAMspec_ReadNormSZ(sz143_file, sz_143_temp)
     call CAMspec_ReadNormSZ(ksz_file, ksz_temp)
     call CAMspec_ReadNormSZ(tszxcib_file, tszxcib_temp)
+    call CAMBspec_MakeSystematicTemplates()
 
     open(48, file=beam_file, form='unformatted', status='unknown')
     read(48) beam_Nspec,num_modes_per_beam,beam_lmax
@@ -333,7 +352,7 @@
     real(campc) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, asz143, r_ps, r_cib, xi, A_ksz
     real(campc) ncib217, ncib143
     real(campc) zCIB
-    integer:: l
+    integer:: l, i
     real(campc) cl_cib_143(CAMSpec_lmax_foreground), cl_cib_217(CAMSpec_lmax_foreground) !CIB
     real(campc), parameter :: sz_bandpass100_nom143 = 2.022d0
     real(campc), parameter :: cib_bandpass143_nom143 = 1.134d0
@@ -342,7 +361,7 @@
     real(campc), parameter :: ps_scale  = 1.d-6/9.d0
     real(campc) :: A_cib_217_bandpass, A_sz_143_bandpass, A_cib_143_bandpass
     integer lmin(Nspec), lmax(Nspec)
-    real(campc) lnrat, nrun_cib
+    real(campc) lnrat, nrun_cib, wigamp(2,2)
 
     if (lmax_compute/=0) then
         lmin = 2
@@ -365,6 +384,8 @@
     nrun_cib = freq_params(11)
     xi = freq_params(12)
     A_ksz = freq_params(13)
+    wigamp(:,1) = freq_params(14:15)
+    wigamp(:,2) = freq_params(16:17)
 
     do l=1, maxval(lmax)
         lnrat = log(real(l,campc)/CamSpec_cib_pivot)
@@ -408,6 +429,13 @@
         zCIB = sqrt(A_cib_143_bandpass*A_cib_217_bandpass*cl_cib_143(l)*cl_cib_217(l))
         C_foregrounds(l,4) = r_ps*sqrt(A_ps_143*A_ps_217)*ps_scale + &
         ( r_cib*zCIB + A_ksz*ksz_temp(l) -sqrt(A_cib_217_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )*llp1(l)
+    end do
+
+    do i=1,camspec_nwiggles
+        C_foregrounds(lmin(2):lmax(2),2)= C_foregrounds(lmin(2):lmax(2),2)+ wigamp(1,i)*wiggle_cl(lmin(2):lmax(2),i)
+        C_foregrounds(lmin(3):lmax(3),3)= C_foregrounds(lmin(3):lmax(3),3)+ wigamp(2,i)*wiggle_cl(lmin(3):lmax(3),i)
+        C_foregrounds(lmin(4):lmax(4),4)= C_foregrounds(lmin(4):lmax(4),4)+ &
+        & sqrt(wigamp(2,i)*wigamp(1,i))*wiggle_cl(lmin(4):lmax(4),i)
     end do
 
     end subroutine compute_fg
