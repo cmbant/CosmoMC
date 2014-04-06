@@ -468,11 +468,11 @@
 
     call compute_fg(C_foregrounds,freq_params, 0)
 
-    cal0 = freq_params(14)
-    cal1 = freq_params(15)
-    cal2 = freq_params(16)
+    cal0 = freq_params(18)
+    cal1 = freq_params(19)
+    cal2 = freq_params(20)
 
-    num_non_beam = 16
+    num_non_beam = 20
     if (size(freq_params) < num_non_beam +  beam_Nspec*num_modes_per_beam) stop 'CAMspec: not enough parameters'
 
     if (keep_num>0) then
