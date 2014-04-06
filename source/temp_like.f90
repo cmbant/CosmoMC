@@ -36,7 +36,7 @@
     !paramters for systematics testing
     integer :: camspec_nwiggles = 0
     integer, allocatable :: wiggle_centers(:), wiggle_widths(:)
-    real(campc), allocatable :: wiggle_cl(:,:), wiggle_corr(:)
+    real(campc), allocatable :: wiggle_cl(:,:)
 
     integer :: camspec_beam_mcmc_num = 1
 
@@ -361,7 +361,7 @@
     real(campc), parameter :: ps_scale  = 1.d-6/9.d0
     real(campc) :: A_cib_217_bandpass, A_sz_143_bandpass, A_cib_143_bandpass
     integer lmin(Nspec), lmax(Nspec)
-    real(campc) lnrat, nrun_cib, wigamp(2,2)
+    real(campc) lnrat, nrun_cib, wigamp(2,2),wiggle_corr(2)
 
     if (lmax_compute/=0) then
         lmin = 2
