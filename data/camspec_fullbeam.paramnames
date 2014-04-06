@@ -13,8 +13,10 @@ xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negati
 aksz          A^{kSZ}
 wig1_143      w^1_{143}
 wig1_217      w^1_{217}
+wig1_r        w^1_r
 wig2_143      w^2_{143}
 wig2_217      w^2_{217}
+wig3_r        w^2_r
 cal0          c_{100}       # relative power spectrum calibration factor 100/143 to rescale measured power with
 cal1          c_{143}       # calibration factor 143
 cal2          c_{217}       # relative calibration factor 217/143 (as for 100)

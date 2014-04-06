@@ -36,7 +36,7 @@
     !paramters for systematics testing
     integer :: camspec_nwiggles = 0
     integer, allocatable :: wiggle_centers(:), wiggle_widths(:)
-    real(campc), allocatable :: wiggle_cl(:,:)
+    real(campc), allocatable :: wiggle_cl(:,:), wiggle_corr(:)
 
     integer :: camspec_beam_mcmc_num = 1
 
@@ -385,7 +385,9 @@
     xi = freq_params(12)
     A_ksz = freq_params(13)
     wigamp(:,1) = freq_params(14:15)
-    wigamp(:,2) = freq_params(16:17)
+    wiggle_corr(1) = freq_params(16)
+    wigamp(:,2) = freq_params(17:18)
+    wiggle_corr(2) = freq_params(19)
 
     do l=1, maxval(lmax)
         lnrat = log(real(l,campc)/CamSpec_cib_pivot)
@@ -435,7 +437,7 @@
         C_foregrounds(lmin(2):lmax(2),2)= C_foregrounds(lmin(2):lmax(2),2)+ wigamp(1,i)*wiggle_cl(lmin(2):lmax(2),i)
         C_foregrounds(lmin(3):lmax(3),3)= C_foregrounds(lmin(3):lmax(3),3)+ wigamp(2,i)*wiggle_cl(lmin(3):lmax(3),i)
         C_foregrounds(lmin(4):lmax(4),4)= C_foregrounds(lmin(4):lmax(4),4)+ &
-        & sqrt(wigamp(2,i)*wigamp(1,i))*wiggle_cl(lmin(4):lmax(4),i)
+        & wiggle_corr(i)*sqrt(wigamp(2,i)*wigamp(1,i))*wiggle_cl(lmin(4):lmax(4),i)
     end do
 
     end subroutine compute_fg
@@ -468,11 +470,11 @@
 
     call compute_fg(C_foregrounds,freq_params, 0)
 
-    cal0 = freq_params(18)
-    cal1 = freq_params(19)
-    cal2 = freq_params(20)
+    cal0 = freq_params(20)
+    cal1 = freq_params(21)
+    cal2 = freq_params(22)
 
-    num_non_beam = 20
+    num_non_beam = 22
     if (size(freq_params) < num_non_beam +  beam_Nspec*num_modes_per_beam) stop 'CAMspec: not enough parameters'
 
     if (keep_num>0) then
