@@ -185,10 +185,14 @@
         derived(6) = Theory%Sigma_8
         derived(7) = CMB%zre
 
-        derived(8) = Theory%tensor_ratio_02
-        derived(9) = Theory%tensor_ratio_BB
-        derived(10) = log(Theory%tensor_AT*1e10)
-        derived(11) = Theory%tensor_ratio_C10
+        if (Theory%tensor_AT>0) then
+            derived(8) = Theory%tensor_ratio_02
+            derived(9) = Theory%tensor_ratio_BB
+            derived(10) = log(Theory%tensor_AT*1e10)
+            derived(11) = Theory%tensor_ratio_C10
+        else
+            derived(8:11)=0
+        end if
 
         derived(12) = cl_norm*CMB%InitPower(As_index)*1e9
         derived(13) = Theory%tensor_AT*1e9

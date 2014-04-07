@@ -167,8 +167,8 @@
         if (NamesOrig%index(Names2%name(i))==-1) then
             n=n+1
         else
-            if (.not. PresentDefault(.false., check_duplicates)) &
-            & call MpiStop('ParamNames_Add: Duplicate name tag'//trim(Names2%name(i)))
+            if (PresentDefault(.false., check_duplicates)) &
+            & call MpiStop('ParamNames_Add: Duplicate name tag - '//trim(Names2%name(i)))
         end if
     end do
     if (n==0) return
