@@ -777,14 +777,18 @@
         P%InitPower%n_runrun(ix) = CMB%InitPower(nrunrun_index)
 
         if (CosmoSettings%inflation_consistency) then
-            if (CMB%InitPower(nt_index)/=0) call MpiStop('Error: inflation_consistency but n_t not set to zero')
-            P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8
-            !note input n_T is ignored, so should be fixed 
-            !note, only using first-order consistency relation
+            if (CMB%InitPower(nt_index)/=0 .or. CMB%InitPower(ntrun_index)/=0) &
+            & call MpiStop('Error: inflation_consistency but n_t not set to zero')
+            ! first-order consistency relation
+            !P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8
+            !next order consistency relation
+            P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8*(2-CMB%InitPower(ns_index) - CMB%InitPower(amp_ratio_index)/8)
+            P%InitPower%nt_run(ix) =CMB%InitPower(amp_ratio_index)/8*(CMB%InitPower(amp_ratio_index)/8 + CMB%InitPower(ns_index) - 1)
+            !note input n_T, nt run is ignored, so should be fixed 
         else
             P%InitPower%ant(ix) = CMB%InitPower(nt_index)
+            P%InitPower%nt_run(ix) = CMB%InitPower(ntrun_index)
         end if
-        P%InitPower%nt_run(ix) = CMB%InitPower(ntrun_index)
     else
         stop 'CAMB_Calculator:Wrong initial power spectrum'
     end if

@@ -136,11 +136,13 @@ When you run with MPI (compiled with -DMPI, the default), a number of chains wil
 <BLOCKQUOTE>
 <B>mpirun -np 4 ./cosmomc params.ini</B>
 </BLOCKQUOTE>
-There is also a supplied perl script runMPI.pl that you may be able to adapt for submitting jobs to a PBS queue, e.g.
+There is also a supplied script python/runMPI.py that you may be able to adapt for submitting jobs to a job queue, e.g.
 <BLOCKQUOTE>
-  <B>perl runMPI.pl params 4</B>
+  <B>python python/runMPI.py params</B>
 </BLOCKQUOTE>
- to run 4 chains over four nodes using the params.ini parameters file (the script is set up by default for the CITA cluster - edit ppn=2 to the number of CPUs per node you have). A couple of runMPI.pl variations are also supplied (specifically for a couple of Cambridge computers, but may be generally adaptable).<BR><BR>
+ to run using the params.ini parameters file. Run runMPI.py without arguments to see a list of options (number of chains, cores, wall time, etc).
+ If necessary edit the <b>job_script</b> file as appropriate for your machine, and also if necessary the <b>submitJob</b> function in <b>python/jobQueue.py</b>.
+ <BR><BR>
  In the parameters file you can set <B>MPI_Converge_Stop</B> to a convergence criterion (see <A HREF="#Convergence">Convergence Diagnostics</A>. Small numbers are better convergence; generally need R-1 < 0.1, but may want much smaller especially for importance sampling or accurate confidence limits. You can also directly impose an error limit on confidence values - see the parameter input file for details). If you set <B>MPI_LearnPropose</B> = T, the proposal density will be updated using the covariance matrix of the last half of all samples (across chains) so far. <BR><BR>
 Using MPI_LearnPropose will significantly improve performance if you are adding new parameters for which you don't have a pre-computed covariance matrix. However adjusting the proposal density is not strictly Markovian, though asymptotically it is as the covariance will converge. The burn in period should therefore be taken to be larger when learning the proposal density to allow for the time it takes the covariance matrix to converge sufficiently (though in practice it probably doesn't matter much in most cases). Note also that as the proposal density changes the number of steps between independent samples is not constant (i.e. the correlation length should decrease along the chain until the covariance has converged). The stopping criterion uses the last half of the samples in each chain, minus a (shortish) initial burn in period. If you don't have a starting covariance matrix a fairly safe thing to do is set <B>ignore_rows=0.3</B> in the <A HREF="#Analysing">GetDist</A> parameter file to skip the first chunk of each chain. <BR><BR>
 You can also set the <B>MPI_R_StopProposeUpdate</B> parameter to stop updating the proposal density after it has converged to R-1 smaller than a specified number. After this point the chain will be strictly Markovian. The number of burn in rows can be calculated by looking at the params.log file for the number of output lines at which R-1 has reached the required value.
@@ -165,7 +167,7 @@ as the <B>param[paramname]</B> variables for each parameter, of the form
 <pre>
  param[paramname] = center min max start_width propose_width
 </pre>
-The <em>start_width</em> entry determines the randomly chosen dispersion of the starting position about the given <i>centre</i>, and should  be as large or larger than the posterior (for the convergence diagnostic to be reliable, chains should start at widely separated points). Chains are restricted to stay within the bounds determined by <i>min</i> and <i>max</i>.
+The <em>start_width</em> entry determines the randomly chosen dispersion of the starting position about the given <i>centre</i>, and should  be as large or larger than the posterior (for the convergence diagnostic to be reliable, chains should start at widely separated points). Chains are restricted to stay within the bounds determined by <i>min</i> and <i>max</i>. If the parameter is not to be varied in your run, you can just specify the fixed value.
 <p>
  The sampler proposes changes in parameters using a proposal density function with a width determined by <i>propose_width</i> (multiplied by the value of the global <B>propose_scale</B> parameter).  The <em>propose_width</em> should be of the order of the conditional posterior width (i.e. the expected error in that parameter when other parameters are fixed). If you specify a <b>propose_matrix</b>
 (approximate covariance matrix for the parameters), the
@@ -507,10 +509,10 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <UL>
 <LI><B>April 2014</B><BR>
 <UL>
-<LI>Chains include "derived parameters" giving the &chi;<sup>2</sup> [-2Ln(Likelioood)] for each likelihood used, and where more than one of a given type, the sum for each type (e.g. CMB, BAO).
-<LI>CAMB update to April 2014 version; cosmomc support added for running of running (<b>nrunrun</b>) and running tensor tilt (<b>ntrun</b>).
+<LI>CAMB update to April 2014 version; cosmomc support added for running of running (<b>nrunrun</b>) and running tensor tilt (<b>ntrun</b>). Using <b>inflation_consistency</b> now uses second order consistency relations for nt and ntrun.
 <LI>Added tensor pivot parameter <b>tensor_pivot_k</b> to specify pivot scale for r independently of the scalar pivot scale. This uses the new CAMB tensor parameterization (tensor_parameterization=2) so that A<sub>t</sub>&nbsp;=&nbsp;P<sub>t</sub>(tensor_pivot_k) = r P<sub>s</sub>(tensor_pivot_k) for any scalar pivot, tilt and running.
 <LI>Re-ordered derived parameters, and added new tensor derived parameters r<sub>0.01</sub> (<b>rBB</b>), log(10<sup>10</sup>A<sub>t</sub>) (<b>logAT</b>), and 10<sup>9</sup>A<sub>t</sub> (<b>AT</b>),  10<sup>9</sup> A<sub>t</sub> e<sup>-2&tau;</sup> (<b>ctlamp</b>)
+<LI>Chains include "derived parameters" giving the &chi;<sup>2</sup> [-2Ln(Likelioood)] for each likelihood used, and where more than one of a given type, the sum for each type (e.g. CMB, BAO).
 <LI>Added partial support for <A HREF="https://pypi.python.org/pypi/pypico">PICO</A> calculator (<b>cosmology_calculator = PICO</b> in .ini file); only CL and some parameters supported
 <LI>GetDist has new optional second parameter to specify file_root, e,g <I>getdist distparams.ini chains/test</i>
 </UL>
