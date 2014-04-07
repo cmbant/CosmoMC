@@ -3,12 +3,14 @@
     use GeneralTypes
     use BaseParameters
     use MatrixUtils
+    use MiscUtils
     implicit none
     private
 
     Type, extends(TConfigClass) :: TLikeCalculator
         real(mcp) :: Temperature =1
         logical :: test_likelihood= .false.
+        logical :: timing = .false.
         real(mcp), allocatable :: test_cov_matrix(:,:)
     contains
     procedure :: AddLike
@@ -294,6 +296,7 @@
     class(TDataLikelihood), pointer :: like => null()
     integer i
     logical :: do_like(DataLikelihoods%count)
+    Type(TTimer) Timer
 
     if (present(likelihood_Mask)) then
         do_like = likelihood_mask
@@ -301,14 +304,15 @@
         do_like = .true.
     end if
     logLike = logZero
-    call this%GetTheoryForLike(like) !chance to initalize
+    call this%GetTheoryForLike(null()) !chance to initalize
     do i= 1, DataLikelihoods%count
         if (do_like(i)) then
             like => DataLikelihoods%Item(i)
             if (any(like%dependent_params(1:num_params) .and. this%changeMask(1:num_params) )) then
                 call this%GetTheoryForLike(like)
+                if (this%timing) call Timer%Start
                 itemLike = like%GetLogLike(this%TheoryParams, this%Params%Theory, this%Params%P(like%nuisance_indices))
-
+                if (this%timing) call Timer%WriteTime('Time for '//trim(like%name))
                 if (itemLike == logZero) return
                 this%Params%Likelihoods(i) = itemLike
             end if

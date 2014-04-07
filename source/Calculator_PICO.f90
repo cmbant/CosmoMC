@@ -179,12 +179,11 @@
     subroutine PICO_ReadParams(this,Ini)
     class(PICO_Calculator) :: this
     class(TSettingIni) :: Ini
-    integer(fpint) :: f=0
-
+    
     call this%CAMB_Calculator%ReadParams(Ini)
     this%calcName ='PICO'
 
-    call fpico_init(f)
+    call fpico_init(1_fpint)
     call fpico_load(Ini%Read_String("pico_datafile"))
     call fpico_set_verbose(int(IfThenElse(Ini%Read_Logical("pico_verbose",.false.),1,0),fpint))
 

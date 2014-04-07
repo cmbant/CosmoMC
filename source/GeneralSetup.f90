@@ -148,14 +148,16 @@
     ! - e.g. for likelihood testing between versions, etc.
     class(TSetup) :: this
     Type(ParamSet) :: Params
-    real(mcp) :: logLike, time
+    real(mcp) :: logLike
+    Type(TTimer) Timer
 
-    time = TimerTime()
+    call Timer%Start()
     Params%P(:num_params) = BaseParams%Center(:num_params)
+    this%LikeCalculator%timing = .true.
     logLike = this%LikeCalculator%GetLogLike(Params)
     if (Feedback <=2) call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%likelihoods)
     write(*,*) 'Test likelihoods done, total logLike = '//RealToStr(logLike)
-    write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(TimerTime()-time)
+    write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(Timer%Time())
     call DoStop()
 
     end subroutine TSetup_DoTests

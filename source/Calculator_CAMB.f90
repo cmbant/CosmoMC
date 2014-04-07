@@ -783,7 +783,8 @@
             !P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8
             !next order consistency relation
             P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8*(2-CMB%InitPower(ns_index) - CMB%InitPower(amp_ratio_index)/8)
-            P%InitPower%nt_run(ix) =CMB%InitPower(amp_ratio_index)/8*(CMB%InitPower(amp_ratio_index)/8 + CMB%InitPower(ns_index) - 1)
+            P%InitPower%nt_run(ix) = CMB%InitPower(amp_ratio_index)/8* &
+            & (CMB%InitPower(amp_ratio_index)/8 + CMB%InitPower(ns_index) - 1)
             !note input n_T, nt run is ignored, so should be fixed 
         else
             P%InitPower%ant(ix) = CMB%InitPower(nt_index)

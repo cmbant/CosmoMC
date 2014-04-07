@@ -9,7 +9,57 @@
     module procedure IfThenElse_S, IfThenElse_L, IfThenElse_I, IfThenElse_R, IfThenElse_D
     END INTERFACE IfThenElse
 
+    integer, parameter :: TTimer_dp = Kind(1.d0)
+    Type TTimer
+        real(TTimer_dp) start_time
     contains
+    procedure Start => TTimer_Start
+    procedure Time => TTimer_Time
+    procedure WriteTime => TTimer_WriteTime    
+    end type TTimer
+
+    contains
+
+    function TimerTime()
+    real(TTimer_dp) time
+    real(TTimer_dp) :: TimerTime
+#ifdef MPI
+    TimerTime = MPI_WTime()
+#else
+    call cpu_time(time)
+    TimerTime=  time
+#endif
+    end function TimerTime
+
+    subroutine TTimer_Start(this)
+    class(TTimer) :: this
+    this%start_time = TimerTime()
+    end subroutine TTimer_Start
+
+    real(TTimer_dp) function TTimer_Time(this)
+    class(TTimer) :: this
+    TTimer_Time =  TimerTime() - this%start_time
+    end function TTimer_Time
+
+    subroutine TTimer_WriteTime(this,Msg, start)
+    class(TTimer) :: this
+    character(LEN=*), intent(in), optional :: Msg
+    real(TTimer_dp), optional :: start
+    real(TTimer_dp) T
+
+    if (present(start)) then
+        T=start
+    else
+        T=this%start_time
+    end if
+
+    if (present(Msg)) then
+        write (*,*) trim(Msg)//': ', TimerTime() - T
+    end if
+    if (.not. present(start)) this%start_time = TimerTime()
+
+    end subroutine TTimer_WriteTime
+
 
     function PresentDefault_S(default, S) result(Sout)
     character(LEN=*), intent(in), target :: default
