@@ -416,8 +416,8 @@
     end do
 
     do i=1,2
-        if (any(freq_params(f_ix:f_ix+4)/=0)) then
-            wigamp = freq_params(f_ix:f_ix+1)
+        wigamp = freq_params(f_ix:f_ix+1)
+        if (any(wigamp/=0)) then
             wiggle_corr = freq_params(f_ix+2)
             wiggle_center = freq_params(f_ix+3)
             wiggle_width = freq_params(f_ix+4)
