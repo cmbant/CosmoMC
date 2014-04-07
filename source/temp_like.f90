@@ -35,8 +35,6 @@
 
     !paramters for systematics testing
     integer :: camspec_nwiggles = 0
-    integer, allocatable :: wiggle_centers(:), wiggle_widths(:)
-    real(campc), allocatable :: wiggle_cl(:,:)
 
     integer :: camspec_beam_mcmc_num = 1
 
@@ -46,8 +44,7 @@
     character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v2_wig'
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num, &
     want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged, marge_file_variant,&
-    compute_fg, Nspec,CAMSpec_lmax_foreground,camspec_fiducial_foregrounds,camspec_fiducial_cl,&
-    camspec_nwiggles, wiggle_centers, wiggle_widths
+    compute_fg, Nspec,CAMSpec_lmax_foreground,camspec_fiducial_foregrounds,camspec_fiducial_cl
     contains
 
     !!Does not seem to be actually faster
@@ -104,19 +101,6 @@
     close(48)
 
     end subroutine ReadFiducialCl
-
-    subroutine CamSpec_MakeSystaticTemplates
-    integer i, L
-
-    allocate(wiggle_cl(CAMspec_lmax,camspec_nwiggles),source=0._campc)
-    if (camspec_nwiggles>2) stop 'add more wiggle parameters'
-    do i=1, camspec_nwiggles
-        do L=2, CAMspec_lmax
-            wiggle_cl(L,i) = exp(-(L-wiggle_centers(i))**2/real(2*wiggle_widths(i)**2,campc))/(L*(L+1))
-        end do
-    end do
-
-    end subroutine CamSpec_MakeSystaticTemplates
 
     subroutine like_init(pre_marged,like_file, sz143_file, tszxcib_file, ksz_file, beam_file,data_vector)
     use MatrixUtils
@@ -238,7 +222,6 @@
     call CAMspec_ReadNormSZ(sz143_file, sz_143_temp)
     call CAMspec_ReadNormSZ(ksz_file, ksz_temp)
     call CAMspec_ReadNormSZ(tszxcib_file, tszxcib_temp)
-    call CamSpec_MakeSystaticTemplates()
 
     open(48, file=beam_file, form='unformatted', status='unknown')
     read(48) beam_Nspec,num_modes_per_beam,beam_lmax
@@ -361,7 +344,9 @@
     real(campc), parameter :: ps_scale  = 1.d-6/9.d0
     real(campc) :: A_cib_217_bandpass, A_sz_143_bandpass, A_cib_143_bandpass
     integer lmin(Nspec), lmax(Nspec)
-    real(campc) lnrat, nrun_cib, wigamp(2,2),wiggle_corr(2)
+    real(campc) lnrat, nrun_cib
+    real(campc) wigamp(2), wiggle_corr, wiggle_center, wiggle_width, wiggle_cl(CAMspec_lmax)
+    integer f_ix
 
     if (lmax_compute/=0) then
         lmin = 2
@@ -384,10 +369,7 @@
     nrun_cib = freq_params(11)
     xi = freq_params(12)
     A_ksz = freq_params(13)
-    wigamp(:,1) = freq_params(14:15)
-    wiggle_corr(1) = freq_params(16)
-    wigamp(:,2) = freq_params(17:18)
-    wiggle_corr(2) = freq_params(19)
+    f_ix = 14
 
     do l=1, maxval(lmax)
         lnrat = log(real(l,campc)/CamSpec_cib_pivot)
@@ -433,11 +415,23 @@
         ( r_cib*zCIB + A_ksz*ksz_temp(l) -sqrt(A_cib_217_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )*llp1(l)
     end do
 
-    do i=1,camspec_nwiggles
-        C_foregrounds(lmin(2):lmax(2),2)= C_foregrounds(lmin(2):lmax(2),2)+ wigamp(1,i)*wiggle_cl(lmin(2):lmax(2),i)
-        C_foregrounds(lmin(3):lmax(3),3)= C_foregrounds(lmin(3):lmax(3),3)+ wigamp(2,i)*wiggle_cl(lmin(3):lmax(3),i)
-        C_foregrounds(lmin(4):lmax(4),4)= C_foregrounds(lmin(4):lmax(4),4)+ &
-        & wiggle_corr(i)*sqrt(wigamp(2,i)*wigamp(1,i))*wiggle_cl(lmin(4):lmax(4),i)
+    do i=1,2
+        if (any(freq_params(f_ix:f_ix+4)/=0)) then
+            wigamp = freq_params(f_ix:f_ix+1)
+            wiggle_corr = freq_params(f_ix+2)
+            wiggle_center = freq_params(f_ix+3)
+            wiggle_width = freq_params(f_ix+4)
+            wiggle_cl=0
+            do L= nint(wiggle_center) - nint(3*wiggle_width),nint(wiggle_center) + nint(3*wiggle_width)
+                wiggle_cl(L) = exp(-(L-wiggle_center)**2/real(2*wiggle_width**2,campc))/(L*(L+1))
+            end do
+
+            C_foregrounds(lmin(2):lmax(2),2)= C_foregrounds(lmin(2):lmax(2),2)+ wigamp(1)*wiggle_cl(lmin(2):lmax(2))
+            C_foregrounds(lmin(3):lmax(3),3)= C_foregrounds(lmin(3):lmax(3),3)+ wigamp(2)*wiggle_cl(lmin(3):lmax(3))
+            C_foregrounds(lmin(4):lmax(4),4)= C_foregrounds(lmin(4):lmax(4),4)+ &
+            & wiggle_corr*sqrt(wigamp(2)*wigamp(1))*wiggle_cl(lmin(4):lmax(4))
+        end if
+        f_ix = f_ix + 5
     end do
 
     end subroutine compute_fg
@@ -470,11 +464,11 @@
 
     call compute_fg(C_foregrounds,freq_params, 0)
 
-    cal0 = freq_params(20)
-    cal1 = freq_params(21)
-    cal2 = freq_params(22)
+    cal0 = freq_params(24)
+    cal1 = freq_params(25)
+    cal2 = freq_params(26)
 
-    num_non_beam = 22
+    num_non_beam = 26
     if (size(freq_params) < num_non_beam +  beam_Nspec*num_modes_per_beam) stop 'CAMspec: not enough parameters'
 
     if (keep_num>0) then
