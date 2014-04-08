@@ -59,10 +59,12 @@
     logical function Cosmo_CalculateRequiredTheoryChanges(this)
     class(TCosmoLikeCalculator) :: this
     integer error
+    Type(TTimer) :: Timer
 
     this%SlowChanged = any(this%changeMask(1:num_hard))
     this%SemiSlowchanged = any(this%changeMask(index_initpower:index_initpower+num_initpower-1))
     error=0
+    if (this%timing) call Timer%Start
 
     select type (Theory=>this%Params%Theory)
     class is (TCosmoTheoryPredictions)
@@ -83,6 +85,8 @@
             end if
         end select
     end select
+
+    if (this%timing) call Timer%WriteTime('Time for theory')
 
     this%Params%validInfo = .true.
     Cosmo_CalculateRequiredTheoryChanges = error==0

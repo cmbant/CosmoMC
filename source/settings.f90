@@ -264,18 +264,6 @@
 
     end subroutine CheckParamChange
 
-
-    function TimerTime()
-    real(mcp) time
-    real(time_dp) :: TimerTime
-#ifdef MPI
-    TimerTime = MPI_WTime()
-#else
-    call cpu_time(time)
-    TimerTime=  time
-#endif
-    end function TimerTime
-
     subroutine Timer(Msg, start)
     character(LEN=*), intent(in), optional :: Msg
     real(time_dp), save :: timer_start
