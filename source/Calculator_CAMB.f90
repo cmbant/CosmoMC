@@ -145,7 +145,7 @@
     Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
     do i=1, noutputs
         Theory%derived_parameters(nthermo_derived+(i-1)*3+1) = BackgroundOutputs%rs_by_D_v(i)
-        Theory%derived_parameters(nthermo_derived+(i-1)*3+2) = BackgroundOutputs%H(i)
+        Theory%derived_parameters(nthermo_derived+(i-1)*3+2) = BackgroundOutputs%H(i)*const_c/1e3_mcp
         Theory%derived_parameters(nthermo_derived+(i-1)*3+3) = BackgroundOutputs%DA(i)
     end do
     end subroutine CAMBCalc_SetDerived
@@ -785,7 +785,7 @@
             P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8*(2-CMB%InitPower(ns_index) - CMB%InitPower(amp_ratio_index)/8)
             P%InitPower%nt_run(ix) = CMB%InitPower(amp_ratio_index)/8* &
             & (CMB%InitPower(amp_ratio_index)/8 + CMB%InitPower(ns_index) - 1)
-            !note input n_T, nt run is ignored, so should be fixed 
+            !note input n_T, nt run is ignored, so should be fixed
         else
             P%InitPower%ant(ix) = CMB%InitPower(nt_index)
             P%InitPower%nt_run(ix) = CMB%InitPower(ntrun_index)
