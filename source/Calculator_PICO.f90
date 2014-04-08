@@ -86,6 +86,13 @@
     call CAMBParams_Set(P)
     call this%SetBackgroundTheoryData(CMB,Theory,error)
 
+    if (p%InitPower%n_runrun(1)/=0 .or. p%InitPower%nt_run(1)/=0 .or. p%tensor_spectral_index(1)/=0) &
+    & call MpiStop('PICO: currently unsupported initial power parameter')
+
+    if (CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
+        call MpiStop('PICO: currently no MPK or sigma8')
+    end if
+
     call fpico_reset_params()
     call fpico_set_param("ombh2", CMB%ombh2)
     call fpico_set_param("omch2", CMB%omch2)
@@ -102,7 +109,6 @@
     !!!Check what's going on with neutrinos
     call fpico_set_param("massive_neutrinos", p%Num_Nu_massless+p%Num_Nu_massive)
     call fpico_set_param("scalar_spectral_index(1)",p%InitPower%an(1))
-    ! call fpico_set_param("tensor_spectral_index(1)",p%InitPower%ant(1))
     call fpico_set_param("scalar_nrun(1)",p%InitPower%n_run(1))
     call fpico_set_param("initial_ratio(1)",p%InitPower%rat(1))
     call fpico_set_param("scalar_amp(1)",p%InitPower%ScalarPowerAmp(1))
@@ -110,9 +116,6 @@
     call fpico_set_param("pivot_tensor",p%InitPower%k_0_tensor)
     call fpico_set_param("re_optical_depth",CMB%tau)
     call fpico_set_param("force",1.d0)
-
-    if (p%InitPower%n_runrun(1)/=0 .or. p%InitPower%nt_run(1)/=0) &
-    & call MpiStop('PICO: unsupposed initial power parameter')
 
     call fpico_reset_requested_outputs()
     if (P%WantCls) then
@@ -150,11 +153,6 @@
         end do
     end do
 
-    !redshifts are in increasing order, so last index is redshift zero
-    if (CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
-        call MpiStop('No MPK or sigma8 with PICO')
-    end if
-
     end subroutine PICO_GetNewPowerData
 
     subroutine PICO_GetTheoryForImportance(this, CMB, Theory, error)
@@ -180,7 +178,7 @@
     subroutine PICO_ReadParams(this,Ini)
     class(PICO_Calculator) :: this
     class(TSettingIni) :: Ini
-    
+
     call this%CAMB_Calculator%ReadParams(Ini)
     this%calcName ='PICO'
 
