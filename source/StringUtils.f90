@@ -192,7 +192,12 @@
         if (present(figs)) then
             SingleToStr = tmp(1:figs)
         else
-            SingleToStr = tmp(1:6)
+            if (abs(R)>10000) then
+                write(tmp,*) R
+                SingleToStr =  trim(adjustl(tmp))
+            else
+                SingleToStr = tmp(1:6)
+            end if
         end if
     else
         if (present(figs)) then
