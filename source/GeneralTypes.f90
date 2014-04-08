@@ -56,7 +56,7 @@
     procedure :: Clear => TTheoryPredictions_Clear
     procedure :: WriteTheory
     procedure :: ReadTheory
-    procedure :: WriteBestFitData
+    procedure :: WriteTextData
     end Type TTheoryPredictions
 
     Type, extends(TConfigClass) :: TTheoryCalculator
@@ -391,10 +391,10 @@
     class(TFileStream) :: F
     end subroutine ReadTheory
 
-    subroutine WriteBestFitData(this,fnameroot)
+    subroutine WriteTextData(this,fnameroot)
     class(TTheoryPredictions) this
     character(LEN=*), intent(in) :: fnameroot
-    end subroutine WriteBestFitData
+    end subroutine WriteTextData
 
 
     !!TGeneralConfig
