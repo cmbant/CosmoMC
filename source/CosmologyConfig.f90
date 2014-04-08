@@ -44,10 +44,10 @@
 #ifdef PICO
         allocate(PICO_Calculator::this%Calculator)
 #else
-        call MpiStop('Compile with -DPICO to use PICO calculator')
+        call MpiStop('Compile with -DPICO to use PICO calculator (e.g. make cosmomc PICO=/path/to/pic/pypico)')
 #endif
     else
-        call MpiStop('Calculator not supported')
+        call MpiStop('Calculator not supported: ' //CalcName)
     end if
     call this%Calculator%InitWithParams(Ini,this)
 
