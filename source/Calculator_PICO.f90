@@ -107,6 +107,7 @@
     call fpico_set_param("initial_ratio(1)",p%InitPower%rat(1))
     call fpico_set_param("scalar_amp(1)",p%InitPower%ScalarPowerAmp(1))
     call fpico_set_param("pivot_scalar",p%InitPower%k_0_scalar)
+    call fpico_set_param("pivot_tensor",p%InitPower%k_0_tensor)
     call fpico_set_param("re_optical_depth",CMB%tau)
     call fpico_set_param("force",1.d0)
 
