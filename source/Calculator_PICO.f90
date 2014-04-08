@@ -86,7 +86,7 @@
     call CAMBParams_Set(P)
     call this%SetBackgroundTheoryData(CMB,Theory,error)
 
-    if (p%InitPower%n_runrun(1)/=0 .or. p%InitPower%nt_run(1)/=0 .or. p%InitPower%tensor_spectral_index(1)/=0) &
+    if (p%InitPower%n_runrun(1)/=0 .or. p%InitPower%nt_run(1)/=0 .or. p%InitPower%ant(1)/=0) &
     & call MpiStop('PICO: currently unsupported initial power parameter')
 
     if (CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
