@@ -15,8 +15,13 @@ cd ##ROOTDIR##
 . /etc/profile.d/modules.sh
 module purge
 module load default-impi
+
+#cfitsio is only needed for WMAP
 module load cfitsio
 
+#for PICO runs also need python (check path also set correctly)
+#not needed otherwise
+module load python/2.7.3
 
 echo Running on host `hostname`
 echo Time is `date`
