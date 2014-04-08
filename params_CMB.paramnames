@@ -49,6 +49,6 @@ kd*           k_D
 thetad*       \theta_D
 zeq*          z_{\rm{eq}}
 thetaeq*      \theta_{\rm{eq}}
-rsDv057*       r_{\rm{drag}}/D_V(0.57) 
-H057*          H(0.57) 
+rsDv057*       r_{\rm{drag}}/D_V(0.57)
+Hubble057*     H(0.57) #now in km/s/Mpc
 DA057*         D_A(0.57)

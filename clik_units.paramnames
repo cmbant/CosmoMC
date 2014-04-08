@@ -102,7 +102,7 @@ kd*           k_{\mathrm{D}}
 thetad*       100\theta_{\mathrm{D}}
 zeq*          z_{\mathrm{eq}}
 thetaeq*      100\theta_{\mathrm{eq}}
-rsDv057*       r_{\mathrm{drag}}/D_{\mathrm{V}}(0.57) 
-H057*          H(0.57) 
+rsDv057*       r_{\mathrm{drag}}/D_{\mathrm{V}}(0.57)
+Hubble057*     H(0.57)
 DA057*         D_{\mathrm{A}}(0.57)
 cef           \alpha/\alpha_0

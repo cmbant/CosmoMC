@@ -31,12 +31,12 @@
         !Make these multiples of 50, should be 50 more than you need accurately
         integer :: lmax = 0
         integer :: num_cls = 0
-        integer :: lmax_tensor = 600 
+        integer :: lmax_tensor = 600
         !note only lmax_computed_cl is actually calculated
         integer :: lmax_computed_cl = 4500 !Never compute primordial above this, just fit
         integer :: lmin_computed_cl = 2000 !if cl needed, calculate to at least this
 
-        !redshifts for output of BAO_dv background parameters
+        !redshifts for output of BAO background parameters
         real(mcp) :: z_outputs(1) = [0.57_mcp]
 
         logical :: CMB_lensing = .true.

@@ -103,8 +103,8 @@
     procedure :: IntegerArrItem => TIntegerArrayList_Item
     generic :: Item => Value, IntegerArrItem
     end Type TIntegerArrayList
-    
-    
+
+
     Type, extends(TOwnedIntrinsicList) :: TStringList
     contains
     procedure :: CharAt => TStringList_CharAt
