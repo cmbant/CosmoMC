@@ -39,7 +39,7 @@
     !Inherited overrides
     procedure :: WriteTheory => TCosmoTheoryPredictions_WriteTheory
     procedure :: ReadTheory => TCosmoTheoryPredictions_ReadTheory
-    procedure :: WriteBestFitData => TCosmoTheoryPredictions_WriteBestFitData
+    procedure :: WriteTextData => TCosmoTheoryPredictions_WriteTextData
     end Type TCosmoTheoryPredictions
 
     public TCosmoTheoryPredictions, TCosmoTheoryPK
@@ -287,12 +287,12 @@
 
     end subroutine TCosmoTheoryPredictions_ReadTheory
 
-    subroutine TCosmoTheoryPredictions_WriteBestFitData(this,fnameroot)
+    subroutine TCosmoTheoryPredictions_WriteTextData(this,fnameroot)
     class(TCosmoTheoryPredictions) this
     character(LEN=*), intent(in) :: fnameroot
 
-    if (CosmoSettings%use_CMB) call this%WriteTextCls(fnameroot //'.bestfit_cl')
+    if (CosmoSettings%use_CMB) call this%WriteTextCls(fnameroot //'.theory_cl')
 
-    end subroutine TCosmoTheoryPredictions_WriteBestFitData
+    end subroutine TCosmoTheoryPredictions_WriteTextData
 
     end module CosmoTheory

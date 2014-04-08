@@ -12,7 +12,7 @@
     implicit none
 
     character(LEN=:), allocatable :: LogFileName,  numstr, fname, rootdir
-    character(LEN=:), allocatable :: InputFile
+    character(LEN=:), allocatable :: InputFile, test_output_root
     Type(TSettingIni) :: Ini
     integer  i
     Type(ParamSet) Params !, EstParams
@@ -108,6 +108,8 @@
         checkpoint = Ini%Read_Logical('checkpoint',.false.)
         flush_write =  Ini%Read_Logical('flush_write',checkpoint)
         start_at_bestfit= Ini%read_logical('start_at_bestfit',.false.)
+    else if (Setup%action==action_tests) then
+        test_output_root = Ini%Read_String('test_output_root')
     end if
 
     new_chains = .true.
@@ -214,7 +216,7 @@
                 call Minimizer%WriteBestFitParams(bestfit_loglike,Params, baseroot//'.minimum')
                 if (allocated(Params%Theory)) then
                     call DataLikelihoods%WriteDataForLikelihoods(Params%P, Params%Theory, baseroot)
-                    call Params%Theory%WriteBestFitData(baseroot)
+                    call Params%Theory%WriteTextData(baseroot//'.bestfit_cl')
                 end if
                 if (Setup%action==action_maxlike) call DoStop('Wrote the minimum to file '//baseroot//'.minimum')
             else
@@ -259,7 +261,7 @@
         call Setup%ImportanceSampler%ImportanceSample(rootname)
         call DoStop('Postprocesing done',.false.)
     else if (Setup%action == action_tests) then
-        call Setup%DoTests()
+        call Setup%DoTests(test_output_root)
     else
         call DoAbort('undefined action')
     end if

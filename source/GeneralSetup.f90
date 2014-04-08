@@ -143,10 +143,11 @@
 
     end subroutine TSetup_DoSampling
 
-    subroutine TSetup_DoTests(this)
+    subroutine TSetup_DoTests(this, output_root)
     !This runs likelihoods for fixed central values of parameters and outputs the likelihoods
     ! - e.g. for likelihood testing between versions, etc.
     class(TSetup) :: this
+    character(LEN=*) :: output_root
     Type(ParamSet) :: Params
     real(mcp) :: logLike
     Type(TTimer) Timer
@@ -159,6 +160,10 @@
     if (Feedback <=2) call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%likelihoods)
     write(*,*) 'Test likelihoods done, total logLike = '//RealToStr(logLike)//', chi-sq = '//RealToStr(logLike*2)
     write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(Timer%Time())
+    if (allocated(Params%Theory) .and. output_root/='') then
+        call DataLikelihoods%WriteDataForLikelihoods(Params%P, Params%Theory, output_root)
+        call Params%Theory%WriteTextData(output_root)
+    end if
     call DoStop()
 
     end subroutine TSetup_DoTests
