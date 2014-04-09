@@ -82,6 +82,8 @@ for jobItem in batch.items(wantSubItems=False):
         ini.params['file_root'] = jobItem.chainRoot
 
         covmat = batch.basePath + 'planck_covmats/' + jobItem.name + '.covmat'
+        if not os.path.exists(covmat):
+            if hasattr(settings, 'covmat'): covmat = batch.basePath + settings.covmat
         if os.path.exists(covmat):
             ini.params['propose_matrix'] = covmat
             if settings.newCovmats: ini.params['MPI_Max_R_ProposeUpdate'] = 20
