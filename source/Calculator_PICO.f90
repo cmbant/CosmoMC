@@ -54,10 +54,13 @@
     character(LEN=*) :: name
     integer(fpint) lmax
 
-    if (CosmoSettings%cl_lmax(i,j)>0) then
-        lmax = min(CosmoSettings%lmax_computed_cl,CosmoSettings%cl_lmax(i,j))
-        call fpico_read_output(name,Theory%Cls(i,j)%CL(lmin:),lmin,lmax)
+    if (i<= size(CosmoSettings%cl_lmax)) then
+        if (CosmoSettings%cl_lmax(i,j)>0) then
+            lmax = min(CosmoSettings%lmax_computed_cl,CosmoSettings%cl_lmax(i,j))
+            call fpico_read_output(name,Theory%Cls(i,j)%CL(lmin:),lmin,lmax)
+        end if
     end if
+
     end subroutine PICO_GetOutputArray
 
     subroutine PICO_GetNewPowerData(this, CMB, Info, Theory, error)
