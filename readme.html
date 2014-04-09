@@ -514,9 +514,9 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <LI>Re-ordered derived parameters, and added new tensor derived parameters r<sub>0.01</sub> (<b>rBB</b>), log(10<sup>10</sup>A<sub>t</sub>) (<b>logAT</b>), and 10<sup>9</sup>A<sub>t</sub> (<b>AT</b>),  10<sup>9</sup> A<sub>t</sub> e<sup>-2&tau;</sup> (<b>ctlamp</b>)
 <LI>Chains include "derived parameters" giving the &chi;<sup>2</sup> [-2Ln(Likelioood)] for each likelihood used, and where more than one of a given type, the sum for each type (e.g. CMB, BAO).
 <LI>Added partial support for <A HREF="https://pypi.python.org/pypi/pypico">PICO</A> calculator (<b>cosmology_calculator = PICO</b> in .ini file, test_pico.ini example provided); only CL and some parameters supported
-<LI>GetDist has new optional second parameter to specify file_root, e,g <I>getdist distparams.ini chains/test</i>
 <LI>Output derived parameter H(z) in now in standard km/s/Mpc units
-<LI>action=4 now outputs timings for each likelihood (only for first time run, so does not account for any caching)
+<LI>action=4 now outputs timings for each likelihood (only for first time run, so does not account for any caching); new <b>test_output_root</b> puts out the theory CL (+ any derived likelihood data) at the test point
+<LI>GetDist has new optional second parameter to specify file_root, e,g <I>getdist distparams.ini chains/test</i>
 </UL>
 
 <LI><B>March 2014</B><BR>

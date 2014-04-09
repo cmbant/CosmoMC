@@ -686,7 +686,7 @@
             ix=1
             atype => LikelihoodTypes%Item(i)
             do j=1, L%Count
-                Like => L%Item(i)
+                Like => L%Item(j)
                 if (Like%LikelihoodType == atype) then
                     indices(ix) = j
                     ix = ix +1
