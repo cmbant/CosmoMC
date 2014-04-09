@@ -1,37 +1,41 @@
-# take CAMB file (e.g. test_lensedCls.dat') and produce dataset with given noise for testing
+# take CAMB file (e.g. test_lensedCls.dat) and produce dataset with given noise for testing
+# Use in cosmomc .ini file using e.g.
+# cmb_dataset[MyForecast]=data/MyForecast/test_lensedCls_exactsim.dataset
+
 from numpy import *
 import iniFile
 import shutil
 import sys, os
 
 
-
-# # Edit parameters you want to change here
-
+# Edit parameters you want to change here
 
 root = r'test_lensedCls'
 
 lensedTotClFileRoot = r'c:\work\dist\git\camb\test_lensedCls'
-reconNoise = 'reconNoise.dat'
-lensPotential = 'flatLCDM_lenspotentialCls.dat'
+outDir = 'z:\\data\\'
+
 fwhm_arcmin = 7.
 # Noise var is N_l in muK^2 for white noise
 NoiseVar = 2e-4
-ENoiseFac = 2
+# Pol noise var = ENoiseFac * NoiseVar
+ENoiseFac = 4
 lmin = 2
 lmax = 2000
 fsky = 1
 
 DoLensing = False
+# if including an idealised lensing reconstruction
+reconNoise = 'reconNoise.dat'
+lensPotential = 'flatLCDM_lenspotentialCls.dat'
 
 
-outDir = 'z:\\data\\'
 # os.path.dirname(sys.path[0])+'/data/'
 ini = iniFile.iniFile()
 dataset = ini.params
 
 # change this if you don't want to use all pol
-dataset['fields_use'] = 'T E B'
+dataset['fields_use'] = 'T E'
 
 
 # #Now produce the Planck_like files
@@ -44,8 +48,7 @@ outRoot = root + '_exactsim'
 NoiseOut = []
 for l in range(lmax + 1):
     NoiseCl = l * (l + 1) / 2 / pi * NoiseVar * exp(l * (l + 1) * sigma2)
-    NoiseO
-    ut.append([NoiseCl, ENoiseFac * NoiseCl, ENoiseFac * NoiseCl])
+    NoiseOut.append([NoiseCl, ENoiseFac * NoiseCl, ENoiseFac * NoiseCl])
 
 
 outfile = open(outDir + outRoot + '_Noise.dat', 'w')
@@ -55,12 +58,14 @@ outfile.close()
 
 dataset['fullsky_exact_fksy'] = fsky
 dataset['name'] = outRoot
-dataset['dataset_format'] = 'CMBLike'
-dataset['like_approx'] = 3
-
+dataset['dataset_format'] = 'CMBLike2'
+dataset['like_approx'] = 'exact'
 
 dataset['cl_lmin'] = lmin
 dataset['cl_lmax'] = lmax
+
+dataset['binned'] = False
+
 
 dataset['cl_hat_includes_noise'] = False
 

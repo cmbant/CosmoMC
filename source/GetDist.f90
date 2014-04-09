@@ -1777,6 +1777,7 @@
     character(LEN=:), allocatable :: filename, infile, out_root
     character(LEN=120) matlab_col, InS1,InS2,fmt
     integer plot_row, plot_col, chain_num, first_chain,chain_ix, plot_num
+    integer, parameter :: ReadAllChainsNum = 1024
 
     integer x,y,j,j2, i2, num_2D_plots, num_cust2D_plots
     integer num_3D_plots
@@ -1843,7 +1844,8 @@
     in_root = GetParam(2)
     if (in_root=='') in_root = Ini%Read_String('file_root', notFoundFail=.true.)
     rootname = File%ExtractName(in_root)
-    chain_num = Ini%Read_Int('chain_num')
+    chain_num = Ini%Read_Int('chain_num',-1) !-1 means keep reading until one not found
+    if (chain_num==-1) chain_num=ReadAllChainsNum
 
     single_column_chain_files = Ini%Read_Logical( 'single_column_chain_files',.false.)
     prior_ranges = 0
@@ -2212,6 +2214,10 @@
             if (.not. IO_ReadChainRows(in_root, chain_ix, chain_num, int(ignorerows),nrows,ncols,max_rows, &
             coldata,samples_are_chains)) then
                 num_chains_used = num_chains_used - 1
+                if (chain_num==ReadAllChainsNum) then
+                    chain_num = chain_ix-1
+                    exit
+                end if
                 cycle
             endif
         end if

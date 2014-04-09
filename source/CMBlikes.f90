@@ -1,7 +1,7 @@
     !Pseudo-Cl (or other C_l esimator) based likelihood approximation for cut sky with polarization
     !AL Mar 2010 - fixed bug using on E, added support for multiple input simulated Chat for bias testing
     !Apr 2011, added fullsky_exact_fksy
-    !Mar 2014  renaned from Planck_like, removed low-L likelihood to separate file
+    !Mar 2014  renamed from Planck_like, removed low-L likelihood to separate file
     !Updated file structure, allows for binned HL likelihoods. Everything now in L(L+1)CL/2pi
 
     module CMBLikes
