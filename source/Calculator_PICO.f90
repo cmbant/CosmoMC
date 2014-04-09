@@ -54,11 +54,9 @@
     character(LEN=*) :: name
     integer(fpint) lmax
 
-    if (i<= size(CosmoSettings%cl_lmax)) then
-        if (CosmoSettings%cl_lmax(i,j)>0) then
-            lmax = min(CosmoSettings%lmax_computed_cl,CosmoSettings%cl_lmax(i,j))
-            call fpico_read_output(name,Theory%Cls(i,j)%CL(lmin:),lmin,lmax)
-        end if
+    if (CosmoSettings%cl_lmax(i,j)>0) then
+        lmax = min(CosmoSettings%lmax_computed_cl,CosmoSettings%cl_lmax(i,j))
+        call fpico_read_output(name,Theory%Cls(i,j)%CL(lmin:),lmin,lmax)
     end if
 
     end subroutine PICO_GetOutputArray
@@ -123,22 +121,28 @@
     call fpico_reset_requested_outputs()
     if (P%WantCls) then
         call fpico_request_output("cl_TT")
-        call fpico_request_output("cl_TE")
-        call fpico_request_output("cl_EE")
-        call fpico_request_output("cl_BB")
-        if (P%WantTransfer) then
-            call fpico_request_output("k")
-            call fpico_request_output("pk")
+        if (CosmoSettings%num_cls>1) then
+            call fpico_request_output("cl_TE")
+            call fpico_request_output("cl_EE")
+            if (CosmoSettings%num_cls)>2) call fpico_request_output("cl_BB")
         end if
+    end if
+    if (P%WantTransfer) then
+        call fpico_request_output("k")
+        call fpico_request_output("pk")
     end if
 
     call fpico_compute_result(success)
     if (.not. success) call mpiStop('PICO failed to get result')
     error = 0
-    call PICO_GetOutputArray(Theory,1,1, "cl_TT")
-    call PICO_GetOutputArray(Theory,2,1, "cl_TE")
-    call PICO_GetOutputArray(Theory,2,2, "cl_EE")
-    call PICO_GetOutputArray(Theory,3,3, "cl_BB")
+    if (P%WantCls) then
+        call PICO_GetOutputArray(Theory,1,1, "cl_TT")
+        if (CosmoSettings%num_cls>1) then
+            call PICO_GetOutputArray(Theory,2,1, "cl_TE")
+            call PICO_GetOutputArray(Theory,2,2, "cl_EE")
+            if (CosmoSettings%num_cls>2) call PICO_GetOutputArray(Theory,3,3, "cl_BB")
+        end if
+    end if
 
     do i=1, min(3,CosmoSettings%num_cls)
         do j= i, 1, -1
