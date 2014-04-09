@@ -33,6 +33,20 @@
 
     end function GetParam
 
+    function GetEnvironmentVariable(name) result(value)
+    character(LEN=*), intent(in) :: name
+    character(LEN=:), allocatable :: value
+    integer L, status
+
+    call get_environment_variable(name, length=L, status=status)
+    if (status==0) then
+        allocate(character(L)::value)
+        call get_environment_variable(name, value, status=status)
+    end if
+    if (status/=0) value=''
+
+    end function GetEnvironmentVariable
+
     function StringStarts(S, substring, index) result(OK)
     character(LEN=*), intent(in) :: S, substring
     integer, intent(in), optional :: index
