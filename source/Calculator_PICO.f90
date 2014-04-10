@@ -124,7 +124,7 @@
         if (CosmoSettings%num_cls>1) then
             call fpico_request_output("cl_TE")
             call fpico_request_output("cl_EE")
-            if (CosmoSettings%num_cls)>2) call fpico_request_output("cl_BB")
+            if (CosmoSettings%num_cls>2) call fpico_request_output("cl_BB")
         end if
     end if
     if (P%WantTransfer) then
