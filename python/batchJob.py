@@ -28,6 +28,14 @@ class dataSet:
         self.params = params  # can be an array of items, either ini file name or dictionaries of parameters
         self.tag = "_".join(self.names)
 
+    def add(self, name, params):
+        if params is None: params = [name + '.ini']
+        else: params = self.standardizeParams(params)
+        self.params = params + self.params  # can be an array of items, either ini file name or dictionaries of parameters
+        if name is not None:
+            self.names = [name] + self.names
+            self.tag = "_".join(self.names)
+
     def extendForImportance(self, names, params):
         data = copy.deepcopy(self)
         data.tag += '_post_' + "_".join(names)
@@ -45,6 +53,13 @@ class dataSet:
 
     def hasName(self, name):
         return name in self.names
+
+class jobGroup:
+    def __init__(self, name, params=[[]], importanceRuns=[], datasets=[]):
+            self.params = params
+            self.groupName = name
+            self.importanceRuns = importanceRuns
+            self.datasets = datasets
 
 
 class jobItem:
