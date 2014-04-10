@@ -29,8 +29,8 @@ class dataSet:
         self.tag = "_".join(self.names)
 
     def add(self, name, params):
-        if params is None: params = [name + '.ini']
-        else: params = self.standardizeParams(params)
+        if params is None: params = [name]
+        params = self.standardizeParams(params)
         self.params = params + self.params  # can be an array of items, either ini file name or dictionaries of parameters
         if name is not None:
             self.names = [name] + self.names
