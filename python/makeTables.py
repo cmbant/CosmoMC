@@ -1,4 +1,4 @@
-import os, batchJobArgs, ResultObjs, paramNames, planckStyle
+import os, batchJobArgs, ResultObjs, paramNames, planckStyle, copy
 
 
 Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True, converge=True)
@@ -9,6 +9,8 @@ Opts.parser.add_argument('--all_limits', action='store_true')
 Opts.parser.add_argument('--bestfitonly', action='store_true')
 Opts.parser.add_argument('--nobestfit', action='store_true')
 Opts.parser.add_argument('--no_delta_chisq', action='store_true')
+Opts.parser.add_argument('--delta_chisq_paramtag', default=None)
+Opts.parser.add_argument('--changes_from_datatag', default=None)
 
 # this is just for the latex labelsm set None to use those in chain .paramnames
 Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')
@@ -16,13 +18,13 @@ Opts.parser.add_argument('--paramList', default=None)
 Opts.parser.add_argument('--blockEndParams', default=None)
 Opts.parser.add_argument('--columns', type=int, nargs=1, default=3)
 Opts.parser.add_argument('--compare', nargs='+', default=None)
+
 Opts.parser.add_argument('--titles', default=None)  # for compare plots
 Opts.parser.add_argument('--forpaper', action='store_true')
 Opts.parser.add_argument('--separate_tex', action='store_true')
 Opts.parser.add_argument('--header_tex', default=None)
 Opts.parser.add_argument('--height', default="9in")
-Opts.parser.add_argument('--width', default="10in")
-
+Opts.parser.add_argument('--width', default="11in")
 
 (batch, args) = Opts.parseForBatch()
 
@@ -36,11 +38,16 @@ else: formatter = None
 def texEscapeText(string):
     return string.replace('_', '{\\textunderscore}')
 
-def getTableLines(content):
+def getTableLines(content, referenceDataJobItem=None):
+    if referenceDataJobItem is not None: refResults = referenceDataJobItem.result_marge
+    else: refResults = None
     return ResultObjs.resultTable(args.columns, [content], blockEndParams=args.blockEndParams,
-                         formatter=formatter, paramList=args.paramList, limit=args.limit).lines
+                         formatter=formatter, paramList=args.paramList, limit=args.limit, refResults=refResults).lines
 
-def paramResultTable(jobItem, referenceJobItem=None):
+def paramResultTable(jobItem, referenceJobItem=None, referenceDataJobItem=None):
+    if referenceJobItem is not None and referenceJobItem.name == jobItem.name: referenceJobItem = None
+    if referenceDataJobItem is not None and referenceDataJobItem.normed_data == jobItem.normed_data:
+        referenceDataJobItem = None
     tableLines = []
     caption = []
     jobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=not args.nobestfit, bestfitonly=args.bestfitonly)
@@ -63,7 +70,7 @@ def paramResultTable(jobItem, referenceJobItem=None):
                         delta = likeMarge.meanLogLike - likeMarge_ref.meanLogLike
                         caption.append('$\\Delta\\bar{\\chi}^2_{\\rm eff} = ' + ('%.2f' % (delta * 2)) + '$')
         if jobItem.result_converge is not None: caption.append('$R-1 =' + jobItem.result_converge.worstR() + '$')
-        if jobItem.result_marge is not None: tableLines += getTableLines(jobItem.result_marge)
+        if jobItem.result_marge is not None: tableLines += getTableLines(jobItem.result_marge, referenceDataJobItem)
     tableLines.append('')
     if not args.forpaper: tableLines.append("; ".join(caption))
     if not bf is None and not args.forpaper:
@@ -97,6 +104,17 @@ if args.all_limits:
     limits = [1, 2, 3]
 else: limits = [args.limit]
 
+baseJobItems = dict()
+for paramtag, parambatch in items:
+    isBase = len(parambatch[0].param_set) == 0
+    for jobItem in parambatch:
+        if (args.delta_chisq_paramtag is None and isBase and not args.no_delta_chis or
+            args.delta_chisq_paramtag is not None and jobItem.paramtag == args.delta_chisq_paramtag):
+                referenceJobItem = copy.deepcopy(jobItem)
+                referenceJobItem.loadJobItemResults(paramNameFile=args.paramNameFile)
+                print jobItem.normed_data, jobItem.paramtag
+                baseJobItems[jobItem.normed_data] = referenceJobItem
+
 
 for limit in limits:
     args.limit = limit
@@ -118,7 +136,6 @@ for limit in limits:
         lines.append('\\tableofcontents')
 
     # set of baseline results, e.g. for Delta chi^2
-    baseJobItems = dict()
 
     for paramtag, parambatch in items:
         isBase = len(parambatch[0].param_set) == 0
@@ -135,14 +152,20 @@ for limit in limits:
             else: print 'no matches for compare: ' + paramtag
         else:
             lines.append(section)
-            for jobItem in parambatch:
-                if (os.path.exists(jobItem.distPath) or args.bestfitonly) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
+            theseItems = [jobItem for jobItem in parambatch
+                if (os.path.exists(jobItem.distPath) or args.bestfitonly) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge))]
+
+            referenceDataJobItem = None
+            for jobItem in theseItems:
+                if args.changes_from_datatag is not None:
+                    if jobItem.normed_data == args.changes_from_datatag or jobItem.datatag == args.changes_from_datatag:
+                        referenceDataJobItem = copy.deepcopy(jobItem)
+                        referenceDataJobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=args.bestfitonly)
+
+            for jobItem in theseItems:
                     if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
-                    if isBase and not args.no_delta_chisq:
-                        baseJobItems[jobItem.normed_data] = jobItem
-                        referenceJobItem = None
-                    else: referenceJobItem = baseJobItems.get(jobItem.normed_data, None)
-                    tableLines = paramResultTable(jobItem, referenceJobItem)
+                    referenceJobItem = baseJobItems.get(jobItem.normed_data, None)
+                    tableLines = paramResultTable(jobItem, referenceJobItem, referenceDataJobItem)
                     if args.separate_tex: ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
                     lines += tableLines
 

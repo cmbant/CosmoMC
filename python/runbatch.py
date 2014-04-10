@@ -6,9 +6,6 @@ Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', 
 jobQueue.addArguments(Opts.parser)
 
 Opts.parser.add_argument('--combineOneJobName', default=None)
-
-# Opts.parser.add_argument('--script', default='runMPI_HPCS.pl')
-
 Opts.parser.add_argument('--subitems', action='store_true')
 Opts.parser.add_argument('--minimize', action='store_true')
 Opts.parser.add_argument('--importance_minimize', action='store_true')

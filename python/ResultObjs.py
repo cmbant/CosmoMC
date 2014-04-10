@@ -195,7 +195,8 @@ class noLineTableFormatter(openTableFormatter):
 
 class resultTable():
 
-    def __init__(self, ncol, results, limit=2, tableParamNames=None, titles=None, formatter=None, numFormatter=None, blockEndParams=None, paramList=None):
+    def __init__(self, ncol, results, limit=2, tableParamNames=None, titles=None, formatter=None,
+                 numFormatter=None, blockEndParams=None, paramList=None, refResults=None):
 # results is a margeStats or bestFit table
         self.lines = []
         if formatter is None: self.format = noLineTableFormatter()
@@ -212,6 +213,7 @@ class resultTable():
         self.colsPerResult = len(results[0].getColumnLabels(limit))
         self.colsPerParam = len(results) * self.colsPerResult
         self.limit = limit
+        self.refResults = refResults
 
         nparams = self.tableParamNames.numParams()
         numrow = nparams / ncol
@@ -276,7 +278,7 @@ class resultTable():
         return self.format.colSeparator.join(self.paramResultTex(result, param) for result in self.results)
 
     def paramResultTex(self, result, p):
-        values = result.texValues(self.format, p, self.limit)
+        values = result.texValues(self.format, p, self.limit, self.refResults)
         if values is not None:
             if len(values) > 1: txt = self.format.textAsColumn(values[1], True, separator=True)
             else: txt = ''
@@ -358,7 +360,7 @@ class bestFit(paramResults):
         return None
 
 
-    def texValues(self, formatter, p, limit=None):
+    def texValues(self, formatter, p, limit=None, refResults=None):
         param = self.parWithName(p.name)
         if param is not None: return [formatter.numberFormatter.formatNumber(param.best_fit)]
         else: return None
@@ -411,7 +413,7 @@ class margeStats(paramResults):
             number_string = number_string.split(".")[0]
         return res + [number_string + '\\% limits']
 
-    def texValues(self, formatter, p, limit=2):
+    def texValues(self, formatter, p, limit=2, refResults=None):
         if not isinstance(p, paramNames.paramInfo): param = self.parWithName(p)
         else: param = self.parWithName(p.name)
         if not param is None:
@@ -420,7 +422,7 @@ class margeStats(paramResults):
             if lim.twotail:
                 if not formatter.numberFormatter.plusMinusLimit(limit, lim.upper - param.mean, lim.lower - param.mean):
                     res, plus_str, _ = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err, wantSign=False)
-                    res += '\pm ' + plus_str
+                    res += r'\pm ' + plus_str
                 else:
                     res, plus_str, minus_str = formatter.numberFormatter.namesigFigs(param.mean, lim.upper - param.mean, lim.lower - param.mean)
                     res += '^{' + plus_str + '}_{' + minus_str + '}'
@@ -429,6 +431,11 @@ class margeStats(paramResults):
             elif lim.onetail_lower:
                 res = '> ' + formatter.numberFormatter.formatNumber(lim.lower, sf)
             else: res = formatter.noConstraint
+            if refResults is not None and res != formatter.noConstraint:
+                refVal = refResults.parWithName(param.name)
+                if refVal is not None:
+                    delta = (param.mean - refVal.mean) / refVal.err
+                    res += '\quad(%+.1f \\sigma)' % (delta)
             if self.hasBestFit:  # add best fit too
                 rangew = (lim.upper - lim.lower) / 10
                 bestfit = formatter.numberFormatter.namesigFigs(param.best_fit, rangew, -rangew)[0]
