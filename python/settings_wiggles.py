@@ -9,11 +9,13 @@ importanceDefaults = ['importance_sampling.ini']
 Camspec = 'CAMspec_defaults.ini'
 # dataset names
 tauprior = {'prior[tau]':'0.06 0.02'}
+WMAPtau = {'prior[tau]':'0.09 0.013'}
+
 no217auto = {'want_spec':'T T F T'}
 freecal = {'prior[cal0]':' 1 0.05', 'prior[cal2]':'1 0.05'}
 
 
-planck_vars = ['pico.ini', 'nonclik_v85F.ini', Camspec, 'lowl.ini', tauprior, {'indep_sample':0} ]
+planck_vars = ['pico.ini', 'nonclik_v85F.ini', Camspec, 'lowl.ini', {'indep_sample':0} ]
 
 wig1800_217 = {'param[wig2_217]':'0 -50 50 3 3'}
 wig1800_143 = {'param[wig2_143]':'0 -50 50 3 3'}
@@ -34,34 +36,31 @@ covmat = 'planck_covmats/base_planck_lowl_lowLike.covmat'
 start_at_bestfit = False
 newCovmats = True
 
-# set up groups of parameters and data sets
-class group:pass
-
 groups = []
 
-g = group()
+g = batchJob.jobGroup('main')
+g.datasets = copy.deepcopy(datasets)
+for d in g.datasets:
+    d.add(None, tauprior)
+
+groups.append(g)
+
+g = batchJob.jobGroup('freecal')
+g.datasets = copy.deepcopy(datasets)
+for d in g.datasets:
+    d.add(None, tauprior)
+    d.add('freecal', freecal)
+
+groups.append(g)
+
+g = batchJob.jobGroup('WMAPtau')
+g.datasets = copy.deepcopy(datasets)
+for d in g.datasets:
+    d.add('WMAPtau', WMAPtau)
+    d.addFirst('freecal', freecal)
 # sets of parameters to vary in addition to baseline
-g.params = [[]]
 
-# lists of dataset names to combine, with corresponding sets of inis to include
-g.datasets = datasets
-
-g.importanceRuns = []
-g.groupName = 'main'
 groups.append(g)
 
 
-g = group()
-datasets = copy.deepcopy(datasets)
-for d in datasets:
-    d.names = ['freecal'] + set.names
-    d.params = [freecal] + set.params
-# sets of parameters to vary in addition to baseline
-g.params = [[]]
 
-# lists of dataset names to combine, with corresponding sets of inis to include
-g.datasets = datasets
-
-g.importanceRuns = []
-g.groupName = 'freecal'
-groups.append(g)
