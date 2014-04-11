@@ -143,17 +143,18 @@
 
     end subroutine TSetup_DoSampling
 
-    subroutine TSetup_DoTests(this, output_root)
+    subroutine TSetup_DoTests(this, output_root, paramsvals)
     !This runs likelihoods for fixed central values of parameters and outputs the likelihoods
     ! - e.g. for likelihood testing between versions, etc.
     class(TSetup) :: this
     character(LEN=*) :: output_root
+    real(mcp), intent(in) :: paramsvals(:)
     Type(ParamSet) :: Params
     real(mcp) :: logLike
     Type(TTimer) Timer
 
     call Timer%Start()
-    Params%P(:num_params) = BaseParams%Center(:num_params)
+    Params%P(:num_params) = paramsvals(:num_params)
     this%LikeCalculator%timing = .true.
     logLike = this%LikeCalculator%GetLogLike(Params)
     write(*,*) '   loglike     chi-sq'

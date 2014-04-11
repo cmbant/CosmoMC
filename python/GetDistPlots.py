@@ -686,14 +686,29 @@ class GetDistPlotter():
         self.last_scatter = scatter(pts[:, cols[0]], pts[:, cols[1]], edgecolors='none',
                 s=self.settings.scatter_size, c=pts[:, cols[2]], cmap=self.settings.colormap_scatter)
         if color_bar: self.last_colorbar = self.add_colorbar(params[2])
+        mins = [min(pts[:, cols[0]]),min(pts[:, cols[1]])]
+        maxs = [max(pts[:, cols[0]]),max(pts[:, cols[1]])]
+        for i in range(2):
+            r=maxs[i]-mins[i]
+            mins[i] -= r/20
+            maxs[i] += r/20
+       
+        return [mins, maxs]
 
     def plot_3d(self, roots, in_params, color_bar=True, line_offset=0, filled=False, **ax_args):
         if isinstance(roots, basestring):roots = [roots]
         params = self.get_param_array(roots[0], in_params)
         if self.fig is None: self.make_figure()
-        self.add_3d_scatter(roots[0], params, color_bar=color_bar)
+        mins, maxs = self.add_3d_scatter(roots[0], params, color_bar=color_bar)
         for i, root in enumerate(roots[1:]):
-            self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled, add_legend_proxy=False)
+            res = self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled, add_legend_proxy=False)
+            if res is None: continue
+            mins = min(res[0], mins)
+            maxs = max(res[1], maxs)
+        if not 'lims' in ax_args:
+            lim1 = self.checkBounds(roots[0], params[0].name , mins[0], maxs[0])
+            lim2 = self.checkBounds(roots[0], params[1].name , mins[1], maxs[1])
+            ax_args['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]
         self.setAxes(params, **ax_args)
 
     def plots_3d(self, roots, param_sets, nx=None, filled_compare=False, legend_labels=None):
