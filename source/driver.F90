@@ -208,19 +208,17 @@
 
     if (allocated(Minimizer)) then
         !New Powell 2009 minimization, AL Sept 2012, update Sept 2013
-        if (Setup%action /= action_MCMC .and. MPIchains>1 .and. .not. Minimizer%uses_MPI) call DoAbort( &
-        'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
+        if (Setup%action /= action_MCMC .and. MPIchains>1 .and. .not. Minimizer%uses_MPI) &
+        & call DoAbort('Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
         if (MpiRank==0) write(*,*) 'finding best fit point...'
         if (minimizer%uses_MPI .or. MpiRank==0) then
             bestfit_loglike = Minimizer%FindBestFit(Params,is_best_bestfit)
             if (is_best_bestfit) then
                 if (bestfit_loglike==logZero) write(*,*) MpiRank,'WARNING: FindBestFit did not converge'
                 if (Feedback >0) write(*,*) 'Best-fit results: '
-                call Minimizer%WriteBestFitParams(bestfit_loglike,Params, baseroot//'.minimum')
-                if (allocated(Params%Theory)) then
-                    call DataLikelihoods%WriteDataForLikelihoods(Params%P, Params%Theory, baseroot)
-                    call Params%Theory%WriteTextData(baseroot//'.bestfit_cl')
-                end if
+                call Minimizer%LikeCalculator%WriteParamsHumanText(baseroot//'.minimum', Params, bestfit_loglike)
+                if (Feedback>0) call Minimizer%LikeCalculator%WriteParamsHumanText(stdout,Params, bestfit_loglike)
+                call Minimizer%LikeCalculator%WriteParamPointTextData(baseroot//'.minimum', Params)
                 if (Setup%action==action_maxlike) call DoStop('Wrote the minimum to file '//baseroot//'.minimum')
             else
                 if (Setup%action==action_maxlike) call DoStop()

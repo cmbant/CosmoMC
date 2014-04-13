@@ -296,11 +296,11 @@
                     maxz = max(maxz,DataLike%max_z)
                     if(num_range >2 .and. maxz>0) then
                         dlnz = min(dlnz,log(DataLike%max_z+1)/(num_range-1))
-                    else if(num_range<3 .and. maxz > 0)then
-                        write(*,'("ERROR: ",A," dataset: ",A, "wants less than 3 redshifts")')&
+                    else if(num_range<2 .and. maxz > 0)then
+                        write(*,'("ERROR: ",A," dataset: ",A, "wants less than 2 redshifts")')&
                         trim(DataLike%LikelihoodType),trim(DataLike%name)
                         write(*,'("       but wants a maximum redshift of ",F7.2,". A minimum ")')maxz
-                        write(*,*)"       of 3 redshifts is required or PowerAtZ will fail."
+                        write(*,*)"       of 2 redshifts is required or PowerAtZ will fail."
                         write(*,*)"       Check dataset settings!"
                         call Mpistop()
                     else if(num_range>1 .and. maxz==0.)then
@@ -350,6 +350,10 @@
     end do
 
     if(full_z%Item(full_z%Count)< maxz) call full_z%Add(maxz)
+    !JD added line below to fix interpolation bug when only z=0 is desired
+    !since 2D interpolator requires at least 2 data points in each interpolation direction
+    !ie k & z.  (Thanks to Tijmen de Haan for spotting the bug).
+    if(full_z%Count<2) call full_z%Add(0.1d0)
 
     this%num_power_redshifts = full_z%Count
     allocate(this%power_redshifts(this%num_power_redshifts))

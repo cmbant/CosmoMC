@@ -32,6 +32,9 @@
         !Redo from text files if .data files not available
 
         logical :: redo_no_new_data  = .false. !true to make no new .data files to save space
+
+        logical ::  redo_output_txt_theory = .false. !output theory data as text for each point (e.g. for rainbow plots)
+        character(LEN=:), allocatable :: redo_output_txt_root
     contains
     procedure :: ReadParams => TImportanceSampler_ReadParams
     procedure :: Init => TImportanceSampler_Init
@@ -61,6 +64,7 @@
     call Ini%Read('redo_no_new_data',this%redo_no_new_data)
     call Ini%Read('redo_skip',this%redo_skip)
     call Ini%Read('redo_thin',this%redo_thin,min=1)
+    call Ini%Read('redo_output_txt_theory',this%redo_output_txt_theory)
 
     if (this%redo_from_text .and. (this%redo_add .or. this%redo_like_name/='')) &
     call Mpistop('redo_new_likes requires .data files, not from text')
@@ -68,12 +72,13 @@
     if (this%redo_from_text  .and. this%redo_skip>0.d0 .and. this%redo_skip<1) &
     call Mpistop('redo_from_text currently requires redo_skip==0 or redo_skip>=1')
 
-    !    txt_theory = Ini%Read_Logical('txt_theory',.false.)
+    if (this%redo_thin>1) write(*,*) 'WARNING: redo thin is for testing, does not to correct weighted thinning'
 
     if (this%redo_outroot == '') then
-        this%redo_outroot = trim(File%ExtractPath(baseroot))//'post_' &
-        // trim(File%ExtractName(baseroot))
+        this%redo_outroot =  File%ExtractPath(baseroot)//'post_'//File%ExtractName(baseroot)
     end if
+    if (this%redo_output_txt_theory) this%redo_output_txt_root = Ini%Read_String('redo_output_txt_dir')
+
 
     end subroutine TImportanceSampler_ReadParams
 
@@ -99,7 +104,7 @@
     real(mcp) weight_min, weight_max, mult_sum, mult_ratio, mult_max,weight
     real(mcp) max_like, max_truelike
     integer error,num, debug
-    character (LEN=:), allocatable :: post_root
+    character (LEN=:), allocatable :: post_root, data_point_txt_root
     integer i
     Type (ParamSet) :: Params
     logical :: has_likes(DataLikelihoods%Count)
@@ -148,12 +153,12 @@
     post_root = this%redo_outroot
 
     if (MpiRank==0 .and.BaseParams%NameMapping%nnames/=0) then
-        call BaseParams%OutputParamNames(trim(post_root),params_used, add_derived=.true.)
-        call BaseParams%OutputParamRanges(trim(post_root))
+        call BaseParams%OutputParamNames(post_root,params_used, add_derived=.true.)
+        call BaseParams%OutputParamRanges(post_root)
     end if
 
     if (has_chain) then
-        if (instance /= 0) post_root = numcat(trim(post_root)//'_',instance)
+        if (instance /= 0) post_root = numcat(post_root//'_',instance)
 
         if (Feedback > 0) then
             if (this%redo_from_text) then
@@ -162,6 +167,15 @@
                 write (*,*) 'reading from: ' //  trim(InputFile)//'.data'
             end if
             write (*,*) 'writing to: ' // trim(post_root)//'.*'
+        end if
+
+        if (this%redo_output_txt_theory) then
+            if (this%redo_output_txt_root =='') then
+                this%redo_output_txt_root  =  post_root
+            else
+                this%redo_output_txt_root =  File%CheckTrailingSlash(this%redo_output_txt_root) // File%ExtractName(post_root)
+            end if
+            write (*,*) 'Writing text file data to ' // this%redo_output_txt_root
         end if
 
         write (*,*) 'Using temperature: ', this%LikeCalculator%Temperature
@@ -259,9 +273,11 @@
                 mult_sum = mult_sum + mult
 
                 if (mult /= 0) then
-                    !                    if (txt_theory) then
-                    !                        call WriteParamsAndDat(Params, mult,like)
-                    !                    else
+                    if (this%redo_output_txt_theory) then
+                        data_point_txt_root = this%redo_output_txt_root // '_'//IntToStr(num)
+                        call this%LikeCalculator%WriteParamPointTextData(data_point_txt_root, Params)
+                        call this%LikeCalculator%WriteParamsHumanText(data_point_txt_root//'.pars', Params, truelike, weight)
+                    end if
                     call Params%WriteParams(this%LikeCalculator%Config,mult,like)
                     if (.not. this%redo_no_new_data) call Params%WriteModel(OutData, truelike,mult)
                 else
@@ -272,7 +288,6 @@
                 weight_max = max(weight,weight_max)
                 weight_min = min(weight,weight_min)
                 mult_max = max(mult_max,mult)
-
             end if
 
         end do

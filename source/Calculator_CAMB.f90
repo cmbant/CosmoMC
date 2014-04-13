@@ -238,12 +238,14 @@
         !JD 08/13 added so we dont have to fill Cls unless using CMB
         if(CosmoSettings%use_CMB)then
             call this%SetPowersFromCAMB(CMB,Theory)
-            if (any(Theory%cls(1,1)%Cl(:) < 0 )) then
-                error = 1
-                call MpiStop('CMB_cls_simple: negative C_l (could edit to silent error here)')
-                return
-            end if
             do i=1, min(3,CosmoSettings%num_cls)
+                if (CosmoSettings%cl_lmax(i,i)>0) then
+                    if (any(Theory%cls(i,i)%Cl(:) < 0 )) then
+                        error = 1
+                        call MpiStop('CMB_cls_simple: negative C_l (could edit to silent error here)')
+                        return
+                    end if
+                end if
                 do j= i, 1, -1
                     if (CosmoSettings%cl_lmax(i,j)>0) then
                         if ( any(isNan(Theory%cls(i,j)%Cl))) then
