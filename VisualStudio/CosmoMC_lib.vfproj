@@ -113,6 +113,7 @@
 		<File RelativePath="..\source\FileUtils.f90"/>
 		<File RelativePath="..\source\IniObjects.f90"/>
 		<File RelativePath="..\source\Interpolation.f90"/>
+		<File RelativePath="..\source\IO.f90"/>
 		<File RelativePath="..\source\Matrix_utils_new.f90"/>
 		<File RelativePath="..\source\MiscUtils.f90"/>
 		<File RelativePath="..\source\MpiUtils.f90"/>
@@ -130,7 +131,6 @@
 		<File RelativePath="..\source\GeneralSetup.f90"/>
 		<File RelativePath="..\source\GeneralTypes.f90"/>
 		<File RelativePath="..\source\ImportanceSampling.f90"/>
-		<File RelativePath="..\source\IO.f90"/>
 		<File RelativePath="..\source\MCMC.f90"/>
 		<File RelativePath="..\source\minimize.f90"/>
 		<File RelativePath="..\source\ParamSet.f90"/>

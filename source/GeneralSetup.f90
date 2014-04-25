@@ -143,26 +143,29 @@
 
     end subroutine TSetup_DoSampling
 
-    subroutine TSetup_DoTests(this, output_root)
-    !This runs likelihoods for fixed central values of parameters and outputs the likelihoods
-    ! - e.g. for likelihood testing between versions, etc.
+    subroutine TSetup_DoTests(this, output_root, paramsvals)
+    !This runs likelihoods for fixed values of parameters and outputs the likelihoods and timings
+    !e.g. for likelihood testing between versions, performance testing, etc.
+    !also can set output_root to write out theory calculation and derived quantities for specific parameters
     class(TSetup) :: this
     character(LEN=*) :: output_root
+    real(mcp), intent(in) :: paramsvals(:)
     Type(ParamSet) :: Params
-    real(mcp) :: logLike
+    real(mcp) :: logLike, time
     Type(TTimer) Timer
 
-    call Timer%Start()
-    Params%P(:num_params) = BaseParams%Center(:num_params)
+    Params%P(:num_params) = paramsvals(:num_params)
     this%LikeCalculator%timing = .true.
+    call Timer%Start()
     logLike = this%LikeCalculator%GetLogLike(Params)
+    time = Timer%Time()
     write(*,*) '   loglike     chi-sq'
     if (Feedback <=2) call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%likelihoods)
     write(*,*) 'Test likelihoods done, total logLike = '//RealToStr(logLike)//', chi-sq = '//RealToStr(logLike*2)
-    write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(Timer%Time())
-    if (allocated(Params%Theory) .and. output_root/='') then
-        call DataLikelihoods%WriteDataForLikelihoods(Params%P, Params%Theory, output_root)
-        call Params%Theory%WriteTextData(output_root)
+    write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(time)
+    if (output_root/='') then
+        call this%LikeCalculator%WriteParamPointTextData(output_root, Params)
+        call this%LikeCalculator%WriteParamsHumanText(output_root//'.pars', Params, LogLike)
     end if
     call DoStop()
 

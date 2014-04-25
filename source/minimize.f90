@@ -25,8 +25,6 @@
     procedure :: ffn
     procedure(FindBestFit), deferred :: FindBestFit
     procedure :: VectToParams
-    procedure :: WriteParamsHumanText
-    procedure :: WriteBestFitParams
     end type
 
     abstract interface
@@ -393,7 +391,7 @@
             call MPI_Barrier(MPI_COMM_WORLD,ierror)
             if (i==MpiRank .and. .not. is_best_bestfit .and. Feedback>0) then
                 print *,MpiRank, 'best_like params:'
-                call this%WriteParamsHumanText(stdout,Params, best_like)
+                call this%LikeCalculator%WriteParamsHumanText(stdout,Params, best_like)
             end if
         end do
         call MPI_Barrier(MPI_COMM_WORLD,ierror)
@@ -401,66 +399,6 @@
 #endif
 
     end function TPowellMinimizer_FindBestFit
-
-
-    subroutine WriteParamsHumanText(this, aunit, P, like)
-    class(TMinimizer) :: this
-    Type(ParamSet) P
-    real(mcp), intent(in), optional :: like
-    integer, intent(in) :: aunit
-    real(mcp), allocatable :: derived(:)
-    integer :: numderived = 0
-    integer isused,i
-
-    if (present(like)) then
-        write (aunit,*) '-log(Like) = ',like
-        write (aunit,*) ' chi-sq    = ',like*2
-        write (aunit,*) ''
-    end if
-
-    do isused = 0,1
-        do i=1, num_params
-            if (isused==0 .and. BaseParams%PWidth(i)/=0 .or. isused==1 .and. BaseParams%PWidth(i)==0) then
-                write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-                i, P%P(i), BaseParams%NameMapping%name(i)
-                write (aunit,'(a)') trim(BaseParams%NameMapping%label(i))
-            end if
-        end do
-        write (aunit,*) ''
-    end do
-
-    if (generic_mcmc) return
-
-    call this%LikeCalculator%Config%Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
-    call DataLikelihoods%addLikelihoodDerivedParams(P%P, P%Theory, derived)
-    if (allocated(derived)) numderived = size(derived)
-    do i=1, numderived
-        write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-        num_params+i, derived(i), BaseParams%NameMapping%name(num_params + i )
-        write (aunit,'(a)') trim(BaseParams%NameMapping%label(num_params+i))
-    end do
-
-    if (present(like)) then
-        write(aunit,*) ''
-        write(aunit,*) '-log(Like)     chi-sq   data'
-        call DataLikelihoods%WriteLikelihoodContribs(aunit, P%likelihoods)
-    end if
-
-    end subroutine WriteParamsHumanText
-
-    subroutine WriteBestFitParams(this, like, Params, fname)
-    class(TMinimizer) :: this
-    real(mcp) like
-    Type(ParamSet) Params
-    character(LEN=*), intent(in) :: fname
-    Type(TTExtFile) :: F
-
-    call F%CreateFile(fname)
-    call this%WriteParamsHumanText(F%unit,Params, like)
-    call F%Close()
-    if (Feedback>0) call this%WriteParamsHumanText(stdout,Params, like)
-
-    end subroutine WriteBestFitParams
 
 
     !function BestFitCovmatEstimate(tol) result (M)

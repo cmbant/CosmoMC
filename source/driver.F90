@@ -12,9 +12,9 @@
     implicit none
 
     character(LEN=:), allocatable :: LogFileName,  numstr, fname, rootdir
-    character(LEN=:), allocatable :: InputFile, test_output_root
+    character(LEN=:), allocatable :: InputFile, test_output_root, test_used_params
     Type(TSettingIni) :: Ini
-    integer  i
+    integer  i, status
     Type(ParamSet) Params !, EstParams
     real(mcp) bestfit_loglike
     logical want_minimize
@@ -24,6 +24,7 @@
     character(LEN=:), allocatable :: prop_mat
     class(TMinimizer), allocatable :: Minimizer
     logical :: estimate_propose_matrix = .false.
+    real(mcp), allocatable :: test_paramvals(:)
 
 #ifdef MPI
     integer ierror
@@ -107,9 +108,11 @@
     if (Setup%action==action_MCMC) then
         checkpoint = Ini%Read_Logical('checkpoint',.false.)
         flush_write =  Ini%Read_Logical('flush_write',checkpoint)
-        start_at_bestfit= Ini%read_logical('start_at_bestfit',.false.)
+        start_at_bestfit = Ini%Read_logical('start_at_bestfit',.false.)
     else if (Setup%action==action_tests) then
         test_output_root = Ini%Read_String('test_output_root')
+        test_used_params = Ini%Read_String('test_used_params')
+        !If not specified, just take from central value
     end if
 
     new_chains = .true.
@@ -205,19 +208,17 @@
 
     if (allocated(Minimizer)) then
         !New Powell 2009 minimization, AL Sept 2012, update Sept 2013
-        if (Setup%action /= action_MCMC .and. MPIchains>1 .and. .not. Minimizer%uses_MPI) call DoAbort( &
-        'Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
+        if (Setup%action /= action_MCMC .and. MPIchains>1 .and. .not. Minimizer%uses_MPI) &
+        & call DoAbort('Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
         if (MpiRank==0) write(*,*) 'finding best fit point...'
         if (minimizer%uses_MPI .or. MpiRank==0) then
             bestfit_loglike = Minimizer%FindBestFit(Params,is_best_bestfit)
             if (is_best_bestfit) then
                 if (bestfit_loglike==logZero) write(*,*) MpiRank,'WARNING: FindBestFit did not converge'
                 if (Feedback >0) write(*,*) 'Best-fit results: '
-                call Minimizer%WriteBestFitParams(bestfit_loglike,Params, baseroot//'.minimum')
-                if (allocated(Params%Theory)) then
-                    call DataLikelihoods%WriteDataForLikelihoods(Params%P, Params%Theory, baseroot)
-                    call Params%Theory%WriteTextData(baseroot//'.bestfit_cl')
-                end if
+                call Minimizer%LikeCalculator%WriteParamsHumanText(baseroot//'.minimum', Params, bestfit_loglike)
+                if (Feedback>0) call Minimizer%LikeCalculator%WriteParamsHumanText(stdout,Params, bestfit_loglike)
+                call Minimizer%LikeCalculator%WriteParamPointTextData(baseroot//'.minimum', Params)
                 if (Setup%action==action_maxlike) call DoStop('Wrote the minimum to file '//baseroot//'.minimum')
             else
                 if (Setup%action==action_maxlike) call DoStop()
@@ -261,7 +262,12 @@
         call Setup%ImportanceSampler%ImportanceSample(rootname)
         call DoStop('Postprocesing done',.false.)
     else if (Setup%action == action_tests) then
-        call Setup%DoTests(test_output_root)
+        allocate(test_paramvals(num_params), source = BaseParams%Center(:num_params))
+        if (test_used_params/='') then
+            read(test_used_params,*, iostat=status) test_paramvals(params_used)
+            if (status/=0) call MpiStop('Error reading test_used_params array')
+        end if
+        call Setup%DoTests(test_output_root,test_paramvals)
     else
         call DoAbort('undefined action')
     end if

@@ -22,6 +22,10 @@
     procedure :: ReadParams => TLikeCalculator_ReadParams
     procedure :: TestLikelihoodFunction => TLikeCalculator_TestLikelihoodFunction
     procedure :: WritePerformanceStats => TLikeCalculator_WritePerformanceStats
+    procedure :: WriteParamsHumanText_unit => TLikeCalculator_WriteParamsHumanText
+    procedure :: WriteParamsHumanText_file => TLikeCalculator_WriteParamsHumanTextFile
+    procedure :: WriteParamPointTextData => TLikeCalculator_WriteParamPointTextData
+    generic :: WriteParamsHumanText => WriteParamsHumanText_unit, WriteParamsHumanText_file
     end type TLikeCalculator
 
     type, extends(TLikeCalculator) :: TGenericLikeCalculator
@@ -46,6 +50,8 @@
     procedure :: UpdateTheoryForLikelihoods => TheoryLike_UpdateTheoryForLikelihoods
     procedure :: SetNewTheoryResults => TheoryLike_SetNewTheoryResults
     procedure :: TestLikelihoodFunction => TheoryLike_TestLikelihoodFunction
+    procedure :: WriteParamsHumanText_unit => TTheoryLike_WriteParamsHumanText
+    procedure :: WriteParamPointTextData => TTheoryLike_WriteParamPointTextData
     end type TTheoryLikeCalculator
 
     type, extends(TCheckpointable) :: TLikelihoodUser
@@ -190,6 +196,58 @@
     end subroutine TLikeCalculator_WritePerformanceStats
 
 
+    subroutine TLikeCalculator_WriteParamsHumanText(this, aunit, P, LogLike, weight)
+    class(TLikeCalculator) :: this
+    class(TCalculationAtParamPoint) P
+    real(mcp), intent(in), optional :: LogLike,weight
+    integer, intent(in) :: aunit
+    integer isused,i
+
+    if (present(weight)) then
+        write (aunit,*) ' weight    = ',weight
+    end if
+
+    if (present(LogLike)) then
+        write (aunit,*) '-log(Like) = ',LogLike
+        write (aunit,*) ' chi-sq    = ',LogLike*2
+        write (aunit,*) ''
+    end if
+
+    do isused = 0,1
+        do i=1, num_params
+            if (isused==0 .and. BaseParams%varying(i) .or. isused==1 .and. .not. BaseParams%varying(i)) then
+                write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
+                i, P%P(i), BaseParams%NameMapping%name(i)
+                write (aunit,'(a)') trim(BaseParams%NameMapping%label(i))
+            end if
+        end do
+        write (aunit,*) ''
+    end do
+
+    end subroutine TLikeCalculator_WriteParamsHumanText
+
+
+    subroutine TLikeCalculator_WriteParamsHumanTextFile(this, fname, P, LogLike, weight)
+    class(TLikeCalculator) :: this
+    character(LEN=*), intent(in) :: fname
+    class(TCalculationAtParamPoint) P
+    real(mcp), intent(in), optional :: LogLike, weight
+    Type(TTextFile) F
+
+    call F%CreateFile(fname)
+    call this%WriteParamsHumanText(F%unit, P, LogLike, weight)
+    call F%Close()
+
+    end subroutine TLikeCalculator_WriteParamsHumanTextFile
+
+
+    subroutine TLikeCalculator_WriteParamPointTextData(this, output_root, Params)
+    class(TLikeCalculator) :: this
+    character(LEN=*), intent(in) :: output_root
+    class(TCalculationAtParamPoint) Params
+    end subroutine TLikeCalculator_WriteParamPointTextData
+
+
     function Generic_GetLogLikeMain(this, Params) result(LogLike)!Get -Ln(Likelihood) for chains
     class(TGenericLikeCalculator) :: this
     class(TCalculationAtParamPoint) :: Params
@@ -221,7 +279,6 @@
     if (.not. allocated(Params%Theory)) call this%Config%NewTheory(Params%Theory)
 
     end subroutine TheoryLike_SetNewTheoryResults
-
 
 
     function TheoryLike_GetLogLikeMain(this, Params) result(LogLike)
@@ -365,5 +422,47 @@
     LogLike = this%TLikeCalculator%TestLikelihoodFunction(Params)
 
     end function TheoryLike_TestLikelihoodFunction
+
+
+    subroutine TTheoryLike_WriteParamsHumanText(this, aunit, P, LogLike, weight)
+    class(TTheoryLikeCalculator) :: this
+    class(TCalculationAtParamPoint) P
+    real(mcp), intent(in), optional :: LogLike, weight
+    integer, intent(in) :: aunit
+    real(mcp), allocatable :: derived(:)
+    integer :: numderived = 0
+    integer i
+
+    call this%TLikeCalculator%WriteParamsHumanText(aunit, P, LogLike, weight)
+
+    call this%Config%Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
+    call DataLikelihoods%addLikelihoodDerivedParams(P%P, P%Theory, derived)
+    if (allocated(derived)) numderived = size(derived)
+    do i=1, numderived
+        write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
+        num_params+i, derived(i), BaseParams%NameMapping%name(num_params + i )
+        write (aunit,'(a)') trim(BaseParams%NameMapping%label(num_params+i))
+    end do
+
+    if (present(LogLike)) then
+        write(aunit,*) ''
+        write(aunit,*) '-log(Like)     chi-sq   data'
+        call DataLikelihoods%WriteLikelihoodContribs(aunit, P%likelihoods)
+    end if
+
+    end subroutine TTheoryLike_WriteParamsHumanText
+
+    subroutine TTheoryLike_WriteParamPointTextData(this, output_root, Params)
+    class(TTheoryLikeCalculator) :: this
+    character(LEN=*), intent(in) :: output_root
+    class(TCalculationAtParamPoint) Params
+
+    if (allocated(Params%Theory)) then
+        call DataLikelihoods%WriteDataForLikelihoods(Params%P, Params%Theory, output_root)
+        call Params%Theory%WriteTextData(output_root)
+    end if
+
+    end subroutine TTheoryLike_WriteParamPointTextData
+
 
     end module CalcLike
