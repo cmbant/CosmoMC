@@ -515,6 +515,7 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <LI>Chains include "derived parameters" giving the &chi;<sup>2</sup> [-2Ln(Likelihood)] for each likelihood used, and where more than one of a given type, the sum for each type (e.g. CMB, BAO).
 <LI>Added partial support for <A HREF="https://pypi.python.org/pypi/pypico">PICO</A> calculator (<b>cosmology_calculator = PICO</b> in .ini file, test_pico.ini example provided); only CL and some parameters supported
 <LI>action=4 now outputs timings for each likelihood (only for first time run, so does not account for any caching); new <b>test_output_root</b> puts out the theory CL (+ any derived likelihood data) at the test point
+<LI>action = 1 (importance sampling) will now by default (<b>redo_auto_likescale=T</b>) automatically re-scale likelihoods to give O(1) weights if needed
 <LI>action = 1 (importance sampling) new has options <b>redo_output_txt_theory</b>, <b>redo_output_txt_dir</b> to output text files with theory CL and data point values for all points in the chain
 <LI>Output derived parameter H(z) is now in standard km/s/Mpc units
 <LI>MPK fix for when only one redshift

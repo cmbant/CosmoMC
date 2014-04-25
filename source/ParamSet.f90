@@ -35,8 +35,10 @@
     real(mcp), intent(in) :: mult, like
     integer j , unused
     logical, save :: first = .true.
+    logical isfirst
     class(TDataLikelihood), pointer :: DataLike
 
+    isfirst=first
     if (first .and. new_chains) then
         first = .false.
         if (mcp==kind(1.0)) then
@@ -66,7 +68,7 @@
     write(F%unit) this%Likelihoods(1:DataLikelihoods%Count)
     write(F%unit) this%P(params_used)
 
-    call this%Theory%WriteTheory(F)
+    call this%Theory%WriteTheory(F, isfirst)
 
     if (flush_write) call F%Flush()
 
@@ -83,9 +85,11 @@
     logical :: has_names
     class(TDataLikelihood), pointer :: DataLike
     integer tmp(1)
+    logical isfirst
 
     error = 0
-    if (this%first) then
+    isfirst = this%first
+    if (isfirst) then
         this%first = .false.
         read(F%unit,iostat=status) j, np
         if (status/=0) then
@@ -141,7 +145,7 @@
     end do
     this%P(1:num_params)= BaseParams%center
     read(F%unit) this%P(this%current_param_indices)
-    call this%Theory%ReadTheory(F)
+    call this%Theory%ReadTheory(F, isfirst)
 
     end subroutine ParamSet_ReadModel
 

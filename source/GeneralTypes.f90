@@ -270,7 +270,7 @@
     & this%Likelihoods(1:DataLikelihoods%Count)*2
     do i=1, DataLikelihoods%LikelihoodTypeIndices%Count
         output_array(num_params_used+numderived+DataLikelihoods%Count+i) = &
-         sum(this%Likelihoods(DataLikelihoods%LikelihoodTypeIndices%Item(i)))*2
+        sum(this%Likelihoods(DataLikelihoods%LikelihoodTypeIndices%Item(i)))*2
     end do
     call IO_OutputChainRow(ChainOutFile, mult, like, output_array)
 
@@ -381,14 +381,16 @@
 
     end subroutine TConfigClass_InitWithParams
 
-    subroutine WriteTheory(this, F)
+    subroutine WriteTheory(this, F, first)
     class(TTheoryPredictions) this
     class(TFileStream) :: F
+    logical, intent(in) :: first
     end subroutine WriteTheory
 
-    subroutine ReadTheory(this, F)
+    subroutine ReadTheory(this, F, first)
     class(TTheoryPredictions) this
     class(TFileStream) :: F
+    logical, intent(in) :: first
     end subroutine ReadTheory
 
     subroutine WriteTextData(this,fnameroot)

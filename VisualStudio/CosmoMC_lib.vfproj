@@ -14,7 +14,7 @@
 				<Tool Name="VFPreBuildEventTool"/>
 				<Tool Name="VFPostBuildEventTool"/></Configuration>
 		<Configuration Name="Release|x64" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" HeapArrays="0" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP" OpenMP="OpenMPParallelCode"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" HeapArrays="0" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP" OpenMP="OpenMPParallelCode" WarnUnusedVariables="true" WarnTruncateSource="true"/>
 				<Tool Name="VFLibrarianTool"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>

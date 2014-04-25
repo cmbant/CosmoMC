@@ -109,7 +109,7 @@
     integer, intent(in) :: lmin
     real(mcp) :: Cl(:,lmin:)
     character(LEN=:), allocatable :: tmp
-    integer ix, i, j,i1,l,ll
+    integer ix, l,ll
     integer, allocatable :: cols(:)
     real(mcp), allocatable :: tmp_ar(:)
     integer status, norder
@@ -180,7 +180,7 @@
     character(LEN=*), intent(in) :: S
     integer, allocatable, intent(out) :: TEB(:,:)
     Type(TStringList) :: L
-    integer tmp,i,i1,i2,ii,jj,ix
+    integer tmp,i,i1,i2
     character(LEN=:), pointer :: P
 
     call L%SetFromString(S,field_names)
@@ -287,12 +287,9 @@
     subroutine CMBLikes_ReadIni(this, Ini)
     class(TCMBLikes) :: this
     class(TSettingIni) :: Ini
-    real(mcp), dimension(:,:), allocatable, target :: Cov, fullcov
     integer ix, i
-    character(LEN=:), allocatable :: S, S_order, covmat_cl
-    integer l,j, x,y, clix
-    real(mcp) :: asum
-    real(mcp), allocatable :: avec(:)
+    character(LEN=:), allocatable :: S, S_order
+    integer l,j, clix
     logical :: cl_fiducial_includes_noise
 
     if (Ini%TestEqual('dataset_format','CMBLike')) &
@@ -812,7 +809,7 @@
     real(mcp) C(this%nfields,this%nfields)
     real(mcp) vecp(this%ncl)
     real(mcp) bigX((this%bin_max-this%bin_min+1)*this%ncl_used)
-    integer  i, Ti,Ei,Bi, bin,clix, bin_ix
+    integer  Ti,Ei,Bi, bin,clix
     logical :: quadratic
 
     chisq =0
