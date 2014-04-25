@@ -50,7 +50,6 @@
     real(mcp), intent(in) :: k,z
     real(mcp) :: logk
     real(mcp) :: outpower
-    integer :: error
 
     logk=log(k)
     if(.not. allocated(PK%x)) then
@@ -107,8 +106,7 @@
     real(mcp):: cl(:)
     integer, intent(in) :: L
     integer, intent(in), optional ::max_ix_out
-    integer imax,ix,i,j, inmax, ii,jj
-    logical symm
+    integer imax,ix,i,j, inmax
 
     imax = PresentDefault(size(this%Cls,2),max_ix_out)
     ix=0
@@ -156,15 +154,14 @@
 
     end subroutine WriteTextCls
 
-    subroutine TCosmoTheoryPredictions_WriteTheory(this, F)
+    subroutine TCosmoTheoryPredictions_WriteTheory(this, F, first)
     Class(TCosmoTheoryPredictions) this
     class(TFileStream) :: F
+    logical, intent(in) :: first
     integer tmp(0)
-    logical, save :: first = .true.
     integer i,j
 
     if (first .and. new_chains) then
-        first = .false.
         Write(F%Unit) CosmoSettings%TCosmoTheoryParams
         if (CosmoSettings%use_LSS) call F%WriteSizedArray(CosmoSettings%power_redshifts)
         if (CosmoSettings%use_CMB) call F%WriteSizedArray(CosmoSettings%cl_lmax)
@@ -213,13 +210,13 @@
     end subroutine TCosmoTheoryPredictions_AllocateForSettings
 
 
-    subroutine TCosmoTheoryPredictions_ReadTheory(this, F)
+    subroutine TCosmoTheoryPredictions_ReadTheory(this, F, first)
     Class(TCosmoTheoryPredictions) this
     class(TFileStream) :: F
-    logical, save :: first = .true.
+    logical, intent(in) :: first
     type(TCosmoTheorySettings), save :: FileSettings
     !JD 02/14 new variables for handling new pk arrays
-    integer :: num_k, num_z, stat
+    integer :: num_k, num_z
     real(mcp), allocatable :: temp(:,:)
     real(mcp), allocatable :: k(:), z(:)
     real(mcp), allocatable :: cl(:)
@@ -227,7 +224,6 @@
     integer i,j
 
     if (first) then
-        first = .false.
         read(F%Unit) FileSettings%TCosmoTheoryParams
         if (FileSettings%use_LSS) call F%ReadSizedArray(FileSettings%power_redshifts)
         if (FileSettings%use_CMB) call F%ReadSizedArray(FileSettings%cl_lmax)

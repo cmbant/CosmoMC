@@ -35,6 +35,10 @@
 
         logical ::  redo_output_txt_theory = .false. !output theory data as text for each point (e.g. for rainbow plots)
         character(LEN=:), allocatable :: redo_output_txt_root
+
+        logical :: redo_auto_likescale = .true. !If big difference is log-likelihood, automatically rescale to O(1) weights
+        real(mcp) :: redo_max_logLike_diff = 10
+        integer :: redo_auto_likescale_count = 5 !number to check weights before rescaling
     contains
     procedure :: ReadParams => TImportanceSampler_ReadParams
     procedure :: Init => TImportanceSampler_Init
@@ -65,6 +69,9 @@
     call Ini%Read('redo_skip',this%redo_skip)
     call Ini%Read('redo_thin',this%redo_thin,min=1)
     call Ini%Read('redo_output_txt_theory',this%redo_output_txt_theory)
+    call Ini%Read('redo_auto_likescale',this%redo_auto_likescale)
+    call Ini%Read('redo_max_logLike_diff',this%redo_max_logLike_diff)
+    call Ini%Read('redo_auto_likescale_count',this%redo_auto_likescale_count)
 
     if (this%redo_from_text .and. (this%redo_add .or. this%redo_like_name/='')) &
     call Mpistop('redo_new_likes requires .data files, not from text')
@@ -100,32 +107,27 @@
     subroutine TImportanceSampler_ImportanceSample(this,InputFile)
     class(TImportanceSampler) :: this
     character(LEN=*), intent(INOUT):: InputFile
-    real(mcp) truelike,mult,like
+    real(mcp) truelike,mult,like, like_diff
     real(mcp) weight_min, weight_max, mult_sum, mult_ratio, mult_max,weight
     real(mcp) max_like, max_truelike
     integer error,num, debug
     character (LEN=:), allocatable :: post_root, data_point_txt_root
     integer i
-    Type (ParamSet) :: Params
+    Type (ParamSet), allocatable :: Params
     logical :: has_likes(DataLikelihoods%Count)
     class(TDataLikelihood), pointer :: DataLike
-    logical :: first = .false., has_chain = .true.
+    logical :: first, has_chain = .true.
     integer(File_size_int)  last_file_loc
-    integer :: at_beginning=0, ierror, num_used
+    integer :: at_beginning, num_used, redo_loop
     class(TFileStream), pointer :: InF
     Type(TTextFile), target :: InChain
     Type(TBinaryFile), target :: OutData, InData
+#ifdef MPI
+    integer ierror
+    real(mcp), allocatable :: like_diffs(:)
+#endif
 
     flush_write = .false.
-    weight_min= 1e30_mcp
-    weight_max = -1e30_mcp
-    mult_sum = 0
-    mult_ratio = 0
-    mult_max = -1e30_mcp
-    max_like = 1e30_mcp
-
-    max_truelike =1e30_mcp
-
     debug = 0
 
     this%LikeCalculator%Temperature = this%redo_temperature
@@ -180,121 +182,157 @@
 
         write (*,*) 'Using temperature: ', this%LikeCalculator%Temperature
 
-        call ChainOutFile%CreateFile(trim(post_root)//'.txt')
-        if (.not. this%redo_no_new_data) call OutData%CreateFile(trim(post_root)//'.data')
-        num = 0
-        num_used = 0
-        call this%LikeCalculator%Config%NewTheory(Params%Theory)
 
-        do
-            if (this%redo_from_text) then
-                error = 0
-                Params%P= BaseParams%center
-                if (.not. IO_ReadChainRow(InChain, mult, like, Params%P, params_used)) exit
-                num=num+1
-            else
-                call Params%ReadModel(InF,has_likes, mult,like, error)
-                num=num+1
-                if (first .and. this%redo_like_name/='') then
-                    first=.false.
-                    do i=1, DataLikelihoods%Count
-                        DataLike => DataLikelihoods%Item(i)
-                        if (DataLike%name==this%redo_like_name) then
-                            if (.not. has_likes(i)) &
-                            call MpiStop('does not currently have like named:'//trim(this%redo_like_name))
-                            has_likes(i)=.true.
-                            if (any(.not. has_likes)) call MpiStop('not all other likelihoods exist already')
-                            has_likes(i)=.false.
-                            this%redo_add =.true.
+        redo_loop= 1
+        do 
+            call InF%Rewind()
+            call ChainOutFile%CreateFile(trim(post_root)//'.txt')
+            if (.not. this%redo_no_new_data) call OutData%CreateFile(trim(post_root)//'.data')
+
+            num = 0
+            num_used = 0
+            weight_min= 1e30_mcp
+            weight_max = -1e30_mcp
+            mult_sum = 0
+            mult_ratio = 0
+            mult_max = -1e30_mcp
+            max_like = 1e30_mcp
+            max_truelike =1e30_mcp
+            at_beginning=0
+            first = .true.
+
+            allocate(Params)
+            call this%LikeCalculator%Config%NewTheory(Params%Theory)
+
+            do
+                if (this%redo_from_text) then
+                    error = 0
+                    Params%P= BaseParams%center
+                    if (.not. IO_ReadChainRow(InChain, mult, like, Params%P, params_used)) exit
+                    num=num+1
+                else
+                    call Params%ReadModel(InF,has_likes, mult,like, error)
+                    num=num+1
+                    if (first .and. this%redo_like_name/='') then
+                        first=.false.
+                        do i=1, DataLikelihoods%Count
+                            DataLike => DataLikelihoods%Item(i)
+                            if (DataLike%name==this%redo_like_name) then
+                                if (.not. has_likes(i)) &
+                                call MpiStop('does not currently have like named:'//trim(this%redo_like_name))
+                                has_likes(i)=.true.
+                                if (any(.not. has_likes)) call MpiStop('not all other likelihoods exist already')
+                                has_likes(i)=.false.
+                                this%redo_add =.true.
+                                exit
+                            end if
+                        end do
+                    end if
+                    if (this%redo_skip>0.d0 .and. this%redo_skip<1) then
+                        at_beginning=at_beginning+1
+                        if (at_beginning==1) then
+                            last_file_loc = InF%Position()
+                            cycle
+                        elseif (at_beginning==2) then
+                            this%redo_skip = InF%Size()/(InF%Position() -last_file_loc) * this%redo_skip
+                            if (Feedback > 0) print *,'skipping ',nint(this%redo_skip), ' models'
+                        end if
+                    end if
+                end if
+
+                if (error ==1) then
+                    if (num==0) call MpiStop('Error reading data file.')
+                    exit
+                end if
+
+                if (num<=this%redo_skip .or. mod(num,this%redo_thin) /= 0) cycle
+
+                if (this%redo_like .or. this%redo_add) then
+                    !Check for new prior before calculating anything
+                    if (this%LikeCalculator%CheckPriorCuts(Params)==logZero) then
+                        if (Feedback >1) write(*,*) 'Model outside new prior bounds: skipped'
+                        cycle
+                    end if
+                end if
+
+                if (this%redo_theory) then
+                    call this%LikeCalculator%GetTheoryForImportance(Params, error)
+                else
+                    error = 0
+                end if
+
+                if (error ==0) then
+                    if (this%redo_like .or. this%redo_add) then
+                        !!!!
+                        call this%LikeCalculator%UpdateTheoryForLikelihoods(Params)
+                        if (this%redo_add) then
+                            truelike = this%LikeCalculator%GetLogLikePost(Params, .not. has_likes)
+                        else
+                            truelike = this%LikeCalculator%GetLogLikePost(Params)
+                        end if
+                        if (truelike == logZero) then
+                            weight = 0
+                        else
+                            weight = exp(like-truelike+this%redo_likeoffset)
+                        end if
+
+                        if (.not. this%redo_change_like_only)  mult = mult*weight
+                    else
+                        truelike = like
+                        weight = 1
+                    end if
+
+                    max_like = min(max_like,like)
+                    max_truelike = min(max_truelike,truelike)
+
+                    num_used=num_used+1
+
+                    mult_ratio = mult_ratio + weight
+                    mult_sum = mult_sum + mult
+
+                    if (this%redo_auto_likescale .and. redo_loop==1 .and. num_used == this%redo_auto_likescale_count) then
+                        !Check log likelihoods scaled to give sensible weights. Rescale must be constant between chains
+                        like_diff = max_truelike - max_like
+#ifdef MPI
+                        allocate(like_diffs(MPIchains))
+                        call MPI_Allgather(like_diff, 1, MPI_real_mcp, like_diffs, 1,  MPI_real_mcp, MPI_COMM_WORLD, ierror)
+                        like_diff = sum(like_diffs)/MpiChains
+#endif
+                        if (abs(like_diff) > this%redo_max_logLike_diff) then
+                            this%redo_likeoffset = like_diff
+                            if (Feedback > 0 .and. MpiRank==0) write(*,*) 'Re-starting with redo_likeoffset = ',this%redo_likeoffset
+                            redo_loop=2
                             exit
                         end if
-                    end do
-                end if
-                if (this%redo_skip>0.d0 .and. this%redo_skip<1) then
-                    at_beginning=at_beginning+1
-                    if (at_beginning==1) then
-                        last_file_loc = InF%Position()
-                        cycle
-                    elseif (at_beginning==2) then
-                        this%redo_skip = InF%Size()/(InF%Position() -last_file_loc) * this%redo_skip
-                        if (Feedback > 0) print *,'skipping ',nint(this%redo_skip), ' models'
                     end if
-                end if
-            end if
 
-            if (error ==1) then
-                if (num==0) call MpiStop('Error reading data file.')
-                exit
-            end if
-
-            if (num<=this%redo_skip .or. mod(num,this%redo_thin) /= 0) cycle
-
-            num_used=num_used+1
-
-            if (this%redo_like .or. this%redo_add) then
-                !Check for new prior before calculating anything
-                if (this%LikeCalculator%CheckPriorCuts(Params)==logZero) then
-                    if (Feedback >1) write(*,*) 'Model outside new prior bounds: skipped'
-                    cycle
-                end if
-            end if
-
-            if (this%redo_theory) then
-                call this%LikeCalculator%GetTheoryForImportance(Params, error)
-            else
-                error = 0
-            end if
-
-            if (error ==0) then
-                if (this%redo_like .or. this%redo_add) then
-                    !!!!
-                    call this%LikeCalculator%UpdateTheoryForLikelihoods(Params)
-                    if (this%redo_add) then
-                        truelike = this%LikeCalculator%GetLogLikePost(Params, .not. has_likes)
+                    if (mult /= 0) then
+                        if (this%redo_output_txt_theory) then
+                            data_point_txt_root = this%redo_output_txt_root // '_'//IntToStr(num)
+                            call this%LikeCalculator%WriteParamPointTextData(data_point_txt_root, Params)
+                            call this%LikeCalculator%WriteParamsHumanText(data_point_txt_root//'.pars', Params, truelike, weight)
+                        end if
+                        call Params%WriteParams(this%LikeCalculator%Config,mult,like)
+                        if (.not. this%redo_no_new_data) call Params%WriteModel(OutData, truelike,mult)
                     else
-                        truelike = this%LikeCalculator%GetLogLikePost(Params)
-                    end if
-                    if (truelike == logZero) then
-                        weight = 0
-                    else
-                        weight = exp(like-truelike+this%redo_likeoffset)
+                        if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
                     end if
 
-                    if (.not. this%redo_change_like_only)  mult = mult*weight
-                else
-                    truelike = like
-                    weight = 1
+                    if (Feedback > 1) write (*,*) num, ' mult= ', real(mult), ' weight = ', real(weight)
+                    weight_max = max(weight,weight_max)
+                    weight_min = min(weight,weight_min)
+                    mult_max = max(mult_max,mult)
                 end if
 
-                max_like = min(max_like,like)
-                max_truelike = min(max_truelike,truelike)
+            end do
 
-                mult_ratio = mult_ratio + weight
-                mult_sum = mult_sum + mult
-
-                if (mult /= 0) then
-                    if (this%redo_output_txt_theory) then
-                        data_point_txt_root = this%redo_output_txt_root // '_'//IntToStr(num)
-                        call this%LikeCalculator%WriteParamPointTextData(data_point_txt_root, Params)
-                        call this%LikeCalculator%WriteParamsHumanText(data_point_txt_root//'.pars', Params, truelike, weight)
-                    end if
-                    call Params%WriteParams(this%LikeCalculator%Config,mult,like)
-                    if (.not. this%redo_no_new_data) call Params%WriteModel(OutData, truelike,mult)
-                else
-                    if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
-                end if
-
-                if (Feedback > 1) write (*,*) num, ' mult= ', real(mult), ' weight = ', real(weight)
-                weight_max = max(weight,weight_max)
-                weight_min = min(weight,weight_min)
-                mult_max = max(mult_max,mult)
-            end if
-
+            call OutData%Close()
+            call ChainOutFile%Close()
+            deallocate(Params)
+            if (redo_loop/=2) exit
+            redo_loop=3
         end do
-
         call InF%Close()
-        call OutData%Close()
-        call ChainOutFile%Close()
 
         if (Feedback>0) then
             write(*,*) 'finished. Processed ',num_used,' models'
