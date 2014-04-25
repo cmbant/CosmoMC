@@ -52,7 +52,7 @@
             if (fname=='') cycle
             if (MpiRank==0 .and. feedback > 0) &
             print*,'Using clik with likelihood file ',trim(fname)
-            call clik_try_lensing(is_lensing, fname)
+            call clik_try_lensing(is_lensing, fname//' ') !add space for clik bug workaround
             if (is_lensing) then
                 allocate(ClikLensingLikelihood::like)
             else
@@ -195,7 +195,6 @@
     subroutine clik_lensing_likeinit(this, fname)
     class (ClikLensingLikelihood) :: this
     character(LEN=*), intent(in) :: fname
-    integer i
 
     if (Feedback > 1) Print*,'Initialising clik lensing...'
     call clik_lensing_init(this%clikid,fname)
