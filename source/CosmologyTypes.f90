@@ -35,6 +35,7 @@
         !note only lmax_computed_cl is actually calculated
         integer :: lmax_computed_cl = 4500 !Never compute primordial above this, just fit
         integer :: lmin_computed_cl = 2000 !if cl needed, calculate to at least this
+        integer :: lmin_store_all_cmb = 0 !>0 if you want output everything even if not used
 
         !redshifts for output of BAO background parameters
         real(mcp) :: z_outputs(1) = [0.57_mcp]
@@ -173,6 +174,7 @@
     call Ini%Read('num_massive_neutrinos',this%num_massive_neutrinos)
     call Ini%Read('lmax_computed_cl',this%lmax_computed_cl)
     call Ini%Read('lmin_computed_cl',this%lmin_computed_cl)
+    call Ini%Read('lmin_store_all_cmb',this%lmin_store_all_cmb)
     call Ini%Read('lmax_tensor',this%lmax_tensor)
 
     end subroutine TCosmoTheorySettings_ReadParams
@@ -255,7 +257,17 @@
             end select
         end do
         if (parse==2) exit
+        if (this%lmin_store_all_cmb>0 ) numcls=max(numcls,IfThenElse(this%use_nonlinear_lensing,4,2))
         allocate(this%cl_lmax(numcls,numcls), source=0)
+        if (this%lmin_store_all_cmb>0) then
+            this%cl_lmax(1,1) = this%lmin_store_all_cmb
+            this%cl_lmax(2,1:2) = this%lmin_store_all_cmb
+            if (this%use_nonlinear_lensing) then
+                !Only force BB and PhiPhi output if likely to be accurate
+                this%cl_lmax(3,3) = this%lmin_store_all_cmb
+                this%cl_lmax(4,4) = this%lmin_store_all_cmb
+            end if
+        end if
     end do
     where (this%cl_lmax>0)
         this%cl_lmax = max(this%cl_lmax,this%lmin_computed_cl)

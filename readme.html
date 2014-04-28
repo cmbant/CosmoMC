@@ -517,6 +517,7 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <LI>action=4 now outputs timings for each likelihood (only for first time run, so does not account for any caching); new <b>test_output_root</b> puts out the theory CL (+ any derived likelihood data) at the test point
 <LI>action = 1 (importance sampling) will now by default (<b>redo_auto_likescale=T</b>) automatically re-scale likelihoods to give O(1) weights if needed
 <LI>action = 1 (importance sampling) new has options <b>redo_output_txt_theory</b>, <b>redo_output_txt_dir</b> to output text files with theory CL and data point values for all points in the chain
+<LI>Parameter <b>lmin_store_all_cmb</b> to force output of all cl up to lmin_store_all_cmb even if not used by likelihoods 
 <LI>Output derived parameter H(z) is now in standard km/s/Mpc units
 <LI>MPK fix for when only one redshift
 <LI>GetDist has new optional second parameter to specify file_root, e,g <I>getdist distparams.ini chains/test</i>

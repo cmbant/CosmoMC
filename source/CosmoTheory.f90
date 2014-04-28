@@ -97,6 +97,7 @@
     else
         call MpiStop('CosmoTheory: ClArray not calcualated')
     end if
+
     end subroutine ClArray
 
 
@@ -135,18 +136,26 @@
     integer l
     real(mcp), allocatable :: cl(:,:)
     Type(TTextFile) :: F
-    logical :: hasPhi
     character(LEN=*), parameter :: fmt = '(1I6,*(E15.5))'
+    integer i, j, n, ix
+    character(LEN=:), allocatable :: fields
 
-    hasPhi = size(this%Cls,2) > 3
-    allocate(cl(CosmoSettings%lmax,IfThenElse(hasPhi,5,4)))
-    call this%ClArray(cl(:,1),1,1) !TT
-    call this%ClArray(cl(:,2),1,2) !TE
-    call this%ClArray(cl(:,3),2,2) !EE
-    call this%ClArray(cl(:,4),3,3) !BB
-    if (hasPhi) call this%ClArray(cl(:,5),4,4) !PP
+    n = count(CosmoSettings%cl_lmax>0)
+    allocate(cl(CosmoSettings%lmax,n), source=0._mcp)
+    ix=0
+    fields = '#    L    '
+    do i = 1, size(this%Cls,2)
+        do j=1,i
+            if (CosmoSettings%cl_lmax(i,j)>0) then
+                ix=ix+1
+                call this%ClArray(cl(:,ix),i,j)
+                fields = fields // CMB_CL_Fields(j:j)//CMB_CL_Fields(i:i)//'             '
+            end if
+        end do
+    end do
 
     call F%CreateFile(aname)
+    call F%WriteTrim(fields)
     do l = 2, CosmoSettings%lmax
         write(F%unit,fmt) L,cl(L,:)
     end do
