@@ -30,24 +30,24 @@ Covmats for Planck are in planck_covmats folder, linked by default for grid runs
 <p>
 Grid run scripts include:
 <UL>
-<LI>makeGrid.py: as descried above, for setting up a grid of models. Stores the information in a "pickle" file that can then be read by the other scripts for iterating over batch items.
-<LI>batchJob.py: not a script, this just defines the objects and iterators used
-<LI>checkConverge.py: for finding chains which are missing or have R-1 larger than a specified threshold
-<LI>cleanup.py: for cleaning up files (e.g. before re-running a failed chain); can also just be used to list files for runs matching input parameters
-<LI>runbatch.py: submit runs to a job submission script
-<LI>settings_xx.py: sample settings files for use with makeGrid.py
-    <LI>addGridBatch.py: if you run multiple grids, e.g. a standard one and a separate small one for some parameter or test likelihood of interest, they can be combined using addGridBatch.py.
+<LI><b>makeGrid.py</b>: as descried above, for setting up a grid of models. Stores the information in a "pickle" file that can then be read by the other scripts for iterating over batch items.
+<LI><b>runbatch.py</b>: submit runs to a job submission script
+<LI><b>settings_xx.py</b>: sample settings files for use with makeGrid.py
+<LI><b>checkConverge.py --running</b>: to check current convergence of chains which are running; without <b>--running</b> it finds chains which are missing or have R-1 larger than a specified threshold after you've run getdist (via runGridGetdist.py as described below)
+<LI><b>cleanup.py</b>: for cleaning up files (e.g. before re-running a failed chain); can also just be used to list files for runs matching input parameters
+<LI><b>batchJob.py</b>: not a script, this just defines the objects and iterators used
+<LI><b>addGridBatch.py</b>: if you run multiple grids, e.g. a standard one and a separate small one for some parameter or test likelihood of interest, they can be combined using addGridBatch.py.
 </UL>
-Once you have generated the chains using CosmoMC you can analyse them. Run python/runGridGetdist.py to run getdist over grid of models, and generating parameter constraints and files for plotting. Other scripts include
+Once you have generated the chains using CosmoMC you can analyse them. Run <b>python/runGridGetdist.py</b> to run getdist over grid of models, and generating parameter constraints and files for plotting. Other scripts you can then use include
 <UL>
-<LI>makeTables.py: script for making latex (and hence PDF) tables from .margestats and .minimum files produced by grid runs.
+<LI><b>makeTables.py</b>: script for making latex (and hence PDF) tables from .margestats and .minimum files produced by grid runs.
 <BR>To make file of comparison plots do something like
 <pre>
  python python/makeTables.py main comp --compare planck_lowl planck_lowl_lowLike  planck_lowl_lowLike_highL --portrait
 </pre>
-<LI>makePlots.py: script for making plots and comparison plots en mass.
-<LI>extractDistFiles.py: for copying all files of a particular type from all the subdirectories in the grid, e.g. to extract all .covmat files, or all .pdf plots
-<LI>makeCompare.py: to extract parameter constraints from .margestats files in the grid
+<LI><b>makePlots.py</b>: script for making plots and comparison plots en mass.
+<LI><b>extractDistFiles.py</b>: for copying all files of a particular type from all the subdirectories in the grid, e.g. to extract all .covmat files, or all .pdf plots
+<LI><b>makeCompare.py</b>: to extract parameter constraints from .margestats files in the grid
 </UL>
 Most scripts have standardized input parameters to restrict to subsets of grid items, e.g. filtering by importance sampling run, no importance sampling, or specific item name (pattern match).
 <P>

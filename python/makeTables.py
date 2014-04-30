@@ -26,7 +26,6 @@ Opts.parser.add_argument('--header_tex', default=None)
 Opts.parser.add_argument('--height', default="9in")
 Opts.parser.add_argument('--width', default="11in")
 
-
 (batch, args) = Opts.parseForBatch()
 
 if args.blockEndParams is not None: args.blockEndParams = args.blockEndParams.split(';')
@@ -109,7 +108,7 @@ baseJobItems = dict()
 for paramtag, parambatch in items:
     isBase = len(parambatch[0].param_set) == 0
     for jobItem in parambatch:
-        if (args.delta_chisq_paramtag is None and isBase and not args.no_delta_chis or
+        if (args.delta_chisq_paramtag is None and isBase and not args.no_delta_chisq or
             args.delta_chisq_paramtag is not None and jobItem.paramtag == args.delta_chisq_paramtag):
                 referenceJobItem = copy.deepcopy(jobItem)
                 referenceJobItem.loadJobItemResults(paramNameFile=args.paramNameFile)
