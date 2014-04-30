@@ -41,10 +41,11 @@ Grid run scripts include:
 Once you have generated the chains using CosmoMC you can analyse them. Run <b>python/runGridGetdist.py</b> to run getdist over grid of models, and generating parameter constraints and files for plotting. Other scripts you can then use include
 <UL>
 <LI><b>makeTables.py</b>: script for making latex (and hence PDF) tables from .margestats and .minimum files produced by grid runs.
-<BR>To make file of comparison plots do something like
+<BR>To make comparison tables do something like
 <pre>
  python python/makeTables.py main comp --compare planck_lowl planck_lowl_lowLike  planck_lowl_lowLike_highL --portrait
 </pre>
+If you want to see how parameters shift around wrt to some baseline data combination use <b>--changes_from_datatag datatag</b>, which adds the fractional change in each parameter's mean in units of the baseline data combination's standard deviation; use <b>--changes_from_paramtag paramtag</b> to show shifts for each data combination wrt to the given baseline parameter combination.
 <LI><b>makePlots.py</b>: script for making plots and comparison plots en mass.
 <LI><b>extractDistFiles.py</b>: for copying all files of a particular type from all the subdirectories in the grid, e.g. to extract all .covmat files, or all .pdf plots
 <LI><b>makeCompare.py</b>: to extract parameter constraints from .margestats files in the grid

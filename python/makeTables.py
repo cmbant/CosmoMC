@@ -11,6 +11,7 @@ Opts.parser.add_argument('--nobestfit', action='store_true')
 Opts.parser.add_argument('--no_delta_chisq', action='store_true')
 Opts.parser.add_argument('--delta_chisq_paramtag', default=None)
 Opts.parser.add_argument('--changes_from_datatag', default=None)
+Opts.parser.add_argument('--changes_from_paramtag', default=None)
 
 # this is just for the latex labelsm set None to use those in chain .paramnames
 Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')
@@ -44,18 +45,20 @@ def getTableLines(content, referenceDataJobItem=None):
     return ResultObjs.resultTable(args.columns, [content], blockEndParams=args.blockEndParams,
                          formatter=formatter, paramList=args.paramList, limit=args.limit, refResults=refResults).lines
 
-def paramResultTable(jobItem, referenceJobItem=None, referenceDataJobItem=None):
-    if referenceJobItem is not None and referenceJobItem.name == jobItem.name: referenceJobItem = None
-    if referenceDataJobItem is not None and referenceDataJobItem.normed_data == jobItem.normed_data:
-        referenceDataJobItem = None
+def paramResultTable(jobItem, deltaChisqJobItem=None, referenceDataJobItem=None):
+    if deltaChisqJobItem is not None and deltaChisqJobItem.name == jobItem.name: deltaChisqJobItem = None
+    if referenceDataJobItem is not None:
+        if (args.changes_from_paramtag is None and referenceDataJobItem.normed_data == jobItem.normed_data
+         or args.changes_from_paramtag is not None and referenceDataJobItem.name == jobItem.name):
+            referenceDataJobItem = None
     tableLines = []
     caption = []
     jobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=not args.nobestfit, bestfitonly=args.bestfitonly)
     bf = jobItem.result_bestfit
     if not bf is None:
         caption.append(' Best-fit $\\chi^2_{\\rm eff} = ' + ('%.2f' % (bf.logLike * 2)) + '$')
-        if referenceJobItem is not None:
-            bf_ref = referenceJobItem.result_bestfit
+        if deltaChisqJobItem is not None:
+            bf_ref = deltaChisqJobItem.result_bestfit
             if bf_ref is not None: caption.append('$\\Delta \\chi^2_{\\rm eff} = ' + ('%.2f' % ((bf.logLike - bf_ref.logLike) * 2)) + '$')
 
     if args.bestfitonly:
@@ -64,8 +67,8 @@ def paramResultTable(jobItem, referenceJobItem=None, referenceDataJobItem=None):
         likeMarge = jobItem.result_likemarge
         if likeMarge is not None and likeMarge.meanLogLike is not None:
                 caption.append('$\\bar{\\chi}^2_{\\rm eff} = ' + ('%.2f' % (likeMarge.meanLogLike * 2)) + '$')
-                if referenceJobItem is not None:
-                    likeMarge_ref = referenceJobItem.result_likemarge
+                if deltaChisqJobItem is not None:
+                    likeMarge_ref = deltaChisqJobItem.result_likemarge
                     if likeMarge_ref is not None and likeMarge_ref.meanLogLike is not None:
                         delta = likeMarge.meanLogLike - likeMarge_ref.meanLogLike
                         caption.append('$\\Delta\\bar{\\chi}^2_{\\rm eff} = ' + ('%.2f' % (delta * 2)) + '$')
@@ -76,7 +79,7 @@ def paramResultTable(jobItem, referenceJobItem=None, referenceDataJobItem=None):
     if not bf is None and not args.forpaper:
         tableLines.append('')
         tableLines.append('$\\chi^2_{\\rm eff}$:')
-        if referenceJobItem is not None: compChiSq = referenceJobItem.result_bestfit
+        if deltaChisqJobItem is not None: compChiSq = deltaChisqJobItem.result_bestfit
         else: compChiSq = None
         for kind, vals in bf.sortedChiSquareds():
             tableLines.append(kind + ' - ')
@@ -103,6 +106,16 @@ items = Opts.sortedParamtagDict(chainExist=not args.bestfitonly)
 if args.all_limits:
     limits = [1, 2, 3]
 else: limits = [args.limit]
+
+
+if args.changes_from_paramtag is not None:
+    if args.changes_from_datatag is not None:
+        raise Exception('You cannot have both changes_from_paramtag and changes_from_datatag')
+    if args.delta_chisq_paramtag is not None and args.delta_chisq_paramtag != args.changes_from_paramtag:
+        raise Exception('when using changes_from_paramtag, delta_chisq_paramtag is set equal to that')
+    if args.no_delta_chisq:
+        raise Exception('when using changes_from_paramtag cannot have no_delta_chisq')
+    args.delta_chisq_paramtag = args.changes_from_paramtag
 
 baseJobItems = dict()
 for paramtag, parambatch in items:
@@ -156,8 +169,8 @@ for limit in limits:
                 if (os.path.exists(jobItem.distPath) or args.bestfitonly) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge))]
 
             referenceDataJobItem = None
-            for jobItem in theseItems:
-                if args.changes_from_datatag is not None:
+            if args.changes_from_datatag is not None:
+                for jobItem in theseItems:
                     if jobItem.normed_data == args.changes_from_datatag or jobItem.datatag == args.changes_from_datatag:
                         referenceDataJobItem = copy.deepcopy(jobItem)
                         referenceDataJobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=args.bestfitonly)
@@ -165,6 +178,9 @@ for limit in limits:
             for jobItem in theseItems:
                     if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
                     referenceJobItem = baseJobItems.get(jobItem.normed_data, None)
+                    if args.changes_from_paramtag is not None:
+                        referenceDataJobItem = referenceJobItem
+
                     tableLines = paramResultTable(jobItem, referenceJobItem, referenceDataJobItem)
                     if args.separate_tex: ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
                     lines += tableLines
