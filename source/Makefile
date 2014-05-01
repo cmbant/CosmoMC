@@ -49,7 +49,7 @@ WMAP ?=
 #e.g. PICO=/path/to/pypico
 PICO ?=
 ifeq ($(PICO),YES)
-PICO = $(shell python -c "import pypico; print pypico.get_folder()")
+override PICO =$(shell python -c "import pypico; print pypico.get_folder()")
 endif
 
 
