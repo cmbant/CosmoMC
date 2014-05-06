@@ -102,6 +102,7 @@ class jobItem:
             tag = '_post_' + job.importanceTag
             job.name = self.name + tag
             job.chainRoot = self.chainRoot + tag
+            job.distPath = self.distPath
             job.distRoot = self.distRoot + tag
             job.datatag = self.datatag + tag
             job.isImportanceJob = True
