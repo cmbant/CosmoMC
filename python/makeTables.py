@@ -12,6 +12,7 @@ Opts.parser.add_argument('--no_delta_chisq', action='store_true')
 Opts.parser.add_argument('--delta_chisq_paramtag', default=None)
 Opts.parser.add_argument('--changes_from_datatag', default=None)
 Opts.parser.add_argument('--changes_from_paramtag', default=None)
+Opts.parser.add_argument('--changes_adding_data', default=None)
 
 # this is just for the latex labelsm set None to use those in chain .paramnames
 Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')
@@ -121,11 +122,10 @@ baseJobItems = dict()
 for paramtag, parambatch in items:
     isBase = len(parambatch[0].param_set) == 0
     for jobItem in parambatch:
-        if (args.delta_chisq_paramtag is None and isBase and not args.no_delta_chisq or
-            args.delta_chisq_paramtag is not None and jobItem.paramtag == args.delta_chisq_paramtag):
+        if (args.delta_chisq_paramtag is None and
+            isBase and not args.no_delta_chisq  or args.delta_chisq_paramtag is not None and jobItem.paramtag == args.delta_chisq_paramtag):
                 referenceJobItem = copy.deepcopy(jobItem)
                 referenceJobItem.loadJobItemResults(paramNameFile=args.paramNameFile)
-                print jobItem.normed_data, jobItem.paramtag
                 baseJobItems[jobItem.normed_data] = referenceJobItem
 
 
@@ -174,10 +174,28 @@ for limit in limits:
                     if jobItem.normed_data == args.changes_from_datatag or jobItem.datatag == args.changes_from_datatag:
                         referenceDataJobItem = copy.deepcopy(jobItem)
                         referenceDataJobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=args.bestfitonly)
+            if args.changes_adding_data is not None:
+                baseJobItems = dict()
+                refItems = []
+                for jobItem in theseItems:
+                    if jobItem.data_set.hasName(args.changes_adding_data):
+                        jobItem.normed_without = "_".join(sorted([x for x in jobItem.data_set.names if not x == args.changes_adding_data]))
+                        refItems.append(jobItem.normed_without)
+                    else: jobItem.normed_without = None
+                for jobItem in theseItems:
+                    if jobItem.normed_data in refItems:
+                        referenceJobItem = copy.deepcopy(jobItem)
+                        referenceJobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=args.bestfitonly)
+                        baseJobItems[jobItem.normed_data] = referenceJobItem
 
             for jobItem in theseItems:
                     if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
-                    referenceJobItem = baseJobItems.get(jobItem.normed_data, None)
+                    if args.changes_adding_data is not None:
+                        if jobItem.normed_without is not None:
+                            referenceDataJobItem = baseJobItems.get(jobItem.normed_without, None)
+                        else: referenceDataJobItem = None
+                        referenceJobItem = referenceDataJobItem
+                    else: referenceJobItem = baseJobItems.get(jobItem.normed_data, None)
                     if args.changes_from_paramtag is not None:
                         referenceDataJobItem = referenceJobItem
 
