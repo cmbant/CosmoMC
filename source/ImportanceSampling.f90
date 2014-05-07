@@ -312,7 +312,7 @@
                             call this%LikeCalculator%WriteParamPointTextData(data_point_txt_root, Params)
                             call this%LikeCalculator%WriteParamsHumanText(data_point_txt_root//'.pars', Params, truelike, weight)
                         end if
-                        call Params%WriteParams(this%LikeCalculator%Config,mult,like)
+                        call Params%WriteParams(this%LikeCalculator%Config,mult,truelike)
                         if (.not. this%redo_no_new_data) call Params%WriteModel(OutData, truelike,mult)
                     else
                         if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
