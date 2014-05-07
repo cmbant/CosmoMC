@@ -10,6 +10,7 @@ Opts.parser.add_argument('--paramList', default=None)
 Opts.parser.add_argument('--compare_data', nargs='+', default=None)
 Opts.parser.add_argument('--compare_importance', nargs='*', default=None)
 Opts.parser.add_argument('--compare_paramtag', nargs='+', default=None)
+Opts.parser.add_argument('--compare_alldata', action='store_true')
 Opts.parser.add_argument('--nx', default=None)
 Opts.parser.add_argument('--legend_labels', default=None)
 Opts.parser.add_argument('--D2_param', default=None)
@@ -53,13 +54,16 @@ items = Opts.sortedParamtagDict()
 
 for paramtag, parambatch in items:
     g.newPlot()
-    if not args.compare_data is None:
+    if args.compare_data is not None or args.compare_alldata:
         print 'comparing: ' + paramtag
-        compares = Opts.filterForDataCompare(parambatch, args.compare_data)
+        if args.compare_alldata:
+            compares = parambatch
+        else:
+            compares = Opts.filterForDataCompare(parambatch, args.compare_data)
         if len(compares) == 0:
             print '..None'
             continue
-        if args.allhave and len(compares) != len(args.compare_data):
+        if not args.compare_alldata and args.allhave and len(compares) != len(args.compare_data):
             print '..not all, skipping'
             continue
         else: comparePlot(compares)
