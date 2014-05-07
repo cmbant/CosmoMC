@@ -103,6 +103,7 @@ class jobItem:
             job.name = self.name + tag
             job.chainRoot = self.chainRoot + tag
             job.distPath = self.distPath
+            job.chainPath = self.chainPath
             job.distRoot = self.distRoot + tag
             job.datatag = self.datatag + tag
             job.isImportanceJob = True
@@ -175,7 +176,7 @@ class jobItem:
 
     def convergeStat(self):
         fname = self.chainRoot + '.converge_stat'
-        if not os.path.exists(fname): return None, None
+        if not nonEmptyFile(fname): return None, None
         textFileHandle = open(fname)
         textFileLines = textFileHandle.readlines()
         textFileHandle.close()
