@@ -799,7 +799,6 @@
     end subroutine CAMBCalc_SetCAMBInitPower
 
     subroutine CAMBCalc_ReadParams(this,Ini)
-    use ModelParams
     class(CAMB_Calculator) :: this
     class(TSettingIni) :: Ini
 
@@ -815,8 +814,6 @@
     else
         highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
     end if
-    
-    AccurateNeutrinoTransfer = Ini%Read_Logical('accurate_neutrino_transfer',.false.)
 
     end subroutine CAMBCalc_ReadParams
 
