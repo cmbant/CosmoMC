@@ -19,10 +19,8 @@ class GetDistPlotSettings:
         self.prob_label = None
         self.prob_y_ticks = False
         # self.prob_label = 'Probability'
-        self.lineM = ['-k', '-r', '-b', '-g', '-m', '-y']
-        # elf.lineM = ['-k', '--r', '-.b', ':g', '--m', '-.y']
+        self.lineM = ['-k', '-r', '-b', '-g', '-m', '-c', '-y']
         self.plot_args = None
-        self.lineL = [':k', ':r', ':b', ':m', ':g', ':y']
         self.solid_colors = ['#006FED', '#E03424', 'gray', '#009966', '#000866', '#336600', '#006633' , 'm', 'r']  # '#66CC99'
         self.default_dash_styles = {'--':(3, 2)}
         self.line_labels = True
@@ -223,14 +221,21 @@ class GetDistPlotter():
     def get_dashes_for_ls(self, ls):
         return self.settings.default_dash_styles.get(ls, None)
 
+    def get_default_ls(self, plotno=0):
+        try:
+            return self.settings.lineM[plotno]
+        except IndexError:
+            print 'Error adding line ' + plotno + ': Add more default line stype entries to settings.lineM'
+            raise
+
     def get_line_styles(self, plotno, **kwargs):
         args = self.get_plot_args(plotno, **kwargs)
-        if not 'ls' in args: args['ls'] = self.settings.lineM[plotno][:-1]
+        if not 'ls' in args: args['ls'] = self.get_default_ls(plotno)[:-1]
         if not 'dashes' in args:
             dashes = self.get_dashes_for_ls(args['ls'])
             if dashes is not None: args['dashes'] = dashes
         if not 'color' in args:
-            args['color'] = self.settings.lineM[plotno][-1]
+            args['color'] = self.get_default_ls(plotno)[-1]
         if not 'lw' in args: args['lw'] = self.settings.lw1
         return args
 
@@ -487,6 +492,9 @@ class GetDistPlotter():
                 for rect, text in zip(self.legend.get_patches(), self.legend.get_texts()):
                     rect.set_visible(False)
                     text.set_color(rect.get_facecolor())
+                for line, text in zip(self.legend.get_lines(), self.legend.get_texts()):
+                    line.set_visible(False)
+                    text.set_color(line.get_color())
 
             return self.legend
 
@@ -552,7 +560,7 @@ class GetDistPlotter():
             subplot(plot_row, plot_col, i + 1)
             self.plot_2d(roots, param_pair=pair, filled=filled, add_legend_proxy=i == 0)
 
-        self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
+        self.finish_plot([legend_labels, [x.replace('_', '{\\textunderscore}') for x in roots]][legend_labels is None], legend_ncol=legend_ncol)
 
         return plot_col, plot_row
 
@@ -686,13 +694,13 @@ class GetDistPlotter():
         self.last_scatter = scatter(pts[:, cols[0]], pts[:, cols[1]], edgecolors='none',
                 s=self.settings.scatter_size, c=pts[:, cols[2]], cmap=self.settings.colormap_scatter)
         if color_bar: self.last_colorbar = self.add_colorbar(params[2])
-        mins = [min(pts[:, cols[0]]),min(pts[:, cols[1]])]
-        maxs = [max(pts[:, cols[0]]),max(pts[:, cols[1]])]
+        mins = [min(pts[:, cols[0]]), min(pts[:, cols[1]])]
+        maxs = [max(pts[:, cols[0]]), max(pts[:, cols[1]])]
         for i in range(2):
-            r=maxs[i]-mins[i]
-            mins[i] -= r/20
-            maxs[i] += r/20
-       
+            r = maxs[i] - mins[i]
+            mins[i] -= r / 20
+            maxs[i] += r / 20
+
         return [mins, maxs]
 
     def plot_3d(self, roots, in_params, color_bar=True, line_offset=0, filled=False, **ax_args):
