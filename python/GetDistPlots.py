@@ -513,6 +513,12 @@ class GetDistPlotter():
                 if 'upper' in legend_loc: subplots_adjust(top=1 - frac / self.plot_row)
                 elif 'lower' in legend_loc: subplots_adjust(bottom=frac / self.plot_row)
 
+    def default_legend_labels(self, legend_labels, roots):
+        if legend_labels is None:
+            if matplotlib.rcParams['text.usetex']:
+                return [x.replace('_', '{\\textunderscore}') for x in roots]
+            else: return roots
+        else: return legend_labels
 
     def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None,
                  paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None):
@@ -536,9 +542,8 @@ class GetDistPlotter():
             if xlims is not None: xlim(xlims[i][0], xlims[i][1])
             if share_y: self.spaceTicks(gca().xaxis, expand=True)
 
-        self.finish_plot([legend_labels, roots][legend_labels is None], legend_ncol=legend_ncol)
+        self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol)
         if share_y: subplots_adjust(wspace=0)
-
         return plot_col, plot_row
 
     def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None, legend_ncol=None, filled=False):
@@ -560,7 +565,7 @@ class GetDistPlotter():
             subplot(plot_row, plot_col, i + 1)
             self.plot_2d(roots, param_pair=pair, filled=filled, add_legend_proxy=i == 0)
 
-        self.finish_plot([legend_labels, [x.replace('_', '{\\textunderscore}') for x in roots]][legend_labels is None], legend_ncol=legend_ncol)
+        self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol)
 
         return plot_col, plot_row
 
@@ -627,7 +632,8 @@ class GetDistPlotter():
             cb = self.fig.colorbar(self.last_scatter, cax=self.fig.add_axes([0.9, 0.5, 0.03, 0.35]))
             self.add_colorbar_label(cb, col_param)
 
-        self.finish_plot([legend_labels, roots][legend_labels is None], legend_loc=None, no_gap=self.settings.no_triangle_axis_labels, no_extra_legend_space=True)
+        self.finish_plot(self.default_legend_labels(legend_labels, roots),
+                         legend_loc=None, no_gap=self.settings.no_triangle_axis_labels, no_extra_legend_space=True)
 
     def rectangle_plot(self, xparams, yparams, yroots, filled=True, ymarkers=None, xmarkers=None, **kwargs):
             self.make_figure(nx=len(xparams), ny=len(yparams))
@@ -726,8 +732,7 @@ class GetDistPlotter():
         for i, triplet in enumerate(sets):
             subplot(plot_row, plot_col, i + 1)
             self.plot_3d(roots, triplet, filled=filled_compare)
-
-        self.finish_plot([legend_labels, roots[1:]][legend_labels is None], no_tight=True)
+        self.finish_plot(self.default_legend_labels(legend_labels, roots[1:]), no_tight=True)
         return plot_col, plot_row
 
     def export(self, fname):

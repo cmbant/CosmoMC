@@ -314,6 +314,11 @@ class bestFit(paramResults):
     def loadFromFile(self, filename, want_fixed=False):
         textFileLines = self.fileList(filename)
         first = textFileLines[0].strip().split('=')
+        if first[0].strip() == 'weight':
+            self.weight = float(first[1].strip())
+            del(textFileLines[0])
+            first = textFileLines[0].strip().split('=')
+        if first[0].strip() != '-log(Like)': raise Exception('Error in format of parameter (best fit) file')
         self.logLike = float(first[1].strip())
         isFixed = False
         isDerived = False
