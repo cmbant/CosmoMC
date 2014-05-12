@@ -51,6 +51,7 @@
             if (fname=='') cycle
             if (MpiRank==0 .and. feedback > 0) &
             print*,'Using clik with likelihood file ',trim(fname)
+            fname = fname // ' ' !just be safe to avoid clik bug
             call clik_try_lensing(is_lensing, fname)
             if (is_lensing) then
                 allocate(ClikLensingLikelihood::like)
