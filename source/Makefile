@@ -12,7 +12,8 @@ ifeq "$(ifortErr)" "0"
 F90C     = ifort
 MPIF90C = mpif90
 FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp
-DEBUGFLAGS = -mkl -openmp -g -check all -check noarg_temp_created -traceback -no-prec-div -fpp -fpe0
+DEBUGFLAGS = -mkl -openmp -g -check all -check noarg_temp_created -traceback -no-prec-div -fpp 
+#add -fpe0 to check for floating point errors (think lowLike also throws these harmlessly)
 MODOUT = -module $(OUTPUT_DIR)
 LAPACKL =
 else
