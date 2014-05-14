@@ -97,7 +97,7 @@
     class(TCosmoLikeCalculator) :: this
     integer, intent(in) :: unit
 
-    write(unit,*) 'slow changes', this%slow_changes, 'power changes', this%semislow_changes
+    write(unit,*) 'slow changes', this%slow_changes, ' power changes', this%semislow_changes
 
     end subroutine Cosmo_WritePerformanceStats
 
