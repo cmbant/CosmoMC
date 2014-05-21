@@ -10,9 +10,9 @@
     Type TTimer
         real(TTimer_dp) start_time
     contains
-    procedure Start => TTimer_Start
-    procedure Time => TTimer_Time
-    procedure WriteTime => TTimer_WriteTime
+    procedure :: Start => TTimer_Start
+    procedure :: Time => TTimer_Time
+    procedure :: WriteTime => TTimer_WriteTime
     end type TTimer
 
     contains
