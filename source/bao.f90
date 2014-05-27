@@ -33,6 +33,9 @@
         !4: D_v - 6DF
         real(mcp), allocatable, dimension(:) :: bao_z, bao_obs, bao_err
         real(mcp), allocatable, dimension(:,:) :: bao_invcov
+        ! AP and f sigma_8 data
+        real(dl), allocatable, dimension(:) :: bao_AP,bao_fsigma8
+        
     contains
     procedure :: LogLike => BAO_LnLike
     procedure :: ReadIni => BAO_ReadIni
