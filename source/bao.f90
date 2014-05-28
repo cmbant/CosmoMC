@@ -33,8 +33,8 @@
         !4: D_v - 6DF
         real(mcp), allocatable, dimension(:) :: bao_z, bao_obs, bao_err
         real(mcp), allocatable, dimension(:,:) :: bao_invcov
-        ! AP and f sigma_8 data
-        real(dl), allocatable, dimension(:) :: bao_AP,bao_fsigma8
+        ! 5: (D_V/rs, F_AP, f sigma_8) 
+        real(mcp), allocatable, dimension(:) :: bao_AP,bao_fsigma8
         
     contains
     procedure :: LogLike => BAO_LnLike
@@ -54,8 +54,9 @@
     real rsdrag_theory
     real(mcp) :: BAO_fixed_rs = -1._mcp
     integer DR7_alpha_npoints
+    logical :: use_bao_lss  = .false.
 
-    public BAOLikelihood, BAOLikelihood_Add
+    public BAOLikelihood, BAOLikelihood_Add, use_bao_lss
     contains
 
     subroutine BAOLikelihood_Add(LikeList, Ini)
@@ -74,7 +75,14 @@
             allocate(this)
             call this%ReadDatasetFile(Ini%ReadFileName(numcat('bao_dataset',i)))
             this%LikelihoodType = 'BAO'
-            this%needs_background_functions = .true.
+            this%num_z = Ini%Read_Int('nz_bao',0)
+            if (this%num_z==0) then
+               this%needs_background_functions = .true.
+            else
+               this%needs_powerspectra = .true.
+               this%max_z = Ini%Read_Double('max_z_bao',1._mcp)
+               use_bao_lss = .true.
+            end if
             call LikeList%Add(this)
         end do
         if (Feedback>1) write(*,*) 'read BAO data sets'
@@ -93,7 +101,7 @@
     this%num_bao = Ini%Read_Int('num_bao',0)
     if (this%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
     this%type_bao = Ini%Read_Int('type_bao',1)
-    if(this%type_bao /= 3 .and. this%type_bao /=2 .and. this%type_bao /=4) then
+    if(this%type_bao /= 3 .and. this%type_bao /=2 .and. this%type_bao /=4 .and. this%type_bao /=5) then
         write(*,*) this%type_bao
         write(*,*)'ERROR: Invalid bao type specified in BAO dataset: '//trim(this%name)
         call MPIStop()
@@ -105,9 +113,17 @@
 
     bao_measurements_file = Ini%ReadFileName('bao_measurements_file')
     call F%Open(bao_measurements_file)
-    do i=1,this%num_bao
-        read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
-    end do
+    if(this%type_bao == 5) then
+       allocate(this%bao_AP(this%num_bao))
+       allocate(this%bao_fsigma8(this%num_bao))
+       do i=1,this%num_bao
+          read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_AP(i),this%bao_fsigma8(i)
+       end do
+    else
+       do i=1,this%num_bao
+          read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
+       end do
+    end if
     call F%Close()
 
     if (this%name == 'DR7') then
@@ -187,6 +203,8 @@
         BAO_LnLike = this%BAO_DR7_loglike(CMB,this%bao_z(1))
     elseif (this%name=='DR11CMASS') then
         BAO_LnLike = this%BAO_DR11_loglike(CMB,this%bao_z(1))
+    elseif (this%type_bao==5) then
+        BAO_LnLike = BAO_RSD_loglike(CMB, Theory,this)
     else
         allocate(BAO_theory(this%num_bao))
 
@@ -219,6 +237,23 @@
     if(feedback>1) write(*,*) trim(this%name)//' BAO likelihood = ', BAO_LnLike
 
     end function BAO_LnLike
+
+    ! RSD like for (D_V/r_s, F_AP, f sigma_8)
+    function BAO_RSD_loglike(CMB,Theory,this)
+      Class(BAOLikelihood) :: this
+      Class(CMBParams) CMB
+      Class(TCosmoTheoryPredictions), target :: Theory
+      real(mcp) BAO_RSD_loglike
+      integer i
+      real(mcp) :: f, z
+      do i=1,this%num_bao 
+         z = this%bao_z(i)
+         f = -(1+z)/Theory%sigma_8_z%Value(z)*Theory%sigma_8_z%Derivative(z)
+         write(*,*) 'Growth rate and sigma_8: ',f,Theory%sigma_8_z%Value(z)
+      end do
+      BAO_RSD_loglike = 0.0d0
+    end function BAO_RSD_loglike
+
 
 
     subroutine BAO_DR7_init(fname)

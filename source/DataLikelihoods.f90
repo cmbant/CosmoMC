@@ -29,7 +29,7 @@
 
     call BAOLikelihood_Add(DataLikelihoods, Ini)
 
-    CosmoSettings%use_LSS = use_mpk
+    CosmoSettings%use_LSS = use_mpk .or. use_bao_lss
 
     end subroutine SetDataLikelihoods
 
