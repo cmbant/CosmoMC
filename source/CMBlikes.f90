@@ -514,7 +514,7 @@
 
     S = Ini%ReadFileName('lensing_fiducial_cl',relative=.true.)
     if (S/='') then
-        Fid = File%LoadTxt(S, comment = Comment)
+        call File%LoadTxt(S, Fid, comment = Comment)
         call L%SetFromString(Comment)
         allocate(ls(size(Fid,1)),source=int(Fid(:,1)))
         allocate(this%Lensing%FiducialPhi(0:ls(size(ls))), source=0._mcp)
@@ -930,7 +930,7 @@
     real(mcp), intent(in) :: fidCL(:)
     integer m,n
 
-    Mat = File%LoadTxt(fname,m,n)
+    call File%LoadTxt(fname,Mat, m,n)
     allocate(this%M(m-1, n-1), source = Mat(2:m,2:n))
     allocate(this%left_indices(m-1), this%right_indices(n-1))
     this%left_indices = int(Mat(2:m,1))
