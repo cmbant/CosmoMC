@@ -31,6 +31,7 @@
     procedure, private :: TCubicSpline_IntRangeValue
     procedure :: InitFromFile => TCubicSpline_InitFromFile
     procedure :: InitInterp => TCubicSpline_InitInterp
+    procedure :: Derivative => TCubicSpline_Derivative
     generic :: Value => TCubicSpline_Value
     generic :: Array => TCubicSpline_ArrayValue, TCubicSpline_IntRangeValue
     generic :: Init => TCubicSpline_Init, TCubicSpline_InitInt
@@ -300,8 +301,45 @@
         y(x) = a0*W%F(llo)+ b0*W%F(lhi)+((a0**3-a0)* W%ddF(llo) +(b0**3-b0)*W%ddF(lhi))*ho**2/6
     end do
 
-
     end subroutine TCubicSpline_IntRangeValue
+
+    ! Get derivative of spline
+    function TCubicSpline_Derivative(W, x, error )
+    class(TCubicSpline) :: W
+    real(sp_acc) :: TCubicSpline_Derivative
+    real(sp_acc), intent(in) :: x
+    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
+    integer llo,lhi
+    real(sp_acc) a0,b0,ho,dely
+
+    if (.not. W%Initialized) call W%FirstUse
+
+    if (x< W%X(1) .or. x> W%X(W%n)) then
+        if (present(error)) then
+            error = -1
+            TCubicSpline_Derivative=0
+            return
+        else
+            write (*,*) 'TCubicSpline_Derivative: out of range ', x
+            stop
+        end if
+    end if
+
+    llo=1
+    do while (W%X(llo+1) < x)  !could do binary search here if large
+        llo = llo + 1
+    end do
+
+    lhi=llo+1
+    ho=W%X(lhi)-W%X(llo)
+    a0=(W%X(lhi)-x)/ho
+    b0=(x-W%X(llo))/ho
+    dely=W%F(lhi)-W%F(llo)
+    TCubicSpline_Derivative = dely/ho-(3.d0*a0**2-1.0d0)*ho*W%ddF(llo)/6.0d0 + &
+    (3.d0*b0**2-1.0d0)*ho*W%ddF(lhi)/6.0d0
+
+    end function TCubicSpline_Derivative
+
 
     !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
     ! calculates array of second derivatives used by cubic spline

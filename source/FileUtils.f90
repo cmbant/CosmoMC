@@ -1350,7 +1350,7 @@
 
     end subroutine ReadTextMatrix
 
-    function LoadTxt(aname, m, n, comment) result(mat)
+    subroutine LoadTxt(aname, mat, m, n, comment)
     character(LEN=*), intent(IN) :: aname
     real(kind(1.d0)), allocatable :: mat(:,:)
     integer mm, nn, j
@@ -1359,7 +1359,6 @@
     integer, optional, intent(out) :: m, n
     character(LEN=:), allocatable, optional, intent(out) :: comment
     integer status
-
 
     call F%Open(aname)
     nn = F%Columns()
@@ -1375,7 +1374,7 @@
     if (present(m)) m = mm
     if (present(n)) n = nn
 
-    end function LoadTxt
+    end subroutine LoadTxt
 
     function CreateTextFile(fname)
     character(LEN=*), intent(in) :: fname
