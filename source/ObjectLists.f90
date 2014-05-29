@@ -848,7 +848,7 @@
     if (present(valid_chars_in)) then
         valid_chars = trim(valid_chars_in)
     else
-        valid_chars='abcdefghijklmopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ0123456789_-.'
+        valid_chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.'
     endif
 
     call this%Clear()

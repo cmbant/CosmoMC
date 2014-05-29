@@ -171,7 +171,7 @@
     subroutine MatrixSym_Write_Binary_Single(aname, mat)
     character(LEN=*), intent(in) :: aname
     real(dm), intent(in) :: mat(:,:)
-    integer i,    file_unit
+    integer i
     integer shp(2)
     Type(TBinaryFile) F
 
