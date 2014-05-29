@@ -10,7 +10,7 @@
         real(mcp) :: angconversion = 11425.8d0
         !angconversion converts inverse of the angular diameter distance at z = zeff to H0
         !for the fiducial cosmology (omega_k = 0, omega_lambda = 0.7, w = -1)
-        !likelihood is in terms of inverse of the angular diameter distance, so includes the tiny cosmological 
+        !likelihood is in terms of inverse of the angular diameter distance, so includes the tiny cosmological
         !dependence of the measurement (primarily on w) correctly.
         real(mcp) :: zeff = 0.04d0
         real(mcp) :: H0, H0_err
