@@ -24,11 +24,17 @@
         real(sp_acc), dimension(:), allocatable :: X
         real(sp_acc), dimension(:), allocatable :: F,  ddF
     contains
-    procedure :: Init => TCubicSpline_Init
+    procedure, private :: TCubicSpline_Init
+    procedure, private :: TCubicSpline_InitInt
+    procedure, private :: TCubicSpline_Value
+    procedure, private :: TCubicSpline_ArrayValue
+    procedure, private :: TCubicSpline_IntRangeValue
     procedure :: InitFromFile => TCubicSpline_InitFromFile
     procedure :: InitInterp => TCubicSpline_InitInterp
-    procedure :: Value => TCubicSpline_Value
-    FINAL :: TCubicSpline_Free
+    generic :: Value => TCubicSpline_Value
+    generic :: Array => TCubicSpline_ArrayValue, TCubicSpline_IntRangeValue
+    generic :: Init => TCubicSpline_Init, TCubicSpline_InitInt
+    FINAL :: TCubicSpline_Free !not needed in standard, just for compiler bugs
     end Type
 
     Type, extends(TInterpolator) :: TInterpGrid2D
@@ -83,13 +89,27 @@
         W%n = size(Xarr)
     end if
 
-    allocate(W%F(n))
-    W%F = values(1:n)
-    allocate(W%X(n))
-    W%X = Xarr(1:n)
+    allocate(W%F(W%n))
+    W%F = values(1:W%n)
+    allocate(W%X(W%n))
+    W%X = Xarr(1:W%n)
     call W%InitInterp(End1, End2)
 
     end subroutine TCubicSpline_Init
+
+    subroutine TCubicSpline_InitInt(W, Xarr,  values, n, End1, End2 )
+    class(TCubicSpline) :: W
+    integer, intent(in) :: XArr(:)
+    real(sp_acc), intent(in) :: values(:)
+    real(sp_acc), allocatable :: XReal(:)
+    integer, intent(in), optional :: n
+    real(sp_acc), intent(in), optional :: End1, End2
+
+    allocate(XReal(size(XArr)))
+    XReal =  XArr
+    call W%Init(XReal, values, n, End1, End2)
+
+    end subroutine TCubicSpline_InitInt
 
     subroutine TCubicSpline_InitInterp(W,End1,End2)
     class(TCubicSpline):: W
@@ -120,7 +140,7 @@
     integer, intent(in), optional :: xcol, ycol
     integer :: ixcol=1,iycol=2
     integer :: nx,ny
-    integer :: i, parse, status
+    integer :: parse, status
     real(sp_acc), allocatable :: tmp(:)
     character(LEN=:), allocatable :: InLine
     Type(TTextFile) :: F
@@ -167,9 +187,11 @@
     subroutine TCubicSpline_Free(W)
     Type(TCubicSpline) :: W
 
-    deallocate(W%X)
-    deallocate(W%F)
-    deallocate(W%ddF)
+    if (allocated(W%X)) then
+        deallocate(W%X)
+        deallocate(W%F)
+        deallocate(W%ddF)
+    end if
     W%Initialized = .false.
 
     end subroutine TCubicSpline_Free
@@ -204,11 +226,82 @@
     ho=W%X(lhi)-W%X(llo)
     a0=(W%X(lhi)-x)/ho
     b0=(x-W%X(llo))/ho
-    TCubicSpline_Value = a0*W%F(llo)+ b0*W%F(lhi)+((a0**3-a0)* W%ddF(llo) &
-    +(b0**3-b0)*W%ddF(lhi))*ho**2/6.
+    TCubicSpline_Value = a0*W%F(llo)+ b0*W%F(lhi)+((a0**3-a0)* W%ddF(llo) +(b0**3-b0)*W%ddF(lhi))*ho**2/6
 
     end function TCubicSpline_Value
 
+    subroutine TCubicSpline_ArrayValue(W, x, y, error )
+    !Get array of values y(x), assuming x is monotonically increasing
+    class(TCubicSpline) :: W
+    real(sp_acc), intent(in) :: x(1:)
+    real(sp_acc), intent(out) :: y(1:)
+    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
+    integer llo,lhi, i
+    real(sp_acc) a0,b0,ho
+
+    if (.not. W%Initialized) call W%FirstUse
+
+    if (x(1)< W%X(1) .or. x(size(x))> W%X(W%n)) then
+        if (present(error)) then
+            error = -1
+            return
+        else
+            write (*,*) 'TCubicSpline_Value: out of range ', x
+            stop
+        end if
+    end if
+
+    llo=1
+    do i=1, size(x)
+        do while (W%X(llo+1) < x(i))  !could do binary search here if large
+            llo = llo + 1
+        end do
+
+        lhi=llo+1
+        ho=W%X(lhi)-W%X(llo)
+        a0=(W%X(lhi)-x(i))/ho
+        b0=(x(i)-W%X(llo))/ho
+        y(i) = a0*W%F(llo)+ b0*W%F(lhi)+((a0**3-a0)* W%ddF(llo) +(b0**3-b0)*W%ddF(lhi))*ho**2/6
+    end do
+
+    end subroutine TCubicSpline_ArrayValue
+
+    subroutine TCubicSpline_IntRangeValue(W, xmin, xmax, y, error )
+    !Get array of values y(x), assuming x is monotonically increasing
+    class(TCubicSpline) :: W
+    integer, intent(in) :: xmin, xmax
+    real(sp_acc), intent(out) :: y(xmin:)
+    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
+    integer llo,lhi, x
+    real(sp_acc) a0,b0,ho
+
+    if (.not. W%Initialized) call W%FirstUse
+
+    if (xmin< W%X(1) .or. xmax> W%X(W%n)) then
+        if (present(error)) then
+            error = -1
+            return
+        else
+            write (*,*) 'TCubicSpline_Value: out of range ', x
+            stop
+        end if
+    end if
+
+    llo=1
+    do x=xmin, xmax
+        do while (W%X(llo+1) < x)  !could do binary search here if large
+            llo = llo + 1
+        end do
+
+        lhi=llo+1
+        ho=W%X(lhi)-W%X(llo)
+        a0=(W%X(lhi)-x)/ho
+        b0=(x-W%X(llo))/ho
+        y(x) = a0*W%F(llo)+ b0*W%F(lhi)+((a0**3-a0)* W%ddF(llo) +(b0**3-b0)*W%ddF(lhi))*ho**2/6
+    end do
+
+
+    end subroutine TCubicSpline_IntRangeValue
 
     !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
     ! calculates array of second derivatives used by cubic spline
@@ -303,7 +396,7 @@
     integer, intent(in), optional :: xcol, ycol, zcol
     integer :: ixcol=1,iycol=2,izcol=3
     integer :: nx,ny
-    integer :: j, parse, status
+    integer :: parse, status
     real(sp_acc), allocatable :: tmp(:)
     real(sp_acc) lasty
     logical :: first
@@ -324,30 +417,30 @@
         nx=0
         do while(F%ReadLineSkipEmptyAndComments(InLine))
 
-            read(InLine,*, iostat=status) tmp
-            if (status/=0) call W%Error('Error reading line: '//trim(InLine))
+        read(InLine,*, iostat=status) tmp
+        if (status/=0) call W%Error('Error reading line: '//trim(InLine))
 
-            if (first .or. tmp(iycol)/=lasty) then
-                lasty=tmp(iycol)
-                ny=ny+1
-                nx=0
-                first = .false.
+        if (first .or. tmp(iycol)/=lasty) then
+            lasty=tmp(iycol)
+            ny=ny+1
+            nx=0
+            first = .false.
+        end if
+
+        nx=nx+1
+        if (parse==2) then
+            if (ny==1) then
+                W%x(nx) = tmp(ixcol)
+            else
+                if (tmp(ixcol)/=W%x(nx)) call W%Error('Non-grid x values')
             end if
-
-            nx=nx+1
-            if (parse==2) then
-                if (ny==1) then
-                    W%x(nx) = tmp(ixcol)
-                else
-                    if (tmp(ixcol)/=W%x(nx)) call W%Error('Non-grid x values')
-                end if
-                if (nx==1) then
-                    W%y(ny) = tmp(iycol)
-                else
-                    if (tmp(iycol)/=W%y(ny))call W%Error('Non-grid y values')
-                end if
-                W%z(nx, ny) = tmp(izcol)
-            endif
+            if (nx==1) then
+                W%y(ny) = tmp(iycol)
+            else
+                if (tmp(iycol)/=W%y(ny))call W%Error('Non-grid y values')
+            end if
+            W%z(nx, ny) = tmp(izcol)
+        endif
         end do
 
         if (parse==2) exit
