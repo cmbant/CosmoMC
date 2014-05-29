@@ -35,7 +35,7 @@
         real(mcp), allocatable, dimension(:,:) :: bao_invcov
         ! 5: (D_V/rs, F_AP, f sigma_8) 
         real(mcp), allocatable, dimension(:) :: bao_AP,bao_fsigma8
-        
+
     contains
     procedure :: LogLike => BAO_LnLike
     procedure :: ReadIni => BAO_ReadIni
@@ -77,11 +77,11 @@
             this%LikelihoodType = 'BAO'
             this%num_z = Ini%Read_Int('nz_bao',0)
             if (this%num_z==0) then
-               this%needs_background_functions = .true.
+                this%needs_background_functions = .true.
             else
-               this%needs_powerspectra = .true.
-               this%max_z = Ini%Read_Double('max_z_bao',1._mcp)
-               use_bao_lss = .true.
+                this%needs_powerspectra = .true.
+                this%max_z = Ini%Read_Double('max_z_bao',1._mcp)
+                use_bao_lss = .true.
             end if
             call LikeList%Add(this)
         end do
@@ -114,15 +114,15 @@
     bao_measurements_file = Ini%ReadFileName('bao_measurements_file')
     call F%Open(bao_measurements_file)
     if(this%type_bao == 5) then
-       allocate(this%bao_AP(this%num_bao))
-       allocate(this%bao_fsigma8(this%num_bao))
-       do i=1,this%num_bao
-          read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_AP(i),this%bao_fsigma8(i)
-       end do
+        allocate(this%bao_AP(this%num_bao))
+        allocate(this%bao_fsigma8(this%num_bao))
+        do i=1,this%num_bao
+            read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_AP(i),this%bao_fsigma8(i)
+        end do
     else
-       do i=1,this%num_bao
-          read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
-       end do
+        do i=1,this%num_bao
+            read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
+        end do
     end if
     call F%Close()
 
@@ -240,18 +240,19 @@
 
     ! RSD like for (D_V/r_s, F_AP, f sigma_8)
     function BAO_RSD_loglike(CMB,Theory,this)
-      Class(BAOLikelihood) :: this
-      Class(CMBParams) CMB
-      Class(TCosmoTheoryPredictions), target :: Theory
-      real(mcp) BAO_RSD_loglike
-      integer i
-      real(mcp) :: f, z
-      do i=1,this%num_bao 
-         z = this%bao_z(i)
-         f = -(1+z)/Theory%sigma_8_z%Value(z)*Theory%sigma_8_z%Derivative(z)
-         write(*,*) 'Growth rate and sigma_8: ',f,Theory%sigma_8_z%Value(z)
-      end do
-      BAO_RSD_loglike = 0.0d0
+    Class(BAOLikelihood) :: this
+    Class(CMBParams) CMB
+    Class(TCosmoTheoryPredictions), target :: Theory
+    real(mcp) BAO_RSD_loglike
+    integer i
+    real(mcp) :: f, z
+
+    do i=1,this%num_bao
+        z = this%bao_z(i)
+        f = -(1+z)/Theory%sigma_8_z%Value(z)*Theory%sigma_8_z%Derivative(z)
+        write(*,*) 'Growth rate and sigma_8: ',f,Theory%sigma_8_z%Value(z)
+    end do
+    BAO_RSD_loglike = 0.0d0
     end function BAO_RSD_loglike
 
 
