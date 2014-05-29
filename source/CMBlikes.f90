@@ -525,7 +525,7 @@
     if (S/='') then
         call this%Lensing%N1_matrix_dphi%LoadFromFile(S, this%Lensing%FiducialPhi(1:))
     end if
-    S = Ini%Read_String('lensing_renorm_fields')
+    S = Ini%Read_String('lensing_renorm_cl')
     if (S/='') then
         if (.not. allocated(Fid)) call MpiStop('lensing_renorm_fields but no lensing_fiducial_cl')
         call RenormCl%SetFromString(S)
@@ -930,7 +930,6 @@
     real(mcp), intent(in) :: fidCL(:)
     integer m,n
 
-    print *, lbound(fidCl), ubound(fidCl)
     Mat = File%LoadTxt(fname,m,n)
     allocate(this%M(m-1, n-1), source = Mat(2:m,2:n))
     allocate(this%left_indices(m-1), this%right_indices(n-1))
