@@ -809,7 +809,8 @@
         !Correct for normalization and actual N1
         associate(CL=>Cls(CL_Phi,CL_Phi)%CL)
             if (allocated(this%Lensing%N1_matrix_dphi%M)) then
-                call this%Lensing%N1_matrix_dphi%InterpProduct(CL(1:), N1_interp, lminN1, lmaxN1, this%pcl_lmax, sub_fiducial = .true.)
+                call this%Lensing%N1_matrix_dphi%InterpProduct(CL(1:), N1_interp, lminN1, lmaxN1, &
+                & this%pcl_lmax, sub_fiducial = .true.)
             end if
 
             if (allocated(this%Lensing%renorm_matrix%M)) then
