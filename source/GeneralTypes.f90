@@ -727,7 +727,7 @@
     real(mcp) :: P(:)
     real(mcp), allocatable :: allDerived(:)
     Class(TDataLikelihood), pointer :: DataLike
-    integer i, stat
+    integer i
     integer :: num_in = 0
     integer :: num_derived = 0
 

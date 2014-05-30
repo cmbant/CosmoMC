@@ -34,13 +34,11 @@
     class(TFileStream) :: F
     real(mcp), intent(in) :: mult, like
     integer j , unused
-    logical, save :: first = .true.
     logical isfirst
     class(TDataLikelihood), pointer :: DataLike
 
-    isfirst=first
-    if (first .and. new_chains) then
-        first = .false.
+    isfirst = F%Position() == 1
+    if (isfirst) then
         if (mcp==kind(1.0)) then
             j=3
         else
