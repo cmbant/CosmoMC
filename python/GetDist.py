@@ -126,7 +126,7 @@ shade_meanlikes = ini.bool('shade_meanlikes',False)
 out_dir = ini.bool('out_dir')
 
 out_root = ini.bool('out_root')
-if (out_root!=''):
+if (out_root<>''):
     rootname = out_root
     print 'producing files with with root ', out_root
 
@@ -160,7 +160,7 @@ plot_meanlikes = ini.bool('plot_meanlikes',False)
 # PCA 
 
 PCA_num = ini.int('PCA_num',0)
-if (PCA_num!=0):
+if (PCA_num<>0):
     if (PCA_num<2):
         print 'Can only do PCA for 2 or more parameters'
         sys.exit(1)
@@ -176,8 +176,8 @@ num_3D_plots = ini.int('num_3D_plots',0)
 make_scatter_samples = ini.bool('make_scatter_samples',False)
 max_scatter_points = ini.int('max_scatter_points',2000)
 
-
-
+BW = ini.bool('B&W', False)
+do_shading = ini.bool('do_shading',True)
 
 
 def getLastChainIndex(file_root):
@@ -194,110 +194,48 @@ if(last_chain==-1):
 
 # Read in the chains
 chains = loadChains(file_root, range(first_chain, last_chain+1), ignore_rows=ignorerows)
+chains.getChainsStats()
+
+# FIXME?: chains to exclude 
+# FIXME?: distinction single column vs. multiple columns
+# FIXME?: ignorerows 
+# FIXME?: check if no chains were read
 
 
+#TODO: CoolChain(cool)
 
-
-
-
-
-
-
-self.nrows = 0
-self.num_chains_used = 0
-
-
-
-
-
-if (self.num_chains_used > self.max_chains):
-    sys.exit('Increase max_chains in GetDist')
-
-    #chain_indices(num_chains_used) = nrows
-    #chain_numbers(num_chains_used) = chain_ix
-
-
-if (single_column_chain_files):
-    # Use used for WMAP 5-year chains suppled on LAMBDA; code from Mike Nolta
-    # Standard CosmoMC case below
-
-    first_haschain = 0
-    for ip in range(self.ncols):
-            #infile = concat(File%CheckTrailingSlash(concat(in_root,chain_ix)), pname(ip))
-        if not os.path.exists(infile):
-            print 'skipping missing ', infile 
-                #coldata(ip,:) = 0
-                #nrows2(ip) = -1
-        else:
-            print 'reading ', infile 
-                #call ChainFile%Open(infile)
-            if (first_haschain==0): first_haschain = ip
-                # ...
-            idx = 0
-                # ...
-                # TODO: read data from file
-
-
-        if (first_haschain==0):
-            sys.exit('no chain parameter files read!')
-
-        for ip in range(2, self.ncols+1): # ?
-            # ...
-            pass
-
-        #nrows = nrows2(first_haschain)
-        print 'all columns match, nrows = ', self.nrows
-
-    else:
-        # Not single column chain files (usual cosmomc format)
-        # This increments nrows by number read in
-
-        # ...
-        pass
-
-
-    if (map_params):
-        # ...
-        pass
-
-
-    if (ignorerows<1) and (ignorerows!=0):
-        # ... 
-        pass
-
-
-if (self.nrows==0):
-    sys.exit('No un-ignored rows! (check number of chains/burn in)')
-
-if (cool!=1):
-    self.CoolChain(cool)
-
-# Adjust weights if requested
+# Adjust weights if requesteda
 if (adjust_priors):
-    self.AdjustPriors()  
+    # TODO: AdjustPriors()
+    pass
 
-
-# See which parameters are fixed
-self.GetUsedCols()
+# See which parameters are fixed (see Chains.loadWMAPChain)
+#TODO: GetUsedCols()
 
 
 # ...
 
 
 if (not no_tests):
-    self.DoConvergeTests(converge_test_limit)
+    #TODO: DoConvergeTests(converge_test_limit)
+    pass
 
 if (adjust_priors):
-    self.DeleteZeros()
+    #TODO: DeleteZeros
+    pass
 
-print 'mean input multiplicity = ', mean_mult
+
+#print 'mean input multiplicity = ',mean_mult
 
 
 # Output thinned data if requested
 # Must do this with unsorted output
-if (thin_factor!=0):
-    self.ThinData(thin_factor)
-    self.WriteThinData(self.rootdirname+'_thin.txt', thin_cool) # ?
+if (thin_factor<>0):
+    #TODO ThinData(thin_factor)
+    # Loop over chain + call chain.thin(thin_factor)
+    filename = rootdirname + '_thin.txt'
+    #TODO WriteThinData(trim(rootdirname)//'_thin.txt',thin_cool)
+
 
 
 # Produce file of weight-1 samples if requested
@@ -308,7 +246,7 @@ if (thin_factor!=0):
 # Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
 num_vars = 0
 
-if (plotparams_num!=0):
+if (plotparams_num<>0):
 
     # ...
     pass
@@ -332,7 +270,7 @@ if (make_single_samples):
 # IO_WriteBounds
 
 # Sort data in order of likelihood of points
-#call SortColData(2)
+#TODO call SortColData(2)
 
 #numsamp = sum(coldata(1,0:nrows-1))
 
@@ -352,7 +290,7 @@ if (triangle_plot):
     pass
 
 print 'using ',nrows,' rows, processing ',num_vars,' parameters'
-if (indep_thin!=0):
+if (indep_thin<>0):
     print 'Approx indep samples: ', int(numsamp/indep_thin) # equiv. to nint ?
 else:
     print  'effective number of samples (assuming indep): ', int(numsamp/max_mult)  # equiv. to nint ?
@@ -375,40 +313,118 @@ if (not no_plots):
 LowerUpperLimits = 0
 
 
-# 1D 
-# --
-
 
 # Do 1D bins
+
 for j in range(num_vars):
     # ... 
 
-    self.Get1DDensity(j)
+    #self.Get1DDensity(j)
+    
+    #call to twoTailLimits in chains.py
+    pass
+
+if (not no_plots):
+    if (plot_ext=='py'):
+        text = "g.plots_1d(roots)"
+
+if (not no_plots):
+    # Output files for 1D plots
+    filename = rootdirname + plot_ext
+    textFileHandle = open(filename, 'w')
+    if (plot_ext=='py'):
+        text = "g.plots_1d(roots)"
+        # ...
+
+    
+    if (triangle_plot):
+        filename = rootdirname + '_tri.' + plot_ext
+        textFileHandle = open(filename, 'w')
+        if (plot_ext=='py'):
+            text = "g.triangle_plot(roots, %s)"%data # todo 
+
+
+# Do 2D bins
+if (plot_2D_param==0) and (num_cust2D_plots==0) and (not no_plots):
+    # In this case output the most correlated variable combinations
+    print "doing 2D plots for most correlated variables"
+    
+    # ...
+
+    
+if (num_cust2D_plots==0):
+    num_2D_plots = 0
+
+    # ...
+else:
+    num_2D_plots = num_cust2D_plots
+      
+
+if (num_2D_plots>0) and (not no_plots):
+    print 'Producing ', num_2D_plots,' 2D plots'
+    filename = rootdirname + '_2D.' + plot_ext
+    textFileHandle = open(filename, 'w')
+    if (plot_ext=='py'):
+        text = 'pairs=[]'
+
+    # ... 
+            
+if (triangle_plot) and (not no_plots):
+    # Add the off-diagonal 2D plots
+    for i in range(triangle_num):
+        # Matlab only ???
+        pass
+
+
+
+# Do 3D plots (i.e. 2D scatter plots with coloured points)
+
+if (num_3D_plots<>0 and not no_plots):
+    print 'producing ',num_3D_plots, '2D colored scatter plots'
+    filename = rootdirname + '_3D.' + plot_ext
+    textFileHandle = open(filename, 'w')
+    # call to WritePlotFileInit
+    text  = ""
+    text += "sets=[]"
+    for j in range(num_3D_plots):
+        text += "sets.append([%s,%s,%s])"%(v1, v2, v3) # todo
+    text += "g.plots_3d(roots,sets)"
+    textFileHandle.close()
 
 
 
 
-
-
-
-# 2D 
-# --
-
-
-
-# 3D 
-# --
-
-
-
-# Statistics
-# ----------
+def WritePlotFileInit(handle):
+    text = """
+import GetDistPlots, os
+g=GetDistPlots.GetDistPlotter('%s')
+g.settings.setWithSubplotSize(%f)
+outdir='%s'
+roots=['%s', '%s']
+"""
+    return text
 
 
 
 
-import pdb
-pdb.set_trace()
+# Write out stats marginalized
+# TODO: margeStats
+
+# TODO: write file paramnames in plot_data/ dir
+
+# Limits from global likelihood
+# TODO: LikeFile 
+
+
+# System command
+if (finish_run_command):
+    finish_run_command = finish_run_command.replace('%ROOTNAME%',rootname)
+    finish_run_command = finish_run_command.replace('%PLOTDIR%',plot_data_dir)
+    finish_run_command = finish_run_command.replace('%PLOTROOT%', os.path.join(plot_data_dir, rootname))
+    os.system(finish_run_command)
+    
+
+
 
 
 
