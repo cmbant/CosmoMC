@@ -238,18 +238,9 @@ class lensLike():
             self.renorm_N1_fid = np.dot(self.renorm_N1_matrix, self.fid_cl[self.renorm_N1_LT, 1])
 
             # bin_renorm_matrix gets correction to A_L (so square it for effect on CPhi)
-#            tmp = self.renorm_matrix[:self.phi_lmax - 1, 1:]
-#            for i in range(tmp.shape[0]):
-#                tmp[i, :] = tmp[i, :] / fid_norm[i]
-#            for b in range(self.nbins):
-#                self.bin_renorm_matrix[b, 2:] = np.dot(self.binning_matrix[b, 2:], tmp)
-
-#            tmp = self.renorm_N1_matrix[:self.phi_lmax - 1, 1:]
-#            for i in range(tmp.shape[0]):
-#                tmp[i, :] = tmp[i, :] / fid_norm[i]
-#            self.bin_N1_renorm_matrix = np.zeros((self.nbins, lmax_mat + 1))
-#            for b in range(self.nbins):
-#                self.bin_N1_renorm_matrix[b, 2:] = np.dot(self.binning_matrix[b, 2:], tmp)
+#            print self.renorm_L
+#            self.bin_renorm_matrix = np.dot(self.binning_matrix[:, 2:], self.renorm_matrix[:self.phi_lmax - 1, :])
+#            self.bin_renorm_N1_matrix = np.dot(self.binning_matrix[:, 2:], self.renorm_N1_matrix[:self.phi_lmax - 1, :])
 
 
         def dumpData(self, froot):
@@ -325,16 +316,14 @@ class lensLike():
             # savefig(r'z:\cl_plot.pdf', bbox_inches='tight')
 
         def chi_squared(self, phicl, clTT=None):
-
             N1 = self.makeN1(phicl, clTT)
             if clTT is not None:
                 phicl = self.makeRenormCPhi(phicl, clTT)
             phicl = phicl + N1 - self.makeN1(lens.fid_phi, None)
-
-            A = np.zeros(self.nbins)
+            binphi = np.zeros(self.nbins)
             for b in range(self.nbins):
-                A[b] = sum(self.binning_matrix[b, self.lmin[b]:self.lmax[b] + 1] * phicl[self.lmin[b]:self.lmax[b] + 1])
-            delta = A - self.bandpowers
+                binphi[b] = sum(self.binning_matrix[b, self.lmin[b]:self.lmax[b] + 1] * phicl[self.lmin[b]:self.lmax[b] + 1])
+            delta = binphi - self.bandpowers
             return np.dot(delta, np.dot(self.covinv, delta))
 
 
