@@ -4,25 +4,17 @@ import os
 import sys
 import numpy as np
 
-import iniFile
 
+import iniFile
 import paramNames
 from MCSamples import MCSamples
 
-# 
 
-
-
-
-# Initialization
-# --------------
-
-# use batchJobArgs.batchArgs
+#FIXME?: use batchJobArgs.batchArgs
 
 if (len(sys.argv)<2):
     print 'Usage: python/GetDist.py ini_file [chain_root]'
     sys.exit()
-    #sys.exit('No parameter input file')
 
 # Parameter file
 ini_file = os.path.abspath(sys.argv[1])
@@ -30,9 +22,16 @@ if not os.path.isfile(ini_file):
     print 'Parameter file do not exist ', ini_file
     sys.exit()
 
+# Input parameters
 ini = iniFile.iniFile()
 ini.readFile(ini_file)
-dataset = ini.params
+#dataset = ini.params
+
+
+parameter_names_file = ini.string('parameter_names')
+if (parameter_names_file):
+    p = paramNames.paramNames(parameter_names_file)
+parameter_names_labels = ini.string('parameter_names_labels')
 
 # file_root
 if (len(sys.argv)>2):
@@ -44,7 +43,6 @@ if (file_root=="") or (not os.path.isfile(file_root)):
      sys.exit()
 
 
-parameter_names_labels = ini.string('parameter_names_labels')
 
 nparams = ini.int('nparams')
 columnnum = ini.int('columnnum',0)
@@ -98,17 +96,69 @@ make_single_samples = ini.bool('make_single_samples', False)
 single_thin = ini.int('single_thin',1)
 cool = ini.float('cool',1.)
 
+#    do ix = 1, Ini%Read_Int('compare_num',0)
+#        call ComparePlots%Add(File%ExtractName(Ini%Read_String(numcat('compare',ix))))
 
-# plotparams_num deprecated message
-# plot_params 
+
+has_limits_top = False
+has_limits_bot = False
+
+bin_limits = ini.string('all_limits')
+markers = 0
+has_markers = False
+
+# ...
 
 
-plot_2D_param = 0 # todo 
+
+
+
+
+if (ini.params.has_key('plotparams_num')):
+    print 'plotparams_num deprectated; just use plot_params'
+    sys.exit(1)
+
+line = ini.string('plot_params')
+if (line<>""):
+    plotparams_num = -1
+    #plot_params # todo
+
+line = ini.string('plot_2D_param')
+if (line==""):
+    plot_2D_param = 0
+else:
+    #call NameMapping%ReadIndices(InLine, tmp_params, 1)
+    plot_2D_param = 123456789 # todo tmp_params(1)
+    #if (plot_2D_param/=0 .and. plotparams_num/=0 .and. &
+    #count(plotparams(1:plotparams_num)==plot_2D_param)==0) &
+    #stop 'plot_2D_param not in plotparams'
+    
+if (plot_2D_param<>0):
+    plot_2D_param = plot_2D_param + 2
+    num_cust2D_plots = 0
+else:
+    # Use custom array of specific plots
+    num_cust2D_plots = ini.int('plot_2D_num',0)
+    for i in range(1, num_cust2D_plots+1):
+        line = ini.string('plot'+str(i))
+        # todo
+        #call NameMapping%ReadIndices(InLine, tmp_params, 2)
+        #if (plotparams_num/=0 .and. (count(plotparams(1:plotparams_num)==tmp_params(1))==0 .or. &
+        #count(plotparams(1:plotparams_num)==tmp_params(2))==0)) then
+        #   write(*,*) trim(numcat('plot',ix)) //': parameter not in plotparams'
+        #   stop
+        #cust2DPLots(ix) = tmp_params(1)+2 + (tmp_params(2)+2)*1000
+
 
 
 triangle_plot = ini.bool('triangle_plot',False)
 if (triangle_plot):
     no_triangle_axis_labels = ini.bool('no_triangle_axis_labels',False)
+    line = ini.string('triangle_params')
+    triangle_num = -1
+    if (line<>""):
+        #call NameMapping%ReadIndices(InLine, triangle_params, triangle_num, unknown_value=-1)
+        pass
 
 
 exclude_chain = ini.bool('exclude_chain') 
@@ -139,39 +189,58 @@ if (plot_data_dir==''):
 rootdirname = os.path.join(out_dir, rootname)
 
 num_contours = ini.int('num_contours',2)
-
+contours = []
+for i in range(1, num_contours+1):
+    contours.append(ini.float('contour'+str(i)))
+    #max_frac_twotail(i) = Ini%Read_Double(numcat('max_frac_twotail',i), exp(-dinvnorm((1-contours(i))/2)**2/2))
+contours_str = "; ".join(contours)
 
 if (not no_tests):
-    converge_test_limit = ini.float('converge_test_limit',contours(num_contours))
-    corr_length_thin = ini.int('corr_length_thin',corr_length_thin)
-    corr_length_steps = ini.int('corr_length_steps',corr_length_steps)
+    converge_test_limit = ini.float('converge_test_limit',contours[num_contours-1])
+    corr_length_thin = ini.int('corr_length_thin', 0)
+    corr_length_steps = ini.int('corr_length_steps', 15)
     
-
 force_twotail = ini.bool('force_twotail',False)
-if (force_twotail):
-    print 'Computing two tail limits'
+if (force_twotail): print 'Computing two tail limits'
 
-
+#if (Ini%Read_String('cov_matrix_dimension')=='') then
+#   if (NameMapping%nnames/=0) covmat_dimension = NameMapping%num_MCMC
+#else
+#   covmat_dimension = Ini%Read_Int('cov_matrix_dimension',0)
+#   if (covmat_dimension == -1) covmat_dimension = ncols-2
+#end if
 
 plot_meanlikes = ini.bool('plot_meanlikes',False)
 
-
-
-# PCA 
+if (ini.params.has_key('do_minimal_1d_intervals')):
+    print 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
+    sys.exit(1)
 
 PCA_num = ini.int('PCA_num',0)
 if (PCA_num<>0):
     if (PCA_num<2):
         print 'Can only do PCA for 2 or more parameters'
         sys.exit(1)
-        
-    # ...
-
-
+    line = ini.string('PCA_params')
+    PCA_func = ini.string('PCA_func')
+    # Characters representing functional mapping
+    if (PCA_func==''):
+        PCA_func = ['N'] * PCA_num  # No mapping
+    if (line.lower()=="all"):
+        PCA_params = range(1, PCA_num+1)
+    else:
+        PCA_params = [] # todo find indexes
+    line = ini.string('PCA_normparam')
+    if (line==""):
+        PCA_NormParam = 0
+    else:
+        PCA_NormParam = 123456789 # todo tmp_params(1)
 
 num_3D_plots = ini.int('num_3D_plots',0)
-# ...
-
+#plot_3D = [ ini.string('3D_plot'+str(ix)) of ix in range(1, num_3D_plots+1) ]
+plot_3D = []
+for ix in range(1, num_3D_plots+1):
+    plot_3D.append(ini.string('3D_plot'+str(ix)))
 
 make_scatter_samples = ini.bool('make_scatter_samples',False)
 max_scatter_points = ini.int('max_scatter_points',2000)
