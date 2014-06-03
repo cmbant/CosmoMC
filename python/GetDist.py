@@ -2,12 +2,13 @@
 
 import os
 import sys
+import glob
 import numpy as np
 
+import chains as ch
 import iniFile
 import paramNames
 from MCSamples import MCSamples
-
 
 #MT FIXME?: use batchJobArgs.batchArgs
 if (len(sys.argv)<2):
@@ -30,15 +31,14 @@ if (parameter_names_file):
     p = paramNames.paramNames(parameter_names_file)
 parameter_names_labels = ini.string('parameter_names_labels', False) # MT: False added here
 
-# file_root
-root_name = ""
 if (len(sys.argv)>2):
-    file_root = sys.argv[2]
+    in_root = sys.argv[2]
 else:
-    file_root = ini.params['file_root']
-if (file_root==""): # or (not os.path.isfile(file_root)): # MT FIXME test file existence? 
-     print 'Root file do not exist ', file_root
+    in_root = ini.params['file_root']
+if (in_root==""): # or (not os.path.isfile(file_root)): # MT FIXME test file existence? 
+     print 'Root file do not exist ', in_root
      sys.exit()
+rootname = os.path.basename(in_root)
 
 if (ini.params.has_key('nparams')):
     ncols = ini.int('nparams') + 2 
@@ -180,7 +180,7 @@ for i in range(1, num_contours+1):
     contours.append(ini.float('contour'+str(i)))
     #MT TODO
     #max_frac_twotail(i) = Ini%Read_Double(numcat('max_frac_twotail',i), exp(-dinvnorm((1-contours(i))/2)**2/2))
-contours_str = "; ".join(contours)
+contours_str = "; ".join([ str(c) for c in contours ]) 
 
 if (not no_tests):
     converge_test_limit = ini.float('converge_test_limit',contours[num_contours-1])
@@ -237,26 +237,32 @@ BW = ini.bool('B&W', False)
 do_shading = ini.bool('do_shading',True)
 
 
-def getLastChainIndex(file_root):
-    # TODO: get max index of chain
-    import pdb; pdb.set_trace()
-    return 0
+def getLastChainIndex(in_root):
+    chain_files = glob.glob(in_root+"_*.txt")
+    if not chain_files: return 0
+    names_files = [ os.path.basename(f) for f in chain_files ]
+    basename = os.path.basename(in_root)
+    indexes = [ int(f.replace(basename+'_', '').replace('.txt', '')) for f in names_files ]
+    return max(indexes)
 
-first_chain = ini.int('first_chain',1)
+first_chain = ini.int('first_chain',1) 
 last_chain = ini.int('chain_num',-1) 
 # -1 means keep reading until one not found
 if(last_chain==-1):
-    last_chain = getLastChainIndex(file_root)
+    last_chain = getLastChainIndex(in_root)
 
 # Read in the chains
-chains = loadChains(file_root, range(first_chain, last_chain+1), ignore_rows=ignorerows)
-chains.getChainsStats()
+chains = ch.loadChains(in_root, range(first_chain, last_chain+1), ignore_frac=ignorerows)
+#chains.getChainsStats()
 
 # FIXME?: chains to exclude 
 # FIXME?: distinction single column vs. multiple columns
 # FIXME?: ignorerows 
 # FIXME?: check if no chains were read
 
+
+
+import pdb; pdb.set_trace()
 
 #TODO: CoolChain(cool)
 
