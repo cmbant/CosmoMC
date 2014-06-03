@@ -114,12 +114,14 @@ class iniFile:
         else: self._undefined(name)
         
     def float(self,name,default=None):
-        if name in self.params: return float(self.params[name])
+        if name in self.params and self.str_is_float(self.params[name]):
+            return float(self.params[name])
         elif default is not None: return default
         else: self._undefined(name)
         
     def int(self,name,default=None):
-        if name in self.params: return int(self.params[name])
+        if name in self.params and self.str_is_int(self.params[name]): 
+                return int(self.params[name])
         elif default is not None: return default
         else: self._undefined(name)
         
@@ -134,4 +136,13 @@ class iniFile:
         
     def array_float(self,name,index=1, default=None):
         return self.float(name+'(%u)'%index,default)
-        
+
+    def str_is_float(self, s):
+        try:
+            float(s)
+            return True
+        except ValueError:
+            return False
+
+    def str_is_int(self, s):
+        return s.isdigit()
