@@ -2,7 +2,7 @@
 
 import os
 import sys
-import numpy
+import numpy as np
 
 class MCSamples:
     """

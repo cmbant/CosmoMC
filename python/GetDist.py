@@ -4,14 +4,12 @@ import os
 import sys
 import numpy as np
 
-
 import iniFile
 import paramNames
 from MCSamples import MCSamples
 
 
-#FIXME?: use batchJobArgs.batchArgs
-
+#MT FIXME?: use batchJobArgs.batchArgs
 if (len(sys.argv)<2):
     print 'Usage: python/GetDist.py ini_file [chain_root]'
     sys.exit()
@@ -27,38 +25,38 @@ ini = iniFile.iniFile()
 ini.readFile(ini_file)
 #dataset = ini.params
 
-
 parameter_names_file = ini.string('parameter_names')
 if (parameter_names_file):
     p = paramNames.paramNames(parameter_names_file)
-parameter_names_labels = ini.string('parameter_names_labels')
+parameter_names_labels = ini.string('parameter_names_labels', False) # MT: False added here
 
 # file_root
+root_name = ""
 if (len(sys.argv)>2):
     file_root = sys.argv[2]
 else:
     file_root = ini.params['file_root']
-if (file_root=="") or (not os.path.isfile(file_root)):
+if (file_root==""): # or (not os.path.isfile(file_root)): # MT FIXME test file existence? 
      print 'Root file do not exist ', file_root
      sys.exit()
 
-
-
-nparams = ini.int('nparams')
-columnnum = ini.int('columnnum',0)
-# TODO ncols = 
+if (ini.params.has_key('nparams')):
+    ncols = ini.int('nparams') + 2 
+    if (ini.params.has_key('columnnum')):
+        print  'specify only one of nparams or columnnum'
+        sys.exit(1)
+else:
+    ncols = ini.int('columnnum',0)
 
 single_column_chain_files = ini.bool('single_column_chain_files', False)
-
 
 num_bins = ini.int('num_bins')
 num_bins_2D = ini.int('num_bins_2D', num_bins)
 smooth_scale_1D = ini.float('smooth_scale_1D', -1.)
 smooth_scale_2D = ini.float('smooth_scale_2D', -1.)
-# TODO: ???
+#MT TODO: ???
 #    if (smooth_scale_1D>0 .and. smooth_scale_1D>1) write(*,*) 'WARNING: smooth_scale_1D>1 is oversmoothed'
 #    if (smooth_scale_1D>0 .and. smooth_scale_1D>1.9) stop 'smooth_scale_1D>1 is now in stdev units'
-
 
 credible_interval_threshold = ini.float('credible_interval_threshold', 0.05)
 
@@ -70,12 +68,12 @@ plot_ext = ini.string('plot_ext','py')
 
 plot_output = ini.string('plot_output','pdf')
 
-#subplot_size_inch = ini.float('subplot_size_inch')
-#subplot_size_inch2 = ini.float('subplot_size_inch2', subplot_size_inch)
-#subplot_size_inch3 = ini.float('subplot_size_inch3', subplot_size_inch)
+subplot_size_inch = ini.float('subplot_size_inch', 3.0)
+subplot_size_inch2 = ini.float('subplot_size_inch2', subplot_size_inch)
+subplot_size_inch3 = ini.float('subplot_size_inch3', subplot_size_inch)
 
 font_scale = ini.float('font_scale',1.)
-finish_run_command = ini.string('finish_run_command')
+finish_run_command = ini.string('finish_run_command', '') # MT added '' here
 
 auto_label = ini.bool('auto_label',False)
 
@@ -91,11 +89,11 @@ line_labels = ini.bool('line_labels',False)
 thin_factor = ini.int('thin_factor',0)
 thin_cool = ini.float('thin_cool',1.)
 
-
 make_single_samples = ini.bool('make_single_samples', False)
 single_thin = ini.int('single_thin',1)
 cool = ini.float('cool',1.)
 
+#MT TODO
 #    do ix = 1, Ini%Read_Int('compare_num',0)
 #        call ComparePlots%Add(File%ExtractName(Ini%Read_String(numcat('compare',ix))))
 
@@ -107,26 +105,22 @@ bin_limits = ini.string('all_limits')
 markers = 0
 has_markers = False
 
+#MT TODO
 # ...
-
-
-
-
-
 
 if (ini.params.has_key('plotparams_num')):
     print 'plotparams_num deprectated; just use plot_params'
     sys.exit(1)
 
-line = ini.string('plot_params')
+line = ini.string('plot_params', 0) # MT added 0 here
 if (line<>""):
     plotparams_num = -1
-    #plot_params # todo
 
 line = ini.string('plot_2D_param')
 if (line==""):
     plot_2D_param = 0
 else:
+    #MT TODO
     #call NameMapping%ReadIndices(InLine, tmp_params, 1)
     plot_2D_param = 123456789 # todo tmp_params(1)
     #if (plot_2D_param/=0 .and. plotparams_num/=0 .and. &
@@ -141,15 +135,13 @@ else:
     num_cust2D_plots = ini.int('plot_2D_num',0)
     for i in range(1, num_cust2D_plots+1):
         line = ini.string('plot'+str(i))
-        # todo
+        #MT todo
         #call NameMapping%ReadIndices(InLine, tmp_params, 2)
         #if (plotparams_num/=0 .and. (count(plotparams(1:plotparams_num)==tmp_params(1))==0 .or. &
         #count(plotparams(1:plotparams_num)==tmp_params(2))==0)) then
         #   write(*,*) trim(numcat('plot',ix)) //': parameter not in plotparams'
         #   stop
         #cust2DPLots(ix) = tmp_params(1)+2 + (tmp_params(2)+2)*1000
-
-
 
 triangle_plot = ini.bool('triangle_plot',False)
 if (triangle_plot):
@@ -160,10 +152,8 @@ if (triangle_plot):
         #call NameMapping%ReadIndices(InLine, triangle_params, triangle_num, unknown_value=-1)
         pass
 
-
-exclude_chain = ini.bool('exclude_chain') 
+exclude_chain = ini.string('exclude_chain') 
 # ...
-
 
 map_params = ini.bool('map_params',False)
 if (map_params):
@@ -171,20 +161,16 @@ if (map_params):
 
 shade_meanlikes = ini.bool('shade_meanlikes',False)
 
+out_dir = ini.string('out_dir')
 
-
-out_dir = ini.bool('out_dir')
-
-out_root = ini.bool('out_root')
+out_root = ini.string('out_root')
 if (out_root<>''):
     rootname = out_root
     print 'producing files with with root ', out_root
 
-
-plot_data_dir = ini.bool('plot_data_dir')
+plot_data_dir = ini.string('plot_data_dir')
 if (plot_data_dir==''):
     plot_data_dir = 'plot_data/'
-
 
 rootdirname = os.path.join(out_dir, rootname)
 
@@ -192,6 +178,7 @@ num_contours = ini.int('num_contours',2)
 contours = []
 for i in range(1, num_contours+1):
     contours.append(ini.float('contour'+str(i)))
+    #MT TODO
     #max_frac_twotail(i) = Ini%Read_Double(numcat('max_frac_twotail',i), exp(-dinvnorm((1-contours(i))/2)**2/2))
 contours_str = "; ".join(contours)
 
@@ -203,6 +190,7 @@ if (not no_tests):
 force_twotail = ini.bool('force_twotail',False)
 if (force_twotail): print 'Computing two tail limits'
 
+#MT TODO
 #if (Ini%Read_String('cov_matrix_dimension')=='') then
 #   if (NameMapping%nnames/=0) covmat_dimension = NameMapping%num_MCMC
 #else
@@ -229,7 +217,7 @@ if (PCA_num<>0):
     if (line.lower()=="all"):
         PCA_params = range(1, PCA_num+1)
     else:
-        PCA_params = [] # todo find indexes
+        PCA_params = [] #MT todo find indexes
     line = ini.string('PCA_normparam')
     if (line==""):
         PCA_NormParam = 0
@@ -251,6 +239,7 @@ do_shading = ini.bool('do_shading',True)
 
 def getLastChainIndex(file_root):
     # TODO: get max index of chain
+    import pdb; pdb.set_trace()
     return 0
 
 first_chain = ini.int('first_chain',1)
@@ -258,8 +247,6 @@ last_chain = ini.int('chain_num',-1)
 # -1 means keep reading until one not found
 if(last_chain==-1):
     last_chain = getLastChainIndex(file_root)
-
-
 
 # Read in the chains
 chains = loadChains(file_root, range(first_chain, last_chain+1), ignore_rows=ignorerows)
