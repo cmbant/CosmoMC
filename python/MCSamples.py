@@ -10,41 +10,29 @@ class MCSamples:
     """
 
     def __init__(self):
-        
-        # Attributes from MCSamples module
-        self.nrows = 0
-        self.ncols = 0
-        self.thin_rows = 0
-        self.num_chains_used = 0
-        self.covmat_dimension = 0
-
-        self.plot_ext = "py"
-
-        self.out_dir = ""
+        self.precision = '%.8e'
 
 
-        self.thin_ix = [] # TODO numpy int array
-        self.colix = [] # TODO numpy int array
-        self.isued = [] # TODO numpy bool array
-        self.chain_indices = [] # TODO numpy int array
-        self.usedvars = [] # TODO numpy int array
+        #self.nrows = 0
+        #self.ncols = 0
+        #self.thin_rows = 0
+        #self.num_chains_used = 0
+        #self.covmat_dimension = 0
 
-        
-        # New attributes needed (temporary ?)
-        self.rootname = ""
-        self.plot_data_dir = ""
-        self.rootdirname = ""
+        #self.thin_ix = [] # TODO numpy int array
+        #self.colix = [] # TODO numpy int array
+        #self.isued = [] # TODO numpy bool array
+        #self.chain_indices = [] # TODO numpy int array
+        #self.usedvars = [] # TODO numpy int array
 
+    def setChains(self, chains):
+        self.chains = chains
 
     def AdjustPriors(self):
-        """
-        """
         sys.exit('You need to write the AdjustPriors function in MCSamples.py first!')
     
 
     def MapParameters(self, invars):
-        """
-        """
         sys.exit('Need to write MapParameters routine first')
 
 
@@ -58,38 +46,29 @@ class MCSamples:
         
         print 'Cooling chains by ', cool
         #MaxL = minval(coldata(2,0:nrows-1))
-        for i in range(self.nrows):
+        nrows = 0
+        for i in range(nrows):
             #newL = coldata(2,i)*cool
             #coldata(1,i) = coldata(1,i)*exp(-(newL - coldata(2,i)) - MaxL*(1-cool) )
             #coldata(2,i) = newL
             pass
         
-    
-    def DeleteZeros(self):
+    # FIXME: pass matrix as parameter ?
+    def DeleteZeros(self, a=None):
         """
-        Delete zeros. 
+        Remove rows where weight is zero.
         """
-        ii = 0
-        for i in range(self.nrows):
-            #if (coldata(1,i)/=0) then
-            #coldata(:,ii) = coldata(:,i)
-            #ii=ii+1
-            pass        
-        if (ii==0):
-            sys.exit('Prior has removed all models!')
-        if (ii!=self.nrows):
-            print 'Prior removed ', nrows-ii, ' models'
-        self.nrows = ii
+        return a[a[:,0]!=0]
 
         
-    def SortColData(self, bycol):
+    def SortColData(self, a=None, icol=None):
         """
-        Sort column data.
+        Sort data for specified column.
 
-        :param bycol: value for 
-        :type bycol: integer value.
+        :param icol: column number
+        :type icol: integer type
         """
-        pass
+        return a[a[:,icol].argsort()]
 
 
     def MakeSingleSamples(self, single_thin):
@@ -97,16 +76,15 @@ class MCSamples:
         Make file of weight-1 samples by choosing samples 
         with probability given by their weight.
 
-        :param single_thin: value for 
+        :param single_thin: value  
         :type single_thin: integer type
         """
-        #call initRandom()
-        fname = os.path.join(self.plot_data_dir, self.rootname.strip()+'_single.txt') 
+        plot_data_dir = ""
+        rootname = ""
+        fname = os.path.join(plot_data_dir, rootname.strip()+'_single.txt') 
         textFileHandle = open(fname, 'w')
-        #maxmult = maxval(coldata(1,0:nrows-1))
-        for i in range(self.nrows):
-            #if (ranmar() <= coldata(1,i)/maxmult/single_thin) write (F%unit,float_format) 1.0, coldata(2,i), coldata(colix(1:num_vars),i)
-            pass
+        #values = chains.makeSingleSamples()
+        
         textFileHandle.close()
 
 
@@ -117,85 +95,42 @@ class MCSamples:
         :param fname: file name
         :type fname: string value
         
-        :param cool: value for 
-        :type cool: real
+        :param cool: cooling factor
+        :type cool: real type
         """
         if(cool!=1):
             print 'Cooled thinned output with temp: ', cool
-
-        #MaxL = minval(coldata(2,0:nrows-1))
-
         textFileHandle = open(fname)
-        for i in range(self.thin_rows):
-            if(cool!=1):
-                #newL = coldata(2,thin_ix(i))*cool
-                #write (F%unit,float_format) exp(-(newL - coldata(2,thin_ix(i))) - MaxL*(1-cool) ), newL, coldata(3:ncols,thin_ix(i))
-                pass
-            else:
-                #write (F%unit,float_format) 1., coldata(2:ncols,thin_ix(i))
-                pass
+        #Data for thin ...
+        thin_rows = 0
         textFileHandle.close()
-        print  'Wrote ', self.thin_rows, ' thinned samples'
+        print  'Wrote ', thin_rows, ' thinned samples'
 
 
-    def ThinData(self, fac, ix1=None, ix2=None):
+    def ThinData(self, fac):
         """
         Make thinned samples.
 
-        :param fac: value for 
+        :param fac: factor value
         :type fac: integer type
-
-        :param ix1: optional value for initial value
-        :type ix1: integer type
-
-        :param ix2: optional value for ending value
-        :type ix2: integer type
-
         """
-        #if (allocated(thin_ix)) deallocate(thin_ix)
-        #allocate(thin_ix(0:nint(numsamp)/fac))
-        
-        tot = 0
-        nout = 0
-        i = 0
-        if (ix1 is not None): i = ix1
-        nend = self.nrows
-        if (ix2 is not None): nend = ix2
-        
-        #mult = coldata(1,i)
-        while (i<nend):
-            #if (abs(nint(coldata(1,i)) - coldata(1,i)) > 1e-4) &
-            #stop 'non-integer weights in ThinData'
-            
-            if (mult+tot<fac):
-                tot = tot + mult
-                i = i+1
-                #if (i<nend): mult = nint(coldata(1,i))
-            else:
-                #thin_ix(nout) = i
-                nout = nout+1
-                if (mult==(fac-tot)):
-                    i = i+1
-                    #if (i<nend) mult = nint(coldata(1,i))
-                else:
-                    mult = mult - (fac -tot)
-                tot = 0
-
-        self.thin_rows = nout
-        
-        #close(50) ??? 
+        #chains.thin()
+        pass
 
 
     def GetCovMatrix(self):
         """
         Get covariance matrix.
         """
+        # use chains.cov and chains.corr
+        textFileHandle = open(fname)
+        textFileHandle.close()
         pass
 
 
     def MostCorrelated2D(self, i1, i2, direc):
         """
-        Most correlated ...
+        Find which parameter is most correllated with the degeneracy in ix1, ix2
 
         :param i1: value for 
         :type i1: integer type
@@ -206,16 +141,9 @@ class MCSamples:
         :param direc: value for 
         :type direc: integer type 
         """
-
-        if (direc!=0) and (direc!=-1):
+        if not direc in [0, -1]:
             sys.exit('Invalid 3D color parameter')
-
-        # Use numpy here ?
-        pars = [i1, i2]
-        
-        # Matrix operations ...
-        
-        #return 
+        # Used ?
 
 
     def GetFractionIndices(self, fraction_indices, n):
@@ -228,24 +156,14 @@ class MCSamples:
         :param n: value
         :type n: integer type
         """
-
-        tot = 0
-        aim = numsamp/n
-        num = 1
-        fraction_indices[0] = 0
-        fraction_indices[n] = self.nrows
-        for i in range(self.nrows):
-            #tot = tot + coldata(1,i)
-            if (tot>aim):
-                num = num+1
-                fraction_indices[num-1] = i
-                if (num==n): break
-                aim = aim + (numsamp/n)
+        # Used ?
+        pass
 
 
     def ConfidVal(self, ix, limfrac, upper, ix1=None, ix2=None):
         """
-        
+        Find upper and lower bounds
+
         :param ix: value for 
         :type ix: integer type
 
@@ -261,9 +179,8 @@ class MCSamples:
         :param ix2: optional value for 
         :type ix2: integer type
         """
-
-        l = 0
-        # ...
+        #chains.confidence()
+        pass
 
 
     def PCA(self, npars, n, param_map, normparam_num):
@@ -274,15 +191,78 @@ class MCSamples:
 
         ...
         """
-        pass 
+        val = 0.
+
+        print 'Doing PCA for ',n,' parameters'
+        filename = rootdirname + ".PCA"
+        textFileHandle = open(filename)
+        textFileHandle.write('PCA for parameters: ')
+        
+        if (normparam_num<>0):
+            if (normparam_num in pars):
+                normparam = pars.index(normparam_num)+1
+            else:
+                sys.exit('Invalid PCA normalization parameter')
+        else:
+            normparam = 0
+
+        # ...
+        # matplotlib.mlab import PCA
+        # scipy.linalg.svd
+
+        for i in range(n):
+            # ...
+            textFileHandle.write("%i:%f"%(pars[i], val))
+        
+        textFileHandle.write('\n')
+        textFileHandle.write('Correlation matrix for reduced parameters\n')
+        
+        for i in range(n):
+            # ...
+            textFileHandle.write('\n') # ...
+
+        # ...
+
+        textFileHandle.write('\n')
+        textFileHandle.write('e-values of correlation matrix\n')
+            
+        # ...
+
+        textFileHandle.write('\n')
+        textFileHandle.write('e-vectors\n')
+
+        # ...
+
+        textFileHandle.write('\n')
+        textFileHandle.write('Principle components\n')
+
+        for i in range(n):
+            # ...
+            textFileHandle.write('PC%i (e-value: %f)\n'%(i, val))
+
+            for j in range(n):
+                # ...
+                pass
+
+
+        textFileHandle.write('          = %f +- %f\n'%(val, val))
+        textFileHandle.write('\n')
+                
+        textFileHandle.write('Correlations of principle components\n')
+
+
+        # ...
+
+        textFileHandle.close()
 
 
     def GetUsedCols(self):
         """
         Get used columns.
         """
-        #isused(j) = any(coldata(j,0:nrows-1)/=coldata(j,0))
+        #Still used ?
         pass
+        
     
         
     def DoConvergeTests(self, limfrac):
@@ -292,17 +272,26 @@ class MCSamples:
         :param limfrac: limit to use for split tests and Raftery-Lewis 
         :type : real type
         """
+        return
 
         # Get statistics for individual chains, and do split tests on the samples
+
         
-        fname = self.rootdirname.strip() + '.converge'
+
+        rootdirname = ""
+        num_chains_used = 0
+        nrows = 0
+        chain_indices = []
+
+
+        fname = rootdirname.strip() + '.converge'
         textFileHandle = open(fname, 'w')
         
-        if (self.num_chains_used>1):
-            print 'Number of chains used =  ', self.num_chains_used
+        if (num_chains_used>1):
+            print 'Number of chains used =  ', num_chains_used
 
-        self.chain_indices[self.num_chains_used+1] = self.nrows
-        for i in range(self.self.num_chains_used):
+        chain_indices[num_chains_used+1] = nrows
+        for i in range(num_chains_used):
             #chain_start(i) =  chain_indices(i) + nint((chain_indices(i+1)-chain_indices(i))*cutfrac)
             #chain_samp(i) = sum(coldata(1,chain_start(i):chain_indices(i+1)-1))
             pass
@@ -310,43 +299,43 @@ class MCSamples:
         #usedsamps = sum(chain_samp(1:num_chains_used))
         #maxsamp = maxval(chain_samp(1:num_chains_used))
         num = 0
+        ncols = 0
 
-
-        for j in range(3, self.ncols+1):
+        for j in range(3, ncols+1):
             #
             pass
         
 
-        for j in range(3, self.ncols+1):
+        for j in range(3, ncols+1):
             #if (isused(j)) &
             #fullvar(j)=  sum(coldata(1,0:nrows-1)*(coldata(j,0:nrows-1)-fullmean(j))**2)/numsamp
             pass
 
-        if (self.num_chains_used>1):
+        if (num_chains_used>1):
             textFileHandle.write("\n")
             textFileHandle.write("Variance test convergence stats using remaining chains\n")
             textFileHandle.write("param var(chain mean)/mean(chain var)\n")
             textFileHandle.write("\n")
 
-            for j in range(3, self.ncols+1):
+            for j in range(3, ncols+1):
                 # 
                 pass
 
 
-        if (self.num_chains_used>1) and (self.covmat_dimension>0):
+        if (num_chains_used>1) and (covmat_dimension>0):
             # Assess convergence in the var(mean)/mean(var) in the worst eigenvalue
             # c.f. Brooks and Gelman 1997
         
-            while(self.usedvars[num]>(covmat_dimension+2)):
+            while(usedvars[num]>(covmat_dimension+2)):
                 num -= 1
             
             #allocate(meanscov(num,num))
             #allocate(cov(num,num))
 
             for jj in range(0, num):
-                j = self.usedvars[jj]
+                j = usedvars[jj]
                 for kk in range(jj, num):
-                    k = self.usedvars[kk]
+                    k = usedvars[kk]
                     # ...
 
             #meanscov = meanscov/(num_chains_used-1) !(usedsamps/maxsamp -1)
@@ -511,7 +500,7 @@ class MCSamples:
         pass
 
 
-    # FIXME: put in another file 
+    # 
     def dinvnorm(self, p):
         """
         Normal inverse translate from
@@ -558,13 +547,54 @@ class MCSamples:
         return dinvnorm
 
 
-    # FIXME: file unit / file handler as parameter
     def GetChainLikeSummary(self):
         """
         """
-        # ...
-        pass
+        #FIXME: format?
+        text = """
+Best fit sample -log(Like) = %f
+Ln(mean 1/like) = %f
+mean(-Ln(like)) = %f
+-Ln(mean like)  = %f
+"""
 
+
+
+
+# 
+
+#FIXME?: pass values as parameters 
+def WritePlotFileInit():
+    text = """
+import GetDistPlots, os
+g=GetDistPlots.GetDistPlotter('%s')
+g.settings.setWithSubplotSize(%f)
+outdir='%s'
+roots=['%s']
+"""
+    return text
+
+
+def WritePlotFileExport():
+    text = "g.export(os.path.join(outdir,'%s'))"
+    return text
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
+
+def main():
+    pass
 
 if __name__ == "__main__":
     main()

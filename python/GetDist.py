@@ -8,7 +8,7 @@ import numpy as np
 import chains as ch
 import iniFile
 import paramNames
-from MCSamples import MCSamples
+import MCSamples
 
 #MT FIXME?: use batchJobArgs.batchArgs
 if (len(sys.argv)<2):
@@ -26,11 +26,7 @@ ini = iniFile.iniFile()
 ini.readFile(ini_file)
 #dataset = ini.params
 
-parameter_names_file = ini.string('parameter_names')
-if (parameter_names_file):
-    p = paramNames.paramNames(parameter_names_file)
-parameter_names_labels = ini.string('parameter_names_labels', False) # MT: False added here
-
+# File root
 if (len(sys.argv)>2):
     in_root = sys.argv[2]
 else:
@@ -40,6 +36,16 @@ if (in_root==""): # or (not os.path.isfile(file_root)): # MT FIXME test file exi
      sys.exit()
 rootname = os.path.basename(in_root)
 
+# Parameter names
+parameter_names_file = ini.string('parameter_names')
+if (parameter_names_file):
+    names = paramNames.paramNames(parameter_names_file)
+else:
+    names = paramNames.paramNames(in_root + '.paramnames')
+parameter_names_labels = ini.string('parameter_names_labels', False) # MT: False added here
+
+#MT todo: read .ranges file 
+
 if (ini.params.has_key('nparams')):
     ncols = ini.int('nparams') + 2 
     if (ini.params.has_key('columnnum')):
@@ -47,6 +53,7 @@ if (ini.params.has_key('nparams')):
         sys.exit(1)
 else:
     ncols = ini.int('columnnum',0)
+
 
 single_column_chain_files = ini.bool('single_column_chain_files', False)
 
@@ -262,13 +269,14 @@ chains = ch.loadChains(in_root, range(first_chain, last_chain+1), ignore_frac=ig
 
 
 
-import pdb; pdb.set_trace()
+#import pdb; pdb.set_trace()
+mc = MCSamples.MCSamples()
 
-#TODO: CoolChain(cool)
+mc.CoolChain(cool)
 
 # Adjust weights if requesteda
 if (adjust_priors):
-    # TODO: AdjustPriors()
+    mc.AdjustPriors()
     pass
 
 # See which parameters are fixed (see Chains.loadWMAPChain)
@@ -277,13 +285,12 @@ if (adjust_priors):
 
 # ...
 
-
 if (not no_tests):
-    #TODO: DoConvergeTests(converge_test_limit)
+    mc.DoConvergeTests(converge_test_limit)
     pass
 
 if (adjust_priors):
-    #TODO: DeleteZeros
+    mc.DeleteZeros()
     pass
 
 
@@ -293,10 +300,9 @@ if (adjust_priors):
 # Output thinned data if requested
 # Must do this with unsorted output
 if (thin_factor<>0):
-    #TODO ThinData(thin_factor)
-    # Loop over chain + call chain.thin(thin_factor)
+    mc.ThinData(thin_factor)
     filename = rootdirname + '_thin.txt'
-    #TODO WriteThinData(trim(rootdirname)//'_thin.txt',thin_cool)
+    mc.WriteThinData(filename, thin_cool)
 
 
 
@@ -325,8 +331,8 @@ for j in range(num_vars):
     pass
 
 
-if (make_single_samples):
-    self.MakeSingleSamples(single_thin)
+ #if (make_single_samples):
+ #   self.MakeSingleSamples(single_thin)
 
 
 # IO_WriteBounds
@@ -341,9 +347,9 @@ if (make_single_samples):
 counts = 0
 ND_cont1, ND_cont2 = -1, -1
 
-for j in range(0, self.nrows-1):
-    # ...
-    pass
+#for j in range(0, self.nrows-1):
+#    # ...
+#    pass
 
 
 triangle_plot = triangle_plot and (num_vars>1)
@@ -351,21 +357,25 @@ if (triangle_plot):
     # ...
     pass
 
-print 'using ',nrows,' rows, processing ',num_vars,' parameters'
-if (indep_thin<>0):
-    print 'Approx indep samples: ', int(numsamp/indep_thin) # equiv. to nint ?
-else:
-    print  'effective number of samples (assuming indep): ', int(numsamp/max_mult)  # equiv. to nint ?
+#print 'using ',nrows,' rows, processing ',num_vars,' parameters'
+indep_thin = 0
+#todo ...
+numsamp = 0
+max_mult = 0
+#if (indep_thin<>0):
+#    print 'Approx indep samples: ', int(numsamp/indep_thin) # equiv. to nint ?
+#else:
+#    print  'effective number of samples (assuming indep): ', int(numsamp/max_mult)  # equiv. to nint ?
 
 # Get covariance matrix and correlation matrix
-self.GetCovMatrix()
+#self.GetCovMatrix()
 
-if (PCA_num>0) and not plots_only:
-    self.PCA(PCA_params,PCA_num,PCA_func, PCA_NormParam)
+#if (PCA_num>0) and not plots_only:
+#    self.PCA(PCA_params,PCA_num,PCA_func, PCA_NormParam)
 
 
 # Find best fit, and mean likelihood
-self.GetChainLikeSummary(stdout)
+#self.GetChainLikeSummary(stdout)
 
 if (not no_plots):
     # Matlab only ? 
@@ -386,24 +396,30 @@ for j in range(num_vars):
     #call to twoTailLimits in chains.py
     pass
 
-if (not no_plots):
-    if (plot_ext=='py'):
-        text = "g.plots_1d(roots)"
 
 if (not no_plots):
     # Output files for 1D plots
-    filename = rootdirname + plot_ext
+    filename = rootdirname + "." + plot_ext
     textFileHandle = open(filename, 'w')
     if (plot_ext=='py'):
         text = "g.plots_1d(roots)"
         # ...
 
-    
     if (triangle_plot):
         filename = rootdirname + '_tri.' + plot_ext
         textFileHandle = open(filename, 'w')
+        textInit = MCSamples.WritePlotFileInit()
+        textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch, out_dir, rootname))
         if (plot_ext=='py'):
-            text = "g.triangle_plot(roots, %s)"%data # todo 
+            import pdb; pdb.set_trace()
+            #todo: make string for tuple of names
+            text = "g.triangle_plot(roots, %s)"%data 
+        textExport = MCSamples.WritePlotFileExport()
+        fname = rootname + tag + ".ext???"
+        textFileHandle.write(textExport%(fname))
+    textFileHandle.close()
+  
+
 
 
 # Do 2D bins
@@ -426,10 +442,19 @@ if (num_2D_plots>0) and (not no_plots):
     print 'Producing ', num_2D_plots,' 2D plots'
     filename = rootdirname + '_2D.' + plot_ext
     textFileHandle = open(filename, 'w')
+    textInit = MCSamples.WritePlotFileInit()
+    textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch2, out_dir, rootname))
     if (plot_ext=='py'):
-        text = 'pairs=[]'
+        textFileHandle.write("pairs=[]\n")
+        for i in range(num_vars):
+            textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
+        textFileHandle.write("g.plots_2d(roots,param_pairs=pairs)\n")
+        textExport = MCSamples.WritePlotFileExport()
+        fname = rootname + "_2D." + plot_ext
+        textFileHandle.write(textExport%(fname))
+    textFileHandle.close()
+        
 
-    # ... 
             
 if (triangle_plot) and (not no_plots):
     # Add the off-diagonal 2D plots
@@ -440,43 +465,44 @@ if (triangle_plot) and (not no_plots):
 
 
 # Do 3D plots (i.e. 2D scatter plots with coloured points)
-
 if (num_3D_plots<>0 and not no_plots):
     print 'producing ',num_3D_plots, '2D colored scatter plots'
     filename = rootdirname + '_3D.' + plot_ext
     textFileHandle = open(filename, 'w')
-    # call to WritePlotFileInit
-    text  = ""
-    text += "sets=[]"
+    textInit = MCSamples.WritePlotFileInit()
+    textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch3, out_dir, rootname))
+    textFileHandle.write("sets=[]\n")
     for j in range(num_3D_plots):
+        v1, v2, v3 = 0, 0, 0
         text += "sets.append([%s,%s,%s])"%(v1, v2, v3) # todo
     text += "g.plots_3d(roots,sets)"
+    fname = rootname + "_3D." + plot_ext
+    textExport = MCSamples.WritePlotFileExport()
+    textFileHandle.write(textExport%(fname))
     textFileHandle.close()
 
 
-
-
-def WritePlotFileInit(handle):
-    text = """
-import GetDistPlots, os
-g=GetDistPlots.GetDistPlotter('%s')
-g.settings.setWithSubplotSize(%f)
-outdir='%s'
-roots=['%s', '%s']
-"""
-    return text
-
-
-
-
 # Write out stats marginalized
-# TODO: margeStats
+if (not plots_only):
+    # TODO: margeStats
+    pass
 
-# TODO: write file paramnames in plot_data/ dir
+
 
 # Limits from global likelihood
-# TODO: LikeFile 
-
+if (not plots_only):
+    filename = rootdirname + '.likestats'
+    textFileHandle = open(filename, 'w')
+    textInit = mc.GetChainLikeSummary()
+    maxlike, meanlike = 0., 0.
+    #todo: compute
+    #textFileHandle.write(textInit%(maxlike, meanlike, meanlike, meanlike))
+    textFileHandle.write("param  bestfit        lower1         upper1         lower2         upper2")
+    
+    for j in range(num_vars):
+        #todo: values
+        textFileHandle.write("%5i  %15.7E"%(j, val)) # adapt format for multiple float values
+    textFileHandle.close()
 
 # System command
 if (finish_run_command):
@@ -485,9 +511,3 @@ if (finish_run_command):
     finish_run_command = finish_run_command.replace('%PLOTROOT%', os.path.join(plot_data_dir, rootname))
     os.system(finish_run_command)
     
-
-
-
-
-
-
