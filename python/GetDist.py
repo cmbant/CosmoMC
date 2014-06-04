@@ -44,7 +44,11 @@ else:
     names = paramNames.paramNames(in_root + '.paramnames')
 parameter_names_labels = ini.string('parameter_names_labels', False) # MT: False added here
 
-#MT todo: read .ranges file 
+# Ranges file 
+ranges = None
+ranges_file = in_root + '.ranges'
+if os.path.isfile(ranges_file):
+    ranges = MCSamples.Ranges(ranges_file)
 
 if (ini.params.has_key('nparams')):
     ncols = ini.int('nparams') + 2 

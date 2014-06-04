@@ -6,7 +6,6 @@ import numpy as np
 
 class MCSamples:
     """
-    
     """
 
     def __init__(self):
@@ -580,8 +579,49 @@ def WritePlotFileExport():
     return text
 
 
+# 
 
+class Ranges():
+    
+    def __init__(self, fileName=None, setParamNameFile=None):
+        self.names = []
+        self.mins = {}
+        self.maxs = {}        
+        if fileName is not None: self.loadFromFile(fileName)
 
+    def loadFromFile(self, fileName):
+        self.filenameLoadedFrom = os.path.split(fileName)[1]
+        f = open(fileName)
+        for line in f:
+            name, mini, maxi = self.readValues(line)
+            if name: 
+                self.names.append(name)
+                self.mins[name] = mini
+                self.maxs[name] = maxi                
+
+    def readValues(self, line):
+        name, mini, maxi = None, None, None
+        strings = [ s for s in line.split(" ")  if s!='' ]
+        if len(strings)==3:
+            name = strings[0]
+            mini = float(strings[1])
+            maxi = float(strings[2])
+        return name, mini, maxi
+
+    def listNames(self):
+        return self.names
+
+    def min(self, name, error=False):
+        if self.mins.has_key(name):
+            return self.mins[name]
+        if error: raise Exception("Name not found:" + name)
+        return None
+
+    def max(self, name, error=False):
+        if self.maxs.has_key(name):
+            return self.maxs[name]
+        if error: raise Exception("Name not found:" + name)
+        return None
 
 
 
