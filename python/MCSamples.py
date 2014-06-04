@@ -593,7 +593,7 @@ class Ranges():
         self.filenameLoadedFrom = os.path.split(fileName)[1]
         f = open(fileName)
         for line in f:
-            name, mini, maxi = self.readValues(line)
+            name, mini, maxi = self.readValues(line.strip())
             if name: 
                 self.names.append(name)
                 self.mins[name] = mini
@@ -601,7 +601,7 @@ class Ranges():
 
     def readValues(self, line):
         name, mini, maxi = None, None, None
-        strings = [ s for s in line.split(" ")  if s!='' ]
+        strings = [ s for s in line.split(" ")  if s<>'' ]
         if len(strings)==3:
             name = strings[0]
             mini = float(strings[1])

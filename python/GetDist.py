@@ -3,14 +3,15 @@
 import os
 import sys
 import glob
+import math
 import numpy as np
+from scipy.stats import norm
 
 import chains as ch
 import iniFile
 import paramNames
 import MCSamples
 
-#MT FIXME?: use batchJobArgs.batchArgs
 if (len(sys.argv)<2):
     print 'Usage: python/GetDist.py ini_file [chain_root]'
     sys.exit()
@@ -31,7 +32,7 @@ if (len(sys.argv)>2):
     in_root = sys.argv[2]
 else:
     in_root = ini.params['file_root']
-if (in_root==""): # or (not os.path.isfile(file_root)): # MT FIXME test file existence? 
+if (in_root==""): # or (not os.path.isfile(file_root)): 
      print 'Root file do not exist ', in_root
      sys.exit()
 rootname = os.path.basename(in_root)
@@ -58,16 +59,17 @@ if (ini.params.has_key('nparams')):
 else:
     ncols = ini.int('columnnum',0)
 
-
 single_column_chain_files = ini.bool('single_column_chain_files', False)
 
 num_bins = ini.int('num_bins')
 num_bins_2D = ini.int('num_bins_2D', num_bins)
 smooth_scale_1D = ini.float('smooth_scale_1D', -1.)
 smooth_scale_2D = ini.float('smooth_scale_2D', -1.)
-#MT TODO: ???
-#    if (smooth_scale_1D>0 .and. smooth_scale_1D>1) write(*,*) 'WARNING: smooth_scale_1D>1 is oversmoothed'
-#    if (smooth_scale_1D>0 .and. smooth_scale_1D>1.9) stop 'smooth_scale_1D>1 is now in stdev units'
+if (smooth_scale_1D>0) and (smooth_scale_1D>1): 
+    print 'WARNING: smooth_scale_1D>1 is oversmoothed'
+if (smooth_scale_1D>0) and (smooth_scale_1D>1.9):
+    print 'smooth_scale_1D>1 is now in stdev units'
+    sys.exit(1)
 
 credible_interval_threshold = ini.float('credible_interval_threshold', 0.05)
 
@@ -104,28 +106,18 @@ make_single_samples = ini.bool('make_single_samples', False)
 single_thin = ini.int('single_thin',1)
 cool = ini.float('cool',1.)
 
-#MT TODO
-#    do ix = 1, Ini%Read_Int('compare_num',0)
-#        call ComparePlots%Add(File%ExtractName(Ini%Read_String(numcat('compare',ix))))
-
-
-has_limits_top = False
-has_limits_bot = False
-
-bin_limits = ini.string('all_limits')
-markers = 0
-has_markers = False
-
-#MT TODO
-# ...
+#Skip GetDist.f90 from l.1952 to l.1988 (matlab related)
 
 if (ini.params.has_key('plotparams_num')):
     print 'plotparams_num deprectated; just use plot_params'
     sys.exit(1)
 
 line = ini.string('plot_params', 0) # MT added 0 here
-if (line<>""):
+if (line not in ["", 0]):
     plotparams_num = -1
+    plotparams = [ s for s in line.split(" ")  if s<>'' ]
+else:
+    plotparams_num = 0
 
 line = ini.string('plot_2D_param')
 if (line==""):
@@ -173,6 +165,8 @@ if (map_params):
 shade_meanlikes = ini.bool('shade_meanlikes',False)
 
 out_dir = ini.string('out_dir')
+if (out_dir<>""):
+    print 'producing files in directory ', out_dir
 
 out_root = ini.string('out_root')
 if (out_root<>''):
@@ -187,10 +181,11 @@ rootdirname = os.path.join(out_dir, rootname)
 
 num_contours = ini.int('num_contours',2)
 contours = []
+max_frac_twotail = []
 for i in range(1, num_contours+1):
     contours.append(ini.float('contour'+str(i)))
-    #MT TODO
-    #max_frac_twotail(i) = Ini%Read_Double(numcat('max_frac_twotail',i), exp(-dinvnorm((1-contours(i))/2)**2/2))
+    #max_frac = ini.float('max_frac_twotail'+str(i), math.exp(-norm((1-contours[i-1])/2)**2/2))
+    #max_frac_twotail.append(max_frac)
 contours_str = "; ".join([ str(c) for c in contours ]) 
 
 if (not no_tests):
@@ -201,13 +196,13 @@ if (not no_tests):
 force_twotail = ini.bool('force_twotail',False)
 if (force_twotail): print 'Computing two tail limits'
 
-#MT TODO
-#if (Ini%Read_String('cov_matrix_dimension')=='') then
-#   if (NameMapping%nnames/=0) covmat_dimension = NameMapping%num_MCMC
-#else
-#   covmat_dimension = Ini%Read_Int('cov_matrix_dimension',0)
-#   if (covmat_dimension == -1) covmat_dimension = ncols-2
-#end if
+if (ini.params.has_key('cov_matrix_dimension')):
+    covmat_dimension = 123456789 # todo
+    pass 
+else:
+    covmat_dimension = ini.int('cov_matrix_dimension',0)
+    if (covmat_dimension==-1):
+        covmat_dimension = ncols-2 # fixme ncols
 
 plot_meanlikes = ini.bool('plot_meanlikes',False)
 
