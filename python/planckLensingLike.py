@@ -9,7 +9,6 @@ import os
 import iniFile
 from scipy import interpolate
 
-
 def parseStr(x):
     if x.isdigit(): return int(x)
     if x.isalpha() or x.isalnum(): return x
@@ -43,7 +42,8 @@ def normCMB(L):
 
 class lensLike():
 
-        def __init__(self, fname):
+        def __init__(self, fname, bin_compression=False):
+            self.bin_compression = bin_compression
             if '.dataset' in fname: self.loadDataset(fname)
             else: self.convertDuncan(fname)
 
@@ -174,9 +174,12 @@ class lensLike():
 
         def makeN1(self, phicl, clTT=None):
             # first get N1 for fiducial ClTT, then rescale result by change in fiducial N1 for actual clTT at fiducial CPhi
+          #  tmp = np.zeros(self.N1_p_L[-1] + 1)
+          #  tmp[:phicl.shape[0]] = phicl
             N1samps = np.dot(self.N1_matrix, phicl[self.N1_p_L])
             f = interpolate.interp1d(self.N1_q_L, N1samps, bounds_error=False)
-            N1 = f(np.arange(self.phi_lmax + 1))
+            N1 = np.zeros(self.phi_lmax + 1)
+            N1[2:] = f(np.arange(2, self.phi_lmax + 1))
             if clTT is not None:
 #                N1_renorm = (np.dot(self.renorm_N1_matrix, clTT[self.renorm_LT]) / self.renorm_N1_fid - 1)
                 N1_renorm = np.dot(self.renorm_N1_matrix, clTT[self.renorm_LT] - self.fid_cl[self.renorm_LT, 1])
@@ -239,14 +242,22 @@ class lensLike():
 
             # bin_renorm_matrix gets correction to A_L (so square it for effect on CPhi)
 #            print self.renorm_L
-#            self.bin_renorm_matrix = np.dot(self.binning_matrix[:, 2:], self.renorm_matrix[:self.phi_lmax - 1, :])
-#            self.bin_renorm_N1_matrix = np.dot(self.binning_matrix[:, 2:], self.renorm_N1_matrix[:self.phi_lmax - 1, :])
-
+#            np.multiply(self.fid_phi[2:self.phi_lmax + 1] , self.renorm_matrix[:self.phi_lmax - 1, :])
+            if self.bin_compression:
+                self.bin_renorm_matrix = np.dot(self.binning_matrix[:, 2:] * self.fid_phi[2:self.phi_lmax + 1], self.renorm_matrix[:self.phi_lmax - 1, :])
+                self.bin_renorm_N1_matrix = np.dot(self.binning_matrix[:, 2:], self.renorm_N1_matrix[:self.phi_lmax - 1, :])
+                self.bin_N1_matrix = np.dot(self.binning_matrix[:, 2:], self.N1_matrix[:self.phi_lmax - 1, :])
+                self.T_window = 2 * self.bin_renorm_N1_matrix + 2 * self.bin_renorm_matrix
+                self.fid_correction = np.dot(self.T_window , self.fid_cl[self.renorm_LT, 1])
+            #    tmp = np.zeros(self.N1_p_L[-1] + 1)
+            #    tmp[:self.fid_phi.shape[0]] = self.fid_phi
+                self.fid_correction += np.dot(self.bin_N1_matrix, self.fid_phi[self.N1_p_L])
 
         def dumpData(self, froot):
             # these not needed for likelihood
-            self.saveCl(froot + '_TT_Filter.dat', -2 * self.estimators[0].w12[0][:, 1], cols=['F_l'])
-            self.saveCl(froot + '_fid_N1.dat', self.fid_N1, cols=['PP'])
+            if hasattr(self, "estimators"):
+                self.saveCl(froot + '_TT_Filter.dat', -2 * self.estimators[0].w12[0][:, 1], cols=['F_l'])
+                self.saveCl(froot + '_fid_N1.dat', self.fid_N1, cols=['PP'])
 
             # main files
             np.savetxt(froot + '_cov.dat', self.cov)
@@ -267,6 +278,24 @@ class lensLike():
                 f.write("%5u " % (0) + "".join("%15u " % (L) for L in self.N1_p_L) + "\n")
                 for i, L in enumerate(self.N1_q_L):
                     f.write("%5u " % L + " ".join("%15.8e" % (L2) for L2 in self.N1_matrix[i, :]) + "\n")
+
+            if self.bin_compression:
+                Ls = [L for L in self.renorm_LT]
+                for L in self.N1_p_L:
+                    if not L in Ls: Ls.append(L)
+                if not os.path.exists(froot + '_lens_delta_window'): os.mkdir(froot + '_lens_delta_window')
+                for b in range(self.nbins):
+                    with open(froot + '_lens_delta_window/window%u.dat' % (b + 1), 'w') as f:
+                        for L in Ls:
+                            if L in self.renorm_LT: T = self.T_window[b, np.where(self.renorm_LT == L)]
+                            else: T = 0
+                            if L in self.N1_p_L: phi = self.bin_N1_matrix[b, np.where(self.N1_p_L == L)]
+                            else: phi = 0
+                            f.write("%5u %10e %10e\n" % (L, T, phi))
+                with open(froot + '_lensing_fiducial_correction.dat', 'w') as f:
+                    f.write("#%4s %12s \n" % ('bin', 'PP'))
+                    for b in range(self.nbins):
+                        f.write("%5u %12.5e\n" % (b + 1, self.fid_correction[b]))
 
 
         def loadDataset(self, froot):
@@ -291,9 +320,24 @@ class lensLike():
             self.fid_cl = loadtxt(ini.relativeFileName('lensing_fiducial_cl'))
             self.fid_phi = self.fid_cl[:, 4]
 
-            self.N1_q_L, self.N1_p_L, self.N1_matrix = self.loadIndexedMatrix(ini.relativeFileName('lensing_N1_matrix_fiducial_dphi'))
 
-            self.getRenormDataFromMatrix(ini.relativeFileName('lensing_renorm_matrix') % ('TT'),
+            if 'linear_correction_fiducial' in ini.params:
+                self.fid_correction = loadtxt(ini.relativeFileName('linear_correction_fiducial'))[:, 1]
+                fname = ini.relativeFileName('linear_correction_bin_window_files')
+                self.T_window = np.zeros((self.nbins, self.cmb_lmax + 1))
+                self.bin_N1_matrix = np.zeros((self.nbins, self.cmb_lmax + 1))
+                self.renorm_LT = np.arange(self.cmb_lmax + 1)
+                self.N1_p_L = np.arange(self.cmb_lmax + 1)
+                for b in range(self.nbins):
+                    d = loadtxt(fname % (b + 1))
+                    for i, L in enumerate(d[:, 0]):
+                        if L <= self.cmb_lmax:
+                            self.T_window[b, L] = d[i, 1]
+                            self.bin_N1_matrix[b, L] = d[i, 2]
+            else:
+                self.N1_q_L, self.N1_p_L, self.N1_matrix = self.loadIndexedMatrix(ini.relativeFileName('lensing_N1_matrix_fiducial_dphi'))
+
+                self.getRenormDataFromMatrix(ini.relativeFileName('lensing_renorm_matrix') % ('TT'),
                                           ini.relativeFileName('lensing_renorm_N1_matrix') % ('TT'))
 
         def plot(self, phicl=None, dofid=True, doN1=True):
@@ -316,25 +360,60 @@ class lensLike():
             # savefig(r'z:\cl_plot.pdf', bbox_inches='tight')
 
         def chi_squared(self, phicl, clTT=None):
-            N1 = self.makeN1(phicl, clTT)
-            if clTT is not None:
-                phicl = self.makeRenormCPhi(phicl, clTT)
-            phicl = phicl + N1 - self.makeN1(lens.fid_phi, None)
+            eps = self.bandpowers * 0
+            if not self.bin_compression:
+                N1 = self.makeN1(phicl, clTT)
+                if clTT is not None:
+                    phicl = self.makeRenormCPhi(phicl, clTT)
+                phicl = phicl + N1 - self.makeN1(self.fid_phi, None)
+            else:
+                if True:
+                    if clTT is not None:
+                        eps = np.dot(self.bin_N1_matrix, phicl[self.N1_p_L])
+                        eps += np.dot(self.T_window, clTT[self.renorm_LT]) - self.fid_correction
+                else:
+                    delta_phi = phicl - self.fid_phi
+#                    tmp = np.zeros(self.N1_p_L[-1] + 1)
+#                    tmp[:phicl.shape[0]] = delta_phi
+#                    delta_phi = tmp[self.N1_p_L]
+                    N1 = np.dot(self.bin_N1_matrix, delta_phi[self.N1_p_L])
+                    eps = N1
+                    if clTT is not None:
+                        N1 += 2 * np.dot(self.bin_renorm_N1_matrix, clTT[self.renorm_LT] - self.fid_cl[self.renorm_LT, 1])
+                        renorm = 2 * np.dot(self.bin_renorm_matrix, clTT[self.renorm_LT] - self.fid_cl[self.renorm_LT, 1])
+                        eps = N1 + renorm
             binphi = np.zeros(self.nbins)
             for b in range(self.nbins):
                 binphi[b] = sum(self.binning_matrix[b, self.lmin[b]:self.lmax[b] + 1] * phicl[self.lmin[b]:self.lmax[b] + 1])
-            delta = binphi - self.bandpowers
+            delta = binphi + eps - self.bandpowers
             return np.dot(delta, np.dot(self.covinv, delta))
 
 
         def testLikes(self):
-            print 'chi2 fid=', lens.chi_squared(lens.fid_phi, None)
+            print 'chi2 fid=', lens.chi_squared(self.fid_phi, None)
             ls = self.fid_cl[:2049, 0]
             cl_fid = self.fid_cl[:2049, 1]
-            cl2 = cl_fid * (ls / 1000.0) ** 0.03
-            phi = self.fid_phi * 0.9
+            cl2 = cl_fid * (ls / 1000.0) ** 0.03 * 1.02
+            phi = self.fid_phi * 1.1 * (ls / 1000.0) ** (0.02)
             print 'chi2 =', self.chi_squared(phi, cl2)
 
+if False:
+    d = loadtxt(r'z:\halofit.txt')
+    k = d[:, 0]
+    sc = 1 / k ** 3
+    plot(d[:, 0], sc * d[:, 1], 'k')
+    plot(d[:, 0], sc * d[:, 2], 'b')
+    plot(d[:, 0], sc * d[:, 3], '--r')
+    plot(d[:, 0], sc * d[:, 4], ':m')
+    plot(d[:, 0], abs(sc * (d[:, 3] - d[:, 1])), '--g')
+
+    gca().set_xscale('log')
+    gca().set_yscale('log')
+    ylim([1e-2, 1e4])
+    legend(['linear', 'nonlinear', 'Q', 'H', 'lin-Q'])
+    savefig(r'z:\halotfit_terms.pdf', bbox_inches='tight')
+    show()
+    sys.exit()
 
 if __name__ == "__main__":
     root = 'g60_full_pttptt'
@@ -342,28 +421,37 @@ if __name__ == "__main__":
     Duncan = False
     if Duncan:
         f = r'C:\tmp\Planck\lensingApr2014' + os.sep + root + '.dat'
-        lens = lensLike(f)
+        lens = lensLike(f, bin_compression=True)
         lens.getRenormDataFromMatrix(r'C:\Work\F90\LensingBiases\like' + os.sep + root + '_renorm_TT_matrix.dat',
                                      r'C:\Work\F90\LensingBiases\like' + os.sep + root + '_renorm_N1_TT_matrix.dat')
-        lens.dumpData(r'C:\Work\F90\LensingBiases\like' + os.sep + root)
+        # lens.dumpData(r'C:\Work\F90\LensingBiases\like' + os.sep + root)
     else:
         f = r'C:\Work\F90\LensingBiases\like' + os.sep + root + '.dataset'
-        lens = lensLike(f)
+        lens = lensLike(f, bin_compression=True)
+#        lens.dumpData(r'C:\Work\F90\LensingBiases\like' + os.sep + root)
 
     lens.testLikes()
 
-    lens.plot()
+#    lens.plot()
     show()
 
 
 if False:
     # check N1s
+    lens.fid_N1 = loadtxt(r'C:\Work\F90\LensingBiases\like\g60_full_pttptt_fid_N1.dat')
     ls = np.arange(lens.fid_N1.shape[0])
     norm = (ls * (ls + 1.)) ** 2 / 2 / np.pi
-    # plot(ls, lens.fid_N1, color='k')
+    plot(ls, lens.fid_N1[:, 1], color='k')
 
-    x = np.dot(lens.renorm_N1_matrix, lens.fid_cl[lens.renorm_N1_LT, 1])
-    plot(lens.renorm_L, x , color='b')
+    # x = np.dot(lens.renorm_N1_matrix, lens.fid_cl[lens.renorm_N1_LT, 1])
+    # plot(lens.renorm_L, x , color='b')
+
+    tmp = np.zeros(lens.N1_p_L[-1] + 1)
+    tmp[:lens.fid_N1.shape[0]] = lens.fid_phi
+    N1 = np.dot(lens.N1_matrix, tmp[lens.N1_p_L])
+
+    plot(lens.N1_q_L, N1 , color='b')
+
     my = loadtxt('C:\Work\F90\LensingBiases\N1_TT_g60_full_pttptt.dat')
     ls = my[:, 0]
 

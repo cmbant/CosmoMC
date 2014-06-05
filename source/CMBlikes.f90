@@ -32,6 +32,14 @@
     procedure :: LoadFromFile
     end Type TCorrectionMatrix
 
+    Type TBinWindows
+        integer :: lmin, lmax
+        real(mcp), dimension(:,:,:), allocatable :: W
+        integer, allocatable :: bin_cols_in(:,:), bin_cols_out(:)
+    contains
+    procedure :: bin => TBinWindows_bin
+    end type
+
     Type LensReconData
         Type(TCorrectionMatrix) N1_matrix_dphi
         Type(TCorrectionMatrix) renorm_matrix
@@ -60,15 +68,22 @@
         real(mcp), dimension(:,:,:), allocatable :: ClHat
         !These are all L(L+1)C_L/2pi
 
+        real(mcp), dimension(:,:), allocatable :: inv_covariance
+
         logical has_lensing
+
+        !Binning parameters
         integer bin_width
         logical binned
         integer nbins, nbins_used
-        integer, allocatable :: bin_cols_in(:,:), bin_cols_out(:)
         integer bin_min, bin_max
-        integer, allocatable :: cov_cl_used(:)
-        real(mcp), dimension(:,:), allocatable :: inv_covariance
-        real(mcp), dimension(:,:,:), allocatable :: binWindows
+        Type(TBinWindows) binWindows
+
+        !For correcting theory bandpowers using linear correction (which is zero at fiducial model):
+        !   CL_bin --> CL_bin + dot(this%Lensing%binDeltaWindows, CL) - FiducialCorrection
+        !Could be incorporated in bandpowers and bin window, but allows cleaner separation of effect of correction for testing
+        Type(TBinWindows) binCorrectionWindows
+        real(mcp), allocatable :: FiducialCorrection(:,:)
 
         Type(TSqMatrix), dimension(:), allocatable :: sqrt_fiducial, NoiseM
         Type(TSqMatrix), dimension(:,:), allocatable :: ChatM
@@ -79,13 +94,13 @@
     procedure :: ReadIni => CMBLikes_ReadIni
     procedure, private :: ReadClArr => CMBLikes_ReadClArr
     procedure, private :: UseString_to_cols
-    procedure, private :: UseString_to_TEB
+    procedure, private :: UseString_to_theoryPairCls
     procedure, private :: Transform => CMBLikes_Transform
     procedure, private :: ExactChisq
     procedure, private :: MatrixToElements
     procedure, private :: MatrixToElementsInt
     procedure, private :: ElementsToMatrix
-    procedure, private :: SetTopHatWindows
+    !    procedure, private :: SetTopHatWindows
     procedure, private :: GetColsFromOrder
     procedure, private :: ReadLensing => CMBLikes_ReadLensing
     procedure :: ReadBinWindows
@@ -199,16 +214,16 @@
 
     end subroutine UseString_to_cols
 
-    subroutine UseString_to_TEB(this, S, TEBP)
+    subroutine UseString_to_theoryPairCls(this, S, theoryPairCls)
     class(TCMBLikes) :: this
     character(LEN=*), intent(in) :: S
-    integer, allocatable, intent(out) :: TEBP(:,:)
+    integer, allocatable, intent(out) :: theoryPairCls(:,:)
     Type(TStringList) :: L
     integer tmp,i,i1,i2
     character(LEN=:), pointer :: P
 
     call L%SetFromString(S,field_names)
-    allocate(TEBP(2,L%Count), source=0)
+    allocate(theoryPairCls(2,L%Count), source=0)
 
     do i=1, L%Count
         P=> L%Item(i)
@@ -220,29 +235,29 @@
             i1=i2
             i2=tmp
         end if
-        TEBP(:,i) = [i1,i2]
+        theoryPairCls(:,i) = [i1,i2]
     end do
     call L%Clear()
 
-    end subroutine UseString_to_TEB
+    end subroutine UseString_to_theoryPairCls
 
-    subroutine SetTopHatWindows(this)
-    class(TCMBLikes) :: this
-    integer i
-    !Untested
-    allocate(this%binWindows(this%pcl_lmin:this%pcl_lmax,1,this%nbins), source=0._mcp)
-    !Internal CL are now L(L+1)C_L
-    do i=this%pcl_lmin,this%pcl_lmin+this%nbins*this%bin_width -1
-        this%binWindows(i,1,(i-this%pcl_lmin)/this%bin_width+1)=real(2*i+1,mcp)/(i*(i+1))
-    end do
-    do i=this%pcl_lmin+this%nbins*this%bin_width,this%pcl_lmax
-        this%binWindows(i,1,this%nbins)=real(2*i+1,mcp)/(i*(i+1))
-    end do
-    do i=1, this%nbins
-        this%binWindows(:,1,i) = this%binWindows(:,1,i)/sum(this%binWindows(:,1,i))
-    end do
-
-    end subroutine SetTopHatWindows
+    !subroutine SetTopHatWindows(this)
+    !class(TCMBLikes) :: this
+    !integer i
+    !!Untested
+    !allocate(this%binWindows(this%pcl_lmin:this%pcl_lmax,1,this%nbins), source=0._mcp)
+    !!Internal CL are now L(L+1)C_L
+    !do i=this%pcl_lmin,this%pcl_lmin+this%nbins*this%bin_width -1
+    !    this%binWindows(i,1,(i-this%pcl_lmin)/this%bin_width+1)=real(2*i+1,mcp)/(i*(i+1))
+    !end do
+    !do i=this%pcl_lmin+this%nbins*this%bin_width,this%pcl_lmax
+    !    this%binWindows(i,1,this%nbins)=real(2*i+1,mcp)/(i*(i+1))
+    !end do
+    !do i=1, this%nbins
+    !    this%binWindows(:,1,i) = this%binWindows(:,1,i)/sum(this%binWindows(:,1,i))
+    !end do
+    !
+    !end subroutine SetTopHatWindows
 
     function GetColsFromOrder(this, Order, cols) result(num)
     !Converts string Order = TT TE EE XY... into indices into array of power spectra (and zero if not present)
@@ -270,39 +285,46 @@
 
     end function GetColsFromOrder
 
-    subroutine ReadBinWindows(this,Ini)
+    subroutine ReadBinWindows(this,Ini, bin_type, binWindows)
     !For example:  bin_window_in_order = TT TE TE BB, bin_window_out_order = TT EE TE BB
     !has window file with five columns giving L, TT->TT, TE->EE, TE->TE, BB->BB
     class(TCMBLikes) :: this
     class(TSettingIni) :: Ini
+    character(LEN=*), intent(in) :: bin_type
+    class(TBinWindows) binWindows
     integer i
     character(LEN=:), allocatable :: filename,  S, Order1, Order2, InLine
     real(mcp), allocatable :: tmp_ar(:)
     integer L, status, norder
     Type(TTextFile) :: F
+    logical Err
 
-    filename = Ini%ReadFileName('bin_window_files', NotFoundFail=.true.,relative=.true.)
-    Order1 = Ini%Read_String('bin_window_in_order', .true.)
-    Order2 = Ini%Read_String_Default('bin_window_out_order', Order1)
-    call this%UseString_to_TEB(Order1, this%bin_cols_in)
-    call this%UseString_to_cols(Order2, this%bin_cols_out)
-    norder = size(this%bin_cols_in,2)
-    if (norder/=size(this%bin_cols_out)) &
-    & call MpiStop('bin_window_in_order and bin_window_out_order must have same numebr of CL')
+    filename = Ini%ReadFileName(bin_type // '_files', NotFoundFail=.true.,relative=.true.)
+    Order1 = Ini%Read_String(bin_type // '_in_order', .true.)
+    Order2 = Ini%Read_String_Default(bin_type // '_out_order', Order1)
+    call this%UseString_to_theoryPairCls(Order1, binWindows%bin_cols_in)
+    call this%UseString_to_cols(Order2, binWindows%bin_cols_out)
+    norder = size(binWindows%bin_cols_in,2)
+    if (norder/=size(binWindows%bin_cols_out)) &
+    & call MpiStop(bin_type // '_in_order and '//bin_type // '_out_order must have same numebr of CL')
 
     allocate(tmp_ar(norder))
-    allocate(this%binWindows(this%pcl_lmin:this%pcl_lmax,norder,this%bin_min:this%bin_max), source=0._mcp)
+    binWindows%lmin = this%pcl_lmin
+    binWindows%lmax = this%pcl_lmax
+    allocate(binWindows%W(this%pcl_lmin:this%pcl_lmax,norder,this%bin_min:this%bin_max), source=0._mcp)
     do i=this%bin_min, this%bin_max
         S = FormatString(filename, i)
+        Err = .false.
         do while (F%ReadNextContentLine(S,InLine))
             read(InLine,*, iostat=status) l, tmp_ar
             if (status/=0) call MpiStop('ReadBinWindows: error reading line '//trim(filename))
             if (l>=this%pcl_lmin .and. l <=this%pcl_lmax) then
-                this%binWindows(l,:,i) = tmp_ar
+                binWindows%W(l,:,i) = tmp_ar
             else
-                write(*,*) 'WARNING: bin window outside cl_lmin--cl_max range'
+                Err = .true.
             end if
         end do
+        if (Err) write(*,*) FormatString( 'WARNING: %s %u outside cl_lmin-cl_max range', bin_type, i)
     end do
 
     end subroutine ReadBinWindows
@@ -373,9 +395,10 @@
         this%bin_min=Ini%Read_Int('use_min',1,min=1,max=this%nbins)
         this%bin_max=Ini%Read_Int('use_max',this%nbins,min=this%bin_min,max=this%nbins)
         if (bin_test) then
-            call this%SetTopHatWindows()
+            call MpiStop('bin_test not implemented')
+            !           call this%SetTopHatWindows()
         else
-            call this%ReadBinWindows(Ini)
+            call this%ReadBinWindows(Ini, 'bin_window', this%binWindows)
         end if
     else
         this%bin_min=Ini%Read_Int('use_min',this%pcl_lmin,min=this%pcl_lmin,max=this%pcl_lmax)
@@ -493,6 +516,14 @@
     end if
     if (Ini%HasKey('lowl_exact')) call MpiStop('lowl_exact has been separated out as not currently used')
 
+    S = Ini%ReadFileName('linear_correction_fiducial',relative=.true.)
+    if (S/='') then
+        allocate(this%FiducialCorrection(this%ncl,this%bin_min:this%bin_max))
+        S_order = Ini%read_String('linear_correction_fiducial_order')
+        call this%ReadClArr(S, S_order,this%FiducialCorrection(:,:),this%bin_min)
+        call this%ReadBinWindows(Ini, 'linear_correction_bin_window', this%binCorrectionWindows)
+    end if
+
     this%has_lensing  = this%cl_lmax(CL_Phi,CL_Phi) > 0
     if (this%has_lensing) then
         call this%ReadLensing(Ini)
@@ -512,6 +543,7 @@
     integer, allocatable :: ls(:)
     !CMB lensing likelihood
 
+
     S = Ini%ReadFileName('lensing_fiducial_cl',relative=.true.)
     if (S/='') then
         call File%LoadTxt(S, Fid, comment = Comment)
@@ -519,10 +551,16 @@
         allocate(ls(size(Fid,1)),source=int(Fid(:,1)))
         allocate(this%Lensing%FiducialPhi(0:ls(size(ls))), source=0._mcp)
         this%Lensing%FiducialPhi(ls) = Fid(:,L%IndexOf('PP'))
+!!!
+        allocate(this%Lensing%FiducialCl(0:ls(size(ls)),1), source=0._mcp)
+        
+            this%Lensing%FiducialCl(ls,1) = Fid(:,2)
+        
     end if
 
     S = Ini%ReadFileName('lensing_N1_matrix_fiducial_dphi',relative=.true.)
     if (S/='') then
+        if (.not. allocated(Fid)) call MpiStop('lensing_N1_matrix_fiducial_dphi but no lensing_fiducial_cl')
         call this%Lensing%N1_matrix_dphi%LoadFromFile(S, this%Lensing%FiducialPhi(1:))
     end if
     S = Ini%Read_String('lensing_renorm_cl')
@@ -564,6 +602,8 @@
     integer vecsize_in
     integer i, j, L1, L2
     real(mcp) :: covmat_scale = 1
+    integer, allocatable :: cov_cl_used(:)
+
 
     covmat_cl = Ini%Read_String('covmat_cl', .true.)
     filename = Ini%ReadFileName('covmat_fiducial', NotFoundFail=.true.,relative=.true.)
@@ -573,13 +613,13 @@
     num_in = size(cl_in_index)
     this%ncl_used = count(cl_in_index /=0)
     allocate(this%cl_use_index(this%ncl_used))
-    allocate(this%cov_cl_used(this%ncl_used))
+    allocate(cov_cl_used(this%ncl_used))
     ix = 0
     do i=1, num_in
         if (cl_in_index(i)/=0) then
             ix = ix+1
             this%cl_use_index(ix) = cl_in_index(i)
-            this%cov_cl_used(ix) = i
+            cov_cl_used(ix) = i
         end if
     end do
 
@@ -592,7 +632,7 @@
             do biny=this%bin_min, this%bin_max
                 this%inv_covariance( (binx-this%bin_min)*this%ncl_used+1:(binx-this%bin_min+1)*this%ncl_used, &
                 & (biny-this%bin_min)*this%ncl_used+1:(biny-this%bin_min+1)*this%ncl_used) = &
-                & covmat_scale*Cov( (binx-1)*num_in+this%cov_cl_used, (biny-1)*num_in+this%cov_cl_used)
+                & covmat_scale*Cov( (binx-1)*num_in+cov_cl_used, (biny-1)*num_in+cov_cl_used)
             end do
         end do
         call Matrix_Inverse(this%inv_covariance)
@@ -608,8 +648,8 @@
                         do L2 = this%bin_min, this%bin_max
                             !Assume L matrices are ordered the other way in blocks of different L for each CL type
                             this%inv_covariance( (L1-this%bin_min)*this%ncl_used+i, (L2-this%bin_min)*this%ncl_used+j) = &
-                            & covmat_scale*Cov((this%cov_cl_used(i)-1)*vecsize_in + L1 - this%pcl_lmin+1, &
-                            & (this%cov_cl_used(j)-1)*vecsize_in + L2 - this%pcl_lmin+1)
+                            & covmat_scale*Cov((cov_cl_used(i)-1)*vecsize_in + L1 - this%pcl_lmin+1, &
+                            & (cov_cl_used(j)-1)*vecsize_in + L2 - this%pcl_lmin+1)
                         end do
                     end do
                 end do
@@ -777,20 +817,14 @@
     class(TCMBLikes) :: this
     Type(TSkyPowerSpectrum) :: TheoryCls(:,:)
     real(mcp) Cls(this%ncl), C(this%nfields,this%nfields)
-    integer bin
-    integer win_ix,ix_in(2), ix_out
+    real(mcp) correctionCl(this%ncl)
+    integer, intent(in) :: bin
 
-    cls=0
-    do win_ix = 1, size(this%bin_cols_in,2)
-        ix_in = this%bin_cols_in(:,win_ix)
-        if (this%cl_lmax(ix_in(1),ix_in(2))>0) then
-            ix_out = this%bin_cols_out(win_ix)
-            if (ix_out>0) then
-                Cls(ix_out) = Cls(ix_out) + &
-                & dot_product(this%BinWindows(:,win_ix,bin),TheoryCls(ix_in(1),ix_in(2))%CL(this%pcl_lmin:this%pcl_lmax))
-            end if
-        end if
-    end do
+    call this%BinWindows%Bin(TheoryCls, Cls, bin)
+    if (allocated(this%binCorrectionWindows%W)) then
+        call this%BinCorrectionWindows%Bin(TheoryCls, correctionCl, bin)
+        Cls = Cls + (correctionCl - this%FiducialCorrection(:,bin))
+    end if
     call this%ElementsToMatrix(Cls, C)
 
     end subroutine GetBinnedTheory
@@ -804,7 +838,12 @@
     integer lmax, lmin, lmaxN1, lminN1
 
     allocate(Cls, source= Theory%Cls)
-
+    CLs(1,1)%CL(2:) = this%Lensing%FiducialCl(2:,1)
+    CLs(4,4)%CL(2:) = this%Lensing%FiducialPhi(2:)
+    
+    CLs(1,1)%CL(2:) = this%Lensing%FiducialCl(2:,1) * ([2:this%pcl_lmax]/1000.0)**0.03 * 1.02
+    CLs(4,4)%CL(2:) = this%Lensing%FiducialPhi(2:) *1.1 * ([2:this%pcl_lmax]/1000.0)**0.02
+    
     if (this%has_lensing) then
         !Correct for normalization and actual N1
         associate(CL=>Cls(CL_Phi,CL_Phi)%CL)
@@ -814,7 +853,7 @@
             end if
 
             if (allocated(this%Lensing%renorm_matrix%M)) then
-                call this%Lensing%renorm_matrix%InterpProduct(Theory%Cls(CL_T,CL_T)%Cl(1:), renorm, lmin, lmax, &
+                call this%Lensing%renorm_matrix%InterpProduct(Cls(CL_T,CL_T)%Cl(1:), renorm, lmin, lmax, &
                 & this%pcl_lmax, sub_fiducial = .true.)
                 CL(lmin:lmax) = CL(lmin:lmax)*(1 + 2*renorm)
             end if
@@ -822,7 +861,7 @@
             if (allocated(N1_interp)) CL(lminN1:lmaxN1) =  CL(lminN1:lmaxN1) + N1_interp
 
             if (allocated(this%Lensing%renorm_N1_matrix%M)) then
-                call this%Lensing%renorm_N1_matrix%InterpProduct(Theory%Cls(CL_T,CL_T)%Cl(1:), &
+                call this%Lensing%renorm_N1_matrix%InterpProduct(Cls(CL_T,CL_T)%Cl(1:), &
                 & N1_interp, lminN1, lmaxN1, this%pcl_lmax, sub_fiducial = .true.)
                 CL(lminN1:lmaxN1) =  CL(lminN1:lmaxN1) + 2*N1_interp
             end if
@@ -962,5 +1001,27 @@
     call Interp%Array(lmin, lmax, InterpOutput)
 
     end subroutine InterpProduct
+
+    subroutine TBinWindows_bin(this, TheoryCls, Cls, bin)
+    class(TBinWindows) :: this
+    Type(TSkyPowerSpectrum) :: TheoryCls(:,:)
+    real(mcp) Cls(:)
+    integer bin
+    integer win_ix,ix_in(2), ix_out
+
+    cls=0
+    do win_ix = 1, size(this%bin_cols_in,2)
+        ix_in = this%bin_cols_in(:,win_ix)
+        if (allocated(TheoryCls(ix_in(1),ix_in(2))%CL)) then
+            ix_out = this%bin_cols_out(win_ix)
+            if (ix_out>0) then
+                Cls(ix_out) = Cls(ix_out) + &
+                & dot_product(this%W(:,win_ix,bin),TheoryCls(ix_in(1),ix_in(2))%CL(this%lmin:this%lmax))
+            end if
+        end if
+    end do
+
+    end subroutine TBinWindows_bin
+
 
     end module CMBLikes
