@@ -838,11 +838,11 @@
     integer lmax, lmin, lmaxN1, lminN1
 
     allocate(Cls, source= Theory%Cls)
-    CLs(1,1)%CL(2:) = this%Lensing%FiducialCl(2:,1)
-    CLs(4,4)%CL(2:) = this%Lensing%FiducialPhi(2:)
+!    CLs(1,1)%CL(2:) = this%Lensing%FiducialCl(2:,1)
+!    CLs(4,4)%CL(2:) = this%Lensing%FiducialPhi(2:)
     
-    CLs(1,1)%CL(2:) = this%Lensing%FiducialCl(2:,1) * ([2:this%pcl_lmax]/1000.0)**0.03 * 1.02
-    CLs(4,4)%CL(2:) = this%Lensing%FiducialPhi(2:) *1.1 * ([2:this%pcl_lmax]/1000.0)**0.02
+!    CLs(1,1)%CL(2:) = this%Lensing%FiducialCl(2:,1) * ([2:this%pcl_lmax]/1000.0)**0.03 * 1.02
+!    CLs(4,4)%CL(2:) = this%Lensing%FiducialPhi(2:) *1.1 * ([2:this%pcl_lmax]/1000.0)**0.02
     
     if (this%has_lensing) then
         !Correct for normalization and actual N1
