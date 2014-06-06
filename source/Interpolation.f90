@@ -996,7 +996,7 @@
     sxa(4), sxxa(4), sya(4), syya(4), xa(3,4), ya(3,4),   &
     z0ia(3,4), zi0a(3,4)
 
-    INTEGER, parameter :: idlt(3,4) = RESHAPE([3, -2, -1, -2, -1, 1,-1, 1,2, 1 ,2, 3 ], [ 3, 4 ] )
+    INTEGER, parameter :: idlt(3,4) = RESHAPE([-3, -2, -1, -2, -1, 1,-1, 1,2, 1 ,2, 3 ], [ 3, 4 ] )
     !AL Jun 14: Fixed F90 translation
 
     ! Calculation
