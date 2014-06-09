@@ -177,6 +177,11 @@ plot_data_dir = ini.string('plot_data_dir')
 if (plot_data_dir==''):
     plot_data_dir = 'plot_data/'
 
+#abs_plot_data_dir = os.path.join(out_dir, plot_data_dir)
+abs_plot_data_dir = plot_data_dir
+if not os.path.isdir(abs_plot_data_dir):
+    os.mkdir(abs_plot_data_dir)
+
 rootdirname = os.path.join(out_dir, rootname)
 
 num_contours = ini.int('num_contours',2)
@@ -242,9 +247,10 @@ max_scatter_points = ini.int('max_scatter_points',2000)
 BW = ini.bool('B&W', False)
 do_shading = ini.bool('do_shading',True)
 
+# Chain files
+chain_files = glob.glob(in_root+"_*.txt")
 
 def getLastChainIndex(in_root):
-    chain_files = glob.glob(in_root+"_*.txt")
     if not chain_files: return 0
     names_files = [ os.path.basename(f) for f in chain_files ]
     basename = os.path.basename(in_root)
@@ -258,57 +264,44 @@ if(last_chain==-1):
     last_chain = getLastChainIndex(in_root)
 
 # Read in the chains
-chains = ch.loadChains(in_root, range(first_chain, last_chain+1), ignore_frac=ignorerows)
-#chains.getChainsStats()
+mc = MCSamples.MCSamples(in_root)
+ok = mc.loadChains(in_root, chain_files)
 
-# FIXME?: chains to exclude 
-# FIXME?: distinction single column vs. multiple columns
-# FIXME?: ignorerows 
-# FIXME?: check if no chains were read
-
-
-
-#import pdb; pdb.set_trace()
-mc = MCSamples.MCSamples()
-
-mc.CoolChain(cool)
+#cool = 2# TEST
+if (cool<>1):
+    mc.CoolChain(cool)
 
 # Adjust weights if requesteda
 if (adjust_priors):
     mc.AdjustPriors()
-    pass
 
-# See which parameters are fixed (see Chains.loadWMAPChain)
-#TODO: GetUsedCols()
-
-
-# ...
+# TODO
+mean_mult = 0
+max_mult = 0
+outliers = 0
+max_mult = 0
+numsamp = 0
 
 if (not no_tests):
     mc.DoConvergeTests(converge_test_limit)
-    pass
 
 if (adjust_priors):
     mc.DeleteZeros()
-    pass
 
-
-#print 'mean input multiplicity = ',mean_mult
-
+print 'mean input multiplicity = ', mean_mult
 
 # Output thinned data if requested
 # Must do this with unsorted output
+thin_factor = 1. # TEST
 if (thin_factor<>0):
     mc.ThinData(thin_factor)
     filename = rootdirname + '_thin.txt'
     mc.WriteThinData(filename, thin_cool)
 
-
-
 # Produce file of weight-1 samples if requested
-
-# ...
-
+if ((num_3D_plots<>0 and not make_single_samples or make_scatter_samples) and not no_plots):
+    make_single_samples = True
+    #single_thin = max(1, round(numsamp/max_mult)/max_scatter_points)
 
 # Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
 num_vars = 0
@@ -324,73 +317,54 @@ else:
     pass
 
 
-for j in range(num_vars):
-    #mean(j) = sum(coldata(1,0:nrows-1)*coldata( colix(j),0:nrows-1))/numsamp
-    #sddev(j)  = sqrt(sum(coldata(1,0:nrows-1)*(coldata(colix(j),0:nrows-1) -mean(j))**2)/numsamp)
-    pass
+#
+mc.getChainsStats()
 
-
- #if (make_single_samples):
- #   self.MakeSingleSamples(single_thin)
-
+if (make_single_samples):
+    filename = os.path.join(plot_data_dir, rootname.strip()+'_single.txt')
+    mc.WriteSingleSamples(filename, single_thin)
 
 # IO_WriteBounds
+filename = os.path.join(plot_data_dir, rootname.strip()+'.bounds')
+mc.WriteBounds(filename)
 
 # Sort data in order of likelihood of points
-#TODO call SortColData(2)
+mc.SortColData(2)
 
 #numsamp = sum(coldata(1,0:nrows-1))
 
-
 # Get ND confidence region (index into sorted coldata)
 counts = 0
-ND_cont1, ND_cont2 = -1, -1
-
-#for j in range(0, self.nrows-1):
-#    # ...
-#    pass
-
+ND_cont1, ND_cont2 = mc.GetConfidenceRegion()
 
 triangle_plot = triangle_plot and (num_vars>1)
 if (triangle_plot):
     # ...
     pass
 
-#print 'using ',nrows,' rows, processing ',num_vars,' parameters'
-indep_thin = 0
-#todo ...
-numsamp = 0
-max_mult = 0
-#if (indep_thin<>0):
-#    print 'Approx indep samples: ', int(numsamp/indep_thin) # equiv. to nint ?
-#else:
-#    print  'effective number of samples (assuming indep): ', int(numsamp/max_mult)  # equiv. to nint ?
+print 'using ', nrows,' rows, processing ', num_vars,' parameters'
+if (indep_thin<>0):
+    print 'Approx indep samples: ', round(numsamp/indep_thin)
+else:
+    print  'effective number of samples (assuming indep): ', round(numsamp/max_mult)
 
 # Get covariance matrix and correlation matrix
-#self.GetCovMatrix()
+mc.GetCovMatrix()
 
-#if (PCA_num>0) and not plots_only:
-#    self.PCA(PCA_params,PCA_num,PCA_func, PCA_NormParam)
-
+if (PCA_num>0) and not plots_only:
+    mc.PCA(PCA_params, PCA_num, PCA_func, PCA_NormParam)
 
 # Find best fit, and mean likelihood
-#self.GetChainLikeSummary(stdout)
-
-if (not no_plots):
-    # Matlab only ? 
-    pass
+mc.GetChainLikeSummary(toStdOut=True)
 
 
 LowerUpperLimits = 0
 
-
-
 # Do 1D bins
 
 for j in range(num_vars):
-    # ... 
 
-    #self.Get1DDensity(j)
+    #mc.Get1DDensity(j)
     
     #call to twoTailLimits in chains.py
     pass
@@ -483,24 +457,22 @@ if (num_3D_plots<>0 and not no_plots):
 
 # Write out stats marginalized
 if (not plots_only):
-    # TODO: margeStats
-    pass
+    mc.OutputMargeStats()
 
-
+# Write paramNames file
+filename = os.path.join(plot_data_dir, rootname + ".paramnames")
+mc.WriteParamNames(filename)
 
 # Limits from global likelihood
 if (not plots_only):
     filename = rootdirname + '.likestats'
     textFileHandle = open(filename, 'w')
-    textInit = mc.GetChainLikeSummary()
-    maxlike, meanlike = 0., 0.
-    #todo: compute
-    #textFileHandle.write(textInit%(maxlike, meanlike, meanlike, meanlike))
+    textInit = mc.GetChainLikeSummary(toStdOut=False)
+    textFileHandle.write(textInit)
     textFileHandle.write("param  bestfit        lower1         upper1         lower2         upper2")
-    
     for j in range(num_vars):
         #todo: values
-        textFileHandle.write("%5i  %15.7E"%(j, val)) # adapt format for multiple float values
+        textFileHandle.write("%5i%15.7E%15.7E%15.7E%15.7E%15.7E"%(j, v1, v2, v3, v4, v5))
     textFileHandle.close()
 
 # System command

@@ -3,103 +3,72 @@
 import os
 import sys
 import numpy as np
+from chains import chains
 
-class MCSamples:
-    """
-    """
+class MCSamples(chains):
 
-    def __init__(self):
-        self.precision = '%.8e'
-
-
-        #self.nrows = 0
-        #self.ncols = 0
-        #self.thin_rows = 0
-        #self.num_chains_used = 0
-        #self.covmat_dimension = 0
-
-        #self.thin_ix = [] # TODO numpy int array
-        #self.colix = [] # TODO numpy int array
-        #self.isued = [] # TODO numpy bool array
-        #self.chain_indices = [] # TODO numpy int array
-        #self.usedvars = [] # TODO numpy int array
-
-    def setChains(self, chains):
-        self.chains = chains
+    def __init__(self, root=None, ignore_rows=0):
+        chains.__init__(self, root, ignore_rows)
 
     def AdjustPriors(self):
         sys.exit('You need to write the AdjustPriors function in MCSamples.py first!')
-    
+        #print "Adjusting priors"
+        #ombh2 = self.samples[0]  # ombh2 prior
+        #chisq = (ombh2 - 0.0213)**2/0.001**2
+        #self.weights *= np.exp(-chisq/2)
+        #self.loglikes += chisq/2
+
 
     def MapParameters(self, invars):
         sys.exit('Need to write MapParameters routine first')
-
+        
 
     def CoolChain(self, cool):
-        """
-        Cool chains.
-
-        :param cool: value for 
-        :type cool: real type
-        """
-        
         print 'Cooling chains by ', cool
-        #MaxL = minval(coldata(2,0:nrows-1))
-        nrows = 0
-        for i in range(nrows):
-            #newL = coldata(2,i)*cool
-            #coldata(1,i) = coldata(1,i)*exp(-(newL - coldata(2,i)) - MaxL*(1-cool) )
-            #coldata(2,i) = newL
-            pass
-        
-    # FIXME: pass matrix as parameter ?
+        MaxL = np.max(self.loglikes)
+        newL = self.loglikes * cool
+        newW = self.weights * np.exp(-(newL-self.loglikes) - (MaxL*(1-cool)))
+        self.weights = np.hstack(newW)
+        self.loglikes = np.hstack(newL)
+
+
     def DeleteZeros(self, a=None):
-        """
-        Remove rows where weight is zero.
-        """
-        return a[a[:,0]!=0]
+        #fixme
+        a = a[a[:,0]!=0]
 
         
-    def SortColData(self, a=None, icol=None):
+    def SortColData(self, icol=None):
         """
         Sort data for specified column.
-
-        :param icol: column number
-        :type icol: integer type
         """
-        return a[a[:,icol].argsort()]
+        if icol is None: return
+        if icol==0:
+            self.weights.sort()
+        elif icol==1:
+            self.loglikes.sort()
+        else:
+            self.samples[icol-2].sort()
 
 
-    def MakeSingleSamples(self, single_thin):
+    def WriteSingleSamples(self, filename, single_thin):
         """
         Make file of weight-1 samples by choosing samples 
         with probability given by their weight.
-
-        :param single_thin: value  
-        :type single_thin: integer type
         """
-        plot_data_dir = ""
-        rootname = ""
-        fname = os.path.join(plot_data_dir, rootname.strip()+'_single.txt') 
-        textFileHandle = open(fname, 'w')
-        #values = chains.makeSingleSamples()
-        
+        textFileHandle = open(filename, 'w')
+        self.makeSingle()
+        self.makeSingleSamples()
+        # FIXME: call to ranmar in f90
         textFileHandle.close()
 
 
     def WriteThinData(self, fname, cool):
         """
         Write thin data.
-
-        :param fname: file name
-        :type fname: string value
-        
-        :param cool: cooling factor
-        :type cool: real type
         """
-        if(cool!=1):
+        if(cool<>1):
             print 'Cooled thinned output with temp: ', cool
-        textFileHandle = open(fname)
+        textFileHandle = open(fname, 'w')
         #Data for thin ...
         thin_rows = 0
         textFileHandle.close()
@@ -109,9 +78,6 @@ class MCSamples:
     def ThinData(self, fac):
         """
         Make thinned samples.
-
-        :param fac: factor value
-        :type fac: integer type
         """
         #chains.thin()
         pass
@@ -124,21 +90,11 @@ class MCSamples:
         # use chains.cov and chains.corr
         textFileHandle = open(fname)
         textFileHandle.close()
-        pass
 
 
     def MostCorrelated2D(self, i1, i2, direc):
         """
         Find which parameter is most correllated with the degeneracy in ix1, ix2
-
-        :param i1: value for 
-        :type i1: integer type
-
-        :param i2: value for 
-        :type i2: integer type 
-
-        :param direc: value for 
-        :type direc: integer type 
         """
         if not direc in [0, -1]:
             sys.exit('Invalid 3D color parameter')
@@ -148,36 +104,12 @@ class MCSamples:
     def GetFractionIndices(self, fraction_indices, n):
         """
         Get fraction indices.
-
-        :param fraction_indices: fraction indices 
-        :type fraction_indices: array of integer type
-
-        :param n: value
-        :type n: integer type
         """
         # Used ?
         pass
 
 
     def ConfidVal(self, ix, limfrac, upper, ix1=None, ix2=None):
-        """
-        Find upper and lower bounds
-
-        :param ix: value for 
-        :type ix: integer type
-
-        :param limfrac: value for 
-        :type limfrac:  type
-        
-        :param upper: value for 
-        :type upper: integer type
-
-        :param ix1: optional value for 
-        :type ix1: integer type
-
-        :param ix2: optional value for 
-        :type ix2: integer type
-        """
         #chains.confidence()
         pass
 
@@ -187,8 +119,6 @@ class MCSamples:
         Perform principle component analysis. In other words, 
         get eigenvectors and eigenvalues for normalized variables
         with optional (log) mapping.
-
-        ...
         """
         val = 0.
 
@@ -267,15 +197,11 @@ class MCSamples:
     def DoConvergeTests(self, limfrac):
         """
         Do convergence tests.
-
-        :param limfrac: limit to use for split tests and Raftery-Lewis 
-        :type : real type
         """
         return
 
         # Get statistics for individual chains, and do split tests on the samples
 
-        
 
         rootdirname = ""
         num_chains_used = 0
@@ -372,33 +298,244 @@ class MCSamples:
         # See http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps
         # Raw non-importance sampled chains only
 
-        # ...
+        if (1):
+
+            nburn = 0
+            hardest=-1
+            hardestend=0
+
+            for ix in range(num_chains_used):
+                #thin_fac(ix) = nint(maxval(coldata(1,chain_indices(ix):chain_indices(ix+1)-1)))
+
+                for j in range(2, covmat_dimension+2):
+                    #...
+                    pass
+
+                # Get thin factor to have independent samples rather than Markov
+                #hardest = max(hardest,1)
+                #u = ConfidVal(hardest,(1-limfrac)/2,hardestend==0)
+                #thin_fac(ix) = thin_fac(ix) + 1
+
+                while(True):
+                    
+                    mc.ThinData()
+                    if (thin_rows<2): break
+                    #binchain 
+
+                    tran2 = 0
+                    # Estimate transitions probabilities for 2nd order process
+                    
+                    for i in range(thin_rows-1):
+                        #tran2(binchain(i-1),binchain(i)) = tran2(binchain(i-1),binchain(i)) +1 
+                        pass
+                    
+                
+                    # Test whether independence is better than Markov using BIC statistic
+                    g2 = 0
+                    # ...
+                    g2 = g2 * 2
+
+
+                    #if (g2 - log( dble(thin_rows-1) ) < 0) exit
+                    thin_fac[ix] = thin_fac[ix] + 1
+
+                if (thin_rows<2): 
+                    thin_fac[ix] = 0
+
+            textFileHandle.write("\n")
+            textFileHandle.write("Raftery&Lewis statistics\n")
+            textFileHandle.write("\n")
+            textFileHandle.write("chain  markov_thin  indep_thin    nburn\n")
+            for ix in range(num_chains_used):
+                if (1): # thin_fac(ix)==0
+                    textFileHandle.write("%4i      Not enough samples\n"%chain_numbers[ix])
+                else:
+                    textFileHandle.write("%4i%12i%12i%12i"%(
+                            chain_numbers[ix], markov_thin[ix], thin_fac[ix], nburn[ix]))
+
+            if (1):
+                print 'RL: Not enough samples to estimate convergence stats'
+            else:
+                print 'RL: Thin for Markov: '
+                print 'RL: Thin for indep samples:  '
+                print 'RL: Estimated burn in steps: '
+
+            # Get correlation lengths
+            textFileHandle.write("\n")
+            textFileHandle.write("Parameter auto-correlations as function of step separation\n")
+            textFileHandle.write("\n")
+
+
+
+            mc.ThinData(autocorr_thin)
+            #maxoff = min(corr_length_steps,thin_rows/(autocorr_thin*num_chains_used))
+
+            #corrs = 0
+            for j in range(maxoff):
+                pass
+
+            if (maxoff>0):
+                pass
+
 
 
         textFileHandle.close()
 
+
+
+
     
-    def Get1DDensity(self, j):
+    def Get1DDensity(self, paramVec):
         """
         Get 1D density.
-
-        :param j: value for 
-        :type j: integer type
         """
 
+        # input parameters
+        num_bins = 1
+        smooth_scale_1D = 1
+        filename = "" # plot_data_dir, rootname, j, .dat
+        filename_like = "" # plot_data_dir, rootname, j, .likes
+        #
+
+        fine_fac = 10
+        logZero = math.pow(1, 30) # ?
+
+        param_min = np.min(paramVec)
+        param_max = np.max(paramVec)
+        range_min = self.confidence(paramVec, 0.0005, upper=False) 
+        range_max = self.confidence(paramVec, 0.0005, upper=True) 
+        width = (range_max-range_min)/(num_bins+1)
+        if (width==0):
+            print "Warning width is 0"
+            return
+
+        if (smooth_scale_1D<=0):
+            # Automatically set smoothing scale from rule of thumb for Gaussian
+            pass
+        else:
+            pass
+
+
+        end_edge = round(smooth_1D*2)
+        
+        #if (has_limits_bot(ix)) then
+        #...
+
+        #if (has_limits_top(ix)) then
+        #...
+
+        if (has_limits_top(ix)):
+            center = range_max
+        else:
+            center = range_min
+
+        ix_min = round((range_min-center)/width)
+        ix_max = round((range_max-center)/width)
+
+        if (not has_limits_bot(ix)): ix_min -= end_edge
+        if (not has_limits_top(ix)): ix_max -= end_edge
+
+        binsraw = np.zeros(ix_max+1-ix_min)
+        
+        winw = round(2.5*fine_fac*smooth_1D)
+        fine_edge = winw + fine_fac*end_edge
+        fine_width = width/fine_fac
+        
+        imin = round((param_min-center)/fine_width)
+        imax = round((param_max-center)/fine_width)
+
+        #allocate(finebins(imin-fine_edge:imax+fine_edge))
+        #finebins=0
+        #if (plot_meanlikes) allocate(finebinlikes(imin-fine_edge:imax+fine_edge))
+        #if (plot_meanlikes) finebinlikes=0
+        
+        for i in range(len(paramVec)):
+            ix2 = round((paramVec[i]-center)/width)
+            if (ix2<=ix_max and ix2>=ix_min): 
+                binsraw[ix2-1] -= paramVec[i]
+            ix2 = round((paramVec[i]-center)/fine_width)
+            finebins[ix2-1] += paramVec[i]
+            if (plot_meanlikes):
+                finebins[ix2-1] += self.weights[i]*self.loglikes[i]
+            else:
+                 finebins[ix2-1] += self.weights[i]*np.exp(meanlike-self.loglikes[i])
+               
+        if (ix_min<>ix_max):
+            # account for underweighting near edges
+            if (not has_limits_bot(ix) and binsraw[ix_min+end_edge-1]==0 and  
+                binsraw[ix_min+end_edge]>np.max(binsraw)/15):
+                # call EdgeWarning(ix-2)
+                pass
+            if (not has_limits_top(ix) and binsraw[ix_max+end_edge+1]==0 and  
+                binsraw[ix_max-end_edge]>np.max(binsraw)/15):
+                # call EdgeWarning(ix-2)
+                pass
+            
+        #allocate(Win(-winw:winw))
         # ...
-        pass
+
+        has_prior = has_limits_bot(ix) or has_limits_top(ix)
+        if (has_prior):
+            # ...
+            pass
+
+        
+
+        # High resolution density (sampled many times per smoothing scale)
+        if (has_limits_bot(ix)): imin = ix_min*fine_fac
+        if (has_limits_top(ix)): imax = ix_max*fine_fac
+
+        #call Density1D%Init(imax-imin+1,fine_width)
+        for i in range(imin, imax+1):
+            # ...
+            pass
+
+
+
+        #maxbin = maxval(Density1D%P)
+        if (maxbin==0):
+            print 'no samples in bin, param: '
+            sys.exit()
+
+        #Density1D%P=Density1D%P/maxbin
+        #call Density1D%InitSpline()
+
+        if (not no_plots):
+            binCounts = np.zeros(ix_max+1-ix_min)
+            if (plot_meanlikes):
+                binlikes = np.zeros(ix_max+1-ix_min)
+                if (mean_loglikes): pass # binlikes=logZero
+
+            # Output values for plots
+            for ix2 in range(ix_min, ix_max+1):
+                # ...
+                pass
+            
+
+            bincounts = bincounts/maxbin
+            if (plot_meanlikes and mean_loglikes):
+                maxbin = np.min(binlikes)
+                binlikes = np.where(binlikes-maxbin<30, np.exp(-(binlikes-maxbin)), 0)
+
+            textFileHandle = open(filename, 'w')
+            for i in range(ix_min, ix_max+1):
+                textFileHandle.write("%f%16.7E\n"%(center+i*width, bincounts[i]))
+                if (ix_min==ix_max): 
+                    textFileHandle.write("%16.7E\n"%(center+ix_min*width))
+            textFileHandle.close()
+        
+        if (plot_meanlikes):
+            maxbin = max(binlikes)
+            textFileHandle = open(filename_like, 'w')
+            for i in range(ix_min, ix_max+1):
+                textFileHandle.write("%f%16.7E\n"%(center+i*width, binlikes[i]/maxbin))
+            textFileHandle.close()
+
         
 
     def Get2DPlotData(self, j, j2):
         """
         Get 2D plot data.
-
-        :param j: value for 
-        :type j: integer type
-
-        :param j2: value for 
-        :type j2: integer type
         """
 
         # ...
@@ -430,68 +567,6 @@ class MCSamples:
         # ...
         textFileHandle.close()
 
-    # FIXME: file unit / file handler as parameter
-    def WritePlotFileInit(self, sm, subplot_size):
-        """
-        Write plot file.
-
-        :param sm: value for 
-        :type sm: bool type
-
-        :param subplot_size: size of subplot
-        :type subplot_size: integer type
-        """
-        
-        if (self.plot_ext=="py"):
-            textFileHandle.write("\n")
-            textFileHandle.write("import GetDistPlots, os\n")
-            textFileHandle.write("g=GetDistPlots.GetDistPlotter('%s')\n"%self.plot_data_dir)
-            textFileHandle.write("g.settings.setWithSubplotSize(%f)\n"%subplot_size)
-            textFileHandle.write("outdir='%s'\n"%self.out_dir)
-            #write(unit,'(a)', advance='NO') 'roots=['''//trim(rootname)//''''
-            #do i = 1, ComparePlots%Count
-            #   write(unit,'(a)', advance='NO') ','''// ComparePlots%Item(i)//''''
-            #end do
-            #write(unit,'(a)') ']'
-            textFileHandle.write("\n")
-        else:
-            # matlab ???
-            pass
-
-
-    # FIXME: file unit / file handler as parameter
-    def WritePlotFileExport(self, tag, plot_col, plot_row):
-        """
-        Write plot file.
-
-        :param tag: tag
-        :type tag: string type
-
-        :param plot_col: value for column
-        :type plot_col: integer type
-
-        :param plot_row: value for row
-        :type plot_row: integer type
-        """
-        
-        # matlab only 
-        pass
-
-
-    def quoted_param_name(self, j):
-        """
-        Get param name.
-
-        :param j: index
-        :type j: integer type
-        """
-        #res=''''//trim(NameMapping%NameOrNumber(j))//''''
-        return ""
-        # FIXME: usefull ?
-
-    def python_param_array(self, params,num):
-        # FIXME: can be replaced easily 
-        pass
 
 
     def EdgeWarning(self, param):
@@ -546,21 +621,66 @@ class MCSamples:
         return dinvnorm
 
 
-    def GetChainLikeSummary(self):
+    def GetChainLikeSummary(self, toStdOut=False):
         """
         """
-        #FIXME: format?
-        text = """
-Best fit sample -log(Like) = %f
-Ln(mean 1/like) = %f
-mean(-Ln(like)) = %f
--Ln(mean like)  = %f
-"""
+        text = ""
+
+        maxlike = np.max(self.loglikes)
+        text += "Best fit sample -log(Like) = %f\n"%maxlike
+        
+        if ((self.loglikes[self.numrows-1][1]-maxlike)<30):
+            meanlike = np.log(np.sum(np.exp(self.loglikes-maxlike)*self.weights)/numsamp)+maxlike
+            text += "Ln(mean 1/like) = %f\n"%(meanlike)
+
+        meanlike = np.sum(self.loglikes*self.weights)/numsamp
+        text += "mean(-Ln(like)) = %f\n"%(meanlike)
+
+        meanlike = -np.log(np.sum(np.exp(self.loglikes-maxlike)*self.weights)/numsamp)+maxlike
+        text = "-Ln(mean like)  = %f\n"%(meanlike)
+
+        if toStdOut:
+            print text
+        else:
+            return text
+
+
+    def SetContours(self, contours=[]):
+        self.contours = contours
+
+    def GetConfidenceRegion(self):
+        ND_cont1, ND_cont2 = -1, -1
+        #indexes = np.where(paramVec[:]>self.get_norm(paramVec)*self.contours[0])
+        #ND_cont1 = indexes[0][0]
+        #indexes = np.where(paramVec[:]>self.get_norm(paramVec)*self.contours[1])
+        #ND_cont2 = indexes[0][0]
+        return ND_cont1, ND_cont2
+
+
+    def WriteBounds(self, filename):
+        self.ranges = Ranges()
+        #
+
+        textFileHandle = open(filename, 'w')
+        indices = []
+        for i in range(len(indices)):
+            name = ""
+            ix = indice[i]
+            valMin = self.ranges.min(name)
+            if (valMin is not None):
+                lim1 = "    N%15.7E"%valMin
+            else:
+                lim1 = "    N"
+            valMax = self.ranges.max(name)
+            if (valMax is not None):
+                lim2 = "    N%15.7E"%valMax
+            else:
+                lim2 = "    N"
+            textFileHandle.write("%22s%17s%17s"%(name, lim1, lim2))
+        textFileHandle.close()
 
 
 
-
-# 
 
 #FIXME?: pass values as parameters 
 def WritePlotFileInit():
@@ -577,6 +697,15 @@ roots=['%s']
 def WritePlotFileExport():
     text = "g.export(os.path.join(outdir,'%s'))"
     return text
+
+
+def WriteParamNames(filename):
+    pass
+
+
+def OutputMargeStats():
+    pass
+
 
 
 # 
@@ -622,20 +751,4 @@ class Ranges():
             return self.maxs[name]
         if error: raise Exception("Name not found:" + name)
         return None
-
-
-
-
-
-
-
-
-
-#
-
-def main():
-    pass
-
-if __name__ == "__main__":
-    main()
 
