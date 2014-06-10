@@ -474,45 +474,49 @@
         C_foregrounds=0
     end if
 
-    call compute_fg(C_foregrounds,freq_params, 0)
+    if (any(want_spec(1:4))) then
+        call compute_fg(C_foregrounds,freq_params, 0)
 
-    cal0 = freq_params(24)
-    cal1 = freq_params(25)
-    cal2 = freq_params(26)
+        cal0 = freq_params(24)
+        cal1 = freq_params(25)
+        cal2 = freq_params(26)
 
-    num_non_beam = 26
-    if (size(freq_params) < num_non_beam +  beam_Nspec*num_modes_per_beam) stop 'CAMspec: not enough parameters'
+        num_non_beam = 26
+        if (size(freq_params) < num_non_beam +  beam_Nspec*num_modes_per_beam) stop 'CAMspec: not enough parameters'
 
-    if (keep_num>0) then
-        beam_params = freq_params(num_non_beam+1:num_non_beam+cov_dim)
-        !set marged beam parameters to their mean subject to fixed non-marged modes
-        if (marge_num>0) beam_params(marge_indices) = matmul(beam_conditional_mean, beam_params(keep_indices))
+        if (keep_num>0) then
+            beam_params = freq_params(num_non_beam+1:num_non_beam+cov_dim)
+            !set marged beam parameters to their mean subject to fixed non-marged modes
+            if (marge_num>0) beam_params(marge_indices) = matmul(beam_conditional_mean, beam_params(keep_indices))
 
-        do ii=1,beam_Nspec
-            do jj=1,num_modes_per_beam
-                ix = jj+num_modes_per_beam*(ii-1)
-                beam_coeffs(jj,ii)=beam_params(ix)
+            do ii=1,beam_Nspec
+                do jj=1,num_modes_per_beam
+                    ix = jj+num_modes_per_beam*(ii-1)
+                    beam_coeffs(jj,ii)=beam_params(ix)
+                enddo
             enddo
-        enddo
+        else
+            beam_coeffs=0
+        end if
+
+        do l = lminX(1), lmaxX(1)
+            X_beam_corr_model(l-lminX(1)+1) = ( cell_cmb(l) + C_foregrounds(l,1) )* corrected_beam(1,l)/cal0
+        end do
+
+        do l = lminX(2), lmaxX(2)
+            X_beam_corr_model(l-lminX(2)+npt(2)) =  (cell_cmb(l)+ C_foregrounds(l,2))*corrected_beam(2,l)/cal1
+        end do
+
+        do l = lminX(3), lmaxX(3)
+            X_beam_corr_model(l-lminX(3)+npt(3)) = (cell_cmb(l)+ C_foregrounds(l,3))* corrected_beam(3,l)/cal2
+        end do
+
+        do l = lminX(4), lmaxX(4)
+            X_beam_corr_model(l-lminX(4)+npt(4)) =  ( cell_cmb(l) + C_foregrounds(l,4))*corrected_beam(4,l)/sqrt(cal1*cal2)
+        end do
     else
-        beam_coeffs=0
+        X_beam_corr_model=0
     end if
-
-    do l = lminX(1), lmaxX(1)
-        X_beam_corr_model(l-lminX(1)+1) = ( cell_cmb(l) + C_foregrounds(l,1) )* corrected_beam(1,l)/cal0
-    end do
-
-    do l = lminX(2), lmaxX(2)
-        X_beam_corr_model(l-lminX(2)+npt(2)) =  (cell_cmb(l)+ C_foregrounds(l,2))*corrected_beam(2,l)/cal1
-    end do
-
-    do l = lminX(3), lmaxX(3)
-        X_beam_corr_model(l-lminX(3)+npt(3)) = (cell_cmb(l)+ C_foregrounds(l,3))* corrected_beam(3,l)/cal2
-    end do
-
-    do l = lminX(4), lmaxX(4)
-        X_beam_corr_model(l-lminX(4)+npt(4)) =  ( cell_cmb(l) + C_foregrounds(l,4))*corrected_beam(4,l)/sqrt(cal1*cal2)
-    end do
 
     if(Nspec.eq.6) then
         ! TE...

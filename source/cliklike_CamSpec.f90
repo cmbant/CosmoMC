@@ -45,7 +45,7 @@
     class(TSettingIni) Ini
     class(TLikelihoodList) :: LikeList
     character (LEN=:), allocatable :: likefilename,sz143filename,&
-    beamfilename, kszfilename,tszxcibfilename, tmp, polfilename, data_vector
+        beamfilename, kszfilename,tszxcibfilename, tmp, polfilename, data_vector
     Class(TCosmologyLikelihood), pointer :: Like
     logical :: use_CAMspec, use_CAMpol
     logical :: use_highL
@@ -66,7 +66,6 @@
         Like%cl_lmax(CL_T,CL_T) = 2500
         Like%cl_lmax(CL_E,CL_T) = 2500
         Like%cl_lmax(CL_E,CL_E) = 2500
-        call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
 
         make_cov_marged = Ini%Read_Logical('make_cov_marged',.false.)
         if (make_cov_marged) marge_file_variant = Ini%Read_string('marge_file_variant')
@@ -75,10 +74,19 @@
             likefilename=Ini%ReadFileName('margelikefile',NotFoundFail = .true.)
             if (camspec_beam_mcmc_num/=1) call MpiStop('camspec_beam_mcmc_num must be one for precomputed')
         else
+            tmp = Ini%Read_String('want_spec')
+            if (tmp/='') read(tmp,*) want_spec
+            tmp = Ini%Read_String('camspec_lmin')
+            if (tmp/='') read(tmp,*) camspec_lmins
+            tmp = Ini%Read_String('camspec_lmax')
+            if (tmp/='') read(tmp,*) camspec_lmaxs
+
             likefilename=Ini%ReadFileName('likefile',NotFoundFail = .true.)
             camspec_fiducial_foregrounds = Ini%ReadFileName('camspec_fiducial_foregrounds',NotFoundFail = .true.)
             camspec_fiducial_cl = Ini%ReadFileName('camspec_fiducial_cl',NotFoundFail = .true.)
         end if
+        if (any(want_spec(1:4))) call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
+
         Like%version = File%ExtractName(likefilename)
 
         sz143filename=Ini%ReadFileName('sz143file',NotFoundFail = .true.)
@@ -88,14 +96,6 @@
         data_vector = Ini%ReadFileName('camspec_data_vector')
         if (data_vector/='') Like%version = File%ExtractName(data_vector)
         call Ini%Read('camspec_beam_mcmc_num',camspec_beam_mcmc_num)
-        if (.not. pre_marged) then
-            tmp = Ini%Read_String('want_spec')
-            if (tmp/='') read(tmp,*) want_spec
-            tmp = Ini%Read_String('camspec_lmin')
-            if (tmp/='') read(tmp,*) camspec_lmins
-            tmp = Ini%Read_String('camspec_lmax')
-            if (tmp/='') read(tmp,*) camspec_lmaxs
-        end if
         call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector)
     end if
 
@@ -214,14 +214,16 @@
     integer L
     Type(TTextFile) F
 
-    allocate(C_foregrounds(CAMSpec_lmax_foreground,Nspec))
-    C_foregrounds=0
-    call compute_fg(C_foregrounds,DataParams, CAMSpec_lmax_foreground)
-    call F%CreateFile(trim(root)//'.camspec_foregrounds')
-    do l = 2, CAMSpec_lmax_foreground
-        write (F%unit,'(1I6,*(E15.5))') l, C_foregrounds(l,:)*l*(l+1)
-    end do
-    call F%Close()
+    if (any(want_spec(1:4))) then
+        allocate(C_foregrounds(CAMSpec_lmax_foreground,Nspec))
+        C_foregrounds=0
+        call compute_fg(C_foregrounds,DataParams, CAMSpec_lmax_foreground)
+        call F%CreateFile(trim(root)//'.camspec_foregrounds')
+        do l = 2, CAMSpec_lmax_foreground
+            write (F%unit,'(1I6,*(E15.5))') l, C_foregrounds(l,:)*l*(l+1)
+        end do
+        call F%Close()
+    end if
 
     end subroutine CAMSpec_WriteLikelihoodData
 
@@ -267,10 +269,10 @@
     real(dp)  cl_tt(2:tt_lmax)
     integer L, offset
     real(dp) A_ps_100, A_ps_143, A_ps_217, A_cib_143, A_cib_217, A_sz_143, r_ps, r_cib, &
-    cal0, cal1, cal2, xi, A_ksz, ncib
+        cal0, cal1, cal2, xi, A_ksz, ncib
     real(dp) a_ps_act_148,a_ps_act_217,a_ps_spt_95,a_ps_spt_150,a_ps_spt_220, &
-    r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220, &
-    cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220
+        r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220, &
+        cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220
     real(dp) act_dust_s,act_dust_e
 
     !asz is already removed, start at second feq param
@@ -309,8 +311,8 @@
 
     like_tot = 0.d0
     call highell_likelihood_compute(cl_tt,A_sz_143,A_ksz,xi,a_ps_act_148,a_ps_act_217,a_ps_spt_95,a_ps_spt_150,a_ps_spt_220, &
-    A_cib_143,A_cib_217, ncib, r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220,r_cib,act_dust_s,act_dust_e, &
-    cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220,like_tot)
+        A_cib_143,A_cib_217, ncib, r_ps_spt_95x150,r_ps_spt_95x220,r_ps_150x220,r_cib,act_dust_s,act_dust_e, &
+        cal_acts_148,cal_acts_217,cal_acte_148,cal_acte_217,cal_spt_95,cal_spt_150,cal_spt_220,like_tot)
     nonclik_lnlike_highL = like_tot
 
     if (Feedback>2) Print*,'highL lnlike = ',nonclik_lnlike_highL
