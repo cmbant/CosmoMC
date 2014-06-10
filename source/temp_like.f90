@@ -29,6 +29,7 @@
     integer, parameter :: CamSpec_sz_pivot = 3000
 
     logical :: want_spec(6) = .true.
+    logical :: camspec_has_TT = .true.
     integer :: camspec_lmins(6) =0
     integer :: camspec_lmaxs(6) =0
     real(campc)  :: llp1(CAMSpec_lmax_foreground)
@@ -132,6 +133,8 @@
     do i=1,CAMSpec_lmax_foreground
         llp1(i) = 1/real(i*(i+1),campc)
     end do
+
+    camspec_has_TT = any(want_spec(1:4))
 
     open(48, file=like_file, form='unformatted', status='old')
 
@@ -473,8 +476,7 @@
         allocate(C_foregrounds(CAMspec_lmax,Nspec))
         C_foregrounds=0
     end if
-
-    if (any(want_spec(1:4))) then
+    if (camspec_has_TT) then
         call compute_fg(C_foregrounds,freq_params, 0)
 
         cal0 = freq_params(24)
@@ -514,8 +516,6 @@
         do l = lminX(4), lmaxX(4)
             X_beam_corr_model(l-lminX(4)+npt(4)) =  ( cell_cmb(l) + C_foregrounds(l,4))*corrected_beam(4,l)/sqrt(cal1*cal2)
         end do
-    else
-        X_beam_corr_model=0
     end if
 
     if(Nspec.eq.6) then
@@ -539,7 +539,7 @@
         zlike=zlike+ (ztemp*2 +c_inv(j, j)*Y(j))*Y(j)
     end do
 
-    if (keep_num>0) then
+    if (keep_num>0 .and. camspec_has_TT) then
         do if2=1,beam_Nspec
             do if1=1,beam_Nspec
                 do ie2=1,num_modes_per_beam
