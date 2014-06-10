@@ -43,8 +43,8 @@
 
     character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v2_wig'
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num, &
-    want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged, marge_file_variant,&
-    compute_fg, Nspec,CAMSpec_lmax_foreground,camspec_fiducial_foregrounds,camspec_fiducial_cl
+        want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged, marge_file_variant,&
+        compute_fg, Nspec,CAMSpec_lmax_foreground,camspec_fiducial_foregrounds,camspec_fiducial_cl
     contains
 
     !!Does not seem to be actually faster
@@ -90,9 +90,9 @@
     do i=2,CAMspec_lmax
         read(48,*) j, fid_cl(i,1:4)
         if(Nspec.eq.6) then
-           fid_cl(i,5)=0.0
-           fid_cl(i,6)=0.0
-           endif
+            fid_cl(i,5)=0.0
+            fid_cl(i,6)=0.0
+        endif
         if (j/=i) stop 'error reading fiducial foreground C_l for beams'
     enddo
     close(48)
@@ -100,12 +100,12 @@
     do i=2,CAMspec_lmax
         read(48,*, end=100) j,fid_theory_tt,fid_theory_te,fid_theory_ee
 100     if (j/=i) stop 'error reading fiducial C_l for beams'
-        if(Nspec.eq.4) then 
-           fid_cl(i,:) = (fid_cl(i,:) + fid_theory_tt)*llp1(i) !want C_l/2Pi foregrounds+theory
+        if(Nspec.eq.4) then
+            fid_cl(i,:) = (fid_cl(i,:) + fid_theory_tt)*llp1(i) !want C_l/2Pi foregrounds+theory
         else if(Nspec.eq.6) then
-           fid_cl(i,1:4) = (fid_cl(i,1:4) + fid_theory_tt)*llp1(i) !want C_l/2Pi foregrounds+theory
-           fid_cl(i,5) = (fid_cl(i,5) + fid_theory_te)*llp1(i) !want C_l/2Pi foregrounds+theory
-           fid_cl(i,6) = (fid_cl(i,6) + fid_theory_ee)*llp1(i) !want C_l/2Pi foregrounds+theory
+            fid_cl(i,1:4) = (fid_cl(i,1:4) + fid_theory_tt)*llp1(i) !want C_l/2Pi foregrounds+theory
+            fid_cl(i,5) = (fid_cl(i,5) + fid_theory_te)*llp1(i) !want C_l/2Pi foregrounds+theory
+            fid_cl(i,6) = (fid_cl(i,6) + fid_theory_ee)*llp1(i) !want C_l/2Pi foregrounds+theory
         endif
     enddo
     close(48)
@@ -168,14 +168,14 @@
         j=0
         ix=0
         npt(1)=1
-        if(.not. want_spec(1)) stop 'One beam mode may not be right here'
+        if(.not. want_spec(1) .and. marge_num>0) stop 'One beam mode may not be right here'
         do i=1,Nspec
             do l = lminX(i), lmaxX(i)
                 j =j+1
                 if (want_spec(i) .and. (camspec_lmins(i)==0 .or. l>=camspec_lmins(i)) &
-                .and. (camspec_lmaxs(i)==0 .or. l<=camspec_lmaxs(i)) ) then
-                    ix =ix+1
-                    indices(ix) = j
+                    .and. (camspec_lmaxs(i)==0 .or. l<=camspec_lmaxs(i)) ) then
+                ix =ix+1
+                indices(ix) = j
                 end if
             end do
             if (want_spec(i)) then
@@ -201,7 +201,7 @@
     CAMspec_lmax = maxval(lmaxX)
 
     if (data_vector/='') then
-       if (Nspec.eq.6) stop 'not yet modified for te+ee'
+        if (Nspec.eq.6) stop 'not yet modified for te+ee'
         !!override data vector in the main camspec file
         !The input file is in comprehensible L, L(L+1)C_L^i/2pi format
         open(48, file=data_vector, form='formatted', status='old', iostat=status)
@@ -236,8 +236,8 @@
 
     open(48, file=beam_file, form='unformatted', status='unknown')
     read(48) beam_Nspec,num_modes_per_beam,beam_lmax
-! removed until we decide about how to handle beam errors for TE & EE
-!    if(beam_Nspec.ne.Nspec) stop 'Problem: beam_Nspec != Nspec'
+    ! removed until we decide about how to handle beam errors for TE & EE
+    !    if(beam_Nspec.ne.Nspec) stop 'Problem: beam_Nspec != Nspec'
     allocate(beam_modes(num_modes_per_beam,0:beam_lmax,beam_Nspec))
     cov_dim=beam_Nspec*num_modes_per_beam
     allocate(beam_cov_full(cov_dim,cov_dim))
@@ -297,10 +297,10 @@
                                         do L2 = lminX(if2),lmaxX(if2)
                                             !c_inv is covariance here
                                             c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
-                                            c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
-                                            beam_factor**2*beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
-                                            beam_cov(marge_indices_reverse(ii),marge_indices_reverse(jj)) * beam_modes(ie2,L2,if2) &
-                                            *fid_cl(L2,if2)*fid_cl(lminX(if1):lmaxX(if1),if1)
+                                                c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
+                                                beam_factor**2*beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
+                                                beam_cov(marge_indices_reverse(ii),marge_indices_reverse(jj)) * beam_modes(ie2,L2,if2) &
+                                                *fid_cl(L2,if2)*fid_cl(lminX(if1):lmaxX(if1),if1)
                                         end do
                                     end if
                                 enddo
@@ -397,7 +397,7 @@
     !
     do l = lmin(1), lmax(1)
         C_foregrounds(l,1)= A_ps_100*ps_scale+  &
-        ( A_ksz*ksz_temp(l) + asz143*sz_bandpass100_nom143*sz_143_temp(l) )*llp1(l)
+            ( A_ksz*ksz_temp(l) + asz143*sz_bandpass100_nom143*sz_143_temp(l) )*llp1(l)
     end do
 
     !   143 foreground
@@ -407,8 +407,8 @@
     do l = lmin(2), lmax(2)
         zCIB = A_cib_143_bandpass*cl_cib_143(l)
         C_foregrounds(l,2)= A_ps_143*ps_scale + &
-        (zCIB +  A_ksz*ksz_temp(l) + A_sz_143_bandpass*sz_143_temp(l) &
-        -2.0*sqrt(A_cib_143_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )*llp1(l)
+            (zCIB +  A_ksz*ksz_temp(l) + A_sz_143_bandpass*sz_143_temp(l) &
+            -2.0*sqrt(A_cib_143_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )*llp1(l)
     end do
 
     !   217 foreground
@@ -424,7 +424,7 @@
     do l = lmin(4), lmax(4)
         zCIB = sqrt(A_cib_143_bandpass*A_cib_217_bandpass*cl_cib_143(l)*cl_cib_217(l))
         C_foregrounds(l,4) = r_ps*sqrt(A_ps_143*A_ps_217)*ps_scale + &
-        ( r_cib*zCIB + A_ksz*ksz_temp(l) -sqrt(A_cib_217_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )*llp1(l)
+            ( r_cib*zCIB + A_ksz*ksz_temp(l) -sqrt(A_cib_217_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )*llp1(l)
     end do
 
     do i=1,2
@@ -441,7 +441,7 @@
             C_foregrounds(lmin(2):lmax(2),2)= C_foregrounds(lmin(2):lmax(2),2)+ wigamp(1)*wiggle_cl(lmin(2):lmax(2))
             C_foregrounds(lmin(3):lmax(3),3)= C_foregrounds(lmin(3):lmax(3),3)+ wigamp(2)*wiggle_cl(lmin(3):lmax(3))
             C_foregrounds(lmin(4):lmax(4),4)= C_foregrounds(lmin(4):lmax(4),4)+ &
-            & wiggle_corr*sqrt(wigamp(2)*wigamp(1))*wiggle_cl(lmin(4):lmax(4))
+                & wiggle_corr*sqrt(wigamp(2)*wigamp(1))*wiggle_cl(lmin(4):lmax(4))
         end if
         f_ix = f_ix + 5
     end do
@@ -514,17 +514,17 @@
         X_beam_corr_model(l-lminX(4)+npt(4)) =  ( cell_cmb(l) + C_foregrounds(l,4))*corrected_beam(4,l)/sqrt(cal1*cal2)
     end do
 
-if(Nspec.eq.6) then
-! TE...
-    do l = lminX(5), lmaxX(5)
-       X_beam_corr_model(l-lminX(5)+npt(5)) = cell_cmbx(l)
-    end do
+    if(Nspec.eq.6) then
+        ! TE...
+        do l = lminX(5), lmaxX(5)
+            X_beam_corr_model(l-lminX(5)+npt(5)) = cell_cmbx(l)
+        end do
 
-! EE...
-    do l = lminX(6), lmaxX(6)
-       X_beam_corr_model(l-lminX(6)+npt(6)) = cell_cmbe(l)
-    end do
-endif
+        ! EE...
+        do l = lminX(6), lmaxX(6)
+            X_beam_corr_model(l-lminX(6)+npt(6)) = cell_cmbe(l)
+        end do
+    endif
 
     Y = X_data - X_beam_corr_model
 
@@ -545,7 +545,7 @@ endif
                             ii=ie1+num_modes_per_beam*(if1-1)
                             if (.not. want_marge(ii)) then
                                 zlike=zlike+beam_coeffs(ie1,if1)*&
-                                beam_cov_inv(keep_indices_reverse(ii),keep_indices_reverse(jj))*beam_coeffs(ie2,if2)
+                                    beam_cov_inv(keep_indices_reverse(ii),keep_indices_reverse(jj))*beam_coeffs(ie2,if2)
                             end if
                         enddo
                     end if

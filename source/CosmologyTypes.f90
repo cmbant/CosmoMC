@@ -239,8 +239,7 @@
                         DataLike%needs_powerspectra = .true.
                     else
                         cycle
-                    end if
-                    if (parse==1) then
+                    end if             if (parse==1) then
                         numcls = max(numcls,size(DataLike%cl_lmax,2))
                     else
                         if (size(DataLike%cl_lmax,2)/=size(DataLike%cl_lmax,1)) &
