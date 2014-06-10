@@ -115,6 +115,7 @@
     procedure, nopass :: TxtNumberColumns
     procedure, nopass :: TxtColumns
     procedure, nopass :: TxtFileColumns
+    procedure, nopass :: TopCommentLine
     procedure, nopass :: LastLine => LastFileLine
     procedure, nopass :: Size => FileSize
     procedure, nopass :: Exists => FileExists
@@ -128,9 +129,12 @@
     procedure, nopass :: ReadTextMatrix
     procedure, nopass :: ReadTextVector
     procedure, nopass :: WriteTextVector
+    procedure, nopass :: LoadTxt_1D
+    procedure, nopass :: LoadTxt_2D
     procedure, nopass :: OpenTextFile
     procedure, nopass :: CreateTextFile
     procedure, nopass :: CharIsSlash
+    generic  :: LoadTxt => LoadTxt_2D, LoadTxt_1D
     end type
 
     type(TFile), save :: File
@@ -766,9 +770,11 @@
     class(TTextFile) :: this
     logical :: OK
     character(LEN=:), allocatable :: InLine
-    character(LEN=:), allocatable, optional, intent(out) :: comment
+    character(LEN=:), allocatable, optional, intent(inout) :: comment
 
-    if (present(comment)) comment=''
+    if (present(comment)) then
+        if (.not. allocated(comment)) comment=''
+    end if
     do
         OK = this%ReadLine(InLine, trimmed=.true.)
         if (.not. OK) return
@@ -815,7 +821,7 @@
     integer n
     character(LEN=:), allocatable :: InLine
 
-    if (this%ReadLine(InLine)) then
+    if (this%ReadLineSkipEmptyAndComments(InLine)) then
         n = File%TxtNumberColumns(InLine)
     else
         n=0
@@ -824,14 +830,22 @@
 
     end function Columns
 
-    function Lines(this) result(n)
+    function Lines(this, nocomments) result(n)
     class(TTextFile) :: this
+    logical, intent(in), optional :: nocomments
     integer n
+    character(LEN=:), allocatable :: InLine
 
     n=0
-    do while (this%ReadLine())
-        n = n+1
-    end do
+    if (PresentDefault(nocomments, .true.)) then
+        do while (this%ReadLineSkipEmptyAndComments(InLine))
+            n = n+1
+        end do
+    else
+        do while (this%ReadLine())
+            n = n+1
+        end do
+    end if
     call this%Rewind()
 
     end function Lines
@@ -1114,7 +1128,8 @@
 
     call F%Open(aname)
     res=''
-    do while (res == '' .and. F%ReadLine(res))
+    do while (res == '')
+        if (.not. F%ReadLine(res)) exit
     end do
     If (res(1:1)/='#') then
         res = ''
@@ -1307,7 +1322,6 @@
     real(kind(1.d0)), intent(out) :: mat(:,:)
     character(LEN=:), allocatable :: InLine
     integer j,k, status, n,m
-    real tmp
     Type(TTextFile) :: F
 
     m = PresentDefault(size(mat,dim=1),inm)
@@ -1337,6 +1351,56 @@
     call F%Close()
 
     end subroutine ReadTextMatrix
+
+    subroutine LoadTxt_2D(aname, mat, m, n, comment)
+    character(LEN=*), intent(IN) :: aname
+    real(kind(1.d0)), allocatable :: mat(:,:)
+    integer mm, nn, j
+    Type(TTextFile) :: F
+    character(LEN=:), allocatable :: InLine
+    integer, optional, intent(out) :: m, n
+    character(LEN=:), allocatable, optional, intent(out) :: comment
+    integer status
+
+    call F%Open(aname)
+    nn = F%Columns()
+    mm = F%Lines()
+    allocate(mat(mm,nn))
+    j=1
+    do while (F%ReadLineSkipEmptyAndComments(InLine, comment = comment))
+        read (InLine,*, iostat=status) mat(j,1:nn)
+        if (status/=0) call F%Error( 'LoadTxt: error reading line:' //trim(InLine))
+        j = j+1
+    end do
+    call F%Close()
+    if (present(m)) m = mm
+    if (present(n)) n = nn
+
+    end subroutine LoadTxt_2D
+
+    subroutine LoadTxt_1D(aname, vec, n, comment)
+    character(LEN=*), intent(IN) :: aname
+    real(kind(1.d0)), allocatable :: vec(:)
+    integer nn, j
+    Type(TTextFile) :: F
+    character(LEN=:), allocatable :: InLine
+    integer, optional, intent(out) :: n
+    character(LEN=:), allocatable, optional, intent(out) :: comment
+    integer status
+
+    call F%Open(aname)
+    nn = F%Lines()
+    allocate(vec(nn))
+    j=1
+    do while (F%ReadLineSkipEmptyAndComments(InLine, comment = comment))
+        read (InLine,*, iostat=status) vec(j)
+        if (status/=0) call F%Error( 'LoadTxt: error reading line:' //trim(InLine))
+        j = j+1
+    end do
+    call F%Close()
+    if (present(n)) n = nn
+
+    end subroutine LoadTxt_1D
 
     function CreateTextFile(fname)
     character(LEN=*), intent(in) :: fname

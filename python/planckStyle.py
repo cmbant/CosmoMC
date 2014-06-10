@@ -59,12 +59,13 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
 plotter = planckPlotter('main/plot_data')
 
 
-def getSubplotPlotter():
+def getSubplotPlotter(plot_data=None):
     s.setWithSubplotSize(2)
     s.axes_fontsize += 2
     s.colorbar_axes_fontsize += 2
 #    s.lab_fontsize += 2
     s.legend_fontsize = s.lab_fontsize + 1
+    if plot_data is not None: plotter = planckPlotter(plot_data)
     return plotter
 
 def getPlotterWidth(size=1, **kwargs):  # size in mm
@@ -79,9 +80,10 @@ def getPlotterWidth(size=1, **kwargs):  # size in mm
     s.rcSizes(**kwargs)
     return plotter
 
-def getSinglePlotter(ratio=3 / 4.):
+def getSinglePlotter(ratio=3 / 4., plot_data=None):
     s.setWithSubplotSize(3.5)
     s.rcSizes()
+    if plot_data is not None: plotter = planckPlotter(plot_data)
     plotter.make_figure(1, ystretch=ratio)
     return plotter
 

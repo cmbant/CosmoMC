@@ -184,7 +184,7 @@
 
 
         redo_loop= 1
-        do 
+        do
             call InF%Rewind()
             call ChainOutFile%CreateFile(trim(post_root)//'.txt')
             if (.not. this%redo_no_new_data) call OutData%CreateFile(trim(post_root)//'.data')

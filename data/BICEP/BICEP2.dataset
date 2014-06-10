@@ -1,5 +1,5 @@
 #Bicep2 data from bicepkeck.org, changed to CMBlikes format (and removing NaN T spectra)
-#Modified by AL 17 March 2014 - not much tested, use at own risk!!
+#Modified by AL 17 March 2014
 
 like_approx = HL
 

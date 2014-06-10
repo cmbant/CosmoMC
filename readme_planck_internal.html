@@ -11,7 +11,7 @@
 Set <b>highL = ../highL</b> to build direct ACT/SPT support (for use with PLANCKLIKE = cliklike_CamSpec). You can either use clik or other likelihoods directly in an interchangeable way, parameter definitions etc are the same.
 <p>
 <h3>Data files</h3>
-A set of .ini files are supplied in ./batch1 which set up standard for Planck runs. Location of data files is set in CAMspec_ACTSPT_defaults, CAMspec_defaults depending on what you want to use. You can either edit these, or make symbolic links from ./data/clik to the relevant actual file locations depending on what you want to use (and ./data/highL and ./data/camspec if you want to run them outside clik).
+A set of .ini files are supplied in ./batch2 which set up standard for Planck full mission runs. Location of data files is set in CAMspec_ACTSPT_defaults, CAMspec_defaults depending on what you want to use. You can either edit these, or make symbolic links from ./data/clik to the relevant actual file locations depending on what you want to use (and ./data/highL and ./data/camspec if you want to run them outside clik).
 <p>
 <H3>Branches</H3>
 <UL>
@@ -32,6 +32,8 @@ A set of .ini files are supplied in ./batch1 which set up standard for Planck ru
 <LI>CamSpec derived parameters (total foreground amplitudes at L=2000)
 <LI>added camspec_make.ini for making beam-marged; use of .bestfit_cl and .camspec_foreground for fiducial model
 <LI>removed _marge_mode marged like file (can easily be calculated on the fly)
+<LI>Click 8.8 has new highL file actspt_2013_11.clik
+<LI>widened values cosmology parameter priors; Added batch2/HST* files for different Hubble contraints
 </UL>
 
 </body></center> 

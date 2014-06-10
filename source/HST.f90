@@ -1,8 +1,4 @@
-    !HST from http://arxiv.org/abs/0905.0695
-    !Thanks to Beth Reid, minor mods by AL, Oct 09
-
-    !Updated by KM to use Riess et al (2011) value of H0 = 73.8 +/- 2.4 km/s/Mpc
-    !Riess et al: 1103.2976
+    ! Hubble measurement constraint, based on corresponding angular diamter distance value and error
 
     module HST
     use CosmologyTypes
@@ -11,16 +7,17 @@
     private
 
     type, extends(TCosmoCalcLikelihood) :: HSTLikelihood
+        real(mcp) :: angconversion = 11425.8d0
+        !angconversion converts inverse of the angular diameter distance at z = zeff to H0
+        !for the fiducial cosmology (omega_k = 0, omega_lambda = 0.7, w = -1)
+        !likelihood is in terms of inverse of the angular diameter distance, so includes the tiny cosmological
+        !dependence of the measurement (primarily on w) correctly.
+        real(mcp) :: zeff = 0.04d0
+        real(mcp) :: H0, H0_err
     contains
     procedure :: LogLikeTheory => HST_LnLike
     end type HSTLikelihood
 
-    ! angdistinveffh0 is the inverse of the angular diameter distance at z = 0.04 for H_0 = 74.2
-    ! and a fiducial cosmology (omega_k = 0, omega_lambda = 0.7, w = -1); this is proportional to
-    !H_0 but includes the tiny cosmological dependence of the measurement (primarily on w) correctly.
-    ! angdistinveffh0err = 3.6 / DL(0.04)
-    !real(mcp), parameter :: angdistinvzeffh0 = 6.49405e-3, zeffh0 = 0.04, &
-    !                       angdistinvzeffh0errsqr = 9.93e-8
 
     public HSTLikelihood, HSTLikelihood_Add
     contains
@@ -33,7 +30,11 @@
     if (Ini%Read_Logical('use_HST',.false.)) then
         allocate(this)
         this%LikelihoodType = 'Hubble'
-        this%name='HST'
+        this%name= Ini%Read_String('Hubble_name')
+        this%H0 = Ini%Read_Double('Hubble_H0')
+        this%H0_err = Ini%Read_Double('Hubble_H0_err')
+        call Ini%Read('Hubble_zeff',this%zeff)
+        call Ini%Read('Hubble_angconversion',this%angconversion)
         this%needs_background_functions = .true.
         call LikeList%Add(this)
     end if
@@ -45,11 +46,8 @@
     Class(CMBParams) CMB
     real(mcp) :: theoryval
 
-    real(mcp), parameter :: angdistinvzeffh0 = 6.45904e-3, zeffh0 = 0.04, &
-    angdistinvzeffh0errsqr = 4.412e-8
-
-    theoryval = 1.0/this%Calculator%AngularDiameterDistance(zeffh0)
-    HST_LnLike = (theoryval - angdistinvzeffh0)**2/(2*angdistinvzeffh0errsqr)
+    theoryval = this%angconversion/this%Calculator%AngularDiameterDistance(this%zeff)
+    HST_LnLike = (theoryval - this%H0)**2/(2*this%H0_err**2)
 
     end function  HST_LnLike
 

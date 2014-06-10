@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>April 2014</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>May 2014</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -507,10 +507,17 @@ Many old add-ons are unlikely to work with this version of CosmoMC. I will add o
 <A NAME="Version"><h2>Version History</h2></A>
 
 <UL>
-
 <LI><B>xx 2014</B><BR>
 <UL>
-<LI>Fixed bugs in writing out likelihoods for importance sampled chains and setting grid run importance sampling output directories
+<LI>Fixed bug in underlying bicubic interpolation (Interpolation.f90); caused crashes with simple mpk runs and possibly more general issues
+<LI>Fixed bug in production of .data files by importance sampling
+</UL>
+
+
+<LI><B>May 2014</B><BR>
+<UL>
+<LI>HST module updated to read H0 value and error from .ini file (allowing easier modification/variation testing)
+<LI>Fixed bugs in writing out likelihoods for importance sampled chains, setting grid run importance sampling output directories, and writing 'derived' likelihoods for each chain position; other minor fixes
 <LI>python/makeTables.py has new option <b>changes_adding_data</b> to give shifts in parameter means (in sigma) between runs with and without given data
 <LI>python/makePlots.py has new option <b>compare_alldata</b> to make plots comparing all data combinations for each parameter combination
 </UL>

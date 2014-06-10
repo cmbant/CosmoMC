@@ -650,7 +650,7 @@
     subroutine AddOutputLikelihoodParams(L, Names)
     Class(TLikelihoodList) :: L
     Type(TParamNames) :: Names, LikeNames
-    integer i, j, ix
+    integer i, j, ix, like_sum_ix
     class(TDataLikelihood), pointer :: Like
     character(LEN=:), pointer :: tag, atype
     integer, allocatable :: counts(:), indices(:)
@@ -682,8 +682,10 @@
 
     !Add a derived parameters which are sums of all likelihoods of a given type (e.g. CMB, BAO, etc..)
     call LikeNames%Alloc(count(counts(:LikelihoodTypes%Count)>1))
+    like_sum_ix = 0
     do i=1, LikelihoodTypes%Count
         if (counts(i)>1) then
+            like_sum_ix = like_sum_ix +1
             allocate(indices(counts(i)))
             ix=1
             atype => LikelihoodTypes%Item(i)
@@ -695,9 +697,9 @@
                 end if
             end do
             call L%LikelihoodTypeIndices%Add(indices)
-            LikeNames%name(i) = atype
-            LikeNames%label(i) = FormatString(trim(chisq_label), StringEscape(trim(atype),'_'))
-            LikeNames%is_derived(i) = .true.
+            LikeNames%name(like_sum_ix) = atype
+            LikeNames%label(like_sum_ix) = FormatString(trim(chisq_label), StringEscape(trim(atype),'_'))
+            LikeNames%is_derived(like_sum_ix) = .true.
             deallocate(indices)
         end if
     end do
@@ -725,7 +727,7 @@
     real(mcp) :: P(:)
     real(mcp), allocatable :: allDerived(:)
     Class(TDataLikelihood), pointer :: DataLike
-    integer i, stat
+    integer i
     integer :: num_in = 0
     integer :: num_derived = 0
 
