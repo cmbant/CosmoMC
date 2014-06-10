@@ -62,8 +62,10 @@
         Like%LikelihoodType = 'CMB'
         Like%name='CamSpec'
         Like%speed = 5
-        allocate(like%cl_lmax(CL_T,CL_T))
-        like%cl_lmax=2500
+        allocate(like%cl_lmax(CL_E,CL_E),source=0)
+        Like%cl_lmax(CL_T,CL_T) = 2500
+        Like%cl_lmax(CL_E,CL_T) = 2500
+        Like%cl_lmax(CL_E,CL_E) = 2500
         call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
 
         make_cov_marged = Ini%Read_Logical('make_cov_marged',.false.)
