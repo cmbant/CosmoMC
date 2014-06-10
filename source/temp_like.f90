@@ -88,7 +88,11 @@
 
     open(48, file=CAMspec_fiducial_foregrounds, form='formatted', status='old')
     do i=2,CAMspec_lmax
-        read(48,*) j, fid_cl(i,:)
+        read(48,*) j, fid_cl(i,1:4)
+        if(Nspec.eq.6) then
+           fid_cl(i,5)=0.0
+           fid_cl(i,6)=0.0
+           endif
         if (j/=i) stop 'error reading fiducial foreground C_l for beams'
     enddo
     close(48)
