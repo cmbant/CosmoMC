@@ -154,7 +154,7 @@
     Class (CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
-    real(dp) zlike, cell_cmb(0:this%cl_lmax(CL_T,CL_T))
+    real(dp) zlike, cell_cmb(0:this%cl_lmax(CL_T,CL_T)),cell_cmbx(0:this%cl_lmax(CL_E,CL_T)), cell_cmbe(0:this%cl_lmax(CL_E,CL_E))
     integer L
 
     !Assuming CAMspec nuisance parameters are set as freq_params(2:34), PLik nuisance parameters as
@@ -163,8 +163,14 @@
     do L=2,this%cl_lmax(CL_T,CL_T)
         cell_cmb(L)=Theory%Cls(CL_T,CL_T)%Cl(L)/(L*(L+1)) !normalization is a georgeism
     enddo
+    do L=2,this%cl_lmax(CL_E,CL_T)
+        cell_cmbx(L)=Theory%Cls(2,1)%Cl(L)/(L*(L+1)) !this is a georgeism
+    enddo
+    do L=2,this%cl_lmax(CL_E,CL_E)
+        cell_cmbe(L)=Theory%Cls(2,2)%Cl(L)/(L*(L+1)) !this is a georgeism
+    enddo
 
-    call calc_like(zlike,  cell_cmb, DataParams)
+    call calc_like(zlike,  cell_cmb, cell_cmbx, cell_cmbe, DataParams)
 
     CamspecLogLike = zlike/2
 

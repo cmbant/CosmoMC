@@ -28,9 +28,9 @@
     integer, parameter :: CamSpec_cib_pivot = 3000
     integer, parameter :: CamSpec_sz_pivot = 3000
 
-    logical :: want_spec(4) = .true.
-    integer :: camspec_lmins(4) =0
-    integer :: camspec_lmaxs(4) =0
+    logical :: want_spec(6) = .true.
+    integer :: camspec_lmins(6) =0
+    integer :: camspec_lmaxs(6) =0
     real(campc)  :: llp1(CAMSpec_lmax_foreground)
 
     !paramters for systematics testing
@@ -83,7 +83,7 @@
 
     subroutine ReadFiducialCl(fid_cl)
     integer i,j
-    real(campc) :: fid_theory
+    real(campc) :: fid_theory_tt,fid_theory_te,fid_theory_ee
     real(campc) :: fid_cl(:,:)
 
     open(48, file=CAMspec_fiducial_foregrounds, form='formatted', status='old')
@@ -94,9 +94,15 @@
     close(48)
     open(48, file=CAMspec_fiducial_cl, form='formatted', status='old')
     do i=2,CAMspec_lmax
-        read(48,*, end=100) j,fid_theory
+        read(48,*, end=100) j,fid_theory_tt,fid_theory_te,fid_theory_ee
 100     if (j/=i) stop 'error reading fiducial C_l for beams'
-        fid_cl(i,:) = (fid_cl(i,:) + fid_theory)*llp1(i) !want C_l/2Pi foregrounds+theory
+        if(Nspec.eq.4) then 
+           fid_cl(i,:) = (fid_cl(i,:) + fid_theory_tt)*llp1(i) !want C_l/2Pi foregrounds+theory
+        else if(Nspec.eq.6) then
+           fid_cl(i,1:4) = (fid_cl(i,1:4) + fid_theory_tt)*llp1(i) !want C_l/2Pi foregrounds+theory
+           fid_cl(i,5) = (fid_cl(i,5) + fid_theory_te)*llp1(i) !want C_l/2Pi foregrounds+theory
+           fid_cl(i,6) = (fid_cl(i,6) + fid_theory_ee)*llp1(i) !want C_l/2Pi foregrounds+theory
+        endif
     enddo
     close(48)
 
@@ -191,6 +197,7 @@
     CAMspec_lmax = maxval(lmaxX)
 
     if (data_vector/='') then
+       if (Nspec.eq.6) stop 'not yet modified for te+ee'
         !!override data vector in the main camspec file
         !The input file is in comprehensible L, L(L+1)C_L^i/2pi format
         open(48, file=data_vector, form='formatted', status='old', iostat=status)
@@ -215,7 +222,7 @@
     end if
 
     if (.not. pre_marged) then
-        allocate(fid_cl(CAMspec_lmax,4))
+        allocate(fid_cl(CAMspec_lmax,Nspec))
         call ReadFiducialCl(fid_cl)
     end if
 
@@ -225,11 +232,12 @@
 
     open(48, file=beam_file, form='unformatted', status='unknown')
     read(48) beam_Nspec,num_modes_per_beam,beam_lmax
-    if(beam_Nspec.ne.Nspec) stop 'Problem: beam_Nspec != Nspec'
+! removed until we decide about how to handle beam errors for TE & EE
+!    if(beam_Nspec.ne.Nspec) stop 'Problem: beam_Nspec != Nspec'
     allocate(beam_modes(num_modes_per_beam,0:beam_lmax,beam_Nspec))
     cov_dim=beam_Nspec*num_modes_per_beam
     allocate(beam_cov_full(cov_dim,cov_dim))
-    read(48) (((beam_modes(i,l,j),j=1,Nspec),l=0,beam_lmax),i=1,num_modes_per_beam)
+    read(48) (((beam_modes(i,l,j),j=1,beam_Nspec),l=0,beam_lmax),i=1,num_modes_per_beam)
     allocate(beam_cov_inv(cov_dim,cov_dim))
     read(48) ((beam_cov_full(i,j),j=1,cov_dim),i=1,cov_dim)  ! beam_cov
     read(48) ((beam_cov_inv(i,j),j=1,cov_dim),i=1,cov_dim) ! beam_cov_inv
@@ -436,9 +444,9 @@
 
     end subroutine compute_fg
 
-    subroutine calc_like(zlike,  cell_cmb, freq_params)
+    subroutine calc_like(zlike,  cell_cmb,cell_cmbx,cell_cmbe, freq_params)
     real(campc), intent(in)  :: freq_params(:)
-    real(campc), dimension(0:) :: cell_cmb
+    real(campc), dimension(0:) :: cell_cmb, cell_cmbx,cell_cmbe
     integer ::  j, l, ii,jj
     real(campc) , allocatable, save ::  X_beam_corr_model(:), Y(:),  C_foregrounds(:,:)
     real(campc) cal0, cal1, cal2
@@ -451,7 +459,7 @@
         print*, 'like_init should have been called before attempting to call calc_like.'
         stop
     end if
-    if(Nspec.ne.4) then
+    if(.not.(Nspec.eq.4.or.Nspec.eq.6)) then
         print*, 'Nspec inconsistent with foreground corrections in calc_like.'
         stop
     end if
@@ -501,6 +509,18 @@
     do l = lminX(4), lmaxX(4)
         X_beam_corr_model(l-lminX(4)+npt(4)) =  ( cell_cmb(l) + C_foregrounds(l,4))*corrected_beam(4,l)/sqrt(cal1*cal2)
     end do
+
+if(Nspec.eq.6) then
+! TE...
+    do l = lminX(5), lmaxX(5)
+       X_beam_corr_model(l-lminX(5)+npt(5)) = cell_cmbx(l)
+    end do
+
+! EE...
+    do l = lminX(6), lmaxX(6)
+       X_beam_corr_model(l-lminX(6)+npt(6)) = cell_cmbe(l)
+    end do
+endif
 
     Y = X_data - X_beam_corr_model
 
