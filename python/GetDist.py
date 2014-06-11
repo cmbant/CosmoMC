@@ -183,8 +183,8 @@ contours = []
 max_frac_twotail = []
 for i in range(1, num_contours+1):
     contours.append(ini.float('contour'+str(i)))
-    #max_frac = ini.float('max_frac_twotail'+str(i), math.exp(-norm((1-contours[i-1])/2)**2/2))
-    #max_frac_twotail.append(max_frac)
+    max_frac = ini.float('max_frac_twotail'+str(i), math.exp(math.pow(-1.0*norm.ppf((1-contours[i-1])/2), 2)/2))
+    max_frac_twotail.append(max_frac)
 contours_str = "; ".join([ str(c) for c in contours ]) 
 
 if (not no_tests):
@@ -222,7 +222,7 @@ if (PCA_num<>0):
     if (line.lower()=="all"):
         PCA_params = range(1, PCA_num+1)
     else:
-        PCA_params = [] #MT todo find indexes
+        PCA_params = names.list() 
     line = ini.string('PCA_normparam')
     if (line==""):
         PCA_NormParam = 0
@@ -271,15 +271,19 @@ if (cool<>1):
 if (adjust_priors):
     mc.AdjustPriors()
 
-# TODO
-mean_mult = 0
-max_mult = 1
-outliers = 0
-numsamp = 0
+#GetUsedCols
+
+mean_mult = mc.norm/mc.numrows
+max_mult = (mean_mult*mc.numrows)/min(mc.numrows/2,500)
+outliers = len(mc.weights[np.where(mc.weights>max_mult)])
+if (outliers<>0):
+    print 'outlier fraction ', float(outliers)/mc.numrows
+max_mult = np.max(mc.weights)
+numsamp = np.sum(mc.weights)
 
 indep_thin = 0
 if (not no_tests):
-    #indep_thin modified ...
+    #indep_thin modified here ...
     mc.DoConvergeTests(converge_test_limit)
 
 adjust_priors = True
@@ -354,11 +358,9 @@ if (PCA_num>0) and not plots_only:
 # Find best fit, and mean likelihood
 mc.GetChainLikeSummary(toStdOut=True)
 
-
 LowerUpperLimits = 0
 
 # Do 1D bins
-
 for j in range(num_vars):
 
     #mc.Get1DDensity(j)

@@ -35,7 +35,7 @@ class MCSamples(chains):
         indexes = np.where(self.weights==0)
         self.weights = np.delete(self.weights, indexes)
         self.loglikes = np.delete(self.loglikes, indexes)
-        self.samples = np.delete(self.samples, indexes)
+        self.samples = np.delete(self.samples, indexes, axis=0)
         
     def SortColData(self, icol=None):
         if icol is None: return
@@ -45,9 +45,7 @@ class MCSamples(chains):
             indexes = self.loglikes.argsort()
         self.weights = self.weights[indexes]
         self.loglikes = self.loglikes[indexes]
-        #todo 
-        #self.samples[] = ...
-
+        self.samples = self.samples[indexes]
 
     def WriteSingleSamples(self, filename, single_thin):
         """
@@ -69,7 +67,9 @@ class MCSamples(chains):
         """
         Write thin data.
         """
+        #fixme: see chain.writeSingle
         if(cool<>1): print 'Cooled thinned output with temp: ', cool
+        MaxL = np.max(self.loglikes)
         textFileHandle = open(fname, 'w')
         #Data for thin ...
         thin_rows = 0
@@ -88,39 +88,22 @@ class MCSamples(chains):
         #textFileHandle.close()
         pass
 
+    # MostCorrelated2D ? 
 
-    def MostCorrelated2D(self, i1, i2, direc):
-        """
-        Find which parameter is most correllated with the degeneracy in ix1, ix2
-        """
-        if not direc in [0, -1]:
-            sys.exit('Invalid 3D color parameter')
-        # Used ?
-
-
-    def GetFractionIndices(self, fraction_indices, n):
-        """
-        Get fraction indices.
-        """
-        # Used ?
-        pass
-
+    # GetFractionIndices ?
 
     # ConfidVal(self, ix, limfrac, upper) => chains.confidence()
 
-
-    def PCA(self, npars, n, param_map, normparam_num):
+    def PCA(self, pars, param_map, normparam_num):
         """
         Perform principle component analysis. In other words, 
         get eigenvectors and eigenvalues for normalized variables
         with optional (log) mapping.
         """
-        val = 0.
-
-        print 'Doing PCA for ',n,' parameters'
-        filename = rootdirname + ".PCA"
+        print 'Doing PCA for ', len(pars),' parameters'
+        filename = self.root + ".PCA"
         textFileHandle = open(filename)
-        textFileHandle.write('PCA for parameters: ')
+        textFileHandle.write('PCA for parameters:\n')
         
         if (normparam_num<>0):
             if (normparam_num in pars):
@@ -130,13 +113,23 @@ class MCSamples(chains):
         else:
             normparam = 0
 
-        # ...
-        # matplotlib.mlab import PCA
-        # scipy.linalg.svd
+        PCdata = self.samples[pars]
+        PClabs = []
+        doexp = False
+        for i in range(len(pars)):
+            if (param_map[i]=='L'):
+                doexp = True
+                PCdata[:, i] = np.log(PCdata[:, i])
+                PClabs.append("ln("+self.index2name[i]+")")
+            elif (param_map[i]=='M'):
+                doexp = True
+                PCdata[:, i] = np.log(-1.0*PCdata[:, i])
+                PClabs.append("ln(-"+self.index2name[i]+")")
+            else:
+                PClabs.append(self.index2name[i])
+            textFileHandle.write("%s:%s\n"%(str(pars[i]), str(PClabs[i])))
 
-        for i in range(n):
-            # ...
-            textFileHandle.write("%i:%f"%(pars[i], val))
+        #PCmean = np.sum(self.weights
         
         textFileHandle.write('\n')
         textFileHandle.write('Correlation matrix for reduced parameters\n')
@@ -180,12 +173,7 @@ class MCSamples(chains):
         textFileHandle.close()
 
 
-    def GetUsedCols(self):
-        """
-        Get used columns.
-        """
-        #Still used ?
-        pass
+    # GetUsedCols ?
         
     
         
@@ -535,7 +523,6 @@ class MCSamples(chains):
 
         # ...
 
-
         plotfile = self.dat_file_2D( self.rootname, j, j2)
         filename = os.path.join(self.plot_data_dir, plotfile)
         textFileHandle = open(filename, 'w')
@@ -563,82 +550,24 @@ class MCSamples(chains):
         textFileHandle.close()
 
 
-
     def EdgeWarning(self, param):
-        # FIXME not many calls. can  be replaced easily 
         pass
 
-
-    # 
-    def dinvnorm(self, p):
-        """
-        Normal inverse translate from
-        http://home.online.no/~pjacklam/notes/invnorm
-        a routine written by john herrero.
-
-        :param p: value for 
-        :type p: real type
-        """
-        a1=-39.6968302866538
-        a2=220.946098424521
-        a3=-275.928510446969
-        a4=138.357751867269
-        a5=-30.6647980661472
-        a6=2.50662827745924
-        b1=-54.4760987982241
-        b2=161.585836858041
-        b3=-155.698979859887
-        b4=66.8013118877197
-        b5=-13.2806815528857
-        c1=-0.00778489400243029
-        c2=-0.322396458041136
-        c3=-2.40075827716184
-        c4=-2.54973253934373
-        c5=4.37466414146497
-        c6=2.93816398269878
-        d1=0.00778469570904146
-        d2=0.32246712907004
-        d3=2.445134137143
-        d4=3.75440866190742
-        p_low=0.02425
-        p_high=1-p_low
-        dinvnorm = 0
-        if(p<p_low):
-            q=dsqrt(-2*dlog(p))
-            dinvnorm=(((((c1*q+c2)*q+c3)*q+c4)*q+c5)*q+c6)/((((d1*q+d2)*q+d3)*q+d4)*q+1)
-        elif (p>=p_high):
-            q=p-0.5
-            r=q*q
-            dinvnorm=(((((a1*r+a2)*r+a3)*r+a4)*r+a5)*r+a6)*q/(((((b1*r+b2)*r+b3)*r+b4)*r+b5)*r+1)
-        else:
-            q=dsqrt(-2*dlog(1-p))
-            dinvnorm=-(((((c1*q+c2)*q+c3)*q+c4)*q+c5)*q+c6)/ ((((d1*q+d2)*q+d3)*q+d4)*q+1)
-        return dinvnorm
-
-
     def GetChainLikeSummary(self, toStdOut=False):
-        """
-        """
         text = ""
-
         maxlike = np.max(self.loglikes)
         text += "Best fit sample -log(Like) = %f\n"%maxlike
-        
         if ((self.loglikes[self.numrows-1]-maxlike)<30):
             meanlike = np.log(np.sum(np.exp(self.loglikes-maxlike)*self.weights)/self.norm)+maxlike
             text += "Ln(mean 1/like) = %f\n"%(meanlike)
-
         meanlike = np.sum(self.loglikes*self.weights)/self.norm
         text += "mean(-Ln(like)) = %f\n"%(meanlike)
-
         meanlike = -np.log(np.sum(np.exp(self.loglikes-maxlike)*self.weights)/self.norm)+maxlike
         text = "-Ln(mean like)  = %f\n"%(meanlike)
-
         if toStdOut:
             print text
         else:
             return text
-
 
     def SetContours(self, contours=[]):
         self.contours = contours
@@ -659,15 +588,12 @@ class MCSamples(chains):
         else:
             self.ranges = None
 
-
     def WriteBounds(self, filename):
         if not hasattr(self, 'ranges') or self.ranges is None: return 
-
         textFileHandle = open(filename, 'w')
-        names = dict((v,k) for k, v in self.index.iteritems()) #{index:name}
-        names.keys().sort()
-        indexes = names.keys()
-        for i in indexes:
+        self.index2name = dict((v,k) for k, v in self.index.iteritems()) 
+        self.index2name.keys().sort()
+        for i in self.index2name.keys():
             name = names[i]
             valMin = self.ranges.min(name)
             if (valMin is not None):
@@ -752,4 +678,3 @@ class Ranges():
             return self.maxs[name]
         if error: raise Exception("Name not found:" + name)
         return None
-
