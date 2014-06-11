@@ -9,6 +9,8 @@ class MCSamples(chains):
 
     def __init__(self, root=None, ignore_rows=0):
         chains.__init__(self, root, ignore_rows)
+        self.ReadRanges()
+
 
     def AdjustPriors(self):
         sys.exit('You need to write the AdjustPriors function in MCSamples.py first!')
@@ -18,11 +20,9 @@ class MCSamples(chains):
         #self.weights *= np.exp(-chisq/2)
         #self.loglikes += chisq/2
 
-
     def MapParameters(self, invars):
         sys.exit('Need to write MapParameters routine first')
         
-
     def CoolChain(self, cool):
         print 'Cooling chains by ', cool
         MaxL = np.max(self.loglikes)
@@ -31,23 +31,22 @@ class MCSamples(chains):
         self.weights = np.hstack(newW)
         self.loglikes = np.hstack(newL)
 
-
-    def DeleteZeros(self, a=None):
-        #fixme
-        a = a[a[:,0]!=0]
-
+    def DeleteZeros(self):
+        indexes = np.where(self.weights==0)
+        self.weights = np.delete(self.weights, indexes)
+        self.loglikes = np.delete(self.loglikes, indexes)
+        self.samples = np.delete(self.samples, indexes)
         
     def SortColData(self, icol=None):
-        """
-        Sort data for specified column.
-        """
         if icol is None: return
-        if icol==0:
-            self.weights.sort()
+        if icol==0: 
+            indexes = self.weights.argsort()
         elif icol==1:
-            self.loglikes.sort()
-        else:
-            self.samples[icol-2].sort()
+            indexes = self.loglikes.argsort()
+        self.weights = self.weights[indexes]
+        self.loglikes = self.loglikes[indexes]
+        #todo 
+        #self.samples[] = ...
 
 
     def WriteSingleSamples(self, filename, single_thin):
@@ -56,9 +55,13 @@ class MCSamples(chains):
         with probability given by their weight.
         """
         textFileHandle = open(filename, 'w')
-        self.makeSingle()
-        self.makeSingleSamples()
-        # FIXME: call to ranmar in f90
+        maxmult = np.max(self.weights)
+        for i in range(self.numrows):
+            rand = np.random.random_sample()
+            if (rand <= self.weights[i]/maxmult/single_thin):
+                textFileHandle.write("%16.7E"%(1.0))
+                textFileHandle.write("%16.7E"%(self.loglikes[i]))
+                #todo write samples
         textFileHandle.close()
 
 
@@ -66,21 +69,14 @@ class MCSamples(chains):
         """
         Write thin data.
         """
-        if(cool<>1):
-            print 'Cooled thinned output with temp: ', cool
+        if(cool<>1): print 'Cooled thinned output with temp: ', cool
         textFileHandle = open(fname, 'w')
         #Data for thin ...
         thin_rows = 0
         textFileHandle.close()
         print  'Wrote ', thin_rows, ' thinned samples'
 
-
-    def ThinData(self, fac):
-        """
-        Make thinned samples.
-        """
-        #chains.thin()
-        pass
+    # ThinData(self, fac) => chains.thin_indices(factor)
 
 
     def GetCovMatrix(self):
@@ -88,8 +84,9 @@ class MCSamples(chains):
         Get covariance matrix.
         """
         # use chains.cov and chains.corr
-        textFileHandle = open(fname)
-        textFileHandle.close()
+        #textFileHandle = open(fname)
+        #textFileHandle.close()
+        pass
 
 
     def MostCorrelated2D(self, i1, i2, direc):
@@ -109,9 +106,7 @@ class MCSamples(chains):
         pass
 
 
-    def ConfidVal(self, ix, limfrac, upper, ix1=None, ix2=None):
-        #chains.confidence()
-        pass
+    # ConfidVal(self, ix, limfrac, upper) => chains.confidence()
 
 
     def PCA(self, npars, n, param_map, normparam_num):
@@ -629,14 +624,14 @@ class MCSamples(chains):
         maxlike = np.max(self.loglikes)
         text += "Best fit sample -log(Like) = %f\n"%maxlike
         
-        if ((self.loglikes[self.numrows-1][1]-maxlike)<30):
-            meanlike = np.log(np.sum(np.exp(self.loglikes-maxlike)*self.weights)/numsamp)+maxlike
+        if ((self.loglikes[self.numrows-1]-maxlike)<30):
+            meanlike = np.log(np.sum(np.exp(self.loglikes-maxlike)*self.weights)/self.norm)+maxlike
             text += "Ln(mean 1/like) = %f\n"%(meanlike)
 
-        meanlike = np.sum(self.loglikes*self.weights)/numsamp
+        meanlike = np.sum(self.loglikes*self.weights)/self.norm
         text += "mean(-Ln(like)) = %f\n"%(meanlike)
 
-        meanlike = -np.log(np.sum(np.exp(self.loglikes-maxlike)*self.weights)/numsamp)+maxlike
+        meanlike = -np.log(np.sum(np.exp(self.loglikes-maxlike)*self.weights)/self.norm)+maxlike
         text = "-Ln(mean like)  = %f\n"%(meanlike)
 
         if toStdOut:
@@ -657,28 +652,43 @@ class MCSamples(chains):
         return ND_cont1, ND_cont2
 
 
+    def ReadRanges(self):
+        ranges_file = self.root + '.ranges'
+        if (os.path.isfile(ranges_file)):
+            self.ranges = Ranges(ranges_file)
+        else:
+            self.ranges = None
+
+
     def WriteBounds(self, filename):
-        self.ranges = Ranges()
-        #
+        if not hasattr(self, 'ranges') or self.ranges is None: return 
 
         textFileHandle = open(filename, 'w')
-        indices = []
-        for i in range(len(indices)):
-            name = ""
-            ix = indice[i]
+        names = dict((v,k) for k, v in self.index.iteritems()) #{index:name}
+        names.keys().sort()
+        indexes = names.keys()
+        for i in indexes:
+            name = names[i]
             valMin = self.ranges.min(name)
             if (valMin is not None):
-                lim1 = "    N%15.7E"%valMin
+                lim1 = "%15.7E"%valMin
             else:
                 lim1 = "    N"
             valMax = self.ranges.max(name)
             if (valMax is not None):
-                lim2 = "    N%15.7E"%valMax
+                lim2 = "%15.7E"%valMax
             else:
                 lim2 = "    N"
-            textFileHandle.write("%22s%17s%17s"%(name, lim1, lim2))
+            textFileHandle.write("%22s%17s%17s\n"%(name, lim1, lim2))
         textFileHandle.close()
 
+
+    def OutputMargeStats(self):
+        pass
+            
+
+    def WriteParamNames(self, filename):
+        pass
 
 
 
@@ -697,15 +707,6 @@ roots=['%s']
 def WritePlotFileExport():
     text = "g.export(os.path.join(outdir,'%s'))"
     return text
-
-
-def WriteParamNames(filename):
-    pass
-
-
-def OutputMargeStats():
-    pass
-
 
 
 # 

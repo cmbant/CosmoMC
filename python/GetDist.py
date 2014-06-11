@@ -45,12 +45,6 @@ else:
     names = paramNames.paramNames(in_root + '.paramnames')
 parameter_names_labels = ini.string('parameter_names_labels', False) # MT: False added here
 
-# Ranges file 
-ranges = None
-ranges_file = in_root + '.ranges'
-if os.path.isfile(ranges_file):
-    ranges = MCSamples.Ranges(ranges_file)
-
 if (ini.params.has_key('nparams')):
     ncols = ini.int('nparams') + 2 
     if (ini.params.has_key('columnnum')):
@@ -266,6 +260,8 @@ if(last_chain==-1):
 # Read in the chains
 mc = MCSamples.MCSamples(in_root)
 ok = mc.loadChains(in_root, chain_files)
+if (not ok): print ""
+mc.makeSingle()
 
 #cool = 2# TEST
 if (cool<>1):
@@ -277,14 +273,16 @@ if (adjust_priors):
 
 # TODO
 mean_mult = 0
-max_mult = 0
+max_mult = 1
 outliers = 0
-max_mult = 0
 numsamp = 0
 
+indep_thin = 0
 if (not no_tests):
+    #indep_thin modified ...
     mc.DoConvergeTests(converge_test_limit)
 
+adjust_priors = True
 if (adjust_priors):
     mc.DeleteZeros()
 
@@ -292,9 +290,8 @@ print 'mean input multiplicity = ', mean_mult
 
 # Output thinned data if requested
 # Must do this with unsorted output
-thin_factor = 1. # TEST
 if (thin_factor<>0):
-    mc.ThinData(thin_factor)
+    mc.thin_indices(thin_factor) # ThinData => thin_indices
     filename = rootdirname + '_thin.txt'
     mc.WriteThinData(filename, thin_cool)
 
@@ -318,7 +315,7 @@ else:
 
 
 #
-mc.getChainsStats()
+#mc.getChainsStats()
 
 if (make_single_samples):
     filename = os.path.join(plot_data_dir, rootname.strip()+'_single.txt')
@@ -329,7 +326,7 @@ filename = os.path.join(plot_data_dir, rootname.strip()+'.bounds')
 mc.WriteBounds(filename)
 
 # Sort data in order of likelihood of points
-mc.SortColData(2)
+mc.SortColData(1)
 
 #numsamp = sum(coldata(1,0:nrows-1))
 
@@ -342,7 +339,7 @@ if (triangle_plot):
     # ...
     pass
 
-print 'using ', nrows,' rows, processing ', num_vars,' parameters'
+#print 'using ', nrows,' rows, processing ', num_vars,' parameters'
 if (indep_thin<>0):
     print 'Approx indep samples: ', round(numsamp/indep_thin)
 else:
