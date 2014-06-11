@@ -521,8 +521,127 @@ class MCSamples(chains):
         Get 2D plot data.
         """
 
-        # ...
+        has_prior = has_limits[colix(j)] or has_limits[colix(j2])
 
+        #corr = corrmatrix(colix(j)-2,colix(j2)-2)
+        # keep things simple unless obvious degeneracy
+        if (abs(corr)<0.3): corr=0. 
+        corr = max(-0.95, corr)
+        corr = min(0.95, corr)
+        
+        # for tight degeneracies increase bin density
+        nbin2D = min(4*num_bins_2D, round(num_bins_2D/(1-abs(corr))))
+        
+        widthx = (range_max[j]-range_min[j])/(nbin2D+1)
+        widthy = (range_max[j2]-range_min[j2])/(nbin2D+1)
+        smooth_scale = (smooth_scale_2D*nbin2D)/num_bins_2D
+        fine_fac = max(2, round(fine_fac_base/smooth_scale))
+
+        ixmin = round((range_min[j] - center[j])/widthx)
+        ixmax = round((range_max[j] - center[j])/widthx)
+
+        iymin = round((range_min[j2] - center[j2])/widthy)
+        iymax = round((range_max[j2] - center[j2])/widthy)
+
+        if (not has_limits_bot(colix[j])): ixmin -= 1
+        if (not has_limits_bot(colix[j2])): iymin -= 1
+        if (not has_limits_top(colix[j])): ixmax += 1
+        if (not has_limits_top(colix[j2])): iymax += 1
+        
+        #allocate(bins2D(ixmin:ixmax,iymin:iymax))
+        #allocate(bin2Dlikes(ixmin:ixmax,iymin:iymax))
+        #bins2D = 0
+        #bin2Dlikes = 0
+
+        winw = round(fine_fac*smooth_scale)
+        imin = (ixmin-3)*winw+1
+        imax = (ixmax+3)*winw-1
+        jmin = (iymin-3)*winw+1
+        jmax = (iymax+3)*winw-1
+        #allocate(finebins(imin:imax,jmin:jmax))
+        #if (shade_meanlikes) allocate(finebinlikes(imin:imax,jmin:jmax))
+        #finebins = 0
+        #if (shade_meanlikes) finebinlikes=0
+        
+        widthj = widthx/fine_fac
+        widthj2 = widthy/fine_fac
+        #col1 = colix(j)
+        #col2 = colix(j2)
+#    do i = 0, nrows-1
+#        ix1=nint((coldata(col1,i)-center(j))/widthj)
+#        ix2=nint((coldata(col2,i)-center(j2))/widthj2)
+#        if (ix1>=imin .and. ix1<=imax .and. ix2>=jmin .and. ix2 <=jmax) then
+#            finebins(ix1,ix2) = finebins(ix1,ix2) + coldata(1,i)
+#            if (shade_meanlikes) finebinlikes(ix1,ix2) = finebinlikes(ix1,ix2) + coldata(1,i)*exp(meanlike - coldata(2,i))
+#        end if
+#    end do
+
+        winw = round(2*fine_fac*smooth_scale)
+        #allocate(Win(-winw:winw,-winw:winw))
+
+#    do ix1=-winw,winw
+#        do ix2=-winw,winw
+#            !                Win(ix1,ix2) = exp(-(ix1**2+ix2**2)/real(fine_fac**2,mcp)/2)
+#            Win(ix1,ix2) = exp(-(ix1**2+ix2**2 - 2*corr*ix1*ix2)/(2*fine_fac**2*smooth_scale**2*(1-corr**2)))
+#        end do
+#    end do
+
+        if (has_prior):
+            norm = sum(win)
+            #allocate(prior_mask(imin:imax,jmin:jmax))
+            #prior_mask =1
+            if (has_limits_bot(colix(j))):
+                prior_mask(ixmin*fine_fac,:) = prior_mask(ixmin*fine_fac,:)/2
+                prior_mask(imin:ixmin*fine_fac-1,:) = 0
+            if (has_limits_top(colix(j))):
+                prior_mask(ixmax*fine_fac,:) = prior_mask(ixmax*fine_fac,:)/2
+                prior_mask(ixmax*fine_fac+1:imax,:) = 0
+            if (has_limits_bot(colix(j2))):
+                prior_mask(:,iymin*fine_fac) = prior_mask(:,iymin*fine_fac)/2
+                prior_mask(:,jmin:iymin*fine_fac-1) = 0
+            if (has_limits_top(colix(j2))):
+                prior_mask(:,iymax*fine_fac) = prior_mask(:,iymax*fine_fac)/2
+                prior_mask(:,iymax*fine_fac+1:jmax) = 0
+
+
+#    do ix1=ixmin, ixmax
+#        do ix2=iymin,iymax
+# ... 
+
+
+#    if (shade_meanlikes) then
+#        deallocate(finebinlikes)
+#        do ix1=ixmin,ixmax
+#            do ix2 =iymin,iymax
+#                if (bins2D(ix1,ix2) >0) bin2Dlikes(ix1,ix2) = bin2Dlikes(ix1,ix2)/bins2D(ix1,ix2)
+#            end do
+#        end do
+#    end if
+
+
+        bins2D = bins2D/np.max(bins2D)
+        # Get contour containing contours(:) of the probability
+        norm = np.sum(bins2D)
+
+        for ix1 in range(num_contours):
+
+            try_t = np.max(bins2D)
+            try_b = 0
+
+            lasttry = -1
+            while True:
+                try_sum = np.sum(bin2D[np.where(bins2D < (try_b + try_t) / 2)])
+                if (try_sum > (1-contours[ix1])*norm):
+                    try_t = (try_b + try_t) / 2
+                else:
+                    try_b = (try_b + try_t) / 2
+                if (try_sum == try_last): break
+                try_last = try_sum
+            contour_levels[ix1] = (try_b + try_t) / 2
+            
+        bind2D[np.where(bins2D < 1e-30)] = 0
+
+        #fixme: use np.savetxt
         plotfile = self.dat_file_2D( self.rootname, j, j2)
         filename = os.path.join(self.plot_data_dir, plotfile)
         textFileHandle = open(filename, 'w')
