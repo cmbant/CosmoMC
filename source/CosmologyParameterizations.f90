@@ -60,7 +60,7 @@
 
     call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
     !set number of hard parameters, number of initial power specturm parameters
-    call this%SetTheoryParameterNumbers(15,last_power_index)
+    call this%SetTheoryParameterNumbers(16,last_power_index)
 
     end subroutine TP_Init
 
@@ -166,12 +166,13 @@
     class(TTheoryPredictions), allocatable :: Theory
     real(mcp) :: P(:)
     Type(CMBParams) CMB
-    integer num_derived
+    integer num_derived, L
+    real(mcp) rms
 
     if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)
     class is (TCosmoTheoryPredictions)
-        num_derived = 18 +  Theory%numderived
+        num_derived = 19 +  Theory%numderived
         allocate(Derived(num_derived))
 
         call this%ParamArrayToTheoryParams(P,CMB)
@@ -185,26 +186,36 @@
         derived(6) = Theory%Sigma_8
         derived(7) = CMB%zre
 
-        if (Theory%tensor_AT>0) then
-            derived(8) = Theory%tensor_ratio_02
-            derived(9) = Theory%tensor_ratio_BB
-            derived(10) = log(Theory%tensor_AT*1e10)
-            derived(11) = Theory%tensor_ratio_C10
+        if (CosmoSettings%use_lensing_potential) then
+            rms=0
+            do L=2, CosmoSettings%cl_lmax(CL_phi,CL_phi)
+                rms = rms + Theory%Cls(CL_Phi,CL_Phi)%CL(L)*(L+0.5_mcp)/(L*(L+1))
+            end do
+            derived(8) = sqrt(rms)*180/pi*60
         else
-            derived(8:11)=0
+            derived(8) = 0
         end if
 
-        derived(12) = cl_norm*CMB%InitPower(As_index)*1e9
-        derived(13) = Theory%tensor_AT*1e9
+        if (Theory%tensor_AT>0) then
+            derived(9) = Theory%tensor_ratio_02
+            derived(10) = Theory%tensor_ratio_BB
+            derived(11) = log(Theory%tensor_AT*1e10)
+            derived(12) = Theory%tensor_ratio_C10
+        else
+            derived(9:12)=0
+        end if
 
-        derived(14)= derived(12)*exp(-2*CMB%tau)  !A e^{-2 tau}
-        derived(15)= derived(13)*exp(-2*CMB%tau)  !At e^{-2 tau}
+        derived(13) = cl_norm*CMB%InitPower(As_index)*1e9
+        derived(14) = Theory%tensor_AT*1e9
 
-        derived(16)= CMB%Yhe !value actually used, may be set from bbn consistency
-        derived(17)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
-        derived(18)=  Theory%Sigma_8*((CMB%omdm+CMB%omb)/0.25_mcp)**0.47_mcp
+        derived(15)= derived(12)*exp(-2*CMB%tau)  !A e^{-2 tau}
+        derived(16)= derived(13)*exp(-2*CMB%tau)  !At e^{-2 tau}
 
-        derived(19:num_derived) = Theory%derived_parameters(1: Theory%numderived)
+        derived(17)= CMB%Yhe !value actually used, may be set from bbn consistency
+        derived(18)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
+        derived(19)=  Theory%Sigma_8*((CMB%omdm+CMB%omb)/0.25_mcp)**0.47_mcp
+
+        derived(20:num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
     end subroutine TP_CalcDerivedParams
@@ -264,7 +275,8 @@
         CMB%iso_cdm_correlated =  Params(12)
         CMB%zre_delta = Params(13)
         CMB%ALens = Params(14)
-        CMB%fdm = Params(15)
+        CMB%ALensf = Params(15)
+        CMB%fdm = Params(16)
         call SetFast(Params,CMB)
     end if
 

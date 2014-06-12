@@ -12,6 +12,7 @@ yhe           Y_{He}    #Helium mass fraction (not used if bbn_consistency)
 alpha1        \alpha_{-1} #correlated CDM isocurvature 
 deltazrei     {\Delta}z_{\rm re} #width of reionization
 Alens         A_{L}     #lensing potential scaled by sqrt(A_lens)
+Alensf        A^f_L     #amplitude of smoothing power from fiducial models 
 fdm           \epsilon_0 f_d    #CosmoRec dark matter annihilation parameter, 0910.3663
 logA          {\rm{ln}}(10^{10} A_s)
 ns            n_s	    #beware that pivot scale can change in .ini file
@@ -28,6 +29,7 @@ omegamh2*     \Omega_m h^2 #includes massive neutrinos
 omeganuh2*    \Omega_\nu h^2 
 sigma8*       \sigma_8
 zrei*         z_{\rm re}
+rmsdeflect*   \langle d^2\rangle^{1/2}  #rms lensing deflection in arcmin
 r02*          r_{0.002}        #r at k=0.002
 rBB*          r_{0.01}         #r at k=0.01 (roughly peak of tensor BB)
 logAT*        {\rm{ln}}(10^{10} A_t) 
