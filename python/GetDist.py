@@ -25,25 +25,19 @@ if not os.path.isfile(ini_file):
 # Input parameters
 ini = iniFile.iniFile()
 ini.readFile(ini_file)
-#dataset = ini.params
 
 # File root
 if (len(sys.argv)>2):
     in_root = sys.argv[2]
 else:
     in_root = ini.params['file_root']
-if (in_root==""): # or (not os.path.isfile(file_root)): 
+if (in_root==''): # or (not os.path.isfile(file_root)): 
      print 'Root file do not exist ', in_root
      sys.exit()
 rootname = os.path.basename(in_root)
 
-# Parameter names
-parameter_names_file = ini.string('parameter_names')
-if (parameter_names_file):
-    names = paramNames.paramNames(parameter_names_file)
-else:
-    names = paramNames.paramNames(in_root + '.paramnames')
-parameter_names_labels = ini.string('parameter_names_labels', False) # MT: False added here
+# Create instance of MCSamples
+mc = MCSamples.MCSamples(in_root)
 
 if (ini.params.has_key('nparams')):
     ncols = ini.int('nparams') + 2 
@@ -51,14 +45,15 @@ if (ini.params.has_key('nparams')):
         print  'specify only one of nparams or columnnum'
         sys.exit(1)
 else:
-    ncols = ini.int('columnnum',0)
+    ncols = ini.int('columnnum', 0)
 
 single_column_chain_files = ini.bool('single_column_chain_files', False)
 
 num_bins = ini.int('num_bins')
 num_bins_2D = ini.int('num_bins_2D', num_bins)
-smooth_scale_1D = ini.float('smooth_scale_1D', -1.)
-smooth_scale_2D = ini.float('smooth_scale_2D', -1.)
+smooth_scale_1D = ini.float('smooth_scale_1D', -1.0)
+# Smoothing scale in terms of bin scale
+smooth_scale_2D = ini.float('smooth_scale_2D', -1.0)
 if (smooth_scale_1D>0) and (smooth_scale_1D>1): 
     print 'WARNING: smooth_scale_1D>1 is oversmoothed'
 if (smooth_scale_1D>0) and (smooth_scale_1D>1.9):
@@ -67,99 +62,125 @@ if (smooth_scale_1D>0) and (smooth_scale_1D>1.9):
 
 credible_interval_threshold = ini.float('credible_interval_threshold', 0.05)
 
-ignorerows = ini.float('ignore_rows',0.)
+ignorerows = ini.float('ignore_rows', 0.0)
 
 adjust_priors = ini.bool('adjust_priors', False)
 
-plot_ext = ini.string('plot_ext','py')
+plot_ext = ini.string('plot_ext', 'py')
 
-plot_output = ini.string('plot_output','pdf')
+plot_output = ini.string('plot_output', 'pdf')
 
-subplot_size_inch = ini.float('subplot_size_inch', 3.0)
+subplot_size_inch  = ini.float('subplot_size_inch' , 3.0)
 subplot_size_inch2 = ini.float('subplot_size_inch2', subplot_size_inch)
 subplot_size_inch3 = ini.float('subplot_size_inch3', subplot_size_inch)
 
-font_scale = ini.float('font_scale',1.)
-finish_run_command = ini.string('finish_run_command', '') # MT added '' here
+font_scale = ini.float('font_scale', 1.0)
+finish_run_command = ini.string('finish_run_command', '') 
 
-auto_label = ini.bool('auto_label',False)
+auto_label = ini.bool('auto_label', False)
 
-prob_label = ini.bool('prob_label',False)
+prob_label = ini.bool('prob_label', False)
 
-samples_are_chains = ini.bool('samples_are_chains',True)
+samples_are_chains = ini.bool('samples_are_chains', True)
 
-no_plots = ini.bool('no_plots',False)
-plots_only = ini.bool('plots_only',False)
-no_tests = plots_only or ini.bool('no_tests',False)
-line_labels = ini.bool('line_labels',False)
+no_plots = ini.bool('no_plots', False)
+plots_only = ini.bool('plots_only', False)
+no_tests = plots_only or ini.bool('no_tests', False)
+line_labels = ini.bool('line_labels', False)
 
-thin_factor = ini.int('thin_factor',0)
-thin_cool = ini.float('thin_cool',1.)
+thin_factor = ini.int('thin_factor', 0)
+thin_cool = ini.float('thin_cool', 1.0)
 
 make_single_samples = ini.bool('make_single_samples', False)
-single_thin = ini.int('single_thin',1)
-cool = ini.float('cool',1.)
+single_thin = ini.int('single_thin', 1)
+cool = ini.float('cool', 1.0)
 
-#Skip GetDist.f90 from l.1952 to l.1988 (matlab related)
+bin_limits = ini.string('all_limits')
+
+indexes = mc.index2name.keys()
+indexes.sort()
+for ix in indexes:
+    name = mc.index2name[ix]
+    mini = mc.ranges.min(name)
+    maxi = mc.ranges.max(name)
+    if (mini and maxi and mini<>maxi):
+        mc.limmin[name] = mini
+        mc.limmax[name] = maxi
+    if (bin_limits<>''):
+        line = bin_limits
+    else:
+        line = ''
+        if ini.params.has_key('limits[%s]'%name.strip()):
+            line = ini.string('limits[%s]'%name.strip())
+    if (line<>''):
+        limits = [ s for s in line.split(' ') if s<>'' ]
+        if len(limits)==2:
+            if limits[0]<>'N': mc.limmin[name] = float(limits[0])
+            if limits[1]<>'N': mc.limmax[name] = float(limits[1])
+    if ini.params.has_key('marker[%s]'%name.strip()):
+        line = ini.string('marker[%s]'%name.strip())
+        if (line<>''):
+            mc.markers[name] = float(line)
 
 if (ini.params.has_key('plotparams_num')):
     print 'plotparams_num deprectated; just use plot_params'
     sys.exit(1)
 
-line = ini.string('plot_params', 0) # MT added 0 here
-if (line not in ["", 0]):
+line = ini.string('plot_params', 0)
+if (line not in ['', 0]):
     plotparams_num = -1
-    plotparams = [ s for s in line.split(" ")  if s<>'' ]
+    plotparams = [ s for s in line.split(' ') if s<>'' ] 
+    plotparams = [ mc.index[name] for name in plotparams]
 else:
     plotparams_num = 0
 
 line = ini.string('plot_2D_param')
-if (line==""):
+if (line==''):
     plot_2D_param = 0
 else:
-    #MT TODO
-    #call NameMapping%ReadIndices(InLine, tmp_params, 1)
-    plot_2D_param = 123456789 # todo tmp_params(1)
-    #if (plot_2D_param/=0 .and. plotparams_num/=0 .and. &
-    #count(plotparams(1:plotparams_num)==plot_2D_param)==0) &
-    #stop 'plot_2D_param not in plotparams'
+    tmp_params = [ s for s in line.split(' ') if s<>'' ]
+    plot_2D_param = int(tmp_params[0])
+    if (plot_2D_param<>0 and plotparams_num<>0 and plotparams.count(plot_2D_param)==0):
+        print 'plot_2D_param not in plotparams'
+        sys.exit(1)
     
 if (plot_2D_param<>0):
     plot_2D_param = plot_2D_param + 2
     num_cust2D_plots = 0
 else:
     # Use custom array of specific plots
-    num_cust2D_plots = ini.int('plot_2D_num',0)
+    num_cust2D_plots = ini.int('plot_2D_num', 0)
+    cust2DPlots = []
     for i in range(1, num_cust2D_plots+1):
         line = ini.string('plot'+str(i))
-        #MT todo
-        #call NameMapping%ReadIndices(InLine, tmp_params, 2)
-        #if (plotparams_num/=0 .and. (count(plotparams(1:plotparams_num)==tmp_params(1))==0 .or. &
-        #count(plotparams(1:plotparams_num)==tmp_params(2))==0)) then
-        #   write(*,*) trim(numcat('plot',ix)) //': parameter not in plotparams'
-        #   stop
-        #cust2DPLots(ix) = tmp_params(1)+2 + (tmp_params(2)+2)*1000
+        tmp_params = [ s for s in line.split(' ') if s<>'' ]
+        tmp_params = [ mc.index[name] for name in tmp_params]
+        if (plotparams_num<>0 and plotparams.count(tmp_params[0])==0):
+            print 'plot'+str(i), ': parameter not in plotparams'
+            sys.exit(1)
+        cust2DPlots.append(tmp_params[0]+2 + (tmp_params[1]+2)*1000)
 
-triangle_plot = ini.bool('triangle_plot',False)
+triangle_plot = ini.bool('triangle_plot', False)
 if (triangle_plot):
-    no_triangle_axis_labels = ini.bool('no_triangle_axis_labels',False)
+    no_triangle_axis_labels = ini.bool('no_triangle_axis_labels', False)
     line = ini.string('triangle_params')
     triangle_num = -1
-    if (line<>""):
-        #call NameMapping%ReadIndices(InLine, triangle_params, triangle_num, unknown_value=-1)
-        pass
+    if (line<>''):
+        triangle_params = [ s for s in line.split(' ') if s<>'' ]
+        triangle_params = [ mc.index[name] for name in triangle_params if mc.index.has_key(name) ]
 
 exclude_chain = ini.string('exclude_chain') 
-# ...
+chain_exclude = [ int(s) for s in exclude_chain.split(' ') if s<>'' ]
+num_exclude = len(chain_exclude) - chain_exclude.count(0)
 
-map_params = ini.bool('map_params',False)
+map_params = ini.bool('map_params', False)
 if (map_params):
     print 'WARNING: Mapping params - .covmat file is new params.'
 
-shade_meanlikes = ini.bool('shade_meanlikes',False)
+shade_meanlikes = ini.bool('shade_meanlikes', False)
 
 out_dir = ini.string('out_dir')
-if (out_dir<>""):
+if (out_dir<>''):
     print 'producing files in directory ', out_dir
 
 out_root = ini.string('out_root')
@@ -178,32 +199,31 @@ if not os.path.isdir(abs_plot_data_dir):
 
 rootdirname = os.path.join(out_dir, rootname)
 
-num_contours = ini.int('num_contours',2)
+num_contours = ini.int('num_contours', 2)
 contours = []
 max_frac_twotail = []
 for i in range(1, num_contours+1):
     contours.append(ini.float('contour'+str(i)))
     max_frac = ini.float('max_frac_twotail'+str(i), math.exp(math.pow(-1.0*norm.ppf((1-contours[i-1])/2), 2)/2))
     max_frac_twotail.append(max_frac)
-contours_str = "; ".join([ str(c) for c in contours ]) 
+contours_str = '; '.join([ str(c) for c in contours ]) 
 
 if (not no_tests):
-    converge_test_limit = ini.float('converge_test_limit',contours[num_contours-1])
+    converge_test_limit = ini.float('converge_test_limit', contours[num_contours-1])
     corr_length_thin = ini.int('corr_length_thin', 0)
     corr_length_steps = ini.int('corr_length_steps', 15)
     
-force_twotail = ini.bool('force_twotail',False)
+force_twotail = ini.bool('force_twotail', False)
 if (force_twotail): print 'Computing two tail limits'
 
 if (ini.params.has_key('cov_matrix_dimension')):
-    covmat_dimension = 123456789 # todo
-    pass 
+    covmat_dimension = len(mc.paramNames.list())
 else:
-    covmat_dimension = ini.int('cov_matrix_dimension',0)
+    covmat_dimension = ini.int('cov_matrix_dimension', 0)
     if (covmat_dimension==-1):
-        covmat_dimension = ncols-2 # fixme ncols
+        covmat_dimension = ncols - 2
 
-plot_meanlikes = ini.bool('plot_meanlikes',False)
+plot_meanlikes = ini.bool('plot_meanlikes', False)
 
 if (ini.params.has_key('do_minimal_1d_intervals')):
     print 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
@@ -219,12 +239,12 @@ if (PCA_num<>0):
     # Characters representing functional mapping
     if (PCA_func==''):
         PCA_func = ['N'] * PCA_num  # No mapping
-    if (line.lower()=="all"):
+    if (line.lower()=='all'):
         PCA_params = range(1, PCA_num+1)
     else:
-        PCA_params = names.list() 
+        PCA_params = mc.index.keys() 
     line = ini.string('PCA_normparam')
-    if (line==""):
+    if (line==''):
         PCA_NormParam = 0
     else:
         PCA_NormParam = 123456789 # todo tmp_params(1)
@@ -235,14 +255,14 @@ plot_3D = []
 for ix in range(1, num_3D_plots+1):
     plot_3D.append(ini.string('3D_plot'+str(ix)))
 
-make_scatter_samples = ini.bool('make_scatter_samples',False)
-max_scatter_points = ini.int('max_scatter_points',2000)
+make_scatter_samples = ini.bool('make_scatter_samples', False)
+max_scatter_points = ini.int('max_scatter_points', 2000)
 
 BW = ini.bool('B&W', False)
-do_shading = ini.bool('do_shading',True)
+do_shading = ini.bool('do_shading', True)
 
 # Chain files
-chain_files = glob.glob(in_root+"_*.txt")
+chain_files = glob.glob(in_root+'_*.txt')
 
 def getLastChainIndex(in_root):
     if not chain_files: return 0
@@ -254,13 +274,11 @@ def getLastChainIndex(in_root):
 first_chain = ini.int('first_chain',1) 
 last_chain = ini.int('chain_num',-1) 
 # -1 means keep reading until one not found
-if(last_chain==-1):
-    last_chain = getLastChainIndex(in_root)
+if(last_chain==-1): last_chain = getLastChainIndex(in_root)
 
 # Read in the chains
-mc = MCSamples.MCSamples(in_root)
 ok = mc.loadChains(in_root, chain_files)
-if (not ok): print ""
+if (not ok): print ''
 mc.makeSingle()
 
 #cool = 2# TEST
@@ -371,10 +389,10 @@ for j in range(num_vars):
 
 if (not no_plots):
     # Output files for 1D plots
-    filename = rootdirname + "." + plot_ext
+    filename = rootdirname + '.' + plot_ext
     textFileHandle = open(filename, 'w')
     if (plot_ext=='py'):
-        text = "g.plots_1d(roots)"
+        text = 'g.plots_1d(roots)'
         # ...
 
     if (triangle_plot):
@@ -383,11 +401,10 @@ if (not no_plots):
         textInit = MCSamples.WritePlotFileInit()
         textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch, out_dir, rootname))
         if (plot_ext=='py'):
-            import pdb; pdb.set_trace()
             #todo: make string for tuple of names
-            text = "g.triangle_plot(roots, %s)"%data 
+            text = 'g.triangle_plot(roots, %s)'%data 
         textExport = MCSamples.WritePlotFileExport()
-        fname = rootname + tag + ".ext???"
+        fname = rootname + tag + '.ext???'
         textFileHandle.write(textExport%(fname))
     textFileHandle.close()
   
@@ -397,7 +414,7 @@ if (not no_plots):
 # Do 2D bins
 if (plot_2D_param==0) and (num_cust2D_plots==0) and (not no_plots):
     # In this case output the most correlated variable combinations
-    print "doing 2D plots for most correlated variables"
+    print 'doing 2D plots for most correlated variables'
     
     # ...
 
@@ -417,12 +434,12 @@ if (num_2D_plots>0) and (not no_plots):
     textInit = MCSamples.WritePlotFileInit()
     textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch2, out_dir, rootname))
     if (plot_ext=='py'):
-        textFileHandle.write("pairs=[]\n")
+        textFileHandle.write('pairs=[]\n')
         for i in range(num_vars):
             textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
-        textFileHandle.write("g.plots_2d(roots,param_pairs=pairs)\n")
+        textFileHandle.write('g.plots_2d(roots,param_pairs=pairs)\n')
         textExport = MCSamples.WritePlotFileExport()
-        fname = rootname + "_2D." + plot_ext
+        fname = rootname + '_2D.' + plot_ext
         textFileHandle.write(textExport%(fname))
     textFileHandle.close()
         
@@ -443,12 +460,12 @@ if (num_3D_plots<>0 and not no_plots):
     textFileHandle = open(filename, 'w')
     textInit = MCSamples.WritePlotFileInit()
     textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch3, out_dir, rootname))
-    textFileHandle.write("sets=[]\n")
+    textFileHandle.write('sets=[]\n')
     for j in range(num_3D_plots):
         v1, v2, v3 = 0, 0, 0
-        text += "sets.append([%s,%s,%s])"%(v1, v2, v3) # todo
-    text += "g.plots_3d(roots,sets)"
-    fname = rootname + "_3D." + plot_ext
+        text += 'sets.append([%s,%s,%s])'%(v1, v2, v3) # todo
+    text += 'g.plots_3d(roots,sets)'
+    fname = rootname + '_3D.' + plot_ext
     textExport = MCSamples.WritePlotFileExport()
     textFileHandle.write(textExport%(fname))
     textFileHandle.close()
@@ -459,7 +476,7 @@ if (not plots_only):
     mc.OutputMargeStats()
 
 # Write paramNames file
-filename = os.path.join(plot_data_dir, rootname + ".paramnames")
+filename = os.path.join(plot_data_dir, rootname + '.paramnames')
 mc.WriteParamNames(filename)
 
 # Limits from global likelihood
@@ -468,10 +485,10 @@ if (not plots_only):
     textFileHandle = open(filename, 'w')
     textInit = mc.GetChainLikeSummary(toStdOut=False)
     textFileHandle.write(textInit)
-    textFileHandle.write("param  bestfit        lower1         upper1         lower2         upper2")
+    textFileHandle.write('param  bestfit        lower1         upper1         lower2         upper2')
     for j in range(num_vars):
         #todo: values
-        textFileHandle.write("%5i%15.7E%15.7E%15.7E%15.7E%15.7E"%(j, v1, v2, v3, v4, v5))
+        textFileHandle.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E'%(j, v1, v2, v3, v4, v5))
     textFileHandle.close()
 
 # System command

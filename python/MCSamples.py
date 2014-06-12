@@ -9,8 +9,14 @@ class MCSamples(chains):
 
     def __init__(self, root=None, ignore_rows=0):
         chains.__init__(self, root, ignore_rows)
+        self.ranges = None
+        self.limmin = {}
+        self.limmax = {}
+        self.markers = {}        
         self.ReadRanges()
-
+        # dict{ index: name}
+        self.index2name = dict((v,k) for k, v in self.index.iteritems()) 
+        self.index2name.keys().sort()
 
     def AdjustPriors(self):
         sys.exit('You need to write the AdjustPriors function in MCSamples.py first!')
@@ -521,7 +527,7 @@ class MCSamples(chains):
         Get 2D plot data.
         """
 
-        has_prior = has_limits[colix(j)] or has_limits[colix(j2])
+        has_prior = has_limits[colix(j)] or has_limits[colix(j2)]
 
         #corr = corrmatrix(colix(j)-2,colix(j2)-2)
         # keep things simple unless obvious degeneracy
@@ -590,18 +596,18 @@ class MCSamples(chains):
             norm = sum(win)
             #allocate(prior_mask(imin:imax,jmin:jmax))
             #prior_mask =1
-            if (has_limits_bot(colix(j))):
-                prior_mask(ixmin*fine_fac,:) = prior_mask(ixmin*fine_fac,:)/2
-                prior_mask(imin:ixmin*fine_fac-1,:) = 0
-            if (has_limits_top(colix(j))):
-                prior_mask(ixmax*fine_fac,:) = prior_mask(ixmax*fine_fac,:)/2
-                prior_mask(ixmax*fine_fac+1:imax,:) = 0
-            if (has_limits_bot(colix(j2))):
-                prior_mask(:,iymin*fine_fac) = prior_mask(:,iymin*fine_fac)/2
-                prior_mask(:,jmin:iymin*fine_fac-1) = 0
-            if (has_limits_top(colix(j2))):
-                prior_mask(:,iymax*fine_fac) = prior_mask(:,iymax*fine_fac)/2
-                prior_mask(:,iymax*fine_fac+1:jmax) = 0
+            # if (has_limits_bot(colix(j))):
+            #     prior_mask(ixmin*fine_fac,:) = prior_mask(ixmin*fine_fac,:)/2
+            #     prior_mask(imin:ixmin*fine_fac-1,:) = 0
+            # if (has_limits_top(colix(j))):
+            #     prior_mask(ixmax*fine_fac,:) = prior_mask(ixmax*fine_fac,:)/2
+            #     prior_mask(ixmax*fine_fac+1:imax,:) = 0
+            # if (has_limits_bot(colix(j2))):
+            #     prior_mask(:,iymin*fine_fac) = prior_mask(:,iymin*fine_fac)/2
+            #     prior_mask(:,jmin:iymin*fine_fac-1) = 0
+            # if (has_limits_top(colix(j2))):
+            #     prior_mask(:,iymax*fine_fac) = prior_mask(:,iymax*fine_fac)/2
+            #     prior_mask(:,iymax*fine_fac+1:jmax) = 0
 
 
 #    do ix1=ixmin, ixmax
@@ -704,16 +710,16 @@ class MCSamples(chains):
         ranges_file = self.root + '.ranges'
         if (os.path.isfile(ranges_file)):
             self.ranges = Ranges(ranges_file)
-        else:
-            self.ranges = None
+
+
+
+
 
     def WriteBounds(self, filename):
         if not hasattr(self, 'ranges') or self.ranges is None: return 
         textFileHandle = open(filename, 'w')
-        self.index2name = dict((v,k) for k, v in self.index.iteritems()) 
-        self.index2name.keys().sort()
         for i in self.index2name.keys():
-            name = names[i]
+            name = self.index2name[i]
             valMin = self.ranges.min(name)
             if (valMin is not None):
                 lim1 = "%15.7E"%valMin
