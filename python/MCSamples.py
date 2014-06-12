@@ -12,7 +12,8 @@ class MCSamples(chains):
         self.ranges = None
         self.limmin = {}
         self.limmax = {}
-        self.markers = {}        
+        self.markers = {}
+        self.isused = []
         self.ReadRanges()
         # dict{ index: name}
         self.index2name = dict((v,k) for k, v in self.index.iteritems()) 
@@ -179,9 +180,11 @@ class MCSamples(chains):
         textFileHandle.close()
 
 
-    # GetUsedCols ?
+    def GetUsedCols(self):
+        for ix in range(self.samples.shape[1]):
+            isused = not np.all(self.samples[:, ix]==self.samples[0][ix])
+            self.isused.append(isused)
         
-    
         
     def DoConvergeTests(self, limfrac):
         """

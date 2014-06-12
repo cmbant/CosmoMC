@@ -43,7 +43,7 @@ if (ini.params.has_key('nparams')):
     ncols = ini.int('nparams') + 2 
     if (ini.params.has_key('columnnum')):
         print  'specify only one of nparams or columnnum'
-        sys.exit(1)
+        sys.exit()
 else:
     ncols = ini.int('columnnum', 0)
 
@@ -58,7 +58,7 @@ if (smooth_scale_1D>0) and (smooth_scale_1D>1):
     print 'WARNING: smooth_scale_1D>1 is oversmoothed'
 if (smooth_scale_1D>0) and (smooth_scale_1D>1.9):
     print 'smooth_scale_1D>1 is now in stdev units'
-    sys.exit(1)
+    sys.exit()
 
 credible_interval_threshold = ini.float('credible_interval_threshold', 0.05)
 
@@ -124,7 +124,7 @@ for ix in indexes:
 
 if (ini.params.has_key('plotparams_num')):
     print 'plotparams_num deprectated; just use plot_params'
-    sys.exit(1)
+    sys.exit()
 
 line = ini.string('plot_params', 0)
 if (line not in ['', 0]):
@@ -142,7 +142,7 @@ else:
     plot_2D_param = int(tmp_params[0])
     if (plot_2D_param<>0 and plotparams_num<>0 and plotparams.count(plot_2D_param)==0):
         print 'plot_2D_param not in plotparams'
-        sys.exit(1)
+        sys.exit()
     
 if (plot_2D_param<>0):
     plot_2D_param = plot_2D_param + 2
@@ -157,7 +157,7 @@ else:
         tmp_params = [ mc.index[name] for name in tmp_params]
         if (plotparams_num<>0 and plotparams.count(tmp_params[0])==0):
             print 'plot'+str(i), ': parameter not in plotparams'
-            sys.exit(1)
+            sys.exit()
         cust2DPlots.append(tmp_params[0]+2 + (tmp_params[1]+2)*1000)
 
 triangle_plot = ini.bool('triangle_plot', False)
@@ -227,13 +227,13 @@ plot_meanlikes = ini.bool('plot_meanlikes', False)
 
 if (ini.params.has_key('do_minimal_1d_intervals')):
     print 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
-    sys.exit(1)
+    sys.exit()
 
 PCA_num = ini.int('PCA_num',0)
 if (PCA_num<>0):
     if (PCA_num<2):
         print 'Can only do PCA for 2 or more parameters'
-        sys.exit(1)
+        sys.exit()
     line = ini.string('PCA_params')
     PCA_func = ini.string('PCA_func')
     # Characters representing functional mapping
@@ -278,10 +278,13 @@ if(last_chain==-1): last_chain = getLastChainIndex(in_root)
 
 # Read in the chains
 ok = mc.loadChains(in_root, chain_files)
-if (not ok): print ''
+#if (not ok): print ''
+if (mc.numrows==0):
+    print 'No un-ignored rows! (check number of chains/burn in)'
+    sys.exit()
+
 mc.makeSingle()
 
-#cool = 2# TEST
 if (cool<>1):
     mc.CoolChain(cool)
 
@@ -289,7 +292,7 @@ if (cool<>1):
 if (adjust_priors):
     mc.AdjustPriors()
 
-#GetUsedCols
+mc.GetUsedCols()
 
 mean_mult = mc.norm/mc.numrows
 max_mult = (mean_mult*mc.numrows)/min(mc.numrows/2,500)
