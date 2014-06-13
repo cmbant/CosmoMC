@@ -70,7 +70,7 @@ class MCSamples(chains):
         textFileHandle.close()
 
 
-    def WriteThinData(self, fname, cool):
+    def WriteThinData(self, fname, thin_ix, cool):
         """
         Write thin data.
         """
@@ -78,6 +78,8 @@ class MCSamples(chains):
         if(cool<>1): print 'Cooled thinned output with temp: ', cool
         MaxL = np.max(self.loglikes)
         textFileHandle = open(fname, 'w')
+        import pdb; pdb.set_trace()
+
         #Data for thin ...
         thin_rows = 0
         textFileHandle.close()

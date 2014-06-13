@@ -279,11 +279,10 @@ if(last_chain==-1): last_chain = getLastChainIndex(in_root)
 # Read in the chains
 ok = mc.loadChains(in_root, chain_files)
 #if (not ok): print ''
+mc.makeSingle()
 if (mc.numrows==0):
     print 'No un-ignored rows! (check number of chains/burn in)'
     sys.exit()
-
-mc.makeSingle()
 
 if (cool<>1):
     mc.CoolChain(cool)
@@ -295,7 +294,7 @@ if (adjust_priors):
 mc.GetUsedCols()
 
 mean_mult = mc.norm/mc.numrows
-max_mult = (mean_mult*mc.numrows)/min(mc.numrows/2,500)
+max_mult = (mean_mult*mc.numrows)/min(mc.numrows/2, 500)
 outliers = len(mc.weights[np.where(mc.weights>max_mult)])
 if (outliers<>0):
     print 'outlier fraction ', float(outliers)/mc.numrows
@@ -307,7 +306,6 @@ if (not no_tests):
     #indep_thin modified here ...
     mc.DoConvergeTests(converge_test_limit)
 
-adjust_priors = True
 if (adjust_priors):
     mc.DeleteZeros()
 
@@ -315,10 +313,11 @@ print 'mean input multiplicity = ', mean_mult
 
 # Output thinned data if requested
 # Must do this with unsorted output
+#thin_factor = 2 # TEST
 if (thin_factor<>0):
-    mc.thin_indices(thin_factor) # ThinData => thin_indices
+    thin_ix = mc.thin_indices(thin_factor) # ThinData => thin_indices
     filename = rootdirname + '_thin.txt'
-    mc.WriteThinData(filename, thin_cool)
+    mc.WriteThinData(filename, thin_ix, thin_cool)
 
 # Produce file of weight-1 samples if requested
 if ((num_3D_plots<>0 and not make_single_samples or make_scatter_samples) and not no_plots):
@@ -328,19 +327,14 @@ if ((num_3D_plots<>0 and not make_single_samples or make_scatter_samples) and no
 # Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
 num_vars = 0
 
-if (plotparams_num<>0):
-
-    # ...
-    pass
-
-else:
-
-    # ...
-    pass
-
-
 #
-#mc.getChainsStats()
+if (plotparams_num<>0):
+    pass
+else:
+    pass
+num_vars = mc.samples.shape[1]
+
+# todo: compute means and sddev (std)
 
 if (make_single_samples):
     filename = os.path.join(plot_data_dir, rootname.strip()+'_single.txt')
@@ -353,18 +347,32 @@ mc.WriteBounds(filename)
 # Sort data in order of likelihood of points
 mc.SortColData(1)
 
-#numsamp = sum(coldata(1,0:nrows-1))
+numsamp = np.sum(mc.weights)
 
 # Get ND confidence region (index into sorted coldata)
 counts = 0
 ND_cont1, ND_cont2 = mc.GetConfidenceRegion()
 
+import pdb; pdb.set_trace()
 triangle_plot = triangle_plot and (num_vars>1)
 if (triangle_plot):
-    # ...
-    pass
+    if (triangle_num==-1):
+        triangle_num = num_vars
+        #triangle_params(1:triangle_num) = [1:num_vars] # ???
+    else:
+        ix = triangle_num
+        indexes = range(1, ix+1)
+        indexes.reverse()
+        for j in indexes:
+            #ix2=indexOf(triangle_params(j)+2,colix,num_vars) # ???
+            if (ix2==0):
+                triangle_num = triangle_num-1
+                #triangle_params(j:triangle_num) = triangle_params(j+1:triangle_num+1) # ???
+            else:
+                triangle_params[j-1] = ix2
+        triangle_plot = triangle_num > 1
 
-#print 'using ', nrows,' rows, processing ', num_vars,' parameters'
+print 'using ', mc.numrows,' rows, processing ', num_vars,' parameters'
 if (indep_thin<>0):
     print 'Approx indep samples: ', round(numsamp/indep_thin)
 else:
