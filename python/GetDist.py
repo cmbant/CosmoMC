@@ -219,7 +219,7 @@ if not os.path.isdir(abs_plot_data_dir):
     os.mkdir(abs_plot_data_dir)
 mc.plot_data_dir = plot_data_dir
 
-rootdirname = os.path.join(out_dir, rootname)
+rootdirname = os.path.join(out_dir, rootname); mc.rootdirname = rootdirname
 
 num_contours = ini.int('num_contours', 2); mc.num_contours = num_contours
 contours = []
@@ -307,6 +307,9 @@ mc.makeSingle()
 if (mc.numrows==0):
     print 'No un-ignored rows! (check number of chains/burn in)'
     sys.exit()
+
+
+#import pdb; pdb.set_trace()
 
 if (cool<>1):
     mc.CoolChain(cool)
@@ -472,7 +475,7 @@ if (not no_plots):
             names = [ mc.index2name[i] for i in triangle_params ]
             text = 'g.triangle_plot(roots, %s)'%str(names)
         textExport = MCSamples.WritePlotFileExport()
-        fname = "" # todo ?
+        fname = "" # ?
         textFileHandle.write(textExport%(fname))
     textFileHandle.close()
 
@@ -555,16 +558,6 @@ if (num_2D_plots>0) and (not no_plots):
         fname = rootname + '_2D.' + plot_ext
         textFileHandle.write(textExport%(fname))
     textFileHandle.close()
-        
-
-            
-if (triangle_plot) and (not no_plots):
-    # Add the off-diagonal 2D plots
-    for i in range(triangle_num):
-        # Matlab only ???
-        pass
-
-
 
 # Do 3D plots (i.e. 2D scatter plots with coloured points)
 if (num_3D_plots<>0 and not no_plots):
@@ -586,7 +579,7 @@ if (num_3D_plots<>0 and not no_plots):
 
 # Write out stats marginalized
 if (not plots_only):
-    mc.OutputMargeStats()
+    mc.OutputMargeStats(contours_str)
 
 # Write paramNames file
 filename = os.path.join(plot_data_dir, rootname + '.paramnames')
@@ -594,14 +587,19 @@ mc.WriteParamNames(filename)
 
 # Limits from global likelihood
 if (not plots_only):
+    bestfit_ix = 0 # Since we have sorted the lines
     filename = rootdirname + '.likestats'
     textFileHandle = open(filename, 'w')
     textInit = mc.GetChainLikeSummary(toStdOut=False)
     textFileHandle.write(textInit)
     textFileHandle.write('param  bestfit        lower1         upper1         lower2         upper2')
     for j in range(num_vars):
-        #todo: values
-        textFileHandle.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E'%(j, v1, v2, v3, v4, v5))
+        best = mc.samples[bestfit_ix][j]
+        min1 = min(mc.samples[0:ND_cont1, j])
+        max1 = max(mc.samples[0:ND_cont1, j])
+        min2 = min(mc.samples[0:ND_cont2, j])
+        max2 = max(mc.samples[0:ND_cont2, j])
+        textFileHandle.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E'%(j, best, min1, max1, min2, max2))
     textFileHandle.close()
 
 # System command

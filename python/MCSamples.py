@@ -221,6 +221,7 @@ class MCSamples(chains):
         self.numsamp = 0
         self.plot_data_dir = ""
         self.rootname = ""
+        self.rootdirname = ""
         self.num_contours = 0
         self.plot_meanlikes = False
 
@@ -1006,12 +1007,56 @@ class MCSamples(chains):
         textFileHandle.close()
 
 
-    def OutputMargeStats(self):
-        pass
+    def OutputMargeStats(self, contours_str):
+        
+        maxLen = max([ len(name) for name in self.index.keys() ])
+        j = max(9, maxLen)
+
+        filename = self.rootdirname + '.margestats'
+        textFileHandle = open(filename, 'w')
+        textFileHandle.write("Marginalized limits: %s\n"%contours_str)
+        textFileHandle.write("%i parameter\n"%j)
+        textFileHandle.write("\n")
+        textFileHandle.write("%15s\n"%("mean"))
+        textFileHandle.write("%15s\n"%("sddev"))
+        for j in range(self.num_contours):
+            textFileHandle.write("%15s\n"%(""))
+            textFileHandle.write("%15s\n"%(""))
+            textFileHandle.write("%7s\n"%(""))
+        textFileHandle.write("\n")
+
+        for j in range(self.num_vars):
+            textFileHandle.write("\n")
+            textFileHandle.write("%f\t%f\n"%(self.mean[j], self.sddev[j]))            
+            for i in range(self.num_contours):
+                textFileHandle.write("\n")
+                if (self.marge_limits_bot[i][self.colix[j]] and self.marge_limits_top[i][self.colix[j]]):
+                    tag = 'none'
+                elif (self.marge_limits_bot[i][self.colix[j]]):
+                    tag = '>'
+                elif (self.marge_limits_top[i][self.colix[j]]):
+                    tag = '<'
+                else:
+                    tag = 'two'
+                textFileHandle.write("%7s\n"%tag)
+            textFileHandle.write("%s\n"%(""))
+
+        textFileHandle.close()
             
 
-    def WriteParamNames(self, filename):
-        pass
+    def WriteParamNames(self, filename, indices=None, add_derived=None):
+        textFileHandle = open(filename, 'w')
+        for name in self.index.keys():
+            # fixme label ?
+            textFileHandle.write("%s\t%s\n"%(name, ""))
+        textFileHandle.close()
+
+
+
+
+
+
+
 
 
 
