@@ -193,9 +193,11 @@ class MCSamples(chains):
         self.limmin = []
         self.limmax = []
 
+        self.has_limits = []
         self.has_limits_bot = []
         self.has_limits_top = []
 
+        self.has_markers = []
         self.markers = []
         self.isused = []
 
@@ -219,6 +221,8 @@ class MCSamples(chains):
         self.numsamp = 0
         self.plot_data_dir = ""
         self.rootname = ""
+        self.num_contours = 0
+        self.plot_meanlikes = False
 
 
 
@@ -603,6 +607,11 @@ class MCSamples(chains):
         self.ix_min = np.zeros(nparam)
         self.ix_max = np.zeros(nparam)
         
+        #
+        self.marge_limits_bot = np.zeros([nparam, self.num_contours])
+        self.marge_limits_top = np.zeros([nparam, self.num_contours])
+
+
     
     def Get1DDensity(self, j):
 
@@ -626,12 +635,12 @@ class MCSamples(chains):
             # Automatically set smoothing scale from rule of thumb for Gaussian
             opt_width = 1.06/(math.pow(max(1.0, self.numsamp/self.max_mult), 0.2)*self.sddev[j])
             smooth_1D = opt_width/width*abs(self.smooth_scale_1D)
-            if (smooth_1d<0.5):
+            if (smooth_1D<0.5):
                 print 'Warning: num_bins not large enough for optimal density'
             smooth_1D = max(1.0, smooth_1D)
-        elif (smooth_scale_1D<1.0):
+        elif (self.smooth_scale_1D<1.0):
             smooth_1D = self.smooth_scale_1D * self.sddev[j]/width
-            if (smooth_1d<1):
+            if (smooth_1D<1):
                 print 'Warning: num_bins not large enough to well sample smoothed density'
         else:
             smooth_1D = self.smooth_scale_1D
@@ -646,7 +655,7 @@ class MCSamples(chains):
             self.range_min[j] = self.limmin[ix]
 
         if (self.has_limits_top[ix]):
-            if ((self.limmax[ix]-self.range_max[j]>width*end_edge) and (self.limmax[ix]-self.param_max[j]>width*smooth_1d)):
+            if ((self.limmax[ix]-self.range_max[j]>width*end_edge) and (self.limmax[ix]-self.param_max[j]>width*smooth_1D)):
                 self.has_limits_top[ix] = False
             else:
                 self.range_max[j] = self.limmax[ix]
@@ -663,7 +672,7 @@ class MCSamples(chains):
         if (not self.has_limits_bot[ix]): self.ix_min[j] -= end_edge
         if (not self.has_limits_top[ix]): self.ix_max[j] += end_edge
         
-        # fixme: user dict here !?
+        # FIXME: USER DICT HERE !?
         # Using index correspondance for f90 arrays with customized indexes:
         # arrayf90(istart, iend) is mapped to 
         # arrayPy = np.zeros(iend+1 - istart)
@@ -680,7 +689,7 @@ class MCSamples(chains):
         # In f90, finebins(imin-fine_edge:imax+fine_edge)
         finebins = np.zeros(imax + 1 - imin + 2 * fine_edge)
         
-        if (plot_meanlikes):
+        if (self.plot_meanlikes):
             # In f90, finebinlikes(imin-fine_edge:imax+fine_edge)
             finebinlikes = np.zeros(imax + 1 - imin + (2*fine_edge))
         
@@ -690,7 +699,7 @@ class MCSamples(chains):
                 binsraw[ix2-self.ix_min[j]] -= paramVec[i]
             ix2 = round((paramVec[i]-self.center[j])/fine_width)
             finebins[ix2+fine_edge] += paramVec[i]
-            if (plot_meanlikes):
+            if (self.plot_meanlikes):
                 finebinlikes[ix2+fine_edge] += self.weights[i] * self.loglikes[i]
             else:
                 finebinlikes[ix2+fine_edge] += self.weights[i] * np.exp(meanlike-self.loglikes[i])
@@ -746,7 +755,7 @@ class MCSamples(chains):
 
         if (not no_plots):
             binCounts = np.zeros(ix_max + 1 - ix_min)
-            if (plot_meanlikes):
+            if (self.plot_meanlikes):
                 binlikes = np.ones(ix_max + 1 - ix_min)
                 if (mean_loglikes): 
                     binlikes = binlikes * logZero
@@ -758,7 +767,7 @@ class MCSamples(chains):
             
 
             bincounts /= maxbin
-            if (plot_meanlikes and mean_loglikes):
+            if (self.plot_meanlikes and mean_loglikes):
                 maxbin = np.min(binlikes)
                 binlikes = np.where(binlikes-maxbin<30, np.exp(-(binlikes-maxbin)), 0)
 
@@ -771,7 +780,7 @@ class MCSamples(chains):
                     textFileHandle.write("%16.7E\n"%(center[j] + ix_min*width))
             textFileHandle.close()
         
-            if (plot_meanlikes):
+            if (self.plot_meanlikes):
                 maxbin = max(binlikes)
                 filename_like = filename + ".likes"
                 textFileHandle = open(filename_like, 'w')
@@ -887,7 +896,7 @@ class MCSamples(chains):
         # Get contour containing contours(:) of the probability
         norm = np.sum(bins2D)
 
-        for ix1 in range(num_contours):
+        for ix1 in range(self.num_contours):
 
             try_t = np.max(bins2D)
             try_b = 0

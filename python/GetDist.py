@@ -99,13 +99,27 @@ bin_limits = ini.string('all_limits')
 
 indexes = mc.index2name.keys()
 indexes.sort()
+nvars = len(indexes)
+
+mc.limmin = nvars * [None]
+mc.limmax = nvars * [None]
+
+mc.has_limits = nvars * [False]
+mc.has_limits_bot = nvars * [False]
+mc.has_limits_top = nvars * [False]
+
+mc.has_markers = nvars * [False]
+mc.markers = nvars * [0.]
+
 for ix in indexes:
     name = mc.index2name[ix]
     mini = mc.ranges.min(name)
     maxi = mc.ranges.max(name)
     if (mini and maxi and mini<>maxi):
-        mc.limmin[name] = mini
-        mc.limmax[name] = maxi
+        mc.limmin[ix] = mini
+        mc.limmax[ix] = maxi
+        mc.has_limits_top[ix] = True
+        mc.has_limits_bot[ix] = True
     if (bin_limits<>''):
         line = bin_limits
     else:
@@ -115,12 +129,17 @@ for ix in indexes:
     if (line<>''):
         limits = [ s for s in line.split(' ') if s<>'' ]
         if len(limits)==2:
-            if limits[0]<>'N': mc.limmin[name] = float(limits[0])
-            if limits[1]<>'N': mc.limmax[name] = float(limits[1])
+            if limits[0]<>'N': 
+                mc.limmin[ix] = float(limits[0])
+                mc.has_limits_bot[ix] = True
+            if limits[1]<>'N': 
+                mc.limmax[ix] = float(limits[1])
+                mc.has_limits_top[ix] = True
     if ini.params.has_key('marker[%s]'%name.strip()):
         line = ini.string('marker[%s]'%name.strip())
         if (line<>''):
-            mc.markers[name] = float(line)
+            mc.has_markers = True
+            mc.markers[ix] = float(line)
 
 if (ini.params.has_key('plotparams_num')):
     print 'plotparams_num deprectated; just use plot_params'
@@ -202,7 +221,7 @@ mc.plot_data_dir = plot_data_dir
 
 rootdirname = os.path.join(out_dir, rootname)
 
-num_contours = ini.int('num_contours', 2)
+num_contours = ini.int('num_contours', 2); mc.num_contours = num_contours
 contours = []
 max_frac_twotail = []
 for i in range(1, num_contours+1):
@@ -226,7 +245,7 @@ else:
     if (covmat_dimension==-1):
         covmat_dimension = ncols - 2
 
-plot_meanlikes = ini.bool('plot_meanlikes', False)
+plot_meanlikes = ini.bool('plot_meanlikes', False); mc.plot_meanlikes = plot_meanlikes
 
 if (ini.params.has_key('do_minimal_1d_intervals')):
     print 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
@@ -330,9 +349,9 @@ if ((num_3D_plots<>0 and not make_single_samples or make_scatter_samples) and no
     #single_thin = max(1, round(numsamp/max_mult)/max_scatter_points)
 
 # Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
-#todo colix
-num_vars = mc.samples.shape[1]
 
+num_vars = mc.samples.shape[1]
+mc.colix = [0] * num_vars
 
 # Compute means and std dev.
 mc.ComputeStats()
@@ -382,7 +401,7 @@ if (PCA_num>0) and not plots_only:
 # Find best fit, and mean likelihood
 mc.GetChainLikeSummary(toStdOut=True)
 
-LowerUpperLimits = 0
+LowerUpperLimits = np.zeros([num_vars, 2, num_contours])
 
 # Initialize variables for 1D bins
 mc.Init1DDensity()
@@ -390,12 +409,51 @@ mc.Init1DDensity()
 # Do 1D bins
 for j in range(num_vars):
 
+    ix = mc.colix[j]
     mc.Get1DDensity(j)
 
     # Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
-    
-    # todo 
-    pass
+    for ix1 in range(num_contours):
+        
+        mc.marge_limits_bot[ix1][ix] = mc.has_limits_bot[ix] and not force_twotail and mc.density1D.P[0] > max_frac_twotail[ix1]
+        mc.marge_limits_top[ix1][ix] = mc.has_limits_top[ix] and not force_twotail and mc.density1D.P[-1] > max_frac_twotail[ix1]
+        
+        if (not mc.marge_limits_bot[ix1][ix] or not mc.marge_limits_top[ix1][ix]):
+            # give limit
+            tail_limit_bot, tail_limit_top, marge_bot, marge_top = mc.density1D.Limits(contours[ix1])
+            mc.marge_limits_bot[ix1][ix] = marge_bot
+            mc.marge_limits_top[ix1][ix] = marge_top
+
+            limfrac = 1 - contours[ix1]
+
+            if (mc.marge_limits_bot[ix1][ix]):
+                # fix to end of prior range
+                tail_limit_bot = mc.range_min[j]
+            elif (mc.marge_limits_top[ix1][ix]):
+                # 1 tail limit
+                tail_limit_bot = mc.confidence(ix, limfrac, upper=False)
+            else:
+                # 2 tail limit
+                tail_confid_bot = mc.confidence(ix, limfrac/2, upper=False)
+            
+            if (mc.marge_limits_top[ix1][ix]):
+                tail_limit_top = mc.range_max[j]
+            elif (mc.marge_limits_bot[ix1][ix]):
+                tail_limit_top = mc.confidence(ix, limfrac, upper=True)
+            else:
+                tail_confid_top = mc.confidence(ix, limfrac/2, upper=True)
+            
+            if (not mc.marge_limits_bot[ix1][ix] and not mc.marge_limits_top[ix1][ix]):
+                # Two tail, check if limits are at very differen density
+                if (abs(mc.density1D.Prob(tail_confid_top) - mc.density1D.Prob(tail_confid_bot)) < credible_interval_threshold):
+                    tail_limit_top = tail_confid_top
+                    tail_limit_bot = tail_confid_bot
+
+            LowerUpperLimits[j][1][ix1] = tail_limit_top
+            LowerUpperLimits[j][0][ix1] = tail_limit_bot
+        else:
+            LowerUpperLimits[j][1][ix1] = mc.range_min[j]
+            LowerUpperLimits[j][0][ix1] = mc.range_max[j]
 
 
 if (not no_plots):
@@ -414,7 +472,7 @@ if (not no_plots):
             names = [ mc.index2name[i] for i in triangle_params ]
             text = 'g.triangle_plot(roots, %s)'%str(names)
         textExport = MCSamples.WritePlotFileExport()
-        fname = "" # todo
+        fname = "" # todo ?
         textFileHandle.write(textExport%(fname))
     textFileHandle.close()
 
