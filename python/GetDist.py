@@ -49,9 +49,9 @@ else:
 
 single_column_chain_files = ini.bool('single_column_chain_files', False)
 
-num_bins = ini.int('num_bins')
+num_bins = ini.int('num_bins'); mc.num_bins = num_bins 
 num_bins_2D = ini.int('num_bins_2D', num_bins)
-smooth_scale_1D = ini.float('smooth_scale_1D', -1.0)
+smooth_scale_1D = ini.float('smooth_scale_1D', -1.0); mc.smooth_scale_1D = smooth_scale_1D 
 # Smoothing scale in terms of bin scale
 smooth_scale_2D = ini.float('smooth_scale_2D', -1.0)
 if (smooth_scale_1D>0) and (smooth_scale_1D>1): 
@@ -168,6 +168,7 @@ if (triangle_plot):
     if (line<>''):
         triangle_params = [ s for s in line.split(' ') if s<>'' ]
         triangle_params = [ mc.index[name] for name in triangle_params if mc.index.has_key(name) ]
+        triangle_num = len(triangle_params)
 
 exclude_chain = ini.string('exclude_chain') 
 chain_exclude = [ int(s) for s in exclude_chain.split(' ') if s<>'' ]
@@ -187,6 +188,7 @@ out_root = ini.string('out_root')
 if (out_root<>''):
     rootname = out_root
     print 'producing files with with root ', out_root
+mc.rootname = rootname
 
 plot_data_dir = ini.string('plot_data_dir')
 if (plot_data_dir==''):
@@ -196,6 +198,7 @@ if (plot_data_dir==''):
 abs_plot_data_dir = plot_data_dir
 if not os.path.isdir(abs_plot_data_dir):
     os.mkdir(abs_plot_data_dir)
+mc.plot_data_dir = plot_data_dir
 
 rootdirname = os.path.join(out_dir, rootname)
 
@@ -247,13 +250,15 @@ if (PCA_num<>0):
     if (line==''):
         PCA_NormParam = 0
     else:
-        PCA_NormParam = 123456789 # todo tmp_params(1)
+        tmp_params = [ s for s in line.split(' ') if s<>'' ]
+        tmp_params = [ mc.index[name] for name in tmp_params]
+        PCA_NormParam = int(tmp_params[0])
 
-num_3D_plots = ini.int('num_3D_plots',0)
-#plot_3D = [ ini.string('3D_plot'+str(ix)) of ix in range(1, num_3D_plots+1) ]
+num_3D_plots = ini.int('num_3D_plots', 0)
 plot_3D = []
 for ix in range(1, num_3D_plots+1):
-    plot_3D.append(ini.string('3D_plot'+str(ix)))
+    line = ini.string('3D_plot'+str(ix))
+    plot_3D.append([ s for s in line.split(' ') if s<>'' ])
 
 make_scatter_samples = ini.bool('make_scatter_samples', False)
 max_scatter_points = ini.int('max_scatter_points', 2000)
@@ -298,8 +303,8 @@ max_mult = (mean_mult*mc.numrows)/min(mc.numrows/2, 500)
 outliers = len(mc.weights[np.where(mc.weights>max_mult)])
 if (outliers<>0):
     print 'outlier fraction ', float(outliers)/mc.numrows
-max_mult = np.max(mc.weights)
-numsamp = np.sum(mc.weights)
+max_mult = np.max(mc.weights); mc.max_mult = max_mult
+numsamp = np.sum(mc.weights); mc.numsamp = numsamp
 
 indep_thin = 0
 if (not no_tests):
@@ -325,16 +330,12 @@ if ((num_3D_plots<>0 and not make_single_samples or make_scatter_samples) and no
     #single_thin = max(1, round(numsamp/max_mult)/max_scatter_points)
 
 # Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
-num_vars = 0
-
-#
-if (plotparams_num<>0):
-    pass
-else:
-    pass
+#todo colix
 num_vars = mc.samples.shape[1]
 
-# todo: compute means and sddev (std)
+
+# Compute means and std dev.
+mc.ComputeStats()
 
 if (make_single_samples):
     filename = os.path.join(plot_data_dir, rootname.strip()+'_single.txt')
@@ -353,23 +354,17 @@ numsamp = np.sum(mc.weights)
 counts = 0
 ND_cont1, ND_cont2 = mc.GetConfidenceRegion()
 
-import pdb; pdb.set_trace()
 triangle_plot = triangle_plot and (num_vars>1)
 if (triangle_plot):
     if (triangle_num==-1):
         triangle_num = num_vars
-        #triangle_params(1:triangle_num) = [1:num_vars] # ???
+        triangle_params = mc.index2name.keys()
     else:
         ix = triangle_num
         indexes = range(1, ix+1)
         indexes.reverse()
         for j in indexes:
-            #ix2=indexOf(triangle_params(j)+2,colix,num_vars) # ???
-            if (ix2==0):
-                triangle_num = triangle_num-1
-                #triangle_params(j:triangle_num) = triangle_params(j+1:triangle_num+1) # ???
-            else:
-                triangle_params[j-1] = ix2
+            pass
         triangle_plot = triangle_num > 1
 
 print 'using ', mc.numrows,' rows, processing ', num_vars,' parameters'
@@ -389,12 +384,17 @@ mc.GetChainLikeSummary(toStdOut=True)
 
 LowerUpperLimits = 0
 
+# Initialize variables for 1D bins
+mc.Init1DDensity()
+
 # Do 1D bins
 for j in range(num_vars):
 
-    #mc.Get1DDensity(j)
+    mc.Get1DDensity(j)
+
+    # Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
     
-    #call to twoTailLimits in chains.py
+    # todo 
     pass
 
 
@@ -404,7 +404,6 @@ if (not no_plots):
     textFileHandle = open(filename, 'w')
     if (plot_ext=='py'):
         text = 'g.plots_1d(roots)'
-        # ...
 
     if (triangle_plot):
         filename = rootdirname + '_tri.' + plot_ext
@@ -412,32 +411,59 @@ if (not no_plots):
         textInit = MCSamples.WritePlotFileInit()
         textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch, out_dir, rootname))
         if (plot_ext=='py'):
-            #todo: make string for tuple of names
-            text = 'g.triangle_plot(roots, %s)'%data 
+            names = [ mc.index2name[i] for i in triangle_params ]
+            text = 'g.triangle_plot(roots, %s)'%str(names)
         textExport = MCSamples.WritePlotFileExport()
-        fname = rootname + tag + '.ext???'
+        fname = "" # todo
         textFileHandle.write(textExport%(fname))
     textFileHandle.close()
-  
-
 
 
 # Do 2D bins
 if (plot_2D_param==0) and (num_cust2D_plots==0) and (not no_plots):
     # In this case output the most correlated variable combinations
     print 'doing 2D plots for most correlated variables'
-    
-    # ...
 
+    try_t = 1e5
+    
+    x, y = 0, 0
+
+    num_cust2D_plots = 12
+    
+    cust2DPlots = []
+    for j in range(num_cust2D_plots):
+        try_b = -1e5
+        for ix1 in range(num_vars):
+            for ix2 in range(ix1+1, num_vars):
+            #if (abs(corrmatrix(colix(ix1)-2,colix(ix2)-2)) < try_t .and. &
+            #abs(corrmatrix(colix(ix1)-2,colix(ix2)-2)) > try_b) then
+            #try_b = abs(corrmatrix(colix(ix1)-2,colix(ix2)-2))
+                x, y = ix1, ix2
+        if (try_b==-1e5):
+            num_cust2D_plots = j-1
+            break
+        
+        try_t = try_b
+
+        #cust2DPlots.append( + *1000)
     
 if (num_cust2D_plots==0):
     num_2D_plots = 0
-
-    # ...
+    
+    for j in range(num_vars):
+            # if (ix_min(j) /= ix_max(j)) then
+            #     do j2 = j+1, num_vars
+            #         if (ix_min(j2) /= ix_max(j2)) then
+            #             if (plot_2D_param==0 .or. plot_2D_param == colix(j) .or. plot_2D_param == colix(j2)) &
+            #             num_2D_plots = num_2D_plots + 1
+            #         end if
+            #     end do
+            # end if
+        pass
 else:
     num_2D_plots = num_cust2D_plots
       
-
+done2D = False # ??
 if (num_2D_plots>0) and (not no_plots):
     print 'Producing ', num_2D_plots,' 2D plots'
     filename = rootdirname + '_2D.' + plot_ext
@@ -446,8 +472,26 @@ if (num_2D_plots>0) and (not no_plots):
     textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch2, out_dir, rootname))
     if (plot_ext=='py'):
         textFileHandle.write('pairs=[]\n')
-        for i in range(num_vars):
-            textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
+        for j in range(num_vars):
+            
+            # if (ix_min(j) /= ix_max(j)) then
+            # if (plot_2D_param/=0 .or. num_cust2D_plots /= 0) then
+            #         if (colix(j) == plot_2D_param) cycle
+            #         j2min = 1
+            #     else
+            #         j2min = j+1
+            #     end if
+            for j2 in range(j2min, num_vars):
+                    # if (ix_min(j2) /= ix_max(j2)) then
+                    #     if (plot_2D_param/=0 .and. colix(j2) /= plot_2D_param) cycle
+                    #     if (num_cust2D_plots /= 0 .and.  &
+                    #     count(cust2Dplots(1:num_cust2D_plots) == colix(j)*1000 + colix(j2))==0) cycle
+
+                    #     plot_num = plot_num + 1
+                    #     done2D(j,j2) = .true.
+                    #     if (.not. plots_only) call Get2DPlotData(j,j2)
+                
+                textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
         textFileHandle.write('g.plots_2d(roots,param_pairs=pairs)\n')
         textExport = MCSamples.WritePlotFileExport()
         fname = rootname + '_2D.' + plot_ext
@@ -473,8 +517,8 @@ if (num_3D_plots<>0 and not no_plots):
     textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch3, out_dir, rootname))
     textFileHandle.write('sets=[]\n')
     for j in range(num_3D_plots):
-        v1, v2, v3 = 0, 0, 0
-        text += 'sets.append([%s,%s,%s])'%(v1, v2, v3) # todo
+        v1, v2, v3 = plot_3D[j]
+        text += "sets.append(['%s','%s','%s'])"%(v1, v2, v3)
     text += 'g.plots_3d(roots,sets)'
     fname = rootname + '_3D.' + plot_ext
     textExport = MCSamples.WritePlotFileExport()

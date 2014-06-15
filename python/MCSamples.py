@@ -2,22 +2,227 @@
 
 import os
 import sys
+import math
 import numpy as np
 from chains import chains
+
+# =============================================================================
+
+class Ranges():
+    
+    def __init__(self, fileName=None, setParamNameFile=None):
+        self.names = []
+        self.mins = {}
+        self.maxs = {}        
+        if fileName is not None: self.loadFromFile(fileName)
+
+    def loadFromFile(self, fileName):
+        self.filenameLoadedFrom = os.path.split(fileName)[1]
+        f = open(fileName)
+        for line in f:
+            name, mini, maxi = self.readValues(line.strip())
+            if name: 
+                self.names.append(name)
+                self.mins[name] = mini
+                self.maxs[name] = maxi                
+
+    def readValues(self, line):
+        name, mini, maxi = None, None, None
+        strings = [ s for s in line.split(" ")  if s<>'' ]
+        if len(strings)==3:
+            name = strings[0]
+            mini = float(strings[1])
+            maxi = float(strings[2])
+        return name, mini, maxi
+
+    def listNames(self):
+        return self.names
+
+    def min(self, name, error=False):
+        if self.mins.has_key(name):
+            return self.mins[name]
+        if error: raise Exception("Name not found:" + name)
+        return None
+
+    def max(self, name, error=False):
+        if self.maxs.has_key(name):
+            return self.maxs[name]
+        if error: raise Exception("Name not found:" + name)
+        return None
+
+# =============================================================================
+
+class Density1D():
+
+    SPLINE_DANGLE = 1.e30
+
+    def __init__(self, n, spacing):
+        self.n   = n
+        self.X   = np.zeros(n) 
+        self.P   = np.zeros(n) 
+        self.ddP = np.zeros(n) 
+        self.spacing = spacing
+
+    def Prob(self, x):
+        if (x > self.X[self.n-1] - self.spacing/1e6):
+            if ( x > self.X[self.n-1] + self.spacing/1e6):
+                print 'Density: x too big ', x
+                sys.exit()
+            return self.P[self.n-1]
+        
+        if (x < self.X[0] - self.spacing/1e6):
+            print 'Density: out of range ', x, self.X[0], self.X[self.n-1]
+            sys.exit()
+
+        # fixme: start index 
+        llo = 1 + max(0, int((x-self.X[0])/self.spacing))
+        lhi = llo + 1
+        a0  = (self.X[lhi] - x) / self.spacing
+        b0  = (x - self.X[llo]) / self.spacing
+        res = (a0*self.P[llo]) + (b0*self.P[lhi]) + ( (
+                (math.pow(a0, 3)-a0)*self.ddP[llo] + 
+                (math.pow(b0, 3)-b0)*self.ddP[lhi] ) * math.pow(self.spacing, 2)/6)
+        return res
+
+    
+    def InitSpline(self):
+        self.ddP = self._spline(self.x, self.P, self.n, self.SPLINE_DANGLE, self.SPLINE_DANGLE)
+
+
+    def Limits(self, p):
+        # Output values
+        mn, mx = 0., 0.
+        lim_bot, lim_top = False, False
+
+        factor = 100
+
+        # fixme: start index 
+        bign = (self.n-1)*factor + 1 
+        grid = np.zeros(bign)
+        for i in range(bign):
+            grid[i] = self.X[0] + i*self.spacing/factor
+        norm  = np.sum(grid)
+        norm -= 0.5*self.P[self.n] - 0.5*self.P[0]
+
+        try_t = max(grid)
+        try_b = 0
+        try_last = -1
+        while True:
+            trial = (try_b + try_t) / 2
+            trial_sum = np.sum(grid, where= grid > trial)
+            if (trial_sum < p*norm):
+                try_t = (try_b + try_t) / 2
+            else:
+                try_b = (try_b + try_t) / 2
+            if (abs(try_sum/try_last - 1) < 1e-4): break
+            try_last = try_sum
+        trial = (try_b + try_t) / 2
+        lim_bot = grid[0] >= trial
+        if (lim_bot):
+            mn = self.P[0]
+        else:
+            for i in range(bign):
+                if (grid[i] > trial):
+                    mn = self.X[0] + (i-1)*self.spacing/factor
+                    break
+        lim_top = grid[-1] >= trial
+        if (lim_top):
+            mx = self.P[-1]
+        else:
+            indexes = range(bign)
+            indexes.reverse()
+            for i in indexes:
+                if (grid[i] > trial):
+                    mx = self.X[0] + (i-1)*self.spacing/factor
+
+        return mn, mx, lim_bot, lim_top
+
+
+    def _spline(self, x, y, n, d11, d1n):
+        """
+        Calculates array of second derivatives used by cubic spline interpolation.
+        """
+        
+        u = np.zeros(n-1)
+        d2 = np.zeros(n) # result
+
+        d1r = (y[1]-y[0]) / (x[1]-x[0])
+        if (d11==SPLINE_DANGLE):
+            d2[0] = 0.
+            u[0]  = 0.
+        else:
+            d2[0] = 0.5
+            u[0]  = (3./x[1]-x[0])*(d1r-d11)
+        
+        for i in range(1, n-2):
+            d1l = d1r
+            d1r = ( y[i+1]-y[i]) / (x[i+1]-x[i])
+            xxdiv = 1. / (x[i+1]-x[i-1])
+            sig = (x[i] - x[i-1]) * xxdiv
+            xp = 1. / (sig*d2[i-1]+2.)
+
+            d2[i] = (sig - 1.) * xp
+
+            u[i] = (6. * (d1r-d1l) * xxdiv - sig*u[i-1]) * xp
+            
+        d1l = d1r
+        
+        if (d1n == SPLINE_DANGLE):
+            qn = 0.
+            un = 0.
+        else:
+            qn = 0.5
+            un = (3. /(x[n-1]-x[n-2])) * (d1n-d1l)
+
+        d2[n-1] = (un - qn*u[n-2]) / (qn*d2[n-2] + 1.)
+        indexes = range(0, n-2)
+        indexes.reverse()
+        for i in indexes:
+            d2[i] = d2[i] * d2[i+1]*u[i] 
+
+        return d2
+
+# =============================================================================
 
 class MCSamples(chains):
 
     def __init__(self, root=None, ignore_rows=0):
         chains.__init__(self, root, ignore_rows)
-        self.ranges = None
-        self.limmin = {}
-        self.limmax = {}
-        self.markers = {}
+
+        self.colix = []
+        self.limmin = []
+        self.limmax = []
+
+        self.has_limits_bot = []
+        self.has_limits_top = []
+
+        self.markers = []
         self.isused = []
+
+        self.ranges = None
         self.ReadRanges()
-        # dict{ index: name}
+
+        # index is a dict such as { name : index }
+        # index2name is a dict such as { index: name }
         self.index2name = dict((v,k) for k, v in self.index.iteritems()) 
         self.index2name.keys().sort()
+
+
+        self.density1D = None
+
+
+
+        # Other variables
+        self.num_bins = 0
+        self.smooth_scale_1D = 0.0
+        self.max_mult = 0
+        self.numsamp = 0
+        self.plot_data_dir = ""
+        self.rootname = ""
+
+
+
+
 
     def AdjustPriors(self):
         sys.exit('You need to write the AdjustPriors function in MCSamples.py first!')
@@ -102,6 +307,18 @@ class MCSamples(chains):
     # GetFractionIndices ?
 
     # ConfidVal(self, ix, limfrac, upper) => chains.confidence()
+
+
+    def ComputeStats(self):
+        """
+        Compute mean and std dev.
+        """
+        nparam = self.samples.shape[1]
+        self.means = np.zeros(nparam)
+        self.sddev = np.zeros(nparam)
+        for i in range(nparam): self.means[i] = self.mean(self.samples[:, i])
+        for i in range(nparam): self.sddev[i] = self.std(self.samples[:, i])
+
 
     def PCA(self, pars, param_map, normparam_num):
         """
@@ -376,155 +593,191 @@ class MCSamples(chains):
         textFileHandle.close()
 
 
-
-
+    def Init1DDensity(self):
+        nparam = self.samples.shape[1]
+        self.param_min = np.zeros(nparam)
+        self.param_max = np.zeros(nparam)
+        self.range_min = np.zeros(nparam)
+        self.range_max = np.zeros(nparam)
+        self.center = np.zeros(nparam)
+        self.ix_min = np.zeros(nparam)
+        self.ix_max = np.zeros(nparam)
+        
     
-    def Get1DDensity(self, paramVec):
-        """
-        Get 1D density.
-        """
-
-        # input parameters
-        num_bins = 1
-        smooth_scale_1D = 1
-        filename = "" # plot_data_dir, rootname, j, .dat
-        filename_like = "" # plot_data_dir, rootname, j, .likes
-        #
+    def Get1DDensity(self, j):
 
         fine_fac = 10
-        logZero = math.pow(1, 30) # ?
+        logZero = 1e30
 
-        param_min = np.min(paramVec)
-        param_max = np.max(paramVec)
-        range_min = self.confidence(paramVec, 0.0005, upper=False) 
-        range_max = self.confidence(paramVec, 0.0005, upper=True) 
-        width = (range_max-range_min)/(num_bins+1)
+        #pname = self.index2name[j]
+        ix = j # ix = self.colix[j] # fixme 
+
+        paramVec = self.samples[:, ix]
+        self.param_min[j] = np.min(paramVec)
+        self.param_max[j] = np.max(paramVec)
+        self.range_min[j] = self.confidence(paramVec, 0.0005, upper=False) 
+        self.range_max[j] = self.confidence(paramVec, 0.0005, upper=True) 
+        width = (self.range_max[j]-self.range_min[j])/(self.num_bins+1)
         if (width==0):
             print "Warning width is 0"
             return
 
-        if (smooth_scale_1D<=0):
+        if (self.smooth_scale_1D<=0):
             # Automatically set smoothing scale from rule of thumb for Gaussian
-            pass
+            opt_width = 1.06/(math.pow(max(1.0, self.numsamp/self.max_mult), 0.2)*self.sddev[j])
+            smooth_1D = opt_width/width*abs(self.smooth_scale_1D)
+            if (smooth_1d<0.5):
+                print 'Warning: num_bins not large enough for optimal density'
+            smooth_1D = max(1.0, smooth_1D)
+        elif (smooth_scale_1D<1.0):
+            smooth_1D = self.smooth_scale_1D * self.sddev[j]/width
+            if (smooth_1d<1):
+                print 'Warning: num_bins not large enough to well sample smoothed density'
         else:
-            pass
+            smooth_1D = self.smooth_scale_1D
 
-
-        end_edge = round(smooth_1D*2)
+        end_edge = round(smooth_1D * 2)
         
-        #if (has_limits_bot(ix)) then
-        #...
-
-        #if (has_limits_top(ix)) then
-        #...
-
-        if (has_limits_top(ix)):
-            center = range_max
+        if (self.has_limits_bot[ix]):
+            if ((self.range_min[j]-self.limmin[ix]>width*end_edge) and (self.param_min[j]-self.limmin[ix]>width*smooth_1D)):
+                # long way from limit 
+                self.has_limits_bot[ix] = False
         else:
-            center = range_min
+            self.range_min[j] = self.limmin[ix]
 
-        ix_min = round((range_min-center)/width)
-        ix_max = round((range_max-center)/width)
+        if (self.has_limits_top[ix]):
+            if ((self.limmax[ix]-self.range_max[j]>width*end_edge) and (self.limmax[ix]-self.param_max[j]>width*smooth_1d)):
+                self.has_limits_top[ix] = False
+            else:
+                self.range_max[j] = self.limmax[ix]
+        self.has_limits[ix] = self.has_limits_top[ix] or self.has_limits_bot[ix]
 
-        if (not has_limits_bot(ix)): ix_min -= end_edge
-        if (not has_limits_top(ix)): ix_max -= end_edge
+        if (self.has_limits_top[ix]):
+            self.center[j] = self.range_max[j]
+        else:
+            self.center[j] = self.range_min[j]
 
-        binsraw = np.zeros(ix_max+1-ix_min)
+        self.ix_min[j] = round((self.range_min[j] - self.center[j])/width)
+        self.ix_max[j] = round((self.range_max[j] - self.center[j])/width)
+
+        if (not self.has_limits_bot[ix]): self.ix_min[j] -= end_edge
+        if (not self.has_limits_top[ix]): self.ix_max[j] += end_edge
         
-        winw = round(2.5*fine_fac*smooth_1D)
-        fine_edge = winw + fine_fac*end_edge
+        # fixme: user dict here !?
+        # Using index correspondance for f90 arrays with customized indexes:
+        # arrayf90(istart, iend) is mapped to 
+        # arrayPy = np.zeros(iend+1 - istart)
+
+        # In f90, binsraw(ix_min(j):ix_max(j)) 
+        binsraw = np.zeros(self.ix_max[j] + 1 - self.ix_min[j])
+        
+        winw = round(2.5 * fine_fac * smooth_1D)
+        fine_edge = winw + fine_fac * end_edge
         fine_width = width/fine_fac
-        
-        imin = round((param_min-center)/fine_width)
-        imax = round((param_max-center)/fine_width)
 
-        #allocate(finebins(imin-fine_edge:imax+fine_edge))
-        #finebins=0
-        #if (plot_meanlikes) allocate(finebinlikes(imin-fine_edge:imax+fine_edge))
-        #if (plot_meanlikes) finebinlikes=0
+        imin = round((self.param_min[j] - self.center[j])/fine_width)
+        imax = round((self.param_max[j] - self.center[j])/fine_width)
+        # In f90, finebins(imin-fine_edge:imax+fine_edge)
+        finebins = np.zeros(imax + 1 - imin + 2 * fine_edge)
+        
+        if (plot_meanlikes):
+            # In f90, finebinlikes(imin-fine_edge:imax+fine_edge)
+            finebinlikes = np.zeros(imax + 1 - imin + (2*fine_edge))
         
         for i in range(len(paramVec)):
-            ix2 = round((paramVec[i]-center)/width)
-            if (ix2<=ix_max and ix2>=ix_min): 
-                binsraw[ix2-1] -= paramVec[i]
-            ix2 = round((paramVec[i]-center)/fine_width)
-            finebins[ix2-1] += paramVec[i]
+            ix2 = round((paramVec[i]-self.center[j])/width)
+            if (ix2<=self.ix_max[j] and ix2>=self.ix_min[j]): 
+                binsraw[ix2-self.ix_min[j]] -= paramVec[i]
+            ix2 = round((paramVec[i]-self.center[j])/fine_width)
+            finebins[ix2+fine_edge] += paramVec[i]
             if (plot_meanlikes):
-                finebins[ix2-1] += self.weights[i]*self.loglikes[i]
+                finebinlikes[ix2+fine_edge] += self.weights[i] * self.loglikes[i]
             else:
-                 finebins[ix2-1] += self.weights[i]*np.exp(meanlike-self.loglikes[i])
+                finebinlikes[ix2+fine_edge] += self.weights[i] * np.exp(meanlike-self.loglikes[i])
                
-        if (ix_min<>ix_max):
+        if (self.ix_min[j]<>self.ix_max[j]):
             # account for underweighting near edges
-            if (not has_limits_bot(ix) and binsraw[ix_min+end_edge-1]==0 and  
-                binsraw[ix_min+end_edge]>np.max(binsraw)/15):
-                # call EdgeWarning(ix-2)
-                pass
-            if (not has_limits_top(ix) and binsraw[ix_max+end_edge+1]==0 and  
-                binsraw[ix_max-end_edge]>np.max(binsraw)/15):
-                # call EdgeWarning(ix-2)
-                pass
-            
-        #allocate(Win(-winw:winw))
-        # ...
-
-        has_prior = has_limits_bot(ix) or has_limits_top(ix)
-        if (has_prior):
-            # ...
-            pass
-
+            if (not self.has_limits_bot[ix] and binsraw[end_edge-1]==0 and  
+                binsraw[end_edge]>np.max(binsraw)/15):
+                self.EdgeWarning(ix)
+            if (not self.has_limits_top[ix] and binsraw[-end_edge+2]==0 and  
+                binsraw[-end_edge+1]>np.max(binsraw)/15):
+                self.EdgeWarning(ix)
         
+        # In f90, Win(-winw:winw)
+        Win = range(-winw, winw+1)
+        Win = [ math.exp( math.pow(-i, 2)/math.pow(fine_fac*smooth_1D, 2)/2) for i in Win ] 
+        wsum = sum(Win)
+        Win = [ i/wsum for i in Win ]
+ 
+        has_prior = self.has_limits_bot[ix] or self.has_limits_top[ix]
+        if (has_prior):
+            # In f90, prior_mask(imin-fine_edge:imax+fine_edge)
+            prior_mask = np.ones(imax + 1 - imin + (2*fine_edge))
+            if (self.has_limit_bot[ix]):
+                index = (self.ix_min[j]*fine_fac) - imin - fine_edge
+                prior_mask[index] = 0.5
+                prior_mask[0:index] = [0] * index
+            if (self.has_limit_top[ix]):
+                index = (self.ix_max[j]*fine_fac) - imin - fine_edge
+                prior_mask[index] = 0.5
+                prior_mask[index+1:] = [0] * (len(prior_mask)+1-index)
 
         # High resolution density (sampled many times per smoothing scale)
-        if (has_limits_bot(ix)): imin = ix_min*fine_fac
-        if (has_limits_top(ix)): imax = ix_max*fine_fac
+        if (self.has_limits_bot[ix]): imin = self.ix_min[j] * fine_fac
+        if (self.has_limits_top[ix]): imax = self.ix_max[j] * fine_fac
 
-        #call Density1D%Init(imax-imin+1,fine_width)
+        self.density1D = Density1D(imax-imin+1, fine_width)
         for i in range(imin, imax+1):
-            # ...
-            pass
+            self.density1D.P[i-imin] = np.dot(Win, finebins) # fixme
+            self.density1D.X[i-imin] = self.center[j] + i*fine_width
+            if (has_prior and self.density1D.P[i-imin]>0):
+                # correct for normalization of window where it is cut by prior boundaries
+                edge_fac = 1 / np.sum(Win*prior_mask) # fixme
+                self.density1D.P[i-imin] *= edge_fac
 
-
-
-        #maxbin = maxval(Density1D%P)
+        maxbin = np.max(self.density1D.P)
         if (maxbin==0):
-            print 'no samples in bin, param: '
+            print 'no samples in bin, param: ', self.index2name[ix]
             sys.exit()
 
-        #Density1D%P=Density1D%P/maxbin
-        #call Density1D%InitSpline()
+        self.density1D.P /= maxbin
+        self.density1D.InitSpline()
 
         if (not no_plots):
-            binCounts = np.zeros(ix_max+1-ix_min)
+            binCounts = np.zeros(ix_max + 1 - ix_min)
             if (plot_meanlikes):
-                binlikes = np.zeros(ix_max+1-ix_min)
-                if (mean_loglikes): pass # binlikes=logZero
-
+                binlikes = np.ones(ix_max + 1 - ix_min)
+                if (mean_loglikes): 
+                    binlikes = binlikes * logZero
             # Output values for plots
-            for ix2 in range(ix_min, ix_max+1):
+            for ix2 in range(self.ix_min[j], self.ix_max[j]+1):
+                
                 # ...
                 pass
             
 
-            bincounts = bincounts/maxbin
+            bincounts /= maxbin
             if (plot_meanlikes and mean_loglikes):
                 maxbin = np.min(binlikes)
                 binlikes = np.where(binlikes-maxbin<30, np.exp(-(binlikes-maxbin)), 0)
 
+            fname = self.rootname + str(j) + ".dat"
+            filename = os.path.join(self.plot_data_dir, fname)
             textFileHandle = open(filename, 'w')
-            for i in range(ix_min, ix_max+1):
-                textFileHandle.write("%f%16.7E\n"%(center+i*width, bincounts[i]))
-                if (ix_min==ix_max): 
-                    textFileHandle.write("%16.7E\n"%(center+ix_min*width))
+            for i in range(self.ix_min[j], self.ix_max[j]+1):
+                textFileHandle.write("%f%16.7E\n"%(center[j] + i*width, bincounts[i]))
+                if (self.ix_min[j]==self.ix_max[j]): 
+                    textFileHandle.write("%16.7E\n"%(center[j] + ix_min*width))
             textFileHandle.close()
         
-        if (plot_meanlikes):
-            maxbin = max(binlikes)
-            textFileHandle = open(filename_like, 'w')
-            for i in range(ix_min, ix_max+1):
-                textFileHandle.write("%f%16.7E\n"%(center+i*width, binlikes[i]/maxbin))
-            textFileHandle.close()
-
+            if (plot_meanlikes):
+                maxbin = max(binlikes)
+                filename_like = filename + ".likes"
+                textFileHandle = open(filename_like, 'w')
+                for i in range(self.ix_min[j], self.ix_max[j]+1):
+                    textFileHandle.write("%f%16.7E\n"%(center[j] + i*width, binlikes[i]/maxbin))
+                textFileHandle.close()
         
 
     def Get2DPlotData(self, j, j2):
@@ -680,8 +933,12 @@ class MCSamples(chains):
         textFileHandle.close()
 
 
-    def EdgeWarning(self, param):
-        pass
+    def EdgeWarning(self, i):
+        if self.index2name.has_key(i):
+            print 'Warning: sharp edge in parameter %i - check limits%i'%(i, i+1)
+        else:
+            name = self.index2name[i]
+            print 'Warning: sharp edge in parameter % - check limits[%s] or limits%i'%(name, name, i+1)
 
     def GetChainLikeSummary(self, toStdOut=False):
         text = ""
@@ -699,25 +956,26 @@ class MCSamples(chains):
         else:
             return text
 
+
+    # New functions
+
     def SetContours(self, contours=[]):
         self.contours = contours
 
     def GetConfidenceRegion(self):
         ND_cont1, ND_cont2 = -1, -1
+        # todo
         #indexes = np.where(paramVec[:]>self.get_norm(paramVec)*self.contours[0])
         #ND_cont1 = indexes[0][0]
         #indexes = np.where(paramVec[:]>self.get_norm(paramVec)*self.contours[1])
         #ND_cont2 = indexes[0][0]
         return ND_cont1, ND_cont2
 
-
+    
     def ReadRanges(self):
         ranges_file = self.root + '.ranges'
         if (os.path.isfile(ranges_file)):
             self.ranges = Ranges(ranges_file)
-
-
-
 
 
     def WriteBounds(self, filename):
@@ -765,46 +1023,3 @@ def WritePlotFileExport():
     return text
 
 
-# 
-
-class Ranges():
-    
-    def __init__(self, fileName=None, setParamNameFile=None):
-        self.names = []
-        self.mins = {}
-        self.maxs = {}        
-        if fileName is not None: self.loadFromFile(fileName)
-
-    def loadFromFile(self, fileName):
-        self.filenameLoadedFrom = os.path.split(fileName)[1]
-        f = open(fileName)
-        for line in f:
-            name, mini, maxi = self.readValues(line.strip())
-            if name: 
-                self.names.append(name)
-                self.mins[name] = mini
-                self.maxs[name] = maxi                
-
-    def readValues(self, line):
-        name, mini, maxi = None, None, None
-        strings = [ s for s in line.split(" ")  if s<>'' ]
-        if len(strings)==3:
-            name = strings[0]
-            mini = float(strings[1])
-            maxi = float(strings[2])
-        return name, mini, maxi
-
-    def listNames(self):
-        return self.names
-
-    def min(self, name, error=False):
-        if self.mins.has_key(name):
-            return self.mins[name]
-        if error: raise Exception("Name not found:" + name)
-        return None
-
-    def max(self, name, error=False):
-        if self.maxs.has_key(name):
-            return self.maxs[name]
-        if error: raise Exception("Name not found:" + name)
-        return None
