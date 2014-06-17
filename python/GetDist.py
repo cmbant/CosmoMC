@@ -50,8 +50,8 @@ else:
 single_column_chain_files = ini.bool('single_column_chain_files', False)
 
 num_bins = ini.int('num_bins'); mc.num_bins = num_bins 
-num_bins_2D = ini.int('num_bins_2D', num_bins)
-smooth_scale_1D = ini.float('smooth_scale_1D', -1.0); mc.smooth_scale_1D = smooth_scale_1D 
+num_bins_2D = ini.int('num_bins_2D', num_bins); mcnum_bins_2D = num_bins_2D
+smooth_scale_1D = ini.float('smooth_scale_1D', -1.0) 
 # Smoothing scale in terms of bin scale
 smooth_scale_2D = ini.float('smooth_scale_2D', -1.0)
 if (smooth_scale_1D>0) and (smooth_scale_1D>1): 
@@ -59,6 +59,8 @@ if (smooth_scale_1D>0) and (smooth_scale_1D>1):
 if (smooth_scale_1D>0) and (smooth_scale_1D>1.9):
     print 'smooth_scale_1D>1 is now in stdev units'
     sys.exit()
+mc.smooth_scale_1D = smooth_scale_1D 
+mc.smooth_scale_2D = smooth_scale_2D 
 
 credible_interval_threshold = ini.float('credible_interval_threshold', 0.05)
 
@@ -198,6 +200,7 @@ if (map_params):
     print 'WARNING: Mapping params - .covmat file is new params.'
 
 shade_meanlikes = ini.bool('shade_meanlikes', False)
+mc.shade_meanlikes = shade_meanlikes
 
 out_dir = ini.string('out_dir')
 if (out_dir<>''):
@@ -309,7 +312,7 @@ if (mc.numrows==0):
     sys.exit()
 
 
-#import pdb; pdb.set_trace()
+import pdb; pdb.set_trace()
 
 if (cool<>1):
     mc.CoolChain(cool)

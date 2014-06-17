@@ -217,15 +217,19 @@ class MCSamples(chains):
         # Other variables
         self.no_plots = False
         self.num_bins = 0
+        self.num_bins_2D = 0
         self.smooth_scale_1D = 0.0
+        self.smooth_scale_2D = 0.0
         self.max_mult = 0
         self.numsamp = 0
         self.plot_data_dir = ""
         self.rootname = ""
         self.rootdirname = ""
         self.num_contours = 0
+        self.meanlike = 0.
         self.plot_meanlikes = False
         self.mean_loglikes = False
+        self.shade_meanlikes = False
 
 
 
@@ -301,13 +305,21 @@ class MCSamples(chains):
 
 
     def GetCovMatrix(self):
-        """
-        Get covariance matrix.
-        """
+
+        corr = self.corr(self.samples)
+
+
+        nparam = self.samples.shape[1]
+
+
+        self.corrmatrix = np.zeros([nparam, nparam]) 
+        import pdb; pdb.set_trace()
+
         # use chains.cov and chains.corr
         #textFileHandle = open(fname)
         #textFileHandle.close()
-        pass
+
+
 
     # MostCorrelated2D ? 
 
@@ -815,117 +827,157 @@ class MCSamples(chains):
         """
         Get 2D plot data.
         """
+        fine_fac_base = 5
+        
+        has_prior = self.has_limits[self.colix[j]] or self.has_limits[self.colix[j2]]
 
-        has_prior = has_limits[colix(j)] or has_limits[colix(j2)]
-
-        #corr = corrmatrix(colix(j)-2,colix(j2)-2)
+        corr = self.corrmatrix[self.colix[j]][self.colix[j2]]
         # keep things simple unless obvious degeneracy
         if (abs(corr)<0.3): corr = 0. 
         corr = max(-0.95, corr)
         corr = min(0.95, corr)
         
         # for tight degeneracies increase bin density
-        nbin2D = min(4*num_bins_2D, round(num_bins_2D/(1-abs(corr))))
+        nbin2D = min(4*self.num_bins_2D, round(self.num_bins_2D/(1-abs(corr))))
         
-        widthx = (range_max[j]-range_min[j])/(nbin2D+1)
-        widthy = (range_max[j2]-range_min[j2])/(nbin2D+1)
-        smooth_scale = (smooth_scale_2D*nbin2D)/num_bins_2D
+        widthx = (self.range_max[j]-self.range_min[j])/(self.nbin2D+1)
+        widthy = (self.range_max[j2]-self.range_min[j2])/(self.nbin2D+1)
+        smooth_scale = (self.smooth_scale_2D*nbin2D)/self.num_bins_2D
         fine_fac = max(2, round(fine_fac_base/smooth_scale))
 
-        ixmin = round((range_min[j] - center[j])/widthx)
-        ixmax = round((range_max[j] - center[j])/widthx)
+        ixmin = int(round((self.range_min[j] - self.center[j])/widthx))
+        ixmax = int(round((self.range_max[j] - self.center[j])/widthx))
 
-        iymin = round((range_min[j2] - center[j2])/widthy)
-        iymax = round((range_max[j2] - center[j2])/widthy)
+        iymin = int(round((self.range_min[j2] - self.center[j2])/widthy))
+        iymax = int(round((self.range_max[j2] - self.center[j2])/widthy))
 
-        if (not has_limits_bot(colix[j])): ixmin -= 1
-        if (not has_limits_bot(colix[j2])): iymin -= 1
-        if (not has_limits_top(colix[j])): ixmax += 1
-        if (not has_limits_top(colix[j2])): iymax += 1
+        if (not self.has_limits_bot[colix[j]]): ixmin -= 1
+        if (not self.has_limits_bot[colix[j2]]): iymin -= 1
+        if (not self.has_limits_top[colix[j]]): ixmax += 1
+        if (not self.has_limits_top[colix[j2]]): iymax += 1
         
-        #allocate(bins2D(ixmin:ixmax,iymin:iymax))
-        #allocate(bin2Dlikes(ixmin:ixmax,iymin:iymax))
-        #bins2D = 0
-        #bin2Dlikes = 0
+        # Using nested python dicts to map f90 2D arrays with non standard indexes.
 
-        winw = round(fine_fac*smooth_scale)
-        imin = (ixmin-3)*winw+1
-        imax = (ixmax+3)*winw-1
-        jmin = (iymin-3)*winw+1
-        jmax = (iymax+3)*winw-1
-        #allocate(finebins(imin:imax,jmin:jmax))
-        #if (shade_meanlikes) allocate(finebinlikes(imin:imax,jmin:jmax))
-        #finebins = 0
-        #if (shade_meanlikes) finebinlikes=0
+        # In f90, bins2D(ixmin:ixmax,iymin:iymax) and bin2Dlikes(ixmin:ixmax,iymin:iymax)
+        indexesX = range(ixmin, ixmax+1)
+        indexesY = range(iymin, iymax+1)
+        bins2D = dict.fromkeys(indexesX, {})
+        for i in bins2D.keys(): bins2D[i] = dict.fromkeys(indexesY, 0.)
+        bin2Dlikes = dict.fromkeys(indexesX, {})
+        for i in bin2Dlikes.keys(): bin2Dlikes[i] = dict.fromkeys(indexesY, 0.)
+
+        winw = int(round(fine_fac*smooth_scale))
+        imin = (ixmin-3)*winw + 1
+        imax = (ixmax+3)*winw - 1
+        jmin = (iymin-3)*winw + 1
+        jmax = (iymax+3)*winw - 1
+
+        # In f90, finebins(imin:imax,jmin:jmax)
+        indexesX = range(imin, imax+1)
+        indexesY = range(imin, imax+1)
+        finebins  = dict.fromkeys(indexesX, {})
+        for i in finebins.keys(): finebins[i] = dict.fromkeys(indexesY, 0.)
         
-        widthj = widthx/fine_fac
-        widthj2 = widthy/fine_fac
-        #col1 = colix(j)
-        #col2 = colix(j2)
-#    do i = 0, nrows-1
-#        ix1=nint((coldata(col1,i)-center(j))/widthj)
-#        ix2=nint((coldata(col2,i)-center(j2))/widthj2)
-#        if (ix1>=imin .and. ix1<=imax .and. ix2>=jmin .and. ix2 <=jmax) then
-#            finebins(ix1,ix2) = finebins(ix1,ix2) + coldata(1,i)
-#            if (shade_meanlikes) finebinlikes(ix1,ix2) = finebinlikes(ix1,ix2) + coldata(1,i)*exp(meanlike - coldata(2,i))
-#        end if
-#    end do
+        if (self.shade_meanlikes):
+            finebinlikes  = dict.fromkeys(indexesX, {})
+            for i in finebinlikes.keys(): finebinlikes[i] = dict.fromkeys(indexesY, 0.)
+        
+        widthj  = widthx / fine_fac
+        widthj2 = widthy / fine_fac
+        col1 = self.colix[j]
+        col2 = self.colix[j2]
+        for i in range(self.numrows):
+            ix1 = int(round(((self.samples[col1, i]-self.center[j])/widthj)))
+            ix2 = int(round((self.samples[col2, i]-self.center[j2])/widthj2))
+            if (ix1>=imin and ix1<=imax and ix2>=jmin and ix2<=jmax):
+                finebins[ix1][ix2] += self.weights[i]
+                if (self.shade_meanlikes):
+                    finebinlikes[ix1][ix2] += self.weights[i]*(math.exp(self.meanlike-self.loglikes[i]))
 
-        winw = round(2*fine_fac*smooth_scale)
-        #allocate(Win(-winw:winw,-winw:winw))
-
-#    do ix1=-winw,winw
-#        do ix2=-winw,winw
-#            !                Win(ix1,ix2) = exp(-(ix1**2+ix2**2)/real(fine_fac**2,mcp)/2)
-#            Win(ix1,ix2) = exp(-(ix1**2+ix2**2 - 2*corr*ix1*ix2)/(2*fine_fac**2*smooth_scale**2*(1-corr**2)))
-#        end do
-#    end do
+        winw = int(round(2*fine_fac*smooth_scale))
+        # In f90, Win(-winw:winw,-winw:winw)
+        indexes = range(-winw, winw+1)
+        Win = dict.fromkeys(indexes, {})
+        for i in Win.keys(): Win[i] = dict.fromkeys(indexes, 0)
+        for ix1 in indexes:
+            for ix2 in indexes:
+                Win[ix1][ix2] = math.exp(
+                    - ( ((ix1*ix1) + (ix2*ix2) - 2*corr*ix1*ix2)) /
+                      (2*fine_fac*fine_fac*smooth_scale*smooth_scale*(1-corr*corr)) )
 
         if (has_prior):
-            norm = sum(win)
-            #allocate(prior_mask(imin:imax,jmin:jmax))
-            #prior_mask =1
-            # if (has_limits_bot(colix(j))):
-            #     prior_mask(ixmin*fine_fac,:) = prior_mask(ixmin*fine_fac,:)/2
-            #     prior_mask(imin:ixmin*fine_fac-1,:) = 0
-            # if (has_limits_top(colix(j))):
-            #     prior_mask(ixmax*fine_fac,:) = prior_mask(ixmax*fine_fac,:)/2
-            #     prior_mask(ixmax*fine_fac+1:imax,:) = 0
-            # if (has_limits_bot(colix(j2))):
-            #     prior_mask(:,iymin*fine_fac) = prior_mask(:,iymin*fine_fac)/2
-            #     prior_mask(:,jmin:iymin*fine_fac-1) = 0
-            # if (has_limits_top(colix(j2))):
-            #     prior_mask(:,iymax*fine_fac) = prior_mask(:,iymax*fine_fac)/2
-            #     prior_mask(:,iymax*fine_fac+1:jmax) = 0
+            norm = sum([ sum(Win[i].values()) for i in indexes ] ) 
+            
+            # In f90, finebins(imin:imax,jmin:jmax)
+            indexesX = range(imin, imax+1)
+            indexesY = range(imin, imax+1)
+            prior_mask  = dict.fromkeys(indexesX, {})
+            for i in prior_mask.keys(): prior_mask[i] = dict.fromkeys(indexesY, 1.)
+            if (self.has_limits_bot[self.colix[j]]):
+                for iy in indexesY:
+                    prior_mask[ixmin*fine_fac][iy] = prior_mask[ixmin*fine_fac][iy]/2
+                    for ix in range(imin, ixmin*fine_fac):
+                        prior_mask[ix][iy] = 0
+            if (self.has_limits_top[self.colix[j]]):
+                for iy in indexesY:
+                    prior_mask[ixmax*fine_fac][iy] = prior_mask[ixmax*fine_fac][iy]/2
+                    for ix in range(ixmax*fine_fac+1, imax+1):
+                        prior_mask[ix][iy] = 0
+            if (self.has_limits_bot[self.colix[j2]]):
+                for ix in indexesX:
+                    prior_mask[ix][iymin*fine_fac] = prior_mask[ix][iymin*fine_fac]/2
+                    for iy in range(jmin, iymin*fine_fac):
+                        prior_mask[ix][iy] = 0
+            if (self.has_limits_top[self.colix[j2]]):
+                for ix in indexesX:
+                    prior_mask[ix][iymax*fine_fac] = prior_mask[ix][iymax*fine_fac]/2
+                    for iy in range(iymax*fine_fac+1, jmax+1):
+                        prior_mask[ix][iy] = 0
 
 
-#    do ix1=ixmin, ixmax
-#        do ix2=iymin,iymax
-# ... 
+        for ix1 in range(ixmin, ixmax+1):
+            for ix2 in range(iymin, iymax+1):
+    
+                
+    
+                #bins2D(ix1,ix2) = sum(win* finebins(ix1*fine_fac-winw:ix1*fine_fac+winw, ix2*fine_fac-winw:ix2*fine_fac+winw))
 
+                #bins2D[ix1][ix2] = sum([ ])  # todo 
+                if (self.shade_meanlikes):
+                    #bin2Dlikes[ix1][ix2] = sum([ ])  # todo 
+                #sum(win* finebinlikes(ix1*fine_fac-winw:ix1*fine_fac+winw,ix2*fine_fac-winw:ix2*fine_fac+winw ))
+                    pass
 
-#    if (shade_meanlikes) then
-#        deallocate(finebinlikes)
-#        do ix1=ixmin,ixmax
-#            do ix2 =iymin,iymax
-#                if (bins2D(ix1,ix2) >0) bin2Dlikes(ix1,ix2) = bin2Dlikes(ix1,ix2)/bins2D(ix1,ix2)
-#            end do
-#        end do
-#    end if
+                if (has_prior):
+                    # correct for normalization of window where it is cut by prior boundaries
+                    #edge_fac = norm / sum([ ]) # todo 
+                    #edge_fac=norm/sum(win*prior_mask(ix1*fine_fac-winw:ix1*fine_fac+winw, ix2*fine_fac-winw:ix2*fine_fac+winw))
+                    bins2D[ix1][ix2] *= edge_fac
+                    if (self.shade_meanlikes):
+                        bin2Dlikes[ix1][ix2] *= edge_fac
 
+        if (self.shade_meanlikes):
+            for ix1 in range(ixmin, ixmax+1):
+                for ix2 in range(iymin, iymax+1):
+                    if (bins2D[ix1][ix2]>0):
+                        bin2Dlikes[ix1][ix2] /= bins2D[ix1][ix2]
 
-        bins2D = bins2D/np.max(bins2D)
+        maxval = max([ max(bins2D[i].values()) for i in bins2D.keys() ])
+        for ix in bins2D.keys():
+            for iy in bins2D[i].keys():
+                bins2D[ix][ix] /= maxval
+
         # Get contour containing contours(:) of the probability
-        norm = np.sum(bins2D)
+        norm = sum([ sum(bins2D[i].values()) for i in bins2D.keys() ])
 
         for ix1 in range(self.num_contours):
-
-            try_t = np.max(bins2D)
+            try_t = max([ max(bins2D[i].values()) for i in bins2D.keys() ])
             try_b = 0
 
             lasttry = -1
             while True:
                 try_sum = np.sum(bin2D[np.where(bins2D < (try_b + try_t) / 2)])
+                # fixme
                 if (try_sum > (1-contours[ix1])*norm):
                     try_t = (try_b + try_t) / 2
                 else:
@@ -935,33 +987,42 @@ class MCSamples(chains):
             contour_levels[ix1] = (try_b + try_t) / 2
             
         bind2D[np.where(bins2D < 1e-30)] = 0
+        # fixme 
 
-        #fixme: use np.savetxt
-        plotfile = self.dat_file_2D( self.rootname, j, j2)
+        name = self.index2name.get(j, "NOTFOUND")
+        name2 = self.index2name.get(j2, "NOTFOUND")
+        plotfile = self.rootname + "_2D_%s_%s"%(name, name2)
         filename = os.path.join(self.plot_data_dir, plotfile)
         textFileHandle = open(filename, 'w')
-        # ...
+        for ix1 in range(ixmin, ixmax+1):
+            for ix2 in range(iymin, iymax+1):
+                textFileHandle.write("%16.7E"%(bins2D[ix1][ix2]))
+            textFileHandle.write("\n")
         textFileHandle.close()
-
 
         textFileHandle = open(filename + "_y", 'w')
-        # ...
+        for i in range(ixmin, ixmax+1):
+            textFileHandle.write("%16.7E\n"%(self.center[j] + i*widthx))
         textFileHandle.close()
-
 
         textFileHandle = open(filename + "_x", 'w')
-        # ...
+        for i in range(iymin, iymax+1):
+            textFileHandle.write("%16.7E\n"%(self.center[j2] + i*widthy))
         textFileHandle.close()
-
 
         textFileHandle = open(filename + "_cont", 'w')
-        # ...
+        textFileHandle.write("\n")
+        # fixme
         textFileHandle.close()
 
-
-        textFileHandle = open(filename + "_likes", 'w')
-        # ...
-        textFileHandle.close()
+        if (self.shade_meanlikes):
+            textFileHandle = open(filename + "_likes", 'w')
+            maxbin = max([ max(bin2Dlikes[i].values()) for i in bin2Dlikes.keys() ])
+            for ix1 in range(ixmin, ixmax+1):
+                for ix2 in range(iymin, iymax+1):
+                    textFileHandle.write("%16.7E"%(bin2Dlikes[ix1][ix2]/maxbin))
+                textFileHandle.write("\n")
+            textFileHandle.close()
 
 
     def EdgeWarning(self, i):
@@ -976,12 +1037,12 @@ class MCSamples(chains):
         maxlike = np.max(self.loglikes)
         text += "Best fit sample -log(Like) = %f\n"%maxlike
         if ((self.loglikes[self.numrows-1]-maxlike)<30):
-            meanlike = np.log(np.sum(np.exp(self.loglikes-maxlike)*self.weights)/self.norm)+maxlike
-            text += "Ln(mean 1/like) = %f\n"%(meanlike)
-        meanlike = np.sum(self.loglikes*self.weights)/self.norm
-        text += "mean(-Ln(like)) = %f\n"%(meanlike)
-        meanlike = -np.log(np.sum(np.exp(self.loglikes-maxlike)*self.weights)/self.norm)+maxlike
-        text = "-Ln(mean like)  = %f\n"%(meanlike)
+            self.meanlike = np.log(np.sum(np.exp(self.loglikes-maxlike)*self.weights)/self.norm)+maxlike
+            text += "Ln(mean 1/like) = %f\n"%(self.meanlike)
+        self.meanlike = np.sum(self.loglikes*self.weights)/self.norm
+        text += "mean(-Ln(like)) = %f\n"%(self.meanlike)
+        self.meanlike = -np.log(np.sum(np.exp(self.loglikes-maxlike)*self.weights)/self.norm)+maxlike
+        text = "-Ln(mean like)  = %f\n"%(self.meanlike)
         if toStdOut:
             print text
         else:
