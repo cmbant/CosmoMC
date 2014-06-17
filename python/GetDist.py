@@ -83,7 +83,7 @@ prob_label = ini.bool('prob_label', False)
 
 samples_are_chains = ini.bool('samples_are_chains', True)
 
-no_plots = ini.bool('no_plots', False)
+no_plots = ini.bool('no_plots', False); mc.no_plots = no_plots
 plots_only = ini.bool('plots_only', False)
 no_tests = plots_only or ini.bool('no_tests', False)
 line_labels = ini.bool('line_labels', False)
@@ -434,17 +434,17 @@ for j in range(num_vars):
                 tail_limit_bot = mc.range_min[j]
             elif (mc.marge_limits_top[ix1][ix]):
                 # 1 tail limit
-                tail_limit_bot = mc.confidence(ix, limfrac, upper=False)
+                tail_limit_bot = mc.confidence(mc.samples[:, ix], limfrac, upper=False)
             else:
                 # 2 tail limit
-                tail_confid_bot = mc.confidence(ix, limfrac/2, upper=False)
+                tail_confid_bot = mc.confidence(mc.samples[:, ix], limfrac/2, upper=False)
             
             if (mc.marge_limits_top[ix1][ix]):
                 tail_limit_top = mc.range_max[j]
             elif (mc.marge_limits_bot[ix1][ix]):
-                tail_limit_top = mc.confidence(ix, limfrac, upper=True)
+                tail_limit_top = mc.confidence(mc.samples[:, ix], limfrac, upper=True)
             else:
-                tail_confid_top = mc.confidence(ix, limfrac/2, upper=True)
+                tail_confid_top = mc.confidence(mc.samples[:, ix], limfrac/2, upper=True)
             
             if (not mc.marge_limits_bot[ix1][ix] and not mc.marge_limits_top[ix1][ix]):
                 # Two tail, check if limits are at very differen density
