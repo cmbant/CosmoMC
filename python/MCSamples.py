@@ -231,8 +231,8 @@ class MCSamples(chains):
         self.mean_loglikes = False
         self.shade_meanlikes = False
 
-
-
+        self.covmat_dimension = 0
+        self.max_split_tests = 4
 
 
     def AdjustPriors(self):
@@ -428,81 +428,51 @@ class MCSamples(chains):
         """
         Do convergence tests.
         """
-        return
+        if not hasattr(self, 'chains'): return 
 
         # Get statistics for individual chains, and do split tests on the samples
 
-
-        rootdirname = ""
-        num_chains_used = 0
-        nrows = 0
-        chain_indices = []
-
-
-        fname = rootdirname.strip() + '.converge'
+        fname = self.rootdirname + '.converge'
         textFileHandle = open(fname, 'w')
         
+        num_chains_used = len(self.chains)
         if (num_chains_used>1):
             print 'Number of chains used =  ', num_chains_used
 
-        chain_indices[num_chains_used+1] = nrows
-        for i in range(num_chains_used):
-            #chain_start(i) =  chain_indices(i) + nint((chain_indices(i+1)-chain_indices(i))*cutfrac)
-            #chain_samp(i) = sum(coldata(1,chain_start(i):chain_indices(i+1)-1))
-            pass
-
-        #usedsamps = sum(chain_samp(1:num_chains_used))
-        #maxsamp = maxval(chain_samp(1:num_chains_used))
-        num = 0
-        ncols = 0
-
-        for j in range(3, ncols+1):
-            #
-            pass
+        # ...
         
-
-        for j in range(3, ncols+1):
-            #if (isused(j)) &
-            #fullvar(j)=  sum(coldata(1,0:nrows-1)*(coldata(j,0:nrows-1)-fullmean(j))**2)/numsamp
-            pass
-
+        params = self.paramNames.list()
+        nparam = self.paramNames.numNonDerived()
+        
         if (num_chains_used>1):
             textFileHandle.write("\n")
             textFileHandle.write("Variance test convergence stats using remaining chains\n")
             textFileHandle.write("param var(chain mean)/mean(chain var)\n")
             textFileHandle.write("\n")
 
-            for j in range(3, ncols+1):
-                # 
-                pass
+            for param in self.paramNames.names:
+                if (param.isDerived): continue
+
+                # Get stats for individual chains - the variance of the means over the mean of the variances
+                for chain in self.chains:
+                    
+                    # ...
+                    textFileHandle.write("\n")
+                    #textFileHandle.write("%3i%13.5f%s\n"%(iparam, value, name)
 
 
-        if (num_chains_used>1) and (covmat_dimension>0):
+        if (num_chains_used>1) and (self.covmat_dimension>0):
             # Assess convergence in the var(mean)/mean(var) in the worst eigenvalue
             # c.f. Brooks and Gelman 1997
-        
-            while(usedvars[num]>(covmat_dimension+2)):
-                num -= 1
             
-            #allocate(meanscov(num,num))
-            #allocate(cov(num,num))
 
-            for jj in range(0, num):
-                j = usedvars[jj]
-                for kk in range(jj, num):
-                    k = usedvars[kk]
-                    # ...
-
-            #meanscov = meanscov/(num_chains_used-1) !(usedsamps/maxsamp -1)
-            #cov = cov / usedsamps
-
-            #invertible = GelmanRubinEvalues(cov, meanscov, evals, num)
             if (invertible):
                 textFileHandle.write("\n")
                 textFileHandle.write("var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters\n")
                 R = 0
                 # ...
                 for jj in range(0, num):
+                    #textFileHandle.write("%3i%13.5f\n"%(iparam, eval))
                     #write (F%unit,'(1I3,f13.5)') jj,evals(jj)
                     #R = max(R,evals(jj))
                     textFileHandle.write("\n")
@@ -519,58 +489,89 @@ class MCSamples(chains):
         textFileHandle.write("Split tests: rms_n([delta(upper/lower quantile)]/sd) n={2,3,4}:\n")
         textFileHandle.write("i.e. mean sample splitting change in the quantiles in units of the st. dev.\n")
         textFileHandle.write("\n")
-        for j in range(3, self.ncols+1):
-            # ...
-            pass
+
+        
+        split_tests = {}
+
+        for j in range(nparam):
+
+            if (0): continue
+
+            for endb in [0, 1]:
+
+                for split_n in range(2, self.max_split_tests+1):
+                    #call GetFractionIndices(frac,split_n)
+                    split_tests[split_n] = 0
+                    confid = self.confidence(xxx, (1-limfrac)/2, 0) 
+                    for i in range(1, split_n+1):
+                        split_tests[split_n] += self.confidence(xxx, (1-limfrac)/2, 0) 
+                    split_tests[split_n] = math.sqrt(split_tests[split_n]/split_n/fullvar(j))
+                if (endb==0):
+                    typestr = 'upper'
+                else:
+                    typestr = 'lower'
+                
+                textFileHandle.write("%3i%i%9.4f%s%s\n"%(j, max_split_tests-1, label))
 
 
         # Now do Raftery and Lewis method
         # See http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps
         # Raw non-importance sampled chains only
 
-        if (1):
+        if (1): # (all(abs(coldata(1,0:nrows-1) - nint(max(0.6_gp,coldata(1,0:nrows-1))))<1e-4)) 
 
             nburn = 0
-            hardest=-1
-            hardestend=0
+            hardest = -1
+            hardestend = 0
 
             for ix in range(num_chains_used):
                 #thin_fac(ix) = nint(maxval(coldata(1,chain_indices(ix):chain_indices(ix+1)-1)))
 
-                for j in range(2, covmat_dimension+2):
+                for j in range(3, self.covmat_dimension+3):
                     #...
                     pass
 
-                # Get thin factor to have independent samples rather than Markov
-                #hardest = max(hardest,1)
-                #u = ConfidVal(hardest,(1-limfrac)/2,hardestend==0)
-                #thin_fac(ix) = thin_fac(ix) + 1
+                markov_thin[ix] = thin_fac[ix]
 
-                while(True):
-                    
-                    mc.ThinData()
+                # Get thin factor to have independent samples rather than Markov
+                hardest = max(hardest, 1)
+                #u = ConfidVal(hardest,(1-limfrac)/2,hardestend==0)
+                thin_fac[ix] += 1
+
+                while(True): # thin_fac
+                    thin_ix = mc.thin_indices() # ThinData => thin_indices
                     if (thin_rows<2): break
-                    #binchain 
+                    binchain =np.zeros(thin_rows)
+#                 where (coldata(hardest,thin_ix(0:thin_rows-1)) > u)
+#                    binchain = 1
+#                elsewhere
+#                    binchain = 2
+#                endwhere
 
                     tran2 = 0
                     # Estimate transitions probabilities for 2nd order process
-                    
-                    for i in range(thin_rows-1):
-                        #tran2(binchain(i-1),binchain(i)) = tran2(binchain(i-1),binchain(i)) +1 
-                        pass
-                    
+                    for i in range(1, thin_rows):
+                        tran2[binchain[i-1]][binchain[i]] += 1
                 
                     # Test whether independence is better than Markov using BIC statistic
                     g2 = 0
-                    # ...
+                    for i1 in [0, 1]:
+                        for i2 in [0, 1]:
+                            if (tran2[i1][i2]<>0):
+                                fitted = float( 
+                                    (tran2[i1][0]+tran2[i1][1]) * 
+                                    (tran2[0][i2]+tran2[1][i2]) ) / float(thin_rows-1)
+                                focus = float(tran2[i1][i2])
+                                if (fitted<=0 or focus<=0):
+                                    print 'Raftery and Lewis estimator had problems'
+                                    return
+                                g2 += math.log(focus/fitted) * focus
                     g2 = g2 * 2
 
+                    if (g2 - math.log(float(thin_rows-1))< 0): break
+                    thin_fac[ix] += 1
 
-                    #if (g2 - log( dble(thin_rows-1) ) < 0) exit
-                    thin_fac[ix] = thin_fac[ix] + 1
-
-                if (thin_rows<2): 
-                    thin_fac[ix] = 0
+                if (thin_rows<2): thin_fac[ix] = 0
 
             textFileHandle.write("\n")
             textFileHandle.write("Raftery&Lewis statistics\n")
@@ -583,7 +584,7 @@ class MCSamples(chains):
                     textFileHandle.write("%4i%12i%12i%12i"%(
                             chain_numbers[ix], markov_thin[ix], thin_fac[ix], nburn[ix]))
 
-            if (1):
+            if (1): # any(thin_fac(1:num_chains_used)==0)
                 print 'RL: Not enough samples to estimate convergence stats'
             else:
                 print 'RL: Thin for Markov: '
@@ -594,18 +595,35 @@ class MCSamples(chains):
             textFileHandle.write("\n")
             textFileHandle.write("Parameter auto-correlations as function of step separation\n")
             textFileHandle.write("\n")
+            if (corr_length_thin<>0):
+                autocorr_thin = corr_length_thin
+            else:
+                if (indep_thin==0):
+                    autocorr_thin = 20
+                elif (indep_thin<=30):
+                    autocorr_thin = 5
+                else:
+                    autocorr_thin = 5 * (indep_thin/30)
 
 
+            thin_ix = mc.thin_indices(autocorr_thin) # ThinData => thin_indices
+            maxoff = min(corr_length_steps, thin_rows/(autocorr_thin*num_chains_used))
 
-            mc.ThinData(autocorr_thin)
-            #maxoff = min(corr_length_steps,thin_rows/(autocorr_thin*num_chains_used))
+            corrs = no.zeros([nparams, maxoff])
+            for off in range(maxoff):
+                for i in range(off, thin_rows):
+                    pass
 
-            #corrs = 0
-            for j in range(maxoff):
-                pass
 
             if (maxoff>0):
-                pass
+                textFileHandle.write("%i"%(maxoff))
+                for i in range(1, maxoff+1):
+                    textFileHandle.write("%8i"%(i*autocorr_thin))
+                for j in range(nparams):
+                    if (j): 
+                        textFileHandle.write("1%3i%8.3f"%(j, corrs[j][i]))
+                       
+                
 
 
 

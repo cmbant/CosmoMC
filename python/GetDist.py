@@ -247,6 +247,7 @@ else:
     covmat_dimension = ini.int('cov_matrix_dimension', 0)
     if (covmat_dimension==-1):
         covmat_dimension = ncols - 2
+mc.covmat_dimension = covmat_dimension
 
 plot_meanlikes = ini.bool('plot_meanlikes', False); mc.plot_meanlikes = plot_meanlikes
 
@@ -306,13 +307,13 @@ if(last_chain==-1): last_chain = getLastChainIndex(in_root)
 # Read in the chains
 ok = mc.loadChains(in_root, chain_files)
 #if (not ok): print ''
-mc.makeSingle()
+#mc.makeSingle()
 if (mc.numrows==0):
     print 'No un-ignored rows! (check number of chains/burn in)'
     sys.exit()
 
 
-import pdb; pdb.set_trace()
+#import pdb; pdb.set_trace()
 
 if (cool<>1):
     mc.CoolChain(cool)
