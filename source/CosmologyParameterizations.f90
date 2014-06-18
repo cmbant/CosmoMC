@@ -208,8 +208,8 @@
         derived(13) = cl_norm*CMB%InitPower(As_index)*1e9
         derived(14) = Theory%tensor_AT*1e9
 
-        derived(15)= derived(12)*exp(-2*CMB%tau)  !A e^{-2 tau}
-        derived(16)= derived(13)*exp(-2*CMB%tau)  !At e^{-2 tau}
+        derived(15)= derived(13)*exp(-2*CMB%tau)  !A e^{-2 tau}
+        derived(16)= derived(14)*exp(-2*CMB%tau)  !At e^{-2 tau}
 
         derived(17)= CMB%Yhe !value actually used, may be set from bbn consistency
         derived(18)= (CMB%omdmh2 + CMB%ombh2)*CMB%h

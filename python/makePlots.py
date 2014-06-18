@@ -18,6 +18,7 @@ Opts.parser.add_argument('--D2_y_params', nargs='+', default=None)
 
 Opts.parser.add_argument('--outputs', nargs='+', default=['pdf'])
 Opts.parser.add_argument('--filled', action='store_true')
+Opts.parser.add_argument('--size_inch', type=float, default=None)
 Opts.parser.add_argument('--allhave', action='store_true')
 
 (batch, args) = Opts.parseForBatch()
@@ -32,6 +33,7 @@ if args.plot_data is None: data = batch.batchPath + os.sep + 'plot_data'
 else: data = args.plot_data
 
 g = GetDistPlots.GetDistPlotter(data)
+if args.size_inch is not None: g.settings.setWithSubplotSize(args.size_inch)
 
 
 def legendLabels(jobItems):

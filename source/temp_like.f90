@@ -125,8 +125,8 @@
     real(campc),  dimension(:,:), allocatable :: cov
     integer, allocatable :: indices(:),np(:)
     integer ix, status
-    real(campc) dummy, in_data(4)
-    real(campc), allocatable :: CL_in(:,:)
+    real(campc) dummy
+    real(campc), allocatable :: CL_in(:,:), in_data(:)
 
     if(.not. needinit) return
 
@@ -204,13 +204,13 @@
     CAMspec_lmax = maxval(lmaxX)
 
     if (data_vector/='') then
-        if (Nspec.eq.6) stop 'not yet modified for te+ee'
         !!override data vector in the main camspec file
         !The input file is in comprehensible L, L(L+1)C_L^i/2pi format
         open(48, file=data_vector, form='formatted', status='old', iostat=status)
         if (status/=0) stop 'Error opening camspec data_vector override'
         print *,'Using CamSpec data vector : '//data_vector
-        allocate(CL_in(CAMspec_lmax, 4))
+        allocate(CL_in(CAMspec_lmax, Nspec))
+        allocate(in_data(Nspec))
         L=0
         do
             read(48,*,iostat = status) L, in_data
@@ -302,8 +302,8 @@
                                             c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) = &
                                                 c_inv(npt(if1):npt(if1)+lmaxX(if1)-lminX(if1),npt(if2)+L2 -lminX(if2) ) + &
                                                 beam_factor**2*beam_modes(ie1,lminX(if1):lmaxX(if1),if1)* &
-                                                beam_cov(marge_indices_reverse(ii),marge_indices_reverse(jj)) * beam_modes(ie2,L2,if2) &
-                                                *fid_cl(L2,if2)*fid_cl(lminX(if1):lmaxX(if1),if1)
+                                                beam_cov(marge_indices_reverse(ii),marge_indices_reverse(jj)) * &
+                                                beam_modes(ie2,L2,if2) *fid_cl(L2,if2)*fid_cl(lminX(if1):lmaxX(if1),if1)
                                         end do
                                     end if
                                 enddo
@@ -313,7 +313,6 @@
                 end if
             enddo
             ! print *,'after', c_inv(500,500), c_inv(npt(3)-500,npt(3)-502),  c_inv(npt(4)-1002,npt(4)-1000)
-
             call Matrix_inverse(c_inv) !now c_inv is the inverse covariance
             if (make_cov_marged .and. marge_num>0) then
                 open(48, file=trim(like_file)//'_beam_marged'//trim(marge_file_variant), form='unformatted', status='unknown')
@@ -574,4 +573,60 @@
     end subroutine calc_like
 
 
+    !Just for checking eigenvalues etc. slower than cholesky
+    subroutine Matrix_Inverse2(M)
+    use MpiUtils
+    use MatrixUtils
+    !Inverse of symmetric positive definite matrix
+    real(campc), intent(inout):: M(:,:)
+    integer i, n
+    real(campc) w(Size(M,DIM=1))
+    real(campc), dimension(:,:), allocatable :: tmp, tmp2
+    real(campc), dimension(:), allocatable :: norm
+
+    n = size(M,DIM=1)
+    do i=1, size(M,DIM=1)
+        if (abs(M(i,i)) < 1d-30) call MpiStop('Matrix_Inverse: very small diagonal'  )
+    end do
+    allocate(tmp(Size(M,DIM=1),Size(M,DIM=1)))
+
+    n=Size(M,DIM=1)
+    if (n<=1) return
+    if (Size(M,DIM=2)/=n) call MpiStop('Matrix_Inverse: non-square matrix')
+    
+    allocate(norm(n))
+    do i=1, n
+        norm(i) = sqrt(abs(M(i,i)))
+        if (norm(i) < 1d-30) &
+            call MpiStop('Matrix_Inverse: very small diagonal'  )
+        M(i,:) = M(i,:)/norm(i)
+        M(:,i) = M(:,i)/norm(i)
+    end do
+    
+    call Matrix_Write('smallmat',M,.true.)
+
+    call Matrix_Diagonalize(M,w,n)
+    call Matrix_Write('eigenvecs',M,.true.)
+    !print *,'evalues:', w
+
+    write (*,*) 'min/max eigenvalues = ', minval(w), maxval(w)
+    if (any(w<=0)) then
+        write (*,*) 'min/max eigenvalues = ', minval(w), maxval(w)
+        call MpiStop('Matrix_Inverse: negative or zero eigenvalues')
+    end if
+    do i=1, n
+        tmp(i,:) = M(:,i)/w(i)
+    end do
+    allocate(tmp2(Size(M,DIM=1),Size(M,DIM=1)))
+    call Matrix_Mult(M,tmp,tmp2)
+    M = tmp2
+    do i=1, n
+        M(i,:) = M(i,:)/norm(i)
+        M(:,i) = M(:,i)/norm(i)
+    end do
+    deallocate(tmp, tmp2)
+    deallocate(norm)
+    call Matrix_End('Inverse')
+
+    end subroutine Matrix_Inverse2
     end module temp_like_camspec

@@ -62,6 +62,18 @@ g.params = [[], ['Alens']]
 groups.append(g)
 
 
+g = batchJob.jobGroup('commlowl')
+g.datasets = []
+
+for d in copy.deepcopy(datasets):
+    d.add('commlowl', ['commlowl.ini'])
+    g.datasets.append(d)
+
+g.params = [[]]
+groups.append(g)
+
+
+
 g = batchJob.jobGroup('freecal')
 g.datasets = copy.deepcopy(datasets)
 for d in g.datasets:
