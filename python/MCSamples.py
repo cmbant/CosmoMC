@@ -254,6 +254,9 @@ class MCSamples(chains):
         self.samples = np.delete(self.samples, indexes, axis=0)
         
     def SortColData(self, icol=None):
+        """
+        Sort coldata in order of likelihood
+        """
         if icol is None: return
         if icol==0: 
             indexes = self.weights.argsort()
@@ -263,6 +266,7 @@ class MCSamples(chains):
         self.loglikes = self.loglikes[indexes]
         self.samples = self.samples[indexes]
 
+    # MakeSingleSamples => WriteSingleSamples
     def WriteSingleSamples(self, filename, single_thin):
         """
         Make file of weight-1 samples by choosing samples 
@@ -275,56 +279,59 @@ class MCSamples(chains):
             if (rand <= self.weights[i]/maxmult/single_thin):
                 textFileHandle.write("%16.7E"%(1.0))
                 textFileHandle.write("%16.7E"%(self.loglikes[i]))
-                #todo write samples
+                for j in self.colix:
+                    textFileHandle.write("%16.7E"%(self.sample[i][j]))
+            textFileHandle.write("\n")
         textFileHandle.close()
 
     def WriteThinData(self, fname, thin_ix, cool):
+        nparams = self.samples.shape[1]
         if(cool<>1): print 'Cooled thinned output with temp: ', cool
         MaxL = np.max(self.loglikes)
         textFileHandle = open(fname, 'w')
-        #import pdb; pdb.set_trace()
-        thin_rows = len(thin_ix)
         for thin in thin_ix:
             if (cool<>1):
-                newL = self.loglikes[thin]*cool
+                newL = self.loglikes[thin] * cool
                 textFileHandle.write("%16.7E"%(
-                        ))
+                        math.exp(-(newL - self.loglikes[thin])-MaxL*(1-cool))))
+                textFileHandle.write("%16.7E"%(newL))
+                for j in nparams:
+                    textFileHandle.write("%16.7E"%(self.sample[i][j]))
             else:
                 textFileHandle.write("%f"%(1.))
                 textFileHandle.write("%f"%(self.loglikes[thin]))
-                nparams = self.samples.shape[1]
-        
+                for j in nparams:
+                    textFileHandle.write("%16.7E"%(self.sample[i][j]))
 
         textFileHandle.close()
         print  'Wrote ', len(thin_ix), ' thinned samples'
 
     # ThinData(self, fac) => chains.thin_indices(factor)
 
-
     def GetCovMatrix(self):
 
         corr = self.corr(self.samples)
+        #nparam = self.samples.shape[1]
+        #self.corrmatrix = np.zeros([nparam, nparam]) 
 
-        nparam = self.samples.shape[1]
+        fname = self.rootdirname + ".covmat"
+        textFileHandle = open(fname, "w")
+        nparam = self.paramNames.numNonDerived()
+        paramNames = []
+        for i in range(nparam):
+            paramNames.append(self.paramNames.parWithName(self.index2name[i]).name)
+        textFileHandle.write("# %s\n"%(" ".join(paramNames)))
+        #fixme: write corr
+        textFileHandle.close()
 
-
-        self.corrmatrix = np.zeros([nparam, nparam]) 
-        import pdb; pdb.set_trace()
-
-        # use chains.cov and chains.corr
-        #textFileHandle = open(fname)
-        #textFileHandle.close()
-
-
+        np.savetxt(self.rootdirname + ".corr", corr, fmt=self.precision)
 
     # MostCorrelated2D ? 
 
     def GetFractionIndices(self, n):
         fraction_indices = []
-        
-
+        # todo 
         return fraction_indices
-
 
     # ConfidVal(self, ix, limfrac, upper) => chains.confidence()
 
@@ -342,15 +349,20 @@ class MCSamples(chains):
         if (normparam_num<>0):
             if (normparam_num in pars):
                 normparam = pars.index(normparam_num)+1
-            else:
-                sys.exit('Invalid PCA normalization parameter')
+                if (normparam==0):
+                    sys.exit('Invalid PCA normalization parameter')
         else:
             normparam = 0
 
+        n = len(pars)
         PCdata = self.samples[pars]
         PClabs = []
         doexp = False
-        for i in range(len(pars)):
+        PCmean = np.zeros()
+        sd = np.zeros(n)
+        newmean = np.zeros(n)
+        newsd = np.zeros(n)
+        for i in range(n):
             if (param_map[i]=='L'):
                 doexp = True
                 PCdata[:, i] = np.log(PCdata[:, i])
@@ -363,51 +375,108 @@ class MCSamples(chains):
                 PClabs.append(self.index2name[i])
             textFileHandle.write("%s:%s\n"%(str(pars[i]), str(PClabs[i])))
 
-        #PCmean = np.sum(self.weights
+            PCmean[i] = np.sum(self.weights*PCdata[:, i])/self.norm
+            PCdata[:, i] -= PCmean[i]
         
         textFileHandle.write('\n')
         textFileHandle.write('Correlation matrix for reduced parameters\n')
-        
         for i in range(n):
-            # ...
-            textFileHandle.write('\n') # ...
-
-        # ...
+            for j in range(n):
+                #corrmatrix(i,j) = sum(coldata(1,0:nrows-1)*PCdata(i,:)*PCdata(j,:))/numsamp
+                #corrmatrix(j,i) = corrmatrix(i,j)
+                pass
+            textFileHandle.write('\n') 
+            
+        #u = corrmatrix
+        #call Matrix_Diagonalize(u, evals, n)
 
         textFileHandle.write('\n')
         textFileHandle.write('e-values of correlation matrix\n')
-            
-        # ...
+        for i in range(n):
+            #write (F%unit,'(''PC'',1I2,'': '','//trim(fmt)) i, evals(i)
+            pass
 
         textFileHandle.write('\n')
         textFileHandle.write('e-vectors\n')
 
-        # ...
+        for i in range(n):
+            #write (F%unit,'(1I3,'': '','//trim(fmt)) pars(i), u(i,:)
+            pass
+
+#    if (normparam /= 0) then
+#        !Set so parameter normparam has exponent 1
+#        do i=1, n
+#            u(:,i) = u(:,i)/u(normparam,i)*sd(normparam)
+#        end do
+#    else
+#        !Normalize so main component has exponent 1
+#        do i=1, n
+#            locarr(1:1) = maxloc(abs(u(:,i)))
+#            u(:,i) = u(:,i)/u(locarr(1),i)*sd(locarr(1))
+#        end do
+#    end if
+#
+#    do i = 0, nrows -1
+#        PCdata(:,i) = matmul(transpose(u), PCdata(:,i))
+#        if (doexp) PCdata(:,i) = exp(PCdata(:,i))
+#    end do
 
         textFileHandle.write('\n')
         textFileHandle.write('Principle components\n')
 
         for i in range(n):
-            # ...
-            textFileHandle.write('PC%i (e-value: %f)\n'%(i, val))
-
+            textFileHandle.write('PC%i (e-value: %f)\n'%(i, evals[i]))
             for j in range(n):
-                # ...
-                pass
-
-
-        textFileHandle.write('          = %f +- %f\n'%(val, val))
-        textFileHandle.write('\n')
-                
+                paramName = self.paramNames.parWithName(self.index2name[j]).name
+                if (param_map[j] in ['L', 'M']):
+                    expo = "%f"%(1/sd[j]*u[i][j])
+                    if (param_map[j]=="M"): div = "%f"%(-math.exp(PCmean[j]))
+                    else: div = "%f"%(math.exp(PCmean[j]))
+                    textFileHandle.write('[%f]  (%s/%s)^{%s}\n'%(u[i][j], paramName, div, expo))
+                else:
+                    if (doexp):
+                        textFileHandle.write('[%f]   exp((%s-%f)/%s)\n'%(u[i][j], paramName, PCmean[j], expo))
+                    else:
+                        textFileHandle.write('[%f]   (%s-%f)/%s)\n'%(u[i][j], paramName, PCmean[j], expo))
+            #newmean(i) = sum(coldata(1,0:nrows-1)*PCdata(i,:))/numsamp
+            #newsd(i) = sqrt(sum(coldata(1,0:nrows-1)*(PCdata(i,:)-newmean(i))**2)/numsamp)
+            textFileHandle.write('          = %f +- %f\n'%(newmean[i], newsd[i]))
+            textFileHandle.write('ND limits: %9.3f%9.3f%9.3f%9.3f\n'%(
+                    np.min(PCdata[0:ND_cont1, i]), np.max(PCdata[0:ND_cont1, i]), 
+                    np.min(PCdata[0:ND_cont2, i]), np.max(PCdata[0:ND_cont2, i])))
+            textFileHandle.write('\n')
+            
+        # Find out how correlated these components are with other parameters
         textFileHandle.write('Correlations of principle components\n')
+        l = [ "%8i"%i for i in range(1,n+1) ]
+        textFileHandle.write('%s\n'%("".join(l)))
+        
+#    do i=1, n
+#        PCdata(i,:) = (PCdata(i,:) - newmean(i)) /newsd(i)
+#    end do
+ 
+        for j in range(1, n+1):
+            textFileHandle.write('PC%2i\n'%(j))
+            for in range(1, n+1):
+                textFileHandle.write('%%8.3f\n'%(
+                        np.sum(self.weights*PCdata[:, i]*PCdata[:, j])/self.norm))
 
-
-        # ...
+        for j in range(1, n+1):
+            textFileHandle.write('%4i\n'%(self.colix[j]))
+            for in range(1, n+1):
+                textFileHandle.write('%%8.3f'%(
+                        np.sum(self.weights*PCdata[:, i]
+                               *self.samples[:, self.colix[j-1]]-self.mean[j-1]/self.sddev[j])/self.norm))
+                
+            paramName = self.paramNames.parWithName(self.index2name[j]).name
+            textFileHandle.write('(%s)\n'%(paramName))
 
         textFileHandle.close()
 
 
     def GetUsedCols(self):
+        if not hasattr(self, 'samples') or self.samples is None:
+            return # do not have simple samples
         for ix in range(self.samples.shape[1]):
             isused = not np.all(self.samples[:, ix]==self.samples[0][ix])
             self.isused.append(isused)
@@ -462,8 +531,6 @@ class MCSamples(chains):
 
         #
         fullvar = np.zeros(nparam)
-        #for i in range(nparam):
-            
         
         if (num_chains_used>1):
             textFileHandle.write("\n")
@@ -499,7 +566,6 @@ class MCSamples(chains):
                 textFileHandle.write(" var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F\n"%GelmanRubin)
             else:
                 print 'WARNING: Gelman-Rubin covariance not invertible'
-
 
         # Do tests for robustness under using splits of the samples
         # Return the rms ([change in upper/lower quantile]/[standard deviation])
@@ -572,12 +638,11 @@ class MCSamples(chains):
                                     for i2 in [0, 1]:
                                         for i3 in [0, 1]:
                                             if (tran[i1][i2][i3]<>0):
-                                                fitted = 
-                                                float( 
+                                                fitted = float( 
                                                     (tran[i1][i2][0]+tran[i1][i2][1]) * 
-                                                    (tran[0][i2][i3]+tran[1][i2][i3]) ) / 
-                                                float(tran[0][i2][0]+tran[0][i2][1]+
-                                                      tran[1][i2][0]+tran[1][i2][1])
+                                                    (tran[0][i2][i3]+tran[1][i2][i3]) ) \
+                                                / float(tran[0][i2][0]+tran[0][i2][1]+
+                                                        tran[1][i2][0]+tran[1][i2][1])
                                                 focus = float(tran[i1][i2][i3])
                                                 g2 += math.log(focus/fitted) * focus
                                 g2 = g2 * 2
@@ -758,12 +823,8 @@ class MCSamples(chains):
         else:
             self.center[j] = self.range_min[j]
         
-        # DEBUG 
-        try:
-            self.ix_min[j] = int(round((self.range_min[j] - self.center[j])/width))
-            self.ix_max[j] = int(round((self.range_max[j] - self.center[j])/width))
-        except:
-            pass
+        self.ix_min[j] = int(round((self.range_min[j] - self.center[j])/width))
+        self.ix_max[j] = int(round((self.range_max[j] - self.center[j])/width))
 
         if (not self.has_limits_bot[ix]): self.ix_min[j] -= end_edge
         if (not self.has_limits_top[ix]): self.ix_max[j] += end_edge
