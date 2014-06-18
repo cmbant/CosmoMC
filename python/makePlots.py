@@ -14,8 +14,11 @@ Opts.parser.add_argument('--compare_alldata', action='store_true')
 Opts.parser.add_argument('--nx', default=None)
 Opts.parser.add_argument('--legend_labels', default=None)
 Opts.parser.add_argument('--D2_param', default=None)
+Opts.parser.add_argument('--D2_y_params', nargs='+', default=None)
+
 Opts.parser.add_argument('--outputs', nargs='+', default=['pdf'])
 Opts.parser.add_argument('--filled', action='store_true')
+Opts.parser.add_argument('--size_inch', type=float, default=None)
 Opts.parser.add_argument('--allhave', action='store_true')
 
 (batch, args) = Opts.parseForBatch()
@@ -30,6 +33,7 @@ if args.plot_data is None: data = batch.batchPath + os.sep + 'plot_data'
 else: data = args.plot_data
 
 g = GetDistPlots.GetDistPlotter(data)
+if args.size_inch is not None: g.settings.setWithSubplotSize(args.size_inch)
 
 
 def legendLabels(jobItems):
@@ -39,7 +43,7 @@ def doplot(jobItem, roots, legend_labels=None):
     if legend_labels is None: legend_labels = args.legend_labels
     else: legend_labels = roots
     if args.D2_param is not None:
-        g.plots_2d(roots, args.D2_param, nx=args.nx, legend_labels=legend_labels, filled=args.filled)
+        g.plots_2d(roots, args.D2_param, params2=args.D2_y_params, nx=args.nx, legend_labels=legend_labels, filled=args.filled)
     else:
         g.plots_1d(roots, paramList=args.paramList, nx=args.nx, legend_labels=legend_labels)
 

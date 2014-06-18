@@ -36,6 +36,14 @@ class dataSet:
             self.names = [name] + self.names
             self.tag = "_".join(self.names)
 
+    def addEnd(self, name, params):
+        if params is None: params = [name]
+        params = self.standardizeParams(params)
+        self.params =  self.params  + params  # can be an array of items, either ini file name or dictionaries of parameters
+        if name is not None:
+            self.names = self.names + [name]
+            self.tag = "_".join(self.names)
+
     def extendForImportance(self, names, params):
         data = copy.deepcopy(self)
         data.tag += '_post_' + "_".join(names)
