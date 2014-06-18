@@ -64,30 +64,27 @@ class Density1D():
         self.spacing = spacing
 
     def Prob(self, x):
-        if (x > self.X[self.n-1] - self.spacing/1e6):
-            if ( x > self.X[self.n-1] + self.spacing/1e6):
+        if (x > self.X[-1] - self.spacing/1e6):
+            if (x > self.X[-1] + self.spacing/1e6):
                 print 'Density: x too big ', x
                 sys.exit()
-            return self.P[self.n-1]
+            return self.P[-1]
         
         if (x < self.X[0] - self.spacing/1e6):
-            print 'Density: out of range ', x, self.X[0], self.X[self.n-1]
+            print 'Density: out of range ', x, self.X[0], self.X[-1]
             sys.exit()
 
-        # fixme: start index 
         llo = 1 + max(0, int((x-self.X[0])/self.spacing))
         lhi = llo + 1
-        a0  = (self.X[lhi] - x) / self.spacing
-        b0  = (x - self.X[llo]) / self.spacing
-        res = (a0*self.P[llo]) + (b0*self.P[lhi]) + ( (
-                (math.pow(a0, 3)-a0)*self.ddP[llo] + 
-                (math.pow(b0, 3)-b0)*self.ddP[lhi] ) * math.pow(self.spacing, 2)/6)
+        a0  = (self.X[lhi-1] - x) / self.spacing
+        b0  = (x - self.X[llo-1]) / self.spacing
+        res = (a0*self.P[llo-1]) + (b0*self.P[lhi-1]) + ( (
+                (math.pow(a0, 3)-a0)*self.ddP[llo-1] + 
+                (math.pow(b0, 3)-b0)*self.ddP[lhi-1] ) * math.pow(self.spacing, 2)/6)
         return res
-
     
     def InitSpline(self):
         self.ddP = self._spline(self.X, self.P, self.n, self.SPLINE_DANGLE, self.SPLINE_DANGLE)
-
 
     def Limits(self, p):
         # Output values
@@ -95,8 +92,6 @@ class Density1D():
         lim_bot, lim_top = False, False
 
         factor = 100
-
-        # fixme: start index 
         bign = (self.n-1)*factor + 1 
         grid = np.zeros(bign)
         for i in range(bign):
@@ -137,7 +132,6 @@ class Density1D():
 
         return mn, mx, lim_bot, lim_top
 
-
     def _spline(self, x, y, n, d11, d1n):
         """
         Calculates array of second derivatives used by cubic spline interpolation.
@@ -167,7 +161,7 @@ class Density1D():
             
         d1l = d1r
         
-        if (d1n == self.SPLINE_DANGLE):
+        if (d1n==self.SPLINE_DANGLE):
             qn = 0.
             un = 0.
         else:
@@ -209,10 +203,7 @@ class MCSamples(chains):
         self.index2name = dict((v,k) for k, v in self.index.iteritems()) 
         self.index2name.keys().sort()
 
-
         self.density1D = None
-
-
 
         # Other variables
         self.no_plots = False
@@ -233,6 +224,8 @@ class MCSamples(chains):
 
         self.covmat_dimension = 0
         self.max_split_tests = 4
+        self.force_twotail = False
+        self.mean_mult = 0
 
 
     def AdjustPriors(self):
@@ -285,21 +278,25 @@ class MCSamples(chains):
                 #todo write samples
         textFileHandle.close()
 
-
     def WriteThinData(self, fname, thin_ix, cool):
-        """
-        Write thin data.
-        """
-        #fixme: see chain.writeSingle
         if(cool<>1): print 'Cooled thinned output with temp: ', cool
         MaxL = np.max(self.loglikes)
         textFileHandle = open(fname, 'w')
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
+        thin_rows = len(thin_ix)
+        for thin in thin_ix:
+            if (cool<>1):
+                newL = self.loglikes[thin]*cool
+                textFileHandle.write("%16.7E"%(
+                        ))
+            else:
+                textFileHandle.write("%f"%(1.))
+                textFileHandle.write("%f"%(self.loglikes[thin]))
+                nparams = self.samples.shape[1]
+        
 
-        #Data for thin ...
-        thin_rows = 0
         textFileHandle.close()
-        print  'Wrote ', thin_rows, ' thinned samples'
+        print  'Wrote ', len(thin_ix), ' thinned samples'
 
     # ThinData(self, fac) => chains.thin_indices(factor)
 
@@ -307,7 +304,6 @@ class MCSamples(chains):
     def GetCovMatrix(self):
 
         corr = self.corr(self.samples)
-
 
         nparam = self.samples.shape[1]
 
@@ -323,21 +319,14 @@ class MCSamples(chains):
 
     # MostCorrelated2D ? 
 
-    # GetFractionIndices ?
+    def GetFractionIndices(self, n):
+        fraction_indices = []
+        
+
+        return fraction_indices
+
 
     # ConfidVal(self, ix, limfrac, upper) => chains.confidence()
-
-
-    def ComputeStats(self):
-        """
-        Compute mean and std dev.
-        """
-        nparam = self.samples.shape[1]
-        self.means = np.zeros(nparam)
-        self.sddev = np.zeros(nparam)
-        for i in range(nparam): self.means[i] = self.mean(self.samples[:, i])
-        for i in range(nparam): self.sddev[i] = self.std(self.samples[:, i])
-
 
     def PCA(self, pars, param_map, normparam_num):
         """
@@ -423,7 +412,6 @@ class MCSamples(chains):
             isused = not np.all(self.samples[:, ix]==self.samples[0][ix])
             self.isused.append(isused)
         
-        
     def DoConvergeTests(self, limfrac):
         """
         Do convergence tests.
@@ -439,10 +427,43 @@ class MCSamples(chains):
         if (num_chains_used>1):
             print 'Number of chains used =  ', num_chains_used
 
-        # ...
-        
-        params = self.paramNames.list()
         nparam = self.paramNames.numNonDerived()
+        for chain in self.chains: chain.getCov(nparam)
+        means = np.zeros(nparam)
+        norm = np.sum([chain.norm for chain in self.chains])
+        for chain in self.chains:
+            means = means + chain.means[0:nparam] * chain.norm
+        means /= norm
+        meanscov = np.zeros((nparam, nparam))
+        for i in range(nparam):
+            for j in range(nparam):
+                meanscov[i, j] = np.sum([chain.norm * (chain.means[i] - means[i]) * (chain.means[j] - means[j]) for chain in self.chains])
+                meanscov[j, i] = meanscov[i, j]
+        meanscov *= len(self.chains) / (len(self.chains) - 1) / norm
+        
+        meanscov2 = np.zeros((nparam, nparam))
+        for chain in self.chains:
+            meancov2 += chain.cov * chain.norm
+        meancov2 /= norm
+        M = meancov2
+        for i in range(nparam):
+            norm = np.sqrt(meancov2[i, i])
+            M[i, :] /= norm
+            M[:, i] /= norm
+            meanscov[:, i] /= norm
+            meanscov[i, :] /= norm
+        invertible = True
+        try:
+            R = np.linalg.inv(np.linalg.cholesky(M))
+            D = np.linalg.eigvals(np.dot(R, meanscov).dot(R.T))
+            GelmanRubin = max(np.real(D))
+        except:# LinAlgError
+            invertible = False
+
+        #
+        fullvar = np.zeros(nparam)
+        #for i in range(nparam):
+            
         
         if (num_chains_used>1):
             textFileHandle.write("\n")
@@ -450,34 +471,32 @@ class MCSamples(chains):
             textFileHandle.write("param var(chain mean)/mean(chain var)\n")
             textFileHandle.write("\n")
 
-            for param in self.paramNames.names:
-                if (param.isDerived): continue
+            between_chain_var = np.zeros(nparam)
+            in_chain_var = np.zeros(nparam)
 
+            for i in range(nparam):
                 # Get stats for individual chains - the variance of the means over the mean of the variances
                 for chain in self.chains:
-                    
-                    # ...
-                    textFileHandle.write("\n")
-                    #textFileHandle.write("%3i%13.5f%s\n"%(iparam, value, name)
+                    chain_means = np.sum(chain.weights*chain.coldata[:, i])/chain.norm
+                    between_chain_var[i] += chain_means*chain_means
+                    in_chain_var[i] += np.sum(chain.weights*(chain.coldata[:, i]-chain_means)*(chain.coldata[:, i]-chain_means))
 
+                between_chain_var[i] /= (num_chains_used-1)
+                in_chain_var[i] /= norm
+                paramName = self.paramNames.parWithName(self.index2name[i]).name
+                textFileHandle.write("%3i%13.5f%s\n"%(i, between_chain_var[i]/in_chain_var[i], paramName))
 
         if (num_chains_used>1) and (self.covmat_dimension>0):
             # Assess convergence in the var(mean)/mean(var) in the worst eigenvalue
             # c.f. Brooks and Gelman 1997
             
-
             if (invertible):
                 textFileHandle.write("\n")
                 textFileHandle.write("var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters\n")
-                R = 0
-                # ...
-                for jj in range(0, num):
-                    #textFileHandle.write("%3i%13.5f\n"%(iparam, eval))
-                    #write (F%unit,'(1I3,f13.5)') jj,evals(jj)
-                    #R = max(R,evals(jj))
+                for jj in range(num):
+                    textFileHandle.write("%3i%13.5f\n"%(ii, D[jj]))
                     textFileHandle.write("\n")
-                textFileHandle.write(" var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F\n"%R)
-                #deallocate(cov,meanscov)
+                textFileHandle.write(" var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F\n"%GelmanRubin)
             else:
                 print 'WARNING: Gelman-Rubin covariance not invertible'
 
@@ -490,22 +509,16 @@ class MCSamples(chains):
         textFileHandle.write("i.e. mean sample splitting change in the quantiles in units of the st. dev.\n")
         textFileHandle.write("\n")
 
-        
         split_tests = {}
-
-        for j in range(nparam):
-
-            if (0): continue
-
+        for i in range(nparam):
             for endb in [0, 1]:
-
                 for split_n in range(2, self.max_split_tests+1):
-                    #call GetFractionIndices(frac,split_n)
+                    frac = self.GetFractionIndices(split_n)
                     split_tests[split_n] = 0
-                    confid = self.confidence(xxx, (1-limfrac)/2, 0) 
+                    confid = self.confidence(xxx, (1-limfrac)/2, endb==0) 
                     for i in range(1, split_n+1):
-                        split_tests[split_n] += self.confidence(xxx, (1-limfrac)/2, 0) 
-                    split_tests[split_n] = math.sqrt(split_tests[split_n]/split_n/fullvar(j))
+                        split_tests[split_n] += self.confidence(xxx, (1-limfrac)/2, endb==0) 
+                    split_tests[split_n] = math.sqrt(split_tests[split_n]/split_n/fullvar[j])
                 if (endb==0):
                     typestr = 'upper'
                 else:
@@ -513,23 +526,78 @@ class MCSamples(chains):
                 
                 textFileHandle.write("%3i%i%9.4f%s%s\n"%(j, max_split_tests-1, label))
 
-
         # Now do Raftery and Lewis method
         # See http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps
         # Raw non-importance sampled chains only
+        thin_fac = np.zeros(num_chains_used)
+
+        tran = np.zeros((2,2,2), dtype=np.int)
+        tran2 = np.zeros((2,2), dtype=np.int)
 
         if (1): # (all(abs(coldata(1,0:nrows-1) - nint(max(0.6_gp,coldata(1,0:nrows-1))))<1e-4)) 
 
-            nburn = 0
+            nburn = np.zeros(num_chains_used, dtype=np.int)
             hardest = -1
             hardestend = 0
-
             for ix in range(num_chains_used):
-                #thin_fac(ix) = nint(maxval(coldata(1,chain_indices(ix):chain_indices(ix+1)-1)))
+                chain = self.chains[i]
+                thin_fac[ix] = int(round(np.max(chain.weights))) 
+                
+                for j in range(self.covmat_dimension):
+                    #isused(j)
+                    if (True and (self.force_twotail or not self.has_limits[j])):
+                        for endb in [0, 1]:
+                            # Get binary chain depending on whether above or below confidence value
+                            
+                            u = self.confidence(xxx, (1-limfrac)/2, endb==0) 
+                            while(True): 
+                                thin_ix = mc.thin_indices() # ThinData => thin_indices
+                                if (thin_rows<2): break
+                                binchain = np.zeros(thin_rows)
+#                            where (coldata(j,thin_ix(0:thin_rows-1)) >= u)
+#                                binchain = 1
+#                            elsewhere
+#                                binchain = 2
+#                            endwhere
 
-                for j in range(3, self.covmat_dimension+3):
-                    #...
-                    pass
+                                tran = 0
+                                # Estimate transitions probabilities for 2nd order process
+                                for i in range(thin_rows):
+                                    tran[binchain[i-2]][binchain[i-1]][binchain[i]] += 1
+                                    
+                                # Test whether 2nd order is better than Markov using BIC statistic
+                                
+                                g2 = 0
+                                for i1 in [0, 1]:
+                                    for i2 in [0, 1]:
+                                        for i3 in [0, 1]:
+                                            if (tran[i1][i2][i3]<>0):
+                                                fitted = 
+                                                float( 
+                                                    (tran[i1][i2][0]+tran[i1][i2][1]) * 
+                                                    (tran[0][i2][i3]+tran[1][i2][i3]) ) / 
+                                                float(tran[0][i2][0]+tran[0][i2][1]+
+                                                      tran[1][i2][0]+tran[1][i2][1])
+                                                focus = float(tran[i1][i2][i3])
+                                                g2 += math.log(focus/fitted) * focus
+                                g2 = g2 * 2
+
+                                if (g2 - math.log(float(thin_rows-2))< 0): break
+                                thin_fac[ix] += 1
+
+                            # Get Markov transition probabilities for binary processes
+                            if (np.sum(tran[:, 0, 1])==0 or np.sum(tran[:, 1, 0])==0):
+                                thin_fac[ix] = 0
+                                # goto 203
+                            
+                            alpha = np.sum(tran[:, 0, 1]) / float(np.sum(tran[:, 0, 0])+np.sum(tran[:, 0, 1]))
+                            beta = np.sum(tran[:, 1, 0]) / float(np.sum(tran[:, 1, 0])+np.sum(tran[:, 1, 1]))
+                            probsum = alpha + beta
+                            tmp1 = math.log(probsum*epsilon/max(alpha,beta)) / math.log(abs(1.0-probsum))
+                            if (int(tmp1+1)*thin_fac[ix]>nburn[ix]):
+                                nburn[ix] = int(tmp1+1)*thin_fac[ix]
+                                hardest = j
+                                hardestend = endb
 
                 markov_thin[ix] = thin_fac[ix]
 
@@ -538,10 +606,11 @@ class MCSamples(chains):
                 #u = ConfidVal(hardest,(1-limfrac)/2,hardestend==0)
                 thin_fac[ix] += 1
 
-                while(True): # thin_fac
+                while(True): 
                     thin_ix = mc.thin_indices() # ThinData => thin_indices
                     if (thin_rows<2): break
-                    binchain =np.zeros(thin_rows)
+                    binchain = np.zeros(thin_rows)
+                    
 #                 where (coldata(hardest,thin_ix(0:thin_rows-1)) > u)
 #                    binchain = 1
 #                elsewhere
@@ -569,27 +638,32 @@ class MCSamples(chains):
                     g2 = g2 * 2
 
                     if (g2 - math.log(float(thin_rows-1))< 0): break
-                    thin_fac[ix] += 1
 
+                    thin_fac[ix] += 1
+#goto 203
                 if (thin_rows<2): thin_fac[ix] = 0
 
             textFileHandle.write("\n")
             textFileHandle.write("Raftery&Lewis statistics\n")
             textFileHandle.write("\n")
             textFileHandle.write("chain  markov_thin  indep_thin    nburn\n")
+
+            # fixme: chain_numbers
             for ix in range(num_chains_used):
-                if (1): # thin_fac(ix)==0
+                if (thin_fac[ix]==0):
                     textFileHandle.write("%4i      Not enough samples\n"%chain_numbers[ix])
                 else:
                     textFileHandle.write("%4i%12i%12i%12i"%(
                             chain_numbers[ix], markov_thin[ix], thin_fac[ix], nburn[ix]))
 
-            if (1): # any(thin_fac(1:num_chains_used)==0)
+            if (not np.all(thin_fac!=0)):
                 print 'RL: Not enough samples to estimate convergence stats'
             else:
-                print 'RL: Thin for Markov: '
-                print 'RL: Thin for indep samples:  '
-                print 'RL: Estimated burn in steps: '
+                print 'RL: Thin for Markov: ', np.max(markov_thin)
+                indep_thin = np.max(thin_fac)
+                print 'RL: Thin for indep samples:  ', str(indep_thin)
+                print 'RL: Estimated burn in steps: ', 
+                np.max(nburn), ' (', int(round(np.max(nburn)/self.mean_mult))
 
             # Get correlation lengths
             textFileHandle.write("\n")
@@ -605,45 +679,31 @@ class MCSamples(chains):
                 else:
                     autocorr_thin = 5 * (indep_thin/30)
 
-
             thin_ix = mc.thin_indices(autocorr_thin) # ThinData => thin_indices
             maxoff = min(corr_length_steps, thin_rows/(autocorr_thin*num_chains_used))
 
             corrs = no.zeros([nparams, maxoff])
             for off in range(maxoff):
                 for i in range(off, thin_rows):
-                    pass
-
+                    for j in range(nparams):
+                        if (j): # isused(j)
+                            corrs[j][off] += 0
+                            # (coldata(j,thin_ix(i))-fullmean(j))* &
+                            #(coldata(j,thin_ix(i-off)) - fullmean(j))
+                for j in range(nparams):
+                    if (j): # isused(j)
+                        corrs[j][off] /= (thin_rows-off)/fullvar(j)
 
             if (maxoff>0):
                 textFileHandle.write("%i"%(maxoff))
                 for i in range(1, maxoff+1):
                     textFileHandle.write("%8i"%(i*autocorr_thin))
                 for j in range(nparams):
-                    if (j): 
+                    if (j): # isused(j)
+                        name = self.index2name.get(j, "NOTFOUND")
                         textFileHandle.write("1%3i%8.3f"%(j, corrs[j][i]))
-                       
                 
-
-
-
         textFileHandle.close()
-
-
-    def Init1DDensity(self):
-        nparam = self.samples.shape[1]
-        self.param_min = np.zeros(nparam)
-        self.param_max = np.zeros(nparam)
-        self.range_min = np.zeros(nparam)
-        self.range_max = np.zeros(nparam)
-        self.center = np.zeros(nparam)
-        self.ix_min = np.zeros(nparam, dtype=np.int)
-        self.ix_max = np.zeros(nparam, dtype=np.int)
-        
-        #
-        self.marge_limits_bot = np.zeros([nparam, self.num_contours])
-        self.marge_limits_top = np.zeros([nparam, self.num_contours])
-
 
     
     def Get1DDensity(self, j):
@@ -1042,7 +1102,6 @@ class MCSamples(chains):
                 textFileHandle.write("\n")
             textFileHandle.close()
 
-
     def EdgeWarning(self, i):
         if self.index2name.has_key(i):
             print 'Warning: sharp edge in parameter %i - check limits%i'%(i, i+1)
@@ -1069,8 +1128,35 @@ class MCSamples(chains):
 
     # New functions
 
+    def ComputeStats(self):
+        """
+        Compute mean and std dev.
+        """
+        nparam = self.samples.shape[1]
+        self.means = np.zeros(nparam)
+        self.sddev = np.zeros(nparam)
+        for i in range(nparam): self.means[i] = self.mean(self.samples[:, i])
+        for i in range(nparam): self.sddev[i] = self.std(self.samples[:, i])
+
+
+    def Init1DDensity(self):
+        nparam = self.samples.shape[1]
+        self.param_min = np.zeros(nparam)
+        self.param_max = np.zeros(nparam)
+        self.range_min = np.zeros(nparam)
+        self.range_max = np.zeros(nparam)
+        self.center = np.zeros(nparam)
+        self.ix_min = np.zeros(nparam, dtype=np.int)
+        self.ix_max = np.zeros(nparam, dtype=np.int)
+        
+        #
+        self.marge_limits_bot = np.zeros([nparam, self.num_contours])
+        self.marge_limits_top = np.zeros([nparam, self.num_contours])
+
+
     def SetContours(self, contours=[]):
         self.contours = contours
+
 
     def GetConfidenceRegion(self):
         ND_cont1, ND_cont2 = -1, -1

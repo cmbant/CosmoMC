@@ -239,6 +239,7 @@ if (not no_tests):
     corr_length_steps = ini.int('corr_length_steps', 15)
     
 force_twotail = ini.bool('force_twotail', False)
+mc.force_twotail = force_twotail
 if (force_twotail): print 'Computing two tail limits'
 
 if (ini.params.has_key('cov_matrix_dimension')):
@@ -308,12 +309,13 @@ if(last_chain==-1): last_chain = getLastChainIndex(in_root)
 ok = mc.loadChains(in_root, chain_files)
 #if (not ok): print ''
 #mc.makeSingle()
-if (mc.numrows==0):
-    print 'No un-ignored rows! (check number of chains/burn in)'
-    sys.exit()
+#if (mc.numrows==0):
+#    print 'No un-ignored rows! (check number of chains/burn in)'
+#    sys.exit()
 
 
 #import pdb; pdb.set_trace()
+mc.getChainsStats()
 
 if (cool<>1):
     mc.CoolChain(cool)
@@ -324,8 +326,8 @@ if (adjust_priors):
 
 mc.GetUsedCols()
 
-mean_mult = mc.norm/mc.numrows
-max_mult = (mean_mult*mc.numrows)/min(mc.numrows/2, 500)
+mc.mean_mult = mc.norm/mc.numrows
+max_mult = (mc.mean_mult*mc.numrows)/min(mc.numrows/2, 500)
 outliers = len(mc.weights[np.where(mc.weights>max_mult)])
 if (outliers<>0):
     print 'outlier fraction ', float(outliers)/mc.numrows
@@ -340,7 +342,7 @@ if (not no_tests):
 if (adjust_priors):
     mc.DeleteZeros()
 
-print 'mean input multiplicity = ', mean_mult
+print 'mean input multiplicity = ', mc.mean_mult
 
 # Output thinned data if requested
 # Must do this with unsorted output
