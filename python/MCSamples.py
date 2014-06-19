@@ -87,7 +87,7 @@ class Density1D():
         self.ddP = self._spline(self.X, self.P, self.n, self.SPLINE_DANGLE, self.SPLINE_DANGLE)
 
     def Limits(self, p):
-        # Output values
+        # Return values
         mn, mx = 0., 0.
         lim_bot, lim_top = False, False
 
@@ -457,13 +457,13 @@ class MCSamples(chains):
  
         for j in range(1, n+1):
             textFileHandle.write('PC%2i\n'%(j))
-            for in range(1, n+1):
+            for j in range(1, n+1):
                 textFileHandle.write('%%8.3f\n'%(
                         np.sum(self.weights*PCdata[:, i]*PCdata[:, j])/self.norm))
 
         for j in range(1, n+1):
             textFileHandle.write('%4i\n'%(self.colix[j]))
-            for in range(1, n+1):
+            for i in range(1, n+1):
                 textFileHandle.write('%%8.3f'%(
                         np.sum(self.weights*PCdata[:, i]
                                *self.samples[:, self.colix[j-1]]-self.mean[j-1]/self.sddev[j])/self.norm))
@@ -475,8 +475,9 @@ class MCSamples(chains):
 
 
     def GetUsedCols(self):
+        #fixme: test if not have simple samples
         if not hasattr(self, 'samples') or self.samples is None:
-            return # do not have simple samples
+            return 
         for ix in range(self.samples.shape[1]):
             isused = not np.all(self.samples[:, ix]==self.samples[0][ix])
             self.isused.append(isused)
@@ -485,6 +486,7 @@ class MCSamples(chains):
         """
         Do convergence tests.
         """
+        #fixme: test if not have chains
         if not hasattr(self, 'chains'): return 
 
         # Get statistics for individual chains, and do split tests on the samples
@@ -632,7 +634,6 @@ class MCSamples(chains):
                                     tran[binchain[i-2]][binchain[i-1]][binchain[i]] += 1
                                     
                                 # Test whether 2nd order is better than Markov using BIC statistic
-                                
                                 g2 = 0
                                 for i1 in [0, 1]:
                                     for i2 in [0, 1]:
@@ -653,7 +654,7 @@ class MCSamples(chains):
                             # Get Markov transition probabilities for binary processes
                             if (np.sum(tran[:, 0, 1])==0 or np.sum(tran[:, 1, 0])==0):
                                 thin_fac[ix] = 0
-                                # goto 203
+                                #fixme goto 203
                             
                             alpha = np.sum(tran[:, 0, 1]) / float(np.sum(tran[:, 0, 0])+np.sum(tran[:, 0, 1]))
                             beta = np.sum(tran[:, 1, 0]) / float(np.sum(tran[:, 1, 0])+np.sum(tran[:, 1, 1]))
@@ -705,7 +706,7 @@ class MCSamples(chains):
                     if (g2 - math.log(float(thin_rows-1))< 0): break
 
                     thin_fac[ix] += 1
-#goto 203
+#fixme goto 203
                 if (thin_rows<2): thin_fac[ix] = 0
 
             textFileHandle.write("\n")
@@ -960,7 +961,6 @@ class MCSamples(chains):
                 for i in range(self.ix_min[j], self.ix_max[j]+1):
                     textFileHandle.write("%f%16.7E\n"%(self.center[j] + i*width, binlikes[i]/maxbin))
                 textFileHandle.close()
-        
 
     def Get2DPlotData(self, j, j2):
         """
@@ -1073,11 +1073,8 @@ class MCSamples(chains):
                     for iy in range(iymax*fine_fac+1, jmax+1):
                         prior_mask[ix][iy] = 0
 
-
         for ix1 in range(ixmin, ixmax+1):
             for ix2 in range(iymin, iymax+1):
-    
-                
     
                 #bins2D(ix1,ix2) = sum(win* finebins(ix1*fine_fac-winw:ix1*fine_fac+winw, ix2*fine_fac-winw:ix2*fine_fac+winw))
 
@@ -1199,7 +1196,6 @@ class MCSamples(chains):
         for i in range(nparam): self.means[i] = self.mean(self.samples[:, i])
         for i in range(nparam): self.sddev[i] = self.std(self.samples[:, i])
 
-
     def Init1DDensity(self):
         nparam = self.samples.shape[1]
         self.param_min = np.zeros(nparam)
@@ -1209,15 +1205,12 @@ class MCSamples(chains):
         self.center = np.zeros(nparam)
         self.ix_min = np.zeros(nparam, dtype=np.int)
         self.ix_max = np.zeros(nparam, dtype=np.int)
-        
         #
         self.marge_limits_bot = np.zeros([nparam, self.num_contours])
         self.marge_limits_top = np.zeros([nparam, self.num_contours])
 
-
     def SetContours(self, contours=[]):
         self.contours = contours
-
 
     def GetConfidenceRegion(self):
         ND_cont1, ND_cont2 = -1, -1
@@ -1227,13 +1220,11 @@ class MCSamples(chains):
         #indexes = np.where(paramVec[:]>self.get_norm(paramVec)*self.contours[1])
         #ND_cont2 = indexes[0][0]
         return ND_cont1, ND_cont2
-
     
     def ReadRanges(self):
         ranges_file = self.root + '.ranges'
         if (os.path.isfile(ranges_file)):
             self.ranges = Ranges(ranges_file)
-
 
     def WriteBounds(self, filename):
         if not hasattr(self, 'ranges') or self.ranges is None: return 
@@ -1252,7 +1243,6 @@ class MCSamples(chains):
                 lim2 = "    N"
             textFileHandle.write("%22s%17s%17s\n"%(name, lim1, lim2))
         textFileHandle.close()
-
 
     def OutputMargeStats(self, contours_str):
         
@@ -1289,7 +1279,6 @@ class MCSamples(chains):
             textFileHandle.write("%s\n"%(""))
 
         textFileHandle.close()
-            
 
     def WriteParamNames(self, filename, indices=None, add_derived=None):
         textFileHandle = open(filename, 'w')
@@ -1297,14 +1286,6 @@ class MCSamples(chains):
             # fixme label ?
             textFileHandle.write("%s\t%s\n"%(name, ""))
         textFileHandle.close()
-
-
-
-
-
-
-
-
 
 
 #FIXME?: pass values as parameters 
@@ -1317,7 +1298,6 @@ outdir='%s'
 roots=['%s']
 """
     return text
-
 
 def WritePlotFileExport():
     text = "g.export(os.path.join(outdir,'%s'))"
