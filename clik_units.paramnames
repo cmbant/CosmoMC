@@ -12,6 +12,7 @@ yhe           Y_{\mathrm{P}}    #Helium mass fraction (not used if bbn_consisten
 alpha1        \alpha_{-1} #correlated CDM isocurvature 
 deltazrei     \Delta z_{\mathrm{re}} #width of reionization
 Alens         A_{\mathrm{L}}     #lensing potential scaled by sqrt(A_lens)
+Alensf         A_{\mathrm{L}^{\mathrm{fid}}     #lensing potential scaled by sqrt(A_lens)
 fdm           \epsilon_0 f_d    #CosmoRec dark matter annihilation parameter, 0910.3663
 logA          \ln(10^{10} A_\mathrm{s})
 ns            n_\mathrm{s}	    #beware that pivot scale can change in .ini file
