@@ -20,6 +20,7 @@ Opts.parser.add_argument('--outputs', nargs='+', default=['pdf'])
 Opts.parser.add_argument('--filled', action='store_true')
 Opts.parser.add_argument('--size_inch', type=float, default=None)
 Opts.parser.add_argument('--allhave', action='store_true')
+Opts.parser.add_argument('--outtag', default=None)
 
 (batch, args) = Opts.parseForBatch()
 
@@ -51,8 +52,10 @@ def comparePlot(jobItems, titles=None):
     roots = [jobItem.name for jobItem in jobItems]
     doplot(jobItem, roots, legend_labels=legendLabels(jobItems))
 
+
 if args.D2_param is not None: tp = '_' + args.D2_param + '_2D'
 else: tp = ''
+if args.outtag is not None: tp = '_' + args.outtag + tp
 
 items = Opts.sortedParamtagDict()
 

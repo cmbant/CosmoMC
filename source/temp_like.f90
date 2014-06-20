@@ -518,6 +518,9 @@
         do l = lminX(4), lmaxX(4)
             X_beam_corr_model(l-lminX(4)+npt(4)) =  ( cell_cmb(l) + C_foregrounds(l,4))*corrected_beam(4,l)/sqrt(cal1*cal2)
         end do
+    else 
+        calTE=1
+        calEE=1
     end if
 
     if(Nspec.eq.6) then

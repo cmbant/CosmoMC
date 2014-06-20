@@ -21,7 +21,9 @@ TTTE = {'want_spec':'T T T T T F', 'pre_marged':'F'}
 
 full = {'want_spec':'T T T T T T', 'pre_marged':'T'}
 
-freecal = {'prior[cal0]':' 1 0.05', 'prior[cal2]':'1 0.05'}
+freecal = {'prior[cal0]':' 1 1', 'prior[cal2]':'1 1'}
+freecalpol = {'prior[cal0]':' 1 1', 'prior[cal2]':'1 1', 'param[calTE]':'1 0.1 2 0.005 0.005', 'param[calEE]':'1 0.1 2 0.01 0.01'}
+
 
 planck_vars = ['pico.ini', 'nonclik_v96F.ini', Camspec, {'indep_sample':0} ]
 
@@ -80,6 +82,13 @@ for d in g.datasets:
     d.add(None, tauprior)
     d.add('freecal', freecal)
 
+groups.append(g)
+
+g = batchJob.jobGroup('freecalpol')
+g.datasets = [batchJob.dataSet('v96', [full] + planck_vars)]
+for d in g.datasets:
+    d.add(None, tauprior)
+    d.add('freecalpol', freecalpol)
 groups.append(g)
 
 
