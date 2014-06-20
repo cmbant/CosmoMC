@@ -456,6 +456,7 @@
     integer ::  j, l, ii,jj
     real(campc) , allocatable, save ::  X_beam_corr_model(:), Y(:),  C_foregrounds(:,:)
     real(campc) cal0, cal1, cal2
+    real(campc) calTE, calEE
     real(campc) zlike, ztemp
     real(campc) beam_params(cov_dim),beam_coeffs(num_modes_per_beam,beam_Nspec)
     integer :: ie1,ie2,if1,if2, ix
@@ -481,8 +482,10 @@
         cal0 = freq_params(24)
         cal1 = freq_params(25)
         cal2 = freq_params(26)
-
-        num_non_beam = 26
+        calTE = freq_params(27)
+        calEE = freq_params(28)
+        
+        num_non_beam = 28
         if (size(freq_params) < num_non_beam +  beam_Nspec*num_modes_per_beam) stop 'CAMspec: not enough parameters'
 
         if (keep_num>0) then
@@ -520,12 +523,12 @@
     if(Nspec.eq.6) then
         ! TE...
         do l = lminX(5), lmaxX(5)
-            X_beam_corr_model(l-lminX(5)+npt(5)) = cell_cmbx(l)
+            X_beam_corr_model(l-lminX(5)+npt(5)) = cell_cmbx(l)/calTE
         end do
 
         ! EE...
         do l = lminX(6), lmaxX(6)
-            X_beam_corr_model(l-lminX(6)+npt(6)) = cell_cmbe(l)
+            X_beam_corr_model(l-lminX(6)+npt(6)) = cell_cmbe(l)/calEE
         end do
     endif
 

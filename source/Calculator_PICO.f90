@@ -116,7 +116,7 @@
     call fpico_set_param("pivot_scalar",p%InitPower%k_0_scalar)
     call fpico_set_param("pivot_tensor",p%InitPower%k_0_tensor)
     call fpico_set_param("re_optical_depth",CMB%tau)
-    call fpico_set_param("force",1.d0)
+!    call fpico_set_param("force",1.d0)
 
     call fpico_reset_requested_outputs()
     if (P%WantCls) then
@@ -133,7 +133,12 @@
     end if
 
     call fpico_compute_result(success)
-    if (.not. success) call mpiStop('PICO failed to get result')
+    if (.not. success) then
+        ! for now just reject if out of pico bounds
+        !call mpiStop('PICO failed to get result')
+        error = 1
+        return
+    end if
     error = 0
     if (P%WantCls) then
         call PICO_GetOutputArray(Theory,1,1, "cl_TT")

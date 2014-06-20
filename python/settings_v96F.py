@@ -89,6 +89,8 @@ g = batchJob.jobGroup('WMAPtau')
 g.datasets = copy.deepcopy(datasets)
 for d in g.datasets:
     d.add('WMAPtau', WMAPtau)
+g.params = [[], ['Alens']]
+
 #    d.addFirst('freecal', freecal)
 # sets of parameters to vary in addition to baseline
 
