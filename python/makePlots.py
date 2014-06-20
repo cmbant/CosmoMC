@@ -2,25 +2,26 @@ import os, batchJobArgs, paramNames, GetDistPlots
 
 
 Opts = batchJobArgs.batchArgs('Make plots from getdist outputs', importance=True, converge=True)
-Opts.parser.add_argument('out_dir')
+Opts.parser.add_argument('out_dir', help='directory to put the produced plots in')
 
-Opts.parser.add_argument('--plot_data', nargs='*', default=None)
-Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')
-Opts.parser.add_argument('--paramList', default=None)
-Opts.parser.add_argument('--compare_data', nargs='+', default=None)
+Opts.parser.add_argument('--plot_data', nargs='*', default=None, help='directory/ies containing getdist output plot_data')
+Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames', help='.paramnames file for getting labels for parameters')
+Opts.parser.add_argument('--paramList', default=None, help='.paramnames file listing parameters to plot (default: all)')
+Opts.parser.add_argument('--compare_data', nargs='+', default=None, help='data tags to compare for each parameter combination')
 Opts.parser.add_argument('--compare_importance', nargs='*', default=None)
-Opts.parser.add_argument('--compare_paramtag', nargs='+', default=None)
-Opts.parser.add_argument('--compare_alldata', action='store_true')
-Opts.parser.add_argument('--nx', default=None)
-Opts.parser.add_argument('--legend_labels', default=None)
-Opts.parser.add_argument('--D2_param', default=None)
-Opts.parser.add_argument('--D2_y_params', nargs='+', default=None)
+Opts.parser.add_argument('--compare_paramtag', nargs='+', default=None, help='list of parameter tags to compare for each data combination')
+Opts.parser.add_argument('--compare_alldata', action='store_true', help='compare all data combinations for each parameter combination')
+Opts.parser.add_argument('--nx', default=None, help='number of plots per row')
+Opts.parser.add_argument('--legend_labels', default=None, nargs='+', help='labels to replace full chain names in legend')
+Opts.parser.add_argument('--D2_param', default=None, help='x-parameter for 2D plots')
+Opts.parser.add_argument('--D2_y_params', nargs='+', default=None, help='list of y parameter names for 2D plots')
 
-Opts.parser.add_argument('--outputs', nargs='+', default=['pdf'])
-Opts.parser.add_argument('--filled', action='store_true')
-Opts.parser.add_argument('--size_inch', type=float, default=None)
-Opts.parser.add_argument('--allhave', action='store_true')
-Opts.parser.add_argument('--outtag', default=None)
+Opts.parser.add_argument('--outputs', nargs='+', default=['pdf'], help='output file type (default: pdf)')
+Opts.parser.add_argument('--filled', action='store_true', help='for 2D plots, output filled contours')
+Opts.parser.add_argument('--size_inch', type=float, default=None, help='output subplot size in inches')
+Opts.parser.add_argument('--legend_ncol', type=int, default=None, help='numnber of columns to draw legends')
+Opts.parser.add_argument('--allhave', action='store_true', help='only include plots where all combinations exist')
+Opts.parser.add_argument('--outtag', default=None, help='tag to add to output filenames to distinguish output')
 
 (batch, args) = Opts.parseForBatch()
 
@@ -37,25 +38,22 @@ g = GetDistPlots.GetDistPlotter(data)
 if args.size_inch is not None: g.settings.setWithSubplotSize(args.size_inch)
 
 
-def legendLabels(jobItems):
-    return [jobItem.name for jobItem in jobItems]
-
-def doplot(jobItem, roots, legend_labels=None):
-    if legend_labels is None: legend_labels = args.legend_labels
-    else: legend_labels = roots
+def doplot(jobItem, roots):
+    ncol = args.legend_ncol or (1, 2)[len(roots) > 2]
     if args.D2_param is not None:
-        g.plots_2d(roots, args.D2_param, params2=args.D2_y_params, nx=args.nx, legend_labels=legend_labels, filled=args.filled)
+        g.plots_2d(roots, args.D2_param, params2=args.D2_y_params, nx=args.nx, legend_labels=args.legend_labels, filled=args.filled, legend_ncol=ncol)
     else:
-        g.plots_1d(roots, paramList=args.paramList, nx=args.nx, legend_labels=legend_labels)
+        g.plots_1d(roots, paramList=args.paramList, nx=args.nx, legend_labels=args.legend_labels, legend_ncol=ncol)
 
 def comparePlot(jobItems, titles=None):
     roots = [jobItem.name for jobItem in jobItems]
-    doplot(jobItem, roots, legend_labels=legendLabels(jobItems))
+    doplot(jobItem, roots)
 
 
-if args.D2_param is not None: tp = '_' + args.D2_param + '_2D'
-else: tp = ''
+tp = ''
+if args.data is not None and args.compare_alldata is not None: tp = '_' + args.data + tp
 if args.outtag is not None: tp = '_' + args.outtag + tp
+if args.D2_param is not None: tp = '_' + args.D2_param + '_2D'
 
 items = Opts.sortedParamtagDict()
 
