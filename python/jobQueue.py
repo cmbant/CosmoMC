@@ -78,11 +78,11 @@ def submitJob(jobName, paramFiles, pbs_template='job_script', numnodes=1, omp=4,
                qsub='qsub'):
     ppn = chainsPerNode * omp
     nchains = numnodes * chainsPerNode
-    mem = mem_per_node * numnodes
+    # mem = mem_per_node * numnodes
     vals = dict()
     vals['JOBNAME'] = jobName
     vals['OMP'] = omp
-    vals['MEM_MB'] = mem
+    vals['MEM_MB'] = mem_per_node
     vals['WALLTIME'] = walltime
     vals['NUMNODES'] = numnodes
     vals['PPN'] = ppn
