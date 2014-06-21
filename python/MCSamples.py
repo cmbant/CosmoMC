@@ -221,6 +221,7 @@ class MCSamples(chains):
         self.plot_meanlikes = False
         self.mean_loglikes = False
         self.shade_meanlikes = False
+        self.indep_thin = 0
 
         self.covmat_dimension = 0
         self.max_split_tests = -1 # 4 # disable split tests
@@ -280,7 +281,7 @@ class MCSamples(chains):
                 textFileHandle.write("%16.7E"%(1.0))
                 textFileHandle.write("%16.7E"%(self.loglikes[i]))
                 for j in self.colix:
-                    textFileHandle.write("%16.7E"%(self.sample[i][j]))
+                    textFileHandle.write("%16.7E"%(self.samples[i][j]))
             textFileHandle.write("\n")
         textFileHandle.close()
 
@@ -296,12 +297,12 @@ class MCSamples(chains):
                         math.exp(-(newL - self.loglikes[thin])-MaxL*(1-cool))))
                 textFileHandle.write("%16.7E"%(newL))
                 for j in nparams:
-                    textFileHandle.write("%16.7E"%(self.sample[i][j]))
+                    textFileHandle.write("%16.7E"%(self.samples[i][j]))
             else:
                 textFileHandle.write("%f"%(1.))
                 textFileHandle.write("%f"%(self.loglikes[thin]))
                 for j in nparams:
-                    textFileHandle.write("%16.7E"%(self.sample[i][j]))
+                    textFileHandle.write("%16.7E"%(self.samples[i][j]))
 
         textFileHandle.close()
         print  'Wrote ', len(thin_ix), ' thinned samples'
@@ -310,7 +311,8 @@ class MCSamples(chains):
 
     def GetCovMatrix(self):
 
-        corr = self.corr(self.samples)
+        paramVecs = [ self.samples[:, i] for i in range(self.samples.shape[1]) ]
+        corr = self.corr(paramVecs)
         #nparam = self.samples.shape[1]
         #self.corrmatrix = np.zeros([nparam, nparam]) 
 
@@ -489,9 +491,6 @@ class MCSamples(chains):
 
 
     def GetUsedCols(self):
-        #fixme: test if not have simple samples
-        if not hasattr(self, 'samples') or self.samples is None:
-            return 
         for ix in range(self.samples.shape[1]):
             isused = not np.all(self.samples[:, ix]==self.samples[0][ix])
             self.isused.append(isused)
@@ -500,7 +499,6 @@ class MCSamples(chains):
         """
         Do convergence tests.
         """
-        #fixme: test if not have chains
         if not hasattr(self, 'chains'): return 
 
         # Get statistics for individual chains, and do split tests on the samples
@@ -512,7 +510,8 @@ class MCSamples(chains):
         if (num_chains_used>1):
             print 'Number of chains used =  ', num_chains_used
 
-        nparam = self.paramNames.numNonDerived()
+        nparam = self.paramNames.numParams()
+        nparamNonDerived = self.paramNames.numNonDerived()
         for chain in self.chains: chain.getCov(nparam)
         means = np.zeros(nparam)
         norm = np.sum([chain.norm for chain in self.chains])
@@ -537,37 +536,37 @@ class MCSamples(chains):
             M[:, i] /= norm
             meanscov[:, i] /= norm
             meanscov[i, :] /= norm
-        invertible = True
-        try:
+
+        invertible = np.isfinite(np.linalg.cond(M))
+        if (invertible):
             R = np.linalg.inv(np.linalg.cholesky(M))
             D = np.linalg.eigvals(np.dot(R, meanscov).dot(R.T))
             GelmanRubin = max(np.real(D))
-        except:# LinAlgError
-            invertible = False
 
         #
         fullvar = np.zeros(nparam)
         
         if (num_chains_used>1):
-            textFileHandle.write("\n")
-            textFileHandle.write("Variance test convergence stats using remaining chains\n")
-            textFileHandle.write("param var(chain mean)/mean(chain var)\n")
-            textFileHandle.write("\n")
+            textFileHandle.write(" \n")
+            textFileHandle.write(" Variance test convergence stats using remaining chains\n")
+            textFileHandle.write(" param var(chain mean)/mean(chain var)\n")
+            textFileHandle.write(" \n")
 
             between_chain_var = np.zeros(nparam)
             in_chain_var = np.zeros(nparam)
 
+            
             for i in range(nparam):
                 # Get stats for individual chains - the variance of the means over the mean of the variances
                 for chain in self.chains:
-                    chain_means = np.sum(chain.weights*chain.coldata[:, i])/chain.norm
+                    chain_means = np.sum(chain.coldata[:, 0]*chain.coldata[:, i])/chain.norm
                     between_chain_var[i] += chain_means*chain_means
-                    in_chain_var[i] += np.sum(chain.weights*(chain.coldata[:, i]-chain_means)*(chain.coldata[:, i]-chain_means))
+                    in_chain_var[i] += np.sum(chain.coldata[:, 0]*(chain.coldata[:, i]-chain_means)*(chain.coldata[:, i]-chain_means))
 
                 between_chain_var[i] /= (num_chains_used-1)
                 in_chain_var[i] /= norm
-                paramName = self.paramNames.parWithName(self.index2name[i]).name
-                textFileHandle.write("%3i%13.5f%s\n"%(i, between_chain_var[i]/in_chain_var[i], paramName))
+                label = self.paramNames.names[i].label
+                textFileHandle.write("%3i%13.5f  %s\n"%(i+1, between_chain_var[i]/in_chain_var[i], label))
 
         if (num_chains_used>1) and (self.covmat_dimension>0):
             # Assess convergence in the var(mean)/mean(var) in the worst eigenvalue
@@ -577,7 +576,7 @@ class MCSamples(chains):
                 textFileHandle.write("\n")
                 textFileHandle.write("var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters\n")
                 for jj in range(num):
-                    textFileHandle.write("%3i%13.5f\n"%(ii, D[jj]))
+                    textFileHandle.write("%3i%13.5f\n"%(jj+1, D[jj]))
                     textFileHandle.write("\n")
                 textFileHandle.write(" var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F\n"%GelmanRubin)
             else:
@@ -605,8 +604,11 @@ class MCSamples(chains):
                     typestr = 'upper'
                 else:
                     typestr = 'lower'
-                
-                textFileHandle.write("%3i%i%9.4f%s%s\n"%(j, max_split_tests-1, label))
+                textFileHandle.write("%3i"%j)
+                for split_n in range(2, self.max_split_tests+1):
+                    textFileHandle.write("%9.4f"%(split_tests[split_n]))
+                label = self.paramNames.names[i].label
+                textFileHandle.write("%s %s\n"%(label, typestr))
 
         # Now do Raftery and Lewis method
         # See http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps
@@ -619,11 +621,12 @@ class MCSamples(chains):
         if (1): # (all(abs(coldata(1,0:nrows-1) - nint(max(0.6_gp,coldata(1,0:nrows-1))))<1e-4)) 
 
             nburn = np.zeros(num_chains_used, dtype=np.int)
+            markov_thin = np.zeros(num_chains_used, dtype=np.int)
             hardest = -1
             hardestend = 0
             for ix in range(num_chains_used):
-                chain = self.chains[i]
-                thin_fac[ix] = int(round(np.max(chain.weights))) 
+                chain = self.chains[ix]
+                thin_fac[ix] = int(round(np.max(chain.coldata[:, 0]))) 
                 
                 for j in range(self.covmat_dimension):
                     #isused(j)
@@ -633,7 +636,7 @@ class MCSamples(chains):
                             
                             u = self.confidence(xxx, (1-limfrac)/2, endb==0) 
                             while(True): 
-                                thin_ix = mc.thin_indices() # ThinData => thin_indices
+                                thin_ix = self.thin_indices(thin_fac[ix])
                                 if (thin_rows<2): break
                                 binchain = np.zeros(thin_rows)
 #                            where (coldata(j,thin_ix(0:thin_rows-1)) >= u)
@@ -687,7 +690,7 @@ class MCSamples(chains):
                 thin_fac[ix] += 1
 
                 while(True): 
-                    thin_ix = mc.thin_indices() # ThinData => thin_indices
+                    thin_ix = self.thin_indices_chain(chain.coldata[:, 0], thin_fac[ix])
                     if (thin_rows<2): break
                     binchain = np.zeros(thin_rows)
                     
@@ -728,7 +731,6 @@ class MCSamples(chains):
             textFileHandle.write("\n")
             textFileHandle.write("chain  markov_thin  indep_thin    nburn\n")
 
-            # fixme: chain_numbers
             for ix in range(num_chains_used):
                 if (thin_fac[ix]==0):
                     textFileHandle.write("%4i      Not enough samples\n"%chain_numbers[ix])
@@ -740,8 +742,8 @@ class MCSamples(chains):
                 print 'RL: Not enough samples to estimate convergence stats'
             else:
                 print 'RL: Thin for Markov: ', np.max(markov_thin)
-                indep_thin = np.max(thin_fac)
-                print 'RL: Thin for indep samples:  ', str(indep_thin)
+                self.indep_thin = np.max(thin_fac)
+                print 'RL: Thin for indep samples:  ', str(self.indep_thin)
                 print 'RL: Estimated burn in steps: ', 
                 np.max(nburn), ' (', int(round(np.max(nburn)/self.mean_mult))
 
@@ -752,14 +754,14 @@ class MCSamples(chains):
             if (corr_length_thin<>0):
                 autocorr_thin = corr_length_thin
             else:
-                if (indep_thin==0):
+                if (self.indep_thin==0):
                     autocorr_thin = 20
-                elif (indep_thin<=30):
+                elif (self.indep_thin<=30):
                     autocorr_thin = 5
                 else:
-                    autocorr_thin = 5 * (indep_thin/30)
+                    autocorr_thin = 5 * (self.indep_thin/30)
 
-            thin_ix = mc.thin_indices(autocorr_thin) # ThinData => thin_indices
+            thin_ix = self.thin_indices(autocorr_thin)
             maxoff = min(corr_length_steps, thin_rows/(autocorr_thin*num_chains_used))
 
             corrs = no.zeros([nparams, maxoff])
@@ -791,7 +793,7 @@ class MCSamples(chains):
         fine_fac = 10
         logZero = 1e30
 
-        ix = j # ix = self.colix[j] # fixme 
+        ix = j # ix = self.colix[j]
 
         paramVec = self.samples[:, ix]
         self.param_min[j] = np.min(paramVec)
@@ -839,6 +841,7 @@ class MCSamples(chains):
             self.center[j] = self.range_min[j]
         
         self.ix_min[j] = int(round((self.range_min[j] - self.center[j])/width))
+
         self.ix_max[j] = int(round((self.range_max[j] - self.center[j])/width))
 
         if (not self.has_limits_bot[ix]): self.ix_min[j] -= end_edge
@@ -1120,6 +1123,7 @@ class MCSamples(chains):
         # Get contour containing contours(:) of the probability
         norm = sum([ sum(bins2D[i].values()) for i in bins2D.keys() ])
 
+        contour_levels = np.zeros(self.num_contours)
         for ix1 in range(self.num_contours):
             try_t = max([ max(bins2D[i].values()) for i in bins2D.keys() ])
             try_b = 0
@@ -1127,7 +1131,7 @@ class MCSamples(chains):
             lasttry = -1
             while True:
                 try_sum = np.sum(bin2D[np.where(bins2D < (try_b + try_t) / 2)])
-                # fixme
+                # fixme?
                 if (try_sum > (1-contours[ix1])*norm):
                     try_t = (try_b + try_t) / 2
                 else:
@@ -1137,7 +1141,7 @@ class MCSamples(chains):
             contour_levels[ix1] = (try_b + try_t) / 2
             
         bind2D[np.where(bins2D < 1e-30)] = 0
-        # fixme 
+        # fixme? 
 
         name = self.index2name.get(j, "NOTFOUND")
         name2 = self.index2name.get(j2, "NOTFOUND")
@@ -1161,8 +1165,8 @@ class MCSamples(chains):
         textFileHandle.close()
 
         textFileHandle = open(filename + "_cont", 'w')
-        textFileHandle.write("\n")
-        # fixme
+        s_levels = [ str(level) for level in contour_levels ]
+        textFileHandle.write("%s\n"%(" ".join(s_levels)))
         textFileHandle.close()
 
         if (self.shade_meanlikes):
@@ -1295,11 +1299,39 @@ class MCSamples(chains):
         textFileHandle.close()
 
     def WriteParamNames(self, filename, indices=None, add_derived=None):
-        textFileHandle = open(filename, 'w')
-        for name in self.index.keys():
-            # fixme label ?
-            textFileHandle.write("%s\t%s\n"%(name, ""))
-        textFileHandle.close()
+        self.paramNames.saveAsText(filename)
+#        textFileHandle = open(filename, 'w')
+#        for name in self.index.keys():
+#            textFileHandle.write("%s\t%s\n"%(name, ""))
+#        textFileHandle.close()
+        
+    # Pass weights as parameter (for chain only)
+    def thin_indices_chain(self, weights, factor):
+        thin_ix = []
+        tot = 0
+        i = 0
+        numrows = len(weights)
+        mult = weights[i]
+        if abs(round(mult) - mult) > 1e-4:
+                raise Exception('Can only thin with integer weights')
+
+        while i < numrows:
+            if (mult + tot < factor):
+                tot += mult
+                i += 1
+                if i < numrows: mult = weights[i]
+            else:
+                thin_ix.append(i)
+                if mult == factor - tot:
+                    i += 1
+                    if i < numrows: mult = weights[i]
+                else:
+                    mult -= (factor - tot)
+                tot = 0
+        return thin_ix
+
+
+
 
 
 #FIXME?: pass values as parameters 

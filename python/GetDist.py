@@ -311,14 +311,11 @@ ok = mc.loadChains(in_root, chain_files)
 #    print 'No un-ignored rows! (check number of chains/burn in)'
 #    sys.exit()
 
-#import pdb; pdb.set_trace()
-#mc.getChainsStats()
-
-indep_thin = 0
+#no_tests = True # Test for xxx_post chains
 if (not no_tests):
-    #indep_thin modified here ...
     mc.DoConvergeTests(converge_test_limit)
 
+#
 mc.makeSingle()
 
 if (cool<>1):
@@ -395,8 +392,8 @@ if (triangle_plot):
         triangle_plot = triangle_num > 1
 
 print 'using ', mc.numrows,' rows, processing ', num_vars,' parameters'
-if (indep_thin<>0):
-    print 'Approx indep samples: ', round(numsamp/indep_thin)
+if (mc.indep_thin<>0):
+    print 'Approx indep samples: ', round(numsamp/mc.indep_thin)
 else:
     print  'effective number of samples (assuming indep): ', round(numsamp/max_mult)
 
