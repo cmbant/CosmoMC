@@ -311,22 +311,26 @@ class MCSamples(chains):
 
     def GetCovMatrix(self):
 
-        paramVecs = [ self.samples[:, i] for i in range(self.samples.shape[1]) ]
-        corr = self.corr(paramVecs)
-        #nparam = self.samples.shape[1]
-        #self.corrmatrix = np.zeros([nparam, nparam]) 
+        nparamNonDerived = self.paramNames.numNonDerived()
+        paramVecs = [ self.samples[:, i] for i in range(nparamNonDerived) ]
+        cov = self.cov(paramVecs)
 
         fname = self.rootdirname + ".covmat"
         textFileHandle = open(fname, "w")
-        nparam = self.paramNames.numNonDerived()
         paramNames = []
-        for i in range(nparam):
+        for i in range(nparamNonDerived):
             paramNames.append(self.paramNames.parWithName(self.index2name[i]).name)
         textFileHandle.write("# %s\n"%(" ".join(paramNames)))
-        #fixme: write corr
+        for i in range(nparamNonDerived):
+            for j in range(nparamNonDerived):
+                textFileHandle.write("%17.7E"%cov[i][j])
+            textFileHandle.write("\n")
         textFileHandle.close()
 
-        np.savetxt(self.rootdirname + ".corr", corr, fmt=self.precision)
+        nparam = self.paramNames.numParams()
+        paramVecs = [ self.samples[:, i] for i in range(nparam) ]
+        corr = self.corr(paramVecs)
+        np.savetxt(self.rootdirname + ".corr", corr, fmt="%17.7E")
 
     # MostCorrelated2D ? 
 

@@ -311,7 +311,7 @@ ok = mc.loadChains(in_root, chain_files)
 #    print 'No un-ignored rows! (check number of chains/burn in)'
 #    sys.exit()
 
-#no_tests = True # Test for xxx_post chains
+no_tests = True # Test for xxx_post chains
 if (not no_tests):
     mc.DoConvergeTests(converge_test_limit)
 
