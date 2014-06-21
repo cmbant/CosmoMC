@@ -233,7 +233,6 @@
     this%version = JLA_version
     JLA_marginalize = Ini%Read_Logical('JLA_marginalize',.false.)
     if (JLA_marginalize) then
-        WRITE(*,*) 'WE have a problem: should never get here.'
         JLA_marge_steps = Ini%Read_Int('JLA_marge_steps',5)
         JLA_step_width = Ini%Read_Double('JLA_step_width',0.05d0)
         JLA_int_points=0
