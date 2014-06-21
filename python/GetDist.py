@@ -7,7 +7,6 @@ import math
 import numpy as np
 from scipy.stats import norm
 
-import chains as ch
 import iniFile
 import paramNames
 import MCSamples
@@ -308,14 +307,19 @@ if(last_chain==-1): last_chain = getLastChainIndex(in_root)
 # Read in the chains
 ok = mc.loadChains(in_root, chain_files)
 #if (not ok): print ''
-#mc.makeSingle()
 #if (mc.numrows==0):
 #    print 'No un-ignored rows! (check number of chains/burn in)'
 #    sys.exit()
 
-
 #import pdb; pdb.set_trace()
-mc.getChainsStats()
+#mc.getChainsStats()
+
+indep_thin = 0
+if (not no_tests):
+    #indep_thin modified here ...
+    mc.DoConvergeTests(converge_test_limit)
+
+mc.makeSingle()
 
 if (cool<>1):
     mc.CoolChain(cool)
@@ -333,11 +337,6 @@ if (outliers<>0):
     print 'outlier fraction ', float(outliers)/mc.numrows
 max_mult = np.max(mc.weights); mc.max_mult = max_mult
 numsamp = np.sum(mc.weights); mc.numsamp = numsamp
-
-indep_thin = 0
-if (not no_tests):
-    #indep_thin modified here ...
-    mc.DoConvergeTests(converge_test_limit)
 
 if (adjust_priors):
     mc.DeleteZeros()

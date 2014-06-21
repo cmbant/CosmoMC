@@ -223,7 +223,7 @@ class MCSamples(chains):
         self.shade_meanlikes = False
 
         self.covmat_dimension = 0
-        self.max_split_tests = 4
+        self.max_split_tests = -1 # 4 # disable split tests
         self.force_twotail = False
         self.mean_mult = 0
 
@@ -330,7 +330,21 @@ class MCSamples(chains):
 
     def GetFractionIndices(self, n):
         fraction_indices = []
-        # todo 
+        aim = self.norm / n
+        fraction_indices.append(0)
+        tot = 0 
+        num = 0
+        nrows = self.weights.shape[0]
+        for i in range(nrows):
+            tot += self.weights[i]
+            if (tot>aim):
+                num += 1
+                fraction_indices.append(num)
+                if (num==n): 
+                    fraction_indices.append(nrows)
+                    return fraction_indices
+                aim += self.norm / n
+        fraction_indices.append(nrows)
         return fraction_indices
 
     # ConfidVal(self, ix, limfrac, upper) => chains.confidence()
@@ -514,11 +528,11 @@ class MCSamples(chains):
         
         meanscov2 = np.zeros((nparam, nparam))
         for chain in self.chains:
-            meancov2 += chain.cov * chain.norm
-        meancov2 /= norm
-        M = meancov2
+            meanscov2 += chain.cov * chain.norm
+        meanscov2 /= norm
+        M = meanscov2
         for i in range(nparam):
-            norm = np.sqrt(meancov2[i, i])
+            norm = np.sqrt(meanscov2[i, i])
             M[i, :] /= norm
             M[:, i] /= norm
             meanscov[:, i] /= norm
