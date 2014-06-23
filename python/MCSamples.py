@@ -504,6 +504,9 @@ class MCSamples(chains):
         Do convergence tests.
         """
         if not hasattr(self, 'chains'): return 
+        
+        # Weights
+        weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
 
         # Get statistics for individual chains, and do split tests on the samples
 
@@ -547,7 +550,6 @@ class MCSamples(chains):
             D = np.linalg.eigvals(np.dot(R, meanscov).dot(R.T))
             GelmanRubin = max(np.real(D))
 
-        #
         fullvar = np.zeros(nparam)
         
         if (num_chains_used>1):
@@ -595,14 +597,15 @@ class MCSamples(chains):
         textFileHandle.write("\n")
 
         split_tests = {}
-        for i in range(nparam):
+        for j in range(nparam):
             for endb in [0, 1]:
                 for split_n in range(2, self.max_split_tests+1):
                     frac = self.GetFractionIndices(split_n)
                     split_tests[split_n] = 0
-                    confid = self.confidence(xxx, (1-limfrac)/2, endb==0) 
+                    coldata = np.vstack((chain.coldata[:, j] for chain in self.chains))
+                    confid = self.confidence(coldata, (1-limfrac)/2, endb==0) 
                     for i in range(1, split_n+1):
-                        split_tests[split_n] += self.confidence(xxx, (1-limfrac)/2, endb==0) 
+                        split_tests[split_n] += self.confidence(coldata[frac[i]:frac[i+1]], (1-limfrac)/2, endb==0) 
                     split_tests[split_n] = math.sqrt(split_tests[split_n]/split_n/fullvar[j])
                 if (endb==0):
                     typestr = 'upper'
@@ -622,7 +625,7 @@ class MCSamples(chains):
         tran = np.zeros((2,2,2), dtype=np.int)
         tran2 = np.zeros((2,2), dtype=np.int)
 
-        if (1): # (all(abs(coldata(1,0:nrows-1) - nint(max(0.6_gp,coldata(1,0:nrows-1))))<1e-4)) 
+        if (np.all(np.abs(weights-np.round(np.where(weights>0.6, weights, 0.6)))<1e-4)):
 
             nburn = np.zeros(num_chains_used, dtype=np.int)
             markov_thin = np.zeros(num_chains_used, dtype=np.int)
@@ -633,23 +636,20 @@ class MCSamples(chains):
                 thin_fac[ix] = int(round(np.max(chain.coldata[:, 0]))) 
                 
                 for j in range(self.covmat_dimension):
-                    #isused(j)
-                    if (True and (self.force_twotail or not self.has_limits[j])):
+                    coldata = np.vstack((chain.coldata[:, j] for chain in self.chains))
+                    if (self.force_twotail or not self.has_limits[j]):
                         for endb in [0, 1]:
                             # Get binary chain depending on whether above or below confidence value
-                            
-                            u = self.confidence(xxx, (1-limfrac)/2, endb==0) 
+                            u = self.confidence(chain.coldata[:, j], (1-limfrac)/2, endb==0) 
                             while(True): 
                                 thin_ix = self.thin_indices(thin_fac[ix])
                                 if (thin_rows<2): break
                                 binchain = np.zeros(thin_rows)
-#                            where (coldata(j,thin_ix(0:thin_rows-1)) >= u)
-#                                binchain = 1
-#                            elsewhere
-#                                binchain = 2
-#                            endwhere
+                                binchain[:] = 2
+                                indexes = np.where(coldata >= u)
+                                binchain[indexes] = 1
 
-                                tran = 0
+                                tran[:,:,:] = 0
                                 # Estimate transitions probabilities for 2nd order process
                                 for i in range(thin_rows):
                                     tran[binchain[i-2]][binchain[i-1]][binchain[i]] += 1
@@ -689,22 +689,20 @@ class MCSamples(chains):
                 markov_thin[ix] = thin_fac[ix]
 
                 # Get thin factor to have independent samples rather than Markov
-                hardest = max(hardest, 1)
-                #u = ConfidVal(hardest,(1-limfrac)/2,hardestend==0)
+                hardest = max(hardest, 0)
+                u = (hardest,(1-limfrac)/2,hardestend==0)
                 thin_fac[ix] += 1
 
                 while(True): 
                     thin_ix = self.thin_indices_chain(chain.coldata[:, 0], thin_fac[ix])
                     if (thin_rows<2): break
                     binchain = np.zeros(thin_rows)
-                    
-#                 where (coldata(hardest,thin_ix(0:thin_rows-1)) > u)
-#                    binchain = 1
-#                elsewhere
-#                    binchain = 2
-#                endwhere
+                    binchain[:] = 2
+                    coldata = np.vstack((chain.coldata[:, hardest] for chain in self.chains))
+                    indexes = np.where(coldata >= u)
+                    binchain[indexes] = 1
 
-                    tran2 = 0
+                    tran2[:,:] = 0
                     # Estimate transitions probabilities for 2nd order process
                     for i in range(1, thin_rows):
                         tran2[binchain[i-1]][binchain[i]] += 1
@@ -772,22 +770,18 @@ class MCSamples(chains):
             for off in range(maxoff):
                 for i in range(off, thin_rows):
                     for j in range(nparams):
-                        if (j): # isused(j)
-                            corrs[j][off] += 0
-                            # (coldata(j,thin_ix(i))-fullmean(j))* &
-                            #(coldata(j,thin_ix(i-off)) - fullmean(j))
+                        coldata = np.vstack((chain.coldata[:, j] for chain in self.chains))
+                        corrs[j][off] += (coldata[thin_ix[i]]-fullmean[j]) * (coldata[thin_ix[i-off]]-fullmean[j])
                 for j in range(nparams):
-                    if (j): # isused(j)
-                        corrs[j][off] /= (thin_rows-off)/fullvar(j)
+                    corrs[j][off] /= (thin_rows-off)/fullvar(j)
 
             if (maxoff>0):
                 textFileHandle.write("%i"%(maxoff))
                 for i in range(1, maxoff+1):
                     textFileHandle.write("%8i"%(i*autocorr_thin))
                 for j in range(nparams):
-                    if (j): # isused(j)
-                        name = self.index2name.get(j, "NOTFOUND")
-                        textFileHandle.write("1%3i%8.3f"%(j, corrs[j][i]))
+                    name = self.index2name.get(j, "NOTFOUND")
+                    textFileHandle.write("1%3i%8.3f"%(j, corrs[j][i]))
                 
         textFileHandle.close()
 
@@ -1096,19 +1090,25 @@ class MCSamples(chains):
 
         for ix1 in range(ixmin, ixmax+1):
             for ix2 in range(iymin, iymax+1):
-    
-                #bins2D(ix1,ix2) = sum(win* finebins(ix1*fine_fac-winw:ix1*fine_fac+winw, ix2*fine_fac-winw:ix2*fine_fac+winw))
-
-                #bins2D[ix1][ix2] = sum([ ])  # todo 
+                bins2D[ix1][ix2] = 0
+                indexes = range(-winw, winw+1)
+                for i in indexes: 
+                    for j in indexes:
+                        bins2D[ix1][ix2] += win[i][j] * finebins[ix1*fine_fac-winw+i][ix2*fine_fac-winw+j]
                 if (self.shade_meanlikes):
-                    #bin2Dlikes[ix1][ix2] = sum([ ])  # todo 
-                #sum(win* finebinlikes(ix1*fine_fac-winw:ix1*fine_fac+winw,ix2*fine_fac-winw:ix2*fine_fac+winw ))
-                    pass
+                    bin2Dlikes[ix1][ix2] = 0
+                    indexes = range(-winw, winw+1)
+                    for i in indexes: 
+                        for j in indexes:
+                            bin2Dlikes[ix1][ix2] += win[i][j] * finebinlikes[ix1*fine_fac-winw+i][ix2*fine_fac-winw+j]
 
                 if (has_prior):
                     # correct for normalization of window where it is cut by prior boundaries
-                    #edge_fac = norm / sum([ ]) # todo 
-                    #edge_fac=norm/sum(win*prior_mask(ix1*fine_fac-winw:ix1*fine_fac+winw, ix2*fine_fac-winw:ix2*fine_fac+winw))
+                    denom = 0
+                    indexes = range(-winw, winw+1)
+                    for i in indexes: 
+                        for j in indexes:
+                            denom +=  win[i][j] * prior_mask[ix1*fine_fac-winw+i][ix2*fine_fac-winw+j]
                     bins2D[ix1][ix2] *= edge_fac
                     if (self.shade_meanlikes):
                         bin2Dlikes[ix1][ix2] *= edge_fac
@@ -1135,7 +1135,6 @@ class MCSamples(chains):
             lasttry = -1
             while True:
                 try_sum = np.sum(bin2D[np.where(bins2D < (try_b + try_t) / 2)])
-                # fixme?
                 if (try_sum > (1-contours[ix1])*norm):
                     try_t = (try_b + try_t) / 2
                 else:
@@ -1145,7 +1144,6 @@ class MCSamples(chains):
             contour_levels[ix1] = (try_b + try_t) / 2
             
         bind2D[np.where(bins2D < 1e-30)] = 0
-        # fixme? 
 
         name = self.index2name.get(j, "NOTFOUND")
         name2 = self.index2name.get(j2, "NOTFOUND")
@@ -1236,11 +1234,11 @@ class MCSamples(chains):
 
     def GetConfidenceRegion(self):
         ND_cont1, ND_cont2 = -1, -1
-        # todo
-        #indexes = np.where(paramVec[:]>self.get_norm(paramVec)*self.contours[0])
-        #ND_cont1 = indexes[0][0]
-        #indexes = np.where(paramVec[:]>self.get_norm(paramVec)*self.contours[1])
-        #ND_cont2 = indexes[0][0]
+        cumsum = np.cumsum(self.weights)
+        indexes = np.where(cumsum>self.norm*self.contours[0])
+        ND_cont1 = indexes[0][0]
+        indexes = np.where(cumsum>self.norm*self.contours[1])
+        ND_cont2 = indexes[0][0]
         return ND_cont1, ND_cont2
     
     def ReadRanges(self):
@@ -1304,10 +1302,6 @@ class MCSamples(chains):
 
     def WriteParamNames(self, filename, indices=None, add_derived=None):
         self.paramNames.saveAsText(filename)
-#        textFileHandle = open(filename, 'w')
-#        for name in self.index.keys():
-#            textFileHandle.write("%s\t%s\n"%(name, ""))
-#        textFileHandle.close()
         
     # Pass weights as parameter (for chain only)
     def thin_indices_chain(self, weights, factor):
@@ -1335,10 +1329,6 @@ class MCSamples(chains):
         return thin_ix
 
 
-
-
-
-#FIXME?: pass values as parameters 
 def WritePlotFileInit():
     text = """
 import GetDistPlots, os
