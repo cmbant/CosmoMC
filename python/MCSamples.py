@@ -222,6 +222,7 @@ class MCSamples(chains):
         self.mean_loglikes = False
         self.shade_meanlikes = False
         self.indep_thin = 0
+        self.contours = []
 
         self.covmat_dimension = 0
         self.max_split_tests = -1 # 4 # disable split tests
@@ -1135,7 +1136,7 @@ class MCSamples(chains):
             lasttry = -1
             while True:
                 try_sum = np.sum(bin2D[np.where(bins2D < (try_b + try_t) / 2)])
-                if (try_sum > (1-contours[ix1])*norm):
+                if (try_sum > (1-self.contours[ix1])*norm):
                     try_t = (try_b + try_t) / 2
                 else:
                     try_b = (try_b + try_t) / 2
@@ -1228,9 +1229,6 @@ class MCSamples(chains):
         #
         self.marge_limits_bot = np.zeros([nparam, self.num_contours])
         self.marge_limits_top = np.zeros([nparam, self.num_contours])
-
-    def SetContours(self, contours=[]):
-        self.contours = contours
 
     def GetConfidenceRegion(self):
         ND_cont1, ND_cont2 = -1, -1

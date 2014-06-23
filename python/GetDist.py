@@ -231,6 +231,7 @@ for i in range(1, num_contours+1):
     max_frac = ini.float('max_frac_twotail'+str(i), math.exp(math.pow(-1.0*norm.ppf((1-contours[i-1])/2), 2)/2))
     max_frac_twotail.append(max_frac)
 contours_str = '; '.join([ str(c) for c in contours ]) 
+mc.contours = contours
 
 if (not no_tests):
     converge_test_limit = ini.float('converge_test_limit', contours[num_contours-1])
