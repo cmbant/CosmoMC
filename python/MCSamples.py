@@ -313,7 +313,7 @@ class MCSamples(chains):
 
         nparamNonDerived = self.paramNames.numNonDerived()
         paramVecs = [ self.samples[:, i] for i in range(nparamNonDerived) ]
-        cov = self.cov(paramVecs)
+        self.covmatrix = self.cov(paramVecs)
 
         fname = self.rootdirname + ".covmat"
         textFileHandle = open(fname, "w")
@@ -323,14 +323,14 @@ class MCSamples(chains):
         textFileHandle.write("# %s\n"%(" ".join(paramNames)))
         for i in range(nparamNonDerived):
             for j in range(nparamNonDerived):
-                textFileHandle.write("%17.7E"%cov[i][j])
+                textFileHandle.write("%17.7E"%self.covmatrix[i][j])
             textFileHandle.write("\n")
         textFileHandle.close()
 
         nparam = self.paramNames.numParams()
         paramVecs = [ self.samples[:, i] for i in range(nparam) ]
-        corr = self.corr(paramVecs)
-        np.savetxt(self.rootdirname + ".corr", corr, fmt="%17.7E")
+        self.corrmatrix = self.corr(paramVecs)
+        np.savetxt(self.rootdirname + ".corr", self.corrmatrix, fmt="%17.7E")
 
     # MostCorrelated2D ? 
 

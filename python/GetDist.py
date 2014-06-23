@@ -311,7 +311,9 @@ ok = mc.loadChains(in_root, chain_files)
 #    print 'No un-ignored rows! (check number of chains/burn in)'
 #    sys.exit()
 
-no_tests = True # Test for xxx_post chains
+#import pdb; pdb.set_trace()
+
+no_tests = True # TEST for xxx_post chains
 if (not no_tests):
     mc.DoConvergeTests(converge_test_limit)
 
@@ -321,7 +323,7 @@ mc.makeSingle()
 if (cool<>1):
     mc.CoolChain(cool)
 
-# Adjust weights if requesteda
+# Adjust weights if requested
 if (adjust_priors):
     mc.AdjustPriors()
 
@@ -344,14 +346,14 @@ print 'mean input multiplicity = ', mc.mean_mult
 # Must do this with unsorted output
 #thin_factor = 2 # TEST
 if (thin_factor<>0):
-    thin_ix = mc.thin_indices(thin_factor) # ThinData => thin_indices
+    thin_ix = mc.thin_indices(thin_factor)
     filename = rootdirname + '_thin.txt'
     mc.WriteThinData(filename, thin_ix, thin_cool)
 
 # Produce file of weight-1 samples if requested
 if ((num_3D_plots<>0 and not make_single_samples or make_scatter_samples) and not no_plots):
     make_single_samples = True
-    #single_thin = max(1, round(numsamp/max_mult)/max_scatter_points)
+    single_thin = max(1, int(round(mc.numsamp/max_mult))/max_scatter_points)
 
 # Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
 
@@ -477,7 +479,7 @@ if (not no_plots):
             names = [ mc.index2name[i] for i in triangle_params ]
             text = 'g.triangle_plot(roots, %s)'%str(names)
         textExport = MCSamples.WritePlotFileExport()
-        fname = "" # ?
+        fname = ""
         textFileHandle.write(textExport%(fname))
     textFileHandle.close()
 
@@ -486,47 +488,36 @@ if (not no_plots):
 if (plot_2D_param==0) and (num_cust2D_plots==0) and (not no_plots):
     # In this case output the most correlated variable combinations
     print 'doing 2D plots for most correlated variables'
-
     try_t = 1e5
-    
     x, y = 0, 0
-
     num_cust2D_plots = 12
-    
     cust2DPlots = []
     for j in range(num_cust2D_plots):
         try_b = -1e5
         for ix1 in range(num_vars):
             for ix2 in range(ix1+1, num_vars):
-            #if (abs(corrmatrix(colix(ix1)-2,colix(ix2)-2)) < try_t .and. &
-            #abs(corrmatrix(colix(ix1)-2,colix(ix2)-2)) > try_b) then
-            #try_b = abs(corrmatrix(colix(ix1)-2,colix(ix2)-2))
-                x, y = ix1, ix2
+                if abs(mc.corrmatrix[ix1][ix2]) < try_t and abs(mc.corrmatrix[ix1][ix2]) > try_b:
+                    try_b = abs(mc.corrmatrix[ix1][ix2])   
+                    x, y = ix1, ix2
         if (try_b==-1e5):
             num_cust2D_plots = j-1
             break
-        
         try_t = try_b
-
-        #cust2DPlots.append( + *1000)
+        cust2DPlots.append(ix + iy*1000)
     
 if (num_cust2D_plots==0):
     num_2D_plots = 0
     
     for j in range(num_vars):
-            # if (ix_min(j) /= ix_max(j)) then
-            #     do j2 = j+1, num_vars
-            #         if (ix_min(j2) /= ix_max(j2)) then
-            #             if (plot_2D_param==0 .or. plot_2D_param == colix(j) .or. plot_2D_param == colix(j2)) &
-            #             num_2D_plots = num_2D_plots + 1
-            #         end if
-            #     end do
-            # end if
-        pass
+        if (mc.ix_min[j]<>mc.ix_max[j]):
+            for j2 in range(j+1, num_vars):
+                if (mc.ix_min[j2]<>mc.ix_max[j2]):
+                    if (plot_2D_param in [0, j, j2]):
+                        num_2D_plots -= 1 
 else:
     num_2D_plots = num_cust2D_plots
       
-done2D = False # ??
+done2D = [ [False] * num_vars ] * num_vars
 if (num_2D_plots>0) and (not no_plots):
     print 'Producing ', num_2D_plots,' 2D plots'
     filename = rootdirname + '_2D.' + plot_ext
@@ -536,23 +527,20 @@ if (num_2D_plots>0) and (not no_plots):
     if (plot_ext=='py'):
         textFileHandle.write('pairs=[]\n')
         for j in range(num_vars):
-            
-            # if (ix_min(j) /= ix_max(j)) then
-            # if (plot_2D_param/=0 .or. num_cust2D_plots /= 0) then
-            #         if (colix(j) == plot_2D_param) cycle
-            #         j2min = 1
-            #     else
-            #         j2min = j+1
-            #     end if
-            for j2 in range(j2min, num_vars):
-                    # if (ix_min(j2) /= ix_max(j2)) then
-                    #     if (plot_2D_param/=0 .and. colix(j2) /= plot_2D_param) cycle
-                    #     if (num_cust2D_plots /= 0 .and.  &
-                    #     count(cust2Dplots(1:num_cust2D_plots) == colix(j)*1000 + colix(j2))==0) cycle
+            if (mc.ix_min[j]<>mc.ix_max[j]):
+                if (plot_2D_param<>0 or num_cust2D_plots<>0):
+                    if (j==plot_2D_param): continue
+                    j2min = 0
+                else:
+                    j2min = j + 1
 
-                    #     plot_num = plot_num + 1
-                    #     done2D(j,j2) = .true.
-                    #     if (.not. plots_only) call Get2DPlotData(j,j2)
+            for j2 in range(j2min, num_vars):
+                if (mc.ix_min[j2]<>mc.ix_max[j2]):
+                    if (plot_2D_param<>0 and j2<>plot_2D_param):
+                        if (num_cust2D_plots<>0 and cust2DPlots.count(j*1000+j2)==0): continue
+                        plot_num += 1
+                        done2D[j][j2] = True
+                        if (not plots_only): mc.Get2DPlotData(j, j2)
                 
                 textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
         textFileHandle.write('g.plots_2d(roots,param_pairs=pairs)\n')
@@ -577,7 +565,6 @@ if (num_3D_plots<>0 and not no_plots):
     textExport = MCSamples.WritePlotFileExport()
     textFileHandle.write(textExport%(fname))
     textFileHandle.close()
-
 
 # Write out stats marginalized
 if (not plots_only):
@@ -607,7 +594,7 @@ if (not plots_only):
 # System command
 if (finish_run_command):
     finish_run_command = finish_run_command.replace('%ROOTNAME%',rootname)
-    finish_run_command = finish_run_command.replace('%PLOTDIR%',plot_data_dir)
+    finish_run_command = finish_run_command.replace('%PLOTDIR%', plot_data_dir)
     finish_run_command = finish_run_command.replace('%PLOTROOT%', os.path.join(plot_data_dir, rootname))
     os.system(finish_run_command)
     
