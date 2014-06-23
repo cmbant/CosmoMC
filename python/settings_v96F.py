@@ -92,8 +92,6 @@ for d in g.datasets:
 groups.append(g)
 
 
-
-
 g = batchJob.jobGroup('WMAPtau')
 g.datasets = copy.deepcopy(datasets)
 for d in g.datasets:
@@ -102,6 +100,19 @@ g.params = [[], ['Alens']]
 
 #    d.addFirst('freecal', freecal)
 # sets of parameters to vary in addition to baseline
+
+groups.append(g)
+
+
+g = batchJob.jobGroup('old')
+g.datasets = []
+for name, x in zip(['v62TN', 'v65F', 'v85F'], ['nonclik_v62TN.ini', 'nonclik.ini', 'nonclik_v85F.ini']):
+    g.datasets.append(batchJob.dataSet(name, ['pico.ini', x, Camspec, {'indep_sample':0} ]))
+g.datasets.append(batchJob.dataSet('v96F', [TT] + planck_vars))
+
+for d in g.datasets:
+    d.add('freecal', freecal)
+
 
 groups.append(g)
 
