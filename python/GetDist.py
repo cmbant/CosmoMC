@@ -403,7 +403,7 @@ else:
 mc.GetCovMatrix()
 
 if (PCA_num>0) and not plots_only:
-    mc.PCA(PCA_params, PCA_num, PCA_func, PCA_NormParam)
+    mc.PCA(PCA_params, PCA_func, PCA_NormParam)
 
 # Find best fit, and mean likelihood
 mc.GetChainLikeSummary(toStdOut=True)

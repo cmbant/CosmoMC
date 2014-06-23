@@ -375,6 +375,7 @@ class MCSamples(chains):
             normparam = 0
 
         n = len(pars)
+        corrmatrix = np.zeros((n, n))
         PCdata = self.samples[pars]
         PClabs = []
         doexp = False
@@ -397,49 +398,50 @@ class MCSamples(chains):
 
             PCmean[i] = np.sum(self.weights*PCdata[:, i])/self.norm
             PCdata[:, i] -= PCmean[i]
-        
+            sd[i] = math.sqrt(np.sum(self.weights*PCdata[:, i]*PCdata[:, i])/self.norm)
+            if (sd[i]<>0): PCdata[:, i] /= sd[i]
+            corrmatrix[i][i] = 1
+
         textFileHandle.write('\n')
         textFileHandle.write('Correlation matrix for reduced parameters\n')
         for i in range(n):
             for j in range(n):
-                #corrmatrix(i,j) = sum(coldata(1,0:nrows-1)*PCdata(i,:)*PCdata(j,:))/numsamp
-                #corrmatrix(j,i) = corrmatrix(i,j)
-                pass
-            textFileHandle.write('\n') 
+                corrmatrix[i][j] = np.sum(self.weights*PCdata[:, i]*PCdata[:, j])/self.norm
+                corrmatrix[i][j] = corrmatrix[j][i]
+            textFileHandle.write('%4i'%pars[i]) 
+            for j in range(n):
+                textFileHandle.write('%8.4f'%corrmatrix[i][j]) 
             
-        #u = corrmatrix
-        #call Matrix_Diagonalize(u, evals, n)
+        u = corrmatrix
+        w, v = np.linalg.eig(u)
 
         textFileHandle.write('\n')
         textFileHandle.write('e-values of correlation matrix\n')
         for i in range(n):
-            #write (F%unit,'(''PC'',1I2,'': '','//trim(fmt)) i, evals(i)
-            pass
+            textFileHandle.write('PC%2i: %8.4f\n'%(i, w[i]))
 
         textFileHandle.write('\n')
         textFileHandle.write('e-vectors\n')
 
         for i in range(n):
-            #write (F%unit,'(1I3,'': '','//trim(fmt)) pars(i), u(i,:)
-            pass
+            textFileHandle.write('%3i:'%pars[i])
+            for j in range(n):
+                textFileHandle.write('%8.4f'%v[i][j])
+            textFileHandle.write('\n')
 
-#    if (normparam /= 0) then
-#        !Set so parameter normparam has exponent 1
-#        do i=1, n
-#            u(:,i) = u(:,i)/u(normparam,i)*sd(normparam)
-#        end do
-#    else
-#        !Normalize so main component has exponent 1
-#        do i=1, n
-#            locarr(1:1) = maxloc(abs(u(:,i)))
-#            u(:,i) = u(:,i)/u(locarr(1),i)*sd(locarr(1))
-#        end do
-#    end if
-#
-#    do i = 0, nrows -1
-#        PCdata(:,i) = matmul(transpose(u), PCdata(:,i))
-#        if (doexp) PCdata(:,i) = exp(PCdata(:,i))
-#    end do
+        if (normparam<>0):
+            # Set so parameter normparam has exponent 1
+            for i in range(n):
+                u[:, i] /= u[normparam, i] * sd[normparam]
+        else:
+            # Normalize so main component has exponent 1
+            for i in range(n):
+                maxi = u.argmax()
+                u[:, i] /= u[maxi, i] * sd[maxi]
+                
+        for i in range(n):
+            PCdata[:, i] = np.dot(u.transpose(), PCdata[:, i])
+            if (doexp): PCdata[:, i] = np.exp(PCdata[:, i])
 
         textFileHandle.write('\n')
         textFileHandle.write('Principle components\n')
@@ -458,8 +460,8 @@ class MCSamples(chains):
                         textFileHandle.write('[%f]   exp((%s-%f)/%s)\n'%(u[i][j], paramName, PCmean[j], expo))
                     else:
                         textFileHandle.write('[%f]   (%s-%f)/%s)\n'%(u[i][j], paramName, PCmean[j], expo))
-            #newmean(i) = sum(coldata(1,0:nrows-1)*PCdata(i,:))/numsamp
-            #newsd(i) = sqrt(sum(coldata(1,0:nrows-1)*(PCdata(i,:)-newmean(i))**2)/numsamp)
+            newmean[i] = np.sum(self.weights*PCdata[:, i])/self.norm
+            newsd[i] = math.sqrt(np.sum(self.weights*(PCdata[:, i]-newmean[i])*(PCdata[:, i]-newmean[i]))/self.norm)
             textFileHandle.write('          = %f +- %f\n'%(newmean[i], newsd[i]))
             textFileHandle.write('ND limits: %9.3f%9.3f%9.3f%9.3f\n'%(
                     np.min(PCdata[0:ND_cont1, i]), np.max(PCdata[0:ND_cont1, i]), 
@@ -471,9 +473,8 @@ class MCSamples(chains):
         l = [ "%8i"%i for i in range(1,n+1) ]
         textFileHandle.write('%s\n'%("".join(l)))
         
-#    do i=1, n
-#        PCdata(i,:) = (PCdata(i,:) - newmean(i)) /newsd(i)
-#    end do
+        for i in range(n):
+            PCdata[:, i] -= newmean[i] / newsd[i]
  
         for j in range(1, n+1):
             textFileHandle.write('PC%2i\n'%(j))
@@ -492,7 +493,6 @@ class MCSamples(chains):
             textFileHandle.write('(%s)\n'%(paramName))
 
         textFileHandle.close()
-
 
     def GetUsedCols(self):
         for ix in range(self.samples.shape[1]):
