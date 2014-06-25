@@ -11,11 +11,22 @@ ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
 F90C     = ifort
 MPIF90C = mpif90
-FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp
-DEBUGFLAGS = -mkl -openmp -g -check all -check noarg_temp_created -traceback -no-prec-div -fpp 
+FFLAGS = -mkl -openmp -O3 -no-prec-div -fpp
+DEBUGFLAGS = -mkl -openmp -g -check all -check noarg_temp_created -traceback -no-prec-div -fpp
 #add -fpe0 to check for floating point errors (think lowLike also throws these harmlessly)
 MODOUT = -module $(OUTPUT_DIR)
 LAPACKL =
+
+ifeq ($(STATIC),YES)
+#so you can re-distribute the binary to another machine
+#static link details from https://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
+LAPACKL =  -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a -Wl,--end-group -lpthread -lm
+FFLAGS+=  -axAVX,SEE4.2 -static-intel
+else
+FFLAGS += -xHost
+endif
+
+
 else
 #gfortran does not yet work yet, open GCC 4.9 compiler bugs are
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60414

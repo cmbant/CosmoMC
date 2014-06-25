@@ -23,13 +23,13 @@ class batchArgs():
             self.parser.add_argument('--name', default=None, nargs='+', help='specific chain full name only (base_paramx_data1_data2)')
             self.parser.add_argument('--param', default=None, nargs='+', help='runs including specific parameter only (paramx)')
             self.parser.add_argument('--paramtag', default=None, help='runs with specific parameter tag only (base_paramx)')
-            self.parser.add_argument('--data', default=None, help='runs including specific data only (data1)')
+            self.parser.add_argument('--data', nargs='+', default=None, help='runs including specific data only (data1)')
             self.parser.add_argument('--datatag', default=None, help='runs with specific data tag only (data1_data2)')
-            self.parser.add_argument('--skip_data', default=None, help='skip runs containing specific data (data1)')
+            self.parser.add_argument('--skip_data', nargs='+', default=None, help='skip runs containing specific data (data1)')
             self.parser.add_argument('--skip_param', default=None, help='skip runs containing specific parameter (paramx)')
             self.parser.add_argument('--group', default=None, nargs='+', help='include only runs with given group names')
 
-            if self.notExist: self.parser.add_argument('--notexist', action='store_true')
+            if self.notExist: self.parser.add_argument('--notexist', action='store_true', help='only include chains that don''t already exist on disk')
 
             self.args = self.parser.parse_args()
             self.batch = batchJob.readobject(self.args.batchPath)
@@ -53,8 +53,8 @@ class batchArgs():
         def dataMatches(self, jobItem):
             if self.args.datatag is None:
                 if self.args.data is None:
-                    return self.args.skip_data is None or not self.args.skip_data in jobItem.data_set.names
-                return self.args.data in jobItem.data_set.names
+                    return self.args.skip_data is None or not jobItem.data_set.hasName(self.args.skip_data)
+                return jobItem.data_set.hasName(self.args.data)
             else:
                 return jobItem.datatag == self.args.datatag
 

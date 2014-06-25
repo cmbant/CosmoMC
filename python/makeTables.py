@@ -2,21 +2,21 @@ import os, batchJobArgs, ResultObjs, paramNames, planckStyle, copy
 
 
 Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True, converge=True)
-Opts.parser.add_argument('latex_filename')
-Opts.parser.add_argument('--limit', type=int, default=2)
+Opts.parser.add_argument('latex_filename', help="name of latex/PDF file to produce")
+Opts.parser.add_argument('--limit', type=int, default=2, help="sigmas of quoted confidence intervals")
 Opts.parser.add_argument('--all_limits', action='store_true')
 
 Opts.parser.add_argument('--bestfitonly', action='store_true')
 Opts.parser.add_argument('--nobestfit', action='store_true')
 Opts.parser.add_argument('--no_delta_chisq', action='store_true')
-Opts.parser.add_argument('--delta_chisq_paramtag', default=None)
-Opts.parser.add_argument('--changes_from_datatag', default=None)
-Opts.parser.add_argument('--changes_from_paramtag', default=None)
-Opts.parser.add_argument('--changes_adding_data', default=None)
+Opts.parser.add_argument('--delta_chisq_paramtag', default=None, help="parameter tag to give best-fit chi-squared differences")
+Opts.parser.add_argument('--changes_from_datatag', default=None, help="give fractional sigma shifts compared to a given data combination tag")
+Opts.parser.add_argument('--changes_from_paramtag', default=None, help="give fractional sigma shifts compared to a given parameter combination tag")
+Opts.parser.add_argument('--changes_adding_data', default=None, help="give fractional sigma shifts when adding given data")
 
 # this is just for the latex labelsm set None to use those in chain .paramnames
-Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')
-Opts.parser.add_argument('--paramList', default=None)
+Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames', help=".paramnames file for custom labels for parameters")
+Opts.parser.add_argument('--paramList', default=None, help=".paramnames file listing specific parameters to include (only)")
 Opts.parser.add_argument('--blockEndParams', default=None)
 Opts.parser.add_argument('--columns', type=int, nargs=1, default=3)
 Opts.parser.add_argument('--compare', nargs='+', default=None)
