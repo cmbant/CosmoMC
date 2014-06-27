@@ -490,6 +490,8 @@
     if (Ini%HasKey(Key)) then
         AValue = Ini%Read_String(Key, .false.)
         if (AValue/='' .or. DefaultFalse(AllowBlank)) return
+    else
+        AValue=''
     end if
     if (DefaultFalse(EnvDefault)) then
         AValue = GetEnvironmentVariable(Key,is_present)
