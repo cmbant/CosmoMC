@@ -43,7 +43,7 @@ MODOUT =  -J$(OUTPUT_DIR)
 LAPACKL = -lblas -llapack
 endif
 
-MPIF90C = mpif90 -f90=$(F90C)
+MPIF90C := mpif90 -f90=$(F90C)
 
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
 RECOMBINATION ?=recfast
