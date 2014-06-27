@@ -6,11 +6,10 @@ BUILD ?= MPI
 
 ifortErr = $(shell which ifort >/dev/null; echo $$?)
 
-#these settings for ifort 13 and higher
+#these settings for ifort 14 and higher
 ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
 F90C     = ifort
-MPIF90C = mpif90
 FFLAGS = -mkl -openmp -O3 -no-prec-div -fpp
 DEBUGFLAGS = -mkl -openmp -g -check all -check noarg_temp_created -traceback -no-prec-div -fpp
 #add -fpe0 to check for floating point errors (think lowLike also throws these harmlessly)
@@ -26,7 +25,6 @@ else
 FFLAGS += -xHost
 endif
 
-
 else
 #gfortran does not yet work yet, open GCC 4.9 compiler bugs are
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60414
@@ -37,7 +35,6 @@ else
 #and preferably
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=44672
 F90C = gfortran
-MPIF90C = mpif90
 FFLAGS = -cpp -O3 -ffast-math
 DEBUGFLAGS = -cpp -Og -g -fbounds-check -fbacktrace
 MODOUT =  -J$(OUTPUT_DIR)
@@ -45,6 +42,8 @@ MODOUT =  -J$(OUTPUT_DIR)
 #commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
 LAPACKL = -lblas -llapack
 endif
+
+MPIF90C = mpif90 -f90=$(F90C)
 
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
 RECOMBINATION ?=recfast
