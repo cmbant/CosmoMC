@@ -97,11 +97,6 @@ WMAP = $(COSMOLIB)/WMAP9
 GSLPATH = $(GSL_ROOT)
 endif
 
-ifeq ($(COSMOHOST),darwin)
-WMAP = /scratch/aml1005/wmap_likelihood_v5
-cfitsio = /usr/local/Cluster-Apps/cfitsio/intel/3.300
-endif
-
 ifeq ($(OUTPUT_DIR),Debug)
 FFLAGS=$(DEBUGFLAGS)
 endif

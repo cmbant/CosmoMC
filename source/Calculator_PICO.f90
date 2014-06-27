@@ -195,7 +195,7 @@
     this%calcName ='PICO'
 
     call fpico_init(1_fpint)
-    call fpico_load(Ini%Read_String("pico_datafile"))
+    call fpico_load(Ini%Read_String_Default("pico_datafile", EnvDefault=.true.))
     call fpico_set_verbose(int(IfThenElse(Ini%Read_Logical("pico_verbose",.false.),1,0),fpint))
 
     end subroutine PICO_ReadParams
