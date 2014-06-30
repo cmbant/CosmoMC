@@ -31,17 +31,17 @@ freecalEE = {'param[calEE]':'1 0.1 2 0.01 0.01', 'prior[calEE]':'1 1'}
 freecalTE = {'param[calTE]':'1 0.1 2 0.005 0.005', 'prior[calTE]': '1 1'}
 
 
-planck_detsets = [freecal, 'nonclik_v96F.ini', Camspec]
-planck_CS = [freecal, 'nonclik_v96CS.ini', Camspec]
+planck_detsets = [freecal, 'nonclik_v97F.ini', Camspec]
+planck_CS = [freecal, 'nonclik_v97CS.ini', Camspec]
 
 # not using these checks yet
 wig1800_217 = {'param[wig2_217]':'0 -50 50 3 3'}
 wig1800_143 = {'param[wig2_143]':'0 -50 50 3 3'}
 wig1460_217 = {'param[wig1_217]':'0 -50 50 3 3'}
 
-v96detsets = []
-v96CS = []
-for name, datasets, planck_vars in zip(['v96', 'v96CS'], [v96detsets, v96CS], [planck_detsets, planck_CS]):
+detsets = []
+CS = []
+for name, datasets, planck_vars in zip(['v97', 'v97CS'], [detsets, CS], [planck_detsets, planck_CS]):
     datasets.append(batchJob.dataSet([name , 'TT'], [TT] + planck_vars))
     datasets.append(batchJob.dataSet([name , 'TE'], [TE, freecalTE] + planck_vars))
     datasets.append(batchJob.dataSet([name , 'EE'], [EE, freecalEE] + planck_vars))
@@ -63,7 +63,7 @@ groups = []
 g = batchJob.jobGroup('main')
 # Main group with just tau prior
 
-g.datasets = copy.deepcopy(v96detsets) + copy.deepcopy(v96CS) + copy.deepcopy(plik)
+g.datasets = copy.deepcopy(detsets) + copy.deepcopy(CS) + copy.deepcopy(plik)
 
 for d in g.datasets:
     d.add(tauname, tauprior)
@@ -81,14 +81,14 @@ groups.append(g)
 
 # group to see the effect of tau prior
 g = batchJob.jobGroup('WMAPtau')
-g.datasets = copy.deepcopy(v96detsets)
+g.datasets = copy.deepcopy(detsets)
 for d in g.datasets:
     d.add('WMAPtau', WMAPtau)
 g.params = [[], ['Alens']]
 groups.append(g)
 
 g = batchJob.jobGroup('highL')
-g.datasets = [copy.deepcopy(v96detsets[0])] + [copy.deepcopy(plik[0])]
+g.datasets = [copy.deepcopy(detsets[0])] + [copy.deepcopy(plik[0])]
 for d in g.datasets:
     d.add(tauname, tauprior)
     d.add(lowl)
@@ -99,7 +99,8 @@ groups.append(g)
 
 g = batchJob.jobGroup('old')
 g.datasets = []
-for name, x in zip(['v62TN', 'v65F', 'v85F'], ['nonclik_v62TN.ini', 'nonclik.ini', 'nonclik_v85F.ini']):
+for name, x in zip(['v62TN', 'v65F', 'v85F', 'v96F'],
+                    ['nonclik_v62TN.ini', 'nonclik.ini', 'nonclik_v85F.ini', 'nonclik_v96F.ini']):
     g.datasets.append(batchJob.dataSet(name, [x, Camspec]))
 
 for d in g.datasets:
