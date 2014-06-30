@@ -65,7 +65,8 @@ class dataSet:
     def tagReplacing(self, x, y):
         items = []
         for name in self.names:
-            if name == x: items.append(y)
+            if name == x:
+                if y != '': items.append(y)
             else: items.append(name)
         return "_".join(items)
 

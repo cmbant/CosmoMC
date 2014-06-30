@@ -279,11 +279,10 @@
         coldata(1:ncols, nrows) = invars(1:ncols)
         nrows = nrows + 1
         if (nrows > ubound(coldata,2)) then
-            print *,'maxrows=', max_rows,ubound(coldata,2) !!!
+            print *, 'expanding array - you have a lot of chain rows!'
             allocate(tmp(ncols,0:ubound(coldata,2)+max_rows))
             tmp(:,0:ubound(coldata,2)) = coldata
             call move_alloc(tmp, coldata)
-            print *, 'expanding array - you have a lot of chain rows!'
         end if
     end do
 

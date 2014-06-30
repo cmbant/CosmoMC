@@ -173,7 +173,10 @@
     class(TCosmoTheoryPredictions) Theory
     integer :: error
 
-    call MpiStop('PICO: no GetTheoryForImportance yet')
+    call this%PICO_GetNewPowerData(CMB, Info, Theory, error)
+    call this%GetNewBackgroundData(CMB,Theory,error)
+    if (error==0) call this%SetDerived(Theory)
+    
     end subroutine PICO_GetTheoryForImportance
 
     subroutine PICO_VersionTraceOutput(this, ReadValues)
