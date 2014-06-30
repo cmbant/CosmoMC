@@ -173,7 +173,7 @@
     class(TCosmoTheoryPredictions) Theory
     integer :: error
 
-    call this%GetNewPowerData(CMB, Info, Theory, error)
+    call this%GetNewPowerData(CMB, null(), Theory, error)
     call this%GetNewBackgroundData(CMB,Theory,error)
     if (error==0) call this%SetDerived(Theory)
     
