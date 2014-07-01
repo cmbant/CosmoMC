@@ -78,7 +78,7 @@ groups.append(g)
 # lowl, same as main but will all + lowl
 g = copy.deepcopy(g)
 g.groupName = 'lowl'
-g.datasets = [d for d in g.datasets if ('TT' in d.data_set.names or 'all' in d.data_set.names)]
+g.datasets = [d for d in g.datasets if ('TT' in d.names or 'all' in d.names)]
 for d in g.datasets:
     d.add('lowl', ['lowl.ini'])
 groups.append(g)
@@ -94,7 +94,7 @@ groups.append(g)
 
 g = batchJob.jobGroup('highL')
 g.datasets = [copy.deepcopy(detsets[0])] + [copy.deepcopy(plik[0])]
-g.datasets = [d for d in g.datasets if ('TT' in d.data_set.names or 'all' in d.data_set.names)]
+g.datasets = [d for d in g.datasets if ('TT' in d.names or 'all' in d.names)]
 for d in g.datasets:
     d.add(tauname, tauprior)
     d.add(lowl)
