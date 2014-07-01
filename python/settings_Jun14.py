@@ -19,6 +19,10 @@ tauprior = {'prior[tau]':'0.07 0.02'}
 tauname = 'tau07'
 WMAPtau = {'prior[tau]':'0.09 0.013'}
 
+varTE = {'param[calTE]': '1 0.1 2 0.005 0.005'}
+varEE = {'param[calEE]': '1 0.1 2 0.01 0.01'}
+
+
 TT = {'want_spec':'T T T T F F', 'pre_marged':'F'}
 EE = {'want_spec':'F F F F F T', 'pre_marged':'F'}
 TE = {'want_spec':'F F F F T F', 'pre_marged':'F'}
@@ -43,9 +47,9 @@ detsets = []
 CS = []
 for name, datasets, planck_vars in zip(['v97', 'v97CS'], [detsets, CS], [planck_detsets, planck_CS]):
     datasets.append(batchJob.dataSet([name , 'TT'], [TT] + planck_vars))
-    datasets.append(batchJob.dataSet([name , 'TE'], [TE, freecalTE] + planck_vars))
-    datasets.append(batchJob.dataSet([name , 'EE'], [EE, freecalEE] + planck_vars))
-    datasets.append(batchJob.dataSet([name, 'all'], [full, freecalTE, freecalEE] + planck_vars))
+    datasets.append(batchJob.dataSet([name , 'TE'], [TE, varTE, freecalTE] + planck_vars))
+    datasets.append(batchJob.dataSet([name , 'EE'], [EE, varEE, freecalEE] + planck_vars))
+    datasets.append(batchJob.dataSet([name, 'all'], [full, varTE, varEE, freecalTE, freecalEE] + planck_vars))
 #    datasets.append(batchJob.dataSet(name + 'TEEE', [TEEE] + planck_vars))
 #    datasets.append(batchJob.dataSet(name + 'TTTE', [TTTE] + planck_vars))
 
