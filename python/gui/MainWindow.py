@@ -297,11 +297,9 @@ class MainWindow(QMainWindow):
         
         title = self.tr("Choose an existing file")
         path = os.getcwd()
-        fileName = QFileDialog.getOpenFileName(
-            self, title, path)
+        fileName = QFileDialog.getOpenFileName(self, title, path)
 
         if fileName:
-            print "fileName ", fileName
             textFileHandle = open(fileName)
             textFileLines = textFileHandle.read()
             textFileHandle.close()
@@ -312,7 +310,6 @@ class MainWindow(QMainWindow):
             
             self.tabWidget.addTab(textBrowser, os.path.basename(str(fileName)))
             self.tabWidget.setTabToolTip(self.tabWidget.currentIndex(), os.path.basename(str(fileName)))
-
 
     def closeTab(self, index):
         self.tabWidget.removeTab(index)
