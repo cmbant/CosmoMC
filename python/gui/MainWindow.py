@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import glob
 import signal
 import random
 
@@ -93,6 +94,7 @@ class MainWindow(QMainWindow):
         self.lineEditDirectory.setReadOnly(True)
 
         self.pushButtonSelect = QPushButton("...", self.selectWidget)
+        self.pushButtonSelect.setToolTip("Choose root directory")
         self.connect(self.pushButtonSelect, SIGNAL("clicked()"), self.selectRootDir)
 
         self.comboBoxParamTag = QComboBox(self.selectWidget)
@@ -157,6 +159,7 @@ class MainWindow(QMainWindow):
         self.tabWidget = QTabWidget(dockBot)
         self.tabWidget.setMovable(False)
         self.tabWidget.setTabsClosable(True)
+        self.connect(self.tabWidget, SIGNAL("tabCloseRequested(int)"), self.closeTab)
 
         # Graphic Layout
         layoutBot = QGridLayout()
@@ -228,7 +231,17 @@ class MainWindow(QMainWindow):
 
         if dirName:
             self.rootdir = str(dirName)
-            self._updateComboBoxParamTag()
+            self.lineEditDirectory.setText(self.rootdir)
+            
+            # 
+            fileobj = os.path.join(self.rootdir, "batch.pyobj")
+            if os.path.isfile(fileobj):
+                self._updateComboBoxParamTag()
+            else:
+                filesparam = glob.glob(os.path.join(self.rootdir, "*.paramnames"))
+                if filesparam:
+                    fileparam = os.path.basename(filesparam[0])
+                    # read paramnames
 
     def _updateComboBoxParamTag(self):
         if self.rootdir and os.path.isdir(self.rootdir):
@@ -236,8 +249,14 @@ class MainWindow(QMainWindow):
             dirs = [ d for d in os.listdir(self.rootdir) if os.path.isdir(os.path.join(self.rootdir, d)) ]
             self.comboBoxParamTag.addItems(dirs)
 
-
     def setParamTag(self, strParamTag):
+        self.paramTag = str(strParamTag)
+        paramDir = os.path.isdir(os.path.join(self.rootdir, self.paramTag))
+        if os.path.isdir(paramDir):
+            dirs = [ d for d in os.listdir(paramDir) if os.path.isdir(os.path.join(paramDir, d)) ]
+            self.comboBoxDataTag.addItems(dirs)
+            
+        
         print "strParamTag ", strParamTag
     
     def setDataTag(self, strDataTag):
@@ -251,23 +270,28 @@ class MainWindow(QMainWindow):
 
     def statusSelectAllX(self):
         if self.selectAllX.isChecked():
-            pass
-        else:
-            pass
+            state = Qt.Checked
+        else: 
+            state = Qt.Unchecked
+
+        for i in range(self.listParametersX.count()):
+            self.listParametersX.item(i).setCheckState(state)
+
 
     def statusSelectAllY(self):
         if self.selectAllY.isChecked():
-            pass
-        else:
-            pass
+            state = Qt.Checked
+        else: 
+            state = Qt.Unchecked
 
+        for i in range(self.listParametersY.count()):
+            self.listParametersY.item(i).setCheckState(state)
 
     def plotData(self):
         pass
 
    
 # slots for selectWidget 
-
 
     def openNewFile(self):
         
@@ -288,7 +312,11 @@ class MainWindow(QMainWindow):
             
             self.tabWidget.addTab(textBrowser, os.path.basename(str(fileName)))
             self.tabWidget.setTabToolTip(self.tabWidget.currentIndex(), os.path.basename(str(fileName)))
-                                     
+
+
+    def closeTab(self, index):
+        self.tabWidget.removeTab(index)
+                         
 
 # test functions
 
