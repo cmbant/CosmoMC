@@ -43,6 +43,7 @@
     procedure, private :: Acoustic
     procedure, private :: BAO_DR7_loglike
     procedure, private :: BAO_DR11_loglike
+    procedure, private :: BAO_RSD_loglike
     end type BAOLikelihood
 
     integer,parameter :: DR11_alpha_npoints=280
@@ -114,11 +115,13 @@
     bao_measurements_file = Ini%ReadFileName('bao_measurements_file')
     call F%Open(bao_measurements_file)
     if(this%type_bao == 5) then
-        allocate(this%bao_AP(this%num_bao))
-        allocate(this%bao_fsigma8(this%num_bao))
-        do i=1,this%num_bao
-            read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_AP(i),this%bao_fsigma8(i)
-        end do
+       if (this%num_bao /= 1) then
+          write(*,*)'ERROR: Need 1 bao data point for: '//trim(this%name)
+          call MPIStop()
+       end if
+       allocate(this%bao_AP(this%num_bao))
+       allocate(this%bao_fsigma8(this%num_bao))
+       read (F%unit,*, iostat=iopb) this%bao_z(1),this%bao_obs(1),this%bao_AP(1),this%bao_fsigma8(1)
     else
         do i=1,this%num_bao
             read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
@@ -132,6 +135,16 @@
     elseif (this%name == 'DR11CMASS') then
         !don't used observed value, probabilty distribution instead
         call BAO_DR11_init(Ini%ReadFileName('prob_dist'))
+    elseif (this%type_bao == 5) then
+       allocate(this%bao_invcov(3,3))
+       this%bao_invcov=0
+       if (Ini%HasKey('bao_invcov_file')) then
+          bao_invcov_file  = Ini%ReadFileName('bao_invcov_file')
+          call File%ReadTextMatrix(bao_invcov_file, this%bao_invcov)
+       else
+          write(*,*)'ERROR: No inverse covariance matrix for: '//trim(this%name)
+          call MPIStop()
+       end if
     else
         allocate(this%bao_invcov(this%num_bao,this%num_bao))
         this%bao_invcov=0
@@ -204,7 +217,7 @@
     elseif (this%name=='DR11CMASS') then
         BAO_LnLike = this%BAO_DR11_loglike(CMB,this%bao_z(1))
     elseif (this%type_bao==5) then
-        BAO_LnLike = BAO_RSD_loglike(CMB, Theory,this)
+        BAO_LnLike = this%BAO_RSD_loglike(CMB, Theory)
     else
         allocate(BAO_theory(this%num_bao))
 
@@ -239,23 +252,22 @@
     end function BAO_LnLike
 
     ! RSD like for (D_V/r_s, F_AP, f sigma_8)
-    function BAO_RSD_loglike(CMB,Theory,this)
-    Class(BAOLikelihood) :: this
-    Class(CMBParams) CMB
-    Class(TCosmoTheoryPredictions), target :: Theory
-    real(mcp) BAO_RSD_loglike
-    integer i
-    real(mcp) :: f, z
-
-    do i=1,this%num_bao
-        z = this%bao_z(i)
-        f = -(1+z)/Theory%sigma_8_z%Value(z)*Theory%sigma_8_z%Derivative(z)
-        write(*,*) 'Growth rate and sigma_8: ',f,Theory%sigma_8_z%Value(z)
-    end do
-    BAO_RSD_loglike = 0.0d0
+    function BAO_RSD_loglike(this,CMB,Theory)
+      Class(BAOLikelihood) :: this
+      Class(CMBParams) CMB
+      Class(TCosmoTheoryPredictions), target :: Theory
+      real(mcp) BAO_RSD_loglike
+      real(mcp) :: f, z,vec(3) 
+      z = this%bao_z(1)
+      f = -(1+z)/Theory%sigma_8_z%Value(z)*Theory%sigma_8_z%Derivative(z)
+      vec(1) = this%Calculator%BAO_D_v(z)/rsdrag_theory - this%bao_obs(1) ! D_V/R_s
+      vec(2) = (1+z)*this%Calculator%AngularDiameterDistance(z)*this%Calculator%Hofz(z) -this%bao_AP(1)! F_AP
+      vec(3) = f*Theory%sigma_8_z%Value(z) -this%bao_fsigma8(1) ! f sigma_8
+      BAO_RSD_loglike = BAO_RSD_loglike + &
+           (vec(1)*(vec(1)*this%bao_invcov(1,1)+vec(2)*this%bao_invcov(1,2)+vec(3)*this%bao_invcov(1,3)) + &
+            vec(2)*(vec(1)*this%bao_invcov(2,1)+vec(2)*this%bao_invcov(2,2)+vec(3)*this%bao_invcov(2,3)) + &
+            vec(3)*(vec(1)*this%bao_invcov(3,1)+vec(2)*this%bao_invcov(3,2)+vec(3)*this%bao_invcov(3,3)))/2.0
     end function BAO_RSD_loglike
-
-
 
     subroutine BAO_DR7_init(fname)
     character(LEN=*), intent(in) :: fname

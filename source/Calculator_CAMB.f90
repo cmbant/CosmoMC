@@ -488,8 +488,6 @@
     end if
     allocate(Theory%sigma_8_z)
     call Theory%sigma_8_z%Init(z,sigma_8_z,n=nz)
-    ! AJM - do I need a call Theory%sigma_8_z%Free?
-    ! AJM - is there a memory leak - Pk, k, z not deallocated?
     deallocate(sigma_8_z)
 
     end subroutine CAMBCalc_SetPkFromCAMB
