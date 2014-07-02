@@ -359,7 +359,7 @@
     integer l
     real(mcp) :: highL_norm = 0
     real(mcp) lens_recon_scale
-    integer i,j, lmx, ix, lmaxCL
+    integer i,j, lmx, lmaxCL
     integer, save, allocatable :: indicesS(:,:), indicesT(:,:)
 
     if (.not. allocated(indicesS)) then
@@ -484,7 +484,7 @@
     end if
 
     if(allocated(Theory%sigma_8_z)) then
-       deallocate(Theory%sigma_8_z)
+        deallocate(Theory%sigma_8_z)
     end if
     allocate(Theory%sigma_8_z)
     call Theory%sigma_8_z%Init(z,sigma_8_z,n=nz)
@@ -537,7 +537,7 @@
     real(mcp), allocatable, intent(out) :: Ratios(:,:)
     Type(MatterPowerData) :: CPK
     real(mcp), allocatable :: PK(:,:)
-    integer error,nk,nz
+    integer error
 
     CPK%num_k = Theory%MPK%nx
     CPK%num_z = Theory%MPK%ny
