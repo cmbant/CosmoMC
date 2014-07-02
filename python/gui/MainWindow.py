@@ -16,7 +16,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
 
         super(MainWindow, self).__init__()
- 
+
+        # 
         self.setAttribute(Qt.WA_DeleteOnClose)
  
         self.createActions()
@@ -31,6 +32,10 @@ class MainWindow(QMainWindow):
 
         # Allow to shutdown the GUI with Ctrl+C
         signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+        # 
+        self.rootdir = ""
+        self.chainsdir = ""
 
 
     def createActions(self):
@@ -88,7 +93,7 @@ class MainWindow(QMainWindow):
         self.lineEditDirectory.setReadOnly(True)
 
         self.pushButtonSelect = QPushButton("...", self.selectWidget)
-        self.connect(self.pushButtonSelect, SIGNAL("clicked()"), self.selectRoot)
+        self.connect(self.pushButtonSelect, SIGNAL("clicked()"), self.selectRootDir)
 
         self.comboBoxParamTag = QComboBox(self.selectWidget)
         self.comboBoxParamTag.clear()
@@ -213,7 +218,7 @@ class MainWindow(QMainWindow):
 # slots for selectWidget 
 
 
-    def selectRoot(self):
+    def selectRootDir(self):
         
         title = self.tr("Choose an existing case")
         path = os.getcwd()
@@ -221,13 +226,15 @@ class MainWindow(QMainWindow):
             self, title, path,
             QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
 
-        if not dirName:
-            print "dirName ", dirName
-        else:
-            print "dirName is None "
-        
-        
-        #fixme: update combos, ...
+        if dirName:
+            self.rootdir = str(dirName)
+            self._updateComboBoxParamTag()
+
+    def _updateComboBoxParamTag(self):
+        if self.rootdir and os.path.isdir(self.rootdir):
+            self.comboBoxParamTag.clear()
+            dirs = [ d for d in os.listdir(self.rootdir) if os.path.isdir(os.path.join(self.rootdir, d)) ]
+            self.comboBoxParamTag.addItems(dirs)
 
 
     def setParamTag(self, strParamTag):
