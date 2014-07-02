@@ -140,6 +140,7 @@ class MainWindow(QMainWindow):
         
         # Minimum size for initial resize of dock widget
         #self.selectWidget.setMinimumSize(250, 250)
+        self.selectWidget.setMaximumSize(300, 300)
 
         dockTop.setWidget(self.selectWidget)
         self.addDockWidget(Qt.LeftDockWidgetArea, dockTop)
@@ -251,13 +252,10 @@ class MainWindow(QMainWindow):
 
     def setParamTag(self, strParamTag):
         self.paramTag = str(strParamTag)
-        paramDir = os.path.isdir(os.path.join(self.rootdir, self.paramTag))
+        paramDir = os.path.join(self.rootdir, self.paramTag)
         if os.path.isdir(paramDir):
             dirs = [ d for d in os.listdir(paramDir) if os.path.isdir(os.path.join(paramDir, d)) ]
             self.comboBoxDataTag.addItems(dirs)
-            
-        
-        print "strParamTag ", strParamTag
     
     def setDataTag(self, strDataTag):
         print "strDataTag ", strDataTag
@@ -276,7 +274,6 @@ class MainWindow(QMainWindow):
 
         for i in range(self.listParametersX.count()):
             self.listParametersX.item(i).setCheckState(state)
-
 
     def statusSelectAllY(self):
         if self.selectAllY.isChecked():
