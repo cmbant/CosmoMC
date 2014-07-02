@@ -13,6 +13,7 @@
     use bao
     use mpk
     use wigglez
+    use wl
     class(TSettingIni), intent(in) :: Ini
 
     CosmoSettings%get_sigma8 = Ini%Read_Logical('get_sigma8',.false.)
@@ -29,7 +30,9 @@
 
     call BAOLikelihood_Add(DataLikelihoods, Ini)
 
-    CosmoSettings%use_LSS = use_mpk
+    call WLLikelihood_Add(DataLikelihoods, Ini)
+
+    CosmoSettings%use_LSS = use_mpk .or. use_wl_lss
 
     end subroutine SetDataLikelihoods
 
