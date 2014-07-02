@@ -1,0 +1,6 @@
+name = CFHTLENS_1bin
+num_theta_bins = 21
+num_z_bins = 1
+wl_measurements_file = %DATASETDIR%xi_pm.dat
+wl_cov_file = %DATASETDIR%Cov_DMV.dat
+ah_factor = 1.0
