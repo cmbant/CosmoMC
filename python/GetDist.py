@@ -102,8 +102,8 @@ indexes = mc.index2name.keys()
 indexes.sort()
 nvars = len(indexes)
 
-mc.limmin = nvars * [None]
-mc.limmax = nvars * [None]
+mc.limmin = nvars * [0.]
+mc.limmax = nvars * [0.]
 
 mc.has_limits = nvars * [False]
 mc.has_limits_bot = nvars * [False]

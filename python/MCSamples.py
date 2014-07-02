@@ -86,11 +86,10 @@ class Density1D():
         return res
     
     def InitSpline(self):
-        # FIXME: use scipy.interpolate
-#http://stackoverflow.com/questions/11851770/spline-interpolation-with-python
         self.ddP = self._spline(self.X, self.P, self.n, self.SPLINE_DANGLE, self.SPLINE_DANGLE)
-        f2 = interp1d(self.X, self.P, kind='cubic')
-        import pdb; pdb.set_trace()
+        #f = interp1d(self.X, self.P, kind='cubic')
+        #xnew = np.linspace(self.X.min(), self.X.max(), self.n)
+        #self.ddP = f(xnew)
 
     def Limits(self, p):
         # Return values
@@ -794,6 +793,8 @@ class MCSamples(chains):
 
     
     def Get1DDensity(self, j):
+        print "Get1DDensity j ", j
+        #import pdb; pdb.set_trace()
 
         fine_fac = 10
         logZero = 1e30
@@ -806,8 +807,8 @@ class MCSamples(chains):
         self.range_min[j] = self.confidence(paramVec, 0.0005, upper=False) 
         self.range_max[j] = self.confidence(paramVec, 0.0005, upper=True) 
         width = (self.range_max[j]-self.range_min[j])/(self.num_bins+1)
-        print ix, width
-        import pdb; pdb.set_trace()
+        #print ix, width
+        #import pdb; pdb.set_trace()
         if (width==0):
             print "Warning width is 0"
             return
