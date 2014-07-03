@@ -1,4 +1,4 @@
-import paramNames, decimal
+import paramNames, decimal, numpy as np
 
 class textFile:
 
@@ -196,7 +196,7 @@ class noLineTableFormatter(openTableFormatter):
 class resultTable():
 
     def __init__(self, ncol, results, limit=2, tableParamNames=None, titles=None, formatter=None,
-                 numFormatter=None, blockEndParams=None, paramList=None, refResults=None):
+                 numFormatter=None, blockEndParams=None, paramList=None, refResults=None, shiftSigma_indep=False, shiftSigma_subset=False):
 # results is a margeStats or bestFit table
         self.lines = []
         if formatter is None: self.format = noLineTableFormatter()
@@ -214,6 +214,9 @@ class resultTable():
         self.colsPerParam = len(results) * self.colsPerResult
         self.limit = limit
         self.refResults = refResults
+        self.shiftSigma_indep = shiftSigma_indep
+        self.shiftSigma_subset = shiftSigma_subset
+
 
         nparams = self.tableParamNames.numParams()
         numrow = nparams / ncol
@@ -278,7 +281,8 @@ class resultTable():
         return self.format.colSeparator.join(self.paramResultTex(result, param) for result in self.results)
 
     def paramResultTex(self, result, p):
-        values = result.texValues(self.format, p, self.limit, self.refResults)
+        values = result.texValues(self.format, p, self.limit, self.refResults,
+                                  shiftSigma_subset=self.shiftSigma_subset, shiftSigma_indep=self.shiftSigma_indep)
         if values is not None:
             if len(values) > 1: txt = self.format.textAsColumn(values[1], True, separator=True)
             else: txt = ''
@@ -365,7 +369,7 @@ class bestFit(paramResults):
         return None
 
 
-    def texValues(self, formatter, p, limit=None, refResults=None):
+    def texValues(self, formatter, p, limit=None, refResults=None, shiftSigma_indep=False, shiftSigma_subset=False):
         param = self.parWithName(p.name)
         if param is not None: return [formatter.numberFormatter.formatNumber(param.best_fit)]
         else: return None
@@ -418,7 +422,7 @@ class margeStats(paramResults):
             number_string = number_string.split(".")[0]
         return res + [number_string + '\\% limits']
 
-    def texValues(self, formatter, p, limit=2, refResults=None):
+    def texValues(self, formatter, p, limit=2, refResults=None, shiftSigma_indep=False, shiftSigma_subset=False):
         if not isinstance(p, paramNames.paramInfo): param = self.parWithName(p)
         else: param = self.parWithName(p.name)
         if not param is None:
@@ -439,8 +443,20 @@ class margeStats(paramResults):
             if refResults is not None and res != formatter.noConstraint:
                 refVal = refResults.parWithName(param.name)
                 if refVal is not None:
-                    delta = (param.mean - refVal.mean) / refVal.err
-                    res += '\quad(%+.1f \\sigma)' % (delta)
+                    delta = param.mean - refVal.mean
+                    if shiftSigma_indep or shiftSigma_subset:
+                        res += '\quad('
+                        if shiftSigma_subset:
+                            # give mean shift in sigma units for subset data (reguarized to max sigma/20)
+                            subset_sigma = np.sqrt(abs(param.err ** 2 - refVal.err ** 2))
+                            res += '%+.1f \\sigma_s' % (delta / max(subset_sigma, refVal.err / 20))
+                        if shiftSigma_indep:
+                            # give mean shift in sigma units for independent data
+                            indep_sigma = np.sqrt(param.err ** 2 + refVal.err ** 2)
+                            res += ', %+.1f \\sigma_i' % (delta / indep_sigma)
+                        res += ')'
+                    else:
+                        res += '\quad(%+.1f \\sigma)' % (delta / refVal.err)
             if self.hasBestFit:  # add best fit too
                 rangew = (lim.upper - lim.lower) / 10
                 bestfit = formatter.numberFormatter.namesigFigs(param.best_fit, rangew, -rangew)[0]

@@ -9,7 +9,7 @@ defaults = ['common.ini']
 importanceDefaults = ['importance_sampling.ini']
 
 override_defaults = ['pico.ini']
-extra_opts = {'indep_sample':0, 'checkpoint':'F'}
+extra_opts = {'indep_sample':0, 'checkpoint':'F', 'pre_marged':'F'}
 
 Camspec = 'CAMspec_defaults.ini'
 highL = 'highL'
@@ -23,14 +23,19 @@ varTE = {'param[calTE]': '1 0.1 2 0.005 0.005'}
 varEE = {'param[calEE]': '1 0.1 2 0.01 0.01'}
 
 
-TT = {'want_spec':'T T T T F F', 'pre_marged':'F'}
-EE = {'want_spec':'F F F F F T', 'pre_marged':'F'}
-TE = {'want_spec':'F F F F T F', 'pre_marged':'F'}
-TEEE = {'want_spec':'F F F F T T', 'pre_marged':'F'}
-TTTE = {'want_spec':'T T T T T F', 'pre_marged':'F'}
-full = {'want_spec':'T T T T T T', 'pre_marged':'F'}
+TT = {'want_spec':'T T T T F F'}
+EE = {'want_spec':'F F F F F T'}
+TE = {'want_spec':'F F F F T F'}
+TEEE = {'want_spec':'F F F F T T'}
+TTTE = {'want_spec':'T T T T T F'}
+full = {'want_spec':'T T T T T T'}
 
-freecal = {'prior[cal0]':'1 1', 'prior[cal2]':'1 1'}
+TT100_217 = {'want_spec':'T F T F F F', 'prior[cal2]':'0.992 0.004', 'param[aps143]':'0', 'param[acib143]':'0', 'param[psr]':'1', 'param[cibr]':'1'}
+TT100_143 = {'want_spec':'T T F F F F', 'prior[cal2]':'0.992 0.004', 'param[aps217]':'0', 'param[acib217]':'0', 'param[psr]':'1', 'param[cibr]':'1'}
+no217auto = {'want_spec':'T T F T F F'}
+
+
+freecal = 'freecal.ini'
 freecalEE = {'param[calEE]':'1 0.1 2 0.01 0.01', 'prior[calEE]':'1 1'}
 freecalTE = {'param[calTE]':'1 0.1 2 0.005 0.005', 'prior[calTE]': '1 1'}
 
@@ -113,6 +118,34 @@ for d in g.datasets:
     d.addEnd(tauname, tauprior)
 groups.append(g)
 
+
+g = batchJob.jobGroup('lmax')
+g.datasets = []
+for lmax in range(550, 2600, 150):
+    sets = copy.deepcopy(detsets) + copy.deepcopy(CS)
+    for d in sets:
+        d.add(tauname, tauprior)
+        d.add('lmax' + str(lmax), {'camspec_lmax': (str(lmax) + ' ') * 6})
+    g.datasets += sets
+
+g.params = [[], ['yhe']]
+groups.append(g)
+
+
+g = batchJob.jobGroup('channels')
+datasets = []
+for name, planck_vars in zip(['v97', 'v97CS'], [planck_detsets, planck_CS]):
+    for namecut, cutvars in zip(['no143', 'no217', 'no217auto'], [TT100_217], [TT100_143], [no217auto]):
+        datasets.append(batchJob.dataSet([name , 'TT', namecut], [TT, cutvars] + planck_vars))
+        datasets.append(batchJob.dataSet([name , 'TE', namecut], [TE, varTE, freecalTE, cutvars] + planck_vars))
+for lmax in range(550, 2600, 150):
+    sets = copy.deepcopy(datasets)
+    for d in sets:
+        d.add(tauname, tauprior)
+        d.add('lmax' + str(lmax), {'camspec_lmax': (str(lmax) + ' ') * 6})
+
+g.params = [[]]
+groups.append(g)
 
 
 def covRenamer(name):
