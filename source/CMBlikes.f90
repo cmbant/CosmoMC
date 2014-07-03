@@ -115,7 +115,7 @@
     integer, parameter :: like_approx_fullsky_exact=3 !ignore all correlations, use exact full sky likelihood function
 
     character(LEN=Ini_Enumeration_Len), parameter :: &
-    & like_Names(3) = [character(Ini_Enumeration_Len)::'HL','gaussian','exact']
+        & like_Names(3) = [character(Ini_Enumeration_Len)::'HL','gaussian','exact']
 
     public TCMBLikes
     contains
@@ -306,7 +306,7 @@
     call this%UseString_to_cols(Order2, binWindows%bin_cols_out)
     norder = size(binWindows%bin_cols_in,2)
     if (norder/=size(binWindows%bin_cols_out)) &
-    & call MpiStop(bin_type // '_in_order and '//bin_type // '_out_order must have same numebr of CL')
+        & call MpiStop(bin_type // '_in_order and '//bin_type // '_out_order must have same numebr of CL')
 
     allocate(tmp_ar(norder))
     binWindows%lmin = this%pcl_lmin
@@ -321,7 +321,7 @@
             if (l>=this%pcl_lmin .and. l <=this%pcl_lmax) then
                 binWindows%W(l,:,i) = tmp_ar
             else
-                Err = .true.
+                Err = Err .or. any(tmp_ar/=0)
             end if
         end do
         if (Err) write(*,*) FormatString( 'WARNING: %s %u outside cl_lmin-cl_max range', bin_type, i)
@@ -338,7 +338,7 @@
     logical :: cl_fiducial_includes_noise, includes_noise
 
     if (Ini%TestEqual('dataset_format','CMBLike')) &
-    & call MpiStop('CMBLikes dataset_format now CMBLike2 (e.g. covmat are for L(L+1)CL/2pi)')
+        & call MpiStop('CMBLikes dataset_format now CMBLike2 (e.g. covmat are for L(L+1)CL/2pi)')
     if (.not. Ini%TestEqual('dataset_format','CMBLike2',EmptyOK=.true.)) call MpiStop('CMBLikes wrong dataset_format')
 
     S = Ini%Read_String('fields_use', .true.)
@@ -452,11 +452,11 @@
     end do
 
     if (this%required_field(CL_T) .and. this%required_field(CL_E)) &
-    & this%cl_lmax(CL_E,CL_T) = this%pcl_lmax
+        & this%cl_lmax(CL_E,CL_T) = this%pcl_lmax
 
 
     if (Ini%HasKey('point_source_cl') .or. Ini%HasKey('beam_modes_file')) &
-    & call MpiStop('dataset uses keywords no longer supported')
+        & call MpiStop('dataset uses keywords no longer supported')
 
     allocate(this%ChatM(this%bin_min:this%bin_max, this%ncl_hat))
 
@@ -482,33 +482,33 @@
     !        end do
     !        call this%ElementsToMatrix(avec, this%sqrt_fiducial(i)%M)
     !        if (.not. cl_fiducial_includes_noise) &
-    !        & this%sqrt_fiducial(i)%M= this%sqrt_fiducial(i)%M + this%NoiseM(i)%M
-    !        call Matrix_Root(this%sqrt_fiducial(i)%M, this%nfields, 0.5_mcp)
-    !    end if
-    !    do clix =1, this%ncl_hat
-    !        allocate(this%ChatM(i,clix)%M(this%nfields,this%nfields))
-    !        do j=1,this%ncl
-    !            avec(j) = sum(this%binWindows(:,i)*this%ClHat(j,:,clix))
-    !        end do
-    !        call this%ElementsToMatrix(avec, this%ChatM(i,clix)%M)
-    !    end do
-    !end do
-    !deallocate(avec)
-    do l=this%bin_min,this%bin_max
-        do clix = 1, this%ncl_hat
-            allocate(this%ChatM(l,clix)%M(this%nfields,this%nfields))
-            call this%ElementsToMatrix(this%ClHat(:,l,clix), this%ChatM(l,clix)%M)
-        end do
-        if (allocated(this%ClNoise)) then
-            allocate(this%NoiseM(l)%M(this%nfields,this%nfields))
-            call this%ElementsToMatrix(this%ClNoise(:,l), this%NoiseM(l)%M)
-        end if
-        if (allocated(this%ClFiducial)) then
-            allocate(this%sqrt_fiducial(l)%M(this%nfields,this%nfields))
-            if (.not. cl_fiducial_includes_noise) this%ClFiducial(:,l)=this%ClFiducial(:,l)+this%ClNoise(:,l)
-            call this%ElementsToMatrix(this%ClFiducial(:,l), this%sqrt_fiducial(l)%M)
-            call Matrix_Root(this%sqrt_fiducial(l)%M, this%nfields, 0.5_mcp)
-        end if
+        !        & this%sqrt_fiducial(i)%M= this%sqrt_fiducial(i)%M + this%NoiseM(i)%M
+        !        call Matrix_Root(this%sqrt_fiducial(i)%M, this%nfields, 0.5_mcp)
+        !    end if
+        !    do clix =1, this%ncl_hat
+        !        allocate(this%ChatM(i,clix)%M(this%nfields,this%nfields))
+        !        do j=1,this%ncl
+        !            avec(j) = sum(this%binWindows(:,i)*this%ClHat(j,:,clix))
+        !        end do
+        !        call this%ElementsToMatrix(avec, this%ChatM(i,clix)%M)
+        !    end do
+        !end do
+        !deallocate(avec)
+        do l=this%bin_min,this%bin_max
+    do clix = 1, this%ncl_hat
+        allocate(this%ChatM(l,clix)%M(this%nfields,this%nfields))
+        call this%ElementsToMatrix(this%ClHat(:,l,clix), this%ChatM(l,clix)%M)
+    end do
+    if (allocated(this%ClNoise)) then
+        allocate(this%NoiseM(l)%M(this%nfields,this%nfields))
+        call this%ElementsToMatrix(this%ClNoise(:,l), this%NoiseM(l)%M)
+    end if
+    if (allocated(this%ClFiducial)) then
+        allocate(this%sqrt_fiducial(l)%M(this%nfields,this%nfields))
+        if (.not. cl_fiducial_includes_noise) this%ClFiducial(:,l)=this%ClFiducial(:,l)+this%ClNoise(:,l)
+        call this%ElementsToMatrix(this%ClFiducial(:,l), this%sqrt_fiducial(l)%M)
+        call Matrix_Root(this%sqrt_fiducial(l)%M, this%nfields, 0.5_mcp)
+    end if
     end do
 
     if (this%like_approx /= like_approx_fullsky_exact) then
@@ -551,11 +551,11 @@
         allocate(ls(size(Fid,1)),source=int(Fid(:,1)))
         allocate(this%Lensing%FiducialPhi(0:ls(size(ls))), source=0._mcp)
         this%Lensing%FiducialPhi(ls) = Fid(:,L%IndexOf('PP'))
-!!!
+        !!!
         allocate(this%Lensing%FiducialCl(0:ls(size(ls)),1), source=0._mcp)
-        
-            this%Lensing%FiducialCl(ls,1) = Fid(:,2)
-        
+
+        this%Lensing%FiducialCl(ls,1) = Fid(:,2)
+
     end if
 
     S = Ini%ReadFileName('lensing_N1_matrix_fiducial_dphi',relative=.true.)
@@ -577,7 +577,7 @@
             do i=1, RenormCl%Count
                 if (RenormCl%Item(i)/='TT') call Mpistop('Pol renormalization not done yet')
                 call this%Lensing%renorm_matrix%LoadFromFile(FormatString(S,RenormCl%Item(i)), &
-                & this%Lensing%FiducialCL(1:,i))
+                    & this%Lensing%FiducialCL(1:,i))
             end do
         end if
         S = Ini%ReadFileName('lensing_renorm_N1_matrix ',relative=.true.)
@@ -585,7 +585,7 @@
             do i=1, RenormCl%Count
                 if (RenormCl%Item(i)/='TT') call Mpistop('Pol renormalization not done yet')
                 call this%Lensing%renorm_N1_matrix%LoadFromFile(FormatString(S,RenormCl%Item(i)), &
-                &this%Lensing%FiducialCL(1:,i))
+                    &this%Lensing%FiducialCL(1:,i))
             end do
         end if
     end if
@@ -631,8 +631,8 @@
         do binx=this%bin_min, this%bin_max
             do biny=this%bin_min, this%bin_max
                 this%inv_covariance( (binx-this%bin_min)*this%ncl_used+1:(binx-this%bin_min+1)*this%ncl_used, &
-                & (biny-this%bin_min)*this%ncl_used+1:(biny-this%bin_min+1)*this%ncl_used) = &
-                & covmat_scale*Cov( (binx-1)*num_in+cov_cl_used, (biny-1)*num_in+cov_cl_used)
+                    & (biny-this%bin_min)*this%ncl_used+1:(biny-this%bin_min+1)*this%ncl_used) = &
+                    & covmat_scale*Cov( (binx-1)*num_in+cov_cl_used, (biny-1)*num_in+cov_cl_used)
             end do
         end do
         call Matrix_Inverse(this%inv_covariance)
@@ -648,8 +648,8 @@
                         do L2 = this%bin_min, this%bin_max
                             !Assume L matrices are ordered the other way in blocks of different L for each CL type
                             this%inv_covariance( (L1-this%bin_min)*this%ncl_used+i, (L2-this%bin_min)*this%ncl_used+j) = &
-                            & covmat_scale*Cov((cov_cl_used(i)-1)*vecsize_in + L1 - this%pcl_lmin+1, &
-                            & (cov_cl_used(j)-1)*vecsize_in + L2 - this%pcl_lmin+1)
+                                & covmat_scale*Cov((cov_cl_used(i)-1)*vecsize_in + L1 - this%pcl_lmin+1, &
+                                & (cov_cl_used(j)-1)*vecsize_in + L2 - this%pcl_lmin+1)
                         end do
                     end do
                 end do
@@ -661,29 +661,29 @@
             !            do l1= this%pcl_lmin, this%pcl_lmax
             !                do l2= this%pcl_lmin, this%pcl_lmax
             !                    fullcov((i-1)*this%vecsize+ l1 -this%pcl_lmin+1 ,(j-1)*this%vecsize+ l2 -this%pcl_lmin+1 ) = &
-            !                    fullcov((i-1)*this%vecsize+ l1 -this%pcl_lmin+1,(j-1)*this%vecsize+ l2 -this%pcl_lmin+1 ) +  &
-            !                    this%point_source_error**2*this%ClPointsources(i,l1)*this%ClPointsources(j,l2)
-            !                end do
-            !            end do
-            !        end do
-            !    end do
-            !end if
-            !if (allocated(this%beammodes)) then
-            !    do i=this%beam_MCMC_modes+1, nmodes
-            !        this%BeamModes(this%pcl_lmin:this%pcl_lmax,i)=this%BeamModes(this%pcl_lmin:this%pcl_lmax,i)*&
-            !        & this%ClFiducial(1,this%pcl_lmin:this%pcl_lmax)
-            !    end do
-            !    do i=this%beam_MCMC_modes+1, nmodes
-            !        do l1= this%pcl_lmin, this%pcl_lmax
-            !            do l2= this%pcl_lmin, this%pcl_lmax
-            !                fullcov(l1 -this%pcl_lmin+1, l2 -this%pcl_lmin+1 ) = &
-            !                fullcov(l1 -this%pcl_lmin+1, l2 -this%pcl_lmin+1 ) +  this%BeamModes(l1,i)*this%BeamModes(l2,i)
-            !            end do
-            !        end do
-            !    end do
-            !end if
+                !                    fullcov((i-1)*this%vecsize+ l1 -this%pcl_lmin+1,(j-1)*this%vecsize+ l2 -this%pcl_lmin+1 ) +  &
+                !                    this%point_source_error**2*this%ClPointsources(i,l1)*this%ClPointsources(j,l2)
+                !                end do
+                !            end do
+                !        end do
+                !    end do
+                !end if
+                !if (allocated(this%beammodes)) then
+                !    do i=this%beam_MCMC_modes+1, nmodes
+                !        this%BeamModes(this%pcl_lmin:this%pcl_lmax,i)=this%BeamModes(this%pcl_lmin:this%pcl_lmax,i)*&
+                !        & this%ClFiducial(1,this%pcl_lmin:this%pcl_lmax)
+                !    end do
+                !    do i=this%beam_MCMC_modes+1, nmodes
+                !        do l1= this%pcl_lmin, this%pcl_lmax
+                !            do l2= this%pcl_lmin, this%pcl_lmax
+                !                fullcov(l1 -this%pcl_lmin+1, l2 -this%pcl_lmin+1 ) = &
+                !                fullcov(l1 -this%pcl_lmin+1, l2 -this%pcl_lmin+1 ) +  this%BeamModes(l1,i)*this%BeamModes(l2,i)
+                !            end do
+                !        end do
+                !    end do
+                !end if
 
-            call Matrix_inverse(this%inv_covariance)
+                    call Matrix_inverse(this%inv_covariance)
         else !Not mainMPI
             allocate(this%inv_covariance(this%nbins_used*this%ncl_used, this%nbins_used*this%ncl_used))
         end if !MainMPI
@@ -838,23 +838,23 @@
     integer lmax, lmin, lmaxN1, lminN1
 
     allocate(Cls, source= Theory%Cls)
-!    CLs(1,1)%CL(2:) = this%Lensing%FiducialCl(2:,1)
-!    CLs(4,4)%CL(2:) = this%Lensing%FiducialPhi(2:)
-    
-!    CLs(1,1)%CL(2:) = this%Lensing%FiducialCl(2:,1) * ([2:this%pcl_lmax]/1000.0)**0.03 * 1.02
-!    CLs(4,4)%CL(2:) = this%Lensing%FiducialPhi(2:) *1.1 * ([2:this%pcl_lmax]/1000.0)**0.02
-    
+    !    CLs(1,1)%CL(2:) = this%Lensing%FiducialCl(2:,1)
+    !    CLs(4,4)%CL(2:) = this%Lensing%FiducialPhi(2:)
+
+    !    CLs(1,1)%CL(2:) = this%Lensing%FiducialCl(2:,1) * ([2:this%pcl_lmax]/1000.0)**0.03 * 1.02
+    !    CLs(4,4)%CL(2:) = this%Lensing%FiducialPhi(2:) *1.1 * ([2:this%pcl_lmax]/1000.0)**0.02
+
     if (this%has_lensing) then
         !Correct for normalization and actual N1
         associate(CL=>Cls(CL_Phi,CL_Phi)%CL)
             if (allocated(this%Lensing%N1_matrix_dphi%M)) then
                 call this%Lensing%N1_matrix_dphi%InterpProduct(CL(1:), N1_interp, lminN1, lmaxN1, &
-                & this%pcl_lmax, sub_fiducial = .true.)
+                    & this%pcl_lmax, sub_fiducial = .true.)
             end if
 
             if (allocated(this%Lensing%renorm_matrix%M)) then
                 call this%Lensing%renorm_matrix%InterpProduct(Cls(CL_T,CL_T)%Cl(1:), renorm, lmin, lmax, &
-                & this%pcl_lmax, sub_fiducial = .true.)
+                    & this%pcl_lmax, sub_fiducial = .true.)
                 CL(lmin:lmax) = CL(lmin:lmax)*(1 + 2*renorm)
             end if
 
@@ -862,7 +862,7 @@
 
             if (allocated(this%Lensing%renorm_N1_matrix%M)) then
                 call this%Lensing%renorm_N1_matrix%InterpProduct(Cls(CL_T,CL_T)%Cl(1:), &
-                & N1_interp, lminN1, lmaxN1, this%pcl_lmax, sub_fiducial = .true.)
+                    & N1_interp, lminN1, lmaxN1, this%pcl_lmax, sub_fiducial = .true.)
                 CL(lminN1:lmaxN1) =  CL(lminN1:lmaxN1) + 2*N1_interp
             end if
             end associate
@@ -899,59 +899,59 @@
         !  if (this%pointsource_MCMC_modes>0) then
         !    mode=mode+1
         !    cl(this%pcl_lmin:this%pcl_lmax,1) = cl(this%pcl_lmin:this%pcl_lmax,1) + &
-        !      this%point_source_error*nuisance_params(mode)*this%ClPointsources(1,this%pcl_lmin:this%pcl_lmax)
-        !  end if
-        !  beamC=0
-        !  do i=1, this%beam_MCMC_modes
-        !     mode = mode + 1
-        !     BeamC = BeamC + nuisance_params(mode) *cl(this%pcl_lmin:this%pcl_lmax,1)*this%beammodes( this%pcl_lmin:this%pcl_lmax,i )
-        !  end do
-        !   cl(this%pcl_lmin:this%pcl_lmax,1) = cl(this%pcl_lmin:this%pcl_lmax,1) + beamC
-        !
-        ! end if
-        do bin = this%bin_min, this%bin_max
-            if (this%binned .or. bin_test) then
-                if (this%like_approx == like_approx_fullsky_exact) call mpiStop('CMBLikes: exact like cannot be binned!')
-                call this%GetBinnedTheory(TheoryCls, C, bin)
-            else
-                C=0
-                if (Ti/=0) C(Ti,Ti) = TheoryCLs(CL_T,CL_T)%CL(bin)
-                if (Ei/=0) then
-                    C(Ei,Ei) = TheoryCLs(CL_E,CL_E)%CL(bin)
-                    if (Ti/=0) then
-                        C(Ei,Ti) = TheoryCLs(CL_E,CL_T)%CL(bin)
-                        C(Ti,Ei) = C(Ei,Ti)
-                    end if
-                end if
-                if (Bi/=0) C(Bi,Bi) =  TheoryCLs(CL_B,CL_B)%CL(bin)
-                if (Phii/=0) then
-                    C(Phii,Phii) = TheoryCLs(CL_Phi,CL_Phi)%CL(bin)
-                    !No cross for the moment
-                    !if (Ti/=0) C(Phii,Ti) = TheoryCLs(CL_Phi,CL_T)%CL(bin)
+            !      this%point_source_error*nuisance_params(mode)*this%ClPointsources(1,this%pcl_lmin:this%pcl_lmax)
+            !  end if
+            !  beamC=0
+            !  do i=1, this%beam_MCMC_modes
+            !     mode = mode + 1
+            !     BeamC = BeamC + nuisance_params(mode) *cl(this%pcl_lmin:this%pcl_lmax,1)*this%beammodes( this%pcl_lmin:this%pcl_lmax,i )
+            !  end do
+            !   cl(this%pcl_lmin:this%pcl_lmax,1) = cl(this%pcl_lmin:this%pcl_lmax,1) + beamC
+            !
+            ! end if
+            do bin = this%bin_min, this%bin_max
+        if (this%binned .or. bin_test) then
+            if (this%like_approx == like_approx_fullsky_exact) call mpiStop('CMBLikes: exact like cannot be binned!')
+            call this%GetBinnedTheory(TheoryCls, C, bin)
+        else
+            C=0
+            if (Ti/=0) C(Ti,Ti) = TheoryCLs(CL_T,CL_T)%CL(bin)
+            if (Ei/=0) then
+                C(Ei,Ei) = TheoryCLs(CL_E,CL_E)%CL(bin)
+                if (Ti/=0) then
+                    C(Ei,Ti) = TheoryCLs(CL_E,CL_T)%CL(bin)
+                    C(Ti,Ei) = C(Ei,Ti)
                 end if
             end if
-
-            if (allocated(this%NoiseM)) then
-                C = C + this%NoiseM(bin)%M
+            if (Bi/=0) C(Bi,Bi) =  TheoryCLs(CL_B,CL_B)%CL(bin)
+            if (Phii/=0) then
+                C(Phii,Phii) = TheoryCLs(CL_Phi,CL_Phi)%CL(bin)
+                !No cross for the moment
+                !if (Ti/=0) C(Phii,Ti) = TheoryCLs(CL_Phi,CL_T)%CL(bin)
             end if
+        end if
 
-            if (this%like_approx == like_approx_HL) then
-                call this%Transform(C, this%ChatM(bin,clix)%M, this%sqrt_fiducial(bin)%M)
-                call this%MatrixToElements(C, vecp)
-                quadratic = .true.
-            else if (this%like_approx == like_approx_fid_gaussian) then
-                call this%MatrixToElements(C- this%ChatM(bin,clix)%M, vecp)
-                quadratic = .true.
-            else if (this%like_approx == like_approx_fullsky_exact) then
-                quadratic = .false.
-                chisq = chisq  + this%ExactChisq(C,this%ChatM(bin,clix)%M,bin)
-            else
-                call MpiStop('Unknown like_approx')
-            end if
+        if (allocated(this%NoiseM)) then
+            C = C + this%NoiseM(bin)%M
+        end if
 
-            if (quadratic) then
-                bigX( (bin-this%bin_min)*this%ncl_used + 1:(bin-this%bin_min+1)*this%ncl_used) = vecp(this%cl_use_index)
-            end if
+        if (this%like_approx == like_approx_HL) then
+            call this%Transform(C, this%ChatM(bin,clix)%M, this%sqrt_fiducial(bin)%M)
+            call this%MatrixToElements(C, vecp)
+            quadratic = .true.
+        else if (this%like_approx == like_approx_fid_gaussian) then
+            call this%MatrixToElements(C- this%ChatM(bin,clix)%M, vecp)
+            quadratic = .true.
+        else if (this%like_approx == like_approx_fullsky_exact) then
+            quadratic = .false.
+            chisq = chisq  + this%ExactChisq(C,this%ChatM(bin,clix)%M,bin)
+        else
+            call MpiStop('Unknown like_approx')
+        end if
+
+        if (quadratic) then
+            bigX( (bin-this%bin_min)*this%ncl_used + 1:(bin-this%bin_min+1)*this%ncl_used) = vecp(this%cl_use_index)
+        end if
         end do
 
         if (quadratic) chisq = chisq + Matrix_QuadForm(this%inv_covariance,BigX)
@@ -1016,7 +1016,7 @@
             ix_out = this%bin_cols_out(win_ix)
             if (ix_out>0) then
                 Cls(ix_out) = Cls(ix_out) + &
-                & dot_product(this%W(:,win_ix,bin),TheoryCls(ix_in(1),ix_in(2))%CL(this%lmin:this%lmax))
+                    & dot_product(this%W(:,win_ix,bin),TheoryCls(ix_in(1),ix_in(2))%CL(this%lmin:this%lmax))
             end if
         end if
     end do
@@ -1024,4 +1024,4 @@
     end subroutine TBinWindows_bin
 
 
-    end module CMBLikes
+                end module CMBLikes

@@ -253,9 +253,9 @@ class lensLike():
             #    tmp[:self.fid_phi.shape[0]] = self.fid_phi
                 self.fid_correction += np.dot(self.bin_N1_matrix, self.fid_phi[self.N1_p_L])
 
-        def dumpData(self, froot):
+        def dumpData(self, froot, extra=False):
             # these not needed for likelihood
-            if hasattr(self, "estimators"):
+            if hasattr(self, "estimators") and extra:
                 self.saveCl(froot + '_TT_Filter.dat', -2 * self.estimators[0].w12[0][:, 1], cols=['F_l'])
                 self.saveCl(froot + '_fid_N1.dat', self.fid_N1, cols=['PP'])
 
@@ -273,6 +273,8 @@ class lensLike():
                 with open(froot + '_window/window%u.dat' % (b + 1), 'w') as f:
                     for L in np.arange(self.lmin[b], self.lmax[b] + 1):
                         f.write("%5u %10e\n" % (L, self.binning_matrix[b, L]))
+
+            return
 
             with open(froot + '_fid_N1_dphi.dat', 'w') as f:
                 f.write("%5u " % (0) + "".join("%15u " % (L) for L in self.N1_p_L) + "\n")
@@ -416,15 +418,16 @@ if False:
     sys.exit()
 
 if __name__ == "__main__":
+    dir = r'C:\Work\F90\LensingBiases\g60'
     root = 'g60_full_pttptt'
 
-    Duncan = False
+    Duncan = True
     if Duncan:
-        f = r'C:\tmp\Planck\lensingApr2014' + os.sep + root + '.dat'
+        f = dir + os.sep + root + '.dat'
         lens = lensLike(f, bin_compression=True)
-        lens.getRenormDataFromMatrix(r'C:\Work\F90\LensingBiases\like' + os.sep + root + '_renorm_TT_matrix.dat',
-                                     r'C:\Work\F90\LensingBiases\like' + os.sep + root + '_renorm_N1_TT_matrix.dat')
-        # lens.dumpData(r'C:\Work\F90\LensingBiases\like' + os.sep + root)
+#        lens.getRenormDataFromMatrix(r'C:\Work\F90\LensingBiases\like' + os.sep + root + '_renorm_TT_matrix.dat',
+ #                                    r'C:\Work\F90\LensingBiases\like' + os.sep + root + '_renorm_N1_TT_matrix.dat')
+        lens.dumpData(dir + os.sep + root)
     else:
         f = r'C:\Work\F90\LensingBiases\like' + os.sep + root + '.dataset'
         lens = lensLike(f, bin_compression=True)
