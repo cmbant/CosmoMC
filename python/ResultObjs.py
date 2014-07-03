@@ -385,7 +385,6 @@ class paramLimit():
 class margeStats(paramResults):
 
     def loadFromFile(self, filename):
-        print filename
         textFileLines = self.fileList(filename)
         lims = textFileLines[0].split(':')[1]
         self.limits = [float(s.strip()) for s in lims.split(';')]

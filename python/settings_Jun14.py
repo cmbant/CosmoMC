@@ -30,8 +30,8 @@ TEEE = {'want_spec':'F F F F T T'}
 TTTE = {'want_spec':'T T T T T F'}
 full = {'want_spec':'T T T T T T'}
 
-TT100_217 = {'want_spec':'T F T F F F', 'prior[cal2]':'0.992 0.004', 'param[aps143]':'0', 'param[acib143]':'0', 'param[psr]':'1', 'param[cibr]':'1'}
-TT100_143 = {'want_spec':'T T F F F F', 'prior[cal2]':'0.992 0.004', 'param[aps217]':'0', 'param[acib217]':'0', 'param[psr]':'1', 'param[cibr]':'1'}
+TT100_217 = {'want_spec':'T F T F F F', 'param[cal2]':'0.992', 'param[aps143]':'0', 'param[acib143]':'0', 'param[psr]':'1', 'param[cibr]':'1'}
+TT100_143 = {'want_spec':'T T F F F F', 'param[cal2]':'0.992', 'param[aps217]':'0', 'param[acib217]':'0', 'param[psr]':'1', 'param[cibr]':'1'}
 no217auto = {'want_spec':'T T F T F F'}
 
 
@@ -135,15 +135,15 @@ groups.append(g)
 g = batchJob.jobGroup('channels')
 datasets = []
 for name, planck_vars in zip(['v97', 'v97CS'], [planck_detsets, planck_CS]):
-    for namecut, cutvars in zip(['no143', 'no217', 'no217auto'], [TT100_217], [TT100_143], [no217auto]):
+    for namecut, cutvars in zip(['no143', 'no217', 'no217auto'], [TT100_217, TT100_143, no217auto]):
         datasets.append(batchJob.dataSet([name , 'TT', namecut], [TT, cutvars] + planck_vars))
-        datasets.append(batchJob.dataSet([name , 'TE', namecut], [TE, varTE, freecalTE, cutvars] + planck_vars))
+g.datasets = []
 for lmax in range(550, 2600, 150):
     sets = copy.deepcopy(datasets)
     for d in sets:
         d.add(tauname, tauprior)
         d.add('lmax' + str(lmax), {'camspec_lmax': (str(lmax) + ' ') * 6})
-
+    g.datasets += sets
 g.params = [[]]
 groups.append(g)
 
