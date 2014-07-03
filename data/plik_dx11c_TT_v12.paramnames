@@ -1,0 +1,15 @@
+acib217       A^{CIB}_{217}     # CIB amplitude at 217 GHz
+ncib          n^{CIB}           # spectral index of the CIB
+acibsz143     A^{CIBXSZ}_{143}
+asz143        A^{tSZ}_{143}     # Thermal SZ amplitude at 143 GH
+aps100        A^{PS}_{100}      # Point source amplitude at 100 GHz
+aps143		 A^{PS}_{143}      # Point source amplitude at 143 GHz
+aps143217     A^{PS}_{143x217}      # Point source amplitude at 143 GHz
+aps217        A^{PS}_{217}      # Point source amplitude at 217 GHz
+aksz          A^{kSZ}   
+t1gal100      t1gal_{100}
+t1gal143      t1gal_{143}
+t1gal143217   t1gal_{143x217}
+t1gal217      t1gal_{217}
+calib_100T    calib_{100T}
+calib_217T    calib_{217T}
