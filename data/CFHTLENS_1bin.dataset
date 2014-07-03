@@ -1,6 +1,8 @@
 name = CFHTLENS_1bin
 num_theta_bins = 21
 num_z_bins = 1
-wl_measurements_file = %DATASETDIR%xi_pm.dat
-wl_cov_file = %DATASETDIR%Cov_DMV.dat
+num_z_p = 70
+measurements_file = %DATASETDIR%CFHTLENS/2D/xi_pm.dat
+cov_file = %DATASETDIR%CFHTLENS/2D/Cov_DMV.dat
+window_file = %DATASETDIR%CFHTLENS/2D/nz_sumpdf.hist
 ah_factor = 1.0

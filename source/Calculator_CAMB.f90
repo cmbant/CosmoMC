@@ -47,6 +47,7 @@
     procedure :: InitForLikelihoods => CAMBCalc_InitForLikelihoods
     procedure :: BAO_D_v => CAMBCalc_BAO_D_v
     procedure :: AngularDiameterDistance => CAMBCalc_AngularDiameterDistance
+    procedure :: ComovingRadialDistance => CAMBCalc_ComovingRadialDistance
     procedure :: Hofz => CAMBCalc_Hofz
     procedure :: CMBToTheta => CAMBCalc_CMBToTheta
     procedure :: GetNewPowerData => CAMBCalc_GetNewPowerData
@@ -642,6 +643,15 @@
     CAMBCalc_AngularDiameterDistance = AngularDiameterDistance(z)
 
     end function CAMBCalc_AngularDiameterDistance
+
+    real(mcp) function CAMBCalc_ComovingRadialDistance(this, z)
+    use CAMB, only : ComovingRadialDistance  !!comoving radial distance also in Mpc no h units
+    class(CAMB_Calculator) :: this
+    real(mcp), intent(IN) :: z
+
+    CAMBCalc_ComovingRadialDistance = ComovingRadialDistance(z)
+
+    end function CAMBCalc_ComovingRadialDistance
 
     real(mcp) function CAMBCalc_Hofz(this, z)
     use CAMB, only : Hofz  !!angular diam distance also in Mpc no h units
