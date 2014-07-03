@@ -256,7 +256,7 @@ if (ini.params.has_key('do_minimal_1d_intervals')):
     print 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
     sys.exit()
 
-PCA_num = ini.int('PCA_num',0)
+PCA_num = ini.int('PCA_num', 0)
 if (PCA_num<>0):
     if (PCA_num<2):
         print 'Can only do PCA for 2 or more parameters'
@@ -300,8 +300,8 @@ def getLastChainIndex(in_root):
     indexes = [ int(f.replace(basename+'_', '').replace('.txt', '')) for f in names_files ]
     return max(indexes)
 
-first_chain = ini.int('first_chain',1) 
-last_chain = ini.int('chain_num',-1) 
+first_chain = ini.int('first_chain', 1) 
+last_chain = ini.int('chain_num', -1) 
 # -1 means keep reading until one not found
 if(last_chain==-1): last_chain = getLastChainIndex(in_root)
 
@@ -312,9 +312,7 @@ ok = mc.loadChains(in_root, chain_files)
 #    print 'No un-ignored rows! (check number of chains/burn in)'
 #    sys.exit()
 
-#import pdb; pdb.set_trace()
-
-no_tests = True # TEST for xxx_post chains
+#no_tests = True # TEST
 if (not no_tests):
     mc.DoConvergeTests(converge_test_limit)
 
@@ -358,8 +356,8 @@ if ((num_3D_plots<>0 and not make_single_samples or make_scatter_samples) and no
 
 # Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
 
-num_vars = mc.samples.shape[1]
-mc.colix = [0] * num_vars
+num_vars = mc.samples.shape[1]; mc.num_vars = num_vars
+mc.colix = [0] * mc.num_vars
 
 # Compute means and std dev.
 mc.ComputeStats()
@@ -375,16 +373,16 @@ mc.WriteBounds(filename)
 # Sort data in order of likelihood of points
 mc.SortColData(1)
 
-numsamp = np.sum(mc.weights)
+numsamp = np.sum(mc.weights); mc.numsamp = numsamp
 
 # Get ND confidence region (index into sorted coldata)
 counts = 0
 ND_cont1, ND_cont2 = mc.GetConfidenceRegion()
 
-triangle_plot = triangle_plot and (num_vars>1)
+triangle_plot = triangle_plot and (mc.num_vars>1)
 if (triangle_plot):
     if (triangle_num==-1):
-        triangle_num = num_vars
+        triangle_num = mc.num_vars
         triangle_params = mc.index2name.keys()
     else:
         ix = triangle_num
@@ -394,7 +392,7 @@ if (triangle_plot):
             pass
         triangle_plot = triangle_num > 1
 
-print 'using ', mc.numrows,' rows, processing ', num_vars,' parameters'
+print 'using ', mc.numrows,' rows, processing ', mc.num_vars,' parameters'
 if (mc.indep_thin<>0):
     print 'Approx indep samples: ', round(numsamp/mc.indep_thin)
 else:
@@ -409,13 +407,13 @@ if (PCA_num>0) and not plots_only:
 # Find best fit, and mean likelihood
 mc.GetChainLikeSummary(toStdOut=True)
 
-LowerUpperLimits = np.zeros([num_vars, 2, num_contours])
+LowerUpperLimits = np.zeros([mc.num_vars, 2, num_contours])
 
 # Initialize variables for 1D bins
 mc.Init1DDensity()
 
 # Do 1D bins
-for j in range(num_vars):
+for j in range(mc.num_vars):
 
     ix = mc.colix[j]
     mc.Get1DDensity(j)
@@ -495,8 +493,8 @@ if (plot_2D_param==0) and (num_cust2D_plots==0) and (not no_plots):
     cust2DPlots = []
     for j in range(num_cust2D_plots):
         try_b = -1e5
-        for ix1 in range(num_vars):
-            for ix2 in range(ix1+1, num_vars):
+        for ix1 in range(mc.num_vars):
+            for ix2 in range(ix1+1, mc.num_vars):
                 if abs(mc.corrmatrix[ix1][ix2]) < try_t and abs(mc.corrmatrix[ix1][ix2]) > try_b:
                     try_b = abs(mc.corrmatrix[ix1][ix2])   
                     x, y = ix1, ix2
@@ -504,21 +502,21 @@ if (plot_2D_param==0) and (num_cust2D_plots==0) and (not no_plots):
             num_cust2D_plots = j-1
             break
         try_t = try_b
-        cust2DPlots.append(ix + iy*1000)
+        cust2DPlots.append(x + y*1000)
     
 if (num_cust2D_plots==0):
     num_2D_plots = 0
     
-    for j in range(num_vars):
+    for j in range(mc.num_vars):
         if (mc.ix_min[j]<>mc.ix_max[j]):
-            for j2 in range(j+1, num_vars):
+            for j2 in range(j+1, mc.num_vars):
                 if (mc.ix_min[j2]<>mc.ix_max[j2]):
                     if (plot_2D_param in [0, j, j2]):
                         num_2D_plots -= 1 
 else:
     num_2D_plots = num_cust2D_plots
       
-done2D = [ [False] * num_vars ] * num_vars
+done2D = [ [False] * mc.num_vars ] * mc.num_vars
 if (num_2D_plots>0) and (not no_plots):
     print 'Producing ', num_2D_plots,' 2D plots'
     filename = rootdirname + '_2D.' + plot_ext
@@ -527,7 +525,7 @@ if (num_2D_plots>0) and (not no_plots):
     textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch2, out_dir, rootname))
     if (plot_ext=='py'):
         textFileHandle.write('pairs=[]\n')
-        for j in range(num_vars):
+        for j in range(mc.num_vars):
             if (mc.ix_min[j]<>mc.ix_max[j]):
                 if (plot_2D_param<>0 or num_cust2D_plots<>0):
                     if (j==plot_2D_param): continue
@@ -535,7 +533,7 @@ if (num_2D_plots>0) and (not no_plots):
                 else:
                     j2min = j + 1
 
-            for j2 in range(j2min, num_vars):
+            for j2 in range(j2min, mc.num_vars):
                 if (mc.ix_min[j2]<>mc.ix_max[j2]):
                     if (plot_2D_param<>0 and j2<>plot_2D_param):
                         if (num_cust2D_plots<>0 and cust2DPlots.count(j*1000+j2)==0): continue
@@ -543,6 +541,8 @@ if (num_2D_plots>0) and (not no_plots):
                         done2D[j][j2] = True
                         if (not plots_only): mc.Get2DPlotData(j, j2)
                 
+                name1 = mc.index2name[j]
+                name2 = mc.index2name[j2]
                 textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
         textFileHandle.write('g.plots_2d(roots,param_pairs=pairs)\n')
         textExport = MCSamples.WritePlotFileExport()
@@ -583,7 +583,7 @@ if (not plots_only):
     textInit = mc.GetChainLikeSummary(toStdOut=False)
     textFileHandle.write(textInit)
     textFileHandle.write('param  bestfit        lower1         upper1         lower2         upper2')
-    for j in range(num_vars):
+    for j in range(mc.num_vars):
         best = mc.samples[bestfit_ix][j]
         min1 = min(mc.samples[0:ND_cont1, j])
         max1 = max(mc.samples[0:ND_cont1, j])
@@ -599,3 +599,4 @@ if (finish_run_command):
     finish_run_command = finish_run_command.replace('%PLOTROOT%', os.path.join(plot_data_dir, rootname))
     os.system(finish_run_command)
     
+print "The End"

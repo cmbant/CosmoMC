@@ -212,6 +212,7 @@ class MCSamples(chains):
 
         # Other variables
         self.no_plots = False
+        self.num_vars = 0
         self.num_bins = 0
         self.num_bins_2D = 0
         self.smooth_scale_1D = 0.0
@@ -793,7 +794,6 @@ class MCSamples(chains):
 
     
     def Get1DDensity(self, j):
-        print "Get1DDensity j ", j
 
         fine_fac = 10
         logZero = 1e30
@@ -806,8 +806,6 @@ class MCSamples(chains):
         self.range_min[j] = self.confidence(paramVec, 0.0005, upper=False) 
         self.range_max[j] = self.confidence(paramVec, 0.0005, upper=True) 
         width = (self.range_max[j]-self.range_min[j])/(self.num_bins+1)
-        #print ix, self.range_min[j], self.range_max[j]
-        #import pdb; pdb.set_trace()
         if (width==0):
             print "Warning width is 0"
             return
@@ -850,10 +848,6 @@ class MCSamples(chains):
         self.ix_min[j] = int(round((self.range_min[j] - self.center[j])/width))
 
         self.ix_max[j] = int(round((self.range_max[j] - self.center[j])/width))
-
-        # debug 
-        #print "j, ix, ix_min, ix_max ", j, ix, self.ix_min[j], self.ix_max[j]
-        #import pdb; pdb.set_trace()
 
         if (not self.has_limits_bot[ix]): self.ix_min[j] -= end_edge
         if (not self.has_limits_top[ix]): self.ix_max[j] += end_edge
@@ -953,14 +947,9 @@ class MCSamples(chains):
                 if (self.mean_loglikes): 
                     for i in binlikes.keys(): binlikes[i] = logZero
 
-            #print "j, ix_min, ix_max ", j, self.ix_min[j], self.ix_max[j]
-            #import pdb; pdb.set_trace()
             # Output values for plots
             for ix2 in range(self.ix_min[j], self.ix_max[j]+1):
-                try: # debug 
-                    bincounts[ix2] = sum([ (Win[i1]*finebins[i2]) for i1, i2 in zip(Win.keys(), range(ix2*fine_fac-winw, ix2*fine_fac+winw+1)) ])
-                except:
-                    import pdb; pdb.set_trace()
+                bincounts[ix2] = sum([ (Win[i1]*finebins[i2]) for i1, i2 in zip(Win.keys(), range(ix2*fine_fac-winw, ix2*fine_fac+winw+1)) ])
                 if (self.plot_meanlikes and bincounts[ix2]>0):
                     binlikes[ix2] = sum([ (Win[i1]*finebinlikes[i2]) for i1, i2 in zip(Win.keys(), range(ix2*fine_fac-winw, ix2*fine_fac+winw+1)) ]) / bincounts[ix2]
                 if (has_prior):
@@ -1298,7 +1287,7 @@ class MCSamples(chains):
 
         for j in range(self.num_vars):
             textFileHandle.write("\n")
-            textFileHandle.write("%f\t%f\n"%(self.mean[j], self.sddev[j]))            
+            textFileHandle.write("%f\t%f\n"%(self.means[j], self.sddev[j]))            
             for i in range(self.num_contours):
                 textFileHandle.write("\n")
                 if (self.marge_limits_bot[i][self.colix[j]] and self.marge_limits_top[i][self.colix[j]]):
