@@ -398,27 +398,6 @@
 
     end function ParamNames_MaxNameLen
 
-    subroutine ParamNames_WriteMatlab(Names,  unit, headObj)
-    class(TParamNames) :: Names
-    character(len=ParamNames_maxlen) name
-    character(len=*), intent(in) :: headObj
-    integer :: unit
-    integer i
-
-    do i=1, Names%nnames
-        name = Names%name(i)
-        if (name /= '') then
-            write(unit,'(a)', advance='NO') trim(headObj)//trim(name)//'= struct(''n'','''//trim(name) &
-            //''',''i'','//trim(intToStr(i))//',''label'','''//trim(Names%label(i))//''',''isDerived'','
-            if (Names%is_derived(i)) then
-                write(unit,'(a)') 'true);'
-            else
-                write(unit,'(a)') 'false);'
-            endif
-        end if
-    end do
-
-    end subroutine ParamNames_WriteMatlab
 
     function ParamNames_ReadIniForParam(Names,Ini,Key, param) result(input)
     ! read Key[name] or Keyn where n is the parameter number

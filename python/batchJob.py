@@ -20,21 +20,28 @@ def nonEmptyFile(fname):
 
 
 class dataSet:
-    def __init__(self, names, params=None):
+    def __init__(self, names, params=None, covmat=None):
         if params is None: params = [(name + '.ini') for name in names]
         else: params = self.standardizeParams(params)
         if isinstance(names, basestring): names = [names]
+        if covmat is not None: self.covmat = covmat
         self.names = names
         self.params = params  # can be an array of items, either ini file name or dictionaries of parameters
         self.tag = "_".join(self.names)
 
-    def add(self, name, params):
+    def add(self, name, params=None, overrideExisting=True):
         if params is None: params = [name]
         params = self.standardizeParams(params)
-        self.params = params + self.params  # can be an array of items, either ini file name or dictionaries of parameters
+        if overrideExisting:
+            self.params = params + self.params  # can be an array of items, either ini file name or dictionaries of parameters
+        else:
+            self.params += params
         if name is not None:
-            self.names = [name] + self.names
+            self.names += [name]
             self.tag = "_".join(self.names)
+
+    def addEnd(self, name, params):
+        self.add(name, params, overrideExisting=False)
 
     def extendForImportance(self, names, params):
         data = copy.deepcopy(self)
@@ -52,7 +59,21 @@ class dataSet:
         return params
 
     def hasName(self, name):
-        return name in self.names
+        if isinstance(name, basestring): return name in self.names
+        else: return any([True for i in name if i in self.names])
+
+    def hasAll(self, name):
+        if isinstance(name, basestring): return name in self.names
+        else: return all([(i in self.names) for i in name])
+
+    def tagReplacing(self, x, y):
+        items = []
+        for name in self.names:
+            if name == x:
+                if y != '': items.append(y)
+            else: items.append(name)
+        return "_".join(items)
+
 
 class jobGroup:
     def __init__(self, name, params=[[]], importanceRuns=[], datasets=[]):

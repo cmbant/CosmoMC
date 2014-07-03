@@ -68,7 +68,7 @@
     ! #define coldata(a, b) coldata(b, a)
     !uncomment to switch order for compilation so confid_val is faster - suggested by Reijo Keskitalo March07
 
-    real(gp), dimension(:,:), target, allocatable :: coldata  !(col_index, row_index)
+    real(gp), dimension(:,:), allocatable :: coldata  !(col_index, row_index)
     integer, dimension(:), allocatable :: thin_ix
     integer thin_rows
 

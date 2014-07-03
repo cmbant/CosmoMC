@@ -14,3 +14,4 @@ Make symlink from /scratch/aml1005 to ./data/clik:
 ln -s /scratch/aml1005/clik_7.4 data/clik
 
 This version can run CAMspec files directly as well as clik files, default setup is clik files.
+./waf configure --lapack_mkl=${MKLROOT} --lapack_mkl_version=10.3 --no_bopix
