@@ -794,7 +794,6 @@ class MCSamples(chains):
     
     def Get1DDensity(self, j):
         print "Get1DDensity j ", j
-        #import pdb; pdb.set_trace()
 
         fine_fac = 10
         logZero = 1e30
@@ -807,7 +806,7 @@ class MCSamples(chains):
         self.range_min[j] = self.confidence(paramVec, 0.0005, upper=False) 
         self.range_max[j] = self.confidence(paramVec, 0.0005, upper=True) 
         width = (self.range_max[j]-self.range_min[j])/(self.num_bins+1)
-        #print ix, width
+        #print ix, self.range_min[j], self.range_max[j]
         #import pdb; pdb.set_trace()
         if (width==0):
             print "Warning width is 0"
@@ -833,8 +832,8 @@ class MCSamples(chains):
             if ((self.range_min[j]-self.limmin[ix]>width*end_edge) and (self.param_min[j]-self.limmin[ix]>width*smooth_1D)):
                 # long way from limit 
                 self.has_limits_bot[ix] = False
-        else:
-            self.range_min[j] = self.limmin[ix]
+            else:
+                self.range_min[j] = self.limmin[ix]
 
         if (self.has_limits_top[ix]):
             if ((self.limmax[ix]-self.range_max[j]>width*end_edge) and (self.limmax[ix]-self.param_max[j]>width*smooth_1D)):
@@ -852,6 +851,10 @@ class MCSamples(chains):
 
         self.ix_max[j] = int(round((self.range_max[j] - self.center[j])/width))
 
+        # debug 
+        #print "j, ix, ix_min, ix_max ", j, ix, self.ix_min[j], self.ix_max[j]
+        #import pdb; pdb.set_trace()
+
         if (not self.has_limits_bot[ix]): self.ix_min[j] -= end_edge
         if (not self.has_limits_top[ix]): self.ix_max[j] += end_edge
         
@@ -864,13 +867,13 @@ class MCSamples(chains):
         
         winw = int(round(2.5 * fine_fac * smooth_1D))
         fine_edge = winw + fine_fac * end_edge
-        fine_width = width/fine_fac
+        fine_width = width / fine_fac
 
         imin = int(round((self.param_min[j] - self.center[j])/fine_width))
         imax = int(round((self.param_max[j] - self.center[j])/fine_width))
         # In f90, finebins(imin-fine_edge:imax+fine_edge)
         indexes = range(imin-fine_edge, imax+fine_edge+1)
-        finebins = dict.fromkeys(indexes, 0)
+        finebins = dict.fromkeys(indexes, 0.0)
         
         if (self.plot_meanlikes):
             # In f90, finebinlikes(imin-fine_edge:imax+fine_edge)
@@ -882,7 +885,7 @@ class MCSamples(chains):
             if (ix2<=self.ix_max[j] and ix2>=self.ix_min[j]): 
                 binsraw[ix2] -= paramVec[i]
             ix2 = round((paramVec[i]-self.center[j])/fine_width)
-            finebins[ix2] += paramVec[i]
+            finebins[ix2] += self.weights[i]
             if (self.plot_meanlikes):
                 finebinlikes[ix2] += self.weights[i] * self.loglikes[i]
             else:
@@ -910,11 +913,11 @@ class MCSamples(chains):
             # In f90, prior_mask(imin-fine_edge:imax+fine_edge)
             indexes = range(imin-fine_edge, imax+fine_edge+1)
             prior_mask = dict.fromkeys(indexes, 1.0)
-            if (self.has_limit_bot[ix]):
+            if (self.has_limits_bot[ix]):
                 prior_mask[self.ix_min[j]*fine_fac] = 0.5
                 for i in range(imin-fine_edge, self.ix_min[j]*fine_fac): 
                     prior_mask[i] = 0
-            if (self.has_limit_top[ix]):
+            if (self.has_limits_top[ix]):
                 index = (self.ix_max[j]*fine_fac) - imin - fine_edge
                 prior_mask[self.ix_max[j]*fine_fac] = 0.5
                 for i in range(self.ix_max[j]*fine_fac+1, imax+fine_edge+1):
@@ -926,11 +929,11 @@ class MCSamples(chains):
 
         self.density1D = Density1D(imax-imin+1, fine_width)
         for i in range(imin, imax+1):
-            self.density1D.P[i-imin] = sum([ (Win[i1]*finebins[i2]) for i1, i2 in zip(Win.keys(), finebins.keys()) ])
+            self.density1D.P[i-imin] = sum([ (Win[i1]*finebins[i2]) for i1, i2 in zip(Win.keys(), range(i-winw, i+winw+1)) ])
             self.density1D.X[i-imin] = self.center[j] + i*fine_width
             if (has_prior and self.density1D.P[i-imin]>0):
                 # correct for normalization of window where it is cut by prior boundaries
-                edge_fac = 1 / sum([ (Win[i1]*prior_mask[i2]) for i1, i2 in zip(Win.keys(), prior_mask.keys()) ])
+                edge_fac = 1 / sum([ (Win[i1]*prior_mask[i2]) for i1, i2 in zip(Win.keys(), range(i-winw, i+winw+1)) ])
                 self.density1D.P[i-imin] *= edge_fac
 
         maxbin = np.max(self.density1D.P)
@@ -944,16 +947,20 @@ class MCSamples(chains):
         if (not self.no_plots):
             # In f90, binCounts(ix_min(j):ix_max(j))
             indexes = range(self.ix_min[j], self.ix_max[j]+1)
-            bincounts = dict.fromkeys(indexes, 0)
+            bincounts = dict.fromkeys(indexes, 0.)
             if (self.plot_meanlikes):
-                binlikes = dict.fromkeys(indexes, 1.0)
+                binlikes = dict.fromkeys(indexes, 0.)
                 if (self.mean_loglikes): 
                     for i in binlikes.keys(): binlikes[i] = logZero
 
+            #print "j, ix_min, ix_max ", j, self.ix_min[j], self.ix_max[j]
+            #import pdb; pdb.set_trace()
             # Output values for plots
             for ix2 in range(self.ix_min[j], self.ix_max[j]+1):
-                bincounts[ix2] = sum([ (Win[i1]*finebins[i2]) for i1, i2 in zip(Win.keys(), range(ix2*fine_fac-winw, ix2*fine_fac+winw+1)) ])
-                
+                try: # debug 
+                    bincounts[ix2] = sum([ (Win[i1]*finebins[i2]) for i1, i2 in zip(Win.keys(), range(ix2*fine_fac-winw, ix2*fine_fac+winw+1)) ])
+                except:
+                    import pdb; pdb.set_trace()
                 if (self.plot_meanlikes and bincounts[ix2]>0):
                     binlikes[ix2] = sum([ (Win[i1]*finebinlikes[i2]) for i1, i2 in zip(Win.keys(), range(ix2*fine_fac-winw, ix2*fine_fac+winw+1)) ]) / bincounts[ix2]
                 if (has_prior):

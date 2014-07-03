@@ -116,7 +116,7 @@ for ix in indexes:
     name = mc.index2name[ix]
     mini = mc.ranges.min(name)
     maxi = mc.ranges.max(name)
-    if (mini and maxi and mini<>maxi):
+    if (mini is not None and maxi is not None and mini<>maxi):
         mc.limmin[ix] = mini
         mc.limmax[ix] = maxi
         mc.has_limits_top[ix] = True
