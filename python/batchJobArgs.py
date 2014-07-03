@@ -25,6 +25,7 @@ class batchArgs():
             self.parser.add_argument('--paramtag', default=None, help='runs with specific parameter tag only (base_paramx)')
             self.parser.add_argument('--data', nargs='+', default=None, help='runs including specific data only (data1)')
             self.parser.add_argument('--datatag', default=None, help='runs with specific data tag only (data1_data2)')
+            self.parser.add_argument('--musthave_data', nargs='+', default=None, help='include only runs that include specific data (data1)')
             self.parser.add_argument('--skip_data', nargs='+', default=None, help='skip runs containing specific data (data1)')
             self.parser.add_argument('--skip_param', default=None, help='skip runs containing specific parameter (paramx)')
             self.parser.add_argument('--group', default=None, nargs='+', help='include only runs with given group names')
@@ -51,6 +52,7 @@ class batchArgs():
             return self.args.group is None or jobItem.group in self.args.group
 
         def dataMatches(self, jobItem):
+            if self.args.musthave_data is not None and not jobItem.data_set.hasAll(self.args.musthave_data): return False
             if self.args.datatag is None:
                 if self.args.skip_data is not None and jobItem.data_set.hasName(self.args.skip_data): return False
                 return self.args.data is None or jobItem.data_set.hasName(self.args.data)

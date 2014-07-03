@@ -62,6 +62,10 @@ class dataSet:
         if isinstance(name, basestring): return name in self.names
         else: return any([True for i in name if i in self.names])
 
+    def hasAll(self, name):
+        if isinstance(name, basestring): return name in self.names
+        else: return all([(i in self.names) for i in name])
+
     def tagReplacing(self, x, y):
         items = []
         for name in self.names:

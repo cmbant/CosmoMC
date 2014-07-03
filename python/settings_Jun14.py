@@ -62,6 +62,7 @@ plik = []
 plik.append(batchJob.dataSet(['plik', 'TT'], ['plik_dx11c_TT_v11.ini'], covmat='planck_covmats/plik_dx11c_TT_v11.covmat'))
 plik.append(batchJob.dataSet(['plik', 'TE'], ['plik_dx11c_TE_v11.ini'], covmat='planck_covmats/plik_dx11c_TE_v11.covmat'))
 plik.append(batchJob.dataSet(['plik', 'EE'], ['plik_dx11c_EE_v11.ini'], covmat='planck_covmats/plik_dx11c_EE_v11.covmat'))
+plik.append(batchJob.dataSet(['plik', 'all'], ['plik_dx11c_TTTEEE_v11.ini'], covmat='planck_covmats/plik_dx11c_TTTEEE_v11.covmat'))
 
 
 start_at_bestfit = False
