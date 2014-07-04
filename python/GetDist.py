@@ -49,7 +49,7 @@ else:
 single_column_chain_files = ini.bool('single_column_chain_files', False)
 
 num_bins = ini.int('num_bins'); mc.num_bins = num_bins 
-num_bins_2D = ini.int('num_bins_2D', num_bins); mcnum_bins_2D = num_bins_2D
+num_bins_2D = ini.int('num_bins_2D', num_bins); mc.num_bins_2D = num_bins_2D
 smooth_scale_1D = ini.float('smooth_scale_1D', -1.0) 
 # Smoothing scale in terms of bin scale
 smooth_scale_2D = ini.float('smooth_scale_2D', -1.0)
@@ -312,6 +312,8 @@ ok = mc.loadChains(in_root, chain_files)
 #    print 'No un-ignored rows! (check number of chains/burn in)'
 #    sys.exit()
 
+#import pdb; pdb.set_trace()
+
 #no_tests = True # TEST
 if (not no_tests):
     mc.DoConvergeTests(converge_test_limit)
@@ -357,7 +359,9 @@ if ((num_3D_plots<>0 and not make_single_samples or make_scatter_samples) and no
 # Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
 
 num_vars = mc.samples.shape[1]; mc.num_vars = num_vars
-mc.colix = [0] * mc.num_vars
+colix = [0] * mc.num_vars
+for i in range(mc.num_vars): colix[i] = i
+mc.colix= colix 
 
 # Compute means and std dev.
 mc.ComputeStats()
@@ -407,7 +411,7 @@ if (PCA_num>0) and not plots_only:
 # Find best fit, and mean likelihood
 mc.GetChainLikeSummary(toStdOut=True)
 
-LowerUpperLimits = np.zeros([mc.num_vars, 2, num_contours])
+LowerUpperLimits = np.zeros([mc.num_vars, 2, mc.num_contours])
 
 # Initialize variables for 1D bins
 mc.Init1DDensity()
@@ -419,7 +423,7 @@ for j in range(mc.num_vars):
     mc.Get1DDensity(j)
 
     # Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
-    for ix1 in range(num_contours):
+    for ix1 in range(mc.num_contours):
         
         mc.marge_limits_bot[ix1][ix] = mc.has_limits_bot[ix] and not force_twotail and mc.density1D.P[0] > max_frac_twotail[ix1]
         mc.marge_limits_top[ix1][ix] = mc.has_limits_top[ix] and not force_twotail and mc.density1D.P[-1] > max_frac_twotail[ix1]
@@ -461,6 +465,7 @@ for j in range(mc.num_vars):
             LowerUpperLimits[j][1][ix1] = mc.range_min[j]
             LowerUpperLimits[j][0][ix1] = mc.range_max[j]
 
+mc.LowerUpperLimits = LowerUpperLimits
 
 if (not no_plots):
     # Output files for 1D plots
@@ -477,8 +482,9 @@ if (not no_plots):
         if (plot_ext=='py'):
             names = [ mc.index2name[i] for i in triangle_params ]
             text = 'g.triangle_plot(roots, %s)'%str(names)
+            textFileHandle.write(text)
         textExport = MCSamples.WritePlotFileExport()
-        fname = ""
+        fname = rootname + '_tri.' + 'pdf'
         textFileHandle.write(textExport%(fname))
     textFileHandle.close()
 
@@ -525,6 +531,7 @@ if (num_2D_plots>0) and (not no_plots):
     textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch2, out_dir, rootname))
     if (plot_ext=='py'):
         textFileHandle.write('pairs=[]\n')
+        plot_num = 0
         for j in range(mc.num_vars):
             if (mc.ix_min[j]<>mc.ix_max[j]):
                 if (plot_2D_param<>0 or num_cust2D_plots<>0):
@@ -535,18 +542,17 @@ if (num_2D_plots>0) and (not no_plots):
 
             for j2 in range(j2min, mc.num_vars):
                 if (mc.ix_min[j2]<>mc.ix_max[j2]):
-                    if (plot_2D_param<>0 and j2<>plot_2D_param):
-                        if (num_cust2D_plots<>0 and cust2DPlots.count(j*1000+j2)==0): continue
-                        plot_num += 1
-                        done2D[j][j2] = True
-                        if (not plots_only): mc.Get2DPlotData(j, j2)
-                
-                name1 = mc.index2name[j]
-                name2 = mc.index2name[j2]
-                textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
+                    if (plot_2D_param<>0 and j2<>plot_2D_param): continue
+                    if (num_cust2D_plots<>0 and cust2DPlots.count(j*1000+j2)==0): continue
+                    plot_num += 1
+                    done2D[j][j2] = True
+                    if (not plots_only): mc.Get2DPlotData(j, j2)
+                    name1 = mc.index2name[j]
+                    name2 = mc.index2name[j2]
+                    textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
         textFileHandle.write('g.plots_2d(roots,param_pairs=pairs)\n')
         textExport = MCSamples.WritePlotFileExport()
-        fname = rootname + '_2D.' + plot_ext
+        fname = rootname + '_2D.' + 'pdf'
         textFileHandle.write(textExport%(fname))
     textFileHandle.close()
 
@@ -558,11 +564,13 @@ if (num_3D_plots<>0 and not no_plots):
     textInit = MCSamples.WritePlotFileInit()
     textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch3, out_dir, rootname))
     textFileHandle.write('sets=[]\n')
+    text = ""
     for j in range(num_3D_plots):
         v1, v2, v3 = plot_3D[j]
-        text += "sets.append(['%s','%s','%s'])"%(v1, v2, v3)
-    text += 'g.plots_3d(roots,sets)'
-    fname = rootname + '_3D.' + plot_ext
+        text += "sets.append(['%s','%s','%s'])\n"%(v1, v2, v3)
+    text += 'g.plots_3d(roots,sets)\n'
+    textFileHandle.write(text)
+    fname = rootname + '_3D.' + 'pdf'
     textExport = MCSamples.WritePlotFileExport()
     textFileHandle.write(textExport%(fname))
     textFileHandle.close()
@@ -582,14 +590,14 @@ if (not plots_only):
     textFileHandle = open(filename, 'w')
     textInit = mc.GetChainLikeSummary(toStdOut=False)
     textFileHandle.write(textInit)
-    textFileHandle.write('param  bestfit        lower1         upper1         lower2         upper2')
+    textFileHandle.write('param  bestfit        lower1         upper1         lower2         upper2\n')
     for j in range(mc.num_vars):
         best = mc.samples[bestfit_ix][j]
         min1 = min(mc.samples[0:ND_cont1, j])
         max1 = max(mc.samples[0:ND_cont1, j])
         min2 = min(mc.samples[0:ND_cont2, j])
         max2 = max(mc.samples[0:ND_cont2, j])
-        textFileHandle.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E'%(j, best, min1, max1, min2, max2))
+        textFileHandle.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E\n'%(j+1, best, min1, max1, min2, max2))
     textFileHandle.close()
 
 # System command

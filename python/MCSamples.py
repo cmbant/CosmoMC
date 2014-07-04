@@ -230,6 +230,7 @@ class MCSamples(chains):
         self.indep_thin = 0
         self.contours = []
 
+        self.LowerUpperLimits = None
         self.covmat_dimension = 0
         self.max_split_tests = -1 # 4 # disable split tests
         self.force_twotail = False
@@ -287,9 +288,9 @@ class MCSamples(chains):
             if (rand <= self.weights[i]/maxmult/single_thin):
                 textFileHandle.write("%16.7E"%(1.0))
                 textFileHandle.write("%16.7E"%(self.loglikes[i]))
-                for j in self.colix:
+                for j in range(self.num_vars):
                     textFileHandle.write("%16.7E"%(self.samples[i][j]))
-            textFileHandle.write("\n")
+                textFileHandle.write("\n")
         textFileHandle.close()
 
     def WriteThinData(self, fname, thin_ix, cool):
@@ -966,8 +967,9 @@ class MCSamples(chains):
                     else:
                         binlikes[i] = 0
 
-            fname = self.rootname + str(j) + ".dat"
-            filename = os.path.join(self.plot_data_dir, fname)
+            fname = self.rootname + "_p_" + str(self.index2name[j])
+
+            filename = os.path.join(self.plot_data_dir, fname + ".dat")
             textFileHandle = open(filename, 'w')
             for i in range(self.ix_min[j], self.ix_max[j]+1):
                 textFileHandle.write("%f%16.7E\n"%(self.center[j] + i*width, bincounts[i]))
@@ -977,7 +979,7 @@ class MCSamples(chains):
         
             if (self.plot_meanlikes):
                 maxbin = max([ binlikes[i] for i in range(self.ix_min[j], self.ix_max[j]+1) ])
-                filename_like = filename + ".likes"
+                filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
                 textFileHandle = open(filename_like, 'w')
                 for i in range(self.ix_min[j], self.ix_max[j]+1):
                     textFileHandle.write("%f%16.7E\n"%(self.center[j] + i*width, binlikes[i]/maxbin))
@@ -1000,8 +1002,8 @@ class MCSamples(chains):
         # for tight degeneracies increase bin density
         nbin2D = min(4*self.num_bins_2D, round(self.num_bins_2D/(1-abs(corr))))
         
-        widthx = (self.range_max[j]-self.range_min[j])/(self.nbin2D+1)
-        widthy = (self.range_max[j2]-self.range_min[j2])/(self.nbin2D+1)
+        widthx = (self.range_max[j]-self.range_min[j])/(nbin2D+1)
+        widthy = (self.range_max[j2]-self.range_min[j2])/(nbin2D+1)
         smooth_scale = (self.smooth_scale_2D*nbin2D)/self.num_bins_2D
         fine_fac = max(2, round(fine_fac_base/smooth_scale))
 
@@ -1011,10 +1013,10 @@ class MCSamples(chains):
         iymin = int(round((self.range_min[j2] - self.center[j2])/widthy))
         iymax = int(round((self.range_max[j2] - self.center[j2])/widthy))
 
-        if (not self.has_limits_bot[colix[j]]): ixmin -= 1
-        if (not self.has_limits_bot[colix[j2]]): iymin -= 1
-        if (not self.has_limits_top[colix[j]]): ixmax += 1
-        if (not self.has_limits_top[colix[j2]]): iymax += 1
+        if (not self.has_limits_bot[self.colix[j]]): ixmin -= 1
+        if (not self.has_limits_bot[self.colix[j2]]): iymin -= 1
+        if (not self.has_limits_top[self.colix[j]]): ixmax += 1
+        if (not self.has_limits_top[self.colix[j2]]): iymax += 1
         
         # Using nested python dicts to map f90 2D arrays with non standard indexes.
 
@@ -1047,8 +1049,8 @@ class MCSamples(chains):
         col1 = self.colix[j]
         col2 = self.colix[j2]
         for i in range(self.numrows):
-            ix1 = int(round(((self.samples[col1, i]-self.center[j])/widthj)))
-            ix2 = int(round((self.samples[col2, i]-self.center[j2])/widthj2))
+            ix1 = int(round(((self.samples[i, col1]-self.center[j])/widthj)))
+            ix2 = int(round((self.samples[i, col2]-self.center[j2])/widthj2))
             if (ix1>=imin and ix1<=imax and ix2>=jmin and ix2<=jmax):
                 finebins[ix1][ix2] += self.weights[i]
                 if (self.shade_meanlikes):
@@ -1100,13 +1102,13 @@ class MCSamples(chains):
                 indexes = range(-winw, winw+1)
                 for i in indexes: 
                     for j in indexes:
-                        bins2D[ix1][ix2] += win[i][j] * finebins[ix1*fine_fac-winw+i][ix2*fine_fac-winw+j]
+                        bins2D[ix1][ix2] += Win[i][j] * finebins[ix1*fine_fac+i][ix2*fine_fac+j]
                 if (self.shade_meanlikes):
                     bin2Dlikes[ix1][ix2] = 0
                     indexes = range(-winw, winw+1)
                     for i in indexes: 
                         for j in indexes:
-                            bin2Dlikes[ix1][ix2] += win[i][j] * finebinlikes[ix1*fine_fac-winw+i][ix2*fine_fac-winw+j]
+                            bin2Dlikes[ix1][ix2] += Win[i][j] * finebinlikes[ix1*fine_fac+i][ix2*fine_fac+j]
 
                 if (has_prior):
                     # correct for normalization of window where it is cut by prior boundaries
@@ -1114,7 +1116,8 @@ class MCSamples(chains):
                     indexes = range(-winw, winw+1)
                     for i in indexes: 
                         for j in indexes:
-                            denom +=  win[i][j] * prior_mask[ix1*fine_fac-winw+i][ix2*fine_fac-winw+j]
+                            denom += Win[i][j] * prior_mask[ix1*fine_fac+i][ix2*fine_fac+j]
+                    edge_fac = norm / denom
                     bins2D[ix1][ix2] *= edge_fac
                     if (self.shade_meanlikes):
                         bin2Dlikes[ix1][ix2] *= edge_fac
@@ -1140,7 +1143,7 @@ class MCSamples(chains):
 
             lasttry = -1
             while True:
-                try_sum = np.sum(bin2D[np.where(bins2D < (try_b + try_t) / 2)])
+                try_sum = np.sum(bins2D[np.where(bins2D < (try_b + try_t) / 2)])
                 if (try_sum > (1-self.contours[ix1])*norm):
                     try_t = (try_b + try_t) / 2
                 else:
@@ -1149,7 +1152,7 @@ class MCSamples(chains):
                 try_last = try_sum
             contour_levels[ix1] = (try_b + try_t) / 2
             
-        bind2D[np.where(bins2D < 1e-30)] = 0
+        bins2D[np.where(bins2D < 1e-30)] = 0
 
         name = self.index2name.get(j, "NOTFOUND")
         name2 = self.index2name.get(j2, "NOTFOUND")
@@ -1232,8 +1235,8 @@ class MCSamples(chains):
         self.ix_min = np.zeros(nparam, dtype=np.int)
         self.ix_max = np.zeros(nparam, dtype=np.int)
         #
-        self.marge_limits_bot = np.zeros([nparam, self.num_contours])
-        self.marge_limits_top = np.zeros([nparam, self.num_contours])
+        self.marge_limits_bot = np.zeros([self.num_contours, nparam])
+        self.marge_limits_top = np.zeros([self.num_contours, nparam])
 
     def GetConfidenceRegion(self):
         ND_cont1, ND_cont2 = -1, -1
@@ -1275,31 +1278,32 @@ class MCSamples(chains):
         filename = self.rootdirname + '.margestats'
         textFileHandle = open(filename, 'w')
         textFileHandle.write("Marginalized limits: %s\n"%contours_str)
-        textFileHandle.write("%i parameter\n"%j)
         textFileHandle.write("\n")
-        textFileHandle.write("%15s\n"%("mean"))
-        textFileHandle.write("%15s\n"%("sddev"))
+        textFileHandle.write("%12s"%("parameter"))
+        textFileHandle.write("%15s"%("mean"))
+        textFileHandle.write("%15s"%("sddev"))
         for j in range(self.num_contours):
-            textFileHandle.write("%15s\n"%(""))
-            textFileHandle.write("%15s\n"%(""))
-            textFileHandle.write("%7s\n"%(""))
+            textFileHandle.write("%15s"%("lower"+str(j+1)))
+            textFileHandle.write("%15s"%("upper"+str(j+1)))
+            textFileHandle.write("%7s"%("limit"+str(j+1)))
         textFileHandle.write("\n")
 
         for j in range(self.num_vars):
-            textFileHandle.write("\n")
-            textFileHandle.write("%f\t%f\n"%(self.means[j], self.sddev[j]))            
+            textFileHandle.write("%12s"%(self.index2name[j]))
+            textFileHandle.write("%16.7E%16.7E"%(self.means[j], self.sddev[j]))
             for i in range(self.num_contours):
-                textFileHandle.write("\n")
-                if (self.marge_limits_bot[i][self.colix[j]] and self.marge_limits_top[i][self.colix[j]]):
+                textFileHandle.write("%16.7E%16.7E"%(self.LowerUpperLimits[j][0][i], self.LowerUpperLimits[j][1][i]))
+                if (self.marge_limits_bot[i][j] and self.marge_limits_top[i][j]):
                     tag = 'none'
-                elif (self.marge_limits_bot[i][self.colix[j]]):
+                elif (self.marge_limits_bot[i][j]):
                     tag = '>'
-                elif (self.marge_limits_top[i][self.colix[j]]):
+                elif (self.marge_limits_top[i][j]):
                     tag = '<'
                 else:
                     tag = 'two'
-                textFileHandle.write("%7s\n"%tag)
-            textFileHandle.write("%s\n"%(""))
+                textFileHandle.write("%7s"%(tag))
+            label = self.paramNames.names[j].label
+            textFileHandle.write("   %s\n"%(label))
 
         textFileHandle.close()
 
