@@ -127,8 +127,8 @@
             if (CosmoSettings%num_cls>2) then
                 if (CosmoSettings%cl_lmax(3,3)>0) call fpico_request_output("cl_BB")
                 if (CosmoSettings%num_cls>3) then
-                    call MpiStop('PICO: lensing output currently innaccurate')
-                    if (CosmoSettings%cl_lmax(4,4)>0) call fpico_request_output("cl_pp")
+!                    call MpiStop('PICO: lensing output currently innaccurate')
+!                    if (CosmoSettings%cl_lmax(4,4)>0) call fpico_request_output("cl_pp")
                 end if
             end if
         end if
