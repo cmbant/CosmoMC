@@ -18,6 +18,9 @@ Opts.parser.add_argument('--legend_labels', default=None, nargs='+', help='label
 Opts.parser.add_argument('--D2_param', default=None, help='x-parameter for 2D plots')
 Opts.parser.add_argument('--D2_y_params', nargs='+', default=None, help='list of y parameter names for 2D plots')
 
+Opts.parser.add_argument('--tri_params', nargs='+', default=None, help='list of parameters for triangle plots')
+
+
 Opts.parser.add_argument('--outputs', nargs='+', default=['pdf'], help='output file type (default: pdf)')
 Opts.parser.add_argument('--filled', action='store_true', help='for 2D plots, output filled contours')
 Opts.parser.add_argument('--size_inch', type=float, default=None, help='output subplot size in inches')
@@ -43,6 +46,8 @@ def doplot(roots):
     ncol = args.legend_ncol or (1, 2)[len(roots) > 2]
     if args.D2_param is not None:
         g.plots_2d(roots, args.D2_param, params2=args.D2_y_params, nx=args.nx, legend_labels=args.legend_labels, filled=args.filled, legend_ncol=ncol)
+    elif args.tri_params is not None:
+        g.triangle_plot(roots, args.tri_params, legend_labels=args.legend_labels, filled_compare=args.filled)
     else:
         g.plots_1d(roots, paramList=args.paramList, nx=args.nx, legend_labels=args.legend_labels, legend_ncol=ncol)
 
@@ -53,6 +58,7 @@ tp = ''
 if args.data is not None and len(args.data) == 1 and args.compare_alldata is not None: tp = '_' + args.data[0] + tp
 if args.outtag is not None: tp = '_' + args.outtag + tp
 if args.D2_param is not None: tp = '_' + args.D2_param + '_2D'
+if args.tri_params is not None: tp = '_tri'
 
 if args.compare_replacing is not None:
     if args.data is None: args.data = args.compare_replacing
