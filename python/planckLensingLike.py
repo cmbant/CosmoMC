@@ -420,6 +420,7 @@ if False:
 if __name__ == "__main__":
     dir = r'C:\Work\F90\LensingBiases\g60'
     root = 'g60_full_pttptt'
+    root = 'g60_full_pp'
 
     Duncan = True
     if Duncan:
