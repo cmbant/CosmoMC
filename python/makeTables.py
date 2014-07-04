@@ -204,10 +204,13 @@ for limit in limits:
                     else: referenceJobItem = baseJobItems.get(jobItem.normed_data, None)
                     if args.changes_from_paramtag is not None:
                         referenceDataJobItem = referenceJobItem
-
-                    tableLines = paramResultTable(jobItem, referenceJobItem, referenceDataJobItem)
-                    if args.separate_tex: ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
-                    lines += tableLines
+                    try:
+                        tableLines = paramResultTable(jobItem, referenceJobItem, referenceDataJobItem)
+                        if args.separate_tex: ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')
+                        lines += tableLines
+                    except Exception  as e:
+                        print 'ERROR: ' + jobItem.name
+                        print "Index Error:" + e.message
 
     if not args.forpaper: lines.append('\\end{document}')
 

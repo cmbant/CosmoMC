@@ -94,7 +94,8 @@ class jobItem:
         self.datatag = data_set.tag
         self.name = self.paramtag + '_' + self.datatag
         self.batchPath = path
-        self.chainPath = path + self.paramtag + os.sep + self.datatag + os.sep
+        self.relativePath = self.paramtag + os.sep + self.datatag + os.sep
+        self.chainPath = path + self.relativePath
         self.chainRoot = self.chainPath + self.name
         self.distPath = self.chainPath + 'dist' + os.sep
         self.distRoot = self.distPath + self.name
@@ -125,6 +126,7 @@ class jobItem:
             job.chainRoot = self.chainRoot + tag
             job.distPath = self.distPath
             job.chainPath = self.chainPath
+            job.relativePath = self.relativePath
             job.distRoot = self.distRoot + tag
             job.datatag = self.datatag + tag
             job.isImportanceJob = True
