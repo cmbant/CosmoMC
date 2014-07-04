@@ -40,7 +40,7 @@
     integer  i
     Type(TSettingIni) :: DataSets
 
-    call Ini%TagValuesForName('cmb_dataset', DataSets)
+    call Ini%TagValuesForName('cmb_dataset', DataSets, filename=.true.)
 
     do i= 1, DataSets%Count
         if (DataSets%Name(i) == 'WMAP') then
