@@ -546,7 +546,7 @@ if (num_2D_plots>0) and (not no_plots):
                     if (num_cust2D_plots<>0 and cust2DPlots.count(j*1000+j2)==0): continue
                     plot_num += 1
                     done2D[j][j2] = True
-                    #if (not plots_only): mc.Get2DPlotData(j, j2)
+                    if (not plots_only): mc.Get2DPlotData(j, j2)
                     name1 = mc.index2name[j]
                     name2 = mc.index2name[j2]
                     textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
