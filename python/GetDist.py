@@ -314,6 +314,7 @@ ok = mc.loadChains(in_root, chain_files)
 
 #import pdb; pdb.set_trace()
 
+
 #no_tests = True # TEST
 if (not no_tests):
     mc.DoConvergeTests(converge_test_limit)
@@ -416,6 +417,8 @@ LowerUpperLimits = np.zeros([mc.num_vars, 2, mc.num_contours])
 # Initialize variables for 1D bins
 mc.Init1DDensity()
 
+
+
 # Do 1D bins
 for j in range(mc.num_vars):
 
@@ -471,8 +474,15 @@ if (not no_plots):
     # Output files for 1D plots
     filename = rootdirname + '.' + plot_ext
     textFileHandle = open(filename, 'w')
+    textInit = MCSamples.WritePlotFileInit()
+    textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch, out_dir, rootname))
     if (plot_ext=='py'):
-        text = 'g.plots_1d(roots)'
+        text = 'g.plots_1d(roots)\n'
+        textFileHandle.write(text)
+        textExport = MCSamples.WritePlotFileExport()
+        fname = rootname + '.' + 'pdf'
+        textFileHandle.write(textExport%(fname))
+    textFileHandle.close()
 
     if (triangle_plot):
         filename = rootdirname + '_tri.' + plot_ext
@@ -481,12 +491,12 @@ if (not no_plots):
         textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch, out_dir, rootname))
         if (plot_ext=='py'):
             names = [ mc.index2name[i] for i in triangle_params ]
-            text = 'g.triangle_plot(roots, %s)'%str(names)
+            text = 'g.triangle_plot(roots, %s)\n'%str(names)
             textFileHandle.write(text)
         textExport = MCSamples.WritePlotFileExport()
         fname = rootname + '_tri.' + 'pdf'
         textFileHandle.write(textExport%(fname))
-    textFileHandle.close()
+        textFileHandle.close()
 
 
 # Do 2D bins
@@ -590,6 +600,7 @@ if (not plots_only):
     textFileHandle = open(filename, 'w')
     textInit = mc.GetChainLikeSummary(toStdOut=False)
     textFileHandle.write(textInit)
+    textFileHandle.write("\n")
     textFileHandle.write('param  bestfit        lower1         upper1         lower2         upper2\n')
     for j in range(mc.num_vars):
         best = mc.samples[bestfit_ix][j]
@@ -597,7 +608,8 @@ if (not plots_only):
         max1 = max(mc.samples[0:ND_cont1, j])
         min2 = min(mc.samples[0:ND_cont2, j])
         max2 = max(mc.samples[0:ND_cont2, j])
-        textFileHandle.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E\n'%(j+1, best, min1, max1, min2, max2))
+        label = mc.paramNames.names[j].label
+        textFileHandle.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E   %s\n'%(j+1, best, min1, max1, min2, max2, label))
     textFileHandle.close()
 
 # System command
