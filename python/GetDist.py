@@ -35,7 +35,10 @@ if (in_root==''): # or (not os.path.isfile(file_root)):
      sys.exit()
 rootname = os.path.basename(in_root)
 
+ignorerows = ini.float('ignore_rows', 0.0)
+
 # Create instance of MCSamples
+#mc = MCSamples.MCSamples(in_root, ignore_rows=ignorerows)
 mc = MCSamples.MCSamples(in_root)
 
 if (ini.params.has_key('nparams')):
@@ -62,8 +65,6 @@ mc.smooth_scale_1D = smooth_scale_1D
 mc.smooth_scale_2D = smooth_scale_2D 
 
 credible_interval_threshold = ini.float('credible_interval_threshold', 0.05)
-
-ignorerows = ini.float('ignore_rows', 0.0)
 
 adjust_priors = ini.bool('adjust_priors', False)
 
@@ -292,6 +293,7 @@ do_shading = ini.bool('do_shading', True)
 
 # Chain files
 chain_files = glob.glob(in_root+'_*.txt')
+chain_files.sort() 
 
 def getLastChainIndex(in_root):
     if not chain_files: return 0
@@ -312,7 +314,8 @@ ok = mc.loadChains(in_root, chain_files)
 #    print 'No un-ignored rows! (check number of chains/burn in)'
 #    sys.exit()
 
-#import pdb; pdb.set_trace()
+mc.removeBurnFraction(ignorerows)
+import pdb; pdb.set_trace()
 
 
 #no_tests = True # TEST
@@ -520,15 +523,15 @@ if (plot_2D_param==0) and (num_cust2D_plots==0) and (not no_plots):
         try_t = try_b
         cust2DPlots.append(x + y*1000)
     
+
 if (num_cust2D_plots==0):
     num_2D_plots = 0
-    
     for j in range(mc.num_vars):
         if (mc.ix_min[j]<>mc.ix_max[j]):
             for j2 in range(j+1, mc.num_vars):
                 if (mc.ix_min[j2]<>mc.ix_max[j2]):
                     if (plot_2D_param in [0, j, j2]):
-                        num_2D_plots -= 1 
+                        num_2D_plots += 1 
 else:
     num_2D_plots = num_cust2D_plots
       
@@ -565,6 +568,15 @@ if (num_2D_plots>0) and (not no_plots):
         fname = rootname + '_2D.' + 'pdf'
         textFileHandle.write(textExport%(fname))
     textFileHandle.close()
+
+
+if (triangle_plot and not no_plots):
+    # Add the off-diagonal 2D plots
+    for i in range(triangle_num):
+        for i2 in range(i+1, triangle_num):
+            j  = triangle_params[i] 
+            j2 = triangle_params[i2] 
+            #if (not done2D[j2][j] and not plots_only): mc.Get2DPlotData(j2, j)
 
 # Do 3D plots (i.e. 2D scatter plots with coloured points)
 if (num_3D_plots<>0 and not no_plots):

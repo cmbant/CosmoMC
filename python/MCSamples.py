@@ -516,7 +516,6 @@ class MCSamples(chains):
         
         # Weights
         weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
-        #self.numsamp = np.sum(weights)
 
         # Get statistics for individual chains, and do split tests on the samples
 
@@ -527,6 +526,7 @@ class MCSamples(chains):
         if (num_chains_used>1):
             print 'Number of chains used =  ', num_chains_used
 
+        #
         nparam = self.paramNames.numParams()
         nparamNonDerived = self.paramNames.numNonDerived()
         for chain in self.chains: chain.getCov(nparam)
@@ -575,7 +575,7 @@ class MCSamples(chains):
                 # Get stats for individual chains - the variance of the means over the mean of the variances
                 for chain in self.chains:
                     chain_means = np.sum(chain.coldata[:, 0]*chain.coldata[:, i])/chain.norm
-                    between_chain_var[i] += chain_means*chain_means
+                    between_chain_var[i] += chain_means * chain_means
                     in_chain_var[i] += np.sum(chain.coldata[:, 0]*(chain.coldata[:, i]-chain_means)*(chain.coldata[:, i]-chain_means))
 
                 between_chain_var[i] /= (num_chains_used-1)
@@ -965,7 +965,9 @@ class MCSamples(chains):
             for i in range(self.ix_min[j], self.ix_max[j]+1):
                 textFileHandle.write("%16.7E%16.7E\n"%(self.center[j] + i*width, bincounts[i - self.ix_min[j]]))
             if (self.ix_min[j]==self.ix_max[j]): 
-                textFileHandle.write("%16.7E\n"%(self.center[j] + ix_min*width))
+                for i in range(self.ix_min.shape[0]):
+                    textFileHandle.write("%16.7E"%(self.center[j] + self.ix_min[i]*width))
+                textFileHandle.write("\n")
             textFileHandle.close()
         
             if (self.plot_meanlikes):
@@ -991,12 +993,12 @@ class MCSamples(chains):
         corr = min(0.95, corr)
         
         # for tight degeneracies increase bin density
-        nbin2D = min(4*self.num_bins_2D, round(self.num_bins_2D/(1-abs(corr))))
+        nbin2D = min(4*self.num_bins_2D, int(round(self.num_bins_2D/(1-abs(corr)))))
         
         widthx = (self.range_max[j]-self.range_min[j])/(nbin2D+1)
         widthy = (self.range_max[j2]-self.range_min[j2])/(nbin2D+1)
         smooth_scale = (self.smooth_scale_2D*nbin2D)/self.num_bins_2D
-        fine_fac = max(2, round(fine_fac_base/smooth_scale))
+        fine_fac = max(2, int(round(fine_fac_base/smooth_scale)))
 
         ixmin = int(round((self.range_min[j] - self.center[j])/widthx))
         ixmax = int(round((self.range_max[j] - self.center[j])/widthx))
@@ -1230,18 +1232,19 @@ class MCSamples(chains):
         if not hasattr(self, 'ranges') or self.ranges is None: return 
         textFileHandle = open(filename, 'w')
         for i in self.index2name.keys():
-            name = self.index2name[i]
-            valMin = self.ranges.min(name)
-            if (valMin is not None):
-                lim1 = "%15.7E"%valMin
-            else:
-                lim1 = "    N"
-            valMax = self.ranges.max(name)
-            if (valMax is not None):
-                lim2 = "%15.7E"%valMax
-            else:
-                lim2 = "    N"
-            textFileHandle.write("%22s%17s%17s\n"%(name, lim1, lim2))
+            if (self.has_limits_bot[i] or self.has_limits_top[i]):
+                name = self.index2name[i]
+                valMin = self.ranges.min(name)
+                if (valMin is not None):
+                    lim1 = "%15.7E"%valMin
+                else:
+                    lim1 = "    N"
+                valMax = self.ranges.max(name)
+                if (valMax is not None):
+                    lim2 = "%15.7E"%valMax
+                else:
+                    lim2 = "    N"
+                textFileHandle.write("%22s%17s%17s\n"%(name, lim1, lim2))
         textFileHandle.close()
 
     def OutputMargeStats(self, contours_str):
@@ -1253,7 +1256,7 @@ class MCSamples(chains):
         textFileHandle = open(filename, 'w')
         textFileHandle.write("Marginalized limits: %s\n"%contours_str)
         textFileHandle.write("\n")
-        textFileHandle.write("%-12s"%("parameter"))
+        textFileHandle.write("%-15s"%("parameter"))
         textFileHandle.write("%-15s"%("mean"))
         textFileHandle.write("%-15s"%("sddev"))
         for j in range(self.num_contours):
