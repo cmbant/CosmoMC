@@ -30,6 +30,8 @@
         !MPK%nx = num_k, MPK%ny = num_z
         type(TCosmoTheoryPK), allocatable :: MPK
         type(TCosmoTheoryPK), allocatable :: NL_MPK
+        type(TCosmoTheoryPK), allocatable :: MPK_WEYL
+        type(TCosmoTheoryPK), allocatable :: NL_MPK_WEYL
     contains
     procedure :: FreePK
     procedure :: ClArray

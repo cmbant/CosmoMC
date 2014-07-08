@@ -223,9 +223,9 @@ module wl
     integer :: num_z
 
     h = CMB%H0/100 
-    num_z = Theory%NL_MPK%ny
-    khmin = exp(Theory%NL_MPK%x(1))
-    khmax = exp(Theory%NL_MPK%x(Theory%NL_MPK%nx))
+    num_z = Theory%NL_MPK_WEYL%ny
+    khmin = exp(Theory%NL_MPK_WEYL%x(1))
+    khmax = exp(Theory%NL_MPK_WEYL%x(Theory%NL_MPK_WEYL%nx))
 
     !-----------------------------------------------------------------------
     ! Compute comoving distance r and dz/dr
@@ -233,15 +233,15 @@ module wl
     
     allocate(r(num_z),dzodr(num_z))
     do iz=1,num_z
-       z = Theory%NL_MPK%y(iz)
+       z = Theory%NL_MPK_WEYL%y(iz)
        r(iz) = this%Calculator%ComovingRadialDistance(z)
        dzodr(iz) = this%Calculator%Hofz(z)
 !!!    DEBUG
 !!!       write(*,*) z,r(iz),dzodr(iz)
     end do
     allocate(r_z, dzodr_z)
-    call r_z%Init(Theory%NL_MPK%y,r,n=num_z)
-    call dzodr_z%Init(Theory%NL_MPK%y,dzodr,n=num_z)
+    call r_z%Init(Theory%NL_MPK_WEYL%y,r,n=num_z)
+    call dzodr_z%Init(Theory%NL_MPK_WEYL%y,dzodr,n=num_z)
     
     !-----------------------------------------------------------------------
     ! Compute lensing efficiency
@@ -279,11 +279,11 @@ module wl
        PP=0
        do iz=1,num_z
           kh = ll(il)/r(iz)/h ! CAMB wants k/h values 
-          z = Theory%NL_MPK%y(iz)
+          z = Theory%NL_MPK_WEYL%y(iz)
           if ((kh .le. khmin) .or. (kh .ge. khmax)) then
              PP(iz)=0.0d0
           else   
-             PP(iz)=Theory%NL_MPK%PowerAt(kh,z)
+             PP(iz)=Theory%NL_MPK_WEYL%PowerAt(kh,z)
              !-----------------------------------------------------------------------
              ! TODO - need to apply a correction for theories with anisotropic stress
              !-----------------------------------------------------------------------

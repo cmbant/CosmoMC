@@ -988,6 +988,8 @@
                 end if
                 !     output transfer functions for this k-value.
 
+
+                MT%TransferWeyl(EV%q_ix,itf)= 1.0
                 if (abs(tau-tautf(itf)) < 1.e-5_dl) then
                     call outtransf(EV,y, MT%TransferData(:,EV%q_ix,itf))
                     call output(EV,y,j,tau,sources,weyl)
@@ -1123,6 +1125,7 @@
     integer ind, i
     real(dl) c(24),w(EV%nvar,9), y(EV%nvar)
     real(dl) atol
+    real(dl) weyl,sources(SourceNum)
 
     atol=tol/exp(AccuracyBoost-1)
     if (CP%Transfer%high_precision) atol=atol/10000
@@ -1135,6 +1138,9 @@
         call GaugeInterface_EvolveScal(EV,tau,y,tautf(i),atol,ind,c,w)
         if (global_error_flag/=0) return
         call outtransf(EV,y,MT%TransferData(:,EV%q_ix,i))
+        ! 3rd argument doesn't matter to get phi
+        call output(EV,y,TimeSteps%npoints,tau,sources,weyl)
+        MT%TransferWeyl(EV%q_ix,i)=weyl
     end do
 
     end subroutine GetTransfer
