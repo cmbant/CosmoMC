@@ -166,6 +166,9 @@ class jobItem:
         fname = self.chainName(chain)
         return nonEmptyFile(fname)
 
+    def allChainExists(self, num_chains):
+        return all([self.chainExists(i + 1) for i in range(num_chains)])
+
     def chainFileDate(self, name, chain=1):
         return os.path.getmtime(self.chainName(chain))
 

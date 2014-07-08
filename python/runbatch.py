@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os, batchJobArgs, jobQueue
 
-Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', notExist=True, converge=True)
+Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', notExist=True, notall=True, converge=True)
 
 jobQueue.addArguments(Opts.parser, combinedJobs=True)
 
@@ -64,8 +64,9 @@ def submitJob(ini):
         else: print '... ' + ini
 
 for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
-    if (not args.notexist or isMinimize and not jobItem.chainMinimumExists()
-       or not isMinimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged()):
+    if ((not args.notexist or isMinimize and not jobItem.chainMinimumExists()
+       or not isMinimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged())
+          and (isMinimize or args.notall is None or not jobItem.allChainExists(args.notall))):
             if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
                 if not args.checkpoint_run or jobItem.wantCheckpointContinue() and jobItem.notRunning():
                     if not args.importance_ready or not jobItem.isImportanceJob or jobItem.parent.chainFinished():

@@ -9,12 +9,13 @@ def argParser(desc=''):
 
 class batchArgs():
 
-        def __init__(self, desc='', importance=True, noBatchPath=False, notExist=False, converge=False):
+        def __init__(self, desc='', importance=True, noBatchPath=False, notExist=False, notall=False, converge=False):
             self.parser = argparse.ArgumentParser(description=desc)
             if not noBatchPath: self.parser.add_argument('batchPath', help='directory containing the grid')
             if converge: self.parser.add_argument('--converge', type=float, default=0, help='minimum R-1 convergence')
             self.importanceParameter = importance;
             self.notExist = notExist
+            self.notall = notall
 
         def parseForBatch(self):
             if self.importanceParameter:
@@ -30,7 +31,10 @@ class batchArgs():
             self.parser.add_argument('--skip_param', default=None, help='skip runs containing specific parameter (paramx)')
             self.parser.add_argument('--group', default=None, nargs='+', help='include only runs with given group names')
 
-            if self.notExist: self.parser.add_argument('--notexist', action='store_true', help='only include chains that don''t already exist on disk')
+            if self.notExist:
+                self.parser.add_argument('--notexist', action='store_true', help='only include chains that don''t already exist on disk')
+            if self.notall:
+                self.parser.add_argument('--notall', type=int, default=None, help='only include chains where all N chains don''t already exist on disk')
 
             self.args = self.parser.parse_args()
             self.batch = batchJob.readobject(self.args.batchPath)
@@ -82,10 +86,11 @@ class batchArgs():
                     items[jobItem.paramtag].append(jobItem)
             return sorted(items.iteritems())
 
-        def filterForDataCompare(self, batch, datatags):
+        def filterForDataCompare(self, batch, datatags, getDistExists=False):
             items = []
             for tag, data in zip([self.batch.normalizeDataTag(data) for data in datatags], datatags):
-                items += [jobItem for jobItem in batch if jobItem.datatag == data or jobItem.normed_data == tag]
+                items += [jobItem for jobItem in batch if (jobItem.datatag == data or jobItem.normed_data == tag)
+                          and (not getDistExists or jobItem.getDistExists())]
             return items
 
 
