@@ -1323,7 +1323,7 @@
     end subroutine MassiveNuVars
 
     !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-    subroutine output(EV,y, j,tau,sources)
+    subroutine output(EV,y, j,tau,sources,weyl)
     use ThermoData
     use lvalues
     use ModelData
@@ -1349,6 +1349,7 @@
     real(dl) ISW
     real(dl) w_eff
     real(dl) hdotoh,ppiedot
+    real(dl), optional, intent(out) :: weyl
 
     yprime = 0
     call derivs(EV,EV%ScalEqsToPropagate,tau,y,yprime)
@@ -1551,6 +1552,8 @@
         sources(2)=0
     end if
 
+    if (present(weyl)) weyl = 0.0d0
+
     if (CTransScal%NumSources > 2) then
         !Get lensing sources
         !Can modify this here if you want to get power spectra for other tracer
@@ -1562,6 +1565,8 @@
 
             !         sources(3) = -2*phi*(tau-tau_maxvis)/((CP%tau0-tau_maxvis)*(CP%tau0-tau))
             !We include the lensing factor of two here
+
+            if (present(weyl)) weyl = phi
         else
             sources(3) = 0
         end if

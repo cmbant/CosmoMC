@@ -922,6 +922,7 @@
     real(dl) c(24),w(EV%nvar,9), y(EV%nvar), sources(SourceNum)
 
     real(dl) yprime(EV%nvar), ddelta, delta, adotoa,dtauda, growth
+    real(dl) weyl
     external dtauda
 
     if (fixq/=0._dl) then
@@ -989,7 +990,9 @@
 
                 if (abs(tau-tautf(itf)) < 1.e-5_dl) then
                     call outtransf(EV,y, MT%TransferData(:,EV%q_ix,itf))
-
+                    call output(EV,y,j,tau,sources,weyl)
+                    MT%TransferWeyl(EV%q_ix,itf)=weyl
+                    
                     itf=itf+1
                     if (j < TimeSteps%npoints) then
                         if (itf <= CP%Transfer%num_redshifts.and. &
