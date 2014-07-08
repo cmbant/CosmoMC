@@ -1,4 +1,5 @@
 ! Module for galaxy weak lensing
+! AJM, some code from Julien Lesgourges 
 
 module wl
   use settings
@@ -21,7 +22,6 @@ module wl
      real(mcp), allocatable, dimension(:,:) :: p
      real(mcp), allocatable, dimension(:) :: z_p
      real(mcp) :: ah_factor ! Anderson-Hartlap factor 
-     integer :: nt
    contains
      procedure :: LogLike => WL_LnLike
      procedure :: ReadIni => WL_ReadIni
@@ -60,8 +60,9 @@ module wl
           this%needs_powerspectra = .true.
           this%num_z = Ini%Read_Int('nz_wl',100)
           this%max_z = Ini%Read_Double('max_z',10.0d0)
+          call LikeList%Add(this)
        end do
-       call LikeList%Add(this)
+       if (Feedback>1) write(*,*) 'read WL data sets'
     end if
 
   end subroutine WLLikelihood_Add
@@ -72,22 +73,22 @@ module wl
     character(LEN=:), allocatable :: measurements_file, cov_file, window_file
     Type(TTextFile) :: F
     real(mcp) :: dummy1,dummy2,pnorm
-    integer i,iz,ib,iopb
+    real(mcp), allocatable, dimension(:,:) :: temp
+    integer i,iz,it,ib,iopb,j,k,nt
 
     if (Feedback > 0) write (*,*) 'reading WL data set: '//trim(this%name)
 
     this%num_z_bins = Ini%Read_Int('num_z_bins')
     this%num_theta_bins = Ini%Read_Int('num_theta_bins')
     this%num_z_p = Ini%Read_Int('num_z_p')
-    this%nt = this%num_z_bins*(1+this%num_z_bins)/2
+    nt = this%num_z_bins*(1+this%num_z_bins)/2
 
     allocate(this%theta_bins(this%num_theta_bins))
     allocate(this%z_bins(this%num_z_bins))
-    allocate(this%xi_obs(this%num_theta_bins*this%nt*2))
-    allocate(this%xi(this%num_theta_bins*this%nt*2))
+    allocate(this%xi_obs(this%num_theta_bins*nt*2))
+    allocate(this%xi(this%num_theta_bins*nt*2))
     allocate(this%z_p(this%num_z_p))
     allocate(this%p(this%num_z_p,this%num_z_bins))
-
     this%ah_factor = Ini%Read_Double('ah_factor',1.0d0)
     
     measurements_file  = Ini%ReadFileName('measurements_file')
@@ -95,28 +96,58 @@ module wl
     cov_file  = Ini%ReadFileName('cov_file')
    
     !------------------------------------------------------
-    ! TODO - ignore theta range if required
+    ! TODO - ignore theta range if required - scale diagonal of covariance matrix? 
     !------------------------------------------------------
+
+    allocate(this%wl_cov(2*this%num_theta_bins*nt,2*this%num_theta_bins*nt))
+    this%wl_cov = 0
+    call File%ReadTextMatrix(cov_file,this%wl_cov)
 
     if (this%name == 'CFHTLENS_1bin') then
 
        call F%Open(window_file)
-       do i = 1,this%num_z_p
-          read (F%unit,*,iostat=iopb) this%z_p(i),this%p(i,1)
+       do iz = 1,this%num_z_p
+          read (F%unit,*,iostat=iopb) this%z_p(iz),this%p(iz,1)
        end do
+       call F%Close()
           
        call F%Open(measurements_file)
-       do i = 1,this%num_theta_bins
-          read (F%unit,*,iostat=iopb) this%theta_bins(i),this%xi_obs(i),dummy1,this%xi_obs(i+this%num_theta_bins),dummy2
+       do it = 1,this%num_theta_bins
+          read (F%unit,*,iostat=iopb) this%theta_bins(it),this%xi_obs(it),dummy1,this%xi_obs(it+this%num_theta_bins),dummy2
+       end do
+       call F%Close()
+       
+    elseif (this%name == 'CFHTLENS_6bin') then
+       
+       do ib=1,this%num_z_bins
+          call F%Open(window_file(1:index(window_file,'BIN_NUMBER')-1)//IntToStr(ib)//window_file(index(window_file,'BIN_NUMBER')+len('BIN_NUMBER'):len(window_file)))
+          do iz=1,this%num_z_p
+             read (F%unit,*,iostat=iopb) this%z_p(iz),this%p(iz,ib)
+          end do
+          call F%Close()
        end do
 
-       allocate(this%wl_cov(2*this%num_theta_bins*this%nt,2*this%num_theta_bins*this%nt))
-       this%wl_cov = 0
-       call File%ReadTextMatrix(cov_file,this%wl_cov)
-
+       call F%Open(measurements_file)
+       k = 1
+       allocate(temp(2*this%num_theta_bins,nt))
+       do i=1,2*this%num_theta_bins
+          read (F%unit,*, iostat=iopb) dummy1,temp(i,:)
+          if (i.le.this%num_theta_bins) this%theta_bins(i)=dummy1
+       end do
+       do j=1,nt
+          do i=1,2*this%num_theta_bins
+             this%xi_obs(k) = temp(i,j)
+             k = k + 1
+          end do
+       end do
+       deallocate(temp)
+       call F%Close()
+       
     else  
+
        write(*,*)'ERROR: Not yet implemented WL dataset: '//trim(this%name)
        call MPIStop()
+
     end if
 
     !Normalize window functions p so \int p(z) dz = 1
@@ -158,9 +189,11 @@ module wl
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) WL_CFHTLENS_loglike
     real(mcp), allocatable :: vec(:),cov(:,:)
+    integer nt
    
-    allocate(vec(this%num_theta_bins*this%nt*2))
-    allocate(cov(this%num_theta_bins*this%nt*2,this%num_theta_bins*this%nt*2))
+    nt = this%num_z_bins*(1+this%num_z_bins)/2
+    allocate(vec(this%num_theta_bins*nt*2))
+    allocate(cov(this%num_theta_bins*nt*2,this%num_theta_bins*nt*2))
     vec(:) = this%xi(:)-this%xi_obs(:)
     cov(:,:) = this%wl_cov(:,:)
     WL_CFHTLENS_loglike = Matrix_GaussianLogLike(cov,vec) 
