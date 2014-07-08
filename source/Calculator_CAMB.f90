@@ -449,7 +449,7 @@
     class(TCosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
     integer :: error
-    real(mcp), allocatable :: k(:), z(:), PK(:,:), Weyl(:,:)
+    real(mcp), allocatable :: k(:), z(:), PK(:,:)
     integer zix,nz,nk
     !For use with for example WL PK's
     real(mcp), allocatable :: NL_Ratios(:,:)
@@ -463,7 +463,6 @@
     allocate(PK(nk,nz))
     allocate(k(nk))
     allocate(z(nz))
-    allocate(Weyl(nk,nz))
 
     k = log(M%TransferData(Transfer_kh,:,1))
     do zix=1,nz
@@ -489,7 +488,6 @@
         call this%GetNLandRatios(M,Theory,NL_Ratios,error)
         if(error/=0) return
     end if
-
 
     end subroutine CAMBCalc_SetPkFromCAMB
 
@@ -554,8 +552,6 @@
     allocate(CPK%nonlin_ratio(CPK%num_k,CPK%num_z))
     allocate(CPK%log_kh(CPK%num_k))
     allocate(CPK%redshifts(CPK%num_z))
-    allocate(CPK%weyl(CPK%num_k,CPK%num_z))
-    allocate(CPK%ddweyl(CPK%num_k,CPK%num_z))
     CPK%log_kh = Theory%MPK%x
     CPK%redshifts = Theory%MPK%y
     CPK%matpower = PK

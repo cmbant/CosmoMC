@@ -1643,7 +1643,6 @@
         real(dl), dimension(:), pointer :: log_kh => NULL(), redshifts => NULL()
         !matpower is log(P_k)
         real(dl), dimension(:,:), allocatable :: matpower, ddmat
-        real(dl), dimension(:,:), allocatable :: weyl,ddweyl
         !if NonLinear, nonlin_ratio =  sqrt(P_nonlinear/P_linear)
         !function of k and redshift NonLinearScaling(k_index,z_index)
         real(dl), dimension(:,:), pointer :: nonlin_ratio => NULL()
@@ -1689,8 +1688,6 @@
     allocate(PK_data%log_kh(PK_data%num_k))
     allocate(PK_data%redshifts(nz))
     PK_data%redshifts = CP%Transfer%Redshifts(itf_start:itf_end)
-    allocate(PK_data%weyl(PK_data%num_k,nz))
-    allocate(PK_data%ddweyl(PK_data%num_k,nz))
 
     h = CP%H0/100
 
@@ -1707,7 +1704,6 @@
             PK_data%matpower(ik,itf) = &
             log(MTrans%TransferData(transfer_power_var,ik,itf_start+itf-1)**2*k &
             *pi*twopi*h**3*power)
-            PK_data%weyl(ik,itf) = MTrans%TransferWeyl(ik,itf_start+itf-1)
         end do
     end do
 
@@ -1763,8 +1759,6 @@
     do i = 1,PK_Data%num_z
         call spline(PK_data%log_kh,PK_data%matpower(1,i),PK_data%num_k,&
         cllo,clhi,PK_data%ddmat(1,i))
-        call spline(PK_data%log_kh,PK_data%weyl(1,i),PK_data%num_k,&
-             cllo,clhi,PK_data%ddweyl(1,i))
     end do
 
     end subroutine MatterPowerdata_getsplines
@@ -1787,8 +1781,6 @@
     deallocate(PK_data%ddmat,stat=i)
     deallocate(PK_data%nonlin_ratio,stat=i)
     deallocate(PK_data%redshifts,stat=i)
-    deallocate(PK_data%weyl,stat=i)
-    deallocate(PK_data%ddweyl,stat=i)
     call MatterPowerdata_Nullify(PK_data)
  
     end subroutine MatterPowerdata_Free
@@ -1846,61 +1838,6 @@
     outpower = exp(max(-30._dl,outpower))
 
     end function MatterPowerData_k
-
-
-    function Weyl_k(PK,  kh, itf,db) result(weyl)
-      !Weyl ratio at k/h by interpolation
-      Type(MatterPowerData) :: PK
-      integer, intent(in) :: itf
-      real (dl), intent(in) :: kh
-      real(dl) :: logk
-      integer llo,lhi
-      real(dl) weyl, dp
-      real(dl) ho,a0,b0
-      integer, save :: i_last = 1
-      logical,optional,intent(in) :: db
-      integer i
-      
-      if(present(db)) then 
-         do i=1,PK%num_k
-            write(*,*) exp(PK%log_kh(i)),PK%weyl(i,itf) 
-         end do
-      end if
-      
-      logk = log(kh)
-      if (logk < PK%log_kh(1)) then
-         dp = (PK%weyl(2,itf) -  PK%weyl(1,itf)) / &
-              ( PK%log_kh(2)-PK%log_kh(1) )
-         weyl = PK%weyl(1,itf) + dp*(logk - PK%log_kh(1))
-      else if (logk > PK%log_kh(PK%num_k)) then
-         !Do dodgy linear extrapolation on assumption accuracy of result won't matter
-         
-         dp = (PK%weyl(PK%num_k,itf) -  PK%weyl(PK%num_k-1,itf)) / &
-              ( PK%log_kh(PK%num_k)-PK%log_kh(PK%num_k-1) )
-         weyl = PK%weyl(PK%num_k,itf) + dp*(logk - PK%log_kh(PK%num_k))
-      else
-         
-         llo=min(i_last,PK%num_k)
-         do while (PK%log_kh(llo) > logk)
-            llo=llo-1
-         end do
-         do while (PK%log_kh(llo+1)< logk)
-            llo=llo+1
-         end do
-         i_last =llo
-         lhi=llo+1
-         ho=PK%log_kh(lhi)-PK%log_kh(llo)
-         a0=(PK%log_kh(lhi)-logk)/ho
-         b0=1-a0
-         
-         weyl = a0*PK%weyl(llo,itf)+ b0*PK%weyl(lhi,itf)+&
-              ((a0**3-a0)* PK%ddweyl(llo,itf) &
-              +(b0**3-b0)*PK%ddweyl(lhi,itf))*ho**2/6
-         
-      end if
-      
-    end function Weyl_k
-
 
     subroutine Transfer_GetMatterPowerS(MTrans,outpower, itf, in, minkh, dlnkh, npoints)
     Type(MatterTransferData), intent(in) :: MTrans
