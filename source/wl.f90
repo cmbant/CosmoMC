@@ -1,5 +1,5 @@
 ! Module for galaxy weak lensing
-! AJM, some code from Julien Lesgourges 
+! AJM, some code from Julien Lesgourgues 
 
 module wl
   use settings
