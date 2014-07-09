@@ -139,13 +139,13 @@ for name, planck_vars in zip(['v97', 'v97CS'], [planck_detsets, planck_CS]):
     for namecut, cutvars in zip(['no143', 'no217', 'no217auto'], [TT100_217, TT100_143, no217auto]):
         datasets.append(batchJob.dataSet([name , 'TT', namecut], [TT, cutvars] + planck_vars))
 g.datasets = []
-for lmax in range(550, 2600, 150):
+for lmax in range(550, 2550, 75):
     sets = copy.deepcopy(datasets)
     for d in sets:
         d.add(tauname, tauprior)
         d.add('lmax' + str(lmax), {'camspec_lmax': (str(lmax) + ' ') * 6})
     g.datasets += sets
-g.params = [[]]
+g.params = [[], ['Alens']]
 groups.append(g)
 
 g = batchJob.jobGroup('lmin')

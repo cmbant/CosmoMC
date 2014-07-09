@@ -1,20 +1,15 @@
-import os, batchJobArgs, ResultObjs, paramNames, planckStyle, GetDistPlots
+import batchJobArgs, ResultObjs, paramNames, planckStyle, GetDistPlots
 
 from pylab import *
 
 
-Opts = batchJobArgs.batchArgs('Compare how parameters means and errors vary', importance=True, converge=True)
+Opts = batchJobArgs.batchArgs('Compare how parameters means and errors vary', importance=True, converge=True, plots=True)
 Opts.parser.add_argument('fname', help='filename root for the produced plots')
+Opts.parser.add_argument('--compare', nargs='+', help="datatag templates for data combinations to compare")
 
-# this is just for the latex labelsm set None to use those in chain .paramnames
-Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames', help=".paramnames file for custom labels for parameters")
+Opts.parser.add_argument('--placeholder_sub', nargs='+', default=['XX'] + range(700, 2501, 150),
+                         help="placeholder to replace, followed by array of replacement values")
 
-Opts.parser.add_argument('--paramList', default=None, help=".paramnames file listing specific parameters to include (only)")
-Opts.parser.add_argument('--compare', nargs='+', default=None)
-
-Opts.parser.add_argument('--size_inch', type=float, default=None, help='output subplot size in inches')
-Opts.parser.add_argument('--nx', default=None, help='number of plots per row')
-Opts.parser.add_argument('--outputs', nargs='+', default=['pdf'], help='output file type (default: pdf)')
 Opts.parser.add_argument('--bands_sigma', type=float, nargs='+', default=None)
 Opts.parser.add_argument('--sigma_from_left', action='store_true')
 Opts.parser.add_argument('--sigma_between', type=int, nargs=2, default=None,
@@ -22,13 +17,7 @@ Opts.parser.add_argument('--sigma_between', type=int, nargs=2, default=None,
                          + ' e.g. 0 1 uses difference between sigmas^2 between data 1 at each L and data 0 at one end ')
 
 
-(batch, args) = Opts.parseForBatch()
-
-if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
-
-g = GetDistPlots.GetDistPlotter('main/plot_data')
-if args.size_inch is not None: g.settings.setWithSubplotSize(args.size_inch)
-
+(batch, args, g) = Opts.parseForBatch()
 
 items = Opts.sortedParamtagDict(chainExist=True)
 
@@ -37,8 +26,7 @@ fill_colors = [[1, 1, 0.8], [1, 0.9, 0.6], [1, 0.8, 0.2]]
 if args.sigma_from_left: compare_index = 0
 else: compare_index = -1
 
-lmaxs = range(700, 2501, 150)
-# lmaxs = range(700, 2501, 75)
+lmaxs = args.placeholder_sub[1:]
 
 for paramtag, parambatch in items:
     print 'Doing paramtag: ' + paramtag + '...'
@@ -48,7 +36,7 @@ for paramtag, parambatch in items:
     clf()
     for parse in [True, False]:
         for compi, comp in enumerate(args.compare):
-            datanames = [comp.replace('XX', str(lmax)) for lmax in lmaxs]
+            datanames = [comp.replace(args.placeholder_sub[0], str(lmax)) for lmax in lmaxs]
             print datanames
             compares = Opts.filterForDataCompare(parambatch, datanames, getDistExists=True)
             if not compares:continue

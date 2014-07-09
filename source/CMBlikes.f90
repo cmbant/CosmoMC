@@ -322,7 +322,9 @@
                 Err = Err .or. any(tmp_ar/=0)
             end if
         end do
-        if (Err) write(*,*) FormatString( 'WARNING: %s %u outside cl_lmin-cl_max range', bin_type, i)
+        if (Err) then
+            write(*,*) FormatString( 'WARNING: %s %u outside cl_lmin-cl_max range: %s', bin_type, i, S)
+        end if
     end do
 
     end subroutine ReadBinWindows

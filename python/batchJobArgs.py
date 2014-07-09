@@ -1,4 +1,4 @@
-import sys, batchJob, fnmatch
+import sys, os, batchJob, fnmatch, paramNames
 try: import argparse
 except:
     print 'use "module load" to load python 2.7'
@@ -9,13 +9,14 @@ def argParser(desc=''):
 
 class batchArgs():
 
-        def __init__(self, desc='', importance=True, noBatchPath=False, notExist=False, notall=False, converge=False):
+        def __init__(self, desc='', importance=True, noBatchPath=False, notExist=False, notall=False, converge=False, plots=False):
             self.parser = argparse.ArgumentParser(description=desc)
             if not noBatchPath: self.parser.add_argument('batchPath', help='directory containing the grid')
             if converge: self.parser.add_argument('--converge', type=float, default=0, help='minimum R-1 convergence')
             self.importanceParameter = importance;
             self.notExist = notExist
             self.notall = notall
+            self.doplots = plots
 
         def parseForBatch(self):
             if self.importanceParameter:
@@ -35,10 +36,27 @@ class batchArgs():
                 self.parser.add_argument('--notexist', action='store_true', help='only include chains that don''t already exist on disk')
             if self.notall:
                 self.parser.add_argument('--notall', type=int, default=None, help='only include chains where all N chains don''t already exist on disk')
+            if self.doplots:
+                self.parser.add_argument('--plot_data', nargs='*', default=None, help='directory/ies containing getdist output plot_data')
+                self.parser.add_argument('--paramNameFile', default='clik_latex.paramnames', help=".paramnames file for custom labels for parameters")
+                self.parser.add_argument('--paramList', default=None, help=".paramnames file listing specific parameters to include (only)")
+                self.parser.add_argument('--size_inch', type=float, default=None, help='output subplot size in inches')
+                self.parser.add_argument('--nx', default=None, help='number of plots per row')
+                self.parser.add_argument('--outputs', nargs='+', default=['pdf'], help='output file type (default: pdf)')
 
-            self.args = self.parser.parse_args()
-            self.batch = batchJob.readobject(self.args.batchPath)
-            return (self.batch, self.args)
+            args = self.parser.parse_args()
+            self.args = args
+            self.batch = batchJob.readobject(args.batchPath)
+            if self.doplots:
+                import GetDistPlots
+                if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
+                if args.plot_data is None: data = self.batch.batchPath + os.sep + 'plot_data'
+                else: data = args.plot_data
+                g = GetDistPlots.GetDistPlotter(data)
+                if args.size_inch is not None: g.settings.setWithSubplotSize(args.size_inch)
+                return (self.batch, self.args, g)
+            else:
+                return (self.batch, self.args)
 
         def wantImportance(self, importanceTag):
             return self.args.importance is None or len(self.args.importance) == 0 or importanceTag in self.args.importance

@@ -1,46 +1,31 @@
 import os, batchJobArgs, paramNames, GetDistPlots
 
 
-Opts = batchJobArgs.batchArgs('Make plots from getdist outputs', importance=True, converge=True)
+Opts = batchJobArgs.batchArgs('Make plots from getdist outputs', importance=True, converge=True, plots=True)
 Opts.parser.add_argument('out_dir', help='directory to put the produced plots in')
 
-Opts.parser.add_argument('--plot_data', nargs='*', default=None, help='directory/ies containing getdist output plot_data')
-Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames', help='.paramnames file for getting labels for parameters')
-Opts.parser.add_argument('--paramList', default=None, help='.paramnames file listing parameters to plot (default: all)')
 Opts.parser.add_argument('--compare_data', nargs='+', default=None, help='data tags to compare for each parameter combination (data1_data2)')
 Opts.parser.add_argument('--compare_importance', nargs='*', default=None)
 Opts.parser.add_argument('--compare_paramtag', nargs='+', default=None, help='list of parameter tags to compare for each data combination (param1_param2)')
 Opts.parser.add_argument('--compare_alldata', action='store_true', help='compare all data combinations for each parameter combination')
 Opts.parser.add_argument('--compare_replacing', nargs='*', default=None, help='compare results replacing data combination x with y, z..(datavar1 datavar2 ...)')
 
-Opts.parser.add_argument('--nx', default=None, help='number of plots per row')
 Opts.parser.add_argument('--legend_labels', default=None, nargs='+', help='labels to replace full chain names in legend')
 Opts.parser.add_argument('--D2_param', default=None, help='x-parameter for 2D plots')
 Opts.parser.add_argument('--D2_y_params', nargs='+', default=None, help='list of y parameter names for 2D plots')
+Opts.parser.add_argument('--filled', action='store_true', help='for 2D plots, output filled contours')
 
 Opts.parser.add_argument('--tri_params', nargs='+', default=None, help='list of parameters for triangle plots')
 
-
-Opts.parser.add_argument('--outputs', nargs='+', default=['pdf'], help='output file type (default: pdf)')
-Opts.parser.add_argument('--filled', action='store_true', help='for 2D plots, output filled contours')
-Opts.parser.add_argument('--size_inch', type=float, default=None, help='output subplot size in inches')
 Opts.parser.add_argument('--legend_ncol', type=int, default=None, help='numnber of columns to draw legends')
 Opts.parser.add_argument('--allhave', action='store_true', help='only include plots where all combinations exist')
 Opts.parser.add_argument('--outtag', default=None, help='tag to add to output filenames to distinguish output')
 
-(batch, args) = Opts.parseForBatch()
-
-if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
+(batch, args, g) = Opts.parseForBatch()
 
 outdir = args.out_dir
 if not os.path.exists(outdir): os.makedirs(outdir)
 outdir = os.path.abspath(outdir) + os.sep
-
-if args.plot_data is None: data = batch.batchPath + os.sep + 'plot_data'
-else: data = args.plot_data
-
-g = GetDistPlots.GetDistPlotter(data)
-if args.size_inch is not None: g.settings.setWithSubplotSize(args.size_inch)
 
 def doplot(roots):
     ncol = args.legend_ncol or (1, 2)[len(roots) > 2]
