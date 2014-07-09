@@ -75,6 +75,8 @@
 
     if(allocated(this%MPK))deallocate(this%MPK)
     if(allocated(this%NL_MPK)) deallocate(this%NL_MPK)
+    if(allocated(this%MPK_WEYL))deallocate(this%MPK_WEYL)
+    if(allocated(this%NL_MPK_WEYL)) deallocate(this%NL_MPK_WEYL)
 
     end subroutine FreePK
 

@@ -38,6 +38,7 @@ module wl
   real(mcp), parameter :: xstop=100.0d0
 
   logical :: use_wl_lss  = .false.
+  logical :: use_weyl = .true.
 
   public WLLikelihood, WLLikelihood_Add, use_wl_lss
   contains
@@ -228,7 +229,11 @@ module wl
     integer :: i,ib,jb,il,it,iz,nr,nrs,izl,izh,j
     integer :: num_z
 
-    PK = Theory%NL_MPK_WEYL
+    if (use_weyl) then
+       PK = Theory%NL_MPK_WEYL
+    else
+       PK = Theory%NL_MPK
+    end if
 
     h = CMB%H0/100 
     num_z = PK%ny
