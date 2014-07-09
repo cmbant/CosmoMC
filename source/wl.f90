@@ -29,14 +29,13 @@ module wl
      procedure, private :: get_convergence
   end type WLLikelihood
 
-  integer, parameter :: nlmax=65
-  integer, parameter :: nthetamax = 70
-  real(mcp), parameter :: dlnl=0.2d0 
-  real(mcp), parameter :: dlntheta = 0.1d0
-  real(mcp), parameter :: thetamin = 0.5d0
-  real(mcp), parameter :: dx = 0.01d0 
-  real(mcp), parameter :: xstop=100.0d0
-
+  ! Integration accuracy parameters
+  integer, parameter :: nlmax = 65
+  real(mcp), parameter :: dlnl = 0.2d0
+  real(mcp) :: dlntheta = 0.25d0
+  real(mcp), parameter :: dx = 0.02d0 
+  real(mcp), parameter :: xstop = 200.0d0
+ 
   logical :: use_wl_lss  = .false.
   logical :: use_weyl = .true.
 
@@ -158,10 +157,6 @@ module wl
           pnorm = pnorm + 0.5d0*(this%p(iz-1,ib)+this%p(iz,ib))*(this%z_p(iz)-this%z_p(iz-1))
        end do
        this%p(:,ib) = this%p(:,ib)/pnorm
-
-!!! DEBUG
-!!!       write(*,*) pnorm
-
     end do
 
     ! Apply Anderson-Hartap correction 
@@ -226,8 +221,10 @@ module wl
     real(mcp) :: khmin, khmax, lmin, lmax, xmin, xmax, x, lll
     real(mcp) :: Bessel0, Bessel4, Cval
     real(mcp) :: i1, i2, lp
+    real(mcp) :: a2r
+    real(mcp) :: thetamin, thetamax
     integer :: i,ib,jb,il,it,iz,nr,nrs,izl,izh,j
-    integer :: num_z
+    integer :: num_z, ntheta
 
     if (use_weyl) then
        PK = Theory%NL_MPK_WEYL
@@ -239,9 +236,7 @@ module wl
     num_z = PK%ny
     khmin = exp(PK%x(1))
     khmax = exp(PK%x(PK%nx))
-
-!!! DEBUG
-!!!    write(*,*) khmin,khmax
+    a2r = pi/(180._mcp*60._mcp) 
 
     !-----------------------------------------------------------------------
     ! Compute comoving distance r and dz/dr
@@ -252,8 +247,6 @@ module wl
        z = PK%y(iz)
        r(iz) = this%Calculator%ComovingRadialDistance(z)
        dzodr(iz) = this%Calculator%Hofz(z)
-!!!    DEBUG
-!!!       write(*,*) z,r(iz),dzodr(iz)
     end do
     allocate(r_z, dzodr_z)
     call r_z%Init(PK%y,r,n=num_z)
@@ -275,14 +268,9 @@ module wl
              gbin(nr,ib)=gbin(nr,ib)+0.5*(dzodr_z%Value(this%z_p(nrs))*this%p(nrs,ib)*(rbin(nrs)-rbin(nr))/rbin(nrs) &
                   + dzodr_z%Value(this%z_p(nrs-1))*this%p(nrs-1,ib)*(rbin(nrs-1)-rbin(nr))/rbin(nrs-1))*(rbin(nrs)-rbin(nrs-1))
           end do
-
-!!! DEBUG
-!!!       write(*,*) ib,nr,gbin(nr,ib)
-
        end do
     end do
   
-    
     !-----------------------------------------------------------------------
     ! Find convergence power spectrum using Limber approximation
     !-----------------------------------------------------------------------
@@ -303,9 +291,6 @@ module wl
           else   
              PP(iz)=PK%PowerAt(kh,z)
           end if
-  !!! DEBUG
-!!!          if (iz>1 .and. il.eq.10) write(*,'(10E15.5)') ll(il),kh,r(iz),PP(iz)
-
        end do
       
        ! Compute integrand over comoving distance 
@@ -324,10 +309,6 @@ module wl
        end do
        Cl(il,:,:) = Cl(il,:,:)/h**3.0*9._mcp/4._mcp*(h*1e5_mcp/const_c)**4.0*(CMB%omdm+CMB%omb)**2
        deallocate(P_z)
-
-!!!    DEBUG
-!!!       write(*,'(10E15.5)') ll(il),Cl(il,1,1),ll(il)**2*Cl(il,1,1)
-
     end do
 
     !-----------------------------------------------------------------------
@@ -344,23 +325,29 @@ module wl
           call C_l(ib,jb)%Init(ll,Cl(:,ib,jb),n=nlmax)
        end do
     end do
+
+    thetamin = minval(this%theta_bins)*0.8
+    thetamax = maxval(this%theta_bins)*1.2
+    ntheta = ceiling(log(thetamax/thetamin)/dlntheta) + 1
+ 
     lmin=ll(1)
     lmax=ll(nlmax)
-    allocate(theta(nthetamax))
-    allocate(xi1(nthetamax,this%num_z_bins,this%num_z_bins),xi2(nthetamax,this%num_z_bins,this%num_z_bins))
+    allocate(theta(ntheta))
+    allocate(xi1(ntheta,this%num_z_bins,this%num_z_bins),xi2(ntheta,this%num_z_bins,this%num_z_bins))
     allocate(i1p(this%num_z_bins,this%num_z_bins),i2p(this%num_z_bins,this%num_z_bins))
     xi1 = 0
     xi2 = 0
-    do it=1,nthetamax
+    
+    do it=1,ntheta
        theta(it) = thetamin*exp(dlntheta*(it-1._mcp))
-       xmin=lmin*theta(it)*pi/(180._mcp*60._mcp) ! Convert from arcmin to radians
-       xmax=lmax*theta(it)*pi/(180._mcp*60._mcp) 
+       xmin=lmin*theta(it)*a2r! Convert from arcmin to radians
+       xmax=lmax*theta(it)*a2r 
        x = xmin
-       lp = 0
+       lp = 0 
        i1p = 0
        i2p = 0
-       do while(x<xmax .and. x<xstop)
-          lll=x/(theta(it)*pi/(180._mcp*60._mcp)) 
+       do while(x<xstop .and. x<xmax)
+          lll=x/(theta(it)*a2r) 
           if(lll>lmax) then
              write(*,*)'ERROR: l>lmax: '//trim(this%name)
              call MPIStop()
@@ -368,8 +355,8 @@ module wl
           Bessel0 = Bessel_J0(x)
           Bessel4 = Bessel_JN(4,x)
           do ib=1,this%num_z_bins
-             do jb=1,this%num_z_bins
-                Cval = C_l(ib,jb)%Value(lll)*lll/pi/2._mcp
+             do jb=ib,this%num_z_bins
+                Cval = C_l(ib,jb)%Value(lll)*lll
                 i1 = Cval*Bessel0
                 i2 = Cval*Bessel4
                 xi1(it,ib,jb) = xi1(it,ib,jb)+0.5*(i1p(ib,jb)+i1)*(lll-lp)
@@ -382,10 +369,17 @@ module wl
           lp = lll
        end do
 
-!!!    DEBUG
-!!!    write(*,*) theta(it),xi1(it,1,1),xi2(it,1,1) 
+       do ib=1,this%num_z_bins
+          do jb=ib,this%num_z_bins
+             xi1(it,jb,ib) = xi1(it,ib,jb)
+             xi2(it,jb,ib) = xi2(it,ib,jb)
+          end do
+       end do
 
     end do
+
+    xi1=xi1/pi/2._mcp
+    xi2=xi2/pi/2._mcp
 
     deallocate(i1p,i2p)
 
@@ -396,8 +390,8 @@ module wl
     allocate(xi1_theta(this%num_z_bins,this%num_z_bins),xi2_theta(this%num_z_bins,this%num_z_bins))
     do ib=1,this%num_z_bins
        do jb=1,this%num_z_bins
-          call xi1_theta(ib,jb)%Init(theta,xi1(:,ib,jb),n=nthetamax)
-          call xi2_theta(ib,jb)%Init(theta,xi2(:,ib,jb),n=nthetamax)
+          call xi1_theta(ib,jb)%Init(theta,xi1(:,ib,jb),n=ntheta)
+          call xi2_theta(ib,jb)%Init(theta,xi2(:,ib,jb),n=ntheta)
        end do
     end do
 
@@ -412,10 +406,6 @@ module wl
           end do
        end do
     end do
-
-!!!    DEBUG
-!!!    write(*,*) this%theta_bins
-!!!    write(*,*) this%xi
 
     deallocate(r,dzodr)
     deallocate(gbin,rbin)
