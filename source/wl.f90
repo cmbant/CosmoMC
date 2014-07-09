@@ -157,6 +157,10 @@ module wl
           pnorm = pnorm + 0.5d0*(this%p(iz-1,ib)+this%p(iz,ib))*(this%z_p(iz)-this%z_p(iz-1))
        end do
        this%p(:,ib) = this%p(:,ib)/pnorm
+
+!!! DEBUG
+!!!       write(*,*) pnorm
+
     end do
 
     ! Apply Anderson-Hartap correction 
@@ -206,6 +210,7 @@ module wl
     Class(WLLikelihood) :: this
     Class(CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
+    type(TCosmoTheoryPK) :: PK
     type(TCubicSpline),  allocatable :: r_z, dzodr_z, P_z, C_l(:,:)
     type(TCubicSpline),  allocatable :: xi1_theta(:,:),xi2_theta(:,:)
     real(mcp) :: h,z,kh
@@ -216,16 +221,22 @@ module wl
     real(mcp), allocatable :: Cl(:,:,:)
     real(mcp), allocatable :: theta(:)
     real(mcp), allocatable :: xi1(:,:,:),xi2(:,:,:) 
+    real(mcp), allocatable :: i1p(:,:),i2p(:,:)
     real(mcp) :: khmin, khmax, lmin, lmax, xmin, xmax, x, lll
     real(mcp) :: Bessel0, Bessel4, Cval
-    real(mcp) :: i1, i2, i1p, i2p, lp
+    real(mcp) :: i1, i2, lp
     integer :: i,ib,jb,il,it,iz,nr,nrs,izl,izh,j
     integer :: num_z
 
+    PK = Theory%NL_MPK_WEYL
+
     h = CMB%H0/100 
-    num_z = Theory%NL_MPK_WEYL%ny
-    khmin = exp(Theory%NL_MPK_WEYL%x(1))
-    khmax = exp(Theory%NL_MPK_WEYL%x(Theory%NL_MPK_WEYL%nx))
+    num_z = PK%ny
+    khmin = exp(PK%x(1))
+    khmax = exp(PK%x(PK%nx))
+
+!!! DEBUG
+!!!    write(*,*) khmin,khmax
 
     !-----------------------------------------------------------------------
     ! Compute comoving distance r and dz/dr
@@ -233,15 +244,15 @@ module wl
     
     allocate(r(num_z),dzodr(num_z))
     do iz=1,num_z
-       z = Theory%NL_MPK_WEYL%y(iz)
+       z = PK%y(iz)
        r(iz) = this%Calculator%ComovingRadialDistance(z)
        dzodr(iz) = this%Calculator%Hofz(z)
 !!!    DEBUG
 !!!       write(*,*) z,r(iz),dzodr(iz)
     end do
     allocate(r_z, dzodr_z)
-    call r_z%Init(Theory%NL_MPK_WEYL%y,r,n=num_z)
-    call dzodr_z%Init(Theory%NL_MPK_WEYL%y,dzodr,n=num_z)
+    call r_z%Init(PK%y,r,n=num_z)
+    call dzodr_z%Init(PK%y,dzodr,n=num_z)
     
     !-----------------------------------------------------------------------
     ! Compute lensing efficiency
@@ -259,11 +270,13 @@ module wl
              gbin(nr,ib)=gbin(nr,ib)+0.5*(dzodr_z%Value(this%z_p(nrs))*this%p(nrs,ib)*(rbin(nrs)-rbin(nr))/rbin(nrs) &
                   + dzodr_z%Value(this%z_p(nrs-1))*this%p(nrs-1,ib)*(rbin(nrs-1)-rbin(nr))/rbin(nrs-1))*(rbin(nrs)-rbin(nrs-1))
           end do
+
+!!! DEBUG
+!!!       write(*,*) ib,nr,gbin(nr,ib)
+
        end do
     end do
-   
-!!!    DEBUG 
-!!!    write(*,*) gbin
+  
     
     !-----------------------------------------------------------------------
     ! Find convergence power spectrum using Limber approximation
@@ -279,15 +292,15 @@ module wl
        PP=0
        do iz=1,num_z
           kh = ll(il)/r(iz)/h ! CAMB wants k/h values 
-          z = Theory%NL_MPK_WEYL%y(iz)
+          z = PK%y(iz)
           if ((kh .le. khmin) .or. (kh .ge. khmax)) then
              PP(iz)=0.0d0
           else   
-             PP(iz)=Theory%NL_MPK_WEYL%PowerAt(kh,z)
-             !-----------------------------------------------------------------------
-             ! TODO - need to apply a correction for theories with anisotropic stress
-             !-----------------------------------------------------------------------
+             PP(iz)=PK%PowerAt(kh,z)
           end if
+  !!! DEBUG
+!!!          if (iz>1 .and. il.eq.10) write(*,'(10E15.5)') ll(il),kh,r(iz),PP(iz)
+
        end do
       
        ! Compute integrand over comoving distance 
@@ -330,6 +343,7 @@ module wl
     lmax=ll(nlmax)
     allocate(theta(nthetamax))
     allocate(xi1(nthetamax,this%num_z_bins,this%num_z_bins),xi2(nthetamax,this%num_z_bins,this%num_z_bins))
+    allocate(i1p(this%num_z_bins,this%num_z_bins),i2p(this%num_z_bins,this%num_z_bins))
     xi1 = 0
     xi2 = 0
     do it=1,nthetamax
@@ -353,10 +367,10 @@ module wl
                 Cval = C_l(ib,jb)%Value(lll)*lll/pi/2._mcp
                 i1 = Cval*Bessel0
                 i2 = Cval*Bessel4
-                xi1(it,ib,jb) = xi1(it,ib,jb)+0.5*(i1p+i1)*(lll-lp)
-                xi2(it,ib,jb) = xi2(it,ib,jb)+0.5*(i2p+i2)*(lll-lp)
-                i1p = i1
-                i2p = i2
+                xi1(it,ib,jb) = xi1(it,ib,jb)+0.5*(i1p(ib,jb)+i1)*(lll-lp)
+                xi2(it,ib,jb) = xi2(it,ib,jb)+0.5*(i2p(ib,jb)+i2)*(lll-lp)
+                i1p(ib,jb) = i1
+                i2p(ib,jb) = i2
              end do
           end do
           x = x+dx
@@ -367,6 +381,8 @@ module wl
 !!!    write(*,*) theta(it),xi1(it,1,1),xi2(it,1,1) 
 
     end do
+
+    deallocate(i1p,i2p)
 
     !-----------------------------------------------------------------------
     ! Get xi's in column vector format 
