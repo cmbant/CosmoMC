@@ -147,6 +147,7 @@ if (ini.params.has_key('plotparams_num')):
     print 'plotparams_num deprectated; just use plot_params'
     sys.exit()
 
+plotparams = []
 line = ini.string('plot_params', 0)
 if (line not in ['', 0]):
     plotparams_num = -1
@@ -226,11 +227,13 @@ rootdirname = os.path.join(out_dir, rootname); mc.rootdirname = rootdirname
 
 num_contours = ini.int('num_contours', 2); mc.num_contours = num_contours
 contours = []
+# how small the end bin must be relative to max to use two tail
 max_frac_twotail = []
 for i in range(1, num_contours+1):
     contours.append(ini.float('contour'+str(i)))
     max_frac = ini.float('max_frac_twotail'+str(i), math.exp(math.pow(-1.0*norm.ppf((1-contours[i-1])/2), 2)/2))
     max_frac_twotail.append(max_frac)
+#fixme: max_frac_twotail
 contours_str = '; '.join([ str(c) for c in contours ]) 
 mc.contours = contours
 
@@ -241,7 +244,7 @@ if (not no_tests):
     
 force_twotail = ini.bool('force_twotail', False)
 mc.force_twotail = force_twotail
-if (force_twotail): print 'Computing two tail limits'
+if (mc.force_twotail): print 'Computing two tail limits'
 
 if (ini.params.has_key('cov_matrix_dimension')):
     covmat_dimension = len(mc.paramNames.list())
@@ -315,7 +318,7 @@ ok = mc.loadChains(in_root, chain_files)
 #    sys.exit()
 
 mc.removeBurnFraction(ignorerows)
-import pdb; pdb.set_trace()
+#import pdb; pdb.set_trace()
 
 
 #no_tests = True # TEST
@@ -332,10 +335,11 @@ if (cool<>1):
 if (adjust_priors):
     mc.AdjustPriors()
 
+# See which parameters are fixed
 mc.GetUsedCols()
 
-mc.mean_mult = mc.norm/mc.numrows
-max_mult = (mc.mean_mult*mc.numrows)/min(mc.numrows/2, 500)
+mc.mean_mult = mc.norm / mc.numrows
+max_mult = (mc.mean_mult*mc.numrows) / min(mc.numrows/2, 500)
 outliers = len(mc.weights[np.where(mc.weights>max_mult)])
 if (outliers<>0):
     print 'outlier fraction ', float(outliers)/mc.numrows
@@ -361,8 +365,8 @@ if ((num_3D_plots<>0 and not make_single_samples or make_scatter_samples) and no
     single_thin = max(1, int(round(mc.numsamp/max_mult))/max_scatter_points)
 
 # Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
-
 num_vars = mc.samples.shape[1]; mc.num_vars = num_vars
+
 colix = [0] * mc.num_vars
 for i in range(mc.num_vars): colix[i] = i
 mc.colix= colix 
@@ -420,8 +424,6 @@ LowerUpperLimits = np.zeros([mc.num_vars, 2, mc.num_contours])
 # Initialize variables for 1D bins
 mc.Init1DDensity()
 
-
-
 # Do 1D bins
 for j in range(mc.num_vars):
 
@@ -431,8 +433,8 @@ for j in range(mc.num_vars):
     # Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
     for ix1 in range(mc.num_contours):
         
-        mc.marge_limits_bot[ix1][ix] = mc.has_limits_bot[ix] and not force_twotail and mc.density1D.P[0] > max_frac_twotail[ix1]
-        mc.marge_limits_top[ix1][ix] = mc.has_limits_top[ix] and not force_twotail and mc.density1D.P[-1] > max_frac_twotail[ix1]
+        mc.marge_limits_bot[ix1][ix] = mc.has_limits_bot[ix] and not mc.force_twotail and (mc.density1D.P[0] > max_frac_twotail[ix1])
+        mc.marge_limits_top[ix1][ix] = mc.has_limits_top[ix] and not mc.force_twotail and (mc.density1D.P[-1] > max_frac_twotail[ix1])
         
         if (not mc.marge_limits_bot[ix1][ix] or not mc.marge_limits_top[ix1][ix]):
             # give limit
@@ -468,6 +470,7 @@ for j in range(mc.num_vars):
             LowerUpperLimits[j][1][ix1] = tail_limit_top
             LowerUpperLimits[j][0][ix1] = tail_limit_bot
         else:
+            # no limit
             LowerUpperLimits[j][1][ix1] = mc.range_min[j]
             LowerUpperLimits[j][0][ix1] = mc.range_max[j]
 

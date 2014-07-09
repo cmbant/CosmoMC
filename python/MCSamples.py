@@ -504,9 +504,11 @@ class MCSamples(chains):
         textFileHandle.close()
 
     def GetUsedCols(self):
-        for ix in range(self.samples.shape[1]):
-            isused = not np.all(self.samples[:, ix]==self.samples[0][ix])
-            self.isused.append(isused)
+        nparams = self.samples.shape[1]
+        self.isused = np.ndarray(nparams, dtype=bool)
+        self.isused[:] = False
+        for ix in range(nparams):
+            self.isused[ix] = not np.all(self.samples[:, ix]==self.samples[0][ix])
         
     def DoConvergeTests(self, limfrac):
         """
@@ -570,18 +572,21 @@ class MCSamples(chains):
 
             between_chain_var = np.zeros(nparam)
             in_chain_var = np.zeros(nparam)
+            chain_means = np.zeros((num_chains_used, nparam))
 
-            for i in range(nparam):
+            norm = np.sum([chain.norm for chain in self.chains])
+            for j in range(nparam):
                 # Get stats for individual chains - the variance of the means over the mean of the variances
-                for chain in self.chains:
-                    chain_means = np.sum(chain.coldata[:, 0]*chain.coldata[:, i])/chain.norm
-                    between_chain_var[i] += chain_means * chain_means
-                    in_chain_var[i] += np.sum(chain.coldata[:, 0]*(chain.coldata[:, i]-chain_means)*(chain.coldata[:, i]-chain_means))
+                for i in range(num_chains_used):
+                    chain = self.chains[i]
+                    chain_means[i][j] = np.sum(chain.coldata[:, 0]*chain.coldata[:, j]) / chain.norm
+                    between_chain_var[j] += np.power(chain_means[i][j] - means[j], 2)
+                    in_chain_var[j] += np.sum(chain.coldata[:, 0] * np.power(chain.coldata[:, j]-chain_means[i][j], 2))
 
-                between_chain_var[i] /= (num_chains_used-1)
-                in_chain_var[i] /= norm
-                label = self.paramNames.names[i].label
-                textFileHandle.write("%3i%13.5f  %s\n"%(i+1, between_chain_var[i]/in_chain_var[i], label))
+                between_chain_var[j] /= (num_chains_used-1)
+                in_chain_var[j] /= norm
+                label = self.paramNames.names[j].label
+                textFileHandle.write("%3i%13.5f  %s\n"%(j+1, between_chain_var[j]/in_chain_var[j], label))
 
         if (num_chains_used>1) and (self.covmat_dimension>0):
             # Assess convergence in the var(mean)/mean(var) in the worst eigenvalue
@@ -1174,14 +1179,15 @@ class MCSamples(chains):
 
     def GetChainLikeSummary(self, toStdOut=False):
         text = ""
-        maxlike = np.max(self.loglikes)
+        #maxlike = np.max(self.loglikes) 
+        maxlike = self.loglikes[0]
         text += "Best fit sample -log(Like) = %f\n"%maxlike
         if ((self.loglikes[self.numrows-1]-maxlike)<30):
             self.meanlike = np.log( np.sum(np.exp(self.loglikes-maxlike)*self.weights) / self.norm ) + maxlike
             text += "Ln(mean 1/like) = %f\n"%(self.meanlike)
         self.meanlike = np.sum(self.loglikes*self.weights) / self.norm
         text += "mean(-Ln(like)) = %f\n"%(self.meanlike)
-        self.meanlike = -np.log( np.sum(np.exp(self.loglikes-maxlike)*self.weights) / self.norm ) + maxlike
+        self.meanlike = - np.log( np.sum(np.exp(-(self.loglikes-maxlike))*self.weights) / self.norm ) + maxlike
         text += "-Ln(mean like)  = %f\n"%(self.meanlike)
         if toStdOut:
             print text
@@ -1257,11 +1263,11 @@ class MCSamples(chains):
         textFileHandle.write("Marginalized limits: %s\n"%contours_str)
         textFileHandle.write("\n")
         textFileHandle.write("%-15s"%("parameter"))
-        textFileHandle.write("%-15s"%("mean"))
-        textFileHandle.write("%-15s"%("sddev"))
+        textFileHandle.write("%-15s "%("mean"))
+        textFileHandle.write("%-15s "%("sddev"))
         for j in range(self.num_contours):
-            textFileHandle.write("%-15s"%("lower"+str(j+1)))
-            textFileHandle.write("%-15s"%("upper"+str(j+1)))
+            textFileHandle.write("%-15s "%("lower"+str(j+1)))
+            textFileHandle.write("%-15s "%("upper"+str(j+1)))
             textFileHandle.write("%-7s"%("limit"+str(j+1)))
         textFileHandle.write("\n")
 
