@@ -231,9 +231,9 @@ contours = []
 max_frac_twotail = []
 for i in range(1, num_contours+1):
     contours.append(ini.float('contour'+str(i)))
-    max_frac = ini.float('max_frac_twotail'+str(i), math.exp(math.pow(-1.0*norm.ppf((1-contours[i-1])/2), 2)/2))
+    max_frac = ini.float('max_frac_twotail'+str(i), math.exp(-1.0*math.pow(norm.ppf((1-contours[i-1])/2), 2)/2))
     max_frac_twotail.append(max_frac)
-#fixme: max_frac_twotail
+
 contours_str = '; '.join([ str(c) for c in contours ]) 
 mc.contours = contours
 
@@ -426,6 +426,8 @@ mc.Init1DDensity()
 
 # Do 1D bins
 for j in range(mc.num_vars):
+    
+    if not mc.isused[j]: continue
 
     ix = mc.colix[j]
     mc.Get1DDensity(j)
@@ -471,8 +473,8 @@ for j in range(mc.num_vars):
             LowerUpperLimits[j][0][ix1] = tail_limit_bot
         else:
             # no limit
-            LowerUpperLimits[j][1][ix1] = mc.range_min[j]
-            LowerUpperLimits[j][0][ix1] = mc.range_max[j]
+            LowerUpperLimits[j][1][ix1] = mc.range_max[j]
+            LowerUpperLimits[j][0][ix1] = mc.range_min[j]
 
 mc.LowerUpperLimits = LowerUpperLimits
 

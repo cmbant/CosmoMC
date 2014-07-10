@@ -66,23 +66,23 @@ class Density1D():
         self.spacing = spacing
 
     def Prob(self, x):
-        if (x > self.X[-1] - self.spacing/1e6):
-            if (x > self.X[-1] + self.spacing/1e6):
+        if (x > (self.X[-1] - self.spacing/1e6)):
+            if (x > (self.X[-1] + self.spacing/1e6)):
                 print 'Density: x too big ', x
                 sys.exit()
             return self.P[-1]
         
-        if (x < self.X[0] - self.spacing/1e6):
+        if (x < (self.X[0] - self.spacing/1e6)):
             print 'Density: out of range ', x, self.X[0], self.X[-1]
             sys.exit()
 
-        llo = 1 + max(0, int((x-self.X[0])/self.spacing))
+        llo = max(0, int((x-self.X[0])/self.spacing))
         lhi = llo + 1
-        a0  = (self.X[lhi-1] - x) / self.spacing
-        b0  = (x - self.X[llo-1]) / self.spacing
-        res = (a0*self.P[llo-1]) + (b0*self.P[lhi-1]) + ( (
-                (math.pow(a0, 3)-a0)*self.ddP[llo-1] + 
-                (math.pow(b0, 3)-b0)*self.ddP[lhi-1] ) * math.pow(self.spacing, 2)/6)
+        a0  = (self.X[lhi] - x) / self.spacing
+        b0  = (x - self.X[llo]) / self.spacing
+        res = (a0*self.P[llo]) + (b0*self.P[lhi]) + ( (
+                (math.pow(a0, 3)-a0)*self.ddP[llo] + 
+                (math.pow(b0, 3)-b0)*self.ddP[lhi] ) * math.pow(self.spacing, 2) / 6)
         return res
     
     def InitSpline(self):
@@ -97,19 +97,19 @@ class Density1D():
         lim_bot, lim_top = False, False
 
         factor = 100
-        bign = (self.n-1)*factor + 1 
+        bign = (self.n-1)*factor + 1
         grid = np.zeros(bign)
         for i in range(bign):
-            grid[i] = self.X[0] + i*self.spacing/factor
+            grid[i] = self.Prob(self.X[0] + i * self.spacing / factor)
         norm  = np.sum(grid)
-        norm -= 0.5*self.P[-1] - 0.5*self.P[0]
+        norm  = norm - (0.5*self.P[-1]) - (0.5*self.P[0])
 
         try_t = max(grid)
         try_b = 0
         try_last = -1
         while True:
             trial = (try_b + try_t) / 2
-            trial_sum = np.sum(grid[grid>trial])
+            trial_sum = np.sum(grid[grid>=trial])
             if (trial_sum < p*norm):
                 try_t = (try_b + try_t) / 2
             else:
@@ -117,7 +117,7 @@ class Density1D():
             if (abs(trial_sum/try_last - 1) < 1e-4): break
             try_last = trial_sum
         trial = (try_b + try_t) / 2
-        lim_bot = grid[0] >= trial
+        lim_bot = (grid[0] >= trial)
         if (lim_bot):
             mn = self.P[0]
         else:
@@ -125,7 +125,7 @@ class Density1D():
                 if (grid[i] > trial):
                     mn = self.X[0] + (i-1)*self.spacing/factor
                     break
-        lim_top = grid[-1] >= trial
+        lim_top = (grid[-1] >= trial)
         if (lim_top):
             mx = self.P[-1]
         else:
@@ -579,9 +579,10 @@ class MCSamples(chains):
                 # Get stats for individual chains - the variance of the means over the mean of the variances
                 for i in range(num_chains_used):
                     chain = self.chains[i]
-                    chain_means[i][j] = np.sum(chain.coldata[:, 0]*chain.coldata[:, j]) / chain.norm
+                    # fixme: start index is 1 ???
+                    chain_means[i][j] = np.sum(chain.coldata[:, 0]*chain.coldata[:, j+2]) / chain.norm
                     between_chain_var[j] += np.power(chain_means[i][j] - means[j], 2)
-                    in_chain_var[j] += np.sum(chain.coldata[:, 0] * np.power(chain.coldata[:, j]-chain_means[i][j], 2))
+                    in_chain_var[j] += np.sum(chain.coldata[:, 0] * np.power(chain.coldata[:, j+2]-chain_means[i][j], 2))
 
                 between_chain_var[j] /= (num_chains_used-1)
                 in_chain_var[j] /= norm
@@ -1276,11 +1277,11 @@ class MCSamples(chains):
             textFileHandle.write("%16.7E%16.7E"%(self.means[j], self.sddev[j]))
             for i in range(self.num_contours):
                 textFileHandle.write("%16.7E%16.7E"%(self.LowerUpperLimits[j][0][i], self.LowerUpperLimits[j][1][i]))
-                if (self.marge_limits_bot[i][j] is True and self.marge_limits_top[i][j] is True):
+                if (self.marge_limits_bot[i][j] and self.marge_limits_top[i][j]):
                     tag = 'none'
-                elif (self.marge_limits_bot[i][j] is True):
+                elif (self.marge_limits_bot[i][j]):
                     tag = '>'
-                elif (self.marge_limits_top[i][j] is True):
+                elif (self.marge_limits_top[i][j]):
                     tag = '<'
                 else:
                     tag = 'two'
