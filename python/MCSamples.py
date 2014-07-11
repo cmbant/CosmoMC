@@ -528,42 +528,25 @@ class MCSamples(chains):
         if (num_chains_used>1):
             print 'Number of chains used =  ', num_chains_used
 
-        #
-        nparam = self.paramNames.numParams()
-        nparamNonDerived = self.paramNames.numNonDerived()
+        #nparam = self.paramNames.numParams()
+        nparam = self.paramNames.numNonDerived()
         for chain in self.chains: chain.getCov(nparam)
         means = np.zeros(nparam)
         norm = np.sum([chain.norm for chain in self.chains])
         for chain in self.chains:
             means = means + chain.means[0:nparam] * chain.norm
         means /= norm
-        meanscov = np.zeros((nparam, nparam))
-        for i in range(nparam):
-            for j in range(nparam):
-                meanscov[i, j] = np.sum([chain.norm * (chain.means[i] - means[i]) * (chain.means[j] - means[j]) for chain in self.chains])
-                meanscov[j, i] = meanscov[i, j]
-        meanscov *= len(self.chains) / (len(self.chains) - 1) / norm
-        
-        meanscov2 = np.zeros((nparam, nparam))
-        for chain in self.chains:
-            meanscov2 += chain.cov * chain.norm
-        meanscov2 /= norm
-        M = meanscov2
-        for i in range(nparam):
-            norm = np.sqrt(meanscov2[i, i])
-            M[i, :] /= norm
-            M[:, i] /= norm
-            meanscov[:, i] /= norm
-            meanscov[i, :] /= norm
 
-        invertible = np.isfinite(np.linalg.cond(M))
-        if (invertible):
-            R = np.linalg.inv(np.linalg.cholesky(M))
-            D = np.linalg.eigvals(np.dot(R, meanscov).dot(R.T))
-            GelmanRubin = max(np.real(D))
+        fullmean = np.zeros(nparam)
+        for j in range(nparam):
+            for chain in self.chains:
+                fullmean[j] += np.sum(chain.coldata[:, 0] * chain.coldata[:, j+2]) / norm 
 
         fullvar = np.zeros(nparam)
-        
+        for j in range(nparam):
+            for chain in self.chains:
+                fullvar[j] += np.sum(chain.coldata[:, 0] * np.power(chain.coldata[:, j+2]-fullmean[j], 2)) / norm 
+
         if (num_chains_used>1):
             textFileHandle.write(" \n")
             textFileHandle.write(" Variance test convergence stats using remaining chains\n")
@@ -589,10 +572,30 @@ class MCSamples(chains):
                 label = self.paramNames.names[j].label
                 textFileHandle.write("%3i%13.5f  %s\n"%(j+1, between_chain_var[j]/in_chain_var[j], label))
 
+        self.covmat_dimension = nparam
         if (num_chains_used>1) and (self.covmat_dimension>0):
             # Assess convergence in the var(mean)/mean(var) in the worst eigenvalue
             # c.f. Brooks and Gelman 1997
-            
+
+            meanscov = np.zeros((nparam, nparam))
+            for i in range(nparam):
+                for j in range(nparam):
+                    meanscov[i, j] = np.sum([chain.norm * (chain.means[i] - means[i]) * (chain.means[j] - means[j]) for chain in self.chains])
+                    meanscov[j, i] = meanscov[i, j]
+            meanscov *= len(self.chains) / (len(self.chains) - 1) / norm
+            meancov = np.zeros((nparam, nparam))
+            for chain in self.chains:
+                meancov += chain.cov * chain.norm
+            meancov /= norm
+
+            M = meanscov
+            invertible = np.isfinite(np.linalg.cond(M))
+            invertible = False
+            if (invertible):
+                R = np.linalg.inv(np.linalg.cholesky(M))
+                D = np.linalg.eigvals(np.dot(R, meanscov).dot(R.T))
+                GelmanRubin = max(np.real(D))
+
             if (invertible):
                 textFileHandle.write("\n")
                 textFileHandle.write("var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters\n")
@@ -879,29 +882,30 @@ class MCSamples(chains):
             finebinlikes = np.zeros( (imax+fine_edge) - (imin-fine_edge) + 1 )
         
         for i in range(len(paramVec)):
-            ix2 = int(round((paramVec[i]-self.center[j])/width))
-            if (ix2<=self.ix_max[j] and ix2>=self.ix_min[j]): 
-                binsraw[ix2 - self.ix_min[j]] -= paramVec[i]
-            ix2 = int(round((paramVec[i]-self.center[j])/fine_width))
-            finebins[ ix2 - (imin-fine_edge) ] += self.weights[i]
+            ix2 = int(round( (paramVec[i]-self.center[j]) / width ))
+            if ( (ix2<=self.ix_max[j]) and (ix2>=self.ix_min[j]) ): 
+                binsraw[ix2 - self.ix_min[j]] += paramVec[i]
+            ix2 = int(round( (paramVec[i]-self.center[j]) / fine_width ))
+            finebins[ix2 - (imin-fine_edge)] += self.weights[i]
             if (self.plot_meanlikes):
-                finebinlikes[ix2 - (imin-fine_edge)] += self.weights[i] * self.loglikes[i]
-            else:
-                finebinlikes[ix2 - (imin-fine_edge)] += self.weights[i] * np.exp(meanlike-self.loglikes[i])
+                if (self.mean_loglikes):
+                    finebinlikes[ix2 - (imin-fine_edge)] += self.weights[i] * self.loglikes[i]
+                else:
+                    finebinlikes[ix2 - (imin-fine_edge)] += self.weights[i] * np.exp(self.meanlike-self.loglikes[i])
                
         if (self.ix_min[j]<>self.ix_max[j]):
             # account for underweighting near edges
-            if (not self.has_limits_bot[ix] and binsraw[end_edge-1]==0 and  
-                binsraw[end_edge]>np.max(binsraw)/15):
+            if ( (not self.has_limits_bot[ix]) and (binsraw[end_edge-1]==0) and  
+                 (binsraw[end_edge]>np.max(binsraw)/15) ):
                 self.EdgeWarning(ix)
-            if (not self.has_limits_top[ix] and binsraw[self.ix_max[j]-end_edge+1-self.ix_min[j]]==0 and  
-                binsraw[self.ix_max[j]-end_edge+1-self.ix_min[j]]>np.max(binsraw)/15):
+            if ( (not self.has_limits_top[ix]) and (binsraw[self.ix_max[j]-end_edge+1-self.ix_min[j]]==0) and  
+                 (binsraw[self.ix_max[j]-end_edge+1-self.ix_min[j]]>np.max(binsraw)/15) ):
                 self.EdgeWarning(ix)
         
         # In f90, Win(-winw:winw)
         Win = np.zeros( (2*winw) + 1 )
         for i in range(-winw, winw+1):
-            Win[i - (-winw)] = math.exp( math.pow(-i, 2) / math.pow(fine_fac*smooth_1D, 2) / 2 ) 
+            Win[i - (-winw)] = math.exp( - math.pow(i, 2) / math.pow(fine_fac*smooth_1D, 2) / 2 ) 
         Win = Win / np.sum(Win)
  
         has_prior = self.has_limits_bot[ix] or self.has_limits_top[ix]
@@ -952,7 +956,7 @@ class MCSamples(chains):
             for ix2 in range(self.ix_min[j], self.ix_max[j]+1):
                 istart, iend = (ix2*fine_fac-winw)-(imin-fine_edge), (ix2*fine_fac+winw+1)-(imin-fine_edge)
                 bincounts[ix2 - self.ix_min[j]] = np.dot(Win, finebins[istart:iend])
-                if (self.plot_meanlikes and bincounts[ix2 - self.ix_min[j]]>0):
+                if (self.plot_meanlikes and (bincounts[ix2 - self.ix_min[j]]>0)):
                     binlikes[ix2 - self.ix_min[j]] = np.dot(Win, finebinlikes[istart:iend]) / bincounts[ix2 - self.ix_min[j]]
                 if (has_prior):
                     # correct for normalization of window where it is cut by prior boundaries
@@ -963,6 +967,7 @@ class MCSamples(chains):
             if (self.plot_meanlikes and self.mean_loglikes):
                 maxbin = min(binlikes)
                 binlikes = np.where( (binlikes-maxbin)<30, np.exp(-(binlikes-maxbin)), 0 )
+
 
             fname = self.rootname + "_p_" + str(self.index2name[j])
 
@@ -1239,6 +1244,7 @@ class MCSamples(chains):
         if not hasattr(self, 'ranges') or self.ranges is None: return 
         textFileHandle = open(filename, 'w')
         for i in self.index2name.keys():
+            if not self.isused[i]: continue
             if (self.has_limits_bot[i] or self.has_limits_top[i]):
                 name = self.index2name[i]
                 valMin = self.ranges.min(name)

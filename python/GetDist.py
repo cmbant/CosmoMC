@@ -426,9 +426,7 @@ mc.Init1DDensity()
 
 # Do 1D bins
 for j in range(mc.num_vars):
-    
     if not mc.isused[j]: continue
-
     ix = mc.colix[j]
     mc.Get1DDensity(j)
 
