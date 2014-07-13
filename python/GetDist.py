@@ -182,6 +182,7 @@ else:
             sys.exit()
         cust2DPlots.append(tmp_params[0]+2 + (tmp_params[1]+2)*1000)
 
+triangle_params = []
 triangle_plot = ini.bool('triangle_plot', False)
 if (triangle_plot):
     no_triangle_axis_labels = ini.bool('no_triangle_axis_labels', False)
@@ -319,8 +320,6 @@ ok = mc.loadChains(in_root, chain_files)
 
 mc.removeBurnFraction(ignorerows)
 #import pdb; pdb.set_trace()
-
-
 #no_tests = True # TEST
 if (not no_tests):
     mc.DoConvergeTests(converge_test_limit)
@@ -398,7 +397,7 @@ if (triangle_plot):
         triangle_params = mc.index2name.keys()
     else:
         ix = triangle_num
-        indexes = range(1, ix+1)
+        indexes = range(ix)
         indexes.reverse()
         for j in indexes:
             pass
@@ -427,6 +426,7 @@ mc.Init1DDensity()
 # Do 1D bins
 for j in range(mc.num_vars):
     if not mc.isused[j]: continue
+
     ix = mc.colix[j]
     mc.Get1DDensity(j)
 
@@ -517,6 +517,7 @@ if (plot_2D_param==0) and (num_cust2D_plots==0) and (not no_plots):
         try_b = -1e5
         for ix1 in range(mc.num_vars):
             for ix2 in range(ix1+1, mc.num_vars):
+                if not mc.isused[ix1] or not mc.isused[ix2]: continue
                 if abs(mc.corrmatrix[ix1][ix2]) < try_t and abs(mc.corrmatrix[ix1][ix2]) > try_b:
                     try_b = abs(mc.corrmatrix[ix1][ix2])   
                     x, y = ix1, ix2
@@ -525,7 +526,6 @@ if (plot_2D_param==0) and (num_cust2D_plots==0) and (not no_plots):
             break
         try_t = try_b
         cust2DPlots.append(x + y*1000)
-    
 
 if (num_cust2D_plots==0):
     num_2D_plots = 0
@@ -538,8 +538,9 @@ if (num_cust2D_plots==0):
 else:
     num_2D_plots = num_cust2D_plots
       
-done2D = [ [False] * mc.num_vars ] * mc.num_vars
-if (num_2D_plots>0) and (not no_plots):
+done2D = np.ndarray([mc.num_vars, mc.num_vars], dtype=bool)
+done2D[:, :] = False
+if ( (num_2D_plots>0) and (not no_plots) ):
     print 'Producing ', num_2D_plots,' 2D plots'
     filename = rootdirname + '_2D.' + plot_ext
     textFileHandle = open(filename, 'w')
@@ -550,28 +551,27 @@ if (num_2D_plots>0) and (not no_plots):
         plot_num = 0
         for j in range(mc.num_vars):
             if (mc.ix_min[j]<>mc.ix_max[j]):
-                if (plot_2D_param<>0 or num_cust2D_plots<>0):
+                if ( (plot_2D_param<>0) or (num_cust2D_plots<>0) ):
                     if (j==plot_2D_param): continue
                     j2min = 0
                 else:
                     j2min = j + 1
 
-            for j2 in range(j2min, mc.num_vars):
-                if (mc.ix_min[j2]<>mc.ix_max[j2]):
-                    if (plot_2D_param<>0 and j2<>plot_2D_param): continue
-                    if (num_cust2D_plots<>0 and cust2DPlots.count(j*1000+j2)==0): continue
-                    plot_num += 1
-                    done2D[j][j2] = True
-                    if (not plots_only): mc.Get2DPlotData(j, j2)
-                    name1 = mc.index2name[j]
-                    name2 = mc.index2name[j2]
-                    textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
+                for j2 in range(j2min, mc.num_vars):
+                    if (mc.ix_min[j2]<>mc.ix_max[j2]):
+                        if ( (plot_2D_param<>0) and (j2<>plot_2D_param) ): continue
+                        if ( (num_cust2D_plots<>0) and (cust2DPlots.count(j*1000+j2)==0) ): continue
+                        plot_num += 1
+                        done2D[j][j2] = True
+                        if (not plots_only): mc.Get2DPlotData(j, j2)
+                        name1 = mc.index2name[j]
+                        name2 = mc.index2name[j2]
+                        textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
         textFileHandle.write('g.plots_2d(roots,param_pairs=pairs)\n')
         textExport = MCSamples.WritePlotFileExport()
         fname = rootname + '_2D.' + 'pdf'
         textFileHandle.write(textExport%(fname))
     textFileHandle.close()
-
 
 if (triangle_plot and not no_plots):
     # Add the off-diagonal 2D plots
@@ -579,7 +579,8 @@ if (triangle_plot and not no_plots):
         for i2 in range(i+1, triangle_num):
             j  = triangle_params[i] 
             j2 = triangle_params[i2] 
-            #if (not done2D[j2][j] and not plots_only): mc.Get2DPlotData(j2, j)
+            if (not mc.isused[j]) or (not mc.isused[j2]): continue
+            if (not done2D[j2][j] and not plots_only): mc.Get2DPlotData(j2, j)
 
 # Do 3D plots (i.e. 2D scatter plots with coloured points)
 if (num_3D_plots<>0 and not no_plots):
