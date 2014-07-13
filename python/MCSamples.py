@@ -996,7 +996,6 @@ class MCSamples(chains):
         """
         fine_fac_base = 5
         
-        print "DEBUG Get2DPlotData j, j2 ", j, j2
         has_prior = self.has_limits[j] or self.has_limits[j2]
 
         corr = self.corrmatrix[j][j2]
@@ -1013,9 +1012,7 @@ class MCSamples(chains):
         smooth_scale = (self.smooth_scale_2D*nbin2D) / self.num_bins_2D
         fine_fac = max(2, int(round(fine_fac_base/smooth_scale)))
 
-        try:
-            ixmin = int(round((self.range_min[j] - self.center[j]) / widthx))
-        except: import pdb; pdb.set_trace()
+        ixmin = int(round((self.range_min[j] - self.center[j]) / widthx))
         ixmax = int(round((self.range_max[j] - self.center[j]) / widthx))
 
         iymin = int(round((self.range_min[j2] - self.center[j2]) / widthy))
@@ -1062,7 +1059,7 @@ class MCSamples(chains):
         indexes = range(-winw, winw+1)
         for ix1 in indexes:
             for ix2 in indexes:
-                Win[ix1][ix2] = math.exp(
+                Win[ix1-(-winw)][ix2-(-winw)] = math.exp(
                     - ( ((ix1*ix1) + (ix2*ix2) - 2*corr*ix1*ix2)) /
                       (2 * (fine_fac*fine_fac) * (smooth_scale*smooth_scale) * (1-corr*corr)) )
 
