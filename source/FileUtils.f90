@@ -1307,7 +1307,6 @@
     real(kind(1.d0)), intent(out) :: mat(:,:)
     character(LEN=:), allocatable :: InLine
     integer j,k, status, n,m
-    real tmp
     Type(TTextFile) :: F
 
     m = PresentDefault(size(mat,dim=1),inm)

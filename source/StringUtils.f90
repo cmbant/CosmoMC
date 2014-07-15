@@ -229,9 +229,8 @@
     class(*) X
     logical OK
     integer ix, P, n
-    character c, fillc
+    character c
     character(LEN=:), allocatable :: form, fform, rep
-    character(LEN=128) output
 
     P=1
     do
