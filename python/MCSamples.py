@@ -85,6 +85,9 @@ class Density1D():
                 (math.pow(b0, 3)-b0)*self.ddP[lhi] ) * math.pow(self.spacing, 2) / 6)
         return res
     
+    def ProbVec(self, v):
+        return v
+
     def InitSpline(self):
         self.ddP = self._spline(self.X, self.P, self.n, self.SPLINE_DANGLE, self.SPLINE_DANGLE)
         #f = interp1d(self.X, self.P, kind='cubic')
@@ -92,22 +95,25 @@ class Density1D():
         #self.ddP = f(xnew)
 
     def Limits(self, p):
+
         # Return values
         mn, mx = 0., 0.
         lim_bot, lim_top = False, False
 
         factor = 100
         bign = (self.n-1)*factor + 1
+        #grid = np.fromiter( (self.X[0]+i*self.spacing/factor for i in range(bign)), dtype=np.float )
         grid = np.zeros(bign)
         for i in range(bign):
             grid[i] = self.Prob(self.X[0] + i * self.spacing / factor)
-        #grid = [ self.Prob(self.X[0] + i * self.spacing / factor) for i in range(bign) ]
+
         norm  = np.sum(grid)
         norm  = norm - (0.5*self.P[-1]) - (0.5*self.P[0])
 
         try_t = max(grid)
         try_b = 0
         try_last = -1
+
         while True:
             trial = (try_b + try_t) / 2
             trial_sum = np.sum(grid[grid>=trial])
@@ -117,15 +123,18 @@ class Density1D():
                 try_b = (try_b + try_t) / 2
             if (abs(trial_sum/try_last - 1) < 1e-4): break
             try_last = trial_sum
+
         trial = (try_b + try_t) / 2
+
         lim_bot = (grid[0] >= trial)
         if (lim_bot):
             mn = self.P[0]
         else:
             for i in range(bign):
                 if (grid[i] > trial):
-                    mn = self.X[0] + (i-1)*self.spacing/factor
+                    mn = self.X[0] + (i-1) * self.spacing / factor
                     break
+
         lim_top = (grid[-1] >= trial)
         if (lim_top):
             mx = self.P[-1]
@@ -134,7 +143,7 @@ class Density1D():
             indexes.reverse()
             for i in indexes:
                 if (grid[i] > trial):
-                    mx = self.X[0] + (i-1)*self.spacing/factor
+                    mx = self.X[0] + (i-1) * self.spacing / factor
 
         return mn, mx, lim_bot, lim_top
 
@@ -156,7 +165,7 @@ class Density1D():
         
         for i in range(1, n-2):
             d1l = d1r
-            d1r = ( y[i+1]-y[i]) / (x[i+1]-x[i])
+            d1r = (y[i+1]-y[i]) / (x[i+1]-x[i])
             xxdiv = 1. / (x[i+1]-x[i-1])
             sig = (x[i] - x[i-1]) * xxdiv
             xp = 1. / (sig*d2[i-1]+2.)
@@ -591,7 +600,8 @@ class MCSamples(chains):
 
             M = meanscov
             invertible = np.isfinite(np.linalg.cond(M))
-            invertible = False
+            #invertible = False
+            import pdb; pdb.set_trace()
             if (invertible):
                 R = np.linalg.inv(np.linalg.cholesky(M))
                 D = np.linalg.eigvals(np.dot(R, meanscov).dot(R.T))
@@ -928,6 +938,7 @@ class MCSamples(chains):
         if (self.has_limits_top[ix]): imax = self.ix_max[j] * fine_fac
 
         self.density1D = Density1D(imax-imin+1, fine_width)
+        # fixme: computation of self.density1D.P and self.density1D.X 
         for i in range(imin, imax+1):
             istart, iend = (i-winw)-(imin-fine_edge), (i+winw+1)-(imin-fine_edge)
             self.density1D.P[i-imin] = np.dot(Win, finebins[istart:iend])
