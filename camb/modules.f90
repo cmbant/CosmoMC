@@ -58,7 +58,7 @@
     !Nu_best: automatically use mixture which is fastest and most accurate
 
     integer, parameter :: max_Nu = 5 !Maximum number of neutrino species
-    integer, parameter :: max_transfer_redshifts = 150
+    integer, parameter :: max_transfer_redshifts = 250
     integer, parameter :: fileio_unit = 13 !Any number not used elsewhere will do
     integer, parameter :: outNone=1
 
