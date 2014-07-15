@@ -723,12 +723,12 @@
     class(*), optional :: S2,S3,S4,S5,S6
     logical, optional :: OK
 
-    call this%ReadItemSub(S1)
-    if (present(S2)) call this%ReadItemSub(S2)
-    if (present(S3)) call this%ReadItemSub(S3)
-    if (present(S4)) call this%ReadItemSub(S4)
-    if (present(S5)) call this%ReadItemSub(S5)
-    if (present(S6)) call this%ReadItemSub(S6)
+    call this%ReadItemSub(S1,OK)
+    if (present(S2) .and. DefaultTrue(OK)) call this%ReadItemSub(S2,OK)
+    if (present(S3) .and. DefaultTrue(OK)) call this%ReadItemSub(S3,OK)
+    if (present(S4) .and. DefaultTrue(OK)) call this%ReadItemSub(S4,OK)
+    if (present(S5) .and. DefaultTrue(OK)) call this%ReadItemSub(S5,OK)
+    if (present(S6) .and. DefaultTrue(OK)) call this%ReadItemSub(S6,OK)
 
     end subroutine ReadItems
 
@@ -837,7 +837,7 @@
     character(LEN=:), allocatable :: InLine
 
     n=0
-    if (PresentDefault(nocomments, .true.)) then
+    if (PresentDefault(.true.,nocomments)) then
         do while (this%ReadLineSkipEmptyAndComments(InLine))
             n = n+1
         end do
