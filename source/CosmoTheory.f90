@@ -42,7 +42,7 @@
     procedure :: WriteTextData => TCosmoTheoryPredictions_WriteTextData
     end Type TCosmoTheoryPredictions
 
-    public TCosmoTheoryPredictions, TCosmoTheoryPK
+    public TCosmoTheoryPredictions, TCosmoTheoryPK,  TSkyPowerSpectrum
     contains
 
     function PowerAt(PK,k,z) result(outpower)

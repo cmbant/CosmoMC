@@ -11,23 +11,23 @@ class batchArgs():
 
         def __init__(self, desc='', importance=True, noBatchPath=False, notExist=False, converge=False):
             self.parser = argparse.ArgumentParser(description=desc)
-            if not noBatchPath: self.parser.add_argument('batchPath')
-            if converge: self.parser.add_argument('--converge', type=float, default=0)
+            if not noBatchPath: self.parser.add_argument('batchPath', help='directory containing the grid')
+            if converge: self.parser.add_argument('--converge', type=float, default=0, help='minimum R-1 convergence')
             self.importanceParameter = importance;
             self.notExist = notExist
 
         def parseForBatch(self):
             if self.importanceParameter:
-                self.parser.add_argument('--noimportance', action='store_true')
-                self.parser.add_argument('--importance', nargs='*', default=None)
-            self.parser.add_argument('--name', default=None, nargs='+')
-            self.parser.add_argument('--param', default=None, nargs='+')
-            self.parser.add_argument('--paramtag', default=None)
-            self.parser.add_argument('--data', default=None)
-            self.parser.add_argument('--datatag', default=None)
-            self.parser.add_argument('--skip_data', default=None)
-            self.parser.add_argument('--skip_param', default=None)
-            self.parser.add_argument('--group', default=None, nargs='+')
+                self.parser.add_argument('--noimportance', action='store_true', help='original chains only, no importance sampled')
+                self.parser.add_argument('--importance', nargs='*', default=None, help='tags for importance sampling runs to include')
+            self.parser.add_argument('--name', default=None, nargs='+', help='specific chain full name only (base_paramx_data1_data2)')
+            self.parser.add_argument('--param', default=None, nargs='+', help='runs including specific parameter only (paramx)')
+            self.parser.add_argument('--paramtag', default=None, help='runs with specific parameter tag only (base_paramx)')
+            self.parser.add_argument('--data', default=None, help='runs including specific data only (data1)')
+            self.parser.add_argument('--datatag', default=None, help='runs with specific data tag only (data1_data2)')
+            self.parser.add_argument('--skip_data', default=None, help='skip runs containing specific data (data1)')
+            self.parser.add_argument('--skip_param', default=None, help='skip runs containing specific parameter (paramx)')
+            self.parser.add_argument('--group', default=None, nargs='+', help='include only runs with given group names')
 
             if self.notExist: self.parser.add_argument('--notexist', action='store_true')
 

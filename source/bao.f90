@@ -31,12 +31,14 @@
         !2: A(z) =2 ie WiggleZ
         !3 D_V/rs in fitting forumla appox (DR9)
         !4: D_v - 6DF
+        !5: D_A/rs (DR8)
         real(mcp), allocatable, dimension(:) :: bao_z, bao_obs, bao_err
         real(mcp), allocatable, dimension(:,:) :: bao_invcov
     contains
     procedure :: LogLike => BAO_LnLike
     procedure :: ReadIni => BAO_ReadIni
     procedure, private :: SDSS_dvtors
+    procedure, private :: SDSS_dAtors
     procedure, private :: Acoustic
     procedure, private :: BAO_DR7_loglike
     procedure, private :: BAO_DR11_loglike
@@ -90,7 +92,7 @@
     this%num_bao = Ini%Read_Int('num_bao',0)
     if (this%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
     this%type_bao = Ini%Read_Int('type_bao',1)
-    if(this%type_bao /= 3 .and. this%type_bao /=2 .and. this%type_bao /=4) then
+    if(this%type_bao /= 3 .and. this%type_bao /=2 .and. this%type_bao /=4 .and. this%type_bao /=5) then
         write(*,*) this%type_bao
         write(*,*)'ERROR: Invalid bao type specified in BAO dataset: '//trim(this%name)
         call MPIStop()
@@ -161,6 +163,23 @@
 
     end function SDSS_dvtors
 
+   ! HS modified SDSS_dvtors to calculate D_A/rs 
+    function SDSS_dAtors(this, CMB,z)
+    !This uses numerical value of D_A/r_s, but re-scales it to match definition of SDSS
+    !paper fitting at the fiducial model. Idea being it is also valid for e.g. varying N_eff
+    class(BAOLikelihood) :: this
+    class(CMBParams) CMB
+    real(mcp) SDSS_dAtors
+    real(mcp), intent(IN)::z
+    real(mcp) rs
+    real(mcp), parameter :: rs_rescale = 153.017d0/148.92 !149.0808
+
+    !    rs = SDSS_CMBToBAOrs(CMB)
+    rs = rsdrag_theory*rs_rescale !rescaled to match fitting formula for LCDM
+    SDSS_dAtors = this%Calculator%AngularDiameterDistance(z)/rs
+    end function SDSS_dAtors
+
+
 
     !===================================================================================
 
@@ -199,6 +218,11 @@
             do j=1, this%num_bao
                 BAO_theory(j) = this%Calculator%BAO_D_v(this%bao_z(j))
             end do
+        else if(this%type_bao ==5)then
+            do j=1, this%num_bao
+                BAO_theory(j) = this%SDSS_dAtors(CMB,this%bao_z(j))
+            end do
+
         end if
 
         do j=1, this%num_bao

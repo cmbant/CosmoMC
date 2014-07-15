@@ -103,6 +103,7 @@
     !                       Xiao Dong-Li and Shuang Wang for catching this
     !   mbetoule, Dec 2013: adaptation to the JLA sample
     !   AL, Mar 2014: updates for latest CosmoMC structure
+    !   AL, June 2014: updated JLA_marginalize=T handling so it should work (also default JLA.ini)
     USE CosmologyTypes
     USE settings
     use CosmoTheory
@@ -114,7 +115,7 @@
     logical :: JLA_marginalize = .false.
     REAL(mcp), allocatable :: JLA_marge_grid(:), alpha_grid(:),beta_grid(:)
     integer :: JLA_marge_steps = 0
-    real(mcp) JLA_step_width
+    real(mcp) JLA_step_width_alpha, JLA_step_width_beta
     real(mcp), parameter :: JLA_alpha_center =  0.14
     real(mcp), parameter :: JLA_beta_center = 3.123
     integer :: JLA_int_points = 1
@@ -233,9 +234,9 @@
     this%version = JLA_version
     JLA_marginalize = Ini%Read_Logical('JLA_marginalize',.false.)
     if (JLA_marginalize) then
-        WRITE(*,*) 'WE have a problem: should never get here.'
-        JLA_marge_steps = Ini%Read_Int('JLA_marge_steps',5)
-        JLA_step_width = Ini%Read_Double('JLA_step_width',0.05d0)
+        JLA_marge_steps = Ini%Read_Int('JLA_marge_steps',7)
+        JLA_step_width_alpha = Ini%Read_Double('JLA_step_width_alpha',0.003d0)
+        JLA_step_width_beta = Ini%Read_Double('JLA_step_width_beta',0.04d0)
         JLA_int_points=0
         allocate(alpha_grid((2*JLA_marge_steps+1)**2))
         allocate(beta_grid((2*JLA_marge_steps+1)**2))
@@ -243,8 +244,8 @@
             do beta_i = - JLA_marge_steps, JLA_marge_steps
                 if (alpha_i**2 + beta_i**2 <= JLA_marge_steps**2) then
                     JLA_int_points=JLA_int_points+1
-                    alpha_grid(JLA_int_points) = JLA_alpha_center + alpha_i* JLA_step_width
-                    beta_grid(JLA_int_points)  = JLA_beta_center + beta_i* JLA_step_width
+                    alpha_grid(JLA_int_points) = JLA_alpha_center + alpha_i* JLA_step_width_alpha
+                    beta_grid(JLA_int_points)  = JLA_beta_center + beta_i* JLA_step_width_beta
                 end if
             end do
         end do
@@ -1212,7 +1213,7 @@
         end do
 
         grid_best = minval(JLA_marge_grid,mask=JLA_marge_grid/=logZero)
-        jla_LnLike =  grid_best - log(sum(exp(-JLA_marge_grid + grid_best),  mask=JLA_marge_grid/=logZero)*JLA_step_width**2)
+        jla_LnLike =  grid_best - log(sum(exp(-JLA_marge_grid + grid_best),  mask=JLA_marge_grid/=logZero)*JLA_step_width_alpha*JLA_step_width_beta)
         IF (Feedback > 1) THEN
             WRITE(*,'(" JLA best logLike ",F7.2,", marge logLike: ",F7.2," for ",I5," SN")') grid_best, jla_LnLike,nsn
         end if
