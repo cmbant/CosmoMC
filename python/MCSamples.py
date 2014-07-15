@@ -520,12 +520,22 @@ class MCSamples(chains):
         for ix in range(nparams):
             self.isused[ix] = not np.all(self.samples[:, ix]==self.samples[0][ix])
         
+    def GetUsedColsChains(self):
+        if not hasattr(self, 'chains') or len(self.chains)==0: return
+        nparams = self.chains[0].coldata.shape[1] - 2
+        self.isused = np.ndarray(nparams, dtype=bool)
+        self.isused[:] = False
+        for ix in range(nparams):
+            self.isused[ix] = not np.all(self.chains[0].coldata[:, ix+2]==self.chains[0].coldata[0][ix+2])
+
     def DoConvergeTests(self, limfrac):
         """
         Do convergence tests.
         """
         if not hasattr(self, 'chains'): return 
         
+        self.GetUsedColsChains()
+
         # Weights
         weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
 
@@ -538,8 +548,7 @@ class MCSamples(chains):
         if (num_chains_used>1):
             print 'Number of chains used =  ', num_chains_used
 
-        #nparam = self.paramNames.numParams()
-        nparam = self.paramNames.numNonDerived()
+        nparam = self.paramNames.numParams()
         for chain in self.chains: chain.getCov(nparam)
         means = np.zeros(nparam)
         norm = np.sum([chain.norm for chain in self.chains])
@@ -569,6 +578,8 @@ class MCSamples(chains):
 
             norm = np.sum([chain.norm for chain in self.chains])
             for j in range(nparam):
+                if not self.isused[j]: continue
+
                 # Get stats for individual chains - the variance of the means over the mean of the variances
                 for i in range(num_chains_used):
                     chain = self.chains[i]
@@ -582,10 +593,19 @@ class MCSamples(chains):
                 label = self.paramNames.names[j].label
                 textFileHandle.write("%3i%13.5f  %s\n"%(j+1, between_chain_var[j]/in_chain_var[j], label))
 
+        nparam = self.paramNames.numNonDerived()
         self.covmat_dimension = nparam
         if (num_chains_used>1) and (self.covmat_dimension>0):
             # Assess convergence in the var(mean)/mean(var) in the worst eigenvalue
             # c.f. Brooks and Gelman 1997
+
+            # from chains.getChainsStats
+            for chain in self.chains: chain.getCov(nparam)
+            means = np.zeros(nparam)
+            norm = np.sum([chain.norm for chain in self.chains])
+            for chain in self.chains:
+                means = means + chain.means[0:nparam] * chain.norm
+            means /= norm
 
             meanscov = np.zeros((nparam, nparam))
             for i in range(nparam):
@@ -597,11 +617,15 @@ class MCSamples(chains):
             for chain in self.chains:
                 meancov += chain.cov * chain.norm
             meancov /= norm
-
-            M = meanscov
+            M = meancov
+            for i in range(nparam):
+                norm = np.sqrt(meancov[i, i])
+                M[i, :] /= norm
+                M[:, i] /= norm
+                meanscov[:, i] /= norm
+                meanscov[i, :] /= norm
+            
             invertible = np.isfinite(np.linalg.cond(M))
-            #invertible = False
-            import pdb; pdb.set_trace()
             if (invertible):
                 R = np.linalg.inv(np.linalg.cholesky(M))
                 D = np.linalg.eigvals(np.dot(R, meanscov).dot(R.T))
@@ -610,10 +634,9 @@ class MCSamples(chains):
             if (invertible):
                 textFileHandle.write("\n")
                 textFileHandle.write("var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters\n")
-                for jj in range(num):
-                    textFileHandle.write("%3i%13.5f\n"%(jj+1, D[jj]))
-                    textFileHandle.write("\n")
-                textFileHandle.write(" var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F\n"%GelmanRubin)
+                for jj in range(nparam):
+                    textFileHandle.write("%3i%13.5f\n"%(jj+1, D[-(jj+1)]))
+                print " var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F\n"%GelmanRubin
             else:
                 print 'WARNING: Gelman-Rubin covariance not invertible'
 
@@ -626,7 +649,9 @@ class MCSamples(chains):
         textFileHandle.write("\n")
 
         split_tests = {}
+        nparam = self.paramNames.numParams()
         for j in range(nparam):
+            if not self.isused[j]: continue
             for endb in [0, 1]:
                 for split_n in range(2, self.max_split_tests+1):
                     frac = self.GetFractionIndices(weights, split_n)
@@ -1274,6 +1299,7 @@ class MCSamples(chains):
         textFileHandle.write("\n")
 
         for j in range(self.num_vars):
+            if not self.isused[j]: continue
             textFileHandle.write("%-12s"%(self.index2name[j]))
             textFileHandle.write("%16.7E%16.7E"%(self.means[j], self.sddev[j]))
             for i in range(self.num_contours):
@@ -1286,7 +1312,7 @@ class MCSamples(chains):
                     tag = '<'
                 else:
                     tag = 'two'
-                textFileHandle.write("%7s"%(tag))
+                textFileHandle.write("  %-5s"%(tag))
             label = self.paramNames.names[j].label
             textFileHandle.write("   %s\n"%(label))
 
