@@ -1,0 +1,16 @@
+#DR8: http://arxiv.org/abs/1201.2172 (Seo et al. 2012)
+#Note that DR8 is not an independent data set from DR9, DR10, or later release versions of BOSS data. 
+#for explanation of the changes to the rs expression, see Hamann et al, 
+#http://xxx.lanl.gov/abs/1003.3999
+
+name = DR8
+
+#Type of measurement: A(z) = 2, D_V/rs=3, D_A/rs = 5
+type_bao = 5
+
+#number of bao data points 
+num_bao = 1
+
+bao_measurements_file = %DATASETDIR%sdss_DR8_bao.txt
+
+

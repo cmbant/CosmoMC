@@ -146,7 +146,8 @@
     class(TTimer) :: this
     character(LEN=*), intent(in), optional :: Msg
     real(TTimer_dp), optional :: start
-    real(TTimer_dp) T
+    real(TTimer_dp) T, DeltaT
+    character(LEN=:), allocatable :: tmp
 
     if (present(start)) then
         T=start
@@ -154,8 +155,14 @@
         T=this%start_time
     end if
 
+    DeltaT = TimerTime() - T
     if (present(Msg)) then
-        write (*,*) trim(Msg)//': ', TimerTime() - T
+        tmp = trim(Msg)//': '
+        if (DeltaT > 0.00002 .and. DeltaT < 1000 .and. len_trim(tmp)<24) then
+            write (*,'(a25,f10.5)') tmp, DeltaT
+        else
+            write (*,*) trim(Msg)//': ', DeltaT
+        end if
     end if
     if (.not. present(start)) this%start_time = TimerTime()
 

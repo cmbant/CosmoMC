@@ -226,7 +226,7 @@
     subroutine Initialize_CMBSettings(this)
     class(TCosmoTheorySettings) this
     class(TDataLikelihood), pointer :: DataLike
-    integer i, parse, numcls, a, b
+    integer i, parse, numcls, a
 
     numcls=0
     do parse=1,2
@@ -378,7 +378,7 @@
     subroutine TCosmologyRequirementsLikelihood_InitForSettings(this, Settings)
     class(TCosmologyRequirementsLikelihood) :: this
     class(TCosmoTheorySettings) :: Settings
-    integer :: i, iz, izprev, numz
+    integer :: iz, izprev, numz
 
     if (this%needs_powerspectra .and. this%needs_exact_z) then
         numz = size(Settings%power_redshifts)

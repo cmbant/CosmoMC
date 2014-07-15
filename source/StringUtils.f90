@@ -33,12 +33,14 @@
 
     end function GetParam
 
-    function GetEnvironmentVariable(name) result(value)
+    function GetEnvironmentVariable(name, is_present) result(value)
     character(LEN=*), intent(in) :: name
     character(LEN=:), allocatable :: value
+    logical, intent(out), optional :: is_present
     integer L, status
 
     call get_environment_variable(name, length=L, status=status)
+    if (present(is_present)) is_present = status==0
     if (status==0) then
         allocate(character(L)::value)
         call get_environment_variable(name, value, status=status)
@@ -229,9 +231,8 @@
     class(*) X
     logical OK
     integer ix, P, n
-    character c, fillc
+    character c
     character(LEN=:), allocatable :: form, fform, rep
-    character(LEN=128) output
 
     P=1
     do

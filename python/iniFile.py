@@ -1,4 +1,4 @@
-# AL Apr 11,Jun13
+# AL Apr 11,Jun13, Jul14
 import os
 
 class iniFile:
@@ -10,12 +10,14 @@ class iniFile:
         self.readOrder = []
         self.defaults = []
         self.includes = []
-        if filename is not None and filename!='': self.readFile(filename, keep_includes)
+        self.original_filename = None
+        if filename is not None and filename != '': self.readFile(filename, keep_includes)
 
 
     def readFile(self, filename, keep_includes=False, if_not_defined=False):
         fileincludes = []
         filedefaults = []
+        self.original_filename = filename
         textFileHandle = open(filename)
         # Remove blanck lines and comment lines from the python list of lists.
         for line in textFileHandle:
@@ -91,58 +93,62 @@ class iniFile:
             self.params[key] = self.params[key].replace(placeholder, text);
 
             return self.params
-        
-    def delete_keys(self,keys):
-        for k in keys: self.params.pop(k,None)
-        
-    def _undefined(self,name):
+
+    def delete_keys(self, keys):
+        for k in keys: self.params.pop(k, None)
+
+    def _undefined(self, name):
         raise Exception('parameter not defined: ' + name)
-        
-    def bool(self,name, default=False):
-        if name in self.params:
-            s=self.params[name]
-            if isinstance(s,bool): return s
-            if s=='T': return True
-            elif s=='F': return False
+
+    def hasKey(self, name):
+        return name in self.params
+
+    def isSet(self, name, allowEmpty=False):
+        return name in self.params and (allowEmpty or self.params[name] != "")
+
+    def asType(self, name, tp, default=None, allowEmpty=False):
+        if self.isSet(name, allowEmpty): return tp(self.params[name])
+        elif default is not None: return default
+        else: self._undefined(name)
+
+    def bool(self, name, default=False):
+        if self.isSet(name):
+            s = self.params[name]
+            if isinstance(s, bool): return s
+            if s == 'T': return True
+            elif s == 'F': return False
             raise Exception('parameter does not have valid T or F boolean value: ' + name)
         elif default is not None: return default
         else: self._undefined(name)
-        
-    def string(self,name, default=None):
-        if name in self.params: return str(self.params[name])
-        elif default is not None: return default
-        else: self._undefined(name)
-        
-    def float(self,name,default=None):
-        if name in self.params and self.str_is_float(self.params[name]):
-            return float(self.params[name])
-        elif default is not None: return default
-        else: self._undefined(name)
-        
-    def int(self,name,default=None):
-        if name in self.params and self.str_is_int(self.params[name]): 
-                return int(self.params[name])
-        elif default is not None: return default
-        else: self._undefined(name)
-        
-    def array_int(self,name,index=1, default=None):
-        return self.int(name+'(%u)'%index,default)
-        
-    def array_string(self,name,index=1, default=None):
-        return self.string(name+'(%u)'%index,default)
 
-    def array_bool(self,name,index=1, default=None):
-        return self.bool(name+'(%u)'%index,default)
-        
-    def array_float(self,name,index=1, default=None):
-        return self.float(name+'(%u)'%index,default)
+    def string(self, name, default=None, allowEmpty=True):
+        return self.asType(name, str, default, allowEmpty=allowEmpty)
 
-    def str_is_float(self, s):
-        try:
-            float(s)
-            return True
-        except ValueError:
-            return False
+    def float(self, name, default=None):
+        return self.asType(name, float, default)
 
-    def str_is_int(self, s):
-        return s.isdigit()
+    def int(self, name, default=None):
+        return self.asType(name, int, default)
+
+    def split(self, name, default=None):
+        s = self.string(name, default)
+        if isinstance(s, basestring): return s.split()
+        else: return s
+
+    def array_int(self, name, index=1, default=None):
+        return self.int(name + '(%u)' % index, default)
+
+    def array_string(self, name, index=1, default=None):
+        return self.string(name + '(%u)' % index, default)
+
+    def array_bool(self, name, index=1, default=None):
+        return self.bool(name + '(%u)' % index, default)
+
+    def array_float(self, name, index=1, default=None):
+        return self.float(name + '(%u)' % index, default)
+
+    def relativeFileName(self, name, default=None):
+        s = self.string(name, default)
+        if self.original_filename is not None:
+            return os.path.join(os.path.dirname(self.original_filename), s)
+        return s
