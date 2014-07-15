@@ -290,7 +290,8 @@
                     mult_ratio = mult_ratio + weight
                     mult_sum = mult_sum + mult
 
-                    if (this%redo_auto_likescale .and. redo_loop==1 .and. num_used == this%redo_auto_likescale_count) then
+                    if (this%redo_auto_likescale .and. redo_loop==1 .and. num_used == this%redo_auto_likescale_count &
+                        & .and. .not. this%redo_change_like_only) then
                         !Check log likelihoods scaled to give sensible weights. Rescale must be constant between chains
                         like_diff = max_truelike - max_like
 #ifdef MPI

@@ -11,6 +11,31 @@
 
     contains
 
+    function DefaultFalse(S) result(Sout)
+    logical, intent(in), optional :: S
+    logical :: Sout
+
+    if (present(S)) then
+        SOut = S
+    else
+        SOut = .false.
+    end if
+
+    end function DefaultFalse
+
+    function DefaultTrue(S) result(Sout)
+    logical, intent(in), optional :: S
+    logical :: Sout
+
+    if (present(S)) then
+        SOut = S
+    else
+        SOut = .true.
+    end if
+
+    end function DefaultTrue
+
+
     function PresentDefault_S(default, S) result(Sout)
     character(LEN=*), intent(in), target :: default
     character(LEN=*), intent(in), target, optional :: S

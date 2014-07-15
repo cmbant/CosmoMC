@@ -100,6 +100,9 @@ class iniFile:
     def _undefined(self, name):
         raise Exception('parameter not defined: ' + name)
 
+    def hasKey(self, name):
+        return name in self.params
+
     def bool(self, name, default=False):
         if name in self.params:
             s = self.params[name]
@@ -124,6 +127,11 @@ class iniFile:
         if name in self.params: return int(self.params[name])
         elif default is not None: return default
         else: self._undefined(name)
+
+    def split(self, name, default=None):
+        s = self.string(name, default)
+        if isinstance(s, basestring): return s.split()
+        else: return s
 
     def array_int(self, name, index=1, default=None):
         return self.int(name + '(%u)' % index, default)

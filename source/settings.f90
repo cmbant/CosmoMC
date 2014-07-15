@@ -24,7 +24,7 @@
 
 
     double precision, parameter :: pi=3.14159265358979323846264338328d0, &
-    twopi=2*pi, fourpi=4*pi
+        twopi=2*pi, fourpi=4*pi
     double precision, parameter :: root2 = 1.41421356237309504880168872421d0, sqrt2 = root2
     double precision, parameter :: log2 = 0.693147180559945309417232121458d0
 
@@ -42,7 +42,6 @@
         !Allowing things like param[name] =
     contains
     procedure :: NamedKey => TNameKeyIniFile_NamedKey
-    procedure :: TagValuesForName => TNameKeyIniFile_TagValuesForName
     end type TNameKeyIniFile
 
 
@@ -51,6 +50,7 @@
     procedure :: FailStop => TSettingIni_FailStop
     procedure :: ReadFilename => TSettingIni_ReadFilename
     procedure :: ReplaceDirs => TSettingIni_ReplaceDirs
+    procedure :: TagValuesForName => TSettingIni_TagValuesForName
     end type
 
     real(mcp) :: AccuracyLevel = 1
@@ -71,8 +71,8 @@
     !'fast' parameters differently (in fact, doing so will make performance worse)
 
     integer, parameter :: sampling_metropolis = 1, sampling_slice = 2, sampling_fastslice =3, &
-    sampling_slowgrid = 4,  sampling_multicanonical = 5,  sampling_wang_landau = 6, &
-    sampling_fast_dragging = 7
+        sampling_slowgrid = 4,  sampling_multicanonical = 5,  sampling_wang_landau = 6, &
+        sampling_fast_dragging = 7
 
     integer :: sampling_method = sampling_metropolis
 
@@ -145,7 +145,7 @@
 #ifdef MPI
     runTime = MPI_WTime() - MPIrun_Start_Time
     if (Feedback > 0 .and. MPIRank==0) &
-    write (*,'("Total time:  ",I0,"  (",F10.5," hours  )")')nint(runTime),runTime/(60*60)
+        write (*,'("Total time:  ",I0,"  (",F10.5," hours  )")')nint(runTime),runTime/(60*60)
     ierror =0
     if (wantbort) then
         !Abort all in case other continuing chains want to communicate with us
@@ -179,7 +179,7 @@
     call StringReplace('%DATASETDIR%',PresentDefault(DataDir,ADir),filename)
     call StringReplace('%LOCALDIR%',LocalDir,filename)
     if (allocated(Ini%Original_filename)) &
-    & call StringReplace('%THISDIR%',File%ExtractPath(Ini%Original_filename),filename)
+        & call StringReplace('%THISDIR%',File%ExtractPath(Ini%Original_filename),filename)
 
     end function TSettingIni_ReplaceDirs
 
@@ -198,13 +198,41 @@
 
     do i=1, CustomParams%Count
         call StringReplace('%'//CustomParams%Name(i)//'%',&
-        trim(Ini%ReplaceDirs(CustomParams%Value(i), ADir)) ,filename)
+            trim(Ini%ReplaceDirs(CustomParams%Value(i), ADir)) ,filename)
     end do
     if (PresentDefault(.false., relative) .and. .not. File%IsFullPath(filename)) then
         filename =  File%ExtractPath(Ini%Original_filename)//filename
     end if
 
     end function TSettingIni_ReadFilename
+
+    subroutine TSettingIni_TagValuesForName(Ini, name, OutList, filename)
+    !Reads all entries of the form "name[tag] = value", storing tag=value in OutList
+    class(TSettingIni) :: Ini
+    character(LEN=*), intent(in) :: name
+    character(LEN=:), allocatable :: tag, value
+    class(TNameValueList) :: OutList
+    integer i, ix
+    character(LEN=:), pointer :: KeyName
+    logical, intent(in), optional :: filename
+
+    call OutList%Clear()
+    tag = trim(name) //'['
+
+    do i=1, Ini%Count
+        KeyName=>Ini%Name(i)
+        if (StringStarts(KeyName, tag) .and. Ini%Value(i)/='') then
+            ix = index(KeyName, ']')
+            if (ix /= len(KeyName)) call Ini%Error('Error readding tagged key', name)
+            value =Ini%Read_String(KeyName)
+            if (DefaultFalse(filename) .and. value/='') value = Ini%ReplaceDirs(value)
+            call OutList%Add(KeyName(len(tag)+1:len(KeyName)-1), value)
+            !!Note: Use Read_String so read values are stored
+        end if
+    end do
+
+    end subroutine TSettingIni_TagValuesForName
+
 
     function TNameKeyIniFile_NamedKey(Ini, Key, Name) result(NamedKey)
     class(TNameKeyIniFile) :: Ini
@@ -215,29 +243,6 @@
 
     end function TNameKeyIniFile_NamedKey
 
-    subroutine TNameKeyIniFile_TagValuesForName(Ini, name, OutList)
-    !Reads all entries of the form "name[tag] = value", storing tag=value in OutList
-    class(TNameKeyIniFile) :: Ini
-    character(LEN=*), intent(in) :: name
-    character(LEN=:), allocatable :: tag
-    class(TNameValueList) :: OutList
-    integer i, ix
-    character(LEN=:), pointer :: KeyName
-
-    call OutList%Clear()
-    tag = trim(name) //'['
-
-    do i=1, Ini%Count
-        KeyName=>Ini%Name(i)
-        if (StringStarts(KeyName, tag) .and. Ini%Value(i)/='') then
-            ix = index(KeyName, ']')
-            if (ix /= len(KeyName)) call Ini%Error('Error readding tagged key', name)
-            call OutList%Add(KeyName(len(tag)+1:len(KeyName)-1), Ini%Read_String(KeyName))
-            !!Note: Use Read_String so read values are stored
-        end if
-    end do
-
-    end subroutine TNameKeyIniFile_TagValuesForName
 
     subroutine CheckParamChangeF(F)
     character(LEN=*), intent(in) ::  F

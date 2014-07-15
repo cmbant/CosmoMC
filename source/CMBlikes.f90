@@ -5,27 +5,56 @@
     !Updated file structure, allows for binned HL likelihoods. Everything now in L(L+1)CL/2pi
 
     module CMBLikes
+    use FileUtils
     use settings
     use CosmologyTypes
     use MatrixUtils
     use CosmoTheory
     use Likelihood_Cosmology
+    use Interpolation
     implicit none
     private
 
     logical, parameter :: bin_test = .false.
 
     Type TSqMatrix
-        real(mcp), dimension(:,:), allocatable :: M
+        real(mcp), allocatable :: M(:,:)
     end Type TSqMatrix
 
+    Type, extends(TSqMatrix) :: TIndexedMatrix
+        integer, allocatable :: Left_indices(:), Right_indices(:)
+    end type TIndexedMatrix
+
+    Type, extends(TIndexedMatrix) :: TCorrectionMatrix
+        real(mcp), allocatable :: Fiducial(:)
+    contains
+    procedure :: InterpProduct
+    procedure :: LoadFromFile
+    end Type TCorrectionMatrix
+
+    Type TBinWindows
+        integer :: lmin, lmax
+        real(mcp), dimension(:,:,:), allocatable :: W
+        integer, allocatable :: bin_cols_in(:,:), bin_cols_out(:)
+    contains
+    procedure :: bin => TBinWindows_bin
+    end type
+
+    Type LensReconData
+        !not actually needed for Planck likelihood
+        real(mcp), allocatable :: FiducialCl(:,:)
+        real(mcp), allocatable :: FiducialPhi(:)
+    end Type LensReconData
+
+    integer, parameter :: tot_fields =4
+
     Type, extends(TCMBLikelihood) :: TCMBLikes
-        logical :: highl_cl = .true.
         integer nfields !number of fields
-        logical use_field(3)
-        integer field_index(3) !mapping from 1,2,3 to index actually used
-        integer fields(3) !indices (1=T,2=E,3=B) of fields to use
-        character field_order(3)
+        logical use_field(tot_fields) !Actually directly used for likelihood
+        logical required_field(tot_fields) !Used for likelihood, or used for something else like renormalization/derived parameters
+        integer field_index(tot_fields) !mapping from 1,2,3 to index actually used
+        integer fields(tot_fields) !indices (1=T,2=E,3=B,4=B) of fields to use
+        character field_order(tot_fields)
         integer ncl !calculated from above = nfields*(nfields+1)/2
         integer ncl_used !Number of C_l actually used in covariance matrix (others assumed zero)
         integer, allocatable :: cl_use_index(:)
@@ -37,52 +66,54 @@
         real(mcp), dimension(:,:,:), allocatable :: ClHat
         !These are all L(L+1)C_L/2pi
 
-        integer cl_phi_lmin, cl_phi_lmax !lmax for the lensing reconstruction
-        integer lensing_recon_ncl !0 for no lensing recon, 1 for phi-phi spectru, 2 phi-phi and phi-T
-        integer phi_like_approx
-        real(mcp), dimension(:,:), allocatable :: ClPhiHat, ClPhiNoise, phi_inv_covariance
-        !for lensing reconstruction
-        !note these are [l(l+1)]^4C_l/2pi
+        real(mcp), dimension(:,:), allocatable :: inv_covariance
 
+        logical has_lensing
+
+        !Binning parameters
         integer bin_width
         logical binned
         integer nbins, nbins_used
-        integer, allocatable :: bin_cols_in(:,:), bin_cols_out(:)
         integer bin_min, bin_max
-        integer, allocatable :: cov_cl_used(:)
-        real(mcp), dimension(:,:), allocatable :: inv_covariance
-        real(mcp), dimension(:,:,:), allocatable :: binWindows
+        Type(TBinWindows) binWindows
+
+        !For correcting theory bandpowers using linear correction (which is zero at fiducial model):
+        !   CL_bin --> CL_bin + dot(binCorrectionWindows, CL) - FiducialCorrection
+        !Could be incorporated in bandpowers and bin window, but allows cleaner separation of effect of correction for testing
+        Type(TBinWindows) binCorrectionWindows
+        real(mcp), allocatable :: FiducialCorrection(:,:)
 
         Type(TSqMatrix), dimension(:), allocatable :: sqrt_fiducial, NoiseM
         Type(TSqMatrix), dimension(:,:), allocatable :: ChatM
+
+        Type(LensReconData) :: Lensing
     contains
     procedure :: LogLike => CMBLikes_LogLike
     procedure :: ReadIni => CMBLikes_ReadIni
     procedure, private :: ReadClArr => CMBLikes_ReadClArr
-    procedure, private :: ReadLensingReconData=> CMBLikes_ReadLensingReconData
-    procedure, private :: ReadClPhiArr => CMBLikes_ReadClPhiArr
     procedure, private :: UseString_to_cols
-    procedure, private :: UseString_to_TEB
+    procedure, private :: UseString_to_theoryPairCls
     procedure, private :: Transform => CMBLikes_Transform
-    procedure, private :: LensRecon_Like => CMBLikes_LensRecon_Like
     procedure, private :: ExactChisq
     procedure, private :: MatrixToElements
     procedure, private :: MatrixToElementsInt
     procedure, private :: ElementsToMatrix
-    procedure, private :: SetTopHatWindows
+    !    procedure, private :: SetTopHatWindows
     procedure, private :: GetColsFromOrder
+    procedure, private :: ReadLensing => CMBLikes_ReadLensing
     procedure :: ReadBinWindows
     procedure :: ReadCovmat
     procedure :: GetBinnedTheory
+    procedure :: GetObservedTheoryCls !Add foregrounds, or renorm lensing
     end Type TCMBLikes
 
-    character(LEN=3), parameter :: field_names = 'TEB'
-    integer, parameter :: like_approx_HL=1   !new approximation from Hammimeche & Lewis arXiv: 0801.0554
+    character(LEN=tot_fields), parameter :: field_names = 'TEBP' !P is CMB lensing
+    integer, parameter :: like_approx_HL=1   !approximation from Hammimeche & Lewis arXiv: 0801.0554
     integer, parameter :: like_approx_fid_gaussian=2 !fiducial fixed covariance matrix, (X-Xhat)^TC^{-1}(X-Xhat)
     integer, parameter :: like_approx_fullsky_exact=3 !ignore all correlations, use exact full sky likelihood function
 
     character(LEN=Ini_Enumeration_Len), parameter :: &
-    & like_Names(3) = [character(Ini_Enumeration_Len)::'HL','gaussian','exact']
+        & like_Names(3) = [character(Ini_Enumeration_Len)::'HL','gaussian','exact']
 
     public TCMBLikes
     contains
@@ -90,15 +121,11 @@
     function TypeIndex(C)
     character, intent(in) :: C
     integer TypeIndex
-    !Get order T, E, B -> 1,2,3
-    if (C=='T') then
-        TypeIndex=1
-    elseif (C=='E') then
-        TypeIndex=2
-    elseif (C=='B') then
-        TypeIndex=3
-    else
-        call mpiStop('Invalid C_l part, must be T E or B')
+    !Get order T, E, B, P -> 1,2,3,4
+
+    TypeIndex = index(field_names,C)
+    if (TypeIndex==0) then
+        call mpiStop('Invalid C_l part, must be one of: '//field_names)
     end if
 
     end function TypeIndex
@@ -108,14 +135,24 @@
     character(LEN=*), intent(in) :: filename, order
     integer, intent(in) :: lmin
     real(mcp) :: Cl(:,lmin:)
-    character(LEN=:), allocatable :: tmp
+    character(LEN=:), allocatable :: tmp, incols
     integer ix, l,ll
     integer, allocatable :: cols(:)
     real(mcp), allocatable :: tmp_ar(:)
     integer status, norder
     Type(TTextFile) :: F
 
-    norder = this%GetColsFromOrder(Order, cols)
+    if (Order=='') then
+        incols = File%TopCommentLine(filename)
+        if (incols=='') then
+            call MpiStop('No column order given for '//filename)
+        else
+            incols = trim(incols(2:))
+        end if
+    else
+        incols = 'L '//order
+    end if
+    norder = this%GetColsFromOrder(incols, cols)-1
     allocate(tmp_ar(norder))
 
     Cl=0
@@ -125,7 +162,7 @@
         ll=l
         if (l >=this%bin_min .and. l<=this%bin_max) then
             do ix=1,this%ncl
-                if (cols(ix)/=0) Cl(ix,l) = tmp_ar(cols(ix))
+                if (cols(ix)/=0) Cl(ix,l) = tmp_ar(cols(ix)-1)
             end do
         end if
     end do
@@ -175,16 +212,16 @@
 
     end subroutine UseString_to_cols
 
-    subroutine UseString_to_TEB(this, S, TEB)
+    subroutine UseString_to_theoryPairCls(this, S, theoryPairCls)
     class(TCMBLikes) :: this
     character(LEN=*), intent(in) :: S
-    integer, allocatable, intent(out) :: TEB(:,:)
+    integer, allocatable, intent(out) :: theoryPairCls(:,:)
     Type(TStringList) :: L
     integer tmp,i,i1,i2
     character(LEN=:), pointer :: P
 
     call L%SetFromString(S,field_names)
-    allocate(TEB(2,L%Count), source=0)
+    allocate(theoryPairCls(2,L%Count), source=0)
 
     do i=1, L%Count
         P=> L%Item(i)
@@ -196,29 +233,29 @@
             i1=i2
             i2=tmp
         end if
-        TEB(:,i) = [i1,i2]
+        theoryPairCls(:,i) = [i1,i2]
     end do
     call L%Clear()
 
-    end subroutine UseString_to_TEB
+    end subroutine UseString_to_theoryPairCls
 
-    subroutine SetTopHatWindows(this)
-    class(TCMBLikes) :: this
-    integer i
-    !Untested
-    allocate(this%binWindows(this%pcl_lmin:this%pcl_lmax,1,this%nbins), source=0._mcp)
-    !Internal CL are now L(L+1)C_L
-    do i=this%pcl_lmin,this%pcl_lmin+this%nbins*this%bin_width -1
-        this%binWindows(i,1,(i-this%pcl_lmin)/this%bin_width+1)=real(2*i+1,mcp)/(i*(i+1))
-    end do
-    do i=this%pcl_lmin+this%nbins*this%bin_width,this%pcl_lmax
-        this%binWindows(i,1,this%nbins)=real(2*i+1,mcp)/(i*(i+1))
-    end do
-    do i=1, this%nbins
-        this%binWindows(:,1,i) = this%binWindows(:,1,i)/sum(this%binWindows(:,1,i))
-    end do
-
-    end subroutine SetTopHatWindows
+    !subroutine SetTopHatWindows(this)
+    !class(TCMBLikes) :: this
+    !integer i
+    !!Untested
+    !allocate(this%binWindows(this%pcl_lmin:this%pcl_lmax,1,this%nbins), source=0._mcp)
+    !!Internal CL are now L(L+1)C_L
+    !do i=this%pcl_lmin,this%pcl_lmin+this%nbins*this%bin_width -1
+    !    this%binWindows(i,1,(i-this%pcl_lmin)/this%bin_width+1)=real(2*i+1,mcp)/(i*(i+1))
+    !end do
+    !do i=this%pcl_lmin+this%nbins*this%bin_width,this%pcl_lmax
+    !    this%binWindows(i,1,this%nbins)=real(2*i+1,mcp)/(i*(i+1))
+    !end do
+    !do i=1, this%nbins
+    !    this%binWindows(:,1,i) = this%binWindows(:,1,i)/sum(this%binWindows(:,1,i))
+    !end do
+    !
+    !end subroutine SetTopHatWindows
 
     function GetColsFromOrder(this, Order, cols) result(num)
     !Converts string Order = TT TE EE XY... into indices into array of power spectra (and zero if not present)
@@ -228,7 +265,7 @@
     Type(TStringList) :: Li
     integer i1,i,j,ix,num
 
-    call Li%SetFromString(Order,field_names)
+    call Li%SetFromString(Order)
     allocate(cols(this%ncl), source=0)
     ix=0
     do i=1,this%nfields
@@ -246,40 +283,48 @@
 
     end function GetColsFromOrder
 
-    subroutine ReadBinWindows(this,Ini)
+    subroutine ReadBinWindows(this,Ini, bin_type, binWindows)
     !For example:  bin_window_in_order = TT TE TE BB, bin_window_out_order = TT EE TE BB
     !has window file with five columns giving L, TT->TT, TE->EE, TE->TE, BB->BB
     class(TCMBLikes) :: this
     class(TSettingIni) :: Ini
+    character(LEN=*), intent(in) :: bin_type
+    class(TBinWindows) binWindows
     integer i
     character(LEN=:), allocatable :: filename,  S, Order1, Order2, InLine
     real(mcp), allocatable :: tmp_ar(:)
     integer L, status, norder
     Type(TTextFile) :: F
+    logical Err
 
-    filename = Ini%ReadFileName('bin_window_files', NotFoundFail=.true.,relative=.true.)
-    Order1 = Ini%Read_String('bin_window_in_order', .true.)
-    Order2 = Ini%Read_String_Default('bin_window_out_order', Order1)
-
-    call this%UseString_to_TEB(Order1, this%bin_cols_in)
-    call this%UseString_to_cols(Order2, this%bin_cols_out)
-    norder = size(this%bin_cols_in,2)
-    if (norder/=size(this%bin_cols_out)) &
-    & call MpiStop('bin_window_in_order and bin_window_out_order must have same numebr of CL')
+    filename = Ini%ReadFileName(bin_type // '_files', NotFoundFail=.true.,relative=.true.)
+    Order1 = Ini%Read_String(bin_type // '_in_order', .true.)
+    Order2 = Ini%Read_String_Default(bin_type // '_out_order', Order1)
+    call this%UseString_to_theoryPairCls(Order1, binWindows%bin_cols_in)
+    call this%UseString_to_cols(Order2, binWindows%bin_cols_out)
+    norder = size(binWindows%bin_cols_in,2)
+    if (norder/=size(binWindows%bin_cols_out)) &
+        & call MpiStop(bin_type // '_in_order and '//bin_type // '_out_order must have same numebr of CL')
 
     allocate(tmp_ar(norder))
-    allocate(this%binWindows(this%pcl_lmin:this%pcl_lmax,norder,this%bin_min:this%bin_max), source=0._mcp)
+    binWindows%lmin = this%pcl_lmin
+    binWindows%lmax = this%pcl_lmax
+    allocate(binWindows%W(this%pcl_lmin:this%pcl_lmax,norder,this%bin_min:this%bin_max), source=0._mcp)
     do i=this%bin_min, this%bin_max
         S = FormatString(filename, i)
+        Err = .false.
         do while (F%ReadNextContentLine(S,InLine))
             read(InLine,*, iostat=status) l, tmp_ar
             if (status/=0) call MpiStop('ReadBinWindows: error reading line '//trim(filename))
             if (l>=this%pcl_lmin .and. l <=this%pcl_lmax) then
-                this%binWindows(l,:,i) = tmp_ar
+                binWindows%W(l,:,i) = tmp_ar
             else
-                write(*,*) 'WARNING: bin window outside cl_lmin--cl_max range'
+                Err = Err .or. any(tmp_ar/=0)
             end if
         end do
+        if (Err) then
+            write(*,*) FormatString( 'WARNING: %s %u outside cl_lmin-cl_max range: %s', bin_type, i, S)
+        end if
     end do
 
     end subroutine ReadBinWindows
@@ -290,10 +335,10 @@
     integer ix, i
     character(LEN=:), allocatable :: S, S_order
     integer l,j, clix
-    logical :: cl_fiducial_includes_noise
+    logical :: cl_fiducial_includes_noise, includes_noise
 
     if (Ini%TestEqual('dataset_format','CMBLike')) &
-    & call MpiStop('CMBLikes dataset_format now CMBLike2 (e.g. covmat are for L(L+1)CL/2pi)')
+        & call MpiStop('CMBLikes dataset_format now CMBLike2 (e.g. covmat are for L(L+1)CL/2pi)')
     if (.not. Ini%TestEqual('dataset_format','CMBLike2',EmptyOK=.true.)) call MpiStop('CMBLikes wrong dataset_format')
 
     S = Ini%Read_String('fields_use', .true.)
@@ -301,6 +346,14 @@
     do i=1, len_trim(S)
         if (trim(S(i:i))/='') this%use_field(TypeIndex(S(i:i))) = .true.
     end do
+
+    S = Ini%Read_String('fields_required')
+    this%required_field = this%use_field
+    if (S /= '') then
+        do i=1, len_trim(S)
+            if (trim(S(i:i))/='') this%required_field(TypeIndex(S(i:i))) = .true.
+        end do
+    end if
 
     this%nfields=0
     this%ncl=0
@@ -310,7 +363,7 @@
     this%nfields = count(this%use_field)
     ix=0
     this%field_index=0
-    do i=1,3
+    do i=1,tot_fields
         if (this%use_field(i)) then
             ix=ix+1
             this%field_index(i)=ix
@@ -342,9 +395,10 @@
         this%bin_min=Ini%Read_Int('use_min',1,min=1,max=this%nbins)
         this%bin_max=Ini%Read_Int('use_max',this%nbins,min=this%bin_min,max=this%nbins)
         if (bin_test) then
-            call this%SetTopHatWindows()
+            call MpiStop('bin_test not implemented')
+            !           call this%SetTopHatWindows()
         else
-            call this%ReadBinWindows(Ini)
+            call this%ReadBinWindows(Ini, 'bin_window', this%binWindows)
         end if
     else
         this%bin_min=Ini%Read_Int('use_min',this%pcl_lmin,min=this%pcl_lmin,max=this%pcl_lmax)
@@ -356,62 +410,61 @@
 
     allocate(this%ClHat(this%ncl,this%bin_min:this%bin_max, this%ncl_hat))
     S = Ini%ReadFileName('cl_hat_file',NotFoundFail=.true., relative=.true.)
-    S_order = Ini%read_String('cl_hat_order', .true.)
+    S_order = Ini%read_String('cl_hat_order')
     call this%ReadClArr(S, S_order,this%ClHat(:,:,1),this%bin_min)
     do j=2, this%ncl_hat
         !for simulated with multiple realizations with same covariance and noise
         call this%ReadClArr(Ini%ReadFileName(numcat('cl_hat_file',j), relative=.true.), S_order,this%ClHat(:,:,j),this%bin_min)
     end do
 
-    if (this%like_approx /= like_approx_fullsky_exact) then
+    if (this%like_approx == like_approx_HL) then
+        S =Ini%ReadFileName('cl_fiducial_file', NotFoundFail=.true. ,relative=.true.)
         allocate(this%ClFiducial(this%ncl,this%bin_min:this%bin_max))
-        S =Ini%ReadFileName('cl_fiducial_file',NotFoundFail=.true.,relative=.true.)
-        S_order = Ini%Read_String('cl_fiducial_order', .true.)
+        S_order = Ini%Read_String('cl_fiducial_order')
         call this%ReadClArr(S, S_order,this%ClFiducial,this%bin_min)
-    else
+    else if (this%like_approx == like_approx_fullsky_exact) then
         !Exact like
         call Ini%Read('fullsky_exact_fksy', this%fullsky_exact_fksy)
     end if
 
-    allocate(this%ClNoise(this%ncl,this%bin_min:this%bin_max))
-    S = Ini%ReadFileName('cl_noise_file',relative=.true.)
-    S_order = Ini%read_String('cl_noise_order', .true.)
-    call this%ReadClArr(S, S_order,this%ClNoise,this%bin_min)
-
-    this%lensing_recon_ncl = Ini%Read_Int('lensing_recon_ncl', 0)
-    if (this%lensing_recon_ncl > 0) call this%ReadLensingReconData(Ini)
-
-    if (this%lensing_recon_ncl >0) then
-        allocate(this%cl_lmax(CL_Phi,CL_Phi), source=0)
-        this%cl_lmax(CL_Phi,CL_Phi) = this%pcl_lmax
-        this%cl_lmax(CL_Phi,1:this%lensing_recon_ncl) = this%pcl_lmax
-    else
-        allocate(this%cl_lmax(CL_B,CL_B), source=0)
-    end if
-
-    do i=1,CL_E
-        if (this%use_field(i)) then
-            do j=1,i
-                if (this%use_field(j)) this%cl_lmax(i,j) = this%pcl_lmax
+    includes_noise = Ini%Read_Logical('cl_hat_includes_noise',.false.)
+    if (this%like_approx/=like_approx_fid_gaussian .or. includes_noise) then
+        S = Ini%ReadFileName('cl_noise_file',relative=.true.,NotFoundFail=.true.)
+        allocate(this%ClNoise(this%ncl,this%bin_min:this%bin_max))
+        S_order = Ini%Read_String('cl_noise_order')
+        call this%ReadClArr(S, S_order,this%ClNoise,this%bin_min)
+        if (.not. includes_noise) then
+            do j=1,this%ncl_hat
+                this%ClHat(:,:,j) =  this%ClHat(:,:,j) + this%ClNoise
             end do
+        else if (this%like_approx==like_approx_fid_gaussian) then
+            do j=1,this%ncl_hat
+                this%ClHat(:,:,j) =  this%ClHat(:,:,j) - this%ClNoise
+            end do
+            deallocate(this%ClNoise)
         end if
-    end do
-    if (this%use_field(CL_B)) this%cl_lmax(CL_B,CL_B) = this%pcl_lmax
-
-    if (.not. Ini%Read_Logical('cl_hat_includes_noise',.false.)) then
-        do j=1,this%ncl_hat
-            this%ClHat(:,:,j) =  this%ClHat(:,:,j) + this%ClNoise
-        end do
     end if
 
-    cl_fiducial_includes_noise = Ini%Read_Logical('cl_fiducial_includes_noise',.false.)
+    allocate(this%cl_lmax(CL_Phi,CL_Phi), source=0)
+
+    do i=1, tot_fields
+        if (this%required_field(i)) this%cl_lmax(i,i) = this%pcl_lmax
+    end do
+
+    if (this%required_field(CL_T) .and. this%required_field(CL_E)) &
+        & this%cl_lmax(CL_E,CL_T) = this%pcl_lmax
+
 
     if (Ini%HasKey('point_source_cl') .or. Ini%HasKey('beam_modes_file')) &
-    & call MpiStop('dataset uses keywords no longer supported')
+        & call MpiStop('dataset uses keywords no longer supported')
 
     allocate(this%ChatM(this%bin_min:this%bin_max, this%ncl_hat))
-    allocate(this%NoiseM(this%bin_min:this%bin_max))
-    allocate(this%sqrt_fiducial(this%bin_min:this%bin_max))
+
+    if (this%like_approx /= like_approx_fid_gaussian) then
+        cl_fiducial_includes_noise = Ini%Read_Logical('cl_fiducial_includes_noise',.false.)
+        allocate(this%NoiseM(this%bin_min:this%bin_max))
+        allocate(this%sqrt_fiducial(this%bin_min:this%bin_max))
+    end if
 
     !if (this%nbins/=0) then
     !allocate(avec(this%ncl))
@@ -429,25 +482,28 @@
     !        end do
     !        call this%ElementsToMatrix(avec, this%sqrt_fiducial(i)%M)
     !        if (.not. cl_fiducial_includes_noise) &
-    !        & this%sqrt_fiducial(i)%M= this%sqrt_fiducial(i)%M + this%NoiseM(i)%M
-    !        call Matrix_Root(this%sqrt_fiducial(i)%M, this%nfields, 0.5_mcp)
-    !    end if
-    !    do clix =1, this%ncl_hat
-    !        allocate(this%ChatM(i,clix)%M(this%nfields,this%nfields))
-    !        do j=1,this%ncl
-    !            avec(j) = sum(this%binWindows(:,i)*this%ClHat(j,:,clix))
-    !        end do
-    !        call this%ElementsToMatrix(avec, this%ChatM(i,clix)%M)
-    !    end do
-    !end do
-    !deallocate(avec)
+        !        & this%sqrt_fiducial(i)%M= this%sqrt_fiducial(i)%M + this%NoiseM(i)%M
+        !        call Matrix_Root(this%sqrt_fiducial(i)%M, this%nfields, 0.5_mcp)
+        !    end if
+        !    do clix =1, this%ncl_hat
+        !        allocate(this%ChatM(i,clix)%M(this%nfields,this%nfields))
+        !        do j=1,this%ncl
+        !            avec(j) = sum(this%binWindows(:,i)*this%ClHat(j,:,clix))
+        !        end do
+        !        call this%ElementsToMatrix(avec, this%ChatM(i,clix)%M)
+        !    end do
+        !end do
+        !deallocate(avec)
+
     do l=this%bin_min,this%bin_max
         do clix = 1, this%ncl_hat
             allocate(this%ChatM(l,clix)%M(this%nfields,this%nfields))
             call this%ElementsToMatrix(this%ClHat(:,l,clix), this%ChatM(l,clix)%M)
         end do
-        allocate(this%NoiseM(l)%M(this%nfields,this%nfields))
-        call this%ElementsToMatrix(this%ClNoise(:,l), this%NoiseM(l)%M)
+        if (allocated(this%ClNoise)) then
+            allocate(this%NoiseM(l)%M(this%nfields,this%nfields))
+            call this%ElementsToMatrix(this%ClNoise(:,l), this%NoiseM(l)%M)
+        end if
         if (allocated(this%ClFiducial)) then
             allocate(this%sqrt_fiducial(l)%M(this%nfields,this%nfields))
             if (.not. cl_fiducial_includes_noise) this%ClFiducial(:,l)=this%ClFiducial(:,l)+this%ClNoise(:,l)
@@ -461,9 +517,44 @@
     end if
     if (Ini%HasKey('lowl_exact')) call MpiStop('lowl_exact has been separated out as not currently used')
 
+    S = Ini%ReadFileName('linear_correction_fiducial',relative=.true.)
+    if (S/='') then
+        allocate(this%FiducialCorrection(this%ncl,this%bin_min:this%bin_max))
+        S_order = Ini%read_String('linear_correction_fiducial_order')
+        call this%ReadClArr(S, S_order,this%FiducialCorrection(:,:),this%bin_min)
+        call this%ReadBinWindows(Ini, 'linear_correction_bin_window', this%binCorrectionWindows)
+    end if
+
+    this%has_lensing  = this%cl_lmax(CL_Phi,CL_Phi) > 0
+    if (this%has_lensing) then
+        call this%ReadLensing(Ini)
+    end if
+
     call this%TCMBLikelihood%ReadIni(Ini)
 
     end subroutine CMBLikes_ReadIni
+
+    subroutine CMBLikes_ReadLensing(this, Ini)
+    class(TCMBLikes) :: this
+    class(TSettingIni) :: Ini
+    integer i
+    character(LEN=:), allocatable :: S, Comment
+    Type(TStringList) :: L, RenormCl
+    real(mcp), allocatable :: Fid(:,:)
+    integer, allocatable :: ls(:)
+
+    S = Ini%ReadFileName('lensing_fiducial_cl',relative=.true.)
+    if (S/='') then
+        call File%LoadTxt(S, Fid, comment = Comment)
+        call L%SetFromString(Comment)
+        allocate(ls(size(Fid,1)),source=int(Fid(:,1)))
+        allocate(this%Lensing%FiducialPhi(0:ls(size(ls))), source=0._mcp)
+        this%Lensing%FiducialPhi(ls) = Fid(:,L%IndexOf('PP'))
+        allocate(this%Lensing%FiducialCl(0:ls(size(ls)),1), source=0._mcp)
+        this%Lensing%FiducialCl(ls,1) = Fid(:,2)
+    end if
+
+    end subroutine CMBLikes_ReadLensing
 
     subroutine ReadCovmat(this, Ini)
     class(TCMBLikes) :: this
@@ -475,6 +566,8 @@
     integer vecsize_in
     integer i, j, L1, L2
     real(mcp) :: covmat_scale = 1
+    integer, allocatable :: cov_cl_used(:)
+
 
     covmat_cl = Ini%Read_String('covmat_cl', .true.)
     filename = Ini%ReadFileName('covmat_fiducial', NotFoundFail=.true.,relative=.true.)
@@ -484,16 +577,15 @@
     num_in = size(cl_in_index)
     this%ncl_used = count(cl_in_index /=0)
     allocate(this%cl_use_index(this%ncl_used))
-    allocate(this%cov_cl_used(this%ncl_used))
+    allocate(cov_cl_used(this%ncl_used))
     ix = 0
     do i=1, num_in
         if (cl_in_index(i)/=0) then
             ix = ix+1
             this%cl_use_index(ix) = cl_in_index(i)
-            this%cov_cl_used(ix) = i
+            cov_cl_used(ix) = i
         end if
     end do
-
 
     if (this%binned) then
         allocate(Cov(num_in*this%nbins,num_in*this%nbins))
@@ -502,8 +594,8 @@
         do binx=this%bin_min, this%bin_max
             do biny=this%bin_min, this%bin_max
                 this%inv_covariance( (binx-this%bin_min)*this%ncl_used+1:(binx-this%bin_min+1)*this%ncl_used, &
-                & (biny-this%bin_min)*this%ncl_used+1:(biny-this%bin_min+1)*this%ncl_used) = &
-                & covmat_scale*Cov( (binx-1)*num_in+this%cov_cl_used, (biny-1)*num_in+this%cov_cl_used)
+                    & (biny-this%bin_min)*this%ncl_used+1:(biny-this%bin_min+1)*this%ncl_used) = &
+                    & covmat_scale*Cov( (binx-1)*num_in+cov_cl_used, (biny-1)*num_in+cov_cl_used)
             end do
         end do
         call Matrix_Inverse(this%inv_covariance)
@@ -519,8 +611,8 @@
                         do L2 = this%bin_min, this%bin_max
                             !Assume L matrices are ordered the other way in blocks of different L for each CL type
                             this%inv_covariance( (L1-this%bin_min)*this%ncl_used+i, (L2-this%bin_min)*this%ncl_used+j) = &
-                            & covmat_scale*Cov((this%cov_cl_used(i)-1)*vecsize_in + L1 - this%pcl_lmin+1, &
-                            & (this%cov_cl_used(j)-1)*vecsize_in + L2 - this%pcl_lmin+1)
+                                & covmat_scale*Cov((cov_cl_used(i)-1)*vecsize_in + L1 - this%pcl_lmin+1, &
+                                & (cov_cl_used(j)-1)*vecsize_in + L2 - this%pcl_lmin+1)
                         end do
                     end do
                 end do
@@ -532,29 +624,29 @@
             !            do l1= this%pcl_lmin, this%pcl_lmax
             !                do l2= this%pcl_lmin, this%pcl_lmax
             !                    fullcov((i-1)*this%vecsize+ l1 -this%pcl_lmin+1 ,(j-1)*this%vecsize+ l2 -this%pcl_lmin+1 ) = &
-            !                    fullcov((i-1)*this%vecsize+ l1 -this%pcl_lmin+1,(j-1)*this%vecsize+ l2 -this%pcl_lmin+1 ) +  &
-            !                    this%point_source_error**2*this%ClPointsources(i,l1)*this%ClPointsources(j,l2)
-            !                end do
-            !            end do
-            !        end do
-            !    end do
-            !end if
-            !if (allocated(this%beammodes)) then
-            !    do i=this%beam_MCMC_modes+1, nmodes
-            !        this%BeamModes(this%pcl_lmin:this%pcl_lmax,i)=this%BeamModes(this%pcl_lmin:this%pcl_lmax,i)*&
-            !        & this%ClFiducial(1,this%pcl_lmin:this%pcl_lmax)
-            !    end do
-            !    do i=this%beam_MCMC_modes+1, nmodes
-            !        do l1= this%pcl_lmin, this%pcl_lmax
-            !            do l2= this%pcl_lmin, this%pcl_lmax
-            !                fullcov(l1 -this%pcl_lmin+1, l2 -this%pcl_lmin+1 ) = &
-            !                fullcov(l1 -this%pcl_lmin+1, l2 -this%pcl_lmin+1 ) +  this%BeamModes(l1,i)*this%BeamModes(l2,i)
-            !            end do
-            !        end do
-            !    end do
-            !end if
+                !                    fullcov((i-1)*this%vecsize+ l1 -this%pcl_lmin+1,(j-1)*this%vecsize+ l2 -this%pcl_lmin+1 ) +  &
+                !                    this%point_source_error**2*this%ClPointsources(i,l1)*this%ClPointsources(j,l2)
+                !                end do
+                !            end do
+                !        end do
+                !    end do
+                !end if
+                !if (allocated(this%beammodes)) then
+                !    do i=this%beam_MCMC_modes+1, nmodes
+                !        this%BeamModes(this%pcl_lmin:this%pcl_lmax,i)=this%BeamModes(this%pcl_lmin:this%pcl_lmax,i)*&
+                !        & this%ClFiducial(1,this%pcl_lmin:this%pcl_lmax)
+                !    end do
+                !    do i=this%beam_MCMC_modes+1, nmodes
+                !        do l1= this%pcl_lmin, this%pcl_lmax
+                !            do l2= this%pcl_lmin, this%pcl_lmax
+                !                fullcov(l1 -this%pcl_lmin+1, l2 -this%pcl_lmin+1 ) = &
+                !                fullcov(l1 -this%pcl_lmin+1, l2 -this%pcl_lmin+1 ) +  this%BeamModes(l1,i)*this%BeamModes(l2,i)
+                !            end do
+                !        end do
+                !    end do
+                !end if
 
-            call Matrix_inverse(this%inv_covariance)
+                    call Matrix_inverse(this%inv_covariance)
         else !Not mainMPI
             allocate(this%inv_covariance(this%nbins_used*this%ncl_used, this%nbins_used*this%ncl_used))
         end if !MainMPI
@@ -563,69 +655,6 @@
 #endif
     end if
     end subroutine ReadCovmat
-
-
-    subroutine CMBLikes_ReadLensingReconData(this, Ini)
-    class(TCMBLikes) :: this
-    class(TSettingIni) :: Ini
-    character(LEN=:), allocatable :: fname
-
-    if (Feedback > 1) print *,'CMBLikes_ReadLensingReconData'
-
-    this%cl_phi_lmin = Ini%Read_Int('cl_phi_lmin', this%pcl_lmin)
-    this%cl_phi_lmax = Ini%Read_Int('cl_phi_lmax', this%pcl_lmax)
-    this%phi_like_approx = Ini%Read_Int('phi_like_approx',this%like_approx)
-
-    allocate(this%ClPhiHat(this%lensing_recon_ncl,this%cl_phi_lmin:this%cl_phi_lmax))
-    allocate(this%ClPhiNoise(this%lensing_recon_ncl,this%cl_phi_lmin:this%cl_phi_lmax))
-    call this%ReadClPhiArr(Ini%ReadFileName('cl_hat_phi_file',relative=.true.),this%ClPhiHat)
-    call this%ReadClPhiArr(Ini%ReadFileName('cl_noise_phi_file',relative=.true.),this%ClPhiNoise)
-
-    if (.not. Ini%Read_Logical('cl_hat_includes_noise')) then
-        this%ClPhiHat = this%ClPhiHat + this%ClPhiNoise
-    end if
-
-    if (this%phi_like_approx /= like_approx_fullsky_exact) then
-        fname = Ini%ReadFileName('covmat_phi_fiducial',relative=.true.)
-        if (fname /='') then
-            allocate(this%phi_inv_covariance(this%cl_phi_lmin:this%cl_phi_lmax,this%cl_phi_lmin:this%cl_phi_lmax))
-            call MatrixSym_Read_Binary(fname, this%phi_inv_covariance)
-            call Matrix_Inverse(this%phi_inv_covariance)
-        end if
-    end if
-
-    if (Feedback > 1) print *, 'CMBLikes_ReadLensingReconData done'
-
-    end subroutine CMBLikes_ReadLensingReconData
-
-    subroutine CMBLikes_ReadClPhiArr(this, aname, Cl)
-    class(TCMBLikes) :: this
-    character(LEN=*), intent(in) :: aname
-    real(mcp) :: Cl(:,this%cl_phi_lmin:),tmp_arr(this%lensing_recon_ncl)
-    character(LEN=:), allocatable :: InLine
-    integer l, ll, status
-    Type(TTextFile) :: F
-
-    call F%Open(aname)
-    Cl=0
-    ll=0
-    do while(F%ReadLine(InLine))
-        read(InLine,*, iostat=status) l, tmp_arr
-        if (status/=0) exit
-        if (l>=this%cl_phi_lmin .and. l <=this%cl_phi_lmax) then
-            ll=l
-            Cl(1,l) = tmp_arr(1)
-            if (this%lensing_recon_ncl>1) call MpiStop('CMBLikes_ReadClPhiArr: change for n>1')
-        end if
-    end do
-    if (ll<this%cl_phi_lmax) then
-        write(*,*) 'CMBLikes_ReadClPhiArr: C_l file does not go up to phi lmax:', this%cl_phi_lmax
-        write (*,*) trim(aname)
-        call MpiStop()
-    end if
-    call F%Close()
-
-    end subroutine CMBLikes_ReadClPhiArr
 
     subroutine CMBLikes_Transform(this, C, Chat, CfHalf, COffset)
     !Get  C = C_s^{1/2}  U f(this) U^T C_s^{1/2} where C^{-1/2} CHat C^{-1/2} = U this U^T
@@ -747,57 +776,34 @@
 
     end function ExactChiSq
 
-    function CMBLikes_LensRecon_Like(this, Theory) result (chisq)
+    subroutine GetBinnedTheory(this, TheoryCls, C, bin)
     class(TCMBLikes) :: this
-    Class(TCosmoTheoryPredictions) :: Theory
-    real(mcp) vec(this%cl_phi_lmin:this%cl_phi_lmax)
-    integer l
-    real(mcp) chisq, Cphi, CPhiHat
-
-    if (Feedback > 1) print *,'CMBLikes_LensRecon_CMBLike'
-
-    if (this%bin_width/=1) call MpiStop('CMBLikes_LensRecon_CMBLike: unsupported option')
-    if (this%lensing_recon_ncl /=1) call MpiStop('CMBLikes_LensRecon_CMBLike: unsupported ncl')
-    !not implemented cross-correlation
-    chisq = 0
-    do l=this%cl_phi_lmin, this%cl_phi_lmax
-        Cphi = Theory%Cls(CL_Phi,CL_phi)%CL(L) + this%ClPhiNoise(1,l)
-        CPhihat = this%ClPhihat(1,l)
-        if (this%phi_like_approx == like_approx_fullsky_exact) then
-            chisq = chisq + (2*l+1)*this%fullsky_exact_fksy*( CPhiHat/CPhi + log(CPhi/CPhiHat) -1)
-        else if (this%phi_like_approx == like_approx_fid_gaussian) then
-            vec(l) = CPhiHat - CPhi
-        else
-            call MpiStop('only implemented lensing recon exact like')
-        end if
-    end do
-
-    if (this%phi_like_approx /= like_approx_fullsky_exact) then
-        chisq = chisq + Matrix_QuadForm(this%phi_inv_covariance,vec)
-    end if
-
-    if (Feedback > 1) print *,'CMBLikes_LensRecon_CMBLike done'
-
-    end function CMBLikes_LensRecon_Like
-
-    subroutine GetBinnedTheory(this, Theory, C, bin)
-    class(TCMBLikes) :: this
-    Class(TCosmoTheoryPredictions) :: Theory
+    Type(TSkyPowerSpectrum) :: TheoryCls(:,:)
     real(mcp) Cls(this%ncl), C(this%nfields,this%nfields)
-    integer bin
-    integer win_ix,ix_in(2), ix_out
+    real(mcp) correctionCl(this%ncl)
+    integer, intent(in) :: bin
 
-    cls=0
-    do win_ix = 1, size(this%bin_cols_in,2)
-        ix_in = this%bin_cols_in(:,win_ix)
-        if (this%cl_lmax(ix_in(1),ix_in(2))>0) then
-            ix_out = this%bin_cols_out(win_ix)
-            if (ix_out>0) Cls(ix_out) = Cls(ix_out) + &
-            & dot_product(this%BinWindows(:,win_ix,bin),Theory%CLs(ix_in(1),ix_in(2))%CL(this%pcl_lmin:this%pcl_lmax))
-        end if
-    end do
+    call this%BinWindows%Bin(TheoryCls, Cls, bin)
+    if (allocated(this%binCorrectionWindows%W)) then
+        call this%BinCorrectionWindows%Bin(TheoryCls, correctionCl, bin)
+        Cls = Cls + (correctionCl - this%FiducialCorrection(:,bin))
+    end if
     call this%ElementsToMatrix(Cls, C)
+
     end subroutine GetBinnedTheory
+
+
+    subroutine GetObservedTheoryCls(this, Theory, Cls)
+    class(TCMBLikes) :: this
+    class(TCosmoTheoryPredictions) :: Theory
+    Type(TSkyPowerSpectrum), allocatable, intent(out) :: Cls(:,:)
+    real(mcp), allocatable :: N1_Interp(:), renorm(:)
+    integer lmax, lmin, lmaxN1, lminN1
+
+    allocate(Cls, source= Theory%Cls)
+    !Chance to make adjustments of foregrounds, corrections etc.
+
+    end subroutine GetObservedTheoryCls
 
     function CMBLikes_LogLike(this, CMB, Theory, DataParams)  result (LogLike)
     real(mcp) logLike
@@ -809,14 +815,17 @@
     real(mcp) C(this%nfields,this%nfields)
     real(mcp) vecp(this%ncl)
     real(mcp) bigX((this%bin_max-this%bin_min+1)*this%ncl_used)
-    integer  Ti,Ei,Bi, bin,clix
+    integer  Ti,Ei,Bi,Phii, bin,clix
     logical :: quadratic
+    Type(TSkyPowerSpectrum), allocatable :: TheoryCls(:,:)
 
     chisq =0
 
     Ti = this%field_index(1)
     Ei = this%field_index(2)
     Bi = this%field_index(3)
+    Phii = this%field_index(4)
+    call this%GetObservedTheoryCls(Theory, TheoryCls)
 
     do clix = 1, this%ncl_hat ! 1 or sum over chi-squareds of simulations
         !removed nuisance parameters for the moment
@@ -825,35 +834,42 @@
         !  if (this%pointsource_MCMC_modes>0) then
         !    mode=mode+1
         !    cl(this%pcl_lmin:this%pcl_lmax,1) = cl(this%pcl_lmin:this%pcl_lmax,1) + &
-        !      this%point_source_error*nuisance_params(mode)*this%ClPointsources(1,this%pcl_lmin:this%pcl_lmax)
-        !  end if
-        !  beamC=0
-        !  do i=1, this%beam_MCMC_modes
-        !     mode = mode + 1
-        !     BeamC = BeamC + nuisance_params(mode) *cl(this%pcl_lmin:this%pcl_lmax,1)*this%beammodes( this%pcl_lmin:this%pcl_lmax,i )
-        !  end do
-        !   cl(this%pcl_lmin:this%pcl_lmax,1) = cl(this%pcl_lmin:this%pcl_lmax,1) + beamC
-        !
-        ! end if
+            !      this%point_source_error*nuisance_params(mode)*this%ClPointsources(1,this%pcl_lmin:this%pcl_lmax)
+            !  end if
+            !  beamC=0
+            !  do i=1, this%beam_MCMC_modes
+            !     mode = mode + 1
+            !     BeamC = BeamC + nuisance_params(mode) *cl(this%pcl_lmin:this%pcl_lmax,1)*this%beammodes( this%pcl_lmin:this%pcl_lmax,i )
+            !  end do
+            !   cl(this%pcl_lmin:this%pcl_lmax,1) = cl(this%pcl_lmin:this%pcl_lmax,1) + beamC
+            !
+            ! end if
+
         do bin = this%bin_min, this%bin_max
             if (this%binned .or. bin_test) then
                 if (this%like_approx == like_approx_fullsky_exact) call mpiStop('CMBLikes: exact like cannot be binned!')
-
-                call this%GetBinnedTheory(Theory, C, bin)
-
+                call this%GetBinnedTheory(TheoryCls, C, bin)
             else
                 C=0
-                if (Ti/=0) C(Ti,Ti) = Theory%CLs(CL_T,CL_T)%CL(bin)
+                if (Ti/=0) C(Ti,Ti) = TheoryCLs(CL_T,CL_T)%CL(bin)
                 if (Ei/=0) then
-                    C(Ei,Ei) = Theory%CLs(CL_E,CL_E)%CL(bin)
+                    C(Ei,Ei) = TheoryCLs(CL_E,CL_E)%CL(bin)
                     if (Ti/=0) then
-                        C(Ei,Ti) = Theory%CLs(CL_E,CL_T)%CL(bin)
+                        C(Ei,Ti) = TheoryCLs(CL_E,CL_T)%CL(bin)
                         C(Ti,Ei) = C(Ei,Ti)
                     end if
                 end if
-                if (Bi/=0) C(Bi,Bi) =  Theory%CLs(CL_B,CL_B)%CL(bin)
+                if (Bi/=0) C(Bi,Bi) =  TheoryCLs(CL_B,CL_B)%CL(bin)
+                if (Phii/=0) then
+                    C(Phii,Phii) = TheoryCLs(CL_Phi,CL_Phi)%CL(bin)
+                    !No cross for the moment
+                    !if (Ti/=0) C(Phii,Ti) = TheoryCLs(CL_Phi,CL_T)%CL(bin)
+                end if
             end if
-            C = C + this%NoiseM(bin)%M
+
+            if (allocated(this%NoiseM)) then
+                C = C + this%NoiseM(bin)%M
+            end if
 
             if (this%like_approx == like_approx_HL) then
                 call this%Transform(C, this%ChatM(bin,clix)%M, this%sqrt_fiducial(bin)%M)
@@ -876,14 +892,72 @@
 
         if (quadratic) chisq = chisq + Matrix_QuadForm(this%inv_covariance,BigX)
 
-        if (this%lensing_recon_ncl>0) then
-            chisq = chisq + this%LensRecon_Like(Theory)
-        end if
     end do
 
     LogLike = chisq/2
 
     end function CMBLikes_LogLike
+
+
+    subroutine LoadFromFile(this, fname, fidCL)
+    class(TCorrectionMatrix) :: this
+    character(LEN=*), intent(in) :: fname
+    real(mcp), allocatable :: Mat(:,:)
+    real(mcp), intent(in) :: fidCL(:)
+    integer m,n
+
+    call File%LoadTxt(fname,Mat, m,n)
+    allocate(this%M(m-1, n-1), source = Mat(2:m,2:n))
+    allocate(this%left_indices(m-1), this%right_indices(n-1))
+    this%left_indices = int(Mat(2:m,1))
+    this%right_indices = int(Mat(1,2:n))
+
+    allocate(this%Fiducial(m-1))
+    this%Fiducial = matmul(this%M, fidCL(this%Right_indices))
+
+    end subroutine LoadFromFile
+
+    subroutine InterpProduct(this, RightInput, InterpOutput, lmin, lmax, lmaxmax, sub_fiducial)
+    class (TCorrectionMatrix) :: this
+    real(mcp), intent(in) :: RightInput(:)
+    real(mcp), allocatable, intent(out) :: InterpOutput(:)
+    integer, intent(out) :: lmin, lmax
+    integer, intent(in) :: lmaxmax
+    logical sub_fiducial
+    Type(TCubicSpline) :: Interp
+    real(mcp), allocatable :: LeftOutput(:)
+
+    allocate(LeftOutput(size(this%Left_Indices)))
+    Leftoutput = matmul(this%M, RightInput(this%Right_indices))
+    if (sub_fiducial) LeftOutput = LeftOutput - this%Fiducial
+    call Interp%Init(this%Left_indices, LeftOutput)
+    lmin = this%Left_indices(1)
+    lmax = min(lmaxmax,this%Left_indices(size(this%Left_Indices)))
+    allocate(InterpOutput(lmin:lmax))
+    call Interp%Array(lmin, lmax, InterpOutput)
+
+    end subroutine InterpProduct
+
+    subroutine TBinWindows_bin(this, TheoryCls, Cls, bin)
+    class(TBinWindows) :: this
+    Type(TSkyPowerSpectrum) :: TheoryCls(:,:)
+    real(mcp) Cls(:)
+    integer bin
+    integer win_ix,ix_in(2), ix_out
+
+    cls=0
+    do win_ix = 1, size(this%bin_cols_in,2)
+        ix_in = this%bin_cols_in(:,win_ix)
+        if (allocated(TheoryCls(ix_in(1),ix_in(2))%CL)) then
+            ix_out = this%bin_cols_out(win_ix)
+            if (ix_out>0) then
+                Cls(ix_out) = Cls(ix_out) + &
+                    & dot_product(this%W(:,win_ix,bin),TheoryCls(ix_in(1),ix_in(2))%CL(this%lmin:this%lmax))
+            end if
+        end if
+    end do
+
+    end subroutine TBinWindows_bin
 
 
     end module CMBLikes

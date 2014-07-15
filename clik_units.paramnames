@@ -12,6 +12,7 @@ yhe           Y_{\mathrm{P}}    #Helium mass fraction (not used if bbn_consisten
 alpha1        \alpha_{-1} #correlated CDM isocurvature 
 deltazrei     \Delta z_{\mathrm{re}} #width of reionization
 Alens         A_{\mathrm{L}}     #lensing potential scaled by sqrt(A_lens)
+Alensf         A_{\mathrm{L}^{\mathrm{fid}}     #lensing potential scaled by sqrt(A_lens)
 fdm           \epsilon_0 f_d    #CosmoRec dark matter annihilation parameter, 0910.3663
 logA          \ln(10^{10} A_\mathrm{s})
 ns            n_\mathrm{s}	    #beware that pivot scale can change in .ini file
@@ -36,6 +37,8 @@ ncib          \gamma^{\mathrm{CIB}}           # spectral index of the CIB
 cal0          c_{100}       # relative power spectrum calibration factor 100/143 to rescale measured power with
 cal1          c_{143}       # calibration factor 143
 cal2          c_{217}       # relative calibration factor 217/143 (as for 100)
+calEE          c_{EE}       # calibration factor 143
+calTE          c_{TE}       # relative calibration factor 217/143 (as for 100)
 xi            \xi^{\mathrm{tSZ}\times\mathrm{CIB}}     # TSZ-CIB template amplitude (positive is negative)
 aksz          A^{\mathrm{kSZ}}
 bm_1_1        \beta^1_1 

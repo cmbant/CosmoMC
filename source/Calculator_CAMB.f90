@@ -73,6 +73,7 @@
     use LambdaGeneral
     use CAMBmain, only : ALens
     use constants, only : default_nnu
+    use lensing, only : ALens_Fiducial
     class(CAMB_Calculator) :: this
     class(CMBParams) CMB
     type(CAMBParams)  P
@@ -89,6 +90,7 @@
     w_lam = CMB%w
     wa_ppf = CMB%wa
     ALens = CMB%ALens
+    ALens_Fiducial = CMB%ALensf
     P%InitialConditionVector(initial_iso_CDM) = &
     sign(sqrt(abs(CMB%iso_cdm_correlated) /(1-abs(CMB%iso_cdm_correlated))),CMB%iso_cdm_correlated)
     P%Num_Nu_Massive = 0

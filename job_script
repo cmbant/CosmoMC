@@ -5,10 +5,9 @@
 #SBATCH -p sandybridge
 #SBATCH -A PLANCK
 #SBATCH --nodes=##NUMNODES##
-#SBATCH --ntasks=##NUMMPI##
+#SBATCH --ntasks=##NUMTASKS##
 #SBATCH --time=##WALLTIME##
 #SBATCH --mail-type=FAIL
-#SBATCH --mem=##MEM_MB##
 
 cd ##ROOTDIR##
 
@@ -34,10 +33,14 @@ echo `cat $NODEFILE | uniq`
 cat $NODEFILE | uniq > scripts/machine.file.$SLURM_JOBID
 
 export OMP_NUM_THREADS=##OMP##
+export I_MPI_PIN=##ONERUN##
 export I_MPI_PIN_DOMAIN=omp:compact
 export I_MPI_PIN_ORDER=scatter
 export I_MPI_CPUINFO=proc
 
 ##COMMAND##
+
+#wait for processes to finish
+wait
 
 
