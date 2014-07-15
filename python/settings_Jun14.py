@@ -132,6 +132,27 @@ for lmax in range(550, 2600, 150):
 g.params = [[], ['yhe']]
 groups.append(g)
 
+g = batchJob.jobGroup('PCA')
+g.datasets = []
+for lmax in range(600, 1601, 200):
+    datasets = []
+    for name, planck_vars in zip(['v97', 'v97CS'], [planck_detsets, planck_CS]):
+        datasets.append(batchJob.dataSet([name , 'TT'], [TT] + planck_vars))
+    sets = copy.deepcopy(datasets)  # + copy.deepcopy(CS)
+    for d in sets:
+        d.add(tauname, tauprior)
+        d.add('lowl', ['lowl.ini'])
+        d.add('alllmax' + str(lmax), {'camspec_lmax': (str(lmax) + ' ') * 6})
+    g.datasets += sets
+    sets = copy.deepcopy(datasets)  # + copy.deepcopy(CS)
+    for d in sets:
+        d.add(tauname, tauprior)
+        d.add('alllmin' + str(lmax + 1), {'camspec_lmin': (str(lmax + 1) + ' ') * 6})
+    g.datasets += sets
+g.params = [[]]
+groups.append(g)
+
+
 
 g = batchJob.jobGroup('channels')
 datasets = []
@@ -152,6 +173,7 @@ g = batchJob.jobGroup('lmin')
 datasets = []
 lmins = [800, 1200]
 for name, planck_vars in zip(['v97', 'v97CS'], [planck_detsets, planck_CS]):
+    datasets.append(batchJob.dataSet([name , 'TT'], [TT] + planck_vars))
     for namecut, cutvars in zip(['no143', 'no217', 'no217auto'], [TT100_217, TT100_143, no217auto]):
         datasets.append(batchJob.dataSet([name , 'TT', namecut], [TT, cutvars] + planck_vars))
 g.datasets = []
