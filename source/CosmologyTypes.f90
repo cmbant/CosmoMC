@@ -102,7 +102,7 @@
         real(mcp) zre, zre_delta, nufrac
         real(mcp) h, H0, tau
         real(mcp) w, wa
-        real(mcp) YHe, nnu, iso_cdm_correlated, ALens, fdm !fdm is dark matter annihilation, eg,. 0910.3663
+        real(mcp) YHe, nnu, iso_cdm_correlated, ALens, Alensf, fdm !fdm is dark matter annihilation, eg,. 0910.3663
         real(mcp) :: omnuh2_sterile = 0._mcp  !note omnhu2 is the sum of this + standard neutrinos
         real(mcp) reserved(5)
     end Type CMBParams

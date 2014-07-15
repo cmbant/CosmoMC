@@ -4,18 +4,31 @@ OUTPUT_DIR ?= Release
 BUILD ?= MPI
 #set BUILD to MPI to force MPI, should be set in ../Makefile
 
+MPIF90C ?= mpif90
+
 ifortErr = $(shell which ifort >/dev/null; echo $$?)
 
-#these settings for ifort 13 and higher
+#these settings for ifort 14 and higher
 ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
 F90C     = ifort
-MPIF90C = mpif90
-FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp
-DEBUGFLAGS = -mkl -openmp -g -check all -check noarg_temp_created -traceback -no-prec-div -fpp 
+#use this if mpif90 is trying to use gfortran: MPIF90C = mpif90 -f90=ifort
+
+FFLAGS = -mkl -openmp -O3 -no-prec-div -fpp
+DEBUGFLAGS = -mkl -openmp -g -check all -check noarg_temp_created -traceback -no-prec-div -fpp
 #add -fpe0 to check for floating point errors (think lowLike also throws these harmlessly)
 MODOUT = -module $(OUTPUT_DIR)
 LAPACKL =
+
+ifeq ($(STATIC),YES)
+#so you can re-distribute the binary to another machine
+#static link details from https://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
+LAPACKL =  -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a -Wl,--end-group -lpthread -lm
+FFLAGS+=  -axAVX,SEE4.2 -static-intel
+else
+FFLAGS += -xHost
+endif
+
 else
 #gfortran does not yet work yet, open GCC 4.9 compiler bugs are
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60414
@@ -26,7 +39,6 @@ else
 #and preferably
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=44672
 F90C = gfortran
-MPIF90C = mpif90
 FFLAGS = -cpp -O3 -ffast-math
 DEBUGFLAGS = -cpp -Og -g -fbounds-check -fbacktrace
 MODOUT =  -J$(OUTPUT_DIR)
@@ -72,24 +84,6 @@ INCLUDE =
 ifeq ($(PLANCKLIKE),cliklike)
 CLIKL = -L$(CLIKPATH)/lib -lclik_f90
 INCLUDE = $(IFLAG)$(CLIKPATH)/include
-endif
-
-
-#COSMOS: use "module load cosmolib latest"
-#use "runCosmomc" (globally installed) to run, defining required memory usage
-ifeq ($(COSMOHOST),cosmos)
-F90C = ifort
-FFLAGS = -openmp -fast -w -fpp2
-LINKMPI = -lmpi
-LAPACKL = -mkl=sequential -lmkl_lapack
-cfitsio = $(CFITSIO)
-WMAP = $(COSMOLIB)/WMAP9
-GSLPATH = $(GSL_ROOT)
-endif
-
-ifeq ($(COSMOHOST),darwin)
-WMAP = /scratch/aml1005/wmap_likelihood_v5
-cfitsio = /usr/local/Cluster-Apps/cfitsio/intel/3.300
 endif
 
 ifeq ($(OUTPUT_DIR),Debug)

@@ -222,7 +222,8 @@
     integer,intent(in) :: chain_ix, chain_num
     integer, intent(in) :: max_rows, ignorerows
     integer, intent(in) :: ncols
-    real(KIND(1.d0)), intent(inout) :: coldata(ncols,0:max_rows) !(col_index, row_index)
+    real(KIND(1.d0)), intent(inout), allocatable :: coldata(:,:) !(col_index, row_index)
+    real(KIND(1.d0)), allocatable :: tmp(:,:) !(col_index, row_index)
     logical, intent(in) :: samples_are_chains
     integer, intent(inout) :: nrows
     logical OK, ChainOK
@@ -277,7 +278,12 @@
 
         coldata(1:ncols, nrows) = invars(1:ncols)
         nrows = nrows + 1
-        if (nrows > max_rows) stop 'need to increase max_rows'
+        if (nrows > ubound(coldata,2)) then
+            print *, 'expanding array - you have a lot of chain rows!'
+            allocate(tmp(ncols,0:ubound(coldata,2)+max_rows))
+            tmp(:,0:ubound(coldata,2)) = coldata
+            call move_alloc(tmp, coldata)
+        end if
     end do
 
     end function IO_ReadChainRows

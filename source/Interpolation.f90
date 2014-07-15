@@ -995,19 +995,9 @@
     REAL(GI)    :: b00xa(4), b00ya(4), b01a(4), b10a(4), cxa(3,4), cya(3,4),   &
     sxa(4), sxxa(4), sya(4), syya(4), xa(3,4), ya(3,4),   &
     z0ia(3,4), zi0a(3,4)
-    ! INTEGER :: idlt(3,4)
-    !     ..
-    !     .. Intrinsic Functions ..
-    ! INTRINSIC        MAX
-    !     ..
-    !     .. Statement Functions ..
-    ! REAL :: z2f,z3f
-    !     ..
-    ! Data statements
-    ! DATA ((idlt(jxy,jpexy),jpexy=1,4),jxy=1,3)/-3,-2,-1,1,-2,-1,1,2,-1,1,2,3/
-    INTEGER, SAVE  :: idlt(3,4) = RESHAPE(   &
-    (/ -3,-2,-1, 1,-2,-1, 1,2,-1, 1,2,3 /), (/ 3, 4 /) )
-    !     ..
+
+    INTEGER, parameter :: idlt(3,4) = RESHAPE([-3, -2, -1, -2, -1, 1,-1, 1,2, 1 ,2, 3 ], [ 3, 4 ] )
+    !AL Jun 14: Fixed F90 translation
 
     ! Calculation
     ! Initial setting of some local variables

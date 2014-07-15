@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 import os, jobQueue, batchJobArgs
 
-parser = batchJobArgs.argParser("Submit a single MPI job")
+parser = batchJobArgs.argParser("Submit a single job to queue")
 
-parser.add_argument('iniFile')
+parser.add_argument('iniFile', nargs='+')
 
 jobQueue.addArguments(parser)
 
 args = parser.parse_args()
 
-omp = jobQueue.getArgsOmp(args, msg=True)
-ini = args.iniFile.replace('.ini', '')
+omp = jobQueue.getArgsOmp(args, msg=True, runsPerJob=len(args.iniFile))
+ini = [ini.replace('.ini', '') for ini in args.iniFile]
 
 if not args.dryrun:
-    jobQueue.submitJob(os.path.basename(ini), ini, numnodes=args.nodes, chainsPerNode=args.chainsPerNode,
-                               omp=omp, walltime=args.walltime, pbs_template=args.job_template)
+    jobQueue.submitJob(os.path.basename(ini[0]), ini, omp=omp, **args.__dict__)

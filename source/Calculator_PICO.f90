@@ -88,7 +88,7 @@
     call this%SetBackgroundTheoryData(CMB,Theory,error)
 
     if (p%InitPower%n_runrun(1)/=0 .or. p%InitPower%nt_run(1)/=0 .or. p%InitPower%ant(1)/=0) &
-    & call MpiStop('PICO: currently unsupported initial power parameter')
+        & call MpiStop('PICO: currently unsupported initial power parameter')
 
     if (CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
         call MpiStop('PICO: currently no MPK or sigma8')
@@ -116,7 +116,7 @@
     call fpico_set_param("pivot_scalar",p%InitPower%k_0_scalar)
     call fpico_set_param("pivot_tensor",p%InitPower%k_0_tensor)
     call fpico_set_param("re_optical_depth",CMB%tau)
-    call fpico_set_param("force",1.d0)
+    !    call fpico_set_param("force",1.d0)
 
     call fpico_reset_requested_outputs()
     if (P%WantCls) then
@@ -124,7 +124,13 @@
         if (CosmoSettings%num_cls>1) then
             call fpico_request_output("cl_TE")
             call fpico_request_output("cl_EE")
-            if (CosmoSettings%num_cls>2) call fpico_request_output("cl_BB")
+            if (CosmoSettings%num_cls>2) then
+                if (CosmoSettings%cl_lmax(3,3)>0) call fpico_request_output("cl_BB")
+                if (CosmoSettings%num_cls>3) then
+!                    call MpiStop('PICO: lensing output currently innaccurate')
+!                    if (CosmoSettings%cl_lmax(4,4)>0) call fpico_request_output("cl_pp")
+                end if
+            end if
         end if
     end if
     if (P%WantTransfer) then
@@ -133,7 +139,12 @@
     end if
 
     call fpico_compute_result(success)
-    if (.not. success) call mpiStop('PICO failed to get result')
+    if (.not. success) then
+        ! for now just reject if out of pico bounds
+        !call mpiStop('PICO failed to get result')
+        error = 1
+        return
+    end if
     error = 0
     if (P%WantCls) then
         call PICO_GetOutputArray(Theory,1,1, "cl_TT")
@@ -141,6 +152,7 @@
             call PICO_GetOutputArray(Theory,2,1, "cl_TE")
             call PICO_GetOutputArray(Theory,2,2, "cl_EE")
             if (CosmoSettings%num_cls>2) call PICO_GetOutputArray(Theory,3,3, "cl_BB")
+!            if (CosmoSettings%num_cls>3) call PICO_GetOutputArray(Theory,4,4, "cl_pp") need to change units, as in scalCls
         end if
     end if
 
@@ -168,7 +180,10 @@
     class(TCosmoTheoryPredictions) Theory
     integer :: error
 
-    call MpiStop('PICO: no GetTheoryForImportance yet')
+    call this%GetNewPowerData(CMB, null(), Theory, error)
+    call this%GetNewBackgroundData(CMB,Theory,error)
+    if (error==0) call this%SetDerived(Theory)
+
     end subroutine PICO_GetTheoryForImportance
 
     subroutine PICO_VersionTraceOutput(this, ReadValues)
@@ -190,7 +205,7 @@
     this%calcName ='PICO'
 
     call fpico_init(1_fpint)
-    call fpico_load(Ini%Read_String("pico_datafile"))
+    call fpico_load(Ini%Read_String_Default("pico_datafile", EnvDefault=.true.))
     call fpico_set_verbose(int(IfThenElse(Ini%Read_Logical("pico_verbose",.false.),1,0),fpint))
 
     end subroutine PICO_ReadParams

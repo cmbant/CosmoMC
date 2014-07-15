@@ -18,10 +18,6 @@ A set of .ini files are supplied in ./batch2 which set up standard for Planck fu
 <LI><b>master</b> is the latest tested stable version; CAMB updated since 2013 first grid results
 <LI><b>final_nominal</b> is the code used for 2013 first papers
 <LI><b>final_nominal_updated</b> is above with various bug fixes, using CAMB March 2013b as original papers
-<LI><b>cosmomc_public</b> is the current public version
-<LI><b>camspec_wiggle</b> has some camspec likelihood variations etc used for tests
-<LI><b>tmp_cl_dump</b> has hack to dump C_l when postprocessing (for rainbow plots)
-<LI><b>final_nominal</b> is the code used for 2013 first papers
 <LI><b>v65F_grid</b> full mission temperature grid (batch2)
 </UL>
 <H3>Changes since public nominal mission release</H3>
@@ -33,7 +29,9 @@ A set of .ini files are supplied in ./batch2 which set up standard for Planck fu
 <LI>added camspec_make.ini for making beam-marged; use of .bestfit_cl and .camspec_foreground for fiducial model
 <LI>removed _marge_mode marged like file (can easily be calculated on the fly)
 <LI>Click 8.8 has new highL file actspt_2013_11.clik
-<LI>widened values cosmology parameter priors; Added batch2/HST* files for different Hubble contraints
+<LI>widened values cosmology parameter priors; Added batch2/HST* files for different Hubble constraints
+<LI>Added Alensf parameter for lensing smoothing from power scaled from fiducial
+<LI>Added rmsdeflect output derived parameter (of physical lensing power)
 </UL>
 
 </body></center> 
