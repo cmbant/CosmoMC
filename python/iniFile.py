@@ -1,4 +1,4 @@
-# AL Apr 11,Jun13
+# AL Apr 11,Jun13, Jul14
 import os
 
 class iniFile:
@@ -100,8 +100,16 @@ class iniFile:
     def _undefined(self, name):
         raise Exception('parameter not defined: ' + name)
 
+    def isSet(self, name, allowEmpty=False):
+        return name in self.params and (allowEmpty or self.params[name] != "")
+
+    def asType(self, name, tp, default=None, allowEmpty=False):
+        if self.isSet(name, allowEmpty): return tp(self.params[name])
+        elif default is not None: return default
+        else: self._undefined(name)
+
     def bool(self, name, default=False):
-        if name in self.params:
+        if self.isSet(name):
             s = self.params[name]
             if isinstance(s, bool): return s
             if s == 'T': return True
@@ -110,20 +118,14 @@ class iniFile:
         elif default is not None: return default
         else: self._undefined(name)
 
-    def string(self, name, default=None):
-        if name in self.params: return str(self.params[name])
-        elif default is not None: return default
-        else: self._undefined(name)
+    def string(self, name, default=None, allowEmpty=True):
+        return self.asType(name, str, default, allowEmpty=allowEmpty)
 
     def float(self, name, default=None):
-        if name in self.params: return float(self.params[name])
-        elif default is not None: return default
-        else: self._undefined(name)
+        return self.asType(name, float, default)
 
     def int(self, name, default=None):
-        if name in self.params: return int(self.params[name])
-        elif default is not None: return default
-        else: self._undefined(name)
+        return self.asType(name, int, default)
 
     def array_int(self, name, index=1, default=None):
         return self.int(name + '(%u)' % index, default)
