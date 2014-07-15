@@ -6,6 +6,7 @@
     module IniObjects
     use FileUtils
     use StringUtils
+    use MiscUtils
     implicit none
     private
 
@@ -82,7 +83,7 @@
     procedure, private :: Ini_Read_Logical_Change
     procedure, private :: Ini_Read_String_Change
     generic :: Read => Ini_Read_Real_Change, Ini_Read_Double_Change, Ini_Read_Int_Change, &
-    & Ini_Read_Logical_Change,Ini_Read_String_Change
+        & Ini_Read_Logical_Change,Ini_Read_String_Change
     end Type TIniFile
 
 
@@ -96,8 +97,7 @@
     L%Count = 0
     L%Capacity = 0
     L%Delta = 128
-    L%ignoreDuplicates = .false.
-    if (present(ignoreDuplicates)) L%ignoreDuplicates=ignoreDuplicates
+    L%ignoreDuplicates = DefaultFalse(ignoreDuplicates)
 
     end subroutine TNameValueList_Init
 
@@ -183,11 +183,8 @@
     logical, optional, intent(in) :: only_if_undefined
     logical isDefault
 
-    if (present(only_if_undefined)) then
-        isDefault = only_if_undefined
-    else
-        isDefault = .true.
-    end if
+    isDefault = DefaultTrue(only_if_undefined)
+
     if ((.not. L%AllowDuplicateKeys .or. isDefault) .and. L%HasKey(AName)) then
         if (L%ignoreDuplicates .or. isDefault) return
         call L%Error('duplicate key name',AName)
@@ -313,11 +310,8 @@
     logical isDefault
     character (LEN=len(AInLine)) :: AName, S, InLine
 
-    if (present(only_if_undefined)) then
-        isDefault = only_if_undefined
-    else
-        isDefault = .false.
-    end if
+    isDefault = DefaultFalse(only_if_undefined)
+
     InLine=trim(adjustl(AInLine))
     EqPos = scan(InLine,'=')
     if (EqPos/=0 .and. InLine(1:1)/='#' .and. .not. StringStarts(InLine,'COMMENT')) then
@@ -351,32 +345,19 @@
     character(LEN=:), allocatable :: InLine
     integer lastpos, i, status
     Type(TNameValueList) IncudeFiles, DefaultValueFiles
-    logical doappend, FileExists, isDefault
+    logical FileExists, isDefault
     Type(TTextFile) :: F
 
-    if (present(append)) then
-        doappend=append
-    else
-        doappend=.false.
-    end if
 
-    if (present(only_if_undefined)) then
-        isDefault = only_if_undefined
-    else
-        isDefault = .false.
-    end if
+    isDefault = DefaultFalse(only_if_undefined)
 
-    if (.not. doappend) then
+    if (.not. DefaultFalse(append)) then
         call Ini%TNameValueList%Init()
         call Ini%ReadValues%Init(.true.)
         Ini%Original_filename = filename
     end if
 
-    if (present(slash_comments)) then
-        Ini%SlashComments = slash_comments
-    else
-        Ini%SlashComments = .false.
-    end if
+    Ini%SlashComments = DefaultFalse(slash_comments)
 
     call F%Open(filename, status=status)
     if (status/=0) then
@@ -418,9 +399,7 @@
     if (present(error)) error=.false.
 
     do i=1, IncudeFiles%Count
-        if (present(error)) then
-            if (error) exit
-        end if
+        if (DefaultFalse(error)) exit
         IncludeFile= IncudeFiles%Items(i)%P%Name
         inquire(file=IncludeFile, exist = FileExists)
         if (.not. FileExists) then
@@ -433,9 +412,7 @@
         call Ini%Open(IncludeFile, error, slash_comments, append=.true.,only_if_undefined=isDefault)
     end do
     do i=1, DefaultValueFiles%Count
-        if (present(error)) then
-            if (error) exit
-        end if
+        if (DefaultFalse(error)) exit
         IncludeFile=DefaultValueFiles%Items(i)%P%Name
         inquire(file=IncludeFile, exist = FileExists)
         if (.not. FileExists) then
@@ -492,31 +469,40 @@
         if (Ini%Echo_Read) write (*,*) trim(Key)//' = ',trim(AValue)
         return
     end if
-    if (present(NotFoundFail)) then
-        if (NotFoundFail) then
-            call Ini%Error('key not found',Key)
-        end if
-    else if (Ini%fail_on_not_found) then
+    if (PresentDefault(Ini%fail_on_not_found, NotFoundFail)) then
         call Ini%Error('key not found',Key)
     end if
 
     end function Ini_Read_String
 
-    function Ini_Read_String_Default(Ini, Key, Default, AllowBlank) result(AValue)
+    function Ini_Read_String_Default(Ini, Key, Default, AllowBlank, EnvDefault) result(AValue)
+    !Returns from Ini first; if not found tries environment variable if EnvDefault is true,
+    !If not found returns Default (unless not present, in which case gives error)
+    !AllBlank specifies whether an empty string counts as a valid result to give instead of Default
     class(TIniFile) :: Ini
-    character (LEN=*), intent(IN) :: Key, Default
-    character(LEN=:), allocatable :: AValue
+    character (LEN=*), intent(IN) :: Key
+    character (LEN=*), intent(IN), optional ::Default
     logical, intent(in), optional :: AllowBlank
+    logical, optional, intent(IN) :: EnvDefault
+    character(LEN=:), allocatable :: AValue
+    logical is_present
 
     if (Ini%HasKey(Key)) then
         AValue = Ini%Read_String(Key, .false.)
-        if (present(AllowBlank)) then
-            if (AllowBlank) return
-        end if
-        if (AValue=='') AValue = Default
+        if (AValue/='' .or. DefaultFalse(AllowBlank)) return
     else
+        AValue=''
+    end if
+    if (DefaultFalse(EnvDefault)) then
+        AValue = GetEnvironmentVariable(Key,is_present)
+        if (DefaultFalse(AllowBlank) .and. is_present) return
+    end if
+    if (AValue=='') then
+        if (.not. present(Default)) call Ini%Error('key not found',Key)
         AValue = Default
     end if
+    call  Ini%ReadValues%Add(Key, AValue)
+    if (Ini%Echo_Read) write (*,*) trim(Key)//' = ',trim(AValue)
 
     end function Ini_Read_String_Default
 
@@ -625,7 +611,7 @@
     Ini_Read_Enumeration = Ini%Read_Int(Key, Default, OK = OK)
     if (OK) then
         if (Ini_Read_Enumeration<1 .or. Ini_Read_Enumeration> size(Names)) &
-        & call Ini%Error('enumeration value not valid',Key)
+            & call Ini%Error('enumeration value not valid',Key)
     else
         S => Ini%ValueOf(Key)
         do i=1, size(Names)

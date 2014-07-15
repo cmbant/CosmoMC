@@ -100,6 +100,9 @@ class iniFile:
     def _undefined(self, name):
         raise Exception('parameter not defined: ' + name)
 
+    def hasKey(self, name):
+        return name in self.params
+
     def isSet(self, name, allowEmpty=False):
         return name in self.params and (allowEmpty or self.params[name] != "")
 
@@ -126,6 +129,11 @@ class iniFile:
 
     def int(self, name, default=None):
         return self.asType(name, int, default)
+
+    def split(self, name, default=None):
+        s = self.string(name, default)
+        if isinstance(s, basestring): return s.split()
+        else: return s
 
     def array_int(self, name, index=1, default=None):
         return self.int(name + '(%u)' % index, default)
