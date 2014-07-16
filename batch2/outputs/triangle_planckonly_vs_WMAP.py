@@ -1,5 +1,3 @@
-#import GetDistPlots
-#g=GetDistPlots.GetDistPlotter('main/plot_data')
 
 import planckStyle as s
 g=s.getSubplotPlotter()

@@ -1,6 +1,7 @@
 # provisional updated (reduced) grid settings for full mission
 # New BBN fitting built in
 # New BAO -> DR11
+import batchJob, copy
 
 ini_dir = 'batch2/'
 
@@ -9,38 +10,64 @@ defaults = ['common.ini']
 importanceDefaults = ['importance_sampling.ini']
 
 # dataset names
-planck = 'v65F'
+planck = 'v97CS'
 lowl = 'lowl'
 lowLike = 'lowLike'
 lensing = 'lensing'
 highL = 'highL'
 WMAP = 'WMAP'
 BAO = 'BAO'
-HST = 'HST'
+HST = 'HST70p6'
 JLA = 'JLA'
 
 BAOdata = 'BAODR11.ini'
 
-Camspec = 'CAMspec_v5F_nonclik.ini'
-CamspecHighL = 'CAMspec_ACTSPT_v5F_nonclik.ini'
 
-planck_lowl_lowLike = [[planck, lowl, lowLike], [Camspec, 'lowl.ini', 'lowLike.ini']]
-planck_lowl_lowLike_highL = [[planck, lowl, lowLike, highL], [CamspecHighL, 'lowl.ini', 'lowLike.ini']]
-planck_lowl = [[planck, lowl], [Camspec, 'lowl.ini']]
+Camspec = 'CAMspec_defaults.ini'
+highL = 'highL'
+lowl = 'lowl'
+# dataset names
+tauprior = {'prior[tau]':'0.07 0.02'}
+tauname = 'tau07'
+WMAPtau = {'prior[tau]':'0.09 0.013'}
+
+varTE = {'param[calTE]': '1 0.1 2 0.005 0.005'}
+varEE = {'param[calEE]': '1 0.1 2 0.01 0.01'}
+
+
+TT = {'want_spec':'T T T T F F'}
+EE = {'want_spec':'F F F F F T'}
+TE = {'want_spec':'F F F F T F'}
+TEEE = {'want_spec':'F F F F T T'}
+TTTE = {'want_spec':'T T T T T F'}
+full = {'want_spec':'T T T T T T'}
+
+TT100_217 = {'want_spec':'T F T F F F', 'param[cal2]':'0.992', 'param[aps143]':'0', 'param[acib143]':'0', 'param[psr]':'1', 'param[cibr]':'1'}
+TT100_143 = {'want_spec':'T T F F F F', 'param[cal2]':'0.992', 'param[aps217]':'0', 'param[acib217]':'0', 'param[psr]':'1', 'param[cibr]':'1'}
+no217auto = {'want_spec':'T T F T F F'}
+
+
+freecal = 'freecal.ini'
+freecalEE = {'param[calEE]':'1 0.1 2 0.01 0.01', 'prior[calEE]':'1 1'}
+freecalTE = {'param[calTE]':'1 0.1 2 0.005 0.005', 'prior[calTE]': '1 1'}
+
+
+planck_detsets = [freecal, 'nonclik_v97F.ini', Camspec]
+planck_CS = [freecal, 'nonclik_v97CS.ini', Camspec]
+
+
+detsets = []
+CS = []
+for name, datasets, planck_vars in zip(['v97CS'], [CS], [planck_CS]):
+    datasets.append(batchJob.dataSet([name , 'TT'], [TT] + planck_vars))
+    datasets.append(batchJob.dataSet([name , 'TE'], [TE, varTE, freecalTE] + planck_vars))
+    datasets.append(batchJob.dataSet([name , 'EE'], [EE, varEE, freecalEE] + planck_vars))
+    datasets.append(batchJob.dataSet([name, 'all'], [full, varTE, varEE, freecalTE, freecalEE] + planck_vars))
+
 WMAP9 = [[WMAP], ['WMAP.ini']]
 
-planck_lowl_lowLike_BAO = [[planck, lowl, lowLike, BAO], [ Camspec, 'lowl.ini', 'lowLike.ini', BAOdata]]
-planck_lowl_lowLike_highL_BAO = [[planck, lowl, lowLike, highL, BAO], [CamspecHighL, 'lowl.ini', 'lowLike.ini', BAOdata]]
-planck_lowl_lowLike_JLA = [[planck, lowl, lowLike, JLA], [Camspec, 'lowl.ini', 'lowLike.ini', 'JLA.ini']]
-planck_lowl_lowLike_HST = [[planck, lowl, lowLike, HST], [Camspec, 'lowl.ini', 'lowLike.ini', 'HST.ini']]
-planck_lowl_lowLike_lensing = [[planck, lowl, lowLike, lensing], [Camspec, 'lowl.ini', 'lowLike.ini', 'lensing.ini']]
-planck_lowl_lowLike_highL_lensing = [[planck, lowl, lowLike, highL, lensing], [CamspecHighL, 'lowl.ini', 'lowLike.ini', 'lensing.ini']]
-planck_tauprior = [[planck, 'tauprior'], [Camspec, 'tauprior.ini']]
-planck_tauprior_highL = [[planck, 'tauprior', highL], [CamspecHighL, 'tauprior.ini']]
-
-
 start_at_bestfit = False
-newCovmats = True
+newCovmats = False
 
 # Importance sampling settings
 
@@ -55,47 +82,53 @@ class importanceFilterNotOmegakLowl:
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
 post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegakLowl()]
-post_HST = [[HST], ['HST.ini'], importanceFilterNotOmegakLowl()]
+post_HST = [[HST], ['HST_GPE70p6.ini'], importanceFilterNotOmegakLowl()]
 post_JLA = [[JLA], ['JLA_marge.ini'], importanceFilterNotOmegakLowl()]
 # set up groups of parameters and data sets
-class group:pass
 
 groups = []
 
-g1 = group()
-# sets of parameters to vary in addition to baseline
-g1.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+g = batchJob.jobGroup('main')
+# Main group with just tau prior
 
-# lists of dataset names to combine, with corresponding sets of inis to include
-g1.datasets = [planck_lowl_lowLike, planck_lowl_lowLike_highL]
+g.datasets = copy.deepcopy(CS)
+for d in g.datasets:
+    d.add(tauname, tauprior)
+g.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+groups.append(g)
+g.importanceRuns = [post_BAO, post_JLA, post_lensing]
 
-# add importance name tags, and list of specific .ini files to include (in batch1/)
-g1.importanceRuns = [post_BAO, post_JLA]
-g1.groupName = 'main'
-groups.append(g1)
+groups.append(g)
 
-g2 = group()
-# lists of dataset names to combine, with corresponding sets of inis to include
-g2.params = [['nnu', 'yhe'], ['nnu', 'mnu'], ['mnu', 'Alens']]
+g2 = batchJob.jobGroup('ext')
+g2.datasets = copy.deepcopy(g.datasets)
+g2.params = [ ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['nnu', 'yhe']]
 # todo: prior on m_phys for ['nnu', 'meffsterile'],
-g2.datasets = [planck_lowl_lowLike, planck_lowl_lowLike_highL]
 g2.importanceRuns = [post_BAO, post_JLA]
-g2.groupName = 'ext'
 groups.append(g2)
 
-g3 = group()
+g3 = batchJob.jobGroup('geom')
 g3.params = [['omegak']]
-g3.datasets = [planck_lowl_lowLike_BAO, planck_lowl_lowLike_highL_BAO]
-g3.importanceRuns = [post_lensing , post_JLA]
-g3.groupName = 'geom'
+g3.datasets = []
+for d in copy.deepcopy(g.datasets):
+    d.add(BAO, BAOdata)
+    g3.datasets.append(d)
+for d in copy.deepcopy(g.datasets):
+    d.add(JLA)
+    g3.datasets.append(d)
+for d in copy.deepcopy(g.datasets):
+    d.add(lensing)
+    g3.datasets.append(d)
+
+g3.importanceRuns = [post_BAO , post_JLA]
 groups.append(g3)
 
-g4 = group()
+g4 = batchJob.jobGroup('planckonly')
 g4.params = [[]]
-g4.datasets = [planck_lowl]
-g4.importanceRuns = [post_BAO, post_JLA]
-g4.groupName = 'planckonly'
+g4.datasets = copy.deepcopy(CS)
+g4.importanceRuns = [post_BAO, post_JLA, post_lensing]
 groups.append(g4)
+
 
 
 skip = ['base_nnu_meffsterile_planck_lowl_lowLike']
