@@ -12,6 +12,8 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 import matplotlib.pyplot as plt
 
+import GetDistPlots
+
 class MainWindow(QMainWindow):
 
     def __init__(self):
@@ -36,7 +38,6 @@ class MainWindow(QMainWindow):
 
         # 
         self.rootdir = ""
-        self.chainsdir = ""
 
 
     def createActions(self):
@@ -284,8 +285,12 @@ class MainWindow(QMainWindow):
         for i in range(self.listParametersY.count()):
             self.listParametersY.item(i).setCheckState(state)
 
+
     def plotData(self):
-        pass
+        g = GetDistPlots.GetDistPlotter('PLA/plot_data')
+        
+
+
 
    
 # slots for selectWidget 
