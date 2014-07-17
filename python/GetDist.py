@@ -274,7 +274,8 @@ if (PCA_num<>0):
     if (line.lower()=='all'):
         PCA_params = range(1, PCA_num+1)
     else:
-        PCA_params = mc.index.keys() 
+        names = [ s for s in line.split(' ') if s<>'' ]
+        PCA_params = [ mc.index[name] for name in names ]
     line = ini.string('PCA_normparam')
     if (line==''):
         PCA_NormParam = 0
@@ -388,7 +389,8 @@ numsamp = np.sum(mc.weights); mc.numsamp = numsamp
 
 # Get ND confidence region (index into sorted coldata)
 counts = 0
-ND_cont1, ND_cont2 = mc.GetConfidenceRegion()
+mc.GetConfidenceRegion()
+
 
 triangle_plot = triangle_plot and (mc.num_vars>1)
 if (triangle_plot):
@@ -620,10 +622,10 @@ if (not plots_only):
     textFileHandle.write('param  bestfit        lower1         upper1         lower2         upper2\n')
     for j in range(mc.num_vars):
         best = mc.samples[bestfit_ix][j]
-        min1 = min(mc.samples[0:ND_cont1, j])
-        max1 = max(mc.samples[0:ND_cont1, j])
-        min2 = min(mc.samples[0:ND_cont2, j])
-        max2 = max(mc.samples[0:ND_cont2, j])
+        min1 = min(mc.samples[0:mc.ND_cont1, j])
+        max1 = max(mc.samples[0:mc.ND_cont1, j])
+        min2 = min(mc.samples[0:mc.ND_cont2, j])
+        max2 = max(mc.samples[0:mc.ND_cont2, j])
         label = mc.paramNames.names[j].label
         textFileHandle.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E   %s\n'%(j+1, best, min1, max1, min2, max2, label))
     textFileHandle.close()

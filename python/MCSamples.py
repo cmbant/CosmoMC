@@ -62,8 +62,9 @@ class Density1D():
         self.n   = n
         self.X   = np.zeros(n) 
         self.P   = np.zeros(n) 
-        self.ddP = np.zeros(n) 
-        self.spacing = spacing
+        #self.ddP = np.zeros(n) 
+        self.spacing = float(spacing)
+        self.test_with_scipy = False
 
     def Prob(self, x):
         if (x > (self.X[-1] - self.spacing/1e6)):
@@ -84,15 +85,17 @@ class Density1D():
                 (math.pow(a0, 3)-a0)*self.ddP[llo] + 
                 (math.pow(b0, 3)-b0)*self.ddP[lhi] ) * math.pow(self.spacing, 2) / 6)
         return res
-    
-    def ProbVec(self, v):
-        return v
 
     def InitSpline(self):
-        self.ddP = self._spline(self.X, self.P, self.n, self.SPLINE_DANGLE, self.SPLINE_DANGLE)
-        #f = interp1d(self.X, self.P, kind='cubic')
-        #xnew = np.linspace(self.X.min(), self.X.max(), self.n)
-        #self.ddP = f(xnew)
+        if self.test_with_scipy: 
+            self.GetProb = interp1d(self.X, self.P, kind='cubic', 
+                                    copy=False,
+                                    bounds_error=False, 
+                                    fill_value=0.,
+                                    #assume_sorted=True # arg not available
+                                    )
+        else:            
+            self.ddP = self._spline(self.X, self.P, self.n, self.SPLINE_DANGLE, self.SPLINE_DANGLE)
 
     def Limits(self, p):
 
@@ -102,10 +105,13 @@ class Density1D():
 
         factor = 100
         bign = (self.n-1)*factor + 1
-        #grid = np.fromiter( (self.X[0]+i*self.spacing/factor for i in range(bign)), dtype=np.float )
-        grid = np.zeros(bign)
-        for i in range(bign):
-            grid[i] = self.Prob(self.X[0] + i * self.spacing / factor)
+        if self.test_with_scipy: 
+            vecx = self.X[0] + np.arange(bign)*self.spacing/factor
+            grid = self.GetProb(vecx) 
+        else:
+            grid = np.zeros(bign)
+            for i in range(bign):
+                grid[i] = self.Prob(self.X[0] + i * self.spacing / factor)
 
         norm  = np.sum(grid)
         norm  = norm - (0.5*self.P[-1]) - (0.5*self.P[0])
@@ -151,7 +157,6 @@ class Density1D():
         """
         Calculates array of second derivatives used by cubic spline interpolation.
         """
-        
         u = np.zeros(n-1)
         d2 = np.zeros(n) # result
 
@@ -160,10 +165,10 @@ class Density1D():
             d2[0] = 0.
             u[0]  = 0.
         else:
-            d2[0] = 0.5
-            u[0]  = (3./x[1]-x[0])*(d1r-d11)
-        
-        for i in range(1, n-2):
+            d2[0] = -0.5
+            u[0]  = (3./(x[1]-x[0]))*(d1r-d11)
+
+        for i in range(1, n-1):
             d1l = d1r
             d1r = (y[i+1]-y[i]) / (x[i+1]-x[i])
             xxdiv = 1. / (x[i+1]-x[i-1])
@@ -187,7 +192,7 @@ class Density1D():
         indexes = range(0, n-2)
         indexes.reverse()
         for i in indexes:
-            d2[i] = d2[i] * d2[i+1]*u[i] 
+            d2[i] = d2[i] * d2[i+1] + u[i] 
 
         return d2
 
@@ -380,44 +385,47 @@ class MCSamples(chains):
         get eigenvectors and eigenvalues for normalized variables
         with optional (log) mapping.
         """
+
         print 'Doing PCA for ', len(pars),' parameters'
-        filename = self.root + ".PCA"
-        textFileHandle = open(filename)
+        filename = self.rootdirname + ".PCA"
+        textFileHandle = open(filename, "w")
         textFileHandle.write('PCA for parameters:\n')
         
         if (normparam_num<>0):
             if (normparam_num in pars):
-                normparam = pars.index(normparam_num)+1
-                if (normparam==0):
-                    sys.exit('Invalid PCA normalization parameter')
+                normparam = pars.index(normparam_num)
         else:
-            normparam = 0
+            normparam = -1
 
         n = len(pars)
         corrmatrix = np.zeros((n, n))
-        PCdata = self.samples[pars]
+        PCdata = self.samples[:, pars]
         PClabs = []
-        doexp = False
-        PCmean = np.zeros()
+
+        PCmean = np.zeros(n)
         sd = np.zeros(n)
         newmean = np.zeros(n)
         newsd = np.zeros(n)
+
+        doexp = False
         for i in range(n):
+            name = self.index2name[pars[i]]
+            label = self.paramNames.parWithName(name).label
             if (param_map[i]=='L'):
                 doexp = True
                 PCdata[:, i] = np.log(PCdata[:, i])
-                PClabs.append("ln("+self.index2name[i]+")")
+                PClabs.append("ln("+label+")")
             elif (param_map[i]=='M'):
                 doexp = True
                 PCdata[:, i] = np.log(-1.0*PCdata[:, i])
-                PClabs.append("ln(-"+self.index2name[i]+")")
+                PClabs.append("ln(-"+label+")")
             else:
-                PClabs.append(self.index2name[i])
-            textFileHandle.write("%s:%s\n"%(str(pars[i]), str(PClabs[i])))
+                PClabs.append(label)
+            textFileHandle.write("%10s :%s\n"%(str(pars[i]+1), str(PClabs[i])))
 
-            PCmean[i] = np.sum(self.weights*PCdata[:, i])/self.norm
+            PCmean[i] = np.sum(self.weights*PCdata[:, i]) / self.norm
             PCdata[:, i] -= PCmean[i]
-            sd[i] = math.sqrt(np.sum(self.weights*PCdata[:, i]*PCdata[:, i])/self.norm)
+            sd[i] = math.sqrt(np.sum(self.weights*PCdata[:, i]*PCdata[:, i]) / self.norm)
             if (sd[i]<>0): PCdata[:, i] /= sd[i]
             corrmatrix[i][i] = 1
 
@@ -425,93 +433,104 @@ class MCSamples(chains):
         textFileHandle.write('Correlation matrix for reduced parameters\n')
         for i in range(n):
             for j in range(n):
-                corrmatrix[i][j] = np.sum(self.weights*PCdata[:, i]*PCdata[:, j])/self.norm
+                corrmatrix[j][i] = np.sum(self.weights*PCdata[:, i]*PCdata[:, j]) / self.norm
                 corrmatrix[i][j] = corrmatrix[j][i]
-            textFileHandle.write('%4i'%pars[i]) 
+            textFileHandle.write('%4i :'%(pars[i]+1)) 
             for j in range(n):
-                textFileHandle.write('%8.4f'%corrmatrix[i][j]) 
+                textFileHandle.write('%8.4f'%corrmatrix[j][i]) 
+            textFileHandle.write('\n')
             
         u = corrmatrix
-        w, v = np.linalg.eig(u)
+        evals, evects = np.linalg.eig(u)
 
+        evals.sort()
         textFileHandle.write('\n')
         textFileHandle.write('e-values of correlation matrix\n')
         for i in range(n):
-            textFileHandle.write('PC%2i: %8.4f\n'%(i, w[i]))
+            textFileHandle.write('PC%2i: %8.4f\n'%(i+1, evals[i]))
 
         textFileHandle.write('\n')
         textFileHandle.write('e-vectors\n')
-
         for i in range(n):
-            textFileHandle.write('%3i:'%pars[i])
+            textFileHandle.write('%3i:'%(pars[i]+1))
             for j in range(n):
-                textFileHandle.write('%8.4f'%v[i][j])
+                textFileHandle.write('%8.4f'%(evects[i][j]))
             textFileHandle.write('\n')
 
-        if (normparam<>0):
+        if (normparam<>-1):
             # Set so parameter normparam has exponent 1
             for i in range(n):
-                u[:, i] /= u[normparam, i] * sd[normparam]
+                u[i, :] = u[i, :] / u[i, normparam] * sd[normparam]
         else:
             # Normalize so main component has exponent 1
             for i in range(n):
-                maxi = u.argmax()
-                u[:, i] /= u[maxi, i] * sd[maxi]
-                
-        for i in range(n):
-            PCdata[:, i] = np.dot(u.transpose(), PCdata[:, i])
-            if (doexp): PCdata[:, i] = np.exp(PCdata[:, i])
+                maxi = np.abs(u[i, :]).argmax()
+                u[i, :] = u[i, :] / u[i, maxi] * sd[maxi]
+
+        nrows = PCdata.shape[0]
+        for i in range(nrows):
+            PCdata[i, :] = np.dot(np.transpose(u), PCdata[i, :])
+            if (doexp): PCdata[i, :] = np.exp(PCdata[i, :])
 
         textFileHandle.write('\n')
         textFileHandle.write('Principle components\n')
 
         for i in range(n):
-            textFileHandle.write('PC%i (e-value: %f)\n'%(i, evals[i]))
+            textFileHandle.write('PC%i (e-value: %f)\n'%(i+1, evals[i]))
             for j in range(n):
-                paramName = self.paramNames.parWithName(self.index2name[j]).name
+                name = self.index2name[pars[j]]
+                label = self.paramNames.parWithName(name).label
                 if (param_map[j] in ['L', 'M']):
-                    expo = "%f"%(1/sd[j]*u[i][j])
-                    if (param_map[j]=="M"): div = "%f"%(-math.exp(PCmean[j]))
-                    else: div = "%f"%(math.exp(PCmean[j]))
-                    textFileHandle.write('[%f]  (%s/%s)^{%s}\n'%(u[i][j], paramName, div, expo))
+                    expo = "%f"%(1.0/sd[j]*u[i][j])
+                    if (param_map[j]=="M"): 
+                        div = "%f"%(-1.0*np.exp(PCmean[j]))
+                    else: 
+                        div = "%f"%(np.exp(PCmean[j]))
+                    textFileHandle.write('[%f]  (%s/%s)^{%s}\n'%(u[i][j], label, div, expo))
                 else:
+                    expo = "%f"%(sd[j]/u[i][j])
                     if (doexp):
-                        textFileHandle.write('[%f]   exp((%s-%f)/%s)\n'%(u[i][j], paramName, PCmean[j], expo))
+                        textFileHandle.write('[%f]   exp((%s-%f)/%s)\n'%(u[i][j], label, PCmean[j], expo))
                     else:
-                        textFileHandle.write('[%f]   (%s-%f)/%s)\n'%(u[i][j], paramName, PCmean[j], expo))
-            newmean[i] = np.sum(self.weights*PCdata[:, i])/self.norm
-            newsd[i] = math.sqrt(np.sum(self.weights*(PCdata[:, i]-newmean[i])*(PCdata[:, i]-newmean[i]))/self.norm)
+                        textFileHandle.write('[%f]   (%s-%f)/%s)\n'%(u[i][j], label, PCmean[j], expo))
+
+            newmean[i] = np.sum(self.weights*PCdata[:, i]) / self.norm
+            newsd[i] = np.sqrt(np.sum(self.weights*(PCdata[:, i]-newmean[i])*(PCdata[:, i]-newmean[i])) / self.norm)
             textFileHandle.write('          = %f +- %f\n'%(newmean[i], newsd[i]))
             textFileHandle.write('ND limits: %9.3f%9.3f%9.3f%9.3f\n'%(
-                    np.min(PCdata[0:ND_cont1, i]), np.max(PCdata[0:ND_cont1, i]), 
-                    np.min(PCdata[0:ND_cont2, i]), np.max(PCdata[0:ND_cont2, i])))
+                    np.min(PCdata[0:self.ND_cont1, i]), np.max(PCdata[0:self.ND_cont1, i]), 
+                    np.min(PCdata[0:self.ND_cont2, i]), np.max(PCdata[0:self.ND_cont2, i])))
             textFileHandle.write('\n')
-            
+
         # Find out how correlated these components are with other parameters
         textFileHandle.write('Correlations of principle components\n')
         l = [ "%8i"%i for i in range(1,n+1) ]
         textFileHandle.write('%s\n'%("".join(l)))
         
         for i in range(n):
-            PCdata[:, i] -= newmean[i] / newsd[i]
- 
-        for j in range(1, n+1):
-            textFileHandle.write('PC%2i\n'%(j))
-            for j in range(1, n+1):
-                textFileHandle.write('%%8.3f\n'%(
-                        np.sum(self.weights*PCdata[:, i]*PCdata[:, j])/self.norm))
+            PCdata[:, i] = (PCdata[:, i] - newmean[i]) / newsd[i]
 
-        for j in range(1, n+1):
-            textFileHandle.write('%4i\n'%(self.colix[j]))
-            for i in range(1, n+1):
-                textFileHandle.write('%%8.3f'%(
+        for j in range(n):
+            textFileHandle.write('PC%2i'%(j+1))
+            for i in range(n):
+                textFileHandle.write('%8.3f'%(
+                        np.sum(self.weights*PCdata[:, i]*PCdata[:, j]) / self.norm))
+            textFileHandle.write('\n')
+
+        for j in range(self.num_vars):
+            if not self.isused[j]: continue
+            textFileHandle.write('%4i'%(j+1))
+            for i in range(n):
+                textFileHandle.write('%8.3f'%(
                         np.sum(self.weights*PCdata[:, i]
-                               *self.samples[:, self.colix[j-1]]-self.mean[j-1]/self.sddev[j])/self.norm))
-                
-            paramName = self.paramNames.parWithName(self.index2name[j]).name
-            textFileHandle.write('(%s)\n'%(paramName))
+                               *(self.samples[:, j]-self.means[j])/self.sddev[j]) / self.norm))
+            
+            name = self.index2name[j]
+            label = self.paramNames.parWithName(name).label
+            textFileHandle.write('   (%s)\n'%(label))
 
         textFileHandle.close()
+
 
     def GetUsedCols(self):
         nparams = self.samples.shape[1]
@@ -628,9 +647,9 @@ class MCSamples(chains):
             invertible = np.isfinite(np.linalg.cond(M))
             if (invertible):
                 R = np.linalg.inv(np.linalg.cholesky(M))
-                D = np.linalg.eigvals(np.dot(R, meanscov).dot(R.T))
+                D = np.linalg.eigvalsh(np.dot(R, meanscov).dot(R.T))
                 GelmanRubin = max(np.real(D))
-
+                
             if (invertible):
                 textFileHandle.write("\n")
                 textFileHandle.write("var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters\n")
@@ -963,7 +982,6 @@ class MCSamples(chains):
         if (self.has_limits_top[ix]): imax = self.ix_max[j] * fine_fac
 
         self.density1D = Density1D(imax-imin+1, fine_width)
-        # fixme: computation of self.density1D.P and self.density1D.X 
         for i in range(imin, imax+1):
             istart, iend = (i-winw)-(imin-fine_edge), (i+winw+1)-(imin-fine_edge)
             self.density1D.P[i-imin] = np.dot(Win, finebins[istart:iend])
@@ -977,8 +995,8 @@ class MCSamples(chains):
         if (maxbin==0):
             print 'no samples in bin, param: ', self.index2name[ix]
             sys.exit()
-
         self.density1D.P /= maxbin
+
         self.density1D.InitSpline()
 
         if (not self.no_plots):
@@ -1117,7 +1135,6 @@ class MCSamples(chains):
                 prior_mask[:, (iymax*fine_fac)-jmin] /= 2
                 prior_mask[:, :(iymax*fine_fac)-jmin] = 0
 
-        #import pdb; pdb.set_trace()
         for ix1 in range(ixmin, ixmax+1):
             for ix2 in range(iymin, iymax+1):
                 ix1start, ix1end = ix1*fine_fac-winw-imin, ix1*fine_fac+winw+1-imin
@@ -1247,13 +1264,12 @@ class MCSamples(chains):
         self.marge_limits_top = np.ndarray([self.num_contours, nparam], dtype=bool)
 
     def GetConfidenceRegion(self):
-        ND_cont1, ND_cont2 = -1, -1
+        self.ND_cont1, self.ND_cont2 = -1, -1
         cumsum = np.cumsum(self.weights)
         indexes = np.where(cumsum>self.norm*self.contours[0])
-        ND_cont1 = indexes[0][0]
+        self.ND_cont1 = indexes[0][0]
         indexes = np.where(cumsum>self.norm*self.contours[1])
-        ND_cont2 = indexes[0][0]
-        return ND_cont1, ND_cont2
+        self.ND_cont2 = indexes[0][0]
     
     def ReadRanges(self):
         ranges_file = self.root + '.ranges'

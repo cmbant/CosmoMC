@@ -163,6 +163,7 @@ class chains():
         corr = self.cov(paramVecs)
         diag = [np.sqrt(corr[i, i]) for i in range(len(paramVecs))]
         for i, di in enumerate(diag):
+            if di==0: continue
             corr[i, :] /= di
             corr[:, i] /= di
         return corr
