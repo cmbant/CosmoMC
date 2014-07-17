@@ -53,7 +53,7 @@ class dataSet:
         return data
 
     def standardizeParams(self, params):
-        if isinstance(params, dict): params = [params]
+        if isinstance(params, dict) or isinstance(params, basestring): params = [params]
         for i in range(len(params)):
             if isinstance(params[i], basestring) and not '.ini' in params[i]: params[i] += '.ini'
         return params

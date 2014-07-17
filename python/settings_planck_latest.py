@@ -1,7 +1,7 @@
 # provisional updated (reduced) grid settings for full mission
 # New BBN fitting built in
 # New BAO -> DR11
-import batchJob, copy
+import batchJob, copy, re
 
 ini_dir = 'batch2/'
 
@@ -42,15 +42,9 @@ TEEE = {'want_spec':'F F F F T T'}
 TTTE = {'want_spec':'T T T T T F'}
 full = {'want_spec':'T T T T T T'}
 
-TT100_217 = {'want_spec':'T F T F F F', 'param[cal2]':'0.992', 'param[aps143]':'0', 'param[acib143]':'0', 'param[psr]':'1', 'param[cibr]':'1'}
-TT100_143 = {'want_spec':'T T F F F F', 'param[cal2]':'0.992', 'param[aps217]':'0', 'param[acib217]':'0', 'param[psr]':'1', 'param[cibr]':'1'}
-no217auto = {'want_spec':'T T F T F F'}
-
-
 freecal = 'freecal.ini'
 freecalEE = {'param[calEE]':'1 0.1 2 0.01 0.01', 'prior[calEE]':'1 1'}
 freecalTE = {'param[calTE]':'1 0.1 2 0.005 0.005', 'prior[calTE]': '1 1'}
-
 
 planck_detsets = [freecal, 'nonclik_v97F.ini', Camspec]
 planck_CS = [freecal, 'nonclik_v97CS.ini', Camspec]
@@ -60,9 +54,10 @@ detsets = []
 CS = []
 for name, datasets, planck_vars in zip(['v97CS'], [CS], [planck_CS]):
     datasets.append(batchJob.dataSet([name , 'TT'], [TT] + planck_vars))
-    datasets.append(batchJob.dataSet([name , 'TE'], [TE, varTE, freecalTE] + planck_vars))
-    datasets.append(batchJob.dataSet([name , 'EE'], [EE, varEE, freecalEE] + planck_vars))
+#    datasets.append(batchJob.dataSet([name , 'TE'], [TE, varTE, freecalTE] + planck_vars))
+#    datasets.append(batchJob.dataSet([name , 'EE'], [EE, varEE, freecalEE] + planck_vars))
     datasets.append(batchJob.dataSet([name, 'all'], [full, varTE, varEE, freecalTE, freecalEE] + planck_vars))
+
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
 
@@ -94,17 +89,17 @@ g = batchJob.jobGroup('main')
 g.datasets = copy.deepcopy(CS)
 for d in g.datasets:
     d.add(tauname, tauprior)
-g.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
-groups.append(g)
-g.importanceRuns = [post_BAO, post_JLA, post_lensing]
+    d.add(lowl)
 
+g.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+g.importanceRuns = [post_BAO, post_JLA, post_lensing]
 groups.append(g)
+
 
 g2 = batchJob.jobGroup('ext')
 g2.datasets = copy.deepcopy(g.datasets)
 g2.params = [ ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['nnu', 'yhe']]
-# todo: prior on m_phys for ['nnu', 'meffsterile'],
-g2.importanceRuns = [post_BAO, post_JLA]
+g2.importanceRuns = [post_BAO, post_JLA, post_lensing]
 groups.append(g2)
 
 g3 = batchJob.jobGroup('geom')
@@ -131,7 +126,7 @@ groups.append(g4)
 
 
 
-skip = ['base_nnu_meffsterile_planck_lowl_lowLike']
+skip = []
 
 # try to match run to exisitng covmat
 covrenames = []
@@ -142,4 +137,10 @@ covrenames.append(['_lensing', '_post_lensing'])
 covrenames.append(['_BAO', '_post_BAO'])
 covrenames.append(['_HST', '_post_HST'])
 covrenames.append(['_JLA', '_post_SNLS'])
+
+def covRenamer(name):
+    renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
+    renamed = re.sub(r'_v.*', '_planck_lowl_lowLike', renamed, re.I)
+    if renamed == name: return[]
+    else: return [renamed]
 

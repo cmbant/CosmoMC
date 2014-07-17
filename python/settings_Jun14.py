@@ -129,7 +129,7 @@ for lmax in range(550, 2600, 150):
         d.add('lmax' + str(lmax), {'camspec_lmax': (str(lmax) + ' ') * 6})
     g.datasets += sets
 
-g.params = [[], ['yhe']]
+g.params = [[], ['yhe'], ['yhe'], ['nnu']]
 groups.append(g)
 
 g = batchJob.jobGroup('PCA')

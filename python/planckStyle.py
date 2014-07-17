@@ -21,6 +21,9 @@ rc('text.latex', preamble=r'\usepackage{' + sfmath + '}')
 
 rcParams.update(params)
 
+defdata_TT = 'v97CS_TT_tau07'
+defdata_all = 'v97CS_all_tau07'
+
 planck = r'\textit{Planck}'
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
@@ -81,6 +84,7 @@ def getPlotterWidth(size=1, **kwargs):  # size in mm
     return plotter
 
 def getSinglePlotter(ratio=3 / 4., plot_data=None):
+    global plotter
     s.setWithSubplotSize(3.5)
     s.rcSizes()
     if plot_data is not None: plotter = planckPlotter(plot_data)
