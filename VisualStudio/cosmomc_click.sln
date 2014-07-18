@@ -1,6 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2010
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30501.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "SharedObj", "..\camb\VisualStudio\SharedObj.vfproj", "{F371D52E-C2C8-4F56-83D2-4ED9E26F5F32}"
 EndProject
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "CAMBLib_ppf", "..\camb\VisualStudio\CAMBLib_ppf.vfproj", "{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}"
@@ -49,6 +51,7 @@ Global
 		{F371D52E-C2C8-4F56-83D2-4ED9E26F5F32}.Debug|Win32.ActiveCfg = Debug|Win32
 		{F371D52E-C2C8-4F56-83D2-4ED9E26F5F32}.Debug|Win32.Build.0 = Debug|Win32
 		{F371D52E-C2C8-4F56-83D2-4ED9E26F5F32}.Debug|x64.ActiveCfg = Debug|x64
+		{F371D52E-C2C8-4F56-83D2-4ED9E26F5F32}.Debug|x64.Build.0 = Debug|x64
 		{F371D52E-C2C8-4F56-83D2-4ED9E26F5F32}.DebugMPI|Mixed Platforms.ActiveCfg = DebugMPI|x64
 		{F371D52E-C2C8-4F56-83D2-4ED9E26F5F32}.DebugMPI|Mixed Platforms.Build.0 = DebugMPI|x64
 		{F371D52E-C2C8-4F56-83D2-4ED9E26F5F32}.DebugMPI|Win32.ActiveCfg = DebugMPI|Win32
@@ -65,6 +68,7 @@ Global
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.Debug|Win32.ActiveCfg = Debug|Win32
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.Debug|Win32.Build.0 = Debug|Win32
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.Debug|x64.ActiveCfg = Debug|x64
+		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.Debug|x64.Build.0 = Debug|x64
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.DebugMPI|Mixed Platforms.ActiveCfg = DebugMPI|x64
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.DebugMPI|Mixed Platforms.Build.0 = DebugMPI|x64
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.DebugMPI|Win32.ActiveCfg = DebugMPI|Win32
@@ -115,6 +119,7 @@ Global
 		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Debug|Win32.ActiveCfg = Debug|Win32
 		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Debug|Win32.Build.0 = Debug|Win32
 		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Debug|x64.ActiveCfg = Debug|x64
+		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.Debug|x64.Build.0 = Debug|x64
 		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.DebugMPI|Mixed Platforms.ActiveCfg = DebugMPI|x64
 		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.DebugMPI|Mixed Platforms.Build.0 = DebugMPI|x64
 		{9A850B68-FC7B-42F7-BB78-C4C38EF90B25}.DebugMPI|Win32.ActiveCfg = DebugMPI|Win32
