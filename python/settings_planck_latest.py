@@ -92,14 +92,14 @@ for d in g.datasets:
     d.add(lowl)
 
 g.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
-g.importanceRuns = [post_BAO, post_JLA, post_lensing]
+g.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST]
 groups.append(g)
 
 
 g2 = batchJob.jobGroup('ext')
 g2.datasets = copy.deepcopy(g.datasets)
 g2.params = [ ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['nnu', 'yhe']]
-g2.importanceRuns = [post_BAO, post_JLA, post_lensing]
+g2.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST]
 groups.append(g2)
 
 g3 = batchJob.jobGroup('geom')
