@@ -1,11 +1,11 @@
 import os, fnmatch, shutil, batchJobArgs, batchJob, zipfile
 
-Opts = batchJobArgs.batchArgs('copy chains and optionally other files', importance=True, converge=True)
+Opts = batchJobArgs.batchArgs('copy or zip chains and optionally other files', importance=True, converge=True)
 
 Opts.parser.add_argument('target_dir', help="output root directory or zip file name")
 
-Opts.parser.add_argument('--dist', action='store_true')
-Opts.parser.add_argument('--chains', action='store_true', default=True)
+Opts.parser.add_argument('--dist', action='store_true', help="include getdist outputs")
+Opts.parser.add_argument('--chains', action='store_true', default=True, help="include chain files")
 Opts.parser.add_argument('--file_extensions', nargs='+', default=['.*'])
 Opts.parser.add_argument('--skip_extensions', nargs='+', default=['.data', '.chk', '.log', '.corr', '.py', '.m'])
 Opts.parser.add_argument('--dryrun', action='store_true')

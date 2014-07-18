@@ -69,7 +69,8 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
           and (isMinimize or args.notall is None or not jobItem.allChainExists(args.notall))):
             if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
                 if not args.checkpoint_run or jobItem.wantCheckpointContinue() and jobItem.notRunning():
-                    if not args.importance_ready or not jobItem.isImportanceJob or jobItem.parent.chainFinished():
+                    if not jobItem.isImportanceJob or  (args.importance_ready and jobItem.parent.chainFinished()
+                                                        or not args.importance_ready and jobItem.parent.chainExists()):
                         if not args.not_queued or notQueued(jobItem.name):
                             submitJob(jobItem.iniFile(variant))
 

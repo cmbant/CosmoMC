@@ -317,12 +317,12 @@
 
     IF (Feedback > 2) WRITE(*,*) 'reading: '//trim(filename)
     OPEN( newunit=file_unit, FILE=TRIM(filename), FORM='formatted', &
-    STATUS='old', ERR = 500 )
+        STATUS='old', ERR = 500 )
 
     READ (file_unit, '(I5)', END=200, ERR=100) nfile
     IF (nfile /= n) THEN
         WRITE (*,'("For file ",A," expected size ",I5," got ",I5)') &
-        TRIM(filename), n, nfile
+            TRIM(filename), n, nfile
         STOP
     ENDIF
 
@@ -406,12 +406,12 @@
         ! they had better all have them or else ugliness will probably
         ! result
         READ (lun, *, ERR=20, END=20) &
-        sndata(count)%name, sndata(count)%zcmb, sndata(count)%zhel,&
-        dz, sndata(count)%mag, dm, sndata(count)%stretch, ds, &
-        sndata(count)%colour,dc,sndata(count)%thirdvar, dt,&
-        sndata(count)%cov_mag_stretch,&
-        sndata(count)%cov_mag_colour,sndata(count)%cov_stretch_colour,&
-        sndata(count)%dataset
+            sndata(count)%name, sndata(count)%zcmb, sndata(count)%zhel,&
+            dz, sndata(count)%mag, dm, sndata(count)%stretch, ds, &
+            sndata(count)%colour,dc,sndata(count)%thirdvar, dt,&
+            sndata(count)%cov_mag_stretch,&
+            sndata(count)%cov_mag_colour,sndata(count)%cov_stretch_colour,&
+            sndata(count)%dataset
         IF ( (count .GT. 1) .AND. (.NOT. has_thirdvar) ) THEN
             WRITE(*,*) "Problem with third variable read"
             STOP
@@ -425,11 +425,11 @@
 20      BACKSPACE lun
         BACKSPACE lun
         READ (lun, *, ERR=30, END=30) &
-        sndata(count)%name, sndata(count)%zcmb, sndata(count)%zhel,&
-        dz, sndata(count)%mag, dm, sndata(count)%stretch, ds, &
-        sndata(count)%colour,dc,sndata(count)%thirdvar,dt,&
-        sndata(count)%cov_mag_stretch,&
-        sndata(count)%cov_mag_colour,sndata(count)%cov_stretch_colour
+            sndata(count)%name, sndata(count)%zcmb, sndata(count)%zhel,&
+            dz, sndata(count)%mag, dm, sndata(count)%stretch, ds, &
+            sndata(count)%colour,dc,sndata(count)%thirdvar,dt,&
+            sndata(count)%cov_mag_stretch,&
+            sndata(count)%cov_mag_colour,sndata(count)%cov_stretch_colour
         IF ( (count .GT. 1) .AND. (.NOT. has_thirdvar) ) THEN
             WRITE(*,*) "Problem with third variable read"
             STOP
@@ -441,11 +441,11 @@
 30      BACKSPACE lun
         BACKSPACE lun
         READ (lun, *, ERR=40, END=40) &
-        sndata(count)%name, sndata(count)%zcmb, sndata(count)%zhel,&
-        dz, sndata(count)%mag, dm, sndata(count)%stretch, ds, &
-        sndata(count)%colour,dc,sndata(count)%cov_mag_stretch,&
-        sndata(count)%cov_mag_colour,sndata(count)%cov_stretch_colour,&
-        sndata(count)%dataset
+            sndata(count)%name, sndata(count)%zcmb, sndata(count)%zhel,&
+            dz, sndata(count)%mag, dm, sndata(count)%stretch, ds, &
+            sndata(count)%colour,dc,sndata(count)%cov_mag_stretch,&
+            sndata(count)%cov_mag_colour,sndata(count)%cov_stretch_colour,&
+            sndata(count)%dataset
         IF ( (count .GT. 1) .AND. (has_thirdvar) ) THEN
             WRITE(*,*) "Problem with third variable read"
             STOP
@@ -459,11 +459,11 @@
 40      BACKSPACE lun
         BACKSPACE lun
         READ (lun, *, ERR=60, END=50) &
-        sndata(count)%name, sndata(count)%zcmb, sndata(count)%zhel,&
-        dz, sndata(count)%mag, dm, sndata(count)%stretch, ds, &
-        sndata(count)%colour,dc,sndata(count)%cov_mag_stretch,&
-        sndata(count)%cov_mag_colour,sndata(count)%cov_stretch_colour,&
-        sndata(count)%dataset
+            sndata(count)%name, sndata(count)%zcmb, sndata(count)%zhel,&
+            dz, sndata(count)%mag, dm, sndata(count)%stretch, ds, &
+            sndata(count)%colour,dc,sndata(count)%cov_mag_stretch,&
+            sndata(count)%cov_mag_colour,sndata(count)%cov_stretch_colour,&
+            sndata(count)%dataset
         IF ( (count .GT. 1) .AND. (has_thirdvar) ) THEN
             WRITE(*,*) "Problem with third variable read"
             STOP
@@ -529,7 +529,7 @@
         BACKSPACE lun
 
         READ (lun, *, ERR=140, END=130) &
-        snabsdist(count)%name, snabsdist(count)%dl
+            snabsdist(count)%name, snabsdist(count)%dl
         count = count+1
     END DO
     RETURN
@@ -586,7 +586,7 @@
     DO i=1,nabsdist
         IF ( snabsdist(i)%index .LT. 0 ) THEN
             WRITE (*,'("Failed to match ",A," to full SN list")') &
-            snabsdist(i)%name
+                snabsdist(i)%name
             STOP
         ENDIF
     ENDDO
@@ -630,13 +630,13 @@
     idispdataset = .FALSE.
     DO i=1, max_idisp_datasets
         intrinsicdisp(i) = Ini%Read_Double(numcat('intrinsicdisp',i-1),&
-        idisp_zero)
+            idisp_zero)
         IF (intrinsicdisp(i) .NE. idisp_zero) idispdataset(i)=.TRUE.
     END DO
 
     !Now read the actual SN data
     OPEN( newunit=file_unit, FILE=TRIM(data_file), FORM='formatted', &
-    STATUS='old', ERR = 500 )
+        STATUS='old', ERR = 500 )
     !Find the number of lines
     CALL count_lines( file_unit, nlines, nsn )
     ALLOCATE( sndata(nsn) )
@@ -652,7 +652,7 @@
     !Absolute distance
     IF ( has_absdist ) THEN
         OPEN( newunit=file_unit, FILE=TRIM(absdist_file), FORM='formatted', &
-        STATUS='old', ERR = 500 )
+            STATUS='old', ERR = 500 )
         !Find the number of lines
         CALL count_lines( file_unit, nlines, nabsdist )
         ALLOCATE( snabsdist(nabsdist) )
@@ -668,48 +668,48 @@
     has_mag_stretch_covmat=Ini%Read_Logical('has_mag_stretch_covmat',.FALSE.)
     has_mag_colour_covmat=Ini%Read_Logical( 'has_mag_colour_covmat',.FALSE. )
     has_stretch_colour_covmat = &
-    Ini%Read_Logical( 'has_stretch_colour_covmat',.FALSE. )
+        Ini%Read_Logical( 'has_stretch_colour_covmat',.FALSE. )
     alphabeta_covmat = ( has_stretch_covmat .OR. has_colour_covmat .OR. &
-    has_mag_stretch_covmat .OR. has_mag_colour_covmat .OR. &
-    has_stretch_colour_covmat )
+        has_mag_stretch_covmat .OR. has_mag_colour_covmat .OR. &
+        has_stretch_colour_covmat )
 
     !First test for covmat
     IF ( has_mag_covmat .OR. has_stretch_covmat .OR. has_colour_covmat .OR. &
-    has_mag_stretch_covmat .OR. has_mag_colour_covmat .OR. &
-    has_stretch_colour_covmat ) THEN
-        diag_errors = .FALSE.
+        has_mag_stretch_covmat .OR. has_mag_colour_covmat .OR. &
+        has_stretch_colour_covmat ) THEN
+    diag_errors = .FALSE.
 
-        !Now Read in the covariance matricies
-        IF (has_mag_covmat) THEN
-            covfile = Ini%Read_String('mag_covmat_file',.TRUE.)
-            ALLOCATE( mag_covmat( nsn, nsn ) )
-            CALL read_cov_matrix( covfile, mag_covmat, nsn )
-        ENDIF
-        IF (has_stretch_covmat) THEN
-            covfile = Ini%Read_String('stretch_covmat_file',.TRUE.)
-            ALLOCATE( stretch_covmat( nsn, nsn ) )
-            CALL read_cov_matrix( covfile, stretch_covmat, nsn )
-        ENDIF
-        IF (has_colour_covmat) THEN
-            covfile = Ini%Read_String('colour_covmat_file',.TRUE.)
-            ALLOCATE( colour_covmat( nsn, nsn ) )
-            CALL read_cov_matrix( covfile, colour_covmat, nsn )
-        ENDIF
-        IF (has_mag_stretch_covmat) THEN
-            covfile = Ini%Read_String('mag_stretch_covmat_file',.TRUE.)
-            ALLOCATE( mag_stretch_covmat( nsn, nsn ) )
-            CALL read_cov_matrix( covfile, mag_stretch_covmat, nsn )
-        ENDIF
-        IF (has_mag_colour_covmat) THEN
-            covfile = Ini%Read_String('mag_colour_covmat_file',.TRUE.)
-            ALLOCATE( mag_colour_covmat( nsn, nsn ) )
-            CALL read_cov_matrix( covfile, mag_colour_covmat, nsn )
-        ENDIF
-        IF (has_stretch_colour_covmat) THEN
-            covfile = Ini%Read_String('stretch_colour_covmat_file',.TRUE.)
-            ALLOCATE( stretch_colour_covmat( nsn, nsn ) )
-            CALL read_cov_matrix( covfile, stretch_colour_covmat, nsn )
-        ENDIF
+    !Now Read in the covariance matricies
+    IF (has_mag_covmat) THEN
+        covfile = Ini%Read_String('mag_covmat_file',.TRUE.)
+        ALLOCATE( mag_covmat( nsn, nsn ) )
+        CALL read_cov_matrix( covfile, mag_covmat, nsn )
+    ENDIF
+    IF (has_stretch_covmat) THEN
+        covfile = Ini%Read_String('stretch_covmat_file',.TRUE.)
+        ALLOCATE( stretch_covmat( nsn, nsn ) )
+        CALL read_cov_matrix( covfile, stretch_covmat, nsn )
+    ENDIF
+    IF (has_colour_covmat) THEN
+        covfile = Ini%Read_String('colour_covmat_file',.TRUE.)
+        ALLOCATE( colour_covmat( nsn, nsn ) )
+        CALL read_cov_matrix( covfile, colour_covmat, nsn )
+    ENDIF
+    IF (has_mag_stretch_covmat) THEN
+        covfile = Ini%Read_String('mag_stretch_covmat_file',.TRUE.)
+        ALLOCATE( mag_stretch_covmat( nsn, nsn ) )
+        CALL read_cov_matrix( covfile, mag_stretch_covmat, nsn )
+    ENDIF
+    IF (has_mag_colour_covmat) THEN
+        covfile = Ini%Read_String('mag_colour_covmat_file',.TRUE.)
+        ALLOCATE( mag_colour_covmat( nsn, nsn ) )
+        CALL read_cov_matrix( covfile, mag_colour_covmat, nsn )
+    ENDIF
+    IF (has_stretch_colour_covmat) THEN
+        covfile = Ini%Read_String('stretch_colour_covmat_file',.TRUE.)
+        ALLOCATE( stretch_colour_covmat( nsn, nsn ) )
+        CALL read_cov_matrix( covfile, stretch_colour_covmat, nsn )
+    ENDIF
     ELSE
         diag_errors = .TRUE.
     END IF
@@ -727,16 +727,16 @@
         WRITE(*,'(" JLA default sigma int: ",F6.3)') idisp_zero
         DO i=1, max_idisp_datasets
             IF ( idispdataset(i)) &
-            WRITE(*,'(" JLA sigma int for dataset ",I2,": ",F6.3)') &
-            i-1,intrinsicdisp(i)
+                WRITE(*,'(" JLA sigma int for dataset ",I2,": ",F6.3)') &
+                i-1,intrinsicdisp(i)
         END DO
         IF (has_absdist) THEN
             WRITE (*,'(" Number of SN with absolute distances: ",I4)') &
-            nabsdist
+                nabsdist
             IF (Feedback>2 .AND. (nabsdist .LT. 10)) THEN
                 DO i=1,nabsdist
                     WRITE(*,'("   Name: ",A12," dist: ",F8.2)') &
-                    snabsdist(i)%name,snabsdist(i)%dl
+                        snabsdist(i)%name,snabsdist(i)%dl
                 ENDDO
             ENDIF
         ENDIF
@@ -747,11 +747,11 @@
         IF (has_stretch_covmat) WRITE (*,*) " Has stretch covariance matrix"
         IF (has_colour_covmat) WRITE (*,*) " Has colour covariance matrix"
         IF (has_mag_stretch_covmat) &
-        WRITE (*,*) " Has mag-stretch covariance matrix"
+            WRITE (*,*) " Has mag-stretch covariance matrix"
         IF (has_mag_colour_covmat) &
-        WRITE (*,*) " Has mag-colour covariance matrix"
+            WRITE (*,*) " Has mag-colour covariance matrix"
         IF (has_stretch_colour_covmat) &
-        WRITE (*,*) " Has stretch_colour covariance matrix"
+            WRITE (*,*) " Has stretch_colour covariance matrix"
     ENDIF
 
     first_inversion = .true.
@@ -773,11 +773,11 @@
     SUBROUTINE invert_covariance_matrix(invcovmat, alpha, beta, status )
     IMPLICIT NONE
     CHARACTER(LEN=*), PARAMETER :: cholerrfmt = &
-    '("Error computing cholesky decomposition for ",F6.3,2X,F6.3)'
+        '("Error computing cholesky decomposition for ",F6.3,2X,F6.3)'
     CHARACTER(LEN=*), PARAMETER :: cholinvfmt = &
-    '("Error inverting cov matrix for ",F6.3,2X,F6.3)'
+        '("Error inverting cov matrix for ",F6.3,2X,F6.3)'
     CHARACTER(LEN=*), PARAMETER :: cholsolfmt = &
-    '("Error forming inv matrix product for ",F6.3,2X,F6.3)'
+        '("Error forming inv matrix product for ",F6.3,2X,F6.3)'
 
     REAL(dl), INTENT(IN) :: alpha, beta
     INTEGER, INTENT(INOUT) :: status
@@ -796,10 +796,10 @@
             status = 0
             RETURN
         ELSE IF ( (ABS(alpha-alpha_prev) .LT. alphatol) .AND. &
-        ( ABS(beta-beta_prev) .LT. betatol ) ) THEN
-            !Previous invcovmatrix is close enough
-            status = 0
-            RETURN
+            ( ABS(beta-beta_prev) .LT. betatol ) ) THEN
+        !Previous invcovmatrix is close enough
+        status = 0
+        RETURN
         ENDIF
     ENDIF
 
@@ -816,9 +816,9 @@
         invcovmat = 0.0_dl
     END IF
     IF (has_stretch_covmat) invcovmat = invcovmat + &
-    alphasq * stretch_covmat
+        alphasq * stretch_covmat
     IF (has_colour_covmat) invcovmat = invcovmat + &
-    betasq * colour_covmat
+        betasq * colour_covmat
     IF (has_mag_stretch_covmat) invcovmat = invcovmat + 2.0 * alpha * mag_stretch_covmat
     IF (has_mag_colour_covmat) invcovmat = invcovmat - 2.0 * beta * mag_colour_covmat
     IF (has_stretch_colour_covmat) invcovmat = invcovmat - 2.0 * alphabeta * stretch_colour_covmat
@@ -826,11 +826,11 @@
     !Update the diagonal terms
     DO I=1, nsn
         invcovmat(I,I) = invcovmat(I,I) + pre_vars(I) &
-        + alphasq * sndata(I)%stretch_var &
-        + betasq  * sndata(I)%colour_var &
-        + 2.0 * alpha * sndata(I)%cov_mag_stretch &
-        - 2.0 * beta * sndata(I)%cov_mag_colour &
-        - 2.0 * alphabeta * sndata(I)%cov_stretch_colour
+            + alphasq * sndata(I)%stretch_var &
+            + betasq  * sndata(I)%colour_var &
+            + 2.0 * alpha * sndata(I)%cov_mag_stretch &
+            - 2.0 * beta * sndata(I)%cov_mag_colour &
+            - 2.0 * alphabeta * sndata(I)%cov_stretch_colour
     END DO
 
     !Factor into Cholesky form, overwriting the input matrix
@@ -914,9 +914,9 @@
     DO i=1,nsn
         IF (.NOT. sndata(i)%has_absdist) THEN
             pre_vars(i) = pre_vars(i) + &
-            zfacsq * pecz**2 * &
-            ( (1.0 + sndata(i)%zcmb)/&
-            (sndata(i)%zcmb*(1+0.5*sndata(i)%zcmb)) )**2
+                zfacsq * pecz**2 * &
+                ( (1.0 + sndata(i)%zcmb)/&
+                (sndata(i)%zcmb*(1+0.5*sndata(i)%zcmb)) )**2
         ENDIF
     ENDDO
     ALLOCATE(lumdists(nsn))
@@ -961,24 +961,24 @@
         WRITE(*,*) "Summary of supernova data: "
         IF (twoscriptmfit) THEN
             WRITE(*,snheadfmt) "Name","zhel","dz","mag","dmag", &
-            "s","ds","c","dc","t","dt","pre_err"
+                "s","ds","c","dc","t","dt","pre_err"
             DO i = 1, nsn
                 WRITE(*,sndatfmt2) sndata(i)%name,sndata(i)%zhel,&
-                SQRT(sndata(i)%z_var),sndata(i)%mag,SQRT(sndata(i)%mag_var),&
-                sndata(i)%stretch,SQRT(sndata(i)%stretch_var),&
-                sndata(i)%colour,SQRT(sndata(i)%colour_var),&
-                sndata(i)%thirdvar,SQRT(sndata(i)%thirdvar_var),&
-                SQRT(pre_vars(i))
+                    SQRT(sndata(i)%z_var),sndata(i)%mag,SQRT(sndata(i)%mag_var),&
+                    sndata(i)%stretch,SQRT(sndata(i)%stretch_var),&
+                    sndata(i)%colour,SQRT(sndata(i)%colour_var),&
+                    sndata(i)%thirdvar,SQRT(sndata(i)%thirdvar_var),&
+                    SQRT(pre_vars(i))
             END DO
         ELSE
             WRITE(*,snheadfmt) "Name","zhel","dz","mag","dmag", &
-            "s","ds","c","dc","pre_err"
+                "s","ds","c","dc","pre_err"
             DO i = 1, nsn
                 WRITE(*,sndatfmt) sndata(i)%name,sndata(i)%zhel,&
-                SQRT(sndata(i)%z_var),sndata(i)%mag,SQRT(sndata(i)%mag_var),&
-                sndata(i)%stretch,SQRT(sndata(i)%stretch_var),&
-                sndata(i)%colour,&
-                SQRT(sndata(i)%colour_var),SQRT(pre_vars(i))
+                    SQRT(sndata(i)%z_var),sndata(i)%mag,SQRT(sndata(i)%mag_var),&
+                    sndata(i)%stretch,SQRT(sndata(i)%stretch_var),&
+                    sndata(i)%colour,&
+                    SQRT(sndata(i)%colour_var),SQRT(pre_vars(i))
             END DO
         ENDIF
     ENDIF
@@ -1005,7 +1005,7 @@
     IF ( ALLOCATED( mag_stretch_covmat ) ) DEALLOCATE( mag_stretch_covmat )
     IF ( ALLOCATED( mag_colour_covmat ) ) DEALLOCATE( mag_colour_covmat )
     IF ( ALLOCATED( stretch_colour_covmat ) ) &
-    DEALLOCATE( stretch_colour_covmat )
+        DEALLOCATE( stretch_colour_covmat )
     IF ( ALLOCATED( snabsdist ) ) DEALLOCATE( snabsdist )
 
     jla_prepped = .FALSE.
@@ -1028,7 +1028,7 @@
     FUNCTION  JLA_alpha_beta_like(alpha, beta,  lumdists)
     real(mcp) :: JLA_alpha_beta_like
     CHARACTER(LEN=*), PARAMETER :: invfmt = &
-    '("Error inverting cov matrix for ",F6.3,2X,F6.3)'
+        '("Error inverting cov matrix for ",F6.3,2X,F6.3)'
 
     INTEGER :: i, status
     real(dl) :: lumdists(nsn)
@@ -1054,15 +1054,15 @@
     ! the covariance matrix and ignoring if there are two scriptms
     ! to deal with
     invvars = 1.0 / ( pre_vars + alphasq * sndata%stretch_var &
-    + betasq * sndata%colour_var &
-    + 2.0 * alpha * sndata%cov_mag_stretch &
-    - 2.0 * beta * sndata%cov_mag_colour &
-    - 2.0 * alphabeta * sndata%cov_stretch_colour )
+        + betasq * sndata%colour_var &
+        + 2.0 * alpha * sndata%cov_mag_stretch &
+        - 2.0 * beta * sndata%cov_mag_colour &
+        - 2.0 * alphabeta * sndata%cov_stretch_colour )
 
     wtval = SUM( invvars )
     estimated_scriptm= SUM( (sndata%mag - lumdists)*invvars ) / wtval
     diffmag = sndata%mag - lumdists + alpha*( sndata%stretch ) &
-    - beta * sndata%colour - estimated_scriptm
+        - beta * sndata%colour - estimated_scriptm
 
     IF ( diag_errors ) THEN
         amarg_A = SUM( invvars * diffmag**2 )
@@ -1140,8 +1140,8 @@
             STOP
         ENDIF
         chisq = amarg_A + LOG( amarg_E*inv_twopi ) + &
-        LOG( tempG * inv_twopi ) - amarg_C*amarg_C/tempG - &
-        amarg_B*amarg_B*amarg_F / ( amarg_E*tempG ) + 2.0*amarg_B*amarg_C*amarg_D/(amarg_E*tempG )
+            LOG( tempG * inv_twopi ) - amarg_C*amarg_C/tempG - &
+            amarg_B*amarg_B*amarg_F / ( amarg_E*tempG ) + 2.0*amarg_B*amarg_C*amarg_D/(amarg_E*tempG )
     ELSE
         chisq = amarg_A + LOG( amarg_E*inv_twoPI ) - amarg_B**2/amarg_E
     ENDIF
@@ -1151,11 +1151,11 @@
         IF (Feedback > 2) THEN
             IF (twoscriptmfit) THEN
                 WRITE(*,'(" JLA alpha: ",F7.4," beta: ",F7.4," scriptm1: ",F9.4, "scriptm2: ",F9.4)') &
-                alpha,beta,(amarg_B*amarg_F-amarg_C*amarg_D)/tempG,&
-                (amarg_C*amarg_E-amarg_B*amarg_D)/tempG
+                    alpha,beta,(amarg_B*amarg_F-amarg_C*amarg_D)/tempG,&
+                    (amarg_C*amarg_E-amarg_B*amarg_D)/tempG
             ELSE
                 WRITE(*,'(" JLA alpha: ",F7.4," beta: ",F9.4," scriptm: ",F9.4)') &
-                alpha,beta,-amarg_B/amarg_E
+                    alpha,beta,-amarg_B/amarg_E
             ENDIF
         END IF
         WRITE(*,'(" JLA chi2: ",F7.2," for ",I5," SN")') chisq,nsn
@@ -1213,7 +1213,8 @@
         end do
 
         grid_best = minval(JLA_marge_grid,mask=JLA_marge_grid/=logZero)
-        jla_LnLike =  grid_best - log(sum(exp(-JLA_marge_grid + grid_best),  mask=JLA_marge_grid/=logZero)*JLA_step_width_alpha*JLA_step_width_beta)
+        jla_LnLike =  grid_best - log(sum(exp(-JLA_marge_grid + grid_best),  &
+            mask=JLA_marge_grid/=logZero)*JLA_step_width_alpha*JLA_step_width_beta)
         IF (Feedback > 1) THEN
             WRITE(*,'(" JLA best logLike ",F7.2,", marge logLike: ",F7.2," for ",I5," SN")') grid_best, jla_LnLike,nsn
         end if

@@ -1,5 +1,5 @@
-import os, ResultObjs, GetDistPlots
-from matplotlib import rcParams, rc
+import os, ResultObjs, GetDistPlots, sys
+from matplotlib import rcParams, rc, pylab
 
 # common setup for matplotlib
 params = {'backend': 'pdf',
@@ -20,6 +20,11 @@ sfmath = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'sfmath'
 rc('text.latex', preamble=r'\usepackage{' + sfmath + '}')
 
 rcParams.update(params)
+
+non_final = True
+version = 'v97CS_tau07'
+defdata_TT = 'v97CS_TT_tau07_lowl'
+defdata_all = 'v97CS_all_tau07_lowl'
 
 planck = r'\textit{Planck}'
 WP = r'\textit{Planck}+WP'
@@ -47,16 +52,25 @@ s.axis_marker_lw = 0.6
 s.lw_contour = 1
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
-    def export(self, fname):
-        if '.' in fname:GetDistPlots.GetDistPlotter.export(self, fname)
-        else:
-            GetDistPlots.GetDistPlotter.export(self, 'outputs/' + fname + '.pdf')
 
-    def exportExtra(self, fname):
-        GetDistPlots.GetDistPlotter.export(self, 'plots/' + fname + '.pdf')
+    def doExport(self, fname, adir=None, watermark=None):
+        if fname is None: fname = os.path.basename(sys.argv[0]).replace('.py', '')
+        if not '.' in fname: fname += '.pdf'
+        if adir is not None and not os.sep in fname: fname = os.path.join(adir, fname)
+        if not os.path.exists(os.path.dirname(fname)): os.makedirs(os.path.dirname(fname))
+        if watermark is not None and watermark or watermark is None and non_final:
+            # #watermark with version tag so we know it's old
+            pylab.gcf().text(0.45, 0.5, version.replace('_', '{\\textunderscore}'), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
+        GetDistPlots.GetDistPlotter.export(self, fname)
+
+    def export(self, fname=None):
+        self.doExport(fname, 'outputs')
+
+    def exportExtra(self, fname=None):
+        self.doExport(fname, 'plots')
 
 
-plotter = planckPlotter('main/plot_data')
+plotter = planckPlotter('grid/plot_data')
 
 
 def getSubplotPlotter(plot_data=None):
@@ -81,6 +95,7 @@ def getPlotterWidth(size=1, **kwargs):  # size in mm
     return plotter
 
 def getSinglePlotter(ratio=3 / 4., plot_data=None):
+    global plotter
     s.setWithSubplotSize(3.5)
     s.rcSizes()
     if plot_data is not None: plotter = planckPlotter(plot_data)
