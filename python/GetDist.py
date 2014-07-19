@@ -499,7 +499,7 @@ if (not no_plots):
         textInit = MCSamples.WritePlotFileInit()
         textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch, out_dir, rootname))
         if (plot_ext=='py'):
-            names = [ mc.index2name[i] for i in triangle_params ]
+            names = [ mc.index2name[i] for i in triangle_params if mc.isused[i] ]
             text = 'g.triangle_plot(roots, %s)\n'%str(names)
             textFileHandle.write(text)
         textExport = MCSamples.WritePlotFileExport()
