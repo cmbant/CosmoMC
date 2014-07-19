@@ -118,11 +118,19 @@ for d in copy.deepcopy(g.datasets):
 g3.importanceRuns = [post_BAO , post_JLA]
 groups.append(g3)
 
-g4 = batchJob.jobGroup('planckonly')
+g4 = batchJob.jobGroup('planckonlynolow')
 g4.params = [[]]
 g4.datasets = copy.deepcopy(CS)
 g4.importanceRuns = [post_BAO, post_JLA, post_lensing]
 groups.append(g4)
+
+g5 = batchJob.jobGroup('planckonly')
+g5.params = [[]]
+g5.datasets = copy.deepcopy(CS)
+for d in g5.datasets:
+    d.add(lowl)
+g5.importanceRuns = [post_BAO, post_JLA, post_lensing]
+groups.append(g5)
 
 
 
