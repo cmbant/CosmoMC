@@ -405,7 +405,8 @@ if (triangle_plot):
             pass
         triangle_plot = triangle_num > 1
 
-print 'using ', mc.numrows,' rows, processing ', mc.num_vars,' parameters'
+num_parameters = mc.isused[mc.isused==True].shape[0]
+print 'using ', mc.numrows,' rows, processing ', num_parameters,' parameters'
 if (mc.indep_thin<>0):
     print 'Approx indep samples: ', round(numsamp/mc.indep_thin)
 else:
@@ -435,10 +436,10 @@ for j in range(mc.num_vars):
     # Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
     for ix1 in range(mc.num_contours):
         
-        mc.marge_limits_bot[ix1][ix] = mc.has_limits_bot[ix] and not mc.force_twotail and (mc.density1D.P[0] > max_frac_twotail[ix1])
-        mc.marge_limits_top[ix1][ix] = mc.has_limits_top[ix] and not mc.force_twotail and (mc.density1D.P[-1] > max_frac_twotail[ix1])
+        mc.marge_limits_bot[ix1][ix] = mc.has_limits_bot[ix] and (not mc.force_twotail) and (mc.density1D.P[0] > max_frac_twotail[ix1])
+        mc.marge_limits_top[ix1][ix] = mc.has_limits_top[ix] and (not mc.force_twotail) and (mc.density1D.P[-1] > max_frac_twotail[ix1])
         
-        if (not mc.marge_limits_bot[ix1][ix] or not mc.marge_limits_top[ix1][ix]):
+        if ( (not mc.marge_limits_bot[ix1][ix]) or (not mc.marge_limits_top[ix1][ix]) ):
             # give limit
             tail_limit_bot, tail_limit_top, marge_bot, marge_top = mc.density1D.Limits(contours[ix1])
             mc.marge_limits_bot[ix1][ix] = marge_bot
@@ -463,7 +464,7 @@ for j in range(mc.num_vars):
             else:
                 tail_confid_top = mc.confidence(mc.samples[:, ix], limfrac/2, upper=True)
             
-            if (not mc.marge_limits_bot[ix1][ix] and not mc.marge_limits_top[ix1][ix]):
+            if ( (not mc.marge_limits_bot[ix1][ix]) and (not mc.marge_limits_top[ix1][ix]) ):
                 # Two tail, check if limits are at very differen density
                 if (abs(mc.density1D.Prob(tail_confid_top) - mc.density1D.Prob(tail_confid_bot)) < credible_interval_threshold):
                     tail_limit_top = tail_confid_top
@@ -621,6 +622,7 @@ if (not plots_only):
     textFileHandle.write("\n")
     textFileHandle.write('param  bestfit        lower1         upper1         lower2         upper2\n')
     for j in range(mc.num_vars):
+        if not mc.isused[j]: continue
         best = mc.samples[bestfit_ix][j]
         min1 = min(mc.samples[0:mc.ND_cont1, j])
         max1 = max(mc.samples[0:mc.ND_cont1, j])

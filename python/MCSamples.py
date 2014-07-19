@@ -6,7 +6,7 @@ import math
 import numpy as np
 from chains import chains
 
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, splrep, splev
 
 # =============================================================================
 
@@ -64,38 +64,45 @@ class Density1D():
         self.P   = np.zeros(n) 
         #self.ddP = np.zeros(n) 
         self.spacing = float(spacing)
-        self.test_with_scipy = False
+        #self.test_with_scipy = False
 
-    def Prob(self, x):
-        if (x > (self.X[-1] - self.spacing/1e6)):
-            if (x > (self.X[-1] + self.spacing/1e6)):
-                print 'Density: x too big ', x
-                sys.exit()
-            return self.P[-1]
+    # def Prob(self, x):
+    #     if (x > (self.X[-1] - self.spacing/1e6)):
+    #         if (x > (self.X[-1] + self.spacing/1e6)):
+    #             print 'Density: x too big ', x
+    #             sys.exit()
+    #         return self.P[-1]
         
-        if (x < (self.X[0] - self.spacing/1e6)):
-            print 'Density: out of range ', x, self.X[0], self.X[-1]
-            sys.exit()
+    #     if (x < (self.X[0] - self.spacing/1e6)):
+    #         print 'Density: out of range ', x, self.X[0], self.X[-1]
+    #         sys.exit()
 
-        llo = max(0, int((x-self.X[0])/self.spacing))
-        lhi = llo + 1
-        a0  = (self.X[lhi] - x) / self.spacing
-        b0  = (x - self.X[llo]) / self.spacing
-        res = (a0*self.P[llo]) + (b0*self.P[lhi]) + ( (
-                (math.pow(a0, 3)-a0)*self.ddP[llo] + 
-                (math.pow(b0, 3)-b0)*self.ddP[lhi] ) * math.pow(self.spacing, 2) / 6)
-        return res
+    #     llo = max(0, int((x-self.X[0])/self.spacing))
+    #     lhi = llo + 1
+    #     a0  = (self.X[lhi] - x) / self.spacing
+    #     b0  = (x - self.X[llo]) / self.spacing
+    #     res = (a0*self.P[llo]) + (b0*self.P[lhi]) + (
+    #             (math.pow(a0, 3)-a0)*self.ddP[llo] + 
+    #             (math.pow(b0, 3)-b0)*self.ddP[lhi] ) * math.pow(self.spacing, 2) / 6
+    #     return res
 
     def InitSpline(self):
-        if self.test_with_scipy: 
-            self.GetProb = interp1d(self.X, self.P, kind='cubic', 
-                                    copy=False,
-                                    bounds_error=False, 
-                                    fill_value=0.,
-                                    #assume_sorted=True # arg not available
-                                    )
-        else:            
-            self.ddP = self._spline(self.X, self.P, self.n, self.SPLINE_DANGLE, self.SPLINE_DANGLE)
+        self.spl = splrep(self.X, self.P, s=0) 
+
+#        if self.test_with_scipy: 
+#            pass
+#            self.GetProb = interp1d(self.X, self.P, kind='cubic', 
+#                                    copy=False,
+#                                    bounds_error=False, 
+#                                    fill_value=0.,
+#                                    #assume_sorted=True # arg not available
+#                                    )
+#        else:            
+#            self.ddP = self._spline(self.X, self.P, self.n, self.SPLINE_DANGLE, self.SPLINE_DANGLE)
+
+    def Prob(self, x):
+        # Assuming x is a single value
+        return splev([x], self.spl) 
 
     def Limits(self, p):
 
@@ -105,13 +112,15 @@ class Density1D():
 
         factor = 100
         bign = (self.n-1)*factor + 1
-        if self.test_with_scipy: 
-            vecx = self.X[0] + np.arange(bign)*self.spacing/factor
-            grid = self.GetProb(vecx) 
-        else:
-            grid = np.zeros(bign)
-            for i in range(bign):
-                grid[i] = self.Prob(self.X[0] + i * self.spacing / factor)
+        vecx = self.X[0] + np.arange(bign)*self.spacing / factor
+        grid = splev(vecx, self.spl) 
+#        if self.test_with_scipy: 
+#            pass
+#            grid = self.GetProb(vecx) 
+#        else:
+#            grid = np.zeros(bign)
+#            for i in range(bign):
+#                grid[i] = self.Prob(self.X[0] + i * self.spacing / factor)
 
         norm  = np.sum(grid)
         norm  = norm - (0.5*self.P[-1]) - (0.5*self.P[0])
@@ -153,48 +162,48 @@ class Density1D():
 
         return mn, mx, lim_bot, lim_top
 
-    def _spline(self, x, y, n, d11, d1n):
-        """
-        Calculates array of second derivatives used by cubic spline interpolation.
-        """
-        u = np.zeros(n-1)
-        d2 = np.zeros(n) # result
+    # def _spline(self, x, y, n, d11, d1n):
+    #     """
+    #     Calculates array of second derivatives used by cubic spline interpolation.
+    #     """
+    #     u = np.zeros(n-1)
+    #     d2 = np.zeros(n) # result
 
-        d1r = (y[1]-y[0]) / (x[1]-x[0])
-        if (d11==self.SPLINE_DANGLE):
-            d2[0] = 0.
-            u[0]  = 0.
-        else:
-            d2[0] = -0.5
-            u[0]  = (3./(x[1]-x[0]))*(d1r-d11)
+    #     d1r = (y[1]-y[0]) / (x[1]-x[0])
+    #     if (d11==self.SPLINE_DANGLE):
+    #         d2[0] = 0.
+    #         u[0]  = 0.
+    #     else:
+    #         d2[0] = -0.5
+    #         u[0]  = (3./(x[1]-x[0]))*(d1r-d11)
 
-        for i in range(1, n-1):
-            d1l = d1r
-            d1r = (y[i+1]-y[i]) / (x[i+1]-x[i])
-            xxdiv = 1. / (x[i+1]-x[i-1])
-            sig = (x[i] - x[i-1]) * xxdiv
-            xp = 1. / (sig*d2[i-1]+2.)
+    #     for i in range(1, n-1):
+    #         d1l = d1r
+    #         d1r = (y[i+1]-y[i]) / (x[i+1]-x[i])
+    #         xxdiv = 1. / (x[i+1]-x[i-1])
+    #         sig = (x[i] - x[i-1]) * xxdiv
+    #         xp = 1. / (sig*d2[i-1]+2.)
 
-            d2[i] = (sig - 1.) * xp
+    #         d2[i] = (sig - 1.) * xp
 
-            u[i] = (6. * (d1r-d1l) * xxdiv - sig*u[i-1]) * xp
+    #         u[i] = (6. * (d1r-d1l) * xxdiv - sig*u[i-1]) * xp
             
-        d1l = d1r
+    #     d1l = d1r
         
-        if (d1n==self.SPLINE_DANGLE):
-            qn = 0.
-            un = 0.
-        else:
-            qn = 0.5
-            un = (3. /(x[n-1]-x[n-2])) * (d1n-d1l)
+    #     if (d1n==self.SPLINE_DANGLE):
+    #         qn = 0.
+    #         un = 0.
+    #     else:
+    #         qn = 0.5
+    #         un = (3. /(x[n-1]-x[n-2])) * (d1n-d1l)
 
-        d2[n-1] = (un - qn*u[n-2]) / (qn*d2[n-2] + 1.)
-        indexes = range(0, n-2)
-        indexes.reverse()
-        for i in indexes:
-            d2[i] = d2[i] * d2[i+1] + u[i] 
+    #     d2[n-1] = (un - qn*u[n-2]) / (qn*d2[n-2] + 1.)
+    #     indexes = range(0, n-2)
+    #     indexes.reverse()
+    #     for i in indexes:
+    #         d2[i] = d2[i] * d2[i+1] + u[i] 
 
-        return d2
+    #     return d2
 
 # =============================================================================
 
@@ -247,7 +256,7 @@ class MCSamples(chains):
 
         self.LowerUpperLimits = None
         self.covmat_dimension = 0
-        self.max_split_tests = -1 #4 # -1 to disable split tests
+        self.max_split_tests = 4
         self.force_twotail = False
         self.mean_mult = 0
 
@@ -358,22 +367,24 @@ class MCSamples(chains):
     # MostCorrelated2D ? 
 
     def GetFractionIndices(self, weights, n):
-        numsamp = np.sum(weights)
-        fraction_indices = []
-        aim = numsamp / n
-        fraction_indices.append(0)
-        tot = 0 
-        num = 0
         nrows = weights.shape[0]
+        numsamp = np.sum(weights)
+
+        tot = 0 
+        aim = numsamp / n
+        num = 0
+
+        fraction_indices = []
+        fraction_indices.append(0)
+
         for i in range(nrows):
-            tot += weights[i]
+            tot = tot + weights[i]
             if (tot>aim):
-                num += 1
-                fraction_indices.append(num)
-                if (num==n): 
-                    fraction_indices.append(nrows)
-                    return fraction_indices
-                aim += numsamp / n
+                num = num + 1
+                fraction_indices.append(i)
+                if (num==n): break
+                aim = aim + numsamp / n
+
         fraction_indices.append(nrows)
         return fraction_indices
 
@@ -442,19 +453,23 @@ class MCSamples(chains):
             
         u = corrmatrix
         evals, evects = np.linalg.eig(u)
+        isorted = evals.argsort()
+        #import pdb; pdb.set_trace()
+        u = evects[isorted] # redefining u 
 
-        evals.sort()
         textFileHandle.write('\n')
         textFileHandle.write('e-values of correlation matrix\n')
         for i in range(n):
-            textFileHandle.write('PC%2i: %8.4f\n'%(i+1, evals[i]))
+            isort = isorted[i]
+            textFileHandle.write('PC%2i: %8.4f\n'%(i+1, evals[isort]))
 
         textFileHandle.write('\n')
         textFileHandle.write('e-vectors\n')
-        for i in range(n):
-            textFileHandle.write('%3i:'%(pars[i]+1))
-            for j in range(n):
-                textFileHandle.write('%8.4f'%(evects[i][j]))
+        for j in range(n):
+            textFileHandle.write('%3i:'%(pars[j]+1))
+            for i in range(n):
+                isort = isorted[i]
+                textFileHandle.write('%8.4f'%(evects[j][isort]))
             textFileHandle.write('\n')
 
         if (normparam<>-1):
@@ -476,7 +491,8 @@ class MCSamples(chains):
         textFileHandle.write('Principle components\n')
 
         for i in range(n):
-            textFileHandle.write('PC%i (e-value: %f)\n'%(i+1, evals[i]))
+            isort = isorted[i]
+            textFileHandle.write('PC%i (e-value: %f)\n'%(i+1, evals[isort]))
             for j in range(n):
                 name = self.index2name[pars[j]]
                 label = self.paramNames.parWithName(name).label
@@ -649,12 +665,11 @@ class MCSamples(chains):
                 R = np.linalg.inv(np.linalg.cholesky(M))
                 D = np.linalg.eigvalsh(np.dot(R, meanscov).dot(R.T))
                 GelmanRubin = max(np.real(D))
-                
             if (invertible):
                 textFileHandle.write("\n")
                 textFileHandle.write("var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters\n")
                 for jj in range(nparam):
-                    textFileHandle.write("%3i%13.5f\n"%(jj+1, D[-(jj+1)]))
+                    textFileHandle.write("%3i%13.5f\n"%(jj+1, D[jj]))
                 print " var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F\n"%GelmanRubin
             else:
                 print 'WARNING: Gelman-Rubin covariance not invertible'
@@ -667,18 +682,22 @@ class MCSamples(chains):
         textFileHandle.write("i.e. mean sample splitting change in the quantiles in units of the st. dev.\n")
         textFileHandle.write("\n")
 
+        # Need these values here
+        self.weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
+        self.norm = np.sum(self.weights)
+
         split_tests = {}
         nparam = self.paramNames.numParams()
         for j in range(nparam):
             if not self.isused[j]: continue
+            coldata = np.hstack((chain.coldata[:, j+2] for chain in self.chains))
             for endb in [0, 1]:
                 for split_n in range(2, self.max_split_tests+1):
-                    frac = self.GetFractionIndices(weights, split_n)
+                    frac = self.GetFractionIndices(self.weights, split_n)
                     split_tests[split_n] = 0
-                    coldata = np.hstack((chain.coldata[:, j+2] for chain in self.chains))
                     confid = self.confidence(coldata, (1-limfrac)/2, endb==0) 
-                    for i in range(1, split_n+1):
-                        split_tests[split_n] += self.confidence(coldata[frac[i]:frac[i+1]], (1-limfrac)/2, endb==0) 
+                    for i in range(split_n):
+                        split_tests[split_n] += math.pow(self.confidence(coldata[frac[i]:frac[i+1]], (1-limfrac)/2, endb==0), 2)
                     split_tests[split_n] = math.sqrt(split_tests[split_n]/split_n/fullvar[j])
                 if (endb==0):
                     typestr = 'upper'
@@ -688,7 +707,7 @@ class MCSamples(chains):
                 for split_n in range(2, self.max_split_tests+1):
                     textFileHandle.write("%9.4f"%(split_tests[split_n]))
                 label = self.paramNames.names[j].label
-                textFileHandle.write("%s %s\n"%(label, typestr))
+                textFileHandle.write("  %s %s\n"%(label, typestr))
 
         # Now do Raftery and Lewis method
         # See http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps
