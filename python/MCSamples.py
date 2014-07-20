@@ -4,9 +4,9 @@ import os
 import sys
 import math
 import numpy as np
-from chains import chains
-
 from scipy.interpolate import interp1d, splrep, splev
+
+from chains import chains
 
 # =============================================================================
 
@@ -62,43 +62,10 @@ class Density1D():
         self.n   = n
         self.X   = np.zeros(n) 
         self.P   = np.zeros(n) 
-        #self.ddP = np.zeros(n) 
         self.spacing = float(spacing)
-        #self.test_with_scipy = False
-
-    # def Prob(self, x):
-    #     if (x > (self.X[-1] - self.spacing/1e6)):
-    #         if (x > (self.X[-1] + self.spacing/1e6)):
-    #             print 'Density: x too big ', x
-    #             sys.exit()
-    #         return self.P[-1]
-        
-    #     if (x < (self.X[0] - self.spacing/1e6)):
-    #         print 'Density: out of range ', x, self.X[0], self.X[-1]
-    #         sys.exit()
-
-    #     llo = max(0, int((x-self.X[0])/self.spacing))
-    #     lhi = llo + 1
-    #     a0  = (self.X[lhi] - x) / self.spacing
-    #     b0  = (x - self.X[llo]) / self.spacing
-    #     res = (a0*self.P[llo]) + (b0*self.P[lhi]) + (
-    #             (math.pow(a0, 3)-a0)*self.ddP[llo] + 
-    #             (math.pow(b0, 3)-b0)*self.ddP[lhi] ) * math.pow(self.spacing, 2) / 6
-    #     return res
 
     def InitSpline(self):
         self.spl = splrep(self.X, self.P, s=0) 
-
-#        if self.test_with_scipy: 
-#            pass
-#            self.GetProb = interp1d(self.X, self.P, kind='cubic', 
-#                                    copy=False,
-#                                    bounds_error=False, 
-#                                    fill_value=0.,
-#                                    #assume_sorted=True # arg not available
-#                                    )
-#        else:            
-#            self.ddP = self._spline(self.X, self.P, self.n, self.SPLINE_DANGLE, self.SPLINE_DANGLE)
 
     def Prob(self, x):
         # Assuming x is a single value
@@ -114,13 +81,6 @@ class Density1D():
         bign = (self.n-1)*factor + 1
         vecx = self.X[0] + np.arange(bign)*self.spacing / factor
         grid = splev(vecx, self.spl) 
-#        if self.test_with_scipy: 
-#            pass
-#            grid = self.GetProb(vecx) 
-#        else:
-#            grid = np.zeros(bign)
-#            for i in range(bign):
-#                grid[i] = self.Prob(self.X[0] + i * self.spacing / factor)
 
         norm  = np.sum(grid)
         norm  = norm - (0.5*self.P[-1]) - (0.5*self.P[0])
@@ -162,49 +122,6 @@ class Density1D():
                     break
 
         return mn, mx, lim_bot, lim_top
-
-    # def _spline(self, x, y, n, d11, d1n):
-    #     """
-    #     Calculates array of second derivatives used by cubic spline interpolation.
-    #     """
-    #     u = np.zeros(n-1)
-    #     d2 = np.zeros(n) # result
-
-    #     d1r = (y[1]-y[0]) / (x[1]-x[0])
-    #     if (d11==self.SPLINE_DANGLE):
-    #         d2[0] = 0.
-    #         u[0]  = 0.
-    #     else:
-    #         d2[0] = -0.5
-    #         u[0]  = (3./(x[1]-x[0]))*(d1r-d11)
-
-    #     for i in range(1, n-1):
-    #         d1l = d1r
-    #         d1r = (y[i+1]-y[i]) / (x[i+1]-x[i])
-    #         xxdiv = 1. / (x[i+1]-x[i-1])
-    #         sig = (x[i] - x[i-1]) * xxdiv
-    #         xp = 1. / (sig*d2[i-1]+2.)
-
-    #         d2[i] = (sig - 1.) * xp
-
-    #         u[i] = (6. * (d1r-d1l) * xxdiv - sig*u[i-1]) * xp
-            
-    #     d1l = d1r
-        
-    #     if (d1n==self.SPLINE_DANGLE):
-    #         qn = 0.
-    #         un = 0.
-    #     else:
-    #         qn = 0.5
-    #         un = (3. /(x[n-1]-x[n-2])) * (d1n-d1l)
-
-    #     d2[n-1] = (un - qn*u[n-2]) / (qn*d2[n-2] + 1.)
-    #     indexes = range(0, n-2)
-    #     indexes.reverse()
-    #     for i in indexes:
-    #         d2[i] = d2[i] * d2[i+1] + u[i] 
-
-    #     return d2
 
 # =============================================================================
 
@@ -632,35 +549,7 @@ class MCSamples(chains):
         if (num_chains_used>1) and (self.covmat_dimension>0):
             # Assess convergence in the var(mean)/mean(var) in the worst eigenvalue
             # c.f. Brooks and Gelman 1997
-
-            # from chains.getChainsStats
-            # for chain in self.chains: chain.getCov(nparam)
-            # means = np.zeros(nparam)
-            # norm = np.sum([chain.norm for chain in self.chains])
-            # for chain in self.chains:
-            #     means = means + chain.means[0:nparam] * chain.norm
-            # means /= norm
-
-            # meanscov = np.zeros((nparam, nparam))
-            # for i in range(nparam):
-            #     for j in range(nparam):
-            #         meanscov[i, j] = np.sum([chain.norm * (chain.means[i] - means[i]) * (chain.means[j] - means[j]) for chain in self.chains])
-            #         meanscov[j, i] = meanscov[i, j]
-            # meanscov *= len(self.chains) / (len(self.chains) - 1) / norm
-            # meancov = np.zeros((nparam, nparam))
-            # for chain in self.chains:
-            #     meancov += chain.cov * chain.norm
-            # meancov /= norm
-
-            # M = meancov
-            # for i in range(nparam):
-            #     norm = np.sqrt(meancov[i, i])
-            #     M[i, :] /= norm
-            #     M[:, i] /= norm
-            #     meanscov[:, i] /= norm
-            #     meanscov[i, :] /= norm
                 
-            # new way of computing
             meanscov = np.zeros((nparam, nparam))
             cov = np.zeros((nparam, nparam))
 
@@ -680,9 +569,6 @@ class MCSamples(chains):
 
             meanscov[:, :] /= (num_chains_used-1)
             cov[:, :] /= norm
-
-            #meanscov = np.transpose(meanscov)
-            #cov = np.transpose(cov)
 
             invertible = np.isfinite(np.linalg.cond(cov))
             if (invertible):
@@ -710,7 +596,6 @@ class MCSamples(chains):
         self.weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
         self.norm = np.sum(self.weights)
 
-        #import pdb; pdb.set_trace()
         split_tests = {}
         nparam = self.paramNames.numParams()
         for j in range(nparam):
@@ -1068,7 +953,6 @@ class MCSamples(chains):
                 maxbin = min(binlikes)
                 binlikes = np.where( (binlikes-maxbin)<30, np.exp(-(binlikes-maxbin)), 0 )
 
-
             fname = self.rootname + "_p_" + str(self.index2name[j])
 
             filename = os.path.join(self.plot_data_dir, fname + ".dat")
@@ -1282,8 +1166,6 @@ class MCSamples(chains):
         else:
             return text
 
-
-    # New functions
 
     def ComputeStats(self):
         """

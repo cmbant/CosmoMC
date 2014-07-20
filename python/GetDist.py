@@ -38,7 +38,6 @@ rootname = os.path.basename(in_root)
 ignorerows = ini.float('ignore_rows', 0.0)
 
 # Create instance of MCSamples
-#mc = MCSamples.MCSamples(in_root, ignore_rows=ignorerows)
 mc = MCSamples.MCSamples(in_root)
 
 if (ini.params.has_key('nparams')):
@@ -218,7 +217,6 @@ plot_data_dir = ini.string('plot_data_dir')
 if (plot_data_dir==''):
     plot_data_dir = 'plot_data/'
 
-#abs_plot_data_dir = os.path.join(out_dir, plot_data_dir)
 abs_plot_data_dir = plot_data_dir
 if not os.path.isdir(abs_plot_data_dir):
     os.mkdir(abs_plot_data_dir)
@@ -320,8 +318,6 @@ ok = mc.loadChains(in_root, chain_files)
 #    sys.exit()
 
 mc.removeBurnFraction(ignorerows)
-#import pdb; pdb.set_trace()
-#no_tests = True # TEST
 if (not no_tests):
     mc.DoConvergeTests(converge_test_limit)
 
@@ -353,7 +349,6 @@ print 'mean input multiplicity = ', mc.mean_mult
 
 # Output thinned data if requested
 # Must do this with unsorted output
-#thin_factor = 2 # TEST
 if (thin_factor<>0):
     thin_ix = mc.thin_indices(thin_factor)
     filename = rootdirname + '_thin.txt'
@@ -430,7 +425,6 @@ mc.Init1DDensity()
 for j in range(mc.num_vars):
     if not mc.isused[j]: continue
 
-    #ix = mc.colix[j]
     ix = j
     mc.Get1DDensity(j)
 
