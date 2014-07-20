@@ -178,6 +178,9 @@ class MCSamples(chains):
         self.force_twotail = False
         self.mean_mult = 0
 
+        self.corr_length_thin = 0
+        self.corr_length_steps = 15
+
 
     def AdjustPriors(self):
         sys.exit('You need to write the AdjustPriors function in MCSamples.py first!')
@@ -504,6 +507,7 @@ class MCSamples(chains):
         for chain in self.chains: chain.getCov(nparam)
         mean = np.zeros(nparam)
         norm = np.sum([chain.norm for chain in self.chains])
+        nrows = np.sum([ chain.coldata.shape[0] for chain in self.chains ])
         for chain in self.chains:
             mean = mean + chain.means[0:nparam] * chain.norm
         mean /= norm
@@ -625,8 +629,10 @@ class MCSamples(chains):
         # Raw non-importance sampled chains only
         thin_fac = np.zeros(num_chains_used)
 
-        tran = np.zeros((2,2,2), dtype=np.int)
-        tran2 = np.zeros((2,2), dtype=np.int)
+        tran = np.zeros( (2,2,2), dtype=np.int )
+        tran2 = np.zeros( (2,2), dtype=np.int )
+
+        epsilon = 0.001
 
         if (np.all(np.abs(weights-np.round(np.where(weights>0.6, weights, 0.6)))<1e-4)):
 
@@ -639,22 +645,23 @@ class MCSamples(chains):
                 thin_fac[ix] = int(round(np.max(chain.coldata[:, 0]))) 
                 
                 for j in range(self.covmat_dimension):
-                    coldata = np.vstack((chain.coldata[:, j] for chain in self.chains))
+                    coldata = np.hstack((chain.coldata[:, j] for chain in self.chains))
                     if (self.force_twotail or not self.has_limits[j]):
                         for endb in [0, 1]:
                             # Get binary chain depending on whether above or below confidence value
                             u = self.confidence(chain.coldata[:, j], (1-limfrac)/2, endb==0) 
                             while(True): 
                                 thin_ix = self.thin_indices(thin_fac[ix])
+                                thin_rows = len(thin_ix)
                                 if (thin_rows<2): break
                                 binchain = np.zeros(thin_rows)
-                                binchain[:] = 2
-                                indexes = np.where(coldata >= u)
-                                binchain[indexes] = 1
+                                binchain[:] = 1
+                                indexes = np.where(coldata[thin_ix] >= u)
+                                binchain[indexes] = 0
 
                                 tran[:,:,:] = 0
                                 # Estimate transitions probabilities for 2nd order process
-                                for i in range(thin_rows):
+                                for i in range(2, thin_rows):
                                     tran[binchain[i-2]][binchain[i-1]][binchain[i]] += 1
                                     
                                 # Test whether 2nd order is better than Markov using BIC statistic
@@ -672,7 +679,7 @@ class MCSamples(chains):
                                                 g2 += math.log(focus/fitted) * focus
                                 g2 = g2 * 2
 
-                                if (g2 - math.log(float(thin_rows-2))< 0): break
+                                if (g2 - math.log(float(thin_rows-2)) * 2 < 0): break
                                 thin_fac[ix] += 1
 
                             # Get Markov transition probabilities for binary processes
@@ -693,17 +700,20 @@ class MCSamples(chains):
 
                 # Get thin factor to have independent samples rather than Markov
                 hardest = max(hardest, 0)
-                u = (hardest,(1-limfrac)/2,hardestend==0)
+                u = self.confidence(chain.coldata[:, hardest], (1-limfrac)/2, hardestend==0)
                 thin_fac[ix] += 1
 
                 while(True): 
                     thin_ix = self.thin_indices_chain(chain.coldata[:, 0], thin_fac[ix])
+                    thin_rows = len(thin_ix)
                     if (thin_rows<2): break
                     binchain = np.zeros(thin_rows)
-                    binchain[:] = 2
-                    coldata = np.vstack((chain.coldata[:, hardest] for chain in self.chains))
+                    binchain[:] = 1
+
+                    coldata = np.hstack((chain.coldata[:, hardest] for chain in self.chains))
+                    coldata = coldata[thin_ix]
                     indexes = np.where(coldata >= u)
-                    binchain[indexes] = 1
+                    binchain[indexes] = 0
 
                     tran2[:,:] = 0
                     # Estimate transitions probabilities for 2nd order process
@@ -736,12 +746,15 @@ class MCSamples(chains):
             textFileHandle.write("\n")
             textFileHandle.write("chain  markov_thin  indep_thin    nburn\n")
 
+            # Computation of mean_mult
+            self.mean_mult = norm / nrows
+
             for ix in range(num_chains_used):
                 if (thin_fac[ix]==0):
-                    textFileHandle.write("%4i      Not enough samples\n"%chain_numbers[ix])
+                    textFileHandle.write("%4i      Not enough samples\n"%ix)
                 else:
                     textFileHandle.write("%4i%12i%12i%12i"%(
-                            chain_numbers[ix], markov_thin[ix], thin_fac[ix], nburn[ix]))
+                            ix, markov_thin[ix], thin_fac[ix], nburn[ix]))
 
             if (not np.all(thin_fac!=0)):
                 print 'RL: Not enough samples to estimate convergence stats'
@@ -749,15 +762,14 @@ class MCSamples(chains):
                 print 'RL: Thin for Markov: ', np.max(markov_thin)
                 self.indep_thin = np.max(thin_fac)
                 print 'RL: Thin for indep samples:  ', str(self.indep_thin)
-                print 'RL: Estimated burn in steps: ', 
-                np.max(nburn), ' (', int(round(np.max(nburn)/self.mean_mult))
+                print 'RL: Estimated burn in steps: ', np.max(nburn), ' (', int(round(np.max(nburn)/self.mean_mult)), ' rows)'
 
             # Get correlation lengths
             textFileHandle.write("\n")
             textFileHandle.write("Parameter auto-correlations as function of step separation\n")
             textFileHandle.write("\n")
-            if (corr_length_thin<>0):
-                autocorr_thin = corr_length_thin
+            if (self.corr_length_thin<>0):
+                autocorr_thin = self.corr_length_thin
             else:
                 if (self.indep_thin==0):
                     autocorr_thin = 20
@@ -767,25 +779,32 @@ class MCSamples(chains):
                     autocorr_thin = 5 * (self.indep_thin/30)
 
             thin_ix = self.thin_indices(autocorr_thin)
-            maxoff = min(corr_length_steps, thin_rows/(autocorr_thin*num_chains_used))
+            thin_rows = len(thin_ix)
+            maxoff = int(min(self.corr_length_steps, thin_rows/(autocorr_thin*num_chains_used)))
 
-            corrs = no.zeros([nparams, maxoff])
+            corrs = np.zeros([maxoff, nparam])
             for off in range(maxoff):
                 for i in range(off, thin_rows):
-                    for j in range(nparams):
-                        coldata = np.vstack((chain.coldata[:, j] for chain in self.chains))
-                        corrs[j][off] += (coldata[thin_ix[i]]-fullmean[j]) * (coldata[thin_ix[i-off]]-fullmean[j])
-                for j in range(nparams):
-                    corrs[j][off] /= (thin_rows-off)/fullvar(j)
+                    for j in range(nparam):
+                        if not self.isused[j]: continue
+                        coldata = np.hstack((chain.coldata[:, j] for chain in self.chains))
+                        corrs[off][j] += (coldata[thin_ix[i]]-fullmean[j]) * (coldata[thin_ix[i-off]]-fullmean[j])
+                for j in range(nparam):
+                    if not self.isused[j]: continue
+                    corrs[off][j] /= (thin_rows-off) / fullvar[j]
 
             if (maxoff>0):
-                textFileHandle.write("%i"%(maxoff))
-                for i in range(1, maxoff+1):
-                    textFileHandle.write("%8i"%(i*autocorr_thin))
-                for j in range(nparams):
-                    name = self.index2name.get(j, "NOTFOUND")
-                    textFileHandle.write("1%3i%8.3f"%(j, corrs[j][i]))
-                
+                for i in range(maxoff):
+                    textFileHandle.write("%8i"%((i+1)*autocorr_thin))
+                textFileHandle.write("\n")
+                for j in range(nparam):
+                    if (self.isused[j]):
+                        name = self.index2name.get(j, "NOTFOUND")
+                        label = self.paramNames.parWithName(name).label
+                        textFileHandle.write("%3i"%j+1)
+                        for i in range(maxoff):
+                            textFileHandle.write("%8.3f"%corrs[i][j])
+                        textFileHandle.write("%s\n"%label)
         textFileHandle.close()
 
     

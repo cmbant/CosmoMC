@@ -240,7 +240,9 @@ if (not no_tests):
     converge_test_limit = ini.float('converge_test_limit', contours[num_contours-1])
     corr_length_thin = ini.int('corr_length_thin', 0)
     corr_length_steps = ini.int('corr_length_steps', 15)
-    
+    mc.corr_length_thin = corr_length_thin
+    mc.corr_length_steps = corr_length_steps
+
 force_twotail = ini.bool('force_twotail', False)
 mc.force_twotail = force_twotail
 if (mc.force_twotail): print 'Computing two tail limits'
