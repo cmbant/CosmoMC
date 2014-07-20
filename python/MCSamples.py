@@ -136,7 +136,7 @@ class Density1D():
                 try_t = (try_b + try_t) / 2
             else:
                 try_b = (try_b + try_t) / 2
-            if (abs(trial_sum/try_last - 1) < 1e-4): break
+            if (math.fabs(trial_sum/try_last - 1) < 1e-4): break
             try_last = trial_sum
 
         trial = (try_b + try_t) / 2
@@ -159,6 +159,7 @@ class Density1D():
             for i in indexes:
                 if (grid[i] > trial):
                     mx = self.X[0] + (i-1) * self.spacing / factor
+                    break
 
         return mn, mx, lim_bot, lim_top
 
@@ -435,9 +436,9 @@ class MCSamples(chains):
             textFileHandle.write("%10s :%s\n"%(str(pars[i]+1), str(PClabs[i])))
 
             PCmean[i] = np.sum(self.weights*PCdata[:, i]) / self.norm
-            PCdata[:, i] -= PCmean[i]
-            sd[i] = math.sqrt(np.sum(self.weights*PCdata[:, i]*PCdata[:, i]) / self.norm)
-            if (sd[i]<>0): PCdata[:, i] /= sd[i]
+            PCdata[:, i] = PCdata[:, i] - PCmean[i]
+            sd[i] = np.sqrt(np.sum(self.weights*np.power(PCdata[:, i], 2)) / self.norm)
+            if (sd[i]<>0): PCdata[:, i] = PCdata[:, i] / sd[i]
             corrmatrix[i][i] = 1
 
         textFileHandle.write('\n')
@@ -454,8 +455,7 @@ class MCSamples(chains):
         u = corrmatrix
         evals, evects = np.linalg.eig(u)
         isorted = evals.argsort()
-        #import pdb; pdb.set_trace()
-        u = evects[isorted] # redefining u 
+        u = np.transpose(evects[:, isorted]) # redefining u 
 
         textFileHandle.write('\n')
         textFileHandle.write('e-values of correlation matrix\n')
@@ -484,7 +484,7 @@ class MCSamples(chains):
 
         nrows = PCdata.shape[0]
         for i in range(nrows):
-            PCdata[i, :] = np.dot(np.transpose(u), PCdata[i, :])
+            PCdata[i, :] = np.dot(u, PCdata[i, :])
             if (doexp): PCdata[i, :] = np.exp(PCdata[i, :])
 
         textFileHandle.write('\n')
@@ -499,7 +499,7 @@ class MCSamples(chains):
                 if (param_map[j] in ['L', 'M']):
                     expo = "%f"%(1.0/sd[j]*u[i][j])
                     if (param_map[j]=="M"): 
-                        div = "%f"%(-1.0*np.exp(PCmean[j]))
+                        div = "%f"%(-np.exp(PCmean[j]))
                     else: 
                         div = "%f"%(np.exp(PCmean[j]))
                     textFileHandle.write('[%f]  (%s/%s)^{%s}\n'%(u[i][j], label, div, expo))
@@ -511,7 +511,7 @@ class MCSamples(chains):
                         textFileHandle.write('[%f]   (%s-%f)/%s)\n'%(u[i][j], label, PCmean[j], expo))
 
             newmean[i] = np.sum(self.weights*PCdata[:, i]) / self.norm
-            newsd[i] = np.sqrt(np.sum(self.weights*(PCdata[:, i]-newmean[i])*(PCdata[:, i]-newmean[i])) / self.norm)
+            newsd[i] = np.sqrt(np.sum(self.weights*np.power(PCdata[:, i]-newmean[i], 2)) / self.norm)
             textFileHandle.write('          = %f +- %f\n'%(newmean[i], newsd[i]))
             textFileHandle.write('ND limits: %9.3f%9.3f%9.3f%9.3f\n'%(
                     np.min(PCdata[0:self.ND_cont1, i]), np.max(PCdata[0:self.ND_cont1, i]), 
@@ -581,15 +581,15 @@ class MCSamples(chains):
         
         num_chains_used = len(self.chains)
         if (num_chains_used>1):
-            print 'Number of chains used =  ', num_chains_used
+            print 'Number of chains used = ', num_chains_used
 
         nparam = self.paramNames.numParams()
         for chain in self.chains: chain.getCov(nparam)
-        means = np.zeros(nparam)
+        mean = np.zeros(nparam)
         norm = np.sum([chain.norm for chain in self.chains])
         for chain in self.chains:
-            means = means + chain.means[0:nparam] * chain.norm
-        means /= norm
+            mean = mean + chain.means[0:nparam] * chain.norm
+        mean /= norm
 
         fullmean = np.zeros(nparam)
         for j in range(nparam):
@@ -611,16 +611,15 @@ class MCSamples(chains):
             in_chain_var = np.zeros(nparam)
             chain_means = np.zeros((num_chains_used, nparam))
 
-            norm = np.sum([chain.norm for chain in self.chains])
+            #norm = np.sum([chain.norm for chain in self.chains])
             for j in range(nparam):
                 if not self.isused[j]: continue
 
                 # Get stats for individual chains - the variance of the means over the mean of the variances
                 for i in range(num_chains_used):
                     chain = self.chains[i]
-                    # fixme: start index is 1 ???
                     chain_means[i][j] = np.sum(chain.coldata[:, 0]*chain.coldata[:, j+2]) / chain.norm
-                    between_chain_var[j] += np.power(chain_means[i][j] - means[j], 2)
+                    between_chain_var[j] += np.power(chain_means[i][j] - mean[j], 2)
                     in_chain_var[j] += np.sum(chain.coldata[:, 0] * np.power(chain.coldata[:, j+2]-chain_means[i][j], 2))
 
                 between_chain_var[j] /= (num_chains_used-1)
@@ -635,37 +634,62 @@ class MCSamples(chains):
             # c.f. Brooks and Gelman 1997
 
             # from chains.getChainsStats
-            for chain in self.chains: chain.getCov(nparam)
-            means = np.zeros(nparam)
-            norm = np.sum([chain.norm for chain in self.chains])
-            for chain in self.chains:
-                means = means + chain.means[0:nparam] * chain.norm
-            means /= norm
+            # for chain in self.chains: chain.getCov(nparam)
+            # means = np.zeros(nparam)
+            # norm = np.sum([chain.norm for chain in self.chains])
+            # for chain in self.chains:
+            #     means = means + chain.means[0:nparam] * chain.norm
+            # means /= norm
 
+            # meanscov = np.zeros((nparam, nparam))
+            # for i in range(nparam):
+            #     for j in range(nparam):
+            #         meanscov[i, j] = np.sum([chain.norm * (chain.means[i] - means[i]) * (chain.means[j] - means[j]) for chain in self.chains])
+            #         meanscov[j, i] = meanscov[i, j]
+            # meanscov *= len(self.chains) / (len(self.chains) - 1) / norm
+            # meancov = np.zeros((nparam, nparam))
+            # for chain in self.chains:
+            #     meancov += chain.cov * chain.norm
+            # meancov /= norm
+
+            # M = meancov
+            # for i in range(nparam):
+            #     norm = np.sqrt(meancov[i, i])
+            #     M[i, :] /= norm
+            #     M[:, i] /= norm
+            #     meanscov[:, i] /= norm
+            #     meanscov[i, :] /= norm
+                
+            # new way of computing
             meanscov = np.zeros((nparam, nparam))
-            for i in range(nparam):
-                for j in range(nparam):
-                    meanscov[i, j] = np.sum([chain.norm * (chain.means[i] - means[i]) * (chain.means[j] - means[j]) for chain in self.chains])
-                    meanscov[j, i] = meanscov[i, j]
-            meanscov *= len(self.chains) / (len(self.chains) - 1) / norm
-            meancov = np.zeros((nparam, nparam))
-            for chain in self.chains:
-                meancov += chain.cov * chain.norm
-            meancov /= norm
-            M = meancov
-            for i in range(nparam):
-                norm = np.sqrt(meancov[i, i])
-                M[i, :] /= norm
-                M[:, i] /= norm
-                meanscov[:, i] /= norm
-                meanscov[i, :] /= norm
-            
-            invertible = np.isfinite(np.linalg.cond(M))
+            cov = np.zeros((nparam, nparam))
+
+            for j in range(nparam):
+                for k in range(nparam):
+                    meanscov[k, j] = 0.
+                    cov[k, j] = 0.
+                    for i in range(num_chains_used):
+                        chain = self.chains[i]
+                        cov[k, j] += np.sum( 
+                            chain.coldata[:, 0] * 
+                            (chain.coldata[:, j+2] - chain_means[i][j]) *
+                            (chain.coldata[:, k+2] - chain_means[i][k]) )
+                        meanscov[k, j] += (chain_means[i][j] - mean[j]) * (chain_means[i][k] - mean[k])
+                    meanscov[j, k] = meanscov[k, j] 
+                    cov[j, k] = cov[k, j] 
+
+            meanscov[:, :] /= (num_chains_used-1)
+            cov[:, :] /= norm
+
+            #meanscov = np.transpose(meanscov)
+            #cov = np.transpose(cov)
+
+            invertible = np.isfinite(np.linalg.cond(cov))
             if (invertible):
-                R = np.linalg.inv(np.linalg.cholesky(M))
+                R = np.linalg.inv(np.linalg.cholesky(cov))
                 D = np.linalg.eigvalsh(np.dot(R, meanscov).dot(R.T))
                 GelmanRubin = max(np.real(D))
-            if (invertible):
+
                 textFileHandle.write("\n")
                 textFileHandle.write("var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters\n")
                 for jj in range(nparam):
@@ -686,6 +710,7 @@ class MCSamples(chains):
         self.weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
         self.norm = np.sum(self.weights)
 
+        #import pdb; pdb.set_trace()
         split_tests = {}
         nparam = self.paramNames.numParams()
         for j in range(nparam):
@@ -694,15 +719,16 @@ class MCSamples(chains):
             for endb in [0, 1]:
                 for split_n in range(2, self.max_split_tests+1):
                     frac = self.GetFractionIndices(self.weights, split_n)
-                    split_tests[split_n] = 0
+                    split_tests[split_n] = 0.
                     confid = self.confidence(coldata, (1-limfrac)/2, endb==0) 
                     for i in range(split_n):
-                        split_tests[split_n] += math.pow(self.confidence(coldata[frac[i]:frac[i+1]], (1-limfrac)/2, endb==0), 2)
+                        split_tests[split_n] = split_tests[split_n] + math.pow(self.confidence(coldata[frac[i]:frac[i+1]], (1-limfrac)/2, endb==0)-confid, 2)
                     split_tests[split_n] = math.sqrt(split_tests[split_n]/split_n/fullvar[j])
                 if (endb==0):
                     typestr = 'upper'
                 else:
                     typestr = 'lower'
+
                 textFileHandle.write("%3i"%(j+1))
                 for split_n in range(2, self.max_split_tests+1):
                     textFileHandle.write("%9.4f"%(split_tests[split_n]))

@@ -369,7 +369,7 @@ num_vars = mc.samples.shape[1]; mc.num_vars = num_vars
 
 colix = [0] * mc.num_vars
 for i in range(mc.num_vars): colix[i] = i
-mc.colix= colix 
+mc.colix = colix 
 
 # Compute means and std dev.
 mc.ComputeStats()
@@ -430,7 +430,8 @@ mc.Init1DDensity()
 for j in range(mc.num_vars):
     if not mc.isused[j]: continue
 
-    ix = mc.colix[j]
+    #ix = mc.colix[j]
+    ix = j
     mc.Get1DDensity(j)
 
     # Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
@@ -466,10 +467,10 @@ for j in range(mc.num_vars):
             
             if ( (not mc.marge_limits_bot[ix1][ix]) and (not mc.marge_limits_top[ix1][ix]) ):
                 # Two tail, check if limits are at very differen density
-                if (abs(mc.density1D.Prob(tail_confid_top) - mc.density1D.Prob(tail_confid_bot)) < credible_interval_threshold):
+                if (math.fabs(mc.density1D.Prob(tail_confid_top) - mc.density1D.Prob(tail_confid_bot)) < credible_interval_threshold):
                     tail_limit_top = tail_confid_top
                     tail_limit_bot = tail_confid_bot
-
+            
             LowerUpperLimits[j][1][ix1] = tail_limit_top
             LowerUpperLimits[j][0][ix1] = tail_limit_bot
         else:
