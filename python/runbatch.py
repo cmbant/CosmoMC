@@ -18,7 +18,7 @@ Opts.parser.add_argument('--not_queued', action='store_true')
 
 if args.not_queued:
     print 'Getting queued names...'
-    queued = jobQueue.queued_jobs()
+    queued = jobQueue.queue_job_names(args.batchPath)
 
 def notQueued(name):
     for job in queued:
@@ -41,12 +41,12 @@ if args.importance is None: args.noimportance = True
 
 isMinimize = args.importance_minimize or args.minimize
 
-omp = jobQueue.getArgsOmp(args, msg=True, runsPerJob=args.runsPerJob)
-
-if args.combineOneJobName is not None:
+if args.combineOneJobName:
     print 'Combining multiple (hopefully fast) into single job script: ' + args.combineOneJobName
 
 iniFiles = []
+
+jobQueue.checkArguments(**args.__dict__)
 
 def jobName():
     return "-".join([os.path.basename(ini) for ini in iniFiles])
@@ -56,12 +56,12 @@ def submitJob(ini):
         ini = ini.replace('.ini', '')
         if not args.dryrun:
             print 'Submitting...' + ini
-            iniFiles.append(ini)
-            if args.combineOneJobName is not None: return
-            if len(iniFiles) >= args.runsPerJob:
-                jobQueue.submitJob(jobName(), iniFiles, omp=omp, **args.__dict__)
-                iniFiles = []
         else: print '... ' + ini
+        iniFiles.append(ini)
+        if args.combineOneJobName: return
+        if len(iniFiles) >= args.runsPerJob:
+            jobQueue.submitJob(jobName(), iniFiles, **args.__dict__)
+            iniFiles = []
 
 for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
     if ((not args.notexist or isMinimize and not jobItem.chainMinimumExists()
@@ -76,4 +76,4 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
 
 
 if len(iniFiles) > 0:
-    jobQueue.submitJob(args.combineOneJobName or jobName(), iniFiles, sequential=args.combineOneJobName is not None, omp=omp, **args.__dict__)
+    jobQueue.submitJob(args.combineOneJobName or jobName(), iniFiles, sequential=args.combineOneJobName is not None, **args.__dict__)
