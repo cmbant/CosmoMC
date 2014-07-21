@@ -13,6 +13,7 @@
     use bao
     use mpk
     use wigglez
+    use szcounts !Anna
     class(TSettingIni), intent(in) :: Ini
 
     CosmoSettings%get_sigma8 = Ini%Read_Logical('get_sigma8',.false.)
@@ -28,6 +29,9 @@
     if (use_mpk) call WiggleZLikelihood_Add(DataLikelihoods, Ini)
 
     call BAOLikelihood_Add(DataLikelihoods, Ini)
+
+    call SZLikelihood_Add(DataLikelihoods, Ini) !Anna
+    CosmoSettings%use_SZ = Ini%Read_Logical('use_SZ',.false.)
 
     CosmoSettings%use_LSS = use_mpk
 

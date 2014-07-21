@@ -1708,7 +1708,7 @@ contains
 !!$
 
    END SELECT
-   !print*,'like=',SZCC_Cash
+
 
    !priors for SZ nuisance params
    SZCC_Cash = SZCC_Cash + (cosmopar%logystar-(-0.186))**2/(2.*0.021**2) + (cosmopar%alpha-1.789)**2/(2.*0.084**2) + (cosmopar%sigmaM-0.075)**2/(2.*0.01**2) !cosmomc_sz
@@ -1725,7 +1725,7 @@ contains
 !stop
 !   if (Feedback>2) Print*,'SZ lnlike = ',SZCC_Cash
 
-   Print*,'SZ lnlike = ',SZCC_Cash
+!   Print*,'SZ lnlike = ',SZCC_Cash
 
  end function SZCC_Cash
 

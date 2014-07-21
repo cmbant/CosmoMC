@@ -9,7 +9,7 @@
     initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
     HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, &
     Transfer_SortAndIndexRedshifts, & !JD added for nonlinear lensing of CMB + MPK compatibility
-    Recombination_Name, reionization_name, power_name, threadnum, version, tensor_param_rpivot
+    Recombination_Name, reionization_name, power_name, threadnum, version, tensor_param_rpivot,Transfer_Get_sigma8 !Anna added for SZ
     use Errors !CAMB
     use settings
     use likelihood
@@ -227,11 +227,25 @@
     class(TTheoryIntermediateCache), pointer :: Info
     class(TCosmoTheoryPredictions) :: Theory
     integer error,i,j
-
+    real(mcp) R !Anna
     select type (Info)
     class is (CAMBTransferCache)
         call this%SetCAMBInitPower(Info%Transfers%Params,CMB,1)
         call CAMB_TransfersToPowers(Info%Transfers)
+        !Begin Anna
+        if (CosmoSettings%use_SZ) then 
+           
+           R=0.25 !corresponding to kmax=4.
+           do i=1,1000
+              R=R+0.1
+              Theory%sigma_R(i,1)=R
+              call Transfer_Get_sigma8(Info%Transfers%MTrans,R)
+              Theory%sigma_R(i,2) = Info%Transfers%MTrans%sigma_8(size(Info%Transfers%MTrans%sigma_8,1),1)
+           End do
+           R=8.
+           call Transfer_Get_sigma8(Info%Transfers%MTrans,R) !to get default value as before
+        endif
+        !End Anna
         !this sets slow CAMB params correctly from value stored in Transfers
         if (global_error_flag/=0) then
             error=global_error_flag
@@ -719,6 +733,13 @@
         P%Transfer%PK_num_redshifts = 1
         P%Transfer%PK_redshifts(1) = 0
     end if
+    !Begin Anna
+  if (CosmoSettings%use_SZ) then 
+       Print*,'Changing settings kmax and logint'
+       P%Transfer%kmax = 4.
+       P%Transfer%k_per_logint=5
+    endif
+    !End Anna 
 
     P%Num_Nu_Massive = 3
     P%Num_Nu_Massless = 0.046

@@ -24,6 +24,7 @@
         real(mcp) sigma_8
         real(mcp) tensor_ratio_C10, tensor_ratio_02, tensor_ratio_BB, tensor_AT
         integer numderived
+        real(mcp) sigma_R(1000,2) !Anna
         real(mcp) derived_parameters(max_derived_parameters)
         !MPK's are interpolator objects now
         !MPK%x = logkh, MPK%y = z (redshift), MPK%z =>actual data array
