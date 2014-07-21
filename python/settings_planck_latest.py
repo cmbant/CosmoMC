@@ -140,7 +140,7 @@ g6 = batchJob.jobGroup('lensing')
 g6.datasets = copy.deepcopy(g.datasets)
 for d in g6.datasets:
     d.add(lensing)
-    d.add(None, {'redo_cls':'F'})
+    d.add(None, {'redo_theory':'F'})
 
 g6.params = [[], ['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alens']]
 g6.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB]
