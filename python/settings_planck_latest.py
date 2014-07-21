@@ -106,16 +106,16 @@ g2.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB]
 groups.append(g2)
 
 g3 = batchJob.jobGroup('geom')
-g3.params = [['omegak']]
+g3.params = [['omegak', 'mnu']]
 g3.datasets = []
 for d in copy.deepcopy(g.datasets):
     d.add(BAO, BAOdata)
     g3.datasets.append(d)
 for d in copy.deepcopy(g.datasets):
-    d.add(JLA)
+    d.add([BAO, HST, JLA], [BAOdata, HSTdata, 'JLA'])
     g3.datasets.append(d)
 
-g3.importanceRuns = [post_BAO , post_JLA, post_HST]
+g3.importanceRuns = [post_lensing]
 groups.append(g3)
 
 # Not needed, just included first time by mistkae..
@@ -143,7 +143,7 @@ for d in g6.datasets:
     d.add(None, {'redo_theory':'F'})
 
 g6.params = [[], ['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alens']]
-g6.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB]
+g6.importanceRuns = []
 groups.append(g6)
 
 

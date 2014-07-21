@@ -18,14 +18,14 @@ pol = chains.loadGridChain(rootdir, 'base', 'v97_all_tau07_lowl', ignore_frac=0.
 
 allcov = allL.cov(params)
 
-noise = highL.cov(params)
+noise = pol.cov(params)
 if False:
     i = params.index('tau')
     N = inv(noise)
     N[i, i] -= 1 / 0.02 ** 2
     noise = inv(N)
 
-w, U = lowl.getSignalToNoise(params, noise)
+w, U = allL.getSignalToNoise(params, noise)
 print params
 
 for i in range(len(params)):
