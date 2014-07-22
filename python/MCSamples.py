@@ -172,6 +172,13 @@ class MCSamples(chains):
         self.indep_thin = 0
         self.contours = []
 
+        self.credible_interval_threshold = 0.05
+
+        self.subplot_size_inch  = 0.
+        self.subplot_size_inch2 = 0.
+        self.subplot_size_inch3 = 0.
+        self.out_dir = ""
+
         self.LowerUpperLimits = None
         self.covmat_dimension = 0
         self.max_split_tests = 4
@@ -1307,6 +1314,209 @@ class MCSamples(chains):
                     mult -= (factor - tot)
                 tot = 0
         return thin_ix
+
+
+    # Bins functions
+    
+    def Do1DBins(self, max_frac_twotail, contours):
+        
+        self.LowerUpperLimits = np.zeros([self.num_vars, 2, self.num_contours])
+
+        for j in range(self.num_vars):
+            if not self.isused[j]: continue
+
+            ix = j
+            self.Get1DDensity(j)
+
+            # Get limits, one or two tail depending on whether posterior 
+            # goes to zero at the limits or not
+            for ix1 in range(self.num_contours):
+
+                self.marge_limits_bot[ix1][ix] = self.has_limits_bot[ix] and \
+                (not self.force_twotail) and (self.density1D.P[0] > max_frac_twotail[ix1])
+                self.marge_limits_top[ix1][ix] = self.has_limits_top[ix] and \
+                (not self.force_twotail) and (self.density1D.P[-1] > max_frac_twotail[ix1])
+
+                if ( (not self.marge_limits_bot[ix1][ix]) or \
+                     (not self.marge_limits_top[ix1][ix]) ):
+                    # give limit
+                    tail_limit_bot, tail_limit_top, marge_bot, marge_top = self.density1D.Limits(contours[ix1])
+                    self.marge_limits_bot[ix1][ix] = marge_bot
+                    self.marge_limits_top[ix1][ix] = marge_top
+
+                    limfrac = 1 - contours[ix1]
+
+                    if (self.marge_limits_bot[ix1][ix]):
+                        # fix to end of prior range
+                        tail_limit_bot = self.range_min[j]
+                    elif (self.marge_limits_top[ix1][ix]):
+                        # 1 tail limit
+                        tail_limit_bot = self.confidence(self.samples[:, ix], 
+                                                         limfrac, upper=False)
+                    else:
+                        # 2 tail limit
+                        tail_confid_bot = self.confidence(self.samples[:, ix], 
+                                                          limfrac/2, upper=False)
+
+                    if (self.marge_limits_top[ix1][ix]):
+                        tail_limit_top = self.range_max[j]
+                    elif (self.marge_limits_bot[ix1][ix]):
+                        tail_limit_top = self.confidence(self.samples[:, ix], 
+                                                         limfrac, upper=True)
+                    else:
+                        tail_confid_top = self.confidence(self.samples[:, ix], 
+                                                          limfrac/2, upper=True)
+
+                    if ( (not self.marge_limits_bot[ix1][ix]) and \
+                         (not self.marge_limits_top[ix1][ix]) ):
+                        # Two tail, check if limits are at very differen density
+                        if (math.fabs( self.density1D.Prob(tail_confid_top) - 
+                                       self.density1D.Prob(tail_confid_bot)) 
+                            < self.credible_interval_threshold):
+                            tail_limit_top = tail_confid_top
+                            tail_limit_bot = tail_confid_bot
+
+                    self.LowerUpperLimits[j][1][ix1] = tail_limit_top
+                    self.LowerUpperLimits[j][0][ix1] = tail_limit_bot
+                else:
+                    # no limit
+                    self.LowerUpperLimits[j][1][ix1] = self.range_max[j]
+                    self.LowerUpperLimits[j][0][ix1] = self.range_min[j]
+
+
+
+    def GetCust2DPlots(self, num_cust2D_plots):
+
+        try_t = 1e5
+        x, y = 0, 0
+        cust2DPlots = []
+        for j in range(num_cust2D_plots):
+            try_b = -1e5
+            for ix1 in range(self.num_vars):
+                for ix2 in range(ix1+1, self.num_vars):
+                    if ( not self.isused[ix1] or \
+                             not self.isused[ix2]): continue
+    
+                    if ( abs(self.corrmatrix[ix1][ix2]) < try_t ) and \
+                            ( abs(self.corrmatrix[ix1][ix2]) > try_b) :
+                        try_b = abs(self.corrmatrix[ix1][ix2])   
+                        x, y = ix1, ix2
+            if (try_b==-1e5):
+                num_cust2D_plots = j-1
+                break
+            try_t = try_b
+            cust2DPlots.append(x + y*1000)
+
+        return cust2DPlots, num_cust2D_plots
+    
+
+    # Write functions
+    
+    def WriteScriptPlots1D(self, filename):
+        textFileHandle = open(filename, 'w')
+        textInit = WritePlotFileInit()
+        textFileHandle.write(textInit%(
+                self.plot_data_dir, self.subplot_size_inch, 
+                self.out_dir, self.rootname))
+        text = 'g.plots_1d(roots)\n'
+        textFileHandle.write(text)
+        textExport = WritePlotFileExport()
+        fname = self.rootname + '.' + 'pdf'
+        textFileHandle.write(textExport%(fname))
+        textFileHandle.close()
+        
+
+    def WriteScriptPlots2D(self, filename, plot_2D_param, num_cust2D_plots, cust2DPlots, plots_only):
+        self.done2D = np.ndarray([self.num_vars, self.num_vars], dtype=bool)
+        self.done2D[:, :] = False
+
+        textFileHandle = open(filename, 'w')
+        textInit = WritePlotFileInit()
+        textFileHandle.write(textInit%(
+                self.plot_data_dir, self.subplot_size_inch2, 
+                self.out_dir, self.rootname))
+        textFileHandle.write('pairs=[]\n')
+        plot_num = 0
+        for j in range(self.num_vars):
+            if (self.ix_min[j]<>self.ix_max[j]):
+                if ( (plot_2D_param<>0) or (num_cust2D_plots<>0) ):
+                    if (j==plot_2D_param): continue
+                    j2min = 0
+                else:
+                    j2min = j + 1
+
+                for j2 in range(j2min, self.num_vars):
+                    if (self.ix_min[j2]<>self.ix_max[j2]):
+                        if ( (plot_2D_param<>0) and (j2<>plot_2D_param) ): continue
+                        if ( (num_cust2D_plots<>0) and (cust2DPlots.count(j*1000+j2)==0) ): continue
+                        plot_num += 1
+                        self.done2D[j][j2] = True
+                        if (not plots_only): self.Get2DPlotData(j, j2)
+                        name1 = self.index2name[j]
+                        name2 = self.index2name[j2]
+                        textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
+        textFileHandle.write('g.plots_2d(roots,param_pairs=pairs)\n')
+        textExport = WritePlotFileExport()
+        fname = self.rootname + '_2D.' + 'pdf'
+        textFileHandle.write(textExport%(fname))
+        textFileHandle.close()
+
+
+    def WriteScriptPlotsTri(self, filename, triangle_params):
+        textFileHandle = open(filename, 'w')
+        textInit = WritePlotFileInit()
+        textFileHandle.write(textInit%(
+                self.plot_data_dir, self.subplot_size_inch, 
+                self.out_dir, self.rootname))
+        names = [ self.index2name[i] for i in triangle_params if self.isused[i] ]
+        text = 'g.triangle_plot(roots, %s)\n'%str(names)
+        textFileHandle.write(text)
+        textExport = WritePlotFileExport()
+        fname = self.rootname + '_tri.' + 'pdf'
+        textFileHandle.write(textExport%(fname))
+        textFileHandle.close()
+
+
+    def WriteScriptPlots3D(self, filename, num_3D_plots, plot_3D):
+        textFileHandle = open(filename, 'w')
+        textInit = WritePlotFileInit()
+        textFileHandle.write(textInit%(
+                self.plot_data_dir, self.subplot_size_inch3, 
+                self.out_dir, self.rootname))
+        textFileHandle.write('sets=[]\n')
+        text = ""
+        for j in range(num_3D_plots):
+            v1, v2, v3 = plot_3D[j]
+            text += "sets.append(['%s','%s','%s'])\n"%(v1, v2, v3)
+        text += 'g.plots_3d(roots,sets)\n'
+        textFileHandle.write(text)
+        fname = self.rootname + '_3D.' + 'pdf'
+        textExport = WritePlotFileExport()
+        textFileHandle.write(textExport%(fname))
+        textFileHandle.close()
+
+
+    def WriteGlobalLikelihood(self, filename):
+        bestfit_ix = 0 # Since we have sorted the lines
+        textFileHandle = open(filename, 'w')
+        textInit = self.GetChainLikeSummary(toStdOut=False)
+        textFileHandle.write(textInit)
+        textFileHandle.write("\n")
+        textFileHandle.write('param  bestfit        lower1         upper1         lower2         upper2\n')
+        for j in range(self.num_vars):
+            if not self.isused[j]: continue
+            best = self.samples[bestfit_ix][j]
+            min1 = min(self.samples[0:self.ND_cont1, j])
+            max1 = max(self.samples[0:self.ND_cont1, j])
+            min2 = min(self.samples[0:self.ND_cont2, j])
+            max2 = max(self.samples[0:self.ND_cont2, j])
+            label = self.paramNames.names[j].label
+            textFileHandle.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E   %s\n'%(j+1, best, min1, max1, min2, max2, label))
+        textFileHandle.close()
+        
+
+
+
 
 
 def WritePlotFileInit():
