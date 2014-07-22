@@ -1249,8 +1249,10 @@ class MCSamples(chains):
                 textFileHandle.write("%22s%17s%17s\n"%(name, lim1, lim2))
         textFileHandle.close()
 
-    def OutputMargeStats(self, contours_str):
-        
+    def OutputMargeStats(self):
+        contours_str = '; '.join([ str(c) for c in self.contours ]) 
+
+
         maxLen = max([ len(name) for name in self.index.keys() ])
         j = max(9, maxLen)
 
@@ -1318,7 +1320,7 @@ class MCSamples(chains):
 
     # Bins functions
     
-    def Do1DBins(self, max_frac_twotail, contours):
+    def Do1DBins(self, max_frac_twotail):
         
         self.LowerUpperLimits = np.zeros([self.num_vars, 2, self.num_contours])
 
@@ -1340,11 +1342,11 @@ class MCSamples(chains):
                 if ( (not self.marge_limits_bot[ix1][ix]) or \
                      (not self.marge_limits_top[ix1][ix]) ):
                     # give limit
-                    tail_limit_bot, tail_limit_top, marge_bot, marge_top = self.density1D.Limits(contours[ix1])
+                    tail_limit_bot, tail_limit_top, marge_bot, marge_top = self.density1D.Limits(self.contours[ix1])
                     self.marge_limits_bot[ix1][ix] = marge_bot
                     self.marge_limits_top[ix1][ix] = marge_top
 
-                    limfrac = 1 - contours[ix1]
+                    limfrac = 1 - self.contours[ix1]
 
                     if (self.marge_limits_bot[ix1][ix]):
                         # fix to end of prior range

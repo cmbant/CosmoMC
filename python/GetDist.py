@@ -214,7 +214,6 @@ mc.shade_meanlikes = shade_meanlikes
 out_dir = ini.string('out_dir')
 if (out_dir<>''):
     print 'producing files in directory ', out_dir
-
 mc.out_dir = out_dir
 
 out_root = ini.string('out_root')
@@ -243,7 +242,6 @@ for i in range(1, num_contours+1):
     max_frac = ini.float('max_frac_twotail'+str(i), math.exp(-1.0*math.pow(norm.ppf((1-contours[i-1])/2), 2)/2))
     max_frac_twotail.append(max_frac)
 
-contours_str = '; '.join([ str(c) for c in contours ]) 
 mc.contours = contours
 
 if (not no_tests):
@@ -428,98 +426,21 @@ if (PCA_num>0) and not plots_only:
 # Find best fit, and mean likelihood
 mc.GetChainLikeSummary(toStdOut=True)
 
-#LowerUpperLimits = np.zeros([mc.num_vars, 2, mc.num_contours])
-
 # Initialize variables for 1D bins
 mc.Init1DDensity()
 
 # Do 1D bins
-mc.Do1DBins(max_frac_twotail, contours)
-
-# for j in range(mc.num_vars):
-#     if not mc.isused[j]: continue
-
-#     ix = j
-#     mc.Get1DDensity(j)
-
-#     # Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
-#     for ix1 in range(mc.num_contours):
-        
-#         mc.marge_limits_bot[ix1][ix] = mc.has_limits_bot[ix] and (not mc.force_twotail) and (mc.density1D.P[0] > max_frac_twotail[ix1])
-#         mc.marge_limits_top[ix1][ix] = mc.has_limits_top[ix] and (not mc.force_twotail) and (mc.density1D.P[-1] > max_frac_twotail[ix1])
-        
-#         if ( (not mc.marge_limits_bot[ix1][ix]) or (not mc.marge_limits_top[ix1][ix]) ):
-#             # give limit
-#             tail_limit_bot, tail_limit_top, marge_bot, marge_top = mc.density1D.Limits(contours[ix1])
-#             mc.marge_limits_bot[ix1][ix] = marge_bot
-#             mc.marge_limits_top[ix1][ix] = marge_top
-
-#             limfrac = 1 - contours[ix1]
-
-#             if (mc.marge_limits_bot[ix1][ix]):
-#                 # fix to end of prior range
-#                 tail_limit_bot = mc.range_min[j]
-#             elif (mc.marge_limits_top[ix1][ix]):
-#                 # 1 tail limit
-#                 tail_limit_bot = mc.confidence(mc.samples[:, ix], limfrac, upper=False)
-#             else:
-#                 # 2 tail limit
-#                 tail_confid_bot = mc.confidence(mc.samples[:, ix], limfrac/2, upper=False)
-            
-#             if (mc.marge_limits_top[ix1][ix]):
-#                 tail_limit_top = mc.range_max[j]
-#             elif (mc.marge_limits_bot[ix1][ix]):
-#                 tail_limit_top = mc.confidence(mc.samples[:, ix], limfrac, upper=True)
-#             else:
-#                 tail_confid_top = mc.confidence(mc.samples[:, ix], limfrac/2, upper=True)
-            
-#             if ( (not mc.marge_limits_bot[ix1][ix]) and (not mc.marge_limits_top[ix1][ix]) ):
-#                 # Two tail, check if limits are at very differen density
-#                 if (math.fabs(mc.density1D.Prob(tail_confid_top) - mc.density1D.Prob(tail_confid_bot)) < credible_interval_threshold):
-#                     tail_limit_top = tail_confid_top
-#                     tail_limit_bot = tail_confid_bot
-            
-#             LowerUpperLimits[j][1][ix1] = tail_limit_top
-#             LowerUpperLimits[j][0][ix1] = tail_limit_bot
-#         else:
-#             # no limit
-#             LowerUpperLimits[j][1][ix1] = mc.range_max[j]
-#             LowerUpperLimits[j][0][ix1] = mc.range_min[j]
-
-# mc.LowerUpperLimits = LowerUpperLimits
-
+mc.Do1DBins(max_frac_twotail)
 
 if (not no_plots):
 
     # Output files for 1D plots
     filename = rootdirname + '.' + plot_ext
     mc.WriteScriptPlots1D(filename)
-    # textFileHandle = open(filename, 'w')
-    # textInit = MCSamples.WritePlotFileInit()
-    # textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch, out_dir, rootname))
-    # if (plot_ext=='py'):
-    #     text = 'g.plots_1d(roots)\n'
-    #     textFileHandle.write(text)
-    #     textExport = MCSamples.WritePlotFileExport()
-    #     fname = rootname + '.' + 'pdf'
-    #     textFileHandle.write(textExport%(fname))
-    # textFileHandle.close()
 
     if (triangle_plot):
         filename = rootdirname + '_tri.' + plot_ext
         mc.WriteScriptPlotsTri(filename, triangle_params)
-        # textFileHandle = open(filename, 'w')
-        # textInit = MCSamples.WritePlotFileInit()
-        # textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch, out_dir, rootname))
-        # if (plot_ext=='py'):
-        #     names = [ mc.index2name[i] for i in triangle_params if mc.isused[i] ]
-        #     text = 'g.triangle_plot(roots, %s)\n'%str(names)
-        #     textFileHandle.write(text)
-        # textExport = MCSamples.WritePlotFileExport()
-        # fname = rootname + '_tri.' + 'pdf'
-        # textFileHandle.write(textExport%(fname))
-        # textFileHandle.close()
-
 
 # Do 2D bins
 if (plot_2D_param==0) and (num_cust2D_plots==0) and (not no_plots):
@@ -527,23 +448,6 @@ if (plot_2D_param==0) and (num_cust2D_plots==0) and (not no_plots):
     print 'doing 2D plots for most correlated variables'
     num_cust2D_plots_0 = 12
     cust2DPlots, num_cust2D_plots = mc.GetCust2DPlots(num_cust2D_plots_0)
-
-    # try_t = 1e5
-    # x, y = 0, 0
-    # cust2DPlots = []
-    # for j in range(num_cust2D_plots):
-    #     try_b = -1e5
-    #     for ix1 in range(mc.num_vars):
-    #         for ix2 in range(ix1+1, mc.num_vars):
-    #             if not mc.isused[ix1] or not mc.isused[ix2]: continue
-    #             if abs(mc.corrmatrix[ix1][ix2]) < try_t and abs(mc.corrmatrix[ix1][ix2]) > try_b:
-    #                 try_b = abs(mc.corrmatrix[ix1][ix2])   
-    #                 x, y = ix1, ix2
-    #     if (try_b==-1e5):
-    #         num_cust2D_plots = j-1
-    #         break
-    #     try_t = try_b
-    #     cust2DPlots.append(x + y*1000)
 
 if (num_cust2D_plots==0):
     num_2D_plots = 0
@@ -556,42 +460,10 @@ if (num_cust2D_plots==0):
 else:
     num_2D_plots = num_cust2D_plots
       
-#done2D = np.ndarray([mc.num_vars, mc.num_vars], dtype=bool)
-#done2D[:, :] = False
 if ( (num_2D_plots>0) and (not no_plots) ):
     print 'Producing ', num_2D_plots,' 2D plots'
     filename = rootdirname + '_2D.' + plot_ext
     mc.WriteScriptPlots2D(filename, plot_2D_param, num_cust2D_plots, cust2DPlots, plots_only)
-
-    # textFileHandle = open(filename, 'w')
-    # textInit = MCSamples.WritePlotFileInit()
-    # textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch2, out_dir, rootname))
-    # if (plot_ext=='py'):
-    #     textFileHandle.write('pairs=[]\n')
-    #     plot_num = 0
-    #     for j in range(mc.num_vars):
-    #         if (mc.ix_min[j]<>mc.ix_max[j]):
-    #             if ( (plot_2D_param<>0) or (num_cust2D_plots<>0) ):
-    #                 if (j==plot_2D_param): continue
-    #                 j2min = 0
-    #             else:
-    #                 j2min = j + 1
-
-    #             for j2 in range(j2min, mc.num_vars):
-    #                 if (mc.ix_min[j2]<>mc.ix_max[j2]):
-    #                     if ( (plot_2D_param<>0) and (j2<>plot_2D_param) ): continue
-    #                     if ( (num_cust2D_plots<>0) and (cust2DPlots.count(j*1000+j2)==0) ): continue
-    #                     plot_num += 1
-    #                     done2D[j][j2] = True
-    #                     if (not plots_only): mc.Get2DPlotData(j, j2)
-    #                     name1 = mc.index2name[j]
-    #                     name2 = mc.index2name[j2]
-    #                     textFileHandle.write("pairs.append(['%s','%s'])\n"%(name1, name2))
-    #     textFileHandle.write('g.plots_2d(roots,param_pairs=pairs)\n')
-    #     textExport = MCSamples.WritePlotFileExport()
-    #     fname = rootname + '_2D.' + 'pdf'
-    #     textFileHandle.write(textExport%(fname))
-    # textFileHandle.close()
 
 if (triangle_plot and not no_plots):
     # Add the off-diagonal 2D plots
@@ -607,24 +479,10 @@ if (num_3D_plots<>0 and not no_plots):
     print 'producing ',num_3D_plots, '2D colored scatter plots'
     filename = rootdirname + '_3D.' + plot_ext
     mc.WriteScriptPlots3D(filename, num_3D_plots, plot_3D)
-    # textFileHandle = open(filename, 'w')
-    # textInit = MCSamples.WritePlotFileInit()
-    # textFileHandle.write(textInit%(plot_data_dir, subplot_size_inch3, out_dir, rootname))
-    # textFileHandle.write('sets=[]\n')
-    # text = ""
-    # for j in range(num_3D_plots):
-    #     v1, v2, v3 = plot_3D[j]
-    #     text += "sets.append(['%s','%s','%s'])\n"%(v1, v2, v3)
-    # text += 'g.plots_3d(roots,sets)\n'
-    # textFileHandle.write(text)
-    # fname = rootname + '_3D.' + 'pdf'
-    # textExport = MCSamples.WritePlotFileExport()
-    # textFileHandle.write(textExport%(fname))
-    # textFileHandle.close()
 
 # Write out stats marginalized
 if (not plots_only):
-    mc.OutputMargeStats(contours_str)
+    mc.OutputMargeStats()
 
 # Write paramNames file
 filename = os.path.join(plot_data_dir, rootname + '.paramnames')
@@ -634,22 +492,6 @@ mc.WriteParamNames(filename)
 if (not plots_only):
     filename = rootdirname + '.likestats'
     mc.WriteGlobalLikelihood(filename)
-    # bestfit_ix = 0 # Since we have sorted the lines
-    # textFileHandle = open(filename, 'w')
-    # textInit = mc.GetChainLikeSummary(toStdOut=False)
-    # textFileHandle.write(textInit)
-    # textFileHandle.write("\n")
-    # textFileHandle.write('param  bestfit        lower1         upper1         lower2         upper2\n')
-    # for j in range(mc.num_vars):
-    #     if not mc.isused[j]: continue
-    #     best = mc.samples[bestfit_ix][j]
-    #     min1 = min(mc.samples[0:mc.ND_cont1, j])
-    #     max1 = max(mc.samples[0:mc.ND_cont1, j])
-    #     min2 = min(mc.samples[0:mc.ND_cont2, j])
-    #     max2 = max(mc.samples[0:mc.ND_cont2, j])
-    #     label = mc.paramNames.names[j].label
-    #     textFileHandle.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E   %s\n'%(j+1, best, min1, max1, min2, max2, label))
-    # textFileHandle.close()
 
 # System command
 if (finish_run_command):
@@ -658,4 +500,3 @@ if (finish_run_command):
     finish_run_command = finish_run_command.replace('%PLOTROOT%', os.path.join(plot_data_dir, rootname))
     os.system(finish_run_command)
     
-print "The End"
