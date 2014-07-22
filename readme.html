@@ -8,14 +8,13 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>May 2014</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>July 2014</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
 <BR>
 </P>
 <H2>Contents</H2>
-See also the <A HREF="http://www.sarahbridle.net/cosmologui/">CosmoloGUI</A> readme for information about how to make plots from samples using an easy-to-use graphical user interface.
 <UL>
 <LI><A HREF="#Intro">Introduction</A>
 <LI><A HREF="#Compiling">Downloading and compiling</A>
@@ -39,6 +38,11 @@ See also the <A HREF="http://www.sarahbridle.net/cosmologui/">CosmoloGUI</A> rea
 <LI><A HREF="#Version">Version history</A>
 <LI><A HREF="#Reference">References</A>
 <LI><A HREF="#FAQ">FAQ</A>
+</UL>
+<UL>
+<LI><A HREF="readme_planck.html">Planck readme</A>
+<LI><A hREF="readme_python.html">Python model grids and plotting readme</A>
+<LI><A HREF="http://cosmologist.info/cosmomc/doc/">Source code documentation</A>
 </UL>
 
 <A NAME="Intro"><h2>Introduction</h2></A>
@@ -437,11 +441,8 @@ You can use CosmoMC to sample any custom function that you want to provide. To d
 You can use named or un-named parameters. Making your own .paramnames file to name your parameters usually makes things easier (except possibly if you have a very large number of parameters where number labels make sense).
 
 <A NAME="Programming"><h2>Programming</h2></A>
-<!--
-<P>
-The most likely reason to modify the code is to change l_max, num_cls, or matter_power_lnzsteps, all specified in cmbtypes.f90. To change the numbers of parameters you'll need to change the constants in settings.f90. Run "make clean" after changing settings before re-compiling. You'll also need to change the SetParamNames function in params_CMB.f90 if you change the parameterization, and maybe add code in params_CMB to do the mapping of new parameters to MCMC array indices. When adding just one additional parameter it's often easiest to re-interpret one of the default parameters rather than adding in new parameters; don't forget to change the .paramnames file though.
-</P>
--->
+<P>The code makes use of Fortran 2003 features and structures. There is automated <A HREF="http://cosmologist.info/cosmomc/doc/">code documentation</A>, which includes modules, classes and subroutines. File and class documentation gives inheritance trees to help understand the structure, for example <A HREF="http://cosmologist.info/cosmomc/doc/file_GeneralTypes.f90.html">GeneralTypes.f90</A> contains the key base classes that other things are inherited from.
+
 <P>You are encouraged to examine what the code is doing and consider carefully
 changes you may wish to make. For example, the results can depend on the
 parameterization. You may also want to use different CAMB modules, e.g.
@@ -454,10 +455,6 @@ source code files you may want to modify are
 
 <br>This defines the maximum number of parameters and their types.
 <li>
-<b>propose.f90</b></li>
-
-<br>This is the proposal density and related constants and subroutines. The efficiency
-of MCMC is quite dependent on the proposal. Fast+slow and fast parameter subspaces are proposed separately. See the <A HREF="http://arxiv.org/abs/1304.4473">paper</A> for a discussion of the proposal density and use of fast and slow parameters.
 <li>
 <b>Calculator_Cosmology.f90 and Calculator_CAMB.f90</b></li>
 
@@ -474,17 +471,23 @@ etc.
 <b>driver.F90</b></li>
 
 <br>Main program that reads in parameters and calls MCMC or post-processing.
+
 <li>
+<b>propose.f90</b></li>
+
+<br>This is the proposal density and related constants and subroutines. The efficiency
+of MCMC is quite dependent on the proposal. Fast+slow and fast parameter subspaces are proposed separately. See the <A HREF="http://arxiv.org/abs/1304.4473">paper</A> for a discussion of the proposal density and use of fast and slow parameters.
+
 <b>GetDist.f90</b></li>
 
 <br>The "getdist" program for analysing chains. Write your own importance
 weighting function or parameter mapping.</ul>
 
 <A NAME="Addons"><h2>Add-ons and extra datasets</h2></A>
-Many old add-ons are unlikely to work with this version of CosmoMC. I will add ones here if and when they are updated.
+Various extended data sets require some code modifications. After testing these may be included as part of the public program, but meanwhile can be 
+installed manually or obtained from the cosmomc git repository (access available on request).
 <UL>
-<LI><A HREF="http://www.slac.stanford.edu/~amantz/work/fgas14/">fgas</A> (Relaxed Galaxy Clusters)
-<LI><A HREF="http://lakme.lbl.gov/~sheejong/cosmomcDR8/">SDSS DR8</a> BAO data
+<LI><A HREF="http://www.slac.stanford.edu/~amantz/work/fgas14/">fgas</A> (Relaxed Galaxy Clusters, available as <b>clusters_fgas</b> branch in git repository)
 </UL>
 <!--
 <LI><A HREF="http://www.utdallas.edu/~jdossett/isitgr/">Integrated Software in Testing General Relativity</a>

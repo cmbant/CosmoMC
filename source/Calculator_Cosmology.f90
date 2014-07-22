@@ -17,6 +17,7 @@
     procedure :: Hofz
     procedure :: AngularDiameterDistance
     procedure :: AngularDiameterDistance2
+    procedure :: LuminosityDistance
     procedure :: CMBToTheta
     procedure :: GetNewBackgroundData
     procedure :: GetNewPowerData
@@ -189,7 +190,16 @@
     AngularDiameterDistance2 = 0
 
     end function AngularDiameterDistance2
-    
+
+    real(mcp) function LuminosityDistance(this, z)
+    class(TCosmologyCalculator) :: this
+    real(mcp), intent(IN) :: z
+
+    call this%ErrorNotImplemented('LuminosityDistance')
+    LuminosityDistance = 0
+
+    end function LuminosityDistance
+
     real(mcp) function Hofz(this, z)
     class(TCosmologyCalculator) :: this
     real(mcp), intent(IN) :: z
