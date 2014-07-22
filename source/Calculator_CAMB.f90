@@ -48,6 +48,7 @@
     procedure :: BAO_D_v => CAMBCalc_BAO_D_v
     procedure :: AngularDiameterDistance => CAMBCalc_AngularDiameterDistance
     procedure :: AngularDiameterDistance2 => CAMBCalc_AngularDiameterDistance2
+    procedure :: LuminosityDistance => CAMBCalc_LuminosityDistance
     procedure :: Hofz => CAMBCalc_Hofz
     procedure :: CMBToTheta => CAMBCalc_CMBToTheta
     procedure :: GetNewPowerData => CAMBCalc_GetNewPowerData
@@ -647,13 +648,22 @@
     end function CAMBCalc_AngularDiameterDistance
 
     real(mcp) function CAMBCalc_AngularDiameterDistance2(this, z1, z2)
-    use CAMB, only : AngularDiameterDistance2
+    use CAMB, only : AngularDiameterDistance2  !!angular diam distance also in Mpc no h units
     class(CAMB_Calculator) :: this
     real(mcp), intent(IN) :: z1, z2
 
-    CAMBCalc_AngularDiameterDistance2 = AngularDiameterDistance2(z1,z2)
+    CAMBCalc_AngularDiameterDistance2 = AngularDiameterDistance2(z1, z2)
 
     end function CAMBCalc_AngularDiameterDistance2
+
+    real(mcp) function CAMBCalc_LuminosityDistance(this, z)
+    use CAMB, only : LuminosityDistance  !! distance also in Mpc no h units
+    class(CAMB_Calculator) :: this
+    real(mcp), intent(IN) :: z
+
+    CAMBCalc_LuminosityDistance = LuminosityDistance(z)
+
+    end function CAMBCalc_LuminosityDistance
 
     real(mcp) function CAMBCalc_Hofz(this, z)
     use CAMB, only : Hofz  !!angular diam distance also in Mpc no h units
