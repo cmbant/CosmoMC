@@ -112,7 +112,9 @@ for d in copy.deepcopy(g.datasets):
     d.add(BAO, BAOdata)
     g3.datasets.append(d)
 for d in copy.deepcopy(g.datasets):
-    d.add([BAO, HST, JLA], [BAOdata, HSTdata, 'JLA'])
+    d.add(BAO, BAOdata)
+    d.add(HST, HSTdata)
+    d.add(JLA)
     g3.datasets.append(d)
 
 g3.importanceRuns = [post_lensing]
