@@ -106,7 +106,7 @@ g2.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB]
 groups.append(g2)
 
 g3 = batchJob.jobGroup('geom')
-g3.params = [['omegak', 'mnu']]
+g3.params = [['omegak'], [ 'mnu']]
 g3.datasets = []
 for d in copy.deepcopy(g.datasets):
     d.add(BAO, BAOdata)
