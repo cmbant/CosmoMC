@@ -7,8 +7,9 @@ rootdir = r'C:\tmp\Planck\SNmodes'
 lmax = 800
 lmin = 800
 
-params = ['theta', 'omegabh2', 'omegamh2', 'ns', 'tau', 'clamp']
-# params = ['tau', 'logA', 'ns', 'omegabh2', 'omegach2', 'thetastar']
+# params = ['thetastar', 'omegabh2', 'omegamh2', 'ns', 'tau', 'clamp']
+
+params = ['thetastar', 'rdrag', 'thetaeq', 'ns', 'tau', 'clamp']
 
 highL = chains.loadGridChain(rootdir, 'base', 'v97_TT_tau07_alllmin' + str(lmax + 1), ignore_frac=0.3)
 lowl = chains.loadGridChain(rootdir, 'base', 'v97_TT_tau07_lowl_alllmax' + str(lmin), ignore_frac=0.3)
@@ -18,14 +19,14 @@ pol = chains.loadGridChain(rootdir, 'base', 'v97_all_tau07_lowl', ignore_frac=0.
 
 allcov = allL.cov(params)
 
-noise = pol.cov(params)
+noise = highL.cov(params)
 if False:
     i = params.index('tau')
     N = inv(noise)
     N[i, i] -= 1 / 0.02 ** 2
     noise = inv(N)
 
-w, U = allL.getSignalToNoise(params, noise)
+w, U = lowl.getSignalToNoise(params, noise)
 print params
 
 for i in range(len(params)):
