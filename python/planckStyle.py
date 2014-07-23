@@ -25,8 +25,13 @@ non_final = True
 version = 'v97CS_tau07'
 defdata_TT = 'v97CS_TT_tau07_lowl'
 defdata_all = 'v97CS_all_tau07_lowl'
+defdata_TTonly = 'v97CS_TT_lowl'
+defdata_allNoLowE = 'v97CS_all_lowl'
+
 
 planck = r'\textit{Planck}'
+planckTT = r'\textit{Planck} TT'
+planckall = planck
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
 lensing = r'\textit{Planck}+lensing'
@@ -35,6 +40,8 @@ NoLowL = r'\textit{Planck}$-$lowL'
 NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
 NoLowLtau = r'\textit{Planck}$-$lowL+$\tau$prior'
 NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
+NoLowLE = r'\textit{Planck}$-$lowE'
+
 LCDM = r'$\Lambda$CDM'
 
 s = GetDistPlots.defaultSettings
