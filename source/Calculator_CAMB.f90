@@ -682,20 +682,20 @@
     !JD Changed P%Transfer%redshifts and P%Transfer%num_redshifts to
     !P%Transfer%PK_redshifts and P%Transfer%PK_num_redshifts respectively
     !for nonlinear lensing of CMB + LSS compatibility
-        Threadnum =num_threads
-        w_lam = -1
-        wa_ppf = 0._dl
-        call CAMB_SetDefParams(P)
+    Threadnum =num_threads
+    w_lam = -1
+    wa_ppf = 0._dl
+    call CAMB_SetDefParams(P)
 
-        HighAccuracyDefault = .true.
+    HighAccuracyDefault = .true.
     P%OutputNormalization = outNone
 
     !JD Modified to save computation time when only using MPK
     if(CosmoSettings%use_CMB) then
-    P%WantScalars = .true.
-    P%WantTensors = CosmoSettings%compute_tensors
-    P%Max_l=CosmoSettings%lmax_computed_cl
-    P%Max_eta_k=CosmoSettings%lmax_computed_cl*2
+        P%WantScalars = .true.
+        P%WantTensors = CosmoSettings%compute_tensors
+        P%Max_l=CosmoSettings%lmax_computed_cl
+        P%Max_eta_k=CosmoSettings%lmax_computed_cl*2
         P%Max_l_tensor=CosmoSettings%lmax_tensor
         P%Max_eta_k_tensor=CosmoSettings%lmax_tensor*5./2
     else
@@ -703,67 +703,67 @@
     end if
 
     P%WantTransfer = CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8
-        P%Transfer%k_per_logint=0
+    P%Transfer%k_per_logint=0
 
-            if (CosmoSettings%use_nonlinear) then
+    if (CosmoSettings%use_nonlinear) then
         P%NonLinear = NonLinear_pk
         P%Transfer%kmax = max(1.2_mcp,CosmoSettings%power_kmax)
-        else
+    else
         P%Transfer%kmax = max(0.8_mcp,CosmoSettings%power_kmax)
-        end if
+    end if
 
     if (AccuracyLevel > 1 .or. HighAccuracyDefault) then
-    if (CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
-        P%Transfer%high_precision=.true.
-    P%Transfer%kmax=P%Transfer%kmax + 0.2
-    end if
-    AccuracyBoost = AccuracyLevel
+        if (CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
+            P%Transfer%high_precision=.true.
+            P%Transfer%kmax=P%Transfer%kmax + 0.2
+        end if
+        AccuracyBoost = AccuracyLevel
         lAccuracyBoost = AccuracyLevel
         lSampleBoost = AccuracyLevel
-            P%AccurateReionization = .true.
-            end if
+        P%AccurateReionization = .true.
+    end if
 
     if (max_transfer_redshifts < CosmoSettings%num_power_redshifts) then
         stop 'Need to manually set max_transfer_redshifts larger in CAMB''s modules.f90'
-        end if
+    end if
 
     if (CosmoSettings%use_LSS) then
-    P%Transfer%PK_num_redshifts = CosmoSettings%num_power_redshifts
-    do zix=1, CosmoSettings%num_power_redshifts
-    !CAMB's ordering is from highest to lowest
-    P%Transfer%PK_redshifts(zix) = CosmoSettings%power_redshifts(CosmoSettings%num_power_redshifts-zix+1)
-    end do
+        P%Transfer%PK_num_redshifts = CosmoSettings%num_power_redshifts
+        do zix=1, CosmoSettings%num_power_redshifts
+            !CAMB's ordering is from highest to lowest
+            P%Transfer%PK_redshifts(zix) = CosmoSettings%power_redshifts(CosmoSettings%num_power_redshifts-zix+1)
+        end do
     else
-    P%Transfer%PK_num_redshifts = 1
-    P%Transfer%PK_redshifts(1) = 0
-        end if
+        P%Transfer%PK_num_redshifts = 1
+        P%Transfer%PK_redshifts(1) = 0
+    end if
 
-        P%Num_Nu_Massive = 3
+    P%Num_Nu_Massive = 3
     P%Num_Nu_Massless = 0.046
     P%InitPower%nn = 1
     P%AccuratePolarization = CosmoSettings%num_cls/=1
-        P%Reion%use_optical_depth = .false.
-        P%OnlyTransfers = .true.
+    P%Reion%use_optical_depth = .false.
+    P%OnlyTransfers = .true.
 
-        if (CosmoSettings%CMB_Lensing) then
+    if (CosmoSettings%CMB_Lensing) then
         P%DoLensing = .true.
-    P%Max_l = CosmoSettings%lmax_computed_cl +100 + 50 !+50 in case accuracyBoost>1 and so odd l spacing
-    P%Max_eta_k = P%Max_l*2
+        P%Max_l = CosmoSettings%lmax_computed_cl +100 + 50 !+50 in case accuracyBoost>1 and so odd l spacing
+        P%Max_eta_k = P%Max_l*2
     end if
 
-        if (HighAccuracyDefault) then
+    if (HighAccuracyDefault) then
         P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl*AccuracyLevel,P%Max_eta_k)
         if (CosmoSettings%CMB_Lensing .and. CosmoSettings%use_lensing_potential) P%Max_eta_k = max(P%Max_eta_k, 12000*AccuracyLevel)
-    if (CosmoSettings%CMB_Lensing .and. CosmoSettings%use_nonlinear_lensing) P%Max_eta_k = max(P%Max_eta_k, 11000*AccuracyLevel)
-    !k_etamax=18000 give c_phi_phi accurate to sub-percent at L=1000, <4% at L=2000
-    !k_etamax=10000 is just < 1% at L<=500
+        if (CosmoSettings%CMB_Lensing .and. CosmoSettings%use_nonlinear_lensing) P%Max_eta_k = max(P%Max_eta_k, 11000*AccuracyLevel)
+        !k_etamax=18000 give c_phi_phi accurate to sub-percent at L=1000, <4% at L=2000
+        !k_etamax=10000 is just < 1% at L<=500
     end if
     !JD 08/13 for nonlinear lensing of CMB + LSS compatibility
     if (CosmoSettings%CMB_Lensing .and. CosmoSettings%use_nonlinear_lensing) then
-    P%WantTransfer = .true.
-    P%NonLinear = NonLinear_lens
-    call Transfer_SetForNonlinearLensing(P%Transfer)
-    if(CosmoSettings%use_nonlinear) P%NonLinear = NonLinear_both
+        P%WantTransfer = .true.
+        P%NonLinear = NonLinear_lens
+        call Transfer_SetForNonlinearLensing(P%Transfer)
+        if(CosmoSettings%use_nonlinear) P%NonLinear = NonLinear_both
     end if
     call Transfer_SortAndIndexRedshifts(P%Transfer)
     !End JD modifications
@@ -785,10 +785,10 @@
     integer, intent(in) :: ix
 
     if (Power_Name == 'power_tilt') then
-    P%InitPower%k_0_scalar = CosmoSettings%pivot_k
-    P%InitPower%k_0_tensor = CosmoSettings%tensor_pivot_k
-    if (P%InitPower%k_0_tensor/=P%InitPower%k_0_scalar) P%InitPower%tensor_parameterization = tensor_param_rpivot
-    P%InitPower%ScalarPowerAmp(ix) = cl_norm*CMB%InitPower(As_index)
+        P%InitPower%k_0_scalar = CosmoSettings%pivot_k
+        P%InitPower%k_0_tensor = CosmoSettings%tensor_pivot_k
+        if (P%InitPower%k_0_tensor/=P%InitPower%k_0_scalar) P%InitPower%tensor_parameterization = tensor_param_rpivot
+        P%InitPower%ScalarPowerAmp(ix) = cl_norm*CMB%InitPower(As_index)
         P%InitPower%rat(ix) = CMB%InitPower(amp_ratio_index)
 
         P%InitPower%an(ix) = CMB%InitPower(ns_index)
@@ -798,29 +798,29 @@
         P%InitPower%n_run(ix) = CMB%InitPower(nrun_index)
         P%InitPower%n_runrun(ix) = CMB%InitPower(nrunrun_index)
 
-    if (CosmoSettings%inflation_consistency) then
-        if (CMB%InitPower(nt_index)/=0 .or. CMB%InitPower(ntrun_index)/=0) &
-            & call MpiStop('Error: inflation_consistency but n_t not set to zero')
-    ! first-order consistency relation
-    !P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8
-        !next order consistency relation
-    P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8*(2-CMB%InitPower(ns_index) - CMB%InitPower(amp_ratio_index)/8)
-    P%InitPower%nt_run(ix) = CMB%InitPower(amp_ratio_index)/8* &
-        & (CMB%InitPower(amp_ratio_index)/8 + CMB%InitPower(ns_index) - 1)
-    !note input n_T, nt run is ignored, so should be fixed
+        if (CosmoSettings%inflation_consistency) then
+            if (CMB%InitPower(nt_index)/=0 .or. CMB%InitPower(ntrun_index)/=0) &
+                & call MpiStop('Error: inflation_consistency but n_t not set to zero')
+            ! first-order consistency relation
+            !P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8
+            !next order consistency relation
+            P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8*(2-CMB%InitPower(ns_index) - CMB%InitPower(amp_ratio_index)/8)
+            P%InitPower%nt_run(ix) = CMB%InitPower(amp_ratio_index)/8* &
+                & (CMB%InitPower(amp_ratio_index)/8 + CMB%InitPower(ns_index) - 1)
+            !note input n_T, nt run is ignored, so should be fixed
+        else
+            P%InitPower%ant(ix) = CMB%InitPower(nt_index)
+            P%InitPower%nt_run(ix) = CMB%InitPower(ntrun_index)
+        end if
     else
-    P%InitPower%ant(ix) = CMB%InitPower(nt_index)
-    P%InitPower%nt_run(ix) = CMB%InitPower(ntrun_index)
-    end if
-    else
-    stop 'CAMB_Calculator:Wrong initial power spectrum'
+        stop 'CAMB_Calculator:Wrong initial power spectrum'
     end if
 
     end subroutine CAMBCalc_SetCAMBInitPower
 
     subroutine CAMBCalc_ReadParams(this,Ini)
     class(CAMB_Calculator) :: this
-        class(TSettingIni) :: Ini
+    class(TSettingIni) :: Ini
 
     call this%TCosmologyCalculator%ReadParams(Ini)
     this%calcName ='CAMB'
@@ -830,29 +830,29 @@
     this%highL_theory_cl_template_file = Ini%ReadFilename('highL_theory_cl_template',DataDir,.true.)
 
     if (Ini%HasKey('highL_unlensed_cl_template')) then
-    highL_unlensed_cl_template=  Ini%ReadFilename('highL_unlensed_cl_template')
+        highL_unlensed_cl_template=  Ini%ReadFilename('highL_unlensed_cl_template')
     else
-    highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
-        end if
+        highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
+    end if
 
-        end subroutine CAMBCalc_ReadParams
+    end subroutine CAMBCalc_ReadParams
 
 
     subroutine CAMBCalc_InitForLikelihoods(this)
     !Called later after likelihoods etc loaded
     class(CAMB_Calculator) :: this
 
-        if (CosmoSettings%use_CMB .and. CosmoSettings%lmax_computed_cl /= CosmoSettings%lmax) then
-    if (CosmoSettings%compute_tensors .and. CosmoSettings%lmax_tensor > CosmoSettings%lmax_computed_cl) &
-        & call MpiStop('lmax_tensor > lmax_computed_cl')
-    call this%LoadFiducialHighLTemplate()
+    if (CosmoSettings%use_CMB .and. CosmoSettings%lmax_computed_cl /= CosmoSettings%lmax) then
+        if (CosmoSettings%compute_tensors .and. CosmoSettings%lmax_tensor > CosmoSettings%lmax_computed_cl) &
+            & call MpiStop('lmax_tensor > lmax_computed_cl')
+        call this%LoadFiducialHighLTemplate()
     end if
 
     call this%InitCAMBParams(this%CAMBP)
 
     if (Feedback > 0 .and. MPIRank==0) then
-    if(CosmoSettings%use_CMB) write(*,*) 'max_eta_k         = ', real(this%CAMBP%Max_eta_k)
-    write(*,*) 'transfer kmax     = ', real(this%CAMBP%Transfer%kmax)
+        if(CosmoSettings%use_CMB) write(*,*) 'max_eta_k         = ', real(this%CAMBP%Max_eta_k)
+        write(*,*) 'transfer kmax     = ', real(this%CAMBP%Transfer%kmax)
     end if
 
     this%CAMBP%WantTensors = CosmoSettings%compute_tensors
@@ -886,9 +886,9 @@
     allocate(this%highL_lensedCL_template(2:CosmoSettings%lmax, 4))
     call F%Open(this%highL_theory_cl_template_file)
     do
-    read(F%unit,*, iostat=status) L , array
-    if (status/=0 .or. L>CosmoSettings%lmax) exit
-    if (L>=2) this%highL_lensedCL_template(L,:) = array
+        read(F%unit,*, iostat=status) L , array
+        if (status/=0 .or. L>CosmoSettings%lmax) exit
+        if (L>=2) this%highL_lensedCL_template(L,:) = array
     end do
     call F%Close()
 
