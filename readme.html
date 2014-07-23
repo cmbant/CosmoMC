@@ -512,11 +512,17 @@ installed manually or obtained from the cosmomc git repository (access available
 <UL>
 <LI><B>July 2014</B><BR>
 <UL>
+<LI>Python job queue scripts generalized for better portability and speed; can use environment variables and job script tokens to specify job submission defaults (job templates for specific machines may need to be updated; new sample template provided for MOAB scheduler)
+<LI>plotTables.py: new options including showing parameter shifts to a reference in sigma units
+<LI>makePlots.py: several new options for different cross-grid data comparisons and triangle plots 
+<LI>makeGrid.py: various small new options and functions (make need to re-run makeGrid on existing grids to update)
+<LI>runbatch.py: option for combining several runs into one job (--runsPerJob)
+<LI>copyGridFiles.py: new script to easily copy chains or getdist results from part of a grid (copy to directory or directly into zip file)
 <LI>Fixed default ranges for JLA alpha parameter in batch1/JLA.ini. Updated JLA likelihood to allow <b>JLA_marginalize=T</b> for importance sampling with internal grid integration (as SNLS, but now non-square grid).
 <LI>Added DR8 BAO likelihood for completeness (thanks Hee-Jong Seo)
 <LI>Fixed bug in underlying bicubic interpolation (Interpolation.f90); caused crashes with simple mpk runs and possibly more general issues
 <LI>Fixed bug in production of .data files by importance sampling
-<LI>Added more helpful "-h" help info for some python scripts; more plotTables.py options
+<LI>Added more helpful "-h" help info for some python scripts
 </UL>
 
 
