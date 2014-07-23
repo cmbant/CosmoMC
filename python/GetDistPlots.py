@@ -735,15 +735,15 @@ class GetDistPlotter():
         self.finish_plot(self.default_legend_labels(legend_labels, roots[1:]), no_tight=True)
         return plot_col, plot_row
 
-    def add_text(self, text, x=0.95, y=0.06, **kwargs):
+    def add_text(self, text_label, x=0.95, y=0.06, **kwargs):
         args = {'horizontalalignment':'right', 'verticalalignment':'center'}
         args.update(kwargs)
-        text(x, y, text, transform=gca().transAxes, **args)
+        text(x, y, text_label, transform=gca().transAxes, **args)
 
-    def add_text_left(self, text, x=0.05, y=0.06, **kwargs):
+    def add_text_left(self, text_label, x=0.05, y=0.06, **kwargs):
         args = {'horizontalalignment':'left'}
         args.update(kwargs)
-        self.add_text(self, text, x, y, **args)
+        self.add_text(self, text_label, x, y, **args)
 
     def export(self, fname):
         savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')

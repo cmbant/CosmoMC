@@ -9,9 +9,13 @@ def argParser(desc=''):
 
 class batchArgs():
 
-        def __init__(self, desc='', importance=True, noBatchPath=False, notExist=False, notall=False, converge=False, plots=False):
+        def __init__(self, desc='', importance=True, noBatchPath=False, notExist=False, notall=False, converge=False, plots=False, batchPathOptional=False):
             self.parser = argparse.ArgumentParser(description=desc)
-            if not noBatchPath: self.parser.add_argument('batchPath', help='directory containing the grid')
+            if not noBatchPath:
+                if batchPathOptional:
+                    self.parser.add_argument('batchPath', nargs='?', help='directory containing the grid')
+                else:
+                    self.parser.add_argument('batchPath', help='directory containing the grid')
             if converge: self.parser.add_argument('--converge', type=float, default=0, help='minimum R-1 convergence')
             self.importanceParameter = importance;
             self.notExist = notExist
@@ -46,17 +50,19 @@ class batchArgs():
 
             args = self.parser.parse_args()
             self.args = args
-            self.batch = batchJob.readobject(args.batchPath)
-            if self.doplots:
-                import GetDistPlots
-                if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
-                if args.plot_data is None: data = self.batch.batchPath + os.sep + 'plot_data'
-                else: data = args.plot_data
-                g = GetDistPlots.GetDistPlotter(data)
-                if args.size_inch is not None: g.settings.setWithSubplotSize(args.size_inch)
-                return (self.batch, self.args, g)
-            else:
-                return (self.batch, self.args)
+            if args.batchPath:
+                self.batch = batchJob.readobject(args.batchPath)
+                if self.doplots:
+                    import GetDistPlots
+                    if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
+                    if args.plot_data is None: data = self.batch.batchPath + os.sep + 'plot_data'
+                    else: data = args.plot_data
+                    g = GetDistPlots.GetDistPlotter(data)
+                    if args.size_inch is not None: g.settings.setWithSubplotSize(args.size_inch)
+                    return (self.batch, self.args, g)
+                else:
+                    return (self.batch, self.args)
+            else: return None, self.args
 
         def wantImportance(self, importanceTag):
             return self.args.importance is None or len(self.args.importance) == 0 or importanceTag in self.args.importance
