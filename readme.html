@@ -71,7 +71,7 @@ Please e-mail details of any bugs or enhancements to <a href="http://cosmologist
 
 
 <A NAME="Compiling"><h2>Downloading and Compiling</h2></A>
-You will need a Fortran 2003 (or higher) compiler - Intel Fortran 14 or higher works (earlier versions probably will not). Others may, but gfortran <i>does not</i> support Fortran 2003 well enough at the moment (see <A HREF="http://gcc.gnu.org/bugzilla/buglist.cgi?cf_known_to_fail_type=allwords&cf_known_to_work_type=allwords&chfield=[Bug%20creation]&chfieldfrom=-7y&chfieldto=Now&email1=antony%40cosmologist.info&emailreporter1=1&emailtype1=substring&list_id=82881&query_format=advanced">bug list</A> if you'd like to help).
+You will need a Fortran 2003 (or higher) compiler - Intel Fortran 14 or higher works (earlier versions probably will not). Others may, but gfortran <i>does not</i> support Fortran 2003 well enough at the moment (see gfortran <A HREF="http://gcc.gnu.org/bugzilla/buglist.cgi?cf_known_to_fail_type=allwords&cf_known_to_work_type=allwords&chfield=[Bug%20creation]&chfieldfrom=-7y&chfieldto=Now&email1=antony%40cosmologist.info&emailreporter1=1&emailtype1=substring&list_id=82881&query_format=advanced">bug list</A> if you'd like to help; bugs are being worked on and hope to have gfortran support in a few months).
 <!--
 Two options:
 <UL>
@@ -484,7 +484,7 @@ of MCMC is quite dependent on the proposal. Fast+slow and fast parameter subspac
 weighting function or parameter mapping.</ul>
 
 <A NAME="Addons"><h2>Add-ons and extra datasets</h2></A>
-Various extended data sets require some code modifications. After testing these may be included as part of the public program, but meanwhile can be 
+Various extended data sets require some code modifications. After testing these may be included as part of the public program, but meanwhile can be
 installed manually or obtained from the cosmomc git repository (access available on request).
 <UL>
 <LI><A HREF="http://www.slac.stanford.edu/~amantz/work/fgas14/">fgas</A> (Relaxed Galaxy Clusters, available as <b>clusters_fgas</b> branch in git repository)
@@ -512,11 +512,17 @@ installed manually or obtained from the cosmomc git repository (access available
 <UL>
 <LI><B>July 2014</B><BR>
 <UL>
+<LI>Python job submission and queue scripts generalized for better portability and speed; can use environment variables and job script tokens to specify job submission defaults (job templates for specific machines may need to be updated; new sample template provided for MOAB scheduler)
+<LI>plotTables.py: new options including showing parameter shifts to a reference in sigma units
+<LI>makePlots.py: several new options for different cross-grid data comparisons and triangle plots 
+<LI>makeGrid.py: various small new options and functions (make need to re-run makeGrid on existing grids to update)
+<LI>runbatch.py: option for combining several runs into one job (--runsPerJob)
+<LI>copyGridFiles.py: new script to easily copy chains or getdist results from part of a grid (copy to directory or directly into zip file)
 <LI>Fixed default ranges for JLA alpha parameter in batch1/JLA.ini. Updated JLA likelihood to allow <b>JLA_marginalize=T</b> for importance sampling with internal grid integration (as SNLS, but now non-square grid).
 <LI>Added DR8 BAO likelihood for completeness (thanks Hee-Jong Seo)
 <LI>Fixed bug in underlying bicubic interpolation (Interpolation.f90); caused crashes with simple mpk runs and possibly more general issues
 <LI>Fixed bug in production of .data files by importance sampling
-<LI>Added more helpful "-h" help info for some python scripts; more plotTables.py options
+<LI>Added more helpful "-h" help info for some python scripts
 </UL>
 
 
