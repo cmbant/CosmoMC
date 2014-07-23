@@ -81,6 +81,7 @@ post_HST = [[HST], [HSTdata], importanceFilterNotOmegakLowl()]
 post_JLA = [[JLA], ['JLA_marge.ini'], importanceFilterNotOmegakLowl()]
 post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegakLowl()]
 post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegakLowl()]
+post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
 
 # set up groups of parameters and data sets
 
@@ -91,8 +92,8 @@ g = batchJob.jobGroup('main')
 
 g.datasets = copy.deepcopy(CS)
 for d in g.datasets:
-    d.add(tauname, tauprior)
     d.add(lowl)
+    d.add(tauname, tauprior)
 
 g.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
 g.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all]
@@ -135,7 +136,8 @@ for d in g5.datasets:
 for d in copy.deepcopy(g5.datasets):
     d.add(lensing)
     g5.datasets.append(d)
-g5.importanceRuns = [post_BAO, post_nonCMB]
+
+g5.importanceRuns = [post_BAO, post_nonCMB, post_WP]
 groups.append(g5)
 
 g6 = batchJob.jobGroup('lensing')
