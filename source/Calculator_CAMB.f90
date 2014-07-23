@@ -492,7 +492,6 @@
     end if
     allocate(Theory%sigma_8_z)
     call Theory%sigma_8_z%Init(z,sigma_8_z,n=nz)
-    deallocate(sigma_8_z)
 
     end subroutine CAMBCalc_SetPkFromCAMB
 
