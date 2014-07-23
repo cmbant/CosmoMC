@@ -1,18 +1,27 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 import glob
 import signal
 import random
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui  import *
+#from PyQt4.QtCore import *
+#from PyQt4.QtGui  import *
+try:
+    from PyQt4.QtCore import *
+    from PyQt4.QtGui  import *
+except ImportError:
+    print "Can't import PyQt4.QtCore or PyQt4.QtGui modules." 
+    sys.exit()
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 import matplotlib.pyplot as plt
 
 import GetDistPlots
+
+# ==============================================================================
 
 class MainWindow(QMainWindow):
 
@@ -335,3 +344,13 @@ class MainWindow(QMainWindow):
 
         # refresh canvas
         self.canvas.draw()
+
+
+# ==============================================================================
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    mainWin = MainWindow()
+    mainWin.show()
+    sys.exit(app.exec_())
+
