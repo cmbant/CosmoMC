@@ -2,6 +2,7 @@
 
 import os
 import sys
+import glob
 import math
 import numpy as np
 from scipy.interpolate import interp1d, splrep, splev
@@ -145,10 +146,11 @@ class MCSamples(chains):
         self.ranges = None
         self.ReadRanges()
 
-        # index is a dict such as { name : index }
-        # index2name is a dict such as { index: name }
-        self.index2name = dict((v,k) for k, v in self.index.iteritems()) 
-        self.index2name.keys().sort()
+        if hasattr(self, 'index'):
+            # index is a dict such as { name : index }
+            # index2name is a dict such as { index: name }
+            self.index2name = dict((v,k) for k, v in self.index.iteritems()) 
+            self.index2name.keys().sort()
 
         self.density1D = None
 
@@ -616,9 +618,10 @@ class MCSamples(chains):
                 for split_n in range(2, self.max_split_tests+1):
                     frac = self.GetFractionIndices(self.weights, split_n)
                     split_tests[split_n] = 0.
-                    confid = self.confidence(coldata, (1-limfrac)/2, endb==0) 
+                    confid = self.confidence(coldata, (1-limfrac)/2., endb==0) 
                     for i in range(split_n):
-                        split_tests[split_n] = split_tests[split_n] + math.pow(self.confidence(coldata[frac[i]:frac[i+1]], (1-limfrac)/2, endb==0)-confid, 2)
+                        split_tests[split_n] = split_tests[split_n] + math.pow(self.confidence(coldata[frac[i]:frac[i+1]], (1-limfrac)/2., endb==0, start=frac[i], end=frac[i+1])-confid, 2)
+                    
                     split_tests[split_n] = math.sqrt(split_tests[split_n]/split_n/fullvar[j])
                 if (endb==0):
                     typestr = 'upper'
@@ -1290,7 +1293,12 @@ class MCSamples(chains):
         textFileHandle.close()
 
     def WriteParamNames(self, filename, indices=None, add_derived=None):
-        self.paramNames.saveAsText(filename)
+        textFileHandle = open(filename, 'w')
+        for info in self.paramNames.names:
+            index = self.index[info.name]
+            if self.isused[index]:
+                textFileHandle.write(info.string() + '\n')
+        textFileHandle.close()
         
     # Pass weights as parameter (for chain only)
     def thin_indices_chain(self, weights, factor):
@@ -1338,7 +1346,7 @@ class MCSamples(chains):
                 (not self.force_twotail) and (self.density1D.P[0] > max_frac_twotail[ix1])
                 self.marge_limits_top[ix1][ix] = self.has_limits_top[ix] and \
                 (not self.force_twotail) and (self.density1D.P[-1] > max_frac_twotail[ix1])
-
+                
                 if ( (not self.marge_limits_bot[ix1][ix]) or \
                      (not self.marge_limits_top[ix1][ix]) ):
                     # give limit
@@ -1377,6 +1385,7 @@ class MCSamples(chains):
                             < self.credible_interval_threshold):
                             tail_limit_top = tail_confid_top
                             tail_limit_bot = tail_confid_bot
+                            pass
 
                     self.LowerUpperLimits[j][1][ix1] = tail_limit_top
                     self.LowerUpperLimits[j][0][ix1] = tail_limit_bot
@@ -1517,10 +1526,6 @@ class MCSamples(chains):
         textFileHandle.close()
         
 
-
-
-
-
 def WritePlotFileInit():
     text = """import GetDistPlots, os
 g=GetDistPlots.GetDistPlotter('%s')
@@ -1535,3 +1540,29 @@ def WritePlotFileExport():
     return text
 
 
+
+# ==============================================================================
+
+# Usefull functions
+
+def GetRootFileName(rootdir):
+    rootFileName = "" 
+    pattern = os.path.join(rootdir, '*_*.txt')
+    chain_files = glob.glob(pattern)
+    chain_files.sort()
+    if chain_files:
+        chain_file0 = chain_files[0]
+        rindex = chain_file0.rindex('_')
+        rootFileName = chain_file0[:rindex]
+    return rootFileName
+        
+def GetChainFiles(rootdir):
+    chain_files = glob.glob(rootdir+'_*.txt')
+    chain_files.sort() 
+    return chain_files 
+
+
+#from PyQt4.QtCore import pyqtRemoveInputHook
+#from pdb import set_trace
+#pyqtRemoveInputHook()
+#set_trace()

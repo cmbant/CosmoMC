@@ -2,7 +2,6 @@
 
 import os
 import sys
-import glob
 import math
 
 import numpy as np
@@ -307,8 +306,7 @@ do_shading = ini.bool('do_shading', True)
 # ==============================================================================
 
 # Chain files
-chain_files = glob.glob(in_root+'_*.txt')
-chain_files.sort() 
+chain_files = MCSamples.GetChainFiles(in_root)
 
 def getLastChainIndex(in_root):
     if not chain_files: return 0
@@ -433,7 +431,6 @@ mc.Init1DDensity()
 mc.Do1DBins(max_frac_twotail)
 
 if (not no_plots):
-
     # Output files for 1D plots
     filename = rootdirname + '.' + plot_ext
     mc.WriteScriptPlots1D(filename)
