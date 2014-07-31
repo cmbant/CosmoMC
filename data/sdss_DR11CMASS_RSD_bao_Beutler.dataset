@@ -1,0 +1,10 @@
+name = DR11CMASS_RSD_Beutler
+
+#Type of measurement: A(z) = 2, D_V/rs=3
+type_bao = 6
+
+#number of bao data points 
+num_bao = 1
+
+bao_measurements_file = %DATASETDIR%sdss_DR11CMASS_RSD_bao_Beutler.txt
+bao_invcov_file = %DATASETDIR%sdss_DR11CMASS_RSD_bao_invcov_Beutler.txt

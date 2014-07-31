@@ -34,7 +34,7 @@
         !5: D_A/rs (DR8)
         real(mcp), allocatable, dimension(:) :: bao_z, bao_obs, bao_err
         real(mcp), allocatable, dimension(:,:) :: bao_invcov
-        ! 5: (D_V/rs, F_AP, f sigma_8) 
+        ! 6: (D_V/rs, F_AP, f sigma_8) 
         real(mcp), allocatable, dimension(:) :: bao_AP,bao_fsigma8
 
     contains
@@ -104,7 +104,7 @@
     this%num_bao = Ini%Read_Int('num_bao',0)
     if (this%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
     this%type_bao = Ini%Read_Int('type_bao',1)
-    if(this%type_bao /= 3 .and. this%type_bao /=2 .and. this%type_bao /=4 .and. this%type_bao /=5) then
+    if(this%type_bao /= 3 .and. this%type_bao /=2 .and. this%type_bao /=4 .and. this%type_bao /=5 .and. this%type_bao /=6) then
         write(*,*) this%type_bao
         write(*,*)'ERROR: Invalid bao type specified in BAO dataset: '//trim(this%name)
         call MPIStop()
@@ -116,7 +116,7 @@
 
     bao_measurements_file = Ini%ReadFileName('bao_measurements_file')
     call F%Open(bao_measurements_file)
-    if(this%type_bao == 5) then
+    if(this%type_bao == 6) then
        if (this%num_bao /= 1) then
           write(*,*)'ERROR: Need 1 bao data point for: '//trim(this%name)
           call MPIStop()
@@ -137,7 +137,7 @@
     elseif (this%name == 'DR11CMASS') then
         !don't used observed value, probabilty distribution instead
         call BAO_DR11_init(Ini%ReadFileName('prob_dist'))
-    elseif (this%type_bao == 5) then
+    elseif (this%type_bao == 6) then
        allocate(this%bao_invcov(3,3))
        this%bao_invcov=0
        if (Ini%HasKey('bao_invcov_file')) then
@@ -235,7 +235,7 @@
         BAO_LnLike = this%BAO_DR7_loglike(CMB,this%bao_z(1))
     elseif (this%name=='DR11CMASS') then
         BAO_LnLike = this%BAO_DR11_loglike(CMB,this%bao_z(1))
-    elseif (this%type_bao==5) then
+    elseif (this%type_bao==6) then
         BAO_LnLike = this%BAO_RSD_loglike(CMB, Theory)
     else
         allocate(BAO_theory(this%num_bao))
