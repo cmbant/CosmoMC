@@ -1557,7 +1557,8 @@ def GetRootFileName(rootdir):
     return rootFileName
         
 def GetChainFiles(rootdir):
-    chain_files = glob.glob(rootdir+'_*.txt')
+    pattern = rootdir + '*_*.txt'
+    chain_files = glob.glob(pattern)
     chain_files.sort() 
     return chain_files 
 

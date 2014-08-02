@@ -5,9 +5,8 @@ import sys
 import glob
 import signal
 import random
+import logging
 
-#from PyQt4.QtCore import *
-#from PyQt4.QtGui  import *
 try:
     from PyQt4.QtCore import *
     from PyQt4.QtGui  import *
@@ -15,21 +14,27 @@ except ImportError:
     print "Can't import PyQt4.QtCore or PyQt4.QtGui modules." 
     sys.exit()
 
+
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 import matplotlib.pyplot as plt
 
+import Resources
+
 import GetDistPlots
+import MCSamples
 
 # ==============================================================================
 
 class MainWindow(QMainWindow):
 
     def __init__(self):
+        """
+        Initialize of GUI components.
+        """
 
         super(MainWindow, self).__init__()
 
-        # 
         self.setAttribute(Qt.WA_DeleteOnClose)
  
         self.createActions()
@@ -45,32 +50,31 @@ class MainWindow(QMainWindow):
         # Allow to shutdown the GUI with Ctrl+C
         signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-        # 
+        # Internal data 
         self.rootdir = ""
+        self.mcsamples = None
 
 
     def createActions(self):
-
-        self.exportAct = QAction(
-            "&Export", self,
+        self.exportAct = QAction(QIcon(":/images/file_export.png"),
+            "&Export as PDF", self,
             statusTip="Export image as PDF", triggered=self.export)
 
-        self.scriptAct = QAction(
-            "Script", self,
+        self.scriptAct = QAction(QIcon(":/images/file_save.png"), 
+            "Save script", self,
             statusTip="Export commands to script", triggered=self.script)
 
-        self.exitAct = QAction(QIcon("./images/application_exit.png"), 
+        self.exitAct = QAction(QIcon(":/images/application_exit.png"), 
             "E&xit", self, shortcut="Ctrl+Q",
             statusTip="Exit application",
             triggered=qApp.closeAllWindows)
  
-        self.aboutAct = QAction(
+        self.aboutAct = QAction(QIcon(":/images/help_about.png"), 
             "&About", self,
             statusTip="Show About box",
             triggered=self.about)
 
     def createMenus(self):
-
         self.fileMenu = self.menuBar().addMenu("&File")
         self.fileMenu.addAction(self.exportAct)
         self.separatorAct = self.fileMenu.addSeparator()
@@ -103,7 +107,8 @@ class MainWindow(QMainWindow):
         self.lineEditDirectory.clear()
         self.lineEditDirectory.setReadOnly(True)
 
-        self.pushButtonSelect = QPushButton("...", self.selectWidget)
+        self.pushButtonSelect = QPushButton(QIcon(":/images/folder_open.png"), 
+            "", self.selectWidget)
         self.pushButtonSelect.setToolTip("Choose root directory")
         self.connect(self.pushButtonSelect, SIGNAL("clicked()"), self.selectRootDir)
 
@@ -117,11 +122,11 @@ class MainWindow(QMainWindow):
 
         self.listParametersX = QListWidget(self.selectWidget)
         self.listParametersX.clear()
-        self.connect(self.listParametersX, SIGNAL("itemClicked()"), self.clickParamX)
+        self.connect(self.listParametersX, SIGNAL("itemChanged(QListWidgetItem *)"), self.itemParamXChanged)
 
         self.listParametersY = QListWidget(self.selectWidget)
         self.listParametersY.clear()
-        self.connect(self.listParametersY, SIGNAL("itemClicked()"), self.clickParamY)
+        self.connect(self.listParametersY, SIGNAL("itemChanged(QListWidgetItem *)"), self.itemParamYChanged)
 
         self.selectAllX = QCheckBox("Select All", self.selectWidget)
         self.selectAllX.setCheckState(Qt.Unchecked)
@@ -162,7 +167,8 @@ class MainWindow(QMainWindow):
 
         self.dataWidget = QWidget(dockBot)
 
-        self.newButton = QPushButton(QIcon("images/file_new.png"), "New", self.dataWidget)
+        self.newButton = QPushButton(QIcon(":/images/file_open.png"), "", self.dataWidget)
+        self.newButton.setToolTip("Select file to display")
         self.connect(self.newButton, SIGNAL("clicked()"), self.openNewFile)
 
         spacer = QSpacerItem(10, 10, QSizePolicy.Expanding, QSizePolicy.Ignored)
@@ -183,8 +189,6 @@ class MainWindow(QMainWindow):
         dockBot.setWidget(self.dataWidget)
         self.addDockWidget(Qt.LeftDockWidgetArea, dockBot)
 
-
-
     def createCentralWidget(self):
         
         self.centralWidget = QWidget()
@@ -192,10 +196,10 @@ class MainWindow(QMainWindow):
         # a figure instance to plot on
         self.figure = plt.figure()
 
-        # this is the Canvas Widget that displays the `figure`
+        # Canvas Widget that displays the `figure`
         self.canvas = FigureCanvas(self.figure)
 
-        # this is the Navigation widget
+        # Navigation widget
         self.toolbar = NavigationToolbar(self.canvas, self)
 
         layout = QVBoxLayout()
@@ -205,20 +209,20 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.centralWidget)
 
-        # test with random data
-        self.test()
+        self.test() # test with random data
         
-# slots for menu actions
+
+    # slots for menu actions
 
     def export(self):
-        filename, filtr = QFileDialog.getSaveFileName(
+        filename, filter = QFileDialog.getSaveFileName(
             self,
             "Choose a file name", '.', "PDF (*.pdf)")
         if not filename:
             return
 
     def script(self):
-        filename, filtr = QFileDialog.getSaveFileName(
+        filename, filter = QFileDialog.getSaveFileName(
             self,
             "Choose a file name", '.', "Python (*.py)")
         if not filename:
@@ -229,38 +233,74 @@ class MainWindow(QMainWindow):
             self, "About GetDist GUI",
             "Qt application for GetDist plots.")
 
-# slots for selectWidget 
 
+    # slots for selectWidget 
 
     def selectRootDir(self):
+        """
+        Slot function called when pushButtonSelect is pressed.
+        """
         
         title = self.tr("Choose an existing case")
         path = os.getcwd()
         dirName = QFileDialog.getExistingDirectory(
-            self, title, path,
+            None, title, path,
             QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
 
+        #fixme: close dialog window
+
         if dirName:
+
             self.rootdir = str(dirName)
             self.lineEditDirectory.setText(self.rootdir)
+
+            self.root = MCSamples.GetRootFileName(self.rootdir)            
+            logging.debug("self.root = %s"%str(self.root))
+            chainFiles = MCSamples.GetChainFiles(self.root)
             
-            # 
+            self.mcsamples = MCSamples.MCSamples(self.root)
+            logging.debug("Read chains from %s"%str(self.root))
+            logging.debug("Please wait ...")
+            self.mcsamples.loadChains(self.root, chainFiles)
+            logging.debug("Done reading")
+            
+            self.plotter = GetDistPlots.GetDistPlotter('main/plot_data')
+
+            filesparam = glob.glob(os.path.join(self.rootdir, "*.paramnames"))
+            if filesparam: 
+                # Directory contains file .paramnames
+                if hasattr(self.mcsamples, "paramNames"):
+                    logging.debug("Reading .paramnames information")
+                    paramNames = self.mcsamples.paramNames.list()
+
+                    # Hide combo boxes and fill list
+                    self.comboBoxParamTag.hide()
+                    self.comboBoxDataTag.hide()
+                    self._updateListParametersX(paramNames)
+            
+            else:
+                self._updateComboBoxParamTag()
+                
+            # Directory contains file batch.pyobj
             fileobj = os.path.join(self.rootdir, "batch.pyobj")
             if os.path.isfile(fileobj):
-                self._updateComboBoxParamTag()
-            else:
-                filesparam = glob.glob(os.path.join(self.rootdir, "*.paramnames"))
-                if filesparam:
-                    fileparam = os.path.basename(filesparam[0])
-                    # read paramnames
+                pass
+            
+        else:
+            # Do nothing 
+            pass 
 
-    def _updateComboBoxParamTag(self):
+    def _updateComboBoxParamTag(self, listOfParams=[]):
         if self.rootdir and os.path.isdir(self.rootdir):
             self.comboBoxParamTag.clear()
-            dirs = [ d for d in os.listdir(self.rootdir) if os.path.isdir(os.path.join(self.rootdir, d)) ]
-            self.comboBoxParamTag.addItems(dirs)
+            if not listOfParams:
+                listOfParams = [ d for d in os.listdir(self.rootdir) if os.path.isdir(os.path.join(self.rootdir, d)) ]
+            self.comboBoxParamTag.addItems(listOfParams)
 
     def setParamTag(self, strParamTag):
+        """
+        Slot function called on change of comboBoxParamTag.
+        """
         self.paramTag = str(strParamTag)
         paramDir = os.path.join(self.rootdir, self.paramTag)
         if os.path.isdir(paramDir):
@@ -268,15 +308,56 @@ class MainWindow(QMainWindow):
             self.comboBoxDataTag.addItems(dirs)
     
     def setDataTag(self, strDataTag):
+        """
+        Slot function called on change of comboBoxDataTag.
+        """
         print "strDataTag ", strDataTag
         
-    def clickParamX(self, item):
-        pass
 
-    def clickParamY(self, item):
-        pass
+    def _updateListParametersX(self, items):
+        """
+        """
+        logging.debug("Fill ListParametersX with %i items"%(len(items)))
+        self.listParametersX.clear()
+        for item in items:
+            listItem = QListWidgetItem()
+            listItem.setText(item)
+            listItem.setFlags(listItem.flags() | Qt.ItemIsUserCheckable) 
+            listItem.setCheckState(Qt.Unchecked)
+            self.listParametersX.addItem(listItem)
+
+    def itemParamXChanged(self, item):
+        """
+        Slot function called when item in listParametersX changes.
+        """
+        if item.isChecked():
+            logging.debug("Change of Item %s: now in check state"%str(item.text()))
+
+
+    def _updateListParametersY(self, items):
+        """
+        """
+        logging.debug("Fill ListParametersY with %i items"%(len(items)))
+        self.listParametersY.clear()
+        for item in items:
+            listItem = QListWidgetItem()
+            listItem.setText(item)
+            listItem.setFlags(listItem.flags() | Qt.ItemIsUserCheckable) 
+            listItem.setCheckState(Qt.Unchecked)
+            self.listParametersY.addItem(listItem)
+
+    def itemParamYChanged(self, item):
+        """
+        Slot function called when item in listParametersY changes.
+        """
+        if item.isChecked():
+            logging.debug("Change of Item %s: now in check state"%str(item.text()))
+
 
     def statusSelectAllX(self):
+        """
+        Slot function called when selectAllX is modified.
+        """
         if self.selectAllX.isChecked():
             state = Qt.Checked
         else: 
@@ -286,6 +367,9 @@ class MainWindow(QMainWindow):
             self.listParametersX.item(i).setCheckState(state)
 
     def statusSelectAllY(self):
+        """
+        Slot function called when selectAllY is modified.
+        """
         if self.selectAllY.isChecked():
             state = Qt.Checked
         else: 
@@ -296,33 +380,50 @@ class MainWindow(QMainWindow):
 
 
     def plotData(self):
+        """
+        Slot function called when pushButtonPlot is pressed.
+        """
         g = GetDistPlots.GetDistPlotter('PLA/plot_data')
-        
+        # ...
 
 
-
-   
-# slots for selectWidget 
+    #
+    # slots for selectWidget (bottom widget on the left)
+    #
 
     def openNewFile(self):
+        """
+        Slot function called when newButton is pressed.
+        """
         
         title = self.tr("Choose an existing file")
         path = os.getcwd()
         fileName = QFileDialog.getOpenFileName(self, title, path)
 
         if fileName:
+            # Read content of file
             textFileHandle = open(fileName)
             textFileLines = textFileHandle.read()
             textFileHandle.close()
             
+            # Display contentin read-only mode
             textBrowser = QTextBrowser(self.tabWidget)
             textBrowser.setPlainText(textFileLines)
             textBrowser.setReadOnly(True)
-            
+
+            # Connection of signal
             self.tabWidget.addTab(textBrowser, os.path.basename(str(fileName)))
             self.tabWidget.setTabToolTip(self.tabWidget.currentIndex(), os.path.basename(str(fileName)))
 
+        else:
+            # Do nothing
+            pass
+
+
     def closeTab(self, index):
+        """
+        Slot function called on a tab widget close event.
+        """
         self.tabWidget.removeTab(index)
                          
 
@@ -349,8 +450,17 @@ class MainWindow(QMainWindow):
 # ==============================================================================
 
 if __name__ == "__main__":
+
+    # Configure the logging
+    level = logging.DEBUG
+    FORMAT = '%(asctime).19s [%(levelname)s]\t[%(filename)s:%(lineno)d]\t\t%(message)s'
+    logging.basicConfig(level=level, format=FORMAT)      
+
     app = QApplication(sys.argv)
     mainWin = MainWindow()
     mainWin.show()
     sys.exit(app.exec_())
+
+# ==============================================================================
+
 
