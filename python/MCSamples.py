@@ -818,7 +818,7 @@ class MCSamples(chains):
         textFileHandle.close()
 
     
-    def Get1DDensity(self, j):
+    def Get1DDensity(self, j, writeDataToFile=True):
 
         fine_fac = 10
         logZero = 1e30
@@ -982,6 +982,10 @@ class MCSamples(chains):
                 maxbin = min(binlikes)
                 binlikes = np.where( (binlikes-maxbin)<30, np.exp(-(binlikes-maxbin)), 0 )
 
+
+
+            # writeDataToFile
+
             fname = self.rootname + "_p_" + str(self.index2name[j])
 
             filename = os.path.join(self.plot_data_dir, fname + ".dat")
@@ -1002,7 +1006,12 @@ class MCSamples(chains):
                     textFileHandle.write("%16.7E%16.7E\n"%(self.center[j] + i*width, binlikes[i - self.ix_min[j]]/maxbin))
                 textFileHandle.close()
 
-    def Get2DPlotData(self, j, j2):
+            # return data ...
+                
+
+
+
+    def Get2DPlotData(self, j, j2, writeDataToFile=True):
         """
         Get 2D plot data.
         """
@@ -1136,6 +1145,8 @@ class MCSamples(chains):
             
         bins2D[np.where(bins2D < 1e-30)] = 0
 
+        # writeDataToFile
+
         name = self.index2name.get(j, "NOTFOUND")
         name2 = self.index2name.get(j2, "NOTFOUND")
         plotfile = self.rootname + "_2D_%s_%s"%(name, name2)
@@ -1170,6 +1181,9 @@ class MCSamples(chains):
                     textFileHandle.write("%16.7E"%(bin2Dlikes[ix1-ixmin][ix2-iymin]/maxbin))
                 textFileHandle.write("\n")
             textFileHandle.close()
+
+        # return data ...
+
 
     def EdgeWarning(self, i):
         if self.index2name.has_key(i):
