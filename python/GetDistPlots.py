@@ -190,15 +190,25 @@ class SampleAnalysisGetDist():
         if transpose: return (pts, y, x)
         else: return (pts, x, y)
 
+# 
+class MCSampleAnalysis(SampleAnalysisGetDist):
+
+    def __init__(self, plot_data):
+        SampleAnalysisGetDist.__init__(plot_data)
+
+
+
 
 class GetDistPlotter():
 
-    def __init__(self, plot_data, settings=None):
+    def __init__(self, plot_data, settings=None, use_mcsamples=False):
         if settings is None: self.settings = defaultSettings
         else: self.settings = settings
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
         self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
+        if use_mcsamples:
+            self.sampleAnalyser = MCSampleAnalysis(self.plot_data)
         self.newPlot()
 
     def newPlot(self):
