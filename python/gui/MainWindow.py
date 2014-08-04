@@ -14,7 +14,6 @@ except ImportError:
     print "Can't import PyQt4.QtCore or PyQt4.QtGui modules." 
     sys.exit()
 
-
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 import matplotlib.pyplot as plt
@@ -244,51 +243,56 @@ class MainWindow(QMainWindow):
         title = self.tr("Choose an existing case")
         path = os.getcwd()
         dirName = QFileDialog.getExistingDirectory(
-            None, title, path,
+            self, title, path,
             QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
 
-        #fixme: close dialog window
+        #fixme: dialog window won't close immediately (on ubuntu 12.04) 
 
         if dirName:
 
+            # Root directory
             self.rootdir = str(dirName)
             self.lineEditDirectory.setText(self.rootdir)
 
+            # Root file name
             self.root = MCSamples.GetRootFileName(self.rootdir)            
             logging.debug("self.root = %s"%str(self.root))
+
+            # Get list of chain files in root directory
             chainFiles = MCSamples.GetChainFiles(self.root)
-            
-            self.mcsamples = MCSamples.MCSamples(self.root)
-            logging.debug("Read chains from %s"%str(self.root))
-            logging.debug("Please wait ...")
-            self.mcsamples.loadChains(self.root, chainFiles)
-            logging.debug("Done reading")
-            
-            self.plotter = GetDistPlots.GetDistPlotter('main/plot_data')
 
-            filesparam = glob.glob(os.path.join(self.rootdir, "*.paramnames"))
-            if filesparam: 
-                # Directory contains file .paramnames
-                if hasattr(self.mcsamples, "paramNames"):
-                    logging.debug("Reading .paramnames information")
-                    paramNames = self.mcsamples.paramNames.list()
-
-                    # Hide combo boxes and fill list
-                    self.comboBoxParamTag.hide()
-                    self.comboBoxDataTag.hide()
-                    self._updateListParametersX(paramNames)
-            
-            else:
+            if len(chainFiles)==0:
+                logging.debug("No chain files in %s"%self.rootdir)
                 self._updateComboBoxParamTag()
-                
-            # Directory contains file batch.pyobj
-            fileobj = os.path.join(self.rootdir, "batch.pyobj")
-            if os.path.isfile(fileobj):
-                pass
+            else:
+                # Create instance of MCSamples and read chain files
+                self.mcsamples = MCSamples.MCSamples(self.root)
+                logging.debug("Read chains from %s"%str(self.root))
+                logging.debug("Please wait ...")
+                self.mcsamples.loadChains(self.root, chainFiles)
+                logging.debug("Done reading")
+
+                # File .paramnames
+                filesparam = glob.glob(os.path.join(self.rootdir, "*.paramnames"))
+                if filesparam: 
+                    # Directory contains file .paramnames
+                    if hasattr(self.mcsamples, "paramNames"):
+                        logging.debug("Reading .paramnames information")
+                        paramNames = self.mcsamples.paramNames.list()
+
+                        # Hide combo boxes and fill list
+                        self.comboBoxParamTag.hide()
+                        self.comboBoxDataTag.hide()
+                        self._updateListParametersX(paramNames)
+            
+                # File batch.pyobj
+                fileobj = os.path.join(self.rootdir, "batch.pyobj")
+                if os.path.isfile(fileobj):
+                    pass
             
         else:
-            # Do nothing 
-            pass 
+            logging.debug("No directory specified")
+
 
     def _updateComboBoxParamTag(self, listOfParams=[]):
         if self.rootdir and os.path.isdir(self.rootdir):
@@ -330,7 +334,7 @@ class MainWindow(QMainWindow):
         """
         Slot function called when item in listParametersX changes.
         """
-        if item.isChecked():
+        if item.checkState()==Qt.Checked:
             logging.debug("Change of Item %s: now in check state"%str(item.text()))
 
 
@@ -350,7 +354,7 @@ class MainWindow(QMainWindow):
         """
         Slot function called when item in listParametersY changes.
         """
-        if item.isChecked():
+        if item.checkState()==Qt.Checked:
             logging.debug("Change of Item %s: now in check state"%str(item.text()))
 
 
@@ -383,8 +387,34 @@ class MainWindow(QMainWindow):
         """
         Slot function called when pushButtonPlot is pressed.
         """
+
+        # X items 
+        items_x = []
+        count = self.listParametersX.count()
+        for i in range(count):
+            item = self.listParametersX.item(i)
+            if item.checkState()==Qt.Checked:
+                items_x.append(str(item.text()))
+
+        # X items 
+        items_y = []
+        count = self.listParametersY.count()
+        for i in range(count):
+            item = self.listParametersY.item(i)
+            if item.checkState()==Qt.Checked:
+                items_y.append(str(item.text()))
+
+
+        from PyQt4.QtCore import pyqtRemoveInputHook
+        from pdb import set_trace
+        pyqtRemoveInputHook()
+        set_trace()
+
         g = GetDistPlots.GetDistPlotter('PLA/plot_data')
-        # ...
+        g.settings.setWithSubplotSize(3.000000)
+
+        # 
+        self.plotter = GetDistPlots.GetDistPlotter('main/plot_data')
 
 
     #
