@@ -26,6 +26,7 @@ HSTdata = 'HST_GPE70p6.ini'
 Camspec = 'CAMspec_defaults.ini'
 highL = 'highL'
 lowl = 'lowl'
+lowTEB = 'lowTEB'
 # dataset names
 tauprior = {'prior[tau]':'0.07 0.02'}
 tauname = 'tau07'
@@ -92,8 +93,7 @@ g = batchJob.jobGroup('main')
 
 g.datasets = copy.deepcopy(CS)
 for d in g.datasets:
-    d.add(lowl)
-    d.add(tauname, tauprior)
+    d.add(lowTEB)
 
 g.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
 g.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all]
@@ -128,7 +128,7 @@ groups.append(g3)
 # g4.importanceRuns = [post_BAO, post_JLA, post_lensing]
 # groups.append(g4)
 
-g5 = batchJob.jobGroup('planckonly')
+g5 = batchJob.jobGroup('nopoltau')
 g5.params = [[]]
 g5.datasets = copy.deepcopy(CS)
 for d in g5.datasets:
