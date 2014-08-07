@@ -10,7 +10,6 @@ defaults = ['common.ini']
 importanceDefaults = ['importance_sampling.ini']
 
 # dataset names
-planck = 'v97CS'
 lowl = 'lowl'
 lowLike = 'lowLike'
 lensing = 'lensing'
@@ -32,32 +31,21 @@ tauprior = {'prior[tau]':'0.07 0.02'}
 tauname = 'tau07'
 WMAPtau = {'prior[tau]':'0.09 0.013'}
 
-varTE = {'param[calTE]': '1 0.1 2 0.005 0.005'}
-varEE = {'param[calEE]': '1 0.1 2 0.01 0.01'}
+
+planck_detsets = ['nonclik_v97F.ini']
+planck_CS = ['nonclik_v97CS.ini']
 
 
-TT = {'want_spec':'T T T T F F'}
-EE = {'want_spec':'F F F F F T'}
-TE = {'want_spec':'F F F F T F'}
-TEEE = {'want_spec':'F F F F T T'}
-TTTE = {'want_spec':'T T T T T F'}
-full = {'want_spec':'T T T T T T'}
+variant_tag = ['all', 'TT', 'TE', 'EE']
+variants = ['TTTEEE', 'TT', 'TE', 'EE']
 
-freecal = 'freecal.ini'
-freecalEE = {'param[calEE]':'1 0.1 2 0.01 0.01', 'prior[calEE]':'1 0.01'}
-freecalTE = {'param[calTE]':'1 0.1 2 0.005 0.005', 'prior[calTE]': '1 0.01'}
+defplanck_base = planck_CS
+defroot = 'CAMspec_'
+planck = 'v97CS'
 
-planck_detsets = [freecal, 'nonclik_v97F.ini', Camspec]
-planck_CS = [freecal, 'nonclik_v97CS.ini', Camspec]
-
-
-detsets = []
-CS = []
-for name, datasets, planck_vars in zip(['v97CS'], [CS], [planck_CS]):
-    datasets.append(batchJob.dataSet([name , 'TT'], [TT] + planck_vars))
-#    datasets.append(batchJob.dataSet([name , 'TE'], [TE, varTE, freecalTE] + planck_vars))
-#    datasets.append(batchJob.dataSet([name , 'EE'], [EE, varEE, freecalEE] + planck_vars))
-    datasets.append(batchJob.dataSet([name, 'all'], [full, varTE, varEE, freecalTE, freecalEE] + planck_vars))
+planck_highL_sets = []
+for name, var in zip(variant_tag, variants):
+    planck_highL_sets.append(batchJob.dataSet([planck , name], [defroot + var] + defplanck_base))
 
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
@@ -91,7 +79,7 @@ groups = []
 g = batchJob.jobGroup('main')
 # Main group with just tau prior
 
-g.datasets = copy.deepcopy(CS)
+g.datasets = copy.deepcopy(planck_highL_sets)
 for d in g.datasets:
     d.add(lowTEB)
 
@@ -130,7 +118,7 @@ groups.append(g3)
 
 g5 = batchJob.jobGroup('nopoltau')
 g5.params = [[]]
-g5.datasets = copy.deepcopy(CS)
+g5.datasets = copy.deepcopy(planck_highL_sets)
 for d in g5.datasets:
     d.add(lowl)
 for d in copy.deepcopy(g5.datasets):
