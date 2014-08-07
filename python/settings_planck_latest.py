@@ -36,8 +36,8 @@ planck_detsets = ['nonclik_v97F.ini']
 planck_CS = ['nonclik_v97CS.ini']
 
 
-variant_tag = ['all', 'TT', 'TE', 'EE']
-variants = ['TTTEEE', 'TT', 'TE', 'EE']
+variant_tag = ['TTTEEE', 'TT', 'TE', 'EE']
+variants = variant_tag
 
 defplanck_base = planck_CS
 defroot = 'CAMspec_'
@@ -45,7 +45,7 @@ planck = 'v97CS'
 
 planck_highL_sets = []
 for name, var in zip(variant_tag, variants):
-    planck_highL_sets.append(batchJob.dataSet([planck , name], [defroot + var] + defplanck_base))
+    planck_highL_sets.append(batchJob.dataSet([planck , name], defplanck_base + [defroot + var]))
 
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
