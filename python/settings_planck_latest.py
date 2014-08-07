@@ -44,8 +44,8 @@ TTTE = {'want_spec':'T T T T T F'}
 full = {'want_spec':'T T T T T T'}
 
 freecal = 'freecal.ini'
-freecalEE = {'param[calEE]':'1 0.1 2 0.01 0.01', 'prior[calEE]':'1 1'}
-freecalTE = {'param[calTE]':'1 0.1 2 0.005 0.005', 'prior[calTE]': '1 1'}
+freecalEE = {'param[calEE]':'1 0.1 2 0.01 0.01', 'prior[calEE]':'1 0.01'}
+freecalTE = {'param[calTE]':'1 0.1 2 0.005 0.005', 'prior[calTE]': '1 0.01'}
 
 planck_detsets = [freecal, 'nonclik_v97F.ini', Camspec]
 planck_CS = [freecal, 'nonclik_v97CS.ini', Camspec]
