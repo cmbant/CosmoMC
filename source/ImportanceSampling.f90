@@ -79,7 +79,7 @@
     if (this%redo_from_text  .and. this%redo_skip>0.d0 .and. this%redo_skip<1) &
     call Mpistop('redo_from_text currently requires redo_skip==0 or redo_skip>=1')
 
-    if (this%redo_thin>1) write(*,*) 'WARNING: redo thin is for testing, does not to correct weighted thinning'
+    if (this%redo_thin>1) write(*,*) 'WARNING: redo thin is for testing, does not do correct weighted thinning'
 
     if (this%redo_outroot == '') then
         this%redo_outroot =  File%ExtractPath(baseroot)//'post_'//File%ExtractName(baseroot)

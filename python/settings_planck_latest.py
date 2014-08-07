@@ -40,12 +40,12 @@ variant_tag = ['TTTEEE', 'TT', 'TE', 'EE']
 variants = variant_tag
 
 defplanck_base = planck_CS
-defroot = 'CAMspec_'
+defroot = 'CAMspec_%s.ini'
 planck = 'v97CS'
 
 planck_highL_sets = []
 for name, var in zip(variant_tag, variants):
-    planck_highL_sets.append(batchJob.dataSet([planck , name], defplanck_base + [defroot + var]))
+    planck_highL_sets.append(batchJob.dataSet([planck , name], defplanck_base + [defroot % (var)]))
 
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
