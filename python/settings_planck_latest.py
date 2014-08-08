@@ -97,6 +97,16 @@ g.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe'
 g.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all]
 groups.append(g)
 
+if False:
+    ghigh = batchJob.jobGroup('highL')
+    ghigh.datasets = copy.deepcopy(g.datasets)
+    for d in ghigh.datasets:
+        d.add(highL)
+
+    ghigh.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+    ghigh.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all]
+    groups.append(ghigh)
+
 
 g2 = batchJob.jobGroup('ext')
 g2.datasets = copy.deepcopy(g.datasets)
