@@ -22,11 +22,12 @@ rc('text.latex', preamble=r'\usepackage{' + sfmath + '}')
 rcParams.update(params)
 
 non_final = True
-version = 'v97CS_tau07'
-defdata_TT = 'v97CS_TT_tau07_lowl'
-defdata_all = 'v97CS_all_tau07_lowl'
-defdata_TTonly = 'v97CS_TT_lowl'
-defdata_allNoLowE = 'v97CS_all_lowl'
+version = 'clik9.0'
+defdata_root = 'plik'
+defdata_TT = defdata_root + '_TT_lowTEB'
+defdata_all = defdata_root + '_TTTEEE_lowTEB'
+defdata_TTonly = defdata_root + '_TT_lowl'
+defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
 
 
 planck = r'\textit{Planck}'

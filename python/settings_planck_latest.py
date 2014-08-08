@@ -36,7 +36,7 @@ camspec_detsets = ['nonclik_v97F.ini']
 camspec_CS = ['nonclik_v97CS.ini']
 
 
-variant_tag = ['TTTEEE', 'TT', 'TE', 'EE']
+variant_tag = ['TTTEEE', 'TT']  # ['TTTEEE', 'TT', 'TE', 'EE']
 variants = variant_tag
 
 planck_highL_sets = []
