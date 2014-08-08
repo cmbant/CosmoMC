@@ -32,20 +32,30 @@ tauname = 'tau07'
 WMAPtau = {'prior[tau]':'0.09 0.013'}
 
 
-planck_detsets = ['nonclik_v97F.ini']
-planck_CS = ['nonclik_v97CS.ini']
+camspec_detsets = ['nonclik_v97F.ini']
+camspec_CS = ['nonclik_v97CS.ini']
 
 
 variant_tag = ['TTTEEE', 'TT', 'TE', 'EE']
 variants = variant_tag
 
-defplanck_base = planck_CS
-defroot = 'CAMspec_%s.ini'
-planck = 'v97CS'
-
 planck_highL_sets = []
-for name, var in zip(variant_tag, variants):
-    planck_highL_sets.append(batchJob.dataSet([planck , name], defplanck_base + [defroot % (var)]))
+planck_vars = ['v97CS']
+planck_ini = ['CAMspec_%s.ini']
+planck_base = [camspec_CS]
+planck_covmats = [None]
+
+if True:
+    planck_vars += ['plik']
+    planck_ini += ['plik_dx11c_%s_v13.ini']
+    planck_base += [[]]
+    planck_covmats += ['planck_covmats/plik_dx11c_%s_v13.covmat']
+for planck, ini, base, cov in zip(planck_vars, planck_ini, planck_base, planck_covmats):
+    for name, var in zip(variant_tag, variants):
+        if cov is not None:
+            covM = cov % (var)
+        else: covM = None
+        planck_highL_sets.append(batchJob.dataSet([planck , name], base + [ ini % (var)], covmat=covM))
 
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
@@ -143,7 +153,8 @@ skip = []
 
 # try to match run to exisitng covmat
 covrenames = []
-covrenames.append([planck, 'planck'])
+for planck in planck_vars:
+    covrenames.append([planck, 'planck'])
 covrenames.append(['planck', 'planck_CAMspec'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
 covrenames.append(['_lensing', '_post_lensing'])
