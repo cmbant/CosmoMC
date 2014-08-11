@@ -1,12 +1,13 @@
-#import planckStyle as s
-#g=s.plotter
+import planckStyle as s
+from pylab import *
+g=s.getSinglePlotter()
 
-import GetDistPlots
-g=GetDistPlots.GetDistPlotter('main/plot_data')
+labels=[s.planckTT,'+lensing',s.planckall, '+lensing','+BAO+HST+JLA' ]
+roots=[s.defdata_TT,s.defdata_all, s.defdata_TT+'_lensing',s.defdata_all+'_lensing', s.defdata_all+'_BAO_HST70p6_JLA_post_lensing' ]
+roots = ['base_mnu_'+root for root in roots]
 
-labels=None
-roots=['base_mnu_planck_lowl_lowLike','base_mnu_planck_lowl_lowLike_lensing','base_mnu_Alens_planck_lowl_lowLike','base_mnu_Alens_planck_lowl_lowLike_post_lensing','base_mnu_planck_tauprior','base_mnu_planck_tauprior_post_lensing']
-g.plots_1d(roots, legend_labels=labels)
+g.plot_1d(roots,'mnu')
+g.add_legend(labels, legend_loc='upper right')
 
-g.export('plots/mnu_compare.pdf')
+g.export()
 

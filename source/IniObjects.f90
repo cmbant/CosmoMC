@@ -345,7 +345,7 @@
     character(LEN=:), allocatable :: InLine
     integer lastpos, i, status
     Type(TNameValueList) IncudeFiles, DefaultValueFiles
-    logical doappend, FileExists, isDefault
+    logical FileExists, isDefault
     Type(TTextFile) :: F
 
 

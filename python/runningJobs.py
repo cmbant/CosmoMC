@@ -1,28 +1,32 @@
-import subprocess
+import jobQueue, batchJobArgs
 
+Opts = batchJobArgs.batchArgs('List details of running or queued jobs; gives job stats, then current R-1 and job/chain names', importance=True, batchPathOptional=True)
 
-res = subprocess.check_output('qstat -u $USER', shell=True)
+group = Opts.parser.add_mutually_exclusive_group()
+group.add_argument('--queued', action='store_true')
+group.add_argument('--running', action='store_true')
 
-res = res.split("\n")
-for line in res[4:]:
-    if ' R ' in line:
-        items = line.split()
-        jobid = items[0].split('.')[0]
-        output = subprocess.check_output('qstat -f ' + str(jobid) , shell=True).split('\n')
-        pars = []
-        current = ''
-        for L in output:
-            if '=' in L:
-                if len(current) > 0:
-                    pars.append(current)
-                current = L.strip()
-            else: current += L.strip()
-        if len(current) > 0: pars.append(current)
-        props = dict()
-        for L in pars[1:]:
-            (key, val) = L.split('=', 1)
-            props[key.strip()] = val.strip()
-        print jobid, " ".join(items[5:]), props['Job_Name']
+(batch, args) = Opts.parseForBatch()
 
+if batch:
+    items = [jobItem for jobItem in Opts.filteredBatchItems()]
+    batchNames = set([jobItem.name for jobItem in items])
 
+ids, jobNames, nameslist, infos = jobQueue.queue_job_details(args.batchPath, running=not args.queued, queued=not args.running)
+for jobId, jobName, names, info in zip(ids, jobNames, nameslist, infos):
+    if not batch or batchNames.intersection(set(names)):
+        stats = dict()
+        if batch:
+            for name in names:
+                for jobItem in items:
+                    if jobItem.name == name:
+                        R = jobItem.convergeStat()[0]
+                        if R: stats[name] = "%6.3f" % (R)
+                        break
+        R = stats.get(jobName) or ' ' * 6
+        print  info + ' |', R, jobName
+        if len(names) > 1:
+            for name in names:
+                R = stats.get(name) or ' ' * 6
+                print '    >> ', R, name
 

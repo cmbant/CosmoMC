@@ -34,7 +34,7 @@
 
     logical :: use_fast_slow = .false.
 
-    character(LEN=*), parameter :: CosmoMC_Version = 'May2014'
+    character(LEN=*), parameter :: CosmoMC_Version = 'July2014'
 
     character(LEN=:), allocatable :: chisq_label
 

@@ -3,6 +3,7 @@
     use CosmologyTypes
     use CosmoTheory
     use CAMB, only : CAMB_GetResults, CAMB_GetAge, CAMBParams, CAMB_SetDefParams, &
+!<<<<<<< HEAD
     AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, wa_ppf,&
     CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Nonlinear_lens, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
     CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, Transfer_SetForNonlinearLensing, &
@@ -10,6 +11,15 @@
     HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, &
     Transfer_SortAndIndexRedshifts, & !JD added for nonlinear lensing of CMB + MPK compatibility
     Recombination_Name, reionization_name, power_name, threadnum, version, tensor_param_rpivot,Transfer_Get_sigma8 !Anna added for SZ
+!!$=======
+!!$        AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, wa_ppf,&
+!!$        CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Nonlinear_lens, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
+!!$        CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, Transfer_SetForNonlinearLensing, &
+!!$        initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
+!!$        HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, &
+!!$        Transfer_SortAndIndexRedshifts, & !JD added for nonlinear lensing of CMB + MPK compatibility
+!!$    Recombination_Name, reionization_name, power_name, threadnum, version, tensor_param_rpivot
+!!$>>>>>>> 0b71d3d1c13daf79d127df93b3b053466f6e55f5
     use Errors !CAMB
     use settings
     use likelihood
@@ -47,6 +57,8 @@
     procedure :: InitForLikelihoods => CAMBCalc_InitForLikelihoods
     procedure :: BAO_D_v => CAMBCalc_BAO_D_v
     procedure :: AngularDiameterDistance => CAMBCalc_AngularDiameterDistance
+    procedure :: AngularDiameterDistance2 => CAMBCalc_AngularDiameterDistance2
+    procedure :: LuminosityDistance => CAMBCalc_LuminosityDistance
     procedure :: Hofz => CAMBCalc_Hofz
     procedure :: CMBToTheta => CAMBCalc_CMBToTheta
     procedure :: GetNewPowerData => CAMBCalc_GetNewPowerData
@@ -91,7 +103,7 @@
     ALens = CMB%ALens
     ALens_Fiducial = CMB%ALensf
     P%InitialConditionVector(initial_iso_CDM) = &
-    sign(sqrt(abs(CMB%iso_cdm_correlated) /(1-abs(CMB%iso_cdm_correlated))),CMB%iso_cdm_correlated)
+        sign(sqrt(abs(CMB%iso_cdm_correlated) /(1-abs(CMB%iso_cdm_correlated))),CMB%iso_cdm_correlated)
     P%Num_Nu_Massive = 0
     P%Nu_mass_numbers = 0
     P%Num_Nu_Massless = CMB%nnu
@@ -143,7 +155,7 @@
     noutputs = size(BackgroundOutputs%z_outputs)
     Theory%numderived = nthermo_derived + noutputs*3
     if (Theory%numderived > max_derived_parameters) &
-    call MpiStop('numderived > max_derived_parameters: increase in CosmologyTypes.f90')
+        call MpiStop('numderived > max_derived_parameters: increase in CosmologyTypes.f90')
     Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
     do i=1, noutputs
         Theory%derived_parameters(nthermo_derived+(i-1)*3+1) = BackgroundOutputs%rs_by_D_v(i)
@@ -315,7 +327,7 @@
         P%WantCls = DoCls
 
         if (.not. DoPk .and. .not. (CosmoSettings%CMB_Lensing .and. &
-        CosmoSettings%use_nonlinear_lensing)) P%WantTransfer = .false.
+            CosmoSettings%use_nonlinear_lensing)) P%WantTransfer = .false.
 
         if (this%CAMB_timing) call Timer()
         if (Feedback > 1) write (*,*) 'Calling CAMB'
@@ -522,7 +534,7 @@
         do ik=1,nk
             k = M%TransferData(Transfer_kh,ik,1)*h
             temp(ik,:) = M%TransferData(t1,ik,:)*&
-            M%TransferData(t2,ik,:)*k*pi*twopi*h**3*scalarPower(k,1)
+                M%TransferData(t2,ik,:)*k*pi*twopi*h**3*scalarPower(k,1)
         end do
     else
         temp = M%TransferData(t1,:,:)
@@ -658,6 +670,24 @@
     CAMBCalc_AngularDiameterDistance = AngularDiameterDistance(z)
 
     end function CAMBCalc_AngularDiameterDistance
+
+    real(mcp) function CAMBCalc_AngularDiameterDistance2(this, z1, z2)
+    use CAMB, only : AngularDiameterDistance2  !!angular diam distance also in Mpc no h units
+    class(CAMB_Calculator) :: this
+    real(mcp), intent(IN) :: z1, z2
+
+    CAMBCalc_AngularDiameterDistance2 = AngularDiameterDistance2(z1, z2)
+
+    end function CAMBCalc_AngularDiameterDistance2
+
+    real(mcp) function CAMBCalc_LuminosityDistance(this, z)
+    use CAMB, only : LuminosityDistance  !! distance also in Mpc no h units
+    class(CAMB_Calculator) :: this
+    real(mcp), intent(IN) :: z
+
+    CAMBCalc_LuminosityDistance = LuminosityDistance(z)
+
+    end function CAMBCalc_LuminosityDistance
 
     real(mcp) function CAMBCalc_Hofz(this, z)
     use CAMB, only : Hofz  !!angular diam distance also in Mpc no h units
@@ -797,19 +827,19 @@
         P%InitPower%an(ix) = CMB%InitPower(ns_index)
 
         if (P%InitPower%rat(ix)>0 .and. .not. CosmoSettings%compute_tensors) &
-        call MpiStop('computing r>0 but compute_tensors=F')
+            call MpiStop('computing r>0 but compute_tensors=F')
         P%InitPower%n_run(ix) = CMB%InitPower(nrun_index)
         P%InitPower%n_runrun(ix) = CMB%InitPower(nrunrun_index)
 
         if (CosmoSettings%inflation_consistency) then
             if (CMB%InitPower(nt_index)/=0 .or. CMB%InitPower(ntrun_index)/=0) &
-            & call MpiStop('Error: inflation_consistency but n_t not set to zero')
+                & call MpiStop('Error: inflation_consistency but n_t not set to zero')
             ! first-order consistency relation
             !P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8
             !next order consistency relation
             P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8*(2-CMB%InitPower(ns_index) - CMB%InitPower(amp_ratio_index)/8)
             P%InitPower%nt_run(ix) = CMB%InitPower(amp_ratio_index)/8* &
-            & (CMB%InitPower(amp_ratio_index)/8 + CMB%InitPower(ns_index) - 1)
+                & (CMB%InitPower(amp_ratio_index)/8 + CMB%InitPower(ns_index) - 1)
             !note input n_T, nt run is ignored, so should be fixed
         else
             P%InitPower%ant(ix) = CMB%InitPower(nt_index)
@@ -847,7 +877,7 @@
 
     if (CosmoSettings%use_CMB .and. CosmoSettings%lmax_computed_cl /= CosmoSettings%lmax) then
         if (CosmoSettings%compute_tensors .and. CosmoSettings%lmax_tensor > CosmoSettings%lmax_computed_cl) &
-        & call MpiStop('lmax_tensor > lmax_computed_cl')
+            & call MpiStop('lmax_tensor > lmax_computed_cl')
         call this%LoadFiducialHighLTemplate()
     end if
 
@@ -896,7 +926,7 @@
     call F%Close()
 
     if (this%highL_lensedCL_template(2,1) < 100) &
-    call MpiStop('highL_theory_cl_template must be in muK^2')
+        call MpiStop('highL_theory_cl_template must be in muK^2')
 
     if (L<CosmoSettings%lmax) call MpiStop('highL_theory_cl_template does not go to lmax')
 
