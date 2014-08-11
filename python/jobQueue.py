@@ -159,10 +159,11 @@ def deleteJobs(batchPath, jobIds=None, rootNames=None, jobNames=None, jobId_minm
             jobId = index.jobNames.get(name)
             if not jobId in jobIds: jobIds.append(jobId)
     if jobId_minmax is not None or jobId_min is not None:
-        for jobId, j in index.jobSettings.items():
+        for jobIdStr, j in index.jobSettings.items():
+            jobId = int(jobIdStr)
             if (jobId_minmax is not None and (jobId >= jobId_minmax[0] and jobId <= jobId_minmax[1]) or
                 jobId_min is not None and jobId >= jobId_min):
-                if not jobId in jobIds: jobIds.append(jobId)
+                if not jobIdStr in jobIds: jobIds.append(jobIdStr)
 
     validIds = queue_job_details(batchPath, running=not queued, queued=not running)[0]
     for jobId in jobIds:

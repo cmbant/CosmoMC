@@ -6,9 +6,9 @@ group = Opts.parser.add_mutually_exclusive_group()
 group.add_argument('--queued', action='store_true')
 group.add_argument('--running', action='store_true')
 
-Opts.parser.add_argument('--delete_id_min', nargs=1)
-Opts.parser.add_argument('--delete_id_range', nargs=2)
-Opts.parser.add_argument('--delete_ids', nargs='+')
+Opts.parser.add_argument('--delete_id_min', type=int)
+Opts.parser.add_argument('--delete_id_range', nargs=2, type=int)
+Opts.parser.add_argument('--delete_ids', nargs='+', type=int)
 
 Opts.parser.add_argument('--confirm', action='store_true')
 
