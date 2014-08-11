@@ -111,7 +111,7 @@ gpol.datasets = copy.deepcopy(planck_pol_sets)
 for d in gpol.datasets:
     d.add(lowTEB)
 
-gpol.params = g.params
+gpol.params = [[], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
 g.importanceRuns = []
 groups.append(gpol)
 
@@ -133,7 +133,7 @@ g2.params = [ ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['nnu', 'yhe']]
 g2.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB]
 groups.append(g2)
 
-g3 = batchJob.jobGroup('geom')
+g3 = batchJob.jobGroup('nonflat')
 g3.params = [['omegak']]
 g3.datasets = []
 for d in copy.deepcopy(g.datasets):

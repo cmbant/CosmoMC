@@ -308,6 +308,13 @@ class batchJob:
     def normalizeDataTag(self, tag):
         return "_".join(sorted(tag.replace('_post', '').split('_')))
 
+    def resolveName(self, paramtag, datatag, wantSubItems=True, wantImportance=True, raiseError=True, base='base'):
+        name = base + '_' + "_".join(sorted(paramtag.split('_'))) + '_' + self.normalizeDataTag(datatag)
+        jobItem = self.normed_name_item(name, wantSubItems, wantImportance)
+        if jobItem is not None: return jobItem.name
+        if raiseError: raise Exception('No match for paramtag, datatag:' + paramtag + ', ' + datatag)
+        else: return None
+
     def save(self, filename=''):
         saveobject(self, (self.batchPath + 'batch.pyobj', filename)[filename != ''])
 

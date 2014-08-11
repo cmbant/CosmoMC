@@ -1,4 +1,4 @@
-import os, ResultObjs, GetDistPlots, sys
+import os, ResultObjs, GetDistPlots, sys, batchJob
 from matplotlib import rcParams, rc, pylab
 
 # common setup for matplotlib
@@ -32,6 +32,7 @@ defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
 
 planck = r'\textit{Planck}'
 planckTT = r'\textit{Planck} TT'
+planckTTlowEE = r'\textit{Planck} TT$+$lowE'
 planckall = planck
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
@@ -59,6 +60,8 @@ s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#
 s.axis_marker_lw = 0.6
 s.lw_contour = 1
 
+rootdir = 'main'
+
 class planckPlotter(GetDistPlots.GetDistPlotter):
 
     def doExport(self, fname, adir=None, watermark=None):
@@ -77,8 +80,11 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
     def exportExtra(self, fname=None):
         self.doExport(fname, 'plots')
 
+    def getRoot(self, paramtag, datatag):
+        batch = batchJob.readobject(rootdir)
+        return batch.resolveName(paramtag, datatag)
 
-plotter = planckPlotter('main/plot_data')
+plotter = planckPlotter(rootdir + '/plot_data')
 
 
 def getSubplotPlotter(plot_data=None):
