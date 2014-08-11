@@ -78,7 +78,7 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
         self.doExport(fname, 'plots')
 
 
-plotter = planckPlotter('grid/plot_data')
+plotter = planckPlotter('main/plot_data')
 
 
 def getSubplotPlotter(plot_data=None):

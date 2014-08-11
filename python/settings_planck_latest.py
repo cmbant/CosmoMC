@@ -36,10 +36,12 @@ camspec_detsets = ['nonclik_v97F.ini']
 camspec_CS = ['nonclik_v97CS.ini']
 
 
-variant_tag = ['TTTEEE', 'TT']  # ['TTTEEE', 'TT', 'TE', 'EE']
+variant_tag = ['TTTEEE', 'TT']
+variant_pol_tag = ['TE', 'EE']
 variants = variant_tag
 
 planck_highL_sets = []
+planck_pol_sets = []
 planck_vars = ['v97CS']
 planck_ini = ['CAMspec_%s.ini']
 planck_base = [camspec_CS]
@@ -56,6 +58,11 @@ for planck, ini, base, cov in zip(planck_vars, planck_ini, planck_base, planck_c
             covM = cov % (var)
         else: covM = None
         planck_highL_sets.append(batchJob.dataSet([planck , name], base + [ ini % (var)], covmat=covM))
+    for var in variant_pol_tag:
+        if cov is not None:
+            covM = cov % (var)
+        else: covM = None
+        planck_pol_sets.append(batchJob.dataSet([planck , var], base + [ ini % (var)], covmat=covM))
 
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
@@ -97,6 +104,17 @@ g.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe'
 g.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all]
 groups.append(g)
 
+
+gpol = batchJob.jobGroup('mainpol')
+gpol.datasets = copy.deepcopy(planck_pol_sets)
+for d in gpol.datasets:
+    d.add(lowTEB)
+
+gpol.params = g.params
+g.importanceRuns = []
+groups.append(gpol)
+
+
 if False:
     ghigh = batchJob.jobGroup('highL')
     ghigh.datasets = copy.deepcopy(g.datasets)
@@ -129,12 +147,7 @@ for d in copy.deepcopy(g.datasets):
 g3.importanceRuns = [post_lensing]
 groups.append(g3)
 
-# Not needed, just included first time by mistkae..
-# g4 = batchJob.jobGroup('planckonlynolow')
-# g4.params = [[]]
-# g4.datasets = copy.deepcopy(CS)
-# g4.importanceRuns = [post_BAO, post_JLA, post_lensing]
-# groups.append(g4)
+
 
 g5 = batchJob.jobGroup('nopoltau')
 g5.params = [[]]
@@ -147,6 +160,20 @@ for d in copy.deepcopy(g5.datasets):
 
 g5.importanceRuns = [post_BAO, post_nonCMB, post_WP]
 groups.append(g5)
+
+
+gpolnopoltau = batchJob.jobGroup('polnopoltau')
+gpolnopoltau.params = [[]]
+gpolnopoltau.datasets = copy.deepcopy(planck_pol_sets)
+for d in copy.deepcopy(planck_pol_sets):
+    d.add(lensing)
+    gpolnopoltau.datasets.append(d)
+
+gpolnopoltau.importanceRuns = [post_BAO, post_nonCMB, post_WP]
+groups.append(gpolnopoltau)
+
+
+
 
 g6 = batchJob.jobGroup('lensing')
 g6.datasets = copy.deepcopy(g.datasets)

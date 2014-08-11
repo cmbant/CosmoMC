@@ -73,6 +73,7 @@ class jobSettings():
         self.queue = getDefaulted('queue', '', template=template, **kwargs)
         self.gridEngine = getDefaulted('GridEngine', 'PBS', template=template, **kwargs)
         self.qsub = getDefaulted('qsub', ('qsub', 'msub')[self.gridEngine == 'MOAB'], template=template, **kwargs)
+        self.qdel = getDefaulted('qdel', ('qdel', 'canceljob')[self.gridEngine == 'MOAB'], template=template, **kwargs)
         self.runCommand = extractValue(template, 'RUN')
 
 
@@ -85,6 +86,24 @@ class jobIndex():
         self.jobNames = dict()
         self.rootNames = dict()
         self.jobSequence = []
+
+    def addJob(self, j):
+            self.jobSettings[j.jobId] = j
+            self.jobNames[j.jobName] = j.jobId
+            for name in j.names:
+                self.rootNames[name] = j.jobId
+            self.jobSequence.append(j.jobId)
+
+    def delId(self, jobId):
+        if jobId is not None:
+            j = self.jobSettings.get(jobId)
+            if j is not None:
+                for rootname in j.names:
+                    del(self.rootNames[rootname])
+                del(self.jobSettings[jobId])
+                del(self.jobNames[j.jobName])
+                self.jobSequence = [s for s in self.jobSequence if s != jobId]
+
 
 def loadJobIndex(batchPath, must_exist=False):
     if batchPath is None: batchPath = './scripts/'
@@ -105,12 +124,63 @@ def saveJobIndex(obj, batchPath=None):
 def addJobIndex(batchPath, jobName, j):
     if batchPath is None: batchPath = './scripts/'
     index = loadJobIndex(batchPath)
-    index.jobSettings[j.jobId] = j
-    index.jobNames[j.jobName] = j.jobId
-    for name in j.names:
-        index.rootNames[name] = j.jobId
-    index.jobSequence.append(j.jobId)
+    index.addJob(j)
     saveJobIndex(index, batchPath)
+
+def deleteJobNames(batchPath, jobNames):
+    if batchPath is None: batchPath = './scripts/'
+    index = loadJobIndex(batchPath)
+    if not index:
+        raise Exception('No existing job index found')
+    if isinstance(jobNames, basestring): jobNames = [jobNames]
+    for name in jobNames:
+        jobId = index.jobNames.get(name)
+        index.delId(jobId)
+    saveJobIndex(index, batchPath)
+
+def deleteRootNames(batchPath, rootNames):
+    deleteJobs(batchPath, rootNames=rootNames)
+
+def deleteJobs(batchPath, jobIds=None, rootNames=None, jobNames=None, jobId_minmax=None, jobId_min=None, confirm=True, running=False, queued=False):
+    if batchPath is None: batchPath = './scripts/'
+    index = loadJobIndex(batchPath)
+    if not index:
+        raise Exception('No existing job index found')
+    if jobIds is None: jobIds = []
+    if isinstance(jobIds, basestring): jobIds = [jobIds]
+    if rootNames is not None:
+        if isinstance(rootNames, basestring): rootNames = [rootNames]
+        for name in rootNames:
+            jobId = index.rootNames.get(name)
+            if not jobId in jobIds: jobIds.append(jobId)
+    if jobNames is not None:
+        if isinstance(jobNames, basestring): jobNames = [jobNames]
+        for name in jobNames:
+            jobId = index.jobNames.get(name)
+            if not jobId in jobIds: jobIds.append(jobId)
+    if jobId_minmax is not None or jobId_min is not None:
+        for jobId, j in index.jobSettings.items():
+            if (jobId_minmax is not None and (jobId >= jobId_minmax[0] and jobId <= jobId_minmax[1]) or
+                jobId_min is not None and jobId >= jobId_min):
+                if not jobId in jobIds: jobIds.append(jobId)
+
+    validIds = queue_job_details(batchPath, running=not queued, queued=not running)[0]
+    for jobId in jobIds:
+        j = index.jobSettings.get(jobId)
+        if j is not None:
+            if confirm:
+                if jobId in validIds:
+                    print 'Cancelling: ', j.jobName, jobId
+                    if hasattr(j, 'qdel'): qdel = j.qdel
+                    else: qdel = 'qdel'
+                    subprocess.check_output(qdel + ' ' + str(jobId), shell=True).strip()
+                index.delId(jobId)
+            elif jobId in validIds:
+                print '...', j.jobName, jobId
+
+    if confirm: saveJobIndex(index, batchPath)
+    return jobIds
+
 
 def submitJob(jobName, paramFiles, sequential=False, msg=False, **kwargs):
 
@@ -216,3 +286,4 @@ def queue_job_names(batchPath=None, running=False, queued=True):
     for nameset in lists:
         names += nameset
     return names
+
