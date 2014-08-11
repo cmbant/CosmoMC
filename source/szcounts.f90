@@ -297,7 +297,7 @@ use Calculator_Cosmology
        p2=p(1)+1
        if (R<r1) p2=p(1)-1 
        s2=cosmopar%sigmaR(p2,2)
-       r2=cosmopar%sigmaR(p2,2)
+       r2=cosmopar%sigmaR(p2,1)
        sigma=s1+(s2-s1)/(r2-r1)*(R-r1)
     endif
 
