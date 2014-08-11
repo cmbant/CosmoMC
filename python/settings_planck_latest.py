@@ -85,6 +85,7 @@ post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
 post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegakLowl()]
 post_HST = [[HST], [HSTdata], importanceFilterNotOmegakLowl()]
 post_JLA = [[JLA], ['JLA_marge.ini'], importanceFilterNotOmegakLowl()]
+post_nonBAO = [[HST, JLA], [HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegakLowl()]
 post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegakLowl()]
 post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegakLowl()]
 post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
@@ -133,7 +134,7 @@ g2.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB]
 groups.append(g2)
 
 g3 = batchJob.jobGroup('geom')
-g3.params = [['omegak'], [ 'mnu']]
+g3.params = [['omegak']]
 g3.datasets = []
 for d in copy.deepcopy(g.datasets):
     d.add(BAO, BAOdata)
@@ -173,8 +174,6 @@ gpolnopoltau.importanceRuns = [post_BAO, post_nonCMB, post_WP]
 groups.append(gpolnopoltau)
 
 
-
-
 g6 = batchJob.jobGroup('lensing')
 g6.datasets = copy.deepcopy(g.datasets)
 for d in g6.datasets:
@@ -184,6 +183,21 @@ for d in g6.datasets:
 g6.params = [[], ['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alens']]
 g6.importanceRuns = []
 groups.append(g6)
+
+g7 = batchJob.jobGroup('mnu')
+g7.datasets = []
+for d in copy.deepcopy(g.datasets):
+    d.add(BAO, BAOdata)
+    g7.datasets.append(d)
+for d in copy.deepcopy(g.datasets):
+    d.add(lensing)
+    d.add(BAO, BAOdata)
+    d.add(None, {'redo_theory':'F'})
+    g7.datasets.append(d)
+
+g7.params = [['mnu'], ['nnu', 'meffsterile']]
+g7.importanceRuns = [post_JLA, post_HST, post_nonBAO]
+groups.append(g7)
 
 
 skip = []
