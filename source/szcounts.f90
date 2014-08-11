@@ -51,7 +51,7 @@ module cosmology
 ! note that we switch to the generalized Linder parametrization now
   public
   TYPE cospar
-     REAL(dl) :: H0,w0,w1,omegam,omegav,n,sig8,omegak,omegabh2,gamma,ystar,alpha,sigmaM,bias,logystar,sigmaR(1000,2)
+  REAL(dl) :: H0,w0,w1,omegam,omegav,n,sig8,omegak,omegabh2,gamma,ystar,alpha,sigmaM,bias,biasinv,logystar,sigmaR(1000,2)
   END TYPE cospar
   Type (cospar), SAVE :: cosmopar
   
@@ -1133,6 +1133,7 @@ implicit none
  real(dl), allocatable :: DNcat(:,:),DNzcat(:),DNycat(:),DN(:,:),DNz(:),DNy(:)
  real(dl), allocatable :: Z(:),LOGY(:),ylims(:,:),thetas(:),skyfracs(:)
  real(dl), allocatable :: SZcat(:,:)
+ real(dl) :: clash,wtg,lens,pns,oh2 ! switches for priors =0 no prior, =1 prior
  real :: sz_kmax = 4.0
  integer :: sz_k_per_logint = 5
  character(len=256) :: SZ_filename = ''
@@ -1166,6 +1167,38 @@ contains
        call LikeList%Add(this)
        this%LikelihoodType = 'SZ'
        this%name='SZ'
+  clash=0.  !swithes for the priors (get multiplied to priors in SZCC_Cash)
+       wtg=0.    !either 0 or 1
+       lens=0.
+       oh2=0.
+       pns=0.
+
+       if (Ini%Read_Logical('prior_clash',.false.)) then
+          clash=1.
+          print*,'CLASH prior on SZ mass bias'
+       endif
+
+       if (Ini%Read_Logical('prior_wgt',.false.)) then
+          wtg=1.
+          print*,'WtG prior on SZ mass bias'
+       endif
+
+       if (Ini%Read_Logical('prior_lens',.false.)) then 
+          print*,'Planck lensing prior on SZ mass bias'
+          lens=1.
+       endif
+
+       if (Ini%Read_Logical('prior_ns',.false.))then 
+          print*,'Prior on ns'
+          pns=1.
+       endif
+       if (Ini%Read_Logical('prior_omegabh2',.false.)) then 
+          oh2=1.
+          print*,'Prior on omegabh2'
+       endif
+
+
+
        !this%power_kmax=sz_kmax
        CALL SZ_init
     endif
@@ -1502,6 +1535,7 @@ contains
    cosmopar%ystar=10.**(DataParams(2))/(2.**cosmopar%alpha)*0.00472724
    cosmopar%logystar=(DataParams(2))!to set the prior on logy
    cosmopar%bias=DataParams(3)
+ cosmopar%biasinv=1./DataParams(3)
    cosmopar%sigmaM=DataParams(4)
    cosmopar%sigmaR=Theory%sigma_R
 !!$   print*,'ystar=',cosmopar%ystar
@@ -1714,18 +1748,18 @@ contains
    SZCC_Cash = SZCC_Cash + (cosmopar%logystar-(-0.186))**2/(2.*0.021**2) + (cosmopar%alpha-1.789)**2/(2.*0.084**2) + (cosmopar%sigmaM-0.075)**2/(2.*0.01**2) !cosmomc_sz
    !print*,'prior on ystar, alpha, scatter'
 
-   ! PRIORS for PLANCK:
-   !SZCC_Cash = SZCC_Cash + (CMB%InitPower(1)-0.9624)**2/(2.*0.014 **2) + (CMB%ombh2 - 0.022)**2/(2*0.002**2)  !BBN
-   !print*,'BBN prior on Ns and Omegabh2'
-   
-   !PRIORS for WMAP:
-   !GetLogLikePost = GetLogLikePost + ns,omegab
-    !print*,'like=',SZCC_Cash
-!end priors
-!stop
-!   if (Feedback>2) Print*,'SZ lnlike = ',SZCC_Cash
+   ! PRIORS ON NS AND OMEGABH2:
+   SZCC_Cash = SZCC_Cash + pns*(CMB%InitPower(ns_index)-0.9624)**2/(2.*0.014 **2) + oh2*(CMB%ombh2 - 0.022)**2/(2*0.002**2)  !BBN
 
-!   Print*,'SZ lnlike = ',SZCC_Cash
+   !PRIORS ON THE BIAS:
+   SZCC_Cash = SZCC_Cash + lens*(cosmopar%biasinv-0.96)**2/(2.*0.19**2)
+!(1-b)^(-1)=0.96 pm 0.19. !Planck lensing
+
+   SZCC_Cash = SZCC_Cash + clash*(cosmopar%bias-0.81)**2/(2.*0.08**2)
+!1-b=0.81+-0.08. !clash
+   SZCC_Cash = SZCC_Cash + wtg*(cosmopar%bias-0.688)**2/(2.*0.072**2)
+
+   Print*,'SZ lnlike = ',SZCC_Cash
 
  end function SZCC_Cash
 
