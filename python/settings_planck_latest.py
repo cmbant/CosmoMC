@@ -112,7 +112,7 @@ for d in gpol.datasets:
     d.add(lowTEB)
 
 gpol.params = [[], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
-g.importanceRuns = []
+gpol.importanceRuns = []
 groups.append(gpol)
 
 
