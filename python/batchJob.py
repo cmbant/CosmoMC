@@ -169,7 +169,7 @@ class jobItem:
     def allChainExists(self, num_chains):
         return all([self.chainExists(i + 1) for i in range(num_chains)])
 
-    def chainFileDate(self, name, chain=1):
+    def chainFileDate(self, chain=1):
         return os.path.getmtime(self.chainName(chain))
 
     def chainsDodgy(self, interval=600):
@@ -182,7 +182,7 @@ class jobItem:
 
     def notRunning(self):
         if not self.chainExists(): return False  # might be in queue
-        lastWrite = self.chainFileDate(self.chainName())
+        lastWrite = self.chainFileDate()
         return lastWrite < time.time() - 5 * 60
 
     def chainMinimumExists(self):
@@ -221,6 +221,9 @@ class jobItem:
 
     def getDistExists(self):
         return os.path.exists(self.distRoot + '.margestats')
+
+    def getDistNeedsUpdate(self):
+        return self.chainExists() and (not self.getDistExists() or self.chainFileDate() > os.path.getmtime(self.distRoot + '.margestats'))
 
     def R(self):
         if self.result_converge is None:

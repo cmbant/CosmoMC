@@ -1,6 +1,7 @@
 # provisional updated (reduced) grid settings for full mission
 # New BBN fitting built in
 # New BAO -> DR11
+# To add: w/w0, nrun r
 import batchJob, copy, re
 
 ini_dir = 'batch2/'
@@ -76,18 +77,18 @@ class importanceFilterLensing:
     def wantImportance(self, jobItem):
         return planck in jobItem.data_set.names and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
 
-class importanceFilterNotOmegakLowl:
+class importanceFilterNotOmegak:
     def wantImportance(self, jobItem):
-        return not ('omegak' in jobItem.param_set and jobItem.datatag == planck + '_' + lowl)
+        return not ('omegak' in jobItem.param_set)
 
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
-post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegakLowl()]
-post_HST = [[HST], [HSTdata], importanceFilterNotOmegakLowl()]
-post_JLA = [[JLA], ['JLA_marge.ini'], importanceFilterNotOmegakLowl()]
-post_nonBAO = [[HST, JLA], [HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegakLowl()]
-post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegakLowl()]
-post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegakLowl()]
+post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegak()]
+post_HST = [[HST], [HSTdata], importanceFilterNotOmegak()]
+post_JLA = [[JLA], ['JLA_marge.ini'], importanceFilterNotOmegak()]
+post_nonBAO = [[HST, JLA], [HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
+post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
+post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
 
 # set up groups of parameters and data sets
@@ -101,7 +102,7 @@ g.datasets = copy.deepcopy(planck_highL_sets)
 for d in g.datasets:
     d.add(lowTEB)
 
-g.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+g.params = [[], ['omegak'], ['mnu'], ['r'], ['nrun', 'r'], ['nnu'], ['nrun'], ['Alens'], ['yhe'], ['w']]
 g.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all]
 groups.append(g)
 
@@ -133,8 +134,8 @@ g2.params = [ ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['nnu', 'yhe']]
 g2.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB]
 groups.append(g2)
 
-g3 = batchJob.jobGroup('nonflat')
-g3.params = [['omegak']]
+g3 = batchJob.jobGroup('geom')
+g3.params = [['omegak'], ['w'], ['w', 'wa']]
 g3.datasets = []
 for d in copy.deepcopy(g.datasets):
     d.add(BAO, BAOdata)
