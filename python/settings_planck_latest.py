@@ -14,6 +14,8 @@ importanceDefaults = ['importance_sampling.ini']
 lowl = 'lowl'
 lowLike = 'lowLike'
 lensing = 'lensing'
+lensonly = 'lensonly'
+
 highL = 'highL'
 WMAP = 'WMAP'
 BAO = 'BAO'
@@ -199,6 +201,23 @@ for d in copy.deepcopy(g.datasets):
 g7.params = [['mnu'], ['nnu', 'meffsterile']]
 g7.importanceRuns = [post_JLA, post_HST, post_nonBAO]
 groups.append(g7)
+
+glens = batchJob.jobGroup('lensonly')
+lensdata = [batchJob.dataSet(lensonly)]
+glens.datasets = copy.deepcopy(lensdata)
+for d in copy.deepcopy(lensdata):
+    d.add(BAO, BAOdata)
+    glens.datasets.append(d)
+for d in copy.deepcopy(lensdata):
+    d.add(HST, HSTdata)
+    glens.datasets.append(d)
+for d in copy.deepcopy(lensdata):
+    d.add('theta', {'param[theta]':'1.0408'})
+    glens.datasets.append(d)
+
+glens.params = [[], ['mnu']]
+glens.importanceRuns = []
+groups.append(glens)
 
 
 skip = []
