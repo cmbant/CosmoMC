@@ -220,12 +220,12 @@ for d in copy.deepcopy(lensdata):
     d.add(BAO, BAOdata)
     glens.datasets.append(d)
 for d in copy.deepcopy(lensdata):
-    d.add(HST, HSTdata)
+    d.add('theta', {'param[theta]':'1.0408'})
     glens.datasets.append(d)
 for d in copy.deepcopy(lensdata):
     d.add('theta', {'param[theta]':'1.0408'})
+    d.add(BAO, BAOdata)
     glens.datasets.append(d)
-
 glens.params = [[], ['mnu']]
 glens.importanceRuns = []
 groups.append(glens)
