@@ -25,6 +25,9 @@ non_final = True
 version = 'clik9.0'
 defdata_root = 'plik'
 defdata_TT = defdata_root + '_TT_lowTEB'
+defdata_TE = defdata_root + '_TE_lowTEB'
+defdata_EE = defdata_root + '_EE_lowTEB'
+
 defdata_all = defdata_root + '_TTTEEE_lowTEB'
 defdata_TTonly = defdata_root + '_TT_lowl'
 defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
@@ -88,6 +91,7 @@ plotter = planckPlotter(rootdir + '/plot_data')
 
 
 def getSubplotPlotter(plot_data=None):
+    global plotter
     s.setWithSubplotSize(2)
     s.axes_fontsize += 2
     s.colorbar_axes_fontsize += 2

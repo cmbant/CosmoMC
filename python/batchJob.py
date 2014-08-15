@@ -312,7 +312,11 @@ class batchJob:
         return "_".join(sorted(tag.replace('_post', '').split('_')))
 
     def resolveName(self, paramtag, datatag, wantSubItems=True, wantImportance=True, raiseError=True, base='base'):
-        name = base + '_' + "_".join(sorted(paramtag.split('_'))) + '_' + self.normalizeDataTag(datatag)
+        if paramtag:
+            if isinstance(paramtag, basestring): paramtag = paramtag.split('_')
+            paramtags = [base] + sorted(paramtag)
+        else: paramtags = [base]
+        name = "_".join(paramtags) + '_' + self.normalizeDataTag(datatag)
         jobItem = self.normed_name_item(name, wantSubItems, wantImportance)
         if jobItem is not None: return jobItem.name
         if raiseError: raise Exception('No match for paramtag, datatag:' + paramtag + ', ' + datatag)

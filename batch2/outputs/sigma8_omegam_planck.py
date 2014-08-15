@@ -20,10 +20,11 @@ for TT in [False, True]:
         fname = 'PlanckTT'
         allname = s.planckTTlowEE
 
-    roots = ['base_' + basedat,
-             'base_' + basedat + '_lensing',
-             'base_' + basedat + '_lensing_post_BAO'
-             ]
+    roots = [g.getRoot('', basedat),
+             g.getRoot('', basedat + '_lensing'),
+             g.getRoot('', basedat + '_lensing_BAO')]
+
+
     legends = [basedatname, '+lensing', '+BAO']
     g.plot_2d(roots, param_pair=['sigma8', 'omegam'], filled=True, lims=ranges)
 
@@ -42,20 +43,25 @@ for TT in [False, True]:
     g.export(fname + '_sigma_8-omega_m')
 
 g.newPlot()
-roots = ['base_' + s.defdata_TTonly,
-                 'base_' + s.defdata_allNoLowE,
-                 'base_' + s.defdata_allNoLowE + '_lensing',
-                 'base_' + s.defdata_allNoLowE + '_lensing_post_BAO',
-                 ]
+roots = [g.getRoot('', s.defdata_TTonly),
+             g.getRoot('', s.defdata_allNoLowE),
+             g.getRoot('', s.defdata_allNoLowE + '_lensing'),
+             g.getRoot('', s.defdata_allNoLowE + '_lensing_BAO')]
+
 
 g.plot_2d(roots, param_pair=['sigma8', 'omegam'], filled=True, lims=ranges)
 
-g.add_2d_contours('base_' + s.defdata_all, 'sigma8', 'omegam', ls='--', color='magenta')
-g.add_2d_contours('base_' + s.defdata_TTonly + '_post_WMAPtau', 'sigma8', 'omegam', ls='-', color='brown', alpha=0.2)
+g.add_2d_contours('base_' + s.defdata_all, 'sigma8', 'omegam', ls='-', color='olive')
+g.add_2d_contours(g.getRoot('', s.defdata_all + '_lensing'), 'sigma8', 'omegam', ls='-', color='midnightblue')
+# g.add_2d_contours(g.getRoot('', s.defdata_all + '_lensing_BAO'), 'sigma8', 'omegam', ls='-', color='pink')
+
+g.add_2d_contours('base_' + s.defdata_TTonly + '_post_WMAPtau', 'sigma8', 'omegam', ls='--', color='brown', alpha=0.2)
 
 legends = [s.planckTT, s.NoLowLE, '+lensing', '+BAO']
 
-g.add_text(s.planckall, 0.96, 0.12, color='magenta')
+g.add_text(s.planckall, 0.96, 0.18, color='olive')
+g.add_text(s.planckall + '+lensing', 0.96, 0.12, color='midnightblue')
+
 g.add_text(s.planckTT + '+$\\tau(0.09\pm 0.013)$', 0.96, 0.06, color='brown', alpha=0.4)
 g.add_legend(legends, legend_loc='upper right', colored_text=True);
 g.export()

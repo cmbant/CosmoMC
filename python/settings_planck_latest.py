@@ -183,9 +183,20 @@ for d in g6.datasets:
     d.add(lensing)
     d.add(None, {'redo_theory':'F'})
 
-g6.params = [[], ['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alens']]
+g6.params = [['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alens']]
 g6.importanceRuns = []
 groups.append(g6)
+
+gbest = batchJob.jobGroup('basebest')
+gbest.datasets = copy.deepcopy(g.datasets)
+for d in gbest.datasets:
+    d.add(lensing)
+    d.add(None, {'redo_theory':'F'})
+
+gbest.params = [[]]
+gbest.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB]
+groups.append(gbest)
+
 
 g7 = batchJob.jobGroup('mnu')
 g7.datasets = []
