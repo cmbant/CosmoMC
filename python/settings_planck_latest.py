@@ -213,11 +213,20 @@ g7.params = [['mnu'], ['nnu', 'meffsterile']]
 g7.importanceRuns = [post_JLA, post_HST, post_nonBAO]
 groups.append(g7)
 
+# Things mainly for the lensing paper
+
 glens = batchJob.jobGroup('lensonly')
 lensdata = [batchJob.dataSet(lensonly)]
 glens.datasets = copy.deepcopy(lensdata)
 for d in copy.deepcopy(lensdata):
     d.add(BAO, BAOdata)
+    glens.datasets.append(d)
+for d in copy.deepcopy(lensdata):
+    d.add(HST, HSTdata)
+    glens.datasets.append(d)
+for d in copy.deepcopy(lensdata):
+    d.add(HST, HSTdata)
+    d.add('widerns', {'prior[ns]': '0.98 0.05'})
     glens.datasets.append(d)
 for d in copy.deepcopy(lensdata):
     d.add('theta', {'param[theta]':'1.0408'})
@@ -229,6 +238,15 @@ for d in copy.deepcopy(lensdata):
 glens.params = [[], ['mnu']]
 glens.importanceRuns = []
 groups.append(glens)
+
+gphi = batchJob.jobGroup('Aphiphi')
+gphi.params = [['Aphiphi'], ['Alensf']]
+gphi.datasets = []
+for d in copy.deepcopy(g.datasets):
+    d.add(lensing)
+    gphi.datasets.append(d)
+gphi.importanceRuns = []
+groups.append(gphi)
 
 
 skip = []

@@ -33,6 +33,7 @@ if not hasattr(settings, 'params'):
     params['wa'] = '0 -2 2 0.3 0.3'
     params['meffsterile'] = '0.1 0 3 0.1 0.03'
     params['Aphiphi'] = '1 0 10 0.02 0.02'
+    params['Alensf'] = '1 0 10 0.03 0.03'
     params['nt'] = '0 -3 3 0.2 0.02'
     settings.params = params
 
