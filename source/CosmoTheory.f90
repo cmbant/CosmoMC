@@ -23,6 +23,7 @@
         !(this, E, B, Phi) x (this, E, B, Phi), with L(L+1)/2pi factor, in muK for CMB components
         real(mcp) sigma_8
         real(mcp) tensor_ratio_C10, tensor_ratio_02, tensor_ratio_BB, tensor_AT
+        real(mcp) :: Lensing_rms_deflect = 0._mcp
         integer numderived
         real(mcp) derived_parameters(max_derived_parameters)
         !MPK's are interpolator objects now

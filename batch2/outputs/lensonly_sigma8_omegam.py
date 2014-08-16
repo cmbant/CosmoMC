@@ -13,6 +13,8 @@ g.add_2d_contours('base_lensonly_BAO', 'sigma8', 'omegam', ls='-', color='green'
 g.add_2d_contours('base_lensonly_theta', 'sigma8', 'omegam', ls='-', color='red')
 g.add_2d_contours('base_' + s.defdata_all, 'sigma8', 'omegam', ls='-', color='black')
 
+# g.add_2d_contours('base_lensonly_HST70p6_widerns', 'sigma8', 'omegam', ls='--', color='orange')
+
 if False:
     g.add_2d_contours('base_mnu_lensonly', 'sigma8', 'omegam', ls='--', color='black')
     g.add_2d_contours('base_mnu_lensonly_HST70p6', 'sigma8', 'omegam', ls='-', color='blue')

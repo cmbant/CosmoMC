@@ -240,8 +240,17 @@ glens.importanceRuns = []
 groups.append(glens)
 
 gphi = batchJob.jobGroup('Aphiphi')
-gphi.params = [['Aphiphi'], ['Alensf']]
+gphi.params = [['Aphiphi']]
 gphi.datasets = []
+for d in copy.deepcopy(g.datasets):
+    d.add(lensing)
+    gphi.datasets.append(d)
+gphi.importanceRuns = []
+groups.append(gphi)
+
+gphi = batchJob.jobGroup('altAlens')
+gphi.params = [['Alensf']]
+gphi.datasets = copy.deepcopy(g.datasets)
 for d in copy.deepcopy(g.datasets):
     d.add(lensing)
     gphi.datasets.append(d)
