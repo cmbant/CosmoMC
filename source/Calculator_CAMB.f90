@@ -431,10 +431,10 @@
         end if
     end if
 
-    if (CosmoSettings%CMBLensing) then
+    if (CosmoSettings%CMB_Lensing .and. this%CAMBP%max_l>=2000) then
         !Get RMS deflection angle in arcmin
         rms=0
-        do L=2, this%CAMBP%lmax
+        do L=2, 2000
             rms = rms +  Cl_scalar(L,1, C_Phi)*(real(l+1)**2/l**2)/twopi*(L+0.5_mcp)/(L*(L+1))
         end do
          Theory%Lensing_rms_deflect = sqrt(rms)*180/pi*60
