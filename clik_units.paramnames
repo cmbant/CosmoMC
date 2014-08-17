@@ -81,6 +81,7 @@ omegal*       \Omega_\Lambda
 omegam*       \Omega_{\mathrm{m}}
 sigma8*       \sigma_8
 zrei*         z_{\mathrm{re}}
+rmsdeflect*   \langle d^2\rangle^{1/2}/\mathrm{arcmin}
 r10*          r_{10}	#tensor-scalar C_l amplitude at l=10
 H0*           H_0		#hubble parameter is H0 km/s/Mpc
 r02*          r_{0.002}         #r at k=0.002

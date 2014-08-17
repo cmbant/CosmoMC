@@ -329,20 +329,22 @@ class GetDistPlotter():
         contour(density.x1, density.x2, density.pts, self.settings.num_shades, cmap=self.settings.colormap)
 #        contour(cs, hold='on')
 
+    def updateLimits(self, res, mins, maxs, doResize=True):
+        if res is None: return mins, maxs
+        if mins is None: return res
+        if not doResize: return mins, maxs
+        else: return [min(x, y) for x, y in zip(res[0], mins)], [max(x, y) for x, y in zip(res[1], maxs)]
+
     def plot_2d(self, roots, param_pair, shaded=True, filled=False, add_legend_proxy=True, **ax_args):
         if self.fig is None: self.make_figure()
         if isinstance(roots, basestring):roots = [roots]
         param_pair = self.get_param_array(roots[0], param_pair)
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
         if shaded and not filled: self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
-        mins = None
+        mins, maxs = None, None
         for i, root in enumerate(roots):
             res = self.add_2d_contours(root, param_pair[0], param_pair[1], i, of=len(roots), filled=filled, add_legend_proxy=add_legend_proxy)
-            if res is None: continue
-            if mins is None: mins, maxs = res
-            elif not shaded:
-                mins = min(res[0], mins)
-                maxs = max(res[1], maxs)
+            mins, maxs = self.updateLimits(res, mins, maxs, doResize=not shaded)
         if mins is None: return
         if not 'lims' in ax_args:
             lim1 = self.checkBounds(roots[0], param_pair[0].name , mins[0], maxs[0])
@@ -716,9 +718,7 @@ class GetDistPlotter():
         mins, maxs = self.add_3d_scatter(roots[0], params, color_bar=color_bar)
         for i, root in enumerate(roots[1:]):
             res = self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled, add_legend_proxy=False)
-            if res is None: continue
-            mins = [min(x, y) for x, y in zip(res[0], mins)]
-            maxs = [max(x, y) for x, y in zip(res[1], maxs)]
+            mins, maxs = self.updateLimits(res, mins, maxs)
         if not 'lims' in ax_args:
             lim1 = self.checkBounds(roots[0], params[0].name , mins[0], maxs[0])
             lim2 = self.checkBounds(roots[0], params[1].name , mins[1], maxs[1])
