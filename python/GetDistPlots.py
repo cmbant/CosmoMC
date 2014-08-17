@@ -717,8 +717,8 @@ class GetDistPlotter():
         for i, root in enumerate(roots[1:]):
             res = self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled, add_legend_proxy=False)
             if res is None: continue
-            mins = min(res[0], mins)
-            maxs = max(res[1], maxs)
+            mins = [min(x, y) for x, y in zip(res[0], mins)]
+            maxs = [max(x, y) for x, y in zip(res[1], maxs)]
         if not 'lims' in ax_args:
             lim1 = self.checkBounds(roots[0], params[0].name , mins[0], maxs[0])
             lim2 = self.checkBounds(roots[0], params[1].name , mins[1], maxs[1])
