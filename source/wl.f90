@@ -21,7 +21,8 @@ module wl
      integer :: num_z_p ! Source galaxy distribution p(z,bin)
      real(mcp), allocatable, dimension(:,:) :: p
      real(mcp), allocatable, dimension(:) :: z_p
-     real(mcp) :: ah_factor ! Anderson-Hartlap factor 
+     real(mcp) :: ah_factor ! Anderson-Hartlap factor
+     logical :: cut_theta  ! Cut non-linear scales
    contains
      procedure :: LogLike => WL_LnLike
      procedure :: ReadIni => WL_ReadIni
@@ -60,6 +61,7 @@ module wl
           this%needs_powerspectra = .true.
           this%num_z = Ini%Read_Int('nz_wl',100)
           this%max_z = Ini%Read_Double('max_z',10.0d0)
+          this%cut_theta = Ini%Read_Logical('cut_theta',.false.)
           call LikeList%Add(this)
        end do
        if (Feedback>1) write(*,*) 'read WL data sets'
@@ -70,11 +72,14 @@ module wl
   subroutine WL_ReadIni(this, Ini)
     class(WLLikelihood) this
     class(TSettingIni) :: Ini
-    character(LEN=:), allocatable :: measurements_file, cov_file, window_file
+    character(LEN=:), allocatable :: measurements_file, cov_file, window_file, cut_file
     Type(TTextFile) :: F
     real(mcp) :: dummy1,dummy2,pnorm
     real(mcp), allocatable, dimension(:,:) :: temp
-    integer i,iz,it,ib,iopb,j,k,nt
+    real(mcp), allocatable, dimension(:,:) :: cut_values
+    integer, allocatable, dimension(:) :: mask
+    integer i,iz,it,ib,iopb,j,k,nt,izl,izh
+    real(mcp) :: xi_plus_cut, xi_minus_cut
 
     if (Feedback > 0) write (*,*) 'reading WL data set: '//trim(this%name)
 
@@ -89,19 +94,28 @@ module wl
     allocate(this%xi(this%num_theta_bins*nt*2))
     allocate(this%z_p(this%num_z_p))
     allocate(this%p(this%num_z_p,this%num_z_bins))
+    allocate(mask(this%num_theta_bins*nt*2))
+    mask = 0
+
     this%ah_factor = Ini%Read_Double('ah_factor',1.0d0)
     
     measurements_file  = Ini%ReadFileName('measurements_file')
     window_file  = Ini%ReadFileName('window_file')
     cov_file  = Ini%ReadFileName('cov_file')
+    cut_file  = Ini%ReadFileName('cut_file')
    
-    !------------------------------------------------------
-    ! TODO - ignore theta range if required - scale diagonal of covariance matrix? 
-    !------------------------------------------------------
-
     allocate(this%wl_cov(2*this%num_theta_bins*nt,2*this%num_theta_bins*nt))
     this%wl_cov = 0
     call File%ReadTextMatrix(cov_file,this%wl_cov)
+
+    allocate(cut_values(this%num_z_bins,2))
+    cut_values = 0
+    call F%Open(cut_file)
+    do iz = 1,this%num_z_bins
+       read (F%unit,*,iostat=iopb) cut_values(iz,1),cut_values(iz,2)
+       write(*,*) cut_values(iz,1),cut_values(iz,2)
+    end do
+    call F%Close()
 
     if (this%name == 'CFHTLENS_1bin') then
 
@@ -142,7 +156,7 @@ module wl
        end do
        deallocate(temp)
        call F%Close()
-       
+
     else  
 
        write(*,*)'ERROR: Not yet implemented WL dataset: '//trim(this%name)
@@ -161,6 +175,27 @@ module wl
 
     ! Apply Anderson-Hartap correction 
     this%wl_cov = this%wl_cov/this%ah_factor
+
+    ! Compute theta mask
+    iz = 0
+    do izl = 1,this%num_z_bins
+       do izh = izl,this%num_z_bins
+          iz = iz + 1 ! this counts the bin combinations iz=1 =>(1,1), iz=1 =>(1,2) etc
+          do i = 1,this%num_theta_bins
+             j = (iz-1)*2*this%num_theta_bins 
+             xi_plus_cut = max(cut_values(izl,1),cut_values(izh,1))
+             xi_minus_cut = max(cut_values(izl,2),cut_values(izh,2))
+             if (this%theta_bins(i)>xi_plus_cut) mask(j+i) = 1      
+             if (this%theta_bins(i)>xi_minus_cut) mask(this%num_theta_bins + j+i) = 1    
+             !write(*,'(5i4,3E15.3,2i4)') izl,izh,i,i+j,this%num_theta_bins + j+i,xi_plus_cut,&
+             !     xi_minus_cut,this%theta_bins(i),mask(j+i),mask(this%num_theta_bins + j+i)
+          end do
+       end do
+    end do
+    
+    write(*,*) mask
+
+    deallocate(cut_values, mask)
 
   end subroutine WL_ReadIni
 

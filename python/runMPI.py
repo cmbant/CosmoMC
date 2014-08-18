@@ -9,8 +9,6 @@ jobQueue.addArguments(parser)
 
 args = parser.parse_args()
 
-omp = jobQueue.getArgsOmp(args, msg=True, runsPerJob=len(args.iniFile))
 ini = [ini.replace('.ini', '') for ini in args.iniFile]
 
-if not args.dryrun:
-    jobQueue.submitJob(os.path.basename(ini[0]), ini, omp=omp, **args.__dict__)
+jobQueue.submitJob(os.path.basename(ini[0]), ini, msg=True, **args.__dict__)

@@ -53,7 +53,7 @@ class dataSet:
         return data
 
     def standardizeParams(self, params):
-        if isinstance(params, dict): params = [params]
+        if isinstance(params, dict) or isinstance(params, basestring): params = [params]
         for i in range(len(params)):
             if isinstance(params[i], basestring) and not '.ini' in params[i]: params[i] += '.ini'
         return params
@@ -169,7 +169,7 @@ class jobItem:
     def allChainExists(self, num_chains):
         return all([self.chainExists(i + 1) for i in range(num_chains)])
 
-    def chainFileDate(self, name, chain=1):
+    def chainFileDate(self, chain=1):
         return os.path.getmtime(self.chainName(chain))
 
     def chainsDodgy(self, interval=600):
@@ -182,7 +182,7 @@ class jobItem:
 
     def notRunning(self):
         if not self.chainExists(): return False  # might be in queue
-        lastWrite = self.chainFileDate(self.chainName())
+        lastWrite = self.chainFileDate()
         return lastWrite < time.time() - 5 * 60
 
     def chainMinimumExists(self):
@@ -221,6 +221,9 @@ class jobItem:
 
     def getDistExists(self):
         return os.path.exists(self.distRoot + '.margestats')
+
+    def getDistNeedsUpdate(self):
+        return self.chainExists() and (not self.getDistExists() or self.chainFileDate() > os.path.getmtime(self.distRoot + '.margestats'))
 
     def R(self):
         if self.result_converge is None:
@@ -307,6 +310,13 @@ class batchJob:
 
     def normalizeDataTag(self, tag):
         return "_".join(sorted(tag.replace('_post', '').split('_')))
+
+    def resolveName(self, paramtag, datatag, wantSubItems=True, wantImportance=True, raiseError=True, base='base'):
+        name = base + '_' + "_".join(sorted(paramtag.split('_'))) + '_' + self.normalizeDataTag(datatag)
+        jobItem = self.normed_name_item(name, wantSubItems, wantImportance)
+        if jobItem is not None: return jobItem.name
+        if raiseError: raise Exception('No match for paramtag, datatag:' + paramtag + ', ' + datatag)
+        else: return None
 
     def save(self, filename=''):
         saveobject(self, (self.batchPath + 'batch.pyobj', filename)[filename != ''])

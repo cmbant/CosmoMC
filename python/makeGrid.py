@@ -66,7 +66,7 @@ for jobItem in batch.items(wantSubItems=False):
         if 'mnu' in jobItem.param_set:
             ini.params['num_massive_neutrinos'] = 3
         if 'meffsterile' in jobItem.param_set:
-            ini.params['param[mnu]'] = '0.06 0.06 0.06 0 0'
+            ini.params['param[mnu]'] = '0.06'
             ini.params['param[nnu]'] = '3.1 3.046 10 0.05 0.05'
             ini.params['num_massive_neutrinos'] = 1
             ini.params['accuracy_level'] = 1.2  # to use 4 rather than 3 momentum modes

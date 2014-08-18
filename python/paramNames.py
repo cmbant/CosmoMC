@@ -3,9 +3,9 @@ import os
 
 class paramInfo:
 
-    def __init__(self, line=None):
-        self.name = ''
-        self.isDerived = False
+    def __init__(self, line=None, name='', derived=False):
+        self.name = name
+        self.isDerived = derived
         self.label = ''
         self.comment = ''
         self.filenameLoadedFrom = ''
@@ -107,6 +107,10 @@ class paramList:
             p = params.parWithName(name.name)
             if p is not None: usedNames.names.append(name)
         return usedNames
+
+    def addDerived(self, name):
+        self.names.append(paramInfo(name=name, derived=True))
+        return self.names[-1]
 
 class paramNames(paramList):
 

@@ -1,5 +1,5 @@
-import os, ResultObjs, GetDistPlots
-from matplotlib import rcParams, rc
+import os, ResultObjs, GetDistPlots, sys, batchJob
+from matplotlib import rcParams, rc, pylab
 
 # common setup for matplotlib
 params = {'backend': 'pdf',
@@ -21,7 +21,19 @@ rc('text.latex', preamble=r'\usepackage{' + sfmath + '}')
 
 rcParams.update(params)
 
+non_final = True
+version = 'clik9.0'
+defdata_root = 'plik'
+defdata_TT = defdata_root + '_TT_lowTEB'
+defdata_all = defdata_root + '_TTTEEE_lowTEB'
+defdata_TTonly = defdata_root + '_TT_lowl'
+defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
+
+
 planck = r'\textit{Planck}'
+planckTT = r'\textit{Planck} TT'
+planckTTlowEE = r'\textit{Planck} TT$+$lowE'
+planckall = planck
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
 lensing = r'\textit{Planck}+lensing'
@@ -30,6 +42,8 @@ NoLowL = r'\textit{Planck}$-$lowL'
 NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
 NoLowLtau = r'\textit{Planck}$-$lowL+$\tau$prior'
 NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
+NoLowLE = r'\textit{Planck}$-$lowE'
+
 LCDM = r'$\Lambda$CDM'
 
 s = GetDistPlots.defaultSettings
@@ -46,17 +60,31 @@ s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#
 s.axis_marker_lw = 0.6
 s.lw_contour = 1
 
+rootdir = 'main'
+
 class planckPlotter(GetDistPlots.GetDistPlotter):
-    def export(self, fname):
-        if '.' in fname:GetDistPlots.GetDistPlotter.export(self, fname)
-        else:
-            GetDistPlots.GetDistPlotter.export(self, 'outputs/' + fname + '.pdf')
 
-    def exportExtra(self, fname):
-        GetDistPlots.GetDistPlotter.export(self, 'plots/' + fname + '.pdf')
+    def doExport(self, fname, adir=None, watermark=None):
+        if fname is None: fname = os.path.basename(sys.argv[0]).replace('.py', '')
+        if not '.' in fname: fname += '.pdf'
+        if adir is not None and not os.sep in fname: fname = os.path.join(adir, fname)
+        if not os.path.exists(os.path.dirname(fname)): os.makedirs(os.path.dirname(fname))
+        if watermark is not None and watermark or watermark is None and non_final:
+            # #watermark with version tag so we know it's old
+            pylab.gcf().text(0.45, 0.5, version.replace('_', '{\\textunderscore}'), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
+        GetDistPlots.GetDistPlotter.export(self, fname)
 
+    def export(self, fname=None):
+        self.doExport(fname, 'outputs')
 
-plotter = planckPlotter('main/plot_data')
+    def exportExtra(self, fname=None):
+        self.doExport(fname, 'plots')
+
+    def getRoot(self, paramtag, datatag):
+        batch = batchJob.readobject(rootdir)
+        return batch.resolveName(paramtag, datatag)
+
+plotter = planckPlotter(rootdir + '/plot_data')
 
 
 def getSubplotPlotter(plot_data=None):
@@ -81,6 +109,7 @@ def getPlotterWidth(size=1, **kwargs):  # size in mm
     return plotter
 
 def getSinglePlotter(ratio=3 / 4., plot_data=None):
+    global plotter
     s.setWithSubplotSize(3.5)
     s.rcSizes()
     if plot_data is not None: plotter = planckPlotter(plot_data)
