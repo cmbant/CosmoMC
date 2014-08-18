@@ -14,6 +14,7 @@ module wl
      real(mcp), allocatable, dimension(:,:) :: wl_invcov,wl_cov
      integer :: num_z_bins
      integer :: num_theta_bins
+     integer :: num_mask
      real(mcp), allocatable, dimension(:) :: theta_bins
      real(mcp), allocatable, dimension(:) :: z_bins
      real(mcp), allocatable, dimension(:) :: xi_obs ! Observed correlation functions
@@ -21,6 +22,7 @@ module wl
      integer :: num_z_p ! Source galaxy distribution p(z,bin)
      real(mcp), allocatable, dimension(:,:) :: p
      real(mcp), allocatable, dimension(:) :: z_p
+     integer, allocatable, dimension(:) :: mask_indices
      real(mcp) :: ah_factor ! Anderson-Hartlap factor
      logical :: cut_theta  ! Cut non-linear scales
    contains
@@ -56,12 +58,12 @@ module wl
           allocate(this)
           this%needs_nonlinear_pk = .true.
           this%kmax=200.0
+          this%cut_theta = Ini%Read_Logical('cut_theta',.false.)
           call this%ReadDatasetFile(Ini%ReadFileName(numcat('wl_dataset',i)))
           this%LikelihoodType = 'WL'
           this%needs_powerspectra = .true.
           this%num_z = Ini%Read_Int('nz_wl',100)
           this%max_z = Ini%Read_Double('max_z',10.0d0)
-          this%cut_theta = Ini%Read_Logical('cut_theta',.false.)
           call LikeList%Add(this)
        end do
        if (Feedback>1) write(*,*) 'read WL data sets'
@@ -110,12 +112,13 @@ module wl
 
     allocate(cut_values(this%num_z_bins,2))
     cut_values = 0
-    call F%Open(cut_file)
-    do iz = 1,this%num_z_bins
-       read (F%unit,*,iostat=iopb) cut_values(iz,1),cut_values(iz,2)
-       write(*,*) cut_values(iz,1),cut_values(iz,2)
-    end do
-    call F%Close()
+    if (this%cut_theta) then
+       call F%Open(cut_file)
+       do iz = 1,this%num_z_bins
+          read (F%unit,*,iostat=iopb) cut_values(iz,1),cut_values(iz,2)
+       end do
+       call F%Close()
+    end if
 
     if (this%name == 'CFHTLENS_1bin') then
 
@@ -192,9 +195,16 @@ module wl
           end do
        end do
     end do
-    
-    write(*,*) mask
-
+    this%num_mask = sum(mask)
+    allocate(this%mask_indices(this%num_mask))
+    j = 1
+    do i=1,this%num_theta_bins*nt*2
+       if (mask(i) == 1) then
+          this%mask_indices(j) = i
+          j = j+1
+       end if
+    end do
+        
     deallocate(cut_values, mask)
 
   end subroutine WL_ReadIni
@@ -224,13 +234,11 @@ module wl
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) WL_CFHTLENS_loglike
     real(mcp), allocatable :: vec(:),cov(:,:)
-    integer nt
-   
-    nt = this%num_z_bins*(1+this%num_z_bins)/2
-    allocate(vec(this%num_theta_bins*nt*2))
-    allocate(cov(this%num_theta_bins*nt*2,this%num_theta_bins*nt*2))
-    vec(:) = this%xi(:)-this%xi_obs(:)
-    cov(:,:) = this%wl_cov(:,:)
+    
+    allocate(vec(this%num_mask))
+    allocate(cov(this%num_mask,this%num_mask))
+    vec(:) = this%xi(this%mask_indices)-this%xi_obs(this%mask_indices)
+    cov(:,:) = this%wl_cov(this%mask_indices,this%mask_indices)
     WL_CFHTLENS_loglike = Matrix_GaussianLogLike(cov,vec) 
     deallocate(cov,vec)
   
