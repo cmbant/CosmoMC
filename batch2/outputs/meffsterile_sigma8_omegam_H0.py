@@ -13,6 +13,7 @@ s8 = np.arange(0.5, 1, 0.01)
 # plotBounds(galaxygalaxy,'green')
 s.plotBounds(s8, s.CFTHlens, 'burlywood')
 s.plotBounds(s8, s.PLSZ, 'gray')
+# s.plotBounds(s8, s.planck_lensing, 'cyan')
 
 
 g.plot_3d(roots, ['sigma8', 'omegam', 'H0'])

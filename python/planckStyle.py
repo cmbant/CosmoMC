@@ -85,8 +85,8 @@ def planck_lensing(s8, sigma):  # mandelbaum
 
 
 def plotBounds(s8, data, c='gray'):
-    pylab.fill_between(s8, data(-2), data(2), facecolor=c, alpha=0.15, edgecolor=c, lw=0)
-    pylab.fill_between(s8, data(-1), data(1), facecolor=c, alpha=0.25, edgecolor=c, lw=0)
+    pylab.fill_between(s8, data(s8, -2), data(s8, 2), facecolor=c, alpha=0.15, edgecolor=c, lw=0)
+    pylab.fill_between(s8, data(s8, -1), data(s8, 1), facecolor=c, alpha=0.25, edgecolor=c, lw=0)
 
 
 class planckPlotter(GetDistPlots.GetDistPlotter):

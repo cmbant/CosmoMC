@@ -26,7 +26,7 @@ if False:
     g.add_2d_contours('base_mnu_lensonly_theta', 'sigma8', 'omegam', ls='--', color='red')
 
 
-g.add_legend([s.lensonly + '+' + s.HST, s.lensonly + '+' + s.BAO, s.lensonly + r'+ \theta_{MC}', s.planckall])
+g.add_legend([s.lensonly + '+' + s.HST, s.lensonly + '+' + s.BAO, s.lensonly + r'+ $\theta_{MC}$', s.planckall])
 
 xlim([0.6, 1.02])
 ylim([0.14, 0.6])
