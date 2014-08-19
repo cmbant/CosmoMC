@@ -299,7 +299,7 @@
                             like_diff = logZero
                         end if
 #ifdef MPI
-                        if (.not. allocated(like_diffs)) allocate(like_diffs(MPIchains))
+                        allocate(like_diffs(MPIchains))
                         call MPI_Allgather(like_diff, 1, MPI_real_mcp, like_diffs, 1,  MPI_real_mcp, MPI_COMM_WORLD, ierror)
                         if (all(like_diffs==logZero)) then
                             like_diff=0

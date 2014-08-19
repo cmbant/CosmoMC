@@ -21,9 +21,9 @@ def nonEmptyFile(fname):
 
 class dataSet:
     def __init__(self, names, params=None, covmat=None):
+        if isinstance(names, basestring): names = [names]
         if params is None: params = [(name + '.ini') for name in names]
         else: params = self.standardizeParams(params)
-        if isinstance(names, basestring): names = [names]
         if covmat is not None: self.covmat = covmat
         self.names = names
         self.params = params  # can be an array of items, either ini file name or dictionaries of parameters
