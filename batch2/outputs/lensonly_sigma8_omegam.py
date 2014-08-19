@@ -8,14 +8,7 @@ g.make_figure(1, xstretch=1.3)
 
 s8 = np.arange(0.5, 1, 0.01)
 
-def lensing(sigma):  # mandelbaum
-    return  ((0.572 + 0.019 * sigma) / s8) ** (1 / 0.25)
-
-def plotBounds(data, c):
-    fill_between(s8, data(-2), data(2), facecolor=c, alpha=0.15, edgecolor=c, lw=0)
-    fill_between(s8, data(-1), data(1), facecolor=c, alpha=0.25, edgecolor=c, lw=0)
-
-plotBounds(lensing, 'grey')
+s.plotBounds(s8, s.planck_lensing)
 
 g.plot_3d('base_lensonly', ['sigma8', 'omegam', 'H0'])
 
@@ -33,8 +26,7 @@ if False:
     g.add_2d_contours('base_mnu_lensonly_theta', 'sigma8', 'omegam', ls='--', color='red')
 
 
-
-g.add_legend(['lensonly+HST', 'lensonly+BAO', 'lensonly+theta', 'Planck'])
+g.add_legend([s.lensonly + '+' + s.HST, s.lensonly + '+' + s.BAO, s.lensonly + r'+ \theta_{MC}', s.planckall])
 
 xlim([0.6, 1.02])
 ylim([0.14, 0.6])

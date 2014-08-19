@@ -46,6 +46,9 @@ NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
 NoLowLtau = r'\textit{Planck}$-$lowL+$\tau$prior'
 NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
 NoLowLE = r'\textit{Planck}$-$lowE'
+lensonly = 'lensing'
+HST = r'$H_0$'
+BAO = 'BAO'
 
 LCDM = r'$\Lambda$CDM'
 
@@ -64,6 +67,27 @@ s.axis_marker_lw = 0.6
 s.lw_contour = 1
 
 rootdir = 'main'
+
+# various Omegam sigma8 constraints for plots
+def PLSZ(s8, sigma):
+    # from Anna 18/7/2014
+    return  ((0.757 + 0.013 * sigma) / s8) ** (1 / 0.3) * 0.32
+
+def CFTHlens(s8, sigma):
+    return  ((0.79 + 0.03 * sigma) / s8) ** (1 / 0.6) * 0.27
+
+def galaxygalaxy(s8, sigma):  # mandelbaum
+    return  ((0.8 + 0.05 * sigma) / s8) ** (1 / 0.57) * 0.25
+
+def planck_lensing(s8, sigma):  # mandelbaum
+    # g60_full
+    return  ((0.572 + 0.019 * sigma) / s8) ** (1 / 0.25)
+
+
+def plotBounds(s8, data, c='gray'):
+    pylab.fill_between(s8, data(-2), data(2), facecolor=c, alpha=0.15, edgecolor=c, lw=0)
+    pylab.fill_between(s8, data(-1), data(1), facecolor=c, alpha=0.25, edgecolor=c, lw=0)
+
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
 

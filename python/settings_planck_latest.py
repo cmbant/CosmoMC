@@ -239,6 +239,14 @@ glens.params = [[], ['mnu']]
 glens.importanceRuns = []
 groups.append(glens)
 
+glens = batchJob.jobGroup('lensonlyext')
+glens.datasets = copy.deepcopy(lensdata)
+glens.params = [['nnu'], ['omegak']]
+glens.importanceRuns = []
+groups.append(glens)
+
+
+
 gphi = batchJob.jobGroup('Aphiphi')
 gphi.params = [['Aphiphi']]
 gphi.datasets = []
