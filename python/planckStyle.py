@@ -79,7 +79,7 @@ def CFTHlens(s8, sigma):
 def galaxygalaxy(s8, sigma):  # mandelbaum
     return  ((0.8 + 0.05 * sigma) / s8) ** (1 / 0.57) * 0.25
 
-def planck_lensing(s8, sigma):  # mandelbaum
+def planck_lensing(s8, sigma):
     # g60_full
     return  ((0.572 + 0.019 * sigma) / s8) ** (1 / 0.25)
 

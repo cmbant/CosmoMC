@@ -451,15 +451,19 @@ class GetDistPlotter():
     def get_param_array(self, root, in_params):
         if in_params is None or len(in_params) == 0: return self.paramNamesForRoot(root).names
         else:
-            if not isinstance(in_params[0], paramNames.paramInfo): return self.paramNamesForRoot(root).parsWithNames(in_params, error=True)
+            if not all([isinstance(param, paramNames.paramInfo) for param in in_params]):
+                return self.paramNamesForRoot(root).parsWithNames(in_params, error=True)
         return in_params
 
     def check_param(self, root, param):
         if not isinstance(param, paramNames.paramInfo): return self.paramNamesForRoot(root).parWithName(param, error=True)
         return param
 
-    def param_latex_label(self, root, param):
-        p = self.check_param(root, param)
+    def param_latex_label(self, root, param, labelParams=None):
+        if labelParams is not None:
+            p = self.sampleAnalyser.paramsForRoot(root, labelParams=labelParams).parWithName(param)
+        else:
+            p = self.check_param(root, param)
         return r'$' + p.label + r'$'
 
     def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False, figure=False):
@@ -692,18 +696,29 @@ class GetDistPlotter():
         cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize, rotation=-90)
         setp(getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.colorbar_axes_fontsize)
 
+    def _makeParamObject(self, names, samples):
+        class sampleNames(): pass
+        p = sampleNames()
+        for i, par in enumerate(names.names):
+            setattr(p, par.name, samples[:, i])
+        return p
+
     def add_3d_scatter(self, root, in_params, color_bar=True):
         params = self.get_param_array(root, in_params)
         pts = self.sampleAnalyser.load_single_samples(root)
         names = self.paramNamesForRoot(root)
-        cols = []
+        samples = []
         for param in params:
-            cols.append(names.numberOfName(param.name) + 2)
-        self.last_scatter = scatter(pts[:, cols[0]], pts[:, cols[1]], edgecolors='none',
-                s=self.settings.scatter_size, c=pts[:, cols[2]], cmap=self.settings.colormap_scatter)
+            if hasattr(param, 'getDerived'):
+                samples.append(param.getDerived(self._makeParamObject(names, pts[:, 2:])))
+            else:
+                samples.append(pts[:, names.numberOfName(param.name) + 2])
+
+        self.last_scatter = scatter(samples[0], samples[1], edgecolors='none',
+                s=self.settings.scatter_size, c=samples[2], cmap=self.settings.colormap_scatter)
         if color_bar: self.last_colorbar = self.add_colorbar(params[2])
-        mins = [min(pts[:, cols[0]]), min(pts[:, cols[1]])]
-        maxs = [max(pts[:, cols[0]]), max(pts[:, cols[1]])]
+        mins = [min(samples[0]), min(samples[1])]
+        maxs = [max(samples[0]), max(samples[1])]
         for i in range(2):
             r = maxs[i] - mins[i]
             mins[i] -= r / 20

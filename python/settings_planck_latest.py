@@ -241,7 +241,7 @@ groups.append(glens)
 
 glens = batchJob.jobGroup('lensonlyext')
 glens.datasets = copy.deepcopy(lensdata)
-glens.params = [['nnu'], ['omegak']]
+glens.params = [['nnu'], ['omegak'], ['nnu', 'meffsterile']]
 glens.importanceRuns = []
 groups.append(glens)
 
