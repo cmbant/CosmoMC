@@ -73,8 +73,15 @@ def PLSZ(s8, sigma):
     # from Anna 18/7/2014
     return  ((0.757 + 0.013 * sigma) / s8) ** (1 / 0.3) * 0.32
 
-def CFTHlens(s8, sigma):
+def CFTHlens_Kilbinger(s8, sigma):
     return  ((0.79 + 0.03 * sigma) / s8) ** (1 / 0.6) * 0.27
+
+def CFTHlens_LCDM(s8, sigma):  # 1408.4742
+    return  ((0.74 + 0.03 * sigma) / s8) ** (1 / 0.47) * 0.27
+
+def CFTHlens_mnu(s8, sigma):  # 1408.4742, same for sterile case
+    return  ((0.72 + 0.03 * sigma) / s8) ** (1 / 0.48) * 0.27
+
 
 def galaxygalaxy(s8, sigma):  # mandelbaum
     return  ((0.8 + 0.05 * sigma) / s8) ** (1 / 0.57) * 0.25

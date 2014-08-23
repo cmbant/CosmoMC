@@ -84,9 +84,12 @@ for jobItem in batch.items(wantSubItems=False):
 
         ini.params['file_root'] = jobItem.chainRoot
 
-        covmat = batch.basePath + 'planck_covmats/' + jobItem.name + '.covmat'
+        covdir = os.path.join(batch.basePath, getattr(settings, 'cov_dir', 'planck_covmats'))
+        covmat = os.path.join(covdir, jobItem.name + '.covmat')
         if not os.path.exists(covmat):
-            if hasattr(jobItem.data_set, 'covmat'): covmat = batch.basePath + jobItem.data_set.covmat
+            covNameMappings = getattr(settings, 'covNameMappings', None)
+            covmat = os.path.join(covdir, jobItem.makeNormedName(covNameMappings)[0] + '.covmat')
+            if not os.path.exists(covmat) and hasattr(jobItem.data_set, 'covmat'): covmat = batch.basePath + jobItem.data_set.covmat
             if not os.path.exists(covmat) and hasattr(settings, 'covmat'): covmat = batch.basePath + settings.covmat
         if os.path.exists(covmat):
             ini.params['propose_matrix'] = covmat
@@ -103,8 +106,9 @@ for jobItem in batch.items(wantSubItems=False):
                         name = jobItem.name.replace(old1, new1, 1)
                         covmat_try += [name.replace(old, new, 1) for old, new in settings.covrenames if old in name]
 
+            covdir2 = os.path.join(batch.basePath, getattr(settings, 'cov_dir_fallback', 'planck_covmats'))
             for name in covmat_try:
-                covmat = batch.basePath + 'planck_covmats/' + name + '.covmat'
+                covmat = os.path.join(batch.basePath, covdir2, name + '.covmat')
                 if os.path.exists(covmat):
                     ini.params['propose_matrix'] = covmat
                     print 'covmat ' + jobItem.name + ' -> ' + name

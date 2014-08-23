@@ -11,14 +11,18 @@ s8 = np.arange(0.5, 1, 0.01)
 
 s.plotBounds(s8, s.planck_lensing)
 
-g.plot_3d('base_mnu_lensonly', ['sigma8', 'omegam', 'thetaeq'])
+base = 'nnu_meffsterile'
 
-g.add_2d_contours('base_mnu_lensonly_HST70p6', 'sigma8', 'omegam', ls='-', color='blue', lw=0.6)
-g.add_2d_contours('base_mnu_lensonly_BAO', 'sigma8', 'omegam', ls='-', color='green', lw=0.6)
-g.add_2d_contours('base_mnu_' + s.defdata_all, 'sigma8', 'omegam', ls='-', color='black', lw=1.2)
+g.plot_3d(g.getRoot(base, 'lensonly'), ['sigma8', 'omegam', 'H0'])
 
+# g.add_2d_contours('base_mnu_lensonly_HST70p6', 'sigma8', 'omegam', ls='-', color='blue', lw=0.6)
+# g.add_2d_contours(base + 'lensonly_BAO', 'sigma8', 'omegam', ls='-', color='green', lw=0.6)
+g.add_2d_contours(g.getRoot(base, s.defdata_all), 'sigma8', 'omegam', ls='--', color='black', lw=1.2)
+# g.add_2d_contours(g.getRoot(base, s.defdata_all + '_BAO'), 'sigma8', 'omegam', ls='--', color='red', lw=1.2)
 
-g.add_legend([s.lensonly + '+' + s.HST, s.lensonly + '+' + s.BAO, s.planckall])
+# g.add_legend([s.lensonly + '+' + s.BAO, s.planckall, s.planckall + '+' + s.BAO], colored_text=True)
+
+# g.add_legend([s.lensonly + '+' + s.BAO, s.planckall, s.planckall + '+' + s.BAO], colored_text=True)
 
 xlim([0.6, 1.02])
 ylim([0.14, 0.6])

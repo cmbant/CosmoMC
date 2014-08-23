@@ -5,6 +5,7 @@
 import batchJob, copy, re
 
 ini_dir = 'batch2/'
+cov_dir = 'covmat_clik9/'
 
 defaults = ['common.ini']
 
@@ -224,10 +225,10 @@ for d in copy.deepcopy(lensdata):
 for d in copy.deepcopy(lensdata):
     d.add(HST, HSTdata)
     glens.datasets.append(d)
-for d in copy.deepcopy(lensdata):
-    d.add(HST, HSTdata)
-    d.add('widerns', {'prior[ns]': '0.98 0.05'})
-    glens.datasets.append(d)
+# for d in copy.deepcopy(lensdata):
+#    d.add(HST, HSTdata)
+#    d.add('widerns', {'prior[ns]': '0.98 0.05'})
+#    glens.datasets.append(d)
 for d in copy.deepcopy(lensdata):
     d.add('theta', {'param[theta]':'1.0408'})
     glens.datasets.append(d)
@@ -267,6 +268,8 @@ groups.append(gphi)
 
 
 skip = []
+
+covNameMappings = {HSTdata:'HST', 'v97CS':'CamSpec'}
 
 # try to match run to exisitng covmat
 covrenames = []

@@ -14,7 +14,7 @@ s8 = np.arange(0.5, 1, 0.01)
 
 
 # plotBounds(galaxygalaxy,'green')
-s.plotBounds(s8, s.CFTHlens, 'burlywood')
+s.plotBounds(s8, s.CFTHlens_mnu, 'burlywood')
 s.plotBounds(s8, s.PLSZ, 'gray')
 # s.plotBounds(s8, s.planck_lensing, 'cyan')
 
