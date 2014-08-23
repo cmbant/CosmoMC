@@ -16,7 +16,8 @@
         !following are numbers of samples / (number of parameters)
         !MPI_Min_Sample_Update*num_fast is min number of chain steps
         !before starting to update covmat and checking convergence
-        integer :: MPI_Min_Sample_Update = 200, MPI_Sample_update_freq = 40
+        integer :: MPI_Min_Sample_Update = 200
+        integer :: MPI_Sample_update_freq = 40
         logical :: MPI_Check_Limit_Converge = .false.
         !After given R_Stop is reached, can optionally check for limit convergence
         !(which is generally a much more stringent test of enough samples)
@@ -138,11 +139,12 @@
     subroutine TMpiChainCollector_SaveState(this,F)
     class(TMpiChainCollector) :: this
     class(TFileStream) :: F
-    integer :: version=1
+    integer :: version=2
 
     call F%Write(version)
     call F%Write(this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn,  &
         & this%flukecheck,  this%Mpi%MPI_Min_Sample_Update, this%DoUpdates)
+    call F%Write(this%Mpi%MPI_Sample_update_freq)
     call this%Samples%SaveState(F)
     call this%Sampler%SaveState(F)
 
@@ -153,9 +155,15 @@
     class(TFileStream) :: F
     integer version
 
-    if (.not. F%ReadItem(version) .or. version/=1) call MpiStop('unknown checkpoint format')
+    if (.not. F%ReadItem(version) .or. version>2) call MpiStop('unknown checkpoint format')
     call F%Read(this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn, &
         & this%flukecheck, this%Mpi%MPI_Min_Sample_Update, this%DoUpdates)
+    if (version>=2) then
+        call F%Read(this%Mpi%MPI_Sample_update_freq)
+    else
+        !bug fix
+        this%Mpi%MPI_Sample_update_freq = this%Mpi%MPI_Sample_update_freq*BaseParams%num_slow
+    end if
     call this%Samples%LoadState(F)
     this%checkpoint_burn=this%checkpoint_freq/3
     call this%Sampler%LoadState(F)
