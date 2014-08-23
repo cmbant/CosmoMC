@@ -5,7 +5,7 @@
 import batchJob, copy, re
 
 ini_dir = 'batch2/'
-cov_dir = 'covmat_clik9/'
+cov_dir = 'planck_covmats/'
 
 defaults = ['common.ini']
 
