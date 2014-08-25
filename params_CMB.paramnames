@@ -29,7 +29,7 @@ omegamh2*     \Omega_m h^2 #includes massive neutrinos
 omeganuh2*    \Omega_\nu h^2 
 sigma8*       \sigma_8
 zrei*         z_{\rm re}
-rmsdeflect*   \langle d^2\rangle^{1/2}  #rms lensing deflection in arcmin
+rmsdeflect*   \langle d^2\rangle^{1/2}  #rms lensing deflection in arcmin (2<=L<=2000)
 r02*          r_{0.002}        #r at k=0.002
 rBB*          r_{0.01}         #r at k=0.01 (roughly peak of tensor BB)
 logAT*        {\rm{ln}}(10^{10} A_t) 
@@ -40,7 +40,8 @@ clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
 ctlamp*       10^9 A_t e^{-2\tau}   #parameter determining L~100 tensor C_l amplitude
 yheused*      Y_P #MCMC value or from bbn consistency
 omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
-S8_47*        \sigma_8 (\Omega_m/0.25)^{0.47} 
+s8omegamp5*   \sigma_8 \Omega_m^{0.5}
+s8omegamp25*  \sigma_8 \Omega_m^{0.25}
 age*          {\rm{Age}}/{\rm{Gyr}}
 zstar*        z_*
 rstar*        r_*

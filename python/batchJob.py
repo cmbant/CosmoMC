@@ -74,6 +74,16 @@ class dataSet:
             else: items.append(name)
         return "_".join(items)
 
+    def namesReplacing(self, dic):
+        if dic is None: return self.names
+        items = []
+        for name in self.names:
+            if name in dic:
+                val = dic[name]
+                if val: items.append(val)
+            else: items.append(name)
+        return items
+
 
 class jobGroup:
     def __init__(self, name, params=[[]], importanceRuns=[], datasets=[]):
@@ -135,13 +145,16 @@ class jobItem:
             job.makeIDs()
             self.importanceItems.append(job)
 
-    def makeIDs(self):
-        self.normed_params = "_".join(sorted(self.param_set))
-        self.normed_data = "_".join(sorted(self.data_set.names))
-        self.normed_name = self.base
-        if len(self.normed_params) > 0: self.normed_name += '_' + self.normed_params
-        self.normed_name += '_' + self.normed_data
+    def makeNormedName(self, dataSubs=None):
+        normed_params = "_".join(sorted(self.param_set))
+        normed_data = "_".join(sorted(self.data_set.namesReplacing(dataSubs)))
+        normed_name = self.base
+        if len(normed_params) > 0: normed_name += '_' + normed_params
+        normed_name += '_' + normed_data
+        return normed_name, normed_params, normed_data
 
+    def makeIDs(self):
+        self.normed_name, self.normed_params, self.normed_data = self.makeNormedName()
 
     def matchesDatatag(self, tagList):
         if self.datatag in tagList or self.normed_data in tagList: return True
@@ -312,7 +325,11 @@ class batchJob:
         return "_".join(sorted(tag.replace('_post', '').split('_')))
 
     def resolveName(self, paramtag, datatag, wantSubItems=True, wantImportance=True, raiseError=True, base='base'):
-        name = base + '_' + "_".join(sorted(paramtag.split('_'))) + '_' + self.normalizeDataTag(datatag)
+        if paramtag:
+            if isinstance(paramtag, basestring): paramtag = paramtag.split('_')
+            paramtags = [base] + sorted(paramtag)
+        else: paramtags = [base]
+        name = "_".join(paramtags) + '_' + self.normalizeDataTag(datatag)
         jobItem = self.normed_name_item(name, wantSubItems, wantImportance)
         if jobItem is not None: return jobItem.name
         if raiseError: raise Exception('No match for paramtag, datatag:' + paramtag + ', ' + datatag)
