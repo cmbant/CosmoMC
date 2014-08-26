@@ -607,12 +607,9 @@
     call Theory%NL_MPK%Init(Theory%MPK%x,Theory%MPK%y,PK)
 
     ! Weyl corrected P(k)
- !!   allocate(Theory%NL_MPK_WEYL)
-!!    nz=size(PK,2)
-!!    do zix=1,nz
-!!       PK(:,zix) = PK(:,zix) + 2*log(M%TransferWeyl(:,CP%Transfer%PK_redshifts_index(nz-zix+1)))
-!!    end do
-!!    call Theory%NL_MPK_WEYL%Init(Theory%MPK%x,Theory%MPK%y,PK)
+    allocate(Theory%NL_MPK_WEYL)
+    PK = Theory%MPK_WEYL%z + 2*log(Ratios)
+    call Theory%NL_MPK_WEYL%Init(Theory%MPK%x,Theory%MPK%y,PK)
 
     end subroutine CAMBCalc_GetNLandRatios
 

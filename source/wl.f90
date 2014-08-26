@@ -274,7 +274,7 @@ module wl
     integer :: num_z, ntheta
 
     if (this%use_non_linear) then
-       PK_WEYL = Theory%MPK_WEYL
+       PK_WEYL = Theory%NL_MPK_WEYL
        PK = Theory%NL_MPK
     else
        PK_WEYL = Theory%MPK_WEYL
