@@ -515,6 +515,12 @@
 
     allocate(temp(nk,CP%Transfer%num_redshifts))
 
+    !! AJM
+    write(*,*) nk,nz
+    write(*,*) CP%Transfer%num_redshifts
+    write(*,*) size(M%TransferData,2)
+    write(*,*) size(M%TransferData,3)
+
     h = CP%H0/100
 
     if(present(t2)) then
@@ -550,9 +556,19 @@
 
     h = CP%H0/100
 
+    !! AJM
+    write(*,*) nk,nz
+    write(*,*) CP%Transfer%num_redshifts
+    write(*,*) size(M%TransferWeyl,1)
+    write(*,*) size(M%TransferWeyl,2)
+
     do ik=1,nk
        k = M%TransferData(Transfer_kh,ik,1)*h
        temp(ik,:) = M%TransferWeyl(ik,:)**2.0*scalarPower(k,1)
+       if (temp(ik,nz) == 0.0d0) temp(ik,nz) = temp(ik,nz-1)
+!       write(12,*) temp(ik,:)
+!       write(*,*) temp(ik,nz),temp(ik,nz-1)
+!       write(12,*) ''
     end do
 
     do zix=1,nz
@@ -610,8 +626,7 @@
 !!    do zix=1,nz
 !!       PK(:,zix) = PK(:,zix) + 2*log(M%TransferWeyl(:,CP%Transfer%PK_redshifts_index(nz-zix+1)))
 !!    end do
-
-    call Theory%NL_MPK_WEYL%Init(Theory%MPK%x,Theory%MPK%y,PK)
+!!    call Theory%NL_MPK_WEYL%Init(Theory%MPK%x,Theory%MPK%y,PK)
 
     end subroutine CAMBCalc_GetNLandRatios
 

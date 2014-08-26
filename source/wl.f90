@@ -40,7 +40,7 @@ module wl
   real(mcp), parameter :: xstop = 200.0d0
  
   logical :: use_wl_lss  = .false.
-  logical :: use_weyl = .false.
+  logical :: use_weyl = .true.
 
   public WLLikelihood, WLLikelihood_Add, use_wl_lss
   contains
@@ -252,7 +252,7 @@ module wl
     type(TCosmoTheoryPK) :: PK, PK_WEYL
     type(TCubicSpline),  allocatable :: r_z, dzodr_z, P_z, C_l(:,:)
     type(TCubicSpline),  allocatable :: xi1_theta(:,:),xi2_theta(:,:)
-    real(mcp) :: h,z,kh
+    real(mcp) :: h,z,kh,k
     real(mcp), allocatable :: r(:),dzodr(:)
     real(mcp), allocatable :: rbin(:),gbin(:,:)
     real(mcp), allocatable :: ll(:),PP(:)
@@ -269,14 +269,10 @@ module wl
     integer :: i,ib,jb,il,it,iz,nr,nrs,izl,izh,j
     integer :: num_z, ntheta
 
-!!    if (use_weyl) then
-!!       PK = Theory%NL_MPK_WEYL
-!!    else
-!!       PK = Theory%NL_MPK
-!!    end if
-
-    PK = Theory%NL_MPK
     PK_WEYL = Theory%MPK_WEYL
+    PK = Theory%MPK
+    ! Ignore NL for now
+!!  PK = Theory%NL_MPK
 
     h = CMB%H0/100 
     num_z = PK%ny
@@ -330,13 +326,19 @@ module wl
        ll(il)=1.*exp(dlnl*(il-1._mcp))
        PP=0
        do iz=1,num_z
-          kh = ll(il)/r(iz)/h ! CAMB wants k/h values 
+          k = ll(il)/r(iz)
+          kh = k/h ! CAMB wants k/h values 
           z = PK%y(iz)
           if ((kh .le. khmin) .or. (kh .ge. khmax)) then
              PP(iz)=0.0d0
           else   
-             PP(iz)=PK%PowerAt(kh,z)
-             write(*,*) kh,PK%PowerAt(kh,z),PK_WEYL%PowerAt(kh,z)
+             if (use_weyl) then
+                PP(iz)= PK_WEYL%PowerAt(kh,z)*k
+             else
+                PP(iz)= PK%PowerAt(kh,z)
+             end if
+             ! Testing
+             write(*,'(10E15.5)') k,z,PK_WEYL%PowerAt(kh,z)*k,9.0/(8.0*pi**2.0)*PK%PowerAt(kh,z)/(h**3.0)*(h*1e5_mcp/const_c)**4.0*(CMB%omdm+CMB%omb)**2*(1+z)**2.0
           end if
        end do
       
@@ -347,16 +349,27 @@ module wl
           do jb=1,this%num_z_bins
              integrand = 0
              do nr=1,this%num_z_p
-                integrand(nr) = gbin(nr,ib)*gbin(nr,jb)*(1.0+this%z_p(nr))**2.0*P_z%Value(rbin(nr))
+                if (use_weyl) then
+                   integrand(nr) = gbin(nr,ib)*gbin(nr,jb)*P_z%Value(rbin(nr))
+                else
+                   integrand(nr) = gbin(nr,ib)*gbin(nr,jb)*(1.0+this%z_p(nr))**2.0*P_z%Value(rbin(nr))
+                end if
              end do             
              do nr=2,this%num_z_p
                 Cl(il,ib,jb)=Cl(il,ib,jb)+0.5d0*(integrand(nr)+integrand(nr-1))*(rbin(nr)-rbin(nr-1)) 
              end do
           end do
        end do
-       Cl(il,:,:) = Cl(il,:,:)/h**3.0*9._mcp/4._mcp*(h*1e5_mcp/const_c)**4.0*(CMB%omdm+CMB%omb)**2
+       if (use_weyl) then
+          Cl(il,:,:) = Cl(il,:,:)*2.0*pi**2.0
+       else
+          Cl(il,:,:) = Cl(il,:,:)/h**3.0*9._mcp/4._mcp*(h*1e5_mcp/const_c)**4.0*(CMB%omdm+CMB%omb)**2
+       end if
        deallocate(P_z)
     end do
+
+    !!! AJM
+    write(*,*) Cl
 
     !-----------------------------------------------------------------------
     ! Convert C_l to xi's
