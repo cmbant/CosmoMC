@@ -41,6 +41,7 @@
     procedure :: SetCAMBInitPower => CAMBCalc_SetCAMBInitPower
     procedure :: SetPkFromCAMB => CAMBCalc_SetPkFromCAMB
     procedure :: TransfersOrPowers => CAMBCalc_TransfersOrPowers
+    procedure :: TransfersOrPowersWeyl => CAMBCalc_TransfersOrPowersWeyl
     procedure :: GetNLandRatios => CAMBCalc_GetNLandRatios
     !Overridden inherited
     procedure :: ReadParams => CAMBCalc_ReadParams
@@ -481,11 +482,13 @@
     end if
     call Theory%MPK%Init(k,z,PK)
 
-    ! Weyl corrected P(k)
     allocate(Theory%MPK_WEYL)
-    do zix=1,nz
-       PK(:,zix) = PK(:,zix) + 2*log(M%TransferWeyl(:,CP%Transfer%PK_redshifts_index(nz-zix+1)))
-    end do
+    call this%TransfersOrPowersWeyl(M,PK)
+    PK = Log(PK)
+    if (any(isNan(PK))) then
+        error = 1
+        return
+    end if
     call Theory%MPK_WEYL%Init(k,z,PK)
 
     if(CosmoSettings%use_nonlinear)then
@@ -529,6 +532,34 @@
     end do
 
     end subroutine CAMBCalc_TransfersOrPowers
+
+    subroutine CAMBCalc_TransfersOrPowersWeyl(this,M,PK)
+    use Transfer
+    use camb, only : CP, ScalarPower
+    class(CAMB_Calculator) :: this
+    Type(MatterTransferData) :: M
+    real(mcp), intent(inout):: PK(:,:)
+    real(mcp), allocatable :: temp(:,:)
+    real(mcp) h, k
+    integer nz, nk, zix, ik
+
+    nk=size(PK,1)
+    nz=size(PK,2)
+
+    allocate(temp(nk,CP%Transfer%num_redshifts))
+
+    h = CP%H0/100
+
+    do ik=1,nk
+       k = M%TransferData(Transfer_kh,ik,1)*h
+       temp(ik,:) = M%TransferWeyl(ik,:)**2.0*scalarPower(k,1)
+    end do
+
+    do zix=1,nz
+        PK(:,zix) = temp(:,CP%Transfer%PK_redshifts_index(nz-zix+1))
+    end do
+
+    end subroutine CAMBCalc_TransfersOrPowersWeyl
 
     subroutine CAMBCalc_GetNLandRatios(this,M,Theory,Ratios,error)
     use Transfer
@@ -574,11 +605,12 @@
     call Theory%NL_MPK%Init(Theory%MPK%x,Theory%MPK%y,PK)
 
     ! Weyl corrected P(k)
-    allocate(Theory%NL_MPK_WEYL)
-    nz=size(PK,2)
-    do zix=1,nz
-       PK(:,zix) = PK(:,zix) + 2*log(M%TransferWeyl(:,CP%Transfer%PK_redshifts_index(nz-zix+1)))
-    end do
+ !!   allocate(Theory%NL_MPK_WEYL)
+!!    nz=size(PK,2)
+!!    do zix=1,nz
+!!       PK(:,zix) = PK(:,zix) + 2*log(M%TransferWeyl(:,CP%Transfer%PK_redshifts_index(nz-zix+1)))
+!!    end do
+
     call Theory%NL_MPK_WEYL%Init(Theory%MPK%x,Theory%MPK%y,PK)
 
     end subroutine CAMBCalc_GetNLandRatios

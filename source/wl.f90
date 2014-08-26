@@ -40,7 +40,7 @@ module wl
   real(mcp), parameter :: xstop = 200.0d0
  
   logical :: use_wl_lss  = .false.
-  logical :: use_weyl = .true.
+  logical :: use_weyl = .false.
 
   public WLLikelihood, WLLikelihood_Add, use_wl_lss
   contains
@@ -249,7 +249,7 @@ module wl
     Class(WLLikelihood) :: this
     Class(CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
-    type(TCosmoTheoryPK) :: PK
+    type(TCosmoTheoryPK) :: PK, PK_WEYL
     type(TCubicSpline),  allocatable :: r_z, dzodr_z, P_z, C_l(:,:)
     type(TCubicSpline),  allocatable :: xi1_theta(:,:),xi2_theta(:,:)
     real(mcp) :: h,z,kh
@@ -269,11 +269,14 @@ module wl
     integer :: i,ib,jb,il,it,iz,nr,nrs,izl,izh,j
     integer :: num_z, ntheta
 
-    if (use_weyl) then
-       PK = Theory%NL_MPK_WEYL
-    else
-       PK = Theory%NL_MPK
-    end if
+!!    if (use_weyl) then
+!!       PK = Theory%NL_MPK_WEYL
+!!    else
+!!       PK = Theory%NL_MPK
+!!    end if
+
+    PK = Theory%NL_MPK
+    PK_WEYL = Theory%MPK_WEYL
 
     h = CMB%H0/100 
     num_z = PK%ny
@@ -333,6 +336,7 @@ module wl
              PP(iz)=0.0d0
           else   
              PP(iz)=PK%PowerAt(kh,z)
+             write(*,*) kh,PK%PowerAt(kh,z),PK_WEYL%PowerAt(kh,z)
           end if
        end do
       

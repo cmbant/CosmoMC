@@ -1552,7 +1552,7 @@
         sources(2)=0
     end if
 
-    if (present(weyl)) weyl = 1.0d0
+    if (present(weyl)) weyl = 0.0
 
     if (CTransScal%NumSources > 2) then
         !Get lensing sources
@@ -1566,7 +1566,8 @@
             !         sources(3) = -2*phi*(tau-tau_maxvis)/((CP%tau0-tau_maxvis)*(CP%tau0-tau))
             !We include the lensing factor of two here
 
-            if (present(weyl)) weyl = phi/(-(dgrho +3*dgq*adotoa/k)/(k2*EV%Kf(1)*2))
+            if (present(weyl)) weyl = phi
+
         else
             sources(3) = 0
         end if
