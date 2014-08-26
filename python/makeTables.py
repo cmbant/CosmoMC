@@ -13,6 +13,9 @@ Opts.parser.add_argument('--delta_chisq_paramtag', default=None, help="parameter
 Opts.parser.add_argument('--changes_from_datatag', default=None, help="give fractional sigma shifts compared to a given data combination tag")
 Opts.parser.add_argument('--changes_from_paramtag', default=None, help="give fractional sigma shifts compared to a given parameter combination tag")
 Opts.parser.add_argument('--changes_adding_data', default=None, help="give fractional sigma shifts when adding given data")
+Opts.parser.add_argument('--changes_replacing', nargs='*', default=None,
+                          help='give sigma shifts for results with data x, y, z replacing data y, z.. with x')
+
 Opts.parser.add_argument('--shift_sigma_indep', action='store_true',
                          help="fractional shifts are relative to the sigma for independent data (sigma^2=sigma1^2+sigma2^2")
 Opts.parser.add_argument('--shift_sigma_subset', action='store_true',
@@ -108,6 +111,9 @@ def compareTable(jobItems, titles=None):
                formatter=formatter, limit=args.limit, titles=titles, blockEndParams=args.blockEndParams, paramList=args.paramList).lines
 
 
+if args.changes_replacing is not None:
+    if args.data is not None: args.data += args.changes_replacing
+
 items = Opts.sortedParamtagDict(chainExist=not args.bestfitonly)
 
 if args.all_limits:
@@ -193,6 +199,13 @@ for limit in limits:
                         referenceJobItem = copy.deepcopy(jobItem)
                         referenceJobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=args.bestfitonly)
                         baseJobItems[jobItem.normed_data] = referenceJobItem
+            if args.changes_replacing is not None:
+                origCompare = [item for item in theseItems if args.changes_replacing[0] in item.data_set.names]
+                baseJobItems = dict()
+                for jobItem in origCompare:
+                    referenceJobItem = copy.deepcopy(jobItem)
+                    referenceJobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=args.bestfitonly)
+                    baseJobItems[jobItem.normed_data] = referenceJobItem
 
             for jobItem in theseItems:
                     if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
@@ -200,6 +213,14 @@ for limit in limits:
                         if jobItem.normed_without is not None:
                             referenceDataJobItem = baseJobItems.get(jobItem.normed_without, None)
                         else: referenceDataJobItem = None
+                        referenceJobItem = referenceDataJobItem
+                    elif args.changes_replacing is not None:
+                        referenceDataJobItem = None
+                        for replace in args.changes_replacing[1:]:
+                            if replace in jobItem.data_set.names:
+                                referenceDataJobItem = baseJobItems.get(
+                                    batch.normalizeDataTag(jobItem.data_set.tagReplacing(replace, args.changes_replacing[0])), None)
+                                break
                         referenceJobItem = referenceDataJobItem
                     else: referenceJobItem = baseJobItems.get(jobItem.normed_data, None)
                     if args.changes_from_paramtag is not None:

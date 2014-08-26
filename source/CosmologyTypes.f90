@@ -65,6 +65,7 @@
     Type, extends(TCosmoTheoryParams):: TCosmoTheorySettings
         !Just add the allocatable components
         integer, allocatable :: cl_lmax(:,:)
+        integer, allocatable :: ArraySizes(:)
         !e.g. lmax_cl(1,1) is lmax for TT; zero if CL is not used; order is T, E, B, Phi
         real(mcp), dimension(:), allocatable :: power_redshifts
     contains

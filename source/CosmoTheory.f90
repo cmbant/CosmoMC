@@ -23,6 +23,7 @@
         !(this, E, B, Phi) x (this, E, B, Phi), with L(L+1)/2pi factor, in muK for CMB components
         real(mcp) sigma_8
         real(mcp) tensor_ratio_C10, tensor_ratio_02, tensor_ratio_BB, tensor_AT
+        real(mcp) :: Lensing_rms_deflect = 0._mcp
         integer numderived
         real(mcp) derived_parameters(max_derived_parameters)
         !MPK's are interpolator objects now
@@ -168,14 +169,15 @@
     Class(TCosmoTheoryPredictions) this
     class(TFileStream) :: F
     logical, intent(in) :: first
-    integer tmp(0)
+    integer ArraySizes(1), valArray(6)
     integer i,j
 
     if (first .and. new_chains) then
         Write(F%Unit) CosmoSettings%TCosmoTheoryParams
         if (CosmoSettings%use_LSS) call F%WriteSizedArray(CosmoSettings%power_redshifts)
         if (CosmoSettings%use_CMB) call F%WriteSizedArray(CosmoSettings%cl_lmax)
-        call F%WriteSizedArray(tmp)
+        ArraySizes(1)=size(valArray)
+        call F%WriteSizedArray(ArraySizes)
     end if
 
     write(F%unit) this%numderived
@@ -188,11 +190,10 @@
         end do
     end do
 
-    if (CosmoSettings%compute_tensors) then
-        write(F%unit) this%tensor_ratio_02, this%tensor_ratio_C10, this%tensor_ratio_BB, this%tensor_AT
-    end if
-
-    if (CosmoSettings%get_sigma8 .or. CosmoSettings%use_LSS) write(F%unit) this%sigma_8
+    valArray(1:4) = [ this%tensor_ratio_02, this%tensor_ratio_C10, this%tensor_ratio_BB, this%tensor_AT ]
+    valArray(5) = this%Lensing_rms_deflect 
+    valArray(6) = this%sigma_8
+    call F%WriteSizedArray(valArray)    
 
     if (CosmoSettings%use_LSS) then
         write(F%unit) this%MPK%nx, this%MPK%ny
@@ -214,7 +215,7 @@
     do i=1,Settings%num_cls
         do j= i, 1, -1
             if (Settings%cl_lmax(i,j) >0) &
-            & allocate(this%Cls(i,j)%Cl(Settings%cl_lmax(i,j)), source=0._mcp)
+                & allocate(this%Cls(i,j)%Cl(Settings%cl_lmax(i,j)), source=0._mcp)
         end do
     end do
     end subroutine TCosmoTheoryPredictions_AllocateForSettings
@@ -230,14 +231,14 @@
     real(mcp), allocatable :: temp(:,:)
     real(mcp), allocatable :: k(:), z(:)
     real(mcp), allocatable :: cl(:)
-    integer, allocatable :: tmp(:)
+    real(mcp), allocatable :: valArray(:)    
     integer i,j
 
     if (first) then
         read(F%Unit) FileSettings%TCosmoTheoryParams
         if (FileSettings%use_LSS) call F%ReadSizedArray(FileSettings%power_redshifts)
         if (FileSettings%use_CMB) call F%ReadSizedArray(FileSettings%cl_lmax)
-        call F%ReadSizedArray(tmp) !not used
+        call F%ReadSizedArray(FileSettings%ArraySizes) !not used
     end if
 
     call this%AllocateForSettings(CosmoSettings)
@@ -259,15 +260,27 @@
         end do
     end do
 
-    if (FileSettings%compute_tensors) then
-        read(F%unit) this%tensor_ratio_02, this%tensor_ratio_C10, this%tensor_ratio_BB, this%tensor_AT
+    if (size(FileSettings%ArraySizes)>0) then
+        call F%ReadSizedArray(valArray)
+        this%tensor_ratio_02 = valArray(1)
+        this%tensor_ratio_C10 = valArray(2)
+        this%tensor_ratio_BB = valArray(3)
+        this%tensor_AT = valArray(4)
+        this%Lensing_rms_deflect = valArray(5)
+        this%sigma_8 = valArray(6)
+    else
+        !Old format, can delete at some point
+        if (FileSettings%compute_tensors) then
+            read(F%unit) this%tensor_ratio_02, this%tensor_ratio_C10, this%tensor_ratio_BB, this%tensor_AT
+        end if
+        if (FileSettings%get_sigma8 .or. FileSettings%use_LSS) read(F%unit) this%sigma_8
     end if
+    
 
-    if (FileSettings%get_sigma8 .or. FileSettings%use_LSS) read(F%unit) this%sigma_8
     if (FileSettings%use_LSS) then
         if (CosmoSettings%use_LSS) then
             if (any(FileSettings%power_redshifts/=CosmoSettings%power_redshifts)) &
-            & call MpiStop('TCosmoTheoryPredictions_ReadTheory: power_redshifts differ - check')
+                & call MpiStop('TCosmoTheoryPredictions_ReadTheory: power_redshifts differ - check')
         end if
         call this%FreePK()
         allocate(this%MPK)

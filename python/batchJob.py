@@ -21,9 +21,9 @@ def nonEmptyFile(fname):
 
 class dataSet:
     def __init__(self, names, params=None, covmat=None):
+        if isinstance(names, basestring): names = [names]
         if params is None: params = [(name + '.ini') for name in names]
         else: params = self.standardizeParams(params)
-        if isinstance(names, basestring): names = [names]
         if covmat is not None: self.covmat = covmat
         self.names = names
         self.params = params  # can be an array of items, either ini file name or dictionaries of parameters
@@ -73,6 +73,16 @@ class dataSet:
                 if y != '': items.append(y)
             else: items.append(name)
         return "_".join(items)
+
+    def namesReplacing(self, dic):
+        if dic is None: return self.names
+        items = []
+        for name in self.names:
+            if name in dic:
+                val = dic[name]
+                if val: items.append(val)
+            else: items.append(name)
+        return items
 
 
 class jobGroup:
@@ -135,13 +145,16 @@ class jobItem:
             job.makeIDs()
             self.importanceItems.append(job)
 
-    def makeIDs(self):
-        self.normed_params = "_".join(sorted(self.param_set))
-        self.normed_data = "_".join(sorted(self.data_set.names))
-        self.normed_name = self.base
-        if len(self.normed_params) > 0: self.normed_name += '_' + self.normed_params
-        self.normed_name += '_' + self.normed_data
+    def makeNormedName(self, dataSubs=None):
+        normed_params = "_".join(sorted(self.param_set))
+        normed_data = "_".join(sorted(self.data_set.namesReplacing(dataSubs)))
+        normed_name = self.base
+        if len(normed_params) > 0: normed_name += '_' + normed_params
+        normed_name += '_' + normed_data
+        return normed_name, normed_params, normed_data
 
+    def makeIDs(self):
+        self.normed_name, self.normed_params, self.normed_data = self.makeNormedName()
 
     def matchesDatatag(self, tagList):
         if self.datatag in tagList or self.normed_data in tagList: return True
@@ -169,7 +182,7 @@ class jobItem:
     def allChainExists(self, num_chains):
         return all([self.chainExists(i + 1) for i in range(num_chains)])
 
-    def chainFileDate(self, name, chain=1):
+    def chainFileDate(self, chain=1):
         return os.path.getmtime(self.chainName(chain))
 
     def chainsDodgy(self, interval=600):
@@ -182,7 +195,7 @@ class jobItem:
 
     def notRunning(self):
         if not self.chainExists(): return False  # might be in queue
-        lastWrite = self.chainFileDate(self.chainName())
+        lastWrite = self.chainFileDate()
         return lastWrite < time.time() - 5 * 60
 
     def chainMinimumExists(self):
@@ -221,6 +234,9 @@ class jobItem:
 
     def getDistExists(self):
         return os.path.exists(self.distRoot + '.margestats')
+
+    def getDistNeedsUpdate(self):
+        return self.chainExists() and (not self.getDistExists() or self.chainFileDate() > os.path.getmtime(self.distRoot + '.margestats'))
 
     def R(self):
         if self.result_converge is None:
@@ -307,6 +323,17 @@ class batchJob:
 
     def normalizeDataTag(self, tag):
         return "_".join(sorted(tag.replace('_post', '').split('_')))
+
+    def resolveName(self, paramtag, datatag, wantSubItems=True, wantImportance=True, raiseError=True, base='base'):
+        if paramtag:
+            if isinstance(paramtag, basestring): paramtag = paramtag.split('_')
+            paramtags = [base] + sorted(paramtag)
+        else: paramtags = [base]
+        name = "_".join(paramtags) + '_' + self.normalizeDataTag(datatag)
+        jobItem = self.normed_name_item(name, wantSubItems, wantImportance)
+        if jobItem is not None: return jobItem.name
+        if raiseError: raise Exception('No match for paramtag, datatag:' + paramtag + ', ' + datatag)
+        else: return None
 
     def save(self, filename=''):
         saveobject(self, (self.batchPath + 'batch.pyobj', filename)[filename != ''])
