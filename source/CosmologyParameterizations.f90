@@ -166,13 +166,12 @@
     class(TTheoryPredictions), allocatable :: Theory
     real(mcp) :: P(:)
     Type(CMBParams) CMB
-    integer num_derived, L
-    real(mcp) rms
+    integer num_derived
 
     if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)
     class is (TCosmoTheoryPredictions)
-        num_derived = 19 +  Theory%numderived
+        num_derived = 20 +  Theory%numderived
         allocate(Derived(num_derived))
 
         call this%ParamArrayToTheoryParams(P,CMB)
@@ -185,17 +184,8 @@
 
         derived(6) = Theory%Sigma_8
         derived(7) = CMB%zre
-
-        if (CosmoSettings%use_lensing_potential) then
-            rms=0
-            do L=2, CosmoSettings%cl_lmax(CL_phi,CL_phi)
-                rms = rms + Theory%Cls(CL_Phi,CL_Phi)%CL(L)*(L+0.5_mcp)/(L*(L+1))
-            end do
-            derived(8) = sqrt(rms)*180/pi*60
-        else
-            derived(8) = 0
-        end if
-
+        derived(8) = Theory%Lensing_rms_deflect
+        
         if (Theory%tensor_AT>0) then
             derived(9) = Theory%tensor_ratio_02
             derived(10) = Theory%tensor_ratio_BB
@@ -213,9 +203,10 @@
 
         derived(17)= CMB%Yhe !value actually used, may be set from bbn consistency
         derived(18)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
-        derived(19)=  Theory%Sigma_8*((CMB%omdm+CMB%omb)/0.25_mcp)**0.47_mcp
+        derived(19)=  Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.5_mcp
+        derived(20)=  Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.25_mcp
 
-        derived(20:num_derived) = Theory%derived_parameters(1: Theory%numderived)
+        derived(21:num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
     end subroutine TP_CalcDerivedParams
