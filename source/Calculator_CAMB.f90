@@ -553,8 +553,6 @@
     do ik=1,nk
        k = M%TransferData(Transfer_kh,ik,1)*h
        temp(ik,:) = M%TransferWeyl(ik,:)**2.0*scalarPower(k,1)
-       ! AJM - fix for z = 0 
-       if (temp(ik,CP%Transfer%num_redshifts) == 0.0d0) temp(ik,CP%Transfer%num_redshifts) = temp(ik,CP%Transfer%num_redshifts-1)
     end do
 
     do zix=1,nz
