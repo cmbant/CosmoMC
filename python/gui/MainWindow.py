@@ -11,7 +11,7 @@ try:
     from PyQt4.QtCore import *
     from PyQt4.QtGui  import *
 except ImportError:
-    print "Can't import PyQt4.QtCore or PyQt4.QtGui modules." 
+    print "Can't import PySide or PyQt4 modules." 
     sys.exit()
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -36,11 +36,11 @@ class MainWindow(QMainWindow):
 
         self.setAttribute(Qt.WA_DeleteOnClose)
  
+        self.createDockWidgets()
         self.createActions()
         self.createMenus()
         #self.createToolBars()
         self.createStatusBar()
-        self.createDockWidgets()
         self.createCentralWidget()
 
         self.setWindowTitle("GetDist GUI")
@@ -56,22 +56,25 @@ class MainWindow(QMainWindow):
 
     def createActions(self):
         self.exportAct = QAction(QIcon(":/images/file_export.png"),
-            "&Export as PDF", self,
-            statusTip="Export image as PDF", triggered=self.export)
+                                 "&Export as PDF", self,
+                                 statusTip="Export image as PDF", 
+                                 triggered=self.export)
 
         self.scriptAct = QAction(QIcon(":/images/file_save.png"), 
-            "Save script", self,
-            statusTip="Export commands to script", triggered=self.script)
+                                 "Save script", self,
+                                 statusTip="Export commands to script", 
+                                 triggered=self.script)
 
         self.exitAct = QAction(QIcon(":/images/application_exit.png"), 
-            "E&xit", self, shortcut="Ctrl+Q",
-            statusTip="Exit application",
-            triggered=qApp.closeAllWindows)
+                               "E&xit", self, 
+                               shortcut="Ctrl+Q",
+                               statusTip="Exit application",
+                               triggered=self.close)
  
         self.aboutAct = QAction(QIcon(":/images/help_about.png"), 
-            "&About", self,
-            statusTip="Show About box",
-            triggered=self.about)
+                                "&About", self,
+                                statusTip="Show About box",
+                                triggered=self.about)
 
     def createMenus(self):
         self.fileMenu = self.menuBar().addMenu("&File")
@@ -83,6 +86,12 @@ class MainWindow(QMainWindow):
  
         self.menuBar().addSeparator()
  
+        self.windowMenu = self.menuBar().addMenu("&Windows")
+        self.windowMenu.addAction(self.dockTop.toggleViewAction())
+        self.windowMenu.addAction(self.dockBot.toggleViewAction())
+                                  
+        self.menuBar().addSeparator()
+
         self.helpMenu = self.menuBar().addMenu("&Help")
         self.helpMenu.addAction(self.aboutAct)
 
@@ -97,10 +106,10 @@ class MainWindow(QMainWindow):
     def createDockWidgets(self):
 
         # Top: select Widget
-        dockTop = QDockWidget(self.tr("Filters"), self)
-        dockTop.setAllowedAreas(Qt.LeftDockWidgetArea)
+        self.dockTop = QDockWidget(self.tr("Filters"), self)
+        self.dockTop.setAllowedAreas(Qt.LeftDockWidgetArea)
 
-        self.selectWidget = QWidget(dockTop)
+        self.selectWidget = QWidget(self.dockTop)
 
         self.lineEditDirectory = QLineEdit(self.selectWidget)
         self.lineEditDirectory.clear()
@@ -135,6 +144,18 @@ class MainWindow(QMainWindow):
         self.selectAllY.setCheckState(Qt.Unchecked)
         self.connect(self.selectAllY, SIGNAL("clicked()"), self.statusSelectAllY)
 
+        self.toggleFilled = QRadioButton("Filled")
+        self.toggleLine = QRadioButton("Line")
+        self.toggleColor = QRadioButton("Color by:")
+        self.comboBoxColor = QComboBox() 
+        # color values ???
+        self.toggleFilled.setChecked(True)
+        
+
+        self.trianglePlot = QCheckBox("Triangle Plot", self.selectWidget)
+        self.trianglePlot.setCheckState(Qt.Unchecked)
+        #self.connect(self.trianglePlot, SIGNAL("clicked()"), self.setTrianglePlot)
+
         self.pushButtonPlot = QPushButton("Make plot", self.selectWidget)
         self.connect(self.pushButtonPlot, SIGNAL("clicked()"), self.plotData)
 
@@ -145,26 +166,30 @@ class MainWindow(QMainWindow):
         layoutTop.addWidget(self.pushButtonSelect,  0, 3, 1, 1)
         layoutTop.addWidget(self.comboBoxParamTag,  1, 0, 1, 2)
         layoutTop.addWidget(self.comboBoxDataTag,   1, 2, 1, 2)
-        layoutTop.addWidget(self.listParametersX,   2, 0, 1, 2)
-        layoutTop.addWidget(self.listParametersY,   2, 2, 1, 2)
-        layoutTop.addWidget(self.selectAllX,        3, 0, 1, 2)
-        layoutTop.addWidget(self.selectAllY,        3, 2, 1, 2)
-        layoutTop.addWidget(self.pushButtonPlot,    4, 0, 1, 4)
+        layoutTop.addWidget(self.selectAllX,        2, 0, 1, 2)
+        layoutTop.addWidget(self.selectAllY,        2, 2, 1, 2)
+        layoutTop.addWidget(self.listParametersX,   3, 0, 5, 2)
+        layoutTop.addWidget(self.listParametersY,   3, 2, 1, 2)
+        layoutTop.addWidget(self.toggleFilled,      4, 2, 1, 2)
+        layoutTop.addWidget(self.toggleLine,        5, 2, 1, 2)
+        layoutTop.addWidget(self.toggleColor,       6, 2, 1, 1)
+        layoutTop.addWidget(self.comboBoxColor,     6, 3, 1, 1)
+        layoutTop.addWidget(self.trianglePlot,      7, 2, 1, 2)
+        layoutTop.addWidget(self.pushButtonPlot,    9, 0, 1, 4)
         self.selectWidget.setLayout(layoutTop)
         
         # Minimum size for initial resize of dock widget
         #self.selectWidget.setMinimumSize(250, 250)
-        self.selectWidget.setMaximumSize(300, 300)
+        self.selectWidget.setMaximumSize(350, 350)
 
-        dockTop.setWidget(self.selectWidget)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dockTop)
-
+        self.dockTop.setWidget(self.selectWidget)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dockTop)
 
         # Bottom: Tab Widget  
-        dockBot = QDockWidget(self.tr("Data Files"), self)
-        dockBot.setAllowedAreas(Qt.LeftDockWidgetArea)
+        self.dockBot = QDockWidget(self.tr("Data Files"), self)
+        self.dockBot.setAllowedAreas(Qt.LeftDockWidgetArea)
 
-        self.dataWidget = QWidget(dockBot)
+        self.dataWidget = QWidget(self.dockBot)
 
         self.newButton = QPushButton(QIcon(":/images/file_open.png"), "", self.dataWidget)
         self.newButton.setToolTip("Select file to display")
@@ -172,7 +197,7 @@ class MainWindow(QMainWindow):
 
         spacer = QSpacerItem(10, 10, QSizePolicy.Expanding, QSizePolicy.Ignored)
 
-        self.tabWidget = QTabWidget(dockBot)
+        self.tabWidget = QTabWidget(self.dockBot)
         self.tabWidget.setMovable(False)
         self.tabWidget.setTabsClosable(True)
         self.connect(self.tabWidget, SIGNAL("tabCloseRequested(int)"), self.closeTab)
@@ -185,8 +210,8 @@ class MainWindow(QMainWindow):
         layoutBot.addWidget(self.tabWidget, 1, 0, 1, 2)
         self.dataWidget.setLayout(layoutBot)
 
-        dockBot.setWidget(self.dataWidget)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dockBot)
+        self.dockBot.setWidget(self.dataWidget)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dockBot)
 
     def createCentralWidget(self):
         
@@ -195,7 +220,7 @@ class MainWindow(QMainWindow):
         # a figure instance to plot on
         self.figure = plt.figure()
 
-        # Canvas Widget that displays the `figure`
+        # Canvas Widget that displays the 'figure'
         self.canvas = FigureCanvas(self.figure)
 
         # Navigation widget
@@ -267,10 +292,9 @@ class MainWindow(QMainWindow):
             else:
                 # Create instance of MCSamples and read chain files
                 self.mcsamples = MCSamples.MCSamples(self.root)
-                logging.debug("Read chains from %s"%str(self.root))
-                logging.debug("Please wait ...")
+                logging.info("Read chains from %s ..."%str(self.root))
                 self.mcsamples.loadChains(self.root, chainFiles)
-                logging.debug("Done reading")
+                logging.info("Done reading")
 
                 # File .paramnames
                 filesparam = glob.glob(os.path.join(self.rootdir, "*.paramnames"))
@@ -383,6 +407,11 @@ class MainWindow(QMainWindow):
             self.listParametersY.item(i).setCheckState(state)
 
 
+#    def setTrianglePlot(self):
+#        if self.trianglePlot.isChecked():
+#            pass
+
+
     def plotData(self):
         """
         Slot function called when pushButtonPlot is pressed.
@@ -405,16 +434,47 @@ class MainWindow(QMainWindow):
                 items_y.append(str(item.text()))
 
 
-        from PyQt4.QtCore import pyqtRemoveInputHook
-        from pdb import set_trace
-        pyqtRemoveInputHook()
-        set_trace()
-
-        g = GetDistPlots.GetDistPlotter('PLA/plot_data')
+        # GetDistPlotter instance
+        g = GetDistPlots.GetDistPlotter(self.rootdir)
         g.settings.setWithSubplotSize(3.000000)
+        roots = [os.path.basename(self.root)]
 
-        # 
-        self.plotter = GetDistPlots.GetDistPlotter('main/plot_data')
+        #
+        if self.trianglePlot.isChecked(): 
+            if len(items_x)>1:
+                # triangle plot
+                params = items_x
+                g.triangle_plot(roots, params)
+            else:
+                self.statusBar().showMessage("Need more than 1 x-param", 2000)
+                
+        elif len(items_x)>0 and len(items_y)==0:
+            # 1d plot 
+
+            #from PyQt4.QtCore import pyqtRemoveInputHook
+            #from pdb import set_trace
+            #pyqtRemoveInputHook()
+            #set_trace()
+
+            g.plots_1d(roots)
+            
+        elif len(items_x)>0 and len(items_y)>0:
+
+            if self.toggleFilled.isChecked() or self.toggleLine.isChecked():
+                # 2d plot 
+                g.plots_2d(roots, param1=items_x, param2=items_y)
+
+            if self.toggleColor.isChecked():
+                # 3d plot 
+                sets = []
+                sets.append(items_x)
+                g.plots_3d(roots, sets)
+
+
+        # ... get figure and display ii in canvas
+
+
+                
 
 
     #
