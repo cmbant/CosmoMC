@@ -184,7 +184,7 @@ for d in g6.datasets:
     d.add(lensing)
     d.add(None, {'redo_theory':'F'})
 
-g6.params = [['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alens']]
+g6.params = [['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alens'], ['nnu', 'meffsterile', 'r']]
 g6.importanceRuns = []
 groups.append(g6)
 
@@ -277,10 +277,7 @@ for planck in planck_vars:
     covrenames.append([planck, 'planck'])
 covrenames.append(['planck', 'planck_CAMspec'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
-covrenames.append(['_lensing', '_post_lensing'])
-covrenames.append(['_BAO', '_post_BAO'])
-covrenames.append(['_HST', '_post_HST'])
-covrenames.append(['_JLA', '_post_SNLS'])
+covrenames.append(['_r', ''])
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
