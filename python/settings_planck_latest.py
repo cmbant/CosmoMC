@@ -5,6 +5,7 @@
 import batchJob, copy, re
 
 ini_dir = 'batch2/'
+cov_dir = 'planck_covmats/'
 
 defaults = ['common.ini']
 
@@ -14,6 +15,8 @@ importanceDefaults = ['importance_sampling.ini']
 lowl = 'lowl'
 lowLike = 'lowLike'
 lensing = 'lensing'
+lensonly = 'lensonly'
+
 highL = 'highL'
 WMAP = 'WMAP'
 BAO = 'BAO'
@@ -181,9 +184,20 @@ for d in g6.datasets:
     d.add(lensing)
     d.add(None, {'redo_theory':'F'})
 
-g6.params = [[], ['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alens']]
+g6.params = [['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alens'], ['nnu', 'meffsterile', 'r']]
 g6.importanceRuns = []
 groups.append(g6)
+
+gbest = batchJob.jobGroup('basebest')
+gbest.datasets = copy.deepcopy(g.datasets)
+for d in gbest.datasets:
+    d.add(lensing)
+    d.add(None, {'redo_theory':'F'})
+
+gbest.params = [[]]
+gbest.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB]
+groups.append(gbest)
+
 
 g7 = batchJob.jobGroup('mnu')
 g7.datasets = []
@@ -200,8 +214,62 @@ g7.params = [['mnu'], ['nnu', 'meffsterile']]
 g7.importanceRuns = [post_JLA, post_HST, post_nonBAO]
 groups.append(g7)
 
+# Things mainly for the lensing paper
+
+glens = batchJob.jobGroup('lensonly')
+lensdata = [batchJob.dataSet(lensonly)]
+glens.datasets = copy.deepcopy(lensdata)
+for d in copy.deepcopy(lensdata):
+    d.add(BAO, BAOdata)
+    glens.datasets.append(d)
+for d in copy.deepcopy(lensdata):
+    d.add(HST, HSTdata)
+    glens.datasets.append(d)
+# for d in copy.deepcopy(lensdata):
+#    d.add(HST, HSTdata)
+#    d.add('widerns', {'prior[ns]': '0.98 0.05'})
+#    glens.datasets.append(d)
+for d in copy.deepcopy(lensdata):
+    d.add('theta', {'param[theta]':'1.0408'})
+    glens.datasets.append(d)
+for d in copy.deepcopy(lensdata):
+    d.add('theta', {'param[theta]':'1.0408'})
+    d.add(BAO, BAOdata)
+    glens.datasets.append(d)
+glens.params = [[], ['mnu']]
+glens.importanceRuns = []
+groups.append(glens)
+
+glens = batchJob.jobGroup('lensonlyext')
+glens.datasets = copy.deepcopy(lensdata)
+glens.params = [['nnu'], ['omegak'], ['nnu', 'meffsterile']]
+glens.importanceRuns = []
+groups.append(glens)
+
+
+
+gphi = batchJob.jobGroup('Aphiphi')
+gphi.params = [['Aphiphi']]
+gphi.datasets = []
+for d in copy.deepcopy(g.datasets):
+    d.add(lensing)
+    gphi.datasets.append(d)
+gphi.importanceRuns = []
+groups.append(gphi)
+
+gphi = batchJob.jobGroup('altAlens')
+gphi.params = [['Alensf']]
+gphi.datasets = copy.deepcopy(g.datasets)
+for d in copy.deepcopy(g.datasets):
+    d.add(lensing)
+    gphi.datasets.append(d)
+gphi.importanceRuns = []
+groups.append(gphi)
+
 
 skip = []
+
+covNameMappings = {HSTdata:'HST', 'v97CS':'CamSpec'}
 
 # try to match run to exisitng covmat
 covrenames = []
@@ -209,10 +277,7 @@ for planck in planck_vars:
     covrenames.append([planck, 'planck'])
 covrenames.append(['planck', 'planck_CAMspec'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
-covrenames.append(['_lensing', '_post_lensing'])
-covrenames.append(['_BAO', '_post_BAO'])
-covrenames.append(['_HST', '_post_HST'])
-covrenames.append(['_JLA', '_post_SNLS'])
+covrenames.append(['_r', ''])
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)

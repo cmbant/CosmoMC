@@ -329,20 +329,22 @@ class GetDistPlotter():
         contour(density.x1, density.x2, density.pts, self.settings.num_shades, cmap=self.settings.colormap)
 #        contour(cs, hold='on')
 
+    def updateLimits(self, res, mins, maxs, doResize=True):
+        if res is None: return mins, maxs
+        if mins is None: return res
+        if not doResize: return mins, maxs
+        else: return [min(x, y) for x, y in zip(res[0], mins)], [max(x, y) for x, y in zip(res[1], maxs)]
+
     def plot_2d(self, roots, param_pair, shaded=True, filled=False, add_legend_proxy=True, **ax_args):
         if self.fig is None: self.make_figure()
         if isinstance(roots, basestring):roots = [roots]
         param_pair = self.get_param_array(roots[0], param_pair)
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
         if shaded and not filled: self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
-        mins = None
+        mins, maxs = None, None
         for i, root in enumerate(roots):
             res = self.add_2d_contours(root, param_pair[0], param_pair[1], i, of=len(roots), filled=filled, add_legend_proxy=add_legend_proxy)
-            if res is None: continue
-            if mins is None: mins, maxs = res
-            elif not shaded:
-                mins = min(res[0], mins)
-                maxs = max(res[1], maxs)
+            mins, maxs = self.updateLimits(res, mins, maxs, doResize=not shaded)
         if mins is None: return
         if not 'lims' in ax_args:
             lim1 = self.checkBounds(roots[0], param_pair[0].name , mins[0], maxs[0])
@@ -449,15 +451,19 @@ class GetDistPlotter():
     def get_param_array(self, root, in_params):
         if in_params is None or len(in_params) == 0: return self.paramNamesForRoot(root).names
         else:
-            if not isinstance(in_params[0], paramNames.paramInfo): return self.paramNamesForRoot(root).parsWithNames(in_params, error=True)
+            if not all([isinstance(param, paramNames.paramInfo) for param in in_params]):
+                return self.paramNamesForRoot(root).parsWithNames(in_params, error=True)
         return in_params
 
     def check_param(self, root, param):
         if not isinstance(param, paramNames.paramInfo): return self.paramNamesForRoot(root).parWithName(param, error=True)
         return param
 
-    def param_latex_label(self, root, param):
-        p = self.check_param(root, param)
+    def param_latex_label(self, root, param, labelParams=None):
+        if labelParams is not None:
+            p = self.sampleAnalyser.paramsForRoot(root, labelParams=labelParams).parWithName(param)
+        else:
+            p = self.check_param(root, param)
         return r'$' + p.label + r'$'
 
     def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False, figure=False):
@@ -690,18 +696,29 @@ class GetDistPlotter():
         cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize, rotation=-90)
         setp(getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.colorbar_axes_fontsize)
 
+    def _makeParamObject(self, names, samples):
+        class sampleNames(): pass
+        p = sampleNames()
+        for i, par in enumerate(names.names):
+            setattr(p, par.name, samples[:, i])
+        return p
+
     def add_3d_scatter(self, root, in_params, color_bar=True):
         params = self.get_param_array(root, in_params)
         pts = self.sampleAnalyser.load_single_samples(root)
         names = self.paramNamesForRoot(root)
-        cols = []
+        samples = []
         for param in params:
-            cols.append(names.numberOfName(param.name) + 2)
-        self.last_scatter = scatter(pts[:, cols[0]], pts[:, cols[1]], edgecolors='none',
-                s=self.settings.scatter_size, c=pts[:, cols[2]], cmap=self.settings.colormap_scatter)
+            if hasattr(param, 'getDerived'):
+                samples.append(param.getDerived(self._makeParamObject(names, pts[:, 2:])))
+            else:
+                samples.append(pts[:, names.numberOfName(param.name) + 2])
+
+        self.last_scatter = scatter(samples[0], samples[1], edgecolors='none',
+                s=self.settings.scatter_size, c=samples[2], cmap=self.settings.colormap_scatter)
         if color_bar: self.last_colorbar = self.add_colorbar(params[2])
-        mins = [min(pts[:, cols[0]]), min(pts[:, cols[1]])]
-        maxs = [max(pts[:, cols[0]]), max(pts[:, cols[1]])]
+        mins = [min(samples[0]), min(samples[1])]
+        maxs = [max(samples[0]), max(samples[1])]
         for i in range(2):
             r = maxs[i] - mins[i]
             mins[i] -= r / 20
@@ -716,9 +733,7 @@ class GetDistPlotter():
         mins, maxs = self.add_3d_scatter(roots[0], params, color_bar=color_bar)
         for i, root in enumerate(roots[1:]):
             res = self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled, add_legend_proxy=False)
-            if res is None: continue
-            mins = min(res[0], mins)
-            maxs = max(res[1], maxs)
+            mins, maxs = self.updateLimits(res, mins, maxs)
         if not 'lims' in ax_args:
             lim1 = self.checkBounds(roots[0], params[0].name , mins[0], maxs[0])
             lim2 = self.checkBounds(roots[0], params[1].name , mins[1], maxs[1])

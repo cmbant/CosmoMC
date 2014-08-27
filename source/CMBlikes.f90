@@ -1,10 +1,10 @@
+    module CMBlikes
     !Pseudo-Cl (or other C_l esimator) based likelihood approximation for cut sky with polarization
     !AL Mar 2010 - fixed bug using on E, added support for multiple input simulated Chat for bias testing
     !Apr 2011, added fullsky_exact_fksy
     !Mar 2014  renamed from Planck_like, removed low-L likelihood to separate file
     !Updated file structure, allows for binned HL likelihoods. Everything now in L(L+1)CL/2pi
 
-    module CMBLikes
     use FileUtils
     use settings
     use CosmologyTypes
@@ -36,6 +36,7 @@
         integer :: lmin, lmax
         real(mcp), dimension(:,:,:), allocatable :: W
         integer, allocatable :: bin_cols_in(:,:), bin_cols_out(:)
+        Type(TSkyPowerSpectrum), allocatable :: fixCls(:,:) !to force particular spectra to be fixed (if allocated)
     contains
     procedure :: bin => TBinWindows_bin
     end type
@@ -290,12 +291,14 @@
     class(TSettingIni) :: Ini
     character(LEN=*), intent(in) :: bin_type
     class(TBinWindows) binWindows
-    integer i
+    integer i, j
     character(LEN=:), allocatable :: filename,  S, Order1, Order2, InLine
     real(mcp), allocatable :: tmp_ar(:)
     integer L, status, norder
     Type(TTextFile) :: F
     logical Err
+    integer, allocatable :: theoryPairsFile(:,:), theoryPairsUse(:,:), fixed_index(:)
+    integer nfixed
 
     filename = Ini%ReadFileName(bin_type // '_files', NotFoundFail=.true.,relative=.true.)
     Order1 = Ini%Read_String(bin_type // '_in_order', .true.)
@@ -326,6 +329,47 @@
             write(*,*) FormatString( 'WARNING: %s %u outside cl_lmin-cl_max range: %s', bin_type, i, S)
         end if
     end do
+
+    S = Ini%ReadFileName(bin_type//'_fix_cl_file',relative=.true.)
+    if (S/='') then
+        !Want to force some of the component CL to a fixed model
+        Order1 = Ini%Read_String(bin_type // '_fix_cl_file_order')
+        if (order1=='') then
+            Order1 = File%TopCommentLine(S)
+            if (Order1=='') call MpiStop('No column order given for '//S)
+            do while(trim(Order1(1:1))=='' .or. Order1(1:1)=='L' .or. Order1(1:1)=='#')
+                Order1= Order1(2:)
+            end do
+        end if
+        call this%UseString_to_theoryPairCls(Order1, theoryPairsFile)
+        norder = size(theoryPairsFile,2)
+        deallocate(tmp_ar)
+        allocate(tmp_ar(norder))
+        Order2 = Ini%Read_String(bin_type // '_fix_cl', .true.)
+        call this%UseString_to_theoryPairCls(Order2, theoryPairsUse)
+        nfixed = size(theoryPairsUse,2)
+        allocate(fixed_index(nfixed))
+        allocate(binWindows%fixCls(tot_fields,tot_fields))
+        do i=1,nfixed
+            allocate(binWindows%fixCls(theoryPairsUse(1,i),theoryPairsUse(2,i))%CL(this%pcl_lmin:this%pcl_lmax), source=0._mcp)
+            do j=1, norder+1
+                if (j>norder) call MpiStop('ReadBinWindows: fix_cl uses CL not in the fix_cl_file')
+                if (all(TheoryPairsFile(:,j)==theoryPairsUse(:,i))) then
+                    fixed_index(i) = j
+                    exit
+                end if
+            end do
+        end do
+        do while (F%ReadNextContentLine(S,inLine))
+            read(InLine,*, iostat=status) l, tmp_ar
+            if (status/=0) call MpiStop(' error fix_cl_file line '//trim(filename))
+            if (l >=this%pcl_lmin .and. l<=this%pcl_lmax) then
+                do i=1, nfixed
+                    binWindows%fixCls(theoryPairsUse(1,i),theoryPairsUse(2,i))%CL(l) = tmp_ar(fixed_index(i))
+                end do
+            end if
+        end do
+    end if
 
     end subroutine ReadBinWindows
 
@@ -495,7 +539,7 @@
         !end do
         !deallocate(avec)
 
-    do l=this%bin_min,this%bin_max
+            do l=this%bin_min,this%bin_max
         do clix = 1, this%ncl_hat
             allocate(this%ChatM(l,clix)%M(this%nfields,this%nfields))
             call this%ElementsToMatrix(this%ClHat(:,l,clix), this%ChatM(l,clix)%M)
@@ -535,6 +579,7 @@
     end subroutine CMBLikes_ReadIni
 
     subroutine CMBLikes_ReadLensing(this, Ini)
+    !Not currently used
     class(TCMBLikes) :: this
     class(TSettingIni) :: Ini
     integer i
@@ -845,7 +890,7 @@
             !
             ! end if
 
-        do bin = this%bin_min, this%bin_max
+                do bin = this%bin_min, this%bin_max
             if (this%binned .or. bin_test) then
                 if (this%like_approx == like_approx_fullsky_exact) call mpiStop('CMBLikes: exact like cannot be binned!')
                 call this%GetBinnedTheory(TheoryCls, C, bin)
@@ -948,9 +993,16 @@
     cls=0
     do win_ix = 1, size(this%bin_cols_in,2)
         ix_in = this%bin_cols_in(:,win_ix)
-        if (allocated(TheoryCls(ix_in(1),ix_in(2))%CL)) then
-            ix_out = this%bin_cols_out(win_ix)
-            if (ix_out>0) then
+        ix_out = this%bin_cols_out(win_ix)
+        if (ix_out>0) then
+            if (allocated(this%fixCls)) then
+                if (allocated(this%fixCls(ix_in(1),ix_in(2))%CL)) then
+                    Cls(ix_out) = Cls(ix_out) + &
+                        & dot_product(this%W(:,win_ix,bin),this%fixCls(ix_in(1),ix_in(2))%CL(this%lmin:this%lmax))
+                    cycle
+                end if
+            end if
+            if (allocated(TheoryCls(ix_in(1),ix_in(2))%CL)) then
                 Cls(ix_out) = Cls(ix_out) + &
                     & dot_product(this%W(:,win_ix,bin),TheoryCls(ix_in(1),ix_in(2))%CL(this%lmin:this%lmax))
             end if
@@ -960,4 +1012,4 @@
     end subroutine TBinWindows_bin
 
 
-    end module CMBLikes
+            end module CMBLikes
