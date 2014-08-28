@@ -3,11 +3,11 @@ import os
 
 class paramInfo:
 
-    def __init__(self, line=None, name='', derived=False):
+    def __init__(self, line=None, name='', label='', comment='', derived=False):
         self.name = name
         self.isDerived = derived
-        self.label = ''
-        self.comment = ''
+        self.label = label
+        self.comment = comment
         self.filenameLoadedFrom = ''
         self.number = None
         if line is not None:
@@ -73,7 +73,7 @@ class paramList:
         for par in self.names:
             if par.name == name:
                 return par
-        if error: raise Exception("parameter name not found:" + name)
+        if error: raise Exception("parameter name not found: " + name)
         return None
 
     def numberOfName(self, name):
@@ -82,7 +82,11 @@ class paramList:
         return -1
 
     def parsWithNames(self, names, error=False):
-        return [self.parWithName(name, error) for name in names]
+        res = []
+        for name in names:
+            if isinstance(name, paramInfo): res.append(name)
+            else: res.append(self.parWithName(name, error=error))
+        return res
 
     def setLabelsAndDerivedFromParamNames(self, fname):
         p = paramNames(fname)
