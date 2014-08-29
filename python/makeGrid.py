@@ -88,7 +88,9 @@ for jobItem in batch.items(wantSubItems=False):
         covmat = os.path.join(covdir, jobItem.name + '.covmat')
         if not os.path.exists(covmat):
             covNameMappings = getattr(settings, 'covNameMappings', None)
-            covmat = os.path.join(covdir, jobItem.makeNormedName(covNameMappings)[0] + '.covmat')
+            mapped_name_norm = jobItem.makeNormedName(covNameMappings)[0]
+            covmat_normed = os.path.join(covdir, mapped_name_norm + '.covmat')
+            covmat = covmat_normed
             if not os.path.exists(covmat) and hasattr(jobItem.data_set, 'covmat'): covmat = batch.basePath + jobItem.data_set.covmat
             if not os.path.exists(covmat) and hasattr(settings, 'covmat'): covmat = batch.basePath + settings.covmat
         if os.path.exists(covmat):
@@ -98,13 +100,16 @@ for jobItem in batch.items(wantSubItems=False):
             hasCov = False
             ini.params['MPI_Max_R_ProposeUpdate'] = 20
             covmat_try = []
-            if 'covRenamer' in dir(settings): covmat_try += settings.covRenamer(jobItem.name)
+            if 'covRenamer' in dir(settings):
+                covmat_try += settings.covRenamer(jobItem.name)
+                covmat_try += settings.covRenamer(mapped_name_norm)
             if hasattr(settings, 'covrenames'):
-                covmat_try += [jobItem.name.replace(old, new, 1) for old, new in settings.covrenames if old in jobItem.name]
-                for new1, old1 in settings.covrenames:
-                    if old1 in jobItem.name:
-                        name = jobItem.name.replace(old1, new1, 1)
-                        covmat_try += [name.replace(old, new, 1) for old, new in settings.covrenames if old in name]
+                for aname in [jobItem.name, mapped_name_norm]:
+                    covmat_try += [aname.replace(old, new, 1) for old, new in settings.covrenames if old in aname]
+                    for new1, old1 in settings.covrenames:
+                        if old1 in aname:
+                            name = aname.replace(old1, new1, 1)
+                            covmat_try += [name.replace(old, new, 1) for old, new in settings.covrenames if old in name]
 
             covdir2 = os.path.join(batch.basePath, getattr(settings, 'cov_dir_fallback', 'planck_covmats'))
             for name in covmat_try:

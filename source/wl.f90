@@ -25,6 +25,8 @@ module wl
      integer, allocatable, dimension(:) :: mask_indices
      real(mcp) :: ah_factor ! Anderson-Hartlap factor
      logical :: cut_theta  ! Cut non-linear scales
+     logical :: use_non_linear ! Whether to use non-linear corrections
+     logical :: use_weyl ! Whether to use Weyl potential or matter P(k)
    contains
      procedure :: LogLike => WL_LnLike
      procedure :: ReadIni => WL_ReadIni
@@ -40,7 +42,6 @@ module wl
   real(mcp), parameter :: xstop = 200.0d0
  
   logical :: use_wl_lss  = .false.
-  logical :: use_weyl = .true.
 
   public WLLikelihood, WLLikelihood_Add, use_wl_lss
   contains
@@ -59,6 +60,8 @@ module wl
           this%needs_nonlinear_pk = .true.
           this%kmax=200.0
           this%cut_theta = Ini%Read_Logical('cut_theta',.false.)
+          this%use_non_linear = Ini%Read_Logical('use_non_linear',.true.)
+          this%use_weyl = Ini%Read_Logical('use_weyl',.true.)
           call this%ReadDatasetFile(Ini%ReadFileName(numcat('wl_dataset',i)))
           this%LikelihoodType = 'WL'
           this%needs_powerspectra = .true.
@@ -190,6 +193,7 @@ module wl
              xi_minus_cut = max(cut_values(izl,2),cut_values(izh,2))
              if (this%theta_bins(i)>xi_plus_cut) mask(j+i) = 1      
              if (this%theta_bins(i)>xi_minus_cut) mask(this%num_theta_bins + j+i) = 1    
+             ! Testing
              !write(*,'(5i4,3E15.3,2i4)') izl,izh,i,i+j,this%num_theta_bins + j+i,xi_plus_cut,&
              !     xi_minus_cut,this%theta_bins(i),mask(j+i),mask(this%num_theta_bins + j+i)
           end do
@@ -249,10 +253,10 @@ module wl
     Class(WLLikelihood) :: this
     Class(CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
-    type(TCosmoTheoryPK) :: PK
+    type(TCosmoTheoryPK) :: PK, PK_WEYL
     type(TCubicSpline),  allocatable :: r_z, dzodr_z, P_z, C_l(:,:)
     type(TCubicSpline),  allocatable :: xi1_theta(:,:),xi2_theta(:,:)
-    real(mcp) :: h,z,kh
+    real(mcp) :: h,z,kh,k
     real(mcp), allocatable :: r(:),dzodr(:)
     real(mcp), allocatable :: rbin(:),gbin(:,:)
     real(mcp), allocatable :: ll(:),PP(:)
@@ -269,10 +273,12 @@ module wl
     integer :: i,ib,jb,il,it,iz,nr,nrs,izl,izh,j
     integer :: num_z, ntheta
 
-    if (use_weyl) then
-       PK = Theory%NL_MPK_WEYL
-    else
+    if (this%use_non_linear) then
+       PK_WEYL = Theory%NL_MPK_WEYL
        PK = Theory%NL_MPK
+    else
+       PK_WEYL = Theory%MPK_WEYL
+       PK = Theory%MPK
     end if
 
     h = CMB%H0/100 
@@ -327,12 +333,19 @@ module wl
        ll(il)=1.*exp(dlnl*(il-1._mcp))
        PP=0
        do iz=1,num_z
-          kh = ll(il)/r(iz)/h ! CAMB wants k/h values 
+          k = ll(il)/r(iz)
+          kh = k/h ! CAMB wants k/h values 
           z = PK%y(iz)
           if ((kh .le. khmin) .or. (kh .ge. khmax)) then
              PP(iz)=0.0d0
           else   
-             PP(iz)=PK%PowerAt(kh,z)
+             if (this%use_weyl) then
+                PP(iz)= PK_WEYL%PowerAt(kh,z)*k
+             else
+                PP(iz)= PK%PowerAt(kh,z)
+             end if
+             ! Testing
+             !write(*,'(10E15.5)') k,z,PK_WEYL%PowerAt(kh,z)*k,9.0/(8.0*pi**2.0)*PK%PowerAt(kh,z)/(h**3.0)*(h*1e5_mcp/const_c)**4.0*(CMB%omdm+CMB%omb)**2*(1+z)**2.0
           end if
        end do
       
@@ -343,14 +356,22 @@ module wl
           do jb=1,this%num_z_bins
              integrand = 0
              do nr=1,this%num_z_p
-                integrand(nr) = gbin(nr,ib)*gbin(nr,jb)*(1.0+this%z_p(nr))**2.0*P_z%Value(rbin(nr))
+                if (this%use_weyl) then
+                   integrand(nr) = gbin(nr,ib)*gbin(nr,jb)*P_z%Value(rbin(nr))
+                else
+                   integrand(nr) = gbin(nr,ib)*gbin(nr,jb)*(1.0+this%z_p(nr))**2.0*P_z%Value(rbin(nr))
+                end if
              end do             
              do nr=2,this%num_z_p
                 Cl(il,ib,jb)=Cl(il,ib,jb)+0.5d0*(integrand(nr)+integrand(nr-1))*(rbin(nr)-rbin(nr-1)) 
              end do
           end do
        end do
-       Cl(il,:,:) = Cl(il,:,:)/h**3.0*9._mcp/4._mcp*(h*1e5_mcp/const_c)**4.0*(CMB%omdm+CMB%omb)**2
+       if (this%use_weyl) then
+          Cl(il,:,:) = Cl(il,:,:)*2.0*pi**2.0
+       else
+          Cl(il,:,:) = Cl(il,:,:)/h**3.0*9._mcp/4._mcp*(h*1e5_mcp/const_c)**4.0*(CMB%omdm+CMB%omb)**2
+       end if
        deallocate(P_z)
     end do
 
