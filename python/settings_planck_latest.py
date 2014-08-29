@@ -105,7 +105,7 @@ g.datasets = copy.deepcopy(planck_highL_sets)
 for d in g.datasets:
     d.add(lowTEB)
 
-g.params = [[], ['omegak'], ['mnu'], ['r'], ['nrun', 'r'], ['nnu'], ['nrun'], ['Alens'], ['yhe'], ['w']]
+g.params = [[], ['omegak'], ['mnu'], ['r'], ['nrun', 'r'], ['nnu'], ['nrun'], ['Alens'], ['yhe'], ['w'], ['alpha1']]
 g.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all]
 groups.append(g)
 
