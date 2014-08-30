@@ -919,7 +919,7 @@
     type(EvolutionVars) EV
     real(dl) tau,tol1,tauend, taustart
     integer j,ind,itf
-    real(dl) c(24),w(EV%nvar,9), y(EV%nvar), sources(SourceNum)
+    real(dl) c(24),w(EV%nvar,9), y(EV%nvar), sources(SourceNum), dummy_sources(3)
 
     real(dl) yprime(EV%nvar), ddelta, delta, adotoa,dtauda, growth
     real(dl) weyl
@@ -992,7 +992,7 @@
                 MT%TransferWeyl(EV%q_ix,itf)= 1.0
                 if (abs(tau-tautf(itf)) < 1.e-5_dl) then
                     call outtransf(EV,y, MT%TransferData(:,EV%q_ix,itf))
-                    call output(EV,y,j,tau,sources,weyl)
+                    call output(EV,y,j,tau,dummy_sources,weyl)
                     MT%TransferWeyl(EV%q_ix,itf)=weyl
                     
                     itf=itf+1
@@ -1125,7 +1125,7 @@
     integer ind, i
     real(dl) c(24),w(EV%nvar,9), y(EV%nvar)
     real(dl) atol
-    real(dl) weyl,sources(SourceNum)
+    real(dl) weyl,dummy_sources(3)
 
     atol=tol/exp(AccuracyBoost-1)
     if (CP%Transfer%high_precision) atol=atol/10000
@@ -1139,7 +1139,7 @@
         if (global_error_flag/=0) return
         call outtransf(EV,y,MT%TransferData(:,EV%q_ix,i))
         ! 3rd argument doesn't matter to get phi
-        call output(EV,y,TimeSteps%npoints,tau,sources,weyl)
+        call output(EV,y,TimeSteps%npoints,tau,dummy_sources,weyl)
         MT%TransferWeyl(EV%q_ix,i)=weyl
     end do
 

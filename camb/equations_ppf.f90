@@ -1344,7 +1344,7 @@
 
     real(dl) k,k2  ,adotoa, grho, gpres,etak,phi,dgpi
     real(dl)  diff_rhopi, octg, octgprime
-    real(dl) sources(CTransScal%NumSources)
+    real(dl) sources(*)
     !        real(dl) t4,t92
     real(dl) ISW
     real(dl) w_eff
