@@ -114,9 +114,14 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
     def exportExtra(self, fname=None):
         self.doExport(fname, 'plots')
 
-    def getRoot(self, paramtag, datatag):
-        batch = batchJob.readobject(rootdir)
-        return batch.resolveName(paramtag, datatag)
+    def getRoot(self, paramtag, datatag, returnJobItem=False):
+        if not hasattr(self, 'batch'): self.batch = batchJob.readobject(rootdir)
+        return self.batch.resolveName(paramtag, datatag, returnJobItem=returnJobItem)
+
+    def getJobItem(self, paramtag, datatag):
+        jobItem = self.getRoot(paramtag, datatag, returnJobItem=True)
+        jobItem.loadJobItemResults(paramNameFile=self.settings.param_names_for_labels)
+        return jobItem
 
 plotter = planckPlotter(rootdir + '/plot_data')
 
