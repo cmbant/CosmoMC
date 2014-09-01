@@ -58,7 +58,6 @@ module wl
        do i= 1, numwlsets
           allocate(this)
           this%needs_nonlinear_pk = .true.
-          this%kmax=200.0
           this%cut_theta = Ini%Read_Logical('cut_theta',.false.)
           this%use_non_linear = Ini%Read_Logical('use_non_linear',.true.)
           this%use_weyl = Ini%Read_Logical('use_weyl',.true.)
@@ -102,6 +101,8 @@ module wl
     allocate(mask(this%num_theta_bins*nt*2))
     mask = 0
 
+    this%kmax = Ini%Read_Double('kmax',200.0d0)
+
     this%ah_factor = Ini%Read_Double('ah_factor',1.0d0)
     
     measurements_file  = Ini%ReadFileName('measurements_file')
@@ -123,7 +124,7 @@ module wl
        call F%Close()
     end if
 
-    if (this%name == 'CFHTLENS_1bin') then
+    if (this%name == 'CFHTLENS_1bin' .or. this%name == 'CFHTLENS_1bin_conservative' .or. this%name == 'CFHTLENS_1bin_ultra_conservative') then
 
        call F%Open(window_file)
        do iz = 1,this%num_z_p
@@ -137,7 +138,7 @@ module wl
        end do
        call F%Close()
        
-    elseif (this%name == 'CFHTLENS_6bin') then
+    elseif (this%name == 'CFHTLENS_6bin' .or. this%name == 'CFHTLENS_6bin_conservative' .or. this%name == 'CFHTLENS_6bin_ultra_conservative') then
        
        do ib=1,this%num_z_bins
           call F%Open(window_file(1:index(window_file,'BIN_NUMBER')-1)//IntToStr(ib)//window_file(index(window_file,'BIN_NUMBER')+len('BIN_NUMBER'):len(window_file)))
@@ -225,7 +226,9 @@ module wl
 
     call this%get_convergence(CMB,Theory)
 
-    if (this%name=='CFHTLENS_1bin' .or. this%name=='CFHTLENS_6bin') then
+    if (this%name=='CFHTLENS_1bin' .or. this%name=='CFHTLENS_1bin_conservative' .or. &
+         this%name=='CFHTLENS_1bin_ultra_conservative' .or. this%name=='CFHTLENS_6bin' .or. &
+         this%name=='CFHTLENS_6bin_conservative' .or. this%name=='CFHTLENS_6bin_ultra_conservative') then
        WL_LnLike = this%WL_CFHTLENS_loglike(CMB,Theory)
     end if
     
