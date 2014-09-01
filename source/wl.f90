@@ -74,6 +74,7 @@ module wl
   end subroutine WLLikelihood_Add
 
   subroutine WL_ReadIni(this, Ini)
+    use MatrixUtils
     class(WLLikelihood) this
     class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: measurements_file, cov_file, window_file, cut_file
@@ -182,7 +183,7 @@ module wl
 
     ! Apply Anderson-Hartap correction 
     this%wl_cov = this%wl_cov/this%ah_factor
-
+   
     ! Compute theta mask
     iz = 0
     do izl = 1,this%num_z_bins
@@ -210,6 +211,11 @@ module wl
        end if
     end do
         
+    ! Precompute masked inverse
+    allocate(this%wl_invcov(this%num_mask,this%num_mask))
+    this%wl_invcov = this%wl_cov(this%mask_indices,this%mask_indices)
+    call Matrix_Inverse(this%wl_invcov)
+
     deallocate(cut_values, mask)
 
   end subroutine WL_ReadIni
@@ -240,14 +246,13 @@ module wl
     Class(CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) WL_CFHTLENS_loglike
-    real(mcp), allocatable :: vec(:),cov(:,:)
+    real(mcp), allocatable :: vec(:),temp(:)
     
-    allocate(vec(this%num_mask))
-    allocate(cov(this%num_mask,this%num_mask))
+    allocate(vec(this%num_mask),temp(this%num_mask))
     vec(:) = this%xi(this%mask_indices)-this%xi_obs(this%mask_indices)
-    cov(:,:) = this%wl_cov(this%mask_indices,this%mask_indices)
-    WL_CFHTLENS_loglike = Matrix_GaussianLogLike(cov,vec) 
-    deallocate(cov,vec)
+    call Matrix_MulVecSymm(this%wl_invcov,vec,temp)
+    WL_CFHTLENS_loglike = dot_product(vec,temp)/2.0
+    deallocate(vec,temp)
   
   end function WL_CFHTLENS_loglike
 
