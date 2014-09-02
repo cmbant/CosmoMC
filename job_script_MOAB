@@ -1,0 +1,41 @@
+#!/bin/bash
+
+###Sample (e.g. for Cosmos computer)
+###Python script replace ##..## placeholders with values given python script
+
+#PBS -q ##QUEUE##
+#PBS -l nodes=##NUMNODES##:ppn=##PPN##     # No. processors required
+#PBS -l walltime=##WALLTIME## # wall clock time required
+#PBS -N ##JOBNAME##
+#PBS -V
+
+cd ##ROOTDIR##
+
+echo Running on host `hostname`
+echo Time is `date`
+echo Directory is `pwd`
+echo Job ID is $PBS_JOBID
+
+export OMP_NUM_THREADS=##OMP##
+export I_MPI_PIN=##ONERUN##
+export I_MPI_PIN_DOMAIN=omp:compact
+export I_MPI_PIN_ORDER=scatter
+export I_MPI_CPUINFO=proc
+export KMP_LIBRARY=throughput
+export KMP_STACKSIZE=1gb
+export OMP_NESTED=FALSE
+
+###set things to be used by the python script, which exptracts text from here with ##XX: ... ##
+### command to use for each run in the batch
+##RUN: time mpirun -np ##NUMMPI## omplace -nt ##OMP## ##PROGRAM## ##INI## > ./scripts/##INIBASE##.log 2>&1 ##
+### qsub command to use when submitting
+##DEFAULT_qsub: msub ##
+##DEFAULT_queue: super2 ##
+
+###put the generated run commands here
+##COMMAND##
+
+#wait for processes to finish
+wait
+
+

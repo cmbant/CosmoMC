@@ -24,7 +24,7 @@ if not hasattr(settings, 'params'):
     params['w'] = '-0.995 -3 -0.3 0.02 0.02'
     params['nnu'] = '3.046 0.05 10 0.05 0.05'
     params['nrun'] = '0 -1 1 0.005 0.001'
-    params['nrunrun'] = '0 -1 1 0.005 0.001'    
+    params['nrunrun'] = '0 -1 1 0.005 0.001'
     params['r'] = '0 0 3 0.03 0.03'
     params['Alens'] = '1 0 10 0.05 0.05'
     params['yhe'] = '0.245 0.1 0.5 0.006 0.006'
@@ -66,7 +66,7 @@ for jobItem in batch.items(wantSubItems=False):
         if 'mnu' in jobItem.param_set:
             ini.params['num_massive_neutrinos'] = 3
         if 'meffsterile' in jobItem.param_set:
-            ini.params['param[mnu]'] = '0.06 0.06 0.06 0 0'
+            ini.params['param[mnu]'] = '0.06'
             ini.params['param[nnu]'] = '3.1 3.046 10 0.05 0.05'
             ini.params['num_massive_neutrinos'] = 1
             ini.params['accuracy_level'] = 1.2  # to use 4 rather than 3 momentum modes
@@ -85,7 +85,8 @@ for jobItem in batch.items(wantSubItems=False):
 
         covmat = batch.basePath + 'planck_covmats/' + jobItem.name + '.covmat'
         if not os.path.exists(covmat):
-            if hasattr(settings, 'covmat'): covmat = batch.basePath + settings.covmat
+            if hasattr(jobItem.data_set, 'covmat'): covmat = batch.basePath + jobItem.data_set.covmat
+            if not os.path.exists(covmat) and hasattr(settings, 'covmat'): covmat = batch.basePath + settings.covmat
         if os.path.exists(covmat):
             ini.params['propose_matrix'] = covmat
             if settings.newCovmats: ini.params['MPI_Max_R_ProposeUpdate'] = 20
@@ -114,6 +115,9 @@ for jobItem in batch.items(wantSubItems=False):
         updateIniParams(ini, jobItem.data_set.params, batch.commonPath)
         for deffile in settings.defaults:
             ini.defaults.append(batch.commonPath + deffile)
+        if hasattr(settings, 'override_defaults'):
+            ini.defaults = [batch.commonPath + deffile for deffile in settings.override_defaults] + ini.defaults
+
 
         ini.params['action'] = cosmomcAction
         ini.saveFile(jobItem.iniFile())

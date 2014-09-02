@@ -1,28 +1,17 @@
-import subprocess
+import jobQueue, argparse
 
+parser = argparse.ArgumentParser(description='List details of running or queued jobs')
 
-res = subprocess.check_output('qstat -u $USER', shell=True)
+parser.add_argument('batchPath', help='directory containing a grid, or empty to see non-batch jobs', nargs='?')
+group = parser.add_mutually_exclusive_group()
+group.add_argument('--queued', action='store_true')
+group.add_argument('--running', action='store_true')
 
-res = res.split("\n")
-for line in res[4:]:
-    if ' R ' in line:
-        items = line.split()
-        jobid = items[0].split('.')[0]
-        output = subprocess.check_output('qstat -f ' + str(jobid) , shell=True).split('\n')
-        pars = []
-        current = ''
-        for L in output:
-            if '=' in L:
-                if len(current) > 0:
-                    pars.append(current)
-                current = L.strip()
-            else: current += L.strip()
-        if len(current) > 0: pars.append(current)
-        props = dict()
-        for L in pars[1:]:
-            (key, val) = L.split('=', 1)
-            props[key.strip()] = val.strip()
-        print jobid, " ".join(items[5:]), props['Job_Name']
+args = parser.parse_args()
 
-
-
+ids, jobNames, nameslist, infos = jobQueue.queue_job_details(args.batchPath, running=not args.queued, queued=not args.running)
+for jobId, jobName, names, info in zip(ids, jobNames, nameslist, infos):
+    print  info, jobName
+    if len(names) > 1:
+        for name in names:
+            print ' >> ', name

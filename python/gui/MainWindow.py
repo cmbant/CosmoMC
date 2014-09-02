@@ -10,15 +10,22 @@ import logging
 try:
     from PyQt4.QtCore import *
     from PyQt4.QtGui  import *
+    import Resources_pyqt
+    os.environ['QT_API'] = 'pyqt'
 except ImportError:
-    print "Can't import PySide or PyQt4 modules." 
-    sys.exit()
+    try:
+        from PySide.QtCore import *
+        from PySide.QtGui  import *
+        import Resources_pyside
+        os.environ['QT_API'] = 'pyside'
+    except ImportError:
+        print "Can't import PyQt4.QtCore or PyQt4.QtGui modules." 
+        sys.exit()
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 import matplotlib.pyplot as plt
 
-import Resources
 
 import GetDistPlots
 import MCSamples
