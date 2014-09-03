@@ -229,23 +229,26 @@ class MCSamples(chains):
         self.loglikes = self.loglikes[indexes]
         self.samples = self.samples[indexes]
 
-    # MakeSingleSamples => WriteSingleSamples
-    def WriteSingleSamples(self, filename, single_thin):
+    def MakeSingleSamples(self, filename="", single_thin=None, writeDataToFile=True):
         """
         Make file of weight-1 samples by choosing samples 
         with probability given by their weight.
         """
-        textFileHandle = open(filename, 'w')
-        maxmult = np.max(self.weights)
-        for i in range(self.numrows):
-            rand = np.random.random_sample()
-            if (rand <= self.weights[i]/maxmult/single_thin):
-                textFileHandle.write("%16.7E"%(1.0))
-                textFileHandle.write("%16.7E"%(self.loglikes[i]))
-                for j in range(self.num_vars):
-                    textFileHandle.write("%16.7E"%(self.samples[i][j]))
-                textFileHandle.write("\n")
-        textFileHandle.close()
+        if writeDataToFile:
+            textFileHandle = open(filename, 'w')
+            maxmult = np.max(self.weights)
+            for i in range(self.numrows):
+                rand = np.random.random_sample()
+                if (rand <= self.weights[i]/maxmult/single_thin):
+                    textFileHandle.write("%16.7E"%(1.0))
+                    textFileHandle.write("%16.7E"%(self.loglikes[i]))
+                    for j in range(self.num_vars):
+                        textFileHandle.write("%16.7E"%(self.samples[i][j]))
+                    textFileHandle.write("\n")
+            textFileHandle.close()
+        else:
+            # return data
+            return self.loglikes, self.samples
 
     def WriteThinData(self, fname, thin_ix, cool):
         nparams = self.samples.shape[1]
@@ -984,30 +987,34 @@ class MCSamples(chains):
 
 
 
-            # writeDataToFile
+            if writeDataToFile:
 
-            fname = self.rootname + "_p_" + str(self.index2name[j])
+                fname = self.rootname + "_p_" + str(self.index2name[j])
 
-            filename = os.path.join(self.plot_data_dir, fname + ".dat")
-            textFileHandle = open(filename, 'w')
-            for i in range(self.ix_min[j], self.ix_max[j]+1):
-                textFileHandle.write("%16.7E%16.7E\n"%(self.center[j] + i*width, bincounts[i - self.ix_min[j]]))
-            if (self.ix_min[j]==self.ix_max[j]): 
-                for i in range(self.ix_min.shape[0]):
-                    textFileHandle.write("%16.7E"%(self.center[j] + self.ix_min[i]*width))
-                textFileHandle.write("\n")
-            textFileHandle.close()
-        
-            if (self.plot_meanlikes):
-                maxbin = max(binlikes)
-                filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
-                textFileHandle = open(filename_like, 'w')
+                filename = os.path.join(self.plot_data_dir, fname + ".dat")
+                textFileHandle = open(filename, 'w')
                 for i in range(self.ix_min[j], self.ix_max[j]+1):
-                    textFileHandle.write("%16.7E%16.7E\n"%(self.center[j] + i*width, binlikes[i - self.ix_min[j]]/maxbin))
+                    textFileHandle.write("%16.7E%16.7E\n"%(self.center[j] + i*width, bincounts[i - self.ix_min[j]]))
+                if (self.ix_min[j]==self.ix_max[j]): 
+                    for i in range(self.ix_min.shape[0]):
+                        textFileHandle.write("%16.7E"%(self.center[j] + self.ix_min[i]*width))
+                    textFileHandle.write("\n")
                 textFileHandle.close()
 
-            # return data ...
-                
+                if (self.plot_meanlikes):
+                    maxbin = max(binlikes)
+                    filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
+                    textFileHandle = open(filename_like, 'w')
+                    for i in range(self.ix_min[j], self.ix_max[j]+1):
+                        textFileHandle.write("%16.7E%16.7E\n"%(self.center[j] + i*width, binlikes[i - self.ix_min[j]]/maxbin))
+                    textFileHandle.close()
+
+            else:
+                dat, likes = None, None
+                #todo ...
+                return dat, likes
+
+        return None, None
 
 
 
@@ -1246,9 +1253,15 @@ class MCSamples(chains):
         if (os.path.isfile(ranges_file)):
             self.ranges = Ranges(ranges_file)
 
-    def WriteBounds(self, filename):
+    def WriteBounds(self, filename=None):
         if not hasattr(self, 'ranges') or self.ranges is None: return 
-        textFileHandle = open(filename, 'w')
+        
+        write_to_file = filename is not None
+        if write_to_file: 
+            textFileHandle = open(filename, 'w')
+        else:
+            upper = dict()
+            lower = dict()            
         for i in self.index2name.keys():
             if not self.isused[i]: continue
             if (self.has_limits_bot[i] or self.has_limits_top[i]):
@@ -1263,8 +1276,18 @@ class MCSamples(chains):
                     lim2 = "%15.7E"%valMax
                 else:
                     lim2 = "    N"
-                textFileHandle.write("%22s%17s%17s\n"%(name, lim1, lim2))
-        textFileHandle.close()
+
+                if write_to_file: 
+                    textFileHandle.write("%22s%17s%17s\n"%(name, lim1, lim2))
+                else:
+                    if lim1.strip() != 'N': lower[name] = float(valMin)
+                    if lim2.strip() != 'N': upper[name] = float(valMax)
+        if write_to_file: 
+            textFileHandle.close()
+        else:
+            return lower, upper
+
+
 
     def OutputMargeStats(self):
         contours_str = '; '.join([ str(c) for c in self.contours ]) 

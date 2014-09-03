@@ -10,14 +10,20 @@ import logging
 try:
     from PyQt4.QtCore import *
     from PyQt4.QtGui  import *
-    import Resources_pyqt
     os.environ['QT_API'] = 'pyqt'
+    try:
+        import Resources_pyqt
+    except ImportError:
+        print "Missing file Resources_pyqt.py: Run script update_resources.sh"
 except ImportError:
     try:
         from PySide.QtCore import *
         from PySide.QtGui  import *
-        import Resources_pyside
         os.environ['QT_API'] = 'pyside'
+        try:
+            import Resources_pyside
+        except ImportError:
+            print "Missing file Resources_pyside.py: Run script update_resources.sh"
     except ImportError:
         print "Can't import PyQt4.QtCore or PyQt4.QtGui modules." 
         sys.exit()
@@ -56,9 +62,10 @@ class MainWindow(QMainWindow):
         # Allow to shutdown the GUI with Ctrl+C
         signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-        # Internal data 
-        self.rootdir = ""
-        self.mcsamples = None
+        # Root directory
+        self.rootdir = "" 
+
+        self.plotter = None
 
 
     def createActions(self):
@@ -126,6 +133,8 @@ class MainWindow(QMainWindow):
             "", self.selectWidget)
         self.pushButtonSelect.setToolTip("Choose root directory")
         self.connect(self.pushButtonSelect, SIGNAL("clicked()"), self.selectRootDir)
+        shortcut = QShortcut(QKeySequence(self.tr("Ctrl+O")), self)
+        self.connect(shortcut, SIGNAL("activated()"), self.selectRootDir)
 
         self.comboBoxParamTag = QComboBox(self.selectWidget)
         self.comboBoxParamTag.clear()
@@ -154,7 +163,7 @@ class MainWindow(QMainWindow):
         self.toggleFilled = QRadioButton("Filled")
         self.toggleLine = QRadioButton("Line")
         self.toggleColor = QRadioButton("Color by:")
-        self.comboBoxColor = QComboBox() 
+        self.lineEditColor = QLineEdit() 
         # color values ???
         self.toggleFilled.setChecked(True)
         
@@ -180,7 +189,7 @@ class MainWindow(QMainWindow):
         layoutTop.addWidget(self.toggleFilled,      4, 2, 1, 2)
         layoutTop.addWidget(self.toggleLine,        5, 2, 1, 2)
         layoutTop.addWidget(self.toggleColor,       6, 2, 1, 1)
-        layoutTop.addWidget(self.comboBoxColor,     6, 3, 1, 1)
+        layoutTop.addWidget(self.lineEditColor,     6, 3, 1, 1)
         layoutTop.addWidget(self.trianglePlot,      7, 2, 1, 2)
         layoutTop.addWidget(self.pushButtonPlot,    9, 0, 1, 4)
         self.selectWidget.setLayout(layoutTop)
@@ -240,7 +249,7 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.centralWidget)
 
-        self.test() # test with random data
+        #self.test() # test with random data
         
 
     # slots for menu actions
@@ -288,39 +297,33 @@ class MainWindow(QMainWindow):
 
             # Root file name
             self.root = MCSamples.GetRootFileName(self.rootdir)            
-            logging.debug("self.root = %s"%str(self.root))
-
-            # Get list of chain files in root directory
             chainFiles = MCSamples.GetChainFiles(self.root)
-
             if len(chainFiles)==0:
                 logging.debug("No chain files in %s"%self.rootdir)
                 self._updateComboBoxParamTag()
             else:
-                # Create instance of MCSamples and read chain files
-                self.mcsamples = MCSamples.MCSamples(self.root)
-                logging.info("Read chains from %s ..."%str(self.root))
-                self.mcsamples.loadChains(self.root, chainFiles)
-                logging.info("Done reading")
+
+                self.plotter = GetDistPlots.GetDistPlotter(chain_dir=self.rootdir)
+                self.statusBar().showMessage("Reading chain files in %s"%str(self.root))
 
                 # File .paramnames
                 filesparam = glob.glob(os.path.join(self.rootdir, "*.paramnames"))
                 if filesparam: 
                     # Directory contains file .paramnames
-                    if hasattr(self.mcsamples, "paramNames"):
-                        logging.debug("Reading .paramnames information")
-                        paramNames = self.mcsamples.paramNames.list()
+                    paramNames = self.plotter.sampleAnalyser.paramsForRoot(self.rootdir).list()
 
-                        # Hide combo boxes and fill list
-                        self.comboBoxParamTag.hide()
-                        self.comboBoxDataTag.hide()
-                        self._updateListParametersX(paramNames)
+                    # Hide combo boxes and fill list
+                    self.comboBoxParamTag.hide()
+                    self.comboBoxDataTag.hide()
+                    self._updateListParametersX(paramNames)
             
                 # File batch.pyobj
                 fileobj = os.path.join(self.rootdir, "batch.pyobj")
                 if os.path.isfile(fileobj):
                     pass
-            
+
+                self.statusBar().showMessage("Ready", 2000)
+           
         else:
             logging.debug("No directory specified")
 
@@ -439,11 +442,10 @@ class MainWindow(QMainWindow):
             item = self.listParametersY.item(i)
             if item.checkState()==Qt.Checked:
                 items_y.append(str(item.text()))
-
-
-        # GetDistPlotter instance
-        g = GetDistPlots.GetDistPlotter(self.rootdir)
-        g.settings.setWithSubplotSize(3.000000)
+            
+        
+        logging.debug("Create GetDistPlotter with arg %s"%self.rootdir)
+        self.plotter.settings.setWithSubplotSize(3.000000)
         roots = [os.path.basename(self.root)]
 
         #
@@ -451,34 +453,34 @@ class MainWindow(QMainWindow):
             if len(items_x)>1:
                 # triangle plot
                 params = items_x
-                g.triangle_plot(roots, params)
+                self.plotter.triangle_plot(roots, params)
             else:
                 self.statusBar().showMessage("Need more than 1 x-param", 2000)
                 
         elif len(items_x)>0 and len(items_y)==0:
             # 1d plot 
+            
+            import pdb; pdb.set_trace()
 
-            #from PyQt4.QtCore import pyqtRemoveInputHook
-            #from pdb import set_trace
-            #pyqtRemoveInputHook()
-            #set_trace()
-
-            g.plots_1d(roots)
+            self.plotter.plots_1d(roots)
             
         elif len(items_x)>0 and len(items_y)>0:
 
             if self.toggleFilled.isChecked() or self.toggleLine.isChecked():
                 # 2d plot 
-                g.plots_2d(roots, param1=items_x, param2=items_y)
+                self.plotter.plots_2d(roots, param1=items_x, param2=items_y)
 
             if self.toggleColor.isChecked():
                 # 3d plot 
                 sets = []
                 sets.append(items_x)
-                g.plots_3d(roots, sets)
+                x = items_x[0]
+                y = items_y[0]
+                color = str(self.lineEditColor.displayText())
+                self.plotter.plot_3d(roots, [x, y, color])
 
 
-        # ... get figure and display ii in canvas
+        # ... get figure and display it in canvas
 
 
                 

@@ -3,6 +3,8 @@ import matplotlib
 matplotlib.use('Agg')
 from pylab import *
 
+import MCSamples
+
 """Plotting scripts for GetDist outputs"""
 
 
@@ -191,22 +193,104 @@ class SampleAnalysisGetDist():
         else: return (pts, x, y)
 
 # 
-class MCSampleAnalysis(SampleAnalysisGetDist):
+class MCSampleAnalysis():
 
-    def __init__(self, plot_data):
-        SampleAnalysisGetDist.__init__(plot_data)
+    def __init__(self, root_dir):
+        self.root_dir = root_dir
+        self.root = MCSamples.GetRootFileName(self.root_dir)
+        self.mcsamples = MCSamples.MCSamples(self.root)
+        self.densities_dat_1D = dict()
+        self.densities_likes_1D = dict()
+        self.densities_2D = dict()
+        self.readChains()
+
+    def newPlot(self):
+        pass
+
+    def readChains(self):
+        # Get list of chain files in root directory
+        chainFiles = MCSamples.GetChainFiles(self.root)
+        self.mcsamples.loadChains(self.root, chainFiles)
+
+        # Make a single array for chains
+        self.mcsamples.makeSingle()
+
+        # Check used columns
+        self.mcsamples.GetUsedCols()
+
+        # Compute statistics values
+        self.mcsamples.ComputeStats()
+
+        # Sort data in order of likelihood of points 
+        self.mcsamples.SortColData(1)
+
+        # Get ND confidence region
+        #self.mcsamples.GetConfidenceRegion()
+
+        # Init arrays for 1D densities
+        self.mcsamples.Init1DDensity()
+
+
+    def get_1d(self, root, param, ext='.dat'):
+        if ext=='.dat' and self.densities_dat_1D.has_key(param): 
+            return self.densities_dat_1D[param]
+        elif ext=='.likes' and self.densities_likes_1D.has_key(param):
+            return self.densities_likes_1D[param]
+        else: 
+            index = self.mcsamples.index[param]
+            dat, likes = self.mcsamples.Get1DDensity(index)
+            if dat is not None: self.densities_dat_1D[param] = dat
+            if likes is not None: self.densities_likes_1D[param] = likes
+
+
+    def get_density_grid(self, root, param1, param2, conts=2, likes=False):
+        return None
+#        if likes:  res = self.load_2d(root, param1, param2, '_likes')
+#        else: res = self.load_2d(root, param1, param2)
+#        if res is None: return None
+#        result = Density2D()
+#        (result.pts, result.x1, result.x2) = res
+#        if conts > 0: result.contours = self.load_2d(root, param1, param2, '_cont', no_axes=True)[0:conts]
+#        return result
+
+    def get_density(self, root, param, likes=False):
+        result = Density1D()
+        pts = self.get_1d(root, param)
+        if pts is None: return None
+        result.x = pts[:, 0]
+        result.pts = pts[:, 1]
+        if (likes): result.likes = self.get_1d(root, param, '.likes')[:, 1]
+        return result
+
+    def load_single_samples(self, root):
+        loglikes, samples = self.mcsamples.MakeSingleSamples(writeDataToFile=False)
+        if not root in self.single_samples: self.single_samples[root] = np.column_stack((loglikes, samples))
+        return self.single_samples[root]
+
+    def paramsForRoot(self, root, labelParams=None):
+        names = self.mcsamples.paramNames
+        if labelParams is not None: 
+            names.setLabelsAndDerivedFromParamNames(labelParams)
+        return names
+        
+    def boundsForRoot(self, root):
+        lower, upper = self.mcsamples.WriteBounds(None)
+        bounds = paramBounds("")
+        bounds.lower = lower
+        bounds.upper = upper
+        return bounds
 
 
 class GetDistPlotter():
 
-    def __init__(self, plot_data, settings=None, use_mcsamples=False):
+    def __init__(self, plot_data=None, settings=None, chain_dir=None):
         if settings is None: self.settings = defaultSettings
         else: self.settings = settings
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
         self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
-        if use_mcsamples:
-            self.sampleAnalyser = MCSampleAnalysis(self.plot_data)
+        if chain_dir is not None:
+            self.sampleAnalyser = MCSampleAnalysis(chain_dir)
         self.newPlot()
 
     def newPlot(self):
@@ -413,6 +497,7 @@ class GetDistPlotter():
 
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
                 no_ylabel=False, no_ytick=False, no_zero=False, **ax_args):
+        #import pdb; pdb.set_trace() # debug
         if isinstance(roots, basestring):roots = [roots]
         if self.fig is None: self.make_figure()
         param = self.check_param(roots[0], param)

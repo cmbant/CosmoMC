@@ -381,7 +381,7 @@ mc.ComputeStats()
 
 if (make_single_samples):
     filename = os.path.join(plot_data_dir, rootname.strip()+'_single.txt')
-    mc.WriteSingleSamples(filename, single_thin)
+    mc.MakeSingleSamples(filename, single_thin)
 
 # IO_WriteBounds
 filename = os.path.join(plot_data_dir, rootname.strip()+'.bounds')
