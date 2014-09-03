@@ -214,8 +214,10 @@
         derived(17)= CMB%Yhe !value actually used, may be set from bbn consistency
         derived(18)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
         derived(19)=  Theory%Sigma_8*((CMB%omdm+CMB%omb)/0.25_mcp)**0.47_mcp
-
-        derived(20:num_derived) = Theory%derived_parameters(1: Theory%numderived)
+        
+        derived(20) = 0.0
+        
+        derived(21:num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
     end subroutine TP_CalcDerivedParams

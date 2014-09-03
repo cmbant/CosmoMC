@@ -143,7 +143,7 @@
     integer noutputs, i
 
     noutputs = size(BackgroundOutputs%z_outputs)
-    Theory%numderived = nthermo_derived + noutputs*3
+    Theory%numderived = nthermo_derived + noutputs*3 + noutputs
     if (Theory%numderived > max_derived_parameters) &
         call MpiStop('numderived > max_derived_parameters: increase in CosmologyTypes.f90')
     Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
@@ -151,6 +151,9 @@
         Theory%derived_parameters(nthermo_derived+(i-1)*3+1) = BackgroundOutputs%rs_by_D_v(i)
         Theory%derived_parameters(nthermo_derived+(i-1)*3+2) = BackgroundOutputs%H(i)*const_c/1e3_mcp
         Theory%derived_parameters(nthermo_derived+(i-1)*3+3) = BackgroundOutputs%DA(i)
+    end do
+    do i=1, noutputs
+       Theory%derived_parameters(nthermo_derived+noutputs*3+i) = 0.0d0
     end do
     end subroutine CAMBCalc_SetDerived
 
