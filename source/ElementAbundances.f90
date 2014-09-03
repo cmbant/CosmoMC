@@ -1,4 +1,4 @@
-    ! Hubble measurement constraint, based on corresponding angular diamter distance value and error
+    ! Element abundance measurements compared to BBN predictions for given omegabh2 and Neff
 
     module ElementAbundances
     use CosmologyTypes
@@ -51,9 +51,9 @@
 
     this%measurement = Ini%Read_String('measurement', NotFoundFail=.true.)
     if (this%measurement=='Yp') then
-        !Use nuclean fraction here, not mass fraction
+        !Use nucleon fraction here, not mass fraction
         col = 5
-    else if (this%measurement=='D/H') then 
+    else if (this%measurement=='D/H') then
         col = 7
     else if (this%measurement=='He3/H') then
         col = 9
@@ -65,7 +65,7 @@
     this%mean = Ini%Read_Double('mean')
     this%error = Ini%Read_Double('error')
     call this%TCosmologyLikelihood%ReadIni(Ini)
-    
+
     end subroutine Abundance_ReadIni
 
     real(mcp) function Abundance_LnLike(this, CMB)
@@ -75,7 +75,7 @@
 
     theoryval = this%BBN_value%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
     theoryerr = this%BBN_error%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
-    
+
     Abundance_LnLike = (theoryval - this%mean)**2/(2*(this%error**2+theoryerr**2))
 
     end function Abundance_LnLike
