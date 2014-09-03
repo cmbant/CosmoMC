@@ -207,7 +207,7 @@
             do
                 if (this%redo_from_text) then
                     error = 0
-                    Params%P= BaseParams%center
+                    Params%P(:num_params)= BaseParams%center
                     if (.not. IO_ReadChainRow(InChain, mult, like, Params%P, params_used)) exit
                     num=num+1
                 else
