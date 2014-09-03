@@ -35,9 +35,9 @@
         call like%ReadDatasetFile(Datasets%Value(i))
         call like%ReadParams(Ini)
         like%speed = 10
-        like%needs_background_functions = .false.
+        like%needs_background_functions = .true.
         like%needs_powerspectra = .false.
-        like%LikelihoodType = 'ElAbund'
+        like%LikelihoodType = 'Abund'
         call LikeList%Add(like)
     end do
     if (Feedback > 1 .and. DataSets%Count>0 ) write (*,*) 'read abundance data sets'
