@@ -168,7 +168,8 @@
     Class(TCosmoTheoryPredictions) this
     class(TFileStream) :: F
     logical, intent(in) :: first
-    integer ArraySizes(1), valArray(6)
+    integer ArraySizes(1)
+    real(mcp) :: valArray(6)
     integer i,j
 
     if (first .and. new_chains) then
