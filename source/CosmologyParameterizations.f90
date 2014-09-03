@@ -15,10 +15,6 @@
     implicit none
     private
 
-    real(mcp), parameter :: neutrino_mass_fac= 94.07_mcp !conversion factor for thermal with Neff=3 TCMB-2.7255
-    !93.014 for 3.046
-    real(mcp), parameter :: standard_neutrino_neff = 3.046_mcp
-
     Type, extends(TCosmologyParameterization) :: ThetaParameterization
         real(mcp) :: H0_min = 40, H0_max = 100
         real(mcp) :: H0_prior_mean = 0._mcp, H0_prior_std = 0._mcp
