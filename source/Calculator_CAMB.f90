@@ -405,7 +405,7 @@
                             CL(2:lmx) =  CL(2:lmx) + cons*Cl_tensor(2:lmx,1, indicesT(i,j))
                         end if
                     end if
-                    end associate
+                end associate
             end if
         end do
     end do
@@ -421,7 +421,7 @@
                     CL(L) =  Cl_scalar(L,1, C_Phi)*(real(l+1)**2/l**2)/twopi * lens_recon_scale
                 end do
                 CL(lmx+1:)=0
-                end associate
+            end associate
         end if
         lmx = min(CosmoSettings%lmax_computed_cl, CosmoSettings%cl_lmax(CL_Phi,CL_T))
         if (lmx/=0) then
