@@ -172,7 +172,8 @@
     real(mcp) :: P(:)
     Type(CMBParams) CMB
     integer num_derived
-    integer, parameter :: num_derived_here = 22
+    integer, parameter :: num_derived_here = 23
+    real(mcp) :: lograt
 
     if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)
@@ -207,18 +208,22 @@
         derived(15)= derived(13)*exp(-2*CMB%tau)  !A e^{-2 tau}
         derived(16)= derived(14)*exp(-2*CMB%tau)  !At e^{-2 tau}
 
-        derived(17)= CMB%Yhe !value actually used, may be set from bbn consistency
+        lograt = log(0.002_mcp/CosmoSettings%pivot_k)
+        derived(17) = CMB%InitPower(ns_index) +CMB%InitPower(nrun_index)*lograt +&
+            CMB%InitPower(nrunrun_index)*lograt**2/2
+
+        derived(18)= CMB%Yhe !value actually used, may be set from bbn consistency
         if (CosmoSettings%bbn_consistency) then
-            derived(18) = BBN_YpBBN%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
-            derived(19) = BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
+            derived(19) = BBN_YpBBN%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
+            derived(20) = BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
         else
-            derived(18:19) = 0
+            derived(19:20) = 0
         end if
-        
-        derived(20)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
-        derived(21)=  Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.5_mcp
-        derived(22)=  Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.25_mcp
-        
+
+        derived(21)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
+        derived(22)=  Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.5_mcp
+        derived(23)=  Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.25_mcp
+
         derived(num_derived_here+1:num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
