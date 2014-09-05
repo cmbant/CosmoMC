@@ -38,7 +38,7 @@ A*            10^9 A_s
 AT*           10^9 A_t
 clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
 ctlamp*       10^9 A_t e^{-2\tau}   #parameter determining L~100 tensor C_l amplitude
-ns02          n_{s,0.002}
+ns02*         n_{s,0.002}
 yheused*      Y_P #MCMC value or from bbn consistency
 YpBBN*        Y_{\rm P}^{\rm BBN}
 DHBBN*        D/H
