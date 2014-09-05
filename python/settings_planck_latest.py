@@ -49,24 +49,16 @@ planck_pol_sets = []
 planck_vars = ['v97CS']
 planck_ini = ['CAMspec_%s.ini']
 planck_base = [camspec_CS]
-planck_covmats = [None]
 
 if True:
     planck_vars += ['plik']
     planck_ini += ['plik_dx11c_%s_v13.ini']
     planck_base += [[]]
-    planck_covmats += ['planck_covmats/plik_dx11c_%s_v13.covmat']
-for planck, ini, base, cov in zip(planck_vars, planck_ini, planck_base, planck_covmats):
+for planck, ini, base in zip(planck_vars, planck_ini, planck_base):
     for name, var in zip(variant_tag, variants):
-        if cov is not None:
-            covM = cov % (var)
-        else: covM = None
-        planck_highL_sets.append(batchJob.dataSet([planck , name], base + [ ini % (var)], covmat=covM))
+        planck_highL_sets.append(batchJob.dataSet([planck , name], base + [ ini % (var)]))
     for var in variant_pol_tag:
-        if cov is not None:
-            covM = cov % (var)
-        else: covM = None
-        planck_pol_sets.append(batchJob.dataSet([planck , var], base + [ ini % (var)], covmat=covM))
+        planck_pol_sets.append(batchJob.dataSet([planck , var], base + [ ini % (var)]))
 
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
@@ -84,6 +76,10 @@ class importanceFilterNotOmegak:
     def wantImportance(self, jobItem):
         return not ('omegak' in jobItem.param_set)
 
+class importanceFilterAbundance:
+    def wantImportance(self, jobItem):
+        return 'nnu' in jobItem.param_set
+
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
 post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegak()]
@@ -93,6 +89,7 @@ post_nonBAO = [[HST, JLA], [HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak
 post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
+post_abundance = [['abundances'], ['abundances.ini'], importanceFilterAbundance()]
 
 # set up groups of parameters and data sets
 
@@ -266,6 +263,11 @@ for d in copy.deepcopy(g.datasets):
 gphi.importanceRuns = []
 groups.append(gphi)
 
+for g in groups:
+    for p in g.params:
+        if 'nnu' in p:
+            g.importanceRuns.append(post_abundance)
+            break
 
 skip = []
 

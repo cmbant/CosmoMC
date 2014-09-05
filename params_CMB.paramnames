@@ -39,8 +39,8 @@ AT*           10^9 A_t
 clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
 ctlamp*       10^9 A_t e^{-2\tau}   #parameter determining L~100 tensor C_l amplitude
 yheused*      Y_P #MCMC value or from bbn consistency
-YpBBN         Y_{\rm P}^{\rm BBN}
-DHBBN         D/H
+YpBBN*        Y_{\rm P}^{\rm BBN}
+DHBBN*        D/H
 omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
 s8omegamp5*   \sigma_8 \Omega_m^{0.5}
 s8omegamp25*  \sigma_8 \Omega_m^{0.25}
