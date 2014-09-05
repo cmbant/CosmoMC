@@ -10,7 +10,7 @@
 
     type, extends(TCosmologyLikelihood) :: AbundanceLikelihood
         character(LEN=:), allocatable :: measurement
-        Type(TInterpGrid2D) :: BBN_value, BBN_error
+        class(TInterpGrid2D), pointer :: BBN_value, BBN_error
         real(mcp) mean, error
     contains
     procedure :: ReadIni => Abundance_ReadIni
@@ -47,21 +47,18 @@
     subroutine Abundance_ReadIni(this, Ini)
     class(AbundanceLikelihood) :: this
     class(TSettingIni) :: Ini
-    integer col
 
     this%measurement = Ini%Read_String('measurement', NotFoundFail=.true.)
     if (this%measurement=='Yp') then
         !Use nucleon fraction here, not mass fraction
-        col = 5
+        this%BBN_value => BBN_YpBBN
+        this%BBN_error => BBN_YpBBN_err
     else if (this%measurement=='D/H') then
-        col = 7
-    else if (this%measurement=='He3/H') then
-        col = 9
+        this%BBN_value => BBN_DH
+        this%BBN_error => BBN_DH_err
     else
         call MpiStop('Un-recognised measurement name: '//this%measurement)
     end if
-    call this%BBN_value%InitFromFile(trim(DataDir)//BBN_data_file, xcol=1,ycol=3,zcol=col)
-    call this%BBN_error%InitFromFile(trim(DataDir)//BBN_data_file, xcol=1,ycol=3,zcol=col+1)
     this%mean = Ini%Read_Double('mean')
     this%error = Ini%Read_Double('error')
     call this%TCosmologyLikelihood%ReadIni(Ini)

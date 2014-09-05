@@ -12,6 +12,7 @@
     use CosmologyTypes
     use CosmoTheory
     use Calculator_Cosmology
+    use bbn
     implicit none
     private
 
@@ -171,11 +172,12 @@
     real(mcp) :: P(:)
     Type(CMBParams) CMB
     integer num_derived
+    integer, parameter :: num_derived_here = 22
 
     if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)
     class is (TCosmoTheoryPredictions)
-        num_derived = 20 +  Theory%numderived
+        num_derived = num_derived_here +  Theory%numderived
         allocate(Derived(num_derived))
 
         call this%ParamArrayToTheoryParams(P,CMB)
@@ -189,7 +191,7 @@
         derived(6) = Theory%Sigma_8
         derived(7) = CMB%zre
         derived(8) = Theory%Lensing_rms_deflect
-        
+
         if (Theory%tensor_AT>0) then
             derived(9) = Theory%tensor_ratio_02
             derived(10) = Theory%tensor_ratio_BB
@@ -206,11 +208,18 @@
         derived(16)= derived(14)*exp(-2*CMB%tau)  !At e^{-2 tau}
 
         derived(17)= CMB%Yhe !value actually used, may be set from bbn consistency
-        derived(18)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
-        derived(19)=  Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.5_mcp
-        derived(20)=  Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.25_mcp
-
-        derived(21:num_derived) = Theory%derived_parameters(1: Theory%numderived)
+        if (CosmoSettings%bbn_consistency) then
+            derived(18) = BBN_YpBBN%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
+            derived(19) = BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
+        else
+            derived(18:19) = 0
+        end if
+        
+        derived(20)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
+        derived(21)=  Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.5_mcp
+        derived(22)=  Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.25_mcp
+        
+        derived(num_derived_here+1:num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
     end subroutine TP_CalcDerivedParams

@@ -8,14 +8,20 @@
     implicit none
 
     type, extends(TInterpGrid2D) :: TBBNPredictions
+        integer :: data_col = 4
     contains
     procedure :: Error => BBNPredictions_error
     procedure :: FirstUse =>  BBN_Init
     end type TBBNPredictions
 
-    type(TBBNPredictions), save :: BBN_YHe
+    type(TBBNPredictions), target, save :: BBN_YHe
     !Helium mass fraction (not Y_P^BBN nucleon fraction, which is column 5)
-    
+
+    type(TBBNPredictions), target, save :: BBN_YpBBN = TBBNPredictions(data_col=5)
+    type(TBBNPredictions), target, save :: BBN_YpBBN_err = TBBNPredictions(data_col=6)
+    type(TBBNPredictions), target, save :: BBN_DH = TBBNPredictions(data_col=7)
+    type(TBBNPredictions), target, save :: BBN_DH_err = TBBNPredictions(data_col=8)
+
     character(LEN=*), parameter :: BBN_data_file = 'BBN_full_alterBBN_880.1.dat'
 
     contains
@@ -23,9 +29,9 @@
     subroutine BBN_Init(W)
     class(TBBNPredictions):: W
 
-    if (feedback >= 1) print*,'Initialising BBN Helium data...'
+    if (feedback >= 1) print*,'Initialising BBN data '//BBN_data_file//', col:', W%data_col
 
-    call W%InitFromFile(trim(DataDir)//BBN_data_file, xcol=1,ycol=3,zcol=4)
+    call W%InitFromFile(trim(DataDir)//BBN_data_file, xcol=1,ycol=3, zcol=W%data_col)
 
     if (feedback >= 1) print*,'Done. Interpolation table is ', W%nx,' by ',W%ny
 
