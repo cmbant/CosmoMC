@@ -4,6 +4,7 @@ import os
 import sys
 import glob
 import math
+import logging
 import numpy as np
 from scipy.interpolate import interp1d, splrep, splev
 
@@ -159,8 +160,8 @@ class MCSamples(chains):
         self.num_vars = 0
         self.num_bins = 0
         self.num_bins_2D = 0
-        self.smooth_scale_1D = 0.0
-        self.smooth_scale_2D = 0.0
+        self.smooth_scale_1D = -1.0
+        self.smooth_scale_2D = -1.0
         self.max_mult = 0
         self.numsamp = 0
         self.plot_data_dir = ""
@@ -176,9 +177,9 @@ class MCSamples(chains):
 
         self.credible_interval_threshold = 0.05
 
-        self.subplot_size_inch  = 0.
-        self.subplot_size_inch2 = 0.
-        self.subplot_size_inch3 = 0.
+        self.subplot_size_inch  = 3.0
+        self.subplot_size_inch2 = self.subplot_size_inch
+        self.subplot_size_inch3 = self.subplot_size_inch
         self.out_dir = ""
 
         self.LowerUpperLimits = None
@@ -189,6 +190,59 @@ class MCSamples(chains):
 
         self.corr_length_thin = 0
         self.corr_length_steps = 15
+
+
+
+    def ComputeLimits(self, ini=None):
+
+        bin_limits = ""
+        if ini: bin_limits = ini.string('all_limits')
+
+        indexes = self.index2name.keys()
+        indexes.sort()
+        nvars = len(indexes)
+
+        self.limmin = nvars * [0.]
+        self.limmax = nvars * [0.]
+
+        self.has_limits = nvars * [False]
+        self.has_limits_bot = nvars * [False]
+        self.has_limits_top = nvars * [False]
+
+        self.has_markers = nvars * [False]
+        self.markers = nvars * [0.]
+
+        for ix in indexes:
+            name = self.index2name[ix]
+            mini = self.ranges.min(name)
+            maxi = self.ranges.max(name)
+            if (mini is not None and maxi is not None and mini<>maxi):
+                self.limmin[ix] = mini
+                self.limmax[ix] = maxi
+                self.has_limits_top[ix] = True
+                self.has_limits_bot[ix] = True
+            if (bin_limits<>''):
+                line = bin_limits
+            else:
+                line = ''
+                if ini and ini.params.has_key('limits[%s]'%name.strip()):
+                    line = ini.string('limits[%s]'%name.strip())
+            if (line<>''):
+                limits = [ s for s in line.split(' ') if s<>'' ]
+                if len(limits)==2:
+                    if limits[0]<>'N': 
+                        self.limmin[ix] = float(limits[0])
+                        self.has_limits_bot[ix] = True
+                    if limits[1]<>'N': 
+                        self.limmax[ix] = float(limits[1])
+                        self.has_limits_top[ix] = True
+            if ini and ini.params.has_key('marker[%s]'%name.strip()):
+                line = ini.string('marker[%s]'%name.strip())
+                if (line<>''):
+                    self.has_markers = True
+                    self.markers[ix] = float(line)
+
+
 
 
     def AdjustPriors(self):
@@ -228,6 +282,10 @@ class MCSamples(chains):
         self.weights = self.weights[indexes]
         self.loglikes = self.loglikes[indexes]
         self.samples = self.samples[indexes]
+
+    def ComputeNumSamp(self):
+        self.numsamp = np.sum(self.weights)
+
 
     def MakeSingleSamples(self, filename="", single_thin=None, writeDataToFile=True):
         """
@@ -486,7 +544,17 @@ class MCSamples(chains):
         self.isused[:] = False
         for ix in range(nparams):
             self.isused[ix] = not np.all(self.samples[:, ix]==self.samples[0][ix])
-        
+
+    def ComputeMultiplicators(self):
+        self.mean_mult = self.norm / self.numrows
+        self.max_mult = (self.mean_mult*self.numrows) / min(self.numrows/2, 500)
+        outliers = len(self.weights[np.where(self.weights>self.max_mult)])
+        if (outliers<>0):
+            print 'outlier fraction ', float(outliers)/self.numrows
+        self.max_mult = np.max(self.weights)
+        self.numsamp = np.sum(self.weights)
+
+
     def GetUsedColsChains(self):
         if not hasattr(self, 'chains') or len(self.chains)==0: return
         nparams = self.chains[0].coldata.shape[1] - 2
@@ -827,6 +895,7 @@ class MCSamples(chains):
         logZero = 1e30
 
         ix = j # ix = self.colix[j]
+        logging.debug("index is %i"%j)
 
         paramVec = self.samples[:, ix]
         self.param_min[j] = np.min(paramVec)
@@ -838,6 +907,7 @@ class MCSamples(chains):
             print "Warning width is 0"
             return
 
+        logging.debug("Smooth scale ... ")
         if (self.smooth_scale_1D<=0):
             # Automatically set smoothing scale from rule of thumb for Gaussian
             opt_width = 1.06/(math.pow(max(1.0, self.numsamp/self.max_mult), 0.2)*self.sddev[j])
@@ -854,6 +924,7 @@ class MCSamples(chains):
 
         end_edge = int(round(smooth_1D * 2))
         
+        logging.debug("Limits ... ")
         if (self.has_limits_bot[ix]):
             if ((self.range_min[j]-self.limmin[ix]>width*end_edge) and (self.param_min[j]-self.limmin[ix]>width*smooth_1D)):
                 # long way from limit 
@@ -943,6 +1014,7 @@ class MCSamples(chains):
         if (self.has_limits_bot[ix]): imin = self.ix_min[j] * fine_fac
         if (self.has_limits_top[ix]): imax = self.ix_max[j] * fine_fac
 
+        logging.debug("Density1D ... ")
         self.density1D = Density1D(imax-imin+1, fine_width)
         for i in range(imin, imax+1):
             istart, iend = (i-winw)-(imin-fine_edge), (i+winw+1)-(imin-fine_edge)
@@ -959,6 +1031,7 @@ class MCSamples(chains):
             sys.exit()
         self.density1D.P /= maxbin
 
+        logging.debug("InitSpline ...")
         self.density1D.InitSpline()
 
         if (not self.no_plots):
@@ -988,6 +1061,7 @@ class MCSamples(chains):
 
 
             if writeDataToFile:
+                logging.debug("Write data to file ...")
 
                 fname = self.rootname + "_p_" + str(self.index2name[j])
 
@@ -1010,8 +1084,31 @@ class MCSamples(chains):
                     textFileHandle.close()
 
             else:
+                logging.debug("Return data ...")
                 dat, likes = None, None
-                #todo ...
+
+                ncols = 2
+                nrows = self.ix_max[j]+1 - self.ix_min[j]
+                if (self.ix_min[j]==self.ix_max[j]): nrows += 1
+
+                dat = np.ndarray((nrows, ncols))
+                index = 0
+                for i in range(self.ix_min[j], self.ix_max[j]+1):
+                    dat[index] = self.center[j] + i*width, bincounts[i - self.ix_min[j]]
+                    index += 1
+                if (self.ix_min[j]==self.ix_max[j]):
+                    dat[index] = self.center[j] + self.ix_min[0]*width, self.center[j] + self.ix_min[1]*width
+                logging.debug("dat.shape = %s"%str(dat.shape))
+
+                if (self.plot_meanlikes):                
+                    nrows = self.ix_max[j]+1 - self.ix_min[j]
+                    likes = np.ndarray((nrows, ncols))
+                    index = 0
+                    for i in range(self.ix_min[j], self.ix_max[j]+1):
+                        likes[index] = self.center[j] + i*width, binlikes[i - self.ix_min[j]]/maxbin
+                        index += 1
+                    logging.debug("likes.shape = %s"%str(likes.shape))
+
                 return dat, likes
 
         return None, None
@@ -1599,8 +1696,3 @@ def GetChainFiles(rootdir):
     chain_files.sort() 
     return chain_files 
 
-
-#from PyQt4.QtCore import pyqtRemoveInputHook
-#from pdb import set_trace
-#pyqtRemoveInputHook()
-#set_trace()

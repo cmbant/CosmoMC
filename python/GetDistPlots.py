@@ -1,4 +1,5 @@
 import os, paramNames
+import logging
 import matplotlib
 matplotlib.use('Agg')
 from pylab import *
@@ -199,6 +200,7 @@ class MCSampleAnalysis():
         self.root_dir = root_dir
         self.root = MCSamples.GetRootFileName(self.root_dir)
         self.mcsamples = MCSamples.MCSamples(self.root)
+
         self.densities_dat_1D = dict()
         self.densities_likes_1D = dict()
         self.densities_2D = dict()
@@ -208,6 +210,9 @@ class MCSampleAnalysis():
         pass
 
     def readChains(self):
+        # compute limits
+        self.mcsamples.ComputeLimits()
+
         # Get list of chain files in root directory
         chainFiles = MCSamples.GetChainFiles(self.root)
         self.mcsamples.loadChains(self.root, chainFiles)
@@ -218,11 +223,15 @@ class MCSampleAnalysis():
         # Check used columns
         self.mcsamples.GetUsedCols()
 
+        self.mcsamples.ComputeMultiplicators()
+
         # Compute statistics values
         self.mcsamples.ComputeStats()
 
         # Sort data in order of likelihood of points 
         self.mcsamples.SortColData(1)
+        
+        self.mcsamples.ComputeNumSamp()
 
         # Get ND confidence region
         #self.mcsamples.GetConfidenceRegion()
@@ -230,17 +239,37 @@ class MCSampleAnalysis():
         # Init arrays for 1D densities
         self.mcsamples.Init1DDensity()
 
+    def compute_1d(self, name):
+        index = self.mcsamples.index[name]
+        logging.debug("Computing 1D density for %s ... "%name)
+        dat, likes = self.mcsamples.Get1DDensity(index, writeDataToFile=False)
+        logging.debug("...done.")
+        if dat is not None: 
+            self.densities_dat_1D[name] = dat
+        if likes is not None: 
+            self.densities_likes_1D[name] = likes
 
     def get_1d(self, root, param, ext='.dat'):
-        if ext=='.dat' and self.densities_dat_1D.has_key(param): 
-            return self.densities_dat_1D[param]
-        elif ext=='.likes' and self.densities_likes_1D.has_key(param):
-            return self.densities_likes_1D[param]
-        else: 
-            index = self.mcsamples.index[param]
-            dat, likes = self.mcsamples.Get1DDensity(index)
-            if dat is not None: self.densities_dat_1D[param] = dat
-            if likes is not None: self.densities_likes_1D[param] = likes
+        name = param.name
+        if ext=='.dat':
+            if self.densities_dat_1D.has_key(name): 
+                return self.densities_dat_1D[name]
+            else:
+                self.compute_1d(name)
+                if self.densities_dat_1D.has_key(name): 
+                    return self.densities_dat_1D[name]
+                else:
+                    return None
+        elif ext=='.likes':
+            if self.densities_likes_1D.has_key(name):
+                return self.densities_likes_1D[name]
+            else:
+                self.compute_1d(name)
+                if self.densities_likes_1D.has_key(name):
+                    return self.densities_likes_1D[name]
+                else:
+                    return None
+        return None
 
 
     def get_density_grid(self, root, param1, param2, conts=2, likes=False):
@@ -497,7 +526,6 @@ class GetDistPlotter():
 
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
                 no_ylabel=False, no_ytick=False, no_zero=False, **ax_args):
-        #import pdb; pdb.set_trace() # debug
         if isinstance(roots, basestring):roots = [roots]
         if self.fig is None: self.make_figure()
         param = self.check_param(roots[0], param)

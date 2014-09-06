@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 
-from MainWindow import MainWindow
-
 try:
-    from PyQt4.QtCore import *
-    from PyQt4.QtGui  import *
+    from PyQt4.QtGui  import QApplication
+    os.environ['QT_API'] = 'pyqt'
 except ImportError:
     try:
-        from PySide.QtCore import *
-        from PySide.QtGui  import *
+        from PySide.QtGui  import QApplication
+        os.environ['QT_API'] = 'pyside'
     except ImportError:
-        print "Can't import PyQt4.QtCore or PyQt4.QtGui modules." 
+        print "Can't import PyQt4 or PySide modules." 
         sys.exit()
+
+from MainWindow import MainWindow
 
 app = QApplication(sys.argv)
 mainWin = MainWindow()

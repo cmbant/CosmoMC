@@ -25,7 +25,7 @@ except ImportError:
         except ImportError:
             print "Missing file Resources_pyside.py: Run script update_resources.sh"
     except ImportError:
-        print "Can't import PyQt4.QtCore or PyQt4.QtGui modules." 
+        print "Can't import PyQt4 or PySide modules." 
         sys.exit()
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -44,6 +44,12 @@ class MainWindow(QMainWindow):
         """
         Initialize of GUI components.
         """
+
+        # Configure the logging
+        level = logging.DEBUG
+        FORMAT = '%(asctime).19s [%(levelname)s]\t[%(filename)s:%(lineno)d]\t\t%(message)s'
+        logging.basicConfig(level=level, format=FORMAT)      
+
 
         super(MainWindow, self).__init__()
 
@@ -451,38 +457,49 @@ class MainWindow(QMainWindow):
         #
         if self.trianglePlot.isChecked(): 
             if len(items_x)>1:
-                # triangle plot
                 params = items_x
+                logging.debug("Triangle plot ")
+                logging.debug("roots  = %s"%str(roots))
+                logging.debug("params = %s"%str(params))
                 self.plotter.triangle_plot(roots, params)
             else:
                 self.statusBar().showMessage("Need more than 1 x-param", 2000)
                 
         elif len(items_x)>0 and len(items_y)==0:
-            # 1d plot 
-            
-            import pdb; pdb.set_trace()
+            params = items_x
+            logging.debug("1D plot ")
+            logging.debug("roots = %s"%str(roots))
+            logging.debug("params = %s"%str(params))
+            self.plotter.plots_1d(roots, params=params)
+            #import pdb; pdb.set_trace()
+            self.figure = self.plotter.fig
+            self.canvas.draw()
 
-            self.plotter.plots_1d(roots)
             
         elif len(items_x)>0 and len(items_y)>0:
 
             if self.toggleFilled.isChecked() or self.toggleLine.isChecked():
-                # 2d plot 
+                logging.debug("2D plot ")
+                logging.debug("roots  = %s"%str(roots))
+                logging.debug("param1 = %s"%str(items_x))
+                logging.debug("param2 = %s"%str(items_y))
                 self.plotter.plots_2d(roots, param1=items_x, param2=items_y)
 
             if self.toggleColor.isChecked():
-                # 3d plot 
                 sets = []
                 sets.append(items_x)
                 x = items_x[0]
                 y = items_y[0]
                 color = str(self.lineEditColor.displayText())
+                logging.debug("3D plot ")
+                logging.debug("roots = %s"%str(roots))
                 self.plotter.plot_3d(roots, [x, y, color])
 
 
         # ... get figure and display it in canvas
 
 
+        logging.debug("End of function")
                 
 
 
@@ -549,11 +566,6 @@ class MainWindow(QMainWindow):
 # ==============================================================================
 
 if __name__ == "__main__":
-
-    # Configure the logging
-    level = logging.DEBUG
-    FORMAT = '%(asctime).19s [%(levelname)s]\t[%(filename)s:%(lineno)d]\t\t%(message)s'
-    logging.basicConfig(level=level, format=FORMAT)      
 
     app = QApplication(sys.argv)
     mainWin = MainWindow()

@@ -103,51 +103,8 @@ make_single_samples = ini.bool('make_single_samples', False)
 single_thin = ini.int('single_thin', 1)
 cool = ini.float('cool', 1.0)
 
-bin_limits = ini.string('all_limits')
-
-indexes = mc.index2name.keys()
-indexes.sort()
-nvars = len(indexes)
-
-mc.limmin = nvars * [0.]
-mc.limmax = nvars * [0.]
-
-mc.has_limits = nvars * [False]
-mc.has_limits_bot = nvars * [False]
-mc.has_limits_top = nvars * [False]
-
-mc.has_markers = nvars * [False]
-mc.markers = nvars * [0.]
-
-for ix in indexes:
-    name = mc.index2name[ix]
-    mini = mc.ranges.min(name)
-    maxi = mc.ranges.max(name)
-    if (mini is not None and maxi is not None and mini<>maxi):
-        mc.limmin[ix] = mini
-        mc.limmax[ix] = maxi
-        mc.has_limits_top[ix] = True
-        mc.has_limits_bot[ix] = True
-    if (bin_limits<>''):
-        line = bin_limits
-    else:
-        line = ''
-        if ini.params.has_key('limits[%s]'%name.strip()):
-            line = ini.string('limits[%s]'%name.strip())
-    if (line<>''):
-        limits = [ s for s in line.split(' ') if s<>'' ]
-        if len(limits)==2:
-            if limits[0]<>'N': 
-                mc.limmin[ix] = float(limits[0])
-                mc.has_limits_bot[ix] = True
-            if limits[1]<>'N': 
-                mc.limmax[ix] = float(limits[1])
-                mc.has_limits_top[ix] = True
-    if ini.params.has_key('marker[%s]'%name.strip()):
-        line = ini.string('marker[%s]'%name.strip())
-        if (line<>''):
-            mc.has_markers = True
-            mc.markers[ix] = float(line)
+# Compute limits
+mc.ComputeLimits(ini)
 
 if (ini.params.has_key('plotparams_num')):
     print 'plotparams_num deprectated; just use plot_params'
@@ -344,13 +301,7 @@ if (adjust_priors):
 # See which parameters are fixed
 mc.GetUsedCols()
 
-mc.mean_mult = mc.norm / mc.numrows
-max_mult = (mc.mean_mult*mc.numrows) / min(mc.numrows/2, 500)
-outliers = len(mc.weights[np.where(mc.weights>max_mult)])
-if (outliers<>0):
-    print 'outlier fraction ', float(outliers)/mc.numrows
-max_mult = np.max(mc.weights); mc.max_mult = max_mult
-numsamp = np.sum(mc.weights); mc.numsamp = numsamp
+mc.ComputeMultiplicators()
 
 if (adjust_priors):
     mc.DeleteZeros()
@@ -367,7 +318,7 @@ if (thin_factor<>0):
 # Produce file of weight-1 samples if requested
 if ((num_3D_plots<>0 and not make_single_samples or make_scatter_samples) and not no_plots):
     make_single_samples = True
-    single_thin = max(1, int(round(mc.numsamp/max_mult))/max_scatter_points)
+    single_thin = max(1, int(round(mc.numsamp/mc.max_mult))/max_scatter_points)
 
 # Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
 num_vars = mc.samples.shape[1]; mc.num_vars = num_vars
@@ -390,7 +341,7 @@ mc.WriteBounds(filename)
 # Sort data in order of likelihood of points
 mc.SortColData(1)
 
-numsamp = np.sum(mc.weights); mc.numsamp = numsamp
+mc.ComputeNumSamp()
 
 # Get ND confidence region (index into sorted coldata)
 counts = 0
@@ -411,9 +362,9 @@ if (triangle_plot):
 num_parameters = mc.isused[mc.isused==True].shape[0]
 print 'using ', mc.numrows,' rows, processing ', num_parameters,' parameters'
 if (mc.indep_thin<>0):
-    print 'Approx indep samples: ', round(numsamp/mc.indep_thin)
+    print 'Approx indep samples: ', round(mc.numsamp/mc.indep_thin)
 else:
-    print  'effective number of samples (assuming indep): ', round(numsamp/max_mult)
+    print  'effective number of samples (assuming indep): ', round(mc.numsamp/mc.max_mult)
 
 # Get covariance matrix and correlation matrix
 mc.GetCovMatrix()
