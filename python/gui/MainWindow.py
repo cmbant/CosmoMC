@@ -28,6 +28,9 @@ except ImportError:
         print "Can't import PyQt4 or PySide modules." 
         sys.exit()
 
+import matplotlib
+matplotlib.use('Qt4Agg')
+
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 import matplotlib.pyplot as plt
@@ -471,10 +474,7 @@ class MainWindow(QMainWindow):
             logging.debug("roots = %s"%str(roots))
             logging.debug("params = %s"%str(params))
             self.plotter.plots_1d(roots, params=params)
-            #import pdb; pdb.set_trace()
-            self.figure = self.plotter.fig
-            self.canvas.draw()
-
+            self.updatePlot()
             
         elif len(items_x)>0 and len(items_y)>0:
 
@@ -495,12 +495,14 @@ class MainWindow(QMainWindow):
                 logging.debug("roots = %s"%str(roots))
                 self.plotter.plot_3d(roots, [x, y, color])
 
-
-        # ... get figure and display it in canvas
-
-
         logging.debug("End of function")
-                
+              
+    
+    def updatePlot(self):
+        logging.debug("Update plot ") 
+        ax = self.figure.add_subplot(111)
+        ax.set_figure(self.plotter.fig)
+        self.canvas.draw()
 
 
     #

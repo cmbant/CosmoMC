@@ -1,7 +1,7 @@
 import os, paramNames
 import logging
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg') # FIXME
 from pylab import *
 
 import MCSamples
@@ -193,7 +193,7 @@ class SampleAnalysisGetDist():
         if transpose: return (pts, y, x)
         else: return (pts, x, y)
 
-# 
+ 
 class MCSampleAnalysis():
 
     def __init__(self, root_dir):
@@ -270,7 +270,6 @@ class MCSampleAnalysis():
                 else:
                     return None
         return None
-
 
     def get_density_grid(self, root, param1, param2, conts=2, likes=False):
         return None
