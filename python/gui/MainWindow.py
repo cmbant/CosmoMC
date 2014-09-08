@@ -451,9 +451,11 @@ class MainWindow(QMainWindow):
             item = self.listParametersY.item(i)
             if item.checkState()==Qt.Checked:
                 items_y.append(str(item.text()))
-            
-        
-        logging.debug("Create GetDistPlotter with arg %s"%self.rootdir)
+                
+        if self.plotter is None:
+            logging.warning("No GetDistPlotter instance")
+            return
+
         self.plotter.settings.setWithSubplotSize(3.000000)
         roots = [os.path.basename(self.root)]
 
@@ -473,7 +475,8 @@ class MainWindow(QMainWindow):
             logging.debug("1D plot ")
             logging.debug("roots = %s"%str(roots))
             logging.debug("params = %s"%str(params))
-            self.plotter.plots_1d(roots, params=params)
+            #self.plotter.plots_1d(roots, params=params)
+            self.plotter.plots_1d(roots)
             self.updatePlot()
             
         elif len(items_x)>0 and len(items_y)>0:

@@ -1,7 +1,7 @@
 import os, paramNames
 import logging
 import matplotlib
-#matplotlib.use('Agg') # FIXME
+matplotlib.use('Agg')
 from pylab import *
 
 import MCSamples
