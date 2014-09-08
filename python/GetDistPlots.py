@@ -728,15 +728,22 @@ class GetDistPlotter():
 
         return [mins, maxs]
 
-    def plot_3d(self, roots, in_params, color_bar=True, line_offset=0, filled=False, **ax_args):
-        if isinstance(roots, basestring):roots = [roots]
-        params = self.get_param_array(roots[0], in_params)
+    def plot_3d(self, roots, in_params=None, params_for_plots=None, color_bar=True, line_offset=0, filled=False, **ax_args):
+        if isinstance(roots, basestring): roots = [roots]
+        if params_for_plots:
+            params_for_plots = [self.get_param_array(root, p) for p, root in zip(params_for_plots, roots)]
+        else:
+            if not in_params: raise Exception('No parameters for plot_3d!')
+            params = self.get_param_array(roots[0], in_params)
+            params_for_plots = [params for root in roots]  # all the same
         if self.fig is None: self.make_figure()
-        mins, maxs = self.add_3d_scatter(roots[0], params, color_bar=color_bar, **ax_args)
+        mins, maxs = self.add_3d_scatter(roots[0], params_for_plots[0], color_bar=color_bar, **ax_args)
         for i, root in enumerate(roots[1:]):
+            params = params_for_plots[i + 1]
             res = self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled, add_legend_proxy=False)
             mins, maxs = self.updateLimits(res, mins, maxs)
         if not 'lims' in ax_args:
+            params = params_for_plots[0]
             lim1 = self.checkBounds(roots[0], params[0].name , mins[0], maxs[0])
             lim2 = self.checkBounds(roots[0], params[1].name , mins[1], maxs[1])
             ax_args['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]

@@ -78,7 +78,7 @@ class importanceFilterNotOmegak:
 
 class importanceFilterAbundance:
     def wantImportance(self, jobItem):
-        return 'nnu' in jobItem.param_set
+        return 'nnu' in jobItem.param_set and not 'yhe' in jobItem.param_set
 
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
@@ -89,7 +89,7 @@ post_nonBAO = [[HST, JLA], [HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak
 post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
-post_abundance = [['abundances'], ['abundances.ini'], importanceFilterAbundance()]
+post_abundance = [['abundances'], ['abundances.ini', {'redo_likes':'F', 'redo_add':'T'}], importanceFilterAbundance()]
 
 # set up groups of parameters and data sets
 
