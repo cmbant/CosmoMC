@@ -35,7 +35,9 @@ g.add_1d_marker(norm + 0.39)
 g.add_1d_marker(norm + 0.57)
 g.add_1d_marker(norm + 1)
 
-g.add_2d_contours(base + s.defdata_all + '_post_BAO', 'nnu', 'H0')
+g.add_2d_contours(base + s.defdata_all + '_post_BAO', 'nnu', 'H0', color='black')
+g.add_2d_contours(base + s.defdata_all + '_post_abundances', 'nnu', 'H0', color='red')
+g.add_legend([s.planckall + '+BAO', s.planckall + '+$Y_P$'], legend_loc='upper left', colored_text=True)
 
 gca().set_xticks([2, 2.5, 3.0, 3.5, 4])
 

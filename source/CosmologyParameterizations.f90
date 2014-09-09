@@ -215,7 +215,7 @@
         derived(18)= CMB%Yhe !value actually used, may be set from bbn consistency
         if (CosmoSettings%bbn_consistency) then
             derived(19) = BBN_YpBBN%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
-            derived(20) = BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
+            derived(20) = 1d5*BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
         else
             derived(19:20) = 0
         end if

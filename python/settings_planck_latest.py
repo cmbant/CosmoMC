@@ -112,7 +112,7 @@ gpol.datasets = copy.deepcopy(planck_pol_sets)
 for d in gpol.datasets:
     d.add(lowTEB)
 
-gpol.params = [[], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+gpol.params = [[], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['yhe'], ['alpha1']]
 gpol.importanceRuns = []
 groups.append(gpol)
 

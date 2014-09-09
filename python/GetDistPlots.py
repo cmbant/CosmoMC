@@ -405,24 +405,30 @@ class GetDistPlotter():
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
 
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
-                no_ylabel=False, no_ytick=False, no_zero=False, **ax_args):
-        if isinstance(roots, basestring):roots = [roots]
+                no_ylabel=False, no_ytick=False, no_zero=False, param_renames={}, **ax_args):
+        if isinstance(roots, basestring): roots = [roots]
         if self.fig is None: self.make_figure()
-        param = self.check_param(roots[0], param)
         xmin = None
+        plotparam = None
+        plotroot = None
         for i, root in enumerate(roots):
-            bounds = self.add_1d(root, param, i)
+            root_param = self.check_param(root, param, param_renames)
+            if not root_param: continue
+            bounds = self.add_1d(root, root_param, i)
             if bounds is not None:
-                if xmin is None: xmin, xmax = bounds
+                if not plotparam:
+                    plotparam = root_param
+                    plotroot = root
+                    xmin, xmax = bounds
                 else:
                     xmin = min(xmin, bounds[0])
                     xmax = max(xmax, bounds[1])
-        if xmin is None: Exception('No roots have parameter: ' + param.name)
+        if xmin is None: Exception('No roots have parameter: ' + plotparam.name)
         if marker is not None: self.add_x_marker(marker, marker_color)
         if not 'lims' in ax_args:
-            xmin, xmax = self.checkBounds(roots[0], param.name, xmin, xmax)
+            xmin, xmax = self.checkBounds(plotroot, plotparam.name, xmin, xmax)
             ax_args['lims'] = [xmin, xmax, 0, 1.099]
-        ax = self.setAxes([param], **ax_args)
+        ax = self.setAxes([plotparam], **ax_args)
 
         if self.settings.prob_label is not None and not no_ylabel:
             if label_right:
@@ -449,15 +455,17 @@ class GetDistPlotter():
             self.fig = figure(figsize=(self.settings.subplot_size_inch * self.plot_col * xstretch, self.settings.subplot_size_inch * self.plot_row * ystretch))
         return self.plot_col, self.plot_row
 
-    def get_param_array(self, root, in_params=None):
+    def get_param_array(self, root, in_params=None, renames={}):
         if in_params is None or len(in_params) == 0: return self.paramNamesForRoot(root).names
         else:
             if not all([isinstance(param, paramNames.paramInfo) for param in in_params]):
-                return self.paramNamesForRoot(root).parsWithNames(in_params, error=True)
+                return self.paramNamesForRoot(root).parsWithNames(in_params, error=True, renames=renames)
         return in_params
 
-    def check_param(self, root, param):
-        if not isinstance(param, paramNames.paramInfo): return self.paramNamesForRoot(root).parWithName(param, error=True)
+    def check_param(self, root, param, renames={}):
+        if not isinstance(param, paramNames.paramInfo):
+            return self.paramNamesForRoot(root).parWithName(param, error=True, renames=renames)
+        elif renames: return self.paramNamesForRoot(root).parWithName(param.name, error=False, renames=renames)
         return param
 
     def param_latex_label(self, root, param, labelParams=None):
@@ -528,13 +536,13 @@ class GetDistPlotter():
         else: return legend_labels
 
     def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None,
-                 paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None):
+                 paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None, param_renames={}):
         if roots_per_param:
-            params = [self.check_param(roots[i][0], param) for i, param in enumerate(params)]
-        else: params = self.get_param_array(roots[0], params)
+            params = [self.check_param(root[0], param, param_renames) for root, param in zip(roots, params)]
+        else: params = self.get_param_array(roots[0], params, param_renames)
         if paramList is not None:
             wantedParams = self.paramNameListFromFile(paramList)
-            params = [param for param in params if param.name in wantedParams]
+            params = [param for param in params if param.name in wantedParams or param_renames.get(param.name, '') in wantedParams]
         nparam = len(params)
         if share_y is None: share_y = self.settings.prob_label is not None and nparam > 1
         plot_col, plot_row = self.make_figure(nparam, nx=nx)
@@ -545,7 +553,7 @@ class GetDistPlotter():
             if markers is not None and i < len(markers): marker = markers[i]
             else: marker = None
 #            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, prune=(None, 'both')[share_y])
-            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker)
+            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, param_renames=param_renames)
             if xlims is not None: xlim(xlims[i][0], xlims[i][1])
             if share_y: self.spaceTicks(gca().xaxis, expand=True)
 
