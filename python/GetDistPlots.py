@@ -1,9 +1,11 @@
 import os, paramNames
 import logging
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
+matplotlib.use('Qt4Agg')
 from pylab import *
 
+import iniFile
 import MCSamples
 
 """Plotting scripts for GetDist outputs"""
@@ -196,8 +198,13 @@ class SampleAnalysisGetDist():
  
 class MCSampleAnalysis():
 
-    def __init__(self, root_dir):
+    def __init__(self, root_dir, ini_file):
         self.root_dir = root_dir
+        self.ini = None
+        if ini_file<>'':
+            self.ini = iniFile.iniFile()        
+            self.ini.readFile(ini_file)
+            logging.debug("Using ini file %s"%ini_file)
         self.root = MCSamples.GetRootFileName(self.root_dir)
         self.mcsamples = MCSamples.MCSamples(self.root)
 
@@ -209,13 +216,43 @@ class MCSampleAnalysis():
     def newPlot(self):
         pass
 
+
+    def initParameters(self):
+        if not self.ini: return
+        
+        logging.debug("Set parameters from .ini file")
+
+        self.mcsamples.num_bins = self.ini.int('num_bins')
+        self.mcsamples.num_bins_2D = self.ini.int('num_bins_2D', self.mcsamples.num_bins)
+        self.mcsamples.smooth_scale_1D = self.ini.float('smooth_scale_1D', -1.0)
+        self.mcsamples.smooth_scale_2D = self.ini.float('smooth_scale_2D', -1.0)
+
+
+        self.mcsamples.no_plots = self.ini.bool('no_plots', False)
+        self.mcsamples.shade_meanlikes = self.ini.bool('shade_meanlikes', False)
+        self.mcsamples.num_contours = self.ini.int('num_contours', 2)
+
+        self.mcsamples.force_twotail = self.ini.bool('force_twotail', False)
+        
+        self.mcsamples.plot_meanlikes = self.ini.bool('plot_meanlikes', False)
+        
+
+
+        
     def readChains(self):
+        self.initParameters()
+
         # compute limits
-        self.mcsamples.ComputeLimits()
+        self.mcsamples.ComputeLimits(self.ini)
 
         # Get list of chain files in root directory
         chainFiles = MCSamples.GetChainFiles(self.root)
         self.mcsamples.loadChains(self.root, chainFiles)
+
+        ignorerows = 0.0
+        if self.ini is not None:
+            ignorerows = self.ini.float('ignore_rows', 0.0)
+        self.mcsamples.removeBurnFraction(ignorerows)
 
         # Make a single array for chains
         self.mcsamples.makeSingle()
@@ -236,8 +273,12 @@ class MCSampleAnalysis():
         # Get ND confidence region
         #self.mcsamples.GetConfidenceRegion()
 
+        # Find best fit, and mean likelihood
+        self.mcsamples.GetChainLikeSummary(toStdOut=False)
+
         # Init arrays for 1D densities
         self.mcsamples.Init1DDensity()
+
 
     def compute_1d(self, name):
         index = self.mcsamples.index[name]
@@ -311,14 +352,14 @@ class MCSampleAnalysis():
 
 class GetDistPlotter():
 
-    def __init__(self, plot_data=None, settings=None, chain_dir=None):
+    def __init__(self, plot_data=None, settings=None, chain_dir=None, ini_file=''):
         if settings is None: self.settings = defaultSettings
         else: self.settings = settings
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
         self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
         if chain_dir is not None:
-            self.sampleAnalyser = MCSampleAnalysis(chain_dir)
+            self.sampleAnalyser = MCSampleAnalysis(chain_dir, ini_file)
         self.newPlot()
 
     def newPlot(self):
@@ -391,7 +432,6 @@ class GetDistPlotter():
         param = self.check_param(root, param)
         density = self.sampleAnalyser.get_density(root, param, likes=self.settings.plot_meanlikes)
         if density is None: return None;
-
         kwargs = self.get_line_styles(plotno, **kwargs)
         plot(density.x, density.pts, **kwargs)
         if self.settings.plot_meanlikes:
@@ -646,8 +686,7 @@ class GetDistPlotter():
             else: return roots
         else: return legend_labels
 
-    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None,
-                 paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None):
+    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None, paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None):
         if roots_per_param:
             params = [self.check_param(roots[i][0], param) for i, param in enumerate(params)]
         else: params = self.get_param_array(roots[0], params)

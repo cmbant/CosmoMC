@@ -243,8 +243,6 @@ class MCSamples(chains):
                     self.markers[ix] = float(line)
 
 
-
-
     def AdjustPriors(self):
         sys.exit('You need to write the AdjustPriors function in MCSamples.py first!')
         #print "Adjusting priors"
@@ -926,14 +924,16 @@ class MCSamples(chains):
         
         logging.debug("Limits ... ")
         if (self.has_limits_bot[ix]):
-            if ((self.range_min[j]-self.limmin[ix]>width*end_edge) and (self.param_min[j]-self.limmin[ix]>width*smooth_1D)):
+            if ( (self.range_min[j]-self.limmin[ix]>(width*end_edge)) and 
+                 (self.param_min[j]-self.limmin[ix]>(width*smooth_1D)) ):
                 # long way from limit 
                 self.has_limits_bot[ix] = False
             else:
                 self.range_min[j] = self.limmin[ix]
 
         if (self.has_limits_top[ix]):
-            if ((self.limmax[ix]-self.range_max[j]>width*end_edge) and (self.limmax[ix]-self.param_max[j]>width*smooth_1D)):
+            if ((self.limmax[ix]-self.range_max[j]>(width*end_edge)) and 
+                (self.limmax[ix]-self.param_max[j]>(width*smooth_1D)) ):
                 self.has_limits_top[ix] = False
             else:
                 self.range_max[j] = self.limmax[ix]
@@ -945,11 +945,11 @@ class MCSamples(chains):
             self.center[j] = self.range_min[j]
         
         self.ix_min[j] = int(round((self.range_min[j] - self.center[j])/width))
-
         self.ix_max[j] = int(round((self.range_max[j] - self.center[j])/width))
 
         if (not self.has_limits_bot[ix]): self.ix_min[j] -= end_edge
         if (not self.has_limits_top[ix]): self.ix_max[j] += end_edge
+
         
         # Using index mapping for f90 arrays with non standard indexes.
 
@@ -1075,6 +1075,8 @@ class MCSamples(chains):
                     textFileHandle.write("\n")
                 textFileHandle.close()
 
+                #if j==3: import pdb; pdb.set_trace()
+
                 if (self.plot_meanlikes):
                     maxbin = max(binlikes)
                     filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
@@ -1084,6 +1086,7 @@ class MCSamples(chains):
                     textFileHandle.close()
 
             else:
+
                 logging.debug("Return data ...")
                 dat, likes = None, None
 
@@ -1098,6 +1101,7 @@ class MCSamples(chains):
                     index += 1
                 if (self.ix_min[j]==self.ix_max[j]):
                     dat[index] = self.center[j] + self.ix_min[0]*width, self.center[j] + self.ix_min[1]*width
+                #import pdb; pdb.set_trace()
                 logging.debug("dat.shape = %s"%str(dat.shape))
 
                 if (self.plot_meanlikes):                
@@ -1108,6 +1112,7 @@ class MCSamples(chains):
                         likes[index] = self.center[j] + i*width, binlikes[i - self.ix_min[j]]/maxbin
                         index += 1
                     logging.debug("likes.shape = %s"%str(likes.shape))
+                #import pdb; pdb.set_trace()
 
                 return dat, likes
 

@@ -7,10 +7,14 @@ import signal
 import random
 import logging
 
+import matplotlib
+matplotlib.use('Qt4Agg')
+
 try:
     from PyQt4.QtCore import *
     from PyQt4.QtGui  import *
     os.environ['QT_API'] = 'pyqt'
+    matplotlib.rcParams['backend.qt4']='PyQt4'
     try:
         import Resources_pyqt
     except ImportError:
@@ -20,6 +24,7 @@ except ImportError:
         from PySide.QtCore import *
         from PySide.QtGui  import *
         os.environ['QT_API'] = 'pyside'
+        matplotlib.rcParams['backend.qt4']='PySide'
         try:
             import Resources_pyside
         except ImportError:
@@ -28,8 +33,6 @@ except ImportError:
         print "Can't import PyQt4 or PySide modules." 
         sys.exit()
 
-import matplotlib
-matplotlib.use('Qt4Agg')
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
@@ -70,6 +73,8 @@ class MainWindow(QMainWindow):
 
         # Allow to shutdown the GUI with Ctrl+C
         signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+        self.iniFile = ""
 
         # Root directory
         self.rootdir = "" 
@@ -241,25 +246,28 @@ class MainWindow(QMainWindow):
     def createCentralWidget(self):
         
         self.centralWidget = QWidget()
-        
-        # a figure instance to plot on
+
+	# a figure instance to plot on
         self.figure = plt.figure()
 
-        # Canvas Widget that displays the 'figure'
-        self.canvas = FigureCanvas(self.figure)
+	# Canvas Widget that displays the 'figure'
+	self.canvas = FigureCanvas(self.figure)
 
-        # Navigation widget
-        self.toolbar = NavigationToolbar(self.canvas, self)
+	# Navigation widget
+	self.toolbar = NavigationToolbar(self.canvas, self)
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.toolbar)
-        layout.addWidget(self.canvas)
-        self.centralWidget.setLayout(layout)
+	layout = QVBoxLayout()
+	layout.addWidget(self.toolbar)
+	layout.addWidget(self.canvas)
+	self.centralWidget.setLayout(layout)
 
         self.setCentralWidget(self.centralWidget)
 
         #self.test() # test with random data
         
+
+    def setIniFile(self, iniFile):
+        self.iniFile = iniFile
 
     # slots for menu actions
 
@@ -312,7 +320,16 @@ class MainWindow(QMainWindow):
                 self._updateComboBoxParamTag()
             else:
 
-                self.plotter = GetDistPlots.GetDistPlotter(chain_dir=self.rootdir)
+                self.plotter = GetDistPlots.GetDistPlotter(chain_dir=self.rootdir, ini_file=self.iniFile)
+                
+                # self.plotter.make_figure()
+                # self.canvas = FigureCanvas(self.plotter.fig)
+                # self.toolbar = NavigationToolbar(self.canvas, self)
+                # layout = QVBoxLayout()
+                # layout.addWidget(self.toolbar)
+                # layout.addWidget(self.canvas)
+                # self.centralWidget.setLayout(layout)
+
                 self.statusBar().showMessage("Reading chain files in %s"%str(self.root))
 
                 # File .paramnames
@@ -475,8 +492,9 @@ class MainWindow(QMainWindow):
             logging.debug("1D plot ")
             logging.debug("roots = %s"%str(roots))
             logging.debug("params = %s"%str(params))
-            #self.plotter.plots_1d(roots, params=params)
-            self.plotter.plots_1d(roots)
+            self.plotter.plots_1d(roots, params=params)
+            #self.plotter.export('test.pdf')
+            #self.plotter.plots_1d(roots)
             self.updatePlot()
             
         elif len(items_x)>0 and len(items_y)>0:
@@ -503,8 +521,49 @@ class MainWindow(QMainWindow):
     
     def updatePlot(self):
         logging.debug("Update plot ") 
-        ax = self.figure.add_subplot(111)
-        ax.set_figure(self.plotter.fig)
+
+        import copy
+        self.figure = copy.copy(self.plotter.fig)
+        self.canvas.draw()
+        #self.centralWidget.update()
+
+        return
+
+        # Display in a dialog
+        widget = QDialog()
+        widget.setWindowFlags(Qt.Popup)
+        canvas = FigureCanvas(self.plotter.fig)
+        toolbar = NavigationToolbar(canvas, widget)
+        canvas.draw()
+        layout = QVBoxLayout()
+        layout.addWidget(toolbar)
+        layout.addWidget(canvas)
+        widget.setLayout(layout)
+        widget.exec_()
+
+        return
+
+       
+
+        self.canvas = FigureCanvas(self.plotter.fig)
+        self.toolbar = NavigationToolbar(self.canvas, self)
+        self.canvas.draw()
+        return
+
+
+
+        ax = self.figure.clear()
+        #ax = self.figure.add_subplot(111)
+        self.canvas.draw()
+        #ax.set_figure(self.plotter.fig)
+
+        figure = plt.figure()
+        data = [random.random() for i in range(10)]
+        ax = figure.add_subplot(111)
+        ax.hold(False)
+        ax.plot(data, '*-')
+        ax.set_figure(figure)
+
         self.canvas.draw()
 
 
