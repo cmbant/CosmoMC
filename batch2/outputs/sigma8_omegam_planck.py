@@ -12,11 +12,13 @@ for TT in [False, True]:
     if not TT:
         basedat = s.defdata_allNoLowE
         basedatname = s.NoLowLE
+        allname = s.planckall
         fname = 'Planckall'
     else:
         basedat = s.defdata_TTonly
         basedatname = s.planckTT
         fname = 'PlanckTT'
+        allname = s.planckTTlowEE
 
     roots = ['base_' + basedat,
              'base_' + basedat + '_lensing',
@@ -32,7 +34,7 @@ for TT in [False, True]:
         g.add_2d_contours('base_' + s.defdata_all, 'sigma8', 'omegam', ls='--', color='magenta')
         g.add_2d_contours('base_' + s.defdata_allNoLowE + '_post_WMAPtau', 'sigma8', 'omegam', ls='-', color='brown', alpha=0.2)
 
-    g.add_text(basedatname + '+$\\tau(0.07\pm 0.02)$', 0.96, 0.12, color='magenta')
+    g.add_text(allname, 0.96, 0.12, color='magenta')
     g.add_text(basedatname + '+$\\tau(0.09\pm 0.013)$', 0.96, 0.06, color='brown', alpha=0.4)
 
     g.add_legend(legends, legend_loc='upper right', colored_text=True);
@@ -53,7 +55,7 @@ g.add_2d_contours('base_' + s.defdata_TTonly + '_post_WMAPtau', 'sigma8', 'omega
 
 legends = [s.planckTT, s.NoLowLE, '+lensing', '+BAO']
 
-g.add_text(s.NoLowLE + '+$\\tau(0.07\pm 0.02)$', 0.96, 0.12, color='magenta')
+g.add_text(s.planckall, 0.96, 0.12, color='magenta')
 g.add_text(s.planckTT + '+$\\tau(0.09\pm 0.013)$', 0.96, 0.06, color='brown', alpha=0.4)
 g.add_legend(legends, legend_loc='upper right', colored_text=True);
 g.export()

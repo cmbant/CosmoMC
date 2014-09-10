@@ -1,6 +1,7 @@
 # provisional updated (reduced) grid settings for full mission
 # New BBN fitting built in
 # New BAO -> DR11
+# To add: w/w0, nrun r
 import batchJob, copy, re
 
 ini_dir = 'batch2/'
@@ -10,7 +11,6 @@ defaults = ['common.ini']
 importanceDefaults = ['importance_sampling.ini']
 
 # dataset names
-planck = 'v97CS'
 lowl = 'lowl'
 lowLike = 'lowLike'
 lensing = 'lensing'
@@ -26,37 +26,44 @@ HSTdata = 'HST_GPE70p6.ini'
 Camspec = 'CAMspec_defaults.ini'
 highL = 'highL'
 lowl = 'lowl'
+lowTEB = 'lowTEB'
 # dataset names
 tauprior = {'prior[tau]':'0.07 0.02'}
 tauname = 'tau07'
 WMAPtau = {'prior[tau]':'0.09 0.013'}
 
-varTE = {'param[calTE]': '1 0.1 2 0.005 0.005'}
-varEE = {'param[calEE]': '1 0.1 2 0.01 0.01'}
+
+camspec_detsets = ['nonclik_v97F.ini']
+camspec_CS = ['nonclik_v97CS.ini']
 
 
-TT = {'want_spec':'T T T T F F'}
-EE = {'want_spec':'F F F F F T'}
-TE = {'want_spec':'F F F F T F'}
-TEEE = {'want_spec':'F F F F T T'}
-TTTE = {'want_spec':'T T T T T F'}
-full = {'want_spec':'T T T T T T'}
+variant_tag = ['TTTEEE', 'TT']
+variant_pol_tag = ['TE', 'EE']
+variants = variant_tag
 
-freecal = 'freecal.ini'
-freecalEE = {'param[calEE]':'1 0.1 2 0.01 0.01', 'prior[calEE]':'1 1'}
-freecalTE = {'param[calTE]':'1 0.1 2 0.005 0.005', 'prior[calTE]': '1 1'}
+planck_highL_sets = []
+planck_pol_sets = []
+planck_vars = ['v97CS']
+planck_ini = ['CAMspec_%s.ini']
+planck_base = [camspec_CS]
+planck_covmats = [None]
 
-planck_detsets = [freecal, 'nonclik_v97F.ini', Camspec]
-planck_CS = [freecal, 'nonclik_v97CS.ini', Camspec]
-
-
-detsets = []
-CS = []
-for name, datasets, planck_vars in zip(['v97CS'], [CS], [planck_CS]):
-    datasets.append(batchJob.dataSet([name , 'TT'], [TT] + planck_vars))
-#    datasets.append(batchJob.dataSet([name , 'TE'], [TE, varTE, freecalTE] + planck_vars))
-#    datasets.append(batchJob.dataSet([name , 'EE'], [EE, varEE, freecalEE] + planck_vars))
-    datasets.append(batchJob.dataSet([name, 'all'], [full, varTE, varEE, freecalTE, freecalEE] + planck_vars))
+if True:
+    planck_vars += ['plik']
+    planck_ini += ['plik_dx11c_%s_v13.ini']
+    planck_base += [[]]
+    planck_covmats += ['planck_covmats/plik_dx11c_%s_v13.covmat']
+for planck, ini, base, cov in zip(planck_vars, planck_ini, planck_base, planck_covmats):
+    for name, var in zip(variant_tag, variants):
+        if cov is not None:
+            covM = cov % (var)
+        else: covM = None
+        planck_highL_sets.append(batchJob.dataSet([planck , name], base + [ ini % (var)], covmat=covM))
+    for var in variant_pol_tag:
+        if cov is not None:
+            covM = cov % (var)
+        else: covM = None
+        planck_pol_sets.append(batchJob.dataSet([planck , var], base + [ ini % (var)], covmat=covM))
 
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
@@ -70,17 +77,18 @@ class importanceFilterLensing:
     def wantImportance(self, jobItem):
         return planck in jobItem.data_set.names and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
 
-class importanceFilterNotOmegakLowl:
+class importanceFilterNotOmegak:
     def wantImportance(self, jobItem):
-        return not ('omegak' in jobItem.param_set and jobItem.datatag == planck + '_' + lowl)
+        return not ('omegak' in jobItem.param_set)
 
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
-post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegakLowl()]
-post_HST = [[HST], [HSTdata], importanceFilterNotOmegakLowl()]
-post_JLA = [[JLA], ['JLA_marge.ini'], importanceFilterNotOmegakLowl()]
-post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegakLowl()]
-post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegakLowl()]
+post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegak()]
+post_HST = [[HST], [HSTdata], importanceFilterNotOmegak()]
+post_JLA = [[JLA], ['JLA_marge.ini'], importanceFilterNotOmegak()]
+post_nonBAO = [[HST, JLA], [HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
+post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
+post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
 
 # set up groups of parameters and data sets
@@ -90,14 +98,34 @@ groups = []
 g = batchJob.jobGroup('main')
 # Main group with just tau prior
 
-g.datasets = copy.deepcopy(CS)
+g.datasets = copy.deepcopy(planck_highL_sets)
 for d in g.datasets:
-    d.add(lowl)
-    d.add(tauname, tauprior)
+    d.add(lowTEB)
 
-g.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+g.params = [[], ['omegak'], ['mnu'], ['r'], ['nrun', 'r'], ['nnu'], ['nrun'], ['Alens'], ['yhe'], ['w']]
 g.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all]
 groups.append(g)
+
+
+gpol = batchJob.jobGroup('mainpol')
+gpol.datasets = copy.deepcopy(planck_pol_sets)
+for d in gpol.datasets:
+    d.add(lowTEB)
+
+gpol.params = [[], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+gpol.importanceRuns = []
+groups.append(gpol)
+
+
+if False:
+    ghigh = batchJob.jobGroup('highL')
+    ghigh.datasets = copy.deepcopy(g.datasets)
+    for d in ghigh.datasets:
+        d.add(highL)
+
+    ghigh.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+    ghigh.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all]
+    groups.append(ghigh)
 
 
 g2 = batchJob.jobGroup('ext')
@@ -107,7 +135,7 @@ g2.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB]
 groups.append(g2)
 
 g3 = batchJob.jobGroup('geom')
-g3.params = [['omegak'], [ 'mnu']]
+g3.params = [['omegak'], ['w'], ['w', 'wa']]
 g3.datasets = []
 for d in copy.deepcopy(g.datasets):
     d.add(BAO, BAOdata)
@@ -121,16 +149,11 @@ for d in copy.deepcopy(g.datasets):
 g3.importanceRuns = [post_lensing]
 groups.append(g3)
 
-# Not needed, just included first time by mistkae..
-# g4 = batchJob.jobGroup('planckonlynolow')
-# g4.params = [[]]
-# g4.datasets = copy.deepcopy(CS)
-# g4.importanceRuns = [post_BAO, post_JLA, post_lensing]
-# groups.append(g4)
 
-g5 = batchJob.jobGroup('planckonly')
+
+g5 = batchJob.jobGroup('nopoltau')
 g5.params = [[]]
-g5.datasets = copy.deepcopy(CS)
+g5.datasets = copy.deepcopy(planck_highL_sets)
 for d in g5.datasets:
     d.add(lowl)
 for d in copy.deepcopy(g5.datasets):
@@ -139,6 +162,18 @@ for d in copy.deepcopy(g5.datasets):
 
 g5.importanceRuns = [post_BAO, post_nonCMB, post_WP]
 groups.append(g5)
+
+
+gpolnopoltau = batchJob.jobGroup('polnopoltau')
+gpolnopoltau.params = [[]]
+gpolnopoltau.datasets = copy.deepcopy(planck_pol_sets)
+for d in copy.deepcopy(planck_pol_sets):
+    d.add(lensing)
+    gpolnopoltau.datasets.append(d)
+
+gpolnopoltau.importanceRuns = [post_BAO, post_nonCMB, post_WP]
+groups.append(gpolnopoltau)
+
 
 g6 = batchJob.jobGroup('lensing')
 g6.datasets = copy.deepcopy(g.datasets)
@@ -150,12 +185,28 @@ g6.params = [[], ['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['
 g6.importanceRuns = []
 groups.append(g6)
 
+g7 = batchJob.jobGroup('mnu')
+g7.datasets = []
+for d in copy.deepcopy(g.datasets):
+    d.add(BAO, BAOdata)
+    g7.datasets.append(d)
+for d in copy.deepcopy(g.datasets):
+    d.add(lensing)
+    d.add(BAO, BAOdata)
+    d.add(None, {'redo_theory':'F'})
+    g7.datasets.append(d)
+
+g7.params = [['mnu'], ['nnu', 'meffsterile']]
+g7.importanceRuns = [post_JLA, post_HST, post_nonBAO]
+groups.append(g7)
+
 
 skip = []
 
 # try to match run to exisitng covmat
 covrenames = []
-covrenames.append([planck, 'planck'])
+for planck in planck_vars:
+    covrenames.append([planck, 'planck'])
 covrenames.append(['planck', 'planck_CAMspec'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
 covrenames.append(['_lensing', '_post_lensing'])

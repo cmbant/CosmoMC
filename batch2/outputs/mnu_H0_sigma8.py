@@ -20,8 +20,11 @@ fill_between(mnu, one*(H-sigma), one*(H+sigma), facecolor=c, alpha=0.15, edgecol
   
 g.plot_3d(roots, ['mnu', 'H0', 'sigma8'])
 
-g.add_2d_contours(base+s.defdata_all+'_lensing', 'mnu', 'H0', plotno=0)
-g.add_2d_contours(base+s.defdata_all+'_lensing_post_BAO_HST70p6_JLA', 'mnu', 'H0', filled=True, zorder=2, alpha=0.6)
+root = g.getRoot('mnu',s.defdata_all+'_lensing')
+g.add_2d_contours(root, 'mnu', 'H0', plotno=0)
+
+root = g.getRoot('mnu',s.defdata_all+'_BAO_HST70p6_JLA_lensing')
+g.add_2d_contours(root, 'mnu', 'H0', filled=True, zorder=2, alpha=0.6)
 
 #gca().set_xticks([2, 2.5,3.0,3.5,4])
 ylim([51,79])
