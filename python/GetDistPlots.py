@@ -1,10 +1,11 @@
 import os, paramNames
 import logging
 import matplotlib
-#matplotlib.use('Agg')
-matplotlib.use('Qt4Agg')
+matplotlib.use('Agg')
+#matplotlib.use('Qt4Agg')
 from pylab import *
 
+import numpy as np
 import iniFile
 import MCSamples
 
@@ -200,6 +201,7 @@ class MCSampleAnalysis():
 
     def __init__(self, root_dir, ini_file):
         self.root_dir = root_dir
+
         self.ini = None
         if ini_file<>'':
             self.ini = iniFile.iniFile()        
@@ -210,12 +212,17 @@ class MCSampleAnalysis():
 
         self.densities_dat_1D = dict()
         self.densities_likes_1D = dict()
-        self.densities_2D = dict()
+
+        self.densities_dat_2D = dict()
+        self.densities_likes_2D = dict()
+        self.densities_cont_2D = dict()
+        self.densities_x_2D = dict()
+        self.densities_y_2D = dict()
+
         self.readChains()
 
     def newPlot(self):
         pass
-
 
     def initParameters(self):
         if not self.ini: return
@@ -227,7 +234,6 @@ class MCSampleAnalysis():
         self.mcsamples.smooth_scale_1D = self.ini.float('smooth_scale_1D', -1.0)
         self.mcsamples.smooth_scale_2D = self.ini.float('smooth_scale_2D', -1.0)
 
-
         self.mcsamples.no_plots = self.ini.bool('no_plots', False)
         self.mcsamples.shade_meanlikes = self.ini.bool('shade_meanlikes', False)
         self.mcsamples.num_contours = self.ini.int('num_contours', 2)
@@ -235,12 +241,12 @@ class MCSampleAnalysis():
         self.mcsamples.force_twotail = self.ini.bool('force_twotail', False)
         
         self.mcsamples.plot_meanlikes = self.ini.bool('plot_meanlikes', False)
-        
-
 
         
     def readChains(self):
         self.initParameters()
+        
+        self.mcsamples.ComputeContours(self.ini)
 
         # compute limits
         self.mcsamples.ComputeLimits(self.ini)
@@ -262,16 +268,21 @@ class MCSampleAnalysis():
 
         self.mcsamples.ComputeMultiplicators()
 
+        self.mcsamples.ComputeColix()
+
         # Compute statistics values
         self.mcsamples.ComputeStats()
 
         # Sort data in order of likelihood of points 
         self.mcsamples.SortColData(1)
         
+        # Get covariance matrix and correlation matrix
         self.mcsamples.ComputeNumSamp()
 
         # Get ND confidence region
         #self.mcsamples.GetConfidenceRegion()
+
+        self.mcsamples.GetCovMatrix(False)
 
         # Find best fit, and mean likelihood
         self.mcsamples.GetChainLikeSummary(toStdOut=False)
@@ -289,6 +300,22 @@ class MCSampleAnalysis():
             self.densities_dat_1D[name] = dat
         if likes is not None: 
             self.densities_likes_1D[name] = likes
+
+    def compute_2d(self, name1, name2):
+        index1 = self.mcsamples.index[name1]
+        index2 = self.mcsamples.index[name2]
+        logging.debug("Computing 2D data for (%s,%s) ... "%(name1, name2))
+        # Pre computation 
+        self.mcsamples.PreComputeDensity(index1)
+        self.mcsamples.PreComputeDensity(index2)
+        dat, likes, cont, x, y = self.mcsamples.Get2DPlotData(index1, index2, writeDataToFile=False)
+        key = (name1, name2)
+        if dat is not None: self.densities_dat_2D[key] = dat
+        if likes is not None: self.densities_likes_2D[key] = likes
+        if cont is not None: self.densities_cont_2D[key] = cont
+        if x is not None: self.densities_x_2D[key] = x
+        if y is not None: self.densities_y_2D[key] = y
+        
 
     def get_1d(self, root, param, ext='.dat'):
         name = param.name
@@ -312,15 +339,35 @@ class MCSampleAnalysis():
                     return None
         return None
 
+    def get_2d(self, root, param1, param2, ext='', no_axes=False):
+        transpose = False # not used here
+        name1, name2 = param1.name, param2.name
+        key = (name1, name2)
+        if  (not self.densities_dat_2D.has_key(key)) \
+                and (not self.densities_x_2D.has_key(key)) \
+                and (not self.densities_y_2D.has_key(key)):
+            self.compute_2d(name1, name2)
+        if ext=='': 
+            pts = self.densities_dat_2D.get(key, np.ndarray(0))
+        elif ext=='_likes':
+            pts = self.densities_likes_2D.get(key, np.ndarray(0))
+        elif ext=='_cont':
+            pts = self.densities_cont_2D.get(key, np.ndarray(0))
+        if no_axes: return pts
+        x = self.densities_x_2D.get(key, np.ndarray(0))
+        y = self.densities_y_2D.get(key, np.ndarray(0))
+        if transpose: return (pts, y, x)
+        else: return (pts, x, y)
+
+
     def get_density_grid(self, root, param1, param2, conts=2, likes=False):
-        return None
-#        if likes:  res = self.load_2d(root, param1, param2, '_likes')
-#        else: res = self.load_2d(root, param1, param2)
-#        if res is None: return None
-#        result = Density2D()
-#        (result.pts, result.x1, result.x2) = res
-#        if conts > 0: result.contours = self.load_2d(root, param1, param2, '_cont', no_axes=True)[0:conts]
-#        return result
+        if likes:  res = self.get_2d(root, param1, param2, '_likes')
+        else: res = self.get_2d(root, param1, param2)
+        if res is None: return None
+        result = Density2D()
+        (result.pts, result.x1, result.x2) = res
+        if conts > 0: result.contours = self.get_2d(root, param1, param2, '_cont', no_axes=True)[0:conts]
+        return result
 
     def get_density(self, root, param, likes=False):
         result = Density1D()
@@ -333,7 +380,8 @@ class MCSampleAnalysis():
 
     def load_single_samples(self, root):
         loglikes, samples = self.mcsamples.MakeSingleSamples(writeDataToFile=False)
-        if not root in self.single_samples: self.single_samples[root] = np.column_stack((loglikes, samples))
+        if not root in self.single_samples: 
+            self.single_samples[root] = np.column_stack((loglikes, samples))
         return self.single_samples[root]
 
     def paramsForRoot(self, root, labelParams=None):

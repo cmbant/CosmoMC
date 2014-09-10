@@ -5,7 +5,6 @@ import sys
 import math
 
 import numpy as np
-from scipy.stats import norm
 
 import iniFile
 import paramNames
@@ -189,19 +188,10 @@ mc.plot_data_dir = plot_data_dir
 
 rootdirname = os.path.join(out_dir, rootname); mc.rootdirname = rootdirname
 
-num_contours = ini.int('num_contours', 2); mc.num_contours = num_contours
-contours = []
-# how small the end bin must be relative to max to use two tail
-max_frac_twotail = []
-for i in range(1, num_contours+1):
-    contours.append(ini.float('contour'+str(i)))
-    max_frac = ini.float('max_frac_twotail'+str(i), math.exp(-1.0*math.pow(norm.ppf((1-contours[i-1])/2), 2)/2))
-    max_frac_twotail.append(max_frac)
-
-mc.contours = contours
+mc.ComputeContours(ini)
 
 if (not no_tests):
-    converge_test_limit = ini.float('converge_test_limit', contours[num_contours-1])
+    converge_test_limit = ini.float('converge_test_limit', mc.contours[mc.num_contours-1])
     corr_length_thin = ini.int('corr_length_thin', 0)
     corr_length_steps = ini.int('corr_length_steps', 15)
     mc.corr_length_thin = corr_length_thin
@@ -321,11 +311,7 @@ if ((num_3D_plots<>0 and not make_single_samples or make_scatter_samples) and no
     single_thin = max(1, int(round(mc.numsamp/mc.max_mult))/max_scatter_points)
 
 # Only use variables whose labels are not empty (and in list of plotparams if plotparams_num /= 0)
-num_vars = mc.samples.shape[1]; mc.num_vars = num_vars
-
-colix = [0] * mc.num_vars
-for i in range(mc.num_vars): colix[i] = i
-mc.colix = colix 
+mc.ComputeColix() 
 
 # Compute means and std dev.
 mc.ComputeStats()
@@ -379,7 +365,7 @@ mc.GetChainLikeSummary(toStdOut=True)
 mc.Init1DDensity()
 
 # Do 1D bins
-mc.Do1DBins(max_frac_twotail)
+mc.Do1DBins(mc.max_frac_twotail)
 
 if (not no_plots):
     # Output files for 1D plots

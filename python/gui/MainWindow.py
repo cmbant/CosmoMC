@@ -342,6 +342,7 @@ class MainWindow(QMainWindow):
                     self.comboBoxParamTag.hide()
                     self.comboBoxDataTag.hide()
                     self._updateListParametersX(paramNames)
+                    self._updateListParametersY(paramNames)
             
                 # File batch.pyobj
                 fileobj = os.path.join(self.rootdir, "batch.pyobj")
@@ -484,6 +485,7 @@ class MainWindow(QMainWindow):
                 logging.debug("roots  = %s"%str(roots))
                 logging.debug("params = %s"%str(params))
                 self.plotter.triangle_plot(roots, params)
+                self.updatePlot()
             else:
                 self.statusBar().showMessage("Need more than 1 x-param", 2000)
                 
@@ -492,19 +494,27 @@ class MainWindow(QMainWindow):
             logging.debug("1D plot ")
             logging.debug("roots = %s"%str(roots))
             logging.debug("params = %s"%str(params))
-            self.plotter.plots_1d(roots, params=params)
-            #self.plotter.export('test.pdf')
             #self.plotter.plots_1d(roots)
+            self.plotter.plots_1d(roots, params=params)
+            self.plotter.export('test_1D.pdf')
             self.updatePlot()
             
         elif len(items_x)>0 and len(items_y)>0:
-
+            # only one X item selected
             if self.toggleFilled.isChecked() or self.toggleLine.isChecked():
                 logging.debug("2D plot ")
                 logging.debug("roots  = %s"%str(roots))
-                logging.debug("param1 = %s"%str(items_x))
-                logging.debug("param2 = %s"%str(items_y))
-                self.plotter.plots_2d(roots, param1=items_x, param2=items_y)
+                #logging.debug("param1 = %s"%str(items_x))
+                #logging.debug("params2 = %s"%str(items_y))
+                #self.plotter.plots_2d(roots, param1=items_x, params2=items_y) # raise Error
+                #
+                pairs = []
+                item_x = items_x[0]
+                for item_y in items_y:
+                    pairs.append([item_x, item_y])
+                self.plotter.plots_2d(roots, param_pairs=pairs)
+                self.plotter.export('test_2D.pdf')
+                self.updatePlot()
 
             if self.toggleColor.isChecked():
                 sets = []
@@ -515,7 +525,7 @@ class MainWindow(QMainWindow):
                 logging.debug("3D plot ")
                 logging.debug("roots = %s"%str(roots))
                 self.plotter.plot_3d(roots, [x, y, color])
-
+                self.updatePlot()
         logging.debug("End of function")
               
     

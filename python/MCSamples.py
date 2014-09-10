@@ -7,6 +7,7 @@ import math
 import logging
 import numpy as np
 from scipy.interpolate import interp1d, splrep, splev
+from scipy.stats import norm
 
 from chains import chains
 
@@ -192,6 +193,21 @@ class MCSamples(chains):
         self.corr_length_steps = 15
 
 
+    def ComputeContours(self, ini=None):
+        self.num_contours = 2
+        if ini: 
+            self.num_contours = ini.int('num_contours', 2)
+        self.contours = []
+        # how small the end bin must be relative to max to use two tail
+        self.max_frac_twotail = []
+        if ini is None: return
+        for i in range(1, self.num_contours+1):
+            self.contours.append(ini.float('contour'+str(i)))
+            max_frac = ini.float('max_frac_twotail'+str(i), 
+                                 math.exp(-1.0*math.pow(norm.ppf((1-self.contours[i-1])/2), 2)/2))
+            self.max_frac_twotail.append(max_frac)
+
+
 
     def ComputeLimits(self, ini=None):
 
@@ -330,28 +346,30 @@ class MCSamples(chains):
 
     # ThinData(self, fac) => chains.thin_indices(factor)
 
-    def GetCovMatrix(self):
+    def GetCovMatrix(self, writeDataToFile=True):
 
         nparamNonDerived = self.paramNames.numNonDerived()
         paramVecs = [ self.samples[:, i] for i in range(nparamNonDerived) ]
         self.covmatrix = self.cov(paramVecs)
 
-        fname = self.rootdirname + ".covmat"
-        textFileHandle = open(fname, "w")
-        paramNames = []
-        for i in range(nparamNonDerived):
-            paramNames.append(self.paramNames.parWithName(self.index2name[i]).name)
-        textFileHandle.write("# %s\n"%(" ".join(paramNames)))
-        for i in range(nparamNonDerived):
-            for j in range(nparamNonDerived):
-                textFileHandle.write("%17.7E"%self.covmatrix[i][j])
-            textFileHandle.write("\n")
-        textFileHandle.close()
+        if writeDataToFile:
+            fname = self.rootdirname + ".covmat"
+            textFileHandle = open(fname, "w")
+            paramNames = []
+            for i in range(nparamNonDerived):
+                paramNames.append(self.paramNames.parWithName(self.index2name[i]).name)
+            textFileHandle.write("# %s\n"%(" ".join(paramNames)))
+            for i in range(nparamNonDerived):
+                for j in range(nparamNonDerived):
+                    textFileHandle.write("%17.7E"%self.covmatrix[i][j])
+                textFileHandle.write("\n")
+            textFileHandle.close()
 
         nparam = self.paramNames.numParams()
         paramVecs = [ self.samples[:, i] for i in range(nparam) ]
         self.corrmatrix = self.corr(paramVecs)
-        np.savetxt(self.rootdirname + ".corr", self.corrmatrix, fmt="%17.7E")
+        if writeDataToFile:
+            np.savetxt(self.rootdirname + ".corr", self.corrmatrix, fmt="%17.7E")
 
     # MostCorrelated2D ? 
 
@@ -886,24 +904,23 @@ class MCSamples(chains):
                         textFileHandle.write("%s\n"%label)
         textFileHandle.close()
 
-    
-    def Get1DDensity(self, j, writeDataToFile=True):
 
-        fine_fac = 10
-        logZero = 1e30
+    def PreComputeDensity(self, j):
+        
+        # Return values
+        width, smooth_1D, end_edge = 0, 0, 0
+
 
         ix = j # ix = self.colix[j]
-        logging.debug("index is %i"%j)
-
         paramVec = self.samples[:, ix]
+
         self.param_min[j] = np.min(paramVec)
         self.param_max[j] = np.max(paramVec)
         self.range_min[j] = self.confidence(paramVec, 0.0005, upper=False) 
         self.range_max[j] = self.confidence(paramVec, 0.0005, upper=True) 
         width = (self.range_max[j]-self.range_min[j])/(self.num_bins+1)
         if (width==0):
-            print "Warning width is 0"
-            return
+            return width, smooth_1D, end_edge
 
         logging.debug("Smooth scale ... ")
         if (self.smooth_scale_1D<=0):
@@ -950,12 +967,29 @@ class MCSamples(chains):
         if (not self.has_limits_bot[ix]): self.ix_min[j] -= end_edge
         if (not self.has_limits_top[ix]): self.ix_max[j] += end_edge
 
+        return width, smooth_1D, end_edge
+
+
+    
+    def Get1DDensity(self, j, writeDataToFile=True):
+
+        ix = j # ix = self.colix[j]
+        logging.debug("index is %i"%j)
+
+        paramVec = self.samples[:, ix]
+
+        width, smooth_1D, end_edge = self.PreComputeDensity(j)
+
+        if (width==0):
+            print "Warning width is 0"
+            return
         
         # Using index mapping for f90 arrays with non standard indexes.
 
         # In f90, binsraw(ix_min(j):ix_max(j))
         binsraw = np.zeros( self.ix_max[j] - self.ix_min[j] + 1 )
         
+        fine_fac = 10
         winw = int(round(2.5 * fine_fac * smooth_1D))
         fine_edge = winw + fine_fac * end_edge
         fine_width = width / fine_fac
@@ -1034,6 +1068,7 @@ class MCSamples(chains):
         logging.debug("InitSpline ...")
         self.density1D.InitSpline()
 
+        logZero = 1e30
         if (not self.no_plots):
             # In f90, binCounts(ix_min(j):ix_max(j))
             bincounts = np.zeros( self.ix_max[j] - self.ix_min[j] + 1 )
@@ -1075,8 +1110,6 @@ class MCSamples(chains):
                     textFileHandle.write("\n")
                 textFileHandle.close()
 
-                #if j==3: import pdb; pdb.set_trace()
-
                 if (self.plot_meanlikes):
                     maxbin = max(binlikes)
                     filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
@@ -1101,7 +1134,6 @@ class MCSamples(chains):
                     index += 1
                 if (self.ix_min[j]==self.ix_max[j]):
                     dat[index] = self.center[j] + self.ix_min[0]*width, self.center[j] + self.ix_min[1]*width
-                #import pdb; pdb.set_trace()
                 logging.debug("dat.shape = %s"%str(dat.shape))
 
                 if (self.plot_meanlikes):                
@@ -1112,7 +1144,6 @@ class MCSamples(chains):
                         likes[index] = self.center[j] + i*width, binlikes[i - self.ix_min[j]]/maxbin
                         index += 1
                     logging.debug("likes.shape = %s"%str(likes.shape))
-                #import pdb; pdb.set_trace()
 
                 return dat, likes
 
@@ -1254,44 +1285,87 @@ class MCSamples(chains):
             
         bins2D[np.where(bins2D < 1e-30)] = 0
 
-        # writeDataToFile
+        if writeDataToFile:
 
-        name = self.index2name.get(j, "NOTFOUND")
-        name2 = self.index2name.get(j2, "NOTFOUND")
-        plotfile = self.rootname + "_2D_%s_%s"%(name, name2)
-        filename = os.path.join(self.plot_data_dir, plotfile)
-        textFileHandle = open(filename, 'w')
-        for ix1 in range(ixmin, ixmax+1):
-            for ix2 in range(iymin, iymax+1):
-                textFileHandle.write("%16.7E"%(bins2D[ix1-ixmin][ix2-iymin]))
-            textFileHandle.write("\n")
-        textFileHandle.close()
-
-        textFileHandle = open(filename + "_y", 'w')
-        for i in range(ixmin, ixmax+1):
-            textFileHandle.write("%16.7E\n"%(self.center[j] + i*widthx))
-        textFileHandle.close()
-
-        textFileHandle = open(filename + "_x", 'w')
-        for i in range(iymin, iymax+1):
-            textFileHandle.write("%16.7E\n"%(self.center[j2] + i*widthy))
-        textFileHandle.close()
-
-        textFileHandle = open(filename + "_cont", 'w')
-        s_levels = [ "%16.7E"%level for level in contour_levels ]
-        textFileHandle.write("%s\n"%(" ".join(s_levels)))
-        textFileHandle.close()
-
-        if (self.shade_meanlikes):
-            textFileHandle = open(filename + "_likes", 'w')
-            maxbin = np.max(bin2Dlikes)
+            name = self.index2name.get(j, "NOTFOUND")
+            name2 = self.index2name.get(j2, "NOTFOUND")
+            plotfile = self.rootname + "_2D_%s_%s"%(name, name2)
+            filename = os.path.join(self.plot_data_dir, plotfile)
+            textFileHandle = open(filename, 'w')
             for ix1 in range(ixmin, ixmax+1):
                 for ix2 in range(iymin, iymax+1):
-                    textFileHandle.write("%16.7E"%(bin2Dlikes[ix1-ixmin][ix2-iymin]/maxbin))
+                    textFileHandle.write("%16.7E"%(bins2D[ix1-ixmin][ix2-iymin]))
                 textFileHandle.write("\n")
             textFileHandle.close()
 
-        # return data ...
+            textFileHandle = open(filename + "_y", 'w')
+            for i in range(ixmin, ixmax+1):
+                textFileHandle.write("%16.7E\n"%(self.center[j] + i*widthx))
+            textFileHandle.close()
+
+            textFileHandle = open(filename + "_x", 'w')
+            for i in range(iymin, iymax+1):
+                textFileHandle.write("%16.7E\n"%(self.center[j2] + i*widthy))
+            textFileHandle.close()
+
+            textFileHandle = open(filename + "_cont", 'w')
+            s_levels = [ "%16.7E"%level for level in contour_levels ]
+            textFileHandle.write("%s\n"%(" ".join(s_levels)))
+            textFileHandle.close()
+
+            if (self.shade_meanlikes):
+                textFileHandle = open(filename + "_likes", 'w')
+                maxbin = np.max(bin2Dlikes)
+                for ix1 in range(ixmin, ixmax+1):
+                    for ix2 in range(iymin, iymax+1):
+                        textFileHandle.write("%16.7E"%(bin2Dlikes[ix1-ixmin][ix2-iymin]/maxbin))
+                    textFileHandle.write("\n")
+                textFileHandle.close()
+        else:
+            dat, likes, cont, x, y = None, None, None, None, None
+
+            ncols = ixmax+1 - ixmin
+            nrows = iymax+1 - iymin
+            dat = np.ndarray((nrows, ncols))
+            irow, icol = 0, 0 
+            for ix1 in range(ixmin, ixmax+1):
+                icol = 0
+                for ix2 in range(iymin, iymax+1):
+                    dat[irow][icol] = bins2D[ix1-ixmin][ix2-iymin]
+                    icol += 1
+                irow += 1
+            
+            if (self.shade_meanlikes):
+                maxbin = np.max(bin2Dlikes)
+                likes = np.ndarray((nrows, ncols))
+                irow, icol = 0, 0 
+                for ix1 in range(ixmin, ixmax+1):
+                    icol = 0
+                    for ix2 in range(iymin, iymax+1):
+                        likes = bin2Dlikes[ix1-ixmin][ix2-iymin]/maxbin
+                        icol += 1
+                    irow += 1
+
+            nlevels = len(contour_levels)
+            cont = np.ndarray(nlevels)
+            idx = 0
+            for level in contour_levels: 
+                cont[idx] = level
+                idx += 1
+            
+            x = np.ndarray(nrows)
+            idx = 0
+            for i in range(iymin, iymax+1):
+                x[idx] = self.center[j2] + i*widthy
+                idx += 1
+            
+            y = np.ndarray(ncols)
+            idx = 0
+            for i in range(ixmin, ixmax+1):
+                y[idx] = self.center[j] + i*widthx
+                idx += 1
+
+            return dat, likes, cont, x, y 
 
 
     def EdgeWarning(self, i):
@@ -1317,6 +1391,12 @@ class MCSamples(chains):
             print text
         else:
             return text
+
+    def ComputeColix(self):
+        self.num_vars = self.samples.shape[1]
+        colix = [0] * self.num_vars
+        for i in range(self.num_vars): colix[i] = i
+        self.colix = colix 
 
 
     def ComputeStats(self):
