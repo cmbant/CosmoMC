@@ -1,4 +1,4 @@
-    module temp_like_camspec2
+    module temp_like_camspec3
     implicit none
 
     private
@@ -12,6 +12,14 @@
     integer, parameter :: lmax_sz = CAMSpec_lmax_foreground
     real(campc) :: sz_143_temp(lmax_sz)
     real(campc) :: ksz_temp(lmax_sz), tszxcib_temp(lmax_sz)
+
+    real(campc) :: cib_217_temp(lmax_sz)
+    real(campc) :: dust_100_temp(lmax_sz)
+    real(campc) :: dust_143_temp(lmax_sz)
+    real(campc) :: dust_217_temp(lmax_sz)
+    real(campc) :: dust_143x217_temp(lmax_sz)
+    logical :: applydust=.false.
+    logical :: cibfromfile=.false.
 
     real(campc), dimension(:,:), allocatable :: beam_cov,beam_cov_inv
     real(campc), dimension(:,:,:), allocatable :: beam_modes ! mode#, l, spec#
@@ -42,10 +50,14 @@
     character(LEN=1024) camspec_fiducial_foregrounds, camspec_fiducial_cl
     character(LEN=80) :: marge_file_variant = ''
 
-    character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v2_wig'
+    character(LEN=*), parameter :: CAMSpec_like_version = 'CamSpec_v3_wig'
+
+    logical :: apply_tight_sz_prior=.false.
+
     public like_init,calc_like,CAMSpec_like_version, camspec_beam_mcmc_num, &
         want_spec,camspec_lmins,camspec_lmaxs, make_cov_marged, marge_file_variant,&
-        compute_fg, Nspec,CAMSpec_lmax_foreground,camspec_fiducial_foregrounds,camspec_fiducial_cl
+        compute_fg, Nspec,CAMSpec_lmax_foreground,camspec_fiducial_foregrounds,camspec_fiducial_cl, apply_tight_sz_prior
+
     contains
 
     !!Does not seem to be actually faster
@@ -71,6 +83,8 @@
     integer i, dummy
     real(campc) :: renorm
 
+    print *,'reading ', fname, ' in readnormSZ'
+
     open(48, file=fname, form='formatted', status='old')
     do i=2,lmax_sz
         read(48,*) dummy,templt(i)
@@ -78,9 +92,59 @@
     enddo
     close(48)
 
+
     renorm=1.d0/templt(CamSpec_sz_pivot)
     templt=templt*renorm
     end subroutine CAMspec_ReadNormSZ
+
+    subroutine CAMspec_ReadNorm(fname, templt,thelmax)
+    character(LEN=*), intent(in) :: fname
+    real(campc) :: templt(lmax_sz)
+    integer i, dummy, thelmax
+    real(campc) :: renorm
+
+    print *,'reading ', fname, ' in readnorm'
+
+    if(thelmax.lt.CamSpec_sz_pivot) stop 'CAMspec_ReadNorm: lmax too low'
+
+    open(48, file=fname, form='formatted', status='old')
+    do i=2,thelmax
+        read(48,*) dummy,templt(i)
+        if (dummy/=i) stop 'CAMspec_ReadNorm: inconsistency in file read'
+        print *,i
+    enddo
+    close(48)
+
+
+    renorm=1.d0/templt(CamSpec_sz_pivot)
+    templt=templt*renorm
+    end subroutine CAMspec_ReadNorm
+
+    subroutine CAMspec_Read(fname, templt,thelength)
+    character(LEN=*), intent(in) :: fname
+    real(campc) :: templt(lmax_sz)
+    integer i, dummy, readlmax
+    integer, optional :: thelength
+
+    print *,'reading ', fname, ' in read'
+    
+
+    if(present(thelength)) then
+       readlmax=min(thelength,lmax_sz)
+    else
+       readlmax=lmax_sz
+    endif
+
+    open(48, file=fname, form='formatted', status='old')
+    do i=2,readlmax
+        read(48,*) dummy,templt(i)
+        if (dummy/=i) stop 'CAMspec_Read: inconsistency in file read'
+    enddo
+    close(48)
+    do i=100,readlmax,100
+       print *, i, templt(i)
+    enddo
+    end subroutine CAMspec_Read
 
     subroutine ReadFiducialCl(fid_cl)
     integer i,j
@@ -113,11 +177,13 @@
 
     end subroutine ReadFiducialCl
 
-    subroutine like_init(pre_marged,like_file, sz143_file, tszxcib_file, ksz_file, beam_file,data_vector)
+    subroutine like_init(pre_marged,like_file, sz143_file, tszxcib_file, ksz_file, beam_file,data_vector,&
+                         cib217_file,dust100_file,dust143_file,dust217_file,dust143x217_file)
     use MatrixUtils
     integer :: i, j,k,l
     logical :: pre_marged
     character(LEN=*), intent(in) :: like_file, sz143_file, ksz_file, tszxcib_file, beam_file,data_vector
+    character(LEN=*), intent(in), optional ::  cib217_file,dust100_file,dust143_file,dust217_file,dust143x217_file
     logical, save :: needinit=.true.
     real(campc) , allocatable:: fid_cl(:,:), beam_cov(:,:), beam_cov_full(:,:)
     integer if1,if2, ie1, ie2, ii, jj, L2
@@ -127,6 +193,15 @@
     integer ix, status
     real(campc) dummy
     real(campc), allocatable :: CL_in(:,:), in_data(:)
+
+    logical, dimension(4) :: dustfiles
+
+    if(present(cib217_file)) print*,'cib217 file present in like_init:',cib217_file
+    if(present(dust100_file)) print*,'dust100 file present in like_init:',dust100_file
+    if(present(dust143_file)) print*,'dust143 file present in like_init:',dust143_file
+    if(present(dust217_file)) print*,'dust217 file present in like_init:',dust217_file
+    if(present(dust143x217_file)) print*,'dust143x217 file present in like_init:',dust143x217_file
+
 
     if(.not. needinit) return
 
@@ -236,6 +311,43 @@
     call CAMspec_ReadNormSZ(sz143_file, sz_143_temp)
     call CAMspec_ReadNormSZ(ksz_file, ksz_temp)
     call CAMspec_ReadNormSZ(tszxcib_file, tszxcib_temp)
+
+
+    dust_100_temp=0.0
+    dust_143_temp=0.0
+    dust_217_temp=0.0
+    dust_143x217_temp=0.0
+
+
+    dustfiles=.false.
+
+    if(present(dust100_file)) then
+        call CAMspec_Read(dust100_file, dust_100_temp,3000)
+        dustfiles(1)=.true.
+    endif
+
+    if(present(dust143_file)) then
+        call CAMspec_Read(dust143_file, dust_143_temp,3000)
+        dustfiles(2)=.true.
+    endif
+
+    if(present(dust217_file)) then
+        call CAMspec_Read(dust217_file, dust_217_temp,3000)
+        dustfiles(3)=.true.
+    endif
+
+    if(present(dust143x217_file)) then
+        call CAMspec_Read(dust143x217_file, dust_143x217_temp,3000)
+        dustfiles(4)=.true.
+    endif
+
+    if(any(dustfiles)) applydust=.true.
+
+    if(present(cib217_file)) then
+        call CAMspec_ReadNormSZ(cib217_file, cib_217_temp)
+        cibfromfile=.true.
+    endif
+    
 
     open(48, file=beam_file, form='unformatted', status='unknown')
     read(48) beam_Nspec,num_modes_per_beam,beam_lmax
@@ -360,6 +472,7 @@
     integer lmin(Nspec), lmax(Nspec)
     real(campc) lnrat, nrun_cib
     real(campc) wigamp(2), wiggle_corr, wiggle_center, wiggle_width, wiggle_cl(CAMspec_lmax)
+    real(campc) dust_100, dust_143, dust_217, dust_143x217
     integer f_ix
 
     if (lmax_compute/=0) then
@@ -383,8 +496,24 @@
     nrun_cib = freq_params(11)
     xi = freq_params(12)
     A_ksz = freq_params(13)
-    f_ix = 14
+    dust_100=freq_params(14)
+    dust_143=freq_params(15)
+    dust_217=freq_params(16)
+    dust_143x217=freq_params(17)
+    f_ix = 18
 
+if(cibfromfile) then
+!print*,'cib from file'
+do l=1,maxval(lmax)
+cl_cib_143(l)=cib_217_temp(l)
+cl_cib_217(l)=cib_217_temp(l)
+end do
+A_cib_143=.094*A_cib_217/cib_bandpass143_nom143*cib_bandpass217_nom217
+r_cib=1.0
+!The above came from ratioing Paolo's templates, which were already colour-corrected,
+!and assumed perfect correlation
+else
+!print*,'cib not from file'
     do l=1, maxval(lmax)
         lnrat = log(real(l,campc)/CamSpec_cib_pivot)
         cl_cib_217(l) = exp(ncib217*lnrat + nrun_cib/2*lnrat**2)
@@ -394,6 +523,8 @@
             cl_cib_143(l)=exp(ncib143*lnrat + nrun_cib/2*lnrat**2)
         end if
     end do
+
+endif
 
     !   100 foreground
     !
@@ -429,8 +560,38 @@
             ( r_cib*zCIB + A_ksz*ksz_temp(l) -sqrt(A_cib_217_bandpass * A_sz_143_bandpass)*xi*tszxcib_temp(l) )*llp1(l)
     end do
 
+
+if(applydust) then
+ !  print*,'applying dust...'
+ !  print *,'dust coeffs: ', dust_100, dust_143, dust_217
+   do l=lmin(1),lmax(1)
+!      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,1) 
+      C_foregrounds(l,1) = C_foregrounds(l,1)+dust_100*dust_100_temp(l)*llp1(l)
+!      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,1) 
+   enddo
+   do l=lmin(2),lmax(2)
+ !     if(mod(l,100).eq.0) print *,l,C_foregrounds(l,2) 
+      C_foregrounds(l,2) = C_foregrounds(l,2)+dust_143*dust_143_temp(l)*llp1(l)
+ !     if(mod(l,100).eq.0) print *,l,C_foregrounds(l,2) 
+   enddo
+   do l=lmin(3),lmax(3)
+!      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,3) 
+      C_foregrounds(l,3) = C_foregrounds(l,3)+dust_217*dust_217_temp(l)*llp1(l)
+!      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,3) 
+   enddo
+   do l=lmin(4),lmax(4)
+!      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,4) 
+      C_foregrounds(l,4) = C_foregrounds(l,4)+dust_143x217*dust_143x217_temp(l)*llp1(l)
+!      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,4) 
+   enddo
+endif
+
+
+
+
     do i=1,2
-        wigamp = freq_params(f_ix:f_ix+1)
+  ! print*,'doing wiggles...'
+      wigamp = freq_params(f_ix:f_ix+1)
         if (any(wigamp/=0)) then
             wiggle_corr = freq_params(f_ix+2)
             wiggle_center = freq_params(f_ix+3)
@@ -479,13 +640,13 @@
     if (camspec_has_TT) then
         call compute_fg(C_foregrounds,freq_params, 0)
 
-        cal0 = freq_params(24)
-        cal1 = freq_params(25)
-        cal2 = freq_params(26)
-        calTE = freq_params(27)
-        calEE = freq_params(28)
+        cal0 = freq_params(28)
+        cal1 = freq_params(29)
+        cal2 = freq_params(30)
+        calTE = freq_params(31)
+        calEE = freq_params(32)
         
-        num_non_beam = 28
+        num_non_beam = 32
         if (size(freq_params) < num_non_beam +  beam_Nspec*num_modes_per_beam) stop 'CAMspec: not enough parameters'
 
         if (keep_num>0) then
@@ -563,6 +724,12 @@
         enddo
     end if
 
+    if(apply_tight_sz_prior) then
+!       asz143 = freq_params(6)
+!       A_ksz = freq_params(13)
+       zlike=zlike+((freq_params(13)+1.6*freq_params(6)-9.5)/3.0)**2
+    endif
+
     !Moved these hard coded priors in prior[cal0] and prior[cal2] input parameters
     !    if (want_spec(1)) zlike=zlike+ ((cal0/cal1-1.0006d0)/0.0004d0)**2
     !    if (any(want_spec(3:4))) zlike=zlike+ ((cal2/cal1-0.9966d0)/0.0015d0)**2
@@ -635,4 +802,4 @@
     call Matrix_End('Inverse')
 
     end subroutine Matrix_Inverse2
-    end module temp_like_camspec2
+    end module temp_like_camspec3

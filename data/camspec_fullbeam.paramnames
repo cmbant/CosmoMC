@@ -11,6 +11,10 @@ ncib          \gamma^{CIB}           # spectral index of the CIB 217
 cibrun        d\ln\gamma^{CIB}/d\ln l  # running of the CIB
 xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
 aksz          A^{kSZ}
+dust100       A^{dust}_{100}  # rescaling of 100 GHz dust template
+dust143       A^{dust}_{143}  # rescaling of 143 GHz dust template
+dust217       A^{dust}_{217}  # rescaling of 217 GHz dust template
+dust143x217   A^{dust}_{143\times217}  # rescaling of 143-217 GHz dust template
 wig1_143      w^1_{143}
 wig1_217      w^1_{217}
 wig1_r        w^1_r
