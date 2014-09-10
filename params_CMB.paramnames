@@ -41,6 +41,7 @@ ctlamp*       10^9 A_t e^{-2\tau}   #parameter determining L~100 tensor C_l ampl
 yheused*      Y_P #MCMC value or from bbn consistency
 omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
 S8_47*        \sigma_8 (\Omega_m/0.25)^{0.47} 
+fsigma8*      f \sigma_8
 age*          {\rm{Age}}/{\rm{Gyr}}
 zstar*        z_*
 rstar*        r_*

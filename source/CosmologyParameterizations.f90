@@ -168,11 +168,15 @@
     Type(CMBParams) CMB
     integer num_derived, L
     real(mcp) rms
+    integer i, n_outputs
+    real(mcp) z
 
     if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)
     class is (TCosmoTheoryPredictions)
-        num_derived = 19 +  Theory%numderived
+
+        n_outputs = size(CosmoSettings%z_outputs)
+        num_derived = 19 +  n_outputs + Theory%numderived
         allocate(Derived(num_derived))
 
         call this%ParamArrayToTheoryParams(P,CMB)
@@ -215,9 +219,18 @@
         derived(18)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
         derived(19)=  Theory%Sigma_8*((CMB%omdm+CMB%omb)/0.25_mcp)**0.47_mcp
         
-        derived(20) = 0.0
-        
-        derived(21:num_derived) = Theory%derived_parameters(1: Theory%numderived)
+        ! f sigma_8
+        do i=1,n_outputs
+           if (CosmoSettings%Use_LSS) then
+              z =  CosmoSettings%z_outputs(i)
+              derived(19+i) = -(1+z)*Theory%sigma_8_z%Derivative(z)
+           else
+              derived(19+i) = 0.0
+           end if
+        end do
+
+        derived(20+n_outputs:num_derived) = Theory%derived_parameters(1: Theory%numderived)
+
     end select
 
     end subroutine TP_CalcDerivedParams
