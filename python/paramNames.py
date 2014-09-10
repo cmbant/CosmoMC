@@ -73,7 +73,7 @@ class paramList:
         for par in self.names:
             if par.name == name:
                 return par
-        if error: raise Exception("parameter name not found:" + name)
+        if error: raise Exception("parameter name not found: " + name)
         return None
 
     def numberOfName(self, name):
@@ -85,7 +85,7 @@ class paramList:
         res = []
         for name in names:
             if isinstance(name, paramInfo): res.append(name)
-            else: res.append(self.parWithName(name))
+            else: res.append(self.parWithName(name, error=error))
         return res
 
     def setLabelsAndDerivedFromParamNames(self, fname):

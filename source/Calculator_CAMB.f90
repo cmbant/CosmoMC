@@ -47,6 +47,7 @@
     procedure :: InitForLikelihoods => CAMBCalc_InitForLikelihoods
     procedure :: BAO_D_v => CAMBCalc_BAO_D_v
     procedure :: AngularDiameterDistance => CAMBCalc_AngularDiameterDistance
+    procedure :: ComovingRadialDistance => CAMBCalc_ComovingRadialDistance
     procedure :: AngularDiameterDistance2 => CAMBCalc_AngularDiameterDistance2
     procedure :: LuminosityDistance => CAMBCalc_LuminosityDistance
     procedure :: Hofz => CAMBCalc_Hofz
@@ -657,6 +658,15 @@
     CAMBCalc_AngularDiameterDistance = AngularDiameterDistance(z)
 
     end function CAMBCalc_AngularDiameterDistance
+
+    real(mcp) function CAMBCalc_ComovingRadialDistance(this, z)
+    use CAMB, only : ComovingRadialDistance  !!comoving radial distance also in Mpc no h units
+    class(CAMB_Calculator) :: this
+    real(mcp), intent(IN) :: z
+
+    CAMBCalc_ComovingRadialDistance = ComovingRadialDistance(z)
+
+    end function CAMBCalc_ComovingRadialDistance
 
     real(mcp) function CAMBCalc_AngularDiameterDistance2(this, z1, z2)
     use CAMB, only : AngularDiameterDistance2  !!angular diam distance also in Mpc no h units

@@ -193,6 +193,7 @@
     Type(TBinaryFile) F
 
     if (Feedback > 0) write (*,*) instance, 'Reading checkpoint from '//rootname//'.chk'
+    if (LogFile%Opened()) call LogFile%Write('Re-starting from checkpoint')
     call F%Open(rootname//'.chk')
     if (.not. F%ReadItem(ID) .or. ID/=chk_id) call DoAbort('invalid checkpoint files')
     call this%ReadState(F)

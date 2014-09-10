@@ -16,6 +16,7 @@
     procedure :: BAO_D_v
     procedure :: Hofz
     procedure :: AngularDiameterDistance
+    procedure :: ComovingRadialDistance
     procedure :: AngularDiameterDistance2
     procedure :: LuminosityDistance
     procedure :: CMBToTheta
@@ -181,6 +182,15 @@
     AngularDiameterDistance = 0
 
     end function AngularDiameterDistance
+
+    real(mcp) function ComovingRadialDistance(this, z)
+    class(TCosmologyCalculator) :: this
+    real(mcp), intent(IN) :: z
+
+    call this%ErrorNotImplemented('ComovingRadialDistance')
+    ComovingRadialDistance = 0
+
+    end function ComovingRadialDistance
 
     real(mcp) function AngularDiameterDistance2(this, z1, z2)
     class(TCosmologyCalculator) :: this

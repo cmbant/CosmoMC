@@ -68,9 +68,12 @@ s.lw_contour = 1
 
 rootdir = 'main'
 
+H0_high = [74.3, 2.1]
+H0_gpe = [70.6, 3.3]
+
 # various Omegam sigma8 constraints for plots
 def PLSZ(s8, sigma):
-    # from Anna 18/7/2014
+    # from Anna 18/7/2014 for fixed b=0.8
     return  ((0.757 + 0.013 * sigma) / s8) ** (1 / 0.3) * 0.32
 
 def CFTHlens_Kilbinger(s8, sigma):
@@ -114,9 +117,14 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
     def exportExtra(self, fname=None):
         self.doExport(fname, 'plots')
 
-    def getRoot(self, paramtag, datatag):
-        batch = batchJob.readobject(rootdir)
-        return batch.resolveName(paramtag, datatag)
+    def getRoot(self, paramtag, datatag, returnJobItem=False):
+        if not hasattr(self, 'batch'): self.batch = batchJob.readobject(rootdir)
+        return self.batch.resolveName(paramtag, datatag, returnJobItem=returnJobItem)
+
+    def getJobItem(self, paramtag, datatag):
+        jobItem = self.getRoot(paramtag, datatag, returnJobItem=True)
+        jobItem.loadJobItemResults(paramNameFile=self.settings.param_names_for_labels)
+        return jobItem
 
 plotter = planckPlotter(rootdir + '/plot_data')
 
