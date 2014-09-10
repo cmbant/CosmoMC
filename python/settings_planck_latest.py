@@ -211,17 +211,18 @@ g7.params = [['mnu'], ['nnu', 'meffsterile']]
 g7.importanceRuns = [post_JLA, post_HST, post_nonBAO]
 groups.append(g7)
 
-gmulti = batchJob.jobGroup('multi')
-gmulti.params = [['nnu', 'w'], ['mnu', 'w']]
-gmulti.datasets = []
-for d in copy.deepcopy(g.datasets):
-#    d.covmat = 'planck_covmats/base_w_BAO_HST_JLA_TTTEEE_lensing_lowTEB_plik.covmat'
-    d.add(lensing)
-    d.add(BAO, BAOdata)
-    d.add(JLA)
-    gmulti.datasets.append(d)
-gmulti.importanceRuns = [post_HST, post_abundance]
-groups.append(gmulti)
+if False:
+    gmulti = batchJob.jobGroup('multi')
+    gmulti.params = [['nnu', 'w'], ['mnu', 'w']]
+    gmulti.datasets = []
+    for d in copy.deepcopy(g.datasets):
+    #    d.covmat = 'planck_covmats/base_w_BAO_HST_JLA_TTTEEE_lensing_lowTEB_plik.covmat'
+        d.add(lensing)
+        d.add(BAO, BAOdata)
+        d.add(JLA)
+        gmulti.datasets.append(d)
+    gmulti.importanceRuns = [post_HST, post_abundance]
+    groups.append(gmulti)
 
 
 # Things mainly for the lensing paper
