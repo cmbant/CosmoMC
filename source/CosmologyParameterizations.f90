@@ -61,7 +61,7 @@
     end if
 
     call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
-    !set number of hard parameters, number of initial power specturm parameters
+    !set number of hard parameters, number of initial power spectrum parameters
     call this%SetTheoryParameterNumbers(16,last_power_index)
 
     end subroutine TP_Init

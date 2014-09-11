@@ -17,6 +17,7 @@
         logical, dimension(:), allocatable ::  is_derived
     contains
     procedure :: Add => ParamNames_Add
+    procedure :: AddFile => ParamNames_AddFile
     procedure :: Alloc => ParamNames_Alloc
     procedure :: AssignItem => ParamNames_AssignItem
     procedure :: AsString => ParamNames_AsString
@@ -112,7 +113,7 @@
     subroutine ParamNames_dealloc(Names)
     class(TParamNames) :: Names
     if (allocated(Names%name)) &
-    deallocate(Names%name,Names%label,Names%comment,Names%is_derived)
+        deallocate(Names%name,Names%label,Names%comment,Names%is_derived)
 
     end subroutine ParamNames_dealloc
 
@@ -154,6 +155,18 @@
 
     end subroutine ParamNames_AssignItem
 
+    subroutine ParamNames_AddFile(Names, filename, check_duplicates)
+    class(TParamNames), target :: Names
+    character(Len=*), intent(in) :: filename
+    logical, intent(in), optional :: check_duplicates
+    Type(TParamNames) :: P
+
+    call P%Init(filename)
+    call Names%Add(P,check_duplicates)
+
+    end subroutine ParamNames_AddFile
+
+
     subroutine ParamNames_Add(Names, Names2, check_duplicates)
     class(TParamNames), target :: Names, Names2
     logical, intent(in), optional :: check_duplicates
@@ -167,8 +180,8 @@
         if (NamesOrig%index(Names2%name(i))==-1) then
             n=n+1
         else
-            if (PresentDefault(.false., check_duplicates)) &
-            & call MpiStop('ParamNames_Add: Duplicate name tag - '//trim(Names2%name(i)))
+            if (DefaultFalse(check_duplicates)) &
+                & call MpiStop('ParamNames_Add: Duplicate name tag - '//trim(Names2%name(i)))
         end if
     end do
     if (n==0) return
