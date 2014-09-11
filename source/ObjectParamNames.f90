@@ -16,7 +16,7 @@
         character(LEN=ParamNames_maxlen), dimension(:), allocatable ::  comment
         logical, dimension(:), allocatable ::  is_derived
     contains
-    procedure :: Add => ParamNames_Add
+    procedure :: AddNames => ParamNames_Add
     procedure :: AddFile => ParamNames_AddFile
     procedure :: Alloc => ParamNames_Alloc
     procedure :: AssignItem => ParamNames_AssignItem
@@ -34,6 +34,7 @@
     procedure :: ReadIniForParam => ParamNames_ReadIniForParam
     procedure :: SetLabels => ParamNames_SetLabels
     procedure :: WriteFile => ParamNames_WriteFile
+    generic :: Add => AddNames, AddFile
     end Type TParamNames
 
     public TParamNames, ParamNames_maxlen
