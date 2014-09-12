@@ -94,8 +94,8 @@
             camspec_fiducial_cl = Ini%ReadFileName('camspec_fiducial_cl',NotFoundFail = .true.)
         end if
         if (any(want_spec(1:4))) then
-           print *,'wanting nonclik TT'
-           call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
+            print *,'wanting nonclik TT'
+            call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
         endif
         Like%version = File%ExtractName(likefilename)
 
@@ -103,7 +103,7 @@
         tszxcibfilename=Ini%ReadFileName('tszxcibfile',NotFoundFail = .true.)
         kszfilename=Ini%ReadFileName('kszfile',NotFoundFail = .true.)
         beamfilename=Ini%ReadFileName('beamfile',NotFoundFail = .true.)
-        data_vector = Ini%ReadFileName('camspec_data_vector')        
+        data_vector = Ini%ReadFileName('camspec_data_vector')
         if (data_vector/='') Like%version = File%ExtractName(data_vector)
         cib217filename=Ini%ReadFileName('cib217file')
         dust100filename=Ini%ReadFileName('dust100file')
@@ -112,42 +112,38 @@
         dust143x217filename=Ini%ReadFileName('dust143x217file')
 
         if(dust100filename/=''.and.dust143filename/=''.and.&
-             dust217filename/=''.and.dust143x217filename/='') then
-           dustfiles_okay=.true.
+            dust217filename/=''.and.dust143x217filename/='') then
+        dustfiles_okay=.true.
         else
-           dustfiles_okay=.false.
+            dustfiles_okay=.false.
         end if
 
 
         call Ini%Read('camspec_beam_mcmc_num',camspec_beam_mcmc_num)
 
 
-
         if (cib217filename/='') then
-           print *,'cib217 template file in use'
-           if (dustfiles_okay) then
-              print *,'using dust template files'
-              call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector,&
-cib217filename,dust100filename,dust143filename,dust217filename,dust143x217filename)
-           else
-              print *,'not using dust template files'
-              call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector,cib217_file=cib217filename)           
-           endif
+            print *,'cib217 template file in use'
+            if (dustfiles_okay) then
+                print *,'using dust template files'
+                call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector,&
+                    cib217filename,dust100filename,dust143filename,dust217filename,dust143x217filename)
+            else
+                print *,'not using dust template files'
+                call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector,cib217_file=cib217filename)
+            endif
         else
-           print *,'not using a cib217 template file'
-           if (dustfiles_okay) then
-              print *,'using dust template files'
-              call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector,&
-dust100_file=dust100filename,dust143_file=dust143filename,dust217_file=dust217filename,dust143x217_file=dust143x217filename)
-           else
-              print *,'not using dust template files'
-              call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector)
+            print *,'not using a cib217 template file'
+            if (dustfiles_okay) then
+                print *,'using dust template files'
+                call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector,&
+                    dust100_file=dust100filename,dust143_file=dust143filename,dust217_file=dust217filename,dust143x217_file=dust143x217filename)
+            else
+                print *,'not using dust template files'
+                call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector)
             endif
 
-            endif
-
-
-
+        endif
     end if
 
     use_highL = Ini%Read_Logical('use_highL',.false.)

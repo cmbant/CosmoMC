@@ -127,12 +127,12 @@
     integer, optional :: thelength
 
     print *,'reading ', fname, ' in read'
-    
+
 
     if(present(thelength)) then
-       readlmax=min(thelength,lmax_sz)
+        readlmax=min(thelength,lmax_sz)
     else
-       readlmax=lmax_sz
+        readlmax=lmax_sz
     endif
 
     open(48, file=fname, form='formatted', status='old')
@@ -142,7 +142,7 @@
     enddo
     close(48)
     do i=100,readlmax,100
-       print *, i, templt(i)
+        print *, i, templt(i)
     enddo
     end subroutine CAMspec_Read
 
@@ -178,7 +178,7 @@
     end subroutine ReadFiducialCl
 
     subroutine like_init(pre_marged,like_file, sz143_file, tszxcib_file, ksz_file, beam_file,data_vector,&
-                         cib217_file,dust100_file,dust143_file,dust217_file,dust143x217_file)
+        cib217_file,dust100_file,dust143_file,dust217_file,dust143x217_file)
     use MatrixUtils
     integer :: i, j,k,l
     logical :: pre_marged
@@ -347,7 +347,7 @@
         call CAMspec_ReadNormSZ(cib217_file, cib_217_temp)
         cibfromfile=.true.
     endif
-    
+
 
     open(48, file=beam_file, form='unformatted', status='unknown')
     read(48) beam_Nspec,num_modes_per_beam,beam_lmax
@@ -502,29 +502,29 @@
     dust_143x217=freq_params(17)
     f_ix = 18
 
-if(cibfromfile) then
-!print*,'cib from file'
-do l=1,maxval(lmax)
-cl_cib_143(l)=cib_217_temp(l)
-cl_cib_217(l)=cib_217_temp(l)
-end do
-A_cib_143=.094*A_cib_217/cib_bandpass143_nom143*cib_bandpass217_nom217
-r_cib=1.0
-!The above came from ratioing Paolo's templates, which were already colour-corrected,
-!and assumed perfect correlation
-else
-!print*,'cib not from file'
-    do l=1, maxval(lmax)
-        lnrat = log(real(l,campc)/CamSpec_cib_pivot)
-        cl_cib_217(l) = exp(ncib217*lnrat + nrun_cib/2*lnrat**2)
-        if (ncib143<-9) then
-            cl_cib_143(l) = cl_cib_217(l)
-        else
-            cl_cib_143(l)=exp(ncib143*lnrat + nrun_cib/2*lnrat**2)
-        end if
-    end do
+    if(cibfromfile) then
+        !print*,'cib from file'
+        do l=1,maxval(lmax)
+            cl_cib_143(l)=cib_217_temp(l)
+            cl_cib_217(l)=cib_217_temp(l)
+        end do
+        A_cib_143=.094*A_cib_217/cib_bandpass143_nom143*cib_bandpass217_nom217
+        r_cib=1.0
+        !The above came from ratioing Paolo's templates, which were already colour-corrected,
+        !and assumed perfect correlation
+    else
+        !print*,'cib not from file'
+        do l=1, maxval(lmax)
+            lnrat = log(real(l,campc)/CamSpec_cib_pivot)
+            cl_cib_217(l) = exp(ncib217*lnrat + nrun_cib/2*lnrat**2)
+            if (ncib143<-9) then
+                cl_cib_143(l) = cl_cib_217(l)
+            else
+                cl_cib_143(l)=exp(ncib143*lnrat + nrun_cib/2*lnrat**2)
+            end if
+        end do
 
-endif
+    endif
 
     !   100 foreground
     !
@@ -561,37 +561,37 @@ endif
     end do
 
 
-if(applydust) then
- !  print*,'applying dust...'
- !  print *,'dust coeffs: ', dust_100, dust_143, dust_217
-   do l=lmin(1),lmax(1)
-!      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,1) 
-      C_foregrounds(l,1) = C_foregrounds(l,1)+dust_100*dust_100_temp(l)*llp1(l)
-!      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,1) 
-   enddo
-   do l=lmin(2),lmax(2)
- !     if(mod(l,100).eq.0) print *,l,C_foregrounds(l,2) 
-      C_foregrounds(l,2) = C_foregrounds(l,2)+dust_143*dust_143_temp(l)*llp1(l)
- !     if(mod(l,100).eq.0) print *,l,C_foregrounds(l,2) 
-   enddo
-   do l=lmin(3),lmax(3)
-!      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,3) 
-      C_foregrounds(l,3) = C_foregrounds(l,3)+dust_217*dust_217_temp(l)*llp1(l)
-!      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,3) 
-   enddo
-   do l=lmin(4),lmax(4)
-!      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,4) 
-      C_foregrounds(l,4) = C_foregrounds(l,4)+dust_143x217*dust_143x217_temp(l)*llp1(l)
-!      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,4) 
-   enddo
-endif
+    if(applydust) then
+        !  print*,'applying dust...'
+        !  print *,'dust coeffs: ', dust_100, dust_143, dust_217
+        do l=lmin(1),lmax(1)
+            !      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,1)
+            C_foregrounds(l,1) = C_foregrounds(l,1)+dust_100*dust_100_temp(l)*llp1(l)
+            !      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,1)
+        enddo
+        do l=lmin(2),lmax(2)
+            !     if(mod(l,100).eq.0) print *,l,C_foregrounds(l,2)
+            C_foregrounds(l,2) = C_foregrounds(l,2)+dust_143*dust_143_temp(l)*llp1(l)
+            !     if(mod(l,100).eq.0) print *,l,C_foregrounds(l,2)
+        enddo
+        do l=lmin(3),lmax(3)
+            !      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,3)
+            C_foregrounds(l,3) = C_foregrounds(l,3)+dust_217*dust_217_temp(l)*llp1(l)
+            !      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,3)
+        enddo
+        do l=lmin(4),lmax(4)
+            !      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,4)
+            C_foregrounds(l,4) = C_foregrounds(l,4)+dust_143x217*dust_143x217_temp(l)*llp1(l)
+            !      if(mod(l,100).eq.0) print *,l,C_foregrounds(l,4)
+        enddo
+    endif
 
 
 
 
     do i=1,2
-  ! print*,'doing wiggles...'
-      wigamp = freq_params(f_ix:f_ix+1)
+        ! print*,'doing wiggles...'
+        wigamp = freq_params(f_ix:f_ix+1)
         if (any(wigamp/=0)) then
             wiggle_corr = freq_params(f_ix+2)
             wiggle_center = freq_params(f_ix+3)
@@ -645,7 +645,7 @@ endif
         cal2 = freq_params(30)
         calTE = freq_params(31)
         calEE = freq_params(32)
-        
+
         num_non_beam = 32
         if (size(freq_params) < num_non_beam +  beam_Nspec*num_modes_per_beam) stop 'CAMspec: not enough parameters'
 
@@ -679,7 +679,7 @@ endif
         do l = lminX(4), lmaxX(4)
             X_beam_corr_model(l-lminX(4)+npt(4)) =  ( cell_cmb(l) + C_foregrounds(l,4))*corrected_beam(4,l)/sqrt(cal1*cal2)
         end do
-    else 
+    else
         calTE=1
         calEE=1
     end if
@@ -725,9 +725,9 @@ endif
     end if
 
     if(apply_tight_sz_prior) then
-!       asz143 = freq_params(6)
-!       A_ksz = freq_params(13)
-       zlike=zlike+((freq_params(13)+1.6*freq_params(6)-9.5)/3.0)**2
+        !       asz143 = freq_params(6)
+        !       A_ksz = freq_params(13)
+        zlike=zlike+((freq_params(13)+1.6*freq_params(6)-9.5)/3.0)**2
     endif
 
     !Moved these hard coded priors in prior[cal0] and prior[cal2] input parameters
@@ -766,7 +766,7 @@ endif
     n=Size(M,DIM=1)
     if (n<=1) return
     if (Size(M,DIM=2)/=n) call MpiStop('Matrix_Inverse: non-square matrix')
-    
+
     allocate(norm(n))
     do i=1, n
         norm(i) = sqrt(abs(M(i,i)))
@@ -775,7 +775,7 @@ endif
         M(i,:) = M(i,:)/norm(i)
         M(:,i) = M(:,i)/norm(i)
     end do
-    
+
     call Matrix_Write('smallmat',M,.true.)
 
     call Matrix_Diagonalize(M,w,n)
