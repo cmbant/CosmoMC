@@ -68,7 +68,8 @@ s.lw_contour = 1
 
 rootdir = 'main'
 
-H0_high = [74.3, 2.1]
+H0_high = [73.9, 2.7]
+H0_Freeman12 = [74.3, 2.1]
 H0_gpe = [70.6, 3.3]
 
 # various Omegam sigma8 constraints for plots

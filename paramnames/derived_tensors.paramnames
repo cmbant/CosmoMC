@@ -1,0 +1,6 @@
+r02*          r_{0.002}        #r at k=0.002
+rBB*          r_{0.01}         #r at k=0.01 (roughly peak of tensor BB)
+logAT*        {\rm{ln}}(10^{10} A_t)
+r10*          r_{L=10}	#tensor-scalar temperature C_l amplitude at l=10
+AT*           10^9 A_t
+ctlamp*       10^9 A_t e^{-2\tau}   #parameter determining L~100 tensor C_l amplitude
