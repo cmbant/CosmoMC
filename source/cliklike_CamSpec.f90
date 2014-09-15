@@ -48,7 +48,6 @@
         beamfilename, kszfilename,tszxcibfilename, tmp, polfilename,&
         data_vector, cib217filename, dust100filename, dust143filename,&
         dust217filename, dust143x217filename
-    logical :: dustfiles_okay
     Class(TCosmologyLikelihood), pointer :: Like
     logical :: use_CAMspec, use_CAMpol
     logical :: use_highL
@@ -93,10 +92,7 @@
             camspec_fiducial_foregrounds = Ini%ReadFileName('camspec_fiducial_foregrounds',NotFoundFail = .true.)
             camspec_fiducial_cl = Ini%ReadFileName('camspec_fiducial_cl',NotFoundFail = .true.)
         end if
-        if (any(want_spec(1:4))) then
-            print *,'wanting nonclik TT'
-            call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
-        endif
+        call Like%loadParamNames(trim(DataDir)//'camspec_fullbeam.paramnames')
         Like%version = File%ExtractName(likefilename)
 
         sz143filename=Ini%ReadFileName('sz143file',NotFoundFail = .true.)
@@ -111,39 +107,11 @@
         dust217filename=Ini%ReadFileName('dust217file')
         dust143x217filename=Ini%ReadFileName('dust143x217file')
 
-        if(dust100filename/=''.and.dust143filename/=''.and.&
-            dust217filename/=''.and.dust143x217filename/='') then
-        dustfiles_okay=.true.
-        else
-            dustfiles_okay=.false.
-        end if
-
-
         call Ini%Read('camspec_beam_mcmc_num',camspec_beam_mcmc_num)
 
+        call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector,&
+            cib217filename,dust100filename,dust143filename,dust217filename,dust143x217filename)
 
-        if (cib217filename/='') then
-            print *,'cib217 template file in use'
-            if (dustfiles_okay) then
-                print *,'using dust template files'
-                call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector,&
-                    cib217filename,dust100filename,dust143filename,dust217filename,dust143x217filename)
-            else
-                print *,'not using dust template files'
-                call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector,cib217_file=cib217filename)
-            endif
-        else
-            print *,'not using a cib217 template file'
-            if (dustfiles_okay) then
-                print *,'using dust template files'
-                call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector,&
-                    dust100_file=dust100filename,dust143_file=dust143filename,dust217_file=dust217filename,dust143x217_file=dust143x217filename)
-            else
-                print *,'not using dust template files'
-                call like_init(pre_marged,likefilename,sz143filename,tszxcibfilename,kszfilename,beamfilename,data_vector)
-            endif
-
-        endif
     end if
 
     use_highL = Ini%Read_Logical('use_highL',.false.)

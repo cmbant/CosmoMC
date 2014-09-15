@@ -80,21 +80,8 @@
     subroutine CAMspec_ReadNormSZ(fname, templt)
     character(LEN=*), intent(in) :: fname
     real(campc) :: templt(lmax_sz)
-    integer i, dummy
-    real(campc) :: renorm
 
-    print *,'reading ', fname, ' in readnormSZ'
-
-    open(48, file=fname, form='formatted', status='old')
-    do i=2,lmax_sz
-        read(48,*) dummy,templt(i)
-        if (dummy/=i) stop 'CAMspec_ReadNormSZ: inconsistency in file read'
-    enddo
-    close(48)
-
-
-    renorm=1.d0/templt(CamSpec_sz_pivot)
-    templt=templt*renorm
+    call CAMspec_ReadNorm(fname, templt, lmax_sz)
     end subroutine CAMspec_ReadNormSZ
 
     subroutine CAMspec_ReadNorm(fname, templt,thelmax)
@@ -105,7 +92,7 @@
 
     print *,'reading ', fname, ' in readnorm'
 
-    if(thelmax.lt.CamSpec_sz_pivot) stop 'CAMspec_ReadNorm: lmax too low'
+    if(thelmax < CamSpec_sz_pivot) stop 'CAMspec_ReadNorm: lmax too low'
 
     open(48, file=fname, form='formatted', status='old')
     do i=2,thelmax
@@ -114,7 +101,6 @@
         print *,i
     enddo
     close(48)
-
 
     renorm=1.d0/templt(CamSpec_sz_pivot)
     templt=templt*renorm
@@ -127,7 +113,6 @@
     integer, optional :: thelength
 
     print *,'reading ', fname, ' in read'
-
 
     if(present(thelength)) then
         readlmax=min(thelength,lmax_sz)
@@ -183,7 +168,7 @@
     integer :: i, j,k,l
     logical :: pre_marged
     character(LEN=*), intent(in) :: like_file, sz143_file, ksz_file, tszxcib_file, beam_file,data_vector
-    character(LEN=*), intent(in), optional ::  cib217_file,dust100_file,dust143_file,dust217_file,dust143x217_file
+    character(LEN=*), intent(in) ::  cib217_file,dust100_file,dust143_file,dust217_file,dust143x217_file
     logical, save :: needinit=.true.
     real(campc) , allocatable:: fid_cl(:,:), beam_cov(:,:), beam_cov_full(:,:)
     integer if1,if2, ie1, ie2, ii, jj, L2
@@ -194,14 +179,14 @@
     real(campc) dummy
     real(campc), allocatable :: CL_in(:,:), in_data(:)
 
-    logical, dimension(4) :: dustfiles
+    logical :: dustfiles(4)
 
-    if(present(cib217_file)) print*,'cib217 file present in like_init:',cib217_file
-    if(present(dust100_file)) print*,'dust100 file present in like_init:',dust100_file
-    if(present(dust143_file)) print*,'dust143 file present in like_init:',dust143_file
-    if(present(dust217_file)) print*,'dust217 file present in like_init:',dust217_file
-    if(present(dust143x217_file)) print*,'dust143x217 file present in like_init:',dust143x217_file
 
+    if(cib217_file /='') print*,'cib217 file present in like_init:',cib217_file
+    if(dust100_file/='') print*,'dust100 file present in like_init:',dust100_file
+    if(dust143_file/='') print*,'dust143 file present in like_init:',dust143_file
+    if(dust217_file/='') print*,'dust217 file present in like_init:',dust217_file
+    if(dust143x217_file/='') print*,'dust143x217 file present in like_init:',dust143x217_file
 
     if(.not. needinit) return
 
@@ -313,37 +298,36 @@
     call CAMspec_ReadNormSZ(tszxcib_file, tszxcib_temp)
 
 
-    dust_100_temp=0.0
-    dust_143_temp=0.0
-    dust_217_temp=0.0
-    dust_143x217_temp=0.0
-
+    dust_100_temp=0
+    dust_143_temp=0
+    dust_217_temp=0
+    dust_143x217_temp=0
 
     dustfiles=.false.
 
-    if(present(dust100_file)) then
+    if(dust100_file/='') then
         call CAMspec_Read(dust100_file, dust_100_temp,3000)
         dustfiles(1)=.true.
     endif
 
-    if(present(dust143_file)) then
+    if(dust143_file/='') then
         call CAMspec_Read(dust143_file, dust_143_temp,3000)
         dustfiles(2)=.true.
     endif
 
-    if(present(dust217_file)) then
+    if(dust217_file/='') then
         call CAMspec_Read(dust217_file, dust_217_temp,3000)
         dustfiles(3)=.true.
     endif
 
-    if(present(dust143x217_file)) then
+    if(dust143x217_file/='') then
         call CAMspec_Read(dust143x217_file, dust_143x217_temp,3000)
         dustfiles(4)=.true.
     endif
 
     if(any(dustfiles)) applydust=.true.
 
-    if(present(cib217_file)) then
+    if(cib217_file/='') then
         call CAMspec_ReadNormSZ(cib217_file, cib_217_temp)
         cibfromfile=.true.
     endif
@@ -502,28 +486,29 @@
     dust_143x217=freq_params(17)
     f_ix = 18
 
-    if(cibfromfile) then
-        !print*,'cib from file'
-        do l=1,maxval(lmax)
-            cl_cib_143(l)=cib_217_temp(l)
-            cl_cib_217(l)=cib_217_temp(l)
-        end do
-        A_cib_143=.094*A_cib_217/cib_bandpass143_nom143*cib_bandpass217_nom217
-        r_cib=1.0
-        !The above came from ratioing Paolo's templates, which were already colour-corrected,
-        !and assumed perfect correlation
-    else
-        !print*,'cib not from file'
-        do l=1, maxval(lmax)
-            lnrat = log(real(l,campc)/CamSpec_cib_pivot)
-            cl_cib_217(l) = exp(ncib217*lnrat + nrun_cib/2*lnrat**2)
-            if (ncib143<-9) then
-                cl_cib_143(l) = cl_cib_217(l)
-            else
-                cl_cib_143(l)=exp(ncib143*lnrat + nrun_cib/2*lnrat**2)
-            end if
-        end do
+    do l=1, maxval(lmax)
+        lnrat = log(real(l,campc)/CamSpec_cib_pivot)
+        cl_cib_217(l) = exp(ncib217*lnrat + nrun_cib/2*lnrat**2)
+        if (ncib143<-9) then
+            cl_cib_143(l) = cl_cib_217(l)
+        else
+            cl_cib_143(l)=exp(ncib143*lnrat + nrun_cib/2*lnrat**2)
+        end if
+    end do
 
+    if(cibfromfile) then
+        !In this case take CIB shape from file; unchanged if ncib=nrun_cib=0, otherwise tilted accordingly
+        !(ncib etc allowed so we can do consistency checks on the model)
+        do l=1,maxval(lmax)
+            cl_cib_143(l)=cib_217_temp(l)*cl_cib_143(l)
+            cl_cib_217(l)=cib_217_temp(l)*cl_cib_217(l)
+        end do
+        if (A_cib_143<-0.99) then
+            A_cib_143=.094*A_cib_217/cib_bandpass143_nom143*cib_bandpass217_nom217
+            !The above came from ratioing Paolo's templates, which were already colour-corrected,
+            !and assumed perfect correlation
+        end if
+        !r_cib=1.0 !assume set in .ini, allow to vary to be able to check consistent with 1
     endif
 
     !   100 foreground
@@ -587,8 +572,6 @@
     endif
 
 
-
-
     do i=1,2
         ! print*,'doing wiggles...'
         wigamp = freq_params(f_ix:f_ix+1)
@@ -617,12 +600,12 @@
     integer ::  j, l, ii,jj
     real(campc) , allocatable, save ::  X_beam_corr_model(:), Y(:),  C_foregrounds(:,:)
     real(campc) cal0, cal1, cal2
-    real(campc) calTE, calEE
+    real(campc) calTE, calEE, calPlanck
     real(campc) zlike, ztemp
     real(campc) beam_params(cov_dim),beam_coeffs(num_modes_per_beam,beam_Nspec)
     integer :: ie1,ie2,if1,if2, ix
     integer num_non_beam
-
+    
     if (.not. allocated(lminX)) then
         print*, 'like_init should have been called before attempting to call calc_like.'
         stop
@@ -637,16 +620,18 @@
         allocate(C_foregrounds(CAMspec_lmax,Nspec))
         C_foregrounds=0
     end if
+
+    if (camspec_has_TT) call compute_fg(C_foregrounds,freq_params, 0)
+
+    calPlanck = freq_params(28) !Total calibration that scales everything
+    cal0 = freq_params(29)*calPlanck
+    cal1 = freq_params(30)*calPlanck
+    cal2 = freq_params(31)*calPlanck
+    calTE = freq_params(32)*calPlanck
+    calEE = freq_params(33)*calPlanck
+    num_non_beam = 33
+
     if (camspec_has_TT) then
-        call compute_fg(C_foregrounds,freq_params, 0)
-
-        cal0 = freq_params(28)
-        cal1 = freq_params(29)
-        cal2 = freq_params(30)
-        calTE = freq_params(31)
-        calEE = freq_params(32)
-
-        num_non_beam = 32
         if (size(freq_params) < num_non_beam +  beam_Nspec*num_modes_per_beam) stop 'CAMspec: not enough parameters'
 
         if (keep_num>0) then
@@ -679,9 +664,6 @@
         do l = lminX(4), lmaxX(4)
             X_beam_corr_model(l-lminX(4)+npt(4)) =  ( cell_cmb(l) + C_foregrounds(l,4))*corrected_beam(4,l)/sqrt(cal1*cal2)
         end do
-    else
-        calTE=1
-        calEE=1
     end if
 
     if(Nspec.eq.6) then
@@ -729,10 +711,6 @@
         !       A_ksz = freq_params(13)
         zlike=zlike+((freq_params(13)+1.6*freq_params(6)-9.5)/3.0)**2
     endif
-
-    !Moved these hard coded priors in prior[cal0] and prior[cal2] input parameters
-    !    if (want_spec(1)) zlike=zlike+ ((cal0/cal1-1.0006d0)/0.0004d0)**2
-    !    if (any(want_spec(3:4))) zlike=zlike+ ((cal2/cal1-0.9966d0)/0.0015d0)**2
 
     contains
 
