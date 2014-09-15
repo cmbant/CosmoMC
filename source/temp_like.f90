@@ -98,7 +98,6 @@
     do i=2,thelmax
         read(48,*) dummy,templt(i)
         if (dummy/=i) stop 'CAMspec_ReadNorm: inconsistency in file read'
-        print *,i
     enddo
     close(48)
 
