@@ -64,6 +64,7 @@
     call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
     if (CosmoSettings%compute_tensors) call Names%Add('paramnames/derived_tensors.paramnames')
     if (CosmoSettings%bbn_consistency) call Names%Add('paramnames/derived_bbn.paramnames')
+    call Names%Add('paramnames/derived_theory.paramnames')
     this%num_derived = Names%num_derived
     !set number of hard parameters, number of initial power spectrum parameters
     call this%SetTheoryParameterNumbers(16,last_power_index)
@@ -204,6 +205,7 @@
         derived(ix+1) = derived(ix)*exp(-2*CMB%tau)  !A e^{-2 tau}
         ix = ix+2
 
+        !n_s at k=0.002 (for case with running, and equal-scale prediction comparison)
         lograt = log(0.002_mcp/CosmoSettings%pivot_k)
         derived(ix) = CMB%InitPower(ns_index) +CMB%InitPower(nrun_index)*lograt +&
             CMB%InitPower(nrunrun_index)*lograt**2/2
@@ -211,6 +213,9 @@
 
         derived(ix)= CMB%Yhe !value actually used, may be set from bbn consistency
         ix = ix+1
+
+        derived(ix:ix+ Theory%numderived-1) = Theory%derived_parameters(1: Theory%numderived)
+        ix = ix +  Theory%numderived
 
         if (CosmoSettings%Compute_tensors) then
             derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(Theory%tensor_AT*1e10), &
@@ -224,11 +229,10 @@
             ix =ix + 2
         end if
 
-        if (ix - 1 + Theory%numderived /= this%num_derived) then
+        if (ix - 1  /= this%num_derived) then
             write(*,*) 'num_derived =', this%num_derived, '; ix, Theory%numderived = ', ix, Theory%numderived
             call MpiStop('TP_CalcDerivedParams error in derived parameter numbers')
         end if
-        derived(ix:this%num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
     end subroutine TP_CalcDerivedParams
