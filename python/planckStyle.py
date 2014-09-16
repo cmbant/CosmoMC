@@ -73,31 +73,32 @@ H0_Freeman12 = [74.3, 2.1]
 H0_gpe = [70.6, 3.3]
 
 # various Omegam sigma8 constraints for plots
-def PLSZ(s8, sigma):
+def PLSZ(omm, sigma):
     # from Anna 18/7/2014 for fixed b=0.8
-    return  ((0.757 + 0.013 * sigma) / s8) ** (1 / 0.3) * 0.32
+    return  (0.757 + 0.013 * sigma) * (omm / 0.32) ** (-0.3)
 
-def CFTHlens_Kilbinger(s8, sigma):
-    return  ((0.79 + 0.03 * sigma) / s8) ** (1 / 0.6) * 0.27
-
-def CFTHlens_LCDM(s8, sigma):  # 1408.4742
-    return  ((0.74 + 0.03 * sigma) / s8) ** (1 / 0.47) * 0.27
-
-def CFTHlens_mnu(s8, sigma):  # 1408.4742, same for sterile case
-    return  ((0.72 + 0.03 * sigma) / s8) ** (1 / 0.48) * 0.27
+def CFTHlens_Kilbinger(omm, sigma):
+    return  (0.79 + 0.03 * sigma) * (omm / 0.27) ** (-0.6)
 
 
-def galaxygalaxy(s8, sigma):  # mandelbaum
-    return  ((0.8 + 0.05 * sigma) / s8) ** (1 / 0.57) * 0.25
+def CFTHlens_LCDM(omm, sigma):  # 1408.4742
+    return  (0.74 + 0.03 * sigma) * (omm / 0.27) ** (-0.47)
 
-def planck_lensing(s8, sigma):
+def CFTHlens_mnu(omm, sigma):  # 1408.4742, same for sterile case
+    return  (0.72 + 0.03 * sigma) * (omm / 0.27) ** (-0.48)
+
+
+def galaxygalaxy(omm, sigma):  # mandelbaum
+    return  (0.8 + 0.05 * sigma) * (omm / 0.25) ** (-0.57)
+
+def planck_lensing(omm, sigma):
     # g60_full
-    return  ((0.572 + 0.019 * sigma) / s8) ** (1 / 0.25)
+    return  (0.572 + 0.019 * sigma) * omm ** (-0.25)
 
 
-def plotBounds(s8, data, c='gray'):
-    pylab.fill_between(s8, data(s8, -2), data(s8, 2), facecolor=c, alpha=0.15, edgecolor=c, lw=0)
-    pylab.fill_between(s8, data(s8, -1), data(s8, 1), facecolor=c, alpha=0.25, edgecolor=c, lw=0)
+def plotBounds(omm, data, c='gray'):
+    pylab.fill_between(omm, data(omm, -2), data(omm, 2), facecolor=c, alpha=0.15, edgecolor=c, lw=0)
+    pylab.fill_between(omm, data(omm, -1), data(omm, 1), facecolor=c, alpha=0.25, edgecolor=c, lw=0)
 
 
 class planckPlotter(GetDistPlots.GetDistPlotter):

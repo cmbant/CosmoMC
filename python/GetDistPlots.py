@@ -280,9 +280,9 @@ class GetDistPlotter():
 
         return density.bounds()
 
-    def add_2d_contours(self, root, param1, param2, plotno=0, of=None, filled=False, color=None, ls=None, cols=None,
-                        alpha=None, add_legend_proxy=True, **kwargs):
-        param1, param2 = self.get_param_array(root, [param1, param2])
+    def add_2d_contours(self, root, param1=None, param2=None, plotno=0, of=None, filled=False, color=None, ls=None, cols=None,
+                        alpha=None, add_legend_proxy=True, param_pair=None, **kwargs):
+        param1, param2 = self.get_param_array(root, param_pair or [param1, param2])
 
         density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
         if density is None: return None
@@ -335,10 +335,10 @@ class GetDistPlotter():
         if not doResize: return mins, maxs
         else: return [min(x, y) for x, y in zip(res[0], mins)], [max(x, y) for x, y in zip(res[1], maxs)]
 
-    def plot_2d(self, roots, param_pair, shaded=False, filled=False, add_legend_proxy=True, **ax_args):
+    def plot_2d(self, roots, param1=None, param2=None, param_pair=None, shaded=False, filled=False, add_legend_proxy=True, **ax_args):
         if self.fig is None: self.make_figure()
         if isinstance(roots, basestring):roots = [roots]
-        param_pair = self.get_param_array(roots[0], param_pair)
+        param_pair = self.get_param_array(roots[0], param_pair or [param1, param2])
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
         if shaded and not filled: self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
         mins, maxs = None, None
