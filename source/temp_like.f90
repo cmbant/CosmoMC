@@ -508,6 +508,8 @@
             !and assumed perfect correlation
         end if
         !r_cib=1.0 !assume set in .ini, allow to vary to be able to check consistent with 1
+    elseif (A_cib_143 < 0) then
+        stop 'A_cib_143 < 0 but no cib from file'
     endif
 
     !   100 foreground
