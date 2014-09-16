@@ -335,7 +335,7 @@ class GetDistPlotter():
         if not doResize: return mins, maxs
         else: return [min(x, y) for x, y in zip(res[0], mins)], [max(x, y) for x, y in zip(res[1], maxs)]
 
-    def plot_2d(self, roots, param_pair, shaded=True, filled=False, add_legend_proxy=True, **ax_args):
+    def plot_2d(self, roots, param_pair, shaded=False, filled=False, add_legend_proxy=True, **ax_args):
         if self.fig is None: self.make_figure()
         if isinstance(roots, basestring):roots = [roots]
         param_pair = self.get_param_array(roots[0], param_pair)

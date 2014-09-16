@@ -885,6 +885,7 @@
     end subroutine CAMBCalc_SetCAMBInitPower
 
     subroutine CAMBCalc_ReadParams(this,Ini)
+    use NonLinear
     class(CAMB_Calculator) :: this
     class(TSettingIni) :: Ini
 
@@ -900,6 +901,8 @@
     else
         highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
     end if
+    
+    halofit_version = Ini%Read_Int('halofit_version',halofit_default)
 
     end subroutine CAMBCalc_ReadParams
 

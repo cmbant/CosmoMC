@@ -297,8 +297,6 @@ cleancosmomc:
 getdist: directories $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LAPACKL) $(GETDISTFLAGS)
 
-#If you want to use the ppf module, change equations_ppf to equations
-#and halofit_ppf to halofit also comment out wa_ppf in CMB_Cls_simple.f90
 camb:
 	cd ../camb && \
 	$(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a \

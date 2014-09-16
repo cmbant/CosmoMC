@@ -24,6 +24,7 @@
         real(mcp) :: H0_prior_mean = 0._mcp, H0_prior_std = 0._mcp
         real(mcp) :: sterile_mphys_max = 10 !maximum allowed physical mass of thermal sterile neutrino in eV
         real(mcp) :: use_min_zre = 0._mcp
+        real(mcp) :: zre_prior_mean = 0._mcp, zre_prior_std = 0._mcp
     contains
     procedure :: ParamArrayToTheoryParams => TP_ParamArrayToTheoryParams
     procedure :: NonBaseParameterPriors => TP_NonBaseParameterPriors
@@ -57,6 +58,10 @@
     if (prior/='') then
         read(prior,*) this%H0_prior_mean, this%H0_prior_std
     end if
+    prior => Ini%Read_String('zre_prior',NotFoundFail=.false.)
+    if (prior/='') then
+        read(prior,*) this%zre_prior_mean, this%zre_prior_std
+    end if
 
     call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
     !set number of hard parameters, number of initial power specturm parameters
@@ -81,6 +86,9 @@
         TP_NonBaseParameterPriors = 0
         if (this%H0_prior_mean/=0._mcp) then
             TP_NonBaseParameterPriors = ((CMB%H0 - this%H0_prior_mean)/this%H0_prior_std)**2/2
+        end if
+        if (this%zre_prior_mean/=0._mcp) then
+            TP_NonBaseParameterPriors = TP_NonBaseParameterPriors + ((CMB%zre - this%zre_prior_mean)/this%zre_prior_std)**2/2
         end if
     end select
     end function TP_NonBaseParameterPriors
