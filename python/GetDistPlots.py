@@ -1,8 +1,8 @@
 import os, paramNames
 import logging
 import matplotlib
-matplotlib.use('Agg')
-#matplotlib.use('Qt4Agg')
+#matplotlib.use('Agg')
+matplotlib.use('Qt4Agg')
 from pylab import *
 
 import numpy as np

@@ -244,22 +244,27 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dockBot)
 
     def createCentralWidget(self):
-        
+        return
+
         self.centralWidget = QWidget()
 
+        self.figure = None
+        self.canvas = None
+        
 	# a figure instance to plot on
-        self.figure = plt.figure()
+        #self.figure = plt.figure()
+        #self.axes = self.figure.add_subplot(111)
 
 	# Canvas Widget that displays the 'figure'
-	self.canvas = FigureCanvas(self.figure)
+	#self.canvas = FigureCanvas(self.figure)
 
 	# Navigation widget
-	self.toolbar = NavigationToolbar(self.canvas, self)
+	#self.toolbar = NavigationToolbar(self.canvas, self)
 
-	layout = QVBoxLayout()
-	layout.addWidget(self.toolbar)
-	layout.addWidget(self.canvas)
-	self.centralWidget.setLayout(layout)
+	#layout = QVBoxLayout()
+	#layout.addWidget(self.toolbar)
+	#layout.addWidget(self.canvas)
+	#self.centralWidget.setLayout(layout)
 
         self.setCentralWidget(self.centralWidget)
 
@@ -530,51 +535,26 @@ class MainWindow(QMainWindow):
               
     
     def updatePlot(self):
-        logging.debug("Update plot ") 
+        logging.debug("Update plot") 
 
-        import copy
-        self.figure = copy.copy(self.plotter.fig)
-        self.canvas.draw()
-        #self.centralWidget.update()
+        if self.plotter.fig is None:
+            self.centralWidget = QWidget()
+            self.setCentralWidget(self.centralWidget)
 
-        return
+            self.figure = None
+            self.canvas = None
+        else:
+            self.centralWidget = QWidget()
+            self.setCentralWidget(self.centralWidget)
+            
+            self.canvas = FigureCanvas(self.plotter.fig)
+            self.toolbar = NavigationToolbar(self.canvas, self)
+            layout = QVBoxLayout()
+            layout.addWidget(self.toolbar)
+            layout.addWidget(self.canvas)
+            self.centralWidget.setLayout(layout)
 
-        # Display in a dialog
-        widget = QDialog()
-        widget.setWindowFlags(Qt.Popup)
-        canvas = FigureCanvas(self.plotter.fig)
-        toolbar = NavigationToolbar(canvas, widget)
-        canvas.draw()
-        layout = QVBoxLayout()
-        layout.addWidget(toolbar)
-        layout.addWidget(canvas)
-        widget.setLayout(layout)
-        widget.exec_()
-
-        return
-
-       
-
-        self.canvas = FigureCanvas(self.plotter.fig)
-        self.toolbar = NavigationToolbar(self.canvas, self)
-        self.canvas.draw()
-        return
-
-
-
-        ax = self.figure.clear()
-        #ax = self.figure.add_subplot(111)
-        self.canvas.draw()
-        #ax.set_figure(self.plotter.fig)
-
-        figure = plt.figure()
-        data = [random.random() for i in range(10)]
-        ax = figure.add_subplot(111)
-        ax.hold(False)
-        ax.plot(data, '*-')
-        ax.set_figure(figure)
-
-        self.canvas.draw()
+            self.canvas.draw()
 
 
     #
