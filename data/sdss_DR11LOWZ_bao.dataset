@@ -2,5 +2,8 @@ name = DR11LOWZ
 
 measurement_type = DV_over_rs
 
+# rs_rescale = 153.017d0/148.92
+rs_rescale = 1.027511416
+
 zeff=0.32	
 bao_measurement = 8.250   0.170
