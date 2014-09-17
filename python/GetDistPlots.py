@@ -1,8 +1,7 @@
 import os, paramNames
 import logging
 import matplotlib
-#matplotlib.use('Agg')
-matplotlib.use('Qt4Agg')
+matplotlib.use('Agg')
 from pylab import *
 
 import numpy as np
@@ -218,6 +217,8 @@ class MCSampleAnalysis():
         self.densities_cont_2D = dict()
         self.densities_x_2D = dict()
         self.densities_y_2D = dict()
+
+        self.single_samples = dict()
 
         self.readChains()
 

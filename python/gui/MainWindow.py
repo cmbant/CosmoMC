@@ -33,11 +33,9 @@ except ImportError:
         print "Can't import PyQt4 or PySide modules." 
         sys.exit()
 
-
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 import matplotlib.pyplot as plt
-
 
 import GetDistPlots
 import MCSamples
@@ -496,12 +494,12 @@ class MainWindow(QMainWindow):
                 
         elif len(items_x)>0 and len(items_y)==0:
             params = items_x
-            logging.debug("1D plot ")
+            logging.debug("1D plot")
             logging.debug("roots = %s"%str(roots))
             logging.debug("params = %s"%str(params))
             #self.plotter.plots_1d(roots)
             self.plotter.plots_1d(roots, params=params)
-            self.plotter.export('test_1D.pdf')
+            #self.plotter.export('test_1D.pdf')
             self.updatePlot()
             
         elif len(items_x)>0 and len(items_y)>0:
@@ -518,7 +516,7 @@ class MainWindow(QMainWindow):
                 for item_y in items_y:
                     pairs.append([item_x, item_y])
                 self.plotter.plots_2d(roots, param_pairs=pairs)
-                self.plotter.export('test_2D.pdf')
+                #self.plotter.export('test_2D.pdf')
                 self.updatePlot()
 
             if self.toggleColor.isChecked():
@@ -527,7 +525,7 @@ class MainWindow(QMainWindow):
                 x = items_x[0]
                 y = items_y[0]
                 color = str(self.lineEditColor.displayText())
-                logging.debug("3D plot ")
+                logging.debug("3D plot")
                 logging.debug("roots = %s"%str(roots))
                 self.plotter.plot_3d(roots, [x, y, color])
                 self.updatePlot()
@@ -538,12 +536,14 @@ class MainWindow(QMainWindow):
         logging.debug("Update plot") 
 
         if self.plotter.fig is None:
+            logging.debug("Define an empty central widget") 
             self.centralWidget = QWidget()
             self.setCentralWidget(self.centralWidget)
 
             self.figure = None
             self.canvas = None
         else:
+            logging.debug("Define new canvas in central widget") 
             self.centralWidget = QWidget()
             self.setCentralWidget(self.centralWidget)
             
