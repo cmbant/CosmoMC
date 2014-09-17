@@ -5,12 +5,13 @@
 
 name = DR8
 
-#Type of measurement: A(z) = 2, D_V/rs=3, D_A/rs = 5
-type_bao = 5
+type_bao = DA_over_rs
 
-#number of bao data points 
-num_bao = 1
+#rs_rescale = 153.017d0/148.92 
+rs_rescale = 1.027511416
 
-bao_measurements_file = %DATASETDIR%sdss_DR8_bao.txt
+zeff = 0.54
+bao_measurement = 9.2124   0.41
+
 
 
