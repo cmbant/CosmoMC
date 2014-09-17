@@ -2,8 +2,7 @@
 #Blake et al. arXiv:1108.2635 
 name = WiggleZ
 
-#Type of measurement: rs/D_V = 1, A(z) = 2
-type_bao = 2
+measurement_type = Az
 
 #number of bao data points 
 num_bao = 3
