@@ -6,10 +6,10 @@
     implicit none
 
     integer, parameter  :: derived_age=1, derived_zstar=2, derived_rstar=3, derived_thetastar=4,derived_zdrag=5, &
-    & derived_rdrag=6,derived_kD=7,derived_thetaD=8 , derived_zEQ =9, derived_thetaEQ=10 !index in derived parameters array
+        & derived_rdrag=6,derived_kD=7,derived_thetaD=8 , derived_zEQ =9, derived_thetaEQ=10 !index in derived parameters array
 
     integer, parameter :: As_index=1, ns_index =2, nrun_index=3, nrunrun_index=4, amp_ratio_index = 5, &
-    & nt_index= 6, ntrun_index = 7, Aphiphi_index = 8, last_power_index = Aphiphi_index
+        & nt_index= 6, ntrun_index = 7, Aphiphi_index = 8, last_power_index = Aphiphi_index
 
     integer, parameter :: max_inipower_params = 10
 
@@ -127,7 +127,7 @@
     num_hard = slow_num
     num_initpower = semi_slow_num
     if (num_hard + num_initpower /= num_theory_params) &
-    call MpiStop('SetTheoryParameterNumbers: parameter numbers do not match')
+        call MpiStop('SetTheoryParameterNumbers: parameter numbers do not match')
     index_initpower = num_hard+1
     index_semislow = index_initpower
     if (num_initpower> max_inipower_params) call MpiStop('see CosmologyTypes.f90: num_initpower> max_inipower_params')
@@ -162,9 +162,9 @@
 
     if (this%CMB_lensing) call Ini%Read('use_nonlinear_lensing',this%use_nonlinear_lensing)
     if (Ini%HasKey('use_lensing_potential')) &
-    & write(*,*) 'NOTE: use_lensing_potential now set internally from likelihoods'
+        & write(*,*) 'NOTE: use_lensing_potential now set internally from likelihoods'
     if (Ini%HasKey('use_CMB')) &
-    & write(*,*) 'NOTE: use_CMB now set internally from likelihoods'
+        & write(*,*) 'NOTE: use_CMB now set internally from likelihoods'
 
     call Ini%Read('pivot_k',this%pivot_k)
     this%tensor_pivot_k = this%pivot_k
@@ -191,7 +191,7 @@
     call this%Initialize_CMBSettings()
 
     if (this%use_lensing_potential .and. .not. this%CMB_lensing) &
-    & call MpiStop('use_lensing_potential must have CMB_lensing=T')
+        & call MpiStop('use_lensing_potential must have CMB_lensing=T')
 
     if (Feedback > 0 .and. MPIRank==0) then
         write (*,*) 'Doing non-linear Pk:', this%use_nonlinear
@@ -203,7 +203,7 @@
                 do i=1, this%num_cls
                     do j= i, 1, -1
                         if (this%cl_lmax(i,j) >0) &
-                        write(*,'(" '//CMB_CL_Fields(i:i)//CMB_CL_Fields(j:j)//' lmax = ",(I5))') this%cl_lmax(i,j)
+                            write(*,'(" '//CMB_CL_Fields(i:i)//CMB_CL_Fields(j:j)//' lmax = ",(I5))') this%cl_lmax(i,j)
                     end do
                 end do
                 write(*,'(" lmax_computed_cl  = ",1I5)') this%lmax_computed_cl
@@ -245,10 +245,10 @@
                         numcls = max(numcls,size(DataLike%cl_lmax,2))
                     else
                         if (size(DataLike%cl_lmax,2)/=size(DataLike%cl_lmax,1)) &
-                        & call MpiStop('cl_max(i,j) should be square: '//trim(DataLike%Name))
+                            & call MpiStop('cl_max(i,j) should be square: '//trim(DataLike%Name))
                         do a=1, size(DataLike%cl_lmax,2)
                             if (any(DataLike%cl_lmax(a,a+1:)>0)) &
-                            & call MpiStop('cl_max(i,j) should have i>=j: '//trim(DataLike%Name))
+                                & call MpiStop('cl_max(i,j) should have i>=j: '//trim(DataLike%Name))
                             this%cl_lmax(a,1:a) = max(this%cl_lmax(a,1:a), DataLike%cl_lmax(a,1:a))
                         end do
                     end if
@@ -311,14 +311,14 @@
                         dlnz = min(dlnz,log(DataLike%max_z+1)/(num_range-1))
                     else if(num_range<2 .and. maxz > 0)then
                         write(*,'("ERROR: ",A," dataset: ",A, "wants less than 2 redshifts")')&
-                        trim(DataLike%LikelihoodType),trim(DataLike%name)
+                            trim(DataLike%LikelihoodType),trim(DataLike%name)
                         write(*,'("       but wants a maximum redshift of ",F7.2,". A minimum ")')maxz
                         write(*,*)"       of 2 redshifts is required or PowerAtZ will fail."
                         write(*,*)"       Check dataset settings!"
                         call Mpistop()
                     else if(num_range>1 .and. maxz==0.)then
                         write(*,'("ERROR: ",A," dataset: ",A, "wants only ",I0," redshifts")')&
-                        trim(DataLike%LikelihoodType),trim(DataLike%name),num_range
+                            trim(DataLike%LikelihoodType),trim(DataLike%name),num_range
                         write(*,*)"       but wants a maximum redshift of 0.0.  Check dataset settings!"
                         call Mpistop()
                     else

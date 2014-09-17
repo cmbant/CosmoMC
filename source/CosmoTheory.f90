@@ -90,7 +90,7 @@
         ii=i
         jj=j
     end if
-    if (allocated(this%Cls(ii,jj))) then
+    if (allocated(this%Cls(ii,jj)%Cl)) then
         outmax = size(cl)
         inmax = size(this%Cls(ii,jj)%Cl)
         mx = min(outmax,inmax)
@@ -116,7 +116,7 @@
     do i=1,min(size(this%Cls,2),imax)
         do j= i, 1, -1
             ix = ix+1
-            if (allocated(this%Cls(i,j))) then
+            if (allocated(this%Cls(i,j)%CL)) then
                 inmax = size(this%Cls(i,j)%Cl)
                 if (inmax >= L) then
                     cl(ix) = this%Cls(i,j)%Cl(L)
@@ -169,7 +169,8 @@
     Class(TCosmoTheoryPredictions) this
     class(TFileStream) :: F
     logical, intent(in) :: first
-    integer ArraySizes(1), valArray(6)
+    integer ArraySizes(1)
+    real(mcp) :: valArray(6)
     integer i,j
 
     if (first .and. new_chains) then

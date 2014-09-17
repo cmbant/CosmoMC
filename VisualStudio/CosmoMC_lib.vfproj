@@ -96,6 +96,7 @@
 		<File RelativePath="..\source\CMB.f90"/>
 		<File RelativePath="..\source\CMBlikes.f90"/>
 		<File RelativePath="..\source\DataLikelihoods.f90"/>
+		<File RelativePath="..\source\ElementAbundances.f90"/>
 		<File RelativePath="..\source\HST.f90"/>
 		<File RelativePath="..\source\likelihood.f90"/>
 		<File RelativePath="..\source\mpk.f90"/>

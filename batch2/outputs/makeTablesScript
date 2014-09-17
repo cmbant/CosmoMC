@@ -1,3 +1,12 @@
+python python/makeTables.py main outputs/grid_limit1 --limit 1 --changes_replacing v97CS plik
+python python/makeTables.py main outputs/grid_limit2 --limit 2 --changes_replacing v97CS plik
+
+
+python python/makeTables.py main outputs/grid_limit68 --limit 1 --header_tex batch1/outputs/tableHeader.tex --paramList batch1/outputs/PLA.paramnames
+python python/makeTables.py main outputs/grid_limit95 --limit 2 --header_tex batch1/outputs/tableHeader.tex --paramList batch1/outputs/PLA.paramnames
+python python/makeTables.py main outputs/grid_limit99 --limit 3 --header_tex batch1/outputs/tableHeader.tex --paramList batch1/outputs/PLA.paramnames
+
+
 python python/makeTables.py main outputs/missionTable --compare planck_lowl_post_lensing planck_lowl_lowLike_highL_post_BAO --paramtag='base' --forpaper --titles "\\plancklensing;\\Planck+\\WP+\\HighL+BAO" --blockEndParams "aksz;logA" --paramList batch1/outputs/paper_table.paramnames
 
 
@@ -9,11 +18,6 @@ python python/makeTables.py main outputs/mainGridAutoTable --compare planck_lowl
 python python/makeTables.py main outputs/LCDM_cosmo_params.tex --limit 1 --compare planck_lowl planck_lowl_post_lensing planck_lowl_lowLike  --paramtag='base' --forpaper --titles "\\planckonly;\\plancklensing;\\Planck+\\WP" --blockEndParams "logA" --paramList ./batch1/outputs/cosmology.paramnames
 
 python python/makeParamCompare.py main --chain_name_params omegak mnu nnu yhe nrun r w  --params omegak mnu nnu yhe nrun r02 w --compare planck_lowl_lowLike planck_lowl_lowLike_BAO planck_lowl_lowLike_highL planck_lowl_lowLike_highL_BAO --single_extparam --latex_filename outputs/grid_1paramext
-
-
-python python/makeTables.py main outputs/grid_limit68 --limit 1 --header_tex batch1/outputs/tableHeader.tex --paramList batch1/outputs/PLA.paramnames
-python python/makeTables.py main outputs/grid_limit95 --limit 2 --header_tex batch1/outputs/tableHeader.tex --paramList batch1/outputs/PLA.paramnames
-python python/makeTables.py main outputs/grid_limit99 --limit 3 --header_tex batch1/outputs/tableHeader.tex --paramList batch1/outputs/PLA.paramnames
 
 
 python python/makeTables.py main outputs/comparetables_limit95 --limit 2 --height 10in --width 14in --compare planck_lowl planck_lowl_lensing planck_lowl_lowLike_lensing planck_lowl_lowLike_highL planck_lowl_lowLike_highL_BAO --paramList batch1/outputs/paper_table.paramnames

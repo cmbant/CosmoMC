@@ -142,8 +142,8 @@
     Type(TLikelihoodList), target, save :: DataLikelihoods
 
     public int_arr,TCheckpointable, TTheoryParams, TTheoryIntermediateCache, TCalculationAtParamPoint, TGeneralConfig, &
-    & TConfigClass, TTheoryPredictions, TTheoryCalculator, TParameterization, GenericParameterization, &
-    & TDataLikelihood, TLikelihoodList, DataLikelihoods, LikeNameLen
+        & TConfigClass, TTheoryPredictions, TTheoryCalculator, TParameterization, GenericParameterization, &
+        & TDataLikelihood, TLikelihoodList, DataLikelihoods, LikeNameLen
 
     contains
 
@@ -195,7 +195,7 @@
     subroutine TParameterization_CalcDerivedParams(this, P, Theory, derived)
     class(TParameterization) :: this
     real(mcp), allocatable :: derived(:)
-    class(TTheoryPredictions), allocatable :: Theory !can be null for simple cases (e.g. generic)
+    class(TTheoryPredictions), allocatable :: Theory !can be unallocated for simple cases (e.g. generic)
     real(mcp) :: P(:)
 
 
@@ -263,14 +263,14 @@
 
     if (allocated(derived)) numderived = size(derived)
     allocate(output_array(num_params_used + numderived + &
-    & DataLikelihoods%Count + DataLikelihoods%LikelihoodTypeIndices%Count))
+        & DataLikelihoods%Count + DataLikelihoods%LikelihoodTypeIndices%Count))
     output_array(1:num_params_used) =  this%P(params_used)
     if (numderived>0) output_array(num_params_used+1:num_params_used+numderived) =  derived
     output_array(num_params_used+numderived+1:num_params_used+numderived+DataLikelihoods%Count) = &
-    & this%Likelihoods(1:DataLikelihoods%Count)*2
+        & this%Likelihoods(1:DataLikelihoods%Count)*2
     do i=1, DataLikelihoods%LikelihoodTypeIndices%Count
         output_array(num_params_used+numderived+DataLikelihoods%Count+i) = &
-        sum(this%Likelihoods(DataLikelihoods%LikelihoodTypeIndices%Item(i)))*2
+            sum(this%Likelihoods(DataLikelihoods%LikelihoodTypeIndices%Item(i)))*2
     end do
     call IO_OutputChainRow(ChainOutFile, mult, like, output_array)
 
@@ -627,7 +627,7 @@
             DataLike%dependent_params(DataLike%nuisance_indices) = .true.
             if (Feedback>1 .and. MPIrank==0) print *,trim(DataLike%name)//' data param indices:', DataLike%nuisance_indices
             if (L%first_fast_param==0 .and. DataLike%speed >=0 .and. &
-            DataLike%new_params>0) L%first_fast_param = DataLike%new_param_block_start
+                DataLike%new_params>0) L%first_fast_param = DataLike%new_param_block_start
         end if
     end do
     do i=1,L%Count
@@ -715,7 +715,7 @@
     do i=1,L%Count
         DataLike=>L%Item(i)
         if (.not. DataLike%checkConflicts(L)) &
-        call MpiStop('Likelihood conflict reported by '//trim(DataLike%Name))
+            call MpiStop('Likelihood conflict reported by '//trim(DataLike%Name))
     end do
 
     end subroutine checkAllConflicts

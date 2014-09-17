@@ -324,15 +324,17 @@ class batchJob:
     def normalizeDataTag(self, tag):
         return "_".join(sorted(tag.replace('_post', '').split('_')))
 
-    def resolveName(self, paramtag, datatag, wantSubItems=True, wantImportance=True, raiseError=True, base='base'):
+    def resolveName(self, paramtag, datatag, wantSubItems=True, wantImportance=True, raiseError=True, base='base', returnJobItem=False):
         if paramtag:
             if isinstance(paramtag, basestring): paramtag = paramtag.split('_')
             paramtags = [base] + sorted(paramtag)
-        else: paramtags = [base]
+        else:
+            paramtag = [base]
+            paramtags = [base]
         name = "_".join(paramtags) + '_' + self.normalizeDataTag(datatag)
         jobItem = self.normed_name_item(name, wantSubItems, wantImportance)
-        if jobItem is not None: return jobItem.name
-        if raiseError: raise Exception('No match for paramtag, datatag:' + paramtag + ', ' + datatag)
+        if jobItem is not None: return (jobItem.name, jobItem)[returnJobItem]
+        if raiseError: raise Exception('No match for paramtag, datatag... ' + "_".join(paramtag) + ', ' + datatag)
         else: return None
 
     def save(self, filename=''):

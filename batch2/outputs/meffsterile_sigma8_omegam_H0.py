@@ -10,16 +10,16 @@ roots = [base + s.defdata_all,
          'base_nnu_mnu_' + s.defdata_all + '_post_BAO',
          'base_' + s.defdata_all + '_post_BAO']
 
-s8 = np.arange(0.5, 1, 0.01)
+omm = np.arange(0.2, 0.45, 0.01)
 
 
 # plotBounds(galaxygalaxy,'green')
-s.plotBounds(s8, s.CFTHlens_mnu, 'burlywood')
-s.plotBounds(s8, s.PLSZ, 'gray')
+s.plotBounds(omm, s.CFTHlens_mnu, 'burlywood')
+s.plotBounds(omm, s.PLSZ, 'gray')
 # s.plotBounds(s8, s.planck_lensing, 'cyan')
 
 
-g.plot_3d(roots, ['sigma8', 'omegam', 'H0'])
+g.plot_3d(roots, ['omegam', 'sigma8', 'H0'])
 
 # g.add_2d_contours(base + s.defdata_all + '_post_BAO', 'sigma8', 'omegam')
 # g.add_2d_contours(base+s.defdata_all+'_post_HST70p6', 'sigma8', 'omegam', plotno=1)
