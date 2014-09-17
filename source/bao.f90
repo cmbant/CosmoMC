@@ -9,6 +9,7 @@
 
     !AL/JH Oct 2012: encorporate DR9 data into something close to new cosmomc format
     !Dec 2013: merged in DR11 patch (Antonio J. Cuesta, for the BOSS collaboration)
+    !Sept 2014: added refactoed DR7 MGS code (thanks Lado Samushia)
 
     module bao
     use MatrixUtils
@@ -42,6 +43,7 @@
     procedure, private :: Acoustic
     procedure, private :: BAO_DR7_loglike
     procedure, private :: BAO_DR11_loglike
+    procedure, private :: BAO_MGS_loglike
     end type BAOLikelihood
 
     integer,parameter :: DR11_alpha_npoints=280
@@ -53,6 +55,7 @@
     real rsdrag_theory
     real(mcp) :: BAO_fixed_rs = -1._mcp
     integer DR7_alpha_npoints
+    real(mcp), allocatable :: MGS_prob(:)
 
     public BAOLikelihood, BAOLikelihood_Add
     contains
@@ -112,6 +115,9 @@
     if (this%name == 'DR7') then
         !don't used observed value, probabilty distribution instead
         call BAO_DR7_init(Ini%ReadFileName('prob_dist'))
+    else if (this%name == 'MGS') then
+        !don't used observed value, probabilty distribution instead
+        call File%LoadTxt(Ini%ReadFileName('prob_dist'), MGS_prob)
     elseif (this%name == 'DR11CMASS') then
         !don't used observed value, probabilty distribution instead
         call BAO_DR11_init(Ini%ReadFileName('prob_dist'))
@@ -163,7 +169,7 @@
 
     end function SDSS_dvtors
 
-   ! HS modified SDSS_dvtors to calculate D_A/rs 
+    ! HS modified SDSS_dvtors to calculate D_A/rs
     function SDSS_dAtors(this, CMB,z)
     !This uses numerical value of D_A/r_s, but re-scales it to match definition of SDSS
     !paper fitting at the fiducial model. Idea being it is also valid for e.g. varying N_eff
@@ -201,6 +207,8 @@
     BAO_LnLike=0
     if (this%name=='DR7') then
         BAO_LnLike = this%BAO_DR7_loglike(CMB,this%bao_z(1))
+    elseif (this%name=='MGS') then
+        BAO_LnLike = this%BAO_MGS_loglike(CMB,this%bao_z(1))
     elseif (this%name=='DR11CMASS') then
         BAO_LnLike = this%BAO_DR11_loglike(CMB,this%bao_z(1))
     else
@@ -228,8 +236,8 @@
         do j=1, this%num_bao
             do k=1, this%num_bao
                 BAO_LnLike = BAO_LnLike +&
-                (BAO_theory(j)-this%bao_obs(j))*this%bao_invcov(j,k)*&
-                (BAO_theory(k)-this%bao_obs(k))
+                    (BAO_theory(j)-this%bao_obs(j))*this%bao_invcov(j,k)*&
+                    (BAO_theory(k)-this%bao_obs(k))
             end do
         end do
         BAO_LnLike = BAO_LnLike/2.d0
@@ -290,7 +298,7 @@
     else
         ii=1+floor((alpha_chain-DR7_alpha_file(1))/DR7_dalpha)
         prob=DR7_prob_file(ii)+(DR7_prob_file(ii+1)-DR7_prob_file(ii))/ &
-        (DR7_alpha_file(ii+1)-DR7_alpha_file(ii))*(alpha_chain-DR7_alpha_file(ii))
+            (DR7_alpha_file(ii+1)-DR7_alpha_file(ii))*(alpha_chain-DR7_alpha_file(ii))
         BAO_DR7_loglike = -log( prob )
     endif
 
@@ -336,19 +344,20 @@
     real (mcp) z, BAO_DR11_loglike, alpha_perp, alpha_plel, prob
     real,parameter :: rd_fid=149.28,H_fid=93.558,DA_fid=1359.72 !fiducial parameters
     integer ii,jj
+
     alpha_perp=(this%Calculator%AngularDiameterDistance(z)/rsdrag_theory)/(DA_fid/rd_fid)
     alpha_plel=(H_fid*rd_fid)/((const_c*this%Calculator%Hofz(z)/1.d3)*rsdrag_theory)
     if ((alpha_perp.lt.DR11_alpha_perp_file(1)).or.(alpha_perp.gt.DR11_alpha_perp_file(DR11_alpha_npoints-1)).or. &
-    &   (alpha_plel.lt.DR11_alpha_plel_file(1)).or.(alpha_plel.gt.DR11_alpha_plel_file(DR11_alpha_npoints-1))) then
-        BAO_DR11_loglike = logZero
+        &   (alpha_plel.lt.DR11_alpha_plel_file(1)).or.(alpha_plel.gt.DR11_alpha_plel_file(DR11_alpha_npoints-1))) then
+    BAO_DR11_loglike = logZero
     else
         ii=1+floor((alpha_perp-DR11_alpha_perp_file(1))/DR11_dalpha_perp)
         jj=1+floor((alpha_plel-DR11_alpha_plel_file(1))/DR11_dalpha_plel)
         prob=(1./((DR11_alpha_perp_file(ii+1)-DR11_alpha_perp_file(ii))*(DR11_alpha_plel_file(jj+1)-DR11_alpha_plel_file(jj))))*  &
-        &       (DR11_prob_file(ii,jj)*(DR11_alpha_perp_file(ii+1)-alpha_perp)*(DR11_alpha_plel_file(jj+1)-alpha_plel) &
-        &       -DR11_prob_file(ii+1,jj)*(DR11_alpha_perp_file(ii)-alpha_perp)*(DR11_alpha_plel_file(jj+1)-alpha_plel) &
-        &       -DR11_prob_file(ii,jj+1)*(DR11_alpha_perp_file(ii+1)-alpha_perp)*(DR11_alpha_plel_file(jj)-alpha_plel) &
-        &       +DR11_prob_file(ii+1,jj+1)*(DR11_alpha_perp_file(ii)-alpha_perp)*(DR11_alpha_plel_file(jj)-alpha_plel))
+            &       (DR11_prob_file(ii,jj)*(DR11_alpha_perp_file(ii+1)-alpha_perp)*(DR11_alpha_plel_file(jj+1)-alpha_plel) &
+            &       -DR11_prob_file(ii+1,jj)*(DR11_alpha_perp_file(ii)-alpha_perp)*(DR11_alpha_plel_file(jj+1)-alpha_plel) &
+            &       -DR11_prob_file(ii,jj+1)*(DR11_alpha_perp_file(ii+1)-alpha_perp)*(DR11_alpha_plel_file(jj)-alpha_plel) &
+            &       +DR11_prob_file(ii+1,jj+1)*(DR11_alpha_perp_file(ii)-alpha_perp)*(DR11_alpha_plel_file(jj)-alpha_plel))
         if  (prob.gt.0.) then
             BAO_DR11_loglike = -log( prob )
         else
@@ -357,6 +366,28 @@
     endif
 
     end function BAO_DR11_loglike
+
+
+    function BAO_MGS_loglike(this,CMB,z)
+    !SDSS DR7 main galaxy sample http://arxiv.org/abs/1409.3242
+    Class(BAOLikelihood) :: this
+    Class(CMBParams) CMB
+    real (mcp) z, BAO_MGS_loglike, alphamgs, chi2
+    real(mcp),parameter :: rsfidmgs = 148.69_mcp, DVfidmgs = 638.9518_mcp
+    real(mcp), parameter :: alpha_min=0.8005_mcp, alpha_max = 1.1985_mcp
+    integer ii
+
+    alphamgs =   this%Calculator%BAO_D_v(z)/rsdrag_theory / (DVfidmgs / rsfidmgs)
+    if ((alphamgs > alpha_max).or.(alphamgs < alpha_min)) then
+        BAO_MGS_loglike = logZero
+    else
+        ii = 1+floor((alphamgs - alpha_min)/0.001)
+        chi2 = (MGS_prob(ii) + MGS_prob(ii+1))/2.0
+        BAO_MGS_loglike = chi2/2.0
+    endif
+
+    end function BAO_MGS_loglike
+
 
     function SDSS_CMBToBAOrs(CMB)
     Type(CMBParams) CMB
