@@ -220,8 +220,9 @@
 
         if (CosmoSettings%bbn_consistency) then
             derived(ix) = BBN_YpBBN%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
-            derived(ix+1) = 1d5*BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
-            ix =ix + 2
+           ! Don't output this until clear about rates used and errors
+           ! derived(ix+1) = 1d5*BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
+            ix =ix + 1 !2
         end if
 
         if (ix - 1 + Theory%numderived /= this%num_derived) then
