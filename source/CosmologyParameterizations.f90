@@ -62,6 +62,7 @@
     end if
 
     call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
+    if (CosmoSettings%Use_LSS) call Names%Add('paramnames/derived_LSS.paramnames')
     if (CosmoSettings%compute_tensors) call Names%Add('paramnames/derived_tensors.paramnames')
     if (CosmoSettings%bbn_consistency) call Names%Add('paramnames/derived_bbn.paramnames')
     this%num_derived = Names%num_derived
@@ -216,16 +217,14 @@
         derived(ix:ix+ Theory%numderived-1) = Theory%derived_parameters(1: Theory%numderived)
         ix = ix +  Theory%numderived
 
-        ! f sigma_8
-        do i=1,size(CosmoSettings%z_outputs)
-            if (CosmoSettings%Use_LSS) then
+        if (CosmoSettings%Use_LSS) then
+            ! f sigma_8 at specified redsfhit
+            do i=1,size(CosmoSettings%z_outputs)
                 z =  CosmoSettings%z_outputs(i)
                 derived(ix) = -(1+z)*Theory%sigma_8_z%Derivative(z)
-            else
-                derived(ix) = 0.0
-            end if
-            ix = ix + 1
-        end do
+                ix = ix + 1
+            end do
+        end if
 
         if (CosmoSettings%Compute_tensors) then
             derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(Theory%tensor_AT*1e10), &
