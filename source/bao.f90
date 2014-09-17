@@ -9,7 +9,8 @@
 
     !AL/JH Oct 2012: encorporate DR9 data into something close to new cosmomc format
     !Dec 2013: merged in DR11 patch (Antonio J. Cuesta, for the BOSS collaboration)
-    !Sept 2014: added refactoed DR7 MGS code (thanks Lado Samushia)
+    !Sept 2014: refactored structure using new "bao_dataset[NAME] = file.dataset" syntax
+    !           added refactoed DR7 MGS code (thanks Lado Samushia)
 
     module bao
     use MatrixUtils
@@ -26,12 +27,8 @@
         [character(Ini_Enumeration_Len)::'Az','DV_over_rs','rs_over_DV','DA_over_rs']
 
     integer, parameter :: bao_Az =1, bao_DV_over_rs = 2, bao_rs_over_DV = 3, bao_DA_over_rs = 4
-    !2: A(z) =2 ie WiggleZ
-    !5: D_A/rs (DR8)
-
 
     type, extends(TCosmoCalcLikelihood) :: TBAOLikelihood
-        !    type, extends(TCosmoCalcLikelihood) :: BAOLikelihood
         integer :: num_bao ! total number of points used
         integer :: type_bao !one of the constants defined above
         real(mcp) :: rs_rescale = 1._mcp !if not generated with numerical CAMB rs
@@ -299,6 +296,7 @@
 
 
     !!!! SDSS DR7 main galaxy sample http://arxiv.org/abs/1409.3242
+    !Adapted from code by Lado Samushia
 
     subroutine BAO_MGS_InitProbDist(this, Ini)
     class(MGSLikelihood) this
