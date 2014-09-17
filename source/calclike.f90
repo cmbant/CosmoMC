@@ -100,8 +100,8 @@
     real(mcp) :: GetLogLikeBounds
 
     if (any(Params%P(:num_params) > BaseParams%PMax(:num_params)) .or. &
-    & any(Params%P(:num_params) < BaseParams%PMin(:num_params))) then
-        GetLogLikeBounds = logZero
+        & any(Params%P(:num_params) < BaseParams%PMin(:num_params))) then
+    GetLogLikeBounds = logZero
     else
         GetLogLikeBounds=0
     end if
@@ -217,7 +217,7 @@
         do i=1, num_params
             if (isused==0 .and. BaseParams%varying(i) .or. isused==1 .and. .not. BaseParams%varying(i)) then
                 write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-                i, P%P(i), BaseParams%NameMapping%name(i)
+                    i, P%P(i), BaseParams%NameMapping%name(i)
                 write (aunit,'(a)') trim(BaseParams%NameMapping%label(i))
             end if
         end do
@@ -440,7 +440,7 @@
     if (allocated(derived)) numderived = size(derived)
     do i=1, numderived
         write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-        num_params+i, derived(i), BaseParams%NameMapping%name(num_params + i )
+            num_params+i, derived(i), BaseParams%NameMapping%name(num_params + i )
         write (aunit,'(a)') trim(BaseParams%NameMapping%label(num_params+i))
     end do
 

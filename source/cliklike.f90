@@ -51,7 +51,7 @@
             fname = Ini%ReadFileName(name, NotFoundFail = .false.)
             if (fname=='') cycle
             if (MpiRank==0 .and. feedback > 0) &
-            print*,'Using clik with likelihood file ',trim(fname)
+                print*,'Using clik with likelihood file ',trim(fname)
             fname = fname // ' ' !just be safe to avoid clik bug
             call clik_try_lensing(is_lensing, fname)
             if (is_lensing) then
@@ -151,7 +151,7 @@
                 end if
                 j = j+1
             end do
-            end associate
+        end associate
     end do
 
     !Appending nuisance parameters
@@ -182,7 +182,7 @@
 
     !Safeguard
     if (this%clik_nnuis/= this%nuisance_params%nnames) &
-    call MpiStop('clik_nnuis has different number of nuisance parameters than .paramnames')
+        call MpiStop('clik_nnuis has different number of nuisance parameters than .paramnames')
     if (this%clik_nnuis /= 0 .and. MPIRank==0 .and. Feedback>0) then
         Print*,'Clik will run with the following nuisance parameters:'
         do i=1,this%clik_nnuis
@@ -243,31 +243,31 @@
             end if
             j = j+1
         end do
+    end associate
+
+    !TB and EB assumed to be zero
+    !If your model predicts otherwise, this function will need to be updated
+    do i=1,4
+        associate(Cls=> Theory%Cls(this%clik_index(1,i),this%clik_index(2,i)))
+            do l=0,this%lensing_lmaxs(i+1)
+                !skip C_0 and C_1
+                if (l >= 2) then
+                    clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)*twopi
+                end if
+                j = j+1
+            end do
         end associate
+    end do
 
-        !TB and EB assumed to be zero
-        !If your model predicts otherwise, this function will need to be updated
-        do i=1,4
-            associate(Cls=> Theory%Cls(this%clik_index(1,i),this%clik_index(2,i)))
-                do l=0,this%lensing_lmaxs(i+1)
-                    !skip C_0 and C_1
-                    if (l >= 2) then
-                        clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)*twopi
-                    end if
-                    j = j+1
-                end do
-                end associate
-        end do
+    do i=1,this%clik_nnuis
+        clik_cl_and_pars(j) = DataParams(i)
+        j = j+1
+    end do
 
-        do i=1,this%clik_nnuis
-            clik_cl_and_pars(j) = DataParams(i)
-            j = j+1
-        end do
+    !Get - ln this needed by CosmoMC
+    clik_lensing_lnlike = -1.d0*clik_lensing_compute(this%clikid,clik_cl_and_pars)
 
-        !Get - ln this needed by CosmoMC
-        clik_lensing_lnlike = -1.d0*clik_lensing_compute(this%clikid,clik_cl_and_pars)
-
-        if (Feedback>1) Print*,trim(this%name)//' lnlike = ',clik_lensing_lnlike
+    if (Feedback>1) Print*,trim(this%name)//' lnlike = ',clik_lensing_lnlike
 
     end function clik_lensing_lnlike
 
