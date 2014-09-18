@@ -104,7 +104,7 @@
     subroutine Cosmo_UpdateTheoryForLikelihoods(this, Params)
     class(TCosmoLikeCalculator) :: this
     class(TCalculationAtParamPoint) :: Params
-    integer :: numz, index_error
+    integer :: index_error
 
     select type (Theory=>Params%Theory)
     class is (TCosmoTheoryPredictions)
