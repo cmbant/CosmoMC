@@ -212,6 +212,9 @@
         derived(ix)= CMB%Yhe !value actually used, may be set from bbn consistency
         ix = ix+1
 
+        derived(ix:ix + Theory%numderived-1) = Theory%derived_parameters(1: Theory%numderived)
+        ix = ix + Theory%numderived
+        
         if (CosmoSettings%Compute_tensors) then
             derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(Theory%tensor_AT*1e10), &
                 Theory%tensor_ratio_C10, Theory%tensor_AT*1e9, Theory%tensor_AT*1e9*exp(-2*CMB%tau) ]
@@ -225,11 +228,10 @@
             ix =ix + 1 !2
         end if
 
-        if (ix - 1 + Theory%numderived /= this%num_derived) then
+        if (ix - 1 /= this%num_derived) then
             write(*,*) 'num_derived =', this%num_derived, '; ix, Theory%numderived = ', ix, Theory%numderived
             call MpiStop('TP_CalcDerivedParams error in derived parameter numbers')
         end if
-        derived(ix:this%num_derived) = Theory%derived_parameters(1: Theory%numderived)
     end select
 
     end subroutine TP_CalcDerivedParams
