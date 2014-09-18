@@ -177,7 +177,8 @@
     real(mcp) :: P(:)
     Type(CMBParams) CMB
     real(mcp) :: lograt
-    integer ix
+    integer ix,i
+    real(mcp) z
 
     if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)
@@ -217,7 +218,7 @@
         ix = ix + Theory%numderived
 
         if (CosmoSettings%Use_LSS) then
-            ! f sigma_8 at specified redsfhit
+            ! f sigma_8 at specified redshift
             do i=1,size(CosmoSettings%z_outputs)
                 z =  CosmoSettings%z_outputs(i)
                 derived(ix) = -(1+z)*Theory%sigma_8_z%Derivative(z)
