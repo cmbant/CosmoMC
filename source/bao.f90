@@ -99,7 +99,7 @@
         this%needs_background_functions = .true.
         call LikeList%Add(this)
     end do
-    
+
     if (Feedback>1) write(*,*) 'read BAO data sets'
 
     end subroutine BAOLikelihood_Add
@@ -122,6 +122,10 @@
 
     call Ini%Read_Enumeration_List('measurement_type',measurement_types, this%type_bao, nvalues = this%num_bao)
     this%needs_powerspectra =  any(this%type_bao == f_sigma8)
+    if (this%needs_powerspectra) then
+        this%num_z = Ini%Read_Int('nz_bao',0)
+        this%max_z = Ini%Read_Double('max_z_bao',1._mcp)
+    end if
 
     if (Ini%HasKey('zeff')) then
         this%bao_z = Ini%Read_Double('zeff')
@@ -292,18 +296,18 @@
         &   (alpha_plel < this%alpha_plel_file(1)).or.(alpha_plel > this%alpha_plel_file(this%alpha_npoints-1))) then
     BAO_DR11_loglike = logZero
     else
-    ii=1+floor((alpha_perp-this%alpha_perp_file(1))/this%dalpha_perp)
-    jj=1+floor((alpha_plel-this%alpha_plel_file(1))/this%dalpha_plel)
-    prob=(1./((this%alpha_perp_file(ii+1)-this%alpha_perp_file(ii))*(this%alpha_plel_file(jj+1)-this%alpha_plel_file(jj))))*  &
-        &       (this%prob_file(ii,jj)*(this%alpha_perp_file(ii+1)-alpha_perp)*(this%alpha_plel_file(jj+1)-alpha_plel) &
-        &       -this%prob_file(ii+1,jj)*(this%alpha_perp_file(ii)-alpha_perp)*(this%alpha_plel_file(jj+1)-alpha_plel) &
-        &       -this%prob_file(ii,jj+1)*(this%alpha_perp_file(ii+1)-alpha_perp)*(this%alpha_plel_file(jj)-alpha_plel) &
-        &       +this%prob_file(ii+1,jj+1)*(this%alpha_perp_file(ii)-alpha_perp)*(this%alpha_plel_file(jj)-alpha_plel))
-    if  (prob > 0) then
-        BAO_DR11_loglike = -log( prob )
-    else
-        BAO_DR11_loglike = logZero
-    endif
+        ii=1+floor((alpha_perp-this%alpha_perp_file(1))/this%dalpha_perp)
+        jj=1+floor((alpha_plel-this%alpha_plel_file(1))/this%dalpha_plel)
+        prob=(1./((this%alpha_perp_file(ii+1)-this%alpha_perp_file(ii))*(this%alpha_plel_file(jj+1)-this%alpha_plel_file(jj))))*  &
+            &       (this%prob_file(ii,jj)*(this%alpha_perp_file(ii+1)-alpha_perp)*(this%alpha_plel_file(jj+1)-alpha_plel) &
+            &       -this%prob_file(ii+1,jj)*(this%alpha_perp_file(ii)-alpha_perp)*(this%alpha_plel_file(jj+1)-alpha_plel) &
+            &       -this%prob_file(ii,jj+1)*(this%alpha_perp_file(ii+1)-alpha_perp)*(this%alpha_plel_file(jj)-alpha_plel) &
+            &       +this%prob_file(ii+1,jj+1)*(this%alpha_perp_file(ii)-alpha_perp)*(this%alpha_plel_file(jj)-alpha_plel))
+        if  (prob > 0) then
+            BAO_DR11_loglike = -log( prob )
+        else
+            BAO_DR11_loglike = logZero
+        endif
     endif
 
     end function BAO_DR11_loglike
@@ -335,11 +339,11 @@
 
     alphamgs =   this%Calculator%BAO_D_v(this%bao_z(1))/this%get_rs_drag(Theory) / (DVfidmgs / rsfidmgs)
     if ((alphamgs > alpha_max).or.(alphamgs < alpha_min)) then
-    BAO_MGS_loglike = logZero
+        BAO_MGS_loglike = logZero
     else
-    ii = 1+floor((alphamgs - alpha_min)/0.001)
-    chi2 = (this%alpha_prob(ii) + this%alpha_prob(ii+1))/2.0
-    BAO_MGS_loglike = chi2/2.0
+        ii = 1+floor((alphamgs - alpha_min)/0.001)
+        chi2 = (this%alpha_prob(ii) + this%alpha_prob(ii+1))/2.0
+        BAO_MGS_loglike = chi2/2.0
     endif
 
     end function BAO_MGS_loglike
