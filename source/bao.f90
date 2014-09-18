@@ -9,6 +9,8 @@
 
     !AL/JH Oct 2012: encorporate DR9 data into something close to new cosmomc format
     !Dec 2013: merged in DR11 patch (Antonio J. Cuesta, for the BOSS collaboration)
+    !Sept 2014: refactored structure using new "bao_dataset[NAME] = file.dataset" syntax
+    !           added refactoed DR7 MGS code (thanks Lado Samushia)
 
     module bao
     use MatrixUtils
@@ -19,121 +21,171 @@
     use Likelihood_Cosmology
     use IniObjects
     implicit none
-
     private
 
-    type, extends(TCosmoCalcLikelihood) :: BAOLikelihood
-        !    type, extends(TCosmoCalcLikelihood) :: BAOLikelihood
+    character(LEN=Ini_Enumeration_Len), parameter :: measurement_types(6) = &
+        [character(Ini_Enumeration_Len)::'Az','DV_over_rs','rs_over_DV','DA_over_rs', &
+        'F_AP', 'f_sigma8']
+
+    integer, parameter :: bao_Az =1, bao_DV_over_rs = 2, bao_rs_over_DV = 3, bao_DA_over_rs = 4, &
+        F_AP= 5, f_sigma8=6
+
+    type, extends(TCosmoCalcLikelihood) :: TBAOLikelihood
         integer :: num_bao ! total number of points used
-        integer :: type_bao
-        !what type of bao data is used
-        !1: old sdss, no longer
-        !2: A(z) =2 ie WiggleZ
-        !3 D_V/rs in fitting forumla appox (DR9)
-        !4: D_v - 6DF
-        !5: D_A/rs (DR8)
+        integer, allocatable :: type_bao(:) !one of the constants defined above
+        real(mcp) :: rs_rescale = 1._mcp !if not generated with numerical CAMB rs
         real(mcp), allocatable, dimension(:) :: bao_z, bao_obs, bao_err
         real(mcp), allocatable, dimension(:,:) :: bao_invcov
     contains
     procedure :: LogLike => BAO_LnLike
     procedure :: ReadIni => BAO_ReadIni
-    procedure, private :: SDSS_dvtors
-    procedure, private :: SDSS_dAtors
+    procedure :: InitProbDist => BAO_InitProbDist
     procedure, private :: Acoustic
-    procedure, private :: BAO_DR7_loglike
-    procedure, private :: BAO_DR11_loglike
-    end type BAOLikelihood
+    procedure, private :: Get_rs_drag
+    end type TBAOLikelihood
 
-    integer,parameter :: DR11_alpha_npoints=280
-    real(mcp), dimension (DR11_alpha_npoints) :: DR11_alpha_perp_file,DR11_alpha_plel_file
-    real(mcp), dimension (DR11_alpha_npoints,DR11_alpha_npoints) ::   DR11_prob_file
-    real(mcp) DR11_dalpha_perp, DR11_dalpha_plel
-    real(mcp), dimension (10000) :: DR7_alpha_file, DR7_prob_file
-    real(mcp) DR7_dalpha
-    real rsdrag_theory
+
+
+    Type, extends(TBAOLikelihood) :: DR11Likelihood
+        real(mcp), allocatable, dimension(:) :: alpha_perp_file,alpha_plel_file
+        real(mcp), allocatable ::  prob_file(:,:)
+        real(mcp) dalpha_perp, dalpha_plel
+        integer alpha_npoints
+    contains
+    procedure :: LogLike => BAO_DR11_loglike
+    procedure :: InitProbDist => BAO_DR11_InitProbDist
+    end type
+
+    Type, extends(TBAOLikelihood) :: MGSLikelihood
+        real(mcp), allocatable :: alpha_prob(:)
+    contains
+    procedure :: LogLike => BAO_MGS_loglike
+    procedure :: InitProbDist => BAO_MGS_InitProbDist
+    end type
+
     real(mcp) :: BAO_fixed_rs = -1._mcp
-    integer DR7_alpha_npoints
 
-    public BAOLikelihood, BAOLikelihood_Add
+    public BAOLikelihood_Add
     contains
 
     subroutine BAOLikelihood_Add(LikeList, Ini)
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
-    Type(BAOLikelihood), pointer :: this
-    integer numbaosets, i
+    class(TBAOLikelihood), pointer :: this
+    integer i
+    Type(TSettingIni) :: DataSets
 
-    if (Ini%Read_Logical('use_BAO',.false.)) then
-        numbaosets = Ini%Read_Int('bao_numdatasets',0)
-        if (numbaosets<1) call MpiStop('Use_BAO but numbaosets = 0')
-        if (Ini%Haskey('BAO_fixed_rs')) then
-            BAO_fixed_rs= Ini%Read_Double('BAO_fixed_rs',-1._mcp)
-        end if
-        do i= 1, numbaosets
-            allocate(this)
-            call this%ReadDatasetFile(Ini%ReadFileName(numcat('bao_dataset',i)))
-            this%LikelihoodType = 'BAO'
-            this%needs_background_functions = .true.
-            call LikeList%Add(this)
-        end do
-        if (Feedback>1) write(*,*) 'read BAO data sets'
+    if (.not. Ini%Read_Logical('use_BAO',.false.)) return
+
+    call Ini%TagValuesForName('bao_dataset', DataSets)
+    if (DataSets%Count==0) call MpiStop('Use_BAO but no bao_dataset[NAMETAG] defined')
+
+    if (Ini%Haskey('BAO_fixed_rs')) then
+        BAO_fixed_rs= Ini%Read_Double('BAO_fixed_rs',-1._mcp)
     end if
+
+    do i= 1, DataSets%Count
+        if (Datasets%Name(i)=='MGS') then
+            allocate(MGSLikelihood::this)
+        else if (Datasets%Name(i)=='DR11CMASS') then
+            allocate(DR11Likelihood::this)
+        else
+            allocate(TBAOLikelihood::this)
+        end if
+        call this%ReadDatasetFile(Datasets%Value(i))
+        if (this%name /= Datasets%Name(i)) &
+            call MpiStop('BAOLikelihood_Add: tag/name mismatch in bao_dataset['//Datasets%Name(i)//'], '//this%name)
+        this%LikelihoodType = 'BAO'
+        this%needs_background_functions = .true.
+        call LikeList%Add(this)
+    end do
+
+    if (Feedback>1) write(*,*) 'read BAO data sets'
 
     end subroutine BAOLikelihood_Add
 
     subroutine BAO_ReadIni(this, Ini)
-    class(BAOLikelihood) this
+    class(TBAOLikelihood) this
     class(TSettingIni) :: Ini
-    character(LEN=:), allocatable :: bao_measurements_file, bao_invcov_file
+    character(LEN=:), allocatable :: bao_measurement, bao_measurements_file
     integer i,iopb
     Type(TTextFile) :: F
 
-    if (Feedback > 0) write (*,*) 'reading BAO data set: '//trim(this%name)
-    this%num_bao = Ini%Read_Int('num_bao',0)
-    if (this%num_bao.eq.0) write(*,*) ' ERROR: parameter num_bao not set'
-    this%type_bao = Ini%Read_Int('type_bao',1)
-    if(this%type_bao /= 3 .and. this%type_bao /=2 .and. this%type_bao /=4 .and. this%type_bao /=5) then
-        write(*,*) this%type_bao
-        write(*,*)'ERROR: Invalid bao type specified in BAO dataset: '//trim(this%name)
-        call MPIStop()
-    end if
+    if (Feedback > 0 .and. MpiRank==0) write (*,*) 'reading BAO data set: '//trim(this%name)
+    this%num_bao = Ini%Read_Int('num_bao',1)
+
+    call Ini%Read('rs_rescale',this%rs_rescale)
 
     allocate(this%bao_z(this%num_bao))
     allocate(this%bao_obs(this%num_bao))
     allocate(this%bao_err(this%num_bao))
 
-    bao_measurements_file = Ini%ReadFileName('bao_measurements_file')
-    call F%Open(bao_measurements_file)
-    do i=1,this%num_bao
-        read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
-    end do
-    call F%Close()
-
-    if (this%name == 'DR7') then
-        !don't used observed value, probabilty distribution instead
-        call BAO_DR7_init(Ini%ReadFileName('prob_dist'))
-    elseif (this%name == 'DR11CMASS') then
-        !don't used observed value, probabilty distribution instead
-        call BAO_DR11_init(Ini%ReadFileName('prob_dist'))
-    else
-        allocate(this%bao_invcov(this%num_bao,this%num_bao))
-        this%bao_invcov=0
-
-        if (Ini%HasKey('bao_invcov_file')) then
-            bao_invcov_file  = Ini%ReadFileName('bao_invcov_file')
-            call File%ReadTextMatrix(bao_invcov_file, this%bao_invcov)
-        else
-            do i=1,this%num_bao
-                !diagonal, or actually just 1..
-                this%bao_invcov(i,i) = 1/this%bao_err(i)**2
-            end do
-        end if
+    call Ini%Read_Enumeration_List('measurement_type',measurement_types, this%type_bao, nvalues = this%num_bao)
+    this%needs_powerspectra =  any(this%type_bao == f_sigma8)
+    if (this%needs_powerspectra) then
+        this%num_z = Ini%Read_Int('nz_bao')
+        this%max_z = Ini%Read_Double('max_z_bao',1._mcp)
     end if
+
+    if (Ini%HasKey('zeff')) then
+        this%bao_z = Ini%Read_Double('zeff')
+        bao_measurement  = Ini%Read_String('bao_measurement')
+        if (this%num_bao>1) then
+            read (bao_measurement,*) this%bao_obs(:)
+        else
+            read (bao_measurement,*) this%bao_obs(1),this%bao_err(1)
+        end if
+    else
+        bao_measurements_file = Ini%ReadFileName('bao_measurements_file')
+        call F%Open(bao_measurements_file)
+        do i=1,this%num_bao
+            read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
+        end do
+        call F%Close()
+    end if
+    if (any(this%bao_z< 0.0001)) call MpiStop('Error reading BAO measurements')
+
+    call this%InitProbDist(Ini)
 
     end subroutine BAO_ReadIni
 
+    subroutine BAO_InitProbDist(this, Ini)
+    class(TBAOLikelihood) this
+    class(TSettingIni) :: Ini
+    integer i
+    character(LEN=:), allocatable ::bao_invcov_file
+
+    allocate(this%bao_invcov(this%num_bao,this%num_bao))
+    this%bao_invcov=0
+
+    if (Ini%HasKey('bao_invcov_file')) then
+        bao_invcov_file  = Ini%ReadFileName('bao_invcov_file')
+        call File%ReadTextMatrix(bao_invcov_file, this%bao_invcov)
+    else
+        do i=1,this%num_bao
+            !diagonal, or actually just 1..
+            this%bao_invcov(i,i) = 1/this%bao_err(i)**2
+        end do
+    end if
+
+    end subroutine BAO_InitProbDist
+
+
+    real(mcp) function get_rs_drag(this,Theory)
+    class(TBAOLikelihood) :: this
+    Class(TCosmoTheoryPredictions), target :: Theory
+
+    if (BAO_fixed_rs>0) then
+        !this is just for use for e.g. BAO 'only' constraints
+        get_rs_drag =  BAO_fixed_rs
+    else
+        get_rs_drag =  Theory%derived_parameters( derived_rdrag )
+    end if
+
+    end function
+
     function Acoustic(this,CMB,z)
-    class(BAOLikelihood) :: this
+    class(TBAOLikelihood) :: this
     class(CMBParams) CMB
     real(mcp) Acoustic
     real(mcp), intent(IN) :: z
@@ -147,209 +199,111 @@
     Acoustic = 100*this%Calculator%BAO_D_v(z)*sqrt(omh2)/(ckm*z)
     end function Acoustic
 
-    function SDSS_dvtors(this, CMB,z)
-    !This uses numerical value of D_v/r_s, but re-scales it to match definition of SDSS
-    !paper fitting at the fiducial model. Idea being it is also valid for e.g. varying N_eff
-    class(BAOLikelihood) :: this
-    class(CMBParams) CMB
-    real(mcp) SDSS_dvtors
-    real(mcp), intent(IN)::z
-    real(mcp) rs
-    real(mcp), parameter :: rs_rescale = 153.017d0/148.92 !149.0808
-
-    !    rs = SDSS_CMBToBAOrs(CMB)
-    rs = rsdrag_theory*rs_rescale !rescaled to match fitting formula for LCDM
-    SDSS_dvtors = this%Calculator%BAO_D_v(z)/rs
-
-    end function SDSS_dvtors
-
-   ! HS modified SDSS_dvtors to calculate D_A/rs 
-    function SDSS_dAtors(this, CMB,z)
-    !This uses numerical value of D_A/r_s, but re-scales it to match definition of SDSS
-    !paper fitting at the fiducial model. Idea being it is also valid for e.g. varying N_eff
-    class(BAOLikelihood) :: this
-    class(CMBParams) CMB
-    real(mcp) SDSS_dAtors
-    real(mcp), intent(IN)::z
-    real(mcp) rs
-    real(mcp), parameter :: rs_rescale = 153.017d0/148.92 !149.0808
-
-    !    rs = SDSS_CMBToBAOrs(CMB)
-    rs = rsdrag_theory*rs_rescale !rescaled to match fitting formula for LCDM
-    SDSS_dAtors = this%Calculator%AngularDiameterDistance(z)/rs
-    end function SDSS_dAtors
-
-
-
-    !===================================================================================
-
     function BAO_LnLike(this, CMB, Theory, DataParams)
-    Class(BAOLikelihood) :: this
+    Class(TBAOLikelihood) :: this
     Class(CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) :: DataParams(:)
-    integer j,k
-    real(mcp) BAO_LnLike
-    real(mcp), allocatable :: BAO_theory(:)
+    integer j
+    real(mcp) BAO_LnLike, rs, z
+    real(mcp)  :: BAO_theory(this%num_bao)
 
-    if (BAO_fixed_rs>0) then
-        !this is just for use for e.g. BAO 'only' constraints
-        rsdrag_theory =  BAO_fixed_rs
-    else
-        rsdrag_theory =  Theory%derived_parameters( derived_rdrag )
-    end if
-    BAO_LnLike=0
-    if (this%name=='DR7') then
-        BAO_LnLike = this%BAO_DR7_loglike(CMB,this%bao_z(1))
-    elseif (this%name=='DR11CMASS') then
-        BAO_LnLike = this%BAO_DR11_loglike(CMB,this%bao_z(1))
-    else
-        allocate(BAO_theory(this%num_bao))
+    rs = this%get_rs_drag(Theory) * this%rs_rescale
 
-        if(this%type_bao ==3)then
-            do j=1, this%num_bao
-                BAO_theory(j) = this%SDSS_dvtors(CMB,this%bao_z(j))
-            end do
-        else if(this%type_bao ==2)then
-            do j=1, this%num_bao
-                BAO_theory(j) = this%Acoustic(CMB,this%bao_z(j))
-            end do
-        else if(this%type_bao ==4)then
-            do j=1, this%num_bao
-                BAO_theory(j) = this%Calculator%BAO_D_v(this%bao_z(j))
-            end do
-        else if(this%type_bao ==5)then
-            do j=1, this%num_bao
-                BAO_theory(j) = this%SDSS_dAtors(CMB,this%bao_z(j))
-            end do
+    do j=1, this%num_bao
+        z= this%bao_z(j)
+        select case(this%type_bao(j))
+        case (bao_DV_over_rs)
+            BAO_theory(j) = this%Calculator%BAO_D_v(z)/rs
+        case (bao_rs_over_DV)
+            BAO_theory(j) = rs/this%Calculator%BAO_D_v(z)
+        case (bao_Az)
+            BAO_theory(j) = this%Acoustic(CMB,z)
+        case (bao_DA_over_rs)
+            BAO_theory(j) = this%Calculator%AngularDiameterDistance(z)/rs
+        case (F_AP)
+            BAO_theory(j) = (1+z)*this%Calculator%AngularDiameterDistance(z)* &
+                this%Calculator%Hofz(z)
+        case (f_sigma8)
+            call MpiStop('BAO_LnLike: f_sigma not implemented in this branch')
+            !            f= -(1+z)/Theory%sigma_8_z%Value(z)*Theory%sigma_8_z%Derivative(z)
+            !           BAO_theory(j) = f*Theory%sigma_8_z%Value(z)
+            case default
+            call MpiStop('BAO_LnLike: Unknown type_bao')
+        end select
+    end do
 
-        end if
-
-        do j=1, this%num_bao
-            do k=1, this%num_bao
-                BAO_LnLike = BAO_LnLike +&
-                (BAO_theory(j)-this%bao_obs(j))*this%bao_invcov(j,k)*&
-                (BAO_theory(k)-this%bao_obs(k))
-            end do
-        end do
-        BAO_LnLike = BAO_LnLike/2.d0
-
-        deallocate(BAO_theory)
-    end if
+    BAO_theory = BAO_theory - this%bao_obs
+    BAO_LnLike = Matrix_QuadForm(this%bao_invcov,BAO_theory) / 2
 
     if(feedback>1) write(*,*) trim(this%name)//' BAO likelihood = ', BAO_LnLike
 
     end function BAO_LnLike
 
 
-    subroutine BAO_DR7_init(fname)
-    character(LEN=*), intent(in) :: fname
-    real(mcp) :: tmp0,tmp1
-    real(mcp) :: DR7_alpha =0
-    integer ios,ii
+    !!!DR11 CMASS
 
-    open(unit=7,file=fname,status='old')
-    !Read data file
-    ios = 0
-    ii  = 0
-    do while (ios.eq.0)
-        read (7,*,iostat=ios) tmp0,tmp1
-        if (ios .ne. 0) cycle
-        if((ii.gt.1).and.(abs(DR7_dalpha-(tmp0-DR7_alpha)).gt.1e-6)) then
-            stop 'binning should be uniform in sdss_baoDR7.txt'
-        endif
-        ii = ii+1
-        DR7_alpha_file(ii) = tmp0
-        DR7_prob_file (ii) = tmp1
-        DR7_dalpha = tmp0-DR7_alpha
-        DR7_alpha  = tmp0
-    enddo
-    DR7_alpha_npoints = ii
-    if (ii.eq.0) call MpiStop('ERROR : reading file')
-    close(7)
-    !Normalize distribution (so that the peak value is 1.0)
-    tmp0=0.0
-    do ii=1,DR7_alpha_npoints
-        if(DR7_prob_file(ii).gt.tmp0) then
-            tmp0=DR7_prob_file(ii)
-        endif
-    enddo
-    DR7_prob_file=DR7_prob_file/tmp0
-
-    end subroutine BAO_DR7_init
-
-    function BAO_DR7_loglike(this,CMB,z)
-    Class(BAOLikelihood) :: this
-    Class(CMBParams) CMB
-    real (mcp) z, BAO_DR7_loglike, alpha_chain, prob
-    real,parameter :: rs_wmap7=152.7934d0,dv1_wmap7=1340.177  !r_s and D_V computed for wmap7 cosmology
-    integer ii
-    alpha_chain = (this%SDSS_dvtors(CMB,z))/(dv1_wmap7/rs_wmap7)
-    if ((alpha_chain.gt.DR7_alpha_file(DR7_alpha_npoints-1)).or.(alpha_chain.lt.DR7_alpha_file(1))) then
-        BAO_DR7_loglike = logZero
-    else
-        ii=1+floor((alpha_chain-DR7_alpha_file(1))/DR7_dalpha)
-        prob=DR7_prob_file(ii)+(DR7_prob_file(ii+1)-DR7_prob_file(ii))/ &
-        (DR7_alpha_file(ii+1)-DR7_alpha_file(ii))*(alpha_chain-DR7_alpha_file(ii))
-        BAO_DR7_loglike = -log( prob )
-    endif
-
-    end function BAO_DR7_loglike
-
-    subroutine BAO_DR11_init(fname)
-    character(LEN=*), intent(in) :: fname
+    subroutine BAO_DR11_InitProbDist(this, Ini)
+    class(DR11Likelihood) this
+    class(TSettingIni) :: Ini
     real(mcp) :: tmp0,tmp1,tmp2
-    integer ios,ii,jj,nn
+    integer ios,ii,jj
+    Type(TTExtFile) F
+    integer :: alpha_npoints
 
-    open(unit=7,file=fname,status='old')
-    ios = 0
-    nn=0
-    do while (ios.eq.0)
-        read (7,*,iostat=ios) tmp0,tmp1,tmp2
-        if (ios .ne. 0) cycle
-        nn = nn + 1
-        ii = 1 +     (nn-1)/DR11_alpha_npoints
-        jj = 1 + mod((nn-1),DR11_alpha_npoints)
-        DR11_alpha_perp_file(ii)   = tmp0
-        DR11_alpha_plel_file(jj)   = tmp1
-        DR11_prob_file(ii,jj)      = tmp2
-    enddo
-    close(7)
-    DR11_dalpha_perp=DR11_alpha_perp_file(2)-DR11_alpha_perp_file(1)
-    DR11_dalpha_plel=DR11_alpha_plel_file(2)-DR11_alpha_plel_file(1)
+    alpha_npoints = Ini%Read_Int('alpha_npoints')
+    allocate(this%alpha_perp_file(alpha_npoints),this%alpha_plel_file(alpha_npoints))
+    allocate(this%prob_file(alpha_npoints,alpha_npoints))
+
+    call F%Open(Ini%ReadFileName('prob_dist'))
+    do ii=1, alpha_npoints
+        do jj=1, alpha_npoints
+            read (F%unit,*,iostat=ios) tmp0,tmp1,tmp2
+            if (ios /= 0) call MpiStop('Error reading BR11 BAO file')
+            this%alpha_perp_file(ii)   = tmp0
+            this%alpha_plel_file(jj)   = tmp1
+            this%prob_file(ii,jj)      = tmp2
+        end do
+    end do
+    call F%Close()
+
+    this%dalpha_perp=this%alpha_perp_file(2)-this%alpha_perp_file(1)
+    this%dalpha_plel=this%alpha_plel_file(2)-this%alpha_plel_file(1)
     !Normalize distribution (so that the peak value is 1.0)
-    tmp0=0.0
-    do ii=1,DR11_alpha_npoints
-        do jj=1,DR11_alpha_npoints
-            if(DR11_prob_file(ii,jj).gt.tmp0) then
-                tmp0=DR11_prob_file(ii,jj)
-            endif
-        enddo
-    enddo
-    DR11_prob_file=DR11_prob_file/tmp0
 
-    end subroutine BAO_DR11_init
+    this%prob_file=this%prob_file/ maxval(this%prob_file)
+    this%alpha_npoints = alpha_npoints
 
-    function BAO_DR11_loglike(this,CMB,z)
-    Class(BAOLikelihood) :: this
+    end subroutine BAO_DR11_InitProbDist
+
+    function BAO_DR11_loglike(this, CMB, Theory, DataParams)
+    !SDSS DR7 main galaxy sample http://arxiv.org/abs/1409.3242
+    Class(DR11Likelihood) :: this
     Class(CMBParams) CMB
+    Class(TCosmoTheoryPredictions), target :: Theory
+    real(mcp) :: DataParams(:)
     real (mcp) z, BAO_DR11_loglike, alpha_perp, alpha_plel, prob
     real,parameter :: rd_fid=149.28,H_fid=93.558,DA_fid=1359.72 !fiducial parameters
     integer ii,jj
+    real(mcp) rsdrag_theory
+
+    z = this%bao_z(1)
+    rsdrag_theory = this%get_rs_drag(Theory)
+
     alpha_perp=(this%Calculator%AngularDiameterDistance(z)/rsdrag_theory)/(DA_fid/rd_fid)
     alpha_plel=(H_fid*rd_fid)/((const_c*this%Calculator%Hofz(z)/1.d3)*rsdrag_theory)
-    if ((alpha_perp.lt.DR11_alpha_perp_file(1)).or.(alpha_perp.gt.DR11_alpha_perp_file(DR11_alpha_npoints-1)).or. &
-    &   (alpha_plel.lt.DR11_alpha_plel_file(1)).or.(alpha_plel.gt.DR11_alpha_plel_file(DR11_alpha_npoints-1))) then
-        BAO_DR11_loglike = logZero
+    if ((alpha_perp < this%alpha_perp_file(1)).or.(alpha_perp > this%alpha_perp_file(this%alpha_npoints-1)).or. &
+        &   (alpha_plel < this%alpha_plel_file(1)).or.(alpha_plel > this%alpha_plel_file(this%alpha_npoints-1))) then
+    BAO_DR11_loglike = logZero
     else
-        ii=1+floor((alpha_perp-DR11_alpha_perp_file(1))/DR11_dalpha_perp)
-        jj=1+floor((alpha_plel-DR11_alpha_plel_file(1))/DR11_dalpha_plel)
-        prob=(1./((DR11_alpha_perp_file(ii+1)-DR11_alpha_perp_file(ii))*(DR11_alpha_plel_file(jj+1)-DR11_alpha_plel_file(jj))))*  &
-        &       (DR11_prob_file(ii,jj)*(DR11_alpha_perp_file(ii+1)-alpha_perp)*(DR11_alpha_plel_file(jj+1)-alpha_plel) &
-        &       -DR11_prob_file(ii+1,jj)*(DR11_alpha_perp_file(ii)-alpha_perp)*(DR11_alpha_plel_file(jj+1)-alpha_plel) &
-        &       -DR11_prob_file(ii,jj+1)*(DR11_alpha_perp_file(ii+1)-alpha_perp)*(DR11_alpha_plel_file(jj)-alpha_plel) &
-        &       +DR11_prob_file(ii+1,jj+1)*(DR11_alpha_perp_file(ii)-alpha_perp)*(DR11_alpha_plel_file(jj)-alpha_plel))
-        if  (prob.gt.0.) then
+        ii=1+floor((alpha_perp-this%alpha_perp_file(1))/this%dalpha_perp)
+        jj=1+floor((alpha_plel-this%alpha_plel_file(1))/this%dalpha_plel)
+        prob=(1./((this%alpha_perp_file(ii+1)-this%alpha_perp_file(ii))*(this%alpha_plel_file(jj+1)-this%alpha_plel_file(jj))))*  &
+            &       (this%prob_file(ii,jj)*(this%alpha_perp_file(ii+1)-alpha_perp)*(this%alpha_plel_file(jj+1)-alpha_plel) &
+            &       -this%prob_file(ii+1,jj)*(this%alpha_perp_file(ii)-alpha_perp)*(this%alpha_plel_file(jj+1)-alpha_plel) &
+            &       -this%prob_file(ii,jj+1)*(this%alpha_perp_file(ii+1)-alpha_perp)*(this%alpha_plel_file(jj)-alpha_plel) &
+            &       +this%prob_file(ii+1,jj+1)*(this%alpha_perp_file(ii)-alpha_perp)*(this%alpha_plel_file(jj)-alpha_plel))
+        if  (prob > 0) then
             BAO_DR11_loglike = -log( prob )
         else
             BAO_DR11_loglike = logZero
@@ -358,28 +312,41 @@
 
     end function BAO_DR11_loglike
 
-    function SDSS_CMBToBAOrs(CMB)
-    Type(CMBParams) CMB
-    real(mcp) ::  rsdrag
-    real(mcp) :: SDSS_CMBToBAOrs
-    real(mcp) :: zeq,zdrag,omh2,obh2,b1,b2
-    real(mcp) :: rd,req,wkeq
 
-    obh2=CMB%ombh2
-    omh2=CMB%ombh2+CMB%omdmh2
 
-    b1     = 0.313*omh2**(-0.419)*(1+0.607*omh2**0.674)
-    b2     = 0.238*omh2**0.223
-    zdrag  = 1291.*omh2**0.251*(1.+b1*obh2**b2)/(1.+0.659*omh2**0.828)
-    zeq    = 2.50e4*omh2*(2.726/2.7)**(-4.)
-    wkeq   = 7.46e-2*omh2*(2.726/2.7)**(-2)
-    req    = 31.5*obh2*(2.726/2.7)**(-4)*(1e3/zeq)
-    rd     = 31.5*obh2*(2.726/2.7)**(-4)*(1e3/zdrag)
-    rsdrag = 2./(3.*wkeq)*sqrt(6./req)*log((sqrt(1.+rd)+sqrt(rd+req))/(1.+sqrt(req)))
+    !!!! SDSS DR7 main galaxy sample http://arxiv.org/abs/1409.3242
+    !Adapted from code by Lado Samushia
 
-    SDSS_CMBToBAOrs = rsdrag
+    subroutine BAO_MGS_InitProbDist(this, Ini)
+    class(MGSLikelihood) this
+    class(TSettingIni) :: Ini
 
-    end function SDSS_CMBToBAOrs
+    call File%LoadTxt(Ini%ReadFileName('prob_dist'), this%alpha_prob)
+
+    end subroutine BAO_MGS_InitProbDist
+
+
+    function BAO_MGS_loglike(this, CMB, Theory, DataParams)
+    Class(MGSLikelihood) :: this
+    Class(CMBParams) CMB
+    Class(TCosmoTheoryPredictions), target :: Theory
+    real(mcp) :: DataParams(:)
+    real(mcp) BAO_MGS_loglike
+    real (mcp) alphamgs, chi2
+    real(mcp),parameter :: rsfidmgs = 148.69_mcp, DVfidmgs = 638.9518_mcp
+    real(mcp), parameter :: alpha_min=0.8005_mcp, alpha_max = 1.1985_mcp
+    integer ii
+
+    alphamgs =   this%Calculator%BAO_D_v(this%bao_z(1))/this%get_rs_drag(Theory) / (DVfidmgs / rsfidmgs)
+    if ((alphamgs > alpha_max).or.(alphamgs < alpha_min)) then
+        BAO_MGS_loglike = logZero
+    else
+        ii = 1+floor((alphamgs - alpha_min)/0.001)
+        chi2 = (this%alpha_prob(ii) + this%alpha_prob(ii+1))/2.0
+        BAO_MGS_loglike = chi2/2.0
+    endif
+
+    end function BAO_MGS_loglike
 
 
     end module bao

@@ -41,9 +41,7 @@ module wl
   real(mcp), parameter :: dx = 0.02d0 
   real(mcp), parameter :: xstop = 200.0d0
  
-  logical :: use_wl_lss  = .false.
-
-  public WLLikelihood, WLLikelihood_Add, use_wl_lss
+  public WLLikelihood, WLLikelihood_Add
   contains
 
   subroutine WLLikelihood_Add(LikeList, Ini)
@@ -53,7 +51,6 @@ module wl
     integer numwlsets, i
 
     if (Ini%Read_Logical('use_WL',.false.)) then
-       use_wl_lss = .true.
        numwlsets = Ini%Read_Int('wl_numdatasets',0)
        do i= 1, numwlsets
           allocate(this)

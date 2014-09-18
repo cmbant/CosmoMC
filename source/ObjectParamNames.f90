@@ -16,7 +16,8 @@
         character(LEN=ParamNames_maxlen), dimension(:), allocatable ::  comment
         logical, dimension(:), allocatable ::  is_derived
     contains
-    procedure :: Add => ParamNames_Add
+    procedure :: AddNames => ParamNames_Add
+    procedure :: AddFile => ParamNames_AddFile
     procedure :: Alloc => ParamNames_Alloc
     procedure :: AssignItem => ParamNames_AssignItem
     procedure :: AsString => ParamNames_AsString
@@ -33,19 +34,11 @@
     procedure :: ReadIniForParam => ParamNames_ReadIniForParam
     procedure :: SetLabels => ParamNames_SetLabels
     procedure :: WriteFile => ParamNames_WriteFile
+    generic :: Add => AddNames, AddFile
     end Type TParamNames
 
     public TParamNames, ParamNames_maxlen
     contains
-
-    function IsWhiteSpace(C)
-    character, intent(in) :: C
-    logical IsWhiteSpace
-
-    IsWhiteSpace = (C==' ') .or. (C==char(9))
-
-    end function IsWhiteSpace
-
 
     function ParamNames_ParseLine(Names,InLine,n) result(res)
     class(TParamNames) :: Names
@@ -112,7 +105,7 @@
     subroutine ParamNames_dealloc(Names)
     class(TParamNames) :: Names
     if (allocated(Names%name)) &
-    deallocate(Names%name,Names%label,Names%comment,Names%is_derived)
+        deallocate(Names%name,Names%label,Names%comment,Names%is_derived)
 
     end subroutine ParamNames_dealloc
 
@@ -154,6 +147,18 @@
 
     end subroutine ParamNames_AssignItem
 
+    subroutine ParamNames_AddFile(Names, filename, check_duplicates)
+    class(TParamNames), target :: Names
+    character(Len=*), intent(in) :: filename
+    logical, intent(in), optional :: check_duplicates
+    Type(TParamNames) :: P
+
+    call P%Init(filename)
+    call Names%Add(P,check_duplicates)
+
+    end subroutine ParamNames_AddFile
+
+
     subroutine ParamNames_Add(Names, Names2, check_duplicates)
     class(TParamNames), target :: Names, Names2
     logical, intent(in), optional :: check_duplicates
@@ -167,8 +172,8 @@
         if (NamesOrig%index(Names2%name(i))==-1) then
             n=n+1
         else
-            if (PresentDefault(.false., check_duplicates)) &
-            & call MpiStop('ParamNames_Add: Duplicate name tag - '//trim(Names2%name(i)))
+            if (DefaultFalse(check_duplicates)) &
+                & call MpiStop('ParamNames_Add: Duplicate name tag - '//trim(Names2%name(i)))
         end if
     end do
     if (n==0) return

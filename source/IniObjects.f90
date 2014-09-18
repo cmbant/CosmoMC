@@ -72,9 +72,11 @@
     procedure :: Read_Real_Array => Ini_Read_Real_Array
     procedure :: Read_Logical => Ini_Read_Logical
     procedure :: Read_Enumeration => Ini_Read_Enumeration
+    procedure :: Read_Enumeration_List => Ini_Read_Enumeration_List
     procedure :: TestEqual => Ini_TestEqual
     procedure :: SaveReadValues => Ini_SaveReadValues
     procedure :: Key_To_Arraykey => Ini_Key_To_Arraykey
+    procedure :: EnumerationValue => Ini_EnumerationValue
     procedure, private :: NameValue_AddLine => Ini_NameValue_AddLine
     procedure, private :: EmptyCheckDefault => Ini_EmptyCheckDefault
     procedure, private :: Ini_Read_Real_Change
@@ -598,6 +600,22 @@
 
     end function Ini_Read_Int
 
+    integer function Ini_EnumerationValue(Ini, S, Names)
+    class(TIniFile) :: Ini
+    character(LEN=*) :: S
+    character(LEN=Ini_Enumeration_Len), intent(in) :: Names(:)
+    integer i
+
+    do i=1, size(Names)
+        if (S==Names(i)) then
+            Ini_EnumerationValue = i
+            return
+        end if
+    end do
+    Ini_EnumerationValue = -1
+
+    end function Ini_EnumerationValue
+
     function Ini_Read_Enumeration(Ini, Key, Names, Default)
     class(TIniFile) :: Ini
     character(LEN=*), intent(in) :: Key
@@ -614,16 +632,62 @@
             & call Ini%Error('enumeration value not valid',Key)
     else
         S => Ini%ValueOf(Key)
-        do i=1, size(Names)
-            if (S==Names(i)) then
-                Ini_Read_Enumeration = i
-                return
-            end if
-        end do
-        call Ini%Error('"'//S//'" enumeration name not recognised',Key)
+        Ini_Read_Enumeration = Ini%EnumerationValue(S, Names)
+        if (Ini_Read_Enumeration<0) call Ini%Error('"'//S//'" enumeration name not recognised',Key)
     end if
 
     end function Ini_Read_Enumeration
+
+    subroutine Ini_Read_Enumeration_List(Ini, Key, Names, Enums, nvalues, max_enums, Default)
+    class(TIniFile) :: Ini
+    character(LEN=*), intent(in) :: Key
+    character(LEN=Ini_Enumeration_Len), intent(in) :: Names(:)
+    integer, allocatable, intent(out) :: Enums(:)
+    character(LEN=*), optional, intent(in) :: Default
+    integer, intent(in), optional :: nvalues, max_enums
+    integer, parameter :: defmax = 128
+    integer :: maxvalues
+    integer, allocatable :: Values(:)
+    character(LEN=Ini_Enumeration_Len+8) part
+    character(LEN=:), allocatable :: InLine
+    integer i, slen, pos, n, status
+
+    InLine = Ini%Read_String_Default(Key, Default)
+    pos = 1
+    slen = len_trim(InLine)
+    n=0
+    maxvalues = PresentDefault(PresentDefault(defmax, max_enums), nvalues)
+    allocate(Values(maxvalues))
+    do
+        do while (pos <= slen)
+            if (IsWhiteSpace(InLine(pos:pos))) then
+                pos = pos+1
+            else
+                exit
+            endif
+        end do
+        read(InLine(pos:), *, iostat=status) part
+        if (status/=0) exit
+        pos = pos + len_trim(part)
+        i= Ini%EnumerationValue(part, Names)
+        if (i<0) call Ini%Error('"'//part//'" enumeration name not recognised',Key)
+        n=n+1
+        if (n > defmax) call Ini%Error('More than maximum enumeration values', Key)
+        values(n) = i
+        if (n == maxvalues) exit
+    end do
+    if (present(nvalues)) then
+        if (n==1) then
+            !Fill whole array with same value
+            allocate(Enums(nvalues), source= values(1))
+            return
+        elseif (n/=nvalues) then
+            call Ini%Error('Wrong number of enumeration values', Key)
+        end if
+    end if
+    allocate(Enums(n), source= values(:n))
+
+    end subroutine Ini_Read_Enumeration_List
 
     function Ini_Read_Double(Ini,Key, Default, min, max)
     class(TIniFile) :: Ini
