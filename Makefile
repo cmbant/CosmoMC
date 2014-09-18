@@ -1,7 +1,6 @@
 default: all
 
-cosmomc: BUILD ?= 
-#MPI
+cosmomc: BUILD ?= MPI
 cosmomc_debug: BUILD ?= MPI
 
 getdist: ./source/*.*90

@@ -205,7 +205,7 @@
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) :: DataParams(:)
     integer j
-    real(mcp) BAO_LnLike, rs, z, f 
+    real(mcp) BAO_LnLike, rs, z, f
     real(mcp)  :: BAO_theory(this%num_bao)
 
     rs = this%get_rs_drag(Theory) * this%rs_rescale
