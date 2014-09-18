@@ -4,13 +4,14 @@ import fileinput
 
 root = '/home/adammoss/work/code/PLANCK/cosmomcplanck/'
 
-angles = np.linspace(1,301,30)
+theta_plus = np.linspace(1,101,20)
+theta_minus = np.linspace(1,201,20)
 NL = [['F','1'],['T','1'],['T','2'],['T','3'],['T','4']]
 filename = root+'data/CFHTLENS/2D/cut_values_test.dat'
-program = [root+'/cosmomc',root+'ancillary/test_2D.ini']
+program = [root+'/cosmomc',root+'ancillary/WL_test_2D.ini']
 
-for i in angles:
-	for j in angles:
+for i in theta_plus:
+	for j in theta_minus:
 		result = ''
 		for k in NL:
 			with open(root+'batch2/WL_test_2D.ini') as a:
