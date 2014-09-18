@@ -277,7 +277,6 @@
     end subroutine BAO_DR11_InitProbDist
 
     function BAO_DR11_loglike(this, CMB, Theory, DataParams)
-    !SDSS DR7 main galaxy sample http://arxiv.org/abs/1409.3242
     Class(DR11Likelihood) :: this
     Class(CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
