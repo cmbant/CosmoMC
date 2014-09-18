@@ -40,15 +40,6 @@
     public TParamNames, ParamNames_maxlen
     contains
 
-    function IsWhiteSpace(C)
-    character, intent(in) :: C
-    logical IsWhiteSpace
-
-    IsWhiteSpace = (C==' ') .or. (C==char(9))
-
-    end function IsWhiteSpace
-
-
     function ParamNames_ParseLine(Names,InLine,n) result(res)
     class(TParamNames) :: Names
     character(LEN=*) :: InLine

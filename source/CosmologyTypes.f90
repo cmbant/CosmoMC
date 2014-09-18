@@ -186,7 +186,7 @@
     class(TDataLikelihood), pointer :: DataLike
     integer i,j
 
-    if(this%use_LSS) call this%Initialize_PKSettings()
+    call this%Initialize_PKSettings()
 
     call this%Initialize_CMBSettings()
 
@@ -300,6 +300,11 @@
         select type (DataLike)
         class is (TCosmologyRequirementsLikelihood)
             if (DataLike%needs_powerspectra) then
+                if (DataLike%needs_exact_z .or. DataLike%num_z>0) then
+                  this%Use_LSS = .true.
+                else
+                   cycle
+                end if
                 this%power_kmax = max(this%power_kmax,DataLike%kmax)
                 this%use_nonlinear = this%use_nonlinear .or. DataLike%needs_nonlinear_pk
                 if(DataLike%needs_exact_z) then
@@ -329,6 +334,8 @@
         end select
     end do
 
+    if(.not. this%use_LSS) return
+    
     !Build array of redshifts where the redshift exact value doesn't matter
     if(maxz>0)then
         num_range = ceiling(log(maxz+1)/dlnz)
