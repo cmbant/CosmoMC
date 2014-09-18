@@ -123,7 +123,7 @@
     call Ini%Read_Enumeration_List('measurement_type',measurement_types, this%type_bao, nvalues = this%num_bao)
     this%needs_powerspectra =  any(this%type_bao == f_sigma8)
     if (this%needs_powerspectra) then
-        this%num_z = Ini%Read_Int('nz_bao',0)
+        this%num_z = Ini%Read_Int('nz_bao')
         this%max_z = Ini%Read_Double('max_z_bao',1._mcp)
     end if
 
