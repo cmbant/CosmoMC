@@ -2,11 +2,11 @@
 
 name = 6DF
 
-#Type of measurement: A(z) = 2, D_V/rs=3, Dv/Mpc=4
-type_bao = 4
+measurement_type = rs_over_DV
 
-#number of bao data points 
-num_bao = 1
+#rs_rescale = 153.9/149.8 
+rs_rescale= 1.027369826
 
-bao_measurements_file = %DATASETDIR%sdss_6DF_bao.txt
+zeff= 0.106
 
+bao_measurement = 0.336 0.015

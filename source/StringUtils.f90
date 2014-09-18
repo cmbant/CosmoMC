@@ -8,6 +8,13 @@
 
     contains
 
+    function IsWhiteSpace(C)
+    character, intent(in) :: C
+    logical IsWhiteSpace
+
+    IsWhiteSpace = (C==' ') .or. (C==char(9))
+
+    end function IsWhiteSpace
 
     function GetParamCount()
     integer GetParamCount
@@ -48,6 +55,7 @@
     if (status/=0) value=''
 
     end function GetEnvironmentVariable
+
 
     function StringStarts(S, substring, index) result(OK)
     character(LEN=*), intent(in) :: S, substring

@@ -2,11 +2,10 @@
 
 name = MGS
 
-#Type of measurement:  D_V/rs=3
-type_bao = 3
+measurement_type = DV_over_rs
 
-#number of bao data points 
-num_bao = 1
+zeff = 0.15
+bao_measurement = 4.465666824   .1681350461
 
-bao_measurements_file = %DATASETDIR%sdss_MGS_bao.txt
 prob_dist = %DATASETDIR%sdss_MGS_prob.txt
+
