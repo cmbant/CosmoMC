@@ -6,7 +6,10 @@ zeff = 0.57
 
 num_bao = 3
 
+nz_bao = 20
+max_z_bao = 1.0
+
 measurement_type = DV_over_rs F_AP f_sigma8
-bao_measurement = 13.88   0.683  0.422
+bao_measurement = 13.88   0.683 0.422
 
 bao_invcov_file = %DATASETDIR%sdss_DR11CMASS_RSD_bao_invcov_Samushia.txt
