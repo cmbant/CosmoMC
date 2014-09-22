@@ -16,7 +16,7 @@ except ImportError:
         from PySide.QtGui  import QApplication
         os.environ['QT_API'] = 'pyside'
     except ImportError:
-        print "Can't import PyQt4 or PySide modules." 
+        print "Can't import PyQt4 or PySide modules."
         sys.exit()
 
 from MainWindow import MainWindow
@@ -24,17 +24,22 @@ from MainWindow import MainWindow
 
 parser = argparse.ArgumentParser(description='GetDist GUI')
 
-parser.add_argument('--ini', help='Path to .ini file', default='../batch1/getdist_common.ini')
+#parser.add_argument('--ini', help='Path to .ini file', default='../batch1/getdist_common.ini')
+parser.add_argument('--ini', help='Path to .ini file', default='batch1/getdist_common.ini')
 args = parser.parse_args()
+
+# Change to suitable directory
+os.chdir(os.path.dirname(os.path.abspath(__file__)) + '/../../')
 
 iniFile = args.ini
 if not os.path.isfile(iniFile):
     print "Invalid file %s"%iniFile
     iniFile=""
 
+
 app = QApplication(sys.argv)
 mainWin = MainWindow()
-if iniFile: 
+if iniFile:
     mainWin.setIniFile(iniFile)
 mainWin.show()
 sys.exit(app.exec_())

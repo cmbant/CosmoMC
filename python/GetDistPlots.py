@@ -195,18 +195,19 @@ class SampleAnalysisGetDist():
         if transpose: return (pts, y, x)
         else: return (pts, x, y)
 
- 
+
 class MCSampleAnalysis():
 
-    def __init__(self, root_dir, ini_file):
-        self.root_dir = root_dir
+    def __init__(self, file_root, ini_file):
+
+        self.root_dir = os.path.dirname(file_root)
 
         self.ini = None
         if ini_file<>'':
-            self.ini = iniFile.iniFile()        
+            self.ini = iniFile.iniFile()
             self.ini.readFile(ini_file)
             logging.debug("Using ini file %s"%ini_file)
-        self.root = MCSamples.GetRootFileName(self.root_dir)
+        self.root = file_root
         self.mcsamples = MCSamples.MCSamples(self.root)
 
         self.densities_dat_1D = dict()
@@ -227,7 +228,7 @@ class MCSampleAnalysis():
 
     def initParameters(self):
         if not self.ini: return
-        
+
         logging.debug("Set parameters from .ini file")
 
         self.mcsamples.num_bins = self.ini.int('num_bins')
@@ -240,13 +241,13 @@ class MCSampleAnalysis():
         self.mcsamples.num_contours = self.ini.int('num_contours', 2)
 
         self.mcsamples.force_twotail = self.ini.bool('force_twotail', False)
-        
+
         self.mcsamples.plot_meanlikes = self.ini.bool('plot_meanlikes', False)
 
-        
+
     def readChains(self):
         self.initParameters()
-        
+
         self.mcsamples.ComputeContours(self.ini)
 
         # compute limits
@@ -274,9 +275,9 @@ class MCSampleAnalysis():
         # Compute statistics values
         self.mcsamples.ComputeStats()
 
-        # Sort data in order of likelihood of points 
+        # Sort data in order of likelihood of points
         self.mcsamples.SortColData(1)
-        
+
         # Get covariance matrix and correlation matrix
         self.mcsamples.ComputeNumSamp()
 
@@ -297,16 +298,16 @@ class MCSampleAnalysis():
         logging.debug("Computing 1D density for %s ... "%name)
         dat, likes = self.mcsamples.Get1DDensity(index, writeDataToFile=False)
         logging.debug("...done.")
-        if dat is not None: 
+        if dat is not None:
             self.densities_dat_1D[name] = dat
-        if likes is not None: 
+        if likes is not None:
             self.densities_likes_1D[name] = likes
 
     def compute_2d(self, name1, name2):
         index1 = self.mcsamples.index[name1]
         index2 = self.mcsamples.index[name2]
         logging.debug("Computing 2D data for (%s,%s) ... "%(name1, name2))
-        # Pre computation 
+        # Pre computation
         self.mcsamples.PreComputeDensity(index1)
         self.mcsamples.PreComputeDensity(index2)
         dat, likes, cont, x, y = self.mcsamples.Get2DPlotData(index1, index2, writeDataToFile=False)
@@ -316,16 +317,16 @@ class MCSampleAnalysis():
         if cont is not None: self.densities_cont_2D[key] = cont
         if x is not None: self.densities_x_2D[key] = x
         if y is not None: self.densities_y_2D[key] = y
-        
+
 
     def get_1d(self, root, param, ext='.dat'):
         name = param.name
         if ext=='.dat':
-            if self.densities_dat_1D.has_key(name): 
+            if self.densities_dat_1D.has_key(name):
                 return self.densities_dat_1D[name]
             else:
                 self.compute_1d(name)
-                if self.densities_dat_1D.has_key(name): 
+                if self.densities_dat_1D.has_key(name):
                     return self.densities_dat_1D[name]
                 else:
                     return None
@@ -348,7 +349,7 @@ class MCSampleAnalysis():
                 and (not self.densities_x_2D.has_key(key)) \
                 and (not self.densities_y_2D.has_key(key)):
             self.compute_2d(name1, name2)
-        if ext=='': 
+        if ext=='':
             pts = self.densities_dat_2D.get(key, np.ndarray(0))
         elif ext=='_likes':
             pts = self.densities_likes_2D.get(key, np.ndarray(0))
@@ -381,16 +382,16 @@ class MCSampleAnalysis():
 
     def load_single_samples(self, root):
         loglikes, samples = self.mcsamples.MakeSingleSamples(writeDataToFile=False)
-        if not root in self.single_samples: 
+        if not root in self.single_samples:
             self.single_samples[root] = np.column_stack((loglikes, samples))
         return self.single_samples[root]
 
     def paramsForRoot(self, root, labelParams=None):
         names = self.mcsamples.paramNames
-        if labelParams is not None: 
+        if labelParams is not None:
             names.setLabelsAndDerivedFromParamNames(labelParams)
         return names
-        
+
     def boundsForRoot(self, root):
         lower, upper = self.mcsamples.WriteBounds(None)
         bounds = paramBounds("")
@@ -401,14 +402,14 @@ class MCSampleAnalysis():
 
 class GetDistPlotter():
 
-    def __init__(self, plot_data=None, settings=None, chain_dir=None, ini_file=''):
+    def __init__(self, plot_data=None, settings=None, file_root=None, ini_file=''):
         if settings is None: self.settings = defaultSettings
         else: self.settings = settings
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
         self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
-        if chain_dir is not None:
-            self.sampleAnalyser = MCSampleAnalysis(chain_dir, ini_file)
+        if file_root is not None:
+            self.sampleAnalyser = MCSampleAnalysis(file_root, ini_file)
         self.newPlot()
 
     def newPlot(self):

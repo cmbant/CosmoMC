@@ -14,11 +14,11 @@ from chains import chains
 # =============================================================================
 
 class Ranges():
-    
+
     def __init__(self, fileName=None, setParamNameFile=None):
         self.names = []
         self.mins = {}
-        self.maxs = {}        
+        self.maxs = {}
         if fileName is not None: self.loadFromFile(fileName)
 
     def loadFromFile(self, fileName):
@@ -26,10 +26,10 @@ class Ranges():
         f = open(fileName)
         for line in f:
             name, mini, maxi = self.readValues(line.strip())
-            if name: 
+            if name:
                 self.names.append(name)
                 self.mins[name] = mini
-                self.maxs[name] = maxi                
+                self.maxs[name] = maxi
 
     def readValues(self, line):
         name, mini, maxi = None, None, None
@@ -63,16 +63,16 @@ class Density1D():
 
     def __init__(self, n, spacing):
         self.n   = n
-        self.X   = np.zeros(n) 
-        self.P   = np.zeros(n) 
+        self.X   = np.zeros(n)
+        self.P   = np.zeros(n)
         self.spacing = float(spacing)
 
     def InitSpline(self):
-        self.spl = splrep(self.X, self.P, s=0) 
+        self.spl = splrep(self.X, self.P, s=0)
 
     def Prob(self, x):
         # Assuming x is a single value
-        return splev([x], self.spl) 
+        return splev([x], self.spl)
 
     def Limits(self, p):
 
@@ -83,7 +83,7 @@ class Density1D():
         factor = 100
         bign = (self.n-1)*factor + 1
         vecx = self.X[0] + np.arange(bign)*self.spacing / factor
-        grid = splev(vecx, self.spl) 
+        grid = splev(vecx, self.spl)
 
         norm  = np.sum(grid)
         norm  = norm - (0.5*self.P[-1]) - (0.5*self.P[0])
@@ -151,7 +151,7 @@ class MCSamples(chains):
         if hasattr(self, 'index'):
             # index is a dict such as { name : index }
             # index2name is a dict such as { index: name }
-            self.index2name = dict((v,k) for k, v in self.index.iteritems()) 
+            self.index2name = dict((v,k) for k, v in self.index.iteritems())
             self.index2name.keys().sort()
 
         self.density1D = None
@@ -195,7 +195,7 @@ class MCSamples(chains):
 
     def ComputeContours(self, ini=None):
         self.num_contours = 2
-        if ini: 
+        if ini:
             self.num_contours = ini.int('num_contours', 2)
         self.contours = []
         # how small the end bin must be relative to max to use two tail
@@ -203,7 +203,7 @@ class MCSamples(chains):
         if ini is None: return
         for i in range(1, self.num_contours+1):
             self.contours.append(ini.float('contour'+str(i)))
-            max_frac = ini.float('max_frac_twotail'+str(i), 
+            max_frac = ini.float('max_frac_twotail'+str(i),
                                  math.exp(-1.0*math.pow(norm.ppf((1-self.contours[i-1])/2), 2)/2))
             self.max_frac_twotail.append(max_frac)
 
@@ -246,10 +246,10 @@ class MCSamples(chains):
             if (line<>''):
                 limits = [ s for s in line.split(' ') if s<>'' ]
                 if len(limits)==2:
-                    if limits[0]<>'N': 
+                    if limits[0]<>'N':
                         self.limmin[ix] = float(limits[0])
                         self.has_limits_bot[ix] = True
-                    if limits[1]<>'N': 
+                    if limits[1]<>'N':
                         self.limmax[ix] = float(limits[1])
                         self.has_limits_top[ix] = True
             if ini and ini.params.has_key('marker[%s]'%name.strip()):
@@ -269,7 +269,7 @@ class MCSamples(chains):
 
     def MapParameters(self, invars):
         sys.exit('Need to write MapParameters routine first')
-        
+
     def CoolChain(self, cool):
         print 'Cooling chains by ', cool
         MaxL = np.max(self.loglikes)
@@ -283,13 +283,13 @@ class MCSamples(chains):
         self.weights = np.delete(self.weights, indexes)
         self.loglikes = np.delete(self.loglikes, indexes)
         self.samples = np.delete(self.samples, indexes, axis=0)
-        
+
     def SortColData(self, icol=None):
         """
         Sort coldata in order of likelihood
         """
         if icol is None: return
-        if icol==0: 
+        if icol==0:
             indexes = self.weights.argsort()
         elif icol==1:
             indexes = self.loglikes.argsort()
@@ -303,7 +303,7 @@ class MCSamples(chains):
 
     def MakeSingleSamples(self, filename="", single_thin=None, writeDataToFile=True):
         """
-        Make file of weight-1 samples by choosing samples 
+        Make file of weight-1 samples by choosing samples
         with probability given by their weight.
         """
         if writeDataToFile:
@@ -327,6 +327,7 @@ class MCSamples(chains):
         if(cool<>1): print 'Cooled thinned output with temp: ', cool
         MaxL = np.max(self.loglikes)
         textFileHandle = open(fname, 'w')
+        i = 0
         for thin in thin_ix:
             if (cool<>1):
                 newL = self.loglikes[thin] * cool
@@ -340,6 +341,7 @@ class MCSamples(chains):
                 textFileHandle.write("%f"%(self.loglikes[thin]))
                 for j in nparams:
                     textFileHandle.write("%16.7E"%(self.samples[i][j]))
+            i += 1
 
         textFileHandle.close()
         print  'Wrote ', len(thin_ix), ' thinned samples'
@@ -371,13 +373,13 @@ class MCSamples(chains):
         if writeDataToFile:
             np.savetxt(self.rootdirname + ".corr", self.corrmatrix, fmt="%17.7E")
 
-    # MostCorrelated2D ? 
+    # MostCorrelated2D ?
 
     def GetFractionIndices(self, weights, n):
         nrows = weights.shape[0]
         numsamp = np.sum(weights)
 
-        tot = 0 
+        tot = 0
         aim = numsamp / n
         num = 0
 
@@ -399,7 +401,7 @@ class MCSamples(chains):
 
     def PCA(self, pars, param_map, normparam_num):
         """
-        Perform principle component analysis. In other words, 
+        Perform principle component analysis. In other words,
         get eigenvectors and eigenvalues for normalized variables
         with optional (log) mapping.
         """
@@ -408,7 +410,7 @@ class MCSamples(chains):
         filename = self.rootdirname + ".PCA"
         textFileHandle = open(filename, "w")
         textFileHandle.write('PCA for parameters:\n')
-        
+
         if (normparam_num<>0):
             if (normparam_num in pars):
                 normparam = pars.index(normparam_num)
@@ -453,15 +455,15 @@ class MCSamples(chains):
             for j in range(n):
                 corrmatrix[j][i] = np.sum(self.weights*PCdata[:, i]*PCdata[:, j]) / self.norm
                 corrmatrix[i][j] = corrmatrix[j][i]
-            textFileHandle.write('%4i :'%(pars[i]+1)) 
+            textFileHandle.write('%4i :'%(pars[i]+1))
             for j in range(n):
-                textFileHandle.write('%8.4f'%corrmatrix[j][i]) 
+                textFileHandle.write('%8.4f'%corrmatrix[j][i])
             textFileHandle.write('\n')
-            
+
         u = corrmatrix
         evals, evects = np.linalg.eig(u)
         isorted = evals.argsort()
-        u = np.transpose(evects[:, isorted]) # redefining u 
+        u = np.transpose(evects[:, isorted]) # redefining u
 
         textFileHandle.write('\n')
         textFileHandle.write('e-values of correlation matrix\n')
@@ -504,9 +506,9 @@ class MCSamples(chains):
                 label = self.paramNames.parWithName(name).label
                 if (param_map[j] in ['L', 'M']):
                     expo = "%f"%(1.0/sd[j]*u[i][j])
-                    if (param_map[j]=="M"): 
+                    if (param_map[j]=="M"):
                         div = "%f"%(-np.exp(PCmean[j]))
-                    else: 
+                    else:
                         div = "%f"%(np.exp(PCmean[j]))
                     textFileHandle.write('[%f]  (%s/%s)^{%s}\n'%(u[i][j], label, div, expo))
                 else:
@@ -520,7 +522,7 @@ class MCSamples(chains):
             newsd[i] = np.sqrt(np.sum(self.weights*np.power(PCdata[:, i]-newmean[i], 2)) / self.norm)
             textFileHandle.write('          = %f +- %f\n'%(newmean[i], newsd[i]))
             textFileHandle.write('ND limits: %9.3f%9.3f%9.3f%9.3f\n'%(
-                    np.min(PCdata[0:self.ND_cont1, i]), np.max(PCdata[0:self.ND_cont1, i]), 
+                    np.min(PCdata[0:self.ND_cont1, i]), np.max(PCdata[0:self.ND_cont1, i]),
                     np.min(PCdata[0:self.ND_cont2, i]), np.max(PCdata[0:self.ND_cont2, i])))
             textFileHandle.write('\n')
 
@@ -528,7 +530,7 @@ class MCSamples(chains):
         textFileHandle.write('Correlations of principle components\n')
         l = [ "%8i"%i for i in range(1,n+1) ]
         textFileHandle.write('%s\n'%("".join(l)))
-        
+
         for i in range(n):
             PCdata[:, i] = (PCdata[:, i] - newmean[i]) / newsd[i]
 
@@ -546,7 +548,7 @@ class MCSamples(chains):
                 textFileHandle.write('%8.3f'%(
                         np.sum(self.weights*PCdata[:, i]
                                *(self.samples[:, j]-self.means[j])/self.sddev[j]) / self.norm))
-            
+
             name = self.index2name[j]
             label = self.paramNames.parWithName(name).label
             textFileHandle.write('   (%s)\n'%(label))
@@ -583,8 +585,8 @@ class MCSamples(chains):
         """
         Do convergence tests.
         """
-        if not hasattr(self, 'chains'): return 
-        
+        if not hasattr(self, 'chains'): return
+
         self.GetUsedColsChains()
 
         # Weights
@@ -594,7 +596,7 @@ class MCSamples(chains):
 
         fname = self.rootdirname + '.converge'
         textFileHandle = open(fname, 'w')
-        
+
         num_chains_used = len(self.chains)
         if (num_chains_used>1):
             print 'Number of chains used = ', num_chains_used
@@ -611,12 +613,12 @@ class MCSamples(chains):
         fullmean = np.zeros(nparam)
         for j in range(nparam):
             for chain in self.chains:
-                fullmean[j] += np.sum(chain.coldata[:, 0] * chain.coldata[:, j+2]) / norm 
+                fullmean[j] += np.sum(chain.coldata[:, 0] * chain.coldata[:, j+2]) / norm
 
         fullvar = np.zeros(nparam)
         for j in range(nparam):
             for chain in self.chains:
-                fullvar[j] += np.sum(chain.coldata[:, 0] * np.power(chain.coldata[:, j+2]-fullmean[j], 2)) / norm 
+                fullvar[j] += np.sum(chain.coldata[:, 0] * np.power(chain.coldata[:, j+2]-fullmean[j], 2)) / norm
 
         if (num_chains_used>1):
             textFileHandle.write(" \n")
@@ -649,7 +651,7 @@ class MCSamples(chains):
         if (num_chains_used>1) and (self.covmat_dimension>0):
             # Assess convergence in the var(mean)/mean(var) in the worst eigenvalue
             # c.f. Brooks and Gelman 1997
-                
+
             meanscov = np.zeros((nparam, nparam))
             cov = np.zeros((nparam, nparam))
 
@@ -659,13 +661,13 @@ class MCSamples(chains):
                     cov[k, j] = 0.
                     for i in range(num_chains_used):
                         chain = self.chains[i]
-                        cov[k, j] += np.sum( 
-                            chain.coldata[:, 0] * 
+                        cov[k, j] += np.sum(
+                            chain.coldata[:, 0] *
                             (chain.coldata[:, j+2] - chain_means[i][j]) *
                             (chain.coldata[:, k+2] - chain_means[i][k]) )
                         meanscov[k, j] += (chain_means[i][j] - mean[j]) * (chain_means[i][k] - mean[k])
-                    meanscov[j, k] = meanscov[k, j] 
-                    cov[j, k] = cov[k, j] 
+                    meanscov[j, k] = meanscov[k, j]
+                    cov[j, k] = cov[k, j]
 
             meanscov[:, :] /= (num_chains_used-1)
             cov[:, :] /= norm
@@ -705,10 +707,10 @@ class MCSamples(chains):
                 for split_n in range(2, self.max_split_tests+1):
                     frac = self.GetFractionIndices(self.weights, split_n)
                     split_tests[split_n] = 0.
-                    confid = self.confidence(coldata, (1-limfrac)/2., endb==0) 
+                    confid = self.confidence(coldata, (1-limfrac)/2., endb==0)
                     for i in range(split_n):
                         split_tests[split_n] = split_tests[split_n] + math.pow(self.confidence(coldata[frac[i]:frac[i+1]], (1-limfrac)/2., endb==0, start=frac[i], end=frac[i+1])-confid, 2)
-                    
+
                     split_tests[split_n] = math.sqrt(split_tests[split_n]/split_n/fullvar[j])
                 if (endb==0):
                     typestr = 'upper'
@@ -739,15 +741,15 @@ class MCSamples(chains):
             hardestend = 0
             for ix in range(num_chains_used):
                 chain = self.chains[ix]
-                thin_fac[ix] = int(round(np.max(chain.coldata[:, 0]))) 
-                
+                thin_fac[ix] = int(round(np.max(chain.coldata[:, 0])))
+
                 for j in range(self.covmat_dimension):
                     coldata = np.hstack((chain.coldata[:, j] for chain in self.chains))
                     if (self.force_twotail or not self.has_limits[j]):
                         for endb in [0, 1]:
                             # Get binary chain depending on whether above or below confidence value
-                            u = self.confidence(chain.coldata[:, j], (1-limfrac)/2, endb==0) 
-                            while(True): 
+                            u = self.confidence(chain.coldata[:, j], (1-limfrac)/2, endb==0)
+                            while(True):
                                 thin_ix = self.thin_indices(thin_fac[ix])
                                 thin_rows = len(thin_ix)
                                 if (thin_rows<2): break
@@ -760,15 +762,15 @@ class MCSamples(chains):
                                 # Estimate transitions probabilities for 2nd order process
                                 for i in range(2, thin_rows):
                                     tran[binchain[i-2]][binchain[i-1]][binchain[i]] += 1
-                                    
+
                                 # Test whether 2nd order is better than Markov using BIC statistic
                                 g2 = 0
                                 for i1 in [0, 1]:
                                     for i2 in [0, 1]:
                                         for i3 in [0, 1]:
                                             if (tran[i1][i2][i3]<>0):
-                                                fitted = float( 
-                                                    (tran[i1][i2][0]+tran[i1][i2][1]) * 
+                                                fitted = float(
+                                                    (tran[i1][i2][0]+tran[i1][i2][1]) *
                                                     (tran[0][i2][i3]+tran[1][i2][i3]) ) \
                                                 / float(tran[0][i2][0]+tran[0][i2][1]+
                                                         tran[1][i2][0]+tran[1][i2][1])
@@ -783,7 +785,7 @@ class MCSamples(chains):
                             if (np.sum(tran[:, 0, 1])==0 or np.sum(tran[:, 1, 0])==0):
                                 thin_fac[ix] = 0
                                 #goto 203
-                            
+
                             alpha = np.sum(tran[:, 0, 1]) / float(np.sum(tran[:, 0, 0])+np.sum(tran[:, 0, 1]))
                             beta = np.sum(tran[:, 1, 0]) / float(np.sum(tran[:, 1, 0])+np.sum(tran[:, 1, 1]))
                             probsum = alpha + beta
@@ -800,7 +802,7 @@ class MCSamples(chains):
                 u = self.confidence(chain.coldata[:, hardest], (1-limfrac)/2, hardestend==0)
                 thin_fac[ix] += 1
 
-                while(True): 
+                while(True):
                     thin_ix = self.thin_indices_chain(chain.coldata[:, 0], thin_fac[ix])
                     thin_rows = len(thin_ix)
                     if (thin_rows<2): break
@@ -816,14 +818,14 @@ class MCSamples(chains):
                     # Estimate transitions probabilities for 2nd order process
                     for i in range(1, thin_rows):
                         tran2[binchain[i-1]][binchain[i]] += 1
-                
+
                     # Test whether independence is better than Markov using BIC statistic
                     g2 = 0
                     for i1 in [0, 1]:
                         for i2 in [0, 1]:
                             if (tran2[i1][i2]<>0):
-                                fitted = float( 
-                                    (tran2[i1][0]+tran2[i1][1]) * 
+                                fitted = float(
+                                    (tran2[i1][0]+tran2[i1][1]) *
                                     (tran2[0][i2]+tran2[1][i2]) ) / float(thin_rows-1)
                                 focus = float(tran2[i1][i2])
                                 if (fitted<=0 or focus<=0):
@@ -906,7 +908,7 @@ class MCSamples(chains):
 
 
     def PreComputeDensity(self, j):
-        
+
         # Return values
         width, smooth_1D, end_edge = 0, 0, 0
 
@@ -916,8 +918,8 @@ class MCSamples(chains):
 
         self.param_min[j] = np.min(paramVec)
         self.param_max[j] = np.max(paramVec)
-        self.range_min[j] = self.confidence(paramVec, 0.0005, upper=False) 
-        self.range_max[j] = self.confidence(paramVec, 0.0005, upper=True) 
+        self.range_min[j] = self.confidence(paramVec, 0.0005, upper=False)
+        self.range_max[j] = self.confidence(paramVec, 0.0005, upper=True)
         width = (self.range_max[j]-self.range_min[j])/(self.num_bins+1)
         if (width==0):
             return width, smooth_1D, end_edge
@@ -925,8 +927,8 @@ class MCSamples(chains):
         logging.debug("Smooth scale ... ")
         if (self.smooth_scale_1D<=0):
             # Automatically set smoothing scale from rule of thumb for Gaussian
-            opt_width = 1.06/(math.pow(max(1.0, self.numsamp/self.max_mult), 0.2)*self.sddev[j])
-            smooth_1D = opt_width/width*abs(self.smooth_scale_1D)
+            opt_width = 1.06 / math.pow(max(1.0, self.numsamp/self.max_mult), 0.2) * self.sddev[j]
+            smooth_1D = opt_width / width * abs(self.smooth_scale_1D)
             if (smooth_1D<0.5):
                 print 'Warning: num_bins not large enough for optimal density'
             smooth_1D = max(1.0, smooth_1D)
@@ -938,18 +940,18 @@ class MCSamples(chains):
             smooth_1D = self.smooth_scale_1D
 
         end_edge = int(round(smooth_1D * 2))
-        
+
         logging.debug("Limits ... ")
         if (self.has_limits_bot[ix]):
-            if ( (self.range_min[j]-self.limmin[ix]>(width*end_edge)) and 
+            if ( (self.range_min[j]-self.limmin[ix]>(width*end_edge)) and
                  (self.param_min[j]-self.limmin[ix]>(width*smooth_1D)) ):
-                # long way from limit 
+                # long way from limit
                 self.has_limits_bot[ix] = False
             else:
                 self.range_min[j] = self.limmin[ix]
 
         if (self.has_limits_top[ix]):
-            if ((self.limmax[ix]-self.range_max[j]>(width*end_edge)) and 
+            if ((self.limmax[ix]-self.range_max[j]>(width*end_edge)) and
                 (self.limmax[ix]-self.param_max[j]>(width*smooth_1D)) ):
                 self.has_limits_top[ix] = False
             else:
@@ -960,7 +962,7 @@ class MCSamples(chains):
             self.center[j] = self.range_max[j]
         else:
             self.center[j] = self.range_min[j]
-        
+
         self.ix_min[j] = int(round((self.range_min[j] - self.center[j])/width))
         self.ix_max[j] = int(round((self.range_max[j] - self.center[j])/width))
 
@@ -970,7 +972,7 @@ class MCSamples(chains):
         return width, smooth_1D, end_edge
 
 
-    
+
     def Get1DDensity(self, j, writeDataToFile=True):
 
         ix = j # ix = self.colix[j]
@@ -983,12 +985,12 @@ class MCSamples(chains):
         if (width==0):
             print "Warning width is 0"
             return
-        
+
         # Using index mapping for f90 arrays with non standard indexes.
 
         # In f90, binsraw(ix_min(j):ix_max(j))
         binsraw = np.zeros( self.ix_max[j] - self.ix_min[j] + 1 )
-        
+
         fine_fac = 10
         winw = int(round(2.5 * fine_fac * smooth_1D))
         fine_edge = winw + fine_fac * end_edge
@@ -998,14 +1000,14 @@ class MCSamples(chains):
         imax = int(round((self.param_max[j] - self.center[j]) / fine_width))
         # In f90, finebins(imin-fine_edge:imax+fine_edge)
         finebins = np.zeros( (imax+fine_edge) - (imin-fine_edge) + 1 )
-        
+
         if (self.plot_meanlikes):
             # In f90, finebinlikes(imin-fine_edge:imax+fine_edge)
             finebinlikes = np.zeros( (imax+fine_edge) - (imin-fine_edge) + 1 )
-        
+
         for i in range(len(paramVec)):
             ix2 = int(round( (paramVec[i]-self.center[j]) / width ))
-            if ( (ix2<=self.ix_max[j]) and (ix2>=self.ix_min[j]) ): 
+            if ( (ix2<=self.ix_max[j]) and (ix2>=self.ix_min[j]) ):
                 binsraw[ix2 - self.ix_min[j]] += paramVec[i]
             ix2 = int(round( (paramVec[i]-self.center[j]) / fine_width ))
             finebins[ix2 - (imin-fine_edge)] += self.weights[i]
@@ -1014,22 +1016,22 @@ class MCSamples(chains):
                     finebinlikes[ix2 - (imin-fine_edge)] += self.weights[i] * self.loglikes[i]
                 else:
                     finebinlikes[ix2 - (imin-fine_edge)] += self.weights[i] * np.exp(self.meanlike-self.loglikes[i])
-               
+
         if (self.ix_min[j]<>self.ix_max[j]):
             # account for underweighting near edges
-            if ( (not self.has_limits_bot[ix]) and (binsraw[end_edge-1]==0) and  
+            if ( (not self.has_limits_bot[ix]) and (binsraw[end_edge-1]==0) and
                  (binsraw[end_edge]>np.max(binsraw)/15) ):
                 self.EdgeWarning(ix)
-            if ( (not self.has_limits_top[ix]) and (binsraw[self.ix_max[j]-end_edge+1-self.ix_min[j]]==0) and  
+            if ( (not self.has_limits_top[ix]) and (binsraw[self.ix_max[j]-end_edge+1-self.ix_min[j]]==0) and
                  (binsraw[self.ix_max[j]-end_edge+1-self.ix_min[j]]>np.max(binsraw)/15) ):
                 self.EdgeWarning(ix)
-        
+
         # In f90, Win(-winw:winw)
         Win = np.zeros( (2*winw) + 1 )
         for i in range(-winw, winw+1):
-            Win[i - (-winw)] = math.exp( - math.pow(i, 2) / math.pow(fine_fac*smooth_1D, 2) / 2 ) 
+            Win[i - (-winw)] = math.exp( - math.pow(i, 2) / math.pow(fine_fac*smooth_1D, 2) / 2 )
         Win = Win / np.sum(Win)
- 
+
         has_prior = self.has_limits_bot[ix] or self.has_limits_top[ix]
         if (has_prior):
             # In f90, prior_mask(imin-fine_edge:imax+fine_edge)
@@ -1087,7 +1089,7 @@ class MCSamples(chains):
                     # correct for normalization of window where it is cut by prior boundaries
                     edge_fac = 1 / np.dot(Win, prior_mask[istart:iend])
                     bincounts[ix2 - self.ix_min[j]] *= edge_fac
-            
+
             bincounts = bincounts / maxbin
             if (self.plot_meanlikes and self.mean_loglikes):
                 maxbin = min(binlikes)
@@ -1104,7 +1106,7 @@ class MCSamples(chains):
                 textFileHandle = open(filename, 'w')
                 for i in range(self.ix_min[j], self.ix_max[j]+1):
                     textFileHandle.write("%16.7E%16.7E\n"%(self.center[j] + i*width, bincounts[i - self.ix_min[j]]))
-                if (self.ix_min[j]==self.ix_max[j]): 
+                if (self.ix_min[j]==self.ix_max[j]):
                     for i in range(self.ix_min.shape[0]):
                         textFileHandle.write("%16.7E"%(self.center[j] + self.ix_min[i]*width))
                     textFileHandle.write("\n")
@@ -1136,7 +1138,7 @@ class MCSamples(chains):
                     dat[index] = self.center[j] + self.ix_min[0]*width, self.center[j] + self.ix_min[1]*width
                 logging.debug("dat.shape = %s"%str(dat.shape))
 
-                if (self.plot_meanlikes):                
+                if (self.plot_meanlikes):
                     nrows = self.ix_max[j]+1 - self.ix_min[j]
                     likes = np.ndarray((nrows, ncols))
                     index = 0
@@ -1156,18 +1158,18 @@ class MCSamples(chains):
         Get 2D plot data.
         """
         fine_fac_base = 5
-        
+
         has_prior = self.has_limits[j] or self.has_limits[j2]
 
         corr = self.corrmatrix[j][j2]
         # keep things simple unless obvious degeneracy
-        if (abs(corr)<0.3): corr = 0. 
+        if (abs(corr)<0.3): corr = 0.
         corr = max(-0.95, corr)
         corr = min(0.95, corr)
-        
+
         # for tight degeneracies increase bin density
         nbin2D = min(4*self.num_bins_2D, int(round(self.num_bins_2D/(1-abs(corr)))))
-        
+
         widthx = (self.range_max[j]-self.range_min[j]) / (nbin2D+1)
         widthy = (self.range_max[j2]-self.range_min[j2]) / (nbin2D+1)
         smooth_scale = (self.smooth_scale_2D*nbin2D) / self.num_bins_2D
@@ -1183,12 +1185,12 @@ class MCSamples(chains):
         if (not self.has_limits_bot[j2]): iymin -= 1
         if (not self.has_limits_top[j]): ixmax += 1
         if (not self.has_limits_top[j2]): iymax += 1
-        
+
         # Using index mapping for f90 2D arrays with non standard indexes.
 
         # In f90, bins2D(ixmin:ixmax,iymin:iymax) and bin2Dlikes(ixmin:ixmax,iymin:iymax)
-        bins2D = np.zeros( (ixmax-ixmin+1, iymax-iymin+1) ) 
-        bin2Dlikes = np.zeros( (ixmax-ixmin+1, iymax-iymin+1) ) 
+        bins2D = np.zeros( (ixmax-ixmin+1, iymax-iymin+1) )
+        bin2Dlikes = np.zeros( (ixmax-ixmin+1, iymax-iymin+1) )
 
         winw = int(round(fine_fac*smooth_scale))
         imin = (ixmin-3)*winw + 1
@@ -1197,11 +1199,11 @@ class MCSamples(chains):
         jmax = (iymax+3)*winw - 1
 
         # In f90, finebins(imin:imax,jmin:jmax)
-        finebins = np.zeros( (imax-imin+1, jmax-jmin+1) ) 
+        finebins = np.zeros( (imax-imin+1, jmax-jmin+1) )
         if (self.shade_meanlikes):
             # In f90, finebinlikes(imin:imax,jmin:jmax)
-            finebinlikes = np.zeros( (imax-imin+1, jmax-jmin+1) ) 
-        
+            finebinlikes = np.zeros( (imax-imin+1, jmax-jmin+1) )
+
         widthj  = widthx / fine_fac
         widthj2 = widthy / fine_fac
         col1 = self.colix[j]
@@ -1225,14 +1227,14 @@ class MCSamples(chains):
                       (2 * (fine_fac*fine_fac) * (smooth_scale*smooth_scale) * (1-corr*corr)) )
 
         if (has_prior):
-            norm = np.sum(Win) 
+            norm = np.sum(Win)
             # In f90, prior_mask(imin:imax,jmin:jmax)
-            prior_mask = np.ones( (imax-imin+1, jmax-jmin+1) ) 
+            prior_mask = np.ones( (imax-imin+1, jmax-jmin+1) )
             if (self.has_limits_bot[j]):
-                prior_mask[(ixmin*fine_fac)-imin, :] /= 2 
+                prior_mask[(ixmin*fine_fac)-imin, :] /= 2
                 prior_mask[:(ixmin*fine_fac)-imin, :] = 0
             if (self.has_limits_top[j]):
-                prior_mask[(ixmax*fine_fac)-imin, :] /= 2 
+                prior_mask[(ixmax*fine_fac)-imin, :] /= 2
                 prior_mask[(ixmax*fine_fac)-imin:, :] = 0
 
             if (self.has_limits_bot[j2]):
@@ -1246,13 +1248,13 @@ class MCSamples(chains):
             for ix2 in range(iymin, iymax+1):
                 ix1start, ix1end = ix1*fine_fac-winw-imin, ix1*fine_fac+winw+1-imin
                 ix2start, ix2end = ix2*fine_fac-winw-jmin, ix2*fine_fac+winw+1-jmin
-                bins2D[ix1-ixmin][ix2-iymin] = np.sum(np.multiply(Win, finebins[ix1start:ix1end, ix2start:ix2end])) 
+                bins2D[ix1-ixmin][ix2-iymin] = np.sum(np.multiply(Win, finebins[ix1start:ix1end, ix2start:ix2end]))
                 if (self.shade_meanlikes):
-                    bin2Dlikes[ix1-ixmin][ix2-iymin] = np.sum(np.multiply(Win, finebinlikes[ix1start:ix1end, ix2start:ix2end])) 
+                    bin2Dlikes[ix1-ixmin][ix2-iymin] = np.sum(np.multiply(Win, finebinlikes[ix1start:ix1end, ix2start:ix2end]))
 
                 if (has_prior):
                     # correct for normalization of window where it is cut by prior boundaries
-                    edge_fac = norm / np.sum(np.multiply(Win, prior_mask[ix1start:ix1end, ix2start:ix2end])) 
+                    edge_fac = norm / np.sum(np.multiply(Win, prior_mask[ix1start:ix1end, ix2start:ix2end]))
                     bins2D[ix1-ixmin][ix2-iymin] *= edge_fac
                     if (self.shade_meanlikes):
                         bin2Dlikes[ix1-ixmin][ix2-iymin] *= edge_fac
@@ -1282,7 +1284,7 @@ class MCSamples(chains):
                 if (try_sum == lasttry): break
                 lasttry = try_sum
             contour_levels[ix1] = (try_b + try_t) / 2
-            
+
         bins2D[np.where(bins2D < 1e-30)] = 0
 
         if writeDataToFile:
@@ -1327,18 +1329,18 @@ class MCSamples(chains):
             ncols = ixmax+1 - ixmin
             nrows = iymax+1 - iymin
             dat = np.ndarray((nrows, ncols))
-            irow, icol = 0, 0 
+            irow, icol = 0, 0
             for ix1 in range(ixmin, ixmax+1):
                 icol = 0
                 for ix2 in range(iymin, iymax+1):
                     dat[irow][icol] = bins2D[ix1-ixmin][ix2-iymin]
                     icol += 1
                 irow += 1
-            
+
             if (self.shade_meanlikes):
                 maxbin = np.max(bin2Dlikes)
                 likes = np.ndarray((nrows, ncols))
-                irow, icol = 0, 0 
+                irow, icol = 0, 0
                 for ix1 in range(ixmin, ixmax+1):
                     icol = 0
                     for ix2 in range(iymin, iymax+1):
@@ -1349,23 +1351,23 @@ class MCSamples(chains):
             nlevels = len(contour_levels)
             cont = np.ndarray(nlevels)
             idx = 0
-            for level in contour_levels: 
+            for level in contour_levels:
                 cont[idx] = level
                 idx += 1
-            
+
             x = np.ndarray(nrows)
             idx = 0
             for i in range(iymin, iymax+1):
                 x[idx] = self.center[j2] + i*widthy
                 idx += 1
-            
+
             y = np.ndarray(ncols)
             idx = 0
             for i in range(ixmin, ixmax+1):
                 y[idx] = self.center[j] + i*widthx
                 idx += 1
 
-            return dat, likes, cont, x, y 
+            return dat, likes, cont, x, y
 
 
     def EdgeWarning(self, i):
@@ -1377,7 +1379,7 @@ class MCSamples(chains):
 
     def GetChainLikeSummary(self, toStdOut=False):
         text = ""
-        #maxlike = np.max(self.loglikes) 
+        #maxlike = np.max(self.loglikes)
         maxlike = self.loglikes[0]
         text += "Best fit sample -log(Like) = %f\n"%maxlike
         if ((self.loglikes[self.numrows-1]-maxlike)<30):
@@ -1396,7 +1398,7 @@ class MCSamples(chains):
         self.num_vars = self.samples.shape[1]
         colix = [0] * self.num_vars
         for i in range(self.num_vars): colix[i] = i
-        self.colix = colix 
+        self.colix = colix
 
 
     def ComputeStats(self):
@@ -1429,21 +1431,23 @@ class MCSamples(chains):
         self.ND_cont1 = indexes[0][0]
         indexes = np.where(cumsum>self.norm*self.contours[1])
         self.ND_cont2 = indexes[0][0]
-    
+
     def ReadRanges(self):
         ranges_file = self.root + '.ranges'
         if (os.path.isfile(ranges_file)):
             self.ranges = Ranges(ranges_file)
+        else:
+            print "No file %s"%ranges_file
 
     def WriteBounds(self, filename=None):
-        if not hasattr(self, 'ranges') or self.ranges is None: return 
-        
+        if not hasattr(self, 'ranges') or self.ranges is None: return
+
         write_to_file = filename is not None
-        if write_to_file: 
+        if write_to_file:
             textFileHandle = open(filename, 'w')
         else:
             upper = dict()
-            lower = dict()            
+            lower = dict()
         for i in self.index2name.keys():
             if not self.isused[i]: continue
             if (self.has_limits_bot[i] or self.has_limits_top[i]):
@@ -1459,12 +1463,12 @@ class MCSamples(chains):
                 else:
                     lim2 = "    N"
 
-                if write_to_file: 
+                if write_to_file:
                     textFileHandle.write("%22s%17s%17s\n"%(name, lim1, lim2))
                 else:
                     if lim1.strip() != 'N': lower[name] = float(valMin)
                     if lim2.strip() != 'N': upper[name] = float(valMax)
-        if write_to_file: 
+        if write_to_file:
             textFileHandle.close()
         else:
             return lower, upper
@@ -1472,7 +1476,7 @@ class MCSamples(chains):
 
 
     def OutputMargeStats(self):
-        contours_str = '; '.join([ str(c) for c in self.contours ]) 
+        contours_str = '; '.join([ str(c) for c in self.contours ])
 
 
         maxLen = max([ len(name) for name in self.index.keys() ])
@@ -1518,7 +1522,7 @@ class MCSamples(chains):
             if self.isused[index]:
                 textFileHandle.write(info.string() + '\n')
         textFileHandle.close()
-        
+
     # Pass weights as parameter (for chain only)
     def thin_indices_chain(self, weights, factor):
         thin_ix = []
@@ -1546,9 +1550,9 @@ class MCSamples(chains):
 
 
     # Bins functions
-    
+
     def Do1DBins(self, max_frac_twotail):
-        
+
         self.LowerUpperLimits = np.zeros([self.num_vars, 2, self.num_contours])
 
         for j in range(self.num_vars):
@@ -1557,7 +1561,7 @@ class MCSamples(chains):
             ix = j
             self.Get1DDensity(j)
 
-            # Get limits, one or two tail depending on whether posterior 
+            # Get limits, one or two tail depending on whether posterior
             # goes to zero at the limits or not
             for ix1 in range(self.num_contours):
 
@@ -1565,7 +1569,7 @@ class MCSamples(chains):
                 (not self.force_twotail) and (self.density1D.P[0] > max_frac_twotail[ix1])
                 self.marge_limits_top[ix1][ix] = self.has_limits_top[ix] and \
                 (not self.force_twotail) and (self.density1D.P[-1] > max_frac_twotail[ix1])
-                
+
                 if ( (not self.marge_limits_bot[ix1][ix]) or \
                      (not self.marge_limits_top[ix1][ix]) ):
                     # give limit
@@ -1580,27 +1584,27 @@ class MCSamples(chains):
                         tail_limit_bot = self.range_min[j]
                     elif (self.marge_limits_top[ix1][ix]):
                         # 1 tail limit
-                        tail_limit_bot = self.confidence(self.samples[:, ix], 
+                        tail_limit_bot = self.confidence(self.samples[:, ix],
                                                          limfrac, upper=False)
                     else:
                         # 2 tail limit
-                        tail_confid_bot = self.confidence(self.samples[:, ix], 
+                        tail_confid_bot = self.confidence(self.samples[:, ix],
                                                           limfrac/2, upper=False)
 
                     if (self.marge_limits_top[ix1][ix]):
                         tail_limit_top = self.range_max[j]
                     elif (self.marge_limits_bot[ix1][ix]):
-                        tail_limit_top = self.confidence(self.samples[:, ix], 
+                        tail_limit_top = self.confidence(self.samples[:, ix],
                                                          limfrac, upper=True)
                     else:
-                        tail_confid_top = self.confidence(self.samples[:, ix], 
+                        tail_confid_top = self.confidence(self.samples[:, ix],
                                                           limfrac/2, upper=True)
 
                     if ( (not self.marge_limits_bot[ix1][ix]) and \
                          (not self.marge_limits_top[ix1][ix]) ):
                         # Two tail, check if limits are at very differen density
-                        if (math.fabs( self.density1D.Prob(tail_confid_top) - 
-                                       self.density1D.Prob(tail_confid_bot)) 
+                        if (math.fabs( self.density1D.Prob(tail_confid_top) -
+                                       self.density1D.Prob(tail_confid_bot))
                             < self.credible_interval_threshold):
                             tail_limit_top = tail_confid_top
                             tail_limit_bot = tail_confid_bot
@@ -1626,10 +1630,10 @@ class MCSamples(chains):
                 for ix2 in range(ix1+1, self.num_vars):
                     if ( not self.isused[ix1] or \
                              not self.isused[ix2]): continue
-    
+
                     if ( abs(self.corrmatrix[ix1][ix2]) < try_t ) and \
                             ( abs(self.corrmatrix[ix1][ix2]) > try_b) :
-                        try_b = abs(self.corrmatrix[ix1][ix2])   
+                        try_b = abs(self.corrmatrix[ix1][ix2])
                         x, y = ix1, ix2
             if (try_b==-1e5):
                 num_cust2D_plots = j-1
@@ -1638,15 +1642,15 @@ class MCSamples(chains):
             cust2DPlots.append(x + y*1000)
 
         return cust2DPlots, num_cust2D_plots
-    
+
 
     # Write functions
-    
+
     def WriteScriptPlots1D(self, filename):
         textFileHandle = open(filename, 'w')
         textInit = WritePlotFileInit()
         textFileHandle.write(textInit%(
-                self.plot_data_dir, self.subplot_size_inch, 
+                self.plot_data_dir, self.subplot_size_inch,
                 self.out_dir, self.rootname))
         text = 'g.plots_1d(roots)\n'
         textFileHandle.write(text)
@@ -1654,7 +1658,7 @@ class MCSamples(chains):
         fname = self.rootname + '.' + 'pdf'
         textFileHandle.write(textExport%(fname))
         textFileHandle.close()
-        
+
 
     def WriteScriptPlots2D(self, filename, plot_2D_param, num_cust2D_plots, cust2DPlots, plots_only):
         self.done2D = np.ndarray([self.num_vars, self.num_vars], dtype=bool)
@@ -1663,7 +1667,7 @@ class MCSamples(chains):
         textFileHandle = open(filename, 'w')
         textInit = WritePlotFileInit()
         textFileHandle.write(textInit%(
-                self.plot_data_dir, self.subplot_size_inch2, 
+                self.plot_data_dir, self.subplot_size_inch2,
                 self.out_dir, self.rootname))
         textFileHandle.write('pairs=[]\n')
         plot_num = 0
@@ -1696,7 +1700,7 @@ class MCSamples(chains):
         textFileHandle = open(filename, 'w')
         textInit = WritePlotFileInit()
         textFileHandle.write(textInit%(
-                self.plot_data_dir, self.subplot_size_inch, 
+                self.plot_data_dir, self.subplot_size_inch,
                 self.out_dir, self.rootname))
         names = [ self.index2name[i] for i in triangle_params if self.isused[i] ]
         text = 'g.triangle_plot(roots, %s)\n'%str(names)
@@ -1711,7 +1715,7 @@ class MCSamples(chains):
         textFileHandle = open(filename, 'w')
         textInit = WritePlotFileInit()
         textFileHandle.write(textInit%(
-                self.plot_data_dir, self.subplot_size_inch3, 
+                self.plot_data_dir, self.subplot_size_inch3,
                 self.out_dir, self.rootname))
         textFileHandle.write('sets=[]\n')
         text = ""
@@ -1743,7 +1747,7 @@ class MCSamples(chains):
             label = self.paramNames.names[j].label
             textFileHandle.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E   %s\n'%(j+1, best, min1, max1, min2, max2, label))
         textFileHandle.close()
-        
+
 
 def WritePlotFileInit():
     text = """import GetDistPlots, os
@@ -1764,8 +1768,14 @@ def WritePlotFileExport():
 
 # Usefull functions
 
+def GetParamNamesFiles(rootdir):
+    pattern = os.path.join(rootdir, '*.paramnames')
+    files = glob.glob(pattern)
+    files.sort()
+    return files
+
 def GetRootFileName(rootdir):
-    rootFileName = "" 
+    rootFileName = ""
     pattern = os.path.join(rootdir, '*_*.txt')
     chain_files = glob.glob(pattern)
     chain_files.sort()
@@ -1774,10 +1784,11 @@ def GetRootFileName(rootdir):
         rindex = chain_file0.rindex('_')
         rootFileName = chain_file0[:rindex]
     return rootFileName
-        
+
 def GetChainFiles(rootdir):
     pattern = rootdir + '*_*.txt'
     chain_files = glob.glob(pattern)
-    chain_files.sort() 
-    return chain_files 
+    chain_files.sort()
+    return chain_files
+
 
