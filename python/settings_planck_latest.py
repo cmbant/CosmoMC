@@ -49,24 +49,16 @@ planck_pol_sets = []
 planck_vars = ['v97CS']
 planck_ini = ['CAMspec_%s.ini']
 planck_base = [camspec_CS]
-planck_covmats = [None]
 
 if True:
     planck_vars += ['plik']
     planck_ini += ['plik_dx11c_%s_v13.ini']
     planck_base += [[]]
-    planck_covmats += ['planck_covmats/plik_dx11c_%s_v13.covmat']
-for planck, ini, base, cov in zip(planck_vars, planck_ini, planck_base, planck_covmats):
+for planck, ini, base in zip(planck_vars, planck_ini, planck_base):
     for name, var in zip(variant_tag, variants):
-        if cov is not None:
-            covM = cov % (var)
-        else: covM = None
-        planck_highL_sets.append(batchJob.dataSet([planck , name], base + [ ini % (var)], covmat=covM))
+        planck_highL_sets.append(batchJob.dataSet([planck , name], base + [ ini % (var)]))
     for var in variant_pol_tag:
-        if cov is not None:
-            covM = cov % (var)
-        else: covM = None
-        planck_pol_sets.append(batchJob.dataSet([planck , var], base + [ ini % (var)], covmat=covM))
+        planck_pol_sets.append(batchJob.dataSet([planck , var], base + [ ini % (var)]))
 
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
@@ -84,6 +76,10 @@ class importanceFilterNotOmegak:
     def wantImportance(self, jobItem):
         return not ('omegak' in jobItem.param_set)
 
+class importanceFilterAbundance:
+    def wantImportance(self, jobItem):
+        return 'nnu' in jobItem.param_set and not 'yhe' in jobItem.param_set
+
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
 post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegak()]
@@ -93,6 +89,7 @@ post_nonBAO = [[HST, JLA], [HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak
 post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
+post_abundance = [['abundances'], ['abundances.ini', {'redo_likes':'F', 'redo_add':'T'}], importanceFilterAbundance()]
 
 # set up groups of parameters and data sets
 
@@ -115,7 +112,7 @@ gpol.datasets = copy.deepcopy(planck_pol_sets)
 for d in gpol.datasets:
     d.add(lowTEB)
 
-gpol.params = [[], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+gpol.params = [[], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['yhe'], ['alpha1']]
 gpol.importanceRuns = []
 groups.append(gpol)
 
@@ -214,6 +211,20 @@ g7.params = [['mnu'], ['nnu', 'meffsterile']]
 g7.importanceRuns = [post_JLA, post_HST, post_nonBAO]
 groups.append(g7)
 
+if False:
+    gmulti = batchJob.jobGroup('multi')
+    gmulti.params = [['nnu', 'w'], ['mnu', 'w']]
+    gmulti.datasets = []
+    for d in copy.deepcopy(g.datasets):
+    #    d.covmat = 'planck_covmats/base_w_BAO_HST_JLA_TTTEEE_lensing_lowTEB_plik.covmat'
+        d.add(lensing)
+        d.add(BAO, BAOdata)
+        d.add(JLA)
+        gmulti.datasets.append(d)
+    gmulti.importanceRuns = [post_HST, post_abundance]
+    groups.append(gmulti)
+
+
 # Things mainly for the lensing paper
 
 glens = batchJob.jobGroup('lensonly')
@@ -242,11 +253,9 @@ groups.append(glens)
 
 glens = batchJob.jobGroup('lensonlyext')
 glens.datasets = copy.deepcopy(lensdata)
-glens.params = [['nnu'], ['omegak'], ['nnu', 'meffsterile']]
+glens.params = [['nnu'], ['nnu', 'meffsterile']]
 glens.importanceRuns = []
 groups.append(glens)
-
-
 
 gphi = batchJob.jobGroup('Aphiphi')
 gphi.params = [['Aphiphi']]
@@ -266,6 +275,11 @@ for d in copy.deepcopy(g.datasets):
 gphi.importanceRuns = []
 groups.append(gphi)
 
+for g in groups:
+    for p in g.params:
+        if 'nnu' in p:
+            g.importanceRuns.append(post_abundance)
+            break
 
 skip = []
 
@@ -278,6 +292,7 @@ for planck in planck_vars:
 covrenames.append(['planck', 'planck_CAMspec'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
 covrenames.append(['_r', ''])
+covrenames.append(['_w', ''])
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)

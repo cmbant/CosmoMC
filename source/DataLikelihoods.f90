@@ -13,11 +13,14 @@
     use bao
     use mpk
     use wigglez
+    use ElementAbundances
     class(TSettingIni), intent(in) :: Ini
 
     CosmoSettings%get_sigma8 = Ini%Read_Logical('get_sigma8',.false.)
 
     call CMBLikelihood_Add(DataLikelihoods, Ini)
+
+    call AbundanceLikelihood_Add(DataLikelihoods, Ini)
 
     call HSTLikelihood_Add(DataLikelihoods, Ini)
 
@@ -28,8 +31,6 @@
     if (use_mpk) call WiggleZLikelihood_Add(DataLikelihoods, Ini)
 
     call BAOLikelihood_Add(DataLikelihoods, Ini)
-
-    CosmoSettings%use_LSS = use_mpk
 
     end subroutine SetDataLikelihoods
 

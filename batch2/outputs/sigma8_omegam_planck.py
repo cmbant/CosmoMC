@@ -5,7 +5,8 @@ g = s.getSinglePlotter()
 
 g.make_figure(1, xstretch=1.3)
 
-ranges = [0.73, 0.92, 0.23, 0.37]
+ranges = [0.245, 0.37, 0.73, 0.92]
+pair = ['omegam', 'sigma8']
 
 for TT in [False, True]:
     g.newPlot()
@@ -26,14 +27,14 @@ for TT in [False, True]:
 
 
     legends = [basedatname, '+lensing', '+BAO']
-    g.plot_2d(roots, param_pair=['sigma8', 'omegam'], filled=True, lims=ranges)
+    g.plot_2d(roots, param_pair=pair, filled=True, lims=ranges)
 
     if TT:
-        g.add_2d_contours('base_' + s.defdata_TT, 'sigma8', 'omegam', ls='--', color='magenta')
-        g.add_2d_contours('base_' + s.defdata_TTonly + '_post_WMAPtau', 'sigma8', 'omegam', ls='-', color='brown', alpha=0.2)
+        g.add_2d_contours('base_' + s.defdata_TT, param_pair=pair, ls='--', color='magenta')
+        g.add_2d_contours('base_' + s.defdata_TTonly + '_post_WMAPtau', param_pair=pair, ls='-', color='brown', alpha=0.2)
     else:
-        g.add_2d_contours('base_' + s.defdata_all, 'sigma8', 'omegam', ls='--', color='magenta')
-        g.add_2d_contours('base_' + s.defdata_allNoLowE + '_post_WMAPtau', 'sigma8', 'omegam', ls='-', color='brown', alpha=0.2)
+        g.add_2d_contours('base_' + s.defdata_all, param_pair=pair, ls='--', color='magenta')
+        g.add_2d_contours('base_' + s.defdata_allNoLowE + '_post_WMAPtau', param_pair=pair, ls='-', color='brown', alpha=0.2)
 
     g.add_text(allname, 0.96, 0.12, color='magenta')
     g.add_text(basedatname + '+$\\tau(0.09\pm 0.013)$', 0.96, 0.06, color='brown', alpha=0.4)
@@ -49,13 +50,16 @@ roots = [g.getRoot('', s.defdata_TTonly),
              g.getRoot('', s.defdata_allNoLowE + '_lensing_BAO')]
 
 
-g.plot_2d(roots, param_pair=['sigma8', 'omegam'], filled=True, lims=ranges)
+g.plot_2d(roots, param_pair=pair, filled=True, lims=ranges)
 
-g.add_2d_contours('base_' + s.defdata_all, 'sigma8', 'omegam', ls='-', color='olive')
-g.add_2d_contours(g.getRoot('', s.defdata_all + '_lensing'), 'sigma8', 'omegam', ls='-', color='midnightblue')
+g.add_2d_contours('base_' + s.defdata_all, param_pair=pair, ls='-', color='olive')
+g.add_2d_contours(g.getRoot('', s.defdata_all + '_lensing'), param_pair=pair, ls='-', color='midnightblue')
 # g.add_2d_contours(g.getRoot('', s.defdata_all + '_lensing_BAO'), 'sigma8', 'omegam', ls='-', color='pink')
 
-g.add_2d_contours('base_' + s.defdata_TTonly + '_post_WMAPtau', 'sigma8', 'omegam', ls='--', color='brown', alpha=0.2)
+g.add_2d_contours('base_' + s.defdata_TTonly + '_post_WMAPtau', param_pair=pair, ls='--', color='brown', alpha=0.2)
+
+# g.add_2d_contours('base_' + s.defdata_allNoLowE + '_lowtau', 'sigma8', 'omegam', color='red', filled=True)
+
 
 legends = [s.planckTT, s.NoLowLE, '+lensing', '+BAO']
 

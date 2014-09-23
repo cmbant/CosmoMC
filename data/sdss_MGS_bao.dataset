@@ -1,0 +1,11 @@
+#DR7 z=0.15 with reconstrcution: http://arxiv.org/abs/1409.3242
+
+name = MGS
+
+measurement_type = DV_over_rs
+
+zeff = 0.15
+bao_measurement = 4.465666824   .1681350461
+
+prob_dist = %DATASETDIR%sdss_MGS_prob.txt
+
