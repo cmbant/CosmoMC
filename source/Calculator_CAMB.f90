@@ -464,7 +464,7 @@
     class(TCosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
     integer :: error
-    real(mcp), allocatable :: k(:), z(:), PK(:,:), sigma_8_z(:)
+    real(mcp), allocatable :: k(:), z(:), PK(:,:), growth_z(:)
     integer zix,nz,nk
     !For use with for example WL PK's
     real(mcp), allocatable :: NL_Ratios(:,:)
@@ -478,12 +478,12 @@
     allocate(PK(nk,nz))
     allocate(k(nk))
     allocate(z(nz))
-    allocate(sigma_8_z(nz))
+    allocate(growth_z(nz))
 
     k = log(M%TransferData(Transfer_kh,:,1))
     do zix=1,nz
         z(zix) = CP%Transfer%PK_redshifts(nz-zix+1)
-        sigma_8_z(zix) = M%sigma_8(nz-zix+1,1)
+        growth_z(zix) = M%sigma2_vdelta_8(nz-zix+1,1)/M%sigma_8(nz-zix+1,1)
     end do
 
     call this%TransfersOrPowers(M,PK,transfer_power_var,transfer_power_var)
@@ -499,11 +499,9 @@
         if(error/=0) return
     end if
 
-    if(allocated(Theory%sigma_8_z)) then
-        deallocate(Theory%sigma_8_z)
-    end if
-    allocate(Theory%sigma_8_z)
-    call Theory%sigma_8_z%Init(z,sigma_8_z,n=nz)
+    if (allocated(Theory%growth_z)) deallocate(Theory%growth_z)
+    allocate(Theory%growth_z)
+    call Theory%growth_z%Init(z,growth_z,n=nz)
 
     end subroutine CAMBCalc_SetPkFromCAMB
 
@@ -758,7 +756,7 @@
         stop 'Need to manually set max_transfer_redshifts larger in CAMB''s modules.f90'
     end if
 
-    if (CosmoSettings%use_LSS) then
+    if (CosmoSettings%num_power_redshifts>1) then
         P%Transfer%PK_num_redshifts = CosmoSettings%num_power_redshifts
         do zix=1, CosmoSettings%num_power_redshifts
             !CAMB's ordering is from highest to lowest

@@ -47,7 +47,7 @@
 
         !Parameters for calculating/storing the matter power spectrum
         real(mcp) :: power_kmax = 0.8_mcp
-        integer :: num_power_redshifts
+        integer :: num_power_redshifts = 0
 
         !Only used in params_CMB
         real(mcp) :: pivot_k = 0.05_mcp !Point for defining primordial power spectra
@@ -294,6 +294,7 @@
     dlnz = 30
 
     call full_z%Add(0.d0)
+    this%use_LSS = size(CosmoSettings%z_outputs)>0 .and. this%get_sigma8 !e.g. for growth function
 
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
@@ -335,7 +336,9 @@
     end do
 
     if(.not. this%use_LSS) return
-    
+
+    call exact_z%AddArrayItems(CosmoSettings%z_outputs)
+
     !Build array of redshifts where the redshift exact value doesn't matter
     if(maxz>0)then
         num_range = ceiling(log(maxz+1)/dlnz)

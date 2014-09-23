@@ -121,12 +121,7 @@
     allocate(this%bao_err(this%num_bao))
 
     call Ini%Read_Enumeration_List('measurement_type',measurement_types, this%type_bao, nvalues = this%num_bao)
-    this%needs_powerspectra =  any(this%type_bao == f_sigma8)
-    if (this%needs_powerspectra) then
-        this%num_z = Ini%Read_Int('nz_bao')
-        this%max_z = Ini%Read_Double('max_z_bao',1._mcp)
-    end if
-
+ 
     if (Ini%HasKey('zeff')) then
         this%bao_z = Ini%Read_Double('zeff')
         bao_measurement  = Ini%Read_String('bao_measurement')
@@ -144,6 +139,14 @@
         call F%Close()
     end if
     if (any(this%bao_z< 0.0001)) call MpiStop('Error reading BAO measurements')
+
+    this%needs_powerspectra =  any(this%type_bao == f_sigma8)
+
+    if (this%needs_powerspectra) then
+        this%needs_exact_z =  .true.
+        allocate(this%exact_z(this%num_bao), source= this%bao_z)
+    end if
+
 
     call this%InitProbDist(Ini)
 
@@ -225,8 +228,7 @@
             BAO_theory(j) = (1+z)*this%Calculator%AngularDiameterDistance(z)* &
                 this%Calculator%Hofz(z)
         case (f_sigma8)
-            f= -(1+z)/Theory%sigma_8_z%Value(z)*Theory%sigma_8_z%Derivative(z)
-            BAO_theory(j) = f*Theory%sigma_8_z%Value(z)
+            BAO_theory(j) = Theory%growth_z%Value(z)
             case default
             call MpiStop('BAO_LnLike: Unknown type_bao')
         end select

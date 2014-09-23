@@ -62,7 +62,7 @@
     end if
 
     call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
-    if (CosmoSettings%Use_LSS) call Names%Add('paramnames/derived_LSS.paramnames')
+    if (CosmoSettings%use_LSS) call Names%Add('paramnames/derived_LSS.paramnames')
     if (CosmoSettings%compute_tensors) call Names%Add('paramnames/derived_tensors.paramnames')
     if (CosmoSettings%bbn_consistency) call Names%Add('paramnames/derived_bbn.paramnames')
     this%num_derived = Names%num_derived
@@ -221,7 +221,7 @@
             ! f sigma_8 at specified redshift
             do i=1,size(CosmoSettings%z_outputs)
                 z =  CosmoSettings%z_outputs(i)
-                derived(ix) = -(1+z)*Theory%sigma_8_z%Derivative(z)
+                derived(ix) = Theory%growth_z%Value(z)
                 ix = ix + 1
             end do
         end if
