@@ -52,6 +52,6 @@ if __name__ == "__main__":
         makeSnippetFiles(args.tex_snippet_dir , args.rootname, params, texs, tag='sig' + str(args.limit))
     else:
         for label, value in zip(labels, texs):
-            print "{:<30} {:}".format(label, value)
+            print("{:<30} {:}".format(label, value))
 
 
