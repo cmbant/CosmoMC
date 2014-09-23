@@ -205,7 +205,7 @@
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) :: DataParams(:)
     integer j
-    real(mcp) BAO_LnLike, rs, z
+    real(mcp) BAO_LnLike, rs, z, f
     real(mcp)  :: BAO_theory(this%num_bao)
 
     rs = this%get_rs_drag(Theory) * this%rs_rescale
@@ -225,9 +225,8 @@
             BAO_theory(j) = (1+z)*this%Calculator%AngularDiameterDistance(z)* &
                 this%Calculator%Hofz(z)
         case (f_sigma8)
-            call MpiStop('BAO_LnLike: f_sigma not implemented in this branch')
-            !            f= -(1+z)/Theory%sigma_8_z%Value(z)*Theory%sigma_8_z%Derivative(z)
-            !           BAO_theory(j) = f*Theory%sigma_8_z%Value(z)
+            f= -(1+z)/Theory%sigma_8_z%Value(z)*Theory%sigma_8_z%Derivative(z)
+            BAO_theory(j) = f*Theory%sigma_8_z%Value(z)
             case default
             call MpiStop('BAO_LnLike: Unknown type_bao')
         end select

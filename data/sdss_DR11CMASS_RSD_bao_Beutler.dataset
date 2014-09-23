@@ -1,0 +1,20 @@
+#http://arxiv.org/abs/1312.4611
+
+name = DR11CMASS_RSD_Beutler
+
+zeff = 0.57
+
+num_bao = 3
+
+nz_bao = 20
+max_z_bao = 1.0
+
+measurement_type = DV_over_rs F_AP f_sigma8
+bao_measurement = 13.88 0.683 0.422
+
+bao_invcov_file = %DATASETDIR%sdss_DR11CMASS_RSD_bao_invcov_Beutler.txt
+
+num_conflicts = 1
+type_conflict1 = BAO
+name_conflict1 = DR11CMASS
+

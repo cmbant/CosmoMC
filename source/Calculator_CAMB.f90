@@ -464,7 +464,7 @@
     class(TCosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
     integer :: error
-    real(mcp), allocatable :: k(:), z(:), PK(:,:)
+    real(mcp), allocatable :: k(:), z(:), PK(:,:), sigma_8_z(:)
     integer zix,nz,nk
     !For use with for example WL PK's
     real(mcp), allocatable :: NL_Ratios(:,:)
@@ -478,10 +478,12 @@
     allocate(PK(nk,nz))
     allocate(k(nk))
     allocate(z(nz))
+    allocate(sigma_8_z(nz))
 
     k = log(M%TransferData(Transfer_kh,:,1))
     do zix=1,nz
         z(zix) = CP%Transfer%PK_redshifts(nz-zix+1)
+        sigma_8_z(zix) = M%sigma_8(nz-zix+1,1)
     end do
 
     call this%TransfersOrPowers(M,PK,transfer_power_var,transfer_power_var)
@@ -496,6 +498,12 @@
         call this%GetNLandRatios(M,Theory,NL_Ratios,error)
         if(error/=0) return
     end if
+
+    if(allocated(Theory%sigma_8_z)) then
+        deallocate(Theory%sigma_8_z)
+    end if
+    allocate(Theory%sigma_8_z)
+    call Theory%sigma_8_z%Init(z,sigma_8_z,n=nz)
 
     end subroutine CAMBCalc_SetPkFromCAMB
 

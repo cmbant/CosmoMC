@@ -31,6 +31,7 @@
         !MPK%nx = num_k, MPK%ny = num_z
         type(TCosmoTheoryPK), allocatable :: MPK
         type(TCosmoTheoryPK), allocatable :: NL_MPK
+        type(TCubicSpline),  allocatable :: sigma_8_z
     contains
     procedure :: FreePK
     procedure :: ClArray
