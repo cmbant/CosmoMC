@@ -222,7 +222,8 @@
             do i=1,size(CosmoSettings%z_outputs)
                 z =  CosmoSettings%z_outputs(i)
                 derived(ix) = Theory%growth_z%Value(z)
-                ix = ix + 1
+                derived(ix+1) = Theory%sigma8_z%Value(z)
+                ix = ix + 2
             end do
         end if
 

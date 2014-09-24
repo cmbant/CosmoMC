@@ -438,7 +438,7 @@
         do L=2, 2000
             rms = rms +  Cl_scalar(L,1, C_Phi)*(real(l+1)**2/l**2)/twopi*(L+0.5_mcp)/(L*(L+1))
         end do
-         Theory%Lensing_rms_deflect = sqrt(rms)*180/pi*60
+        Theory%Lensing_rms_deflect = sqrt(rms)*180/pi*60
     else
         Theory%Lensing_rms_deflect = 0
     end if
@@ -464,7 +464,7 @@
     class(TCosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
     integer :: error
-    real(mcp), allocatable :: k(:), z(:), PK(:,:), growth_z(:)
+    real(mcp), allocatable :: k(:), z(:), PK(:,:), growth_z(:), sigma8_z(:)
     integer zix,nz,nk
     !For use with for example WL PK's
     real(mcp), allocatable :: NL_Ratios(:,:)
@@ -479,11 +479,13 @@
     allocate(k(nk))
     allocate(z(nz))
     allocate(growth_z(nz))
+    allocate(sigma8_z(nz))
 
     k = log(M%TransferData(Transfer_kh,:,1))
     do zix=1,nz
         z(zix) = CP%Transfer%PK_redshifts(nz-zix+1)
-        growth_z(zix) = M%sigma2_vdelta_8(nz-zix+1,1)/M%sigma_8(nz-zix+1,1)
+        sigma8_z(zix) = M%sigma_8(nz-zix+1,1)
+        growth_z(zix) = M%sigma2_vdelta_8(nz-zix+1,1)/sigma8_z(zix)
     end do
 
     call this%TransfersOrPowers(M,PK,transfer_power_var,transfer_power_var)
@@ -499,9 +501,10 @@
         if(error/=0) return
     end if
 
-    if (allocated(Theory%growth_z)) deallocate(Theory%growth_z)
-    allocate(Theory%growth_z)
+    if (allocated(Theory%growth_z)) deallocate(Theory%growth_z, Theory%sigma8_z)
+    allocate(Theory%growth_z, Theory%sigma8_z)
     call Theory%growth_z%Init(z,growth_z,n=nz)
+    call Theory%sigma8_z%Init(z,sigma8_z,n=nz)
 
     end subroutine CAMBCalc_SetPkFromCAMB
 
@@ -864,7 +867,7 @@
     else
         highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
     end if
-    
+
     halofit_version = Ini%Read_Int('halofit_version',halofit_default)
 
     end subroutine CAMBCalc_ReadParams
