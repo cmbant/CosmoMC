@@ -48,13 +48,6 @@ class MainWindow(QMainWindow):
         """
         Initialize of GUI components.
         """
-
-        # Configure the logging
-        level = logging.DEBUG
-        FORMAT = '%(asctime).19s [%(levelname)s]\t[%(filename)s:%(lineno)d]\t\t%(message)s'
-        logging.basicConfig(level=level, format=FORMAT)
-
-
         super(MainWindow, self).__init__()
 
         self.setAttribute(Qt.WA_DeleteOnClose)
@@ -64,7 +57,6 @@ class MainWindow(QMainWindow):
         self.createMenus()
         #self.createToolBars()
         self.createStatusBar()
-        self.createCentralWidget()
 
         self.setWindowTitle("GetDist GUI")
         self.resize(800, 600)
@@ -106,8 +98,8 @@ class MainWindow(QMainWindow):
     def createMenus(self):
         self.fileMenu = self.menuBar().addMenu("&File")
         self.fileMenu.addAction(self.exportAct)
-        self.separatorAct = self.fileMenu.addSeparator()
-        self.fileMenu.addAction(self.scriptAct)
+        #self.separatorAct = self.fileMenu.addSeparator()
+        #self.fileMenu.addAction(self.scriptAct)
         self.separatorAct = self.fileMenu.addSeparator()
         self.fileMenu.addAction(self.exitAct)
 
@@ -180,10 +172,8 @@ class MainWindow(QMainWindow):
         self.comboBoxColor.clear()
         self.toggleFilled.setChecked(True)
 
-
         self.trianglePlot = QCheckBox("Triangle Plot", self.selectWidget)
         self.trianglePlot.setCheckState(Qt.Unchecked)
-        #self.connect(self.trianglePlot, SIGNAL("clicked()"), self.setTrianglePlot)
 
         self.pushButtonPlot = QPushButton("Make plot", self.selectWidget)
         self.connect(self.pushButtonPlot, SIGNAL("clicked()"), self.plotData)
@@ -242,45 +232,20 @@ class MainWindow(QMainWindow):
         self.dockBot.setWidget(self.dataWidget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dockBot)
 
-    def createCentralWidget(self):
-        return
-
-        #self.centralWidget = QWidget()
-
-        #self.figure = None
-        #self.canvas = None
-
-	# a figure instance to plot on
-        #self.figure = plt.figure()
-        #self.axes = self.figure.add_subplot(111)
-
-	# Canvas Widget that displays the 'figure'
-	#self.canvas = FigureCanvas(self.figure)
-
-	# Navigation widget
-	#self.toolbar = NavigationToolbar(self.canvas, self)
-
-	#layout = QVBoxLayout()
-	#layout.addWidget(self.toolbar)
-	#layout.addWidget(self.canvas)
-	#self.centralWidget.setLayout(layout)
-
-        #self.setCentralWidget(self.centralWidget)
-
-        #self.test() # test with random data
-
-
     def setIniFile(self, iniFile):
         self.iniFile = iniFile
 
     # slots for menu actions
 
     def export(self):
-        filename, filter = QFileDialog.getSaveFileName(
-            self,
-            "Choose a file name", '.', "PDF (*.pdf)")
+        filename = QFileDialog.getSaveFileName(
+            self, "Choose a file name", '.', "PDF (*.pdf)")
         if not filename:
             return
+        filename = str(filename)
+        if self.plotter:
+            logging.debug("Saving PDF in file %s"%filename)
+            self.plotter.export(filename)
 
     def script(self):
         filename, filter = QFileDialog.getSaveFileName(
@@ -319,7 +284,6 @@ class MainWindow(QMainWindow):
         dirName = str(dirName)
 
         if dirName:
-
             settings.setValue('lastSearchDirectory', dirName)
 
             # Root directory
@@ -338,7 +302,6 @@ class MainWindow(QMainWindow):
                 # Root file name
                 self.root = MCSamples.GetRootFileName(self.rootdir)
 
-
             chainFiles = MCSamples.GetChainFiles(self.root)
             if len(chainFiles)==0:
                 logging.debug("No chain files in %s"%self.rootdir)
@@ -346,17 +309,8 @@ class MainWindow(QMainWindow):
                 self._updateComboBoxColor()
             else:
 
-
-
-                self.plotter = GetDistPlots.GetDistPlotter(file_root=self.root, ini_file=self.iniFile)
-
-                # self.plotter.make_figure()
-                # self.canvas = FigureCanvas(self.plotter.fig)
-                # self.toolbar = NavigationToolbar(self.canvas, self)
-                # layout = QVBoxLayout()
-                # layout.addWidget(self.toolbar)
-                # layout.addWidget(self.canvas)
-                # self.centralWidget.setLayout(layout)
+                self.plotter = GetDistPlots.GetDistPlotter(
+                    file_root=self.root, ini_file=self.iniFile)
 
                 self.statusBar().showMessage("Reading chain files in %s"%str(self.root))
 
@@ -386,7 +340,8 @@ class MainWindow(QMainWindow):
         if self.rootdir and os.path.isdir(self.rootdir):
             self.comboBoxParamTag.clear()
             if not listOfParams:
-                listOfParams = [ d for d in os.listdir(self.rootdir) if os.path.isdir(os.path.join(self.rootdir, d)) ]
+                listOfParams = [ d for d in os.listdir(self.rootdir)
+                                 if os.path.isdir(os.path.join(self.rootdir, d)) ]
             self.comboBoxParamTag.addItems(listOfParams)
 
     def setParamTag(self, strParamTag):
@@ -396,14 +351,15 @@ class MainWindow(QMainWindow):
         self.paramTag = str(strParamTag)
         paramDir = os.path.join(self.rootdir, self.paramTag)
         if os.path.isdir(paramDir):
-            dirs = [ d for d in os.listdir(paramDir) if os.path.isdir(os.path.join(paramDir, d)) ]
+            dirs = [ d for d in os.listdir(paramDir)
+                     if os.path.isdir(os.path.join(paramDir, d)) ]
             self.comboBoxDataTag.addItems(dirs)
 
     def setDataTag(self, strDataTag):
         """
         Slot function called on change of comboBoxDataTag.
         """
-        print "strDataTag ", strDataTag
+        logging.debug("Data tag is %s"%strDataTag)
 
 
     def _updateListParametersX(self, items):
@@ -425,7 +381,6 @@ class MainWindow(QMainWindow):
         if item.checkState()==Qt.Checked:
             logging.debug("Change of Item %s: now in check state"%str(item.text()))
 
-
     def _updateListParametersY(self, items):
         """
         """
@@ -444,7 +399,6 @@ class MainWindow(QMainWindow):
         """
         if item.checkState()==Qt.Checked:
             logging.debug("Change of Item %s: now in check state"%str(item.text()))
-
 
     def statusSelectAllX(self):
         """
@@ -474,12 +428,9 @@ class MainWindow(QMainWindow):
         if self.rootdir and os.path.isdir(self.rootdir):
             self.comboBoxParamTag.clear()
             if not listOfParams:
-                listOfParams = [ d for d in os.listdir(self.rootdir) if os.path.isdir(os.path.join(self.rootdir, d)) ]
+                listOfParams = [ d for d in os.listdir(self.rootdir)
+                                 if os.path.isdir(os.path.join(self.rootdir, d)) ]
             self.comboBoxColor.addItems(listOfParams)
-
-#    def setTrianglePlot(self):
-#        if self.trianglePlot.isChecked():
-#            pass
 
 
     def plotData(self):
@@ -547,7 +498,8 @@ class MainWindow(QMainWindow):
                 for item_y in items_y:
                     pairs.append([item_x, item_y])
 
-                self.plotter.plots_2d(roots, param_pairs=pairs,filled=filled)
+                logging.debug("pairs  = %s"%str(pairs))
+                self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled)
                 #self.plotter.export('test_2D.pdf')
                 self.updatePlot()
 
@@ -561,18 +513,15 @@ class MainWindow(QMainWindow):
                 logging.debug("roots = %s"%str(roots))
                 self.plotter.plot_3d(roots, [x, y, color])
                 self.updatePlot()
-        logging.debug("End of function")
-
 
     def updatePlot(self):
-        logging.debug("Update plot")
 
         if self.plotter.fig is None:
             logging.debug("Define an empty central widget")
             self.centralWidget = QWidget()
             self.setCentralWidget(self.centralWidget)
 
-            self.figure = None
+            #self.figure = None
             self.canvas = None
         else:
             logging.debug("Define new canvas in central widget")
@@ -588,7 +537,6 @@ class MainWindow(QMainWindow):
 
             self.canvas.draw()
 
-
     #
     # slots for selectWidget (bottom widget on the left)
     #
@@ -597,7 +545,6 @@ class MainWindow(QMainWindow):
         """
         Slot function called when newButton is pressed.
         """
-
         title = self.tr("Choose an existing file")
         path = os.getcwd()
         fileName, filt = QFileDialog.getOpenFileName(self, title, path)
@@ -617,39 +564,14 @@ class MainWindow(QMainWindow):
 
             # Connection of signal
             self.tabWidget.addTab(textBrowser, os.path.basename(str(fileName)))
-            self.tabWidget.setTabToolTip(self.tabWidget.currentIndex(), os.path.basename(str(fileName)))
-
-        else:
-            # Do nothing
-            pass
-
+            self.tabWidget.setTabToolTip(self.tabWidget.currentIndex(),
+                                         os.path.basename(str(fileName)))
 
     def closeTab(self, index):
         """
         Slot function called on a tab widget close event.
         """
         self.tabWidget.removeTab(index)
-
-
-# test functions
-
-    def test(self):
-
-        # random data
-        data = [random.random() for i in range(10)]
-
-        # create an axis
-        ax = self.figure.add_subplot(111)
-
-        # discards the old graph
-        ax.hold(False)
-
-        # plot data
-        ax.plot(data, '*-')
-
-        # refresh canvas
-        self.canvas.draw()
-
 
 # ==============================================================================
 

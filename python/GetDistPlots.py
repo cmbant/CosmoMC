@@ -1,5 +1,4 @@
 import os, paramNames
-import logging
 import matplotlib
 matplotlib.use('Agg')
 from pylab import *
@@ -206,7 +205,6 @@ class MCSampleAnalysis():
         if ini_file<>'':
             self.ini = iniFile.iniFile()
             self.ini.readFile(ini_file)
-            logging.debug("Using ini file %s"%ini_file)
         self.root = file_root
         self.mcsamples = MCSamples.MCSamples(self.root)
 
@@ -228,8 +226,6 @@ class MCSampleAnalysis():
 
     def initParameters(self):
         if not self.ini: return
-
-        logging.debug("Set parameters from .ini file")
 
         self.mcsamples.num_bins = self.ini.int('num_bins')
         self.mcsamples.num_bins_2D = self.ini.int('num_bins_2D', self.mcsamples.num_bins)
@@ -295,9 +291,7 @@ class MCSampleAnalysis():
 
     def compute_1d(self, name):
         index = self.mcsamples.index[name]
-        logging.debug("Computing 1D density for %s ... "%name)
         dat, likes = self.mcsamples.Get1DDensity(index, writeDataToFile=False)
-        logging.debug("...done.")
         if dat is not None:
             self.densities_dat_1D[name] = dat
         if likes is not None:
@@ -306,11 +300,11 @@ class MCSampleAnalysis():
     def compute_2d(self, name1, name2):
         index1 = self.mcsamples.index[name1]
         index2 = self.mcsamples.index[name2]
-        logging.debug("Computing 2D data for (%s,%s) ... "%(name1, name2))
         # Pre computation
         self.mcsamples.PreComputeDensity(index1)
         self.mcsamples.PreComputeDensity(index2)
-        dat, likes, cont, x, y = self.mcsamples.Get2DPlotData(index1, index2, writeDataToFile=False)
+        #dat, likes, cont, x, y = self.mcsamples.Get2DPlotData(index1, index2, writeDataToFile=False)
+        dat, likes, cont, x, y = self.mcsamples.Get2DPlotData(index2, index1, writeDataToFile=False)
         key = (name1, name2)
         if dat is not None: self.densities_dat_2D[key] = dat
         if likes is not None: self.densities_likes_2D[key] = likes
