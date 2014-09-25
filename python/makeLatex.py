@@ -39,6 +39,7 @@ if __name__ == "__main__":
     parser.add_argument('rootname', help='rootname.margestats should be the file you want to convert')
     parser.add_argument('--params', nargs='*', help='list of parameter name tags; if not supplied, output all parameters')
     parser.add_argument('--limit', type=int, default=1, help='which limit to output, usually 1: 1 sigma or 2: 2 sigma')
+    parser.add_argument('--tabular', action='store_true', help='output as rows of a latex table')
     parser.add_argument('--tex_snippet_dir', help='output a .tex file for each parameter constraint for input() in a paper')
 
 #    parser.add_argument('--batchPath', help='directory containing the grid')
@@ -52,6 +53,12 @@ if __name__ == "__main__":
         makeSnippetFiles(args.tex_snippet_dir , args.rootname, params, texs, tag='sig' + str(args.limit))
     else:
         for label, value in zip(labels, texs):
-            print "{:<30} {:}".format(label, value)
+            if args.tabular:
+                if value != '---':
+                    print("$ {0:<33}$ & $ {1:<33}$\\\\".format(label, value))
+                else:
+                    print("$ {0:<33}$ &   {1:<33} \\\\".format(label, value))
+            else:
+                print("{0:<33} {1:}".format(label, value))
 
 
