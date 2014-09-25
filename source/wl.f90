@@ -48,24 +48,24 @@
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
     Type(WLLikelihood), pointer :: this
-    integer numwlsets, i
+    Type(TSettingIni) :: DataSets
+    integer i
+    logical :: nonlinear, useweyl
 
     if (Ini%Read_Logical('use_WL',.false.)) then
-        numwlsets = Ini%Read_Int('wl_numdatasets',0)
-        do i= 1, numwlsets
+        nonlinear = Ini%Read_Logical('wl_use_non_linear',.true.)
+        useweyl = Ini%Read_Logical('wl_use_weyl',.true.)
+        call Ini%TagValuesForName('wl_dataset', DataSets)
+        do i= 1, DataSets%Count
             allocate(this)
-            this%needs_nonlinear_pk = .true.
-            this%cut_theta = Ini%Read_Logical('cut_theta',.false.)
-            this%use_non_linear = Ini%Read_Logical('use_non_linear',.true.)
-            this%use_weyl = Ini%Read_Logical('use_weyl',.true.)
-            call this%ReadDatasetFile(Ini%ReadFileName(numcat('wl_dataset',i)))
+            this%needs_nonlinear_pk = nonlinear
+            this%use_non_linear = nonlinear
+            this%use_weyl = useweyl
+            call this%ReadDatasetFile(DataSets%Value(i))
             this%LikelihoodType = 'WL'
             this%needs_powerspectra = .true.
-            this%needs_weylpower = .true.
-            this%num_z = Ini%Read_Int('nz_wl',100)
-            this%max_z = Ini%Read_Double('max_z',10.0d0)
+            this%needs_weylpower = useweyl
             call LikeList%Add(this)
-            print *, 'WL settings', this%use_weyl, this%use_non_linear
         end do
         if (Feedback>1) write(*,*) 'read WL data sets'
     end if
@@ -76,7 +76,8 @@
     use MatrixUtils
     class(WLLikelihood) this
     class(TSettingIni) :: Ini
-    character(LEN=:), allocatable :: measurements_file, cov_file, window_file, cut_file
+    character(LEN=:), allocatable :: measurements_file, cov_file, window_file, &
+        measurements_format
     Type(TTextFile) :: F
     real(mcp) :: dummy1,dummy2,pnorm
     real(mcp), allocatable, dimension(:,:) :: temp
@@ -86,6 +87,10 @@
     real(mcp) :: xi_plus_cut, xi_minus_cut
 
     if (Feedback > 0) write (*,*) 'reading WL data set: '//trim(this%name)
+
+    this%num_z = Ini%Read_Int('nz_wl',100)
+    this%max_z = Ini%Read_Double('max_z',10.0d0)
+    this%cut_theta = Ini%Read_Logical('cut_theta',.false.)
 
     this%num_z_bins = Ini%Read_Int('num_z_bins')
     this%num_theta_bins = Ini%Read_Int('num_theta_bins')
@@ -98,61 +103,44 @@
     allocate(this%xi(this%num_theta_bins*nt*2))
     allocate(this%z_p(this%num_z_p))
     allocate(this%p(this%num_z_p,this%num_z_bins))
-    allocate(mask(this%num_theta_bins*nt*2))
-    mask = 0
 
     this%kmax = Ini%Read_Double('kmax',200.0d0)
 
     this%ah_factor = Ini%Read_Double('ah_factor',1.0d0)
 
     measurements_file  = Ini%ReadFileName('measurements_file')
+    measurements_format = Ini%Read_String('measurements_format',NotFoundFail=.true.)
+
     window_file  = Ini%ReadFileName('window_file')
     cov_file  = Ini%ReadFileName('cov_file')
-    cut_file  = Ini%ReadFileName('cut_file')
 
     allocate(this%wl_cov(2*this%num_theta_bins*nt,2*this%num_theta_bins*nt))
     this%wl_cov = 0
     call File%ReadTextMatrix(cov_file,this%wl_cov)
 
-    allocate(cut_values(this%num_z_bins,2))
-    cut_values = 0
     if (this%cut_theta) then
-        call F%Open(cut_file)
-        do iz = 1,this%num_z_bins
-            read (F%unit,*,iostat=iopb) cut_values(iz,1),cut_values(iz,2)
-        end do
-        call F%Close()
+        call File%LoadTxt(Ini%ReadFileName('cut_file'), cut_values)
+        if (size(cut_values,1)/=this%num_z_bins) call MpiStop('WL_ReadIni: bad cut values')
     end if
 
-    if (this%name == 'CFHTLENS_1bin' .or. this%name == 'CFHTLENS_1bin_conservative' .or. this%name == 'CFHTLENS_1bin_ultra_conservative') then
-
-        call F%Open(window_file)
-        do iz = 1,this%num_z_p
-            read (F%unit,*,iostat=iopb) this%z_p(iz),this%p(iz,1)
+    do ib=1,this%num_z_bins
+        call F%Open(FormatString(window_file,ib,allow_unused=.true.))
+        do iz=1,this%num_z_p
+            read (F%unit,*) this%z_p(iz),this%p(iz,ib)
         end do
         call F%Close()
+    end do
 
-        call F%Open(measurements_file)
+    call F%Open(measurements_file)
+    if (measurements_format == '1bin') then
         do it = 1,this%num_theta_bins
-            read (F%unit,*,iostat=iopb) this%theta_bins(it),this%xi_obs(it),dummy1,this%xi_obs(it+this%num_theta_bins),dummy2
+            read (F%unit,*) this%theta_bins(it),this%xi_obs(it),dummy1,this%xi_obs(it+this%num_theta_bins),dummy2
         end do
-        call F%Close()
-
-    elseif (this%name == 'CFHTLENS_6bin' .or. this%name == 'CFHTLENS_6bin_conservative' .or. this%name == 'CFHTLENS_6bin_ultra_conservative') then
-
-        do ib=1,this%num_z_bins
-            call F%Open(window_file(1:index(window_file,'BIN_NUMBER')-1)//IntToStr(ib)//window_file(index(window_file,'BIN_NUMBER')+len('BIN_NUMBER'):len(window_file)))
-            do iz=1,this%num_z_p
-                read (F%unit,*,iostat=iopb) this%z_p(iz),this%p(iz,ib)
-            end do
-            call F%Close()
-        end do
-
-        call F%Open(measurements_file)
+    elseif (measurements_format == '6bin') then
         k = 1
         allocate(temp(2*this%num_theta_bins,nt))
         do i=1,2*this%num_theta_bins
-            read (F%unit,*, iostat=iopb) dummy1,temp(i,:)
+            read (F%unit,*) dummy1,temp(i,:)
             if (i.le.this%num_theta_bins) this%theta_bins(i)=dummy1
         end do
         do j=1,nt
@@ -162,14 +150,11 @@
             end do
         end do
         deallocate(temp)
-        call F%Close()
-
     else
-
-        write(*,*)'ERROR: Not yet implemented WL dataset: '//trim(this%name)
+        write(*,*)'ERROR: Not yet implemented WL measurements format: '//measurements_format
         call MPIStop()
-
     end if
+    call F%Close()
 
     !Normalize window functions p so \int p(z) dz = 1
     do ib=1,this%num_z_bins
@@ -184,22 +169,28 @@
     this%wl_cov = this%wl_cov/this%ah_factor
 
     ! Compute theta mask
-    iz = 0
-    do izl = 1,this%num_z_bins
-        do izh = izl,this%num_z_bins
-            iz = iz + 1 ! this counts the bin combinations iz=1 =>(1,1), iz=1 =>(1,2) etc
-            do i = 1,this%num_theta_bins
-                j = (iz-1)*2*this%num_theta_bins
-                xi_plus_cut = max(cut_values(izl,1),cut_values(izh,1))
-                xi_minus_cut = max(cut_values(izl,2),cut_values(izh,2))
-                if (this%theta_bins(i)>xi_plus_cut) mask(j+i) = 1
-                if (this%theta_bins(i)>xi_minus_cut) mask(this%num_theta_bins + j+i) = 1
-                ! Testing
-                !write(*,'(5i4,3E15.3,2i4)') izl,izh,i,i+j,this%num_theta_bins + j+i,xi_plus_cut,&
-                !     xi_minus_cut,this%theta_bins(i),mask(j+i),mask(this%num_theta_bins + j+i)
+    allocate(mask(this%num_theta_bins*nt*2))
+    if (allocated(cut_values)) then
+        mask = 0
+        iz = 0
+        do izl = 1,this%num_z_bins
+            do izh = izl,this%num_z_bins
+                iz = iz + 1 ! this counts the bin combinations iz=1 =>(1,1), iz=1 =>(1,2) etc
+                do i = 1,this%num_theta_bins
+                    j = (iz-1)*2*this%num_theta_bins
+                    xi_plus_cut = max(cut_values(izl,1),cut_values(izh,1))
+                    xi_minus_cut = max(cut_values(izl,2),cut_values(izh,2))
+                    if (this%theta_bins(i)>xi_plus_cut) mask(j+i) = 1
+                    if (this%theta_bins(i)>xi_minus_cut) mask(this%num_theta_bins + j+i) = 1
+                    ! Testing
+                    !write(*,'(5i4,3E15.3,2i4)') izl,izh,i,i+j,this%num_theta_bins + j+i,xi_plus_cut,&
+                    !     xi_minus_cut,this%theta_bins(i),mask(j+i),mask(this%num_theta_bins + j+i)
+                end do
             end do
         end do
-    end do
+    else
+        mask = 1
+    end if
     this%num_mask = sum(mask)
     allocate(this%mask_indices(this%num_mask))
     j = 1
@@ -214,8 +205,6 @@
     allocate(this%wl_invcov(this%num_mask,this%num_mask))
     this%wl_invcov = this%wl_cov(this%mask_indices,this%mask_indices)
     call Matrix_Inverse(this%wl_invcov)
-
-    deallocate(cut_values, mask)
 
     end subroutine WL_ReadIni
 
@@ -354,7 +343,8 @@
             else
                 PP(iz)= PK%PowerAt(kh,z)
                 ! Testing
-                !write(*,'(10E15.5)') k,z,PK_WEYL%PowerAt(kh,z)*k,9.0/(8.0*pi**2.0)*PK%PowerAt(kh,z)/(h**3.0)*(h*1e5_mcp/const_c)**4.0*(CMB%omdm+CMB%omb)**2*(1+z)**2.0
+                !write(*,'(10E15.5)') k,z,PK_WEYL%PowerAt(kh,z)*k,9.0/(8.0*pi**2.0)&
+                !*PK%PowerAt(kh,z)/(h**3.0)*(h*1e5_mcp/const_c)**4.0*(CMB%omdm+CMB%omb)**2*(1+z)**2.0
             end if
         end do
 

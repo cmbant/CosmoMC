@@ -4,7 +4,12 @@ num_theta_bins = 21
 num_z_bins = 1
 num_z_p = 70
 measurements_file = %DATASETDIR%CFHTLENS/2D/xi_pm.dat
+measurements_format = 1bin
 cov_file = %DATASETDIR%CFHTLENS/2D/Cov_DMV.dat
 window_file = %DATASETDIR%CFHTLENS/2D/nz_sumpdf.hist
 cut_file = %DATASETDIR%CFHTLENS/2D/cut_values_none.dat
 ah_factor = 1.0
+
+nz_wl = 150
+max_z = 10.0
+cut_theta = T

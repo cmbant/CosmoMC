@@ -1,10 +1,5 @@
 name = CFHTLENS_1bin_conservative
 kmax = 10.0
-num_theta_bins = 21
-num_z_bins = 1
-num_z_p = 70
-measurements_file = %DATASETDIR%CFHTLENS/2D/xi_pm.dat
-cov_file = %DATASETDIR%CFHTLENS/2D/Cov_DMV.dat
-window_file = %DATASETDIR%CFHTLENS/2D/nz_sumpdf.hist
 cut_file = %DATASETDIR%CFHTLENS/2D/cut_values_conservative.dat
-ah_factor = 1.0
+DEFAULT(CFHTLENS_1bin.dataset)
+
