@@ -91,7 +91,7 @@
         integer :: num_z = 0
         real(mcp), dimension(:), allocatable :: exact_z
         integer, dimension(:), allocatable :: exact_z_index
-        real(mcp) :: max_z
+        real(mcp) :: max_z = 0._mcp
         real(mcp) :: kmax = 0.8_mcp
     contains
     procedure :: InitForSettings => TCosmologyRequirementsLikelihood_InitForSettings

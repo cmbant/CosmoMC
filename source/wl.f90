@@ -18,7 +18,6 @@
         real(mcp), allocatable, dimension(:) :: theta_bins
         real(mcp), allocatable, dimension(:) :: z_bins
         real(mcp), allocatable, dimension(:) :: xi_obs ! Observed correlation functions
-        real(mcp), allocatable, dimension(:) :: xi ! Theoretical correlation functions
         integer :: num_z_p ! Source galaxy distribution p(z,bin)
         real(mcp), allocatable, dimension(:,:) :: p
         real(mcp), allocatable, dimension(:) :: z_p
@@ -30,7 +29,6 @@
     contains
     procedure :: LogLike => WL_LnLike
     procedure :: ReadIni => WL_ReadIni
-    procedure, private :: WL_CFHTLENS_loglike
     procedure, private :: get_convergence
     end type WLLikelihood
 
@@ -76,20 +74,19 @@
     use MatrixUtils
     class(WLLikelihood) this
     class(TSettingIni) :: Ini
-    character(LEN=:), allocatable :: measurements_file, cov_file, window_file, &
-        measurements_format
+    character(LEN=:), allocatable :: measurements_file, window_file, measurements_format
     Type(TTextFile) :: F
     real(mcp) :: dummy1,dummy2,pnorm
     real(mcp), allocatable, dimension(:,:) :: temp
     real(mcp), allocatable, dimension(:,:) :: cut_values
     integer, allocatable, dimension(:) :: mask
-    integer i,iz,it,ib,iopb,j,k,nt,izl,izh
+    integer i,iz,it,ib,j,k,nt,izl,izh
     real(mcp) :: xi_plus_cut, xi_minus_cut
 
     if (Feedback > 0) write (*,*) 'reading WL data set: '//trim(this%name)
 
     this%num_z = Ini%Read_Int('nz_wl',100)
-    this%max_z = Ini%Read_Double('max_z',10.0d0)
+    this%max_z = Ini%Read_Double('max_z')
     this%cut_theta = Ini%Read_Logical('cut_theta',.false.)
 
     this%num_z_bins = Ini%Read_Int('num_z_bins')
@@ -100,11 +97,10 @@
     allocate(this%theta_bins(this%num_theta_bins))
     allocate(this%z_bins(this%num_z_bins))
     allocate(this%xi_obs(this%num_theta_bins*nt*2))
-    allocate(this%xi(this%num_theta_bins*nt*2))
     allocate(this%z_p(this%num_z_p))
     allocate(this%p(this%num_z_p,this%num_z_bins))
 
-    this%kmax = Ini%Read_Double('kmax',200.0d0)
+    this%kmax = Ini%Read_Double('kmax')
 
     this%ah_factor = Ini%Read_Double('ah_factor',1.0d0)
 
@@ -112,12 +108,10 @@
     measurements_format = Ini%Read_String('measurements_format',NotFoundFail=.true.)
 
     window_file  = Ini%ReadFileName('window_file')
-    cov_file  = Ini%ReadFileName('cov_file')
 
-    allocate(this%wl_cov(2*this%num_theta_bins*nt,2*this%num_theta_bins*nt))
-    this%wl_cov = 0
-    call File%ReadTextMatrix(cov_file,this%wl_cov)
-
+    call File%LoadTxt(Ini%ReadFileName('cov_file'),this%wl_cov)
+    if (size(this%wl_cov,1)/= 2*this%num_theta_bins*nt) call MpiStop('WL_ReadIni: wrong cov size')
+    
     if (this%cut_theta) then
         call File%LoadTxt(Ini%ReadFileName('cut_file'), cut_values)
         if (size(cut_values,1)/=this%num_z_bins) call MpiStop('WL_ReadIni: bad cut values')
@@ -151,8 +145,7 @@
         end do
         deallocate(temp)
     else
-        write(*,*)'ERROR: Not yet implemented WL measurements format: '//measurements_format
-        call MPIStop()
+        call MPIStop('ERROR: Not yet implemented WL measurements format: '//measurements_format)
     end if
     call F%Close()
 
@@ -215,40 +208,23 @@
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) :: DataParams(:)
     real(mcp) WL_LnLike
+    real(mcp) vec(this%num_mask)
+    real(mcp), allocatable :: xi(:)
 
-    WL_LnLike=0
-
-    call this%get_convergence(CMB,Theory)
-
-    if (this%name=='CFHTLENS_1bin' .or. this%name=='CFHTLENS_1bin_conservative' .or. &
-        this%name=='CFHTLENS_1bin_ultra_conservative' .or. this%name=='CFHTLENS_6bin' .or. &
-        this%name=='CFHTLENS_6bin_conservative' .or. this%name=='CFHTLENS_6bin_ultra_conservative') then
-    WL_LnLike = this%WL_CFHTLENS_loglike(CMB,Theory)
-    end if
+    allocate(xi(size(this%xi_obs)))
+    call this%get_convergence(CMB,Theory, xi)
+    vec = xi(this%mask_indices)-this%xi_obs(this%mask_indices)
+    WL_LnLike = Matrix_QuadForm(this%wl_invcov,vec) / 2
 
     end function WL_LnLike
 
-    function WL_CFHTLENS_loglike(this,CMB,Theory)
-    use MatrixUtils
-    Class(WLLikelihood) :: this
-    Class(CMBParams) CMB
-    Class(TCosmoTheoryPredictions), target :: Theory
-    real(mcp) WL_CFHTLENS_loglike
-    real(mcp), allocatable :: vec(:),temp(:)
 
-    allocate(vec(this%num_mask),temp(this%num_mask))
-    vec(:) = this%xi(this%mask_indices)-this%xi_obs(this%mask_indices)
-    call Matrix_MulVecSymm(this%wl_invcov,vec,temp)
-    WL_CFHTLENS_loglike = dot_product(vec,temp)/2.0
-    deallocate(vec,temp)
-
-    end function WL_CFHTLENS_loglike
-
-    subroutine get_convergence(this,CMB,Theory)
+    subroutine get_convergence(this,CMB,Theory,xi)
     use Interpolation
     Class(WLLikelihood) :: this
     Class(CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
+    real(mcp), intent(out) :: xi(:)
     type(TCosmoTheoryPK), pointer :: PK
     type(TCubicSpline),  allocatable :: r_z, dzodr_z, P_z, C_l(:,:)
     type(TCubicSpline),  allocatable :: xi1_theta(:,:),xi2_theta(:,:)
@@ -356,9 +332,7 @@
                 integrand = 0
                 do nr=1,this%num_z_p
                     integrand(nr) = gbin(nr,ib)*gbin(nr,jb)*P_z%Value(rbin(nr))
-                    if (.not. this%use_weyl) then
-                        integrand(nr) =integrand(nr) *(1.0+this%z_p(nr))**2.0
-                    end if
+                    if (.not. this%use_weyl) integrand(nr) = integrand(nr) *(1.0+this%z_p(nr))**2.0
                 end do
                 do nr=2,this%num_z_p
                     Cl(il,ib,jb)=Cl(il,ib,jb)+0.5d0*(integrand(nr)+integrand(nr-1))*(rbin(nr)-rbin(nr-1))
@@ -441,8 +415,6 @@
     xi1=xi1/pi/2._mcp
     xi2=xi2/pi/2._mcp
 
-    deallocate(i1p,i2p)
-
     !-----------------------------------------------------------------------
     ! Get xi's in column vector format
     !-----------------------------------------------------------------------
@@ -461,17 +433,11 @@
             iz = iz + 1 ! this counts the bin combinations iz=1 =>(1,1), iz=1 =>(1,2) etc
             do i = 1,this%num_theta_bins
                 j = (iz-1)*2*this%num_theta_bins
-                this%xi(j+i) = xi1_theta(izl,izh)%Value(this%theta_bins(i))
-                this%xi(this%num_theta_bins + j+i) = xi2_theta(izl,izh)%Value(this%theta_bins(i))
+                xi(j+i) = xi1_theta(izl,izh)%Value(this%theta_bins(i))
+                xi(this%num_theta_bins + j+i) = xi2_theta(izl,izh)%Value(this%theta_bins(i))
             end do
         end do
     end do
-
-    deallocate(r,dzodr)
-    deallocate(gbin,rbin)
-    deallocate(ll,PP,integrand,Cl)
-    deallocate(C_l,theta,xi1,xi2)
-    deallocate(xi1_theta,xi2_theta)
 
     end subroutine get_convergence
 
