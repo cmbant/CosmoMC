@@ -33,6 +33,8 @@
         type(TCosmoTheoryPK), allocatable :: NL_MPK
         type(TCosmoTheoryPK), allocatable :: MPK_WEYL
         type(TCosmoTheoryPK), allocatable :: NL_MPK_WEYL
+        type(TCubicSpline),  allocatable :: growth_z !defined as sigma8_vd^2/sigma8
+        type(TCubicSpline),  allocatable :: sigma8_z
     contains
     procedure :: FreePK
     procedure :: ClArray
@@ -74,9 +76,9 @@
     subroutine FreePK(this)
     class(TCosmoTheoryPredictions) this
 
-    if(allocated(this%MPK))deallocate(this%MPK)
+    if(allocated(this%MPK)) deallocate(this%MPK)
     if(allocated(this%NL_MPK)) deallocate(this%NL_MPK)
-    if(allocated(this%MPK_WEYL))deallocate(this%MPK_WEYL)
+    if(allocated(this%MPK_WEYL)) deallocate(this%MPK_WEYL)
     if(allocated(this%NL_MPK_WEYL)) deallocate(this%NL_MPK_WEYL)
 
     end subroutine FreePK

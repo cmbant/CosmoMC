@@ -231,8 +231,7 @@
     end if
 
     if (CP%WantTransfer .and. .not. CP%OnlyTransfers .and. global_error_flag==0) &
-    call Transfer_Get_sigma8(MT,8._dl)
-    !Can call with other arguments if need different size
+    call Transfer_Get_sigmas(MT)
 
     !     if CMB calculations are requested, calculate the Cl by
     !     integrating the sources over time and over k.
@@ -919,10 +918,9 @@
     type(EvolutionVars) EV
     real(dl) tau,tol1,tauend, taustart
     integer j,ind,itf
-    real(dl) c(24),w(EV%nvar,9), y(EV%nvar), sources(SourceNum), dummy_sources(3)
+    real(dl) c(24),w(EV%nvar,9), y(EV%nvar), sources(SourceNum)
 
     real(dl) yprime(EV%nvar), ddelta, delta, adotoa,dtauda, growth
-    real(dl) weyl
     external dtauda
 
     if (fixq/=0._dl) then
@@ -988,13 +986,9 @@
                 end if
                 !     output transfer functions for this k-value.
 
-
-                MT%TransferWeyl(EV%q_ix,itf)= 1.0
                 if (abs(tau-tautf(itf)) < 1.e-5_dl) then
-                    call outtransf(EV,y, MT%TransferData(:,EV%q_ix,itf))
-                    call output(EV,y,j,tau,dummy_sources,weyl)
-                    MT%TransferWeyl(EV%q_ix,itf)=weyl
-                    
+                    call outtransf(EV,y, tau, MT%TransferData(:,EV%q_ix,itf))
+
                     itf=itf+1
                     if (j < TimeSteps%npoints) then
                         if (itf <= CP%Transfer%num_redshifts.and. &
@@ -1125,7 +1119,6 @@
     integer ind, i
     real(dl) c(24),w(EV%nvar,9), y(EV%nvar)
     real(dl) atol
-    real(dl) weyl,dummy_sources(3)
 
     atol=tol/exp(AccuracyBoost-1)
     if (CP%Transfer%high_precision) atol=atol/10000
@@ -1137,10 +1130,7 @@
     do i=1,CP%Transfer%num_redshifts
         call GaugeInterface_EvolveScal(EV,tau,y,tautf(i),atol,ind,c,w)
         if (global_error_flag/=0) return
-        call outtransf(EV,y,MT%TransferData(:,EV%q_ix,i))
-        ! 3rd argument doesn't matter to get phi
-        call output(EV,y,TimeSteps%npoints,tau,dummy_sources,weyl)
-        MT%TransferWeyl(EV%q_ix,i)=weyl
+        call outtransf(EV,y,tau,MT%TransferData(:,EV%q_ix,i))
     end do
 
     end subroutine GetTransfer

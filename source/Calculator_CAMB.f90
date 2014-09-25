@@ -8,8 +8,8 @@
         CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, Transfer_SetForNonlinearLensing, &
         initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
         HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, &
-        Transfer_SortAndIndexRedshifts, & !JD added for nonlinear lensing of CMB + MPK compatibility
-    Recombination_Name, reionization_name, power_name, threadnum, version, tensor_param_rpivot
+        Transfer_SortAndIndexRedshifts,  &
+        Recombination_Name, reionization_name, power_name, threadnum, version, tensor_param_rpivot
     use Errors !CAMB
     use settings
     use likelihood
@@ -40,8 +40,6 @@
     procedure :: InitCAMBParams => CAMBCalc_InitCAMBParams
     procedure :: SetCAMBInitPower => CAMBCalc_SetCAMBInitPower
     procedure :: SetPkFromCAMB => CAMBCalc_SetPkFromCAMB
-    procedure :: TransfersOrPowers => CAMBCalc_TransfersOrPowers
-    procedure :: TransfersOrPowersWeyl => CAMBCalc_TransfersOrPowersWeyl
     procedure :: GetNLandRatios => CAMBCalc_GetNLandRatios
     !Overridden inherited
     procedure :: ReadParams => CAMBCalc_ReadParams
@@ -439,7 +437,7 @@
         do L=2, 2000
             rms = rms +  Cl_scalar(L,1, C_Phi)*(real(l+1)**2/l**2)/twopi*(L+0.5_mcp)/(L*(L+1))
         end do
-         Theory%Lensing_rms_deflect = sqrt(rms)*180/pi*60
+        Theory%Lensing_rms_deflect = sqrt(rms)*180/pi*60
     else
         Theory%Lensing_rms_deflect = 0
     end if
@@ -465,112 +463,64 @@
     class(TCosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
     integer :: error
-    real(mcp), allocatable :: k(:), z(:), PK(:,:)
+    real(mcp), allocatable :: k(:), z(:), PK(:,:), growth_z(:), sigma8_z(:)
     integer zix,nz,nk
     !For use with for example WL PK's
     real(mcp), allocatable :: NL_Ratios(:,:)
 
     !Free theory arrays as they may resize between samples
     call Theory%FreePK()
-    allocate(Theory%MPK)
 
     nk=M%num_q_trans
     nz=CP%Transfer%PK_num_redshifts
     allocate(PK(nk,nz))
     allocate(k(nk))
     allocate(z(nz))
+    allocate(growth_z(nz))
+    allocate(sigma8_z(nz))
 
     k = log(M%TransferData(Transfer_kh,:,1))
     do zix=1,nz
         z(zix) = CP%Transfer%PK_redshifts(nz-zix+1)
+        sigma8_z(zix) = M%sigma_8(nz-zix+1,1)
+        growth_z(zix) = M%sigma2_vdelta_8(nz-zix+1,1)/sigma8_z(zix)
     end do
 
-    call this%TransfersOrPowers(M,PK,transfer_power_var,transfer_power_var)
-    PK = Log(PK)
-    if (any(isNan(PK))) then
-        error = 1
-        return
+    if (CosmoSettings%use_matterpower) then
+        call Transfer_GetUnsplinedPower(M, PK,transfer_power_var,transfer_power_var)
+        PK = Log(PK)
+        if (any(isNan(PK))) then
+            error = 1
+            return
+        end if
+        allocate(Theory%MPK)
+        call Theory%MPK%Init(k,z,PK)
     end if
-    call Theory%MPK%Init(k,z,PK)
 
-    allocate(Theory%MPK_WEYL)
-    call this%TransfersOrPowersWeyl(M,PK)
-    PK = Log(PK)
-    if (any(isNan(PK))) then
-        error = 1
-        return
+
+    if (CosmoSettings%use_Weylpower) then
+        call Transfer_GetUnsplinedPower(M, PK,transfer_Weyl,transfer_Weyl,hubble_units=.false.)
+        PK = Log(PK)
+        if (any(isNan(PK))) then
+            error = 1
+            return
+        end if
+        allocate(Theory%MPK_WEYL)
+        call Theory%MPK_WEYL%Init(k,z,PK)
     end if
-    call Theory%MPK_WEYL%Init(k,z,PK)
 
     if(CosmoSettings%use_nonlinear)then
         call this%GetNLandRatios(M,Theory,NL_Ratios,error)
         if(error/=0) return
     end if
 
+    if (allocated(Theory%growth_z)) deallocate(Theory%growth_z, Theory%sigma8_z)
+    allocate(Theory%growth_z, Theory%sigma8_z)
+    call Theory%growth_z%Init(z,growth_z,n=nz)
+    call Theory%sigma8_z%Init(z,sigma8_z,n=nz)
+
     end subroutine CAMBCalc_SetPkFromCAMB
 
-    subroutine CAMBCalc_TransfersOrPowers(this,M,PK,t1,t2)
-    use Transfer
-    use camb, only : CP, ScalarPower
-    class(CAMB_Calculator) :: this
-    Type(MatterTransferData) :: M
-    real(mcp), intent(inout):: PK(:,:)
-    integer, intent(in) :: t1
-    integer, optional, intent(in) :: t2
-    real(mcp), allocatable :: temp(:,:)
-    real(mcp) h, k
-    integer nz, nk, zix, ik
-
-    nk=size(PK,1)
-    nz=size(PK,2)
-
-    allocate(temp(nk,CP%Transfer%num_redshifts))
-
-    h = CP%H0/100
-
-    if(present(t2)) then
-        do ik=1,nk
-            k = M%TransferData(Transfer_kh,ik,1)*h
-            temp(ik,:) = M%TransferData(t1,ik,:)*&
-                M%TransferData(t2,ik,:)*k*pi*twopi*h**3*scalarPower(k,1)
-        end do
-    else
-        temp = M%TransferData(t1,:,:)
-    end if
-
-    do zix=1,nz
-        PK(:,zix) = temp(:,CP%Transfer%PK_redshifts_index(nz-zix+1))
-    end do
-
-    end subroutine CAMBCalc_TransfersOrPowers
-
-    subroutine CAMBCalc_TransfersOrPowersWeyl(this,M,PK)
-    use Transfer
-    use camb, only : CP, ScalarPower
-    class(CAMB_Calculator) :: this
-    Type(MatterTransferData) :: M
-    real(mcp), intent(inout):: PK(:,:)
-    real(mcp), allocatable :: temp(:,:)
-    real(mcp) h, k
-    integer nz, nk, zix, ik
-
-    nk=size(PK,1)
-    nz=size(PK,2)
-
-    allocate(temp(nk,CP%Transfer%num_redshifts))
-
-    h = CP%H0/100
-
-    do ik=1,nk
-       k = M%TransferData(Transfer_kh,ik,1)*h
-       temp(ik,:) = M%TransferWeyl(ik,:)**2.0*scalarPower(k,1)
-    end do
-
-    do zix=1,nz
-        PK(:,zix) = temp(:,CP%Transfer%PK_redshifts_index(nz-zix+1))
-    end do
-
-    end subroutine CAMBCalc_TransfersOrPowersWeyl
 
     subroutine CAMBCalc_GetNLandRatios(this,M,Theory,Ratios,error)
     use Transfer
@@ -589,7 +539,7 @@
     allocate(Theory%NL_MPK)
     allocate(Ratios(CPK%num_k,CPK%num_z))
 
-    !Allocate Dummy Pointer and fill with Linear MPK
+    !fill PK with Linear MPK
     allocate(PK(CPK%num_k,CPK%num_z))
     PK=Theory%MPK%z
 
@@ -615,10 +565,12 @@
     end if
     call Theory%NL_MPK%Init(Theory%MPK%x,Theory%MPK%y,PK)
 
-    ! Weyl corrected P(k)
-    allocate(Theory%NL_MPK_WEYL)
-    PK = Theory%MPK_WEYL%z + 2*log(Ratios)
-    call Theory%NL_MPK_WEYL%Init(Theory%MPK%x,Theory%MPK%y,PK)
+    if (allocated(Theory%MPK_WEYL)) then
+        !Assume Weyl scales the same way under non-linear correction
+        allocate(Theory%NL_MPK_WEYL)
+        PK = Theory%MPK_WEYL%z + 2*log(Ratios)
+        call Theory%NL_MPK_WEYL%Init(Theory%MPK%x,Theory%MPK%y,PK)
+    end if
 
     end subroutine CAMBCalc_GetNLandRatios
 
@@ -793,7 +745,7 @@
         stop 'Need to manually set max_transfer_redshifts larger in CAMB''s modules.f90'
     end if
 
-    if (CosmoSettings%use_LSS) then
+    if (CosmoSettings%num_power_redshifts>1) then
         P%Transfer%PK_num_redshifts = CosmoSettings%num_power_redshifts
         do zix=1, CosmoSettings%num_power_redshifts
             !CAMB's ordering is from highest to lowest
@@ -901,7 +853,7 @@
     else
         highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
     end if
-    
+
     halofit_version = Ini%Read_Int('halofit_version',halofit_default)
 
     end subroutine CAMBCalc_ReadParams

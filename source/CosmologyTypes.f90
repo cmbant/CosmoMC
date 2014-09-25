@@ -46,9 +46,11 @@
         logical :: compute_tensors = .false.
 
         !Parameters for calculating/storing the matter power spectrum
+        logical :: use_matterpower = .false.
+        logical :: use_Weylpower = .false. !power spectrum of Weyl potential for lensing
         real(mcp) :: power_kmax = 0.8_mcp
-        integer :: num_power_redshifts
-
+        integer :: num_power_redshifts = 0
+        
         !Only used in params_CMB
         real(mcp) :: pivot_k = 0.05_mcp !Point for defining primordial power spectra
         real(mcp) :: tensor_pivot_k = 0.05_mcp !Point for defining tensor power spectra
@@ -85,6 +87,7 @@
 
         logical :: needs_nonlinear_pk = .false.
         logical :: needs_exact_z = .false.
+        logical :: needs_Weylpower = .false.
         integer :: num_z = 0
         real(mcp), dimension(:), allocatable :: exact_z
         integer, dimension(:), allocatable :: exact_z_index
@@ -294,6 +297,7 @@
     dlnz = 30
 
     call full_z%Add(0.d0)
+    this%use_LSS = size(CosmoSettings%z_outputs)>0 .and. this%get_sigma8 !e.g. for growth function
 
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
@@ -307,6 +311,8 @@
                 end if
                 this%power_kmax = max(this%power_kmax,DataLike%kmax)
                 this%use_nonlinear = this%use_nonlinear .or. DataLike%needs_nonlinear_pk
+                this%use_matterpower = .true.
+                this%use_Weylpower = this%use_Weylpower .or. DataLike%needs_Weylpower
                 if(DataLike%needs_exact_z) then
                     call exact_z%AddArrayItems(DataLike%exact_z)
                 else
@@ -335,7 +341,9 @@
     end do
 
     if(.not. this%use_LSS) return
-    
+
+    call exact_z%AddArrayItems(CosmoSettings%z_outputs)
+
     !Build array of redshifts where the redshift exact value doesn't matter
     if(maxz>0)then
         num_range = ceiling(log(maxz+1)/dlnz)
