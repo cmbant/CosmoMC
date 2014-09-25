@@ -226,8 +226,8 @@
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp), intent(out) :: xi(:)
     type(TCosmoTheoryPK), pointer :: PK
-    type(TCubicSpline),  allocatable :: r_z, dzodr_z, P_z, C_l(:,:)
-    type(TCubicSpline),  allocatable :: xi1_theta(:,:),xi2_theta(:,:)
+    type(TCubicSpline) :: r_z, dzodr_z, P_z
+    type(TCubicSpline),  allocatable :: C_l(:,:), xi1_theta(:,:),xi2_theta(:,:)
     real(mcp) :: h,z,kh,k
     real(mcp), allocatable :: r(:),dzodr(:)
     real(mcp), allocatable :: rbin(:),gbin(:,:)
@@ -275,7 +275,6 @@
         r(iz) = this%Calculator%ComovingRadialDistance(z)
         dzodr(iz) = this%Calculator%Hofz(z)
     end do
-    allocate(r_z, dzodr_z)
     call r_z%Init(PK%y,r,n=num_z)
     call dzodr_z%Init(PK%y,dzodr,n=num_z)
 
@@ -325,7 +324,6 @@
         end do
 
         ! Compute integrand over comoving distance
-        allocate(P_z)
         call P_z%Init(r,PP,n=num_z)
         do ib=1,this%num_z_bins
             do jb=1,this%num_z_bins
@@ -342,7 +340,6 @@
         if (.not. this%use_weyl) then
             Cl(il,:,:) = Cl(il,:,:)/h**3.0*9._mcp/4._mcp*(h*1e5_mcp/const_c)**4.0*(CMB%omdm+CMB%omb)**2
         end if
-        deallocate(P_z)
     end do
 
     !-----------------------------------------------------------------------

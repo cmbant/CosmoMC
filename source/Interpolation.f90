@@ -32,6 +32,7 @@
     procedure :: InitFromFile => TCubicSpline_InitFromFile
     procedure :: InitInterp => TCubicSpline_InitInterp
     procedure :: Derivative => TCubicSpline_Derivative
+    procedure :: Clear => TCubicSpline_Clear
     generic :: Value => TCubicSpline_Value
     generic :: Array => TCubicSpline_ArrayValue, TCubicSpline_IntRangeValue
     generic :: Init => TCubicSpline_Init, TCubicSpline_InitInt
@@ -52,6 +53,7 @@
     procedure :: Value => TInterpGrid2D_Value !one point
     procedure :: Values => TInterpGrid2D_Values !array of points
     procedure :: Error => TInterpGrid2D_error
+    procedure :: Clear => TInterpGrid2D_Clear
     procedure, private :: InitInterp => TInterpGrid2D_InitInterp
     FINAL :: TInterpGrid2D_Free
     end Type TInterpGrid2D
@@ -84,6 +86,7 @@
     integer, intent(in), optional :: n
     real(sp_acc), intent(in), optional :: End1, End2
 
+    call W%Clear()
     if (present(n)) then
         W%n = n
     else
@@ -184,9 +187,8 @@
 
     end subroutine TCubicSpline_InitFromFile
 
-
-    subroutine TCubicSpline_Free(W)
-    Type(TCubicSpline) :: W
+    subroutine TCubicSpline_Clear(W)
+    class(TCubicSpline) :: W
 
     if (allocated(W%X)) then
         deallocate(W%X)
@@ -194,6 +196,13 @@
         deallocate(W%ddF)
     end if
     W%Initialized = .false.
+
+    end subroutine TCubicSpline_Clear
+
+    subroutine TCubicSpline_Free(W)
+    Type(TCubicSpline) :: W
+
+    call W%Clear()
 
     end subroutine TCubicSpline_Free
 
@@ -407,6 +416,7 @@
     REAL(GI), INTENT(IN)      :: y(:)
     REAL(GI), INTENT(IN)      :: z(:,:)
 
+    call W%Clear()
     W%nx = size(x)
     W%ny = size(y)
     allocate(W%x(W%nx), source = x)
@@ -499,8 +509,8 @@
 
     end subroutine TInterpGrid2D_InitFromFile
 
-    subroutine TInterpGrid2D_Free(W)
-    Type(TInterpGrid2D):: W
+    subroutine TInterpGrid2D_Clear(W)
+    class(TInterpGrid2D):: W
 
     if (allocated(W%Wk)) then
         deallocate(W%x)
@@ -509,6 +519,14 @@
         deallocate(W%z)
     end if
     W%Initialized = .false.
+
+    end subroutine TInterpGrid2D_Clear
+   
+    
+    subroutine TInterpGrid2D_Free(W)
+    Type(TInterpGrid2D):: W
+
+    call W%Clear()
 
     end subroutine TInterpGrid2D_Free
 
