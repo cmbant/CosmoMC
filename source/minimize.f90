@@ -87,7 +87,7 @@
     associate (minimize_indices => this%minimize_indices)
         if (this%num_rot>0) then
             P%P(minimize_indices(this%min_params_rot)) = matmul(this%paramRot,vect(this%min_params_rot)) &
-            + this%origin(this%minimize_indices(this%min_params_rot))
+                + this%origin(this%minimize_indices(this%min_params_rot))
         end if
 
         do i=1, size(minimize_indices)
@@ -99,14 +99,14 @@
 
         do i=1, size(minimize_indices)
             if (P%P(minimize_indices(i)) < BaseParams%PMin(minimize_indices(i))-1d-13) &
-            call DoAbort(numcat('Minimize:Rotated parameter less than prior boundary:',i))
+                call DoAbort(numcat('Minimize:Rotated parameter less than prior boundary:',i))
             if (P%P(minimize_indices(i)) > BaseParams%PMax(minimize_indices(i))+1d-13) &
-            call DoAbort(numcat('Minimize:Rotated parameter greater than prior boundary:',i))
+                call DoAbort(numcat('Minimize:Rotated parameter greater than prior boundary:',i))
             !Just fix up small rounding error
         end do
         P%P(minimize_indices) = max(BaseParams%PMin(minimize_indices),P%P(minimize_indices))
         P%P(minimize_indices) = min(BaseParams%PMax(minimize_indices),P%P(minimize_indices))
-        end associate
+    end associate
 
     end subroutine VectToparams
 
@@ -155,7 +155,7 @@
     call Matrix_Inverse(this%inv_cov)
     do i=1,num_params_used
         this%used_param_scales(i) = min( sqrt( 1/this%inv_cov(i,i)) , &
-        (BaseParams%PMax(params_used(i))- BaseParams%PMin(params_used(i)))/this%start_trust_radius/3.)
+            (BaseParams%PMax(params_used(i))- BaseParams%PMin(params_used(i)))/this%start_trust_radius/3.)
     end do
 
     diag_params => Ini%Read_String('minimize_diag_params')
@@ -203,9 +203,9 @@
             XU(i) = 1d10
         else
             XL(i) = (BaseParams%PMin(this%minimize_indices(i))-this%origin(this%minimize_indices(i))) &
-            / this%used_param_scales(this%minimize_indices_used(i))
+                / this%used_param_scales(this%minimize_indices_used(i))
             XU(i) = (BaseParams%PMax(this%minimize_indices(i))-this%origin(this%minimize_indices(i))) &
-            / this%used_param_scales(this%minimize_indices_used(i))
+                / this%used_param_scales(this%minimize_indices_used(i))
         end if
     end do
 
@@ -217,7 +217,7 @@
         this%min_params_rot = rot_params_used(1:this%num_rot)
         allocate(this%paramRot(this%num_rot,this%num_rot))
         this%paramRot = this%inv_cov(this%minimize_indices_used(this%min_params_rot),&
-        & this%minimize_indices_used(this%min_params_rot))
+            & this%minimize_indices_used(this%min_params_rot))
         call Matrix_Inverse(this%paramRot)
         associate(scales => this%used_param_scales(this%minimize_indices_used(this%min_params_rot)))
             do i=1,this%num_rot
@@ -228,7 +228,7 @@
             do i=1,this%num_rot
                 this%paramRot(i,:) = this%paramRot(i,:) * scales(i)
             end do
-            end associate
+        end associate
     end if
 
     !Initial and final radius of region required (in normalized units)
@@ -317,7 +317,7 @@
         end if
         !Only finish if sanity check passes
         if (abs(last_like - best_like) < this%minimize_loglike_tolerance*2 .or. &
-        this%minimize_mcmc_refine_num>0 .and. abs(last_like - best_like) < max(this%minimize_loglike_tolerance,0.5_mcp)) exit
+            this%minimize_mcmc_refine_num>0 .and. abs(last_like - best_like) < max(this%minimize_loglike_tolerance,0.5_mcp)) exit
     end do
 
     call Params%Clear(keep=this%MinParams)
@@ -357,16 +357,16 @@
                 checkLike=LikeCalcMCMC%GetLogLike(this%MinParams)*temperature
                 !same as MCMC%MaxLike*temperature but want to get everything computed
                 if (Feedback>0) print *,MpiRank, 'check likes, best_like:', &
-                & real([checklike, MCMC%MaxLike*temperature, best_like]) !this
+                    & real([checklike, MCMC%MaxLike*temperature, best_like]) !this
                 best_like = MCMC%MaxLike*temperature
                 call Params%Clear(keep=this%MinParams)
                 Params = this%MinParams
             end if
             deallocate(MCMC)
             if (last_best - best_like < this%minimize_loglike_tolerance &
-            .and. temperature < 4*this%minimize_loglike_tolerance/num_params_used) exit
+                .and. temperature < 4*this%minimize_loglike_tolerance/num_params_used) exit
             if (last_best - best_like < 2*sqrt(num_params_used*temperature)) &
-            Temperature = Temperature/ this%minimize_temp_scale_factor
+                Temperature = Temperature/ this%minimize_temp_scale_factor
         end do
         deallocate(LikeCalcMCMC)
     end if
@@ -376,7 +376,7 @@
     if (this%uses_MPI) then
         allocate(bestfit_loglikes(MPIchains))
         call MPI_Allgather(best_like, 1, MPI_real_mcp, &
-        bestfit_loglikes, 1,  MPI_real_mcp, MPI_COMM_WORLD, ierror)
+            bestfit_loglikes, 1,  MPI_real_mcp, MPI_COMM_WORLD, ierror)
         if (MpiRank==0 .and. MPIChains>1) then
             print *,'synched bestfits:', bestfit_loglikes
             if (maxval(bestfit_loglikes)-minval(bestfit_loglikes) >1) then

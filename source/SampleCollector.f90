@@ -16,7 +16,8 @@
         !following are numbers of samples / (number of parameters)
         !MPI_Min_Sample_Update*num_fast is min number of chain steps
         !before starting to update covmat and checking convergence
-        integer :: MPI_Min_Sample_Update = 200, MPI_Sample_update_freq = 40
+        integer :: MPI_Min_Sample_Update = 200
+        integer :: MPI_Sample_update_freq = 40
         logical :: MPI_Check_Limit_Converge = .false.
         !After given R_Stop is reached, can optionally check for limit convergence
         !(which is generally a much more stringent test of enough samples)
@@ -103,9 +104,8 @@
     end if
     if (this%checkpoint_burn/=0) this%checkpoint_burn = this%checkpoint_burn-1
     if (this%indep_sample /= 0 .and. this%indep_acc >= this%indep_sample*thin .and. want) then
-        if (this%OutDataFile%Opened()) then
-            call CurParams%WriteModel(this%OutDataFile, CurLike, real(floor(this%indep_acc/(this%indep_sample*thin)),mcp))
-        end if
+        if (.not. this%OutDataFile%Opened()) call this%OutDataFile%CreateOpenFile(rootname//'.data',append=.not. new_chains)
+        call CurParams%WriteModel(this%OutDataFile, CurLike, real(floor(this%indep_acc/(this%indep_sample*thin)),mcp))
         this%indep_acc = mod(this%indep_acc, real(this%indep_sample*thin,mcp))
     end if
 
@@ -132,9 +132,6 @@
     end if
 #endif
     this%indep_sample = Ini%Read_Int('indep_sample')
-    if (this%indep_sample /=0) then
-        call this%OutDataFile%CreateOpenFile(rootname//'.data',append=.not. new_chains)
-    end if
 
     end subroutine TMpiChainCollector_ReadParams
 
@@ -142,11 +139,12 @@
     subroutine TMpiChainCollector_SaveState(this,F)
     class(TMpiChainCollector) :: this
     class(TFileStream) :: F
-    integer :: version=1
+    integer :: version=2
 
     call F%Write(version)
     call F%Write(this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn,  &
-    & this%flukecheck,  this%Mpi%MPI_Min_Sample_Update, this%DoUpdates)
+        & this%flukecheck,  this%Mpi%MPI_Min_Sample_Update, this%DoUpdates)
+    call F%Write(this%Mpi%MPI_Sample_update_freq)
     call this%Samples%SaveState(F)
     call this%Sampler%SaveState(F)
 
@@ -157,9 +155,15 @@
     class(TFileStream) :: F
     integer version
 
-    if (.not. F%ReadItem(version) .or. version/=1) call MpiStop('unknown checkpoint format')
+    if (.not. F%ReadItem(version) .or. version>2) call MpiStop('unknown checkpoint format')
     call F%Read(this%Mpi%MPI_thin_fac, this%Burn_done, this%all_burn, &
-    & this%flukecheck, this%Mpi%MPI_Min_Sample_Update, this%DoUpdates)
+        & this%flukecheck, this%Mpi%MPI_Min_Sample_Update, this%DoUpdates)
+    if (version>=2) then
+        call F%Read(this%Mpi%MPI_Sample_update_freq)
+    else
+        !bug fix
+        this%Mpi%MPI_Sample_update_freq = this%Mpi%MPI_Sample_update_freq*BaseParams%num_slow
+    end if
     call this%Samples%LoadState(F)
     this%checkpoint_burn=this%checkpoint_freq/3
     call this%Sampler%LoadState(F)
@@ -189,6 +193,7 @@
     Type(TBinaryFile) F
 
     if (Feedback > 0) write (*,*) instance, 'Reading checkpoint from '//rootname//'.chk'
+    if (LogFile%Opened()) call LogFile%Write('Re-starting from checkpoint')
     call F%Open(rootname//'.chk')
     if (.not. F%ReadItem(ID) .or. ID/=chk_id) call DoAbort('invalid checkpoint files')
     call this%ReadState(F)
@@ -241,9 +246,9 @@
     MPICovMat = MPICovMat / MPImean(0)
 
     call MPI_ALLGATHER(MPICovMat,Size(MPICovMat),MPI_real_mcp,MPICovmats,Size(MPICovmat), &
-    MPI_real_mcp, MPI_COMM_WORLD,ierror)
+        MPI_real_mcp, MPI_COMM_WORLD,ierror)
     call MPI_ALLGATHER(MPIMean,Size(MPIMean),MPI_real_mcp,MPIMeans,Size(MPIMean), &
-    MPI_real_mcp, MPI_COMM_WORLD,ierror)
+        MPI_real_mcp, MPI_COMM_WORLD,ierror)
 
     if (all(MPIMeans(0,:)> this%Mpi%MPI_Min_Sample_Update/2 + 2)) then
         !check have reasonable number of samples in each)
@@ -259,7 +264,7 @@
                 do j=i,num_params_used
                     cov(i,j) = sum(MPIMeans(0,:)*MPICovMats(i,j,:))/ norm
                     meanscov(i,j) = sum(MPIMeans(0,:)*&
-                    (chain_means(:,i)-mean(i))*(chain_means(:,j)-mean(j)))/norm
+                        (chain_means(:,i)-mean(i))*(chain_means(:,j)-mean(j)))/norm
                     meanscov(j,i) = meanscov(i,j)
                     cov(j,i) = cov(i,j)
                 end do
@@ -283,7 +288,7 @@
                     if (this%Mpi%MPI_Check_Limit_Converge) then
                         !Now check if limits from different chains agree well enough
                         if (this%CheckLImitsConverge(this%Samples, MpiCovmat)) &
-                        call ConvergeStatus(.true., R, 'Requested limit convergence achieved')
+                            call ConvergeStatus(.true., R, 'Requested limit convergence achieved')
                     else
                         !If not also checking limits, we are done
                         call ConvergeStatus(.true., R, 'Requested convergence R achieved')
@@ -303,11 +308,11 @@
         end if !MPIChains >1
 
         if (this%Mpi%MPI_LearnPropose .and. ( MPIChains==1 .or. (BaseParams%covariance_is_diagonal &
-        .or. R < this%Mpi%MPI_Max_R_ProposeUpdate) .and. R > this%Mpi%MPI_R_StopProposeUpdate)) then
-            !If beginning to converge, update covariance matrix
-            if (Feedback > 0 .and. MPIRank==0) write (*,*) 'updating proposal density'
+            .or. R < this%Mpi%MPI_Max_R_ProposeUpdate) .and. R > this%Mpi%MPI_R_StopProposeUpdate)) then
+        !If beginning to converge, update covariance matrix
+        if (Feedback > 0 .and. MPIRank==0) write (*,*) 'updating proposal density'
 
-            call this%Sampler%SetCovariance(MPICovMat)
+        call this%Sampler%SetCovariance(MPICovMat)
 
         end if !update propose
     end if !all chains have enough
@@ -332,9 +337,9 @@
     !Dump checkpoint info
     !Have to be careful if were to dump before burn
     if (checkpoint .and. this%all_burn .and. this%checkpoint_burn==0 .and. &
-    (.not. this%done_check .or.  mod(this%sample_num+1, this%checkpoint_freq)==0)) then
-        this%done_check=.true.
-        call this%WriteCheckpoint()
+        (.not. this%done_check .or.  mod(this%sample_num+1, this%checkpoint_freq)==0)) then
+    this%done_check=.true.
+    call this%WriteCheckpoint()
     end if
 
     !Do main adding samples functions
@@ -496,7 +501,7 @@
 
     do j=1, numCheck
         call L%ConfidVal(params_check(j), this%Mpi%MPI_Limit_Converge, L%Count/2, L%Count, &
-        Limits(1,j,instance),Limits(2,j,instance))
+            Limits(1,j,instance),Limits(2,j,instance))
     end do
     !Now tell everyone else
     do i=1, MPIChains
@@ -515,16 +520,16 @@
                 Worsti = params_check(j)
             end if
             if (Feedback > 0 .and. MPIRank ==0) &
-            write(*,'(1A22,1A8,1f8.3)') BaseParams%UsedParamNameOrNumber(params_check(j)),'lim err', LimErr
+                write(*,'(1A22,1A8,1f8.3)') BaseParams%UsedParamNameOrNumber(params_check(j)),'lim err', LimErr
         end do
     end do
     if (Feedback > 0 .and. MPIRank==0) then
         write (*,'(a)')  'Current limit err = '//trim(RealToStr(WorstErr))// &
-        ' for '//trim(BaseParams%UsedParamNameOrNumber(Worsti))//'; samps = '//trim(IntToStr(L%Count*this%Mpi%MPI_thin_fac))
+            ' for '//trim(BaseParams%UsedParamNameOrNumber(Worsti))//'; samps = '//trim(IntToStr(L%Count*this%Mpi%MPI_thin_fac))
     end if
     if (LogFile%Opened()) then
         write (logLine,'(a)') 'Current limit err = '//trim(RealToStr(WorstErr))// &
-        ' for '//trim(BaseParams%UsedParamNameOrNumber(Worsti))//'; samps = '//trim(IntToStr(L%Count*this%Mpi%MPI_thin_fac))
+            ' for '//trim(BaseParams%UsedParamNameOrNumber(Worsti))//'; samps = '//trim(IntToStr(L%Count*this%Mpi%MPI_thin_fac))
         call LogFile%Write(logLine)
         if (flush_write) call LogFile%Flush()
     end if

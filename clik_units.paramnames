@@ -12,7 +12,7 @@ yhe           Y_{\mathrm{P}}    #Helium mass fraction (not used if bbn_consisten
 alpha1        \alpha_{-1} #correlated CDM isocurvature 
 deltazrei     \Delta z_{\mathrm{re}} #width of reionization
 Alens         A_{\mathrm{L}}     #lensing potential scaled by sqrt(A_lens)
-Alensf         A_{\mathrm{L}^{\mathrm{fid}}     #lensing potential scaled by sqrt(A_lens)
+Alensf        A_{\mathrm{L}}^{\mathrm{fid}}     #lensing potential scaled by sqrt(A_lens)
 fdm           \epsilon_0 f_d    #CosmoRec dark matter annihilation parameter, 0910.3663
 logA          \ln(10^{10} A_\mathrm{s})
 ns            n_\mathrm{s}	    #beware that pivot scale can change in .ini file
@@ -81,6 +81,7 @@ omegal*       \Omega_\Lambda
 omegam*       \Omega_{\mathrm{m}}
 sigma8*       \sigma_8
 zrei*         z_{\mathrm{re}}
+rmsdeflect*   \langle d^2\rangle^{1/2}/\mathrm{arcmin}
 r10*          r_{10}	#tensor-scalar C_l amplitude at l=10
 H0*           H_0		#hubble parameter is H0 km/s/Mpc
 r02*          r_{0.002}         #r at k=0.002
@@ -90,10 +91,14 @@ AT*           10^9 A_{\mathrm{t}}
 A*            10^9 A_{\mathrm{s}}
 omegamh2*     \Omega_{\mathrm{m}} h^2 #includes massive neutrinos
 omegamh3*     \Omega_{\mathrm{m}} h^3 #well determined orthogonal to degeneracy for 6-param model
-S8_47*        \sigma_8 (\Omega_{\mathrm{m}}/0.25)^{0.47} 
+s8omegamp5*   \sigma_8 \Omega_{\mathrm{m}}^{0.5}
+s8omegamp25*  \sigma_8 \Omega_{\mathrm{m}}^{0.25}
 yheused*      Y_{\mathrm{P}} #MCMC value or from bbn consistency
+YpBBN*        Y_{\rm P}^{\rm BBN}
+DHBBN*        10^5 {\rm D}/{\rm H}
 clamp*        10^9 A_{\mathrm{s}} e^{-2\tau}   #parameter determining C_l amplitude
-ctlamp*       10^9 A_t e^{-2\tau}   #parameter determining L~100 tensor C_l amplitude
+ctlamp*       10^9 A_{\mathrm{t}} e^{-2\tau}   #parameter determining L~100 tensor C_l amplitude
+ns02*         n_{\mathrm{s},0.002}
 omeganuh2*    \Omega_\nu h^2 
 age*          \mathrm{Age}/\mathrm{Gyr}
 zstar*        z_\ast

@@ -167,7 +167,7 @@
                         & highL_norm = CL(lmx)/this%highL_lensedCL_template(lmx,indicesT(i,j))
                         CL(lmx+1:lmaxCL) =  highL_norm*this%highL_lensedCL_template(lmx+1:lmaxCL,indicesT(i,j))
                     end if
-                    end associate
+                end associate
             end if
         end do
     end do

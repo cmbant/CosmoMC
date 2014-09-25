@@ -196,8 +196,8 @@
             mult_sum = 0
             mult_ratio = 0
             mult_max = -1e30_mcp
-            max_like = 1e30_mcp
-            max_truelike =1e30_mcp
+            max_like = logZero
+            max_truelike = logZero
             at_beginning=0
             first = .true.
 
@@ -207,7 +207,7 @@
             do
                 if (this%redo_from_text) then
                     error = 0
-                    Params%P= BaseParams%center
+                    Params%P(:num_params)= BaseParams%center
                     if (.not. IO_ReadChainRow(InChain, mult, like, Params%P, params_used)) exit
                     num=num+1
                 else
@@ -293,11 +293,19 @@
                     if (this%redo_auto_likescale .and. redo_loop==1 .and. num_used == this%redo_auto_likescale_count &
                         & .and. .not. this%redo_change_like_only) then
                         !Check log likelihoods scaled to give sensible weights. Rescale must be constant between chains
-                        like_diff = max_truelike - max_like
+                        if (max_truelike /= logZero) then
+                            like_diff = max_truelike - max_like
+                        else
+                            like_diff = logZero
+                        end if
 #ifdef MPI
                         allocate(like_diffs(MPIchains))
                         call MPI_Allgather(like_diff, 1, MPI_real_mcp, like_diffs, 1,  MPI_real_mcp, MPI_COMM_WORLD, ierror)
-                        like_diff = sum(like_diffs)/MpiChains
+                        if (all(like_diffs==logZero)) then
+                            like_diff=0
+                        else
+                            like_diff = sum(like_diffs, mask = like_diffs/=logZero) / count(like_diffs/=logZero)
+                        end if
 #endif
                         if (abs(like_diff) > this%redo_max_logLike_diff) then
                             this%redo_likeoffset = like_diff

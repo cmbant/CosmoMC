@@ -57,6 +57,7 @@
     procedure :: InitForLikelihoods => CAMBCalc_InitForLikelihoods
     procedure :: BAO_D_v => CAMBCalc_BAO_D_v
     procedure :: AngularDiameterDistance => CAMBCalc_AngularDiameterDistance
+    procedure :: ComovingRadialDistance => CAMBCalc_ComovingRadialDistance
     procedure :: AngularDiameterDistance2 => CAMBCalc_AngularDiameterDistance2
     procedure :: LuminosityDistance => CAMBCalc_LuminosityDistance
     procedure :: Hofz => CAMBCalc_Hofz
@@ -170,7 +171,7 @@
     class(CMBParams) CMB
     Type(CAMBParams)  P
 
-    !set background dparameters, but don't calculate thermal history
+    !set background parameters, but don't calculate thermal history
     call this%CMBToCAMB(CMB, P)
     call CAMBParams_Set(P)
 
@@ -386,7 +387,7 @@
     real(mcp), parameter :: cons =  (COBE_CMBTemp*1e6)**2
     integer l
     real(mcp) :: highL_norm = 0
-    real(mcp) lens_recon_scale
+    real(mcp) lens_recon_scale, rms
     integer i,j, lmx, lmaxCL
     integer, save, allocatable :: indicesS(:,:), indicesT(:,:)
 
@@ -428,7 +429,7 @@
                             CL(2:lmx) =  CL(2:lmx) + cons*Cl_tensor(2:lmx,1, indicesT(i,j))
                         end if
                     end if
-                    end associate
+                end associate
             end if
         end do
     end do
@@ -444,7 +445,7 @@
                     CL(L) =  Cl_scalar(L,1, C_Phi)*(real(l+1)**2/l**2)/twopi * lens_recon_scale
                 end do
                 CL(lmx+1:)=0
-                end associate
+            end associate
         end if
         lmx = min(CosmoSettings%lmax_computed_cl, CosmoSettings%cl_lmax(CL_Phi,CL_T))
         if (lmx/=0) then
@@ -453,6 +454,17 @@
                 Theory%Cls(CL_phi,CL_T)%CL = Cl_scalar(l,1, C_PhiTemp)/real(l)**3 * sqrt(lens_recon_scale)
             end do
         end if
+    end if
+
+    if (CosmoSettings%CMB_Lensing .and. this%CAMBP%max_l>=2000) then
+        !Get RMS deflection angle in arcmin
+        rms=0
+        do L=2, 2000
+            rms = rms +  Cl_scalar(L,1, C_Phi)*(real(l+1)**2/l**2)/twopi*(L+0.5_mcp)/(L*(L+1))
+        end do
+         Theory%Lensing_rms_deflect = sqrt(rms)*180/pi*60
+    else
+        Theory%Lensing_rms_deflect = 0
     end if
 
     if (CosmoSettings%compute_tensors) then
@@ -670,6 +682,15 @@
     CAMBCalc_AngularDiameterDistance = AngularDiameterDistance(z)
 
     end function CAMBCalc_AngularDiameterDistance
+
+    real(mcp) function CAMBCalc_ComovingRadialDistance(this, z)
+    use CAMB, only : ComovingRadialDistance  !!comoving radial distance also in Mpc no h units
+    class(CAMB_Calculator) :: this
+    real(mcp), intent(IN) :: z
+
+    CAMBCalc_ComovingRadialDistance = ComovingRadialDistance(z)
+
+    end function CAMBCalc_ComovingRadialDistance
 
     real(mcp) function CAMBCalc_AngularDiameterDistance2(this, z1, z2)
     use CAMB, only : AngularDiameterDistance2  !!angular diam distance also in Mpc no h units

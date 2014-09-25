@@ -12,18 +12,17 @@
     use CosmologyTypes
     use CosmoTheory
     use Calculator_Cosmology
+    use bbn
     implicit none
     private
-
-    real(mcp), parameter :: neutrino_mass_fac= 94.07_mcp !conversion factor for thermal with Neff=3 TCMB-2.7255
-    !93.014 for 3.046
-    real(mcp), parameter :: standard_neutrino_neff = 3.046_mcp
 
     Type, extends(TCosmologyParameterization) :: ThetaParameterization
         real(mcp) :: H0_min = 40, H0_max = 100
         real(mcp) :: H0_prior_mean = 0._mcp, H0_prior_std = 0._mcp
         real(mcp) :: sterile_mphys_max = 10 !maximum allowed physical mass of thermal sterile neutrino in eV
         real(mcp) :: use_min_zre = 0._mcp
+        real(mcp) :: zre_prior_mean = 0._mcp, zre_prior_std = 0._mcp
+        integer :: num_derived = 0
     contains
     procedure :: ParamArrayToTheoryParams => TP_ParamArrayToTheoryParams
     procedure :: NonBaseParameterPriors => TP_NonBaseParameterPriors
@@ -57,9 +56,16 @@
     if (prior/='') then
         read(prior,*) this%H0_prior_mean, this%H0_prior_std
     end if
+    prior => Ini%Read_String('zre_prior',NotFoundFail=.false.)
+    if (prior/='') then
+        read(prior,*) this%zre_prior_mean, this%zre_prior_std
+    end if
 
     call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
-    !set number of hard parameters, number of initial power specturm parameters
+    if (CosmoSettings%compute_tensors) call Names%Add('paramnames/derived_tensors.paramnames')
+    if (CosmoSettings%bbn_consistency) call Names%Add('paramnames/derived_bbn.paramnames')
+    this%num_derived = Names%num_derived
+    !set number of hard parameters, number of initial power spectrum parameters
     call this%SetTheoryParameterNumbers(16,last_power_index)
 
     end subroutine TP_Init
@@ -81,6 +87,9 @@
         TP_NonBaseParameterPriors = 0
         if (this%H0_prior_mean/=0._mcp) then
             TP_NonBaseParameterPriors = ((CMB%H0 - this%H0_prior_mean)/this%H0_prior_std)**2/2
+        end if
+        if (this%zre_prior_mean/=0._mcp) then
+            TP_NonBaseParameterPriors = TP_NonBaseParameterPriors + ((CMB%zre - this%zre_prior_mean)/this%zre_prior_std)**2/2
         end if
     end select
     end function TP_NonBaseParameterPriors
@@ -166,14 +175,13 @@
     class(TTheoryPredictions), allocatable :: Theory
     real(mcp) :: P(:)
     Type(CMBParams) CMB
-    integer num_derived, L
-    real(mcp) rms
+    real(mcp) :: lograt
+    integer ix
 
     if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)
     class is (TCosmoTheoryPredictions)
-        num_derived = 19 +  Theory%numderived
-        allocate(Derived(num_derived))
+        allocate(Derived(this%num_derived))
 
         call this%ParamArrayToTheoryParams(P,CMB)
 
@@ -182,40 +190,48 @@
         derived(3) = CMB%omdm+CMB%omb
         derived(4) = CMB%omdmh2 + CMB%ombh2
         derived(5) = CMB%omnuh2
+        derived(6) = (CMB%omdmh2 + CMB%ombh2)*CMB%h
 
-        derived(6) = Theory%Sigma_8
-        derived(7) = CMB%zre
+        derived(7) = Theory%Sigma_8
+        derived(8) = Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.5_mcp
+        derived(9) = Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.25_mcp
+        derived(10)= Theory%Sigma_8/CMB%h**0.5_mcp
 
-        if (CosmoSettings%use_lensing_potential) then
-            rms=0
-            do L=2, CosmoSettings%cl_lmax(CL_phi,CL_phi)
-                rms = rms + Theory%Cls(CL_Phi,CL_Phi)%CL(L)*(L+0.5_mcp)/(L*(L+1))
-            end do
-            derived(8) = sqrt(rms)*180/pi*60
-        else
-            derived(8) = 0
+        derived(11) = Theory%Lensing_rms_deflect
+        derived(12) = CMB%zre
+        ix=13
+        derived(ix) = cl_norm*CMB%InitPower(As_index)*1e9
+        derived(ix+1) = derived(ix)*exp(-2*CMB%tau)  !A e^{-2 tau}
+        ix = ix+2
+
+        lograt = log(0.002_mcp/CosmoSettings%pivot_k)
+        derived(ix) = CMB%InitPower(ns_index) +CMB%InitPower(nrun_index)*lograt +&
+            CMB%InitPower(nrunrun_index)*lograt**2/2
+        ix=ix+1
+
+        derived(ix)= CMB%Yhe !value actually used, may be set from bbn consistency
+        ix = ix+1
+
+        derived(ix:ix + Theory%numderived-1) = Theory%derived_parameters(1: Theory%numderived)
+        ix = ix + Theory%numderived
+        
+        if (CosmoSettings%Compute_tensors) then
+            derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(Theory%tensor_AT*1e10), &
+                Theory%tensor_ratio_C10, Theory%tensor_AT*1e9, Theory%tensor_AT*1e9*exp(-2*CMB%tau) ]
+            ix=ix+6
         end if
 
-        if (Theory%tensor_AT>0) then
-            derived(9) = Theory%tensor_ratio_02
-            derived(10) = Theory%tensor_ratio_BB
-            derived(11) = log(Theory%tensor_AT*1e10)
-            derived(12) = Theory%tensor_ratio_C10
-        else
-            derived(9:12)=0
+        if (CosmoSettings%bbn_consistency) then
+            derived(ix) = BBN_YpBBN%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
+           ! Don't output this until clear about rates used and errors
+           ! derived(ix+1) = 1d5*BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
+            ix =ix + 1 !2
         end if
 
-        derived(13) = cl_norm*CMB%InitPower(As_index)*1e9
-        derived(14) = Theory%tensor_AT*1e9
-
-        derived(15)= derived(13)*exp(-2*CMB%tau)  !A e^{-2 tau}
-        derived(16)= derived(14)*exp(-2*CMB%tau)  !At e^{-2 tau}
-
-        derived(17)= CMB%Yhe !value actually used, may be set from bbn consistency
-        derived(18)= (CMB%omdmh2 + CMB%ombh2)*CMB%h
-        derived(19)=  Theory%Sigma_8*((CMB%omdm+CMB%omb)/0.25_mcp)**0.47_mcp
-
-        derived(20:num_derived) = Theory%derived_parameters(1: Theory%numderived)
+        if (ix - 1 /= this%num_derived) then
+            write(*,*) 'num_derived =', this%num_derived, '; ix, Theory%numderived = ', ix, Theory%numderived
+            call MpiStop('TP_CalcDerivedParams error in derived parameter numbers')
+        end if
     end select
 
     end subroutine TP_CalcDerivedParams

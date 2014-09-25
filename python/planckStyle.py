@@ -1,4 +1,4 @@
-import os, ResultObjs, GetDistPlots, sys
+import os, ResultObjs, GetDistPlots, sys, batchJob
 from matplotlib import rcParams, rc, pylab
 
 # common setup for matplotlib
@@ -25,6 +25,9 @@ non_final = True
 version = 'clik9.0'
 defdata_root = 'plik'
 defdata_TT = defdata_root + '_TT_lowTEB'
+defdata_TE = defdata_root + '_TE_lowTEB'
+defdata_EE = defdata_root + '_EE_lowTEB'
+
 defdata_all = defdata_root + '_TTTEEE_lowTEB'
 defdata_TTonly = defdata_root + '_TT_lowl'
 defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
@@ -32,6 +35,7 @@ defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
 
 planck = r'\textit{Planck}'
 planckTT = r'\textit{Planck} TT'
+planckTTlowEE = r'\textit{Planck} TT$+$lowE'
 planckall = planck
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
@@ -42,6 +46,9 @@ NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
 NoLowLtau = r'\textit{Planck}$-$lowL+$\tau$prior'
 NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
 NoLowLE = r'\textit{Planck}$-$lowE'
+lensonly = 'lensing'
+HST = r'$H_0$'
+BAO = 'BAO'
 
 LCDM = r'$\Lambda$CDM'
 
@@ -58,6 +65,41 @@ s.solid_contour_palefactor = 0.6
 s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1'), 'g', 'c']
 s.axis_marker_lw = 0.6
 s.lw_contour = 1
+
+rootdir = 'main'
+
+H0_high = [73.9, 2.7]
+H0_Freeman12 = [74.3, 2.1]
+H0_gpe = [70.6, 3.3]
+
+# various Omegam sigma8 constraints for plots
+def PLSZ(omm, sigma):
+    # from Anna 18/7/2014 for fixed b=0.8
+    return  (0.757 + 0.013 * sigma) * (omm / 0.32) ** (-0.3)
+
+def CFTHlens_Kilbinger(omm, sigma):
+    return  (0.79 + 0.03 * sigma) * (omm / 0.27) ** (-0.6)
+
+
+def CFTHlens_LCDM(omm, sigma):  # 1408.4742
+    return  (0.74 + 0.03 * sigma) * (omm / 0.27) ** (-0.47)
+
+def CFTHlens_mnu(omm, sigma):  # 1408.4742, same for sterile case
+    return  (0.72 + 0.03 * sigma) * (omm / 0.27) ** (-0.48)
+
+
+def galaxygalaxy(omm, sigma):  # mandelbaum
+    return  (0.8 + 0.05 * sigma) * (omm / 0.25) ** (-0.57)
+
+def planck_lensing(omm, sigma):
+    # g60_full
+    return  (0.572 + 0.019 * sigma) * omm ** (-0.25)
+
+
+def plotBounds(omm, data, c='gray'):
+    pylab.fill_between(omm, data(omm, -2), data(omm, 2), facecolor=c, alpha=0.15, edgecolor=c, lw=0)
+    pylab.fill_between(omm, data(omm, -1), data(omm, 1), facecolor=c, alpha=0.25, edgecolor=c, lw=0)
+
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
 
@@ -77,11 +119,20 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
     def exportExtra(self, fname=None):
         self.doExport(fname, 'plots')
 
+    def getRoot(self, paramtag, datatag, returnJobItem=False):
+        if not hasattr(self, 'batch'): self.batch = batchJob.readobject(rootdir)
+        return self.batch.resolveName(paramtag, datatag, returnJobItem=returnJobItem)
 
-plotter = planckPlotter('main/plot_data')
+    def getJobItem(self, paramtag, datatag):
+        jobItem = self.getRoot(paramtag, datatag, returnJobItem=True)
+        jobItem.loadJobItemResults(paramNameFile=self.settings.param_names_for_labels)
+        return jobItem
+
+plotter = planckPlotter(rootdir + '/plot_data')
 
 
 def getSubplotPlotter(plot_data=None):
+    global plotter
     s.setWithSubplotSize(2)
     s.axes_fontsize += 2
     s.colorbar_axes_fontsize += 2

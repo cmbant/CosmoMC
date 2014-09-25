@@ -6,6 +6,10 @@
     implicit none
     private
 
+    real(mcp), parameter :: neutrino_mass_fac= 94.07_mcp !conversion factor for thermal with Neff=3 TCMB-2.7255
+    !93.014 for 3.046
+    real(mcp), parameter :: standard_neutrino_neff = 3.046_mcp
+
     Type TCosmologyImportanceOptions
         logical :: redo_cls, redo_pk
     end Type TCosmologyImportanceOptions
@@ -16,6 +20,7 @@
     procedure :: BAO_D_v
     procedure :: Hofz
     procedure :: AngularDiameterDistance
+    procedure :: ComovingRadialDistance
     procedure :: AngularDiameterDistance2
     procedure :: LuminosityDistance
     procedure :: CMBToTheta
@@ -31,7 +36,7 @@
     procedure :: ReadImportanceParams => TCosmologyCalculator_ReadImportanceParams
     end Type TCosmologyCalculator
 
-    public TCosmologyCalculator, TCosmologyImportanceOptions
+    public TCosmologyCalculator, TCosmologyImportanceOptions, neutrino_mass_fac, standard_neutrino_neff
     contains
 
     subroutine TCosmologyCalculator_ReadImportanceParams(this, Ini)
@@ -181,6 +186,15 @@
     AngularDiameterDistance = 0
 
     end function AngularDiameterDistance
+
+    real(mcp) function ComovingRadialDistance(this, z)
+    class(TCosmologyCalculator) :: this
+    real(mcp), intent(IN) :: z
+
+    call this%ErrorNotImplemented('ComovingRadialDistance')
+    ComovingRadialDistance = 0
+
+    end function ComovingRadialDistance
 
     real(mcp) function AngularDiameterDistance2(this, z1, z2)
     class(TCosmologyCalculator) :: this

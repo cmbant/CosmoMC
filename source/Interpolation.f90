@@ -45,7 +45,7 @@
         REAL(GI), private, allocatable :: wk(:,:,:)
         REAL(GI), allocatable :: x(:), y(:)
         REAL(GI), allocatable :: z(:,:)
-        integer nx, ny
+        integer :: nx=0, ny=0
     contains
     procedure :: Init => TInterpGrid2D_Init
     procedure :: InitFromFile => TInterpGrid2D_InitFromFile
@@ -336,7 +336,7 @@
     b0=(x-W%X(llo))/ho
     dely=W%F(lhi)-W%F(llo)
     TCubicSpline_Derivative = dely/ho-(3.d0*a0**2-1.0d0)*ho*W%ddF(llo)/6.0d0 + &
-    (3.d0*b0**2-1.0d0)*ho*W%ddF(lhi)/6.0d0
+        (3.d0*b0**2-1.0d0)*ho*W%ddF(lhi)/6.0d0
 
     end function TCubicSpline_Derivative
 
@@ -455,30 +455,30 @@
         nx=0
         do while(F%ReadLineSkipEmptyAndComments(InLine))
 
-        read(InLine,*, iostat=status) tmp
-        if (status/=0) call W%Error('Error reading line: '//trim(InLine))
+            read(InLine,*, iostat=status) tmp
+            if (status/=0) call W%Error('Error reading line: '//trim(InLine))
 
-        if (first .or. tmp(iycol)/=lasty) then
-            lasty=tmp(iycol)
-            ny=ny+1
-            nx=0
-            first = .false.
-        end if
+            if (first .or. tmp(iycol)/=lasty) then
+                lasty=tmp(iycol)
+                ny=ny+1
+                nx=0
+                first = .false.
+            end if
 
-        nx=nx+1
-        if (parse==2) then
-            if (ny==1) then
-                W%x(nx) = tmp(ixcol)
-            else
-                if (tmp(ixcol)/=W%x(nx)) call W%Error('Non-grid x values')
-            end if
-            if (nx==1) then
-                W%y(ny) = tmp(iycol)
-            else
-                if (tmp(iycol)/=W%y(ny))call W%Error('Non-grid y values')
-            end if
-            W%z(nx, ny) = tmp(izcol)
-        endif
+            nx=nx+1
+            if (parse==2) then
+                if (ny==1) then
+                    W%x(nx) = tmp(ixcol)
+                else
+                    if (tmp(ixcol)/=W%x(nx)) call W%Error('Non-grid x values')
+                end if
+                if (nx==1) then
+                    W%y(ny) = tmp(iycol)
+                else
+                    if (tmp(iycol)/=W%y(ny))call W%Error('Non-grid y values')
+                end if
+                W%z(nx, ny) = tmp(izcol)
+            endif
         end do
 
         if (parse==2) exit
@@ -683,7 +683,7 @@
 
         ! Calculates the z values at the output points.
         CALL rgplnl(nxd, nyd, xd, yd, zd, wk, nipi, xi(iip), yi(iip), inxi, inyi, &
-        zi(iip))
+            zi(iip))
     END DO
     RETURN
 
@@ -709,9 +709,9 @@
 9000 FORMAT (/' *** RGBI3P Error 1: NXD = 1 or less')
 9010 FORMAT (/' *** RGBI3P Error 2: NYD = 1 or less')
 9020 FORMAT (/' *** RGBI3P Error 3: Identical XD values or',  &
-    ' XD values out of sequence'/ '    IX =', i6, ',  XD(IX) =', e11.3)
+        ' XD values out of sequence'/ '    IX =', i6, ',  XD(IX) =', e11.3)
 9030 FORMAT (/' *** RGBI3P Error 4: Identical YD values or',  &
-    ' YD values out of sequence',/,'    IY =',i6,',  YD(IY) =', e11.3)
+        ' YD values out of sequence',/,'    IY =',i6,',  YD(IY) =', e11.3)
 9040 FORMAT (/' *** RGBI3P Error 5: NIP = 0 or less')
 9050 FORMAT ('    NXD =', i5,',  NYD =', i5,',  NIP =', i5/)
     END SUBROUTINE rgbi3p
@@ -866,7 +866,7 @@
 
             ! Calculates the z values at the output-grid points.
             CALL rgplnl(nxd, nyd, xd, yd, zd, wk, nipi, xi(ixi), yii, inxi, inyi,  &
-            zi(ixi,iyi))
+                zi(ixi,iyi))
         END DO
     END DO
     RETURN
@@ -896,9 +896,9 @@
 9000 FORMAT (/' *** RGSF3P Error 1: NXD = 1 or less')
 9010 FORMAT (/' *** RGSF3P Error 2: NYD = 1 or less')
 9020 FORMAT (/' *** RGSF3P Error 3: Identical XD values or',  &
-    ' XD values out of sequence',/,'    IX =',i6,',  XD(IX) =', e11.3)
+        ' XD values out of sequence',/,'    IX =',i6,',  XD(IX) =', e11.3)
 9030 FORMAT (/' *** RGSF3P Error 4: Identical YD values or',  &
-    ' YD values out of sequence',/,'    IY =',i6,',  YD(IY) =', e11.3)
+        ' YD values out of sequence',/,'    IY =',i6,',  YD(IY) =', e11.3)
 9040 FORMAT (/' *** RGSF3P Error 5: NXI = 0 or less')
 9050 FORMAT (/' *** RGSF3P Error 6: NYI = 0 or less')
 9060 FORMAT ('    NXD =', i5, ',  NYD =', i5, ',  NXI =', i5,',  NYI =', i5 /)
@@ -929,7 +929,7 @@
     REAL(GI)              :: fn_val
 
     fn_val = ((zz2-zz0)*(xx3-xx1)/xx2 - (zz1-zz0)*(xx3-xx2)/xx1) *  &
-    (xx3/(xx2-xx1)) + zz0
+        (xx3/(xx2-xx1)) + zz0
     RETURN
     END FUNCTION z3f
 
@@ -980,21 +980,21 @@
     !     ..
     !     .. Local Scalars ..
     REAL(GI) :: b00, b00x, b00y, b01, b10, b11, cx1, cx2, cx3, cy1, cy2,  &
-    cy3, disf, dnm, dz00, dz01, dz02, dz03, dz10, dz11, dz12,  &
-    dz13, dz20, dz21, dz22, dz23, dz30, dz31, dz32, dz33,  &
-    dzx10, dzx20, dzx30, dzxy11, dzxy12, dzxy13, dzxy21,  &
-    dzxy22, dzxy23, dzxy31, dzxy32, dzxy33, dzy01, dzy02,  &
-    dzy03, epsln, pezx, pezxy, pezy, smpef, smpei, smwtf,  &
-    smwti, sx, sxx, sxxy, sxxyy, sxy, sxyy, sxyz, sxz, sy, syy,  &
-    syz, sz, volf, wt, x0, x1, x2, x3, y0, y1, y2,  &
-    y3, z00, z01, z02, z03, z10, z11, z12, z13, z20, z21, z22,  &
-    z23, z30, z31, z32, z33, zxdi, zxydi, zydi
+        cy3, disf, dnm, dz00, dz01, dz02, dz03, dz10, dz11, dz12,  &
+        dz13, dz20, dz21, dz22, dz23, dz30, dz31, dz32, dz33,  &
+        dzx10, dzx20, dzx30, dzxy11, dzxy12, dzxy13, dzxy21,  &
+        dzxy22, dzxy23, dzxy31, dzxy32, dzxy33, dzy01, dzy02,  &
+        dzy03, epsln, pezx, pezxy, pezy, smpef, smpei, smwtf,  &
+        smwti, sx, sxx, sxxy, sxxyy, sxy, sxyy, sxyz, sxz, sy, syy,  &
+        syz, sz, volf, wt, x0, x1, x2, x3, y0, y1, y2,  &
+        y3, z00, z01, z02, z03, z10, z11, z12, z13, z20, z21, z22,  &
+        z23, z30, z31, z32, z33, zxdi, zxydi, zydi
     INTEGER :: ipex, ipey, ix0, ix1, ix2, ix3, iy0, iy1, iy2, iy3, nx0, ny0
     !     ..
     !     .. Local Arrays ..
     REAL(GI)    :: b00xa(4), b00ya(4), b01a(4), b10a(4), cxa(3,4), cya(3,4),   &
-    sxa(4), sxxa(4), sya(4), syya(4), xa(3,4), ya(3,4),   &
-    z0ia(3,4), zi0a(3,4)
+        sxa(4), sxxa(4), sya(4), syya(4), xa(3,4), ya(3,4),   &
+        z0ia(3,4), zi0a(3,4)
 
     INTEGER, parameter :: idlt(3,4) = RESHAPE([-3, -2, -1, -2, -1, 1,-1, 1,2, 1 ,2, 3 ], [ 3, 4 ] )
     !AL Jun 14: Fixed F90 translation
@@ -1024,7 +1024,7 @@
                 ix2 = ix0 + idlt(2,ipex)
                 ix3 = ix0 + idlt(3,ipex)
                 IF ((ix1 < 1) .OR. (ix2 < 1) .OR. (ix3 < 1) .OR.  &
-                (ix1 > nx0) .OR. (ix2 > nx0) .OR. (ix3 > nx0)) CYCLE
+                    (ix1 > nx0) .OR. (ix2 > nx0) .OR. (ix3 > nx0)) CYCLE
                 ! Selects and/or supplements the x and z values.
                 x1 = xd(ix1) - x0
                 z10 = zd(ix1,iy0)
@@ -1123,7 +1123,7 @@
                 iy2 = iy0 + idlt(2,ipey)
                 iy3 = iy0 + idlt(3,ipey)
                 IF ((iy1 < 1) .OR. (iy2 < 1) .OR. (iy3 < 1) .OR.  &
-                (iy1 > ny0) .OR. (iy2 > ny0) .OR. (iy3 > ny0)) CYCLE
+                    (iy1 > ny0) .OR. (iy2 > ny0) .OR. (iy3 > ny0)) CYCLE
                 ! Selects and/or supplements the y and z values.
                 y1 = yd(iy1) - y0
                 z01 = zd(ix0,iy1)
@@ -1220,7 +1220,7 @@
                 ix2 = ix0 + idlt(2,ipex)
                 ix3 = ix0 + idlt(3,ipex)
                 IF ((ix1 < 1) .OR. (ix2 < 1) .OR. (ix3 < 1) .OR.  &
-                (ix1 > nx0) .OR. (ix2 > nx0) .OR. (ix3 > nx0)) CYCLE
+                    (ix1 > nx0) .OR. (ix2 > nx0) .OR. (ix3 > nx0)) CYCLE
                 ! Retrieves the necessary values for estimating zxy in the x direction.
                 x1 = xa(1,ipex)
                 x2 = xa(2,ipex)
@@ -1242,7 +1242,7 @@
                     iy2 = iy0 + idlt(2,ipey)
                     iy3 = iy0 + idlt(3,ipey)
                     IF ((iy1 < 1) .OR. (iy2 < 1) .OR. (iy3 < 1) .OR. (iy1 > ny0) .OR.  &
-                    (iy2 > ny0) .OR. (iy3 > ny0)) CYCLE
+                        (iy2 > ny0) .OR. (iy3 > ny0)) CYCLE
                     ! Retrieves the necessary values for estimating zxy in the y direction.
                     y1 = ya(1,ipey)
                     y2 = ya(2,ipey)
@@ -1337,8 +1337,8 @@
                     dzxy32 = (z32-z30-z02+z00)/ (x3*y2)
                     dzxy33 = (z33-z30-z03+z00)/ (x3*y3)
                     pezxy = cx1* (cy1*dzxy11+cy2*dzxy12+cy3*dzxy13) +  &
-                    cx2* (cy1*dzxy21+cy2*dzxy22+cy3*dzxy23) +  &
-                    cx3* (cy1*dzxy31+cy2*dzxy32+cy3*dzxy33)
+                        cx2* (cy1*dzxy21+cy2*dzxy22+cy3*dzxy23) +  &
+                        cx3* (cy1*dzxy31+cy2*dzxy32+cy3*dzxy33)
                     ! Calculates the volatility factor and distance factor in the x
                     ! and y directions for the primary estimate of zxy.
                     b00 = (b00x+b00y)/2.0
@@ -1347,7 +1347,7 @@
                     sxyy = sx*syy
                     sxxyy = sxx*syy
                     sxyz = x1* (y1*z11+y2*z12+y3*z13) + x2* (y1*z21+y2*z22+y3*z23) +  &
-                    x3* (y1*z31+y2*z32+y3*z33)
+                        x3* (y1*z31+y2*z32+y3*z33)
                     b11 = (sxyz-b00*sxy-b10*sxxy-b01*sxyy)/sxxyy
                     dz00 = z00 - b00
                     dz01 = z01 - (b00+b01*y1)
@@ -1366,14 +1366,14 @@
                     dz32 = z32 - (b00+b01*y2+x3* (b10+b11*y2))
                     dz33 = z33 - (b00+b01*y3+x3* (b10+b11*y3))
                     volf = dz00**2 + dz01**2 + dz02**2 + dz03**2 +  &
-                    dz10**2 + dz11**2 + dz12**2 + dz13**2 +  &
-                    dz20**2 + dz21**2 + dz22**2 + dz23**2 +  &
-                    dz30**2 + dz31**2 + dz32**2 + dz33**2
+                        dz10**2 + dz11**2 + dz12**2 + dz13**2 +  &
+                        dz20**2 + dz21**2 + dz22**2 + dz23**2 +  &
+                        dz30**2 + dz31**2 + dz32**2 + dz33**2
                     disf = sxx*syy
                     ! Calculates EPSLN.
                     epsln = (z00**2 + z01**2 + z02**2 + z03**2 + z10**2 +   &
-                    z11**2 + z12**2 + z13**2 + z20**2 + z21**2 + z22**2 +   &
-                    z23**2 + z30**2 + z31**2 + z32**2 + z33**2)* 1.0E-12
+                        z11**2 + z12**2 + z13**2 + z20**2 + z21**2 + z22**2 +   &
+                        z23**2 + z30**2 + z31**2 + z32**2 + z33**2)* 1.0E-12
                     ! Accumulates the weighted primary estimates of zxy and their weights.
                     IF (volf > epsln) THEN
                         ! - For a finite weight.
@@ -1615,10 +1615,10 @@
     !     ..
     !     .. Local Scalars ..
     REAL(GI) :: a, b, c, W, dx, dxsq, dy, dysq, p00, p01, p02, p03, p10, p11,  &
-    p12, p13, p20, p21, p22, p23, p30, p31, p32, p33, q0, q1, q2,  &
-    q3, u, v, x0, xii, y0, yii, z00, z01, z0dx, z0dy, z10, z11,  &
-    z1dx, z1dy, zdxdy, zii, zx00, zx01, zx0dy, zx10, zx11,  &
-    zx1dy, zxy00, zxy01, zxy10, zxy11, zy00, zy01, zy0dx, zy10, zy11, zy1dx
+        p12, p13, p20, p21, p22, p23, p30, p31, p32, p33, q0, q1, q2,  &
+        q3, u, v, x0, xii, y0, yii, z00, z01, z0dx, z0dy, z10, z11,  &
+        z1dx, z1dy, zdxdy, zii, zx00, zx01, zx0dy, zx10, zx11,  &
+        zx1dy, zxy00, zxy01, zxy10, zxy11, zy00, zy01, zy0dx, zy10, zy11, zy1dx
     INTEGER :: iip, ixd0, ixd1, ixdi, ixdipv, iyd0, iyd1, iydi, iydipv
     !     ..
     !     .. Intrinsic Functions ..
@@ -1722,91 +1722,91 @@
             ! Case 2.  When the rectangle is inside the data area in the x
             ! direction but outside in the y direction.
         ELSE IF ((ixdi > 0.AND.ixdi < nxd) .AND.  &
-        (iydi <= 0.OR.iydi >= nyd)) THEN
-            ! Retrieves the z and partial derivative values at the other
-            ! vertex of the semi-infinite rectangle.
-            IF (ixdi /= ixdipv .OR. iydi /= iydipv) THEN
-                ixd1 = ixd0 + 1
-                dx = xd(ixd1) - x0
-                dxsq = dx*dx
-                z10 = zd(ixd1,iyd0)
-                zx10 = pdd(1,ixd1,iyd0)
-                zy10 = pdd(2,ixd1,iyd0)
-                zxy10 = pdd(3,ixd1,iyd0)
-                ! Calculates the polynomial coefficients.
-                z0dx = (z10-z00)/dx
-                zy0dx = (zy10-zy00)/dx
-                p00 = z00
-                p01 = zy00
-                p10 = zx00
-                p11 = zxy00
-                p20 = (2.0* (z0dx-zx00)+z0dx-zx10)/dx
-                p21 = (2.0* (zy0dx-zxy00)+zy0dx-zxy10)/dx
-                p30 = (-2.0*z0dx+zx10+zx00)/dxsq
-                p31 = (-2.0*zy0dx+zxy10+zxy00)/dxsq
-            END IF
-            ! Evaluates the polynomial.
-            u = xii - x0
-            v = yii - y0
-            q0 = p00 + v*p01
-            q1 = p10 + v*p11
-            q2 = p20 + v*p21
-            q3 = p30 + v*p31
-            zii = q0 + u* (q1+u* (q2+u*q3))
-            ! End of Case 2
-
-            ! Case 3.  When the rectangle is outside the data area in the x
-            ! direction but inside in the y direction.
-        ELSE IF ((ixdi <= 0.OR.ixdi >= nxd) .AND.  &
-        (iydi > 0 .AND. iydi < nyd)) THEN
-            ! Retrieves the z and partial derivative values at the other
-            ! vertex of the semi-infinite rectangle.
-            IF (ixdi /= ixdipv .OR. iydi /= iydipv) THEN
-                iyd1 = iyd0 + 1
-                dy = yd(iyd1) - y0
-                dysq = dy*dy
-                z01 = zd(ixd0,iyd1)
-                zx01 = pdd(1,ixd0,iyd1)
-                zy01 = pdd(2,ixd0,iyd1)
-                zxy01 = pdd(3,ixd0,iyd1)
-                ! Calculates the polynomial coefficients.
-                z0dy = (z01-z00)/dy
-                zx0dy = (zx01-zx00)/dy
-                p00 = z00
-                p01 = zy00
-                p02 = (2.0*(z0dy-zy00)+z0dy-zy01)/dy
-                p03 = (-2.0*z0dy+zy01+zy00)/dysq
-                p10 = zx00
-                p11 = zxy00
-                p12 = (2.0*(zx0dy-zxy00) + zx0dy - zxy01)/dy
-                p13 = (-2.0*zx0dy + zxy01 + zxy00)/dysq
-            END IF
-
-            ! Evaluates the polynomial.
-            u = xii - x0
-            v = yii - y0
-            q0 = p00 + v* (p01 + v*(p02+v*p03))
-            q1 = p10 + v* (p11 + v*(p12+v*p13))
-            zii = q0 + u*q1
-            ! End of Case 3
-
-            ! Case 4.  When the rectangle is outside the data area in both the
-            ! x and y direction.
-        ELSE IF ((ixdi <= 0 .OR. ixdi >= nxd) .AND.  &
-        (iydi <= 0 .OR. iydi >= nyd)) THEN
+            (iydi <= 0.OR.iydi >= nyd)) THEN
+        ! Retrieves the z and partial derivative values at the other
+        ! vertex of the semi-infinite rectangle.
+        IF (ixdi /= ixdipv .OR. iydi /= iydipv) THEN
+            ixd1 = ixd0 + 1
+            dx = xd(ixd1) - x0
+            dxsq = dx*dx
+            z10 = zd(ixd1,iyd0)
+            zx10 = pdd(1,ixd1,iyd0)
+            zy10 = pdd(2,ixd1,iyd0)
+            zxy10 = pdd(3,ixd1,iyd0)
             ! Calculates the polynomial coefficients.
-            IF (ixdi /= ixdipv .OR. iydi /= iydipv) THEN
-                p00 = z00
-                p01 = zy00
-                p10 = zx00
-                p11 = zxy00
-            END IF
-            ! Evaluates the polynomial.
-            u = xii - x0
-            v = yii - y0
-            q0 = p00 + v*p01
-            q1 = p10 + v*p11
-            zii = q0 + u*q1
+            z0dx = (z10-z00)/dx
+            zy0dx = (zy10-zy00)/dx
+            p00 = z00
+            p01 = zy00
+            p10 = zx00
+            p11 = zxy00
+            p20 = (2.0* (z0dx-zx00)+z0dx-zx10)/dx
+            p21 = (2.0* (zy0dx-zxy00)+zy0dx-zxy10)/dx
+            p30 = (-2.0*z0dx+zx10+zx00)/dxsq
+            p31 = (-2.0*zy0dx+zxy10+zxy00)/dxsq
+        END IF
+        ! Evaluates the polynomial.
+        u = xii - x0
+        v = yii - y0
+        q0 = p00 + v*p01
+        q1 = p10 + v*p11
+        q2 = p20 + v*p21
+        q3 = p30 + v*p31
+        zii = q0 + u* (q1+u* (q2+u*q3))
+        ! End of Case 2
+
+        ! Case 3.  When the rectangle is outside the data area in the x
+        ! direction but inside in the y direction.
+        ELSE IF ((ixdi <= 0.OR.ixdi >= nxd) .AND.  &
+            (iydi > 0 .AND. iydi < nyd)) THEN
+        ! Retrieves the z and partial derivative values at the other
+        ! vertex of the semi-infinite rectangle.
+        IF (ixdi /= ixdipv .OR. iydi /= iydipv) THEN
+            iyd1 = iyd0 + 1
+            dy = yd(iyd1) - y0
+            dysq = dy*dy
+            z01 = zd(ixd0,iyd1)
+            zx01 = pdd(1,ixd0,iyd1)
+            zy01 = pdd(2,ixd0,iyd1)
+            zxy01 = pdd(3,ixd0,iyd1)
+            ! Calculates the polynomial coefficients.
+            z0dy = (z01-z00)/dy
+            zx0dy = (zx01-zx00)/dy
+            p00 = z00
+            p01 = zy00
+            p02 = (2.0*(z0dy-zy00)+z0dy-zy01)/dy
+            p03 = (-2.0*z0dy+zy01+zy00)/dysq
+            p10 = zx00
+            p11 = zxy00
+            p12 = (2.0*(zx0dy-zxy00) + zx0dy - zxy01)/dy
+            p13 = (-2.0*zx0dy + zxy01 + zxy00)/dysq
+        END IF
+
+        ! Evaluates the polynomial.
+        u = xii - x0
+        v = yii - y0
+        q0 = p00 + v* (p01 + v*(p02+v*p03))
+        q1 = p10 + v* (p11 + v*(p12+v*p13))
+        zii = q0 + u*q1
+        ! End of Case 3
+
+        ! Case 4.  When the rectangle is outside the data area in both the
+        ! x and y direction.
+        ELSE IF ((ixdi <= 0 .OR. ixdi >= nxd) .AND.  &
+            (iydi <= 0 .OR. iydi >= nyd)) THEN
+        ! Calculates the polynomial coefficients.
+        IF (ixdi /= ixdipv .OR. iydi /= iydipv) THEN
+            p00 = z00
+            p01 = zy00
+            p10 = zx00
+            p11 = zxy00
+        END IF
+        ! Evaluates the polynomial.
+        u = xii - x0
+        v = yii - y0
+        q0 = p00 + v*p01
+        q1 = p10 + v*p11
+        zii = q0 + u*q1
         END IF
         ! End of Case 4
         zi(iip) = zii

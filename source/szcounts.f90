@@ -51,7 +51,7 @@ module cosmology
 ! note that we switch to the generalized Linder parametrization now
   public
   TYPE cospar
-  REAL(dl) :: H0,w0,w1,omegam,omegav,n,sig8,omegak,omegabh2,gamma,ystar,alpha,sigmaM,bias,biasinv,logystar,sigmaR(1000,2)
+     REAL(dl) :: H0,w0,w1,omegam,omegav,n,sig8,omegak,omegabh2,gamma,ystar,alpha,sigmaM,bias,biasinv,logystar,sigmaR(1000,2)
   END TYPE cospar
   Type (cospar), SAVE :: cosmopar
   
@@ -282,7 +282,6 @@ use Calculator_Cosmology
 !!$
 !!$    endif
 !!$print*,'old',sigma
-    p=minloc(abs(cosmopar%sigmaR(:,1)-R))
     max_R=maxval(cosmopar%sigmaR(:,1))
     min_R=minval(cosmopar%sigmaR(:,1))
 
@@ -624,8 +623,8 @@ contains
 
 
 
-  SUBROUTINE deltaN_yz(Z,Nz,LOGY,Ny,DN,skyfracs,thetas,ylims,switch)
-       REAL(dl),INTENT(IN) :: z(:),logy(:),thetas(:),skyfracs(:),ylims(:,:)
+  SUBROUTINE deltaN_yz(Z,Nz,LOGY,Ny,DN,skyfracs,thetas,ylims,switch,qa_ytot,erf_list)
+       REAL(dl),INTENT(IN) :: z(:),logy(:),thetas(:),skyfracs(:),ylims(:,:),qa_ytot(:,:),erf_list(:,:)
        INTEGER, INTENT(IN):: Ny,Nz,switch
        REAl(dl),allocatable :: grid(:,:),steps_z(:),steps_z2(:),steps_m(:)
        REAl(dl),allocatable ::ytheta5_data(:,:),ytheta5_model(:),Mz_data(:,:)
@@ -713,7 +712,7 @@ contains
        endif
 
        completeness(:,:)=0.       
-       call grid_C(npatches,steps_z,steps_m,thetas,ylims,skyfracs,completeness)
+       call grid_C(npatches,steps_z,steps_m,thetas,ylims,skyfracs,completeness,qa_ytot,erf_list)
 
 
        grid(:,:)=0.
@@ -852,7 +851,7 @@ contains
 
 
 
-  SUBROUTINE grid_C(npatches,steps_z,steps_m,thetas,ylims,skyfracs,completeness)
+  SUBROUTINE grid_C_old(npatches,steps_z,steps_m,thetas,ylims,skyfracs,completeness)
     REAl(dl),intent(in) :: steps_z(:),steps_m(:),thetas(:),ylims(:,:),skyfracs(:)
     INTEGER :: nsteps_z,nsteps_m,nthetas,ntab,npatches,iostat
     real(sp):: completeness(:,:)
@@ -1021,7 +1020,281 @@ contains
        stop  
     endif
 
-  END SUBROUTINE grid_C
+  END SUBROUTINE grid_C_old
+
+  SUBROUTINE grid_C(npatches,steps_z,steps_m,thetas,ylims,skyfracs,completeness,qa_ytot,erf_list)
+    REAl(dl),intent(in) :: steps_z(:),steps_m(:),thetas(:),ylims(:,:),skyfracs(:),qa_ytot(:,:),erf_list(:,:)
+    INTEGER :: nsteps_z,nsteps_m,nthetas,ntab,npatches,iostat,switch_comp,nsteps_y,nsteps_t,nerf
+    real(sp):: completeness(:,:)
+    integer ::i,j,ii,jj,index1,index2,count,P(1),k1,k2,l1,l2,k,N,nthetas2,nrows,indt(1),indy(1),it,i1y,i2y,i3y
+    integer ::indminy(2),indmaxy(2),iminy,imaxy
+    real (dl):: dif_old,dif,max,min,dlm,binz,m_min,m_max,mp,yp,zp,thp,xk1,xk2,xk3,yk1,yk2,yk3,fact
+    real(dl),allocatable:: dif_y(:),dif_theta(:),difft(:),diffy(:)
+    real(dl):: min_thetas,max_thetas,min_y,max_y
+    real(dl):: c1,c2,th1,th2,c,y12,y1,y2,y,col1,col0
+    REAL(dl),parameter::q=6.
+  !!REAL(dl),parameter::q=5.
+    !real(dl)::erf_compl
+    !compl(patches,thetas,y)
+    real(dl),allocatable::thetas2(:),ylims2(:,:),erfs(:,:)
+    real(dl)::win0,win,arg,arg0,y0,py,lnymax,lnymin,lny,dy,fac,mu,int,dlny,fsky
+    real(dl):: sigmaM
+
+    sigmaM=cosmopar%sigmaM
+    switch_comp = 1 !ERF
+    !switch_comp = 2 !QA
+    ntab=size(ylims)
+    nsteps_z=size(steps_z)
+    nsteps_m=size(steps_m)
+    nthetas=size(thetas)
+    
+    allocate(dif_y(ntab),dif_theta(nthetas))
+    
+!!$    print*,nsteps_z,nsteps_m
+!!$    print*,ntab,nthetas
+    
+    min_thetas=minval(thetas)
+    max_thetas=maxval(thetas)
+
+    min_y=minval(qa_ytot)
+    max_y=maxval(qa_ytot)
+    
+    nerf = size(qa_ytot(:,0))
+    
+    SELECT CASE(switch_comp)
+     CASE(1)
+       ! print*, 'ERF ANALYTICAL COMPLETENESS'
+
+        if (sigmaM==0) then
+           do jj=1,nsteps_z
+              do ii=1,nsteps_m
+                 mp=exp(steps_m(ii))
+                 zp=steps_z(jj)
+                 thp=theta500(mp,zp)
+                 yp=y500(mp,zp)
+                 if (thp > max_thetas) then
+                    l1=nthetas
+                    l2=nthetas-1
+                    th1=thetas(l1)
+                    th2=thetas(l2) 
+                    
+                 else if  (thp < min_thetas) then
+                    l1=1
+                    l2=2
+                    th1=thetas(l1)
+                    th2=thetas(l2) 
+                 else
+                    dif_theta=abs(thetas-thp)
+                    P=minloc(dif_theta) 
+                    l1=P(1)
+                    th1=thetas(l1)
+                    l2=l1+1
+                    if (th1 > thp) l2=l1-1 
+                    th2=thetas(l2)
+                    
+                 endif
+                 completeness(ii,jj)=0.
+                 do i=1,npatches
+                    y1=ylims(i,l1)
+                    y2=ylims(i,l2)
+                    y=y1+(y2-y1)/(th2-th1)*(thp-th1)
+                    c2=erf_compl(yp,y,q) 
+                    completeness(ii,jj)=completeness(ii,jj)+c2*skyfracs(i)
+                 enddo
+              enddo
+           enddo
+
+           !do i=100,110
+           !   print*, y500(exp(steps_m(i)),steps_z(150))
+           !   print*, ''
+           !   print*, theta500(steps_m(i),steps_z(150))
+           !   print*, ''
+           !   print*,completeness(i,150)
+           !enddo
+           !stop
+
+        else
+           fac=1./sqrt(2.*pi*sigmaM**2)
+           lnymin=-11.5 
+           lnymax=10.
+           dlny=0.05
+           
+           N=(lnymax-lnymin)/dlny
+           
+           fsky=0
+           do i=1,npatches
+              fsky=fsky+skyfracs(i)
+           enddo
+           !     print*,'fsky=',fsky
+           
+!!$
+           allocate(erfs(N,nthetas),stat=iostat)!y,integrated completeness
+           if (iostat/=0) then
+              print*,'allocation error'
+           endif
+           
+           
+           do j=1,nthetas
+              lny=lnymin
+              do k=1,N
+                 y0=dexp(lny)
+                 lny=lny+dlny
+                 win0=0.
+                 do i=1,npatches
+                    y1=ylims(i,j)
+                    win0=win0+erf_compl(y0,y1,q)*skyfracs(i)
+                 enddo
+                 erfs(k,j)=win0
+                 !           if (erfs(k,j)>fsky) erfs(k,j)=fsky
+              enddo
+           enddo
+           
+           
+           
+           do jj=1,nsteps_z
+              do ii=1,nsteps_m
+                 
+                 mp=exp(steps_m(ii))
+                 zp=steps_z(jj)           
+                 thp=theta500(mp,zp)
+                 yp=y500(mp,zp)
+                 
+                 if (thp > max_thetas) then
+                    l1=nthetas
+                    l2=nthetas-1
+                    th1=thetas(l1)
+                    th2=thetas(l2) 
+                 else if  (thp < min_thetas) then
+                    l1=1
+                    l2=2
+                    th1=thetas(l1)
+                    th2=thetas(l2) 
+                 else
+                    dif_theta=abs(thetas-thp)
+                    P=minloc(dif_theta) 
+                    l1=P(1)
+                    th1=thetas(l1)
+                    l2=l1+1
+                    if (th1 > thp) l2=l1-1 
+                    th2=thetas(l2)
+                 endif
+                 
+                 mu=dlog(y500(mp,zp))
+                 
+                 int=0.
+                 lny=lnymin
+                 do k=1,N-1
+                    y0=dexp(lny)
+                    y=dexp(lny+dlny)
+                    dy=y-y0
+                    arg0=((lny-mu)/(sqrt(2.)*sigmaM))
+                    win0=erfs(k,l1)+(erfs(k,l2)-erfs(k,l1))/(th2-th1)*(thp-th1)
+                    win=erfs(k+1,l1)+(erfs(k+1,l2)-erfs(k+1,l1))/(th2-th1)*(thp-th1)
+                    lny=lny+dlny
+                    arg=((lny-mu)/(sqrt(2.)*sigmaM))
+                    py=(win0*fac/y0*exp(-arg0**2)+win*fac/y*exp(-arg**2))*0.5
+                    int=int+py*dy
+                 enddo
+                 if (int > fsky) int=fsky
+                 if (int < 0.) int=0.
+                 completeness(ii,jj)=int
+                 
+                 
+              enddo
+           enddo
+           
+           deallocate(erfs)
+           
+        endif
+        
+     CASE(2)
+!        print*, 'QA COMPLETENESS'
+        if (sigmaM==0) then
+           do jj=1,nsteps_z
+              do ii=1,nsteps_m
+               
+                 mp=exp(steps_m(ii))
+                 zp=steps_z(jj)
+                 
+                 thp=theta500(mp,zp)
+                 yp=y500(mp,zp)
+
+                 allocate(difft(nthetas))
+                 difft = abs(thetas-thp)
+                 indt = minloc(difft)
+                 it = indt(1)
+
+                 allocate(diffy(nerf))
+                 diffy = abs(qa_ytot(:,it)-yp)
+
+                 indy = minloc(diffy)
+
+                 i1y = indy(1)-1
+                 i2y = indy(1)+1
+
+                 deallocate(difft)
+                 deallocate(diffy)
+
+                 indminy = minloc(qa_ytot)
+                 indmaxy = maxloc(qa_ytot)
+
+                 if (i1y <=0) then
+                    i1y = indminy(1)
+                 endif
+
+                 if (i2y>nerf) then
+                    i2y = indmaxy(1)
+                 endif
+
+                 if (yp < min_y) then
+                    i1y = indminy(1)
+                    i2y = indminy(1)+1
+                 endif
+
+                 if (yp > max_y) then
+                    i1y = indmaxy(1)-1
+                    i2y = indmaxy(1)
+                 endif
+                 
+                 xk1 = qa_ytot(i1y,it)
+                 xk2 = qa_ytot(i2y,it)
+                 yk1 = erf_list(i1y,it)
+                 yk2 = erf_list(i2y,it)
+ 
+                 completeness(ii,jj) = 0.
+                
+                 !INTERPOLATION POLY ORDER 1
+                 completeness(ii,jj) = exp(log(yk1)+((log(yp)-log(xk1))/(log(xk2)-log(xk1)))*(log(yk2)-log(yk1)))
+                                                   
+                 if (completeness(ii,jj)> 1.) completeness(ii,jj)=1.
+                 if (completeness(ii,jj)==0.) completeness(ii,jj)=1e-20
+
+                 fact = sum(skyfracs)
+                 completeness(ii,jj) = completeness(ii,jj)*fact
+
+              enddo
+           enddo
+                      
+           !do jj=1,nsteps_z
+           !   do ii=1,nsteps_m           
+           !do i=100,150
+           !   print*, y500(exp(steps_m(i)),steps_z(150))
+           !   print*, theta500(steps_m(i),steps_z(150))
+           !   print*, completeness(ii,jj)
+           !   print*, ''
+           !enddo
+           !   enddo
+           !   enddo
+           !stop
+
+        else 
+           print*, 'CASE NOT IMPLEMENTED - STOPPING'
+           stop
+        endif
+        
+     END SELECT
+     
+   END SUBROUTINE grid_C
 
 
   SUBROUTINE get_grid(nz,nm,z,lnm,grid)
@@ -1128,10 +1401,11 @@ implicit none
  integer :: SZ_switch  !1 fot N(z), 2 for N(y), 3 for N(z,y) 
  integer :: nmiss_switch  !0 for simple rescaling, 1 for MCMC 
  integer :: errorz_switch  !0 for simple rescaling, 1 for MCMC 
- integer :: nmiss,nred2,ncat
+ integer :: nmiss,nred2,ncat,nerf,nrows_qa,nrows_erf
  integer :: ylim_switch  !>1 for constant ylim, <1 for variable ylim
+
  real(dl), allocatable :: DNcat(:,:),DNzcat(:),DNycat(:),DN(:,:),DNz(:),DNy(:)
- real(dl), allocatable :: Z(:),LOGY(:),ylims(:,:),thetas(:),skyfracs(:)
+ real(dl), allocatable :: Z(:),LOGY(:),ylims(:,:),thetas(:),skyfracs(:),erf_list(:,:),qa_ytot(:,:)
  real(dl), allocatable :: SZcat(:,:)
  real(dl) :: clash,wtg,lens,pns,oh2 ! switches for priors =0 no prior, =1 prior
  real :: sz_kmax = 4.0
@@ -1156,7 +1430,8 @@ contains
     class(TSettingIni) :: ini
     integer count
     Type(SZLikelihood), pointer :: this
-   
+
+
     if (.not. Ini%Read_Logical('use_SZ',.false.)) return
 
     if (Ini%Read_Logical('use_SZ',.false.)) then
@@ -1167,7 +1442,9 @@ contains
        call LikeList%Add(this)
        this%LikelihoodType = 'SZ'
        this%name='SZ'
-  clash=0.  !swithes for the priors (get multiplied to priors in SZCC_Cash)
+
+
+       clash=0.  !swithes for the priors (get multiplied to priors in SZCC_Cash)
        wtg=0.    !either 0 or 1
        lens=0.
        oh2=0.
@@ -1178,7 +1455,7 @@ contains
           print*,'CLASH prior on SZ mass bias'
        endif
 
-       if (Ini%Read_Logical('prior_wgt',.false.)) then
+       if (Ini%Read_Logical('prior_wtg',.false.)) then
           wtg=1.
           print*,'WtG prior on SZ mass bias'
        endif
@@ -1197,12 +1474,9 @@ contains
           print*,'Prior on omegabh2'
        endif
 
-
-
-       !this%power_kmax=sz_kmax
        CALL SZ_init
     endif
-     end subroutine SZLikelihood_Add
+  end subroutine SZLikelihood_Add
 
      subroutine SZ_init
 !!$       use settings
@@ -1219,10 +1493,9 @@ contains
        integer ::Nfact,error
        real(dl) :: ymin,ymax,dlogy,logymax,logymin,yi,col1,col2,sum,col3,col4
        real(dl) :: y_min,y_max,z_min,z_max,factorial
+      
 
-       !real(dl),allocatable :: SZcat(:,:)
 
-       print*,'Initialising SZ likelihood'
        error=0
        !file names 
        cat_filename='data/SZ_cat.txt'
@@ -1380,6 +1653,65 @@ contains
           CLOSE (unit=iunit)
        endif
 
+  CALL get_free_lun( iunit )
+!begin matthieu
+  filename='data/SZ_list_erf.txt'
+    nerf=rows_number(filename,1)
+    print*,'Number of rows ERF list=',nerf
+
+    filename='data/SZ_y500_interp_mc_snr6.txt'
+    nrows_qa=rows_number(filename,1)
+    print*,'Number of rows QA Y500=',nrows_qa
+    if (nrows_qa /= nerf*nthetas) then
+       print*,'Format error for y500_interp_erf_inter_snr6.txt:'
+       print*,'Expected rows:',nerf*nthetas
+       print*,'Actual rows:',nrows_qa
+       stop
+    endif
+    allocate(qa_ytot(nerf,nthetas))
+    open (UNIT=iunit,file=filename,status='unknown',form="formatted")
+    i=1
+    j=1
+    DO ii=1,nrows_qa
+       READ(iunit,*,IOSTAT=Reason)  col1
+       qa_ytot(i,j)=col1
+       i=i+1
+       if (i > nerf) then
+          i=1
+          j=j+1
+       endif
+    ENDDO
+      CLOSE (unit=iunit)
+      CALL get_free_lun( iunit )
+
+    filename='data/SZ_list_mc_2d_snr6.txt'
+    nrows_erf=rows_number(filename,1)
+    print*,'Number of ERF tot =',nrows_erf
+    if (nrows_erf /= nerf*nthetas) then
+       print*,'Format error for list_erf_2d_snr6.txt:'
+       print*,'Expected rows:',nerf*nthetas
+       print*,'Actual rows:',nrows_erf
+       stop
+    endif
+    allocate(erf_list(nerf,nthetas)) 
+    open (UNIT=iunit,file=filename,status='unknown',form="formatted")
+    i=1
+    j=1
+    DO ii=1,nrows_erf
+       READ(iunit,*,IOSTAT=Reason)  col1
+       erf_list(i,j)=col1
+       i=i+1
+       if (i > nerf) then
+          i=1
+          j=j+1
+       endif
+    ENDDO
+!End matthieu
+
+
+
+
+
        ALLOCATE(Z(Nz),LOGY(Ny),stat=iostat)
        if (iostat /= 0) then
           print *, "Cannot allocate work arrays"
@@ -1515,7 +1847,8 @@ contains
 !!$   if (do_sz_init) then 
 !!$      call SZ_init
 !!$   end if
-
+!  print*,'priors',clash,wtg,lens,pns,oh2
+!stop
    SZCC_Cash=logzero
 
    nit=1000
@@ -1535,7 +1868,7 @@ contains
    cosmopar%ystar=10.**(DataParams(2))/(2.**cosmopar%alpha)*0.00472724
    cosmopar%logystar=(DataParams(2))!to set the prior on logy
    cosmopar%bias=DataParams(3)
- cosmopar%biasinv=1./DataParams(3)
+   cosmopar%biasinv=1./DataParams(3)
    cosmopar%sigmaM=DataParams(4)
    cosmopar%sigmaR=Theory%sigma_R
 !!$   print*,'ystar=',cosmopar%ystar
@@ -1560,7 +1893,7 @@ contains
    CASE(1) ! n(Z)
       !theo counts
 
-      call deltaN_yz(Z,Nz,LOGY,Ny,DNZ,skyfracs,thetas,ylims,sz_switch)
+      call deltaN_yz(Z,Nz,LOGY,Ny,DNZ,skyfracs,thetas,ylims,sz_switch,qa_ytot,erf_list)
       ! N(z)
 
       sum=0.
@@ -1715,7 +2048,7 @@ contains
 !stop
    CASE(2) ! n(y)
 
-      call deltaN_yz(Z,Nz,LOGY,Ny,DNy,skyfracs,thetas,ylims,sz_switch)
+      call deltaN_yz(Z,Nz,LOGY,Ny,DNy,skyfracs,thetas,ylims,sz_switch,qa_ytot,erf_list)
 
       ! N(y)
       sum=0.
@@ -1742,7 +2075,7 @@ contains
 !!$
 
    END SELECT
-
+   !print*,'like=',SZCC_Cash
 
    !priors for SZ nuisance params
    SZCC_Cash = SZCC_Cash + (cosmopar%logystar-(-0.186))**2/(2.*0.021**2) + (cosmopar%alpha-1.789)**2/(2.*0.084**2) + (cosmopar%sigmaM-0.075)**2/(2.*0.01**2) !cosmomc_sz
@@ -1758,6 +2091,7 @@ contains
    SZCC_Cash = SZCC_Cash + clash*(cosmopar%bias-0.81)**2/(2.*0.08**2)
 !1-b=0.81+-0.08. !clash
    SZCC_Cash = SZCC_Cash + wtg*(cosmopar%bias-0.688)**2/(2.*0.072**2)
+
 
    Print*,'SZ lnlike = ',SZCC_Cash
 
