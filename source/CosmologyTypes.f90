@@ -306,7 +306,7 @@
         select type (DataLike)
         class is (TCosmologyRequirementsLikelihood)
             if (DataLike%needs_powerspectra) then
-                if (DataLike%needs_exact_z .or. DataLike%num_z>0 .or. this%use_sigmaR) then
+                if (DataLike%needs_exact_z .or. DataLike%num_z>0 .or. DataLike%needs_sigmaR) then
                   this%Use_LSS = .true.
                 else
                    cycle

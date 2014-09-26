@@ -2107,7 +2107,7 @@
     real(dl) lnk, dlnk, lnko, minR
     real(dl), dimension(size(R)) ::  x, win, dsig8, dsig8o, sig8, sig8o
     type(MatterPowerData) :: PKspline
-    integer, parameter :: nsub = 4
+    integer, parameter :: nsub = 5
 
     minR = minval(R)
     red_ix =  CP%Transfer%PK_redshifts_index(CP%Transfer%PK_num_redshifts)

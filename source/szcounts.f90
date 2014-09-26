@@ -472,7 +472,8 @@ contains
 ! maybe put this later outside dndlnM, for lowest mass limit and test ahead
 ! of run
 !!$    if (1._dl/R > P%Transfer%kmax) then
-!!$       write(*,*) 'Cluster radius too small, increase P%Transfer%kmas from',P%Transfer%kmax,' to ',1._dl/R,' or possibly larger !'
+!!$       write(*,*) 'Cluster radius too small, increase P%Transfer%kmas from',P%Transfer%kmax,' to ',&
+!!$   ._dl/R,' or possibly larger !'
 !!$       stop
 !!$    end if
 ! dM/dR
@@ -528,7 +529,7 @@ contains
        GOTO 1
     ENDIF
     H=XA(KHI)-XA(KLO)
-    IF (H.EQ.0.) PAUSE 'Bad XA input.'
+    IF (H.EQ.0.) stop 'Bad XA input.'
     A=(XA(KHI)-X)/H
     B=(X-XA(KLO))/H
     Y=A*YA(KLO)+B*YA(KHI)+((A**3-A)*Y2A(KLO)+(B**3-B)*Y2A(KHI))*(H**2)/6.
@@ -706,8 +707,8 @@ contains
     REAl(dl):: sum,xi,xi1,zi,sigmaM,sq_sigmaM,lnm,window,bias,sum2,dz,sum3
     REAl(dl)::dnnew,dnold,lny1_new,lnylim,angsize,counts
     REAL (dl)::dif,dif_t,frac,ylim,frac_same,limit_m,test_new,h,C
-    REAl(dl):: test(nsteps_z),c1,c2,f1,f2,x1,x2
     INTEGER::nsteps_z,nsteps_m,nsum,nthetas,col,k_ini,k_fin,t,k_ininew,col_old,npatches
+    REAl(dl):: test(nsteps_z),c1,c2,f1,f2,x1,x2
     INTEGER::k,kk,JJ,II,j1,j2,i,index
     INTEGER::p(1)
 
@@ -754,8 +755,8 @@ contains
     REAl(dl):: sum,xi,xi1,zi,sigmaM,sq_sigmaM,lnm,window,bias,sum2,dz,sum3,mp,zp,yp
     REAl(dl)::dnnew,dnold,lny1_new,lnylim,angsize,counts,dy
     REAL (dl)::dif,dif_t,frac,ylim,frac_same,limit_m,test_new,h,C
-    REAl(dl):: test(nsteps_z),c1,c2,f1,f2,x1,x2
     INTEGER::nsteps_z,nsteps_m,nsum,nthetas,col,k_ini,k_fin,t,k_ininew,col_old,npatches,n
+    REAl(dl):: test(nsteps_z),c1,c2,f1,f2,x1,x2
     INTEGER::k,kk,JJ,II,j1,j2,i,index
     INTEGER::p(1)
 
@@ -1277,7 +1278,6 @@ module input
   implicit none
   REAL(dl), SAVE :: zmaxs,z0,dz
   INTEGER, SAVE :: Nred, Nscat
-  CHARACTER*80, SAVE :: outroot
 contains
 
 
@@ -1353,7 +1353,6 @@ implicit none
  real(dl), allocatable :: SZcat(:,:)
  real(dl) :: clash,wtg,lens,pns,oh2 ! switches for priors =0 no prior, =1 prior
  real :: sz_kmax = 4.0
- integer :: sz_k_per_logint = 5
  character(len=256) :: SZ_filename = ''
  character(LEN=*), parameter :: SZ_version =  'June_2014'
 
@@ -1379,7 +1378,7 @@ contains
        allocate(this)
        this%needs_background_functions = .true.
        this%needs_powerspectra = .true.
-       this%kmax = 4
+       this%kmax = sz_kmax
        this%needs_sigmaR = .true.
        this%version = SZ_version
        call this%loadParamNames(trim(DataDir)//'SZ.paramnames')
@@ -1782,7 +1781,6 @@ contains
    real(mcp) :: SZCC_Cash_ini
    INTEGER :: N,i,j,Nf,ii
    REAL(DL) :: sum,factorial,ln_factorial,SZCC_Cash_exp
-   character*80 :: outfile
    INTEGER :: iseed,p(1),jj,nit,it,iostat
    REAL(DL) ::test,dif,difold,z_min,z_max
    REAL(DL),allocatable :: DNzcum(:),DNz_old(:),RANDCAT(:)
@@ -1849,7 +1847,7 @@ contains
       ENDDO
 
       !print*,'theory counts',DNZ
-      if (ISNAN(DNZ(1))==.true.) then
+      if (ISNAN(DNZ(1))) then
          print*,'NaN found in theory counts!'
          stop
       endif
@@ -1920,7 +1918,7 @@ contains
                sum=sum+DNzcat(I)
             ENDDO
             !if (int(sum) /= nred2) then 
-            if (abs(sum-dble(nred2)>1.e-5)) then 
+            if (abs(sum-dble(nred2))>1.e-5) then 
                print*,'error number of clusters with redhift'
 
                print*,nred2,sum
@@ -1955,7 +1953,7 @@ contains
             DO I=1,Nz
                sum=sum+DNzcat(I)
             ENDDO
-            if (abs(sum-dble(ncat)>1.e-5)) then 
+            if (abs(sum-dble(ncat))>1.e-5) then 
                print*,'error total number of clusters'
                print*,sum,ncat
                stop
@@ -2025,7 +2023,8 @@ contains
    !print*,'like=',SZCC_Cash
 
    !priors for SZ nuisance params
-   SZCC_Cash = SZCC_Cash + (cosmopar%logystar-(-0.186))**2/(2.*0.021**2) + (cosmopar%alpha-1.789)**2/(2.*0.084**2) + (cosmopar%sigmaM-0.075)**2/(2.*0.01**2) !cosmomc_sz
+   SZCC_Cash = SZCC_Cash + (cosmopar%logystar-(-0.186))**2/(2.*0.021**2) +&
+       (cosmopar%alpha-1.789)**2/(2.*0.084**2) + (cosmopar%sigmaM-0.075)**2/(2.*0.01**2) !cosmomc_sz
    !print*,'prior on ystar, alpha, scatter'
 
    ! PRIORS ON NS AND OMEGABH2:
