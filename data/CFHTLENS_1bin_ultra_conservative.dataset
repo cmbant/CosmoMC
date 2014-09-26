@@ -1,0 +1,4 @@
+name = CFHTLENS_1bin_ultra_conservative
+kmax = 1.0
+cut_file = %DATASETDIR%CFHTLENS/2D/cut_values_ultra_conservative.dat
+DEFAULT(CFHTLENS_1bin.dataset)

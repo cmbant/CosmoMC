@@ -62,6 +62,7 @@
     end if
 
     call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
+    if (CosmoSettings%use_LSS) call Names%Add('paramnames/derived_LSS.paramnames')
     if (CosmoSettings%compute_tensors) call Names%Add('paramnames/derived_tensors.paramnames')
     if (CosmoSettings%bbn_consistency) call Names%Add('paramnames/derived_bbn.paramnames')
     this%num_derived = Names%num_derived
@@ -176,7 +177,8 @@
     real(mcp) :: P(:)
     Type(CMBParams) CMB
     real(mcp) :: lograt
-    integer ix
+    integer ix,i
+    real(mcp) z
 
     if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)
@@ -214,7 +216,17 @@
 
         derived(ix:ix + Theory%numderived-1) = Theory%derived_parameters(1: Theory%numderived)
         ix = ix + Theory%numderived
-        
+
+        if (CosmoSettings%Use_LSS) then
+            ! f sigma_8 at specified redshift
+            do i=1,size(CosmoSettings%z_outputs)
+                z =  CosmoSettings%z_outputs(i)
+                derived(ix) = Theory%growth_z%Value(z)
+                derived(ix+1) = Theory%sigma8_z%Value(z)
+                ix = ix + 2
+            end do
+        end if
+
         if (CosmoSettings%Compute_tensors) then
             derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(Theory%tensor_AT*1e10), &
                 Theory%tensor_ratio_C10, Theory%tensor_AT*1e9, Theory%tensor_AT*1e9*exp(-2*CMB%tau) ]

@@ -1303,13 +1303,13 @@
 
     subroutine WriteTextVector(aname, vec, n)
     character(LEN=*), intent(IN) :: aname
-    integer, intent(in) :: n
-    class(*), intent(in) :: vec(n)
+    integer, intent(in), optional :: n
+    class(*), intent(in) :: vec(:)
     integer j
     Type(TTextFile) :: F
 
     call F%CreateFile(aname)
-    do j=1,n
+    do j=1, PresentDefault(size(vec),n)
         call F%Write(vec(j))
     end do
     call F%Close()

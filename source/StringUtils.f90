@@ -1,4 +1,5 @@
     module StringUtils
+    use MiscUtils
     implicit none
 
 
@@ -289,10 +290,11 @@
 
     end function SubNextFormat
 
-    function FormatString(formatst, i1,i2,i3,i4,i5,i6) result(S)
+    function FormatString(formatst, i1,i2,i3,i4,i5,i6,i7,i8, allow_unused) result(S)
     character(LEN=*), intent(in) :: formatst
     class(*), intent(in) :: i1
-    class(*), intent(in),optional :: i2,i3,i4,i5,i6
+    class(*), intent(in),optional :: i2,i3,i4,i5,i6,i7,i8
+    logical, optional, intent(in) :: allow_unused
     character(LEN=:), allocatable :: S
     logical OK
     !Note that this routine is incomplete and very simple (so buggy in complex cases)
@@ -305,7 +307,9 @@
     if (OK .and. present(i4)) OK = SubNextFormat(S, i4)
     if (OK .and. present(i5)) OK = SubNextFormat(S, i5)
     if (OK .and. present(i6)) OK = SubNextFormat(S, i6)
-    if (.not. OK) stop 'FormatString: Wrong number or kind of formats in string'
+    if (OK .and. present(i7)) OK = SubNextFormat(S, i7)
+    if (OK .and. present(i8)) OK = SubNextFormat(S, i8)
+    if (.not. OK .and. .not. DefaultFalse(allow_unused)) stop 'FormatString: Wrong number or kind of formats in string'
     call StringReplace('%%', '%', S)
 
     end function FormatString

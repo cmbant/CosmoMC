@@ -1,6 +1,7 @@
     module Interpolation
     use FileUtils
     use MpiUtils
+    use MiscUtils
     implicit none
 
 #ifdef SINGLE
@@ -29,9 +30,12 @@
     procedure, private :: TCubicSpline_Value
     procedure, private :: TCubicSpline_ArrayValue
     procedure, private :: TCubicSpline_IntRangeValue
+    procedure :: FirstUse =>  TCubicSpline_FirstUse
     procedure :: InitFromFile => TCubicSpline_InitFromFile
+    procedure :: InitForSize => TCubicSpline_InitForSize
     procedure :: InitInterp => TCubicSpline_InitInterp
     procedure :: Derivative => TCubicSpline_Derivative
+    procedure :: Clear => TCubicSpline_Clear
     generic :: Value => TCubicSpline_Value
     generic :: Array => TCubicSpline_ArrayValue, TCubicSpline_IntRangeValue
     generic :: Init => TCubicSpline_Init, TCubicSpline_InitInt
@@ -52,6 +56,7 @@
     procedure :: Value => TInterpGrid2D_Value !one point
     procedure :: Values => TInterpGrid2D_Values !array of points
     procedure :: Error => TInterpGrid2D_error
+    procedure :: Clear => TInterpGrid2D_Clear
     procedure, private :: InitInterp => TInterpGrid2D_InitInterp
     FINAL :: TInterpGrid2D_Free
     end Type TInterpGrid2D
@@ -78,21 +83,36 @@
     end subroutine TInterpolator_error
 
 
+    subroutine TCubicSpline_InitForSize(W, n)
+    class(TCubicSpline) :: W
+    integer, intent(in) :: n
+
+    call W%Clear()
+    W%n = n
+    allocate(W%X(W%n))
+    allocate(W%F(W%n))
+
+    end subroutine TCubicSpline_InitForSize
+
+    subroutine TCubicSpline_FirstUse(W)
+    class(TCubicSpline) W
+
+    if (.not. W%Initialized) then
+        call W%InitInterp()
+        W%Initialized = .true.
+    end if
+
+    end subroutine TCubicSpline_FirstUse
+
     subroutine TCubicSpline_Init(W, Xarr,  values, n, End1, End2 )
     class(TCubicSpline) :: W
     real(sp_acc), intent(in) :: Xarr(:), values(:)
     integer, intent(in), optional :: n
     real(sp_acc), intent(in), optional :: End1, End2
 
-    if (present(n)) then
-        W%n = n
-    else
-        W%n = size(Xarr)
-    end if
+    call W%InitForSize(PresentDefault(size(Xarr),n))
 
-    allocate(W%F(W%n))
     W%F = values(1:W%n)
-    allocate(W%X(W%n))
     W%X = Xarr(1:W%n)
     call W%InitInterp(End1, End2)
 
@@ -116,6 +136,8 @@
     class(TCubicSpline):: W
     real(sp_acc), intent(in), optional :: End1, End2
     real(sp_acc) :: e1,e2
+
+    if (.not. allocated(W%X)) call W%error('TCubicSpline has no data')
 
     if (present(End1)) then
         e1 = End1
@@ -171,9 +193,7 @@
         if (parse==2) exit
 
         if (nx<2) call W%Error('not enough values to interpolate')
-        W%n = nx
-        allocate(W%X(W%n))
-        allocate(W%F(W%n))
+        call W%InitForSize(nx)
         status=0
         call F%Rewind()
     end do
@@ -184,9 +204,8 @@
 
     end subroutine TCubicSpline_InitFromFile
 
-
-    subroutine TCubicSpline_Free(W)
-    Type(TCubicSpline) :: W
+    subroutine TCubicSpline_Clear(W)
+    class(TCubicSpline) :: W
 
     if (allocated(W%X)) then
         deallocate(W%X)
@@ -194,6 +213,13 @@
         deallocate(W%ddF)
     end if
     W%Initialized = .false.
+
+    end subroutine TCubicSpline_Clear
+
+    subroutine TCubicSpline_Free(W)
+    Type(TCubicSpline) :: W
+
+    call W%Clear()
 
     end subroutine TCubicSpline_Free
 
@@ -407,6 +433,7 @@
     REAL(GI), INTENT(IN)      :: y(:)
     REAL(GI), INTENT(IN)      :: z(:,:)
 
+    call W%Clear()
     W%nx = size(x)
     W%ny = size(y)
     allocate(W%x(W%nx), source = x)
@@ -499,8 +526,8 @@
 
     end subroutine TInterpGrid2D_InitFromFile
 
-    subroutine TInterpGrid2D_Free(W)
-    Type(TInterpGrid2D):: W
+    subroutine TInterpGrid2D_Clear(W)
+    class(TInterpGrid2D):: W
 
     if (allocated(W%Wk)) then
         deallocate(W%x)
@@ -509,6 +536,14 @@
         deallocate(W%z)
     end if
     W%Initialized = .false.
+
+    end subroutine TInterpGrid2D_Clear
+
+
+    subroutine TInterpGrid2D_Free(W)
+    Type(TInterpGrid2D):: W
+
+    call W%Clear()
 
     end subroutine TInterpGrid2D_Free
 

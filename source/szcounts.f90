@@ -47,11 +47,13 @@ end module constants_sz
 module cosmology
   USE precision
   USE CONSTANTS_sz
+  use Interpolation
   implicit none
 ! note that we switch to the generalized Linder parametrization now
   public
   TYPE cospar
-     REAL(dl) :: H0,w0,w1,omegam,omegav,n,sig8,omegak,omegabh2,gamma,ystar,alpha,sigmaM,bias,biasinv,logystar,sigmaR(1000,2)
+     REAL(dl) :: H0,w0,w1,omegam,omegav,n,sig8,omegak,omegabh2,gamma,ystar,alpha,sigmaM,bias,biasinv,logystar
+     class(TCubicSpline), pointer :: sigmaR
   END TYPE cospar
   Type (cospar), SAVE :: cosmopar
   
@@ -257,67 +259,10 @@ use Calculator_Cosmology
   public
   REAL(dl) :: normsig8
   REAL(dl) :: normgrowth
-  type(CAMBparams) :: P2 
+  type(CAMBparams), save :: P2 
   contains
 
-
-
-
-  function sigma(R)
-! radius in units of h^-1 Mpc
-    real(dl), INTENT(IN) :: R
-    real(dl) :: sigma,max_r,min_r,s1,s2,r1,r2
-    INTEGER::p(1),p2
-  !  Type(MatterTransferData) :: MT
- !   Class(TCosmoTheoryPredictions), target :: Theory
-
-   !if (global_error_flag/=0) return
-
-
-!!$    call Transfer_Get_sigma8(MT, R*1.0_dl)
-!!$    sigma = MT%sigma_8(1,1)
-!!$
-!!$    if (ISNAN(sigma)==.true.) then
-!!$       print*,'Sigma is NaN!!!'
-!!$
-!!$    endif
-!!$print*,'old',sigma
-    max_R=maxval(cosmopar%sigmaR(:,1))
-    min_R=minval(cosmopar%sigmaR(:,1))
-
-    if (R > max_R) then
-       sigma=cosmopar%sigmaR(1000,2)
-    else if  (R < min_R) then
-       sigma=cosmopar%sigmaR(1,2)
-    else
-       p=minloc(abs(cosmopar%sigmaR(:,1)-R))
-       s1=cosmopar%sigmaR(p(1),2)
-       r1=cosmopar%sigmaR(p(1),1)
-       p2=p(1)+1
-       if (R<r1) p2=p(1)-1 
-       s2=cosmopar%sigmaR(p2,2)
-       r2=cosmopar%sigmaR(p2,1)
-       sigma=s1+(s2-s1)/(r2-r1)*(R-r1)
-    endif
-
-
-!!$print*,'new',sigma,R,s1,s2
-!!$    stop
-    RETURN
-  end function sigma
-  
-  function dsigdR(R)
-! Radius in units of h^-1 Mpc
-    real(dl), INTENT(IN) :: R
-    real(dl) :: dsigdR
-    real(dl), PARAMETER :: deps = 0.01
-    real(dl) :: s1,s2
-    s1 = sigma(R*(1-deps))
-    s2 = sigma(R*(1+deps)) 
-    dsigdR=(s2-s1)/deps/R/2.0
-    RETURN
-  end function dsigdR
-
+ 
 !-----------------------------------------------------------------------
   subroutine INIGROWTH
 ! normalize growth factor to 1 today
@@ -533,7 +478,7 @@ contains
 ! dM/dR
     dMdR = 3*M/R
 
-    sR =sigma(R)
+    sR =cosmopar%sigmaR%Value(R)
 
 !    write(*,*) cosmopar%omegam,sR
     !g = delta(z)
@@ -544,7 +489,7 @@ contains
     dsoz=massfnpar%dso/Omegam(z)
     if (massfnpar%psind==1) then
        fJen = massfnpar%Amf*exp(-abs(-dlog(g*sR)+massfnpar%Bmf)**massfnpar%epsmf)
-       dndlnM_new = -rhom0*fJen*dsigdR(R)/dMdR/sR
+       dndlnM_new = -rhom0*fJen*cosmopar%sigmaR%Derivative(R)/dMdR/sR
     elseif (massfnpar%psind==2) then
        call SPLINTNR(del,par_aa,der_aa,total,log10(dsoz),par1)
        call SPLINTNR(del,par_a,der_a,total,log10(dsoz),par2)
@@ -558,7 +503,7 @@ contains
        massfnpar%pmf = par4
 
        fTink = massfnpar%Amf*((g*sR/massfnpar%Bmf)**(-massfnpar%epsmf)+1.0_dl)*exp(-massfnpar%pmf/sR/sR/g/g)
-       dndlnM_new = -rhom0*fTink*dsigdR(R)/dMdR/sR
+       dndlnM_new = -rhom0*fTink*cosmopar%sigmaR%Derivative(R)/dMdR/sR
     else
        write(*,*) 'Invalid mass function indicator: ',massfnpar%psind
        stop
@@ -620,7 +565,6 @@ contains
     next_z=zi+dzi             
        return
      end function next_z
-
 
 
   SUBROUTINE deltaN_yz(Z,Nz,LOGY,Ny,DN,skyfracs,thetas,ylims,switch,qa_ytot,erf_list)
@@ -1431,12 +1375,12 @@ contains
     integer count
     Type(SZLikelihood), pointer :: this
 
-
-    if (.not. Ini%Read_Logical('use_SZ',.false.)) return
-
     if (Ini%Read_Logical('use_SZ',.false.)) then
        allocate(this)
        this%needs_background_functions = .true.
+       this%needs_powerspectra = .true.
+       this%kmax = 4
+       this%needs_sigmaR = .true.
        this%version = SZ_version
        call this%loadParamNames(trim(DataDir)//'SZ.paramnames')
        call LikeList%Add(this)
@@ -1844,6 +1788,9 @@ contains
    REAL(DL),allocatable :: DNzcum(:),DNz_old(:),RANDCAT(:)
 
    save iseed
+   
+   
+   
 !!$   if (do_sz_init) then 
 !!$      call SZ_init
 !!$   end if
@@ -1870,7 +1817,7 @@ contains
    cosmopar%bias=DataParams(3)
    cosmopar%biasinv=1./DataParams(3)
    cosmopar%sigmaM=DataParams(4)
-   cosmopar%sigmaR=Theory%sigma_R
+   cosmopar%sigmaR=>Theory%sigma_R
 !!$   print*,'ystar=',cosmopar%ystar
 !!$   print*,'n=',cosmopar%n
 !!$   print*,'alpha=',cosmopar%alpha

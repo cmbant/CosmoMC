@@ -104,7 +104,9 @@
 		<File RelativePath="..\source\supernovae_JLA.f90"/>
 		<File RelativePath="..\source\supernovae_SNLS.f90"/>
 		<File RelativePath="..\source\supernovae_Union2.f90"/>
-		<File RelativePath="..\source\wigglez.f90"/></Filter>
+		<File RelativePath="..\source\szcounts.f90"/>
+		<File RelativePath="..\source\wigglez.f90"/>
+		<File RelativePath="..\source\wl.f90"/></Filter>
 		<Filter Name="Planck">
 		<File RelativePath="..\source\cliklike_CamSpec.f90"/>
 		<File RelativePath="..\source\pol_like.f90"/>

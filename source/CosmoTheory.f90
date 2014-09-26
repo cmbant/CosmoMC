@@ -25,13 +25,17 @@
         real(mcp) tensor_ratio_C10, tensor_ratio_02, tensor_ratio_BB, tensor_AT
         real(mcp) :: Lensing_rms_deflect = 0._mcp
         integer numderived
-        real(mcp) sigma_R(1000,2) !Anna
         real(mcp) derived_parameters(max_derived_parameters)
         !MPK's are interpolator objects now
         !MPK%x = logkh, MPK%y = z (redshift), MPK%z =>actual data array
         !MPK%nx = num_k, MPK%ny = num_z
         type(TCosmoTheoryPK), allocatable :: MPK
         type(TCosmoTheoryPK), allocatable :: NL_MPK
+        type(TCosmoTheoryPK), allocatable :: MPK_WEYL
+        type(TCosmoTheoryPK), allocatable :: NL_MPK_WEYL
+        type(TCubicSpline),  allocatable :: growth_z !defined as sigma8_vd^2/sigma8
+        type(TCubicSpline),  allocatable :: sigma8_z
+        type(TCubicSpline),  allocatable :: sigma_R
     contains
     procedure :: FreePK
     procedure :: ClArray
@@ -73,8 +77,10 @@
     subroutine FreePK(this)
     class(TCosmoTheoryPredictions) this
 
-    if(allocated(this%MPK))deallocate(this%MPK)
+    if(allocated(this%MPK)) deallocate(this%MPK)
     if(allocated(this%NL_MPK)) deallocate(this%NL_MPK)
+    if(allocated(this%MPK_WEYL)) deallocate(this%MPK_WEYL)
+    if(allocated(this%NL_MPK_WEYL)) deallocate(this%NL_MPK_WEYL)
 
     end subroutine FreePK
 
