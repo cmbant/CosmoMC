@@ -463,30 +463,40 @@
     class(TCosmoTheoryPredictions) Theory
     Type(MatterTransferData) M
     integer :: error
-    real(mcp), allocatable :: k(:), z(:), PK(:,:), growth_z(:), sigma8_z(:)
-    integer zix,nz,nk
-    !For use with for example WL PK's
+    real(mcp), allocatable :: k(:), z(:), PK(:,:)
+    integer zix,nz,nk, nR
     real(mcp), allocatable :: NL_Ratios(:,:)
+    real(mcp) :: dR, R, minR
+    real(mcp), allocatable :: tmp(:)
+    integer i
 
     !Free theory arrays as they may resize between samples
     call Theory%FreePK()
 
-    nk=M%num_q_trans
     nz=CP%Transfer%PK_num_redshifts
-    allocate(PK(nk,nz))
-    allocate(k(nk))
+    
+    if (allocated(Theory%growth_z)) deallocate(Theory%growth_z, Theory%sigma8_z)
+    allocate(Theory%growth_z, Theory%sigma8_z)
+    call Theory%growth_z%InitForSize(nz)
+    call Theory%sigma8_z%InitForSize(nz)
     allocate(z(nz))
-    allocate(growth_z(nz))
-    allocate(sigma8_z(nz))
 
-    k = log(M%TransferData(Transfer_kh,:,1))
     do zix=1,nz
         z(zix) = CP%Transfer%PK_redshifts(nz-zix+1)
-        sigma8_z(zix) = M%sigma_8(nz-zix+1,1)
-        growth_z(zix) = M%sigma2_vdelta_8(nz-zix+1,1)/sigma8_z(zix)
+        Theory%sigma8_z%F(zix) = M%sigma_8(nz-zix+1,1)
+        Theory%growth_z%F(zix) = M%sigma2_vdelta_8(nz-zix+1,1)/M%sigma_8(nz-zix+1,1)
     end do
+    Theory%sigma8_z%X=z
+    Theory%growth_z%X=z
 
     if (CosmoSettings%use_matterpower) then
+        nk=M%num_q_trans
+        nz=CP%Transfer%PK_num_redshifts
+        allocate(PK(nk,nz))
+        allocate(k(nk))
+
+        k = log(M%TransferData(Transfer_kh,:,1))
+
         call Transfer_GetUnsplinedPower(M, PK,transfer_power_var,transfer_power_var)
         PK = Log(PK)
         if (any(isNan(PK))) then
@@ -509,15 +519,24 @@
         call Theory%MPK_WEYL%Init(k,z,PK)
     end if
 
+    if (CosmoSettings%use_SigmaR) then
+        !Note R is in k*h units
+        dR = log(1.4/AccuracyLevel)
+        minR = 1/CP%Transfer%kmax
+        nR = nint(log(150/minR)/dR) +1
+        allocate(Theory%Sigma_R)
+        call Theory%Sigma_R%InitForSize(nR)
+        do i=1, nR
+            Theory%Sigma_R%X(i) = exp((i-1)*dR)*minR
+        end do
+        call Transfer_GetSigmaRArray(M, Theory%Sigma_R%X, Theory%Sigma_R%F, & 
+            var1 = transfer_nonu,var2=transfer_nonu)
+    end if
+
     if(CosmoSettings%use_nonlinear)then
         call this%GetNLandRatios(M,Theory,NL_Ratios,error)
         if(error/=0) return
     end if
-
-    if (allocated(Theory%growth_z)) deallocate(Theory%growth_z, Theory%sigma8_z)
-    allocate(Theory%growth_z, Theory%sigma8_z)
-    call Theory%growth_z%Init(z,growth_z,n=nz)
-    call Theory%sigma8_z%Init(z,sigma8_z,n=nz)
 
     end subroutine CAMBCalc_SetPkFromCAMB
 

@@ -35,6 +35,7 @@
         type(TCosmoTheoryPK), allocatable :: NL_MPK_WEYL
         type(TCubicSpline),  allocatable :: growth_z !defined as sigma8_vd^2/sigma8
         type(TCubicSpline),  allocatable :: sigma8_z
+        type(TCubicSpline),  allocatable :: sigma_R
     contains
     procedure :: FreePK
     procedure :: ClArray

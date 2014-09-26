@@ -1,6 +1,7 @@
     module Interpolation
     use FileUtils
     use MpiUtils
+    use MiscUtils
     implicit none
 
 #ifdef SINGLE
@@ -29,7 +30,9 @@
     procedure, private :: TCubicSpline_Value
     procedure, private :: TCubicSpline_ArrayValue
     procedure, private :: TCubicSpline_IntRangeValue
+    procedure :: FirstUse =>  TCubicSpline_FirstUse
     procedure :: InitFromFile => TCubicSpline_InitFromFile
+    procedure :: InitForSize => TCubicSpline_InitForSize
     procedure :: InitInterp => TCubicSpline_InitInterp
     procedure :: Derivative => TCubicSpline_Derivative
     procedure :: Clear => TCubicSpline_Clear
@@ -80,22 +83,36 @@
     end subroutine TInterpolator_error
 
 
+    subroutine TCubicSpline_InitForSize(W, n)
+    class(TCubicSpline) :: W
+    integer, intent(in) :: n
+
+    call W%Clear()
+    W%n = n
+    allocate(W%X(W%n))
+    allocate(W%F(W%n))
+
+    end subroutine TCubicSpline_InitForSize
+
+    subroutine TCubicSpline_FirstUse(W)
+    class(TCubicSpline) W
+
+    if (.not. W%Initialized) then
+        call W%InitInterp()
+        W%Initialized = .true.
+    end if
+
+    end subroutine TCubicSpline_FirstUse
+
     subroutine TCubicSpline_Init(W, Xarr,  values, n, End1, End2 )
     class(TCubicSpline) :: W
     real(sp_acc), intent(in) :: Xarr(:), values(:)
     integer, intent(in), optional :: n
     real(sp_acc), intent(in), optional :: End1, End2
 
-    call W%Clear()
-    if (present(n)) then
-        W%n = n
-    else
-        W%n = size(Xarr)
-    end if
+    call W%InitForSize(PresentDefault(size(Xarr),n))
 
-    allocate(W%F(W%n))
     W%F = values(1:W%n)
-    allocate(W%X(W%n))
     W%X = Xarr(1:W%n)
     call W%InitInterp(End1, End2)
 
@@ -119,6 +136,8 @@
     class(TCubicSpline):: W
     real(sp_acc), intent(in), optional :: End1, End2
     real(sp_acc) :: e1,e2
+
+    if (.not. allocated(W%X)) call W%error('TCubicSpline has no data')
 
     if (present(End1)) then
         e1 = End1
@@ -174,9 +193,7 @@
         if (parse==2) exit
 
         if (nx<2) call W%Error('not enough values to interpolate')
-        W%n = nx
-        allocate(W%X(W%n))
-        allocate(W%F(W%n))
+        call W%InitForSize(nx)
         status=0
         call F%Rewind()
     end do
@@ -521,8 +538,8 @@
     W%Initialized = .false.
 
     end subroutine TInterpGrid2D_Clear
-   
-    
+
+
     subroutine TInterpGrid2D_Free(W)
     Type(TInterpGrid2D):: W
 

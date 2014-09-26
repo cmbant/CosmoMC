@@ -48,6 +48,7 @@
         !Parameters for calculating/storing the matter power spectrum
         logical :: use_matterpower = .false.
         logical :: use_Weylpower = .false. !power spectrum of Weyl potential for lensing
+        logical :: use_sigmaR =.false. !sigma_R, e.g. for clusters
         real(mcp) :: power_kmax = 0.8_mcp
         integer :: num_power_redshifts = 0
         
@@ -88,11 +89,12 @@
         logical :: needs_nonlinear_pk = .false.
         logical :: needs_exact_z = .false.
         logical :: needs_Weylpower = .false.
+        logical :: needs_sigmaR = .true.
+        real(mcp) :: kmax = 0.8_mcp
         integer :: num_z = 0
+        real(mcp) :: max_z = 0._mcp
         real(mcp), dimension(:), allocatable :: exact_z
         integer, dimension(:), allocatable :: exact_z_index
-        real(mcp) :: max_z = 0._mcp
-        real(mcp) :: kmax = 0.8_mcp
     contains
     procedure :: InitForSettings => TCosmologyRequirementsLikelihood_InitForSettings
     end type TCosmologyRequirementsLikelihood
@@ -304,7 +306,7 @@
         select type (DataLike)
         class is (TCosmologyRequirementsLikelihood)
             if (DataLike%needs_powerspectra) then
-                if (DataLike%needs_exact_z .or. DataLike%num_z>0) then
+                if (DataLike%needs_exact_z .or. DataLike%num_z>0 .or. this%use_sigmaR) then
                   this%Use_LSS = .true.
                 else
                    cycle
@@ -313,6 +315,7 @@
                 this%use_nonlinear = this%use_nonlinear .or. DataLike%needs_nonlinear_pk
                 this%use_matterpower = .true.
                 this%use_Weylpower = this%use_Weylpower .or. DataLike%needs_Weylpower
+                this%use_sigmaR = this%use_sigmaR .or. DataLike%needs_sigmaR
                 if(DataLike%needs_exact_z) then
                     call exact_z%AddArrayItems(DataLike%exact_z)
                 else
