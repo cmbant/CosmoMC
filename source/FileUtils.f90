@@ -59,7 +59,7 @@
     generic :: ReadStringItem => ReadStringFunc
     generic :: WriteSizedArray => WriteSizedArray1,WriteSizedArray2
     generic :: ReadSizedArray => ReadSizedArray_R,ReadSizedArray_D,ReadSizedArray_I, &
-    & ReadSizedArray2_I, ReadSizedArray2_R, ReadSizedArray2_D
+        & ReadSizedArray2_I, ReadSizedArray2_R, ReadSizedArray2_D
     final :: TFileStream_Free
     end type
 
@@ -115,6 +115,7 @@
     procedure, nopass :: TxtNumberColumns
     procedure, nopass :: TxtColumns
     procedure, nopass :: TxtFileColumns
+    procedure, nopass :: TxtFileLines
     procedure, nopass :: TopCommentLine
     procedure, nopass :: LastLine => LastFileLine
     procedure, nopass :: Size => FileSize
@@ -355,7 +356,7 @@
     end if
 
     open(file=aname,form=amode,status=state, action=action, newunit=this%unit, &
-    & iostat=out_status, position =pos,  access=this%access)
+        & iostat=out_status, position =pos,  access=this%access)
     if (present(status)) then
         status=out_status
         if (out_status/=0) this%unit = 0
@@ -441,7 +442,7 @@
 
     res = status==0
     if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
-    & call this%Error('Error reading item')
+        & call this%Error('Error reading item')
     if (present(OK)) OK = res
     end subroutine ReadItemSub
 
@@ -475,7 +476,7 @@
         call this%Error('Unknown type to read')
     end select
     if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
-    & call this%Error('Error reading item')
+        & call this%Error('Error reading item')
     if (present(OK)) OK = status==0
     end subroutine ReadArray
 
@@ -519,7 +520,7 @@
         call this%Error('Unknown type to read')
     end select
     if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
-    & call this%Error('Error reading item')
+        & call this%Error('Error reading item')
     if (present(OK)) OK = status==0
     end subroutine ReadArray2
 
@@ -1067,7 +1068,7 @@
         call this%Error('unknown type to Read')
     end select
     if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
-    & call this%Error('Error reading item')
+        & call this%Error('Error reading item')
     if (present(OK)) OK = status==0
 
     end subroutine ReadItemTxt
@@ -1092,7 +1093,7 @@
     end select
 
     if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
-    & call this%Error('Error reading item')
+        & call this%Error('Error reading item')
     if (present(OK)) OK = status==0
 
     end subroutine ReadArrayTxt
@@ -1149,6 +1150,17 @@
     call F%Close()
 
     end function TxtFileColumns
+
+    function TxtFileLines(aname) result(n)
+    character(LEN=*), intent(IN) :: aname
+    integer n
+    Type(TTextFile) :: F
+
+    call F%Open(aname)
+    n = F%Lines()
+    call F%Close()
+
+    end function TxtFileLines
 
 
     function LastFileLine(aname)

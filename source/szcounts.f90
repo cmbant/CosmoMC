@@ -1263,78 +1263,20 @@ contains
 end module numbercounts
 
 
-
-
-
-! ####################################################################
-
-
-module input
-  USE PRECISION
-  use cosmology
-  use survey
-  use massfunction
-  use massobservable
-  implicit none
-  REAL(dl), SAVE :: zmaxs,z0,dz
-  INTEGER, SAVE :: Nred, Nscat
-contains
-
-
-  function rows_number(filename,iunit)
-    integer:: reason,iunit,nrows,rows_number
-    character (LEN=200)::filename
-    real(DL):: col
-    open (UNIT=iunit,file=filename,status='unknown',form="formatted")
-    print*,filename
-    nrows=1
-    DO
-       READ(iunit,*,IOSTAT=Reason)  col
-       IF (Reason > 0)  THEN 
-          print*,'Error in reading file'
-          print*,filename
-          stop
-       ELSE IF (Reason < 0) THEN
-          exit
-       ELSE
-          nrows=nrows+1
-       END IF
-    END DO
-   rows_number=nrows-1
-    CLOSE (unit=iunit)
-    return
-  end function rows_number
-  
- subroutine read_values(filename,iunit,nrows,vector)
-    integer:: reason,iunit,nrows,i
-    character (LEN=200)::filename
-    real(DL)::col,vector(:)
-    open (UNIT=iunit,file=filename,status='unknown',form="formatted")
-    DO i=1,nrows
-       READ(iunit,*,IOSTAT=Reason)  col
-       vector(i)=col
-    END DO
-    CLOSE (unit=iunit)
-    return
-  end subroutine read_values
-
-            
-end module input
-        
 ! ####################################################################
 
 
 
 module szcounts
 use MatrixUtils
-use input
 use settings
 use CosmologyTypes
 use CosmoTheory
 use Calculator_Cosmology
 use Likelihood_Cosmology
 use IniObjects
-
+use massfunction
+use massobservable
 
 implicit none
  private
@@ -1347,7 +1289,7 @@ implicit none
  integer :: errorz_switch  !0 for simple rescaling, 1 for MCMC 
  integer :: nmiss,nred2,ncat,nerf,nrows_qa,nrows_erf
  integer :: ylim_switch  !>1 for constant ylim, <1 for variable ylim
-
+ 
  real(dl), allocatable :: DNcat(:,:),DNzcat(:),DNycat(:),DN(:,:),DNz(:),DNy(:)
  real(dl), allocatable :: Z(:),LOGY(:),ylims(:,:),thetas(:),skyfracs(:),erf_list(:,:),qa_ytot(:,:)
  real(dl), allocatable :: SZcat(:,:)
@@ -1356,12 +1298,15 @@ implicit none
  character(len=256) :: SZ_filename = ''
  character(LEN=*), parameter :: SZ_version =  'June_2014'
 
+ REAL(dl), SAVE :: zmaxs,z0,dz
+ INTEGER, SAVE :: Nred, Nscat
+  
  type, extends(TCosmoCalcLikelihood) :: SZLikelihood
   contains
  procedure :: LogLike => SZCC_Cash
  end type SZLikelihood
 
- !PRIVATE:: ran_mwc,get_free_lun,randgauss_boxmuller
+ !PRIVATE:: ran_mwc,randgauss_boxmuller
  PUBLIC :: SZLikelihood_Add, SZcc_Cash
 
 contains
@@ -1423,7 +1368,6 @@ contains
 
      subroutine SZ_init
 !!$       use settings
-!!$       use input
        ! reading input file containing data and selection function
        ! computing the data counts
        ! basic settings
@@ -1494,8 +1438,7 @@ contains
 
           print*,'Reading catalogue'
 
-          CALL get_free_lun(iunit)
-          open (UNIT=iunit,file=filename,status='old',form="formatted",iostat=reason)
+          open (newunit=iunit,file=filename,status='old',form="formatted",iostat=reason)
           IF (Reason > 0)  THEN 
              print*,'Error opening file',filename
           endif
@@ -1526,8 +1469,7 @@ contains
           endif
           CLOSE (unit=iunit)
 
-          CALL get_free_lun( iunit )
-          open (UNIT=iunit,file=filename,status='old',form="formatted")
+          open (newunit=iunit,file=filename,status='old',form="formatted")
           DO i=1,nrows
              READ(iunit,*,IOSTAT=Reason)  col1, col2, col3
              !SZcat(i,1)=col1  !redshift
@@ -1541,31 +1483,17 @@ contains
 
 
           !file with theta
-          filename=thetas_filename
-          nthetas=rows_number(filename,1)
-          print*,'Number of size thetas=',nthetas
-          allocate(thetas(nthetas),stat=iostat) 
-          if (iostat/=0) then
-             print*,'allocation error'
-          endif
-
           ! theta, nbins, first_index, last_index,first_index2, last_index2
-          call read_values(filename,1,nthetas,thetas)
+          call File%LoadTxt(thetas_filename, thetas, n=nthetas)
+          print*,'Number of size thetas=',nthetas
 
           !file with skyfracs
-          filename=skyfracs_filename
-          npatches=rows_number(filename,1)
-          print*,'Number of patches=',npatches
-          allocate(skyfracs(npatches),stat=iostat)
-          if (iostat/=0) then
-             print*,'allocation error'
-          endif
-
           ! theta, nbins, first_index, last_index,first_index2, last_index2
-          call read_values(filename,1,npatches,skyfracs)
+          call File%LoadTxt(skyfracs_filename, skyfracs, n=npatches)
+          print*,'Number of patches=',npatches
 
           filename=ylims_filename
-          nrows=rows_number(filename,1)
+          nrows=File%TxtFileLines(filename)
           print*,'Number of size y =',nrows
           if (nrows /= npatches*nthetas) then
              print*,'Format error for ylims.txt:'
@@ -1578,10 +1506,7 @@ contains
              print*,'allocation error'
           endif
 
-          CLOSE (unit=iunit)
-          CALL get_free_lun( iunit )
-
-          open (UNIT=iunit,file=filename,status='unknown',form="formatted")
+          open (newunit=iunit,file=filename,status='unknown',form="formatted")
           i=1
           j=1
           DO ii=1,nrows
@@ -1596,14 +1521,13 @@ contains
           CLOSE (unit=iunit)
        endif
 
-  CALL get_free_lun( iunit )
 !begin matthieu
   filename='data/SZ_list_erf.txt'
-    nerf=rows_number(filename,1)
+    nerf=File%TxtFileLines(filename)
     print*,'Number of rows ERF list=',nerf
 
     filename='data/SZ_y500_interp_mc_snr6.txt'
-    nrows_qa=rows_number(filename,1)
+    nrows_qa=File%TxtFileLines(filename)
     print*,'Number of rows QA Y500=',nrows_qa
     if (nrows_qa /= nerf*nthetas) then
        print*,'Format error for y500_interp_erf_inter_snr6.txt:'
@@ -1612,7 +1536,7 @@ contains
        stop
     endif
     allocate(qa_ytot(nerf,nthetas))
-    open (UNIT=iunit,file=filename,status='unknown',form="formatted")
+    open (newunit=iunit,file=filename,status='unknown',form="formatted")
     i=1
     j=1
     DO ii=1,nrows_qa
@@ -1625,10 +1549,9 @@ contains
        endif
     ENDDO
       CLOSE (unit=iunit)
-      CALL get_free_lun( iunit )
 
     filename='data/SZ_list_mc_2d_snr6.txt'
-    nrows_erf=rows_number(filename,1)
+    nrows_erf=File%TxtFileLines(filename)
     print*,'Number of ERF tot =',nrows_erf
     if (nrows_erf /= nerf*nthetas) then
        print*,'Format error for list_erf_2d_snr6.txt:'
@@ -1637,7 +1560,7 @@ contains
        stop
     endif
     allocate(erf_list(nerf,nthetas)) 
-    open (UNIT=iunit,file=filename,status='unknown',form="formatted")
+    open (newunit=iunit,file=filename,status='unknown',form="formatted")
     i=1
     j=1
     DO ii=1,nrows_erf
@@ -2137,24 +2060,6 @@ contains
     endif
     return
   end function randgauss_boxmuller
- 
-
-  SUBROUTINE get_free_lun( lun )
-    IMPLICIT NONE
-    INTEGER, INTENT(out) :: lun
-
-    INTEGER, SAVE :: last_lun = 19
-    LOGICAL :: used
-
-    lun = last_lun
-    DO
-        INQUIRE( unit=lun, opened=used )
-        IF ( .NOT. used ) EXIT
-        lun = lun + 1
-    END DO
-    last_lun = lun
-
-    END SUBROUTINE get_free_lun
 
 end module szcounts
 
