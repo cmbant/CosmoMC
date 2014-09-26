@@ -129,6 +129,7 @@
     procedure, nopass :: Delete => DeleteFile
     procedure, nopass :: ReadTextMatrix
     procedure, nopass :: ReadTextVector
+    procedure, nopass :: WriteTextMatrix
     procedure, nopass :: WriteTextVector
     procedure, nopass :: LoadTxt_1D
     procedure, nopass :: LoadTxt_2D
@@ -136,6 +137,7 @@
     procedure, nopass :: CreateTextFile
     procedure, nopass :: CharIsSlash
     generic  :: LoadTxt => LoadTxt_2D, LoadTxt_1D
+    generic  :: SaveTxt => WriteTextMatrix, WriteTextVector
     end type
 
     type(TFile), save :: File
@@ -1109,14 +1111,14 @@
 
     end subroutine  ReadStringTxt
 
-    subroutine WriteFormat(this, formatst, i1,i2,i3,i4,i5,i6)
+    subroutine WriteFormat(this, formatst, i1,i2,i3,i4,i5,i6,i7,i8)
     class(TTextFile) :: this
     character(LEN=*), intent(in) :: formatst
     class(*), intent(in) :: i1
-    class(*), intent(in),optional :: i2,i3,i4,i5,i6
+    class(*), intent(in),optional :: i2,i3,i4,i5,i6,i7,i8
 
     call this%CheckOpen(.true.)
-    write(this%unit,'(a)') FormatString(formatst,i1,i2,i3,i4,i5,i6)
+    write(this%unit,'(a)') FormatString(formatst,i1,i2,i3,i4,i5,i6,i7,i8)
 
     end subroutine WriteFormat
 
@@ -1313,20 +1315,54 @@
 
     end subroutine ReadTextVector
 
-    subroutine WriteTextVector(aname, vec, n)
+    subroutine WriteTextVector(aname, vec, n, fmt)
     character(LEN=*), intent(IN) :: aname
     integer, intent(in), optional :: n
     class(*), intent(in) :: vec(:)
+    character(LEN=*), intent(in), optional :: fmt
     integer j
     Type(TTextFile) :: F
 
     call F%CreateFile(aname)
+    if (present(fmt)) then
+        if (isFLoat(vec)) then
+            F%RealFormat = fmt
+        else
+            F%IntegerFormat = fmt
+        end if
+    end if
     do j=1, PresentDefault(size(vec),n)
         call F%Write(vec(j))
     end do
     call F%Close()
 
     end subroutine WriteTextVector
+
+    subroutine WriteTextMatrix(aname, mat, m, n, fmt)
+    character(LEN=*), intent(IN) :: aname
+    integer, intent(in), optional :: m, n
+    character(LEN=*), intent(in), optional :: fmt
+    class(*), intent(in) :: mat(:,:)
+    integer j
+    Type(TTextFile) :: F
+
+    call F%CreateFile(aname)
+    if (present(fmt)) then
+        if (isFLoat(mat)) then
+            F%RealFormat = fmt
+        else
+            F%IntegerFormat = fmt
+        end if
+    end if
+    if (present(m) .or. present(n)) then
+        call F%Write(mat(1:PresentDefault(size(mat,1),m),1:PresentDefault(size(mat,2),n)))
+    else
+        call F%Write(mat)
+    end if
+    call F%Close()
+
+    end subroutine WriteTextMatrix
+
 
     subroutine ReadTextMatrix(aname, mat, inm,inn)
     character(LEN=*), intent(IN) :: aname
