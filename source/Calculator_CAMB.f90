@@ -467,16 +467,14 @@
     integer zix,nz,nk, nR
     real(mcp), allocatable :: NL_Ratios(:,:)
     real(mcp) :: dR, R, minR
-    real(mcp), allocatable :: tmp(:)
     integer i
-
+    
     !Free theory arrays as they may resize between samples
     call Theory%FreePK()
 
     nz=CP%Transfer%PK_num_redshifts
-    
-    if (allocated(Theory%growth_z)) deallocate(Theory%growth_z, Theory%sigma8_z)
-    allocate(Theory%growth_z, Theory%sigma8_z)
+
+    if (.not. allocated(Theory%growth_z)) allocate(Theory%growth_z, Theory%sigma8_z)
     call Theory%growth_z%InitForSize(nz)
     call Theory%sigma8_z%InitForSize(nz)
     allocate(z(nz))
@@ -521,15 +519,15 @@
 
     if (CosmoSettings%use_SigmaR) then
         !Note R is in k*h units
-        dR = log(1.4/AccuracyLevel)
+        dR = log(1.2)/AccuracyLevel
         minR = 1/CP%Transfer%kmax
         nR = nint(log(150/minR)/dR) +1
-        allocate(Theory%Sigma_R)
+        if (.not. allocated(Theory%Sigma_R)) allocate(Theory%Sigma_R)
         call Theory%Sigma_R%InitForSize(nR)
         do i=1, nR
             Theory%Sigma_R%X(i) = exp((i-1)*dR)*minR
         end do
-        call Transfer_GetSigmaRArray(M, Theory%Sigma_R%X, Theory%Sigma_R%F, & 
+        call Transfer_GetSigmaRArray(M, Theory%Sigma_R%X, Theory%Sigma_R%F, &
             var1 = transfer_nonu,var2=transfer_nonu)
     end if
 
