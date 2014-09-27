@@ -1328,7 +1328,7 @@ class MCSamples(chains):
 
             ncols = ixmax+1 - ixmin
             nrows = iymax+1 - iymin
-            dat = np.ndarray((nrows, ncols))
+            dat = np.ndarray((ncols, nrows))
             irow, icol = 0, 0
             for ix1 in range(ixmin, ixmax+1):
                 icol = 0
@@ -1339,12 +1339,12 @@ class MCSamples(chains):
 
             if (self.shade_meanlikes):
                 maxbin = np.max(bin2Dlikes)
-                likes = np.ndarray((nrows, ncols))
+                likes = np.ndarray((ncols, nrows))
                 irow, icol = 0, 0
                 for ix1 in range(ixmin, ixmax+1):
                     icol = 0
                     for ix2 in range(iymin, iymax+1):
-                        likes = bin2Dlikes[ix1-ixmin][ix2-iymin]/maxbin
+                        likes[irow][icol] = bin2Dlikes[ix1-ixmin][ix2-iymin]/maxbin
                         icol += 1
                     irow += 1
 
