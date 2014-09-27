@@ -10,15 +10,11 @@ except:
     sys.exit()
 
 try:
-    from PyQt4.QtGui  import QApplication
-    os.environ['QT_API'] = 'pyqt'
+    from PySide.QtGui  import QApplication
+    os.environ['QT_API'] = 'pyside'
 except ImportError:
-    try:
-        from PySide.QtGui  import QApplication
-        os.environ['QT_API'] = 'pyside'
-    except ImportError:
-        print "Can't import PyQt4 or PySide modules."
-        sys.exit()
+    print "Can't import PySide modules."
+    sys.exit()
 
 from MainWindow import MainWindow
 

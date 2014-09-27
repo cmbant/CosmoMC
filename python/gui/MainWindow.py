@@ -4,34 +4,23 @@ import os
 import sys
 import glob
 import signal
-import random
 import logging
 
 import matplotlib
 matplotlib.use('Qt4Agg')
 
 try:
-    from PyQt4.QtCore import *
-    from PyQt4.QtGui  import *
-    os.environ['QT_API'] = 'pyqt'
-    matplotlib.rcParams['backend.qt4']='PyQt4'
+    from PySide.QtCore import *
+    from PySide.QtGui  import *
+    os.environ['QT_API'] = 'pyside'
+    matplotlib.rcParams['backend.qt4']='PySide'
     try:
-        import Resources_pyqt
+        import Resources_pyside
     except ImportError:
-        print "Missing file Resources_pyqt.py: Run script update_resources.sh"
+        print "Missing file Resources_pyside.py: Run script update_resources.sh"
 except ImportError:
-    try:
-        from PySide.QtCore import *
-        from PySide.QtGui  import *
-        os.environ['QT_API'] = 'pyside'
-        matplotlib.rcParams['backend.qt4']='PySide'
-        try:
-            import Resources_pyside
-        except ImportError:
-            print "Missing file Resources_pyside.py: Run script update_resources.sh"
-    except ImportError:
-        print "Can't import PyQt4 or PySide modules."
-        sys.exit()
+    print "Can't import PySide modules."
+    sys.exit()
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
@@ -238,7 +227,7 @@ class MainWindow(QMainWindow):
     # slots for menu actions
 
     def export(self):
-        filename = QFileDialog.getSaveFileName(
+        filename, filt = QFileDialog.getSaveFileName(
             self, "Choose a file name", '.', "PDF (*.pdf)")
         if not filename:
             return
@@ -248,7 +237,7 @@ class MainWindow(QMainWindow):
             self.plotter.export(filename)
 
     def script(self):
-        filename, filter = QFileDialog.getSaveFileName(
+        filename, filt = QFileDialog.getSaveFileName(
             self,
             "Choose a file name", '.', "Python (*.py)")
         if not filename:
@@ -269,11 +258,8 @@ class MainWindow(QMainWindow):
 	settings = QSettings('cosmomc', 'gui')
         last_dir = settings.value('lastSearchDirectory')
 
-        if isinstance(last_dir, QVariant):
-            last_dir = str(last_dir.toString())
-
 	# Search in current directory, if no previous path available
-        if last_dir=="":
+        if not last_dir:
             logging.debug("Setting to current directory")
             last_dir = os.getcwd()
 
@@ -284,6 +270,7 @@ class MainWindow(QMainWindow):
         dirName = str(dirName)
 
         if dirName:
+            logging.debug("Setting current directory to %s (%s)"%(dirName, type(dirName)))
             settings.setValue('lastSearchDirectory', dirName)
 
             # Root directory
