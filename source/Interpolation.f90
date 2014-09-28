@@ -3,6 +3,7 @@
     use MpiUtils
     use MiscUtils
     use Stringutils
+    use ObjectLists
     implicit none
 
 #ifdef SINGLE
@@ -12,8 +13,9 @@
 #endif
     real(sp_acc), parameter :: SPLINE_DANGLE=1.e30_sp_acc
     integer, parameter :: GI = sp_acc
+    integer, parameter :: Interpolation_version = 1
 
-    Type :: TInterpolator
+    Type, extends(TSaveLoadStateObject) :: TInterpolator
         private
         logical :: initialized =.false.
     contains
@@ -24,14 +26,19 @@
     type, extends(TInterpolator) :: TInterpolator1D
         real(sp_acc) :: Xmin_interp, Xmax_interp
         integer :: n = 0 !number of function points
-        real(sp_acc), dimension(:), allocatable :: F !function values
+        real(sp_acc), allocatable :: F(:) !function values
         real(sp_acc) :: fraction_tol =  1.e-5_sp_acc !fraction of step size allowed past end
         real(sp_acc), private :: Xmin_check, Xmax_check, Xend_tol_interp
+        integer, private :: read_version = Interpolation_version
+        real(sp_acc) :: start_bc = SPLINE_DANGLE
+        real(sp_acc) :: end_bc = SPLINE_DANGLE
     contains
     procedure, private :: TInterpolator1D_IntValue
     procedure, private :: GetValue => TInterpolator1D_Value
     procedure :: Clear => TInterpolator1D_Clear
     procedure :: FirstUse =>  TInterpolator1D_FirstUse
+    procedure :: LoadState => TInterpolator1D_LoadState
+    procedure :: SaveState => TInterpolator1D_SaveState
     procedure :: InitForSize => TInterpolator1D_InitForSize
     procedure :: InitInterp => TInterpolator1D_InitInterp
     generic :: Value => GetValue, TInterpolator1D_IntValue
@@ -63,6 +70,8 @@
     procedure :: InitInterp => TCubicSpline_InitInterp
     procedure :: Clear => TCubicSpline_Clear
     procedure :: FindNext => TCubicSpline_FindNext
+    procedure :: LoadState => TCubicSpline_LoadState
+    procedure :: SaveState => TCubicSpline_SaveState
     generic :: Init => TCubicSpline_Init, TCubicSpline_InitInt
     FINAL :: TCubicSpline_Free !not needed in standard, just for compiler bugs
     end Type
@@ -75,6 +84,8 @@
     procedure :: Init => TRegularCubicSpline_Init
     procedure :: InitInterp => TRegularCubicSpline_InitInterp
     procedure :: FindNext => TRegularCubicSpline_FindNext
+    procedure :: LoadState => TRegularCubicSpline_LoadState
+    procedure :: SaveState => TRegularCubicSpline_SaveState
     end Type
 
 
@@ -144,6 +155,8 @@
     real(sp_acc), intent(in), optional :: End1, End2
 
     if (.not. allocated(this%F)) call this%error('Interpolator has no data')
+    this%start_bc = PresentDefault(this%start_bc, End1)
+    this%end_bc = PresentDefault(this%end_bc, End2)
 
     end subroutine TInterpolator1D_InitInterp
 
@@ -162,6 +175,8 @@
 
     if (allocated(this%F)) deallocate(this%F)
     this%n = 0
+    this%start_bc = SPLINE_DANGLE
+    this%end_bc = SPLINE_DANGLE
     this%Initialized = .false.
 
     end subroutine TInterpolator1D_Clear
@@ -186,6 +201,28 @@
     TInterpolator1D_IntValue = this%Value(real(x,sp_acc),error)
 
     end function TInterpolator1D_IntValue
+
+    subroutine TInterpolator1D_LoadState(this,F)
+    class(TInterpolator1D) :: this
+    class(TFileStream) :: F
+    integer n
+
+    call this%Clear()
+    call F%Read(n, this%read_version)
+    if (n>0) then
+        call this%InitForSize(n)
+        call F%Read(this%F)
+    end if
+    end subroutine TInterpolator1D_LoadState
+
+    subroutine TInterpolator1D_SaveState(this,F)
+    class(TInterpolator1D) :: this
+    class(TFileStream) :: F
+
+    call F%Write(this%n, Interpolation_version)
+    if (this%n>0) call F%Write(this%F)
+
+    end subroutine TInterpolator1D_SaveState
 
 
     subroutine TSpline1D_FindNext(this, x, llo, xlo, xhi)
@@ -331,7 +368,7 @@
     subroutine TSpline1D_Clear(this)
     class(TSpline1D) :: this
 
-    call this%TInterpolator1D%Clear()
+    call TInterpolator1D_Clear(this)
     if (allocated(this%ddF)) deallocate(this%ddF)
 
     end subroutine TSpline1D_Clear
@@ -342,7 +379,7 @@
     class(TCubicSpline) :: this
     integer, intent(in) :: n
 
-    call this%TInterpolator1D%InitForSize(n)
+    call TInterpolator1D_InitForSize(this,n)
     allocate(this%X(this%n))
 
     end subroutine TCubicSpline_InitForSize
@@ -379,28 +416,16 @@
     subroutine TCubicSpline_InitInterp(this,End1,End2)
     class(TCubicSpline):: this
     real(sp_acc), intent(in), optional :: End1, End2
-    real(sp_acc) :: e1,e2
 
     call this%TSpline1D%InitInterp(End1,End2)
 
-    if (present(End1)) then
-        e1 = End1
-    else
-        e1 = SPLINE_DANGLE
-    end if
-
-    if (present(End2)) then
-        e2 = End2
-    else
-        e2 = SPLINE_DANGLE
-    end if
     this%Xend_tol_interp = (this%X(2)-this%X(1))*this%fraction_tol
     this%Xmin_interp = this%X(1)
     this%Xmax_interp = this%X(this%n)
     this%Xmin_check = this%X(1) - this%Xend_tol_interp
     this%Xmax_check = this%X(this%n) + this%Xend_tol_interp
     allocate(this%ddF(this%n))
-    call spline(this%X,this%F,this%n,e1,e2,this%ddF)
+    call spline(this%X,this%F,this%n,this%start_bc,this%end_bc,this%ddF)
     this%Initialized = .true.
 
     end subroutine TCubicSpline_InitInterp
@@ -482,6 +507,30 @@
 
     end subroutine TCubicSpline_FindNext
 
+    subroutine TCubicSpline_LoadState(this,F)
+    class(TCubicSpline) :: this
+    class(TFileStream) :: F
+
+    call TInterpolator1D_LoadState(this,F)
+    if (this%n>0) then
+        call F%Read(this%X)
+        call F%Read(this%start_bc, this%end_bc)
+        call this%InitInterp(this%start_bc, this%end_bc)
+    end if
+
+    end subroutine TCubicSpline_LoadState
+
+    subroutine TCubicSpline_SaveState(this,F)
+    class(TCubicSpline) :: this
+    class(TFileStream) :: F
+
+    call TInterpolator1D_SaveState(this,F)
+    if (this%n==0) return
+    call F%Write(this%X)
+    call F%Write(this%start_bc, this%end_bc)
+
+    end subroutine TCubicSpline_SaveState
+
     !Cubic spline on regular x
 
     subroutine TRegularCubicSpline_Init(this, xmin, xmax, n, values, End1, End2 )
@@ -513,23 +562,11 @@
 
     call this%TSpline1D%InitInterp(End1,End2)
 
-    if (present(End1)) then
-        e1 = End1
-    else
-        e1 = SPLINE_DANGLE
-    end if
-
-    if (present(End2)) then
-        e2 = End2
-    else
-        e2 = SPLINE_DANGLE
-    end if
-
     this%Xend_tol_interp = this%delta_x*this%fraction_tol
     this%xmin_check = this%xmin_interp - this%Xend_tol_interp
     this%xmax_check = this%xmax_interp + this%Xend_tol_interp
     allocate(this%ddF(this%n))
-    call regular_spline(this%delta_x,this%F,this%n,e1,e2,this%ddF)
+    call regular_spline(this%delta_x,this%F,this%n,this%start_bc,this%end_bc,this%ddF)
     this%Initialized = .true.
 
     end subroutine TRegularCubicSpline_InitInterp
@@ -548,6 +585,28 @@
 
     end subroutine TRegularCubicSpline_FindNext
 
+    subroutine TRegularCubicSpline_LoadState(this,F)
+    class(TRegularCubicSpline) :: this
+    class(TFileStream) :: F
+
+    call TInterpolator1D_LoadState(this,F)
+    call F%Read(this%xmin, this%xmax, this%delta_x)
+    this%delta_x = (this%xmax - this%xmin)/(this%n-1)
+    this%xmin_interp = this%xmin
+    this%xmax_interp = this%xmax
+
+    end subroutine TRegularCubicSpline_LoadState
+
+    subroutine TRegularCubicSpline_SaveState(this,F)
+    class(TRegularCubicSpline) :: this
+    class(TFileStream) :: F
+
+    call TInterpolator1D_SaveState(this,F)
+    call F%Write(this%xmin, this%xmax, this%delta_x)
+
+    end subroutine TRegularCubicSpline_SaveState
+
+    !Cubic spline on with regular spacing in log(x)
 
     subroutine TLogRegularCubicSpline_Init(this, xmin, xmax, n, values, End1, End2 )
     class(TLogRegularCubicSpline) :: this

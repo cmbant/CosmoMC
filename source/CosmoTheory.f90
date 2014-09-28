@@ -208,6 +208,11 @@
         write(F%unit) this%MPK%y
         write(F%unit) this%MPK%z
         if(CosmoSettings%use_nonlinear) write(F%unit) this%NL_MPK%z
+        if(CosmoSettings%use_WeylPower) write(F%unit) this%MPK_WEYL%z
+        if(CosmoSettings%use_nonlinear.and. CosmoSettings%use_WeylPower) write(F%unit) this%NL_MPK_WEYL%z
+        call this%sigma8_z%SaveState(F)
+        call this%growth_z%SaveState(F)
+        if (CosmoSettings%use_sigmaR) call this%sigma_R%SaveState(F)
     end if
 
     end subroutine TCosmoTheoryPredictions_WriteTheory
@@ -308,6 +313,24 @@
                 write(*,*)"          but you are not using them. Be careful that this"
                 write(*,*)"          is what you intended."
             end if
+        end if
+        if(FileSettings%use_WeylPower) then
+            allocate(this%MPK_WEYL)
+            read(F%unit)temp
+            call this%MPK_WEYL%Init(k,z,temp)
+        end if
+        if(FileSettings%use_nonlinear.and. FileSettings%use_WeylPower) then
+            allocate(this%NL_MPK_WEYL)
+            read(F%unit)temp
+            call this%NL_MPK_WEYL%Init(k,z,temp)
+        end if
+        
+        if (.not. allocated(this%growth_z)) allocate(this%growth_z, this%sigma8_z)
+        call this%sigma8_z%LoadState(F)
+        call this%growth_z%LoadState(F)
+        if (FileSettings%use_sigmaR) then
+            if (.not. allocated(this%sigma_R)) allocate(this%Sigma_R)
+            call this%sigma_R%LoadState(F)
         end if
     end if
 

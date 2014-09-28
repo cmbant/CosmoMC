@@ -26,6 +26,9 @@ JLA = 'JLA'
 BAOdata = 'BAODR11.ini'
 HSTdata = 'HST_GPE70p6.ini'
 
+RSD = 'BAO_RSD.ini'
+WL = 'WL.ini'
+
 Camspec = 'CAMspec_defaults.ini'
 highL = 'highL'
 lowl = 'lowl'
@@ -274,6 +277,27 @@ for d in copy.deepcopy(g.datasets):
     gphi.datasets.append(d)
 gphi.importanceRuns = []
 groups.append(gphi)
+
+
+extdata = batchJob.jobGroup('extdata')
+extdata.params = [[''], ['mnu'], ['nnu', 'meffsterile']]
+extdata.datasets = []
+for d in copy.deepcopy(g.datasets):
+    d.add(WL)
+    extdata.datasets.append(d)
+for d in copy.deepcopy(g.datasets):
+    d.add(RSD)
+    extdata.datasets.append(d)
+for d in copy.deepcopy(g.datasets):
+    d.add(RSD)
+    d.add(WL)
+    d.add(JLA)
+    d.add(HST)
+    extdata.datasets.append(d)
+
+extdata.importanceRuns = []
+groups.append(extdata)
+
 
 for g in groups:
     for p in g.params:

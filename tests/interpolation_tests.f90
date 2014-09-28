@@ -1,5 +1,6 @@
     module InterpolationTests
     use Interpolation
+    use FileUtils
     implicit None
     integer, parameter, private :: sp= KIND(1.d0)
 
@@ -21,13 +22,14 @@
     real(sp), allocatable :: x(:),f(:)
     integer i
     integer fails
-    Type(TCubicSpline) :: Irreg
-    Type(TRegularCubicSpline) :: Reg
+    Type(TCubicSpline) :: Irreg, IrregLoad
+    Type(TRegularCubicSpline) :: Reg, RegLoad
     Type(TLogRegularCubicSpline) :: Reglog
     real(sp) xx
     real(sP), parameter:: testval = 13.2623_sp
     real(sP), parameter:: testarrayval(3) = [7.3_sp, 9._sp,34.34643_sp]
     real(sp) :: outarray(3), funcarray(3)
+    Type(TBinaryFile) :: FB
     
     fails = 0
     allocate(x(100),f(100))
@@ -87,6 +89,32 @@
         print *, outarray
         print *, funcarray
     end if
+
+    call FB%CreateFile('test.bin')
+    call Irreg%SaveState(FB)
+    call FB%Close()
+    call FB%Open('test.bin')
+    call IrregLoad%loadState(FB)
+    call FB%Close()
+    if (abs( IrregLoad%Value(testval) -Irreg%Value(testval))<1e-8) then
+        print *,'Load OK'
+    else
+        fails = fails+1
+        print *, 'Load error'
+    end if
+    call FB%CreateFile('test.bin')
+    call Reg%SaveState(FB)
+    call FB%Close()
+    call FB%Open('test.bin')
+    call RegLoad%loadState(FB)
+    call FB%Close()
+    if (abs( RegLoad%Value(testval) -Reg%Value(testval))<1e-8) then
+        print *,'Load OK'
+    else
+        fails = fails+1
+        print *, 'Load error'
+    end if
+    call File%Delete('test.bin')
     
     end function RunInterpolationTests
 
