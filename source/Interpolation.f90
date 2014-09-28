@@ -2,6 +2,7 @@
     use FileUtils
     use MpiUtils
     use MiscUtils
+    use Stringutils
     implicit none
 
 #ifdef SINGLE
@@ -20,27 +21,71 @@
     procedure :: Error => TInterpolator_Error
     end Type TInterpolator
 
-    Type, extends(TInterpolator) :: TCubicSpline
-        integer n
-        real(sp_acc), dimension(:), allocatable :: X
-        real(sp_acc), dimension(:), allocatable :: F,  ddF
+    type, extends(TInterpolator) :: TInterpolator1D
+        real(sp_acc) :: Xmin_interp, Xmax_interp
+        integer :: n = 0 !number of function points
+        real(sp_acc), dimension(:), allocatable :: F !function values
+        real(sp_acc) :: fraction_tol =  1.e-5_sp_acc !fraction of step size allowed past end
+        real(sp_acc), private :: Xmin_check, Xmax_check, Xend_tol_interp
     contains
+    procedure, private :: TInterpolator1D_IntValue
+    procedure, private :: GetValue => TInterpolator1D_Value
+    procedure :: Clear => TInterpolator1D_Clear
+    procedure :: FirstUse =>  TInterpolator1D_FirstUse
+    procedure :: InitForSize => TInterpolator1D_InitForSize
+    procedure :: InitInterp => TInterpolator1D_InitInterp
+    generic :: Value => GetValue, TInterpolator1D_IntValue
+    end Type TInterpolator1D
+
+    Type, extends(TInterpolator1D) :: TSpline1D
+        real(sp_acc), allocatable :: ddF(:)
+    contains
+    procedure :: Clear => TSpline1D_Clear
+    procedure :: GetValue => TSpline1D_Value
+    procedure, private :: TSpline1D_ArrayValue
+    procedure, private :: TSpline1D_IntRangeValue
+    procedure :: Derivative => TSpline1D_Derivative
+    procedure :: FindNext => TSpline1D_FindNext
+    procedure :: FindValue => TSpline1D_FindValue
+    generic :: Array => TSpline1D_ArrayValue, TSpline1D_IntRangeValue
+    end Type TSpline1D
+
+
+    Type, extends(TSpline1D) :: TCubicSpline
+        ! 1D cubic spline interpolator with irregular monotonic X spacing
+        real(sp_acc), allocatable :: X(:)
+    contains
+    procedure, private, nopass :: spline
     procedure, private :: TCubicSpline_Init
     procedure, private :: TCubicSpline_InitInt
-    procedure, private :: TCubicSpline_Value
-    procedure, private :: TCubicSpline_ArrayValue
-    procedure, private :: TCubicSpline_IntRangeValue
-    procedure :: FirstUse =>  TCubicSpline_FirstUse
     procedure :: InitFromFile => TCubicSpline_InitFromFile
     procedure :: InitForSize => TCubicSpline_InitForSize
     procedure :: InitInterp => TCubicSpline_InitInterp
-    procedure :: Derivative => TCubicSpline_Derivative
     procedure :: Clear => TCubicSpline_Clear
-    generic :: Value => TCubicSpline_Value
-    generic :: Array => TCubicSpline_ArrayValue, TCubicSpline_IntRangeValue
+    procedure :: FindNext => TCubicSpline_FindNext
     generic :: Init => TCubicSpline_Init, TCubicSpline_InitInt
     FINAL :: TCubicSpline_Free !not needed in standard, just for compiler bugs
     end Type
+
+    Type, extends(TSpline1D) :: TRegularCubicSpline
+        ! 1D interpolation with regular X spacing
+        real(sp_acc) :: xmin, xmax, delta_x
+    contains
+    procedure, private, nopass :: regular_spline
+    procedure :: Init => TRegularCubicSpline_Init
+    procedure :: InitInterp => TRegularCubicSpline_InitInterp
+    procedure :: FindNext => TRegularCubicSpline_FindNext
+    end Type
+
+
+    Type, extends(TRegularCubicSpline) :: TLogRegularCubicSpline
+        ! 1D interpolation with regular log(X) spacing
+    contains
+    procedure :: Init => TLogRegularCubicSpline_Init
+    procedure :: Derivative => TLogRegularCubicSpline_Derivative
+    procedure :: GetValue => TLogRegularCubicSpline_Value
+    end Type
+
 
     Type, extends(TInterpolator) :: TInterpGrid2D
         !      ALGORITHM 760, COLLECTED ALGORITHMS FROM ACM.
@@ -55,71 +100,270 @@
     procedure :: InitFromFile => TInterpGrid2D_InitFromFile
     procedure :: Value => TInterpGrid2D_Value !one point
     procedure :: Values => TInterpGrid2D_Values !array of points
-    procedure :: Error => TInterpGrid2D_error
     procedure :: Clear => TInterpGrid2D_Clear
     procedure, private :: InitInterp => TInterpGrid2D_InitInterp
     FINAL :: TInterpGrid2D_Free
     end Type TInterpGrid2D
 
 
-    public TCubicSpline, TInterpGrid2D, SPLINE_DANGLE
+    public TInterpolator1D, TSpline1D, TCubicSpline, TRegularCubicSpline, TInterpGrid2D, SPLINE_DANGLE
 
     contains
 
-    subroutine TInterpolator_FirstUse(W)
-    class(TInterpolator) W
+    subroutine TInterpolator_FirstUse(this)
+    class(TInterpolator) this
 
-    W%Initialized = .true.
-    call W%error('TInterpolator not initialized')
+    this%Initialized = .true.
+    call this%error('TInterpolator not initialized')
 
     end subroutine TInterpolator_FirstUse
 
-    subroutine TInterpolator_error(W,S)
-    class(TInterpolator):: W
+    subroutine TInterpolator_error(this,S,v1,v2)
+    class(TInterpolator):: this
     character(LEN=*), intent(in) :: S
+    class(*), intent(in), optional :: v1, v2
 
-    call MpiStop('Interpolation error: '//trim(S))
+    call MpiStop(FormatString('Interpolation error: '//trim(S),v1,v2))
 
     end subroutine TInterpolator_error
 
+    !!! 1D interpolation
 
-    subroutine TCubicSpline_InitForSize(W, n)
-    class(TCubicSpline) :: W
+    subroutine TInterpolator1D_FirstUse(this)
+    class(TInterpolator1D) this
+
+    if (.not. this%Initialized) then
+        call this%InitInterp()
+        this%Initialized = .true.
+    end if
+
+    end subroutine TInterpolator1D_FirstUse
+
+    subroutine TInterpolator1D_InitInterp(this,End1,End2)
+    class(TInterpolator1D):: this
+    real(sp_acc), intent(in), optional :: End1, End2
+
+    if (.not. allocated(this%F)) call this%error('Interpolator has no data')
+
+    end subroutine TInterpolator1D_InitInterp
+
+    subroutine TInterpolator1D_InitForSize(this, n)
+    class(TInterpolator1D) :: this
     integer, intent(in) :: n
 
-    call W%Clear()
-    W%n = n
-    allocate(W%X(W%n))
-    allocate(W%F(W%n))
+    call this%Clear()
+    this%n = n
+    allocate(this%F(this%n))
+
+    end subroutine TInterpolator1D_InitForSize
+
+    subroutine TInterpolator1D_Clear(this)
+    class(TInterpolator1D) :: this
+
+    if (allocated(this%F)) deallocate(this%F)
+    this%n = 0
+    this%Initialized = .false.
+
+    end subroutine TInterpolator1D_Clear
+
+    function TInterpolator1D_Value(this, x, error )
+    class(TInterpolator1D) :: this
+    real(sp_acc) :: TInterpolator1D_Value
+    real(sp_acc), intent(in) :: x
+    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
+
+    TInterpolator1D_Value = 0
+    call this%error('Value not implemented')
+
+    end function TInterpolator1D_Value
+
+    function TInterpolator1D_IntValue(this, x, error )
+    class(TInterpolator1D) :: this
+    real(sp_acc) :: TInterpolator1D_IntValue
+    integer, intent(in) :: x
+    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
+
+    TInterpolator1D_IntValue = this%Value(real(x,sp_acc),error)
+
+    end function TInterpolator1D_IntValue
+
+
+    subroutine TSpline1D_FindNext(this, x, llo, xlo, xhi)
+    class(TSpline1D) :: this
+    real(sp_acc), intent(in) :: x
+    integer, intent(inout) :: llo
+    real(sp_acc), intent(out) :: xlo, xhi
+
+    xlo = 0
+    xhi = 0
+    llo=0
+    call this%Error('FindNext not implemented')
+
+    end subroutine TSpline1D_FindNext
+
+    subroutine TSpline1D_FindValue(this, x, llo, xlo, xhi, error)
+    class(TSpline1D) :: this
+    real(sp_acc), intent(in) :: x
+    integer, intent(out) :: llo
+    real(sp_acc), intent(out) :: xlo, xhi
+    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
+    integer i
+
+    if (.not. this%Initialized) call this%FirstUse
+
+    if (x< this%Xmin_check .or. x> this%Xmax_check) then
+        if (present(error)) then
+            error = -1
+            return
+        else
+            call this%Error('Spline x = %f out of range',x)
+        end if
+    end if
+    llo=1
+    call this%FindNext(x,llo, xlo, xhi)
+
+    end subroutine TSpline1D_FindValue
+
+
+    function TSpline1D_Value(this, x, error )
+    class(TSpline1D) :: this
+    real(sp_acc) :: TSpline1D_Value
+    real(sp_acc), intent(in) :: x
+    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
+    integer llo,lhi
+    real(sp_acc) a0,b0,ho,xlo,xhi
+
+    call this%FindValue(x, llo, xlo, xhi, error)
+
+    lhi=llo+1
+    ho=xhi - xlo
+    a0=(xhi-x)/ho
+    b0 = 1-a0
+    !TSpline1D_Value = a0*this%F(llo)+ b0*this%F(lhi)+((a0**3-a0)* this%ddF(llo) +(b0**3-b0)*this%ddF(lhi))*ho**2/6
+    TSpline1D_Value = b0*this%F(lhi)+a0*(this%F(llo) -b0*((a0+1)*this%ddF(llo) +(2-a0)*this%ddF(lhi))*ho**2/6)
+
+    end function TSpline1D_Value
+
+    ! Get derivative of spline
+    function TSpline1D_Derivative(this, x, error )
+    class(TSpline1D) :: this
+    real(sp_acc) :: TSpline1D_Derivative
+    real(sp_acc), intent(in) :: x
+    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
+    integer llo,lhi
+    real(sp_acc) a0,b0,ho,dely, xlo, xhi
+
+    call this%FindValue(x, llo, xlo, xhi, error)
+
+    lhi=llo+1
+    ho = xhi - xlo
+    a0=(xhi-x)/ho
+    b0 = 1-a0
+    dely=this%F(lhi)-this%F(llo)
+    TSpline1D_Derivative = dely/ho+ ((1-3*a0**2)*this%ddF(llo) + (3*b0**2-1)*this%ddF(lhi))*ho/6
+
+    end function TSpline1D_Derivative
+
+    subroutine TSpline1D_ArrayValue(this, x, y, error )
+    !Get array of values y(x), assuming x is monotonically increasing
+    class(TSpline1D) :: this
+    real(sp_acc), intent(in) :: x(1:)
+    real(sp_acc), intent(out) :: y(1:)
+    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
+    integer llo,lhi, i
+    real(sp_acc) a0,b0,ho, xlo, xhi
+
+    if (.not. this%Initialized) call this%FirstUse
+
+    if (x(1)< this%Xmin_check .or. x(size(x))> this%Xmax_check) then
+        if (present(error)) then
+            error = -1
+            return
+        else
+            call this%Error('Spline ArrayValue: out of range')
+        end if
+    end if
+
+    llo=1
+    do i=1, size(x)
+        call this%FindNext(x(i),llo, xlo, xhi)
+        lhi=llo+1
+        ho=xhi - xlo
+        a0=(xhi-x(i))/ho
+        b0=1-a0
+        y(i) = b0*this%F(lhi)+a0*(this%F(llo) -b0*((a0+1)*this%ddF(llo) +(2-a0)*this%ddF(lhi))*ho**2/6)
+    end do
+
+    end subroutine TSpline1D_ArrayValue
+
+    subroutine TSpline1D_IntRangeValue(this, xmin, xmax, y, error )
+    !Get array of values y(x), assuming x is monotonically increasing
+    class(TSpline1D) :: this
+    integer, intent(in) :: xmin, xmax
+    real(sp_acc), intent(out) :: y(xmin:)
+    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
+    integer llo,lhi, x
+    real(sp_acc) a0,b0,ho,xlo,xhi
+
+    if (.not. this%Initialized) call this%FirstUse
+
+    if (xmin< this%Xmin_check .or. xmax> this%Xmax_check ) then
+        if (present(error)) then
+            error = -1
+            return
+        else
+            call this%Error('Array spline: limits out of range ')
+        end if
+    end if
+
+    llo=1
+    do x=xmin, xmax
+        call this%FindNext(real(x,sp_acc),llo, xlo, xhi)
+        lhi=llo+1
+        ho=xhi-xlo
+        a0=(xhi-x)/ho
+        b0=1-a0
+        y(x) = b0*this%F(lhi)+a0*(this%F(llo) -b0*((a0+1)*this%ddF(llo) +(2-a0)*this%ddF(lhi))*ho**2/6)
+    end do
+
+    end subroutine TSpline1D_IntRangeValue
+
+    subroutine TSpline1D_Clear(this)
+    class(TSpline1D) :: this
+
+    call this%TInterpolator1D%Clear()
+    if (allocated(this%ddF)) deallocate(this%ddF)
+
+    end subroutine TSpline1D_Clear
+
+    !Irregular Cubic spline
+
+    subroutine TCubicSpline_InitForSize(this, n)
+    class(TCubicSpline) :: this
+    integer, intent(in) :: n
+
+    call this%TInterpolator1D%InitForSize(n)
+    allocate(this%X(this%n))
 
     end subroutine TCubicSpline_InitForSize
 
-    subroutine TCubicSpline_FirstUse(W)
-    class(TCubicSpline) W
 
-    if (.not. W%Initialized) then
-        call W%InitInterp()
-        W%Initialized = .true.
-    end if
-
-    end subroutine TCubicSpline_FirstUse
-
-    subroutine TCubicSpline_Init(W, Xarr,  values, n, End1, End2 )
-    class(TCubicSpline) :: W
-    real(sp_acc), intent(in) :: Xarr(:), values(:)
+    subroutine TCubicSpline_Init(this, Xarr,  values, n, End1, End2 )
+    class(TCubicSpline) :: this
+    real(sp_acc), intent(in) :: Xarr(1:), values(1:)
     integer, intent(in), optional :: n
     real(sp_acc), intent(in), optional :: End1, End2
 
-    call W%InitForSize(PresentDefault(size(Xarr),n))
+    call this%InitForSize(PresentDefault(size(Xarr),n))
 
-    W%F = values(1:W%n)
-    W%X = Xarr(1:W%n)
-    call W%InitInterp(End1, End2)
+    this%F = values(1:this%n)
+    this%X = Xarr(1:this%n)
+    call this%InitInterp(End1, End2)
 
     end subroutine TCubicSpline_Init
 
-    subroutine TCubicSpline_InitInt(W, Xarr,  values, n, End1, End2 )
-    class(TCubicSpline) :: W
+    subroutine TCubicSpline_InitInt(this, Xarr,  values, n, End1, End2 )
+    class(TCubicSpline) :: this
     integer, intent(in) :: XArr(:)
     real(sp_acc), intent(in) :: values(:)
     real(sp_acc), allocatable :: XReal(:)
@@ -128,16 +372,16 @@
 
     allocate(XReal(size(XArr)))
     XReal =  XArr
-    call W%Init(XReal, values, n, End1, End2)
+    call this%Init(XReal, values, n, End1, End2)
 
     end subroutine TCubicSpline_InitInt
 
-    subroutine TCubicSpline_InitInterp(W,End1,End2)
-    class(TCubicSpline):: W
+    subroutine TCubicSpline_InitInterp(this,End1,End2)
+    class(TCubicSpline):: this
     real(sp_acc), intent(in), optional :: End1, End2
     real(sp_acc) :: e1,e2
 
-    if (.not. allocated(W%X)) call W%error('TCubicSpline has no data')
+    call this%TSpline1D%InitInterp(End1,End2)
 
     if (present(End1)) then
         e1 = End1
@@ -150,15 +394,19 @@
     else
         e2 = SPLINE_DANGLE
     end if
-
-    allocate(W%ddF(W%n))
-    call spline(W%X,W%F,W%n,e1,e2,W%ddF)
-    W%Initialized = .true.
+    this%Xend_tol_interp = (this%X(2)-this%X(1))*this%fraction_tol
+    this%Xmin_interp = this%X(1)
+    this%Xmax_interp = this%X(this%n)
+    this%Xmin_check = this%X(1) - this%Xend_tol_interp
+    this%Xmax_check = this%X(this%n) + this%Xend_tol_interp
+    allocate(this%ddF(this%n))
+    call spline(this%X,this%F,this%n,e1,e2,this%ddF)
+    this%Initialized = .true.
 
     end subroutine TCubicSpline_InitInterp
 
-    subroutine TCubicSpline_InitFromFile(W, Filename, xcol, ycol)
-    class(TCubicSpline):: W
+    subroutine TCubicSpline_InitFromFile(this, Filename, xcol, ycol)
+    class(TCubicSpline):: this
     character(LEN=*), intent(in) :: Filename
     integer, intent(in), optional :: xcol, ycol
     integer :: ixcol=1,iycol=2
@@ -181,190 +429,165 @@
             if (.not. F%ReadLineSkipEmptyAndComments(InLine)) exit
 
             read(InLine,*, iostat=status) tmp
-            if (status/=0) call W%Error('Error reading line: '//trim(InLine))
+            if (status/=0) call this%Error('Error reading line: '//trim(InLine))
 
             nx=nx+1
             if (parse==2) then
-                W%X(nx) = tmp(ixcol)
-                W%F(nx) = tmp(iycol)
+                this%X(nx) = tmp(ixcol)
+                this%F(nx) = tmp(iycol)
             endif
         end do
 
         if (parse==2) exit
 
-        if (nx<2) call W%Error('not enough values to interpolate')
-        call W%InitForSize(nx)
+        if (nx<2) call this%Error('not enough values to interpolate')
+        call this%InitForSize(nx)
         status=0
         call F%Rewind()
     end do
 
     call F%Close()
 
-    call W%InitInterp()
+    call this%InitInterp()
 
     end subroutine TCubicSpline_InitFromFile
 
-    subroutine TCubicSpline_Clear(W)
-    class(TCubicSpline) :: W
+    subroutine TCubicSpline_Clear(this)
+    class(TCubicSpline) :: this
 
-    if (allocated(W%X)) then
-        deallocate(W%X)
-        deallocate(W%F)
-        deallocate(W%ddF)
-    end if
-    W%Initialized = .false.
+    call this%TSpline1D%Clear()
+    if (allocated(this%X)) deallocate(this%X)
 
     end subroutine TCubicSpline_Clear
 
-    subroutine TCubicSpline_Free(W)
-    Type(TCubicSpline) :: W
+    subroutine TCubicSpline_Free(this)
+    Type(TCubicSpline) :: this
 
-    call W%Clear()
+    call this%Clear()
 
     end subroutine TCubicSpline_Free
 
-    function TCubicSpline_Value(W, x, error )
-    class(TCubicSpline) :: W
-    real(sp_acc) :: TCubicSpline_Value
+    subroutine TCubicSpline_FindNext(this, x, llo, xlo, xhi)
+    !No error checking, assumes x>= x at point point llo, updating llo
+    class(TCubicSpline) :: this
     real(sp_acc), intent(in) :: x
-    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
-    integer llo,lhi
-    real(sp_acc) a0,b0,ho
+    integer, intent(inout) :: llo
+    real(sp_acc), intent(out) :: xlo, xhi
 
-    if (.not. W%Initialized) call W%FirstUse
-
-    if (x< W%X(1) .or. x> W%X(W%n)) then
-        if (present(error)) then
-            error = -1
-            TCubicSpline_Value=0
-            return
-        else
-            write (*,*) 'TCubicSpline_Value: out of range ', x
-            stop
-        end if
-    end if
-
-    llo=1
-    do while (W%X(llo+1) < x)  !could do binary search here if large
+    do while (llo < this%n .and. this%X(llo+1) < x)  !could do binary search here if large
         llo = llo + 1
     end do
+    xlo = this%X(llo)
+    xhi = this%X(llo+1)
 
-    lhi=llo+1
-    ho=W%X(lhi)-W%X(llo)
-    a0=(W%X(lhi)-x)/ho
-    b0=(x-W%X(llo))/ho
-    TCubicSpline_Value = a0*W%F(llo)+ b0*W%F(lhi)+((a0**3-a0)* W%ddF(llo) +(b0**3-b0)*W%ddF(lhi))*ho**2/6
+    end subroutine TCubicSpline_FindNext
 
-    end function TCubicSpline_Value
+    !Cubic spline on regular x
 
-    subroutine TCubicSpline_ArrayValue(W, x, y, error )
-    !Get array of values y(x), assuming x is monotonically increasing
-    class(TCubicSpline) :: W
-    real(sp_acc), intent(in) :: x(1:)
-    real(sp_acc), intent(out) :: y(1:)
-    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
-    integer llo,lhi, i
-    real(sp_acc) a0,b0,ho
+    subroutine TRegularCubicSpline_Init(this, xmin, xmax, n, values, End1, End2 )
+    class(TRegularCubicSpline) :: this
+    real(sp_acc), intent(in) :: xmin, xmax
+    integer, intent(in) :: n
+    real(sp_acc), intent(in), optional :: values(1:)
+    real(sp_acc), intent(in), optional :: End1, End2
 
-    if (.not. W%Initialized) call W%FirstUse
-
-    if (x(1)< W%X(1) .or. x(size(x))> W%X(W%n)) then
-        if (present(error)) then
-            error = -1
-            return
-        else
-            write (*,*) 'TCubicSpline_Value: out of range ', x
-            stop
-        end if
+    if (xmax < xmin) call this%Error('TRegularCubicSpline_Init xmax (%f) < xmin (%f)',xmax, xmin)
+    if (n<2) call this%Error('TRegularCubicSpline_Init needs at at least 2 points')
+    call this%InitForSize(n)
+    this%xmin =xmin
+    this%xmax =xmax
+    this%delta_x = (xmax - xmin)/(n-1)
+    this%xmin_interp = xmin
+    this%xmax_interp = xmax
+    if (present(values)) then
+        this%F = values(1:this%n)
+        call this%InitInterp(End1, End2)
     end if
 
-    llo=1
-    do i=1, size(x)
-        do while (W%X(llo+1) < x(i))  !could do binary search here if large
-            llo = llo + 1
-        end do
+    end subroutine TRegularCubicSpline_Init
 
-        lhi=llo+1
-        ho=W%X(lhi)-W%X(llo)
-        a0=(W%X(lhi)-x(i))/ho
-        b0=(x(i)-W%X(llo))/ho
-        y(i) = a0*W%F(llo)+ b0*W%F(lhi)+((a0**3-a0)* W%ddF(llo) +(b0**3-b0)*W%ddF(lhi))*ho**2/6
-    end do
+    subroutine TRegularCubicSpline_InitInterp(this,End1,End2)
+    class(TRegularCubicSpline):: this
+    real(sp_acc), intent(in), optional :: End1, End2
+    real(sp_acc) :: e1,e2
 
-    end subroutine TCubicSpline_ArrayValue
+    call this%TSpline1D%InitInterp(End1,End2)
 
-    subroutine TCubicSpline_IntRangeValue(W, xmin, xmax, y, error )
-    !Get array of values y(x), assuming x is monotonically increasing
-    class(TCubicSpline) :: W
-    integer, intent(in) :: xmin, xmax
-    real(sp_acc), intent(out) :: y(xmin:)
-    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
-    integer llo,lhi, x
-    real(sp_acc) a0,b0,ho
-
-    if (.not. W%Initialized) call W%FirstUse
-
-    if (xmin< W%X(1) .or. xmax> W%X(W%n)) then
-        if (present(error)) then
-            error = -1
-            return
-        else
-            write (*,*) 'TCubicSpline_Value: out of range ', x
-            stop
-        end if
+    if (present(End1)) then
+        e1 = End1
+    else
+        e1 = SPLINE_DANGLE
     end if
 
-    llo=1
-    do x=xmin, xmax
-        do while (W%X(llo+1) < x)  !could do binary search here if large
-            llo = llo + 1
-        end do
+    if (present(End2)) then
+        e2 = End2
+    else
+        e2 = SPLINE_DANGLE
+    end if
 
-        lhi=llo+1
-        ho=W%X(lhi)-W%X(llo)
-        a0=(W%X(lhi)-x)/ho
-        b0=(x-W%X(llo))/ho
-        y(x) = a0*W%F(llo)+ b0*W%F(lhi)+((a0**3-a0)* W%ddF(llo) +(b0**3-b0)*W%ddF(lhi))*ho**2/6
-    end do
+    this%Xend_tol_interp = this%delta_x*this%fraction_tol
+    this%xmin_check = this%xmin_interp - this%Xend_tol_interp
+    this%xmax_check = this%xmax_interp + this%Xend_tol_interp
+    allocate(this%ddF(this%n))
+    call regular_spline(this%delta_x,this%F,this%n,e1,e2,this%ddF)
+    this%Initialized = .true.
 
-    end subroutine TCubicSpline_IntRangeValue
+    end subroutine TRegularCubicSpline_InitInterp
 
-    ! Get derivative of spline
-    function TCubicSpline_Derivative(W, x, error )
-    class(TCubicSpline) :: W
-    real(sp_acc) :: TCubicSpline_Derivative
+
+    subroutine TRegularCubicSpline_FindNext(this, x, llo, xlo, xhi)
+    class(TRegularCubicSpline) :: this
+    real(sp_acc), intent(in) :: x
+    integer, intent(inout) :: llo
+    real(sp_acc), intent(out) :: xlo, xhi
+
+    llo = min(max(0,int((x - this%xmin_interp)/this%delta_x)), this%n-2)
+    xlo = this%xmin_interp + llo*this%delta_x
+    llo = llo+1
+    xhi = xlo + this%delta_x
+
+    end subroutine TRegularCubicSpline_FindNext
+
+
+    subroutine TLogRegularCubicSpline_Init(this, xmin, xmax, n, values, End1, End2 )
+    class(TLogRegularCubicSpline) :: this
+    real(sp_acc), intent(in) :: xmin, xmax
+    integer, intent(in) :: n
+    real(sp_acc), intent(in), optional :: values(1:)
+    real(sp_acc), intent(in), optional :: End1, End2
+
+    if (xmin < 0) call this%Error('TLogRegularCubicSpline_Init log with xmin (%f) <0', xmin)
+
+    call TRegularCubicSpline_Init(this,xmin,xmax,n)
+    this%xmin_interp = log(xmin)
+    this%xmax_interp = log(xmax)
+    this%delta_x = (this%xmax_interp - this%xmin_interp)/(n-1)
+    if (present(values)) then
+        this%F = values(1:this%n)
+        call this%InitInterp(End1, End2)
+    end if
+
+    end subroutine TLogRegularCubicSpline_Init
+
+    function TLogRegularCubicSpline_Value(this, x, error )
+    class(TLogRegularCubicSpline) :: this
+    real(sp_acc) :: TLogRegularCubicSpline_Value
     real(sp_acc), intent(in) :: x
     integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
-    integer llo,lhi
-    real(sp_acc) a0,b0,ho,dely
 
-    if (.not. W%Initialized) call W%FirstUse
+    TLogRegularCubicSpline_Value = TSpline1D_Value(this, log(x), error)
 
-    if (x< W%X(1) .or. x> W%X(W%n)) then
-        if (present(error)) then
-            error = -1
-            TCubicSpline_Derivative=0
-            return
-        else
-            write (*,*) 'TCubicSpline_Derivative: out of range ', x
-            stop
-        end if
-    end if
+    end function TLogRegularCubicSpline_Value
 
-    llo=1
-    do while (W%X(llo+1) < x)  !could do binary search here if large
-        llo = llo + 1
-    end do
+    function TLogRegularCubicSpline_Derivative(this, x, error )
+    class(TLogRegularCubicSpline) :: this
+    real(sp_acc) :: TLogRegularCubicSpline_Derivative
+    real(sp_acc), intent(in) :: x
+    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
 
-    lhi=llo+1
-    ho=W%X(lhi)-W%X(llo)
-    a0=(W%X(lhi)-x)/ho
-    b0=(x-W%X(llo))/ho
-    dely=W%F(lhi)-W%F(llo)
-    TCubicSpline_Derivative = dely/ho-(3.d0*a0**2-1.0d0)*ho*W%ddF(llo)/6.0d0 + &
-        (3.d0*b0**2-1.0d0)*ho*W%ddF(lhi)/6.0d0
+    TLogRegularCubicSpline_Derivative = TSpline1D_Derivative(this, log(x), error)/x
 
-    end function TCubicSpline_Derivative
+    end function TLogRegularCubicSpline_Derivative
 
 
     !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -416,47 +639,79 @@
     end do
     end subroutine spline
 
+    subroutine regular_spline(delta,y,n,d11,d1n,d2)
+    integer, intent(in) :: n
+    real(sp_acc), intent(in) :: delta, y(n), d11, d1n
+    real(sp_acc), intent(out) :: d2(n)
+    integer i
+    real(sp_acc) xp,qn,un,d1l,d1r
+    real(sp_acc), allocatable :: u(:)
 
-    subroutine TInterpGrid2D_InitInterp(W)
-    class(TInterpGrid2D):: W
+    allocate(u(n-1))
 
-    allocate(W%Wk(3,W%NX,W%NY))
-    CALL rgpd3p(W%nx, W%ny, W%x, W%y, W%z, W%wk)
-    W%Initialized = .true.
+    d1r= (y(2)-y(1))/delta
+    if (d11==SPLINE_DANGLE) then
+        d2(1)=0._sp_acc
+        u(1)=0._sp_acc
+    else
+        d2(1)=-0.5_sp_acc
+        u(1)=(3._sp_acc/delta)*(d1r-d11)
+    endif
+
+    do i=2,n-1
+        d1l=d1r
+        d1r=(y(i+1)-y(i))/delta
+        xp=1/(d2(i-1)/2+2._sp_acc)
+        d2(i)=-xp/2
+        u(i)=(3*(d1r-d1l)/delta  -u(i-1)/2)*xp
+    end do
+    d1l=d1r
+
+    if (d1n==SPLINE_DANGLE) then
+        qn=0._sp_acc
+        un=0._sp_acc
+    else
+        qn=0.5_sp_acc
+        un=(3._sp_acc/delta)*(d1n-d1l)
+    endif
+
+    d2(n)=(un-qn*u(n-1))/(qn*d2(n-1)+1._sp_acc)
+    do i=n-1,1,-1
+        d2(i)=d2(i)*d2(i+1)+u(i)
+    end do
+
+    end subroutine regular_spline
+
+
+    subroutine TInterpGrid2D_InitInterp(this)
+    class(TInterpGrid2D):: this
+
+    allocate(this%Wk(3,this%NX,this%NY))
+    CALL rgpd3p(this%nx, this%ny, this%x, this%y, this%z, this%wk)
+    this%Initialized = .true.
 
     end subroutine TInterpGrid2D_InitInterp
 
     !F2003 wrappers by AL, 2013
-    subroutine TInterpGrid2D_Init(W, x, y, z)
-    class(TInterpGrid2D):: W
+    subroutine TInterpGrid2D_Init(this, x, y, z)
+    class(TInterpGrid2D):: this
     REAL(GI), INTENT(IN)      :: x(:)
     REAL(GI), INTENT(IN)      :: y(:)
     REAL(GI), INTENT(IN)      :: z(:,:)
 
-    call W%Clear()
-    W%nx = size(x)
-    W%ny = size(y)
-    allocate(W%x(W%nx), source = x)
-    allocate(W%y(W%ny), source = y)
-    allocate(W%z(size(z,1),size(z,2)), source = z)
+    call this%Clear()
+    this%nx = size(x)
+    this%ny = size(y)
+    allocate(this%x(this%nx), source = x)
+    allocate(this%y(this%ny), source = y)
+    allocate(this%z(size(z,1),size(z,2)), source = z)
 
-    call W%InitInterp()
+    call this%InitInterp()
 
     end subroutine TInterpGrid2D_Init
 
-
-    subroutine TInterpGrid2D_error(W,S)
-    class(TInterpGrid2D):: W
-    character(LEN=*), intent(in) :: S
-
-    write(*,*) 'InterGrid2D Error: '//trim(S)
-    stop
-
-    end subroutine TInterpGrid2D_error
-
-
-    subroutine TInterpGrid2D_InitFromFile(W, Filename, xcol, ycol, zcol)
-    class(TInterpGrid2D):: W
+    subroutine TInterpGrid2D_InitFromFile(this, Filename, xcol, ycol, zcol)
+    class(TInterpGrid2D):: this
     character(LEN=*), intent(in) :: Filename
     integer, intent(in), optional :: xcol, ycol, zcol
     integer :: ixcol=1,iycol=2,izcol=3
@@ -483,7 +738,7 @@
         do while(F%ReadLineSkipEmptyAndComments(InLine))
 
             read(InLine,*, iostat=status) tmp
-            if (status/=0) call W%Error('Error reading line: '//trim(InLine))
+            if (status/=0) call this%Error('Error reading line: '//trim(InLine))
 
             if (first .or. tmp(iycol)/=lasty) then
                 lasty=tmp(iycol)
@@ -495,75 +750,75 @@
             nx=nx+1
             if (parse==2) then
                 if (ny==1) then
-                    W%x(nx) = tmp(ixcol)
+                    this%x(nx) = tmp(ixcol)
                 else
-                    if (tmp(ixcol)/=W%x(nx)) call W%Error('Non-grid x values')
+                    if (tmp(ixcol)/=this%x(nx)) call this%Error('Non-grid x values')
                 end if
                 if (nx==1) then
-                    W%y(ny) = tmp(iycol)
+                    this%y(ny) = tmp(iycol)
                 else
-                    if (tmp(iycol)/=W%y(ny))call W%Error('Non-grid y values')
+                    if (tmp(iycol)/=this%y(ny))call this%Error('Non-grid y values')
                 end if
-                W%z(nx, ny) = tmp(izcol)
+                this%z(nx, ny) = tmp(izcol)
             endif
         end do
 
         if (parse==2) exit
 
-        if (nx<2 .or. ny<2) call W%Error('not enough values to interpolate')
-        W%nx = nx
-        W%ny = ny
-        allocate(W%x(W%nx))
-        allocate(W%y(W%ny))
-        allocate(W%z(nx,ny))
+        if (nx<2 .or. ny<2) call this%Error('not enough values to interpolate')
+        this%nx = nx
+        this%ny = ny
+        allocate(this%x(this%nx))
+        allocate(this%y(this%ny))
+        allocate(this%z(nx,ny))
         status=0
         call F%Rewind()
     end do
 
     call F%Close()
 
-    call W%InitInterp()
+    call this%InitInterp()
 
     end subroutine TInterpGrid2D_InitFromFile
 
-    subroutine TInterpGrid2D_Clear(W)
-    class(TInterpGrid2D):: W
+    subroutine TInterpGrid2D_Clear(this)
+    class(TInterpGrid2D):: this
 
-    if (allocated(W%Wk)) then
-        deallocate(W%x)
-        deallocate(W%y)
-        deallocate(W%Wk)
-        deallocate(W%z)
+    if (allocated(this%Wk)) then
+        deallocate(this%x)
+        deallocate(this%y)
+        deallocate(this%Wk)
+        deallocate(this%z)
     end if
-    W%Initialized = .false.
+    this%Initialized = .false.
 
     end subroutine TInterpGrid2D_Clear
 
 
-    subroutine TInterpGrid2D_Free(W)
-    Type(TInterpGrid2D):: W
+    subroutine TInterpGrid2D_Free(this)
+    Type(TInterpGrid2D):: this
 
-    call W%Clear()
+    call this%Clear()
 
     end subroutine TInterpGrid2D_Free
 
-    function TInterpGrid2D_Value(W,x,y,error) result (res)
+    function TInterpGrid2D_Value(this,x,y,error) result (res)
     !Z matrix not stored internally to save mem, so must pass again
-    class(TInterpGrid2D) :: W
+    class(TInterpGrid2D) :: this
     real(GI) res, z(1), xx(1),yy(1)
     real(GI), intent(in) :: x,y
     integer, intent(inout), optional :: error
 
     xx(1)=x
     yy(1)=y
-    call W%Values(1,xx,yy,z,error)
+    call this%Values(1,xx,yy,z,error)
     res = z(1)
 
     end function TInterpGrid2D_Value
 
-    subroutine TInterpGrid2D_Values(W, nip, x,y,z, error)
+    subroutine TInterpGrid2D_Values(this, nip, x,y,z, error)
     !Z matrix not stored internally to save mem, so must pass again
-    class(TInterpGrid2D) :: W
+    class(TInterpGrid2D) :: this
     integer, intent(in) :: nip
     real(GI), intent(out):: z(*)
     real(GI), intent(in) :: x(*),y(*)
@@ -571,13 +826,13 @@
     integer md,ier
 
     md=2
-    if (.not. W%Initialized)  call W%FirstUse
+    if (.not. this%Initialized)  call this%FirstUse
 
-    call rgbi3p(W%Wk,md, W%nx, W%ny, W%x, W%y, W%z, nip, x, y, z, ier)
+    call rgbi3p(this%Wk,md, this%nx, this%ny, this%x, this%y, this%z, nip, x, y, z, ier)
     if (present(error)) then
         error=ier
     elseif (ier/=0) then
-        call W%Error('error interpolating value')
+        call this%Error('error interpolating value')
     end if
 
     end subroutine TInterpGrid2D_Values
@@ -1649,7 +1904,7 @@
 
     !     ..
     !     .. Local Scalars ..
-    REAL(GI) :: a, b, c, W, dx, dxsq, dy, dysq, p00, p01, p02, p03, p10, p11,  &
+    REAL(GI) :: a, b, c, this, dx, dxsq, dy, dysq, p00, p01, p02, p03, p10, p11,  &
         p12, p13, p20, p21, p22, p23, p30, p31, p32, p33, q0, q1, q2,  &
         q3, u, v, x0, xii, y0, yii, z00, z01, z0dx, z0dy, z10, z11,  &
         z1dx, z1dy, zdxdy, zii, zx00, zx01, zx0dy, zx10, zx11,  &
@@ -1725,7 +1980,7 @@
                 a = zdxdy - zx0dy - zy0dx + zxy00
                 b = zx1dy - zx0dy - zxy10 + zxy00
                 c = zy1dx - zy0dx - zxy01 + zxy00
-                W = zxy11 - zxy10 - zxy01 + zxy00
+                this = zxy11 - zxy10 - zxy01 + zxy00
                 p00 = z00
                 p01 = zy00
                 p02 = (2.0* (z0dy-zy00)+z0dy-zy01)/dy
@@ -1736,12 +1991,12 @@
                 p13 = (-2.0*zx0dy+zxy01+zxy00)/dysq
                 p20 = (2.0* (z0dx-zx00)+z0dx-zx10)/dx
                 p21 = (2.0* (zy0dx-zxy00)+zy0dx-zxy10)/dx
-                p22 = (3.0* (3.0*a-b-c)+W)/ (dx*dy)
-                p23 = (-6.0*a+2.0*b+3.0*c-W)/ (dx*dysq)
+                p22 = (3.0* (3.0*a-b-c)+this)/ (dx*dy)
+                p23 = (-6.0*a+2.0*b+3.0*c-this)/ (dx*dysq)
                 p30 = (-2.0*z0dx+zx10+zx00)/dxsq
                 p31 = (-2.0*zy0dx+zxy10+zxy00)/dxsq
-                p32 = (-6.0*a+3.0*b+2.0*c-W)/ (dxsq*dy)
-                p33 = (2.0* (2.0*a-b-c)+W)/ (dxsq*dysq)
+                p32 = (-6.0*a+3.0*b+2.0*c-this)/ (dxsq*dy)
+                p33 = (2.0* (2.0*a-b-c)+this)/ (dxsq*dysq)
             END IF
 
             ! Evaluates the polynomial.
