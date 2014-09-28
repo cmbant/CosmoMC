@@ -284,6 +284,18 @@
             stop
         end if
         call StringReplace('%s', X, S)
+    type is (double precision)
+        if (c/='f') then
+            write(*,*) 'Wrong format for type: '//trim(S)
+            stop
+        end if
+        call StringReplace('%f', RealToStr(X),S)
+    type is (real)
+        if (c/='f') then
+            write(*,*) 'Wrong format for type: '//trim(S)
+            stop
+        end if
+        call StringReplace('%f', RealToStr(X),S)
         class default
         stop 'Unsupported format type'
     end select
@@ -292,8 +304,7 @@
 
     function FormatString(formatst, i1,i2,i3,i4,i5,i6,i7,i8, allow_unused) result(S)
     character(LEN=*), intent(in) :: formatst
-    class(*), intent(in) :: i1
-    class(*), intent(in),optional :: i2,i3,i4,i5,i6,i7,i8
+    class(*), intent(in),optional :: i1,i2,i3,i4,i5,i6,i7,i8
     logical, optional, intent(in) :: allow_unused
     character(LEN=:), allocatable :: S
     logical OK
@@ -301,7 +312,8 @@
     !(should not substitute on the previously substituted string, etc, etc..)
     !Can do things like FormatString('case %d, ans = %03d%%',i,percent)
     S = formatst
-    OK = SubNextFormat(S, i1)
+    OK = .true.
+    if (present(i1)) OK = SubNextFormat(S, i1)
     if (OK .and. present(i2)) OK = SubNextFormat(S, i2)
     if (OK .and. present(i3)) OK = SubNextFormat(S, i3)
     if (OK .and. present(i4)) OK = SubNextFormat(S, i4)
