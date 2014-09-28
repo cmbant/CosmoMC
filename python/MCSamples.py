@@ -1254,7 +1254,11 @@ class MCSamples(chains):
 
                 if (has_prior):
                     # correct for normalization of window where it is cut by prior boundaries
-                    edge_fac = norm / np.sum(np.multiply(Win, prior_mask[ix1start:ix1end, ix2start:ix2end]))
+                    denom = np.sum(np.multiply(Win, prior_mask[ix1start:ix1end, ix2start:ix2end]))
+                    if denom!=0.:
+                        edge_fac = norm / denom
+                    else:
+                        edge_fac = 0.
                     bins2D[ix1-ixmin][ix2-iymin] *= edge_fac
                     if (self.shade_meanlikes):
                         bin2Dlikes[ix1-ixmin][ix2-iymin] *= edge_fac
@@ -1475,32 +1479,31 @@ class MCSamples(chains):
 
 
 
-    def OutputMargeStats(self):
+    def OutputMargeStats(self, writeDataToFile=True):
         contours_str = '; '.join([ str(c) for c in self.contours ])
 
 
         maxLen = max([ len(name) for name in self.index.keys() ])
         j = max(9, maxLen)
 
-        filename = self.rootdirname + '.margestats'
-        textFileHandle = open(filename, 'w')
-        textFileHandle.write("Marginalized limits: %s\n"%contours_str)
-        textFileHandle.write("\n")
-        textFileHandle.write("%-15s"%("parameter"))
-        textFileHandle.write("%-15s "%("mean"))
-        textFileHandle.write("%-15s "%("sddev"))
+        text  = ""
+        text += "Marginalized limits: %s\n"%contours_str
+        text += "\n"
+        text += "%-15s"%("parameter")
+        text += "%-15s "%("mean")
+        text += "%-15s "%("sddev")
         for j in range(self.num_contours):
-            textFileHandle.write("%-15s "%("lower"+str(j+1)))
-            textFileHandle.write("%-15s "%("upper"+str(j+1)))
-            textFileHandle.write("%-7s"%("limit"+str(j+1)))
-        textFileHandle.write("\n")
+            text += "%-15s "%("lower"+str(j+1))
+            text += "%-15s "%("upper"+str(j+1))
+            text += "%-7s"%("limit"+str(j+1))
+        text += "\n"
 
         for j in range(self.num_vars):
             if not self.isused[j]: continue
-            textFileHandle.write("%-12s"%(self.index2name[j]))
-            textFileHandle.write("%16.7E%16.7E"%(self.means[j], self.sddev[j]))
+            text += "%-12s"%(self.index2name[j])
+            text += "%16.7E%16.7E"%(self.means[j], self.sddev[j])
             for i in range(self.num_contours):
-                textFileHandle.write("%16.7E%16.7E"%(self.LowerUpperLimits[j][0][i], self.LowerUpperLimits[j][1][i]))
+                text += "%16.7E%16.7E"%(self.LowerUpperLimits[j][0][i], self.LowerUpperLimits[j][1][i])
                 if (self.marge_limits_bot[i][j] and self.marge_limits_top[i][j]):
                     tag = 'none'
                 elif (self.marge_limits_bot[i][j]):
@@ -1509,11 +1512,18 @@ class MCSamples(chains):
                     tag = '<'
                 else:
                     tag = 'two'
-                textFileHandle.write("  %-5s"%(tag))
+                text += "  %-5s"%(tag)
             label = self.paramNames.names[j].label
-            textFileHandle.write("   %s\n"%(label))
+            text += "   %s\n"%(label)
 
-        textFileHandle.close()
+        if writeDataToFile:
+            filename = self.rootdirname + '.margestats'
+            textFileHandle = open(filename, 'w')
+            textFileHandle.write(text)
+            textFileHandle.close()
+        else:
+            return text
+
 
     def WriteParamNames(self, filename, indices=None, add_derived=None):
         textFileHandle = open(filename, 'w')
@@ -1786,9 +1796,13 @@ def GetRootFileName(rootdir):
     return rootFileName
 
 def GetChainFiles(rootdir):
-    pattern = rootdir + '*_*.txt'
-    chain_files = glob.glob(pattern)
-    chain_files.sort()
+    chain_files = []
+    iFile = 1
+    while 1:
+        fname = rootdir + '_' + str(iFile) + '.txt'
+        if os.path.isfile(fname):
+            chain_files.append(fname)
+            iFile += 1
+        else: break
     return chain_files
-
 

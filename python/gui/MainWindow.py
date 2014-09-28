@@ -79,6 +79,13 @@ class MainWindow(QMainWindow):
                                statusTip="Exit application",
                                triggered=self.close)
 
+        self.statsAct = QAction(QIcon(":/images/.png"),
+                               "Marge Stats", self,
+                               shortcut="",
+                               statusTip="Show Marge Stats",
+                               triggered=self.showMargeStats)
+
+
         self.aboutAct = QAction(QIcon(":/images/help_about.png"),
                                 "&About", self,
                                 statusTip="Show About box",
@@ -93,10 +100,13 @@ class MainWindow(QMainWindow):
         self.fileMenu.addAction(self.exitAct)
 
         self.menuBar().addSeparator()
+        self.dataMenu = self.menuBar().addMenu("&Data")
+        self.dataMenu.addAction(self.statsAct)
+
+        self.menuBar().addSeparator()
 
         self.windowMenu = self.menuBar().addMenu("&Windows")
         self.windowMenu.addAction(self.dockTop.toggleViewAction())
-        self.windowMenu.addAction(self.dockBot.toggleViewAction())
 
         self.menuBar().addSeparator()
 
@@ -188,38 +198,11 @@ class MainWindow(QMainWindow):
 
         # Minimum size for initial resize of dock widget
         #self.selectWidget.setMinimumSize(250, 250)
-        self.selectWidget.setMaximumSize(350, 350)
+        self.selectWidget.setMaximumSize(350, 800)
 
         self.dockTop.setWidget(self.selectWidget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dockTop)
 
-        # Bottom: Tab Widget
-        self.dockBot = QDockWidget(self.tr("Data Files"), self)
-        self.dockBot.setAllowedAreas(Qt.LeftDockWidgetArea)
-
-        self.dataWidget = QWidget(self.dockBot)
-
-        self.newButton = QPushButton(QIcon(":/images/file_open.png"), "", self.dataWidget)
-        self.newButton.setToolTip("Select file to display")
-        self.connect(self.newButton, SIGNAL("clicked()"), self.openNewFile)
-
-        spacer = QSpacerItem(10, 10, QSizePolicy.Expanding, QSizePolicy.Ignored)
-
-        self.tabWidget = QTabWidget(self.dockBot)
-        self.tabWidget.setMovable(False)
-        self.tabWidget.setTabsClosable(True)
-        self.connect(self.tabWidget, SIGNAL("tabCloseRequested(int)"), self.closeTab)
-
-        # Graphic Layout
-        layoutBot = QGridLayout()
-        layoutBot.setSpacing(5)
-        layoutBot.addWidget(self.newButton, 0, 0, 1, 1)
-        layoutBot.addItem(spacer, 0, 1, 1, 1)
-        layoutBot.addWidget(self.tabWidget, 1, 0, 1, 2)
-        self.dataWidget.setLayout(layoutBot)
-
-        self.dockBot.setWidget(self.dataWidget)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.dockBot)
 
     def setIniFile(self, iniFile):
         self.iniFile = iniFile
@@ -242,6 +225,16 @@ class MainWindow(QMainWindow):
             "Choose a file name", '.', "Python (*.py)")
         if not filename:
             return
+
+    def showMargeStats(self):
+        if self.plotter is None:
+            self.statusBar().showMessage("No data available", 2000)
+            return
+
+        text = self.plotter.sampleAnalyser.getMargeStats()
+        dlg = Dialog(self, text)
+        dlg.exec_()
+
 
     def about(self):
         QMessageBox.about(
@@ -524,41 +517,27 @@ class MainWindow(QMainWindow):
 
             self.canvas.draw()
 
-    #
-    # slots for selectWidget (bottom widget on the left)
-    #
+# ==============================================================================
 
-    def openNewFile(self):
-        """
-        Slot function called when newButton is pressed.
-        """
-        title = self.tr("Choose an existing file")
-        path = os.getcwd()
-        fileName, filt = QFileDialog.getOpenFileName(self, title, path)
-        fileName = str(fileName)
-        logging.debug("fileName = %s"%fileName)
+class Dialog(QDialog):
 
-        if fileName:
-            # Read content of file
-            textFileHandle = open(fileName)
-            textFileLines = textFileHandle.read()
-            textFileHandle.close()
+    def __init__(self, parent=None, text=""):
+        QDialog.__init__(self, parent)
 
-            # Display contentin read-only mode
-            textBrowser = QTextBrowser(self.tabWidget)
-            textBrowser.setPlainText(textFileLines)
-            textBrowser.setReadOnly(True)
+        self.textBrowser = QTextEdit(self)
 
-            # Connection of signal
-            self.tabWidget.addTab(textBrowser, os.path.basename(str(fileName)))
-            self.tabWidget.setTabToolTip(self.tabWidget.currentIndex(),
-                                         os.path.basename(str(fileName)))
+        layout = QGridLayout()
+        layout.setColumnStretch(1, 1)
+        layout.setColumnMinimumWidth(1, 250)
+        layout.addWidget(self.textBrowser, 0, 0)
+        self.setLayout(layout)
 
-    def closeTab(self, index):
-        """
-        Slot function called on a tab widget close event.
-        """
-        self.tabWidget.removeTab(index)
+        self.setWindowTitle(self.tr("Dialog"))
+
+        if (text):
+            self.textBrowser.setPlainText(text)
+            self.textBrowser.setReadOnly(True)
+
 
 # ==============================================================================
 

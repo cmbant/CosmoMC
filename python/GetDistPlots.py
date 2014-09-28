@@ -289,6 +289,10 @@ class MCSampleAnalysis():
         self.mcsamples.Init1DDensity()
 
 
+    def getMargeStats(self):
+        text = self.mcsamples.OutputMargeStats(writeDataToFile=False)
+        return text
+
     def compute_1d(self, name):
         index = self.mcsamples.index[name]
         dat, likes = self.mcsamples.Get1DDensity(index, writeDataToFile=False)
