@@ -144,7 +144,8 @@
 
     if (this%needs_powerspectra) then
         this%needs_exact_z =  .true.
-        allocate(this%exact_z(this%num_bao), source= this%bao_z)
+        allocate(this%exact_z(this%num_bao))
+        this%exact_z = this%bao_z
     end if
 
 

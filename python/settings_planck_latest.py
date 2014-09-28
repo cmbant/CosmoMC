@@ -26,8 +26,9 @@ JLA = 'JLA'
 BAOdata = 'BAODR11.ini'
 HSTdata = 'HST_GPE70p6.ini'
 
-RSD = 'BAO_RSD.ini'
-WL = 'WL.ini'
+RSDdata = 'BAO_RSD.ini'
+BAORSD = 'BAORSD';
+WL = 'WL'
 
 Camspec = 'CAMspec_defaults.ini'
 highL = 'highL'
@@ -280,19 +281,21 @@ groups.append(gphi)
 
 
 extdata = batchJob.jobGroup('extdata')
-extdata.params = [[''], ['mnu'], ['nnu', 'meffsterile']]
+extdata.params = [[], ['mnu'], ['nnu', 'meffsterile']]
 extdata.datasets = []
 for d in copy.deepcopy(g.datasets):
     d.add(WL)
+    d.add(lensing)
     extdata.datasets.append(d)
 for d in copy.deepcopy(g.datasets):
-    d.add(RSD)
+    d.add(BAORSD, RSDdata)
     extdata.datasets.append(d)
 for d in copy.deepcopy(g.datasets):
-    d.add(RSD)
+    d.add(BAORSD, RSDdata)
+    d.add(lensing)
     d.add(WL)
     d.add(JLA)
-    d.add(HST)
+    d.add(HST, HSTdata)
     extdata.datasets.append(d)
 
 extdata.importanceRuns = []
@@ -308,19 +311,21 @@ for g in groups:
 skip = []
 
 covNameMappings = {HSTdata:'HST', 'v97CS':'CamSpec'}
-
+covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO']
 # try to match run to exisitng covmat
 covrenames = []
 for planck in planck_vars:
     covrenames.append([planck, 'planck'])
 covrenames.append(['planck', 'planck_CAMspec'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
+covrenames.append(['Alensf', 'Alens'])
 covrenames.append(['_r', ''])
 covrenames.append(['_w', ''])
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
     renamed = re.sub(r'_v.*', '_planck_lowl_lowLike', renamed, re.I)
+
     if renamed == name: return[]
     else: return [renamed]
 

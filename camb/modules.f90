@@ -2207,13 +2207,13 @@
         if (CP%InitPower%nn>1)  write(*,*) 'Power spectrum : ', in
         do j_PK=1, CP%Transfer%PK_num_redshifts
             j = CP%Transfer%PK_redshifts_index(j_PK)
-            write(*,'("at z =",f7.3," sigma8 (all matter) = ",f6.4)') &
+            write(*,'("at z =",f7.3," sigma8 (all matter) = ",f7.4)') &
                 CP%Transfer%redshifts(j), MTrans%sigma_8(j_PK,in)
         end do
         if (get_growth_sigma8) then
             do j_PK=1, CP%Transfer%PK_num_redshifts
                 j = CP%Transfer%PK_redshifts_index(j_PK)
-                write(*,'("at z =",f7.3," sigma8^2_vd/sigma8  = ",f6.4)') &
+                write(*,'("at z =",f7.3," sigma8^2_vd/sigma8  = ",f7.4)') &
                     CP%Transfer%redshifts(j), MTrans%sigma2_vdelta_8(j_PK,in)/MTrans%sigma_8(j_PK,in)
             end do
         end if
