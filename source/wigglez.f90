@@ -311,7 +311,6 @@
     iopb = 0
 
     allocate(this%exact_z(this%num_z))
-    allocate(this%exact_z_index(this%num_z))
     this%exact_z(1) = Ini%Read_Double('redshift',0.d0)
 
     if(this%exact_z(1).eq.0.0) then
