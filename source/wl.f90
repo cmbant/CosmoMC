@@ -243,7 +243,7 @@
     real(mcp) :: a2r
     real(mcp) :: thetamin, thetamax
     integer :: i,ib,jb,il,it,iz,nr,nrs,izl,izh,j
-    integer :: num_z, ntheta
+    integer :: num_z, ntheta, min_iz
 
     if (this%use_non_linear) then
         if (this%use_weyl) then
@@ -270,8 +270,10 @@
     !-----------------------------------------------------------------------
 
     allocate(r(num_z),dzodr(num_z))
+    min_iz=1
     do iz=1,num_z
         z = PK%y(iz)
+        if (z==0) min_iz=iz+1
         r(iz) = this%Calculator%ComovingRadialDistance(z)
         dzodr(iz) = this%Calculator%Hofz(z)
     end do
@@ -309,7 +311,7 @@
 
         ll(il)=1.*exp(dlnl*(il-1._mcp))
         PP=0
-        do iz=1,num_z
+        do iz=min_iz,num_z
             k = ll(il)/r(iz)
             kh = k/h ! CAMB wants k/h values
             z = PK%y(iz)
