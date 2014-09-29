@@ -51,7 +51,7 @@
         logical :: use_sigmaR =.false. !sigma_R, e.g. for clusters
         real(mcp) :: power_kmax = 0.8_mcp
         integer :: num_power_redshifts = 0
-        
+
         !Only used in params_CMB
         real(mcp) :: pivot_k = 0.05_mcp !Point for defining primordial power spectra
         real(mcp) :: tensor_pivot_k = 0.05_mcp !Point for defining tensor power spectra
@@ -307,9 +307,9 @@
         class is (TCosmologyRequirementsLikelihood)
             if (DataLike%needs_powerspectra) then
                 if (DataLike%needs_exact_z .or. DataLike%num_z>0 .or. DataLike%needs_sigmaR) then
-                  this%Use_LSS = .true.
+                    this%Use_LSS = .true.
                 else
-                   cycle
+                    cycle
                 end if
                 this%power_kmax = max(this%power_kmax,DataLike%kmax)
                 this%use_nonlinear = this%use_nonlinear .or. DataLike%needs_nonlinear_pk
@@ -402,6 +402,7 @@
     if (this%needs_powerspectra .and. this%needs_exact_z) then
         numz = size(Settings%power_redshifts)
         this%exact_z_index = 0
+        if (.not. allocated(this%exact_z_index)) allocate(this%exact_z_index(this%num_z))
         do iz=1,this%num_z
             izprev=1
             do while(abs(this%exact_z(iz)-Settings%power_redshifts(izprev))>1.d-4)

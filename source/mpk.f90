@@ -218,7 +218,6 @@
 
     !JD 10/13  New settings for new mpk array handling
     allocate(this%exact_z(this%num_z))
-    allocate(this%exact_z_index(this%num_z))
     this%exact_z(1) = Ini%Read_Double('redshift',0.35d0)
 
     if(this%needs_nonlinear_pk) then
