@@ -401,8 +401,8 @@
 
     if (this%needs_powerspectra .and. this%needs_exact_z) then
         numz = size(Settings%power_redshifts)
+        allocate(this%exact_z_index(this%num_z))
         this%exact_z_index = 0
-        if (.not. allocated(this%exact_z_index)) allocate(this%exact_z_index(this%num_z))
         do iz=1,this%num_z
             izprev=1
             do while(abs(this%exact_z(iz)-Settings%power_redshifts(izprev))>1.d-4)
