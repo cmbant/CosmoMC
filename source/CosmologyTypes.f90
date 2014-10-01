@@ -89,7 +89,7 @@
         logical :: needs_nonlinear_pk = .false.
         logical :: needs_exact_z = .false.
         logical :: needs_Weylpower = .false.
-        logical :: needs_sigmaR = .true.
+        logical :: needs_sigmaR = .false.
         real(mcp) :: kmax = 0.8_mcp
         integer :: num_z = 0
         real(mcp) :: max_z = 0._mcp
