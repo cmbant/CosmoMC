@@ -59,7 +59,7 @@
     generic :: ReadStringItem => ReadStringFunc
     generic :: WriteSizedArray => WriteSizedArray1,WriteSizedArray2
     generic :: ReadSizedArray => ReadSizedArray_R,ReadSizedArray_D,ReadSizedArray_I, &
-    & ReadSizedArray2_I, ReadSizedArray2_R, ReadSizedArray2_D
+        & ReadSizedArray2_I, ReadSizedArray2_R, ReadSizedArray2_D
     final :: TFileStream_Free
     end type
 
@@ -115,6 +115,7 @@
     procedure, nopass :: TxtNumberColumns
     procedure, nopass :: TxtColumns
     procedure, nopass :: TxtFileColumns
+    procedure, nopass :: TxtFileLines
     procedure, nopass :: TopCommentLine
     procedure, nopass :: LastLine => LastFileLine
     procedure, nopass :: Size => FileSize
@@ -128,6 +129,7 @@
     procedure, nopass :: Delete => DeleteFile
     procedure, nopass :: ReadTextMatrix
     procedure, nopass :: ReadTextVector
+    procedure, nopass :: WriteTextMatrix
     procedure, nopass :: WriteTextVector
     procedure, nopass :: LoadTxt_1D
     procedure, nopass :: LoadTxt_2D
@@ -135,6 +137,7 @@
     procedure, nopass :: CreateTextFile
     procedure, nopass :: CharIsSlash
     generic  :: LoadTxt => LoadTxt_2D, LoadTxt_1D
+    generic  :: SaveTxt => WriteTextMatrix, WriteTextVector
     end type
 
     type(TFile), save :: File
@@ -355,7 +358,7 @@
     end if
 
     open(file=aname,form=amode,status=state, action=action, newunit=this%unit, &
-    & iostat=out_status, position =pos,  access=this%access)
+        & iostat=out_status, position =pos,  access=this%access)
     if (present(status)) then
         status=out_status
         if (out_status/=0) this%unit = 0
@@ -441,7 +444,7 @@
 
     res = status==0
     if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
-    & call this%Error('Error reading item')
+        & call this%Error('Error reading item')
     if (present(OK)) OK = res
     end subroutine ReadItemSub
 
@@ -475,7 +478,7 @@
         call this%Error('Unknown type to read')
     end select
     if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
-    & call this%Error('Error reading item')
+        & call this%Error('Error reading item')
     if (present(OK)) OK = status==0
     end subroutine ReadArray
 
@@ -519,7 +522,7 @@
         call this%Error('Unknown type to read')
     end select
     if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
-    & call this%Error('Error reading item')
+        & call this%Error('Error reading item')
     if (present(OK)) OK = status==0
     end subroutine ReadArray2
 
@@ -1067,7 +1070,7 @@
         call this%Error('unknown type to Read')
     end select
     if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
-    & call this%Error('Error reading item')
+        & call this%Error('Error reading item')
     if (present(OK)) OK = status==0
 
     end subroutine ReadItemTxt
@@ -1092,7 +1095,7 @@
     end select
 
     if (status/=0 .and. (.not. IS_IOSTAT_END(status) .or. .not. present(OK))) &
-    & call this%Error('Error reading item')
+        & call this%Error('Error reading item')
     if (present(OK)) OK = status==0
 
     end subroutine ReadArrayTxt
@@ -1108,14 +1111,14 @@
 
     end subroutine  ReadStringTxt
 
-    subroutine WriteFormat(this, formatst, i1,i2,i3,i4,i5,i6)
+    subroutine WriteFormat(this, formatst, i1,i2,i3,i4,i5,i6,i7,i8)
     class(TTextFile) :: this
     character(LEN=*), intent(in) :: formatst
     class(*), intent(in) :: i1
-    class(*), intent(in),optional :: i2,i3,i4,i5,i6
+    class(*), intent(in),optional :: i2,i3,i4,i5,i6,i7,i8
 
     call this%CheckOpen(.true.)
-    write(this%unit,'(a)') FormatString(formatst,i1,i2,i3,i4,i5,i6)
+    write(this%unit,'(a)') FormatString(formatst,i1,i2,i3,i4,i5,i6,i7,i8)
 
     end subroutine WriteFormat
 
@@ -1149,6 +1152,17 @@
     call F%Close()
 
     end function TxtFileColumns
+
+    function TxtFileLines(aname) result(n)
+    character(LEN=*), intent(IN) :: aname
+    integer n
+    Type(TTextFile) :: F
+
+    call F%Open(aname)
+    n = F%Lines()
+    call F%Close()
+
+    end function TxtFileLines
 
 
     function LastFileLine(aname)
@@ -1301,20 +1315,54 @@
 
     end subroutine ReadTextVector
 
-    subroutine WriteTextVector(aname, vec, n)
+    subroutine WriteTextVector(aname, vec, n, fmt)
     character(LEN=*), intent(IN) :: aname
-    integer, intent(in) :: n
-    class(*), intent(in) :: vec(n)
+    integer, intent(in), optional :: n
+    class(*), intent(in) :: vec(:)
+    character(LEN=*), intent(in), optional :: fmt
     integer j
     Type(TTextFile) :: F
 
     call F%CreateFile(aname)
-    do j=1,n
+    if (present(fmt)) then
+        if (isFLoat(vec)) then
+            F%RealFormat = fmt
+        else
+            F%IntegerFormat = fmt
+        end if
+    end if
+    do j=1, PresentDefault(size(vec),n)
         call F%Write(vec(j))
     end do
     call F%Close()
 
     end subroutine WriteTextVector
+
+    subroutine WriteTextMatrix(aname, mat, m, n, fmt)
+    character(LEN=*), intent(IN) :: aname
+    integer, intent(in), optional :: m, n
+    character(LEN=*), intent(in), optional :: fmt
+    class(*), intent(in) :: mat(:,:)
+    integer j
+    Type(TTextFile) :: F
+
+    call F%CreateFile(aname)
+    if (present(fmt)) then
+        if (isFLoat(mat)) then
+            F%RealFormat = fmt
+        else
+            F%IntegerFormat = fmt
+        end if
+    end if
+    if (present(m) .or. present(n)) then
+        call F%Write(mat(1:PresentDefault(size(mat,1),m),1:PresentDefault(size(mat,2),n)))
+    else
+        call F%Write(mat)
+    end if
+    call F%Close()
+
+    end subroutine WriteTextMatrix
+
 
     subroutine ReadTextMatrix(aname, mat, inm,inn)
     character(LEN=*), intent(IN) :: aname

@@ -1,4 +1,4 @@
-import os, sys, batchJob, iniFile
+import os, sys, batchJob, iniFile, copy
 
 
 if len(sys.argv) < 2:
@@ -84,7 +84,8 @@ for jobItem in batch.items(wantSubItems=False):
 
         ini.params['file_root'] = jobItem.chainRoot
 
-        covdir = os.path.join(batch.basePath, getattr(settings, 'cov_dir', 'planck_covmats'))
+        cov_dir_name = getattr(settings, 'cov_dir', 'planck_covmats')
+        covdir = os.path.join(batch.basePath, cov_dir_name)
         covmat = os.path.join(covdir, jobItem.name + '.covmat')
         if not os.path.exists(covmat):
             covNameMappings = getattr(settings, 'covNameMappings', None)
@@ -110,8 +111,15 @@ for jobItem in batch.items(wantSubItems=False):
                         if old1 in aname:
                             name = aname.replace(old1, new1, 1)
                             covmat_try += [name.replace(old, new, 1) for old, new in settings.covrenames if old in name]
-
-            covdir2 = os.path.join(batch.basePath, getattr(settings, 'cov_dir_fallback', 'planck_covmats'))
+            if 'covWithoutNameOrder' in dir(settings):
+                if covNameMappings:
+                    removes = copy.deepcopy(covNameMappings)
+                else: removes = dict()
+                for name in settings.covWithoutNameOrder:
+                    if name in jobItem.data_set.names:
+                        removes[name] = ''
+                        covmat_try += [jobItem.makeNormedName(removes)[0]]
+            covdir2 = os.path.join(batch.basePath, getattr(settings, 'cov_dir_fallback', cov_dir_name))
             for name in covmat_try:
                 covmat = os.path.join(batch.basePath, covdir2, name + '.covmat')
                 if os.path.exists(covmat):
