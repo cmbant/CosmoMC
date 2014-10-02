@@ -130,7 +130,7 @@
         do it = 1,this%num_theta_bins
             read (F%unit,*) this%theta_bins(it),this%xi_obs(it),dummy1,this%xi_obs(it+this%num_theta_bins),dummy2
         end do
-    elseif (measurements_format == '6bin') then
+    elseif (measurements_format == 'nbin') then
         k = 1
         allocate(temp(2*this%num_theta_bins,nt))
         do i=1,2*this%num_theta_bins
