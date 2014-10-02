@@ -492,7 +492,7 @@ class GetDistPlotter():
             if colored_text:
                 args['handlelength'] = 0
                 args['handletextpad'] = 0
-            if label_order is None:
+            if label_order is not None:
                 lines = [lines[i] for i in label_order]
                 legend_labels = [legend_labels[i] for i in label_order]
             if figure:
