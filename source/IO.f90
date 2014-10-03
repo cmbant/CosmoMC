@@ -323,7 +323,7 @@
     call F%NewLine()
 
     do j=1, num_vars
-        call F%WriteLeftAligned(nameFormat,Names%NameOrNumber(colix(j)-2))
+        call F%WriteLeftAligned(nameFormat,Names%NameOrNumber(colix(j)-2, tag_derived=.true.))
         call F%WriteInLineItems(mean(j), sddev(j))
         do i=1, num_contours
             call F%WriteInLineItems(cont_lines(j,1,i),cont_lines(j,2,i)) !don't send array section to avoid ifort 14 bug
