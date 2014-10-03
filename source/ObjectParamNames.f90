@@ -382,14 +382,16 @@
     end subroutine ParamNames_WriteFile
 
 
-    function ParamNames_NameOrNumber(Names,ix) result(name)
+    function ParamNames_NameOrNumber(Names,ix, tag_derived) result(name)
     class(TParamNames) :: Names
     character(len=:), allocatable  :: name
+    logical, intent(in), optional :: tag_derived
     integer, intent(in) :: ix
 
     name = trim(Names%name(ix))
     if (name == '') name = trim(IntToStr(ix))
-
+    if (DefaultFalse(tag_derived) .and. Names%is_derived(ix)) name = name //'*'
+    
     end function ParamNames_NameOrNumber
 
     function ParamNames_MaxNameLen(Names) result(alen)
