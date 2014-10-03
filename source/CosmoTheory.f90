@@ -20,7 +20,7 @@
 
     Type, extends(TTheoryPredictions) :: TCosmoTheoryPredictions
         Type(TSkyPowerSpectrum), allocatable :: Cls(:,:)
-        !(this, E, B, Phi) x (this, E, B, Phi), with L(L+1)/2pi factor, in muK for CMB components
+        !(T, E, B, Phi) x (T, E, B, Phi), with L(L+1)/2pi factor, in muK for CMB components
         real(mcp) sigma_8
         real(mcp) tensor_ratio_C10, tensor_ratio_02, tensor_ratio_BB, tensor_AT
         real(mcp) :: Lensing_rms_deflect = 0._mcp

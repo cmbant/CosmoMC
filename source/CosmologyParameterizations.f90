@@ -179,11 +179,12 @@
     real(mcp) :: lograt
     integer ix,i
     real(mcp) z
+    real(mcp), parameter :: derivedCL(4) = [40, 220, 810, 1420]
 
     if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)
     class is (TCosmoTheoryPredictions)
-        allocate(Derived(this%num_derived))
+        allocate(Derived(this%num_derived), source=0._mcp)
 
         call this%ParamArrayToTheoryParams(P,CMB)
 
@@ -206,7 +207,13 @@
         derived(ix+1) = derived(ix)*exp(-2*CMB%tau)  !A e^{-2 tau}
         ix = ix+2
 
-        lograt = log(0.002_mcp/CosmoSettings%pivot_k)
+        if(CosmoSettings%use_CMB) then
+            !L(L+1)C_L/2pi at various places
+            derived(ix:ix+size(DerivedCL)-1) = Theory%Cls(1,1)%CL(derivedCL)
+        end if
+        ix = ix+size(derivedCL)
+
+        lograt = log(0.002_mcp/CosmoSettings%pivot_k)   !get ns at k=0.002
         derived(ix) = CMB%InitPower(ns_index) +CMB%InitPower(nrun_index)*lograt +&
             CMB%InitPower(nrunrun_index)*lograt**2/2
         ix=ix+1
@@ -235,8 +242,8 @@
 
         if (CosmoSettings%bbn_consistency) then
             derived(ix) = BBN_YpBBN%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
-           ! Don't output this until clear about rates used and errors
-           ! derived(ix+1) = 1d5*BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
+            ! Don't output this until clear about rates used and errors
+            ! derived(ix+1) = 1d5*BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
             ix =ix + 1 !2
         end if
 

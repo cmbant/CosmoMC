@@ -36,6 +36,10 @@ rmsdeflect*   \langle d^2\rangle^{1/2}  #rms lensing deflection in arcmin (2<=L<
 zrei*         z_{\rm re}
 A*            10^9 A_s
 clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
+DL40*         D_{40}   #L(L+1)C_L/2pi at L=40 in muK^2
+DL220*        D_{220}  #L(L+1)C_L/2pi at L=220 in muK^2
+DL810*        D_{810}  #L(L+1)C_L/2pi at L=810 in muK^2
+DL1420*       D_{1420} #L(L+1)C_L/2pi at L=1420 in muK^2
 ns02*         n_{s,0.002}
 yheused*      Y_P #MCMC value or from bbn consistency
 age*          {\rm{Age}}/{\rm{Gyr}}
@@ -51,3 +55,4 @@ thetaeq*      \theta_{\rm{eq}}
 rsDv057*       r_{\rm{drag}}/D_V(0.57)
 Hubble057*     H(0.57) #now in km/s/Mpc
 DA057*         D_A(0.57)
+FAP057*        F_{\rm AP}(0.57)
