@@ -204,7 +204,6 @@
         derived(ix+1) = derived(ix)*exp(-2*CMB%tau)  !A e^{-2 tau}
         ix = ix+2
 
-        !n_s at k=0.002 (for case with running, and equal-scale prediction comparison)
         lograt = log(0.002_mcp/CosmoSettings%pivot_k)
         derived(ix) = CMB%InitPower(ns_index) +CMB%InitPower(nrun_index)*lograt +&
             CMB%InitPower(nrunrun_index)*lograt**2/2
@@ -213,9 +212,9 @@
         derived(ix)= CMB%Yhe !value actually used, may be set from bbn consistency
         ix = ix+1
 
-        derived(ix:ix+ Theory%numderived-1) = Theory%derived_parameters(1: Theory%numderived)
-        ix = ix +  Theory%numderived
-
+        derived(ix:ix + Theory%numderived-1) = Theory%derived_parameters(1: Theory%numderived)
+        ix = ix + Theory%numderived
+        
         if (CosmoSettings%Compute_tensors) then
             derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(Theory%tensor_AT*1e10), &
                 Theory%tensor_ratio_C10, Theory%tensor_AT*1e9, Theory%tensor_AT*1e9*exp(-2*CMB%tau) ]
@@ -224,11 +223,12 @@
 
         if (CosmoSettings%bbn_consistency) then
             derived(ix) = BBN_YpBBN%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
-            derived(ix+1) = 1d5*BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
-            ix =ix + 2
+           ! Don't output this until clear about rates used and errors
+           ! derived(ix+1) = 1d5*BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
+            ix =ix + 1 !2
         end if
 
-        if (ix - 1  /= this%num_derived) then
+        if (ix - 1 /= this%num_derived) then
             write(*,*) 'num_derived =', this%num_derived, '; ix, Theory%numderived = ', ix, Theory%numderived
             call MpiStop('TP_CalcDerivedParams error in derived parameter numbers')
         end if

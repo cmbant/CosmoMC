@@ -1,4 +1,5 @@
     module StringUtils
+    use MiscUtils
     implicit none
 
 
@@ -8,6 +9,13 @@
 
     contains
 
+    function IsWhiteSpace(C)
+    character, intent(in) :: C
+    logical IsWhiteSpace
+
+    IsWhiteSpace = (C==' ') .or. (C==char(9))
+
+    end function IsWhiteSpace
 
     function GetParamCount()
     integer GetParamCount
@@ -48,6 +56,7 @@
     if (status/=0) value=''
 
     end function GetEnvironmentVariable
+
 
     function StringStarts(S, substring, index) result(OK)
     character(LEN=*), intent(in) :: S, substring
@@ -275,29 +284,44 @@
             stop
         end if
         call StringReplace('%s', X, S)
+    type is (double precision)
+        if (c/='f') then
+            write(*,*) 'Wrong format for type: '//trim(S)
+            stop
+        end if
+        call StringReplace('%f', RealToStr(X),S)
+    type is (real)
+        if (c/='f') then
+            write(*,*) 'Wrong format for type: '//trim(S)
+            stop
+        end if
+        call StringReplace('%f', RealToStr(X),S)
         class default
         stop 'Unsupported format type'
     end select
 
     end function SubNextFormat
 
-    function FormatString(formatst, i1,i2,i3,i4,i5,i6) result(S)
+    function FormatString(formatst, i1,i2,i3,i4,i5,i6,i7,i8, allow_unused) result(S)
     character(LEN=*), intent(in) :: formatst
-    class(*), intent(in) :: i1
-    class(*), intent(in),optional :: i2,i3,i4,i5,i6
+    class(*), intent(in),optional :: i1,i2,i3,i4,i5,i6,i7,i8
+    logical, optional, intent(in) :: allow_unused
     character(LEN=:), allocatable :: S
     logical OK
     !Note that this routine is incomplete and very simple (so buggy in complex cases)
     !(should not substitute on the previously substituted string, etc, etc..)
     !Can do things like FormatString('case %d, ans = %03d%%',i,percent)
     S = formatst
-    OK = SubNextFormat(S, i1)
+    OK = .true.
+    if (present(i1)) OK = SubNextFormat(S, i1)
     if (OK .and. present(i2)) OK = SubNextFormat(S, i2)
     if (OK .and. present(i3)) OK = SubNextFormat(S, i3)
     if (OK .and. present(i4)) OK = SubNextFormat(S, i4)
     if (OK .and. present(i5)) OK = SubNextFormat(S, i5)
     if (OK .and. present(i6)) OK = SubNextFormat(S, i6)
-    if (.not. OK) stop 'FormatString: Wrong number or kind of formats in string'
+    if (OK .and. present(i7)) OK = SubNextFormat(S, i7)
+    if (OK .and. present(i8)) OK = SubNextFormat(S, i8)
+    if (.not. OK .and. .not. DefaultFalse(allow_unused)) stop 'FormatString: Wrong number or kind of formats in string'
     call StringReplace('%%', '%', S)
 
     end function FormatString

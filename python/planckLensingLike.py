@@ -269,13 +269,43 @@ class lensLike(CMBlikes.DatasetLikelihood):
 def ConvertDuncan(fname, dir, root):
         lens = lensLike(fname, bin_compression=True)
         lens.dumpData(dir + os.sep + root)
+        with open(dir + os.sep + root + '.dataset', "w") as f:
+            f.write("like_approx = gaussian\n")
+            f.write("fields_use = P\n")
+            if lens.num_estimators == 1:
+                f.write("fields_required =  T\n")
+            else:
+
+                f.write("fields_required =  T E P\n")
+            f.write("binned = T\n")
+            f.write("nbins= %u \n" % (lens.nbins))
+            f.write("use_min= 1 \n")
+            f.write("use_max= %u \n" % (lens.nbins))
+            f.write("cl_lmin = 2\n")
+            f.write("cl_lmax = %s\n" % (lens.phi_lmax))
+            f.write("""
+cl_hat_file = %s_bandpowers.dat
+
+bin_window_files = %s_window/window%%u.dat
+bin_window_in_order = PP
+bin_window_out_order = PP
+
+covmat_cl = PP
+covmat_fiducial = %s_cov.dat
+
+linear_correction_fiducial = %s_lensing_fiducial_correction.dat
+linear_correction_bin_window_files = %s_lens_delta_window/window%%u.dat
+linear_correction_bin_window_in_order = TT EE TE PP
+linear_correction_bin_window_out_order = PP PP PP PP
+            """ % (root, root, root, root, root))
 
 
 if __name__ == "__main__":
-    dir = r'C:\Work\F90\LensingBiases\g60'
-    dir = r'z:'
+    dir = r'C:\Work\F90\LensingBiases\dx11'
+#    dir = r'z:'
     root = 'g60_full_pttptt'
     root = 'g60_full_pp'
+    root = '143_g40_full_pttptt'
 
     Duncan = True
     if Duncan:
