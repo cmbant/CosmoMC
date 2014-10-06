@@ -207,6 +207,7 @@ class MCSampleAnalysis():
             self.ini.readFile(ini_file)
         self.root = file_root
         self.mcsamples = MCSamples.MCSamples(self.root)
+        self.done_1Dbins = False
 
         self.densities_dat_1D = dict()
         self.densities_likes_1D = dict()
@@ -290,6 +291,12 @@ class MCSampleAnalysis():
 
 
     def getMargeStats(self):
+        # Do 1D bins
+        if not self.done_1Dbins:
+            print "Do 1D bins ..."
+            self.mcsamples.Do1DBins()
+            self.done_1Dbins = True
+            print "... done!"
         text = self.mcsamples.OutputMargeStats(writeDataToFile=False)
         return text
 

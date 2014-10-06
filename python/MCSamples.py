@@ -912,7 +912,6 @@ class MCSamples(chains):
         # Return values
         width, smooth_1D, end_edge = 0, 0, 0
 
-
         ix = j # ix = self.colix[j]
         paramVec = self.samples[:, ix]
 
@@ -970,7 +969,6 @@ class MCSamples(chains):
         if (not self.has_limits_top[ix]): self.ix_max[j] += end_edge
 
         return width, smooth_1D, end_edge
-
 
 
     def Get1DDensity(self, j, writeDataToFile=True):
@@ -1561,71 +1559,78 @@ class MCSamples(chains):
 
     # Bins functions
 
-    def Do1DBins(self, max_frac_twotail):
-
+    def createLowerUpperLimits(self):
         self.LowerUpperLimits = np.zeros([self.num_vars, 2, self.num_contours])
+
+
+    def Do1DBins(self, max_frac_twotail=None):
+        if max_frac_twotail is None:
+            max_frac_twotail = self.max_frac_twotail
+        self.createLowerUpperLimits()
 
         for j in range(self.num_vars):
             if not self.isused[j]: continue
-
-            ix = j
             self.Get1DDensity(j)
+            self.setLowerUpperLimits(j, max_frac_twotail)
 
-            # Get limits, one or two tail depending on whether posterior
-            # goes to zero at the limits or not
-            for ix1 in range(self.num_contours):
 
-                self.marge_limits_bot[ix1][ix] = self.has_limits_bot[ix] and \
-                (not self.force_twotail) and (self.density1D.P[0] > max_frac_twotail[ix1])
-                self.marge_limits_top[ix1][ix] = self.has_limits_top[ix] and \
-                (not self.force_twotail) and (self.density1D.P[-1] > max_frac_twotail[ix1])
 
-                if ( (not self.marge_limits_bot[ix1][ix]) or \
-                     (not self.marge_limits_top[ix1][ix]) ):
-                    # give limit
-                    tail_limit_bot, tail_limit_top, marge_bot, marge_top = self.density1D.Limits(self.contours[ix1])
-                    self.marge_limits_bot[ix1][ix] = marge_bot
-                    self.marge_limits_top[ix1][ix] = marge_top
+    def setLowerUpperLimits(self, ix, max_frac_twotail):
 
-                    limfrac = 1 - self.contours[ix1]
+        # Get limits, one or two tail depending on whether posterior
+        # goes to zero at the limits or not
+        for ix1 in range(self.num_contours):
 
-                    if (self.marge_limits_bot[ix1][ix]):
-                        # fix to end of prior range
-                        tail_limit_bot = self.range_min[j]
-                    elif (self.marge_limits_top[ix1][ix]):
-                        # 1 tail limit
-                        tail_limit_bot = self.confidence(self.samples[:, ix],
-                                                         limfrac, upper=False)
-                    else:
-                        # 2 tail limit
-                        tail_confid_bot = self.confidence(self.samples[:, ix],
-                                                          limfrac/2, upper=False)
+            self.marge_limits_bot[ix1][ix] = self.has_limits_bot[ix] and \
+            (not self.force_twotail) and (self.density1D.P[0] > max_frac_twotail[ix1])
+            self.marge_limits_top[ix1][ix] = self.has_limits_top[ix] and \
+            (not self.force_twotail) and (self.density1D.P[-1] > max_frac_twotail[ix1])
 
-                    if (self.marge_limits_top[ix1][ix]):
-                        tail_limit_top = self.range_max[j]
-                    elif (self.marge_limits_bot[ix1][ix]):
-                        tail_limit_top = self.confidence(self.samples[:, ix],
-                                                         limfrac, upper=True)
-                    else:
-                        tail_confid_top = self.confidence(self.samples[:, ix],
-                                                          limfrac/2, upper=True)
+            if ( (not self.marge_limits_bot[ix1][ix]) or \
+                 (not self.marge_limits_top[ix1][ix]) ):
+                # give limit
+                tail_limit_bot, tail_limit_top, marge_bot, marge_top = self.density1D.Limits(self.contours[ix1])
+                self.marge_limits_bot[ix1][ix] = marge_bot
+                self.marge_limits_top[ix1][ix] = marge_top
 
-                    if ( (not self.marge_limits_bot[ix1][ix]) and \
-                         (not self.marge_limits_top[ix1][ix]) ):
-                        # Two tail, check if limits are at very differen density
-                        if (math.fabs( self.density1D.Prob(tail_confid_top) -
-                                       self.density1D.Prob(tail_confid_bot))
-                            < self.credible_interval_threshold):
-                            tail_limit_top = tail_confid_top
-                            tail_limit_bot = tail_confid_bot
-                            pass
+                limfrac = 1 - self.contours[ix1]
 
-                    self.LowerUpperLimits[j][1][ix1] = tail_limit_top
-                    self.LowerUpperLimits[j][0][ix1] = tail_limit_bot
+                if (self.marge_limits_bot[ix1][ix]):
+                    # fix to end of prior range
+                    tail_limit_bot = self.range_min[ix]
+                elif (self.marge_limits_top[ix1][ix]):
+                    # 1 tail limit
+                    tail_limit_bot = self.confidence(self.samples[:, ix],
+                                                     limfrac, upper=False)
                 else:
-                    # no limit
-                    self.LowerUpperLimits[j][1][ix1] = self.range_max[j]
-                    self.LowerUpperLimits[j][0][ix1] = self.range_min[j]
+                    # 2 tail limit
+                    tail_confid_bot = self.confidence(self.samples[:, ix],
+                                                      limfrac/2, upper=False)
+
+                if (self.marge_limits_top[ix1][ix]):
+                    tail_limit_top = self.range_max[ix]
+                elif (self.marge_limits_bot[ix1][ix]):
+                    tail_limit_top = self.confidence(self.samples[:, ix],
+                                                     limfrac, upper=True)
+                else:
+                    tail_confid_top = self.confidence(self.samples[:, ix],
+                                                      limfrac/2, upper=True)
+
+                if ( (not self.marge_limits_bot[ix1][ix]) and \
+                     (not self.marge_limits_top[ix1][ix]) ):
+                    # Two tail, check if limits are at very differen density
+                    if (math.fabs( self.density1D.Prob(tail_confid_top) -
+                                   self.density1D.Prob(tail_confid_bot))
+                        < self.credible_interval_threshold):
+                        tail_limit_top = tail_confid_top
+                        tail_limit_bot = tail_confid_bot
+
+                self.LowerUpperLimits[ix][1][ix1] = tail_limit_top
+                self.LowerUpperLimits[ix][0][ix1] = tail_limit_bot
+            else:
+                # no limit
+                self.LowerUpperLimits[ix][1][ix1] = self.range_max[ix]
+                self.LowerUpperLimits[ix][0][ix1] = self.range_min[ix]
 
 
 

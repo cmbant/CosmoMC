@@ -232,7 +232,8 @@ class MainWindow(QMainWindow):
             return
 
         text = self.plotter.sampleAnalyser.getMargeStats()
-        dlg = Dialog(self, text)
+        text = text.replace('\t', '\t\t') # uses double tab
+        dlg = DialogMargeStats(self, text)
         dlg.exec_()
 
 
@@ -520,7 +521,7 @@ class MainWindow(QMainWindow):
 
 # ==============================================================================
 
-class Dialog(QDialog):
+class DialogMargeStats(QDialog):
 
     def __init__(self, parent=None, text=""):
         QDialog.__init__(self, parent)
@@ -528,12 +529,12 @@ class Dialog(QDialog):
         self.textBrowser = QTextEdit(self)
 
         layout = QGridLayout()
-        layout.setColumnStretch(1, 1)
-        layout.setColumnMinimumWidth(1, 250)
+        #layout.setColumnStretch(1, 1)
+        #layout.setColumnMinimumWidth(1, 250)
         layout.addWidget(self.textBrowser, 0, 0)
         self.setLayout(layout)
 
-        self.setWindowTitle(self.tr("Dialog"))
+        self.setWindowTitle(self.tr("Dialog for MargeStats"))
 
         if (text):
             self.textBrowser.setPlainText(text)
