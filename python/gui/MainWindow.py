@@ -7,7 +7,7 @@ import signal
 import logging
 
 import matplotlib
-matplotlib.use('Qt4Agg')
+#matplotlib.use('Qt4Agg')
 
 try:
     from PySide.QtCore import *
@@ -491,7 +491,8 @@ class MainWindow(QMainWindow):
                 color = str(self.comboBoxColor.currentText())
                 logging.debug("3D plot")
                 logging.debug("roots = %s"%str(roots))
-                self.plotter.plot_3d(roots, [x, y, color])
+                sets = [[x, y, color]]
+                self.plotter.plots_3d(roots, sets)
                 self.updatePlot()
 
     def updatePlot(self):
