@@ -5,11 +5,13 @@ def checkDir(fname):
 
 
 Opts = batchJobArgs.batchArgs('Run getdist over the grid of models', notExist=True)
+Opts.parser.add_argument('--update_only', action='store_true')
 Opts.parser.add_argument('--plots', action='store_true')
 Opts.parser.add_argument('--norun', action='store_true')
 Opts.parser.add_argument('--plot_data', default=None, help="directory to store the plot_data in for each chain")
 Opts.parser.add_argument('--burn_removed', action='store_true', help="if burn in has already been removed from chains")
 Opts.parser.add_argument('--no_plots', action='store_true', help="just make non-plot outputs (faster)")
+
 
 
 (batch, args) = Opts.parseForBatch()
@@ -59,7 +61,7 @@ if not args.plots:
                 if args.no_plots: ini.params['no_plots'] = True
                 fname = ini_dir + jobItem.name + tag + '.ini'
                 ini.saveFile(fname)
-                if not args.norun and (not args.notexist or not jobItem.getDistExists()):
+                if not args.norun and (not args.notexist or not jobItem.getDistExists()) and (not args.update_only or jobItem.getDistNeedsUpdate()):
                     if jobItem.chainExists():
                         print "running: " + fname
                         os.system('./getdist ' + fname)
