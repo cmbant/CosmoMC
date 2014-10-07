@@ -281,10 +281,10 @@ class GetDistPlotter():
         return density.bounds()
 
     def add_2d_contours(self, root, param1=None, param2=None, plotno=0, of=None, filled=False, color=None, ls=None, cols=None,
-                        alpha=None, add_legend_proxy=True, param_pair=None, **kwargs):
+                        alpha=None, add_legend_proxy=True, param_pair=None, density=None, **kwargs):
         param1, param2 = self.get_param_array(root, param_pair or [param1, param2])
 
-        density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
+        if not density: density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
         if density is None: return None
         if alpha is None: alpha = self.get_alpha2D(plotno, filled, **kwargs)
 
@@ -475,7 +475,8 @@ class GetDistPlotter():
             p = self.check_param(root, param)
         return r'$' + p.label + r'$'
 
-    def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False, figure=False):
+    def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False,
+                   figure=False, label_order=None):
             if legend_loc is None:
                 if figure: legend_loc = self.settings.figure_legend_loc
                 else: legend_loc = self.settings.legend_loc
@@ -491,6 +492,9 @@ class GetDistPlotter():
             if colored_text:
                 args['handlelength'] = 0
                 args['handletextpad'] = 0
+            if label_order is not None:
+                lines = [lines[i] for i in label_order]
+                legend_labels = [legend_labels[i] for i in label_order]
             if figure:
 #                args['frameon'] = self.settings.figure_legend_frame
                 self.legend = self.fig.legend(lines, legend_labels, legend_loc, **args)
