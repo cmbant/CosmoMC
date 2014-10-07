@@ -2,7 +2,6 @@
     use CosmologyTypes
     use settings
     use temp_like_camspec3
-    use pol_like_camspec
     use Likelihood_Cosmology
     use CosmoTheory
 #ifdef highL
@@ -17,14 +16,6 @@
     procedure :: WriteLikelihoodData => CamSpec_WriteLikelihoodData
     procedure :: derivedParameters => CamSpec_DerivedParameters
     end type CamSpeclikelihood
-
-    type, extends(TCosmologyLikelihood) :: CamPollikelihood
-    contains
-    procedure :: LogLike => CamPolLogLike
-    end type CamPollikelihood
-
-
-
 
 #ifdef highL
     type, extends(TCosmologyLikelihood) :: highLLikelihood
@@ -142,28 +133,6 @@
 #endif
     end if
 
-    use_CAMpol=Ini%Read_Logical('use_CAMpol',.false.)
-
-    if(use_CAMpol) then
-        print *,'using non-clik CAMpol likelihood'
-        allocate(campollikelihood::like)
-        call LikeList%Add(Like)
-        Like%LikelihoodType = 'CMB'
-        Like%name='campol'
-        Like%speed = 5
-        Like%needs_powerspectra=.true.
-        allocate(like%cl_lmax(2,2),source=0)
-        Like%cl_lmax(CL_E,CL_T) = 2500
-        Like%cl_lmax(CL_E,CL_E) = 2500
-
-        polfilename=Ini%ReadFileName('pollikefile',NotFoundFail = .true. )
-
-        Like%version= File%ExtractName(polfilename)
-
-        call pol_like_init(polfilename)
-
-    end if
-
     end subroutine nonclik_readParams
 
     real(mcp) function CamspecLogLike(this, CMB, Theory, DataParams)
@@ -194,30 +163,6 @@
     if (Feedback>2) Print*,'CamSpec lnlike = ',CamspecLogLike
 
     end function CamspecLogLike
-
-    real(mcp) function CampolLogLike(this, CMB, Theory, DataParams)
-    Class(CamPollikelihood) :: this
-    Class (CMBParams) CMB
-    Class(TCosmoTheoryPredictions), target :: Theory
-    real(mcp) DataParams(:)
-    real(dp) zlike, cell_cmbx(0:this%cl_lmax(CL_E,CL_T)), cell_cmbe(0:this%cl_lmax(CL_E,CL_E))
-    integer L
-
-    do L=2,this%cl_lmax(CL_E,CL_T)
-        cell_cmbx(L)=Theory%Cls(2,1)%Cl(L)/(L*(L+1)) !this is a georgeism
-    enddo
-    do L=2,this%cl_lmax(CL_E,CL_E)
-        cell_cmbe(L)=Theory%Cls(2,2)%Cl(L)/(L*(L+1)) !this is a georgeism
-    enddo
-
-    call pol_calc_like(zlike,  cell_cmbx, cell_cmbe)
-
-    CampolLogLike = zlike/2
-
-    if (Feedback>2) Print*,'Campol lnlike = ',CampolLogLike
-
-    end function CampolLogLike
-
 
 
     subroutine CAMSpec_WriteLikelihoodData(this,Theory,DataParams, root)

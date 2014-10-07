@@ -152,7 +152,6 @@ endif
 
 ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
 PLANCKLIKEFILES +=  $(OUTPUT_DIR)/temp_like.o
-PLANCKLIKEFILES +=  $(OUTPUT_DIR)/pol_like.o
 PLANCKLIKEFILES += $(OUTPUT_DIR)/cliklike_CamSpec.o
 endif
 
@@ -242,7 +241,7 @@ $(OUTPUT_DIR)/supernovae_Union2.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_SNLS.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_JLA.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 
-$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/pol_like.o
+$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o
 
 $(OUTPUT_DIR)/Calculator_PICO.o: $(OUTPUT_DIR)/Calculator_CAMB.o $(OUTPUT_DIR)/fpico_interface.o
 

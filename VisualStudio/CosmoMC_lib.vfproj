@@ -107,7 +107,6 @@
 		<File RelativePath="..\source\wigglez.f90"/></Filter>
 		<Filter Name="Planck">
 		<File RelativePath="..\source\cliklike_CamSpec.f90"/>
-		<File RelativePath="..\source\pol_like.f90"/>
 		<File RelativePath="..\source\temp_like.f90"/></Filter>
 		<Filter Name="Utils">
 		<File RelativePath="..\source\ArrayUtils.f90"/>
