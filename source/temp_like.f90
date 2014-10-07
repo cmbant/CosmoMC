@@ -146,6 +146,7 @@
     enddo
     close(48)
     open(48, file=CAMspec_fiducial_cl, form='formatted', status='old')
+    if (index(CAMspec_fiducial_cl,'minimum.theory_cl')>0) read(48,*)
     do i=2,CAMspec_lmax
         read(48,*, end=100) j,fid_theory_tt,fid_theory_te,fid_theory_ee
 100     if (j/=i) stop 'error reading fiducial C_l for beams'
