@@ -16,12 +16,20 @@
         real(mcp), allocatable :: mean(:),std(:) !std=0 for no prior (default)
     end Type ParamGaussPrior
 
+    Type TLinearCombination
+        real(mcp) :: mean =0._mcp
+        real(mcp) :: std = 0._mcp
+        character(LEN=:), allocatable :: Name
+        real(mcp), allocatable :: Combination(:)
+    end Type TLinearCombination
+
     Type :: TBaseParameters
         logical :: use_fast_slow = .false.
         integer :: num_fast, num_slow
         real(mcp), allocatable :: PMin(:), PMax(:), StartWidth(:), PWidth(:), center(:)
         logical(mcp), allocatable :: varying(:)
         Type(ParamGaussPrior) :: GaussPriors
+        Type(TLinearCombination), allocatable :: LinearCombinations(:)
         Type(int_arr), allocatable :: param_blocks(:)
         real(mcp), dimension(:,:), allocatable ::  covariance_estimate
         logical :: covariance_is_diagonal, covariance_has_new
@@ -152,6 +160,8 @@
     class(TSettingIni) :: Ini
     integer i, status
     character(LEN=:), allocatable :: InLine
+    Type(TSettingIni) :: Combs
+    integer params(num_params), num_lin
 
     allocate(this%GaussPriors%std(num_params))
     allocate(this%GaussPriors%mean(num_params))
@@ -164,6 +174,25 @@
                 if (status/=0) call this%ParamError('Error reading prior mean and stdd dev: '//trim(InLIne),i)
             end if
         end if
+    end do
+
+    call Ini%TagValuesForName('linear_combination', Combs)
+    allocate(this%LinearCombinations(Combs%Count))
+    do i= 1, Combs%Count
+        associate( comb =>this%LinearCombinations(i) )
+            Comb%name = Combs%Name(i)
+            num_lin = -1
+            call this%NameMapping%ReadIndices(Combs%Value(i), params, num_lin)
+            allocate(Comb%Combination(num_params),source = 0._mcp)
+            InLine = Ini%Read_String(Ini%NamedKey('linear_combination_weights',Comb%name), NotFoundFail=.true.)
+            read(InLine,*, iostat=status) Comb%Combination(params(:num_lin))
+            if (status/=0) call MpiStop('Error reading linear_combination_weights: '//trim(InLIne))
+            InLine = Ini%Read_String(Ini%NamedKey('prior',Comb%name))
+            if (InLine/='') then
+                read(InLine,*, iostat=status) Comb%mean, Comb%std
+                if (status/=0) call MpiStop('Error reading linear_combination_prior: '//trim(InLIne))
+            end if
+        end associate
     end do
 
     end subroutine TBaseParameters_ReadPriors
@@ -327,14 +356,14 @@
             DataLike=>DataLikelihoods%Item(i)
             do j=1, num_params_used-1
                 if (param_type(params_used(j))==tp_fast .and. params_used(j) >= DataLike%new_param_block_start &
-                .and. params_used(j) < DataLike%new_param_block_start + DataLike%new_params) then
-                    if (first) then
-                        first = .false.
-                    else
-                        num_breaks = num_breaks+1
-                        breaks(num_breaks)=j
-                    end if
-                    exit
+                    .and. params_used(j) < DataLike%new_param_block_start + DataLike%new_params) then
+                if (first) then
+                    first = .false.
+                else
+                    num_breaks = num_breaks+1
+                    breaks(num_breaks)=j
+                end if
+                exit
                 end if
             end do
         end do
@@ -384,8 +413,8 @@
     if (Feedback > 0 .and. MpiRank==0) then
         if (use_fast_slow) then
             write(*,'(1I3," parameters (",1I2," slow (",1I2," semi-slow), ",1I2," fast (",1I2," semi-fast))")') &
-            & num_params_used,this%num_slow, size(this%param_blocks(tp_semislow)%P), &
-            & this%num_fast,size(this%param_blocks(tp_semifast)%P)
+                & num_params_used,this%num_slow, size(this%param_blocks(tp_semislow)%P), &
+                & this%num_fast,size(this%param_blocks(tp_semifast)%P)
         else
             write(*,'(1I3," parameters")') num_params_used
         end if

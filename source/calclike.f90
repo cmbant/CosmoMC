@@ -120,6 +120,14 @@
             logLike = logLike + ((P(i)-BaseParams%GaussPriors%mean(i))/BaseParams%GaussPriors%std(i))**2
         end if
     end do
+
+    do i= 1, size(BaseParams%LinearCombinations)
+        associate(Comb => BaseParams%LinearCombinations(i))
+            if (Comb%std/=0) then
+                logLike = logLike + ((dot_product(Comb%Combination,P) -Comb%mean)/Comb%std)**2
+            end if
+        end associate
+    end do
     logLike=logLike/2
 
     end function GetLogPriors
