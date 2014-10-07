@@ -394,6 +394,9 @@ class margeStats(paramResults):
             param = paramNames.paramInfo()
             items = [s.strip() for s in line.split(None, len(self.limits) * 3 + 3)]
             param.name = items[0]
+            if param.name[-1] == '*':
+                param.isDerived = True
+                param.name = param.name[:-1]
             param.mean = float(items[1])
             param.err = float(items[2])
             param.label = items[-1]

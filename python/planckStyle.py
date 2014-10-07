@@ -17,7 +17,7 @@ params = {'backend': 'pdf',
 
 sfmath = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'sfmath'
 # use of Sans Serif also in math mode
-rc('text.latex', preamble=r'\usepackage{' + sfmath + '}')
+rc('text.latex', preamble=r'\usepackage{' + sfmath.replace(os.sep, '/') + '}')
 
 rcParams.update(params)
 
