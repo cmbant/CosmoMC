@@ -32,7 +32,7 @@
     integer marge_num, keep_num
 
     logical :: make_cov_marged = .false.
-    real(campc) :: beam_factor = 2.7_campc
+    real(campc) :: beam_factor = 1.0_campc
     integer, parameter :: CamSpec_cib_pivot = 3000
     integer, parameter :: CamSpec_sz_pivot = 3000
 
@@ -624,7 +624,7 @@
 
     if (camspec_has_TT) call compute_fg(C_foregrounds,freq_params, 0)
 
-    calPlanck = freq_params(28) !Total calibration that scales everything
+    calPlanck = freq_params(28)**2 !Total calibration that scales everything
     cal0 = freq_params(29)*calPlanck
     cal1 = freq_params(30)*calPlanck
     cal2 = freq_params(31)*calPlanck
