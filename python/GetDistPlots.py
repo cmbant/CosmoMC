@@ -281,10 +281,10 @@ class GetDistPlotter():
         return density.bounds()
 
     def add_2d_contours(self, root, param1=None, param2=None, plotno=0, of=None, filled=False, color=None, ls=None, cols=None,
-                        alpha=None, add_legend_proxy=True, param_pair=None, **kwargs):
+                        alpha=None, add_legend_proxy=True, param_pair=None, density=None, **kwargs):
         param1, param2 = self.get_param_array(root, param_pair or [param1, param2])
 
-        density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
+        if not density: density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
         if density is None: return None
         if alpha is None: alpha = self.get_alpha2D(plotno, filled, **kwargs)
 
