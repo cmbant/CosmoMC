@@ -125,9 +125,9 @@
         if (dummy/=i) stop 'CAMspec_Read: inconsistency in file read'
     enddo
     close(48)
-    do i=100,readlmax,100
-        print *, i, templt(i)
-    enddo
+!    do i=100,readlmax,100
+!        print *, i, templt(i)
+!    enddo
     end subroutine CAMspec_Read
 
     subroutine ReadFiducialCl(fid_cl)
