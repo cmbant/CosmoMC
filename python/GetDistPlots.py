@@ -423,7 +423,7 @@ class GetDistPlotter():
                 else:
                     xmin = min(xmin, bounds[0])
                     xmax = max(xmax, bounds[1])
-        if xmin is None: Exception('No roots have parameter: ' + plotparam.name)
+        if plotparam is None: raise Exception('No roots have parameter: ' + str(param))
         if marker is not None: self.add_x_marker(marker, marker_color)
         if not 'lims' in ax_args:
             xmin, xmax = self.checkBounds(plotroot, plotparam.name, xmin, xmax)
