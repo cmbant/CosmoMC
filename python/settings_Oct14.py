@@ -71,7 +71,7 @@ plikDS = []
 plikDS.append(batchJob.dataSet(['plikDS', 'TT'], ['plik_dx11dr2_DS_v14_TT.ini'], covmat='planck_covmats/plik_dx11dr2_HM_v14_TT.covmat'))
 plikDS.append(batchJob.dataSet(['plikDS', 'TE'], ['plik_dx11dr2_DS_v14_TE.ini'], covmat='planck_covmats/plik_dx11dr2_HM_v14_TE.covmat'))
 plikDS.append(batchJob.dataSet(['plikDS', 'EE'], ['plik_dx11dr2_DS_v14_EE.ini'], covmat='planck_covmats/plik_dx11dr2_HM_v14_EE.covmat'))
-plikDS.append(batchJob.dataSet(['plikDS', 'TTTEEE'], ['plik_dx11dr2_DS_v14_TTTEE.ini'], covmat='planck_covmats/plik_dx11dr2_HM_v14_TTTEEE.covmat'))
+plikDS.append(batchJob.dataSet(['plikDS', 'TTTEEE'], ['plik_dx11dr2_DS_v14_TTTEEE.ini'], covmat='planck_covmats/plik_dx11dr2_HM_v14_TTTEEE.covmat'))
 
 plik = plikHM + plikDS
 
