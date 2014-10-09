@@ -64,7 +64,7 @@ for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detse
 plikHM = []
 plikHM.append(batchJob.dataSet(['plik', 'TT'], ['plik_dx11dr2_HM_TT_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_TT.covmat'))
 plikHM.append(batchJob.dataSet(['plik', 'TE'], ['plik_dx11dr2_HM_TE_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_TE.covmat'))
-plikHM.append(batchJob.dataSet(['plik', 'EE'], ['plik_dx11dr2_HM_EE_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_EE.covmatt'))
+plikHM.append(batchJob.dataSet(['plik', 'EE'], ['plik_dx11dr2_HM_EE_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_EE.covmat'))
 plikHM.append(batchJob.dataSet(['plik', 'TTTEEE'], ['plik_dx11dr2_HM_TTTEEE_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_TTTEEE.covmat'))
 
 plikDS = []
