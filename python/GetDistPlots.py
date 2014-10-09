@@ -495,11 +495,11 @@ class GetDistPlotter():
 
         return density.bounds()
 
-    def add_2d_contours(self, root, param1, param2, plotno=0, of=None, filled=False, color=None, ls=None, cols=None,
-                        alpha=None, add_legend_proxy=True, **kwargs):
-        param1, param2 = self.get_param_array(root, [param1, param2])
+    def add_2d_contours(self, root, param1=None, param2=None, plotno=0, of=None, filled=False, color=None, ls=None, cols=None,
+                        alpha=None, add_legend_proxy=True, param_pair=None, density=None, **kwargs):
+        param1, param2 = self.get_param_array(root, param_pair or [param1, param2])
 
-        density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
+        if not density: density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
         if density is None: return None
         if alpha is None: alpha = self.get_alpha2D(plotno, filled, **kwargs)
 
@@ -550,10 +550,10 @@ class GetDistPlotter():
         if not doResize: return mins, maxs
         else: return [min(x, y) for x, y in zip(res[0], mins)], [max(x, y) for x, y in zip(res[1], maxs)]
 
-    def plot_2d(self, roots, param_pair, shaded=True, filled=False, add_legend_proxy=True, **ax_args):
+    def plot_2d(self, roots, param1=None, param2=None, param_pair=None, shaded=False, filled=False, add_legend_proxy=True, **ax_args):
         if self.fig is None: self.make_figure()
         if isinstance(roots, basestring):roots = [roots]
-        param_pair = self.get_param_array(roots[0], param_pair)
+        param_pair = self.get_param_array(roots[0], param_pair or [param1, param2])
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
         if shaded and not filled: self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
         mins, maxs = None, None
@@ -597,7 +597,7 @@ class GetDistPlotter():
         if x and self.settings.x_label_rotation != 0:setp(xticks()[1], rotation=self.settings.x_label_rotation)
         self.set_locator(axis, x, prune=prune)
 
-    def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None, prune=None):
+    def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None, prune=None, color_label_in_axes=False):
         if lims is not None: axis(lims)
         if prune is None: prune = self.settings.tick_prune
         ax = gca()
@@ -609,6 +609,7 @@ class GetDistPlotter():
             self.setAxisProperties(ax.yaxis, False, prune)
             if do_ylabel:self.set_ylabel(params[1])
             elif no_label_no_numbers: ax.set_yticklabels([])
+        if color_label_in_axes and len(params) > 2: self.add_text(r'$' + params[2].label + '$')
         return ax
 
     def set_xlabel(self, param):
@@ -619,24 +620,30 @@ class GetDistPlotter():
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
 
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
-                no_ylabel=False, no_ytick=False, no_zero=False, **ax_args):
+                no_ylabel=False, no_ytick=False, no_zero=False, param_renames={}, **ax_args):
         if isinstance(roots, basestring):roots = [roots]
         if self.fig is None: self.make_figure()
-        param = self.check_param(roots[0], param)
         xmin = None
+        plotparam = None
+        plotroot = None
         for i, root in enumerate(roots):
-            bounds = self.add_1d(root, param, i)
+            root_param = self.check_param(root, param, param_renames)
+            if not root_param: continue
+            bounds = self.add_1d(root, root_param, i)
             if bounds is not None:
-                if xmin is None: xmin, xmax = bounds
+                if not plotparam:
+                    plotparam = root_param
+                    plotroot = root
+                    xmin, xmax = bounds
                 else:
                     xmin = min(xmin, bounds[0])
                     xmax = max(xmax, bounds[1])
-        if xmin is None: Exception('No roots have parameter: ' + param.name)
+        if xmin is None: Exception('No roots have parameter: ' + plotparam.name)
         if marker is not None: self.add_x_marker(marker, marker_color)
         if not 'lims' in ax_args:
-            xmin, xmax = self.checkBounds(roots[0], param.name, xmin, xmax)
+            xmin, xmax = self.checkBounds(plotroot, plotparam.name, xmin, xmax)
             ax_args['lims'] = [xmin, xmax, 0, 1.099]
-        ax = self.setAxes([param], **ax_args)
+        ax = self.setAxes([plotparam], **ax_args)
 
         if self.settings.prob_label is not None and not no_ylabel:
             if label_right:
@@ -663,15 +670,17 @@ class GetDistPlotter():
             self.fig = figure(figsize=(self.settings.subplot_size_inch * self.plot_col * xstretch, self.settings.subplot_size_inch * self.plot_row * ystretch))
         return self.plot_col, self.plot_row
 
-    def get_param_array(self, root, in_params):
+    def get_param_array(self, root, in_params=None, renames={}):
         if in_params is None or len(in_params) == 0: return self.paramNamesForRoot(root).names
         else:
             if not all([isinstance(param, paramNames.paramInfo) for param in in_params]):
-                return self.paramNamesForRoot(root).parsWithNames(in_params, error=True)
+                return self.paramNamesForRoot(root).parsWithNames(in_params, error=True, renames=renames)
         return in_params
 
-    def check_param(self, root, param):
-        if not isinstance(param, paramNames.paramInfo): return self.paramNamesForRoot(root).parWithName(param, error=True)
+    def check_param(self, root, param, renames={}):
+        if not isinstance(param, paramNames.paramInfo):
+            return self.paramNamesForRoot(root).parWithName(param, error=True, renames=renames)
+        elif renames: return self.paramNamesForRoot(root).parWithName(param.name, error=False, renames=renames)
         return param
 
     def param_latex_label(self, root, param, labelParams=None):
@@ -681,7 +690,8 @@ class GetDistPlotter():
             p = self.check_param(root, param)
         return r'$' + p.label + r'$'
 
-    def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False, figure=False):
+    def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False,
+                   figure=False, label_order=None):
             if legend_loc is None:
                 if figure: legend_loc = self.settings.figure_legend_loc
                 else: legend_loc = self.settings.legend_loc
@@ -697,6 +707,9 @@ class GetDistPlotter():
             if colored_text:
                 args['handlelength'] = 0
                 args['handletextpad'] = 0
+            if label_order is not None:
+                lines = [lines[i] for i in label_order]
+                legend_labels = [legend_labels[i] for i in label_order]
             if figure:
 #                args['frameon'] = self.settings.figure_legend_frame
                 self.legend = self.fig.legend(lines, legend_labels, legend_loc, **args)
@@ -741,13 +754,14 @@ class GetDistPlotter():
             else: return roots
         else: return legend_labels
 
-    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None, paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None):
+    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None,
+                 paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None, param_renames={}):
         if roots_per_param:
-            params = [self.check_param(roots[i][0], param) for i, param in enumerate(params)]
-        else: params = self.get_param_array(roots[0], params)
+            params = [self.check_param(root[0], param, param_renames) for root, param in zip(roots, params)]
+        else: params = self.get_param_array(roots[0], params, param_renames)
         if paramList is not None:
             wantedParams = self.paramNameListFromFile(paramList)
-            params = [param for param in params if param.name in wantedParams]
+            params = [param for param in params if param.name in wantedParams or param_renames.get(param.name, '') in wantedParams]
         nparam = len(params)
         if share_y is None: share_y = self.settings.prob_label is not None and nparam > 1
         plot_col, plot_row = self.make_figure(nparam, nx=nx)
@@ -758,7 +772,7 @@ class GetDistPlotter():
             if markers is not None and i < len(markers): marker = markers[i]
             else: marker = None
 #            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, prune=(None, 'both')[share_y])
-            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker)
+            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, param_renames=param_renames)
             if xlims is not None: xlim(xlims[i][0], xlims[i][1])
             if share_y: self.spaceTicks(gca().xaxis, expand=True)
 
@@ -891,15 +905,16 @@ class GetDistPlotter():
         for ticklabel in ax.get_yticklabels():
             ticklabel.set_rotation(rotation)
 
-    def add_colorbar(self, param, orientation='vertical'):
+    def add_colorbar(self, param, orientation='vertical', **ax_args):
         cb = colorbar(orientation=orientation)
-        self.add_colorbar_label(cb, param)
-        if self.settings.colorbar_rotation is not None:
-            self.rotate_yticklabels(cb.ax, self.settings.colorbar_rotation)
-            labels = [label.get_text() for label in cb.ax.yaxis.get_ticklabels()[::2]]
-            cb.ax.yaxis.set_ticks(cb.ax.yaxis.get_ticklocs()[::2])
-            cb.ax.yaxis.set_ticklabels(labels)
-        return cb
+        if not ax_args.get('color_label_in_axes'):
+            self.add_colorbar_label(cb, param)
+            if self.settings.colorbar_rotation is not None:
+                self.rotate_yticklabels(cb.ax, self.settings.colorbar_rotation)
+                labels = [label.get_text() for label in cb.ax.yaxis.get_ticklabels()[::2]]
+                cb.ax.yaxis.set_ticks(cb.ax.yaxis.get_ticklocs()[::2])
+                cb.ax.yaxis.set_ticklabels(labels)
+            return cb
 
     def add_line(self, P1, P2, zorder=0, color=None, ls=None, **kwargs):
             if color is None: color = self.settings.axis_marker_color
@@ -917,7 +932,7 @@ class GetDistPlotter():
             setattr(p, par.name, samples[:, i])
         return p
 
-    def add_3d_scatter(self, root, in_params, color_bar=True):
+    def add_3d_scatter(self, root, in_params, color_bar=True, **ax_args):
         params = self.get_param_array(root, in_params)
         pts = self.sampleAnalyser.load_single_samples(root)
         names = self.paramNamesForRoot(root)
@@ -930,7 +945,7 @@ class GetDistPlotter():
 
         self.last_scatter = scatter(samples[0], samples[1], edgecolors='none',
                 s=self.settings.scatter_size, c=samples[2], cmap=self.settings.colormap_scatter)
-        if color_bar: self.last_colorbar = self.add_colorbar(params[2])
+        if color_bar: self.last_colorbar = self.add_colorbar(params[2], **ax_args)
         mins = [min(samples[0]), min(samples[1])]
         maxs = [max(samples[0]), max(samples[1])]
         for i in range(2):
@@ -940,29 +955,46 @@ class GetDistPlotter():
 
         return [mins, maxs]
 
-    def plot_3d(self, roots, in_params, color_bar=True, line_offset=0, filled=False, **ax_args):
+    def plot_3d(self, roots, in_params=None, params_for_plots=None, color_bar=True, line_offset=0, filled=False, **ax_args):
         if isinstance(roots, basestring):roots = [roots]
-        params = self.get_param_array(roots[0], in_params)
+        if params_for_plots:
+            params_for_plots = [self.get_param_array(root, p) for p, root in zip(params_for_plots, roots)]
+        else:
+            if not in_params: raise Exception('No parameters for plot_3d!')
+            params = self.get_param_array(roots[0], in_params)
+            params_for_plots = [params for root in roots]  # all the same
         if self.fig is None: self.make_figure()
-        mins, maxs = self.add_3d_scatter(roots[0], params, color_bar=color_bar)
+        mins, maxs = self.add_3d_scatter(roots[0], params_for_plots[0], color_bar=color_bar, **ax_args)
         for i, root in enumerate(roots[1:]):
+            params = params_for_plots[i + 1]
             res = self.add_2d_contours(root, params[0], params[1], i + line_offset, filled=filled, add_legend_proxy=False)
             mins, maxs = self.updateLimits(res, mins, maxs)
         if not 'lims' in ax_args:
+            params = params_for_plots[0]
             lim1 = self.checkBounds(roots[0], params[0].name , mins[0], maxs[0])
             lim2 = self.checkBounds(roots[0], params[1].name , mins[1], maxs[1])
             ax_args['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]
         self.setAxes(params, **ax_args)
 
-    def plots_3d(self, roots, param_sets, nx=None, filled_compare=False, legend_labels=None):
+    def plots_3d(self, roots, param_sets, nx=None, filled_compare=False, legend_labels=None, **kwargs):
+        if isinstance(roots, basestring):roots = [roots]
         sets = [[self.check_param(roots[0], param) for param in param_group] for param_group in param_sets]
         plot_col, plot_row = self.make_figure(len(sets), nx=nx, xstretch=1.3)
 
         for i, triplet in enumerate(sets):
             subplot(plot_row, plot_col, i + 1)
-            self.plot_3d(roots, triplet, filled=filled_compare)
+            self.plot_3d(roots, triplet, filled=filled_compare, **kwargs)
         self.finish_plot(self.default_legend_labels(legend_labels, roots[1:]), no_tight=True)
         return plot_col, plot_row
+
+    def plots_3d_z(self, roots, param_x, param_y, param_z=None, max_z=None, **kwargs):
+        """Make set of plots of param_x against param_y, each coloured by values of parameters in param_z (all if None)"""
+        if isinstance(roots, basestring):roots = [roots]
+        param_z = self.get_param_array(roots[0], param_z)
+        if max_z is not None and len(param_z) > max_z: param_z = param_z[:max_z]
+        param_x, param_y = self.get_param_array(roots[0], [param_x, param_y])
+        sets = [[param_x, param_y, z] for z in param_z if z != param_x and z != param_y]
+        return self.plots_3d(roots, sets, **kwargs)
 
     def add_text(self, text_label, x=0.95, y=0.06, **kwargs):
         args = {'horizontalalignment':'right', 'verticalalignment':'center'}

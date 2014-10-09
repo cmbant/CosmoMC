@@ -21,12 +21,29 @@ def loadChains(root=None, chain_indices=None, ignore_rows=0, ignore_frac=0, no_c
             return c
         return None
 
-def loadGridChain(rootdir, model, data, importance=None):
+def loadGridChain(rootdir, model, data, importance=None, ignore_frac=0):
     tags = [model, data]
     if importance is not None: tags += ['post', importance]
     path = model + os.sep + data + os.sep + "_".join(tags)
     print path
-    return loadChains(rootdir + os.sep + path, ignore_frac=0, separate_chains=False, no_stat=True)
+    return loadChains(rootdir + os.sep + path, ignore_frac=ignore_frac, separate_chains=False, no_stat=True)
+
+
+def getSignalToNoise(C, noise=None, R=None, eigs_only=False):
+    if R is None:
+        if noise is None: raise Exception('Must give noise or rotation R')
+#        w, U = np.linalg.eigh(noise)  # noise = (U * w).dot(U.T)
+#        w = w ** (-0.5)
+#        R = (U * w).dot(U.T)
+        R = np.linalg.inv(np.linalg.cholesky(noise))
+
+    M = np.dot(R, C).dot(R.T)
+    if eigs_only:
+        return np.linalg.eigvalsh(M)
+    else:
+        w, U = np.linalg.eigh(M)
+        U = np.dot(U.T, R)
+        return w, U
 
 
 class chain():
@@ -91,13 +108,15 @@ class chains():
         self.setParams(pars)
         return pars
 
-    def valuesForParam(self, param):
+    def valuesForParam(self, param, force_array=False):
         if isinstance(param, basestring): param = [param]
         results = []
         for par in param:
-            ix = self.index[par]
-            results.append(self.samples[:, ix])
-        if len(results) == 1: return results[0]
+            if isinstance(par, basestring):
+                ix = self.index[par]
+                results.append(self.samples[:, ix])
+            else: results.append(par)
+        if len(results) == 1 and not force_array: return results[0]
         return results
 
     def weighted_sum(self, paramVec, where=None):
@@ -155,6 +174,7 @@ class chains():
         return try_t
 
     def cov(self, paramVecs):
+        paramVecs = self.valuesForParam(paramVecs, force_array=True)
         diffs = [vec - self.mean(vec) for vec in paramVecs]
         n = len(paramVecs)
         cov = np.zeros((n, n))
@@ -168,11 +188,22 @@ class chains():
         corr = self.cov(paramVecs)
         diag = [np.sqrt(corr[i, i]) for i in range(len(paramVecs))]
         for i, di in enumerate(diag):
-            if di==0: continue
             corr[i, :] /= di
             corr[:, i] /= di
         return corr
 
+    def getSignalToNoise(self, params, noise=None, R=None, eigs_only=False):
+        """
+        Returns w, M, where w is the eigenvalues of the signal to noise (small means better constrained)
+        """
+        C = self.cov(params)
+        return getSignalToNoise(C, noise, R, eigs_only)
+
+
+    def addDerived(self, paramName, paramVec):
+        self.paramNames.addDerived(paramName)
+        self.samples.append(paramVec, 1)
+        self.getParamIndices()
 
     def chainFiles(self, root, chain_indices=None, ext='.txt'):
         index = -1
@@ -219,7 +250,7 @@ class chains():
             meanscov[:, i] /= norm
             meanscov[i, :] /= norm
         R = np.linalg.inv(np.linalg.cholesky(M))
-        D = np.linalg.eigvals(np.dot(R, meanscov).dot(R.T))
+        D = np.linalg.eigvalsh(np.dot(R, meanscov).dot(R.T))
         self.GelmanRubin = max(np.real(D))
         print 'R-1 = ', self.GelmanRubin
 
