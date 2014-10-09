@@ -61,12 +61,19 @@ for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detse
     datasets.append(batchJob.dataSet([name , 'TTTEEE'], planck_vars + ['CAMspec_TTTEEE.ini']))
 
 
-plik = []
-plik.append(batchJob.dataSet(['plik', 'TT'], ['plik_dx11c_TT_v12.ini'], covmat='planck_covmats/plik_dx11c_TT_v12.covmat'))
-plik.append(batchJob.dataSet(['plik', 'TE'], ['plik_dx11c_TE_v12.ini'], covmat='planck_covmats/plik_dx11c_TE_v12.covmat'))
-plik.append(batchJob.dataSet(['plik', 'EE'], ['plik_dx11c_EE_v12.ini'], covmat='planck_covmats/plik_dx11c_EE_v12.covmat'))
-plik.append(batchJob.dataSet(['plik', 'TTTEEE'], ['plik_dx11c_TTTEEE_v12.ini'], covmat='planck_covmats/plik_dx11c_TTTEEE_v12.covmat'))
+plikHM = []
+plikHM.append(batchJob.dataSet(['plik', 'TT'], ['plik_dx11dr2_HM_TT_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_TT.covmat'))
+plikHM.append(batchJob.dataSet(['plik', 'TE'], ['plik_dx11dr2_HM_TE_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_TE.covmat'))
+plikHM.append(batchJob.dataSet(['plik', 'EE'], ['plik_dx11dr2_HM_EE_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_EE.covmatt'))
+plikHM.append(batchJob.dataSet(['plik', 'TTTEEE'], ['plik_dx11dr2_HM_TTTEEE_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_TTTEEE.covmat'))
 
+plikDS = []
+plikDS.append(batchJob.dataSet(['plik', 'TT'], ['plik_dx11dr2_DS_TT_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_TT.covmat'))
+plikDS.append(batchJob.dataSet(['plik', 'TE'], ['plik_dx11dr2_DS_TE_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_TE.covmat'))
+plikDS.append(batchJob.dataSet(['plik', 'EE'], ['plik_dx11dr2_DS_EE_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_EE.covmat'))
+plikDS.append(batchJob.dataSet(['plik', 'TTTEEE'], ['plik_dx11dr2_DS_TTTEEE_v14.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v14_TTTEEE.covmat'))
+
+plik = plikHM + plikDS
 
 start_at_bestfit = False
 newCovmats = True
@@ -76,7 +83,7 @@ groups = []
 g = batchJob.jobGroup('main')
 # Main group with just tau prior
 
-g.datasets = copy.deepcopy(detsets) + copy.deepcopy(CS)  # + copy.deepcopy(plik)
+g.datasets = copy.deepcopy(detsets) + copy.deepcopy(CS) + copy.deepcopy(plik)
 
 for d in g.datasets:
     d.add(tauname, tauprior)
