@@ -41,8 +41,8 @@ freecalTE = {'param[calTE]':'1 0.1 2 0.005 0.005', 'prior[calTE]': '1 1'}
 
 
 CamSpecVars = ['v910F', 'v910CMH']
-planck_detsets = [freecal, 'nonclik_detsets.ini', Camspec]
-planck_CS = [freecal, 'nonclik.ini', Camspec]
+planck_detsets = [freecal, 'nonclik_detsets.ini']
+planck_CS = [freecal, 'nonclik.ini']
 
 # not using these checks yet
 wig1800_217 = {'param[wig2_217]':'0 -50 50 3 3'}
@@ -52,7 +52,7 @@ wig1460_217 = {'param[wig1_217]':'0 -50 50 3 3'}
 detsets = []
 CS = []
 for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detsets, planck_CS]):
-    datasets.append(batchJob.dataSet([name , 'TT'], [TT] + planck_vars))
+    datasets.append(batchJob.dataSet([name , 'TT'], planck_vars + ['CAMspec_TT.ini']))
 #    datasets.append(batchJob.dataSet([name , 'TE'], [TE, varTE, freecalTE] + planck_vars))
 #    datasets.append(batchJob.dataSet([name , 'EE'], [EE, varEE, freecalEE] + planck_vars))
 #    datasets.append(batchJob.dataSet([name, 'all'], [full, varTE, varEE, freecalTE, freecalEE] + planck_vars))
@@ -156,9 +156,13 @@ groups.append(g)
 
 g = batchJob.jobGroup('channels')
 datasets = []
-for name, planck_vars in zip(CamSpecVars, [planck_detsets, planck_CS]):
+for aset in detsets + CS:
+# for name, planck_vars in zip(CamSpecVars, [planck_detsets, planck_CS]):
     for namecut, cutvars in zip(['no143', 'no217', 'no217auto'], [TT100_217, TT100_143, no217auto]):
-        datasets.append(batchJob.dataSet([name , 'TT', namecut], [TT, cutvars] + planck_vars))
+#        datasets.append(batchJob.dataSet([name , 'TT', namecut], [TT, cutvars] + planck_vars))
+        d = copy.deepcopy(aset)
+        d.add(namecut, cutvars)
+        datasets.append(d)
 g.datasets = []
 for lmax in range(550, 2550, 150):
     sets = copy.deepcopy(datasets)

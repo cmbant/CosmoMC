@@ -62,9 +62,6 @@
 
         apply_tight_sz_prior=Ini%Read_Logical('apply_tight_sz_prior',.false.)
 
-        if(apply_tight_sz_prior) print *,'applying tight sz prior'
-        if(.not.apply_tight_sz_prior) print *,'not applying tight sz prior'
-
         make_cov_marged = Ini%Read_Logical('make_cov_marged',.false.)
         if (make_cov_marged) marge_file_variant = Ini%Read_string('marge_file_variant')
         pre_marged= .not. make_cov_marged .and. Ini%Read_Logical('pre_marged',.false.)
