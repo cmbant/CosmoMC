@@ -26,7 +26,7 @@ fill_colors = [[1, 1, 0.8], [1, 0.9, 0.6], [1, 0.8, 0.2]]
 if args.sigma_from_left: compare_index = 0
 else: compare_index = -1
 
-lmaxs = args.placeholder_sub[1:]
+lmaxs = [int(x) for x in args.placeholder_sub[1:]]
 
 for paramtag, parambatch in items:
     print 'Doing paramtag: ' + paramtag + '...'
@@ -79,5 +79,5 @@ for paramtag, parambatch in items:
             subplot(plot_row, plot_col, i + 1)
             text(0.95, 0.8, '$' + param.label + '$', horizontalalignment='right', verticalalignment='center', transform=gca().transAxes, fontsize=18)
             xlim(lmaxs[0], lmaxs[-1])
-        g.finish_plot(g.default_legend_labels(None, [paramtag + '_' + p for p in  args.compare]), legend_ncol=2)
+        g.finish_plot(g.default_legend_labels(None, [paramtag + '_' + p for p in  args.compare]), legend_ncol=len(args.compare))
         for ext in args.outputs: g.export(paramtag + '_' + args.fname + '.' + ext)

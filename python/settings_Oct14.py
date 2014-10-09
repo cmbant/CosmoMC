@@ -65,7 +65,7 @@ plik = []
 plik.append(batchJob.dataSet(['plik', 'TT'], ['plik_dx11c_TT_v12.ini'], covmat='planck_covmats/plik_dx11c_TT_v12.covmat'))
 plik.append(batchJob.dataSet(['plik', 'TE'], ['plik_dx11c_TE_v12.ini'], covmat='planck_covmats/plik_dx11c_TE_v12.covmat'))
 plik.append(batchJob.dataSet(['plik', 'EE'], ['plik_dx11c_EE_v12.ini'], covmat='planck_covmats/plik_dx11c_EE_v12.covmat'))
-plik.append(batchJob.dataSet(['plik', 'all'], ['plik_dx11c_TTTEEE_v12.ini'], covmat='planck_covmats/plik_dx11c_TTTEEE_v12.covmat'))
+plik.append(batchJob.dataSet(['plik', 'TTTEEE'], ['plik_dx11c_TTTEEE_v12.ini'], covmat='planck_covmats/plik_dx11c_TTTEEE_v12.covmat'))
 
 
 start_at_bestfit = False
@@ -130,7 +130,7 @@ for aset in detsetsTT + CSTT:
 # for name, planck_vars in zip(CamSpecVars, [planck_detsets, planck_CS]):
     for namecut, cutvars in zip(['no143', 'no217', 'no217auto'], [TT100_217, TT100_143, no217auto]):
         d = copy.deepcopy(aset)
-        d.chopdatasets(namecut, cutvars)
+        d.add(namecut, cutvars)
         datasets.append(d)
 g.datasets = []
 for lmax in range(550, 2550, 150):
