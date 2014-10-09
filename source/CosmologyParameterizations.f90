@@ -207,7 +207,7 @@
         derived(ix+1) = derived(ix)*exp(-2*CMB%tau)  !A e^{-2 tau}
         ix = ix+2
 
-        if(CosmoSettings%use_CMB) then
+        if(CosmoSettings%use_CMB .and. allocated(Theory%Cls(1,1)%CL)) then
             !L(L+1)C_L/2pi at various places
             derived(ix:ix+size(DerivedCL)-1) = Theory%Cls(1,1)%CL(derivedCL)
         end if
