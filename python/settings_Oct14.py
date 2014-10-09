@@ -36,8 +36,6 @@ no217auto = {'want_spec':'T T F T F F'}
 
 
 freecal = 'freecal.ini'
-freecalEE = {'param[calEE]':'1 0.1 2 0.01 0.01', 'prior[calEE]':'1 1'}
-freecalTE = {'param[calTE]':'1 0.1 2 0.005 0.005', 'prior[calTE]': '1 1'}
 
 
 CamSpecVars = ['v910F', 'v910CMH']
@@ -53,11 +51,15 @@ detsets = []
 CS = []
 for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detsets, planck_CS]):
     datasets.append(batchJob.dataSet([name , 'TT'], planck_vars + ['CAMspec_TT.ini']))
-#    datasets.append(batchJob.dataSet([name , 'TE'], [TE, varTE, freecalTE] + planck_vars))
-#    datasets.append(batchJob.dataSet([name , 'EE'], [EE, varEE, freecalEE] + planck_vars))
-#    datasets.append(batchJob.dataSet([name, 'all'], [full, varTE, varEE, freecalTE, freecalEE] + planck_vars))
-#    datasets.append(batchJob.dataSet(name + 'TEEE', [TEEE] + planck_vars))
-#    datasets.append(batchJob.dataSet(name + 'TTTE', [TTTE] + planck_vars))
+
+detsetsTT = copy.copy(detsets)
+CSTT = copy.copy(CS)
+
+for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detsets, planck_CS]):
+    datasets.append(batchJob.dataSet([name , 'TE'], planck_vars + ['CAMspec_TE.ini']))
+    datasets.append(batchJob.dataSet([name , 'EE'], planck_vars + ['CAMspec_EE.ini']))
+    datasets.append(batchJob.dataSet([name , 'TTTEEE'], planck_vars + ['CAMspec_TTTEEE.ini']))
+
 
 plik = []
 plik.append(batchJob.dataSet(['plik', 'TT'], ['plik_dx11c_TT_v12.ini'], covmat='planck_covmats/plik_dx11c_TT_v12.covmat'))
@@ -85,38 +87,9 @@ groups.append(g)
 # lowl, same as main but will all + lowl
 g = copy.deepcopy(g)
 g.groupName = 'lowl'
-g.datasets = [d for d in g.datasets if ('TT' in d.names or 'all' in d.names)]
+g.datasets = [d for d in g.datasets if ('TT' in d.names or 'TTTEEE' in d.names)]
 for d in g.datasets:
     d.add('lowl', ['lowl.ini'])
-groups.append(g)
-
-
-# group to see the effect of tau prior
-g = batchJob.jobGroup('WMAPtau')
-g.datasets = copy.deepcopy(detsets)
-for d in g.datasets:
-    d.add('WMAPtau', WMAPtau)
-g.params = [[], ['Alens']]
-groups.append(g)
-
-g = batchJob.jobGroup('highL')
-g.datasets = [copy.deepcopy(detsets[0])] + [copy.deepcopy(plik[0])]
-g.datasets = [d for d in g.datasets if ('TT' in d.names or 'all' in d.names)]
-for d in g.datasets:
-    d.add(tauname, tauprior)
-    d.add(lowl)
-    d.add(highL)
-g.params = [[], ['Alens']]
-groups.append(g)
-
-g = batchJob.jobGroup('old')
-g.datasets = []
-for name, x in zip(['v62TN', 'v65F', 'v85F', 'v96F'],
-                    ['nonclik_v62TN.ini', 'nonclik.ini', 'nonclik_v85F.ini', 'nonclik_v96F.ini']):
-    g.datasets.append(batchJob.dataSet(name, [x, Camspec]))
-
-for d in g.datasets:
-    d.addEnd(tauname, tauprior)
 groups.append(g)
 
 
@@ -135,10 +108,8 @@ groups.append(g)
 g = batchJob.jobGroup('PCA')
 g.datasets = []
 for lmax in range(600, 1601, 200):
-    datasets = []
-    for name, planck_vars in zip(CamSpecVars, [planck_detsets, planck_CS]):
-        datasets.append(batchJob.dataSet([name , 'TT'], [TT] + planck_vars))
-    sets = copy.deepcopy(datasets)  # + copy.deepcopy(CS)
+    datasets = detsetsTT + CSTT
+    sets = copy.deepcopy(datasets)
     for d in sets:
         d.add(tauname, tauprior)
         d.add('lowl', ['lowl.ini'])
@@ -153,19 +124,17 @@ g.params = [[]]
 groups.append(g)
 
 
-
 g = batchJob.jobGroup('channels')
-datasets = []
-for aset in detsets + CS:
+chopdatasets = []
+for aset in detsetsTT + CSTT:
 # for name, planck_vars in zip(CamSpecVars, [planck_detsets, planck_CS]):
     for namecut, cutvars in zip(['no143', 'no217', 'no217auto'], [TT100_217, TT100_143, no217auto]):
-#        datasets.append(batchJob.dataSet([name , 'TT', namecut], [TT, cutvars] + planck_vars))
         d = copy.deepcopy(aset)
-        d.add(namecut, cutvars)
+        d.chopdatasets(namecut, cutvars)
         datasets.append(d)
 g.datasets = []
 for lmax in range(550, 2550, 150):
-    sets = copy.deepcopy(datasets)
+    sets = copy.deepcopy(chopdatasets)
     for d in sets:
         d.add(tauname, tauprior)
         d.add('lmax' + str(lmax), {'camspec_lmax': (str(lmax) + ' ') * 6})
@@ -174,15 +143,10 @@ g.params = [[], ['Alens'], ['nnu']]
 groups.append(g)
 
 g = batchJob.jobGroup('lmin')
-datasets = []
 lmins = [800, 1200]
-for name, planck_vars in zip(CamSpecVars, [planck_detsets, planck_CS]):
-    datasets.append(batchJob.dataSet([name , 'TT'], [TT] + planck_vars))
-    for namecut, cutvars in zip(['no143', 'no217', 'no217auto'], [TT100_217, TT100_143, no217auto]):
-        datasets.append(batchJob.dataSet([name , 'TT', namecut], [TT, cutvars] + planck_vars))
 g.datasets = []
 for lmin in lmins:
-    sets = copy.deepcopy(datasets)
+    sets = copy.deepcopy(chopdatasets)
     for d in sets:
         d.add(tauname, tauprior)
         d.add('lmin' + str(lmin), {'param[cal0]':'0.9997', 'camspec_lmin': '2500 ' + (str(lmin) + ' ') * 5})
