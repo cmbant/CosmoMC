@@ -302,17 +302,18 @@ linear_correction_bin_window_out_order = PP PP PP PP
 
 if __name__ == "__main__":
     dir = r'C:\Work\F90\LensingBiases\dx11'
+    dir = r'C:\Work\F90\LensingBiases\plenslike_dx11_test'
 #    dir = r'z:'
     root = 'g60_full_pttptt'
     root = 'g60_full_pp'
-    root = '143_g40_full_pttptt'
+    root = 'smica_g30_dcl_full_pp'
 
     Duncan = True
     if Duncan:
         ConvertDuncan(dir + os.sep + root + '.dat', dir, root)
     else:
-        f = r'C:\Work\F90\LensingBiases\like' + os.sep + root + '.dataset'
-        lens = lensLike(f, bin_compression=True)
+        f = dir + os.sep + root + '.dataset'
+        lens = CMBlikes.DatasetLikelihood(f)
 #        lens.dumpData(r'C:\Work\F90\LensingBiases\like' + os.sep + root)
 
         lens.plot()

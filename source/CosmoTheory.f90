@@ -20,7 +20,7 @@
 
     Type, extends(TTheoryPredictions) :: TCosmoTheoryPredictions
         Type(TSkyPowerSpectrum), allocatable :: Cls(:,:)
-        !(this, E, B, Phi) x (this, E, B, Phi), with L(L+1)/2pi factor, in muK for CMB components
+        !(T, E, B, Phi) x (T, E, B, Phi), with L(L+1)/2pi factor, in muK for CMB components
         real(mcp) sigma_8
         real(mcp) tensor_ratio_C10, tensor_ratio_02, tensor_ratio_BB, tensor_AT
         real(mcp) :: Lensing_rms_deflect = 0._mcp
@@ -31,6 +31,11 @@
         !MPK%nx = num_k, MPK%ny = num_z
         type(TCosmoTheoryPK), allocatable :: MPK
         type(TCosmoTheoryPK), allocatable :: NL_MPK
+        type(TCosmoTheoryPK), allocatable :: MPK_WEYL
+        type(TCosmoTheoryPK), allocatable :: NL_MPK_WEYL
+        type(TCubicSpline),  allocatable :: growth_z !defined as sigma8_vd^2/sigma8
+        type(TCubicSpline),  allocatable :: sigma8_z
+        type(TCubicSpline),  allocatable :: sigma_R
     contains
     procedure :: FreePK
     procedure :: ClArray
@@ -72,8 +77,10 @@
     subroutine FreePK(this)
     class(TCosmoTheoryPredictions) this
 
-    if(allocated(this%MPK))deallocate(this%MPK)
+    if(allocated(this%MPK)) deallocate(this%MPK)
     if(allocated(this%NL_MPK)) deallocate(this%NL_MPK)
+    if(allocated(this%MPK_WEYL)) deallocate(this%MPK_WEYL)
+    if(allocated(this%NL_MPK_WEYL)) deallocate(this%NL_MPK_WEYL)
 
     end subroutine FreePK
 
@@ -191,16 +198,24 @@
     end do
 
     valArray(1:4) = [ this%tensor_ratio_02, this%tensor_ratio_C10, this%tensor_ratio_BB, this%tensor_AT ]
-    valArray(5) = this%Lensing_rms_deflect 
+    valArray(5) = this%Lensing_rms_deflect
     valArray(6) = this%sigma_8
-    call F%WriteSizedArray(valArray)    
+    call F%WriteSizedArray(valArray)
 
-    if (CosmoSettings%use_LSS) then
+    if (CosmoSettings%use_matterpower) then
         write(F%unit) this%MPK%nx, this%MPK%ny
         write(F%unit) this%MPK%x
         write(F%unit) this%MPK%y
         write(F%unit) this%MPK%z
         if(CosmoSettings%use_nonlinear) write(F%unit) this%NL_MPK%z
+        if(CosmoSettings%use_WeylPower) write(F%unit) this%MPK_WEYL%z
+        if(CosmoSettings%use_nonlinear.and. CosmoSettings%use_WeylPower) write(F%unit) this%NL_MPK_WEYL%z
+        if (CosmoSettings%use_sigmaR) call this%sigma_R%SaveState(F)
+    end if
+
+    if (CosmoSettings%use_LSS) then
+        call this%sigma8_z%SaveState(F)
+        call this%growth_z%SaveState(F)
     end if
 
     end subroutine TCosmoTheoryPredictions_WriteTheory
@@ -231,7 +246,7 @@
     real(mcp), allocatable :: temp(:,:)
     real(mcp), allocatable :: k(:), z(:)
     real(mcp), allocatable :: cl(:)
-    real(mcp), allocatable :: valArray(:)    
+    real(mcp), allocatable :: valArray(:)
     integer i,j
 
     if (first) then
@@ -253,7 +268,7 @@
                 if (CosmoSettings%cl_lmax(i,j)>0) then
                     associate (Sz => min(FileSettings%cl_lmax(i,j),CosmoSettings%cl_lmax(i,j)))
                         this%Cls(i,j)%Cl(1:Sz) = Cl(1:sz)
-                        end associate
+                    end associate
                 end if
                 deallocate(cl)
             end if
@@ -275,10 +290,10 @@
         end if
         if (FileSettings%get_sigma8 .or. FileSettings%use_LSS) read(F%unit) this%sigma_8
     end if
-    
 
-    if (FileSettings%use_LSS) then
-        if (CosmoSettings%use_LSS) then
+
+    if (FileSettings%use_matterpower) then
+        if (CosmoSettings%use_matterpower) then
             if (any(FileSettings%power_redshifts/=CosmoSettings%power_redshifts)) &
                 & call MpiStop('TCosmoTheoryPredictions_ReadTheory: power_redshifts differ - check')
         end if
@@ -302,6 +317,27 @@
                 write(*,*)"          is what you intended."
             end if
         end if
+        if(FileSettings%use_WeylPower) then
+            allocate(this%MPK_WEYL)
+            read(F%unit)temp
+            call this%MPK_WEYL%Init(k,z,temp)
+        end if
+        if(FileSettings%use_nonlinear.and. FileSettings%use_WeylPower) then
+            allocate(this%NL_MPK_WEYL)
+            read(F%unit)temp
+            call this%NL_MPK_WEYL%Init(k,z,temp)
+        end if
+
+        if (FileSettings%use_sigmaR) then
+            if (.not. allocated(this%sigma_R)) allocate(this%Sigma_R)
+            call this%sigma_R%LoadState(F)
+        end if
+    end if
+
+    if (FileSettings%use_LSS) then
+        if (.not. allocated(this%growth_z)) allocate(this%growth_z, this%sigma8_z)
+        call this%sigma8_z%LoadState(F)
+        call this%growth_z%LoadState(F)
     end if
 
     end subroutine TCosmoTheoryPredictions_ReadTheory

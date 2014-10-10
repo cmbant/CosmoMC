@@ -46,8 +46,11 @@
         logical :: compute_tensors = .false.
 
         !Parameters for calculating/storing the matter power spectrum
+        logical :: use_matterpower = .false.
+        logical :: use_Weylpower = .false. !power spectrum of Weyl potential for lensing
+        logical :: use_sigmaR =.false. !sigma_R, e.g. for clusters
         real(mcp) :: power_kmax = 0.8_mcp
-        integer :: num_power_redshifts
+        integer :: num_power_redshifts = 0
 
         !Only used in params_CMB
         real(mcp) :: pivot_k = 0.05_mcp !Point for defining primordial power spectra
@@ -85,11 +88,13 @@
 
         logical :: needs_nonlinear_pk = .false.
         logical :: needs_exact_z = .false.
+        logical :: needs_Weylpower = .false.
+        logical :: needs_sigmaR = .false.
+        real(mcp) :: kmax = 0.8_mcp
         integer :: num_z = 0
+        real(mcp) :: max_z = 0._mcp
         real(mcp), dimension(:), allocatable :: exact_z
         integer, dimension(:), allocatable :: exact_z_index
-        real(mcp) :: max_z
-        real(mcp) :: kmax = 0.8_mcp
     contains
     procedure :: InitForSettings => TCosmologyRequirementsLikelihood_InitForSettings
     end type TCosmologyRequirementsLikelihood
@@ -294,19 +299,23 @@
     dlnz = 30
 
     call full_z%Add(0.d0)
+    this%use_LSS = size(CosmoSettings%z_outputs)>0 .and. this%get_sigma8 !e.g. for growth function
 
     do i=1,DataLikelihoods%Count
         DataLike=>DataLikelihoods%Item(i)
         select type (DataLike)
         class is (TCosmologyRequirementsLikelihood)
             if (DataLike%needs_powerspectra) then
-                if (DataLike%needs_exact_z .or. DataLike%num_z>0) then
-                  this%Use_LSS = .true.
+                if (DataLike%needs_exact_z .or. DataLike%num_z>0 .or. DataLike%needs_sigmaR) then
+                    this%Use_LSS = .true.
                 else
-                   cycle
+                    cycle
                 end if
                 this%power_kmax = max(this%power_kmax,DataLike%kmax)
                 this%use_nonlinear = this%use_nonlinear .or. DataLike%needs_nonlinear_pk
+                this%use_matterpower = .true.
+                this%use_Weylpower = this%use_Weylpower .or. DataLike%needs_Weylpower
+                this%use_sigmaR = this%use_sigmaR .or. DataLike%needs_sigmaR
                 if(DataLike%needs_exact_z) then
                     call exact_z%AddArrayItems(DataLike%exact_z)
                 else
@@ -335,7 +344,9 @@
     end do
 
     if(.not. this%use_LSS) return
-    
+
+    call exact_z%AddArrayItems(CosmoSettings%z_outputs)
+
     !Build array of redshifts where the redshift exact value doesn't matter
     if(maxz>0)then
         num_range = ceiling(log(maxz+1)/dlnz)
@@ -390,6 +401,7 @@
 
     if (this%needs_powerspectra .and. this%needs_exact_z) then
         numz = size(Settings%power_redshifts)
+        allocate(this%exact_z_index(this%num_z))
         this%exact_z_index = 0
         do iz=1,this%num_z
             izprev=1

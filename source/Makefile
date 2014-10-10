@@ -15,7 +15,7 @@ F90C     = ifort
 #use this if mpif90 is trying to use gfortran: MPIF90C = mpif90 -f90=ifort
 
 FFLAGS = -mkl -openmp -O3 -no-prec-div -fpp
-DEBUGFLAGS = -mkl -openmp -g -check all -check noarg_temp_created -traceback -no-prec-div -fpp
+DEBUGFLAGS = -mkl -openmp -g -check all -check noarg_temp_created -traceback -fpp -fpe0
 #add -fpe0 to check for floating point errors (think lowLike also throws these harmlessly)
 MODOUT = -module $(OUTPUT_DIR)
 LAPACKL =
@@ -165,10 +165,12 @@ OBJFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o 
 
 
 SUPERNOVAE = $(OUTPUT_DIR)/supernovae_Union2.o $(OUTPUT_DIR)/supernovae_SNLS.o $(OUTPUT_DIR)/supernovae_JLA.o
+SZ = $(OUTPUT_DIR)/szcounts.o
 
 DATAMODULES = $(PLANCKLIKEFILES) $(OUTPUT_DIR)/mpk.o $(OUTPUT_DIR)/wigglez.o \
-	$(OUTPUT_DIR)/bao.o $(SUPERNOVAE) $(OUTPUT_DIR)/supernovae.o $(OUTPUT_DIR)/HST.o  $(OUTPUT_DIR)/CMB.o $(OUTPUT_DIR)/CMBlikes.o $(OUTPUT_DIR)/ElementAbundances.o
+	$(OUTPUT_DIR)/bao.o $(SUPERNOVAE) $(SZ) $(OUTPUT_DIR)/supernovae.o $(OUTPUT_DIR)/HST.o  $(OUTPUT_DIR)/CMB.o $(OUTPUT_DIR)/CMBlikes.o $(OUTPUT_DIR)/ElementAbundances.o
 
+DATAMODULES += $(OUTPUT_DIR)/wl.o
 
 COSMOFILES = $(OUTPUT_DIR)/CosmologyTypes.o $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/bbn.o $(OUTPUT_DIR)/Calculator_Cosmology.o \
 	$(OUTPUT_DIR)/CalcLike_Cosmology.o $(OUTPUT_DIR)/Likelihood_Cosmology.o $(CALCFILES) $(DATAMODULES) $(PARAMETERIZATION) $(LIKEFILES) \
@@ -195,6 +197,7 @@ endif
 
 default: cosmomc
 
+$(OUTPUT_DIR)/StringUtils.o: $(OUTPUT_DIR)/MiscUtils.o
 $(OUTPUT_DIR)/RandUtils.o: $(OUTPUT_DIR)/MpiUtils.o
 $(OUTPUT_DIR)/FileUtils.o: $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/MiscUtils.o $(OUTPUT_DIR)/StringUtils.o
 $(OUTPUT_DIR)/ObjectLists.o: $(OUTPUT_DIR)/FileUtils.o
@@ -233,6 +236,7 @@ $(OUTPUT_DIR)/bbn.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPU
 $(OUTPUT_DIR)/mpk.o: $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/wigglez.o: $(OUTPUT_DIR)/mpk.o
 $(OUTPUT_DIR)/bao.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/wl.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/HST.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/cliklike.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/CosmologyConfig.o: $(PARAMETERIZATION) $(OUTPUT_DIR)/GeneralSetup.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
@@ -241,7 +245,13 @@ $(OUTPUT_DIR)/supernovae_Union2.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_SNLS.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_JLA.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 
+<<<<<<< HEAD
 $(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o
+=======
+$(OUTPUT_DIR)/szcounts.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
+
+$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o $(OUTPUT_DIR)/pol_like.o
+>>>>>>> newtransfer_lens_SZ
 
 $(OUTPUT_DIR)/Calculator_PICO.o: $(OUTPUT_DIR)/Calculator_CAMB.o $(OUTPUT_DIR)/fpico_interface.o
 
@@ -296,8 +306,6 @@ cleancosmomc:
 getdist: directories $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LAPACKL) $(GETDISTFLAGS)
 
-#If you want to use the ppf module, change equations_ppf to equations
-#and halofit_ppf to halofit also comment out wa_ppf in CMB_Cls_simple.f90
 camb:
 	cd ../camb && \
 	$(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a \
