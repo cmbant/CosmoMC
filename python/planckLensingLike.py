@@ -217,8 +217,8 @@ class lensLike(CMBlikes.DatasetLikelihood):
 
             # main files
             np.savetxt(froot + '_cov.dat', self.cov)
-            self.saveCl(froot + '_fid_cl.dat', self.fid_cl[:, 1:], cols=['TT', 'EE', 'TE', 'PP'])
-            self.saveCl(froot + '_fid_N1.dat', self.fid_N1, cols=['PP'])
+#            self.saveCl(froot + '_fid_cl.dat', self.fid_cl[:, 1:], cols=['TT', 'EE', 'TE', 'PP'])
+#           self.saveCl(froot + '_fid_N1.dat', self.fid_N1, cols=['PP'])
 
             with open(froot + '_bandpowers.dat', 'w') as f:
                 f.write("#%4s %5s %5s %8s %12s %10s %7s\n" % ('bin', 'L_min', 'L_max', 'L_av', 'PP', 'Error', 'Ahat'))
@@ -266,17 +266,39 @@ class lensLike(CMBlikes.DatasetLikelihood):
             print 'chi2 =', self.chi_squared(phi, cl2)
 
 
-def ConvertDuncan(fname, dir, root):
-        lens = lensLike(fname, bin_compression=True)
-        lens.dumpData(dir + os.sep + root)
-        with open(dir + os.sep + root + '.dataset', "w") as f:
+def ConvertDuncan(fname, dir, root, var):
+        lens = lensLike(fname + '.dat', bin_compression=True)
+        outroot = root
+        if var: outroot += '_' + var
+        diroutroot = os.path.join(r'z://lens/', outroot)
+        lens.dumpData(diroutroot)
+        for b in range(lens.nbins):
+            win = loadtxt(fname + '_lens_delta_window/window%u.dat' % (b + 1))
+            if not os.path.exists(diroutroot + '_lens_delta_window'): os.mkdir(diroutroot + '_lens_delta_window')
+            with open(diroutroot + '_lens_delta_window/window%u.dat' % (b + 1), 'w') as f:
+                for i in range(len(win[:, 0])):
+                    if lens.num_estimators == 1:
+                        f.write("%5u %10e %10e\n" % (int(win[i, 0]), win[i, 1], win[i, 4]))
+                    else:
+                        f.write("%5u %10e %10e %10e %10e\n" % (int(win[i, 0]), win[i, 1], win[i, 2], win[i, 3], win[i, 4]))
+        corr = loadtxt(fname + '_lensing_fiducial_correction.dat')
+        with open(diroutroot + '_lensing_fiducial_correction.dat', 'w') as f:
+            f.write("#%4s %14s \n" % ('bin', 'PP'))
+            for b in range(lens.nbins):
+                f.write("%5u %14.7e\n" % (b + 1, corr[b, 1]))
+
+
+        with open(diroutroot + '.dataset', "w") as f:
             f.write("like_approx = gaussian\n")
             f.write("fields_use = P\n")
             if lens.num_estimators == 1:
                 f.write("fields_required =  T\n")
+                order = 'TT PP'
+                out_order = 'PP PP'
             else:
-
                 f.write("fields_required =  T E P\n")
+                order = 'TT EE TE PP'
+                out_order = ' PP PP PP PP'
             f.write("binned = T\n")
             f.write("nbins= %u \n" % (lens.nbins))
             f.write("use_min= 1 \n")
@@ -295,27 +317,29 @@ covmat_fiducial = %s_cov.dat
 
 linear_correction_fiducial = %s_lensing_fiducial_correction.dat
 linear_correction_bin_window_files = %s_lens_delta_window/window%%u.dat
-linear_correction_bin_window_in_order = TT EE TE PP
-linear_correction_bin_window_out_order = PP PP PP PP
-            """ % (root, root, root, root, root))
+linear_correction_bin_window_in_order = %s
+linear_correction_bin_window_out_order = %s
+            """ % (outroot, outroot, outroot, outroot, outroot, order, out_order))
+
+            with open(diroutroot + '_lensonly.dataset', 'w') as f:
+                    f.write(
+"""DEFAULT(%s.dataset)
+INCLUDE(fix_renormalization.ini)""" % (outroot))
 
 
 if __name__ == "__main__":
-    dir = r'C:\Work\F90\LensingBiases\dx11'
-    dir = r'C:\Work\F90\LensingBiases\plenslike_dx11_test'
-#    dir = r'z:'
-    root = 'g60_full_pttptt'
-    root = 'g60_full_pp'
-    root = 'smica_g30_dcl_full_pp'
+    dir = r'C:\Work\F90\LensingBiases\plenslike_dx11'
+    for root in ['smica_g30_ftl_full_pp', 'smica_g30_ftl_full_pttptt']:
+        for var, newvar in [(r'aggressive', 'aggressive'), (r'conservative', '')]:
+            Duncan = True
+            if Duncan:
+                ConvertDuncan(os.path.join(dir , var , root), dir, root, newvar)
 
-    Duncan = True
-    if Duncan:
-        ConvertDuncan(dir + os.sep + root + '.dat', dir, root)
-    else:
-        f = dir + os.sep + root + '.dataset'
-        lens = CMBlikes.DatasetLikelihood(f)
-#        lens.dumpData(r'C:\Work\F90\LensingBiases\like' + os.sep + root)
+            else:
+                f = dir + os.sep + root + '.dataset'
+                lens = CMBlikes.DatasetLikelihood(f)
+        #        lens.dumpData(r'C:\Work\F90\LensingBiases\like' + os.sep + root)
 
-        lens.plot()
-        show()
+                lens.plot()
+                show()
 

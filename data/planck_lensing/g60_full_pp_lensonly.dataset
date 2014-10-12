@@ -1,5 +1,0 @@
-DEFAULT(g60_full_pp.dataset)
-
-linear_correction_bin_window_fix_cl_file = ../base_v97CS_TT_lowTEB.minimum.theory_cl
-linear_correction_bin_window_fix_cl= TT EE TE
-
