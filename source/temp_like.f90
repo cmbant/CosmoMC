@@ -1,4 +1,4 @@
-    module temp_like_camspec3
+    module temp_like_camspec4
     implicit none
 
     private
@@ -782,4 +782,4 @@
     call Matrix_End('Inverse')
 
     end subroutine Matrix_Inverse2
-    end module temp_like_camspec3
+    end module temp_like_camspec4
