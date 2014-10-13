@@ -21,4 +21,6 @@ linear_correction_fiducial = smica_g30_ftl_full_pp_lensing_fiducial_correction.d
 linear_correction_bin_window_files = smica_g30_ftl_full_pp_lens_delta_window/window%u.dat
 linear_correction_bin_window_in_order = TT EE TE PP
 linear_correction_bin_window_out_order =  PP PP PP PP
+
+calibration_param = ../planck_calib.paramnames
             
