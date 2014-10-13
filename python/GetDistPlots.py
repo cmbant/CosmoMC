@@ -198,17 +198,22 @@ class SampleAnalysisGetDist():
 class MCSampleAnalysis():
 
     def __init__(self, file_root, ini_file):
-
-        self.root_dir = os.path.dirname(file_root)
-
         self.ini = None
         if ini_file<>'':
             self.ini = iniFile.iniFile()
             self.ini.readFile(ini_file)
-        self.root = file_root
-        self.mcsamples = MCSamples.MCSamples(self.root)
+
+        self.main_root = os.path.basename(file_root)
+        print "main_root is %s"%self.main_root
+        self.roots = []
+        self.roots.append(self.main_root)
+
+        self.mcsamples = {}
+        self.mcsamples[self.main_root] = MCSamples.MCSamples(file_root)
+
         self.done_1Dbins = False
 
+        # Dicts. 1st key is root; 2nd key is param
         self.densities_dat_1D = dict()
         self.densities_likes_1D = dict()
 
@@ -220,149 +225,164 @@ class MCSampleAnalysis():
 
         self.single_samples = dict()
 
-        self.readChains()
+        self.readChains(self.main_root, self.mcsamples[self.main_root])
+
+    def addRoot(self, file_root):
+        print "add root for %s"%file_root
+        base_root = os.path.basename(file_root)
+        self.roots.append(base_root)
+
+        self.mcsamples[base_root] = MCSamples.MCSamples(file_root)
+        self.readChains(base_root, self.mcsamples[base_root])
+
 
     def newPlot(self):
         pass
 
-    def initParameters(self):
+    def initParameters(self, mcsamples):
         if not self.ini: return
 
-        self.mcsamples.num_bins = self.ini.int('num_bins')
-        self.mcsamples.num_bins_2D = self.ini.int('num_bins_2D', self.mcsamples.num_bins)
-        self.mcsamples.smooth_scale_1D = self.ini.float('smooth_scale_1D', -1.0)
-        self.mcsamples.smooth_scale_2D = self.ini.float('smooth_scale_2D', -1.0)
+        mcsamples.num_bins = self.ini.int('num_bins')
+        mcsamples.num_bins_2D = self.ini.int('num_bins_2D', mcsamples.num_bins)
+        mcsamples.smooth_scale_1D = self.ini.float('smooth_scale_1D', -1.0)
+        mcsamples.smooth_scale_2D = self.ini.float('smooth_scale_2D', -1.0)
 
-        self.mcsamples.no_plots = self.ini.bool('no_plots', False)
-        self.mcsamples.shade_meanlikes = self.ini.bool('shade_meanlikes', False)
-        self.mcsamples.num_contours = self.ini.int('num_contours', 2)
+        mcsamples.no_plots = self.ini.bool('no_plots', False)
+        mcsamples.shade_meanlikes = self.ini.bool('shade_meanlikes', False)
+        mcsamples.num_contours = self.ini.int('num_contours', 2)
 
-        self.mcsamples.force_twotail = self.ini.bool('force_twotail', False)
+        mcsamples.force_twotail = self.ini.bool('force_twotail', False)
 
-        self.mcsamples.plot_meanlikes = self.ini.bool('plot_meanlikes', False)
+        mcsamples.plot_meanlikes = self.ini.bool('plot_meanlikes', False)
 
+    def readChains(self, rootdir, mcsamples):
+        self.initParameters(mcsamples)
 
-    def readChains(self):
-        self.initParameters()
-
-        self.mcsamples.ComputeContours(self.ini)
+        mcsamples.ComputeContours(self.ini)
 
         # compute limits
-        self.mcsamples.ComputeLimits(self.ini)
+        mcsamples.ComputeLimits(self.ini)
 
         # Get list of chain files in root directory
-        chainFiles = MCSamples.GetChainFiles(self.root)
-        self.mcsamples.loadChains(self.root, chainFiles)
+        root = mcsamples.root
+        chainFiles = MCSamples.GetChainFiles(root)
+        mcsamples.loadChains(root, chainFiles)
 
         ignorerows = 0.0
         if self.ini is not None:
             ignorerows = self.ini.float('ignore_rows', 0.0)
-        self.mcsamples.removeBurnFraction(ignorerows)
+        mcsamples.removeBurnFraction(ignorerows)
 
         # Make a single array for chains
-        self.mcsamples.makeSingle()
+        mcsamples.makeSingle()
 
         # Check used columns
-        self.mcsamples.GetUsedCols()
+        mcsamples.GetUsedCols()
 
-        self.mcsamples.ComputeMultiplicators()
+        mcsamples.ComputeMultiplicators()
 
-        self.mcsamples.ComputeColix()
+        mcsamples.ComputeColix()
 
         # Compute statistics values
-        self.mcsamples.ComputeStats()
+        mcsamples.ComputeStats()
 
         # Sort data in order of likelihood of points
-        self.mcsamples.SortColData(1)
+        mcsamples.SortColData(1)
 
         # Get covariance matrix and correlation matrix
-        self.mcsamples.ComputeNumSamp()
+        mcsamples.ComputeNumSamp()
 
         # Get ND confidence region
-        #self.mcsamples.GetConfidenceRegion()
+        #mcsamples.GetConfidenceRegion()
 
-        self.mcsamples.GetCovMatrix(False)
+        mcsamples.GetCovMatrix(False)
 
         # Find best fit, and mean likelihood
-        self.mcsamples.GetChainLikeSummary(toStdOut=False)
+        mcsamples.GetChainLikeSummary(toStdOut=False)
 
         # Init arrays for 1D densities
-        self.mcsamples.Init1DDensity()
+        mcsamples.Init1DDensity()
 
 
     def getMargeStats(self):
         # Do 1D bins
         if not self.done_1Dbins:
-            print "Do 1D bins ..."
-            self.mcsamples.Do1DBins()
+            self.mcsamples[self.main_root].Do1DBins()
             self.done_1Dbins = True
-            print "... done!"
-        text = self.mcsamples.OutputMargeStats(writeDataToFile=False)
+        text = self.mcsamples[self.main_root].OutputMargeStats(writeDataToFile=False)
         return text
 
-    def compute_1d(self, name):
-        index = self.mcsamples.index[name]
-        dat, likes = self.mcsamples.Get1DDensity(index, writeDataToFile=False)
+    def compute_1d(self, root, name):
+        index = self.mcsamples[root].index[name]
+        dat, likes = self.mcsamples[root].Get1DDensity(index, writeDataToFile=False)
         if dat is not None:
-            self.densities_dat_1D[name] = dat
+            self.densities_dat_1D[root][name] = dat
         if likes is not None:
-            self.densities_likes_1D[name] = likes
+            self.densities_likes_1D[root][name] = likes
 
-    def compute_2d(self, name1, name2):
-        index1 = self.mcsamples.index[name1]
-        index2 = self.mcsamples.index[name2]
+    def compute_2d(self, root, name1, name2):
+        index1 = self.mcsamples[root].index[name1]
+        index2 = self.mcsamples[root].index[name2]
         # Pre computation
-        self.mcsamples.PreComputeDensity(index1)
-        self.mcsamples.PreComputeDensity(index2)
-        #dat, likes, cont, x, y = self.mcsamples.Get2DPlotData(index1, index2, writeDataToFile=False)
-        dat, likes, cont, x, y = self.mcsamples.Get2DPlotData(index2, index1, writeDataToFile=False)
+        self.mcsamples[root].PreComputeDensity(index1)
+        self.mcsamples[root].PreComputeDensity(index2)
+        dat, likes, cont, x, y = self.mcsamples[root].Get2DPlotData(index2, index1, writeDataToFile=False)
         key = (name1, name2)
-        if dat is not None: self.densities_dat_2D[key] = dat
-        if likes is not None: self.densities_likes_2D[key] = likes
-        if cont is not None: self.densities_cont_2D[key] = cont
-        if x is not None: self.densities_x_2D[key] = x
-        if y is not None: self.densities_y_2D[key] = y
+        if dat is not None: self.densities_dat_2D[root][key] = dat
+        if likes is not None: self.densities_likes_2D[root][key] = likes
+        if cont is not None: self.densities_cont_2D[root][key] = cont
+        if x is not None: self.densities_x_2D[root][key] = x
+        if y is not None: self.densities_y_2D[root][key] = y
 
 
     def get_1d(self, root, param, ext='.dat'):
+        if not self.densities_dat_1D.has_key(root):
+            self.densities_dat_1D[root] = {}
+
         name = param.name
         if ext=='.dat':
-            if self.densities_dat_1D.has_key(name):
-                return self.densities_dat_1D[name]
+            if self.densities_dat_1D[root].has_key(name):
+                return self.densities_dat_1D[root][name]
             else:
-                self.compute_1d(name)
-                if self.densities_dat_1D.has_key(name):
-                    return self.densities_dat_1D[name]
+                self.compute_1d(root, name)
+                if self.densities_dat_1D[root].has_key(name):
+                    return self.densities_dat_1D[root][name]
                 else:
                     return None
         elif ext=='.likes':
-            if self.densities_likes_1D.has_key(name):
-                return self.densities_likes_1D[name]
+            if self.densities_likes_1D[root].has_key(name):
+                return self.densities_likes_1D[root][name]
             else:
-                self.compute_1d(name)
-                if self.densities_likes_1D.has_key(name):
-                    return self.densities_likes_1D[name]
+                self.compute_1d(root, name)
+                if self.densities_likes_1D[root].has_key(name):
+                    return self.densities_likes_1D[root][name]
                 else:
                     return None
         return None
 
     def get_2d(self, root, param1, param2, ext='', no_axes=False):
+        if not self.densities_x_2D.has_key(root): self.densities_x_2D[root] = {}
+        if not self.densities_y_2D.has_key(root): self.densities_y_2D[root] = {}
+        if not self.densities_dat_2D.has_key(root): self.densities_dat_2D[root] = {}
+        if not self.densities_likes_2D.has_key(root): self.densities_likes_2D[root] = {}
+        if not self.densities_cont_2D.has_key(root): self.densities_cont_2D[root] = {}
+
         transpose = False # not used here
         name1, name2 = param1.name, param2.name
         key = (name1, name2)
-        if  (not self.densities_dat_2D.has_key(key)) \
-                and (not self.densities_x_2D.has_key(key)) \
-                and (not self.densities_y_2D.has_key(key)):
-            self.compute_2d(name1, name2)
+        if  (not self.densities_dat_2D[root].has_key(key)) \
+                and (not self.densities_x_2D[root].has_key(key)) \
+                and (not self.densities_y_2D[root].has_key(key)):
+            self.compute_2d(root, name1, name2)
         if ext=='':
-            pts = self.densities_dat_2D.get(key, np.ndarray(0))
+            pts = self.densities_dat_2D[root].get(key, np.ndarray(0))
         elif ext=='_likes':
-            pts = self.densities_likes_2D.get(key, np.ndarray(0))
+            pts = self.densities_likes_2D[root].get(key, np.ndarray(0))
         elif ext=='_cont':
-            pts = self.densities_cont_2D.get(key, np.ndarray(0))
+            pts = self.densities_cont_2D[root].get(key, np.ndarray(0))
         if no_axes: return pts
-        x = self.densities_x_2D.get(key, np.ndarray(0))
-        y = self.densities_y_2D.get(key, np.ndarray(0))
+        x = self.densities_x_2D[root].get(key, np.ndarray(0))
+        y = self.densities_y_2D[root].get(key, np.ndarray(0))
         if transpose: return (pts, y, x)
         else: return (pts, x, y)
 
@@ -386,23 +406,31 @@ class MCSampleAnalysis():
         return result
 
     def load_single_samples(self, root):
-        loglikes, samples = self.mcsamples.MakeSingleSamples(writeDataToFile=False)
+        loglikes, samples = self.mcsamples[root].MakeSingleSamples(writeDataToFile=False)
         if not root in self.single_samples:
             self.single_samples[root] = np.column_stack((loglikes, samples))
         return self.single_samples[root]
 
     def paramsForRoot(self, root, labelParams=None):
-        names = self.mcsamples.paramNames
+        if os.path.isabs(root):
+            root = os.path.basename(root)
+        names = self.mcsamples[root].paramNames
         if labelParams is not None:
             names.setLabelsAndDerivedFromParamNames(labelParams)
         return names
 
     def boundsForRoot(self, root):
-        lower, upper = self.mcsamples.WriteBounds(None)
+        lower, upper = self.mcsamples[root].WriteBounds(None)
         bounds = paramBounds("")
         bounds.lower = lower
         bounds.upper = upper
         return bounds
+
+    # def rootFileForRoot(self, root):
+    #     for rootFile in self.roots:
+    #         if os.path.dirname(rootFile)==root:
+    #             return rootFile
+    #     return None
 
 
 class GetDistPlotter():
@@ -486,7 +514,7 @@ class GetDistPlotter():
     def add_1d(self, root, param, plotno=0, **kwargs):
         param = self.check_param(root, param)
         density = self.sampleAnalyser.get_density(root, param, likes=self.settings.plot_meanlikes)
-        if density is None: return None;
+        if density is None: return None
         kwargs = self.get_line_styles(plotno, **kwargs)
         plot(density.x, density.pts, **kwargs)
         if self.settings.plot_meanlikes:
