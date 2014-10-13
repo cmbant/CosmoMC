@@ -319,6 +319,8 @@ linear_correction_fiducial = %s_lensing_fiducial_correction.dat
 linear_correction_bin_window_files = %s_lens_delta_window/window%%u.dat
 linear_correction_bin_window_in_order = %s
 linear_correction_bin_window_out_order = %s
+
+calibration_param = ../planck_calib.paramnames
             """ % (outroot, outroot, outroot, outroot, outroot, order, out_order))
 
             with open(diroutroot + '_lensonly.dataset', 'w') as f:
