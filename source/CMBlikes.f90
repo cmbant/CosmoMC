@@ -63,6 +63,7 @@
         integer like_approx
         real(mcp) :: fullsky_exact_fksy = 1 ! only used for testing with exactly fullsky
         integer ncl_hat !1, or more if using multiple simulations
+        integer :: calibration_index = 0 !if non-zero, index into nuisance parameter array of global calibration of TEB
         real(mcp), dimension(:,:), allocatable :: ClFiducial, ClNoise
         real(mcp), dimension(:,:,:), allocatable :: ClHat
         !These are all L(L+1)C_L/2pi
@@ -526,20 +527,20 @@
     !        end do
     !        call this%ElementsToMatrix(avec, this%sqrt_fiducial(i)%M)
     !        if (.not. cl_fiducial_includes_noise) &
-        !        & this%sqrt_fiducial(i)%M= this%sqrt_fiducial(i)%M + this%NoiseM(i)%M
-        !        call Matrix_Root(this%sqrt_fiducial(i)%M, this%nfields, 0.5_mcp)
-        !    end if
-        !    do clix =1, this%ncl_hat
-        !        allocate(this%ChatM(i,clix)%M(this%nfields,this%nfields))
-        !        do j=1,this%ncl
-        !            avec(j) = sum(this%binWindows(:,i)*this%ClHat(j,:,clix))
-        !        end do
-        !        call this%ElementsToMatrix(avec, this%ChatM(i,clix)%M)
-        !    end do
-        !end do
-        !deallocate(avec)
+    !        & this%sqrt_fiducial(i)%M= this%sqrt_fiducial(i)%M + this%NoiseM(i)%M
+    !        call Matrix_Root(this%sqrt_fiducial(i)%M, this%nfields, 0.5_mcp)
+    !    end if
+    !    do clix =1, this%ncl_hat
+    !        allocate(this%ChatM(i,clix)%M(this%nfields,this%nfields))
+    !        do j=1,this%ncl
+    !            avec(j) = sum(this%binWindows(:,i)*this%ClHat(j,:,clix))
+    !        end do
+    !        call this%ElementsToMatrix(avec, this%ChatM(i,clix)%M)
+    !    end do
+    !end do
+    !deallocate(avec)
 
-            do l=this%bin_min,this%bin_max
+    do l=this%bin_min,this%bin_max
         do clix = 1, this%ncl_hat
             allocate(this%ChatM(l,clix)%M(this%nfields,this%nfields))
             call this%ElementsToMatrix(this%ClHat(:,l,clix), this%ChatM(l,clix)%M)
@@ -570,10 +571,12 @@
     end if
 
     this%has_lensing  = this%cl_lmax(CL_Phi,CL_Phi) > 0
-    if (this%has_lensing) then
-        call this%ReadLensing(Ini)
-    end if
 
+    S = Ini%ReadFileName('calibration_param', relative=.true.)
+    if (S/='') then
+        call this%loadParamNames(S)
+        this%calibration_index = this%nuisance_params%nnames
+    end if
     call this%TCMBLikelihood%ReadIni(Ini)
 
     end subroutine CMBLikes_ReadIni
@@ -582,9 +585,8 @@
     !Not currently used
     class(TCMBLikes) :: this
     class(TSettingIni) :: Ini
-    integer i
     character(LEN=:), allocatable :: S, Comment
-    Type(TStringList) :: L, RenormCl
+    Type(TStringList) :: L
     real(mcp), allocatable :: Fid(:,:)
     integer, allocatable :: ls(:)
 
@@ -669,29 +671,29 @@
             !            do l1= this%pcl_lmin, this%pcl_lmax
             !                do l2= this%pcl_lmin, this%pcl_lmax
             !                    fullcov((i-1)*this%vecsize+ l1 -this%pcl_lmin+1 ,(j-1)*this%vecsize+ l2 -this%pcl_lmin+1 ) = &
-                !                    fullcov((i-1)*this%vecsize+ l1 -this%pcl_lmin+1,(j-1)*this%vecsize+ l2 -this%pcl_lmin+1 ) +  &
-                !                    this%point_source_error**2*this%ClPointsources(i,l1)*this%ClPointsources(j,l2)
-                !                end do
-                !            end do
-                !        end do
-                !    end do
-                !end if
-                !if (allocated(this%beammodes)) then
-                !    do i=this%beam_MCMC_modes+1, nmodes
-                !        this%BeamModes(this%pcl_lmin:this%pcl_lmax,i)=this%BeamModes(this%pcl_lmin:this%pcl_lmax,i)*&
-                !        & this%ClFiducial(1,this%pcl_lmin:this%pcl_lmax)
-                !    end do
-                !    do i=this%beam_MCMC_modes+1, nmodes
-                !        do l1= this%pcl_lmin, this%pcl_lmax
-                !            do l2= this%pcl_lmin, this%pcl_lmax
-                !                fullcov(l1 -this%pcl_lmin+1, l2 -this%pcl_lmin+1 ) = &
-                !                fullcov(l1 -this%pcl_lmin+1, l2 -this%pcl_lmin+1 ) +  this%BeamModes(l1,i)*this%BeamModes(l2,i)
-                !            end do
-                !        end do
-                !    end do
-                !end if
+            !                    fullcov((i-1)*this%vecsize+ l1 -this%pcl_lmin+1,(j-1)*this%vecsize+ l2 -this%pcl_lmin+1 ) +  &
+            !                    this%point_source_error**2*this%ClPointsources(i,l1)*this%ClPointsources(j,l2)
+            !                end do
+            !            end do
+            !        end do
+            !    end do
+            !end if
+            !if (allocated(this%beammodes)) then
+            !    do i=this%beam_MCMC_modes+1, nmodes
+            !        this%BeamModes(this%pcl_lmin:this%pcl_lmax,i)=this%BeamModes(this%pcl_lmin:this%pcl_lmax,i)*&
+            !        & this%ClFiducial(1,this%pcl_lmin:this%pcl_lmax)
+            !    end do
+            !    do i=this%beam_MCMC_modes+1, nmodes
+            !        do l1= this%pcl_lmin, this%pcl_lmax
+            !            do l2= this%pcl_lmin, this%pcl_lmax
+            !                fullcov(l1 -this%pcl_lmin+1, l2 -this%pcl_lmin+1 ) = &
+            !                fullcov(l1 -this%pcl_lmin+1, l2 -this%pcl_lmin+1 ) +  this%BeamModes(l1,i)*this%BeamModes(l2,i)
+            !            end do
+            !        end do
+            !    end do
+            !end if
 
-                    call Matrix_inverse(this%inv_covariance)
+            call Matrix_inverse(this%inv_covariance)
         else !Not mainMPI
             allocate(this%inv_covariance(this%nbins_used*this%ncl_used, this%nbins_used*this%ncl_used))
         end if !MainMPI
@@ -838,15 +840,24 @@
     end subroutine GetBinnedTheory
 
 
-    subroutine GetObservedTheoryCls(this, Theory, Cls)
+    subroutine GetObservedTheoryCls(this, Theory, Cls, DataParams)
     class(TCMBLikes) :: this
     class(TCosmoTheoryPredictions) :: Theory
     Type(TSkyPowerSpectrum), allocatable, intent(out) :: Cls(:,:)
-    real(mcp), allocatable :: N1_Interp(:), renorm(:)
-    integer lmax, lmin, lmaxN1, lminN1
+    real(mcp), intent(in) :: DataParams(:)
+    integer i,j
 
     allocate(Cls, source= Theory%Cls)
-    !Chance to make adjustments of foregrounds, corrections etc.
+    if (this%calibration_index > 0) then
+        !Scale T, E, B spectra by the calibration parameter
+        do i=CL_T,CL_B
+            do j=CL_T,i
+                if (allocated(Cls(i,j)%CL)) then
+                    Cls(i,j)%CL = Cls(i,j)%CL / DataParams(this%calibration_index)**2
+                end if
+            end do
+        end do
+    end if
 
     end subroutine GetObservedTheoryCls
 
@@ -870,7 +881,7 @@
     Ei = this%field_index(2)
     Bi = this%field_index(3)
     Phii = this%field_index(4)
-    call this%GetObservedTheoryCls(Theory, TheoryCls)
+    call this%GetObservedTheoryCls(Theory, TheoryCls, DataParams)
 
     do clix = 1, this%ncl_hat ! 1 or sum over chi-squareds of simulations
         !removed nuisance parameters for the moment
@@ -879,18 +890,18 @@
         !  if (this%pointsource_MCMC_modes>0) then
         !    mode=mode+1
         !    cl(this%pcl_lmin:this%pcl_lmax,1) = cl(this%pcl_lmin:this%pcl_lmax,1) + &
-            !      this%point_source_error*nuisance_params(mode)*this%ClPointsources(1,this%pcl_lmin:this%pcl_lmax)
-            !  end if
-            !  beamC=0
-            !  do i=1, this%beam_MCMC_modes
-            !     mode = mode + 1
-            !     BeamC = BeamC + nuisance_params(mode) *cl(this%pcl_lmin:this%pcl_lmax,1)*this%beammodes( this%pcl_lmin:this%pcl_lmax,i )
-            !  end do
-            !   cl(this%pcl_lmin:this%pcl_lmax,1) = cl(this%pcl_lmin:this%pcl_lmax,1) + beamC
-            !
-            ! end if
+        !      this%point_source_error*nuisance_params(mode)*this%ClPointsources(1,this%pcl_lmin:this%pcl_lmax)
+        !  end if
+        !  beamC=0
+        !  do i=1, this%beam_MCMC_modes
+        !     mode = mode + 1
+        !     BeamC = BeamC + nuisance_params(mode) *cl(this%pcl_lmin:this%pcl_lmax,1)*this%beammodes( this%pcl_lmin:this%pcl_lmax,i )
+        !  end do
+        !   cl(this%pcl_lmin:this%pcl_lmax,1) = cl(this%pcl_lmin:this%pcl_lmax,1) + beamC
+        !
+        ! end if
 
-                do bin = this%bin_min, this%bin_max
+        do bin = this%bin_min, this%bin_max
             if (this%binned .or. bin_test) then
                 if (this%like_approx == like_approx_fullsky_exact) call mpiStop('CMBLikes: exact like cannot be binned!')
                 call this%GetBinnedTheory(TheoryCls, C, bin)
@@ -1012,4 +1023,4 @@
     end subroutine TBinWindows_bin
 
 
-            end module CMBLikes
+    end module CMBLikes

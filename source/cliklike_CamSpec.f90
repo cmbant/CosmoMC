@@ -1,7 +1,7 @@
     module noncliklike
     use CosmologyTypes
     use settings
-    use temp_like_camspec3
+    use temp_like_camspec4
     use Likelihood_Cosmology
     use CosmoTheory
 #ifdef highL
