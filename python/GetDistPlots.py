@@ -235,6 +235,14 @@ class MCSampleAnalysis():
         self.mcsamples[base_root] = MCSamples.MCSamples(file_root)
         self.readChains(base_root, self.mcsamples[base_root])
 
+    def removeRoot(self, file_root):
+        base_root = os.path.basename(file_root)
+        print "remove root for %s"%base_root
+        if base_root in self.roots:
+            self.roots.remove(base_root)
+        if self.mcsamples.has_key(base_root):
+            del self.mcsamples[base_root]
+        # ...
 
     def newPlot(self):
         pass

@@ -134,8 +134,8 @@ class MainWindow(QMainWindow):
         shortcut = QShortcut(QKeySequence(self.tr("Ctrl+O")), self)
         self.connect(shortcut, SIGNAL("activated()"), self.selectRootDir)
 
-        self.labelOtherRoots = QLabel(self.selectWidget)
-        self.labelOtherRoots.setText("")
+        self.pushButtonRoots = QPushButton("Manage additional chain roots", self.selectWidget)
+        self.connect(self.pushButtonRoots, SIGNAL("clicked()"), self.manageOtherRoots)
         self.pushButtonAdd = QPushButton(QIcon(":/images/file_add.png"),
                                             "", self.selectWidget)
         self.pushButtonAdd.setToolTip("Add a root directory")
@@ -183,7 +183,7 @@ class MainWindow(QMainWindow):
         layoutTop.setSpacing(5)
         layoutTop.addWidget(self.lineEditDirectory, 0, 0, 1, 3)
         layoutTop.addWidget(self.pushButtonSelect,  0, 3, 1, 1)
-        layoutTop.addWidget(self.labelOtherRoots,   1, 0, 1, 3)
+        layoutTop.addWidget(self.pushButtonRoots,   1, 0, 1, 3)
         layoutTop.addWidget(self.pushButtonAdd,     1, 3, 1, 1)
         layoutTop.addWidget(self.comboBoxParamTag,  2, 0, 1, 2)
         layoutTop.addWidget(self.comboBoxDataTag,   2, 2, 1, 2)
@@ -199,7 +199,7 @@ class MainWindow(QMainWindow):
         layoutTop.addWidget(self.pushButtonPlot,   10, 0, 1, 4)
         self.selectWidget.setLayout(layoutTop)
 
-        self.labelOtherRoots.hide()
+        self.pushButtonRoots.hide()
         self.pushButtonAdd.hide()
         self.comboBoxParamTag.hide()
         self.comboBoxDataTag.hide()
@@ -245,6 +245,10 @@ class MainWindow(QMainWindow):
             self, "About GetDist GUI",
             "Qt application for GetDist plots.")
 
+    def manageOtherRoots(self):
+        dlg = DialogManageOtherRoots(self, self.other_roots)
+        val = dlg.exec_()
+
 
     # slots for selectWidget
 
@@ -272,7 +276,7 @@ class MainWindow(QMainWindow):
             if os.path.isfile(filebatch):
                 self.rootdir = dirName
                 self.lineEditDirectory.setText(self.rootdir)
-                self.labelOtherRoots.hide()
+                self.pushButtonRoots.hide()
                 self.pushButtonAdd.hide()
                 self._readGridChain(self.rootdir)
                 return
@@ -311,7 +315,7 @@ class MainWindow(QMainWindow):
                     # Hide combo boxes and fill list
                     self.comboBoxParamTag.hide()
                     self.comboBoxDataTag.hide()
-                    self.labelOtherRoots.show()
+                    self.pushButtonRoots.show()
                     self.pushButtonAdd.show()
                     self._updateListParametersX(paramNames)
                     self._updateListParametersY(paramNames)
@@ -358,6 +362,7 @@ class MainWindow(QMainWindow):
 
             baseName = os.path.basename(root)
             if not self.other_roots.has_key(baseName):
+                logging.debug("Add root %s"%baseName)
                 self.other_roots[baseName] = True
 
                 if self.plotter is not None:
@@ -491,8 +496,8 @@ class MainWindow(QMainWindow):
 
         roots = []
         roots.append(os.path.basename(self.root))
-        for other_root in self.other_roots.keys():
-            roots.append(os.path.basename(other_root))
+        for other_root, state in self.other_roots.items():
+            if state: roots.append(os.path.basename(other_root))
         logging.debug("Plotting with roots = %s"%str(roots))
 
 
@@ -589,6 +594,66 @@ class DialogMargeStats(QDialog):
             self.textBrowser.setPlainText(text)
             self.textBrowser.setReadOnly(True)
 
+
+# ==============================================================================
+
+class DialogManageOtherRoots(QDialog):
+
+    def __init__(self, parent, other_roots):
+        QDialog.__init__(self, parent)
+        self.parent = parent
+
+        self.list = QListWidget(self)
+        self.list.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.list.setSelectionMode(QAbstractItemView.SingleSelection)
+
+        self.pushButton = QPushButton(QIcon(":/images/file_remove.png"),
+                                            "", self)
+        self.pushButton.setToolTip("Remove a root directory")
+        self.connect(self.pushButton, SIGNAL("clicked()"), self.removeRoot)
+
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok |
+                                          QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        layout = QGridLayout()
+        layout.addWidget(self.list, 0, 0, 1, 4)
+        layout.addWidget(self.pushButton, 1, 0, 1, 1)
+        layout.addWidget(self.buttonBox, 2, 0, 1, 4)
+
+        self.setLayout(layout)
+
+        self.setWindowTitle(self.tr("Manage additional chain roots"))
+
+        #
+        for chain, state in other_roots.items():
+            item = QListWidgetItem(self.list,)
+            item.setText(str(chain))
+            if state:
+                item.setCheckState(Qt.Checked)
+            else:
+                item.setCheckState(Qt.Unchecked)
+
+    def removeRoot(self):
+        for i in range(self.list.count()):
+            item = self.list.item(i)
+            if item.isSelected():
+                root = str(item.text())
+                logging.debug("Remove root %s"%root)
+                self.parent.plotter.sampleAnalyser.removeRoot(root)
+                self.list.takeItem(i)
+
+    def accept(self):
+        roots = {}
+        for i in range(self.list.count()):
+            item = self.list.item(i)
+            root = str(item.text())
+            state = (item.checkState()==Qt.Checked)
+            roots[root] = state
+
+        self.parent.other_roots = roots
+        QDialog.accept(self)
 
 # ==============================================================================
 
