@@ -46,12 +46,12 @@ variants = variant_tag
 
 planck_highL_sets = []
 planck_pol_sets = []
-planck_vars = ['v910CMH']
+planck_vars = ['CamSpecHM']
 planck_ini = ['CAMspec_%s.ini']
 planck_base = [camspec_CS]
 
 if True:
-    planck_vars += ['plik']
+    planck_vars += ['plikHM']
     planck_ini += ['plik_dx11dr2_HM_v15_%s.ini']
     planck_base += [[]]
 for planck, ini, base in zip(planck_vars, planck_ini, planck_base):
@@ -311,7 +311,7 @@ for g in groups:
 skip = []
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO']
-covNameMappings = {HSTdata:'HST', 'v910CMH':'CamSpec', 'v910F':'CamSpec'}
+covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik'}
 
 # try to match run to exisitng covmat
 covrenames = []
@@ -320,13 +320,17 @@ for planck in planck_vars:
 covrenames.append(['planck', 'planck_CAMspec'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
 covrenames.append(['Alensf', 'Alens'])
+covrenames.append(['_Aphiphi', ''])
 covrenames.append(['_r', ''])
 covrenames.append(['_w', ''])
+covrenames.append(['_alpha1', ''])
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
-    renamed = re.sub(r'_v.*', '_planck_lowl_lowLike', renamed, re.I)
-
+    if 'wa_' in name:
+        renamed = re.sub(r'_CamSpec.*', '_planck_lowl_lowLike_BAO', renamed, re.I)
+    else:
+        renamed = re.sub(r'_CamSpec.*', '_planck_lowl_lowLike', renamed, re.I)
     if renamed == name: return[]
     else: return [renamed]
 
