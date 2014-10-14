@@ -315,7 +315,7 @@ class MCSampleAnalysis():
     def getMargeStats(self):
         # Do 1D bins
         if not self.done_1Dbins:
-            self.mcsamples[self.main_root].Do1DBins()
+            self.mcsamples[self.main_root].Do1DBins(writeDataToFile=False)
             self.done_1Dbins = True
         text = self.mcsamples[self.main_root].OutputMargeStats(writeDataToFile=False)
         return text

@@ -1563,14 +1563,14 @@ class MCSamples(chains):
         self.LowerUpperLimits = np.zeros([self.num_vars, 2, self.num_contours])
 
 
-    def Do1DBins(self, max_frac_twotail=None):
+    def Do1DBins(self, max_frac_twotail=None, writeDataToFile=True):
         if max_frac_twotail is None:
             max_frac_twotail = self.max_frac_twotail
         self.createLowerUpperLimits()
 
         for j in range(self.num_vars):
             if not self.isused[j]: continue
-            self.Get1DDensity(j)
+            self.Get1DDensity(j, writeDataToFile)
             self.setLowerUpperLimits(j, max_frac_twotail)
 
 
