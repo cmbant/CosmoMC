@@ -1,7 +1,3 @@
-# provisional updated (reduced) grid settings for full mission
-# New BBN fitting built in
-# New BAO -> DR11
-# To add: w/w0, nrun r
 import batchJob, copy, re
 
 ini_dir = 'batch2/'
@@ -13,18 +9,18 @@ importanceDefaults = ['importance_sampling.ini']
 
 # dataset names
 lowl = 'lowl'
-lowLike = 'lowLike'
 lensing = 'lensing'
 lensonly = 'lensonly'
 
 highL = 'highL'
 WMAP = 'WMAP'
 BAO = 'BAO'
-HST = 'HST70p6'
+HST = 'H070p6'
 JLA = 'JLA'
 
 BAOdata = 'BAODR11.ini'
 HSTdata = 'HST_GPE70p6.ini'
+
 
 Camspec = 'CAMspec_defaults.ini'
 highL = 'highL'
@@ -34,10 +30,11 @@ lowTEB = 'lowTEB'
 tauprior = {'prior[tau]':'0.07 0.02'}
 tauname = 'tau07'
 WMAPtau = {'prior[tau]':'0.09 0.013'}
+zre_prior = {'use_min_zre', '6.5' }
 
 
-camspec_detsets = ['nonclik_v97F.ini']
-camspec_CS = ['nonclik_v97CS.ini']
+camspec_detsets = ['nonclik_detsets.ini']
+camspec_CS = ['nonclik.ini']
 
 
 variant_tag = ['TTTEEE', 'TT']
@@ -46,13 +43,13 @@ variants = variant_tag
 
 planck_highL_sets = []
 planck_pol_sets = []
-planck_vars = ['v97CS']
+planck_vars = ['v910CMH']
 planck_ini = ['CAMspec_%s.ini']
 planck_base = [camspec_CS]
 
 if True:
     planck_vars += ['plik']
-    planck_ini += ['plik_dx11c_%s_v13.ini']
+    planck_ini += ['plik_dx11dr2_HM_v15_%s.ini']
     planck_base += [[]]
 for planck, ini, base in zip(planck_vars, planck_ini, planck_base):
     for name, var in zip(variant_tag, variants):
@@ -273,6 +270,10 @@ for d in copy.deepcopy(g.datasets):
     d.add(lensing)
     gphi.datasets.append(d)
 gphi.importanceRuns = []
+
+
+
+
 groups.append(gphi)
 
 for g in groups:
@@ -283,7 +284,7 @@ for g in groups:
 
 skip = []
 
-covNameMappings = {HSTdata:'HST', 'v97CS':'CamSpec'}
+covNameMappings = {HSTdata:'HST', 'v910CMH':'CamSpec', 'v910F':'CamSpec'}
 
 # try to match run to exisitng covmat
 covrenames = []
