@@ -18,7 +18,7 @@ BAO = 'BAO'
 HST = 'H070p6'
 JLA = 'JLA'
 
-BAOdata = 'BAODR11.ini'
+BAOdata = 'BAO.ini'
 HSTdata = 'HST_GPE70p6.ini'
 
 
