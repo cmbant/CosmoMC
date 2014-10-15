@@ -306,10 +306,10 @@ groups.append(extdata)
 gWL = batchJob.jobGroup('WLonly')
 WLdata = [batchJob.dataSet(WLonly)]
 gWL.datasets = copy.deepcopy(WLdata)
-for d in copy.deepcopy(lensdata):
+for d in copy.deepcopy(WLdata):
     d.add(BAO, BAOdata)
     gWL.datasets.append(d)
-for d in copy.deepcopy(lensdata):
+for d in copy.deepcopy(WLdata):
     d.add(HST, HSTdata)
     gWL.datasets.append(d)
 gWL.params = [[], ['mnu']]
