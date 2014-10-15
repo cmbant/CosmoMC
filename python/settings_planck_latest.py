@@ -341,6 +341,7 @@ covrenames.append(['_Aphiphi', ''])
 covrenames.append(['_r', ''])
 covrenames.append(['_w', ''])
 covrenames.append(['_alpha1', ''])
+covrenames.append(['_WLonly', '_lensonly'])
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
