@@ -45,8 +45,8 @@ batch.save()
 
 def setMinimize(jobItem, ini):
     ini.params['action'] = 2
-    ini.params['lmin_store_all_cmb'] = 2000
-    if 'omegak' in jobItem.param_set: ini.params['accuracy_level'] = 1.3
+    ini.params['lmin_store_all_cmb'] = 2500
+    if 'omegak' in jobItem.param_set: ini.params['accuracy_level'] = 1.2
 
 def updateIniParams(ini, params, path):
         for iniitem in params:
