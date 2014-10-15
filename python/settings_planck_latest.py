@@ -11,6 +11,7 @@ importanceDefaults = ['importance_sampling.ini']
 lowl = 'lowl'
 lensing = 'lensing'
 lensonly = 'lensonly'
+WLonly = 'WLonly'
 
 highL = 'highL'
 WMAP = 'WMAP'
@@ -300,6 +301,22 @@ for d in copy.deepcopy(g.datasets):
 
 extdata.importanceRuns = []
 groups.append(extdata)
+
+
+gWL = batchJob.jobGroup('WLonly')
+WLdata = [batchJob.dataSet(WLonly)]
+gWL.datasets = copy.deepcopy(WLdata)
+for d in copy.deepcopy(lensdata):
+    d.add(BAO, BAOdata)
+    gWL.datasets.append(d)
+for d in copy.deepcopy(lensdata):
+    d.add(HST, HSTdata)
+    gWL.datasets.append(d)
+gWL.params = [[], ['mnu']]
+gWL.importanceRuns = []
+groups.append(gWL)
+
+
 
 
 for g in groups:
