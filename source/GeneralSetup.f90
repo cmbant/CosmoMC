@@ -156,10 +156,10 @@
 
     Params%P(:num_params) = paramsvals(:num_params)
     this%LikeCalculator%timing = .true.
-    write(*,*) '   loglike     chi-sq'
     call Timer%Start()
     logLike = this%LikeCalculator%GetLogLike(Params)
     time = Timer%Time()
+    write(*,*) '   loglike     chi-sq'
     if (Feedback <=2) call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%likelihoods)
     write(*,*) 'Test likelihoods done, total logLike = '//RealToStr(logLike)//', chi-sq = '//RealToStr(logLike*2)
     write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(time)
