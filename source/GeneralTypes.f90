@@ -251,27 +251,20 @@
     class(TCalculationAtParamPoint) this
     class(TGeneralConfig) :: Config
     real(mcp), intent(in) :: mult, like
-    real(mcp), allocatable :: output_array(:)
-    real(mcp), allocatable :: derived(:)
+    real(mcp), allocatable :: output_array(:), derived(:)
     integer :: numderived = 0
-    integer i
 
     if (ChainOutFile%unit==0) return
 
     call Config%Parameterization%CalcDerivedParams(this%P, this%Theory, derived)
-    call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived)
+    call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived, this%Likelihoods)
 
     if (allocated(derived)) numderived = size(derived)
-    allocate(output_array(num_params_used + numderived + &
-        & DataLikelihoods%Count + DataLikelihoods%LikelihoodTypeIndices%Count))
-    output_array(1:num_params_used) =  this%P(params_used)
-    if (numderived>0) output_array(num_params_used+1:num_params_used+numderived) =  derived
-    output_array(num_params_used+numderived+1:num_params_used+numderived+DataLikelihoods%Count) = &
-        & this%Likelihoods(1:DataLikelihoods%Count)*2
-    do i=1, DataLikelihoods%LikelihoodTypeIndices%Count
-        output_array(num_params_used+numderived+DataLikelihoods%Count+i) = &
-            sum(this%Likelihoods(DataLikelihoods%LikelihoodTypeIndices%Item(i)))*2
-    end do
+
+    allocate(output_array(num_params_used+numderived))
+    output_array(:num_params_used) = this%P(params_used)
+    if (numderived>0) output_array(num_params_used+1:) = derived
+
     call IO_OutputChainRow(ChainOutFile, mult, like, output_array)
 
     end subroutine TCalculationAtParamPoint_WriteParams
@@ -720,9 +713,10 @@
 
     end subroutine checkAllConflicts
 
-    subroutine addLikelihoodDerivedParams(L, P, Theory, derived)
+    subroutine addLikelihoodDerivedParams(L, P, Theory, derived, Likelihoods)
     class(TLikelihoodList) :: L
     real(mcp), allocatable :: derived(:)
+    real(mcp), intent(in), optional :: Likelihoods(:)
     class(TTheoryPredictions) :: Theory
     real(mcp) :: P(:)
     real(mcp), allocatable :: allDerived(:)
@@ -731,20 +725,32 @@
     integer :: num_in = 0
     integer :: num_derived = 0
 
-    if (L%num_derived_parameters==0) return
-
     if (allocated(derived)) num_in = size(derived)
     num_derived = L%num_derived_parameters + num_in
-    allocate(allDerived(num_derived))
-    if (num_in >= 0) allDerived(1:num_in) = derived
-    call move_alloc(allDerived, derived)
+    if (L%num_derived_parameters >=0) then
+        allocate(allDerived(num_derived))
+        if (num_in > 0) allDerived(1:num_in) = derived
+        call move_alloc(allDerived, derived)
 
-    do i=1,L%Count
-        DataLike=>L%Item(i)
-        if (allocated(DataLike%derived_indices)) then
-            Derived(DataLike%derived_indices) = DataLike%derivedParameters(Theory, P(DataLike%nuisance_indices))
-        end if
-    end do
+        do i=1,L%Count
+            DataLike=>L%Item(i)
+            if (allocated(DataLike%derived_indices)) then
+                Derived(DataLike%derived_indices) = DataLike%derivedParameters(Theory, P(DataLike%nuisance_indices))
+            end if
+        end do
+    end if
+
+    if (present(Likelihoods) .and. L%Count>0) then
+        allocate(allDerived(num_derived + L%Count + L%LikelihoodTypeIndices%Count))
+        if (num_derived>0) allDerived(:num_derived) =  derived
+        call move_alloc(allDerived, derived)
+        !Add the chi2 for each likelihood
+        derived(num_derived+1:num_derived+L%Count) =  Likelihoods(:L%Count)*2
+        !Add the total chi2 for each likelihood type
+        do i=1, L%LikelihoodTypeIndices%Count
+            derived(num_derived+ L%Count+i) = sum(Likelihoods(L%LikelihoodTypeIndices%Item(i)))*2
+        end do
+    end if
 
     end subroutine addLikelihoodDerivedParams
 
