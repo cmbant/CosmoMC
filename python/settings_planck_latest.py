@@ -90,6 +90,8 @@ post_JLA = [[JLA], ['JLA_marge.ini'], importanceFilterNotOmegak()]
 post_nonBAO = [[HST, JLA], [HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
+post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
+
 post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
 post_abundance = [['abundances'], ['abundances.ini', {'redo_likes':'F', 'redo_add':'T'}], importanceFilterAbundance()]
 
@@ -212,6 +214,16 @@ for d in copy.deepcopy(g.datasets):
 g7.params = [['mnu'], ['nnu', 'meffsterile']]
 g7.importanceRuns = [post_JLA, post_HST, post_nonBAO]
 groups.append(g7)
+
+gnnu = batchJob.jobGroup('nnu')
+gnnu.datasets = []
+for d in copy.deepcopy(g.datasets):
+    d.add(BAO, BAOdata)
+    gnnu.datasets.append(d)
+
+gnnu.params = [['nnu']]
+gnnu.importanceRuns = [post_nonBAO, post_allnonBAO]
+groups.append(gnnu)
 
 if False:
     gmulti = batchJob.jobGroup('multi')
