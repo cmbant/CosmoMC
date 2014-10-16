@@ -93,8 +93,7 @@
             allocate(TBAOLikelihood::this)
         end if
         call this%ReadDatasetFile(Datasets%Value(i))
-        if (this%name /= Datasets%Name(i)) &
-            call MpiStop('BAOLikelihood_Add: tag/name mismatch in bao_dataset['//Datasets%Name(i)//'], '//this%name)
+        this%tag = Datasets%Name(i)
         this%LikelihoodType = 'BAO'
         this%needs_background_functions = .true.
         call LikeList%Add(this)
