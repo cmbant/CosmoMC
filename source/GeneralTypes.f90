@@ -667,7 +667,7 @@
         else
             tag => Like%Name
         end if
-        LikeNames%name(Like%Original_index) = tag
+        LikeNames%name(Like%Original_index) = 'chi2_'//tag
         LikeNames%label(Like%Original_index) = FormatString(trim(chisq_label), StringEscape(trim(tag),'_'))
         LikeNames%is_derived(Like%Original_index) = .true.
         if (Like%LikelihoodType/='') then
@@ -699,7 +699,7 @@
                 end if
             end do
             call L%LikelihoodTypeIndices%Add(indices)
-            LikeNames%name(like_sum_ix) = atype
+            LikeNames%name(like_sum_ix) = 'chi2_'//atype
             LikeNames%label(like_sum_ix) = FormatString(trim(chisq_label), StringEscape(trim(atype),'_'))
             LikeNames%is_derived(like_sum_ix) = .true.
             deallocate(indices)
