@@ -178,6 +178,15 @@ for d in copy.deepcopy(planck_pol_sets):
 gpolnopoltau.importanceRuns = [post_BAO, post_nonCMB, post_WP]
 groups.append(gpolnopoltau)
 
+glowllens = batchJob.jobGroup('lowllensing')
+glowllens.params = [['mnu']]
+glowllens.datasets = copy.deepcopy(planck_highL_sets)
+for d in glowllens.datasets:
+    d.add(lowl)
+    d.add(lensing)
+
+glowllens.importanceRuns = [post_BAO, post_nonCMB]
+groups.append(glowllens)
 
 g6 = batchJob.jobGroup('lensing')
 g6.datasets = copy.deepcopy(g.datasets)
