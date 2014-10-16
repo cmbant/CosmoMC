@@ -549,11 +549,12 @@
     Class(TLikelihoodList) :: L
     integer, intent(in) :: aunit
     real(mcp), intent(in) :: likelihoods(*)
-    integer i
+    integer i, ix
     Class(TDataLikelihood), pointer :: LikeItem
 
-    do i=1,L%Count
-        LikeItem =>  L%Item(L%Original_order(i))
+    do ix=1,L%Count
+        i = L%Original_order(ix)
+        LikeItem =>  L%Item(i)
         write (aunit,'(2f11.3)',advance='NO') likelihoods(i),likelihoods(i)*2
         write(aunit,'(a)',advance='NO') '   '//trim(LikeItem%LikelihoodType)//': '//trim(LikeItem%name)
         if (LikeItem%Version/='') write(aunit,'(a)',advance='NO') ' '//trim(LikeItem%Version)
