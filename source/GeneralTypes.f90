@@ -110,6 +110,7 @@
         character(LEN=LikeNameLen) :: version = ''
         Type(TParamNames) :: nuisance_params
         !Internally calculated
+        integer :: original_index = 0
         logical :: dependent_params(max_num_params) = .false.
         integer, allocatable :: nuisance_indices(:)
         integer, allocatable :: derived_indices(:)
@@ -128,6 +129,7 @@
         integer :: first_fast_param =0
         integer :: num_derived_parameters = 0
         Type(TIntegerArrayList) :: LikelihoodTypeIndices
+        integer, allocatable :: original_order(:)
     contains
     procedure :: Item => LikelihoodItem
     procedure :: WriteLikelihoodContribs
@@ -251,27 +253,20 @@
     class(TCalculationAtParamPoint) this
     class(TGeneralConfig) :: Config
     real(mcp), intent(in) :: mult, like
-    real(mcp), allocatable :: output_array(:)
-    real(mcp), allocatable :: derived(:)
+    real(mcp), allocatable :: output_array(:), derived(:)
     integer :: numderived = 0
-    integer i
 
     if (ChainOutFile%unit==0) return
 
     call Config%Parameterization%CalcDerivedParams(this%P, this%Theory, derived)
-    call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived)
+    call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived, this%Likelihoods)
 
     if (allocated(derived)) numderived = size(derived)
-    allocate(output_array(num_params_used + numderived + &
-        & DataLikelihoods%Count + DataLikelihoods%LikelihoodTypeIndices%Count))
-    output_array(1:num_params_used) =  this%P(params_used)
-    if (numderived>0) output_array(num_params_used+1:num_params_used+numderived) =  derived
-    output_array(num_params_used+numderived+1:num_params_used+numderived+DataLikelihoods%Count) = &
-        & this%Likelihoods(1:DataLikelihoods%Count)*2
-    do i=1, DataLikelihoods%LikelihoodTypeIndices%Count
-        output_array(num_params_used+numderived+DataLikelihoods%Count+i) = &
-            sum(this%Likelihoods(DataLikelihoods%LikelihoodTypeIndices%Item(i)))*2
-    end do
+
+    allocate(output_array(num_params_used+numderived))
+    output_array(:num_params_used) = this%P(params_used)
+    if (numderived>0) output_array(num_params_used+1:) = derived
+
     call IO_OutputChainRow(ChainOutFile, mult, like, output_array)
 
     end subroutine TCalculationAtParamPoint_WriteParams
@@ -554,10 +549,11 @@
     Class(TLikelihoodList) :: L
     integer, intent(in) :: aunit
     real(mcp), intent(in) :: likelihoods(*)
-    integer i
+    integer i, ix
     Class(TDataLikelihood), pointer :: LikeItem
 
-    do i=1,L%Count
+    do ix=1,L%Count
+        i = L%Original_order(ix)
         LikeItem =>  L%Item(i)
         write (aunit,'(2f11.3)',advance='NO') likelihoods(i),likelihoods(i)*2
         write(aunit,'(a)',advance='NO') '   '//trim(LikeItem%LikelihoodType)//': '//trim(LikeItem%name)
@@ -607,11 +603,17 @@
     Class(TDataLikelihood), pointer :: DataLike
     integer i,j, baseDerived
 
+    do i=1,L%Count
+        DataLike=>L%Item(i)
+        DataLike%original_index = i
+    end do
+    allocate(L%Original_order(L%Count))
     call L%Sort
     L%first_fast_param=0
     baseDerived = Names%num_derived
     do i=1,L%Count
         DataLike=>L%Item(i)
+        L%Original_order(DataLike%Original_index) = i 
         NewNames => DataLike%nuisance_params
         if (Feedback>0 .and. MPIrank==0) print *,'adding parameters for: '//trim(DataLIke%name)
         DataLike%new_param_block_start = Names%num_MCMC +1
@@ -665,9 +667,9 @@
         else
             tag => Like%Name
         end if
-        LikeNames%name(i) = tag
-        LikeNames%label(i) = FormatString(trim(chisq_label), StringEscape(trim(tag),'_'))
-        LikeNames%is_derived(i) = .true.
+        LikeNames%name(Like%Original_index) = 'chi2_'//tag
+        LikeNames%label(Like%Original_index) = FormatString(trim(chisq_label), StringEscape(trim(tag),'_'))
+        LikeNames%is_derived(Like%Original_index) = .true.
         if (Like%LikelihoodType/='') then
             ix = LikelihoodTypes%IndexOf(Like%LikelihoodType)
             if (ix==-1) then
@@ -697,7 +699,7 @@
                 end if
             end do
             call L%LikelihoodTypeIndices%Add(indices)
-            LikeNames%name(like_sum_ix) = atype
+            LikeNames%name(like_sum_ix) = 'chi2_'//atype
             LikeNames%label(like_sum_ix) = FormatString(trim(chisq_label), StringEscape(trim(atype),'_'))
             LikeNames%is_derived(like_sum_ix) = .true.
             deallocate(indices)
@@ -720,9 +722,10 @@
 
     end subroutine checkAllConflicts
 
-    subroutine addLikelihoodDerivedParams(L, P, Theory, derived)
+    subroutine addLikelihoodDerivedParams(L, P, Theory, derived, Likelihoods)
     class(TLikelihoodList) :: L
     real(mcp), allocatable :: derived(:)
+    real(mcp), intent(in), optional :: Likelihoods(:)
     class(TTheoryPredictions) :: Theory
     real(mcp) :: P(:)
     real(mcp), allocatable :: allDerived(:)
@@ -731,20 +734,32 @@
     integer :: num_in = 0
     integer :: num_derived = 0
 
-    if (L%num_derived_parameters==0) return
-
     if (allocated(derived)) num_in = size(derived)
     num_derived = L%num_derived_parameters + num_in
-    allocate(allDerived(num_derived))
-    if (num_in >= 0) allDerived(1:num_in) = derived
-    call move_alloc(allDerived, derived)
+    if (L%num_derived_parameters >=0) then
+        allocate(allDerived(num_derived))
+        if (num_in > 0) allDerived(1:num_in) = derived
+        call move_alloc(allDerived, derived)
 
-    do i=1,L%Count
-        DataLike=>L%Item(i)
-        if (allocated(DataLike%derived_indices)) then
-            Derived(DataLike%derived_indices) = DataLike%derivedParameters(Theory, P(DataLike%nuisance_indices))
-        end if
-    end do
+        do i=1,L%Count
+            DataLike=>L%Item(i)
+            if (allocated(DataLike%derived_indices)) then
+                Derived(DataLike%derived_indices) = DataLike%derivedParameters(Theory, P(DataLike%nuisance_indices))
+            end if
+        end do
+    end if
+
+    if (present(Likelihoods) .and. L%Count>0) then
+        allocate(allDerived(num_derived + L%Count + L%LikelihoodTypeIndices%Count))
+        if (num_derived>0) allDerived(:num_derived) =  derived
+        call move_alloc(allDerived, derived)
+        !Add the chi2 for each likelihood
+        derived(num_derived+1:num_derived+L%Count) =  Likelihoods(L%Original_order)*2
+        !Add the total chi2 for each likelihood type
+        do i=1, L%LikelihoodTypeIndices%Count
+            derived(num_derived+ L%Count+i) = sum(Likelihoods(L%LikelihoodTypeIndices%Item(i)))*2
+        end do
+    end if
 
     end subroutine addLikelihoodDerivedParams
 
