@@ -61,6 +61,7 @@
             this%use_weyl = useweyl
             call this%ReadDatasetFile(DataSets%Value(i))
             this%LikelihoodType = 'WL'
+            this%tag = DataSets%Name(i)
             this%needs_powerspectra = .true.
             this%needs_weylpower = useweyl
             call LikeList%Add(this)
