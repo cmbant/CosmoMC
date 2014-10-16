@@ -110,6 +110,7 @@
         character(LEN=LikeNameLen) :: version = ''
         Type(TParamNames) :: nuisance_params
         !Internally calculated
+        integer :: original_index = 0
         logical :: dependent_params(max_num_params) = .false.
         integer, allocatable :: nuisance_indices(:)
         integer, allocatable :: derived_indices(:)
@@ -128,6 +129,7 @@
         integer :: first_fast_param =0
         integer :: num_derived_parameters = 0
         Type(TIntegerArrayList) :: LikelihoodTypeIndices
+        integer, allocatable :: original_order(:)
     contains
     procedure :: Item => LikelihoodItem
     procedure :: WriteLikelihoodContribs
@@ -600,11 +602,17 @@
     Class(TDataLikelihood), pointer :: DataLike
     integer i,j, baseDerived
 
+    do i=1,L%Count
+        DataLike=>L%Item(i)
+        DataLike%original_index = i
+    end do
+    allocate(L%Original_order(L%Count))
     call L%Sort
     L%first_fast_param=0
     baseDerived = Names%num_derived
     do i=1,L%Count
         DataLike=>L%Item(i)
+        L%Original_order(DataLike%Original_index) = i 
         NewNames => DataLike%nuisance_params
         if (Feedback>0 .and. MPIrank==0) print *,'adding parameters for: '//trim(DataLIke%name)
         DataLike%new_param_block_start = Names%num_MCMC +1
@@ -658,9 +666,9 @@
         else
             tag => Like%Name
         end if
-        LikeNames%name(i) = tag
-        LikeNames%label(i) = FormatString(trim(chisq_label), StringEscape(trim(tag),'_'))
-        LikeNames%is_derived(i) = .true.
+        LikeNames%name(Like%Original_index) = tag
+        LikeNames%label(Like%Original_index) = FormatString(trim(chisq_label), StringEscape(trim(tag),'_'))
+        LikeNames%is_derived(Like%Original_index) = .true.
         if (Like%LikelihoodType/='') then
             ix = LikelihoodTypes%IndexOf(Like%LikelihoodType)
             if (ix==-1) then
@@ -745,7 +753,7 @@
         if (num_derived>0) allDerived(:num_derived) =  derived
         call move_alloc(allDerived, derived)
         !Add the chi2 for each likelihood
-        derived(num_derived+1:num_derived+L%Count) =  Likelihoods(:L%Count)*2
+        derived(num_derived+1:num_derived+L%Count) =  Likelihoods(L%Original_order)*2
         !Add the total chi2 for each likelihood type
         do i=1, L%LikelihoodTypeIndices%Count
             derived(num_derived+ L%Count+i) = sum(Likelihoods(L%LikelihoodTypeIndices%Item(i)))*2
