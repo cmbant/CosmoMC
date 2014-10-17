@@ -93,11 +93,11 @@ def paramResultTable(jobItem, deltaChisqJobItem=None, referenceDataJobItem=None)
         else: compChiSq = None
         for kind, vals in bf.sortedChiSquareds():
             tableLines.append(kind + ' - ')
-            for (name, chisq) in vals:
-                line = '  ' + texEscapeText(name) + ': ' + ('%.2f' % chisq) + ' '
+            for val in vals:
+                line = '  ' + texEscapeText(val.name) + ': ' + ('%.2f' % val.chisq) + ' '
                 if compChiSq is not None:
-                    comp = compChiSq.chiSquareForKindName(kind, name)
-                    if comp is not None: line += '($\Delta$ ' + ('%.2f' % (chisq - comp)) + ') '
+                    comp = compChiSq.chiSquareForKindName(kind, val.name)
+                    if comp is not None: line += '($\Delta$ ' + ('%.2f' % (val.chisq - comp)) + ') '
                 tableLines.append(line)
     return tableLines
 

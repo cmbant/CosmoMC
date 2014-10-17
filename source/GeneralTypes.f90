@@ -559,7 +559,7 @@
         write (aunit,'(2f11.3)',advance='NO') likelihoods(i),likelihoods(i)*2
         tagname = trim (LikeItem%name)
         if (allocated(LikeItem%tag)) then
-            if (LikeItem%tag /= LikeItem%name) tagname = LikeItem%tag //'='//tagname
+            if (LikeItem%tag /= LikeItem%name) tagname = LikeItem%tag //' = '//tagname
         end if
         write(aunit,'(a)',advance='NO') '   '//trim(LikeItem%LikelihoodType)//': '//tagname
         if (LikeItem%Version/='') write(aunit,'(a)',advance='NO') ' '//trim(LikeItem%Version)
