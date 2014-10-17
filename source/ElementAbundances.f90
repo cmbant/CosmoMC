@@ -37,7 +37,7 @@
         like%speed = 10
         like%needs_background_functions = .true.
         like%needs_powerspectra = .false.
-        like%tag = Datasets%Names(i)
+        like%tag = Datasets%Name(i)
         like%LikelihoodType = 'Abund'
         call LikeList%Add(like)
     end do
