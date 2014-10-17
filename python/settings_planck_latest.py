@@ -359,13 +359,13 @@ for planck in planck_vars:
     covrenames.append([planck, 'planck'])
 covrenames.append(['planck', 'planck_CAMspec'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
-covrenames.append(['lowl_lensing', 'lowTEB'])
 covrenames.append(['Alensf', 'Alens'])
 covrenames.append(['_Aphiphi', ''])
 covrenames.append(['_r', ''])
 covrenames.append(['_w', ''])
 covrenames.append(['_alpha1', ''])
 covrenames.append(['_WLonly', '_lensonly'])
+covrenames.append(['lowl', 'lowTEB'])
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
