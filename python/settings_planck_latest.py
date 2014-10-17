@@ -359,6 +359,7 @@ for planck in planck_vars:
     covrenames.append([planck, 'planck'])
 covrenames.append(['planck', 'planck_CAMspec'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
+covrenames.append(['lowl_lensing', 'lowTEB'])
 covrenames.append(['Alensf', 'Alens'])
 covrenames.append(['_Aphiphi', ''])
 covrenames.append(['_r', ''])
