@@ -551,12 +551,17 @@
     real(mcp), intent(in) :: likelihoods(*)
     integer i, ix
     Class(TDataLikelihood), pointer :: LikeItem
+    character(LEN=:), allocatable :: tagname
 
     do ix=1,L%Count
         i = L%Original_order(ix)
         LikeItem =>  L%Item(i)
         write (aunit,'(2f11.3)',advance='NO') likelihoods(i),likelihoods(i)*2
-        write(aunit,'(a)',advance='NO') '   '//trim(LikeItem%LikelihoodType)//': '//trim(LikeItem%name)
+        tagname = trim (LikeItem%name)
+        if (allocated(LikeItem%tag)) then
+            if (LikeItem%tag /= LikeItem%name) tagname = LikeItem%tag //'='//tagname
+        end if
+        write(aunit,'(a)',advance='NO') '   '//trim(LikeItem%LikelihoodType)//': '//tagname
         if (LikeItem%Version/='') write(aunit,'(a)',advance='NO') ' '//trim(LikeItem%Version)
         write(aunit,'(a)') ''
     end do
@@ -613,7 +618,7 @@
     baseDerived = Names%num_derived
     do i=1,L%Count
         DataLike=>L%Item(i)
-        L%Original_order(DataLike%Original_index) = i 
+        L%Original_order(DataLike%Original_index) = i
         NewNames => DataLike%nuisance_params
         if (Feedback>0 .and. MPIrank==0) print *,'adding parameters for: '//trim(DataLIke%name)
         DataLike%new_param_block_start = Names%num_MCMC +1
