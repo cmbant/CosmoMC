@@ -435,14 +435,16 @@ class margeStats(paramResults):
         if not param is None:
             lim = param.limits[limit - 1]
             sf = 3
-            if (lim.onetail_upper or limit == 1) and 'chi2_' in param.name:
+            if 'chi2_' in param.name:
                 # Chi2 for low dof are very skewed, always want mean and sigma or limit
+                res, sigma, _ = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err, wantSign=False)
                 if limit == 1:
-                    res, plus_str, _ = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err, wantSign=False)
-                    res += r'\pm ' + plus_str
+                    res += r'\pm ' + sigma
                 else:
-                    res, plus_str, minus_str = formatter.numberFormatter.namesigFigs(param.mean, lim.upper - param.mean, lim.lower)
-                    res += '^{' + plus_str + '}_{>' + minus_str + '}'
+                    # in this case give mean and effective dof
+                    res += r'\,({\nu\rm{:}\,%.1f})' % (param.err ** 2 / 2)
+#                    res, plus_str, minus_str = formatter.numberFormatter.namesigFigs(param.mean, lim.upper - param.mean, lim.lower)
+#                    res += '^{' + plus_str + '}_{>' + minus_str + '}'
             elif lim.twotail:
                 if not formatter.numberFormatter.plusMinusLimit(limit, lim.upper - param.mean, lim.lower - param.mean):
                     res, plus_str, _ = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err, wantSign=False)
