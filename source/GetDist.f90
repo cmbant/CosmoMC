@@ -2402,7 +2402,7 @@
                     tail_confid_top = ConfidVal(ix,limfrac/2,.true.)
                 end if
                 if (.not. marge_limits_bot(ix1,ix) .and. .not. marge_limits_top(ix1,ix)) then
-                    !Two tail, check if limits are at very differen density
+                    !Two tail, check if limits are at very different density
                     if (abs(Density1D%Prob(tail_confid_top) - Density1D%Prob(tail_confid_bot)) < credible_interval_threshold) then
                         tail_limit_top=tail_confid_top
                         tail_limit_bot=tail_confid_bot

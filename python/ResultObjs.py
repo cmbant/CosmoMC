@@ -435,7 +435,11 @@ class margeStats(paramResults):
         if not param is None:
             lim = param.limits[limit - 1]
             sf = 3
-            if lim.twotail:
+            if lim.onetail_upper and 'chi2_' in param.name:
+                # Chi2 for low dof are very skewed, always want mean and limits
+                res, plus_str, minus_str = formatter.numberFormatter.namesigFigs(param.mean, lim.upper - param.mean, lim.lower)
+                res += '^{' + plus_str + '}_{>' + minus_str + '}'
+            elif lim.twotail:
                 if not formatter.numberFormatter.plusMinusLimit(limit, lim.upper - param.mean, lim.lower - param.mean):
                     res, plus_str, _ = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err, wantSign=False)
                     res += r'\pm ' + plus_str
