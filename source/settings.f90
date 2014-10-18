@@ -34,7 +34,7 @@
 
     logical :: use_fast_slow = .false.
 
-    character(LEN=*), parameter :: CosmoMC_Version = 'July2014'
+    character(LEN=*), parameter :: CosmoMC_Version = 'Oct2014'
 
     character(LEN=:), allocatable :: chisq_label
 
@@ -63,7 +63,7 @@
 
     integer, parameter :: max_likelihood_functions = 50
 
-    integer, parameter :: max_data_params = 100
+    integer, parameter :: max_data_params = 200
     integer, parameter :: max_theory_params = 30
     integer, parameter :: max_num_params = max_theory_params + max_data_params
 

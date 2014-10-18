@@ -29,11 +29,11 @@
     subroutine BBN_Init(this)
     class(TBBNPredictions):: this
 
-    if (feedback >= 1) print*,'Initialising BBN data '//BBN_data_file//', col:', this%data_col
+    if (feedback > 1) print*,'Initialising BBN data '//BBN_data_file//', col:', this%data_col
 
     call this%InitFromFile(trim(DataDir)//BBN_data_file, xcol=1,ycol=3, zcol=this%data_col)
 
-    if (feedback >= 1) print*,'Done. Interpolation table is ', this%nx,' by ',this%ny
+    if (feedback > 1) print*,'Done. Interpolation table is ', this%nx,' by ',this%ny
 
     end subroutine BBN_Init
 

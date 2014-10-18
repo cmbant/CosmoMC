@@ -21,9 +21,9 @@ rc('text.latex', preamble=r'\usepackage{' + sfmath.replace(os.sep, '/') + '}')
 
 rcParams.update(params)
 
-non_final = True
-version = 'clik9.0'
-defdata_root = 'plik'
+non_final = False
+version = 'clik10.1'
+defdata_root = 'plikHM'
 defdata_TT = defdata_root + '_TT_lowTEB'
 defdata_TE = defdata_root + '_TE_lowTEB'
 defdata_EE = defdata_root + '_EE_lowTEB'

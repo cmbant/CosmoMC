@@ -1,7 +1,3 @@
-# provisional updated (reduced) grid settings for full mission
-# New BBN fitting built in
-# New BAO -> DR11
-# To add: w/w0, nrun r
 import batchJob, copy, re
 
 ini_dir = 'batch2/'
@@ -13,17 +9,18 @@ importanceDefaults = ['importance_sampling.ini']
 
 # dataset names
 lowl = 'lowl'
-lowLike = 'lowLike'
 lensing = 'lensing'
 lensonly = 'lensonly'
+WLonly = 'WLonly'
+WLonlyHeymans = 'WLonlyHeymans'  # just used as a check against less conservative cuts
 
 highL = 'highL'
 WMAP = 'WMAP'
 BAO = 'BAO'
-HST = 'HST70p6'
+HST = 'H070p6'
 JLA = 'JLA'
 
-BAOdata = 'BAODR11.ini'
+BAOdata = 'BAO.ini'
 HSTdata = 'HST_GPE70p6.ini'
 
 RSDdata = 'BAO_RSD.ini'
@@ -38,10 +35,11 @@ lowTEB = 'lowTEB'
 tauprior = {'prior[tau]':'0.07 0.02'}
 tauname = 'tau07'
 WMAPtau = {'prior[tau]':'0.09 0.013'}
+zre_prior = {'use_min_zre', '6.5' }
 
 
-camspec_detsets = ['nonclik_v97F.ini']
-camspec_CS = ['nonclik_v97CS.ini']
+camspec_detsets = ['nonclik_detsets.ini']
+camspec_CS = ['nonclik.ini']
 
 
 variant_tag = ['TTTEEE', 'TT']
@@ -50,13 +48,13 @@ variants = variant_tag
 
 planck_highL_sets = []
 planck_pol_sets = []
-planck_vars = ['v97CS']
+planck_vars = ['CamSpecHM']
 planck_ini = ['CAMspec_%s.ini']
 planck_base = [camspec_CS]
 
 if True:
-    planck_vars += ['plik']
-    planck_ini += ['plik_dx11c_%s_v13.ini']
+    planck_vars += ['plikHM']
+    planck_ini += ['plik_dx11dr2_HM_v15_%s.ini']
     planck_base += [[]]
 for planck, ini, base in zip(planck_vars, planck_ini, planck_base):
     for name, var in zip(variant_tag, variants):
@@ -92,6 +90,8 @@ post_JLA = [[JLA], ['JLA_marge.ini'], importanceFilterNotOmegak()]
 post_nonBAO = [[HST, JLA], [HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
+post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
+
 post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
 post_abundance = [['abundances'], ['abundances.ini', {'redo_likes':'F', 'redo_add':'T'}], importanceFilterAbundance()]
 
@@ -215,6 +215,16 @@ g7.params = [['mnu'], ['nnu', 'meffsterile']]
 g7.importanceRuns = [post_JLA, post_HST, post_nonBAO]
 groups.append(g7)
 
+gnnu = batchJob.jobGroup('nnu')
+gnnu.datasets = []
+for d in copy.deepcopy(g.datasets):
+    d.add(BAO, BAOdata)
+    gnnu.datasets.append(d)
+
+gnnu.params = [['nnu']]
+gnnu.importanceRuns = [post_nonBAO, post_allnonBAO]
+groups.append(gnnu)
+
 if False:
     gmulti = batchJob.jobGroup('multi')
     gmulti.params = [['nnu', 'w'], ['mnu', 'w']]
@@ -277,6 +287,10 @@ for d in copy.deepcopy(g.datasets):
     d.add(lensing)
     gphi.datasets.append(d)
 gphi.importanceRuns = []
+
+
+
+
 groups.append(gphi)
 
 
@@ -302,6 +316,22 @@ extdata.importanceRuns = []
 groups.append(extdata)
 
 
+gWL = batchJob.jobGroup('WLonly')
+WLdata = [batchJob.dataSet(WLonly), batchJob.dataSet(WLonlyHeymans)]
+gWL.datasets = copy.deepcopy(WLdata)
+for d in copy.deepcopy(WLdata):
+    d.add(BAO, BAOdata)
+    gWL.datasets.append(d)
+for d in copy.deepcopy(WLdata):
+    d.add(HST, HSTdata)
+    gWL.datasets.append(d)
+gWL.params = [[], ['mnu']]
+gWL.importanceRuns = []
+groups.append(gWL)
+
+
+
+
 for g in groups:
     for p in g.params:
         if 'nnu' in p:
@@ -310,8 +340,10 @@ for g in groups:
 
 skip = []
 
-covNameMappings = {HSTdata:'HST', 'v97CS':'CamSpec'}
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO']
+covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik',
+                   WLonlyHeymans: WLonly}
+
 # try to match run to exisitng covmat
 covrenames = []
 for planck in planck_vars:
@@ -319,13 +351,18 @@ for planck in planck_vars:
 covrenames.append(['planck', 'planck_CAMspec'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
 covrenames.append(['Alensf', 'Alens'])
+covrenames.append(['_Aphiphi', ''])
 covrenames.append(['_r', ''])
 covrenames.append(['_w', ''])
+covrenames.append(['_alpha1', ''])
+covrenames.append(['_WLonly', '_lensonly'])
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
-    renamed = re.sub(r'_v.*', '_planck_lowl_lowLike', renamed, re.I)
-
+    if 'wa_' in name:
+        renamed = re.sub(r'_CamSpec.*', '_planck_lowl_lowLike_BAO', renamed, re.I)
+    else:
+        renamed = re.sub(r'_CamSpec.*', '_planck_lowl_lowLike', renamed, re.I)
     if renamed == name: return[]
     else: return [renamed]
 
