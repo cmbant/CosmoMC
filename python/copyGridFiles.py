@@ -5,7 +5,7 @@ Opts = batchJobArgs.batchArgs('copy or zip chains and optionally other files', i
 Opts.parser.add_argument('target_dir', help="output root directory or zip file name")
 
 Opts.parser.add_argument('--dist', action='store_true', help="include getdist outputs")
-Opts.parser.add_argument('--chains', action='store_true', default=True, help="include chain files")
+Opts.parser.add_argument('--chains', action='store_true', help="include chain files")
 Opts.parser.add_argument('--file_extensions', nargs='+', default=['.*'])
 Opts.parser.add_argument('--skip_extensions', nargs='+', default=['.data', '.chk', '.log', '.corr', '.py', '.m'])
 Opts.parser.add_argument('--dryrun', action='store_true')
@@ -51,19 +51,19 @@ for jobItem in Opts.filteredBatchItems():
         infofiles = 0
         distfiles = 0
         outdir = jobItem.relativePath
+        if not args.zip: batchJob.makePath(target_dir + outdir)
         if args.chains:
-            if not args.zip: batchJob.makePath(target_dir + outdir)
             i = 1
             while os.path.exists(jobItem.chainRoot + ('_%d.txt') % i):
                 f = jobItem.name + ('_%d.txt') % i
                 chainfiles += 1
                 doCopy(jobItem.chainPath, outdir, f)
                 i += 1
-            for f in os.listdir(jobItem.chainPath):
-                if fileMatches(f, jobItem.name):
-                    infofiles += 1
-                    if args.verbose: print jobItem.chainPath + f
-                    doCopy(jobItem.chainPath, outdir, f)
+        for f in os.listdir(jobItem.chainPath):
+            if fileMatches(f, jobItem.name):
+                infofiles += 1
+                if args.verbose: print jobItem.chainPath + f
+                doCopy(jobItem.chainPath, outdir, f)
         if args.dist:
             outdir += 'dist' + os.sep
             if not args.zip: batchJob.makePath(target_dir + outdir)
