@@ -136,6 +136,7 @@ class MainWindow(QMainWindow):
         self.connect(shortcut, SIGNAL("activated()"), self.selectRootDir)
 
         self.listRoots = QListWidget(self.selectWidget)
+        self.listRoots.setMaximumSize(QSize(16777215, 120))
         self.listRoots.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.listRoots.setSelectionMode(QAbstractItemView.SingleSelection)
 
@@ -317,6 +318,7 @@ class MainWindow(QMainWindow):
                 if filesparam:
                     # Directory contains file .paramnames
                     paramNames = self.plotter.sampleAnalyser.paramsForRoot(self.root).list()
+
 
                     # Hide combo boxes and fill list
                     self.comboBoxParamTag.hide()

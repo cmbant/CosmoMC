@@ -422,9 +422,9 @@ class MCSampleAnalysis():
     def paramsForRoot(self, root, labelParams=None):
         if os.path.isabs(root):
             root = os.path.basename(root)
-        names = self.mcsamples[root].paramNames
-        if labelParams is not None:
-            names.setLabelsAndDerivedFromParamNames(labelParams)
+        names = self.mcsamples[root].GetUsedParamNames()
+        #if labelParams is not None:
+        #    names.setLabelsAndDerivedFromParamNames(labelParams)
         return names
 
     def boundsForRoot(self, root):

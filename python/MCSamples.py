@@ -1523,6 +1523,14 @@ class MCSamples(chains):
             return text
 
 
+    def GetUsedParamNames(self):
+        names = []
+        for info in self.paramNames.names:
+            index = self.index[info.name]
+            if self.isused[index]:
+                names.append(info.name)
+        return names
+
     def WriteParamNames(self, filename, indices=None, add_derived=None):
         textFileHandle = open(filename, 'w')
         for info in self.paramNames.names:
