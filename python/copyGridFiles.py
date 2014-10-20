@@ -14,8 +14,6 @@ Opts.parser.add_argument('--zip', action='store_true')
 
 (batch, args) = Opts.parseForBatch()
 
-if not args.chains and not args.dist: print 'use --chains or --dist!'
-
 if '.zip' in args.target_dir: args.zip = True
 
 if args.zip:
