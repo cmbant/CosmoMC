@@ -80,9 +80,9 @@
     character(LEN=:), allocatable :: newS
 
     if (DefaultFalse(trimmed)) then
-        newS = S
-    else
         newS = trim(S)
+    else
+        newS = S
     end if
 
     end function StringTrimmed
