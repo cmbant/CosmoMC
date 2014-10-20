@@ -261,15 +261,14 @@
     if (ChainOutFile%unit==0) return
 
     call Config%Parameterization%CalcDerivedParams(this%P, this%Theory, derived)
-    call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived, this%Likelihoods)
+    call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived, this%Likelihoods, like)
 
     if (allocated(derived)) numderived = size(derived)
 
-    allocate(output_array(num_params_used+numderived+1))
+    allocate(output_array(num_params_used+numderived))
     output_array(:num_params_used) = this%P(params_used)
-    if (numderived>0) output_array(num_params_used+1:num_params_used+numderived) = derived
-    output_array(num_params_used+numderived+1) = 2*(like - sum(this%Likelihoods(:DataLikelihoods%Count))) !prior
-
+    if (numderived>0) output_array(num_params_used+1:) = derived
+    
     call IO_OutputChainRow(ChainOutFile, mult, like, output_array)
 
     end subroutine TCalculationAtParamPoint_WriteParams
@@ -679,7 +678,7 @@
     integer, allocatable :: counts(:), indices(:)
     Type(TStringList) :: LikelihoodTypes
 
-    call LikeNames%Alloc(L%Count)
+    call LikeNames%Alloc(L%Count+1)
     allocate(counts(L%Count), source=0)
     do i=1, L%Count
         Like => L%Item(i)
@@ -697,6 +696,11 @@
             end if
         end if
     end do
+    !Add a parameter for the prior
+    LikeNames%name(L%Count+1) = 'chi2_prior'
+    LikeNames%label(L%Count+1) = FormatString(trim(chisq_label), 'prior')
+    LikeNames%is_derived(L%Count+1) = .true.
+
     call Names%Add(LikeNames,check_duplicates=.true.)
 
     !Add a derived parameters which are sums of all likelihoods of a given type (e.g. CMB, BAO, etc..)
@@ -722,12 +726,6 @@
             deallocate(indices)
         end if
     end do
-    !Add a parameter for the prior
-    like_sum_ix = like_sum_ix +1
-    LikeNames%name(like_sum_ix) = 'chi2_prior'
-    LikeNames%label(like_sum_ix) = FormatString(trim(chisq_label), 'prior')
-    LikeNames%is_derived(like_sum_ix) = .true.
-
     call Names%Add(LikeNames,check_duplicates=.true.)
 
     end subroutine AddOutputLikelihoodParams
@@ -745,10 +743,10 @@
 
     end subroutine checkAllConflicts
 
-    subroutine addLikelihoodDerivedParams(L, P, Theory, derived, Likelihoods)
+    subroutine addLikelihoodDerivedParams(L, P, Theory, derived, Likelihoods, logLike)
     class(TLikelihoodList) :: L
     real(mcp), allocatable :: derived(:)
-    real(mcp), intent(in), optional :: Likelihoods(:)
+    real(mcp), intent(in), optional :: Likelihoods(:), logLike
     class(TTheoryPredictions) :: Theory
     real(mcp) :: P(:)
     real(mcp), allocatable :: allDerived(:)
@@ -773,14 +771,17 @@
     end if
 
     if (present(Likelihoods) .and. L%Count>0) then
-        allocate(allDerived(num_derived + L%Count + L%LikelihoodTypeIndices%Count))
+        if (.not. present(logLike)) call MpiStop('Must have logLike in addLikelihoodDerivedParams')
+        allocate(allDerived(num_derived + L%Count + L%LikelihoodTypeIndices%Count +1))
         if (num_derived>0) allDerived(:num_derived) =  derived
         call move_alloc(allDerived, derived)
         !Add the chi2 for each likelihood
         derived(num_derived+1:num_derived+L%Count) =  Likelihoods(L%Original_order)*2
+        !Add the chi2 for the prior
+        derived(num_derived+L%Count+1)  = 2*(logLike - sum(Likelihoods(:L%Count))) !prior
         !Add the total chi2 for each likelihood type
         do i=1, L%LikelihoodTypeIndices%Count
-            derived(num_derived+ L%Count+i) = sum(Likelihoods(L%LikelihoodTypeIndices%Item(i)))*2
+            derived(num_derived+ L%Count+i +1) = sum(Likelihoods(L%LikelihoodTypeIndices%Item(i)))*2
         end do
     end if
 
