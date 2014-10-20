@@ -122,6 +122,7 @@
     procedure :: derivedParameters  => TDataLikelihood_derivedParameters
     procedure :: loadParamNames => TDataLikelihood_loadParamNames
     procedure :: checkConflicts => TDataLikelihood_checkConflicts
+    procedure :: GetTag => TDataLikelihood_GetTag
     end type TDataLikelihood
 
     !This is the global list of likelihoods we will use
@@ -139,6 +140,7 @@
     procedure :: checkAllConflicts
     procedure :: WriteDataForLikelihoods
     procedure :: addLikelihoodDerivedParams
+    procedure :: OutputDescription
     end type TLikelihoodList
 
     Type(TLikelihoodList), target, save :: DataLikelihoods
@@ -528,6 +530,18 @@
 
     end function TDataLikelihood_checkConflicts
 
+    function TDataLikelihood_GetTag(this) result(tag)
+    class(TDataLikelihood) :: this
+    character(LEN=:), allocatable :: tag
+
+    if (allocated(this%tag)) then
+        tag = this%tag
+    else
+        tag = this%Name
+    end if
+
+    end function TDataLikelihood_GetTag
+
 
     !!!TLikelihoodList
 
@@ -659,7 +673,8 @@
     Type(TParamNames) :: Names, LikeNames
     integer i, j, ix, like_sum_ix
     class(TDataLikelihood), pointer :: Like
-    character(LEN=:), pointer :: tag, atype
+    character(LEN=:), pointer :: atype
+    character(LEN=:), allocatable :: tag
     integer, allocatable :: counts(:), indices(:)
     Type(TStringList) :: LikelihoodTypes
 
@@ -667,11 +682,7 @@
     allocate(counts(L%Count), source=0)
     do i=1, L%Count
         Like => L%Item(i)
-        if (allocated(Like%Tag)) then
-            tag => Like%tag
-        else
-            tag => Like%Name
-        end if
+        tag = Like%GetTag()
         LikeNames%name(Like%Original_index) = 'chi2_'//tag
         LikeNames%label(Like%Original_index) = FormatString(trim(chisq_label), StringEscape(trim(tag),'_'))
         LikeNames%is_derived(Like%Original_index) = .true.
@@ -768,4 +779,25 @@
 
     end subroutine addLikelihoodDerivedParams
 
-    end module
+    subroutine OutputDescription(L, fname)
+    class(TLikelihoodList) :: L
+    character(LEN=*), intent(in) :: fname
+    Type(TTextFile) :: F
+    integer i,ix
+    Class(TDataLikelihood), pointer :: DataLike
+
+    call F%CreateFile(fname//'.likelihoods')
+    do ix=1,L%Count
+        if (allocated(L%original_order)) then
+            i = L%Original_order(ix)
+        else
+            i = ix
+        end if
+        DataLike => L%Item(i)
+        call F%Write(DataLike%GetTag()//char(9)//DataLike%Name//char(9)//DataLike%Version)
+    end do
+    call F%Close()
+
+    end subroutine OutputDescription
+
+    end module GeneralTypes
