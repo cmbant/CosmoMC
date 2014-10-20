@@ -537,7 +537,7 @@
     if (allocated(this%tag)) then
         tag = this%tag
     else
-        tag = this%Name
+        tag = trim(this%Name)
     end if
 
     end function TDataLikelihood_GetTag
@@ -684,7 +684,7 @@
         Like => L%Item(i)
         tag = Like%GetTag()
         LikeNames%name(Like%Original_index) = 'chi2_'//tag
-        LikeNames%label(Like%Original_index) = FormatString(trim(chisq_label), StringEscape(trim(tag),'_'))
+        LikeNames%label(Like%Original_index) = FormatString(trim(chisq_label), StringEscape(tag,'_'))
         LikeNames%is_derived(Like%Original_index) = .true.
         if (Like%LikelihoodType/='') then
             ix = LikelihoodTypes%IndexOf(Like%LikelihoodType)
@@ -794,7 +794,8 @@
             i = ix
         end if
         DataLike => L%Item(i)
-        call F%Write(DataLike%GetTag()//char(9)//DataLike%Name//char(9)//DataLike%Version)
+        call F%Write(Join(char(9),DataLike%LikelihoodType, DataLike%GetTag(), &
+            DataLike%Name, DataLike%Version, trimmed = .true.))
     end do
     call F%Close()
 
