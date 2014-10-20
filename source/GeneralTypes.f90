@@ -268,7 +268,7 @@
     allocate(output_array(num_params_used+numderived))
     output_array(:num_params_used) = this%P(params_used)
     if (numderived>0) output_array(num_params_used+1:) = derived
-    
+
     call IO_OutputChainRow(ChainOutFile, mult, like, output_array)
 
     end subroutine TCalculationAtParamPoint_WriteParams
@@ -704,7 +704,7 @@
     call Names%Add(LikeNames,check_duplicates=.true.)
 
     !Add a derived parameters which are sums of all likelihoods of a given type (e.g. CMB, BAO, etc..)
-    call LikeNames%Alloc(count(counts(:LikelihoodTypes%Count)>1) +1)
+    call LikeNames%Alloc(count(counts(:LikelihoodTypes%Count)>1))
     like_sum_ix = 0
     do i=1, LikelihoodTypes%Count
         if (counts(i)>1) then
