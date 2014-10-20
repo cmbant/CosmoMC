@@ -74,6 +74,19 @@
 
     end function StringStarts
 
+    function StringTrimmed(S, trimmed) result(newS)
+    character(LEN=*), intent(in) :: S
+    logical, intent(in), optional :: trimmed
+    character(LEN=:), allocatable :: newS
+
+    if (DefaultFalse(trimmed)) then
+        newS = trim(S)
+    else
+        newS = S
+    end if
+
+    end function StringTrimmed
+
     subroutine StringReplace(FindS, RepS, S)
     character(LEN=*), intent(in) :: FindS, RepS
     character(LEN=:), allocatable, intent(inout) :: S
@@ -109,6 +122,21 @@
     end do
 
     end function StringEscape
+
+    function Join(separator, S, S1,S2,S3,S4,S5,S6, trimmed) result(newS)
+    character(LEN=*), intent(in) :: Separator, S, S1
+    character(LEN=*), optional :: S2,S3,S4,S5,S6
+    character(LEN=:), allocatable :: newS
+    logical, intent(in), optional :: trimmed
+
+    newS = StringTrimmed(S,trimmed)//Separator//StringTrimmed(S1,trimmed)
+    if (present(S2)) newS = newS //Separator //StringTrimmed(S2,trimmed)
+    if (present(S3)) newS = newS //Separator //StringTrimmed(S3,trimmed)
+    if (present(S4)) newS = newS //Separator //StringTrimmed(S4,trimmed)
+    if (present(S5)) newS = newS //Separator //StringTrimmed(S5,trimmed)
+    if (present(S6)) newS = newS //Separator //StringTrimmed(S6,trimmed)
+
+    end function Join
 
     function numcat(S, num)
     character(LEN=*) S

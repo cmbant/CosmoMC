@@ -122,6 +122,7 @@
     procedure :: derivedParameters  => TDataLikelihood_derivedParameters
     procedure :: loadParamNames => TDataLikelihood_loadParamNames
     procedure :: checkConflicts => TDataLikelihood_checkConflicts
+    procedure :: GetTag => TDataLikelihood_GetTag
     end type TDataLikelihood
 
     !This is the global list of likelihoods we will use
@@ -139,6 +140,7 @@
     procedure :: checkAllConflicts
     procedure :: WriteDataForLikelihoods
     procedure :: addLikelihoodDerivedParams
+    procedure :: OutputDescription
     end type TLikelihoodList
 
     Type(TLikelihoodList), target, save :: DataLikelihoods
@@ -259,7 +261,7 @@
     if (ChainOutFile%unit==0) return
 
     call Config%Parameterization%CalcDerivedParams(this%P, this%Theory, derived)
-    call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived, this%Likelihoods)
+    call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived, this%Likelihoods, like)
 
     if (allocated(derived)) numderived = size(derived)
 
@@ -528,6 +530,18 @@
 
     end function TDataLikelihood_checkConflicts
 
+    function TDataLikelihood_GetTag(this) result(tag)
+    class(TDataLikelihood) :: this
+    character(LEN=:), allocatable :: tag
+
+    if (allocated(this%tag)) then
+        tag = this%tag
+    else
+        tag = trim(this%Name)
+    end if
+
+    end function TDataLikelihood_GetTag
+
 
     !!!TLikelihoodList
 
@@ -659,21 +673,18 @@
     Type(TParamNames) :: Names, LikeNames
     integer i, j, ix, like_sum_ix
     class(TDataLikelihood), pointer :: Like
-    character(LEN=:), pointer :: tag, atype
+    character(LEN=:), pointer :: atype
+    character(LEN=:), allocatable :: tag
     integer, allocatable :: counts(:), indices(:)
     Type(TStringList) :: LikelihoodTypes
 
-    call LikeNames%Alloc(L%Count)
+    call LikeNames%Alloc(L%Count+1)
     allocate(counts(L%Count), source=0)
     do i=1, L%Count
         Like => L%Item(i)
-        if (allocated(Like%Tag)) then
-            tag => Like%tag
-        else
-            tag => Like%Name
-        end if
+        tag = Like%GetTag()
         LikeNames%name(Like%Original_index) = 'chi2_'//tag
-        LikeNames%label(Like%Original_index) = FormatString(trim(chisq_label), StringEscape(trim(tag),'_'))
+        LikeNames%label(Like%Original_index) = FormatString(trim(chisq_label), StringEscape(tag,'_'))
         LikeNames%is_derived(Like%Original_index) = .true.
         if (Like%LikelihoodType/='') then
             ix = LikelihoodTypes%IndexOf(Like%LikelihoodType)
@@ -685,6 +696,11 @@
             end if
         end if
     end do
+    !Add a parameter for the prior
+    LikeNames%name(L%Count+1) = 'chi2_prior'
+    LikeNames%label(L%Count+1) = FormatString(trim(chisq_label), 'prior')
+    LikeNames%is_derived(L%Count+1) = .true.
+
     call Names%Add(LikeNames,check_duplicates=.true.)
 
     !Add a derived parameters which are sums of all likelihoods of a given type (e.g. CMB, BAO, etc..)
@@ -727,10 +743,10 @@
 
     end subroutine checkAllConflicts
 
-    subroutine addLikelihoodDerivedParams(L, P, Theory, derived, Likelihoods)
+    subroutine addLikelihoodDerivedParams(L, P, Theory, derived, Likelihoods, logLike)
     class(TLikelihoodList) :: L
     real(mcp), allocatable :: derived(:)
-    real(mcp), intent(in), optional :: Likelihoods(:)
+    real(mcp), intent(in), optional :: Likelihoods(:), logLike
     class(TTheoryPredictions) :: Theory
     real(mcp) :: P(:)
     real(mcp), allocatable :: allDerived(:)
@@ -755,17 +771,43 @@
     end if
 
     if (present(Likelihoods) .and. L%Count>0) then
-        allocate(allDerived(num_derived + L%Count + L%LikelihoodTypeIndices%Count))
+        if (.not. present(logLike)) call MpiStop('Must have logLike in addLikelihoodDerivedParams')
+        allocate(allDerived(num_derived + L%Count + L%LikelihoodTypeIndices%Count +1))
         if (num_derived>0) allDerived(:num_derived) =  derived
         call move_alloc(allDerived, derived)
         !Add the chi2 for each likelihood
         derived(num_derived+1:num_derived+L%Count) =  Likelihoods(L%Original_order)*2
+        !Add the chi2 for the prior
+        derived(num_derived+L%Count+1)  = 2*(logLike - sum(Likelihoods(:L%Count))) !prior
         !Add the total chi2 for each likelihood type
         do i=1, L%LikelihoodTypeIndices%Count
-            derived(num_derived+ L%Count+i) = sum(Likelihoods(L%LikelihoodTypeIndices%Item(i)))*2
+            derived(num_derived+ L%Count+i +1) = sum(Likelihoods(L%LikelihoodTypeIndices%Item(i)))*2
         end do
     end if
 
     end subroutine addLikelihoodDerivedParams
 
-    end module
+    subroutine OutputDescription(L, fname)
+    class(TLikelihoodList) :: L
+    character(LEN=*), intent(in) :: fname
+    Type(TTextFile) :: F
+    integer i,ix
+    Class(TDataLikelihood), pointer :: DataLike
+
+    call F%CreateFile(fname//'.likelihoods')
+    do ix=1,L%Count
+        if (allocated(L%original_order)) then
+            i = L%Original_order(ix)
+        else
+            i = ix
+        end if
+        DataLike => L%Item(i)
+        !first entry is always 1 for now (in future maybe 0 for likelihoods not sampled from)
+        call F%Write(Join(char(9),'1', DataLike%LikelihoodType, DataLike%GetTag(), &
+            DataLike%Name, DataLike%Version, trimmed = .true.))
+    end do
+    call F%Close()
+
+    end subroutine OutputDescription
+
+    end module GeneralTypes

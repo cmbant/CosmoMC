@@ -25,7 +25,7 @@ export KMP_LIBRARY=throughput
 export KMP_STACKSIZE=1gb
 export OMP_NESTED=FALSE
 
-###set things to be used by the python script, which exptracts text from here with ##XX: ... ##
+###set things to be used by the python script, which extracts text from here with ##XX: ... ##
 ### command to use for each run in the batch
 ##RUN: time mpirun -np ##NUMMPI## omplace -nt ##OMP## ##PROGRAM## ##INI## > ./scripts/##INIBASE##.log 2>&1 ##
 ### qsub command to use when submitting
