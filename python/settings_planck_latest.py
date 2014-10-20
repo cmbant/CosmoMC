@@ -35,7 +35,6 @@ lowTEB = 'lowTEB'
 tauprior = {'prior[tau]':'0.07 0.02'}
 tauname = 'tau07'
 WMAPtau = {'prior[tau]':'0.09 0.013'}
-zre_prior = {'use_min_zre': '6.5' }
 
 
 camspec_detsets = ['nonclik_detsets.ini']
@@ -72,7 +71,11 @@ newCovmats = False
 
 class importanceFilterLensing:
     def wantImportance(self, jobItem):
-        return planck in jobItem.data_set.names and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
+        return [p for planck in planck_vars if planck in jobItem.data_set.names] and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
+
+class importanceFilterZre:
+    def wantImportance(self, jobItem):
+        return [p for planck in planck_vars if planck in jobItem.data_set.names] and not 'reion' in jobItem.data_set.names
 
 class importanceFilterNotOmegak:
     def wantImportance(self, jobItem):
@@ -94,6 +97,7 @@ post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], impo
 
 post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
 post_abundance = [['abundances'], ['abundances.ini', {'redo_likes':'F', 'redo_add':'T'}], importanceFilterAbundance()]
+post_zre = [['zre6p5'], ['zre_prior.ini'], importanceFilterZre()]
 
 # set up groups of parameters and data sets
 
@@ -160,11 +164,15 @@ g5.params = [[]]
 g5.datasets = copy.deepcopy(planck_highL_sets)
 for d in g5.datasets:
     d.add(lowl)
-for d in copy.deepcopy(g5.datasets):
+for d in copy.deepcopy(planck_highL_sets):
+    d.add(lowl)
     d.add(lensing)
     g5.datasets.append(d)
-
-g5.importanceRuns = [post_BAO, post_nonCMB, post_WP]
+for d in copy.deepcopy(planck_highL_sets):
+    d.add(lowl)
+    d.add('reion', 'reion_tau.ini')
+    g5.datasets.append(d)
+g5.importanceRuns = [post_BAO, post_nonCMB, post_zre]
 groups.append(g5)
 
 
@@ -175,7 +183,7 @@ for d in copy.deepcopy(planck_pol_sets):
     d.add(lensing)
     gpolnopoltau.datasets.append(d)
 
-gpolnopoltau.importanceRuns = [post_BAO, post_nonCMB, post_WP]
+gpolnopoltau.importanceRuns = [post_BAO, post_nonCMB]
 groups.append(gpolnopoltau)
 
 glowllens = batchJob.jobGroup('lowllensing')
@@ -349,7 +357,7 @@ for g in groups:
 
 skip = []
 
-covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO']
+covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion']
 covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik',
                    WLonlyHeymans: WLonly}
 
