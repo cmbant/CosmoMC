@@ -364,7 +364,6 @@ class MainWindow(QMainWindow):
             settings.setValue('lastSearchDirectory', dirName)
 
             root = fileName.replace('.paramnames', '')
-
             baseName = os.path.basename(root)
             if not self.other_roots.has_key(baseName):
                 logging.debug("Add root %s"%baseName)
@@ -377,9 +376,8 @@ class MainWindow(QMainWindow):
 
     def updateOtherRoots(self):
         logging.debug("Update other roots")
-
         self.listRoots.clear()
-        for chain, state in other_roots.items():
+        for chain, state in self.other_roots.items():
             item = QListWidgetItem(self.listRoots)
             item.setText(str(chain))
             if state:
@@ -396,19 +394,18 @@ class MainWindow(QMainWindow):
                 logging.debug("Remove root %s"%root)
                 self.plotter.sampleAnalyser.removeOtherRoot(root)
                 self.listRoots.takeItem(i)
+                if self.other_roots.has_key(root):
+                    del self.other_roots[root]
 
     def getOtherRoots(self):
         logging.debug("Get status for other roots")
-
         roots = {}
         for i in range(self.listRoots.count()):
             item = self.listRoots.item(i)
             root = str(item.text())
             state = (item.checkState()==Qt.Checked)
             roots[root] = state
-
         self.other_roots = roots
-
 
     def _updateComboBoxParamTag(self, listOfParams=[]):
         if self.rootdir and os.path.isdir(self.rootdir):
