@@ -30,7 +30,7 @@ lowTEB = 'lowTEB'
 tauprior = {'prior[tau]':'0.07 0.02'}
 tauname = 'tau07'
 WMAPtau = {'prior[tau]':'0.09 0.013'}
-zre_prior = {'use_min_zre', '6.5' }
+zre_prior = {'use_min_zre': '6.5' }
 
 
 camspec_detsets = ['nonclik_detsets.ini']
