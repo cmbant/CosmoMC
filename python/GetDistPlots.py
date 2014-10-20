@@ -227,7 +227,7 @@ class MCSampleAnalysis():
 
         self.readChains(self.main_root, self.mcsamples[self.main_root])
 
-    def addRoot(self, file_root):
+    def addOtherRoot(self, file_root):
         print "add root for %s"%file_root
         base_root = os.path.basename(file_root)
         self.roots.append(base_root)
@@ -235,7 +235,7 @@ class MCSampleAnalysis():
         self.mcsamples[base_root] = MCSamples.MCSamples(file_root)
         self.readChains(base_root, self.mcsamples[base_root])
 
-    def removeRoot(self, file_root):
+    def removeOtherRoot(self, file_root):
         base_root = os.path.basename(file_root)
         print "remove root for %s"%base_root
         if base_root in self.roots:
