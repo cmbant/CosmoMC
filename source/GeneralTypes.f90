@@ -794,7 +794,8 @@
             i = ix
         end if
         DataLike => L%Item(i)
-        call F%Write(Join(char(9),DataLike%LikelihoodType, DataLike%GetTag(), &
+        !first entry is always 1 for now (in future maybe 0 for likelihoods not sampled from)
+        call F%Write(Join(char(9),'1', DataLike%LikelihoodType, DataLike%GetTag(), &
             DataLike%Name, DataLike%Version, trimmed = .true.))
     end do
     call F%Close()
