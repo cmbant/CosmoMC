@@ -419,12 +419,19 @@ class MCSampleAnalysis():
             self.single_samples[root] = np.column_stack((loglikes, samples))
         return self.single_samples[root]
 
-    def paramsForRoot(self, root, labelParams=None):
+    def usedParamsForRoot(self, root):
         if os.path.isabs(root):
             root = os.path.basename(root)
         names = self.mcsamples[root].GetUsedParamNames()
-        #if labelParams is not None:
-        #    names.setLabelsAndDerivedFromParamNames(labelParams)
+        return names
+
+
+    def paramsForRoot(self, root, labelParams=None):
+        if os.path.isabs(root):
+            root = os.path.basename(root)
+        names = self.mcsamples[root].paramNames
+        if labelParams is not None:
+            names.setLabelsAndDerivedFromParamNames(labelParams)
         return names
 
     def boundsForRoot(self, root):

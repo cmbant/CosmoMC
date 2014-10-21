@@ -1522,7 +1522,6 @@ class MCSamples(chains):
         else:
             return text
 
-
     def GetUsedParamNames(self):
         names = []
         for info in self.paramNames.names:

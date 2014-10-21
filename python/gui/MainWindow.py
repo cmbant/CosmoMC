@@ -317,8 +317,7 @@ class MainWindow(QMainWindow):
 
                 if filesparam:
                     # Directory contains file .paramnames
-                    paramNames = self.plotter.sampleAnalyser.paramsForRoot(self.root).list()
-
+                    paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(self.root)
 
                     # Hide combo boxes and fill list
                     self.comboBoxParamTag.hide()
@@ -589,6 +588,7 @@ class MainWindow(QMainWindow):
                 logging.debug("3D plot")
                 logging.debug("roots = %s"%str(roots))
                 sets = [[x, y, color]]
+                logging.debug("sets = %s"%str(sets))
                 self.plotter.plots_3d(roots, sets)
                 self.updatePlot()
 
