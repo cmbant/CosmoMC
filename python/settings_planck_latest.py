@@ -305,9 +305,6 @@ for d in copy.deepcopy(g.datasets):
     gphi.datasets.append(d)
 gphi.importanceRuns = []
 
-
-
-
 groups.append(gphi)
 
 
@@ -347,6 +344,10 @@ gWL.importanceRuns = []
 groups.append(gWL)
 
 
+gWMAP = batchJob.jobGroup('WMAP')
+gWMAP.params = [[]]
+gWMAP.datasets = [WMAP9]
+groups.append(gWMAP)
 
 
 for g in groups:
