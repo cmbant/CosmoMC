@@ -92,6 +92,14 @@ class jobGroup:
             self.importanceRuns = importanceRuns
             self.datasets = datasets
 
+class importanceSetting:
+    def __init__(self, names, inis=[], chain_analysis_setings={}):
+        self.names = names
+        self.inis = inis
+        self.dist_settings = chain_analysis_setings
+
+    def wantImportance(self, jobItem):
+        return True
 
 class jobItem:
 
@@ -113,6 +121,7 @@ class jobItem:
         self.importanceItems = []
         self.result_converge = None
         self.group = None
+        self.dist_settings = dict()
         self.makeIDs()
 
     def iniFile(self, variant=''):
@@ -122,15 +131,19 @@ class jobItem:
 
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
-        for (imp, ini, arr) in [(x[0], x[1], x) for x in importanceRuns]:
-            if len(arr) > 2 and not arr[2].wantImportance(self): continue
-            if len(set(imp).intersection(self.data_set.names)) > 0:
+        for impRun in importanceRuns:
+            if isinstance(impRun, importanceSetting):
+                if not impRun.wantImportance(self): continue
+            else:
+                impRun = importanceSetting(impRun[0], impRun[1])
+                if len(impRun) > 2 and not impRun[2].wantImportance(self): continue
+            if len(set(impRun.names).intersection(self.data_set.names)) > 0:
                 print 'importance job duplicating parent data set:' + self.name
                 continue
-            data = self.data_set.extendForImportance(imp, ini)
+            data = self.data_set.extendForImportance(impRun.names, impRun.inis)
             job = jobItem(self.batchPath, self.param_set, data)
-            job.importanceTag = "_".join(imp)
-            job.importanceSettings = ini
+            job.importanceTag = "_".join(impRun.names)
+            job.importanceSettings = impRun.inis
             tag = '_post_' + job.importanceTag
             job.name = self.name + tag
             job.chainRoot = self.chainRoot + tag
@@ -142,6 +155,7 @@ class jobItem:
             job.isImportanceJob = True
             job.parent = self
             job.group = self.group
+            job.dist_settings.update(impRun.dist_settings)
             job.makeIDs()
             self.importanceItems.append(job)
 
