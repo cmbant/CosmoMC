@@ -1785,7 +1785,6 @@ def WritePlotFileExport():
     return text
 
 
-
 # ==============================================================================
 
 # Usefull functions
@@ -1818,3 +1817,4 @@ def GetChainFiles(rootdir):
         else: break
     return chain_files
 
+# ==============================================================================

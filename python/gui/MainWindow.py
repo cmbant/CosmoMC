@@ -54,13 +54,23 @@ class MainWindow(QMainWindow):
         # Allow to shutdown the GUI with Ctrl+C
         signal.signal(signal.SIGINT, signal.SIG_DFL)
 
+        # Path for .ini file
         self.iniFile = ""
 
-        # Root directory
-        self.rootdir = None
-        self.root = None
-        self.isgrid = False
-        self.other_roots = {}
+        # Path of root directory
+        self.rootdirname = None
+
+        # Root name for chain
+        self.rootname = None
+
+        # Dict for other roots
+        self.other_rootnames = {}
+
+        self.is_grid = False
+        self.grid_items = {}
+
+        self.paramTag = ""
+        self.dataTag = ""
 
         self.plotter = None
 
@@ -131,9 +141,9 @@ class MainWindow(QMainWindow):
         self.pushButtonSelect = QPushButton(QIcon(":/images/file_add.png"),
                                             "", self.selectWidget)
         self.pushButtonSelect.setToolTip("Choose root directory")
-        self.connect(self.pushButtonSelect, SIGNAL("clicked()"), self.selectRootDir)
+        self.connect(self.pushButtonSelect, SIGNAL("clicked()"), self.selectRootDirName)
         shortcut = QShortcut(QKeySequence(self.tr("Ctrl+O")), self)
-        self.connect(shortcut, SIGNAL("activated()"), self.selectRootDir)
+        self.connect(shortcut, SIGNAL("activated()"), self.selectRootDirName)
 
         self.listRoots = QListWidget(self.selectWidget)
         self.listRoots.setMaximumSize(QSize(16777215, 120))
@@ -217,6 +227,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dockTop)
 
     def setIniFile(self, iniFile):
+        logging.debug("ini file is %s"%iniFile)
         self.iniFile = iniFile
 
     # slots for menu actions
@@ -229,14 +240,19 @@ class MainWindow(QMainWindow):
         if self.plotter:
             logging.debug("Saving PDF in file %s"%filename)
             self.plotter.export(filename)
+        else:
+            logging.warning("No plotter data to export")
 
     def script(self):
         filename, filt = QFileDialog.getSaveFileName(
-            self, "Choose a file name", '.', "Python (*.py)")
+            self, "Choose a file name", '.', "rPython (*.py)")
         if not filename: return
+        filename = str(filename)
+        logging.debug("Export script to %s"%filename)
 
     def showMargeStats(self):
         if self.plotter is None:
+            logging.warning("No plotter data. Can't show marge stats")
             self.statusBar().showMessage("No data available", 2000)
             return
 
@@ -253,12 +269,12 @@ class MainWindow(QMainWindow):
 
     # slots for selectWidget
 
-    def selectRootDir(self):
+    def selectRootDirName(self):
         """
         Slot function called when pushButtonSelect is pressed.
         """
         # If a rootdir is defined, add another root
-        if self.rootdir is not None and self.isgrid==False:
+        if self.rootdirname is not None and self.is_grid==False:
             self.addOtherRoot()
             return
 
@@ -277,47 +293,35 @@ class MainWindow(QMainWindow):
         if dirName:
             settings.setValue('lastSearchDirectory', dirName)
 
-            # Grid chain
+            # Root directory
+            self.rootdirname = dirName
+            self.lineEditDirectory.setText(self.rootdirname)
+
+            # Grid chains
             filebatch = os.path.join(dirName, "batch.pyobj")
             if os.path.isfile(filebatch):
-                self.isgrid = True
-                self.rootdir = dirName
-                self.lineEditDirectory.setText(self.rootdir)
-                self.listRoots.hide()
-                self.pushButtonRemove.hide()
-                self._readGridChain(self.rootdir)
+                self._readGridChain(self.rootdirname)
                 return
 
-            # Root directory
-            self.rootdir = dirName
-            self.lineEditDirectory.setText(self.rootdir)
+            # Root file name
+            self._getRootFileName()
+            if self.rootname is None:
+                logging.warning("Root file name is not defined")
+                #return
 
-            # File .paramnames
-            filesparam = glob.glob(os.path.join(self.rootdir, "*.paramnames"))
-            if len(filesparam)>1:
-                fileparam, ok = QInputDialog.getItem(self, "Select file", "Param name:",
-                                                     filesparam, 0, False)
-                if ok and fileparam:
-                    self.root = str(fileparam).replace(".paramnames", "")
-                    logging.debug("self.root = %s"%self.root)
             else:
-                # Root file name
-                self.root = MCSamples.GetRootFileName(self.rootdir)
+                # Get chain files
+                chainFiles = MCSamples.GetChainFiles(self.rootname)
+                if len(chainFiles)==0:
+                    logging.debug("No chain files in %s"%self.rootdirname)
+                    self._updateComboBoxParamTag()
+                    self._updateComboBoxColor()
+                else:
+                    self.statusBar().showMessage("Reading chain files in %s"%str(self.rootname))
+                    self.plotter = GetDistPlots.GetDistPlotter(
+                        file_root=self.rootname, ini_file=self.iniFile)
 
-            chainFiles = MCSamples.GetChainFiles(self.root)
-            if len(chainFiles)==0:
-                logging.debug("No chain files in %s"%self.rootdir)
-                self._updateComboBoxParamTag()
-                self._updateComboBoxColor()
-            else:
-
-                self.statusBar().showMessage("Reading chain files in %s"%str(self.root))
-                self.plotter = GetDistPlots.GetDistPlotter(
-                    file_root=self.root, ini_file=self.iniFile)
-
-                if filesparam:
-                    # Directory contains file .paramnames
-                    paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(self.root)
+                    paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(self.rootname)
 
                     # Hide combo boxes and fill list
                     self.comboBoxParamTag.hide()
@@ -333,19 +337,53 @@ class MainWindow(QMainWindow):
         else:
             logging.debug("No directory specified")
 
-
     def _readGridChain(self, batchPath):
         logging.debug("Read grid chain in %s"%batchPath)
+        self.is_grid = True
         batch = batchJob.readobject(batchPath)
         items = dict()
         for jobItem in batch.items(True, True):
             if jobItem.chainExists():
                 if not jobItem.paramtag in items: items[jobItem.paramtag] = []
-                items[jobItem.paramtag].append(jobItem)
-        names = sorted(items.keys())
+                items[jobItem.paramtag].append(jobItem.datatag)
+        logging.debug("Found %i names for grid"%len(items.keys()))
+        self.grid_items = items
         self.comboBoxParamTag.show()
         self.comboBoxDataTag.show()
-        self._updateComboBoxParamTag(names)
+        self.listRoots.hide()
+        self.pushButtonRemove.hide()
+        self._updateComboBoxParamTag(self.grid_items.keys())
+
+    def _getFileParam(self, paramTag=None, dataTag=None):
+        fileparam = ""
+        if self.rootdirname is not None:
+            if paramTag is not None and dataTag is not None:
+                rootdirname = os.path.join(self.rootdirname, paramTag, dataTag)
+            else:
+                rootdirname = self.rootdirname
+            filesparam = MCSamples.GetParamNamesFiles(rootdirname)
+            if len(filesparam)>1:
+                fn, ok = QInputDialog.getItem(self, "Select file", "Param name:",
+                                              filesparam, 0, False)
+                if ok and fn: fileparam = fn
+            elif len(filesparam)==1:
+                fileparam = filesparam[0]
+        return fileparam
+
+    def _getRootFileName(self, paramTag=None, dataTag=None):
+        fileparam = self._getFileParam(paramTag, dataTag)
+        if fileparam<>'':
+            self.rootname = str(fileparam).replace(".paramnames", "")
+            logging.debug("rootname: %s"%self.rootname)
+        else:
+            if paramTag is not None and dataTag is not None:
+                rootdirname = os.path.join(self.rootdirname, paramTag, dataTag)
+            else:
+                rootdirname = self.rootdirname
+            self.rootname = MCSamples.GetRootFileName(rootdirname)
+            logging.debug("rootname: %s"%self.rootname)
+
+
 
 
     def addOtherRoot(self):
@@ -366,9 +404,9 @@ class MainWindow(QMainWindow):
 
             root = fileName.replace('.paramnames', '')
             baseName = os.path.basename(root)
-            if not self.other_roots.has_key(baseName):
+            if not self.other_rootnames.has_key(baseName):
                 logging.debug("Add root %s"%baseName)
-                self.other_roots[baseName] = True
+                self.other_rootnames[baseName] = True
 
                 if self.plotter is not None:
                     self.plotter.sampleAnalyser.addOtherRoot(root)
@@ -378,7 +416,7 @@ class MainWindow(QMainWindow):
     def updateOtherRoots(self):
         logging.debug("Update other roots")
         self.listRoots.clear()
-        for chain, state in self.other_roots.items():
+        for chain, state in self.other_rootnames.items():
             item = QListWidgetItem(self.listRoots)
             item.setText(str(chain))
             if state:
@@ -395,8 +433,8 @@ class MainWindow(QMainWindow):
                 logging.debug("Remove root %s"%root)
                 self.plotter.sampleAnalyser.removeOtherRoot(root)
                 self.listRoots.takeItem(i)
-                if self.other_roots.has_key(root):
-                    del self.other_roots[root]
+                if self.other_rootnames.has_key(root):
+                    del self.other_rootnames[root]
 
     def getOtherRoots(self):
         logging.debug("Get status for other roots")
@@ -406,33 +444,76 @@ class MainWindow(QMainWindow):
             root = str(item.text())
             state = (item.checkState()==Qt.Checked)
             roots[root] = state
-        self.other_roots = roots
+        self.other_rootnames = roots
 
     def _updateComboBoxParamTag(self, listOfParams=[]):
-        if self.rootdir and os.path.isdir(self.rootdir):
+        if self.rootdirname and os.path.isdir(self.rootdirname):
             self.comboBoxParamTag.show()
             self.comboBoxParamTag.clear()
             if not listOfParams:
-                listOfParams = [ d for d in os.listdir(self.rootdir)
-                                 if os.path.isdir(os.path.join(self.rootdir, d)) ]
+                listOfParams = [ d for d in os.listdir(self.rootdirname)
+                                 if os.path.isdir(os.path.join(self.rootdirname, d)) ]
             self.comboBoxParamTag.addItems(listOfParams)
+            self.setParamTag(str(self.comboBoxParamTag.itemText(0)))
+
+    def _updateComboBoxDataTag(self, listOfDatas=[]):
+        #import pdb; pdb.set_trace()
+        logging.debug("Update data with %i values"%len(listOfDatas))
+        if self.rootdirname and os.path.isdir(self.rootdirname):
+            self.comboBoxDataTag.show()
+            self.comboBoxDataTag.clear()
+            if not listOfDatas:
+                pass
+            self.comboBoxDataTag.addItems(listOfDatas)
 
     def setParamTag(self, strParamTag):
         """
         Slot function called on change of comboBoxParamTag.
         """
         self.paramTag = str(strParamTag)
-        paramDir = os.path.join(self.rootdir, self.paramTag)
-        if os.path.isdir(paramDir):
-            dirs = [ d for d in os.listdir(paramDir)
-                     if os.path.isdir(os.path.join(paramDir, d)) ]
-            self.comboBoxDataTag.addItems(dirs)
+        logging.debug("Param: %s"%self.paramTag)
+        if self.is_grid:
+            if self.grid_items.has_key(self.paramTag):
+                datas = self.grid_items[self.paramTag]
+                self._updateComboBoxDataTag(datas)
+            else:
+                logging.warning("Grid defined but no data found for param %s"%self.paramTag)
+        else:
+            logging.warning("No grid defined and no data found for param %s"%self.paramTag)
+            dir_param = os.path.join(self.rootdirname, self.paramTag)
+            if os.path.isdir(dir_param):
+                subdirs = [ d for d in os.listdir(dir_param)
+                            if os.path.isdir(os.path.join(dir_param, d)) ]
+                self._updateComboBoxDataTag(subdirs)
+            else:
+                logging.warning("No param found")
 
     def setDataTag(self, strDataTag):
         """
         Slot function called on change of comboBoxDataTag.
         """
-        logging.debug("Data tag is %s"%strDataTag)
+        self.dataTag = str(strDataTag)
+        logging.debug("Data: %s"%strDataTag)
+
+        path = os.path.join(self.rootdirname, self.paramTag, self.dataTag)
+        if not os.path.isdir(path):
+            logging.warning("No directory found for %s/%s"%(self.paramTag, self.dataTag))
+            return
+
+        self._getRootFileName(self.paramTag, self.dataTag)
+        logging.debug("rootname: %s"%self.rootname)
+        if self.rootname is None:
+            logging.warning("Root file name is not defined")
+            return
+
+        self.plotter = GetDistPlots.GetDistPlotter(
+            file_root=self.rootname, ini_file=self.iniFile)
+
+        paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(self.rootname)
+
+        self._updateListParametersX(paramNames)
+        self._updateListParametersY(paramNames)
+        self._updateComboBoxColor(paramNames)
 
 
     def _updateListParametersX(self, items):
@@ -498,11 +579,11 @@ class MainWindow(QMainWindow):
             self.listParametersY.item(i).setCheckState(state)
 
     def _updateComboBoxColor(self, listOfParams=[]):
-        if self.rootdir and os.path.isdir(self.rootdir):
-            self.comboBoxParamTag.clear()
+        if self.rootdirname and os.path.isdir(self.rootdirname):
+            self.comboBoxColor.clear()
             if not listOfParams:
-                listOfParams = [ d for d in os.listdir(self.rootdir)
-                                 if os.path.isdir(os.path.join(self.rootdir, d)) ]
+                listOfParams = [ d for d in os.listdir(self.rootdirname)
+                                 if os.path.isdir(os.path.join(self.rootdirname, d)) ]
             self.comboBoxColor.addItems(listOfParams)
 
 
@@ -534,11 +615,11 @@ class MainWindow(QMainWindow):
         self.plotter.settings.setWithSubplotSize(3.000000)
 
         roots = []
-        roots.append(os.path.basename(self.root))
+        roots.append(os.path.basename(self.rootname))
 
         self.getOtherRoots()
-        for other_root, state in self.other_roots.items():
-            if state: roots.append(os.path.basename(other_root))
+        for other_rootname, state in self.other_rootnames.items():
+            if state: roots.append(os.path.basename(other_rootname))
         logging.debug("Plotting with roots = %s"%str(roots))
 
 
