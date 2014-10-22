@@ -3,7 +3,8 @@ from pylab import *
 
 g = s.getSinglePlotter()
 
-roots = [g.getRoot('omegak', s.defdata_all),
+roots = [ g.getRoot('omegak', s.defdata_TT),
+       g.getRoot('omegak', s.defdata_all),
        g.getRoot('omegak', s.defdata_all + '_lensing'),
        g.getRoot('omegak', s.defdata_all + '_lensing_BAO')]
 
@@ -19,5 +20,5 @@ g.add_2d_contours(roots[2], params[0], params[1], filled=True, zorder=2, alpha=0
 
 g.add_line([1, 0], [0, 1], zorder=0)
 
-g.add_legend(['+lensing', '+lensing+BAO'])
+g.add_legend(['+TE+EE', '+lensing', '+lensing+BAO'])
 g.export()

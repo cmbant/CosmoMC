@@ -5,10 +5,11 @@ g = s.getSinglePlotter()
 
 g.make_figure(1, xstretch=1.3)
 base = 'base_nnu_meffsterile_'
-roots = [base + s.defdata_all,
-         base + s.defdata_all + '_post_BAO',
-         'base_nnu_mnu_' + s.defdata_all + '_post_BAO',
-         'base_' + s.defdata_all + '_post_BAO']
+roots = [ g.getRoot('nnu_meffsterile', s.defdata),
+          g.getRoot('nnu_meffsterile', s.defdata + '_BA0'),
+          g.getRoot('nnu_mmu', s.defdata + '_BAO'),
+          g.getRoot('', s.defdata + '_BAO')
+                  ]
 
 omm = np.arange(0.2, 0.45, 0.01)
 

@@ -25,6 +25,7 @@ Aphiphi       A^{\phi\phi}_{\mathrm{L}} #scaling of lensing potential power (len
 alpha_SNLS    \alpha_{\mathrm{SNLS}}
 beta_SNLS     \beta_{\mathrm{SNLS}}
 asz           A_{\mathrm{tSZ}}     # SZ template amplitude, as in WMAP
+calPlanck     y_{\rm cal}
 aps100        A^{\mathrm{PS}}_{100}      # Point source amplitude at 100 GHz
 aps143        A^{\mathrm{PS}}_{143}      # Point source amplitude at 143 GHz
 aps217        A^{\mathrm{PS}}_{217}      # Point source amplitude at 217 GHz

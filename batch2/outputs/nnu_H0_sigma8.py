@@ -6,7 +6,7 @@ g = s.getSinglePlotter()
 g.make_figure(1, xstretch=1.3)
 
 base = 'base_nnu_'
-roots = [base + s.defdata_TT]
+roots = [base + s.defdata]
 
 
 neff = [1, 5]
@@ -35,9 +35,9 @@ g.add_1d_marker(norm + 0.39)
 g.add_1d_marker(norm + 0.57)
 g.add_1d_marker(norm + 1)
 
-g.add_2d_contours(base + s.defdata_all + '_post_BAO', 'nnu', 'H0', color='black')
-g.add_2d_contours(base + s.defdata_all + '_post_abundances', 'nnu', 'H0', color='red')
-g.add_legend([s.planckall + '+BAO', s.planckall + '+$Y_P$'], legend_loc='upper left', colored_text=True)
+g.add_2d_contours(g.getRoot('nnu', s.defdata_all + '_BAO'), 'nnu', 'H0', color='black')
+g.add_2d_contours(g.getRoot('nnu', s.defdata_all + '_abundances'), 'nnu', 'H0', color='red')
+g.add_legend([s.defplanck + '+BAO', s.planckall + '+$Y_P$'], legend_loc='upper left', colored_text=True)
 
 gca().set_xticks([2, 2.5, 3.0, 3.5, 4])
 
