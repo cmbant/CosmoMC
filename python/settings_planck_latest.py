@@ -100,7 +100,7 @@ post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceF
 post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 
-post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
+post_WP = [[ 'WMAPtau'], [WMAPtau]]
 post_abundance = [['abundances'], ['abundances.ini', {'redo_likes':'F', 'redo_add':'T'}], importanceFilterAbundance()]
 post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], chain_analysis_setings={'limits[zrei]':'6.5 N'})
 
@@ -116,7 +116,7 @@ for d in g.datasets:
     d.add(lowTEB)
 
 g.params = [[], ['omegak'], ['mnu'], ['r'], ['nrun', 'r'], ['nnu'], ['nrun'], ['Alens'], ['yhe'], ['w'], ['alpha1']]
-g.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all]
+g.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all, post_zre]
 groups.append(g)
 
 
@@ -205,7 +205,6 @@ g6 = batchJob.jobGroup('lensing')
 g6.datasets = copy.deepcopy(g.datasets)
 for d in g6.datasets:
     d.add(lensing)
-    d.add(None, {'redo_theory':'F'})
 
 g6.params = [['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alens'], ['nnu', 'meffsterile', 'r']]
 g6.importanceRuns = []
@@ -215,10 +214,9 @@ gbest = batchJob.jobGroup('basebest')
 gbest.datasets = copy.deepcopy(g.datasets)
 for d in gbest.datasets:
     d.add(lensing)
-    d.add(None, {'redo_theory':'F'})
 
 gbest.params = [[]]
-gbest.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB]
+gbest.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB, post_zre]
 groups.append(gbest)
 
 
