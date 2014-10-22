@@ -11,7 +11,11 @@ items = Opts.sortedParamtagDict(chainExist=args.exists)
 
 for paramtag, parambatch in items:
     for jobItem in parambatch:
-        if args.normed:
-            print jobItem.normed_name, '(%s)' % jobItem.group
+        if hasattr(jobItem, 'group'):
+            tag = '(%s)' % jobItem.group
         else:
-            print jobItem.name, '(%s)' % jobItem.group
+            tag = ''
+        if args.normed:
+            print jobItem.normed_name, tag
+        else:
+            print jobItem.name, tag
