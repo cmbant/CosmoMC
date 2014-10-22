@@ -31,6 +31,7 @@ export OMP_NESTED=FALSE
 ### qsub command to use when submitting
 ##DEFAULT_qsub: msub ##
 ##DEFAULT_queue: super2 ##
+##DEFAULT_qdel: canceljob ##
 
 ###put the generated run commands here
 ##COMMAND##
