@@ -19,7 +19,7 @@ for TT in [False, True]:
         basedat = s.defdata_TTonly
         basedatname = s.planckTT
         fname = 'PlanckTT'
-        allname = s.planckTTlowEE
+        allname = s.planckTTlowTEB
 
     roots = [g.getRoot('', basedat),
              g.getRoot('', basedat + '_lensing'),

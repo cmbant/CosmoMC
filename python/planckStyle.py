@@ -32,23 +32,29 @@ defdata_all = defdata_root + '_TTTEEE_lowTEB'
 defdata_TTonly = defdata_root + '_TT_lowl'
 defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
 
+defdata = defdata_TT
 
 planck = r'\textit{Planck}'
 planckTT = r'\textit{Planck} TT'
-planckTTlowEE = r'\textit{Planck} TT$+$lowE'
-planckall = planck
+planckTTlowTEB = r'\textit{Planck} TT$+$lowP'
+planckall = r'\textit{Planck} TT\,TE\,EE$+$lowP'
+NoLowLE = r'\textit{Planck} TT\,TE\,EE'
+lensing = r'\textit{Planck} TT$+$lowP$+$lensing'
+lensingall = r'\textit{Planck} TT\,TE\,EE$+$lowP$+$lensing'
+
+defplanck = planckTTlowTEB
+
+NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
+NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
+WPhighLlensing = r'\textit{Planck}+lensing+WP+highL'
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
-lensing = r'\textit{Planck}+lensing'
-WPhighLlensing = r'\textit{Planck}+lensing+WP+highL'
 NoLowL = r'\textit{Planck}$-$lowL'
-NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
 NoLowLtau = r'\textit{Planck}$-$lowL+$\tau$prior'
-NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
-NoLowLE = r'\textit{Planck}$-$lowE'
 lensonly = 'lensing'
 HST = r'$H_0$'
 BAO = 'BAO'
+
 
 LCDM = r'$\Lambda$CDM'
 
