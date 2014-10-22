@@ -78,7 +78,7 @@ class importanceFilterLensing:
     def wantImportance(self, jobItem):
         return [p for planck in planck_vars if planck in jobItem.data_set.names] and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
 
-class importanceFilterZre:
+class zre_importance(batchJob.importanceSetting):
     def wantImportance(self, jobItem):
         return [p for planck in planck_vars if planck in jobItem.data_set.names] and not 'reion' in jobItem.data_set.names
 
@@ -102,7 +102,7 @@ post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], impo
 
 post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
 post_abundance = [['abundances'], ['abundances.ini', {'redo_likes':'F', 'redo_add':'T'}], importanceFilterAbundance()]
-post_zre = [['zre6p5'], ['zre_prior.ini'], importanceFilterZre()]
+post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], chain_analysis_setings={'limits[zrei]':'6.5 N'})
 
 # set up groups of parameters and data sets
 
