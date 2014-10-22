@@ -23,7 +23,7 @@ rcParams.update(params)
 
 non_final = False
 version = 'clik10.1'
-defdata_root = 'plikHM'
+defdata_root = 'CamSpecHM'
 defdata_TT = defdata_root + '_TT_lowTEB'
 defdata_TE = defdata_root + '_TE_lowTEB'
 defdata_EE = defdata_root + '_EE_lowTEB'
@@ -37,10 +37,10 @@ defdata = defdata_TT
 planck = r'\textit{Planck}'
 planckTT = r'\textit{Planck} TT'
 planckTTlowTEB = r'\textit{Planck} TT$+$lowP'
-planckall = r'\textit{Planck} TT\,TE\,EE$+$lowP'
-NoLowLE = r'\textit{Planck} TT\,TE\,EE'
+planckall = r'\textit{Planck} TT,TE,EE$+$lowP'
+NoLowLE = r'\textit{Planck} TT,TE,EE'
 lensing = r'\textit{Planck} TT$+$lowP$+$lensing'
-lensingall = r'\textit{Planck} TT\,TE\,EE$+$lowP$+$lensing'
+lensingall = r'\textit{Planck} TT,TE,EE$+$lowP$+$lensing'
 
 defplanck = planckTTlowTEB
 
