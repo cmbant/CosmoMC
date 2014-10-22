@@ -135,8 +135,8 @@ class jobItem:
             if isinstance(impRun, importanceSetting):
                 if not impRun.wantImportance(self): continue
             else:
-                impRun = importanceSetting(impRun[0], impRun[1])
                 if len(impRun) > 2 and not impRun[2].wantImportance(self): continue
+                impRun = importanceSetting(impRun[0], impRun[1])
             if len(set(impRun.names).intersection(self.data_set.names)) > 0:
                 print 'importance job duplicating parent data set:' + self.name
                 continue
