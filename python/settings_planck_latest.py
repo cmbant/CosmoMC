@@ -64,6 +64,11 @@ for planck, ini, base in zip(planck_vars, planck_ini, planck_base):
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
 
+likechecks = []
+likechecks.append(batchJob.dataSet(['CamSpecDS', 'TT'], camspec_detsets + ['CAMspec_TT.ini']))
+likechecks.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
+
+
 start_at_bestfit = False
 newCovmats = False
 
@@ -344,22 +349,31 @@ gWL.importanceRuns = []
 groups.append(gWL)
 
 
-gWMAP = batchJob.jobGroup('WMAP')
-gWMAP.params = [[]]
-gWMAP.datasets = [WMAP9]
-groups.append(gWMAP)
-
-
 for g in groups:
     for p in g.params:
         if 'nnu' in p:
             g.importanceRuns.append(post_abundance)
             break
 
+
+gWMAP = batchJob.jobGroup('WMAP')
+gWMAP.params = [[]]
+gWMAP.datasets = [WMAP9]
+groups.append(gWMAP)
+
+gchecks = batchJob.jobGroup('checks')
+gchecks.datasets = likechecks
+for d in gchecks.datasets:
+    d.add(lowTEB)
+
+gchecks.params = [[], ['mnu'], ['nnu'], ['Alens'], ['yhe']]
+gchecks.importanceRuns = []
+groups.append(gchecks)
+
 skip = []
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion']
-covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik',
+covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'Mspec':'CamSpec',
                    WLonlyHeymans: WLonly}
 
 # try to match run to exisitng covmat
