@@ -12,6 +12,6 @@ items = Opts.sortedParamtagDict(chainExist=args.exists)
 for paramtag, parambatch in items:
     for jobItem in parambatch:
         if args.normed:
-            print jobItem.normed_name
+            print jobItem.normed_name, '(%s)' % jobItem.group
         else:
-            print jobItem.name
+            print jobItem.name, '(%s)' % jobItem.group
