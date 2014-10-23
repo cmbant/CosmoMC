@@ -357,6 +357,7 @@ groups.append(gWL)
 
 
 for g in groups:
+    if len([d for d in g.datasets if  'abundances' in d.names]): continue
     for p in g.params:
         if 'nnu' in p:
             g.importanceRuns.append(post_abundance)
