@@ -144,7 +144,7 @@ for lmax in range(550, 2550, 150):
         d.add('lmax' + str(lmax), {'camspec_lmax': (str(lmax) + ' ') * 6})
     g.datasets += sets
 g.params = [[], ['Alens'], ['nnu']]
-groups.append(g)
+# groups.append(g)
 
 g = batchJob.jobGroup('lmin')
 lmins = [800, 1200]
@@ -161,6 +161,8 @@ groups.append(g)
 covrenames = []
 covrenames.append(['_tau07', '_lowTEB'])
 covrenames.append(['_tau07_lowl', '_lowTEB'])
+
+covNameMappings = {'v910CMH':'CamSpec', 'v910F':'CamSpec', 'plikDSv16':'plik', 'plikHMv16':'plik', 'tau07':'lowTEB'}
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
