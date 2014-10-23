@@ -21,8 +21,8 @@ rc('text.latex', preamble=r'\usepackage{' + sfmath.replace(os.sep, '/') + '}')
 
 rcParams.update(params)
 
-non_final = False
-version = 'clik10.1'
+non_final = True
+version = 'CamSpecHM'
 defdata_root = 'CamSpecHM'
 defdata_TT = defdata_root + '_TT_lowTEB'
 defdata_TE = defdata_root + '_TE_lowTEB'
