@@ -53,7 +53,7 @@ planck_base = [camspec_CS]
 
 if True:
     planck_vars += ['plikHM']
-    planck_ini += ['plik_dx11dr2_HM_v15_%s.ini']
+    planck_ini += ['plik_dx11dr2_HM_v16_%s.ini']
     planck_base += [[]]
 for planck, ini, base in zip(planck_vars, planck_ini, planck_base):
     for name, var in zip(variant_tag, variants):
