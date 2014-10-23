@@ -35,6 +35,7 @@ class batchArgs():
             self.parser.add_argument('--skip_data', nargs='+', default=None, help='skip runs containing specific data (data1)')
             self.parser.add_argument('--skip_param', default=None, help='skip runs containing specific parameter (paramx)')
             self.parser.add_argument('--group', default=None, nargs='+', help='include only runs with given group names')
+            self.parser.add_argument('--skip_group', default=None, nargs='+', help='exclude runs with given group names')
 
             if self.notExist:
                 self.parser.add_argument('--notexist', action='store_true', help='only include chains that don''t already exist on disk')
@@ -77,7 +78,8 @@ class batchArgs():
             return False
 
         def groupMatches(self, jobItem):
-            return self.args.group is None or jobItem.group in self.args.group
+            return (self.args.group is None or jobItem.group in self.args.group) and (
+                self.args.skip_group is None or not jobItem.group in self.args.skip_group)
 
         def dataMatches(self, jobItem):
             if self.args.musthave_data is not None and not jobItem.data_set.hasAll(self.args.musthave_data): return False
