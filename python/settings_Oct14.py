@@ -19,9 +19,6 @@ tauprior = {'prior[tau]':'0.07 0.015'}
 tauname = 'tau07'
 WMAPtau = {'prior[tau]':'0.09 0.013'}
 
-varTE = {'param[calTE]': '1 0.1 2 0.005 0.005'}
-varEE = {'param[calEE]': '1 0.1 2 0.01 0.01'}
-
 
 TT = {'want_spec':'T T T T F F'}
 EE = {'want_spec':'F F F F F T'}
@@ -35,12 +32,9 @@ TT100_143 = {'want_spec':'T T F F F F', 'param[cal2]':'0.995', 'param[aps217]':'
 no217auto = {'want_spec':'T T F T F F'}
 
 
-freecal = 'freecal.ini'
-
-
 CamSpecVars = ['v910F', 'v910CMH']
-planck_detsets = [freecal, 'nonclik_detsets.ini']
-planck_CS = [freecal, 'nonclik.ini']
+planck_detsets = ['nonclik_detsets.ini']
+planck_CS = ['nonclik.ini']
 
 # not using these checks yet
 wig1800_217 = {'param[wig2_217]':'0 -50 50 3 3'}
@@ -62,16 +56,16 @@ for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detse
 
 
 plikHM = []
-plikHM.append(batchJob.dataSet(['plikHMv15', 'TT'], ['plik_dx11dr2_HM_v15_TT.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v15_TT.covmat'))
-plikHM.append(batchJob.dataSet(['plikHMv15', 'TE'], ['plik_dx11dr2_HM_v15_TE.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v15_TE.covmat'))
-plikHM.append(batchJob.dataSet(['plikHMv15', 'EE'], ['plik_dx11dr2_HM_v15_EE.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v15_EE.covmat'))
-plikHM.append(batchJob.dataSet(['plikHMv15', 'TTTEEE'], ['plik_dx11dr2_HM_v15_TTTEEE.ini'], covmat='planck_covmats/plik_dx11dr2_DS_v15_TTTEEE.covmat'))
+plikHM.append(batchJob.dataSet(['plikHMv16', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv16', 'TE'], ['plik_dx11dr2_HM_v16_TE.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv16', 'EE'], ['plik_dx11dr2_HM_v16_EE.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv16', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
 
 plikDS = []
-plikDS.append(batchJob.dataSet(['plikDSv15', 'TT'], ['plik_dx11dr2_DS_v15_TT.ini'], covmat='planck_covmats/plik_dx11dr2_HM_v15_TT.covmat'))
-plikDS.append(batchJob.dataSet(['plikDSv15', 'TE'], ['plik_dx11dr2_DS_v15_TE.ini'], covmat='planck_covmats/plik_dx11dr2_HM_v15_TE.covmat'))
-plikDS.append(batchJob.dataSet(['plikDSv15', 'EE'], ['plik_dx11dr2_DS_v15_EE.ini'], covmat='planck_covmats/plik_dx11dr2_HM_v15_EE.covmat'))
-plikDS.append(batchJob.dataSet(['plikDSv15', 'TTTEEE'], ['plik_dx11dr2_DS_v15_TTTEEE.ini'], covmat='planck_covmats/plik_dx11dr2_HM_v15_TTTEEE.covmat'))
+plikDS.append(batchJob.dataSet(['plikDSv16', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
+plikDS.append(batchJob.dataSet(['plikDSv16', 'TE'], ['plik_dx11dr2_DS_v16_TE.ini']))
+plikDS.append(batchJob.dataSet(['plikDSv16', 'EE'], ['plik_dx11dr2_DS_v16_EE.ini']))
+plikDS.append(batchJob.dataSet(['plikDSv16', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
 
 Mspec = []
 Mspec.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
