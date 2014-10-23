@@ -266,11 +266,14 @@ def queue_job_details(batchPath=None, running=True, queued=True, warnNotBatch=Tr
     for line in res[2:]:
         if ' ' + os.environ.get('USER') + ' ' in line and (queued and not ' Running ' in line or running and ' Running ' in line):
             items = line.split()
-            jobId = items[0].split('.')
-            if jobId[0].upper() == 'TOTAL': continue
-            if len(jobId) == 1 or jobId[0].isdigit(): jobId = jobId[0]
-            else: jobId = jobId[1]
+            jobId = items[0]
             j = index.jobSettings.get(jobId)
+            if j is None:
+                jobId = items[0].split('.')
+                if jobId[0].upper() == 'TOTAL': continue
+                if len(jobId) == 1 or jobId[0].isdigit(): jobId = jobId[0]
+                else: jobId = jobId[1]
+                j = index.jobSettings.get(jobId)
             if j is None:
                 if warnNotBatch: print '...Job ' + jobId + ' not in this batch, skipping'
                 continue

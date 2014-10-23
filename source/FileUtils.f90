@@ -228,7 +228,7 @@
     logical, intent(in), optional :: forWrite
 
     if (this%unit/=0) return
-    if (PresentDefault(.false.,forWrite) .and. this%ReadOnly) then
+    if (DefaultFalse(forWrite) .and. this%ReadOnly) then
         call this%Error('File not open for write')
     else
         call this%Error('File not opened')
@@ -339,7 +339,7 @@
     this%FileName = trim(aname)
 
     amode = PresentDefault(this%mode, mode)
-    if (PresentDefault(.false., forwrite)) then
+    if (DefaultFalse(forwrite)) then
         state = 'replace'
         action = 'readwrite'
         this%ReadOnly = .false.
@@ -348,7 +348,7 @@
         action = 'read'
         this%ReadOnly = .true.
     end if
-    if (PresentDefault(.false., append) .and. FileExists(aname)) then
+    if (DefaultFalse(append) .and. FileExists(aname)) then
         pos = 'append'
         state = 'old'
         action = 'readwrite'
@@ -840,7 +840,7 @@
     character(LEN=:), allocatable :: InLine
 
     n=0
-    if (PresentDefault(.true.,nocomments)) then
+    if (DefaultTrue(nocomments)) then
         do while (this%ReadLineSkipEmptyAndComments(InLine))
             n = n+1
         end do
@@ -1232,10 +1232,10 @@
     end function ExtractFileExt
 
 
-    function ExtractFileName(aname, no_ext)
+    function ExtractFileName(aname, no_ext, all_ext)
     character(LEN=*), intent(IN) :: aname
     character(LEN=:), allocatable :: ExtractFileName
-    logical, intent(in), optional :: no_ext
+    logical, intent(in), optional :: no_ext, all_ext
     integer alen, i
 
     alen = len_trim(aname)
@@ -1246,10 +1246,11 @@
         end if
     end do
     if (.not. allocated(ExtractFileName)) ExtractFileName = trim(aname)
-    if (PresentDefault(.false.,no_ext)) then
+    if (DefaultFalse(no_ext)) then
         do i = len(ExtractFileName), 1, -1
             if (ExtractFileName(i:i)=='.') then
                 ExtractFileName = ExtractFileName(1:i-1)
+                if (.not. DefaultFalse(all_ext)) exit
             end if
         end do
     end if

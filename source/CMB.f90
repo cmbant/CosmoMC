@@ -49,7 +49,6 @@
             like%name = Datasets%Value(i)
             select type(like)
             class is (TWMAPLikelihood)
-            like%Tag = DataSets%Name(i)
             end select
 #else
             call MpiStop('Set WMAP directory in Makefile to compile with WMAP')
@@ -58,6 +57,7 @@
             allocate(TCMBLikes::like)
             call like%ReadDatasetFile(Datasets%Value(i))
         end if
+        like%Tag = DataSets%Name(i)
         call like%ReadParams(Ini)
         call Ini%Read(Ini%NamedKey('cmb_dataset_speed',DataSets%Name(i)),like%speed)
 

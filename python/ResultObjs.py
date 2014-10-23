@@ -305,6 +305,8 @@ class resultTable():
 
 class paramResults(paramNames.paramList): pass
 
+class likelihoodChi2(object): pass
+
 class bestFit(paramResults):
 
     def __init__(self, fileName=None, setParamNameFile=None, want_fixed=False):
@@ -344,8 +346,11 @@ class bestFit(paramResults):
                             if len(name) > 1:
                                 (kind, name) = name
                             else: kind = ''
-                            name = name.replace('.clik', '').replace('.cldf', '')
-                            self.chiSquareds.append((kind, name, float(chisq)))
+                            chi2 = likelihoodChi2()
+                            if '=' in name: chi2.tag, chi2.name = [s.strip() for s in name.split('=')]
+                            else: chi2.tag, chi2.name = None, name
+                            chi2.chisq = float(chisq)
+                            self.chiSquareds.append((kind, chi2))
                     break
                 continue
             if not isFixed or want_fixed:
@@ -358,14 +363,14 @@ class bestFit(paramResults):
 
     def sortedChiSquareds(self):
         likes = dict()
-        for (kind, name, chisq) in self.chiSquareds:
+        for (kind, val) in self.chiSquareds:
             if not kind in likes: likes[kind] = []
-            likes[kind].append((name, chisq))
+            likes[kind].append(val)
         return sorted(likes.iteritems())
 
     def chiSquareForKindName(self, kind, name):
-        for (akind, aname, chisq) in self.chiSquareds:
-            if akind == kind and aname == name: return chisq
+        for (akind, val) in self.chiSquareds:
+            if akind == kind and val.name == name: return val.chisq
         return None
 
 
@@ -430,7 +435,17 @@ class margeStats(paramResults):
         if not param is None:
             lim = param.limits[limit - 1]
             sf = 3
-            if lim.twotail:
+            if 'chi2_' in param.name:
+                # Chi2 for low dof are very skewed, always want mean and sigma or limit
+                res, sigma, _ = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err, wantSign=False)
+                if limit == 1:
+                    res += r'\pm ' + sigma
+                else:
+                    # in this case give mean and effective dof
+                    res += r'\,({\nu\rm{:}\,%.1f})' % (param.err ** 2 / 2)
+#                    res, plus_str, minus_str = formatter.numberFormatter.namesigFigs(param.mean, lim.upper - param.mean, lim.lower)
+#                    res += '^{' + plus_str + '}_{>' + minus_str + '}'
+            elif lim.twotail:
                 if not formatter.numberFormatter.plusMinusLimit(limit, lim.upper - param.mean, lim.lower - param.mean):
                     res, plus_str, _ = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err, wantSign=False)
                     res += r'\pm ' + plus_str

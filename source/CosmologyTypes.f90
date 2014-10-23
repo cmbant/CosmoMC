@@ -258,7 +258,7 @@
                         end do
                     end if
                 else
-                    if(DataLike%LikelihoodType=='CMB') call MpiStop('CMB likelihood seems to have no cl_lmax set')
+                    if(DataLike%LikelihoodType=='CMB') call MpiStop(DataLike%name//' CMB likelihood seems to have no cl_lmax set')
                 end if
             end select
         end do

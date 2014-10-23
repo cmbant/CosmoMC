@@ -73,6 +73,9 @@ plikDS.append(batchJob.dataSet(['plikDSv15', 'TE'], ['plik_dx11dr2_DS_v15_TE.ini
 plikDS.append(batchJob.dataSet(['plikDSv15', 'EE'], ['plik_dx11dr2_DS_v15_EE.ini'], covmat='planck_covmats/plik_dx11dr2_HM_v15_EE.covmat'))
 plikDS.append(batchJob.dataSet(['plikDSv15', 'TTTEEE'], ['plik_dx11dr2_DS_v15_TTTEEE.ini'], covmat='planck_covmats/plik_dx11dr2_HM_v15_TTTEEE.covmat'))
 
+Mspec = []
+Mspec.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
+
 plik = plikHM + plikDS
 
 start_at_bestfit = False
@@ -83,7 +86,7 @@ groups = []
 g = batchJob.jobGroup('main')
 # Main group with just tau prior
 
-g.datasets = copy.deepcopy(detsets) + copy.deepcopy(CS) + copy.deepcopy(plik)
+g.datasets = copy.deepcopy(detsets) + copy.deepcopy(CS) + copy.deepcopy(plik) + copy.deepcopy(Mspec)
 
 for d in g.datasets:
     d.add(tauname, tauprior)
@@ -161,10 +164,13 @@ for lmin in lmins:
 g.params = [[]]
 groups.append(g)
 
-
+covrenames = []
+covrenames.append(['_tau07', '_lowTEB'])
+covrenames.append(['_tau07_lowl', '_lowTEB'])
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
     renamed = re.sub(r'_v.*', '_planck_lowl_lowLike', renamed, re.I)
+
     if renamed == name: return[]
     else: return [renamed]

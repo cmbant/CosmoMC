@@ -353,14 +353,12 @@
             end if
 
             if (MCMC%MaxLike/=logZero .and. MCMC%MaxLike*temperature < best_like) then
-                this%MinParams%P  = MCMC%MaxLikeParams
-                checkLike=LikeCalcMCMC%GetLogLike(this%MinParams)*temperature
+                Params%P  = MCMC%MaxLikeParams
+                checkLike=LikeCalcMCMC%GetLogLike(Params)*temperature
                 !same as MCMC%MaxLike*temperature but want to get everything computed
                 if (Feedback>0) print *,MpiRank, 'check likes, best_like:', &
                     & real([checklike, MCMC%MaxLike*temperature, best_like]) !this
                 best_like = MCMC%MaxLike*temperature
-                call Params%Clear(keep=this%MinParams)
-                Params = this%MinParams
             end if
             deallocate(MCMC)
             if (last_best - best_like < this%minimize_loglike_tolerance &

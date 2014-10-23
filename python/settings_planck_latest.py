@@ -35,7 +35,6 @@ lowTEB = 'lowTEB'
 tauprior = {'prior[tau]':'0.07 0.02'}
 tauname = 'tau07'
 WMAPtau = {'prior[tau]':'0.09 0.013'}
-zre_prior = {'use_min_zre', '6.5' }
 
 
 camspec_detsets = ['nonclik_detsets.ini']
@@ -65,6 +64,11 @@ for planck, ini, base in zip(planck_vars, planck_ini, planck_base):
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
 
+likechecks = []
+likechecks.append(batchJob.dataSet(['CamSpecDS', 'TT'], camspec_detsets + ['CAMspec_TT.ini']))
+likechecks.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
+
+
 start_at_bestfit = False
 newCovmats = False
 
@@ -72,7 +76,11 @@ newCovmats = False
 
 class importanceFilterLensing:
     def wantImportance(self, jobItem):
-        return planck in jobItem.data_set.names and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
+        return [p for planck in planck_vars if planck in jobItem.data_set.names] and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
+
+class zre_importance(batchJob.importanceSetting):
+    def wantImportance(self, jobItem):
+        return [p for planck in planck_vars if planck in jobItem.data_set.names] and not 'reion' in jobItem.data_set.names
 
 class importanceFilterNotOmegak:
     def wantImportance(self, jobItem):
@@ -92,8 +100,9 @@ post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceF
 post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 
-post_WP = [[ 'WMAPtau'], [WMAPtau, {'redo_no_new_data':'T'}]]
-post_abundance = [['abundances'], ['abundances.ini', {'redo_likes':'F', 'redo_add':'T'}], importanceFilterAbundance()]
+post_WP = [[ 'WMAPtau'], [WMAPtau]]
+post_abundance = [['abundances'], ['abundances.ini'], importanceFilterAbundance()]
+post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], chain_analysis_setings={'limits[zrei]':'6.5 N'})
 
 # set up groups of parameters and data sets
 
@@ -107,7 +116,7 @@ for d in g.datasets:
     d.add(lowTEB)
 
 g.params = [[], ['omegak'], ['mnu'], ['r'], ['nrun', 'r'], ['nnu'], ['nrun'], ['Alens'], ['yhe'], ['w'], ['alpha1']]
-g.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all]
+g.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all, post_zre]
 groups.append(g)
 
 
@@ -160,11 +169,15 @@ g5.params = [[]]
 g5.datasets = copy.deepcopy(planck_highL_sets)
 for d in g5.datasets:
     d.add(lowl)
-for d in copy.deepcopy(g5.datasets):
+for d in copy.deepcopy(planck_highL_sets):
+    d.add(lowl)
     d.add(lensing)
     g5.datasets.append(d)
-
-g5.importanceRuns = [post_BAO, post_nonCMB, post_WP]
+for d in copy.deepcopy(planck_highL_sets):
+    d.add(lowl)
+    d.add('reion', 'reion_tau.ini')
+    g5.datasets.append(d)
+g5.importanceRuns = [post_BAO, post_nonCMB, post_zre]
 groups.append(g5)
 
 
@@ -175,15 +188,23 @@ for d in copy.deepcopy(planck_pol_sets):
     d.add(lensing)
     gpolnopoltau.datasets.append(d)
 
-gpolnopoltau.importanceRuns = [post_BAO, post_nonCMB, post_WP]
+gpolnopoltau.importanceRuns = [post_BAO, post_nonCMB]
 groups.append(gpolnopoltau)
 
+glowllens = batchJob.jobGroup('lowllensing')
+glowllens.params = [['mnu']]
+glowllens.datasets = copy.deepcopy(planck_highL_sets)
+for d in glowllens.datasets:
+    d.add(lowl)
+    d.add(lensing)
+
+glowllens.importanceRuns = [post_BAO, post_nonCMB]
+groups.append(glowllens)
 
 g6 = batchJob.jobGroup('lensing')
 g6.datasets = copy.deepcopy(g.datasets)
 for d in g6.datasets:
     d.add(lensing)
-    d.add(None, {'redo_theory':'F'})
 
 g6.params = [['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alens'], ['nnu', 'meffsterile', 'r']]
 g6.importanceRuns = []
@@ -193,10 +214,9 @@ gbest = batchJob.jobGroup('basebest')
 gbest.datasets = copy.deepcopy(g.datasets)
 for d in gbest.datasets:
     d.add(lensing)
-    d.add(None, {'redo_theory':'F'})
 
 gbest.params = [[]]
-gbest.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB]
+gbest.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB, post_zre]
 groups.append(gbest)
 
 
@@ -224,6 +244,15 @@ for d in copy.deepcopy(g.datasets):
 gnnu.params = [['nnu']]
 gnnu.importanceRuns = [post_nonBAO, post_allnonBAO]
 groups.append(gnnu)
+
+gabund = batchJob.jobGroup('abund')
+gabund.datasets = []
+for d in copy.deepcopy(g.datasets):
+    d.add('abundances', ['abundances.ini'])
+    gabund.datasets.append(d)
+gabund.params = [['nnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu']]
+gabund.importanceRuns = [post_BAO, post_all, post_lensing]
+groups.append(gabund)
 
 if False:
     gmulti = batchJob.jobGroup('multi')
@@ -288,9 +317,6 @@ for d in copy.deepcopy(g.datasets):
     gphi.datasets.append(d)
 gphi.importanceRuns = []
 
-
-
-
 groups.append(gphi)
 
 
@@ -330,18 +356,32 @@ gWL.importanceRuns = []
 groups.append(gWL)
 
 
-
-
 for g in groups:
+    if len([d for d in g.datasets if  'abundances' in d.names]): continue
     for p in g.params:
         if 'nnu' in p:
             g.importanceRuns.append(post_abundance)
             break
 
+
+gWMAP = batchJob.jobGroup('WMAP')
+gWMAP.params = [[]]
+gWMAP.datasets = [WMAP9]
+groups.append(gWMAP)
+
+gchecks = batchJob.jobGroup('checks')
+gchecks.datasets = likechecks
+for d in gchecks.datasets:
+    d.add(lowTEB)
+
+gchecks.params = [[], ['mnu'], ['nnu'], ['Alens'], ['yhe']]
+gchecks.importanceRuns = []
+groups.append(gchecks)
+
 skip = []
 
-covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO']
-covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik',
+covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances']
+covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'Mspec':'CamSpec',
                    WLonlyHeymans: WLonly}
 
 # try to match run to exisitng covmat
@@ -356,6 +396,7 @@ covrenames.append(['_r', ''])
 covrenames.append(['_w', ''])
 covrenames.append(['_alpha1', ''])
 covrenames.append(['_WLonly', '_lensonly'])
+covrenames.append(['lowl', 'lowTEB'])
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)

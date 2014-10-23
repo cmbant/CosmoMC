@@ -444,7 +444,7 @@
     call this%TLikeCalculator%WriteParamsHumanText(aunit, P, LogLike, weight)
 
     call this%Config%Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
-    call DataLikelihoods%addLikelihoodDerivedParams(P%P, P%Theory, derived)
+    call DataLikelihoods%addLikelihoodDerivedParams(P%P, P%Theory, derived, P%Likelihoods, LogLike)
     if (allocated(derived)) numderived = size(derived)
     do i=1, numderived
         write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &

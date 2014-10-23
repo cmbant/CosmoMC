@@ -8,7 +8,9 @@ g = s.getSinglePlotter()
 
 g.make_figure(1, xstretch=1)
 
-roots = ['base_nnu_meffsterile_r_' + s.defdata_all + '_lensing', 'base_r_' + s.defdata_all, g.getRoot('r', s.defdata_all + '_lensing_BAO_HST70p6_JLA')]
+roots = [g.getRoot('nnu_meffsterile_r', s.defdata + '_lensing'),
+               'base_r_' + s.defdata,
+                g.getRoot('r', s.defdata_all + '_lensing_BAO_HST70p6_JLA')]
 
 
 
@@ -78,7 +80,7 @@ for p in [1, 2]:
 nnu = g.param_latex_label(roots[0], 'nnu')
 meff = g.param_latex_label(roots[0], 'meffsterile', labelParams='clik_latex.paramnames')
 
-labels = [meff + '+' + nnu + '(' + s.lensing + ')', s.LCDM + '(' + s.planckall + ')', s.LCDM + '(' + s.planckall + '+ext)']
+labels = [meff + '+' + nnu + '(' + s.lensing + ')', s.LCDM + '(' + s.defplanck + ')', s.LCDM + '(' + s.planckall + '+ext)']
 g.add_legend(labels, colored_text=True)
 
 xlim([0.95, 1])

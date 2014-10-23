@@ -204,6 +204,10 @@
         call BaseParams%OutputParamRanges(baseroot)
     end if
 
+    if (MpiRank==0 .and. Setup%action==action_MCMC) then
+        call DataLikelihoods%OutputDescription(baseroot)
+    end if
+
     call SetIdlePriority !If running on Windows
 
     if (allocated(Minimizer)) then
