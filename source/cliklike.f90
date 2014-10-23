@@ -153,18 +153,12 @@
             end do
         end associate
     end do
+    j =j + sum(this%clik_lmax(5:6)+1) !zero arrays of TB, EB
 
     !Appending nuisance parameters
-    !Not pretty. Oh well.
     if (this%clik_nnuis > 0) then
         do i=1,this%clik_nnuis
-            !silvia--------------------------------------------
-            if(i .eq. 6 .and. INDEX(trim(this%name),'plik').ne. 0)then
-                clik_cl_and_pars(j) = DataParams(i)-2
-            else
-                clik_cl_and_pars(j) = DataParams(i)
-            end if
-            !------------------------------------------------
+            clik_cl_and_pars(j) = DataParams(i)
             j = j+1
         end do
     end if
