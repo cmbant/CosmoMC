@@ -56,16 +56,16 @@ for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detse
 
 
 plikHM = []
-plikHM.append(batchJob.dataSet(['plikHMv16', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
-plikHM.append(batchJob.dataSet(['plikHMv16', 'TE'], ['plik_dx11dr2_HM_v16_TE.ini']))
-plikHM.append(batchJob.dataSet(['plikHMv16', 'EE'], ['plik_dx11dr2_HM_v16_EE.ini']))
-plikHM.append(batchJob.dataSet(['plikHMv16', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv16sz', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv16sz', 'TE'], ['plik_dx11dr2_HM_v16_TE.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv16sz', 'EE'], ['plik_dx11dr2_HM_v16_EE.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv16sz', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
 
 plikDS = []
-plikDS.append(batchJob.dataSet(['plikDSv16', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
-plikDS.append(batchJob.dataSet(['plikDSv16', 'TE'], ['plik_dx11dr2_DS_v16_TE.ini']))
-plikDS.append(batchJob.dataSet(['plikDSv16', 'EE'], ['plik_dx11dr2_DS_v16_EE.ini']))
-plikDS.append(batchJob.dataSet(['plikDSv16', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
+plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
+plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TE'], ['plik_dx11dr2_DS_v16_TE.ini']))
+plikDS.append(batchJob.dataSet(['plikDSv16sz', 'EE'], ['plik_dx11dr2_DS_v16_EE.ini']))
+plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
 
 Mspec = []
 Mspec.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
