@@ -162,7 +162,7 @@ covrenames = []
 covrenames.append(['_tau07', '_lowTEB'])
 covrenames.append(['_tau07_lowl', '_lowTEB'])
 
-covNameMappings = {'v910CMH':'CamSpec', 'v910F':'CamSpec', 'plikDSv16':'plik', 'plikHMv16':'plik', 'tau07':'lowTEB'}
+covNameMappings = {'v910CMH':'CamSpec', 'v910F':'CamSpec', 'plikDSv16sz':'plik', 'plikHMv16sz':'plik', 'tau07':'lowTEB'}
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
