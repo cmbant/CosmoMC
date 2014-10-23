@@ -101,7 +101,7 @@ post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini
 post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 
 post_WP = [[ 'WMAPtau'], [WMAPtau]]
-post_abundance = [['abundances'], ['abundances.ini', {'redo_likes':'F', 'redo_add':'T'}], importanceFilterAbundance()]
+post_abundance = [['abundances'], ['abundances.ini'], importanceFilterAbundance()]
 post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], chain_analysis_setings={'limits[zrei]':'6.5 N'})
 
 # set up groups of parameters and data sets
@@ -245,6 +245,15 @@ gnnu.params = [['nnu']]
 gnnu.importanceRuns = [post_nonBAO, post_allnonBAO]
 groups.append(gnnu)
 
+gabund = batchJob.jobGroup('abund')
+gabund.datasets = []
+for d in copy.deepcopy(g.datasets):
+    d.add('abundances', ['abundances.ini'])
+    gabund.datasets.append(d)
+gabund.params = [['nnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu']]
+gabund.importanceRuns = [post_BAO, post_all, post_lensing]
+groups.append(gabund)
+
 if False:
     gmulti = batchJob.jobGroup('multi')
     gmulti.params = [['nnu', 'w'], ['mnu', 'w']]
@@ -370,7 +379,7 @@ groups.append(gchecks)
 
 skip = []
 
-covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion']
+covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances']
 covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'Mspec':'CamSpec',
                    WLonlyHeymans: WLonly}
 
