@@ -66,6 +66,7 @@ if not args.plots:
                     ini.params['compare1'] = jobItem.parent.chainRoot
                 if args.no_plots: ini.params['no_plots'] = True
                 fname = ini_dir + jobItem.name + tag + '.ini'
+                ini.params.update(jobItem.dist_settings)
                 ini.saveFile(fname)
                 if not args.norun and (not args.notexist or not jobItem.getDistExists()) and (not args.update_only or jobItem.getDistNeedsUpdate()):
                     if jobItem.chainExists():

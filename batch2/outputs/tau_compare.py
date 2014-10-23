@@ -1,12 +1,16 @@
 import planckStyle as s
 g = s.plotter
 
-labels = [s.planckTT, s.NoLowLE, s.planckTT + '+lensing', s.NoLowLE + '+lensing', s.NoLowLE + '+lensing+BAO+HST+JLA', s.NoLowLE + '+zre' ]
+
+g.settings.lineM = ['-k', '-r', '-b', '-g', '-m', '--c']
+
+labels = [s.planckTT, s.NoLowLE, s.planckTT + '+lensing', s.NoLowLE + '+lensing', s.NoLowLE + '+lensing+BAO+HST+JLA', s.planckTTlowTEB]
 roots = [s.defdata_TTonly,
          s.defdata_allNoLowE,
          s.defdata_TTonly + '_lensing',
          s.defdata_allNoLowE + '_lensing',
        s.defdata_allNoLowE + '_lensing_post_BAO_HST70p6_JLA',
+       s.defdata,
   #     s.defdata_allNoLowE + '_lowtau',
        ]
 roots = ['base_' + root for root in roots]

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, batchJobArgs, jobQueue
+import hashlib, os, batchJobArgs, jobQueue
 
 Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', notExist=True, notall=True, converge=True)
 
@@ -49,7 +49,11 @@ iniFiles = []
 jobQueue.checkArguments(**args.__dict__)
 
 def jobName():
-    return "-".join([os.path.basename(ini) for ini in iniFiles])
+    s = "-".join([os.path.basename(ini) for ini in iniFiles])
+    if len(s) < 70: return s
+    base = os.path.basename(iniFiles[0])
+    if len(base) > 70: base = base[:70]
+    return base + '__' + hashlib.md5(s).hexdigest()[:16]
 
 def submitJob(ini):
         global iniFiles
@@ -60,6 +64,7 @@ def submitJob(ini):
         iniFiles.append(ini)
         if args.combineOneJobName: return
         if len(iniFiles) >= args.runsPerJob:
+            if args.runsPerJob > 1: print '--> jobName: ', jobName()
             jobQueue.submitJob(jobName(), iniFiles, **args.__dict__)
             iniFiles = []
 
@@ -76,4 +81,5 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
 
 
 if len(iniFiles) > 0:
+    if args.runsPerJob > 1: print '--> jobName: ', jobName()
     jobQueue.submitJob(args.combineOneJobName or jobName(), iniFiles, sequential=args.combineOneJobName is not None, **args.__dict__)
