@@ -55,6 +55,14 @@ for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detse
     datasets.append(batchJob.dataSet([name , 'TTTEEE'], planck_vars + ['CAMspec_TTTEEE.ini']))
 
 
+plikHM1 = []
+plikHM1.append(batchJob.dataSet(['plikHMv16', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
+plikHM1.append(batchJob.dataSet(['plikHMv16', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
+
+plikDS1 = []
+plikDS1.append(batchJob.dataSet(['plikDSv16', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
+plikDS1.append(batchJob.dataSet(['plikDSv16', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
+
 plikHM = []
 plikHM.append(batchJob.dataSet(['plikHMv16sz', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
 plikHM.append(batchJob.dataSet(['plikHMv16sz', 'TE'], ['plik_dx11dr2_HM_v16_TE.ini']))
@@ -70,7 +78,7 @@ plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TTTEEE'], ['plik_dx11dr2_DS_v16_
 Mspec = []
 Mspec.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
 
-plik = plikHM + plikDS
+plik = plikHM + plikDS + plikHM1 + plikDS1
 
 start_at_bestfit = False
 newCovmats = True
