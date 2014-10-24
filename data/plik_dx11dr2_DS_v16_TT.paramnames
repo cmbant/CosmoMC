@@ -4,17 +4,17 @@ xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negati
 asz143        A^{tSZ}_{143}     # Thermal SZ amplitude at 143 GH
 aps100        A^{PS}_{100}      # Point source amplitude at 100 GHz
 aps143		 A^{PS}_{143}      # Point source amplitude at 143 GHz
-aps143217     A^{PS}_{143x217}      # Point source amplitude at 143 GHz
+aps143217     A^{PS}_{143\times 217}      # Point source amplitude at 143 GHz
 aps217        A^{PS}_{217}      # Point source amplitude at 217 GHz
 aksz          A^{kSZ}  
 kgal100      A^{{\rm dust}TT}_{100}
 kgal143      A^{{\rm dust}TT}_{143}
-kgal143217   A^{{\rm dust}TT}_{143x217}
+kgal143217   A^{{\rm dust}TT}_{143\times 217}
 kgal217      A^{{\rm dust}TT}_{217}
-A_cnoise_100_100_TT     A_{100x100}^{{\rm{cnoise}}
-A_cnoise_143_143_TT     A_{143x143}^{{\rm{cnoise}}
-A_cnoise_143_217_TT     A_{143x217}^{{\rm{cnoise}}
-A_cnoise_217_217_TT     A_{217x217}^{{\rm{cnoise}}
+A_cnoise_100_100_TT     A_{100}^{{\rm{cnoise}}
+A_cnoise_143_143_TT     A_{143}^{{\rm{cnoise}}
+A_cnoise_143_217_TT     A_{143\times 217}^{{\rm{cnoise}}
+A_cnoise_217_217_TT     A_{217}^{{\rm{cnoise}}
 cal0            c_{100}
 cal2            c_{217}
 calPlanck       y_{\rm cal}
