@@ -131,17 +131,6 @@ gpol.importanceRuns = []
 groups.append(gpol)
 
 
-if False:
-    ghigh = batchJob.jobGroup('highL')
-    ghigh.datasets = copy.deepcopy(g.datasets)
-    for d in ghigh.datasets:
-        d.add(highL)
-
-    ghigh.params = [[], ['omegak'], ['mnu'], ['r'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
-    ghigh.importanceRuns = [post_BAO, post_JLA, post_lensing, post_HST, post_all]
-    groups.append(ghigh)
-
-
 g2 = batchJob.jobGroup('ext')
 g2.datasets = copy.deepcopy(g.datasets)
 g2.params = [ ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['nnu', 'yhe']]
@@ -243,7 +232,7 @@ for d in copy.deepcopy(g.datasets):
     gnnu.datasets.append(d)
 
 gnnu.params = [['nnu']]
-gnnu.importanceRuns = [post_nonBAO, post_allnonBAO]
+gnnu.importanceRuns = [post_nonBAO, post_allnonBAO, post_lensing]
 groups.append(gnnu)
 
 gabund = batchJob.jobGroup('abund')

@@ -2,7 +2,7 @@ import planckStyle as s
 from pylab import *
 g = s.getSinglePlotter()
 
-labels = [s.planckTT, s.planckall]
+labels = [s.planckTTlowTEB, s.planckall]
 roots = [s.defdata_TT, s.defdata_all]
 roots = ['base_alpha1_' + root for root in roots]
 

@@ -3,7 +3,7 @@ import GetDistPlots
 from pylab import *
 
 
-roots = [s.defdata_TT]
+roots = ['base_' + s.defdata]
 g = s.getSinglePlotter(ratio=1)
 g.newPlot()
 pars = g.get_param_array(roots[0], ['FAP057', 'fsigma8z057'])
@@ -44,7 +44,7 @@ g.add_2d_contours(roots[0], 'FAP057', 'fsigma8z057', filled=False, density=densi
 g.add_2d_contours(roots[0], 'FAP057', 'fsigma8z057', filled=True, plotno=3)
 
 
-g.add_legend(['DR11-CMASS (Samushia et al.)', 'DR11-CMASS (Beutler et al.)', s.planckTTlowEE], legend_loc='upper left')
+g.add_legend(['DR11-CMASS (Samushia et al.)', 'DR11-CMASS (Beutler et al.)', s.defplanck], legend_loc='upper left')
 g.setAxes(params=pars)
 g.export()
 
