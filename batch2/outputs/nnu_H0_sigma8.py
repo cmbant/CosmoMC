@@ -37,7 +37,7 @@ g.add_1d_marker(norm + 1)
 
 g.add_2d_contours(g.getRoot('nnu', s.defdata_all + '_BAO'), 'nnu', 'H0', color='black')
 g.add_2d_contours(g.getRoot('nnu', s.defdata_all + '_abundances'), 'nnu', 'H0', color='red')
-g.add_legend([s.defplanck + '+BAO', s.planckall + '+$Y_P$'], legend_loc='upper left', colored_text=True)
+g.add_legend([s.planckall + '+BAO', s.planckall + '+$Y_P$'], legend_loc='upper left', colored_text=True)
 
 gca().set_xticks([2, 2.5, 3.0, 3.5, 4])
 

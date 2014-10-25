@@ -4,12 +4,12 @@ g = s.plotter
 
 g.settings.lineM = ['-k', '-r', '-b', '-g', '-m', '--c']
 
-labels = [s.planckTT, s.NoLowLE, s.planckTT + '+lensing', s.NoLowLE + '+lensing', s.NoLowLE + '+lensing+BAO+HST+JLA', s.planckTTlowTEB]
+labels = [s.planckTT, s.NoLowLE, s.planckTT + '+lensing', s.NoLowLE + '+lensing', s.NoLowLE + '+lensing+BAO', s.planckTTlowTEB]
 roots = [s.defdata_TTonly,
          s.defdata_allNoLowE,
          s.defdata_TTonly + '_lensing',
          s.defdata_allNoLowE + '_lensing',
-       s.defdata_allNoLowE + '_lensing_post_BAO_HST70p6_JLA',
+       s.defdata_allNoLowE + '_lensing_post_BAO',
        s.defdata,
   #     s.defdata_allNoLowE + '_lowtau',
        ]
