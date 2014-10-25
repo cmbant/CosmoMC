@@ -53,7 +53,7 @@ roots = [g.getRoot('', s.defdata_TTonly),
 g.plot_2d(roots, param_pair=pair, filled=True, lims=ranges)
 
 g.add_2d_contours('base_' + s.defdata_all, param_pair=pair, ls='-', color='olive')
-g.add_2d_contours(g.getRoot('', s.defdata_all + '_lensing'), param_pair=pair, ls='-', color='midnightblue')
+g.add_2d_contours(g.getRoot('', s.defdata_all + '_lensing_zre6p5'), param_pair=pair, ls='-', color='midnightblue')
 # g.add_2d_contours(g.getRoot('', s.defdata_all + '_lensing_BAO'), 'sigma8', 'omegam', ls='-', color='pink')
 
 # g.add_2d_contours('base_' + s.defdata_TTonly + '_post_WMAPtau', param_pair=pair, ls='--', color='brown', alpha=0.2)
