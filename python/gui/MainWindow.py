@@ -17,14 +17,14 @@ try:
     try:
         import Resources_pyside
     except ImportError:
-        print "Missing file Resources_pyside.py: Run script update_resources.sh"
+        print "Missing Resources_pyside.py: Run script update_resources.sh"
 except ImportError:
     print "Can't import PySide modules."
     sys.exit()
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 import GetDistPlots
 import MCSamples
@@ -41,13 +41,13 @@ class MainWindow(QMainWindow):
         """
         super(MainWindow, self).__init__()
 
-        self.setAttribute(Qt.WA_DeleteOnClose)
-
+        # GUI setup
         self.createDockWidgets()
         self.createActions()
         self.createMenus()
         self.createStatusBar()
 
+        self.setAttribute(Qt.WA_DeleteOnClose)
         self.setWindowTitle("GetDist GUI")
         self.resize(800, 600)
 
@@ -66,16 +66,23 @@ class MainWindow(QMainWindow):
         # Dict for other roots
         self.other_rootnames = {}
 
+        # Grid chains parameters
         self.is_grid = False
         self.grid_items = {}
-
         self.paramTag = ""
         self.dataTag = ""
 
+        # Plot instance
         self.plotter = None
+
+        # Script
+        self.script = ""
 
 
     def createActions(self):
+        """
+        Create Qt actions used in GUI.
+        """
         self.exportAct = QAction(QIcon(":/images/file_export.png"),
                                  "&Export as PDF", self,
                                  statusTip="Export image as PDF",
@@ -84,7 +91,7 @@ class MainWindow(QMainWindow):
         self.scriptAct = QAction(QIcon(":/images/file_save.png"),
                                  "Save script", self,
                                  statusTip="Export commands to script",
-                                 triggered=self.script)
+                                 triggered=self.saveScript)
 
         self.exitAct = QAction(QIcon(":/images/application_exit.png"),
                                "E&xit", self,
@@ -104,8 +111,12 @@ class MainWindow(QMainWindow):
                                 triggered=self.about)
 
     def createMenus(self):
+        """
+        Create Qt menus.
+        """
         self.fileMenu = self.menuBar().addMenu("&File")
         self.fileMenu.addAction(self.exportAct)
+        self.fileMenu.addAction(self.scriptAct)
         self.separatorAct = self.fileMenu.addSeparator()
         self.fileMenu.addAction(self.exitAct)
 
@@ -124,11 +135,15 @@ class MainWindow(QMainWindow):
         self.helpMenu.addAction(self.aboutAct)
 
     def createStatusBar(self):
+        """
+        Create Qt status bar.
+        """
         self.statusBar().showMessage("Ready", 2000)
 
     def createDockWidgets(self):
-
-        # Top: select Widget
+        """
+        Create dockable widget and its content.
+        """
         self.dockTop = QDockWidget(self.tr("Filters"), self)
         self.dockTop.setAllowedAreas(Qt.LeftDockWidgetArea)
 
@@ -141,7 +156,8 @@ class MainWindow(QMainWindow):
         self.pushButtonSelect = QPushButton(QIcon(":/images/file_add.png"),
                                             "", self.selectWidget)
         self.pushButtonSelect.setToolTip("Choose root directory")
-        self.connect(self.pushButtonSelect, SIGNAL("clicked()"), self.selectRootDirName)
+        self.connect(self.pushButtonSelect, SIGNAL("clicked()"),
+                     self.selectRootDirName)
         shortcut = QShortcut(QKeySequence(self.tr("Ctrl+O")), self)
         self.connect(shortcut, SIGNAL("activated()"), self.selectRootDirName)
 
@@ -153,32 +169,41 @@ class MainWindow(QMainWindow):
         self.pushButtonRemove = QPushButton(QIcon(":/images/file_remove.png"),
                                             "", self.selectWidget)
         self.pushButtonRemove.setToolTip("Remove a root directory")
-        self.connect(self.pushButtonRemove, SIGNAL("clicked()"), self.removeOtherRoot)
+        self.connect(self.pushButtonRemove, SIGNAL("clicked()"),
+                     self.removeOtherRoot)
 
 
         self.comboBoxParamTag = QComboBox(self.selectWidget)
         self.comboBoxParamTag.clear()
-        self.connect(self.comboBoxParamTag, SIGNAL("activated(const QString&)"), self.setParamTag)
+        self.connect(self.comboBoxParamTag,
+                     SIGNAL("activated(const QString&)"), self.setParamTag)
 
         self.comboBoxDataTag = QComboBox(self.selectWidget)
         self.comboBoxDataTag.clear()
-        self.connect(self.comboBoxDataTag, SIGNAL("activated(const QString&)"), self.setDataTag)
+        self.connect(self.comboBoxDataTag,
+                     SIGNAL("activated(const QString&)"), self.setDataTag)
 
         self.listParametersX = QListWidget(self.selectWidget)
         self.listParametersX.clear()
-        self.connect(self.listParametersX, SIGNAL("itemChanged(QListWidgetItem *)"), self.itemParamXChanged)
+        self.connect(self.listParametersX,
+                     SIGNAL("itemChanged(QListWidgetItem *)"),
+                     self.itemParamXChanged)
 
         self.listParametersY = QListWidget(self.selectWidget)
         self.listParametersY.clear()
-        self.connect(self.listParametersY, SIGNAL("itemChanged(QListWidgetItem *)"), self.itemParamYChanged)
+        self.connect(self.listParametersY,
+                     SIGNAL("itemChanged(QListWidgetItem *)"),
+                     self.itemParamYChanged)
 
         self.selectAllX = QCheckBox("Select All", self.selectWidget)
         self.selectAllX.setCheckState(Qt.Unchecked)
-        self.connect(self.selectAllX, SIGNAL("clicked()"), self.statusSelectAllX)
+        self.connect(self.selectAllX, SIGNAL("clicked()"),
+                     self.statusSelectAllX)
 
         self.selectAllY = QCheckBox("Select All", self.selectWidget)
         self.selectAllY.setCheckState(Qt.Unchecked)
-        self.connect(self.selectAllY, SIGNAL("clicked()"), self.statusSelectAllY)
+        self.connect(self.selectAllY, SIGNAL("clicked()"),
+                     self.statusSelectAllY)
 
         self.toggleFilled = QRadioButton("Filled")
         self.toggleLine = QRadioButton("Line")
@@ -233,6 +258,9 @@ class MainWindow(QMainWindow):
     # slots for menu actions
 
     def export(self):
+        """
+        Callback for action 'Export as PDF'.
+        """
         filename, filt = QFileDialog.getSaveFileName(
             self, "Choose a file name", '.', "PDF (*.pdf)")
         if not filename: return
@@ -243,25 +271,37 @@ class MainWindow(QMainWindow):
         else:
             logging.warning("No plotter data to export")
 
-    def script(self):
+    def saveScript(self):
+        """
+        Callback for action 'Save script'.
+        """
         filename, filt = QFileDialog.getSaveFileName(
             self, "Choose a file name", '.', "rPython (*.py)")
         if not filename: return
         filename = str(filename)
         logging.debug("Export script to %s"%filename)
+        f = open(filename, 'w')
+        f.write(self.script)
+        f.close()
 
     def showMargeStats(self):
-        if self.plotter is None:
-            logging.warning("No plotter data. Can't show marge stats")
+        """
+        Callback for action 'Show Marge Stats'.
+        """
+        if self.plotter is None or self.rootname is None:
+            logging.warning("No data. Can't show marge stats")
             self.statusBar().showMessage("No data available", 2000)
             return
 
-        text = self.plotter.sampleAnalyser.getMargeStats()
+        text = self.plotter.sampleAnalyser.getMargeStats(self.rootname)
         text = text.replace('\t', '\t\t') # uses double tab
         dlg = DialogMargeStats(self, text)
         dlg.exec_()
 
     def about(self):
+        """
+        Callback for action 'About'.
+        """
         QMessageBox.about(
             self, "About GetDist GUI",
             "Qt application for GetDist plots.")
@@ -275,7 +315,7 @@ class MainWindow(QMainWindow):
         """
         # If a rootdir is defined, add another root
         if self.rootdirname is not None and self.is_grid==False:
-            self.addOtherRoot()
+            self.addRoot()
             return
 
 	settings = QSettings('cosmomc', 'gui')
@@ -290,56 +330,59 @@ class MainWindow(QMainWindow):
             QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
         dirName = str(dirName)
 
-        if dirName:
-            settings.setValue('lastSearchDirectory', dirName)
+        # No directory selected
+        if dirName is None or dirName=='':
+            return
 
-            # Root directory
-            self.rootdirname = dirName
-            self.lineEditDirectory.setText(self.rootdirname)
+        settings.setValue('lastSearchDirectory', dirName)
 
-            # Grid chains
-            filebatch = os.path.join(dirName, "batch.pyobj")
-            if os.path.isfile(filebatch):
-                self._readGridChain(self.rootdirname)
-                return
+        # Root directory
+        self.rootdirname = dirName
+        self.lineEditDirectory.setText(self.rootdirname)
 
-            # Root file name
-            self._getRootFileName()
-            if self.rootname is None:
-                logging.warning("Root file name is not defined")
-                #return
+        # Grid chains
+        filebatch = os.path.join(dirName, "batch.pyobj")
+        if os.path.isfile(filebatch):
+            self._readGridChain(self.rootdirname)
+            return
 
-            else:
-                # Get chain files
-                chainFiles = MCSamples.GetChainFiles(self.rootname)
-                if len(chainFiles)==0:
-                    logging.debug("No chain files in %s"%self.rootdirname)
-                    self._updateComboBoxParamTag()
-                    self._updateComboBoxColor()
-                else:
-                    self.statusBar().showMessage("Reading chain files in %s"%str(self.rootname))
-                    self.plotter = GetDistPlots.GetDistPlotter(
-                        file_root=self.rootname, ini_file=self.iniFile)
+        # Root file name
+        self._getRootFileName()
+        if self.rootname is None:
+            logging.warning("Root file name is not defined")
+            return
 
-                    paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(self.rootname)
+        # Get chain files
+        chainFiles = MCSamples.GetChainFiles(self.rootname)
+        if len(chainFiles)==0:
+            logging.debug("No chain files in %s"%self.rootdirname)
+            self._updateComboBoxParamTag()
+            self._updateComboBoxColor()
+            return
 
-                    # Hide combo boxes and fill list
-                    self.comboBoxParamTag.hide()
-                    self.comboBoxDataTag.hide()
-                    self.listRoots.show()
-                    self.pushButtonRemove.show()
-                    self._updateListParametersX(paramNames)
-                    self._updateListParametersY(paramNames)
-                    self._updateComboBoxColor(paramNames)
+        self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True,
+                                                   ini_file=self.iniFile)
+        self.statusBar().showMessage("Read chains in %s"%str(self.rootname))
+        self.plotter.sampleAnalyser.addRoot(self.rootname)
 
-                self.statusBar().showMessage("Ready", 2000)
+        paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(self.rootname)
 
-        else:
-            logging.debug("No directory specified")
+        # Hide combo boxes and fill list
+        self.comboBoxParamTag.hide()
+        self.comboBoxDataTag.hide()
+        self.listRoots.show()
+        self.pushButtonRemove.show()
+        self._updateListParametersX(paramNames)
+        self._updateListParametersY(paramNames)
+        self._updateComboBoxColor(paramNames)
+
 
     def _readGridChain(self, batchPath):
-        logging.debug("Read grid chain in %s"%batchPath)
+        """
+        Setup of a grid chain.
+        """
         self.is_grid = True
+        logging.debug("Read grid chain in %s"%batchPath)
         batch = batchJob.readobject(batchPath)
         items = dict()
         for jobItem in batch.items(True, True):
@@ -355,6 +398,9 @@ class MainWindow(QMainWindow):
         self._updateComboBoxParamTag(self.grid_items.keys())
 
     def _getFileParam(self, paramTag=None, dataTag=None):
+        """
+        Get corresponding .paramnames file.
+        """
         fileparam = ""
         if self.rootdirname is not None:
             if paramTag is not None and dataTag is not None:
@@ -363,14 +409,21 @@ class MainWindow(QMainWindow):
                 rootdirname = self.rootdirname
             filesparam = MCSamples.GetParamNamesFiles(rootdirname)
             if len(filesparam)>1:
-                fn, ok = QInputDialog.getItem(self, "Select file", "Param name:",
-                                              filesparam, 0, False)
-                if ok and fn: fileparam = fn
+                d = dict()
+                for fileparam in filesparam:
+                    d[os.path.basename(fileparam)] = fileparam
+                fn, ok = QInputDialog.getItem(
+                    self, "Select file", "Param name:", d.keys(), 0, False)
+                if ok and fn:
+                    fileparam = d[fn]
             elif len(filesparam)==1:
                 fileparam = filesparam[0]
         return fileparam
 
     def _getRootFileName(self, paramTag=None, dataTag=None):
+        """
+        Get the root file name.
+        """
         fileparam = self._getFileParam(paramTag, dataTag)
         if fileparam<>'':
             self.rootname = str(fileparam).replace(".paramnames", "")
@@ -383,10 +436,10 @@ class MainWindow(QMainWindow):
             self.rootname = MCSamples.GetRootFileName(rootdirname)
             logging.debug("rootname: %s"%self.rootname)
 
-
-
-
-    def addOtherRoot(self):
+    def addRoot(self):
+        """
+        Add another root file name.
+        """
 	settings = QSettings('cosmomc', 'gui')
         last_dir = settings.value('lastSearchDirectory')
 
@@ -397,19 +450,25 @@ class MainWindow(QMainWindow):
         title = self.tr("Choose a chain root")
         fileName, filt = QFileDialog.getOpenFileName(
             self, title, last_dir, filt)
+        fileName = str(fileName)
 
         if fileName:
+
             dirName = os.path.dirname(fileName)
             settings.setValue('lastSearchDirectory', dirName)
 
             root = fileName.replace('.paramnames', '')
             baseName = os.path.basename(root)
-            if not self.other_rootnames.has_key(baseName):
-                logging.debug("Add root %s"%baseName)
-                self.other_rootnames[baseName] = True
-
+            if root==self.rootname:
+                logging.warning("Same root as main root")
+                return
+            elif not self.other_rootnames.has_key(baseName):
                 if self.plotter is not None:
-                    self.plotter.sampleAnalyser.addOtherRoot(root)
+                    self.plotter.sampleAnalyser.addRoot(root)
+                    logging.debug("Add root %s"%baseName)
+                    self.other_rootnames[baseName] = True
+                else:
+                    logging.warning("No plotter instance")
 
         self.updateOtherRoots()
 
@@ -451,13 +510,13 @@ class MainWindow(QMainWindow):
             self.comboBoxParamTag.show()
             self.comboBoxParamTag.clear()
             if not listOfParams:
-                listOfParams = [ d for d in os.listdir(self.rootdirname)
-                                 if os.path.isdir(os.path.join(self.rootdirname, d)) ]
+                listOfParams = [
+                    d for d in os.listdir(self.rootdirname)
+                    if os.path.isdir(os.path.join(self.rootdirname, d)) ]
             self.comboBoxParamTag.addItems(listOfParams)
             self.setParamTag(str(self.comboBoxParamTag.itemText(0)))
 
     def _updateComboBoxDataTag(self, listOfDatas=[]):
-        #import pdb; pdb.set_trace()
         logging.debug("Update data with %i values"%len(listOfDatas))
         if self.rootdirname and os.path.isdir(self.rootdirname):
             self.comboBoxDataTag.show()
@@ -506,8 +565,11 @@ class MainWindow(QMainWindow):
             logging.warning("Root file name is not defined")
             return
 
-        self.plotter = GetDistPlots.GetDistPlotter(
-            file_root=self.rootname, ini_file=self.iniFile)
+        if self.plotter is None:
+            self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True,
+                                                       ini_file=self.iniFile)
+        self.statusBar().showMessage("Read chains in %s"%str(self.rootname))
+        self.plotter.sampleAnalyser.addRoot(self.rootname)
 
         paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(self.rootname)
 
@@ -562,7 +624,6 @@ class MainWindow(QMainWindow):
             state = Qt.Checked
         else:
             state = Qt.Unchecked
-
         for i in range(self.listParametersX.count()):
             self.listParametersX.item(i).setCheckState(state)
 
@@ -574,7 +635,6 @@ class MainWindow(QMainWindow):
             state = Qt.Checked
         else:
             state = Qt.Unchecked
-
         for i in range(self.listParametersY.count()):
             self.listParametersY.item(i).setCheckState(state)
 
@@ -582,8 +642,9 @@ class MainWindow(QMainWindow):
         if self.rootdirname and os.path.isdir(self.rootdirname):
             self.comboBoxColor.clear()
             if not listOfParams:
-                listOfParams = [ d for d in os.listdir(self.rootdirname)
-                                 if os.path.isdir(os.path.join(self.rootdirname, d)) ]
+                listOfParams = [
+                    d for d in os.listdir(self.rootdirname)
+                    if os.path.isdir(os.path.join(self.rootdirname, d)) ]
             self.comboBoxColor.addItems(listOfParams)
 
 
@@ -622,43 +683,56 @@ class MainWindow(QMainWindow):
             if state: roots.append(os.path.basename(other_rootname))
         logging.debug("Plotting with roots = %s"%str(roots))
 
-
+        # Script
+        self.script  = ""
+        self.script += "import GetDistPlots, os\n"
+        self.script += "g=GetDistPlots.GetDistPlotter(mcsamples=True, ini_file='%s')\n"%self.iniFile
+        self.script += "g.settings.setWithSubplotSize(3.000000)\n"
+        self.script += "outdir='.'\n"
+        self.script += "roots=%s\n"%str(roots)
+        # FIXME: rootname absolute path
+        self.script += "g.sampleAnalyser.addRoots(roots)\n"
 
         #
         if self.trianglePlot.isChecked():
             if len(items_x)>1:
                 params = items_x
                 logging.debug("Triangle plot ")
-                logging.debug("roots  = %s"%str(roots))
                 logging.debug("params = %s"%str(params))
+                self.script += "params = %s\n"%str(params)
                 self.plotter.triangle_plot(roots, params)
                 self.updatePlot()
+                self.script += "g.triangle_plot(roots, params)\n"
             else:
                 self.statusBar().showMessage("Need more than 1 x-param", 2000)
 
         elif len(items_x)>0 and len(items_y)==0:
             params = items_x
             logging.debug("1D plot")
-            logging.debug("roots = %s"%str(roots))
             logging.debug("params = %s"%str(params))
             self.plotter.plots_1d(roots, params=params)
             self.updatePlot()
+            self.script += "params=%s\n"%str(params)
+            self.script += "g.plots_1d(roots, params=params)\n"
 
         elif len(items_x)>0 and len(items_y)>0:
             # only one X item selected
             if self.toggleFilled.isChecked() or self.toggleLine.isChecked():
                 filled=self.toggleFilled.isChecked()
                 logging.debug("2D plot ")
-                logging.debug("roots  = %s"%str(roots))
                 #
                 pairs = []
+                self.script += "pairs = []\n"
                 item_x = items_x[0]
                 for item_y in items_y:
                     pairs.append([item_x, item_y])
+                    self.script += "pairs.append(['%s','%s'])\n"%(item_x, item_y)
 
                 logging.debug("pairs  = %s"%str(pairs))
+                self.script += "filled=%s\n"%filled
                 self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled)
                 self.updatePlot()
+                self.script += "g.plots_2d(oots, param_pairs=pairs, filled=filled)\n"
 
             if self.toggleColor.isChecked():
                 sets = []
@@ -667,11 +741,16 @@ class MainWindow(QMainWindow):
                 y = items_y[0]
                 color = str(self.comboBoxColor.currentText())
                 logging.debug("3D plot")
-                logging.debug("roots = %s"%str(roots))
                 sets = [[x, y, color]]
                 logging.debug("sets = %s"%str(sets))
+                self.script += "sets = []\n"
+                self.script += "sets.append(['%s', '%s', '%s'])\n"%(x, y, color)
                 self.plotter.plots_3d(roots, sets)
                 self.updatePlot()
+                self.script += "g.plots_3d(roots, sets)\n"
+
+        basename = os.path.basename(self.rootname)
+        self.script += "g.export(os.path.join(outdir,'%s.pdf'))\n"%basename
 
     def updatePlot(self):
 

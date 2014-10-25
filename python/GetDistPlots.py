@@ -197,19 +197,15 @@ class SampleAnalysisGetDist():
 
 class MCSampleAnalysis():
 
-    def __init__(self, file_root, ini_file):
+    def __init__(self, ini_file):
         self.ini = None
         if ini_file<>'':
             self.ini = iniFile.iniFile()
             self.ini.readFile(ini_file)
 
-        self.main_root = os.path.basename(file_root)
-        print "main_root is %s"%self.main_root
         self.roots = []
-        self.roots.append(self.main_root)
 
         self.mcsamples = {}
-        self.mcsamples[self.main_root] = MCSamples.MCSamples(file_root)
 
         self.done_1Dbins = False
 
@@ -225,11 +221,13 @@ class MCSampleAnalysis():
 
         self.single_samples = dict()
 
-        self.readChains(self.main_root, self.mcsamples[self.main_root])
+    def addRoots(self, roots):
+        for root in roots:
+            self.addRoot(root)
 
-    def addOtherRoot(self, file_root):
-        print "add root for %s"%file_root
+    def addRoot(self, file_root):
         base_root = os.path.basename(file_root)
+        print "add root for %s "%base_root
         self.roots.append(base_root)
 
         self.mcsamples[base_root] = MCSamples.MCSamples(file_root)
@@ -312,12 +310,13 @@ class MCSampleAnalysis():
         mcsamples.Init1DDensity()
 
 
-    def getMargeStats(self):
+    def getMargeStats(self, file_root):
+        base_root = os.path.basename(file_root)
         # Do 1D bins
         if not self.done_1Dbins:
-            self.mcsamples[self.main_root].Do1DBins(writeDataToFile=False)
+            self.mcsamples[base_root].Do1DBins(writeDataToFile=False)
             self.done_1Dbins = True
-        text = self.mcsamples[self.main_root].OutputMargeStats(writeDataToFile=False)
+        text = self.mcsamples[base_root].OutputMargeStats(writeDataToFile=False)
         return text
 
     def compute_1d(self, root, name):
@@ -450,14 +449,14 @@ class MCSampleAnalysis():
 
 class GetDistPlotter():
 
-    def __init__(self, plot_data=None, settings=None, file_root=None, ini_file=''):
+    def __init__(self, plot_data=None, settings=None, mcsamples=False, ini_file=''):
         if settings is None: self.settings = defaultSettings
         else: self.settings = settings
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
         self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
-        if file_root is not None:
-            self.sampleAnalyser = MCSampleAnalysis(file_root, ini_file)
+        if mcsamples:
+            self.sampleAnalyser = MCSampleAnalysis(ini_file)
         self.newPlot()
 
     def newPlot(self):

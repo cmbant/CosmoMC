@@ -974,7 +974,8 @@ class MCSamples(chains):
     def Get1DDensity(self, j, writeDataToFile=True):
 
         ix = j # ix = self.colix[j]
-        logging.debug("index is %i"%j)
+        logging.info("1D density for %s (%i)"
+                     %(self.index2name.get(j, ''), j))
 
         paramVec = self.samples[:, ix]
 
@@ -1048,7 +1049,6 @@ class MCSamples(chains):
         if (self.has_limits_bot[ix]): imin = self.ix_min[j] * fine_fac
         if (self.has_limits_top[ix]): imax = self.ix_max[j] * fine_fac
 
-        logging.debug("Density1D ... ")
         self.density1D = Density1D(imax-imin+1, fine_width)
         for i in range(imin, imax+1):
             istart, iend = (i-winw)-(imin-fine_edge), (i+winw+1)-(imin-fine_edge)
@@ -1065,7 +1065,6 @@ class MCSamples(chains):
             sys.exit()
         self.density1D.P /= maxbin
 
-        logging.debug("InitSpline ...")
         self.density1D.InitSpline()
 
         logZero = 1e30
@@ -1120,7 +1119,6 @@ class MCSamples(chains):
 
             else:
 
-                logging.debug("Return data ...")
                 dat, likes = None, None
 
                 ncols = 2
