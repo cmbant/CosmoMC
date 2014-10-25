@@ -50,7 +50,7 @@ jobQueue.checkArguments(**args.__dict__)
 
 def jobName():
     s = "-".join([os.path.basename(ini) for ini in iniFiles])
-    if len(s) < 70: return s
+    if len(iniFiles) < 2 or len(s) < 70: return s
     base = os.path.basename(iniFiles[0])
     if len(base) > 70: base = base[:70]
     return base + '__' + hashlib.md5(s).hexdigest()[:16]
