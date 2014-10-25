@@ -261,6 +261,9 @@ class MCSampleAnalysis():
 
         mcsamples.plot_meanlikes = self.ini.bool('plot_meanlikes', False)
 
+        mcsamples.single_thin = self.ini.int('single_thin', 1)
+
+
     def readChains(self, rootdir, mcsamples):
         self.initParameters(mcsamples)
 
@@ -413,9 +416,9 @@ class MCSampleAnalysis():
         return result
 
     def load_single_samples(self, root):
-        loglikes, samples = self.mcsamples[root].MakeSingleSamples(writeDataToFile=False)
         if not root in self.single_samples:
-            self.single_samples[root] = np.column_stack((loglikes, samples))
+            res = self.mcsamples[root].MakeSingleSamples(writeDataToFile=False)
+            self.single_samples[root] = res
         return self.single_samples[root]
 
     def usedParamsForRoot(self, root):

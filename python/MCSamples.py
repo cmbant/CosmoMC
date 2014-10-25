@@ -175,6 +175,7 @@ class MCSamples(chains):
         self.shade_meanlikes = False
         self.indep_thin = 0
         self.contours = []
+        self.single_thin = 1
 
         self.credible_interval_threshold = 0.05
 
@@ -306,6 +307,9 @@ class MCSamples(chains):
         Make file of weight-1 samples by choosing samples
         with probability given by their weight.
         """
+        if single_thin is None:
+            single_thin = self.single_thin
+
         if writeDataToFile:
             textFileHandle = open(filename, 'w')
             maxmult = np.max(self.weights)
@@ -320,7 +324,25 @@ class MCSamples(chains):
             textFileHandle.close()
         else:
             # return data
-            return self.loglikes, self.samples
+            weights = []
+            loglikes = []
+            samples = []
+            maxmult = np.max(self.weights)
+            for i in range(self.numrows):
+                rand = np.random.random_sample()
+                if (rand <= self.weights[i]/maxmult/single_thin):
+                    weights.append(1.0)
+                    loglikes.append(self.loglikes[i])
+                    values = []
+                    for j in range(self.num_vars):
+                        values.append(self.samples[i][j])
+                    samples.append(values)
+            a1 = np.array(weights)
+            a2 = np.array(loglikes)
+            a3 = np.array(samples)
+
+            res = np.column_stack((a1, a2, a3))
+            return res
 
     def WriteThinData(self, fname, thin_ix, cool):
         nparams = self.samples.shape[1]
