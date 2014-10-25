@@ -7,7 +7,7 @@ Opts.parser.add_argument('target_dir', help="output root directory or zip file n
 Opts.parser.add_argument('--dist', action='store_true', help="include getdist outputs")
 Opts.parser.add_argument('--chains', action='store_true', help="include chain files")
 Opts.parser.add_argument('--file_extensions', nargs='+', default=['.*'])
-Opts.parser.add_argument('--skip_extensions', nargs='+', default=['.data', '.chk', '.log', '.corr', '.py', '.m'])
+Opts.parser.add_argument('--skip_extensions', nargs='+', default=['.data', '.chk', '.chk_tmp', '.log', '.corr', '.py', '.m'])
 Opts.parser.add_argument('--dryrun', action='store_true')
 Opts.parser.add_argument('--verbose', action='store_true')
 Opts.parser.add_argument('--zip', action='store_true')
