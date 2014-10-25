@@ -22,27 +22,41 @@ rc('text.latex', preamble=r'\usepackage{' + sfmath.replace(os.sep, '/') + '}')
 rcParams.update(params)
 
 non_final = False
-version = 'clik10.1'
+version = 'clik10.2'
 defdata_root = 'plikHM'
+
+datalabel = dict()
 defdata_TT = defdata_root + '_TT_lowTEB'
+datalabel[defdata_TT] = r'\textit{Planck} TT$+$lowP'
 defdata_TE = defdata_root + '_TE_lowTEB'
+datalabel[defdata_TE] = r'\textit{Planck} TE$+$lowP'
 defdata_EE = defdata_root + '_EE_lowTEB'
+datalabel[defdata_EE] = r'\textit{Planck} EE$+$lowP'
 
 defdata_all = defdata_root + '_TTTEEE_lowTEB'
+datalabel[defdata_all] = r'\textit{Planck} TT,TE,EE$+$lowP'
 defdata_TTonly = defdata_root + '_TT_lowl'
+datalabel[defdata_TTonly] = r'\textit{Planck} TT'
 defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
+datalabel[defdata_allNoLowE] = r'\textit{Planck} TT,TE,EE'
 
 defdata = defdata_TT
+deflabel = datalabel[defdata_TT]
+
+defdata_lensing = defdata_TT + '_lensing'
+datalabel[defdata_lensing] = datalabel[defdata_TT] + '$+$lensing'
+defdata_all_lensing = defdata_all + '_lensing'
+datalabel[defdata_all_lensing] = datalabel[defdata_all] + '$+$lensing'
 
 planck = r'\textit{Planck}'
-planckTT = r'\textit{Planck} TT'
-planckTTlowTEB = r'\textit{Planck} TT$+$lowP'
-planckall = r'\textit{Planck} TT,TE,EE$+$lowP'
-NoLowLE = r'\textit{Planck} TT,TE,EE'
-lensing = r'\textit{Planck} TT$+$lowP$+$lensing'
-lensingall = r'\textit{Planck} TT,TE,EE$+$lowP$+$lensing'
 
-defplanck = planckTTlowTEB
+planckTT = datalabel[defdata_TTonly]
+planckTTlowTEB = datalabel[defdata_TT]
+planckall = datalabel[defdata_all]
+NoLowLE = datalabel[defdata_allNoLowE]
+lensing = datalabel[defdata_lensing]
+lensingall = datalabel[defdata_all_lensing]
+defplanck = datalabel[defdata]
 
 NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
 NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
