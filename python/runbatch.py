@@ -9,7 +9,8 @@ Opts.parser.add_argument('--subitems', action='store_true')
 Opts.parser.add_argument('--minimize', action='store_true')
 Opts.parser.add_argument('--importance_minimize', action='store_true')
 Opts.parser.add_argument('--minimize_failed', action='store_true')
-Opts.parser.add_argument('--checkpoint_run', action='store_true')
+Opts.parser.add_argument('--checkpoint_run', nargs='?', default=None, const=0, type=float,
+                         help='run if stopped and not finished; if optional value given then only run chains with convergence worse than the given value')
 Opts.parser.add_argument('--importance_ready', action='store_true')
 Opts.parser.add_argument('--not_queued', action='store_true')
 
@@ -73,7 +74,7 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
        or not isMinimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged())
           and (isMinimize or args.notall is None or not jobItem.allChainExists(args.notall))):
             if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
-                if not args.checkpoint_run or jobItem.wantCheckpointContinue() and jobItem.notRunning():
+                if args.checkpoint_run is None or jobItem.wantCheckpointContinue(args.checkpoint_run) and jobItem.notRunning():
                     if not jobItem.isImportanceJob or  (args.importance_ready and jobItem.parent.chainFinished()
                                                         or not args.importance_ready and jobItem.parent.chainExists()):
                         if not args.not_queued or notQueued(jobItem.name):

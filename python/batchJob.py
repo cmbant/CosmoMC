@@ -240,11 +240,11 @@ class jobItem:
         if done is None: return False
         return done
 
-    def wantCheckpointContinue(self):
+    def wantCheckpointContinue(self, minR=0):
         R, done = self.convergeStat()
         if R is None: return False
         if not os.path.exists(self.chainRoot + '_1.chk'): return False
-        return not done
+        return not done and R > minR
 
     def getDistExists(self):
         return os.path.exists(self.distRoot + '.margestats')
