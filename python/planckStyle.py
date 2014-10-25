@@ -99,7 +99,7 @@ def galaxygalaxy(omm, sigma):  # mandelbaum
 
 def planck_lensing(omm, sigma):
     # g60_full
-    return  (0.572 + 0.019 * sigma) * omm ** (-0.25)
+    return  (0.592 + 0.021 * sigma) * omm ** (-0.25)
 
 
 def plotBounds(omm, data, c='gray'):
