@@ -33,8 +33,8 @@ Opts.parser.add_argument('--titles', default=None)  # for compare plots
 Opts.parser.add_argument('--forpaper', action='store_true')
 Opts.parser.add_argument('--separate_tex', action='store_true')
 Opts.parser.add_argument('--header_tex', default=None)
-Opts.parser.add_argument('--height', default="10in")
-Opts.parser.add_argument('--width', default="11in")
+Opts.parser.add_argument('--height', default="9in")
+Opts.parser.add_argument('--width', default="12in")
 
 (batch, args) = Opts.parseForBatch()
 

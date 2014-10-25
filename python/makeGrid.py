@@ -47,6 +47,7 @@ def setMinimize(jobItem, ini):
     ini.params['action'] = 2
     ini.params['lmin_store_all_cmb'] = 2500
     if 'omegak' in jobItem.param_set: ini.params['accuracy_level'] = 1.2
+    if 'meffsterile' in jobItem.param_set: ini.params['sterile_mphys_max'] = 10000
 
 def updateIniParams(ini, params, path):
         for iniitem in params:
