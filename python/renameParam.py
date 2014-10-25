@@ -2,7 +2,7 @@ import os, batchJobArgs, paramNames
 
 Opts = batchJobArgs.batchArgs('rename parameter in all .paramnames files in grid', importance=True)
 Opts.parser.add_argument('--old_new', nargs='+', help="list of oldname newname oldname2 newname2...")
-Opts.parser.add_argument('--labelNames', default='clik_latex.paramnames', help=".paramnames file for labels for new names")
+Opts.parser.add_argument('--labelNames', default='clik_latex.paramnames', help=".paramnames file for new param labels")
 Opts.parser.add_argument('--map_file', help="file with rows of oldname newname label")
 Opts.parser.add_argument('--confirm', action='store_true', help="true to replace .paramnames files")
 
@@ -44,9 +44,12 @@ for jobItem in Opts.filteredBatchItems():
                 if p:
                     has = True
                     p.name = new
-                    if labels:
-                        plab = labels.parWithName(new)
-                        if plab: p.label = plab.label
+        if labels:
+            for p in names.names:
+                plab = labels.parWithName(p.name)
+                if plab:
+                    has = True
+                    p.label = plab.label
         if has:
             print jobItem.chainRoot
             if args.confirm: names.saveAsText(name)

@@ -2,9 +2,8 @@ import planckStyle as s
 from pylab import *
 g = s.getSinglePlotter()
 
-labels = [s.planckTT, s.planckall]
-roots = [s.defdata_TT, s.defdata_all]
-roots = ['base_nrun_' + root for root in roots]
+dataroots = [s.defdata_TT, s.defdata_all]
+roots = ['base_nrun_' + root for root in dataroots]
 
 g.plot_3d(roots, ['ns02', 'nrun', 'ns'])
 # g.add_legend(labels, legend_loc='upper right')
