@@ -144,7 +144,7 @@ class MainWindow(QMainWindow):
         """
         Create dockable widget and its content.
         """
-        self.dockTop = QDockWidget(self.tr("Filters"), self)
+        self.dockTop = QDockWidget(self.tr(""), self)
         self.dockTop.setAllowedAreas(Qt.LeftDockWidgetArea)
 
         self.selectWidget = QWidget(self.dockTop)
@@ -466,7 +466,7 @@ class MainWindow(QMainWindow):
                 if self.plotter is not None:
                     self.plotter.sampleAnalyser.addRoot(root)
                     logging.debug("Add root %s"%baseName)
-                    self.other_rootnames[baseName] = True
+                    self.other_rootnames[baseName] = [root, True]
                 else:
                     logging.warning("No plotter instance")
 
@@ -475,9 +475,10 @@ class MainWindow(QMainWindow):
     def updateOtherRoots(self):
         logging.debug("Update other roots")
         self.listRoots.clear()
-        for chain, state in self.other_rootnames.items():
+        for chain, values in self.other_rootnames.items():
             item = QListWidgetItem(self.listRoots)
             item.setText(str(chain))
+            state = values[1]
             if state:
                 item.setCheckState(Qt.Checked)
             else:
@@ -502,8 +503,11 @@ class MainWindow(QMainWindow):
             item = self.listRoots.item(i)
             root = str(item.text())
             state = (item.checkState()==Qt.Checked)
-            roots[root] = state
-        self.other_rootnames = roots
+            if self.other_rootnames.has_key(root):
+                self.other_rootnames[root][1] = state
+                logging.debug("status for '%s': %s"%(root, state))
+            else:
+                logging.warning("No key for root '%s'"%root)
 
     def _updateComboBoxParamTag(self, listOfParams=[]):
         if self.rootdirname and os.path.isdir(self.rootdirname):
@@ -653,6 +657,10 @@ class MainWindow(QMainWindow):
         Slot function called when pushButtonPlot is pressed.
         """
 
+        if self.rootname is None:
+            logging.warning("No rootname defined")
+            return
+
         # X items
         items_x = []
         count = self.listParametersX.count()
@@ -675,23 +683,32 @@ class MainWindow(QMainWindow):
 
         self.plotter.settings.setWithSubplotSize(3.000000)
 
-        roots = []
-        roots.append(os.path.basename(self.rootname))
-
-        self.getOtherRoots()
-        for other_rootname, state in self.other_rootnames.items():
-            if state: roots.append(os.path.basename(other_rootname))
-        logging.debug("Plotting with roots = %s"%str(roots))
-
         # Script
         self.script  = ""
         self.script += "import GetDistPlots, os\n"
         self.script += "g=GetDistPlots.GetDistPlotter(mcsamples=True, ini_file='%s')\n"%self.iniFile
         self.script += "g.settings.setWithSubplotSize(3.000000)\n"
         self.script += "outdir='.'\n"
-        self.script += "roots=%s\n"%str(roots)
-        # FIXME: rootname absolute path
-        self.script += "g.sampleAnalyser.addRoots(roots)\n"
+        self.script += "dict_roots={}\n"
+
+        roots = []
+        basename = os.path.basename(self.rootname)
+        roots.append(basename)
+        self.script += "dict_roots['%s'] = '%s'\n"%(basename, self.rootname)
+
+        self.getOtherRoots()
+        for basename, values in self.other_rootnames.items():
+            other_rootname, state = values
+            if state:
+                roots.append(os.path.basename(other_rootname))
+                self.script += "dict_roots['%s'] = '%s'\n"%(basename, other_rootname)
+            else:
+                logging.debug("root '%s' not selected"%basename)
+
+        self.script += "g.sampleAnalyser.addRoots(dict_roots.values())\n"
+        self.script += "roots=dict_roots.keys()\n"
+
+        logging.debug("Plotting with roots = %s"%str(roots))
 
         #
         if self.trianglePlot.isChecked():
