@@ -73,7 +73,7 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
     if ((not args.notexist or isMinimize and not jobItem.chainMinimumExists()
        or not isMinimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged())
           and (isMinimize or args.notall is None or not jobItem.allChainExists(args.notall))):
-            if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
+            if args.converge == 0 or (jobItem.isImportanceJob and jobItem.parent.hasConvergeBetterThan(args.converge) or jobItem.hasConvergeBetterThan(args.converge)):
                 if args.checkpoint_run is None or jobItem.wantCheckpointContinue(args.checkpoint_run) and jobItem.notRunning():
                     if not jobItem.isImportanceJob or  (args.importance_ready and jobItem.parent.chainFinished()
                                                         or not args.importance_ready and jobItem.parent.chainExists()):
