@@ -330,6 +330,7 @@ class MainWindow(QMainWindow):
 
 	settings = QSettings('cosmomc', 'gui')
         last_dir = settings.value('lastSearchDirectory')
+        last_dir = ''
 
 	# Search in current directory, if no previous path available
         if not last_dir: last_dir = os.getcwd()
@@ -595,6 +596,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Read chains in %s"%str(rootname))
         self.plotter.sampleAnalyser.addRoot(rootname)
         self.other_rootnames[basename] = [rootname, True]
+        self.updateOtherRoots()
 
         paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(rootname)
 
@@ -734,7 +736,6 @@ class MainWindow(QMainWindow):
 
         logging.debug("Plotting with roots = %s"%str(roots))
 
-        #
         if self.trianglePlot.isChecked():
             if len(items_x)>1:
                 params = items_x
