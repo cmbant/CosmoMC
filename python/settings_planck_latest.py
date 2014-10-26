@@ -91,7 +91,7 @@ class importanceFilterNotOmegak:
 
 class importanceFilterAbundance:
     def wantImportance(self, jobItem):
-        return 'nnu' in jobItem.param_set and not 'yhe' in jobItem.param_set
+        return 'nnu' in jobItem.param_set and not 'yhe' in jobItem.param_set and not jobItem.data_set.hasName('lensonly')
 
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
@@ -170,7 +170,7 @@ for d in copy.deepcopy(planck_highL_sets):
     g5.datasets.append(d)
 for d in copy.deepcopy(planck_highL_sets):
     d.add(lowl)
-    d.add('reion', 'reion_tau.ini')
+    d.add('reion', 'reion_tau.ini', dist_settings={'limits[zrei]':'6.5 N'})
     g5.datasets.append(d)
 g5.importanceRuns = [post_BAO, post_nonCMB, post_zre]
 groups.append(g5)

@@ -20,7 +20,7 @@ def nonEmptyFile(fname):
 
 
 class dataSet:
-    def __init__(self, names, params=None, covmat=None):
+    def __init__(self, names, params=None, covmat=None, dist_settings={}):
         if isinstance(names, basestring): names = [names]
         if params is None: params = [(name + '.ini') for name in names]
         else: params = self.standardizeParams(params)
@@ -28,10 +28,12 @@ class dataSet:
         self.names = names
         self.params = params  # can be an array of items, either ini file name or dictionaries of parameters
         self.tag = "_".join(self.names)
+        self.dist_settings = dist_settings
 
-    def add(self, name, params=None, overrideExisting=True):
+    def add(self, name, params=None, overrideExisting=True, dist_settings={}):
         if params is None: params = [name]
         params = self.standardizeParams(params)
+        self.dist_settings.update(dist_settings)
         if overrideExisting:
             self.params = params + self.params  # can be an array of items, either ini file name or dictionaries of parameters
         else:
@@ -40,8 +42,8 @@ class dataSet:
             self.names += [name]
             self.tag = "_".join(self.names)
 
-    def addEnd(self, name, params):
-        self.add(name, params, overrideExisting=False)
+    def addEnd(self, name, params, dist_settings={}):
+        self.add(name, params, overrideExisting=False, dist_settings=dist_settings)
 
     def extendForImportance(self, names, params):
         data = copy.deepcopy(self)
@@ -121,7 +123,7 @@ class jobItem:
         self.importanceItems = []
         self.result_converge = None
         self.group = None
-        self.dist_settings = dict()
+        self.dist_settings = copy.copy(data_set.dist_settings)
         self.makeIDs()
 
     def iniFile(self, variant=''):
