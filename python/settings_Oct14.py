@@ -78,7 +78,7 @@ plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TTTEEE'], ['plik_dx11dr2_DS_v16_
 Mspec = []
 Mspec.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
 
-plik = plikHM + plikDS + plikHM1 + plikDS1
+plik = plikHM + plikDS  # + plikHM1 + plikDS1
 
 start_at_bestfit = False
 newCovmats = True

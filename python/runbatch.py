@@ -5,6 +5,7 @@ Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', 
 
 jobQueue.addArguments(Opts.parser, combinedJobs=True)
 
+Opts.parser.add_argument('--parent_converge', type=float, default=0, help='minimum R-1 convergence for importance job parent')
 Opts.parser.add_argument('--subitems', action='store_true')
 Opts.parser.add_argument('--minimize', action='store_true')
 Opts.parser.add_argument('--importance_minimize', action='store_true')
@@ -73,12 +74,13 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
     if ((not args.notexist or isMinimize and not jobItem.chainMinimumExists()
        or not isMinimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged())
           and (isMinimize or args.notall is None or not jobItem.allChainExists(args.notall))):
-            if args.converge == 0 or (jobItem.isImportanceJob and jobItem.parent.hasConvergeBetterThan(args.converge) or jobItem.hasConvergeBetterThan(args.converge)):
-                if args.checkpoint_run is None or jobItem.wantCheckpointContinue(args.checkpoint_run) and jobItem.notRunning():
-                    if not jobItem.isImportanceJob or  (args.importance_ready and jobItem.parent.chainFinished()
-                                                        or not args.importance_ready and jobItem.parent.chainExists()):
-                        if not args.not_queued or notQueued(jobItem.name):
-                            submitJob(jobItem.iniFile(variant))
+            if not args.parent_converge or not jobItem.isImportanceJob or jobItem.parent.hasConvergeBetterThan(args.parent_converge):
+                if args.converge == 0 or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
+                    if args.checkpoint_run is None or jobItem.wantCheckpointContinue(args.checkpoint_run) and jobItem.notRunning():
+                        if not jobItem.isImportanceJob or  (args.importance_ready and jobItem.parent.chainFinished()
+                                                            or not args.importance_ready and jobItem.parent.chainExists()):
+                            if not args.not_queued or notQueued(jobItem.name):
+                                submitJob(jobItem.iniFile(variant))
 
 
 if len(iniFiles) > 0:

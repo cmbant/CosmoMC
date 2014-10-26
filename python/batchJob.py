@@ -260,9 +260,13 @@ class jobItem:
         return float(self.result_converge.worstR())
 
     def hasConvergeBetterThan(self, R, returnNotExist=False):
-        chainR = self.R()
-        if chainR is None: return returnNotExist
-        return chainR <= R
+        try:
+            chainR = self.R()
+            if chainR is None: return returnNotExist
+            return chainR <= R
+        except:
+            print 'WARNING: Bad .converge for ' + self.name
+            return returnNotExist
 
     def loadJobItemResults(self, paramNameFile=None, bestfit=True, bestfitonly=False, noconverge=False, silent=False):
         self.result_converge = None
