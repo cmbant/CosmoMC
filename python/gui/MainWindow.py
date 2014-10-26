@@ -225,18 +225,18 @@ class MainWindow(QMainWindow):
         layoutTop.addWidget(self.pushButtonSelect,  0, 3, 1, 1)
         layoutTop.addWidget(self.listRoots,         1, 0, 2, 3)
         layoutTop.addWidget(self.pushButtonRemove,  1, 3, 1, 1)
-        layoutTop.addWidget(self.comboBoxParamTag,  2, 0, 1, 2)
-        layoutTop.addWidget(self.comboBoxDataTag,   2, 2, 1, 2)
-        layoutTop.addWidget(self.selectAllX,        3, 0, 1, 2)
-        layoutTop.addWidget(self.selectAllY,        3, 2, 1, 2)
-        layoutTop.addWidget(self.listParametersX,   4, 0, 5, 2)
-        layoutTop.addWidget(self.listParametersY,   4, 2, 1, 2)
-        layoutTop.addWidget(self.toggleFilled,      5, 2, 1, 2)
-        layoutTop.addWidget(self.toggleLine,        6, 2, 1, 2)
-        layoutTop.addWidget(self.toggleColor,       7, 2, 1, 1)
-        layoutTop.addWidget(self.comboBoxColor,     7, 3, 1, 1)
-        layoutTop.addWidget(self.trianglePlot,      8, 2, 1, 2)
-        layoutTop.addWidget(self.pushButtonPlot,   10, 0, 1, 4)
+        layoutTop.addWidget(self.comboBoxParamTag,  3, 0, 1, 2)
+        layoutTop.addWidget(self.comboBoxDataTag,   3, 2, 1, 2)
+        layoutTop.addWidget(self.selectAllX,        4, 0, 1, 2)
+        layoutTop.addWidget(self.selectAllY,        4, 2, 1, 2)
+        layoutTop.addWidget(self.listParametersX,   5, 0, 5, 2)
+        layoutTop.addWidget(self.listParametersY,   5, 2, 1, 2)
+        layoutTop.addWidget(self.toggleFilled,      6, 2, 1, 2)
+        layoutTop.addWidget(self.toggleLine,        7, 2, 1, 2)
+        layoutTop.addWidget(self.toggleColor,       8, 2, 1, 1)
+        layoutTop.addWidget(self.comboBoxColor,     8, 3, 1, 1)
+        layoutTop.addWidget(self.trianglePlot,      9, 2, 1, 2)
+        layoutTop.addWidget(self.pushButtonPlot,   11, 0, 1, 4)
         self.selectWidget.setLayout(layoutTop)
 
         self.listRoots.hide()
@@ -275,6 +275,10 @@ class MainWindow(QMainWindow):
         """
         Callback for action 'Save script'.
         """
+        if self.script=='':
+            logging.warning("Script is empty!")
+            return
+
         filename, filt = QFileDialog.getSaveFileName(
             self, "Choose a file name", '.', "rPython (*.py)")
         if not filename: return
@@ -288,12 +292,18 @@ class MainWindow(QMainWindow):
         """
         Callback for action 'Show Marge Stats'.
         """
-        if self.plotter is None or self.rootname is None:
-            logging.warning("No data. Can't show marge stats")
+        if self.rootname is not None:
+            rootname = self.rootname
+        else:
+            logging.warning("No rootname. Can't show marge stats")
+            return
+
+        if self.plotter is None:
+            logging.warning("No plotter. Can't show marge stats")
             self.statusBar().showMessage("No data available", 2000)
             return
 
-        text = self.plotter.sampleAnalyser.getMargeStats(self.rootname)
+        text = self.plotter.sampleAnalyser.getMargeStats(rootname)
         text = text.replace('\t', '\t\t') # uses double tab
         dlg = DialogMargeStats(self, text)
         dlg.exec_()
@@ -329,6 +339,7 @@ class MainWindow(QMainWindow):
             self, title, last_dir,
             QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
         dirName = str(dirName)
+        logging.debug("dirName: %s"%dirName)
 
         # No directory selected
         if dirName is None or dirName=='':
@@ -347,10 +358,13 @@ class MainWindow(QMainWindow):
             return
 
         # Root file name
-        self._getRootFileName()
-        if self.rootname is None:
+        rootname = self._getRootFileName()
+        if rootname=='':
             logging.warning("Root file name is not defined")
             return
+        else:
+            self.rootname = rootname
+            logging.warning("rootname: %s"%self.rootname)
 
         # Get chain files
         chainFiles = MCSamples.GetChainFiles(self.rootname)
@@ -362,7 +376,7 @@ class MainWindow(QMainWindow):
 
         self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True,
                                                    ini_file=self.iniFile)
-        self.statusBar().showMessage("Read chains in %s"%str(self.rootname))
+        logging.debug("Read chains in %s"%str(self.rootname))
         self.plotter.sampleAnalyser.addRoot(self.rootname)
 
         paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(self.rootname)
@@ -393,8 +407,8 @@ class MainWindow(QMainWindow):
         self.grid_items = items
         self.comboBoxParamTag.show()
         self.comboBoxDataTag.show()
-        self.listRoots.hide()
-        self.pushButtonRemove.hide()
+        self.listRoots.show()
+        self.pushButtonRemove.show()
         self._updateComboBoxParamTag(self.grid_items.keys())
 
     def _getFileParam(self, paramTag=None, dataTag=None):
@@ -424,17 +438,17 @@ class MainWindow(QMainWindow):
         """
         Get the root file name.
         """
+        rootname = ''
         fileparam = self._getFileParam(paramTag, dataTag)
         if fileparam<>'':
-            self.rootname = str(fileparam).replace(".paramnames", "")
-            logging.debug("rootname: %s"%self.rootname)
+            rootname = str(fileparam).replace(".paramnames", "")
         else:
             if paramTag is not None and dataTag is not None:
                 rootdirname = os.path.join(self.rootdirname, paramTag, dataTag)
             else:
                 rootdirname = self.rootdirname
-            self.rootname = MCSamples.GetRootFileName(rootdirname)
-            logging.debug("rootname: %s"%self.rootname)
+            rootname = MCSamples.GetRootFileName(rootdirname)
+        return rootname
 
     def addRoot(self):
         """
@@ -498,7 +512,6 @@ class MainWindow(QMainWindow):
 
     def getOtherRoots(self):
         logging.debug("Get status for other roots")
-        roots = {}
         for i in range(self.listRoots.count()):
             item = self.listRoots.item(i)
             root = str(item.text())
@@ -519,15 +532,6 @@ class MainWindow(QMainWindow):
                     if os.path.isdir(os.path.join(self.rootdirname, d)) ]
             self.comboBoxParamTag.addItems(listOfParams)
             self.setParamTag(str(self.comboBoxParamTag.itemText(0)))
-
-    def _updateComboBoxDataTag(self, listOfDatas=[]):
-        logging.debug("Update data with %i values"%len(listOfDatas))
-        if self.rootdirname and os.path.isdir(self.rootdirname):
-            self.comboBoxDataTag.show()
-            self.comboBoxDataTag.clear()
-            if not listOfDatas:
-                pass
-            self.comboBoxDataTag.addItems(listOfDatas)
 
     def setParamTag(self, strParamTag):
         """
@@ -551,6 +555,16 @@ class MainWindow(QMainWindow):
             else:
                 logging.warning("No param found")
 
+    def _updateComboBoxDataTag(self, listOfDatas=[]):
+        logging.debug("Update data with %i values"%len(listOfDatas))
+        if self.rootdirname and os.path.isdir(self.rootdirname):
+            self.comboBoxDataTag.show()
+            self.comboBoxDataTag.clear()
+            if listOfDatas:
+                self.comboBoxDataTag.addItems(listOfDatas)
+            else:
+                logging.warning("No datas to display")
+
     def setDataTag(self, strDataTag):
         """
         Slot function called on change of comboBoxDataTag.
@@ -563,19 +577,26 @@ class MainWindow(QMainWindow):
             logging.warning("No directory found for %s/%s"%(self.paramTag, self.dataTag))
             return
 
-        self._getRootFileName(self.paramTag, self.dataTag)
-        logging.debug("rootname: %s"%self.rootname)
-        if self.rootname is None:
+        rootname = self._getRootFileName(self.paramTag, self.dataTag)
+        logging.debug("paramTag, dataTag: %s, %s"%(self.paramTag, self.dataTag))
+        logging.debug("rootname: %s"%rootname)
+        if rootname=='':
             logging.warning("Root file name is not defined")
+            return
+
+        basename = os.path.basename(rootname)
+        if self.other_rootnames.has_key(basename):
+            logging.warning("Root name '%s' allready selected"%basename)
             return
 
         if self.plotter is None:
             self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True,
                                                        ini_file=self.iniFile)
-        self.statusBar().showMessage("Read chains in %s"%str(self.rootname))
-        self.plotter.sampleAnalyser.addRoot(self.rootname)
+        self.statusBar().showMessage("Read chains in %s"%str(rootname))
+        self.plotter.sampleAnalyser.addRoot(rootname)
+        self.other_rootnames[basename] = [rootname, True]
 
-        paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(self.rootname)
+        paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(rootname)
 
         self._updateListParametersX(paramNames)
         self._updateListParametersY(paramNames)
@@ -657,7 +678,7 @@ class MainWindow(QMainWindow):
         Slot function called when pushButtonPlot is pressed.
         """
 
-        if self.rootname is None:
+        if self.rootname is None and len(self.other_rootnames)==0:
             logging.warning("No rootname defined")
             return
 
@@ -692,10 +713,13 @@ class MainWindow(QMainWindow):
         self.script += "dict_roots={}\n"
 
         roots = []
-        basename = os.path.basename(self.rootname)
-        roots.append(basename)
-        self.script += "dict_roots['%s'] = '%s'\n"%(basename, self.rootname)
+        # Main root name
+        if self.rootname is not None:
+            basename = os.path.basename(self.rootname)
+            roots.append(basename)
+            self.script += "dict_roots['%s'] = '%s'\n"%(basename, self.rootname)
 
+        # Other root names
         self.getOtherRoots()
         for basename, values in self.other_rootnames.items():
             other_rootname, state = values
@@ -766,8 +790,9 @@ class MainWindow(QMainWindow):
                 self.updatePlot()
                 self.script += "g.plots_3d(roots, sets)\n"
 
-        basename = os.path.basename(self.rootname)
-        self.script += "g.export(os.path.join(outdir,'%s.pdf'))\n"%basename
+        if self.rootname is not None:
+            basename = os.path.basename(self.rootname)
+            self.script += "g.export(os.path.join(outdir,'%s.pdf'))\n"%basename
 
     def updatePlot(self):
 
