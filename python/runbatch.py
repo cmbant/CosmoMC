@@ -5,14 +5,14 @@ Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', 
 
 jobQueue.addArguments(Opts.parser, combinedJobs=True)
 
-Opts.parser.add_argument('--subitems', action='store_true')
-Opts.parser.add_argument('--minimize', action='store_true')
-Opts.parser.add_argument('--importance_minimize', action='store_true')
-Opts.parser.add_argument('--minimize_failed', action='store_true')
+Opts.parser.add_argument('--subitems', action='store_true', help='include jobs coming from linked subgrids')
+Opts.parser.add_argument('--minimize', action='store_true', help='run the minimization (best fit) runs for main jobs')
+Opts.parser.add_argument('--importance_minimize', action='store_true', help='run minimization runs for items where chains are importance sampled')
+Opts.parser.add_argument('--minimize_failed', action='store_true', help='re-run failied minimizations')
 Opts.parser.add_argument('--checkpoint_run', nargs='?', default=None, const=0, type=float,
                          help='run if stopped and not finished; if optional value given then only run chains with convergence worse than the given value')
-Opts.parser.add_argument('--importance_ready', action='store_true')
-Opts.parser.add_argument('--not_queued', action='store_true')
+Opts.parser.add_argument('--importance_ready', action='store_true', help='only run importance jobs where the main chain has converged and stopped')
+Opts.parser.add_argument('--not_queued', action='store_true', help='include only things are are not currently in the job queue')
 
 
 (batch, args) = Opts.parseForBatch()
@@ -73,7 +73,8 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
     if ((not args.notexist or isMinimize and not jobItem.chainMinimumExists()
        or not isMinimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged())
           and (isMinimize or args.notall is None or not jobItem.allChainExists(args.notall))):
-            if args.converge == 0 or (jobItem.isImportanceJob and jobItem.parent.hasConvergeBetterThan(args.converge) or jobItem.hasConvergeBetterThan(args.converge)):
+            if args.converge == 0 or (jobItem.isImportanceJob and jobItem.parent.hasConvergeBetterThan(args.converge)
+                                      or jobItem.hasConvergeBetterThan(args.converge)):
                 if args.checkpoint_run is None or jobItem.wantCheckpointContinue(args.checkpoint_run) and jobItem.notRunning():
                     if not jobItem.isImportanceJob or  (args.importance_ready and jobItem.parent.chainFinished()
                                                         or not args.importance_ready and jobItem.parent.chainExists()):
