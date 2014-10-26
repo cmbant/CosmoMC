@@ -45,7 +45,7 @@ for TT in [False, True]:
 
 g.newPlot()
 dataroots = [s.defdata_TTonly, s.defdata_allNoLowE, s.defdata_allNoLowE + '_lensing', s.defdata_allNoLowE + '_lensing_BAO']
-roots = [g.getRoot('', x) for x in datraroots]
+roots = [g.getRoot('', x) for x in dataroots]
 
 g.plot_2d(roots, param_pair=pair, filled=True, lims=ranges)
 

@@ -30,7 +30,7 @@ g.plot_3d(roots, ['mnu', 'H0', 'sigma8'])
 root = g.getRoot('mnu', s.defdata + '_lensing')
 g.add_2d_contours(root, 'mnu', 'H0', plotno=0)
 
-root = g.getRoot('mnu', s.defdata + '_BAO_HST70p6_JLA_lensing')
+root = g.getRoot('mnu', s.defdata + '_BAO_H070p6_JLA_lensing')
 g.add_2d_contours(root, 'mnu', 'H0', filled=True, zorder=2, alpha=0.6)
 
 # gca().set_xticks([2, 2.5,3.0,3.5,4])

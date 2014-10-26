@@ -10,7 +10,7 @@ g.make_figure(1, xstretch=1)
 
 roots = [g.getRoot('nnu_meffsterile_r', s.defdata + '_lensing'),
                'base_r_' + s.defdata,
-                g.getRoot('r', s.defdata_all + '_lensing_BAO_HST70p6_JLA')]
+                g.getRoot('r', s.defdata_all + '_lensing_BAO_H070p6_JLA')]
 
 
 
