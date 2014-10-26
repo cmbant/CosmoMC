@@ -31,6 +31,8 @@ Camspec = 'CAMspec_defaults.ini'
 highL = 'highL'
 lowl = 'lowl'
 lowTEB = 'lowTEB'
+lowEB = 'lowEB'
+
 # dataset names
 tauprior = {'prior[tau]':'0.07 0.02'}
 tauname = 'tau07'
@@ -125,8 +127,11 @@ gpol = batchJob.jobGroup('mainpol')
 gpol.datasets = copy.deepcopy(planck_pol_sets)
 for d in gpol.datasets:
     d.add(lowTEB)
+for d in copy.deepcopy(planck_pol_sets):
+    d.add(lowEB)
+    gpol.datasets.append(d)
 
-gpol.params = [[], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['yhe'], ['alpha1']]
+gpol.params = [[], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
 gpol.importanceRuns = []
 groups.append(gpol)
 
@@ -387,6 +392,7 @@ covrenames.append(['_w', ''])
 covrenames.append(['_alpha1', ''])
 covrenames.append(['_WLonly', '_lensonly'])
 covrenames.append(['lowl', 'lowTEB'])
+covrenames.append(['lowEB', 'lowTEB'])
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
