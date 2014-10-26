@@ -5,15 +5,16 @@ Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', 
 
 jobQueue.addArguments(Opts.parser, combinedJobs=True)
 
-Opts.parser.add_argument('--parent_converge', type=float, default=0, help='minimum R-1 convergence for importance job parent')
-Opts.parser.add_argument('--subitems', action='store_true')
-Opts.parser.add_argument('--minimize', action='store_true')
-Opts.parser.add_argument('--importance_minimize', action='store_true')
-Opts.parser.add_argument('--minimize_failed', action='store_true')
+Opts.parser.add_argument('--subitems', action='store_true', help='include sub-grid items')
+Opts.parser.add_argument('--not_queued', action='store_true')
+Opts.parser.add_argument('--minimize', action='store_true', help='Run minimization jobs')
+Opts.parser.add_argument('--importance_minimize', action='store_true', help='Run minimization jobs for chains that are importance sampled')
+Opts.parser.add_argument('--minimize_failed', action='store_true', help='run where minimization previously failed')
 Opts.parser.add_argument('--checkpoint_run', nargs='?', default=None, const=0, type=float,
                          help='run if stopped and not finished; if optional value given then only run chains with convergence worse than the given value')
-Opts.parser.add_argument('--importance_ready', action='store_true')
-Opts.parser.add_argument('--not_queued', action='store_true')
+Opts.parser.add_argument('--importance_ready', action='store_true', help='where parent chain has converged and stopped')
+Opts.parser.add_argument('--importance_changed', action='store_true', help='run importance jobs where the parent chain has changed since last run')
+Opts.parser.add_argument('--parent_converge', type=float, default=0, help='minimum R-1 convergence for importance job parent')
 
 
 (batch, args) = Opts.parseForBatch()
@@ -29,7 +30,6 @@ def notQueued(name):
             return False
     return True
 
-
 variant = ''
 if args.importance_minimize:
     variant = '_minimize'
@@ -39,7 +39,9 @@ if args.minimize:
     args.noimportance = True
     variant = '_minimize'
 
-if args.importance is None: args.noimportance = True
+if args.importance is None:
+    if args.importance_changed or args.importance_ready: args.importance = []
+    else:  args.noimportance = True
 
 isMinimize = args.importance_minimize or args.minimize
 
@@ -78,7 +80,8 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
                 if args.converge == 0 or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
                     if args.checkpoint_run is None or jobItem.wantCheckpointContinue(args.checkpoint_run) and jobItem.notRunning():
                         if not jobItem.isImportanceJob or  (args.importance_ready and jobItem.parent.chainFinished()
-                                                            or not args.importance_ready and jobItem.parent.chainExists()):
+                                                            or not args.importance_ready and jobItem.parent.chainExists() and
+                                                            (not args.importance_changed or jobItem.parentChanged())):
                             if not args.not_queued or notQueued(jobItem.name):
                                 submitJob(jobItem.iniFile(variant))
 

@@ -62,7 +62,7 @@ for jobItem in Opts.filteredBatchItems():
                 infofiles += 1
                 if args.verbose: print jobItem.chainPath + f
                 doCopy(jobItem.chainPath, outdir, f)
-        if args.dist:
+        if args.dist and os.path.exists(jobItem.distPath):
             outdir += 'dist' + os.sep
             if not args.zip: batchJob.makePath(target_dir + outdir)
             for f in os.listdir(jobItem.distPath):

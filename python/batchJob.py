@@ -254,6 +254,9 @@ class jobItem:
     def getDistNeedsUpdate(self):
         return self.chainExists() and (not self.getDistExists() or self.chainFileDate() > os.path.getmtime(self.distRoot + '.margestats'))
 
+    def parentChanged(self):
+        return (not self.chainExists() or self.chainFileDate() < self.parent.chainFileDate()) and self.parent.notRunning()
+
     def R(self):
         if self.result_converge is None:
             fname = self.distRoot + '.converge'
