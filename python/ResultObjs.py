@@ -355,6 +355,7 @@ class bestFit(paramResults):
                 continue
             if not isFixed or want_fixed:
                 param = paramNames.paramInfo()
+                param.isFixed = isFixed
                 param.isDerived = isDerived
                 (param.number, param.best_fit, param.name, param.label) = [s.strip() for s in line.split(None, 3)]
                 param.number = int(param.number)

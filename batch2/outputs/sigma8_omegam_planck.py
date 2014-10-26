@@ -44,11 +44,8 @@ for TT in [False, True]:
     g.export(fname + '_sigma_8-omega_m')
 
 g.newPlot()
-roots = [g.getRoot('', s.defdata_TTonly),
-             g.getRoot('', s.defdata_allNoLowE),
-             g.getRoot('', s.defdata_allNoLowE + '_lensing'),
-             g.getRoot('', s.defdata_allNoLowE + '_lensing_BAO')]
-
+dataroots = [s.defdata_TTonly, s.defdata_allNoLowE, s.defdata_allNoLowE + '_lensing', s.defdata_allNoLowE + '_lensing_BAO']
+roots = [g.getRoot('', x) for x in datraroots]
 
 g.plot_2d(roots, param_pair=pair, filled=True, lims=ranges)
 
