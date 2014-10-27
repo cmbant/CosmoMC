@@ -144,7 +144,7 @@ class chains():
 
 
     def confidence(self, paramVec, limfrac, upper, start=None, end=None):
-
+        paramVec = self.valuesForParam(paramVec)
         try_b = min(paramVec)
         try_t = max(paramVec)
 
@@ -372,6 +372,7 @@ class chains():
         self.loglikes += logLikes
         self.weights *= np.exp(-(logLikes - scale))
         self.norm = np.sum(self.weights)
+
 
 # c = loadChains('C:\\tmp\\Planck\\chains\\base_nrun_r_planck_CAMspec_lowl_lowLike', ignore_frac=0.3, separate_chains=False)
 # c.getChainsStats()

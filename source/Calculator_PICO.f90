@@ -88,7 +88,7 @@
     call this%SetBackgroundTheoryData(CMB,Theory,error)
 
     if (p%InitPower%n_runrun(1)/=0 .or. p%InitPower%nt_run(1)/=0 .or. p%InitPower%ant(1)/=0) &
-    & call MpiStop('PICO: currently unsupported initial power parameter')
+        & call MpiStop('PICO: currently unsupported initial power parameter')
 
     if (CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
         call MpiStop('PICO: currently no MPK or sigma8')
@@ -155,7 +155,7 @@
                         & highL_norm = CL(lmx)/this%highL_lensedCL_template(lmx,indicesT(i,j))
                         CL(lmx+1:lmaxCL) =  highL_norm*this%highL_lensedCL_template(lmx+1:lmaxCL,indicesT(i,j))
                     end if
-                    end associate
+                end associate
             end if
         end do
     end do

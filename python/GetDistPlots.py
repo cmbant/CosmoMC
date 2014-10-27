@@ -199,7 +199,7 @@ class MCSampleAnalysis():
 
     def __init__(self, ini_file):
         self.ini = None
-        if ini_file<>'':
+        if ini_file <> '':
             self.ini = iniFile.iniFile()
             self.ini.readFile(ini_file)
 
@@ -234,7 +234,7 @@ class MCSampleAnalysis():
 
     def removeOtherRoot(self, file_root):
         base_root = os.path.basename(file_root)
-        print "remove root for %s"%base_root
+        print "remove root for %s" % base_root
         if base_root in self.roots:
             self.roots.remove(base_root)
         if self.mcsamples.has_key(base_root):
@@ -301,7 +301,7 @@ class MCSampleAnalysis():
         mcsamples.ComputeNumSamp()
 
         # Get ND confidence region
-        #mcsamples.GetConfidenceRegion()
+        # mcsamples.GetConfidenceRegion()
 
         mcsamples.GetCovMatrix(False)
 
@@ -349,7 +349,7 @@ class MCSampleAnalysis():
             self.densities_dat_1D[root] = {}
 
         name = param.name
-        if ext=='.dat':
+        if ext == '.dat':
             if self.densities_dat_1D[root].has_key(name):
                 return self.densities_dat_1D[root][name]
             else:
@@ -358,7 +358,7 @@ class MCSampleAnalysis():
                     return self.densities_dat_1D[root][name]
                 else:
                     return None
-        elif ext=='.likes':
+        elif ext == '.likes':
             if self.densities_likes_1D[root].has_key(name):
                 return self.densities_likes_1D[root][name]
             else:
@@ -376,18 +376,18 @@ class MCSampleAnalysis():
         if not self.densities_likes_2D.has_key(root): self.densities_likes_2D[root] = {}
         if not self.densities_cont_2D.has_key(root): self.densities_cont_2D[root] = {}
 
-        transpose = False # not used here
+        transpose = False  # not used here
         name1, name2 = param1.name, param2.name
         key = (name1, name2)
         if  (not self.densities_dat_2D[root].has_key(key)) \
                 and (not self.densities_x_2D[root].has_key(key)) \
                 and (not self.densities_y_2D[root].has_key(key)):
             self.compute_2d(root, name1, name2)
-        if ext=='':
+        if ext == '':
             pts = self.densities_dat_2D[root].get(key, np.ndarray(0))
-        elif ext=='_likes':
+        elif ext == '_likes':
             pts = self.densities_likes_2D[root].get(key, np.ndarray(0))
-        elif ext=='_cont':
+        elif ext == '_cont':
             pts = self.densities_cont_2D[root].get(key, np.ndarray(0))
         if no_axes: return pts
         x = self.densities_x_2D[root].get(key, np.ndarray(0))
@@ -665,7 +665,7 @@ class GetDistPlotter():
 
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
                 no_ylabel=False, no_ytick=False, no_zero=False, param_renames={}, **ax_args):
-        if isinstance(roots, basestring):roots = [roots]
+        if isinstance(roots, basestring): roots = [roots]
         if self.fig is None: self.make_figure()
         xmin = None
         plotparam = None
@@ -1000,7 +1000,7 @@ class GetDistPlotter():
         return [mins, maxs]
 
     def plot_3d(self, roots, in_params=None, params_for_plots=None, color_bar=True, line_offset=0, filled=False, **ax_args):
-        if isinstance(roots, basestring):roots = [roots]
+        if isinstance(roots, basestring): roots = [roots]
         if params_for_plots:
             params_for_plots = [self.get_param_array(root, p) for p, root in zip(params_for_plots, roots)]
         else:
