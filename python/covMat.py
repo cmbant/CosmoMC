@@ -80,3 +80,23 @@ class covMat():
                     C.matrix[i, j] = cov2.matrix[map2[covmap[i]], map2[covmap[j]]]
 
         return C
+
+    def correlation(self):
+        m = self.matrix.copy()
+        for i in range(self.size):
+            s = np.sqrt(self.matrix[i, i])
+            m[i, :] /= s
+            m[:, i] /= s
+        return m
+
+    def plot(self):
+        import pylab as plt
+        plt.pcolor(self.correlation())
+        plt.colorbar()
+        sz = self.size
+        plt.yticks(np.arange(0.5, sz + .5), range(1, sz + 1))
+        plt.gca().set_yticklabels(self.paramNames)
+        plt.xticks(np.arange(0.5, sz + .5), range(1, sz + 1))
+        plt.xlim([0, sz])
+        plt.ylim([0, sz])
+

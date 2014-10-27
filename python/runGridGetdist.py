@@ -1,4 +1,4 @@
-import os, iniFile, batchJobArgs
+import os, iniFile, batchJobArgs, time, subprocess
 
 def checkDir(fname):
     if not os.path.exists(fname): os.makedirs(fname)
@@ -11,6 +11,9 @@ Opts.parser.add_argument('--norun', action='store_true')
 Opts.parser.add_argument('--plot_data', default=None, help="directory to store the plot_data in for each chain")
 Opts.parser.add_argument('--burn_removed', action='store_true', help="if burn in has already been removed from chains")
 Opts.parser.add_argument('--no_plots', action='store_true', help="just make non-plot outputs (faster)")
+Opts.parser.add_argument('--delay', type=int, help="run after delay of some number of seconds")
+Opts.parser.add_argument('--procs', type=int, default=1, help="number of getdist instances to run in parallel")
+Opts.parser.add_argument('--command', default='./getdist', help="program to run")
 
 
 
@@ -36,6 +39,9 @@ ini_dir = batch.batchPath + 'getdist' + os.sep
 checkDir(data_dir)
 checkDir(ini_dir)
 
+if args.delay: time.sleep(args.delay)
+processes = set()
+
 if not args.plots:
         for jobItem in Opts.filteredBatchItems():
                 ini = iniFile.iniFile()
@@ -60,11 +66,16 @@ if not args.plots:
                     ini.params['compare1'] = jobItem.parent.chainRoot
                 if args.no_plots: ini.params['no_plots'] = True
                 fname = ini_dir + jobItem.name + tag + '.ini'
+                ini.params.update(jobItem.dist_settings)
                 ini.saveFile(fname)
                 if not args.norun and (not args.notexist or not jobItem.getDistExists()) and (not args.update_only or jobItem.getDistNeedsUpdate()):
                     if jobItem.chainExists():
                         print "running: " + fname
-                        os.system('./getdist ' + fname)
+                        processes.add(subprocess.Popen([args.command, fname]))
+                        while len(processes) >= args.procs:
+                            time.sleep(.1)
+                            processes.difference_update([p for p in processes if p.poll() is not None])
+#                        os.system(args.command + '' + fname)
                     else: print "Chains do not exist yet: " + jobItem.chainRoot
 
 

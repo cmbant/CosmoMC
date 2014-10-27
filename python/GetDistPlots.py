@@ -597,6 +597,9 @@ class GetDistPlotter():
     def plot_2d(self, roots, param1=None, param2=None, param_pair=None, shaded=False, filled=False, add_legend_proxy=True, **ax_args):
         if self.fig is None: self.make_figure()
         if isinstance(roots, basestring):roots = [roots]
+        if isinstance(param1, list):
+            param_pair = param1
+            param1 = None
         param_pair = self.get_param_array(roots[0], param_pair or [param1, param2])
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
         if shaded and not filled: self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
@@ -682,7 +685,7 @@ class GetDistPlotter():
                 else:
                     xmin = min(xmin, bounds[0])
                     xmax = max(xmax, bounds[1])
-        if xmin is None: Exception('No roots have parameter: ' + plotparam.name)
+        if plotparam is None: raise Exception('No roots have parameter: ' + str(param))
         if marker is not None: self.add_x_marker(marker, marker_color)
         if not 'lims' in ax_args:
             xmin, xmax = self.checkBounds(plotroot, plotparam.name, xmin, xmax)

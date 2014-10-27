@@ -40,6 +40,9 @@ class paramInfo:
             res = res + '\t#' + self.comment
         return res
 
+    def __str__(self):
+        return self.string()
+
 class paramList:
 
     def __init__(self, fileName=None, setParamNameFile=None):

@@ -20,7 +20,7 @@ def nonEmptyFile(fname):
 
 
 class dataSet:
-    def __init__(self, names, params=None, covmat=None):
+    def __init__(self, names, params=None, covmat=None, dist_settings={}):
         if isinstance(names, basestring): names = [names]
         if params is None: params = [(name + '.ini') for name in names]
         else: params = self.standardizeParams(params)
@@ -28,10 +28,12 @@ class dataSet:
         self.names = names
         self.params = params  # can be an array of items, either ini file name or dictionaries of parameters
         self.tag = "_".join(self.names)
+        self.dist_settings = dist_settings
 
-    def add(self, name, params=None, overrideExisting=True):
+    def add(self, name, params=None, overrideExisting=True, dist_settings={}):
         if params is None: params = [name]
         params = self.standardizeParams(params)
+        self.dist_settings.update(dist_settings)
         if overrideExisting:
             self.params = params + self.params  # can be an array of items, either ini file name or dictionaries of parameters
         else:
@@ -40,8 +42,8 @@ class dataSet:
             self.names += [name]
             self.tag = "_".join(self.names)
 
-    def addEnd(self, name, params):
-        self.add(name, params, overrideExisting=False)
+    def addEnd(self, name, params, dist_settings={}):
+        self.add(name, params, overrideExisting=False, dist_settings=dist_settings)
 
     def extendForImportance(self, names, params):
         data = copy.deepcopy(self)
@@ -92,6 +94,14 @@ class jobGroup:
             self.importanceRuns = importanceRuns
             self.datasets = datasets
 
+class importanceSetting:
+    def __init__(self, names, inis=[], dist_settings={}):
+        self.names = names
+        self.inis = inis
+        self.dist_settings = dist_settings
+
+    def wantImportance(self, jobItem):
+        return True
 
 class jobItem:
 
@@ -113,6 +123,7 @@ class jobItem:
         self.importanceItems = []
         self.result_converge = None
         self.group = None
+        self.dist_settings = copy.copy(data_set.dist_settings)
         self.makeIDs()
 
     def iniFile(self, variant=''):
@@ -122,15 +133,19 @@ class jobItem:
 
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
-        for (imp, ini, arr) in [(x[0], x[1], x) for x in importanceRuns]:
-            if len(arr) > 2 and not arr[2].wantImportance(self): continue
-            if len(set(imp).intersection(self.data_set.names)) > 0:
+        for impRun in importanceRuns:
+            if isinstance(impRun, importanceSetting):
+                if not impRun.wantImportance(self): continue
+            else:
+                if len(impRun) > 2 and not impRun[2].wantImportance(self): continue
+                impRun = importanceSetting(impRun[0], impRun[1])
+            if len(set(impRun.names).intersection(self.data_set.names)) > 0:
                 print 'importance job duplicating parent data set:' + self.name
                 continue
-            data = self.data_set.extendForImportance(imp, ini)
+            data = self.data_set.extendForImportance(impRun.names, impRun.inis)
             job = jobItem(self.batchPath, self.param_set, data)
-            job.importanceTag = "_".join(imp)
-            job.importanceSettings = ini
+            job.importanceTag = "_".join(impRun.names)
+            job.importanceSettings = impRun.inis
             tag = '_post_' + job.importanceTag
             job.name = self.name + tag
             job.chainRoot = self.chainRoot + tag
@@ -142,6 +157,7 @@ class jobItem:
             job.isImportanceJob = True
             job.parent = self
             job.group = self.group
+            job.dist_settings.update(impRun.dist_settings)
             job.makeIDs()
             self.importanceItems.append(job)
 
@@ -226,17 +242,20 @@ class jobItem:
         if done is None: return False
         return done
 
-    def wantCheckpointContinue(self):
+    def wantCheckpointContinue(self, minR=0):
         R, done = self.convergeStat()
         if R is None: return False
         if not os.path.exists(self.chainRoot + '_1.chk'): return False
-        return not done
+        return not done and R > minR
 
     def getDistExists(self):
         return os.path.exists(self.distRoot + '.margestats')
 
     def getDistNeedsUpdate(self):
         return self.chainExists() and (not self.getDistExists() or self.chainFileDate() > os.path.getmtime(self.distRoot + '.margestats'))
+
+    def parentChanged(self):
+        return (not self.chainExists() or self.chainFileDate() < self.parent.chainFileDate())
 
     def R(self):
         if self.result_converge is None:
@@ -246,9 +265,13 @@ class jobItem:
         return float(self.result_converge.worstR())
 
     def hasConvergeBetterThan(self, R, returnNotExist=False):
-        chainR = self.R()
-        if chainR is None: return returnNotExist
-        return chainR <= R
+        try:
+            chainR = self.R()
+            if chainR is None: return returnNotExist
+            return chainR <= R
+        except:
+            print 'WARNING: Bad .converge for ' + self.name
+            return returnNotExist
 
     def loadJobItemResults(self, paramNameFile=None, bestfit=True, bestfitonly=False, noconverge=False, silent=False):
         self.result_converge = None
