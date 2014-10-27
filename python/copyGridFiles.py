@@ -6,15 +6,18 @@ Opts.parser.add_argument('target_dir', help="output root directory or zip file n
 
 Opts.parser.add_argument('--dist', action='store_true', help="include getdist outputs")
 Opts.parser.add_argument('--chains', action='store_true', help="include chain files")
-Opts.parser.add_argument('--file_extensions', nargs='+', default=['.*'])
+Opts.parser.add_argument('--file_extensions', nargs='+', default=['.*'], help='extensions to include')
 Opts.parser.add_argument('--skip_extensions', nargs='+', default=['.data', '.chk', '.chk_tmp', '.log', '.corr', '.py', '.m'])
 Opts.parser.add_argument('--dryrun', action='store_true')
 Opts.parser.add_argument('--verbose', action='store_true')
-Opts.parser.add_argument('--zip', action='store_true')
+Opts.parser.add_argument('--zip', action='store_true', help='make a zip file. Not needed if target_dir is a filename ending in .zip')
+
 
 (batch, args) = Opts.parseForBatch()
 
 if '.zip' in args.target_dir: args.zip = True
+
+sizeMB = 0
 
 if args.zip:
     zipper = zipfile.ZipFile(args.target_dir, 'w', compression=zipfile.ZIP_DEFLATED, allowZip64=True)
@@ -32,14 +35,14 @@ def fileMatches(f, name):
     return False
 
 def doCopy(source, dest, name):
+    global sizeMB
     if args.verbose: print source + f
     if not args.dryrun:
         if args.zip:
             zipper.write(source + f, dest + f)
         else:
             shutil.copyfile(source + f, target_dir + dest + f)
-
-
+    sizeMB += os.path.getsize(source + f) / 1024.**2
 
 
 for jobItem in Opts.filteredBatchItems():
@@ -72,3 +75,5 @@ for jobItem in Opts.filteredBatchItems():
         print '... %d chain files, %d other files and %d dist files' % (chainfiles, infofiles, distfiles)
 
 if args.zip: zipper.close()
+
+print 'Total size: %u MB' % (sizeMB)

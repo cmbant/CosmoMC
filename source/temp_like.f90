@@ -274,7 +274,7 @@
         L=0
         do
             read(48,*,iostat = status) L, in_data
-            if (status/=0) exit
+            if (status/=0 .or. L > CAMspec_lmax) exit
             CL_in(L,:) = in_data
         end do
         if (L< CAMspec_lmax) stop 'Error reading camspec data_vector override'

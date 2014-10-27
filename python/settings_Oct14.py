@@ -82,7 +82,7 @@ plik1bin.append(batchJob.dataSet(['bin1l80sz', 'TT'], [{'clik_data_plik':'data/c
 Mspec = []
 Mspec.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
 
-plik = plikHM + plikDS + plik1bin  # + plikHM1 + plikDS1
+plik = plikHM + plikDS  # + plikHM1 + plikDS1
 
 start_at_bestfit = False
 newCovmats = True
