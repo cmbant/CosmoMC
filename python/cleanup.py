@@ -13,6 +13,7 @@ Opts.parser.add_argument('--chainnum', default=None)
 sizeMB = 0
 
 def fsizestr(fname):
+    global sizeMB
     sz = os.path.getsize(fname) / 1024
     sizeMB += sz / 1024.
     if (sz < 1024): return str(sz) + 'KB'
