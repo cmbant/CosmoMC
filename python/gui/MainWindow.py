@@ -71,6 +71,7 @@ class MainWindow(QMainWindow):
         self.grid_items = {}
         self.paramTag = ""
         self.dataTag = ""
+        self.data2chains = {}
 
         # Plot instance
         self.plotter = None
@@ -403,7 +404,7 @@ class MainWindow(QMainWindow):
         for jobItem in batch.items(True, True):
             if jobItem.chainExists():
                 if not jobItem.paramtag in items: items[jobItem.paramtag] = []
-                items[jobItem.paramtag].append(jobItem.datatag)
+                items[jobItem.paramtag].append((jobItem.datatag, jobItem.chainRoot))
         logging.debug("Found %i names for grid"%len(items.keys()))
         self.grid_items = items
         self.comboBoxParamTag.show()
@@ -542,7 +543,8 @@ class MainWindow(QMainWindow):
         logging.debug("Param: %s"%self.paramTag)
         if self.is_grid:
             if self.grid_items.has_key(self.paramTag):
-                datas = self.grid_items[self.paramTag]
+                values = self.grid_items[self.paramTag]
+                datas = [ (v[0], v[1]) for v in values ]
                 self._updateComboBoxDataTag(datas)
             else:
                 logging.warning("Grid defined but no data found for param %s"%self.paramTag)
@@ -562,7 +564,15 @@ class MainWindow(QMainWindow):
             self.comboBoxDataTag.show()
             self.comboBoxDataTag.clear()
             if listOfDatas:
-                self.comboBoxDataTag.addItems(listOfDatas)
+                self.data2chains = {}
+                for data in listOfDatas:
+                    if type(data)==type(()): # (dataTag, chainRoot)
+                        #self.comboBoxDataTag.addItem(data[0], data[1])
+                        self.comboBoxDataTag.addItem(data[0])
+                        self.data2chains[data[0]] = data[1]
+                        logging.debug("Insert %s (%s)"%(str(data[0]), str(data[1])))
+                    else:
+                        self.comboBoxDataTag.addItem(data) # dataTag
             else:
                 logging.warning("No datas to display")
 
@@ -573,15 +583,10 @@ class MainWindow(QMainWindow):
         self.dataTag = str(strDataTag)
         logging.debug("Data: %s"%strDataTag)
 
-        path = os.path.join(self.rootdirname, self.paramTag, self.dataTag)
-        if not os.path.isdir(path):
-            logging.warning("No directory found for %s/%s"%(self.paramTag, self.dataTag))
-            return
-
-        rootname = self._getRootFileName(self.paramTag, self.dataTag)
-        logging.debug("paramTag, dataTag: %s, %s"%(self.paramTag, self.dataTag))
-        logging.debug("rootname: %s"%rootname)
-        if rootname=='':
+        if self.data2chains.has_key(strDataTag):
+            rootname = self.data2chains.get(strDataTag)
+            logging.debug("rootname: %s"%rootname)
+        else:
             logging.warning("Root file name is not defined")
             return
 
@@ -679,10 +684,20 @@ class MainWindow(QMainWindow):
         """
         Slot function called when pushButtonPlot is pressed.
         """
-
-        if self.rootname is None and len(self.other_rootnames)==0:
-            logging.warning("No rootname defined")
-            return
+        # Ensure at least 1 root name specified
+        self.getOtherRoots()
+        if self.rootname is None:
+            if len(self.other_rootnames)==0:
+                logging.warning("No rootname defined")
+                return
+            else:
+                nroots = 0
+                for basename, values in self.other_rootnames.items():
+                    other_rootname, state = values
+                    if state: nroots += 1
+                if nroots==0:
+                     logging.warning("No rootname selected")
+                     return
 
         # X items
         items_x = []
@@ -722,7 +737,6 @@ class MainWindow(QMainWindow):
             self.script += "dict_roots['%s'] = '%s'\n"%(basename, self.rootname)
 
         # Other root names
-        self.getOtherRoots()
         for basename, values in self.other_rootnames.items():
             other_rootname, state = values
             if state:

@@ -227,7 +227,6 @@ class MCSampleAnalysis():
 
     def addRoot(self, file_root):
         base_root = os.path.basename(file_root)
-        print "add root for %s "%base_root
         self.roots.append(base_root)
 
         self.mcsamples[base_root] = MCSamples.MCSamples(file_root)
@@ -531,8 +530,6 @@ class GetDistPlotter():
     def add_1d(self, root, param, plotno=0, **kwargs):
         param = self.check_param(root, param)
         density = self.sampleAnalyser.get_density(root, param, likes=self.settings.plot_meanlikes)
-        print density.x, density.pts # TEST
-        #import pdb; pdb.set_trace()
         if density is None: return None
         kwargs = self.get_line_styles(plotno, **kwargs)
         plot(density.x, density.pts, **kwargs)
