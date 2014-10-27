@@ -14,6 +14,9 @@ lensonly = 'lensonly'
 WLonly = 'WLonly'
 WLonlyHeymans = 'WLonlyHeymans'  # just used as a check against less conservative cuts
 
+WLonly1bin = 'WLonly1bin'
+WLonlyHeymans1bin = 'WLonlyCons1bin'  # just used as a check against less conservative cuts
+
 highL = 'highL'
 WMAP = 'WMAP'
 BAO = 'BAO'
@@ -338,7 +341,7 @@ groups.append(extdata)
 
 
 gWL = batchJob.jobGroup('WLonly')
-WLdata = [batchJob.dataSet(WLonly), batchJob.dataSet(WLonlyHeymans)]
+WLdata = [batchJob.dataSet(WLonly), batchJob.dataSet(WLonlyHeymans), batchJob.dataSet(WLonly1bin), batchJob.dataSet(WLonlyHeymans1bin)]
 gWL.datasets = copy.deepcopy(WLdata)
 for d in copy.deepcopy(WLdata):
     d.add(BAO, BAOdata)
@@ -349,6 +352,17 @@ for d in copy.deepcopy(WLdata):
 gWL.params = [[], ['mnu']]
 gWL.importanceRuns = []
 groups.append(gWL)
+
+gWLvar = batchJob.jobGroup('WLvar')
+WLdata = [batchJob.dataSet(WLonly1bin), batchJob.dataSet(WLonlyHeymans1bin)]
+gWLvar.datasets = copy.deepcopy(WLdata)
+for d in copy.deepcopy(WLdata):
+    d.add(BAO, BAOdata)
+    gWLvar.datasets.append(d)
+gWLvar.params = [[]]
+gWLvar.importanceRuns = []
+groups.append(gWLvar)
+
 
 
 for g in groups:
@@ -377,7 +391,7 @@ skip = []
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances']
 covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'Mspec':'CamSpec',
-                   WLonlyHeymans: WLonly}
+                   WLonlyHeymans: WLonly, WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
 
 # try to match run to exisitng covmat
 covrenames = []
