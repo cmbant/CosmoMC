@@ -105,7 +105,7 @@ post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], impo
 
 post_WP = [[ 'WMAPtau'], [WMAPtau]]
 post_abundance = [['abundances'], ['abundances.ini'], importanceFilterAbundance()]
-post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], chain_analysis_setings={'limits[zrei]':'6.5 N'})
+post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'})
 
 # set up groups of parameters and data sets
 
@@ -266,7 +266,7 @@ if False:
 # Things mainly for the lensing paper
 
 glens = batchJob.jobGroup('lensonly')
-lensdata = [batchJob.dataSet(lensonly)]
+lensdata = [batchJob.dataSet(lensonly, dist_settings={'limits[H0]':'40 100'})]
 glens.datasets = copy.deepcopy(lensdata)
 for d in copy.deepcopy(lensdata):
     d.add(BAO, BAOdata)

@@ -75,10 +75,14 @@ plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TE'], ['plik_dx11dr2_DS_v16_TE.i
 plikDS.append(batchJob.dataSet(['plikDSv16sz', 'EE'], ['plik_dx11dr2_DS_v16_EE.ini']))
 plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
 
+plik1bin = []
+plik1bin.append(batchJob.dataSet(['plikHMv16bin1sz', 'TT'], [{'clik_data_plik':'data/clik/hi_l/plik/plik_dx11dr2_HM_v16_TT_bin1.clik'}, 'plik_dx11dr2_HM_v16_TT.ini']))
+plik1bin.append(batchJob.dataSet(['bin1l80sz', 'TT'], [{'clik_data_plik':'data/clik/hi_l/plik/plik_dx11dr2_HM_v16_TT_bin1l80.clik'}, 'plik_dx11dr2_HM_v16_TT.ini']))
+
 Mspec = []
 Mspec.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
 
-plik = plikHM + plikDS  # + plikHM1 + plikDS1
+plik = plikHM + plikDS + plik1bin  # + plikHM1 + plikDS1
 
 start_at_bestfit = False
 newCovmats = True
@@ -167,10 +171,10 @@ g.params = [[]]
 groups.append(g)
 
 covrenames = []
-covrenames.append(['_tau07', '_lowTEB'])
 covrenames.append(['_tau07_lowl', '_lowTEB'])
+covrenames.append(['_tau07', '_lowTEB'])
 
-covNameMappings = {'v910CMH':'CamSpec', 'v910F':'CamSpec', 'plikDSv16sz':'plik', 'plikHMv16sz':'plik', 'tau07':'lowTEB'}
+covNameMappings = {'v910CMH':'CamSpec', 'v910F':'CamSpec', 'plikDSv16sz':'plik', 'plikHMv16sz':'plik', 'plikHMv16bin1sz':'plik', 'bin1l80sz':'plik', 'tau07':'lowTEB'}
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)

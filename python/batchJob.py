@@ -95,10 +95,10 @@ class jobGroup:
             self.datasets = datasets
 
 class importanceSetting:
-    def __init__(self, names, inis=[], chain_analysis_setings={}):
+    def __init__(self, names, inis=[], dist_settings={}):
         self.names = names
         self.inis = inis
-        self.dist_settings = chain_analysis_setings
+        self.dist_settings = dist_settings
 
     def wantImportance(self, jobItem):
         return True
@@ -255,7 +255,7 @@ class jobItem:
         return self.chainExists() and (not self.getDistExists() or self.chainFileDate() > os.path.getmtime(self.distRoot + '.margestats'))
 
     def parentChanged(self):
-        return (not self.chainExists() or self.chainFileDate() < self.parent.chainFileDate()) and self.parent.notRunning()
+        return (not self.chainExists() or self.chainFileDate() < self.parent.chainFileDate())
 
     def R(self):
         if self.result_converge is None:
