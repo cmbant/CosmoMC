@@ -143,22 +143,27 @@ class chains():
         return self.confidence(paramVec, (1 - confidence) / 2, upper=False) , self.confidence(paramVec, (1 - confidence) / 2, upper=True)
 
 
-    def confidence(self, paramVec, limfrac, upper):
+    def confidence(self, paramVec, limfrac, upper, start=None, end=None):
         paramVec = self.valuesForParam(paramVec)
         try_b = min(paramVec)
         try_t = max(paramVec)
 
+        if start is None: start = 0
+        if end is None: end = len(paramVec)
+        weights = self.weights[start:end]
+        norm = np.sum(weights)
+
         lasttry = -1
         while True:
             if upper:
-                trial = self.get_norm(paramVec > (try_b + try_t) / 2)
-                if trial > self.norm * limfrac:
+                trial = np.sum(weights[paramVec > (try_b + try_t) / 2])
+                if trial > (norm * limfrac):
                     try_b = (try_b + try_t) / 2
                 else:
                     try_t = (try_b + try_t) / 2
             else:
-                trial = self.get_norm(paramVec < (try_b + try_t) / 2)
-                if (trial > self.norm * limfrac):
+                trial = np.sum(weights[paramVec < (try_b + try_t) / 2])
+                if trial > (norm * limfrac):
                     try_t = (try_b + try_t) / 2
                 else:
                     try_b = (try_b + try_t) / 2
