@@ -341,7 +341,7 @@ groups.append(extdata)
 
 
 gWL = batchJob.jobGroup('WLonly')
-WLdata = [batchJob.dataSet(WLonly), batchJob.dataSet(WLonlyHeymans), batchJob.dataSet(WLonly1bin), batchJob.dataSet(WLonlyHeymans1bin)]
+WLdata = [batchJob.dataSet(WLonly), batchJob.dataSet(WLonlyHeymans)]
 gWL.datasets = copy.deepcopy(WLdata)
 for d in copy.deepcopy(WLdata):
     d.add(BAO, BAOdata)
@@ -391,7 +391,7 @@ skip = []
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances']
 covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'Mspec':'CamSpec',
-                   WLonlyHeymans: WLonly, WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
+                    WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
 
 # try to match run to exisitng covmat
 covrenames = []
