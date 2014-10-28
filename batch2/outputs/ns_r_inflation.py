@@ -32,7 +32,8 @@ def ns_N_2(N, p):  # solved used above expresion for r_ns, but naive expression 
 
 g.plot_2d(roots, ['ns', 'r02'], filled=True)
 
-ns = np.arange(0.93, 0.999, 0.0005)
+
+ns = np.arange(0.91, 1.02, 0.0005)
 r = np.arange(0, 0.34, 0.002)
 ns, r = np.meshgrid(ns, r)
 
@@ -47,11 +48,11 @@ CS = contour(ns, r, N, origin='lower', levels=[50, 60], colors='k', linestyles='
 #    fmt[l] = lab
 
 # clabel(CS, CS.levels, inline=True, fmt={}, fontsize=7)
-for x, y, lab in zip([0.954, 0.9575], [0.2, 0.222], ['N=50', 'N=60']):
-    plt.text(x, y, lab, size=7, rotation=-55, color='k',
+for x, y, lab in zip([0.954, 0.9585], [0.2, 0.211], ['N=50', 'N=60']):
+    plt.text(x, y, lab, size=7, rotation=-58, color='k',
          ha="center", va="center", bbox=dict(ec='1', fc='1', alpha=0))
 
-ns = arange(0.93, 1.1, 0.001)  #
+ns = arange(0.9, 1.1, 0.001)  #
 plot(ns, r_ns(ns, 1), ls='-', color='k', lw=1, alpha=0.8)
 
 plt.text(0.954, 0.13, 'Convex', size=7, rotation=-22, color='k',
@@ -80,8 +81,8 @@ for p in [1, 2]:
 nnu = g.param_latex_label(roots[0], 'nnu')
 meff = g.param_latex_label(roots[0], 'meffsterile', labelParams='clik_latex.paramnames')
 
-labels = [meff + '+' + nnu + '(' + s.lensing + ')', s.LCDM + '(' + s.defplanck + ')', s.LCDM + '(' + s.planckall + '+ext)']
+labels = [meff + '+' + nnu + ' (' + s.lensing + ')', s.LCDM + ' (' + s.defplanck + ')', s.LCDM + ' (' + s.planckall + '+ext)']
 g.add_legend(labels, colored_text=True)
 
-xlim([0.95, 1])
+xlim([0.945, 1])
 g.export()
