@@ -21,10 +21,13 @@ highL = 'highL'
 WMAP = 'WMAP'
 BAO = 'BAO'
 HST = 'H070p6'
+H073p9 = 'H073p9'
+
 JLA = 'JLA'
 
 BAOdata = 'BAO.ini'
 HSTdata = 'HST_GPE70p6.ini'
+H073p9data = 'HST_high'
 
 RSDdata = 'BAO_RSD.ini'
 BAORSD = 'BAORSD';
@@ -96,10 +99,16 @@ class importanceFilterAbundance:
     def wantImportance(self, jobItem):
         return 'nnu' in jobItem.param_set and not 'yhe' in jobItem.param_set and not jobItem.data_set.hasName('lensonly')
 
+class importanceFilterHighH0:
+    def wantImportance(self, jobItem):
+        return ('nnu' in jobItem.param_set)
+
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
 post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegak()]
 post_HST = [[HST], [HSTdata], importanceFilterNotOmegak()]
+post_highH0 = [[H073p9], [H073p9data], importanceFilterHighH0()]
+
 post_JLA = [[JLA], ['JLA_marge.ini'], importanceFilterNotOmegak()]
 post_nonBAO = [[HST, JLA], [HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
 post_nonCMB = [[BAO, HST, JLA], [BAOdata, HSTdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
@@ -134,7 +143,7 @@ for d in copy.deepcopy(planck_pol_sets):
     d.add(lowEB)
     gpol.datasets.append(d)
 
-gpol.params = [[], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['yhe']]
+gpol.params = [[], ['mnu'], ['nnu'], ['nrun'], ['Alens'], ['yhe'], ['r']]
 gpol.importanceRuns = []
 groups.append(gpol)
 
@@ -238,10 +247,21 @@ gnnu.datasets = []
 for d in copy.deepcopy(g.datasets):
     d.add(BAO, BAOdata)
     gnnu.datasets.append(d)
-
 gnnu.params = [['nnu']]
 gnnu.importanceRuns = [post_nonBAO, post_allnonBAO, post_lensing]
 groups.append(gnnu)
+
+if False:
+    gH0 = batchJob.jobGroup('nnuH')
+    gH0.datasets = []
+    for d in copy.deepcopy(g.datasets):
+        d.add(H073p9, H073p9data)
+        gH0.datasets.append(d)
+
+    gH0.params = [['nnu'], ['nnu', 'meffsterile']]
+    gH0.importanceRuns = [post_BAO, post_nonBAO, post_allnonBAO, post_lensing]
+    gH0.append(gnnu)
+
 
 gabund = batchJob.jobGroup('abund')
 gabund.datasets = []
@@ -366,10 +386,12 @@ groups.append(gWLvar)
 
 
 for g in groups:
-    if len([d for d in g.datasets if  'abundances' in d.names]): continue
     for p in g.params:
         if 'nnu' in p:
-            g.importanceRuns.append(post_abundance)
+            if not len([d for d in g.datasets if  'H070p6' in d.names]):
+                g.importanceRuns.append(post_highH0)
+            if not len([d for d in g.datasets if  'abundances' in d.names]):
+                g.importanceRuns.append(post_abundance)
             break
 
 
@@ -399,7 +421,9 @@ covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 
 covrenames = []
 for planck in planck_vars:
     covrenames.append([planck, 'planck'])
-covrenames.append(['planck', 'planck_CAMspec'])
+
+covrenames.append(['base_r_plikHM_TE_lowEB', 'base_TE_lowTEB_plik'])
+covrenames.append(['base_r_plikHM_EE_lowEB', 'base_EE_lowTEB_plik'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
 covrenames.append(['Alensf', 'Alens'])
 covrenames.append(['_Aphiphi', ''])
