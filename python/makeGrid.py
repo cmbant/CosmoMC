@@ -1,18 +1,18 @@
-import os, sys, batchJob, iniFile, copy
+import os, sys, batchJob, batchJobArgs, iniFile, copy
 
+parser = batchJobArgs.argParser('Initialize grid using settings file')
+parser.add_argument('batchPath', help='root directory containing/to contain the grid (e.g. ./PLA where directories base, base_xx etc are under ./PLA)')
+parser.add_argument('settingName', help='python setting file (without .py), usually found as python/settingName.py')
+parser.add_argument('--readOnly', action='store_true', help='option to configure an already-run existing grid')
 
-if len(sys.argv) < 2:
-    print 'Usage: python/makeGrid.py new_directory_for_outputs grid_settings_python_file'
-    print 'e.g. python/makeGrid.py /scratch/../testgrid settings_testgrid'
-    sys.exit()
+args = parser.parse_args()
 
-
-batchPath = os.path.abspath(sys.argv[1]) + os.sep
+batchPath = os.path.abspath(args.batchPath) + os.sep
 
 # 0: chains, 1: importance sampling, 2: best-fit, 3: best-fit and Hessian
 cosmomcAction = 0
 
-settings = __import__(sys.argv[2])
+settings = __import__(args.settingName)
 
 batch = batchJob.batchJob(batchPath, settings.ini_dir)
 
@@ -40,13 +40,24 @@ if not hasattr(settings, 'params'):
 
 if hasattr(settings, 'skip'): batch.skip = settings.skip
 batch.makeItems(settings.groups)
-batch.makeDirectories()
-batch.save()
+if args.readOnly:
+    for jobItem in [b for b in batch.jobItems]:
+        if not jobItem.chainExists():
+            batch.jobItems.remove(jobItem)
+    batch.save()
+    print 'OK, configured grid with %u existing chains' % (len(batch.jobItems))
+    sys.exit()
+else:
+    batch.makeDirectories()
+    batch.save()
+
+
 
 def setMinimize(jobItem, ini):
     ini.params['action'] = 2
-    ini.params['lmin_store_all_cmb'] = 2000
-    if 'omegak' in jobItem.param_set: ini.params['accuracy_level'] = 1.3
+    ini.params['lmin_store_all_cmb'] = 2500
+    if 'omegak' in jobItem.param_set: ini.params['accuracy_level'] = 1.2
+    if 'meffsterile' in jobItem.param_set: ini.params['sterile_mphys_max'] = 10000
 
 def updateIniParams(ini, params, path):
         for iniitem in params:

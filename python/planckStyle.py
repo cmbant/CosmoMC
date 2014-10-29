@@ -1,5 +1,5 @@
-import os, ResultObjs, GetDistPlots
-from matplotlib import rcParams, rc
+import os, ResultObjs, GetDistPlots, sys, batchJob
+from matplotlib import rcParams, rc, pylab
 
 # common setup for matplotlib
 params = {'backend': 'pdf',
@@ -17,19 +17,59 @@ params = {'backend': 'pdf',
 
 sfmath = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'sfmath'
 # use of Sans Serif also in math mode
-rc('text.latex', preamble=r'\usepackage{' + sfmath + '}')
+rc('text.latex', preamble=r'\usepackage{' + sfmath.replace(os.sep, '/') + '}')
 
 rcParams.update(params)
 
+non_final = False
+version = 'clik10.2'
+defdata_root = 'plikHM'
+
+datalabel = dict()
+defdata_TT = defdata_root + '_TT_lowTEB'
+datalabel[defdata_TT] = r'\textit{Planck} TT$+$lowP'
+defdata_TE = defdata_root + '_TE_lowTEB'
+datalabel[defdata_TE] = r'\textit{Planck} TE$+$lowP'
+defdata_EE = defdata_root + '_EE_lowTEB'
+datalabel[defdata_EE] = r'\textit{Planck} EE$+$lowP'
+
+defdata_all = defdata_root + '_TTTEEE_lowTEB'
+datalabel[defdata_all] = r'\textit{Planck} TT,TE,EE$+$lowP'
+defdata_TTonly = defdata_root + '_TT_lowl'
+datalabel[defdata_TTonly] = r'\textit{Planck} TT'
+defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
+datalabel[defdata_allNoLowE] = r'\textit{Planck} TT,TE,EE'
+
+defdata = defdata_TT
+deflabel = datalabel[defdata_TT]
+
+defdata_lensing = defdata_TT + '_lensing'
+datalabel[defdata_lensing] = datalabel[defdata_TT] + '$+$lensing'
+defdata_all_lensing = defdata_all + '_lensing'
+datalabel[defdata_all_lensing] = datalabel[defdata_all] + '$+$lensing'
+
 planck = r'\textit{Planck}'
+
+planckTT = datalabel[defdata_TTonly]
+planckTTlowTEB = datalabel[defdata_TT]
+planckall = datalabel[defdata_all]
+NoLowLE = datalabel[defdata_allNoLowE]
+lensing = datalabel[defdata_lensing]
+lensingall = datalabel[defdata_all_lensing]
+defplanck = datalabel[defdata]
+
+NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
+NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
+WPhighLlensing = r'\textit{Planck}+lensing+WP+highL'
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
-lensing = r'\textit{Planck}+lensing'
-WPhighLlensing = r'\textit{Planck}+lensing+WP+highL'
 NoLowL = r'\textit{Planck}$-$lowL'
-NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
 NoLowLtau = r'\textit{Planck}$-$lowL+$\tau$prior'
-NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
+lensonly = 'lensing'
+HST = r'$H_0$'
+BAO = 'BAO'
+
+
 LCDM = r'$\Lambda$CDM'
 
 s = GetDistPlots.defaultSettings
@@ -46,20 +86,73 @@ s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#
 s.axis_marker_lw = 0.6
 s.lw_contour = 1
 
+rootdir = 'main'
+
+H0_high = [73.9, 2.7]
+H0_Freeman12 = [74.3, 2.1]
+H0_gpe = [70.6, 3.3]
+
+# various Omegam sigma8 constraints for plots
+def PLSZ(omm, sigma):
+    # from Anna 18/7/2014 for fixed b=0.8
+    return  (0.757 + 0.013 * sigma) * (omm / 0.32) ** (-0.3)
+
+def CFTHlens_Kilbinger(omm, sigma):
+    return  (0.79 + 0.03 * sigma) * (omm / 0.27) ** (-0.6)
+
+
+def CFTHlens_LCDM(omm, sigma):  # 1408.4742
+    return  (0.74 + 0.03 * sigma) * (omm / 0.27) ** (-0.47)
+
+def CFTHlens_mnu(omm, sigma):  # 1408.4742, same for sterile case
+    return  (0.72 + 0.03 * sigma) * (omm / 0.27) ** (-0.48)
+
+
+def galaxygalaxy(omm, sigma):  # mandelbaum
+    return  (0.8 + 0.05 * sigma) * (omm / 0.25) ** (-0.57)
+
+def planck_lensing(omm, sigma):
+    # g60_full
+    return  (0.592 + 0.021 * sigma) * omm ** (-0.25)
+
+
+def plotBounds(omm, data, c='gray'):
+    pylab.fill_between(omm, data(omm, -2), data(omm, 2), facecolor=c, alpha=0.15, edgecolor=c, lw=0)
+    pylab.fill_between(omm, data(omm, -1), data(omm, 1), facecolor=c, alpha=0.25, edgecolor=c, lw=0)
+
+
 class planckPlotter(GetDistPlots.GetDistPlotter):
-    def export(self, fname):
-        if '.' in fname:GetDistPlots.GetDistPlotter.export(self, fname)
-        else:
-            GetDistPlots.GetDistPlotter.export(self, 'outputs/' + fname + '.pdf')
 
-    def exportExtra(self, fname):
-        GetDistPlots.GetDistPlotter.export(self, 'plots/' + fname + '.pdf')
+    def doExport(self, fname, adir=None, watermark=None):
+        if fname is None: fname = os.path.basename(sys.argv[0]).replace('.py', '')
+        if not '.' in fname: fname += '.pdf'
+        if adir is not None and not os.sep in fname: fname = os.path.join(adir, fname)
+        if not os.path.exists(os.path.dirname(fname)): os.makedirs(os.path.dirname(fname))
+        if watermark is not None and watermark or watermark is None and non_final:
+            # #watermark with version tag so we know it's old
+            pylab.gcf().text(0.45, 0.5, version.replace('_', '{\\textunderscore}'), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
+        GetDistPlots.GetDistPlotter.export(self, fname)
 
+    def export(self, fname=None):
+        self.doExport(fname, 'outputs')
 
-plotter = planckPlotter('main/plot_data')
+    def exportExtra(self, fname=None):
+        self.doExport(fname, 'plots')
+
+    def getRoot(self, paramtag, datatag, returnJobItem=False):
+        if not hasattr(self, 'batch'): self.batch = batchJob.readobject(rootdir)
+        return self.batch.resolveName(paramtag, datatag, returnJobItem=returnJobItem)
+
+    def getJobItem(self, paramtag, datatag):
+        jobItem = self.getRoot(paramtag, datatag, returnJobItem=True)
+        jobItem.loadJobItemResults(paramNameFile=self.settings.param_names_for_labels)
+        return jobItem
+
+plotter = planckPlotter(rootdir + '/plot_data')
 
 
 def getSubplotPlotter(plot_data=None):
+    global plotter
     s.setWithSubplotSize(2)
     s.axes_fontsize += 2
     s.colorbar_axes_fontsize += 2
@@ -81,6 +174,7 @@ def getPlotterWidth(size=1, **kwargs):  # size in mm
     return plotter
 
 def getSinglePlotter(ratio=3 / 4., plot_data=None):
+    global plotter
     s.setWithSubplotSize(3.5)
     s.rcSizes()
     if plot_data is not None: plotter = planckPlotter(plot_data)

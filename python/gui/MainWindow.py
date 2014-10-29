@@ -23,7 +23,7 @@ except ImportError:
     sys.exit()
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 #import matplotlib.pyplot as plt
 
 import GetDistPlots
@@ -49,7 +49,7 @@ class MainWindow(QMainWindow):
 
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.setWindowTitle("GetDist GUI")
-        self.resize(800, 600)
+        #self.resize(800, 600)
 
         # Allow to shutdown the GUI with Ctrl+C
         signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -127,8 +127,8 @@ class MainWindow(QMainWindow):
 
         self.menuBar().addSeparator()
 
-        self.windowMenu = self.menuBar().addMenu("&Windows")
-        self.windowMenu.addAction(self.dockTop.toggleViewAction())
+        #self.windowMenu = self.menuBar().addMenu("&Windows")
+        #self.windowMenu.addAction(self.dockTop.toggleViewAction())
 
         self.menuBar().addSeparator()
 
@@ -145,11 +145,14 @@ class MainWindow(QMainWindow):
         """
         Create dockable widget and its content.
         """
-        self.dockTop = QDockWidget(self.tr(""), self)
-        self.dockTop.setAllowedAreas(Qt.LeftDockWidgetArea)
+        #self.dockTop = QDockWidget(self.tr(""), self)
+        #self.dockTop.setAllowedAreas(Qt.LeftDockWidgetArea)
 
-        self.selectWidget = QWidget(self.dockTop)
+        #self.selectWidget = QWidget(self.dockTop)
+        self.centralWidget = QWidget(self)
+        self.setCentralWidget(self.centralWidget)
 
+        self.selectWidget = QWidget(self.centralWidget)
         self.lineEditDirectory = QLineEdit(self.selectWidget)
         self.lineEditDirectory.clear()
         self.lineEditDirectory.setReadOnly(True)
@@ -250,10 +253,26 @@ class MainWindow(QMainWindow):
 
         # Minimum size for initial resize of dock widget
         #self.selectWidget.setMinimumSize(250, 250)
-        self.selectWidget.setMaximumSize(600, 1200)
+        #self.selectWidget.setMaximumSize(600, 1200)
 
-        self.dockTop.setWidget(self.selectWidget)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.dockTop)
+        #self.dockTop.setWidget(self.selectWidget)
+        #self.addDockWidget(Qt.LeftDockWidgetArea, self.dockTop)
+
+        self.plotWidget = QWidget(self.centralWidget)
+        self.table = QTableView(self.plotWidget)
+        layout = QGridLayout(self.plotWidget)
+        layout.addWidget(self.table)
+        self.plotWidget.setLayout(layout)
+
+        splitter = QSplitter(self.centralWidget)
+        #splitter.setOrientation(
+        splitter.addWidget(self.selectWidget)
+        splitter.addWidget(self.plotWidget)
+        w = self.width()
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([w/2., w/2.])
+
 
     def setIniFile(self, iniFile):
         logging.debug("ini file is %s"%iniFile)
@@ -889,27 +908,35 @@ class MainWindow(QMainWindow):
             self.script += "g.export(os.path.join(outdir,'%s.pdf'))\n"%basename
 
     def updatePlot(self):
-
         if self.plotter.fig is None:
             logging.debug("Define an empty central widget")
-            self.centralWidget = QWidget()
-            self.setCentralWidget(self.centralWidget)
-
             #self.figure = None
             self.canvas = None
         else:
             logging.debug("Define new canvas in central widget")
-            self.centralWidget = QWidget()
-            self.setCentralWidget(self.centralWidget)
-
             self.canvas = FigureCanvas(self.plotter.fig)
             self.toolbar = NavigationToolbar(self.canvas, self)
-            layout = QVBoxLayout()
-            layout.addWidget(self.toolbar)
-            layout.addWidget(self.canvas)
-            self.centralWidget.setLayout(layout)
+
+            # Remove previous widgets
+            if self.plotWidget.layout() is None:
+                layout = QVBoxLayout(self.plotWidget)
+                layout.addWidget(self.toolbar)
+                layout.addWidget(self.canvas)
+                self.plotWidget.setLayout(layout)
 
             self.canvas.draw()
+
+
+    # def clearLayout(self, layout):
+    #     if layout is not None:
+    #         while layout.count():
+    #             item = layout.takeAt(0)
+    #             widget = item.widget()
+    #             if widget is not None:
+    #                 widget.deleteLater()
+    #             else:
+    #                 self.clearLayout(item.layout())
+
 
 # ==============================================================================
 
