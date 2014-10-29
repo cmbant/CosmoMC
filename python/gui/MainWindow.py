@@ -24,7 +24,7 @@ except ImportError:
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 import GetDistPlots
 import MCSamples
@@ -42,14 +42,13 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
 
         # GUI setup
-        self.createDockWidgets()
+        self.createWidgets()
         self.createActions()
         self.createMenus()
         self.createStatusBar()
 
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.setWindowTitle("GetDist GUI")
-        #self.resize(800, 600)
 
         # Allow to shutdown the GUI with Ctrl+C
         signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -127,11 +126,6 @@ class MainWindow(QMainWindow):
 
         self.menuBar().addSeparator()
 
-        #self.windowMenu = self.menuBar().addMenu("&Windows")
-        #self.windowMenu.addAction(self.dockTop.toggleViewAction())
-
-        self.menuBar().addSeparator()
-
         self.helpMenu = self.menuBar().addMenu("&Help")
         self.helpMenu.addAction(self.aboutAct)
 
@@ -141,14 +135,10 @@ class MainWindow(QMainWindow):
         """
         self.statusBar().showMessage("Ready", 2000)
 
-    def createDockWidgets(self):
+    def createWidgets(self):
         """
-        Create dockable widget and its content.
+        Create widgets.
         """
-        #self.dockTop = QDockWidget(self.tr(""), self)
-        #self.dockTop.setAllowedAreas(Qt.LeftDockWidgetArea)
-
-        #self.selectWidget = QWidget(self.dockTop)
         self.centralWidget = QWidget(self)
         self.setCentralWidget(self.centralWidget)
 
@@ -178,7 +168,6 @@ class MainWindow(QMainWindow):
         self.pushButtonRemove.setToolTip("Remove a root directory")
         self.connect(self.pushButtonRemove, SIGNAL("clicked()"),
                      self.removeOtherRoot)
-
 
         self.comboBoxParamTag = QComboBox(self.selectWidget)
         self.comboBoxParamTag.clear()
@@ -251,32 +240,41 @@ class MainWindow(QMainWindow):
         self.comboBoxParamTag.hide()
         self.comboBoxDataTag.hide()
 
-        # Minimum size for initial resize of dock widget
-        #self.selectWidget.setMinimumSize(250, 250)
-        #self.selectWidget.setMaximumSize(600, 1200)
-
-        #self.dockTop.setWidget(self.selectWidget)
-        #self.addDockWidget(Qt.LeftDockWidgetArea, self.dockTop)
-
         self.plotWidget = QWidget(self.centralWidget)
-        self.table = QTableView(self.plotWidget)
-        layout = QGridLayout(self.plotWidget)
-        layout.addWidget(self.table)
+        layout = QVBoxLayout(self.plotWidget)
         self.plotWidget.setLayout(layout)
 
         splitter = QSplitter(self.centralWidget)
-        #splitter.setOrientation(
         splitter.addWidget(self.selectWidget)
         splitter.addWidget(self.plotWidget)
         w = self.width()
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([w/2., w/2.])
+        splitter.setSizes([w/4., 3*w/4.])
 
+        hbox = QHBoxLayout(self)
+        hbox.addWidget(splitter)
+        self.centralWidget.setLayout(hbox)
+        self.readSettings()
 
     def setIniFile(self, iniFile):
         logging.debug("ini file is %s"%iniFile)
         self.iniFile = iniFile
+
+    def closeEvent(self, event):
+        self.writeSettings()
+        event.accept()
+
+
+    def readSettings(self):
+        settings = QSettings("cosmologist", "cosmomc_gui")
+        pos = settings.value("pos", QPoint(200, 200))
+        size = settings.value("size", QSize(400, 400))
+        self.resize(size)
+        self.move(pos)
+
+    def writeSettings(self):
+        settings = QSettings("cosmologist", "cosmomc_gui")
+        settings.setValue("pos", self.pos())
+        settings.setValue("size", self.size())
 
     # slots for menu actions
 
@@ -416,7 +414,6 @@ class MainWindow(QMainWindow):
         self.comboBoxDataTag.hide()
         self.listRoots.show()
         self.pushButtonRemove.show()
-
 
 
     def _updateParameters(self):
@@ -737,6 +734,7 @@ class MainWindow(QMainWindow):
         """
         Slot function called when pushButtonPlot is pressed.
         """
+
         # Ensure at least 1 root name specified
         self.getOtherRoots()
         if self.rootname is None:
@@ -914,29 +912,21 @@ class MainWindow(QMainWindow):
             self.canvas = None
         else:
             logging.debug("Define new canvas in central widget")
+            # Remove everything from layout
+            i = 0
+            while 1:
+                item = self.plotWidget.layout().takeAt(i)
+                if item is None: break
+            if hasattr(self, "canvas"): del self.canvas
+            if hasattr(self, "toolbar"): del self.toolbar
+
             self.canvas = FigureCanvas(self.plotter.fig)
             self.toolbar = NavigationToolbar(self.canvas, self)
-
-            # Remove previous widgets
-            if self.plotWidget.layout() is None:
-                layout = QVBoxLayout(self.plotWidget)
-                layout.addWidget(self.toolbar)
-                layout.addWidget(self.canvas)
-                self.plotWidget.setLayout(layout)
-
+            self.plotWidget.layout().addWidget(self.toolbar)
+            self.plotWidget.layout().addWidget(self.canvas)
             self.canvas.draw()
-
-
-    # def clearLayout(self, layout):
-    #     if layout is not None:
-    #         while layout.count():
-    #             item = layout.takeAt(0)
-    #             widget = item.widget()
-    #             if widget is not None:
-    #                 widget.deleteLater()
-    #             else:
-    #                 self.clearLayout(item.layout())
-
+            #self.plotWidget.update()
+            self.plotWidget.show()
 
 # ==============================================================================
 
