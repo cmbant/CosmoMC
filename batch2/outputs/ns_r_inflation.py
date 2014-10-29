@@ -85,4 +85,5 @@ labels = [meff + '+' + nnu + ' (' + s.lensing + ')', s.LCDM + ' (' + s.defplanck
 g.add_legend(labels, colored_text=True)
 
 xlim([0.945, 1])
+ylim([0, 0.29])
 g.export()

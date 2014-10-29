@@ -4,14 +4,14 @@ from pylab import *
 
 g = s.getSinglePlotter()
 
-for tag, pars in zip(['sigma8_omegam', 'omegam_H0'], [['sigma8', 'omegam', 'H0'], ['omegam', 'H0', 'sigma8']]):
+for tag, pars in zip(['sigma8_omegam', 'omegam_H0'], [['omegam', 'sigma8', 'H0'], ['omegam', 'H0', 'sigma8']]):
     for base in ['', 'mnu', 'nnu', 'nnu_meffsterile']:
         g.newPlot()
         g.make_figure(1, xstretch=1.3)
 
-        if pars[0] == 'sigma8':
-            s8 = np.arange(0.5, 1, 0.01)
-            s.plotBounds(s8, s.planck_lensing)
+        if pars[1] == 'sigma8':
+            omm = np.arange(0.1, 0.7, 0.01)
+            s.plotBounds(omm, s.planck_lensing)
 
         g.plot_3d(g.getRoot(base, 'lensonly'), pars)
 
@@ -23,8 +23,9 @@ for tag, pars in zip(['sigma8_omegam', 'omegam_H0'], [['sigma8', 'omegam', 'H0']
         # g.add_legend([s.lensonly + '+' + s.BAO, s.planckall, s.planckall + '+' + s.BAO], colored_text=True)
 
         # g.add_legend([s.lensonly + '+' + s.BAO, s.planckall, s.planckall + '+' + s.BAO], colored_text=True)
-        if pars[0] == 'sigma8':
-            xlim([0.6, 1.02])
-            ylim([0.14, 0.6])
+        if pars[1] == 'sigma8':
+            pass
+            ylim([0.6, 1.02])
+            xlim([0.14, 0.6])
         if base == '': base = 'base'
         g.export('lensonly_' + tag + '_' + base)

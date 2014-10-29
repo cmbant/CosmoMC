@@ -118,6 +118,8 @@ post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], impo
 post_WP = [[ 'WMAPtau'], [WMAPtau]]
 post_abundance = [['abundances'], ['abundances.ini'], importanceFilterAbundance()]
 post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'})
+post_BAOzre = zre_importance([BAO, 'zre6p5'], [BAOdata, 'zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'})
+post_reion = zre_importance(['reion'], ['reion_tau.ini'], dist_settings={'limits[zrei]':'6.5 N'})
 
 # set up groups of parameters and data sets
 
@@ -184,7 +186,7 @@ for d in copy.deepcopy(planck_highL_sets):
     d.add(lowl)
     d.add('reion', 'reion_tau.ini', dist_settings={'limits[zrei]':'6.5 N'})
     g5.datasets.append(d)
-g5.importanceRuns = [post_BAO, post_nonCMB, post_zre]
+g5.importanceRuns = [post_BAO, post_nonCMB, post_zre, post_BAOzre, post_reion]
 groups.append(g5)
 
 
@@ -223,7 +225,7 @@ for d in gbest.datasets:
     d.add(lensing)
 
 gbest.params = [[]]
-gbest.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB, post_zre]
+gbest.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB, post_zre, post_BAOzre, post_reion]
 groups.append(gbest)
 
 
