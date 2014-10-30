@@ -21,9 +21,14 @@ rc('text.latex', preamble=r'\usepackage{' + sfmath.replace(os.sep, '/') + '}')
 
 rcParams.update(params)
 
-non_final = False
-version = 'clik10.2'
-defdata_root = 'plikHM'
+if False:
+    non_final = True
+    version = 'CamSpec v910HM'
+    defdata_root = 'CamSpecHM'
+else:
+    non_final = False
+    version = 'clik10.2'
+    defdata_root = 'plikHM'
 
 datalabel = dict()
 defdata_TT = defdata_root + '_TT_lowTEB'

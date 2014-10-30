@@ -39,7 +39,7 @@ if not hasattr(settings, 'params'):
 
 
 if hasattr(settings, 'skip'): batch.skip = settings.skip
-batch.makeItems(settings.groups)
+batch.makeItems(settings.groups, messages=not args.readOnly)
 if args.readOnly:
     for jobItem in [b for b in batch.jobItems]:
         if not jobItem.chainExists():

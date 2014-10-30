@@ -64,15 +64,6 @@ g.add_2d_contours('base_' + s.defdata_all, param_pair=pair, ls='-', color='olive
 g.add_2d_contours(g.getRoot('', s.defdata_all + '_lensing'), param_pair=pair, ls='-', color='darkred')
 g.add_2d_contours(g.getRoot('', s.defdata_allNoLowE + '_reion'), param_pair=pair, ls='--', color='midnightblue')
 
-# g.add_2d_contours(g.getRoot('', s.defdata_all + '_lensing_zre6p5'), param_pair=pair, ls='-', color='midnightblue')
-
-# g.add_2d_contours(g.getRoot('', s.defdata_all + '_lensing_BAO'), 'sigma8', 'omegam', ls='-', color='pink')
-
-# g.add_2d_contours('base_' + s.defdata_TTonly + '_post_WMAPtau', param_pair=pair, ls='--', color='brown', alpha=0.2)
-
-# g.add_2d_contours('base_' + s.defdata_allNoLowE + '_lowtau', 'sigma8', 'omegam', color='red', filled=True)
-
-
 legends = [s.planckTT, s.NoLowLE, r'+ lensing', r'+ BAO', r'+ $z_{\rm re} > 6.5$']
 
 g.add_text(s.planckall, 0.96, 0.18, color='olive')

@@ -298,7 +298,7 @@ class batchJob:
         self.subBatches = []
         self.jobItems = None
 
-    def makeItems(self, dataAndParams):
+    def makeItems(self, dataAndParams, messages=True):
             self.jobItems = []
             for group in dataAndParams:
                 for data_set in group.datasets:
@@ -311,12 +311,12 @@ class batchJob:
             for item in self.items():
                 for x in [imp for imp in item.importanceJobs()]:
                     if self.has_normed_name(x.normed_name):
-                        print 'replacing importance sampling run with full run: ' + x.name
+                        if messages: print 'replacing importance sampling run with full run: ' + x.name
                         item.importanceItems.remove(x)
             for item in self.items():
                 for x in [imp for imp in item.importanceJobs()]:
                     if self.has_normed_name(x.normed_name, wantImportance=True, exclude=x):
-                        print 'removing duplicate importance sampling run: ' + x.name
+                        if messages: print 'removing duplicate importance sampling run: ' + x.name
                         item.importanceItems.remove(x)
 
 
