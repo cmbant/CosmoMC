@@ -560,6 +560,7 @@ class MainWindow(QMainWindow):
                 logging.debug("Remove root %s"%root)
                 self.plotter.sampleAnalyser.removeOtherRoot(root)
                 self.listRoots.takeItem(i)
+                self._updateParameters()
                 if self.other_rootnames.has_key(root):
                     del self.other_rootnames[root]
 
