@@ -7,7 +7,7 @@ params = ['theta', 'omegabh2', 'omegach2', 'logA', 'ns', 'tau']
 
 
 for par in ['', 'nnu']:
-    g.newplot()
+    g.newPlot()
     roots = [g.getRoot(par, s.defdata_root + '_EE_lowEB'),
          g.getRoot(par, s.defdata_root + '_TE_lowEB'),
          g.getRoot(par, s.defdata_root + '_TT_lowTEB'),

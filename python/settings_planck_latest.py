@@ -419,7 +419,8 @@ skip = []
 
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances']
-covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'Mspec':'CamSpec',
+covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
+                   'Mspec':'CamSpec',
                     WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
 
 # try to match run to exisitng covmat

@@ -195,6 +195,17 @@ class jobItem:
         fname = self.chainName(chain)
         return nonEmptyFile(fname)
 
+    def chainNames(self, num_chains=None):
+        if num_chains:
+            return [self.chainName(i) for i in range(num_chains)]
+        else:
+            i = 1
+            chains = []
+            while self.chainExists(i):
+                chains.append(self.chainName(i))
+                i += 1
+            return chains
+
     def allChainExists(self, num_chains):
         return all([self.chainExists(i + 1) for i in range(num_chains)])
 
