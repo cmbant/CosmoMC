@@ -775,14 +775,15 @@ class GetDistPlotter():
         self.last_scatter = scatter(samples[0], samples[1], edgecolors='none',
                 s=self.settings.scatter_size, c=samples[2], cmap=self.settings.colormap_scatter)
         if color_bar: self.last_colorbar = self.add_colorbar(params[2], **ax_args)
-        mins = [min(samples[0]), min(samples[1])]
-        maxs = [max(samples[0]), max(samples[1])]
-        for i in range(2):
-            r = maxs[i] - mins[i]
-            mins[i] -= r / 20
-            maxs[i] += r / 20
-
-        return [mins, maxs]
+        xbounds = [min(samples[0]), max(samples[0])]
+        r = xbounds[1] - xbounds[0]
+        xbounds[0] -= r / 20
+        xbounds[1] += r / 20
+        ybounds = [min(samples[1]), max(samples[1])]
+        r = ybounds[1] - ybounds[0]
+        ybounds[0] -= r / 20
+        ybounds[1] += r / 20
+        return [xbounds, ybounds]
 
     def plot_3d(self, roots, in_params=None, params_for_plots=None, color_bar=True, line_offset=0,
                 filled=False, contour_args=None, **ax_args):
@@ -795,15 +796,15 @@ class GetDistPlotter():
             params_for_plots = [params for root in roots]  # all the same
         if self.fig is None: self.make_figure()
         contour_args = self._make_contour_args(filled, contour_args, len(roots) - 1)
-        mins, maxs = self.add_3d_scatter(roots[0], params_for_plots[0], color_bar=color_bar, **ax_args)
+        xlims, ylims = self.add_3d_scatter(roots[0], params_for_plots[0], color_bar=color_bar, **ax_args)
         for i, root in enumerate(roots[1:]):
             params = params_for_plots[i + 1]
             res = self.add_2d_contours(root, params[0], params[1], i + line_offset, add_legend_proxy=False, **contour_args[i])
-            mins, maxs = self.updateLimits(res, mins, maxs)
+            xlims, ylims = self.updateLimits(res, xlims, ylims)
         if not 'lims' in ax_args:
             params = params_for_plots[0]
-            lim1 = self.checkBounds(roots[0], params[0].name , mins[0], maxs[0])
-            lim2 = self.checkBounds(roots[0], params[1].name , mins[1], maxs[1])
+            lim1 = self.checkBounds(roots[0], params[0].name , xlims[0], xlims[1])
+            lim2 = self.checkBounds(roots[0], params[1].name , ylims[0], ylims[1])
             ax_args['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]
         self.setAxes(params, **ax_args)
 
