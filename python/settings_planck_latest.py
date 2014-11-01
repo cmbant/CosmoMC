@@ -302,16 +302,12 @@ for d in copy.deepcopy(lensdata):
 for d in copy.deepcopy(lensdata):
     d.add(HST, HSTdata)
     glens.datasets.append(d)
-# for d in copy.deepcopy(lensdata):
-#    d.add(HST, HSTdata)
-#    d.add('widerns', {'prior[ns]': '0.98 0.05'})
-#    glens.datasets.append(d)
 for d in copy.deepcopy(lensdata):
     d.add('theta', {'param[theta]':'1.0408'})
     glens.datasets.append(d)
 for d in copy.deepcopy(lensdata):
-    d.add('theta', {'param[theta]':'1.0408'})
     d.add(BAO, BAOdata)
+    d.add('theta', {'param[theta]':'1.0408'})
     glens.datasets.append(d)
 glens.params = [[], ['mnu']]
 glens.importanceRuns = []
@@ -319,7 +315,11 @@ groups.append(glens)
 
 glens = batchJob.jobGroup('lensonlyext')
 glens.datasets = copy.deepcopy(lensdata)
-glens.params = [['nnu'], ['nnu', 'meffsterile']]
+for d in copy.deepcopy(glens.datasets):
+    d.add('theta', {'param[theta]':'1.0408'})
+    d.add(BAO, BAOdata)
+    glens.datasets.append(d)
+glens.params = [['nnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu']]
 glens.importanceRuns = []
 groups.append(glens)
 
@@ -371,10 +371,14 @@ gWL.datasets = copy.deepcopy(WLdata)
 for d in copy.deepcopy(WLdata):
     d.add(BAO, BAOdata)
     gWL.datasets.append(d)
+# for d in copy.deepcopy(WLdata):
+#    d.add(HST, HSTdata)
+#    gWL.datasets.append(d)
 for d in copy.deepcopy(WLdata):
-    d.add(HST, HSTdata)
+    d.add(BAO, BAOdata)
+    d.add('theta', {'param[theta]':'1.0408'})
     gWL.datasets.append(d)
-gWL.params = [[], ['mnu']]
+gWL.params = [[], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu']]
 gWL.importanceRuns = []
 groups.append(gWL)
 
@@ -418,7 +422,7 @@ skip = []
 
 
 
-covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances']
+covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances', 'theta']
 covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
                    'Mspec':'CamSpec',
                     WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
@@ -437,8 +441,12 @@ covrenames.append(['_r', ''])
 covrenames.append(['_w', ''])
 covrenames.append(['_alpha1', ''])
 covrenames.append(['_WLonly', '_lensonly'])
+covrenames.append(['_WLonlyHeymans', '_lensonly'])
 covrenames.append(['lowl', 'lowTEB'])
 covrenames.append(['lowEB', 'lowTEB'])
+covrenames.append(['_nnu_meffsterile', ''])
+covrenames.append(['_nnu_mnu', '_mnu'])
+
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)

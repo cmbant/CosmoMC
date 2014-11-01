@@ -176,6 +176,10 @@ class jobItem:
         if self.datatag in tagList or self.normed_data in tagList: return True
         return self.datatag.replace('_post', '') in  [tag.replace('_post', '') for tag in tagList]
 
+    def hasParam(self, name):
+        if isinstance(name, basestring): return name in self.param_set
+        else: return any([True for i in name if i in self.param_set])
+
     def importanceJobs(self):
         return self.importanceItems
 
