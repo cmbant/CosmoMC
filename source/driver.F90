@@ -165,6 +165,9 @@
 
     call BaseParams%InitializeUsedParams(Ini)
     call BaseParams%SetFastSlowParams(Ini, use_fast_slow)
+    if (BaseParams%block_semi_fast .and. CosmoSettings%use_nonlinear_lensing) &
+        call MpiStop('use_nonlinear_lensing does not work rigorously with block_semi_fast')
+
     Params%P(1:num_params) = BaseParams%Center(1:num_params)
     if (Setup%action /= action_importance) then
         prop_mat = Ini%Read_String('propose_matrix',.false.)
