@@ -175,8 +175,8 @@
     integer i
 
     !Safeguard
-    if (this%clik_nnuis/= this%nuisance_params%nnames) &
-        call MpiStop('clik_nnuis has different number of nuisance parameters than .paramnames')
+    if (this%clik_nnuis/= this%nuisance_params%nnames) call MpiStop(FormatString( &
+        'clik_nnuis (%u) has different number of nuisance parameters than .paramnames  (%u)',this%clik_nnuis,this%nuisance_params%nnames))
     if (this%clik_nnuis /= 0 .and. MPIRank==0 .and. Feedback>0) then
         Print*,'Clik will run with the following nuisance parameters:'
         do i=1,this%clik_nnuis

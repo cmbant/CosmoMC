@@ -15,6 +15,7 @@ Opts.parser.add_argument('--changes_from_paramtag', default=None, help="give fra
 Opts.parser.add_argument('--changes_adding_data', default=None, help="give fractional sigma shifts when adding given data")
 Opts.parser.add_argument('--changes_replacing', nargs='*', default=None,
                           help='give sigma shifts for results with data x, y, z replacing data y, z.. with x')
+Opts.parser.add_argument('--changes_only', action='store_true', help='Only include results in the changes_replacing set')
 
 Opts.parser.add_argument('--shift_sigma_indep', action='store_true',
                          help="fractional shifts are relative to the sigma for independent data (sigma^2=sigma1^2+sigma2^2")
@@ -208,7 +209,6 @@ for limit in limits:
                     baseJobItems[jobItem.normed_data] = referenceJobItem
 
             for jobItem in theseItems:
-                    if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
                     if args.changes_adding_data is not None:
                         if jobItem.normed_without is not None:
                             referenceDataJobItem = baseJobItems.get(jobItem.normed_without, None)
@@ -222,9 +222,11 @@ for limit in limits:
                                     batch.normalizeDataTag(jobItem.data_set.tagReplacing(replace, args.changes_replacing[0])), None)
                                 break
                         referenceJobItem = referenceDataJobItem
+                        if args.changes_only and not referenceDataJobItem: continue
                     else: referenceJobItem = baseJobItems.get(jobItem.normed_data, None)
                     if args.changes_from_paramtag is not None:
                         referenceDataJobItem = referenceJobItem
+                    if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
                     try:
                         tableLines = paramResultTable(jobItem, referenceJobItem, referenceDataJobItem)
                         if args.separate_tex: ResultObjs.textFile(tableLines).write(jobItem.distRoot + '.tex')

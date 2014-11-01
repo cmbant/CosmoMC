@@ -10,8 +10,12 @@ Opts.parser.add_argument('--chainnum', default=None)
 
 (batch, args) = Opts.parseForBatch()
 
+sizeMB = 0
+
 def fsizestr(fname):
+    global sizeMB
     sz = os.path.getsize(fname) / 1024
+    sizeMB += sz / 1024.
     if (sz < 1024): return str(sz) + 'KB'
     if (sz < 1024 * 1024): return str(sz / 1024) + 'MB'
     if (sz < 1024 * 1024 * 1024): return str(sz / 1024 / 1024) + 'GB'
@@ -36,4 +40,5 @@ for jobItem in Opts.filteredBatchItems():
                                 print fname, ' (' + fsizestr(fname) + ')'
                                 if args.confirm: os.remove(fname)
 
+print 'Total size: %u MB' % (sizeMB)
 if not args.confirm: print 'Files not actually deleted: add --confirm to delete'

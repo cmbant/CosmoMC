@@ -19,7 +19,7 @@ bfs = []
 for base in bases:
     bfs.append(refJobItem.result_marge.parWithName(base).mean)
 
-roots = [[g.getRoot(param, s.defdata_TT), g.getRoot(param, s.defdata_all), g.getRoot(param, s.defdata_all + '_lensing_BAO_HST70p6_JLA')] for param in paramchains]
+roots = [[g.getRoot(param, s.defdata_TT), g.getRoot(param, s.defdata_all), g.getRoot(param, s.defdata_all + '_BAO')] for param in paramchains]
 
 g.rectangle_plot(bases, params, roots, ymarkers=defs, xmarkers=bfs)
 g.export()

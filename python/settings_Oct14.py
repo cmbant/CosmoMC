@@ -55,19 +55,34 @@ for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detse
     datasets.append(batchJob.dataSet([name , 'TTTEEE'], planck_vars + ['CAMspec_TTTEEE.ini']))
 
 
+plikHM1 = []
+plikHM1.append(batchJob.dataSet(['plikHMv16', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
+plikHM1.append(batchJob.dataSet(['plikHMv16', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
+
+plikDS1 = []
+plikDS1.append(batchJob.dataSet(['plikDSv16', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
+plikDS1.append(batchJob.dataSet(['plikDSv16', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
+
 plikHM = []
-plikHM.append(batchJob.dataSet(['plikHMv16', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
-plikHM.append(batchJob.dataSet(['plikHMv16', 'TE'], ['plik_dx11dr2_HM_v16_TE.ini']))
-plikHM.append(batchJob.dataSet(['plikHMv16', 'EE'], ['plik_dx11dr2_HM_v16_EE.ini']))
-plikHM.append(batchJob.dataSet(['plikHMv16', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv16sz', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv16sz', 'TE'], ['plik_dx11dr2_HM_v16_TE.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv16sz', 'EE'], ['plik_dx11dr2_HM_v16_EE.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv16sz', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
 
 plikDS = []
-plikDS.append(batchJob.dataSet(['plikDSv16', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
-plikDS.append(batchJob.dataSet(['plikDSv16', 'TE'], ['plik_dx11dr2_DS_v16_TE.ini']))
-plikDS.append(batchJob.dataSet(['plikDSv16', 'EE'], ['plik_dx11dr2_DS_v16_EE.ini']))
-plikDS.append(batchJob.dataSet(['plikDSv16', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
+plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
+plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TE'], ['plik_dx11dr2_DS_v16_TE.ini']))
+plikDS.append(batchJob.dataSet(['plikDSv16sz', 'EE'], ['plik_dx11dr2_DS_v16_EE.ini']))
+plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
 
-plik = plikHM + plikDS
+plik1bin = []
+plik1bin.append(batchJob.dataSet(['plikHMv16bin1sz', 'TT'], [{'clik_data_plik':'data/clik/hi_l/plik/plik_dx11dr2_HM_v16_TT_bin1.clik'}, 'plik_dx11dr2_HM_v16_TT.ini']))
+plik1bin.append(batchJob.dataSet(['bin1l80sz', 'TT'], [{'clik_data_plik':'data/clik/hi_l/plik/plik_dx11dr2_HM_v16_TT_bin1l80.clik'}, 'plik_dx11dr2_HM_v16_TT.ini']))
+
+Mspec = []
+Mspec.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
+
+plik = plikHM + plikDS  # + plikHM1 + plikDS1
 
 start_at_bestfit = False
 newCovmats = True
@@ -77,7 +92,7 @@ groups = []
 g = batchJob.jobGroup('main')
 # Main group with just tau prior
 
-g.datasets = copy.deepcopy(detsets) + copy.deepcopy(CS) + copy.deepcopy(plik)
+g.datasets = copy.deepcopy(detsets) + copy.deepcopy(CS) + copy.deepcopy(plik) + copy.deepcopy(Mspec)
 
 for d in g.datasets:
     d.add(tauname, tauprior)
@@ -141,7 +156,7 @@ for lmax in range(550, 2550, 150):
         d.add('lmax' + str(lmax), {'camspec_lmax': (str(lmax) + ' ') * 6})
     g.datasets += sets
 g.params = [[], ['Alens'], ['nnu']]
-groups.append(g)
+# groups.append(g)
 
 g = batchJob.jobGroup('lmin')
 lmins = [800, 1200]
@@ -155,10 +170,15 @@ for lmin in lmins:
 g.params = [[]]
 groups.append(g)
 
+covrenames = []
+covrenames.append(['_tau07_lowl', '_lowTEB'])
+covrenames.append(['_tau07', '_lowTEB'])
 
+covNameMappings = {'v910CMH':'CamSpec', 'v910F':'CamSpec', 'plikDSv16sz':'plik', 'plikHMv16sz':'plik', 'plikHMv16bin1sz':'plik', 'bin1l80sz':'plik', 'tau07':'lowTEB'}
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
     renamed = re.sub(r'_v.*', '_planck_lowl_lowLike', renamed, re.I)
+
     if renamed == name: return[]
     else: return [renamed]

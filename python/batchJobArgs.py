@@ -28,12 +28,12 @@ class batchArgs():
                 self.parser.add_argument('--importance', nargs='*', default=None, help='tags for importance sampling runs to include')
             self.parser.add_argument('--name', default=None, nargs='+', help='specific chain full name only (base_paramx_data1_data2)')
             self.parser.add_argument('--param', default=None, nargs='+', help='runs including specific parameter only (paramx)')
-            self.parser.add_argument('--paramtag', default=None, help='runs with specific parameter tag only (base_paramx)')
+            self.parser.add_argument('--paramtag', default=None, nargs='+', help='runs with specific parameter tag only (base_paramx)')
             self.parser.add_argument('--data', nargs='+', default=None, help='runs including specific data only (data1)')
-            self.parser.add_argument('--datatag', default=None, help='runs with specific data tag only (data1_data2)')
+            self.parser.add_argument('--datatag', nargs='+', default=None, help='runs with specific data tag only (data1_data2)')
             self.parser.add_argument('--musthave_data', nargs='+', default=None, help='include only runs that include specific data (data1)')
             self.parser.add_argument('--skip_data', nargs='+', default=None, help='skip runs containing specific data (data1)')
-            self.parser.add_argument('--skip_param', default=None, help='skip runs containing specific parameter (paramx)')
+            self.parser.add_argument('--skip_param', nargs='+', default=None, help='skip runs containing specific parameter (paramx)')
             self.parser.add_argument('--group', default=None, nargs='+', help='include only runs with given group names')
             self.parser.add_argument('--skip_group', default=None, nargs='+', help='exclude runs with given group names')
 
@@ -87,17 +87,17 @@ class batchArgs():
                 if self.args.skip_data is not None and jobItem.data_set.hasName(self.args.skip_data): return False
                 return self.args.data is None or jobItem.data_set.hasName(self.args.data)
             else:
-                return jobItem.datatag == self.args.datatag
+                return jobItem.datatag in self.args.datatag
 
         def paramsMatch(self, jobItem):
             if self.args.paramtag is None:
                 if self.args.param is None:
-                    return self.args.skip_param is None or not self.args.skip_param in jobItem.param_set
+                    return not self.args.skip_param or not jobItem.hasParam(self.args.skip_param)
                 for pat in self.args.param:
-                    if pat in jobItem.param_set: return self.args.skip_param is None or not self.args.skip_param in jobItem.param_set
+                    if pat in jobItem.param_set: return not self.args.skip_param  or not jobItem.hasParam(self.args.skip_param)
                 return False
             else:
-                return jobItem.paramtag == self.args.paramtag
+                return jobItem.paramtag in self.args.paramtag
 
         def filteredBatchItems(self, wantSubItems=True, chainExist=False):
             for jobItem in self.batch.items(wantImportance=not self.args.noimportance, wantSubItems=wantSubItems):
