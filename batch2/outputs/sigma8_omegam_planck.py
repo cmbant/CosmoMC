@@ -71,5 +71,5 @@ g.add_text(s.planckall + '+lensing', 0.96, 0.12, color='darkred')
 # g.add_text(s.planckall + '+lensing ($z_{\\rm re}>6.5$)', 0.96, 0.06, color='midnightblue', alpha=1)
 g.add_text(s.NoLowLE + '+ reion prior', 0.96, 0.06, color='midnightblue', alpha=1)
 
-g.add_legend(legends, legend_loc='upper right', colored_text=True);
+g.add_legend(legends, legend_loc='upper right', colored_text=True, align_right=True);
 g.export()

@@ -505,7 +505,7 @@ class GetDistPlotter():
         return r'$' + p.label + r'$'
 
     def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False,
-                   figure=False, label_order=None):
+                   figure=False, ax=None, label_order=None, align_right=False):
             if legend_loc is None:
                 if figure: legend_loc = self.settings.figure_legend_loc
                 else: legend_loc = self.settings.legend_loc
@@ -532,7 +532,12 @@ class GetDistPlotter():
                     self.legend.get_frame().set_edgecolor('none')
             else:
                 args['frameon'] = self.settings.legend_frame and not colored_text
-                self.legend = gca().legend(lines, legend_labels, legend_loc, **args)
+                self.legend = (ax or gca()).legend(lines, legend_labels, legend_loc, **args)
+            if align_right:
+                vp = self.legend ._legend_box._children[-1]._children[0]
+                for c in vp._children:
+                    c._children.reverse()
+                vp.align = "right"
             if not self.settings.legend_rect_border:
                 for rect in self.legend.get_patches():
                     rect.set_edgecolor(rect.get_facecolor())
