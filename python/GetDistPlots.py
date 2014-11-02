@@ -17,6 +17,7 @@ class GetDistPlotSettings:
         self.plot_meanlikes = False
         self.shade_meanlikes = False
         self.prob_label = None
+        self.norm_prob_label = 'P'
         self.prob_y_ticks = False
         # self.prob_label = 'Probability'
         self.lineM = ['-k', '-r', '-b', '-g', '-m', '-c', '-y']
@@ -270,13 +271,18 @@ class GetDistPlotter():
         if up is not None: xmax = min(xmax, up)
         return xmin, xmax
 
-    def add_1d(self, root, param, plotno=0, **kwargs):
+    def add_1d(self, root, param, plotno=0, normalized=False, **kwargs):
         param = self.check_param(root, param)
         density = self.sampleAnalyser.get_density(root, param, likes=self.settings.plot_meanlikes)
         if density is None: return None;
+        pts = density.pts
+        if normalized:
+            norm = (pts[0] + pts[-1]) / 2 + sum(pts[1:-1])
+            norm *= density.x[1] - density.x[0]
+            pts /= norm
 
         kwargs = self.get_line_styles(plotno, **kwargs)
-        plot(density.x, density.pts, **kwargs)
+        plot(density.x, pts, **kwargs)
         if self.settings.plot_meanlikes:
             kwargs['lw'] = self.settings.lw_likes
             plot(density.x, density.likes, **kwargs)
@@ -426,7 +432,7 @@ class GetDistPlotter():
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
 
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
-                no_ylabel=False, no_ytick=False, no_zero=False, line_args={}, param_renames={}, **ax_args):
+                no_ylabel=False, no_ytick=False, no_zero=False, normalized=False, line_args={}, param_renames={}, **ax_args):
         if isinstance(roots, basestring): roots = [roots]
         if self.fig is None: self.make_figure()
         plotparam = None
@@ -437,7 +443,7 @@ class GetDistPlotter():
         for i, root in enumerate(roots):
             root_param = self.check_param(root, param, param_renames)
             if not root_param: continue
-            bounds = self.add_1d(root, root_param, i, **line_args[i])
+            bounds = self.add_1d(root, root_param, i, normalized=normalized, **line_args[i])
             xmin, xmax = self.updateLimit(bounds, (xmin, xmax))
             if bounds is not None and not plotparam:
                     plotparam = root_param
@@ -446,18 +452,22 @@ class GetDistPlotter():
         if marker is not None: self.add_x_marker(marker, marker_color)
         if not 'lims' in ax_args:
             xmin, xmax = self.checkBounds(plotroot, plotparam.name, xmin, xmax)
-            ax_args['lims'] = [xmin, xmax, 0, 1.099]
+            if normalized: mx = gca().yaxis.get_view_interval()[-1]
+            else: mx = 1.099
+            ax_args['lims'] = [xmin, xmax, 0, mx]
         ax = self.setAxes([plotparam], **ax_args)
 
-        if self.settings.prob_label is not None and not no_ylabel:
+        if normalized: lab = self.settings.norm_prob_label
+        else: lab = self.settings.prob_label
+        if lab and not no_ylabel:
             if label_right:
                 ax.yaxis.set_label_position("right")
                 ax.yaxis.tick_right()
-                ylabel(self.settings.prob_label)
-            else: ylabel(self.settings.prob_label)
+                ylabel(lab)
+            else: ylabel(lab)
         if no_ytick or not self.settings.prob_y_ticks: ax.set_yticks([])
         elif no_ylabel: ax.set_yticklabels([])
-        elif no_zero:
+        elif no_zero and not normalized:
             ticks = ax.get_yticks()
             if ticks[-1] > 1: ticks = ticks[:-1]
             ax.set_yticks(ticks[1:])
@@ -495,7 +505,7 @@ class GetDistPlotter():
         return r'$' + p.label + r'$'
 
     def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False,
-                   figure=False, label_order=None):
+                   figure=False, ax=None, label_order=None, align_right=False):
             if legend_loc is None:
                 if figure: legend_loc = self.settings.figure_legend_loc
                 else: legend_loc = self.settings.legend_loc
@@ -522,7 +532,12 @@ class GetDistPlotter():
                     self.legend.get_frame().set_edgecolor('none')
             else:
                 args['frameon'] = self.settings.legend_frame and not colored_text
-                self.legend = gca().legend(lines, legend_labels, legend_loc, **args)
+                self.legend = (ax or gca()).legend(lines, legend_labels, legend_loc, **args)
+            if align_right:
+                vp = self.legend ._legend_box._children[-1]._children[0]
+                for c in vp._children:
+                    c._children.reverse()
+                vp.align = "right"
             if not self.settings.legend_rect_border:
                 for rect in self.legend.get_patches():
                     rect.set_edgecolor(rect.get_facecolor())
@@ -586,6 +601,7 @@ class GetDistPlotter():
 
     def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None, legend_ncol=None, filled=False):
         pairs = []
+        if isinstance(roots, basestring): roots = [roots]
         if param_pairs is None:
             if param1 is not None:
                 param1 = self.check_param(roots[0], param1)
