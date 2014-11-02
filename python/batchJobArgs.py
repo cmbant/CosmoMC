@@ -38,9 +38,9 @@ class batchArgs():
             self.parser.add_argument('--skip_group', default=None, nargs='+', help='exclude runs with given group names')
 
             if self.notExist:
-                self.parser.add_argument('--notexist', action='store_true', help='only include chains that don''t already exist on disk')
+                self.parser.add_argument('--notexist', action='store_true', help='only include chains that don\'t already exist on disk')
             if self.notall:
-                self.parser.add_argument('--notall', type=int, default=None, help='only include chains where all N chains don''t already exist on disk')
+                self.parser.add_argument('--notall', type=int, default=None, help='only include chains where all N chains don\'t already exist on disk')
             if self.doplots:
                 self.parser.add_argument('--plot_data', nargs='*', default=None, help='directory/ies containing getdist output plot_data')
                 self.parser.add_argument('--paramNameFile', default='clik_latex.paramnames', help=".paramnames file for custom labels for parameters")
