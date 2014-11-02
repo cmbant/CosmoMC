@@ -16,8 +16,14 @@ for TT in [False, True]:
     basedatname = s.datalabel[basedat]
 
     ref = 'base_' + basedat + '_lensing_post_BAO'
+    refs = [ref]
     vars = ['nnu', 'mnu', 'nnu_mnu', 'nnu_meffsterile']
-    roots = [[g.getRoot(var, basedat), g.getRoot(var, basedat + '_lensing'), g.getRoot(var, basedat + '_lensing_BAO')] for var in vars]
+
+    roots = [[g.getRoot(var, basedat),
+              g.getRoot(var, basedat + '_lensing'),
+              g.getRoot(var, basedat + '_lensing_BAO'),
+#              'base_' + var + '_WLonlyHeymans_BAO_theta',
+              ] for var in vars]
     labels = [basedatname, '+lensing', '+lensing+BAO', '$\Lambda$CDM']
 
     mnu = r'$\Sigma m_\nu$'
@@ -26,7 +32,7 @@ for TT in [False, True]:
 
     legends = [s.LCDM , '+' + nnu, '+' + mnu, '+' + nnu + '+' + mnu, '+' + nnu + '+' + meff]
 
-    plotroots = [ [root + [ref] for root in roots[0:2]], [root + [ref] for root in roots[2:]]] * 2
+    plotroots = [ [root + refs for root in roots[0:2]], [root + refs for root in roots[2:]]] * 2
     plottexts = [ [legend for legend in legends[1:3]], [legend for legend in legends[3:]] ] * 2
 
     lims = {'sigma8':[0.61, 0.97], 'H0':[52, 79], 'omegam':[0.21, 0.55]}

@@ -22,6 +22,8 @@ names = paramNames.paramNames(args.paramNameFile)
 
 if args.chain_name_params is None: args.chain_name_params = args.params
 
+if args.compare: args.compare = [batch.normalizeDataTag(dat) for dat in args.compare]
+
 table = dict()
 paramtag_for_param = dict()
 for par in args.params:
@@ -29,7 +31,7 @@ for par in args.params:
 
 for jobItem in Opts.filteredBatchItems():
     if (args.compare is None or jobItem.matchesDatatag(args.compare)) and (not args.single_extparam or
-                                len(jobItem.param_set) == 1  and len(set(args.chain_name_params).intersection(jobItem.param_set)) > 0):
+                                len(jobItem.param_set) == 1  and jobItem.hasParam(args.chain_name_params)):
         jobItem.loadJobItemResults(paramNameFile=None, bestfit=not args.nobestfits, noconverge=True, silent=True)
         if jobItem.result_marge is not None:
             results = []
@@ -39,9 +41,8 @@ for jobItem in Opts.filteredBatchItems():
                     if not jobItem.paramtag in table: table[jobItem.paramtag] = dict()
                     dataTable = table[jobItem.paramtag]
                     if not jobItem.paramtag in paramtag_for_param[par]: paramtag_for_param[par].append(jobItem.paramtag)
-                    dataName = jobItem.datatag.replace('_post', '')
-                    if not jobItem.datatag in dataTable: dataTable[dataName] = dict()
-                    dataTable[dataName][par] = texValues
+                    if not jobItem.normed_data in dataTable: dataTable[jobItem.normed_data] = dict()
+                    dataTable[jobItem.normed_data][par] = texValues
 
 def makeMath(txt):
     if args.mathColumns: return '$' + txt + '$'
@@ -62,8 +63,8 @@ lines = []
 
 for i, par in enumerate(args.params):
     for paramtag in paramtag_for_param[par]:
-        print paramtag
         dataTable = table[paramtag]
+        print paramtag, len(dataTable)
         if args.compare is not None: dataTable = sortData(dataTable, args.compare)
         cols = [makeMath(names.parWithName(par, True).label)]
         for datatag in dataTable:

@@ -32,6 +32,8 @@ H073p9data = 'HST_high'
 RSDdata = 'BAO_RSD.ini'
 BAORSD = 'BAORSD';
 WL = 'WL'
+WLHeymans = 'WLHeymans'
+
 
 Camspec = 'CAMspec_defaults.ini'
 highL = 'highL'
@@ -378,7 +380,7 @@ for d in copy.deepcopy(WLdata):
     d.add(BAO, BAOdata)
     d.add('theta', {'param[theta]':'1.0408'})
     gWL.datasets.append(d)
-gWL.params = [[], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu']]
+gWL.params = [[], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['nnu']]
 gWL.importanceRuns = []
 groups.append(gWL)
 
@@ -424,7 +426,7 @@ skip = []
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances', 'theta']
 covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
-                   'Mspec':'CamSpec',
+                   'Mspec':'CamSpec', WLHeymans : WL,
                     WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
 
 # try to match run to exisitng covmat

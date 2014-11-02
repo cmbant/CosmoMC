@@ -17,3 +17,6 @@ python python/makeTables.py main compare_plikHM_2sig  --limit 2 --converge 0.1  
 python python/makeTables.py main compare_plikHM_3sig  --limit 3 --converge 0.1  --changes_replacing plikHM plikDS CamSpecHM CamSpecDS Mspec cleanCMH WMAP --header_tex batch2/outputs/tableHeader.tex
 
 python python/makeTables.py main pol_shift_sigma_table --limit 1 --changes_replacing TTTEEE TT --shift_sigma_subset --data TT TTTEEE
+
+
+python python/makeParamCompare.py main --chain_name_params mnu nnu yhe nrun r w  --params mnu nnu yhe nrun r02 w --compare plikHM_TT_lowTEB plikHM_TTTEEE_lowTEB plikHM_TT_lowTEB_lensing plikHM_TT_lowTEB_lensing_H070p6_JLA_BAO plikHM_TTTEEE_lowTEB_lensing_H070p6_JLA_BAO --single_extparam --latex_filename outputs/grid_1paramext --nobestfits
