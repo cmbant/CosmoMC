@@ -394,6 +394,14 @@ class GetDistPlotter():
         if lw is None: lw = self.settings.axis_marker_lw
         axhline(marker, ls=ls, color=color, lw=lw)
 
+    def add_y_bands(self, y, sigma, xlim=None, color='gray', ax=None, alpha1=0.15, alpha2=0.1):
+        ax = ax or gca()
+        xlim = xlim or ax.xaxis.get_view_interval()
+        one = array([1, 1])
+        c = color
+        if alpha2 > 0: ax.fill_between(xlim, one * (y - sigma * 2), one * (y + sigma * 2), facecolor=c, alpha=alpha2, edgecolor=c, lw=0)
+        if alpha1 > 0: ax.fill_between(xlim, one * (y - sigma), one * (y + sigma), facecolor=c, alpha=alpha1, edgecolor=c, lw=0)
+
     def set_locator(self, axis, x=False, prune=None):
         if x: xmin, xmax = axis.get_view_interval()
         if (x and (abs(xmax - xmin) < 0.01 or max(abs(xmin), abs(xmax)) >= 1000)):
