@@ -17,11 +17,12 @@ for base in ['base', 'base_mnu', 'base_nnu_meffsterile', 'base_nnu_mnu']:
     g.plot_3d(base + '_WLonly', ['omegam', 'sigma8', 'H0'])
 
     # g.add_2d_contours('base_lensonly_HST70p6', 'omegam', 'sigma8', ls='-', color='blue', lw=0.6)
-    g.add_2d_contours(base + '_WLonly_BAO', 'omegam', 'sigma8', ls='-', color='magenta', lw=0.6)
-    g.add_2d_contours(base + '_WLonly_theta', 'omegam', 'sigma8', ls='-', color='red', lw=0.6)
+    g.add_2d_contours(base + '_WLonly_BAO', 'omegam', 'sigma8', ls='-', color='darkred', lw=0.6)
+    g.add_2d_contours(base + '_WLonly_BAO_theta', 'omegam', 'sigma8', ls='-', color='green', lw=0.6)
 
     g.add_2d_contours(base + '_WLonlyHeymans', 'omegam', 'sigma8', ls='--', color='blue', lw=0.6)
-    g.add_2d_contours(base + '_WLonlyHeymans_BAO', 'omegam', 'sigma8', ls='-', color='olive', lw=0.6)
+    g.add_2d_contours(base + '_WLonlyHeymans_BAO', 'omegam', 'sigma8', ls='--', color='darkred', lw=0.6)
+    g.add_2d_contours(base + '_WLonlyHeymans_BAO_theta', 'omegam', 'sigma8', ls='--', color='green', lw=0.6)
 
     g.add_2d_contours(base + '_' + s.defdata, 'omegam', 'sigma8', ls='-', color='black', lw=1.2)
 
