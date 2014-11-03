@@ -1,5 +1,6 @@
 import os, paramNames
 import matplotlib
+import copy as cp
 matplotlib.use('Agg')
 from pylab import *
 
@@ -349,14 +350,19 @@ class GetDistPlotter():
         if not doResize: return xlims, ylims
         else: return self.updateLimit(res[0], xlims), self.updateLimit(res[1], ylims)
 
-    def _make_contour_args(self, filled, contour_args, nroots):
-        if not contour_args:
-            contour_args = [{'filled':filled}] * nroots
+    def _make_contour_args(self, filled, contour_args, nroots, colors=None, ls=None):
+        if not contour_args: contour_args = [{}] * nroots
         elif isinstance(contour_args, dict): contour_args = [contour_args] * nroots
+        for i, args in enumerate(contour_args):
+            c = cp.copy(args)  # careful to copy before modifying any
+            contour_args[i] = c
+            if c.get('filled') is None: c['filled'] = filled
+            if colors: c['color'] = colors[i]
+            if ls: c['ls'] = ls[i]
         return contour_args
 
     def plot_2d(self, roots, param1=None, param2=None, param_pair=None, shaded=False, filled=False, add_legend_proxy=True,
-                contour_args=None, **ax_args):
+                contour_args=None, colors=None, ls=None, **ax_args):
         if self.fig is None: self.make_figure()
         if isinstance(roots, basestring):roots = [roots]
         if isinstance(param1, list):
@@ -366,7 +372,7 @@ class GetDistPlotter():
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
         if shaded and not filled: self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
         xbounds, ybounds = None, None
-        contour_args = self._make_contour_args(filled, contour_args, len(roots))
+        contour_args = self._make_contour_args(filled, contour_args, len(roots), colors, ls)
         for i, root in enumerate(roots):
             res = self.add_2d_contours(root, param_pair[0], param_pair[1], i, of=len(roots),
                                        add_legend_proxy=add_legend_proxy, **contour_args[i])
@@ -658,7 +664,7 @@ class GetDistPlotter():
 
 
     def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled_compare=False, shaded=False,
-                      contour_args=None, line_args=None):
+                      contour_args=None, contour_colors=None, contour_ls=None, line_args=None):
         if isinstance(roots, basestring):roots = [roots]
         params = self.get_param_array(roots[0], in_params)
         plot_col = len(params)
@@ -667,7 +673,7 @@ class GetDistPlotter():
         lims = dict()
         ticks = dict()
         line_args = None
-        contour_args = self._make_contour_args(filled_compare, contour_args, len(roots))
+        contour_args = self._make_contour_args(filled_compare, contour_args, len(roots), contour_colors, contour_ls)
         if filled_compare and not line_args:
             cols = [self.settings.solid_colors[len(roots) - plotno - 1] for plotno in range(len(params))]
             line_args = []
