@@ -205,7 +205,7 @@ class MCSamples(chains):
         for i in range(1, self.num_contours+1):
             self.contours.append(ini.float('contour'+str(i)))
             max_frac = ini.float('max_frac_twotail'+str(i),
-                                 math.exp(-1.0*math.pow(norm.ppf((1-self.contours[i-1])/2), 2)/2))
+                                 np.exp(-1.0*math.pow(norm.ppf((1-self.contours[i-1])/2), 2)/2))
             self.max_frac_twotail.append(max_frac)
 
 
@@ -354,7 +354,7 @@ class MCSamples(chains):
             if (cool<>1):
                 newL = self.loglikes[thin] * cool
                 textFileHandle.write("%16.7E"%(
-                        math.exp(-(newL - self.loglikes[thin])-MaxL*(1-cool))))
+                        np.exp(-(newL - self.loglikes[thin])-MaxL*(1-cool))))
                 textFileHandle.write("%16.7E"%(newL))
                 for j in nparams:
                     textFileHandle.write("%16.7E"%(self.samples[i][j]))
@@ -1050,7 +1050,7 @@ class MCSamples(chains):
         # In f90, Win(-winw:winw)
         Win = np.zeros( (2*winw) + 1 )
         for i in range(-winw, winw+1):
-            Win[i - (-winw)] = math.exp( - math.pow(i, 2) / math.pow(fine_fac*smooth_1D, 2) / 2 )
+            Win[i - (-winw)] = np.exp( - math.pow(i, 2) / math.pow(fine_fac*smooth_1D, 2) / 2 )
         Win = Win / np.sum(Win)
 
         has_prior = self.has_limits_bot[ix] or self.has_limits_top[ix]
@@ -1175,11 +1175,12 @@ class MCSamples(chains):
         """
         Get 2D plot data.
         """
+
         fine_fac_base = 5
 
         has_prior = self.has_limits[j] or self.has_limits[j2]
 
-        corr = self.corrmatrix[j][j2]
+        corr = self.corrmatrix[j2][j]
         # keep things simple unless obvious degeneracy
         if (abs(corr)<0.3): corr = 0.
         corr = max(-0.95, corr)
@@ -1207,8 +1208,8 @@ class MCSamples(chains):
         # Using index mapping for f90 2D arrays with non standard indexes.
 
         # In f90, bins2D(ixmin:ixmax,iymin:iymax) and bin2Dlikes(ixmin:ixmax,iymin:iymax)
-        bins2D = np.zeros( (ixmax-ixmin+1, iymax-iymin+1) )
-        bin2Dlikes = np.zeros( (ixmax-ixmin+1, iymax-iymin+1) )
+        bins2D = np.zeros( (iymax-iymin+1, ixmax-ixmin+1) )
+        bin2Dlikes = np.zeros( (iymax-iymin+1, ixmax-ixmin+1) )
 
         winw = int(round(fine_fac*smooth_scale))
         imin = (ixmin-3)*winw + 1
@@ -1217,78 +1218,76 @@ class MCSamples(chains):
         jmax = (iymax+3)*winw - 1
 
         # In f90, finebins(imin:imax,jmin:jmax)
-        finebins = np.zeros( (imax-imin+1, jmax-jmin+1) )
+        finebins = np.zeros( (jmax-jmin+1, imax-imin+1) )
         if (self.shade_meanlikes):
             # In f90, finebinlikes(imin:imax,jmin:jmax)
-            finebinlikes = np.zeros( (imax-imin+1, jmax-jmin+1) )
+            finebinlikes = np.zeros( (jmax-jmin+1, imax-imin+1) )
 
         widthj  = widthx / fine_fac
         widthj2 = widthy / fine_fac
-        col1 = self.colix[j]
-        col2 = self.colix[j2]
         for i in range(self.numrows):
-            ix1 = int(round(((self.samples[i, j]-self.center[j]) / widthj)))
-            ix2 = int(round(((self.samples[i, j2]-self.center[j2]) / widthj2)))
+            ix1 = int(round(((self.samples[i][j] -self.center[j] ) / widthj )))
+            ix2 = int(round(((self.samples[i][j2]-self.center[j2]) / widthj2)))
             if ( (ix1>=imin) and (ix1<=imax) and (ix2>=jmin) and (ix2<=jmax)):
-                finebins[ix1-imin][ix2-jmin] += self.weights[i]
+                finebins[ix2-jmin][ix1-imin] += self.weights[i]
                 if (self.shade_meanlikes):
-                    finebinlikes[ix1-imin][ix2-jmin] += self.weights[i] * (math.exp(self.meanlike-self.loglikes[i]))
+                    finebinlikes[ix2-jmin][ix1-imin] += self.weights[i] * (np.exp(self.meanlike-self.loglikes[i]))
 
         winw = int(round(2*fine_fac*smooth_scale))
         # In f90, Win(-winw:winw,-winw:winw)
-        Win = np.ones( ((2*winw)+1, (2*winw)+1) )
+        Win = np.zeros( ((2*winw)+1, (2*winw)+1) )
         indexes = range(-winw, winw+1)
         for ix1 in indexes:
             for ix2 in indexes:
-                Win[ix1-(-winw)][ix2-(-winw)] = math.exp(
+                Win[ix2-(-winw)][ix1-(-winw)] = np.exp(
                     - ( ((ix1*ix1) + (ix2*ix2) - 2*corr*ix1*ix2)) /
                       (2 * (fine_fac*fine_fac) * (smooth_scale*smooth_scale) * (1-corr*corr)) )
 
         if (has_prior):
             norm = np.sum(Win)
             # In f90, prior_mask(imin:imax,jmin:jmax)
-            prior_mask = np.ones( (imax-imin+1, jmax-jmin+1) )
+            prior_mask = np.ones( (jmax-jmin+1, imax-imin+1) )
             if (self.has_limits_bot[j]):
-                prior_mask[(ixmin*fine_fac)-imin, :] /= 2
-                prior_mask[:(ixmin*fine_fac)-imin, :] = 0
+                prior_mask[:, (ixmin*fine_fac)-imin] /= 2
+                prior_mask[:, :(ixmin*fine_fac)-imin] = 0
             if (self.has_limits_top[j]):
-                prior_mask[(ixmax*fine_fac)-imin, :] /= 2
-                prior_mask[(ixmax*fine_fac)-imin:, :] = 0
+                prior_mask[:, (ixmax*fine_fac)-imin] /= 2
+                prior_mask[:, (ixmax*fine_fac)+1-imin:] = 0
 
             if (self.has_limits_bot[j2]):
-                prior_mask[:, (iymin*fine_fac)-jmin] /= 2
-                prior_mask[:, :(iymin*fine_fac)-jmin] = 0
+                prior_mask[(iymin*fine_fac)-jmin, :] /= 2
+                prior_mask[:(iymin*fine_fac)-jmin, :] = 0
             if (self.has_limits_top[j2]):
-                prior_mask[:, (iymax*fine_fac)-jmin] /= 2
-                prior_mask[:, :(iymax*fine_fac)-jmin] = 0
+                prior_mask[(iymax*fine_fac)-jmin, :] /= 2
+                prior_mask[(iymax*fine_fac)+1-jmin:, :] = 0
 
         for ix1 in range(ixmin, ixmax+1):
             for ix2 in range(iymin, iymax+1):
                 ix1start, ix1end = ix1*fine_fac-winw-imin, ix1*fine_fac+winw+1-imin
                 ix2start, ix2end = ix2*fine_fac-winw-jmin, ix2*fine_fac+winw+1-jmin
-                bins2D[ix1-ixmin][ix2-iymin] = np.sum(np.multiply(Win, finebins[ix1start:ix1end, ix2start:ix2end]))
+                bins2D[ix2-iymin][ix1-ixmin] = np.sum(np.multiply(Win, finebins[ix2start:ix2end, ix1start:ix1end]))
                 if (self.shade_meanlikes):
-                    bin2Dlikes[ix1-ixmin][ix2-iymin] = np.sum(np.multiply(Win, finebinlikes[ix1start:ix1end, ix2start:ix2end]))
+                    bin2Dlikes[ix2-iymin][ix1-ixmin] = np.sum(np.multiply(Win, finebinlikes[ix2start:ix2end, ix1start:ix1end]))
 
                 if (has_prior):
                     # correct for normalization of window where it is cut by prior boundaries
-                    denom = np.sum(np.multiply(Win, prior_mask[ix1start:ix1end, ix2start:ix2end]))
+                    denom = np.sum(np.multiply(Win, prior_mask[ix2start:ix2end, ix1start:ix1end]))
                     if denom!=0.:
                         edge_fac = norm / denom
                     else:
                         edge_fac = 0.
-                    bins2D[ix1-ixmin][ix2-iymin] *= edge_fac
+                    bins2D[ix2-iymin][ix1-ixmin] *= edge_fac
                     if (self.shade_meanlikes):
-                        bin2Dlikes[ix1-ixmin][ix2-iymin] *= edge_fac
+                        bin2Dlikes[ix2-iymin][ix1-ixmin] *= edge_fac
+
 
         if (self.shade_meanlikes):
             for ix1 in range(ixmin, ixmax+1):
                 for ix2 in range(iymin, iymax+1):
-                    if (bins2D[ix1-ixmin][ix2-iymin]>0):
-                        bin2Dlikes[ix1-ixmin][ix2-iymin] = bin2Dlikes[ix1-ixmin][ix2-iymin] / bins2D[ix1-ixmin][ix2-iymin]
+                    if (bins2D[ix2-iymin][ix1-ixmin]>0):
+                        bin2Dlikes[ix2-iymin][ix1-ixmin] = bin2Dlikes[ix2-iymin][ix1-ixmin] / bins2D[ix2-iymin][ix1-ixmin]
 
         bins2D = bins2D / np.max(bins2D)
-
         # Get contour containing contours(:) of the probability
         norm = np.sum(bins2D)
 
@@ -1318,7 +1317,7 @@ class MCSamples(chains):
             textFileHandle = open(filename, 'w')
             for ix1 in range(ixmin, ixmax+1):
                 for ix2 in range(iymin, iymax+1):
-                    textFileHandle.write("%16.7E"%(bins2D[ix1-ixmin][ix2-iymin]))
+                    textFileHandle.write("%16.7E"%(bins2D[ix2-iymin][ix1-ixmin]))
                 textFileHandle.write("\n")
             textFileHandle.close()
 
@@ -1342,7 +1341,7 @@ class MCSamples(chains):
                 maxbin = np.max(bin2Dlikes)
                 for ix1 in range(ixmin, ixmax+1):
                     for ix2 in range(iymin, iymax+1):
-                        textFileHandle.write("%16.7E"%(bin2Dlikes[ix1-ixmin][ix2-iymin]/maxbin))
+                        textFileHandle.write("%16.7E"%(bin2Dlikes[ix2-iymin][ix1-ixmin]/maxbin))
                     textFileHandle.write("\n")
                 textFileHandle.close()
         else:
@@ -1355,7 +1354,7 @@ class MCSamples(chains):
             for ix1 in range(ixmin, ixmax+1):
                 icol = 0
                 for ix2 in range(iymin, iymax+1):
-                    dat[irow][icol] = bins2D[ix1-ixmin][ix2-iymin]
+                    dat[irow][icol] = bins2D[ix2-iymin][ix1-ixmin]
                     icol += 1
                 irow += 1
 
@@ -1366,7 +1365,7 @@ class MCSamples(chains):
                 for ix1 in range(ixmin, ixmax+1):
                     icol = 0
                     for ix2 in range(iymin, iymax+1):
-                        likes[irow][icol] = bin2Dlikes[ix1-ixmin][ix2-iymin]/maxbin
+                        likes[irow][icol] = bin2Dlikes[ix2-iymin][ix1-ixmin] / maxbin
                         icol += 1
                     irow += 1
 
