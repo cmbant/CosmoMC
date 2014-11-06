@@ -6,6 +6,8 @@ Opts.parser.add_argument('target_dir', help="output root directory or zip file n
 
 Opts.parser.add_argument('--dist', action='store_true', help="include getdist outputs")
 Opts.parser.add_argument('--chains', action='store_true', help="include chain files")
+Opts.parser.add_argument('--remove_burn_fraction', default=0.0, type=float, help="fraction at start of chain to remove as burn in")
+
 Opts.parser.add_argument('--file_extensions', nargs='+', default=['.*'], help='extensions to include')
 Opts.parser.add_argument('--skip_extensions', nargs='+', default=['.data', '.chk', '.chk_tmp', '.log', '.corr', '.py', '.m'])
 Opts.parser.add_argument('--dryrun', action='store_true')
@@ -34,15 +36,30 @@ def fileMatches(f, name):
             return True
     return False
 
-def doCopy(source, dest, name):
+def doCopy(source, dest, name, hasBurn=False):
     global sizeMB
     if args.verbose: print source + f
     if not args.dryrun:
-        if args.zip:
-            zipper.write(source + f, dest + f)
+        if args.remove_burn_fraction and hasBurn:
+            lines = open(source + f).readlines()
+            lines = lines[int(len(lines) * args.remove_burn_fraction):]
+            frac = 1 - args.remove_burn_fraction
         else:
-            shutil.copyfile(source + f, target_dir + dest + f)
-    sizeMB += os.path.getsize(source + f) / 1024.**2
+            frac = 1
+            lines = None
+        destf = dest + f
+        if args.zip:
+            if lines:
+                zipper.writestr(destf, "".join(lines))
+
+            else:
+                zipper.write(source + f, destf)
+        else:
+            if lines:
+                open(target_dir + destf, 'w').writelines(lines)
+            else:
+                shutil.copyfile(source + f, target_dir + destf)
+    sizeMB += os.path.getsize(source + f) / 1024.**2 * frac
 
 
 for jobItem in Opts.filteredBatchItems():
@@ -51,6 +68,7 @@ for jobItem in Opts.filteredBatchItems():
         chainfiles = 0
         infofiles = 0
         distfiles = 0
+        doneProperties = False
         outdir = jobItem.relativePath
         if not args.zip: batchJob.makePath(target_dir + outdir)
         if args.chains:
@@ -58,10 +76,21 @@ for jobItem in Opts.filteredBatchItems():
             while os.path.exists(jobItem.chainRoot + ('_%d.txt') % i):
                 f = jobItem.name + ('_%d.txt') % i
                 chainfiles += 1
-                doCopy(jobItem.chainPath, outdir, f)
+                doCopy(jobItem.chainPath, outdir, f, not jobItem.isImportanceJob)
                 i += 1
+            if not jobItem.isImportanceJob and args.remove_burn_fraction:
+                props = jobItem.propertiesIni()
+                props.params['burn_removed'] = True
+                iniName = jobItem.name + '.properties.ini'
+                if args.zip:
+                    zipper.writestr(outdir + iniName , "\n".join(props.fileLines()))
+                else:
+                    props.saveFile(target_dir + outdir + iniName)
+                doneProperties = True
+
         for f in os.listdir(jobItem.chainPath):
             if fileMatches(f, jobItem.name):
+                if doneProperties and '.properties.ini' in f: continue
                 infofiles += 1
                 if args.verbose: print jobItem.chainPath + f
                 doCopy(jobItem.chainPath, outdir, f)

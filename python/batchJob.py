@@ -1,5 +1,5 @@
 
-import os, sys, pickle, ResultObjs, time, copy
+import os, sys, pickle, ResultObjs, time, copy, iniFile
 
 
 def readobject(directory=None):
@@ -131,6 +131,17 @@ class jobItem:
             return self.batchPath + 'iniFiles' + os.sep + self.name + variant + '.ini'
         else: return self.batchPath + 'postIniFiles' + os.sep + self.name + variant + '.ini'
 
+    def propertiesIniFile(self):
+        return self.chainRoot + '.properties.ini'
+
+    def propertiesIni(self):
+        if os.path.exists(self.propertiesIniFile()):
+            return iniFile.iniFile(self.propertiesIniFile())
+        else:
+            ini = iniFile.iniFile()
+            ini.original_filename = self.propertiesIniFile()
+            return ini
+
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
         for impRun in importanceRuns:
@@ -176,6 +187,10 @@ class jobItem:
         if self.datatag in tagList or self.normed_data in tagList: return True
         return self.datatag.replace('_post', '') in  [tag.replace('_post', '') for tag in tagList]
 
+    def hasParam(self, name):
+        if isinstance(name, basestring): return name in self.param_set
+        else: return any([True for i in name if i in self.param_set])
+
     def importanceJobs(self):
         return self.importanceItems
 
@@ -194,6 +209,17 @@ class jobItem:
     def chainExists(self, chain=1):
         fname = self.chainName(chain)
         return nonEmptyFile(fname)
+
+    def chainNames(self, num_chains=None):
+        if num_chains:
+            return [self.chainName(i) for i in range(num_chains)]
+        else:
+            i = 1
+            chains = []
+            while self.chainExists(i):
+                chains.append(self.chainName(i))
+                i += 1
+            return chains
 
     def allChainExists(self, num_chains):
         return all([self.chainExists(i + 1) for i in range(num_chains)])
@@ -298,7 +324,7 @@ class batchJob:
         self.subBatches = []
         self.jobItems = None
 
-    def makeItems(self, dataAndParams):
+    def makeItems(self, dataAndParams, messages=True):
             self.jobItems = []
             for group in dataAndParams:
                 for data_set in group.datasets:
@@ -311,12 +337,12 @@ class batchJob:
             for item in self.items():
                 for x in [imp for imp in item.importanceJobs()]:
                     if self.has_normed_name(x.normed_name):
-                        print 'replacing importance sampling run with full run: ' + x.name
+                        if messages: print 'replacing importance sampling run with full run: ' + x.name
                         item.importanceItems.remove(x)
             for item in self.items():
                 for x in [imp for imp in item.importanceJobs()]:
                     if self.has_normed_name(x.normed_name, wantImportance=True, exclude=x):
-                        print 'removing duplicate importance sampling run: ' + x.name
+                        if messages: print 'removing duplicate importance sampling run: ' + x.name
                         item.importanceItems.remove(x)
 
 
