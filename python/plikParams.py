@@ -1,0 +1,39 @@
+import os, batchJobArgs, plik_postprocess, iniFile
+
+Opts = batchJobArgs.batchArgs('add plik params and bestfits', importance=True)
+
+
+(batch, args) = Opts.parseForBatch()
+
+
+for jobItem in Opts.filteredBatchItems():
+    name = jobItem.chainRoot + '.paramnames'
+    properties = jobItem.propertiesIni()
+    if 'plik' in name and os.path.exists(name) and not properties.bool('plik_foregrounds', False):
+
+        ini = iniFile.iniFile(jobItem.chainRoot + '.inputparams')
+        dat = ini.string('clik_data_plik', '')
+        params = ini.string('clik_params_plik', '')
+        hasderived = dat
+        if not dat:
+            dat = ini.string('clik_data_plikTE', '')
+            params = ini.string('clik_params_plikTE', '')
+        if not dat:
+            dat = ini.string('clik_data_plikEE', '')
+            params = ini.string('clik_params_plikEE', '')
+        if not dat: raise Exception('no clik file found:' + jobItem.chainRoot)
+        dat = dat.replace('%DATASETDIR%', './data/')
+        params = params.replace('%DATASETDIR%', './data/')
+        print dat, params
+
+        minroot = jobItem.chainRoot + '.minimum'
+        if os.path.exists(jobItem.chainRoot + '.minimum'):
+            print minroot
+            plik_postprocess.main_fgfile([ '', dat, params, minroot, minroot + '.plik_foregrounds'])
+        else: minroot = jobItem.chainRoot + '.ranges'
+        chains = jobItem.chainNames()
+        if hasderived: plik_postprocess.main_fg2000([ '', dat, params, minroot, jobItem.chainRoot + '.paramnames'] + chains)
+        properties.params['plik_foregrounds'] = True
+        properties.saveFile()
+
+print 'Done. Re-run getdist to update getdist outputs.'

@@ -1,4 +1,4 @@
-import os, batchJobArgs, ResultObjs, paramNames, planckStyle, copy
+import os, batchJob, batchJobArgs, ResultObjs, paramNames, planckStyle, copy
 
 
 Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True, converge=True)
@@ -141,6 +141,8 @@ for paramtag, parambatch in items:
                 referenceJobItem.loadJobItemResults(paramNameFile=args.paramNameFile)
                 baseJobItems[jobItem.normed_data] = referenceJobItem
 
+loc = os.path.split(args.latex_filename)[0]
+if loc: batchJob.makePath(loc)
 
 for limit in limits:
     args.limit = limit

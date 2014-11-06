@@ -1,5 +1,5 @@
 
-import os, sys, pickle, ResultObjs, time, copy
+import os, sys, pickle, ResultObjs, time, copy, iniFile
 
 
 def readobject(directory=None):
@@ -130,6 +130,17 @@ class jobItem:
         if not self.isImportanceJob:
             return self.batchPath + 'iniFiles' + os.sep + self.name + variant + '.ini'
         else: return self.batchPath + 'postIniFiles' + os.sep + self.name + variant + '.ini'
+
+    def propertiesIniFile(self):
+        return self.chainRoot + '.properties.ini'
+
+    def propertiesIni(self):
+        if os.path.exists(self.propertiesIniFile()):
+            return iniFile.iniFile(self.propertiesIniFile())
+        else:
+            ini = iniFile.iniFile()
+            ini.original_filename = self.propertiesIniFile()
+            return ini
 
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
