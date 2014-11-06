@@ -23,8 +23,8 @@ except ImportError:
     sys.exit()
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
-#import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+import matplotlib.pyplot as plt
 
 import GetDistPlots
 import MCSamples
@@ -42,14 +42,13 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
 
         # GUI setup
-        self.createDockWidgets()
+        self.createWidgets()
         self.createActions()
         self.createMenus()
         self.createStatusBar()
 
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.setWindowTitle("GetDist GUI")
-        self.resize(800, 600)
 
         # Allow to shutdown the GUI with Ctrl+C
         signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -127,11 +126,6 @@ class MainWindow(QMainWindow):
 
         self.menuBar().addSeparator()
 
-        self.windowMenu = self.menuBar().addMenu("&Windows")
-        self.windowMenu.addAction(self.dockTop.toggleViewAction())
-
-        self.menuBar().addSeparator()
-
         self.helpMenu = self.menuBar().addMenu("&Help")
         self.helpMenu.addAction(self.aboutAct)
 
@@ -141,15 +135,14 @@ class MainWindow(QMainWindow):
         """
         self.statusBar().showMessage("Ready", 2000)
 
-    def createDockWidgets(self):
+    def createWidgets(self):
         """
-        Create dockable widget and its content.
+        Create widgets.
         """
-        self.dockTop = QDockWidget(self.tr(""), self)
-        self.dockTop.setAllowedAreas(Qt.LeftDockWidgetArea)
+        self.centralWidget = QWidget(self)
+        self.setCentralWidget(self.centralWidget)
 
-        self.selectWidget = QWidget(self.dockTop)
-
+        self.selectWidget = QWidget(self.centralWidget)
         self.lineEditDirectory = QLineEdit(self.selectWidget)
         self.lineEditDirectory.clear()
         self.lineEditDirectory.setReadOnly(True)
@@ -166,13 +159,15 @@ class MainWindow(QMainWindow):
         self.listRoots.setMaximumSize(QSize(16777215, 120))
         self.listRoots.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.listRoots.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.connect(self.listRoots,
+                     SIGNAL("itemChanged(QListWidgetItem *)"),
+                     self.updateListRoots)
 
         self.pushButtonRemove = QPushButton(QIcon(":/images/file_remove.png"),
                                             "", self.selectWidget)
         self.pushButtonRemove.setToolTip("Remove a root directory")
         self.connect(self.pushButtonRemove, SIGNAL("clicked()"),
                      self.removeOtherRoot)
-
 
         self.comboBoxParamTag = QComboBox(self.selectWidget)
         self.comboBoxParamTag.clear()
@@ -245,16 +240,41 @@ class MainWindow(QMainWindow):
         self.comboBoxParamTag.hide()
         self.comboBoxDataTag.hide()
 
-        # Minimum size for initial resize of dock widget
-        #self.selectWidget.setMinimumSize(250, 250)
-        self.selectWidget.setMaximumSize(350, 800)
+        self.plotWidget = QWidget(self.centralWidget)
+        layout = QVBoxLayout(self.plotWidget)
+        self.plotWidget.setLayout(layout)
 
-        self.dockTop.setWidget(self.selectWidget)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.dockTop)
+        splitter = QSplitter(self.centralWidget)
+        splitter.addWidget(self.selectWidget)
+        splitter.addWidget(self.plotWidget)
+        w = self.width()
+        splitter.setSizes([w/4., 3*w/4.])
+
+        hbox = QHBoxLayout(self)
+        hbox.addWidget(splitter)
+        self.centralWidget.setLayout(hbox)
+        self.readSettings()
 
     def setIniFile(self, iniFile):
         logging.debug("ini file is %s"%iniFile)
         self.iniFile = iniFile
+
+    def closeEvent(self, event):
+        self.writeSettings()
+        event.accept()
+
+
+    def readSettings(self):
+        settings = QSettings("cosmologist", "cosmomc_gui")
+        pos = settings.value("pos", QPoint(200, 200))
+        size = settings.value("size", QSize(400, 400))
+        self.resize(size)
+        self.move(pos)
+
+    def writeSettings(self):
+        settings = QSettings("cosmologist", "cosmomc_gui")
+        settings.setValue("pos", self.pos())
+        settings.setValue("size", self.size())
 
     # slots for menu actions
 
@@ -262,22 +282,25 @@ class MainWindow(QMainWindow):
         """
         Callback for action 'Export as PDF'.
         """
-        filename, filt = QFileDialog.getSaveFileName(
-            self, "Choose a file name", '.', "PDF (*.pdf)")
-        if not filename: return
-        filename = str(filename)
         if self.plotter:
+            filename, filt = QFileDialog.getSaveFileName(
+                self, "Choose a file name", '.', "PDF (*.pdf)")
+            if not filename: return
+            filename = str(filename)
+
             logging.debug("Saving PDF in file %s"%filename)
             self.plotter.export(filename)
         else:
-            logging.warning("No plotter data to export")
+            #logging.warning("No plotter data to export")
+            QMessageBox.warning(self, "Export", "No plotter data to export")
 
     def saveScript(self):
         """
         Callback for action 'Save script'.
         """
         if self.script=='':
-            logging.warning("Script is empty!")
+            QMessageBox.warning(self, "Script", "No script to save")
+            #logging.warning("Script is empty!")
             return
 
         filename, filt = QFileDialog.getSaveFileName(
@@ -296,11 +319,13 @@ class MainWindow(QMainWindow):
         if self.rootname is not None:
             rootname = self.rootname
         else:
-            logging.warning("No rootname. Can't show marge stats")
+            QMessageBox.warning(self, "Marge Stats", "No rootname. Can't show marge stats")
+            #logging.warning("No rootname. Can't show marge stats")
             return
 
         if self.plotter is None:
-            logging.warning("No plotter. Can't show marge stats")
+            QMessageBox.warning(self, "Marge Stats", "No plotter. Can't show marge stats")
+            #logging.warning("No plotter. Can't show marge stats")
             self.statusBar().showMessage("No data available", 2000)
             return
 
@@ -324,6 +349,7 @@ class MainWindow(QMainWindow):
         """
         Slot function called when pushButtonSelect is pressed.
         """
+
         # If a rootdir is defined, add another root
         if self.rootdirname is not None and self.is_grid==False:
             self.addRoot()
@@ -362,11 +388,12 @@ class MainWindow(QMainWindow):
         # Root file name
         rootname = self._getRootFileName()
         if rootname=='':
-            logging.warning("Root file name is not defined")
+            QMessageBox.warning(self, "Select root", "Root file name is not defined")
+            #logging.warning("Root file name is not defined")
             return
         else:
             self.rootname = rootname
-            logging.warning("rootname: %s"%self.rootname)
+            logging.info("rootname: %s"%self.rootname)
 
         # Get chain files
         chainFiles = MCSamples.GetChainFiles(self.rootname)
@@ -380,17 +407,36 @@ class MainWindow(QMainWindow):
                                                    ini_file=self.iniFile)
         logging.debug("Read chains in %s"%str(self.rootname))
         self.plotter.sampleAnalyser.addRoot(self.rootname)
-
-        paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(self.rootname)
+        self._updateParameters()
 
         # Hide combo boxes and fill list
         self.comboBoxParamTag.hide()
         self.comboBoxDataTag.hide()
         self.listRoots.show()
         self.pushButtonRemove.show()
-        self._updateListParametersX(paramNames)
-        self._updateListParametersY(paramNames)
-        self._updateComboBoxColor(paramNames)
+
+
+    def _updateParameters(self):
+        paramSets = []
+
+        if self.rootname is not None:
+            params = self.plotter.sampleAnalyser.usedParamsForRoot(self.rootname)
+            paramSets.append(set(params))
+
+        for k, values in self.other_rootnames.items():
+            rootname, state = values
+            if state:
+                params = self.plotter.sampleAnalyser.usedParamsForRoot(rootname)
+                paramSets.append(set(params))
+
+        if paramSets:
+            intersect = set.intersection(*paramSets)
+            paramNames = list(intersect)
+            self._updateListParametersX(paramNames)
+            self._updateListParametersY(paramNames)
+            self._updateComboBoxColor(paramNames)
+        else:
+            logging.warning("No parameters found")
 
 
     def _readGridChain(self, batchPath):
@@ -474,31 +520,36 @@ class MainWindow(QMainWindow):
             settings.setValue('lastSearchDirectory', dirName)
 
             root = fileName.replace('.paramnames', '')
-            baseName = os.path.basename(root)
+            basename = os.path.basename(root)
             if root==self.rootname:
                 logging.warning("Same root as main root")
                 return
-            elif not self.other_rootnames.has_key(baseName):
+            elif not self.other_rootnames.has_key(basename):
                 if self.plotter is not None:
                     self.plotter.sampleAnalyser.addRoot(root)
-                    logging.debug("Add root %s"%baseName)
-                    self.other_rootnames[baseName] = [root, True]
+                    logging.debug("Add root %s"%basename)
+                    self.other_rootnames[basename] = [root, True]
+                    item = QListWidgetItem(self.listRoots)
+                    item.setText(basename)
+                    item.setCheckState(Qt.Checked)
+                    idx = self.listRoots.count()
+                    self.listRoots.insertItem(idx, item)
+                    self._updateParameters()
                 else:
                     logging.warning("No plotter instance")
 
-        self.updateOtherRoots()
-
-    def updateOtherRoots(self):
-        logging.debug("Update other roots")
-        self.listRoots.clear()
-        for chain, values in self.other_rootnames.items():
-            item = QListWidgetItem(self.listRoots)
-            item.setText(str(chain))
-            state = values[1]
-            if state:
-                item.setCheckState(Qt.Checked)
+    def updateListRoots(self, item):
+        logging.debug("updateListRoots")
+        nitems = self.listRoots.count()
+        for i in range(nitems):
+            item = self.listRoots.item(i)
+            root = item.text()
+            state = item.checkState()==Qt.Checked
+            if self.other_rootnames.has_key(root):
+                self.other_rootnames[root][1] = state
             else:
-                item.setCheckState(Qt.Unchecked)
+                logging.warning('No root found for %s'%root)
+        self._updateParameters()
 
     def removeOtherRoot(self):
         logging.debug("Remove root")
@@ -509,6 +560,7 @@ class MainWindow(QMainWindow):
                 logging.debug("Remove root %s"%root)
                 self.plotter.sampleAnalyser.removeOtherRoot(root)
                 self.listRoots.takeItem(i)
+                self._updateParameters()
                 if self.other_rootnames.has_key(root):
                     del self.other_rootnames[root]
 
@@ -601,13 +653,12 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Read chains in %s"%str(rootname))
         self.plotter.sampleAnalyser.addRoot(rootname)
         self.other_rootnames[basename] = [rootname, True]
-        self.updateOtherRoots()
-
-        paramNames = self.plotter.sampleAnalyser.usedParamsForRoot(rootname)
-
-        self._updateListParametersX(paramNames)
-        self._updateListParametersY(paramNames)
-        self._updateComboBoxColor(paramNames)
+        item = QListWidgetItem(self.listRoots)
+        item.setText(basename)
+        item.setCheckState(Qt.Checked)
+        idx = self.listRoots.count()
+        self.listRoots.insertItem(idx, item)
+        self._updateParameters()
 
 
     def _updateListParametersX(self, items):
@@ -684,11 +735,13 @@ class MainWindow(QMainWindow):
         """
         Slot function called when pushButtonPlot is pressed.
         """
+
         # Ensure at least 1 root name specified
         self.getOtherRoots()
         if self.rootname is None:
             if len(self.other_rootnames)==0:
-                logging.warning("No rootname defined")
+                QMessageBox.warning(self, "Plot data", "No root defined")
+                #logging.warning("No rootname defined")
                 return
             else:
                 nroots = 0
@@ -697,7 +750,15 @@ class MainWindow(QMainWindow):
                     if state: nroots += 1
                 if nroots==0:
                      logging.warning("No rootname selected")
+                     QMessageBox.warning(self, "Plot data", "No root selected")
                      return
+
+        if self.plotter is None:
+            QMessageBox.warning(self, "Plot data", "No GetDistPlotter instance")
+            #logging.warning("No GetDistPlotter instance")
+            return
+
+        self.plotter.settings.setWithSubplotSize(3.000000)
 
         # X items
         items_x = []
@@ -715,11 +776,6 @@ class MainWindow(QMainWindow):
             if item.checkState()==Qt.Checked:
                 items_y.append(str(item.text()))
 
-        if self.plotter is None:
-            logging.warning("No GetDistPlotter instance")
-            return
-
-        self.plotter.settings.setWithSubplotSize(3.000000)
 
         # Script
         self.script  = ""
@@ -756,17 +812,31 @@ class MainWindow(QMainWindow):
                 logging.debug("Triangle plot ")
                 logging.debug("params = %s"%str(params))
                 self.script += "params = %s\n"%str(params)
-                self.plotter.triangle_plot(roots, params)
+                try:
+                    self.plotter.triangle_plot(roots, params)
+                except:
+                    QMessageBox.critical(
+                        self, "Triangle plot",
+                        "Error for command 'triangle_plot(roots, params)' with roots=%s \nparams=%s \n"%(str(roots), str(params)))
+                    return
+
                 self.updatePlot()
                 self.script += "g.triangle_plot(roots, params)\n"
             else:
-                self.statusBar().showMessage("Need more than 1 x-param", 2000)
+                QMessageBox.warning(self, "Triangle plot", "Need more than 1 x-param")
+                #self.statusBar().showMessage("Need more than 1 x-param", 2000)
 
         elif len(items_x)>0 and len(items_y)==0:
             params = items_x
             logging.debug("1D plot")
             logging.debug("params = %s"%str(params))
-            self.plotter.plots_1d(roots, params=params)
+            try:
+                self.plotter.plots_1d(roots, params=params)
+            except:
+                QMessageBox.critical(
+                        self, "Plot 1D",
+                        "Error for command 'plots_1d(roots, params=params)' with roots=%s \nparams=%s \n"%(str(roots), str(params)))
+                return
             self.updatePlot()
             self.script += "params=%s\n"%str(params)
             self.script += "g.plots_1d(roots, params=params)\n"
@@ -786,7 +856,13 @@ class MainWindow(QMainWindow):
 
                 logging.debug("pairs  = %s"%str(pairs))
                 self.script += "filled=%s\n"%filled
-                self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled)
+                try:
+                    self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled)
+                except:
+                    QMessageBox.critical(
+                        self, "Plot 2D",
+                        "Error for command 'plots_2d(roots, param_pairs=pairs, filled=filled)' with roots=%s \npairs=%s \n"%(str(roots), str(pairs)))
+                    return
                 self.updatePlot()
                 self.script += "g.plots_2d(oots, param_pairs=pairs, filled=filled)\n"
 
@@ -801,36 +877,57 @@ class MainWindow(QMainWindow):
                 logging.debug("sets = %s"%str(sets))
                 self.script += "sets = []\n"
                 self.script += "sets.append(['%s', '%s', '%s'])\n"%(x, y, color)
-                self.plotter.plots_3d(roots, sets)
+                try:
+                    self.plotter.plots_3d(roots, sets)
+                except:
+                    QMessageBox.critical(
+                        self, "Plot 3D",
+                        "Error for command 'plots_3d(roots, sets)' with roots=%s \nsets=%s \n"%(str(roots), str(sets)))
+                    return
+
                 self.updatePlot()
                 self.script += "g.plots_3d(roots, sets)\n"
+
+        else:
+            text  = ""
+            text += "Wrong parameters. Usage:\n"
+            text += "\n"
+            text += "Tri: box checked + X parameters\n"
+            text += "1D : X parameter(s)\n"
+            text += "2D : X parameter + Y parameter(s) + Filled or Line\n"
+            text += "3D : X parameter + Y parameter + Color parameter\n"
+            text += "\n"
+
+            QMessageBox.warning(self, "Plot", text)
+            self.script = ""
+            return
 
         if self.rootname is not None:
             basename = os.path.basename(self.rootname)
             self.script += "g.export(os.path.join(outdir,'%s.pdf'))\n"%basename
 
     def updatePlot(self):
-
         if self.plotter.fig is None:
             logging.debug("Define an empty central widget")
-            self.centralWidget = QWidget()
-            self.setCentralWidget(self.centralWidget)
-
             #self.figure = None
             self.canvas = None
         else:
             logging.debug("Define new canvas in central widget")
-            self.centralWidget = QWidget()
-            self.setCentralWidget(self.centralWidget)
+            # Remove everything from layout
+            i = 0
+            while 1:
+                item = self.plotWidget.layout().takeAt(i)
+                if item is None: break
+            if hasattr(self, "canvas"): del self.canvas
+            if hasattr(self, "toolbar"): del self.toolbar
 
             self.canvas = FigureCanvas(self.plotter.fig)
             self.toolbar = NavigationToolbar(self.canvas, self)
-            layout = QVBoxLayout()
-            layout.addWidget(self.toolbar)
-            layout.addWidget(self.canvas)
-            self.centralWidget.setLayout(layout)
-
+            self.plotWidget.layout().addWidget(self.toolbar)
+            self.plotWidget.layout().addWidget(self.canvas)
             self.canvas.draw()
+            #self.plotWidget.update()
+            self.plotWidget.show()
 
 # ==============================================================================
 
