@@ -21,20 +21,31 @@ rc('text.latex', preamble=r'\usepackage{' + sfmath.replace(os.sep, '/') + '}')
 
 rcParams.update(params)
 
-non_final = False
-version = 'clik10.2'
-defdata_root = 'plikHM'
+if False:
+    non_final = True
+    version = 'CamSpec v910HM'
+    defdata_root = 'CamSpecHM'
+else:
+    non_final = False
+    version = 'clik10.2'
+    defdata_root = 'plikHM'
 
 datalabel = dict()
 defdata_TT = defdata_root + '_TT_lowTEB'
 datalabel[defdata_TT] = r'\textit{Planck} TT$+$lowP'
-defdata_TE = defdata_root + '_TE_lowTEB'
-datalabel[defdata_TE] = r'\textit{Planck} TE$+$lowP'
-defdata_EE = defdata_root + '_EE_lowTEB'
-datalabel[defdata_EE] = r'\textit{Planck} EE$+$lowP'
+defdata_TE = defdata_root + '_TE_lowEB'
+datalabel[defdata_TE] = r'\textit{Planck} TE$+$lowEB'
+defdata_EE = defdata_root + '_EE_lowEB'
+datalabel[defdata_EE] = r'\textit{Planck} EE$+$lowEB'
+defdata_TE_TEB = defdata_root + '_TE_lowTEB'
+datalabel[defdata_TE_TEB] = r'\textit{Planck} TE$+$lowP'
+defdata_EE_TEB = defdata_root + '_EE_lowTEB'
+datalabel[defdata_EE_TEB] = r'\textit{Planck} EE$+$lowP'
+
 
 defdata_all = defdata_root + '_TTTEEE_lowTEB'
 datalabel[defdata_all] = r'\textit{Planck} TT,TE,EE$+$lowP'
+defdata_TTTEEE = defdata_all
 defdata_TTonly = defdata_root + '_TT_lowl'
 datalabel[defdata_TTonly] = r'\textit{Planck} TT'
 defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
@@ -82,7 +93,7 @@ s.alpha_filled_add = 0.85
 # s.solid_colors = ['#006FED', '#E03424', 'gray', '#009966' ]
 s.solid_contour_palefactor = 0.6
 
-s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1'), 'g', 'c']
+s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1'), 'g', 'cadetblue', 'indianred']
 s.axis_marker_lw = 0.6
 s.lw_contour = 1
 
@@ -123,8 +134,9 @@ def plotBounds(omm, data, c='gray'):
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
 
-    def doExport(self, fname, adir=None, watermark=None):
+    def doExport(self, fname, adir=None, watermark=None, tag=None):
         if fname is None: fname = os.path.basename(sys.argv[0]).replace('.py', '')
+        if tag: fname += '_' + tag
         if not '.' in fname: fname += '.pdf'
         if adir is not None and not os.sep in fname: fname = os.path.join(adir, fname)
         if not os.path.exists(os.path.dirname(fname)): os.makedirs(os.path.dirname(fname))
@@ -133,8 +145,8 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
             pylab.gcf().text(0.45, 0.5, version.replace('_', '{\\textunderscore}'), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
         GetDistPlots.GetDistPlotter.export(self, fname)
 
-    def export(self, fname=None):
-        self.doExport(fname, 'outputs')
+    def export(self, fname=None, tag=None):
+        self.doExport(fname, 'outputs', tag=tag)
 
     def exportExtra(self, fname=None):
         self.doExport(fname, 'plots')

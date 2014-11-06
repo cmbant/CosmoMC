@@ -11,7 +11,7 @@ class iniFile:
         self.defaults = []
         self.includes = []
         self.original_filename = None
-        if filename is not None and filename != '': self.readFile(filename, keep_includes)
+        if filename: self.readFile(filename, keep_includes)
 
 
     def readFile(self, filename, keep_includes=False, if_not_defined=False):
@@ -57,7 +57,9 @@ class iniFile:
 
         return self.params
 
-    def saveFile(self, filename):
+    def saveFile(self, filename=None):
+        if not filename: filename = self.original_filename
+        if not filename: raise Exception('No filename for iniFile.saveFile()')
         with open(filename, 'w') as f: f.write("\n".join(self.fileLines()))
 
     def fileLines(self):
