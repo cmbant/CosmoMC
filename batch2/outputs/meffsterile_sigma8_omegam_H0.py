@@ -7,7 +7,7 @@ g.make_figure(1, xstretch=1.3)
 base = 'base_nnu_meffsterile_'
 roots = [ g.getRoot('nnu_meffsterile', s.defdata),
           g.getRoot('nnu_meffsterile', s.defdata + '_BAO'),
-          g.getRoot('nnu_mmu', s.defdata + '_BAO'),
+          g.getRoot('nnu_mnu', s.defdata + '_BAO'),
           g.getRoot('', s.defdata + '_BAO')
                   ]
 

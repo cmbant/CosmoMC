@@ -71,7 +71,7 @@
         select type (CMB=>this%TheoryParams)
         class is (CMBParams)
             if (CosmoSettings%Use_CMB .or. CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
-                if (this%SlowChanged) then
+                if (this%SlowChanged .or. this%SemiSlowchanged .and. .not. BaseParams%block_semi_fast) then
                     this%slow_changes = this%slow_changes + 1
                     this%Params%validInfo = .false.
                     call this%CosmoCalc%GetNewTransferData(CMB, this%Params%Info,Theory, error)

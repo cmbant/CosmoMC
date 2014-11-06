@@ -89,6 +89,7 @@
     integer nrows, ncols, num_bins, num_bins_2D
     real(mcp) numsamp, max_mult, mean_mult
     integer ND_cont1, ND_cont2
+    real(mcp), allocatable :: ND_limit_top(:,:), ND_limit_bot(:,:)
     integer covmat_dimension
     integer colix(max_cols), num_vars  !Parameters with non-blank labels
     real(mcp) prior_ranges(2,max_cols)
@@ -137,15 +138,16 @@
     subroutine AdjustPriors
     !Can adjust the multiplicity of each sample in coldata(1, rownum) for new priors
     !Be careful as this code is parameterisation dependent
-    !  integer i
+    !  integer i, ix
     !   real(mcp) ombh2, chisq
 
     stop 'You need to write the AdjustPriors subroutine in GetDist.f90 first!'
 
     !   write (*,*) 'Adjusting priors'
+    !   ix = NameMapping%Index('omegabh2')
     !   do i=0, nrows-1
     !!E.g. ombh2 prior
-    !      ombh2 = coldata(1+2,i)
+    !      ombh2 = coldata(ix+2,i)
     !      chisq = (ombh2 - 0.0213)**2/0.001 **2
     !      coldata(1,i) = coldata(1,i)*exp(-chisq/2)
     !      coldata(2,i) = coldata(2,i) + chisq/2
@@ -276,7 +278,7 @@
     mult = coldata(1,i)
     do while (i< nend)
         if (abs(nint(coldata(1,i)) - coldata(1,i)) > 1e-4) &
-        stop 'non-integer weights in ThinData'
+            stop 'non-integer weights in ThinData'
 
         if (mult + tot < fac) then
             tot = tot + mult
@@ -330,7 +332,7 @@
             do j = i, ncols-2
                 if (isused(j+2)) then
                     corrmatrix(i,j) = sum(coldata(1,0:nrows-1)*((coldata(2+i,0:nrows-1)-mean(i))* &
-                    (coldata(2+j,0:nrows-1)-mean(j))))/numsamp
+                        (coldata(2+j,0:nrows-1)-mean(j))))/numsamp
                     corrmatrix(j,i) = corrmatrix(i,j)
                 end if
             end do
@@ -446,7 +448,7 @@
                 try_t = (try_b+try_t)/2
             end if
             if (try == lasttry .and. (abs(try_b + try_t)< 1e-10_mcp &
-            .or. abs((try_b - try_t)/(try_b + try_t)) < 0.05_mcp )) exit
+                .or. abs((try_b - try_t)/(try_b + try_t)) < 0.05_mcp )) exit
             lasttry = try
         end do
     else
@@ -458,7 +460,7 @@
                 try_b = (try_b+try_t)/2
             end if
             if (try == lasttry .and. (abs(try_b + try_t)< 1e-10_mcp &
-            .or. abs((try_b - try_t)/(try_b + try_t)) < 0.05_mcp )) exit
+                .or. abs((try_b - try_t)/(try_b + try_t)) < 0.05_mcp )) exit
             lasttry = try
         end do
     end if
@@ -588,15 +590,15 @@
                     div = RealToStr( exp(PCmean(j)))
                 end if
                 write(F%unit,*) '['//trim(RealToStr(u(j,i)))//']   ('//trim(labels(pars(j)+2)) &
-                //'/'//trim(div)//')^{'//trim(expo)//'}'
+                    //'/'//trim(div)//')^{'//trim(expo)//'}'
             else
                 expo = RealToStr(sd(j)/u(j,i))
                 if (doexp) then
                     write(F%unit,*) '['//trim(RealToStr(u(j,i)))//']    exp(('// &
-                    trim(labels(pars(j)+2))//'-'//trim(RealToStr(PCmean(j)))// ')/'// trim(expo)//')'
+                        trim(labels(pars(j)+2))//'-'//trim(RealToStr(PCmean(j)))// ')/'// trim(expo)//')'
                 else
                     write(F%unit,*) '['//trim(RealToStr(u(j,i)))//']   ('// &
-                    trim(labels(pars(j)+2))//'-'//trim(RealToStr(PCmean(j)))// ')/'// trim(expo)
+                        trim(labels(pars(j)+2))//'-'//trim(RealToStr(PCmean(j)))// ')/'// trim(expo)
                 end if
             end if
         end do
@@ -604,7 +606,7 @@
         newsd(i) = sqrt(sum(coldata(1,0:nrows-1)*(PCdata(i,:)-newmean(i))**2)/numsamp)
         write (F%unit,*) '          = '//trim(RealToStr(newmean(i)))// ' +- '//trim(RealToStr(newsd(i)))
         write (F%unit,'('' ND limits: '',4f9.3)') minval(PCdata(i,0:ND_cont1)),maxval(PCdata(i,0:ND_cont1)), &
-        minval(PCdata(i,0:ND_cont2)),maxval(PCdata(i,0:ND_cont2))
+            minval(PCdata(i,0:ND_cont2)),maxval(PCdata(i,0:ND_cont2))
         write (F%unit,*) ''
     end do
 
@@ -621,7 +623,7 @@
         write (F%unit,'(''PC'',1I2)', advance = 'no') j
         do i=1,n
             write (F%unit,'(1f8.3)', advance ='no') sum(coldata(1,0:nrows-1)*PCdata(i,:)* &
-            PCdata(j,:))/numsamp
+                PCdata(j,:))/numsamp
         end do
         write (F%unit,*) ''
     end do
@@ -630,7 +632,7 @@
         write (F%unit,'(1I4)', advance = 'no') colix(j)-2
         do i=1,n
             write (F%unit,'(1f8.3)', advance ='no') sum(coldata(1,0:nrows-1)*PCdata(i,:)* &
-            (coldata(colix(j),0:nrows-1)-mean(j))/sddev(j))/numsamp
+                (coldata(colix(j),0:nrows-1)-mean(j))/sddev(j))/numsamp
         end do
         write (F%unit,*) '  ('//trim(labels(colix(j)))//')'
     end do
@@ -695,7 +697,7 @@
                 usedvars(num)=j
                 do i=1, num_chains_used
                     mean(j) = mean(j) + sum(coldata(1,chain_start(i):chain_indices(i+1)-1)*&
-                    coldata(j,chain_start(i):chain_indices(i+1)-1))
+                        coldata(j,chain_start(i):chain_indices(i+1)-1))
                 end do
                 mean(j) = mean(j)/usedsamps
             end if
@@ -704,7 +706,7 @@
 
     do j = 3, ncols
         if (isused(j)) &
-        fullvar(j)=  sum(coldata(1,0:nrows-1)*(coldata(j,0:nrows-1)-fullmean(j))**2)/numsamp
+            fullvar(j)=  sum(coldata(1,0:nrows-1)*(coldata(j,0:nrows-1)-fullmean(j))**2)/numsamp
     end do
 
 
@@ -723,20 +725,20 @@
                     !Get stats for individual chains - the variance of the means over the mean of the variances
                     do i=1, num_chains_used
                         chain_means(i,j) =   sum(coldata(1,chain_start(i):chain_indices(i+1)-1)* &
-                        coldata(j,chain_start(i):chain_indices(i+1)-1))/chain_samp(i)
+                            coldata(j,chain_start(i):chain_indices(i+1)-1))/chain_samp(i)
 
                         between_chain_var(j) = between_chain_var(j) + &
-                        ! chain_samp(i)/maxsamp* & !Weight for different length chains
-                        (chain_means(i,j) - mean(j))**2
+                            ! chain_samp(i)/maxsamp* & !Weight for different length chains
+                            (chain_means(i,j) - mean(j))**2
 
                         in_chain_var(j) = in_chain_var(j) +  & !chain_samp(i)/maxsamp *&
-                        sum(coldata(1,chain_start(i):chain_indices(i+1)-1)* &
-                        (coldata(j,chain_start(i):chain_indices(i+1)-1)-chain_means(i,j))**2)
+                            sum(coldata(1,chain_start(i):chain_indices(i+1)-1)* &
+                            (coldata(j,chain_start(i):chain_indices(i+1)-1)-chain_means(i,j))**2)
                     end do
                     between_chain_var(j) = between_chain_var(j)/(num_chains_used-1) !(usedsamps/maxsamp -1)
                     in_chain_var(j) = in_chain_var(j)/usedsamps
                     write (F%unit,'(1I3,f13.5,"  '//trim(labels(j))//'")') j-2, &
-                    between_chain_var(j) /in_chain_var(j)
+                        between_chain_var(j) /in_chain_var(j)
                 end if
             end if
         end do
@@ -761,13 +763,13 @@
                 cov(jj,kk)= 0
                 do i= 1, num_chains_used
                     cov(jj,kk) = cov(jj,kk) + &
-                    !sqrt(chain_samp(jj)*chain_samp(kk))/maxsamp * &
-                    sum(coldata(1,chain_start(i):chain_indices(i+1)-1)* &
-                    (coldata(j,chain_start(i):chain_indices(i+1)-1)-chain_means(i,j))* &
-                    (coldata(k,chain_start(i):chain_indices(i+1)-1)-chain_means(i,k)))
+                        !sqrt(chain_samp(jj)*chain_samp(kk))/maxsamp * &
+                        sum(coldata(1,chain_start(i):chain_indices(i+1)-1)* &
+                        (coldata(j,chain_start(i):chain_indices(i+1)-1)-chain_means(i,j))* &
+                        (coldata(k,chain_start(i):chain_indices(i+1)-1)-chain_means(i,k)))
 
                     meanscov(jj,kk) = meanscov(jj,kk)+ & !sqrt(chain_samp(jj)*chain_samp(kk))/maxsamp * &
-                    (chain_means(i,j)-mean(j))*(chain_means(i,k)-mean(k))
+                        (chain_means(i,j)-mean(j))*(chain_means(i,k)-mean(k))
                 end do
                 meanscov(kk,jj) = meanscov(jj,kk)
                 cov(kk,jj) = cov(jj,kk)
@@ -813,7 +815,7 @@
                     confid =  ConfidVal(j,(1-limfrac)/2,endb==0,0,nrows-1)
                     do i=1,split_n
                         split_tests(split_n) = split_tests(split_n) + &
-                        (ConfidVal(j,(1-limfrac)/2,endb==0,frac(i),frac(i+1)-1)-confid)**2
+                            (ConfidVal(j,(1-limfrac)/2,endb==0,frac(i),frac(i+1)-1)-confid)**2
                     end do !i
                     split_tests(split_n) = sqrt(split_tests(split_n)/split_n/fullvar(j))
                 end do
@@ -823,7 +825,7 @@
                     typestr = 'lower'
                 end if
                 write (F%unit,'(1I3,'//trim(IntToStr(max_split_tests-1)) // 'f9.4,"  ' &
-                //trim(labels(j))//' '//trim(typestr)//'")') j-2, split_tests(2:max_split_tests)
+                    //trim(labels(j))//' '//trim(typestr)//'")') j-2, split_tests(2:max_split_tests)
 
             end do !endb
         end if
@@ -844,7 +846,7 @@
                     do endb =0,1
                         !Get binary chain depending on whether above or below confidence value
                         u = ConfidVal(j,(1-limfrac)/2,endb==0,&
-                        chain_indices(ix),chain_indices(ix+1)-1)
+                            chain_indices(ix),chain_indices(ix+1)-1)
                         do !thin_fac
                             call ThinData(thin_fac(ix),chain_indices(ix),chain_indices(ix+1)-1)
                             if (thin_rows < 2) exit
@@ -858,7 +860,7 @@
                             !Estimate transitions probabilities for 2nd order process
                             do i = 2, thin_rows-1
                                 tran(binchain(i-2),binchain(i-1),binchain(i)) = &
-                                tran(binchain(i-2),binchain(i-1),binchain(i)) +1
+                                    tran(binchain(i-2),binchain(i-1),binchain(i)) +1
                             end do
                             deallocate(binchain)
 
@@ -869,8 +871,8 @@
                                     do i3=1,2
                                         if (tran(i1,i2,i3)/=0) then
                                             fitted = dble(tran(i1,i2,1) + tran(i1,i2,2)) * &
-                                            (tran(1,i2,i3) + tran(2,i2,i3))  / dble( tran(1,i2,1) + &
-                                            tran(1,i2,2) + tran(2,i2,1) + tran(2,i2,2) )
+                                                (tran(1,i2,i3) + tran(2,i2,i3))  / dble( tran(1,i2,1) + &
+                                                tran(1,i2,2) + tran(2,i2,1) + tran(2,i2,2) )
                                             focus = dble( tran(i1,i2,i3) )
                                             g2 = g2 + log( focus / fitted ) * focus
                                         end if
@@ -919,7 +921,7 @@
                 !Estimate transitions probabilities for 2nd order process
                 do i = 1, thin_rows-1
                     tran2(binchain(i-1),binchain(i)) = &
-                    tran2(binchain(i-1),binchain(i)) +1
+                        tran2(binchain(i-1),binchain(i)) +1
                 end do
                 deallocate(binchain)
 
@@ -929,7 +931,7 @@
                     do i2=1,2
                         if (tran2(i1,i2)/=0) then
                             fitted = dble( (tran2(i1,1) + tran2(i1,2)) * (tran2(1,i2) + &
-                            tran2(2,i2)) ) / dble(thin_rows -1)
+                                tran2(2,i2)) ) / dble(thin_rows -1)
                             focus = dble( tran2(i1,i2) )
                             if (fitted <= 0 .or. focus <= 0) then
                                 write (*,*) 'Raftery and Lewis estimator had problems'
@@ -957,7 +959,7 @@
                 write (F%unit,'(1I4,"      Not enough samples")') chain_numbers(ix)
             else
                 write (F%unit,'(1I4,3I12)') chain_numbers(ix), markov_thin(ix), &
-                thin_fac(ix), nburn(ix)
+                    thin_fac(ix), nburn(ix)
             end if
         end do
 
@@ -965,13 +967,13 @@
             write (*,*) 'RL: Not enough samples to estimate convergence stats'
         else
             call writeS('RL: Thin for Markov:         '//&
-            Trim(IntToStr(maxval(markov_thin(1:num_chains_used)))))
+                Trim(IntToStr(maxval(markov_thin(1:num_chains_used)))))
             indep_thin = maxval(thin_fac(1:num_chains_used))
             call writeS('RL: Thin for indep samples:  '// &
-            trim(IntToStr(indep_thin)))
+                trim(IntToStr(indep_thin)))
             call WriteS('RL: Estimated burn in steps: '//&
-            trim(IntToStr(maxval(nburn(1:num_chains_used))))//' ('//&
-            trim(IntToStr(nint(maxval(nburn(1:num_chains_used))/mean_mult)))//' rows)')
+                trim(IntToStr(maxval(nburn(1:num_chains_used))))//' ('//&
+                trim(IntToStr(nint(maxval(nburn(1:num_chains_used))/mean_mult)))//' rows)')
         end if
 
         !!Get correlation lengths
@@ -998,8 +1000,8 @@
             do i=off, thin_rows-1
                 do j = 3, ncols
                     if (isused(j)) &
-                    corrs(j,off) = corrs(j,off) + (coldata(j,thin_ix(i))-fullmean(j))* &
-                    (coldata(j,thin_ix(i-off)) - fullmean(j))
+                        corrs(j,off) = corrs(j,off) + (coldata(j,thin_ix(i))-fullmean(j))* &
+                        (coldata(j,thin_ix(i-off)) - fullmean(j))
                 end do
             end do
             do j = 3, ncols
@@ -1009,11 +1011,11 @@
 
         if (maxoff>0) then
             write (F%unit,'("   ",'//trim(IntToStr(maxoff)) // 'I8)')  &
-            (/(I, I=autocorr_thin, maxoff*autocorr_thin,autocorr_thin)/)
+                (/(I, I=autocorr_thin, maxoff*autocorr_thin,autocorr_thin)/)
             do j = 3, ncols
                 if (isused(j)) then
                     write (F%unit,'(1I3,'//trim(IntToStr(maxoff)) // 'f8.3,"  ' &
-                    //trim(labels(j))//'")') j-2, corrs(j,:)
+                        //trim(labels(j))//'")') j-2, corrs(j,:)
                 end if
             end do
         end if
@@ -1042,9 +1044,10 @@
 
     param_min(j) = minval(coldata(ix,0:nrows-1))
     param_max(j) = maxval(coldata(ix,0:nrows-1))
-    range_min(j) = ConfidVal(ix,0.0005_mcp,.false.)
-    range_max(j) = ConfidVal(ix,0.0005_mcp,.true.)
-
+    !Want sensible range, but also need to check that wide enough for 2D plots where projection may look much more peaked
+    range_min(j) = min(ND_limit_bot(2,j), ConfidVal(ix,0.001_mcp,.false.))
+    range_max(j) = max(ND_limit_top(2,j), ConfidVal(ix,0.001_mcp,.true.))
+    
     width = (range_max(j)-range_min(j))/(num_bins+1)
     if (width==0) return
 
@@ -1125,12 +1128,12 @@
     if (ix_min(j) /= ix_max(j)) then
         !account for underweighting near edges
         if (.not. has_limits_bot(ix) .and. binsraw(ix_min(j)+end_edge-1)==0  .and. &
-        binsraw(ix_min(j)+end_edge) >  maxval(binsraw)/15) then
-            call EdgeWarning(ix-2)
+            binsraw(ix_min(j)+end_edge) >  maxval(binsraw)/15) then
+        call EdgeWarning(ix-2)
         end if
         if (.not. has_limits_top(ix) .and. binsraw(ix_max(j)-end_edge+1)==0  .and. &
-        binsraw(ix_max(j)-end_edge) >  maxval(binsraw)/15) then
-            call EdgeWarning(ix-2)
+            binsraw(ix_max(j)-end_edge) >  maxval(binsraw)/15) then
+        call EdgeWarning(ix-2)
         end if
     end if
     deallocate(binsraw)
@@ -1187,7 +1190,7 @@
         do ix2=ix_min(j), ix_max(j)
             bincounts(ix2) = sum(win* finebins(ix2*fine_fac-winw:ix2*fine_fac+winw))
             if (plot_meanlikes .and. bincounts(ix2)>0) &
-            binlikes(ix2)=  sum(win* finebinlikes(ix2*fine_fac-winw:ix2*fine_fac+winw))/bincounts(ix2)
+                binlikes(ix2)=  sum(win* finebinlikes(ix2*fine_fac-winw:ix2*fine_fac+winw))/bincounts(ix2)
             if (has_prior) then
                 !correct for normalization of window where it is cut by prior boundaries
                 edge_fac=1/sum(win*prior_mask(ix2*fine_fac-winw:ix2*fine_fac+winw))
@@ -1333,7 +1336,7 @@
         do ix2=iymin,iymax
             bins2D(ix1,ix2) = sum(win* finebins(ix1*fine_fac-winw:ix1*fine_fac+winw, ix2*fine_fac-winw:ix2*fine_fac+winw))
             if (shade_meanlikes) bin2Dlikes(ix1,ix2)= &
-            sum(win* finebinlikes(ix1*fine_fac-winw:ix1*fine_fac+winw,ix2*fine_fac-winw:ix2*fine_fac+winw ))
+                sum(win* finebinlikes(ix1*fine_fac-winw:ix1*fine_fac+winw,ix2*fine_fac-winw:ix2*fine_fac+winw ))
 
             if (has_prior) then
                 !correct for normalization of window where it is cut by prior boundaries
@@ -1481,7 +1484,7 @@
         do i = 1, ComparePlots%Count
             fmt = trim(numcat('lineM{',i+1)) // '}'
             if (PlotContMATLAB(aunit,ComparePlots%Item(i),j,j2,.false.)) &
-            write (aunit,'(a)') '[C h] = contour(x1,x2,pts,cnt,'//trim(fmt)//');'
+                write (aunit,'(a)') '[C h] = contour(x1,x2,pts,cnt,'//trim(fmt)//');'
             write (aunit,'(a)') 'set(h,''LineWidth'',lw2);'
         end do
     end if
@@ -1645,7 +1648,7 @@
     call F%Write('text(0,0,'''//trim(rootname)//''',''color'', colstr(1),''Interpreter'',''none'');')
     do ix1 = 1, ComparePlots%Count
         call F%WriteFormat('text(frac*%u,0,''' // ComparePlots%Item(ix1) // &
-        ''',''Interpreter'',''none'',''color'',colstr(%u));', ix1, ix1+1)
+            ''',''Interpreter'',''none'',''color'',colstr(%u));', ix1, ix1+1)
     end do
 
     end  subroutine WriteMatlabLineLabels
@@ -1655,10 +1658,10 @@
 
     if (NameMapping%nnames==0 .or. NameMapping%name(param)=='') then
         call WriteS('Warning: sharp edge in parameter '//trim(intToStr(param))// &
-        ' - check limits'//trim(intToStr(param)))
+            ' - check limits'//trim(intToStr(param)))
     else
         call WriteS('Warning: sharp edge in parameter '//trim(NameMapping%name(param))// &
-        ' - check limits['//trim(NameMapping%name(param))//'] or limits'//trim(intToStr(param)))
+            ' - check limits['//trim(NameMapping%name(param))//'] or limits'//trim(intToStr(param)))
     end if
 
     end subroutine EdgeWarning
@@ -1675,7 +1678,7 @@
     character(LEN=*) :: rootname
     character(LEN=:), allocatable :: dat_file_2D
     dat_file_2D =  trim(rootname)//'_2D_'//trim(NameMapping%NameOrNumber(colix(j)-2)) &
-    //'_'//trim(NameMapping%NameOrNumber(colix(j2)-2))
+        //'_'//trim(NameMapping%NameOrNumber(colix(j2)-2))
     end function dat_file_2D
 
     subroutine CheckMatlabAxes(afile)
@@ -1746,7 +1749,7 @@
 
     if (coldata(2,nrows-1) - maxlike < 30) then
         meanlike = log(sum(exp((coldata(2,0:nrows-1) -maxlike))*coldata(1,0:nrows-1)) &
-        / numsamp) + maxlike
+            / numsamp) + maxlike
         write (unit,*) 'Ln(mean 1/like) = ', meanlike
     end if
 
@@ -1919,8 +1922,8 @@
             end if
         else
             if (NameMapping%nnames/=0 .and. .not. &
-            NameMapping%HasReadIniForParam(Ini, 'lab',ix-2)) then
-                labels(ix) = trim(NameMapping%label(ix-2))
+                NameMapping%HasReadIniForParam(Ini, 'lab',ix-2)) then
+            labels(ix) = trim(NameMapping%label(ix-2))
             else
                 labels(ix) = NameMapping%ReadIniForParam(Ini,'lab',ix-2)
             end if
@@ -2003,8 +2006,8 @@
         call NameMapping%ReadIndices(InLine, tmp_params, 1)
         plot_2D_param = tmp_params(1)
         if (plot_2D_param/=0 .and. plotparams_num/=0 .and. &
-        count(plotparams(1:plotparams_num)==plot_2D_param)==0) &
-        stop 'plot_2D_param not in plotparams'
+            count(plotparams(1:plotparams_num)==plot_2D_param)==0) &
+            stop 'plot_2D_param not in plotparams'
     end if
 
     if (plot_2D_param /= 0) then
@@ -2017,9 +2020,9 @@
             InLine = Ini%Read_String(numcat('plot',ix))
             call NameMapping%ReadIndices(InLine, tmp_params, 2)
             if (plotparams_num/=0 .and. (count(plotparams(1:plotparams_num)==tmp_params(1))==0 .or. &
-            count(plotparams(1:plotparams_num)==tmp_params(2))==0)) then
-                write(*,*) trim(numcat('plot',ix)) //': parameter not in plotparams'
-                stop
+                count(plotparams(1:plotparams_num)==tmp_params(2))==0)) then
+            write(*,*) trim(numcat('plot',ix)) //': parameter not in plotparams'
+            stop
             end if
             cust2DPLots(ix) = tmp_params(1)+2 + (tmp_params(2)+2)*1000
         end do
@@ -2048,7 +2051,7 @@
 
     map_params = Ini%Read_Logical('map_params',.false.)
     if (map_params)  &
-    write (*,*) 'WARNING: Mapping params - .covmat file is new params.'
+        write (*,*) 'WARNING: Mapping params - .covmat file is new params.'
 
     shade_meanlikes = Ini%Read_Logical('shade_meanlikes',.false.)
 
@@ -2105,7 +2108,7 @@
     plot_meanlikes = Ini%Read_Logical('plot_meanlikes',.false.)
 
     if (Ini%HasKey('do_minimal_1d_intervals')) &
-    stop 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
+        stop 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
 
     PCA_num = Ini%Read_Int('PCA_num',0)
     if (PCA_num /= 0) then
@@ -2212,13 +2215,13 @@
         else  !Not single column chain files (usual cosmomc format)
             !This increments nrows by number read in
             if (.not. IO_ReadChainRows(in_root, chain_ix, chain_num, int(ignorerows),nrows,ncols,max_rows, &
-            coldata,samples_are_chains)) then
-                num_chains_used = num_chains_used - 1
-                if (chain_num==ReadAllChainsNum) then
-                    chain_num = chain_ix-1
-                    exit
-                end if
-                cycle
+                coldata,samples_are_chains)) then
+            num_chains_used = num_chains_used - 1
+            if (chain_num==ReadAllChainsNum) then
+                chain_num = chain_ix-1
+                exit
+            end if
+            cycle
             endif
         end if
 
@@ -2306,7 +2309,7 @@
     if (make_single_samples) call MakeSingleSamples(single_thin)
 
     call IO_WriteBounds(NameMapping, plot_data_dir//trim(rootname)//'.bounds', &
-    limmin,limmax,has_limits_bot,has_limits_top, colix(1:num_vars))
+        limmin,limmax,has_limits_bot,has_limits_top, colix(1:num_vars))
 
     !Sort data in order of likelihood of points
 
@@ -2325,7 +2328,15 @@
         end if
         if (counts > numsamp*contours(2) .and. ND_cont2==-1) then
             ND_cont2 = j
+            if (ND_cont1 /= -1) exit
         end if
+    end do
+    allocate(ND_limit_top(2,num_vars), ND_limit_bot(2,num_vars))
+    do j=1,num_vars
+        ND_limit_bot(1,j) = minval(coldata(colix(j),0:ND_cont1))
+        ND_limit_bot(2,j) = minval(coldata(colix(j),0:ND_cont2))
+        ND_limit_top(1,j) = maxval(coldata(colix(j),0:ND_cont1))
+        ND_limit_top(2,j) = maxval(coldata(colix(j),0:ND_cont2))
     end do
 
     triangle_plot = triangle_plot .and. (num_vars > 1)
@@ -2469,9 +2480,9 @@
             do ix1 =1 ,num_vars
                 do ix2 = ix1+1,num_vars
                     if (abs(corrmatrix(colix(ix1)-2,colix(ix2)-2)) < try_t .and. &
-                    abs(corrmatrix(colix(ix1)-2,colix(ix2)-2)) > try_b) then
-                        try_b = abs(corrmatrix(colix(ix1)-2,colix(ix2)-2))
-                        x = ix1; y = ix2;
+                        abs(corrmatrix(colix(ix1)-2,colix(ix2)-2)) > try_b) then
+                    try_b = abs(corrmatrix(colix(ix1)-2,colix(ix2)-2))
+                    x = ix1; y = ix2;
                     end if
                 end do
             end do
@@ -2494,7 +2505,7 @@
                 do j2 = j+1, num_vars
                     if (ix_min(j2) /= ix_max(j2)) then
                         if (plot_2D_param==0 .or. plot_2D_param == colix(j) .or. plot_2D_param == colix(j2)) &
-                        num_2D_plots = num_2D_plots + 1
+                            num_2D_plots = num_2D_plots + 1
                     end if
                 end do
             end if
@@ -2528,7 +2539,7 @@
                     if (ix_min(j2) /= ix_max(j2)) then
                         if (plot_2D_param/=0 .and. colix(j2) /= plot_2D_param) cycle
                         if (num_cust2D_plots /= 0 .and.  &
-                        count(cust2Dplots(1:num_cust2D_plots) == colix(j)*1000 + colix(j2))==0) cycle
+                            count(cust2Dplots(1:num_cust2D_plots) == colix(j)*1000 + colix(j2))==0) cycle
 
                         plot_num = plot_num + 1
                         done2D(j,j2) = .true.
@@ -2636,7 +2647,7 @@
                 end if
             elseif (plot_ext=='py') then
                 call File3D%WriteFormat('sets.append([%s,%s,%s])',  quoted_param_name(tmp_params(1)), &
-                & quoted_param_name(tmp_params(2)), quoted_param_name(tmp_params(3)))
+                    & quoted_param_name(tmp_params(2)), quoted_param_name(tmp_params(3)))
             end if
         end do
         if (plot_ext=='py') then
@@ -2649,8 +2660,8 @@
     !write out stats
     !Marginalized
     if (.not. plots_only) &
-    call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
-    LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels)
+        call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
+        LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels)
 
     call NameMapping%WriteFile(plot_data_dir//trim(rootname)//'.paramnames', colix(1:num_vars)-2)
 
@@ -2662,10 +2673,7 @@
         write(LikeFile%unit,'(a)') 'param  bestfit        lower1         upper1         lower2         upper2'
         do j=1, num_vars
             write(LikeFile%unit,'(1I5,5E15.7,"   '//trim(labels(colix(j)))//'")') colix(j)-2, coldata(colix(j),bestfit_ix),&
-            minval(coldata(colix(j),0:ND_cont1)), &
-            maxval(coldata(colix(j),0:ND_cont1)), &
-            minval(coldata(colix(j),0:ND_cont2)), &
-            maxval(coldata(colix(j),0:ND_cont2))
+                ND_limit_bot(1,j), ND_limit_top(1,j), ND_limit_bot(2,j), ND_limit_top(2,j)
         end do
         call LikeFile%Close()
     end if

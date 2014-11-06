@@ -122,6 +122,7 @@
     procedure, nopass :: Exists => FileExists
     procedure, nopass :: ExtractName => ExtractFileName
     procedure, nopass :: ExtractPath => ExtractFilePath
+    procedure, nopass :: Join => File_Join
     procedure, nopass :: ChangeExt => ChangeFileExt
     procedure, nopass :: CheckTrailingSlash
     procedure, nopass :: IsFullPath
@@ -1286,6 +1287,15 @@
     end if
 
     end function CheckTrailingSlash
+
+
+    function File_Join(path, aname)
+    character(LEN=*), intent(in) :: path, aname
+    character(LEN=:), allocatable :: File_Join
+
+    File_Join = CheckTrailingSlash(path)//trim(aname)
+
+    end function File_Join
 
 
     subroutine DeleteFile(aname)

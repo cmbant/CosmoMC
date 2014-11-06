@@ -18,16 +18,18 @@
         real(mcp) :: redo_temperature = 1
         integer :: redo_thin = 1
         logical :: redo_change_like_only = .false.
-
         !This last one is for comparing goodness of fit
         !After importance sampling, you can recompute the likelihoods without the new data, but
         !keeping the weights from the importance sampling, and thereby asses whether the mean
         !likelihood wrt the original distribution of the parameter space after importance sampling
         !is similar to that after, in which case the datasets intersect in a region of high likelihood
 
+        logical :: redo_nochange = .false.
+        !for adding likelihood derived parameters without affecting original distribution
+        
         logical :: redo_add = .false.
         !if just want to add new datasets rather than re-computing the entire likelihood
-
+               
         logical :: redo_from_text = .false.
         !Redo from text files if .data files not available
 
@@ -63,6 +65,7 @@
     call Ini%Read('redo_likeoffset',this%redo_likeoffset)
     call Ini%Read('redo_temp',this%redo_temperature)
     call Ini%Read('redo_change_like_only',this%redo_change_like_only)
+    call Ini%Read('redo_nochange',this%redo_nochange)
     call Ini%Read('redo_add',this%redo_add)
     call Ini%Read('redo_from_text',this%redo_from_text)
     call Ini%Read('redo_no_new_data',this%redo_no_new_data)
@@ -135,6 +138,9 @@
     if (Feedback>0 .and. this%redo_change_like_only) &
     write (*,*) 'Warning: only changing likelihoods not weights'
 
+    if (Feedback>0 .and. this%redo_nochange) &
+    write (*,*) 'Warning: calcalating new likelihoods but not using them'
+
     if (this%redo_datafile /= '') InputFile = this%redo_datafile
 
     if (this%redo_from_text) then
@@ -175,7 +181,7 @@
             if (this%redo_output_txt_root =='') then
                 this%redo_output_txt_root  =  post_root
             else
-                this%redo_output_txt_root =  File%CheckTrailingSlash(this%redo_output_txt_root) // File%ExtractName(post_root)
+                this%redo_output_txt_root =  File%Join(this%redo_output_txt_root, File%ExtractName(post_root))
             end if
             write (*,*) 'Writing text file data to ' // this%redo_output_txt_root
         end if
@@ -276,11 +282,13 @@
                             weight = exp(like-truelike+this%redo_likeoffset)
                         end if
 
-                        if (.not. this%redo_change_like_only)  mult = mult*weight
+                        if (.not. this%redo_change_like_only .and. .not. this%redo_nochange)  mult = mult*weight
                     else
                         truelike = like
                         weight = 1
                     end if
+                    
+                    if (this%redo_nochange) truelike = like
 
                     max_like = min(max_like,like)
                     max_truelike = min(max_truelike,truelike)
@@ -291,7 +299,7 @@
                     mult_sum = mult_sum + mult
 
                     if (this%redo_auto_likescale .and. redo_loop==1 .and. num_used == this%redo_auto_likescale_count &
-                        & .and. .not. this%redo_change_like_only) then
+                        & .and. .not. this%redo_change_like_only .and. .not. this%redo_nochange) then
                         !Check log likelihoods scaled to give sensible weights. Rescale must be constant between chains
                         if (max_truelike /= logZero) then
                             like_diff = max_truelike - max_like
