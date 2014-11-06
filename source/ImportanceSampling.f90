@@ -181,7 +181,7 @@
             if (this%redo_output_txt_root =='') then
                 this%redo_output_txt_root  =  post_root
             else
-                this%redo_output_txt_root =  File%CheckTrailingSlash(this%redo_output_txt_root) // File%ExtractName(post_root)
+                this%redo_output_txt_root =  File%Join(this%redo_output_txt_root, File%ExtractName(post_root))
             end if
             write (*,*) 'Writing text file data to ' // this%redo_output_txt_root
         end if

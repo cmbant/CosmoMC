@@ -337,6 +337,8 @@ groups.append(gphi)
 gphi = batchJob.jobGroup('altAlens')
 gphi.params = [['Alensf']]
 gphi.datasets = copy.deepcopy(g.datasets)
+for d in gphi.datasets:
+    d.add(None, {'highL_unlensed_cl_template' : './camb/base_plikHM_TT_lowTEB_lensing_lenspotentialCls.dat'})
 for d in copy.deepcopy(g.datasets):
     d.add(lensing)
     gphi.datasets.append(d)

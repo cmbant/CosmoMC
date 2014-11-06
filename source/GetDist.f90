@@ -138,15 +138,16 @@
     subroutine AdjustPriors
     !Can adjust the multiplicity of each sample in coldata(1, rownum) for new priors
     !Be careful as this code is parameterisation dependent
-    !  integer i
+    !  integer i, ix
     !   real(mcp) ombh2, chisq
 
     stop 'You need to write the AdjustPriors subroutine in GetDist.f90 first!'
 
     !   write (*,*) 'Adjusting priors'
+    !   ix = NameMapping%Index('omegabh2')
     !   do i=0, nrows-1
     !!E.g. ombh2 prior
-    !      ombh2 = coldata(1+2,i)
+    !      ombh2 = coldata(ix+2,i)
     !      chisq = (ombh2 - 0.0213)**2/0.001 **2
     !      coldata(1,i) = coldata(1,i)*exp(-chisq/2)
     !      coldata(2,i) = coldata(2,i) + chisq/2

@@ -6,8 +6,6 @@ g.settings.lineM = ['-g', '-r', '-b', '-k', '--r', '--b']
 
 pol = ['TT', 'TE', 'EE', 'TTTEEE']
 dataroots = [ getattr(s, 'defdata_' + p) for p in pol]
-labels = [s.datalabel[r] for r in dataroots]
-labels += [r'\textit{Planck} TE$+$ lowEB', r'\textit{Planck} EE$+$ lowEB']
 
 for par in ['', 'nnu', 'mnu', 'Alens', 'r', 'yhe', 'nrun']:
     g.newPlot()
@@ -15,7 +13,8 @@ for par in ['', 'nnu', 'mnu', 'Alens', 'r', 'yhe', 'nrun']:
     if par: base += par + '_'
     roots = [base + dat for dat in dataroots]
 
-    roots += [roots[1].replace('TEB', 'EB'), roots[2].replace('TEB', 'EB')]
+    roots += [roots[1].replace('_EB', '_TEB'), roots[2].replace('_EB', '_TEB')]
+    labels = [s.datalabel[r] for r in dataroots]
 
     g.settings.legend_frac_subplot_margin = 0.15
 
