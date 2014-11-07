@@ -29,7 +29,7 @@ for base in ['base', 'base_mnu', 'base_nnu_meffsterile', 'base_nnu_mnu']:
     # g.add_2d_contours('base_lensonly_HST70p6_widerns', 'omegam','sigma8', ls='--', color='orange')
 
 
-    g.add_legend([  'WL +' + s.BAO, 'WL (Heymans)' , 'WL (Heymans) + BAO', s.defplanck], colored_text=True)
+    g.add_legend([  'WL +' + s.BAO, r'WL + \theta+' + s.BAO, 'WL (Heymans)' , 'WL (Heymans) + BAO', r'WL (Heymans) + $\theta$ +BAO', s.defplanck], colored_text=True)
 
     xlim([0.13, 0.6])
     ylim([0.31, 1.1])

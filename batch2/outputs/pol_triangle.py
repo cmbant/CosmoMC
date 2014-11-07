@@ -8,15 +8,10 @@ params = ['theta', 'omegabh2', 'omegach2', 'logA', 'ns', 'tau']
 
 for par in ['', 'nnu']:
     g.newPlot()
-    roots = [ g.getRoot(par, s.defdata_root + '_EE_lowEB'),
-         g.getRoot(par, s.defdata_root + '_TE_lowEB'),
-         g.getRoot(par, s.defdata_root + '_TT_lowTEB'),
-         g.getRoot(par, s.defdata_root + '_TTTEEE_lowTEB'),
-       ]
+    dataroots = [s.defdata_root + '_EE_lowEB', s.defdata_root + '_TE_lowEB', s.defdata_root + '_TT_lowTEB', s.defdata_root + '_TTTEEE_lowTEB']
+    roots = [ g.getRoot(par, root) for root in dataroots]
 
-
-    labs = ['EE + lowEB', 'TE + lowEB', 'TT + lowTEB', 'TTTEEE + lowTEB']
-    labs = [s.planck + ' ' + t for t in labs]
+    labs = [s.datalabel[t] for t in dataroots]
     params = ['theta', 'omegabh2', 'omegach2', 'logA', 'ns', 'tau']
     if par: params = [par] + params
     # g.settings.plot_args = [{'color':'olive'}, {'color':'red'}, {'color': 'black', 'alpha':1}]

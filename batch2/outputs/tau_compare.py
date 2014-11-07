@@ -1,7 +1,6 @@
 import planckStyle as s
 g = s.plotter
 
-
 g.settings.lineM = ['-k', '-r', '-b', '-g', '-m', '--c']
 
 labels = [s.planckTT, s.NoLowLE, s.planckTT + '+lensing', s.NoLowLE + '+lensing', s.NoLowLE + '+lensing+BAO', s.planckTTlowTEB]
