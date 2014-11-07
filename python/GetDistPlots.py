@@ -373,7 +373,7 @@ class GetDistPlotter():
 
     def _make_contour_args(self, filled, contour_args, nroots, colors=None, ls=None, alphas=None):
         contour_args = self._make_line_args(contour_args, nroots, colors, ls, alphas)
-        for args in enumerate(contour_args):
+        for args in contour_args:
             if args.get('filled') is None: args['filled'] = filled
         return contour_args
 
