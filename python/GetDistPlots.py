@@ -210,6 +210,7 @@ class GetDistPlotter():
         clf()
         self.extra_artists = []
         self.contours_added = []
+        self.lines_added = dict()
         self.param_name_sets = dict()
         self.param_bounds_sets = dict()
         self.sampleAnalyser.newPlot()
@@ -283,7 +284,10 @@ class GetDistPlotter():
             pts /= norm
 
         kwargs = self.get_line_styles(plotno, **kwargs)
-        plot(density.x, pts, **kwargs)
+        self.lines_added[plotno] = kwargs
+        l, = plot(density.x, pts, **kwargs)
+        if kwargs.get('dashes'):
+            l.set_dashes(kwargs['dashes'])
         if self.settings.plot_meanlikes:
             kwargs['lw'] = self.settings.lw_likes
             plot(density.x, density.likes, **kwargs)
@@ -350,15 +354,27 @@ class GetDistPlotter():
         if not doResize: return xlims, ylims
         else: return self.updateLimit(res[0], xlims), self.updateLimit(res[1], ylims)
 
-    def _make_contour_args(self, filled, contour_args, nroots, colors=None, ls=None):
-        if not contour_args: contour_args = [{}] * nroots
-        elif isinstance(contour_args, dict): contour_args = [contour_args] * nroots
-        for i, args in enumerate(contour_args):
+
+    def _make_line_args(self, line_args, nroots, colors=None, ls=None, alphas=None, lws=None):
+        if not line_args: line_args = [{}] * nroots
+        elif isinstance(line_args, dict): line_args = [line_args] * nroots
+        for i, args in enumerate(line_args):
             c = cp.copy(args)  # careful to copy before modifying any
-            contour_args[i] = c
-            if c.get('filled') is None: c['filled'] = filled
-            if colors: c['color'] = colors[i]
-            if ls: c['ls'] = ls[i]
+            line_args[i] = c
+            if colors and colors[i]:
+                if isinstance(colors[i], basestring):
+                    c['color'] = matplotlib.colors.colorConverter.to_rgb(colors[i])
+                else:
+                    c['color'] = colors[i]
+            if ls and ls[i]: c['ls'] = ls[i]
+            if alphas and alphas[i]: c['alpha'] = alphas[i]
+            if lws and lws[i]: c['lw'] = lws[i]
+        return line_args
+
+    def _make_contour_args(self, filled, contour_args, nroots, colors=None, ls=None, alphas=None):
+        contour_args = self._make_line_args(contour_args, nroots, colors, ls, alphas)
+        for args in contour_args:
+            if args.get('filled') is None: args['filled'] = filled
         return contour_args
 
     def plot_2d(self, roots, param1=None, param2=None, param_pair=None, shaded=False, filled=False, add_legend_proxy=True,
@@ -446,13 +462,13 @@ class GetDistPlotter():
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
 
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
-                no_ylabel=False, no_ytick=False, no_zero=False, normalized=False, line_args={}, param_renames={}, **ax_args):
+                no_ylabel=False, no_ytick=False, no_zero=False, normalized=False, line_args={}, colors=None, ls=None, alphas=None, lws=None,
+                 param_renames={}, **ax_args):
         if isinstance(roots, basestring): roots = [roots]
         if self.fig is None: self.make_figure()
         plotparam = None
         plotroot = None
-        if not line_args: line_args = [{}] * len(roots)
-        elif isinstance(line_args, dict): line_args = [line_args] * len(roots)
+        line_args = self._make_line_args(line_args, len(roots), colors, ls, alphas, lws)
         xmin, xmax = None, None
         for i, root in enumerate(roots):
             root_param = self.check_param(root, param, param_renames)
@@ -516,6 +532,7 @@ class GetDistPlotter():
             p = self.sampleAnalyser.paramsForRoot(root, labelParams=labelParams).parWithName(param)
         else:
             p = self.check_param(root, param)
+        if not p: raise Exception('Parameter not found: ' + param)
         return r'$' + p.label + r'$'
 
     def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False,
@@ -527,7 +544,7 @@ class GetDistPlotter():
             lines = []
             if len(self.contours_added) == 0:
                 for i in enumerate(legend_labels):
-                    args = self.get_line_styles(i[0] + line_offset)
+                    args = self.lines_added.get(i[0]) or self.get_line_styles(i[0] + line_offset)
                     lines.append(Line2D([0, 1], [0, 1], **args))
             else: lines = self.contours_added
             args = {'ncol':legend_ncol}
@@ -713,30 +730,36 @@ class GetDistPlotter():
         self.finish_plot(self.default_legend_labels(legend_labels, roots),
                          legend_loc=None, no_gap=self.settings.no_triangle_axis_labels, no_extra_legend_space=True)
 
-    def rectangle_plot(self, xparams, yparams, yroots=None, plot_roots=None, plot_texts=None,
+    def rectangle_plot(self, xparams, yparams, yroots=None, roots=None, plot_roots=None, plot_texts=None,
                        filled=True, ymarkers=None, xmarkers=None, param_limits={},
                        legend_labels=[], legend_ncol=None, **kwargs):
+            """
+                roots uses the same set of roots for every plot in the rectangle
+                yroots (list of list of roots) allows use of different set of roots for each row of the plot
+                plot_roots allows you to specify (via list of list of list of roots) the set of roots for each individual subplot 
+            """
             self.make_figure(nx=len(xparams), ny=len(yparams))
 #            f, plots = subplots(len(yparams), len(xparams), sharex='col', sharey='row')
             sharey = None
             yshares = []
             xshares = []
             ax_arr = []
-            if plot_roots and yroots: raise Exception('ractangle plot: must have either yroots or plot_roots')
+            if plot_roots and yroots or roots and yroots or plot_roots and roots:
+                raise Exception('rectangle plot: must have one of roots, yroots, plot_roots')
             limits = dict()
             for x, xparam in enumerate(xparams):
                 sharex = None
                 if plot_roots: yroots = plot_roots[x]
+                elif roots: yroots = [roots for _ in yparams]
                 axarray = []
                 res = None
-                for y, (yparam, roots) in enumerate(zip(yparams, yroots)):
-#                    f.sca(plots[y, x])
+                for y, (yparam, subplot_roots) in enumerate(zip(yparams, yroots)):
                     if x > 0: sharey = yshares[y]
                     ax = self.subplot(x + 1, y + 1, sharex=sharex, sharey=sharey)
                     if y == 0:
                         sharex = ax
                         xshares.append(ax)
-                    res = self.plot_2d(roots, param_pair=[xparam, yparam], filled=filled, do_xlabel=y == len(yparams) - 1,
+                    res = self.plot_2d(subplot_roots, param_pair=[xparam, yparam], filled=filled, do_xlabel=y == len(yparams) - 1,
                                  do_ylabel=x == 0, add_legend_proxy=x == 0 and y == 0)
                     if ymarkers is not None and ymarkers[y] is not None: self.add_y_marker(ymarkers[y], **kwargs)
                     if xmarkers is not None and xmarkers[x] is not None: self.add_x_marker(xmarkers[x], **kwargs)

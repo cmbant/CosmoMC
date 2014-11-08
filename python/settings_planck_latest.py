@@ -352,11 +352,14 @@ extdata.params = [[], ['mnu'], ['nnu', 'meffsterile']]
 extdata.datasets = []
 for d in copy.deepcopy(g.datasets):
     d.add(WL)
-    d.add(lensing)
-    extdata.datasets.append(d)
-for d in copy.deepcopy(g.datasets):
-    d.add(BAORSD, RSDdata)
-    extdata.datasets.append(d)
+if False:
+    for d in copy.deepcopy(g.datasets):
+        d.add(WL)
+        d.add(lensing)
+        extdata.datasets.append(d)
+    for d in copy.deepcopy(g.datasets):
+        d.add(BAORSD, RSDdata)
+        extdata.datasets.append(d)
 for d in copy.deepcopy(g.datasets):
     d.add(BAORSD, RSDdata)
     d.add(lensing)
@@ -427,7 +430,7 @@ skip = []
 
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances', 'theta']
-covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
+covNameMappings = {HST:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
                    'Mspec':'CamSpec', WLHeymans : WL,
                     WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
 
