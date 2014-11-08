@@ -63,7 +63,7 @@ planck_base = [camspec_CS]
 
 if True:
     planck_vars += ['plikHM']
-    planck_ini += ['plik_dx11dr2_HM_v16_%s.ini']
+    planck_ini += ['plik_dx11dr2_HM_v17_%s.ini']
     planck_base += [[]]
 for planck, ini, base in zip(planck_vars, planck_ini, planck_base):
     for name, var in zip(variant_tag, variants):
@@ -76,7 +76,7 @@ WMAP9 = [[WMAP], ['WMAP.ini']]
 
 likechecks = []
 likechecks.append(batchJob.dataSet(['CamSpecDS', 'TT'], camspec_detsets + ['CAMspec_TT.ini']))
-likechecks.append(batchJob.dataSet(['plikDS', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
+likechecks.append(batchJob.dataSet(['plikDS', 'TT'], ['plik_dx11dr2_DS_v17_TT.ini']))
 likechecks.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
 likechecks.append(batchJob.dataSet(['cleanCMH', 'TT'], ['cleanCMH.ini']))
 likechecks.append(batchJob.dataSet(['plikLite', 'TT'], ['plik_lite_TT.ini']))
