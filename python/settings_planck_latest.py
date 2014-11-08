@@ -427,7 +427,7 @@ skip = []
 
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances', 'theta']
-covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
+covNameMappings = {HST:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
                    'Mspec':'CamSpec', WLHeymans : WL,
                     WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
 
