@@ -352,6 +352,7 @@ extdata.params = [[], ['mnu'], ['nnu', 'meffsterile']]
 extdata.datasets = []
 for d in copy.deepcopy(g.datasets):
     d.add(WL)
+    extdata.datasets.append(d)
 if False:
     for d in copy.deepcopy(g.datasets):
         d.add(WL)
