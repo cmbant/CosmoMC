@@ -75,7 +75,8 @@ class MainWindow(QMainWindow):
         self.data2chains = {}
 
         # Plot instance
-
+        self.items_x = []
+        self.items_y = []
         self.plotter = None
 
         # Script
@@ -673,6 +674,7 @@ class MainWindow(QMainWindow):
         """
         """
         logging.debug("Fill ListParametersX with %i items"%(len(items)))
+        self.items_x = []
         self.listParametersX.clear()
         for item in items:
             listItem = QListWidgetItem()
@@ -685,14 +687,21 @@ class MainWindow(QMainWindow):
         """
         Slot function called when item in listParametersX changes.
         """
-        # FIXME: items X
+        item_x = str(item.text())
         if item.checkState()==Qt.Checked:
-            logging.debug("Change of Item %s: now in check state"%str(item.text()))
+            if item_x not in self.items_x:
+                logging.debug("Add item %s"%item_x)
+                self.items_x.append(item_x)
+        else:
+            if item_x in self.items_x:
+                logging.debug("Del item %s"%item_x)
+                self.items_x.remove(item_x)
 
     def _updateListParametersY(self, items):
         """
         """
         logging.debug("Fill ListParametersY with %i items"%(len(items)))
+        self.items_y = []
         self.listParametersY.clear()
         for item in items:
             listItem = QListWidgetItem()
@@ -705,14 +714,21 @@ class MainWindow(QMainWindow):
         """
         Slot function called when item in listParametersY changes.
         """
+        item_y = str(item.text())
         if item.checkState()==Qt.Checked:
-            logging.debug("Change of Item %s: now in check state"%str(item.text()))
+            if item_y not in self.items_x:
+                logging.debug("Add item %s"%item_y)
+                self.items_y.append(item_y)
+        else:
+            if item_y in self.items_y:
+                logging.debug("Del item %s"%item_y)
+                self.items_y.remove(item_y)
 
     def statusSelectAllX(self):
         """
         Slot function called when selectAllX is modified.
         """
-        # FIXME: items X
+        self.items_x = []
         if self.selectAllX.isChecked():
             state = Qt.Checked
         else:
@@ -724,6 +740,7 @@ class MainWindow(QMainWindow):
         """
         Slot function called when selectAllY is modified.
         """
+        self.items_y = []
         if self.selectAllY.isChecked():
             state = Qt.Checked
         else:
@@ -771,22 +788,12 @@ class MainWindow(QMainWindow):
         self.plotter.settings.setWithSubplotSize(3.000000)
 
         # X items
-        # FIXME: items X
-        items_x = []
-        count = self.listParametersX.count()
-        for i in range(count):
-            item = self.listParametersX.item(i)
-            if item.checkState()==Qt.Checked:
-                items_x.append(str(item.text()))
+        items_x = self.items_x
+        print "items_x ", items_x
 
         # Y items
-        items_y = []
-        count = self.listParametersY.count()
-        for i in range(count):
-            item = self.listParametersY.item(i)
-            if item.checkState()==Qt.Checked:
-                items_y.append(str(item.text()))
-
+        items_y = self.items_y
+        print "items_y ", items_y
 
         # Script
         self.script  = ""
