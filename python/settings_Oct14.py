@@ -63,11 +63,17 @@ plikDS1 = []
 plikDS1.append(batchJob.dataSet(['plikDSv16', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
 plikDS1.append(batchJob.dataSet(['plikDSv16', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
 
+plikHMsz = []
+plikHMsz.append(batchJob.dataSet(['plikHMv16sz', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
+plikHMsz.append(batchJob.dataSet(['plikHMv16sz', 'TE'], ['plik_dx11dr2_HM_v16_TE.ini']))
+plikHMsz.append(batchJob.dataSet(['plikHMv16sz', 'EE'], ['plik_dx11dr2_HM_v16_EE.ini']))
+plikHMsz.append(batchJob.dataSet(['plikHMv16sz', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
+
 plikHM = []
-plikHM.append(batchJob.dataSet(['plikHMv16sz', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
-plikHM.append(batchJob.dataSet(['plikHMv16sz', 'TE'], ['plik_dx11dr2_HM_v16_TE.ini']))
-plikHM.append(batchJob.dataSet(['plikHMv16sz', 'EE'], ['plik_dx11dr2_HM_v16_EE.ini']))
-plikHM.append(batchJob.dataSet(['plikHMv16sz', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv17', 'TT'], ['plik_dx11dr2_HM_v17_TT.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv17', 'TE'], ['plik_dx11dr2_HM_v17_TE.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv17', 'EE'], ['plik_dx11dr2_HM_v17_EE.ini']))
+plikHM.append(batchJob.dataSet(['plikHMv17', 'TTTEEE'], ['plik_dx11dr2_HM_v17_TTTEEE.ini']))
 
 plikDS = []
 plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
@@ -82,7 +88,7 @@ plik1bin.append(batchJob.dataSet(['bin1l80sz', 'TT'], [{'clik_data_plik':'data/c
 Mspec = []
 Mspec.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
 
-plik = plikHM + plikDS  # + plikHM1 + plikDS1
+plik = plikHM + plikHMsz + plikDS  # + plikHM1 + plikDS1
 
 start_at_bestfit = False
 newCovmats = True
@@ -174,7 +180,7 @@ covrenames = []
 covrenames.append(['_tau07_lowl', '_lowTEB'])
 covrenames.append(['_tau07', '_lowTEB'])
 
-covNameMappings = {'v910CMH':'CamSpec', 'v910F':'CamSpec', 'plikDSv16sz':'plik', 'plikHMv16sz':'plik', 'plikHMv16bin1sz':'plik', 'bin1l80sz':'plik', 'tau07':'lowTEB'}
+covNameMappings = {'v910CMH':'CamSpec', 'v910F':'CamSpec', 'plikHMv17':'plik', 'plikDSv16sz':'plik', 'plikHMv16sz':'plik', 'plikHMv16bin1sz':'plik', 'bin1l80sz':'plik', 'tau07':'lowTEB'}
 
 def covRenamer(name):
     renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)

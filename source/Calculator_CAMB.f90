@@ -791,7 +791,7 @@
     if (HighAccuracyDefault) then
         P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl*AccuracyLevel,P%Max_eta_k)
         if (CosmoSettings%CMB_Lensing .and. (CosmoSettings%use_lensing_potential .or. CosmoSettings%use_nonlinear_lensing)) &
-            P%Max_eta_k = max(P%Max_eta_k, 12000*AccuracyLevel)
+            P%Max_eta_k = max(P%Max_eta_k, 14000*AccuracyLevel)
         !k_etamax=18000 give c_phi_phi accurate to sub-percent at L=1000, <4% at L=2000
         !k_etamax=10000 is just < 1% at L<=500
     end if

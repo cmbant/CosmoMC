@@ -63,7 +63,7 @@ planck_base = [camspec_CS]
 
 if True:
     planck_vars += ['plikHM']
-    planck_ini += ['plik_dx11dr2_HM_v16_%s.ini']
+    planck_ini += ['plik_dx11dr2_HM_v17_%s.ini']
     planck_base += [[]]
 for planck, ini, base in zip(planck_vars, planck_ini, planck_base):
     for name, var in zip(variant_tag, variants):
@@ -76,7 +76,7 @@ WMAP9 = [[WMAP], ['WMAP.ini']]
 
 likechecks = []
 likechecks.append(batchJob.dataSet(['CamSpecDS', 'TT'], camspec_detsets + ['CAMspec_TT.ini']))
-likechecks.append(batchJob.dataSet(['plikDS', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
+likechecks.append(batchJob.dataSet(['plikDS', 'TT'], ['plik_dx11dr2_DS_v17_TT.ini']))
 likechecks.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
 likechecks.append(batchJob.dataSet(['cleanCMH', 'TT'], ['cleanCMH.ini']))
 likechecks.append(batchJob.dataSet(['plikLite', 'TT'], ['plik_lite_TT.ini']))
@@ -352,11 +352,15 @@ extdata.params = [[], ['mnu'], ['nnu', 'meffsterile']]
 extdata.datasets = []
 for d in copy.deepcopy(g.datasets):
     d.add(WL)
-    d.add(lensing)
     extdata.datasets.append(d)
-for d in copy.deepcopy(g.datasets):
-    d.add(BAORSD, RSDdata)
-    extdata.datasets.append(d)
+if False:
+    for d in copy.deepcopy(g.datasets):
+        d.add(WL)
+        d.add(lensing)
+        extdata.datasets.append(d)
+    for d in copy.deepcopy(g.datasets):
+        d.add(BAORSD, RSDdata)
+        extdata.datasets.append(d)
 for d in copy.deepcopy(g.datasets):
     d.add(BAORSD, RSDdata)
     d.add(lensing)
@@ -427,7 +431,7 @@ skip = []
 
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances', 'theta']
-covNameMappings = {HSTdata:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
+covNameMappings = {HST:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
                    'Mspec':'CamSpec', WLHeymans : WL,
                     WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
 

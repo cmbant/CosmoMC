@@ -21,7 +21,10 @@ r
 Aphiphi
 omegal*
 omegam*
+clamp*
 sigma8*
+s8omegamp5*
+s8omegamp25* 
 zrei*
 r10*
 H0*
@@ -29,7 +32,6 @@ r02*
 A*
 omegamh2*
 omegamh3*
-yheused*
 omeganuh2*
 age*
 zstar*
@@ -38,7 +40,7 @@ thetastar*
 zdrag*
 rdrag*
 kd*
-thetad*
 zeq*
-thetaeq*
-rsDv057*
+f2000_143*
+f2000_x*
+f2000_217*

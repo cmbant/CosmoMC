@@ -1,6 +1,7 @@
 
  ./waf configure --install_all_deps --lapack_mkl=${MKLROOT} --lapack_mkl_version=10.3 --no_bopix
 
+
 set the following in ~/.bashrc (for your equivalent of /scratch/aml1005)
 
 export PLANCKLIKE=cliklike
