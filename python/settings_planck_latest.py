@@ -158,7 +158,7 @@ groups.append(gpol)
 g2 = batchJob.jobGroup('ext')
 g2.datasets = copy.deepcopy(g.datasets)
 g2.params = [ ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['nnu', 'yhe']]
-g2.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB, post_lensing]
+g2.importanceRuns = [post_BAO, post_HST, post_nonCMB, post_lensing]
 groups.append(g2)
 
 g3 = batchJob.jobGroup('geom')
@@ -242,11 +242,10 @@ for d in copy.deepcopy(g.datasets):
 for d in copy.deepcopy(g.datasets):
     d.add(lensing)
     d.add(BAO, BAOdata)
-    d.add(None, {'redo_theory':'F'})
     g7.datasets.append(d)
 
 g7.params = [['mnu'], ['nnu', 'meffsterile']]
-g7.importanceRuns = [post_JLA, post_HST, post_nonBAO]
+g7.importanceRuns = [post_HST, post_nonBAO]
 groups.append(g7)
 
 gnnu = batchJob.jobGroup('nnu')
@@ -257,18 +256,6 @@ for d in copy.deepcopy(g.datasets):
 gnnu.params = [['nnu']]
 gnnu.importanceRuns = [post_nonBAO, post_allnonBAO, post_lensing]
 groups.append(gnnu)
-
-if False:
-    gH0 = batchJob.jobGroup('nnuH')
-    gH0.datasets = []
-    for d in copy.deepcopy(g.datasets):
-        d.add(H073p9, H073p9data)
-        gH0.datasets.append(d)
-
-    gH0.params = [['nnu'], ['nnu', 'meffsterile']]
-    gH0.importanceRuns = [post_BAO, post_nonBAO, post_allnonBAO, post_lensing]
-    gH0.append(gnnu)
-
 
 gabund = batchJob.jobGroup('abund')
 gabund.datasets = []
