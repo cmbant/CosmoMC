@@ -2,12 +2,15 @@
 
 import os
 import sys
-import glob
+#import glob
 import signal
 import logging
 
 import matplotlib
 #matplotlib.use('Qt4Agg')
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 
 try:
     from PySide.QtCore import *
@@ -22,10 +25,6 @@ except ImportError:
     print "Can't import PySide modules."
     sys.exit()
 
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
-import matplotlib.pyplot as plt
-
 import GetDistPlots
 import MCSamples
 
@@ -35,11 +34,13 @@ import batchJob
 
 class MainWindow(QMainWindow):
 
-    def __init__(self):
+    def __init__(self, app):
         """
         Initialize of GUI components.
         """
         super(MainWindow, self).__init__()
+
+        self.app = app
 
         # GUI setup
         self.createWidgets()
@@ -73,6 +74,8 @@ class MainWindow(QMainWindow):
         self.data2chains = {}
 
         # Plot instance
+        self.items_x = []
+        self.items_y = []
         self.plotter = None
 
         # Script
@@ -250,7 +253,7 @@ class MainWindow(QMainWindow):
         w = self.width()
         splitter.setSizes([w/4., 3*w/4.])
 
-        hbox = QHBoxLayout(self)
+        hbox = QHBoxLayout()
         hbox.addWidget(splitter)
         self.centralWidget.setLayout(hbox)
         self.readSettings()
@@ -329,8 +332,8 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("No data available", 2000)
             return
 
+        # FIXME: wait cursor
         text = self.plotter.sampleAnalyser.getMargeStats(rootname)
-        text = text.replace('\t', '\t\t') # uses double tab
         dlg = DialogMargeStats(self, text)
         dlg.exec_()
 
@@ -406,7 +409,10 @@ class MainWindow(QMainWindow):
         self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True,
                                                    ini_file=self.iniFile)
         logging.debug("Read chains in %s"%str(self.rootname))
+        # FIXME: wait cursor
+        self.app.setOverrideCursor(QCursor(Qt.WaitCursor))
         self.plotter.sampleAnalyser.addRoot(self.rootname)
+        self.app.restoreOverrideCursor()
         self._updateParameters()
 
         # Hide combo boxes and fill list
@@ -526,6 +532,7 @@ class MainWindow(QMainWindow):
                 return
             elif not self.other_rootnames.has_key(basename):
                 if self.plotter is not None:
+                    # FIXME: wait cursor
                     self.plotter.sampleAnalyser.addRoot(root)
                     logging.debug("Add root %s"%basename)
                     self.other_rootnames[basename] = [root, True]
@@ -651,6 +658,7 @@ class MainWindow(QMainWindow):
             self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True,
                                                        ini_file=self.iniFile)
         self.statusBar().showMessage("Read chains in %s"%str(rootname))
+        # FIXME: wait cursor
         self.plotter.sampleAnalyser.addRoot(rootname)
         self.other_rootnames[basename] = [rootname, True]
         item = QListWidgetItem(self.listRoots)
@@ -665,6 +673,7 @@ class MainWindow(QMainWindow):
         """
         """
         logging.debug("Fill ListParametersX with %i items"%(len(items)))
+        self.items_x = []
         self.listParametersX.clear()
         for item in items:
             listItem = QListWidgetItem()
@@ -677,13 +686,21 @@ class MainWindow(QMainWindow):
         """
         Slot function called when item in listParametersX changes.
         """
+        item_x = str(item.text())
         if item.checkState()==Qt.Checked:
-            logging.debug("Change of Item %s: now in check state"%str(item.text()))
+            if item_x not in self.items_x:
+                logging.debug("Add item %s"%item_x)
+                self.items_x.append(item_x)
+        else:
+            if item_x in self.items_x:
+                logging.debug("Del item %s"%item_x)
+                self.items_x.remove(item_x)
 
     def _updateListParametersY(self, items):
         """
         """
         logging.debug("Fill ListParametersY with %i items"%(len(items)))
+        self.items_y = []
         self.listParametersY.clear()
         for item in items:
             listItem = QListWidgetItem()
@@ -696,13 +713,21 @@ class MainWindow(QMainWindow):
         """
         Slot function called when item in listParametersY changes.
         """
+        item_y = str(item.text())
         if item.checkState()==Qt.Checked:
-            logging.debug("Change of Item %s: now in check state"%str(item.text()))
+            if item_y not in self.items_x:
+                logging.debug("Add item %s"%item_y)
+                self.items_y.append(item_y)
+        else:
+            if item_y in self.items_y:
+                logging.debug("Del item %s"%item_y)
+                self.items_y.remove(item_y)
 
     def statusSelectAllX(self):
         """
         Slot function called when selectAllX is modified.
         """
+        self.items_x = []
         if self.selectAllX.isChecked():
             state = Qt.Checked
         else:
@@ -714,6 +739,7 @@ class MainWindow(QMainWindow):
         """
         Slot function called when selectAllY is modified.
         """
+        self.items_y = []
         if self.selectAllY.isChecked():
             state = Qt.Checked
         else:
@@ -760,22 +786,9 @@ class MainWindow(QMainWindow):
 
         self.plotter.settings.setWithSubplotSize(3.000000)
 
-        # X items
-        items_x = []
-        count = self.listParametersX.count()
-        for i in range(count):
-            item = self.listParametersX.item(i)
-            if item.checkState()==Qt.Checked:
-                items_x.append(str(item.text()))
-
-        # X items
-        items_y = []
-        count = self.listParametersY.count()
-        for i in range(count):
-            item = self.listParametersY.item(i)
-            if item.checkState()==Qt.Checked:
-                items_y.append(str(item.text()))
-
+        # X and Y items
+        items_x = self.items_x
+        items_y = self.items_y
 
         # Script
         self.script  = ""
@@ -807,6 +820,7 @@ class MainWindow(QMainWindow):
         logging.debug("Plotting with roots = %s"%str(roots))
 
         if self.trianglePlot.isChecked():
+            # Triangle plot
             if len(items_x)>1:
                 params = items_x
                 logging.debug("Triangle plot ")
@@ -827,6 +841,7 @@ class MainWindow(QMainWindow):
                 #self.statusBar().showMessage("Need more than 1 x-param", 2000)
 
         elif len(items_x)>0 and len(items_y)==0:
+            # 1D plot
             params = items_x
             logging.debug("1D plot")
             logging.debug("params = %s"%str(params))
@@ -842,8 +857,8 @@ class MainWindow(QMainWindow):
             self.script += "g.plots_1d(roots, params=params)\n"
 
         elif len(items_x)>0 and len(items_y)>0:
-            # only one X item selected
             if self.toggleFilled.isChecked() or self.toggleLine.isChecked():
+                # 2D plot
                 filled=self.toggleFilled.isChecked()
                 logging.debug("2D plot ")
                 #
@@ -867,6 +882,7 @@ class MainWindow(QMainWindow):
                 self.script += "g.plots_2d(oots, param_pairs=pairs, filled=filled)\n"
 
             if self.toggleColor.isChecked():
+                # 3D plot
                 sets = []
                 sets.append(items_x)
                 x = items_x[0]
@@ -936,24 +952,59 @@ class DialogMargeStats(QDialog):
     def __init__(self, parent=None, text=""):
         QDialog.__init__(self, parent)
 
-        self.textBrowser = QTextEdit(self)
+        self.label = QLabel(self)
+        self.table = QTableWidget(self)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        #self.table.horizontalHeader().hide()
+        self.table.verticalHeader().hide()
 
         layout = QGridLayout()
-        layout.addWidget(self.textBrowser, 0, 0)
+        layout.addWidget(self.label, 0, 0)
+        layout.addWidget(self.table, 1, 0)
         self.setLayout(layout)
 
         self.setWindowTitle(self.tr("Dialog for MargeStats"))
 
         if (text):
-            self.textBrowser.setPlainText(text)
-            self.textBrowser.setReadOnly(True)
+            lines = text.split("\n")
+            line0 = lines.pop(0)
+            self.label.setText(line0)
+            line = lines.pop(0) # empty
+            line = lines.pop(0) # headers
+            headers = line.split(' ')
+            headers = [ h for h in headers if h<>'' ] + [ 'Label' ]
+            self.table.setColumnCount(len(headers))
+            self.table.setHorizontalHeaderLabels(headers)
+            self.table.verticalHeader().setVisible(False)
+            self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+            self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+            self.table.setRowCount(len(lines))
+            irow = 0
+            for line in lines:
+                values = line.split(' ')
+                values = [ v for v in values if v<>'' ]
+                icol = 0
+                for value in values:
+                    item = QTableWidgetItem(value)
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                    self.table.setItem(irow, icol, item)
+                    icol += 1
+                irow += 1
+
+            self.table.resizeRowsToContents()
+            self.table.resizeColumnsToContents()
+
+            w = self.table.horizontalHeader().length() + 40
+            h = self.table.verticalHeader().length()   + 40
+            self.resize(w, h)
 
 # ==============================================================================
 
 if __name__ == "__main__":
 
     app = QApplication(sys.argv)
-    mainWin = MainWindow()
+    mainWin = MainWindow(app)
     mainWin.show()
     sys.exit(app.exec_())
 

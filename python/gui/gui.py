@@ -40,7 +40,7 @@ if not os.path.isfile(iniFile):
 
 # GUI application
 app = QApplication(sys.argv)
-mainWin = MainWindow()
+mainWin = MainWindow(app)
 if iniFile: mainWin.setIniFile(iniFile)
 mainWin.show()
 sys.exit(app.exec_())
