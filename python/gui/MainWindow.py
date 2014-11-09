@@ -2,12 +2,15 @@
 
 import os
 import sys
-import glob
+#import glob
 import signal
 import logging
 
 import matplotlib
 #matplotlib.use('Qt4Agg')
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 
 try:
     from PySide.QtCore import *
@@ -21,10 +24,6 @@ try:
 except ImportError:
     print "Can't import PySide modules."
     sys.exit()
-
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
-import matplotlib.pyplot as plt
 
 import GetDistPlots
 import MCSamples
@@ -254,7 +253,7 @@ class MainWindow(QMainWindow):
         w = self.width()
         splitter.setSizes([w/4., 3*w/4.])
 
-        hbox = QHBoxLayout(self)
+        hbox = QHBoxLayout()
         hbox.addWidget(splitter)
         self.centralWidget.setLayout(hbox)
         self.readSettings()
@@ -787,13 +786,9 @@ class MainWindow(QMainWindow):
 
         self.plotter.settings.setWithSubplotSize(3.000000)
 
-        # X items
+        # X and Y items
         items_x = self.items_x
-        print "items_x ", items_x
-
-        # Y items
         items_y = self.items_y
-        print "items_y ", items_y
 
         # Script
         self.script  = ""
@@ -1000,7 +995,6 @@ class DialogMargeStats(QDialog):
             self.table.resizeRowsToContents()
             self.table.resizeColumnsToContents()
 
-            #self.setFixedSize(500, 500)
             w = self.table.horizontalHeader().length() + 40
             h = self.table.verticalHeader().length()   + 40
             self.resize(w, h)
