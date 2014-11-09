@@ -72,4 +72,5 @@ g.add_text(s.planckall + '+lensing', 0.96, 0.12, color='darkred')
 g.add_text(s.NoLowLE + '+ reion prior', 0.96, 0.06, color='midnightblue', alpha=1)
 
 g.add_legend(legends, legend_loc='upper right', colored_text=True, align_right=True);
+gca().set_yticks(np.arange(0.75, 1, 0.05))
 g.export()
