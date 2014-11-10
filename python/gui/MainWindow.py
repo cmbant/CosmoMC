@@ -423,21 +423,35 @@ class MainWindow(QMainWindow):
 
 
     def _updateParameters(self):
-        paramSets = []
+        all_params = []
 
         if self.rootname is not None:
             params = self.plotter.sampleAnalyser.usedParamsForRoot(self.rootname)
-            paramSets.append(set(params))
+            logging.debug("%i parameters"%len(params))
+            all_params.append(params)
 
         for k, values in self.other_rootnames.items():
             rootname, state = values
             if state:
                 params = self.plotter.sampleAnalyser.usedParamsForRoot(rootname)
-                paramSets.append(set(params))
+                logging.debug("%i parameters"%len(params))
+                all_params.append(params)
 
-        if paramSets:
-            intersect = set.intersection(*paramSets)
-            paramNames = list(intersect)
+        if all_params:
+            if len(all_params)==1:
+                paramNames = all_params[0]
+                logging.debug("%i parameters used"%len(paramNames))
+            else:
+                # Find shared parameters
+                shared_params = []
+                for param in all_params[0]:
+                    shared = True
+                    for other_params in all_params[1:]:
+                        if not param in other_params: shared = False
+                    if shared: shared_params.append(param)
+                paramNames = shared_params
+                logging.debug("%i (shared) parameters used"%len(paramNames))
+
             self._updateListParametersX(paramNames)
             self._updateListParametersY(paramNames)
             self._updateComboBoxColor(paramNames)
