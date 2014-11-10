@@ -410,9 +410,9 @@ class MainWindow(QMainWindow):
                                                    ini_file=self.iniFile)
         logging.debug("Read chains in %s"%str(self.rootname))
         # FIXME: wait cursor
-        self.app.setOverrideCursor(QCursor(Qt.WaitCursor))
+        #self.app.setOverrideCursor(QCursor(Qt.WaitCursor))
         self.plotter.sampleAnalyser.addRoot(self.rootname)
-        self.app.restoreOverrideCursor()
+        #self.app.restoreOverrideCursor()
         self._updateParameters()
 
         # Hide combo boxes and fill list
@@ -687,6 +687,7 @@ class MainWindow(QMainWindow):
         """
         """
         logging.debug("Fill ListParametersX with %i items"%(len(items)))
+        items_x_old = self.items_x
         self.items_x = []
         self.listParametersX.clear()
         for item in items:
@@ -695,6 +696,14 @@ class MainWindow(QMainWindow):
             listItem.setFlags(listItem.flags() | Qt.ItemIsUserCheckable)
             listItem.setCheckState(Qt.Unchecked)
             self.listParametersX.addItem(listItem)
+
+        if items_x_old:
+            for item_x in items_x_old:
+                match_items = self.listParametersX.findItems(item_x, Qt.MatchExactly)
+                if match_items:
+                    logging.debug("Re check param %s"%item_x)
+                    match_items[0].setCheckState(Qt.Checked)
+
 
     def itemParamXChanged(self, item):
         """
@@ -714,6 +723,7 @@ class MainWindow(QMainWindow):
         """
         """
         logging.debug("Fill ListParametersY with %i items"%(len(items)))
+        items_y_old = self.items_y
         self.items_y = []
         self.listParametersY.clear()
         for item in items:
@@ -722,6 +732,14 @@ class MainWindow(QMainWindow):
             listItem.setFlags(listItem.flags() | Qt.ItemIsUserCheckable)
             listItem.setCheckState(Qt.Unchecked)
             self.listParametersY.addItem(listItem)
+
+        if items_y_old:
+            for item_y in items_y_old:
+                match_items = self.listParametersY.findItems(item_y, Qt.MatchExactly)
+                if match_items:
+                    logging.debug("Re check param %s"%item_y)
+                    match_items[0].setCheckState(Qt.Checked)
+
 
     def itemParamYChanged(self, item):
         """
@@ -763,12 +781,21 @@ class MainWindow(QMainWindow):
 
     def _updateComboBoxColor(self, listOfParams=[]):
         if self.rootdirname and os.path.isdir(self.rootdirname):
+            param_old = str(self.comboBoxColor.currentText())
             self.comboBoxColor.clear()
             if not listOfParams:
                 listOfParams = [
                     d for d in os.listdir(self.rootdirname)
                     if os.path.isdir(os.path.join(self.rootdirname, d)) ]
             self.comboBoxColor.addItems(listOfParams)
+
+            idx = self.comboBoxColor.findText(param_old, Qt.MatchExactly)
+            if idx<>-1:
+                self.comboBoxColor.setCurrentIndex(idx)
+                logging.debug("Re set param %s at index %i"%(param_old, idx))
+            else:
+                logging.debug("Param %s not found in new list"%(param_old))
+
 
 
     def plotData(self):
