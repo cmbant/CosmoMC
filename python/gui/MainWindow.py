@@ -826,6 +826,8 @@ class MainWindow(QMainWindow):
             return
 
         self.plotter.settings.setWithSubplotSize(3.000000)
+        if self.plotter.fig is not None:
+            self.plotter.fig.clf()
 
         # X and Y items
         items_x = self.items_x
