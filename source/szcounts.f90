@@ -2196,16 +2196,16 @@ print*,'sz switch=',sz_switch
    cosmopar%biasinv=1./DataParams(3)
    cosmopar%sigmaM=DataParams(4)
    cosmopar%sigmaR=>Theory%sigma_R
-   print*,'ystar=',cosmopar%ystar
-   print*,'n=',cosmopar%n
-   print*,'alpha=',cosmopar%alpha
-   print*,'scatter=',cosmopar%sigmaM
-   print*,'bias=',cosmopar%bias
-   print*,'H0=',cosmopar%H0
-   print*,'omegam=',cosmopar%omegam
-   print*,'omegav=',cosmopar%omegav
-   print*,'omegak=',cosmopar%omegak
-   print*,'sigma8=',cosmopar%sig8
+!!$   print*,'ystar=',cosmopar%ystar
+!!$   print*,'n=',cosmopar%n
+!!$   print*,'alpha=',cosmopar%alpha
+!!$   print*,'scatter=',cosmopar%sigmaM
+!!$   print*,'bias=',cosmopar%bias
+!!$   print*,'H0=',cosmopar%H0
+!!$   print*,'omegam=',cosmopar%omegam
+!!$   print*,'omegav=',cosmopar%omegav
+!!$   print*,'omegak=',cosmopar%omegak
+!!$   print*,'sigma8=',cosmopar%sig8
 
    call INIGROWTH
  
