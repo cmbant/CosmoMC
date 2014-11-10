@@ -803,7 +803,6 @@ class MainWindow(QMainWindow):
                 logging.debug("Param %s not found in new list"%(param_old))
 
 
-
     def plotData(self):
         """
         Slot function called when pushButtonPlot is pressed.
@@ -831,7 +830,7 @@ class MainWindow(QMainWindow):
             #logging.warning("No GetDistPlotter instance")
             return
 
-        self.plotter.settings.setWithSubplotSize(3.000000)
+        #self.plotter.settings.setWithSubplotSize(3.000000)
         if self.plotter.fig is not None:
             self.plotter.fig.clf()
 
@@ -868,7 +867,7 @@ class MainWindow(QMainWindow):
 
         logging.debug("Plotting with roots = %s"%str(roots))
 
-
+        #
         filled = self.toggleFilled.isChecked()
         line = self.toggleLine.isChecked()
         color = self.toggleColor.isChecked()
@@ -881,24 +880,25 @@ class MainWindow(QMainWindow):
                 logging.debug("Triangle plot ")
                 logging.debug("params = %s"%str(params))
                 self.script += "params = %s\n"%str(params)
+                if color:
+                    param_3d = color_param
+                    self.script += "param_3d = '%s'\n"%str(color_param)
+                else:
+                    param_3d = None
+                    self.script += "param_3d = None\n"
                 self.script += "filled = %s\n"%filled
                 try:
-                    self.plotter.triangle_plot(roots, params)
-                    # filled_compare=
-                    # contour_colors=
+                    self.plotter.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)
                 except:
                     QMessageBox.critical(
                         self, "Triangle plot",
-                        "Error for command 'triangle_plot(roots, params)' with roots=%s \nparams=%s \n"%(str(roots), str(params)))
+                        "Error for command:\n\ntriangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)\n\nwith roots=%s \nparams=%s \nparam_3d=%s \nfilled=%s\n"%(str(roots), str(params), str(param_3d), str(filled)))
                     return
 
                 self.updatePlot()
-                self.script += "g.triangle_plot(roots, params)\n"
-                # filled_compare=
-                # contour_colors=
+                self.script += "g.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)\n"
             else:
-                QMessageBox.warning(self, "Triangle plot", "Need more than 1 x-param")
-                #self.statusBar().showMessage("Need more than 1 x-param", 2000)
+                QMessageBox.warning(self, "Triangle plot", "Need more than 1 X parameter selected")
 
         elif len(items_x)>0 and len(items_y)==0:
             # 1D plot
@@ -910,7 +910,7 @@ class MainWindow(QMainWindow):
             except:
                 QMessageBox.critical(
                         self, "Plot 1D",
-                        "Error for command 'plots_1d(roots, params=params)' with roots=%s \nparams=%s \n"%(str(roots), str(params)))
+                        "Error for command:\n\nplots_1d(roots, params=params)\n\nwith roots=%s \nparams=%s \n"%(str(roots), str(params)))
                 return
             self.updatePlot()
             self.script += "params=%s\n"%str(params)
@@ -922,11 +922,13 @@ class MainWindow(QMainWindow):
                 logging.debug("2D plot ")
                 #
                 pairs = []
-                self.script += "pairs = []\n"
                 item_x = items_x[0]
-                for item_y in items_y:
-                    pairs.append([item_x, item_y])
-                    self.script += "pairs.append(['%s','%s'])\n"%(item_x, item_y)
+                # self.script += "pairs = []\n"
+                # for item_y in items_y:
+                #     pairs.append([item_x, item_y])
+                #     self.script += "pairs.append(['%s','%s'])\n"%(item_x, item_y)
+                pairs = zip( [item_x] * len(items_y), items_y)
+                self.script += "pairs = %s\n"%pairs
 
                 logging.debug("pairs  = %s"%str(pairs))
                 self.script += "filled=%s\n"%filled
@@ -964,15 +966,18 @@ class MainWindow(QMainWindow):
 
         else:
             text  = ""
-            text += "Wrong parameters. Usage:\n"
+            text += "Wrong parameters selection. Specify parameters such as:\n"
             text += "\n"
-            text += "Tri: box checked + X parameters\n"
-            text += "1D : X parameter(s)\n"
-            text += "2D : X parameter + Y parameter(s) + Filled or Line\n"
-            text += "3D : X parameter + Y parameter + Color parameter\n"
+            text += "Triangle plot: Click on 'Triangle plot' and select more than 1 X parameters\n"
+            text += "\n"
+            text += "1D plot: Select X parameter(s)\n"
+            text += "\n"
+            text += "2D plot: Select X parameter, Y parameter(s) and select 'Filled' or 'Line'\n"
+            text += "\n"
+            text += "3D plot: Select X parameter, Y parameter and 'Color by' parameter\n"
             text += "\n"
 
-            QMessageBox.warning(self, "Plot", text)
+            QMessageBox.warning(self, "Plot usage", text)
             self.script = ""
             return
 
