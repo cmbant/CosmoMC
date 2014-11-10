@@ -319,9 +319,15 @@ class MainWindow(QMainWindow):
         """
         Callback for action 'Show Marge Stats'.
         """
+        rootname = None
         if self.rootname is not None:
             rootname = self.rootname
-        else:
+        elif self.is_grid:
+            item = self.listRoots.currentItem()
+            if item is not None:
+                rootname = str(item.text())
+
+        if rootname is None:
             QMessageBox.warning(self, "Marge Stats", "No rootname. Can't show marge stats")
             #logging.warning("No rootname. Can't show marge stats")
             return
