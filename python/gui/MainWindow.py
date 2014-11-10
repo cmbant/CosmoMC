@@ -586,10 +586,10 @@ class MainWindow(QMainWindow):
                 root = str(item.text())
                 logging.debug("Remove root %s"%root)
                 self.plotter.sampleAnalyser.removeOtherRoot(root)
-                self.listRoots.takeItem(i)
-                self._updateParameters()
                 if self.other_rootnames.has_key(root):
                     del self.other_rootnames[root]
+                self.listRoots.takeItem(i)
+                self._updateParameters()
 
     def getOtherRoots(self):
         logging.debug("Get status for other roots")
