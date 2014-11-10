@@ -860,6 +860,12 @@ class MainWindow(QMainWindow):
 
         logging.debug("Plotting with roots = %s"%str(roots))
 
+
+        filled = self.toggleFilled.isChecked()
+        line = self.toggleLine.isChecked()
+        color = self.toggleColor.isChecked()
+        color_param = str(self.comboBoxColor.currentText())
+
         if self.trianglePlot.isChecked():
             # Triangle plot
             if len(items_x)>1:
@@ -867,8 +873,11 @@ class MainWindow(QMainWindow):
                 logging.debug("Triangle plot ")
                 logging.debug("params = %s"%str(params))
                 self.script += "params = %s\n"%str(params)
+                self.script += "filled = %s\n"%filled
                 try:
                     self.plotter.triangle_plot(roots, params)
+                    # filled_compare=
+                    # contour_colors=
                 except:
                     QMessageBox.critical(
                         self, "Triangle plot",
@@ -877,6 +886,8 @@ class MainWindow(QMainWindow):
 
                 self.updatePlot()
                 self.script += "g.triangle_plot(roots, params)\n"
+                # filled_compare=
+                # contour_colors=
             else:
                 QMessageBox.warning(self, "Triangle plot", "Need more than 1 x-param")
                 #self.statusBar().showMessage("Need more than 1 x-param", 2000)
@@ -898,9 +909,8 @@ class MainWindow(QMainWindow):
             self.script += "g.plots_1d(roots, params=params)\n"
 
         elif len(items_x)>0 and len(items_y)>0:
-            if self.toggleFilled.isChecked() or self.toggleLine.isChecked():
+            if filled or line:
                 # 2D plot
-                filled=self.toggleFilled.isChecked()
                 logging.debug("2D plot ")
                 #
                 pairs = []
@@ -922,18 +932,17 @@ class MainWindow(QMainWindow):
                 self.updatePlot()
                 self.script += "g.plots_2d(oots, param_pairs=pairs, filled=filled)\n"
 
-            if self.toggleColor.isChecked():
+            if color:
                 # 3D plot
                 sets = []
                 sets.append(items_x)
                 x = items_x[0]
                 y = items_y[0]
-                color = str(self.comboBoxColor.currentText())
                 logging.debug("3D plot")
-                sets = [[x, y, color]]
+                sets = [[x, y, color_param]]
                 logging.debug("sets = %s"%str(sets))
                 self.script += "sets = []\n"
-                self.script += "sets.append(['%s', '%s', '%s'])\n"%(x, y, color)
+                self.script += "sets.append(['%s', '%s', '%s'])\n"%(x, y, color_param)
                 try:
                     self.plotter.plots_3d(roots, sets)
                 except:
