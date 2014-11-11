@@ -79,7 +79,7 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
             if not args.parent_converge or not jobItem.isImportanceJob or jobItem.parent.hasConvergeBetterThan(args.parent_converge):
                 if args.converge == 0 or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
                     if args.checkpoint_run is None or jobItem.wantCheckpointContinue(args.checkpoint_run) and jobItem.notRunning():
-                        if not jobItem.isImportanceJob or isMinimize or (args.importance_ready and jobItem.parent.chainFinished()
+                        if not jobItem.isImportanceJob or  (args.importance_ready and jobItem.parent.chainFinished()
                                                             or not args.importance_ready and jobItem.parent.chainExists() and
                                                             (not args.importance_changed or jobItem.parentChanged())):
                             if not args.not_queued or notQueued(jobItem.name):

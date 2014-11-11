@@ -160,9 +160,7 @@ def deleteJobs(batchPath, jobIds=None, rootNames=None, jobNames=None, jobId_minm
             if not jobId in jobIds: jobIds.append(jobId)
     if jobId_minmax is not None or jobId_min is not None:
         for jobIdStr, j in index.jobSettings.items():
-            parts = jobIdStr.split('.')
-            if len(parts) == 1 or parts[0].isdigit(): jobId = int(parts[0])
-            else: jobId = int(parts[1])
+            jobId = int(jobIdStr)
             if (jobId_minmax is not None and (jobId >= jobId_minmax[0] and jobId <= jobId_minmax[1]) or
                 jobId_min is not None and jobId >= jobId_min):
                 if not jobIdStr in jobIds: jobIds.append(jobIdStr)

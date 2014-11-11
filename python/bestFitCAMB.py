@@ -31,7 +31,6 @@ neffstandard = 3.046 / 3
 ini.params['massless_neutrinos'] = float(ini.params['massless_neutrinos']) - neffstandard * nmassive
 ini.params['massive_neutrinos'] = int(round(neffstandard * nmassive))
 ini.params['nu_mass_degeneracies'] = neffstandard * nmassive
-ini.params['share_delta_neff'] = False
 ini.params['tensor_spectral_index(1)'] = -float(ini.params['initial_ratio(1)']) / 8
 
 
