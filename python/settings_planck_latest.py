@@ -158,7 +158,7 @@ groups.append(gpol)
 g2 = batchJob.jobGroup('ext')
 g2.datasets = copy.deepcopy(g.datasets)
 g2.params = [ ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['nnu', 'yhe']]
-g2.importanceRuns = [post_BAO, post_JLA, post_HST, post_nonCMB, post_lensing]
+g2.importanceRuns = [post_BAO, post_HST, post_nonCMB, post_lensing]
 groups.append(g2)
 
 g3 = batchJob.jobGroup('geom')
@@ -176,6 +176,26 @@ for d in copy.deepcopy(g.datasets):
 g3.importanceRuns = [post_lensing]
 groups.append(g3)
 
+
+lowTT = batchJob.jobGroup('lowTT')
+lowTT.params = [ [], ['Alens'], ['nnu']]
+lowTT.datasets = copy.deepcopy(planck_highL_sets)
+for d in lowTT.datasets:
+    d.add(lowEB)
+for d in copy.deepcopy(lowTT.datasets):
+    d.add(BAO, BAOdata)
+    lowTT.datasets.append(d)
+lowTT.importanceRuns = []
+groups.append(lowTT)
+
+
+gprior = batchJob.jobGroup('tauprior')
+gprior.params = [ [], ['Alens'], ['nnu'], ['nrun']]
+gprior.datasets = copy.deepcopy(planck_highL_sets)
+for d in gprior.datasets:
+    d.add(tauname, tauprior)
+gprior.importanceRuns = []
+groups.append(gprior)
 
 
 g5 = batchJob.jobGroup('nopoltau')
@@ -224,6 +244,15 @@ g6.params = [['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alen
 g6.importanceRuns = [post_BAO]
 groups.append(g6)
 
+inflat = batchJob.jobGroup('inflat')
+inflat.datasets = copy.deepcopy(g.datasets)
+for d in inflat.datasets:
+    d.add(lensing)
+inflat.params = [['r'], ['nrun', 'r']]
+inflat.importanceRuns = [post_BAO, post_nonCMB, post_zre]
+groups.append(inflat)
+
+
 gbest = batchJob.jobGroup('basebest')
 gbest.datasets = copy.deepcopy(g.datasets)
 for d in gbest.datasets:
@@ -242,11 +271,10 @@ for d in copy.deepcopy(g.datasets):
 for d in copy.deepcopy(g.datasets):
     d.add(lensing)
     d.add(BAO, BAOdata)
-    d.add(None, {'redo_theory':'F'})
     g7.datasets.append(d)
 
 g7.params = [['mnu'], ['nnu', 'meffsterile']]
-g7.importanceRuns = [post_JLA, post_HST, post_nonBAO]
+g7.importanceRuns = [post_HST, post_nonBAO]
 groups.append(g7)
 
 gnnu = batchJob.jobGroup('nnu')
@@ -257,18 +285,6 @@ for d in copy.deepcopy(g.datasets):
 gnnu.params = [['nnu']]
 gnnu.importanceRuns = [post_nonBAO, post_allnonBAO, post_lensing]
 groups.append(gnnu)
-
-if False:
-    gH0 = batchJob.jobGroup('nnuH')
-    gH0.datasets = []
-    for d in copy.deepcopy(g.datasets):
-        d.add(H073p9, H073p9data)
-        gH0.datasets.append(d)
-
-    gH0.params = [['nnu'], ['nnu', 'meffsterile']]
-    gH0.importanceRuns = [post_BAO, post_nonBAO, post_allnonBAO, post_lensing]
-    gH0.append(gnnu)
-
 
 gabund = batchJob.jobGroup('abund')
 gabund.datasets = []
@@ -348,7 +364,7 @@ groups.append(gphi)
 
 
 extdata = batchJob.jobGroup('extdata')
-extdata.params = [[], ['mnu'], ['nnu', 'meffsterile']]
+extdata.params = [[], ['nnu'], ['mnu'], ['nnu', 'meffsterile']]
 extdata.datasets = []
 for d in copy.deepcopy(g.datasets):
     d.add(WL)
@@ -432,7 +448,7 @@ skip = []
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances', 'theta']
 covNameMappings = {HST:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
-                   'Mspec':'CamSpec', WLHeymans : WL,
+                   'Mspec':'CamSpec', WLHeymans : WL, 'tau07':'lowTEB',
                     WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
 
 # try to match run to exisitng covmat
@@ -442,7 +458,6 @@ for planck in planck_vars:
 
 covrenames.append(['base_r_plikHM_TE_lowEB', 'base_TE_lowTEB_plik'])
 covrenames.append(['base_r_plikHM_EE_lowEB', 'base_EE_lowTEB_plik'])
-covrenames.append(['tauprior', 'lowl_lowLike'])
 covrenames.append(['Alensf', 'Alens'])
 covrenames.append(['_Aphiphi', ''])
 covrenames.append(['_r', ''])

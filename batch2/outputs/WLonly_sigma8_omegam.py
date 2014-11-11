@@ -12,7 +12,9 @@ for base in ['base', 'base_mnu', 'base_nnu_meffsterile', 'base_nnu_mnu']:
     g.newPlot()
 
     g.make_figure(1, xstretch=1.3)
-    if base == 'base': s.plotBounds(omm, s.planck_lensing)
+    if base == 'base':
+        s.plotBounds(omm, s.planck_lensing)
+#        g.plot_3d(base + '_maccrann', ['omegam', 'sigma8', 'H0'])
 
     g.plot_3d(base + '_WLonlyHeymans', ['omegam', 'sigma8', 'H0'])
 

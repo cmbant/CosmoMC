@@ -24,7 +24,7 @@ c = 'gray'
 one = array([1, 1])
 fill_between([0, 6.5], one * 0.7, one * 1, facecolor=c, alpha=0.1, edgecolor=c, lw=0)
 
-g.add_2d_contours(g.getRoot('', s.defdata_TTonly + '_reion_BAO'), param_pair=pair, ls='-', color='red')
+# g.add_2d_contours(g.getRoot('', s.defdata_TTonly + '_reion_BAO'), param_pair=pair, ls='-', color='red')
 
 # g.add_text(s.planckall, 0.96, 0.18, color='olive')
 # g.add_text(s.planckall + '+lensing', 0.96, 0.12, color='midnightblue')
