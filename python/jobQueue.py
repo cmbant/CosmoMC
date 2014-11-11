@@ -1,4 +1,4 @@
-import subprocess, os, numpy as np, re, pickle, time
+import subprocess, os, numpy as np, re, pickle, time, shutil
 
 def addArguments(parser, combinedJobs=False):
     parser.add_argument('--nodes', type=int)
@@ -117,8 +117,12 @@ def loadJobIndex(batchPath, must_exist=False):
 
 def saveJobIndex(obj, batchPath=None):
     if batchPath is None: batchPath = './scripts/'
-    with open(os.path.join(batchPath, 'jobIndex.pyobj'), 'wb') as output:
+    fname = os.path.join(batchPath, 'jobIndex.pyobj')
+    with open(fname + '_tmp', 'wb') as output:
         pickle.dump(obj, output, pickle.HIGHEST_PROTOCOL)
+    # try to prevent corruption from error mid-write
+    os.remove(fname)
+    shutil.move(fname + '_tmp', fname)
 
 
 def addJobIndex(batchPath, jobName, j):
