@@ -179,12 +179,16 @@ class chains():
                 cov[j, i] = cov[i, j]
         return cov
 
-    def corr(self, paramVecs):
-        corr = self.cov(paramVecs)
+    def corr(self, paramVecs, cov=None):
+        if cov is not None:
+            corr = np.copy(cov)
+        else:
+            corr = self.cov(paramVecs)
         diag = [np.sqrt(corr[i, i]) for i in range(len(paramVecs))]
         for i, di in enumerate(diag):
-            corr[i, :] /= di
-            corr[:, i] /= di
+            if di:
+                corr[i, :] /= di
+                corr[:, i] /= di
         return corr
 
     def getSignalToNoise(self, params, noise=None, R=None, eigs_only=False):

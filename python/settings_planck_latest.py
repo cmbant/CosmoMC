@@ -419,13 +419,14 @@ groups.append(gWLvar)
 
 
 for g in groups:
-    for p in g.params:
-        if 'nnu' in p:
-            if not len([d for d in g.datasets if  'H070p6' in d.names]):
-                g.importanceRuns.append(post_highH0)
-            if not len([d for d in g.datasets if  'abundances' in d.names]):
-                g.importanceRuns.append(post_abundance)
-            break
+    if g.groupName not in ['lowTT', 'tauprior', 'lensonly', 'WLonly', 'mainpol']:
+        for p in g.params:
+            if 'nnu' in p:
+                if not len([d for d in g.datasets if  'H070p6' in d.names]):
+                    g.importanceRuns.append(post_highH0)
+                if not len([d for d in g.datasets if  'abundances' in d.names]):
+                    g.importanceRuns.append(post_abundance)
+                break
 
 
 gWMAP = batchJob.jobGroup('WMAP')
