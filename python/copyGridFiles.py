@@ -63,7 +63,8 @@ def doCopy(source, dest, name, hasBurn=False):
                 open(target_dir + destf, 'w').writelines(lines)
             else:
                 if args.sym_link:
-                    os.symlink(source + f, target_dir + destf)
+                    if os.path.islink(target_dir + destf): os.unlink(target_dir + destf)
+                    os.symlink(os.path.realpath(source + f), target_dir + destf)
                 else:
                     shutil.copyfile(source + f, target_dir + destf)
     elif args.remove_burn_fraction and hasBurn:
