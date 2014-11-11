@@ -359,16 +359,14 @@ class MainWindow(QMainWindow):
         Slot function called when pushButtonSelect is pressed.
         """
 
-        # If a rootdir is defined, add another root
-        if self.rootdirname is not None and self.is_grid==False:
-            self.addRoot()
-            return
+        # # If a rootdir is defined, add another root
+        # if self.rootdirname is not None and self.is_grid==False:
+        #     self.addRoot()
+        #     return
 
 	settings = QSettings('cosmomc', 'gui')
         last_dir = settings.value('lastSearchDirectory')
         last_dir = ''
-
-	# Search in current directory, if no previous path available
         if not last_dir: last_dir = os.getcwd()
 
         title = self.tr("Choose an existing case")
@@ -385,22 +383,24 @@ class MainWindow(QMainWindow):
         settings.setValue('lastSearchDirectory', dirName)
 
         # Root directory
-        self.rootdirname = dirName
-        self.lineEditDirectory.setText(self.rootdirname)
+
 
         # Grid chains
         filebatch = os.path.join(dirName, "batch.pyobj")
         if os.path.isfile(filebatch):
+            self.rootdirname = dirName
+            self.lineEditDirectory.setText(self.rootdirname)
             self._readGridChain(self.rootdirname)
             return
 
         # Root file name
-        rootname = self._getRootFileName()
+        rootname = self._getRootFileName(dirName)
         if rootname=='':
             QMessageBox.warning(self, "Select root", "Root file name is not defined")
-            #logging.warning("Root file name is not defined")
             return
         else:
+            self.rootdirname = dirName
+            self.lineEditDirectory.setText(self.rootdirname)
             self.rootname = rootname
             logging.info("rootname: %s"%self.rootname)
 
@@ -508,7 +508,7 @@ class MainWindow(QMainWindow):
                 fileparam = filesparam[0]
         return fileparam
 
-    def _getRootFileName(self, paramTag=None, dataTag=None):
+    def _getRootFileName(self, dirName, paramTag=None, dataTag=None):
         """
         Get the root file name.
         """
@@ -518,9 +518,9 @@ class MainWindow(QMainWindow):
             rootname = str(fileparam).replace(".paramnames", "")
         else:
             if paramTag is not None and dataTag is not None:
-                rootdirname = os.path.join(self.rootdirname, paramTag, dataTag)
+                rootdirname = os.path.join(dirName, paramTag, dataTag)
             else:
-                rootdirname = self.rootdirname
+                rootdirname = dirName
             rootname = MCSamples.GetRootFileName(rootdirname)
         return rootname
 
@@ -830,7 +830,7 @@ class MainWindow(QMainWindow):
             #logging.warning("No GetDistPlotter instance")
             return
 
-        #self.plotter.settings.setWithSubplotSize(3.000000)
+        self.plotter.settings.setWithSubplotSize(3.000000)
         if self.plotter.fig is not None:
             self.plotter.fig.clf()
 
@@ -856,7 +856,7 @@ class MainWindow(QMainWindow):
         # Other root names
         for basename, values in self.other_rootnames.items():
             other_rootname, state = values
-            if state:
+            if state: # only if rootname is selected
                 roots.append(os.path.basename(other_rootname))
                 self.script += "dict_roots['%s'] = '%s'\n"%(basename, other_rootname)
             else:
@@ -867,18 +867,18 @@ class MainWindow(QMainWindow):
 
         logging.debug("Plotting with roots = %s"%str(roots))
 
-        #
+        # Other plot parameters
         filled = self.toggleFilled.isChecked()
         line = self.toggleLine.isChecked()
         color = self.toggleColor.isChecked()
         color_param = str(self.comboBoxColor.currentText())
 
+        # Check type of plot
         if self.trianglePlot.isChecked():
             # Triangle plot
             if len(items_x)>1:
                 params = items_x
-                logging.debug("Triangle plot ")
-                logging.debug("params = %s"%str(params))
+                logging.debug("Triangle plot with params = %s"%str(params))
                 self.script += "params = %s\n"%str(params)
                 if color:
                     param_3d = color_param
@@ -892,55 +892,68 @@ class MainWindow(QMainWindow):
                 except:
                     QMessageBox.critical(
                         self, "Triangle plot",
-                        "Error for command:\n\ntriangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)\n\nwith roots=%s \nparams=%s \nparam_3d=%s \nfilled=%s\n"%(str(roots), str(params), str(param_3d), str(filled)))
+                        "Error for command:\n\ntriangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)\n\nwith roots=%s\nparams=%s\nparam_3d=%s\nfilled=%s\n"%(str(roots), str(params), str(param_3d), str(filled)))
                     return
-
                 self.updatePlot()
                 self.script += "g.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)\n"
             else:
-                QMessageBox.warning(self, "Triangle plot", "Need more than 1 X parameter selected")
+                QMessageBox.warning(self, "Triangle plot", "Select more than 1 X parameter")
 
         elif len(items_x)>0 and len(items_y)==0:
             # 1D plot
             params = items_x
-            logging.debug("1D plot")
-            logging.debug("params = %s"%str(params))
+            logging.debug("1D plot with params = %s"%str(params))
+            self.script += "params=%s\n"%str(params)
             try:
                 self.plotter.plots_1d(roots, params=params)
             except:
                 QMessageBox.critical(
                         self, "Plot 1D",
-                        "Error for command:\n\nplots_1d(roots, params=params)\n\nwith roots=%s \nparams=%s \n"%(str(roots), str(params)))
+                        "Error for command:\n\nplots_1d(roots, params=params)\n\nwith roots=%s\nparams=%s\n"%(str(roots), str(params)))
                 return
             self.updatePlot()
-            self.script += "params=%s\n"%str(params)
             self.script += "g.plots_1d(roots, params=params)\n"
 
         elif len(items_x)>0 and len(items_y)>0:
             if filled or line:
-                # 2D plot
-                logging.debug("2D plot ")
-                #
-                pairs = []
-                item_x = items_x[0]
-                # self.script += "pairs = []\n"
-                # for item_y in items_y:
-                #     pairs.append([item_x, item_y])
-                #     self.script += "pairs.append(['%s','%s'])\n"%(item_x, item_y)
-                pairs = zip( [item_x] * len(items_y), items_y)
-                self.script += "pairs = %s\n"%pairs
+                if len(items_x)>1 and len(items_y)>1:
+                    # Rectangle plot
+                    self.script += "xparams = %s\n"%str(items_x)
+                    self.script += "yparams = %s\n"%str(items_y)
+                    self.script += "filled=%s\n"%filled
+                    logging.debug("Rectangle plot with xparams=%s and yparams=%s"%(str(items_x), str(items_y)))
+                    try:
+                        self.plotter.rectangle_plot(items_x, items_y, yroots=roots) # FIXME
+                    except:
+                        QMessageBox.critical(
+                            self, "Plot 2D",
+                            "Error for command:\n\nrectangle_plot(xparams, yparams, roots)\n\nwith xparams=%s\nyparams=%s\nroots=%s\n"%(str(items_x), str(items_y), str(roots)))
+                        return
+                    self.updatePlot()
+                    self.script += "g.rectangle_plot(xparams, yparams, roots)\n" # FIXME
 
-                logging.debug("pairs  = %s"%str(pairs))
-                self.script += "filled=%s\n"%filled
-                try:
-                    self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled)
-                except:
-                    QMessageBox.critical(
-                        self, "Plot 2D",
-                        "Error for command 'plots_2d(roots, param_pairs=pairs, filled=filled)' with roots=%s \npairs=%s \n"%(str(roots), str(pairs)))
-                    return
-                self.updatePlot()
-                self.script += "g.plots_2d(oots, param_pairs=pairs, filled=filled)\n"
+                else:
+                    # 2D plot
+                    if len(items_x)==1 and len(items_y)>1:
+                        item_x = items_x[0]
+                        pairs = zip( [item_x] * len(items_y), items_y)
+                    elif len(items_x)>1 and len(items_y)==1:
+                        item_y = items_y[0]
+                        pairs = zip( items_x, [item_y] * len(items_x))
+                    else:
+                        pairs = []
+                    self.script += "pairs = %s\n"%pairs
+                    logging.debug("2D plot with pairs = %s"%str(pairs))
+                    self.script += "filled=%s\n"%filled
+                    try:
+                        self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled)
+                    except:
+                        QMessageBox.critical(
+                            self, "Plot 2D",
+                            "Error for command:\n\nplots_2d(roots, param_pairs=pairs, filled=filled)\n\nwith roots=%s\npairs=%s\nfilled=%s\n"%(str(roots), str(pairs), str(filled)))
+                        return
+                    self.updatePlot()
+                    self.script += "g.plots_2d(roots, param_pairs=pairs, filled=filled)\n"
 
             if color:
                 # 3D plot
@@ -948,9 +961,8 @@ class MainWindow(QMainWindow):
                 sets.append(items_x)
                 x = items_x[0]
                 y = items_y[0]
-                logging.debug("3D plot")
                 sets = [[x, y, color_param]]
-                logging.debug("sets = %s"%str(sets))
+                logging.debug("3D plot with sets = %s"%str(sets))
                 self.script += "sets = []\n"
                 self.script += "sets.append(['%s', '%s', '%s'])\n"%(x, y, color_param)
                 try:
@@ -960,7 +972,6 @@ class MainWindow(QMainWindow):
                         self, "Plot 3D",
                         "Error for command 'plots_3d(roots, sets)' with roots=%s \nsets=%s \n"%(str(roots), str(sets)))
                     return
-
                 self.updatePlot()
                 self.script += "g.plots_3d(roots, sets)\n"
 
@@ -972,7 +983,7 @@ class MainWindow(QMainWindow):
             text += "\n"
             text += "1D plot: Select X parameter(s)\n"
             text += "\n"
-            text += "2D plot: Select X parameter, Y parameter(s) and select 'Filled' or 'Line'\n"
+            text += "2D plot: Select X parameter(s), Y parameter(s) and select 'Filled' or 'Line'\n"
             text += "\n"
             text += "3D plot: Select X parameter, Y parameter and 'Color by' parameter\n"
             text += "\n"
