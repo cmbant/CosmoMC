@@ -6,6 +6,8 @@ Opts.parser.add_argument('target_dir', help="output root directory or zip file n
 
 Opts.parser.add_argument('--dist', action='store_true', help="include getdist outputs")
 Opts.parser.add_argument('--chains', action='store_true', help="include chain files")
+Opts.parser.add_argument('--sym_link', action='store_true', help="just make symbolic links to source directories")
+
 Opts.parser.add_argument('--remove_burn_fraction', default=0.0, type=float, help="fraction at start of chain to remove as burn in")
 
 Opts.parser.add_argument('--file_extensions', nargs='+', default=['.*'], help='extensions to include')
@@ -27,6 +29,8 @@ else:
     target_dir = os.path.abspath(args.target_dir) + os.sep
     batchJob.makePath(target_dir)
 
+if args.sym_link and (args.remove_burn_fraction or args.zip): raise Exception('option not compatible with --sym_link')
+
 
 def fileMatches(f, name):
     for ext in args.file_extensions:
@@ -39,13 +43,13 @@ def fileMatches(f, name):
 def doCopy(source, dest, name, hasBurn=False):
     global sizeMB
     if args.verbose: print source + f
+    frac = 1
     if not args.dryrun:
         if args.remove_burn_fraction and hasBurn:
             lines = open(source + f).readlines()
             lines = lines[int(len(lines) * args.remove_burn_fraction):]
             frac = 1 - args.remove_burn_fraction
         else:
-            frac = 1
             lines = None
         destf = dest + f
         if args.zip:
@@ -58,7 +62,13 @@ def doCopy(source, dest, name, hasBurn=False):
             if lines:
                 open(target_dir + destf, 'w').writelines(lines)
             else:
-                shutil.copyfile(source + f, target_dir + destf)
+                if args.sym_link:
+                    if os.path.islink(target_dir + destf): os.unlink(target_dir + destf)
+                    os.symlink(os.path.realpath(source + f), target_dir + destf)
+                else:
+                    shutil.copyfile(source + f, target_dir + destf)
+    elif args.remove_burn_fraction and hasBurn:
+        frac = 1 - args.remove_burn_fraction
     sizeMB += os.path.getsize(source + f) / 1024.**2 * frac
 
 
