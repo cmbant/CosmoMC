@@ -851,14 +851,14 @@ class MainWindow(QMainWindow):
                     self.script += "filled=%s\n"%filled
                     logging.debug("Rectangle plot with xparams=%s and yparams=%s"%(str(items_x), str(items_y)))
                     try:
-                        self.plotter.rectangle_plot(items_x, items_y, yroots=roots) # FIXME
+                        self.plotter.rectangle_plot(items_x, items_y, roots=roots)
                     except:
                         QMessageBox.critical(
                             self, "Plot 2D",
-                            "Error for command:\n\nrectangle_plot(xparams, yparams, roots)\n\nwith xparams=%s\nyparams=%s\nroots=%s\n"%(str(items_x), str(items_y), str(roots)))
+                            "Error for command:\n\nrectangle_plot(xparams, yparams, roots=roots)\n\nwith xparams=%s\nyparams=%s\nroots=%s\n"%(str(items_x), str(items_y), str(roots)))
                         return
                     self.updatePlot()
-                    self.script += "g.rectangle_plot(xparams, yparams, roots)\n" # FIXME
+                    self.script += "g.rectangle_plot(xparams, yparams, roots=roots)\n"
 
                 else:
                     # 2D plot
