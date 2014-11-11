@@ -244,6 +244,15 @@ g6.params = [['omegak'], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['Alen
 g6.importanceRuns = [post_BAO]
 groups.append(g6)
 
+inflat = batchJob.jobGroup('inflat')
+inflat.datasets = copy.deepcopy(g.datasets)
+for d in inflat.datasets:
+    d.add(lensing)
+inflat.params = [['r'], ['nrun', 'r']]
+inflat.importanceRuns = [post_BAO, post_nonCMB, post_zre]
+groups.append(inflat)
+
+
 gbest = batchJob.jobGroup('basebest')
 gbest.datasets = copy.deepcopy(g.datasets)
 for d in gbest.datasets:
