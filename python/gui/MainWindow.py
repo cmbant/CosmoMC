@@ -7,10 +7,13 @@ import signal
 import logging
 
 import matplotlib
+from matplotlib import rcParams
 #matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+
+#rcParams['figure.max_num_figures'] = 1000
 
 try:
     from PySide.QtCore import *
