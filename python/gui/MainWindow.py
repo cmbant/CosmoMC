@@ -862,12 +862,14 @@ class MainWindow(QMainWindow):
 
                 else:
                     # 2D plot
-                    if len(items_x)==1 and len(items_y)>1:
+                    if len(items_x)==1 and len(items_y)==1:
+                        pairs = [ [items_x[0], items_y[0]] ]
+                    elif len(items_x)==1 and len(items_y)>1:
                         item_x = items_x[0]
-                        pairs = zip( [item_x] * len(items_y), items_y)
+                        pairs = zip([item_x] * len(items_y), items_y)
                     elif len(items_x)>1 and len(items_y)==1:
                         item_y = items_y[0]
-                        pairs = zip( items_x, [item_y] * len(items_x))
+                        pairs = zip(items_x, [item_y] * len(items_x))
                     else:
                         pairs = []
                     self.script += "pairs = %s\n"%pairs
