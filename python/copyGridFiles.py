@@ -72,6 +72,19 @@ def doCopy(source, dest, name, hasBurn=False):
     sizeMB += os.path.getsize(source + f) / 1024.**2 * frac
 
 
+def writeIni(iniName, props):
+    if args.dryrun: return
+    if args.zip:
+        zipper.writestr(outdir + iniName , "\n".join(props.fileLines()))
+    else:
+        props.saveFile(target_dir + outdir + iniName)
+
+
+config_path = os.path.join(batch.batchPath, 'config/')
+if not args.dryrun and not args.zip: batchJob.makePath(target_dir + 'config')
+for f in os.listdir(config_path):
+    doCopy(config_path, 'config/', f)
+
 for jobItem in Opts.filteredBatchItems():
     if (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
         print jobItem.name
@@ -91,11 +104,7 @@ for jobItem in Opts.filteredBatchItems():
             if not jobItem.isImportanceJob and args.remove_burn_fraction:
                 props = jobItem.propertiesIni()
                 props.params['burn_removed'] = True
-                iniName = jobItem.name + '.properties.ini'
-                if args.zip:
-                    zipper.writestr(outdir + iniName , "\n".join(props.fileLines()))
-                else:
-                    props.saveFile(target_dir + outdir + iniName)
+                writeIni(jobItem.name + '.properties.ini', props)
                 doneProperties = True
 
         for f in os.listdir(jobItem.chainPath):

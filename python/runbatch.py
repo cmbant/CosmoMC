@@ -15,6 +15,7 @@ Opts.parser.add_argument('--checkpoint_run', nargs='?', default=None, const=0, t
 Opts.parser.add_argument('--importance_ready', action='store_true', help='where parent chain has converged and stopped')
 Opts.parser.add_argument('--importance_changed', action='store_true', help='run importance jobs where the parent chain has changed since last run')
 Opts.parser.add_argument('--parent_converge', type=float, default=0, help='minimum R-1 convergence for importance job parent')
+Opts.parser.add_argument('--parent_stopped', action='store_true', help='only run if parent chain is not still running')
 
 
 (batch, args) = Opts.parseForBatch()
@@ -79,9 +80,11 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
             if not args.parent_converge or not jobItem.isImportanceJob or jobItem.parent.hasConvergeBetterThan(args.parent_converge):
                 if args.converge == 0 or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
                     if args.checkpoint_run is None or jobItem.wantCheckpointContinue(args.checkpoint_run) and jobItem.notRunning():
-                        if not jobItem.isImportanceJob or isMinimize or (args.importance_ready and jobItem.parent.chainFinished()
-                                                            or not args.importance_ready and jobItem.parent.chainExists() and
-                                                            (not args.importance_changed or jobItem.parentChanged())):
+                        if (not jobItem.isImportanceJob or isMinimize
+                            or (args.importance_ready and jobItem.parent.chainFinished()
+                                or not args.importance_ready and jobItem.parent.chainExists())
+                            and (not args.importance_changed or jobItem.parentChanged())
+                            and (not args.parent_stopped or jobItem.parent.notRunning())):
                             if not args.not_queued or notQueued(jobItem.name):
                                 submitJob(jobItem.iniFile(variant))
 
