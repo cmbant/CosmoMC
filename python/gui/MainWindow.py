@@ -762,6 +762,8 @@ class MainWindow(QMainWindow):
         if self.plotter.fig is not None:
             self.plotter.fig.clf()
 
+        plt.close('all')
+
         # X and Y items
         items_x = self.items_x
         items_y = self.items_y
@@ -769,7 +771,7 @@ class MainWindow(QMainWindow):
         # Script
         self.script  = ""
         self.script += "import GetDistPlots, os\n"
-        self.script += "g=GetDistPlots.GetDistPlotter(mcsamples=True, ini_file='%s')\n"%self.iniFile
+        self.script += "g=GetDistPlots.GetDistPlotter(mcsamples=True, ini_file=r'%s')\n"%self.iniFile
         self.script += "g.settings.setWithSubplotSize(3.000000)\n"
         self.script += "outdir='.'\n"
         self.script += "dict_roots={}\n"
@@ -784,7 +786,7 @@ class MainWindow(QMainWindow):
                 if self.rootnames.has_key(basename):
                     rootname, state = self.rootnames[basename]
                     roots.append(os.path.basename(rootname))
-                    self.script += "dict_roots['%s'] = '%s'\n"%(basename, rootname)
+                    self.script += "dict_roots['%s'] = r'%s'\n"%(basename, rootname)
                 else:
                     logging.warning("self.rootnames has no key %s"%basename)
             else:
@@ -900,7 +902,7 @@ class MainWindow(QMainWindow):
                 except:
                     QMessageBox.critical(
                         self, "Plot 3D",
-                        "Error for command 'plots_3d(roots, sets)' with roots=%s \nsets=%s \n"%(str(roots), str(sets)))
+                        "Error for command:\n\nplots_3d(roots, sets)\n\nwith roots=%s\nsets=%s\n"%(str(roots), str(sets)))
                     return
                 self.updatePlot()
                 self.script += "g.plots_3d(roots, sets)\n"
@@ -927,11 +929,11 @@ class MainWindow(QMainWindow):
 
     def updatePlot(self):
         if self.plotter.fig is None:
-            logging.debug("Define an empty central widget")
+            #logging.debug("Define an empty central widget")
             #self.figure = None
             self.canvas = None
         else:
-            logging.debug("Define new canvas in central widget")
+            #logging.debug("Define new canvas in central widget")
             # Remove everything from layout
             i = 0
             while 1:
