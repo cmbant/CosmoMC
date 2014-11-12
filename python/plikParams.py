@@ -2,11 +2,13 @@ import os, batchJobArgs, plik_postprocess, iniFile
 
 Opts = batchJobArgs.batchArgs('add plik params and bestfits', importance=True)
 
+Opts.parser.add_argument('--finished', action='store_true', help='only run on completed chains')
 
 (batch, args) = Opts.parseForBatch()
 
 
 for jobItem in Opts.filteredBatchItems():
+    if args.finished and not jobItem.chainFinished(): continue
     name = jobItem.chainRoot + '.paramnames'
     properties = jobItem.propertiesIni()
     if 'plik' in name and os.path.exists(name) and not properties.bool('plik_foregrounds', False):

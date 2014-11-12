@@ -2,7 +2,7 @@ import os, sys, batchJob, batchJobArgs, iniFile, copy
 
 parser = batchJobArgs.argParser('Initialize grid using settings file')
 parser.add_argument('batchPath', help='root directory containing/to contain the grid (e.g. ./PLA where directories base, base_xx etc are under ./PLA)')
-parser.add_argument('settingName', help='python setting file (without .py), usually found as python/settingName.py')
+parser.add_argument('settingName', nargs='?', help='python setting file (without .py) for making or updating a grid, usually found as python/settingName.py')
 parser.add_argument('--readOnly', action='store_true', help='option to configure an already-run existing grid')
 
 args = parser.parse_args()
@@ -12,7 +12,12 @@ batchPath = os.path.abspath(args.batchPath) + os.sep
 # 0: chains, 1: importance sampling, 2: best-fit, 3: best-fit and Hessian
 cosmomcAction = 0
 
-settings = __import__(args.settingName)
+if not args.settingName:
+    args.readOnly = True
+    sys.path.insert(0, batchPath + 'config')
+    settings = __import__(iniFile.iniFile(batchPath + 'config/config.ini').params['setting_file'].replace('.py', ''))
+else:
+    settings = __import__(args.settingName)
 
 batch = batchJob.batchJob(batchPath, settings.ini_dir)
 
@@ -48,7 +53,7 @@ if args.readOnly:
     print 'OK, configured grid with %u existing chains' % (len(batch.jobItems))
     sys.exit()
 else:
-    batch.makeDirectories()
+    batch.makeDirectories(settings.__file__)
     batch.save()
 
 
