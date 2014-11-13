@@ -1,5 +1,5 @@
 
-import os, sys, pickle, ResultObjs, time, copy, iniFile
+import os, sys, shutil, pickle, ResultObjs, time, copy, iniFile
 
 
 def readobject(directory=None):
@@ -18,6 +18,14 @@ def makePath(s):
 def nonEmptyFile(fname):
     return os.path.exists(fname) and os.path.getsize(fname) > 0
 
+class propertiesItem:
+    def propertiesIni(self):
+        if os.path.exists(self.propertiesIniFile()):
+            return iniFile.iniFile(self.propertiesIniFile())
+        else:
+            ini = iniFile.iniFile()
+            ini.original_filename = self.propertiesIniFile()
+            return ini
 
 class dataSet:
     def __init__(self, names, params=None, covmat=None, dist_settings={}):
@@ -103,7 +111,8 @@ class importanceSetting:
     def wantImportance(self, jobItem):
         return True
 
-class jobItem:
+
+class jobItem(propertiesItem):
 
     def __init__(self, path, param_set, data_set, base='base'):
         self.param_set = param_set
@@ -133,14 +142,6 @@ class jobItem:
 
     def propertiesIniFile(self):
         return self.chainRoot + '.properties.ini'
-
-    def propertiesIni(self):
-        if os.path.exists(self.propertiesIniFile()):
-            return iniFile.iniFile(self.propertiesIniFile())
-        else:
-            ini = iniFile.iniFile()
-            ini.original_filename = self.propertiesIniFile()
-            return ini
 
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
@@ -264,7 +265,11 @@ class jobItem:
         return float(textFileLines[0].strip()), len(textFileLines) > 1 and textFileLines[1].strip() == 'Done'
 
     def chainFinished(self):
-        done = self.convergeStat()[1]
+        if self.isImportanceJob:
+            done = self.parent.convergeStat()[1]
+            if done is None or self.parentChanged() or not self.notRunning(): return False
+        else:
+            done = self.convergeStat()[1]
         if done is None: return False
         return done
 
@@ -314,7 +319,7 @@ class jobItem:
             elif not silent: print 'missing: ' + marge_root
 
 
-class batchJob:
+class batchJob(propertiesItem):
 
     def __init__(self, path, iniDir):
         self.batchPath = path
@@ -323,6 +328,9 @@ class batchJob:
         self.commonPath = self.basePath + iniDir
         self.subBatches = []
         self.jobItems = None
+
+    def propertiesIniFile(self):
+        return os.path.join(self.batchPath, 'config', 'config.ini')
 
     def makeItems(self, dataAndParams, messages=True):
             self.jobItems = []
@@ -390,8 +398,15 @@ class batchJob:
         saveobject(self, (self.batchPath + 'batch.pyobj', filename)[filename != ''])
 
 
-    def makeDirectories(self):
+    def makeDirectories(self, setting_file=None):
             makePath(self.batchPath)
+            if setting_file:
+                makePath(self.batchPath + 'config')
+                setting_file = setting_file.replace('.pyc', '.py')
+                shutil.copy(setting_file, self.batchPath + 'config')
+                props = self.propertiesIni()
+                props.params['setting_file'] = os.path.split(setting_file)[-1]
+                props.saveFile()
             makePath(self.batchPath + 'iniFiles')
             makePath(self.batchPath + 'postIniFiles')
 
