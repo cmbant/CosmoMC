@@ -81,8 +81,8 @@ for p in [1, 2]:
 nnu = g.param_latex_label(roots[0], 'nnu')
 meff = g.param_latex_label(roots[0], 'meffsterile', labelParams='clik_latex.paramnames')
 
-labels = [meff + '+' + nnu + ' (' + s.lensing + ')', s.LCDM + ' (' + s.defplanck + ')', s.LCDM + ' (' + s.planckall + '+ext)']
-g.add_legend(labels, colored_text=True)
+labels = [meff + '+' + nnu + ' (' + s.lensing + ')', s.LCDM + ' (' + s.defplanck + ')', s.LCDM + ' (' + s.defplanck + '+ext)']
+g.add_legend(labels, colored_text=True, align_right=True)
 
 xlim([0.945, 1])
 ylim([0, 0.29])

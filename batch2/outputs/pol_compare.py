@@ -13,7 +13,7 @@ for par in ['', 'nnu', 'mnu', 'Alens', 'r', 'yhe', 'nrun']:
     if par: base += par + '_'
     roots = [base + dat for dat in dataroots]
 
-    roots += [roots[1].replace('_EB', '_TEB'), roots[2].replace('_EB', '_TEB')]
+#    roots += [roots[1].replace('lowEB', 'lowTEB'), roots[2].replace('lowEB', 'lowTEB')]
     labels = [s.datalabel[r] for r in dataroots]
 
     g.settings.legend_frac_subplot_margin = 0.15
