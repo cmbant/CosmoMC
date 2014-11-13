@@ -614,7 +614,6 @@ class GetDistPlotter():
         if not doResize: return xlims, ylims
         else: return self.updateLimit(res[0], xlims), self.updateLimit(res[1], ylims)
 
-
     def _make_line_args(self, line_args, nroots, colors=None, ls=None, alphas=None, lws=None):
         if not line_args: line_args = [{}] * nroots
         elif isinstance(line_args, dict): line_args = [line_args] * nroots
@@ -996,7 +995,7 @@ class GetDistPlotter():
             """
                 roots uses the same set of roots for every plot in the rectangle
                 yroots (list of list of roots) allows use of different set of roots for each row of the plot
-                plot_roots allows you to specify (via list of list of list of roots) the set of roots for each individual subplot 
+                plot_roots allows you to specify (via list of list of list of roots) the set of roots for each individual subplot
             """
             self.make_figure(nx=len(xparams), ny=len(yparams))
 #            f, plots = subplots(len(yparams), len(xparams), sharex='col', sharey='row')

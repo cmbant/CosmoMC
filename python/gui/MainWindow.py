@@ -7,10 +7,13 @@ import signal
 import logging
 
 import matplotlib
+from matplotlib import rcParams
 #matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+
+#rcParams['figure.max_num_figures'] = 1000
 
 try:
     from PySide.QtCore import *
@@ -762,6 +765,8 @@ class MainWindow(QMainWindow):
         if self.plotter.fig is not None:
             self.plotter.fig.clf()
 
+        plt.close('all')
+
         # X and Y items
         items_x = self.items_x
         items_y = self.items_y
@@ -769,7 +774,7 @@ class MainWindow(QMainWindow):
         # Script
         self.script  = ""
         self.script += "import GetDistPlots, os\n"
-        self.script += "g=GetDistPlots.GetDistPlotter(mcsamples=True, ini_file='%s')\n"%self.iniFile
+        self.script += "g=GetDistPlots.GetDistPlotter(mcsamples=True, ini_file=r'%s')\n"%self.iniFile
         self.script += "g.settings.setWithSubplotSize(3.000000)\n"
         self.script += "outdir='.'\n"
         self.script += "dict_roots={}\n"
@@ -784,7 +789,7 @@ class MainWindow(QMainWindow):
                 if self.rootnames.has_key(basename):
                     rootname, state = self.rootnames[basename]
                     roots.append(os.path.basename(rootname))
-                    self.script += "dict_roots['%s'] = '%s'\n"%(basename, rootname)
+                    self.script += "dict_roots['%s'] = r'%s'\n"%(basename, rootname)
                 else:
                     logging.warning("self.rootnames has no key %s"%basename)
             else:
@@ -851,23 +856,25 @@ class MainWindow(QMainWindow):
                     self.script += "filled=%s\n"%filled
                     logging.debug("Rectangle plot with xparams=%s and yparams=%s"%(str(items_x), str(items_y)))
                     try:
-                        self.plotter.rectangle_plot(items_x, items_y, yroots=roots) # FIXME
+                        self.plotter.rectangle_plot(items_x, items_y, roots=roots)
                     except:
                         QMessageBox.critical(
                             self, "Plot 2D",
-                            "Error for command:\n\nrectangle_plot(xparams, yparams, roots)\n\nwith xparams=%s\nyparams=%s\nroots=%s\n"%(str(items_x), str(items_y), str(roots)))
+                            "Error for command:\n\nrectangle_plot(xparams, yparams, roots=roots)\n\nwith xparams=%s\nyparams=%s\nroots=%s\n"%(str(items_x), str(items_y), str(roots)))
                         return
                     self.updatePlot()
-                    self.script += "g.rectangle_plot(xparams, yparams, roots)\n" # FIXME
+                    self.script += "g.rectangle_plot(xparams, yparams, roots=roots)\n"
 
                 else:
                     # 2D plot
-                    if len(items_x)==1 and len(items_y)>1:
+                    if len(items_x)==1 and len(items_y)==1:
+                        pairs = [ [items_x[0], items_y[0]] ]
+                    elif len(items_x)==1 and len(items_y)>1:
                         item_x = items_x[0]
-                        pairs = zip( [item_x] * len(items_y), items_y)
+                        pairs = zip([item_x] * len(items_y), items_y)
                     elif len(items_x)>1 and len(items_y)==1:
                         item_y = items_y[0]
-                        pairs = zip( items_x, [item_y] * len(items_x))
+                        pairs = zip(items_x, [item_y] * len(items_x))
                     else:
                         pairs = []
                     self.script += "pairs = %s\n"%pairs
@@ -898,7 +905,7 @@ class MainWindow(QMainWindow):
                 except:
                     QMessageBox.critical(
                         self, "Plot 3D",
-                        "Error for command 'plots_3d(roots, sets)' with roots=%s \nsets=%s \n"%(str(roots), str(sets)))
+                        "Error for command:\n\nplots_3d(roots, sets)\n\nwith roots=%s\nsets=%s\n"%(str(roots), str(sets)))
                     return
                 self.updatePlot()
                 self.script += "g.plots_3d(roots, sets)\n"
@@ -925,11 +932,11 @@ class MainWindow(QMainWindow):
 
     def updatePlot(self):
         if self.plotter.fig is None:
-            logging.debug("Define an empty central widget")
+            #logging.debug("Define an empty central widget")
             #self.figure = None
             self.canvas = None
         else:
-            logging.debug("Define new canvas in central widget")
+            #logging.debug("Define new canvas in central widget")
             # Remove everything from layout
             i = 0
             while 1:
