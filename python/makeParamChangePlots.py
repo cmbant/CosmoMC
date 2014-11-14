@@ -11,7 +11,7 @@ Opts.parser.add_argument('--placeholder_sub', nargs='+', default=['XX'] + range(
                          help="placeholder to replace, followed by array of replacement values")
 
 Opts.parser.add_argument('--bands_sigma', type=float, nargs='+', default=None)
-Opts.parser.add_argument('--sigma_from_left', action='store_true')
+Opts.parser.add_argument('--sigma_from_left', type=int, default=None)
 Opts.parser.add_argument('--sigma_between', type=int, nargs=2, default=None,
                          help='zero-based indices of the compare items to use for plotting error bands. '
                          + ' e.g. 0 1 uses difference between sigmas^2 between data 1 at each L and data 0 at one end ')
@@ -23,7 +23,7 @@ items = Opts.sortedParamtagDict(chainExist=True)
 
 fill_colors = [[1, 1, 0.8], [1, 0.9, 0.6], [1, 0.8, 0.2]]
 
-if args.sigma_from_left: compare_index = 0
+if args.sigma_from_left is not None: compare_index = args.sigma_from_left
 else: compare_index = -1
 
 lmaxs = [int(x) for x in args.placeholder_sub[1:]]
