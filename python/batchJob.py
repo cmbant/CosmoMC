@@ -394,6 +394,12 @@ class batchJob(propertiesItem):
         if raiseError: raise Exception('No match for paramtag, datatag... ' + "_".join(paramtag) + ', ' + datatag)
         else: return None
 
+    def resolveRoot(self, root):
+        for jobItem in self.items(True, True):
+            if jobItem.name == root: return jobItem
+        return self.normed_name_item(root, True, True)
+
+
     def save(self, filename=''):
         saveobject(self, (self.batchPath + 'batch.pyobj', filename)[filename != ''])
 

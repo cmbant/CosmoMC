@@ -13,6 +13,8 @@ batchPath = os.path.abspath(args.batchPath) + os.sep
 cosmomcAction = 0
 
 if not args.settingName:
+    if not os.path.exists(batchPath + 'config'):
+        raise Exception('Need to give name of setting file if batchPath/config does not exist')
     args.readOnly = True
     sys.path.insert(0, batchPath + 'config')
     settings = __import__(iniFile.iniFile(batchPath + 'config/config.ini').params['setting_file'].replace('.py', ''))

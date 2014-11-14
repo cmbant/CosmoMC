@@ -286,6 +286,30 @@ gnnu.params = [['nnu']]
 gnnu.importanceRuns = [post_nonBAO, post_allnonBAO, post_lensing]
 groups.append(gnnu)
 
+
+gNnu = batchJob.jobGroup('nnumodels')
+gNnudatasets = []
+for d in copy.deepcopy(g.datasets):
+    d.add('nnup39', {'param[nnu]':3.046 + 0.39})
+    gNnudatasets.append(d)
+for d in copy.deepcopy(g.datasets):
+    d.add('nnup57', {'param[nnu]':3.046 + 0.57})
+    gNnudatasets.append(d)
+for d in copy.deepcopy(g.datasets):
+    d.add('nnu1', {'param[nnu]':3.046 + 1})
+    gNnudatasets.append(d)
+gNnu.datasets = copy.deepcopy(gNnudatasets)
+for d in copy.deepcopy(gNnudatasets):
+    d.add(BAO, BAOdata)
+    gNnu.datasets.append(d)
+for d in copy.deepcopy(gNnudatasets):
+    d.add(lensing)
+    gNnu.datasets.append(d)
+gNnu.params = [['nnu']]
+groups.append(gNnu)
+
+
+
 gabund = batchJob.jobGroup('abund')
 gabund.datasets = []
 for d in copy.deepcopy(g.datasets):
@@ -395,13 +419,15 @@ gWL.datasets = copy.deepcopy(WLdata)
 for d in copy.deepcopy(WLdata):
     d.add(BAO, BAOdata)
     gWL.datasets.append(d)
-# for d in copy.deepcopy(WLdata):
-#    d.add(HST, HSTdata)
-#    gWL.datasets.append(d)
 for d in copy.deepcopy(WLdata):
     d.add(BAO, BAOdata)
     d.add('theta', {'param[theta]':'1.0408'})
     gWL.datasets.append(d)
+for d in copy.deepcopy(WLdata):
+    d.add(HST, HSTdata)
+    d.add('theta', {'param[theta]':'1.0408'})
+    gWL.datasets.append(d)
+
 gWL.params = [[], ['mnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu'], ['nnu']]
 gWL.importanceRuns = []
 groups.append(gWL)
@@ -449,7 +475,7 @@ skip = []
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'lensing', 'BAO', 'reion', 'abundances', 'theta']
 covNameMappings = {HST:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
-                   'Mspec':'CamSpec', WLHeymans : WL, 'tau07':'lowTEB',
+                   'Mspec':'CamSpec', WLHeymans : WL, 'tau07':'lowTEB', 'nnu1':'', 'nnup39':'', 'nnup57':'',
                     WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
 
 # try to match run to exisitng covmat
@@ -470,6 +496,7 @@ covrenames.append(['lowl', 'lowTEB'])
 covrenames.append(['lowEB', 'lowTEB'])
 covrenames.append(['_nnu_meffsterile', ''])
 covrenames.append(['_nnu_mnu', '_mnu'])
+covrenames.append(['_H070p6_theta', '_BAO_theta'])
 
 
 def covRenamer(name):
