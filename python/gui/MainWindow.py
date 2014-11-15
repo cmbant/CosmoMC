@@ -12,7 +12,6 @@ from matplotlib import rcParams
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
-
 #rcParams['figure.max_num_figures'] = 1000
 
 try:
@@ -376,7 +375,8 @@ class MainWindow(QMainWindow):
             self._readGridChain(self.rootdirname)
             return
         else:
-            self._resetGridData()
+            if self.is_grid:
+                self._resetGridData()
 
         self.rootdirname = dirName
         self.lineEditDirectory.setText(self.rootdirname)
@@ -440,6 +440,7 @@ class MainWindow(QMainWindow):
     def _resetGridData(self):
         # Grid chains parameters
         self.is_grid = False
+        self.batch = None
         self.grid_items = {}
         self.paramTag = ""
         self.dataTag = ""
@@ -450,11 +451,13 @@ class MainWindow(QMainWindow):
         Setup of a grid chain.
         """
         # Reset data
+        self._resetPlotData()
         self.rootnames = {}
         self._resetGridData()
         self.is_grid = True
         logging.debug("Read grid chain in %s"%batchPath)
         batch = batchJob.readobject(batchPath)
+        self.batch = batch
         items = dict()
         for jobItem in batch.items(True, True):
             if jobItem.chainExists():
@@ -462,6 +465,12 @@ class MainWindow(QMainWindow):
                 items[jobItem.paramtag].append((jobItem.datatag, jobItem.chainRoot))
         logging.debug("Found %i names for grid"%len(items.keys()))
         self.grid_items = items
+
+        self.plotter = GetDistPlots.GetDistPlotter(
+            mcsamples=True,
+            chain_dir=self.rootdirname,
+            ini_file=self.iniFile)
+
         self.comboBoxRootname.hide()
         self.comboBoxParamTag.show()
         self.comboBoxDataTag.show()
@@ -524,7 +533,7 @@ class MainWindow(QMainWindow):
             if item and item.isSelected():
                 root = str(item.text())
                 logging.debug("Remove root %s"%root)
-                self.plotter.sampleAnalyser.removeOtherRoot(root)
+                self.plotter.sampleAnalyser.removeRoot(root)
                 if self.rootnames.has_key(root):
                     del self.rootnames[root]
                 self.listRoots.takeItem(i)
@@ -589,7 +598,7 @@ class MainWindow(QMainWindow):
                         #self.comboBoxDataTag.addItem(data[0], data[1])
                         self.comboBoxDataTag.addItem(data[0])
                         self.data2chains[data[0]] = data[1]
-                        logging.debug("Insert %s (%s)"%(str(data[0]), str(data[1])))
+                        #logging.debug("Insert %s (%s)"%(str(data[0]), str(data[1])))
                     else:
                         self.comboBoxDataTag.addItem(data) # dataTag
             else:
@@ -615,11 +624,13 @@ class MainWindow(QMainWindow):
             return
 
         if self.plotter is None:
-            self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True,
-                                                       ini_file=self.iniFile)
+            self.plotter = GetDistPlots.GetDistPlotter(
+                mcsamples=True,
+                chain_dir=self.rootdirname,
+                ini_file=self.iniFile)
         self.statusBar().showMessage("Read chains in %s"%str(rootname))
         # FIXME: wait cursor
-        self.plotter.sampleAnalyser.addRoot(rootname)
+        self.plotter.sampleAnalyser.addRootGrid(basename)
         self.rootnames[basename] = [rootname, True]
         item = QListWidgetItem(self.listRoots)
         item.setText(basename)
@@ -772,16 +783,24 @@ class MainWindow(QMainWindow):
         items_y = self.items_y
 
         # Script
-        self.script  = ""
-        self.script += "import GetDistPlots, os\n"
-        self.script += "g=GetDistPlots.GetDistPlotter(mcsamples=True, ini_file=r'%s')\n"%self.iniFile
-        self.script += "g.settings.setWithSubplotSize(3.000000)\n"
-        self.script += "outdir='.'\n"
-        self.script += "dict_roots={}\n"
-
-        roots = []
+        if self.is_grid:
+            self.script  = ""
+            self.script += "import GetDistPlots, os\n"
+            self.script += "g=GetDistPlots.GetDistPlotter(mcsamples=True, chain_dir=r'%s', ini_file=r'%s')\n"%(
+                self.rootdirname, self.iniFile)
+            self.script += "g.settings.setWithSubplotSize(3.000000)\n"
+            self.script += "outdir='.'\n"
+            self.script += "roots = []\n"
+        else:
+            self.script  = ""
+            self.script += "import GetDistPlots, os\n"
+            self.script += "g=GetDistPlots.GetDistPlotter(mcsamples=True, ini_file=r'%s')\n"%self.iniFile
+            self.script += "g.settings.setWithSubplotSize(3.000000)\n"
+            self.script += "outdir='.'\n"
+            self.script += "dict_roots={}\n"
 
         # Root names
+        roots = []
         for i in range(self.listRoots.count()):
             item = self.listRoots.item(i)
             basename = str(item.text())
@@ -789,16 +808,24 @@ class MainWindow(QMainWindow):
                 if self.rootnames.has_key(basename):
                     rootname, state = self.rootnames[basename]
                     roots.append(os.path.basename(rootname))
-                    self.script += "dict_roots['%s'] = r'%s'\n"%(basename, rootname)
+                    if self.is_grid:
+                        self.script += "roots.append('%s')\n"%(basename)
+                    else:
+                        self.script += "dict_roots['%s'] = r'%s'\n"%(basename, rootname)
                 else:
                     logging.warning("self.rootnames has no key %s"%basename)
             else:
                 logging.debug("root '%s' not selected"%basename)
 
-        self.script += "g.sampleAnalyser.addRoots(dict_roots.values())\n"
-        self.script += "roots=dict_roots.keys()\n"
+        if self.is_grid:
+            self.script += "g.sampleAnalyser.addRootsGrid(roots)\n"
+        else:
+            self.script += "g.sampleAnalyser.addRoots(dict_roots.values())\n"
+            self.script += "roots=dict_roots.keys()\n"
 
         logging.debug("Plotting with roots = %s"%str(roots))
+
+
 
         # Plot parameters
         filled = self.toggleFilled.isChecked()

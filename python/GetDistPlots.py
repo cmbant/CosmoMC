@@ -6,6 +6,7 @@ from pylab import *
 
 import numpy as np
 import iniFile
+import batchJob
 import MCSamples
 
 """Plotting scripts for GetDist outputs"""
@@ -202,7 +203,15 @@ class SampleAnalysisGetDist():
 
 class MCSampleAnalysis():
 
-    def __init__(self, ini_file):
+    def __init__(self, chain_dir, ini_file):
+        self.chain_dir = chain_dir
+        self.batch = None
+        if self.chain_dir <> '':
+            self.is_grid = True
+            self.batch = batchJob.readobject(self.chain_dir)
+        else:
+            self.is_grid = False
+
         self.ini = None
         if ini_file <> '':
             self.ini = iniFile.iniFile()
@@ -226,6 +235,19 @@ class MCSampleAnalysis():
 
         self.single_samples = dict()
 
+    def addRootsGrid(self, roots):
+        for root in roots:
+            self.addRootGrid(root)
+
+    def addRootGrid(self, base_root):
+        if self.batch is None: return
+        item = self.batch.resolveRoot(base_root)
+        file_root = item.chainRoot
+        self.roots.append(base_root)
+
+        self.mcsamples[base_root] = MCSamples.MCSamples(file_root)
+        self.readChains(base_root, self.mcsamples[base_root])
+
     def addRoots(self, roots):
         for root in roots:
             self.addRoot(root)
@@ -237,14 +259,13 @@ class MCSampleAnalysis():
         self.mcsamples[base_root] = MCSamples.MCSamples(file_root)
         self.readChains(base_root, self.mcsamples[base_root])
 
-    def removeOtherRoot(self, file_root):
+    def removeRoot(self, file_root):
         base_root = os.path.basename(file_root)
         print "remove root for %s" % base_root
         if base_root in self.roots:
             self.roots.remove(base_root)
         if self.mcsamples.has_key(base_root):
             del self.mcsamples[base_root]
-        # ...
 
     def newPlot(self):
         pass
@@ -456,14 +477,14 @@ class MCSampleAnalysis():
 
 class GetDistPlotter():
 
-    def __init__(self, plot_data=None, settings=None, mcsamples=False, ini_file=''):
+    def __init__(self, plot_data=None, settings=None, mcsamples=False, chain_dir='', ini_file=''):
         if settings is None: self.settings = defaultSettings
         else: self.settings = settings
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
         self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
         if mcsamples:
-            self.sampleAnalyser = MCSampleAnalysis(ini_file)
+            self.sampleAnalyser = MCSampleAnalysis(chain_dir, ini_file)
         self.newPlot()
 
     def newPlot(self):
