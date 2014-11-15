@@ -17,6 +17,8 @@ Opts.parser.add_argument('--changes_replacing', nargs='*', default=None,
                           help='give sigma shifts for results with data x, y, z replacing data y, z.. with x')
 Opts.parser.add_argument('--changes_only', action='store_true', help='Only include results in the changes_replacing set')
 
+Opts.parser.add_argument('--changes_data_ignore', nargs='+', help='ignore these data tags when mapping to reference for comparison')
+
 Opts.parser.add_argument('--shift_sigma_indep', action='store_true',
                          help="fractional shifts are relative to the sigma for independent data (sigma^2=sigma1^2+sigma2^2")
 Opts.parser.add_argument('--shift_sigma_subset', action='store_true',
@@ -131,6 +133,15 @@ if args.changes_from_paramtag is not None:
         raise Exception('when using changes_from_paramtag cannot have no_delta_chisq')
     args.delta_chisq_paramtag = args.changes_from_paramtag
 
+def dataIndex(jobItem):
+    if args.changes_data_ignore:
+        ignores = dict()
+        for ig in args.changes_data_ignore:
+            ignores[ig] = ''
+        return jobItem.data_set.makeNormedDatatag(ignores)
+    else:
+        return jobItem.normed_data
+
 baseJobItems = dict()
 for paramtag, parambatch in items:
     isBase = len(parambatch[0].param_set) == 0
@@ -225,7 +236,7 @@ for limit in limits:
                                 break
                         referenceJobItem = referenceDataJobItem
                         if args.changes_only and not referenceDataJobItem: continue
-                    else: referenceJobItem = baseJobItems.get(jobItem.normed_data, None)
+                    else: referenceJobItem = baseJobItems.get(dataIndex(jobItem), None)
                     if args.changes_from_paramtag is not None:
                         referenceDataJobItem = referenceJobItem
                     if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')

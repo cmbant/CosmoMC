@@ -22,7 +22,7 @@ for TT in [False, True]:
     roots = [[g.getRoot(var, basedat),
               g.getRoot(var, basedat + '_lensing'),
               g.getRoot(var, basedat + '_lensing_BAO'),
-#              'base_' + var + '_WLonly_BAO_theta',
+              'base_' + var + '_WLonlyHeymans_H070p6_BAO_theta',
               ] for var in vars]
     labels = [basedatname, '+lensing', '+lensing+BAO', '$\Lambda$CDM']
 

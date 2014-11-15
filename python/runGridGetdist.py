@@ -55,8 +55,8 @@ if not args.plots:
                     ini.includes.append(custom_plot2)
                 elif os.path.exists(custom_plot):
                     ini.includes.append(custom_plot)
-                elif len(jobItem.param_set) > 0:
-                    ini.params['plot_2D_param'] = jobItem.param_set[0]
+#                elif len(jobItem.param_set) > 0:
+#                   ini.params['plot_2D_param'] = jobItem.param_set[0]
                 ini.defaults.append(batch.commonPath + base_ini)
                 tag = ''
                 if jobItem.isImportanceJob or args.burn_removed or jobItem.propertiesIni().bool('burn_removed'):

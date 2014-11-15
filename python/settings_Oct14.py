@@ -114,7 +114,7 @@ for d in g.datasets:
     d.add('lowl', ['lowl.ini'])
 groups.append(g)
 
-
+lmaxs = []
 g = batchJob.jobGroup('lmax')
 g.datasets = []
 for lmax in range(550, 2600, 150):
@@ -122,6 +122,7 @@ for lmax in range(550, 2600, 150):
     for d in sets:
         d.add(tauname, tauprior)
         d.add('lmax' + str(lmax), {'camspec_lmax': (str(lmax) + ' ') * 6})
+        if not 'lmax' + str(lmax) in lmaxs: lmaxs.append('lmax' + str(lmax))
     g.datasets += sets
 
 g.params = [[], ['yhe'], ['nnu'], ['Alens']]
@@ -136,6 +137,8 @@ for lmax in range(600, 1601, 200):
         d.add(tauname, tauprior)
         d.add('lowl', ['lowl.ini'])
         d.add('alllmax' + str(lmax), {'camspec_lmax': (str(lmax) + ' ') * 6})
+        if not 'alllmax' + str(lmax) in lmaxs: lmaxs.append('alllmax' + str(lmax))
+
     g.datasets += sets
     sets = copy.deepcopy(datasets)  # + copy.deepcopy(CS)
     for d in sets:
@@ -153,16 +156,17 @@ for aset in detsetsTT + CSTT:
     for namecut, cutvars in zip(['no143', 'no217', 'no217auto'], [TT100_217, TT100_143, no217auto]):
         d = copy.deepcopy(aset)
         d.add(namecut, cutvars)
-        datasets.append(d)
+        chopdatasets.append(d)
 g.datasets = []
 for lmax in range(550, 2550, 150):
     sets = copy.deepcopy(chopdatasets)
     for d in sets:
         d.add(tauname, tauprior)
         d.add('lmax' + str(lmax), {'camspec_lmax': (str(lmax) + ' ') * 6})
+        if not 'lmax' + str(lmax) in lmaxs: lmaxs.append('lmax' + str(lmax))
     g.datasets += sets
 g.params = [[], ['Alens'], ['nnu']]
-# groups.append(g)
+groups.append(g)
 
 g = batchJob.jobGroup('lmin')
 lmins = [800, 1200]
@@ -180,11 +184,18 @@ covrenames = []
 covrenames.append(['_tau07_lowl', '_lowTEB'])
 covrenames.append(['_tau07', '_lowTEB'])
 
-covNameMappings = {'v910CMH':'CamSpec', 'v910F':'CamSpec', 'plikHMv17':'plik', 'plikDSv16sz':'plik', 'plikHMv16sz':'plik', 'plikHMv16bin1sz':'plik', 'bin1l80sz':'plik', 'tau07':'lowTEB'}
+covNameMappings = {'v910CMH':'CamSpec', 'v910F':'CamSpec', 'plikHMv17':'plik', 'plikDSv16sz':'plik', 'plikHMv16sz':'plik',
+                   'plikHMv16bin1sz':'plik', 'bin1l80sz':'plik', 'tau07':'lowTEB'}
+covNameMappings['no217auto'] = ''
+covNameMappings['no217'] = ''
+covNameMappings['no143'] = ''
+
+for mx in lmaxs:
+    covNameMappings[mx] = ''
 
 def covRenamer(name):
-    renamed = re.sub(r'_v.*_highL', '_planck_lowl_lowLike_highL', name, re.I)
-    renamed = re.sub(r'_v.*', '_planck_lowl_lowLike', renamed, re.I)
+#    renamed = re.sub(r'_lmax.*', '', name, re.I)
+    renamed = re.sub(r'_v.*', '_CamSpecHM_TT_lowTEB', name, re.I)
 
     if renamed == name: return[]
     else: return [renamed]
