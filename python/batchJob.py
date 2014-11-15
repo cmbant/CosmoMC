@@ -94,6 +94,9 @@ class dataSet:
             else: items.append(name)
         return items
 
+    def makeNormedDatatag(self, dic):
+        return "_".join(sorted(self.namesReplacing(dic)))
+
 
 class jobGroup:
     def __init__(self, name, params=[[]], importanceRuns=[], datasets=[]):
@@ -175,7 +178,7 @@ class jobItem(propertiesItem):
 
     def makeNormedName(self, dataSubs=None):
         normed_params = "_".join(sorted(self.param_set))
-        normed_data = "_".join(sorted(self.data_set.namesReplacing(dataSubs)))
+        normed_data = self.data_set.makeNormedDatatag(dataSubs)
         normed_name = self.base
         if len(normed_params) > 0: normed_name += '_' + normed_params
         normed_name += '_' + normed_data
