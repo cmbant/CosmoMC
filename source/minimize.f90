@@ -122,8 +122,12 @@
     call this%VectToParams(vect, P)
 
     like = this%LikeCalculator%GetLogLike(P)
-    call this%MinParams%Clear(keep=P)
-    this%MinParams = P !want to keep e.g. the Age calculation
+    if (like == logZero) then
+        call MpiStop('Minimizer does not currently support non-boundary LogZero rejections')
+    else
+        call this%MinParams%Clear(keep=P)
+        this%MinParams = P !want to keep e.g. the Age calculation
+    end if
 
     end function ffn
 
