@@ -38,4 +38,4 @@ for base in ['base', 'base_mnu', 'base_nnu_meffsterile', 'base_nnu_mnu']:
     xlim([0.13, 0.6])
     ylim([0.45, 1.1])
 
-    g.doExport(None, tag=base, adir='outputs/WLonly')
+    g.doExport(tag=base, adir='outputs/WLonly')

@@ -23,4 +23,4 @@ g.add_legend([ 'WL 1bin', 'WL 1bin+' + s.BAO, 'WL 1bin (Cons)' , 'WL 1 bin (Cons
 xlim([0.13, 0.6])
 ylim([0.31, 1.1])
 
-g.export(adir='outputs/WLonly')
+g.doExport(adir='outputs/WLonly')

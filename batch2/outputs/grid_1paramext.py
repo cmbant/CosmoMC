@@ -21,6 +21,6 @@ for base in bases:
 
 roots = [[g.getRoot(param, s.defdata_TT), g.getRoot(param, s.defdata_all), g.getRoot(param, s.defdata_all + '_BAO')] for param in paramchains]
 
-g.rectangle_plot(bases, params, yroots=roots, ymarkers=defs, xmarkers=bfs)
+g.rectangle_plot(bases, params, yroots=roots, ymarkers=defs, xmarkers=bfs, filled=True)
 g.export()
 
