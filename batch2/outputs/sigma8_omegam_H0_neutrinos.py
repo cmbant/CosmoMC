@@ -22,6 +22,7 @@ for TT in [False, True]:
     roots = [[g.getRoot(var, basedat),
               g.getRoot(var, basedat + '_lensing'),
               g.getRoot(var, basedat + '_lensing_BAO'),
+              ref,
               'base_' + var + '_WLonlyHeymans_H070p6_BAO_theta',
               ] for var in vars]
     labels = [basedatname, '+lensing', '+lensing+BAO', '$\Lambda$CDM']
@@ -32,12 +33,16 @@ for TT in [False, True]:
 
     legends = [s.LCDM , '+' + nnu, '+' + mnu, '+' + nnu + '+' + mnu, '+' + nnu + '+' + meff]
 
-    plotroots = [ [root + refs for root in roots[0:2]], [root + refs for root in roots[2:]]] * 2
+#    plotroots = [ [root + refs for root in roots[0:2]], [root + refs for root in roots[2:]]] * 2
+    plotroots = [ [root for root in roots[0:2]], [root for root in roots[2:]]] * 2
+
     plottexts = [ [legend for legend in legends[1:3]], [legend for legend in legends[3:]] ] * 2
+    colors = g.settings.solid_colors[:4][::-1]
 
     lims = {'sigma8':[0.61, 0.97], 'H0':[52, 79], 'omegam':[0.21, 0.55]}
     g.rectangle_plot(['omegam', 'omegam', 'H0', 'H0'], ['sigma8'] * 2, plot_roots=plotroots, plot_texts=plottexts,
-                      param_limits=lims, legend_labels=labels, legend_ncol=4)
+                      param_limits=lims, legend_labels=labels, legend_ncol=4, colors=colors,
+                      contour_args=[{'filled':True}] * 3 + [{'filled':True}, {'filled':False, 'ls':'--', 'color':'c'}])
 
     g.export(tag=fname)
     g.newPlot()

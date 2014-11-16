@@ -134,7 +134,7 @@ def plotBounds(omm, data, c='gray'):
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
 
-    def doExport(self, fname, adir=None, watermark=None, tag=None):
+    def doExport(self, fname=None, adir=None, watermark=None, tag=None):
         if fname is None: fname = os.path.basename(sys.argv[0]).replace('.py', '')
         if tag: fname += '_' + tag
         if not '.' in fname: fname += '.pdf'

@@ -8,7 +8,8 @@ g = s.getSinglePlotter()
 
 g.make_figure(1, xstretch=1)
 
-roots = [g.getRoot('nnu_meffsterile_r', s.defdata + '_lensing'),
+roots = [g.getRoot('nnu_r', s.defdata + '_nnup39_lensing'),
+#        g.getRoot('nnu_meffsterile_r', s.defdata + '_lensing'),
                'base_r_' + s.defdata,
                 g.getRoot('r', s.defdata + '_lensing_BAO_H070p6_JLA')]
 
@@ -78,10 +79,12 @@ for p in [1, 2]:
 
 
 # mnu = g.param_latex_label(roots[2], 'mnu', labelParams='params_CMB.paramnames')
-nnu = g.param_latex_label(roots[0], 'nnu')
-meff = g.param_latex_label(roots[0], 'meffsterile', labelParams='clik_latex.paramnames')
+# nnu = g.param_latex_label(roots[0], 'nnu')
+# meff = g.param_latex_label(roots[0], 'meffsterile', labelParams='clik_latex.paramnames')
 
-labels = [meff + '+' + nnu + ' (' + s.lensing + ')', s.LCDM + ' (' + s.defplanck + ')', s.LCDM + ' (' + s.defplanck + '+ext)']
+# labels = [meff + '+' + nnu + ' (' + s.lensing + ')', s.LCDM + ' (' + s.defplanck + ')', s.LCDM + ' (' + s.defplanck + '+ext)']
+labels = [r'$\Delta N_{\rm eff}=0.39$ (' + s.lensing + ')', s.LCDM + ' (' + s.defplanck + ')', s.LCDM + ' (' + s.defplanck + '+ext)']
+
 g.add_legend(labels, colored_text=True, align_right=True)
 
 xlim([0.945, 1])
