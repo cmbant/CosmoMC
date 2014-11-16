@@ -203,25 +203,22 @@ class SampleAnalysisGetDist():
 
 class MCSampleAnalysis():
 
-    def __init__(self, chain_dir, ini_file):
+    def __init__(self, chain_dir='', ini_file='batch2/getdist_common.ini'):
         self.chain_dir = chain_dir
         self.batch = None
-        if self.chain_dir <> '':
-            self.is_grid = True
-            self.batch = batchJob.readobject(self.chain_dir)
-        else:
-            self.is_grid = False
+        if chain_dir:
+            import makeGrid
+            if makeGrid.pathIsGrid(chain_dir):
+                self.batch = batchJob.readobject(self.chain_dir)
+                ini_file = self.batch.commonPath + 'getdist_common.ini'
 
         self.ini = None
-        if ini_file <> '':
-            self.ini = iniFile.iniFile()
-            self.ini.readFile(ini_file)
+        if ini_file:
+            self.ini = iniFile.iniFile(ini_file)
 
         self.roots = []
 
         self.mcsamples = {}
-
-        self.done_1Dbins = False
 
         # Dicts. 1st key is root; 2nd key is param
         self.densities_dat_1D = dict()
@@ -235,29 +232,33 @@ class MCSampleAnalysis():
 
         self.single_samples = dict()
 
+    def samplesForRoot(self, root, file_root=None):
+        if root in self.mcsamples: return self.mcsamples[root]
+        if not file_root:
+            if self.batch:
+                jobItem = self.batch.resolveRoot(root)
+                file_root = jobItem.chainRoot
+            else:
+                file_root = os.path.join(self.chain_dir, root)
+        self.roots.append(root)
+        self.mcsamples[root] = MCSamples.MCSamples(file_root)
+        self.readChains(self.mcsamples[root])
+        return self.mcsamples[root]
+
     def addRootsGrid(self, roots):
         for root in roots:
             self.addRootGrid(root)
 
     def addRootGrid(self, base_root):
-        if self.batch is None: return
-        item = self.batch.resolveRoot(base_root)
-        file_root = item.chainRoot
-        self.roots.append(base_root)
-
-        self.mcsamples[base_root] = MCSamples.MCSamples(file_root)
-        self.readChains(base_root, self.mcsamples[base_root])
+        if self.batch is None: return None
+        return self.samplesForRoot(base_root)
 
     def addRoots(self, roots):
         for root in roots:
             self.addRoot(root)
 
     def addRoot(self, file_root):
-        base_root = os.path.basename(file_root)
-        self.roots.append(base_root)
-
-        self.mcsamples[base_root] = MCSamples.MCSamples(file_root)
-        self.readChains(base_root, self.mcsamples[base_root])
+        return self.samplesForRoot(os.path.basename(file_root), file_root)
 
     def removeRoot(self, file_root):
         base_root = os.path.basename(file_root)
@@ -289,7 +290,7 @@ class MCSampleAnalysis():
         mcsamples.single_thin = self.ini.int('single_thin', 1)
 
 
-    def readChains(self, rootdir, mcsamples):
+    def readChains(self, mcsamples):
         self.initParameters(mcsamples)
 
         mcsamples.ComputeContours(self.ini)
@@ -341,9 +342,7 @@ class MCSampleAnalysis():
     def getMargeStats(self, file_root):
         base_root = os.path.basename(file_root)
         # Do 1D bins
-        if not self.done_1Dbins:
-            self.mcsamples[base_root].Do1DBins(writeDataToFile=False)
-            self.done_1Dbins = True
+        self.mcsamples[base_root].Do1DBins(writeDataToFile=False)
         text = self.mcsamples[base_root].OutputMargeStats(writeDataToFile=False)
         return text
 
@@ -482,9 +481,10 @@ class GetDistPlotter():
         else: self.settings = settings
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
-        self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
-        if mcsamples:
+        if chain_dir or mcsamples:
             self.sampleAnalyser = MCSampleAnalysis(chain_dir, ini_file)
+        else:
+            self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
         self.newPlot()
 
     def newPlot(self):

@@ -5,7 +5,13 @@ import os, sys, shutil, pickle, ResultObjs, time, copy, iniFile
 def readobject(directory=None):
     if directory == None:
         directory = sys.argv[1]
-    with open(os.path.abspath(directory) + os.sep + 'batch.pyobj', 'rb') as inp:
+    fname = os.path.abspath(directory) + os.sep + 'batch.pyobj'
+    if not os.path.exists(fname):
+        import makeGrid
+        if makeGrid.pathIsGrid(directory):
+            return makeGrid.makeGrid(directory, readOnly=True, interactive=False)
+        return None
+    with open(fname, 'rb') as inp:
         return pickle.load(inp)
 
 def saveobject(obj, filename):
@@ -324,10 +330,10 @@ class jobItem(propertiesItem):
 
 class batchJob(propertiesItem):
 
-    def __init__(self, path, iniDir):
+    def __init__(self, path, iniDir, cosmomcPath=None):
         self.batchPath = path
         self.skip = []
-        self.basePath = os.path.dirname(sys.path[0]) + os.sep
+        self.basePath = cosmomcPath or os.path.normpath(os.path.join(os.path.dirname(__file__), '..' + os.sep)) + os.sep
         self.commonPath = self.basePath + iniDir
         self.subBatches = []
         self.jobItems = None
