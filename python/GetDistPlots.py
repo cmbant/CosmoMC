@@ -635,30 +635,38 @@ class GetDistPlotter():
         if not doResize: return xlims, ylims
         else: return self.updateLimit(res[0], xlims), self.updateLimit(res[1], ylims)
 
-    def _make_line_args(self, line_args, nroots, colors=None, ls=None, alphas=None, lws=None):
-        if not line_args: line_args = [{}] * nroots
+
+    def _make_line_args(self, nroots, **kwargs):
+        line_args = kwargs.get('line_args')
+        if line_args is None: line_args = kwargs.get('contour_args')
+        if line_args is None: line_args = [{}] * nroots
         elif isinstance(line_args, dict): line_args = [line_args] * nroots
+        if len(line_args) < nroots: line_args += [{}] * (nroots - len(line_args))
+        colors = kwargs.get('colors')
+        lws = kwargs.get('lws')
+        alphas = kwargs.get('alphas')
+        ls = kwargs.get('ls')
         for i, args in enumerate(line_args):
             c = cp.copy(args)  # careful to copy before modifying any
             line_args[i] = c
-            if colors and colors[i]:
+            if colors and i < len(colors) and colors[i]:
                 if isinstance(colors[i], basestring):
-                    c['color'] = matplotlib.colors.colorConverter.to_rgb(colors[i])
+#                    c['color'] = matplotlib.colors.colorConverter.to_rgb(colors[i])
+                    c['color'] = colors[i]
                 else:
                     c['color'] = colors[i]
-            if ls and ls[i]: c['ls'] = ls[i]
-            if alphas and alphas[i]: c['alpha'] = alphas[i]
-            if lws and lws[i]: c['lw'] = lws[i]
+            if ls and i < len(ls) and ls[i]: c['ls'] = ls[i]
+            if alphas and i < len(alphas) and alphas[i]: c['alpha'] = alphas[i]
+            if lws and i < len(lws) and lws[i]: c['lw'] = lws[i]
         return line_args
 
-    def _make_contour_args(self, filled, contour_args, nroots, colors=None, ls=None, alphas=None):
-        contour_args = self._make_line_args(contour_args, nroots, colors, ls, alphas)
-        for args in contour_args:
-            if args.get('filled') is None: args['filled'] = filled
+    def _make_contour_args(self, nroots, **kwargs):
+        contour_args = self._make_line_args(nroots, **kwargs)
+        for cont in contour_args:
+            if cont.get('filled') is None: cont['filled'] = kwargs.get('filled') or False
         return contour_args
 
-    def plot_2d(self, roots, param1=None, param2=None, param_pair=None, shaded=False, filled=False, add_legend_proxy=True,
-                contour_args=None, colors=None, ls=None, **ax_args):
+    def plot_2d(self, roots, param1=None, param2=None, param_pair=None, shaded=False, add_legend_proxy=True, **kwargs):
         if self.fig is None: self.make_figure()
         if isinstance(roots, basestring):roots = [roots]
         if isinstance(param1, list):
@@ -666,19 +674,19 @@ class GetDistPlotter():
             param1 = None
         param_pair = self.get_param_array(roots[0], param_pair or [param1, param2])
         if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
-        if shaded and not filled: self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
+        if shaded and not kwargs.get('filled'): self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
         xbounds, ybounds = None, None
-        contour_args = self._make_contour_args(filled, contour_args, len(roots), colors, ls)
+        contour_args = self._make_contour_args(len(roots), **kwargs)
         for i, root in enumerate(roots):
             res = self.add_2d_contours(root, param_pair[0], param_pair[1], i, of=len(roots),
                                        add_legend_proxy=add_legend_proxy, **contour_args[i])
             xbounds, ybounds = self.updateLimits(res, xbounds, ybounds, doResize=not shaded)
         if xbounds is None: return
-        if not 'lims' in ax_args:
+        if not 'lims' in kwargs:
             lim1 = self.checkBounds(roots[0], param_pair[0].name , xbounds[0], xbounds[1])
             lim2 = self.checkBounds(roots[0], param_pair[1].name , ybounds[0], ybounds[1])
-            ax_args['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]
-        self.setAxes(param_pair, **ax_args)
+            kwargs['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]
+        self.setAxes(param_pair, **kwargs)
         return xbounds, ybounds
 
     def add_1d_marker(self, marker, color=None, ls=None):
@@ -719,7 +727,8 @@ class GetDistPlotter():
         if x and self.settings.x_label_rotation != 0:setp(xticks()[1], rotation=self.settings.x_label_rotation)
         self.set_locator(axis, x, prune=prune)
 
-    def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None, prune=None, color_label_in_axes=False):
+    def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None, prune=None,
+                color_label_in_axes=False, **other_args):
         if lims is not None: axis(lims)
         if prune is None: prune = self.settings.tick_prune
         ax = gca()
@@ -742,13 +751,12 @@ class GetDistPlotter():
         ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
 
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
-                no_ylabel=False, no_ytick=False, no_zero=False, normalized=False, line_args={}, colors=None, ls=None, alphas=None, lws=None,
-                 param_renames={}, **ax_args):
+                no_ylabel=False, no_ytick=False, no_zero=False, normalized=False, param_renames={}, **kwargs):
         if isinstance(roots, basestring): roots = [roots]
         if self.fig is None: self.make_figure()
         plotparam = None
         plotroot = None
-        line_args = self._make_line_args(line_args, len(roots), colors, ls, alphas, lws)
+        line_args = self._make_line_args(len(roots), **kwargs)
         xmin, xmax = None, None
         for i, root in enumerate(roots):
             root_param = self.check_param(root, param, param_renames)
@@ -760,12 +768,12 @@ class GetDistPlotter():
                     plotroot = root
         if plotparam is None: raise Exception('No roots have parameter: ' + str(param))
         if marker is not None: self.add_x_marker(marker, marker_color)
-        if not 'lims' in ax_args:
+        if not 'lims' in kwargs:
             xmin, xmax = self.checkBounds(plotroot, plotparam.name, xmin, xmax)
             if normalized: mx = gca().yaxis.get_view_interval()[-1]
             else: mx = 1.099
-            ax_args['lims'] = [xmin, xmax, 0, mx]
-        ax = self.setAxes([plotparam], **ax_args)
+            kwargs['lims'] = [xmin, xmax, 0, mx]
+        ax = self.setAxes([plotparam], **kwargs)
 
         if normalized: lab = self.settings.norm_prob_label
         else: lab = self.settings.prob_label
@@ -961,7 +969,7 @@ class GetDistPlotter():
 
 
     def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled_compare=False, shaded=False,
-                      contour_args=None, contour_colors=None, contour_ls=None, line_args=None):
+                      contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None):
         if isinstance(roots, basestring):roots = [roots]
         params = self.get_param_array(roots[0], in_params)
         plot_col = len(params)
@@ -970,7 +978,8 @@ class GetDistPlotter():
         lims = dict()
         ticks = dict()
         line_args = None
-        contour_args = self._make_contour_args(filled_compare, contour_args, len(roots), contour_colors, contour_ls)
+        contour_args = self._make_contour_args(len(roots), filled=filled_compare, contour_args=contour_args,
+                                               colors=contour_colors, ls=contour_ls, lws=contour_lws)
         if filled_compare and not line_args:
             cols = [self.settings.solid_colors[len(roots) - plotno - 1] for plotno in range(len(params))]
             line_args = []
@@ -1011,8 +1020,7 @@ class GetDistPlotter():
                          legend_loc=None, no_gap=self.settings.no_triangle_axis_labels, no_extra_legend_space=True)
 
     def rectangle_plot(self, xparams, yparams, yroots=None, roots=None, plot_roots=None, plot_texts=None,
-                       filled=True, ymarkers=None, xmarkers=None, param_limits={},
-                       legend_labels=[], legend_ncol=None, **kwargs):
+                       ymarkers=None, xmarkers=None, param_limits={}, legend_labels=[], legend_ncol=None, marker_args={}, **kwargs):
             """
                 roots uses the same set of roots for every plot in the rectangle
                 yroots (list of list of roots) allows use of different set of roots for each row of the plot
@@ -1039,10 +1047,10 @@ class GetDistPlotter():
                     if y == 0:
                         sharex = ax
                         xshares.append(ax)
-                    res = self.plot_2d(subplot_roots, param_pair=[xparam, yparam], filled=filled, do_xlabel=y == len(yparams) - 1,
-                                 do_ylabel=x == 0, add_legend_proxy=x == 0 and y == 0)
-                    if ymarkers is not None and ymarkers[y] is not None: self.add_y_marker(ymarkers[y], **kwargs)
-                    if xmarkers is not None and xmarkers[x] is not None: self.add_x_marker(xmarkers[x], **kwargs)
+                    res = self.plot_2d(subplot_roots, param_pair=[xparam, yparam], do_xlabel=y == len(yparams) - 1,
+                                 do_ylabel=x == 0, add_legend_proxy=x == 0 and y == 0, **kwargs)
+                    if ymarkers is not None and ymarkers[y] is not None: self.add_y_marker(ymarkers[y], **marker_args)
+                    if xmarkers is not None and xmarkers[x] is not None: self.add_x_marker(xmarkers[x], **marker_args)
                     limits[xparam], limits[yparam] = self.updateLimits(res, limits.get(xparam), limits.get(yparam))
                     if y != len(yparams) - 1: setp(ax.get_xticklabels(), visible=False)
                     if x != 0: setp(ax.get_yticklabels(), visible=False)
@@ -1118,8 +1126,7 @@ class GetDistPlotter():
         ybounds[1] += r / 20
         return [xbounds, ybounds]
 
-    def plot_3d(self, roots, in_params=None, params_for_plots=None, color_bar=True, line_offset=0,
-                filled=False, contour_args=None, **ax_args):
+    def plot_3d(self, roots, in_params=None, params_for_plots=None, color_bar=True, line_offset=0, **kwargs):
         if isinstance(roots, basestring): roots = [roots]
         if params_for_plots:
             params_for_plots = [self.get_param_array(root, p) for p, root in zip(params_for_plots, roots)]
@@ -1128,18 +1135,18 @@ class GetDistPlotter():
             params = self.get_param_array(roots[0], in_params)
             params_for_plots = [params for root in roots]  # all the same
         if self.fig is None: self.make_figure()
-        contour_args = self._make_contour_args(filled, contour_args, len(roots) - 1)
-        xlims, ylims = self.add_3d_scatter(roots[0], params_for_plots[0], color_bar=color_bar, **ax_args)
+        contour_args = self._make_contour_args(len(roots) - 1, **kwargs)
+        xlims, ylims = self.add_3d_scatter(roots[0], params_for_plots[0], color_bar=color_bar, **kwargs)
         for i, root in enumerate(roots[1:]):
             params = params_for_plots[i + 1]
             res = self.add_2d_contours(root, params[0], params[1], i + line_offset, add_legend_proxy=False, **contour_args[i])
             xlims, ylims = self.updateLimits(res, xlims, ylims)
-        if not 'lims' in ax_args:
+        if not 'lims' in kwargs:
             params = params_for_plots[0]
             lim1 = self.checkBounds(roots[0], params[0].name , xlims[0], xlims[1])
             lim2 = self.checkBounds(roots[0], params[1].name , ylims[0], ylims[1])
-            ax_args['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]
-        self.setAxes(params, **ax_args)
+            kwargs['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]
+        self.setAxes(params, **kwargs)
 
     def plots_3d(self, roots, param_sets, nx=None, filled_compare=False, legend_labels=None, **kwargs):
         if isinstance(roots, basestring):roots = [roots]
