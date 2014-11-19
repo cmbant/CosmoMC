@@ -122,6 +122,23 @@ class paramList:
     def maxNameLen(self):
         return max([len(name.name) for name in self.names])
 
+    def name(self, ix, tag_derived=False):
+        par = self.names[ix]
+        if tag_derived and  par.isDerived:
+            return par.name + '*'
+        else:
+            return par.name
+
+    def __str__(self):
+        text = ''
+        for par in self.names:
+            text += par.string() + '\n'
+        return text
+
+    def saveAsText(self, fileName):
+        with open(fileName, 'w') as f:
+            f.write(str(self))
+
 
 class paramNames(paramList):
 
@@ -151,9 +168,4 @@ class paramNames(paramList):
                 name.comment)
 
 
-    def saveAsText(self, fileName):
-        textFileHandle = open(fileName, 'w')
-        for info in self.names:
-            textFileHandle.write(info.string() + '\n')
-        textFileHandle.close()
 

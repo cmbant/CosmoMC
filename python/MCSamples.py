@@ -9,7 +9,8 @@ import numpy as np
 from scipy.interpolate import splrep, splev
 from scipy.stats import norm
 import pickle
-
+import ResultObjs
+import copy
 from chains import chains, chainFiles, lastModified
 
 # =============================================================================
@@ -221,12 +222,7 @@ class MCSamples(chains):
         self.density1D = dict()
 
     def parName(self, i, starDerived=False):
-        if starDerived:
-            par = self.paramNames.names[i]
-            if par.isDerived: return par.name + '*'
-            else: return par.name
-        else:
-            return self.paramNames.names[i].name
+        self.paramNames.name(i, starDerived)
 
     def parLabel(self, i):
         return self.paramNames.names[i].label
@@ -1623,31 +1619,15 @@ class MCSamples(chains):
         else:
             return lower, upper
 
-
-
-    def OutputMargeStats(self, writeDataToFile=True):
-        contours_str = '; '.join([ str(c) for c in self.contours ])
-
-
-        maxLen = max(9, self.paramNames.maxNameLen()) + 1
-        parForm = "%-" + str(maxLen) + "s"
-        text = ""
-        text += "Marginalized limits: %s\n\n" % contours_str
-        text += parForm % ("parameter") + "  "
-        text += "%-15s" % ("mean")
-        text += "%-15s" % ("sddev")
-        for j in range(self.num_contours):
-            text += "%-15s" % ("lower" + str(j + 1))
-            text += "%-15s" % ("upper" + str(j + 1))
-            text += "%-7s" % ("limit" + str(j + 1))
-        text += "\n"
-
-        for j in range(self.num_vars):
-            if not self.isused[j]: continue
-            text += parForm % (self.parName(j, True))
-            text += "%15.7E%15.7E" % (self.means[j], self.sddev[j])
+    def getMargeStats(self):
+        m = ResultObjs.margeStats()
+        m.limits = self.contours
+        for j, par in enumerate([copy.deepcopy(p) for p in self.paramNames.names]):
+            m.names.append(par)
+            par.mean = self.means[j]
+            par.err = self.sddev[j]
+            par.limits = []
             for i in range(self.num_contours):
-                text += "%15.7E%15.7E" % (self.LowerUpperLimits[j][0][i], self.LowerUpperLimits[j][1][i])
                 if (self.marge_limits_bot[i][j] and self.marge_limits_top[i][j]):
                     tag = 'none'
                 elif (self.marge_limits_bot[i][j]):
@@ -1656,17 +1636,12 @@ class MCSamples(chains):
                     tag = '<'
                 else:
                     tag = 'two'
-                text += "  %-5s" % (tag)
-            label = self.parLabel(j)
-            text += "   %s\n" % (label)
+                par.limits.append(ResultObjs.paramLimit(
+                        [self.LowerUpperLimits[j][0][i], self.LowerUpperLimits[j][1][i]], tag))
+        return m
 
-        if writeDataToFile:
-            filename = self.rootdirname + '.margestats'
-            textFileHandle = open(filename, 'w')
-            textFileHandle.write(text)
-            textFileHandle.close()
-        else:
-            return text
+    def saveMargeStats(self):
+        self.getMargeStats().saveAsText(self.rootdirname + '.margestats')
 
     def GetUsedParamNames(self):
         names = []

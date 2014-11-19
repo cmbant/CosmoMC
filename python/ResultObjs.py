@@ -388,6 +388,16 @@ class paramLimit():
         self.onetail_upper = tag == '>'
         self.onetail_lower = tag == '<'
 
+    def limitTag(self):
+        if self.twotail:
+            return 'two'
+        elif self.onetail_upper:
+            return '>'
+        elif self.onetail_lower:
+            return '<'
+        else:
+            return 'none'
+
 class margeStats(paramResults):
 
     def loadFromFile(self, filename):
@@ -410,6 +420,41 @@ class margeStats(paramResults):
             for i in range(len(self.limits)):
                 param.limits.append(paramLimit([float(s) for s in items[3 + i * 3:5 + i * 3] ], items[5 + i * 3]))
             self.names.append(param)
+
+    def headerLine(self, inc_limits=False):
+        maxLen = max(9, self.maxNameLen()) + 1
+        parForm = "%-" + str(maxLen) + "s"
+        text = ""
+        text += parForm % ("parameter") + "  "
+        text += "%-15s" % ("mean")
+        text += "%-15s" % ("sddev")
+        for j, limit in enumerate(self.limits):
+            if inc_limits:
+                tag = "_%.0f%%" % (limit * 100)
+                limtxt = 'type'
+            else:
+                tag = str(j + 1)
+                limtxt = "limit" + tag
+            text += "%-15s" % ("lower" + tag)
+            text += "%-15s" % ("upper" + tag)
+            text += "%-7s" % (limtxt)
+        return text, parForm
+
+    def __str__(self):
+        contours_str = '; '.join([ str(c) for c in self.limits ])
+        header, parForm = self.headerLine()
+        text = ""
+        text += "Marginalized limits: %s\n\n" % contours_str
+        text += header
+        text += "\n"
+
+        for j, par in enumerate(self.names):
+            text += parForm % (self.name(j, True))
+            text += "%15.7E%15.7E" % (par.mean, par.err)
+            for lim in par.limits:
+                text += "%15.7E%15.7E  %-5s" % (lim.lower, lim.upper, lim.limitTag())
+            text += "   %s\n" % (par.label)
+        return text
 
 
     def addBestFit(self, bf):

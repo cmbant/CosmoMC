@@ -379,15 +379,14 @@ if (num_3D_plots <> 0 and not no_plots):
     mc.WriteScriptPlots3D(filename, num_3D_plots, plot_3D)
 
 # Write out stats marginalized
-if (not plots_only):
-    mc.OutputMargeStats()
+if not plots_only: mc.saveMargeStats()
 
 # Write paramNames file
 filename = os.path.join(plot_data_dir, rootname + '.paramnames')
 mc.WriteParamNames(filename)
 
 # Limits from global likelihood
-if (not plots_only):
+if not plots_only:
     filename = rootdirname + '.likestats'
     mc.WriteGlobalLikelihood(filename)
 

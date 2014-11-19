@@ -265,14 +265,6 @@ class MCSampleAnalysis():
     def newPlot(self):
         pass
 
-    def getMargeStats(self, file_root):
-        root = os.path.basename(file_root)
-        samples = self.samplesForRoot(root)
-        # Do 1D bins
-        samples.Do1DBins(writeDataToFile=False)
-        text = samples.OutputMargeStats(writeDataToFile=False)
-        return text
-
     def compute_1d(self, root, name):
         samples = self.samplesForRoot(root)
         index = samples.index[name]

@@ -6,7 +6,7 @@ import sys
 import signal
 import logging
 import GetDistPlots
-
+import ResultObjs
 import matplotlib
 from matplotlib import rcParams
 # matplotlib.use('Qt4Agg')
@@ -331,21 +331,21 @@ class MainWindow(QMainWindow):
             # logging.warning("No rootname. Can't show marge stats")
             return
 
-        text = ''
-        if self.batch and False:
+        stats = None
+        if self.batch:
             jobItem = self.batch.resolveRoot(rootname)
             fname = jobItem.distRoot + '.margestats'
-            if os.path.exists(fname):
-                text = open(fname).read()
-
-        if not text:
+            stats = ResultObjs.margeStats(fname)
+        if not stats:
             try:
                 self.statusBar().showMessage("Calculating margestats....")
-                text = self.plotter.sampleAnalyser.getMargeStats(rootname)
+                samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
+                samples.Do1DBins(writeDataToFile=False)
+                stats = samples.getMargeStats()
             finally:
                 self.statusBar().showMessage("")
 
-        dlg = DialogMargeStats(self, text, rootname)
+        dlg = DialogMargeStats(self, stats, rootname)
         dlg.exec_()
 
     def about(self):
@@ -953,48 +953,69 @@ class MainWindow(QMainWindow):
 
 class DialogMargeStats(QDialog):
 
-    def __init__(self, parent=None, text="", root=''):
+    def __init__(self, parent=None, stats="", root=''):
         QDialog.__init__(self, parent)
 
         self.label = QLabel(self)
         self.table = QTableWidget(self)
-        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+#        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 #        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         # self.table.horizontalHeader().hide()
         self.table.verticalHeader().hide()
 
         layout = QGridLayout()
-        layout.addWidget(self.label, 0, 0)
-        layout.addWidget(self.table, 1, 0)
+        layout.addWidget(self.table, 0, 0)
         self.setLayout(layout)
 
         self.setWindowTitle(self.tr('Marginalized constraints: ' + root + ".margestats"))
 
-        if (text):
-            lines = text.split("\n")
-            line0 = lines.pop(0)
-            self.label.setText(line0)
-            line = lines.pop(0)  # empty
-            line = lines.pop(0)  # headers
-            headers = line.split(' ')
-            headers = [ h for h in headers if h <> '' ] + [ 'Label' ]
+        if (stats):
+
+            headers = stats.headerLine(inc_limits=True)[0].split() + [ 'label' ]
             self.table.setColumnCount(len(headers))
-            self.table.setHorizontalHeaderLabels(headers)
+            self.table.setHorizontalHeaderLabels([h.replace('_', ' ') for h in headers])
             self.table.verticalHeader().setVisible(False)
             self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
             self.table.setSelectionMode(QAbstractItemView.SingleSelection)
-            self.table.setRowCount(len(lines))
-            irow = 0
-            for line in lines:
-                values = line.split(' ')
-                values = [ v for v in values if v <> '' ]
-                icol = 0
-                for value in values:
-                    item = QTableWidgetItem(value)
+            self.table.setRowCount(stats.numParams())
+            for irow, par in enumerate(stats.names):
+                vals = [par.name, par.mean, par.err]
+                for lim in par.limits:
+                    vals += [lim.lower, lim.upper, lim.limitTag()]
+                vals += [par.label]
+                for icol, value in enumerate(vals):
+                    item = QTableWidgetItem(str(value))
                     item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                    if icol == 0 and not par.isDerived:
+                        font = QFont()
+                        font.setBold(True)
+                        item.setFont(font)
                     self.table.setItem(irow, icol, item)
-                    icol += 1
-                irow += 1
+
+#             lines = text.split("\n")
+#             line0 = lines.pop(0)
+#             self.label.setText(line0)
+#             line = lines.pop(0)  # empty
+#             line = lines.pop(0)  # headers
+#             headers = line.split(' ')
+#             headers = [ h for h in headers if h <> '' ] + [ 'Label' ]
+#             self.table.setColumnCount(len(headers))
+#             self.table.setHorizontalHeaderLabels(headers)
+#             self.table.verticalHeader().setVisible(False)
+#             self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+#             self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+#             self.table.setRowCount(len(lines))
+#             irow = 0
+#             for line in lines:
+#                 values = line.split(' ')
+#                 values = [ v for v in values if v <> '' ]
+#                 icol = 0
+#                 for value in values:
+#                     item = QTableWidgetItem(value)
+#                     item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+#                     self.table.setItem(irow, icol, item)
+#                     icol += 1
+#                 irow += 1
 
             self.table.resizeRowsToContents()
             self.table.resizeColumnsToContents()
