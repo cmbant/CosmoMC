@@ -89,6 +89,9 @@ class chain():
         self.means = np.asarray(means)
         return means
 
+class paramConfidenceData():
+    pass
+
 class parSamples(): pass
 
 class chains():
@@ -156,21 +159,25 @@ class chains():
         return self.confidence(paramVec, (1 - confidence) / 2, upper=False) , self.confidence(paramVec, (1 - confidence) / 2, upper=True)
 
 
-    def confidence(self, paramVec, limfrac, upper, start=None, end=None):
-        paramVec = self.valuesForParam(paramVec)
+    def initParamConfidenceData(self, paramVec):
+        d = paramConfidenceData()
+        d.paramVec = self.valuesForParam(paramVec)
+        d.norm = np.sum(self.weights)
+        d.indexes = paramVec.argsort()
+        weightsort = self.weights[d.indexes]
+        d.cumsum = np.cumsum(weightsort)
+        return d
 
-        if start is None: start = 0
-        if end is None: end = len(paramVec)
-        weights = self.weights[start:end]
-        norm = np.sum(weights)
+    def confidence(self, paramVec, limfrac, upper):
+        if isinstance(paramVec, paramConfidenceData):
+            d = paramVec
+        else:
+            d = self.initParamConfidenceData(paramVec)
 
-        indexes = paramVec.argsort()
-        weightsort = weights[indexes]
-        cumsum = np.cumsum(weightsort)
-        if not upper: target = norm * limfrac
-        else: target = norm * (1 - limfrac)
-        ix = np.searchsorted(cumsum, target)
-        return paramVec[indexes[min(ix, indexes.shape[0] - 1)]]
+        if not upper: target = d.norm * limfrac
+        else: target = d.norm * (1 - limfrac)
+        ix = np.searchsorted(d.cumsum, target)
+        return d.paramVec[d.indexes[min(ix, d.indexes.shape[0] - 1)]]
 #         try_b = np.min(paramVec)
 #         try_t = np.max(paramVec)
 #         lasttry = -1

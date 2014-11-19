@@ -119,6 +119,10 @@ class paramList:
         self.names.append(paramInfo(name=name, derived=True))
         return self.names[-1]
 
+    def maxNameLen(self):
+        return max([len(name.name) for name in self.names])
+
+
 class paramNames(paramList):
 
 

@@ -68,6 +68,9 @@ class MainWindow(QMainWindow):
         self._resetGridData()
         self._resetPlotData()
 
+        lastDir = self.getSettings().value('lastSearchDirectory')
+        if lastDir:
+            self.openDirectory(lastDir)
 
     def createActions(self):
         """
@@ -353,13 +356,15 @@ class MainWindow(QMainWindow):
             self, "About GetDist GUI",
             "Qt application for GetDist plots.")
 
-    # slots for selectWidget
+
+    def getSettings(self):
+        return QSettings('cosmomc', 'gui')
 
     def selectRootDirName(self):
         """
         Slot function called when pushButtonSelect is pressed.
         """
-        settings = QSettings('cosmomc', 'gui')
+        settings = self.getSettings()
         last_dir = settings.value('lastSearchDirectory')
         if not last_dir: last_dir = os.getcwd()
 
@@ -373,6 +378,9 @@ class MainWindow(QMainWindow):
             return  # No directory selected
 
         settings.setValue('lastSearchDirectory', dirName)
+        self.openDirectory(dirName)
+
+    def openDirectory(self, dirName):
 
         # Check if it's a grid
         if makeGrid.pathIsGrid(dirName):
@@ -383,7 +391,6 @@ class MainWindow(QMainWindow):
         else:
             if self.is_grid:
                 self._resetGridData()
-
 
         root_list = MCSamples.GetChainRootFiles(dirName)
         if not len(root_list):
@@ -994,6 +1001,7 @@ class DialogMargeStats(QDialog):
 
             w = self.table.horizontalHeader().length() + 40
             h = self.table.verticalHeader().length() + 40
+            h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, h)
             self.resize(w, h)
 
 # ==============================================================================
