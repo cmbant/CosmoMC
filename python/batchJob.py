@@ -152,6 +152,9 @@ class jobItem(propertiesItem):
     def propertiesIniFile(self):
         return self.chainRoot + '.properties.ini'
 
+    def isBurnRemoved(self):
+        return self.propertiesIni().bool('burn_removed')
+
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
         for impRun in importanceRuns:

@@ -42,6 +42,7 @@ class GetDistPlotSettings:
         self.colormap = cm.Blues
         self.colormap_scatter = cm.jet
         self.colorbar_rotation = None  # e.g. -90
+        self.colorbar_label_rotation = -90  # seems to cause problems with some versions, can set to zero
 
         self.param_names_for_labels = 'clik_latex.paramnames'
         self.tick_prune = None  # 'lower' or 'upper'
@@ -203,7 +204,7 @@ class SampleAnalysisGetDist():
 
 class MCSampleAnalysis():
 
-    def __init__(self, chain_dir='', ini_file='batch2/getdist_common.ini'):
+    def __init__(self, chain_dir='', ini_file=''):
         self.chain_dir = chain_dir
         self.batch = None
         if chain_dir:
@@ -215,8 +216,6 @@ class MCSampleAnalysis():
         self.ini = None
         if ini_file:
             self.ini = iniFile.iniFile(ini_file)
-
-        self.roots = []
 
         self.mcsamples = {}
 
@@ -233,25 +232,22 @@ class MCSampleAnalysis():
         self.single_samples = dict()
 
     def samplesForRoot(self, root, file_root=None):
+        if os.path.isabs(root):
+            root = os.path.basename(root)
         if root in self.mcsamples: return self.mcsamples[root]
+        jobItem = None
         if not file_root:
             if self.batch:
                 jobItem = self.batch.resolveRoot(root)
                 file_root = jobItem.chainRoot
             else:
                 file_root = os.path.join(self.chain_dir, root)
-        self.roots.append(root)
-        self.mcsamples[root] = MCSamples.MCSamples(file_root)
-        self.readChains(self.mcsamples[root])
+        self.mcsamples[root] = MCSamples.loadMCSamples(file_root, self.ini, jobItem)
         return self.mcsamples[root]
 
-    def addRootsGrid(self, roots):
-        for root in roots:
-            self.addRootGrid(root)
-
-    def addRootGrid(self, base_root):
+    def addRootGrid(self, root):
         if self.batch is None: return None
-        return self.samplesForRoot(base_root)
+        return self.samplesForRoot(root)
 
     def addRoots(self, roots):
         for root in roots:
@@ -261,106 +257,39 @@ class MCSampleAnalysis():
         return self.samplesForRoot(os.path.basename(file_root), file_root)
 
     def removeRoot(self, file_root):
-        base_root = os.path.basename(file_root)
-        print "remove root for %s" % base_root
-        if base_root in self.roots:
-            self.roots.remove(base_root)
-        if self.mcsamples.has_key(base_root):
-            del self.mcsamples[base_root]
+        root = os.path.basename(file_root)
+        print "remove root for %s" % root
+        if self.mcsamples.has_key(root):
+            del self.mcsamples[root]
 
     def newPlot(self):
         pass
 
-    def initParameters(self, mcsamples):
-        if not self.ini: return
-
-        mcsamples.num_bins = self.ini.int('num_bins')
-        mcsamples.num_bins_2D = self.ini.int('num_bins_2D', mcsamples.num_bins)
-        mcsamples.smooth_scale_1D = self.ini.float('smooth_scale_1D', -1.0)
-        mcsamples.smooth_scale_2D = self.ini.float('smooth_scale_2D', -1.0)
-
-        mcsamples.no_plots = self.ini.bool('no_plots', False)
-        mcsamples.shade_meanlikes = self.ini.bool('shade_meanlikes', False)
-        mcsamples.num_contours = self.ini.int('num_contours', 2)
-
-        mcsamples.force_twotail = self.ini.bool('force_twotail', False)
-
-        mcsamples.plot_meanlikes = self.ini.bool('plot_meanlikes', False)
-
-        mcsamples.single_thin = self.ini.int('single_thin', 1)
-
-
-    def readChains(self, mcsamples):
-        self.initParameters(mcsamples)
-
-        mcsamples.ComputeContours(self.ini)
-
-        # compute limits
-        mcsamples.ComputeLimits(self.ini)
-
-        # Get list of chain files in root directory
-        root = mcsamples.root
-        chainFiles = MCSamples.GetChainFiles(root)
-        mcsamples.loadChains(root, chainFiles)
-
-        ignorerows = 0.0
-        if self.ini is not None:
-            ignorerows = self.ini.float('ignore_rows', 0.0)
-        mcsamples.removeBurnFraction(ignorerows)
-
-        # Make a single array for chains
-        mcsamples.makeSingle()
-
-        # Check used columns
-        mcsamples.GetUsedCols()
-
-        mcsamples.ComputeMultiplicators()
-
-        mcsamples.ComputeColix()
-
-        # Compute statistics values
-        mcsamples.ComputeStats()
-
-        # Sort data in order of likelihood of points
-        mcsamples.SortColData(1)
-
-        # Get covariance matrix and correlation matrix
-        mcsamples.ComputeNumSamp()
-
-        # Get ND confidence region
-        # mcsamples.GetConfidenceRegion()
-
-        mcsamples.GetCovMatrix(False)
-
-        # Find best fit, and mean likelihood
-        mcsamples.GetChainLikeSummary(toStdOut=False)
-
-        # Init arrays for 1D densities
-        mcsamples.Init1DDensity()
-
-
     def getMargeStats(self, file_root):
-        base_root = os.path.basename(file_root)
+        root = os.path.basename(file_root)
+        samples = self.samplesForRoot(root)
         # Do 1D bins
-        self.mcsamples[base_root].Do1DBins(writeDataToFile=False)
-        text = self.mcsamples[base_root].OutputMargeStats(writeDataToFile=False)
+        samples.Do1DBins(writeDataToFile=False)
+        text = samples.OutputMargeStats(writeDataToFile=False)
         return text
 
     def compute_1d(self, root, name):
-        index = self.mcsamples[root].index[name]
-        dat, likes = self.mcsamples[root].Get1DDensity(index, writeDataToFile=False)
+        samples = self.samplesForRoot(root)
+        index = samples.index[name]
+        dat, likes = samples.Get1DDensity(index, writeDataToFile=False)
         if dat is not None:
             self.densities_dat_1D[root][name] = dat
         if likes is not None:
             self.densities_likes_1D[root][name] = likes
 
     def compute_2d(self, root, name1, name2):
-        index1 = self.mcsamples[root].index[name1]
-        index2 = self.mcsamples[root].index[name2]
+        samples = self.samplesForRoot(root)
+        index1 = samples.index[name1]
+        index2 = samples.index[name2]
         # Pre computation
-        self.mcsamples[root].PreComputeDensity(index1)
-        self.mcsamples[root].PreComputeDensity(index2)
-        dat, likes, cont, x, y = self.mcsamples[root].Get2DPlotData(index2, index1, writeDataToFile=False)
+        samples.PreComputeDensity(index1)
+        samples.PreComputeDensity(index2)
+        dat, likes, cont, x, y = samples.Get2DPlotData(index2, index1, writeDataToFile=False)
         key = (name1, name2)
         if dat is not None: self.densities_dat_2D[root][key] = dat
         if likes is not None: self.densities_likes_2D[root][key] = likes
@@ -405,8 +334,8 @@ class MCSampleAnalysis():
         name1, name2 = param1.name, param2.name
         key = (name1, name2)
         if  (not self.densities_dat_2D[root].has_key(key)) \
-                and (not self.densities_x_2D[root].has_key(key)) \
-                and (not self.densities_y_2D[root].has_key(key)):
+                or (not self.densities_x_2D[root].has_key(key)) \
+                or (not self.densities_y_2D[root].has_key(key)):
             self.compute_2d(root, name1, name2)
         if ext == '':
             pts = self.densities_dat_2D[root].get(key, np.ndarray(0))
@@ -441,37 +370,27 @@ class MCSampleAnalysis():
 
     def load_single_samples(self, root):
         if not root in self.single_samples:
-            res = self.mcsamples[root].MakeSingleSamples(writeDataToFile=False)
-            self.single_samples[root] = res
+            self.single_samples[root] = self.samplesForRoot(root).MakeSingleSamples(writeDataToFile=False)
         return self.single_samples[root]
 
     def usedParamsForRoot(self, root):
-        if os.path.isabs(root):
-            root = os.path.basename(root)
-        names = self.mcsamples[root].GetUsedParamNames()
+        names = self.samplesForRoot(root).GetUsedParamNames()
         return names
 
 
     def paramsForRoot(self, root, labelParams=None):
-        if os.path.isabs(root):
-            root = os.path.basename(root)
-        names = self.mcsamples[root].paramNames
+        samples = self.samplesForRoot(root)
+        names = samples.paramNames
         if labelParams is not None:
             names.setLabelsAndDerivedFromParamNames(labelParams)
         return names
 
     def boundsForRoot(self, root):
-        lower, upper = self.mcsamples[root].WriteBounds(None)
+        lower, upper = self.samplesForRoot(root).WriteBounds(None)
         bounds = paramBounds("")
         bounds.lower = lower
         bounds.upper = upper
         return bounds
-
-    # def rootFileForRoot(self, root):
-    #     for rootFile in self.roots:
-    #         if os.path.dirname(rootFile)==root:
-    #             return rootFile
-    #     return None
 
 
 class GetDistPlotter():
@@ -885,11 +804,15 @@ class GetDistPlotter():
                 if 'upper' in legend_loc: subplots_adjust(top=1 - frac / self.plot_row)
                 elif 'lower' in legend_loc: subplots_adjust(bottom=frac / self.plot_row)
 
+    def _escapeLatex(self, text):
+        if matplotlib.rcParams['text.usetex']:
+            return text.replace('_', '{\\textunderscore}')
+        else:
+            return text
+
     def default_legend_labels(self, legend_labels, roots):
         if legend_labels is None:
-            if matplotlib.rcParams['text.usetex']:
-                return [x.replace('_', '{\\textunderscore}') for x in roots]
-            else: return roots
+            return [self._escapeLatex(root) for root in roots]
         else: return legend_labels
 
     def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, nx=None,
@@ -1092,7 +1015,7 @@ class GetDistPlotter():
             gca().add_line(Line2D(P1, P2, color=color, ls=ls, zorder=zorder, **kwargs))
 
     def add_colorbar_label(self, cb, param):
-        cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize, rotation=-90)
+        cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize , rotation=self.settings.colorbar_label_rotation)
         setp(getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.colorbar_axes_fontsize)
 
     def _makeParamObject(self, names, samples):
@@ -1182,8 +1105,19 @@ class GetDistPlotter():
         args.update(kwargs)
         self.add_text(text_label, x, y, ax, **args)
 
-    def export(self, fname):
+    def export(self, fname=None, adir=None, watermark=None, tag=None):
+        if fname is None: fname = os.path.basename(sys.argv[0]).replace('.py', '')
+        if tag: fname += '_' + tag
+        if not '.' in fname: fname += '.pdf'
+        if adir is not None and not os.sep in fname: fname = os.path.join(adir, fname)
+        adir = os.path.dirname(fname)
+        if adir and not os.path.exists(adir): os.makedirs(adir)
+        if watermark:
+            gcf().text(0.45, 0.5, self._escapeLatex(watermark), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
+
         savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
+
+
 
     def paramNameListFromFile(self, fname):
         p = paramNames.paramNames(fname)

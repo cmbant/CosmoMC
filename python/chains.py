@@ -1,13 +1,27 @@
 import os, paramNames, pickle, random
 import numpy as np
 
+def lastModified(files):
+    return max([os.path.getmtime(fname) for fname in files])
+
+def chainFiles(root, chain_indices=None, ext='.txt'):
+    index = -1
+    files = []
+    while True:
+        index += 1
+        fname = root + ('', '_' + str(index))[index > 0] + ext
+        if index > 0 and not os.path.exists(fname): break
+        if (chain_indices is None or index in chain_indices) and os.path.exists(fname):
+            files.append(fname)
+    return files
+
 
 def loadChains(root=None, chain_indices=None, ignore_rows=0, ignore_frac=0, no_cache=False, separate_chains=False, no_stat=False, ext='.txt'):
     c = chains(root, ignore_rows=ignore_rows)
     if root is not None:
-        files = c.chainFiles(root, chain_indices, ext=ext)
+        files = chainFiles(root, chain_indices, ext=ext)
         c.cachefile = root + ext + '.pysamples'
-        if not separate_chains and chain_indices is None and not no_cache and os.path.exists(c.cachefile) and c.lastModified(files) < os.path.getmtime(c.cachefile):
+        if not separate_chains and chain_indices is None and not no_cache and os.path.exists(c.cachefile) and lastModified(files) < os.path.getmtime(c.cachefile):
             with open(c.cachefile, 'rb') as inp:
                 return pickle.load(inp)
         elif c.loadChains(root, files):
@@ -79,7 +93,8 @@ class parSamples(): pass
 
 class chains():
 
-    def __init__(self, root=None, ignore_rows=0):
+    def __init__(self, root=None, ignore_rows=0, jobItem=None):
+        self.jobItem = jobItem
         self.precision = '%.8e'
         self.ignore_rows = ignore_rows
         self.root = root
@@ -89,9 +104,6 @@ class chains():
         if self.hasNames:
             self.paramNames = paramNames.paramNames(root + '.paramnames')
             self.getParamIndices()
-
-    def lastModified(self, files):
-        return max([os.path.getmtime(fname) for fname in files])
 
     def getParamIndices(self):
         index = dict()
@@ -109,6 +121,7 @@ class chains():
         return pars
 
     def valuesForParam(self, param, force_array=False):
+        if isinstance(param, np.ndarray): return param
         if isinstance(param, basestring): param = [param]
         results = []
         for par in param:
@@ -145,33 +158,40 @@ class chains():
 
     def confidence(self, paramVec, limfrac, upper, start=None, end=None):
         paramVec = self.valuesForParam(paramVec)
-        try_b = min(paramVec)
-        try_t = max(paramVec)
 
         if start is None: start = 0
         if end is None: end = len(paramVec)
         weights = self.weights[start:end]
         norm = np.sum(weights)
 
-        lasttry = -1
-        while True:
-            if upper:
-                trial = np.sum(weights[paramVec > (try_b + try_t) / 2])
-                if trial > (norm * limfrac):
-                    try_b = (try_b + try_t) / 2
-                else:
-                    try_t = (try_b + try_t) / 2
-            else:
-                trial = np.sum(weights[paramVec < (try_b + try_t) / 2])
-                if trial > (norm * limfrac):
-                    try_t = (try_b + try_t) / 2
-                else:
-                    try_b = (try_b + try_t) / 2
-            if trial == lasttry and (abs(try_b + try_t) < 1e-10 or
-                      abs((try_b - try_t) / (try_b + try_t)) < 0.05): break
-            lasttry = trial
-
-        return try_t
+        indexes = paramVec.argsort()
+        weightsort = weights[indexes]
+        cumsum = np.cumsum(weightsort)
+        if not upper: target = norm * limfrac
+        else: target = norm * (1 - limfrac)
+        ix = np.searchsorted(cumsum, target)
+        return paramVec[indexes[min(ix, indexes.shape[0] - 1)]]
+#         try_b = np.min(paramVec)
+#         try_t = np.max(paramVec)
+#         lasttry = -1
+#         while True:
+#             if upper:
+#                 trial = np.sum(weights[paramVec > (try_b + try_t) / 2])
+#                 if trial > (norm * limfrac):
+#                     try_b = (try_b + try_t) / 2
+#                 else:
+#                     try_t = (try_b + try_t) / 2
+#             else:
+#                 trial = np.sum(weights[paramVec < (try_b + try_t) / 2])
+#                 if trial > (norm * limfrac):
+#                     try_t = (try_b + try_t) / 2
+#                 else:
+#                     try_b = (try_b + try_t) / 2
+#             if trial == lasttry and (abs(try_b + try_t) < 1e-10 or
+#                       abs((try_b - try_t) / (try_b + try_t)) < 0.05): break
+#             lasttry = trial
+#
+#         return try_t
 
     def cov(self, paramVecs):
         paramVecs = self.valuesForParam(paramVecs, force_array=True)
@@ -209,16 +229,6 @@ class chains():
         self.samples.append(paramVec, 1)
         self.getParamIndices()
 
-    def chainFiles(self, root, chain_indices=None, ext='.txt'):
-        index = -1
-        files = []
-        while True:
-            index += 1
-            fname = root + ('', '_' + str(index))[index > 0] + ext
-            if index > 0 and not os.path.exists(fname): break
-            if (chain_indices is None or index in chain_indices) and os.path.exists(fname):
-                files.append(fname)
-        return files
 
     def loadChains(self, root, files):
         self.chains = []
@@ -265,6 +275,7 @@ class chains():
         self.samples = np.vstack((chain.coldata[:, 2:] for chain in self.chains))
         self.norm = np.sum(self.weights)
         self.numrows = self.samples.shape[0]
+        self.num_vars = self.samples.shape[1]
         del(self.chains)
         return self
 
@@ -311,7 +322,7 @@ class chains():
         if self.hasNames:
             self.paramNames.deleteIndices([fix - 2 for fix in fixed])
             self.getParamIndices()
-            print 'Non-derived parameters: ', [name.name for name in self.paramNames.names[0:self.paramNames.numNonDerived()]]
+#           print 'Non-derived parameters: ', [name.name for name in self.paramNames.names[0:self.paramNames.numNonDerived()]]
 
 
     def writeSingle(self, root):

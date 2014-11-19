@@ -135,15 +135,9 @@ def plotBounds(omm, data, c='gray'):
 class planckPlotter(GetDistPlots.GetDistPlotter):
 
     def doExport(self, fname=None, adir=None, watermark=None, tag=None):
-        if fname is None: fname = os.path.basename(sys.argv[0]).replace('.py', '')
-        if tag: fname += '_' + tag
-        if not '.' in fname: fname += '.pdf'
-        if adir is not None and not os.sep in fname: fname = os.path.join(adir, fname)
-        if not os.path.exists(os.path.dirname(fname)): os.makedirs(os.path.dirname(fname))
-        if watermark is not None and watermark or watermark is None and non_final:
-            # #watermark with version tag so we know it's old
-            pylab.gcf().text(0.45, 0.5, version.replace('_', '{\\textunderscore}'), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
-        GetDistPlots.GetDistPlotter.export(self, fname)
+        if watermark is None and non_final:
+            watermark = version
+        GetDistPlots.GetDistPlotter.export(fname, adir, watermark, tag)
 
     def export(self, fname=None, tag=None):
         self.doExport(fname, 'outputs', tag=tag)

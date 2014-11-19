@@ -59,7 +59,7 @@ if not args.plots:
 #                   ini.params['plot_2D_param'] = jobItem.param_set[0]
                 ini.defaults.append(batch.commonPath + base_ini)
                 tag = ''
-                if jobItem.isImportanceJob or args.burn_removed or jobItem.propertiesIni().bool('burn_removed'):
+                if jobItem.isImportanceJob or args.burn_removed or jobItem.isBurnRemoved():
                     ini.params['ignore_rows'] = 0
                 if jobItem.isImportanceJob:
                     ini.params['compare_num'] = 1

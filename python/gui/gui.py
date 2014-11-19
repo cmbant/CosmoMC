@@ -20,7 +20,7 @@ from MainWindow import MainWindow
 
 parser = argparse.ArgumentParser(description='GetDist GUI')
 parser.add_argument('-v', '--verbose', help='verbose', action="store_true")
-parser.add_argument('--ini', help='Path to .ini file', default='batch1/getdist_common.ini')
+parser.add_argument('--ini', help='Path to .ini file', default=None)
 args = parser.parse_args()
 
 # Configure the logging
@@ -30,17 +30,10 @@ FORMAT = '%(asctime).19s [%(levelname)s]\t[%(filename)s:%(lineno)d]\t\t%(message
 logging.basicConfig(level=level, format=FORMAT)
 
 # Change to suitable directory
-os.chdir(os.path.dirname(os.path.abspath(__file__)) + '/../../')
-
-# Ini file
-iniFile = args.ini
-if not os.path.isfile(iniFile):
-    logging.warning("Invalid file %s"%iniFile)
-    iniFile=""
+cosmomc_dir = os.path.normpath(os.path.dirname(os.path.abspath(__file__)) + '/../../') + os.sep
 
 # GUI application
 app = QApplication(sys.argv)
-mainWin = MainWindow(app)
-if iniFile: mainWin.setIniFile(iniFile)
+mainWin = MainWindow(app, cosmomc_dir, args.ini)
 mainWin.show()
 sys.exit(app.exec_())
