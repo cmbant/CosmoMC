@@ -39,6 +39,8 @@ Camspec = 'CAMspec_defaults.ini'
 highL = 'highL'
 lowl = 'lowl'
 lowTEB = 'lowTEB'
+WMAPTEB = 'WMAPTEB'
+
 lowEB = 'lowEB'
 
 # dataset names
@@ -51,26 +53,23 @@ camspec_detsets = ['nonclik_detsets.ini']
 camspec_CS = ['nonclik.ini']
 
 
-variant_tag = ['TTTEEE', 'TT']
+variant_tag = ['TT', 'TTTEEE']
 variant_pol_tag = ['TE', 'EE']
 variants = variant_tag
 
 planck_highL_sets = []
 planck_pol_sets = []
-planck_vars = ['CamSpecHM']
-planck_ini = ['CAMspec_%s.ini']
-planck_base = [camspec_CS]
+planck_vars = ['plikHM', 'CamSpecHM']
+planck_ini = ['plik_dx11dr2_HM_v17_%s.ini', 'CAMspec_%s.ini']
+planck_base = [[], camspec_CS]
 
-if True:
-    planck_vars += ['plikHM']
-    planck_ini += ['plik_dx11dr2_HM_v17_%s.ini']
-    planck_base += [[]]
 for planck, ini, base in zip(planck_vars, planck_ini, planck_base):
     for name, var in zip(variant_tag, variants):
         planck_highL_sets.append(batchJob.dataSet([planck , name], base + [ ini % (var)]))
     for var in variant_pol_tag:
         planck_pol_sets.append(batchJob.dataSet([planck , var], base + [ ini % (var)]))
 
+baseTT = planck_highL_sets[0]
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
 
@@ -502,13 +501,22 @@ gchecks.params = [[], ['mnu'], ['nnu'], ['Alens'], ['yhe']]
 gchecks.importanceRuns = []
 groups.append(gchecks)
 
+
+gchecks = batchJob.jobGroup('tauchecks')
+gchecks.datasets = [copy.deepcopy(baseTT)]
+for d in gchecks.datasets:
+    d.add(WMAPTEB)
+gchecks.params = [[], ['mnu'], ['nnu'], ['Alens'], ['yhe']]
+gchecks.importanceRuns = []
+groups.append(gchecks)
+
 skip = []
 
 
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'WLHeymans', 'lensing', 'BAO', 'reion', 'abundances', 'theta']
 covNameMappings = {HST:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
-                   'Mspec':'CamSpec', WLHeymans : WL, 'tau07':'lowTEB', 'nnu1':'', 'nnup39':'', 'nnup57':'',
+                   'Mspec':'CamSpec', WLHeymans : WL, 'tau07':'lowTEB', 'WMAPTEB':'lowTEB', 'nnu1':'', 'nnup39':'', 'nnup57':'',
                     WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
 
 # try to match run to exisitng covmat
