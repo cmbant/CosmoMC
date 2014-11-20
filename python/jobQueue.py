@@ -121,7 +121,7 @@ def saveJobIndex(obj, batchPath=None):
     with open(fname + '_tmp', 'wb') as output:
         pickle.dump(obj, output, pickle.HIGHEST_PROTOCOL)
     # try to prevent corruption from error mid-write
-    os.remove(fname)
+    if os.path.exists(fname): os.remove(fname)
     shutil.move(fname + '_tmp', fname)
 
 
