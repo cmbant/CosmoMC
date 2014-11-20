@@ -745,6 +745,7 @@ class MCSamples(chains):
                 label = self.paramNames.names[j].label
                 textFileHandle.write("  %s %s\n"%(label, typestr))
 
+
         # Now do Raftery and Lewis method
         # See http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps
         # Raw non-importance sampled chains only
@@ -755,7 +756,8 @@ class MCSamples(chains):
 
         epsilon = 0.001
 
-        if (np.all(np.abs(weights-np.round(np.where(weights>0.6, weights, 0.6)))<1e-4)):
+        do_raftery_method = False
+        if do_raftery_method and (np.all(np.abs(weights-np.round(np.where(weights>0.6, weights, 0.6)))<1e-4)):
 
             nburn = np.zeros(num_chains_used, dtype=np.int)
             markov_thin = np.zeros(num_chains_used, dtype=np.int)
