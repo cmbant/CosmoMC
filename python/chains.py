@@ -326,8 +326,9 @@ class chains():
                 if np.all(chain.coldata[:, i] == chain.coldata[0, i]): fixed.append(i)
             for chain in self.chains:
                 chain.setColData(np.delete(chain.coldata, fixed, 1))
+            fixed = [fix - 2 for fix in fixed]
         if self.hasNames:
-            self.paramNames.deleteIndices([fix - 2 for fix in fixed])
+            self.paramNames.deleteIndices(fixed)
             self.getParamIndices()
 #           print 'Non-derived parameters: ', [name.name for name in self.paramNames.names[0:self.paramNames.numNonDerived()]]
 

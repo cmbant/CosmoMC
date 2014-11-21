@@ -24,6 +24,9 @@ def makePath(s):
 def nonEmptyFile(fname):
     return os.path.exists(fname) and os.path.getsize(fname) > 0
 
+def getCodeRootPath():
+    return os.path.normpath(os.path.join(os.path.dirname(__file__), '..' + os.sep)) + os.sep
+
 class propertiesItem:
     def propertiesIni(self):
         if os.path.exists(self.propertiesIniFile()):
@@ -336,7 +339,7 @@ class batchJob(propertiesItem):
     def __init__(self, path, iniDir, cosmomcPath=None):
         self.batchPath = path
         self.skip = []
-        self.basePath = cosmomcPath or os.path.normpath(os.path.join(os.path.dirname(__file__), '..' + os.sep)) + os.sep
+        self.basePath = cosmomcPath or getCodeRootPath()
         self.commonPath = self.basePath + iniDir
         self.subBatches = []
         self.jobItems = None

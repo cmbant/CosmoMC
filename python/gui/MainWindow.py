@@ -9,6 +9,7 @@ import GetDistPlots
 import ResultObjs
 import matplotlib
 from matplotlib import rcParams
+import numpy as np
 # matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -332,7 +333,7 @@ class MainWindow(QMainWindow):
             return
 
         stats = None
-        if self.batch:
+        if self.batch and False:
             jobItem = self.batch.resolveRoot(rootname)
             fname = jobItem.distRoot + '.margestats'
             stats = ResultObjs.margeStats(fname)
@@ -410,7 +411,7 @@ class MainWindow(QMainWindow):
         for _, values in self.rootnames.items():
             rootname, state = values
             if state:
-                params = self.plotter.sampleAnalyser.usedParamsForRoot(rootname)
+                params = self.plotter.sampleAnalyser.samplesForRoot(rootname).paramNames.list()
                 logging.debug("%i parameters" % len(params))
                 all_params.append(params)
 
@@ -740,7 +741,6 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Plot data", "No GetDistPlotter instance")
                 return
 
-            self.plotter.settings.setWithSubplotSize(3.5)
             if self.plotter.fig is not None:
                 self.plotter.fig.clf()
 
@@ -749,6 +749,7 @@ class MainWindow(QMainWindow):
             # X and Y items
             items_x = self.items_x
             items_y = self.items_y
+            self.plotter.settings.setWithSubplotSize(3.5)
 
             script = ""
             # Script
@@ -787,7 +788,14 @@ class MainWindow(QMainWindow):
 
             logging.debug("Plotting with roots = %s" % str(roots))
 
+            height = self.plotWidget.height() * 0.75
+            width = self.plotWidget.width() * 0.75
 
+            def setSizeQT(sz):
+                self.plotter.settings.setWithSubplotSize(max(2.0, sz / 80.))
+
+            def setSizeForN(n):
+                setSizeQT(min(height, width) / max(n, 1))
 
             # Plot parameters
             filled = self.toggleFilled.isChecked()
@@ -809,6 +817,7 @@ class MainWindow(QMainWindow):
                         param_3d = None
                         script += "param_3d = None\n"
                     script += "filled = %s\n" % filled
+                    setSizeForN(len(params))
                     try:
                         self.plotter.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)
                     except:
@@ -826,6 +835,7 @@ class MainWindow(QMainWindow):
                 params = items_x
                 logging.debug("1D plot with params = %s" % str(params))
                 script += "params=%s\n" % str(params)
+                setSizeForN(round(np.sqrt(len(params) / 1.4)))
                 try:
                     self.plotter.plots_1d(roots, params=params)
                 except:
@@ -843,6 +853,8 @@ class MainWindow(QMainWindow):
                         script += "yparams = %s\n" % str(items_y)
                         script += "filled=%s\n" % filled
                         logging.debug("Rectangle plot with xparams=%s and yparams=%s" % (str(items_x), str(items_y)))
+
+                        setSizeQT(min(height / len(items_y), width / len(items_x)))
                         try:
                             self.plotter.rectangle_plot(items_x, items_y, roots=roots, filled=filled)
                         except:
@@ -857,18 +869,22 @@ class MainWindow(QMainWindow):
                         # 2D plot
                         if len(items_x) == 1 and len(items_y) == 1:
                             pairs = [ [items_x[0], items_y[0]] ]
+                            setSizeQT(min(height, width))
                         elif len(items_x) == 1 and len(items_y) > 1:
                             item_x = items_x[0]
                             pairs = zip([item_x] * len(items_y), items_y)
+                            setSizeForN(round(np.sqrt(len(pairs) / 1.4)))
                         elif len(items_x) > 1 and len(items_y) == 1:
                             item_y = items_y[0]
                             pairs = zip(items_x, [item_y] * len(items_x))
+                            setSizeForN(round(np.sqrt(len(pairs) / 1.4)))
                         else:
                             pairs = []
                         if filled or line:
                             script += "pairs = %s\n" % pairs
                             logging.debug("2D plot with pairs = %s" % str(pairs))
                             script += "filled=%s\n" % filled
+
                             try:
                                 self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled)
                             except:
@@ -979,9 +995,9 @@ class DialogMargeStats(QDialog):
             self.table.setSelectionMode(QAbstractItemView.SingleSelection)
             self.table.setRowCount(stats.numParams())
             for irow, par in enumerate(stats.names):
-                vals = [par.name, par.mean, par.err]
+                vals = [par.name, "%5g" % par.mean, "%5g" % par.err]
                 for lim in par.limits:
-                    vals += [lim.lower, lim.upper, lim.limitTag()]
+                    vals += ["%5g" % lim.lower, "%5g" % lim.upper, lim.limitTag()]
                 vals += [par.label]
                 for icol, value in enumerate(vals):
                     item = QTableWidgetItem(str(value))
@@ -1030,7 +1046,7 @@ class DialogMargeStats(QDialog):
 if __name__ == "__main__":
 
     app = QApplication(sys.argv)
-    mainWin = MainWindow(app, os.path.normpath(os.path.dirname(os.path.abspath(__file__)) + '/../../') + os.sep)
+    mainWin = MainWindow(app, batchJob.getCodeRootPath())
     mainWin.show()
     sys.exit(app.exec_())
 

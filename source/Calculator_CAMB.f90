@@ -248,7 +248,7 @@
                 if (CosmoSettings%cl_lmax(i,i)>0) then
                     if (any(Theory%cls(i,i)%Cl(:) < 0 )) then
                         error = 1
-                        call MpiStop('CMB_cls_simple: negative C_l (could edit to silent error here)')
+                        call MpiStop('Calculator_CAMB: negative C_l (could edit to silent error here)')
                         return
                     end if
                 end if
@@ -326,7 +326,7 @@
         call this%SetPowersFromCAMB(CMB,Theory)
         if (any(Theory%cls(1,1)%Cl(:) < 0 )) then
             error = 1
-            call MpiStop('CMB_cls_simple: negative C_l (could edit to silent error here)')
+            call MpiStop('Calculator_CAMB: negative C_l (could edit to silent error here)')
         end if
         do i=1, min(3,CosmoSettings%num_cls)
             if(error/=0) exit

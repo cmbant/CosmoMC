@@ -37,16 +37,7 @@ ignorerows = ini.float('ignore_rows', 0.0)
 # Create instance of MCSamples
 mc = MCSamples.MCSamples(in_root)
 
-if (ini.params.has_key('nparams')):
-    ncols = ini.int('nparams') + 2
-    if (ini.params.has_key('columnnum')):
-        print  'specify only one of nparams or columnnum'
-        sys.exit()
-else:
-    ncols = ini.int('columnnum', 0)
-
 single_column_chain_files = ini.bool('single_column_chain_files', False)
-
 
 mc.initParameters(ini)
 
@@ -77,59 +68,6 @@ thin_cool = ini.float('thin_cool', 1.0)
 make_single_samples = ini.bool('make_single_samples', False)
 single_thin = ini.int('single_thin', 1)
 cool = ini.float('cool', 1.0)
-
-# Compute limits
-mc.initLimits(ini)
-
-if (ini.params.has_key('plotparams_num')):
-    print 'plotparams_num deprectated; just use plot_params'
-    sys.exit()
-
-plotparams = []
-line = ini.string('plot_params', 0)
-if (line not in ['', 0]):
-    plotparams_num = -1
-    plotparams = [ s for s in line.split(' ') if s <> '' ]
-    plotparams = [ mc.index[name] for name in plotparams ]
-else:
-    plotparams_num = 0
-
-line = ini.string('plot_2D_param')
-if (line == ''):
-    plot_2D_param = 0
-else:
-    tmp_params = [ s for s in line.split(' ') if s <> '' ]
-    plot_2D_param = int(tmp_params[0])
-    if (plot_2D_param <> 0 and plotparams_num <> 0 and plotparams.count(plot_2D_param) == 0):
-        print 'plot_2D_param not in plotparams'
-        sys.exit()
-
-if (plot_2D_param <> 0):
-    plot_2D_param = plot_2D_param + 2
-    num_cust2D_plots = 0
-else:
-    # Use custom array of specific plots
-    num_cust2D_plots = ini.int('plot_2D_num', 0)
-    cust2DPlots = []
-    for i in range(1, num_cust2D_plots + 1):
-        line = ini.string('plot' + str(i))
-        tmp_params = [ s for s in line.split(' ') if s <> '' ]
-        tmp_params = [ mc.index[name] for name in tmp_params ]
-        if (plotparams_num <> 0 and plotparams.count(tmp_params[0]) == 0):
-            print 'plot' + str(i), ': parameter not in plotparams'
-            sys.exit()
-        cust2DPlots.append(tmp_params[0] + 2 + (tmp_params[1] + 2) * 1000)
-
-triangle_params = []
-triangle_plot = ini.bool('triangle_plot', False)
-if (triangle_plot):
-    no_triangle_axis_labels = ini.bool('no_triangle_axis_labels', False)
-    line = ini.string('triangle_params')
-    triangle_num = -1
-    if (line <> ''):
-        triangle_params = [ s for s in line.split(' ') if s <> '' ]
-        triangle_params = [ mc.index[name] for name in triangle_params if mc.index.has_key(name) ]
-        triangle_num = len(triangle_params)
 
 exclude_chain = ini.string('exclude_chain')
 chain_exclude = [ int(s) for s in exclude_chain.split(' ') if s <> '' ]
@@ -173,14 +111,6 @@ if (not no_tests):
     mc.corr_length_thin = corr_length_thin
     mc.corr_length_steps = corr_length_steps
 
-if (ini.params.has_key('cov_matrix_dimension')):
-    covmat_dimension = len(mc.paramNames.list())
-else:
-    covmat_dimension = ini.int('cov_matrix_dimension', 0)
-    if (covmat_dimension == -1):
-        covmat_dimension = ncols - 2
-mc.covmat_dimension = covmat_dimension
-
 if (ini.params.has_key('do_minimal_1d_intervals')):
     print 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
     sys.exit()
@@ -196,23 +126,11 @@ if (PCA_num <> 0):
     if (PCA_func == ''):
         PCA_func = ['N'] * PCA_num  # No mapping
     if (line.lower() == 'all'):
-        PCA_params = range(1, PCA_num + 1)
+        PCA_params = mc.paramNames.list()
     else:
-        names = [ s for s in line.split(' ') if s <> '' ]
-        PCA_params = [ mc.index[name] for name in names ]
+        PCA_params = line.split()
     line = ini.string('PCA_normparam')
-    if (line == ''):
-        PCA_NormParam = 0
-    else:
-        tmp_params = [ s for s in line.split(' ') if s <> '' ]
-        tmp_params = [ mc.index[name] for name in tmp_params]
-        PCA_NormParam = int(tmp_params[0])
-
-num_3D_plots = ini.int('num_3D_plots', 0)
-plot_3D = []
-for ix in range(1, num_3D_plots + 1):
-    line = ini.string('3D_plot' + str(ix))
-    plot_3D.append([ s for s in line.split(' ') if s <> '' ])
+    PCA_NormParam = line or None
 
 make_scatter_samples = ini.bool('make_scatter_samples', False)
 
@@ -244,11 +162,15 @@ ok = mc.loadChains(in_root, chain_files)
 #    sys.exit()
 
 mc.removeBurnFraction(ignorerows)
+mc.deleteFixedParams()
+
 if (not no_tests):
     mc.DoConvergeTests(converge_test_limit)
 
-#
 mc.makeSingle()
+
+def filterPars(names):
+    return [ name for name in names if mc.paramNames.parWithName(name) ]
 
 if (cool <> 1):
     mc.CoolChain(cool)
@@ -257,15 +179,51 @@ if (cool <> 1):
 if (adjust_priors):
     mc.AdjustPriors()
 
-# See which parameters are fixed
-mc.GetUsedCols()
+plotparams = []
+line = ini.string('plot_params', '')
+if (line not in ['', 0]):
+    plotparams = filterPars(line.split())
+
+line = ini.string('plot_2D_param', '')
+plot_2D_param = None
+if line.strip() and line <> '0':
+    plot_2D_param = line.strip()
+
+cust2DPlots = []
+if not plot_2D_param:
+    # Use custom array of specific plots
+    num_cust2D_plots = ini.int('plot_2D_num', 0)
+    for i in range(1, num_cust2D_plots + 1):
+        line = ini.string('plot' + str(i))
+        pars = filterPars(line.split())
+        if len(pars) <> 2: raise Exception('plot_2D_num parameter not found, not varied, or not wrong number of parameters')
+        cust2DPlots.append(pars)
+
+triangle_params = []
+triangle_plot = ini.bool('triangle_plot', False)
+if (triangle_plot):
+    no_triangle_axis_labels = ini.bool('no_triangle_axis_labels', False)
+    line = ini.string('triangle_params')
+    if line: triangle_params = filterPars(line.split())
+    triangle_num = len(triangle_params)
+    triangle_plot = triangle_num > 1
+
+# Compute limits
+mc.initLimits(ini)
+
+num_3D_plots = ini.int('num_3D_plots', 0)
+plot_3D = []
+for ix in range(1, num_3D_plots + 1):
+    line = ini.string('3D_plot' + str(ix))
+    pars = filterPars(line.split())
+    if len(pars) <> 3: raise Exception('3D_plot parameter not found, not varied, or not wrong number of parameters')
+    plot_3D.append(line.split)
 
 mc.ComputeMultiplicators()
+print 'mean input multiplicity = ', mc.mean_mult
 
 if (adjust_priors):
     mc.DeleteZeros()
-
-print 'mean input multiplicity = ', mc.mean_mult
 
 # Output thinned data if requested
 # Must do this with unsorted output
@@ -275,7 +233,7 @@ if (thin_factor <> 0):
     mc.WriteThinData(filename, thin_ix, thin_cool)
 
 # Produce file of weight-1 samples if requested
-if ((num_3D_plots <> 0 and not make_single_samples or make_scatter_samples) and not no_plots):
+if ((num_3D_plots and not make_single_samples or make_scatter_samples) and not no_plots):
     make_single_samples = True
     single_thin = max(1, int(round(mc.numsamp / mc.max_mult)) / mc.max_scatter_points)
 
@@ -296,20 +254,10 @@ mc.SortColData(1)
 mc.ComputeNumSamp()
 
 # Get ND confidence region (index into sorted coldata)
-counts = 0
 mc.GetConfidenceRegion()
 
-triangle_plot = triangle_plot and (mc.num_vars > 1)
-if (triangle_plot):
-    if (triangle_num == -1):
-        triangle_num = mc.num_vars
-        triangle_params = mc.paramNames.list()
-    else:
-        ix = triangle_num
 
-        triangle_plot = triangle_num > 1
-
-num_parameters = mc.isused[mc.isused == True].shape[0]
+num_parameters = mc.paramNames.numParams()
 print 'using ', mc.numrows, ' rows, processing ', num_parameters, ' parameters'
 if (mc.indep_thin <> 0):
     print 'Approx indep samples: ', round(mc.numsamp / mc.indep_thin)
@@ -331,64 +279,50 @@ mc.Init1DDensity()
 # Do 1D bins
 mc.Do1DBins(mc.max_frac_twotail)
 
-if (not no_plots):
+if not no_plots:
     # Output files for 1D plots
+    print 'Calculating plot data...'
     filename = rootdirname + '.' + plot_ext
-    mc.WriteScriptPlots1D(filename)
-
-    if (triangle_plot):
-        filename = rootdirname + '_tri.' + plot_ext
-        mc.WriteScriptPlotsTri(filename, triangle_params)
+    mc.WriteScriptPlots1D(filename, plotparams)
 
 # Do 2D bins
-if (plot_2D_param == 0) and (num_cust2D_plots == 0) and (not no_plots):
+if plot_2D_param == 'corr' and not no_plots:
     # In this case output the most correlated variable combinations
     print 'doing 2D plots for most correlated variables'
     num_cust2D_plots_0 = 12
-    cust2DPlots, num_cust2D_plots = mc.GetCust2DPlots(num_cust2D_plots_0)
+    cust2DPlots = mc.GetCust2DPlots(num_cust2D_plots_0)
+    plot_2D_param = None
+elif plot_2D_param:
+    mc.paramNames.parWithName(plot_2D_param, error=True)  # just check
 
-if (num_cust2D_plots == 0):
-    num_2D_plots = 0
-    for j in range(mc.num_vars):
-        if (mc.ix_min[j] <> mc.ix_max[j]):
-            for j2 in range(j + 1, mc.num_vars):
-                if (mc.ix_min[j2] <> mc.ix_max[j2]):
-                    if (plot_2D_param in [0, j, j2]):
-                        num_2D_plots += 1
-else:
-    num_2D_plots = num_cust2D_plots
-
-if ((num_2D_plots > 0) and (not no_plots)):
-    print 'Producing ', num_2D_plots, ' 2D plots'
+if (cust2DPlots or plot_2D_param) and  not no_plots:
     filename = rootdirname + '_2D.' + plot_ext
-    mc.WriteScriptPlots2D(filename, plot_2D_param, num_cust2D_plots, cust2DPlots, plots_only)
+    mc.WriteScriptPlots2D(filename, plot_2D_param, cust2DPlots, plots_only)
 
 if (triangle_plot and not no_plots):
     # Add the off-diagonal 2D plots
+    mc.WriteScriptPlotsTri(rootdirname + '_tri.' + plot_ext, triangle_params)
     for i in range(triangle_num):
         for i2 in range(i + 1, triangle_num):
-            j = triangle_params[i]
-            j2 = triangle_params[i2]
-            if (not mc.isused[j]) or (not mc.isused[j2]): continue
-            if (not mc.done2D[j2][j] and not plots_only): mc.Get2DPlotData(j2, j)
+            j = mc.index[triangle_params[i]]
+            j2 = mc.index[triangle_params[i2]]
+            if (not mc.done2D or not mc.done2D[j2][j]) and not plots_only: mc.Get2DPlotData(j2, j)
 
 # Do 3D plots (i.e. 2D scatter plots with coloured points)
 if (num_3D_plots <> 0 and not no_plots):
     print 'producing ', num_3D_plots, '2D colored scatter plots'
     filename = rootdirname + '_3D.' + plot_ext
-    mc.WriteScriptPlots3D(filename, num_3D_plots, plot_3D)
+    mc.WriteScriptPlots3D(filename, plot_3D)
 
 # Write out stats marginalized
 if not plots_only: mc.saveMargeStats()
 
 # Write paramNames file
-filename = os.path.join(plot_data_dir, rootname + '.paramnames')
-mc.WriteParamNames(filename)
+mc.paramNames.saveAsText(os.path.join(plot_data_dir, rootname + '.paramnames'))
 
 # Limits from global likelihood
 if not plots_only:
-    filename = rootdirname + '.likestats'
-    mc.WriteGlobalLikelihood(filename)
+    mc.WriteGlobalLikelihood(rootdirname + '.likestats')
 
 # System command
 if (finish_run_command):
