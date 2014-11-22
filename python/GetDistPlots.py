@@ -1046,7 +1046,6 @@ class GetDistPlotter(object):
                 samples.append(param.getDerived(self._makeParamObject(names, pts)))
             else:
                 samples.append(pts[:, names.numberOfName(param.name)])
-
         self.last_scatter = scatter(samples[0], samples[1], edgecolors='none',
                 s=self.settings.scatter_size, c=samples[2], cmap=self.settings.colormap_scatter)
         if color_bar: self.last_colorbar = self.add_colorbar(params[2], **ax_args)

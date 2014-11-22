@@ -5,7 +5,7 @@ import sys
 import iniFile
 import chains
 import MCSamples
-
+import numpy as np
 # ==============================================================================
 
 if (len(sys.argv) < 2):
@@ -208,9 +208,6 @@ if (triangle_plot):
     triangle_num = len(triangle_params)
     triangle_plot = triangle_num > 1
 
-# Compute limits
-mc.initLimits(ini)
-
 num_3D_plots = ini.int('num_3D_plots', 0)
 plot_3D = []
 for ix in range(1, num_3D_plots + 1):
@@ -219,11 +216,11 @@ for ix in range(1, num_3D_plots + 1):
     if len(pars) <> 3: raise Exception('3D_plot parameter not found, not varied, or not wrong number of parameters')
     plot_3D.append(line.split)
 
-mc.ComputeMultiplicators()
-print 'mean input multiplicity = ', mc.mean_mult
 
 if (adjust_priors):
     mc.DeleteZeros()
+
+mc.updateForNewLikelihoods(ini)
 
 # Output thinned data if requested
 # Must do this with unsorted output
@@ -237,25 +234,11 @@ if ((num_3D_plots and not make_single_samples or make_scatter_samples) and not n
     make_single_samples = True
     single_thin = max(1, int(round(mc.numsamp / mc.max_mult)) / mc.max_scatter_points)
 
-# Compute means and std dev.
-mc.ComputeStats()
-
 if (make_single_samples):
     filename = os.path.join(plot_data_dir, rootname.strip() + '_single.txt')
     mc.MakeSingleSamples(filename, single_thin)
 
-# IO_WriteBounds
-filename = os.path.join(plot_data_dir, rootname.strip() + '.bounds')
-mc.WriteBounds(filename)
-
-# Sort data in order of likelihood of points
-mc.SortColData(1)
-
-mc.ComputeNumSamp()
-
-# Get ND confidence region (index into sorted coldata)
-mc.GetConfidenceRegion()
-
+print 'mean input multiplicity = ', mc.mean_mult
 
 num_parameters = mc.paramNames.numParams()
 print 'using ', mc.numrows, ' rows, processing ', num_parameters, ' parameters'
@@ -264,17 +247,13 @@ if (mc.indep_thin <> 0):
 else:
     print  'effective number of samples (assuming indep): ', round(mc.numsamp / mc.max_mult)
 
-# Get covariance matrix and correlation matrix
-mc.GetCovMatrix()
+
+# IO_WriteBounds
+filename = os.path.join(plot_data_dir, rootname.strip() + '.bounds')
+mc.WriteBounds(filename)
 
 if (PCA_num > 0) and not plots_only:
     mc.PCA(PCA_params, PCA_func, PCA_NormParam)
-
-# Find best fit, and mean likelihood
-mc.GetChainLikeSummary(toStdOut=True)
-
-# Initialize variables for 1D bins
-mc.Init1DDensity()
 
 # Do 1D bins
 mc.Do1DBins(mc.max_frac_twotail)

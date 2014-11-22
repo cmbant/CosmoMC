@@ -17,6 +17,7 @@ from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as Navigatio
 # rcParams['figure.max_num_figures'] = 1000
 
 try:
+    import PySide
     from PySide.QtCore import *
     from PySide.QtGui  import *
     os.environ['QT_API'] = 'pyside'
@@ -87,6 +88,10 @@ class MainWindow(QMainWindow):
                                  statusTip="Export commands to script",
                                  triggered=self.saveScript)
 
+        self.reLoadAct = QAction("Re-load files", self,
+                                 statusTip="Re-scan directory",
+                                 triggered=self.reLoad)
+
         self.exitAct = QAction(QIcon(":/images/application_exit.png"),
                                "E&xit", self,
                                shortcut="Ctrl+Q",
@@ -112,6 +117,7 @@ class MainWindow(QMainWindow):
         self.fileMenu.addAction(self.exportAct)
         self.fileMenu.addAction(self.scriptAct)
         self.separatorAct = self.fileMenu.addSeparator()
+        self.fileMenu.addAction(self.reLoadAct)
         self.fileMenu.addAction(self.exitAct)
 
         self.menuBar().addSeparator()
@@ -269,15 +275,18 @@ class MainWindow(QMainWindow):
         self.writeSettings()
         event.accept()
 
+    def getSettings(self):
+        return QSettings('cosmomc', 'gui')
+
     def readSettings(self):
-        settings = QSettings("cosmologist", "cosmomc_gui")
+        settings = self.getSettings()
         pos = settings.value("pos", QPoint(200, 200))
         size = settings.value("size", QSize(400, 400))
         self.resize(size)
         self.move(pos)
 
     def writeSettings(self):
-        settings = QSettings("cosmologist", "cosmomc_gui")
+        settings = self.getSettings()
         settings.setValue("pos", self.pos())
         settings.setValue("size", self.size())
 
@@ -317,6 +326,11 @@ class MainWindow(QMainWindow):
         f.write(self.script)
         f.close()
 
+    def reLoad(self):
+        adir = self.getSettings().value('lastSearchDirectory')
+        batchJob.resetGrid(adir)
+        self.openDirectory(adir)
+
     def showMargeStats(self):
         """
         Callback for action 'Show Marge Stats'.
@@ -355,11 +369,8 @@ class MainWindow(QMainWindow):
         """
         QMessageBox.about(
             self, "About GetDist GUI",
-            "Qt application for GetDist plots.")
+            "Qt application for GetDist plots.\n\nMatplotlib: " + matplotlib.__version__ + "\nPySide: " + PySide.__version__)
 
-
-    def getSettings(self):
-        return QSettings('cosmomc', 'gui')
 
     def selectRootDirName(self):
         """
@@ -956,7 +967,6 @@ class MainWindow(QMainWindow):
                 if item is None: break
             if hasattr(self, "canvas"): del self.canvas
             if hasattr(self, "toolbar"): del self.toolbar
-
             self.canvas = FigureCanvas(self.plotter.fig)
             self.toolbar = NavigationToolbar(self.canvas, self)
             self.plotWidget.layout().addWidget(self.toolbar)

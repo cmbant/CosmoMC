@@ -15,16 +15,19 @@ from chains import chains, chainFiles, lastModified
 
 # =============================================================================
 
-version = 1
+version = 4
 
 
 def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False):
         files = chainFiles(file_root)
         cachefile = file_root + '.py_mcsamples'
         if not no_cache and os.path.exists(cachefile) and lastModified(files) < os.path.getmtime(cachefile):
-            with open(cachefile, 'rb') as inp:
-                cache = pickle.load(inp)
-            if cache.version == version: return cache
+            try:
+                with open(cachefile, 'rb') as inp:
+                    cache = pickle.load(inp)
+                if cache.version == version: return cache
+            except:
+                pass
         samples = MCSamples(file_root, jobItem=jobItem)
         samples.readChains(files, ini)
         with open(cachefile, 'wb') as output:
@@ -32,7 +35,7 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False):
         return samples
 
 
-class Ranges():
+class Ranges(object):
 
     def __init__(self, fileName=None, setParamNameFile=None):
         self.names = []
@@ -76,7 +79,7 @@ class Ranges():
 
 # =============================================================================
 
-class Density1D():
+class Density1D(object):
 
     SPLINE_DANGLE = 1.e30
 
@@ -162,7 +165,7 @@ class Density1D():
 
 class MCSamples(chains):
 
-    def __init__(self, root=None, ignore_rows=0, jobItem=None):
+    def __init__(self, root=None, ignore_rows=0, jobItem=None, ini=None):
         chains.__init__(self, root, ignore_rows, jobItem=jobItem)
 
         self.version = version
@@ -176,6 +179,8 @@ class MCSamples(chains):
         self.has_markers = []
         self.markers = []
 
+        self.ini = None
+
         self.ranges = None
         self.ReadRanges()
 
@@ -185,6 +190,7 @@ class MCSamples(chains):
         self.num_bins_2D = 40
         self.smooth_scale_1D = 0.25
         self.smooth_scale_2D = 2
+        self.max_corr_2D = 0.95
         self.num_contours = 2
         self.contours = [0.68, 0.95]
         self.max_scatter_points = 2000
@@ -193,9 +199,9 @@ class MCSamples(chains):
         self.shade_meanlikes = False
 
         self.num_vars = 0
+        self.numsamp = 0
         self.max_mult = 0
         self.mean_mult = 0
-        self.numsamp = 0
         self.plot_data_dir = ""
         self.rootname = ""
         self.rootdirname = ""
@@ -244,7 +250,6 @@ class MCSamples(chains):
 
         self.plot_meanlikes = ini.bool('plot_meanlikes', self.plot_meanlikes)
 
-        self.single_thin = ini.int('single_thin', 1)
         self.max_scatter_points = ini.int('max_scatter_points', self.max_scatter_points)
         self.credible_interval_threshold = ini.float('credible_interval_threshold', self.credible_interval_threshold)
 
@@ -255,6 +260,7 @@ class MCSamples(chains):
         self.force_twotail = ini.bool('force_twotail', False)
         if (self.force_twotail): print 'Computing two tail limits'
 
+        self.max_corr_2D = ini.float('max_corr_2D', self.max_corr_2D)
 
 
     def initContours(self, ini=None):
@@ -280,8 +286,8 @@ class MCSamples(chains):
 
         nvars = len(self.paramNames.names)
 
-        self.limmin = nvars * [0.]
-        self.limmax = nvars * [0.]
+        self.limmin = np.zeros(nvars)
+        self.limmax = np.zeros(nvars)
 
         self.has_limits = nvars * [False]
         self.has_limits_bot = nvars * [False]
@@ -322,11 +328,6 @@ class MCSamples(chains):
     def readChains(self, chain_files, ini):
         # Used for by plotting scripts and gui
 
-        if ini: self.initParameters(ini)
-        self.initContours(ini)
-
-        self.initLimits(ini)
-
         self.loadChains(self.root, chain_files)
 
         ignorerows = 0
@@ -340,19 +341,30 @@ class MCSamples(chains):
         # Make a single array for chains
         self.makeSingle()
 
+        self.updateForNewLikelihoods(ini)
+
+        return self
+
+    def updateForNewLikelihoods(self, ini=None):
+        self.updateChainBaseStatistics(ini)
+        self.GetConfidenceRegion()
+        # Get ND confidence region
+
+
+    def updateChainBaseStatistics(self, ini=None):
+
+        super(MCSamples, self).updateChainBaseStatistics()
+        if not ini: ini = self.ini
+        if ini:
+            self.initParameters(ini)
+            self.initContours(ini)
+            self.initLimits(ini)
+        self.ini = ini
+
         self.ComputeMultiplicators()
 
         # Compute statistics values
         self.ComputeStats()
-
-        # Sort data in order of likelihood of points
-        self.SortColData(1)
-
-        # Get covariance matrix and correlation matrix
-        self.ComputeNumSamp()
-
-        # Get ND confidence region
-        self.GetConfidenceRegion()
 
         self.GetCovMatrix(False)
 
@@ -361,8 +373,6 @@ class MCSamples(chains):
 
         # Init arrays for 1D densities
         self.Init1DDensity()
-        return self
-
 
     def AdjustPriors(self):
         sys.exit('You need to write the AdjustPriors function in MCSamples.py first!')
@@ -389,23 +399,22 @@ class MCSamples(chains):
         self.loglikes = np.delete(self.loglikes, indexes)
         self.samples = np.delete(self.samples, indexes, axis=0)
 
-    def SortColData(self, icol=None):
+    def SortByLikelihood(self):
+        self.SortColData(likes=True)
+
+    def SortColData(self, ix=None, likes=False):
         """
         Sort coldata in order of likelihood
         """
-        if icol is None: return
-        if icol == 0:
-            indexes = self.weights.argsort()
-        elif icol == 1:
+        if likes:
             indexes = self.loglikes.argsort()
         else:
-            indexes = self.samples[:, icol - 2].argsort()
+            if ix is None: return
+            indexes = self.samples[:, ix].argsort()
         self.weights = self.weights[indexes]
         self.loglikes = self.loglikes[indexes]
         self.samples = self.samples[indexes]
 
-    def ComputeNumSamp(self):
-        self.numsamp = np.sum(self.weights)
 
 
     def MakeSingleSamples(self, filename="", single_thin=None, writeDataToFile=True):
@@ -414,14 +423,14 @@ class MCSamples(chains):
         with probability given by their weight.
         """
         if single_thin is None:
-            single_thin = max(1, int(round(self.numsamp / self.max_mult)) / self.max_scatter_points)
+            single_thin = max(1, self.numsamp / self.max_mult / self.max_scatter_points)
+        rand = np.random.random_sample(self.numrows)
+        maxmult = np.max(self.weights)
 
         if writeDataToFile:
             textFileHandle = open(filename, 'w')
-            maxmult = np.max(self.weights)
-            for i in range(self.numrows):
-                rand = np.random.random_sample()
-                if (rand <= self.weights[i] / maxmult / single_thin):
+            for i, r in enumerate(rand):
+                if (r <= self.weights[i] / maxmult / single_thin):
                     textFileHandle.write("%16.7E" % (1.0))
                     textFileHandle.write("%16.7E" % (self.loglikes[i]))
                     for j in range(self.num_vars):
@@ -430,30 +439,7 @@ class MCSamples(chains):
             textFileHandle.close()
         else:
             # return data
-            rand = np.random.random_sample(self.numrows)
-            maxmult = np.max(self.weights)
-            indices = rand <= self.weights / (maxmult * single_thin)
-            return self.samples[indices]
-
-#             weights = []
-#             loglikes = []
-#             samples = []
-#             maxmult = np.max(self.weights)
-#             for i in range(self.numrows):
-#                 rand = np.random.random_sample()
-#                 if (rand <= self.weights[i] / maxmult / single_thin):
-#                     weights.append(1.0)
-#                     loglikes.append(self.loglikes[i])
-#                     values = []
-#                     for j in range(self.num_vars):
-#                         values.append(self.samples[i][j])
-#                     samples.append(values)
-#             a1 = np.array(weights)
-#             a2 = np.array(loglikes)
-#             a3 = np.array(samples)
-#
-#             res = np.column_stack((a1, a2, a3))
-#             return res
+            return self.samples[rand <= self.weights / (maxmult * single_thin)]
 
     def WriteThinData(self, fname, thin_ix, cool):
         nparams = self.samples.shape[1]
@@ -483,9 +469,11 @@ class MCSamples(chains):
 
     def GetCovMatrix(self, writeDataToFile=True):
 
+        nparam = self.paramNames.numParams()
+        paramVecs = [ self.samples[:, i] for i in range(nparam) ]
+        fullcov = self.cov(paramVecs)
         nparamNonDerived = self.paramNames.numNonDerived()
-        paramVecs = [ self.samples[:, i] for i in range(nparamNonDerived) ]
-        self.covmatrix = self.cov(paramVecs)
+        self.covmatrix = fullcov[:nparamNonDerived, :nparamNonDerived]
 
         if writeDataToFile:
             fname = self.rootdirname + ".covmat"
@@ -497,9 +485,7 @@ class MCSamples(chains):
                 textFileHandle.write("\n")
             textFileHandle.close()
 
-        nparam = self.paramNames.numParams()
-        paramVecs = [ self.samples[:, i] for i in range(nparam) ]
-        self.corrmatrix = self.corr(paramVecs)
+        self.corrmatrix = self.corr(paramVecs, cov=fullcov)
         if writeDataToFile:
             np.savetxt(self.rootdirname + ".corr", self.corrmatrix, fmt="%17.7E")
 
@@ -1298,6 +1284,23 @@ class MCSamples(chains):
         return None, None
 
 
+    def get2DContourLevels(self, bins2D):
+        norm = np.sum(bins2D)
+        contour_levels = np.zeros(self.num_contours)
+        for ix1 in range(self.num_contours):
+            try_t = np.max(bins2D)
+            try_b = 0
+            lasttry = -1
+            while True:
+                try_sum = np.sum(bins2D[np.where(bins2D < (try_b + try_t) / 2)])
+                if (try_sum > (1 - self.contours[ix1]) * norm):
+                    try_t = (try_b + try_t) / 2
+                else:
+                    try_b = (try_b + try_t) / 2
+                if (try_sum == lasttry): break
+                lasttry = try_sum
+            contour_levels[ix1] = (try_b + try_t) / 2
+        return contour_levels
 
     def Get2DPlotData(self, j, j2, writeDataToFile=True):
         """
@@ -1311,8 +1314,8 @@ class MCSamples(chains):
         corr = self.corrmatrix[j2][j]
         # keep things simple unless obvious degeneracy
         if (abs(corr) < 0.3): corr = 0.
-        corr = max(-0.95, corr)
-        corr = min(0.95, corr)
+        corr = max(-self.max_corr_2D, corr)
+        corr = min(self.max_corr_2D, corr)
 
         # for tight degeneracies increase bin density
         nbin2D = min(4 * self.num_bins_2D, int(round(self.num_bins_2D / (1 - abs(corr)))))
@@ -1416,22 +1419,8 @@ class MCSamples(chains):
 
         bins2D = bins2D / np.max(bins2D)
         # Get contour containing contours(:) of the probability
-        norm = np.sum(bins2D)
 
-        contour_levels = np.zeros(self.num_contours)
-        for ix1 in range(self.num_contours):
-            try_t = np.max(bins2D)
-            try_b = 0
-            lasttry = -1
-            while True:
-                try_sum = np.sum(bins2D[np.where(bins2D < (try_b + try_t) / 2)])
-                if (try_sum > (1 - self.contours[ix1]) * norm):
-                    try_t = (try_b + try_t) / 2
-                else:
-                    try_b = (try_b + try_t) / 2
-                if (try_sum == lasttry): break
-                lasttry = try_sum
-            contour_levels[ix1] = (try_b + try_t) / 2
+        contour_levels = self.get2DContourLevels(bins2D)
 
         bins2D[np.where(bins2D < 1e-30)] = 0
 
@@ -1524,8 +1513,7 @@ class MCSamples(chains):
 
     def GetChainLikeSummary(self, toStdOut=False):
         text = ""
-        # maxlike = np.max(self.loglikes)
-        maxlike = self.loglikes[0]
+        maxlike = np.max(self.loglikes)
         text += "Best fit sample -log(Like) = %f\n" % maxlike
         if ((self.loglikes[self.numrows - 1] - maxlike) < 30):
             self.meanlike = np.log(np.sum(np.exp(self.loglikes - maxlike) * self.weights) / self.norm) + maxlike
@@ -1551,6 +1539,8 @@ class MCSamples(chains):
         for i in range(nparam): self.sddev[i] = self.std(self.samples[:, i])
 
     def Init1DDensity(self):
+        self.done_1Dbins = False
+        self.density1D = dict()
         nparam = self.samples.shape[1]
         self.param_min = np.zeros(nparam)
         self.param_max = np.zeros(nparam)
@@ -1564,18 +1554,22 @@ class MCSamples(chains):
         self.marge_limits_top = np.ndarray([self.num_contours, nparam], dtype=bool)
 
     def GetConfidenceRegion(self):
-        cumsum = np.cumsum(self.weights)
+                # Sort data in order of likelihood of points
+        # self.SortByLikelihood()
+        indexes = self.loglikes.argsort()
+        cumsum = np.cumsum(self.weights[indexes])
         self.ND_cont1 = np.searchsorted(cumsum, self.norm * self.contours[0])
         self.ND_cont2 = np.searchsorted(cumsum, self.norm * self.contours[1])
 
         self.ND_limit_top = np.empty((2, self.num_vars))
         self.ND_limit_bot = np.empty((2, self.num_vars))
         for j in range(self.num_vars):
-            self.ND_limit_bot[0, j] = np.min(self.samples[:self.ND_cont1, j])
-            self.ND_limit_bot[1, j] = np.min(self.samples[:self.ND_cont2, j])
-            self.ND_limit_top[0, j] = np.max(self.samples[:self.ND_cont1, j])
-            self.ND_limit_top[1, j] = np.max(self.samples[:self.ND_cont2, j])
-
+            region1 = self.samples[indexes[:self.ND_cont1], j]
+            region2 = self.samples[indexes[:self.ND_cont2], j]
+            self.ND_limit_bot[0, j] = np.min(region1)
+            self.ND_limit_bot[1, j] = np.min(region2)
+            self.ND_limit_top[0, j] = np.max(region1)
+            self.ND_limit_top[1, j] = np.max(region2)
 
     def ReadRanges(self):
         ranges_file = self.root + '.ranges'

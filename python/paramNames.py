@@ -115,8 +115,10 @@ class paramList:
             if p is not None: usedNames.names.append(name)
         return usedNames
 
-    def addDerived(self, name):
-        self.names.append(paramInfo(name=name, derived=True))
+    def addDerived(self, name, **kwargs):
+        if kwargs.get('derived') is None: kwargs['derived'] = True
+        kwargs['name'] = name
+        self.names.append(paramInfo(**kwargs))
         return self.names[-1]
 
     def maxNameLen(self):

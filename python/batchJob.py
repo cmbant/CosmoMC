@@ -2,6 +2,10 @@
 import os, sys, shutil, pickle, ResultObjs, time, copy, iniFile
 
 
+def resetGrid(directory):
+    fname = os.path.abspath(directory) + os.sep + 'batch.pyobj'
+    if os.path.exists(fname): os.remove(fname)
+
 def readobject(directory=None):
     if directory == None:
         directory = sys.argv[1]

@@ -30,6 +30,7 @@ def loadChains(root=None, chain_indices=None, ignore_rows=0, ignore_frac=0, no_c
             if not no_stat: c.getChainsStats()
             if not separate_chains:
                 c.makeSingle()
+                c.updateChainBaseStatistics()
                 with open(c.cachefile, 'wb') as output:
                     pickle.dump(c, output, pickle.HIGHEST_PROTOCOL)
             return c
@@ -60,7 +61,7 @@ def getSignalToNoise(C, noise=None, R=None, eigs_only=False):
         return w, U
 
 
-class chain():
+class chain(object):
     def __init__(self, filename, ignore_rows=0):
         self.setColData(np.loadtxt(filename, skiprows=ignore_rows))
 
@@ -89,12 +90,12 @@ class chain():
         self.means = np.asarray(means)
         return means
 
-class paramConfidenceData():
+class paramConfidenceData(object):
     pass
 
-class parSamples(): pass
+class parSamples(object): pass
 
-class chains():
+class chains(object):
 
     def __init__(self, root=None, ignore_rows=0, jobItem=None):
         self.jobItem = jobItem
@@ -231,11 +232,16 @@ class chains():
         return getSignalToNoise(C, noise, R, eigs_only)
 
 
-    def addDerived(self, paramName, paramVec):
-        self.paramNames.addDerived(paramName)
-        self.samples.append(paramVec, 1)
+    def updateChainBaseStatistics(self):
+        self.norm = np.sum(self.weights)
+        self.numrows = self.samples.shape[0]
+        self.num_vars = self.samples.shape[1]
         self.getParamIndices()
 
+    def addDerived(self, paramVec, **kwargs):
+        self.samples = np.c_[self.samples, paramVec]
+        return self.paramNames.addDerived(**kwargs)
+    #    self.updateChainBaseStatistics()
 
     def loadChains(self, root, files):
         self.chains = []
@@ -280,9 +286,6 @@ class chains():
         self.weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
         self.loglikes = np.hstack((chain.coldata[:, 1] for chain in self.chains))
         self.samples = np.vstack((chain.coldata[:, 2:] for chain in self.chains))
-        self.norm = np.sum(self.weights)
-        self.numrows = self.samples.shape[0]
-        self.num_vars = self.samples.shape[1]
         del(self.chains)
         return self
 
