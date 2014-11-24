@@ -10,7 +10,7 @@ from scipy.interpolate import splrep, splev
 from scipy.stats import norm
 import pickle
 import ResultObjs
-import copy
+import iniFile
 from chains import chains, chainFiles, lastModified
 
 # =============================================================================
@@ -341,25 +341,24 @@ class MCSamples(chains):
         # Make a single array for chains
         self.makeSingle()
 
-        self.updateForNewLikelihoods(ini)
+        self.updateChainBaseStatistics(ini)
 
         return self
 
-    def updateForNewLikelihoods(self, ini=None):
-        self.updateChainBaseStatistics(ini)
-        self.GetConfidenceRegion()
-        # Get ND confidence region
-
-
-    def updateChainBaseStatistics(self, ini=None):
+    def updateChainBaseStatistics(self, ini=None, ini_settings={}):
 
         super(MCSamples, self).updateChainBaseStatistics()
         if not ini: ini = self.ini
-        if ini:
-            self.initParameters(ini)
-            self.initContours(ini)
-            self.initLimits(ini)
+        if ini_settings:
+            if not ini: ini = iniFile.iniFile()
+            ini.params.update(ini_settings)
+
         self.ini = ini
+
+        if ini: self.initParameters(ini)
+
+        self.initContours(ini)
+        self.initLimits(ini)
 
         self.ComputeMultiplicators()
 
@@ -373,6 +372,9 @@ class MCSamples(chains):
 
         # Init arrays for 1D densities
         self.Init1DDensity()
+
+        # Get ND confidence region
+        self.GetConfidenceRegion()
 
     def AdjustPriors(self):
         sys.exit('You need to write the AdjustPriors function in MCSamples.py first!')
@@ -399,25 +401,8 @@ class MCSamples(chains):
         self.loglikes = np.delete(self.loglikes, indexes)
         self.samples = np.delete(self.samples, indexes, axis=0)
 
-    def SortByLikelihood(self):
-        self.SortColData(likes=True)
 
-    def SortColData(self, ix=None, likes=False):
-        """
-        Sort coldata in order of likelihood
-        """
-        if likes:
-            indexes = self.loglikes.argsort()
-        else:
-            if ix is None: return
-            indexes = self.samples[:, ix].argsort()
-        self.weights = self.weights[indexes]
-        self.loglikes = self.loglikes[indexes]
-        self.samples = self.samples[indexes]
-
-
-
-    def MakeSingleSamples(self, filename="", single_thin=None, writeDataToFile=True):
+    def MakeSingleSamples(self, filename="", single_thin=None):
         """
         Make file of weight-1 samples by choosing samples
         with probability given by their weight.
@@ -427,7 +412,7 @@ class MCSamples(chains):
         rand = np.random.random_sample(self.numrows)
         maxmult = np.max(self.weights)
 
-        if writeDataToFile:
+        if filename:
             textFileHandle = open(filename, 'w')
             for i, r in enumerate(rand):
                 if (r <= self.weights[i] / maxmult / single_thin):

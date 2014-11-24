@@ -220,7 +220,7 @@ for ix in range(1, num_3D_plots + 1):
 if (adjust_priors):
     mc.DeleteZeros()
 
-mc.updateForNewLikelihoods(ini)
+mc.updateChainBaseStatistics(ini)
 
 # Output thinned data if requested
 # Must do this with unsorted output

@@ -105,6 +105,7 @@ class chains(object):
         self.chains = []
         self.samples = None
         self.hasNames = os.path.exists(root + '.paramnames')
+        self.needs_update = True
         if self.hasNames:
             self.paramNames = paramNames.paramNames(root + '.paramnames')
             self.getParamIndices()
@@ -237,9 +238,11 @@ class chains(object):
         self.numrows = self.samples.shape[0]
         self.num_vars = self.samples.shape[1]
         self.getParamIndices()
+        self.needs_update = False
 
     def addDerived(self, paramVec, **kwargs):
         self.samples = np.c_[self.samples, paramVec]
+        self.needs_update = True
         return self.paramNames.addDerived(**kwargs)
     #    self.updateChainBaseStatistics()
 
@@ -389,7 +392,7 @@ class chains(object):
 
     def filter(self, where):
         self.samples = self.samples[where, :]
-        self.weights = self.weights[where, :]
+        self.weights = self.weights[where]
         self.loglikes = self.loglikes[where]
         self.norm = np.sum(self.weights)
 

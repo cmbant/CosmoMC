@@ -366,7 +366,7 @@ class MCSampleAnalysis(object):
 
     def load_single_samples(self, root):
         if not root in self.single_samples:
-            self.single_samples[root] = self.samplesForRoot(root).MakeSingleSamples(writeDataToFile=False)
+            self.single_samples[root] = self.samplesForRoot(root).MakeSingleSamples()
         return self.single_samples[root]
 
 
@@ -1010,6 +1010,8 @@ class GetDistPlotter(object):
 
     def add_colorbar(self, param, orientation='vertical', **ax_args):
         cb = colorbar(orientation=orientation)
+        cb.set_alpha(1)
+        cb.draw_all()
         if not ax_args.get('color_label_in_axes'):
             self.add_colorbar_label(cb, param)
             if self.settings.colorbar_rotation is not None:
@@ -1036,7 +1038,7 @@ class GetDistPlotter(object):
             setattr(p, par.name, samples[:, i])
         return p
 
-    def add_3d_scatter(self, root, in_params, color_bar=True, **ax_args):
+    def add_3d_scatter(self, root, in_params, color_bar=True, alpha=1, extra_thin=1, **ax_args):
         params = self.get_param_array(root, in_params)
         pts = self.sampleAnalyser.load_single_samples(root)
         names = self.paramNamesForRoot(root)
@@ -1046,8 +1048,10 @@ class GetDistPlotter(object):
                 samples.append(param.getDerived(self._makeParamObject(names, pts)))
             else:
                 samples.append(pts[:, names.numberOfName(param.name)])
+        if extra_thin > 1:
+            samples = [ pts[::extra_thin] for pts in samples]
         self.last_scatter = scatter(samples[0], samples[1], edgecolors='none',
-                s=self.settings.scatter_size, c=samples[2], cmap=self.settings.colormap_scatter)
+                s=self.settings.scatter_size, c=samples[2], cmap=self.settings.colormap_scatter, alpha=alpha)
         if color_bar: self.last_colorbar = self.add_colorbar(params[2], **ax_args)
         xbounds = [min(samples[0]), max(samples[0])]
         r = xbounds[1] - xbounds[0]

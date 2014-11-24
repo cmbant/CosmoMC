@@ -9,7 +9,7 @@ w             w			#equation of state parameter for scalar field dark energy toda
 wa            w_a       #w_a variation
 nnu           N_{\mathrm{eff}}   #effective number of neutrinos (only clearly defined for massless)
 yhe           Y_{\mathrm{P}}    #Helium mass fraction (not used if bbn_consistency)    
-alpha1        \alpha_{-1} #correlated CDM isocurvature 
+alpha1        \alpha #correlated CDM isocurvature 
 deltazrei     \Delta z_{\mathrm{re}} #width of reionization
 Alens         A_{\mathrm{L}}     #lensing potential scaled by sqrt(A_lens)
 Alensf        A_{\mathrm{L}}^{\mathrm{fid}}     #lensing potential scaled by sqrt(A_lens)
@@ -82,7 +82,7 @@ omegal*       \Omega_\Lambda
 omegam*       \Omega_{\mathrm{m}}
 sigma8*       \sigma_8
 zrei*         z_{\mathrm{re}}
-rmsdeflect*   \langle d^2\rangle^{1/2}/\mathrm{arcmin}
+rmsdeflect*   \langle d^2\rangle^{1/2}\,[\mathrm{arcmin}]
 r10*          r_{10}	#tensor-scalar C_l amplitude at l=10
 H0*           H_0		#hubble parameter is H0 km/s/Mpc
 r02*          r_{0.002}         #r at k=0.002
@@ -101,7 +101,7 @@ clamp*        10^9 A_{\mathrm{s}} e^{-2\tau}   #parameter determining C_l amplit
 ctlamp*       10^9 A_{\mathrm{t}} e^{-2\tau}   #parameter determining L~100 tensor C_l amplitude
 ns02*         n_{\mathrm{s},0.002}
 omeganuh2*    \Omega_\nu h^2 
-age*          \mathrm{Age}/\mathrm{Gyr}
+age*          \mathrm{Age}\,[\mathrm{Gyr}]
 zstar*        z_\ast
 rstar*        r_\ast
 thetastar*    100\theta_\ast
