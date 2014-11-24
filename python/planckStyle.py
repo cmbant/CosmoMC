@@ -33,24 +33,24 @@ else:
 
 datalabel = dict()
 defdata_TT = defdata_root + '_TT_lowTEB'
-datalabel[defdata_TT] = r'\textit{Planck} TT$+$lowP'
+datalabel[defdata_TT] = r'\textit{Planck} TT$+$lowT,P'
 defdata_TE = defdata_root + '_TE_lowEB'
-datalabel[defdata_TE] = r'\textit{Planck} TE$+$lowEB'
+datalabel[defdata_TE] = r'\textit{Planck} TE$+$lowP'
 defdata_EE = defdata_root + '_EE_lowEB'
-datalabel[defdata_EE] = r'\textit{Planck} EE$+$lowEB'
+datalabel[defdata_EE] = r'\textit{Planck} EE$+$lowP'
 defdata_TE_TEB = defdata_root + '_TE_lowTEB'
-datalabel[defdata_TE_TEB] = r'\textit{Planck} TE$+$lowP'
+datalabel[defdata_TE_TEB] = r'\textit{Planck} TE$+$lowT,P'
 defdata_EE_TEB = defdata_root + '_EE_lowTEB'
-datalabel[defdata_EE_TEB] = r'\textit{Planck} EE$+$lowP'
+datalabel[defdata_EE_TEB] = r'\textit{Planck} EE$+$lowT,P'
 
 
 defdata_all = defdata_root + '_TTTEEE_lowTEB'
-datalabel[defdata_all] = r'\textit{Planck} TT,TE,EE$+$lowP'
+datalabel[defdata_all] = r'\textit{Planck} TT,TE,EE$+$lowT,P'
 defdata_TTTEEE = defdata_all
 defdata_TTonly = defdata_root + '_TT_lowl'
-datalabel[defdata_TTonly] = r'\textit{Planck} TT'
+datalabel[defdata_TTonly] = r'\textit{Planck} TT$+$lowT'
 defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
-datalabel[defdata_allNoLowE] = r'\textit{Planck} TT,TE,EE'
+datalabel[defdata_allNoLowE] = r'\textit{Planck} TT,TE,EE$+$lowT'
 
 defdata = defdata_TT
 deflabel = datalabel[defdata_TT]
@@ -69,6 +69,10 @@ NoLowLE = datalabel[defdata_allNoLowE]
 lensing = datalabel[defdata_lensing]
 lensingall = datalabel[defdata_all_lensing]
 defplanck = datalabel[defdata]
+
+shortlabel = {}
+for key, value in datalabel.items():
+    shortlabel[key] = value.replace(planck + ' ', '')
 
 NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
 NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
