@@ -78,18 +78,28 @@ def CLdensity(samples, param, scalarMap, nbins=300, deltaL=1, Lmax=200, color_po
     im.set_interpolation('bicubic')
 
 
+def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=200):
+    new_cmap = colors.LinearSegmentedColormap.from_list(
+        'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
+        cmap(np.linspace(minval, maxval, n)))
+    return new_cmap
+
 def getColorMap(parvals, parname):
     jet = plt.get_cmap('jet')
-    delta = np.max(parvals) - np.min(parvals)
+    cmap = truncate_colormap(jet, 0.05, 0.9)
+    # delta = np.max(parvals) - np.min(parvals)
+    delta = 0
     cNorm = colors.Normalize(vmin=np.min(parvals) + delta / 10, vmax=np.max(parvals) - delta / 10)
-    scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=jet)
+    scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cmap)
     scalarMap.set_array(parvals)
     return scalarMap, cNorm
 
 def setLabels(scalarMap, cNorm, par):
     xlabel('$L$')
     cb = colorbar(scalarMap, norm=cNorm)
-    cb.set_label('$' + par.label + '$', rotation=colorbar_label_rotation_angle, labelpad=10)
+    lab = par.label
+    if lab == r'\alpha_{-1}': lab = r'\alpha'
+    cb.set_label('$' + lab + '$', rotation=colorbar_label_rotation_angle, labelpad=10)
     if colorbar_tick_label_vertical:
         for ticklabel in cb.ax.get_yticklabels():
             ticklabel.set_rotation(-90)

@@ -207,21 +207,26 @@ class SampleAnalysisGetDist(object):
 
 class MCSampleAnalysis(object):
 
-    def __init__(self, chain_dir='', ini_file=''):
+    def __init__(self, chain_dir='', settings=None):
         self.chain_dir = chain_dir
         self.batch = None
+        ini = None
         if chain_dir:
             import makeGrid
             if makeGrid.pathIsGrid(chain_dir):
                 self.batch = batchJob.readobject(self.chain_dir)
-                ini_file = self.batch.commonPath + 'getdist_common.ini'
+                ini = iniFile.iniFile(self.batch.commonPath + 'getdist_common.ini')
 
-        self.ini = None
-        if ini_file:
-            self.ini = iniFile.iniFile(ini_file)
+        if settings and isinstance(settings, basestring):
+            ini = iniFile.iniFile(settings)
 
+        if not ini: ini = iniFile.iniFile()
+        if isinstance(settings, dict): ini.params.update(settings)
+        self.ini = ini
+        self.reset()
+
+    def reset(self):
         self.mcsamples = {}
-
         # Dicts. 1st key is root; 2nd key is param
         self.densities_dat_1D = dict()
         self.densities_likes_1D = dict()
@@ -283,9 +288,9 @@ class MCSampleAnalysis(object):
         index1 = samples.index[name1]
         index2 = samples.index[name2]
         # Pre computation
-        samples.PreComputeDensity(index1)
-        samples.PreComputeDensity(index2)
-        dat, likes, cont, x, y = samples.Get2DPlotData(index2, index1, writeDataToFile=False)
+        samples.initParamRanges(index1)
+        samples.initParamRanges(index2)
+        dat, likes, cont, x, y = samples.Get2DPlotData(index2, index1)
         key = (name1, name2)
         if dat is not None: self.densities_dat_2D[root][key] = dat
         if likes is not None: self.densities_likes_2D[root][key] = likes
@@ -388,13 +393,13 @@ class MCSampleAnalysis(object):
 
 class GetDistPlotter(object):
 
-    def __init__(self, plot_data=None, settings=None, mcsamples=False, chain_dir='', ini_file=''):
+    def __init__(self, plot_data=None, settings=None, mcsamples=False, chain_dir='', analysis_settings=None):
         if settings is None: self.settings = defaultSettings
         else: self.settings = settings
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
         if chain_dir or mcsamples:
-            self.sampleAnalyser = MCSampleAnalysis(chain_dir, ini_file)
+            self.sampleAnalyser = MCSampleAnalysis(chain_dir, analysis_settings)
         else:
             self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
         self.newPlot()

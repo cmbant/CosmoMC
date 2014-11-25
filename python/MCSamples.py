@@ -238,9 +238,9 @@ class MCSamples(chains):
         self.smooth_scale_1D = ini.float('smooth_scale_1D', self.smooth_scale_1D)
         self.smooth_scale_2D = ini.float('smooth_scale_2D', self.smooth_scale_2D)
 
-        if (self.smooth_scale_1D > 0) and (self.smooth_scale_1D > 1):
+        if self.smooth_scale_1D > 0 and self.smooth_scale_1D > 1:
             raise Exception('WARNING: smooth_scale_1D>1 is oversmoothed')
-        if (self.smooth_scale_1D > 0) and (self.smooth_scale_1D > 1.9):
+        if self.smooth_scale_1D > 0 and self.smooth_scale_1D > 1.9:
             raise Exception('smooth_scale_1D>1 is now in stdev units')
 
         self.no_plots = ini.bool('no_plots', False)
@@ -258,7 +258,7 @@ class MCSamples(chains):
         self.subplot_size_inch3 = ini.float('subplot_size_inch3', self.subplot_size_inch)
 
         self.force_twotail = ini.bool('force_twotail', False)
-        if (self.force_twotail): print 'Computing two tail limits'
+        if self.force_twotail: print 'Computing two tail limits'
 
         self.max_corr_2D = ini.float('max_corr_2D', self.max_corr_2D)
 
@@ -1002,7 +1002,7 @@ class MCSamples(chains):
         textFileHandle.close()
 
 
-    def PreComputeDensity(self, j, paramConfid=None):
+    def initParamRanges(self, j, paramConfid=None):
 
         # Return values
         smooth_1D, end_edge = 0, 0
@@ -1072,7 +1072,7 @@ class MCSamples(chains):
         logging.info("1D density for %s (%i)" % (self.parName(j), j))
 
         paramVec = self.samples[:, j]
-        width, smooth_1D, end_edge = self.PreComputeDensity(j, paramConfid)
+        width, smooth_1D, end_edge = self.initParamRanges(j, paramConfid)
 
         if width == 0: raise Exception("width is 0 in Get1DDensity")
 
@@ -1287,7 +1287,7 @@ class MCSamples(chains):
             contour_levels[ix1] = (try_b + try_t) / 2
         return contour_levels
 
-    def Get2DPlotData(self, j, j2, writeDataToFile=True):
+    def Get2DPlotData(self, j, j2, writeDataToFile=False):
         """
         Get 2D plot data.
         """
@@ -1781,7 +1781,7 @@ class MCSamples(chains):
                         if cust2DPlots and (par1 + '__' + par2) not in cuts: continue
                         plot_num += 1
                         self.done2D[j][j2] = True
-                        if not plots_only: self.Get2DPlotData(j, j2)
+                        if not plots_only: self.Get2DPlotData(j, j2, writeDataToFile=True)
                         textFileHandle.write("pairs.append(['%s','%s'])\n" % (par1, par2))
         textFileHandle.write('g.plots_2d(roots,param_pairs=pairs)\n')
         textExport = WritePlotFileExport()
