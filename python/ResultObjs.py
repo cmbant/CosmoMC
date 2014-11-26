@@ -398,6 +398,9 @@ class paramLimit():
         else:
             return 'none'
 
+    def __str__(self):
+        return "%g %g %s" % (self.lower, self.upper, self.limitTag())
+
 class margeStats(paramResults):
 
     def loadFromFile(self, filename):

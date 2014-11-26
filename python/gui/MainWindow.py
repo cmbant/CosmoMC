@@ -356,7 +356,6 @@ class MainWindow(QMainWindow):
             try:
                 self.statusBar().showMessage("Calculating margestats....")
                 samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
-                samples.Do1DBins(writeDataToFile=False)
                 stats = samples.getMargeStats()
             finally:
                 self.statusBar().showMessage("")

@@ -256,7 +256,7 @@ if (PCA_num > 0) and not plots_only:
     mc.PCA(PCA_params, PCA_func, PCA_NormParam)
 
 # Do 1D bins
-mc.Do1DBins(mc.max_frac_twotail)
+mc.Do1DBins(mc.max_frac_twotail, writeDataToFile=True)
 
 if not no_plots:
     # Output files for 1D plots

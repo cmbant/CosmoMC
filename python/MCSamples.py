@@ -1596,6 +1596,7 @@ class MCSamples(chains):
             return lower, upper
 
     def getMargeStats(self):
+        self.Do1DBins()
         m = ResultObjs.margeStats()
         m.hasBestFit = False
         m.limits = self.contours
@@ -1632,7 +1633,7 @@ class MCSamples(chains):
         return thin_ix
 
 
-    def Do1DBins(self, max_frac_twotail=None, writeDataToFile=True):
+    def Do1DBins(self, max_frac_twotail=None, writeDataToFile=False):
         if self.done_1Dbins: return
         if max_frac_twotail is None:
             max_frac_twotail = self.max_frac_twotail
