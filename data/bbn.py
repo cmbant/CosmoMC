@@ -31,6 +31,16 @@ omegafac = (1e5 / Mpc) ** 2 / (8 * np.pi * G) * 3
 def runBBN(eta,DeltaN=0,tau=tau_n,prog='./alter_etannutau.x'):
     return subprocess.check_output([prog, str(eta), str(3+DeltaN), str(tau)], shell=False,stderr=subprocess.STDOUT)
 
+# BBN predictions from Parthenope
+def ypBBN_Parthenope(omegab, neff):
+    #neff here is including 0.046 factor
+  return 0.1817 + 0.9020 * omegab - 10.33 * omegab * omegab + (0.01948 + 0.02440 * omegab - 0.4404 * omegab * omegab) * neff +\
+       (-0.001002 - 0.002778 * omegab + 0.04719 * omegab * omegab) * neff * neff;
+
+def yhe_to_ypBBN(Yp, ombh2):
+    return -4*m_H*Yp/(Yp*m_He-4*Yp*m_H-m_He)
+    
+
     
 def runBBNplot():
     #standard BBN plot

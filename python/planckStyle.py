@@ -33,7 +33,7 @@ else:
 
 datalabel = dict()
 defdata_TT = defdata_root + '_TT_lowTEB'
-datalabel[defdata_TT] = r'\textit{Planck} TT$+$lowT,P'
+datalabel[defdata_TT] = r'\textit{Planck} TT$+$lowP'
 defdata_TE = defdata_root + '_TE_lowEB'
 datalabel[defdata_TE] = r'\textit{Planck} TE$+$lowP'
 defdata_EE = defdata_root + '_EE_lowEB'
@@ -45,12 +45,12 @@ datalabel[defdata_EE_TEB] = r'\textit{Planck} EE$+$lowT,P'
 
 
 defdata_all = defdata_root + '_TTTEEE_lowTEB'
-datalabel[defdata_all] = r'\textit{Planck} TT,TE,EE$+$lowT,P'
+datalabel[defdata_all] = r'\textit{Planck} TT,TE,EE$+$lowP'
 defdata_TTTEEE = defdata_all
 defdata_TTonly = defdata_root + '_TT_lowl'
-datalabel[defdata_TTonly] = r'\textit{Planck} TT$+$lowT'
+datalabel[defdata_TTonly] = r'\textit{Planck} TT'
 defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
-datalabel[defdata_allNoLowE] = r'\textit{Planck} TT,TE,EE$+$lowT'
+datalabel[defdata_allNoLowE] = r'\textit{Planck} TT,TE,EE'
 
 defdata = defdata_TT
 deflabel = datalabel[defdata_TT]

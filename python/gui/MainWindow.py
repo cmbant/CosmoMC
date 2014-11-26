@@ -38,12 +38,13 @@ import makeGrid
 
 class MainWindow(QMainWindow):
 
-    def __init__(self, app, base_dir, ini=None):
+    def __init__(self, app, ini=None, base_dir=None):
         """
         Initialize of GUI components.
         """
         super(MainWindow, self).__init__()
 
+        if base_dir is None: base_dir = batchJob.getCodeRootPath()
         os.chdir(base_dir)
         self.updating = False
         self.app = app
@@ -487,7 +488,7 @@ class MainWindow(QMainWindow):
         self.plotter = GetDistPlots.GetDistPlotter(
             mcsamples=True,
             chain_dir=self.rootdirname,
-            ini_file=self.iniFile)
+            analysis_settings=self.iniFile)
 
         self.comboBoxRootname.hide()
         self.listRoots.show()
@@ -1056,7 +1057,7 @@ class DialogMargeStats(QDialog):
 if __name__ == "__main__":
 
     app = QApplication(sys.argv)
-    mainWin = MainWindow(app, batchJob.getCodeRootPath())
+    mainWin = MainWindow(app)
     mainWin.show()
     sys.exit(app.exec_())
 

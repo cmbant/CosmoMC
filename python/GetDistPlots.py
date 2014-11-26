@@ -753,7 +753,7 @@ class GetDistPlotter(object):
         return r'$' + p.label + r'$'
 
     def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False,
-                   figure=False, ax=None, label_order=None, align_right=False):
+                   figure=False, ax=None, label_order=None, align_right=False, fontsize=None):
             if legend_loc is None:
                 if figure: legend_loc = self.settings.figure_legend_loc
                 else: legend_loc = self.settings.legend_loc
@@ -765,7 +765,7 @@ class GetDistPlotter(object):
                     lines.append(Line2D([0, 1], [0, 1], **args))
             else: lines = self.contours_added
             args = {'ncol':legend_ncol}
-            if self.settings.legend_fontsize is not None: args['prop'] = {'size':self.settings.legend_fontsize}
+            if fontsize or self.settings.legend_fontsize: args['prop'] = {'size':fontsize or self.settings.legend_fontsize}
             if colored_text:
                 args['handlelength'] = 0
                 args['handletextpad'] = 0
@@ -1008,7 +1008,7 @@ class GetDistPlotter(object):
             self.finish_plot(no_gap=True, legend_labels=legend_labels, legend_ncol=legend_ncol)
             return ax_arr
 
-    def rotate_yticklabels(self, ax=None, rotation=-90):
+    def rotate_yticklabels(self, ax=None, rotation=90):
         if ax is None: ax = gca()
         for ticklabel in ax.get_yticklabels():
             ticklabel.set_rotation(rotation)

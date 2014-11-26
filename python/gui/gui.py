@@ -29,11 +29,10 @@ if args.verbose: level = logging.DEBUG
 FORMAT = '%(asctime).19s [%(levelname)s]\t[%(filename)s:%(lineno)d]\t\t%(message)s'
 logging.basicConfig(level=level, format=FORMAT)
 
-# Change to suitable directory
-cosmomc_dir = os.path.normpath(os.path.dirname(os.path.abspath(__file__)) + '/../../') + os.sep
+
 
 # GUI application
 app = QApplication(sys.argv)
-mainWin = MainWindow(app, cosmomc_dir, args.ini)
+mainWin = MainWindow(app, ini=args.ini)
 mainWin.show()
 sys.exit(app.exec_())
