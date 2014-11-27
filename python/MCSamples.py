@@ -821,6 +821,7 @@ class MCSamples(chains):
                 label = self.parLabel(j)
                 textFileHandle.write("  %s %s\n" % (label, typestr))
 
+
         # Now do Raftery and Lewis method
         # See http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps
         # Raw non-importance sampled chains only
