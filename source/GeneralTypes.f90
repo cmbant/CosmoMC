@@ -678,6 +678,7 @@
     integer, allocatable :: counts(:), indices(:)
     Type(TStringList) :: LikelihoodTypes
 
+    if (L%Count==0) return
     call LikeNames%Alloc(L%Count+1)
     allocate(counts(L%Count), source=0)
     do i=1, L%Count
