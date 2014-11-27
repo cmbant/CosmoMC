@@ -379,8 +379,7 @@ class MCSampleAnalysis(object):
         samples = self.samplesForRoot(root)
         names = samples.paramNames
         if labelParams is not None:
-            if self.batch: labelParams = os.path.join(self.batch.basePath, labelParams)
-            names.setLabelsAndDerivedFromParamNames(labelParams)
+            names.setLabelsAndDerivedFromParamNames(os.path.join(batchJob.getCodeRootPath(), labelParams))
         return names
 
     def boundsForRoot(self, root):

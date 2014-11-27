@@ -412,7 +412,7 @@ class MainWindow(QMainWindow):
         self.lineEditDirectory.setText(self.rootdirname)
 
         if self.plotter is None:
-            self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True, ini_file=self.iniFile)
+            self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True, analysis_settings=self.iniFile)
 
         self._updateComboBoxRootname(root_list)
 
@@ -464,6 +464,7 @@ class MainWindow(QMainWindow):
         self.data2chains = {}
         self.listRoots.clear()
         self.rootnames = {}
+        self.plotter = None
 
     def _readGridChains(self, batchPath):
         """
@@ -614,12 +615,6 @@ class MainWindow(QMainWindow):
         """
         self.dataTag = str(strDataTag)
         logging.debug("Data: %s" % strDataTag)
-
-        if self.plotter is None:
-            self.plotter = GetDistPlots.GetDistPlotter(
-                mcsamples=True,
-                chain_dir=self.rootdirname,
-                ini_file=self.iniFile)
         self.newRootItem(self.paramTag + '_' + self.dataTag)
 
     def _updateListParametersX(self, items):

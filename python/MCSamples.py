@@ -498,9 +498,8 @@ class MCSamples(chains):
         fraction_indices.append(nrows)
         return fraction_indices
 
-    # ConfidVal(self, ix, limfrac, upper) => chains.confidence()
 
-    def PCA(self, params, param_map, normparam=None):
+    def PCA(self, params, param_map, normparam=None, writeDataToFile=False):
         """
         Perform principle component analysis. In other words,
         get eigenvectors and eigenvalues for normalized variables
@@ -508,9 +507,8 @@ class MCSamples(chains):
         """
 
         print 'Doing PCA for ', len(params), ' parameters'
-        filename = self.rootdirname + ".PCA"
-        textFileHandle = open(filename, "w")
-        textFileHandle.write('PCA for parameters:\n')
+
+        PCAtext = 'PCA for parameters:\n'
 
         params = [name for name in params if self.paramNames.parWithName(name)]
         indices = [self.index[param] for param in params]
@@ -544,7 +542,7 @@ class MCSamples(chains):
                 PClabs.append("ln(-" + label + ")")
             else:
                 PClabs.append(label)
-            textFileHandle.write("%10s :%s\n" % (str(parix + 1), str(PClabs[i])))
+            PCAtext += "%10s :%s\n" % (str(parix + 1), str(PClabs[i]))
 
             PCmean[i] = np.sum(self.weights * PCdata[:, i]) / self.norm
             PCdata[:, i] = PCdata[:, i] - PCmean[i]
@@ -552,36 +550,36 @@ class MCSamples(chains):
             if (sd[i] <> 0): PCdata[:, i] = PCdata[:, i] / sd[i]
             corrmatrix[i][i] = 1
 
-        textFileHandle.write('\n')
-        textFileHandle.write('Correlation matrix for reduced parameters\n')
+        PCAtext += "\n"
+        PCAtext += 'Correlation matrix for reduced parameters\n'
         for i, parix in enumerate(indices):
             for j in range(n):
                 corrmatrix[j][i] = np.sum(self.weights * PCdata[:, i] * PCdata[:, j]) / self.norm
                 corrmatrix[i][j] = corrmatrix[j][i]
-            textFileHandle.write('%4i :' % (parix + 1))
+            PCAtext += '%12s :' % params[i]
             for j in range(n):
-                textFileHandle.write('%8.4f' % corrmatrix[j][i])
-            textFileHandle.write('\n')
+                PCAtext += '%8.4f' % corrmatrix[j][i]
+            PCAtext += '\n'
 
         u = corrmatrix
         evals, evects = np.linalg.eig(u)
         isorted = evals.argsort()
         u = np.transpose(evects[:, isorted])  # redefining u
 
-        textFileHandle.write('\n')
-        textFileHandle.write('e-values of correlation matrix\n')
+        PCAtext += '\n'
+        PCAtext += 'e-values of correlation matrix\n'
         for i in range(n):
             isort = isorted[i]
-            textFileHandle.write('PC%2i: %8.4f\n' % (i + 1, evals[isort]))
+            PCAtext += 'PC%2i: %8.4f\n' % (i + 1, evals[isort])
 
-        textFileHandle.write('\n')
-        textFileHandle.write('e-vectors\n')
+        PCAtext += '\n'
+        PCAtext += 'e-vectors\n'
         for j in range(n):
-            textFileHandle.write('%3i:' % (indices[j] + 1))
+            PCAtext += '%3i:' % (indices[j] + 1)
             for i in range(n):
                 isort = isorted[i]
-                textFileHandle.write('%8.4f' % (evects[j][isort]))
-            textFileHandle.write('\n')
+                '%8.4f' % (evects[j][isort])
+            PCAtext += '\n'
 
         if (normparam <> -1):
             # Set so parameter normparam has exponent 1
@@ -598,12 +596,12 @@ class MCSamples(chains):
             PCdata[i, :] = np.dot(u, PCdata[i, :])
             if (doexp): PCdata[i, :] = np.exp(PCdata[i, :])
 
-        textFileHandle.write('\n')
-        textFileHandle.write('Principle components\n')
+        PCAtext += '\n'
+        PCAtext += 'Principle components\n'
 
         for i in range(n):
             isort = isorted[i]
-            textFileHandle.write('PC%i (e-value: %f)\n' % (i + 1, evals[isort]))
+            PCAtext += 'PC%i (e-value: %f)\n' % (i + 1, evals[isort])
             for j in range(n):
                 label = self.parLabel(indices[j])
                 if (param_map[j] in ['L', 'M']):
@@ -612,48 +610,52 @@ class MCSamples(chains):
                         div = "%f" % (-np.exp(PCmean[j]))
                     else:
                         div = "%f" % (np.exp(PCmean[j]))
-                    textFileHandle.write('[%f]  (%s/%s)^{%s}\n' % (u[i][j], label, div, expo))
+                    PCAtext += '[%f]  (%s/%s)^{%s}\n' % (u[i][j], label, div, expo)
                 else:
                     expo = "%f" % (sd[j] / u[i][j])
                     if (doexp):
-                        textFileHandle.write('[%f]   exp((%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo))
+                        PCAtext += '[%f]   exp((%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo)
                     else:
-                        textFileHandle.write('[%f]   (%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo))
+                        PCAtext += '[%f]   (%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo)
 
             newmean[i] = np.sum(self.weights * PCdata[:, i]) / self.norm
             newsd[i] = np.sqrt(np.sum(self.weights * np.power(PCdata[:, i] - newmean[i], 2)) / self.norm)
-            textFileHandle.write('          = %f +- %f\n' % (newmean[i], newsd[i]))
-            textFileHandle.write('ND limits: %9.3f%9.3f%9.3f%9.3f\n' % (
+            PCAtext += '          = %f +- %f\n' % (newmean[i], newsd[i])
+            PCAtext += 'ND limits: %9.3f%9.3f%9.3f%9.3f\n' % (
                     np.min(PCdata[0:self.ND_cont1, i]), np.max(PCdata[0:self.ND_cont1, i]),
-                    np.min(PCdata[0:self.ND_cont2, i]), np.max(PCdata[0:self.ND_cont2, i])))
-            textFileHandle.write('\n')
+                    np.min(PCdata[0:self.ND_cont2, i]), np.max(PCdata[0:self.ND_cont2, i]))
+            PCAtext += '\n'
 
         # Find out how correlated these components are with other parameters
-        textFileHandle.write('Correlations of principle components\n')
+        PCAtext += 'Correlations of principle components\n'
         l = [ "%8i" % i for i in range(1, n + 1) ]
-        textFileHandle.write('%s\n' % ("".join(l)))
+        PCAtext += '%s\n' % ("".join(l))
 
         for i in range(n):
             PCdata[:, i] = (PCdata[:, i] - newmean[i]) / newsd[i]
 
         for j in range(n):
-            textFileHandle.write('PC%2i' % (j + 1))
+            PCAtext += 'PC%2i' % (j + 1)
             for i in range(n):
-                textFileHandle.write('%8.3f' % (
-                        np.sum(self.weights * PCdata[:, i] * PCdata[:, j]) / self.norm))
-            textFileHandle.write('\n')
+                PCAtext += '%8.3f' % (
+                        np.sum(self.weights * PCdata[:, i] * PCdata[:, j]) / self.norm)
+            PCAtext += '\n'
 
         for j in range(self.num_vars):
-            textFileHandle.write('%4i' % (j + 1))
+            PCAtext += '%4i' % (j + 1)
             for i in range(n):
-                textFileHandle.write('%8.3f' % (
+                PCAtext += '%8.3f' % (
                         np.sum(self.weights * PCdata[:, i]
-                               * (self.samples[:, j] - self.means[j]) / self.sddev[j]) / self.norm))
+                               * (self.samples[:, j] - self.means[j]) / self.sddev[j]) / self.norm)
 
-            textFileHandle.write('   (%s)\n' % (self.parLabel(j)))
+            PCAtext += '   (%s)\n' % (self.parLabel(j))
 
-        textFileHandle.close()
-
+        if writeDataToFile:
+            filename = self.rootdirname + ".PCA"
+            with open(filename, "w") as f:
+                f.write(PCAtext)
+        else:
+            return PCAtext
 
     def ComputeMultiplicators(self):
         self.mean_mult = self.norm / self.numrows

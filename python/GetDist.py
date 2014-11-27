@@ -253,7 +253,7 @@ filename = os.path.join(plot_data_dir, rootname.strip() + '.bounds')
 mc.WriteBounds(filename)
 
 if (PCA_num > 0) and not plots_only:
-    mc.PCA(PCA_params, PCA_func, PCA_NormParam)
+    mc.PCA(PCA_params, PCA_func, PCA_NormParam, writeDataToFile=True)
 
 # Do 1D bins
 mc.Do1DBins(mc.max_frac_twotail, writeDataToFile=True)
