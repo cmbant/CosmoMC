@@ -761,6 +761,7 @@ class GetDistPlotter(object):
             if len(self.contours_added) == 0:
                 for i in enumerate(legend_labels):
                     args = self.lines_added.get(i[0]) or self.get_line_styles(i[0] + line_offset)
+                    args.pop('filled', None)
                     lines.append(Line2D([0, 1], [0, 1], **args))
             else: lines = self.contours_added
             args = {'ncol':legend_ncol}

@@ -14,8 +14,8 @@ s.plotBounds(omm, s.planck_lensing)
 
 g.plot_3d('base_lensonly', ['omegam', 'sigma8', 'H0'])
 
-g.add_2d_contours('base_lensonly_BAO', 'omegam', 'sigma8', ls='-', color='blue', lw=0.6)
-g.add_2d_contours('base_lensonly_BAO_theta', 'omegam', 'sigma8', ls='-', color='red', lw=0.6)
+g.add_2d_contours('base_lensonly_BAO', 'omegam', 'sigma8', ls='-', color='blue', lw=0.6, alpha=0.4)
+g.add_2d_contours('base_lensonly_BAO_theta', 'omegam', 'sigma8', ls='-', color='red', lw=0.6, alpha=0.4)
 g.add_2d_contours('base_' + s.defdata, 'omegam', 'sigma8', ls='-', color='black', lw=1.2)
 
 
