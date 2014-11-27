@@ -1047,7 +1047,7 @@
     !Want sensible range, but also need to check that wide enough for 2D plots where projection may look much more peaked
     range_min(j) = min(ND_limit_bot(2,j), ConfidVal(ix,0.001_mcp,.false.))
     range_max(j) = max(ND_limit_top(2,j), ConfidVal(ix,0.001_mcp,.true.))
-    
+
     width = (range_max(j)-range_min(j))/(num_bins+1)
     if (width==0) return
 
@@ -1106,10 +1106,14 @@
 
     imin = nint((param_min(j) - center(j))/fine_width)
     imax = nint((param_max(j) - center(j))/fine_width)
+    imin = min(ix_min(j)*fine_fac, imin)
+    imax = max(ix_max(j)*fine_fac, imax)
+
     allocate(finebins(imin-fine_edge:imax+fine_edge))
     finebins=0
     if (plot_meanlikes) allocate(finebinlikes(imin-fine_edge:imax+fine_edge))
     if (plot_meanlikes) finebinlikes=0
+
 
     do i = 0, nrows-1
         ix2=nint((coldata(ix,i)-center(j))/width)
