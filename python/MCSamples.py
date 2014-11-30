@@ -365,10 +365,10 @@ class MCSamples(chains):
         # Compute statistics values
         self.ComputeStats()
 
-        self.GetCovMatrix(False)
+        self.GetCovMatrix()
 
         # Find best fit, and mean likelihood
-        self.GetChainLikeSummary(toStdOut=False)
+        self.GetChainLikeSummary()
 
         # Init arrays for 1D densities
         self.Init1DDensity()
@@ -452,29 +452,28 @@ class MCSamples(chains):
 
     # ThinData(self, fac) => chains.thin_indices(factor)
 
-    def GetCovMatrix(self, writeDataToFile=True):
-
+    def GetCovMatrix(self):
         nparam = self.paramNames.numParams()
         paramVecs = [ self.samples[:, i] for i in range(nparam) ]
         fullcov = self.cov(paramVecs)
         nparamNonDerived = self.paramNames.numNonDerived()
         self.covmatrix = fullcov[:nparamNonDerived, :nparamNonDerived]
+        self.corrmatrix = self.corr(paramVecs, cov=fullcov)
 
-        if writeDataToFile:
-            fname = self.rootdirname + ".covmat"
-            textFileHandle = open(fname, "w")
+    def writeCovMatrix(self, filename=None):
+        filename = filename or self.rootdirname + ".covmat"
+        nparamNonDerived = self.paramNames.numNonDerived()
+        with open(filename, "w") as textFileHandle:
             textFileHandle.write("# %s\n" % (" ".join(self.paramNames.list()[:nparamNonDerived])))
             for i in range(nparamNonDerived):
                 for j in range(nparamNonDerived):
                     textFileHandle.write("%17.7E" % self.covmatrix[i][j])
                 textFileHandle.write("\n")
-            textFileHandle.close()
 
-        self.corrmatrix = self.corr(paramVecs, cov=fullcov)
-        if writeDataToFile:
-            np.savetxt(self.rootdirname + ".corr", self.corrmatrix, fmt="%17.7E")
+    def writeCorrMatrix(self, filename=None):
+        filename = filename or self.rootdirname + ".corr"
+        np.savetxt(filename, self.corrmatrix, fmt="%17.7E")
 
-    # MostCorrelated2D ?
 
     def GetFractionIndices(self, weights, n):
         nrows = weights.shape[0]
@@ -670,8 +669,7 @@ class MCSamples(chains):
     def GetUsedColsChains(self):
         if not hasattr(self, 'chains') or len(self.chains) == 0: return
         nparams = self.chains[0].coldata.shape[1] - 2
-        isused = np.ndarray(nparams, dtype=bool)
-        isused[:] = False
+        isused = np.zeros(nparams, dtype=bool)
         for ix in range(nparams):
             isused[ix] = not np.all(self.chains[0].coldata[:, ix + 2] == self.chains[0].coldata[0][ix + 2])
         return isused
@@ -796,6 +794,8 @@ class MCSamples(chains):
         self.weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
         self.norm = np.sum(self.weights)
 
+        raise Exception('Converge tests not updated yet (and very slow)')
+
         split_tests = {}
         nparam = self.paramNames.numParams()
         for j in range(nparam):
@@ -852,8 +852,7 @@ class MCSamples(chains):
                                 thin_ix = self.thin_indices(thin_fac[ix])
                                 thin_rows = len(thin_ix)
                                 if (thin_rows < 2): break
-                                binchain = np.zeros(thin_rows)
-                                binchain[:] = 1
+                                binchain = np.ones(thin_rows)
                                 indexes = np.where(coldata[thin_ix] >= u)
                                 binchain[indexes] = 0
 
@@ -905,8 +904,7 @@ class MCSamples(chains):
                     thin_ix = self.thin_indices_chain(chain.coldata[:, 0], thin_fac[ix])
                     thin_rows = len(thin_ix)
                     if (thin_rows < 2): break
-                    binchain = np.zeros(thin_rows)
-                    binchain[:] = 1
+                    binchain = np.ones(thin_rows)
 
                     coldata = np.hstack((chain.coldata[:, hardest] for chain in self.chains))
                     coldata = coldata[thin_ix]
@@ -1070,7 +1068,7 @@ class MCSamples(chains):
         return width, smooth_1D, end_edge
 
 
-    def Get1DDensity(self, j, writeDataToFile=True, get_density=False, paramConfid=None):
+    def Get1DDensity(self, j, writeDataToFile=False, get_density=False, paramConfid=None):
 
         logging.info("1D density for %s (%i)" % (self.parName(j), j))
 

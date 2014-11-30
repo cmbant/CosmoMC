@@ -73,11 +73,18 @@ root = 'base_plikHM_TT_lowTEB'
 def makeNew(samples):
     p = samples.getParams()
     rsH = p.Hubble057 * p.rdrag / rd_fid
-    rsH = samples.addDerived(rsH, name='rsH', label=r'H(0.57) (r_{\mathrm{drag}}/r_{\mathrm{drag}}^{\rm fid})\, [{\rm km} \,{\rm s}^{-1}{\rm Mpc}^{-1}]')
+    rsHpar = samples.addDerived(rsH, name='rsH', label=r'H(0.57) (r_{\mathrm{drag}}/r_{\mathrm{drag}}^{\rm fid})\, [{\rm km} \,{\rm s}^{-1}{\rm Mpc}^{-1}]')
     Da = p.DA057 * rd_fid / p.rdrag
-    Da = samples.addDerived(Da, name='Da', label=r'D_A(0.57) (r_{\mathrm{drag}}^{\rm fid}/r_{\mathrm{drag}})\,[\rm{Mpc}]')
+    Dapar = samples.addDerived(Da, name='Da', label=r'D_A(0.57) (r_{\mathrm{drag}}^{\rm fid}/r_{\mathrm{drag}})\,[\rm{Mpc}]')
+    comb = (Da / 1410) * (rsH / 92) ** sqrt(3.0)
+
     samples.updateChainBaseStatistics()
-    return rsH, Da
+    print samples.mean(Da), samples.std(Da)
+    print samples.mean(rsH), samples.std(rsH)
+    print samples.mean(comb), samples.std(comb)
+    print samples.PCA(['Da', 'rsH'], 'LL')
+
+    return rsHpar, Dapar
 
 samples = g.sampleAnalyser.samplesForRoot(root)
 rsH, Da = makeNew(samples)

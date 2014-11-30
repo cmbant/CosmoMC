@@ -34,7 +34,6 @@ class GetDistPlotSettings(object):
         self.x_label_rotation = 0
         self.num_shades = 80
         self.fig_width_inch = fig_width_inch  # if you want to force specific fixed width
-        self.setWithSubplotSize(subplot_size_inch)
         self.progress = False
         self.tight_layout = True
         self.no_triangle_axis_labels = True
@@ -42,8 +41,10 @@ class GetDistPlotSettings(object):
         self.colormap = cm.Blues
         self.colormap_scatter = cm.jet
         self.colorbar_rotation = None  # e.g. -90
+        self.colorbar_label_pad = 0
         self.colorbar_label_rotation = -90  # seems to cause problems with some versions, can set to zero
-        self.colorbar_label_pad = 10
+
+        self.setWithSubplotSize(subplot_size_inch)
 
         self.param_names_for_labels = 'clik_latex.paramnames'
         self.tick_prune = None  # 'lower' or 'upper'
@@ -82,6 +83,7 @@ class GetDistPlotSettings(object):
         self.scatter_size = 3
         if size_inch > 4: self.scatter_size = size_inch * 2
         self.colorbar_axes_fontsize = self.axes_fontsize
+        if  self.colorbar_label_rotation:  self.colorbar_label_pad = size_inch * 3
 
     def rcSizes(self, axes_fontsize=None, lab_fontsize=None, legend_fontsize=None):
         self.font_size = rcParams['font.size']
@@ -228,15 +230,8 @@ class MCSampleAnalysis(object):
     def reset(self):
         self.mcsamples = {}
         # Dicts. 1st key is root; 2nd key is param
-        self.densities_dat_1D = dict()
-        self.densities_likes_1D = dict()
-
-        self.densities_dat_2D = dict()
-        self.densities_likes_2D = dict()
-        self.densities_cont_2D = dict()
-        self.densities_x_2D = dict()
-        self.densities_y_2D = dict()
-
+        self.densities_1D = dict()
+        self.densities_2D = dict()
         self.single_samples = dict()
 
     def samplesForRoot(self, root, file_root=None):
@@ -274,90 +269,51 @@ class MCSampleAnalysis(object):
     def newPlot(self):
         pass
 
-    def compute_1d(self, root, name):
-        samples = self.samplesForRoot(root)
-        index = samples.index[name]
-        dat, likes = samples.Get1DDensity(index, writeDataToFile=False)
-        if dat is not None:
-            self.densities_dat_1D[root][name] = dat
-        if likes is not None:
-            self.densities_likes_1D[root][name] = likes
-
-    def compute_2d(self, root, name1, name2):
-        samples = self.samplesForRoot(root)
-        index1 = samples.index[name1]
-        index2 = samples.index[name2]
-        # Pre computation
-        samples.initParamRanges(index1)
-        samples.initParamRanges(index2)
-        dat, likes, cont, x, y = samples.Get2DPlotData(index2, index1)
-        key = (name1, name2)
-        if dat is not None: self.densities_dat_2D[root][key] = dat
-        if likes is not None: self.densities_likes_2D[root][key] = likes
-        if cont is not None: self.densities_cont_2D[root][key] = cont
-        if x is not None: self.densities_x_2D[root][key] = x
-        if y is not None: self.densities_y_2D[root][key] = y
-
-
-    def get_1d(self, root, param, ext='.dat'):
-        if not self.densities_dat_1D.has_key(root):
-            self.densities_dat_1D[root] = {}
+    def get_1d(self, root, param, likes=False):
+        rootdata = self.densities_1D.get(root)
+        if rootdata is None:
+            rootdata = {}
+            self.densities_1D[root] = rootdata
 
         name = param.name
-        if ext == '.dat':
-            if self.densities_dat_1D[root].has_key(name):
-                return self.densities_dat_1D[root][name]
-            else:
-                self.compute_1d(root, name)
-                if self.densities_dat_1D[root].has_key(name):
-                    return self.densities_dat_1D[root][name]
-                else:
-                    return None
-        elif ext == '.likes':
-            if self.densities_likes_1D[root].has_key(name):
-                return self.densities_likes_1D[root][name]
-            else:
-                self.compute_1d(root, name)
-                if self.densities_likes_1D[root].has_key(name):
-                    return self.densities_likes_1D[root][name]
-                else:
-                    return None
-        return None
+        samples = self.samplesForRoot(root)
+        density = rootdata.get(name)
+        if density is None:
+            index = samples.index.get(name)
+            if index is None: return None
+            density = samples.Get1DDensity(index)
 
-    def get_2d(self, root, param1, param2, ext='', no_axes=False):
-        if not self.densities_x_2D.has_key(root): self.densities_x_2D[root] = {}
-        if not self.densities_y_2D.has_key(root): self.densities_y_2D[root] = {}
-        if not self.densities_dat_2D.has_key(root): self.densities_dat_2D[root] = {}
-        if not self.densities_likes_2D.has_key(root): self.densities_likes_2D[root] = {}
-        if not self.densities_cont_2D.has_key(root): self.densities_cont_2D[root] = {}
-
-        transpose = False  # not used here
-        name1, name2 = param1.name, param2.name
-        key = (name1, name2)
-        if  (not self.densities_dat_2D[root].has_key(key)) \
-                or (not self.densities_x_2D[root].has_key(key)) \
-                or (not self.densities_y_2D[root].has_key(key)):
-            self.compute_2d(root, name1, name2)
-        if ext == '':
-            pts = self.densities_dat_2D[root].get(key, np.ndarray(0))
-        elif ext == '_likes':
-            pts = self.densities_likes_2D[root].get(key, np.ndarray(0))
-        elif ext == '_cont':
-            pts = self.densities_cont_2D[root].get(key, np.ndarray(0))
-        if no_axes: return pts
-        x = self.densities_x_2D[root].get(key, np.ndarray(0))
-        y = self.densities_y_2D[root].get(key, np.ndarray(0))
-        if transpose: return (pts, y, x)
-        else: return (pts, x, y)
-
+        if density is None: return None
+        dat, likedata = density
+        if likes:
+            return likedata
+        else:
+            return dat
 
     def get_density_grid(self, root, param1, param2, conts=2, likes=False):
-        if likes:  res = self.get_2d(root, param1, param2, '_likes')
-        else: res = self.get_2d(root, param1, param2)
-        if res is None: return None
+        rootdata = self.densities_2D.get(root)
+        if not rootdata:
+            rootdata = {}
+            self.densities_2D[root] = rootdata
+        key = (param1.name, param2.name)
+        density = rootdata.get(key)
+        if not density:
+            samples = self.samplesForRoot(root)
+            index1 = samples.index.get(param1.name)
+            index2 = samples.index.get(param2.name)
+            if index1 is None or index2 is None: return None
+            samples.initParamRanges(index1)
+            samples.initParamRanges(index2)
+            density = samples.Get2DPlotData(index2, index1)
+            if density is None: return None
+            rootdata[key] = density
         result = Density2D()
-        (result.pts, result.x1, result.x2) = res
-        if conts > 0: result.contours = self.get_2d(root, param1, param2, '_cont', no_axes=True)[0:conts]
+        dat, likes, cont, result.x1, result.x2 = density
+        if likes:
+            result.pts = likes
+        else:
+            result.pts = dat
+        if conts > 0: result.contours = cont[0:conts]
         return result
 
     def get_density(self, root, param, likes=False):
@@ -366,7 +322,7 @@ class MCSampleAnalysis(object):
         if pts is None: return None
         result.x = pts[:, 0]
         result.pts = pts[:, 1]
-        if (likes): result.likes = self.get_1d(root, param, '.likes')[:, 1]
+        if (likes): result.likes = self.get_1d(root, param, True)[:, 1]
         return result
 
     def load_single_samples(self, root):
@@ -496,8 +452,17 @@ class GetDistPlotter(object):
         param1, param2 = self.get_param_array(root, param_pair or [param1, param2])
 
         if not density: density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
-        if density is None: return None
+        if density is None:
+            if add_legend_proxy: self.contours_added.append(None)
+            return None
         if alpha is None: alpha = self.get_alpha2D(plotno, **kwargs)
+
+        if add_legend_proxy:
+            proxyIx = len(self.contours_added)
+            self.contours_added.append(None)
+        elif None in self.contours_added and self.contours_added.index(None) == plotno:
+            proxyIx = plotno
+        else: proxyIx = -1
 
         if kwargs.get('filled'):
             linestyles = ['-']
@@ -513,7 +478,7 @@ class GetDistPlotter(object):
                 else: cols = color
             levels = sorted(np.append([density.pts.max() + 1], density.contours))
             CS = contourf(density.x1, density.x2, density.pts, levels, colors=cols, alpha=alpha, **kwargs)
-            if add_legend_proxy: self.contours_added.append(Rectangle((0, 0), 1, 1, fc=CS.tcolors[1][0]))
+            if proxyIx >= 0: self.contours_added[proxyIx] = (Rectangle((0, 0), 1, 1, fc=CS.tcolors[1][0]))
             contour(density.x1, density.x2, density.pts, levels[:1], colors=CS.tcolors[1],
                     linewidths=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines, **kwargs)
         else:
@@ -530,10 +495,10 @@ class GetDistPlotter(object):
             if dashes:
                 for c in CS.collections:
                     c.set_dashes([(0, dashes)])
-            if add_legend_proxy:
+            if proxyIx >= 0:
                 line = Line2D([0, 1], [0, 1], ls=linestyles[0], lw=self.settings.lw_contour, color=cols[0], alpha=args.get('alpha'))
                 if dashes: line.set_dashes(dashes)
-                self.contours_added.append(line)
+                self.contours_added[proxyIx] = line
 
         return density.xy_bounds()
 
@@ -801,8 +766,8 @@ class GetDistPlotter(object):
                     text.set_color(c)
             return self.legend
 
-    def finish_plot(self, legend_labels=[], legend_loc=None, line_offset=0, legend_ncol=None, no_gap=False, no_extra_legend_space=False, no_tight=False):
-        has_legend = self.settings.line_labels and len(legend_labels) > 1
+    def finish_plot(self, legend_labels=None, legend_loc=None, line_offset=0, legend_ncol=None, no_gap=False, no_extra_legend_space=False, no_tight=False):
+        has_legend = self.settings.line_labels and legend_labels and len(legend_labels) > 1
         if self.settings.tight_layout and not no_tight:
             if no_gap: tight_layout(h_pad=0, w_pad=0)
             else: tight_layout()
@@ -958,7 +923,7 @@ class GetDistPlotter(object):
                          legend_loc=None, no_gap=self.settings.no_triangle_axis_labels, no_extra_legend_space=True)
 
     def rectangle_plot(self, xparams, yparams, yroots=None, roots=None, plot_roots=None, plot_texts=None,
-                       ymarkers=None, xmarkers=None, param_limits={}, legend_labels=[], legend_ncol=None, marker_args={}, **kwargs):
+                       ymarkers=None, xmarkers=None, param_limits={}, legend_labels=None, legend_ncol=None, marker_args={}, **kwargs):
             """
                 roots uses the same set of roots for every plot in the rectangle
                 yroots (list of list of roots) allows use of different set of roots for each row of the plot
@@ -1005,6 +970,7 @@ class GetDistPlotter(object):
                 self.spaceTicks(ax.yaxis)
                 ax.set_ylim(ax.yaxis.get_view_interval())
             subplots_adjust(wspace=0, hspace=0)
+            if roots: legend_labels = self.default_legend_labels(legend_labels, roots)
             self.finish_plot(no_gap=True, legend_labels=legend_labels, legend_ncol=legend_ncol)
             return ax_arr
 

@@ -36,6 +36,22 @@ import batchJob
 import makeGrid
 # ==============================================================================
 
+class ParamListWidget(QListWidget):
+    def __init__(self, widget, owner):
+        QListWidget.__init__(self, widget)
+        self.setDragDropMode(self.InternalMove)
+        self.setMaximumSize(QSize(16777215, 120))
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.setDragEnabled(True)
+        self.viewport().setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
+        self.setDragDropMode(QAbstractItemView.InternalMove)
+        self.owner = owner
+        list_model = self.model()
+        list_model.layoutChanged.connect(owner._updateParameters)
+
+
 class MainWindow(QMainWindow):
 
     def __init__(self, app, ini=None, base_dir=None):
@@ -156,14 +172,8 @@ class MainWindow(QMainWindow):
         shortcut = QShortcut(QKeySequence(self.tr("Ctrl+O")), self)
         self.connect(shortcut, SIGNAL("activated()"), self.selectRootDirName)
 
-        self.listRoots = QListWidget(self.selectWidget)
-        self.listRoots.setMaximumSize(QSize(16777215, 120))
-        self.listRoots.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.listRoots.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.listRoots.setDragEnabled(True)
-        self.listRoots.viewport().setAcceptDrops(True)
-        self.listRoots.setDropIndicatorShown(True)
-        self.listRoots.setDragDropMode(QAbstractItemView.InternalMove)
+        self.listRoots = ParamListWidget(self.selectWidget, self)
+
         self.connect(self.listRoots,
                      SIGNAL("itemChanged(QListWidgetItem *)"),
                      self.updateListRoots)
@@ -323,9 +333,8 @@ class MainWindow(QMainWindow):
         if not filename: return
         filename = str(filename)
         logging.debug("Export script to %s" % filename)
-        f = open(filename, 'w')
-        f.write(self.script)
-        f.close()
+        with open(filename, 'w') as f:
+            f.write(self.script)
 
     def reLoad(self):
         adir = self.getSettings().value('lastSearchDirectory')
@@ -417,33 +426,41 @@ class MainWindow(QMainWindow):
         self._updateComboBoxRootname(root_list)
 
     def _updateParameters(self):
-        all_params = []
 
-        for _, values in self.rootnames.items():
-            rootname, state = values
-            if state:
-                params = self.plotter.sampleAnalyser.samplesForRoot(rootname).paramNames.list()
-                logging.debug("%i parameters" % len(params))
-                all_params.append(params)
+        roots = self.checkedRootNames()
+        if not len(roots):
+            return
+        if self.rootnames.has_key(roots[0]):
+            rootname, _ = self.rootnames[roots[0]]
+            paramNames = self.plotter.sampleAnalyser.samplesForRoot(rootname).paramNames.list()
+        else:
+            raise Exception('roonames out of synch')
+#         all_params = []
+#
+#         for root in  self.checkedRootNames():
+#             if self.rootnames.has_key(root):
+#                 rootname, _ = self.roonames[root]
+#                 params = self.plotter.sampleAnalyser.samplesForRoot(rootname).paramNames.list()
+#                 logging.debug("%i parameters" % len(params))
+#                 all_params.append(params)
+#         if all_params:
+#             if len(all_params) == 1:
+#                 paramNames = all_params[0]
+#                 logging.debug("%i parameters used" % len(paramNames))
+#             else:
+#                 # Find shared parameters
+#                 shared_params = []
+#                 for param in all_params[0]:
+#                     shared = True
+#                     for other_params in all_params[1:]:
+#                         if not param in other_params: shared = False
+#                     if shared: shared_params.append(param)
+#                 paramNames = shared_params
+#                 logging.debug("%i (shared) parameters used" % len(paramNames))
 
-        if all_params:
-            if len(all_params) == 1:
-                paramNames = all_params[0]
-                logging.debug("%i parameters used" % len(paramNames))
-            else:
-                # Find shared parameters
-                shared_params = []
-                for param in all_params[0]:
-                    shared = True
-                    for other_params in all_params[1:]:
-                        if not param in other_params: shared = False
-                    if shared: shared_params.append(param)
-                paramNames = shared_params
-                logging.debug("%i (shared) parameters used" % len(paramNames))
-
-            self._updateListParametersX(paramNames)
-            self._updateListParametersY(paramNames)
-            self._updateComboBoxColor(paramNames)
+        self._updateListParametersX(paramNames)
+        self._updateListParametersY(paramNames)
+        self._updateComboBoxColor(paramNames)
 
     def _resetPlotData(self):
         # Plot parameters
@@ -723,6 +740,15 @@ class MainWindow(QMainWindow):
             else:
                 logging.debug("Param %s not found in new list" % (param_old))
 
+    def checkedRootNames(self):
+        items = []
+        for i in range(self.listRoots.count()):
+            item = self.listRoots.item(i)
+            if item.checkState() == Qt.Checked:
+                items.append(str(item.text()))
+        return items
+
+
     def plotData(self):
         """
         Slot function called when pushButtonPlot is pressed.
@@ -774,19 +800,14 @@ class MainWindow(QMainWindow):
 
             # Root names
             roots = []
-            for i in range(self.listRoots.count()):
-                item = self.listRoots.item(i)
-                basename = str(item.text())
-                if item.checkState() == Qt.Checked:
-                    if self.rootnames.has_key(basename):
-                        rootname, state = self.rootnames[basename]
-                        roots.append(os.path.basename(rootname))
-                        if self.is_grid:
-                            script += "roots.append('%s')\n" % (basename)
-                        else:
-                            script += "dict_roots['%s'] = r'%s'\n" % (basename, rootname)
+            for basename in self.checkedRootNames():
+                if self.rootnames.has_key(basename):
+                    rootname, state = self.rootnames[basename]
+                    roots.append(os.path.basename(rootname))
+                    if self.is_grid:
+                        script += "roots.append('%s')\n" % (basename)
                     else:
-                        logging.warning("self.rootnames has no key %s" % basename)
+                        script += "dict_roots['%s'] = r'%s'\n" % (basename, rootname)
 
             if not self.is_grid:
                 script += "g.sampleAnalyser.addRoots(dict_roots.values())\n"
@@ -801,7 +822,7 @@ class MainWindow(QMainWindow):
                 self.plotter.settings.setWithSubplotSize(max(2.0, sz / 80.))
 
             def setSizeForN(n):
-                setSizeQT(min(height, width) / max(n, 1))
+                setSizeQT(min(height, width) / max(n, 2))
 
             # Plot parameters
             filled = self.toggleFilled.isChecked()

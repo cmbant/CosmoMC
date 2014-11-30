@@ -3,12 +3,12 @@ from pylab import *
 
 g = s.getSinglePlotter()
 
-g.make_figure(1, xstretch=1.3)
 
 ranges = [0, 22, 0.76, 0.93]
 pair = ['zrei', 'sigma8']
 
 g.newPlot()
+g.make_figure(1, xstretch=1.3)
 
 
 dataroots = [s.defdata_TTonly, s.defdata_allNoLowE, s.defdata_allNoLowE + '_lensing', s.defdata_allNoLowE + '_lensing_BAO']

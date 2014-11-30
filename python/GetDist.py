@@ -222,6 +222,9 @@ if (adjust_priors):
 
 mc.updateChainBaseStatistics(ini)
 
+mc.writeCovMatrix()
+mc.writeCorrMatrix()
+
 # Output thinned data if requested
 # Must do this with unsorted output
 if (thin_factor <> 0):
@@ -285,7 +288,7 @@ if (triangle_plot and not no_plots):
         for i2 in range(i + 1, triangle_num):
             j = mc.index[triangle_params[i]]
             j2 = mc.index[triangle_params[i2]]
-            if (not mc.done2D or not mc.done2D[j2][j]) and not plots_only: mc.Get2DPlotData(j2, j, writeDataToFile=True)
+            if (mc.done2D is None or not mc.done2D[j2][j]) and not plots_only: mc.Get2DPlotData(j2, j, writeDataToFile=True)
 
 # Do 3D plots (i.e. 2D scatter plots with coloured points)
 if (num_3D_plots <> 0 and not no_plots):
