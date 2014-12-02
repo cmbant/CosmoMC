@@ -1,8 +1,7 @@
 # AL Apr 11,Jun13, Jul14
 import os
 
-class iniFile:
-
+class iniFile(object):
 
     def __init__(self, filename=None, keep_includes=False):
 
@@ -154,3 +153,10 @@ class iniFile:
         if self.original_filename is not None:
             return os.path.join(os.path.dirname(self.original_filename), s)
         return s
+
+def setAttrWithDefaults(instance, ini, allowEmpty=True):
+    if isinstance(ini, basestring): ini = iniFile(ini)
+    for key, value in ini.params:
+        if hasattr(instance, key):
+            setattr(instance, key, ini.asType(key, type(value), getattr(instance, key), allowEmpty))
+
