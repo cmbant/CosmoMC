@@ -124,7 +124,6 @@ post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini
 post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], importanceFilterBAO()]
 
 post_WP = [[ 'WMAPtau'], [WMAPtau]]
-post_abundance = [['abundances'], ['abundances.ini'], importanceFilterAbundance()]
 post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'})
 post_BAOzre = zre_importance([BAO, 'zre6p5'], [BAOdata, 'zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'})
 post_reion = zre_importance(['reion'], ['reion_tau.ini'], dist_settings={'limits[zrei]':'6.5 N'})
@@ -328,15 +327,6 @@ gNnur.params = [['nnu', 'r']]
 groups.append(gNnur)
 
 
-gabund = batchJob.jobGroup('abund')
-gabund.datasets = []
-for d in copy.deepcopy(g.datasets):
-    d.add('abundances', ['abundances.ini'])
-    gabund.datasets.append(d)
-gabund.params = [['nnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu']]
-gabund.importanceRuns = [post_BAO, post_all, post_lensing]
-groups.append(gabund)
-
 if False:
     gmulti = batchJob.jobGroup('multi')
     gmulti.params = [['nnu', 'w'], ['mnu', 'w']]
@@ -347,7 +337,7 @@ if False:
         d.add(BAO, BAOdata)
         d.add(JLA)
         gmulti.datasets.append(d)
-    gmulti.importanceRuns = [post_HST, post_abundance]
+    gmulti.importanceRuns = [post_HST]
     groups.append(gmulti)
 
 
@@ -482,8 +472,6 @@ if False:
                 if 'nnu' in p:
                     if not len([d for d in g.datasets if  'H070p6' in d.names]):
                         g.importanceRuns.append(post_highH0)
-                    if not len([d for d in g.datasets if  'abundances' in d.names]):
-                        g.importanceRuns.append(post_abundance)
                     break
 
 
