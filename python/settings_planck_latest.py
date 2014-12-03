@@ -302,6 +302,7 @@ for d in copy.deepcopy(g.datasets):
     gNnudatasets.append(d)
 gNnu.datasets = copy.deepcopy(gNnudatasets)
 for d in copy.deepcopy(gNnudatasets):
+    if d.hasName('nnu1'): continue  # outside BAO prior range, doesn't work
     d.add(BAO, BAOdata)
     gNnu.datasets.append(d)
 for d in copy.deepcopy(gNnudatasets):
@@ -395,33 +396,34 @@ gphi.importanceRuns = []
 groups.append(gphi)
 
 
-extdata = batchJob.jobGroup('extdata')
-extdata.params = [[], ['nnu'], ['mnu'], ['nnu', 'mnu'], ['nnu', 'meffsterile']]
-extdata.datasets = []
-for d in copy.deepcopy(g.datasets):
-    d.add(WL)
-    extdata.datasets.append(d)
-for d in copy.deepcopy(g.datasets):
-    d.add(WLHeymans)
-    extdata.datasets.append(d)
 if False:
+    extdata = batchJob.jobGroup('extdata')
+    extdata.params = [[], ['nnu'], ['mnu'], ['nnu', 'mnu'], ['nnu', 'meffsterile']]
+    extdata.datasets = []
     for d in copy.deepcopy(g.datasets):
         d.add(WL)
-        d.add(lensing)
         extdata.datasets.append(d)
     for d in copy.deepcopy(g.datasets):
-        d.add(BAORSD, RSDdata)
+        d.add(WLHeymans)
         extdata.datasets.append(d)
-for d in copy.deepcopy(g.datasets):
-    d.add(BAORSD, RSDdata)
-    d.add(lensing)
-    d.add(WL)
-    d.add(JLA)
-    d.add(HST, HSTdata)
-    extdata.datasets.append(d)
+    if False:
+        for d in copy.deepcopy(g.datasets):
+            d.add(WL)
+            d.add(lensing)
+            extdata.datasets.append(d)
+        for d in copy.deepcopy(g.datasets):
+            d.add(BAORSD, RSDdata)
+            extdata.datasets.append(d)
+    for d in copy.deepcopy(g.datasets):
+        d.add(BAORSD, RSDdata)
+        d.add(lensing)
+        d.add(WL)
+        d.add(JLA)
+        d.add(HST, HSTdata)
+        extdata.datasets.append(d)
 
-extdata.importanceRuns = []
-groups.append(extdata)
+    extdata.importanceRuns = []
+    groups.append(extdata)
 
 WLdata = [batchJob.dataSet(WLonly), batchJob.dataSet(WLonlyHeymans)]
 gWL = batchJob.jobGroup('WLonlybase')
@@ -494,7 +496,7 @@ gchecks = batchJob.jobGroup('tauchecks')
 gchecks.datasets = [copy.deepcopy(baseTT)]
 for d in gchecks.datasets:
     d.add(WMAPTEB)
-gchecks.params = [[], ['mnu'], ['nnu'], ['Alens'], ['yhe']]
+gchecks.params = [[], ['mnu'], ['nnu'], ['Alens'], ['yhe'], ['r'], ['nrun', 'r']]
 gchecks.importanceRuns = []
 groups.append(gchecks)
 

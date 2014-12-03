@@ -22,7 +22,7 @@
     type(TBBNPredictions), target, save :: BBN_DH = TBBNPredictions(data_col=7)
     type(TBBNPredictions), target, save :: BBN_DH_err = TBBNPredictions(data_col=8)
 
-    character(LEN=*), parameter :: BBN_data_file = 'BBN_full_alterBBN_880.1.dat'
+    character(LEN=*), parameter :: BBN_data_file = 'BBN_full_Parthenelope_880.3.dat'
 
     contains
 
