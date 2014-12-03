@@ -2805,7 +2805,7 @@
             write(*,'("zstar                = ",f8.2)') ThermoDerivedParams( derived_zstar )
             write(*,'("r_s(zstar)/Mpc       = ",f7.2)') ThermoDerivedParams( derived_rstar )
             write(*,'("100*theta            = ",f9.6)') ThermoDerivedParams( derived_thetastar )
-            write(*,'("DA(zstar)/Gpc        = ",f9.6)') ThermoDerivedParams( derived_DAstar )
+            write(*,'("DA(zstar)/Gpc        = ",f9.5)') ThermoDerivedParams( derived_DAstar )
 
             write(*,'("zdrag                = ",f8.2)') ThermoDerivedParams( derived_zdrag )
             write(*,'("r_s(zdrag)/Mpc       = ",f7.2)') ThermoDerivedParams( derived_rdrag )
