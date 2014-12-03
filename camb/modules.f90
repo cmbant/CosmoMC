@@ -2813,8 +2813,8 @@
             write(*,'("k_D(zstar) Mpc       = ",f7.4)') ThermoDerivedParams( derived_kD )
             write(*,'("100*theta_D          = ",f9.6)') ThermoDerivedParams( derived_thetaD )
 
-            write(*,'("z_EQ (if vel_nu=1)   = ",f8.2)') ThermoDerivedParams( derived_zEQ )
-            write(*,'("k_EQ (if vel_nu=1)   = ",f7.4)') ThermoDerivedParams( derived_kEQ )
+            write(*,'("z_EQ (if v_nu=1)     = ",f8.2)') ThermoDerivedParams( derived_zEQ )
+            write(*,'("k_EQ Mpc (if v_nu=1) = ",f9.6)') ThermoDerivedParams( derived_kEQ )
             write(*,'("100*theta_EQ         = ",f9.6)') ThermoDerivedParams( derived_thetaEQ )
             write(*,'("100*theta_rs_EQ      = ",f9.6)') ThermoDerivedParams( derived_theta_rs_EQ )
 
