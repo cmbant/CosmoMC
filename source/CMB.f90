@@ -8,7 +8,7 @@
     private
 
     type, extends(TCMBLikelihood) :: TCMBSZLikelihood
-     ! (inherited) tag set from "cmb_dataset[tag] =" in input file
+        ! (inherited) tag set from "cmb_dataset[tag] =" in input file
         real(mcp), pointer, dimension(:) :: sz_template
     contains
     procedure :: ReadSZTemplate
@@ -34,6 +34,7 @@
 #ifdef NONCLIK
     use noncliklike
 #endif
+    use BK_planck
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
     class(TCMBLikelihood), pointer  :: like
@@ -54,7 +55,11 @@
             call MpiStop('Set WMAP directory in Makefile to compile with WMAP')
 #endif
         else
-            allocate(TCMBLikes::like)
+            if (DataSets%Name(i) == 'BKPLANCK') then
+                allocate(TBK_planck::like)
+            else
+                allocate(TCMBLikes::like)
+            end if
             call like%ReadDatasetFile(Datasets%Value(i))
         end if
         like%Tag = DataSets%Name(i)

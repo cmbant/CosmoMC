@@ -94,6 +94,7 @@
 		<Filter Name="Likelihood">
 		<File RelativePath="..\source\bao.f90"/>
 		<File RelativePath="..\source\CMB.f90"/>
+		<File RelativePath="..\source\CMB_BK_Planck.f90"/>
 		<File RelativePath="..\source\CMBlikes.f90">
 			<FileConfiguration Name="Debug|x64">
 				<Tool Name="VFFortranCompilerTool" WarnUnusedVariables="true"/></FileConfiguration></File>

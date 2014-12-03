@@ -47,6 +47,7 @@
     integer, parameter :: tot_theory_fields = 4
 
     Type, extends(TSkyPowerSpectrum) :: TMapCrossPowerSpectrum
+        integer map_i, map_j
         integer theory_i, theory_j
     end type TMapCrossPowerSpectrum
 
@@ -116,7 +117,8 @@
     procedure :: ReadBinWindows
     procedure :: ReadCovmat
     procedure :: GetBinnedMapCls
-    procedure :: GetTheoryMapCls !Add foregrounds etc
+    procedure :: GetTheoryMapCls !take theory calcualtion and add foregrounds etc using sub below
+    procedure :: AdaptTheoryForMaps
     end Type TCMBLikes
 
     character(LEN=tot_theory_fields), parameter :: field_names = 'TEBP' !P is CMB lensing
@@ -127,7 +129,7 @@
     character(LEN=Ini_Enumeration_Len), parameter :: &
         & like_Names(3) = [character(Ini_Enumeration_Len)::'HL','gaussian','exact']
 
-    public TCMBLikes
+    public TCMBLikes, TMapCrossPowerSpectrum
     contains
 
     function TypeIndex(C)
@@ -552,9 +554,9 @@
             ix=ix+1
             this%map_required_index(i)=ix
             this%required_order(ix) = i
-        end if        
+        end if
     end do
-    
+
     allocate(this%map_used_index(this%map_names%Count), source=0)
     ix=0
     do i=1, this%map_names%Count
@@ -562,7 +564,7 @@
             ix=ix+1
             this%map_used_index(i)=ix
             call this%map_order%Add(this%map_names%Item(i))
-        end if        
+        end if
     end do
     this%ncl = (this%nmaps*(this%nmaps+1))/2
 
@@ -728,6 +730,7 @@
     call this%TCMBLikelihood%ReadIni(Ini)
 
     end subroutine CMBLikes_ReadIni
+
 
     subroutine ReadCovmat(this, Ini)
     class(TCMBLikes) :: this
@@ -977,14 +980,29 @@
     allocate(TMapCrossPowerSpectrum::Cls(this%nmaps_required, this%nmaps_required))
     do i=1, this%nmaps_required
         do j=1, i
-            call this%RequiredMapPair_to_Theory_i_j(i,j,f1,f2)
-            if (allocated(Theory%Cls(f1,f2)%CL)) then
-                Cls(i,j)%theory_i = f1
-                CLs(i,j)%theory_j = f2
-                allocate(Cls(i,j)%CL, source = Theory%Cls(f1,f2)%CL)
-            end if
+            associate(CL => Cls(i,j))
+                CL%map_i = this%required_order(i)
+                CL%map_j = this%required_order(j)
+                call this%RequiredMapPair_to_Theory_i_j(i,j,f1,f2)
+                if (allocated(Theory%Cls(f1,f2)%CL)) then
+                    CL%theory_i = f1
+                    CL%theory_j = f2
+                    allocate(CL%CL, source = Theory%Cls(f1,f2)%CL)
+                end if
+            end associate
         end do
     end do
+    call this%AdaptTheoryForMaps(Cls,DataParams)
+
+    end subroutine GetTheoryMapCls
+
+
+    subroutine AdaptTheoryForMaps(this,Cls,DataParams)
+    class(TCMBLikes) :: this
+    class(TMapCrossPowerSpectrum), intent(inout) :: Cls(:,:)
+    real(mcp), intent(in) :: DataParams(:)
+    integer i,j
+
     if (this%calibration_index > 0) then
         !Scale T, E, B spectra by the calibration parameter
         do i=1, this%nmaps_required
@@ -998,7 +1016,7 @@
         end do
     end if
 
-    end subroutine GetTheoryMapCls
+    end subroutine AdaptTheoryForMaps
 
     function CMBLikes_LogLike(this, CMB, Theory, DataParams)  result (LogLike)
     real(mcp) logLike
