@@ -7,6 +7,23 @@ defaults = ['common.ini']
 
 importanceDefaults = ['importance_sampling.ini']
 
+# ranges for parameters when they are varied
+params = dict()
+params['w'] = '-0.99 -3. 1 0.02 0.02'
+params['wa'] = '0 -3 2 0.05 0.05'
+params['mnu'] = '0.02 0 5 0.1 0.03'
+params['omegak'] = '-0.0008 -0.3 0.3 0.001 0.001'  # starting exactly on flat seems to confuse minimizer
+params['nnu'] = '3.046 0.05 10 0.05 0.05'
+params['nrun'] = '0 -1 1 0.005 0.001'
+params['r'] = '0 0 3 0.03 0.03'
+params['Alens'] = '1 0 10 0.05 0.05'
+params['yhe'] = '0.245 0.1 0.5 0.006 0.006'
+params['alpha1'] = '0 -1 1 0.0003 0.0003'
+params['meffsterile'] = '0.1 0 3 0.1 0.03'
+params['Aphiphi'] = '1 0 10 0.02 0.02'
+params['Alensf'] = '1 0 10 0.03 0.03'
+
+
 # dataset names
 lowl = 'lowl'
 lensing = 'lensing'
