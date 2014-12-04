@@ -48,7 +48,6 @@ plot_ext = ini.string('plot_ext', 'py')
 
 plot_output = ini.string('plot_output', 'pdf')
 
-font_scale = ini.float('font_scale', 1.0)
 finish_run_command = ini.string('finish_run_command', '')
 
 auto_label = ini.bool('auto_label', False)
