@@ -24,6 +24,10 @@ python python/makeTables.py main tables/compare_plikTTlowTEB_1sig  --limit 1 --c
 python python/makeTables.py main tables/compare_plikTTlowTEB_2sig  --limit 2 --converge 0.1 --changes_from_datatag plikHM_TT_lowTEB --header_tex batch2/outputs/tableHeader.tex &
 python python/makeTables.py main tables/compare_plikTTlowTEB_3sig  --limit 3 --converge 0.1 --changes_from_datatag plikHM_TT_lowTEB --header_tex batch2/outputs/tableHeader.tex
 
+python python/makeTables.py main tables/compare_TTTEEE_TT_1sig  --limit 1 --converge 0.1 --changes_replacing TT TTTEEE --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_TTTEEE_TT_2sig  --limit 2 --converge 0.1 --changes_replacing TT TTTEEE --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_TTTEEE_TT_3sig  --limit 3 --converge 0.1 --changes_replacing TT TTTEEE --header_tex batch2/outputs/tableHeader.tex
+
 
 
 python python/makeTables.py main tables/pol_shift_sigma_table --limit 1 --changes_replacing TTTEEE TT --shift_sigma_subset --data TT TTTEEE

@@ -1,5 +1,6 @@
 import os, ResultObjs, GetDistPlots, sys, batchJob
 from matplotlib import rcParams, rc, pylab
+import iniFile
 
 # common setup for matplotlib
 params = {'backend': 'pdf',
@@ -69,6 +70,10 @@ lensing = datalabel[defdata_lensing]
 lensingall = datalabel[defdata_all_lensing]
 defplanck = datalabel[defdata]
 
+shortlabel = {}
+for key, value in datalabel.items():
+    shortlabel[key] = value.replace(planck + ' ', '')
+
 NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
 NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
 WPhighLlensing = r'\textit{Planck}+lensing+WP+highL'
@@ -98,7 +103,22 @@ s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#
 s.axis_marker_lw = 0.6
 s.lw_contour = 1
 
-rootdir = 'main'
+use_plot_data = True
+
+def getRoot():
+    global use_plot_data
+    codeRoot = batchJob.getCodeRootPath()
+    configf = os.path.join(codeRoot, 'python', 'config.ini')
+    root = None
+    output_base_dir = None
+    if os.path.exists(configf):
+        ini = iniFile.iniFile(configf)
+        root = ini.string('default_grid_root', '')
+        output_base_dir = ini.string('output_base_dir', '')
+        use_plot_data = ini.bool('use_plot_data', use_plot_data)
+    return root or os.path.join(codeRoot, 'main'), output_base_dir or codeRoot
+
+rootdir, output_base_dir = getRoot()
 
 H0_high = [73.9, 2.7]
 H0_Freeman12 = [74.3, 2.1]
@@ -135,16 +155,16 @@ def plotBounds(omm, data, c='gray'):
 
 class planckPlotter(GetDistPlots.GetDistPlotter):
 
+    def getBatch(self):
+        if not hasattr(self, 'batch'): self.batch = batchJob.readobject(rootdir)
+        return self.batch
+
     def doExport(self, fname=None, adir=None, watermark=None, tag=None):
-        if fname is None: fname = os.path.basename(sys.argv[0]).replace('.py', '')
-        if tag: fname += '_' + tag
-        if not '.' in fname: fname += '.pdf'
-        if adir is not None and not os.sep in fname: fname = os.path.join(adir, fname)
-        if not os.path.exists(os.path.dirname(fname)): os.makedirs(os.path.dirname(fname))
-        if watermark is not None and watermark or watermark is None and non_final:
-            # #watermark with version tag so we know it's old
-            pylab.gcf().text(0.45, 0.5, version.replace('_', '{\\textunderscore}'), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
-        GetDistPlots.GetDistPlotter.export(self, fname)
+        if watermark is None and non_final:
+            watermark = version
+        if adir:
+            if not os.sep in adir: adir = os.path.join(output_base_dir, adir)
+        super(planckPlotter, self).export(fname, adir, watermark, tag)
 
     def export(self, fname=None, tag=None):
         self.doExport(fname, 'outputs', tag=tag)
@@ -153,26 +173,31 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
         self.doExport(fname, 'plots')
 
     def getRoot(self, paramtag, datatag, returnJobItem=False):
-        if not hasattr(self, 'batch'): self.batch = batchJob.readobject(rootdir)
-        return self.batch.resolveName(paramtag, datatag, returnJobItem=returnJobItem)
+        return self.getBatch().resolveName(paramtag, datatag, returnJobItem=returnJobItem)
 
     def getJobItem(self, paramtag, datatag):
         jobItem = self.getRoot(paramtag, datatag, returnJobItem=True)
         jobItem.loadJobItemResults(paramNameFile=self.settings.param_names_for_labels)
         return jobItem
 
-plotter = planckPlotter(rootdir + '/plot_data')
+def getPlotter(plot_data=None, grid_dir=None):
+    global plotter, rootdir
+    if plot_data is not None or use_plot_data:
+        plotter = planckPlotter(plot_data or os.path.join(rootdir, 'plot_data'))
+    if grid_dir or not use_plot_data:
+        plotter = planckPlotter(chain_dir=grid_dir or rootdir)
+    return plotter
+
+plotter = getPlotter()
 
 
-def getSubplotPlotter(plot_data=None):
-    global plotter
+def getSubplotPlotter(plot_data=None, grid_dir=None):
     s.setWithSubplotSize(2)
     s.axes_fontsize += 2
     s.colorbar_axes_fontsize += 2
 #    s.lab_fontsize += 2
     s.legend_fontsize = s.lab_fontsize + 1
-    if plot_data is not None: plotter = planckPlotter(plot_data)
-    return plotter
+    return getPlotter(plot_data, grid_dir)
 
 def getPlotterWidth(size=1, **kwargs):  # size in mm
     inch_mm = 0.0393700787
@@ -184,13 +209,12 @@ def getPlotterWidth(size=1, **kwargs):  # size in mm
     s.fig_width_inch = width
     s.setWithSubplotSize(2)
     s.rcSizes(**kwargs)
-    return plotter
+    return getPlotter()
 
-def getSinglePlotter(ratio=3 / 4., plot_data=None):
-    global plotter
+def getSinglePlotter(ratio=3 / 4., plot_data=None, grid_dir=None):
     s.setWithSubplotSize(3.5)
     s.rcSizes()
-    if plot_data is not None: plotter = planckPlotter(plot_data)
+    plotter = getPlotter(plot_data, grid_dir)
     plotter.make_figure(1, ystretch=ratio)
     return plotter
 

@@ -55,6 +55,16 @@ def dh_fit(omegab,dneff,taun):
 def runBBN(eta,DeltaN=0,tau=tau_n,prog='./alter_etannutau.x'):
     return subprocess.check_output([prog, str(eta), str(3+DeltaN), str(tau)], shell=False,stderr=subprocess.STDOUT)
 
+# BBN predictions from Parthenope
+def ypBBN_Parthenope(omegab, neff):
+    #neff here is including 0.046 factor
+  return 0.1817 + 0.9020 * omegab - 10.33 * omegab * omegab + (0.01948 + 0.02440 * omegab - 0.4404 * omegab * omegab) * neff +\
+       (-0.001002 - 0.002778 * omegab + 0.04719 * omegab * omegab) * neff * neff;
+
+def yhe_to_ypBBN(Yp, ombh2):
+    return -4*m_H*Yp/(Yp*m_He-4*Yp*m_H-m_He)
+    
+
     
 def runBBNplot():
     #standard BBN plot
@@ -106,8 +116,8 @@ for DeltaN in DeltaNs:
             D= dh_fit(ombh2, DeltaN, tau_n)*1e-5
             Yp = Yp_fid
             #Yp error already includes tau_n error??
-            sigdD = np.sqrt(4.e-07**2 + ((dh_fit(ombh2,DeltaN,tau_n+1.1)-dh_fit(ombh2,DeltaN,tau_n-1.1))/2*1e-5)**2 +  (0.002*D)**2)
-            sigYBBN = np.sqrt(0.0003**2 + ((yhe_fit(ombh2,DeltaN,tau_n+1.1)-yhe_fit(ombh2,DeltaN,tau_n-1.1))/2)**2 + (0.002*Yp)**2)
+            sigdD = 4e-7 #np.sqrt(4.e-07**2 + ((dh_fit(ombh2,DeltaN,tau_n+1.1)-dh_fit(ombh2,DeltaN,tau_n-1.1))/2*1e-5)**2 +  (0.002*D)**2)
+            sigYBBN = 0.0003 #np.sqrt(0.0003**2 + ((yhe_fit(ombh2,DeltaN,tau_n+1.1)-yhe_fit(ombh2,DeltaN,tau_n-1.1))/2)**2 + (0.002*Yp)**2)
             line = (('%12.5f ')*6 + ('%12.3e %12.2e'))%(ombh2, eta*1e10, DeltaN, Yp, YBBN, sigYBBN, D, sigdD) 
             lines += [line]            
         print line

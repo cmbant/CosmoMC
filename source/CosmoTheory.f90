@@ -265,6 +265,7 @@
         do j= i, 1, -1
             if (FileSettings%cl_lmax(i,j)>0) then
                 call F%ReadSizedArray(cl)
+                if (i> CosmoSettings%num_cls) cycle
                 if (CosmoSettings%cl_lmax(i,j)>0) then
                     associate (Sz => min(FileSettings%cl_lmax(i,j),CosmoSettings%cl_lmax(i,j)))
                         this%Cls(i,j)%Cl(1:Sz) = Cl(1:sz)

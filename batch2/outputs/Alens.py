@@ -41,7 +41,7 @@ roots = ['base_' + s.defdata_TTonly,
 ]
 
 g.plot_1d(roots, 'rmsdeflect', normalized=True, param_renames={'Alensf':'Alens'})
-g.add_legend(['TT', 'TE+lowEB', 'EE+lowEB', 'lensing', 'TT+lowTEB', 'TT+lowTEB+lensing'],
+g.add_legend(['TT', 'TE+lowP', 'EE+lowP', 'lensing', 'TT+lowP', 'TT+lowP+lensing'],
              legend_loc='upper right', colored_text=True)
 xlim([1.9, 3.1])
 g.export(tag='deflect')

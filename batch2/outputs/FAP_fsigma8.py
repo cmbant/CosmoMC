@@ -1,5 +1,6 @@
 import planckStyle as s
 import GetDistPlots
+import batchJob
 from pylab import *
 
 
@@ -19,17 +20,17 @@ def RSDdensity(FAPbar, f8bar, covfile):
     like = (FAP - FAPbar) ** 2 * invcov[0, 0] + 2 * (FAP - FAPbar) * (f8 - f8bar) * invcov[0, 1] + (f8 - f8bar) ** 2 * invcov[1, 1]
 
     density = GetDistPlots.Density2D()
-    density.pts = exp(-like)
+    density.pts = exp(-like / 2)
     density.x1 = FAP
     density.x2 = f8
-    density.contours = exp(-np.array([2.279, 5.991]))
+    density.contours = exp(-np.array([1.509, 2.4477]) ** 2 / 2)
     return density
 
 
 
 FAPbar = 0.6725
 f8bar = 0.4412
-density = RSDdensity(FAPbar, f8bar, './data/sdss_DR11CMASS_RSD_bao_invcov_Samushia.txt')
+density = RSDdensity(FAPbar, f8bar, batchJob.getCodeRootPath() + 'data/sdss_DR11CMASS_RSD_bao_invcov_Samushia.txt')
 g.add_2d_contours(roots[0], 'FAP057', 'fsigma8z057', filled=True, density=density)
 
 
@@ -38,7 +39,7 @@ g.add_2d_contours(roots[0], 'FAP057', 'fsigma8z057', filled=True, density=densit
 
 FAPbar = .683
 f8bar = 0.422
-density = RSDdensity(FAPbar, f8bar, './data/sdss_DR11CMASS_RSD_bao_invcov_Beutler.txt')
+density = RSDdensity(FAPbar, f8bar, batchJob.getCodeRootPath() + 'data/sdss_DR11CMASS_RSD_bao_invcov_Beutler.txt')
 g.add_2d_contours(roots[0], 'FAP057', 'fsigma8z057', filled=False, density=density, ls=':', alpha=0.5)
 
 g.add_2d_contours(roots[0], 'FAP057', 'fsigma8z057', filled=True, plotno=3)

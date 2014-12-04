@@ -1,13 +1,27 @@
 import os, paramNames, pickle, random
 import numpy as np
 
+def lastModified(files):
+    return max([os.path.getmtime(fname) for fname in files])
+
+def chainFiles(root, chain_indices=None, ext='.txt'):
+    index = -1
+    files = []
+    while True:
+        index += 1
+        fname = root + ('', '_' + str(index))[index > 0] + ext
+        if index > 0 and not os.path.exists(fname): break
+        if (chain_indices is None or index in chain_indices) and os.path.exists(fname):
+            files.append(fname)
+    return files
+
 
 def loadChains(root=None, chain_indices=None, ignore_rows=0, ignore_frac=0, no_cache=False, separate_chains=False, no_stat=False, ext='.txt'):
     c = chains(root, ignore_rows=ignore_rows)
     if root is not None:
-        files = c.chainFiles(root, chain_indices, ext=ext)
+        files = chainFiles(root, chain_indices, ext=ext)
         c.cachefile = root + ext + '.pysamples'
-        if not separate_chains and chain_indices is None and not no_cache and os.path.exists(c.cachefile) and c.lastModified(files) < os.path.getmtime(c.cachefile):
+        if not separate_chains and chain_indices is None and not no_cache and os.path.exists(c.cachefile) and lastModified(files) < os.path.getmtime(c.cachefile):
             with open(c.cachefile, 'rb') as inp:
                 return pickle.load(inp)
         elif c.loadChains(root, files):
@@ -16,6 +30,7 @@ def loadChains(root=None, chain_indices=None, ignore_rows=0, ignore_frac=0, no_c
             if not no_stat: c.getChainsStats()
             if not separate_chains:
                 c.makeSingle()
+                c.updateChainBaseStatistics()
                 with open(c.cachefile, 'wb') as output:
                     pickle.dump(c, output, pickle.HIGHEST_PROTOCOL)
             return c
@@ -46,7 +61,7 @@ def getSignalToNoise(C, noise=None, R=None, eigs_only=False):
         return w, U
 
 
-class chain():
+class chain(object):
     def __init__(self, filename, ignore_rows=0):
         self.setColData(np.loadtxt(filename, skiprows=ignore_rows))
 
@@ -75,23 +90,25 @@ class chain():
         self.means = np.asarray(means)
         return means
 
-class parSamples(): pass
+class paramConfidenceData(object):
+    pass
 
-class chains():
+class parSamples(object): pass
 
-    def __init__(self, root=None, ignore_rows=0):
+class chains(object):
+
+    def __init__(self, root=None, ignore_rows=0, jobItem=None):
+        self.jobItem = jobItem
         self.precision = '%.8e'
         self.ignore_rows = ignore_rows
         self.root = root
         self.chains = []
         self.samples = None
         self.hasNames = os.path.exists(root + '.paramnames')
+        self.needs_update = True
         if self.hasNames:
             self.paramNames = paramNames.paramNames(root + '.paramnames')
             self.getParamIndices()
-
-    def lastModified(self, files):
-        return max([os.path.getmtime(fname) for fname in files])
 
     def getParamIndices(self):
         index = dict()
@@ -109,6 +126,7 @@ class chains():
         return pars
 
     def valuesForParam(self, param, force_array=False):
+        if isinstance(param, np.ndarray): return param
         if isinstance(param, basestring): param = [param]
         results = []
         for par in param:
@@ -143,30 +161,46 @@ class chains():
         return self.confidence(paramVec, (1 - confidence) / 2, upper=False) , self.confidence(paramVec, (1 - confidence) / 2, upper=True)
 
 
+    def initParamConfidenceData(self, paramVec):
+        d = paramConfidenceData()
+        d.paramVec = self.valuesForParam(paramVec)
+        d.norm = np.sum(self.weights)
+        d.indexes = paramVec.argsort()
+        weightsort = self.weights[d.indexes]
+        d.cumsum = np.cumsum(weightsort)
+        return d
+
     def confidence(self, paramVec, limfrac, upper):
-        paramVec = self.valuesForParam(paramVec)
-        try_b = min(paramVec)
-        try_t = max(paramVec)
+        if isinstance(paramVec, paramConfidenceData):
+            d = paramVec
+        else:
+            d = self.initParamConfidenceData(paramVec)
 
-        lasttry = -1
-        while True:
-            if upper:
-                trial = self.get_norm(paramVec > (try_b + try_t) / 2)
-                if trial > self.norm * limfrac:
-                    try_b = (try_b + try_t) / 2
-                else:
-                    try_t = (try_b + try_t) / 2
-            else:
-                trial = self.get_norm(paramVec < (try_b + try_t) / 2)
-                if (trial > self.norm * limfrac):
-                    try_t = (try_b + try_t) / 2
-                else:
-                    try_b = (try_b + try_t) / 2
-            if trial == lasttry and (abs(try_b + try_t) < 1e-10 or
-                      abs((try_b - try_t) / (try_b + try_t)) < 0.05): break
-            lasttry = trial
-
-        return try_t
+        if not upper: target = d.norm * limfrac
+        else: target = d.norm * (1 - limfrac)
+        ix = np.searchsorted(d.cumsum, target)
+        return d.paramVec[d.indexes[min(ix, d.indexes.shape[0] - 1)]]
+#         try_b = np.min(paramVec)
+#         try_t = np.max(paramVec)
+#         lasttry = -1
+#         while True:
+#             if upper:
+#                 trial = np.sum(weights[paramVec > (try_b + try_t) / 2])
+#                 if trial > (norm * limfrac):
+#                     try_b = (try_b + try_t) / 2
+#                 else:
+#                     try_t = (try_b + try_t) / 2
+#             else:
+#                 trial = np.sum(weights[paramVec < (try_b + try_t) / 2])
+#                 if trial > (norm * limfrac):
+#                     try_t = (try_b + try_t) / 2
+#                 else:
+#                     try_b = (try_b + try_t) / 2
+#             if trial == lasttry and (abs(try_b + try_t) < 1e-10 or
+#                       abs((try_b - try_t) / (try_b + try_t)) < 0.05): break
+#             lasttry = trial
+#
+#         return try_t
 
     def cov(self, paramVecs):
         paramVecs = self.valuesForParam(paramVecs, force_array=True)
@@ -199,21 +233,18 @@ class chains():
         return getSignalToNoise(C, noise, R, eigs_only)
 
 
-    def addDerived(self, paramName, paramVec):
-        self.paramNames.addDerived(paramName)
-        self.samples.append(paramVec, 1)
+    def updateChainBaseStatistics(self):
+        self.norm = np.sum(self.weights)
+        self.numrows = self.samples.shape[0]
+        self.num_vars = self.samples.shape[1]
         self.getParamIndices()
+        self.needs_update = False
 
-    def chainFiles(self, root, chain_indices=None, ext='.txt'):
-        index = -1
-        files = []
-        while True:
-            index += 1
-            fname = root + ('', '_' + str(index))[index > 0] + ext
-            if index > 0 and not os.path.exists(fname): break
-            if (chain_indices is None or index in chain_indices) and os.path.exists(fname):
-                files.append(fname)
-        return files
+    def addDerived(self, paramVec, **kwargs):
+        self.samples = np.c_[self.samples, paramVec]
+        self.needs_update = True
+        return self.paramNames.addDerived(**kwargs)
+    #    self.updateChainBaseStatistics()
 
     def loadChains(self, root, files):
         self.chains = []
@@ -258,8 +289,6 @@ class chains():
         self.weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
         self.loglikes = np.hstack((chain.coldata[:, 1] for chain in self.chains))
         self.samples = np.vstack((chain.coldata[:, 2:] for chain in self.chains))
-        self.norm = np.sum(self.weights)
-        self.numrows = self.samples.shape[0]
         del(self.chains)
         return self
 
@@ -303,10 +332,11 @@ class chains():
                 if np.all(chain.coldata[:, i] == chain.coldata[0, i]): fixed.append(i)
             for chain in self.chains:
                 chain.setColData(np.delete(chain.coldata, fixed, 1))
+            fixed = [fix - 2 for fix in fixed]
         if self.hasNames:
-            self.paramNames.deleteIndices([fix - 2 for fix in fixed])
+            self.paramNames.deleteIndices(fixed)
             self.getParamIndices()
-            print 'Non-derived parameters: ', [name.name for name in self.paramNames.names[0:self.paramNames.numNonDerived()]]
+#           print 'Non-derived parameters: ', [name.name for name in self.paramNames.names[0:self.paramNames.numNonDerived()]]
 
 
     def writeSingle(self, root):
@@ -362,7 +392,7 @@ class chains():
 
     def filter(self, where):
         self.samples = self.samples[where, :]
-        self.weights = self.weights[where, :]
+        self.weights = self.weights[where]
         self.loglikes = self.loglikes[where]
         self.norm = np.sum(self.weights)
 

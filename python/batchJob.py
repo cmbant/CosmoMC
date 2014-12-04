@@ -2,10 +2,20 @@
 import os, sys, shutil, pickle, ResultObjs, time, copy, iniFile
 
 
+def resetGrid(directory):
+    fname = os.path.abspath(directory) + os.sep + 'batch.pyobj'
+    if os.path.exists(fname): os.remove(fname)
+
 def readobject(directory=None):
     if directory == None:
         directory = sys.argv[1]
-    with open(os.path.abspath(directory) + os.sep + 'batch.pyobj', 'rb') as inp:
+    fname = os.path.abspath(directory) + os.sep + 'batch.pyobj'
+    if not os.path.exists(fname):
+        import makeGrid
+        if makeGrid.pathIsGrid(directory):
+            return makeGrid.makeGrid(directory, readOnly=True, interactive=False)
+        return None
+    with open(fname, 'rb') as inp:
         return pickle.load(inp)
 
 def saveobject(obj, filename):
@@ -17,6 +27,9 @@ def makePath(s):
 
 def nonEmptyFile(fname):
     return os.path.exists(fname) and os.path.getsize(fname) > 0
+
+def getCodeRootPath():
+    return os.path.normpath(os.path.join(os.path.dirname(__file__), '..' + os.sep)) + os.sep
 
 class propertiesItem:
     def propertiesIni(self):
@@ -145,6 +158,9 @@ class jobItem(propertiesItem):
 
     def propertiesIniFile(self):
         return self.chainRoot + '.properties.ini'
+
+    def isBurnRemoved(self):
+        return self.propertiesIni().bool('burn_removed')
 
     def makeImportance(self, importanceRuns):
         self.importanceItems = []
@@ -324,10 +340,10 @@ class jobItem(propertiesItem):
 
 class batchJob(propertiesItem):
 
-    def __init__(self, path, iniDir):
+    def __init__(self, path, iniDir, cosmomcPath=None):
         self.batchPath = path
         self.skip = []
-        self.basePath = os.path.dirname(sys.path[0]) + os.sep
+        self.basePath = cosmomcPath or getCodeRootPath()
         self.commonPath = self.basePath + iniDir
         self.subBatches = []
         self.jobItems = None

@@ -299,8 +299,6 @@
 
     thin_rows = nout
 
-    close(50)
-
     end subroutine ThinData
 
 
