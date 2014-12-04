@@ -184,9 +184,9 @@ lowTT.params = [ [], ['Alens'], ['nnu']]
 lowTT.datasets = copy.deepcopy(planck_highL_sets)
 for d in lowTT.datasets:
     d.add(lowEB)
-for d in copy.deepcopy(lowTT.datasets):
-    d.add(BAO, BAOdata)
-    lowTT.datasets.append(d)
+# for d in copy.deepcopy(lowTT.datasets):
+#    d.add(BAO, BAOdata)
+#    lowTT.datasets.append(d)
 lowTT.importanceRuns = []
 groups.append(lowTT)
 

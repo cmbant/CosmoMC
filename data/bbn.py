@@ -105,6 +105,7 @@ for DeltaN in DeltaNs:
         else:
             D= dh_fit(ombh2, DeltaN, tau_n)*1e-5
             Yp = Yp_fid
+            #Yp error already includes tau_n error??
             sigdD = np.sqrt(4.e-07**2 + ((dh_fit(ombh2,DeltaN,tau_n+1.1)-dh_fit(ombh2,DeltaN,tau_n-1.1))/2*1e-5)**2 +  (0.002*D)**2)
             sigYBBN = np.sqrt(0.0003**2 + ((yhe_fit(ombh2,DeltaN,tau_n+1.1)-yhe_fit(ombh2,DeltaN,tau_n-1.1))/2)**2 + (0.002*Yp)**2)
             line = (('%12.5f ')*6 + ('%12.3e %12.2e'))%(ombh2, eta*1e10, DeltaN, Yp, YBBN, sigYBBN, D, sigdD) 
