@@ -44,12 +44,12 @@
     procedure :: bin => TBinWindows_bin
     end type
 
-    integer, parameter :: tot_theory_fields = 4
-
     Type, extends(TSkyPowerSpectrum) :: TMapCrossPowerSpectrum
         integer map_i, map_j
         integer theory_i, theory_j
     end type TMapCrossPowerSpectrum
+
+    integer, parameter :: tot_theory_fields = len(CMB_CL_Fields)
 
     Type, extends(TCMBLikelihood) :: TCMBLikes
         integer nmaps !number of maps used in the likelihood
@@ -114,6 +114,7 @@
     procedure, private :: RequiredMapPair_to_Theory_i_j
     procedure, private :: PairStringToUsedMapIndices
     procedure, private :: PairStringToMapIndices
+    procedure, nopass :: TypeIndex
     procedure :: ReadBinWindows
     procedure :: ReadCovmat
     procedure :: GetBinnedMapCls
@@ -121,15 +122,14 @@
     procedure :: AdaptTheoryForMaps
     end Type TCMBLikes
 
-    character(LEN=tot_theory_fields), parameter :: field_names = 'TEBP' !P is CMB lensing
     integer, parameter :: like_approx_HL=1   !approximation from Hammimeche & Lewis arXiv: 0801.0554
     integer, parameter :: like_approx_fid_gaussian=2 !fiducial fixed covariance matrix, (X-Xhat)^TC^{-1}(X-Xhat)
     integer, parameter :: like_approx_fullsky_exact=3 !ignore all correlations, use exact full sky likelihood function
 
     character(LEN=Ini_Enumeration_Len), parameter :: &
-        & like_Names(3) = [character(Ini_Enumeration_Len)::'HL','gaussian','exact']
+        & CMBLikes_like_Names(3) = [character(Ini_Enumeration_Len)::'HL','gaussian','exact']
 
-    public TCMBLikes, TMapCrossPowerSpectrum
+    public TCMBLikes, TMapCrossPowerSpectrum, TBinWindows, CMBLikes_like_Names
     contains
 
     function TypeIndex(C)
@@ -137,9 +137,9 @@
     integer TypeIndex
     !Get order T, E, B, P -> 1,2,3,4
 
-    TypeIndex = index(field_names,C)
+    TypeIndex = index(CMB_CL_Fields,C)
     if (TypeIndex==0) then
-        call mpiStop('Invalid C_l part, must be one of: '//field_names)
+        call mpiStop('Invalid C_l part, must be one of: '//CMB_CL_Fields)
     end if
 
     end function TypeIndex
@@ -322,6 +322,7 @@
     if (this%has_map_names) then
         ClName = name1//cross_separators(1:1)//name2
     else
+        
         ClName =name1//name2
     end if
 
@@ -468,13 +469,13 @@
             call MpiStop('CMBLikes: number of map_fields does not match map_names')
         allocate(this%map_fields(this%map_names%Count))
         do i=1, map_fields%Count
-            this%map_fields(i) = TypeIndex(map_fields%CharAt(i,1))
+            this%map_fields(i) = this%TypeIndex(map_fields%CharAt(i,1))
         end do
     else
         !map fields are just directly T E B or P (one each at most)
         allocate(this%map_fields(tot_theory_fields))
         do i=1, tot_theory_fields
-            tmp = field_names(i:i) !just avoid ifort 15.01 bug on adding directly
+            tmp = CMB_CL_Fields(i:i) !just avoid ifort 15.01 bug on adding directly
             call this%map_names%Add(tmp)
             this%map_fields(i) =i
         end do
@@ -485,7 +486,7 @@
         use_theory_field = .false.
         call fields_use%SetFromString(S)
         do i=1, fields_use%count
-            use_theory_field(TypeIndex(fields_use%CharAt(i,1))) = .true.
+            use_theory_field(this%TypeIndex(fields_use%CharAt(i,1))) = .true.
         end do
     else
         if (.not. this%has_map_names) call MpiStop('CMBlikes: must have fields_use or map_names')
@@ -532,21 +533,20 @@
             end if
         end do
     end if
+    this%required_theory_field = .false.
     do i=1, this%map_names%Count
         if (this%require_map(i)) then
             this%required_theory_field(this%map_fields(i)) = .true.
         end if
     end do
 
-
-    this%ncl=0
     this%ncl_used=0
 
-    this%like_approx = Ini%Read_Enumeration('like_approx',Like_Names)
+    this%like_approx = Ini%Read_Enumeration('like_approx',CMBLikes_like_Names)
     this%nmaps = count(this%use_map)
     this%nmaps_required = count(this%require_map)
 
-    allocate(this%required_order(this%nmaps_required), source=0)
+    allocate(this%required_order(this%nmaps_required))
     allocate(this%map_required_index(this%map_names%Count), source=0)
     ix =0
     do i=1, this%map_names%Count
