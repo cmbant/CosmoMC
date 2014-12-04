@@ -107,7 +107,8 @@ rstar*        r_\ast
 thetastar*    100\theta_\ast
 zdrag*        z_{\mathrm{drag}}
 rdrag*        r_{\mathrm{drag}}
-kd*           k_{\mathrm{D}}
+kd*           k_{\mathrm{D}} [\mathrm{Mpc}^{-1}]
+keq*           k_{\mathrm{eq}} [\mathrm{Mpc}^{-1}]
 thetad*       100\theta_{\mathrm{D}}
 zeq*          z_{\mathrm{eq}}
 thetaeq*      100\theta_{\mathrm{eq}}

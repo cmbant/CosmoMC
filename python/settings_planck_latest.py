@@ -7,6 +7,23 @@ defaults = ['common.ini']
 
 importanceDefaults = ['importance_sampling.ini']
 
+# ranges for parameters when they are varied
+params = dict()
+params['w'] = '-0.99 -3. 1 0.02 0.02'
+params['wa'] = '0 -3 2 0.05 0.05'
+params['mnu'] = '0.02 0 5 0.1 0.03'
+params['omegak'] = '-0.0008 -0.3 0.3 0.001 0.001'  # starting exactly on flat seems to confuse minimizer
+params['nnu'] = '3.046 0.05 10 0.05 0.05'
+params['nrun'] = '0 -1 1 0.005 0.001'
+params['r'] = '0 0 3 0.03 0.03'
+params['Alens'] = '1 0 10 0.05 0.05'
+params['yhe'] = '0.245 0.1 0.5 0.006 0.006'
+params['alpha1'] = '0 -1 1 0.0003 0.0003'
+params['meffsterile'] = '0.1 0 3 0.1 0.03'
+params['Aphiphi'] = '1 0 10 0.02 0.02'
+params['Alensf'] = '1 0 10 0.03 0.03'
+
+
 # dataset names
 lowl = 'lowl'
 lensing = 'lensing'
@@ -60,7 +77,7 @@ variants = variant_tag
 planck_highL_sets = []
 planck_pol_sets = []
 planck_vars = ['plikHM', 'CamSpecHM']
-planck_ini = ['plik_dx11dr2_HM_v17_%s.ini', 'CAMspec_%s.ini']
+planck_ini = ['plik_dx11dr2_HM_v18_%s.ini', 'CAMspec_%s.ini']
 planck_base = [[], camspec_CS]
 
 for planck, ini, base in zip(planck_vars, planck_ini, planck_base):
@@ -75,7 +92,7 @@ WMAP9 = [[WMAP], ['WMAP.ini']]
 
 likechecks = []
 likechecks.append(batchJob.dataSet(['CamSpecDS', 'TT'], camspec_detsets + ['CAMspec_TT.ini']))
-likechecks.append(batchJob.dataSet(['plikDS', 'TT'], ['plik_dx11dr2_DS_v17_TT.ini']))
+likechecks.append(batchJob.dataSet(['plikDS', 'TT'], ['plik_dx11dr2_DS_v18_TT.ini']))
 likechecks.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
 likechecks.append(batchJob.dataSet(['cleanCMH', 'TT'], ['cleanCMH.ini']))
 likechecks.append(batchJob.dataSet(['plikLite', 'TT'], ['plik_lite_TT.ini']))
@@ -124,7 +141,6 @@ post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini
 post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], importanceFilterBAO()]
 
 post_WP = [[ 'WMAPtau'], [WMAPtau]]
-post_abundance = [['abundances'], ['abundances.ini'], importanceFilterAbundance()]
 post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'})
 post_BAOzre = zre_importance([BAO, 'zre6p5'], [BAOdata, 'zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'})
 post_reion = zre_importance(['reion'], ['reion_tau.ini'], dist_settings={'limits[zrei]':'6.5 N'})
@@ -185,9 +201,9 @@ lowTT.params = [ [], ['Alens'], ['nnu']]
 lowTT.datasets = copy.deepcopy(planck_highL_sets)
 for d in lowTT.datasets:
     d.add(lowEB)
-for d in copy.deepcopy(lowTT.datasets):
-    d.add(BAO, BAOdata)
-    lowTT.datasets.append(d)
+# for d in copy.deepcopy(lowTT.datasets):
+#    d.add(BAO, BAOdata)
+#    lowTT.datasets.append(d)
 lowTT.importanceRuns = []
 groups.append(lowTT)
 
@@ -303,6 +319,7 @@ for d in copy.deepcopy(g.datasets):
     gNnudatasets.append(d)
 gNnu.datasets = copy.deepcopy(gNnudatasets)
 for d in copy.deepcopy(gNnudatasets):
+    if d.hasName('nnu1'): continue  # outside BAO prior range, doesn't work
     d.add(BAO, BAOdata)
     gNnu.datasets.append(d)
 for d in copy.deepcopy(gNnudatasets):
@@ -328,15 +345,6 @@ gNnur.params = [['nnu', 'r']]
 groups.append(gNnur)
 
 
-gabund = batchJob.jobGroup('abund')
-gabund.datasets = []
-for d in copy.deepcopy(g.datasets):
-    d.add('abundances', ['abundances.ini'])
-    gabund.datasets.append(d)
-gabund.params = [['nnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu']]
-gabund.importanceRuns = [post_BAO, post_all, post_lensing]
-groups.append(gabund)
-
 if False:
     gmulti = batchJob.jobGroup('multi')
     gmulti.params = [['nnu', 'w'], ['mnu', 'w']]
@@ -347,7 +355,7 @@ if False:
         d.add(BAO, BAOdata)
         d.add(JLA)
         gmulti.datasets.append(d)
-    gmulti.importanceRuns = [post_HST, post_abundance]
+    gmulti.importanceRuns = [post_HST]
     groups.append(gmulti)
 
 
@@ -405,33 +413,34 @@ gphi.importanceRuns = []
 groups.append(gphi)
 
 
-extdata = batchJob.jobGroup('extdata')
-extdata.params = [[], ['nnu'], ['mnu'], ['nnu', 'mnu'], ['nnu', 'meffsterile']]
-extdata.datasets = []
-for d in copy.deepcopy(g.datasets):
-    d.add(WL)
-    extdata.datasets.append(d)
-for d in copy.deepcopy(g.datasets):
-    d.add(WLHeymans)
-    extdata.datasets.append(d)
 if False:
+    extdata = batchJob.jobGroup('extdata')
+    extdata.params = [[], ['nnu'], ['mnu'], ['nnu', 'mnu'], ['nnu', 'meffsterile']]
+    extdata.datasets = []
     for d in copy.deepcopy(g.datasets):
         d.add(WL)
-        d.add(lensing)
         extdata.datasets.append(d)
     for d in copy.deepcopy(g.datasets):
-        d.add(BAORSD, RSDdata)
+        d.add(WLHeymans)
         extdata.datasets.append(d)
-for d in copy.deepcopy(g.datasets):
-    d.add(BAORSD, RSDdata)
-    d.add(lensing)
-    d.add(WL)
-    d.add(JLA)
-    d.add(HST, HSTdata)
-    extdata.datasets.append(d)
+    if False:
+        for d in copy.deepcopy(g.datasets):
+            d.add(WL)
+            d.add(lensing)
+            extdata.datasets.append(d)
+        for d in copy.deepcopy(g.datasets):
+            d.add(BAORSD, RSDdata)
+            extdata.datasets.append(d)
+    for d in copy.deepcopy(g.datasets):
+        d.add(BAORSD, RSDdata)
+        d.add(lensing)
+        d.add(WL)
+        d.add(JLA)
+        d.add(HST, HSTdata)
+        extdata.datasets.append(d)
 
-extdata.importanceRuns = []
-groups.append(extdata)
+    extdata.importanceRuns = []
+    groups.append(extdata)
 
 WLdata = [batchJob.dataSet(WLonly), batchJob.dataSet(WLonlyHeymans)]
 gWL = batchJob.jobGroup('WLonlybase')
@@ -482,8 +491,6 @@ if False:
                 if 'nnu' in p:
                     if not len([d for d in g.datasets if  'H070p6' in d.names]):
                         g.importanceRuns.append(post_highH0)
-                    if not len([d for d in g.datasets if  'abundances' in d.names]):
-                        g.importanceRuns.append(post_abundance)
                     break
 
 
@@ -506,7 +513,7 @@ gchecks = batchJob.jobGroup('tauchecks')
 gchecks.datasets = [copy.deepcopy(baseTT)]
 for d in gchecks.datasets:
     d.add(WMAPTEB)
-gchecks.params = [[], ['mnu'], ['nnu'], ['Alens'], ['yhe']]
+gchecks.params = [[], ['mnu'], ['nnu'], ['Alens'], ['yhe'], ['r'], ['nrun', 'r']]
 gchecks.importanceRuns = []
 groups.append(gchecks)
 

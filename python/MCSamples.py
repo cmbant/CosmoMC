@@ -18,7 +18,7 @@ from chains import chains, chainFiles, lastModified
 version = 4
 
 
-def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False):
+def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settings={}):
         files = chainFiles(file_root)
         cachefile = file_root + '.py_mcsamples'
         if not no_cache and os.path.exists(cachefile) and lastModified(files) < os.path.getmtime(cachefile):
@@ -29,7 +29,7 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False):
             except:
                 pass
         samples = MCSamples(file_root, jobItem=jobItem)
-        samples.readChains(files, ini)
+        samples.readChains(files, ini, ini_settings=dist_settings)
         with open(cachefile, 'wb') as output:
                 pickle.dump(samples, output, pickle.HIGHEST_PROTOCOL)
         return samples
@@ -325,7 +325,7 @@ class MCSamples(chains):
                     self.has_markers = True
                     self.markers[ix] = float(line)
 
-    def readChains(self, chain_files, ini):
+    def readChains(self, chain_files, ini, ini_settings={}):
         # Used for by plotting scripts and gui
 
         self.loadChains(self.root, chain_files)
@@ -341,7 +341,7 @@ class MCSamples(chains):
         # Make a single array for chains
         self.makeSingle()
 
-        self.updateChainBaseStatistics(ini)
+        self.updateChainBaseStatistics(ini, ini_settings=ini_settings)
 
         return self
 
@@ -1564,37 +1564,33 @@ class MCSamples(chains):
         else:
             print "No file %s" % ranges_file
 
-    def WriteBounds(self, filename=None):
-        if not hasattr(self, 'ranges') or self.ranges is None: return
-
-        write_to_file = filename is not None
-        if write_to_file:
-            textFileHandle = open(filename, 'w')
-        else:
-            upper = dict()
-            lower = dict()
+    def getBounds(self):
+        upper = dict()
+        lower = dict()
         for i, name in enumerate(self.paramNames.list()):
-            if (self.has_limits_bot[i] or self.has_limits_top[i]):
-                valMin = self.ranges.min(name)
-                if (valMin is not None):
-                    lim1 = "%15.7E" % valMin
-                else:
-                    lim1 = "    N"
-                valMax = self.ranges.max(name)
-                if (valMax is not None):
-                    lim2 = "%15.7E" % valMax
-                else:
-                    lim2 = "    N"
+            if self.has_limits_bot[i]:
+                lower[name] = self.limmin[i]
+            if self.has_limits_top[i]:
+                upper[name] = self.limmax[i]
+        return lower, upper
 
-                if write_to_file:
-                    textFileHandle.write("%22s%17s%17s\n" % (name, lim1, lim2))
-                else:
-                    if lim1.strip() != 'N': lower[name] = float(valMin)
-                    if lim2.strip() != 'N': upper[name] = float(valMax)
-        if write_to_file:
-            textFileHandle.close()
-        else:
-            return lower, upper
+    def writeBounds(self, filename):
+        lower, upper = self.getBounds()
+        with open(filename, 'w') as f:
+            for i, name in enumerate(self.paramNames.list()):
+                if (self.has_limits_bot[i] or self.has_limits_top[i]):
+                    valMin = lower.get(name)
+                    if (valMin):
+                        lim1 = "%15.7E" % valMin
+                    else:
+                        lim1 = "    N"
+                    valMax = upper.get(name)
+                    if (valMax is not None):
+                        lim2 = "%15.7E" % valMax
+                    else:
+                        lim2 = "    N"
+                    f.write("%22s%17s%17s\n" % (name, lim1, lim2))
+
 
     def getMargeStats(self):
         self.Do1DBins()

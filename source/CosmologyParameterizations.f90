@@ -61,10 +61,11 @@
         read(prior,*) this%zre_prior_mean, this%zre_prior_std
     end if
 
-    call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
+    call this%Initialize(Ini,Names, 'paramnames/params_CMB.paramnames', Config)
+    if (CosmoSettings%bbn_consistency) call Names%Add('paramnames/derived_bbn.paramnames')
+    call Names%Add('paramnames/derived_theory.paramnames')
     if (CosmoSettings%use_LSS) call Names%Add('paramnames/derived_LSS.paramnames')
     if (CosmoSettings%compute_tensors) call Names%Add('paramnames/derived_tensors.paramnames')
-    if (CosmoSettings%bbn_consistency) call Names%Add('paramnames/derived_bbn.paramnames')
     this%num_derived = Names%num_derived
     !set number of hard parameters, number of initial power spectrum parameters
     call this%SetTheoryParameterNumbers(16,last_power_index)
@@ -170,6 +171,19 @@
 
     end subroutine TP_ParamArrayToTheoryParams
 
+    function GetYPBBN(Yhe)
+    !Convert yhe defined as mass fraction (CMB codes), to nucleon ratio definition
+    real(mcp), intent(in) :: Yhe
+    real(mcp) GetYPBBN
+    real(mcp), parameter :: m_proton = 1.672621637e-27
+    real(mcp), parameter :: m_H = 1.673575e-27
+    real(mcp), parameter :: not4 = 3.9715
+    real(mcp), parameter :: m_He = m_H * not4
+
+    GetYPBBN =  4 * m_H * Yhe / (m_He - Yhe * (m_He - 4*m_H))
+
+    end function GetYPBBN
+
     subroutine TP_CalcDerivedParams(this, P, Theory, derived)
     class(ThetaParameterization) :: this
     real(mcp), allocatable :: derived(:)
@@ -179,7 +193,7 @@
     real(mcp) :: lograt
     integer ix,i
     real(mcp) z
-    integer, parameter :: derivedCL(4) = [40, 220, 810, 1420]
+    integer, parameter :: derivedCL(5) = [40, 220, 810, 1420, 2000]
 
     if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)
@@ -219,7 +233,13 @@
         ix=ix+1
 
         derived(ix)= CMB%Yhe !value actually used, may be set from bbn consistency
-        ix = ix+1
+        derived(ix+1)= GetYpBBN(CMB%Yhe) !same, as nucleon ratio definition
+        ix = ix+2
+
+        if (CosmoSettings%bbn_consistency) then
+            derived(ix) = 1d5*BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
+            ix =ix + 1
+        end if
 
         derived(ix:ix + Theory%numderived-1) = Theory%derived_parameters(1: Theory%numderived)
         ix = ix + Theory%numderived
@@ -238,13 +258,6 @@
             derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(Theory%tensor_AT*1e10), &
                 Theory%tensor_ratio_C10, Theory%tensor_AT*1e9, Theory%tensor_AT*1e9*exp(-2*CMB%tau) ]
             ix=ix+6
-        end if
-
-        if (CosmoSettings%bbn_consistency) then
-            derived(ix) = BBN_YpBBN%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
-            ! Don't output this until clear about rates used and errors
-            ! derived(ix+1) = 1d5*BBN_DH%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff)
-            ix =ix + 1 !2
         end if
 
         if (ix - 1 /= this%num_derived) then
@@ -333,7 +346,7 @@
     class(TGeneralConfig), target :: Config
 
     this%late_time_only = .true.
-    call this%Initialize(Ini,Names, 'params_background.paramnames', Config)
+    call this%Initialize(Ini,Names, 'paramnames/params_background.paramnames', Config)
     call this%SetTheoryParameterNumbers(Names%num_MCMC,0)
 
     end subroutine BK_Init

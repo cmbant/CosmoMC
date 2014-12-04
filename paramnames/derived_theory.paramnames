@@ -1,0 +1,17 @@
+age*          {\rm{Age}}/{\rm{Gyr}}
+zstar*        z_*
+rstar*        r_*
+thetastar*    100\theta_*
+DAstar*       D_{\rm{A}}/{\rm{Gpc}}
+zdrag*        z_{\rm{drag}}
+rdrag*        r_{\rm{drag}}
+kd*           k_{\rm D}
+thetad*       100\theta_{\rm{D}}
+zeq*          z_{\rm{eq}}
+keq*          k_{\rm{eq}}
+thetaeq*      100\theta_{\rm{eq}}
+thetarseq*    100\theta_{\rm{s,eq}}
+rsDv057*       r_{\rm{drag}}/D_V(0.57)
+Hubble057*     H(0.57) #now in km/s/Mpc
+DA057*         D_A(0.57)
+FAP057*        F_{\rm AP}(0.57)

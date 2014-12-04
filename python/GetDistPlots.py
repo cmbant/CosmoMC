@@ -244,9 +244,11 @@ class MCSampleAnalysis(object):
                 jobItem = self.batch.resolveRoot(root)
                 if not jobItem: raise Exception('chain not found: ' + root)
                 file_root = jobItem.chainRoot
+                dist_setings = jobItem.dist_settings
             else:
                 file_root = os.path.join(self.chain_dir, root)
-        self.mcsamples[root] = MCSamples.loadMCSamples(file_root, self.ini, jobItem)
+                dist_setings = {}
+        self.mcsamples[root] = MCSamples.loadMCSamples(file_root, self.ini, jobItem, dist_settings=dist_setings)
         return self.mcsamples[root]
 
     def addRootGrid(self, root):
@@ -339,7 +341,7 @@ class MCSampleAnalysis(object):
         return names
 
     def boundsForRoot(self, root):
-        lower, upper = self.samplesForRoot(root).WriteBounds(None)
+        lower, upper = self.samplesForRoot(root).getBounds()
         bounds = paramBounds("")
         bounds.lower = lower
         bounds.upper = upper

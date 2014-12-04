@@ -727,6 +727,7 @@
         call this%loadParamNames(S)
         this%calibration_index = this%nuisance_params%nnames
     end if
+    
     call this%TCMBLikelihood%ReadIni(Ini)
 
     end subroutine CMBLikes_ReadIni

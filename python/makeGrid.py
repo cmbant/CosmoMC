@@ -202,4 +202,5 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
 
 if __name__ == "__main__":
     args = getArgs()
-    makeGrid(args.__dict__, interactive=True)
+    args.interactive = True
+    makeGrid(**args.__dict__)
