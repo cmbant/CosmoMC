@@ -251,9 +251,8 @@ else:
     print  'effective number of samples (assuming indep): ', round(mc.numsamp / mc.max_mult)
 
 
-# IO_WriteBounds
 filename = os.path.join(plot_data_dir, rootname.strip() + '.bounds')
-mc.WriteBounds(filename)
+mc.writeBounds(filename)
 
 if (PCA_num > 0) and not plots_only:
     mc.PCA(PCA_params, PCA_func, PCA_NormParam, writeDataToFile=True)
