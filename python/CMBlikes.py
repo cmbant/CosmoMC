@@ -21,6 +21,9 @@ def readWithHeader(fname):
             x = x[1:].split()
         return x, loadtxt(fname)
 
+class MapCls():
+    pass
+
 class ClsArray():
         # Store arrays of cls: self.cls_array[i,j] is zero based array of correlation of field i with j
 
@@ -92,45 +95,62 @@ class DatasetLikelihood():
         def typeIndex(self, field):
             return self.field_names.index(field)
 
-        def clString_to_fieldPair(self, cl):
-                if '_' in cl: fields = cl.split('_')
-                else:
-                    if len(cl) != 2: raise Exception('Cl_order but be CL names, 2 characters or _ separated')
-                    fields = [cl[0], cl[1]]
-                if len(fields) != 2: raise Exception('Invalid C_l order, must have pairs of field names')
-                pair = [self.typeIndex(fields[0]), self.typeIndex(fields[1])]
-                if pair[1] > pair[0]: pair.reverse()
-                return pair
+        def pairStringToMapIndices(self, S):
+            if len(S) == 2:
+                if self.has_map_names: raise Exception('CMBlikes: CL names must use MAP1xMAP2 name')
+                map1, map2 = S[0], S[1]
+            else:
+                if not 'x' in S: raise Exception('CMBLikes: invalid spectrum name ' + S)
+                map1, map2 = S.split('x')
+            return self.map_names.index(map1), self.map_names.index(map2)
 
-        def UseString_to_theoryPairCls(self, L):
-            pairs = []
-            for cl in L:
-                pairs.append(self.clString_to_fieldPair(cl))
-            return pairs
+        def pairStringToUsedMapIndices(self, used_index, S):
+            i1, i2 = self.pairStringToMapIndices(S)
+            i1, i2 = used_index[i1], used_index[i2]
+            if i2 > i1: i1, i2 = i2, i1
+            return i1, i2
 
-        def UseString_to_cols(self, L):
-            cols = [None] * len(L)
-            for i, cl in enumerate(L):
-                pair = self.clString_to_fieldPair(cl)
-                i1 = self.field_index[pair[0]]
-                i2 = self.field_index[pair[1]]
+        def useString_to_cols(self, S):
+            cL_i_j = self.useString_to_Cl_i_j(S, self.map_used_index)
 
-                if (i1 < 0 or i2 < 0): continue
-                if (i2 > i1): i1, i2 = i2, i1
+            cols = []
+            for i1, i2 in cL_i_j:
+                if i1 is None or i2 is None:
+                    cols.append(None)
+                    continue
                 ix = 0
-                for ii in range(self.nfields):
+                for ii in range(self.nmaps):
                     for jj in range(ii + 1):
-                        if (ii == i1 and jj == i2): cols[i] = ix
+                        if (ii == i1 and jj == i2): cols.append(ix)
                         ix += 1
             return cols
 
+        def useString_to_Cl_i_j(self, S, used_index):
+            cl_i_j = []
+            if isinstance(S, basestring): S = S.split()
+            for P in S:
+                cl_i_j.append(self.pairStringToUsedMapIndices(used_index, P))
+            return cl_i_j
+
+        def requiredMapPair_to_Theory_i_j(self, i1, i2):
+            i = self.map_fields[self.required_order[i1]]
+            j = self.map_fields[self.required_order[i2]]
+            if j > i: i, j = j, i
+            return i, j
+
+        def CL_i_j_name(self, i, j):
+            name1, name2 = self.map_order[i], self.map_order[j]
+            if self.has_map_names:
+                return name1 + 'x' + name2
+            else:
+                return name1 + name2
 
         def readBinWindows(self, ini, file_stem):
             bins = BinWindows(self.cl_lmin, self.cl_lmax, self.nbins)
             in_cl = ini.split(file_stem + '_in_order')
             out_cl = ini.split(file_stem + '_out_order')
-            bins.cols_in = self.UseString_to_theoryPairCls(in_cl)
-            bins.cols_out = self.UseString_to_cols(out_cl)
+            bins.cols_in = self.useString_to_Cl_i_j(in_cl, self.map_required_index)
+            bins.cols_out = self.useString_to_cols(out_cl)
             norder = len(bins.cols_in)
             if norder != len(bins.cols_out):
                 raise Exception('_in_order and _out_order must have same number of entries')
@@ -146,6 +166,9 @@ class DatasetLikelihood():
                     else:
                         Err = Err or any(window[i, 1:] != 0)
                 if Err: print 'WARNING: %s %u outside cl_lmin-cl_max range: %s' % (file_stem, b, windows % (b + 1))
+
+            if ini.hasKey(file_stem + '_fix_cl_file'):
+                raise Exception('CMBlikes: python version does not support _fix_cl_file yet')
             return bins
 
 
@@ -155,34 +178,70 @@ class DatasetLikelihood():
             self.readIni(ini)
 
         def readIni(self, ini):
+            names = ini.split('map_names', '')
+            self.has_map_names = len(names) > 0
+            if self.has_map_names:
+                self.map_names = names
+                self.map_field_names = ini.split('map_fields')
+                if len(self.map_field_names) != len(names):
+                    raise Exception('CMBLikes: number of map_fields does not match map_names')
+                self.map_fields = [self.typeIndex(field) for field in self.map_field_names]
+            else:
+                self.map_names = self.field_names
+                self.map_field_names = self.field_names
+                self.map_fields = range(len(self.field_names))
+
             self.like_approx = ini.string('like_approx', 'gaussian')
             if self.like_approx != 'gaussian': raise Exception('Only gaussian implented in python so far')
 
-            self.fields_use = ini.split('fields_use')
-            index_use = [self.typeIndex(f) for f in self.fields_use]
-            self.use_field = [i in index_use for i in range(len(self.field_names))]
-            self.nfields = sum(self.use_field)
+            fields_use = ini.split('fields_use', '')
+            if len(fields_use):
+                use_theory_field = [field in fields_use for field in self.field_names]
+            else:
+                use_theory_field = [True] * len(self.field_names)
 
-            if ini.hasKey('fields_required'):
-                self.fields_required = ini.string('fields_required').split()
-            else: self.fields_required = self.fields_use
-            index_use = [self.typeIndex(f) for f in self.fields_required]
-            self.required_field = [i in index_use for i in range(len(self.field_names))]
+            maps_use = ini.split('maps_use', '')
+            if len(maps_use):
+                self.use_map = [map in maps_use for map in self.map_names]
+            else:
+                self.use_map = [use_theory_field[i] for i in self.map_fields]
+
+            if self.has_map_names:
+                S = ini.split('maps_required', '')
+                if ini.hasKey('fields_required'):
+                    raise Exception('CMBLikes: use maps_required not fields_required')
+            else:
+                S = ini.split('fields_required', '')
+
+            if len(S):
+                self.require_map = [m in S for m in self.map_names]
+            else:
+                self.require_map = self.use_map
+
+            self.required_theory_field = [False] * len(self.field_names)
+            for i, r  in enumerate(self.require_map):
+                if r:
+                    self.required_theory_field[self.map_fields[i]] = True
+
+            self.nmaps = sum(self.use_map)
+            self.nmaps_required = sum(self.require_map)
+
+            self.required_order = []
+            self.map_required_index = [None] * len(self.map_names)
+            self.map_used_index = [None] * len(self.map_names)
+            self.map_order = []
+            for i, m in enumerate(self.map_names):
+                if self.require_map[i]:
+                    self.map_required_index[i] = len(self.required_order)
+                    self.required_order.append(i)
+                if self.use_map[i]:
+                    self.map_used_index[i] = len(self.map_order)
+                    self.map_order.append(m)
 
             self.binned = ini.bool('binned', True)
             if not self.binned: raise Exception('Currently only support binned')
 
-            self.field_index = np.zeros(self.tot_fields, dtype=int) - 1
-            self.fields = np.zeros(self.tot_fields)
-            self.field_order = []
-            ix = 0
-            for i in range(self.tot_fields):
-                if self.use_field[i]:
-                    self.field_index[i] = ix
-                    self.fields[ix] = i
-                    self.field_order.append(self.field_names[i])
-                    ix += 1
-            self.ncl = self.nfields * (self.nfields + 1)
+            self.ncl = self.nmaps * (self.nmaps + 1)
 
             self.nbins = ini.int('nbins')
             self.bin_min = ini.int('use_min', 1) - 1
@@ -191,7 +250,6 @@ class DatasetLikelihood():
             self.cl_lmax = ini.int('cl_lmax')
             self.cl_lmin = ini.int('cl_lmin')
 
-            self.phi_lmax = self.cl_lmax
             self.lmin, self.lmax, self.lav, self.bandpowers, self.Ahat = readTextCommentColumns(
                                 ini.relativeFileName('cl_hat_file'), ['L_min', 'L_max', 'L_av', 'PP', 'Ahat'])
 
@@ -243,13 +301,27 @@ class DatasetLikelihood():
                 plot(ls, phicl, color='k')
                 xlim([2, ls[-1]])
 
+        def getTheoryMapCl(self, ClArray):
+            used_fields = []
+            for name in self.field_names:
+                if name in self.map_field_names:used_fields.append(name)
+            Cls = ClsArray(field_names=used_fields)
+            Cls.lmin = ClArray.lmin
+            Cls.lmax = ClArray.lmax
+            for i in range(self.nmaps_required):
+                for j in range(i + 1):
+                    f1, f2 = self.requiredMapPair_to_Theory_i_j(i, j)
+                    Cls.cls_array[i, j] = ClArray.cls_array[f1, f2]
+            return Cls
+
         def chi_squared(self, ClArray):
 
             binphi = np.zeros(self.nbins_used)
+            MapCl = self.getTheoryMapCl(ClArray)
             for b in range(self.bin_min, self.bin_max + 1):
-                band = self.bins.bin(ClArray, b)[0]
+                band = self.bins.bin(MapCl, b)[0]
                 if self.linear_correction:
-                    band += self.linear_correction.bin(ClArray, b) - self.fid_correction[b]
+                    band += self.linear_correction.bin(MapCl, b) - self.fid_correction[b]
                 binphi[b - self.bin_min] = band
 
             delta = binphi - self.bandpowers[self.bin_min:self.bin_max + 1]
@@ -264,7 +336,7 @@ def plotAndChisq(dataset, cl_file):
 
 
 if __name__ == "__main__":
-#    plotAndChisq(r'test_data/g60_full_pp.dataset', r'test_data/testout_pp.theory_cl')
+#    plotAndChisq(r'../data/planck_lensing/smica_g30_ftl_full_pp.dataset', r'../data/base_plikHM_TT_lowTEB.minimum.theory_cl')
 #    sys.exit()
     try: import argparse
     except:
