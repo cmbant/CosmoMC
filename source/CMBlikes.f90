@@ -65,6 +65,7 @@
         integer, allocatable :: map_used_index(:) !for each map_name, zero if not used, otherwise the index into the used map list
         integer, allocatable :: map_required_index(:)  !same for required maps
         integer, allocatable :: required_order(:)
+        logical :: has_foregrounds = .false.
         Type(TStringList) :: map_order !names of the maps actually used
         integer ncl !calculated from above = nmaps*(nmaps+1)/2
         integer ncl_used !Number of C_l actually used in covariance matrix (others assumed zero)
@@ -97,6 +98,7 @@
 
         Type(TSqMatrix), dimension(:), allocatable :: sqrt_fiducial, NoiseM
         Type(TSqMatrix), dimension(:,:), allocatable :: ChatM
+        class(TMapCrossPowerSpectrum), allocatable :: MapCls(:,:)
     contains
     procedure :: LogLike => CMBLikes_LogLike
     procedure :: ReadIni => CMBLikes_ReadIni
@@ -111,15 +113,18 @@
     !    procedure, private :: SetTopHatWindows
     procedure, private :: GetColsFromOrder
     procedure, private :: Cl_i_j_name
-    procedure, private :: RequiredMapPair_to_Theory_i_j
+    procedure, private :: MapPair_to_Theory_i_j
     procedure, private :: PairStringToUsedMapIndices
     procedure, private :: PairStringToMapIndices
     procedure, nopass :: TypeIndex
     procedure :: ReadBinWindows
     procedure :: ReadCovmat
+    procedure :: InitMapCls
     procedure :: GetBinnedMapCls
     procedure :: GetTheoryMapCls !take theory calcualtion and add foregrounds etc using sub below
-    procedure :: AdaptTheoryForMaps
+    procedure :: AdaptTheoryForMaps !call AddForegrounds etc for calibrations, beams, etc
+    procedure :: AddForegrounds
+    procedure :: WriteLikelihoodData => CMBLikes_WriteLikelihoodData
     end Type TCMBLikes
 
     integer, parameter :: like_approx_HL=1   !approximation from Hammimeche & Lewis arXiv: 0801.0554
@@ -277,21 +282,22 @@
     end subroutine UseString_to_Cl_i_j
 
 
-    subroutine RequiredMapPair_to_Theory_i_j(this, i1,i2, i, j)
+    subroutine MapPair_to_Theory_i_j(this, order, i1,i2, i, j)
     class(TCMBLikes) :: this
+    integer, intent(in) :: order(:)
     integer, intent(in) :: i1,i2
     integer, intent(out) :: i,j
     integer tmp
 
-    i = this%map_fields(this%required_order(i1))
-    j = this%map_fields(this%required_order(i2))
+    i = this%map_fields(order(i1))
+    j = this%map_fields(order(i2))
     if (j>i) then
         tmp = i
         i = j
         j=tmp
     end if
 
-    end subroutine RequiredMapPair_to_Theory_i_j
+    end subroutine MapPair_to_Theory_i_j
 
     !subroutine SetTopHatWindows(this)
     !class(TCMBLikes) :: this
@@ -322,7 +328,7 @@
     if (this%has_map_names) then
         ClName = name1//cross_separators(1:1)//name2
     else
-        
+
         ClName =name1//name2
     end if
 
@@ -727,8 +733,10 @@
         call this%loadParamNames(S)
         this%calibration_index = this%nuisance_params%nnames
     end if
-    
+
     call this%TCMBLikelihood%ReadIni(Ini)
+
+    call this%InitMapCls(this%MapCls, this%nmaps_required, this%required_order)
 
     end subroutine CMBLikes_ReadIni
 
@@ -969,26 +977,46 @@
 
     end subroutine GetBinnedMapCls
 
-
-    subroutine GetTheoryMapCls(this, Theory, Cls, DataParams)
+    subroutine InitMapCls(this, Cls, nmaps, order)
     class(TCMBLikes) :: this
-    class(TCosmoTheoryPredictions) :: Theory
+    integer, intent(in) :: nmaps, order(:)
     class(TMapCrossPowerSpectrum), allocatable, intent(out) :: Cls(:,:)
-    real(mcp), intent(in) :: DataParams(:)
     integer i,j
     integer f1, f2
 
-    allocate(TMapCrossPowerSpectrum::Cls(this%nmaps_required, this%nmaps_required))
-    do i=1, this%nmaps_required
+    if (nmaps /= size(order)) call MpiStop('CMBLikes InitMapCls: size mismatch')
+    allocate(TMapCrossPowerSpectrum::Cls(nmaps, nmaps))
+    do i=1, nmaps
         do j=1, i
             associate(CL => Cls(i,j))
-                CL%map_i = this%required_order(i)
-                CL%map_j = this%required_order(j)
-                call this%RequiredMapPair_to_Theory_i_j(i,j,f1,f2)
-                if (allocated(Theory%Cls(f1,f2)%CL)) then
-                    CL%theory_i = f1
-                    CL%theory_j = f2
-                    allocate(CL%CL, source = Theory%Cls(f1,f2)%CL)
+                CL%map_i = order(i)
+                CL%map_j = order(j)
+                call this%MapPair_to_Theory_i_j(order,i,j,f1,f2)
+                CL%theory_i = f1
+                CL%theory_j = f2
+                allocate(CL%CL(this%pcl_lmin:this%pcl_lmax), source=0._mcp)
+            end associate
+        end do
+    end do
+
+    end subroutine InitMapCls
+
+
+    subroutine GetTheoryMapCls(this, Theory, Cls, DataParams)
+    class(TCMBLikes), target :: this
+    class(TCosmoTheoryPredictions) :: Theory
+    class(TMapCrossPowerSpectrum), pointer, intent(out) :: Cls(:,:)
+    real(mcp), intent(in) :: DataParams(:)
+    integer i,j
+
+    Cls => this%MapCls
+    do i=1, this%nmaps_required
+        do j=1, i
+            associate(CL => Cls(i,j),Th => Theory%Cls(CL%theory_i ,CL%theory_j))
+                if (allocated(Th%CL)) then
+                    CL%CL(this%pcl_lmin:this%pcl_lmax) = Th%CL(this%pcl_lmin:this%pcl_lmax)
+                else
+                    CL%CL(this%pcl_lmin:this%pcl_lmax) = 0
                 end if
             end associate
         end do
@@ -997,6 +1025,13 @@
 
     end subroutine GetTheoryMapCls
 
+    subroutine AddForegrounds(this,Cls,DataParams)
+    class(TCMBLikes) :: this
+    class(TMapCrossPowerSpectrum), intent(inout) :: Cls(:,:)
+    real(mcp), intent(in) :: DataParams(:)
+
+
+    end subroutine AddForegrounds
 
     subroutine AdaptTheoryForMaps(this,Cls,DataParams)
     class(TCMBLikes) :: this
@@ -1004,6 +1039,7 @@
     real(mcp), intent(in) :: DataParams(:)
     integer i,j
 
+    call this%AddForegrounds(Cls, DataParams)
     if (this%calibration_index > 0) then
         !Scale T, E, B spectra by the calibration parameter
         do i=1, this%nmaps_required
@@ -1019,6 +1055,43 @@
 
     end subroutine AdaptTheoryForMaps
 
+
+    subroutine CMBLikes_WriteLikelihoodData(this,Theory,DataParams, root)
+    Class(TCMBLikes) :: this
+    class(TTheoryPredictions) :: Theory
+    real(mcp), intent(in) :: DataParams(:)
+    class(TMapCrossPowerSpectrum), allocatable :: Cls(:,:)
+    character(LEN=*), intent(in) :: root
+    integer L, i, j
+    Type(TTextFile) F
+
+    if (.not. this%has_foregrounds) return
+    call this%InitMapCls(Cls, this%nmaps_required, this%required_order)
+    call this%AddForegrounds(Cls, DataParams)
+
+    F%IntegerFormat = '(*(I6))'
+    call F%CreateFile(trim(root)//'.'//this%getTag()//'_foregrounds')
+    call F%WriteInLine('#   L')
+    do i=1, this%nmaps_required
+        do j=1,i
+            call F%WriteInLine( this%Cl_i_j_name(Cls(i,j)%map_i,Cls(i,j)%map_j), '(a17)')
+        end do
+    end do
+    call F%NewLine()
+    do L = this%pcl_lmin, this%pcl_lmax
+        call F%WriteInLine(L)
+        do i=1, this%nmaps_required
+            do j=1,i
+                call F%WriteInLine( Cls(i,j)%CL(L) )
+            end do
+        end do
+        call F%Newline()
+    end do
+    call F%Close()
+
+    end subroutine CMBLikes_WriteLikelihoodData
+
+
     function CMBLikes_LogLike(this, CMB, Theory, DataParams)  result (LogLike)
     real(mcp) logLike
     class(TCMBLikes) :: this
@@ -1031,7 +1104,7 @@
     real(mcp) bigX((this%bin_max-this%bin_min+1)*this%ncl_used)
     integer  i,j, bin,clix
     logical :: quadratic
-    class(TMapCrossPowerSpectrum), allocatable :: TheoryCls(:,:)
+    class(TMapCrossPowerSpectrum), pointer :: TheoryCls(:,:)
 
     chisq =0
 
@@ -1127,6 +1200,8 @@
     call Interp%Array(lmin, lmax, InterpOutput)
 
     end subroutine InterpProduct
+
+
 
     subroutine TBinWindows_bin(this, TheoryCls, Cls, bin)
     class(TBinWindows) :: this

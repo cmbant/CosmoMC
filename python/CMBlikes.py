@@ -132,9 +132,9 @@ class DatasetLikelihood():
                 cl_i_j.append(self.pairStringToUsedMapIndices(used_index, P))
             return cl_i_j
 
-        def requiredMapPair_to_Theory_i_j(self, i1, i2):
-            i = self.map_fields[self.required_order[i1]]
-            j = self.map_fields[self.required_order[i2]]
+        def mapPair_to_Theory_i_j(self, order, i1, i2):
+            i = self.map_fields[order[i1]]
+            j = self.map_fields[order[i2]]
             if j > i: i, j = j, i
             return i, j
 
@@ -310,7 +310,7 @@ class DatasetLikelihood():
             Cls.lmax = ClArray.lmax
             for i in range(self.nmaps_required):
                 for j in range(i + 1):
-                    f1, f2 = self.requiredMapPair_to_Theory_i_j(i, j)
+                    f1, f2 = self.mapPair_to_Theory_i_j(self.required_order, i, j)
                     Cls.cls_array[i, j] = ClArray.cls_array[f1, f2]
             return Cls
 
