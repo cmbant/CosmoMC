@@ -1071,7 +1071,7 @@
 
     F%IntegerFormat = '(*(I6))'
     call F%CreateFile(trim(root)//'.'//this%getTag()//'_foregrounds')
-    call F%WriteInLine('#   L')
+    call F%WriteInLine('#    L')
     do i=1, this%nmaps_required
         do j=1,i
             call F%WriteInLine( this%Cl_i_j_name(Cls(i,j)%map_i,Cls(i,j)%map_j), '(a17)')
