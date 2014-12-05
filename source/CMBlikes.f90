@@ -4,8 +4,7 @@
     !Apr 2011, added fullsky_exact_fksy
     !Mar 2014  renamed from Planck_like, removed low-L likelihood to separate file
     !Updated file structure, allows for binned HL likelihoods. Everything now in L(L+1)CL/2pi
-    !2014 linear correction bin windows (e.g. for Planck lensing likelihood)
-    !Nov 2014: added generalization for more general map cross spectra
+
     use FileUtils
     use settings
     use CosmologyTypes
@@ -17,8 +16,6 @@
     private
 
     logical, parameter :: bin_test = .false.
-
-    character(LEN=*), parameter :: cross_separators = 'x'
 
     Type TSqMatrix
         real(mcp), allocatable :: M(:,:)
@@ -44,29 +41,22 @@
     procedure :: bin => TBinWindows_bin
     end type
 
-    integer, parameter :: tot_theory_fields = 4
+    Type LensReconData
+        !not actually needed for Planck likelihood
+        real(mcp), allocatable :: FiducialCl(:,:)
+        real(mcp), allocatable :: FiducialPhi(:)
+    end Type LensReconData
 
-    Type, extends(TSkyPowerSpectrum) :: TMapCrossPowerSpectrum
-        integer map_i, map_j
-        integer theory_i, theory_j
-    end type TMapCrossPowerSpectrum
+    integer, parameter :: tot_fields =4
 
     Type, extends(TCMBLikelihood) :: TCMBLikes
-        integer nmaps !number of maps used in the likelihood
-        integer nmaps_required !number of maps used before binning or corrections
-        logical, allocatable :: use_map(:) !which maps are used directly in likelihood (others ignored)
-        logical, allocatable :: require_map(:) !which maps are used directly in likelihood (others ignored)
-        logical required_theory_field(tot_theory_fields)
-        !Used for likelihood, or used for something else like renormalization/derived parameters
-        logical :: has_map_names = .false.
-        Type(TStringList) :: map_names !strings labelling each distinct map, e.g. T143, B353, .. or just T E etc.
-        integer, allocatable :: map_fields(:) !the theory field that each map is measuring
-
-        integer, allocatable :: map_used_index(:) !for each map_name, zero if not used, otherwise the index into the used map list
-        integer, allocatable :: map_required_index(:)  !same for required maps
-        integer, allocatable :: required_order(:)
-        Type(TStringList) :: map_order !names of the maps actually used
-        integer ncl !calculated from above = nmaps*(nmaps+1)/2
+        integer nfields !number of fields
+        logical use_field(tot_fields) !Actually directly used for likelihood
+        logical required_field(tot_fields) !Used for likelihood, or used for something else like renormalization/derived parameters
+        integer field_index(tot_fields) !mapping from 1,2,3 to index actually used
+        integer fields(tot_fields) !indices (1=T,2=E,3=B,4=B) of fields to use
+        character field_order(tot_fields)
+        integer ncl !calculated from above = nfields*(nfields+1)/2
         integer ncl_used !Number of C_l actually used in covariance matrix (others assumed zero)
         integer, allocatable :: cl_use_index(:)
         integer pcl_lmin, pcl_lmax !The range of l in data files (esp. covmat and/or window files)
@@ -97,12 +87,14 @@
 
         Type(TSqMatrix), dimension(:), allocatable :: sqrt_fiducial, NoiseM
         Type(TSqMatrix), dimension(:,:), allocatable :: ChatM
+
+        Type(LensReconData) :: Lensing
     contains
     procedure :: LogLike => CMBLikes_LogLike
     procedure :: ReadIni => CMBLikes_ReadIni
     procedure, private :: ReadClArr => CMBLikes_ReadClArr
     procedure, private :: UseString_to_cols
-    procedure, private :: UseString_to_Cl_i_j
+    procedure, private :: UseString_to_theoryPairCls
     procedure, private :: Transform => CMBLikes_Transform
     procedure, private :: ExactChisq
     procedure, private :: MatrixToElements
@@ -110,18 +102,14 @@
     procedure, private :: ElementsToMatrix
     !    procedure, private :: SetTopHatWindows
     procedure, private :: GetColsFromOrder
-    procedure, private :: Cl_i_j_name
-    procedure, private :: RequiredMapPair_to_Theory_i_j
-    procedure, private :: PairStringToUsedMapIndices
-    procedure, private :: PairStringToMapIndices
+    procedure, private :: ReadLensing => CMBLikes_ReadLensing
     procedure :: ReadBinWindows
     procedure :: ReadCovmat
-    procedure :: GetBinnedMapCls
-    procedure :: GetTheoryMapCls !take theory calcualtion and add foregrounds etc using sub below
-    procedure :: AdaptTheoryForMaps
+    procedure :: GetBinnedTheory
+    procedure :: GetObservedTheoryCls !Add foregrounds, or renorm lensing
     end Type TCMBLikes
 
-    character(LEN=tot_theory_fields), parameter :: field_names = 'TEBP' !P is CMB lensing
+    character(LEN=tot_fields), parameter :: field_names = 'TEBP' !P is CMB lensing
     integer, parameter :: like_approx_HL=1   !approximation from Hammimeche & Lewis arXiv: 0801.0554
     integer, parameter :: like_approx_fid_gaussian=2 !fiducial fixed covariance matrix, (X-Xhat)^TC^{-1}(X-Xhat)
     integer, parameter :: like_approx_fullsky_exact=3 !ignore all correlations, use exact full sky likelihood function
@@ -129,7 +117,7 @@
     character(LEN=Ini_Enumeration_Len), parameter :: &
         & like_Names(3) = [character(Ini_Enumeration_Len)::'HL','gaussian','exact']
 
-    public TCMBLikes, TMapCrossPowerSpectrum
+    public TCMBLikes
     contains
 
     function TypeIndex(C)
@@ -188,62 +176,31 @@
 
     end subroutine CMBLikes_ReadClArr
 
-    subroutine PairStringToMapIndices(this,S, i1,i2)
-    class(TCMBLikes) :: this
-    character(LEN=*), intent(in) :: S
-    integer, intent(out) :: i1,i2
-    integer ix
-
-    if (len(S)==2) then
-        if (this%has_map_names) call MpiStop('CMBlikes: CL names must use MAP1xMAP2 names')
-        i1= this%map_names%indexOf(S(1:1))
-        i2= this%map_names%indexOf(S(2:2))
-    else
-        ix = scan(S, cross_separators)
-        if (ix==0) call MpiStop('CMBLikes: invalid spectrum name '//S)
-        i1 = this%map_names%indexOf(S(1:ix-1))
-        i2 = this%map_names%indexOf(S(ix+1:))
-    end if
-    if (i1==-1 .or. i2==-1) call MpiStop('CMBLikes: unrecognised map name '//S)
-
-    end subroutine PairStringToMapIndices
-
-    subroutine PairStringToUsedMapIndices(this,used_index, S, i1,i2)
-    class(TCMBLikes) :: this
-    character(LEN=*), intent(in) :: S
-    integer, intent(in) :: used_index(:)
-    integer, intent(out) :: i1,i2
-    integer tmp
-
-    call this%PairStringToMapIndices(S,i1,i2)
-    i1 = used_index(i1)
-    i2 = used_index(i2)
-    if (i2>i1) then
-        tmp=i1
-        i1=i2
-        i2=tmp
-    end if
-
-    end subroutine PairStringToUsedMapIndices
-
-
     subroutine UseString_to_cols(this, S, cols)
     class(TCMBLikes) :: this
     character(LEN=*), intent(in) :: S
     integer, allocatable, intent(out) :: cols(:)
-    integer i,i1,i2,ii,jj,ix
-    integer, allocatable :: cl_i_j(:,:)
+    Type(TStringList) :: L
+    integer tmp,i,i1,i2,ii,jj,ix
+    character(LEN=:), pointer :: P
 
-    call this%UseString_to_Cl_i_j(S, this%map_used_index, cl_i_j)
+    call L%SetFromString(S,field_names)
+    allocate(cols(L%Count), source=0)
 
-    allocate(cols(size(cl_i_j,2)), source=0)
-
-    do i=1, size(cl_i_j,2)
-        i1 = cl_i_j(1,i)
-        i2 = cl_i_j(2,i)
+    do i=1, L%Count
+        P=> L%Item(i)
+        if (len(P)/=2) call mpiStop('Invalid C_l order')
+        i1= this%field_index(TypeIndex(L%CharAt(i,1)))
+        i2= this%field_index(TypeIndex(L%CharAt(i,2)))
         if (i1==0 .or. i2==0) cycle
+        if (i2>i1) then
+            tmp=i1
+            i1=i2
+            i2=tmp
+        end if
+
         ix=0
-        do ii=1, this%nmaps
+        do ii=1, this%nfields
             do jj=1,ii
                 ix = ix+1
                 if (ii==i1 .and. jj==i2) then
@@ -253,45 +210,36 @@
         end do
     end do
 
+    call L%Clear()
+
     end subroutine UseString_to_cols
 
-    subroutine UseString_to_Cl_i_j(this, S, used_index, cl_i_j)
+    subroutine UseString_to_theoryPairCls(this, S, theoryPairCls)
     class(TCMBLikes) :: this
     character(LEN=*), intent(in) :: S
-    integer, allocatable, intent(out) :: cl_i_j(:,:)
-    integer, intent(in) :: used_index(:)
+    integer, allocatable, intent(out) :: theoryPairCls(:,:)
     Type(TStringList) :: L
-    integer i,i1,i2
+    integer tmp,i,i1,i2
     character(LEN=:), pointer :: P
 
-    call L%SetFromString(S)
-    allocate(cl_i_j(2,L%Count), source=0)
+    call L%SetFromString(S,field_names)
+    allocate(theoryPairCls(2,L%Count), source=0)
 
     do i=1, L%Count
         P=> L%Item(i)
-        call this%PairStringToUsedMapIndices(used_index,P,i1,i2)
-        cl_i_j(:,i) = [i1,i2]
+        if (len(P)/=2) call mpiStop('Invalid C_l order')
+        i1= TypeIndex(L%CharAt(i,1))
+        i2= TypeIndex(L%CharAt(i,2))
+        if (i2>i1) then
+            tmp=i1
+            i1=i2
+            i2=tmp
+        end if
+        theoryPairCls(:,i) = [i1,i2]
     end do
     call L%Clear()
 
-    end subroutine UseString_to_Cl_i_j
-
-
-    subroutine RequiredMapPair_to_Theory_i_j(this, i1,i2, i, j)
-    class(TCMBLikes) :: this
-    integer, intent(in) :: i1,i2
-    integer, intent(out) :: i,j
-    integer tmp
-
-    i = this%map_fields(this%required_order(i1))
-    j = this%map_fields(this%required_order(i2))
-    if (j>i) then
-        tmp = i
-        i = j
-        j=tmp
-    end if
-
-    end subroutine RequiredMapPair_to_Theory_i_j
+    end subroutine UseString_to_theoryPairCls
 
     !subroutine SetTopHatWindows(this)
     !class(TCMBLikes) :: this
@@ -311,24 +259,8 @@
     !
     !end subroutine SetTopHatWindows
 
-    function Cl_i_j_name(this,i,j) result(ClName)
-    class(TCMBLikes) :: this
-    character(LEN=:), allocatable :: ClName
-    integer, intent(in) :: i,j
-    character(LEN=:), allocatable :: name1,name2
-
-    name1 = this%map_order%Item(i)
-    name2 = this%map_order%Item(j)
-    if (this%has_map_names) then
-        ClName = name1//cross_separators(1:1)//name2
-    else
-        ClName =name1//name2
-    end if
-
-    end function Cl_i_j_name
-
     function GetColsFromOrder(this, Order, cols) result(num)
-    !Converts string Order = TT TE EE XY... or AAAxBBB AAAxCCC BBxCC into indices into array of power spectra (and zero if not present)
+    !Converts string Order = TT TE EE XY... into indices into array of power spectra (and zero if not present)
     class(TCMBLikes) :: this
     character(LEN=*), intent(in) :: Order
     integer, allocatable :: cols(:)
@@ -338,11 +270,11 @@
     call Li%SetFromString(Order)
     allocate(cols(this%ncl), source=0)
     ix=0
-    do i=1,this%nmaps
+    do i=1,this%nfields
         do j=1,i
             ix = ix +1
-            i1 =Li%IndexOf(this%Cl_i_j_name(i,j))
-            if (i1==-1 .and. i/=j) i1 = Li%IndexOf(this%Cl_i_j_name(j,i))
+            i1 =Li%IndexOf(this%field_order(i)//this%field_order(j))
+            if (i1==-1 .and. i/=j) i1 = Li%IndexOf(this%field_order(j)//this%field_order(i))
             if (i1/=-1) then
                 if (cols(ix)>0) call MpiStop('GetColsFromOrder: duplicate CL type')
                 cols(ix) = i1
@@ -366,13 +298,13 @@
     integer L, status, norder
     Type(TTextFile) :: F
     logical Err
-    integer, allocatable :: MapPairsFile(:,:), MapPairsUse(:,:), fixed_index(:)
+    integer, allocatable :: theoryPairsFile(:,:), theoryPairsUse(:,:), fixed_index(:)
     integer nfixed
 
     filename = Ini%ReadFileName(bin_type // '_files', NotFoundFail=.true.,relative=.true.)
     Order1 = Ini%Read_String(bin_type // '_in_order', .true.)
     Order2 = Ini%Read_String_Default(bin_type // '_out_order', Order1)
-    call this%UseString_to_CL_i_j(Order1, this%map_required_index, binWindows%bin_cols_in)
+    call this%UseString_to_theoryPairCls(Order1, binWindows%bin_cols_in)
     call this%UseString_to_cols(Order2, binWindows%bin_cols_out)
     norder = size(binWindows%bin_cols_in,2)
     if (norder/=size(binWindows%bin_cols_out)) &
@@ -410,20 +342,20 @@
                 Order1= Order1(2:)
             end do
         end if
-        call this%UseString_to_Cl_i_j(Order1, this%map_required_index, MapPairsFile)
-        norder = size(MapPairsFile,2)
+        call this%UseString_to_theoryPairCls(Order1, theoryPairsFile)
+        norder = size(theoryPairsFile,2)
         deallocate(tmp_ar)
         allocate(tmp_ar(norder))
         Order2 = Ini%Read_String(bin_type // '_fix_cl', .true.)
-        call this%UseString_to_Cl_i_j(Order2,this%map_required_index,  MapPairsUse)
-        nfixed = size(MapPairsUse,2)
+        call this%UseString_to_theoryPairCls(Order2, theoryPairsUse)
+        nfixed = size(theoryPairsUse,2)
         allocate(fixed_index(nfixed))
-        allocate(binWindows%fixCls(this%nmaps_required,this%nmaps_required))
+        allocate(binWindows%fixCls(tot_fields,tot_fields))
         do i=1,nfixed
-            allocate(binWindows%fixCls(MapPairsUse(1,i),MapPairsUse(2,i))%CL(this%pcl_lmin:this%pcl_lmax), source=0._mcp)
+            allocate(binWindows%fixCls(theoryPairsUse(1,i),theoryPairsUse(2,i))%CL(this%pcl_lmin:this%pcl_lmax), source=0._mcp)
             do j=1, norder+1
                 if (j>norder) call MpiStop('ReadBinWindows: fix_cl uses CL not in the fix_cl_file')
-                if (all(MapPairsFile(:,j)==MapPairsUse(:,i))) then
+                if (all(TheoryPairsFile(:,j)==theoryPairsUse(:,i))) then
                     fixed_index(i) = j
                     exit
                 end if
@@ -434,7 +366,7 @@
             if (status/=0) call MpiStop(' error fix_cl_file line '//trim(filename))
             if (l >=this%pcl_lmin .and. l<=this%pcl_lmax) then
                 do i=1, nfixed
-                    binWindows%fixCls(MapPairsUse(1,i),MapPairsUse(2,i))%CL(l) = tmp_ar(fixed_index(i))
+                    binWindows%fixCls(theoryPairsUse(1,i),theoryPairsUse(2,i))%CL(l) = tmp_ar(fixed_index(i))
                 end do
             end if
         end do
@@ -449,124 +381,42 @@
     character(LEN=:), allocatable :: S, S_order
     integer l,j, clix
     logical :: cl_fiducial_includes_noise, includes_noise
-    Type(TStringList) :: map_fields, fields_use, maps_use
-    logical use_theory_field(tot_theory_fields)
-    character(LEN=:), allocatable :: tmp
 
     if (Ini%TestEqual('dataset_format','CMBLike')) &
         & call MpiStop('CMBLikes dataset_format now CMBLike2 (e.g. covmat are for L(L+1)CL/2pi)')
     if (.not. Ini%TestEqual('dataset_format','CMBLike2',EmptyOK=.true.)) call MpiStop('CMBLikes wrong dataset_format')
 
-    S = Ini%Read_String('map_names')
-    this%has_map_names = S/=''
-    if (this%has_map_names) then
-        !E.g. have multiple frequencies for given measurement
-        call this%map_names%SetFromString(S)
-        S = Ini%Read_String('map_fields',.true.)
-        call map_fields%SetFromString(S)
-        if (map_fields%Count/=this%map_names%Count) &
-            call MpiStop('CMBLikes: number of map_fields does not match map_names')
-        allocate(this%map_fields(this%map_names%Count))
-        do i=1, map_fields%Count
-            this%map_fields(i) = TypeIndex(map_fields%CharAt(i,1))
-        end do
-    else
-        !map fields are just directly T E B or P (one each at most)
-        allocate(this%map_fields(tot_theory_fields))
-        do i=1, tot_theory_fields
-            tmp = field_names(i:i) !just avoid ifort 15.01 bug on adding directly
-            call this%map_names%Add(tmp)
-            this%map_fields(i) =i
-        end do
-    end if
-
-    S = Ini%Read_String('fields_use')
-    if (S/='') then
-        use_theory_field = .false.
-        call fields_use%SetFromString(S)
-        do i=1, fields_use%count
-            use_theory_field(TypeIndex(fields_use%CharAt(i,1))) = .true.
-        end do
-    else
-        if (.not. this%has_map_names) call MpiStop('CMBlikes: must have fields_use or map_names')
-        use_theory_field = .true.
-    end if
-
-    allocate(this%use_map(this%map_names%Count))
-    S = Ini%Read_String('maps_use')
-    if (S/='') then
-        this%use_map = .false.
-        call maps_use%SetFromString(S)
-        do i=1,maps_use%Count
-            j = this%map_names%IndexOf(maps_use%Item(i))
-            if (j/=-1) then
-                this%use_map(j) = .true.
-            else
-                call MpiStop('CMBlikes: maps_use item not found - '//maps_use%Item(i))
-            end if
-        end do
-    else
-        this%use_map = .true.
-        do i=1,this%map_names%count
-            this%use_map(i) = use_theory_field(this%map_fields(i))
-        end do
-    end if
-
-    allocate(this%require_map(this%map_names%Count), source=this%use_map)
-    !Bandpowers can depend on more fields than are actually used in likelihood
-    !e.g. for correcting leakage or other linear corrections
-    if (this%has_map_names) then
-        S = Ini%Read_String('maps_required')
-        if (Ini%HasKey('fields_required')) call MpiStop('CMBLikes: use maps_required not fields_required')
-    else
-        S = Ini%Read_String('fields_required')
-    end if
-    if (S/='') then
-        call maps_use%SetFromString(S)
-        do i=1,maps_use%Count
-            j = this%map_names%IndexOf(maps_use%Item(i))
-            if (j/=-1) then
-                this%require_map(j) = .true.
-            else
-                call MpiStop('CMBlikes: required item not found - '//maps_use%Item(i))
-            end if
-        end do
-    end if
-    do i=1, this%map_names%Count
-        if (this%require_map(i)) then
-            this%required_theory_field(this%map_fields(i)) = .true.
-        end if
+    S = Ini%Read_String('fields_use', .true.)
+    this%use_field = .false.
+    do i=1, len_trim(S)
+        if (trim(S(i:i))/='') this%use_field(TypeIndex(S(i:i))) = .true.
     end do
 
+    S = Ini%Read_String('fields_required')
+    this%required_field = this%use_field
+    if (S /= '') then
+        do i=1, len_trim(S)
+            if (trim(S(i:i))/='') this%required_field(TypeIndex(S(i:i))) = .true.
+        end do
+    end if
 
+    this%nfields=0
     this%ncl=0
     this%ncl_used=0
 
     this%like_approx = Ini%Read_Enumeration('like_approx',Like_Names)
-    this%nmaps = count(this%use_map)
-    this%nmaps_required = count(this%require_map)
-
-    allocate(this%required_order(this%nmaps_required), source=0)
-    allocate(this%map_required_index(this%map_names%Count), source=0)
-    ix =0
-    do i=1, this%map_names%Count
-        if (this%require_map(i)) then
-            ix=ix+1
-            this%map_required_index(i)=ix
-            this%required_order(ix) = i
-        end if
-    end do
-
-    allocate(this%map_used_index(this%map_names%Count), source=0)
+    this%nfields = count(this%use_field)
     ix=0
-    do i=1, this%map_names%Count
-        if (this%use_map(i)) then
+    this%field_index=0
+    do i=1,tot_fields
+        if (this%use_field(i)) then
             ix=ix+1
-            this%map_used_index(i)=ix
-            call this%map_order%Add(this%map_names%Item(i))
+            this%field_index(i)=ix
+            this%fields(ix) =i
+            this%field_order(ix) = field_names(i:i)
         end if
     end do
-    this%ncl = (this%nmaps*(this%nmaps+1))/2
+    this%ncl = (this%nfields*(this%nfields+1))/2
 
     this%pcl_lmin = Ini%Read_Int('cl_lmin')
     this%pcl_lmax = Ini%Read_Int('cl_lmax')
@@ -642,11 +492,11 @@
 
     allocate(this%cl_lmax(CL_Phi,CL_Phi), source=0)
 
-    do i=1, tot_theory_fields
-        if (this%required_theory_field(i)) this%cl_lmax(i,i) = this%pcl_lmax
+    do i=1, tot_fields
+        if (this%required_field(i)) this%cl_lmax(i,i) = this%pcl_lmax
     end do
 
-    if (this%required_theory_field(CL_T) .and. this%required_theory_field(CL_E)) &
+    if (this%required_field(CL_T) .and. this%required_field(CL_E)) &
         & this%cl_lmax(CL_E,CL_T) = this%pcl_lmax
 
 
@@ -664,24 +514,24 @@
     !if (this%nbins/=0) then
     !allocate(avec(this%ncl))
     !do i=1, this%nbins
-    !    allocate(this%NoiseM(i)%M(this%nmaps,this%nmaps))
+    !    allocate(this%NoiseM(i)%M(this%nfields,this%nfields))
     !    do j=1,this%ncl
     !        avec(j) = sum(this%binWindows(:,i)*(this%ClNoise(j,:)))
     !    end do
     !    call this%ElementsToMatrix(avec, this%NoiseM(i)%M)
     !
     !    if (allocated(this%ClFiducial)) then
-    !        allocate(this%sqrt_fiducial(i)%M(this%nmaps,this%nmaps))
+    !        allocate(this%sqrt_fiducial(i)%M(this%nfields,this%nfields))
     !        do j=1,this%ncl
     !            avec(j) = sum(this%binWindows(:,i)*this%ClFiducial(j,:))
     !        end do
     !        call this%ElementsToMatrix(avec, this%sqrt_fiducial(i)%M)
     !        if (.not. cl_fiducial_includes_noise) &
     !        & this%sqrt_fiducial(i)%M= this%sqrt_fiducial(i)%M + this%NoiseM(i)%M
-    !        call Matrix_Root(this%sqrt_fiducial(i)%M, this%nmaps, 0.5_mcp)
+    !        call Matrix_Root(this%sqrt_fiducial(i)%M, this%nfields, 0.5_mcp)
     !    end if
     !    do clix =1, this%ncl_hat
-    !        allocate(this%ChatM(i,clix)%M(this%nmaps,this%nmaps))
+    !        allocate(this%ChatM(i,clix)%M(this%nfields,this%nfields))
     !        do j=1,this%ncl
     !            avec(j) = sum(this%binWindows(:,i)*this%ClHat(j,:,clix))
     !        end do
@@ -692,18 +542,18 @@
 
     do l=this%bin_min,this%bin_max
         do clix = 1, this%ncl_hat
-            allocate(this%ChatM(l,clix)%M(this%nmaps,this%nmaps))
+            allocate(this%ChatM(l,clix)%M(this%nfields,this%nfields))
             call this%ElementsToMatrix(this%ClHat(:,l,clix), this%ChatM(l,clix)%M)
         end do
         if (allocated(this%ClNoise)) then
-            allocate(this%NoiseM(l)%M(this%nmaps,this%nmaps))
+            allocate(this%NoiseM(l)%M(this%nfields,this%nfields))
             call this%ElementsToMatrix(this%ClNoise(:,l), this%NoiseM(l)%M)
         end if
         if (allocated(this%ClFiducial)) then
-            allocate(this%sqrt_fiducial(l)%M(this%nmaps,this%nmaps))
+            allocate(this%sqrt_fiducial(l)%M(this%nfields,this%nfields))
             if (.not. cl_fiducial_includes_noise) this%ClFiducial(:,l)=this%ClFiducial(:,l)+this%ClNoise(:,l)
             call this%ElementsToMatrix(this%ClFiducial(:,l), this%sqrt_fiducial(l)%M)
-            call Matrix_Root(this%sqrt_fiducial(l)%M, this%nmaps, 0.5_mcp)
+            call Matrix_Root(this%sqrt_fiducial(l)%M, this%nfields, 0.5_mcp)
         end if
     end do
 
@@ -727,11 +577,31 @@
         call this%loadParamNames(S)
         this%calibration_index = this%nuisance_params%nnames
     end if
-    
     call this%TCMBLikelihood%ReadIni(Ini)
 
     end subroutine CMBLikes_ReadIni
 
+    subroutine CMBLikes_ReadLensing(this, Ini)
+    !Not currently used
+    class(TCMBLikes) :: this
+    class(TSettingIni) :: Ini
+    character(LEN=:), allocatable :: S, Comment
+    Type(TStringList) :: L
+    real(mcp), allocatable :: Fid(:,:)
+    integer, allocatable :: ls(:)
+
+    S = Ini%ReadFileName('lensing_fiducial_cl',relative=.true.)
+    if (S/='') then
+        call File%LoadTxt(S, Fid, comment = Comment)
+        call L%SetFromString(Comment)
+        allocate(ls(size(Fid,1)),source=int(Fid(:,1)))
+        allocate(this%Lensing%FiducialPhi(0:ls(size(ls))), source=0._mcp)
+        this%Lensing%FiducialPhi(ls) = Fid(:,L%IndexOf('PP'))
+        allocate(this%Lensing%FiducialCl(0:ls(size(ls)),1), source=0._mcp)
+        this%Lensing%FiducialCl(ls,1) = Fid(:,2)
+    end if
+
+    end subroutine CMBLikes_ReadLensing
 
     subroutine ReadCovmat(this, Ini)
     class(TCMBLikes) :: this
@@ -839,49 +709,49 @@
     !Get  C = C_f^{1/2} C^{-1/2} C^{+1/2} U f(this) U^T C^{+1/2} C^{-1/2} C_f^{1/2} where C^{-1/2} CHat C^{-1/2} = U this U^T
 
     class(TCMBLikes) :: this
-    real(mcp) C(this%nmaps,this%nmaps)
-    real(mcp), intent(in), optional :: COffset(this%nmaps,this%nmaps)
-    real(mcp), intent(in) :: CHat(this%nmaps,this%nmaps), CfHalf(this%nmaps,this%nmaps)
-    real(mcp) :: U(this%nmaps,this%nmaps), Rot(this%nmaps,this%nmaps)
-    real(mcp) :: roots(this%nmaps)
-    real(mcp) :: diag(this%nmaps)
+    real(mcp) C(this%nfields,this%nfields)
+    real(mcp), intent(in), optional :: COffset(this%nfields,this%nfields)
+    real(mcp), intent(in) :: CHat(this%nfields,this%nfields), CfHalf(this%nfields,this%nfields)
+    real(mcp) :: U(this%nfields,this%nfields), Rot(this%nfields,this%nfields)
+    real(mcp) :: roots(this%nfields)
+    real(mcp) :: diag(this%nfields)
     integer i
 
     if (present(COffset)) then
         U = C + Coffset*C
-        call Matrix_Diagonalize(U,Diag,this%nmaps)
+        call Matrix_Diagonalize(U,Diag,this%nfields)
         Rot= matmul(matmul(transpose(U),CHat+ COffset*C),U)
     else
         U = C
-        call Matrix_Diagonalize(U,Diag,this%nmaps)
+        call Matrix_Diagonalize(U,Diag,this%nfields)
         Rot= matmul(matmul(transpose(U),CHat),U)
     end if
     roots = sqrt(Diag)
 
-    do i=1, this%nmaps
+    do i=1, this%nfields
         Rot(i,:)=Rot(i,:)/roots(i)
         Rot(:,i)=Rot(:,i)/roots(i)
     end do
 
     Rot = matmul(U,matmul(Rot,transpose(U)))
-    call Matrix_Diagonalize(Rot,Diag,this%nmaps)
+    call Matrix_Diagonalize(Rot,Diag,this%nfields)
 
     Diag = sign(sqrt(2*max(0._mcp,Diag-log(Diag)-1)),Diag-1)
     !want f(this)-1 to save calculating X-X_s
 
     if (present(COffset)) then
         Rot = MatMul(transpose(U),Rot)
-        do i=1, this%nmaps
+        do i=1, this%nfields
             Rot(i,:)=Rot(i,:)*roots(i)
         end do
         Rot = MatMul(U,Rot)
-        call Matrix_Root(C,this%nmaps, -0.5_mcp)
+        call Matrix_Root(C,this%nfields, -0.5_mcp)
         Rot = MatMul(C,Rot)
     end if
 
     U = matmul(CfHalf,Rot)
     C = U
-    do i=1, this%nmaps
+    do i=1, this%nfields
         C(:,i) = C(:,i)*Diag(i)
     end do
     C = MatMul(C,transpose(U))
@@ -891,12 +761,12 @@
 
     subroutine MatrixToElements(this, M, X)
     class(TCMBLikes) :: this
-    real(mcp) :: M(this%nmaps,this%nmaps)
+    real(mcp) :: M(this%nfields,this%nfields)
     real(mcp) :: X(this%ncl)
     integer ix,i,j
 
     ix=0
-    do i=1, this%nmaps
+    do i=1, this%nfields
         do j=1,i
             ix = ix+1
             X(ix) = M(i,j)
@@ -907,12 +777,12 @@
 
     subroutine MatrixToElementsInt(this, M, X)
     class(TCMBLikes) :: this
-    integer, intent(in) :: M(this%nmaps,this%nmaps)
+    integer, intent(in) :: M(this%nfields,this%nfields)
     integer,intent(out) :: X(this%ncl)
     integer ix,i,j
 
     ix=0
-    do i=1, this%nmaps
+    do i=1, this%nfields
         do j=1,i
             ix = ix+1
             X(ix) = M(i,j)
@@ -924,12 +794,12 @@
 
     subroutine ElementsToMatrix(this, X, M)
     class(TCMBLikes) :: this
-    real(mcp), intent(out) :: M(this%nmaps,this%nmaps)
+    real(mcp), intent(out) :: M(this%nfields,this%nfields)
     real(mcp), intent(in) :: X(this%ncl)
     integer ix,i,j
 
     ix=0
-    do i=1, this%nmaps
+    do i=1, this%nfields
         do j=1,i
             ix = ix+1
             M(i,j) = X(ix)
@@ -941,22 +811,22 @@
 
     function ExactChiSq(this, C,Chat,l)
     class(TCMBLikes) :: this
-    real(mcp), intent(in) :: C(this%nmaps,this%nmaps), Chat(this%nmaps,this%nmaps)
+    real(mcp), intent(in) :: C(this%nfields,this%nfields), Chat(this%nfields,this%nfields)
     integer, intent(in) :: l
     real(mcp) ExactChiSq
-    real(mcp) M(this%nmaps,this%nmaps)
+    real(mcp) M(this%nfields,this%nfields)
 
     M = C
-    call Matrix_root(M,this%nmaps,-0.5_mcp)
+    call Matrix_root(M,this%nfields,-0.5_mcp)
     M = matmul(M,matmul(Chat,M))
-    ExactChiSq = (2*l+1)*this%fullsky_exact_fksy*(Matrix_Trace(M) - this%nmaps - MatrixSym_LogDet(M) )
+    ExactChiSq = (2*l+1)*this%fullsky_exact_fksy*(Matrix_Trace(M) - this%nfields - MatrixSym_LogDet(M) )
 
     end function ExactChiSq
 
-    subroutine GetBinnedMapCls(this, TheoryCls, C, bin)
+    subroutine GetBinnedTheory(this, TheoryCls, C, bin)
     class(TCMBLikes) :: this
-    class(TMapCrossPowerSpectrum) :: TheoryCls(:,:)
-    real(mcp) Cls(this%ncl), C(this%nmaps,this%nmaps)
+    Type(TSkyPowerSpectrum) :: TheoryCls(:,:)
+    real(mcp) Cls(this%ncl), C(this%nfields,this%nfields)
     real(mcp) correctionCl(this%ncl)
     integer, intent(in) :: bin
 
@@ -967,57 +837,29 @@
     end if
     call this%ElementsToMatrix(Cls, C)
 
-    end subroutine GetBinnedMapCls
+    end subroutine GetBinnedTheory
 
 
-    subroutine GetTheoryMapCls(this, Theory, Cls, DataParams)
+    subroutine GetObservedTheoryCls(this, Theory, Cls, DataParams)
     class(TCMBLikes) :: this
     class(TCosmoTheoryPredictions) :: Theory
-    class(TMapCrossPowerSpectrum), allocatable, intent(out) :: Cls(:,:)
-    real(mcp), intent(in) :: DataParams(:)
-    integer i,j
-    integer f1, f2
-
-    allocate(TMapCrossPowerSpectrum::Cls(this%nmaps_required, this%nmaps_required))
-    do i=1, this%nmaps_required
-        do j=1, i
-            associate(CL => Cls(i,j))
-                CL%map_i = this%required_order(i)
-                CL%map_j = this%required_order(j)
-                call this%RequiredMapPair_to_Theory_i_j(i,j,f1,f2)
-                if (allocated(Theory%Cls(f1,f2)%CL)) then
-                    CL%theory_i = f1
-                    CL%theory_j = f2
-                    allocate(CL%CL, source = Theory%Cls(f1,f2)%CL)
-                end if
-            end associate
-        end do
-    end do
-    call this%AdaptTheoryForMaps(Cls,DataParams)
-
-    end subroutine GetTheoryMapCls
-
-
-    subroutine AdaptTheoryForMaps(this,Cls,DataParams)
-    class(TCMBLikes) :: this
-    class(TMapCrossPowerSpectrum), intent(inout) :: Cls(:,:)
+    Type(TSkyPowerSpectrum), allocatable, intent(out) :: Cls(:,:)
     real(mcp), intent(in) :: DataParams(:)
     integer i,j
 
+    allocate(Cls, source= Theory%Cls)
     if (this%calibration_index > 0) then
         !Scale T, E, B spectra by the calibration parameter
-        do i=1, this%nmaps_required
-            do j=1, i
-                if (allocated(Cls(i,j)%CL) ) then
-                    if (Cls(i,j)%theory_i<=CL_B .and. Cls(i,j)%theory_j<=CL_B) then
-                        Cls(i,j)%CL = Cls(i,j)%CL / DataParams(this%calibration_index)**2
-                    end if
+        do i=CL_T,CL_B
+            do j=CL_T,i
+                if (allocated(Cls(i,j)%CL)) then
+                    Cls(i,j)%CL = Cls(i,j)%CL / DataParams(this%calibration_index)**2
                 end if
             end do
         end do
     end if
 
-    end subroutine AdaptTheoryForMaps
+    end subroutine GetObservedTheoryCls
 
     function CMBLikes_LogLike(this, CMB, Theory, DataParams)  result (LogLike)
     real(mcp) logLike
@@ -1026,35 +868,59 @@
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) DataParams(:)
     real(mcp) chisq
-    real(mcp) C(this%nmaps,this%nmaps)
+    real(mcp) C(this%nfields,this%nfields)
     real(mcp) vecp(this%ncl)
     real(mcp) bigX((this%bin_max-this%bin_min+1)*this%ncl_used)
-    integer  i,j, bin,clix
+    integer  Ti,Ei,Bi,Phii, bin,clix
     logical :: quadratic
-    class(TMapCrossPowerSpectrum), allocatable :: TheoryCls(:,:)
+    Type(TSkyPowerSpectrum), allocatable :: TheoryCls(:,:)
 
     chisq =0
 
-    call this%GetTheoryMapCls(Theory, TheoryCls, DataParams)
+    Ti = this%field_index(1)
+    Ei = this%field_index(2)
+    Bi = this%field_index(3)
+    Phii = this%field_index(4)
+    call this%GetObservedTheoryCls(Theory, TheoryCls, DataParams)
 
     do clix = 1, this%ncl_hat ! 1 or sum over chi-squareds of simulations
+        !removed nuisance parameters for the moment
+        !if (this%num_nuisance_parameters/=0 .and. Ti /= 0) then
+        !  mode=0
+        !  if (this%pointsource_MCMC_modes>0) then
+        !    mode=mode+1
+        !    cl(this%pcl_lmin:this%pcl_lmax,1) = cl(this%pcl_lmin:this%pcl_lmax,1) + &
+        !      this%point_source_error*nuisance_params(mode)*this%ClPointsources(1,this%pcl_lmin:this%pcl_lmax)
+        !  end if
+        !  beamC=0
+        !  do i=1, this%beam_MCMC_modes
+        !     mode = mode + 1
+        !     BeamC = BeamC + nuisance_params(mode) *cl(this%pcl_lmin:this%pcl_lmax,1)*this%beammodes( this%pcl_lmin:this%pcl_lmax,i )
+        !  end do
+        !   cl(this%pcl_lmin:this%pcl_lmax,1) = cl(this%pcl_lmin:this%pcl_lmax,1) + beamC
+        !
+        ! end if
+
         do bin = this%bin_min, this%bin_max
             if (this%binned .or. bin_test) then
                 if (this%like_approx == like_approx_fullsky_exact) call mpiStop('CMBLikes: exact like cannot be binned!')
-                call this%GetBinnedMapCls(TheoryCls, C, bin)
+                call this%GetBinnedTheory(TheoryCls, C, bin)
             else
-                if (this%nmaps /= this%nmaps_required) call MpiStop('CMBlikes: Unbinned must have required==used')
-                do i=1, this%nmaps
-                    do j=0, i
-                        if (allocated(TheoryCls(i,j)%CL)) then
-                            C(i,j) =TheoryCLs(i,j)%CL(bin)
-                        else
-                            C(i,j)=0
-                        end if
-                        C(j,i) = C(i,j)
-                    end do
-                end do
-
+                C=0
+                if (Ti/=0) C(Ti,Ti) = TheoryCLs(CL_T,CL_T)%CL(bin)
+                if (Ei/=0) then
+                    C(Ei,Ei) = TheoryCLs(CL_E,CL_E)%CL(bin)
+                    if (Ti/=0) then
+                        C(Ei,Ti) = TheoryCLs(CL_E,CL_T)%CL(bin)
+                        C(Ti,Ei) = C(Ei,Ti)
+                    end if
+                end if
+                if (Bi/=0) C(Bi,Bi) =  TheoryCLs(CL_B,CL_B)%CL(bin)
+                if (Phii/=0) then
+                    C(Phii,Phii) = TheoryCLs(CL_Phi,CL_Phi)%CL(bin)
+                    !No cross for the moment
+                    !if (Ti/=0) C(Phii,Ti) = TheoryCLs(CL_Phi,CL_T)%CL(bin)
+                end if
             end if
 
             if (allocated(this%NoiseM)) then
@@ -1130,7 +996,7 @@
 
     subroutine TBinWindows_bin(this, TheoryCls, Cls, bin)
     class(TBinWindows) :: this
-    class(TSkyPowerSpectrum) :: TheoryCls(:,:)
+    Type(TSkyPowerSpectrum) :: TheoryCls(:,:)
     real(mcp) Cls(:)
     integer bin
     integer win_ix,ix_in(2), ix_out
