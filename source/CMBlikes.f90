@@ -73,10 +73,8 @@
         integer pcl_lmin, pcl_lmax !The range of l in data files (esp. covmat and/or window files)
         integer like_approx
         real(mcp) :: fullsky_exact_fksy = 1 ! only used for testing with exactly fullsky
-        integer ncl_hat !1, or more if using multiple simulations
         integer :: calibration_index = 0 !if non-zero, index into nuisance parameter array of global calibration of TEB
-        real(mcp), dimension(:,:), allocatable :: ClFiducial, ClNoise
-        real(mcp), dimension(:,:,:), allocatable :: ClHat
+        real(mcp), dimension(:,:), allocatable :: ClFiducial, ClNoise, ClHat
         !These are all L(L+1)C_L/2pi
 
         real(mcp), dimension(:,:), allocatable :: inv_covariance
@@ -97,7 +95,7 @@
         real(mcp), allocatable :: FiducialCorrection(:,:)
 
         Type(TSqMatrix), dimension(:), allocatable :: sqrt_fiducial, NoiseM
-        Type(TSqMatrix), dimension(:,:), allocatable :: ChatM
+        Type(TSqMatrix), dimension(:), allocatable :: ChatM
         class(TMapCrossPowerSpectrum), allocatable :: MapCls(:,:)
     contains
     procedure :: LogLike => CMBLikes_LogLike
@@ -149,17 +147,26 @@
 
     end function TypeIndex
 
-    subroutine CMBLikes_ReadClArr(this, filename, order, Cl, lmin)
+    subroutine CMBLikes_ReadClArr(this, Ini, basename,  Cl, hasKey)
     class(TCMBLikes) :: this
-    character(LEN=*), intent(in) :: filename, order
-    integer, intent(in) :: lmin
-    real(mcp) :: Cl(:,lmin:)
-    character(LEN=:), allocatable :: tmp, incols
+    class(TSettingIni), intent(in) :: Ini
+    character(LEN=*), intent(in) :: basename
+    logical, intent(inout), optional :: hasKey
+    real(mcp), allocatable,intent(out) :: Cl(:,:)
+    character(LEN=:), allocatable :: tmp, incols, order, filename
     integer ix, l,ll
     integer, allocatable :: cols(:)
     real(mcp), allocatable :: tmp_ar(:)
     integer status, norder
     Type(TTextFile) :: F
+
+    filename =Ini%ReadFileName(basename//'_file', NotFoundFail=.not. present(hasKey) ,relative=.true.)
+    if (present(hasKey)) then
+        hasKey = filename /=''
+        if (.not. hasKey) return
+    end if
+    allocate(Cl(this%ncl,this%bin_min:this%bin_max))
+    Order = Ini%Read_String(basename//'_order')
 
     if (Order=='') then
         incols = File%TopCommentLine(filename)
@@ -453,12 +460,13 @@
     class(TCMBLikes) :: this
     class(TSettingIni) :: Ini
     integer ix, i
-    character(LEN=:), allocatable :: S, S_order
-    integer l,j, clix
+    character(LEN=:), allocatable :: S
+    integer l,j
     logical :: cl_fiducial_includes_noise, includes_noise
     Type(TStringList) :: map_fields, fields_use, maps_use
     logical use_theory_field(tot_theory_fields)
     character(LEN=:), allocatable :: tmp
+    logical :: hasKey
 
     if (Ini%TestEqual('dataset_format','CMBLike')) &
         & call MpiStop('CMBLikes dataset_format now CMBLike2 (e.g. covmat are for L(L+1)CL/2pi)')
@@ -607,22 +615,10 @@
     end if
     this%nbins_used = this%bin_max - this%bin_min + 1
 
-    this%ncl_hat = Ini%Read_Int('ncl_hat', 1) !only >1 if multiple sims for testing
-
-    allocate(this%ClHat(this%ncl,this%bin_min:this%bin_max, this%ncl_hat))
-    S = Ini%ReadFileName('cl_hat_file',NotFoundFail=.true., relative=.true.)
-    S_order = Ini%read_String('cl_hat_order')
-    call this%ReadClArr(S, S_order,this%ClHat(:,:,1),this%bin_min)
-    do j=2, this%ncl_hat
-        !for simulated with multiple realizations with same covariance and noise
-        call this%ReadClArr(Ini%ReadFileName(numcat('cl_hat_file',j), relative=.true.), S_order,this%ClHat(:,:,j),this%bin_min)
-    end do
+    call this%ReadClArr(Ini, 'cl_hat', this%ClHat)
 
     if (this%like_approx == like_approx_HL) then
-        S =Ini%ReadFileName('cl_fiducial_file', NotFoundFail=.true. ,relative=.true.)
-        allocate(this%ClFiducial(this%ncl,this%bin_min:this%bin_max))
-        S_order = Ini%Read_String('cl_fiducial_order')
-        call this%ReadClArr(S, S_order,this%ClFiducial,this%bin_min)
+        call this%ReadClArr(Ini,'cl_fiducial',this%ClFiducial)
     else if (this%like_approx == like_approx_fullsky_exact) then
         !Exact like
         call Ini%Read('fullsky_exact_fksy', this%fullsky_exact_fksy)
@@ -630,23 +626,16 @@
 
     includes_noise = Ini%Read_Logical('cl_hat_includes_noise',.false.)
     if (this%like_approx/=like_approx_fid_gaussian .or. includes_noise) then
-        S = Ini%ReadFileName('cl_noise_file',relative=.true.,NotFoundFail=.true.)
-        allocate(this%ClNoise(this%ncl,this%bin_min:this%bin_max))
-        S_order = Ini%Read_String('cl_noise_order')
-        call this%ReadClArr(S, S_order,this%ClNoise,this%bin_min)
+        call this%ReadClArr(Ini, 'cl_noise',this%ClNoise)
         if (.not. includes_noise) then
-            do j=1,this%ncl_hat
-                this%ClHat(:,:,j) =  this%ClHat(:,:,j) + this%ClNoise
-            end do
+            this%ClHat =  this%ClHat + this%ClNoise
         else if (this%like_approx==like_approx_fid_gaussian) then
-            do j=1,this%ncl_hat
-                this%ClHat(:,:,j) =  this%ClHat(:,:,j) - this%ClNoise
-            end do
+            this%ClHat =  this%ClHat - this%ClNoise
             deallocate(this%ClNoise)
         end if
     end if
 
-    allocate(this%cl_lmax(CL_Phi,CL_Phi), source=0)
+    allocate(this%cl_lmax(tot_theory_fields,tot_theory_fields), source=0)
 
     do i=1, tot_theory_fields
         if (this%required_theory_field(i)) this%cl_lmax(i,i) = this%pcl_lmax
@@ -659,7 +648,7 @@
     if (Ini%HasKey('point_source_cl') .or. Ini%HasKey('beam_modes_file')) &
         & call MpiStop('dataset uses keywords no longer supported')
 
-    allocate(this%ChatM(this%bin_min:this%bin_max, this%ncl_hat))
+    allocate(this%ChatM(this%bin_min:this%bin_max))
 
     if (this%like_approx /= like_approx_fid_gaussian) then
         cl_fiducial_includes_noise = Ini%Read_Logical('cl_fiducial_includes_noise',.false.)
@@ -697,10 +686,8 @@
     !deallocate(avec)
 
     do l=this%bin_min,this%bin_max
-        do clix = 1, this%ncl_hat
-            allocate(this%ChatM(l,clix)%M(this%nmaps,this%nmaps))
-            call this%ElementsToMatrix(this%ClHat(:,l,clix), this%ChatM(l,clix)%M)
-        end do
+        allocate(this%ChatM(l)%M(this%nmaps,this%nmaps))
+        call this%ElementsToMatrix(this%ClHat(:,l), this%ChatM(l)%M)
         if (allocated(this%ClNoise)) then
             allocate(this%NoiseM(l)%M(this%nmaps,this%nmaps))
             call this%ElementsToMatrix(this%ClNoise(:,l), this%NoiseM(l)%M)
@@ -718,11 +705,8 @@
     end if
     if (Ini%HasKey('lowl_exact')) call MpiStop('lowl_exact has been separated out as not currently used')
 
-    S = Ini%ReadFileName('linear_correction_fiducial',relative=.true.)
-    if (S/='') then
-        allocate(this%FiducialCorrection(this%ncl,this%bin_min:this%bin_max))
-        S_order = Ini%read_String('linear_correction_fiducial_order')
-        call this%ReadClArr(S, S_order,this%FiducialCorrection(:,:),this%bin_min)
+    call this%ReadClArr(Ini, 'linear_correction_fiducial',this%FiducialCorrection, hasKey=hasKey)
+    if (hasKey) then
         call this%ReadBinWindows(Ini, 'linear_correction_bin_window', this%binCorrectionWindows)
     end if
 
@@ -961,16 +945,16 @@
 
     end function ExactChiSq
 
-    subroutine GetBinnedMapCls(this, TheoryCls, C, bin)
+    subroutine GetBinnedMapCls(this, MapCls, C, bin)
     class(TCMBLikes) :: this
-    class(TMapCrossPowerSpectrum) :: TheoryCls(:,:)
+    class(TMapCrossPowerSpectrum) :: MapCls(:,:)
     real(mcp) Cls(this%ncl), C(this%nmaps,this%nmaps)
     real(mcp) correctionCl(this%ncl)
     integer, intent(in) :: bin
 
-    call this%BinWindows%Bin(TheoryCls, Cls, bin)
+    call this%BinWindows%Bin(MapCls, Cls, bin)
     if (allocated(this%binCorrectionWindows%W)) then
-        call this%BinCorrectionWindows%Bin(TheoryCls, correctionCl, bin)
+        call this%BinCorrectionWindows%Bin(MapCls, correctionCl, bin)
         Cls = Cls + (correctionCl - this%FiducialCorrection(:,bin))
     end if
     call this%ElementsToMatrix(Cls, C)
@@ -1102,7 +1086,7 @@
     real(mcp) C(this%nmaps,this%nmaps)
     real(mcp) vecp(this%ncl)
     real(mcp) bigX((this%bin_max-this%bin_min+1)*this%ncl_used)
-    integer  i,j, bin,clix
+    integer  i,j, bin
     logical :: quadratic
     class(TMapCrossPowerSpectrum), pointer :: TheoryCls(:,:)
 
@@ -1110,52 +1094,50 @@
 
     call this%GetTheoryMapCls(Theory, TheoryCls, DataParams)
 
-    do clix = 1, this%ncl_hat ! 1 or sum over chi-squareds of simulations
-        do bin = this%bin_min, this%bin_max
-            if (this%binned .or. bin_test) then
-                if (this%like_approx == like_approx_fullsky_exact) call mpiStop('CMBLikes: exact like cannot be binned!')
-                call this%GetBinnedMapCls(TheoryCls, C, bin)
-            else
-                if (this%nmaps /= this%nmaps_required) call MpiStop('CMBlikes: Unbinned must have required==used')
-                do i=1, this%nmaps
-                    do j=0, i
-                        if (allocated(TheoryCls(i,j)%CL)) then
-                            C(i,j) =TheoryCLs(i,j)%CL(bin)
-                        else
-                            C(i,j)=0
-                        end if
-                        C(j,i) = C(i,j)
-                    end do
+    do bin = this%bin_min, this%bin_max
+        if (this%binned .or. bin_test) then
+            if (this%like_approx == like_approx_fullsky_exact) call mpiStop('CMBLikes: exact like cannot be binned!')
+            call this%GetBinnedMapCls(TheoryCls, C, bin)
+        else
+            if (this%nmaps /= this%nmaps_required) call MpiStop('CMBlikes: Unbinned must have required==used')
+            do i=1, this%nmaps
+                do j=0, i
+                    if (allocated(TheoryCls(i,j)%CL)) then
+                        C(i,j) =TheoryCLs(i,j)%CL(bin)
+                    else
+                        C(i,j)=0
+                    end if
+                    C(j,i) = C(i,j)
                 end do
+            end do
 
-            end if
+        end if
 
-            if (allocated(this%NoiseM)) then
-                C = C + this%NoiseM(bin)%M
-            end if
+        if (allocated(this%NoiseM)) then
+            C = C + this%NoiseM(bin)%M
+        end if
 
-            if (this%like_approx == like_approx_HL) then
-                call this%Transform(C, this%ChatM(bin,clix)%M, this%sqrt_fiducial(bin)%M)
-                call this%MatrixToElements(C, vecp)
-                quadratic = .true.
-            else if (this%like_approx == like_approx_fid_gaussian) then
-                call this%MatrixToElements(C- this%ChatM(bin,clix)%M, vecp)
-                quadratic = .true.
-            else if (this%like_approx == like_approx_fullsky_exact) then
-                quadratic = .false.
-                chisq = chisq  + this%ExactChisq(C,this%ChatM(bin,clix)%M,bin)
-            else
-                call MpiStop('Unknown like_approx')
-            end if
+        if (this%like_approx == like_approx_HL) then
+            call this%Transform(C, this%ChatM(bin)%M, this%sqrt_fiducial(bin)%M)
+            call this%MatrixToElements(C, vecp)
+            quadratic = .true.
+        else if (this%like_approx == like_approx_fid_gaussian) then
+            call this%MatrixToElements(C- this%ChatM(bin)%M, vecp)
+            quadratic = .true.
+        else if (this%like_approx == like_approx_fullsky_exact) then
+            quadratic = .false.
+            chisq = chisq  + this%ExactChisq(C,this%ChatM(bin)%M,bin)
+        else
+            call MpiStop('Unknown like_approx')
+        end if
 
-            if (quadratic) then
-                bigX( (bin-this%bin_min)*this%ncl_used + 1:(bin-this%bin_min+1)*this%ncl_used) = vecp(this%cl_use_index)
-            end if
-        end do
-
-        if (quadratic) chisq = chisq + Matrix_QuadForm(this%inv_covariance,BigX)
-
+        if (quadratic) then
+            bigX( (bin-this%bin_min)*this%ncl_used + 1:(bin-this%bin_min+1)*this%ncl_used) = vecp(this%cl_use_index)
+        end if
     end do
+
+    if (quadratic) chisq = chisq + Matrix_QuadForm(this%inv_covariance,BigX)
+
 
     LogLike = chisq/2
 
