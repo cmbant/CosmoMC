@@ -131,7 +131,7 @@ class importanceFilterHighH0:
 class lensTest_importance(batchJob.importanceSetting):
     def wantImportance(self, jobItem):
         return 'lensing' in jobItem.data_set.names and (
-            len(jobItem.param_set) == 0 or len(jobItem.param_set) == 1 and jobItem.param_set.hasParam(['omegak', 'mnu']))
+            len(jobItem.param_set) == 0 or len(jobItem.param_set) == 1 and jobItem.hasParam(['omegak', 'mnu']))
 
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
