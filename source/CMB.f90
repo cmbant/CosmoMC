@@ -39,11 +39,12 @@
     class(TSettingIni) :: ini
     class(TCMBLikelihood), pointer  :: like
     integer  i
-    Type(TSettingIni) :: DataSets
+    Type(TSettingIni) :: DataSets, OverrideSettings
 
     call Ini%TagValuesForName('cmb_dataset', DataSets, filename=.true.)
 
     do i= 1, DataSets%Count
+        call Ini%SettingValuesForTagName('cmb_dataset',DataSets%Name(i),OverrideSettings)
         if (DataSets%Name(i) == 'WMAP') then
 #ifdef WMAP
             allocate(TWMAPLikelihood::like)
@@ -60,7 +61,7 @@
             else
                 allocate(TCMBLikes::like)
             end if
-            call like%ReadDatasetFile(Datasets%Value(i))
+            call like%ReadDatasetFile(Datasets%Value(i),OverrideSettings)
         end if
         like%Tag = DataSets%Name(i)
         call like%ReadParams(Ini)

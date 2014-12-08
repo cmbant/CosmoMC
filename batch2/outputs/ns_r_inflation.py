@@ -13,7 +13,8 @@ roots = [g.getRoot('nnu_r', s.defdata + '_nnup39_lensing'),
                'base_r_' + s.defdata,
                 g.getRoot('r', s.defdata + '_lensing_BAO_H070p6_JLA')]
 
-
+# g.sampleAnalyser.addRoot(r'C:\tmp\Planck\b2keck\base_r_plikHM_TT_lowTEB_B2keck')
+# roots += ['base_r_plikHM_TT_lowTEB_B2keck']
 
 def N_r_ns(r, ns):
     return (r - 16) / (8. * ns - 8 + r) / 2.

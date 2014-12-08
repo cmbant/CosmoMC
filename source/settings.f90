@@ -51,6 +51,7 @@
     procedure :: ReadFilename => TSettingIni_ReadFilename
     procedure :: ReplaceDirs => TSettingIni_ReplaceDirs
     procedure :: TagValuesForName => TSettingIni_TagValuesForName
+    procedure :: SettingValuesForTagName => TSettingIni_SettingValuesForTagName
     end type
 
     real(mcp) :: AccuracyLevel = 1
@@ -162,8 +163,8 @@
     stop
     end subroutine DoStop
 
-    subroutine TSettingIni_FailStop(L)
-    class(TSettingIni) :: L
+    subroutine TSettingIni_FailStop(this)
+    class(TSettingIni) :: this
 
     call MpiStop()
 
@@ -223,7 +224,8 @@
         KeyName=>Ini%Name(i)
         if (StringStarts(KeyName, tag) .and. Ini%Value(i)/='') then
             ix = index(KeyName, ']')
-            if (ix /= len(KeyName)) call Ini%Error('Error readding tagged key', name)
+            if (ix /= len(keyName))  call Ini%Error('Error reading tagged key', name)
+            if (index(KeyName,',')/=0) cycle
             value =Ini%Read_String(KeyName)
             if (DefaultFalse(filename) .and. value/='') value = Ini%ReplaceDirs(value)
             call OutList%Add(KeyName(len(tag)+1:len(KeyName)-1), value)
@@ -232,6 +234,33 @@
     end do
 
     end subroutine TSettingIni_TagValuesForName
+
+
+    subroutine TSettingIni_SettingValuesForTagName(Ini, name, tag, OutList, filename)
+    !Reads all entries of the form "name[tag,setting] = value", storing setting=value in OutList
+    class(TSettingIni) :: Ini
+    character(LEN=*), intent(in) :: name, tag
+    character(LEN=:), allocatable :: value, stem
+    class(TNameValueList) :: OutList
+    integer i, ix
+    character(LEN=:), pointer :: KeyName
+    logical, intent(in), optional :: filename
+
+    call OutList%Clear()
+    stem = trim(name) //'['//trim(tag)//','
+
+    do i=1, Ini%Count
+        KeyName=>Ini%Name(i)
+        if (StringStarts(KeyName, stem)) then
+            ix = index(KeyName, ']')
+            if (ix /= len(KeyName)) call Ini%Error('Error reading tagged key setting', name)
+            value =Ini%Read_String(KeyName)
+            if (DefaultFalse(filename) .and. value/='') value = Ini%ReplaceDirs(value)
+            call OutList%Add(KeyName(len(stem)+1:len(KeyName)-1), value)
+        end if
+    end do
+
+    end subroutine TSettingIni_SettingValuesForTagName
 
 
     function TNameKeyIniFile_NamedKey(Ini, Key, Name) result(NamedKey)
