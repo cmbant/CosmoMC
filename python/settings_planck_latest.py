@@ -128,6 +128,11 @@ class importanceFilterHighH0:
     def wantImportance(self, jobItem):
         return ('nnu' in jobItem.param_set)
 
+class lensTest_importance(batchJob.importanceSetting):
+    def wantImportance(self, jobItem):
+        return 'lensing' in jobItem.data_set.names and (
+            len(jobItem.param_set) == 0 or len(jobItem.param_set) == 1 and jobItem.param_set.hasParam(['omegak', 'mnu']))
+
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
 post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegak()]
@@ -141,9 +146,9 @@ post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini
 post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], importanceFilterBAO()]
 
 post_WP = [[ 'WMAPtau'], [WMAPtau]]
-post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'})
-post_BAOzre = zre_importance([BAO, 'zre6p5'], [BAOdata, 'zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'})
-post_reion = zre_importance(['reion'], ['reion_tau.ini'], dist_settings={'limits[zrei]':'6.5 N'})
+post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'}, minimize=False)
+post_BAOzre = zre_importance([BAO, 'zre6p5'], [BAOdata, 'zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'}, minimize=False)
+post_reion = zre_importance(['reion'], ['reion_tau.ini'], dist_settings={'limits[zrei]':'6.5 N'}, minimize=False)
 
 # set up groups of parameters and data sets
 
@@ -518,6 +523,11 @@ gchecks.importanceRuns = []
 groups.append(gchecks)
 
 skip = []
+
+importanceRuns = []
+for maxbin in [5, 7, 9, 11, 13, 15, 19]:
+    importanceRuns.append(lensTest_importance(['maxlens' + str(maxbin)], ['lensing_aggressive.ini'], minimize=False))
+
 
 
 

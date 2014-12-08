@@ -68,7 +68,7 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
 
 
     if hasattr(settings, 'skip'): batch.skip = settings.skip
-    batch.makeItems(settings.groups, messages=not readOnly)
+    batch.makeItems(settings, messages=not readOnly)
     if readOnly:
         for jobItem in [b for b in batch.jobItems]:
             if not jobItem.chainExists():
@@ -173,6 +173,7 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
             for imp in jobItem.importanceJobs():
                 if batch.hasName(imp.name.replace('_post', '')): raise Exception('importance sampling something you already have?')
                 for minimize in (False, True):
+                    if minimize and not getattr(imp, 'want_minimize', True): continue
                     ini = iniFile.iniFile()
                     updateIniParams(ini, imp.importanceSettings, batch.commonPath)
                     if cosmomcAction == 0 and not minimize:

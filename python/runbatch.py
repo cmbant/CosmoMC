@@ -76,7 +76,8 @@ def submitJob(ini):
 for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
     if ((not args.notexist or isMinimize and not jobItem.chainMinimumExists()
        or not isMinimize and not jobItem.chainExists()) and (not args.minimize_failed or not jobItem.chainMinimumConverged())
-          and (isMinimize or args.notall is None or not jobItem.allChainExists(args.notall))):
+          and (isMinimize or args.notall is None or not jobItem.allChainExists(args.notall))) \
+                and (not isMinimize or getattr(jobItem, 'want_minimize', True)):
             if not args.parent_converge or not jobItem.isImportanceJob or jobItem.parent.hasConvergeBetterThan(args.parent_converge):
                 if args.converge == 0 or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
                     if args.checkpoint_run is None or jobItem.wantCheckpointContinue(args.checkpoint_run) and jobItem.notRunning():

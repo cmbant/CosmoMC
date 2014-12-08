@@ -119,10 +119,11 @@ class jobGroup:
             self.datasets = datasets
 
 class importanceSetting:
-    def __init__(self, names, inis=[], dist_settings={}):
+    def __init__(self, names, inis=[], dist_settings={}, minimize=True):
         self.names = names
         self.inis = inis
         self.dist_settings = dist_settings
+        self.want_minimize = minimize
 
     def wantImportance(self, jobItem):
         return True
@@ -130,7 +131,7 @@ class importanceSetting:
 
 class jobItem(propertiesItem):
 
-    def __init__(self, path, param_set, data_set, base='base'):
+    def __init__(self, path, param_set, data_set, base='base', minimize=True):
         self.param_set = param_set
         if not isinstance(data_set, dataSet): data_set = dataSet(data_set[0], data_set[1])
         self.data_set = data_set
@@ -146,6 +147,7 @@ class jobItem(propertiesItem):
         self.distRoot = self.distPath + self.name
         self.isImportanceJob = False
         self.importanceItems = []
+        self.want_minimize = minimize
         self.result_converge = None
         self.group = None
         self.dist_settings = copy.copy(data_set.dist_settings)
@@ -163,7 +165,6 @@ class jobItem(propertiesItem):
         return self.propertiesIni().bool('burn_removed')
 
     def makeImportance(self, importanceRuns):
-        self.importanceItems = []
         for impRun in importanceRuns:
             if isinstance(impRun, importanceSetting):
                 if not impRun.wantImportance(self): continue
@@ -174,7 +175,7 @@ class jobItem(propertiesItem):
                 print 'importance job duplicating parent data set:' + self.name
                 continue
             data = self.data_set.extendForImportance(impRun.names, impRun.inis)
-            job = jobItem(self.batchPath, self.param_set, data)
+            job = jobItem(self.batchPath, self.param_set, data, minimize=impRun.want_minimize)
             job.importanceTag = "_".join(impRun.names)
             job.importanceSettings = impRun.inis
             tag = '_post_' + job.importanceTag
@@ -351,16 +352,22 @@ class batchJob(propertiesItem):
     def propertiesIniFile(self):
         return os.path.join(self.batchPath, 'config', 'config.ini')
 
-    def makeItems(self, dataAndParams, messages=True):
+    def makeItems(self, settings, messages=True):
             self.jobItems = []
-            for group in dataAndParams:
+            allImportance = getattr(settings, 'importanceRuns', [])
+            for group in settings.groups:
                 for data_set in group.datasets:
                     for param_set in group.params:
                         item = jobItem(self.batchPath, param_set, data_set)
                         if hasattr(group, 'groupName'): item.group = group.groupName
                         if not item.name in self.skip:
                             item.makeImportance(group.importanceRuns)
+                            item.makeImportance(allImportance)
                             self.jobItems.append(item)
+            for jobItem in getattr(settings, 'jobItems', []):
+                self.jobItems.append(jobItem)
+                jobItem.makeImportance(allImportance)
+
             for item in self.items():
                 for x in [imp for imp in item.importanceJobs()]:
                     if self.has_normed_name(x.normed_name):
