@@ -77,10 +77,7 @@
     call Ini%Read('redo_auto_likescale_count',this%redo_auto_likescale_count)
 
     if (this%redo_from_text .and. (this%redo_add .or. this%redo_like_name/='')) &
-        call Mpistop('redo_new_likes requires .data files, not from text')
-
-    if (this%redo_from_text  .and. this%redo_skip>0.d0 .and. this%redo_skip<1) &
-        call Mpistop('redo_from_text currently requires redo_skip==0 or redo_skip>=1')
+        call Mpistop('redo_add and/or redo_like_name require .data files, not from text')
 
     if (this%redo_outroot == '') then
         this%redo_outroot =  File%ExtractPath(baseroot)//'post_'//File%ExtractName(baseroot)
