@@ -120,18 +120,9 @@ class importanceFilterBAO:
     def wantImportance(self, jobItem):
         return not ('omegak' in jobItem.param_set) and jobItem.data_set.hasName('BAO')
 
-class importanceFilterAbundance:
-    def wantImportance(self, jobItem):
-        return 'nnu' in jobItem.param_set and not 'yhe' in jobItem.param_set and not jobItem.data_set.hasName('lensonly')
-
 class importanceFilterHighH0:
     def wantImportance(self, jobItem):
         return ('nnu' in jobItem.param_set)
-
-class lensTest_importance(batchJob.importanceSetting):
-    def wantImportance(self, jobItem):
-        return jobItem.data_set.hasAll(['lensing', 'TT']) and (
-            len(jobItem.param_set) == 0 or len(jobItem.param_set) == 1 and jobItem.hasParam(['omegak', 'mnu']))
 
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
@@ -523,6 +514,14 @@ gchecks.importanceRuns = []
 groups.append(gchecks)
 
 skip = []
+
+
+# Check lensing results with aggressive likelihood up to given max bin
+
+class lensTest_importance(batchJob.importanceSetting):
+    def wantImportance(self, jobItem):
+        return jobItem.data_set.hasAll(['lensing', 'TT']) and (
+            len(jobItem.param_set) == 0 or len(jobItem.param_set) == 1 and jobItem.hasParam(['omegak', 'mnu']))
 
 importanceRuns = []
 for maxbin in [5, 7, 9, 11, 13, 15, 19]:
