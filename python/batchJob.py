@@ -364,9 +364,9 @@ class batchJob(propertiesItem):
                             item.makeImportance(group.importanceRuns)
                             item.makeImportance(allImportance)
                             self.jobItems.append(item)
-            for jobItem in getattr(settings, 'jobItems', []):
-                self.jobItems.append(jobItem)
-                jobItem.makeImportance(allImportance)
+            for item in getattr(settings, 'jobItems', []):
+                self.jobItems.append(item)
+                item.makeImportance(allImportance)
 
             for item in self.items():
                 for x in [imp for imp in item.importanceJobs()]:
