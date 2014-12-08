@@ -72,7 +72,7 @@ class batchArgs():
             return (self.args.importancetag is None or len(self.args.importancetag) == 0 or
                  jobItem.importanceTag in self.args.importancetag) and \
                   (self.args.importance is None or len(self.args.importance) == 0 or
-                     len([True for x in self.args.importance if x in jobItem.importanceNames]))
+                     len([True for x in self.args.importance if x in jobItem.data_set.importanceNames]))
 
         def jobItemWanted(self, jobItem):
             return not jobItem.isImportanceJob and (self.args.importance is None) or jobItem.isImportanceJob and self.wantImportance(jobItem)
