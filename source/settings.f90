@@ -163,8 +163,8 @@
     stop
     end subroutine DoStop
 
-    subroutine TSettingIni_FailStop(L)
-    class(TSettingIni) :: L
+    subroutine TSettingIni_FailStop(this)
+    class(TSettingIni) :: this
 
     call MpiStop()
 
@@ -225,7 +225,7 @@
         if (StringStarts(KeyName, tag) .and. Ini%Value(i)/='') then
             ix = index(KeyName, ']')
             if (ix /= len(keyName))  call Ini%Error('Error reading tagged key', name)
-            if (index(KeyName,',')/=0) continue
+            if (index(KeyName,',')/=0) cycle
             value =Ini%Read_String(KeyName)
             if (DefaultFalse(filename) .and. value/='') value = Ini%ReplaceDirs(value)
             call OutList%Add(KeyName(len(tag)+1:len(KeyName)-1), value)
