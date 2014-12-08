@@ -53,6 +53,7 @@ class batchArgs():
             self.args = args
             if args.batchPath:
                 self.batch = batchJob.readobject(args.batchPath)
+                if self.batch is None: raise Exception('batchPath does not exist or it not initialized with makeGrid.py')
                 if self.doplots:
                     import GetDistPlots
                     if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)

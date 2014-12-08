@@ -239,6 +239,7 @@ class MCSampleAnalysis(object):
             root = os.path.basename(root)
         if root in self.mcsamples: return self.mcsamples[root]
         jobItem = None
+        dist_setings = {}
         if not file_root:
             if self.batch:
                 jobItem = self.batch.resolveRoot(root)
@@ -247,7 +248,6 @@ class MCSampleAnalysis(object):
                 dist_setings = jobItem.dist_settings
             else:
                 file_root = os.path.join(self.chain_dir, root)
-                dist_setings = {}
         self.mcsamples[root] = MCSamples.loadMCSamples(file_root, self.ini, jobItem, dist_settings=dist_setings)
         return self.mcsamples[root]
 

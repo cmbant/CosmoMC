@@ -43,6 +43,7 @@
     procedure :: AddString => TNameValueList_Add
     procedure :: Name => TNameValueList_Name
     procedure :: Value => TNameValueList_Value
+    procedure :: Override => TNameValueList_Override
     procedure :: TNameValueList_AddDouble
     procedure :: TNameValueList_AddReal
     procedure :: TNameValueList_AddInt
@@ -178,6 +179,25 @@
     AValue = L%IndexOf(AName) /= -1
 
     end function TNameValueList_HasKey
+    
+    subroutine TNameValueList_Override(L, Settings, only_if_exists)
+    class(TNameValueList) :: L
+    class(TNameValueList), intent(in) :: Settings
+    logical, intent(in), optional :: only_if_exists
+    integer i, ix
+    character(LEN=:), pointer :: name
+    
+    do i=1, Settings%Count
+        name => Settings%Name(i)
+        ix = L%IndexOf(name)
+        if (ix/=-1) then
+            L%Items(i)%P%Value = Settings%Value(i)
+        elseif (.not. DefaultFalse(only_if_exists)) then
+            call L%Add(name, Settings%Value(i))
+        end if
+    end do
+
+    end subroutine TNameValueList_Override
 
     subroutine TNameValueList_Add(L, AName, AValue, only_if_undefined)
     class(TNameValueList) :: L

@@ -123,7 +123,9 @@
 
     like = this%LikeCalculator%GetLogLike(P)
     if (like == logZero) then
-        call MpiStop('Minimizer does not currently support non-boundary LogZero rejections')
+        print *, 'Warning: Minimizer does not currently properly support non-boundary LogZero rejections'
+!        call MpiStop('Minimizer does not currently support non-boundary LogZero rejections')
+        call P%Clear(keep=this%MinParams)
     else
         call this%MinParams%Clear(keep=P)
         this%MinParams = P !want to keep e.g. the Age calculation
