@@ -526,7 +526,8 @@ skip = []
 
 importanceRuns = []
 for maxbin in [5, 7, 9, 11, 13, 15, 19]:
-    importanceRuns.append(lensTest_importance(['maxlens' + str(maxbin)], ['lensing_aggressive.ini'], minimize=False))
+    importanceRuns.append(lensTest_importance(['bintest', 'maxbin' + str(maxbin)],
+                                               [{'cmb_dataset[lensing,use_max]':maxbin}, 'lensing_aggressive.ini'], minimize=False))
 
 
 
