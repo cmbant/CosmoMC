@@ -25,7 +25,9 @@ class batchArgs():
         def parseForBatch(self):
             if self.importanceParameter:
                 self.parser.add_argument('--noimportance', action='store_true', help='original chains only, no importance sampled')
-                self.parser.add_argument('--importance', nargs='*', default=None, help='tags for importance sampling runs to include')
+                self.parser.add_argument('--importance', nargs='*', default=None, help='data names for importance sampling runs to include')
+                self.parser.add_argument('--importancetag', nargs='*', default=None, help='importance tags for importance sampling runs to include')
+
             self.parser.add_argument('--name', default=None, nargs='+', help='specific chain full name only (base_paramx_data1_data2)')
             self.parser.add_argument('--param', default=None, nargs='+', help='runs including specific parameter only (paramx)')
             self.parser.add_argument('--paramtag', default=None, nargs='+', help='runs with specific parameter tag only (base_paramx)')
@@ -66,11 +68,14 @@ class batchArgs():
                     return (self.batch, self.args)
             else: return None, self.args
 
-        def wantImportance(self, importanceTag):
-            return self.args.importance is None or len(self.args.importance) == 0 or importanceTag in self.args.importance
+        def wantImportance(self, jobItem):
+            return (self.args.importancetag is None or len(self.args.importancetag) == 0 or
+                 jobItem.importanceTag in self.args.importancetag) and \
+                  (self.args.importance is None or len(self.args.importance) == 0 or
+                     len([True for x in self.args.importance if x in jobItem.importanceNames]))
 
         def jobItemWanted(self, jobItem):
-            return not jobItem.isImportanceJob and (self.args.importance is None) or jobItem.isImportanceJob and self.wantImportance(jobItem.importanceTag)
+            return not jobItem.isImportanceJob and (self.args.importance is None) or jobItem.isImportanceJob and self.wantImportance(jobItem)
 
         def nameMatches(self, jobItem):
             if self.args.name is None: return True
