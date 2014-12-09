@@ -12,8 +12,8 @@ Opts.parser.add_argument('--no_delta_chisq', action='store_true')
 Opts.parser.add_argument('--delta_chisq_paramtag', default=None, help="parameter tag to give best-fit chi-squared differences")
 Opts.parser.add_argument('--changes_from_datatag', default=None, help="give fractional sigma shifts compared to a given data combination tag")
 Opts.parser.add_argument('--changes_from_paramtag', default=None, help="give fractional sigma shifts compared to a given parameter combination tag")
-Opts.parser.add_argument('--changes_adding_data', default=None, help="give fractional sigma shifts when adding given data")
-Opts.parser.add_argument('--changes_replacing', nargs='*', default=None,
+Opts.parser.add_argument('--changes_adding_data', nargs='+', default=None, help="give fractional sigma shifts when adding given data")
+Opts.parser.add_argument('--changes_replacing', nargs='+', default=None,
                           help='give sigma shifts for results with data x, y, z replacing data y, z.. with x')
 Opts.parser.add_argument('--changes_only', action='store_true', help='Only include results in the changes_replacing set')
 
@@ -205,7 +205,7 @@ for limit in limits:
                 refItems = []
                 for jobItem in theseItems:
                     if jobItem.data_set.hasName(args.changes_adding_data):
-                        jobItem.normed_without = "_".join(sorted([x for x in jobItem.data_set.names if not x == args.changes_adding_data]))
+                        jobItem.normed_without = "_".join(sorted([x for x in jobItem.data_set.names if not x in args.changes_adding_data]))
                         refItems.append(jobItem.normed_without)
                     else: jobItem.normed_without = None
                 for jobItem in theseItems:
@@ -227,6 +227,7 @@ for limit in limits:
                             referenceDataJobItem = baseJobItems.get(jobItem.normed_without, None)
                         else: referenceDataJobItem = None
                         referenceJobItem = referenceDataJobItem
+                        if args.changes_only and not referenceDataJobItem: continue
                     elif args.changes_replacing is not None:
                         referenceDataJobItem = None
                         for replace in args.changes_replacing[1:]:

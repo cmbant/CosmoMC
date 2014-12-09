@@ -120,10 +120,6 @@ class importanceFilterBAO:
     def wantImportance(self, jobItem):
         return not ('omegak' in jobItem.param_set) and jobItem.data_set.hasName('BAO')
 
-class importanceFilterAbundance:
-    def wantImportance(self, jobItem):
-        return 'nnu' in jobItem.param_set and not 'yhe' in jobItem.param_set and not jobItem.data_set.hasName('lensonly')
-
 class importanceFilterHighH0:
     def wantImportance(self, jobItem):
         return ('nnu' in jobItem.param_set)
@@ -141,9 +137,11 @@ post_all = [[lensing, BAO, HST, JLA], [lensing, BAOdata, HSTdata, 'JLA_marge.ini
 post_allnonBAO = [[lensing, HST, JLA], [lensing, HSTdata, 'JLA_marge.ini'], importanceFilterBAO()]
 
 post_WP = [[ 'WMAPtau'], [WMAPtau]]
-post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'})
-post_BAOzre = zre_importance([BAO, 'zre6p5'], [BAOdata, 'zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'})
-post_reion = zre_importance(['reion'], ['reion_tau.ini'], dist_settings={'limits[zrei]':'6.5 N'})
+post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'}, minimize=False)
+post_BAOzre = zre_importance([BAO, 'zre6p5'], [BAOdata, 'zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'}, minimize=False)
+post_reion = zre_importance(['reion'], ['reion_tau.ini'], dist_settings={'limits[zrei]':'6.5 N'}, minimize=False)
+
+post_fix = [[ 'fix'], ['postfix.ini']]
 
 # set up groups of parameters and data sets
 
@@ -192,7 +190,7 @@ for d in copy.deepcopy(g.datasets):
     d.add(JLA)
     g3.datasets.append(d)
 
-g3.importanceRuns = [post_lensing]
+g3.importanceRuns = [post_lensing, post_fix]
 groups.append(g3)
 
 
@@ -293,7 +291,7 @@ for d in copy.deepcopy(g.datasets):
     g7.datasets.append(d)
 
 g7.params = [['mnu'], ['nnu', 'meffsterile']]
-g7.importanceRuns = [post_HST, post_nonBAO]
+g7.importanceRuns = [post_HST, post_nonBAO, post_fix]
 groups.append(g7)
 
 gnnu = batchJob.jobGroup('nnu')
@@ -508,7 +506,6 @@ gchecks.params = [[], ['mnu'], ['nnu'], ['Alens'], ['yhe']]
 gchecks.importanceRuns = []
 groups.append(gchecks)
 
-
 gchecks = batchJob.jobGroup('tauchecks')
 gchecks.datasets = [copy.deepcopy(baseTT)]
 for d in gchecks.datasets:
@@ -517,14 +514,40 @@ gchecks.params = [[], ['mnu'], ['nnu'], ['Alens'], ['yhe'], ['r'], ['nrun', 'r']
 gchecks.importanceRuns = []
 groups.append(gchecks)
 
+gcuts = batchJob.jobGroup('lowhighL')
+lowplik = ' %DATASETDIR%clik/hi_l/plik/Plig_DATA_v27hmlmax800_dx11d2hm1xhm2freqv27mask807060_TT_camcutsTE2F217_lmin30_lmax801_v24hm.clik'
+hiplik = ' %DATASETDIR%clik/hi_l/plik/Plig_DATA_v27hmlmin800_dx11d2hm1xhm2freqv27mask807060_TT_camcutsTE2F217_lmin802_v24hm.clik'
+
+gcuts.datasets = [batchJob.dataSet(['plikHM', 'TT', 'lmax801'], [{'clik_data_plik':lowplik}, 'plik_dx11dr2_HM_v18_TT.ini']),
+                  batchJob.dataSet(['plikHM', 'TT', 'lmin802'], [{'clik_data_plik':hiplik}, 'plik_dx11dr2_HM_v18_TT.ini'])
+                  ]
+for d in gcuts.datasets:
+    d.add(WMAPTEB)
+gcuts.params = [[]]
+gcuts.importanceRuns = []
+groups.append(gcuts)
+
 skip = []
+
+
+# Check lensing results with aggressive likelihood up to given max bin
+if False:
+    class lensTest_importance(batchJob.importanceSetting):
+        def wantImportance(self, jobItem):
+            return jobItem.data_set.hasAll(['lensing', 'TT']) and (
+                len(jobItem.param_set) == 0 or len(jobItem.param_set) == 1 and jobItem.hasParam(['mnu']))
+
+    importanceRuns = []
+    for maxbin in [5, 7, 9, 11, 13, 15, 19]:
+        importanceRuns.append(lensTest_importance(['bintest', 'maxbin' + str(maxbin)],
+                                                   [{'cmb_dataset[lensing,use_max]':maxbin}, 'lensing_aggressive.ini'], minimize=False))
 
 
 
 covWithoutNameOrder = [HST, 'JLA', BAORSD, 'WL', 'WLHeymans', 'lensing', 'BAO', 'reion', 'abundances', 'theta']
 covNameMappings = {HST:'HST', 'CamSpecHM':'CamSpec', 'CamSpecDS':'CamSpec', 'plikHM':'plik', 'plikDS':'plik', 'plikLite':'plik',
                    'Mspec':'CamSpec', WLHeymans : WL, 'tau07':'lowTEB', 'WMAPTEB':'lowTEB', 'nnu1':'', 'nnup39':'', 'nnup57':'',
-                    WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly }
+                    WLonlyHeymans1bin: WLonlyHeymans, WLonly1bin:WLonly, 'lmax801':'', 'lmin802':'' }
 
 # try to match run to exisitng covmat
 covrenames = []

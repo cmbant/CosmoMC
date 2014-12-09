@@ -26,10 +26,10 @@
 
         logical :: redo_nochange = .false.
         !for adding likelihood derived parameters without affecting original distribution
-        
+
         logical :: redo_add = .false.
         !if just want to add new datasets rather than re-computing the entire likelihood
-               
+
         logical :: redo_from_text = .false.
         !Redo from text files if .data files not available
 
@@ -77,12 +77,7 @@
     call Ini%Read('redo_auto_likescale_count',this%redo_auto_likescale_count)
 
     if (this%redo_from_text .and. (this%redo_add .or. this%redo_like_name/='')) &
-    call Mpistop('redo_new_likes requires .data files, not from text')
-
-    if (this%redo_from_text  .and. this%redo_skip>0.d0 .and. this%redo_skip<1) &
-    call Mpistop('redo_from_text currently requires redo_skip==0 or redo_skip>=1')
-
-    if (this%redo_thin>1) write(*,*) 'WARNING: redo thin is for testing, does not do correct weighted thinning'
+        call Mpistop('redo_add and/or redo_like_name require .data files, not from text')
 
     if (this%redo_outroot == '') then
         this%redo_outroot =  File%ExtractPath(baseroot)//'post_'//File%ExtractName(baseroot)
@@ -122,6 +117,7 @@
     logical :: first, has_chain = .true.
     integer(File_size_int)  last_file_loc
     integer :: at_beginning, num_used, redo_loop
+    integer thin_acc
     class(TFileStream), pointer :: InF
     Type(TTextFile), target :: InChain
     Type(TBinaryFile), target :: OutData, InData
@@ -136,18 +132,20 @@
     this%LikeCalculator%Temperature = this%redo_temperature
 
     if (Feedback>0 .and. this%redo_change_like_only) &
-    write (*,*) 'Warning: only changing likelihoods not weights'
+        write (*,*) 'Warning: only changing likelihoods not weights'
 
     if (Feedback>0 .and. this%redo_nochange) &
-    write (*,*) 'Warning: calcalating new likelihoods but not using them'
+        write (*,*) 'Warning: calcalating new likelihoods but not using them'
 
     if (this%redo_datafile /= '') InputFile = this%redo_datafile
 
     if (this%redo_from_text) then
         call InChain%Open(trim(InputFile)//'.txt')
+        if (this%redo_skip < 1) then
+            this%redo_skip = nint(InChain%Lines()*this%redo_skip)
+        end if
         InF => InChain
         if (.not. this%redo_theory) write (*,*) '**You probably want to set redo_theory**'
-        if (this%redo_thin>1) write (*,*) 'redo_thin only OK with redo_from_text if input weights are 1'
     else
         if (File%Exists(trim(InputFile)//'.data')) then
             call InData%Open(trim(InputFile)//'.data')
@@ -216,6 +214,7 @@
                     Params%P(:num_params)= BaseParams%center
                     if (.not. IO_ReadChainRow(InChain, mult, like, Params%P, params_used)) exit
                     num=num+1
+                    if (this%redo_skip>=1 .and. num<=this%redo_skip) cycle
                 else
                     call Params%ReadModel(InF,has_likes, mult,like, error)
                     num=num+1
@@ -225,7 +224,7 @@
                             DataLike => DataLikelihoods%Item(i)
                             if (DataLike%name==this%redo_like_name) then
                                 if (.not. has_likes(i)) &
-                                call MpiStop('does not currently have like named:'//trim(this%redo_like_name))
+                                    call MpiStop('does not currently have like named:'//trim(this%redo_like_name))
                                 has_likes(i)=.true.
                                 if (any(.not. has_likes)) call MpiStop('not all other likelihoods exist already')
                                 has_likes(i)=.false.
@@ -243,6 +242,20 @@
                             this%redo_skip = InF%Size()/(InF%Position() -last_file_loc) * this%redo_skip
                             if (Feedback > 0) print *,'skipping ',nint(this%redo_skip), ' models'
                         end if
+                    else if (num<=this%redo_skip) then
+                        cycle
+                    end if
+                end if
+
+                if (this%redo_thin>1) then
+                    if (abs(nint(mult) - mult) > 1e-4) &
+                        call MpiStop('redo_thin can only be used with chains with integer weights')
+                    thin_acc = thin_acc + nint(mult)
+                    if (thin_acc >= this%redo_thin) then
+                        mult = thin_acc / this%redo_thin
+                        thin_acc = mod(thin_acc, this%redo_thin)
+                    else
+                        cycle
                     end if
                 end if
 
@@ -250,8 +263,6 @@
                     if (num==0) call MpiStop('Error reading data file.')
                     exit
                 end if
-
-                if (num<=this%redo_skip .or. mod(num,this%redo_thin) /= 0) cycle
 
                 if (this%redo_like .or. this%redo_add) then
                     !Check for new prior before calculating anything
@@ -269,7 +280,6 @@
 
                 if (error ==0) then
                     if (this%redo_like .or. this%redo_add) then
-                        !!!!
                         call this%LikeCalculator%UpdateTheoryForLikelihoods(Params)
                         if (this%redo_add) then
                             truelike = this%LikeCalculator%GetLogLikePost(Params, .not. has_likes)
@@ -287,7 +297,7 @@
                         truelike = like
                         weight = 1
                     end if
-                    
+
                     if (this%redo_nochange) truelike = like
 
                     max_like = min(max_like,like)
@@ -300,27 +310,27 @@
 
                     if (this%redo_auto_likescale .and. redo_loop==1 .and. num_used == this%redo_auto_likescale_count &
                         & .and. .not. this%redo_change_like_only .and. .not. this%redo_nochange) then
-                        !Check log likelihoods scaled to give sensible weights. Rescale must be constant between chains
-                        if (max_truelike /= logZero) then
-                            like_diff = max_truelike - max_like
-                        else
-                            like_diff = logZero
-                        end if
+                    !Check log likelihoods scaled to give sensible weights. Rescale must be constant between chains
+                    if (max_truelike /= logZero) then
+                        like_diff = max_truelike - max_like
+                    else
+                        like_diff = logZero
+                    end if
 #ifdef MPI
-                        allocate(like_diffs(MPIchains))
-                        call MPI_Allgather(like_diff, 1, MPI_real_mcp, like_diffs, 1,  MPI_real_mcp, MPI_COMM_WORLD, ierror)
-                        if (all(like_diffs==logZero)) then
-                            like_diff=0
-                        else
-                            like_diff = sum(like_diffs, mask = like_diffs/=logZero) / count(like_diffs/=logZero)
-                        end if
+                    allocate(like_diffs(MPIchains))
+                    call MPI_Allgather(like_diff, 1, MPI_real_mcp, like_diffs, 1,  MPI_real_mcp, MPI_COMM_WORLD, ierror)
+                    if (all(like_diffs==logZero)) then
+                        like_diff=0
+                    else
+                        like_diff = sum(like_diffs, mask = like_diffs/=logZero) / count(like_diffs/=logZero)
+                    end if
 #endif
-                        if (abs(like_diff) > this%redo_max_logLike_diff) then
-                            this%redo_likeoffset = like_diff
-                            if (Feedback > 0 .and. MpiRank==0) write(*,*) 'Re-starting with redo_likeoffset = ',this%redo_likeoffset
-                            redo_loop=2
-                            exit
-                        end if
+                    if (abs(like_diff) > this%redo_max_logLike_diff) then
+                        this%redo_likeoffset = like_diff
+                        if (Feedback > 0 .and. MpiRank==0) write(*,*) 'Re-starting with redo_likeoffset = ',this%redo_likeoffset
+                        redo_loop=2
+                        exit
+                    end if
                     end if
 
                     if (mult /= 0) then

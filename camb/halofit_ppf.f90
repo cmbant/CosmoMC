@@ -100,7 +100,7 @@
                 ! Totally crazy non-linear
                 global_error_flag=349
                 write(*,*) 'Error in halofit'
-                goto 101 
+                goto 101
             end if
         end do
 

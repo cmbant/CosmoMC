@@ -3,6 +3,8 @@ from pylab import *
 
 g = s.getSinglePlotter()
 
+g.settings.param_names_for_labels = 'clik_Hunits.paramnames'
+
 g.make_figure(1, xstretch=1.3)
 
 base = 'base_mnu_'
@@ -11,18 +13,7 @@ roots = [base + s.defdata]
 
 mnu = [0, 2.3]
 H, sigma = s.H0_gpe
-c = 'gray'
-one = array([1, 1])
-fill_between(mnu, one * (H - sigma * 2), one * (H + sigma * 2), facecolor=c, alpha=0.1, edgecolor=c, lw=0)
-fill_between(mnu, one * (H - sigma), one * (H + sigma), facecolor=c, alpha=0.15, edgecolor=c, lw=0)
-
-if False:
-    H, sigma = s.H0_high
-    c = 'burlywood'
-    plot(mnu, one * (H - sigma), color=c, ls='--')
-    plot(mnu, one * (H + sigma), color=c, ls='--')
-    plot(mnu, one * (H - 2 * sigma), color=c, ls=':')
-    plot(mnu, one * (H + 2 * sigma), color=c, ls=':')
+g.add_y_bands(H, sigma, xlim=mnu)
 
 
 g.plot_3d(roots, ['mnu', 'H0', 'sigma8'])

@@ -170,8 +170,8 @@
 
     end subroutine TSettingIni_FailStop
 
-    function TSettingIni_ReplaceDirs(Ini,inname, ADir) result(filename)
-    class(TSettingIni) :: Ini
+    function TSettingIni_ReplaceDirs(this,inname, ADir) result(filename)
+    class(TSettingIni) :: this
     character(LEN=*) :: inname
     character(LEN=:), allocatable :: filename
     character(LEN=*), optional, intent(in) :: ADir
@@ -179,37 +179,37 @@
     filename = inname
     call StringReplace('%DATASETDIR%',PresentDefault(DataDir,ADir),filename)
     call StringReplace('%LOCALDIR%',LocalDir,filename)
-    if (allocated(Ini%Original_filename)) &
-        & call StringReplace('%THISDIR%',File%ExtractPath(Ini%Original_filename),filename)
+    if (allocated(this%Original_filename)) &
+        & call StringReplace('%THISDIR%',File%ExtractPath(this%Original_filename),filename)
 
     end function TSettingIni_ReplaceDirs
 
-    function TSettingIni_ReadFilename(Ini,key, ADir, NotFoundFail, relative) result (filename)
-    class(TSettingIni) :: Ini
+    function TSettingIni_ReadFilename(this,key, ADir, NotFoundFail, relative) result (filename)
+    class(TSettingIni) :: this
     character(LEN=*), intent(in) :: Key
     character(LEN=*), optional, intent(in) :: ADir
     character(LEN=:), allocatable :: filename
     logical, optional :: NotFoundFail, relative
     integer i
 
-    filename = Ini%Read_String(key, NotFoundFail)
+    filename = this%Read_String(key, NotFoundFail)
     if (filename=='') return
 
-    filename = Ini%ReplaceDirs(filename, ADir)
+    filename = this%ReplaceDirs(filename, ADir)
 
     do i=1, CustomParams%Count
         call StringReplace('%'//CustomParams%Name(i)//'%',&
-            trim(Ini%ReplaceDirs(CustomParams%Value(i), ADir)) ,filename)
+            trim(this%ReplaceDirs(CustomParams%Value(i), ADir)) ,filename)
     end do
     if (PresentDefault(.false., relative) .and. .not. File%IsFullPath(filename)) then
-        filename =  File%ExtractPath(Ini%Original_filename)//filename
+        filename =  File%ExtractPath(this%Original_filename)//filename
     end if
 
     end function TSettingIni_ReadFilename
 
-    subroutine TSettingIni_TagValuesForName(Ini, name, OutList, filename)
+    subroutine TSettingIni_TagValuesForName(this, name, OutList, filename)
     !Reads all entries of the form "name[tag] = value", storing tag=value in OutList
-    class(TSettingIni) :: Ini
+    class(TSettingIni) :: this
     character(LEN=*), intent(in) :: name
     character(LEN=:), allocatable :: tag, value
     class(TNameValueList) :: OutList
@@ -220,14 +220,14 @@
     call OutList%Clear()
     tag = trim(name) //'['
 
-    do i=1, Ini%Count
-        KeyName=>Ini%Name(i)
-        if (StringStarts(KeyName, tag) .and. Ini%Value(i)/='') then
+    do i=1, this%Count
+        KeyName=>this%Name(i)
+        if (StringStarts(KeyName, tag) .and. this%Value(i)/='') then
             ix = index(KeyName, ']')
-            if (ix /= len(keyName))  call Ini%Error('Error reading tagged key', name)
+            if (ix /= len(keyName))  call this%Error('Error reading tagged key', name)
             if (index(KeyName,',')/=0) cycle
-            value =Ini%Read_String(KeyName)
-            if (DefaultFalse(filename) .and. value/='') value = Ini%ReplaceDirs(value)
+            value =this%Read_String(KeyName)
+            if (DefaultFalse(filename) .and. value/='') value = this%ReplaceDirs(value)
             call OutList%Add(KeyName(len(tag)+1:len(KeyName)-1), value)
             !!Note: Use Read_String so read values are stored
         end if
@@ -236,9 +236,9 @@
     end subroutine TSettingIni_TagValuesForName
 
 
-    subroutine TSettingIni_SettingValuesForTagName(Ini, name, tag, OutList, filename)
+    subroutine TSettingIni_SettingValuesForTagName(this, name, tag, OutList, filename)
     !Reads all entries of the form "name[tag,setting] = value", storing setting=value in OutList
-    class(TSettingIni) :: Ini
+    class(TSettingIni) :: this
     character(LEN=*), intent(in) :: name, tag
     character(LEN=:), allocatable :: value, stem
     class(TNameValueList) :: OutList
@@ -249,13 +249,13 @@
     call OutList%Clear()
     stem = trim(name) //'['//trim(tag)//','
 
-    do i=1, Ini%Count
-        KeyName=>Ini%Name(i)
+    do i=1, this%Count
+        KeyName=>this%Name(i)
         if (StringStarts(KeyName, stem)) then
             ix = index(KeyName, ']')
-            if (ix /= len(KeyName)) call Ini%Error('Error reading tagged key setting', name)
-            value =Ini%Read_String(KeyName)
-            if (DefaultFalse(filename) .and. value/='') value = Ini%ReplaceDirs(value)
+            if (ix /= len(KeyName)) call this%Error('Error reading tagged key setting', name)
+            value =this%Read_String(KeyName)
+            if (DefaultFalse(filename) .and. value/='') value = this%ReplaceDirs(value)
             call OutList%Add(KeyName(len(stem)+1:len(KeyName)-1), value)
         end if
     end do
@@ -263,8 +263,8 @@
     end subroutine TSettingIni_SettingValuesForTagName
 
 
-    function TNameKeyIniFile_NamedKey(Ini, Key, Name) result(NamedKey)
-    class(TNameKeyIniFile) :: Ini
+    function TNameKeyIniFile_NamedKey(this, Key, Name) result(NamedKey)
+    class(TNameKeyIniFile) :: this
     character(LEN=*), intent(in) :: Key, Name
     character(LEN=:), allocatable :: NamedKey
 

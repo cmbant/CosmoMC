@@ -7,6 +7,7 @@ Opts.parser.add_argument('target_dir', help="output root directory or zip file n
 Opts.parser.add_argument('--dist', action='store_true', help="include getdist outputs")
 Opts.parser.add_argument('--chains', action='store_true', help="include chain files")
 Opts.parser.add_argument('--sym_link', action='store_true', help="just make symbolic links to source directories")
+Opts.parser.add_argument('--no_config', action='store_true', help="don't copy grid config info")
 
 Opts.parser.add_argument('--remove_burn_fraction', default=0.0, type=float, help="fraction at start of chain to remove as burn in")
 
@@ -80,10 +81,11 @@ def writeIni(iniName, props):
         props.saveFile(target_dir + outdir + iniName)
 
 
-config_path = os.path.join(batch.batchPath, 'config/')
-if not args.dryrun and not args.zip: batchJob.makePath(target_dir + 'config')
-for f in os.listdir(config_path):
-    doCopy(config_path, 'config/', f)
+if not args.no_config:
+    config_path = os.path.join(batch.batchPath, 'config/')
+    if not args.dryrun and not args.zip: batchJob.makePath(target_dir + 'config')
+    for f in os.listdir(config_path):
+        doCopy(config_path, 'config/', f)
 
 for jobItem in Opts.filteredBatchItems():
     if (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):

@@ -34,7 +34,6 @@ omegamh2*
 omegamh3*
 omeganuh2*
 age*
-yheused*
 zstar*
 rstar*
 thetastar*
@@ -42,6 +41,8 @@ zdrag*
 rdrag*
 kd*
 zeq*
+keq*
+thetarseq*
 f2000_143*
 f2000_x*
 f2000_217*
