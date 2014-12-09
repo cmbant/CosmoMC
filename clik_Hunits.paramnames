@@ -84,7 +84,7 @@ sigma8*       \sigma_8
 zrei*         z_{\mathrm{re}}
 rmsdeflect*   \langle d^2\rangle^{1/2}\,[\mathrm{arcmin}]
 r10*          r_{10}	#tensor-scalar C_l amplitude at l=10
-H0*           H_0		#hubble parameter is H0 km/s/Mpc
+H0*           H_0\,[{\rm km}\,{\rm s}^{-1}\,{\rm Mpc}^{-1}]#hubble parameter is H0 km/s/Mpc
 r02*          r_{0.002}         #r at k=0.002
 rBB*          r_{0.01}         #r at k=0.01 (roughly peak of tensor BB)
 logAT*        {\rm{ln}}(10^{10} A_{\mathrm{t}}) 

@@ -59,21 +59,12 @@ ob_max = 0.026
 yp_min = 0.14
 yp_max = 0.36
 # helium data: Aver et al. 2013, arXiv:1309.0047
-aver_minus = 0.2465 - 0.0097
-aver_plus = 0.2465 + 0.0097
+aver_mean = 0.2465
+aver_sigma = 0.0097
 # helium data: Serenelli and Basu 2010
 sere_minus = 0.294
 sere_plus = yp_max
 
-aver_b = np.zeros(2, dtype='float')
-aver_y1 = np.zeros(2, dtype='float')
-aver_y2 = np.zeros(2, dtype='float')
-aver_b[0] = ob_min
-aver_b[1] = ob_max
-aver_y1[0] = aver_minus
-aver_y1[1] = aver_minus
-aver_y2[0] = aver_plus
-aver_y2[1] = aver_plus
 
 sere_b = np.zeros(2, dtype='float')
 sere_y1 = np.zeros(2, dtype='float')
@@ -101,16 +92,14 @@ bbn_y = ypBBN(bbn_b, 0)
 bbn_y1 = bbn_y - sigma_yp_theo
 bbn_y2 = bbn_y + sigma_yp_theo
 
-plt.fill_between(aver_b, aver_y1, aver_y2, alpha=0.1, color='black')
-# plt.fill_between(sere_b,sere_y1,sere_y2,alpha=0.1,color='black')
-plt.plot(aver_b, aver_y1, alpha=0.4, color='black', linestyle='solid')
-plt.plot(aver_b, aver_y2, alpha=0.4, color='black', linestyle='solid')
-plt.fill_between(aver_b, sere_y1, yp_max , alpha=0.07, color='gray')
+
+g.add_y_bands(aver_mean, aver_sigma, xlim=sere_b)
+
+plt.fill_between(sere_b, sere_y1, yp_max , alpha=0.07, color='gray')
 plt.plot(sere_b, sere_y1, alpha=0.2, color='gray', linestyle='-')
 plt.text(0.0182, 0.249, "Aver et al. (2013)", fontsize=7.)
 plt.text(0.0182, 0.34, "Excluded by", fontsize=7.)
 plt.text(0.0182, 0.33, "Serenelli \& Basu (2010)", fontsize=7.)
-
 
 plt.fill_between(bbn_b, bbn_y1, bbn_y2, alpha=0.9, color='green')
 plt.plot(bbn_b, bbn_y1, color='green', linestyle='solid')
@@ -143,13 +132,13 @@ N_max = 5
 Neff = np.arange(N_min, N_max + 0.1, 0.1)
 
 Nrange = [N_min, N_max]
-plt.fill_between(Nrange, aver_y1, aver_y2, alpha=0.1, color='black')
-# plt.fill_between(sere_b,sere_y1,sere_y2,alpha=0.1,color='black')
-plt.plot(Nrange, aver_y1, alpha=0.4, color='black', linestyle='solid')
-plt.plot(Nrange, aver_y2, alpha=0.4, color='black', linestyle='solid')
+
+g.add_y_bands(aver_mean, aver_sigma, xlim=Nrange)
+
+
 plt.fill_between(Nrange, Neff[-1], sere_y1, alpha=0.07, color='gray')
 plt.plot(Nrange, sere_y1, alpha=0.2, color='gray', linestyle='-')
-plt.text(0.2, 0.243, "Aver et al. (2013)", fontsize=8.)
+plt.text(0.2, 0.243, "Aver et al. (2013)", fontsize=7.)
 plt.text(0.1, 0.34, "Excluded by", fontsize=7.)
 plt.text(0.1, 0.33, "Serenelli \& Basu (2010)", fontsize=7.)
 

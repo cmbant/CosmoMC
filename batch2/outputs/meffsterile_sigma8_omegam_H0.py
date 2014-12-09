@@ -26,7 +26,7 @@ g.plot_3d(roots, ['omegam', 'sigma8', 'H0'])
 # g.add_2d_contours(base+s.defdata_all+'_post_HST70p6', 'sigma8', 'omegam', plotno=1)
 
 
-mnu = g.param_latex_label(roots[2], 'mnu', labelParams='params_CMB.paramnames')
+mnu = g.param_latex_label(roots[2], 'mnu', labelParams='paramnames/params_CMB.paramnames')
 nnu = g.param_latex_label(roots[2], 'nnu')
 meff = g.param_latex_label(roots[1], 'meffsterile', labelParams='clik_latex.paramnames')
 

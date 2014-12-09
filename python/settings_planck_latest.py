@@ -141,7 +141,7 @@ post_zre = zre_importance(['zre6p5'], ['zre_prior.ini'], dist_settings={'limits[
 post_BAOzre = zre_importance([BAO, 'zre6p5'], [BAOdata, 'zre_prior.ini'], dist_settings={'limits[zrei]':'6.5 N'}, minimize=False)
 post_reion = zre_importance(['reion'], ['reion_tau.ini'], dist_settings={'limits[zrei]':'6.5 N'}, minimize=False)
 
-# post_fix = [[ 'fix'], ['postfix.ini']]
+post_fix = [[ 'fix'], ['postfix.ini']]
 
 # set up groups of parameters and data sets
 
@@ -190,7 +190,7 @@ for d in copy.deepcopy(g.datasets):
     d.add(JLA)
     g3.datasets.append(d)
 
-g3.importanceRuns = [post_lensing]
+g3.importanceRuns = [post_lensing, post_fix]
 groups.append(g3)
 
 
@@ -291,7 +291,7 @@ for d in copy.deepcopy(g.datasets):
     g7.datasets.append(d)
 
 g7.params = [['mnu'], ['nnu', 'meffsterile']]
-g7.importanceRuns = [post_HST, post_nonBAO]
+g7.importanceRuns = [post_HST, post_nonBAO, post_fix]
 groups.append(g7)
 
 gnnu = batchJob.jobGroup('nnu')
