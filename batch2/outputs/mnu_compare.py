@@ -1,7 +1,7 @@
 import planckStyle as s
 from pylab import *
 g = s.getSinglePlotter()
-g.settings.norm_prob_label = r'P [${\rm eV}^{-1}$]'
+g.settings.norm_prob_label = r'Probability density [${\rm eV}^{-1}$]'
 g.settings.lineM = ['-b', '-r', '-g', '--b', '--r', '--g', '-c', '-y']
 
 labels = [s.defplanck, '+lensing', '+BAO+$H_0$+JLA', s.planckall, '+lensing', '+BAO+$H_0$+JLA' ]
