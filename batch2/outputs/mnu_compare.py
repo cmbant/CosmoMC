@@ -4,7 +4,7 @@ g = s.getSinglePlotter()
 g.settings.norm_prob_label = r'Probability density [${\rm eV}^{-1}$]'
 g.settings.lineM = ['-b', '-r', '-g', '--b', '--r', '--g', '-c', '-y']
 
-labels = [s.defplanck, '+lensing', '+BAO+$H_0$+JLA', s.planckall, '+lensing', '+BAO+$H_0$+JLA' ]
+labels = [s.defplanck, '+lensing', '+ext', s.planckall, '+lensing', '+ext' ]
 roots = [s.defdata,
          s.defdata + '_lensing',
          s.defdata + '_BAO_H070p6_JLA_lensing',

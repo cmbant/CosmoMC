@@ -6,12 +6,12 @@ dataroots = [s.defdata_TT, s.defdata_all]
 roots = ['base_alpha1_' + root for root in dataroots]
 
 if False:
-    samples = g.sampleAnalyser.samplesForRoot(roots[0])
+    samples = g.sampleAnalyser.samplesForRoot(roots[1])
     p = samples.getParams()
-    samples.filter(p.alpha1 > 0)
-    samples.updateChainBaseStatistics(ini_settings={'limits[alpha1]':'0 N'})
+    samples.filter(p.alpha1 < 0)
+    samples.updateChainBaseStatistics(ini_settings={'limits[alpha1]':'N 0'})
     p = samples.getParams()
-    print samples.confidence(p.alpha1, 0.05 / 2, upper=True)
+    print samples.confidence(p.alpha1, 0.05, upper=False)
 
 
 g.plot_2d(roots, ['ns', 'alpha1'], filled=True)

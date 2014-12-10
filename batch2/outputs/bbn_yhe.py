@@ -56,8 +56,8 @@ num_ob = 50
 ob_min = 0.018
 ob_max = 0.026
 # yhe range in the plot
-yp_min = 0.14
-yp_max = 0.36
+yp_min = 0.15
+yp_max = 0.35
 # helium data: Aver et al. 2013, arXiv:1309.0047
 aver_mean = 0.2465
 aver_sigma = 0.0097
@@ -97,9 +97,8 @@ g.add_y_bands(aver_mean, aver_sigma, xlim=sere_b)
 
 plt.fill_between(sere_b, sere_y1, yp_max , alpha=0.07, color='gray')
 plt.plot(sere_b, sere_y1, alpha=0.2, color='gray', linestyle='-')
-plt.text(0.0182, 0.249, "Aver et al. (2013)", fontsize=7.)
-plt.text(0.0182, 0.34, "Excluded by", fontsize=7.)
-plt.text(0.0182, 0.33, "Serenelli \& Basu (2010)", fontsize=7.)
+plt.text(0.0183, 0.249, "Aver et al. (2013)", fontsize=7.)
+plt.text(0.0183, 0.325, "Excluded by Serenelli \& Basu (2010)", fontsize=7.)
 
 plt.fill_between(bbn_b, bbn_y1, bbn_y2, alpha=0.9, color='green')
 plt.plot(bbn_b, bbn_y1, color='green', linestyle='solid')
@@ -109,7 +108,7 @@ roots = [g.getRoot('yhe', d) for d in datatag]
 
 g.settings.legend_fontsize = 8
 g.plot_2d(roots, 'omegabh2', 'YpBBN', filled=True, lims=[ob_min + 0.0001, ob_max, yp_min, yp_max], colors=colors)
-g.add_legend(labels, legend_loc='lower left', colored_text=True)
+g.add_legend(labels, legend_loc='lower left', colored_text=False)
 gca().set_yticks([0.15, 0.2, 0.25, 0.3, 0.35])
 
 plt.gca().annotate('Standard BBN',
@@ -138,9 +137,8 @@ g.add_y_bands(aver_mean, aver_sigma, xlim=Nrange)
 
 plt.fill_between(Nrange, Neff[-1], sere_y1, alpha=0.07, color='gray')
 plt.plot(Nrange, sere_y1, alpha=0.2, color='gray', linestyle='-')
-plt.text(0.2, 0.243, "Aver et al. (2013)", fontsize=7.)
-plt.text(0.1, 0.34, "Excluded by", fontsize=7.)
-plt.text(0.1, 0.33, "Serenelli \& Basu (2010)", fontsize=7.)
+plt.text(0.17, 0.245, "Aver et al. (2013)", fontsize=7.)
+plt.text(0.17, 0.337, "Excluded by Serenelli \& Basu (2010)", fontsize=7.)
 
 
 roots = [g.getRoot('nnu_yhe', d) for d in datatag]
@@ -154,7 +152,7 @@ bbn_y2 = bbn_y + sigma_yp_theo
 plt.fill_between(Neff, bbn_y1, bbn_y2, alpha=0.9, color='green')
 plt.plot(Neff, bbn_y1, color='green', linestyle='solid')
 plt.plot(Neff, bbn_y2, color='green', linestyle='solid')
-g.add_legend(labels, legend_loc='lower left', colored_text=True, fontsize=8)
+g.add_legend(labels, legend_loc='lower left', colored_text=False, fontsize=8)
 g.add_x_marker(3.046)
 gca().set_yticks([0.15, 0.2, 0.25, 0.3, 0.35])
 # g.rotate_yticklabels()

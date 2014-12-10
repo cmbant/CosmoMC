@@ -103,6 +103,10 @@ def setLabels(scalarMap, cNorm, par):
     if colorbar_tick_label_vertical:
         for ticklabel in cb.ax.get_yticklabels():
             ticklabel.set_rotation(-90)
+        labels = [label.get_text() for label in cb.ax.yaxis.get_ticklabels()[::2]]
+        cb.ax.yaxis.set_ticks(cb.ax.yaxis.get_ticklocs()[::2])
+        cb.ax.yaxis.set_ticklabels(labels)
+
 
 
 def rainbowLinePlot(ls, pars, cls, parname, lpow=2, delta_to=None, last_colors=None, alpha=1):

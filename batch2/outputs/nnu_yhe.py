@@ -1,9 +1,7 @@
 import planckStyle as s
 from pylab import *
 
-g = s.getSinglePlotter(ratio=1)
-
-g.make_figure(1, xstretch=1.3)
+g = s.getSinglePlotter()
 
 roots = [g.getRoot('nnu_yhe', s.defdata),
          g.getRoot('nnu_yhe', s.defdata_all),

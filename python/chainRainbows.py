@@ -19,9 +19,11 @@ lensing_dataset = r'C:\Work\Dist\git\cosmomcplanck\data\planck_lensing\smica_g30
 linePlot = True
 make_file_dir = 'z://'
 if make_file_dir:
-    def_max = 100
+    def_max = 500
     linePlot = False
     def_figsize = 3.5
+
+r.colorbar_tick_label_vertical = True
 
 def makeRainbow(ls, pars, cls, parname, lpow, delta_to, Lmax, color_pow=0.5, last_colors=None):
     if linePlot:
@@ -85,8 +87,8 @@ def CMBRainbow(chainRoot, parname='omegach2', cl_ix=1, diff_to_file=None, Lmax=2
     pts = datapoints[:, ioff]
     sig = datapoints[:, ioff + 1]
     if lpow == 1: ylabel(r'$[\ell(\ell+1)]^{1/2} C^{TE}_\ell/2\pi$\,[$\mu{\rm K}^2$]')
-    if lpow == 2 and cl_ix == 3: ylabel(r'$D^{EE}_\ell$\,[$\mu{\rm K}^2$]')
-    if lpow == 2 and cl_ix == 1: ylabel(r'$D^{TT}_\ell$\,[$\mu{\rm K}^2$]')
+    if lpow == 2 and cl_ix == 3: ylabel(r'$\mathcal{D}^{\rm EE}_\ell$\,[$\mu{\rm K}^2$]')
+    if lpow == 2 and cl_ix == 1: ylabel(r'$\mathcal{D}^{\rm TT}_\ell$\,[$\mu{\rm K}^2$]')
 
     if diff_to_file:
         for i, L in enumerate(Lbin):

@@ -7,7 +7,7 @@ g = s.getSinglePlotter()
 for tag, pars in zip(['sigma8_omegam', 'omegam_H0'], [['omegam', 'sigma8', 'H0'], ['omegam', 'H0', 'sigma8']]):
     for base in [ '', 'mnu', 'nnu', 'nnu_meffsterile', 'nnu_mnu']:
         g.newPlot()
-        g.make_figure(1, xstretch=1.3)
+#        g.make_figure(1, xstretch=1.3)
 
         if pars[1] == 'sigma8':
             omm = np.arange(0.1, 0.7, 0.01)

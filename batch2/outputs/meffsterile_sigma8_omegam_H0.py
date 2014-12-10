@@ -3,7 +3,6 @@ from pylab import *
 
 g = s.getSinglePlotter()
 
-g.make_figure(1, xstretch=1.3)
 base = 'base_nnu_meffsterile_'
 roots = [ g.getRoot('nnu_meffsterile', s.defdata),
           g.getRoot('nnu_meffsterile', s.defdata + '_BAO'),
