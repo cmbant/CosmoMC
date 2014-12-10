@@ -42,7 +42,7 @@ if False:
 
         g.export(fname + '_sigma_8-omega_m')
 
-g.newPlot()
+g = s.getSinglePlotter(ratio=1)
 dataroots = [s.defdata_TTonly,
              s.defdata_allNoLowE,
              s.defdata_allNoLowE + '_lensing',
@@ -52,7 +52,6 @@ dataroots = [s.defdata_TTonly,
              ]
 roots = [g.getRoot('', x) for x in dataroots]
 
-g.make_figure()
 omm = np.arange(0.1, 0.7, 0.01)
 s.plotBounds(omm, s.planck_lensing)
 
@@ -64,12 +63,12 @@ g.add_2d_contours('base_' + s.defdata_all, param_pair=pair, ls='-', color='olive
 g.add_2d_contours(g.getRoot('', s.defdata_all + '_lensing'), param_pair=pair, ls='-', color='darkred')
 g.add_2d_contours(g.getRoot('', s.defdata_allNoLowE + '_reion'), param_pair=pair, ls='--', color='midnightblue')
 
-legends = [s.planckTT, s.NoLowLE, r'+ lensing', r'+ BAO', r'+ $z_{\rm re} > 6.5$']
+legends = [s.planckTT, s.NoLowLE, r'+lensing', r'+BAO', r'+$z_{\rm re} > 6.5$']
 
 g.add_text(s.planckall, 0.96, 0.18, color='olive')
 g.add_text(s.planckall + '+lensing', 0.96, 0.12, color='darkred')
 # g.add_text(s.planckall + '+lensing ($z_{\\rm re}>6.5$)', 0.96, 0.06, color='midnightblue', alpha=1)
-g.add_text(s.NoLowLE + '+ reion prior', 0.96, 0.06, color='midnightblue', alpha=1)
+g.add_text(s.NoLowLE + '+reion prior', 0.96, 0.06, color='midnightblue', alpha=1)
 
 g.add_legend(legends, legend_loc='upper right', colored_text=True, align_right=True);
 gca().set_yticks(np.arange(0.75, 1, 0.05))

@@ -215,7 +215,7 @@ def getSinglePlotter(ratio=3 / 4., plot_data=None, grid_dir=None):
     s.setWithSubplotSize(3.5)
     s.rcSizes()
     plotter = getPlotter(plot_data, grid_dir)
-    plotter.make_figure(1, ystretch=ratio)
+    plotter.make_figure(1, xstretch=1 / ratio)
     return plotter
 
 

@@ -5,9 +5,6 @@ g = s.getSinglePlotter()
 
 g.settings.param_names_for_labels = 'clik_Hunits.paramnames'
 
-
-g.make_figure(1, xstretch=1.3)
-
 base = 'base_nnu_'
 roots = [base + s.defdata]
 

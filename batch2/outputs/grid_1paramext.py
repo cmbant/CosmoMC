@@ -3,7 +3,7 @@ from pylab import *
 import sys
 
 g = s.getSubplotPlotter()
-
+g.settings.legend_frac_subplot_margin = 0.1
 # g.settings.solid_colors = [g.settings.solid_colors[0]]+g.settings.solid_colors
 
 # g.settings.solid_colors = ['#009966', '#000866', '#000866']
@@ -21,6 +21,8 @@ for base in bases:
 
 roots = [[g.getRoot(param, s.defdata_TT), g.getRoot(param, s.defdata_all), g.getRoot(param, s.defdata_all + '_BAO')] for param in paramchains]
 
-g.rectangle_plot(bases, params, yroots=roots, ymarkers=defs, xmarkers=bfs, filled=True)
+labels = [s.datalabel[s.defdata_TT], s.datalabel[s.defdata_all], s.datalabel[s.defdata_all] + '+BAO']
+
+g.rectangle_plot(bases, params, yroots=roots, ymarkers=defs, xmarkers=bfs, filled=True, legend_labels=labels)
 g.export()
 

@@ -973,7 +973,7 @@ class GetDistPlotter(object):
                 ax.set_ylim(ax.yaxis.get_view_interval())
             subplots_adjust(wspace=0, hspace=0)
             if roots: legend_labels = self.default_legend_labels(legend_labels, roots)
-            self.finish_plot(no_gap=True, legend_labels=legend_labels, legend_ncol=legend_ncol)
+            self.finish_plot(no_gap=True, legend_labels=legend_labels, legend_ncol=legend_ncol or len(legend_labels))
             return ax_arr
 
     def rotate_yticklabels(self, ax=None, rotation=90):

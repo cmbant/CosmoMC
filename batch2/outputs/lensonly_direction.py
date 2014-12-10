@@ -1,8 +1,6 @@
 import planckStyle as s
 g = s.getSinglePlotter()
 
-g.make_figure(1, xstretch=1.3)
-
 roots = [g.getRoot('', s.defdata), 'base_lensonly', g.getRoot('', s.defdata + '_lensing')]
 
 params = ['s8omegamp25', 'rmsdeflect', 'H0']

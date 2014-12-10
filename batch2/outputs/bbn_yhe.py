@@ -98,8 +98,7 @@ g.add_y_bands(aver_mean, aver_sigma, xlim=sere_b)
 plt.fill_between(sere_b, sere_y1, yp_max , alpha=0.07, color='gray')
 plt.plot(sere_b, sere_y1, alpha=0.2, color='gray', linestyle='-')
 plt.text(0.0182, 0.249, "Aver et al. (2013)", fontsize=7.)
-plt.text(0.0182, 0.34, "Excluded by", fontsize=7.)
-plt.text(0.0182, 0.33, "Serenelli \& Basu (2010)", fontsize=7.)
+plt.text(0.0182, 0.335, "Excluded by Serenelli \& Basu (2010)", fontsize=7.)
 
 plt.fill_between(bbn_b, bbn_y1, bbn_y2, alpha=0.9, color='green')
 plt.plot(bbn_b, bbn_y1, color='green', linestyle='solid')
@@ -139,8 +138,7 @@ g.add_y_bands(aver_mean, aver_sigma, xlim=Nrange)
 plt.fill_between(Nrange, Neff[-1], sere_y1, alpha=0.07, color='gray')
 plt.plot(Nrange, sere_y1, alpha=0.2, color='gray', linestyle='-')
 plt.text(0.2, 0.243, "Aver et al. (2013)", fontsize=7.)
-plt.text(0.1, 0.34, "Excluded by", fontsize=7.)
-plt.text(0.1, 0.33, "Serenelli \& Basu (2010)", fontsize=7.)
+plt.text(0.1, 0.335, "Excluded by Serenelli \& Basu (2010)", fontsize=7.)
 
 
 roots = [g.getRoot('nnu_yhe', d) for d in datatag]

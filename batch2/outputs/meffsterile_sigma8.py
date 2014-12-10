@@ -3,7 +3,6 @@ import os
 from  pylab import *
 
 g = s.getSinglePlotter()
-g.make_figure(1, xstretch=1.3)
 
 outdir = ''
 roots = ['base_nnu_meffsterile_' + s.defdata]
