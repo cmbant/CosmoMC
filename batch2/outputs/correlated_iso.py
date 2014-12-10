@@ -5,7 +5,7 @@ g = s.getSinglePlotter()
 dataroots = [s.defdata_TT, s.defdata_all]
 roots = ['base_alpha1_' + root for root in dataroots]
 
-if True:
+if False:
     samples = g.sampleAnalyser.samplesForRoot(roots[1])
     p = samples.getParams()
     samples.filter(p.alpha1 < 0)

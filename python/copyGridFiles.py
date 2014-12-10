@@ -12,7 +12,7 @@ Opts.parser.add_argument('--no_config', action='store_true', help="don't copy gr
 Opts.parser.add_argument('--remove_burn_fraction', default=0.0, type=float, help="fraction at start of chain to remove as burn in")
 
 Opts.parser.add_argument('--file_extensions', nargs='+', default=['.*'], help='extensions to include')
-Opts.parser.add_argument('--skip_extensions', nargs='+', default=['.data', '.chk', '.chk_tmp', '.log', '.corr', '.py', '.m'])
+Opts.parser.add_argument('--skip_extensions', nargs='+', default=['.data', '.chk', '.chk_tmp', '.log', '.corr', '.py', '.m', '.py_mcsamples', '.pysamples'])
 Opts.parser.add_argument('--dryrun', action='store_true')
 Opts.parser.add_argument('--verbose', action='store_true')
 Opts.parser.add_argument('--zip', action='store_true', help='make a zip file. Not needed if target_dir is a filename ending in .zip')
