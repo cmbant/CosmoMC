@@ -43,6 +43,10 @@ if False:
         g.export(fname + '_sigma_8-omega_m')
 
 g = s.getSinglePlotter(ratio=1)
+
+g.settings.solid_colors[2] = ['slategray']
+
+
 dataroots = [s.defdata_TTonly,
              s.defdata_allNoLowE,
              s.defdata_allNoLowE + '_lensing',

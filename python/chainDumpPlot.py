@@ -104,7 +104,6 @@ def setLabels(scalarMap, cNorm, par):
         for ticklabel in cb.ax.get_yticklabels():
             ticklabel.set_rotation(-90)
         labels = [label.get_text() for label in cb.ax.yaxis.get_ticklabels()[::2]]
-        print labels
         cb.ax.yaxis.set_ticks(cb.ax.yaxis.get_ticklocs()[::2])
         cb.ax.yaxis.set_ticklabels(labels)
 

@@ -96,7 +96,7 @@ g.add_2d_contours(root, 'Da', 'rsH', filled=True, density=density)
 # g.add_2d_contours(root, 'Da', 'rsH', filled=False, density=densityG)
 g.settings.scatter_size = 2
 g.add_3d_scatter(root, [ 'Da', 'rsH', 'omegach2'], alpha=0.07, extra_thin=1)
-g.add_legend(['CMASS DR-11'], legend_loc='upper left')
+g.add_legend(['BOSS CMASS'], legend_loc='upper left')
 g.setAxes([Da, rsH], lims=[1350, 1500, 85, 110])
 
 g.export()
