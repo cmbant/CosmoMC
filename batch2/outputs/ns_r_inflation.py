@@ -55,9 +55,9 @@ for x, y, lab in zip([0.954, 0.9585], [0.2, 0.211], ['N=50', 'N=60']):
 ns = arange(0.9, 1.1, 0.001)  #
 plot(ns, r_ns(ns, 1), ls='-', color='k', lw=1, alpha=0.8)
 
-plt.text(0.954, 0.13, 'Convex', size=7, rotation=-26, color='k',
+plt.text(0.954, 0.13, 'Convex', size=7, rotation=-27, color='k',
          ha="center", va="center")
-plt.text(0.954, 0.116, 'Concave', size=7, rotation=-26, color='k',
+plt.text(0.954, 0.116, 'Concave', size=7, rotation=-27, color='k',
          ha="center", va="center")
 
 modcol = 'red'
@@ -82,7 +82,7 @@ for p in [1, 2]:
 # meff = g.param_latex_label(roots[0], 'meffsterile', labelParams='clik_latex.paramnames')
 
 # labels = [meff + '+' + nnu + ' (' + s.lensing + ')', s.LCDM + ' (' + s.defplanck + ')', s.LCDM + ' (' + s.defplanck + '+ext)']
-labels = [r'$\Delta N_{\rm eff}=0.39$ (' + s.lensing + ')', s.LCDM + ' (' + s.defplanck + ')', s.LCDM + ' (' + s.defplanck + '+ext)']
+labels = [ s.lensing + r' ($\Delta N_{\rm eff}=0.39$)', s.LCDM + ' ' + s.defplanck, '+lensing+ext']
 
 g.add_legend(labels, colored_text=True, align_right=True)
 
