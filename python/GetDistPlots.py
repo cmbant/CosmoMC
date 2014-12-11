@@ -370,6 +370,7 @@ class GetDistPlotter(object):
         self.param_bounds_sets = dict()
         self.sampleAnalyser.newPlot()
         self.fig = None
+        self.subplots = None
 
     def get_plot_args(self, plotno, **kwargs):
         if not self.settings.plot_args is None and len(self.settings.plot_args) > plotno:
@@ -623,10 +624,10 @@ class GetDistPlotter(object):
         self.set_locator(axis, x, prune=prune)
 
     def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None, prune=None,
-                color_label_in_axes=False, **other_args):
+                color_label_in_axes=False, ax=None, **other_args):
         if lims is not None: axis(lims)
         if prune is None: prune = self.settings.tick_prune
-        ax = gca()
+        ax = ax or gca()
         self.setAxisProperties(ax.xaxis, True, prune)
         if pos is not None: ax.set_position(pos)  # # set [left, bottom, width, height] for the figure
         if do_xlabel and len(params) > 0:self.set_xlabel(params[0])
@@ -695,6 +696,8 @@ class GetDistPlotter(object):
             self.fig = figure(figsize=(self.settings.fig_width_inch, (self.settings.fig_width_inch * self.plot_row * ystretch) / (self.plot_col * xstretch)))
         else:
             self.fig = figure(figsize=(self.settings.subplot_size_inch * self.plot_col * xstretch, self.settings.subplot_size_inch * self.plot_row * ystretch))
+        self.subplots = np.ndarray((self.plot_row, self.plot_col), dtype=object)
+        self.subplots[:, :] = None
         return self.plot_col, self.plot_row
 
     def get_param_array(self, root, in_params=None, renames={}):
@@ -806,15 +809,16 @@ class GetDistPlotter(object):
         if share_y is None: share_y = self.settings.prob_label is not None and nparam > 1
         plot_col, plot_row = self.make_figure(nparam, nx=nx)
         plot_roots = roots
+
         for i, param in enumerate(params):
-            subplot(plot_row, plot_col, i + 1)
+            ax = self.subplot_number(i)
             if roots_per_param: plot_roots = roots[i]
             if markers is not None and i < len(markers): marker = markers[i]
             else: marker = None
 #            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, prune=(None, 'both')[share_y])
             self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, param_renames=param_renames)
-            if xlims is not None: xlim(xlims[i][0], xlims[i][1])
-            if share_y: self.spaceTicks(gca().xaxis, expand=True)
+            if xlims is not None: ax.set_xlim(xlims[i][0], xlims[i][1])
+            if share_y: self.spaceTicks(ax.xaxis, expand=True)
 
         self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol)
         if share_y: subplots_adjust(wspace=0)
@@ -837,7 +841,7 @@ class GetDistPlotter(object):
         plot_col, plot_row = self.make_figure(len(pairs), nx=nx)
 
         for i, pair in enumerate(pairs):
-            subplot(plot_row, plot_col, i + 1)
+            self.subplot(i)
             self.plot_2d(roots, param_pair=pair, filled=filled, add_legend_proxy=i == 0)
 
         self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol)
@@ -845,14 +849,19 @@ class GetDistPlotter(object):
         return plot_col, plot_row
 
     def subplot(self, x, y, **kwargs):
-        return subplot(self.plot_row, self.plot_col, x + (y - 1) * self.plot_col, **kwargs)
+        self.subplots[y, x] = ax = subplot(self.plot_row, self.plot_col, y * self.plot_col + x + 1, **kwargs)
+        return ax
+
+    def subplot_number(self, i, **kwargs):
+        self.subplots[i / self.plot_col, i % self.plot_col] = ax = subplot(self.plot_row, self.plot_col, i + 1)
+        return ax
 
     def plots_2d_triplets(self, root_params_triplets, nx=None, filled=False, x_lim=None):
         plot_col, plot_row = self.make_figure(len(root_params_triplets), nx=nx)
         for i, (root, param1, param2) in enumerate(root_params_triplets):
-            subplot(plot_row, plot_col, i + 1)
+            ax = self.subplot_number(i)
             self.plot_2d(root, param_pair=[param1, param2], filled=filled, add_legend_proxy=i == 0)
-            if x_lim is not None:xlim(x_lim)
+            if x_lim is not None:ax.set_xlim(x_lim)
         self.finish_plot()
         return plot_col, plot_row
 
@@ -890,17 +899,17 @@ class GetDistPlotter(object):
                 if isinstance(col, tuple) or isinstance(col, list): col = col[-1]
                 line_args += [{'color': col} ]
         for i, param in enumerate(params):
-            subplot(plot_col, plot_col, i * plot_col + i + 1)
+            ax = self.subplot(i, i)
             self.plot_1d(roots, param, do_xlabel=i == plot_col - 1, no_label_no_numbers=self.settings.no_triangle_axis_labels,
                          label_right=True, no_zero=True, no_ylabel=True, no_ytick=True, line_args=line_args)
             # set no_ylabel=True for now, can't see how to not screw up spacing with right-sided y label
-            if self.settings.no_triangle_axis_labels: self.spaceTicks(gca().xaxis, expand=not shaded)
-            lims[i] = xlim()
-            ticks[i] = gca().get_xticks()
+            if self.settings.no_triangle_axis_labels: self.spaceTicks(ax.xaxis, expand=not shaded)
+            lims[i] = ax.get_xlim()
+            ticks[i] = ax.get_xticks()
         for i, param in enumerate(params):
             for i2 in range(i + 1, len(params)):
                 param2 = params[i2]
-                subplot(plot_col, plot_col, i2 * plot_col + i + 1)
+                ax = self.subplot(i, i2)
                 if plot_3d_with_param is not None:
                     self.plot_3d(roots, [param, param2, col_param], color_bar=False, line_offset=1, add_legend_proxy=False,
                       do_xlabel=i2 == plot_col - 1, do_ylabel=i == 0, contour_args=contour_args,
@@ -909,10 +918,10 @@ class GetDistPlotter(object):
                     self.plot_2d(roots, param_pair=[param, param2], do_xlabel=i2 == plot_col - 1, do_ylabel=i == 0,
                                         no_label_no_numbers=self.settings.no_triangle_axis_labels, shaded=shaded,
                                          add_legend_proxy=i == 1 and i2 == i + 1, contour_args=contour_args)
-                gca().set_xticks(ticks[i])
-                gca().set_yticks(ticks[i2])
-                xlim(lims[i])
-                ylim(lims[i2])
+                ax.set_xticks(ticks[i])
+                ax.set_yticks(ticks[i2])
+                ax.set_xlim(lims[i])
+                ax.set_ylim(lims[i2])
 
         if self.settings.no_triangle_axis_labels:subplots_adjust(wspace=0, hspace=0)
         if plot_3d_with_param is not None:
@@ -948,7 +957,7 @@ class GetDistPlotter(object):
                 res = None
                 for y, (yparam, subplot_roots) in enumerate(zip(yparams, yroots)):
                     if x > 0: sharey = yshares[y]
-                    ax = self.subplot(x + 1, y + 1, sharex=sharex, sharey=sharey)
+                    ax = self.subplot(x, y , sharex=sharex, sharey=sharey)
                     if y == 0:
                         sharex = ax
                         xshares.append(ax)
@@ -994,10 +1003,10 @@ class GetDistPlotter(object):
                 cb.ax.yaxis.set_ticklabels(labels)
             return cb
 
-    def add_line(self, P1, P2, zorder=0, color=None, ls=None, **kwargs):
+    def add_line(self, P1, P2, zorder=0, color=None, ls=None, ax=None, **kwargs):
             if color is None: color = self.settings.axis_marker_color
             if ls is None: ls = self.settings.axis_marker_ls
-            gca().add_line(Line2D(P1, P2, color=color, ls=ls, zorder=zorder, **kwargs))
+            (ax or gca()).add_line(Line2D(P1, P2, color=color, ls=ls, zorder=zorder, **kwargs))
 
     def add_colorbar_label(self, cb, param):
         cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize,
@@ -1064,7 +1073,7 @@ class GetDistPlotter(object):
         plot_col, plot_row = self.make_figure(len(sets), nx=nx, xstretch=1.3)
 
         for i, triplet in enumerate(sets):
-            subplot(plot_row, plot_col, i + 1)
+            self.subplot_number(i)
             self.plot_3d(roots, triplet, filled=filled_compare, **kwargs)
         self.finish_plot(self.default_legend_labels(legend_labels, roots[1:]), no_tight=True)
         return plot_col, plot_row
@@ -1083,6 +1092,8 @@ class GetDistPlotter(object):
         args.update(kwargs)
         if isinstance(ax, int):
             ax = self.fig.axes[ax]
+        if isinstance(ax, list):
+            ax = self.subplots[ax[0], ax[1]]
         else:
             ax = ax or gca()
         ax.text(x, y, text_label, transform=ax.transAxes, **args)
