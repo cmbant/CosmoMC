@@ -383,9 +383,6 @@ for d in copy.deepcopy(lensdata):
     d.add(BAO, BAOdata)
     glens.datasets.append(d)
 for d in copy.deepcopy(lensdata):
-    d.add(HST, HSTdata)
-    glens.datasets.append(d)
-for d in copy.deepcopy(lensdata):
     d.add('theta', {'param[theta]':'1.0408'})
     glens.datasets.append(d)
 for d in copy.deepcopy(lensdata):
@@ -397,8 +394,8 @@ glens.importanceRuns = []
 groups.append(glens)
 
 glens = batchJob.jobGroup('lensonlyext')
-glens.datasets = copy.deepcopy(lensdata)
-for d in copy.deepcopy(glens.datasets):
+glens.datasets = []
+for d in copy.deepcopy(lensdata):
     d.add('theta', {'param[theta]':'1.0408'})
     d.add(BAO, BAOdata)
     glens.datasets.append(d)

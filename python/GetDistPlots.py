@@ -851,7 +851,7 @@ class GetDistPlotter(object):
         plot_col, plot_row = self.make_figure(len(pairs), nx=nx)
 
         for i, pair in enumerate(pairs):
-            self.subplot(i)
+            self.subplot_number(i)
             self.plot_2d(roots, param_pair=pair, filled=filled, add_legend_proxy=i == 0)
 
         self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol)
