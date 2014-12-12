@@ -1026,12 +1026,12 @@ class MCSamples(chains):
             opt_width = 1.06 / math.pow(max(1.0, self.numsamp / self.max_mult), 0.2) * self.sddev[j]
             smooth_1D = opt_width / width * abs(self.smooth_scale_1D)
             if (smooth_1D < 0.5):
-                print 'Warning: num_bins not large enough for optimal density'
+                print 'Warning: num_bins not large enough for optimal density - ' + self.parName(j)
             smooth_1D = max(1.0, smooth_1D)
         elif (self.smooth_scale_1D < 1.0):
             smooth_1D = self.smooth_scale_1D * self.sddev[j] / width
             if (smooth_1D < 1):
-                print 'Warning: num_bins not large enough to well sample smoothed density'
+                print 'Warning: num_bins not large enough to well sample smoothed density - ' + self.parName(j)
         else:
             smooth_1D = self.smooth_scale_1D
 

@@ -4,7 +4,7 @@ g = s.getSinglePlotter()
 
 g.settings.lineM = ['-b', '-r', '-g', '--r', ':r', '--g', '-c', '-y']
 
-labels = [s.planckTT, '+lensing', '+lensing+BAO' , s.defplanck, s.planck + '\\ TT+WP', s.defplanck + '+BAO' ]
+labels = [s.planckTT, '+lensing', '+lensing+BAO' , s.defplanck, s.planck + '\\ TT+WP/lowP', s.defplanck + '+BAO' ]
 roots = [s.defdata_TTonly,
          s.defdata_TTonly + '_lensing',
          s.defdata_TTonly + '_lensing_BAO',

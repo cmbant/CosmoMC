@@ -300,6 +300,7 @@ groups.append(g7)
 gmnuAlens = batchJob.jobGroup('mnuAlens')
 gmnuAlens.datasets = []
 for d in  [copy.deepcopy(baseTT)]:
+    d.add(lowTEB)
     d.add(lensing)
     d.add(BAO, BAOdata)
     d.covmat = 'planck_covmats/base_mnu_BAO_TT_lowTEB_plik.covmat'

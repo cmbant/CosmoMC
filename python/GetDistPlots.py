@@ -209,16 +209,17 @@ class SampleAnalysisGetDist(object):
 
 class MCSampleAnalysis(object):
 
-    def __init__(self, chain_dir='', settings=None):
+    def __init__(self, chain_dir=None, settings=None):
         self.chain_dir = chain_dir
         self.batch = None
         ini = None
-        if chain_dir:
+        if chain_dir and isinstance(chain_dir, basestring):
             import makeGrid
             if makeGrid.pathIsGrid(chain_dir):
-                self.batch = batchJob.readobject(self.chain_dir)
+                self.batch = batchJob.readobject(chain_dir)
                 ini = iniFile.iniFile(self.batch.commonPath + 'getdist_common.ini')
-
+            else:
+                self.chain_dir = [chain_dir]
         if settings and isinstance(settings, basestring):
             ini = iniFile.iniFile(settings)
 
@@ -247,7 +248,12 @@ class MCSampleAnalysis(object):
                 file_root = jobItem.chainRoot
                 dist_setings = jobItem.dist_settings
             else:
-                file_root = os.path.join(self.chain_dir, root)
+                for directory in self.chain_dir:
+                    name = os.path.join(directory, root)
+                    if os.path.exists(name + '_1.txt'):
+                        file_root = name
+                        break
+                if not file_root:  raise Exception('chain not found: ' + root)
         self.mcsamples[root] = MCSamples.loadMCSamples(file_root, self.ini, jobItem, dist_settings=dist_setings)
         return self.mcsamples[root]
 
@@ -350,12 +356,16 @@ class MCSampleAnalysis(object):
 
 class GetDistPlotter(object):
 
-    def __init__(self, plot_data=None, settings=None, mcsamples=False, chain_dir='', analysis_settings=None):
+    def __init__(self, plot_data=None, settings=None, mcsamples=False, chain_dir=None, analysis_settings=None):
+        """
+        Set plot_data to directory name if you have pre-compputed plot_data/ directory from GetDist
+        Set chain_dir to directly to use chains in the given directory (can also be a list of directories to search)
+        """
         if settings is None: self.settings = defaultSettings
         else: self.settings = settings
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
-        if chain_dir or mcsamples:
+        if chain_dir is not None or mcsamples:
             self.sampleAnalyser = MCSampleAnalysis(chain_dir, analysis_settings)
         else:
             self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
@@ -1114,8 +1124,6 @@ class GetDistPlotter(object):
             gcf().text(0.45, 0.5, self._escapeLatex(watermark), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
 
         savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
-
-
 
     def paramNameListFromFile(self, fname):
         p = paramNames.paramNames(fname)

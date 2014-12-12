@@ -3,9 +3,6 @@ from pylab import *
 
 g = s.getSinglePlotter()
 
-g.make_figure(1, xstretch=1.3)
-
-
 omm = np.arange(0.1, 0.7, 0.01)
 
 s.plotBounds(omm, s.planck_lensing)
