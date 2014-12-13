@@ -264,7 +264,7 @@ class MCSamples(chains):
 
 
     def initContours(self, ini=None):
-        if ini:
+        if ini and ini.hasKey('num_contours'):
             self.contours = []
             self.num_contours = ini.int('num_contours', 2)
             for i in range(1, self.num_contours + 1):
@@ -282,7 +282,7 @@ class MCSamples(chains):
     def initLimits(self, ini=None):
 
         bin_limits = ""
-        if ini: bin_limits = ini.string('all_limits')
+        if ini: bin_limits = ini.string('all_limits', '')
 
         nvars = len(self.paramNames.names)
 

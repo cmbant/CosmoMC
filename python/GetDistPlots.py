@@ -235,10 +235,10 @@ class MCSampleAnalysis(object):
         self.densities_2D = dict()
         self.single_samples = dict()
 
-    def samplesForRoot(self, root, file_root=None):
+    def samplesForRoot(self, root, file_root=None, cache=True):
         if os.path.isabs(root):
             root = os.path.basename(root)
-        if root in self.mcsamples: return self.mcsamples[root]
+        if root in self.mcsamples and cache: return self.mcsamples[root]
         jobItem = None
         dist_setings = {}
         if not file_root:

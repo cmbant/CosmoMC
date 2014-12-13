@@ -4,7 +4,7 @@ g = s.getSinglePlotter()
 
 g.settings.lineM = ['-b', '-r', '-g', '--r', ':r', '--g', '-c', '-y']
 
-labels = [s.planckTT, '+lensing', '+lensing+BAO' , s.defplanck, s.planck + '\\ TT+WP/lowP', s.defplanck + '+BAO' ]
+labels = [s.planckTT, '+lensing', '+lensing+BAO' , s.defplanck, s.defplanck + '+WP', s.defplanck + '+BAO' ]
 roots = [s.defdata_TTonly,
          s.defdata_TTonly + '_lensing',
          s.defdata_TTonly + '_lensing_BAO',
@@ -17,8 +17,7 @@ roots = [g.getRoot('', root) for root in roots]
 
 g.plot_1d(roots, 'tau', normalized=True)
 g.add_legend(labels, legend_loc='upper right')
-xlim([0.01, 0.3])
-
+# xlim([0.01, 0.3])
 
 g.export()
 
