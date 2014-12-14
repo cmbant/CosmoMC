@@ -28,6 +28,7 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settin
                 if cache.version == version: return cache
             except:
                 pass
+        if not len(files): raise Exception('No chains found: ' + file_root)
         samples = MCSamples(file_root, jobItem=jobItem)
         samples.readChains(files, ini, ini_settings=dist_settings)
         with open(cachefile, 'wb') as output:

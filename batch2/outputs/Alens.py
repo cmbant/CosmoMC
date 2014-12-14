@@ -1,13 +1,14 @@
 import planckStyle as s
 from pylab import *
 g = s.getSinglePlotter()
-g.settings.lineM = ['-b', ':b', '--r', '--g', '--k', '-m', '-y', '--y']
+g.settings.lineM = ['-b', '-.b', '--r', '--g', '--k', '-m', '-y', '--y']
 
 roots = [s.defdata,
          s.defdata_TE,
          s.defdata_EE,
          s.defdata_all,
 ]
+
 roots = [g.getRoot('Alens', root) for root in roots]
 roots = roots[:1] + [g.getRoot('Aphiphi', s.defdata + '_lensing')] + roots[1:]
 
@@ -18,6 +19,11 @@ Aphiphi = g.param_latex_label(roots[1], 'Aphiphi', labelParams='clik_latex.param
 
 g.add_legend([s.deflabel, '+lensing (' + Aphiphi + ')', s.datalabel[s.defdata_TE], s.datalabel[s.defdata_EE], s.datalabel[s.defdata_all]],
              legend_loc='upper right', colored_text=True)
+
+ext = []
+for lab in ['TT', 'TE', 'EE', 'TTTEEE']:
+    ext.append('base_Alens_CamSpecHM_' + lab + '_lowEB')
+g.plot_1d(ext, 'Alens', normalized=True, colors=['b', 'r', 'g', 'k'], ls=[':', ':', ':', ':'])
 
 g.add_x_marker(1, ls='-')
 gca().set_xticks([0.6, 1, 1.4, 1.8, 2.2])

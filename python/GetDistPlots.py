@@ -29,7 +29,7 @@ class GetDistPlotSettings(object):
         self.lineM = ['-k', '-r', '-b', '-g', '-m', '-c', '-y']
         self.plot_args = None
         self.solid_colors = ['#006FED', '#E03424', 'gray', '#009966', '#000866', '#336600', '#006633' , 'm', 'r']  # '#66CC99'
-        self.default_dash_styles = {'--':(3, 2)}
+        self.default_dash_styles = {'--':(3, 2), '-.':(4, 1, 1, 1)}
         self.line_labels = True
         self.x_label_rotation = 0
         self.num_shades = 80
