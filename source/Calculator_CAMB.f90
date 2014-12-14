@@ -28,6 +28,8 @@
         integer :: ncalls = 0
         integer :: nerrors = 0
         logical :: CAMB_timing = .false.
+        real(mcp) :: k_eta_max_scalar = -1._mcp
+        logical :: accurate_BB =.false.
         type(CAMBParams)  CAMBP
         character(LEN=:), allocatable :: highL_theory_cl_template_file
         real(mcp), allocatable :: highL_lensedCL_template(:,:)
@@ -470,7 +472,7 @@
     real(mcp), allocatable :: NL_Ratios(:,:)
     real(mcp) :: dR, R, minR
     integer i
-    
+
     !Free theory arrays as they may resize between samples
     call Theory%FreePK()
 
@@ -760,6 +762,8 @@
         P%AccurateReionization = .true.
     end if
 
+    P%AccurateBB = this%accurate_BB
+
     if (max_transfer_redshifts < CosmoSettings%num_power_redshifts) then
         stop 'Need to manually set max_transfer_redshifts larger in CAMB''s modules.f90'
     end if
@@ -794,6 +798,9 @@
             P%Max_eta_k = max(P%Max_eta_k, 14000*AccuracyLevel)
         !k_etamax=18000 give c_phi_phi accurate to sub-percent at L=1000, <4% at L=2000
         !k_etamax=10000 is just < 1% at L<=500
+    end if
+    if (this%k_eta_max_scalar>0) then
+        P%Max_eta_k = this%k_eta_max_scalar
     end if
     !JD 08/13 for nonlinear lensing of CMB + LSS compatibility
     if (CosmoSettings%CMB_Lensing .and. CosmoSettings%use_nonlinear_lensing) then
@@ -872,6 +879,9 @@
     else
         highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
     end if
+
+    this%k_eta_max_scalar = Ini%Read_Double('k_eta_max_scalar',-1._mcp)
+    this%accurate_BB = Ini%Read_Logical('accurate_BB',.false.)
 
     halofit_version = Ini%Read_Int('halofit_version',halofit_default)
 

@@ -11,7 +11,7 @@
     private
 
     Type, extends(TTheoryLikelihoodUser) :: TImportanceSampler
-        logical  redo_like, redo_theory
+        logical  redo_likelihoods, redo_theory
         real(mcp) :: redo_skip = 100
         character(LEN=:), allocatable :: redo_datafile, redo_outroot,redo_like_name
         real(mcp) :: redo_likeoffset = 0
@@ -56,7 +56,7 @@
     class(TImportanceSampler) :: this
     class(TSettingIni) :: Ini
 
-    this%redo_like = Ini%Read_Logical('redo_likelihoods')
+    this%redo_likelihoods = Ini%Read_Logical('redo_likelihoods')
     this%redo_theory = Ini%read_Logical('redo_theory')
     this%redo_datafile = Ini%Read_String('redo_datafile')
     this%redo_outroot = Ini%Read_String('redo_outroot')
@@ -264,7 +264,7 @@
                     exit
                 end if
 
-                if (this%redo_like .or. this%redo_add) then
+                if (this%redo_likelihoods .or. this%redo_add) then
                     !Check for new prior before calculating anything
                     if (this%LikeCalculator%CheckPriorCuts(Params)==logZero) then
                         if (Feedback >1) write(*,*) 'Model outside new prior bounds: skipped'
@@ -279,7 +279,7 @@
                 end if
 
                 if (error ==0) then
-                    if (this%redo_like .or. this%redo_add) then
+                    if (this%redo_likelihoods .or. this%redo_add) then
                         call this%LikeCalculator%UpdateTheoryForLikelihoods(Params)
                         if (this%redo_add) then
                             truelike = this%LikeCalculator%GetLogLikePost(Params, .not. has_likes)
