@@ -1059,7 +1059,8 @@
         smooth_1D=max(1.d0, smooth_1d)
     elseif (smooth_scale_1D<1.0_mcp) then
         smooth_1D=smooth_scale_1D*sddev(j)/width
-        if (smooth_1d< 1) write(*,*) 'Warning: num_bins not large enough to well sample smoothed density'
+        if (smooth_1d< 1) write(*,*) 'Warning: num_bins not large enough to well sample smoothed density: '&
+            //trim(NameMapping%NameOrNumber(ix-2))
     else
         smooth_1d = smooth_scale_1D
     end if

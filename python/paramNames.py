@@ -6,7 +6,7 @@ class paramInfo:
     def __init__(self, line=None, name='', label='', comment='', derived=False):
         self.name = name
         self.isDerived = derived
-        self.label = label
+        self.label = label or name
         self.comment = comment
         self.filenameLoadedFrom = ''
         self.number = None

@@ -35,6 +35,9 @@ python python/makeTables.py main tables/pol_shift_sigma_table --limit 1 --change
 python python/makeTables.py main tables/comparetables_1sig --limit 1 --height 10in --width 14in --compare plikHM_TT_lowTEB plikHM_TTTEEE_lowTEB plikHM_TT_lowTEB_lensing plikHM_TT_lowTEB_lensing_BAO plikHM_TTTEEE_lowTEB_lensing --paramList batch1/outputs/paper_table.paramnames &
 python python/makeTables.py main tables/comparetables_2sig --limit 2 --height 10in --width 14in --compare plikHM_TT_lowTEB plikHM_TTTEEE_lowTEB plikHM_TT_lowTEB_lensing plikHM_TT_lowTEB_lensing_BAO plikHM_TTTEEE_lowTEB_lensing --paramList batch1/outputs/paper_table.paramnames &
 
+python python/makeTables.py main tables/lensonly_1sig  --limit 1 --converge 0.1  --data lensonly --changes_from_paramtag base &
+python python/makeTables.py main tables/lensonly_2sig  --limit 2 --converge 0.1  --data lensonly --changes_from_paramtag base 
+
 
 python python/makeTables.py main tables/LCDM_compare.tex --nobestfit --limit 1 --compare plikHM_TT_lowTEB plikHM_TT_lowTEB_lensing plikHM_TT_lowTEB_lensing_H070p6_JLA_BAO plikHM_TTTEEE_lowTEB plikHM_TTTEEE_lowTEB_lensing  plikHM_TTTEEE_lowTEB_lensing_H070p6_JLA_BAO --paramtag='base' --forpaper --titles "\\shortTT;\\shortTT+\\lensing;\\shortTT+\\lensing+\\ext;\\shortall;\\shortall+\\lensing;\\shortall+\\lensing+\\ext" --blockEndParams "thetarseq;ns" --paramList batch2/outputs/cosmology.paramnames
 

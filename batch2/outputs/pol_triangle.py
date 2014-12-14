@@ -18,6 +18,7 @@ for par in ['', 'nnu']:
     g.triangle_plot(roots, params, filled_compare=True,
     #                contour_args=[{'filled':False}, {'filled':False}, {'filled':False}, {'filled':True}],
                         legend_labels=labs)
+
     g.export(tag=par)
 
 

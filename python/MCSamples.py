@@ -28,6 +28,7 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settin
                 if cache.version == version: return cache
             except:
                 pass
+        if not len(files): raise Exception('No chains found: ' + file_root)
         samples = MCSamples(file_root, jobItem=jobItem)
         samples.readChains(files, ini, ini_settings=dist_settings)
         with open(cachefile, 'wb') as output:
@@ -264,7 +265,7 @@ class MCSamples(chains):
 
 
     def initContours(self, ini=None):
-        if ini:
+        if ini and ini.hasKey('num_contours'):
             self.contours = []
             self.num_contours = ini.int('num_contours', 2)
             for i in range(1, self.num_contours + 1):
@@ -282,7 +283,7 @@ class MCSamples(chains):
     def initLimits(self, ini=None):
 
         bin_limits = ""
-        if ini: bin_limits = ini.string('all_limits')
+        if ini: bin_limits = ini.string('all_limits', '')
 
         nvars = len(self.paramNames.names)
 
@@ -1026,12 +1027,12 @@ class MCSamples(chains):
             opt_width = 1.06 / math.pow(max(1.0, self.numsamp / self.max_mult), 0.2) * self.sddev[j]
             smooth_1D = opt_width / width * abs(self.smooth_scale_1D)
             if (smooth_1D < 0.5):
-                print 'Warning: num_bins not large enough for optimal density'
+                print 'Warning: num_bins not large enough for optimal density - ' + self.parName(j)
             smooth_1D = max(1.0, smooth_1D)
         elif (self.smooth_scale_1D < 1.0):
             smooth_1D = self.smooth_scale_1D * self.sddev[j] / width
             if (smooth_1D < 1):
-                print 'Warning: num_bins not large enough to well sample smoothed density'
+                print 'Warning: num_bins not large enough to well sample smoothed density - ' + self.parName(j)
         else:
             smooth_1D = self.smooth_scale_1D
 

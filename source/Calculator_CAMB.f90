@@ -256,7 +256,7 @@
                     if (CosmoSettings%cl_lmax(i,j)>0) then
                         if ( any(isNan(Theory%cls(i,j)%Cl))) then
                             error=1
-                            write(*,*) 'WARNING: NaN CL?'
+                            write(*,*) 'WARNING: NaN CL?', i, j
                             return
                         end if
                     end if

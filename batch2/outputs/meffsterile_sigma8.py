@@ -7,6 +7,17 @@ g = s.getSinglePlotter()
 outdir = ''
 roots = ['base_nnu_meffsterile_' + s.defdata]
 
+if False:
+    samples = g.sampleAnalyser.samplesForRoot('base_nnu_meffsterile_' + s.defdata + '_lensing_BAO')
+    p = samples.getParams()
+    mphys = p.meffsterile / (p.nnu - 3.046) ** 0.75
+    samples.filter(mphys < 2)
+    samples.updateChainBaseStatistics()
+    p = samples.getParams()
+    print samples.confidence(p.meffsterile, 0.05, upper=True)
+    print samples.confidence(p.nnu, 0.05, upper=True)
+
+
 mmax = 1.7
 nmax = 4.49
 g.plot_3d(roots, ['meffsterile', 'nnu', 'sigma8'])

@@ -70,19 +70,27 @@ density.contours = exp(-np.array([1.509, 2.4477]) ** 2 / 2)
 
 root = 'base_plikHM_TT_lowTEB'
 
+c = 29979.2458
+
 def makeNew(samples):
     p = samples.getParams()
     rsH = p.Hubble057 * p.rdrag / rd_fid
     rsHpar = samples.addDerived(rsH, name='rsH', label=r'H(0.57) (r_{\mathrm{drag}}/r_{\mathrm{drag}}^{\rm fid})\, [{\rm km} \,{\rm s}^{-1}{\rm Mpc}^{-1}]')
     Da = p.DA057 * rd_fid / p.rdrag
     Dapar = samples.addDerived(Da, name='Da', label=r'D_A(0.57) (r_{\mathrm{drag}}^{\rm fid}/r_{\mathrm{drag}})\,[\rm{Mpc}]')
-    comb = (Da / 1410) * (rsH / 92) ** sqrt(3.0)
+  #  comb = (Da / 1410) * (rsH / 91.7) ** 1.72
+    Hphys = rsH * rd_fid / c
+    Daphys = Da / rd_fid
+    comb = (Daphys / 9.447) * (Hphys / 0.4564) ** 1.72
 
     samples.updateChainBaseStatistics()
-    print samples.mean(Da), samples.std(Da)
-    print samples.mean(rsH), samples.std(rsH)
+    print 'Da ', samples.mean(Da), samples.std(Da)
+    print 'rsH ', samples.mean(rsH), samples.std(rsH)
+    print 'Daphys ', samples.mean(Daphys), samples.std(Daphys)
+    print 'Hphys ', samples.mean(Hphys), samples.std(Hphys)
+
     print samples.mean(comb), samples.std(comb)
-    print samples.PCA(['Da', 'rsH'], 'LL')
+    print samples.PCA(['Da', 'rsH'], 'LLL', 'Da')
 
     return rsHpar, Dapar
 

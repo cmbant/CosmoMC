@@ -6,5 +6,7 @@ alpha_npoints = 280
 prob_dist = %DATASETDIR%sdss_DR11CMASS_consensus.dat
 
 zeff =0.57	
-bao_measurement = 13.420   0.130
+#Note these values are not used in the actual likelihood; latter is with true rs
+#bao_measurement = 13.420   0.130
+bao_measurement = 13.773  0.134
 

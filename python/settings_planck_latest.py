@@ -126,6 +126,7 @@ class importanceFilterHighH0:
 
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
+post_lensingBAO = [[BAO, lensing], [BAOdata, 'lensing.ini'], importanceFilterNotOmegak()]
 post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegak()]
 post_HST = [[HST], [HSTdata], importanceFilterNotOmegak()]
 post_highH0 = [[H073p9], [H073p9data], importanceFilterHighH0()]
@@ -294,6 +295,22 @@ g7.params = [['mnu'], ['nnu', 'meffsterile']]
 g7.importanceRuns = [post_HST, post_nonBAO]
 groups.append(g7)
 
+
+
+gmnuAlens = batchJob.jobGroup('mnuAlens')
+gmnuAlens.datasets = []
+for d in  [copy.deepcopy(baseTT)]:
+    d.add(lowTEB)
+    d.add(lensing)
+    d.add(BAO, BAOdata)
+    d.covmat = 'planck_covmats/base_mnu_BAO_TT_lowTEB_plik.covmat'
+    gmnuAlens.datasets.append(d)
+
+gmnuAlens.params = [['mnu', 'omegak'], ['mnu', 'w'], ['mnu', 'Alens']]
+gmnuAlens.importanceRuns = [post_nonBAO]
+groups.append(gmnuAlens)
+
+
 gnnu = batchJob.jobGroup('nnu')
 gnnu.datasets = []
 for d in copy.deepcopy(g.datasets):
@@ -366,26 +383,23 @@ for d in copy.deepcopy(lensdata):
     d.add(BAO, BAOdata)
     glens.datasets.append(d)
 for d in copy.deepcopy(lensdata):
-    d.add(HST, HSTdata)
-    glens.datasets.append(d)
-for d in copy.deepcopy(lensdata):
     d.add('theta', {'param[theta]':'1.0408'})
     glens.datasets.append(d)
 for d in copy.deepcopy(lensdata):
     d.add(BAO, BAOdata)
     d.add('theta', {'param[theta]':'1.0408'})
     glens.datasets.append(d)
-glens.params = [[], ['mnu']]
+glens.params = [[], ['mnu'], ['nnu']]
 glens.importanceRuns = []
 groups.append(glens)
 
 glens = batchJob.jobGroup('lensonlyext')
-glens.datasets = copy.deepcopy(lensdata)
-for d in copy.deepcopy(glens.datasets):
+glens.datasets = []
+for d in copy.deepcopy(lensdata):
     d.add('theta', {'param[theta]':'1.0408'})
     d.add(BAO, BAOdata)
     glens.datasets.append(d)
-glens.params = [['nnu'], ['nnu', 'meffsterile'], ['nnu', 'mnu']]
+glens.params = [['nnu', 'meffsterile'], ['nnu', 'mnu']]
 glens.importanceRuns = []
 groups.append(glens)
 
@@ -511,7 +525,7 @@ gchecks.datasets = [copy.deepcopy(baseTT)]
 for d in gchecks.datasets:
     d.add(WMAPTEB)
 gchecks.params = [[], ['mnu'], ['nnu'], ['Alens'], ['yhe'], ['r'], ['nrun', 'r']]
-gchecks.importanceRuns = []
+gchecks.importanceRuns = [post_lensing, post_BAO, post_lensingBAO]
 groups.append(gchecks)
 
 gcuts = batchJob.jobGroup('lowhighL')
@@ -567,6 +581,8 @@ covrenames.append(['lowl', 'lowTEB'])
 covrenames.append(['lowEB', 'lowTEB'])
 covrenames.append(['_nnu_meffsterile', ''])
 covrenames.append(['_nnu_mnu', '_mnu'])
+
+
 covrenames.append(['_H070p6_theta', '_BAO_theta'])
 covrenames.append(['_H070p6_BAO_theta', '_BAO_theta'])
 
