@@ -84,7 +84,8 @@ for p in [1, 2]:
 # labels = [meff + '+' + nnu + ' (' + s.lensing + ')', s.LCDM + ' (' + s.defplanck + ')', s.LCDM + ' (' + s.defplanck + '+ext)']
 labels = [ s.lensing + r' ($\Delta N_{\rm eff}=0.39$)', s.LCDM + ' ' + s.defplanck, '+lensing+ext']
 
-g.add_legend(labels, colored_text=True, align_right=True)
+leg = g.add_legend(labels, colored_text=True, align_right=True)
+leg.get_texts()[0].set_color('grey')
 
 xlim([0.945, 1])
 ylim([0, 0.29])

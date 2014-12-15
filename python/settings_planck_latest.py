@@ -509,6 +509,7 @@ if False:
 gWMAP = batchJob.jobGroup('WMAP')
 gWMAP.params = [[]]
 gWMAP.datasets = [WMAP9]
+gWMAP.importanceRuns = [post_BAO, post_lensing, post_lensingBAO]
 groups.append(gWMAP)
 
 gchecks = batchJob.jobGroup('checks')
