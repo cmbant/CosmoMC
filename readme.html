@@ -512,7 +512,15 @@ installed manually or obtained from the cosmomc git repository (access available
 <UL>
 <LI><B>xxx 2014</B><BR>
 <UL>
-<LI>Added BAO from DR7 MGS (<A HREF="http://arxiv.org/abs/1409.3242">arXiv:1409.3242</A>, thanks Lado Samushia)
+<LI>New GetDist python version and graphical user inferface:
+<UL>
+<LI>Run python/gui/gui.py (required PySide python module to be installed): make 1D, 2D, 3D plots, select parameters and chains, export PDF or script
+<LI>Pure-Python version of GetDist (not all options supported, e.g. no Raftery-Lewis convergence tests)
+<LI>GetDistPlots can now generate densities on the fly from chains without running GetDist first (old method still supported)
+</UL>
+<LI>
+<LI>BAO module restructured, and supporting a number of points with any of of fsigma8, DA, H, Dv/rs, rs/DV and with a correlation matrix
+<LI>Added BAO from DR7 MGS (<A HREF="http://arxiv.org/abs/1409.3242">arXiv:1409.3242</A>, thanks Lado Samushia), and 6DF updated to use rs/Dv.
 <LI>Fixes for ifort 15 compatibility
 <LI>Added deleteJobs.py and corresponding functions in jobQueue.py
 <LI>batchJob functions to resolve actual chain name given param and data tags (in any order)
