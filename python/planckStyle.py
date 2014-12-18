@@ -1,11 +1,11 @@
-import os, ResultObjs, GetDistPlots, sys, batchJob
+import os, ResultObjs, GetDistPlots, batchJob
 from matplotlib import rcParams, rc, pylab
 import iniFile
 
 # common setup for matplotlib
 params = {'backend': 'pdf',
-          'axes.labelsize': 10,
-          'font.size': 10,
+          'axes.labelsize': 9,
+          'font.size': 9,
           'legend.fontsize': 9,
           'xtick.labelsize': 9,
           'ytick.labelsize': 9,
@@ -80,7 +80,6 @@ WPhighLlensing = r'\textit{Planck}+lensing+WP+highL'
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
 NoLowL = r'\textit{Planck}$-$lowL'
-NoLowLtau = r'\textit{Planck}$-$lowL+$\tau$prior'
 lensonly = 'lensing'
 HST = r'$H_0$'
 BAO = 'BAO'
@@ -125,27 +124,13 @@ H0_Freeman12 = [74.3, 2.1]
 H0_gpe = [70.6, 3.3]
 
 # various Omegam sigma8 constraints for plots
-def PLSZ(omm, sigma):
-    # from Anna 18/7/2014 for fixed b=0.8
-    return  (0.757 + 0.013 * sigma) * (omm / 0.32) ** (-0.3)
-
-def CFTHlens_Kilbinger(omm, sigma):
-    return  (0.79 + 0.03 * sigma) * (omm / 0.27) ** (-0.6)
-
-
-def CFTHlens_LCDM(omm, sigma):  # 1408.4742
-    return  (0.74 + 0.03 * sigma) * (omm / 0.27) ** (-0.47)
-
-def CFTHlens_mnu(omm, sigma):  # 1408.4742, same for sterile case
-    return  (0.72 + 0.03 * sigma) * (omm / 0.27) ** (-0.48)
-
 
 def galaxygalaxy(omm, sigma):  # mandelbaum
     return  (0.8 + 0.05 * sigma) * (omm / 0.25) ** (-0.57)
 
 def planck_lensing(omm, sigma):
     # g60_full
-    return  (0.592 + 0.021 * sigma) * omm ** (-0.25)
+    return  (0.591 + 0.021 * sigma) * omm ** (-0.25)
 
 
 def plotBounds(omm, data, c='gray'):
@@ -207,12 +192,13 @@ def getPlotterWidth(size=1, **kwargs):  # size in mm
     elif size == 3: width = 180 * inch_mm
     else: width = size * inch_mm
     s.fig_width_inch = width
-    s.setWithSubplotSize(2)
+    s.setWithSubplotSize(kwargs.get('subplot_size', 2))
     s.rcSizes(**kwargs)
     return getPlotter()
 
-def getSinglePlotter(ratio=3 / 4., plot_data=None, grid_dir=None):
-    s.setWithSubplotSize(3.5)
+def getSinglePlotter(ratio=3 / 4., plot_data=None, grid_dir=None, width_inch=3.464):
+    s.setWithSubplotSize(width_inch)
+    s.fig_width_inch = width_inch
     s.rcSizes()
     plotter = getPlotter(plot_data, grid_dir)
     plotter.make_figure(1, xstretch=1 / ratio)
