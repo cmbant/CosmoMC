@@ -499,7 +499,7 @@ class MCSamples(chains):
         return fraction_indices
 
 
-    def PCA(self, params, param_map, normparam=None, writeDataToFile=False):
+    def PCA(self, params, param_map, normparam=None, writeDataToFile=False, conditional_params=[]):
         """
         Perform principle component analysis. In other words,
         get eigenvectors and eigenvalues for normalized variables
@@ -507,11 +507,15 @@ class MCSamples(chains):
         """
 
         print 'Doing PCA for ', len(params), ' parameters'
+        if len(conditional_params): print 'conditional %u fixed parameters' % len(conditional_params)
 
         PCAtext = 'PCA for parameters:\n'
 
         params = [name for name in params if self.paramNames.parWithName(name)]
+        nparams = len(params)
         indices = [self.index[param] for param in params]
+        conditional_params = [self.index[param] for param in conditional_params]
+        indices += conditional_params
 
         if normparam:
             if normparam in params:
@@ -519,7 +523,7 @@ class MCSamples(chains):
             else: normparam = -1
         else: normparam = -1
 
-        n = len(params)
+        n = len(indices)
         corrmatrix = np.zeros((n, n))
         PCdata = self.samples[:, indices]
         PClabs = []
@@ -531,37 +535,46 @@ class MCSamples(chains):
 
         doexp = False
         for i, parix in enumerate(indices):
-            label = self.parLabel(parix)
-            if (param_map[i] == 'L'):
-                doexp = True
-                PCdata[:, i] = np.log(PCdata[:, i])
-                PClabs.append("ln(" + label + ")")
-            elif (param_map[i] == 'M'):
-                doexp = True
-                PCdata[:, i] = np.log(-1.0 * PCdata[:, i])
-                PClabs.append("ln(-" + label + ")")
-            else:
-                PClabs.append(label)
-            PCAtext += "%10s :%s\n" % (str(parix + 1), str(PClabs[i]))
+            if i < nparams:
+                label = self.parLabel(parix)
+                if (param_map[i] == 'L'):
+                    doexp = True
+                    PCdata[:, i] = np.log(PCdata[:, i])
+                    PClabs.append("ln(" + label + ")")
+                elif (param_map[i] == 'M'):
+                    doexp = True
+                    PCdata[:, i] = np.log(-1.0 * PCdata[:, i])
+                    PClabs.append("ln(-" + label + ")")
+                else:
+                    PClabs.append(label)
+                PCAtext += "%10s :%s\n" % (str(parix + 1), str(PClabs[i]))
 
             PCmean[i] = np.sum(self.weights * PCdata[:, i]) / self.norm
             PCdata[:, i] = PCdata[:, i] - PCmean[i]
             sd[i] = np.sqrt(np.sum(self.weights * np.power(PCdata[:, i], 2)) / self.norm)
             if (sd[i] <> 0): PCdata[:, i] = PCdata[:, i] / sd[i]
-            corrmatrix[i][i] = 1
 
         PCAtext += "\n"
         PCAtext += 'Correlation matrix for reduced parameters\n'
         for i, parix in enumerate(indices):
-            for j in range(n):
+            corrmatrix[i][i] = 1
+            for j in range(i):
                 corrmatrix[j][i] = np.sum(self.weights * PCdata[:, i] * PCdata[:, j]) / self.norm
                 corrmatrix[i][j] = corrmatrix[j][i]
+        for i in range(nparams):
             PCAtext += '%12s :' % params[i]
             for j in range(n):
                 PCAtext += '%8.4f' % corrmatrix[j][i]
             PCAtext += '\n'
 
-        u = corrmatrix
+        if len(conditional_params):
+            u = np.linalg.inv(corrmatrix)
+            u = u[np.ix_(range(len(params)), range(len(params)))]
+            u = np.linalg.inv(u)
+            n = nparams
+            PCdata = PCdata[:, :nparams]
+        else:
+            u = corrmatrix
         evals, evects = np.linalg.eig(u)
         isorted = evals.argsort()
         u = np.transpose(evects[:, isorted])  # redefining u

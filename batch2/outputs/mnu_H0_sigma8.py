@@ -25,5 +25,6 @@ g.add_2d_contours(root, 'mnu', 'H0', filled=True, zorder=2, alpha=0.6)
 
 # gca().set_xticks([2, 2.5,3.0,3.5,4])
 ylim([51, 79])
+gca().set_yticks([55, 60, 65, 70, 75])
 
 g.export()

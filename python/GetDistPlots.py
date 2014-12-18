@@ -1011,7 +1011,7 @@ class GetDistPlotter(object):
                 labels = [label.get_text() for label in cb.ax.yaxis.get_ticklabels()[::2]]
                 cb.ax.yaxis.set_ticks(cb.ax.yaxis.get_ticklocs()[::2])
                 cb.ax.yaxis.set_ticklabels(labels)
-            return cb
+        return cb
 
     def add_line(self, P1, P2, zorder=0, color=None, ls=None, ax=None, **kwargs):
             if color is None: color = self.settings.axis_marker_color

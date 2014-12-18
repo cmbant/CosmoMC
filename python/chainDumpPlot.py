@@ -11,6 +11,7 @@ import CMBlikes
 
 colorbar_label_rotation_angle = -90
 colorbar_tick_label_vertical = False
+label_dict = {}
 
 def loadFiles(pat, max_files=400, cl_ix=1, calParam=None, rescale=1):
     d, name = os.path.split(pat + '_?_*')
@@ -97,8 +98,8 @@ def getColorMap(parvals, parname):
 def setLabels(scalarMap, cNorm, par):
     xlabel('$L$')
     cb = colorbar(scalarMap, norm=cNorm)
-    lab = par.label
-    if lab == r'\alpha_{-1}': lab = r'\alpha'
+    lab = label_dict.get(par.name, par.label)
+
     cb.set_label('$' + lab + '$', rotation=colorbar_label_rotation_angle, labelpad=10)
     if colorbar_tick_label_vertical:
         for ticklabel in cb.ax.get_yticklabels():

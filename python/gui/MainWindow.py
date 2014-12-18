@@ -7,9 +7,8 @@ import logging
 import GetDistPlots
 import ResultObjs
 import matplotlib
-from matplotlib import rcParams
 import numpy as np
-# matplotlib.use('Qt4Agg')
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
@@ -275,10 +274,6 @@ class MainWindow(QMainWindow):
         hbox.addWidget(splitter)
         self.centralWidget.setLayout(hbox)
         self.readSettings()
-
-    def setIniFile(self, iniFile):
-        logging.debug("ini file is %s" % iniFile)
-        self.iniFile = iniFile
 
     def closeEvent(self, event):
         self.writeSettings()

@@ -88,5 +88,6 @@ leg = g.add_legend(labels, colored_text=True, align_right=True)
 leg.get_texts()[0].set_color('grey')
 
 xlim([0.945, 1])
+gca().set_xticks([0.95, 0.96, 0.97, 0.98, 0.99, 1.0])
 ylim([0, 0.29])
 g.export()

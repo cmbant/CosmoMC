@@ -23,7 +23,9 @@ if make_file_dir:
     linePlot = False
     def_figsize = 3.5
 
-r.colorbar_tick_label_vertical = True
+
+r.label_dict['alpha1'] = r'\alpha'
+r.label_dict['omegach2'] = r'\Omega_{\rm c} h^2'
 
 def makeRainbow(ls, pars, cls, parname, lpow, delta_to, Lmax, color_pow=0.5, last_colors=None):
     if linePlot:
@@ -144,16 +146,13 @@ if False:
     # xlim([2, 200])
 
 
-CMBRainbow(r'C:\tmp\Planck\final_Nov14\cl_chains\iso\base_alpha1_plikHM_TT_lowTEB_post', parname='alpha1', cl_ix=3, Lmax=200, ymax=1.3, data=True, tag='EE')
-# CMBRainbow(r'C:\tmp\Planck\final_Nov14\cl_chains\iso\base_alpha1_plikHM_TT_lowTEB_post', parname='alpha1', cl_ix=2, Lmax=300, data=True, tag='TE')
+def paramPaper():
+    r.colorbar_tick_label_vertical = True
+    CMBRainbow(r'C:\tmp\Planck\final_Nov14\cl_chains\iso\base_alpha1_plikHM_TT_lowTEB_post', parname='alpha1', cl_ix=3, Lmax=200, ymax=1.3, data=True, tag='EE')
+    CMBRainbow(r'C:\tmp\Planck\final_Nov14\cl_chains\iso\base_alpha1_plikHM_TT_lowTEB_post', parname='alpha1', cl_ix=1, ymax=2000,
+                Lmax=60, data=True, tag='TT')
 
-CMBRainbow(r'C:\tmp\Planck\final_Nov14\cl_chains\iso\base_alpha1_plikHM_TT_lowTEB_post', parname='alpha1', cl_ix=1, ymax=2000,
-            Lmax=60, data=True, tag='TT')
 
-# CMBRainbow(r'C:\tmp\Planck\final_Nov14\cl_chains\base_plikHM_TT_lowTEB_post', parname='ns', cl_ix=3, Lmax=200, data=False)
-
-# CMBRainbow(r'C:\tmp\Planck\final_Nov14\cl_chains\base_nnu_plikHM_TT_lowTEB_post', parname='nnu', cl_ix=2, Lmax=500)
-
-# lensingPaper()
+lensingPaper()
 
 show()

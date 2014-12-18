@@ -5,12 +5,12 @@ import iniFile
 # common setup for matplotlib
 params = {'backend': 'pdf',
           'axes.labelsize': 9,
-          'font.size': 9,
-          'legend.fontsize': 9,
-          'xtick.labelsize': 9,
-          'ytick.labelsize': 9,
-          'ytick.major.pad': 6,
-          'xtick.major.pad': 6,
+          'font.size': 8,
+          'legend.fontsize': 8,
+          'xtick.labelsize': 8,
+          'ytick.labelsize': 8,
+          'ytick.major.pad': 4,
+          'xtick.major.pad': 4,
           'text.usetex': True,
           'font.family':'sans-serif',
           # free font similar to Helvetica

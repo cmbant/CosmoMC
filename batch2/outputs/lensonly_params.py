@@ -5,7 +5,7 @@ from pylab import *
 g = s.getSinglePlotter()
 
 for tag, pars in zip(['sigma8_omegam', 'omegam_H0'], [['omegam', 'sigma8', 'H0'], ['omegam', 'H0', 'sigma8']]):
-    for base in [ '', 'mnu', 'nnu', 'nnu_meffsterile', 'nnu_mnu']:
+    for base in [ '', 'mnu', 'nnu']:  # , 'nnu_meffsterile', 'nnu_mnu']:
         g.newPlot()
 #        g.make_figure(1, xstretch=1.3)
 
