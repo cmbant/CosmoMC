@@ -12,6 +12,9 @@ import CMBlikes
 colorbar_label_rotation_angle = -90
 colorbar_tick_label_vertical = False
 label_dict = {}
+color_ticks = None
+color_ticklabels = None
+
 
 def loadFiles(pat, max_files=400, cl_ix=1, calParam=None, rescale=1):
     d, name = os.path.split(pat + '_?_*')
@@ -102,12 +105,16 @@ def setLabels(scalarMap, cNorm, par):
 
     cb.set_label('$' + lab + '$', rotation=colorbar_label_rotation_angle, labelpad=10)
     if colorbar_tick_label_vertical:
+        if color_ticks is not None:
+            cb.set_ticks(color_ticks)
+        if color_ticklabels is not None:
+            cb.set_ticklabels(color_ticklabels)
         for ticklabel in cb.ax.get_yticklabels():
             ticklabel.set_rotation(-90)
-        labels = [label.get_text() for label in cb.ax.yaxis.get_ticklabels()[::2]]
-        cb.ax.yaxis.set_ticks(cb.ax.yaxis.get_ticklocs()[::2])
-        cb.ax.yaxis.set_ticklabels(labels)
-
+        if color_ticks is None:
+            labels = [label.get_text() for label in cb.ax.yaxis.get_ticklabels()[::2]]
+            cb.ax.yaxis.set_ticks(cb.ax.yaxis.get_ticklocs()[::2])
+            cb.ax.yaxis.set_ticklabels(labels)
 
 
 def rainbowLinePlot(ls, pars, cls, parname, lpow=2, delta_to=None, last_colors=None, alpha=1):

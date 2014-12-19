@@ -148,11 +148,14 @@ if False:
 
 def paramPaper():
     r.colorbar_tick_label_vertical = True
+    r.color_ticks = [-0.01, -0.005, 0]
+    r.color_ticklabels = ['-0.010', '-0.005', '0.000']
     CMBRainbow(r'C:\tmp\Planck\final_Nov14\cl_chains\iso\base_alpha1_plikHM_TT_lowTEB_post', parname='alpha1', cl_ix=3, Lmax=200, ymax=1.3, data=True, tag='EE')
+
     CMBRainbow(r'C:\tmp\Planck\final_Nov14\cl_chains\iso\base_alpha1_plikHM_TT_lowTEB_post', parname='alpha1', cl_ix=1, ymax=2000,
                 Lmax=60, data=True, tag='TT')
 
 
-lensingPaper()
-
+# lensingPaper()
+paramPaper()
 show()

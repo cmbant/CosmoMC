@@ -1,11 +1,11 @@
-import os, paramNames
+import os
+import sys
+import paramNames
+import iniFile
 import matplotlib
 import copy as cp
 matplotlib.use('Agg')
 from pylab import *
-
-import numpy as np
-import iniFile
 import batchJob
 import MCSamples
 
@@ -381,6 +381,17 @@ class GetDistPlotter(object):
         self.sampleAnalyser.newPlot()
         self.fig = None
         self.subplots = None
+
+    def show_all_settings(self):
+        print 'Python version:', sys.version
+        print '\nMatplotlib version:', matplotlib.__version__
+        print '\nGetDist Plot Settings:'
+        sets = self.settings.__dict__
+        for key, value in sets.items():
+            print key, ':', value
+        print '\nRC params:'
+        for key, value in matplotlib.rcParams.items():
+            print key, ':', value
 
     def get_plot_args(self, plotno, **kwargs):
         if not self.settings.plot_args is None and len(self.settings.plot_args) > plotno:
