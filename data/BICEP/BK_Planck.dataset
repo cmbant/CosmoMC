@@ -35,3 +35,7 @@ covmat_cl = BKxBK PB217xPB217 PB353xPB353 PB217xBK PB353xPB217 PB353xBK
 covmat_fiducial = BKPLAN_likelihood_covmat_r0p2.dat
 
 nusiance_params = BKPLAN.paramnames
+
+bandpass[BK] = bandpass_B2.txt 
+bandpass[PB217] = bandpass_P217.txt
+bandpass[PB353] = bandpass_P353.txt
