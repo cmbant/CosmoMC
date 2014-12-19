@@ -36,6 +36,6 @@ covmat_fiducial = BKPLAN_likelihood_covmat_r0p2.dat
 
 nusiance_params = BKPLAN.paramnames
 
-bandpass[BK] = bandpass_B2.txt 
+bandpass[BK] = bandpass_BK.txt 
 bandpass[PB217] = bandpass_P217.txt
 bandpass[PB353] = bandpass_P353.txt
