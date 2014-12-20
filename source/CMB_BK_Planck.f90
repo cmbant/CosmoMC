@@ -98,40 +98,66 @@
 
     end subroutine DustScaling
 
+    ! Calculates power-law scaling of synchrotron signal defined at 150 GHz
+    ! to specified bandpass.
+    subroutine SyncScaling(beta,bandpass,fsync)
+    real(mcp), intent(in) :: beta
+    Type(TBandpass), intent(in) :: bandpass
+    real(mcp), intent(out) :: fsync
+    real(mcp) :: pl_int = 0  ! Integrate power-law scaling.
+    real(mcp) :: th_int = 0  ! Integrate thermodynamic temperature conversion.
+    real(mcp) :: nu0 = 150.0 ! Pivot frequency for sync (150 GHz).
+    real(mcp) :: pl0         ! Power-law scaling at pivot.
+    real(mcp) :: th0         ! Thermodynamic temperature conversion at pivot.
+
+    ! Integrate power-law scaling and thermodynamic temperature conversion
+    ! across experimental bandpass.
+    pl_int = sum( bandpass%dnu * bandpass%R(:,2) * bandpass%R(:,1)**(2+beta))
+    th_int = sum( bandpass%dnu * bandpass%R(:,2) * bandpass%R(:,1)**4 * exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) &
+        / (exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) - 1)**2)
+
+    ! Calculate values at pivot frequency.
+    pl0 = nu0**(2+beta)
+    th0 = nu0**4 * exp(Ghz_Kelvin*nu0/T_CMB) / (exp(Ghz_Kelvin*nu0/T_CMB) - 1)**2
+    ! Calculate dust scaling.
+    fsync = (pl_int / pl0) / (th_int / th0)
+
+    end subroutine SyncScaling
 
     subroutine TBK_planck_AddForegrounds(this,Cls,DataParams)
     class(TBK_planck) :: this
     class(TMapCrossPowerSpectrum), intent(inout) :: Cls(:,:)
     real(mcp), intent(in) :: DataParams(:)
-    real(mcp) :: Adust, Async, alphadust, beta
-    real(mcp), parameter :: fsync_B2=1.027449,fsync_P217=0.572670
-    real(mcp), parameter :: fsync_P353=0.585792
-    ! real(mcp), parameter :: fdust_B2=0.046010,fdust_P217=0.144359
-    ! real(mcp), parameter :: fdust_P353=1.130129
-    ! real(mcp), parameter :: fdust(3) = [fdust_B2,fdust_P217,fdust_P353]
+    real(mcp) :: Adust, Async, alphadust, betadust
     real(mcp) :: fdust(this%nmaps_required)
-    real(mcp), parameter :: fsync(3) = [fsync_B2,fsync_P217,fsync_P353]
+    real(mcp) :: fsync(this%nmaps_required)
     real(mcp) :: dust, sync
+    real(mcp) :: alphasync = -0.6_mcp
+    real(mcp) :: betasync = -3.0_mcp
     integer i,j,l
+    real(mcp) :: lpivot = 80.0_mcp
 
     Adust = DataParams(1)
     Async = DataParams(2)
     alphadust = DataParams(3)
-    beta = DataParams(4)
+    betadust = DataParams(4)
 
     do i=1, this%nmaps_required
-        call DustScaling(beta,this%T_dust,this%Bandpasses(i),fdust(i))
+        call DustScaling(betadust,this%T_dust,this%Bandpasses(i),fdust(i))
         write(*,*) "dust scaling ", this%map_order%Item(i), fdust(i)
+        call SyncScaling(betasync, this%Bandpasses(i), fsync(i))
+        write(*,*) "sync scaling ", this%map_order%Item(i), fsync(i)
     end do
 
     do i=1, this%nmaps_required
         do j=1, i
             associate(CL=> Cls(i,j))
-                !dust = fdust(CL%map_i)*fdust(CL%map_j)
                 dust = fdust(i)*fdust(j)
-                sync = fsync(CL%map_i)*fsync(CL%map_j)
+                sync = fsync(i)*fsync(j)
                 do l=this%pcl_lmin,this%pcl_lmax
-                    CL%CL(l) = CL%CL(l)+ (Adust)*(l/80.)**(alphadust)*dust+(Async)*(l/80.)**(-0.6)*sync
+                    CL%CL(l) = CL%CL(l) + &
+                         dust*Adust*(l/lpivot)**(alphadust) + &
+                         sync*Async*(l/lpivot)**(alphasync)
                 end do
             end associate
         end do
