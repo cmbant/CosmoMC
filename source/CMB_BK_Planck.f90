@@ -5,17 +5,18 @@
     use FileUtils
     private
 
-    real(mcp), parameter :: h = 6.62606957e-34_mcp ! Planck's constant
     real(mcp), parameter :: T_CMB = 2.7255_mcp     ! CMB temperature
+    real(mcp), parameter :: h = 6.62606957e-34_mcp ! Planck's constant
     real(mcp), parameter :: kB = 1.3806488e-23_mcp ! Boltzmann constant
+    real(mcp), parameter :: Ghz_Kelvin = h/kB*1e9_mcp
 
     Type TBandpass
-        real(mcp), allocatable :: R(:,:) 
+        real(mcp), allocatable :: R(:,:)
         real(mcp), allocatable :: dnu(:)
     end Type TBandpass
 
     Type, extends(TCMBLikes) :: TBK_planck
-        real(mcp) :: T_dust = 19.6
+        real(mcp) :: T_dust = 19.6_mcp
         Type(TBandpass), allocatable :: Bandpasses(:)
     contains
     procedure :: ReadIni => TBK_planck_ReadIni
@@ -31,13 +32,13 @@
     class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: fname
     integer i
-    
+
     !Read all standard parameters
     call this%TCMBLikes%ReadIni(Ini)
     this%has_foregrounds = .true.
     !Set up nuisance parameters
     call this%loadParamNames(Ini%ReadFileName('nusiance_params',relative=.true.,NotFoundFail=.true.))
-    
+
     !Override dust temperature if wanted
     call Ini%Read('T_dust',this%T_dust)
 
@@ -75,31 +76,26 @@
     real(mcp), intent(in) :: beta
     real(mcp), intent(in) :: Tdust
     Type(TBandpass), intent(in) :: bandpass
-    real(mcp), target :: fdust
-    integer :: i
-    real :: gb_int = 0.0 ! Integrate greybody scaling.
-    real :: th_int = 0.0 ! Integrate thermodynamic temperature conversion.
-    real :: nu0 = 353.0  ! Pivot frequency for dust (353 GHz).
-    real :: gb0          ! Greybody scaling at pivot. 
-    real :: th0          ! Thermodynamic temperature conversion at pivot.
+    real(mcp), intent(out) :: fdust
+    real(mcp) :: gb_int = 0 ! Integrate greybody scaling.
+    real(mcp) :: th_int = 0 ! Integrate thermodynamic temperature conversion.
+    real(mcp) :: nu0 = 353  ! Pivot frequency for dust (353 GHz).
+    real(mcp) :: gb0          ! Greybody scaling at pivot.
+    real(mcp) :: th0          ! Thermodynamic temperature conversion at pivot.
 
-    ! Integrate greybody scaling and thermodynamic temperature conversion 
+    ! Integrate greybody scaling and thermodynamic temperature conversion
     ! across experimental bandpass.
-    do i=1, size(bandpass%R,1)
-       gb_int = gb_int + bandpass%dnu(i) * bandpass%R(i,2) * &
-            bandpass%R(i,1)**(3+beta) / &
-            (exp(h*bandpass%R(i,1)*1.0e9/(kB*Tdust)) - 1.0)
-       th_int = th_int + bandpass%dnu(i) * bandpass%R(i,2) * &
-            bandpass%R(i,1)**4 * exp(h*bandpass%R(i,1)*1.0e9/(kB*T_CMB)) / &
-            (exp(h*bandpass%R(i,1)*1.0e9/(kB*T_CMB)) - 1.0)**2
-    end do
+    gb_int = sum( bandpass%dnu * bandpass%R(:,2) * bandpass%R(:,1)**(3+beta) &
+        / (exp(Ghz_Kelvin*bandpass%R(:,1)/Tdust) - 1))
+    th_int = sum( bandpass%dnu * bandpass%R(:,2) * bandpass%R(:,1)**4 * exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) &
+        / (exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) - 1)**2)
+
     ! Calculate values at pivot frequency.
-    gb0 = nu0**(3+beta) / (exp(h*nu0*1.0e9/(kB*Tdust)) - 1.0)
-    th0 = nu0**4 * exp(h*nu0*1.0e9/(kB*T_CMB)) / &
-         (exp(h*nu0*1.0e9/(kB*T_CMB)) - 1.0)**2
+    gb0 = nu0**(3+beta) / (exp(Ghz_Kelvin*nu0/Tdust) - 1)
+    th0 = nu0**4 * exp(Ghz_Kelvin*nu0/T_CMB) / (exp(Ghz_Kelvin*nu0/T_CMB) - 1)**2
     ! Calculate dust scaling.
     fdust = (gb_int / gb0) / (th_int / th0)
-    
+
     end subroutine DustScaling
 
 
@@ -113,9 +109,8 @@
     ! real(mcp), parameter :: fdust_B2=0.046010,fdust_P217=0.144359
     ! real(mcp), parameter :: fdust_P353=1.130129
     ! real(mcp), parameter :: fdust(3) = [fdust_B2,fdust_P217,fdust_P353]
-    real(mcp), allocatable :: fdust(:)
+    real(mcp) :: fdust(this%nmaps_required)
     real(mcp), parameter :: fsync(3) = [fsync_B2,fsync_P217,fsync_P353]
-    real(mcp), parameter :: Tdust = 19.6
     real(mcp) :: dust, sync
     integer i,j,l
 
@@ -123,17 +118,17 @@
     Async = DataParams(2)
     alphadust = DataParams(3)
     beta = DataParams(4)
-    
-    allocate(fdust(this%nmaps_required))
+
     do i=1, this%nmaps_required
-       call DustScaling(beta,Tdust,this%Bandpasses(i),fdust(i))
-       write(*,*) "dust scaling ", i, fdust(i)
+        call DustScaling(beta,this%T_dust,this%Bandpasses(i),fdust(i))
+        write(*,*) "dust scaling ", this%map_order%Item(i), fdust(i)
     end do
 
     do i=1, this%nmaps_required
-       do j=1, i
-          associate(CL=> Cls(i,j))
-                dust = fdust(CL%map_i)*fdust(CL%map_j)
+        do j=1, i
+            associate(CL=> Cls(i,j))
+                !dust = fdust(CL%map_i)*fdust(CL%map_j)
+                dust = fdust(i)*fdust(j)
                 sync = fsync(CL%map_i)*fsync(CL%map_j)
                 do l=this%pcl_lmin,this%pcl_lmax
                     CL%CL(l) = CL%CL(l)+ (Adust)*(l/80.)**(alphadust)*dust+(Async)*(l/80.)**(-0.6)*sync
@@ -141,8 +136,6 @@
             end associate
         end do
     end do
-
-    deallocate(fdust)
 
     end subroutine TBK_planck_AddForegrounds
 
