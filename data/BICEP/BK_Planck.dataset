@@ -34,7 +34,7 @@ bin_window_in_order = BKxBK PB217xPB217 PB353xPB353 PB217xBK PB353xPB217 PB353xB
 covmat_cl = BKxBK PB217xPB217 PB353xPB353 PB217xBK PB353xPB217 PB353xBK
 covmat_fiducial = BKPLAN_likelihood_covmat_r0p2.dat
 
-nusiance_params = BKPLAN.paramnames
+nuisance_params = BKPLAN.paramnames
 
 bandpass[BK] = bandpass_BK.txt 
 bandpass[PB217] = bandpass_P217.txt

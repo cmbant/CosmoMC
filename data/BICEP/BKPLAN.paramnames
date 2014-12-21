@@ -2,3 +2,7 @@ BBdust         A_{B,\mathrm{dust}}
 BBsync         A_{B,\mathrm{sync}}
 BBalphadust    \alpha_{B,\mathrm{dust}}
 BBbetadust     \beta_{B,\mathrm{dust}}
+BBTdust        T_{\mathrm{dust}}
+BBalphasync    \alpha_{B,\mathrm{sync}}
+BBbetasync     \beta_{B,\mathrm{sync}}
+BBdustsynccorr \epsilon_{\mathrm{dust,sync}}

@@ -37,10 +37,7 @@
     call this%TCMBLikes%ReadIni(Ini)
     this%has_foregrounds = .true.
     !Set up nuisance parameters
-    call this%loadParamNames(Ini%ReadFileName('nusiance_params',relative=.true.,NotFoundFail=.true.))
-
-    !Override dust temperature if wanted
-    call Ini%Read('T_dust',this%T_dust)
+    call this%loadParamNames(Ini%ReadFileName('nuisance_params',relative=.true.,NotFoundFail=.true.))
 
     !Load in the bandpass files for each map
     allocate(this%Bandpasses(this%nmaps_required))
@@ -128,12 +125,11 @@
     class(TBK_planck) :: this
     class(TMapCrossPowerSpectrum), intent(inout) :: Cls(:,:)
     real(mcp), intent(in) :: DataParams(:)
-    real(mcp) :: Adust, Async, alphadust, betadust
+    real(mcp) :: Adust, Async, alphadust, betadust, Tdust
+    real(mcp) :: alphasync, betasync, dustsync_corr
     real(mcp) :: fdust(this%nmaps_required)
     real(mcp) :: fsync(this%nmaps_required)
     real(mcp) :: dust, sync
-    real(mcp) :: alphasync = -0.6_mcp
-    real(mcp) :: betasync = -3.0_mcp
     integer i,j,l
     real(mcp) :: lpivot = 80.0_mcp
 
@@ -141,9 +137,13 @@
     Async = DataParams(2)
     alphadust = DataParams(3)
     betadust = DataParams(4)
+    Tdust = DataParams(5)
+    alphasync = DataParams(6)
+    betasync = DataParams(7)
+    dustsync_corr = DataParams(8)
 
     do i=1, this%nmaps_required
-        call DustScaling(betadust,this%T_dust,this%Bandpasses(i),fdust(i))
+        call DustScaling(betadust,Tdust,this%Bandpasses(i),fdust(i))
         write(*,*) "dust scaling ", this%map_order%Item(i), fdust(i)
         call SyncScaling(betasync, this%Bandpasses(i), fsync(i))
         write(*,*) "sync scaling ", this%map_order%Item(i), fsync(i)
