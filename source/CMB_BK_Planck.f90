@@ -3,6 +3,7 @@
     use CMBlikes
     use CosmologyTypes
     use FileUtils
+    implicit none
     private
 
     real(mcp), parameter :: T_CMB = 2.7255_mcp     ! CMB temperature
@@ -46,7 +47,6 @@
         call this%ReadBandpass(fname, this%Bandpasses(i))
     end do
 
-
     end subroutine TBK_planck_ReadIni
 
     subroutine TBK_planck_Read_Bandpass(this, fname, Bandpass)
@@ -55,7 +55,7 @@
     real(mcp), pointer :: nu(:)
     Type(TBandpass), target :: Bandpass
     integer i, n
-    real(mcp) :: th_int
+    real(mcp) :: th_int, nu0, th0
 
     call File%LoadTxt(fname, Bandpass%R, n)
     nu => Bandpass%R(:,1)
@@ -70,9 +70,13 @@
     ! and pivot frequencies 353 GHz (used for dust) and 150 GHz (used for
     ! sync).
     th_int = sum( Bandpass%dnu * Bandpass%R(:,2) * Bandpass%R(:,1)**4 * exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) &
-         / (exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) - 1)**2)
-    Bandpass%th353 = th_int / 31140203.658
-    Bandpass%th150 = th_int / 41829471.890
+        / (exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) - 1)**2)
+    nu0=353
+    th0 = nu0**4 * exp(Ghz_Kelvin*nu0/T_CMB) / (exp(Ghz_Kelvin*nu0/T_CMB) - 1)**2
+    Bandpass%th353 = th_int / th0
+    nu0=150
+    th0 = nu0**4 * exp(Ghz_Kelvin*nu0/T_CMB) / (exp(Ghz_Kelvin*nu0/T_CMB) - 1)**2
+    Bandpass%th150 = th_int / th0
 
     end subroutine TBK_planck_Read_Bandpass
 
@@ -83,16 +87,14 @@
     real(mcp), intent(in) :: Tdust
     Type(TBandpass), intent(in) :: bandpass
     real(mcp), intent(out) :: fdust
-    real(mcp) :: gb_int = 0 ! Integrate greybody scaling.
-    real(mcp) :: nu0 = 353  ! Pivot frequency for dust (353 GHz).
-    real(mcp) :: gb0          ! Greybody scaling at pivot.
+    real(mcp), parameter :: nu0 = 353._mcp  ! Pivot frequency for dust (353 GHz).
+    real(mcp) :: gb_int  ! Integrate greybody scaling.
+    real(mcp) :: gb0     ! Greybody scaling at pivot.
 
     ! Integrate greybody scaling and thermodynamic temperature conversion
     ! across experimental bandpass.
     gb_int = sum( bandpass%dnu * bandpass%R(:,2) * bandpass%R(:,1)**(3+beta) &
         / (exp(Ghz_Kelvin*bandpass%R(:,1)/Tdust) - 1))
-    th_int = sum( bandpass%dnu * bandpass%R(:,2) * bandpass%R(:,1)**4 * exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) &
-        / (exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) - 1)**2)
 
     ! Calculate values at pivot frequency.
     gb0 = nu0**(3+beta) / (exp(Ghz_Kelvin*nu0/Tdust) - 1)
@@ -108,15 +110,13 @@
     real(mcp), intent(in) :: beta
     Type(TBandpass), intent(in) :: bandpass
     real(mcp), intent(out) :: fsync
-    real(mcp) :: pl_int = 0  ! Integrate power-law scaling.
-    real(mcp) :: nu0 = 150.0 ! Pivot frequency for sync (150 GHz).
-    real(mcp) :: pl0         ! Power-law scaling at pivot.
+    real(mcp), parameter :: nu0 = 150.0_mcp ! Pivot frequency for sync (150 GHz).
+    real(mcp) :: pl_int  ! Integrate power-law scaling.
+    real(mcp) :: pl0     ! Power-law scaling at pivot.
 
     ! Integrate power-law scaling and thermodynamic temperature conversion
     ! across experimental bandpass.
     pl_int = sum( bandpass%dnu * bandpass%R(:,2) * bandpass%R(:,1)**(2+beta))
-    th_int = sum( bandpass%dnu * bandpass%R(:,2) * bandpass%R(:,1)**4 * exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) &
-        / (exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) - 1)**2)
 
     ! Calculate values at pivot frequency.
     pl0 = nu0**(2+beta)
@@ -160,9 +160,9 @@
                 dustsync = fdust(i)*fsync(j) + fsync(i)*fdust(j)
                 do l=this%pcl_lmin,this%pcl_lmax
                     CL%CL(l) = CL%CL(l) + &
-                         dust*Adust*(l/lpivot)**(alphadust) + &
-                         sync*Async*(l/lpivot)**(alphasync) + &
-                         dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
+                        dust*Adust*(l/lpivot)**(alphadust) + &
+                        sync*Async*(l/lpivot)**(alphasync) + &
+                        dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
                 end do
             end associate
         end do
