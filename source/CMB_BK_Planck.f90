@@ -134,7 +134,7 @@
     real(mcp) :: alphasync, betasync, dustsync_corr
     real(mcp) :: fdust(this%nmaps_required)
     real(mcp) :: fsync(this%nmaps_required)
-    real(mcp) :: dust, sync
+    real(mcp) :: dust, sync, dustsync
     integer i,j,l
     real(mcp) :: lpivot = 80.0_mcp
 
@@ -149,9 +149,7 @@
 
     do i=1, this%nmaps_required
         call DustScaling(betadust,Tdust,this%Bandpasses(i),fdust(i))
-        write(*,*) "dust scaling ", this%map_order%Item(i), fdust(i)
         call SyncScaling(betasync, this%Bandpasses(i), fsync(i))
-        write(*,*) "sync scaling ", this%map_order%Item(i), fsync(i)
     end do
 
     do i=1, this%nmaps_required
@@ -159,10 +157,12 @@
             associate(CL=> Cls(i,j))
                 dust = fdust(i)*fdust(j)
                 sync = fsync(i)*fsync(j)
+                dustsync = fdust(i)*fsync(j) + fsync(i)*fdust(j)
                 do l=this%pcl_lmin,this%pcl_lmax
                     CL%CL(l) = CL%CL(l) + &
                          dust*Adust*(l/lpivot)**(alphadust) + &
-                         sync*Async*(l/lpivot)**(alphasync)
+                         sync*Async*(l/lpivot)**(alphasync) + &
+                         dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
                 end do
             end associate
         end do
