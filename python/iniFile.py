@@ -1,7 +1,7 @@
 # AL Apr 11,Jun13, Jul14
 import os
 
-class iniFile:
+class iniFile(object):
 
 
     def __init__(self, filename=None, keep_includes=False):

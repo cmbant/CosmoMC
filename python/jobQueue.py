@@ -45,7 +45,7 @@ def getDefaulted(key_name, default=None, tp=str, template=None, ext_env=None, **
 def checkArguments(**kwargs):
     submitJob(None, None, msg=True, **kwargs)
 
-class jobSettings():
+class jobSettings(object):
 
     def __init__(self, jobName, msg=False, **kwargs):
         self.jobName = jobName
@@ -77,7 +77,7 @@ class jobSettings():
         self.runCommand = extractValue(template, 'RUN')
 
 
-class jobIndex():
+class jobIndex(object):
     """
      Stores the mappings between job Ids, jobNames
     """

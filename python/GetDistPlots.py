@@ -90,10 +90,39 @@ class GetDistPlotSettings(object):
         self.legend_fontsize = legend_fontsize or rcParams['legend.fontsize']
         self.lab_fontsize = lab_fontsize  or rcParams['axes.labelsize']
         self.axes_fontsize = axes_fontsize or rcParams['xtick.labelsize']
-        self.colorbar_axes_fontsize = self.axes_fontsize - 1
+        if isinstance(self.axes_fontsize, int): self.colorbar_axes_fontsize = self.axes_fontsize - 1
+        else: self.colorbar_axes_fontsize = 'smaller'
 
 
 defaultSettings = GetDistPlotSettings()
+
+def getSinglePlotter(ratio=3 / 4., plot_data=None, chain_dir=None, width_inch=3.464, settings=None, mcsamples=False, analysis_settings=None):
+    """ 
+    Wrapper functions to get plotter to make single plot of fixed width (default: one page column width)
+    """
+    plotter = GetDistPlotter(plot_data=plot_data, chain_dir=chain_dir, settings=settings or GetDistPlotSettings(), mcsamples=mcsamples, analysis_settings=analysis_settings)
+    plotter.settings.setWithSubplotSize(width_inch)
+    plotter.settings.fig_width_inch = width_inch
+#    if settings is None: plotter.settings.rcSizes()
+    plotter.make_figure(1, xstretch=1 / ratio)
+    return plotter
+
+def getSubplotPlotter(plot_data=None, chain_dir=None, subplot_size=2, settings=None, mcsamples=False, analysis_settings=None, width_inch=None):
+    """ 
+    Wrapper functions to get plotter to make array of subplots 
+    if width_inch is None, just makes plot as big as needed
+    """
+    plotter = GetDistPlotter(plot_data=plot_data, chain_dir=chain_dir, settings=settings or GetDistPlotSettings(), mcsamples=mcsamples, analysis_settings=analysis_settings)
+    plotter.settings.setWithSubplotSize(subplot_size)
+    if width_inch:
+        plotter.settings.fig_width_inch = width_inch
+        if not settings: plotter.settings.rcSizes()
+    if subplot_size < 3 and settings is None:
+        plotter.settings.axes_fontsize += 2
+        plotter.settings.colorbar_axes_fontsize += 2
+        plotter.settings.legend_fontsize = plotter.settings.lab_fontsize + 1
+    return plotter
+
 
 class Density1D(object):
     def bounds(self): return min(self.x), max(self.x)
@@ -1035,7 +1064,7 @@ class GetDistPlotter(object):
         setp(getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.colorbar_axes_fontsize)
 
     def _makeParamObject(self, names, samples):
-        class sampleNames(): pass
+        class sampleNames(object): pass
         p = sampleNames()
         for i, par in enumerate(names.names):
             setattr(p, par.name, samples[:, i])

@@ -1,6 +1,6 @@
 import numpy as np
 
-class covMat():
+class covMat(object):
 
     def __init__(self, filename='', matrix=[], paramNames=[]):
 

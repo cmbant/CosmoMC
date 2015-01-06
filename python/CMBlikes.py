@@ -21,7 +21,7 @@ def readWithHeader(fname):
             x = x[1:].split()
         return x, loadtxt(fname)
 
-class ClsArray():
+class ClsArray(object):
         # Store arrays of cls: self.cls_array[i,j] is zero based array of correlation of field i with j
 
         def __init__(self, filename=None, cols=None, field_names=['T', 'E', 'B', 'P']):
@@ -58,7 +58,7 @@ class ClsArray():
             if j > i: i, j = j, i
             return self.cls_array[i, j]
 
-class BinWindows():
+class BinWindows(object):
 
         def __init__(self, lmin, lmax, nbins):
             self.lmin = lmin
@@ -81,7 +81,7 @@ class BinWindows():
                         f.write("%5u " + "%10e"*len(self.cols_in) + "\n" % (L, self.binning_matrix[b, :, L]))
 
 
-class DatasetLikelihood():
+class DatasetLikelihood(object):
 
         def __init__(self, fname, field_names=['T', 'E', 'B', 'P']):
             self.field_names = field_names

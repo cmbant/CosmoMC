@@ -12,15 +12,35 @@ import pickle
 import ResultObjs
 import iniFile
 from chains import chains, chainFiles, lastModified
-
+import batchJob
 # =============================================================================
 
 version = 4
 
+default_grid_root = None
+output_base_dir = None
+cache_dir = None
+use_plot_data = False
+
+config_file = os.environ.get('GETDIST_CONFIG', None)
+if not config_file:
+    codeRoot = batchJob.getCodeRootPath()
+    config_file = os.path.join(codeRoot, 'python', 'config.ini')
+if os.path.exists(config_file):
+    ini = iniFile.iniFile(config_file)
+    default_grid_root = ini.string('default_grid_root', '')
+    output_base_dir = ini.string('output_base_dir', '')
+    cache_dir = ini.string('cache_dir', '')
+    use_plot_data = ini.bool('use_plot_data', use_plot_data)
+else:
+    ini = iniFile.iniFile()
+
 
 def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settings={}):
         files = chainFiles(file_root)
-        cachefile = file_root + '.py_mcsamples'
+        path, name = os.path.split(file_root)
+        path = cache_dir or path
+        cachefile = os.path.join(path, name) + '.py_mcsamples'
         if not no_cache and os.path.exists(cachefile) and lastModified(files) < os.path.getmtime(cachefile):
             try:
                 with open(cachefile, 'rb') as inp:
@@ -98,7 +118,7 @@ class Density1D(object):
         return splev([x], self.spl)
 
     def initLimitGrids(self, factor=100):
-        class InterpGrid(): pass
+        class InterpGrid(object): pass
 
         g = InterpGrid()
         g.factor = factor
@@ -210,9 +230,9 @@ class MCSamples(chains):
         self.mean_loglikes = False
         self.indep_thin = 0
 
-        self.subplot_size_inch = 3.0
+        self.subplot_size_inch = 4.0
         self.subplot_size_inch2 = self.subplot_size_inch
-        self.subplot_size_inch3 = self.subplot_size_inch
+        self.subplot_size_inch3 = 6.0
         self.out_dir = ""
 
         self.max_split_tests = 4
@@ -1749,7 +1769,7 @@ class MCSamples(chains):
 
     # Write functions
 
-    def WriteScriptPlots1D(self, filename, plotparams=None):
+    def WriteScriptPlots1D(self, filename, plotparams=None, ext='pdf'):
         textFileHandle = open(filename, 'w')
         textInit = WritePlotFileInit()
         textFileHandle.write(textInit % (
@@ -1761,12 +1781,12 @@ class MCSamples(chains):
             text = 'g.plots_1d(roots)\n'
         textFileHandle.write(text)
         textExport = WritePlotFileExport()
-        fname = self.rootname + '.' + 'pdf'
+        fname = self.rootname + '.' + ext
         textFileHandle.write(textExport % (fname))
         textFileHandle.close()
 
 
-    def WriteScriptPlots2D(self, filename, plot_2D_param, cust2DPlots, plots_only):
+    def WriteScriptPlots2D(self, filename, plot_2D_param, cust2DPlots, plots_only, ext='pdf'):
         self.done2D = np.ndarray([self.num_vars, self.num_vars], dtype=bool)
         self.done2D[:, :] = False
 
@@ -1797,13 +1817,13 @@ class MCSamples(chains):
                         textFileHandle.write("pairs.append(['%s','%s'])\n" % (par1, par2))
         textFileHandle.write('g.plots_2d(roots,param_pairs=pairs)\n')
         textExport = WritePlotFileExport()
-        fname = self.rootname + '_2D.' + 'pdf'
+        fname = self.rootname + '_2D.' + ext
         textFileHandle.write(textExport % (fname))
         textFileHandle.close()
         print 'Produced ', plot_num, ' 2D plots'
 
 
-    def WriteScriptPlotsTri(self, filename, triangle_params):
+    def WriteScriptPlotsTri(self, filename, triangle_params, ext='pdf'):
         textFileHandle = open(filename, 'w')
         textInit = WritePlotFileInit()
         textFileHandle.write(textInit % (
@@ -1812,12 +1832,12 @@ class MCSamples(chains):
         text = 'g.triangle_plot(roots, %s)\n' % triangle_params
         textFileHandle.write(text)
         textExport = WritePlotFileExport()
-        fname = self.rootname + '_tri.' + 'pdf'
+        fname = self.rootname + '_tri.' + ext
         textFileHandle.write(textExport % (fname))
         textFileHandle.close()
 
 
-    def WriteScriptPlots3D(self, filename, plot_3D):
+    def WriteScriptPlots3D(self, filename, plot_3D, ext='pdf'):
         textFileHandle = open(filename, 'w')
         textInit = WritePlotFileInit()
         textFileHandle.write(textInit % (
@@ -1829,7 +1849,7 @@ class MCSamples(chains):
             text += "sets.append(['%s','%s','%s'])\n" % (v1, v2, v3)
         text += 'g.plots_3d(roots,sets)\n'
         textFileHandle.write(text)
-        fname = self.rootname + '_3D.' + 'pdf'
+        fname = self.rootname + '_3D.' + ext
         textExport = WritePlotFileExport()
         textFileHandle.write(textExport % (fname))
         textFileHandle.close()
