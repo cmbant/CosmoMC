@@ -6,8 +6,7 @@ import numpy as np
 
 g = s.getSinglePlotter(ratio=1)
 
-roots = [g.getRoot('nnu_r', s.defdata + '_nnup39_lensing'),
-#        g.getRoot('nnu_meffsterile_r', s.defdata + '_lensing'),
+roots = [  g.getRoot('nnu_r', s.defdata + '_nnup39_lensing'),
                'base_r_' + s.defdata,
                 g.getRoot('r', s.defdata + '_lensing_BAO_H070p6_JLA')]
 
@@ -81,8 +80,8 @@ for p in [1, 2]:
 # nnu = g.param_latex_label(roots[0], 'nnu')
 # meff = g.param_latex_label(roots[0], 'meffsterile', labelParams='clik_latex.paramnames')
 
-# labels = [meff + '+' + nnu + ' (' + s.lensing + ')', s.LCDM + ' (' + s.defplanck + ')', s.LCDM + ' (' + s.defplanck + '+ext)']
 labels = [ s.lensing + r' ($\Delta N_{\rm eff}=0.39$)', s.LCDM + ' ' + s.defplanck, '+lensing+ext']
+# labels = [  s.LCDM + ' ' + s.defplanck, '+lensing+ext']
 
 leg = g.add_legend(labels, colored_text=True, align_right=True)
 leg.get_texts()[0].set_color('grey')

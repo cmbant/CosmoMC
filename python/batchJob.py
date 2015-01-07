@@ -7,16 +7,21 @@ def resetGrid(directory):
     if os.path.exists(fname): os.remove(fname)
 
 def readobject(directory=None):
+    import makeGrid
     if directory == None:
         directory = sys.argv[1]
     fname = os.path.abspath(directory) + os.sep + 'batch.pyobj'
     if not os.path.exists(fname):
-        import makeGrid
         if makeGrid.pathIsGrid(directory):
             return makeGrid.makeGrid(directory, readOnly=True, interactive=False)
         return None
-    with open(fname, 'rb') as inp:
-        return pickle.load(inp)
+    try:
+        with open(fname, 'rb') as inp:
+            return pickle.load(inp)
+    except:
+        if makeGrid.pathIsGrid(directory):
+            return makeGrid.makeGrid(directory, readOnly=True, interactive=False)
+        raise
 
 def saveobject(obj, filename):
         with open(filename, 'wb') as output:
