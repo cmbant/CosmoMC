@@ -510,6 +510,8 @@
     allocate(this%use_map(this%map_names%Count))
     S = Ini%Read_String('maps_use')
     if (S/='') then
+        if (any(.not. use_theory_field)) &
+            print *, 'CMBlikes WARNING: maps_use overrides fields_use'
         this%use_map = .false.
         call maps_use%SetFromString(S)
         do i=1,maps_use%Count
