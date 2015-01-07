@@ -1821,7 +1821,8 @@
     logical make_scatter_samples
     real(mcp) :: converge_test_limit
     Type (TTextFile) FileMatlab, File2D, File3d, FileTri, LikeFile
-
+    integer c
+    
     NameMapping%nnames = 0
 
     InputFile = GetParam(1)
@@ -2346,7 +2347,7 @@
     if (triangle_plot) then
         if(triangle_num==-1) then
             triangle_num=num_vars
-            triangle_params(1:triangle_num) = [1:num_vars]
+            triangle_params(1:triangle_num) = [ (c, c= 1, num_vars) ]
         else
             ix=triangle_num
             do j=ix,1,-1

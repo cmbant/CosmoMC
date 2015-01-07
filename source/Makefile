@@ -39,8 +39,8 @@ else
 #and preferably
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=44672
 F90C = gfortran
-FFLAGS = -cpp -O3 -ffast-math
-DEBUGFLAGS = -cpp -Og -g -fbounds-check -fbacktrace
+FFLAGS = -cpp -O3 -ffast-math -ffree-line-length-none
+DEBUGFLAGS = -cpp -Og -g -fbounds-check -fbacktrace -ffree-line-length-none
 MODOUT =  -J$(OUTPUT_DIR)
 #LAPACKL = -Wl,-framework -Wl,accelerate
 #commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
