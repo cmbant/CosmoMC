@@ -529,7 +529,8 @@
         end do
     end if
 
-    allocate(this%require_map(this%map_names%Count), source=this%use_map)
+    allocate(this%require_map(this%map_names%Count))
+    this%require_map = this%use_map
     !Bandpowers can depend on more fields than are actually used in likelihood
     !e.g. for correcting leakage or other linear corrections
     if (this%has_map_names) then
