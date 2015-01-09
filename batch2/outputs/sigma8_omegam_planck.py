@@ -3,7 +3,7 @@ from pylab import *
 
 g = s.getSinglePlotter()
 
-ranges = [0.245, 0.37, 0.73, 0.965]
+ranges = [0.246, 0.37, 0.73, 0.965]
 pair = ['omegam', 'sigma8']
 
 if False:

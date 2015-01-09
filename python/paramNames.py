@@ -1,7 +1,7 @@
 # AL Apr 11
 import os
 
-class paramInfo:
+class paramInfo(object):
 
     def __init__(self, line=None, name='', label='', comment='', derived=False):
         self.name = name
@@ -43,7 +43,7 @@ class paramInfo:
     def __str__(self):
         return self.string()
 
-class paramList:
+class paramList(object):
 
     def __init__(self, fileName=None, setParamNameFile=None):
 
@@ -143,7 +143,6 @@ class paramList:
 
 
 class paramNames(paramList):
-
 
     def loadFromFile(self, fileName):
 

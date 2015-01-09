@@ -1,16 +1,16 @@
-import os, ResultObjs, GetDistPlots, sys, batchJob
+import os, ResultObjs, GetDistPlots, batchJob
 from matplotlib import rcParams, rc, pylab
-import iniFile
+import MCSamples
 
 # common setup for matplotlib
 params = {'backend': 'pdf',
-          'axes.labelsize': 10,
-          'font.size': 10,
-          'legend.fontsize': 9,
-          'xtick.labelsize': 9,
-          'ytick.labelsize': 9,
-          'ytick.major.pad': 6,
-          'xtick.major.pad': 6,
+          'axes.labelsize': 9,
+          'font.size': 8,
+          'legend.fontsize': 8,
+          'xtick.labelsize': 8,
+          'ytick.labelsize': 8,
+          'ytick.major.pad': 4,
+          'xtick.major.pad': 4,
           'text.usetex': True,
           'font.family':'sans-serif',
           # free font similar to Helvetica
@@ -80,7 +80,6 @@ WPhighLlensing = r'\textit{Planck}+lensing+WP+highL'
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
 NoLowL = r'\textit{Planck}$-$lowL'
-NoLowLtau = r'\textit{Planck}$-$lowL+$\tau$prior'
 lensonly = 'lensing'
 HST = r'$H_0$'
 BAO = 'BAO'
@@ -96,56 +95,28 @@ s.norm_prob_label = 'Probability density'
 s.prob_y_ticks = True
 s.param_names_for_labels = 'clik_units.paramnames'
 s.alpha_filled_add = 0.85
-# s.solid_colors = ['#006FED', '#E03424', 'gray', '#009966' ]
 s.solid_contour_palefactor = 0.6
 
 s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1'), 'g', 'cadetblue', 'indianred']
 s.axis_marker_lw = 0.6
 s.lw_contour = 1
 
-use_plot_data = True
-
-def getRoot():
-    global use_plot_data
-    codeRoot = batchJob.getCodeRootPath()
-    configf = os.path.join(codeRoot, 'python', 'config.ini')
-    root = None
-    output_base_dir = None
-    if os.path.exists(configf):
-        ini = iniFile.iniFile(configf)
-        root = ini.string('default_grid_root', '')
-        output_base_dir = ini.string('output_base_dir', '')
-        use_plot_data = ini.bool('use_plot_data', use_plot_data)
-    return root or os.path.join(codeRoot, 'main'), output_base_dir or codeRoot
-
-rootdir, output_base_dir = getRoot()
+use_plot_data = MCSamples.use_plot_data
+rootdir = MCSamples.default_grid_root or os.path.join(batchJob.getCodeRootPath(), 'main')
+output_base_dir = MCSamples.output_base_dir or batchJob.getCodeRootPath()
 
 H0_high = [73.9, 2.7]
 H0_Freeman12 = [74.3, 2.1]
 H0_gpe = [70.6, 3.3]
 
 # various Omegam sigma8 constraints for plots
-def PLSZ(omm, sigma):
-    # from Anna 18/7/2014 for fixed b=0.8
-    return  (0.757 + 0.013 * sigma) * (omm / 0.32) ** (-0.3)
-
-def CFTHlens_Kilbinger(omm, sigma):
-    return  (0.79 + 0.03 * sigma) * (omm / 0.27) ** (-0.6)
-
-
-def CFTHlens_LCDM(omm, sigma):  # 1408.4742
-    return  (0.74 + 0.03 * sigma) * (omm / 0.27) ** (-0.47)
-
-def CFTHlens_mnu(omm, sigma):  # 1408.4742, same for sterile case
-    return  (0.72 + 0.03 * sigma) * (omm / 0.27) ** (-0.48)
-
 
 def galaxygalaxy(omm, sigma):  # mandelbaum
     return  (0.8 + 0.05 * sigma) * (omm / 0.25) ** (-0.57)
 
 def planck_lensing(omm, sigma):
     # g60_full
-    return  (0.592 + 0.021 * sigma) * omm ** (-0.25)
+    return  (0.591 + 0.021 * sigma) * omm ** (-0.25)
 
 
 def plotBounds(omm, data, c='gray'):
@@ -180,24 +151,24 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
         jobItem.loadJobItemResults(paramNameFile=self.settings.param_names_for_labels)
         return jobItem
 
-def getPlotter(plot_data=None, grid_dir=None):
+def getPlotter(plot_data=None, grid_dir=None, **kwargs):
     global plotter, rootdir
     if plot_data is not None or use_plot_data:
-        plotter = planckPlotter(plot_data or os.path.join(rootdir, 'plot_data'))
+        plotter = planckPlotter(plot_data or os.path.join(rootdir, 'plot_data'), **kwargs)
     if grid_dir or not use_plot_data:
-        plotter = planckPlotter(chain_dir=grid_dir or rootdir)
+        plotter = planckPlotter(chain_dir=grid_dir or rootdir, **kwargs)
     return plotter
 
 plotter = getPlotter()
 
 
-def getSubplotPlotter(plot_data=None, grid_dir=None):
+def getSubplotPlotter(plot_data=None, chain_dir=None, **kwargs):
     s.setWithSubplotSize(2)
     s.axes_fontsize += 2
     s.colorbar_axes_fontsize += 2
 #    s.lab_fontsize += 2
     s.legend_fontsize = s.lab_fontsize + 1
-    return getPlotter(plot_data, grid_dir)
+    return getPlotter(plot_data, chain_dir)
 
 def getPlotterWidth(size=1, **kwargs):  # size in mm
     inch_mm = 0.0393700787
@@ -207,14 +178,15 @@ def getPlotterWidth(size=1, **kwargs):  # size in mm
     elif size == 3: width = 180 * inch_mm
     else: width = size * inch_mm
     s.fig_width_inch = width
-    s.setWithSubplotSize(2)
+    s.setWithSubplotSize(kwargs.get('subplot_size', 2))
     s.rcSizes(**kwargs)
     return getPlotter()
 
-def getSinglePlotter(ratio=3 / 4., plot_data=None, grid_dir=None):
-    s.setWithSubplotSize(3.5)
+def getSinglePlotter(ratio=3 / 4., plot_data=None, chain_dir=None, width_inch=3.464, **kwargs):
+    s.setWithSubplotSize(width_inch)
+    s.fig_width_inch = width_inch
     s.rcSizes()
-    plotter = getPlotter(plot_data, grid_dir)
+    plotter = getPlotter(plot_data, chain_dir)
     plotter.make_figure(1, xstretch=1 / ratio)
     return plotter
 

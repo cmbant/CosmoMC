@@ -512,11 +512,40 @@ installed manually or obtained from the cosmomc git repository (access available
 <UL>
 <LI><B>xxx 2014</B><BR>
 <UL>
-<LI>Added BAO from DR7 MGS (<A HREF="http://arxiv.org/abs/1409.3242">arXiv:1409.3242</A>, thanks Lado Samushia)
-<LI>Fixes for ifort 15 compatibility
-<LI>Added deleteJobs.py and corresponding functions in jobQueue.py
+<LI>New GetDist python version, updated plotted and graphical user interface:
+<UL>
+<LI>Run python/gui/gui.py (required PySide python module to be installed): make 1D, 2D, 3D plots, select parameters and chains, export PDF or script
+<LI>Pure-Python version of GetDist, python/GetDist.py (not all options supported, e.g. no Raftery-Lewis convergence tests)
+<LI>GetDistPlots can now generate densities on the fly from chains without running GetDist first (old method still supported)
+<LI>Many plotting generalizations, including new rectangle plots, customization of colours and lines, mixed filled/line contour legends, etc.
+<LI>MCSamples.py module for script access generalized getdist function: loading chains, getting margestats/limits, density estimates, adding new derived parameters, PCA, etc.
+</UL>
+<LI>CAMB updated to December 2014 version, with support for more transfer function options, sigma8 variations, halofit version selection, and new derived parameters
+<LI>Data Updates:
+<UL>
+<LI>New weak lensing module, using Weyl spectrum from CAMB, with various data cuts of the <A HREF="http://arxiv.org/abs/1303.1808">CFHTlenS data</A> (thanks Adam Moss)
+<LI>BAO module restructured, and supports a number of points with any of fsigma8, DA, H, Dv/rs, rs/DV and with a correlation matrix
+<LI>Added RSD/BAO measurements from <A HREF="http://arxiv.org/abs/1312.4899">Samushia et al.</A> and <A HREF="http://arxiv.org/abs/1204.4725">Beutler et al.</A> (thanks Adam Moss)
+<LI>Added BAO from DR7 MGS (<A HREF="http://arxiv.org/abs/1409.3242">arXiv:1409.3242</A>, thanks Lado Samushia), and 6DF updated to use rs/Dv.
+<LI>New Abundances module for Yp and D/H abundance measurement likelihoods
+</UL>
+<LI>Grid scripts:
+<UL>
+<LI>New optional script parameters to select more specifically in various ways
+<LI>deleteJobs.py and corresponding functions in jobQueue.py
+<LI>listGrid.py to view chain names in grid
 <LI>batchJob functions to resolve actual chain name given param and data tags (in any order)
-<LI>Fixed emptying of .data files when -starting from checkpoint
+<LI>Matching of .covmat names using normalized name tags
+<LI>Numerous other small generalizations
+</UL>
+<LI>Importance sampling (action=1):
+<UL>
+<LI>Now support redo_from_text with redo_skip and redo_thin (no need for .data files)
+<LI>New redo_nochange option to calculate new likelihood chi2 derived parameters without affecting weights
+<LI>Bug fixes
+</UL>
+<LI>Updated bbn_consistency interpolation table from Parthenelope fits
+<LI>New default derived parameters, added if appropriate; .paramnames files moved into paramnames/ folder
 </UL>
 
 <LI><B>July 2014</B><BR>

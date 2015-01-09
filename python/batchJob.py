@@ -7,16 +7,21 @@ def resetGrid(directory):
     if os.path.exists(fname): os.remove(fname)
 
 def readobject(directory=None):
+    import makeGrid
     if directory == None:
         directory = sys.argv[1]
     fname = os.path.abspath(directory) + os.sep + 'batch.pyobj'
     if not os.path.exists(fname):
-        import makeGrid
         if makeGrid.pathIsGrid(directory):
             return makeGrid.makeGrid(directory, readOnly=True, interactive=False)
         return None
-    with open(fname, 'rb') as inp:
-        return pickle.load(inp)
+    try:
+        with open(fname, 'rb') as inp:
+            return pickle.load(inp)
+    except:
+        if makeGrid.pathIsGrid(directory):
+            return makeGrid.makeGrid(directory, readOnly=True, interactive=False)
+        raise
 
 def saveobject(obj, filename):
         with open(filename, 'wb') as output:
@@ -31,7 +36,7 @@ def nonEmptyFile(fname):
 def getCodeRootPath():
     return os.path.normpath(os.path.join(os.path.dirname(__file__), '..' + os.sep)) + os.sep
 
-class propertiesItem:
+class propertiesItem(object):
     def propertiesIni(self):
         if os.path.exists(self.propertiesIniFile()):
             return iniFile.iniFile(self.propertiesIniFile())
@@ -40,7 +45,7 @@ class propertiesItem:
             ini.original_filename = self.propertiesIniFile()
             return ini
 
-class dataSet:
+class dataSet(object):
     def __init__(self, names, params=None, covmat=None, dist_settings={}):
         if isinstance(names, basestring): names = [names]
         if params is None: params = [(name + '.ini') for name in names]
@@ -111,14 +116,14 @@ class dataSet:
         return "_".join(sorted(self.namesReplacing(dic)))
 
 
-class jobGroup:
+class jobGroup(object):
     def __init__(self, name, params=[[]], importanceRuns=[], datasets=[]):
             self.params = params
             self.groupName = name
             self.importanceRuns = importanceRuns
             self.datasets = datasets
 
-class importanceSetting:
+class importanceSetting(object):
     def __init__(self, names, inis=[], dist_settings={}, minimize=True):
         self.names = names
         self.inis = inis

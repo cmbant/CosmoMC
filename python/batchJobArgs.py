@@ -7,7 +7,7 @@ except:
 def argParser(desc=''):
     return argparse.ArgumentParser(description=desc)
 
-class batchArgs():
+class batchArgs(object):
 
         def __init__(self, desc='', importance=True, noBatchPath=False, notExist=False, notall=False, converge=False, plots=False, batchPathOptional=False):
             self.parser = argparse.ArgumentParser(description=desc)

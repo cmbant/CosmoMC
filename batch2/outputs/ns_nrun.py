@@ -6,6 +6,6 @@ dataroots = [s.defdata_TT, s.defdata_all]
 roots = ['base_nrun_' + root for root in dataroots]
 
 g.plot_3d(roots, ['ns02', 'nrun', 'ns'])
-# g.add_legend(labels, legend_loc='upper right')
+
 g.add_y_marker(0)
 g.export()

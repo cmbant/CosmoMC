@@ -315,7 +315,7 @@ bin_window_out_order = PP
 covmat_cl = PP
 covmat_fiducial = %s_cov.dat
 
-linear_correction_fiducial_file = %s_lensing_fiducial_correction.dat
+linear_correction_fiducial = %s_lensing_fiducial_correction.dat
 linear_correction_bin_window_files = %s_lens_delta_window/window%%u.dat
 linear_correction_bin_window_in_order = %s
 linear_correction_bin_window_out_order = %s

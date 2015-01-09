@@ -78,6 +78,7 @@
     procedure :: SaveReadValues => Ini_SaveReadValues
     procedure :: Key_To_Arraykey => Ini_Key_To_Arraykey
     procedure :: EnumerationValue => Ini_EnumerationValue
+    procedure :: ResolveLinkedFile => Ini_ResolveLinkedFile
     procedure, private :: NameValue_AddLine => Ini_NameValue_AddLine
     procedure, private :: EmptyCheckDefault => Ini_EmptyCheckDefault
     procedure, private :: Ini_Read_Real_Change
@@ -357,6 +358,29 @@
 
     end subroutine Ini_NameValue_AddLine
 
+    function Ini_ResolveLinkedFile(this, name, thisfilename) result(IncludeFile)
+    class(TIniFile) :: this
+    character(LEN=*), intent(in) :: name, thisfilename
+    character(LEN=:), allocatable :: IncludeFile
+
+    if (.not. File%IsFullPath(name)) then
+        IncludeFile= File%ExtractPath(thisfilename)//trim(name)
+        if (File%Exists(IncludeFile)) then
+            if (File%Exists(name) .and. name/=IncludeFile) &
+                call this%Error(trim(thisfilename)// &
+                ' , ambiguous multiple matches to include file: '//trim(name))
+        else
+            IncludeFile= name
+        end if
+    else
+        IncludeFile= name
+    end if
+    if (.not. File%Exists(IncludeFile)) then
+        call this%Error(trim(thisfilename)//' , include file not found: '//trim(name))
+    end if
+
+    end function Ini_ResolveLinkedFile
+
     recursive subroutine Ini_Open(this, filename, error, slash_comments, append,only_if_undefined)
     class(TIniFile) :: this
     character (LEN=*), intent(IN) :: filename
@@ -367,7 +391,7 @@
     character(LEN=:), allocatable :: InLine
     integer lastpos, i, status
     Type(TNameValueList) IncudeFiles, DefaultValueFiles
-    logical FileExists, isDefault
+    logical isDefault
     Type(TTextFile) :: F
 
 
@@ -422,28 +446,12 @@
 
     do i=1, IncudeFiles%Count
         if (DefaultFalse(error)) exit
-        IncludeFile= IncudeFiles%Items(i)%P%Name
-        inquire(file=IncludeFile, exist = FileExists)
-        if (.not. FileExists) then
-            IncludeFile= File%ExtractPath(filename)//trim(IncludeFile)
-            inquire(file=IncludeFile, exist = FileExists)
-            if (.not. FileExists) then
-                call this%Error('Ini_Open, error in INCLUDE file not found: '//trim(IncudeFiles%Items(i)%P%Name))
-            end if
-        end if
+        IncludeFile = this%ResolveLinkedFile(IncudeFiles%Items(i)%P%Name, filename)
         call this%Open(IncludeFile, error, slash_comments, append=.true.,only_if_undefined=isDefault)
     end do
     do i=1, DefaultValueFiles%Count
         if (DefaultFalse(error)) exit
-        IncludeFile=DefaultValueFiles%Items(i)%P%Name
-        inquire(file=IncludeFile, exist = FileExists)
-        if (.not. FileExists) then
-            IncludeFile=trim(File%ExtractPath(filename))//trim(IncludeFile)
-            inquire(file=IncludeFile, exist = FileExists)
-            if (.not. FileExists) then
-                call this%Error('Ini_Open, error in DEFAULT file not found: '//trim(DefaultValueFiles%Items(i)%P%Name))
-            end if
-        end if
+        IncludeFile = this%ResolveLinkedFile(DefaultValueFiles%Items(i)%P%Name, filename)
         call this%Open(IncludeFile, error, slash_comments, append=.true., only_if_undefined=.true.)
     end do
     call IncudeFiles%Clear()

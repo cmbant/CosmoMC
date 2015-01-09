@@ -7,12 +7,11 @@
 import sys
 import zipfile
 import os
-import os.path
 import getopt
 from datetime import datetime
 import time
 
-class unzip:
+class unzip(object):
     def __init__(self, info_only=False):
         self.info_only = info_only
 

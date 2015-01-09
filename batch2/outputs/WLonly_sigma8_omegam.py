@@ -30,7 +30,7 @@ for base in ['base']:
 
  #   g.add_legend([  'WL +' + s.BAO, r'WL + \theta+' + s.BAO, 'WL (Heymans)' , 'WL (Heymans) + BAO', r'WL (Heymans) + $\theta$ +BAO', s.defplanck], colored_text=True)
 
-    g.add_legend([  'WL+' + s.BAO, r'WL+$\theta_{MC}$+' + s.BAO, s.defplanck], colored_text=True)
+    g.add_legend([  'WL+' + s.BAO, r'WL+$\theta_{\rm MC}$+' + s.BAO, s.defplanck], colored_text=True)
 
     xlim([0.13, 0.6])
     ylim([0.45, 1.1])

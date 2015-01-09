@@ -25,9 +25,9 @@ if False:
 
 # g.add_legend([s.defplanck, s.defplanck + '+lensing'])
 
-g.add_legend([ s.lensonly + '+' + s.BAO, s.lensonly + '+' + s.BAO + r'+$\theta_{MC}$', s.defplanck])
+g.add_legend([ s.lensonly + '+' + s.BAO, s.lensonly + '+' + s.BAO + r'+$\theta_{\rm MC}$', s.defplanck])
 
-xlim([0.14, 0.6])
+xlim([0.15, 0.6])
 ylim([0.6, 1.02])
 
 g.export()

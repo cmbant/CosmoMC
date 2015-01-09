@@ -393,15 +393,16 @@ glens.params = [[], ['mnu'], ['nnu']]
 glens.importanceRuns = []
 groups.append(glens)
 
-glens = batchJob.jobGroup('lensonlyext')
-glens.datasets = []
-for d in copy.deepcopy(lensdata):
-    d.add('theta', {'param[theta]':'1.0408'})
-    d.add(BAO, BAOdata)
-    glens.datasets.append(d)
-glens.params = [['nnu', 'meffsterile'], ['nnu', 'mnu']]
-glens.importanceRuns = []
-groups.append(glens)
+if False:
+    glens = batchJob.jobGroup('lensonlyext')
+    glens.datasets = []
+    for d in copy.deepcopy(lensdata):
+        d.add('theta', {'param[theta]':'1.0408'})
+        d.add(BAO, BAOdata)
+        glens.datasets.append(d)
+    glens.params = [['nnu', 'meffsterile'], ['nnu', 'mnu']]
+    glens.importanceRuns = []
+    groups.append(glens)
 
 gphi = batchJob.jobGroup('Aphiphi')
 gphi.params = [['Aphiphi']]
@@ -509,6 +510,7 @@ if False:
 gWMAP = batchJob.jobGroup('WMAP')
 gWMAP.params = [[]]
 gWMAP.datasets = [WMAP9]
+gWMAP.importanceRuns = [post_BAO, post_lensing, post_lensingBAO]
 groups.append(gWMAP)
 
 gchecks = batchJob.jobGroup('checks')

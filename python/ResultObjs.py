@@ -1,6 +1,6 @@
 import paramNames, decimal, numpy as np
 
-class textFile:
+class textFile(object):
 
     def __init__(self, lines=[]):
         self.lines = lines
@@ -62,7 +62,7 @@ def numberFigs(number, sigfig):
         result.insert(0, '-')
     return ''.join(result)
 
-class numberFormatter():
+class numberFormatter(object):
     def __init__(self, sig_figs=4):
         self.sig_figs = sig_figs
         self.separate_limit_tol = 0.1
@@ -193,7 +193,7 @@ class noLineTableFormatter(openTableFormatter):
         return r'\noalign{\vskip 3pt}\cline{2-' + str(colsPerParam * numResults + 1) + r'}\noalign{\vskip 3pt}'
 
 
-class resultTable():
+class resultTable(object):
 
     def __init__(self, ncol, results, limit=2, tableParamNames=None, titles=None, formatter=None,
                  numFormatter=None, blockEndParams=None, paramList=None, refResults=None, shiftSigma_indep=False, shiftSigma_subset=False):
@@ -380,7 +380,7 @@ class bestFit(paramResults):
         if param is not None: return [formatter.numberFormatter.formatNumber(param.best_fit)]
         else: return None
 
-class paramLimit():
+class paramLimit(object):
     def __init__(self, minmax, tag='two'):
         self.lower = minmax[0]
         self.upper = minmax[1]

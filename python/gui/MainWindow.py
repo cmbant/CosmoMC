@@ -7,9 +7,8 @@ import logging
 import GetDistPlots
 import ResultObjs
 import matplotlib
-from matplotlib import rcParams
 import numpy as np
-# matplotlib.use('Qt4Agg')
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
@@ -25,7 +24,7 @@ try:
     except ImportError:
         print "Missing Resources_pyside.py: Run script update_resources.sh"
 except ImportError:
-    print "Can't import PySide modules."
+    print "Can't import PySide modules, please install PySide first."
     sys.exit()
 
 import MCSamples
@@ -81,6 +80,8 @@ class MainWindow(QMainWindow):
 
         # Path of root directory
         self.rootdirname = None
+
+        self.plot_module = 'GetDistPlots'
 
         self._resetGridData()
         self._resetPlotData()
@@ -276,10 +277,6 @@ class MainWindow(QMainWindow):
         self.centralWidget.setLayout(hbox)
         self.readSettings()
 
-    def setIniFile(self, iniFile):
-        logging.debug("ini file is %s" % iniFile)
-        self.iniFile = iniFile
-
     def closeEvent(self, event):
         self.writeSettings()
         event.accept()
@@ -418,10 +415,14 @@ class MainWindow(QMainWindow):
         self.rootdirname = dirName
         self.lineEditDirectory.setText(self.rootdirname)
 
-        if self.plotter is None:
-            self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True, analysis_settings=self.iniFile)
+        self.getPlotter()
 
         self._updateComboBoxRootname(root_list)
+
+    def getPlotter(self, chain_dir=None):
+        if self.plotter is None or chain_dir:
+            self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True, chain_dir=chain_dir, analysis_settings=self.iniFile)
+        return self.plotter
 
     def _updateParameters(self):
 
@@ -490,7 +491,12 @@ class MainWindow(QMainWindow):
         self._resetGridData()
         self.is_grid = True
         logging.debug("Read grid chain in %s" % batchPath)
-        batch = batchJob.readobject(batchPath)
+        try:
+            batch = batchJob.readobject(batchPath)
+        except:
+            batchJob.resetGrid(batchPath)
+            batch = batchJob.readobject(batchPath)
+
         self.batch = batch
         items = dict()
         for jobItem in batch.items(True, True):
@@ -500,10 +506,7 @@ class MainWindow(QMainWindow):
         logging.debug("Found %i names for grid" % len(items.keys()))
         self.grid_paramtag_jobItems = items
 
-        self.plotter = GetDistPlots.GetDistPlotter(
-            mcsamples=True,
-            chain_dir=self.rootdirname,
-            analysis_settings=self.iniFile)
+        self.getPlotter(chain_dir=self.rootdirname)
 
         self.comboBoxRootname.hide()
         self.listRoots.show()
@@ -781,20 +784,15 @@ class MainWindow(QMainWindow):
             items_y = self.items_y
             self.plotter.settings.setWithSubplotSize(3.5)
 
-            script = ""
-            # Script
-            if self.is_grid:
-                script = ""
-                script += "import GetDistPlots, os\n"
-                script += "g=GetDistPlots.GetDistPlotter(chain_dir=r'%s')\n" % (self.rootdirname)
-                script += "g.settings.setWithSubplotSize(3.5)\n"
-                script += "roots = []\n"
+            script = "import %s as s\nimport os\n\n" % self.plot_module
+            if len(items_x) > 1 or len(items_y) > 1:
+                plot_func = 'getSubplotPlotter'
             else:
-                script = ""
-                script += "import GetDistPlots, os\n"
-                script += "g=GetDistPlots.GetDistPlotter(mcsamples=True, ini_file=r'%s')\n" % self.iniFile
-                script += "g.settings.setWithSubplotSize(3.5)\n"
-                script += "dict_roots={}\n"
+                plot_func = 'getSinglePlotter'
+            if self.is_grid:
+                script += "g=s.%s(chain_dir=r'%s')\n" % (plot_func, self.rootdirname)
+            else:
+                script += "g=s.%s(mcsamples=True, ini_file=r'%s')\n" % (plot_func, self.iniFile)
 
             # Root names
             roots = []
@@ -802,14 +800,12 @@ class MainWindow(QMainWindow):
                 if self.rootnames.has_key(basename):
                     rootname, state = self.rootnames[basename]
                     roots.append(os.path.basename(rootname))
-                    if self.is_grid:
-                        script += "roots.append('%s')\n" % (basename)
-                    else:
-                        script += "dict_roots['%s'] = r'%s'\n" % (basename, rootname)
+                    if not self.is_grid:
+                        script += "g.sampleAnalyser.addRoot(r'%s')\n" % (rootname)
 
-            if not self.is_grid:
-                script += "g.sampleAnalyser.addRoots(dict_roots.values())\n"
-                script += "roots=dict_roots.keys()\n"
+            script += "roots = []\n"
+            for root in roots:
+                script += "roots.append('%s')\n" % (root)
 
             logging.debug("Plotting with roots = %s" % str(roots))
 
@@ -927,7 +923,6 @@ class MainWindow(QMainWindow):
                             try:
                                 triplets = ["['%s', '%s', '%s']" % tuple(trip) for trip in sets]
                                 if len(sets) == 1:
-                                    script += "g.make_figure(1, ystretch=0.75)\n"
                                     script += "g.plot_3d(roots, %s)\n" % triplets[0]
                                     self.plotter.settings.scatter_size = 6
                                     self.plotter.make_figure(1, ystretch=0.75)

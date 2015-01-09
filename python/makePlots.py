@@ -1,4 +1,4 @@
-import os, batchJobArgs, paramNames, GetDistPlots
+import os, batchJobArgs
 
 
 Opts = batchJobArgs.batchArgs('Make plots from getdist outputs', importance=True, converge=True, plots=True)
