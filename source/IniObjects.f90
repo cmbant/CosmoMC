@@ -367,7 +367,8 @@
         IncludeFile= File%ExtractPath(thisfilename)//trim(name)
         if (File%Exists(IncludeFile)) then
             if (File%Exists(name) .and. name/=IncludeFile) &
-                call this%Error(trim(thisfilename)//' , ambiguous multiple matches to include file: '//trim(name))
+                call this%Error(trim(thisfilename)// &
+                ' , ambiguous multiple matches to include file: '//trim(name))
         else
             IncludeFile= name
         end if
