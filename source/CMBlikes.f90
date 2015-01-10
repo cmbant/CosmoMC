@@ -1104,7 +1104,7 @@
         else
             if (this%nmaps /= this%nmaps_required) call MpiStop('CMBlikes: Unbinned must have required==used')
             do i=1, this%nmaps
-                do j=0, i
+                do j=1, i
                     if (allocated(TheoryCls(i,j)%CL)) then
                         C(i,j) =TheoryCLs(i,j)%CL(bin)
                     else
