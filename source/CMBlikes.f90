@@ -593,7 +593,8 @@
         this%nbins = Ini%Read_Int('nbins',0)
     else
         this%nbins = this%pcl_lmax - this%pcl_lmin + 1
-        Write(*,*) 'WARNING: Unbinned likelihoods untested in this version'
+        if (this%like_approx/=like_approx_fullsky_exact) &
+            Write(*,*) 'WARNING: Unbinned likelihoods untested in this version'
     end if
 
     if (bin_test) then
