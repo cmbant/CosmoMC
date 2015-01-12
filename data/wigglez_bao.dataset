@@ -7,5 +7,5 @@ measurement_type = Az
 #number of bao data points 
 num_bao = 3
 
-bao_measurements_file = %DATASETDIR%wigglez_BAO.txt
-bao_invcov_file = %DATASETDIR%wigglez_BAO_invcov.txt
+bao_measurements_file = wigglez_BAO.txt
+bao_invcov_file = wigglez_BAO_invcov.txt

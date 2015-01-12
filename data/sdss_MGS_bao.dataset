@@ -7,5 +7,5 @@ measurement_type = DV_over_rs
 zeff = 0.15
 bao_measurement = 4.465666824   .1681350461
 
-prob_dist = %DATASETDIR%sdss_MGS_prob.txt
+prob_dist = sdss_MGS_prob.txt
 

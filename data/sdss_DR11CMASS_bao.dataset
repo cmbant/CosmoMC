@@ -3,7 +3,7 @@ name = DR11CMASS
 measurement_type = DV_over_rs
 
 alpha_npoints = 280
-prob_dist = %DATASETDIR%sdss_DR11CMASS_consensus.dat
+prob_dist = sdss_DR11CMASS_consensus.dat
 
 zeff =0.57	
 #Note these values are not used in the actual likelihood; latter is with true rs
