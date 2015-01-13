@@ -73,7 +73,7 @@
     class(TSettingIni) :: ini
     class(TBAOLikelihood), pointer :: this
     integer i
-    Type(TSettingIni) :: DataSets, OverrideSettings
+    Type(TSettingIni) :: DataSets
 
     if (.not. Ini%Read_Logical('use_BAO',.false.)) return
 
@@ -85,7 +85,6 @@
     end if
 
     do i= 1, DataSets%Count
-        call Ini%SettingValuesForTagName('bao_dataset',DataSets%Name(i),OverrideSettings)
         if (Datasets%Name(i)=='MGS') then
             allocate(MGSLikelihood::this)
         else if (Datasets%Name(i)=='DR11CMASS') then
@@ -93,7 +92,7 @@
         else
             allocate(TBAOLikelihood::this)
         end if
-        call this%ReadDatasetFile(Datasets%Value(i),OverrideSettings)
+        call this%ReadDatasetFile(Datasets%Value(i))
         this%tag = Datasets%Name(i)
         this%LikelihoodType = 'BAO'
         this%needs_background_functions = .true.
@@ -110,38 +109,19 @@
     character(LEN=:), allocatable :: bao_measurement, bao_measurements_file
     integer i,iopb
     Type(TTextFile) :: F
-    logical :: hasType
-    character(LEN=Ini_Enumeration_Len) :: tp
 
     if (Feedback > 0 .and. MpiRank==0) write (*,*) 'reading BAO data set: '//trim(this%name)
-
     this%num_bao = Ini%Read_Int('num_bao',1)
+
     call Ini%Read('rs_rescale',this%rs_rescale)
 
     allocate(this%bao_z(this%num_bao))
     allocate(this%bao_obs(this%num_bao))
     allocate(this%bao_err(this%num_bao))
 
-    hasType = Ini%HasKey('measurement_type')
-    if (hasType) then
-        call Ini%Read_Enumeration_List('measurement_type',measurement_types, this%type_bao, nvalues = this%num_bao)
-    else
-        allocate(this%type_bao(this%num_bao))
-    end if
-    bao_measurements_file = Ini%ReadRelativeFileName('bao_measurements_file')
-    if (bao_measurements_file/='') then
-        call F%Open(bao_measurements_file)
-        do i=1,this%num_bao
-            if (hasType) then
-                read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
-            else
-                read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i), tp
-                this%type_bao(i) = Ini%EnumerationValue(tp, measurement_types)
-            end if
-        end do
-        call F%Close()
-    else
-        if (.not. hasType) call MpiStop('BAO data file must have measurement_file or measurement_type')
+    call Ini%Read_Enumeration_List('measurement_type',measurement_types, this%type_bao, nvalues = this%num_bao)
+ 
+    if (Ini%HasKey('zeff')) then
         this%bao_z = Ini%Read_Double('zeff')
         bao_measurement  = Ini%Read_String('bao_measurement')
         if (this%num_bao>1) then
@@ -149,8 +129,14 @@
         else
             read (bao_measurement,*) this%bao_obs(1),this%bao_err(1)
         end if
+    else
+        bao_measurements_file = Ini%ReadFileName('bao_measurements_file')
+        call F%Open(bao_measurements_file)
+        do i=1,this%num_bao
+            read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
+        end do
+        call F%Close()
     end if
-
     if (any(this%bao_z< 0.0001)) call MpiStop('Error reading BAO measurements')
 
     this%needs_powerspectra =  any(this%type_bao == f_sigma8)
@@ -160,6 +146,7 @@
         allocate(this%exact_z(this%num_bao))
         this%exact_z = this%bao_z
     end if
+
 
     call this%InitProbDist(Ini)
 
@@ -175,7 +162,7 @@
     this%bao_invcov=0
 
     if (Ini%HasKey('bao_invcov_file')) then
-        bao_invcov_file  = Ini%ReadRelativeFileName('bao_invcov_file')
+        bao_invcov_file  = Ini%ReadFileName('bao_invcov_file')
         call File%ReadTextMatrix(bao_invcov_file, this%bao_invcov)
     else
         do i=1,this%num_bao
@@ -269,7 +256,7 @@
     allocate(this%alpha_perp_file(alpha_npoints),this%alpha_plel_file(alpha_npoints))
     allocate(this%prob_file(alpha_npoints,alpha_npoints))
 
-    call F%Open(Ini%ReadRelativeFileName('prob_dist'))
+    call F%Open(Ini%ReadFileName('prob_dist'))
     do ii=1, alpha_npoints
         do jj=1, alpha_npoints
             read (F%unit,*,iostat=ios) tmp0,tmp1,tmp2
@@ -334,7 +321,7 @@
     class(MGSLikelihood) this
     class(TSettingIni) :: Ini
 
-    call File%LoadTxt(Ini%ReadRelativeFileName('prob_dist'), this%alpha_prob)
+    call File%LoadTxt(Ini%ReadFileName('prob_dist'), this%alpha_prob)
 
     end subroutine BAO_MGS_InitProbDist
 
