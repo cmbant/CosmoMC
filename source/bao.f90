@@ -23,12 +23,12 @@
     implicit none
     private
 
-    character(LEN=Ini_Enumeration_Len), parameter :: measurement_types(6) = &
+    character(LEN=Ini_Enumeration_Len), parameter :: measurement_types(7) = &
         [character(Ini_Enumeration_Len)::'Az','DV_over_rs','rs_over_DV','DA_over_rs', &
-        'F_AP', 'f_sigma8']
+        'F_AP', 'f_sigma8','bao_Hz_rs']
 
     integer, parameter :: bao_Az =1, bao_DV_over_rs = 2, bao_rs_over_DV = 3, bao_DA_over_rs = 4, &
-        F_AP= 5, f_sigma8=6
+        F_AP= 5, f_sigma8=6, bao_Hz_rs = 7
 
     type, extends(TCosmoCalcLikelihood) :: TBAOLikelihood
         integer :: num_bao ! total number of points used
@@ -218,6 +218,8 @@
         select case(this%type_bao(j))
         case (bao_DV_over_rs)
             BAO_theory(j) = this%Calculator%BAO_D_v(z)/rs
+        case (bao_Hz_rs)
+            BAO_theory(j) = this%Calculator%Hofz_Hunit(z)*rs
         case (bao_rs_over_DV)
             BAO_theory(j) = rs/this%Calculator%BAO_D_v(z)
         case (bao_Az)
@@ -291,7 +293,7 @@
     rsdrag_theory = this%get_rs_drag(Theory)
 
     alpha_perp=(this%Calculator%AngularDiameterDistance(z)/rsdrag_theory)/(DA_fid/rd_fid)
-    alpha_plel=(H_fid*rd_fid)/((const_c*this%Calculator%Hofz(z)/1.d3)*rsdrag_theory)
+    alpha_plel=(H_fid*rd_fid)/((this%Calculator%Hofz_Hunit(z))*rsdrag_theory)
     if ((alpha_perp < this%alpha_perp_file(1)).or.(alpha_perp > this%alpha_perp_file(this%alpha_npoints-1)).or. &
         &   (alpha_plel < this%alpha_plel_file(1)).or.(alpha_plel > this%alpha_plel_file(this%alpha_npoints-1))) then
     BAO_DR11_loglike = logZero

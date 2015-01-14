@@ -19,6 +19,7 @@
     contains
     procedure :: BAO_D_v
     procedure :: Hofz
+    procedure :: Hofz_Hunit
     procedure :: AngularDiameterDistance
     procedure :: ComovingRadialDistance
     procedure :: AngularDiameterDistance2
@@ -222,5 +223,13 @@
     Hofz = 0
 
     end function Hofz
+
+    real(mcp) function Hofz_Hunit(this, z)
+    class(TCosmologyCalculator) :: this
+    real(mcp), intent(IN) :: z
+
+    Hofz_Hunit = const_c*this%Hofz(z)/1.d3
+
+    end function Hofz_Hunit
 
     end module Calculator_Cosmology
