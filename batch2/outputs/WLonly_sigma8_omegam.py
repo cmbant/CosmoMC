@@ -11,24 +11,13 @@ for base in ['base']:
 
     if base == 'base':
         s.plotBounds(omm, s.planck_lensing)
-#        g.plot_3d(base + '_maccrann', ['omegam', 'sigma8', 'H0'])
 
     g.plot_3d(base + '_WLonlyHeymans', ['omegam', 'sigma8', 'H0'])
 
-    # g.add_2d_contours('base_lensonly_HST70p6', 'omegam', 'sigma8', ls='-', color='blue', lw=0.6)
-#    g.add_2d_contours(base + '_WLonly_BAO', 'omegam', 'sigma8', ls='-', color='darkred', lw=0.6)
-#    g.add_2d_contours(base + '_WLonly_BAO_theta', 'omegam', 'sigma8', ls='-', color='green', lw=0.6)
-
-#    g.add_2d_contours(base + '_WLonlyHeymans', 'omegam', 'sigma8', ls='--', color='blue', lw=0.6)
     g.add_2d_contours(base + '_WLonlyHeymans_BAO', 'omegam', 'sigma8', ls='-', color='blue', lw=0.6)
     g.add_2d_contours(base + '_WLonlyHeymans_BAO_theta', 'omegam', 'sigma8', ls='-', color='green', lw=0.6)
 
     g.add_2d_contours(base + '_' + s.defdata, 'omegam', 'sigma8', ls='-', color='black', lw=1.2)
-
-    # g.add_2d_contours('base_lensonly_HST70p6_widerns', 'omegam','sigma8', ls='--', color='orange')
-
-
- #   g.add_legend([  'WL +' + s.BAO, r'WL + \theta+' + s.BAO, 'WL (Heymans)' , 'WL (Heymans) + BAO', r'WL (Heymans) + $\theta$ +BAO', s.defplanck], colored_text=True)
 
     g.add_legend([  'WL+' + s.BAO, r'WL+$\theta_{\rm MC}$+' + s.BAO, s.defplanck], colored_text=True)
 

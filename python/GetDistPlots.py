@@ -870,7 +870,7 @@ class GetDistPlotter(object):
             if xlims is not None: ax.set_xlim(xlims[i][0], xlims[i][1])
             if share_y: self.spaceTicks(ax.xaxis, expand=True)
 
-        self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_ordel=label_order)
+        self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_order=label_order)
         if share_y: subplots_adjust(wspace=0)
         return plot_col, plot_row
 
