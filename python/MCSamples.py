@@ -40,6 +40,7 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settin
         files = chainFiles(file_root)
         path, name = os.path.split(file_root)
         path = cache_dir or path
+        if not os.path.exists(path): os.mkdir(path)
         cachefile = os.path.join(path, name) + '.py_mcsamples'
         if not no_cache and os.path.exists(cachefile) and lastModified(files) < os.path.getmtime(cachefile):
             try:
