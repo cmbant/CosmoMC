@@ -1,16 +1,10 @@
-    !!! Generalized BAO module added by J. Dossett
-    ! Copied structure from mpk.f90 and Reid BAO code
-    !
-    ! When using WiggleZ data set cite Blake et al. arXiv:1108.2635
-
-    !for SDSS data set: http://www.sdss3.org/science/boss_publications.php
-
-    ! For rescaling method see Hamann et al, http://arxiv.org/abs/1003.3999
+    !BAO, f_sigma8 and other measurements at single redshifts, with correlations
 
     !AL/JH Oct 2012: encorporate DR9 data into something close to new cosmomc format
     !Dec 2013: merged in DR11 patch (Antonio J. Cuesta, for the BOSS collaboration)
     !Sept 2014: refactored structure using new "bao_dataset[NAME] = file.dataset" syntax
     !           added refactoed DR7 MGS code (thanks Lado Samushia)
+    !Jan 2014 added bao_HZ_rs, f_sigma8, F_AP, and more general .dat format
 
     module bao
     use MatrixUtils
@@ -73,11 +67,11 @@
     class(TSettingIni) :: ini
     class(TBAOLikelihood), pointer :: this
     integer i
-    Type(TSettingIni) :: DataSets
+    Type(TSettingIni) :: DataSets, OverrideSettings
 
     if (.not. Ini%Read_Logical('use_BAO',.false.)) return
 
-    call Ini%TagValuesForName('bao_dataset', DataSets)
+    call Ini%TagValuesForName('bao_dataset', DataSets, filename=.true.)
     if (DataSets%Count==0) call MpiStop('Use_BAO but no bao_dataset[NAMETAG] defined')
 
     if (Ini%Haskey('BAO_fixed_rs')) then
@@ -85,6 +79,7 @@
     end if
 
     do i= 1, DataSets%Count
+        call Ini%SettingValuesForTagName('bao_dataset',DataSets%Name(i),OverrideSettings)
         if (Datasets%Name(i)=='MGS') then
             allocate(MGSLikelihood::this)
         else if (Datasets%Name(i)=='DR11CMASS') then
@@ -92,7 +87,7 @@
         else
             allocate(TBAOLikelihood::this)
         end if
-        call this%ReadDatasetFile(Datasets%Value(i))
+        call this%ReadDatasetFile(Datasets%Value(i),OverrideSettings)
         this%tag = Datasets%Name(i)
         this%LikelihoodType = 'BAO'
         this%needs_background_functions = .true.
@@ -120,7 +115,7 @@
     allocate(this%bao_err(this%num_bao))
 
     call Ini%Read_Enumeration_List('measurement_type',measurement_types, this%type_bao, nvalues = this%num_bao)
- 
+
     if (Ini%HasKey('zeff')) then
         this%bao_z = Ini%Read_Double('zeff')
         bao_measurement  = Ini%Read_String('bao_measurement')
@@ -130,7 +125,7 @@
             read (bao_measurement,*) this%bao_obs(1),this%bao_err(1)
         end if
     else
-        bao_measurements_file = Ini%ReadFileName('bao_measurements_file')
+        bao_measurements_file = Ini%ReadRelativeFileName('bao_measurements_file')
         call F%Open(bao_measurements_file)
         do i=1,this%num_bao
             read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
@@ -162,7 +157,7 @@
     this%bao_invcov=0
 
     if (Ini%HasKey('bao_invcov_file')) then
-        bao_invcov_file  = Ini%ReadFileName('bao_invcov_file')
+        bao_invcov_file  = Ini%ReadRelativeFileName('bao_invcov_file')
         call File%ReadTextMatrix(bao_invcov_file, this%bao_invcov)
     else
         do i=1,this%num_bao
@@ -258,7 +253,7 @@
     allocate(this%alpha_perp_file(alpha_npoints),this%alpha_plel_file(alpha_npoints))
     allocate(this%prob_file(alpha_npoints,alpha_npoints))
 
-    call F%Open(Ini%ReadFileName('prob_dist'))
+    call F%Open(Ini%ReadRelativeFileName('prob_dist'))
     do ii=1, alpha_npoints
         do jj=1, alpha_npoints
             read (F%unit,*,iostat=ios) tmp0,tmp1,tmp2
@@ -323,7 +318,7 @@
     class(MGSLikelihood) this
     class(TSettingIni) :: Ini
 
-    call File%LoadTxt(Ini%ReadFileName('prob_dist'), this%alpha_prob)
+    call File%LoadTxt(Ini%ReadRelativeFileName('prob_dist'), this%alpha_prob)
 
     end subroutine BAO_MGS_InitProbDist
 
