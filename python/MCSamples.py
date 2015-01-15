@@ -198,8 +198,7 @@ class MCSamples(chains):
         self.has_limits_bot = []
         self.has_limits_top = []
 
-        self.has_markers = []
-        self.markers = []
+        self.markers = {}
 
         self.ini = None
 
@@ -315,8 +314,7 @@ class MCSamples(chains):
         self.has_limits_bot = nvars * [False]
         self.has_limits_top = nvars * [False]
 
-        self.has_markers = nvars * [False]
-        self.markers = nvars * [0.]
+        self.markers = {}
 
         for ix, name in enumerate(self.paramNames.list()):
             mini = self.ranges.min(name)
@@ -330,8 +328,8 @@ class MCSamples(chains):
                 line = bin_limits
             else:
                 line = ''
-                if ini and ini.params.has_key('limits[%s]' % name.strip()):
-                    line = ini.string('limits[%s]' % name.strip())
+                if ini and ini.params.has_key('limits[%s]' % name):
+                    line = ini.string('limits[%s]' % name)
             if (line <> ''):
                 limits = [ s for s in line.split(' ') if s <> '' ]
                 if len(limits) == 2:
@@ -341,11 +339,10 @@ class MCSamples(chains):
                     if limits[1] <> 'N':
                         self.limmax[ix] = float(limits[1])
                         self.has_limits_top[ix] = True
-            if ini and ini.params.has_key('marker[%s]' % name.strip()):
-                line = ini.string('marker[%s]' % name.strip())
+            if ini and ini.params.has_key('marker[%s]' % name):
+                line = ini.string('marker[%s]' % name)
                 if (line <> ''):
-                    self.has_markers = True
-                    self.markers[ix] = float(line)
+                    self.markers[name] = float(line)
 
     def readChains(self, chain_files, ini, ini_settings={}):
         # Used for by plotting scripts and gui
@@ -1250,7 +1247,6 @@ class MCSamples(chains):
                 binlikes = np.where((binlikes - maxbin) < 30, np.exp(-(binlikes - maxbin)), 0)
 
 
-
             if writeDataToFile:
                 logging.debug("Write data to file ...")
 
@@ -1276,7 +1272,7 @@ class MCSamples(chains):
 
             else:
 
-                dat, likes = None, None
+                likes = None
 
                 ncols = 2
                 nrows = self.ix_max[j] + 1 - self.ix_min[j]
@@ -1776,10 +1772,11 @@ class MCSamples(chains):
         textFileHandle.write(textInit % (
                 self.plot_data_dir, self.subplot_size_inch,
                 self.out_dir, self.rootname))
+        text = 'markers=' + str(self.markers) + '\n'
         if plotparams:
-            text = 'g.plots_1d(roots,[' + ",".join(['\'' + par + '\'' for par in plotparams]) + '])'
+            text += 'g.plots_1d(roots,[' + ",".join(['\'' + par + '\'' for par in plotparams]) + '], markers=markers)'
         else:
-            text = 'g.plots_1d(roots)\n'
+            text += 'g.plots_1d(roots, markers=markers)\n'
         textFileHandle.write(text)
         textExport = WritePlotFileExport()
         fname = self.rootname + '.' + ext

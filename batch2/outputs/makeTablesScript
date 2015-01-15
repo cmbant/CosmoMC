@@ -1,8 +1,8 @@
 
 
-python python/makeTables.py main tables/baseline_params_table_2015_1sig  --limit 1 --converge 0.1 --data plikHM lensonly --header_tex batch2/outputs/tableHeader.tex &
-python python/makeTables.py main tables/baseline_params_table_2015_2sig  --limit 2 --converge 0.1 --data plikHM lensonly --header_tex batch2/outputs/tableHeader.tex &
-python python/makeTables.py main tables/baseline_params_table_2015_3sig  --limit 3 --converge 0.1 --data plikHM lensonly --header_tex batch2/outputs/tableHeader.tex
+python python/makeTables.py main tables/baseline_params_table_2015_1sig  --limit 1 --converge 0.1 --data plikHM lensonly WMAP --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/baseline_params_table_2015_2sig  --limit 2 --converge 0.1 --data plikHM lensonly WMAP --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/baseline_params_table_2015_3sig  --limit 3 --converge 0.1 --data plikHM lensonly WMAP --header_tex batch2/outputs/tableHeader.tex
 
 python python/makeTables.py main tables/CamSpec_table_2015_1sig  --limit 1 --converge 0.1 --data CamSpecHM lensonly --header_tex batch2/outputs/tableHeader.tex &
 python python/makeTables.py main tables/CamSpec_table_2015_2sig  --limit 2 --converge 0.1 --data CamSpecHM lensonly --header_tex batch2/outputs/tableHeader.tex &
