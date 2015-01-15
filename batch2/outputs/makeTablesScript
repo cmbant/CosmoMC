@@ -1,8 +1,14 @@
 
 
-python python/makeTables.py main tables/baseline_params_table_2015_1sig  --limit 1 --converge 0.1 --data plikHM lensonly WMAP --header_tex batch2/outputs/tableHeader.tex &
-python python/makeTables.py main tables/baseline_params_table_2015_2sig  --limit 2 --converge 0.1 --data plikHM lensonly WMAP --header_tex batch2/outputs/tableHeader.tex &
-python python/makeTables.py main tables/baseline_params_table_2015_3sig  --limit 3 --converge 0.1 --data plikHM lensonly WMAP --header_tex batch2/outputs/tableHeader.tex
+python python/makeTables.py main tables/baseline_params_table_2015_limit68  --limit 1 --converge 0.1 --data plikHM lensonly WMAP --skip_data lmax801 lmin802 --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/baseline_params_table_2015_limit95  --limit 2 --converge 0.1 --data plikHM lensonly WMAP --skip_data lmax801 lmin802  --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/baseline_params_table_2015_limit99  --limit 3 --converge 0.1 --data plikHM lensonly WMAP --skip_data lmax801 lmin802  --header_tex batch2/outputs/tableHeader.tex
+
+
+python python/makeTables.py main tables/params_table_2015_limit68  --limit 1 --converge 0.1 --data plikHM plikDS CamSpecHM CamSpecDS WLonlyHeymans lensonly WMAP  --skip_data lmax801 lmin802 --header_tex batch2/outputs/tableHeader.tex --changes_replacing plikHM plikDS CamSpecHM CamSpecDS WMAP &
+python python/makeTables.py main tables/params_table_2015_limit95  --limit 2 --converge 0.1 --data plikHM plikDS CamSpecHM CamSpecDS WLonlyHeymans lensonly WMAP --skip_data lmax801 lmin802  --header_tex batch2/outputs/tableHeader.tex  --changes_replacing plikHM plikDS CamSpecHM CamSpecDS WMAP&
+python python/makeTables.py main tables/params_table_2015_limit99  --limit 3 --converge 0.1 --data plikHM plikDS CamSpecHM CamSpecDS WLonlyHeymans lensonly WMAP --skip_data lmax801 lmin802  --header_tex batch2/outputs/tableHeader.tex  --changes_replacing plikHM plikDS CamSpecHM CamSpecDS WMAP
+
 
 python python/makeTables.py main tables/CamSpec_table_2015_1sig  --limit 1 --converge 0.1 --data CamSpecHM lensonly --header_tex batch2/outputs/tableHeader.tex &
 python python/makeTables.py main tables/CamSpec_table_2015_2sig  --limit 2 --converge 0.1 --data CamSpecHM lensonly --header_tex batch2/outputs/tableHeader.tex &
