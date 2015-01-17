@@ -63,9 +63,9 @@ def numberFigs(number, sigfig):
     return ''.join(result)
 
 class numberFormatter(object):
-    def __init__(self, sig_figs=4):
+    def __init__(self, sig_figs=4, separate_limit_tol=0.1):
         self.sig_figs = sig_figs
-        self.separate_limit_tol = 0.1
+        self.separate_limit_tol = separate_limit_tol
 
     def namesigFigs(self, value, limplus, limminus, wantSign=True):
         frac = limplus / (abs(value) + limplus)
@@ -77,10 +77,10 @@ class numberFormatter(object):
         sf = self.sig_figs
         if frac > 0.1 and value < 100 and value >= 20: sf = 2
         elif frac > 0.01 and value < 1000: sf = 3
-#        if abs(value) < 1 and limplus - limminus > abs(value): sf = 2
         res = self.formatNumber(value, sf)
         maxdp = max(self.decimal_places(plus_str), self.decimal_places(minus_str))
-        while abs(value) < 1 and maxdp < self.decimal_places(res):
+#        while abs(value) < 1 and maxdp < self.decimal_places(res):
+        while maxdp < self.decimal_places(res):
             sf -= 1
             if sf == 0:
                 res = ('%.' + str(maxdp) + 'f') % value
