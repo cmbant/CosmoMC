@@ -863,14 +863,15 @@ class GetDistPlotter(object):
         for i, param in enumerate(params):
             ax = self.subplot_number(i)
             if roots_per_param: plot_roots = roots[i]
-            if markers is not None and i < len(markers): marker = markers[i]
+            if markers is not None:
+                if isinstance(markers, dict): marker = markers.get(param.name, None)
+                elif i < len(markers): marker = markers[i]
             else: marker = None
-#            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, prune=(None, 'both')[share_y])
             self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, param_renames=param_renames)
             if xlims is not None: ax.set_xlim(xlims[i][0], xlims[i][1])
             if share_y: self.spaceTicks(ax.xaxis, expand=True)
 
-        self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_ordel=label_order)
+        self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_order=label_order)
         if share_y: subplots_adjust(wspace=0)
         return plot_col, plot_row
 

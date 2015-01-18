@@ -160,7 +160,7 @@
     integer status, norder
     Type(TTextFile) :: F
 
-    filename =Ini%ReadFileName(basename//'_file', NotFoundFail=.not. present(hasKey) ,relative=.true.)
+    filename =Ini%ReadRelativeFileName(basename//'_file', NotFoundFail=.not. present(hasKey))
     if (present(hasKey)) then
         hasKey = filename /=''
         if (.not. hasKey) return
@@ -383,7 +383,7 @@
     integer, allocatable :: MapPairsFile(:,:), MapPairsUse(:,:), fixed_index(:)
     integer nfixed
 
-    filename = Ini%ReadFileName(bin_type // '_files', NotFoundFail=.true.,relative=.true.)
+    filename = Ini%ReadRelativeFileName(bin_type // '_files', NotFoundFail=.true.)
     Order1 = Ini%Read_String(bin_type // '_in_order', .true.)
     Order2 = Ini%Read_String_Default(bin_type // '_out_order', Order1)
     call this%UseString_to_CL_i_j(Order1, this%map_required_index, binWindows%bin_cols_in)
@@ -413,7 +413,7 @@
         end if
     end do
 
-    S = Ini%ReadFileName(bin_type//'_fix_cl_file',relative=.true.)
+    S = Ini%ReadRelativeFileName(bin_type//'_fix_cl_file')
     if (S/='') then
         !Want to force some of the component CL to a fixed model
         Order1 = Ini%Read_String(bin_type // '_fix_cl_file_order')
@@ -716,7 +716,7 @@
 
     this%has_lensing  = this%cl_lmax(CL_Phi,CL_Phi) > 0
 
-    S = Ini%ReadFileName('calibration_param', relative=.true.)
+    S = Ini%ReadRelativeFileName('calibration_param')
     if (S/='') then
         call this%loadParamNames(S)
         this%calibration_index = this%nuisance_params%nnames
@@ -743,7 +743,7 @@
 
 
     covmat_cl = Ini%Read_String('covmat_cl', .true.)
-    filename = Ini%ReadFileName('covmat_fiducial', NotFoundFail=.true.,relative=.true.)
+    filename = Ini%ReadRelativeFileName('covmat_fiducial', NotFoundFail=.true.)
     call Ini%Read('covmat_scale',covmat_scale)
 
     call this%UseString_to_cols(covmat_cl, cl_in_index)

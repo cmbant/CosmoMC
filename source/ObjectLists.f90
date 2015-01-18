@@ -111,6 +111,7 @@
     procedure :: Compare => TStringList_Compare
     procedure :: StringItem  => TStringList_Item
     procedure :: SetFromString => TStringList_SetFromString
+    procedure :: ReadColumnsGetArray => TStringList_ReadColumnsGetArray
     procedure :: IndexOf => TStringList_IndexOf
     procedure :: ValueOf => TStringList_ValueOf
     procedure :: WriteItems
@@ -632,11 +633,11 @@
 
     subroutine TObjectList_LoadState(this,F)
     class(TObjectList) :: this
-     class(TFileStream) :: F
-   integer i, count
+    class(TFileStream) :: F
+    integer i, count
 
     if (.not. F%ReadItem(count) .or. count/=this%Count) &
-    & call this%Error('TObjectList_LoadState count mismatch (objects must exist before load)')
+        & call this%Error('TObjectList_LoadState count mismatch (objects must exist before load)')
     do i=1,this%Count
         select type (item => this%Items(i)%P)
         class is (TSaveLoadStateObject)
@@ -870,6 +871,19 @@
 
     end subroutine TStringList_SetFromString
 
+
+    subroutine TStringList_ReadColumnsGetArray(this, filename, array)
+    class(TStringList) :: this
+    character(LEN=*), intent(in) :: filename
+    real(list_prec), intent(out), allocatable :: array(:,:)
+    character(LEN=:), allocatable :: comment
+
+    call File%LoadTxt(filename, array,comment = comment)
+    call this%SetFromString(comment)
+    if (this%Count /= size(array,1)) &
+        call this%Error('Column header does not match number of columns: ' //trim(filename))
+
+    end subroutine TStringList_ReadColumnsGetArray
 
     function TStringList_IndexOf(this, S) result(index)
     class(TStringList) :: this

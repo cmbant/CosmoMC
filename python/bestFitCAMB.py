@@ -35,6 +35,12 @@ ini.params['share_delta_neff'] = False
 ini.params['tensor_spectral_index(1)'] = -float(ini.params['initial_ratio(1)']) / 8
 
 
+inPars = iniFile.iniFile(root + '.inputparams')
+if inPars.bool('use_nonlinear_lensing', True):
+    ini.params['do_nonlinear'] = 3
+# Note, if you want accurate spectrun on small scales, may need to increase accuracy
+
+
 ini.saveFile(sys.argv[2])
 
 print 'OK, though note this does not support all parameter extensions from LCDM'

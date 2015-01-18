@@ -56,7 +56,7 @@ prob_label = ini.bool('prob_label', False)
 
 samples_are_chains = ini.bool('samples_are_chains', True)
 
-no_plots = ini.bool('no_plots', False); mc.no_plots = no_plots
+no_plots = ini.bool('no_plots', False);
 plots_only = ini.bool('plots_only', False)
 no_tests = plots_only or ini.bool('no_tests', False)
 line_labels = ini.bool('line_labels', False)

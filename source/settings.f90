@@ -49,6 +49,7 @@
     contains
     procedure :: FailStop => TSettingIni_FailStop
     procedure :: ReadFilename => TSettingIni_ReadFilename
+    procedure :: ReadRelativeFilename => TSettingIni_ReadRelativeFilename
     procedure :: ReplaceDirs => TSettingIni_ReplaceDirs
     procedure :: TagValuesForName => TSettingIni_TagValuesForName
     procedure :: SettingValuesForTagName => TSettingIni_SettingValuesForTagName
@@ -184,6 +185,17 @@
 
     end function TSettingIni_ReplaceDirs
 
+    function TSettingIni_ReadRelativeFilename(this,key, ADir, NotFoundFail) result (filename)
+    class(TSettingIni) :: this
+    character(LEN=*), intent(in) :: Key
+    character(LEN=*), optional, intent(in) :: ADir
+    character(LEN=:), allocatable :: filename
+    logical, optional :: NotFoundFail
+
+    filename = this%ReadFileName(key,Adir,NotFoundFail,.true.)
+
+    end function TSettingIni_ReadRelativeFilename
+
     function TSettingIni_ReadFilename(this,key, ADir, NotFoundFail, relative) result (filename)
     class(TSettingIni) :: this
     character(LEN=*), intent(in) :: Key
@@ -201,7 +213,7 @@
         call StringReplace('%'//CustomParams%Name(i)//'%',&
             trim(this%ReplaceDirs(CustomParams%Value(i), ADir)) ,filename)
     end do
-    if (PresentDefault(.false., relative) .and. .not. File%IsFullPath(filename)) then
+    if (DefaultFalse(relative) .and. .not. File%IsFullPath(filename)) then
         filename =  File%ExtractPath(this%Original_filename)//filename
     end if
 
