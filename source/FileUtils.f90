@@ -1354,7 +1354,6 @@
     integer, intent(in), optional :: m, n
     character(LEN=*), intent(in), optional :: fmt
     class(*), intent(in) :: mat(:,:)
-    integer j
     Type(TTextFile) :: F
 
     call F%CreateFile(aname)

@@ -231,7 +231,7 @@
     integer, intent(inout) :: llo
     real(sp_acc), intent(out) :: xlo, xhi
 
-    xlo = 0
+    xlo = x
     xhi = 0
     llo=0
     call this%Error('FindNext not implemented')
@@ -244,7 +244,6 @@
     integer, intent(out) :: llo
     real(sp_acc), intent(out) :: xlo, xhi
     integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
-    integer i
 
     if (.not. this%Initialized) call this%FirstUse
 
@@ -558,7 +557,6 @@
     subroutine TRegularCubicSpline_InitInterp(this,End1,End2)
     class(TRegularCubicSpline):: this
     real(sp_acc), intent(in), optional :: End1, End2
-    real(sp_acc) :: e1,e2
 
     call this%TSpline1D%InitInterp(End1,End2)
 

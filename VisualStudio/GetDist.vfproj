@@ -25,7 +25,7 @@
 				<Tool Name="VFPostBuildEventTool"/>
 				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
 		<Configuration Name="Debug|x64">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" MultiProcessorCompilation="true" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP" ErrorLimit="4" WarnDeclarations="true" WarnUnusedVariables="true" WarnTruncateSource="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug" UseMkl="mklParallel"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" MultiProcessorCompilation="true" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="NOWMAP" ErrorLimit="4" StandardWarnings="standardWarningsF08" WarnDeclarations="true" WarnUnusedVariables="true" WarnTruncateSource="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug" UseMkl="mklParallel"/>
 				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" GenerateDebugInformation="true" SubSystem="subSystemConsole" StackReserveSize="10000000"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
@@ -60,7 +60,9 @@
 		<File RelativePath="..\source\ObjectParamNames.f90"/>
 		<File RelativePath="..\source\RandUtils.f90"/>
 		<File RelativePath="..\source\StringUtils.f90"/></Filter>
-		<File RelativePath="..\source\GetDist.f90"/>
+		<File RelativePath="..\source\GetDist.f90">
+			<FileConfiguration Name="Debug|x64">
+				<Tool Name="VFFortranCompilerTool" StandardWarnings="standardWarningsF08"/></FileConfiguration></File>
 		<File RelativePath="..\source\IO.f90"/>
 		<File RelativePath="..\source\samples.f90"/>
 		<File RelativePath="..\source\settings.f90"/></Filter></Files>

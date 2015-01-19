@@ -130,10 +130,12 @@
 
     subroutine DoStop(S, abort)
     character(LEN=*), intent(in), optional :: S
-    integer ierror
     logical, intent(in), optional :: abort
     logical wantbort
+#ifdef MPI
+    integer ierror
     real(time_dp) runTime
+#endif
 
     call ChainOutFile%Close()
 
