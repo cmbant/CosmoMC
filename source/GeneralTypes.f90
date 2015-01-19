@@ -178,8 +178,8 @@
         call Names%init(ParamNamesFile)
         num_theory_params= Names%num_MCMC
     else
-        Names%nnames=0
         num_theory_params= Ini%Read_Int('num_theory_params')
+        call Names%SetUnnamed(num_theory_params)
     end if
     if (num_theory_params> max_theory_params) call MpiStop('see settings.f90: num_theory_params> max_theory_params')
     index_data =  num_theory_params+1

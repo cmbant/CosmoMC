@@ -48,7 +48,7 @@
         real(mcp) :: max_like_radius = 0.01_mcp
         integer :: max_like_iterations  = 10000
         integer :: minimization_points_factor = 2
-        real(mcp) :: minimize_loglike_tolerance = 0._mcp
+        real(mcp) :: minimize_loglike_tolerance = 1e-4._mcp
         logical :: minimize_separate_fast = .true.
         integer :: minimize_mcmc_refine_num = 20
         !MCMC steps per parameter to refine after provisional best fit
