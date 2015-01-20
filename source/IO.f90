@@ -83,12 +83,13 @@
 
 
     subroutine IO_OutputChainRow(F, mult, like, values)
-    class(TTextFile) :: F
+    class(TFileStream) :: F
     real(mcp) mult, like, values(:)
-
-    call F%WriteArrayTxt([mult,like], advance=.false.)
-    call F%WriteArrayTxt(values)
-    !    call F%Write( [mult, like, values]) !gfortran bug
+    real(mcp), allocatable :: tmp(:)
+    
+    allocate(tmp(1:size(values)+2), source= [mult, like, values])
+    call F%Write(tmp)
+  !    call F%Write( [mult, like, values]) !gfortran bug
 
     if (flush_write) call F%Flush()
 
