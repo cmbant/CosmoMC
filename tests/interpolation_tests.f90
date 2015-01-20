@@ -18,7 +18,7 @@
     funcderiv = 3*(x/47.2_sp)**2/47.2_sp  + 2*(x/5.5_sp)/5.5_sp +3.5_sp
     end function
 
-    function RunInterpolationTests result(fails)
+    function RunInterpolationTests() result(fails)
     real(sp), allocatable :: x(:),f(:)
     integer i
     integer fails

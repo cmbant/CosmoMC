@@ -11,7 +11,7 @@
     contains
 
 
-    function RunListTests result (fails)
+    function RunListTests() result (fails)
     integer fails
     fails = 0
     call test_TRealArrayList(fails)
