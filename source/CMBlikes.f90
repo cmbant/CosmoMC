@@ -1000,12 +1000,14 @@
     Cls => this%MapCls
     do i=1, this%nmaps_required
         do j=1, i
-            associate(CL => Cls(i,j),Th => Theory%Cls(CL%theory_i ,CL%theory_j))
-                if (allocated(Th%CL)) then
-                    CL%CL(this%pcl_lmin:this%pcl_lmax) = Th%CL(this%pcl_lmin:this%pcl_lmax)
-                else
-                    CL%CL(this%pcl_lmin:this%pcl_lmax) = 0
-                end if
+            associate(CL => Cls(i,j))
+                associate(Th => Theory%Cls(CL%theory_i ,CL%theory_j))
+                    if (allocated(Th%CL)) then
+                        CL%CL(this%pcl_lmin:this%pcl_lmax) = Th%CL(this%pcl_lmin:this%pcl_lmax)
+                    else
+                        CL%CL(this%pcl_lmin:this%pcl_lmax) = 0
+                    end if
+                end associate
             end associate
         end do
     end do

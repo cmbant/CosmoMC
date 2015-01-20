@@ -652,7 +652,6 @@
     integer Ini_Read_Enumeration
     character(LEN=:), pointer :: S
     logical OK
-    integer i
 
     Ini_Read_Enumeration = this%Read_Int(Key, Default, OK = OK)
     if (OK) then

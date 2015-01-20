@@ -59,7 +59,7 @@
     use ObjectLists
     implicit none
 
-    Type(TParamNames) :: NameMapping
+    Type(TParamNames), save :: NameMapping
 
     integer, parameter :: gp = KIND(1.d0)
     character(LEN=*), parameter :: float_format = '(*(E16.7))'
@@ -127,7 +127,7 @@
     real(mcp) limmin(max_cols),limmax(max_cols)
     real(mcp) center(max_cols), param_min(max_cols), param_max(max_cols), range_min(max_cols), range_max(max_cols)
     logical BW,do_shading
-    Type(TStringList) :: ComparePlots
+    Type(TStringList), save :: ComparePlots
     logical :: prob_label = .false.
     logical :: plots_only, no_plots
     real(mcp) :: smooth_scale_1D=-1.d0, smooth_scale_2D = 1.d0
@@ -226,7 +226,8 @@
     call F%CreateFile(plot_data_dir//trim(rootname)//'_single.txt')
     maxmult = maxval(coldata(1,0:nrows-1))
     do i= 0, nrows -1
-        if (ranmar() <= coldata(1,i)/maxmult/single_thin) write (F%unit,float_format) 1.0, coldata(2,i), coldata(colix(1:num_vars),i)
+        if (ranmar() <= coldata(1,i)/maxmult/single_thin) &
+            write (F%unit,float_format) 1.0, coldata(2,i), coldata(colix(1:num_vars),i)
     end do
     call F%Close()
 
@@ -1245,7 +1246,8 @@
     real(mcp) :: corr, edge_fac
     real(mcp), allocatable :: prior_mask(:,:)
     real(mcp), dimension(:,:), allocatable :: bins2D, bin2Dlikes
-    real(mcp) widthx, widthy, col1, col2
+    real(mcp) widthx, widthy
+    integer col1, col2
     integer ixmax,iymax,ixmin,iymin
     integer winw, nbin2D
     logical has_prior
@@ -1255,9 +1257,9 @@
     has_prior=has_limits(colix(j)) .or. has_limits(colix(j2))
 
     corr = corrmatrix(colix(j)-2,colix(j2)-2)
-    if (abs(corr)<0.3) corr=0._mcp !keep things simple unless obvious degeneracy
-    corr=max(-0.95,corr)
-    corr=min(0.95,corr)
+    if (abs(corr)<0.3_mcp) corr=0._mcp !keep things simple unless obvious degeneracy
+    corr=max(-0.95_mcp,corr)
+    corr=min(0.95_mcp,corr)
     nbin2D = min(4*num_bins_2D,nint(num_bins_2D/(1-abs(corr)))) !for tight degeneracies increase bin density
     widthx =  (range_max(j)-range_min(j))/(nbin2D+1)
     widthy =  (range_max(j2)-range_min(j2))/(nbin2D+1)
@@ -1822,7 +1824,7 @@
     real(mcp) :: converge_test_limit
     Type (TTextFile) FileMatlab, File2D, File3d, FileTri, LikeFile
     integer c
-    
+
     NameMapping%nnames = 0
 
     InputFile = GetParam(1)
@@ -2396,11 +2398,14 @@
 
         !Get limits, one or two tail depending on whether posterior goes to zero at the limits or not
         do ix1 = 1, num_contours
-            marge_limits_bot(ix1,ix) =  has_limits_bot(ix) .and. .not. force_twotail .and. Density1D%P(1) > max_frac_twotail(ix1)
-            marge_limits_top(ix1,ix) =  has_limits_top(ix) .and. .not. force_twotail .and. Density1D%P(Density1D%n) > max_frac_twotail(ix1)
+            marge_limits_bot(ix1,ix) =  has_limits_bot(ix) .and. .not. force_twotail &
+                .and. Density1D%P(1) > max_frac_twotail(ix1)
+            marge_limits_top(ix1,ix) =  has_limits_top(ix) .and. .not. force_twotail &
+                .and. Density1D%P(Density1D%n) > max_frac_twotail(ix1)
             if (.not. marge_limits_bot(ix1,ix) .or. .not. marge_limits_top(ix1,ix)) then
                 !give limit
-                call Density1D%Limits(contours(ix1), tail_limit_bot, tail_limit_top, marge_limits_bot(ix1,ix), marge_limits_top(ix1,ix))
+                call Density1D%Limits(contours(ix1), tail_limit_bot, tail_limit_top, &
+                    marge_limits_bot(ix1,ix), marge_limits_top(ix1,ix))
                 limfrac = 1-contours(ix1)
                 if (marge_limits_bot(ix1,ix)) then !fix to end of prior range
                     tail_limit_bot = range_min(j)
@@ -2664,7 +2669,7 @@
     !write out stats
     !Marginalized
     if (.not. plots_only) &
-        call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours, contours_str, &
+        call IO_OutputMargeStats(NameMapping, rootdirname, num_vars,num_contours,contours_str, &
         LowerUpperLimits, colix, mean, sddev, marge_limits_bot, marge_limits_top, labels)
 
     call NameMapping%WriteFile(plot_data_dir//trim(rootname)//'.paramnames', colix(1:num_vars)-2)

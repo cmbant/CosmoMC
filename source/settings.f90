@@ -66,7 +66,7 @@
     integer, parameter :: max_likelihood_functions = 50
 
     integer, parameter :: max_data_params = 200
-    integer, parameter :: max_theory_params = 30
+    integer, parameter :: max_theory_params = 50
     integer, parameter :: max_num_params = max_theory_params + max_data_params
 
     !Set to false if using a slow likelihood function so no there's point is treating
@@ -130,10 +130,12 @@
 
     subroutine DoStop(S, abort)
     character(LEN=*), intent(in), optional :: S
-    integer ierror
     logical, intent(in), optional :: abort
     logical wantbort
+#ifdef MPI
+    integer ierror
     real(time_dp) runTime
+#endif
 
     call ChainOutFile%Close()
 
