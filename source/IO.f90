@@ -83,10 +83,12 @@
 
 
     subroutine IO_OutputChainRow(F, mult, like, values)
-    class(TFileStream) :: F
+    class(TTextFile) :: F
     real(mcp) mult, like, values(:)
 
-    call F%Write( [mult, like, values])
+    call F%WriteArrayTxt([mult,like], advance=.false.)
+    call F%WriteArrayTxt(values)
+    !    call F%Write( [mult, like, values]) !gfortran bug
 
     if (flush_write) call F%Flush()
 
