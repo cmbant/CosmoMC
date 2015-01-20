@@ -753,9 +753,11 @@
     real(mcp), allocatable :: allDerived(:)
     Class(TDataLikelihood), pointer :: DataLike
     integer i
-    integer :: num_in = 0
-    integer :: num_derived = 0
+    integer :: num_in
+    integer :: num_derived
 
+    num_in=0
+    num_derived=0
     if (allocated(derived)) num_in = size(derived)
     num_derived = L%num_derived_parameters + num_in
     if (L%num_derived_parameters >=0) then
