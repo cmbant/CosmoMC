@@ -968,7 +968,8 @@
     subroutine InitMapCls(this, Cls, nmaps, order)
     class(TCMBLikes) :: this
     integer, intent(in) :: nmaps, order(:)
-    class(TMapCrossPowerSpectrum), allocatable, intent(out) :: Cls(:,:)
+    class(TMapCrossPowerSpectrum), allocatable, target, intent(out) :: Cls(:,:)
+    class(TMapCrossPowerSpectrum), pointer :: CL
     integer i,j
     integer f1, f2
 
@@ -976,14 +977,13 @@
     allocate(TMapCrossPowerSpectrum::Cls(nmaps, nmaps))
     do i=1, nmaps
         do j=1, i
-            associate(CL => Cls(i,j))
-                CL%map_i = order(i)
-                CL%map_j = order(j)
-                call this%MapPair_to_Theory_i_j(order,i,j,f1,f2)
-                CL%theory_i = f1
-                CL%theory_j = f2
-                allocate(CL%CL(this%pcl_lmin:this%pcl_lmax), source=0._mcp)
-            end associate
+            CL =>Cls(i,j)
+            CL%map_i = order(i)
+            CL%map_j = order(j)
+            call this%MapPair_to_Theory_i_j(order,i,j,f1,f2)
+            CL%theory_i = f1
+            CL%theory_j = f2
+            allocate(CL%CL(this%pcl_lmin:this%pcl_lmax), source=0._mcp)
         end do
     end do
 
@@ -1000,15 +1000,22 @@
     Cls => this%MapCls
     do i=1, this%nmaps_required
         do j=1, i
-            associate(CL => Cls(i,j))
-                associate(Th => Theory%Cls(CL%theory_i ,CL%theory_j))
-                    if (allocated(Th%CL)) then
-                        CL%CL(this%pcl_lmin:this%pcl_lmax) = Th%CL(this%pcl_lmin:this%pcl_lmax)
-                    else
-                        CL%CL(this%pcl_lmin:this%pcl_lmax) = 0
-                    end if
-                end associate
-            end associate
+            !Neat version, buggy in gfortran
+            !associate(CL => Cls(i,j))
+            !    associate(Th => Theory%Cls(CL%theory_i ,CL%theory_j))
+            !        if (allocated(Th%CL)) then
+            !            CL%CL(this%pcl_lmin:this%pcl_lmax) = Th%CL(this%pcl_lmin:this%pcl_lmax)
+            !        else
+            !            CL%CL(this%pcl_lmin:this%pcl_lmax) = 0
+            !        end if
+            !    end associate
+            !end associate
+            if (allocated(Theory%Cls(Cls(i,j)%theory_i ,Cls(i,j)%theory_j)%CL)) then
+                Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) = &
+                    Theory%Cls(Cls(i,j)%theory_i ,Cls(i,j)%theory_j)%CL(this%pcl_lmin:this%pcl_lmax)
+            else
+                Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) = 0
+            end if
         end do
     end do
     call this%AdaptTheoryForMaps(Cls,DataParams)
