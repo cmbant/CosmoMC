@@ -173,14 +173,18 @@
     class(*), intent(in), target :: C
     class(*), intent(in), target, optional :: Object
     class(*), pointer :: CP
-    class(*), pointer :: ObjectP => null()
+    class(*), pointer :: ObjectP
 
     !This all looks a bit unneccessary, just trying to avoid ifort bugs, c.f.
     !http://software.intel.com/en-us/forums/topic/390944
     !This subroutine does *not* help directly, but derived types can use AddItemPointer which is OK.
 
     CP=> C
-    if (present(Object)) ObjectP=>Object
+    if (present(Object)) then
+        ObjectP => Object
+    else
+        nullify(ObjectP)
+    end if
     call this%AddItemPointer(CP, ObjectP)
 
     end subroutine AddItem
@@ -203,8 +207,9 @@
     class(*), intent(in) :: C
     class(*), intent(in), optional :: Object
     class(*), pointer :: P
-    class(*), pointer :: PO=>null()
+    class(*), pointer :: PO
 
+    nullify(PO)
     if (this%OwnsObjects) then
         allocate(P, source=C)
         if (present(Object)) allocate(PO, source=Object)
