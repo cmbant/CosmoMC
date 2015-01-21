@@ -116,6 +116,7 @@
     procedure, nopass :: TxtColumns
     procedure, nopass :: TxtFileColumns
     procedure, nopass :: TxtFileLines
+    procedure, nopass :: LastTopComment
     procedure, nopass :: TopCommentLine
     procedure, nopass :: LastLine => LastFileLine
     procedure, nopass :: Size => FileSize
@@ -1141,6 +1142,27 @@
     call F%Close()
 
     end function TopCommentLine
+    
+    
+    function LastTopComment(aname) result(res)
+    !Get content of last commented line at the top of file (e.g. column header)
+    character(LEN=*), intent(IN) :: aname
+    character(LEN=:), allocatable :: res, InLine
+    Type(TTextFile) :: F
+
+    call F%Open(aname)
+    res=''
+    do while (F%ReadLine(InLine))
+        if (trim(InLine)=='') cycle
+        if (res(1:1)=='#') then
+            res = trim(InLine(2:))
+        else
+            exit
+        end if
+    end do
+    call F%Close()
+
+    end function LastTopComment
 
 
     function TxtFileColumns(aname) result(n)
