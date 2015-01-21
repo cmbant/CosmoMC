@@ -41,7 +41,7 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
             sys.path.insert(0, batchPath + 'config')
             settings = __import__(iniFile.iniFile(batchPath + 'config/config.ini').params['setting_file'].replace('.py', ''))
         else:
-            settings = __import__(settingName)
+            settings = __import__(settingName, fromlist=['dummy'])
 
     batch = batchJob.batchJob(batchPath, settings.ini_dir)
 
@@ -79,6 +79,8 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
     else:
         batch.makeDirectories(settings.__file__)
         batch.save()
+
+    start_at_bestfit = getattr(settings, 'start_at_bestfit', False)
 
     for jobItem in batch.items(wantSubItems=False):
 
@@ -120,7 +122,7 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
                 if not os.path.exists(covmat) and hasattr(settings, 'covmat'): covmat = batch.basePath + settings.covmat
             if os.path.exists(covmat):
                 ini.params['propose_matrix'] = covmat
-                if settings.newCovmats: ini.params['MPI_Max_R_ProposeUpdate'] = 20
+                if getattr(settings, 'newCovmats', True): ini.params['MPI_Max_R_ProposeUpdate'] = 20
             else:
                 hasCov = False
                 ini.params['MPI_Max_R_ProposeUpdate'] = 20
@@ -153,7 +155,7 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
                         break
                 if not hasCov: print 'WARNING: no matching specific covmat for ' + jobItem.name
 
-            ini.params['start_at_bestfit'] = settings.start_at_bestfit
+            ini.params['start_at_bestfit'] = start_at_bestfit
             updateIniParams(ini, jobItem.data_set.params, batch.commonPath)
             for deffile in settings.defaults:
                 ini.defaults.append(batch.commonPath + deffile)
@@ -163,7 +165,7 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
 
             ini.params['action'] = cosmomcAction
             ini.saveFile(jobItem.iniFile())
-            if not settings.start_at_bestfit:
+            if not start_at_bestfit:
                 setMinimize(jobItem, ini)
                 variant = '_minimize'
                 ini.saveFile(jobItem.iniFile(variant))
@@ -193,7 +195,7 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
 
     if not interactive: return batch
     print  'Done... to run do: python python/runbatch.py ' + batchPath
-    if not settings.start_at_bestfit:
+    if not start_at_bestfit:
         print '....... for best fits: python python/runbatch.py ' + batchPath + ' --minimize'
     print ''
     print 'for importance sampled: python python/runbatch.py ' + batchPath + ' --importance'

@@ -1,7 +1,6 @@
 # Load CosmoMC format .dataset files with lensing likelihood data
 # AL July 2014
 
-import numpy as np
 import os
 import iniFile
 from pylab import *

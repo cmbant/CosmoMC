@@ -99,7 +99,6 @@ likechecks.append(batchJob.dataSet(['plikLite', 'TT'], ['plik_lite_TT.ini']))
 likechecks.append(batchJob.dataSet(['plikLite', 'TTTEEE'], ['plik_lite_TTTEEE.ini']))
 
 
-start_at_bestfit = False
 newCovmats = False
 
 # Importance sampling settings

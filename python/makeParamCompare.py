@@ -1,4 +1,6 @@
-import os , batchJobArgs, ResultObjs, paramNames
+import os
+import batchJobArgs
+from getdist import ResultObjs, paramNames
 
 
 Opts = batchJobArgs.batchArgs('Compare parameter constraints over set of models')

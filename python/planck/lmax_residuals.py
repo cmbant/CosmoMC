@@ -1,15 +1,13 @@
 import os, sys
 from numpy import *
 from pylab import *
-import covMat
-import chains
-import ResultObjs
+from getdist import covMat, chains, ResultObjs
 import matplotlib.animation as animation
 
 if False:
     d = loadtxt(r'z://base_plikHM_TT_lowTEB_lensing_50k_lenspotentialCls.dat')
     d2 = loadtxt(r'z://base_plikHM_TT_lowTEB_lensing_lenspotentialCls.dat')
- #   d3 = loadtxt(r'z://base_plikHM_TT_lowTEB_lensing_10k_lenspotentialCls.dat')
+#   d3 = loadtxt(r'z://base_plikHM_TT_lowTEB_lensing_10k_lenspotentialCls.dat')
 
     plot(d2[:2000, 0], 1 - d2[:2000, 5] / d[:2000, 5], '-r')
 #    plot(d3[:2000, 0], 1 - d3[:2000, 5] / d[:2000, 5], '-b')

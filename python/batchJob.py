@@ -1,5 +1,7 @@
 
-import os, sys, shutil, pickle, ResultObjs, time, copy, iniFile
+import os, sys, shutil, pickle, time, copy
+import iniFile
+from getdist import ResultObjs
 
 
 def resetGrid(directory):

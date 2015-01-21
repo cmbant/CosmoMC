@@ -1,4 +1,3 @@
-import os
 from matplotlib import rcParams, rc
 
 # common setup for matplotlib

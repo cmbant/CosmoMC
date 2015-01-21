@@ -24,7 +24,7 @@ class covMat(object):
             self.size = len(paramNames)
         else:
             raise Exception('.covmat must now have parameter names header')
-        matrix = [[0 for col in range(self.size)] for row in range(self.size)]
+        matrix = [[0 for _ in range(self.size)] for row in range(self.size)]
         used = []
         for i in range(self.size):
             splitLine = textFileLines[i + 1].split()

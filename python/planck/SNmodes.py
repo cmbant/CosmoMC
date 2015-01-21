@@ -1,6 +1,6 @@
-import chains
 import numpy as np
 from pylab import *
+from getdist import chains
 
 rootdir = r'C:\tmp\Planck\SNmodes'
 

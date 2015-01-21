@@ -1,5 +1,4 @@
-import batchJobArgs, ResultObjs, paramNames, planckStyle, GetDistPlots
-
+import batchJobArgs
 from pylab import *
 
 

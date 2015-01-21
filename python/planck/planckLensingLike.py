@@ -6,7 +6,6 @@ from pylab import *
 import numpy as np
 import string
 import os
-import iniFile
 import CMBlikes
 
 def parseStr(x):

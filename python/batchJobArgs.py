@@ -1,4 +1,4 @@
-import sys, os, batchJob, fnmatch, paramNames
+import sys, os, batchJob, fnmatch
 try: import argparse
 except:
     print 'use "module load" to load python 2.7'
@@ -58,6 +58,7 @@ class batchArgs(object):
                 if self.batch is None: raise Exception('batchPath does not exist or it not initialized with makeGrid.py')
                 if self.doplots:
                     import GetDistPlots
+                    from getdist import paramNames
                     if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
                     if args.plot_data is not None:
                         g = GetDistPlots.GetDistPlotter(plot_data=args.plot_data)

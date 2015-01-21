@@ -12,7 +12,6 @@ import pickle
 import ResultObjs
 import iniFile
 from chains import chains, chainFiles, lastModified
-import batchJob
 # =============================================================================
 
 version = 4
@@ -24,8 +23,7 @@ use_plot_data = False
 
 config_file = os.environ.get('GETDIST_CONFIG', None)
 if not config_file:
-    codeRoot = batchJob.getCodeRootPath()
-    config_file = os.path.join(codeRoot, 'python', 'config.ini')
+    config_file = os.path.join(os.path.dirname(__file__), 'config.ini')
 if os.path.exists(config_file):
     ini = iniFile.iniFile(config_file)
     default_grid_root = ini.string('default_grid_root', '')
@@ -34,7 +32,6 @@ if os.path.exists(config_file):
     use_plot_data = ini.bool('use_plot_data', use_plot_data)
 else:
     ini = iniFile.iniFile()
-
 
 def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settings={}):
         files = chainFiles(file_root)
@@ -1102,7 +1099,7 @@ class MCSamples(chains):
 
     def Get1DDensity(self, j, writeDataToFile=False, get_density=False, paramConfid=None):
 
-        logging.info("1D density for %s (%i)" % (self.parName(j), j))
+        logging.debug("1D density for %s (%i)" % (self.parName(j), j))
 
         paramVec = self.samples[:, j]
         width, smooth_1D, end_edge = self.initParamRanges(j, paramConfid)
