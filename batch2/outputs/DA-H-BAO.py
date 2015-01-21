@@ -68,7 +68,7 @@ density.x1 = perp
 density.x2 = para
 density.contours = exp(-np.array([1.509, 2.4477]) ** 2 / 2)
 
-root = 'base_plikHM_TT_lowTEB'
+root = 'base_plikHM_TT_lowTEB_lensing'
 
 c = 29979.2458
 

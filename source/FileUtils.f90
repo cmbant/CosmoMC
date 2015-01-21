@@ -1127,6 +1127,7 @@
     !Misc functions
 
     function TopCommentLine(aname) result(res)
+    !Get top comment line in file, including #
     character(LEN=*), intent(IN) :: aname
     character(LEN=:), allocatable :: res
     Type(TTextFile) :: F
@@ -1142,10 +1143,10 @@
     call F%Close()
 
     end function TopCommentLine
-    
-    
+
+
     function LastTopComment(aname) result(res)
-    !Get content of last commented line at the top of file (e.g. column header)
+    !Get content of last commented line at the top of file (e.g. column header), without #
     character(LEN=*), intent(IN) :: aname
     character(LEN=:), allocatable :: res, InLine
     Type(TTextFile) :: F
