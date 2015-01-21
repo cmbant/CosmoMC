@@ -169,12 +169,8 @@
     Order = Ini%Read_String(basename//'_order')
 
     if (Order=='') then
-        incols = File%TopCommentLine(filename)
-        if (incols=='') then
-            call MpiStop('No column order given for '//filename)
-        else
-            incols = trim(incols(2:))
-        end if
+        incols = File%LastTopComment(filename)
+        if (incols=='') call MpiStop('No column order given for '//filename)
     else
         incols = 'L '//order
     end if
@@ -418,9 +414,9 @@
         !Want to force some of the component CL to a fixed model
         Order1 = Ini%Read_String(bin_type // '_fix_cl_file_order')
         if (order1=='') then
-            Order1 = File%TopCommentLine(S)
+            Order1 = File%LastTopComment(S)
             if (Order1=='') call MpiStop('No column order given for '//S)
-            do while(trim(Order1(1:1))=='' .or. Order1(1:1)=='L' .or. Order1(1:1)=='#')
+            do while(trim(Order1(1:1))=='' .or. Order1(1:1)=='L')
                 Order1= Order1(2:)
             end do
         end if

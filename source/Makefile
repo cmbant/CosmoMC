@@ -30,12 +30,12 @@ FFLAGS += -xHost
 endif
 
 else
-#gfortran does not yet work yet, open GCC 4.9 compiler bugs are
-#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60414
+#gfortran does not yet work yet, open GCC 5 compiler bugs are
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60334
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60289
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60255
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51976
+#https://gcc.gnu.org/bugzilla/show_bug.cgi?id=60322
 #and preferably
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=44672
 F90C = gfortran

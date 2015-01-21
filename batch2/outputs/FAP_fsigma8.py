@@ -4,7 +4,7 @@ import batchJob
 from pylab import *
 
 
-roots = ['base_' + s.defdata]
+roots = ['base_' + s.defdata + '_lensing']
 g = s.getSinglePlotter(ratio=1)
 g.newPlot()
 pars = g.get_param_array(roots[0], ['FAP057', 'fsigma8z057'])
@@ -45,7 +45,7 @@ g.add_2d_contours(roots[0], 'FAP057', 'fsigma8z057', filled=False, density=densi
 g.add_2d_contours(roots[0], 'FAP057', 'fsigma8z057', filled=True, plotno=3)
 
 
-g.add_legend(['BOSS CMASS (Samushia et al.)', 'BOSS CMASS (Beutler et al.)', s.defplanck], legend_loc='upper left')
+g.add_legend(['BOSS CMASS (Samushia et al.)', 'BOSS CMASS (Beutler et al.)', s.defplanck + '+lensing'], legend_loc='upper left')
 g.setAxes(params=pars)
 g.export()
 
