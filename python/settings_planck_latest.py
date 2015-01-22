@@ -90,8 +90,6 @@ baseTT = planck_highL_sets[0]
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
 
-BKP = batchJob.dataSet(['BKP'], ['BKPlanck.ini'])
-
 likechecks = []
 likechecks.append(batchJob.dataSet(['CamSpecDS', 'TT'], camspec_detsets + ['CAMspec_TT.ini']))
 likechecks.append(batchJob.dataSet(['plikDS', 'TT'], ['plik_dx11dr2_DS_v18_TT.ini']))
@@ -551,7 +549,7 @@ gbkp = batchJob.jobGroup('')
 gbkp.covmat = 'planck_covmats/base_r_plikHM_TT_lowTEB_BKP.covmat'
 gbkp.datasets = []
 for d in  [copy.deepcopy(baseTT)]:
-    d.add(BKP)
+    d.add(['BKP'], ['BKPlanck.ini'])
     gbkp.datasets.append(d)
 for d in copy.deepcopy(gbkp.datasets):
     d.add(lensing)
