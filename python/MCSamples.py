@@ -35,7 +35,6 @@ if os.path.exists(config_file):
 else:
     ini = iniFile.iniFile()
 
-
 def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settings={}):
         files = chainFiles(file_root)
         path, name = os.path.split(file_root)

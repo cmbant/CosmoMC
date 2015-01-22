@@ -142,9 +142,9 @@
     generic  :: SaveTxt => WriteTextMatrix, WriteTextVector
     end type
 
-    type(TFile), save :: File
+    type(TFile), public, save :: File
 
-    public TFileStream, TBinaryFile, TTextFile, File, File_size_int
+    public TFileStream, TBinaryFile, TTextFile, TFile, File_size_int
     contains
 
     function FileExists(aname)
@@ -1156,7 +1156,7 @@
     do while (F%ReadLine(InLine))
         if (trim(InLine)=='') cycle
         if (InLine(1:1)=='#') then
-            res = trim(InLine(2:))
+            res = trim(adjustl(InLine(2:)))
         else
             exit
         end if

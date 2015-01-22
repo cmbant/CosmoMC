@@ -43,7 +43,7 @@
     !Load in the bandpass files for each map
     allocate(this%Bandpasses(this%nmaps_required))
     do i = 1, this%nmaps_required
-        fname = Ini%ReadFileName('bandpass['//this%map_order%Item(i)//']',relative = .true., NotFoundFail=.true.)
+        fname = Ini%ReadFileName('bandpass['//this%used_map_order%Item(i)//']',relative = .true., NotFoundFail=.true.)
         call this%ReadBandpass(fname, this%Bandpasses(i))
     end do
 
@@ -168,7 +168,8 @@
                         CL%CL(l) = CL%CL(l) + &
                              dust*Adust*(l/lpivot)**(alphadust)*EEtoBB_dust + &
                              sync*Async*(l/lpivot)**(alphasync)*EEtoBB_sync + &
-                             dustsync_corr*dustsync*sqrt(Adust*EEtoBB_dust*Async*EEtoBB_sync)*(l/lpivot)**((alphadust+alphasync)/2)
+                             dustsync_corr*dustsync*sqrt(Adust*EEtoBB_dust*Async*EEtoBB_sync)* &
+                            (l/lpivot)**((alphadust+alphasync)/2)
                     end do
                 end if
                 if ((this%map_fields(this%required_order(i)).eq.3) .and. &

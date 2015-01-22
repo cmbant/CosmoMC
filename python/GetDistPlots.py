@@ -392,6 +392,7 @@ class GetDistPlotter(object):
         """
         if settings is None: self.settings = defaultSettings
         else: self.settings = settings
+        if chain_dir is None and plot_data is None: chain_dir = MCSamples.default_grid_root
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
         if chain_dir is not None or mcsamples:
