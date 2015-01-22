@@ -161,23 +161,26 @@
                 dust = fdust(i)*fdust(j)
                 sync = fsync(i)*fsync(j)
                 dustsync = fdust(i)*fsync(j) + fsync(i)*fdust(j)
-                do l=this%pcl_lmin,this%pcl_lmax
-                        if((i.eq.3).and.(j.eq.2))then
-                                CL%CL(l) = 0.d0
-                        end if
-                        if((i.eq.2).and.(j.eq.2))then 
-                                CL%CL(l) = CL%CL(l) + &
-                                dust*Adust*(l/lpivot)**(alphadust)*EEtoBB_dust + &
-                                sync*Async*(l/lpivot)**(alphasync)*EEtoBB_sync + &
-                                dustsync_corr*dustsync*sqrt(Adust*EEtoBB_dust*Async*EEtoBB_sync)*(l/lpivot)**((alphadust+alphasync)/2)
-                        end if
-                        if((i.eq.3).and.(j.eq.3))then
-                                CL%CL(l) = CL%CL(l) + &
-                                dust*Adust*(l/lpivot)**(alphadust) + &
-                                sync*Async*(l/lpivot)**(alphasync) + &
-                                dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
-                        end if
-                end do
+                if ((this%map_fields(this%required_order(i)).eq.2) .and. &
+                     (this%map_fields(this%required_order(j)).eq.2)) then
+                    ! EE spectrum: multiply foregrounds by EE/BB ratio
+                    do l=this%pcl_lmin,this%pcl_lmax
+                        CL%CL(l) = CL%CL(l) + &
+                             dust*Adust*(l/lpivot)**(alphadust)*EEtoBB_dust + &
+                             sync*Async*(l/lpivot)**(alphasync)*EEtoBB_sync + &
+                             dustsync_corr*dustsync*sqrt(Adust*EEtoBB_dust*Async*EEtoBB_sync)*(l/lpivot)**((alphadust+alphasync)/2)
+                    end do
+                end if
+                if ((this%map_fields(this%required_order(i)).eq.3) .and. &
+                     (this%map_fields(this%required_order(j)).eq.3)) then
+                    ! BB spectrum: add foregrounds normally
+                    do l=this%pcl_lmin,this%pcl_lmax
+                        CL%CL(l) = CL%CL(l) + &
+                             dust*Adust*(l/lpivot)**(alphadust) + &
+                             sync*Async*(l/lpivot)**(alphasync) + &
+                             dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
+                    end do
+                end if
             end associate
         end do
     end do
