@@ -90,6 +90,8 @@ baseTT = planck_highL_sets[0]
 
 WMAP9 = [[WMAP], ['WMAP.ini']]
 
+BKP = batchJob.dataSet(['BKP'], ['BKPlanck.ini'])
+
 likechecks = []
 likechecks.append(batchJob.dataSet(['CamSpecDS', 'TT'], camspec_detsets + ['CAMspec_TT.ini']))
 likechecks.append(batchJob.dataSet(['plikDS', 'TT'], ['plik_dx11dr2_DS_v18_TT.ini']))
@@ -530,21 +532,36 @@ gchecks.params = [[], ['mnu'], ['nnu'], ['Alens'], ['yhe'], ['r'], ['nrun', 'r']
 gchecks.importanceRuns = [post_lensing, post_BAO, post_lensingBAO]
 groups.append(gchecks)
 
-gcuts = batchJob.jobGroup('lowhighL')
-lowplik = ' %DATASETDIR%clik/hi_l/plik/Plig_DATA_v27hmlmax800_dx11d2hm1xhm2freqv27mask807060_TT_camcutsTE2F217_lmin30_lmax801_v24hm.clik'
-hiplik = ' %DATASETDIR%clik/hi_l/plik/Plig_DATA_v27hmlmin800_dx11d2hm1xhm2freqv27mask807060_TT_camcutsTE2F217_lmin802_v24hm.clik'
+if False:
+    gcuts = batchJob.jobGroup('lowhighL')
+    lowplik = ' %DATASETDIR%clik/hi_l/plik/Plig_DATA_v27hmlmax800_dx11d2hm1xhm2freqv27mask807060_TT_camcutsTE2F217_lmin30_lmax801_v24hm.clik'
+    hiplik = ' %DATASETDIR%clik/hi_l/plik/Plig_DATA_v27hmlmin800_dx11d2hm1xhm2freqv27mask807060_TT_camcutsTE2F217_lmin802_v24hm.clik'
 
-gcuts.datasets = [batchJob.dataSet(['plikHM', 'TT', 'lmax801'], [{'clik_data_plik':lowplik}, 'plik_dx11dr2_HM_v18_TT.ini']),
-                  batchJob.dataSet(['plikHM', 'TT', 'lmin802'], [{'clik_data_plik':hiplik}, 'plik_dx11dr2_HM_v18_TT.ini'])
-                  ]
-for d in gcuts.datasets:
-    d.add(WMAPTEB)
-gcuts.params = [[]]
-gcuts.importanceRuns = []
-groups.append(gcuts)
+    gcuts.datasets = [batchJob.dataSet(['plikHM', 'TT', 'lmax801'], [{'clik_data_plik':lowplik}, 'plik_dx11dr2_HM_v18_TT.ini']),
+                      batchJob.dataSet(['plikHM', 'TT', 'lmin802'], [{'clik_data_plik':hiplik}, 'plik_dx11dr2_HM_v18_TT.ini'])
+                      ]
+    for d in gcuts.datasets:
+        d.add(WMAPTEB)
+    gcuts.params = [[]]
+    gcuts.importanceRuns = []
+    groups.append(gcuts)
+
+
+gbkp = batchJob.jobGroup('')
+gbkp.covmat = 'planck_covmats/base_r_plikHM_TT_lowTEB_BKP.covmat'
+gbkp.datasets = [copy.deepcopy(baseTT)]
+for d in gbkp.datasets:
+    d.add(BKP)
+for d in copy.deepcopy(gbkp.datasets):
+    d.add(lensing)
+    gbkp.datasets.add(d)
+
+gbkp.params = [['r'], ['nrun', 'r']]
+gbkp.importanceRuns = [post_BAO, post_nonCMB]
+gbkp.append(gchecks)
+
 
 skip = []
-
 
 # Check lensing results with aggressive likelihood up to given max bin
 if False:
