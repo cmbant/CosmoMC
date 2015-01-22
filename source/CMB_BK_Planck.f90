@@ -43,7 +43,7 @@
     !Load in the bandpass files for each map
     allocate(this%Bandpasses(this%nmaps_required))
     do i = 1, this%nmaps_required
-        fname = Ini%ReadFileName('bandpass['//this%map_order%Item(i)//']',relative = .true., NotFoundFail=.true.)
+        fname = Ini%ReadFileName('bandpass['//this%used_map_order%Item(i)//']',relative = .true., NotFoundFail=.true.)
         call this%ReadBandpass(fname, this%Bandpasses(i))
     end do
 
@@ -135,7 +135,7 @@
     real(mcp) :: fdust(this%nmaps_required)
     real(mcp) :: fsync(this%nmaps_required)
     real(mcp) :: dust, sync, dustsync
-    real(mcp) :: EEtoBB_dust,EEtoBB_sync    
+    real(mcp) :: EEtoBB_dust,EEtoBB_sync
     integer i,j,l
     real(mcp) :: lpivot = 80.0_mcp
 
@@ -148,7 +148,7 @@
     betasync = DataParams(7)
     dustsync_corr = DataParams(8)
     EEtoBB_dust = DataParams(9)
-    EEtoBB_sync = DataParams(10)        
+    EEtoBB_sync = DataParams(10)
 
     do i=1, this%nmaps_required
         call DustScaling(betadust,Tdust,this%Bandpasses(i),fdust(i))
@@ -162,21 +162,22 @@
                 sync = fsync(i)*fsync(j)
                 dustsync = fdust(i)*fsync(j) + fsync(i)*fdust(j)
                 do l=this%pcl_lmin,this%pcl_lmax
-                        if((i.eq.3).and.(j.eq.2))then
-                                CL%CL(l) = 0.d0
-                        end if
-                        if((i.eq.2).and.(j.eq.2))then 
-                                CL%CL(l) = CL%CL(l) + &
-                                dust*Adust*(l/lpivot)**(alphadust)*EEtoBB_dust + &
-                                sync*Async*(l/lpivot)**(alphasync)*EEtoBB_sync + &
-                                dustsync_corr*dustsync*sqrt(Adust*EEtoBB_dust*Async*EEtoBB_sync)*(l/lpivot)**((alphadust+alphasync)/2)
-                        end if
-                        if((i.eq.3).and.(j.eq.3))then
-                                CL%CL(l) = CL%CL(l) + &
-                                dust*Adust*(l/lpivot)**(alphadust) + &
-                                sync*Async*(l/lpivot)**(alphasync) + &
-                                dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
-                        end if
+                    if((i.eq.3).and.(j.eq.2))then
+                        CL%CL(l) = 0.d0
+                    end if
+                    if((i.eq.2).and.(j.eq.2))then
+                        CL%CL(l) = CL%CL(l) + &
+                            dust*Adust*(l/lpivot)**(alphadust)*EEtoBB_dust + &
+                            sync*Async*(l/lpivot)**(alphasync)*EEtoBB_sync + &
+                            dustsync_corr*dustsync*sqrt(Adust*EEtoBB_dust*Async*EEtoBB_sync) &
+                            *(l/lpivot)**((alphadust+alphasync)/2)
+                    end if
+                    if((i.eq.3).and.(j.eq.3))then
+                        CL%CL(l) = CL%CL(l) + &
+                            dust*Adust*(l/lpivot)**(alphadust) + &
+                            sync*Async*(l/lpivot)**(alphasync) + &
+                            dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
+                    end if
                 end do
             end associate
         end do
