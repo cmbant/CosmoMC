@@ -557,7 +557,7 @@ for d in copy.deepcopy(gbkp.datasets):
 
 gbkp.params = [['r'], ['nrun', 'r']]
 gbkp.importanceRuns = [post_BAO, post_nonCMB]
-gbkp.append(gchecks)
+groups.append(gbkp)
 
 
 skip = []
