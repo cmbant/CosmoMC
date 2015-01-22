@@ -485,13 +485,10 @@
         call this%map_names%SetFromString(S)
         S = Ini%Read_String('map_fields',.true.)
         call map_fields%SetFromString(S)
-        print *,S
         if (map_fields%Count/=this%map_names%Count) &
             call MpiStop('CMBLikes: number of map_fields does not match map_names')
         allocate(this%map_fields(this%map_names%Count))
         do i=1, map_fields%Count
-            print *, i, map_fields%count
-            print *, map_fields%Item(i)
             this%map_fields(i) = this%TypeIndex(map_fields%CharAt(i,1))
         end do
     else
