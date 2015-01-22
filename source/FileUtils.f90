@@ -1156,7 +1156,7 @@
     do while (F%ReadLine(InLine))
         if (trim(InLine)=='') cycle
         if (InLine(1:1)=='#') then
-            res = trim(InLine(2:))
+            res = trim(adjustl(InLine(2:)))
         else
             exit
         end if
