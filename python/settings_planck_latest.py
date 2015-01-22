@@ -549,12 +549,13 @@ if False:
 
 gbkp = batchJob.jobGroup('')
 gbkp.covmat = 'planck_covmats/base_r_plikHM_TT_lowTEB_BKP.covmat'
-gbkp.datasets = [copy.deepcopy(baseTT)]
-for d in gbkp.datasets:
+gbkp.datasets = []
+for d in  [copy.deepcopy(baseTT)]:
     d.add(BKP)
+    gbkp.datasets.append(d)
 for d in copy.deepcopy(gbkp.datasets):
     d.add(lensing)
-    gbkp.datasets.add(d)
+    gbkp.datasets.append(d)
 
 gbkp.params = [['r'], ['nrun', 'r']]
 gbkp.importanceRuns = [post_BAO, post_nonCMB]
