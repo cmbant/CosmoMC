@@ -142,9 +142,9 @@
     generic  :: SaveTxt => WriteTextMatrix, WriteTextVector
     end type
 
-    type(TFile), save :: File
+    type(TFile), public, save :: File
 
-    public TFileStream, TBinaryFile, TTextFile, File, File_size_int
+    public TFileStream, TBinaryFile, TTextFile, TFile, File_size_int
     contains
 
     function FileExists(aname)

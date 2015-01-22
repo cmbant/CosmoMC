@@ -81,7 +81,7 @@ def makeNew(samples):
   #  comb = (Da / 1410) * (rsH / 91.7) ** 1.72
     Hphys = rsH * rd_fid / c
     Daphys = Da / rd_fid
-    comb = (Daphys / 9.447) * (Hphys / 0.4564) ** 1.72
+    comb = (Daphys / 9.385) * (Hphys / 0.4582) ** 1.7
 
     samples.updateChainBaseStatistics()
     print 'Da ', samples.mean(Da), samples.std(Da)
