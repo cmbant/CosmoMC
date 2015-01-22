@@ -545,10 +545,11 @@ if False:
     groups.append(gcuts)
 
 
-gbkp = batchJob.jobGroup('')
-gbkp.covmat = 'planck_covmats/base_r_plikHM_TT_lowTEB_BKP.covmat'
+gbkp = batchJob.jobGroup('BKP')
 gbkp.datasets = []
 for d in  [copy.deepcopy(baseTT)]:
+    d.covmat = 'planck_covmats/base_r_plikHM_TT_lowTEB_BKP.covmat'
+    d.add(lowTEB)
     d.add('BKP', 'BKPlanck.ini')
     gbkp.datasets.append(d)
 for d in copy.deepcopy(gbkp.datasets):
