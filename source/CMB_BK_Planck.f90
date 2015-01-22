@@ -135,7 +135,7 @@
     real(mcp) :: fdust(this%nmaps_required)
     real(mcp) :: fsync(this%nmaps_required)
     real(mcp) :: dust, sync, dustsync
-    real(mcp) :: EEtoBB_dust,EEtoBB_sync    
+    real(mcp) :: EEtoBB_dust,EEtoBB_sync
     integer i,j,l
     real(mcp) :: lpivot = 80.0_mcp
 
@@ -148,7 +148,7 @@
     betasync = DataParams(7)
     dustsync_corr = DataParams(8)
     EEtoBB_dust = DataParams(9)
-    EEtoBB_sync = DataParams(10)        
+    EEtoBB_sync = DataParams(10)
 
     do i=1, this%nmaps_required
         call DustScaling(betadust,Tdust,this%Bandpasses(i),fdust(i))
@@ -161,27 +161,19 @@
                 dust = fdust(i)*fdust(j)
                 sync = fsync(i)*fsync(j)
                 dustsync = fdust(i)*fsync(j) + fsync(i)*fdust(j)
-                if ((this%map_fields(this%required_order(i)).eq.2) .and. &
-                     (this%map_fields(this%required_order(j)).eq.2)) then
+                If (CL%theory_i==2 .and. CL%theory_j==2) then
                     ! EE spectrum: multiply foregrounds by EE/BB ratio
-                    do l=this%pcl_lmin,this%pcl_lmax
-                        CL%CL(l) = CL%CL(l) + &
-                             dust*Adust*(l/lpivot)**(alphadust)*EEtoBB_dust + &
-                             sync*Async*(l/lpivot)**(alphasync)*EEtoBB_sync + &
-                             dustsync_corr*dustsync*sqrt(Adust*EEtoBB_dust*Async*EEtoBB_sync)* &
-                            (l/lpivot)**((alphadust+alphasync)/2)
-                    end do
+                    dust = dust * EEtoBB_dust
+                    sync = sync * EEtoBB_sync
+                    dustsync = dustsync * sqrt(EEtoBB_dust*EEtoBB_sync)
                 end if
-                if ((this%map_fields(this%required_order(i)).eq.3) .and. &
-                     (this%map_fields(this%required_order(j)).eq.3)) then
-                    ! BB spectrum: add foregrounds normally
-                    do l=this%pcl_lmin,this%pcl_lmax
-                        CL%CL(l) = CL%CL(l) + &
-                             dust*Adust*(l/lpivot)**(alphadust) + &
-                             sync*Async*(l/lpivot)**(alphasync) + &
-                             dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
-                    end do
-                end if
+
+                do l=this%pcl_lmin,this%pcl_lmax
+                    CL%CL(l) = CL%CL(l) + &
+                        dust*Adust*(l/lpivot)**(alphadust) + &
+                        sync*Async*(l/lpivot)**(alphasync) + &
+                        dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
+                end do
             end associate
         end do
     end do
