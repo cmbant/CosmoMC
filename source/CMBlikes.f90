@@ -66,7 +66,7 @@
         integer, allocatable :: map_required_index(:)  !same for required maps
         integer, allocatable :: required_order(:)
         logical :: has_foregrounds = .false.
-        Type(TStringList) :: map_order !names of the maps actually used
+        Type(TStringList) :: used_map_order !names of the maps actually used
         integer ncl !calculated from above = nmaps*(nmaps+1)/2
         integer ncl_used !Number of C_l actually used in covariance matrix (others assumed zero)
         integer, allocatable :: cl_use_index(:)
@@ -110,6 +110,7 @@
     procedure, private :: ElementsToMatrix
     !    procedure, private :: SetTopHatWindows
     procedure, private :: GetColsFromOrder
+    procedure, private :: Cl_used_i_j_name
     procedure, private :: Cl_i_j_name
     procedure, private :: MapPair_to_Theory_i_j
     procedure, private :: PairStringToUsedMapIndices
@@ -320,19 +321,28 @@
     !
     !end subroutine SetTopHatWindows
 
-    function Cl_i_j_name(this,i,j) result(ClName)
+    function Cl_used_i_j_name(this,i,j) result(ClName)
     class(TCMBLikes) :: this
+    integer, intent(in) :: i,j
+    character(LEN=:), allocatable :: ClName
+
+    ClName = this%CL_i_j_name(this%used_map_order,i,j)
+
+    end function Cl_used_i_j_name
+
+    function Cl_i_j_name(this,names,i,j) result(ClName)
+    class(TCMBLikes) :: this
+    class(TStringList), intent(in) :: names
     character(LEN=:), allocatable :: ClName
     integer, intent(in) :: i,j
     character(LEN=:), allocatable :: name1,name2
 
-    name1 = this%map_order%Item(i)
-    name2 = this%map_order%Item(j)
+    name1 = names%Item(i)
+    name2 = names%Item(j)
     if (this%has_map_names) then
         ClName = name1//cross_separators(1:1)//name2
     else
-
-        ClName =name1//name2
+        ClName = name1//name2
     end if
 
     end function Cl_i_j_name
@@ -351,8 +361,8 @@
     do i=1,this%nmaps
         do j=1,i
             ix = ix +1
-            i1 =Li%IndexOf(this%Cl_i_j_name(i,j))
-            if (i1==-1 .and. i/=j) i1 = Li%IndexOf(this%Cl_i_j_name(j,i))
+            i1 =Li%IndexOf(this%Cl_used_i_j_name(i,j))
+            if (i1==-1 .and. i/=j) i1 = Li%IndexOf(this%Cl_used_i_j_name(j,i))
             if (i1/=-1) then
                 if (cols(ix)>0) call MpiStop('GetColsFromOrder: duplicate CL type')
                 cols(ix) = i1
@@ -576,7 +586,7 @@
         if (this%use_map(i)) then
             ix=ix+1
             this%map_used_index(i)=ix
-            call this%map_order%Add(this%map_names%Item(i))
+            call this%used_map_order%Add(this%map_names%Item(i))
         end if
     end do
     this%ncl = (this%nmaps*(this%nmaps+1))/2
@@ -1067,7 +1077,7 @@
     call F%WriteInLine('#    L')
     do i=1, this%nmaps_required
         do j=1,i
-            call F%WriteInLine( this%Cl_i_j_name(Cls(i,j)%map_i,Cls(i,j)%map_j), '(a17)')
+            call F%WriteInLine(this%CL_i_j_Name(this%map_names,Cls(i,j)%map_i,Cls(i,j)%map_j), '(a17)')
         end do
     end do
     call F%NewLine()
