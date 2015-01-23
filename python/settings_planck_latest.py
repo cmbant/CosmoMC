@@ -548,7 +548,7 @@ if False:
 gbkp = batchJob.jobGroup('BKP')
 gbkp.datasets = []
 for d in  [copy.deepcopy(baseTT)]:
-    d.covmat = 'base_r_plikHM_TT_lowTEB_BKP.covmat'
+    d.covmat = 'planck_covmats/base_r_plikHM_TT_lowTEB_BKP.covmat'
     d.add(lowTEB)
     d.add('BKP', 'BKPlanck.ini')
     gbkp.datasets.append(d)
