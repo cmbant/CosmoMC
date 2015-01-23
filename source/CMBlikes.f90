@@ -24,17 +24,6 @@
         real(mcp), allocatable :: M(:,:)
     end Type TSqMatrix
 
-    Type, extends(TSqMatrix) :: TIndexedMatrix
-        integer, allocatable :: Left_indices(:), Right_indices(:)
-    end type TIndexedMatrix
-
-    Type, extends(TIndexedMatrix) :: TCorrectionMatrix
-        real(mcp), allocatable :: Fiducial(:)
-    contains
-    procedure :: InterpProduct
-    procedure :: LoadFromFile
-    end Type TCorrectionMatrix
-
     Type TBinWindows
         integer :: lmin, lmax
         real(mcp), dimension(:,:,:), allocatable :: W
@@ -1161,47 +1150,6 @@
     LogLike = chisq/2
 
     end function CMBLikes_LogLike
-
-
-    subroutine LoadFromFile(this, fname, fidCL)
-    class(TCorrectionMatrix) :: this
-    character(LEN=*), intent(in) :: fname
-    real(mcp), allocatable :: Mat(:,:)
-    real(mcp), intent(in) :: fidCL(:)
-    integer m,n
-
-    call File%LoadTxt(fname,Mat, m,n)
-    allocate(this%M(m-1, n-1), source = Mat(2:m,2:n))
-    allocate(this%left_indices(m-1), this%right_indices(n-1))
-    this%left_indices = int(Mat(2:m,1))
-    this%right_indices = int(Mat(1,2:n))
-
-    allocate(this%Fiducial(m-1))
-    this%Fiducial = matmul(this%M, fidCL(this%Right_indices))
-
-    end subroutine LoadFromFile
-
-    subroutine InterpProduct(this, RightInput, InterpOutput, lmin, lmax, lmaxmax, sub_fiducial)
-    class (TCorrectionMatrix) :: this
-    real(mcp), intent(in) :: RightInput(:)
-    real(mcp), allocatable, intent(out) :: InterpOutput(:)
-    integer, intent(out) :: lmin, lmax
-    integer, intent(in) :: lmaxmax
-    logical sub_fiducial
-    Type(TCubicSpline) :: Interp
-    real(mcp), allocatable :: LeftOutput(:)
-
-    allocate(LeftOutput(size(this%Left_Indices)))
-    Leftoutput = matmul(this%M, RightInput(this%Right_indices))
-    if (sub_fiducial) LeftOutput = LeftOutput - this%Fiducial
-    call Interp%Init(this%Left_indices, LeftOutput)
-    lmin = this%Left_indices(1)
-    lmax = min(lmaxmax,this%Left_indices(size(this%Left_Indices)))
-    allocate(InterpOutput(lmin:lmax))
-    call Interp%Array(lmin, lmax, InterpOutput)
-
-    end subroutine InterpProduct
-
 
 
     subroutine TBinWindows_bin(this, TheoryCls, Cls, bin)
