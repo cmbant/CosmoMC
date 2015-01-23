@@ -1,3 +1,4 @@
+# Get CAMB input parameters from best-fit .minimum file from cosmomc
 import sys, os, iniFile
 from getdist import ResultObjs
 

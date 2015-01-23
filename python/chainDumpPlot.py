@@ -2,8 +2,7 @@ from pylab import *
 import matplotlib.cm as cmx
 import matplotlib.colors as colors
 import os, fnmatch
-import ResultObjs
-import CMBlikes
+from getdist import ResultObjs
 
 """
     load and plot chain cl data, as export by cosmomc using action =1 and redo_output_txt_theory=T, redo_output_txt_dir=xxx

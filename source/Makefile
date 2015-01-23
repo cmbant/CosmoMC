@@ -35,7 +35,7 @@ else
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60289
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60255
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51976
-#https://gcc.gnu.org/bugzilla/show_bug.cgi?id=60322
+#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60322
 #and preferably
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=44672
 F90C = gfortran

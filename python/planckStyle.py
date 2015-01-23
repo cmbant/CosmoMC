@@ -1,6 +1,6 @@
-import os, ResultObjs, GetDistPlots, batchJob
+import os, GetDistPlots, batchJob
 from matplotlib import rcParams, rc, pylab
-import MCSamples
+from getdist import ResultObjs, MCSamples
 
 # common setup for matplotlib
 params = {'backend': 'pdf',

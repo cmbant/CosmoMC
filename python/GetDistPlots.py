@@ -1,13 +1,12 @@
 import os
 import sys
-import paramNames
 import iniFile
 import matplotlib
 import copy as cp
 matplotlib.use('Agg')
 from pylab import *
 import batchJob
-import MCSamples
+from getdist import MCSamples, paramNames
 
 """Plotting scripts for GetDist outputs"""
 

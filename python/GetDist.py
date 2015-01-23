@@ -3,9 +3,7 @@
 import os
 import sys
 import iniFile
-import chains
-import MCSamples
-import numpy as np
+from getdist import MCSamples, chains
 # ==============================================================================
 
 if (len(sys.argv) < 2):

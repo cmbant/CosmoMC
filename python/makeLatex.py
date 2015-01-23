@@ -1,5 +1,6 @@
 
-import ResultObjs, os
+import os
+from getdist import ResultObjs
 
 def margeParamTex(rootname, params=None, limit=1, paramNameFile=None):
     """ Get tex snipped for constraint on parameters in params """

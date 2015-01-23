@@ -1,4 +1,6 @@
-import os, batchJobArgs, paramNames, re
+import os, re
+import batchJobArgs
+from getdist import paramNames
 
 Opts = batchJobArgs.batchArgs('rename parameter in all .paramnames files in grid', importance=True)
 Opts.parser.add_argument('--old_new', nargs='+', help="list of oldname newname oldname2 newname2...")
