@@ -253,12 +253,9 @@
     end module massobservable
 
     ! ####################################################################
-    ! This module links to libcamb, initializes it and provides a
-    ! subroutine to obtain sigma8
 
     module power
     use PRECISION
-    use CAMB
     use TRANSFER
     use cosmology
 
@@ -903,8 +900,7 @@
     min_y=minval(qa_ytot)
     max_y=maxval(qa_ytot)
 
-    nerf = size(qa_ytot(:,0))
-
+    nerf =size(qa_ytot,1)
 
 
     if (sigmaM==0) then
@@ -1096,7 +1092,8 @@
     min_y=minval(qa_ytot)
     max_y=maxval(qa_ytot)
 
-    nerf = size(qa_ytot(:,0))
+
+    nerf = size(qa_ytot,1)
 
     SELECT CASE(switch_comp)
     CASE(1)
@@ -1437,12 +1434,12 @@
 
         if (Ini%Read_Logical('2D',.false.)) then
             sz_switch=2
-            print*,'2D SZ likelihood dN/dz'
+            print*,'2D SZ likelihood dN/dzdq'
         endif
 
         if (sz_switch==0) then
            sz_switch=2 !default
-           print*,'2D SZ likelihood dN/dz'
+           print*,'2D SZ likelihood dN/dzdq'
         endif
 
         if (Ini%Read_Logical('prior_alpha_SZ',.false.)) then
@@ -1877,12 +1874,6 @@
          print*,'total cat',sum
 
          nred2=nrows-nmiss
-         print*,nrows,nmiss
-
-         if (nrows /= int(sum)) then
-            print*,'Error number of clusters!',nrows,sum
-            !stop
-         endif
          ncat=nrows
 
          print*,'Number of clusters:',ncat
@@ -1968,8 +1959,9 @@
          if (print_counts==1) then
             print*,'predicted counts'
             print*,DNz
+            print*,'total counts',sum
          endif
-         print*,'total counts',sum
+         
 
          if (ISNAN(DNZ(1))) then
             print*,'NaN found in theory counts!'
@@ -2045,7 +2037,6 @@
                   !if (int(sum) /= nred2) then
                   if (abs(sum-dble(nred2))>1.e-5) then
                      print*,'error number of clusters with redhift'
-
                      print*,nred2,sum
                      stop
                   endif
@@ -2129,7 +2120,8 @@
                sum=sum+DN(I,J)
             enddo
          ENDDO
-         print*,'total counts',sum
+           if (print_counts==1) print*,'total counts',sum
+
   
          sum=0.
          do i=1,Nz
