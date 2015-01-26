@@ -1,5 +1,6 @@
-import os, paramNames, pickle, random
+import os, pickle, random
 import numpy as np
+from getdist import paramNames
 
 def lastModified(files):
     return max([os.path.getmtime(fname) for fname in files])

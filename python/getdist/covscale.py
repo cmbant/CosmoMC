@@ -1,6 +1,6 @@
 
 import sys, fnmatch, os
-import covMat
+from getdist import covMat
 
 if len(sys.argv) < 4:
     print 'covscale rescales parmeter(s) in all .covmat files in a directory and outputs to another directory'

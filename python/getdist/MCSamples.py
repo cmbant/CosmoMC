@@ -9,12 +9,12 @@ import numpy as np
 from scipy.interpolate import splrep, splev
 from scipy.stats import norm
 import pickle
-import ResultObjs
 import iniFile
-from chains import chains, chainFiles, lastModified
+from getdist.chains import chains, chainFiles, lastModified
+from getdist import ResultObjs
 # =============================================================================
 
-version = 4
+version = 5
 
 default_grid_root = None
 output_base_dir = None

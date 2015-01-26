@@ -5,9 +5,9 @@ import sys
 import signal
 import logging
 import GetDistPlots
-import ResultObjs
 import matplotlib
 import numpy as np
+from getdist import ResultObjs, MCSamples
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -26,8 +26,6 @@ try:
 except ImportError:
     print "Can't import PySide modules, please install PySide first."
     sys.exit()
-
-import MCSamples
 
 import batchJob
 import makeGrid

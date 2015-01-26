@@ -16,7 +16,7 @@ except ImportError:
     print "Can't import PySide modules."
     sys.exit()
 
-from MainWindow import MainWindow
+from getdist.MainWindow import MainWindow
 
 parser = argparse.ArgumentParser(description='GetDist GUI')
 parser.add_argument('-v', '--verbose', help='verbose', action="store_true")

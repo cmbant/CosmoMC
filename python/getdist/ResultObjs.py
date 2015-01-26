@@ -1,4 +1,6 @@
-import paramNames, decimal, numpy as np
+import decimal
+import numpy as np
+from getdist import paramNames
 
 class textFile(object):
 

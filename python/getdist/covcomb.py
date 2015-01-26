@@ -3,7 +3,7 @@
 # Nb. in1 values take priority over in2
 
 import sys
-import covMat
+from getdist import covMat
 
 if len(sys.argv) < 3:
     print 'Usage: python covcmb.py out.covmat in1.covmat in2.covmat [in3.covmat...]'
