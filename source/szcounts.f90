@@ -1893,7 +1893,6 @@
     function SZCC_Cash(this,CMB,Theory,DataParams)
       ! likelihood computation
       ! SZ nuisance in dataparams
-      use camb
       use cosmology
       use numbercounts
       Class(SZLikelihood) :: this
