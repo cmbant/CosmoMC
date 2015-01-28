@@ -168,12 +168,16 @@
                     dustsync = dustsync * sqrt(EEtoBB_dust*EEtoBB_sync)
                 end if
 
-                do l=this%pcl_lmin,this%pcl_lmax
-                    CL%CL(l) = CL%CL(l) + &
-                        dust*Adust*(l/lpivot)**(alphadust) + &
-                        sync*Async*(l/lpivot)**(alphasync) + &
-                        dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
-                end do
+                if ((CL%theory_i==2 .and. CL%theory_j==2) .or. &
+                    (CL%theory_i==3 .and. CL%theory_j==3)) then
+                    ! Only add foregrounds to EE or BB.
+                    do l=this%pcl_lmin,this%pcl_lmax
+                        CL%CL(l) = CL%CL(l) + &
+                            dust*Adust*(l/lpivot)**(alphadust) + &
+                            sync*Async*(l/lpivot)**(alphasync) + &
+                            dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
+                    end do
+                end if
             end associate
         end do
     end do
