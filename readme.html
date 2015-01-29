@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>July 2014</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>January 2015</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -146,6 +146,7 @@ There is also a supplied script python/runMPI.py that you may be able to adapt f
 </BLOCKQUOTE>
  to run using the params.ini parameters file. Run runMPI.py without arguments to see a list of options (number of chains, cores, wall time, etc).
  If necessary edit the <b>job_script</b> file as appropriate for your machine, and also if necessary the <b>submitJob</b> function in <b>python/jobQueue.py</b>.
+ Alternatively, better, set the <b>COSMOMC_job_template</b> environment variable in your .bashrc to the name of a script template file customized for your machine.
  <BR><BR>
  In the parameters file you can set <B>MPI_Converge_Stop</B> to a convergence criterion (see <A HREF="#Convergence">Convergence Diagnostics</A>. Small numbers are better convergence; generally need R-1 < 0.1, but may want much smaller especially for importance sampling or accurate confidence limits. You can also directly impose an error limit on confidence values - see the parameter input file for details). If you set <B>MPI_LearnPropose</B> = T, the proposal density will be updated using the covariance matrix of the last half of all samples (across chains) so far. <BR><BR>
 Using MPI_LearnPropose will significantly improve performance if you are adding new parameters for which you don't have a pre-computed covariance matrix. However adjusting the proposal density is not strictly Markovian, though asymptotically it is as the covariance will converge. The burn in period should therefore be taken to be larger when learning the proposal density to allow for the time it takes the covariance matrix to converge sufficiently (though in practice it probably doesn't matter much in most cases). Note also that as the proposal density changes the number of steps between independent samples is not constant (i.e. the correlation length should decrease along the chain until the covariance has converged). The stopping criterion uses the last half of the samples in each chain, minus a (shortish) initial burn in period. If you don't have a starting covariance matrix a fairly safe thing to do is set <B>ignore_rows=0.3</B> in the <A HREF="#Analysing">GetDist</A> parameter file to skip the first chunk of each chain. <BR><BR>
@@ -512,15 +513,16 @@ installed manually or obtained from the cosmomc git repository (access available
 <UL>
 <LI><B>January 2015</B><BR>
 <UL>
+<LI>Added BICEP-Keck-Planck likelihood (e.g. include batch2/BKPlank.ini)
 <LI>New GetDist python version, updated plotted and graphical user interface:
 <UL>
-<LI>Run python/gui/gui.py (required PySide python module to be installed): make 1D, 2D, 3D plots, select parameters and chains, export PDF or script
+<LI>Run python/getdust/gui.py (required PySide python module to be installed): make 1D, 2D, 3D plots, select parameters and chains, export PDF or script
 <LI>Pure-Python version of GetDist, python/GetDist.py (not all options supported, e.g. no Raftery-Lewis convergence tests)
 <LI>GetDistPlots can now generate densities on the fly from chains without running GetDist first (old method still supported)
 <LI>Many plotting generalizations, including new rectangle plots, customization of colours and lines, mixed filled/line contour legends, etc.
 <LI>MCSamples.py module for script access generalized getdist function: loading chains, getting margestats/limits, density estimates, adding new derived parameters, PCA, etc.
 </UL>
-<LI>CAMB updated to December 2014 version, with support for more transfer function options, sigma8 variations, halofit version selection, and new derived parameters
+<LI>CAMB updated to January 2015 version, with support for more transfer function options, sigma8 variations, halofit version selection, and new derived parameters
 <LI>Data Updates:
 <UL>
 <LI>New weak lensing module, using Weyl spectrum from CAMB, with various data cuts of the <A HREF="http://arxiv.org/abs/1303.1808">CFHTlenS data</A> (thanks Adam Moss)
