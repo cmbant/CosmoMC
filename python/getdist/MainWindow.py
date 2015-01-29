@@ -7,6 +7,7 @@ import logging
 import GetDistPlots
 import matplotlib
 import numpy as np
+from iniFile import iniFile
 from getdist import ResultObjs, MCSamples
 
 import matplotlib.pyplot as plt
@@ -74,7 +75,7 @@ class MainWindow(QMainWindow):
         signal.signal(signal.SIGINT, signal.SIG_DFL)
 
         # Path for .ini file
-        self.iniFile = ini or 'batch2/getdist_common.ini'
+        self.iniFile = ini or MCSamples.default_getdist_settings
 
         # Path of root directory
         self.rootdirname = None
@@ -118,6 +119,12 @@ class MainWindow(QMainWindow):
                                statusTip="Show Marge Stats",
                                triggered=self.showMargeStats)
 
+        self.optionsAct = QAction(QIcon(""),
+                               "Analysis settings", self,
+                               shortcut="",
+                               statusTip="Show settings for getdist and plots",
+                               triggered=self.showSettings)
+
         self.aboutAct = QAction(QIcon(":/images/help_about.png"),
                                 "&About", self,
                                 statusTip="Show About box",
@@ -137,6 +144,10 @@ class MainWindow(QMainWindow):
         self.menuBar().addSeparator()
         self.dataMenu = self.menuBar().addMenu("&Data")
         self.dataMenu.addAction(self.statsAct)
+
+        self.menuBar().addSeparator()
+        self.optionMenu = self.menuBar().addMenu("&Options")
+        self.optionMenu.addAction(self.optionsAct)
 
         self.menuBar().addSeparator()
 
@@ -350,10 +361,11 @@ class MainWindow(QMainWindow):
             return
 
         stats = None
-        if self.batch and False:
-            jobItem = self.batch.resolveRoot(rootname)
-            fname = jobItem.distRoot + '.margestats'
-            stats = ResultObjs.margeStats(fname)
+#        if self.batch:
+#            jobItem = self.batch.resolveRoot(rootname)
+#            fname = jobItem.distRoot + '.margestats'
+#            stats = ResultObjs.margeStats(fname)
+
         if not stats:
             try:
                 self.statusBar().showMessage("Calculating margestats....")
@@ -364,6 +376,23 @@ class MainWindow(QMainWindow):
 
         dlg = DialogMargeStats(self, stats, rootname)
         dlg.exec_()
+
+    def showSettings(self):
+        """
+        Callback for action 'Show settings'
+        """
+        if not self.plotter:
+            QMessageBox.warning(self, "settings", "Open chains first ")
+            return
+        if isinstance(self.iniFile, basestring): self.iniFile = iniFile(self.iniFile)
+        dlg = DialogSettings(self, self.iniFile)
+        dlg.show()
+
+    def settingsChanged(self):
+        if self.plotter:
+            self.plotter.sampleAnalyser.reset(self.iniFile)
+            self.plotData()
+
 
     def about(self):
         """
@@ -431,7 +460,7 @@ class MainWindow(QMainWindow):
             rootname, _ = self.rootnames[roots[0]]
             paramNames = self.plotter.sampleAnalyser.samplesForRoot(rootname).paramNames.list()
         else:
-            raise Exception('roonames out of synch')
+            raise Exception('rootnames out of synch')
 #         all_params = []
 #
 #         for root in  self.checkedRootNames():
@@ -790,7 +819,10 @@ class MainWindow(QMainWindow):
             if self.is_grid:
                 script += "g=s.%s(chain_dir=r'%s')\n" % (plot_func, self.rootdirname)
             else:
-                script += "g=s.%s(mcsamples=True, ini_file=r'%s')\n" % (plot_func, self.iniFile)
+                if isinstance(self.iniFile, basestring):
+                    script += "g=s.%s(mcsamples=True, ini_file=r'%s')\n" % (plot_func, self.iniFile)
+                else:
+                    script += "g=s.%s(mcsamples=True)\n" % (plot_func)
 
             # Root names
             roots = []
@@ -982,6 +1014,8 @@ class MainWindow(QMainWindow):
             # self.plotWidget.update()
             self.plotWidget.show()
 
+
+
 # ==============================================================================
 
 class DialogMargeStats(QDialog):
@@ -991,9 +1025,9 @@ class DialogMargeStats(QDialog):
 
         self.label = QLabel(self)
         self.table = QTableWidget(self)
-#        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-#        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        # self.table.horizontalHeader().hide()
+#       self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+#       self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+#       self.table.horizontalHeader().hide()
         self.table.verticalHeader().hide()
 
         layout = QGridLayout()
@@ -1008,7 +1042,8 @@ class DialogMargeStats(QDialog):
             self.table.setColumnCount(len(headers))
             self.table.setHorizontalHeaderLabels([h.replace('_', ' ') for h in headers])
             self.table.verticalHeader().setVisible(False)
-            self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+#            self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+            self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
             self.table.setSelectionMode(QAbstractItemView.SingleSelection)
             self.table.setRowCount(stats.numParams())
             for irow, par in enumerate(stats.names):
@@ -1059,6 +1094,77 @@ class DialogMargeStats(QDialog):
             self.resize(w, h)
 
 # ==============================================================================
+
+
+class DialogSettings(QDialog):
+
+    def __init__(self, parent, ini):
+        QDialog.__init__(self, parent)
+
+        self.table = QTableWidget(self)
+        self.table.verticalHeader().hide()
+
+        layout = QGridLayout()
+        layout.addWidget(self.table, 0, 0)
+        button = QPushButton("Update")
+        self.connect(button, SIGNAL("clicked()"),
+                     self.doUpdate)
+
+        layout.addWidget(button, 1, 0)
+        self.setLayout(layout)
+
+        self.setWindowTitle(self.tr('Settings'))
+
+        headers = ['parameter', 'value']
+        self.table.setColumnCount(len(headers))
+        self.table.setHorizontalHeaderLabels(headers)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+
+        names = iniFile(os.path.join(os.path.dirname(__file__), 'analysis_defaults.ini'))
+        items = []
+        self.ini = ini
+        for key in ini.readOrder:
+            if key in names.params:
+                items.append(key)
+
+        for key in ini.params:
+            if not key in items and key in names.params:
+                items.append(key)
+
+        nblank = 3
+        self.rows = len(items) + nblank
+        self.table.setRowCount(self.rows)
+        for irow, key in enumerate(items):
+                item = QTableWidgetItem(str(key))
+                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                self.table.setItem(irow, 0, item)
+                item = QTableWidgetItem(ini.string(key))
+                self.table.setItem(irow, 1, item)
+        for i in range(nblank):
+            item = QTableWidgetItem(str(""))
+            irow = len(items) + i
+            self.table.setItem(irow, 0, item)
+            item = QTableWidgetItem(str(""))
+            self.table.setItem(irow, 1, item)
+        self.table.resizeRowsToContents()
+        self.table.resizeColumnsToContents()
+        self.table.horizontalHeader().setStretchLastSection(True);
+        self.table.setEditTriggers(QAbstractItemView.AllEditTriggers)
+
+        h = self.table.verticalHeader().length() + 40
+        h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, h)
+        self.resize(300, h)
+        self.setAttribute(Qt.WA_DeleteOnClose)
+
+    def doUpdate(self):
+        for row in range(self.rows):
+            key = self.table.item(row, 0).text().strip()
+            if key:
+                self.ini.params[key] = self.table.item(row, 1).text().strip()
+        self.parent().settingsChanged()
+
 
 if __name__ == "__main__":
 

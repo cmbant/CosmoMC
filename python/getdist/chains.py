@@ -101,7 +101,7 @@ class chains(object):
     def __init__(self, root=None, ignore_rows=0, jobItem=None):
         self.jobItem = jobItem
         self.precision = '%.8e'
-        self.ignore_rows = ignore_rows
+        self.ignore_lines = ignore_rows
         self.root = root
         self.chains = []
         self.samples = None
@@ -251,7 +251,7 @@ class chains(object):
         self.chains = []
         for fname in files:
                 print fname
-                self.chains.append(chain(fname, self.ignore_rows))
+                self.chains.append(chain(fname, self.ignore_lines))
         if len(self.chains) == 0: print 'loadChains - no chains found for ' + root
         return len(self.chains) > 0
 

@@ -57,7 +57,7 @@ samples_are_chains = ini.bool('samples_are_chains', True)
 no_plots = ini.bool('no_plots', False);
 plots_only = ini.bool('plots_only', False)
 no_tests = plots_only or ini.bool('no_tests', False)
-line_labels = ini.bool('line_labels', False)
+# not used: line_labels = ini.bool('line_labels', False)
 
 thin_factor = ini.int('thin_factor', 0)
 thin_cool = ini.float('thin_cool', 1.0)

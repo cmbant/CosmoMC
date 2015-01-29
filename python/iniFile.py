@@ -4,15 +4,17 @@ import os
 class iniFile(object):
 
 
-    def __init__(self, filename=None, keep_includes=False):
+    def __init__(self, settings=None, keep_includes=False):
 
         self.params = dict()
         self.readOrder = []
         self.defaults = []
         self.includes = []
         self.original_filename = None
-        if filename: self.readFile(filename, keep_includes)
-
+        if isinstance(settings, basestring):
+            self.readFile(settings, keep_includes)
+        elif isinstance(settings, dict):
+            self.params.update(settings)
 
     def readFile(self, filename, keep_includes=False, if_not_defined=False):
         try:

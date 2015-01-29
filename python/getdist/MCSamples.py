@@ -5,11 +5,12 @@ import sys
 import glob
 import math
 import logging
+import copy
 import numpy as np
 from scipy.interpolate import splrep, splev
 from scipy.stats import norm
 import pickle
-import iniFile
+from iniFile import iniFile
 from getdist.chains import chains, chainFiles, lastModified
 from getdist import ResultObjs
 # =============================================================================
@@ -20,18 +21,20 @@ default_grid_root = None
 output_base_dir = None
 cache_dir = None
 use_plot_data = False
+default_getdist_settings = os.path.join(os.path.dirname(__file__), 'analysis_defaults.ini')
 
 config_file = os.environ.get('GETDIST_CONFIG', None)
 if not config_file:
     config_file = os.path.join(os.path.dirname(__file__), 'config.ini')
 if os.path.exists(config_file):
-    ini = iniFile.iniFile(config_file)
-    default_grid_root = ini.string('default_grid_root', '')
-    output_base_dir = ini.string('output_base_dir', '')
-    cache_dir = ini.string('cache_dir', '')
-    use_plot_data = ini.bool('use_plot_data', use_plot_data)
+    config_ini = iniFile(config_file)
+    default_grid_root = config_ini.string('default_grid_root', '')
+    output_base_dir = config_ini.string('output_base_dir', '')
+    cache_dir = config_ini.string('cache_dir', '')
+    default_getdist_settings = config_ini.string('default_getdist_settings', default_getdist_settings)
+    use_plot_data = config_ini.bool('use_plot_data', use_plot_data)
 else:
-    ini = iniFile.iniFile()
+    config_ini = iniFile()
 
 def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settings={}):
         files = chainFiles(file_root)
@@ -39,16 +42,21 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settin
         path = cache_dir or path
         if not os.path.exists(path): os.mkdir(path)
         cachefile = os.path.join(path, name) + '.py_mcsamples'
+        samples = MCSamples(file_root, jobItem=jobItem)
+        samples.update_settings(ini, dist_settings)
         if not no_cache and os.path.exists(cachefile) and lastModified(files) < os.path.getmtime(cachefile):
             try:
                 with open(cachefile, 'rb') as inp:
                     cache = pickle.load(inp)
-                if cache.version == version: return cache
+                if cache.version == version and samples.ignore_rows == cache.ignore_rows:
+                    changed = len(samples.contours) != len(cache.contours) or \
+                                np.any(np.array(samples.contours) != np.array(cache.contours))
+                    cache.update_settings(ini, dist_settings, doUpdate=changed)
+                    return cache
             except:
                 pass
         if not len(files): raise Exception('No chains found: ' + file_root)
-        samples = MCSamples(file_root, jobItem=jobItem)
-        samples.readChains(files, ini, ini_settings=dist_settings)
+        samples.readChains(files)
         with open(cachefile, 'wb') as output:
                 pickle.dump(samples, output, pickle.HIGHEST_PROTOCOL)
         return samples
@@ -185,7 +193,7 @@ class Density1D(object):
 class MCSamples(chains):
 
     def __init__(self, root=None, ignore_rows=0, jobItem=None, ini=None):
-        chains.__init__(self, root, ignore_rows, jobItem=jobItem)
+        chains.__init__(self, root, jobItem=jobItem)
 
         self.version = version
         self.limmin = []
@@ -197,7 +205,7 @@ class MCSamples(chains):
 
         self.markers = {}
 
-        self.ini = None
+        self.ini = ini
 
         self.ranges = None
         self.ReadRanges()
@@ -226,7 +234,8 @@ class MCSamples(chains):
         self.meanlike = 0.
         self.mean_loglikes = False
         self.indep_thin = 0
-
+        self.samples = None
+        self.ignore_rows = ignore_rows
         self.subplot_size_inch = 4.0
         self.subplot_size_inch2 = self.subplot_size_inch
         self.subplot_size_inch3 = 6.0
@@ -243,6 +252,8 @@ class MCSamples(chains):
 
         self.density1D = dict()
 
+        self.update_settings(ini)
+
     def parName(self, i, starDerived=False):
         return self.paramNames.name(i, starDerived)
 
@@ -250,6 +261,13 @@ class MCSamples(chains):
         return self.paramNames.names[i].label
 
     def initParameters(self, ini):
+
+        self.ignore_rows = self.ini.float('ignore_rows', self.ignore_rows)
+        self.ignore_lines = int(self.ignore_rows)
+        if not self.ignore_lines:
+            self.ignore_frac = self.ignore_rows
+        else:
+            self.ignore_frac = 0
 
         self.num_bins = ini.int('num_bins', self.num_bins)
         self.num_bins_2D = ini.int('num_bins_2D', self.num_bins_2D)
@@ -280,8 +298,6 @@ class MCSamples(chains):
 
         self.max_corr_2D = ini.float('max_corr_2D', self.max_corr_2D)
 
-
-    def initContours(self, ini=None):
         if ini and ini.hasKey('num_contours'):
             self.contours = []
             self.num_contours = ini.int('num_contours', 2)
@@ -341,40 +357,42 @@ class MCSamples(chains):
                 if (line <> ''):
                     self.markers[name] = float(line)
 
-    def readChains(self, chain_files, ini, ini_settings={}):
+    def update_settings(self, ini=None, ini_settings={}, doUpdate=True):
+        if not ini:
+            ini = self.ini
+        elif isinstance(ini, basestring):
+            ini = iniFile(ini)
+        else:
+            ini = copy.deepcopy(ini)
+        if not ini: ini = iniFile(default_getdist_settings)
+        if ini_settings:
+            ini.params.update(ini_settings)
+        self.ini = ini
+        if ini: self.initParameters(ini)
+        if doUpdate and self.samples: self.updateChainBaseStatistics()
+
+    def readChains(self, chain_files):
         # Used for by plotting scripts and gui
 
         self.loadChains(self.root, chain_files)
 
-        ignorerows = 0
-        if ini:
-            ignorerows = ini.float('ignore_rows', 0.0)
-        if ignorerows and (not self.jobItem or (not self.jobItem.isImportanceJob and not self.jobItem.isBurnRemoved())):
-            self.removeBurnFraction(ignorerows)
+        if self.ignore_frac and  (not self.jobItem or
+                    (not self.jobItem.isImportanceJob and not self.jobItem.isBurnRemoved())):
+            self.removeBurnFraction(self.ignore_frac)
 
         self.deleteFixedParams()
 
         # Make a single array for chains
         self.makeSingle()
 
-        self.updateChainBaseStatistics(ini, ini_settings=ini_settings)
+        self.updateChainBaseStatistics()
 
         return self
 
-    def updateChainBaseStatistics(self, ini=None, ini_settings={}):
+    def updateChainBaseStatistics(self):
 
         super(MCSamples, self).updateChainBaseStatistics()
-        if not ini: ini = self.ini
-        if ini_settings:
-            if not ini: ini = iniFile.iniFile()
-            ini.params.update(ini_settings)
-
-        self.ini = ini
-
-        if ini: self.initParameters(ini)
-
-        self.initContours(ini)
-        self.initLimits(ini)
+        self.initLimits(self.ini)
 
         self.ComputeMultiplicators()
 
@@ -1239,7 +1257,7 @@ class MCSamples(chains):
                     bincounts[ix2 - self.ix_min[j]] *= edge_fac
 
             bincounts = bincounts / maxbin
-            if (self.plot_meanlikes and self.mean_loglikes):
+            if self.plot_meanlikes and self.mean_loglikes:
                 maxbin = min(binlikes)
                 binlikes = np.where((binlikes - maxbin) < 30, np.exp(-(binlikes - maxbin)), 0)
 
@@ -1259,7 +1277,7 @@ class MCSamples(chains):
                     textFileHandle.write("\n")
                 textFileHandle.close()
 
-                if (self.plot_meanlikes):
+                if self.plot_meanlikes:
                     maxbin = max(binlikes)
                     filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
                     textFileHandle = open(filename_like, 'w')
@@ -1280,14 +1298,15 @@ class MCSamples(chains):
                 for i in range(self.ix_min[j], self.ix_max[j] + 1):
                     dat[index] = self.center[j] + i * width, bincounts[i - self.ix_min[j]]
                     index += 1
-                if (self.ix_min[j] == self.ix_max[j]):
+                if self.ix_min[j] == self.ix_max[j]:
                     dat[index] = self.center[j] + self.ix_min[0] * width, self.center[j] + self.ix_min[1] * width
                 logging.debug("dat.shape = %s" % str(dat.shape))
 
-                if (self.plot_meanlikes):
+                if self.plot_meanlikes:
                     nrows = self.ix_max[j] + 1 - self.ix_min[j]
                     likes = np.ndarray((nrows, ncols))
                     index = 0
+                    maxbin = max(binlikes[:self.ix_max[j] - self.ix_min[j] + 1])
                     for i in range(self.ix_min[j], self.ix_max[j] + 1):
                         likes[index] = self.center[j] + i * width, binlikes[i - self.ix_min[j]] / maxbin
                         index += 1
@@ -1364,7 +1383,7 @@ class MCSamples(chains):
 
         # In f90, finebins(imin:imax,jmin:jmax)
         finebins = np.zeros((jmax - jmin + 1, imax - imin + 1))
-        if (self.shade_meanlikes):
+        if self.shade_meanlikes:
             # In f90, finebinlikes(imin:imax,jmin:jmax)
             finebinlikes = np.zeros((jmax - jmin + 1, imax - imin + 1))
 
@@ -1375,7 +1394,7 @@ class MCSamples(chains):
             ix2 = int(round(((self.samples[i][j2] - self.center[j2]) / widthj2)))
             if ((ix1 >= imin) and (ix1 <= imax) and (ix2 >= jmin) and (ix2 <= jmax)):
                 finebins[ix2 - jmin][ix1 - imin] += self.weights[i]
-                if (self.shade_meanlikes):
+                if self.shade_meanlikes:
                     finebinlikes[ix2 - jmin][ix1 - imin] += self.weights[i] * (np.exp(self.meanlike - self.loglikes[i]))
 
         winw = int(round(2 * fine_fac * smooth_scale))
@@ -1410,7 +1429,7 @@ class MCSamples(chains):
                 ix1start, ix1end = ix1 * fine_fac - winw - imin, ix1 * fine_fac + winw + 1 - imin
                 ix2start, ix2end = ix2 * fine_fac - winw - jmin, ix2 * fine_fac + winw + 1 - jmin
                 bins2D[ix2 - iymin][ix1 - ixmin] = np.sum(np.multiply(Win, finebins[ix2start:ix2end, ix1start:ix1end]))
-                if (self.shade_meanlikes):
+                if self.shade_meanlikes:
                     bin2Dlikes[ix2 - iymin][ix1 - ixmin] = np.sum(np.multiply(Win, finebinlikes[ix2start:ix2end, ix1start:ix1end]))
 
                 if (has_prior):
@@ -1421,11 +1440,11 @@ class MCSamples(chains):
                     else:
                         edge_fac = 0.
                     bins2D[ix2 - iymin][ix1 - ixmin] *= edge_fac
-                    if (self.shade_meanlikes):
+                    if self.shade_meanlikes:
                         bin2Dlikes[ix2 - iymin][ix1 - ixmin] *= edge_fac
 
 
-        if (self.shade_meanlikes):
+        if self.shade_meanlikes:
             for ix1 in range(ixmin, ixmax + 1):
                 for ix2 in range(iymin, iymax + 1):
                     if (bins2D[ix2 - iymin][ix1 - ixmin] > 0):
@@ -1466,7 +1485,7 @@ class MCSamples(chains):
             textFileHandle.write("%s\n" % (" ".join(s_levels)))
             textFileHandle.close()
 
-            if (self.shade_meanlikes):
+            if self.shade_meanlikes:
                 textFileHandle = open(filename + "_likes", 'w')
                 maxbin = np.max(bin2Dlikes)
                 for ix1 in range(ixmin, ixmax + 1):
@@ -1488,7 +1507,7 @@ class MCSamples(chains):
                     icol += 1
                 irow += 1
 
-            if (self.shade_meanlikes):
+            if self.shade_meanlikes:
                 maxbin = np.max(bin2Dlikes)
                 likes = np.ndarray((ncols, nrows))
                 irow, icol = 0, 0

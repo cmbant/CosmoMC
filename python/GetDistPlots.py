@@ -20,7 +20,7 @@ class GetDistPlotSettings(object):
         # otherwise width as wide as neccessary to show all subplots at specified size
 
         self.plot_meanlikes = False
-        self.shade_meanlikes = False
+        self.shade_meanlikes = True
         self.prob_label = None
         self.norm_prob_label = 'P'
         self.prob_y_ticks = False
@@ -240,23 +240,28 @@ class MCSampleAnalysis(object):
     def __init__(self, chain_dir=None, settings=None):
         self.chain_dir = chain_dir
         self.batch = None
-        ini = None
+        self.ini = None
         if chain_dir and isinstance(chain_dir, basestring):
             import makeGrid
             if makeGrid.pathIsGrid(chain_dir):
                 self.batch = batchJob.readobject(chain_dir)
-                ini = iniFile.iniFile(self.batch.commonPath + 'getdist_common.ini')
+                # this gets things like specific parameter limits etc.
+                if os.path.exists(self.batch.commonPath + 'getdist_common.ini'):
+                    self.ini = iniFile.iniFile(self.batch.commonPath + 'getdist_common.ini')
             else:
                 self.chain_dir = [chain_dir]
-        if settings and isinstance(settings, basestring):
-            ini = iniFile.iniFile(settings)
+        self.reset(settings)
 
-        if not ini: ini = iniFile.iniFile()
-        if isinstance(settings, dict): ini.params.update(settings)
-        self.ini = ini
-        self.reset()
+    def reset(self, settings=None):
+        if isinstance(settings, iniFile.iniFile):
+            ini = settings
+        else:
+            ini = iniFile.iniFile(settings or MCSamples.default_getdist_settings)
+        if self.ini:
+            self.ini.params.update(ini.params)
+        else:
+            self.ini = ini
 
-    def reset(self):
         self.mcsamples = {}
         # Dicts. 1st key is root; 2nd key is param
         self.densities_1D = dict()
@@ -344,9 +349,9 @@ class MCSampleAnalysis(object):
             if density is None: return None
             rootdata[key] = density
         result = Density2D()
-        dat, likes, cont, result.x1, result.x2 = density
+        dat, datlikes, cont, result.x1, result.x2 = density
         if likes:
-            result.pts = likes
+            result.pts = datlikes
         else:
             result.pts = dat
         if conts > 0: result.contours = cont[0:conts]
@@ -358,7 +363,7 @@ class MCSampleAnalysis(object):
         if pts is None: return None
         result.x = pts[:, 0]
         result.pts = pts[:, 1]
-        if (likes): result.likes = self.get_1d(root, param, True)[:, 1]
+        if likes: result.likes = self.get_1d(root, param, True)[:, 1]
         return result
 
     def load_single_samples(self, root):
@@ -396,6 +401,8 @@ class GetDistPlotter(object):
         else: self.plot_data = plot_data
         if chain_dir is not None or mcsamples:
             self.sampleAnalyser = MCSampleAnalysis(chain_dir, analysis_settings)
+            self.sampleAnalyser.ini.params.update({'plot_meanlikes':self.settings.plot_meanlikes})
+            self.sampleAnalyser.ini.params.update({'shared_meanlikes':self.settings.shade_meanlikes})
         else:
             self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
         self.newPlot()
@@ -894,7 +901,8 @@ class GetDistPlotter(object):
 
         for i, pair in enumerate(pairs):
             self.subplot_number(i)
-            self.plot_2d(roots, param_pair=pair, filled=filled, add_legend_proxy=i == 0)
+            self.plot_2d(roots, param_pair=pair, filled=filled, shaded=not filled and self.settings.shade_meanlikes,
+                         add_legend_proxy=i == 0)
 
         self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_order=label_order)
 
