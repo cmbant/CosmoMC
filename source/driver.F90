@@ -20,6 +20,7 @@
     logical want_minimize
     logical is_best_bestfit
     logical :: start_at_bestfit = .false.
+    logical :: fixed_slow
     Class(TDataLikelihood), pointer :: Like
     character(LEN=:), allocatable :: prop_mat
     class(TMinimizer), allocatable :: Minimizer
@@ -165,7 +166,8 @@
 
     call BaseParams%InitializeUsedParams(Ini)
     call BaseParams%SetFastSlowParams(Ini, use_fast_slow)
-    if (BaseParams%block_semi_fast .and. CosmoSettings%use_nonlinear_lensing) &
+    if (BaseParams%block_semi_fast .and. CosmoSettings%use_nonlinear_lensing &
+        & .and. BaseParams%num_slow/=BaseParams%num_semi_slow) &
         call MpiStop('use_nonlinear_lensing does not work rigorously with block_semi_fast')
 
     Params%P(1:num_params) = BaseParams%Center(1:num_params)

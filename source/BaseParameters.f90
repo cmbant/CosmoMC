@@ -26,6 +26,7 @@
     Type :: TBaseParameters
         logical :: use_fast_slow = .false.
         integer :: num_fast, num_slow
+        integer :: num_semi_fast, num_semi_slow
         real(mcp), allocatable :: PMin(:), PMax(:), StartWidth(:), PWidth(:), center(:)
         logical(mcp), allocatable :: varying(:)
         logical :: block_semi_fast = .true.
@@ -413,11 +414,12 @@
         ix=j+1
     end do
 
+    this%num_semi_slow = size(this%param_blocks(tp_semislow)%P)
+    this%num_semi_fast = size(this%param_blocks(tp_semifast)%P)
     if (Feedback > 0 .and. MpiRank==0) then
         if (use_fast_slow) then
             write(*,'(1I3," parameters (",1I2," slow (",1I2," semi-slow), ",1I2," fast (",1I2," semi-fast))")') &
-                & num_params_used,this%num_slow, size(this%param_blocks(tp_semislow)%P), &
-                & this%num_fast,size(this%param_blocks(tp_semifast)%P)
+                & num_params_used,this%num_slow, this%num_semi_slow, this%num_fast, this%num_semi_fast
         else
             write(*,'(1I3," parameters")') num_params_used
         end if
