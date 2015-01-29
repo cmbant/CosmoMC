@@ -440,7 +440,7 @@ class MainWindow(QMainWindow):
         self.rootdirname = dirName
         self.lineEditDirectory.setText(self.rootdirname)
 
-        self.getPlotter()
+        self.getPlotter(chain_dir=self.rootdirname)
 
         self._updateComboBoxRootname(root_list)
 
