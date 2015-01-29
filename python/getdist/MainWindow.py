@@ -808,6 +808,8 @@ class MainWindow(QMainWindow):
             items_x = self.items_x
             items_y = self.items_y
             self.plotter.settings.setWithSubplotSize(3.5)
+            self.plotter.settings.legend_position_config = 2
+            self.plotter.settings.legend_frac_subplot_margin = 0.05
 
             script = "import %s as s\nimport os\n\n" % self.plot_module
             if len(items_x) > 1 or len(items_y) > 1:
@@ -886,7 +888,11 @@ class MainWindow(QMainWindow):
                 script += "params=%s\n" % str(params)
                 setSizeForN(round(np.sqrt(len(params) / 1.4)))
                 try:
-                    self.plotter.plots_1d(roots, params=params)
+                    if len(roots) > 3:
+                        ncol = 2
+                    else:
+                        ncol = None
+                    self.plotter.plots_1d(roots, params=params, legend_ncol=ncol)
                 except:
                     QMessageBox.critical(
                             self, "Plot 1D",

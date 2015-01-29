@@ -25,7 +25,7 @@ class GetDistPlotSettings(object):
         self.norm_prob_label = 'P'
         self.prob_y_ticks = False
         # self.prob_label = 'Probability'
-        self.lineM = ['-k', '-r', '-b', '-g', '-m', '-c', '-y']
+        self.lineM = ['-k', '-r', '-b', '-g', '-m', '-c', '-y', '--k', '--r', '--b', '--g', '--m']
         self.plot_args = None
         self.solid_colors = ['#006FED', '#E03424', 'gray', '#009966', '#000866', '#336600', '#006633' , 'm', 'r']  # '#66CC99'
         self.default_dash_styles = {'--':(3, 2), '-.':(4, 1, 1, 1)}
@@ -56,6 +56,8 @@ class GetDistPlotSettings(object):
         self.figure_legend_ncol = 1
 
         self.legend_rect_border = False
+        self.legend_position_config = 1
+
         self.legend_frac_subplot_margin = 0.2
         self.legend_frac_subplot_line = 0.1
         self.legend_fontsize = None
@@ -444,7 +446,7 @@ class GetDistPlotter(object):
         try:
             return self.settings.lineM[plotno]
         except IndexError:
-            print 'Error adding line ' + plotno + ': Add more default line stype entries to settings.lineM'
+            print 'Error adding line ' + str(plotno) + ': Add more default line stype entries to settings.lineM'
             raise
 
     def get_line_styles(self, plotno, **kwargs):
@@ -839,7 +841,12 @@ class GetDistPlotter(object):
             if legend_loc is None: legend_loc = self.settings.figure_legend_loc
             self.extra_artists = [self.add_legend(legend_labels, legend_loc, line_offset, legend_ncol, label_order=label_order, figure=True)]
             if self.settings.tight_layout and not no_extra_legend_space:
-                frac = self.settings.legend_frac_subplot_margin + (len(legend_labels) / legend_ncol) * self.settings.legend_frac_subplot_line
+                nrows = len(legend_labels) / legend_ncol
+                if self.settings.legend_position_config == 1:
+                    frac = self.settings.legend_frac_subplot_margin + nrows * self.settings.legend_frac_subplot_line
+                else:
+                    frac = self.settings.legend_frac_subplot_margin + (nrows * self.settings.legend_fontsize * 0.015) / self.settings.subplot_size_inch
+                if self.plot_row == 1: frac = min(frac, 0.5)
                 if 'upper' in legend_loc: subplots_adjust(top=1 - frac / self.plot_row)
                 elif 'lower' in legend_loc: subplots_adjust(bottom=frac / self.plot_row)
 
