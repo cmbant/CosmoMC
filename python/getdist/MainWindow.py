@@ -94,8 +94,8 @@ class MainWindow(QMainWindow):
         Create Qt actions used in GUI.
         """
         self.exportAct = QAction(QIcon(":/images/file_export.png"),
-                                 "&Export as PDF", self,
-                                 statusTip="Export image as PDF",
+                                 "&Export as PDF/Image", self,
+                                 statusTip="Export image as PDF, PNG, JPG",
                                  triggered=self.export)
 
         self.scriptAct = QAction(QIcon(":/images/file_save.png"),
@@ -309,15 +309,13 @@ class MainWindow(QMainWindow):
 
     def export(self):
         """
-        Callback for action 'Export as PDF'.
+        Callback for action 'Export as PDF/Image'.
         """
         if self.plotter:
             filename, _ = QFileDialog.getSaveFileName(
-                self, "Choose a file name", '.', "PDF (*.pdf)")
+                self, "Choose a file name", '.', "PDF (*.pdf);; Image (*.png *.jpg)")
             if not filename: return
             filename = str(filename)
-
-            logging.debug("Saving PDF in file %s" % filename)
             self.plotter.export(filename)
         else:
             # logging.warning("No plotter data to export")

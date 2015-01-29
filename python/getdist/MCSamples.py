@@ -239,6 +239,7 @@ class MCSamples(chains):
         self.subplot_size_inch = 4.0
         self.subplot_size_inch2 = self.subplot_size_inch
         self.subplot_size_inch3 = 6.0
+        self.plot_output = 'pdf'
         self.out_dir = ""
 
         self.max_split_tests = 4
@@ -292,6 +293,8 @@ class MCSamples(chains):
         self.subplot_size_inch = ini.float('subplot_size_inch' , self.subplot_size_inch)
         self.subplot_size_inch2 = ini.float('subplot_size_inch2', self.subplot_size_inch)
         self.subplot_size_inch3 = ini.float('subplot_size_inch3', self.subplot_size_inch)
+
+        self.plot_output = ini.string('plot_output', self.plot_output)
 
         self.force_twotail = ini.bool('force_twotail', False)
         if self.force_twotail: print 'Computing two tail limits'
@@ -1317,10 +1320,12 @@ class MCSamples(chains):
         return None, None
 
 
-    def get2DContourLevels(self, bins2D):
+    def get2DContourLevels(self, bins2D, num_plot_contours=None):
         norm = np.sum(bins2D)
-        contour_levels = np.zeros(self.num_contours)
-        for ix1 in range(self.num_contours):
+        ncontours = self.num_contours
+        if num_plot_contours: ncontours = min(num_plot_contours, ncontours)
+        contour_levels = np.zeros(ncontours)
+        for ix1 in range(ncontours):
             try_t = np.max(bins2D)
             try_b = 0
             lasttry = -1
@@ -1335,7 +1340,7 @@ class MCSamples(chains):
             contour_levels[ix1] = (try_b + try_t) / 2
         return contour_levels
 
-    def Get2DPlotData(self, j, j2, writeDataToFile=False):
+    def Get2DPlotData(self, j, j2, writeDataToFile=False, num_plot_contours=None):
         """
         Get 2D plot data.
         """
@@ -1453,7 +1458,7 @@ class MCSamples(chains):
         bins2D = bins2D / np.max(bins2D)
         # Get contour containing contours(:) of the probability
 
-        contour_levels = self.get2DContourLevels(bins2D)
+        contour_levels = self.get2DContourLevels(bins2D, num_plot_contours)
 
         bins2D[np.where(bins2D < 1e-30)] = 0
 
@@ -1782,7 +1787,8 @@ class MCSamples(chains):
 
     # Write functions
 
-    def WriteScriptPlots1D(self, filename, plotparams=None, ext='pdf'):
+    def WriteScriptPlots1D(self, filename, plotparams=None, ext=None):
+        ext = ext or self.plot_output
         textFileHandle = open(filename, 'w')
         textInit = WritePlotFileInit()
         textFileHandle.write(textInit % (
@@ -1800,7 +1806,8 @@ class MCSamples(chains):
         textFileHandle.close()
 
 
-    def WriteScriptPlots2D(self, filename, plot_2D_param, cust2DPlots, plots_only, ext='pdf'):
+    def WriteScriptPlots2D(self, filename, plot_2D_param, cust2DPlots, plots_only, ext=None):
+        ext = ext or self.plot_output
         self.done2D = np.ndarray([self.num_vars, self.num_vars], dtype=bool)
         self.done2D[:, :] = False
 
@@ -1837,7 +1844,8 @@ class MCSamples(chains):
         print 'Produced ', plot_num, ' 2D plots'
 
 
-    def WriteScriptPlotsTri(self, filename, triangle_params, ext='pdf'):
+    def WriteScriptPlotsTri(self, filename, triangle_params, ext=None):
+        ext = ext or self.plot_output
         textFileHandle = open(filename, 'w')
         textInit = WritePlotFileInit()
         textFileHandle.write(textInit % (
@@ -1851,7 +1859,8 @@ class MCSamples(chains):
         textFileHandle.close()
 
 
-    def WriteScriptPlots3D(self, filename, plot_3D, ext='pdf'):
+    def WriteScriptPlots3D(self, filename, plot_3D, ext=None):
+        ext = ext or self.plot_output
         textFileHandle = open(filename, 'w')
         textInit = WritePlotFileInit()
         textFileHandle.write(textInit % (

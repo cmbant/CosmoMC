@@ -60,7 +60,7 @@ class GetDistPlotSettings(object):
         self.legend_frac_subplot_line = 0.1
         self.legend_fontsize = None
 
-        self.num_contours = 2
+        self.num_plot_contours = 2
         self.solid_contour_palefactor = 0.6
         self.alpha_filled_add = 0.85
         self.alpha_factor_contour_lines = 0.5
@@ -345,7 +345,7 @@ class MCSampleAnalysis(object):
             if index1 is None or index2 is None: return None
             samples.initParamRanges(index1)
             samples.initParamRanges(index2)
-            density = samples.Get2DPlotData(index2, index1)
+            density = samples.Get2DPlotData(index2, index1, num_plot_contours=conts)
             if density is None: return None
             rootdata[key] = density
         result = Density2D()
@@ -511,7 +511,7 @@ class GetDistPlotter(object):
                             add_legend_proxy=True, param_pair=None, density=None, alpha=None, **kwargs):
         param1, param2 = self.get_param_array(root, param_pair or [param1, param2])
 
-        if not density: density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_contours, likes=False)
+        if not density: density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_plot_contours, likes=False)
         if density is None:
             if add_legend_proxy: self.contours_added.append(None)
             return None

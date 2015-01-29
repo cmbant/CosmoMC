@@ -44,8 +44,6 @@ adjust_priors = ini.bool('adjust_priors', False)
 
 plot_ext = ini.string('plot_ext', 'py')
 
-plot_output = ini.string('plot_output', 'pdf')
-
 finish_run_command = ini.string('finish_run_command', '')
 
 auto_label = ini.bool('auto_label', False)
@@ -261,7 +259,7 @@ if not no_plots:
     # Output files for 1D plots
     print 'Calculating plot data...'
     filename = rootdirname + '.' + plot_ext
-    mc.WriteScriptPlots1D(filename, plotparams, ext=plot_output)
+    mc.WriteScriptPlots1D(filename, plotparams)
 
 # Do 2D bins
 if plot_2D_param == 'corr' and not no_plots:
@@ -275,11 +273,11 @@ elif plot_2D_param:
 
 if (cust2DPlots or plot_2D_param) and  not no_plots:
     filename = rootdirname + '_2D.' + plot_ext
-    mc.WriteScriptPlots2D(filename, plot_2D_param, cust2DPlots, plots_only, ext=plot_output)
+    mc.WriteScriptPlots2D(filename, plot_2D_param, cust2DPlots, plots_only)
 
 if (triangle_plot and not no_plots):
     # Add the off-diagonal 2D plots
-    mc.WriteScriptPlotsTri(rootdirname + '_tri.' + plot_ext, triangle_params, ext=plot_output)
+    mc.WriteScriptPlotsTri(rootdirname + '_tri.' + plot_ext, triangle_params)
     for i in range(triangle_num):
         for i2 in range(i + 1, triangle_num):
             j = mc.index[triangle_params[i]]
@@ -290,7 +288,7 @@ if (triangle_plot and not no_plots):
 if (num_3D_plots <> 0 and not no_plots):
     print 'producing ', num_3D_plots, '2D colored scatter plots'
     filename = rootdirname + '_3D.' + plot_ext
-    mc.WriteScriptPlots3D(filename, plot_3D, ext=plot_output)
+    mc.WriteScriptPlots3D(filename, plot_3D)
 
 # Write out stats marginalized
 if not plots_only: mc.saveMargeStats()
