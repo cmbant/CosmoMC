@@ -8,7 +8,7 @@ import GetDistPlots
 import matplotlib
 import numpy as np
 from iniFile import iniFile
-from getdist import ResultObjs, MCSamples
+from getdist import MCSamples
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas

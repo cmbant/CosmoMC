@@ -20,7 +20,7 @@ class GetDistPlotSettings(object):
         # otherwise width as wide as neccessary to show all subplots at specified size
 
         self.plot_meanlikes = False
-        self.shade_meanlikes = True
+        self.shade_meanlikes = False
         self.prob_label = None
         self.norm_prob_label = 'P'
         self.prob_y_ticks = False
