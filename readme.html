@@ -908,7 +908,7 @@ Theory, Inference and Learning Algorithms</a>
 <A NAME="FAQ"><h2>FAQ</h2></A>
 <OL>
 <LI><B>What are the dotted lines on the plots?</B><BR>
-Dotted lines are mean likelihoods of samples, solid lines are marginalized probabilities. For Gaussian distributions they should be the same. For skew distributions, or if chains are poorly converged, they will not be. Sometime there is a much better fit (giving high mean likelihood) in a small region of parameter space which has very low marginalized probability. There is more discussion in the original  <a href="http://arxiv.org/abs/astro-ph/0205436">paper</a>.
+Dotted lines are mean likelihoods of samples, solid lines are marginalized probabilities. For Gaussian distributions they should be the same. For skew distributions, or if chains are poorly converged, they will not be. Sometime there is a much better fit (giving high mean likelihood) in a small region of parameter space which has very low marginalized probability. There is more discussion in the original  <a href="http://arxiv.org/abs/astro-ph/0205436">paper</a>. 
 <BR>&nbsp;
 <LI><B>What's in the .likestats file produced by getdist?</B><BR>
 These are values for the best-fit sample, and projections of the n-Dimensional confidence region. Usually people only look at the best-fit values. The n-D limits give you some idea of the range of the posterior, and are much more conservative than the marginalized limits.
@@ -929,10 +929,10 @@ call this%Initialize(Ini,Names, 'params_CMB.paramnames', Config)
 </pre>
 to set your new parameter names file.
 <LI>Modify Calculator_CAMB.f90 (the CAMBCalc_CMBToCAMB procedure) to pass your new CMBParams parameters to CAMB to actually change the result
-<LI>Edit your .ini files to to add range and width settings for the new parameter names
+<LI>Edit your .ini files to add range and width settings for the new parameter names
 </UL>
 <BR>
-If instead your parameter is a <b>likelihood</b> parameter (nuisance parameter), the new parameter can be handled entirely inside your likelihood function code (see supernovae_JLA.f90 for a simple example that has two nuisance parameters): you just set the .paramnames file (which determimes the number of new parameters), and then use them when passed in to your likelihood function. See Likelihood_Cosmology.f90 for likelihood classes that your likelihood can extend.
+If instead your parameter is a <b>likelihood</b> parameter (nuisance parameter), the new parameter can be handled entirely inside your likelihood function code (see supernovae_JLA.f90 for a simple example that has two nuisance parameters): you just set the .paramnames file (which determines the number of new parameters), and then use them when passed in to your likelihood function. See Likelihood_Cosmology.f90 for likelihood classes that your likelihood can extend.
 <BR>&nbsp;
 <LI><B>Why do some chains sometimes appear to get stuck?</B><BR>
 Usually this is because the starting position for the chain is a long way from the best fit region. Since the marginal distributions of e.q. A_s are rather narrow, it can take a while for chains to move from into an acceptable region of A_s exp(-2&tau;). The cure is to check your starting parameter values and start widths (especially make sure the widths are not too wide-- too small is better than too wide when running with MPI), or to use a sampling method that is more robust (e.g. use <B>sampling_method</B> = 7). If you are patient, stuck chains should eventually find a sensible region of parameter space anyway. Occasionally the staring position may be in a corner of parameter space so that prior ranges prevent any reasonable proposed moves. In this case check your starting values and ranges, or just try re-starting the chain (a different random starting position will possibly be OK).
@@ -941,7 +941,7 @@ Usually this is because the starting position for the chain is a long way from t
 See <A HREF="http://cosmocoffee.info/viewtopic.php?t=231">CosmoCoffee</A>.
 </OL>
 <P>
-Feel free to ask questions (and read answers to other people's) on the <A HREF="http://cosmocoffee.info">CosmoCoffee</A> software forum. There is also a FAQ in the <A HREF="http://www.sarahbridle.net/cosmologui/">CosmoloGUI readme</A>.
+Feel free to ask questions (and read answers to other people's) on the <A HREF="http://cosmocoffee.info">CosmoCoffee</A> software forum. 
 <hr>
 <FONT SIZE=2><a href="http://cosmologist.info/">Antony Lewis</a></A>.
 </body>
