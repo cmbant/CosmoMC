@@ -41,13 +41,14 @@ page</a> for the latest version.<BR>
 </UL>
 <UL>
 <LI><A HREF="readme_planck.html">Planck readme</A>
+<LI><A hREF="readme_gui.html">GetDist plotting GUI readme</A>
 <LI><A hREF="readme_python.html">Python model grids and plotting readme</A>
 <LI><A HREF="http://cosmologist.info/cosmomc/doc/">Source code documentation</A>
 </UL>
 
 <A NAME="Intro"><h2>Introduction</h2></A>
 CosmoMC is a Fortran 2003/2008 Markov-Chain Monte-Carlo (MCMC) engine for exploring cosmological
-parameter space, together with code for analysing Monte-Carlo samples and importance sampling (plus a suite of python scripts for building grids of runs and plotting and presenting results).
+parameter space, together with Fortran and python code for analysing Monte-Carlo samples and importance sampling (plus a suite of scripts for building grids of runs, plotting and presenting results).
 The code does brute force (but accurate) theoretical matter power spectrum and <I>C<sub>l</sub></I> calculations with
 <a href="http://camb.info/">CAMB</a>. See the <a href="http://arxiv.org/abs/astro-ph/0205436">paper</a>
 for an introduction, descriptions, and typical results from some pre-WMAP data. It can also be compiled as a <A HREF="#Generic">generic sampler</A> without using any cosmology codes.
@@ -59,11 +60,11 @@ you'll need to set aside rather longer. You can also run on a cluster.
 The program takes as inputs estimates of central values and posterior uncertainties of the various parameters. The proposal density can use information about parameter correlations from a supplied covariance matrix: use one if possible as it will significantly improve performance. Covariance matrices are supplied for common sets of default base parameters. If you compile and run with <A HREF="http://www-unix.mcs.anl.gov/mpi/">MPI</A> (to run across nodes in a cluster), there is an option to dynamically
 learn the proposal matrix from the covariance of the post-burn-in samples so far. The MPI option also allows you to terminate the computation automatically when a particular convergence criterion is matched. MPI is strongly recommended.
 
-<p>There are two fortran programs supplied <B>cosmomc</B> and <B>getdist</B>. The first
+<p>There are two programs supplied <B>cosmomc</B> and <B>getdist</B>. The first is a compiled Fortran code
 does the actual Monte-Carlo and produces sets of .txt chain files and (optionally) .data output
 files (the binary .data files include the theoretical CMB power spectra
 etc.). The "getdist" program analyses the .txt files calculating statistics
-and outputs files for the requested 1D, 2D and 3D plots (and could be used independently of the main cosmomc program).
+and outputs files for the requested 1D, 2D and 3D plots (and could be used independently of the main cosmomc program), and there are Fortran and pure python versions.
  The "cosmomc" program also does post processing on .data files, for example doing importance
 sampling with new data.
 <P>
@@ -71,7 +72,7 @@ Please e-mail details of any bugs or enhancements to <a href="http://cosmologist
 
 
 <A NAME="Compiling"><h2>Downloading and Compiling</h2></A>
-You will need a Fortran 2003 (or higher) compiler - Intel Fortran 14 or higher works (earlier versions probably will not). Others may, but gfortran <i>does not</i> support Fortran 2003 well enough at the moment (see gfortran <A HREF="http://gcc.gnu.org/bugzilla/buglist.cgi?cf_known_to_fail_type=allwords&cf_known_to_work_type=allwords&chfield=[Bug%20creation]&chfieldfrom=-7y&chfieldto=Now&email1=antony%40cosmologist.info&emailreporter1=1&emailtype1=substring&list_id=82881&query_format=advanced">bug list</A> if you'd like to help; bugs are being worked on and hope to have gfortran support in a few months).
+To run CosmoMC you will need a Fortran 2003 (or higher) compiler - Intel Fortran 14 or higher works (earlier versions will not). Others may, but gfortran <i>does not</i> support Fortran 2003 well enough at the moment (see gfortran <A HREF="http://gcc.gnu.org/bugzilla/buglist.cgi?cf_known_to_fail_type=allwords&cf_known_to_work_type=allwords&chfield=[Bug%20creation]&chfieldfrom=-7y&chfieldto=Now&email1=antony%40cosmologist.info&emailreporter1=1&emailtype1=substring&list_id=82881&query_format=advanced">bug list</A>; we hope to have gfortran bugs fixed soon). If you just want to analyse chains and run plots, you only need python 2.6+ (see <A HREF="#Analysing">plotting</A> below).
 <!--
 Two options:
 <UL>
@@ -84,8 +85,6 @@ Download and install yourself:
 Get the <a href="http://cosmologist.info/cosmomc/submit.html">download</a>
 and unzip and untar it (run "gunzip cosmomc.tar.gz", then "tar -xf cosmomc.tar")</li>
 <LI>To use Planck you need to download and install the Planck likelihood code first. See the <A HREF="readme_planck.html">Planck readme</A> before continuing.
-<!-- <A HREF="http://heasarc.gsfc.nasa.gov/docs/software/fitsio/fitsio.html">CFITSIO</A> installed
--->
 <LI>If necessary edit the relevant top parts of the Makefile in the source directory depending on what system you are using
 <!--  Set variables for cfitsio and WMAP directories (or leave blank not to use WMAP)-->
 <blockquote><FONT SIZE=2>Using MPI simplifies running several chains and proposal optimization. MPI can be used with OpenMP: generally you want to use OpenMP to use all the shared-memory processors on each node of a cluster, and MPI to run multiple chains on different nodes (the program can also just be run on a single CPU).
@@ -100,7 +99,7 @@ Run "make"  (try "gmake" if you get an error)</li>
 
 
 <!--you can get free <A HREF="http://www.intel.com/software/products/compilers/downloads/forlin.htm" TARGET="_blank">Intel Linux</A>, <A HREF="http://g95.sourceforge.net/">G95</A> or <A HREF="http://gcc.gnu.org/wiki/GFortran">GFortran</A> compilers. Please let me know if you find compiler bugs and have specific fixes.-->
-If not using Intel also need to link to <a href="http://www.netlib.org/lapack/">LAPACK</a> (for doing matrix diagonalization, etc) - you may need to edit the Makefile to specify where this on your system (Intel compilers use MPL).
+<!--If not using Intel also need to link to <a href="http://www.netlib.org/lapack/">LAPACK</a> (for doing matrix diagonalization, etc) - you may need to edit the Makefile to specify where this on your system (Intel compilers use MPL). -->
 <P>
 Using Visual Fortran there's no need to use the Makefile, just open the project file in the source folder, and set params.ini as the program argument. This is not set up to compile with MPI, so mainly useful for development.
 
@@ -163,7 +162,7 @@ The input .ini files contain sets of name-value pairs, in the form <b>key = valu
 <BR><BR>
 Keys setting input values for specific parameters can be set using numbered key values, param[omegabh2]=xxx yy... for omegabh2. The names of the various parameters are set in .paramnames files: for cosmology parameters see params_CMB.paramnames. Likelihoods may also have nuisance parameters that need to be varied: see the .paramnames files in the ./data/  directory.
 <BR><BR>
-.ini files can include other ini files using DEFAULT(xx.ini) or INCLUDE(yy.ini), so there's no need to repeat lots of settings when you do different similar runs. The sample test.ini file includes .ini files in the batch1/ directory, set up for Planck/BICEP analysis runs. The <b>action=4</b> setting just calculates test likelihoods for one model (the central value of your parameter ranges) and writes out the result. Set <b>action=0</b> to run a test chain. Using DEFAULT in a .ini files means you can include default settings, but override ones of interest for a particular run.
+.ini files can include other ini files using DEFAULT(xx.ini) or INCLUDE(yy.ini), so there's no need to repeat lots of settings when you do different similar runs. The sample test.ini file includes .ini files in the batch2/ directory, set up for Planck runs. The <b>action=4</b> setting just calculates test likelihoods for one model (the central value of your parameter ranges) and writes out the result. Set <b>action=0</b> to run a test chain. Using DEFAULT in a .ini files means you can include default settings, but override ones of interest for a particular run.
 <UL>
 
 <LI><B>Parameter limits and proposal density</B><BR>
@@ -243,13 +242,15 @@ other local minima, and for getting more robust high-confidence error bars. See 
 <A NAME="Output">
 <B><FONT COLOR="blue">Output files</FONT></B><BR>
 <UL>
-<LI>The program produces a <B>file_root.txt</B> file listing each accepted set of
-parameters; the first column gives the number of iterations staying at
+<LI>The program produces  <B>file_root_1.txt</B>, <B>file_root_2.txt</B> etc, files listing each accepted set of
+parameters for each chain; the first column gives the number of iterations staying at
 that parameter set (more generally, the sample weight), and the second the likelihood.  <BR><BR>
-<LI>If <b>indep_sample</b> is non-zero, a file_root.data file is produced containing full computed
-model information at the independent sample points. These can be used for quick importance sampling using action=1.<BR><BR>
 <LI>A <B>file_root.paramnames</B> file lists the names and labels of the parameters corresponding to the columns 3+ of the output chain files. By default this is just a copy of the params_CMB.paramnames file read in by the default parameterization specified in params_CMB.f90. Parameter names are strings of numbers and letters without spaces, used reference parameters in input files; the labels are used when making plot axes labels and various output files.
 <BR><BR>
+<LI>A <B>file_root.ranges</B>  lists the name tags of the parameters, and their upper and lower bounds (including parameters that are not varied, where upper and lower are equal to the fixed value)
+<BR><BR>
+<LI>Files  <B>file_root_1.dat</B>,  <B>file_root_2.dat</B>, etc., if <b>indep_sample</b> is non-zero. These contain full computed
+model information at the independent sample points (power spectra etc). These can be used for quick importance sampling using action=1.<BR><BR>
 <LI>A <B>file_root.log</B> file
 contains some info which may be useful to assess performance.<BR><BR>
 <LI>For post-processing (action=1), the program reads in an existing .data file and processes
@@ -259,15 +260,21 @@ are non-integer, and the output is already thinned by whatever the original
 parameter was. The post-processed file are output to files with root <b>redo_outroot</b>.
 </UL>
 <A NAME="Analysing"><h2>Analysing samples and plotting</h2></A>
-The <b>getdist</b> program analyses text files produced by the cosmomc program. These are in the format
+There are now three ways you can analyse chain results.
+<UL>
+<LI>Using the <b>getdist</b> program, compiled from fortran
+<LI>Using the <b>python/GetDist.py</b> python equivalent (which can be run without having a fortran compiler installed). Note that this currently does not produce all the convergence stats (and a few other things) of the fortran program
+<LI>With the GetDist Gui interactive program, in <b>python/getdist/gui.py</b>.  This requires the python <A HREF="https://pypi.python.org/pypi/PySide">PySide</A> module to be installed (you can get builds for Windows <A HREF="http://www.lfd.uci.edu/~gohlke/pythonlibs/">here</A>).
+</UL>
+The <b>getdist</b> program analyses text chain files produced by the cosmomc program. These are in the format
 <p>&nbsp;&nbsp;&nbsp; <i>weight like param1 param2 param3</i> ...
 <p>The <i>weight</i> gives the number of samples (or importance weight)
 with these parameters. <i>like</i> gives -log(likelihood). The getdist
-program could be used completely independently of the cosmomc program.
+program and gui could be used completely independently of the cosmomc program.
 <P>
-Run <B>getdist distparams.ini</B> to process the chains specified in the
+Run <B>getdist distparams.ini</B> or <B>python python/GetDist.py distparams.ini</B>  to process the chains specified in the
 parameter input file distparams.ini. This should be fairly self-explanatory,
-in the same format as the cosmomc parameter input file.
+in the same format as the cosmomc parameter input file. Note that the outputs from the python and fortran versions of getdist are not identical due to slightly different algorithms, but should be consistent to better than the sampling noise. Both can produce pre-computed densities for plotting (in plot_data directory), but the python plotting scripts do not require this (they are generated on demand) - output will be faster and make far fewer files if <b>no_plots=T</b>.
 <P>
 
 <P>
@@ -341,7 +348,17 @@ param1^a param2^b param3^c ...&nbsp; = x \pm y.
 <P>
 <A NAME="Plotting">
 <B><FONT COLOR="blue">Plotting</FONT></B><P>
-If GetDist produces scripts files to make simple 1D, 2D and 3D plots. These can be either python or matlab, set <b>plot_ext=py</b> or <b>plot_ext=m</b> for which you prefer. The script files produced are called
+GetDist can be used to produce basic simple scripts for various types of plots. You can also just write plotting scripts, or use the GetDist Gui, in which case there is no need to run GetDist first.
+<UL>
+<LI><B>Interactive plotting</B><BR>
+See the <A HREF="readme_gui.html">GetDist GUI readme</A> for details of hope to use the GetDist GUI to make plots from chains. Even if you ultimately write custom scripts to optimize how things are displayed, this can be a quick and easy way to compare results and see what you want to plot.
+<LI><B>Python plot scripts</B><BR>
+See the <A HREF="readme_python.html">CosmoMC python readme</A> for details of how to use the plotting library.
+<LI><B>Matlab plots</B><BR>
+If <b>plot_ext=m</b> GetDist produces Matlab '.m' files. Matlab support is not likely to be developed further, but maintained from the previous version for convenience.
+</UL>
+<P>
+If <b>no_plots=F</b>, GetDist produces scripts files to make simple 1D, 2D and 3D plots. In the fortran getdist these can be either python or matlab, set <b>plot_ext=py</b> or <b>plot_ext=m</b> for which you prefer, python is now preferred and the matlab option is not available from python getdist. The script files produced are called
 <UL>
 <LI><B>file_root</B> for 1D maringalized plots
 <LI><B>file_root</B>_2D for 2D maringalized plots
@@ -349,26 +366,6 @@ If GetDist produces scripts files to make simple 1D, 2D and 3D plots. These can 
 <LI><B>file_root</B>_tri to make 'triangle' plots (<A HREF="http://cosmologist.info/cosmomc/power/fig5.ps">example</A>. Set triangle_plot=T in the .ini file)
 </UL>
 To compare two different sets of chains set <B>compare_num=1</B> in the .ini file, and <B>compare1</B> to the root name of some chains you have previously run GetDist on.
-<UL>
-<LI><B>Python plots</B><BR>
-If <b>plot_ext=py</b> GetDist produces python '.py' files.
-GetDist also produces a set of files in the plot_data directory that can be used by custom python scripts for plotting, independently of the <b>plot_ext</b> scripts described above.
-See the <A HREF="readme_python.html">CosmoMC python readme</A> for details of how to use the plotting library.
-<P>
-<LI><B>Matlab plots</B><BR>
-If <b>plot_ext=m</b> GetDist produces Matlab '.m' files. Matlab support is not likely to be developed further, but maintained from
-the previous version for convenience.  Type <B>file_root</B> into a Matlab
-window set to the directory containing the .m files to produce 1D marginalized plots.
-You can use the <B>blue</B> Matlab script (in the <B>mscripts</B>) directory to change to a B&W-friendly colourmap (see also other colormaps in that directory).
-<BR><BR>
-<A NAME="CustPlotting">
-<B>Custom Matlab plots</B><BR>
-Some Matlab scripts are also supplied for making custom Matlab plots using the files produced by GetDist (see also <A HREF="http://www.sarahbridle.net/cosmologui/">CosmoloGui</A>). The scripts are in the <B> mscripts</B> directory - you will probably want to add this to your Matlab path using e.g. <B>addpath('mscripts')</B>. <B>confid2D</B> makes marginalized contour plots like <A HREF="http://cosmologist.info/cosmomc/pics/WMAP3_TT.png">this</A>.
-But now the python scripts do this much better and more easily.
-<!--
-<LI><B>plot4D</B> generates a rotatable 3D plot, coloured by a fourth parameter, like <A HREF="http://cosmologist.info/cosmomc/pics/4D.png">this</A>. For example <B>plot4D('file_root',16,20,17,4)</B> would plot parameters 16, 20 and 17 on the x, y and z axes, coloured by parameter 4 (as in the example plot). Note that plot4D uses the file file_root_single.txt, which is generated by GetDist only when you explicitly thin the chains, or generate at least one 3D plot.
--->
-</UL>
 <P>
 Parameter labels are set in distparams.ini - if any are blank the parameter is ignored. You can also specify which parameters to plot, or if parameters are not specified for
 the 2D plots or the colour of the 3D plots getdist automatically works out
@@ -488,7 +485,7 @@ weighting function or parameter mapping.</ul>
 Various extended data sets require some code modifications. After testing these may be included as part of the public program, but meanwhile can be
 installed manually or obtained from the cosmomc git repository (access available on request).
 <UL>
-<LI><A HREF="http://www.slac.stanford.edu/~amantz/work/fgas14/">fgas</A> (Relaxed Galaxy Clusters, available as <b>clusters_fgas</b> branch in git repository)
+<LI><A HREF="https://sites.google.com/site/adambmantz/work/fgas14/">fgas</A> (Relaxed Galaxy Clusters, available as <b>clusters_fgas</b> branch in git repository)
 </UL>
 <!--
 <LI><A HREF="http://www.utdallas.edu/~jdossett/isitgr/">Integrated Software in Testing General Relativity</a>
@@ -513,6 +510,8 @@ installed manually or obtained from the cosmomc git repository (access available
 <UL>
 <LI><B>January 2015</B><BR>
 <UL>
+<LI>Planck 2015 result configuration and settings; new set of data setting files in batch2/ 
+<LI>Added Planck 2015 lensing likelihood (native CosmoMC, see data/planck_lensing)
 <LI>Added <A HREF="http://bicepkeck.org/">BICEP-Keck-Planck</A> likelihood (e.g. include batch2/BKPlanck.ini)
 <LI>New GetDist python version, updated plotted and graphical user interface:
 <UL>
@@ -539,6 +538,7 @@ installed manually or obtained from the cosmomc git repository (access available
 <LI>batchJob functions to resolve actual chain name given param and data tags (in any order)
 <LI>Matching of .covmat names using normalized name tags
 <LI>Numerous other small generalizations
+<LI>Simplified installation of grid chain download
 </UL>
 <LI>Importance sampling (action=1):
 <UL>
@@ -908,7 +908,7 @@ Theory, Inference and Learning Algorithms</a>
 <A NAME="FAQ"><h2>FAQ</h2></A>
 <OL>
 <LI><B>What are the dotted lines on the plots?</B><BR>
-Dotted lines are mean likelihoods of samples, solid lines are marginalized probabilities. For Gaussian distributions they should be the same. For skew distributions, or if chains are poorly converged, they will not be. Sometime there is a much better fit (giving high mean likelihood) in a small region of parameter space which has very low marginalized probability. There is more discussion in the original  <a href="http://arxiv.org/abs/astro-ph/0205436">paper</a>. 
+Dotted lines are mean likelihoods of samples, solid lines are marginalized probabilities. For Gaussian distributions they should be the same. For skew distributions, or if chains are poorly converged, they will not be. Sometime there is a much better fit (giving high mean likelihood) in a small region of parameter space which has very low marginalized probability. There is more discussion in the original  <a href="http://arxiv.org/abs/astro-ph/0205436">paper</a>.
 <BR>&nbsp;
 <LI><B>What's in the .likestats file produced by getdist?</B><BR>
 These are values for the best-fit sample, and projections of the n-Dimensional confidence region. Usually people only look at the best-fit values. The n-D limits give you some idea of the range of the posterior, and are much more conservative than the marginalized limits.
@@ -941,7 +941,7 @@ Usually this is because the starting position for the chain is a long way from t
 See <A HREF="http://cosmocoffee.info/viewtopic.php?t=231">CosmoCoffee</A>.
 </OL>
 <P>
-Feel free to ask questions (and read answers to other people's) on the <A HREF="http://cosmocoffee.info">CosmoCoffee</A> software forum. 
+Feel free to ask questions (and read answers to other people's) on the <A HREF="http://cosmocoffee.info">CosmoCoffee</A> software forum.
 <hr>
 <FONT SIZE=2><a href="http://cosmologist.info/">Antony Lewis</a></A>.
 </body>
