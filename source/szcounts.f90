@@ -1,5 +1,5 @@
     !-----------------------------------------------------------!
-    ! Module for SZ cluster counts likelihood
+    ! Module for SZ cluster counts likelihood Final version
     !
     ! Module prepared for cosmomcplanck by A. Bonaldi 2015
     ! This module have been used to produce the results in
@@ -351,11 +351,11 @@
     contains
 
 
-    function dndlnM_new(z,M,g)
+    function dndlnM(z,M,g)
     !mass function: Jenkins, Tinker (default), Watson
     ! mass in units of h^-1 M_sun
     real(dl), INTENT(in) :: z,M,g
-    real(dl) :: dndlnM_new
+    real(dl) :: dndlnM
     real(dl) :: R,rhom0,rhom
     real(dl) :: dMdR,sR,fJen
     real(dl) :: fTink
@@ -477,7 +477,7 @@
     dsoz=massfnpar%dso/Omegam(z)
     if (massfnpar%psind==1) then  !Jenkins et al.
         fJen = massfnpar%Amf*exp(-abs(-dlog(g*sR)+massfnpar%Bmf)**massfnpar%epsmf)
-        dndlnM_new = -rhom0*fJen*cosmopar%sigmaR%Derivative(R)/dMdR/sR
+        dndlnM = -rhom0*fJen*cosmopar%sigmaR%Derivative(R)/dMdR/sR
     elseif (massfnpar%psind==2) then  !Tinker et al.
         call SPLINTNR(del,par_aa,der_aa,total,log10(dsoz),par1)
         call SPLINTNR(del,par_a,der_a,total,log10(dsoz),par2)
@@ -492,7 +492,7 @@
 
         fTink = massfnpar%Amf*((g*sR/massfnpar%Bmf)**(-massfnpar%epsmf)+1.0_dl)*exp(-massfnpar%pmf/sR/sR/g/g)
 
-        dndlnM_new = -rhom0*fTink*cosmopar%sigmaR%Derivative(R)/dMdR/sR
+        dndlnM = -rhom0*fTink*cosmopar%sigmaR%Derivative(R)/dMdR/sR
 
     elseif (massfnpar%psind==3) then !Watson et al. 2013
 
@@ -539,13 +539,13 @@
 
         fwat=fwat*Gamma
 
-        dndlnM_new = -rhom0*fWat*cosmopar%sigmaR%Derivative(R)/dMdR/sR
+        dndlnM = -rhom0*fWat*cosmopar%sigmaR%Derivative(R)/dMdR/sR
     else
         write(*,*) 'Invalid mass function indicator: ',massfnpar%psind
         stop
     end if
     RETURN
-    end function dndlnM_new
+    end function dndlnM
 
 
     SUBROUTINE SPLINTNR(XA,YA,Y2A,N,X,Y)
@@ -859,13 +859,12 @@
     REAl(dl),intent(in) :: steps_z(:),steps_m(:),thetas(:),ylims(:,:),skyfracs(:),logy(:),qa_ytot(:,:),erf_list(:,:)
     INTEGER :: nsteps_z,nsteps_m,nthetas,ntab,npatches,iostat,switch_comp,nsteps_y,nsteps_t,nerf,iy
     real(sp):: completeness(:,:,:) !different completeness for different bin in q
-    integer ::i,j,ii,jj,index1,index2,count,P(1),k1,k2,l1,l2,k,N,nthetas2,nrows,indt(1),indy(1),it,i1y,i2y,i3y,kk
-    integer ::indminy(2),indmaxy(2),iminy,imaxy,nq
-    real (dl):: dif_old,dif,max,min,dlm,binz,m_min,m_max,mp,yp,zp,thp,xk1,xk2,xk3,yk1,yk2,yk3,fact,qmin,qmax,dlogy
-    real(dl),allocatable:: dif_y(:),dif_theta(:),difft(:),diffy(:)
+    integer ::i,j,ii,jj,index1,index2,count,P(1),k1,k2,l1,l2,k,N,nthetas2,nrows,indt(1),indy(1),kk,nq
+    real (dl):: dif,binz,m_min,m_max,mp,yp,zp,thp,qmin,qmax,dlogy
+    real(dl),allocatable:: dif_y(:),dif_theta(:)!,difft(:),diffy(:)
     real(dl):: min_thetas,max_thetas,min_y,max_y
-    real(dl):: c1,c2,th1,th2,c,y12,y1,y2,y,col1,col0,csum,ytiny
-    real(dl),allocatable::thetas2(:),ylims2(:,:),erfs(:,:,:)
+    real(dl):: c1,c2,th1,th2,c,y1,y2,y,col1
+    real(dl),allocatable::erfs(:,:,:)
     real(dl)::win0,win,arg,arg0,y0,py,lnymax,lnymin,lny,dy,fac,mu,int,dlny,fsky
     real(dl):: sigmaM
 
@@ -1051,11 +1050,11 @@
 
     integer ::i,j,ii,jj,index1,index2,count,P(1),k1,k2,l1,l2,k,N,nthetas2,nrows,indt(1),indy(1),it,i1y,i2y,i3y
     integer ::indminy(2),indmaxy(2),iminy,imaxy
-    real (dl):: dif_old,dif,max,min,dlm,binz,m_min,m_max,mp,yp,zp,thp,xk1,xk2,xk3,yk1,yk2,yk3,fact
-    real(dl),allocatable:: dif_y(:),dif_theta(:),difft(:),diffy(:)
+    real (dl):: dif_old,dif,max,min,dlm,binz,m_min,m_max,mp,yp,zp,thp
+    real(dl),allocatable:: dif_y(:),dif_theta(:)
     real(dl):: min_thetas,max_thetas,min_y,max_y
-    real(dl):: c1,c2,th1,th2,c,y12,y1,y2,y,col1,col0
-    real(dl),allocatable::thetas2(:),ylims2(:,:),erfs(:,:)
+    real(dl):: c1,c2,th1,th2,c,y1,y2,y,col1
+    real(dl),allocatable::erfs(:,:)
     real(dl)::win0,win,arg,arg0,y0,py,lnymax,lnymin,lny,dy,fac,mu,int,dlny,fsky
     real(dl):: sigmaM
 
@@ -1081,223 +1080,144 @@
 
     nerf = size(qa_ytot,1)
 
-    SELECT CASE(switch_comp)
-    CASE(1)
-        !error function
-        if (sigmaM==0) then
-            ! no scatter in y-m relation
-            do jj=1,nsteps_z
-                do ii=1,nsteps_m
-                    mp=exp(steps_m(ii))
-                    zp=steps_z(jj)
-                    thp=theta500(mp,zp)
-                    yp=y500(mp,zp)
-                    if (thp > max_thetas) then
-                        l1=nthetas
-                        l2=nthetas-1
-                        th1=thetas(l1)
-                        th2=thetas(l2)
+    !switch comp=1 CASE: error function
+    !error function
+    if (sigmaM==0) then
+        ! no scatter in y-m relation
+        do jj=1,nsteps_z
+            do ii=1,nsteps_m
+                mp=exp(steps_m(ii))
+                zp=steps_z(jj)
+                thp=theta500(mp,zp)
+                yp=y500(mp,zp)
+                if (thp > max_thetas) then
+                    l1=nthetas
+                    l2=nthetas-1
+                    th1=thetas(l1)
+                    th2=thetas(l2)
 
-                    else if  (thp < min_thetas) then
-                        l1=1
-                        l2=2
-                        th1=thetas(l1)
-                        th2=thetas(l2)
-                    else
-                        dif_theta=abs(thetas-thp)
-                        P=minloc(dif_theta)
-                        l1=P(1)
-                        th1=thetas(l1)
-                        l2=l1+1
-                        if (th1 > thp) l2=l1-1
-                        th2=thetas(l2)
+                else if  (thp < min_thetas) then
+                    l1=1
+                    l2=2
+                    th1=thetas(l1)
+                    th2=thetas(l2)
+                else
+                    dif_theta=abs(thetas-thp)
+                    P=minloc(dif_theta)
+                    l1=P(1)
+                    th1=thetas(l1)
+                    l2=l1+1
+                    if (th1 > thp) l2=l1-1
+                    th2=thetas(l2)
 
-                    endif
-                    completeness(ii,jj)=0.
+                endif
+                completeness(ii,jj)=0.
 
-                    do i=1,npatches
-                        y1=ylims(i,l1)
-                        y2=ylims(i,l2)
-                        y=y1+(y2-y1)/(th2-th1)*(thp-th1)!sigma at the elevant scale for the patch
-                        c2=erf_compl(yp,y,q)
-                        completeness(ii,jj)=completeness(ii,jj)+c2*skyfracs(i)
+                do i=1,npatches
+                    y1=ylims(i,l1)
+                    y2=ylims(i,l2)
+                    y=y1+(y2-y1)/(th2-th1)*(thp-th1)!sigma at the elevant scale for the patch
+                    c2=erf_compl(yp,y,q)
+                    completeness(ii,jj)=completeness(ii,jj)+c2*skyfracs(i)
 
-                    enddo
                 enddo
             enddo
+        enddo
+    else
+        ! scatter in y-m relation
+        fac=1./sqrt(2.*pi*sigmaM**2)
+        lnymin=-11.5
+        lnymax=10.
+        dlny=0.05
+
+        N=(lnymax-lnymin)/dlny
+
+        fsky=0
+        do i=1,npatches
+            fsky=fsky+skyfracs(i)
+        enddo
+        !     print*,'fsky=',fsky
+
+        !!$
+        allocate(erfs(N,nthetas),stat=iostat)!y,integrated completeness
+        if (iostat/=0) then
+            print*,'allocation error'
+        endif
 
 
-
-        else
-            ! scatter in y-m relation
-            fac=1./sqrt(2.*pi*sigmaM**2)
-            lnymin=-11.5
-            lnymax=10.
-            dlny=0.05
-
-            N=(lnymax-lnymin)/dlny
-
-            fsky=0
-            do i=1,npatches
-                fsky=fsky+skyfracs(i)
+        do j=1,nthetas
+            lny=lnymin
+            do k=1,N
+                y0=dexp(lny)
+                lny=lny+dlny
+                win0=0.
+                do i=1,npatches
+                    y1=ylims(i,j)
+                    win0=win0+erf_compl(y0,y1,q)*skyfracs(i)
+                enddo
+                erfs(k,j)=win0
+                !           if (erfs(k,j)>fsky) erfs(k,j)=fsky
             enddo
-            !     print*,'fsky=',fsky
-
-            !!$
-            allocate(erfs(N,nthetas),stat=iostat)!y,integrated completeness
-            if (iostat/=0) then
-                print*,'allocation error'
-            endif
+        enddo
 
 
-            do j=1,nthetas
+
+        do jj=1,nsteps_z
+            do ii=1,nsteps_m
+
+                mp=exp(steps_m(ii))
+                zp=steps_z(jj)
+                thp=theta500(mp,zp)
+                yp=y500(mp,zp)
+
+                if (thp > max_thetas) then
+                    l1=nthetas
+                    l2=nthetas-1
+                    th1=thetas(l1)
+                    th2=thetas(l2)
+                else if  (thp < min_thetas) then
+                    l1=1
+                    l2=2
+                    th1=thetas(l1)
+                    th2=thetas(l2)
+                else
+                    dif_theta=abs(thetas-thp)
+                    P=minloc(dif_theta)
+                    l1=P(1)
+                    th1=thetas(l1)
+                    l2=l1+1
+                    if (th1 > thp) l2=l1-1
+                    th2=thetas(l2)
+                endif
+                y=y500(mp,zp)
+                mu=dlog(y500(mp,zp))
+
+                int=0.
                 lny=lnymin
-                do k=1,N
+                do k=1,N-1
                     y0=dexp(lny)
+                    y=dexp(lny+dlny)
+                    dy=y-y0
+                    arg0=((lny-mu)/(sqrt(2.)*sigmaM))
+                    win0=erfs(k,l1)+(erfs(k,l2)-erfs(k,l1))/(th2-th1)*(thp-th1)
+                    win=erfs(k+1,l1)+(erfs(k+1,l2)-erfs(k+1,l1))/(th2-th1)*(thp-th1)
                     lny=lny+dlny
-                    win0=0.
-                    do i=1,npatches
-                        y1=ylims(i,j)
-                        win0=win0+erf_compl(y0,y1,q)*skyfracs(i)
-                    enddo
-                    erfs(k,j)=win0
-                    !           if (erfs(k,j)>fsky) erfs(k,j)=fsky
+                    arg=((lny-mu)/(sqrt(2.)*sigmaM))
+                    py=(win0*fac/y0*exp(-arg0**2)+win*fac/y*exp(-arg**2))*0.5
+                    int=int+py*dy
                 enddo
+                if (int > fsky) int=fsky
+                if (int < 0.) int=0.
+                completeness(ii,jj)=int
+
             enddo
+        enddo
+
+        deallocate(erfs)
+
+    endif
 
 
-
-            do jj=1,nsteps_z
-                do ii=1,nsteps_m
-
-                    mp=exp(steps_m(ii))
-                    zp=steps_z(jj)
-                    thp=theta500(mp,zp)
-                    yp=y500(mp,zp)
-
-                    if (thp > max_thetas) then
-                        l1=nthetas
-                        l2=nthetas-1
-                        th1=thetas(l1)
-                        th2=thetas(l2)
-                    else if  (thp < min_thetas) then
-                        l1=1
-                        l2=2
-                        th1=thetas(l1)
-                        th2=thetas(l2)
-                    else
-                        dif_theta=abs(thetas-thp)
-                        P=minloc(dif_theta)
-                        l1=P(1)
-                        th1=thetas(l1)
-                        l2=l1+1
-                        if (th1 > thp) l2=l1-1
-                        th2=thetas(l2)
-                    endif
-                    y=y500(mp,zp)
-                    mu=dlog(y500(mp,zp))
-
-                    int=0.
-                    lny=lnymin
-                    do k=1,N-1
-                        y0=dexp(lny)
-                        y=dexp(lny+dlny)
-                        dy=y-y0
-                        arg0=((lny-mu)/(sqrt(2.)*sigmaM))
-                        win0=erfs(k,l1)+(erfs(k,l2)-erfs(k,l1))/(th2-th1)*(thp-th1)
-                        win=erfs(k+1,l1)+(erfs(k+1,l2)-erfs(k+1,l1))/(th2-th1)*(thp-th1)
-                        lny=lny+dlny
-                        arg=((lny-mu)/(sqrt(2.)*sigmaM))
-                        py=(win0*fac/y0*exp(-arg0**2)+win*fac/y*exp(-arg**2))*0.5
-                        int=int+py*dy
-                    enddo
-                    if (int > fsky) int=fsky
-                    if (int < 0.) int=0.
-                    completeness(ii,jj)=int
-
-                enddo
-            enddo
-
-            deallocate(erfs)
-
-        endif
-
-    CASE(2)
-        !QA COMPLETENESS
-        if (sigmaM==0) then
-            ! no scatter in y-m relation
-            do jj=1,nsteps_z
-                do ii=1,nsteps_m
-
-                    mp=exp(steps_m(ii))
-                    zp=steps_z(jj)
-
-                    thp=theta500(mp,zp)
-                    yp=y500(mp,zp)
-
-                    allocate(difft(nthetas))
-                    difft = abs(thetas-thp)
-                    indt = minloc(difft)
-                    it = indt(1)
-
-                    allocate(diffy(nerf))
-                    diffy = abs(qa_ytot(:,it)-yp)
-
-                    indy = minloc(diffy)
-
-                    i1y = indy(1)-1
-                    i2y = indy(1)+1
-
-                    deallocate(difft)
-                    deallocate(diffy)
-
-                    indminy = minloc(qa_ytot)
-                    indmaxy = maxloc(qa_ytot)
-
-                    if (i1y <=0) then
-                        i1y = indminy(1)
-                    endif
-
-                    if (i2y>nerf) then
-                        i2y = indmaxy(1)
-                    endif
-
-                    if (yp < min_y) then
-                        i1y = indminy(1)
-                        i2y = indminy(1)+1
-                    endif
-
-                    if (yp > max_y) then
-                        i1y = indmaxy(1)-1
-                        i2y = indmaxy(1)
-                    endif
-
-                    xk1 = qa_ytot(i1y,it)
-                    xk2 = qa_ytot(i2y,it)
-                    yk1 = erf_list(i1y,it)
-                    yk2 = erf_list(i2y,it)
-
-                    completeness(ii,jj) = 0.
-
-                    !INTERPOLATION POLY ORDER 1
-                    completeness(ii,jj) = exp(log(yk1)+((log(yp)-log(xk1))/(log(xk2)-log(xk1)))*(log(yk2)-log(yk1)))
-
-                    if (completeness(ii,jj)> 1.) completeness(ii,jj)=1.
-                    if (completeness(ii,jj)==0.) completeness(ii,jj)=1e-20
-
-                    fact = sum(skyfracs)
-                    completeness(ii,jj) = completeness(ii,jj)*fact
-
-                enddo
-            enddo
-        else
-            ! scatter in y-m relation
-            print*, 'QA completeness and scatter in Y-M relation'
-            print*, 'CASE NOT IMPLEMENTED - STOPPING'
-            stop
-        endif
-
-    END SELECT
 
     END SUBROUTINE grid_C
 
@@ -1305,7 +1225,7 @@
     !tabulate counts from theory
     REAL(dl):: z(:),lnm(:),grid(:,:)
     INTEGER :: I,J,nz,nm
-    REAL(dl):: Mnew,g,ynew,vol,theta
+    REAL(dl):: Mnew,g,vol,theta
 
 
 
@@ -1314,7 +1234,7 @@
         vol=dVdzdO(z(I))
         DO J=1,Nm
             Mnew=exp(lnm(J))
-            grid(j,i) = dndlnM_new(z(I),Mnew,g)*surveypar%deg2*vol
+            grid(j,i) = dndlnM(z(I),Mnew,g)*surveypar%deg2*vol
         ENDDO
     ENDDO
 
@@ -1375,7 +1295,7 @@
     ! user-defined settings are interfaced here
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
-    integer count
+    !integer count
     Type(SZLikelihood), pointer :: this
 
     print_counts=0
@@ -1634,64 +1554,6 @@
     endif
 
 
-    !This part is used for selection function given by QA
-
-    filename='data/SZ_y500_mc_MMF3_snr6.txt' !MMF3 final QA
-    !filename='data/SZ_y500_mc_inter_snr6.txt' !intersection final QA
-
-    nrows_qa=File%TxtFileLines(filename)
-    print*,'Number of rows QA Y500=',nrows_qa
-    nerf=nrows_qa/nthetas
-
-    !!$
-    if (nrows_qa /= nerf*nthetas) then
-        print*,'Format error for ',filename
-        print*,'Expected rows:',nerf*nthetas
-        print*,'Actual rows:',nrows_qa
-        stop
-    endif
-
-    allocate(qa_ytot(nerf,nthetas))
-    open (newunit=iunit,file=filename,status='unknown',form="formatted")
-    i=1
-    j=1
-    DO ii=1,nrows_qa
-        READ(iunit,*,IOSTAT=Reason)  col1
-        qa_ytot(i,j)=col1
-        i=i+1
-        if (i > nerf) then
-            i=1
-            j=j+1
-        endif
-    ENDDO
-    CLOSE (unit=iunit)
-
-    filename='data/SZ_list_mc_MMF3_snr6.txt' !MMF3 final QA
-    !filename='data/SZ_list_mc_inter_snr6.txt' !intersection final QA
-
-    nrows_erf=File%TxtFileLines(filename)
-    print*,'Number of ERF tot =',nrows_erf
-    if (nrows_erf /= nerf*nthetas) then
-        print*,'Format error for ',filename
-        print*,'Expected rows:',nerf*nthetas
-        print*,'Actual rows:',nrows_erf
-        stop
-    endif
-    allocate(erf_list(nerf,nthetas))
-    open (newunit=iunit,file=filename,status='unknown',form="formatted")
-    i=1
-    j=1
-    DO ii=1,nrows_erf
-        READ(iunit,*,IOSTAT=Reason)  col1
-        erf_list(i,j)=col1
-        i=i+1
-        if (i > nerf) then
-            i=1
-            j=j+1
-        endif
-    ENDDO
-    !end part for QA selectin function
-
     ALLOCATE(Z(Nz),LOGY(Ny+1),stat=iostat)
     if (iostat /= 0) then
         print *, "Cannot allocate work arrays"
@@ -1753,15 +1615,7 @@
         nred2=nrows-nmiss
         print*,nrows,nmiss
 
-        !!$         if (nred2 /= int(sum)) then
-        !!$            print*,'Error number of clusters!'
-        !!$            stop
-        !!$         endif
         ncat=nrows
-        !!$         if (nred2+nmiss /=nrows) then
-        !!$            print*,'Error number of clusters!'
-        !!$            stop
-        !!$         endif
 
         print*,'Number of clusters:',ncat
         print*,'Number of clusters with redshift:',nred2
@@ -1784,7 +1638,6 @@
         ! compute P(q|qm) once and for all
 
         nrows=size(SZcat(:,1))
-
         nmiss=0
         DO ii=1,nrows
             if (SZcat(ii,1) <0.d0) nmiss=nmiss+1.
@@ -1886,8 +1739,8 @@
     INTEGER :: N,i,j,Nf,ii
     REAL(DL) :: sum,factorial,ln_factorial,SZCC_Cash_exp
     INTEGER :: p(1),jj,nit,it,iostat
-    REAL(DL) ::test,dif,difold,z_min,z_max,fact
-    REAL(DL),allocatable :: DNzcum(:),DNz_old(:),RANDCAT(:)
+    REAL(DL) ::z_min,z_max,fact
+    !REAL(DL),allocatable :: DNzcum(:),DNz_old(:),RANDCAT(:)
     integer, save :: iseed
 
 
@@ -1946,23 +1799,8 @@
             stop
         endif
 
-        !cumulative for missing redshifts
-        allocate(DNzcum(Nz),DNz_old(Nz),randcat(ncat),stat=iostat)
-        if (iostat/=0) then
-            print*,'allocation error'
-        endif
 
-        do jj=1,Nz
-            sum=0
-            do ii=1,jj
-                sum=sum+DNz(ii)
-            end do
-            DNzcum(jj)=sum
-        enddo
-
-        !check likelihood
-        DNz_old=DNzcat
-        DNzcat=DNzcat/dble(nred2)*dble(ncat)
+        DNzcat=DNzcat/dble(nred2)*dble(ncat) !rescaling for missing redshifts
         sum=0.
         do i=1,Nz
             if (DNz(i) /= 0.) then
@@ -1972,119 +1810,6 @@
             end if
         end do
         SZCC_Cash=sum
-
-        DNzcat=DNz_old
-
-        if (nmiss_switch==0 .and. errorz_switch==0) goto 2
-
-        if (dexp(-sum) /= 0._dl) then
-            DNzcat=DNz_old
-            !print*,'Initial Loglike=',SZCC_Cash
-            SZCC_Cash_ini=SZCC_Cash
-
-            ! print*,'ITERATIONS:'!, dexp(-sum)
-            SZCC_Cash_exp=0._dl
-
-            do it=1,nit
-                DNzcat=DNz_old
-                if (errorz_switch==1) then
-                    randcat(:)=-1.
-                    ! realization of catalogue with redshift
-                    do i=1,ncat
-                        if (SZcat(i,1) > 0.) then
-                            randcat(i)=randgauss_boxmuller(iseed)*SZcat(i,2)+SZcat(i,1)
-                            if (randcat(i) <0.) randcat(i)=1.e-3
-                        endif
-                    enddo
-                    DNzcat(:)=0.
-                    DO I=1,Nz
-                        z_min=Z(I)-dz/2.
-                        z_max=Z(I)+dz/2.
-                        DO ii=1,ncat
-                            if ((randcat(ii) >0).and.(randcat(ii) >= z_min) .and. (randcat(ii) < z_max)) then
-                                DNzcat(I)=DNzcat(I)+1.
-                            endif
-                        ENDDO
-
-                    END DO
-
-                    sum=0.
-                    DO I=1,Nz
-                        sum=sum+DNzcat(I)
-                    ENDDO
-                    !if (int(sum) /= nred2) then
-                    if (abs(sum-dble(nred2))>1.e-5) then
-                        print*,'error number of clusters with redhift'
-                        print*,nred2,sum
-                        stop
-                    endif
-                endif
-                SELECT CASE(nmiss_switch)
-                case(0)
-
-                    DNzcat=DNZcat/dble(nred2)*dble(ncat)
-                case(1)
-
-                    do i=1,Nmiss
-                        test=ran_mwc(iseed)*dble(DNzcum(Nz))
-                        difold=dble(DNzcum(Nz))
-                        do jj=1,Nz
-                            dif=Dnzcum(jj)-test
-                            if ((dif>= 0.) .and. (dif < difold)) then
-                                j=jj
-                                difold=dif
-                            endif
-                        enddo
-
-                        DNzcat(J)=DNZcat(J)+1
-                    enddo
-
-                END SELECT
-
-                !print*,'with missing z:',DNZcat
-
-                sum=0.
-                DO I=1,Nz
-                    sum=sum+DNzcat(I)
-                ENDDO
-
-
-                if (abs(sum-dble(ncat))>1.e-5) then
-                    print*,'error total number of clusters'
-                    print*,sum,ncat
-                    stop
-                endif
-
-                ! likelihood computation
-                sum=0.
-                do i=1,Nz
-                    if (DNz(i) /= 0.) then
-                        ln_factorial=0.
-                        if (DNzcat(i) /= 0.) ln_factorial=0.918939+(DNzcat(i)+0.5)*dlog(DNzcat(i))-DNzcat(i) !Stirling
-
-                        sum=sum-1.*(DNzcat(i)*dlog(DNz(i))-DNz(i)-ln_factorial)
-                    end if
-                end do
-                SZCC_Cash_exp = SZCC_Cash_exp+exp(-sum)
-            ENDDO
-            SZCC_Cash_exp=SZCC_Cash_exp/dble(nit)
-            if (SZCC_Cash_exp >0._dl) then
-                !print*,'AVERAGE'
-                SZCC_Cash=-1.*dlog(SZCC_Cash_exp)
-                print*,SZCC_Cash,SZCC_Cash_ini
-            else
-                !print*,'INITIAL'
-                SZCC_Cash=SZCC_Cash_ini
-            endif
-            print*,SZCC_Cash,SZCC_Cash_ini
-        endif
-2       continue
-        !print*,'SZ Cash likelihood=',SZCC_Cash
-        deallocate(DNzcum,DNZ_old,randcat,stat=iostat)
-        if (iostat/=0) then
-            print*,'deallocation error'
-            stop
-        endif
 
     CASE(2) ! n(z,q)
 
@@ -2106,22 +1831,23 @@
             do j=1,Ny+1
                 if (DN(i,j) /= 0.) then
                     ln_factorial=0.
-                    if (DNcat(i,j)==0)  go to 100
-                    !if (DNcat(i,j) /= 0.) ln_factorial=0.918939+(DNcat(i,j)+0.5)*dlog(DNcat(i,j))-DNcat(i,j) !Stirling
-                    if (DNcat(i,j) >10.) then
-                        !Stirling approximation only for more than 10 elements
-                        ln_factorial=0.918939+(DNcat(i,j)+0.5)*dlog(DNcat(i,j))-DNcat(i,j)
-                    else
-                        !direct computation of factorial
-                        fact=1.
-                        do ii=1,int(DNcat(i,j))
-                            fact=ii*fact
-                        enddo
-                        ln_factorial=dlog(fact)
-                    endif
-100                 continue
-                    sum=sum-1.*(DNcat(i,j)*dlog(DN(i,j))-DN(i,j)-ln_factorial)
 
+                    if (DNcat(i,j)>0.) then
+
+                        if (DNcat(i,j) >10.) then
+                            !Stirling approximation only for more than 10 elements
+                            ln_factorial=0.918939+(DNcat(i,j)+0.5)*dlog(DNcat(i,j))-DNcat(i,j)
+                        else
+                            !direct computation of factorial
+                            fact=1.
+                            do ii=1,int(DNcat(i,j))
+                                fact=ii*fact
+                            enddo
+                            ln_factorial=dlog(fact)
+                        endif
+                    endif
+
+                    sum=sum-1.*(DNcat(i,j)*dlog(DN(i,j))-DN(i,j)-ln_factorial)
                 end if
             enddo
         end do
@@ -2153,101 +1879,6 @@
     !Print*,'SZ lnlike = ',SZCC_Cash
 
     end function SZCC_Cash
-
-
-    ! routines for random numbers generation (missing redshifts, error on redshifts)
-    !=======================================================================
-    function ran_mwc(iseed)
-    !=======================================================================
-    !     This routine implements the Marsaglia "multiply with carry method"
-    !     and adds a Marsaglia shift sequence to it.
-    !     (cf. references at http://www.cs.hku.hk/)
-    !     You are welcome to replace this with your preferred generator
-    !     of uniform variates in the interval ]0,1[ (i.e. excluding 0 and 1)
-
-    !     (Re-)initialise with setting iseed to a negative number.
-    !     Note that iseed=0 gives the same sequence as iseed=-1
-    !     After initialisation iseed becomes abs(iseed) (or 1 if it was 0).
-
-    !     B. D. Wandelt, May 1999
-    !=======================================================================
-    implicit none
-    integer, intent(inout):: iseed
-    real(SP) :: ran_mwc
-
-    integer:: i,iseedl,iseedu,mwc,combined
-    integer,save :: upper,lower,shifter
-    integer,parameter :: mask16=65535,mask30=2147483647
-    real(SP),save :: small
-    logical, save :: first=.true.
-
-    if (first.or.iseed<=0) then
-        if(iseed==0) iseed=-1
-        iseed=abs(iseed)
-        small=nearest(1.0_sp,-1.0_sp)/mask30
-
-        ! Users often enter small seeds - I spread them out using the
-        ! Marsaglia shifter a few times.
-        shifter=iseed
-        do i=1,9
-            shifter=ieor(shifter,ishft(shifter,13))
-            shifter=ieor(shifter,ishft(shifter,-17))
-            shifter=ieor(shifter,ishft(shifter,5))
-        enddo
-
-        iseedu=ishft(shifter,-16)
-        upper=ishft(iseedu+8765,16)+iseedu !This avoids the fixed points.
-        iseedl=iand(shifter,mask16)
-        lower=ishft(iseedl+4321,16)+iseedl !This avoids the fixed points.
-
-        first=.false.
-    endif
-
-100 continue
-
-    shifter=ieor(shifter,ishft(shifter,13))
-    shifter=ieor(shifter,ishft(shifter,-17))
-    shifter=ieor(shifter,ishft(shifter,5))
-
-    upper=36969*iand(upper,mask16)+ishft(upper,-16)
-    lower=18000*iand(lower,mask16)+ishft(lower,-16)
-
-    mwc=ishft(upper,16)+iand(lower,mask16)
-
-    combined=iand(mwc,mask30)+iand(shifter,mask30)
-
-    ran_mwc=small*iand(combined,mask30)
-    if(ran_mwc==0._sp) goto 100
-
-    return
-    end function ran_mwc
-
-
-    !=======================================================================
-    function randgauss_boxmuller(iseed)
-    !=======================================================================
-    !     Box-Muller method for converting uniform into Gaussian deviates
-    !=======================================================================
-    integer, intent(inout) :: iseed
-    real(SP) :: randgauss_boxmuller
-    logical, save :: empty=.true.
-    real(SP) :: fac,rsq,v1,v2
-    real(SP),save :: gset
-
-    if (empty .or. iseed < 0) then ! bug correction, EH, March 13, 2003
-1       v1=2.*ran_mwc(iseed)-1.
-        v2=2.*ran_mwc(iseed)-1.
-        rsq=v1**2+v2**2
-        if(rsq.ge.1.or.rsq.eq.0.) goto 1
-        fac=sqrt(-2.*log(rsq)/rsq)
-        gset=v1*fac
-        randgauss_boxmuller=v2*fac
-        empty=.false.
-    else
-        randgauss_boxmuller=gset
-        empty=.true.
-    endif
-    end function randgauss_boxmuller
 
     end module szcounts
 
