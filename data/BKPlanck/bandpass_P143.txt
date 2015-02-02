@@ -1,8 +1,16 @@
-# bandpass_P143.txt
-# Date: 2015-01-12
+# BICEP2/Keck Array and Planck Joint Analysis January 2015 Data Products
+# The BICEP2/Keck and Planck Collaborations, A Joint Analysis of BICEP2/Keck Array and Planck Data
+# http://bicepkeck.org/
 #
-# Data from BICEP2/Keck Array/Planck joint analysis
-# ...add paper citation here...
+# File: bandpass_P143.txt 
+# Date: 2015-01-31
+#
+# Experiment bandpasses for the multi-component likelihood described in Section III of A Joint Analysis of BICEP2/Keck Array and Planck Data.
+# See the comments in the .dataset file for further information.
+# This file provides the frequency spectrum for: P143.
+#   Column 1 = frequency in GHz
+#   Column 2 = response to a source with uniform spectral radiance
+# See Planck 2013 results IX and BK-II for further details.
 
 10.110 7.3153e-11
 10.616 7.37948e-11
