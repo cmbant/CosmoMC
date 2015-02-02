@@ -1081,141 +1081,141 @@
     nerf = size(qa_ytot,1)
 
     !switch comp=1 CASE: error function
-        !error function
-        if (sigmaM==0) then
-            ! no scatter in y-m relation
-            do jj=1,nsteps_z
-                do ii=1,nsteps_m
-                    mp=exp(steps_m(ii))
-                    zp=steps_z(jj)
-                    thp=theta500(mp,zp)
-                    yp=y500(mp,zp)
-                    if (thp > max_thetas) then
-                        l1=nthetas
-                        l2=nthetas-1
-                        th1=thetas(l1)
-                        th2=thetas(l2)
+    !error function
+    if (sigmaM==0) then
+        ! no scatter in y-m relation
+        do jj=1,nsteps_z
+            do ii=1,nsteps_m
+                mp=exp(steps_m(ii))
+                zp=steps_z(jj)
+                thp=theta500(mp,zp)
+                yp=y500(mp,zp)
+                if (thp > max_thetas) then
+                    l1=nthetas
+                    l2=nthetas-1
+                    th1=thetas(l1)
+                    th2=thetas(l2)
 
-                    else if  (thp < min_thetas) then
-                        l1=1
-                        l2=2
-                        th1=thetas(l1)
-                        th2=thetas(l2)
-                    else
-                        dif_theta=abs(thetas-thp)
-                        P=minloc(dif_theta)
-                        l1=P(1)
-                        th1=thetas(l1)
-                        l2=l1+1
-                        if (th1 > thp) l2=l1-1
-                        th2=thetas(l2)
+                else if  (thp < min_thetas) then
+                    l1=1
+                    l2=2
+                    th1=thetas(l1)
+                    th2=thetas(l2)
+                else
+                    dif_theta=abs(thetas-thp)
+                    P=minloc(dif_theta)
+                    l1=P(1)
+                    th1=thetas(l1)
+                    l2=l1+1
+                    if (th1 > thp) l2=l1-1
+                    th2=thetas(l2)
 
-                    endif
-                    completeness(ii,jj)=0.
+                endif
+                completeness(ii,jj)=0.
 
-                    do i=1,npatches
-                        y1=ylims(i,l1)
-                        y2=ylims(i,l2)
-                        y=y1+(y2-y1)/(th2-th1)*(thp-th1)!sigma at the elevant scale for the patch
-                        c2=erf_compl(yp,y,q)
-                        completeness(ii,jj)=completeness(ii,jj)+c2*skyfracs(i)
-
-                    enddo
-                enddo
-            enddo
-        else
-            ! scatter in y-m relation
-            fac=1./sqrt(2.*pi*sigmaM**2)
-            lnymin=-11.5
-            lnymax=10.
-            dlny=0.05
-
-            N=(lnymax-lnymin)/dlny
-
-            fsky=0
-            do i=1,npatches
-                fsky=fsky+skyfracs(i)
-            enddo
-            !     print*,'fsky=',fsky
-
-            !!$
-            allocate(erfs(N,nthetas),stat=iostat)!y,integrated completeness
-            if (iostat/=0) then
-                print*,'allocation error'
-            endif
-
-
-            do j=1,nthetas
-                lny=lnymin
-                do k=1,N
-                    y0=dexp(lny)
-                    lny=lny+dlny
-                    win0=0.
-                    do i=1,npatches
-                        y1=ylims(i,j)
-                        win0=win0+erf_compl(y0,y1,q)*skyfracs(i)
-                    enddo
-                    erfs(k,j)=win0
-                    !           if (erfs(k,j)>fsky) erfs(k,j)=fsky
-                enddo
-            enddo
-
-
-
-            do jj=1,nsteps_z
-                do ii=1,nsteps_m
-
-                    mp=exp(steps_m(ii))
-                    zp=steps_z(jj)
-                    thp=theta500(mp,zp)
-                    yp=y500(mp,zp)
-
-                    if (thp > max_thetas) then
-                        l1=nthetas
-                        l2=nthetas-1
-                        th1=thetas(l1)
-                        th2=thetas(l2)
-                    else if  (thp < min_thetas) then
-                        l1=1
-                        l2=2
-                        th1=thetas(l1)
-                        th2=thetas(l2)
-                    else
-                        dif_theta=abs(thetas-thp)
-                        P=minloc(dif_theta)
-                        l1=P(1)
-                        th1=thetas(l1)
-                        l2=l1+1
-                        if (th1 > thp) l2=l1-1
-                        th2=thetas(l2)
-                    endif
-                    y=y500(mp,zp)
-                    mu=dlog(y500(mp,zp))
-
-                    int=0.
-                    lny=lnymin
-                    do k=1,N-1
-                        y0=dexp(lny)
-                        y=dexp(lny+dlny)
-                        dy=y-y0
-                        arg0=((lny-mu)/(sqrt(2.)*sigmaM))
-                        win0=erfs(k,l1)+(erfs(k,l2)-erfs(k,l1))/(th2-th1)*(thp-th1)
-                        win=erfs(k+1,l1)+(erfs(k+1,l2)-erfs(k+1,l1))/(th2-th1)*(thp-th1)
-                        lny=lny+dlny
-                        arg=((lny-mu)/(sqrt(2.)*sigmaM))
-                        py=(win0*fac/y0*exp(-arg0**2)+win*fac/y*exp(-arg**2))*0.5
-                        int=int+py*dy
-                    enddo
-                    if (int > fsky) int=fsky
-                    if (int < 0.) int=0.
-                    completeness(ii,jj)=int
+                do i=1,npatches
+                    y1=ylims(i,l1)
+                    y2=ylims(i,l2)
+                    y=y1+(y2-y1)/(th2-th1)*(thp-th1)!sigma at the elevant scale for the patch
+                    c2=erf_compl(yp,y,q)
+                    completeness(ii,jj)=completeness(ii,jj)+c2*skyfracs(i)
 
                 enddo
             enddo
+        enddo
+    else
+        ! scatter in y-m relation
+        fac=1./sqrt(2.*pi*sigmaM**2)
+        lnymin=-11.5
+        lnymax=10.
+        dlny=0.05
 
-            deallocate(erfs)
+        N=(lnymax-lnymin)/dlny
 
+        fsky=0
+        do i=1,npatches
+            fsky=fsky+skyfracs(i)
+        enddo
+        !     print*,'fsky=',fsky
+
+        !!$
+        allocate(erfs(N,nthetas),stat=iostat)!y,integrated completeness
+        if (iostat/=0) then
+            print*,'allocation error'
         endif
+
+
+        do j=1,nthetas
+            lny=lnymin
+            do k=1,N
+                y0=dexp(lny)
+                lny=lny+dlny
+                win0=0.
+                do i=1,npatches
+                    y1=ylims(i,j)
+                    win0=win0+erf_compl(y0,y1,q)*skyfracs(i)
+                enddo
+                erfs(k,j)=win0
+                !           if (erfs(k,j)>fsky) erfs(k,j)=fsky
+            enddo
+        enddo
+
+
+
+        do jj=1,nsteps_z
+            do ii=1,nsteps_m
+
+                mp=exp(steps_m(ii))
+                zp=steps_z(jj)
+                thp=theta500(mp,zp)
+                yp=y500(mp,zp)
+
+                if (thp > max_thetas) then
+                    l1=nthetas
+                    l2=nthetas-1
+                    th1=thetas(l1)
+                    th2=thetas(l2)
+                else if  (thp < min_thetas) then
+                    l1=1
+                    l2=2
+                    th1=thetas(l1)
+                    th2=thetas(l2)
+                else
+                    dif_theta=abs(thetas-thp)
+                    P=minloc(dif_theta)
+                    l1=P(1)
+                    th1=thetas(l1)
+                    l2=l1+1
+                    if (th1 > thp) l2=l1-1
+                    th2=thetas(l2)
+                endif
+                y=y500(mp,zp)
+                mu=dlog(y500(mp,zp))
+
+                int=0.
+                lny=lnymin
+                do k=1,N-1
+                    y0=dexp(lny)
+                    y=dexp(lny+dlny)
+                    dy=y-y0
+                    arg0=((lny-mu)/(sqrt(2.)*sigmaM))
+                    win0=erfs(k,l1)+(erfs(k,l2)-erfs(k,l1))/(th2-th1)*(thp-th1)
+                    win=erfs(k+1,l1)+(erfs(k+1,l2)-erfs(k+1,l1))/(th2-th1)*(thp-th1)
+                    lny=lny+dlny
+                    arg=((lny-mu)/(sqrt(2.)*sigmaM))
+                    py=(win0*fac/y0*exp(-arg0**2)+win*fac/y*exp(-arg**2))*0.5
+                    int=int+py*dy
+                enddo
+                if (int > fsky) int=fsky
+                if (int < 0.) int=0.
+                completeness(ii,jj)=int
+
+            enddo
+        enddo
+
+        deallocate(erfs)
+
+    endif
 
 
 
@@ -1615,8 +1615,8 @@
         nred2=nrows-nmiss
         print*,nrows,nmiss
 
-               ncat=nrows
-       
+        ncat=nrows
+
         print*,'Number of clusters:',ncat
         print*,'Number of clusters with redshift:',nred2
         print*,'Number of clusters with no redshift:',nmiss
@@ -1799,8 +1799,8 @@
             stop
         endif
 
-         
-        DNzcat=DNzcat/dble(nred2)*dble(ncat) !rescaling for missing redshifts 
+
+        DNzcat=DNzcat/dble(nred2)*dble(ncat) !rescaling for missing redshifts
         sum=0.
         do i=1,Nz
             if (DNz(i) /= 0.) then
@@ -1811,7 +1811,7 @@
         end do
         SZCC_Cash=sum
 
-      CASE(2) ! n(z,q)
+    CASE(2) ! n(z,q)
 
         call deltaN_yz(Z,Nz,LOGY,Ny,DNZ,DN,skyfracs,thetas,ylims,sz_switch,qa_ytot,erf_list)
 
@@ -1832,21 +1832,21 @@
                 if (DN(i,j) /= 0.) then
                     ln_factorial=0.
 
-                    if (DNcat(i,j)>0.) then                  
-                   
-                    if (DNcat(i,j) >10.) then
-                       !Stirling approximation only for more than 10 elements
-                        ln_factorial=0.918939+(DNcat(i,j)+0.5)*dlog(DNcat(i,j))-DNcat(i,j)
-                    else
-                        !direct computation of factorial
-                        fact=1.
-                        do ii=1,int(DNcat(i,j))
-                            fact=ii*fact
-                        enddo
-                        ln_factorial=dlog(fact)
-                     endif
-                 endif
-             
+                    if (DNcat(i,j)>0.) then
+
+                        if (DNcat(i,j) >10.) then
+                            !Stirling approximation only for more than 10 elements
+                            ln_factorial=0.918939+(DNcat(i,j)+0.5)*dlog(DNcat(i,j))-DNcat(i,j)
+                        else
+                            !direct computation of factorial
+                            fact=1.
+                            do ii=1,int(DNcat(i,j))
+                                fact=ii*fact
+                            enddo
+                            ln_factorial=dlog(fact)
+                        endif
+                    endif
+
                     sum=sum-1.*(DNcat(i,j)*dlog(DN(i,j))-DN(i,j)-ln_factorial)
                 end if
             enddo
