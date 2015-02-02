@@ -6,7 +6,8 @@ g = s.getSubplotPlotter()
 params = ['theta', 'omegabh2', 'omegach2', 'logA', 'ns', 'tau']
 
 
-for par in ['', 'nnu']:
+# for par in ['', 'nnu']:
+for par in ['']:
     g.newPlot()
     dataroots = [s.defdata_root + '_EE_lowEB', s.defdata_root + '_TE_lowEB', s.defdata_root + '_TT_lowTEB', s.defdata_root + '_TTTEEE_lowTEB']
     roots = [ g.getRoot(par, root) for root in dataroots]

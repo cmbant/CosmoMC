@@ -22,6 +22,7 @@ output_base_dir = None
 cache_dir = None
 use_plot_data = False
 default_getdist_settings = os.path.join(os.path.dirname(__file__), 'analysis_defaults.ini')
+default_plot_output = 'pdf'
 
 config_file = os.environ.get('GETDIST_CONFIG', None)
 if not config_file:
@@ -33,6 +34,7 @@ if os.path.exists(config_file):
     cache_dir = config_ini.string('cache_dir', '')
     default_getdist_settings = config_ini.string('default_getdist_settings', default_getdist_settings)
     use_plot_data = config_ini.bool('use_plot_data', use_plot_data)
+    default_plot_output = config_ini.string('default_plot_output', default_plot_output)
 else:
     config_ini = iniFile()
 
@@ -239,7 +241,7 @@ class MCSamples(chains):
         self.subplot_size_inch = 4.0
         self.subplot_size_inch2 = self.subplot_size_inch
         self.subplot_size_inch3 = 6.0
-        self.plot_output = 'pdf'
+        self.plot_output = default_plot_output
         self.out_dir = ""
 
         self.max_split_tests = 4

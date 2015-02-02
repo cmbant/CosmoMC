@@ -1,50 +1,44 @@
 #!/bin/bash
 
-##SLURM Example for Darwin in Cambridge (adapted from STG perl script)
+###Sample (e.g. PBS cluster)
+###Python script replace ##..## placeholders with values given python script
 
-#SBATCH -p sandybridge
-#SBATCH -A PLANCK
-#SBATCH --nodes=##NUMNODES##
-#SBATCH --ntasks=##NUMTASKS##
-#SBATCH --time=##WALLTIME##
-#SBATCH --mail-type=FAIL
+#PBS -q ##QUEUE##
+#PBS -l nodes=##NUMNODES##:ppn=##PPN##     # No. processors required
+#PBS -l walltime=##WALLTIME## # wall clock time required
+#PBS -N ##JOBNAME##
+#PBS -V
 
 cd ##ROOTDIR##
-
-. /etc/profile.d/modules.sh
-module purge
-module load default-impi
-
-#cfitsio is only needed for WMAP
-module load cfitsio
-
-#for PICO runs also need python (check path also set correctly)
-#not needed otherwise
-module load python/2.7.3
 
 echo Running on host `hostname`
 echo Time is `date`
 echo Directory is `pwd`
-echo Slurm job ID is $SLURM_JOBID
-echo This jobs runs on the following machines:
-export NODEFILE=`generate_pbs_nodefile`
-echo `cat $NODEFILE | uniq`
+echo Job ID is $PBS_JOBID
 
-cat $NODEFILE | uniq > scripts/machine.file.$SLURM_JOBID
+#for PICO runs also need python (check path also set correctly)
+#not needed otherwise
+#module load python/2.7.3
 
 export OMP_NUM_THREADS=##OMP##
+
+#you may not need these
 export I_MPI_PIN=##ONERUN##
 export I_MPI_PIN_DOMAIN=omp:compact
 export I_MPI_PIN_ORDER=scatter
 export I_MPI_CPUINFO=proc
+export KMP_LIBRARY=throughput
+export KMP_STACKSIZE=1gb
+export OMP_NESTED=FALSE
 
 ###set things to be used by the python script, which extracts text from here with ##XX: ... ##
 ### command to use for each run in the batch
-##RUN: time mpirun --ppn ##MPIPERNODE## -np ##NUMMPI## ##PROGRAM## ##INI## > ./scripts/##INIBASE##.log 2>&1 ##
-### defaults for this script
+##RUN: time mpirun -np ##NUMMPI## ##PROGRAM## ##INI## > ./scripts/##INIBASE##.log 2>&1 ##
+### qsub command to use when submitting
 ##DEFAULT_qsub: qsub ##
-##DEFAULT_coresPerNode: 16 ##
+##DEFAULT_qdel: qdel ##
 
+###put the generated run commands here
 ##COMMAND##
 
 #wait for processes to finish

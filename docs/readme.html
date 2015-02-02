@@ -22,6 +22,7 @@ page</a> for the latest version.<BR>
  <UL>
 <LI><A HREF="#Input">Input Parameters</A>
 <LI><A HREF="#Output">Output Files</A>
+<LI><A HREF="#jobscript">Job script configuration</A>
 </UL>
 <LI><A HREF="#Analysing">Analysing samples and plotting</A>
  <UL>
@@ -39,19 +40,21 @@ page</a> for the latest version.<BR>
 <LI><A HREF="#Reference">References</A>
 <LI><A HREF="#FAQ">FAQ</A>
 </UL>
+<b>Specific documentation</b>
 <UL>
+<LI><A hREF="readme_python.html">Python plotting and analysis readme</A>
+<LI><A hREF="readme_gui.html">GetDist GUI readme</A>
 <LI><A HREF="readme_planck.html">Planck readme</A>
-<LI><A hREF="readme_gui.html">GetDist plotting GUI readme</A>
-<LI><A hREF="readme_python.html">Python model grids and plotting readme</A>
-<LI><A HREF="http://cosmologist.info/cosmomc/doc/">Source code documentation</A>
+<LI><A hREF="readme_grids.html">CosmoMC grids readme</A>
+<LI><A HREF="http://cosmologist.info/cosmomc/doc/">Fortran source code documentation</A>
 </UL>
 
-<A NAME="Intro"><h2>Introduction</h2></A>
-CosmoMC is a Fortran 2003/2008 Markov-Chain Monte-Carlo (MCMC) engine for exploring cosmological
+<A NAME="Intro"><h2  style ="color:darkred">Introduction</h2></A>
+CosmoMC is a Fortran 2008 Markov-Chain Monte-Carlo (MCMC) engine for exploring cosmological
 parameter space, together with Fortran and python code for analysing Monte-Carlo samples and importance sampling (plus a suite of scripts for building grids of runs, plotting and presenting results).
 The code does brute force (but accurate) theoretical matter power spectrum and <I>C<sub>l</sub></I> calculations with
-<a href="http://camb.info/">CAMB</a>. See the <a href="http://arxiv.org/abs/astro-ph/0205436">paper</a>
-for an introduction, descriptions, and typical results from some pre-WMAP data. It can also be compiled as a <A HREF="#Generic">generic sampler</A> without using any cosmology codes.
+<a href="http://camb.info/">CAMB</a>. See the original <a href="http://arxiv.org/abs/astro-ph/0205436">paper</a>
+for an introduction and descriptions, and up-to-date <a href="http://arxiv.org/abs/1304.4473">sampling algorithm</A> details. It can also be compiled as a <A HREF="#Generic">generic sampler</A> without using any cosmology codes.
 <P>
 On a multi-processor machine you can start to get good results in a few of hours. On single processors
 you'll need to set aside rather longer. You can also run on a cluster.
@@ -71,8 +74,8 @@ sampling with new data.
 Please e-mail details of any bugs or enhancements to <a href="http://cosmologist.info/">Antony Lewis</a>. If you have any questions please ask in the <A HREF="http://cosmocoffee.info">CosmoCoffee</A> computers and software forum. You can also read answers to other people's questions there.
 
 
-<A NAME="Compiling"><h2>Downloading and Compiling</h2></A>
-To run CosmoMC you will need a Fortran 2003 (or higher) compiler - Intel Fortran 14 or higher works (earlier versions will not). Others may, but gfortran <i>does not</i> support Fortran 2003 well enough at the moment (see gfortran <A HREF="http://gcc.gnu.org/bugzilla/buglist.cgi?cf_known_to_fail_type=allwords&cf_known_to_work_type=allwords&chfield=[Bug%20creation]&chfieldfrom=-7y&chfieldto=Now&email1=antony%40cosmologist.info&emailreporter1=1&emailtype1=substring&list_id=82881&query_format=advanced">bug list</A>; we hope to have gfortran bugs fixed soon). If you just want to analyse chains and run plots, you only need python 2.6+ (see <A HREF="#Analysing">plotting</A> below).
+<A NAME="Compiling"><h2  style ="color:darkred">Downloading and Compiling</h2></A>
+To run CosmoMC you will need a Fortran 2003 (or higher) compiler - Intel Fortran 14 or higher works (earlier versions will not). Others may, but gfortran <i>does not</i> support Fortran 2003 well enough at the moment (see gfortran <A HREF="http://gcc.gnu.org/bugzilla/buglist.cgi?cf_known_to_fail_type=allwords&cf_known_to_work_type=allwords&chfield=[Bug%20creation]&chfieldfrom=-7y&chfieldto=Now&email1=antony%40cosmologist.info&emailreporter1=1&emailtype1=substring&list_id=82881&query_format=advanced">bug list</A>; we hope to have gfortran bugs fixed soon). If you just want to analyse chains and run plots, you only need python 2.7+ (see <A HREF="#Analysing">plotting</A> below).
 <!--
 Two options:
 <UL>
@@ -112,7 +115,7 @@ See <A HREF="http://cosmologist.info/cosmomc/cosmomc.bib">BibTex file</A> for re
 CosmoMC can also be compiled to sample any function you like, without calling any cosmology codes. Edit the supplied Makefile so that the WMAP variable is not set and set <b>generic_mcmc = .true.</b> in settings.f90. Also in settings.f90 set <b>num_hard</b> to the number of parameters you want to vary, and num_initpower, and num_norm to zero. Write your likelihood function as a function of the array of parameters in GenericLikelihoodFunction (calclike.f90). You don't need CFITSIO or WMAP code installed to do this, but you will still need to compile CAMB.
 <P>
 -->
-<A NAME="Running"><h2>Running and input parameters</h2></A>
+<A NAME="Running"><h2  style ="color:darkred">Running and input parameters</h2></A>
 <P>
 See the supplied <B>params.ini</B> file for a fairly self-explanatory list of
 input parameters and options. The <b>file_root</b> entry gives the root name for all files produced. Running using MPI on a cluster is recommended if possible as you can automatically handle convergence testing and stopping.
@@ -144,8 +147,7 @@ There is also a supplied script python/runMPI.py that you may be able to adapt f
   <B>python python/runMPI.py params</B>
 </BLOCKQUOTE>
  to run using the params.ini parameters file. Run runMPI.py without arguments to see a list of options (number of chains, cores, wall time, etc).
- If necessary edit the <b>job_script</b> file as appropriate for your machine, and also if necessary the <b>submitJob</b> function in <b>python/jobQueue.py</b>.
- Alternatively, better, set the <b>COSMOMC_job_template</b> environment variable in your .bashrc to the name of a script template file customized for your machine.
+ You will probably need to set up a job script template file for your computer cluster (a couple of samples are supplied). See <A HREF="#jobscript">Configuring job settings for your machine</A>.
  <BR><BR>
  In the parameters file you can set <B>MPI_Converge_Stop</B> to a convergence criterion (see <A HREF="#Convergence">Convergence Diagnostics</A>. Small numbers are better convergence; generally need R-1 < 0.1, but may want much smaller especially for importance sampling or accurate confidence limits. You can also directly impose an error limit on confidence values - see the parameter input file for details). If you set <B>MPI_LearnPropose</B> = T, the proposal density will be updated using the covariance matrix of the last half of all samples (across chains) so far. <BR><BR>
 Using MPI_LearnPropose will significantly improve performance if you are adding new parameters for which you don't have a pre-computed covariance matrix. However adjusting the proposal density is not strictly Markovian, though asymptotically it is as the covariance will converge. The burn in period should therefore be taken to be larger when learning the proposal density to allow for the time it takes the covariance matrix to converge sufficiently (though in practice it probably doesn't matter much in most cases). Note also that as the proposal density changes the number of steps between independent samples is not constant (i.e. the correlation length should decrease along the chain until the covariance has converged). The stopping criterion uses the last half of the samples in each chain, minus a (shortish) initial burn in period. If you don't have a starting covariance matrix a fairly safe thing to do is set <B>ignore_rows=0.3</B> in the <A HREF="#Analysing">GetDist</A> parameter file to skip the first chunk of each chain. <BR><BR>
@@ -153,7 +155,6 @@ You can also set the <B>MPI_R_StopProposeUpdate</B> parameter to stop updating t
 <P>
 If things go wrong check the .log and any error files in your cosmomc/scripts directory.
 </UL>
-<BR>
 </P>
 <A NAME="Input">
 <B><FONT COLOR="blue">Input Parameters</FONT></B>
@@ -259,7 +260,38 @@ are non-integer, and the output is already thinned by whatever the original
 <b>indep_sample</b>
 parameter was. The post-processed file are output to files with root <b>redo_outroot</b>.
 </UL>
-<A NAME="Analysing"><h2>Analysing samples and plotting</h2></A>
+
+
+<A NAME="jobscript"></A>
+<B><FONT COLOR="blue">Configuring job settings for your machine</FONT></B>
+<P>
+The <b>runMPI.py</b> and <b>runbatch.py</b> submission scripts use a job template file to submit jobs to the queue on your cluster.
+The <b>job_script</b> files is supplied as sample, and you may need to make your own template specific to the configuration of your machine, depending on what queuing system you have (e.g. PBS, SLURM, etc.)
+Recommended steps are
+<UL>
+<LI>If necessary, copy <b>job_script</b> to a new file, e.g. <b>job_script_mycluster</b> which you will then edit
+<LI>If necessary, edit the template script:
+<UL>
+<LI>Things of the form <b>##tag##</b> are placeholders, and are replaced by relevant values for each run. Leave these as is, just edit the surrounding text so they are put in the right places.
+<LI>The line starting <b>##RUN:</b> gives the template for each mpirun command used to actually run jobs.
+<LI>Lines of the form <b>##DEFAULT_xxx: yyy ##</b> give names of specific commands or settings on your machine, for example <b>##DEFAULT_qsub: msub ##</b> sets the job submission command to "qsub".
+</UL>
+<LI>Set <b>COSMOMC_xxx</b> environment variable in your .bashrc to give the name of the script template filename, and any other job setting defaults that you want to override from the job template used. E.g.
+<pre>
+export COSMOMC_job_template=job_script_mycluster
+export COSMOMC_coresPerNode=8
+export COSMOMC_nodes=2
+export COSMOMC_chainsPerNode=2
+export COSMOMC_queue=default_queue
+export COSMOMC_walltime=24:00:00
+</pre>
+</UL>
+If necessary you can also edit the <b>submitJob</b> function in <b>python/jobQueue.py</b>, but most things can be configured via the template and .bashrc settings.
+You can change the number of chains, nodes, walltime etc when submitting a job by using optional parameters to runMPI.py and runbatch.py: see <b>-h</b> help for available options.
+</P>
+
+
+<A NAME="Analysing"><h2 style ="color:darkred">Analysing samples and plotting</h2></A>
 There are now three ways you can analyse chain results.
 <UL>
 <LI>Using the <b>getdist</b> program, compiled from fortran
@@ -372,7 +404,7 @@ the 2D plots or the colour of the 3D plots getdist automatically works out
 the most correlated variables and uses them.
 The data files used by  python and Matlab are output to the plot_data directory.
 
-<A NAME="Convergence"><h2>Convergence diagnostics</h2></A>
+<A NAME="Convergence"><h2  style ="color:darkred">Convergence diagnostics</h2></A>
 
 The <B>getdist</B> program will output convergence diagnostics, both short summary information when getdist is run, and also more detailed information in the file_root.converge file. When running with MPI the first two of the parameters below can also be calculated when running the chains for comparison with a stopping criterion (see the .ini input file).
 <UL>
@@ -392,7 +424,7 @@ A simpler way to assess the error on quantile limits is by computing them using 
 <B><FONT COLOR="blue">Differences between GetDist and MPI run-time statistics</FONT></B><BR><BR>
 GetDist will cut out <B>ignore_rows</B> from the beginning of each chain, then compute the R statistic using all of the remaining samples. The MPI run-time statistic uses the last half of all of the samples. In addition, GetDist will use all the parameters, including derived parameters. If a derived parameter has poor convergence this may show up when running GetDist but not when running the chain (however the eigenvalues of covariance of means is computed using only base parameters). The run-time values also use thinned samples (by default every one in ten), whereas GetDist will use all of them. GetDist will allow you to use only subsets of the chains.
 </BLOCKQUOTE>
-<A NAME="Kosowsky"><H2>Parameterizations</B></H2>
+<A NAME="Kosowsky"><H2  style ="color:darkred">Parameterizations</B></H2>
 <P>
 Performance of the MCMC can be improved by using parameters which have a close to Gaussian posterior distribution. The default parameters (which get implicit flat priors) are
 <UL>
@@ -429,7 +461,7 @@ To change parameterization make a new .paramnames file, then change sources/para
 <P>
 Likelihoods that you use may also have their own nuisance parameters.
 
-<A NAME="Generic"><h2>Using CosmoMC as a generic sampler</h2></A>
+<A NAME="Generic"><h2  style ="color:darkred">Using CosmoMC as a generic sampler</h2></A>
 You can use CosmoMC to sample any custom function that you want to provide. To do this
 <UL>
 <LI>Write your own likelihood in GenericLikelihoodFunction in calclike.f90
@@ -438,8 +470,8 @@ You can use CosmoMC to sample any custom function that you want to provide. To d
 </UL>
 You can use named or un-named parameters. Making your own .paramnames file to name your parameters usually makes things easier (except possibly if you have a very large number of parameters where number labels make sense).
 
-<A NAME="Programming"><h2>Programming</h2></A>
-<P>The code makes use of Fortran 2003 features and structures. There is automated <A HREF="http://cosmologist.info/cosmomc/doc/">code documentation</A>, which includes modules, classes and subroutines. File and class documentation gives inheritance trees to help understand the structure, for example <A HREF="http://cosmologist.info/cosmomc/doc/file_GeneralTypes.f90.html">GeneralTypes.f90</A> contains the key base classes that other things are inherited from.
+<A NAME="Programming"><h2  style ="color:darkred">Programming</h2></A>
+<P>The code makes use of Fortran 2003 features and structures. There is automated <A HREF="http://cosmologist.info/cosmomc/doc/">code documentation</A>, which includes modules, classes and subroutines. File and class documentation gives inheritance trees to help understand the structure, for example <A HREF="http://cosmologist.info/cosmomc/doc/files/GeneralTypes.html">GeneralTypes.f90</A> contains the key base classes that other things are inherited from.
 
 <P>You are encouraged to examine what the code is doing and consider carefully
 changes you may wish to make. For example, the results can depend on the
@@ -450,30 +482,22 @@ source code files you may want to modify are
 <ul>
 <li>
 <b>settings.f90</b></li>
-
-<br>This defines the maximum number of parameters and their types.
-<li>
+This defines the maximum number of parameters and their types.
 <li>
 <b>Calculator_Cosmology.f90 and Calculator_CAMB.f90</b></li>
-
-<br>Routines for generating Cls, matter power spectra and sigma8 from CAMB.
+Routines for generating Cls, matter power spectra and sigma8 from CAMB.
 Override the calcualtor class in Calculator_Cosmology.f90  to implement cosmology using other calculatorse.g. a fast approximator like PICO,
 or other Boltzmann code.
 etc.
 
-<li>
-<b>DataLikelihoods.f90</b>
-<br> This is where you can add in new likelihood functions
+<li><b>DataLikelihoods.f90</b></li>
+This is where you can add in new likelihood functions
 
-<li>
-<b>driver.F90</b></li>
+<li><b>driver.F90</b></li>
+Main program that reads in parameters and calls MCMC or post-processing.
 
-<br>Main program that reads in parameters and calls MCMC or post-processing.
-
-<li>
-<b>propose.f90</b></li>
-
-<br>This is the proposal density and related constants and subroutines. The efficiency
+<li><b>propose.f90</b></li>
+This is the proposal density and related constants and subroutines. The efficiency
 of MCMC is quite dependent on the proposal. Fast+slow and fast parameter subspaces are proposed separately. See the <A HREF="http://arxiv.org/abs/1304.4473">paper</A> for a discussion of the proposal density and use of fast and slow parameters.
 
 <b>GetDist.f90</b></li>
@@ -505,14 +529,14 @@ installed manually or obtained from the cosmomc git repository (access available
 <LI><A HREF="http://www.slosar.com/aslosar/lya.html">Lyman-alpha Forest Power Spectrum from the Sloan Digital Sky Survey</A>
 </UL>
 -->
-<A NAME="Version"><h2>Version History</h2></A>
+<A NAME="Version"><h2  style ="color:darkred">Version History</h2></A>
 
 <UL>
 <LI><B>January 2015</B><BR>
 <UL>
-<LI>Planck 2015 result configuration and settings; new set of data setting files in batch2/ 
+<LI>Planck 2015 result configuration and settings; new set of data setting files in batch2/
 <LI>Added Planck 2015 lensing likelihood (native CosmoMC, see data/planck_lensing)
-<LI>Added <A HREF="http://bicepkeck.org/">BICEP-Keck-Planck</A> likelihood (e.g. include batch2/BKPlanck.ini)
+<LI>Added <A HREF="http://bicepkeck.org/">BICEP-Keck-Planck</A> likelihood (native CosmoMC; include batch2/BKPlanck.ini)
 <LI>New GetDist python version, updated plotted and graphical user interface:
 <UL>
 <LI>Run python/getdust/gui.py (required PySide python module to be installed): make 1D, 2D, 3D plots, select parameters and chains, export PDF or script
@@ -892,7 +916,7 @@ Fixed bounds checking in MatterPowerAt (harmless with 2df). Added an exact likel
 <LI><B>Feb 2003</B><BR> Support for WMAP data (customized code fixes TE and amplitude bugs).  CMB computation now uses <I>C<sub>l</sub></I> transfer functions - complete split possible between transfer functions and the initial power spectrum, so improved efficiency handling fast parameters. Bug fixes and tidying of proposal function. Initial power spectrum no longer assumed smooth for P_k. GetDist limitsxxx variables can be N to auto-size one end (margestats are still one tail). Support of IBM XL fortran (workarounds for bug on Seaborg). GetDist will automatically compute some chain statistics to help diagnose convergence and accuracy. CAMB updated, including more accurate and faster handling of tight coupling. Option to generate chains including CMB lensing effect. Various other changes.
 <LI><B>Nov 2002</B><BR> Added support for polarization, and improved compatibility with different compilers and systems.
 </UL>
-<A NAME="Reference"><h2>Reference links</h2></A>
+<A NAME="Reference"><h2  style ="color:darkred">Reference links</h2></A>
 See the  <A HREF="http://cosmologist.info/cosmomc/cosmomc.bib">BibTex file</A> of CosmoMC references you should cite (including data likelihoods), along with some references of potential interest. These are the two main CosmoMC papers and some general sampling references:
 <UL>
 <LI><a href="http://arxiv.org/abs/1304.4473">Efficient sampling of fast and slow cosmological parameters</a>
@@ -905,7 +929,7 @@ Theory, Inference and Learning Algorithms</a>
 </UL>
 <!--There are also some <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A> on the proposal density, fast and slow parameters, and slice sampling as used by CosmoMC. -->
 
-<A NAME="FAQ"><h2>FAQ</h2></A>
+<A NAME="FAQ"><h2  style ="color:darkred">FAQ</h2></A>
 <OL>
 <LI><B>What are the dotted lines on the plots?</B><BR>
 Dotted lines are mean likelihoods of samples, solid lines are marginalized probabilities. For Gaussian distributions they should be the same. For skew distributions, or if chains are poorly converged, they will not be. Sometime there is a much better fit (giving high mean likelihood) in a small region of parameter space which has very low marginalized probability. There is more discussion in the original  <a href="http://arxiv.org/abs/astro-ph/0205436">paper</a>.

@@ -1,5 +1,6 @@
 import planckStyle as s
-g = s.plotter
+
+g = s.getPlotter()
 
 g.settings.lineM = ['-k', '-r', '-b', '-g', '-m', '--c']
 
@@ -10,7 +11,6 @@ roots = [s.defdata_TTonly,
          s.defdata_allNoLowE + '_lensing',
        s.defdata_allNoLowE + '_lensing_post_BAO',
        s.defdata,
-  #     s.defdata_allNoLowE + '_lowtau',
        ]
 roots = ['base_' + root for root in roots]
 

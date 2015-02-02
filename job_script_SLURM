@@ -1,0 +1,53 @@
+#!/bin/bash
+
+##SLURM Example for Darwin in Cambridge (adapted from STG perl script)
+
+#SBATCH -p sandybridge
+#SBATCH -A PLANCK
+#SBATCH --nodes=##NUMNODES##
+#SBATCH --ntasks=##NUMTASKS##
+#SBATCH --time=##WALLTIME##
+#SBATCH --mail-type=FAIL
+
+cd ##ROOTDIR##
+
+. /etc/profile.d/modules.sh
+module purge
+module load default-impi
+
+#cfitsio is only needed for WMAP
+module load cfitsio
+
+#for PICO runs also need python (check path also set correctly)
+#not needed otherwise
+module load python/2.7.3
+
+echo Running on host `hostname`
+echo Time is `date`
+echo Directory is `pwd`
+echo Slurm job ID is $SLURM_JOBID
+echo This jobs runs on the following machines:
+export NODEFILE=`generate_pbs_nodefile`
+echo `cat $NODEFILE | uniq`
+
+cat $NODEFILE | uniq > scripts/machine.file.$SLURM_JOBID
+
+export OMP_NUM_THREADS=##OMP##
+export I_MPI_PIN=##ONERUN##
+export I_MPI_PIN_DOMAIN=omp:compact
+export I_MPI_PIN_ORDER=scatter
+export I_MPI_CPUINFO=proc
+
+###set things to be used by the python script, which extracts text from here with ##XX: ... ##
+### command to use for each run in the batch
+##RUN: time mpirun --ppn ##MPIPERNODE## -np ##NUMMPI## ##PROGRAM## ##INI## > ./scripts/##INIBASE##.log 2>&1 ##
+### defaults for this script
+##DEFAULT_qsub: qsub ##
+##DEFAULT_coresPerNode: 16 ##
+
+##COMMAND##
+
+#wait for processes to finish
+wait
+
+

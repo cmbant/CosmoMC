@@ -105,15 +105,9 @@ use_plot_data = MCSamples.use_plot_data
 rootdir = MCSamples.default_grid_root or os.path.join(batchJob.getCodeRootPath(), 'main')
 output_base_dir = MCSamples.output_base_dir or batchJob.getCodeRootPath()
 
-H0_high = [73.9, 2.7]
-H0_Freeman12 = [74.3, 2.1]
 H0_gpe = [70.6, 3.3]
 
 # various Omegam sigma8 constraints for plots
-
-def galaxygalaxy(omm, sigma):  # mandelbaum
-    return  (0.8 + 0.05 * sigma) * (omm / 0.25) ** (-0.57)
-
 def planck_lensing(omm, sigma):
     # g60_full
     return  (0.591 + 0.021 * sigma) * omm ** (-0.25)
@@ -151,22 +145,19 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
         jobItem.loadJobItemResults(paramNameFile=self.settings.param_names_for_labels)
         return jobItem
 
-def getPlotter(plot_data=None, grid_dir=None, **kwargs):
+def getPlotter(plot_data=None, chain_dir=None, **kwargs):
     global plotter, rootdir
     if plot_data is not None or use_plot_data:
         plotter = planckPlotter(plot_data or os.path.join(rootdir, 'plot_data'), **kwargs)
-    if grid_dir or not use_plot_data:
-        plotter = planckPlotter(chain_dir=grid_dir or rootdir, **kwargs)
+    if chain_dir or not use_plot_data:
+        plotter = planckPlotter(chain_dir=chain_dir or rootdir, **kwargs)
     return plotter
 
-plotter = getPlotter()
 
-
-def getSubplotPlotter(plot_data=None, chain_dir=None, **kwargs):
-    s.setWithSubplotSize(2)
+def getSubplotPlotter(plot_data=None, chain_dir=None, subplot_size=2, **kwargs):
+    s.setWithSubplotSize(subplot_size)
     s.axes_fontsize += 2
     s.colorbar_axes_fontsize += 2
-#    s.lab_fontsize += 2
     s.legend_fontsize = s.lab_fontsize + 1
     return getPlotter(plot_data, chain_dir)
 

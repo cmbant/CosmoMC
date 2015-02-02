@@ -97,28 +97,31 @@ class GetDistPlotSettings(object):
 
 defaultSettings = GetDistPlotSettings()
 
-def getSinglePlotter(ratio=3 / 4., plot_data=None, chain_dir=None, width_inch=3.464, settings=None, mcsamples=False, analysis_settings=None):
+def getPlotter(**kwargs):
+    return GetDistPlotter(**kwargs)
+
+def getSinglePlotter(ratio=3 / 4., width_inch=6, **kwargs):
     """ 
     Wrapper functions to get plotter to make single plot of fixed width (default: one page column width)
     """
-    plotter = GetDistPlotter(plot_data=plot_data, chain_dir=chain_dir, settings=settings or GetDistPlotSettings(), mcsamples=mcsamples, analysis_settings=analysis_settings)
+    plotter = getPlotter(**kwargs)
     plotter.settings.setWithSubplotSize(width_inch)
     plotter.settings.fig_width_inch = width_inch
 #    if settings is None: plotter.settings.rcSizes()
-    plotter.make_figure(1, xstretch=1 / ratio)
+    plotter.make_figure(1, xstretch=1. / ratio)
     return plotter
 
-def getSubplotPlotter(plot_data=None, chain_dir=None, subplot_size=2, settings=None, mcsamples=False, analysis_settings=None, width_inch=None):
+def getSubplotPlotter(subplot_size=2, width_inch=None, **kwargs):
     """ 
     Wrapper functions to get plotter to make array of subplots 
     if width_inch is None, just makes plot as big as needed
     """
-    plotter = GetDistPlotter(plot_data=plot_data, chain_dir=chain_dir, settings=settings or GetDistPlotSettings(), mcsamples=mcsamples, analysis_settings=analysis_settings)
+    plotter = getPlotter(**kwargs)
     plotter.settings.setWithSubplotSize(subplot_size)
     if width_inch:
         plotter.settings.fig_width_inch = width_inch
-        if not settings: plotter.settings.rcSizes()
-    if subplot_size < 3 and settings is None:
+        if not kwargs.get('settings'): plotter.settings.rcSizes()
+    if subplot_size < 3 and kwargs.get('settings') is None:
         plotter.settings.axes_fontsize += 2
         plotter.settings.colorbar_axes_fontsize += 2
         plotter.settings.legend_fontsize = plotter.settings.lab_fontsize + 1
@@ -391,12 +394,12 @@ class MCSampleAnalysis(object):
 
 class GetDistPlotter(object):
 
-    def __init__(self, plot_data=None, settings=None, mcsamples=False, chain_dir=None, analysis_settings=None):
+    def __init__(self, chain_dir=None, plot_data=None, settings=None, analysis_settings=None, mcsamples=True):
         """
         Set plot_data to directory name if you have pre-compputed plot_data/ directory from GetDist
         Set chain_dir to directly to use chains in the given directory (can also be a list of directories to search)
         """
-        if settings is None: self.settings = defaultSettings
+        if settings is None: self.settings = cp.deepcopy(defaultSettings)
         else: self.settings = settings
         if chain_dir is None and plot_data is None: chain_dir = MCSamples.default_grid_root
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
@@ -1174,7 +1177,7 @@ class GetDistPlotter(object):
     def export(self, fname=None, adir=None, watermark=None, tag=None):
         if fname is None: fname = os.path.basename(sys.argv[0]).replace('.py', '')
         if tag: fname += '_' + tag
-        if not '.' in fname: fname += '.pdf'
+        if not '.' in fname: fname += '.' + MCSamples.default_plot_output
         if adir is not None and not os.sep in fname: fname = os.path.join(adir, fname)
         adir = os.path.dirname(fname)
         if adir and not os.path.exists(adir): os.makedirs(adir)

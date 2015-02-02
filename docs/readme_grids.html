@@ -1,0 +1,63 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>Cosmomc Grids</title>
+</head>
+<body bgcolor="#FFFFFF" link="#0000FF" vlink="#800080">
+
+
+<h2>Grids of CosmoMC runs</h2>
+
+CosmoMC has a set of scripts for generating and analysing grids of parameter runs using CosmoMC and GetDist, plus a variety of utility scripts and plotting functions.
+See the <A HREF="readme_python.html">python readme</A> for how to configure python on your system.
+ 
+<P>
+Most scripts can be run without arguments to show a list of possible input parameters.
+If you just want to use downloaded grid chains, you can use the <A HREF="readme_python.html">plotting scripts</A> and <A HREF="readme_gui.html">GetDist GUI</A> directly without reading below;
+see <A HREF="readme_planck.html">Planck grid readme</A> for examples.
+<P>
+A description for a grid of models is given in a python settings file.
+ <UL>
+ <LI>If your results will be large, make a directory for the outputs on a data disk, then make a symbolic link to ./gridname in cosmomc, e.g. doing <b>ln -s /scratch//..//mygrid mygrid</b>, so "mygrid" is an easy shorthand for the location. This name is used as a parameter for most of the scripts.
+  <LI>Copy and edit python/settings_sample.py appropriately and save in e.g. python/my_settings_file.py
+  <LI>To generate grid directories and .ini files for CosmoMC do
+<blockquote>
+<b>python python/makeGrid.py mygrid my_settings_file</b>
+</blockquote>
+This produces sets of .ini files for each run in mygrid/iniFiles, and a directory structure for storing chain results.
+<LI>Use runbatch.py to submit all the ini files produced to the queue; makeGrid will tell you what to do.
+</UL>
+You will also need to produce a submission script for your machine. See <A HREF="readme.html#jobscript">configuring job settings for your machine</A>.
+<P>
+For a more complicated example of a large grid configuration see <b>python/planck/settings_planck_latest.py</b>.
+To run with settings in subfolders do e.g. "python makeGrid.py mygrid planck.settings_planck_latest".
+
+Covmats for Planck are in planck_covmats folder, linked by default for grid runs.
+<p>
+Grid scripts take as a first argument the name of the folder containing the grid, and also many optional arguments that can be used to restrict to particular parameter or data combinations.
+Available scripts include:
+<UL>
+<LI><b>makeGrid.py</b>: as descried above, for setting up a grid of models. Stores the information in a "pickle" file that can then be read by the other scripts for iterating over batch items.
+<LI><b>runbatch.py</b>: submit runs to a job submission script
+<LI><b>runningJobs.py</b>: to check what is currently running and current convergence statistics.
+<LI><b>checkConverge.py</b>: after running getGridGetdist, this can be used to find chains with poor convergence
+<LI><b>cleanup.py</b>: for cleaning up files (e.g. before re-running a failed chain); can also just be used to list files for runs matching input parameters
+<LI><b>runGridGetdist.py</b>: runs getdist over the grid of chain results, and generating parameter constraints (.margestats files etc). This runs the fortran getdist, and produces plot_data files for plotting; run with <b>--no_plots</b> if you don't need these (e.g. using the GetDist GUI, or python plot scripts).
+<LI><b>makeTables.py</b>: script for making latex (and hence PDF) tables from .margestats and .minimum files produced by runGridGetDist.py.
+<BR>To make basic tables do something like
+<pre>
+ python python/makeTables.py main mytable_limit95 --limit 2
+</pre>
+If you want to see how parameters shift around wrt to some baseline data combination use <b>--changes_from_datatag datatag</b>, which adds the fractional change in each parameter's mean in units of the baseline data combination's standard deviation; use <b>--changes_from_paramtag paramtag</b> to show shifts for each data combination wrt to the given baseline parameter combination. Use <b>-h</b> to see full list of possible options.
+<LI><b>makePlots.py</b>: script for making plots and comparison plots en mass.
+<LI><b>copyGridFiles.py</b>: to copy chains (add <b>--chains</b>) and/or getdist results (add <b>--dist</b>) to another folder or directly into a zip file, e.g.
+<pre>
+ copyGridFiles.py mygrid mygrid.zip --dist --chains
+</pre>
+<LI><b>extractDistFiles.py</b>: for copying all files of a particular type from all the subdirectories in the grid, e.g. to extract all .covmat files, or all .pdf plots
+<LI><b>makeCompare.py</b>: to extract parameter constraints from .margestats files in the grid
+</UL>
+Most scripts have standardized input parameters to restrict to subsets of grid items, e.g. filtering by importance sampling run, no importance sampling, or specific item name (pattern match).
+<P>
+
+</body> 
