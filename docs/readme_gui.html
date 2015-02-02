@@ -5,9 +5,21 @@
 </head>
 <body bgcolor="#FFFFFF" link="#0000FF" vlink="#800080">
 
+<center>
 <h2>GetDist GUI</h2>
-
-Run python/getdist/gui.py. Some docs to follow!
-
+<IMG SRC="http://cosmologist.info/cosmomc/pics/planck2015/gui_bkp.png">
+</center>
+<P>
+The GetDist Gui can be used to open chains and plot them for quick visualization. It can either open a <A HREF="readme_grids.html">grid</A> directory (as show above), or a directory containing chain files. 
+Select each chain root name you want to plot to add it to the list box; these can be dragged and dropped to change the order if needed. Then select the parameter names to plot in the checkboxes below.
+The Gui supports 1D, 2D (line and filled), 3D (select two parameters and "color by"), and triangle and rectangle plots.
+<P>
+To show the gui run python/getdist/gui.py.  This requires the standard python <A HREF="https://pypi.python.org/pypi/PySide">PySide</A> module to be installed if it is not already (you can get builds for Windows <A HREF="http://www.lfd.uci.edu/~gohlke/pythonlibs/">here</A>). It should run on any platform.
+<P>
+Use the option on the file menu to export as-is a PDF or other image file of the current plot. For better quality (i.e. not formatted for the current window shape) and fine control (e.g. add custom legend text, etc), export the script, edit and then run it separately (see <A hREF="readme_python.html">plotting scripts</A>).
+<P>
+The Data menu has an option to let you view the parameter statistics (.margestats).
+<P>
+The Options menu allows you to change a few settings defining how limits, lines and contours are calculated.
 
 </body> 
