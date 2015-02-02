@@ -292,11 +292,12 @@ You can change the number of chains, nodes, walltime etc when submitting a job b
 
 
 <A NAME="Analysing"><h2 style ="color:darkred">Analysing samples and plotting</h2></A>
-There are now three ways you can analyse chain results.
+There are now several ways you can analyse chain results:
 <UL>
-<LI>Using the <b>getdist</b> program, compiled from fortran
-<LI>Using the <b>python/GetDist.py</b> python equivalent (which can be run without having a fortran compiler installed). Note that this currently does not produce all the convergence stats (and a few other things) of the fortran program
-<LI>With the GetDist Gui interactive program, in <b>python/getdist/gui.py</b>.  This requires the python <A HREF="https://pypi.python.org/pypi/PySide">PySide</A> module to be installed (you can get builds for Windows <A HREF="http://www.lfd.uci.edu/~gohlke/pythonlibs/">here</A>).
+<LI>Using the <b>getdist</b> program, compiled with Fortran
+<LI>Using the <b>python/GetDist.py</b> python equivalent (which can be run without having a fortran compiler installed). Note that this currently does not produce all the convergence stats (and a few other things) of the Fortran program
+<LI>With the GetDist Gui interactive program, in <b>python/getdist/gui.py</b>.  See the <A HREF="readme_gui.html">GetDist Gui readme</A>.
+<LI>Programmatically, using the <A HREF="readme_python.html">python scripts</A>.
 </UL>
 The <b>getdist</b> program analyses text chain files produced by the cosmomc program. These are in the format
 <p>&nbsp;&nbsp;&nbsp; <i>weight like param1 param2 param3</i> ...
@@ -900,7 +901,7 @@ Added mpk.f90 for reading in general (multiple) matter power spectrum data files
 Various minor bug fixes and improved MPI error handling. Included (though not compiled by default) supernovae_riess_gold.f90 file to include more recent supernova data. Some mscripts fixes for compatibility with Matlab 7.
 
 <LI><B>August 2004</B><BR>
-Improved proposal density for efficient handling of fast and slow parameters, plus more robust distance proposal (should see significant speed improvement). New <B>sampling_method</B> parameter: new options for slice sampling (robust) and directional gridding (robust and efficient use of fast parameters). Also option to use slice sampling for burn in (more robust than Metropolis in many cases), then switch to Metropolis (faster with good covariance matrix). See the <A HREF="http://cosmologist.info/CosmoMC.pdf">notes</A> for details. Improved MPI handling and minor bug fixes. Fixed effect of reionization on CAMB's lensed <I>C<sub>l</sub></I> results.
+Improved proposal density for efficient handling of fast and slow parameters, plus more robust distance proposal (should see significant speed improvement). New <B>sampling_method</B> parameter: new options for slice sampling (robust) and directional gridding (robust and efficient use of fast parameters). Also option to use slice sampling for burn in (more robust than Metropolis in many cases), then switch to Metropolis (faster with good covariance matrix). See the <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A> for details. Improved MPI handling and minor bug fixes. Fixed effect of reionization on CAMB's lensed <I>C<sub>l</sub></I> results.
 
 <LI><B>June 2004</B><BR>
 Uses June 2004 CAMB version: bessel_cache.camb file no longer produced or needed (prevents MPI problems). Increased sig figs of chain output and GetDist analysis. New parameter propose_scale, the ratio of proposal width to st. dev., default 2.4 (following <A HREF="http://www.stat.columbia.edu/~gelman/research/published/theory7.ps">Roberts, Gelman, Gilks</A>, <A HREF="http://arxiv.org/abs/astro-ph/0405462">astro-ph/0405462</A>) - often significantly speeds convergence (parameters in .ini file are now estimates of the st. dev., not desired proposal widths).  Added MPI_R_StopProposeUpdate to stop updating proposal covariance matrix after a given convergence level has been reached. Added accuracy_level parameter to run at higher CAMB accuracy level (may be useful for forecasting).
@@ -925,7 +926,6 @@ See the  <A HREF="http://cosmologist.info/cosmomc/cosmomc.bib">BibTex file</A> o
 Inference Using Markov Chain Monte Carlo Methods</a>
 <LI><a href="http://www.inference.phy.cam.ac.uk/mackay/itprnn/book.html">Information
 Theory, Inference and Learning Algorithms</a>
-<LI><a href="http://www.statslab.cam.ac.uk/~mcmc/">MCMC Preprint Service</a>
 </UL>
 <!--There are also some <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A> on the proposal density, fast and slow parameters, and slice sampling as used by CosmoMC. -->
 

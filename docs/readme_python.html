@@ -1,7 +1,7 @@
 <html>
 <head>
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-   <title>Cosmomc Python Plotting and Analysis</title>
+   <title>CosmoMC-GetDist: Python Plotting and Analysis</title>
 </head>
 <body bgcolor="#FFFFFF" link="#0000FF" vlink="#800080">
 
@@ -20,7 +20,7 @@ For plotting from Planck chains see the <A HREF="readme_planck.html">Planck read
 <UL>
 <LI><A HREF="#plotting_scripts">Plotting scripts</A>
 <LI><A HREF="#stats">Calculating statistics</A>
-<LI><A HREF="#plotting_derived">Adding and plotting new derived parameters</A>
+<LI><A HREF="#derived">Adding and plotting new derived parameters</A>
 </UL>
 <A NAME="plotting_scripts">
 <h2>Plotting scripts</h2>
@@ -174,6 +174,7 @@ ND limits:     0.984    1.017    0.983    1.019
 </pre>
 which tells you that &Omega;<sub>m</sub>H<sub>0</sub><sup>2.97</sup>is constrained at the 0.4% level.
 
+<A NAME="derived"></A>
 <h3>Adding and plotting new derived parameters</h3>
 You can use the <b>addDerived</b> function of MCSamples to add a new parameter to existing chains, which can then be used like any of the original parameters.
 An example gives the idea (from batch2/outputs/DA-H-BAO.py), which adds a new parameter with name tag 'rsH' which is a function of the original parameters 'Hubble057' and 'rdrag':  
