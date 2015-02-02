@@ -35,14 +35,14 @@ export PLANCKLIKE=cliklike
 export CLIKPATH=PLC..PATH/plc_2.0/plc_2.0
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CLIKPATH/lib
 </pre>
-Instead of the last item you can also use PLC's recommended <b>source PLC..PATH/plc_1.0/bin/clik_profile.sh</b>.
+Instead of the last item you can also use PLC's recommended <b>source PLC..PATH/plc_2.0/bin/clik_profile.sh</b>.
 While you're at it you can add CosmoMC's python path (for plotting and analysis of chains):
 <pre>
 export PYTHONPATH=COSMOMC..PATH/python:$PYTHONPATH
 </pre>
 <LI>Change to your COSMOMC..PATH root directory and make a symbolic link to your PLC installation
 <pre>
-ln -s PLC..PATH/plc_1.0 ./data/clik
+ln -s PLC..PATH/plc_2.0 ./data/clik
 </pre>
 (CosmoMC will look for files in ./data/clik - e.g. "ls -d ./data/clik/*.clik" should show you the likelihood data you downloaded).
 <LI>Log out and in again to get the new settings,  then you can build cosmomc as described in the <A HREF="readme.html">ReadMe</A>.
