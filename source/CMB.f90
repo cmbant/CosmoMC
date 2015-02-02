@@ -8,7 +8,7 @@
     private
 
     type, extends(TCMBLikelihood) :: TCMBSZLikelihood
-     ! (inherited) tag set from "cmb_dataset[tag] =" in input file
+        ! (inherited) tag set from "cmb_dataset[tag] =" in input file
         real(mcp), pointer, dimension(:) :: sz_template
     contains
     procedure :: ReadSZTemplate
@@ -34,30 +34,36 @@
 #ifdef NONCLIK
     use noncliklike
 #endif
+    use BK_planck
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
     class(TCMBLikelihood), pointer  :: like
     integer  i
-    Type(TSettingIni) :: DataSets
+    Type(TSettingIni) :: DataSets, OverrideSettings
 
-    call Ini%TagValuesForName('cmb_dataset', DataSets)
+    call Ini%TagValuesForName('cmb_dataset', DataSets, filename=.true.)
 
     do i= 1, DataSets%Count
+        call Ini%SettingValuesForTagName('cmb_dataset',DataSets%Name(i),OverrideSettings)
         if (DataSets%Name(i) == 'WMAP') then
 #ifdef WMAP
             allocate(TWMAPLikelihood::like)
             like%name = Datasets%Value(i)
             select type(like)
             class is (TWMAPLikelihood)
-            like%Tag = DataSets%Name(i)
             end select
 #else
             call MpiStop('Set WMAP directory in Makefile to compile with WMAP')
 #endif
         else
-            allocate(TCMBLikes::like)
-            call like%ReadDatasetFile(Datasets%Value(i))
+            if (DataSets%Name(i) == 'BKPLANCK') then
+                allocate(TBK_planck::like)
+            else
+                allocate(TCMBLikes::like)
+            end if
+            call like%ReadDatasetFile(Datasets%Value(i),OverrideSettings)
         end if
+        like%Tag = DataSets%Name(i)
         call like%ReadParams(Ini)
         call Ini%Read(Ini%NamedKey('cmb_dataset_speed',DataSets%Name(i)),like%speed)
 

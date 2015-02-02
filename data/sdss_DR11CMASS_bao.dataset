@@ -1,10 +1,12 @@
 name = DR11CMASS
 
-#Type of measurement: A(z) = 2, D_V/rs=3
-type_bao = 3
+measurement_type = DV_over_rs
 
-#number of bao data points 
-num_bao = 1
+alpha_npoints = 280
+prob_dist = sdss_DR11CMASS_consensus.dat
 
-bao_measurements_file = %DATASETDIR%sdss_DR11CMASS_bao.txt
-prob_dist = %DATASETDIR%sdss_DR11CMASS_consensus.dat
+zeff =0.57	
+#Note these values are not used in the actual likelihood; latter is with true rs
+#bao_measurement = 13.420   0.130
+bao_measurement = 13.773  0.134
+

@@ -20,9 +20,10 @@
 
     Type, extends(TTheoryPredictions) :: TCosmoTheoryPredictions
         Type(TSkyPowerSpectrum), allocatable :: Cls(:,:)
-        !(this, E, B, Phi) x (this, E, B, Phi), with L(L+1)/2pi factor, in muK for CMB components
+        !(T, E, B, Phi) x (T, E, B, Phi), with L(L+1)/2pi factor, in muK for CMB components
         real(mcp) sigma_8
         real(mcp) tensor_ratio_C10, tensor_ratio_02, tensor_ratio_BB, tensor_AT
+        real(mcp) :: Lensing_rms_deflect = 0._mcp
         integer numderived
         real(mcp) derived_parameters(max_derived_parameters)
         !MPK's are interpolator objects now
@@ -30,6 +31,11 @@
         !MPK%nx = num_k, MPK%ny = num_z
         type(TCosmoTheoryPK), allocatable :: MPK
         type(TCosmoTheoryPK), allocatable :: NL_MPK
+        type(TCosmoTheoryPK), allocatable :: MPK_WEYL
+        type(TCosmoTheoryPK), allocatable :: NL_MPK_WEYL
+        type(TCubicSpline),  allocatable :: growth_z !defined as sigma8_vd^2/sigma8
+        type(TCubicSpline),  allocatable :: sigma8_z
+        type(TCubicSpline),  allocatable :: sigma_R
     contains
     procedure :: FreePK
     procedure :: ClArray
@@ -71,8 +77,10 @@
     subroutine FreePK(this)
     class(TCosmoTheoryPredictions) this
 
-    if(allocated(this%MPK))deallocate(this%MPK)
+    if(allocated(this%MPK)) deallocate(this%MPK)
     if(allocated(this%NL_MPK)) deallocate(this%NL_MPK)
+    if(allocated(this%MPK_WEYL)) deallocate(this%MPK_WEYL)
+    if(allocated(this%NL_MPK_WEYL)) deallocate(this%NL_MPK_WEYL)
 
     end subroutine FreePK
 
@@ -167,14 +175,16 @@
     Class(TCosmoTheoryPredictions) this
     class(TFileStream) :: F
     logical, intent(in) :: first
-    integer tmp(0)
+    integer ArraySizes(1)
+    real(mcp) :: valArray(6)
     integer i,j
 
     if (first .and. new_chains) then
         Write(F%Unit) CosmoSettings%TCosmoTheoryParams
         if (CosmoSettings%use_LSS) call F%WriteSizedArray(CosmoSettings%power_redshifts)
         if (CosmoSettings%use_CMB) call F%WriteSizedArray(CosmoSettings%cl_lmax)
-        call F%WriteSizedArray(tmp)
+        ArraySizes(1)=size(valArray)
+        call F%WriteSizedArray(ArraySizes)
     end if
 
     write(F%unit) this%numderived
@@ -187,18 +197,25 @@
         end do
     end do
 
-    if (CosmoSettings%compute_tensors) then
-        write(F%unit) this%tensor_ratio_02, this%tensor_ratio_C10, this%tensor_ratio_BB, this%tensor_AT
-    end if
+    valArray(1:4) = [ this%tensor_ratio_02, this%tensor_ratio_C10, this%tensor_ratio_BB, this%tensor_AT ]
+    valArray(5) = this%Lensing_rms_deflect
+    valArray(6) = this%sigma_8
+    call F%WriteSizedArray(valArray)
 
-    if (CosmoSettings%get_sigma8 .or. CosmoSettings%use_LSS) write(F%unit) this%sigma_8
-
-    if (CosmoSettings%use_LSS) then
+    if (CosmoSettings%use_matterpower) then
         write(F%unit) this%MPK%nx, this%MPK%ny
         write(F%unit) this%MPK%x
         write(F%unit) this%MPK%y
         write(F%unit) this%MPK%z
         if(CosmoSettings%use_nonlinear) write(F%unit) this%NL_MPK%z
+        if(CosmoSettings%use_WeylPower) write(F%unit) this%MPK_WEYL%z
+        if(CosmoSettings%use_nonlinear.and. CosmoSettings%use_WeylPower) write(F%unit) this%NL_MPK_WEYL%z
+        if (CosmoSettings%use_sigmaR) call this%sigma_R%SaveState(F)
+    end if
+
+    if (CosmoSettings%use_LSS) then
+        call this%sigma8_z%SaveState(F)
+        call this%growth_z%SaveState(F)
     end if
 
     end subroutine TCosmoTheoryPredictions_WriteTheory
@@ -213,7 +230,7 @@
     do i=1,Settings%num_cls
         do j= i, 1, -1
             if (Settings%cl_lmax(i,j) >0) &
-            & allocate(this%Cls(i,j)%Cl(Settings%cl_lmax(i,j)), source=0._mcp)
+                & allocate(this%Cls(i,j)%Cl(Settings%cl_lmax(i,j)), source=0._mcp)
         end do
     end do
     end subroutine TCosmoTheoryPredictions_AllocateForSettings
@@ -229,14 +246,14 @@
     real(mcp), allocatable :: temp(:,:)
     real(mcp), allocatable :: k(:), z(:)
     real(mcp), allocatable :: cl(:)
-    integer, allocatable :: tmp(:)
+    real(mcp), allocatable :: valArray(:)
     integer i,j
 
     if (first) then
         read(F%Unit) FileSettings%TCosmoTheoryParams
         if (FileSettings%use_LSS) call F%ReadSizedArray(FileSettings%power_redshifts)
         if (FileSettings%use_CMB) call F%ReadSizedArray(FileSettings%cl_lmax)
-        call F%ReadSizedArray(tmp) !not used
+        call F%ReadSizedArray(FileSettings%ArraySizes) !not used
     end if
 
     call this%AllocateForSettings(CosmoSettings)
@@ -248,25 +265,38 @@
         do j= i, 1, -1
             if (FileSettings%cl_lmax(i,j)>0) then
                 call F%ReadSizedArray(cl)
+                if (i> CosmoSettings%num_cls) cycle
                 if (CosmoSettings%cl_lmax(i,j)>0) then
                     associate (Sz => min(FileSettings%cl_lmax(i,j),CosmoSettings%cl_lmax(i,j)))
                         this%Cls(i,j)%Cl(1:Sz) = Cl(1:sz)
-                        end associate
+                    end associate
                 end if
                 deallocate(cl)
             end if
         end do
     end do
 
-    if (FileSettings%compute_tensors) then
-        read(F%unit) this%tensor_ratio_02, this%tensor_ratio_C10, this%tensor_ratio_BB, this%tensor_AT
+    if (size(FileSettings%ArraySizes)>0) then
+        call F%ReadSizedArray(valArray)
+        this%tensor_ratio_02 = valArray(1)
+        this%tensor_ratio_C10 = valArray(2)
+        this%tensor_ratio_BB = valArray(3)
+        this%tensor_AT = valArray(4)
+        this%Lensing_rms_deflect = valArray(5)
+        this%sigma_8 = valArray(6)
+    else
+        !Old format, can delete at some point
+        if (FileSettings%compute_tensors) then
+            read(F%unit) this%tensor_ratio_02, this%tensor_ratio_C10, this%tensor_ratio_BB, this%tensor_AT
+        end if
+        if (FileSettings%get_sigma8 .or. FileSettings%use_LSS) read(F%unit) this%sigma_8
     end if
 
-    if (FileSettings%get_sigma8 .or. FileSettings%use_LSS) read(F%unit) this%sigma_8
-    if (FileSettings%use_LSS) then
-        if (CosmoSettings%use_LSS) then
+
+    if (FileSettings%use_matterpower) then
+        if (CosmoSettings%use_matterpower) then
             if (any(FileSettings%power_redshifts/=CosmoSettings%power_redshifts)) &
-            & call MpiStop('TCosmoTheoryPredictions_ReadTheory: power_redshifts differ - check')
+                & call MpiStop('TCosmoTheoryPredictions_ReadTheory: power_redshifts differ - check')
         end if
         call this%FreePK()
         allocate(this%MPK)
@@ -288,6 +318,27 @@
                 write(*,*)"          is what you intended."
             end if
         end if
+        if(FileSettings%use_WeylPower) then
+            allocate(this%MPK_WEYL)
+            read(F%unit)temp
+            call this%MPK_WEYL%Init(k,z,temp)
+        end if
+        if(FileSettings%use_nonlinear.and. FileSettings%use_WeylPower) then
+            allocate(this%NL_MPK_WEYL)
+            read(F%unit)temp
+            call this%NL_MPK_WEYL%Init(k,z,temp)
+        end if
+
+        if (FileSettings%use_sigmaR) then
+            if (.not. allocated(this%sigma_R)) allocate(this%Sigma_R)
+            call this%sigma_R%LoadState(F)
+        end if
+    end if
+
+    if (FileSettings%use_LSS) then
+        if (.not. allocated(this%growth_z)) allocate(this%growth_z, this%sigma8_z)
+        call this%sigma8_z%LoadState(F)
+        call this%growth_z%LoadState(F)
     end if
 
     end subroutine TCosmoTheoryPredictions_ReadTheory

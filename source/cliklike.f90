@@ -23,7 +23,8 @@
     end type ClikLikelihood
 
     type, extends(ClikLikelihood) :: ClikLensingLikelihood
-        integer(kind=4) lensing_lmax
+        !integer(kind=4) lensing_lmax
+        integer(kind=4), dimension(7) :: lensing_lmaxs
     contains
     procedure :: LogLike => clik_lensing_LnLike
     procedure :: clik_likeinit => clik_lensing_likeinit
@@ -152,18 +153,12 @@
             end do
         end associate
     end do
+    j =j + sum(this%clik_lmax(5:6)+1) !zero arrays of TB, EB
 
     !Appending nuisance parameters
-    !Not pretty. Oh well.
     if (this%clik_nnuis > 0) then
         do i=1,this%clik_nnuis
-            !silvia--------------------------------------------
-            if(i .eq. 6 .and. INDEX(trim(this%name),'plik').ne. 0)then
-                clik_cl_and_pars(j) = DataParams(i)-2
-            else
-                clik_cl_and_pars(j) = DataParams(i)
-            end if
-            !------------------------------------------------
+            clik_cl_and_pars(j) = DataParams(i)
             j = j+1
         end do
     end if
@@ -180,8 +175,8 @@
     integer i
 
     !Safeguard
-    if (this%clik_nnuis/= this%nuisance_params%nnames) &
-        call MpiStop('clik_nnuis has different number of nuisance parameters than .paramnames')
+    if (this%clik_nnuis/= this%nuisance_params%nnames) call MpiStop(FormatString( &
+        'clik_nnuis (%u) has different number of nuisance parameters than .paramnames  (%u)',this%clik_nnuis,this%nuisance_params%nnames))
     if (this%clik_nnuis /= 0 .and. MPIRank==0 .and. Feedback>0) then
         Print*,'Clik will run with the following nuisance parameters:'
         do i=1,this%clik_nnuis
@@ -195,24 +190,29 @@
     subroutine clik_lensing_likeinit(this, fname)
     class (ClikLensingLikelihood) :: this
     character(LEN=*), intent(in) :: fname
-    integer i
 
     if (Feedback > 1) Print*,'Initialising clik lensing...'
     call clik_lensing_init(this%clikid,fname)
-    call clik_lensing_get_lmax(this%clikid,this%lensing_lmax)
+    !    call clik_lensing_get_lmax(this%clikid,this%lensing_lmax)
 
+    ! fill the lmaxs array. It contains (in that order) lmax for cl_phiphi, cl_TT, cl_EE, cl_BB, cl_TE, cl_TB, cl_EB
+    ! -1 means that a particular spectrum is not used.
+    ! lmaxs(1) will never be -1, but all the other can be is the likelihood is set not to include renormalization
+    call clik_lensing_get_lmaxs(this%clikid,this%lensing_lmaxs)
 
     this%clik_nnuis = 0 !clik_lensing_get_extra_parameter_names(this%clikid,this%names)
     allocate(this%cl_lmax(CL_phi,CL_phi), source=0)
-    this%cl_lmax(CL_T,CL_T) = this%lensing_lmax
-    this%cl_lmax(CL_Phi,CL_Phi) = this%lensing_lmax
+    this%cl_lmax(CL_T,CL_T) = this%lensing_lmaxs(2)
+    this%cl_lmax(CL_E,CL_T) = this%lensing_lmaxs(5)
+    this%cl_lmax(CL_E,CL_E) = this%lensing_lmaxs(3)
+    this%cl_lmax(CL_B,CL_B) = this%lensing_lmaxs(4)
+    this%cl_lmax(CL_Phi,CL_Phi) = this%lensing_lmaxs(1)
     where (this%cl_lmax<0)
         this%cl_lmax=0
     end where
     call this%do_checks()
-    print *,'lensing lmax: ', this%lensing_lmax
-
-    this%clik_n = 2*(this%lensing_lmax+1) + this%clik_nnuis
+    print *,'lensing lmax: ', this%lensing_lmaxs
+    this%clik_n = sum(this%lensing_lmaxs(1:7)+1) !2*(this%lensing_lmax+1) + this%clik_nnuis
 
     end subroutine clik_lensing_likeinit
 
@@ -230,7 +230,7 @@
 
     j = 1
     associate(Cls=> Theory%Cls(CL_Phi,CL_Phi))
-        do l=0,this%lensing_lmax
+        do l=0,this%lensing_lmaxs(1)
             !skip C_0 and C_1
             if (l >= 2) then
                 clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)**2*twopi
@@ -241,15 +241,17 @@
 
     !TB and EB assumed to be zero
     !If your model predicts otherwise, this function will need to be updated
-    associate(Cls=> Theory%Cls(1,1))
-        do l=0,this%lensing_lmax
-            !skip C_0 and C_1
-            if (l >= 2) then
-                clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)*twopi
-            end if
-            j = j+1
-        end do
-    end associate
+    do i=1,4
+        associate(Cls=> Theory%Cls(this%clik_index(1,i),this%clik_index(2,i)))
+            do l=0,this%lensing_lmaxs(i+1)
+                !skip C_0 and C_1
+                if (l >= 2) then
+                    clik_cl_and_pars(j) = CLs%Cl(L)/real(l*(l+1),mcp)*twopi
+                end if
+                j = j+1
+            end do
+        end associate
+    end do
 
     do i=1,this%clik_nnuis
         clik_cl_and_pars(j) = DataParams(i)

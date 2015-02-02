@@ -34,9 +34,10 @@
 
     end subroutine ReadIni
 
-    subroutine ReadDatasetFile(this, fname)
+    subroutine ReadDatasetFile(this, fname, OverrideSettings)
     class(TDatasetFileLikelihood) :: this
     character(LEN=*), intent(in) :: fname
+    class(TSettingIni), optional, intent(in) :: OverrideSettings
     logical bad
     Type(TSettingIni) :: ini
     integer i_conflict
@@ -45,6 +46,7 @@
     if (bad) then
         call MpiStop('Error opening dataset file '//trim(fname))
     end if
+    if (present(OverrideSettings)) call Ini%Override(OverrideSettings)
 
     this%name = Ini%Read_String('name')
     if (this%name=='') this%name = File%ExtractName(fname, no_ext=.true.)

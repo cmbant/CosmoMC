@@ -1,0 +1,4 @@
+name = CFHTLENS_2bin_Simpson
+kmax = 10.0
+cut_file = %DATASETDIR%CFHTLENS/2bin/cut_values_Simpson.dat
+DEFAULT(CFHTLENS_2bin.dataset)

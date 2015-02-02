@@ -12,22 +12,23 @@ import sys, os
 
 root = r'test_lensedCls'
 
-lensedTotClFileRoot = r'c:\work\dist\git\camb\test_lensedCls'
-outDir = 'z:\\data\\'
+lensedTotClFileRoot = os.path.join(os.path.dirname(__file__), '..', 'data', 'base_plikHM_TT_lowTEB.minimum.theory_cl')
+dataCols = 'TT TE EE BB PP'
+outDir = 'z:\\'
 
-fwhm_arcmin = 7.
+# these numbers are Planck-like
 # Noise var is N_l in muK^2 for white noise
-NoiseVar = 2e-4
+# note  NoiseVar = (muKArcmin * np.pi / 180 / 60.) ** 2
+
+fwhm_arcmin = 5.
+# NoiseVar = 2e-4
+NoiseVar = 4e-5
 # Pol noise var = ENoiseFac * NoiseVar
+# 2 normally, but for Planck only half detectors are polarized
 ENoiseFac = 4
 lmin = 2
-lmax = 2000
-fsky = 1
-
-DoLensing = False
-# if including an idealised lensing reconstruction
-reconNoise = 'reconNoise.dat'
-lensPotential = 'flatLCDM_lenspotentialCls.dat'
+lmax = 2500
+fsky = 0.57
 
 
 # os.path.dirname(sys.path[0])+'/data/'
@@ -46,10 +47,14 @@ sigma2 = (fwhm / xlc) ** 2
 outPath = ''
 outRoot = root + '_exactsim'
 NoiseOut = []
+
+# d = loadtxt(lensedTotClFileRoot)
+# SN = 0
 for l in range(lmax + 1):
     NoiseCl = l * (l + 1) / 2 / pi * NoiseVar * exp(l * (l + 1) * sigma2)
     NoiseOut.append([NoiseCl, ENoiseFac * NoiseCl, ENoiseFac * NoiseCl])
-
+#    if (l >= 2): SN += (2 * l + 1) * fsky * (d[l - 2, 1] / (NoiseCl + d[l - 2, 1])) ** 2
+# print 'Number of modes: ', SN
 
 outfile = open(outDir + outRoot + '_Noise.dat', 'w')
 for l in range(2, lmax + 1):
@@ -70,25 +75,11 @@ dataset['binned'] = False
 dataset['cl_hat_includes_noise'] = False
 
 dataset['cl_hat_file'] = outPath + outRoot + '.dat'
-dataset['cl_hat_order'] = 'TT EE BB TE'
+dataset['cl_hat_order'] = dataCols
 dataset['cl_noise_file '] = outPath + outRoot + '_Noise.dat'
 dataset['cl_noise_order'] = 'TT EE BB'
-
-if DoLensing:
-    dataset['lensing_recon_ncl'] = 1
-    dataset['cl_hat_phi_file'] = outPath + outRoot + '_PhiEst.dat'
-    dataset['cl_noise_phi_file'] = outPath + outRoot + '_PhiNoise.dat'
-    dataset['cl_hat_includes_noise'] = False
-    shutil.copy(reconNoise, outDir + outRoot + '_PhiNoise.dat')
-    fout = open(outDir + outRoot + '_PhiEst.dat', 'w')
-    f = open(lensPotential)
-    for line in f:
-            row = line.split()
-            fout.write(str(int(row[0])) + ' ' + str(row[5]) + '\n')
-    f.close()
-    fout.close()
 
 
 ini.saveFile(outDir + outRoot + '.dataset')
 
-shutil.copy(lensedTotClFileRoot + '.dat', outDir + outRoot + '.dat')
+shutil.copy(lensedTotClFileRoot, outDir + outRoot + '.dat')

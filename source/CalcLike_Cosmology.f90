@@ -71,7 +71,7 @@
         select type (CMB=>this%TheoryParams)
         class is (CMBParams)
             if (CosmoSettings%Use_CMB .or. CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
-                if (this%SlowChanged) then
+                if (this%SlowChanged .or. this%SemiSlowchanged .and. .not. BaseParams%block_semi_fast) then
                     this%slow_changes = this%slow_changes + 1
                     this%Params%validInfo = .false.
                     call this%CosmoCalc%GetNewTransferData(CMB, this%Params%Info,Theory, error)
@@ -104,23 +104,24 @@
     subroutine Cosmo_UpdateTheoryForLikelihoods(this, Params)
     class(TCosmoLikeCalculator) :: this
     class(TCalculationAtParamPoint) :: Params
-    integer :: numz, index_error
+    integer :: index_error
 
     select type (Theory=>Params%Theory)
     class is (TCosmoTheoryPredictions)
         if (CosmoSettings%Use_LSS) then
             if(Theory%sigma_8==0) &
-            call MpiStop('ERROR: Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk')
-
-            if((CosmoSettings%power_redshifts(CosmoSettings%num_power_redshifts)-Theory%MPK%y(Theory%MPK%ny))>1.d-3)then
-                write(*,*) 'ERROR: Thes elected datasets call for a higher redshift than has been calculated'
-                write(*,*) '       Use redo_theory and redo_pk'
-                call MpiStop()
-            end if
-            if(CosmoSettings%num_power_redshifts > Theory%MPK%ny)then
-                write(*,*) 'ERROR: The selected datasets call for more redshifts than are calculated'
-                write(*,*) '       Use redo_theory and redo_pk'
-                call MpiStop()
+                call MpiStop('ERROR: Matter power/sigma_8 have not been computed. Use redo_theory and redo_pk')
+            if (allocated(Theory%MPK)) then
+                if((CosmoSettings%power_redshifts(CosmoSettings%num_power_redshifts)-Theory%MPK%y(Theory%MPK%ny))>1.d-3)then
+                    write(*,*) 'ERROR: Thes elected datasets call for a higher redshift than has been calculated'
+                    write(*,*) '       Use redo_theory and redo_pk'
+                    call MpiStop()
+                end if
+                if(CosmoSettings%num_power_redshifts > Theory%MPK%ny)then
+                    write(*,*) 'ERROR: The selected datasets call for more redshifts than are calculated'
+                    write(*,*) '       Use redo_theory and redo_pk'
+                    call MpiStop()
+                end if
             end if
             index_error =0
             !AL for the moment only allow reading with matching mpk

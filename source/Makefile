@@ -4,31 +4,43 @@ OUTPUT_DIR ?= Release
 BUILD ?= MPI
 #set BUILD to MPI to force MPI, should be set in ../Makefile
 
+MPIF90C ?= mpif90
+
 ifortErr = $(shell which ifort >/dev/null; echo $$?)
 
-#these settings for ifort 13 and higher
+#these settings for ifort 14 and higher
 ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
 F90C     = ifort
-MPIF90C = mpif90
-FFLAGS = -mkl -openmp -O3 -xHost -no-prec-div -fpp
-DEBUGFLAGS = -mkl -openmp -g -check all -check noarg_temp_created -traceback -no-prec-div -fpp 
+#use this if mpif90 is trying to use gfortran: MPIF90C = mpif90 -f90=ifort
+
+FFLAGS = -mkl -openmp -O3 -no-prec-div -fpp
+DEBUGFLAGS = -mkl -openmp -g -check all -check noarg_temp_created -traceback -fpp -fpe0
 #add -fpe0 to check for floating point errors (think lowLike also throws these harmlessly)
 MODOUT = -module $(OUTPUT_DIR)
 LAPACKL =
+
+ifeq ($(STATIC),YES)
+#so you can re-distribute the binary to another machine
+#static link details from https://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
+LAPACKL =  -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a -Wl,--end-group -lpthread -lm
+FFLAGS+=  -axAVX,SEE4.2 -static-intel
 else
-#gfortran does not yet work yet, open GCC 4.9 compiler bugs are
-#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60414
+FFLAGS += -xHost
+endif
+
+else
+#gfortran does not yet work yet, open GCC 5 compiler bugs are
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60334
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60289
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60255
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51976
+#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60322
 #and preferably
 #http://gcc.gnu.org/bugzilla/show_bug.cgi?id=44672
 F90C = gfortran
-MPIF90C = mpif90
-FFLAGS = -cpp -O3 -ffast-math
-DEBUGFLAGS = -cpp -Og -g -fbounds-check -fbacktrace
+FFLAGS = -cpp -O3 -ffast-math -ffree-line-length-none
+DEBUGFLAGS = -cpp -Og -g -fbounds-check -fbacktrace -ffree-line-length-none
 MODOUT =  -J$(OUTPUT_DIR)
 #LAPACKL = -Wl,-framework -Wl,accelerate
 #commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
@@ -74,24 +86,6 @@ CLIKL = -L$(CLIKPATH)/lib -lclik_f90
 INCLUDE = $(IFLAG)$(CLIKPATH)/include
 endif
 
-
-#COSMOS: use "module load cosmolib latest"
-#use "runCosmomc" (globally installed) to run, defining required memory usage
-ifeq ($(COSMOHOST),cosmos)
-F90C = ifort
-FFLAGS = -openmp -fast -w -fpp2
-LINKMPI = -lmpi
-LAPACKL = -mkl=sequential -lmkl_lapack
-cfitsio = $(CFITSIO)
-WMAP = $(COSMOLIB)/WMAP9
-GSLPATH = $(GSL_ROOT)
-endif
-
-ifeq ($(COSMOHOST),darwin)
-WMAP = /scratch/aml1005/wmap_likelihood_v5
-cfitsio = /usr/local/Cluster-Apps/cfitsio/intel/3.300
-endif
-
 ifeq ($(OUTPUT_DIR),Debug)
 FFLAGS=$(DEBUGFLAGS)
 endif
@@ -135,6 +129,9 @@ ifneq ($(PRECISION),)
 FFLAGS += -D$(PRECISION) -DMATRIX_$(PRECISION)
 endif
 
+ifneq ($(NONCLIKLIKE),)
+FFLAGS += -DNONCLIK
+endif
 
 ifneq ($(PLANCKLIKE),)
 FFLAGS += -DCLIK
@@ -146,11 +143,16 @@ LINKFLAGS += -L$(highL) -lhigh
 INCLUDE += $(IFLAG)$(highL)
 endif
 
-PLANCKLIKEFILES=
+PLANCKLIKEFILES= $(OUTPUT_DIR)/CMB_BK_Planck.o
 
 
 ifneq ($(PLANCKLIKE),)
 PLANCKLIKEFILES += $(OUTPUT_DIR)/$(PLANCKLIKE).o
+endif
+
+ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
+PLANCKLIKEFILES +=  $(OUTPUT_DIR)/temp_like.o
+PLANCKLIKEFILES += $(OUTPUT_DIR)/cliklike_CamSpec.o
 endif
 
 LIKEFILES =  $(OUTPUT_DIR)/DataLikelihoods.o $(OUTPUT_DIR)/calclike.o
@@ -163,10 +165,12 @@ OBJFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o 
 
 
 SUPERNOVAE = $(OUTPUT_DIR)/supernovae_Union2.o $(OUTPUT_DIR)/supernovae_SNLS.o $(OUTPUT_DIR)/supernovae_JLA.o
+#SZ = $(OUTPUT_DIR)/szcounts.o
 
 DATAMODULES = $(PLANCKLIKEFILES) $(OUTPUT_DIR)/mpk.o $(OUTPUT_DIR)/wigglez.o \
-	$(OUTPUT_DIR)/bao.o $(SUPERNOVAE) $(OUTPUT_DIR)/supernovae.o $(OUTPUT_DIR)/HST.o  $(OUTPUT_DIR)/CMB.o $(OUTPUT_DIR)/CMBlikes.o
+	$(OUTPUT_DIR)/bao.o $(SUPERNOVAE) $(SZ) $(OUTPUT_DIR)/supernovae.o $(OUTPUT_DIR)/HST.o  $(OUTPUT_DIR)/CMB.o $(OUTPUT_DIR)/CMBlikes.o $(OUTPUT_DIR)/ElementAbundances.o
 
+DATAMODULES += $(OUTPUT_DIR)/wl.o
 
 COSMOFILES = $(OUTPUT_DIR)/CosmologyTypes.o $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/bbn.o $(OUTPUT_DIR)/Calculator_Cosmology.o \
 	$(OUTPUT_DIR)/CalcLike_Cosmology.o $(OUTPUT_DIR)/Likelihood_Cosmology.o $(CALCFILES) $(DATAMODULES) $(PARAMETERIZATION) $(LIKEFILES) \
@@ -193,6 +197,7 @@ endif
 
 default: cosmomc
 
+$(OUTPUT_DIR)/StringUtils.o: $(OUTPUT_DIR)/MiscUtils.o
 $(OUTPUT_DIR)/RandUtils.o: $(OUTPUT_DIR)/MpiUtils.o
 $(OUTPUT_DIR)/FileUtils.o: $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/MiscUtils.o $(OUTPUT_DIR)/StringUtils.o
 $(OUTPUT_DIR)/ObjectLists.o: $(OUTPUT_DIR)/FileUtils.o
@@ -226,11 +231,13 @@ $(OUTPUT_DIR)/Calculator_CAMB.o: $(OUTPUT_DIR)/Calculator_Cosmology.o
 $(OUTPUT_DIR)/CosmologyTypes.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/Likelihood_Cosmology.o: $(OUTPUT_DIR)/Calculator_Cosmology.o $(OUTPUT_DIR)/CosmoTheory.o
 $(OUTPUT_DIR)/CMBlikes.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/CMB_BK_Planck.o: $(OUTPUT_DIR)/CMBlikes.o
 $(OUTPUT_DIR)/CMB.o: $(OUTPUT_DIR)/CMBlikes.o $(PLANCKLIKEFILES)
 $(OUTPUT_DIR)/bbn.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/Interpolation.o
 $(OUTPUT_DIR)/mpk.o: $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/wigglez.o: $(OUTPUT_DIR)/mpk.o
 $(OUTPUT_DIR)/bao.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/wl.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/HST.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/cliklike.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/CosmologyConfig.o: $(PARAMETERIZATION) $(OUTPUT_DIR)/GeneralSetup.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
@@ -239,8 +246,13 @@ $(OUTPUT_DIR)/supernovae_Union2.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_SNLS.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/supernovae_JLA.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 
+$(OUTPUT_DIR)/cliklike_CamSpec.o: $(OUTPUT_DIR)/temp_like.o
+
+$(OUTPUT_DIR)/szcounts.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
+
 $(OUTPUT_DIR)/Calculator_PICO.o: $(OUTPUT_DIR)/Calculator_CAMB.o $(OUTPUT_DIR)/fpico_interface.o
 
+$(OUTPUT_DIR)/ElementAbundances.o: $(OUTPUT_DIR)/bbn.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
 
 ifneq ($(highL),)
 $(OUTPUT_DIR)/cliklike_CamSpec.o: $(highL)/libhigh.a
@@ -291,8 +303,6 @@ cleancosmomc:
 getdist: directories $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LAPACKL) $(GETDISTFLAGS)
 
-#If you want to use the ppf module, change equations_ppf to equations
-#and halofit_ppf to halofit also comment out wa_ppf in CMB_Cls_simple.f90
 camb:
 	cd ../camb && \
 	$(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a \

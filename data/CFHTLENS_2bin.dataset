@@ -1,0 +1,15 @@
+name = CFHTLENS_2bin
+kmax = 100.0
+num_theta_bins = 8
+num_z_bins = 2
+num_z_p = 72
+measurements_file = %DATASETDIR%CFHTLENS/2bin/tomo_newformat.dat
+measurements_format = nbin
+cov_file = %DATASETDIR%CFHTLENS/2bin/cov.dat
+window_file = %DATASETDIR%CFHTLENS/2bin/nofz_%u.hist
+cut_file = %DATASETDIR%CFHTLENS/2bin/cut_values_none.dat
+ah_factor = 0.732
+
+nz_wl = 95
+max_z = 3.52
+cut_theta = T

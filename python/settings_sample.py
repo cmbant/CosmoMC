@@ -1,43 +1,43 @@
 # sample settings for a particular grid run
 
-newCovmats = True
-start_at_bestfit = False
+import batchJob
 
-# dataset names
-planck = 'planck'
-lowl = 'lowl'
-lowLike = 'lowLike'
-lensing = 'lensing'
-highL = 'highL'
-BAO = 'BAO'
-HST = 'HST'
-SNLS = 'SNLS'
-Union = 'Union2'
+# Directory to find .ini files
+ini_dir = 'batch2/'
 
-# set up groups of parameters and data sets
-class group:pass
+# directory to look for existing covariance matrices
+cov_dir = 'planck_covmats/'
 
-g = group()
-g.params = [[], ['mnu'], ['nnu'], ['nrun']]
+# ini files you want to base each set of runs on
+defaults = ['common.ini']
+importanceDefaults = ['importance_sampling.ini']
+
+# set up list of groups of parameters and data sets
+groups = []
+
+# make first group of runs (all parameter variations with all data combinations)
+g = batchJob.jobGroup('main')
+
+g.params = [[], ['mnu'], ['nnu']]
 
 g.datasets = []
 
 # lists of dataset names to combine, with corresponding sets of inis to include
-g.datasets.append([[planck, lowl, lowLike], ['planck.ini', 'lowl.ini', 'lowLike.ini']])
-g.datasets.append([[planck, lowl, lowLike, highL], ['planck.ini', 'lowl.ini', 'lowLike.ini']])
+g.datasets.append(batchJob.dataSet(['plikHM', 'TT', 'lowTEB'], ['plik_dx11dr2_HM_v18_TT.ini', 'lowTEB.ini']))
+g.datasets.append(batchJob.dataSet(['plikHM', 'TT', 'lowTEB', 'lensing'], ['plik_dx11dr2_HM_v18_TT.ini', 'lowTEB.ini', 'lensing.ini']))
 
 
 # add importance name tags, and list of specific .ini files to include (in batch1/)
 g.importanceRuns = []
-g.importanceRuns.append([[BAO], ['BAO.ini']])
+g.importanceRuns.append([['BAO'], ['BAO.ini']])
 
-groups = [g]
+groups.append(g)
 
-# try to match run to exisitng covmat
-covrenames = [['_my_new_data', '']]
+# try to match each new run name to exisitng covmat
+# e.g. get name without particular data combinations
+covWithoutNameOrder = ['lensing', 'BAO']
+# or try replacing various names (these are standard for provided planck_covmats)
+covNameMappings = {'plikHM':'plik', 'plikLite':'plik'}
+# for mapping to nominal mission names try
+# covNameMappings = {'plikHM':'planck','TT':'', 'lowTEB':'lowLike'}
 
-ini_dir = 'batch1/'
-# ini files you want to base each set of runs on
-defaults = ['common_batch1.ini']
-
-importanceDefaults = ['importance_sampling.ini']

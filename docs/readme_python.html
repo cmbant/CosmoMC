@@ -1,0 +1,209 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>CosmoMC-GetDist: Python Plotting and Analysis</title>
+</head>
+<body bgcolor="#FFFFFF" link="#0000FF" vlink="#800080">
+
+<H2>Python scripts for plotting, analysing and grids of runs</H3>
+
+See the ./python directory for scripts, which mostly require Python 2.7+. To configure your system to 
+work with the script libraries add CosmoMC's python path to your environment variables, e.g. in ~/.bashrc (or ~/bash_profile, etc):
+<pre>
+export PYTHONPATH=COSMOMC..PATH/python:$PYTHONPATH
+</pre>
+where COSOMC..PATH is the full path of wherever you installed CosmoMC.
+<P>
+Scripts for plotting and analysing are described below. See also <A HREF="readme_grids.html">grid scripts</A> and <A HREF="readme_gui.html">GetDist GUI</A> documentation.
+For plotting from Planck chains see the <A HREF="readme_planck.html">Planck readme</A> for how to download and install.
+
+<UL>
+<LI><A HREF="#plotting_scripts">Plotting scripts</A>
+<LI><A HREF="#stats">Calculating statistics</A>
+<LI><A HREF="#derived">Adding and plotting new derived parameters</A>
+</UL>
+<A NAME="plotting_scripts">
+<h2>Plotting scripts</h2>
+GetDistPlots (directly, or via planckStyle) are used to make plots from chain results using your own custom scripts. 
+For <A HREF="readme_grids.html">grids</A> of chains, as the Planck downloads, you can also use <B>python python/makePlots.py PLA  ..</B> 
+to make plots (en masse if you wish) for quick inspection of grid results.
+<P>
+The sample scripts make use of <b>planckStyle</b>. This can be interchanged with <b>GetDistPlots</b> if you do not want
+to use the Planck style (or some extra functions used in the batch2/output samples). Both implement the functions
+<UL>
+<LI><b>getSinglePlotter</b>, to get a plotter object suitable for single plot figures
+<LI><b>getPlotter</b>, to get a plotter object suitable for making plots that scale with the number of subplots
+<LI><b>getSubplotPlotter</b>, to get a plotter object for plotting several fixed small-size subplots, suitable for scaling to fit in paper
+</UL>
+The GetDistPlotter main plotting class is defined in python/GetDistPlots.py.
+For example you can do
+<blockquote>
+<pre>
+import planckStyle
+
+g = planckStyle.getSinglePlotter(chain_dir = './PLA')
+
+roots = ['base_nnu_mnu_plikHM_TT_lowTEB', 'base_nnu_mnu_plikHM_TT_lowTEB_lensing', 'base_nnu_mnu_plikHM_TT_lowTEB_lensing_post_BAO']
+g.plot_2d(roots, 'mnu', 'nnu', filled=True)
+g.add_legend(['Planck', 'Planck+lensing', 'Planck+lensing+BAO'], legend_loc='upper right');
+g.export('mnu_nnu.png')
+</pre>
+</blockquote>
+The chain_dir argument can be neglected if you have set up a default in config.ini.
+You can do "from pylab import *" and use standard matplotlib commands to customize the plots, and
+there are also many plot script options you can use to customize settings, and also change global getdist plot settings using g.settings.xxx.
+For example:
+<blockquote>
+<pre>
+import planckStyle
+
+g = planckStyle.getSinglePlotter(chain_dir = './PLA', ratio=1)
+
+roots = ['base_nnu_mnu_plikHM_TT_lowTEB', 'base_nnu_mnu_plikHM_TT_lowTEB_lensing', 'base_nnu_mnu_plikHM_TT_lowTEB_lensing_post_BAO']
+g.settings.solid_contour_palefactor = 0.8
+g.plot_2d(roots, 'mnu', 'nnu', filled=True, colors=['orange', 'darkred', 'green'], lims=[0, 1.3, 2, 4.2])
+g.add_legend(['Planck', 'Planck+lensing', 'Planck+lensing+BAO'], legend_loc='upper right', colored_text=True);
+g.add_y_marker(3.046)
+g.export('mnu_nnu2.png')
+</pre>
+</blockquote>
+Outputs of the two versions should look like this:<BR>
+<IMG SRC="http://cosmologist.info/cosmomc/pics/planck2015/mnu_nnu.png">
+<IMG SRC="http://cosmologist.info/cosmomc/pics/planck2015/mnu_nnu2.png">
+<P>
+See python/GetDistPlots.py for the various functions and options available, and the sample scripts in batch2/outputs.
+<p>
+The main functions for making single plots are:
+<pre>
+    def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
+                no_ylabel=False, no_ytick=False, no_zero=False, normalized=False, param_renames={}, **kwargs):
+    def plot_2d(self, roots, param1=None, param2=None, param_pair=None, shaded=False, add_legend_proxy=True, **kwargs):
+    def plot_3d(self, roots, in_params=None, params_for_plots=None, color_bar=True, line_offset=0, add_legend_proxy=True, **kwargs):
+
+    def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False,
+                   figure=False, ax=None, label_order=None, align_right=False, fontsize=None):
+</pre>
+These functions make sets of subplots:
+<pre>
+    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, label_order=None, nx=None,
+                 paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None, param_renames={}):
+    def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None, legend_ncol=None,
+                 label_order=None, filled=False):
+    def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled=False, filled_compare=False, shaded=False,
+                      contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None, label_order=None):
+    def rectangle_plot(self, xparams, yparams, yroots=None, roots=None, plot_roots=None, plot_texts=None,
+                       ymarkers=None, xmarkers=None, param_limits={}, legend_labels=None, legend_ncol=None,
+                       label_order=None, marker_args={}, **kwargs):
+</pre>
+These functions give more fine grained control for adding things to a figure:
+<pre>
+    def make_figure(self, nplot=1, nx=None, ny=None, xstretch=1, ystretch=1):
+
+    def add_1d(self, root, param, plotno=0, normalized=False, **kwargs)
+    
+    def add_2d_contours(self, root, param1=None, param2=None, plotno=0, of=None, cols=None,
+                            add_legend_proxy=True, param_pair=None, density=None, alpha=None, **kwargs):
+    def add_2d_shading(self, root, param1, param2):
+    def add_3d_scatter(self, root, in_params, color_bar=True, alpha=1, extra_thin=1, **ax_args):
+ 
+    def finish_plot(self, legend_labels=None, legend_loc=None, line_offset=0, legend_ncol=None, label_order=None, no_gap=False, no_extra_legend_space=False, no_tight=False):
+        has_legend = self.settings.line_labels and legend_labels and len(legend_labels) > 1
+</pre>
+Utility function add annotation and markers to plots:
+<pre>
+    def add_x_marker(self, marker, color=None, ls=None, lw=None):
+    def add_y_marker(self, marker, color=None, ls=None, lw=None):
+    def add_y_bands(self, y, sigma, xlim=None, color='gray', ax=None, alpha1=0.15, alpha2=0.1):
+    def add_text(self, text_label, x=0.95, y=0.06, ax=None, **kwargs):
+    def add_text_left(self, text_label, x=0.05, y=0.06, ax=None, **kwargs):
+</pre>
+Finally there's the export function:
+<pre>
+    def export(self, fname=None, adir=None, watermark=None, tag=None):
+</pre>
+Plus additional function that you can find in the source code for GetDistPlots.py.
+
+<A NAME="stats">
+<H2>Analysis scripts</H2>
+The GetDist program can be used to get means, variances, limits etc from all parameters in a chain. The python scripts allow you to do
+this dynamically, and also offer additional features such as being able to define new derived parameters.
+
+<H4>Calculating derived parameters</H4>
+For simple calculations like finding the mean and variance of new derived parameters you can use the functions in python/chains.py. For example, if you want to calculate the posterior mean and limits for &sigma;<sub>8</sub> &Omega;<sub>m</sub><sup>0.6</sup> from Planck you could write a python script
+<blockquote>
+<pre>
+import GetDistPlots as s
+
+g = s.getSinglePlotter(chain_dir=r'./PLA')
+
+samples = g.sampleAnalyser.samplesForRoot('base_plikHM_TT_lowTEB_lensing')
+
+p = samples.getParams()
+
+derived = p.sigma8 * p.omegam ** 0.6
+
+print 'mean, err = ', samples.mean(derived), samples.std(derived)
+print '95% limits: ', samples.twoTailLimits(derived, 0.95)
+</pre>
+</blockquote>
+Here p.omegam is a vector of parameter values, similar p.sigma8; chains.mean and chains.var sum the samples with the corresponding weights to calculate the result.
+<P>
+See python/getdist/chains.py and python/getdist/MCSamples.py for other functions you can use.
+ Use GetDist or MCSamples.py if you want to reproduce Planck results: chains.py only does tail integrals, it does not check for skewness or calculate credible intervals for skewed distributions. MCSamples gives you code access to most getdist results.
+<P>
+For example if you want to do a power law fit in the variable &Omega;<sub>m</sub> and H<sub>0</sub>, you could do
+<blockquote>
+<pre>
+import GetDistPlots as s
+
+g = s.getSinglePlotter(chain_dir=r'./PLA')
+samples = g.sampleAnalyser.samplesForRoot('base_plikHM_TT_lowTEB')
+
+print samples.PCA(['omegam', 'H0'], 'LL', 'omegam')
+</pre>
+</blockquote>
+which fits  &Omega;<sub>m</sub> and H<sub>0</sub>, using log transforms (L), normalized so the exponent of &Omega;<sub>m</sub>  is unity (as in GetDist PCA outputs).
+The output includes
+<pre>
+Principle components
+PC1 (e-value: 0.006151)
+[0.042284]  (\Omega_m/0.314833)^{1.000000}
+[0.042284]  (H_0/67.300590)^{2.971216}
+          = 1.000011 +- 0.004690
+ND limits:     0.984    1.017    0.983    1.019
+</pre>
+which tells you that &Omega;<sub>m</sub>H<sub>0</sub><sup>2.97</sup>is constrained at the 0.4% level.
+
+<A NAME="derived"></A>
+<h3>Adding and plotting new derived parameters</h3>
+You can use the <b>addDerived</b> function of MCSamples to add a new parameter to existing chains, which can then be used like any of the original parameters.
+An example gives the idea (from batch2/outputs/DA-H-BAO.py), which adds a new parameter with name tag 'rsH' which is a function of the original parameters 'Hubble057' and 'rdrag':  
+<pre>
+    p = samples.getParams()
+    rd_fid = 149.28
+    rsH = p.Hubble057 * p.rdrag / rd_fid
+    samples.addDerived(rsH, name='rsH', label=r'H(0.57) (r_{\mathrm{drag}}/r_{\mathrm{drag}}^{\rm fid})\, [{\rm km} \,{\rm s}^{-1}{\rm Mpc}^{-1}]')
+    samples.updateChainBaseStatistics()
+</pre>
+The last line is needed to ensure caches etc are cleared, but only needs to be called once if you are adding several new parameters.
+After doing this, you can use 'rsH' as you would any of the original parameter names in the chain.
+
+<H3>Other scripts</H3>
+
+Multi-purpose use and utility scripts include
+<UL>
+<LI>extractBestFitCAMB.py: for converting .minimum best-fit file to CAMB input .ini file (not all parameter combinations)
+<LI>extractBestFitParams.py: for converting .minimum best-fit file to cosmomc input params[xx] settings if you want to fix them
+<LI>iniFile.py: for reading and writing .ini files
+<LI>makePerfectForecastDataset.py: a simple old script for simulating perfect fake CMB datasets
+<LI>getdist/paramNames.py: for reading paramNames files, and general objects for storing parameter info
+<LI>getdist/ResultObjs.py: objects for getdist output results (.margestats) and .minimum files.
+<LI>getdist/MCSamples.py: routines and objects for loading chain files and analysing in python
+<LI>getdist/chains.py: a more basic version of the above
+<LI>getdist/covscale.py: for modifying .covmat files if parameters are re-scaled
+<LI>getdist/covMat.py: object for covariance matrix and reading .covmat
+
+</UL>
+
+
+</body> 

@@ -152,11 +152,11 @@
     estimate_propose_matrix = Ini%Read_Logical('estimate_propose_matrix',.false.)
     if (estimate_propose_matrix) then
         if (Ini%Read_String('propose_matrix') /= '') &
-        call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
+            call DoAbort('Cannot have estimate_propose_matrix and propose_matrix')
     end if
     want_minimize = Setup%action == action_maxlike .or. Setup%action==action_Hessian &
-    .or. Setup%action == action_MCMC .and. estimate_propose_matrix .or. &
-    start_at_bestfit .and. new_chains
+        .or. Setup%action == action_MCMC .and. estimate_propose_matrix .or. &
+        start_at_bestfit .and. new_chains
 
     call Setup%Config%SetTheoryParameterization(Ini, BaseParams%NameMapping,'theta')
 
@@ -165,6 +165,10 @@
 
     call BaseParams%InitializeUsedParams(Ini)
     call BaseParams%SetFastSlowParams(Ini, use_fast_slow)
+    if (BaseParams%block_semi_fast .and. CosmoSettings%use_nonlinear_lensing &
+        & .and. BaseParams%num_slow/=BaseParams%num_semi_slow) &
+        call MpiStop('use_nonlinear_lensing does not work rigorously with block_semi_fast')
+
     Params%P(1:num_params) = BaseParams%Center(1:num_params)
     if (Setup%action /= action_importance) then
         prop_mat = Ini%Read_String('propose_matrix',.false.)
@@ -204,12 +208,16 @@
         call BaseParams%OutputParamRanges(baseroot)
     end if
 
+    if (MpiRank==0 .and. Setup%action==action_MCMC) then
+        call DataLikelihoods%OutputDescription(baseroot)
+    end if
+
     call SetIdlePriority !If running on Windows
 
     if (allocated(Minimizer)) then
         !New Powell 2009 minimization, AL Sept 2012, update Sept 2013
         if (Setup%action /= action_MCMC .and. MPIchains>1 .and. .not. Minimizer%uses_MPI) &
-        & call DoAbort('Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
+            & call DoAbort('Mimization only uses one MPI thread, use -np 1 or compile without MPI (don''t waste CPUs!)')
         if (MpiRank==0) write(*,*) 'finding best fit point...'
         if (minimizer%uses_MPI .or. MpiRank==0) then
             bestfit_loglike = Minimizer%FindBestFit(Params,is_best_bestfit)

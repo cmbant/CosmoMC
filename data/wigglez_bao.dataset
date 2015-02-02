@@ -2,11 +2,10 @@
 #Blake et al. arXiv:1108.2635 
 name = WiggleZ
 
-#Type of measurement: rs/D_V = 1, A(z) = 2
-type_bao = 2
+measurement_type = Az
 
 #number of bao data points 
 num_bao = 3
 
-bao_measurements_file = %DATASETDIR%wigglez_BAO.txt
-bao_invcov_file = %DATASETDIR%wigglez_BAO_invcov.txt
+bao_measurements_file = wigglez_BAO.txt
+bao_invcov_file = wigglez_BAO_invcov.txt

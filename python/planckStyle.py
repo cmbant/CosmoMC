@@ -1,15 +1,16 @@
-import os, ResultObjs, GetDistPlots
-from matplotlib import rcParams, rc
+import os, GetDistPlots, batchJob
+from matplotlib import rcParams, rc, pylab
+from getdist import ResultObjs, MCSamples
 
 # common setup for matplotlib
 params = {'backend': 'pdf',
-          'axes.labelsize': 10,
-          'font.size': 10,
-          'legend.fontsize': 9,
-          'xtick.labelsize': 9,
-          'ytick.labelsize': 9,
-          'ytick.major.pad': 6,
-          'xtick.major.pad': 6,
+          'axes.labelsize': 9,
+          'font.size': 8,
+          'legend.fontsize': 8,
+          'xtick.labelsize': 8,
+          'ytick.labelsize': 8,
+          'ytick.major.pad': 4,
+          'xtick.major.pad': 4,
           'text.usetex': True,
           'font.family':'sans-serif',
           # free font similar to Helvetica
@@ -17,56 +18,148 @@ params = {'backend': 'pdf',
 
 sfmath = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'sfmath'
 # use of Sans Serif also in math mode
-rc('text.latex', preamble=r'\usepackage{' + sfmath + '}')
+rc('text.latex', preamble=r'\usepackage{' + sfmath.replace(os.sep, '/') + '}')
 
 rcParams.update(params)
 
+if False:
+    non_final = True
+    version = 'CamSpec v910HM'
+    defdata_root = 'CamSpecHM'
+else:
+    non_final = False
+    version = 'clik10.2'
+    defdata_root = 'plikHM'
+
+datalabel = dict()
+defdata_TT = defdata_root + '_TT_lowTEB'
+datalabel[defdata_TT] = r'\textit{Planck} TT$+$lowP'
+defdata_TE = defdata_root + '_TE_lowEB'
+datalabel[defdata_TE] = r'\textit{Planck} TE$+$lowP'
+defdata_EE = defdata_root + '_EE_lowEB'
+datalabel[defdata_EE] = r'\textit{Planck} EE$+$lowP'
+defdata_TE_TEB = defdata_root + '_TE_lowTEB'
+datalabel[defdata_TE_TEB] = r'\textit{Planck} TE$+$lowT,P'
+defdata_EE_TEB = defdata_root + '_EE_lowTEB'
+datalabel[defdata_EE_TEB] = r'\textit{Planck} EE$+$lowT,P'
+
+
+defdata_all = defdata_root + '_TTTEEE_lowTEB'
+datalabel[defdata_all] = r'\textit{Planck} TT,TE,EE$+$lowP'
+defdata_TTTEEE = defdata_all
+defdata_TTonly = defdata_root + '_TT_lowl'
+datalabel[defdata_TTonly] = r'\textit{Planck} TT'
+defdata_allNoLowE = defdata_root + '_TTTEEE_lowl'
+datalabel[defdata_allNoLowE] = r'\textit{Planck} TT,TE,EE'
+
+defdata = defdata_TT
+deflabel = datalabel[defdata_TT]
+
+defdata_lensing = defdata_TT + '_lensing'
+datalabel[defdata_lensing] = datalabel[defdata_TT] + '$+$lensing'
+defdata_all_lensing = defdata_all + '_lensing'
+datalabel[defdata_all_lensing] = datalabel[defdata_all] + '$+$lensing'
+
 planck = r'\textit{Planck}'
+
+planckTT = datalabel[defdata_TTonly]
+planckTTlowTEB = datalabel[defdata_TT]
+planckall = datalabel[defdata_all]
+NoLowLE = datalabel[defdata_allNoLowE]
+lensing = datalabel[defdata_lensing]
+lensingall = datalabel[defdata_all_lensing]
+defplanck = datalabel[defdata]
+
+shortlabel = {}
+for key, value in datalabel.items():
+    shortlabel[key] = value.replace(planck + ' ', '')
+
+NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
+NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
+WPhighLlensing = r'\textit{Planck}+lensing+WP+highL'
 WP = r'\textit{Planck}+WP'
 WPhighL = r'\textit{Planck}+WP+highL'
-lensing = r'\textit{Planck}+lensing'
-WPhighLlensing = r'\textit{Planck}+lensing+WP+highL'
 NoLowL = r'\textit{Planck}$-$lowL'
-NoLowLhighL = r'\textit{Planck}$-$lowL+highL'
-NoLowLtau = r'\textit{Planck}$-$lowL+$\tau$prior'
-NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
+lensonly = 'lensing'
+HST = r'$H_0$'
+BAO = 'BAO'
+
+
 LCDM = r'$\Lambda$CDM'
 
 s = GetDistPlots.defaultSettings
 s.legend_frame = False
 s.figure_legend_frame = False
 s.prob_label = r'$P/P_{\rm max}$'
+s.norm_prob_label = 'Probability density'
 s.prob_y_ticks = True
 s.param_names_for_labels = 'clik_units.paramnames'
 s.alpha_filled_add = 0.85
-# s.solid_colors = ['#006FED', '#E03424', 'gray', '#009966' ]
 s.solid_contour_palefactor = 0.6
 
-s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1'), 'g', 'c']
+s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1'), 'g', 'cadetblue', 'indianred']
 s.axis_marker_lw = 0.6
 s.lw_contour = 1
 
+use_plot_data = MCSamples.use_plot_data
+rootdir = MCSamples.default_grid_root or os.path.join(batchJob.getCodeRootPath(), 'main')
+output_base_dir = MCSamples.output_base_dir or batchJob.getCodeRootPath()
+
+H0_gpe = [70.6, 3.3]
+
+# various Omegam sigma8 constraints for plots
+def planck_lensing(omm, sigma):
+    # g60_full
+    return  (0.591 + 0.021 * sigma) * omm ** (-0.25)
+
+
+def plotBounds(omm, data, c='gray'):
+    pylab.fill_between(omm, data(omm, -2), data(omm, 2), facecolor=c, alpha=0.15, edgecolor=c, lw=0)
+    pylab.fill_between(omm, data(omm, -1), data(omm, 1), facecolor=c, alpha=0.25, edgecolor=c, lw=0)
+
+
 class planckPlotter(GetDistPlots.GetDistPlotter):
-    def export(self, fname):
-        if '.' in fname:GetDistPlots.GetDistPlotter.export(self, fname)
-        else:
-            GetDistPlots.GetDistPlotter.export(self, 'outputs/' + fname + '.pdf')
 
-    def exportExtra(self, fname):
-        GetDistPlots.GetDistPlotter.export(self, 'plots/' + fname + '.pdf')
+    def getBatch(self):
+        if not hasattr(self, 'batch'): self.batch = batchJob.readobject(rootdir)
+        return self.batch
+
+    def doExport(self, fname=None, adir=None, watermark=None, tag=None):
+        if watermark is None and non_final:
+            watermark = version
+        if adir:
+            if not os.sep in adir: adir = os.path.join(output_base_dir, adir)
+        super(planckPlotter, self).export(fname, adir, watermark, tag)
+
+    def export(self, fname=None, tag=None):
+        self.doExport(fname, 'outputs', tag=tag)
+
+    def exportExtra(self, fname=None):
+        self.doExport(fname, 'plots')
+
+    def getRoot(self, paramtag, datatag, returnJobItem=False):
+        return self.getBatch().resolveName(paramtag, datatag, returnJobItem=returnJobItem)
+
+    def getJobItem(self, paramtag, datatag):
+        jobItem = self.getRoot(paramtag, datatag, returnJobItem=True)
+        jobItem.loadJobItemResults(paramNameFile=self.settings.param_names_for_labels)
+        return jobItem
+
+def getPlotter(plot_data=None, chain_dir=None, **kwargs):
+    global plotter, rootdir
+    if plot_data is not None or use_plot_data:
+        plotter = planckPlotter(plot_data or os.path.join(rootdir, 'plot_data'), **kwargs)
+    if chain_dir or not use_plot_data:
+        plotter = planckPlotter(chain_dir=chain_dir or rootdir, **kwargs)
+    return plotter
 
 
-plotter = planckPlotter('main/plot_data')
-
-
-def getSubplotPlotter(plot_data=None):
-    s.setWithSubplotSize(2)
+def getSubplotPlotter(plot_data=None, chain_dir=None, subplot_size=2, **kwargs):
+    s.setWithSubplotSize(subplot_size)
     s.axes_fontsize += 2
     s.colorbar_axes_fontsize += 2
-#    s.lab_fontsize += 2
     s.legend_fontsize = s.lab_fontsize + 1
-    if plot_data is not None: plotter = planckPlotter(plot_data)
-    return plotter
+    return getPlotter(plot_data, chain_dir)
 
 def getPlotterWidth(size=1, **kwargs):  # size in mm
     inch_mm = 0.0393700787
@@ -76,15 +169,16 @@ def getPlotterWidth(size=1, **kwargs):  # size in mm
     elif size == 3: width = 180 * inch_mm
     else: width = size * inch_mm
     s.fig_width_inch = width
-    s.setWithSubplotSize(2)
+    s.setWithSubplotSize(kwargs.get('subplot_size', 2))
     s.rcSizes(**kwargs)
-    return plotter
+    return getPlotter()
 
-def getSinglePlotter(ratio=3 / 4., plot_data=None):
-    s.setWithSubplotSize(3.5)
+def getSinglePlotter(ratio=3 / 4., plot_data=None, chain_dir=None, width_inch=3.464, **kwargs):
+    s.setWithSubplotSize(width_inch)
+    s.fig_width_inch = width_inch
     s.rcSizes()
-    if plot_data is not None: plotter = planckPlotter(plot_data)
-    plotter.make_figure(1, ystretch=ratio)
+    plotter = getPlotter(plot_data, chain_dir)
+    plotter.make_figure(1, xstretch=1 / ratio)
     return plotter
 
 

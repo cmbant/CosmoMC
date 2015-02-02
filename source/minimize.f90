@@ -48,7 +48,7 @@
         real(mcp) :: max_like_radius = 0.01_mcp
         integer :: max_like_iterations  = 10000
         integer :: minimization_points_factor = 2
-        real(mcp) :: minimize_loglike_tolerance = 0._mcp
+        real(mcp) :: minimize_loglike_tolerance = 1e-6_mcp
         logical :: minimize_separate_fast = .true.
         integer :: minimize_mcmc_refine_num = 20
         !MCMC steps per parameter to refine after provisional best fit
@@ -122,8 +122,14 @@
     call this%VectToParams(vect, P)
 
     like = this%LikeCalculator%GetLogLike(P)
-    call this%MinParams%Clear(keep=P)
-    this%MinParams = P !want to keep e.g. the Age calculation
+    if (like == logZero) then
+        print *, 'Warning: Minimizer does not currently properly support non-boundary LogZero rejections'
+!        call MpiStop('Minimizer does not currently support non-boundary LogZero rejections')
+        call P%Clear(keep=this%MinParams)
+    else
+        call this%MinParams%Clear(keep=P)
+        this%MinParams = P !want to keep e.g. the Age calculation
+    end if
 
     end function ffn
 
@@ -256,7 +262,7 @@
 
     function TPowellMinimizer_FindBestFit(this,Params,is_best_bestfit) result(best_like)
     class(TPowellMinimizer) :: this
-    Type(ParamSet) Params
+    Type(ParamSet) Params, MCParams
     logical, intent(out) :: is_best_bestfit
     real(mcp) best_like, last_like
     real(Powell_CO_prec) :: vect(num_params_used), vect_fast(BaseParams%num_fast)
@@ -330,9 +336,10 @@
         scale = 2
         temperature = this%minimize_refine_temp
         allocate(LikeCalcMCMC, source=this%LikeCalculator)
-
         !BOBYQA can stop because of numerical errors, do some MCMC steps to do last bit of numerically noisy convergence
         do
+            MCParams = Params
+
             allocate(TMetropolisSampler::MCMC)
 
             if (Feedback > 0) print *,MpiRank,'Minimize MCMC with temp', temperature
@@ -342,7 +349,7 @@
 
             call MCMC%InitWithPropose(LikecalcMCMC,null(), propose_scale=scale*sqrt(temperature))
             call MCMC%SetCovariance(BaseParams%covariance_estimate)
-            call MCMC%SampleFrom(Params, StartLike, this%minimize_mcmc_refine_num * num_params_used)
+            call MCMC%SampleFrom(MCParams, StartLike, this%minimize_mcmc_refine_num * num_params_used)
 
             if (Feedback > 0) then
                 if (MCMC%MaxLike/=logZero) then
@@ -353,15 +360,14 @@
             end if
 
             if (MCMC%MaxLike/=logZero .and. MCMC%MaxLike*temperature < best_like) then
-                this%MinParams%P  = MCMC%MaxLikeParams
-                checkLike=LikeCalcMCMC%GetLogLike(this%MinParams)*temperature
+                Params%P  = MCMC%MaxLikeParams
+                checkLike=LikeCalcMCMC%GetLogLike(Params)*temperature
                 !same as MCMC%MaxLike*temperature but want to get everything computed
                 if (Feedback>0) print *,MpiRank, 'check likes, best_like:', &
                     & real([checklike, MCMC%MaxLike*temperature, best_like]) !this
                 best_like = MCMC%MaxLike*temperature
-                call Params%Clear(keep=this%MinParams)
-                Params = this%MinParams
             end if
+            call MCParams%Clear(keep=Params)
             deallocate(MCMC)
             if (last_best - best_like < this%minimize_loglike_tolerance &
                 .and. temperature < 4*this%minimize_loglike_tolerance/num_params_used) exit

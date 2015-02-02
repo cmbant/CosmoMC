@@ -1,0 +1,15 @@
+name = CFHTLENS_6bin
+kmax = 100.0
+num_theta_bins = 5
+num_z_bins = 6
+num_z_p = 72
+measurements_file = %DATASETDIR%CFHTLENS/blu_sample/cfhtlens_xipm_6bin_blu.dat
+measurements_format = nbin
+cov_file = %DATASETDIR%CFHTLENS/blu_sample/covariance_matrix_blu.dat
+window_file = %DATASETDIR%CFHTLENS/blu_sample/nofz_blu/nofz_%ublu.hist
+cut_file = %DATASETDIR%CFHTLENS/blu_sample/cut_values_none.dat
+ah_factor = 0.873
+
+nz_wl = 95
+max_z = 3.52
+cut_theta = T

@@ -1,6 +1,7 @@
 # Just look at parameters being produced in single chain
 
-import os, paramNames, sys
+import os, sys
+from getdist import paramNames
 import numpy as np
 
 

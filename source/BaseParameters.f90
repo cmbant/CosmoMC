@@ -16,12 +16,23 @@
         real(mcp), allocatable :: mean(:),std(:) !std=0 for no prior (default)
     end Type ParamGaussPrior
 
+    Type TLinearCombination
+        real(mcp) :: mean =0._mcp
+        real(mcp) :: std = 0._mcp
+        character(LEN=:), allocatable :: Name
+        real(mcp), allocatable :: Combination(:)
+    end Type TLinearCombination
+
     Type :: TBaseParameters
         logical :: use_fast_slow = .false.
         integer :: num_fast, num_slow
+        integer :: num_semi_fast, num_semi_slow
         real(mcp), allocatable :: PMin(:), PMax(:), StartWidth(:), PWidth(:), center(:)
         logical(mcp), allocatable :: varying(:)
+        logical :: block_semi_fast = .true.
+        logical :: block_fast_likelihood_params = .true.
         Type(ParamGaussPrior) :: GaussPriors
+        Type(TLinearCombination), allocatable :: LinearCombinations(:)
         Type(int_arr), allocatable :: param_blocks(:)
         real(mcp), dimension(:,:), allocatable ::  covariance_estimate
         logical :: covariance_is_diagonal, covariance_has_new
@@ -152,6 +163,8 @@
     class(TSettingIni) :: Ini
     integer i, status
     character(LEN=:), allocatable :: InLine
+    Type(TSettingIni) :: Combs
+    integer params(num_params), num_lin
 
     allocate(this%GaussPriors%std(num_params))
     allocate(this%GaussPriors%mean(num_params))
@@ -164,6 +177,25 @@
                 if (status/=0) call this%ParamError('Error reading prior mean and stdd dev: '//trim(InLIne),i)
             end if
         end if
+    end do
+
+    call Ini%TagValuesForName('linear_combination', Combs)
+    allocate(this%LinearCombinations(Combs%Count))
+    do i= 1, Combs%Count
+        associate( comb =>this%LinearCombinations(i) )
+            Comb%name = Combs%Name(i)
+            num_lin = -1
+            call this%NameMapping%ReadIndices(Combs%Value(i), params, num_lin)
+            allocate(Comb%Combination(num_params),source = 0._mcp)
+            InLine = Ini%Read_String(Ini%NamedKey('linear_combination_weights',Comb%name), NotFoundFail=.true.)
+            read(InLine,*, iostat=status) Comb%Combination(params(:num_lin))
+            if (status/=0) call MpiStop('Error reading linear_combination_weights: '//trim(InLIne))
+            InLine = Ini%Read_String(Ini%NamedKey('prior',Comb%name))
+            if (InLine/='') then
+                read(InLine,*, iostat=status) Comb%mean, Comb%std
+                if (status/=0) call MpiStop('Error reading linear_combination_prior: '//trim(InLIne))
+            end if
+        end associate
     end do
 
     end subroutine TBaseParameters_ReadPriors
@@ -271,7 +303,6 @@
     integer fast_number, fast_param_index
     integer param_type(num_params)
     integer speed, num_speed
-    logical :: block_semi_fast =.false., block_fast_likelihood_params=.false.
     integer :: breaks(num_params), num_breaks
     class(TDataLikelihood), pointer :: DataLike
     logical first
@@ -293,23 +324,25 @@
                 fast_params(fast_number) = i
             end do
         end if
-        block_semi_fast = Ini%Read_Logical('block_semi_fast',.true.)
-        block_fast_likelihood_params = Ini%Read_logical('block_fast_likelihood_params',.true.)
+        call Ini%Read('block_semi_fast',this%block_semi_fast)
+        call Ini%Read('block_fast_likelihood_params',this%block_fast_likelihood_params)
     else
         fast_number = 0
+        this%block_semi_fast = .false.
+        this%block_fast_likelihood_params = .false.
     end if
 
     param_type = tp_unused
     do i=1,num_params
         if (BaseParams%varying(i)) then !to get sizes for allocation arrays
             if (use_fast_slow .and. any(i==fast_params(1:fast_number))) then
-                if (i >= index_data .or. .not. block_semi_fast) then
+                if (i >= index_data .or. .not. this%block_semi_fast) then
                     param_type(i) = tp_fast
                 else
                     param_type(i) = tp_semifast
                 end if
             else
-                if (use_fast_slow .and. index_semislow >=0 .and. i >= index_semislow .and. block_semi_fast) then
+                if (use_fast_slow .and. index_semislow >=0 .and. i >= index_semislow .and. this%block_semi_fast) then
                     param_type(i) = tp_semislow
                 else
                     param_type(i) = tp_slow
@@ -319,7 +352,7 @@
     end do
 
     num_breaks=0
-    if (block_fast_likelihood_params) then
+    if (this%block_fast_likelihood_params) then
         !put parameters for different likelihoods in separate blocks,
         !so not randomly mix them and hence don't all need to be recomputed
         first=.true.
@@ -327,14 +360,14 @@
             DataLike=>DataLikelihoods%Item(i)
             do j=1, num_params_used-1
                 if (param_type(params_used(j))==tp_fast .and. params_used(j) >= DataLike%new_param_block_start &
-                .and. params_used(j) < DataLike%new_param_block_start + DataLike%new_params) then
-                    if (first) then
-                        first = .false.
-                    else
-                        num_breaks = num_breaks+1
-                        breaks(num_breaks)=j
-                    end if
-                    exit
+                    .and. params_used(j) < DataLike%new_param_block_start + DataLike%new_params) then
+                if (first) then
+                    first = .false.
+                else
+                    num_breaks = num_breaks+1
+                    breaks(num_breaks)=j
+                end if
+                exit
                 end if
             end do
         end do
@@ -381,11 +414,12 @@
         ix=j+1
     end do
 
+    this%num_semi_slow = size(this%param_blocks(tp_semislow)%P)
+    this%num_semi_fast = size(this%param_blocks(tp_semifast)%P)
     if (Feedback > 0 .and. MpiRank==0) then
         if (use_fast_slow) then
             write(*,'(1I3," parameters (",1I2," slow (",1I2," semi-slow), ",1I2," fast (",1I2," semi-fast))")') &
-            & num_params_used,this%num_slow, size(this%param_blocks(tp_semislow)%P), &
-            & this%num_fast,size(this%param_blocks(tp_semifast)%P)
+                & num_params_used,this%num_slow, this%num_semi_slow, this%num_fast, this%num_semi_fast
         else
             write(*,'(1I3," parameters")') num_params_used
         end if

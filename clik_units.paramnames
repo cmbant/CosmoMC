@@ -9,9 +9,10 @@ w             w			#equation of state parameter for scalar field dark energy toda
 wa            w_a       #w_a variation
 nnu           N_{\mathrm{eff}}   #effective number of neutrinos (only clearly defined for massless)
 yhe           Y_{\mathrm{P}}    #Helium mass fraction (not used if bbn_consistency)    
-alpha1        \alpha_{-1} #correlated CDM isocurvature 
+alpha1        \alpha #correlated CDM isocurvature 
 deltazrei     \Delta z_{\mathrm{re}} #width of reionization
 Alens         A_{\mathrm{L}}     #lensing potential scaled by sqrt(A_lens)
+Alensf        A_{\mathrm{L}}^{\mathrm{fid}}     #lensing potential scaled by sqrt(A_lens)
 fdm           \epsilon_0 f_d    #CosmoRec dark matter annihilation parameter, 0910.3663
 logA          \ln(10^{10} A_\mathrm{s})
 ns            n_\mathrm{s}	    #beware that pivot scale can change in .ini file
@@ -24,6 +25,7 @@ Aphiphi       A^{\phi\phi}_{\mathrm{L}} #scaling of lensing potential power (len
 alpha_SNLS    \alpha_{\mathrm{SNLS}}
 beta_SNLS     \beta_{\mathrm{SNLS}}
 asz           A_{\mathrm{tSZ}}     # SZ template amplitude, as in WMAP
+calPlanck     y_{\rm cal}
 aps100        A^{\mathrm{PS}}_{100}      # Point source amplitude at 100 GHz
 aps143        A^{\mathrm{PS}}_{143}      # Point source amplitude at 143 GHz
 aps217        A^{\mathrm{PS}}_{217}      # Point source amplitude at 217 GHz
@@ -36,6 +38,8 @@ ncib          \gamma^{\mathrm{CIB}}           # spectral index of the CIB
 cal0          c_{100}       # relative power spectrum calibration factor 100/143 to rescale measured power with
 cal1          c_{143}       # calibration factor 143
 cal2          c_{217}       # relative calibration factor 217/143 (as for 100)
+calEE          c_{EE}       # calibration factor 143
+calTE          c_{TE}       # relative calibration factor 217/143 (as for 100)
 xi            \xi^{\mathrm{tSZ}\times\mathrm{CIB}}     # TSZ-CIB template amplitude (positive is negative)
 aksz          A^{\mathrm{kSZ}}
 bm_1_1        \beta^1_1 
@@ -78,6 +82,7 @@ omegal*       \Omega_\Lambda
 omegam*       \Omega_{\mathrm{m}}
 sigma8*       \sigma_8
 zrei*         z_{\mathrm{re}}
+rmsdeflect*   \langle d^2\rangle^{1/2}\,[\mathrm{arcmin}]
 r10*          r_{10}	#tensor-scalar C_l amplitude at l=10
 H0*           H_0		#hubble parameter is H0 km/s/Mpc
 r02*          r_{0.002}         #r at k=0.002
@@ -87,22 +92,26 @@ AT*           10^9 A_{\mathrm{t}}
 A*            10^9 A_{\mathrm{s}}
 omegamh2*     \Omega_{\mathrm{m}} h^2 #includes massive neutrinos
 omegamh3*     \Omega_{\mathrm{m}} h^3 #well determined orthogonal to degeneracy for 6-param model
-S8_47*        \sigma_8 (\Omega_{\mathrm{m}}/0.25)^{0.47} 
+s8omegamp5*   \sigma_8 \Omega_{\mathrm{m}}^{0.5}
+s8omegamp25*  \sigma_8 \Omega_{\mathrm{m}}^{0.25}
 yheused*      Y_{\mathrm{P}} #MCMC value or from bbn consistency
+YpBBN*        Y_{\rm P}^{\rm BBN}
+DHBBN*        10^5 {\rm D}/{\rm H}
 clamp*        10^9 A_{\mathrm{s}} e^{-2\tau}   #parameter determining C_l amplitude
-ctlamp*       10^9 A_t e^{-2\tau}   #parameter determining L~100 tensor C_l amplitude
+ctlamp*       10^9 A_{\mathrm{t}} e^{-2\tau}   #parameter determining L~100 tensor C_l amplitude
+ns02*         n_{\mathrm{s},0.002}
 omeganuh2*    \Omega_\nu h^2 
-age*          \mathrm{Age}/\mathrm{Gyr}
+age*          \mathrm{Age}\,[\mathrm{Gyr}]
 zstar*        z_\ast
 rstar*        r_\ast
 thetastar*    100\theta_\ast
 zdrag*        z_{\mathrm{drag}}
 rdrag*        r_{\mathrm{drag}}
-kd*           k_{\mathrm{D}}
+kd*           k_{\mathrm{D}} [\mathrm{Mpc}^{-1}]
+keq*           k_{\mathrm{eq}} [\mathrm{Mpc}^{-1}]
 thetad*       100\theta_{\mathrm{D}}
 zeq*          z_{\mathrm{eq}}
 thetaeq*      100\theta_{\mathrm{eq}}
 rsDv057*       r_{\mathrm{drag}}/D_{\mathrm{V}}(0.57)
 Hubble057*     H(0.57)
 DA057*         D_{\mathrm{A}}(0.57)
-cef           \alpha/\alpha_0

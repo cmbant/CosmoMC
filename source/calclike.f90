@@ -100,8 +100,8 @@
     real(mcp) :: GetLogLikeBounds
 
     if (any(Params%P(:num_params) > BaseParams%PMax(:num_params)) .or. &
-    & any(Params%P(:num_params) < BaseParams%PMin(:num_params))) then
-        GetLogLikeBounds = logZero
+        & any(Params%P(:num_params) < BaseParams%PMin(:num_params))) then
+    GetLogLikeBounds = logZero
     else
         GetLogLikeBounds=0
     end if
@@ -119,6 +119,14 @@
         if (BaseParams%varying(i) .and. BaseParams%GaussPriors%std(i)/=0) then
             logLike = logLike + ((P(i)-BaseParams%GaussPriors%mean(i))/BaseParams%GaussPriors%std(i))**2
         end if
+    end do
+
+    do i= 1, size(BaseParams%LinearCombinations)
+        associate(Comb => BaseParams%LinearCombinations(i))
+            if (Comb%std/=0) then
+                logLike = logLike + ((dot_product(Comb%Combination,P) -Comb%mean)/Comb%std)**2
+            end if
+        end associate
     end do
     logLike=logLike/2
 
@@ -217,7 +225,7 @@
         do i=1, num_params
             if (isused==0 .and. BaseParams%varying(i) .or. isused==1 .and. .not. BaseParams%varying(i)) then
                 write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-                i, P%P(i), BaseParams%NameMapping%name(i)
+                    i, P%P(i), BaseParams%NameMapping%name(i)
                 write (aunit,'(a)') trim(BaseParams%NameMapping%label(i))
             end if
         end do
@@ -436,11 +444,11 @@
     call this%TLikeCalculator%WriteParamsHumanText(aunit, P, LogLike, weight)
 
     call this%Config%Parameterization%CalcDerivedParams(P%P,P%Theory, derived)
-    call DataLikelihoods%addLikelihoodDerivedParams(P%P, P%Theory, derived)
+    call DataLikelihoods%addLikelihoodDerivedParams(P%P, P%Theory, derived, P%Likelihoods, LogLike)
     if (allocated(derived)) numderived = size(derived)
     do i=1, numderived
         write(aunit,'(1I5,1E15.7,"   ",1A22)', advance='NO') &
-        num_params+i, derived(i), BaseParams%NameMapping%name(num_params + i )
+            num_params+i, derived(i), BaseParams%NameMapping%name(num_params + i )
         write (aunit,'(a)') trim(BaseParams%NameMapping%label(num_params+i))
     end do
 

@@ -1,0 +1,46 @@
+omegabh2      \Omega_b h^2	#physical baryon density
+omegach2      \Omega_c h^2	#physical CDM matter density
+theta         100\theta_{MC} #100 times the ratio of the angular diameter distance to the LSS sound horizon (approx)
+tau           \tau
+omegak        \Omega_K
+mnu           \Sigma m_\nu    #sum of physical masses of standard neutrinos
+meffsterile   m_{\nu,{\rm{sterile}}}^{\rm{eff}}  #effective mass of sterile neutrino, \approx omeganuh2*94
+w             w			#equation of state parameter for scalar field dark energy today
+wa            w_a       #w_a variation
+nnu           N_{eff}   #effective number of neutrinos (only clearly defined for massless)
+yhe           Y_{He}    #Helium mass fraction (not used if bbn_consistency)    
+alpha1        \alpha_{-1} #correlated CDM isocurvature 
+deltazrei     {\Delta}z_{\rm re} #width of reionization
+Alens         A_{L}     #lensing potential scaled by sqrt(A_lens)
+Alensf        A^f_L     #amplitude of smoothing power from fiducial models 
+fdm           \epsilon_0 f_d    #CosmoRec dark matter annihilation parameter, 0910.3663
+logA          {\rm{ln}}(10^{10} A_s)
+ns            n_s	    #beware that pivot scale can change in .ini file
+nrun          n_{\rm run}
+nrunrun       n_{\rm run, run}
+r             r #ratio of tensor to scalar primordial amplitudes at pivot scale
+nt            n_t
+ntrun         n_{t,{\rm run}}
+Aphiphi       A^{\phi\phi}_L #scaling of lensing potential power (lensed power spectra unchanged)
+H0*           H_0		#hubble parameter is H0 km/s/Mpc
+omegal*       \Omega_\Lambda
+omegam*       \Omega_m
+omegamh2*     \Omega_m h^2 #includes massive neutrinos
+omeganuh2*    \Omega_\nu h^2 
+omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
+sigma8*       \sigma_8
+s8omegamp5*   \sigma_8 \Omega_m^{0.5}
+s8omegamp25*  \sigma_8 \Omega_m^{0.25}
+s8h5*         \sigma_8/h^{0.5}
+rmsdeflect*   \langle d^2\rangle^{1/2}  #rms lensing deflection in arcmin (2<=L<=2000)
+zrei*         z_{\rm re}
+A*            10^9 A_s
+clamp*        10^9 A_s e^{-2\tau}   #parameter determining C_l amplitude
+DL40*         D_{40}   #L(L+1)C_L/2pi at L=40 in muK^2
+DL220*        D_{220}  #L(L+1)C_L/2pi at L=220 in muK^2
+DL810*        D_{810}  #L(L+1)C_L/2pi at L=810 in muK^2
+DL1420*       D_{1420} #L(L+1)C_L/2pi at L=1420 in muK^2
+DL2000*       D_{2000} #L(L+1)C_L/2pi at L=2000 in muK^2
+ns02*         n_{s,0.002}
+yheused*      Y_P #MCMC value or from bbn consistency (mass definition)
+YpBBN*        Y_P^{\rm{BBN}} #MCMC value or from bbn consistency (nucleon definition)

@@ -1,0 +1,13 @@
+#http://arxiv.org/abs/1312.4899
+
+DEFAULT(sdss_DR11CMASS_RSD_bao_Beutler.dataset)
+name = DR11CMASS_RSD_Samushia
+
+measurement_type = DV_over_rs F_AP f_sigma8
+bao_measurement = 13.85 0.6725 0.4412
+
+bao_invcov_file = sdss_DR11CMASS_RSD_bao_invcov_Samushia.txt
+
+num_conflicts = 2
+type_conflict2 = BAO
+name_conflict2 = DR11CMASS_RSD_Beutler
