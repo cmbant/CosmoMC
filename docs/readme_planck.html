@@ -11,14 +11,14 @@
 <h2>CosmoMC and Plotting with Planck Likelihood and Chains</h2>
 
 </center>
-The Planck likelihood code (PLC/clik) and parameter chains are available from the <A HREF="http://wiki.cosmos.esa.int/planckpla/index.php/">Planck Legacy Archive</A>. 
+The Planck likelihood code (PLC/clik) and parameter chains are available from the <A HREF="http://wiki.cosmos.esa.int/planckpla/index.php/">Planck Legacy Archive</A>.
 The Planck lensing and Bicep-Keck-Planck likelihoods are included with the cosmomc installation and do not need to be installed separately.
 <P>
 <H3>Using the Planck likelihood with CosmoMC</H3>
 Here I assume you have installed CosmoMC in a directory called COSMOMC..PATH, and will install the Planck likelihood code in a directory called PLC..PATH.
-Note you need to use ifort 14 or higher to build CosmoMC, so make sure you have that configured before you start. 
+Note you need to use ifort 14 or higher to build CosmoMC, so make sure you have that configured before you start.
 <UL>
-<LI>Download and and install the likelihood code and data files to somewhere convenient, probably not under cosmomc. These are the links (note things are likely to be updated and change, so apologies if not everything work exactly as stated here)
+<LI>Download and install the likelihood code and data files to somewhere convenient, probably not under cosmomc. These are the links (note things are likely to be updated and change, so apologies if not everything work exactly as stated here)
 <UL>
 <LI><A HREF="http://wiki.cosmos.esa.int/planckpla/index.php/CMB_spectrum_%26_Likelihood_Code">Planck likelihood code and data download links</A>
 </UL>
@@ -63,10 +63,10 @@ For the program to know about the structure of the grid you first need to initia
 <PRE>
 python python/makeGrid.py PLA
 </PRE>
-You can now use the python python grid and plotting scripts on the PLA directory, and they will know about the available data.
+You can now use python, grid and plotting scripts on the PLA directory, and they will know about the available data.
 Grid configuration settings for the Planck parameter grid are in PLA/config/.
 <P>
-If you download multiple Planck 2015 chain bundles, extract them to the same location so new folders are just merged over the existing ones, then plotting scripts etc will find
+If you download multiple Planck 2015 chain bundles, extract them to the same location so new folders are just merged over the existing ones and run makeGrid.py again, then plotting scripts etc will find
 all the results.
 <P>
 You can also configure the plotting scripts to use the PLA location as the <b>default_grid_root</b>  (esp. if you want to run or adapt sample plot scripts under batch2/outputs/).
@@ -77,7 +77,7 @@ cache_dir = PLA..PATH/cache
 output_base_dir=
 </pre>
 Setting <b>use_plot_data = F</b> means that you do not need to run getdist first, anything needed for plotting will be calculated on the fly.
-The <b>cache_dir</b> is used to cache python-format chains, which makes loading them much faster after the first time. 
+The <b>cache_dir</b> is used to cache python-format chains, which makes loading them much faster after the first time.
 By default, plots go into ./outputs directory under cosmomc. You can se the <b>output_base_dir</b> to another location is where plot output (e.g. pdf) files are put by default
 (in output_base_dir/outputs).
 

@@ -295,8 +295,10 @@ class MainWindow(QMainWindow):
 
     def readSettings(self):
         settings = self.getSettings()
-        pos = settings.value("pos", QPoint(200, 200))
-        size = settings.value("size", QSize(400, 400))
+        h = min(QApplication.desktop().screenGeometry().height() * 4 / 5., 700)
+        size = QSize(min(QApplication.desktop().screenGeometry().width() * 4 / 5., 900), h)
+        pos = settings.value("pos", QPoint(100, 100))
+        size = settings.value("size", size)
         self.resize(size)
         self.move(pos)
 
@@ -373,7 +375,7 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage("")
 
         dlg = DialogMargeStats(self, stats, rootname)
-        dlg.exec_()
+        dlg.show()
 
     def showSettings(self):
         """
