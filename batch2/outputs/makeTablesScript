@@ -1,0 +1,52 @@
+
+
+python python/makeTables.py main tables/baseline_params_table_2015_limit68  --limit 1 --converge 0.1 --data plikHM lensonly WMAP --skip_data lmax801 lmin802 --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/baseline_params_table_2015_limit95  --limit 2 --converge 0.1 --data plikHM lensonly WMAP --skip_data lmax801 lmin802  --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/baseline_params_table_2015_limit99  --limit 3 --converge 0.1 --data plikHM lensonly WMAP --skip_data lmax801 lmin802  --header_tex batch2/outputs/tableHeader.tex
+
+
+python python/makeTables.py main tables/params_table_2015_limit68  --limit 1 --converge 0.1 --data plikHM plikDS CamSpecHM CamSpecDS WLonlyHeymans lensonly WMAP  --skip_data lmax801 lmin802 --header_tex batch2/outputs/tableHeader.tex --changes_replacing plikHM plikDS CamSpecHM CamSpecDS WMAP &
+python python/makeTables.py main tables/params_table_2015_limit95  --limit 2 --converge 0.1 --data plikHM plikDS CamSpecHM CamSpecDS WLonlyHeymans lensonly WMAP --skip_data lmax801 lmin802  --header_tex batch2/outputs/tableHeader.tex  --changes_replacing plikHM plikDS CamSpecHM CamSpecDS WMAP&
+python python/makeTables.py main tables/params_table_2015_limit99  --limit 3 --converge 0.1 --data plikHM plikDS CamSpecHM CamSpecDS WLonlyHeymans lensonly WMAP --skip_data lmax801 lmin802  --header_tex batch2/outputs/tableHeader.tex  --changes_replacing plikHM plikDS CamSpecHM CamSpecDS WMAP
+
+
+python python/makeTables.py main tables/CamSpec_table_2015_1sig  --limit 1 --converge 0.1 --data CamSpecHM lensonly --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/CamSpec_table_2015_2sig  --limit 2 --converge 0.1 --data CamSpecHM lensonly --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/CamSpec_table_2015_3sig  --limit 3 --converge 0.1 --data CamSpecHM lensonly --header_tex batch2/outputs/tableHeader.tex
+
+python python/makeTables.py main tables/result_table_2015_1sig  --limit 1 --converge 0.1 --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/result_table_2015_2sig  --limit 2 --converge 0.1 --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/result_table_2015_3sig  --limit 3 --converge 0.1 --header_tex batch2/outputs/tableHeader.tex
+
+python python/makeTables.py main tables/compare_plikHM_1sig  --limit 1 --converge 0.1  --changes_replacing plikHM plikDS CamSpecHM CamSpecDS Mspec cleanCMH WMAP --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_plikHM_2sig  --limit 2 --converge 0.1  --changes_replacing plikHM plikDS CamSpecHM CamSpecDS Mspec cleanCMH WMAP --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_plikHM_3sig  --limit 3 --converge 0.1  --changes_replacing plikHM plikDS CamSpecHM CamSpecDS Mspec cleanCMH WMAP --header_tex batch2/outputs/tableHeader.tex
+
+python python/makeTables.py main tables/compare_model_1sig  --limit 1 --converge 0.1  --changes_from_paramtag base --header_tex batch2/outputs/tableHeader.tex --changes_data_ignore nnup39 nnup57 nnu1 &
+python python/makeTables.py main tables/compare_model_2sig  --limit 2 --converge 0.1  --changes_from_paramtag base --header_tex batch2/outputs/tableHeader.tex --changes_data_ignore nnup39 nnup57 nnu1 &
+python python/makeTables.py main tables/compare_model_3sig  --limit 3 --converge 0.1  --changes_from_paramtag base --header_tex batch2/outputs/tableHeader.tex --changes_data_ignore nnup39 nnup57 nnu1
+
+python python/makeTables.py main tables/compare_plikTTlowTEB_1sig  --limit 1 --converge 0.1 --changes_from_datatag plikHM_TT_lowTEB --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_plikTTlowTEB_2sig  --limit 2 --converge 0.1 --changes_from_datatag plikHM_TT_lowTEB --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_plikTTlowTEB_3sig  --limit 3 --converge 0.1 --changes_from_datatag plikHM_TT_lowTEB --header_tex batch2/outputs/tableHeader.tex
+
+python python/makeTables.py main tables/compare_TTTEEE_TT_1sig  --limit 1 --converge 0.1 --changes_replacing TT TTTEEE --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_TTTEEE_TT_2sig  --limit 2 --converge 0.1 --changes_replacing TT TTTEEE --header_tex batch2/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_TTTEEE_TT_3sig  --limit 3 --converge 0.1 --changes_replacing TT TTTEEE --header_tex batch2/outputs/tableHeader.tex
+
+
+
+python python/makeTables.py main tables/pol_shift_sigma_table --limit 1 --changes_replacing TTTEEE TT --shift_sigma_subset --data TT TTTEEE
+
+python python/makeTables.py main tables/comparetables_1sig --limit 1 --height 10in --width 14in --compare plikHM_TT_lowTEB plikHM_TTTEEE_lowTEB plikHM_TT_lowTEB_lensing plikHM_TT_lowTEB_lensing_BAO plikHM_TTTEEE_lowTEB_lensing --paramList batch2/outputs/paper_table.paramnames &
+python python/makeTables.py main tables/comparetables_2sig --limit 2 --height 10in --width 14in --compare plikHM_TT_lowTEB plikHM_TTTEEE_lowTEB plikHM_TT_lowTEB_lensing plikHM_TT_lowTEB_lensing_BAO plikHM_TTTEEE_lowTEB_lensing --paramList batch2/outputs/paper_table.paramnames &
+
+python python/makeTables.py main tables/lensonly_1sig  --limit 1 --converge 0.1  --data lensonly --changes_from_paramtag base &
+python python/makeTables.py main tables/lensonly_2sig  --limit 2 --converge 0.1  --data lensonly --changes_from_paramtag base
+
+
+python python/makeTables.py main tables/LCDM_compare.tex --nobestfit --limit 1 --compare plikHM_TT_lowTEB plikHM_TT_lowTEB_lensing plikHM_TT_lowTEB_lensing_H070p6_JLA_BAO plikHM_TTTEEE_lowTEB plikHM_TTTEEE_lowTEB_lensing  plikHM_TTTEEE_lowTEB_lensing_H070p6_JLA_BAO --paramtag='base' --forpaper --titles "\\shortTT;\\shortTT+\\lensing;\\shortTT+\\lensing+\\ext;\\shortall;\\shortall+\\lensing;\\shortall+\\lensing+\\ext" --blockEndParams "thetarseq;ns" --paramList batch2/outputs/cosmology.paramnames
+
+python python/makeParamCompare.py main --chain_name_params omegak mnu nnu yhe nrun r w  --params omegak mnu nnu yhe nrun r02 w --compare plikHM_TT_lowTEB plikHM_TT_lowTEB_lensing plikHM_TT_lowTEB_lensing_H070p6_JLA_BAO  plikHM_TTTEEE_lowTEB plikHM_TTTEEE_lowTEB_lensing plikHM_TTTEEE_lowTEB_lensing_H070p6_JLA_BAO --single_extparam --latex_filename tables/grid_1paramext --nobestfits
+
+

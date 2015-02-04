@@ -1,0 +1,54 @@
+\title{\textit{Planck} 2015 Results: Cosmological Parameter Tables}
+
+
+%\titlerunning{Planck Cosmological Parameter Tables}
+\maketitle
+\begin{abstract}
+These tables summarize the results of \textit{Planck} 2015 parameter estimation exploration results. They include \textit{Planck} HFI data in combination with LFI polarization, \textit{Planck} lensing, as well as additional non-CMB data as detailed in the main parameter papers.
+\end{abstract}
+
+\newpage
+\section{Introduction}
+
+The tables are arranged grouped firstly by cosmological model, and then by data combination. The name tags match those of the full chains also provided on the PLA. They all start with {\tt base} to denote the baseline model, followed by the parameter tags of any additional parameters that are also varied (as defined in the parameter paper). Data combination tags are as follows (see the parameters paper for full description and references):
+
+\begin{tabular} { l   l  }
+Data tag & Data used\\
+\hline
+{\tt plikHM}         & baseline high-$\ell$ \textit{Planck} power spectra ({\tt plik} cross half-mission, $30\le l\le 2508$) \\
+{\tt plikDS}         & high-$\ell$ \textit{Planck} ({\tt plik} cross detsets, $30\le l\le 2508$) \\
+{\tt CamSpecHM}      & alternative high-$\ell$ \textit{Planck}  ({\tt CamSpec} cross half-mission, $30\le l\le 2500$) \\
+{\tt CamSpecDS}      & high-$\ell$ \textit{Planck} ({\tt CamSpec} cross detsets, $30\le l\le 2500$) \\
+{\tt lowl }          & low-$\ell$ \textit{Planck} temperature (Commander, $2\le l \le 29$)  \\
+{\tt lowTEB}         & low-$\ell$ temperature and LFI polarization (bflike, $2\le l \le 29$)\\
+{\tt lowEB}          & low-$\ell$  LFI polarization only (bflike, $2\le l \le 29$)\\
+{\tt WMAPTEB}        & low-$\ell$ temperature, and  LFI+WMAP polarization (bflike, $2\le l \le 29$)\\
+{\tt lensing}        & \textit{Planck}  lensing power spectrum reconstruction\\
+{\tt lensonly}       & \textit{Planck}  lensing power spectrum reconstruction only; T,E fixed to best-fit spectrum + priors\\
+{\tt zre6p5}         & A hard prior $z_{\rm re} > 6.5$\\
+{\tt tau07}          & A Gaussian prior $\tau = 0.07 \pm 0.02$\\
+{\tt reion}          & A hard prior $z_{\rm re} > 6.5$, combined with Gaussian prior $z_{\rm re} = 7\pm 1$\\
+{\tt BAO}            & Baryon oscillation data from DR11LOWZ, DR11CMASS, MGS and 6DF \\
+{\tt JLA}            & Supernova data from the SDSS-II/SNLS3 Joint Light-curve Analysis \\
+{\tt H070p6}         & A conservative Hubble parameter constraint, $H_0 = 70.6\pm 3.3$ (Efstathiou; arXiv:1311.3461) \\
+{\tt theta}          & 100$\theta_{\rm MC}$ fixed to 1.0408 \\
+{\tt WMAP}           & The full WMAP (temperature and polarization) 9 year data \\
+%{\tt BAORSD}         & DR11 Samushia et al. fsigma8, AP parameter and BAO, plus DR11LOWZ, MGS and 6DF  \\
+%{\tt WL}, {\tt WLonly} & Ultraconservative cut of the CFHTlens weak lensing data  \\
+{\tt WLonlyHeymans}      & Conservative cut of the CFHTLenS weak lensing data + priors \\
+\hline
+\end{tabular}
+\vskip 1cm
+The high-$\ell$ \textit{Planck} likelihoods have {\tt TT}, {\tt TE}, {\tt EE} variants from each spectrum alone, plus the {\tt TTTEEE} joint constraint.
+
+Data likelihoods are either included when running the chains, or by importance sampling. Data combinations that are added by importance sampling appear
+at the end of the list, following the {\tt post{\textunderscore}} tag. Note that the best fits are merely examples of parameter combinations that fit the data well, due to parameter degeneracies there may be other combinations of parameters that fit the data nearly equally well.
+
+Beneath each table is the $\chi^2_{\rm eff}=-2\log({\rm likelihood})$ for each best fit model, and also the contributions coming from each separate part of the likelihood. Mean minus log likelihoods are also given, $\bar{\chi}^2_{\rm eff}$.
+The tables also give the $\chi^2_{\rm eff}$ of the various component parts of the likelihood, where quoted values are the best-fit and mean, standard deviation (in the case of 1-sigma tables), or effective degrees of freedom ($\nu$, defined by $\sigma^2/2$).
+
+The $R-1$ value is also given, which measures the convergence of the sampling chains, with small values being better converged. The sampling uncertainty on quoted mean values are typically of order $R-1$ in units of the standard deviation.
+
+%Files are provided in the format produced by the CosmoMC code, available from http://cosmologist.info/cosmomc.
+
+\newpage
