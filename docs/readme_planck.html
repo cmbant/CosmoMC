@@ -21,7 +21,7 @@ Note you need to use ifort 14 or higher to build CosmoMC, so make sure you have 
 <UL>
 <LI>Download and install the likelihood code and data files to somewhere convenient, probably not under cosmomc. These are the links (note things are likely to be updated and change, so apologies if not everything work exactly as stated here)
 <UL>
-<LI><A HREF="http://pla.esac.esa.int/pla/index.html#cosmology">Planck likelihood code and data download links</A> (<A hREF="http://irsa.ipac.caltech.edu/data/Planck/release_1/software/">US</A> site)
+<LI><A HREF="http://pla.esac.esa.int/pla/index.html#cosmology">Planck likelihood code and data download links</A> (select Release: PR1-2013, or see <A hREF="http://irsa.ipac.caltech.edu/data/Planck/release_1/software/">US</A> site)
 </UL>
 
 <LI>Change to the plc_1.0  directory and do
@@ -56,7 +56,7 @@ Note that the "highL" (ACT/SPT) likelihood file is not included in the first PLC
 <P>
 <A NAME="PlanckChains"></A>
 <H3>Using Planck 2015 Chains</H3>
-Planck provide a set of parameter chains produced by CosmoMC, available <A HREF="http://wiki.cosmos.esa.int/planckpla/index.php/Cosmological_Parameters">here</a>.
+Planck provide a set of parameter chains produced by CosmoMC, available for download <A HREF="http://pla.esac.esa.int/pla/#cosmology">here</a>; see <A HREF="http://wiki.cosmos.esa.int/planckpla2015/index.php/Cosmological_Parameters">description</A>.
 <P>
 You can use CosmoMC's python scripts and getdist to analyse and make plots from them. Check you have set the PYTHONPATH as described at the top of the <A hREF="readme_python.html">Python readme</A>.
 <P>
@@ -64,7 +64,7 @@ Then download and extract all the chain data. Make a symbolic link from ./cosmom
 <PRE>
 ln -s PLA..PATH ./PLA
 </PRE>
-so that ./PLA/base is for example the head directory with the baseline model chains.
+so that ./PLA/base is for example the head directory with the baseline model chains (and PLA..PATH is the full path that you extracted the contents of the download to).
 For the program to know about the structure of the grid you first need to initialize it for the location you have installed in. Do
 <PRE>
 python python/makeGrid.py PLA
