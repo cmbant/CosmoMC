@@ -56,8 +56,11 @@ Note that the "highL" (ACT/SPT) likelihood file is not included in the first PLC
 <P>
 <A NAME="PlanckChains"></A>
 <H3>Using Planck 2015 Chains</H3>
-Planck provide a set of parameter chains produced by CosmoMC, available <A HREF="http://pla.esac.esa.int/pla/index.html#cosmology">here</a>.
-You can use CosmoMC's python scripts and getdist to analyse and make plots from them. First download and extract all the chain data. Make a symbolic link from ./cosmomc/PLA to the location of the chains, e.g.
+Planck provide a set of parameter chains produced by CosmoMC, available <A HREF="http://wiki.cosmos.esa.int/planckpla/index.php/Cosmological_Parameters">here</a>.
+<P>
+You can use CosmoMC's python scripts and getdist to analyse and make plots from them. Check you have set the PYTHONPATH as described at the top of the <A hREF="readme_python.html">Python readme</A>.
+<P>
+Then download and extract all the chain data. Make a symbolic link from ./cosmomc/PLA to the location of the chains, e.g.
 <PRE>
 ln -s PLA..PATH ./PLA
 </PRE>
