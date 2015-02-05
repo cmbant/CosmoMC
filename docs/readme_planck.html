@@ -53,8 +53,11 @@ to see if things are being loaded and start running OK.
 <P>
 <A NAME="PlanckChains"></A>
 <H3>Using Planck Chains</H3>
-Planck provide a set of parameter chains produced by CosmoMC, available <A HREF="http://wiki.cosmos.esa.int/planckpla/index.php/Cosmological_Parameters">here</a>.
-You can use CosmoMC's python scripts and getdist to analyse and make plots from them. First download and extract all the chain data. Make a symbolic link from ./cosmomc/PLA to the location of the chains, e.g.
+Planck provide a set of parameter chains produced by CosmoMC, available for download <A HREF="http://pla.esac.esa.int/pla/#cosmology">here</a>.
+<P>
+You can use CosmoMC's python scripts and getdist to analyse and make plots from them. Check you have set the PYTHONPATH as described at the top of the <A hREF="readme_python.html">Python readme</A>.
+<P>
+Then download and extract all the chain data. Make a symbolic link from ./cosmomc/PLA to the location of the chains, e.g.
 <PRE>
 ln -s PLA..PATH ./PLA
 </PRE>
@@ -67,7 +70,7 @@ You can now use python, grid and plotting scripts on the PLA directory, and they
 Grid configuration settings for the Planck parameter grid are in PLA/config/.
 <P>
 If you download multiple Planck 2015 chain bundles, extract them to the same location so new folders are just merged over the existing ones and run makeGrid.py again, then plotting scripts etc will find
-all the results.
+all the results. If you want to use the +BKP tensor chains, download and add them last, so the config folder matches that in the BKP download.
 <P>
 You can also configure the plotting scripts to use the PLA location as the <b>default_grid_root</b>  (esp. if you want to run or adapt sample plot scripts under batch2/outputs/).
 Make a text file called <b>python/getdist/config.ini</b> and add setting lines as required,e.g.

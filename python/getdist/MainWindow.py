@@ -9,6 +9,7 @@ import matplotlib
 import numpy as np
 from iniFile import iniFile
 from getdist import MCSamples
+from sys import platform
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -1013,8 +1014,10 @@ class MainWindow(QMainWindow):
             if hasattr(self, "canvas"): del self.canvas
             if hasattr(self, "toolbar"): del self.toolbar
             self.canvas = FigureCanvas(self.plotter.fig)
-            self.toolbar = NavigationToolbar(self.canvas, self)
-            self.plotWidget.layout().addWidget(self.toolbar)
+            if platform <> "darwin":
+                # for some reason the toolbar crashes out on a Mac; just don't show it
+                self.toolbar = NavigationToolbar(self.canvas, self)
+                self.plotWidget.layout().addWidget(self.toolbar)
             self.plotWidget.layout().addWidget(self.canvas)
             self.canvas.draw()
             # self.plotWidget.update()
