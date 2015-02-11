@@ -1263,7 +1263,6 @@ class MCSamples(chains):
                     corrected = density1D.P[i - imin] * Kernel.boundary_K[imax - i] \
                                  - xP * Kernel.boundary_xK[imax - i]
                     normed = density1D.P[i - imin] / Kernel.a0[imax - i]
-                    print normed, corrected
                     density1D.P[i - imin] = normed * np.exp(corrected / normed - 1)
             else:
                 if has_prior and density1D.P[i - imin] > 0:
