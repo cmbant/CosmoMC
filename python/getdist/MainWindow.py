@@ -285,6 +285,7 @@ class MainWindow(QMainWindow):
         hbox = QHBoxLayout()
         hbox.addWidget(splitter)
         self.centralWidget.setLayout(hbox)
+        self.canvas = None
         self.readSettings()
 
     def closeEvent(self, event):
@@ -1022,8 +1023,6 @@ class MainWindow(QMainWindow):
             self.canvas.draw()
             # self.plotWidget.update()
             self.plotWidget.show()
-
-
 
 # ==============================================================================
 
