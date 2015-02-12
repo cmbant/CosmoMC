@@ -1210,17 +1210,6 @@ class MCSamples(chains):
                 w = self.weights * np.exp(self.meanlike - self.loglikes)
             counts = np.bincount(ix2 - minix, weights=w)
             finebinlikes[minix - fine_min:minix - fine_min + len(counts)] = counts
-#         for i in range(len(paramVec)):
-#            ix2 = int(round((paramVec[i] - self.center[j]) / width))
-#           if ((ix2 <= self.ix_max[j]) and (ix2 >= self.ix_min[j])):
-#                binsraw[ix2 - self.ix_min[j]] += self.weights[i]
-#            ix2 = int(round((paramVec[i] - self.center[j]) / fine_width))
-#            finebins[ix2 - fine_min] += self.weights[i]
-#            if (self.plot_meanlikes):
-#                if (self.mean_loglikes):
-#                    finebinlikes[ix2 - fine_min] += self.weights[i] * self.loglikes[i]
-#                else:
-#                    finebinlikes[ix2 - fine_min] += self.weights[i] * np.exp(self.meanlike - self.loglikes[i])
 
         if self.ix_min[j] <> self.ix_max[j]:
             # account for underweighting near edges
@@ -1230,7 +1219,6 @@ class MCSamples(chains):
             if (not self.has_limits_top[j] and binsraw[self.ix_max[j] - end_edge + 1 - self.ix_min[j]] == 0 and
                  binsraw[self.ix_max[j] - end_edge + 1 - self.ix_min[j]] > np.max(binsraw) / 15):
                 self.EdgeWarning(j)
-
 
         has_prior = self.has_limits_bot[j] or self.has_limits_top[j]
         Kernel = Kernel1D(winw, fine_fac * smooth_1D, boundary=has_prior)
@@ -1306,59 +1294,30 @@ class MCSamples(chains):
                     maxbin = min(binlikes)
                     binlikes = np.where((binlikes - maxbin) < 30, np.exp(-(binlikes - maxbin)), 0)
 
+            x = self.center[j] + np.arange(self.ix_min[j], self.ix_max[j] + 1) * width
+            if self.plot_meanlikes:
+                maxbin = np.max(binlikes)
+                likes = binlikes / maxbin
+            else:
+                likes = None
             if writeDataToFile:
                 logging.debug("Write data to file ...")
 
                 fname = self.rootname + "_p_" + self.parName(j)
-
                 filename = os.path.join(self.plot_data_dir, fname + ".dat")
-                textFileHandle = open(filename, 'w')
-                for i in range(self.ix_min[j], self.ix_max[j] + 1):
-                    textFileHandle.write("%16.7E%16.7E\n" % (self.center[j] + i * width, bincounts[i - self.ix_min[j]]))
-                if (self.ix_min[j] == self.ix_max[j]):
-                    for i in range(self.ix_min.shape[0]):
-                        textFileHandle.write("%16.7E" % (self.center[j] + self.ix_min[i] * width))
-                    textFileHandle.write("\n")
-                textFileHandle.close()
+                with open(filename, 'w') as f:
+                    for xval, binval in zip(x, bincounts):
+                        f.write("%16.7E%16.7E\n" % (xval, binval))
 
                 if self.plot_meanlikes:
-                    maxbin = max(binlikes)
                     filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
-                    textFileHandle = open(filename_like, 'w')
-                    for i in range(self.ix_min[j], self.ix_max[j] + 1):
-                        textFileHandle.write("%16.7E%16.7E\n" % (self.center[j] + i * width, binlikes[i - self.ix_min[j]] / maxbin))
-                    textFileHandle.close()
-
+                    with open(filename_like, 'w') as f:
+                        for xval, binval in zip(x, likes):
+                            f.write("%16.7E%16.7E\n" % (xval, binval))
             else:
+                return x, bincounts, likes
 
-                likes = None
-
-                ncols = 2
-                nrows = self.ix_max[j] + 1 - self.ix_min[j]
-                if (self.ix_min[j] == self.ix_max[j]): nrows += 1
-
-                dat = np.ndarray((nrows, ncols))
-                index = 0
-                for i in range(self.ix_min[j], self.ix_max[j] + 1):
-                    dat[index] = self.center[j] + i * width, bincounts[i - self.ix_min[j]]
-                    index += 1
-                if self.ix_min[j] == self.ix_max[j]:
-                    dat[index] = self.center[j] + self.ix_min[0] * width, self.center[j] + self.ix_min[1] * width
-                logging.debug("dat.shape = %s" % str(dat.shape))
-
-                if self.plot_meanlikes:
-                    nrows = self.ix_max[j] + 1 - self.ix_min[j]
-                    likes = np.ndarray((nrows, ncols))
-                    index = 0
-                    maxbin = max(binlikes[:self.ix_max[j] - self.ix_min[j] + 1])
-                    for i in range(self.ix_min[j], self.ix_max[j] + 1):
-                        likes[index] = self.center[j] + i * width, binlikes[i - self.ix_min[j]] / maxbin
-                        index += 1
-                    logging.debug("likes.shape = %s" % str(likes.shape))
-
-                return dat, likes
-
-        return None, None
+        return None, None, None
 
 
     def get2DContourLevels(self, bins2D, num_plot_contours=None):
@@ -1392,7 +1351,7 @@ class MCSamples(chains):
 
         corr = self.corrmatrix[j2][j]
         # keep things simple unless obvious degeneracy
-        if (abs(corr) < 0.3): corr = 0.
+        if abs(corr) < 0.3: corr = 0.
         corr = max(-self.max_corr_2D, corr)
         corr = min(self.max_corr_2D, corr)
 
@@ -1419,7 +1378,10 @@ class MCSamples(chains):
 
         # In f90, bins2D(ixmin:ixmax,iymin:iymax) and bin2Dlikes(ixmin:ixmax,iymin:iymax)
         bins2D = np.zeros((iymax - iymin + 1, ixmax - ixmin + 1))
-        bin2Dlikes = np.zeros((iymax - iymin + 1, ixmax - ixmin + 1))
+        if self.shade_meanlikes:
+            bin2Dlikes = np.zeros((iymax - iymin + 1, ixmax - ixmin + 1))
+        else:
+            bin2Dlikes = None
 
         winw = int(round(fine_fac * smooth_scale))
         imin = (ixmin - 3) * winw + 1
@@ -1452,21 +1414,21 @@ class MCSamples(chains):
                 Win[ix2 - (-winw)][ix1 - (-winw)] = np.exp(-(((ix1 * ix1) + (ix2 * ix2) - 2 * corr * ix1 * ix2)) /
                       (2 * (fine_fac * fine_fac) * (smooth_scale * smooth_scale) * (1 - corr * corr)))
 
-        if (has_prior):
+        if has_prior:
             norm = np.sum(Win)
             # In f90, prior_mask(imin:imax,jmin:jmax)
             prior_mask = np.ones((jmax - jmin + 1, imax - imin + 1))
-            if (self.has_limits_bot[j]):
+            if self.has_limits_bot[j]:
                 prior_mask[:, (ixmin * fine_fac) - imin] /= 2
                 prior_mask[:, :(ixmin * fine_fac) - imin] = 0
-            if (self.has_limits_top[j]):
+            if self.has_limits_top[j]:
                 prior_mask[:, (ixmax * fine_fac) - imin] /= 2
                 prior_mask[:, (ixmax * fine_fac) + 1 - imin:] = 0
 
-            if (self.has_limits_bot[j2]):
+            if self.has_limits_bot[j2]:
                 prior_mask[(iymin * fine_fac) - jmin, :] /= 2
                 prior_mask[:(iymin * fine_fac) - jmin, :] = 0
-            if (self.has_limits_top[j2]):
+            if self.has_limits_top[j2]:
                 prior_mask[(iymax * fine_fac) - jmin, :] /= 2
                 prior_mask[(iymax * fine_fac) + 1 - jmin:, :] = 0
 
@@ -1478,7 +1440,7 @@ class MCSamples(chains):
                 if self.shade_meanlikes:
                     bin2Dlikes[ix2 - iymin][ix1 - ixmin] = np.sum(np.multiply(Win, finebinlikes[ix2start:ix2end, ix1start:ix1end]))
 
-                if (has_prior):
+                if has_prior:
                     # correct for normalization of window where it is cut by prior boundaries
                     denom = np.sum(np.multiply(Win, prior_mask[ix2start:ix2end, ix1start:ix1end]))
                     if denom != 0.:
@@ -1497,93 +1459,47 @@ class MCSamples(chains):
                         bin2Dlikes[ix2 - iymin][ix1 - ixmin] = bin2Dlikes[ix2 - iymin][ix1 - ixmin] / bins2D[ix2 - iymin][ix1 - ixmin]
 
         bins2D = bins2D / np.max(bins2D)
-        # Get contour containing contours(:) of the probability
 
+        # Get contour containing contours(:) of the probability
         contour_levels = self.get2DContourLevels(bins2D, num_plot_contours)
 
         bins2D[np.where(bins2D < 1e-30)] = 0
 
         if writeDataToFile:
-
+            # note store things in confusing traspose form
             name = self.parName(j)
             name2 = self.parName(j2)
             plotfile = self.rootname + "_2D_%s_%s" % (name, name2)
             filename = os.path.join(self.plot_data_dir, plotfile)
-            textFileHandle = open(filename, 'w')
-            for ix1 in range(ixmin, ixmax + 1):
-                for ix2 in range(iymin, iymax + 1):
-                    textFileHandle.write("%16.7E" % (bins2D[ix2 - iymin][ix1 - ixmin]))
-                textFileHandle.write("\n")
-            textFileHandle.close()
-
-            textFileHandle = open(filename + "_y", 'w')
-            for i in range(ixmin, ixmax + 1):
-                textFileHandle.write("%16.7E\n" % (self.center[j] + i * widthx))
-            textFileHandle.close()
-
-            textFileHandle = open(filename + "_x", 'w')
-            for i in range(iymin, iymax + 1):
-                textFileHandle.write("%16.7E\n" % (self.center[j2] + i * widthy))
-            textFileHandle.close()
-
-            textFileHandle = open(filename + "_cont", 'w')
-            s_levels = [ "%16.7E" % level for level in contour_levels ]
-            textFileHandle.write("%s\n" % (" ".join(s_levels)))
-            textFileHandle.close()
-
-            if self.shade_meanlikes:
-                textFileHandle = open(filename + "_likes", 'w')
-                maxbin = np.max(bin2Dlikes)
+            with open(filename, 'w') as f:
                 for ix1 in range(ixmin, ixmax + 1):
                     for ix2 in range(iymin, iymax + 1):
-                        textFileHandle.write("%16.7E" % (bin2Dlikes[ix2 - iymin][ix1 - ixmin] / maxbin))
-                    textFileHandle.write("\n")
-                textFileHandle.close()
+                        f.write("%16.7E" % (bins2D[ix2 - iymin][ix1 - ixmin]))
+                    f.write("\n")
+
+            with open(filename + "_y", 'w') as f:
+                for i in range(ixmin, ixmax + 1):
+                    f.write("%16.7E\n" % (self.center[j] + i * widthx))
+
+            with open(filename + "_x", 'w') as f:
+                for i in range(iymin, iymax + 1):
+                    f.write("%16.7E\n" % (self.center[j2] + i * widthy))
+
+            with open(filename + "_cont", 'w') as f:
+                s_levels = [ "%16.7E" % level for level in contour_levels ]
+                f.write("%s\n" % (" ".join(s_levels)))
+
+            if self.shade_meanlikes:
+                with open(filename + "_likes", 'w') as f:
+                    maxbin = np.max(bin2Dlikes)
+                    for ix1 in range(ixmin, ixmax + 1):
+                        for ix2 in range(iymin, iymax + 1):
+                            f.write("%16.7E" % (bin2Dlikes[ix2 - iymin][ix1 - ixmin] / maxbin))
+                        f.write("\n")
         else:
-            dat, likes, cont, x, y = None, None, None, None, None
-
-            ncols = ixmax + 1 - ixmin
-            nrows = iymax + 1 - iymin
-            dat = np.ndarray((ncols, nrows))
-            irow, icol = 0, 0
-            for ix1 in range(ixmin, ixmax + 1):
-                icol = 0
-                for ix2 in range(iymin, iymax + 1):
-                    dat[irow][icol] = bins2D[ix2 - iymin][ix1 - ixmin]
-                    icol += 1
-                irow += 1
-
-            if self.shade_meanlikes:
-                maxbin = np.max(bin2Dlikes)
-                likes = np.ndarray((ncols, nrows))
-                irow, icol = 0, 0
-                for ix1 in range(ixmin, ixmax + 1):
-                    icol = 0
-                    for ix2 in range(iymin, iymax + 1):
-                        likes[irow][icol] = bin2Dlikes[ix2 - iymin][ix1 - ixmin] / maxbin
-                        icol += 1
-                    irow += 1
-
-            nlevels = len(contour_levels)
-            cont = np.ndarray(nlevels)
-            idx = 0
-            for level in contour_levels:
-                cont[idx] = level
-                idx += 1
-
-            x = np.ndarray(nrows)
-            idx = 0
-            for i in range(iymin, iymax + 1):
-                x[idx] = self.center[j2] + i * widthy
-                idx += 1
-
-            y = np.ndarray(ncols)
-            idx = 0
-            for i in range(ixmin, ixmax + 1):
-                y[idx] = self.center[j] + i * widthx
-                idx += 1
-
-            return dat, likes, cont, x, y
+            y = self.center[j2] + np.arange(iymin, iymax + 1) * widthy
+            x = self.center[j] + np.arange(ixmin, ixmax + 1) * widthx
+            return bins2D, bin2Dlikes, contour_levels, x, y
 
 
     def EdgeWarning(self, i):

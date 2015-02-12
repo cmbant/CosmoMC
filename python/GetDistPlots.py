@@ -266,7 +266,7 @@ class MCSampleAnalysis(object):
             self.ini.params.update(ini.params)
         else:
             self.ini = ini
-
+        self.ini.params['no_plots'] = False
         self.mcsamples = {}
         # Dicts. 1st key is root; 2nd key is param
         self.densities_1D = dict()
@@ -328,13 +328,15 @@ class MCSampleAnalysis(object):
             index = samples.index.get(name)
             if index is None: return None
             density = samples.Get1DDensity(index)
+            rootdata[name] = density
+        return density
 
-        if density is None: return None
-        dat, likedata = density
-        if likes:
-            return likedata
-        else:
-            return dat
+    def get_density(self, root, param, likes=False):
+        result = Density1D()
+        pts = self.get_1d(root, param, likes)
+        if pts is None: return None
+        result.x, result.pts, result.likes = pts
+        return result
 
     def get_density_grid(self, root, param1, param2, conts=2, likes=False):
         rootdata = self.densities_2D.get(root)
@@ -350,7 +352,7 @@ class MCSampleAnalysis(object):
             if index1 is None or index2 is None: return None
             samples.initParamRanges(index1)
             samples.initParamRanges(index2)
-            density = samples.Get2DPlotData(index2, index1, num_plot_contours=conts)
+            density = samples.Get2DPlotData(index1, index2, num_plot_contours=conts)
             if density is None: return None
             rootdata[key] = density
         result = Density2D()
@@ -360,15 +362,6 @@ class MCSampleAnalysis(object):
         else:
             result.pts = dat
         if conts > 0: result.contours = cont[0:conts]
-        return result
-
-    def get_density(self, root, param, likes=False):
-        result = Density1D()
-        pts = self.get_1d(root, param)
-        if pts is None: return None
-        result.x = pts[:, 0]
-        result.pts = pts[:, 1]
-        if likes: result.likes = self.get_1d(root, param, True)[:, 1]
         return result
 
     def load_single_samples(self, root):
