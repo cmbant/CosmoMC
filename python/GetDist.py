@@ -97,9 +97,7 @@ mc.plot_data_dir = plot_data_dir
 
 rootdirname = os.path.join(out_dir, rootname); mc.rootdirname = rootdirname
 
-mc.initContours(ini)
-
-if (not no_tests):
+if not no_tests:
     converge_test_limit = ini.float('converge_test_limit', mc.contours[mc.num_contours - 1])
     corr_length_thin = ini.int('corr_length_thin', 0)
     corr_length_steps = ini.int('corr_length_steps', 15)
@@ -215,7 +213,7 @@ for ix in range(1, num_3D_plots + 1):
 if (adjust_priors):
     mc.DeleteZeros()
 
-mc.updateChainBaseStatistics(ini)
+mc.updateChainBaseStatistics()
 
 mc.writeCovMatrix()
 mc.writeCorrMatrix()

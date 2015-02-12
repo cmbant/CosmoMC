@@ -394,7 +394,7 @@ class MCSampleAnalysis(object):
 
 class GetDistPlotter(object):
 
-    def __init__(self, chain_dir=None, plot_data=None, settings=None, analysis_settings=None, mcsamples=True):
+    def __init__(self, plot_data=None, chain_dir=None, settings=None, analysis_settings=None, mcsamples=True):
         """
         Set plot_data to directory name if you have pre-compputed plot_data/ directory from GetDist
         Set chain_dir to directly to use chains in the given directory (can also be a list of directories to search)
@@ -404,7 +404,7 @@ class GetDistPlotter(object):
         if chain_dir is None and plot_data is None: chain_dir = MCSamples.default_grid_root
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
-        if chain_dir is not None or mcsamples:
+        if chain_dir is not None or mcsamples and plot_data is None:
             self.sampleAnalyser = MCSampleAnalysis(chain_dir, analysis_settings)
             self.sampleAnalyser.ini.params.update({'plot_meanlikes':self.settings.plot_meanlikes})
             self.sampleAnalyser.ini.params.update({'shared_meanlikes':self.settings.shade_meanlikes})
@@ -1193,7 +1193,7 @@ class GetDistPlotter(object):
 
 
 def sample_plots():
-    g = GetDistPlotter('main/plot_data')
+    g = GetDistPlotter(plot_data='main/plot_data')
     g.settings.setWithSubplotSize(3)
     g.settings.param_names_for_labels = 'clik_latex.paramnames'
 
