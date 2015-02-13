@@ -400,7 +400,7 @@ class GetDistPlotter(object):
         if chain_dir is not None or mcsamples and plot_data is None:
             self.sampleAnalyser = MCSampleAnalysis(chain_dir, analysis_settings)
             self.sampleAnalyser.ini.params.update({'plot_meanlikes':self.settings.plot_meanlikes})
-            self.sampleAnalyser.ini.params.update({'shared_meanlikes':self.settings.shade_meanlikes})
+            self.sampleAnalyser.ini.params.update({'shade_meanlikes':self.settings.shade_meanlikes})
         else:
             self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
         self.newPlot()
