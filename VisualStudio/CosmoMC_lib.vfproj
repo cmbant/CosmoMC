@@ -107,7 +107,6 @@
 		<File RelativePath="..\source\supernovae_JLA.f90"/>
 		<File RelativePath="..\source\supernovae_SNLS.f90"/>
 		<File RelativePath="..\source\supernovae_Union2.f90"/>
-		<File RelativePath="..\source\szcounts.f90"/>
 		<File RelativePath="..\source\wigglez.f90"/>
 		<File RelativePath="..\source\wl.f90"/></Filter>
 		<Filter Name="Utils">

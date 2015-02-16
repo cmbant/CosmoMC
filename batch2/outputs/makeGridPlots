@@ -1,0 +1,11 @@
+
+
+python python/makePlots.py main plots/compare_data --compare_data plikHM_TT_lowTEB plikHM_TT_lowTEB_lensing plikHM_TT_lowTEB_BAO plikHM_TTTEEE_lowTEB --param meffsterile
+
+python python/makePlots.py main plots/compare_model --compare_paramtag base --noimportance --data plikHM
+
+python python/makePlots.py main plots/compare_importance --compare_importance --data plikHM
+
+python python/makePlots.py main plots/compare_TT_likes --group main checks --compare_replacing CamSpecHM cleanCMH plikHM plikDS --allhave --legend_ncol=4 --musthave_data TT
+
+python python/makePlots.py main plots/compare_likes --compare_replacing plikHM CamSpecHM plikDS --legend_ncol=3

@@ -1,0 +1,4 @@
+python python/copyGridFiles.py main /scratch/aml1005/PLA2015/CosmoParams_base_plikHM_TT_lowTEB_R2.00.zip --converge 0.1 --dist --chains --musthave_data plikHM TT lowTEB --paramtag base --remove_burn_fraction 0.3 --skip_data lmax801 lmin802 &
+python python/copyGridFiles.py main /scratch/aml1005/PLA2015/CosmoParams_base_plikHM_R2.00.zip --converge 0.1 --dist --chains --musthave_data plikHM --paramtag base --remove_burn_fraction 0.3 --skip_data lmax801 lmin802  &
+python python/copyGridFiles.py main /scratch/aml1005/PLA2015/CosmoParams_base_lensonly_R2.00.zip --converge 0.1 --dist --chains --data lensonly --paramtag base --remove_burn_fraction 0.3 &
+python python/copyGridFiles.py main /scratch/aml1005/PLA2015/CosmoParams_R2.00.zip --converge 0.1 --dist --chains --data plikHM plikDS lensonly WLonlyHeymans WMAP --remove_burn_fraction 0.3 --skip_data lmax801 lmin802  &

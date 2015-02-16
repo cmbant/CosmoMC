@@ -7,12 +7,12 @@
 
 <H2>Python scripts for plotting, analysing and grids of runs</H3>
 
-See the ./python directory for scripts, which mostly require Python 2.7+. To configure your system to 
+See the ./python directory for scripts, which mostly require Python 2.7+. To configure your system to
 work with the script libraries add CosmoMC's python path to your environment variables, e.g. in ~/.bashrc (or ~/bash_profile, etc):
 <pre>
 export PYTHONPATH=COSMOMC..PATH/python:$PYTHONPATH
 </pre>
-where COSOMC..PATH is the full path of wherever you installed CosmoMC.
+where COSOMC..PATH is the full path of wherever you installed CosmoMC. If you have problems on a Mac or need to install python, see <A HREF="#installpython">Installing Python</A>.
 <P>
 Scripts for plotting and analysing are described below. See also <A HREF="readme_grids.html">grid scripts</A> and <A HREF="readme_gui.html">GetDist GUI</A> documentation.
 For plotting from Planck chains see the <A HREF="readme_planck.html">Planck readme</A> for how to download and install.
@@ -24,8 +24,8 @@ For plotting from Planck chains see the <A HREF="readme_planck.html">Planck read
 </UL>
 <A NAME="plotting_scripts">
 <h2>Plotting scripts</h2>
-GetDistPlots (directly, or via planckStyle) are used to make plots from chain results using your own custom scripts. 
-For <A HREF="readme_grids.html">grids</A> of chains, as the Planck downloads, you can also use <B>python python/makePlots.py PLA  ..</B> 
+GetDistPlots (directly, or via planckStyle) are used to make plots from chain results using your own custom scripts.
+For <A HREF="readme_grids.html">grids</A> of chains, as the Planck downloads, you can also use <B>python python/makePlots.py PLA  ..</B>
 to make plots (en masse if you wish) for quick inspection of grid results.
 <P>
 The sample scripts make use of <b>planckStyle</b>. This can be interchanged with <b>GetDistPlots</b> if you do not want
@@ -100,12 +100,12 @@ These functions give more fine grained control for adding things to a figure:
     def make_figure(self, nplot=1, nx=None, ny=None, xstretch=1, ystretch=1):
 
     def add_1d(self, root, param, plotno=0, normalized=False, **kwargs)
-    
+
     def add_2d_contours(self, root, param1=None, param2=None, plotno=0, of=None, cols=None,
                             add_legend_proxy=True, param_pair=None, density=None, alpha=None, **kwargs):
     def add_2d_shading(self, root, param1, param2):
     def add_3d_scatter(self, root, in_params, color_bar=True, alpha=1, extra_thin=1, **ax_args):
- 
+
     def finish_plot(self, legend_labels=None, legend_loc=None, line_offset=0, legend_ncol=None, label_order=None, no_gap=False, no_extra_legend_space=False, no_tight=False):
         has_legend = self.settings.line_labels and legend_labels and len(legend_labels) > 1
 </pre>
@@ -146,7 +146,7 @@ print 'mean, err = ', samples.mean(derived), samples.std(derived)
 print '95% limits: ', samples.twoTailLimits(derived, 0.95)
 </pre>
 </blockquote>
-Here p.omegam is a vector of parameter values, similar p.sigma8; chains.mean and chains.var sum the samples with the corresponding weights to calculate the result.
+Here p.omegam is a vector of parameter values, similar p.sigma8; samples.mean and samples.std sum the samples with the corresponding weights to calculate the result.
 <P>
 See python/getdist/chains.py and python/getdist/MCSamples.py for other functions you can use.
  Use GetDist or MCSamples.py if you want to reproduce Planck results: chains.py only does tail integrals, it does not check for skewness or calculate credible intervals for skewed distributions. MCSamples gives you code access to most getdist results.
@@ -177,7 +177,7 @@ which tells you that &Omega;<sub>m</sub>H<sub>0</sub><sup>2.97</sup>is constrain
 <A NAME="derived"></A>
 <h3>Adding and plotting new derived parameters</h3>
 You can use the <b>addDerived</b> function of MCSamples to add a new parameter to existing chains, which can then be used like any of the original parameters.
-An example gives the idea (from batch2/outputs/DA-H-BAO.py), which adds a new parameter with name tag 'rsH' which is a function of the original parameters 'Hubble057' and 'rdrag':  
+An example gives the idea (from batch2/outputs/DA-H-BAO.py), which adds a new parameter with name tag 'rsH' which is a function of the original parameters 'Hubble057' and 'rdrag':
 <pre>
     p = samples.getParams()
     rd_fid = 149.28
@@ -205,5 +205,29 @@ Multi-purpose use and utility scripts include
 
 </UL>
 
+<A NAME="installpython"></A>
+<H3>Installing Python Windows</H3>
+See the <A HREF="https://www.python.org/downloads/windows/">Python 2.7 download</A>.
+Also install Matplotlib and PySide standard packages using standard methods, or download builds from
+ <A HREF="http://www.lfd.uci.edu/~gohlke/pythonlibs/">here</A>.
+<H3>Installing Python on a Mac</H3>
+There are several options, here's one:
+<UL>
+<LI>Install <A HREF="https://www.macports.org/install.php">MacPorts</A>, following the instructions on that page (including installing XCode and command line tools first).
+<LI>Then from Terminal do
+<pre>
+   sudo port install python27
+   sudo port select --set python python27
+   sudo port install py-matplotlib
+   sudo port install py-scipy
+   sudo port install py-pyside
+   sudo port install texlive-latex-extra
+   sudo port install texlive-fonts-recommended
+   sudo port install dvipng
+</pre>
+</UL>
+Check that <b>python --version</b> says 2.7.9. If not, edit your system path to remove other python installations.
+<H4>Writing Python</H4>
+While not needed for GetDist/Cosmomc scripts to run, you may also find an integrated development environment like <A hREF="http://pydev.org/">PyDev</A> or <A HREF="https://www.jetbrains.com/pycharm/">PyCharm</A> useful (they are similar). This will let you run in one click, check syntax as you type, format nicely, etc.
 
 </body> 
