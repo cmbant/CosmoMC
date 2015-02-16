@@ -124,7 +124,7 @@ class Kernel1D(object):
         #  www3.stat.sinica.edu.tw/statistica/oldpdf/A6n414.pdf after Eq 1b.
         # Note odd term sign flip because here Win(X) = K(-X)
         a0 = np.cumsum(self.Win)
-        p = np.arange(-self.winw, self.winw + 1)  # / self.h
+        p = np.arange(-self.winw, self.winw + 1)
         a1 = np.cumsum(p * self.Win)
         a2 = np.cumsum(p ** 2 * self.Win)
         denom = a0 * a2 - a1 ** 2
@@ -1395,7 +1395,6 @@ class MCSamples(chains):
             finebins[ix2][ix1] += self.weights[i]
             if self.shade_meanlikes:
                 finebinlikes[ix2][ix1] += likeweights[i]
-
         # In f90, Win(-winw:winw,-winw:winw)
         Win = np.zeros(((2 * winw) + 1, (2 * winw) + 1))
         indexes = range(-winw, winw + 1)
@@ -1404,23 +1403,6 @@ class MCSamples(chains):
             for ix2 in indexes:
                 Win[ix2 - (-winw)][ix1 - (-winw)] = np.exp(-(ix1 ** 2 + ix2 ** 2 - 2 * corr * ix1 * ix2) / signorm)
 
-        if has_prior:
-            norm = np.sum(Win)
-            # In f90, prior_mask(imin:imax,jmin:jmax)
-            prior_mask = np.ones((jmax - jmin + 1, imax - imin + 1))
-            if self.has_limits_bot[j]:
-                prior_mask[:, (ixmin * fine_fac) - imin] /= 2
-                prior_mask[:, :(ixmin * fine_fac) - imin] = 0
-            if self.has_limits_top[j]:
-                prior_mask[:, (ixmax * fine_fac) - imin] /= 2
-                prior_mask[:, (ixmax * fine_fac) + 1 - imin:] = 0
-
-            if self.has_limits_bot[j2]:
-                prior_mask[(iymin * fine_fac) - jmin, :] /= 2
-                prior_mask[:(iymin * fine_fac) - jmin, :] = 0
-            if self.has_limits_top[j2]:
-                prior_mask[(iymax * fine_fac) - jmin, :] /= 2
-                prior_mask[(iymax * fine_fac) + 1 - jmin:, :] = 0
 
         bins2D = fftconvolve(finebins[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
                                        ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
@@ -1438,26 +1420,27 @@ class MCSamples(chains):
             bin2Dlikes = None
 
         if has_prior:
+            # simple boundary correction by normalization
+            prior_mask = np.ones((jmax - jmin + 1, imax - imin + 1))
+            if self.has_limits_bot[j]:
+                prior_mask[:, (ixmin * fine_fac) - imin] /= 2
+                prior_mask[:, :(ixmin * fine_fac) - imin] = 0
+            if self.has_limits_top[j]:
+                prior_mask[:, (ixmax * fine_fac) - imin] /= 2
+                prior_mask[:, (ixmax * fine_fac) + 1 - imin:] = 0
+
+            if self.has_limits_bot[j2]:
+                prior_mask[(iymin * fine_fac) - jmin, :] /= 2
+                prior_mask[:(iymin * fine_fac) - jmin, :] = 0
+            if self.has_limits_top[j2]:
+                prior_mask[(iymax * fine_fac) - jmin, :] /= 2
+                prior_mask[(iymax * fine_fac) + 1 - jmin:, :] = 0
+
             denom = fftconvolve(prior_mask[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
                                        ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
                               Win, 'valid')[::fine_fac, ::fine_fac]
+            norm = np.sum(Win)
             bins2D[denom > 0] *= norm / denom[denom > 0]
-            if False:
-                for ix1 in range(ixmin, ixmax + 1):
-                    for ix2 in range(iymin, iymax + 1):
-                        ix1start, ix1end = ix1 * fine_fac - winw - imin, ix1 * fine_fac + winw + 1 - imin
-                        ix2start, ix2end = ix2 * fine_fac - winw - jmin, ix2 * fine_fac + winw + 1 - jmin
-                        # bins2D[ix2 - iymin][ix1 - ixmin] = np.sum(np.multiply(Win, finebins[ix2start:ix2end, ix1start:ix1end]))
-                        # if self.shade_meanlikes:
-                        #    bin2Dlikes[ix2 - iymin][ix1 - ixmin] = np.sum(np.multiply(Win, finebinlikes[ix2start:ix2end, ix1start:ix1end]))
-
-                            # correct for normalization of window where it is cut by prior boundaries
-                        denom = np.sum(np.multiply(Win, prior_mask[ix2start:ix2end, ix1start:ix1end]))
-                        if denom != 0.:
-                            edge_fac = norm / denom
-                        else:
-                            edge_fac = 0.
-                        bins2D[ix2 - iymin][ix1 - ixmin] *= edge_fac
 
         bins2D = bins2D / np.max(bins2D)
 
