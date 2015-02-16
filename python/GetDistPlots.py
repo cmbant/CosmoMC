@@ -266,7 +266,7 @@ class MCSampleAnalysis(object):
             self.ini.params.update(ini.params)
         else:
             self.ini = ini
-
+        self.ini.params['no_plots'] = False
         self.mcsamples = {}
         # Dicts. 1st key is root; 2nd key is param
         self.densities_1D = dict()
@@ -328,13 +328,15 @@ class MCSampleAnalysis(object):
             index = samples.index.get(name)
             if index is None: return None
             density = samples.Get1DDensity(index)
+            rootdata[name] = density
+        return density
 
-        if density is None: return None
-        dat, likedata = density
-        if likes:
-            return likedata
-        else:
-            return dat
+    def get_density(self, root, param, likes=False):
+        result = Density1D()
+        pts = self.get_1d(root, param, likes)
+        if pts is None: return None
+        result.x, result.pts, result.likes = pts
+        return result
 
     def get_density_grid(self, root, param1, param2, conts=2, likes=False):
         rootdata = self.densities_2D.get(root)
@@ -350,7 +352,7 @@ class MCSampleAnalysis(object):
             if index1 is None or index2 is None: return None
             samples.initParamRanges(index1)
             samples.initParamRanges(index2)
-            density = samples.Get2DPlotData(index2, index1, num_plot_contours=conts)
+            density = samples.Get2DPlotData(index1, index2, num_plot_contours=conts)
             if density is None: return None
             rootdata[key] = density
         result = Density2D()
@@ -360,15 +362,6 @@ class MCSampleAnalysis(object):
         else:
             result.pts = dat
         if conts > 0: result.contours = cont[0:conts]
-        return result
-
-    def get_density(self, root, param, likes=False):
-        result = Density1D()
-        pts = self.get_1d(root, param)
-        if pts is None: return None
-        result.x = pts[:, 0]
-        result.pts = pts[:, 1]
-        if likes: result.likes = self.get_1d(root, param, True)[:, 1]
         return result
 
     def load_single_samples(self, root):
@@ -394,7 +387,7 @@ class MCSampleAnalysis(object):
 
 class GetDistPlotter(object):
 
-    def __init__(self, chain_dir=None, plot_data=None, settings=None, analysis_settings=None, mcsamples=True):
+    def __init__(self, plot_data=None, chain_dir=None, settings=None, analysis_settings=None, mcsamples=True):
         """
         Set plot_data to directory name if you have pre-compputed plot_data/ directory from GetDist
         Set chain_dir to directly to use chains in the given directory (can also be a list of directories to search)
@@ -404,10 +397,10 @@ class GetDistPlotter(object):
         if chain_dir is None and plot_data is None: chain_dir = MCSamples.default_grid_root
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
-        if chain_dir is not None or mcsamples:
+        if chain_dir is not None or mcsamples and plot_data is None:
             self.sampleAnalyser = MCSampleAnalysis(chain_dir, analysis_settings)
             self.sampleAnalyser.ini.params.update({'plot_meanlikes':self.settings.plot_meanlikes})
-            self.sampleAnalyser.ini.params.update({'shared_meanlikes':self.settings.shade_meanlikes})
+            self.sampleAnalyser.ini.params.update({'shade_meanlikes':self.settings.shade_meanlikes})
         else:
             self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
         self.newPlot()
@@ -1193,7 +1186,7 @@ class GetDistPlotter(object):
 
 
 def sample_plots():
-    g = GetDistPlotter('main/plot_data')
+    g = GetDistPlotter(plot_data='main/plot_data')
     g.settings.setWithSubplotSize(3)
     g.settings.param_names_for_labels = 'clik_latex.paramnames'
 

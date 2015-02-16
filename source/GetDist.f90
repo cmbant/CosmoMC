@@ -132,6 +132,7 @@
     logical :: plots_only, no_plots
     real(mcp) :: smooth_scale_1D=-1.d0, smooth_scale_2D = 1.d0
     real(mcp) :: credible_interval_threshold = 0.05d0
+    integer :: boundary_correction_method = 1  !0 old basic norm correction, 1 linear boundary kernel
 
     contains
 
@@ -1028,7 +1029,7 @@
 
     subroutine Get1DDensity(j)
     integer j,i,ix2
-    real(mcp), allocatable :: binlikes(:), bincounts(:), binsraw(:), win(:), prior_mask(:)
+    real(mcp), allocatable :: binlikes(:), bincounts(:), binsraw(:), prior_mask(:)
     real(mcp), allocatable :: finebins(:),finebinlikes(:)
     integer ix
     integer imin, imax, winw, end_edge, fine_edge
@@ -1038,6 +1039,8 @@
     integer, parameter :: fine_fac = 10
     real(mcp) :: smooth_1D, opt_width
     Type(TTextFile) :: F
+    Type(TKernel1D) :: Kernel
+    real(mcp) :: normed, corrected, xP, binnorm
 
     ix = colix(j)
 
@@ -1142,13 +1145,10 @@
     end if
     deallocate(binsraw)
 
-    allocate(Win(-winw:winw))
-    do i=-winw,winw
-        Win(i)=exp(-i**2/(fine_fac*smooth_1D)**2/2)
-    end do
-    Win=Win/sum(win)
     has_prior = has_limits_bot(ix) .or. has_limits_top(ix)
-    if (has_prior) then
+    call Kernel%Init(winw, fine_fac*smooth_1D, has_prior)
+
+    if (has_prior .and. boundary_correction_method==0) then
         allocate(prior_mask(imin-fine_edge:imax+fine_edge))
         prior_mask =1
         if (has_limits_bot(ix)) then
@@ -1166,14 +1166,33 @@
     if (has_limits_top(ix)) imax=ix_max(j)*fine_fac
     call Density1D%Init(imax-imin+1,fine_width)
     do i = imin,imax
-        Density1D%P(i-imin+1) = sum(win* finebins(i-winw:i+winw))
+        Density1D%P(i-imin+1) = sum(Kernel%Win* finebins(i-winw:i+winw))
         Density1D%X(i-imin+1) = center(j) + i*fine_width
-        if (has_prior .and. Density1D%P(i-imin+1)>0) then
+        if (boundary_correction_method==0 .and. has_prior .and. Density1D%P(i-imin+1)>0) then
             !correct for normalization of window where it is cut by prior boundaries
-            edge_fac=1/sum(win*prior_mask(i-winw:i+winw))
+            edge_fac=1/sum(Kernel%win*prior_mask(i-winw:i+winw))
             Density1D%P(i-imin+1)=Density1D%P(i-imin+1)*edge_fac
         end if
     end do
+    if (boundary_correction_method==1) then
+        if (has_limits_bot(ix)) then
+            do i=0, winw
+                normed = Density1D%P(i+1)/Kernel%a0(i)
+                xP =  sum(Kernel%xWin* finebins(imin+i-winw:imin+i+winw))
+                corrected = Density1D%P(i+1) * Kernel%boundary_K(i) + xP* Kernel%boundary_xK(i)
+                Density1D%P(i+1) = normed * exp(corrected/normed -1)
+            end do
+        end if
+        if (has_limits_top(ix)) then
+            do i = imax-winw+1, imax
+                normed = Density1D%P(i-imin+1)/Kernel%a0(imax-i)
+                xP =  sum(Kernel%xWin* finebins(i-winw:i+winw))
+                corrected = Density1D%P(i-imin+1) * Kernel%boundary_K(imax-i) - xP* Kernel%boundary_xK(imax-i)
+                Density1D%P(i-imin+1) = normed * exp(corrected/normed -1)
+            end do
+        end if
+    end if
+
     maxbin = maxval(Density1D%P)
     if (maxbin==0) then
         write (*,*) 'no samples in bin, param: '//trim(NameMapping%NameOrNumber(colix(j)-2))
@@ -1183,33 +1202,28 @@
     call Density1D%InitSpline()
 
     if (.not. no_plots) then
+        !Output values for plots
         allocate(binCounts(ix_min(j):ix_max(j)))
-        bincounts=0
+        bincounts = density1D%P( ix_min(j)*fine_fac - imin+1:ix_max(j)*fine_fac - imin + 1: fine_fac)
         if (plot_meanlikes ) then
             allocate(binLikes(ix_min(j):ix_max(j)))
             binlikes = 0
             if (mean_loglikes) binlikes=logZero
+            do ix2=ix_min(j), ix_max(j)
+                binnorm = sum(Kernel%win* finebins(ix2*fine_fac-winw:ix2*fine_fac+winw))
+                if (binnorm>0) then
+                    binlikes(ix2)=  sum(Kernel%win* finebinlikes(ix2*fine_fac-winw:ix2*fine_fac+winw))/binnorm
+                end if
+            end do
+            if (mean_loglikes) then
+                maxbin = minval(binlikes)
+                where (binlikes - maxbin < 30)
+                    binlikes = exp(-(binlikes- maxbin))
+                elsewhere
+                    binlikes = 0
+                end where
+            endif
         end if
-        !Output values for plots
-        do ix2=ix_min(j), ix_max(j)
-            bincounts(ix2) = sum(win* finebins(ix2*fine_fac-winw:ix2*fine_fac+winw))
-            if (plot_meanlikes .and. bincounts(ix2)>0) &
-                binlikes(ix2)=  sum(win* finebinlikes(ix2*fine_fac-winw:ix2*fine_fac+winw))/bincounts(ix2)
-            if (has_prior) then
-                !correct for normalization of window where it is cut by prior boundaries
-                edge_fac=1/sum(win*prior_mask(ix2*fine_fac-winw:ix2*fine_fac+winw))
-                bincounts(ix2) = bincounts(ix2)*edge_fac
-            end if
-        end do
-        bincounts=bincounts/maxbin
-        if (plot_meanlikes .and. mean_loglikes) then
-            maxbin = minval(binlikes)
-            where (binlikes - maxbin < 30)
-                binlikes = exp(-(binlikes- maxbin))
-            elsewhere
-                binlikes = 0
-            end where
-        endif
 
         fname = trim(dat_file_name(rootname,j))
         filename = plot_data_dir// fname
@@ -1517,7 +1531,7 @@
 
     if (plot_ext=='py') then
         write(unit,'(a)') 'import GetDistPlots, os'
-        write(unit,'(a)') 'g=GetDistPlots.GetDistPlotter('''// plot_data_dir//''')'
+        write(unit,'(a)') 'g=GetDistPlots.GetDistPlotter(plot_data='''// plot_data_dir//''')'
         write(unit,'(a)') 'g.settings.setWithSubplotSize('//trim(RealToStr(subplot_size))//')'
         write(unit,'(a)') 'outdir='''//out_dir//''''
         write(unit,'(a)', advance='NO') 'roots=['''//trim(rootname)//''''
@@ -1896,6 +1910,7 @@
     if (smooth_scale_1D>0 .and. smooth_scale_1D>1) write(*,*) 'WARNING: smooth_scale_1D>1 is oversmoothed'
     if (smooth_scale_1D>0 .and. smooth_scale_1D>1.9) stop 'smooth_scale_1D>1 is now in stdev units'
     credible_interval_threshold =Ini%Read_Double('credible_interval_threshold',credible_interval_threshold)
+    boundary_correction_method = Ini%Read_Int('boundary_correction_method',boundary_correction_method)
 
     ignorerows = Ini%Read_Double('ignore_rows',0.d0)
 

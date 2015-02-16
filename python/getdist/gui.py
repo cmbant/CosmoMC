@@ -6,17 +6,21 @@ import logging
 
 try: import argparse
 except:
-    print 'use "module load" to load python 2.7'
+    print 'use "module load" to load python 2.7, or see docs/readme_python.html for how to install'
     sys.exit()
 
 try:
     from PySide.QtGui  import QApplication
     os.environ['QT_API'] = 'pyside'
 except ImportError:
-    print "Can't import PySide modules."
+    print "Can't import PySide modules. See docs/readme_python.html for how to install."
     sys.exit()
 
-from getdist.MainWindow import MainWindow
+try:
+    from getdist.MainWindow import MainWindow
+except ImportError:
+    print "Configure your PYTHONPATH as described in the readme!"
+    sys.exit()
 
 parser = argparse.ArgumentParser(description='GetDist GUI')
 parser.add_argument('-v', '--verbose', help='verbose', action="store_true")

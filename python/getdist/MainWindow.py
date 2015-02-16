@@ -9,6 +9,7 @@ import matplotlib
 import numpy as np
 from iniFile import iniFile
 from getdist import MCSamples
+from sys import platform
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -284,6 +285,7 @@ class MainWindow(QMainWindow):
         hbox = QHBoxLayout()
         hbox.addWidget(splitter)
         self.centralWidget.setLayout(hbox)
+        self.canvas = None
         self.readSettings()
 
     def closeEvent(self, event):
@@ -295,8 +297,10 @@ class MainWindow(QMainWindow):
 
     def readSettings(self):
         settings = self.getSettings()
-        pos = settings.value("pos", QPoint(200, 200))
-        size = settings.value("size", QSize(400, 400))
+        h = min(QApplication.desktop().screenGeometry().height() * 4 / 5., 700)
+        size = QSize(min(QApplication.desktop().screenGeometry().width() * 4 / 5., 900), h)
+        pos = settings.value("pos", QPoint(100, 100))
+        size = settings.value("size", size)
         self.resize(size)
         self.move(pos)
 
@@ -373,7 +377,7 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage("")
 
         dlg = DialogMargeStats(self, stats, rootname)
-        dlg.exec_()
+        dlg.show()
 
     def showSettings(self):
         """
@@ -1011,14 +1015,14 @@ class MainWindow(QMainWindow):
             if hasattr(self, "canvas"): del self.canvas
             if hasattr(self, "toolbar"): del self.toolbar
             self.canvas = FigureCanvas(self.plotter.fig)
-            self.toolbar = NavigationToolbar(self.canvas, self)
-            self.plotWidget.layout().addWidget(self.toolbar)
+            if platform <> "darwin":
+                # for some reason the toolbar crashes out on a Mac; just don't show it
+                self.toolbar = NavigationToolbar(self.canvas, self)
+                self.plotWidget.layout().addWidget(self.toolbar)
             self.plotWidget.layout().addWidget(self.canvas)
             self.canvas.draw()
             # self.plotWidget.update()
             self.plotWidget.show()
-
-
 
 # ==============================================================================
 

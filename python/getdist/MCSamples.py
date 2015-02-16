@@ -9,10 +9,12 @@ import copy
 import numpy as np
 from scipy.interpolate import splrep, splev
 from scipy.stats import norm
+from scipy.signal import fftconvolve
 import pickle
 from iniFile import iniFile
 from getdist.chains import chains, chainFiles, lastModified
 from getdist import ResultObjs
+import time
 # =============================================================================
 
 version = 5
@@ -108,22 +110,50 @@ class Ranges(object):
 
 # =============================================================================
 
+class Kernel1D(object):
+
+    def __init__(self, winw, h, boundary=False):
+        self.winw = winw
+        self.h = h
+        Win = np.exp(-np.arange(-winw, winw + 1) ** 2 / (2.*h ** 2))
+        self.Win = Win / np.sum(Win)
+        if boundary: self.get1DBoundaryCorrectionFactors()
+
+    def get1DBoundaryCorrectionFactors(self):
+        # linear boundary kernel, e.g. Jones 1993, Jones and Foster 1996
+        #  www3.stat.sinica.edu.tw/statistica/oldpdf/A6n414.pdf after Eq 1b.
+        # Note odd term sign flip because here Win(X) = K(-X)
+        a0 = np.cumsum(self.Win)
+        p = np.arange(-self.winw, self.winw + 1)
+        a1 = np.cumsum(p * self.Win)
+        a2 = np.cumsum(p ** 2 * self.Win)
+        denom = a0 * a2 - a1 ** 2
+        self.xWin = p * self.Win
+        self.boundary_K = a2[self.winw:] / denom[self.winw:]
+        self.boundary_xK = a1[self.winw:] / denom[self.winw:]
+        self.a0 = a0[self.winw:]
+
+
 class Density1D(object):
 
-    SPLINE_DANGLE = 1.e30
-
-    def __init__(self, n, spacing):
+    def __init__(self, xmin, n, spacing, P=None):
         self.n = n
-        self.X = np.zeros(n)
-        self.P = np.zeros(n)
+        self.X = xmin + np.arange(n) * float(spacing)
+        if P is not None:
+            self.P = P
+        else:
+            self.P = np.zeros(n)
         self.spacing = float(spacing)
 
     def InitSpline(self):
         self.spl = splrep(self.X, self.P, s=0)
 
     def Prob(self, x):
-        # Assuming x is a single value
-        return splev([x], self.spl)
+        if isinstance(x, np.ndarray):
+            return splev(x, self.spl)
+        else:
+            return splev([x], self.spl)
+
 
     def initLimitGrids(self, factor=100):
         class InterpGrid(object): pass
@@ -218,6 +248,7 @@ class MCSamples(chains):
         self.num_bins_2D = 40
         self.smooth_scale_1D = 0.25
         self.smooth_scale_2D = 2
+        self.boundary_correction_method = 1
         self.max_corr_2D = 0.95
         self.num_contours = 2
         self.contours = [0.68, 0.95]
@@ -281,6 +312,9 @@ class MCSamples(chains):
             raise Exception('WARNING: smooth_scale_1D>1 is oversmoothed')
         if self.smooth_scale_1D > 0 and self.smooth_scale_1D > 1.9:
             raise Exception('smooth_scale_1D>1 is now in stdev units')
+
+        self.boundary_correction_method = ini.int('boundary_correction_method',
+                                                  getattr(self, 'boundary_correction_method', 1))
 
         self.no_plots = ini.bool('no_plots', False)
         self.shade_meanlikes = ini.bool('shade_meanlikes', False)
@@ -1065,24 +1099,26 @@ class MCSamples(chains):
         self.param_min[j] = np.min(paramVec)
         self.param_max[j] = np.max(paramVec)
         paramConfid = paramConfid or self.initParamConfidenceData(paramVec)
-        self.range_min[j] = min(self.ND_limit_bot[1, j], self.confidence(paramConfid, 0.005, upper=False))
-        self.range_max[j] = max(self.ND_limit_top[1, j], self.confidence(paramConfid, 0.005, upper=True))
+        self.range_min[j] = min(self.ND_limit_bot[1, j], self.confidence(paramConfid, 0.001, upper=False))
+        self.range_max[j] = max(self.ND_limit_top[1, j], self.confidence(paramConfid, 0.001, upper=True))
 
         width = (self.range_max[j] - self.range_min[j]) / (self.num_bins + 1)
         if (width == 0):
             return width, smooth_1D, end_edge
 
         logging.debug("Smooth scale ... ")
-        if (self.smooth_scale_1D <= 0):
-            # Automatically set smoothing scale from rule of thumb for Gaussian
+        if self.smooth_scale_1D <= 0:
+            # Automatically set smoothing scale from rule of thumb for Gaussian, e.g. see
+            # http://en.wikipedia.org/wiki/Kernel_density_estimation
+            # 1/5 power is insensitive so just use v crude estimate of effective number
             opt_width = 1.06 / math.pow(max(1.0, self.numsamp / self.max_mult), 0.2) * self.sddev[j]
             smooth_1D = opt_width / width * abs(self.smooth_scale_1D)
-            if (smooth_1D < 0.5):
+            if smooth_1D < 0.5:
                 print 'Warning: num_bins not large enough for optimal density - ' + self.parName(j)
             smooth_1D = max(1.0, smooth_1D)
-        elif (self.smooth_scale_1D < 1.0):
+        elif self.smooth_scale_1D < 1.0:
             smooth_1D = self.smooth_scale_1D * self.sddev[j] / width
-            if (smooth_1D < 1):
+            if smooth_1D < 1:
                 print 'Warning: num_bins not large enough to well sample smoothed density - ' + self.parName(j)
         else:
             smooth_1D = self.smooth_scale_1D
@@ -1090,7 +1126,7 @@ class MCSamples(chains):
         end_edge = int(round(smooth_1D * 2))
 
         logging.debug("Limits ... ")
-        if (self.has_limits_bot[j]):
+        if self.has_limits_bot[j]:
             if ((self.range_min[j] - self.limmin[j] > (width * end_edge)) and
                  (self.param_min[j] - self.limmin[j] > (width * smooth_1D))):
                 # long way from limit
@@ -1098,7 +1134,7 @@ class MCSamples(chains):
             else:
                 self.range_min[j] = self.limmin[j]
 
-        if (self.has_limits_top[j]):
+        if self.has_limits_top[j]:
             if ((self.limmax[j] - self.range_max[j] > (width * end_edge)) and
                 (self.limmax[j] - self.param_max[j] > (width * smooth_1D))):
                 self.has_limits_top[j] = False
@@ -1106,7 +1142,7 @@ class MCSamples(chains):
                 self.range_max[j] = self.limmax[j]
         self.has_limits[j] = self.has_limits_top[j] or self.has_limits_bot[j]
 
-        if (self.has_limits_top[j]):
+        if self.has_limits_top[j]:
             self.center[j] = self.range_max[j]
         else:
             self.center[j] = self.range_min[j]
@@ -1148,7 +1184,7 @@ class MCSamples(chains):
         fine_min = imin - fine_edge
         finebins = np.zeros((imax + fine_edge) - fine_min + 1)
 
-        if (self.plot_meanlikes):
+        if self.plot_meanlikes:
             # In f90, finebinlikes(imin-fine_edge:imax+fine_edge)
             finebinlikes = np.zeros((imax + fine_edge) - fine_min + 1)
 
@@ -1169,70 +1205,70 @@ class MCSamples(chains):
         minix = np.min(ix2)
         counts = np.bincount(ix2 - minix, weights=self.weights)
         finebins[minix - fine_min:minix - fine_min + len(counts)] = counts
-        if (self.plot_meanlikes):
-            if (self.mean_loglikes):
+        if self.plot_meanlikes:
+            if self.mean_loglikes:
                 w = self.weights * self.loglikes
             else:
                 w = self.weights * np.exp(self.meanlike - self.loglikes)
             counts = np.bincount(ix2 - minix, weights=w)
             finebinlikes[minix - fine_min:minix - fine_min + len(counts)] = counts
-#         for i in range(len(paramVec)):
-#            ix2 = int(round((paramVec[i] - self.center[j]) / width))
-#           if ((ix2 <= self.ix_max[j]) and (ix2 >= self.ix_min[j])):
-#                binsraw[ix2 - self.ix_min[j]] += self.weights[i]
-#            ix2 = int(round((paramVec[i] - self.center[j]) / fine_width))
-#            finebins[ix2 - fine_min] += self.weights[i]
-#            if (self.plot_meanlikes):
-#                if (self.mean_loglikes):
-#                    finebinlikes[ix2 - fine_min] += self.weights[i] * self.loglikes[i]
-#                else:
-#                    finebinlikes[ix2 - fine_min] += self.weights[i] * np.exp(self.meanlike - self.loglikes[i])
 
-        if (self.ix_min[j] <> self.ix_max[j]):
+        if self.ix_min[j] <> self.ix_max[j]:
             # account for underweighting near edges
-            if ((not self.has_limits_bot[j]) and (binsraw[end_edge - 1] == 0) and
-                 (binsraw[end_edge] > np.max(binsraw) / 15)):
+            if (not self.has_limits_bot[j] and binsraw[end_edge - 1] == 0 and
+                 binsraw[end_edge] > np.max(binsraw) / 15):
                 self.EdgeWarning(j)
-            if ((not self.has_limits_top[j]) and (binsraw[self.ix_max[j] - end_edge + 1 - self.ix_min[j]] == 0) and
-                 (binsraw[self.ix_max[j] - end_edge + 1 - self.ix_min[j]] > np.max(binsraw) / 15)):
+            if (not self.has_limits_top[j] and binsraw[self.ix_max[j] - end_edge + 1 - self.ix_min[j]] == 0 and
+                 binsraw[self.ix_max[j] - end_edge + 1 - self.ix_min[j]] > np.max(binsraw) / 15):
                 self.EdgeWarning(j)
-
-        # In f90, Win(-winw:winw)
-        Win = np.zeros(2 * winw + 1)
-        for i in range(-winw, winw + 1):
-            Win[i - (-winw)] = np.exp(-math.pow(i, 2) / math.pow(fine_fac * smooth_1D, 2) / 2)
-        Win = Win / np.sum(Win)
 
         has_prior = self.has_limits_bot[j] or self.has_limits_top[j]
-        if (has_prior):
+        Kernel = Kernel1D(winw, fine_fac * smooth_1D, boundary=has_prior)
+
+        if has_prior and self.boundary_correction_method == 0:
             # In f90, prior_mask(imin-fine_edge:imax+fine_edge)
             prior_mask = np.ones((imax + fine_edge) - fine_min + 1)
-
-            if (self.has_limits_bot[j]):
+            if self.has_limits_bot[j]:
                 index = (self.ix_min[j] * fine_fac) - fine_min
                 prior_mask[ index ] = 0.5
                 prior_mask[ : index ] = 0
-            if (self.has_limits_top[j]):
+            if self.has_limits_top[j]:
                 index = (self.ix_max[j] * fine_fac) - fine_min
                 prior_mask[ index ] = 0.5
                 prior_mask[ index + 1 : ] = 0
 
         # High resolution density (sampled many times per smoothing scale)
-        if (self.has_limits_bot[j]): imin = self.ix_min[j] * fine_fac
-        if (self.has_limits_top[j]): imax = self.ix_max[j] * fine_fac
+        if self.has_limits_bot[j]: imin = self.ix_min[j] * fine_fac
+        if self.has_limits_top[j]: imax = self.ix_max[j] * fine_fac
+        conv = np.convolve(finebins[imin - winw - fine_min:imax + winw + 1 - fine_min], Kernel.Win, 'valid')
 
-        density1D = Density1D(imax - imin + 1, fine_width)
-        for i in range(imin, imax + 1):
-            istart, iend = (i - winw) - fine_min, (i + winw + 1) - fine_min
-            density1D.P[i - imin] = np.dot(Win, finebins[istart:iend])
-            density1D.X[i - imin] = self.center[j] + (i * fine_width)
-            if (has_prior and density1D.P[i - imin] > 0):
-                # correct for normalization of window where it is cut by prior boundaries
-                edge_fac = 1 / np.dot(Win, prior_mask[istart:iend])
-                density1D.P[i - imin] *= edge_fac
+        density1D = Density1D(self.center[j] + imin * fine_width, imax - imin + 1, fine_width, P=conv)
+#        density1D.X = self.center[j] + np.arange(imin, imax + 1) * fine_width
+        if self.boundary_correction_method == 1:
+            if self.has_limits_bot[j]:
+                for i in range(winw):
+                    normed = density1D.P[i] / Kernel.a0[i]
+                    xP = np.dot(Kernel.xWin, finebins[imin + i - winw - fine_min:imin + i + winw + 1 - fine_min])
+                    corrected = density1D.P[i] * Kernel.boundary_K[i] + xP * Kernel.boundary_xK[i]
+                    density1D.P[i] = normed * np.exp(corrected / normed - 1)
+            if self.has_limits_top[j]:
+                for i in range(imax - winw + 1, imax + 1):
+                    normed = density1D.P[i - imin] / Kernel.a0[imax - i]
+                    istart, iend = (i - winw) - fine_min, (i + winw + 1) - fine_min
+                    xP = np.dot(Kernel.xWin, finebins[istart:iend])
+                    corrected = density1D.P[i - imin] * Kernel.boundary_K[imax - i] \
+                                 - xP * Kernel.boundary_xK[imax - i]
+                    density1D.P[i - imin] = normed * np.exp(corrected / normed - 1)
+        elif has_prior and self.boundary_correction_method == 0:
+            for i in range(imin, imax + 1):
+                if density1D.P[i - imin] > 0:
+                    # correct for normalization of window where it is cut by prior boundaries
+                    istart, iend = (i - winw) - fine_min, (i + winw + 1) - fine_min
+                    edge_fac = 1 / np.dot(Kernel.Win, prior_mask[istart:iend])
+                    density1D.P[i - imin] *= edge_fac
 
         maxbin = np.max(density1D.P)
-        if (maxbin == 0):
+        if maxbin == 0:
             raise Exception('no samples in bin, param: ' + self.parName(j))
         density1D.P /= maxbin
 
@@ -1243,83 +1279,47 @@ class MCSamples(chains):
 
         logZero = 1e30
         if not self.no_plots:
-            # In f90, binCounts(ix_min(j):ix_max(j))
-            bincounts = np.zeros(self.ix_max[j] - self.ix_min[j] + 1)
-            if (self.plot_meanlikes):
+            bincounts = density1D.P[self.ix_min[j] * fine_fac - imin:self.ix_max[j] * fine_fac - imin + 1:fine_fac]
+            if self.plot_meanlikes:
                 # In f90, binlikes(ix_min(j):ix_max(j))
+                rawbins = conv[self.ix_min[j] * fine_fac - imin:self.ix_max[j] * fine_fac - imin + 1:fine_fac]
                 binlikes = np.zeros(self.ix_max[j] - self.ix_min[j] + 1)
-                if (self.mean_loglikes): binlikes[:] = logZero
+                if self.mean_loglikes: binlikes[:] = logZero
 
-            # Output values for plots
-            for ix2 in range(self.ix_min[j], self.ix_max[j] + 1):
-                istart, iend = (ix2 * fine_fac - winw) - fine_min, (ix2 * fine_fac + winw + 1) - fine_min
-                bincounts[ix2 - self.ix_min[j]] = np.dot(Win, finebins[istart:iend])
-                if (self.plot_meanlikes and (bincounts[ix2 - self.ix_min[j]] > 0)):
-                    binlikes[ix2 - self.ix_min[j]] = np.dot(Win, finebinlikes[istart:iend]) / bincounts[ix2 - self.ix_min[j]]
-                if (has_prior):
-                    # correct for normalization of window where it is cut by prior boundaries
-                    edge_fac = 1 / np.dot(Win, prior_mask[istart:iend])
-                    bincounts[ix2 - self.ix_min[j]] *= edge_fac
+                # Output values for plots
+                for ix2 in range(self.ix_min[j], self.ix_max[j] + 1):
+                    if rawbins[ix2 - self.ix_min[j]] > 0:
+                        istart, iend = (ix2 * fine_fac - winw) - fine_min, (ix2 * fine_fac + winw + 1) - fine_min
+                        binlikes[ix2 - self.ix_min[j]] = np.dot(Kernel.Win, finebinlikes[istart:iend]) / rawbins[ix2 - self.ix_min[j]]
 
-            bincounts = bincounts / maxbin
-            if self.plot_meanlikes and self.mean_loglikes:
-                maxbin = min(binlikes)
-                binlikes = np.where((binlikes - maxbin) < 30, np.exp(-(binlikes - maxbin)), 0)
+                if self.mean_loglikes:
+                    maxbin = min(binlikes)
+                    binlikes = np.where((binlikes - maxbin) < 30, np.exp(-(binlikes - maxbin)), 0)
 
-
+            x = self.center[j] + np.arange(self.ix_min[j], self.ix_max[j] + 1) * width
+            if self.plot_meanlikes:
+                maxbin = np.max(binlikes)
+                likes = binlikes / maxbin
+            else:
+                likes = None
             if writeDataToFile:
                 logging.debug("Write data to file ...")
 
                 fname = self.rootname + "_p_" + self.parName(j)
-
                 filename = os.path.join(self.plot_data_dir, fname + ".dat")
-                textFileHandle = open(filename, 'w')
-                for i in range(self.ix_min[j], self.ix_max[j] + 1):
-                    textFileHandle.write("%16.7E%16.7E\n" % (self.center[j] + i * width, bincounts[i - self.ix_min[j]]))
-                if (self.ix_min[j] == self.ix_max[j]):
-                    for i in range(self.ix_min.shape[0]):
-                        textFileHandle.write("%16.7E" % (self.center[j] + self.ix_min[i] * width))
-                    textFileHandle.write("\n")
-                textFileHandle.close()
+                with open(filename, 'w') as f:
+                    for xval, binval in zip(x, bincounts):
+                        f.write("%16.7E%16.7E\n" % (xval, binval))
 
                 if self.plot_meanlikes:
-                    maxbin = max(binlikes)
                     filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
-                    textFileHandle = open(filename_like, 'w')
-                    for i in range(self.ix_min[j], self.ix_max[j] + 1):
-                        textFileHandle.write("%16.7E%16.7E\n" % (self.center[j] + i * width, binlikes[i - self.ix_min[j]] / maxbin))
-                    textFileHandle.close()
-
+                    with open(filename_like, 'w') as f:
+                        for xval, binval in zip(x, likes):
+                            f.write("%16.7E%16.7E\n" % (xval, binval))
             else:
+                return x, bincounts, likes
 
-                likes = None
-
-                ncols = 2
-                nrows = self.ix_max[j] + 1 - self.ix_min[j]
-                if (self.ix_min[j] == self.ix_max[j]): nrows += 1
-
-                dat = np.ndarray((nrows, ncols))
-                index = 0
-                for i in range(self.ix_min[j], self.ix_max[j] + 1):
-                    dat[index] = self.center[j] + i * width, bincounts[i - self.ix_min[j]]
-                    index += 1
-                if self.ix_min[j] == self.ix_max[j]:
-                    dat[index] = self.center[j] + self.ix_min[0] * width, self.center[j] + self.ix_min[1] * width
-                logging.debug("dat.shape = %s" % str(dat.shape))
-
-                if self.plot_meanlikes:
-                    nrows = self.ix_max[j] + 1 - self.ix_min[j]
-                    likes = np.ndarray((nrows, ncols))
-                    index = 0
-                    maxbin = max(binlikes[:self.ix_max[j] - self.ix_min[j] + 1])
-                    for i in range(self.ix_min[j], self.ix_max[j] + 1):
-                        likes[index] = self.center[j] + i * width, binlikes[i - self.ix_min[j]] / maxbin
-                        index += 1
-                    logging.debug("likes.shape = %s" % str(likes.shape))
-
-                return dat, likes
-
-        return None, None
+        return None, None, None
 
 
     def get2DContourLevels(self, bins2D, num_plot_contours=None):
@@ -1346,14 +1346,13 @@ class MCSamples(chains):
         """
         Get 2D plot data.
         """
-
         fine_fac_base = 5
 
         has_prior = self.has_limits[j] or self.has_limits[j2]
 
         corr = self.corrmatrix[j2][j]
         # keep things simple unless obvious degeneracy
-        if (abs(corr) < 0.3): corr = 0.
+        if abs(corr) < 0.3: corr = 0.
         corr = max(-self.max_corr_2D, corr)
         corr = min(self.max_corr_2D, corr)
 
@@ -1371,180 +1370,120 @@ class MCSamples(chains):
         iymin = int(round((self.range_min[j2] - self.center[j2]) / widthy))
         iymax = int(round((self.range_max[j2] - self.center[j2]) / widthy))
 
-        if (not self.has_limits_bot[j]): ixmin -= 1
-        if (not self.has_limits_bot[j2]): iymin -= 1
-        if (not self.has_limits_top[j]): ixmax += 1
-        if (not self.has_limits_top[j2]): iymax += 1
-
-        # Using index mapping for f90 2D arrays with non standard indexes.
-
-        # In f90, bins2D(ixmin:ixmax,iymin:iymax) and bin2Dlikes(ixmin:ixmax,iymin:iymax)
-        bins2D = np.zeros((iymax - iymin + 1, ixmax - ixmin + 1))
-        bin2Dlikes = np.zeros((iymax - iymin + 1, ixmax - ixmin + 1))
-
-        winw = int(round(fine_fac * smooth_scale))
-        imin = (ixmin - 3) * winw + 1
-        imax = (ixmax + 3) * winw - 1
-        jmin = (iymin - 3) * winw + 1
-        jmax = (iymax + 3) * winw - 1
-
-        # In f90, finebins(imin:imax,jmin:jmax)
-        finebins = np.zeros((jmax - jmin + 1, imax - imin + 1))
-        if self.shade_meanlikes:
-            # In f90, finebinlikes(imin:imax,jmin:jmax)
-            finebinlikes = np.zeros((jmax - jmin + 1, imax - imin + 1))
+        if not self.has_limits_bot[j]: ixmin -= 1
+        if not self.has_limits_bot[j2]: iymin -= 1
+        if not self.has_limits_top[j]: ixmax += 1
+        if not self.has_limits_top[j2]: iymax += 1
 
         widthj = widthx / fine_fac
         widthj2 = widthy / fine_fac
-        for i in range(self.numrows):
-            ix1 = int(round(((self.samples[i][j] - self.center[j]) / widthj)))
-            ix2 = int(round(((self.samples[i][j2] - self.center[j2]) / widthj2)))
-            if ((ix1 >= imin) and (ix1 <= imax) and (ix2 >= jmin) and (ix2 <= jmax)):
-                finebins[ix2 - jmin][ix1 - imin] += self.weights[i]
-                if self.shade_meanlikes:
-                    finebinlikes[ix2 - jmin][ix1 - imin] += self.weights[i] * (np.exp(self.meanlike - self.loglikes[i]))
-
         winw = int(round(2 * fine_fac * smooth_scale))
+
+        ix1s = np.round((self.samples[:, j] - self.center[j]) / widthj).astype(np.int)
+        ix2s = np.round((self.samples[:, j2] - self.center[j2]) / widthj2).astype(np.int)
+        imin = min(ixmin * fine_fac, np.min(ix1s)) - winw
+        imax = max(ixmax * fine_fac, np.max(ix1s)) + winw
+        jmin = min(iymin * fine_fac, np.min(ix2s)) - winw
+        jmax = max(iymax * fine_fac, np.max(ix2s)) + winw
+
+        finebins = np.zeros((jmax - jmin + 1, imax - imin + 1))
+        if self.shade_meanlikes:
+            finebinlikes = np.zeros((jmax - jmin + 1, imax - imin + 1))
+            likeweights = self.weights * np.exp(self.meanlike - self.loglikes)
+
+        for i, (ix1, ix2) in enumerate(zip(ix1s - imin, ix2s - jmin)):
+            finebins[ix2][ix1] += self.weights[i]
+            if self.shade_meanlikes:
+                finebinlikes[ix2][ix1] += likeweights[i]
         # In f90, Win(-winw:winw,-winw:winw)
         Win = np.zeros(((2 * winw) + 1, (2 * winw) + 1))
         indexes = range(-winw, winw + 1)
+        signorm = (2 * (fine_fac * smooth_scale) ** 2 * (1 - corr ** 2))
         for ix1 in indexes:
             for ix2 in indexes:
-                Win[ix2 - (-winw)][ix1 - (-winw)] = np.exp(-(((ix1 * ix1) + (ix2 * ix2) - 2 * corr * ix1 * ix2)) /
-                      (2 * (fine_fac * fine_fac) * (smooth_scale * smooth_scale) * (1 - corr * corr)))
+                Win[ix2 - (-winw)][ix1 - (-winw)] = np.exp(-(ix1 ** 2 + ix2 ** 2 - 2 * corr * ix1 * ix2) / signorm)
 
-        if (has_prior):
-            norm = np.sum(Win)
-            # In f90, prior_mask(imin:imax,jmin:jmax)
+
+        bins2D = fftconvolve(finebins[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
+                                       ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
+                              Win, 'valid')[::fine_fac, ::fine_fac]
+        del finebins
+        if self.shade_meanlikes:
+            bin2Dlikes = fftconvolve(finebinlikes[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
+                                       ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
+                              Win, 'valid')[::fine_fac, ::fine_fac]
+            del finebinlikes
+            mx = 1e-4 * np.max(bins2D)
+            bin2Dlikes[bins2D > mx] /= bins2D[bins2D > mx]
+            bin2Dlikes[bins2D <= mx] = 0
+        else:
+            bin2Dlikes = None
+
+        if has_prior:
+            # simple boundary correction by normalization
             prior_mask = np.ones((jmax - jmin + 1, imax - imin + 1))
-            if (self.has_limits_bot[j]):
+            if self.has_limits_bot[j]:
                 prior_mask[:, (ixmin * fine_fac) - imin] /= 2
                 prior_mask[:, :(ixmin * fine_fac) - imin] = 0
-            if (self.has_limits_top[j]):
+            if self.has_limits_top[j]:
                 prior_mask[:, (ixmax * fine_fac) - imin] /= 2
                 prior_mask[:, (ixmax * fine_fac) + 1 - imin:] = 0
 
-            if (self.has_limits_bot[j2]):
+            if self.has_limits_bot[j2]:
                 prior_mask[(iymin * fine_fac) - jmin, :] /= 2
                 prior_mask[:(iymin * fine_fac) - jmin, :] = 0
-            if (self.has_limits_top[j2]):
+            if self.has_limits_top[j2]:
                 prior_mask[(iymax * fine_fac) - jmin, :] /= 2
                 prior_mask[(iymax * fine_fac) + 1 - jmin:, :] = 0
 
-        for ix1 in range(ixmin, ixmax + 1):
-            for ix2 in range(iymin, iymax + 1):
-                ix1start, ix1end = ix1 * fine_fac - winw - imin, ix1 * fine_fac + winw + 1 - imin
-                ix2start, ix2end = ix2 * fine_fac - winw - jmin, ix2 * fine_fac + winw + 1 - jmin
-                bins2D[ix2 - iymin][ix1 - ixmin] = np.sum(np.multiply(Win, finebins[ix2start:ix2end, ix1start:ix1end]))
-                if self.shade_meanlikes:
-                    bin2Dlikes[ix2 - iymin][ix1 - ixmin] = np.sum(np.multiply(Win, finebinlikes[ix2start:ix2end, ix1start:ix1end]))
-
-                if (has_prior):
-                    # correct for normalization of window where it is cut by prior boundaries
-                    denom = np.sum(np.multiply(Win, prior_mask[ix2start:ix2end, ix1start:ix1end]))
-                    if denom != 0.:
-                        edge_fac = norm / denom
-                    else:
-                        edge_fac = 0.
-                    bins2D[ix2 - iymin][ix1 - ixmin] *= edge_fac
-                    if self.shade_meanlikes:
-                        bin2Dlikes[ix2 - iymin][ix1 - ixmin] *= edge_fac
-
-
-        if self.shade_meanlikes:
-            for ix1 in range(ixmin, ixmax + 1):
-                for ix2 in range(iymin, iymax + 1):
-                    if (bins2D[ix2 - iymin][ix1 - ixmin] > 0):
-                        bin2Dlikes[ix2 - iymin][ix1 - ixmin] = bin2Dlikes[ix2 - iymin][ix1 - ixmin] / bins2D[ix2 - iymin][ix1 - ixmin]
+            denom = fftconvolve(prior_mask[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
+                                       ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
+                              Win, 'valid')[::fine_fac, ::fine_fac]
+            norm = np.sum(Win)
+            bins2D[denom > 0] *= norm / denom[denom > 0]
 
         bins2D = bins2D / np.max(bins2D)
-        # Get contour containing contours(:) of the probability
 
+        # Get contour containing contours(:) of the probability
         contour_levels = self.get2DContourLevels(bins2D, num_plot_contours)
 
         bins2D[np.where(bins2D < 1e-30)] = 0
 
         if writeDataToFile:
-
+            # note store things in confusing traspose form
             name = self.parName(j)
             name2 = self.parName(j2)
             plotfile = self.rootname + "_2D_%s_%s" % (name, name2)
             filename = os.path.join(self.plot_data_dir, plotfile)
-            textFileHandle = open(filename, 'w')
-            for ix1 in range(ixmin, ixmax + 1):
-                for ix2 in range(iymin, iymax + 1):
-                    textFileHandle.write("%16.7E" % (bins2D[ix2 - iymin][ix1 - ixmin]))
-                textFileHandle.write("\n")
-            textFileHandle.close()
-
-            textFileHandle = open(filename + "_y", 'w')
-            for i in range(ixmin, ixmax + 1):
-                textFileHandle.write("%16.7E\n" % (self.center[j] + i * widthx))
-            textFileHandle.close()
-
-            textFileHandle = open(filename + "_x", 'w')
-            for i in range(iymin, iymax + 1):
-                textFileHandle.write("%16.7E\n" % (self.center[j2] + i * widthy))
-            textFileHandle.close()
-
-            textFileHandle = open(filename + "_cont", 'w')
-            s_levels = [ "%16.7E" % level for level in contour_levels ]
-            textFileHandle.write("%s\n" % (" ".join(s_levels)))
-            textFileHandle.close()
-
-            if self.shade_meanlikes:
-                textFileHandle = open(filename + "_likes", 'w')
-                maxbin = np.max(bin2Dlikes)
+            with open(filename, 'w') as f:
                 for ix1 in range(ixmin, ixmax + 1):
                     for ix2 in range(iymin, iymax + 1):
-                        textFileHandle.write("%16.7E" % (bin2Dlikes[ix2 - iymin][ix1 - ixmin] / maxbin))
-                    textFileHandle.write("\n")
-                textFileHandle.close()
+                        f.write("%16.7E" % (bins2D[ix2 - iymin][ix1 - ixmin]))
+                    f.write("\n")
+
+            with open(filename + "_y", 'w') as f:
+                for i in range(ixmin, ixmax + 1):
+                    f.write("%16.7E\n" % (self.center[j] + i * widthx))
+
+            with open(filename + "_x", 'w') as f:
+                for i in range(iymin, iymax + 1):
+                    f.write("%16.7E\n" % (self.center[j2] + i * widthy))
+
+            with open(filename + "_cont", 'w') as f:
+                s_levels = [ "%16.7E" % level for level in contour_levels ]
+                f.write("%s\n" % (" ".join(s_levels)))
+
+            if self.shade_meanlikes:
+                with open(filename + "_likes", 'w') as f:
+                    maxbin = np.max(bin2Dlikes)
+                    for ix1 in range(ixmin, ixmax + 1):
+                        for ix2 in range(iymin, iymax + 1):
+                            f.write("%16.7E" % (bin2Dlikes[ix2 - iymin][ix1 - ixmin] / maxbin))
+                        f.write("\n")
         else:
-            dat, likes, cont, x, y = None, None, None, None, None
-
-            ncols = ixmax + 1 - ixmin
-            nrows = iymax + 1 - iymin
-            dat = np.ndarray((ncols, nrows))
-            irow, icol = 0, 0
-            for ix1 in range(ixmin, ixmax + 1):
-                icol = 0
-                for ix2 in range(iymin, iymax + 1):
-                    dat[irow][icol] = bins2D[ix2 - iymin][ix1 - ixmin]
-                    icol += 1
-                irow += 1
-
-            if self.shade_meanlikes:
-                maxbin = np.max(bin2Dlikes)
-                likes = np.ndarray((ncols, nrows))
-                irow, icol = 0, 0
-                for ix1 in range(ixmin, ixmax + 1):
-                    icol = 0
-                    for ix2 in range(iymin, iymax + 1):
-                        likes[irow][icol] = bin2Dlikes[ix2 - iymin][ix1 - ixmin] / maxbin
-                        icol += 1
-                    irow += 1
-
-            nlevels = len(contour_levels)
-            cont = np.ndarray(nlevels)
-            idx = 0
-            for level in contour_levels:
-                cont[idx] = level
-                idx += 1
-
-            x = np.ndarray(nrows)
-            idx = 0
-            for i in range(iymin, iymax + 1):
-                x[idx] = self.center[j2] + i * widthy
-                idx += 1
-
-            y = np.ndarray(ncols)
-            idx = 0
-            for i in range(ixmin, ixmax + 1):
-                y[idx] = self.center[j] + i * widthx
-                idx += 1
-
-            return dat, likes, cont, x, y
+            y = self.center[j2] + np.arange(iymin, iymax + 1) * widthy
+            x = self.center[j] + np.arange(ixmin, ixmax + 1) * widthx
+            return bins2D, bin2Dlikes, contour_levels, x, y
 
 
     def EdgeWarning(self, i):
@@ -1897,7 +1836,7 @@ class MCSamples(chains):
 
 def WritePlotFileInit():
     text = """import GetDistPlots, os
-g=GetDistPlots.GetDistPlotter('%s')
+g=GetDistPlots.GetDistPlotter(plot_data='%s')
 g.settings.setWithSubplotSize(%f)
 outdir='%s'
 roots=['%s']
