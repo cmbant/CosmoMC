@@ -1829,6 +1829,7 @@
     ! SZ nuisance in dataparams
     use cosmology
     use numbercounts
+    use, intrinsic :: ieee_arithmetic
     Class(SZLikelihood) :: this
     Class (CMBParams):: CMB
     Class(TCosmoTheoryPredictions), target :: Theory
@@ -1888,7 +1889,7 @@
         endif
 
 
-        if (ISNAN(DNZ(1))) then
+        if (ieee_is_nan(DNZ(1))) then
             print*,'NaN found in theory counts!'
             stop
         endif

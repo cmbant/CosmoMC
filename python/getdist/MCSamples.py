@@ -14,10 +14,10 @@ import pickle
 from iniFile import iniFile
 from getdist.chains import chains, chainFiles, lastModified
 from getdist import ResultObjs
-import time
+
 # =============================================================================
 
-version = 5
+version = 6
 
 default_grid_root = None
 output_base_dir = None
@@ -40,6 +40,19 @@ if os.path.exists(config_file):
 else:
     config_ini = iniFile()
 
+class MCException(Exception):
+    pass
+
+class FileException(MCException):
+    pass
+
+class SettingException(MCException):
+    pass
+
+class ParamException(MCException):
+    pass
+
+
 def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settings={}):
         files = chainFiles(file_root)
         path, name = os.path.split(file_root)
@@ -48,7 +61,8 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settin
         cachefile = os.path.join(path, name) + '.py_mcsamples'
         samples = MCSamples(file_root, jobItem=jobItem)
         samples.update_settings(ini, dist_settings)
-        if not no_cache and os.path.exists(cachefile) and lastModified(files) < os.path.getmtime(cachefile):
+        allfiles = files + [file_root + '.ranges', file_root + '.paramnames']
+        if not no_cache and os.path.exists(cachefile) and lastModified(allfiles) < os.path.getmtime(cachefile):
             try:
                 with open(cachefile, 'rb') as inp:
                     cache = pickle.load(inp)
@@ -59,11 +73,60 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settin
                     return cache
             except:
                 pass
-        if not len(files): raise Exception('No chains found: ' + file_root)
+        if not len(files): FileException('No chains found: ' + file_root)
         samples.readChains(files)
         with open(cachefile, 'wb') as output:
                 pickle.dump(samples, output, pickle.HIGHEST_PROTOCOL)
         return samples
+
+def get2DContourLevels(bins2D, contours=[0.68, 0.95], norm=None, half_edge=True):
+    # bins 2D is the density. If half_edge, then edge bins are only half integrated over in each direction.
+    contour_levels = np.zeros(len(contours))
+    if half_edge:
+        abins = bins2D.copy()
+        abins[:, 0] /= 2
+        abins[0, :] /= 2
+        abins[:, -1] /= 2
+        abins[-1, :] /= 2
+    if norm is None:
+        abins = bins2D
+        norm = np.sum(bins2D)
+        missing = 0
+    else:
+        # account for the fact that some points may be outside the bins2D binning box
+        missing = norm - np.sum(abins)
+    targets = (1 - np.array(contours)) * norm - missing
+    if True:
+        bins = abins.reshape(-1)
+        indexes = bins2D.reshape(-1).argsort()
+        sortgrid = bins[indexes]
+        cumsum = np.cumsum(sortgrid)
+        ixs = np.searchsorted(cumsum, targets)
+        for i, ix in enumerate(ixs):
+            if ix == 0:
+                raise MCException("Contour level outside plotted ranges")
+            h = cumsum[ix] - cumsum[ix - 1]
+            d = (cumsum[ix] - targets[i]) / h
+            contour_levels[i] = sortgrid[ix] * (1 - d) + d * sortgrid[ix - 1]
+    else:
+        # old method, twice or so slower
+        try_t = np.max(bins2D)
+        lastcontour = 0
+        for i, (contour, target) in enumerate(zip(contours, targets)):
+            if contour < lastcontour: raise SettingException('contour levels must be decreasing')
+            lastcontour = contour
+            try_b = 0
+            lasttry = -1
+            while True:
+                try_sum = np.sum(abins[bins2D < (try_b + try_t) / 2])
+                if try_sum > target:
+                    try_t = (try_b + try_t) / 2
+                else:
+                    try_b = (try_b + try_t) / 2
+                if try_sum == lasttry: break
+                lasttry = try_sum
+            contour_levels[i] = (try_b + try_t) / 2
+    return contour_levels
 
 
 class Ranges(object):
@@ -99,39 +162,25 @@ class Ranges(object):
     def min(self, name, error=False):
         if self.mins.has_key(name):
             return self.mins[name]
-        if error: raise Exception("Name not found:" + name)
+        if error: ParamException("Name not found:" + name)
         return None
 
     def max(self, name, error=False):
         if self.maxs.has_key(name):
             return self.maxs[name]
-        if error: raise Exception("Name not found:" + name)
+        if error: raise ParamException("Name not found:" + name)
         return None
 
 # =============================================================================
 
 class Kernel1D(object):
 
-    def __init__(self, winw, h, boundary=False):
+    def __init__(self, winw, h):
         self.winw = winw
         self.h = h
-        Win = np.exp(-np.arange(-winw, winw + 1) ** 2 / (2.*h ** 2))
+        self.x = np.arange(-winw, winw + 1)
+        Win = np.exp(-(self.x / h) ** 2 / 2.)
         self.Win = Win / np.sum(Win)
-        if boundary: self.get1DBoundaryCorrectionFactors()
-
-    def get1DBoundaryCorrectionFactors(self):
-        # linear boundary kernel, e.g. Jones 1993, Jones and Foster 1996
-        #  www3.stat.sinica.edu.tw/statistica/oldpdf/A6n414.pdf after Eq 1b.
-        # Note odd term sign flip because here Win(X) = K(-X)
-        a0 = np.cumsum(self.Win)
-        p = np.arange(-self.winw, self.winw + 1)
-        a1 = np.cumsum(p * self.Win)
-        a2 = np.cumsum(p ** 2 * self.Win)
-        denom = a0 * a2 - a1 ** 2
-        self.xWin = p * self.Win
-        self.boundary_K = a2[self.winw:] / denom[self.winw:]
-        self.boundary_xK = a1[self.winw:] / denom[self.winw:]
-        self.a0 = a0[self.winw:]
 
 
 class Density1D(object):
@@ -199,16 +248,16 @@ class Density1D(object):
 #         trial = (try_b + try_t) / 2
 
         lim_bot = (g.grid[0] >= trial)
-        if (lim_bot):
+        if lim_bot:
             mn = self.P[0]
         else:
             for i in range(g.bign):
-                if (g.grid[i] > trial):
+                if g.grid[i] > trial:
                     mn = self.X[0] + (i - 1) * self.spacing / g.factor
                     break
 
         lim_top = (g.grid[-1] >= trial)
-        if (lim_top):
+        if lim_top:
             mx = self.P[-1]
         else:
             indexes = range(g.bign)
@@ -239,7 +288,6 @@ class MCSamples(chains):
 
         self.ini = ini
 
-        self.ranges = None
         self.ReadRanges()
 
         # Other variables
@@ -249,6 +297,7 @@ class MCSamples(chains):
         self.smooth_scale_1D = 0.25
         self.smooth_scale_2D = 2
         self.boundary_correction_method = 1
+        self.smooth_correct_contours = True
         self.max_corr_2D = 0.95
         self.num_contours = 2
         self.contours = [0.68, 0.95]
@@ -309,13 +358,14 @@ class MCSamples(chains):
         self.smooth_scale_2D = ini.float('smooth_scale_2D', self.smooth_scale_2D)
 
         if self.smooth_scale_1D > 0 and self.smooth_scale_1D > 1:
-            raise Exception('WARNING: smooth_scale_1D>1 is oversmoothed')
+            raise SettingException('mooth_scale_1D>1 is oversmoothed')
         if self.smooth_scale_1D > 0 and self.smooth_scale_1D > 1.9:
-            raise Exception('smooth_scale_1D>1 is now in stdev units')
+            raise SettingException('smooth_scale_1D>1 is now in stdev units')
 
         self.boundary_correction_method = ini.int('boundary_correction_method',
                                                   getattr(self, 'boundary_correction_method', 1))
 
+        self.smooth_correct_contours = ini.bool('smooth_correct_contours', getattr(self, 'smooth_correct_contours', True))
         self.no_plots = ini.bool('no_plots', False)
         self.shade_meanlikes = ini.bool('shade_meanlikes', False)
 
@@ -338,16 +388,14 @@ class MCSamples(chains):
         self.max_corr_2D = ini.float('max_corr_2D', self.max_corr_2D)
 
         if ini and ini.hasKey('num_contours'):
-            self.contours = []
             self.num_contours = ini.int('num_contours', 2)
-            for i in range(1, self.num_contours + 1):
-                self.contours.append(ini.float('contour' + str(i)))
+            self.contours = np.array([ini.float('contour' + str(i + 1)) for i in range(self.num_contours)])
         # how small the end bin must be relative to max to use two tail
         self.max_frac_twotail = []
-        for i in range(1, self.num_contours + 1):
-            max_frac = np.exp(-1.0 * math.pow(norm.ppf((1 - self.contours[i - 1]) / 2), 2) / 2)
+        for i in range(self.num_contours):
+            max_frac = np.exp(-1.0 * math.pow(norm.ppf((1 - self.contours[i]) / 2), 2) / 2)
             if ini:
-                max_frac = ini.float('max_frac_twotail' + str(i), max_frac)
+                max_frac = ini.float('max_frac_twotail' + str(i + 1), max_frac)
             self.max_frac_twotail.append(max_frac)
 
 
@@ -371,18 +419,18 @@ class MCSamples(chains):
         for ix, name in enumerate(self.paramNames.list()):
             mini = self.ranges.min(name)
             maxi = self.ranges.max(name)
-            if (mini is not None and maxi is not None and mini <> maxi):
+            if mini is not None and maxi is not None and mini <> maxi:
                 self.limmin[ix] = mini
                 self.limmax[ix] = maxi
                 self.has_limits_top[ix] = True
                 self.has_limits_bot[ix] = True
-            if (bin_limits <> ''):
+            if bin_limits <> '':
                 line = bin_limits
             else:
                 line = ''
                 if ini and ini.params.has_key('limits[%s]' % name):
                     line = ini.string('limits[%s]' % name)
-            if (line <> ''):
+            if line <> '':
                 limits = [ s for s in line.split(' ') if s <> '' ]
                 if len(limits) == 2:
                     if limits[0] <> 'N':
@@ -393,7 +441,7 @@ class MCSamples(chains):
                         self.has_limits_top[ix] = True
             if ini and ini.params.has_key('marker[%s]' % name):
                 line = ini.string('marker[%s]' % name)
-                if (line <> ''):
+                if line <> '':
                     self.markers[name] = float(line)
 
     def update_settings(self, ini=None, ini_settings={}, doUpdate=True):
@@ -528,10 +576,10 @@ class MCSamples(chains):
     def GetCovMatrix(self):
         nparam = self.paramNames.numParams()
         paramVecs = [ self.samples[:, i] for i in range(nparam) ]
-        fullcov = self.cov(paramVecs)
+        self.fullcov = self.cov(paramVecs)
         nparamNonDerived = self.paramNames.numNonDerived()
-        self.covmatrix = fullcov[:nparamNonDerived, :nparamNonDerived]
-        self.corrmatrix = self.corr(paramVecs, cov=fullcov)
+        self.covmatrix = self.fullcov[:nparamNonDerived, :nparamNonDerived]
+        self.corrmatrix = self.corr(paramVecs, cov=self.fullcov)
 
     def writeCovMatrix(self, filename=None):
         filename = filename or self.rootdirname + ".covmat"
@@ -745,7 +793,7 @@ class MCSamples(chains):
     def ComputeMultiplicators(self):
         self.mean_mult = self.norm / self.numrows
         self.max_mult = (self.mean_mult * self.numrows) / min(self.numrows / 2, 500)
-        outliers = len(self.weights[np.where(self.weights > self.max_mult)])
+        outliers = len(self.weights[self.weights > self.max_mult])
         if (outliers <> 0):
             print 'outlier fraction ', float(outliers) / self.numrows
         self.max_mult = np.max(self.weights)
@@ -880,7 +928,7 @@ class MCSamples(chains):
         self.weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
         self.norm = np.sum(self.weights)
 
-        raise Exception('Converge tests not updated yet (and very slow)')
+        raise MCException('Converge tests not updated yet (and very slow)')
 
         split_tests = {}
         nparam = self.paramNames.numParams()
@@ -1144,6 +1192,8 @@ class MCSamples(chains):
 
         if self.has_limits_top[j]:
             self.center[j] = self.range_max[j]
+            if self.has_limits_bot[j]:
+                width = (self.range_max[j] - self.range_min[j]) / (self.num_bins + 1)  # Feb15
         else:
             self.center[j] = self.range_min[j]
 
@@ -1163,9 +1213,7 @@ class MCSamples(chains):
         paramVec = self.samples[:, j]
         width, smooth_1D, end_edge = self.initParamRanges(j, paramConfid)
 
-        if width == 0: raise Exception("width is 0 in Get1DDensity")
-
-        # Using index mapping for f90 arrays with non standard indexes.
+        if width == 0: raise MCException("width is 0 in Get1DDensity")
 
         # In f90, binsraw(ix_min(j):ix_max(j))
         binsraw = np.zeros(self.ix_max[j] - self.ix_min[j] + 1)
@@ -1222,54 +1270,46 @@ class MCSamples(chains):
                  binsraw[self.ix_max[j] - end_edge + 1 - self.ix_min[j]] > np.max(binsraw) / 15):
                 self.EdgeWarning(j)
 
-        has_prior = self.has_limits_bot[j] or self.has_limits_top[j]
-        Kernel = Kernel1D(winw, fine_fac * smooth_1D, boundary=has_prior)
-
-        if has_prior and self.boundary_correction_method == 0:
-            # In f90, prior_mask(imin-fine_edge:imax+fine_edge)
-            prior_mask = np.ones((imax + fine_edge) - fine_min + 1)
-            if self.has_limits_bot[j]:
-                index = (self.ix_min[j] * fine_fac) - fine_min
-                prior_mask[ index ] = 0.5
-                prior_mask[ : index ] = 0
-            if self.has_limits_top[j]:
-                index = (self.ix_max[j] * fine_fac) - fine_min
-                prior_mask[ index ] = 0.5
-                prior_mask[ index + 1 : ] = 0
-
         # High resolution density (sampled many times per smoothing scale)
         if self.has_limits_bot[j]: imin = self.ix_min[j] * fine_fac
         if self.has_limits_top[j]: imax = self.ix_max[j] * fine_fac
-        conv = np.convolve(finebins[imin - winw - fine_min:imax + winw + 1 - fine_min], Kernel.Win, 'valid')
+
+        Kernel = Kernel1D(winw, fine_fac * smooth_1D)
+        fineused = finebins[imin - winw - fine_min:imax + winw + 1 - fine_min]
+        conv = np.convolve(fineused, Kernel.Win, 'valid')
 
         density1D = Density1D(self.center[j] + imin * fine_width, imax - imin + 1, fine_width, P=conv)
 #        density1D.X = self.center[j] + np.arange(imin, imax + 1) * fine_width
-        if self.boundary_correction_method == 1:
+
+        if self.has_limits_bot[j] or self.has_limits_top[j]:
+            # correct for cuts allowing for normalization over window
+            prior_mask = np.ones(imax - imin + 2 * winw + 1)
             if self.has_limits_bot[j]:
-                for i in range(winw):
-                    normed = density1D.P[i] / Kernel.a0[i]
-                    xP = np.dot(Kernel.xWin, finebins[imin + i - winw - fine_min:imin + i + winw + 1 - fine_min])
-                    corrected = density1D.P[i] * Kernel.boundary_K[i] + xP * Kernel.boundary_xK[i]
-                    density1D.P[i] = normed * np.exp(corrected / normed - 1)
+                prior_mask[ winw ] = 0.5
+                prior_mask[ : winw ] = 0
             if self.has_limits_top[j]:
-                for i in range(imax - winw + 1, imax + 1):
-                    normed = density1D.P[i - imin] / Kernel.a0[imax - i]
-                    istart, iend = (i - winw) - fine_min, (i + winw + 1) - fine_min
-                    xP = np.dot(Kernel.xWin, finebins[istart:iend])
-                    corrected = density1D.P[i - imin] * Kernel.boundary_K[imax - i] \
-                                 - xP * Kernel.boundary_xK[imax - i]
-                    density1D.P[i - imin] = normed * np.exp(corrected / normed - 1)
-        elif has_prior and self.boundary_correction_method == 0:
-            for i in range(imin, imax + 1):
-                if density1D.P[i - imin] > 0:
-                    # correct for normalization of window where it is cut by prior boundaries
-                    istart, iend = (i - winw) - fine_min, (i + winw + 1) - fine_min
-                    edge_fac = 1 / np.dot(Kernel.Win, prior_mask[istart:iend])
-                    density1D.P[i - imin] *= edge_fac
+                prior_mask[ imax - imin + winw ] = 0.5
+                prior_mask[ imax - imin + winw + 1 : ] = 0
+            a0 = np.convolve(prior_mask, Kernel.Win, 'valid')
+            ix = np.nonzero(a0 * density1D.P)
+            a0 = a0[ix]
+            normed = density1D.P[ix] / a0
+            if self.boundary_correction_method == 1:
+                # linear boundary kernel, e.g. Jones 1993, Jones and Foster 1996
+                #  www3.stat.sinica.edu.tw/statistica/oldpdf/A6n414.pdf after Eq 1b, expressed for general prior mask
+                xWin = Kernel.Win * Kernel.x
+                a1 = np.convolve(prior_mask, xWin, 'valid')[ix]
+                a2 = np.convolve(prior_mask, xWin * Kernel.x, 'valid')[ix]
+                xP = np.convolve(fineused, xWin, 'valid')[ix]
+                corrected = (density1D.P[ix] * a2 - xP * a1) / (a0 * a2 - a1 ** 2)
+                density1D.P[ix] = normed * np.exp(np.minimum(corrected / normed, 4) - 1)
+            elif self.boundary_correction_method == 0:
+                density1D.P[ix] = normed
+            else: raise SettingException('Unknown boundary_correction_method (expected 0 or 1)')
 
         maxbin = np.max(density1D.P)
         if maxbin == 0:
-            raise Exception('no samples in bin, param: ' + self.parName(j))
+            raise MCException('no samples in bin, param: ' + self.parName(j))
         density1D.P /= maxbin
 
         density1D.InitSpline()
@@ -1322,26 +1362,6 @@ class MCSamples(chains):
         return None, None, None
 
 
-    def get2DContourLevels(self, bins2D, num_plot_contours=None):
-        norm = np.sum(bins2D)
-        ncontours = self.num_contours
-        if num_plot_contours: ncontours = min(num_plot_contours, ncontours)
-        contour_levels = np.zeros(ncontours)
-        for ix1 in range(ncontours):
-            try_t = np.max(bins2D)
-            try_b = 0
-            lasttry = -1
-            while True:
-                try_sum = np.sum(bins2D[np.where(bins2D < (try_b + try_t) / 2)])
-                if (try_sum > (1 - self.contours[ix1]) * norm):
-                    try_t = (try_b + try_t) / 2
-                else:
-                    try_b = (try_b + try_t) / 2
-                if (try_sum == lasttry): break
-                lasttry = try_sum
-            contour_levels[ix1] = (try_b + try_t) / 2
-        return contour_levels
-
     def Get2DPlotData(self, j, j2, writeDataToFile=False, num_plot_contours=None):
         """
         Get 2D plot data.
@@ -1352,7 +1372,7 @@ class MCSamples(chains):
 
         corr = self.corrmatrix[j2][j]
         # keep things simple unless obvious degeneracy
-        if abs(corr) < 0.3: corr = 0.
+        if abs(corr) < 0.1: corr = 0.
         corr = max(-self.max_corr_2D, corr)
         corr = min(self.max_corr_2D, corr)
 
@@ -1393,25 +1413,26 @@ class MCSamples(chains):
 
         for i, (ix1, ix2) in enumerate(zip(ix1s - imin, ix2s - jmin)):
             finebins[ix2][ix1] += self.weights[i]
-            if self.shade_meanlikes:
+
+        if self.shade_meanlikes:
+            for i, (ix1, ix2) in enumerate(zip(ix1s - imin, ix2s - jmin)):
                 finebinlikes[ix2][ix1] += likeweights[i]
         # In f90, Win(-winw:winw,-winw:winw)
-        Win = np.zeros(((2 * winw) + 1, (2 * winw) + 1))
+        Win = np.empty(((2 * winw) + 1, (2 * winw) + 1))
         indexes = range(-winw, winw + 1)
-        signorm = (2 * (fine_fac * smooth_scale) ** 2 * (1 - corr ** 2))
+        signorm = 2 * (fine_fac * smooth_scale) ** 2 * (1 - corr ** 2)
         for ix1 in indexes:
             for ix2 in indexes:
                 Win[ix2 - (-winw)][ix1 - (-winw)] = np.exp(-(ix1 ** 2 + ix2 ** 2 - 2 * corr * ix1 * ix2) / signorm)
+        Win /= np.sum(Win)
 
-
-        bins2D = fftconvolve(finebins[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
-                                       ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
-                              Win, 'valid')[::fine_fac, ::fine_fac]
-        del finebins
+        fineused = finebins[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
+                            ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin]
+        bins2D = fftconvolve(fineused, Win, 'valid')[::fine_fac, ::fine_fac]
         if self.shade_meanlikes:
             bin2Dlikes = fftconvolve(finebinlikes[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
-                                       ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
-                              Win, 'valid')[::fine_fac, ::fine_fac]
+                                                  ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
+                                                  Win, 'valid')[::fine_fac, ::fine_fac]
             del finebinlikes
             mx = 1e-4 * np.max(bins2D)
             bin2Dlikes[bins2D > mx] /= bins2D[bins2D > mx]
@@ -1420,7 +1441,7 @@ class MCSamples(chains):
             bin2Dlikes = None
 
         if has_prior:
-            # simple boundary correction by normalization
+            # Correct for edge effects
             prior_mask = np.ones((jmax - jmin + 1, imax - imin + 1))
             if self.has_limits_bot[j]:
                 prior_mask[:, (ixmin * fine_fac) - imin] /= 2
@@ -1436,18 +1457,87 @@ class MCSamples(chains):
                 prior_mask[(iymax * fine_fac) - jmin, :] /= 2
                 prior_mask[(iymax * fine_fac) + 1 - jmin:, :] = 0
 
-            denom = fftconvolve(prior_mask[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
-                                       ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
-                              Win, 'valid')[::fine_fac, ::fine_fac]
-            norm = np.sum(Win)
-            bins2D[denom > 0] *= norm / denom[denom > 0]
+            priorused = prior_mask[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
+                                   ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin]
+            a00 = fftconvolve(priorused, Win, 'valid')[::fine_fac, ::fine_fac]
+            ix = np.nonzero(a00 * bins2D)
+            normed = bins2D[ix] / a00[ix]
+            if self.boundary_correction_method == 1:
+                x = np.empty(Win.shape)
+                y = np.empty(Win.shape)
+                for i in range(Win.shape[0]):
+                    x[i, :] = indexes
+                    y[:, i] = indexes
 
-        bins2D = bins2D / np.max(bins2D)
+                winx = np.multiply(Win, x)
+                winy = np.multiply(Win, y)
+                a10 = fftconvolve(priorused, winx, 'valid')[::fine_fac, ::fine_fac]
+                a01 = fftconvolve(priorused, winy, 'valid')[::fine_fac, ::fine_fac]
+                a20 = fftconvolve(priorused, np.multiply(winx, x), 'valid')[::fine_fac, ::fine_fac]
+                a02 = fftconvolve(priorused, np.multiply(winy, y), 'valid')[::fine_fac, ::fine_fac]
+                a11 = fftconvolve(priorused, np.multiply(winx, y), 'valid')[::fine_fac, ::fine_fac]
+                xP = fftconvolve(fineused, winx, 'valid')[::fine_fac, ::fine_fac]
+                yP = fftconvolve(fineused, winy, 'valid')[::fine_fac, ::fine_fac]
+                denom = (a20 * a01 ** 2 + a10 ** 2 * a02 - a00 * a02 * a20 + a11 ** 2 * a00 - 2 * a01 * a10 * a11)
+                A = a11[ix] ** 2 - a02[ix] * a20[ix]
+                Ax = a10[ix] * a02[ix] - a01[ix] * a11[ix]
+                Ay = a01[ix] * a20[ix] - a10[ix] * a11[ix]
+                corrected = (bins2D[ix] * A + xP[ix] * Ax + yP[ix] * Ay) / denom[ix]
+                bins2D[ix] = normed * np.exp(np.minimum(corrected / normed, 4) - 1)
+            elif self.boundary_correction_method == 0:
+                # simple boundary correction by normalization
+                bins2D[ix] = normed
+            else: raise SettingException('unknown boundary_correction_method (expected 0 or 1)')
+
+        mx = np.max(bins2D)
+        bins2D = bins2D / mx
+        bins2D_norm = np.sum(finebins) / fine_fac ** 2 / mx  # true norm, including excluded area in tails
+        ncontours = len(self.contours)
+        if num_plot_contours: ncontours = min(num_plot_contours, ncontours)
+        contours = self.contours[:ncontours]
 
         # Get contour containing contours(:) of the probability
-        contour_levels = self.get2DContourLevels(bins2D, num_plot_contours)
+        contour_levels = get2DContourLevels(bins2D, contours, norm=bins2D_norm)
+        if self.smooth_correct_contours:
+            # estimate dependence on smoothing width and roughly correct
+            varscale = 2
+            Winscale = Win ** varscale
+            Winscale /= np.sum(Winscale)
+            bins2Droot = fftconvolve(fineused, Winscale, 'valid')[::fine_fac, ::fine_fac]
+            if has_prior:
+                simple_normed = bins2D.copy()
+                simple_normed[ix] = normed / mx
+                aw00 = fftconvolve(priorused, Winscale, 'valid')[::fine_fac, ::fine_fac]
+                ix = np.nonzero(aw00 * bins2Droot)
+                bins2Droot[ix] = bins2Droot[ix] / aw00[ix]
+            else:
+                simple_normed = bins2D
+            bins2Droot /= np.max(bins2Droot)
 
-        bins2D[np.where(bins2D < 1e-30)] = 0
+            varrat2 = (fine_fac * smooth_scale) ** 2 / (self.fullcov[j2, j2] / widthj2 ** 2)
+            varrat = (fine_fac * smooth_scale) ** 2 / (self.fullcov[j, j] / widthj ** 2)
+            varrat = max(0.02, varrat , varrat2)  # probably better to get from estimate of curvature, but only used for approximate linearization in the smoothing width
+            if False:
+                # this compres with analytic result for full gaussian assuming varrat is ratio of variances
+                p = 1 - np.array(self.contours[:num_plot_contours])
+                rat = np.exp(np.log(p) / (1 + varrat)) / p
+#                print contour_levels * rat
+                contour_levels *= rat
+            else:
+                for i, contour_level  in enumerate(contour_levels):
+                    orig = np.log(np.sum(simple_normed[simple_normed < contour_level]))
+                    dpdW = (np.log(np.sum(simple_normed[bins2Droot < contour_level])) - orig) / (1 / (1 + varrat / varscale) - 1 / (1 + varrat))
+                    dpdL = (np.log(np.sum(simple_normed[simple_normed < contour_level * 1.1])) - orig) / 0.1
+    #                dpdL = (np.log(np.sum(simple_normed[np.where(simple_normed < contour_levels[i] * 1.1)])) - orig) / np.log(1.1)
+                    if dpdL > 0:
+    #                    fac = np.exp(dpdW / dpdL * (1 - 1 / (1 + varrat)))
+                        fac = dpdW / dpdL * (1 - 1 / (1 + varrat))
+                        print 'dW,dL,scale', dpdW, dpdL, fac
+                        contour_levels[i] += max(fac * contour_level, 0)
+                    else:
+                        print 'dW,dL,scale', dpdW, dpdL
+
+        bins2D[bins2D < 1e-30] = 0
 
         if writeDataToFile:
             # note store things in confusing traspose form
@@ -1534,7 +1624,6 @@ class MCSamples(chains):
 
     def GetConfidenceRegion(self):
                 # Sort data in order of likelihood of points
-        # self.SortByLikelihood()
         indexes = self.loglikes.argsort()
         cumsum = np.cumsum(self.weights[indexes])
         self.ND_cont1 = np.searchsorted(cumsum, self.norm * self.contours[0])
@@ -1552,10 +1641,11 @@ class MCSamples(chains):
 
     def ReadRanges(self):
         ranges_file = self.root + '.ranges'
-        if (os.path.isfile(ranges_file)):
+        if os.path.isfile(ranges_file):
             self.ranges = Ranges(ranges_file)
         else:
-            print "No file %s" % ranges_file
+            self.ranges = Ranges()
+#            print "No file %s" % ranges_file
 
     def getBounds(self):
         upper = dict()
@@ -1605,7 +1695,7 @@ class MCSamples(chains):
         numrows = len(weights)
         mult = weights[i]
         if abs(round(mult) - mult) > 1e-4:
-                raise Exception('Can only thin with integer weights')
+                raise SettingException('Can only thin with integer weights')
 
         while i < numrows:
             if (mult + tot < factor):
@@ -1673,14 +1763,14 @@ class MCSamples(chains):
                     # 2 tail limit
                     tail_confid_bot = self.confidence(paramConfid, limfrac / 2, upper=False)
 
-                if (self.marge_limits_top[ix1][j]):
+                if self.marge_limits_top[ix1][j]:
                     tail_limit_top = self.range_max[j]
-                elif (self.marge_limits_bot[ix1][j]):
+                elif self.marge_limits_bot[ix1][j]:
                     tail_limit_top = self.confidence(paramConfid, limfrac, upper=True)
                 else:
                     tail_confid_top = self.confidence(paramConfid, limfrac / 2, upper=True)
 
-                if ((not self.marge_limits_bot[ix1][j]) and  (not self.marge_limits_top[ix1][j])):
+                if not self.marge_limits_bot[ix1][j] and  not self.marge_limits_top[ix1][j]:
                     # Two tail, check if limits are at very different density
                     if (math.fabs(density1D.Prob(tail_confid_top) -
                                    density1D.Prob(tail_confid_bot))
@@ -1693,11 +1783,11 @@ class MCSamples(chains):
                 # no limit
                 lim = [self.range_min[j], self.range_max[j]]
 
-            if (self.marge_limits_bot[ix1][j] and self.marge_limits_top[ix1][j]):
+            if self.marge_limits_bot[ix1][j] and self.marge_limits_top[ix1][j]:
                 tag = 'none'
-            elif (self.marge_limits_bot[ix1][j]):
+            elif self.marge_limits_bot[ix1][j]:
                 tag = '>'
-            elif (self.marge_limits_top[ix1][j]):
+            elif self.marge_limits_top[ix1][j]:
                 tag = '<'
             else:
                 tag = 'two'

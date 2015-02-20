@@ -778,6 +778,17 @@ class MainWindow(QMainWindow):
                 items.append(str(item.text()))
         return items
 
+    def errorReport(self, e, caption="Error", msg="Unknown Error"):
+        if isinstance(e, MCSamples.SettingException):
+            QMessageBox.critical(self, 'Setting error', str(e))
+        elif isinstance(e, MCSamples.ParamException):
+            QMessageBox.critical(self, 'Param error', str(e))
+        elif isinstance(e, MCSamples.FileException):
+            QMessageBox.critical(self, 'File error', str(e))
+        else:
+            QMessageBox.critical(self, caption, str(e) + "\n\n" + msg)
+        raise
+
 
     def plotData(self):
         """
@@ -875,15 +886,13 @@ class MainWindow(QMainWindow):
                     setSizeForN(len(params))
                     try:
                         self.plotter.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)
-                    except:
-                        QMessageBox.critical(
-                            self, "Triangle plot",
+                    except Exception as e:
+                        self.errorReport(e, caption="Triangle plot", msg=
                             "Error for command:\n\ntriangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)\n\nwith roots=%s\nparams=%s\nparam_3d=%s\nfilled=%s\n" % (str(roots), str(params), str(param_3d), str(filled)))
-                        raise
                     self.updatePlot()
                     script += "g.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)\n"
                 else:
-                    QMessageBox.warning(self, "Triangle plot", "Select more than 1 x parameter")
+                    QMessageBox.warning(self, "Triangle plot", "Select more than 1 x parameter for triangle plot")
 
             elif len(items_x) > 0 and len(items_y) == 0:
                 # 1D plot
@@ -897,11 +906,8 @@ class MainWindow(QMainWindow):
                     else:
                         ncol = None
                     self.plotter.plots_1d(roots, params=params, legend_ncol=ncol)
-                except:
-                    QMessageBox.critical(
-                            self, "Plot 1D",
-                            "Error for command:\n\nplots_1d(roots, params=params)\n\nwith roots=%s\nparams=%s\n" % (str(roots), str(params)))
-                    raise
+                except Exception as e:
+                    self.errorReport(e, caption="plot1D", msg="Error for command:\n\nplots_1d(roots, params=params)\n\nwith roots=%s\nparams=%s\n" % (str(roots), str(params)))
                 self.updatePlot()
                 script += "g.plots_1d(roots, params=params)\n"
 
@@ -916,11 +922,9 @@ class MainWindow(QMainWindow):
                         setSizeQT(min(height / len(items_y), width / len(items_x)))
                         try:
                             self.plotter.rectangle_plot(items_x, items_y, roots=roots, filled=filled)
-                        except:
-                            QMessageBox.critical(
-                                self, "Plot 2D",
+                        except  Exception as e:
+                            self.errorReport(e, caption="Plot 2D", msg=
                                 "Error for command:\n\nrectangle_plot(xparams, yparams, roots=roots)\n\nwith xparams=%s\nyparams=%s\nroots=%s\n" % (str(items_x), str(items_y), str(roots)))
-                            raise
                         self.updatePlot()
                         script += "g.rectangle_plot(xparams, yparams, roots=roots,filled=filled)\n"
 
@@ -946,12 +950,10 @@ class MainWindow(QMainWindow):
 
                             try:
                                 self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled)
-                            except:
-                                QMessageBox.critical(
-                                    self, "Plot 2D",
+                            except Exception as e:
+                                self.errorReport(e, caption="Plot 2D", msg=
                                     "Error for command:\n\nplots_2d(roots, param_pairs=pairs, filled=filled)\n\nwith roots=%s\npairs=%s\nfilled=%s\n"
                                     % (str(roots), str(pairs), str(filled)))
-                                raise
                             self.updatePlot()
                             script += "g.plots_2d(roots, param_pairs=pairs, filled=filled)\n"
                         elif color:
@@ -969,11 +971,9 @@ class MainWindow(QMainWindow):
                                     script += "sets = [" + ",".join(triplets) + "]\n"
                                     script += "g.plots_3d(roots, sets)\n"
                                     self.plotter.plots_3d(roots, sets)
-                            except:
-                                QMessageBox.critical(
-                                    self, "Plot 3D",
+                            except Exception as e:
+                                self.errorReport(e, caption="Plot 3D", msg=
                                     "Error for command:\n\nplots_3d(roots, sets)\n\nwith roots=%s\nsets=%s\n" % (str(roots), str(sets)))
-                                raise
                             self.updatePlot()
 
 

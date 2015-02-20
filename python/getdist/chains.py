@@ -3,7 +3,7 @@ import numpy as np
 from getdist import paramNames
 
 def lastModified(files):
-    return max([os.path.getmtime(fname) for fname in files])
+    return max([os.path.getmtime(fname) for fname in files if os.path.exists(fname)])
 
 def chainFiles(root, chain_indices=None, ext='.txt'):
     index = -1
