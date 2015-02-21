@@ -638,23 +638,6 @@ class GetDistPlotter(object):
             lim2 = self.checkBounds(roots[0], param_pair[1].name , ybounds[0], ybounds[1])
             kwargs['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]
 
-        if True:
-            try:
-                x = np.arange(0, 8, 0.02)
-                y = np.arange(-8, 8, 0.02)
-                x, y = np.meshgrid(x, y)
-                invcov = np.linalg.inv(np.array([[1, 0], [0, 1]]))
-                like = (x) ** 2 * invcov[0, 0] + 2 * x * y * invcov[0, 1] + (y) ** 2 * invcov[1, 1]
-                density = Density2D()
-                density.pts = exp(-like / 2)
-                levels = MCSamples.get2DContourLevels(density.pts, contours=[0.68, 0.95, 0.99])
-                density.x1 = x
-                density.x2 = y
-#                levels = exp(-np.array([1.509, 2.4477, 3.034854259]) ** 2 / 2)
-                density.contours = levels
-                self.add_2d_contours(roots[0], 'x', 'y', filled=False, density=density)
-            except:
-                pass
         self.setAxes(param_pair, **kwargs)
         return xbounds, ybounds
 

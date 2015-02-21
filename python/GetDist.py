@@ -25,7 +25,7 @@ if (len(sys.argv) > 2):
     in_root = sys.argv[2]
 else:
     in_root = ini.params['file_root']
-if (in_root == ''):  # or (not os.path.isfile(file_root)):
+if in_root == '':  # or (not os.path.isfile(file_root)):
     print 'Root file does not exist ', in_root
     sys.exit()
 rootname = os.path.basename(in_root)
@@ -157,7 +157,7 @@ ok = mc.loadChains(in_root, chain_files)
 mc.removeBurnFraction(ignorerows)
 mc.deleteFixedParams()
 
-if (not no_tests):
+if not no_tests:
     mc.DoConvergeTests(converge_test_limit)
 
 mc.makeSingle()
@@ -165,16 +165,16 @@ mc.makeSingle()
 def filterPars(names):
     return [ name for name in names if mc.paramNames.parWithName(name) ]
 
-if (cool <> 1):
+if cool <> 1:
     mc.CoolChain(cool)
 
 # Adjust weights if requested
-if (adjust_priors):
+if adjust_priors:
     mc.AdjustPriors()
 
 plotparams = []
 line = ini.string('plot_params', '')
-if (line not in ['', 0]):
+if line not in ['', '0']:
     plotparams = filterPars(line.split())
 
 line = ini.string('plot_2D_param', '')
@@ -230,7 +230,7 @@ if ((num_3D_plots and not make_single_samples or make_scatter_samples) and not n
     make_single_samples = True
     single_thin = max(1, int(round(mc.numsamp / mc.max_mult)) / mc.max_scatter_points)
 
-if (make_single_samples):
+if make_single_samples:
     filename = os.path.join(plot_data_dir, rootname.strip() + '_single.txt')
     mc.MakeSingleSamples(filename, single_thin)
 

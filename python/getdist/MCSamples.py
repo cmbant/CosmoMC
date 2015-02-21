@@ -79,8 +79,12 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settin
                 pickle.dump(samples, output, pickle.HIGHEST_PROTOCOL)
         return samples
 
-def get2DContourLevels(bins2D, contours=[0.68, 0.95], norm=None, half_edge=True):
-    # bins 2D is the density. If half_edge, then edge bins are only half integrated over in each direction.
+def get2DContourLevels(bins2D, contours=[0.68, 0.95], missing_norm=0, half_edge=True):
+    """
+     Get countour levels encolosing "countours" of the probability.
+     bins 2D is the density. If half_edge, then edge bins are only half integrated over in each direction.
+     missing_norm accounts of any points not included in bin2D (e.g. points in far tails that are not plotted)
+    """
     contour_levels = np.zeros(len(contours))
     if half_edge:
         abins = bins2D.copy()
@@ -88,14 +92,10 @@ def get2DContourLevels(bins2D, contours=[0.68, 0.95], norm=None, half_edge=True)
         abins[0, :] /= 2
         abins[:, -1] /= 2
         abins[-1, :] /= 2
-    if norm is None:
-        abins = bins2D
-        norm = np.sum(bins2D)
-        missing = 0
     else:
-        # account for the fact that some points may be outside the bins2D binning box
-        missing = norm - np.sum(abins)
-    targets = (1 - np.array(contours)) * norm - missing
+        abins = bins2D
+    norm = np.sum(abins)
+    targets = (1 - np.array(contours)) * norm - missing_norm
     if True:
         bins = abins.reshape(-1)
         indexes = bins2D.reshape(-1).argsort()
@@ -311,7 +311,11 @@ class MCSamples(chains):
         self.max_mult = 0
         self.mean_mult = 0
         self.plot_data_dir = ""
-        self.rootname = ""
+        if root:
+            self.rootname = os.path.basename(root)
+        else:
+            self.rootname = ""
+
         self.rootdirname = ""
         self.meanlike = 0.
         self.mean_loglikes = False
@@ -1151,7 +1155,7 @@ class MCSamples(chains):
         self.range_max[j] = max(self.ND_limit_top[1, j], self.confidence(paramConfid, 0.001, upper=True))
 
         width = (self.range_max[j] - self.range_min[j]) / (self.num_bins + 1)
-        if (width == 0):
+        if width == 0:
             return width, smooth_1D, end_edge
 
         logging.debug("Smooth scale ... ")
@@ -1367,7 +1371,6 @@ class MCSamples(chains):
         Get 2D plot data.
         """
         fine_fac_base = 5
-
         has_prior = self.has_limits[j] or self.has_limits[j2]
 
         corr = self.corrmatrix[j2][j]
@@ -1395,31 +1398,33 @@ class MCSamples(chains):
         if not self.has_limits_top[j]: ixmax += 1
         if not self.has_limits_top[j2]: iymax += 1
 
-        widthj = widthx / fine_fac
-        widthj2 = widthy / fine_fac
+        finewidthx = widthx / fine_fac
+        finewidthy = widthy / fine_fac
         winw = int(round(2 * fine_fac * smooth_scale))
 
-        ix1s = np.round((self.samples[:, j] - self.center[j]) / widthj).astype(np.int)
-        ix2s = np.round((self.samples[:, j2] - self.center[j2]) / widthj2).astype(np.int)
+        ix1s = np.round((self.samples[:, j] - self.center[j]) / finewidthx).astype(np.int)
+        ix2s = np.round((self.samples[:, j2] - self.center[j2]) / finewidthy).astype(np.int)
         imin = min(ixmin * fine_fac, np.min(ix1s)) - winw
         imax = max(ixmax * fine_fac, np.max(ix1s)) + winw
         jmin = min(iymin * fine_fac, np.min(ix2s)) - winw
         jmax = max(iymax * fine_fac, np.max(ix2s)) + winw
 
-        finebins = np.zeros((jmax - jmin + 1, imax - imin + 1))
+        flatix = (ix1s - imin) + (ix2s - jmin) * (imax - imin + 1)
+        finebins = np.bincount(flatix, weights=self.weights,
+                    minlength=(jmax - jmin + 1) * (imax - imin + 1)).reshape((jmax - jmin + 1 , imax - imin + 1))
+# equivalent to this slow method
+#        finebins = np.zeros((jmax - jmin + 1, imax - imin + 1))
+#        for i, (ix1, ix2) in enumerate(zip(ix1s - imin, ix2s - jmin)):
+#            finebins[ix2][ix1] += self.weights[i]
+
         if self.shade_meanlikes:
-            finebinlikes = np.zeros((jmax - jmin + 1, imax - imin + 1))
             likeweights = self.weights * np.exp(self.meanlike - self.loglikes)
+            finebinlikes = np.bincount(flatix, weights=likeweights,
+                    minlength=(jmax - jmin + 1) * (imax - imin + 1)).reshape((jmax - jmin + 1 , imax - imin + 1))
 
-        for i, (ix1, ix2) in enumerate(zip(ix1s - imin, ix2s - jmin)):
-            finebins[ix2][ix1] += self.weights[i]
-
-        if self.shade_meanlikes:
-            for i, (ix1, ix2) in enumerate(zip(ix1s - imin, ix2s - jmin)):
-                finebinlikes[ix2][ix1] += likeweights[i]
         # In f90, Win(-winw:winw,-winw:winw)
         Win = np.empty(((2 * winw) + 1, (2 * winw) + 1))
-        indexes = range(-winw, winw + 1)
+        indexes = np.arange(-winw, winw + 1)
         signorm = 2 * (fine_fac * smooth_scale) ** 2 * (1 - corr ** 2)
         for ix1 in indexes:
             for ix2 in indexes:
@@ -1428,11 +1433,12 @@ class MCSamples(chains):
 
         fineused = finebins[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
                             ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin]
-        bins2D = fftconvolve(fineused, Win, 'valid')[::fine_fac, ::fine_fac]
+        bins2D = fftconvolve(fineused, Win, 'valid')
+
         if self.shade_meanlikes:
             bin2Dlikes = fftconvolve(finebinlikes[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
                                                   ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
-                                                  Win, 'valid')[::fine_fac, ::fine_fac]
+                                                  Win, 'valid')
             del finebinlikes
             mx = 1e-4 * np.max(bins2D)
             bin2Dlikes[bins2D > mx] /= bins2D[bins2D > mx]
@@ -1459,30 +1465,29 @@ class MCSamples(chains):
 
             priorused = prior_mask[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
                                    ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin]
-            a00 = fftconvolve(priorused, Win, 'valid')[::fine_fac, ::fine_fac]
+            a00 = fftconvolve(priorused, Win, 'valid')
             ix = np.nonzero(a00 * bins2D)
-            normed = bins2D[ix] / a00[ix]
+            a00 = a00[ix]
+            normed = bins2D[ix] / a00
             if self.boundary_correction_method == 1:
-                x = np.empty(Win.shape)
+                # linear boundary correction
                 y = np.empty(Win.shape)
                 for i in range(Win.shape[0]):
-                    x[i, :] = indexes
                     y[:, i] = indexes
-
-                winx = np.multiply(Win, x)
-                winy = np.multiply(Win, y)
-                a10 = fftconvolve(priorused, winx, 'valid')[::fine_fac, ::fine_fac]
-                a01 = fftconvolve(priorused, winy, 'valid')[::fine_fac, ::fine_fac]
-                a20 = fftconvolve(priorused, np.multiply(winx, x), 'valid')[::fine_fac, ::fine_fac]
-                a02 = fftconvolve(priorused, np.multiply(winy, y), 'valid')[::fine_fac, ::fine_fac]
-                a11 = fftconvolve(priorused, np.multiply(winx, y), 'valid')[::fine_fac, ::fine_fac]
-                xP = fftconvolve(fineused, winx, 'valid')[::fine_fac, ::fine_fac]
-                yP = fftconvolve(fineused, winy, 'valid')[::fine_fac, ::fine_fac]
+                winx = Win * indexes
+                winy = Win * y
+                a10 = fftconvolve(priorused, winx, 'valid')[ix]
+                a01 = fftconvolve(priorused, winy, 'valid')[ix]
+                a20 = fftconvolve(priorused, winx * indexes, 'valid')[ix]
+                a02 = fftconvolve(priorused, winy * y, 'valid')[ix]
+                a11 = fftconvolve(priorused, winy * indexes, 'valid')[ix]
+                xP = fftconvolve(fineused, winx, 'valid')[ix]
+                yP = fftconvolve(fineused, winy, 'valid')[ix]
                 denom = (a20 * a01 ** 2 + a10 ** 2 * a02 - a00 * a02 * a20 + a11 ** 2 * a00 - 2 * a01 * a10 * a11)
-                A = a11[ix] ** 2 - a02[ix] * a20[ix]
-                Ax = a10[ix] * a02[ix] - a01[ix] * a11[ix]
-                Ay = a01[ix] * a20[ix] - a10[ix] * a11[ix]
-                corrected = (bins2D[ix] * A + xP[ix] * Ax + yP[ix] * Ay) / denom[ix]
+                A = a11 ** 2 - a02 * a20
+                Ax = a10 * a02 - a01 * a11
+                Ay = a01 * a20 - a10 * a11
+                corrected = (bins2D[ix] * A + xP * Ax + yP * Ay) / denom
                 bins2D[ix] = normed * np.exp(np.minimum(corrected / normed, 4) - 1)
             elif self.boundary_correction_method == 0:
                 # simple boundary correction by normalization
@@ -1491,88 +1496,76 @@ class MCSamples(chains):
 
         mx = np.max(bins2D)
         bins2D = bins2D / mx
-        bins2D_norm = np.sum(finebins) / fine_fac ** 2 / mx  # true norm, including excluded area in tails
+        missing_norm = (np.sum(finebins) - np.sum(fineused[winw:-winw, winw:-winw])) / mx
+
         ncontours = len(self.contours)
         if num_plot_contours: ncontours = min(num_plot_contours, ncontours)
         contours = self.contours[:ncontours]
 
         # Get contour containing contours(:) of the probability
-        contour_levels = get2DContourLevels(bins2D, contours, norm=bins2D_norm)
+        contour_levels = get2DContourLevels(bins2D, contours, missing_norm=missing_norm)
         if self.smooth_correct_contours:
             # estimate dependence on smoothing width and roughly correct
             varscale = 2
             Winscale = Win ** varscale
             Winscale /= np.sum(Winscale)
-            bins2Droot = fftconvolve(fineused, Winscale, 'valid')[::fine_fac, ::fine_fac]
+            bins2Droot = fftconvolve(fineused, Winscale, 'valid')
             if has_prior:
                 simple_normed = bins2D.copy()
                 simple_normed[ix] = normed / mx
-                aw00 = fftconvolve(priorused, Winscale, 'valid')[::fine_fac, ::fine_fac]
+                aw00 = fftconvolve(priorused, Winscale, 'valid')
                 ix = np.nonzero(aw00 * bins2Droot)
                 bins2Droot[ix] = bins2Droot[ix] / aw00[ix]
             else:
                 simple_normed = bins2D
             bins2Droot /= np.max(bins2Droot)
 
-            varrat2 = (fine_fac * smooth_scale) ** 2 / (self.fullcov[j2, j2] / widthj2 ** 2)
-            varrat = (fine_fac * smooth_scale) ** 2 / (self.fullcov[j, j] / widthj ** 2)
+            varrat2 = (fine_fac * smooth_scale) ** 2 / (self.fullcov[j2, j2] / finewidthy ** 2)
+            varrat = (fine_fac * smooth_scale) ** 2 / (self.fullcov[j, j] / finewidthx ** 2)
             varrat = max(0.02, varrat , varrat2)  # probably better to get from estimate of curvature, but only used for approximate linearization in the smoothing width
             if False:
                 # this compres with analytic result for full gaussian assuming varrat is ratio of variances
                 p = 1 - np.array(self.contours[:num_plot_contours])
                 rat = np.exp(np.log(p) / (1 + varrat)) / p
-#                print contour_levels * rat
                 contour_levels *= rat
             else:
                 for i, contour_level  in enumerate(contour_levels):
                     orig = np.log(np.sum(simple_normed[simple_normed < contour_level]))
                     dpdW = (np.log(np.sum(simple_normed[bins2Droot < contour_level])) - orig) / (1 / (1 + varrat / varscale) - 1 / (1 + varrat))
                     dpdL = (np.log(np.sum(simple_normed[simple_normed < contour_level * 1.1])) - orig) / 0.1
-    #                dpdL = (np.log(np.sum(simple_normed[np.where(simple_normed < contour_levels[i] * 1.1)])) - orig) / np.log(1.1)
                     if dpdL > 0:
-    #                    fac = np.exp(dpdW / dpdL * (1 - 1 / (1 + varrat)))
                         fac = dpdW / dpdL * (1 - 1 / (1 + varrat))
-                        print 'dW,dL,scale', dpdW, dpdL, fac
                         contour_levels[i] += max(fac * contour_level, 0)
-                    else:
-                        print 'dW,dL,scale', dpdW, dpdL
+
+        if True:
+            bins2D = bins2D[::fine_fac, ::fine_fac ]
+            if self.shade_meanlikes:
+                bin2Dlikes = bin2Dlikes[::fine_fac, ::fine_fac ]
+            y = self.center[j2] + np.arange(iymin, iymax + 1) * widthy
+            x = self.center[j] + np.arange(ixmin, ixmax + 1) * widthx
+        else:
+            y = self.center[j2] + np.arange(iymin * fine_fac, iymax * fine_fac + 1) * finewidthy
+            x = self.center[j] + np.arange(ixmin * fine_fac, ixmax * fine_fac + 1) * finewidthx
+
 
         bins2D[bins2D < 1e-30] = 0
+        if self.shade_meanlikes:
+            bin2Dlikes /= np.max(bin2Dlikes)
 
+#        print 'time 2D:', time.time() - now
         if writeDataToFile:
             # note store things in confusing traspose form
             name = self.parName(j)
             name2 = self.parName(j2)
             plotfile = self.rootname + "_2D_%s_%s" % (name, name2)
             filename = os.path.join(self.plot_data_dir, plotfile)
-            with open(filename, 'w') as f:
-                for ix1 in range(ixmin, ixmax + 1):
-                    for ix2 in range(iymin, iymax + 1):
-                        f.write("%16.7E" % (bins2D[ix2 - iymin][ix1 - ixmin]))
-                    f.write("\n")
-
-            with open(filename + "_y", 'w') as f:
-                for i in range(ixmin, ixmax + 1):
-                    f.write("%16.7E\n" % (self.center[j] + i * widthx))
-
-            with open(filename + "_x", 'w') as f:
-                for i in range(iymin, iymax + 1):
-                    f.write("%16.7E\n" % (self.center[j2] + i * widthy))
-
-            with open(filename + "_cont", 'w') as f:
-                s_levels = [ "%16.7E" % level for level in contour_levels ]
-                f.write("%s\n" % (" ".join(s_levels)))
-
+            np.savetxt(filename, bins2D.T, "%16.7E")
+            np.savetxt(filename + "_y", x, "%16.7E")
+            np.savetxt(filename + "_x", y, "%16.7E")
+            np.savetxt(filename + "_cont-test", np.atleast_2d(contour_levels), "%16.7E")
             if self.shade_meanlikes:
-                with open(filename + "_likes", 'w') as f:
-                    maxbin = np.max(bin2Dlikes)
-                    for ix1 in range(ixmin, ixmax + 1):
-                        for ix2 in range(iymin, iymax + 1):
-                            f.write("%16.7E" % (bin2Dlikes[ix2 - iymin][ix1 - ixmin] / maxbin))
-                        f.write("\n")
+                np.savetxt(filename + "_likes", bin2Dlikes.T , "%16.7E")
         else:
-            y = self.center[j2] + np.arange(iymin, iymax + 1) * widthy
-            x = self.center[j] + np.arange(ixmin, ixmax + 1) * widthx
             return bins2D, bin2Dlikes, contour_levels, x, y
 
 
