@@ -86,9 +86,7 @@ if (out_root <> ''):
     print 'producing files with with root ', out_root
 mc.rootname = rootname
 
-plot_data_dir = ini.string('plot_data_dir')
-if (plot_data_dir == ''):
-    plot_data_dir = 'plot_data/'
+plot_data_dir = ini.string('plot_data_dir') or 'plot_data/'
 
 abs_plot_data_dir = plot_data_dir
 if not os.path.isdir(abs_plot_data_dir):
@@ -97,20 +95,13 @@ mc.plot_data_dir = plot_data_dir
 
 rootdirname = os.path.join(out_dir, rootname); mc.rootdirname = rootdirname
 
-if not no_tests:
-    converge_test_limit = ini.float('converge_test_limit', mc.contours[mc.num_contours - 1])
-    corr_length_thin = ini.int('corr_length_thin', 0)
-    corr_length_steps = ini.int('corr_length_steps', 15)
-    mc.corr_length_thin = corr_length_thin
-    mc.corr_length_steps = corr_length_steps
-
-if (ini.params.has_key('do_minimal_1d_intervals')):
+if ini.params.has_key('do_minimal_1d_intervals'):
     print 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
     sys.exit()
 
 PCA_num = ini.int('PCA_num', 0)
-if (PCA_num <> 0):
-    if (PCA_num < 2):
+if PCA_num <> 0:
+    if PCA_num < 2:
         print 'Can only do PCA for 2 or more parameters'
         sys.exit()
     line = ini.string('PCA_params')
@@ -145,7 +136,7 @@ def getLastChainIndex(in_root):
 first_chain = ini.int('first_chain', 1)
 last_chain = ini.int('chain_num', -1)
 # -1 means keep reading until one not found
-if(last_chain == -1): last_chain = getLastChainIndex(in_root)
+if last_chain == -1: last_chain = getLastChainIndex(in_root)
 
 # Read in the chains
 ok = mc.loadChains(in_root, chain_files)
@@ -156,11 +147,10 @@ ok = mc.loadChains(in_root, chain_files)
 
 mc.removeBurnFraction(ignorerows)
 mc.deleteFixedParams()
+mc.makeSingle()
 
 if not no_tests:
-    mc.DoConvergeTests(converge_test_limit)
-
-mc.makeSingle()
+    mc.DoConvergeTests(mc.converge_test_limit, writeDataToFile=True, feedback=True)
 
 def filterPars(names):
     return [ name for name in names if mc.paramNames.parWithName(name) ]
@@ -220,34 +210,25 @@ mc.writeCorrMatrix()
 
 # Output thinned data if requested
 # Must do this with unsorted output
-if (thin_factor <> 0):
+if thin_factor <> 0:
     thin_ix = mc.thin_indices(thin_factor)
     filename = rootdirname + '_thin.txt'
     mc.WriteThinData(filename, thin_ix, thin_cool)
 
 # Produce file of weight-1 samples if requested
-if ((num_3D_plots and not make_single_samples or make_scatter_samples) and not no_plots):
+if (num_3D_plots and not make_single_samples or make_scatter_samples) and not no_plots:
     make_single_samples = True
-    single_thin = max(1, int(round(mc.numsamp / mc.max_mult)) / mc.max_scatter_points)
+    single_thin = max(1, int(round(mc.norm / mc.max_mult)) / mc.max_scatter_points)
 
 if make_single_samples:
     filename = os.path.join(plot_data_dir, rootname.strip() + '_single.txt')
     mc.MakeSingleSamples(filename, single_thin)
 
-print 'mean input multiplicity = ', mc.mean_mult
+print mc.getNumSampleSummaryText()
 
-num_parameters = mc.paramNames.numParams()
-print 'using ', mc.numrows, ' rows, processing ', num_parameters, ' parameters'
-if (mc.indep_thin <> 0):
-    print 'Approx indep samples: ', round(mc.numsamp / mc.indep_thin)
-else:
-    print  'effective number of samples (assuming indep): ', round(mc.numsamp / mc.max_mult)
+mc.writeBounds(os.path.join(plot_data_dir, rootname.strip() + '.bounds'))
 
-
-filename = os.path.join(plot_data_dir, rootname.strip() + '.bounds')
-mc.writeBounds(filename)
-
-if (PCA_num > 0) and not plots_only:
+if PCA_num > 0 and not plots_only:
     mc.PCA(PCA_params, PCA_func, PCA_NormParam, writeDataToFile=True)
 
 # Do 1D bins
@@ -269,11 +250,11 @@ if plot_2D_param == 'corr' and not no_plots:
 elif plot_2D_param:
     mc.paramNames.parWithName(plot_2D_param, error=True)  # just check
 
-if (cust2DPlots or plot_2D_param) and  not no_plots:
+if cust2DPlots or plot_2D_param and  not no_plots:
     filename = rootdirname + '_2D.' + plot_ext
     mc.WriteScriptPlots2D(filename, plot_2D_param, cust2DPlots, plots_only)
 
-if (triangle_plot and not no_plots):
+if triangle_plot and not no_plots:
     # Add the off-diagonal 2D plots
     mc.WriteScriptPlotsTri(rootdirname + '_tri.' + plot_ext, triangle_params)
     for i in range(triangle_num):
@@ -283,7 +264,7 @@ if (triangle_plot and not no_plots):
             if (mc.done2D is None or not mc.done2D[j2][j]) and not plots_only: mc.Get2DPlotData(j2, j, writeDataToFile=True)
 
 # Do 3D plots (i.e. 2D scatter plots with coloured points)
-if (num_3D_plots <> 0 and not no_plots):
+if num_3D_plots <> 0 and not no_plots:
     print 'producing ', num_3D_plots, '2D colored scatter plots'
     filename = rootdirname + '_3D.' + plot_ext
     mc.WriteScriptPlots3D(filename, plot_3D)
@@ -299,7 +280,7 @@ if not plots_only:
     mc.WriteGlobalLikelihood(rootdirname + '.likestats')
 
 # System command
-if (finish_run_command):
+if finish_run_command:
     finish_run_command = finish_run_command.replace('%ROOTNAME%', rootname)
     finish_run_command = finish_run_command.replace('%PLOTDIR%', plot_data_dir)
     finish_run_command = finish_run_command.replace('%PLOTROOT%', os.path.join(plot_data_dir, rootname))

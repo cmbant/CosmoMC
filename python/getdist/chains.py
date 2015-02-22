@@ -63,33 +63,42 @@ def getSignalToNoise(C, noise=None, R=None, eigs_only=False):
 
 
 class chain(object):
-    def __init__(self, filename, ignore_rows=0):
-        self.setColData(np.loadtxt(filename, skiprows=ignore_rows))
+    def __init__(self, filename=None, ignore_rows=0, samples=None, weights=None, loglikes=None):
+        if filename:
+            self.setColData(np.loadtxt(filename, skiprows=ignore_rows))
+        else:
+            self.setSamples(samples)
+            self.weights = weights
+            self.loglikes = loglikes
+
 
     def setColData(self, coldata):
-        self.coldata = coldata
-        self.n = self.coldata.shape[1] - 2
+        self.setSamples(coldata[:, 2:])
+        self.weights = coldata[:, 0]
+        self.loglikes = coldata[:, 1]
+
+    def setSamples(self, samples):
+        self.samples = samples
+        self.n = self.samples.shape[1]
         self.means = []
 
     def getCov(self, n):
         if len(self.means) == 0: self.getMeans()
-        weights = self.coldata[:, 0]
         cov = np.zeros((n, n))
         for i in range(n):
+            weightdiff = (self.samples[:, i] - self.means[i]) * self.weights
             for j in range(i, n):
-                cov[i, j] = np.dot(weights, (self.coldata[:, i + 2] - self.means[i]) * (self.coldata[:, j + 2] - self.means[j])) / self.norm
+                cov[i, j] = np.dot(weightdiff , self.samples[:, j] - self.means[j]) / self.norm
                 cov[j, i] = cov[i, j]
         self.cov = cov
         return cov
 
     def getMeans(self):
-        means = []
-        weights = self.coldata[:, 0]
-        self.norm = weights.sum()
-        for i in range(2, self.n + 2):
-            means.append(np.average(self.coldata[:, i], weights=weights))
-        self.means = np.asarray(means)
-        return means
+        self.norm = np.sum(self.weights)
+        self.means = np.empty(self.n)
+        for i in range(self.n):
+            self.means[i] = np.dot(self.samples[:, i], self.weights) / self.norm
+        return self.means
 
 class paramConfidenceData(object):
     pass
@@ -103,7 +112,6 @@ class chains(object):
         self.precision = '%.8e'
         self.ignore_lines = ignore_rows
         self.root = root
-        self.chains = []
         self.samples = None
         self.hasNames = os.path.exists(root + '.paramnames')
         self.needs_update = True
@@ -159,49 +167,30 @@ class chains(object):
         return np.sqrt(self.var(paramVec, where))
 
     def twoTailLimits(self, paramVec, confidence):
-        return self.confidence(paramVec, (1 - confidence) / 2, upper=False) , self.confidence(paramVec, (1 - confidence) / 2, upper=True)
+        limits = np.array([(1 - confidence) / 2, 1 - (1 - confidence) / 2])
+        return self.confidence(paramVec, limits)
 
 
-    def initParamConfidenceData(self, paramVec):
+    def initParamConfidenceData(self, paramVec, start=0, end=None, weights=None):
+        if weights is None: weights = self.weights
         d = paramConfidenceData()
-        d.paramVec = self.valuesForParam(paramVec)
-        d.norm = np.sum(self.weights)
-        d.indexes = paramVec.argsort()
-        weightsort = self.weights[d.indexes]
+        d.paramVec = self.valuesForParam(paramVec)[start:end]
+        d.norm = np.sum(weights[start:end])
+        d.indexes = d.paramVec.argsort()
+        weightsort = weights[start + d.indexes]
         d.cumsum = np.cumsum(weightsort)
         return d
 
-    def confidence(self, paramVec, limfrac, upper):
+    def confidence(self, paramVec, limfrac, upper=False, start=0, end=None, weights=None):
         if isinstance(paramVec, paramConfidenceData):
             d = paramVec
         else:
-            d = self.initParamConfidenceData(paramVec)
+            d = self.initParamConfidenceData(paramVec, start, end, weights)
 
         if not upper: target = d.norm * limfrac
         else: target = d.norm * (1 - limfrac)
         ix = np.searchsorted(d.cumsum, target)
-        return d.paramVec[d.indexes[min(ix, d.indexes.shape[0] - 1)]]
-#         try_b = np.min(paramVec)
-#         try_t = np.max(paramVec)
-#         lasttry = -1
-#         while True:
-#             if upper:
-#                 trial = np.sum(weights[paramVec > (try_b + try_t) / 2])
-#                 if trial > (norm * limfrac):
-#                     try_b = (try_b + try_t) / 2
-#                 else:
-#                     try_t = (try_b + try_t) / 2
-#             else:
-#                 trial = np.sum(weights[paramVec < (try_b + try_t) / 2])
-#                 if trial > (norm * limfrac):
-#                     try_t = (try_b + try_t) / 2
-#                 else:
-#                     try_b = (try_b + try_t) / 2
-#             if trial == lasttry and (abs(try_b + try_t) < 1e-10 or
-#                       abs((try_b - try_t) / (try_b + try_t)) < 0.05): break
-#             lasttry = trial
-#
-#         return try_t
+        return d.paramVec[d.indexes[np.minimum(ix, d.indexes.shape[0] - 1)]]
 
     def cov(self, paramVecs):
         paramVecs = self.valuesForParam(paramVecs, force_array=True)
@@ -209,8 +198,9 @@ class chains(object):
         n = len(paramVecs)
         cov = np.zeros((n, n))
         for i, diff1 in enumerate(diffs):
+            weightdiff = diff1 * self.weights
             for j, diff2 in enumerate(diffs[:i + 1]):
-                cov[i, j] = np.dot(diff1, diff2 * self.weights) / self.norm
+                cov[i, j] = np.dot(weightdiff , diff2) / self.norm
                 cov[j, i] = cov[i, j]
         return cov
 
@@ -255,11 +245,11 @@ class chains(object):
         if len(self.chains) == 0: print 'loadChains - no chains found for ' + root
         return len(self.chains) > 0
 
-    def getChainsStats(self):
-        nparam = self.paramNames.numNonDerived()
+    def getChainsStats(self, nparam=None):
+        nparam = nparam or self.paramNames.numNonDerived()
         for chain in self.chains: chain.getCov(nparam)
-        self.means = np.zeros(nparam)
         norm = np.sum([chain.norm for chain in self.chains])
+        self.means = np.zeros(nparam)
         for chain in self.chains:
             self.means = self.means + chain.means[0:nparam] * chain.norm
         self.means /= norm
@@ -287,11 +277,19 @@ class chains(object):
 
 
     def makeSingle(self):
-        self.weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
-        self.loglikes = np.hstack((chain.coldata[:, 1] for chain in self.chains))
-        self.samples = np.vstack((chain.coldata[:, 2:] for chain in self.chains))
+        self.chain_offsets = np.cumsum(np.array([0] + [chain.samples.shape[0] for chain in self.chains]))
+        self.weights = np.hstack((chain.weights for chain in self.chains))
+        self.loglikes = np.hstack((chain.loglikes for chain in self.chains))
+        self.samples = np.vstack((chain.samples for chain in self.chains))
         del(self.chains)
         return self
+
+    def getSeparateChains(self):
+        if hasattr(self, 'chains'): return self.chains
+        chainlist = []
+        for off1, off2 in zip(self.chain_offsets[:-1], self.chain_offsets[1:]):
+            chainlist.append(chain(samples=self.samples[off1:off2], weights=self.weights[off1:off2], loglikes=self.loglikes[off1:off2]))
+        return chainlist
 
     def loadWMAPChain(self, chainPath, namesFile, thinfac=1):
         params = paramNames.paramNames(namesFile)
@@ -319,7 +317,12 @@ class chains(object):
 
     def removeBurnFraction(self, ignore_frac):
         for chain in self.chains:
-            chain.coldata = chain.coldata[round(chain.coldata.shape[0] * ignore_frac):, :]
+            ix = int(round(chain.samples.shape[0] * ignore_frac))
+            chain.samples = chain.samples[ix:, :]
+            if chain.weights is not None:
+                chain.weights = chain.weights[ix:]
+            if chain.loglikes is not None:
+                chain.loglikes = chain.loglikes[ix:]
 
     def deleteFixedParams(self):
         fixed = []
@@ -329,11 +332,10 @@ class chains(object):
             self.samples = np.delete(self.samples, fixed, 1)
         else:
             chain = self.chains[0]
-            for i in range(2, chain.n + 2):
-                if np.all(chain.coldata[:, i] == chain.coldata[0, i]): fixed.append(i)
+            for i in range(chain.n):
+                if np.all(chain.samples[:, i] == chain.samples[0, i]): fixed.append(i)
             for chain in self.chains:
-                chain.setColData(np.delete(chain.coldata, fixed, 1))
-            fixed = [fix - 2 for fix in fixed]
+                chain.setSamples(np.delete(chain.samples, fixed, 1))
         if self.hasNames:
             self.paramNames.deleteIndices(fixed)
             self.getParamIndices()
@@ -344,38 +346,52 @@ class chains(object):
         np.savetxt(root + '.txt', np.hstack((self.weights.reshape(-1, 1), self.loglikes.reshape(-1, 1), self.samples)), fmt=self.precision)
         self.paramNames.saveAsText(root + '.paramnames')
 
-    def thin_indices(self, factor):
-        thin_ix = []
+    def thin_indices(self, factor, weights=None):
         tot = 0
         i = 0
-        self.numrows = len(self.weights)
-        mult = self.weights[i]
-        if abs(round(mult) - mult) > 1e-4:
-                raise Exception('Can only thin with integer weights')
+        if weights is None:  weights = self.weights
+        numrows = len(weights)
+        norm1 = np.sum(weights)
+        weights = weights.astype(np.int)
+        norm = np.sum(weights)
 
-        while i < self.numrows:
-            if (mult + tot < factor):
-                tot += mult
-                i += 1
-                if i < self.numrows: mult = self.weights[i]
-            else:
-                thin_ix.append(i)
-                if mult == factor - tot:
+        if abs(norm - norm1) > 1e-4:
+                raise Exception('Can only thin with integer weights')
+        if factor <> int(factor):
+                raise Exception('Thin factor must be integer')
+
+        if factor >= np.max(weights):
+            cumsum = np.cumsum(weights) / int(factor)
+            _, thin_ix = np.unique(cumsum, return_index=True)
+        else:
+            thin_ix = np.empty(norm / factor, dtype=np.int)
+            ix = 0
+            mult = weights[i]
+            while i < numrows:
+                if mult + tot < factor:
+                    tot += mult
                     i += 1
-                    if i < self.numrows: mult = self.weights[i]
+                    if i < numrows: mult = weights[i]
                 else:
-                    mult -= (factor - tot)
-                tot = 0
+                    thin_ix[ix] = i
+                    ix += 1
+                    if mult == factor - tot:
+                        i += 1
+                        if i < numrows: mult = weights[i]
+                    else:
+                        mult -= (factor - tot)
+                    tot = 0
+
         return thin_ix
 
     def singleSamples_indices(self):
-        max_weight = max(self.weights)
+        max_weight = np.max(self.weights)
         thin_ix = []
         for i in range(self.numrows):
             P = self.weights[i] / max_weight
             if random.random() < P:
                 thin_ix.append(i)
-        return thin_ix
+        return np.array(thin_ix, dtype=np.int)
 
     def makeSingleSamples(self):
         thin_ix = self.singleSamples_indices()

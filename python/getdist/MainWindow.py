@@ -68,6 +68,7 @@ class MainWindow(QMainWindow):
         self.createActions()
         self.createMenus()
         self.createStatusBar()
+        self.settingDlg = None
 
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.setWindowTitle("GetDist GUI")
@@ -120,6 +121,12 @@ class MainWindow(QMainWindow):
                                statusTip="Show Marge Stats",
                                triggered=self.showMargeStats)
 
+        self.convergeAct = QAction(QIcon(":/images/view_text.png"),
+                               "Converge Stats", self,
+                               shortcut="",
+                               statusTip="Show Convergence Stats",
+                               triggered=self.showConvergeStats)
+
         self.optionsAct = QAction(QIcon(""),
                                "Analysis settings", self,
                                shortcut="",
@@ -145,6 +152,7 @@ class MainWindow(QMainWindow):
         self.menuBar().addSeparator()
         self.dataMenu = self.menuBar().addMenu("&Data")
         self.dataMenu.addAction(self.statsAct)
+        self.dataMenu.addAction(self.convergeAct)
 
         self.menuBar().addSeparator()
         self.optionMenu = self.menuBar().addMenu("&Options")
@@ -347,21 +355,47 @@ class MainWindow(QMainWindow):
         batchJob.resetGrid(adir)
         self.openDirectory(adir)
 
-    def showMargeStats(self):
-        """
-        Callback for action 'Show Marge Stats'.
-        """
+    def getRootname(self):
         rootname = None
         item = self.listRoots.currentItem()
         if not item and self.listRoots.count(): item = self.listRoots.item(0)
         if item is not None:
             rootname = str(item.text())
-
         if rootname is None:
-            QMessageBox.warning(self, "Marge Stats", "Select a root name first. ")
+            QMessageBox.warning(self, "Chain Stats", "Select a root name first. ")
             # logging.warning("No rootname. Can't show marge stats")
-            return
+        return rootname
 
+    def showConvergeStats(self):
+        """
+        Callback for action 'Show Converge Stats'.
+        """
+        rootname = self.getRootname()
+        if rootname is None: return
+        try:
+            self.statusBar().showMessage("Calculating convergence stats....")
+            samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
+            stats = samples.DoConvergeTests(samples.converge_test_limit)
+            summary = samples.getNumSampleSummaryText()
+            if getattr(samples, 'GelmanRubin', None):
+                summary += "var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F" % samples.GelmanRubin
+
+        except Exception as e:
+            self.errorReport(e, caption="Convergence stats")
+        finally:
+            self.statusBar().showMessage("")
+
+        dlg = DialogConvergeStats(self, stats, summary, rootname)
+        dlg.show()
+        dlg.activateWindow()
+
+
+    def showMargeStats(self):
+        """
+        Callback for action 'Show Marge Stats'.
+        """
+        rootname = self.getRootname()
+        if rootname is None: return
         stats = None
 #        if self.batch:
 #            jobItem = self.batch.resolveRoot(rootname)
@@ -387,8 +421,9 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "settings", "Open chains first ")
             return
         if isinstance(self.iniFile, basestring): self.iniFile = iniFile(self.iniFile)
-        dlg = DialogSettings(self, self.iniFile)
-        dlg.show()
+        self.settingDlg = self.settingDlg or DialogSettings(self, self.iniFile)
+        self.settingDlg.show()
+        self.settingDlg.activateWindow()
 
     def settingsChanged(self):
         if self.plotter:
@@ -1044,7 +1079,7 @@ class DialogMargeStats(QDialog):
 
         self.setWindowTitle(self.tr('Marginalized constraints: ' + root + ".margestats"))
 
-        if (stats):
+        if stats:
 
             headers = stats.headerLine(inc_limits=True)[0].split() + [ 'label' ]
             self.table.setColumnCount(len(headers))
@@ -1103,6 +1138,34 @@ class DialogMargeStats(QDialog):
 
 # ==============================================================================
 
+class DialogConvergeStats(QDialog):
+
+    def __init__(self, parent, stats, summary, root):
+        QDialog.__init__(self, parent)
+        self.text = QTextEdit(self)
+        self.text.setText(stats)
+        self.text.setWordWrapMode(QTextOption.NoWrap)
+        font = QFont("Monospace")
+        font.setStyleHint(QFont.TypeWriter)
+        self.text.setFont(font)
+        layout = QGridLayout()
+        layout.addWidget(self.text, 1, 0)
+        self.text = QTextEdit(self)
+        if summary:
+            self.text2 = QTextEdit(self)
+            self.text2.setText(summary)
+            self.text2.setWordWrapMode(QTextOption.NoWrap)
+            self.text2.setFont(font)
+            self.text2.setMaximumHeight(80)
+            layout.addWidget(self.text2, 0, 0)
+
+        self.setLayout(layout)
+        self.setWindowTitle(self.tr('Convergence stats: ' + root))
+        h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, 1200)
+        self.resize(700, h)
+        self.setAttribute(Qt.WA_DeleteOnClose)
+
+# ==============================================================================
 
 class DialogSettings(QDialog):
 
