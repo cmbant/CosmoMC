@@ -32,6 +32,8 @@ class GetDistPlotSettings(object):
         self.line_labels = True
         self.x_label_rotation = 0
         self.num_shades = 80
+        self.shade_level_scale = 1.8  # contour levels at [0:1:spacing]**shade_level_scale
+        self.shade_level_scale_meanlikes = 1.2  # equivalnet if shade_meanlikes = True
         self.fig_width_inch = fig_width_inch  # if you want to force specific fixed width
         self.progress = False
         self.tight_layout = True
@@ -62,7 +64,7 @@ class GetDistPlotSettings(object):
         self.legend_frac_subplot_line = 0.1
         self.legend_fontsize = None
 
-        self.num_plot_contours = 3
+        self.num_plot_contours = 2
         self.solid_contour_palefactor = 0.6
         self.alpha_filled_add = 0.85
         self.alpha_factor_contour_lines = 0.5
@@ -560,16 +562,31 @@ class GetDistPlotter(object):
 
         return density.xy_bounds()
 
-    def add_2d_shading(self, root, param1, param2):
+    def add_2d_shading(self, root, param1, param2, colormap=None):
         param1, param2 = self.get_param_array(root, [param1, param2])
         density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=0, likes=self.settings.shade_meanlikes)
         if density is None: return
+        if colormap is None: colormap = self.settings.colormap
+        scalarMap = cm.ScalarMappable(cmap=colormap)
+        cols = scalarMap.to_rgba(np.linspace(0, 1, self.settings.num_shades))
+        # make sure outside area white and nice fade
+        n = min(self.settings.num_shades / 3, 20)
+        white = np.array([1, 1, 1, 1])
+        # would be better to fade in alpha, but then the extra contourf fix doesn't work well
+        for i in range(n):
+            cols[i + 1] = (white * (n - i) + np.array(cols[i + 1]) * i) / float(n)
+        cols[0][3] = 0  # keep edges clear
+#        pcolor(density.x1, density.x2, density.pts, cmap=self.settings.colormap, vmin=1. / self.settings.num_shades)
+        levels = np.linspace(0, 1, self.settings.num_shades)
+        if self.settings.shade_meanlikes:
+            levels = levels ** self.settings.shade_level_scale_meanlikes
+        else:
+            levels = levels ** self.settings.shade_level_scale
 
-#        pcolor(x1, x2, shade_dat, cmap=self.settings.colormap, vmax=shade_dat.max(), vmin=shade_dat.min())
-        contourf(density.x1, density.x2, density.pts, self.settings.num_shades, cmap=self.settings.colormap)
-# doing contour gets rid of annoying wehite lines
-        contour(density.x1, density.x2, density.pts, self.settings.num_shades, cmap=self.settings.colormap)
-#        contour(cs, hold='on')
+        contourf(density.x1, density.x2, density.pts, self.settings.num_shades, colors=cols, levels=levels)
+# doing contourf gets rid of annoying wehite lines in pdfs
+        contour(density.x1, density.x2, density.pts, self.settings.num_shades, colors=cols, levels=levels)
+
 
     def updateLimit(self, bounds, curbounds):
         if not bounds: return curbounds
@@ -631,7 +648,7 @@ class GetDistPlotter(object):
         for i, root in enumerate(roots):
             res = self.add_2d_contours(root, param_pair[0], param_pair[1], i, of=len(roots),
                                        add_legend_proxy=add_legend_proxy, **contour_args[i])
-            xbounds, ybounds = self.updateLimits(res, xbounds, ybounds, doResize=not shaded)
+            xbounds, ybounds = self.updateLimits(res, xbounds, ybounds)
         if xbounds is None: return
         if not 'lims' in kwargs:
             lim1 = self.checkBounds(roots[0], param_pair[0].name , xbounds[0], xbounds[1])
@@ -887,7 +904,7 @@ class GetDistPlotter(object):
         return plot_col, plot_row
 
     def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None, legend_ncol=None,
-                 label_order=None, filled=False):
+                 label_order=None, filled=False, shaded=False):
         pairs = []
         if isinstance(roots, basestring): roots = [roots]
         if param_pairs is None:
@@ -900,12 +917,13 @@ class GetDistPlotter(object):
         else:
             for pair in param_pairs:
                 pairs.append((self.check_param(roots[0], pair[0]), self.check_param(roots[0], pair[1])))
-
+        if filled and shaded:
+            raise Exception("Plots cannot be both filled and shaded")
         plot_col, plot_row = self.make_figure(len(pairs), nx=nx)
 
         for i, pair in enumerate(pairs):
             self.subplot_number(i)
-            self.plot_2d(roots, param_pair=pair, filled=filled, shaded=not filled and self.settings.shade_meanlikes,
+            self.plot_2d(roots, param_pair=pair, filled=filled, shaded=not filled and shaded,
                          add_legend_proxy=i == 0)
 
         self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_order=label_order)

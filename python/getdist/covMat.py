@@ -2,12 +2,12 @@ import numpy as np
 
 class covMat(object):
 
-    def __init__(self, filename='', matrix=[], paramNames=[]):
+    def __init__(self, filename='', matrix=None, paramNames=[]):
 
         self.matrix = matrix
         self.paramNames = paramNames
         self.size = 0
-        if matrix: self.size = matrix.shape[0]
+        if matrix is not None: self.size = matrix.shape[0]
         if filename != '':
             self.loadFromFile(filename)
 
@@ -15,38 +15,19 @@ class covMat(object):
         return " ".join(self.paramNames)
 
     def loadFromFile(self, filename):
-        textFileHandle = open(filename)
-        textFileLines = textFileHandle.readlines()
-        textFileHandle.close()
-        first = textFileLines[0].strip()
-        if first.startswith('#'):
-            paramNames = first[1:].split()
-            self.size = len(paramNames)
-        else:
-            raise Exception('.covmat must now have parameter names header')
-        matrix = [[0 for _ in range(self.size)] for row in range(self.size)]
-        used = []
-        for i in range(self.size):
-            splitLine = textFileLines[i + 1].split()
-            for j in range(len(splitLine)):
-                matrix[i][j] = float(splitLine[j])
-            if matrix[i].count(0.) != self.size:
-                used.append(i)
-
-        self.size = len(used)
-        self.matrix = np.empty((self.size, self.size))
-        self.paramNames = []
-        for i in range(self.size):
-            self.paramNames.append(paramNames[used[i]])
-            for j in range(self.size):
-                self.matrix[i, j] = matrix[used[i]][used[j]]
-
+        with open(filename) as f:
+            first = f.readline().strip()
+            if first.startswith('#'):
+                self.paramNames = first[1:].split()
+                self.size = len(self.paramNames)
+            else:
+                raise Exception('.covmat must now have parameter names header')
+            self.matrix = np.loadtxt(f)
 
     def saveToFile(self, filename):
-        fout = open(filename, 'w')
-        fout.write('# ' + self.paramNameString() + '\n')
-        np.savetxt(fout, self.matrix, '%E')
-        fout.close
+        with open(filename, 'w') as fout:
+            fout.write('# ' + self.paramNameString() + '\n')
+            np.savetxt(fout, self.matrix, '%15.7E')
 
     def rescaleParameter(self, name, scale):
         if name in self.paramNames:

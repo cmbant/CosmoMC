@@ -427,8 +427,7 @@ class margeStats(paramResults):
             self.names.append(param)
 
     def headerLine(self, inc_limits=False):
-        maxLen = max(9, self.maxNameLen()) + 1
-        parForm = "%-" + str(maxLen) + "s"
+        parForm = self.parFormat()
         text = ""
         text += parForm % ("parameter") + "  "
         text += "%-15s" % ("mean")
@@ -545,6 +544,29 @@ class likeStats(paramResults):
         self.logMeanInvLike = results.get('Ln(mean 1/like)', None)
         self.meanLogLike = results.get('mean(-Ln(like))', None)
         self.logMeanLike = results.get('-Ln(mean like)', None)
+
+    def likeSummary(self):
+        text = "Best fit sample -log(Like) = %f\n" % self.logLike_sample
+        if self.logMeanInvLike:
+            text += "Ln(mean 1/like) = %f\n" % (self.logMeanInvLike)
+        text += "mean(-Ln(like)) = %f\n" % (self.meanLogLike)
+        text += "-Ln(mean like)  = %f\n" % (self.logMeanLike)
+        return text
+
+    def headerLine(self):
+        return self.parFormat() % ("parameter") + '  bestfit        lower1         upper1         lower2         upper2\n'
+
+    def __str__(self):
+        text = self.likeSummary()
+        parForm = self.parFormat()
+        if len(self.names):
+            text += "\n"
+            text += self.headerLine()
+            for j, par in enumerate(self.names):
+                text += parForm % (self.name(j, True))
+                text += '%15.7E%15.7E%15.7E%15.7E%15.7E   %s\n' % (par.bestfit_sample,
+                par.ND_limit_bot[0], par.ND_limit_top[0], par.ND_limit_bot[1], par.ND_limit_top[1], par.label)
+        return text
 
 
 class convergeStats(paramResults):

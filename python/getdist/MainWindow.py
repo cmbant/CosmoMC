@@ -121,6 +121,12 @@ class MainWindow(QMainWindow):
                                statusTip="Show Marge Stats",
                                triggered=self.showMargeStats)
 
+        self.likeStatsAct = QAction(QIcon(":/images/view_text.png"),
+                               "Like Stats", self,
+                               shortcut="",
+                               statusTip="Show Likelihood (N-D) Stats",
+                               triggered=self.showLikeStats)
+
         self.convergeAct = QAction(QIcon(":/images/view_text.png"),
                                "Converge Stats", self,
                                shortcut="",
@@ -152,6 +158,7 @@ class MainWindow(QMainWindow):
         self.menuBar().addSeparator()
         self.dataMenu = self.menuBar().addMenu("&Data")
         self.dataMenu.addAction(self.statsAct)
+        self.dataMenu.addAction(self.likeStatsAct)
         self.dataMenu.addAction(self.convergeAct)
 
         self.menuBar().addSeparator()
@@ -240,9 +247,20 @@ class MainWindow(QMainWindow):
 
         self.toggleFilled = QRadioButton("Filled")
         self.toggleLine = QRadioButton("Line")
+        self.connect(self.toggleLine, SIGNAL("toggled(bool)"),
+                     self.statusPlotType)
+
+        self.checkShade = QCheckBox("Shaded", self.selectWidget)
+        self.checkShade.setEnabled(False)
+
         self.toggleColor = QRadioButton("Color by:")
+        self.connect(self.toggleColor, SIGNAL("toggled()"),
+                     self.statusPlotType)
+
         self.comboBoxColor = QComboBox(self)
         self.comboBoxColor.clear()
+        self.comboBoxColor.setEnabled(False)
+
         self.toggleFilled.setChecked(True)
 
         self.trianglePlot = QCheckBox("Triangle Plot", self.selectWidget)
@@ -267,7 +285,9 @@ class MainWindow(QMainWindow):
         layoutTop.addWidget(self.listParametersX, 6, 0, 5, 2)
         layoutTop.addWidget(self.listParametersY, 6, 2, 1, 2)
         layoutTop.addWidget(self.toggleFilled, 7, 2, 1, 2)
-        layoutTop.addWidget(self.toggleLine, 8, 2, 1, 2)
+        layoutTop.addWidget(self.toggleLine, 8, 2, 1, 1)
+        layoutTop.addWidget(self.checkShade, 8, 3, 1, 1)
+
         layoutTop.addWidget(self.toggleColor, 9, 2, 1, 1)
         layoutTop.addWidget(self.comboBoxColor, 9, 3, 1, 1)
         layoutTop.addWidget(self.trianglePlot, 10, 2, 1, 2)
@@ -396,21 +416,22 @@ class MainWindow(QMainWindow):
         """
         rootname = self.getRootname()
         if rootname is None: return
-        stats = None
-#        if self.batch:
-#            jobItem = self.batch.resolveRoot(rootname)
-#            fname = jobItem.distRoot + '.margestats'
-#            stats = ResultObjs.margeStats(fname)
-
-        if not stats:
-            try:
-                self.statusBar().showMessage("Calculating margestats....")
-                samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
-                stats = samples.getMargeStats()
-            finally:
-                self.statusBar().showMessage("")
+        try:
+            self.statusBar().showMessage("Calculating margestats....")
+            samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
+            stats = samples.getMargeStats()
+        finally:
+            self.statusBar().showMessage("")
 
         dlg = DialogMargeStats(self, stats, rootname)
+        dlg.show()
+
+    def showLikeStats(self):
+        rootname = self.getRootname()
+        if rootname is None: return
+        samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
+        stats = samples.getLikeStats()
+        dlg = DialogLikeStats(self, stats, rootname)
         dlg.show()
 
     def showSettings(self):
@@ -437,7 +458,7 @@ class MainWindow(QMainWindow):
         """
         QMessageBox.about(
             self, "About GetDist GUI",
-            "Qt application for GetDist plots.\n\nMatplotlib: " + matplotlib.__version__ + "\nPySide: " + PySide.__version__)
+            "GetDist GUI v " + str(MCSamples.version) + "\ncosmologist.info/cosmomc/\n\nMatplotlib: " + matplotlib.__version__ + "\nPySide: " + PySide.__version__)
 
 
     def selectRootDirName(self):
@@ -793,6 +814,11 @@ class MainWindow(QMainWindow):
         for i in range(self.listParametersY.count()):
             self.listParametersY.item(i).setCheckState(state)
 
+    def statusPlotType(self, checked):
+        # radio buttons changed
+        self.checkShade.setEnabled(self.toggleLine.isChecked())
+        self.comboBoxColor.setEnabled(self.toggleColor.isChecked())
+
     def _updateComboBoxColor(self, listOfParams):
         if self.rootdirname and os.path.isdir(self.rootdirname):
             param_old = str(self.comboBoxColor.currentText())
@@ -900,6 +926,7 @@ class MainWindow(QMainWindow):
 
             # Plot parameters
             filled = self.toggleFilled.isChecked()
+            shaded = not filled and self.checkShade.isChecked()
             line = self.toggleLine.isChecked()
             color = self.toggleColor.isChecked()
             color_param = str(self.comboBoxColor.currentText())
@@ -917,15 +944,14 @@ class MainWindow(QMainWindow):
                     else:
                         param_3d = None
                         script += "param_3d = None\n"
-                    script += "filled = %s\n" % filled
                     setSizeForN(len(params))
                     try:
-                        self.plotter.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)
+                        self.plotter.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled, shaded=shaded)
                     except Exception as e:
                         self.errorReport(e, caption="Triangle plot", msg=
                             "Error for command:\n\ntriangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)\n\nwith roots=%s\nparams=%s\nparam_3d=%s\nfilled=%s\n" % (str(roots), str(params), str(param_3d), str(filled)))
                     self.updatePlot()
-                    script += "g.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)\n"
+                    script += "g.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=%s, shaded=%s)\n" % (filled, shaded)
                 else:
                     QMessageBox.warning(self, "Triangle plot", "Select more than 1 x parameter for triangle plot")
 
@@ -981,16 +1007,14 @@ class MainWindow(QMainWindow):
                         if filled or line:
                             script += "pairs = %s\n" % pairs
                             logging.debug("2D plot with pairs = %s" % str(pairs))
-                            script += "filled=%s\n" % filled
-
                             try:
-                                self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled)
+                                self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled, shaded=shaded)
                             except Exception as e:
                                 self.errorReport(e, caption="Plot 2D", msg=
                                     "Error for command:\n\nplots_2d(roots, param_pairs=pairs, filled=filled)\n\nwith roots=%s\npairs=%s\nfilled=%s\n"
                                     % (str(roots), str(pairs), str(filled)))
                             self.updatePlot()
-                            script += "g.plots_2d(roots, param_pairs=pairs, filled=filled)\n"
+                            script += "g.plots_2d(roots, param_pairs=pairs, filled=%s, shaded=%s)\n" % (str(filled), str(shaded))
                         elif color:
                             # 3D plot
                             sets = [list(pair) + [color_param] for pair in pairs]
@@ -1061,6 +1085,61 @@ class MainWindow(QMainWindow):
 
 # ==============================================================================
 
+class DialogLikeStats(QDialog):
+    def __init__(self, parent, stats, root):
+        QDialog.__init__(self, parent)
+
+        self.label = QLabel(self)
+        self.table = QTableWidget(self)
+        self.table.verticalHeader().hide()
+
+        layout = QGridLayout()
+        layout.addWidget(self.table, 1, 0)
+        self.setLayout(layout)
+        self.setWindowTitle(self.tr('Likelihood constraints: ' + root + ".likestats"))
+
+        self.text = QTextEdit(self)
+        self.text.setText(stats.likeSummary())
+        self.text.setWordWrapMode(QTextOption.NoWrap)
+        self.text.setMaximumHeight(80)
+        font = QFont("Monospace")
+        font.setStyleHint(QFont.TypeWriter)
+        self.text.setFont(font)
+        layout.addWidget(self.text, 0, 0)
+
+        if stats:
+            headers = stats.headerLine().strip().split() + [ 'label' ]
+            self.table.setColumnCount(len(headers))
+            self.table.setHorizontalHeaderLabels([h.replace('_', ' ') for h in headers])
+            self.table.verticalHeader().setVisible(False)
+            self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
+            self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+            self.table.setRowCount(stats.numParams())
+            for irow, par in enumerate(stats.names):
+                vals = [par.name, "%5g" % par.bestfit_sample]
+                for lim in [0, 1]:
+                    vals += ["%5g" % par.ND_limit_bot[lim], "%5g" % par.ND_limit_top[lim]]
+                vals += [par.label]
+                for icol, value in enumerate(vals):
+                    item = QTableWidgetItem(str(value))
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                    if icol == 0 and not par.isDerived:
+                        font = QFont()
+                        font.setBold(True)
+                        item.setFont(font)
+                    self.table.setItem(irow, icol, item)
+
+            self.table.resizeRowsToContents()
+            self.table.resizeColumnsToContents()
+
+            w = self.table.horizontalHeader().length() + 40
+            h = self.table.verticalHeader().length() + 40
+            h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, h)
+            self.resize(w, h)
+
+
+# ==============================================================================
+
 class DialogMargeStats(QDialog):
 
     def __init__(self, parent=None, stats="", root=''):
@@ -1102,31 +1181,6 @@ class DialogMargeStats(QDialog):
                         font.setBold(True)
                         item.setFont(font)
                     self.table.setItem(irow, icol, item)
-
-#             lines = text.split("\n")
-#             line0 = lines.pop(0)
-#             self.label.setText(line0)
-#             line = lines.pop(0)  # empty
-#             line = lines.pop(0)  # headers
-#             headers = line.split(' ')
-#             headers = [ h for h in headers if h <> '' ] + [ 'Label' ]
-#             self.table.setColumnCount(len(headers))
-#             self.table.setHorizontalHeaderLabels(headers)
-#             self.table.verticalHeader().setVisible(False)
-#             self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-#             self.table.setSelectionMode(QAbstractItemView.SingleSelection)
-#             self.table.setRowCount(len(lines))
-#             irow = 0
-#             for line in lines:
-#                 values = line.split(' ')
-#                 values = [ v for v in values if v <> '' ]
-#                 icol = 0
-#                 for value in values:
-#                     item = QTableWidgetItem(value)
-#                     item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-#                     self.table.setItem(irow, icol, item)
-#                     icol += 1
-#                 irow += 1
 
             self.table.resizeRowsToContents()
             self.table.resizeColumnsToContents()
@@ -1193,7 +1247,7 @@ class DialogSettings(QDialog):
         self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
 
-        names = iniFile(os.path.join(os.path.dirname(__file__), 'analysis_defaults.ini'))
+        names = iniFile(MCSamples.default_getdist_settings)
         items = []
         self.ini = ini
         for key in ini.readOrder:

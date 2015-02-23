@@ -2236,7 +2236,7 @@
         else  !Not single column chain files (usual cosmomc format)
             !This increments nrows by number read in
             if (.not. IO_ReadChainRows(in_root, chain_ix, chain_num, int(ignorerows),nrows,ncols,max_rows, &
-                coldata,samples_are_chains)) then
+                coldata,samples_are_chains, chain_num==ReadAllChainsNum)) then
             num_chains_used = num_chains_used - 1
             if (chain_num==ReadAllChainsNum) then
                 chain_num = chain_ix-1

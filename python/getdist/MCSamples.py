@@ -13,11 +13,12 @@ from scipy.signal import fftconvolve
 import pickle
 from iniFile import iniFile
 from getdist.chains import chains, chainFiles, lastModified
-from getdist import ResultObjs
+from getdist import ResultObjs, covMat
 
 # =============================================================================
 
-version = 8
+pickle_version = 9
+version = 1.1
 
 default_grid_root = None
 output_base_dir = None
@@ -66,7 +67,7 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settin
             try:
                 with open(cachefile, 'rb') as inp:
                     cache = pickle.load(inp)
-                if cache.version == version and samples.ignore_rows == cache.ignore_rows:
+                if cache.version == pickle_version and samples.ignore_rows == cache.ignore_rows:
                     changed = len(samples.contours) != len(cache.contours) or \
                                 np.any(np.array(samples.contours) != np.array(cache.contours))
                     cache.update_settings(ini, dist_settings, doUpdate=changed)
@@ -139,13 +140,13 @@ class Ranges(object):
 
     def loadFromFile(self, fileName):
         self.filenameLoadedFrom = os.path.split(fileName)[1]
-        f = open(fileName)
-        for line in f:
-            name, mini, maxi = self.readValues(line.strip())
-            if name:
-                self.names.append(name)
-                self.mins[name] = mini
-                self.maxs[name] = maxi
+        with open(fileName) as f:
+            for line in f:
+                name, mini, maxi = self.readValues(line.strip())
+                if name:
+                    self.names.append(name)
+                    self.mins[name] = mini
+                    self.maxs[name] = maxi
 
     def readValues(self, line):
         name, mini, maxi = None, None, None
@@ -261,7 +262,7 @@ class MCSamples(chains):
     def __init__(self, root=None, ignore_rows=0, jobItem=None, ini=None):
         chains.__init__(self, root, jobItem=jobItem)
 
-        self.version = version
+        self.version = pickle_version
         self.limmin = []
         self.limmax = []
 
@@ -291,6 +292,7 @@ class MCSamples(chains):
         self.plot_meanlikes = False
         self.shade_meanlikes = False
 
+        self.likeStats = None
         self.num_vars = 0
         self.max_mult = 0
         self.mean_mult = 0
@@ -471,21 +473,16 @@ class MCSamples(chains):
         super(MCSamples, self).updateChainBaseStatistics()
         self.initLimits(self.ini)
 
-        self.ComputeMultiplicators()
-
         # Compute statistics values
         self.ComputeStats()
 
-        self.GetCovMatrix()
-
-        # Find best fit, and mean likelihood
-        self.GetChainLikeSummary()
+        self.setCovMatrix()
 
         # Init arrays for 1D densities
         self.Init1DDensity()
 
         # Get ND confidence region
-        self.GetConfidenceRegion()
+        self.setLikeStats()
 
     def AdjustPriors(self):
         sys.exit('You need to write the AdjustPriors function in MCSamples.py first!')
@@ -559,29 +556,25 @@ class MCSamples(chains):
 
         print  'Wrote ', len(thin_ix), ' thinned samples'
 
-    # ThinData(self, fac) => chains.thin_indices(factor)
 
-    def GetCovMatrix(self):
+    def setCovMatrix(self):
         nparam = self.paramNames.numParams()
         paramVecs = [ self.samples[:, i] for i in range(nparam) ]
         self.fullcov = self.cov(paramVecs)
-        nparamNonDerived = self.paramNames.numNonDerived()
-        self.covmatrix = self.fullcov[:nparamNonDerived, :nparamNonDerived]
         self.corrmatrix = self.corr(paramVecs, cov=self.fullcov)
+
+    def getCovMat(self):
+        nparamNonDerived = self.paramNames.numNonDerived()
+        return covMat.covMat(matrix=self.fullcov[:nparamNonDerived, :nparamNonDerived],
+                                    paramNames=self.paramNames.list()[:nparamNonDerived])
 
     def writeCovMatrix(self, filename=None):
         filename = filename or self.rootdirname + ".covmat"
-        nparamNonDerived = self.paramNames.numNonDerived()
-        with open(filename, "w") as textFileHandle:
-            textFileHandle.write("# %s\n" % (" ".join(self.paramNames.list()[:nparamNonDerived])))
-            for i in range(nparamNonDerived):
-                for j in range(nparamNonDerived):
-                    textFileHandle.write("%17.7E" % self.covmatrix[i][j])
-                textFileHandle.write("\n")
+        self.getCovMat().saveToFile(filename)
 
     def writeCorrMatrix(self, filename=None):
         filename = filename or self.rootdirname + ".corr"
-        np.savetxt(filename, self.corrmatrix, fmt="%17.7E")
+        np.savetxt(filename, self.corrmatrix, fmt="%15.7E")
 
 
     def GetFractionIndices(self, weights, n):
@@ -640,9 +633,9 @@ class MCSamples(chains):
                     PClabs.append(label)
                 PCAtext += "%10s :%s\n" % (str(parix + 1), str(PClabs[i]))
 
-            PCmean[i] = np.sum(self.weights * PCdata[:, i]) / self.norm
+            PCmean[i] = np.dot(self.weights , PCdata[:, i]) / self.norm
             PCdata[:, i] = PCdata[:, i] - PCmean[i]
-            sd[i] = np.sqrt(np.sum(self.weights * np.power(PCdata[:, i], 2)) / self.norm)
+            sd[i] = np.sqrt(np.dot(self.weights , np.power(PCdata[:, i], 2)) / self.norm)
             if (sd[i] <> 0): PCdata[:, i] = PCdata[:, i] / sd[i]
 
         PCAtext += "\n"
@@ -722,12 +715,12 @@ class MCSamples(chains):
                     else:
                         PCAtext += '[%f]   (%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo)
 
-            newmean[i] = np.sum(self.weights * PCdata[:, i]) / self.norm
+            newmean[i] = np.dot(self.weights , PCdata[:, i]) / self.norm
             newsd[i] = np.sqrt(np.sum(self.weights * np.power(PCdata[:, i] - newmean[i], 2)) / self.norm)
             PCAtext += '          = %f +- %f\n' % (newmean[i], newsd[i])
             PCAtext += 'ND limits: %9.3f%9.3f%9.3f%9.3f\n' % (
-                    np.min(PCdata[0:self.ND_cont1, i]), np.max(PCdata[0:self.ND_cont1, i]),
-                    np.min(PCdata[0:self.ND_cont2, i]), np.max(PCdata[0:self.ND_cont2, i]))
+                    np.min(PCdata[:self.likeStats.ND_cont1, i]), np.max(PCdata[:self.likeStats.ND_cont1, i]),
+                    np.min(PCdata[:self.likeStats.ND_cont2, i]), np.max(PCdata[:self.likeStats.ND_cont2, i]))
             PCAtext += '\n'
 
         # Find out how correlated these components are with other parameters
@@ -761,13 +754,6 @@ class MCSamples(chains):
         else:
             return PCAtext
 
-    def ComputeMultiplicators(self):
-        self.mean_mult = self.norm / self.numrows
-        self.max_mult = (self.mean_mult * self.numrows) / min(self.numrows / 2, 500)
-        outliers = np.sum(self.weights > self.max_mult)
-        if outliers <> 0:
-            print 'outlier fraction ', float(outliers) / self.numrows
-        self.max_mult = np.max(self.weights)
 
     def getNumSampleSummaryText(self):
         lines = 'mean input multiplicity = ' + str(self.mean_mult) + "\n"
@@ -810,7 +796,7 @@ class MCSamples(chains):
             for j in range(nparam):
                 # Get stats for individual chains - the variance of the means over the mean of the variances
                 for chain in chainlist:
-                    in_chain_var[j] += np.sum(chain.weights * (chain.samples[:, j ] - chain.means[j]) ** 2)
+                    in_chain_var[j] += np.dot(chain.weights , (chain.samples[:, j ] - chain.means[j]) ** 2)
 
                 in_chain_var[j] /= self.norm
                 label = self.parLabel(j)
@@ -1017,7 +1003,7 @@ class MCSamples(chains):
                 lines += "\n"
 
             if 'CorrLength' in what:
-                # Get correlation lengths
+                # Get correlation lengths. We ignore the fact that there are jumps between chains, so slight underestimate
                 lines += "Parameter auto-correlations as function of step separation\n"
                 lines += "\n"
                 if self.corr_length_thin <> 0:
@@ -1063,12 +1049,13 @@ class MCSamples(chains):
         smooth_1D, end_edge = 0, 0
 
         paramVec = self.samples[:, j]
+        par = self.paramNames.names[j]
 
         self.param_min[j] = np.min(paramVec)
         self.param_max[j] = np.max(paramVec)
         paramConfid = paramConfid or self.initParamConfidenceData(paramVec)
-        self.range_min[j] = min(self.ND_limit_bot[1, j], self.confidence(paramConfid, 0.001, upper=False))
-        self.range_max[j] = max(self.ND_limit_top[1, j], self.confidence(paramConfid, 0.001, upper=True))
+        self.range_min[j] = min(par.ND_limit_bot[1], self.confidence(paramConfid, 0.001, upper=False))
+        self.range_max[j] = max(par.ND_limit_top[1], self.confidence(paramConfid, 0.001, upper=True))
 
         width = (self.range_max[j] - self.range_min[j]) / (self.num_bins + 1)
         if width == 0:
@@ -1469,7 +1456,7 @@ class MCSamples(chains):
             np.savetxt(filename, bins2D.T, "%16.7E")
             np.savetxt(filename + "_y", x, "%16.7E")
             np.savetxt(filename + "_x", y, "%16.7E")
-            np.savetxt(filename + "_cont-test", np.atleast_2d(contour_levels), "%16.7E")
+            np.savetxt(filename + "_cont", np.atleast_2d(contour_levels), "%16.7E")
             if self.shade_meanlikes:
                 np.savetxt(filename + "_likes", bin2Dlikes.T , "%16.7E")
         else:
@@ -1480,32 +1467,22 @@ class MCSamples(chains):
         name = self.parName(i)
         print 'Warning: sharp edge in parameter %s - check limits[%s] or limits%i' % (name, name, i + 1)
 
-    def GetChainLikeSummary(self, toStdOut=False):
-        text = ""
-        maxlike = np.max(self.loglikes)
-        text += "Best fit sample -log(Like) = %f\n" % maxlike
-        if ((self.loglikes[self.numrows - 1] - maxlike) < 30):
-            self.meanlike = np.log(np.sum(np.exp(self.loglikes - maxlike) * self.weights) / self.norm) + maxlike
-            text += "Ln(mean 1/like) = %f\n" % (self.meanlike)
-        self.meanlike = np.sum(self.loglikes * self.weights) / self.norm
-        text += "mean(-Ln(like)) = %f\n" % (self.meanlike)
-        self.meanlike = -np.log(np.sum(np.exp(-(self.loglikes - maxlike)) * self.weights) / self.norm) + maxlike
-        text += "-Ln(mean like)  = %f\n" % (self.meanlike)
-        if toStdOut:
-            print text
-        else:
-            return text
-
-
     def ComputeStats(self):
         """
         Compute mean and std dev.
         """
         nparam = self.samples.shape[1]
-        self.means = np.zeros(nparam)
-        self.sddev = np.zeros(nparam)
-        for i in range(nparam): self.means[i] = self.mean(self.samples[:, i])
-        for i in range(nparam): self.sddev[i] = self.std(self.samples[:, i])
+        self.mean_mult = self.norm / self.numrows
+        self.max_mult = np.max(self.weights)
+        mult_max = (self.mean_mult * self.numrows) / min(self.numrows / 2, 500)
+        outliers = np.sum(self.weights > mult_max)
+        if outliers <> 0:
+            print 'outlier fraction ', float(outliers) / self.numrows
+        self.means = np.empty(nparam)
+        self.sddev = np.empty(nparam)
+        for i in range(nparam):
+            self.means[i] = self.mean(self.samples[:, i])
+            self.sddev[i] = self.std(self.samples[:, i])
 
     def Init1DDensity(self):
         self.done_1Dbins = False
@@ -1518,26 +1495,40 @@ class MCSamples(chains):
         self.center = np.zeros(nparam)
         self.ix_min = np.zeros(nparam, dtype=np.int)
         self.ix_max = np.zeros(nparam, dtype=np.int)
-        #
+
         self.marge_limits_bot = np.ndarray([self.num_contours, nparam], dtype=bool)
         self.marge_limits_top = np.ndarray([self.num_contours, nparam], dtype=bool)
 
-    def GetConfidenceRegion(self):
-                # Sort data in order of likelihood of points
+    def setLikeStats(self):
+        # Find best fit sample and mean likelihood
+        m = ResultObjs.likeStats()
+        bestfit_ix = np.argmin(self.loglikes)
+        maxlike = self.loglikes[bestfit_ix]
+        m.logLike_sample = maxlike
+        if np.max(self.loglikes) - maxlike < 30:
+            m.logMeanInvLike = np.log(np.dot(np.exp(self.loglikes - maxlike) , self.weights) / self.norm) + maxlike
+        else:
+            m.logMeanInvLike = None
+
+        m.meanLogLike = np.dot(self.loglikes , self.weights) / self.norm
+        m.logMeanLike = -np.log(np.dot(np.exp(-(self.loglikes - maxlike)) , self.weights) / self.norm) + maxlike
+        m.names = self.paramNames.names
+
+        # get N-dimensional confidence region
         indexes = self.loglikes.argsort()
         cumsum = np.cumsum(self.weights[indexes])
-        self.ND_cont1 = np.searchsorted(cumsum, self.norm * self.contours[0])
-        self.ND_cont2 = np.searchsorted(cumsum, self.norm * self.contours[1])
+        m.ND_cont1, m.ND_cont2 = np.searchsorted(cumsum, self.norm * self.contours[0:2])
 
-        self.ND_limit_top = np.empty((2, self.num_vars))
-        self.ND_limit_bot = np.empty((2, self.num_vars))
-        for j in range(self.num_vars):
-            region1 = self.samples[indexes[:self.ND_cont1], j]
-            region2 = self.samples[indexes[:self.ND_cont2], j]
-            self.ND_limit_bot[0, j] = np.min(region1)
-            self.ND_limit_bot[1, j] = np.min(region2)
-            self.ND_limit_top[0, j] = np.max(region1)
-            self.ND_limit_top[1, j] = np.max(region2)
+        for j, par in enumerate(self.paramNames.names):
+            region1 = self.samples[indexes[:m.ND_cont1], j]
+            region2 = self.samples[indexes[:m.ND_cont2], j]
+            par.ND_limit_bot = np.array([np.min(region1), np.min(region2)])
+            par.ND_limit_top = np.array([np.max(region1), np.max(region2)])
+            par.bestfit_sample = self.samples[bestfit_ix][j]
+
+        self.likeStats = m
+        self.meanlike = m.meanLogLike
+        return m
 
     def ReadRanges(self):
         ranges_file = self.root + '.ranges'
@@ -1561,14 +1552,14 @@ class MCSamples(chains):
         lower, upper = self.getBounds()
         with open(filename, 'w') as f:
             for i, name in enumerate(self.paramNames.list()):
-                if (self.has_limits_bot[i] or self.has_limits_top[i]):
+                if self.has_limits_bot[i] or self.has_limits_top[i]:
                     valMin = lower.get(name)
-                    if (valMin):
+                    if valMin is not None:
                         lim1 = "%15.7E" % valMin
                     else:
                         lim1 = "    N"
                     valMax = upper.get(name)
-                    if (valMax is not None):
+                    if valMax is not None:
                         lim2 = "%15.7E" % valMax
                     else:
                         lim2 = "    N"
@@ -1583,8 +1574,8 @@ class MCSamples(chains):
         m.names = self.paramNames.names
         return m
 
-    def saveMargeStats(self):
-        self.getMargeStats().saveAsText(self.rootdirname + '.margestats')
+    def getLikeStats(self):
+        return self.likeStats or self.setLikeStats()
 
 
     def Do1DBins(self, max_frac_twotail=None, writeDataToFile=False):
@@ -1680,7 +1671,7 @@ class MCSamples(chains):
                             (abs(self.corrmatrix[ix1][ix2]) > try_b) :
                         try_b = abs(self.corrmatrix[ix1][ix2])
                         x, y = ix1, ix2
-            if (try_b == -1e5):
+            if try_b == -1e5:
                 num_cust2D_plots = j - 1
                 break
             try_t = try_b
@@ -1693,21 +1684,20 @@ class MCSamples(chains):
 
     def WriteScriptPlots1D(self, filename, plotparams=None, ext=None):
         ext = ext or self.plot_output
-        textFileHandle = open(filename, 'w')
-        textInit = WritePlotFileInit()
-        textFileHandle.write(textInit % (
-                self.plot_data_dir, self.subplot_size_inch,
-                self.out_dir, self.rootname))
-        text = 'markers=' + str(self.markers) + '\n'
-        if plotparams:
-            text += 'g.plots_1d(roots,[' + ",".join(['\'' + par + '\'' for par in plotparams]) + '], markers=markers)'
-        else:
-            text += 'g.plots_1d(roots, markers=markers)\n'
-        textFileHandle.write(text)
-        textExport = WritePlotFileExport()
-        fname = self.rootname + '.' + ext
-        textFileHandle.write(textExport % (fname))
-        textFileHandle.close()
+        with  open(filename, 'w') as f:
+            textInit = self.WritePlotFileInit()
+            f.write(textInit % (
+                    self.plot_data_dir, self.subplot_size_inch,
+                    self.out_dir, self.rootname))
+            text = 'markers=' + str(self.markers) + '\n'
+            if plotparams:
+                text += 'g.plots_1d(roots,[' + ",".join(['\'' + par + '\'' for par in plotparams]) + '], markers=markers)'
+            else:
+                text += 'g.plots_1d(roots, markers=markers)\n'
+            f.write(text)
+            textExport = self.WritePlotFileExport()
+            fname = self.rootname + '.' + ext
+            f.write(textExport % (fname))
 
 
     def WriteScriptPlots2D(self, filename, plot_2D_param, cust2DPlots, plots_only, ext=None):
@@ -1715,99 +1705,81 @@ class MCSamples(chains):
         self.done2D = np.ndarray([self.num_vars, self.num_vars], dtype=bool)
         self.done2D[:, :] = False
 
-        textFileHandle = open(filename, 'w')
-        textInit = WritePlotFileInit()
-        textFileHandle.write(textInit % (
-                self.plot_data_dir, self.subplot_size_inch2,
-                self.out_dir, self.rootname))
-        textFileHandle.write('pairs=[]\n')
-        plot_num = 0
-        if cust2DPlots: cuts = [par1 + '__' + par2 for par1, par2 in cust2DPlots]
-        for j, par1 in enumerate(self.paramNames.list()):
-            if (self.ix_min[j] <> self.ix_max[j]):
-                if plot_2D_param or cust2DPlots:
-                    if par1 == plot_2D_param: continue
-                    j2min = 0
-                else:
-                    j2min = j + 1
+        with open(filename, 'w') as f:
+            textInit = self.WritePlotFileInit()
+            f.write(textInit % (
+                    self.plot_data_dir, self.subplot_size_inch2,
+                    self.out_dir, self.rootname))
+            f.write('pairs=[]\n')
+            plot_num = 0
+            if cust2DPlots: cuts = [par1 + '__' + par2 for par1, par2 in cust2DPlots]
+            for j, par1 in enumerate(self.paramNames.list()):
+                if self.ix_min[j] <> self.ix_max[j]:
+                    if plot_2D_param or cust2DPlots:
+                        if par1 == plot_2D_param: continue
+                        j2min = 0
+                    else:
+                        j2min = j + 1
 
-                for j2 in range(j2min, self.num_vars):
-                    par2 = self.parName(j2)
-                    if (self.ix_min[j2] <> self.ix_max[j2]):
-                        if plot_2D_param and par2 <> plot_2D_param: continue
-                        if cust2DPlots and (par1 + '__' + par2) not in cuts: continue
-                        plot_num += 1
-                        self.done2D[j][j2] = True
-                        if not plots_only: self.Get2DPlotData(j, j2, writeDataToFile=True)
-                        textFileHandle.write("pairs.append(['%s','%s'])\n" % (par1, par2))
-        textFileHandle.write('g.plots_2d(roots,param_pairs=pairs)\n')
-        textExport = WritePlotFileExport()
-        fname = self.rootname + '_2D.' + ext
-        textFileHandle.write(textExport % (fname))
-        textFileHandle.close()
-        print 'Produced ', plot_num, ' 2D plots'
+                    for j2 in range(j2min, self.num_vars):
+                        par2 = self.parName(j2)
+                        if self.ix_min[j2] <> self.ix_max[j2]:
+                            if plot_2D_param and par2 <> plot_2D_param: continue
+                            if cust2DPlots and (par1 + '__' + par2) not in cuts: continue
+                            plot_num += 1
+                            self.done2D[j][j2] = True
+                            if not plots_only: self.Get2DPlotData(j, j2, writeDataToFile=True)
+                            f.write("pairs.append(['%s','%s'])\n" % (par1, par2))
+            f.write('g.plots_2d(roots,param_pairs=pairs)\n')
+            textExport = self.WritePlotFileExport()
+            fname = self.rootname + '_2D.' + ext
+            f.write(textExport % (fname))
 
 
     def WriteScriptPlotsTri(self, filename, triangle_params, ext=None):
         ext = ext or self.plot_output
-        textFileHandle = open(filename, 'w')
-        textInit = WritePlotFileInit()
-        textFileHandle.write(textInit % (
-                self.plot_data_dir, self.subplot_size_inch,
-                self.out_dir, self.rootname))
-        text = 'g.triangle_plot(roots, %s)\n' % triangle_params
-        textFileHandle.write(text)
-        textExport = WritePlotFileExport()
-        fname = self.rootname + '_tri.' + ext
-        textFileHandle.write(textExport % (fname))
-        textFileHandle.close()
+        with open(filename, 'w') as f:
+            textInit = self.WritePlotFileInit()
+            f.write(textInit % (
+                    self.plot_data_dir, self.subplot_size_inch,
+                    self.out_dir, self.rootname))
+            text = 'g.triangle_plot(roots, %s)\n' % triangle_params
+            f.write(text)
+            textExport = self.WritePlotFileExport()
+            fname = self.rootname + '_tri.' + ext
+            f.write(textExport % (fname))
 
 
     def WriteScriptPlots3D(self, filename, plot_3D, ext=None):
         ext = ext or self.plot_output
-        textFileHandle = open(filename, 'w')
-        textInit = WritePlotFileInit()
-        textFileHandle.write(textInit % (
-                self.plot_data_dir, self.subplot_size_inch3,
-                self.out_dir, self.rootname))
-        textFileHandle.write('sets=[]\n')
-        text = ""
-        for v1, v2, v3 in plot_3D:
-            text += "sets.append(['%s','%s','%s'])\n" % (v1, v2, v3)
-        text += 'g.plots_3d(roots,sets)\n'
-        textFileHandle.write(text)
-        fname = self.rootname + '_3D.' + ext
-        textExport = WritePlotFileExport()
-        textFileHandle.write(textExport % (fname))
-        textFileHandle.close()
-
-
-    def WriteGlobalLikelihood(self, filename):
-        bestfit_ix = np.argmin(self.loglikes)
         with open(filename, 'w') as f:
-            textInit = self.GetChainLikeSummary(toStdOut=False)
-            f.write(textInit)
-            f.write("\n")
-            f.write('param  bestfit        lower1         upper1         lower2         upper2\n')
-            for j in range(self.num_vars):
-                best = self.samples[bestfit_ix][j]
-                label = self.parLabel(j)
-                f.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E   %s\n' % (j + 1, best,
-                    self.ND_limit_bot[0, j], self.ND_limit_top[0, j], self.ND_limit_bot[1, j], self. ND_limit_top[1, j], label))
+            textInit = self.WritePlotFileInit()
+            f.write(textInit % (
+                    self.plot_data_dir, self.subplot_size_inch3,
+                    self.out_dir, self.rootname))
+            f.write('sets=[]\n')
+            text = ""
+            for pars in plot_3D:
+                text += "sets.append(['%s','%s','%s'])\n" % tuple(pars)
+            text += 'g.plots_3d(roots,sets)\n'
+            f.write(text)
+            fname = self.rootname + '_3D.' + ext
+            textExport = self.WritePlotFileExport()
+            f.write(textExport % (fname))
 
 
-def WritePlotFileInit():
-    text = """import GetDistPlots, os
+    def WritePlotFileInit(self):
+        text = """import GetDistPlots, os
 g=GetDistPlots.GetDistPlotter(plot_data='%s')
 g.settings.setWithSubplotSize(%f)
 outdir='%s'
 roots=['%s']
 """
-    return text
+        return text
 
-def WritePlotFileExport():
-    text = "g.export(os.path.join(outdir,'%s'))\n"
-    return text
+    def WritePlotFileExport(self):
+        text = "g.export(os.path.join(outdir,'%s'))\n"
+        return text
 
 
 # ==============================================================================

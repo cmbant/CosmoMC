@@ -149,8 +149,6 @@ mc.removeBurnFraction(ignorerows)
 mc.deleteFixedParams()
 mc.makeSingle()
 
-if not no_tests:
-    mc.DoConvergeTests(mc.converge_test_limit, writeDataToFile=True, feedback=True)
 
 def filterPars(names):
     return [ name for name in names if mc.paramNames.parWithName(name) ]
@@ -184,7 +182,7 @@ if not plot_2D_param:
 
 triangle_params = []
 triangle_plot = ini.bool('triangle_plot', False)
-if (triangle_plot):
+if triangle_plot:
     no_triangle_axis_labels = ini.bool('no_triangle_axis_labels', False)
     line = ini.string('triangle_params')
     if line: triangle_params = filterPars(line.split())
@@ -197,13 +195,16 @@ for ix in range(1, num_3D_plots + 1):
     line = ini.string('3D_plot' + str(ix))
     pars = filterPars(line.split())
     if len(pars) <> 3: raise Exception('3D_plot parameter not found, not varied, or not wrong number of parameters')
-    plot_3D.append(line.split)
+    plot_3D.append(pars)
 
 
-if (adjust_priors):
+if adjust_priors:
     mc.DeleteZeros()
 
 mc.updateChainBaseStatistics()
+
+if not no_tests:
+    mc.DoConvergeTests(mc.converge_test_limit, writeDataToFile=True, feedback=True)
 
 mc.writeCovMatrix()
 mc.writeCorrMatrix()
@@ -224,60 +225,65 @@ if make_single_samples:
     filename = os.path.join(plot_data_dir, rootname.strip() + '_single.txt')
     mc.MakeSingleSamples(filename, single_thin)
 
-print mc.getNumSampleSummaryText()
-
-mc.writeBounds(os.path.join(plot_data_dir, rootname.strip() + '.bounds'))
+print mc.getNumSampleSummaryText().strip()
+print mc.likeStats.likeSummary().strip()
 
 if PCA_num > 0 and not plots_only:
     mc.PCA(PCA_params, PCA_func, PCA_NormParam, writeDataToFile=True)
 
 # Do 1D bins
-mc.Do1DBins(mc.max_frac_twotail, writeDataToFile=True)
+mc.Do1DBins(mc.max_frac_twotail, writeDataToFile=not no_plots)
 
 if not no_plots:
     # Output files for 1D plots
     print 'Calculating plot data...'
+
+    mc.writeBounds(os.path.join(plot_data_dir, rootname.strip() + '.bounds'))
+
     filename = rootdirname + '.' + plot_ext
     mc.WriteScriptPlots1D(filename, plotparams)
 
-# Do 2D bins
-if plot_2D_param == 'corr' and not no_plots:
-    # In this case output the most correlated variable combinations
-    print 'doing 2D plots for most correlated variables'
-    num_cust2D_plots_0 = 12
-    cust2DPlots = mc.GetCust2DPlots(num_cust2D_plots_0)
-    plot_2D_param = None
-elif plot_2D_param:
-    mc.paramNames.parWithName(plot_2D_param, error=True)  # just check
+    # Do 2D bins
+    if plot_2D_param == 'corr':
+        # In this case output the most correlated variable combinations
+        print '...doing 2D plots for most correlated variables'
+        num_cust2D_plots_0 = 12
+        cust2DPlots = mc.GetCust2DPlots(num_cust2D_plots_0)
+        plot_2D_param = None
+    elif plot_2D_param:
+        mc.paramNames.parWithName(plot_2D_param, error=True)  # just check
 
-if cust2DPlots or plot_2D_param and  not no_plots:
-    filename = rootdirname + '_2D.' + plot_ext
-    mc.WriteScriptPlots2D(filename, plot_2D_param, cust2DPlots, plots_only)
+    if cust2DPlots or plot_2D_param:
+        print '...producing 2D plots'
+        filename = rootdirname + '_2D.' + plot_ext
+        mc.WriteScriptPlots2D(filename, plot_2D_param, cust2DPlots, plots_only)
 
-if triangle_plot and not no_plots:
-    # Add the off-diagonal 2D plots
-    mc.WriteScriptPlotsTri(rootdirname + '_tri.' + plot_ext, triangle_params)
-    for i in range(triangle_num):
-        for i2 in range(i + 1, triangle_num):
-            j = mc.index[triangle_params[i]]
-            j2 = mc.index[triangle_params[i2]]
-            if (mc.done2D is None or not mc.done2D[j2][j]) and not plots_only: mc.Get2DPlotData(j2, j, writeDataToFile=True)
+    if triangle_plot:
+        # Add the off-diagonal 2D plots
+        print '...producing triangle plot'
+        mc.WriteScriptPlotsTri(rootdirname + '_tri.' + plot_ext, triangle_params)
+        for i in range(triangle_num):
+            for i2 in range(i + 1, triangle_num):
+                j = mc.index[triangle_params[i]]
+                j2 = mc.index[triangle_params[i2]]
+                if mc.done2D is None or not mc.done2D[j2][j] and not plots_only:
+                    mc.Get2DPlotData(j2, j, writeDataToFile=True)
 
-# Do 3D plots (i.e. 2D scatter plots with coloured points)
-if num_3D_plots <> 0 and not no_plots:
-    print 'producing ', num_3D_plots, '2D colored scatter plots'
-    filename = rootdirname + '_3D.' + plot_ext
-    mc.WriteScriptPlots3D(filename, plot_3D)
-
-# Write out stats marginalized
-if not plots_only: mc.saveMargeStats()
+    # Do 3D plots (i.e. 2D scatter plots with coloured points)
+    if num_3D_plots <> 0:
+        print '...producing ', num_3D_plots, '2D colored scatter plots'
+        filename = rootdirname + '_3D.' + plot_ext
+        mc.WriteScriptPlots3D(filename, plot_3D)
 
 # Write paramNames file
-mc.paramNames.saveAsText(os.path.join(plot_data_dir, rootname + '.paramnames'))
+    mc.paramNames.saveAsText(os.path.join(plot_data_dir, rootname + '.paramnames'))
+
+if not plots_only:
+# Write out stats marginalized
+    mc.getMargeStats().saveAsText(rootdirname + '.margestats')
 
 # Limits from global likelihood
-if not plots_only:
-    mc.WriteGlobalLikelihood(rootdirname + '.likestats')
+    mc.getLikeStats().saveAsText(rootdirname + '.likestats')
 
 # System command
 if finish_run_command:

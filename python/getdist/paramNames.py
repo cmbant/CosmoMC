@@ -124,6 +124,10 @@ class paramList(object):
     def maxNameLen(self):
         return max([len(name.name) for name in self.names])
 
+    def parFormat(self):
+        maxLen = max(9, self.maxNameLen()) + 1
+        return "%-" + str(maxLen) + "s"
+
     def name(self, ix, tag_derived=False):
         par = self.names[ix]
         if tag_derived and  par.isDerived:
