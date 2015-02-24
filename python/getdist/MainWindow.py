@@ -225,15 +225,15 @@ class MainWindow(QMainWindow):
 
         self.listParametersX = QListWidget(self.selectWidget)
         self.listParametersX.clear()
-        self.connect(self.listParametersX,
-                     SIGNAL("itemChanged(QListWidgetItem *)"),
-                     self.itemParamXChanged)
+#        self.connect(self.listParametersX,
+#                     SIGNAL("itemChanged(QListWidgetItem *)"),
+#                     self.itemParamXChanged)
 
         self.listParametersY = QListWidget(self.selectWidget)
         self.listParametersY.clear()
-        self.connect(self.listParametersY,
-                     SIGNAL("itemChanged(QListWidgetItem *)"),
-                     self.itemParamYChanged)
+#        self.connect(self.listParametersY,
+#                     SIGNAL("itemChanged(QListWidgetItem *)"),
+#                     self.itemParamYChanged)
 
         self.selectAllX = QCheckBox("Select All", self.selectWidget)
         self.selectAllX.setCheckState(Qt.Unchecked)
@@ -542,16 +542,13 @@ class MainWindow(QMainWindow):
 #                 paramNames = shared_params
 #                 logging.debug("%i (shared) parameters used" % len(paramNames))
 
-        self._updateListParametersX(paramNames)
-        self._updateListParametersY(paramNames)
+        self._updateListParameters(paramNames, self.listParametersX, self.getXParams())
+        self._updateListParameters(paramNames, self.listParametersY, self.getYParams())
         self._updateComboBoxColor(paramNames)
 
     def _resetPlotData(self):
         # Plot parameters
-        self.items_x = []
-        self.items_y = []
         self.plotter = None
-
         # Script
         self.script = ""
 
@@ -720,81 +717,37 @@ class MainWindow(QMainWindow):
         logging.debug("Data: %s" % strDataTag)
         self.newRootItem(self.paramTag + '_' + self.dataTag)
 
-    def _updateListParametersX(self, items):
+    def _updateListParameters(self, items, listParameters, items_old=None):
         """
         """
-        logging.debug("Fill ListParametersX with %i items" % (len(items)))
-        items_x_old = self.items_x
-        self.items_x = []
-        self.listParametersX.clear()
+        logging.debug("Fill ListParameters with %i items" % (len(items)))
+        listParameters.clear()
         for item in items:
             listItem = QListWidgetItem()
             listItem.setText(item)
             listItem.setFlags(listItem.flags() | Qt.ItemIsUserCheckable)
             listItem.setCheckState(Qt.Unchecked)
-            self.listParametersX.addItem(listItem)
+            listParameters.addItem(listItem)
 
-        if items_x_old:
-            for item_x in items_x_old:
-                match_items = self.listParametersX.findItems(item_x, Qt.MatchExactly)
+        if items_old:
+            for item in items_old:
+                match_items = listParameters.findItems(item, Qt.MatchExactly)
                 if match_items:
-                    logging.debug("Re check param %s" % item_x)
                     match_items[0].setCheckState(Qt.Checked)
 
-    def itemParamXChanged(self, item):
-        """
-        Slot function called when item in listParametersX changes.
-        """
-        item_x = str(item.text())
-        if item.checkState() == Qt.Checked:
-            if item_x not in self.items_x:
-                logging.debug("Add item %s" % item_x)
-                self.items_x.append(item_x)
-        else:
-            if item_x in self.items_x:
-                logging.debug("Del item %s" % item_x)
-                self.items_x.remove(item_x)
+    def getCheckedParams(self, checklist):
+        return [checklist.item(i).text() for i in range(checklist.count()) if checklist.item(i).checkState() == Qt.Checked]
 
-    def _updateListParametersY(self, items):
-        """
-        """
-        logging.debug("Fill ListParametersY with %i items" % (len(items)))
-        items_y_old = self.items_y
-        self.items_y = []
-        self.listParametersY.clear()
-        for item in items:
-            listItem = QListWidgetItem()
-            listItem.setText(item)
-            listItem.setFlags(listItem.flags() | Qt.ItemIsUserCheckable)
-            listItem.setCheckState(Qt.Unchecked)
-            self.listParametersY.addItem(listItem)
+    def getXParams(self):
+        return self.getCheckedParams(self.listParametersX)
 
-        if items_y_old:
-            for item_y in items_y_old:
-                match_items = self.listParametersY.findItems(item_y, Qt.MatchExactly)
-                if match_items:
-                    logging.debug("Re check param %s" % item_y)
-                    match_items[0].setCheckState(Qt.Checked)
-
-    def itemParamYChanged(self, item):
-        """
-        Slot function called when item in listParametersY changes.
-        """
-        item_y = str(item.text())
-        if item.checkState() == Qt.Checked:
-            if item_y not in self.items_x:
-                logging.debug("Add item %s" % item_y)
-                self.items_y.append(item_y)
-        else:
-            if item_y in self.items_y:
-                logging.debug("Del item %s" % item_y)
-                self.items_y.remove(item_y)
+    def getYParams(self):
+        return self.getCheckedParams(self.listParametersY)
 
     def statusSelectAllX(self):
         """
         Slot function called when selectAllX is modified.
         """
-        self.items_x = []
         if self.selectAllX.isChecked():
             state = Qt.Checked
         else:
@@ -806,7 +759,6 @@ class MainWindow(QMainWindow):
         """
         Slot function called when selectAllY is modified.
         """
-        self.items_y = []
         if self.selectAllY.isChecked():
             state = Qt.Checked
         else:
@@ -881,8 +833,8 @@ class MainWindow(QMainWindow):
             plt.close('all')
 
             # X and Y items
-            items_x = self.items_x
-            items_y = self.items_y
+            items_x = self.getXParams()
+            items_y = self.getYParams()
             self.plotter.settings.setWithSubplotSize(3.5)
             self.plotter.settings.legend_position_config = 2
             self.plotter.settings.legend_frac_subplot_margin = 0.05
@@ -1106,6 +1058,7 @@ class DialogLikeStats(QDialog):
         font.setStyleHint(QFont.TypeWriter)
         self.text.setFont(font)
         layout.addWidget(self.text, 0, 0)
+        self.setAttribute(Qt.WA_DeleteOnClose)
 
         if stats:
             headers = stats.headerLine().strip().split() + [ 'label' ]
@@ -1157,6 +1110,7 @@ class DialogMargeStats(QDialog):
         self.setLayout(layout)
 
         self.setWindowTitle(self.tr('Marginalized constraints: ' + root + ".margestats"))
+        self.setAttribute(Qt.WA_DeleteOnClose)
 
         if stats:
 
@@ -1266,6 +1220,8 @@ class DialogSettings(QDialog):
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 self.table.setItem(irow, 0, item)
                 item = QTableWidgetItem(ini.string(key))
+                hint = names.comments.get(key, None)
+                if hint: item.setToolTip("\n".join(hint))
                 self.table.setItem(irow, 1, item)
         for i in range(nblank):
             item = QTableWidgetItem(str(""))
@@ -1281,7 +1237,6 @@ class DialogSettings(QDialog):
         h = self.table.verticalHeader().length() + 40
         h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, h)
         self.resize(300, h)
-        self.setAttribute(Qt.WA_DeleteOnClose)
 
     def doUpdate(self):
         for row in range(self.rows):

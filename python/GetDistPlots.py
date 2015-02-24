@@ -538,7 +538,7 @@ class GetDistPlotter(object):
                 else: cols = color
             levels = sorted(np.append([density.pts.max() + 1], density.contours))
             CS = contourf(density.x1, density.x2, density.pts, levels, colors=cols, alpha=alpha, **kwargs)
-            if proxyIx >= 0: self.contours_added[proxyIx] = (Rectangle((0, 0), 1, 1, fc=CS.tcolors[1][0]))
+            if proxyIx >= 0: self.contours_added[proxyIx] = (Rectangle((0, 0), 1, 1, fc=CS.tcolors[-1][0]))
             contour(density.x1, density.x2, density.pts, levels[:1], colors=CS.tcolors[1],
                     linewidths=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines, **kwargs)
         else:
@@ -925,7 +925,6 @@ class GetDistPlotter(object):
             self.subplot_number(i)
             self.plot_2d(roots, param_pair=pair, filled=filled, shaded=not filled and shaded,
                          add_legend_proxy=i == 0)
-
         self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_order=label_order)
 
         return plot_col, plot_row

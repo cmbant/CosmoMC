@@ -1,12 +1,16 @@
 # AL Apr 11,Jun13, Jul14
 import os
+import numpy as np
+
+class IniError(Exception):
+    pass
 
 class iniFile(object):
-
 
     def __init__(self, settings=None, keep_includes=False):
 
         self.params = dict()
+        self.comments = dict()
         self.readOrder = []
         self.defaults = []
         self.includes = []
@@ -21,28 +25,32 @@ class iniFile(object):
             fileincludes = []
             filedefaults = []
             self.original_filename = filename
-            textFileHandle = open(filename)
-            # Remove blanck lines and comment lines from the python list of lists.
-            for line in textFileHandle:
-                s = line.strip()
-                if s == 'END':break
-                if s.startswith('#'):continue
-                elif s.startswith('INCLUDE('):
-                    fileincludes.append(s[s.find('(') + 1:s.rfind(')')])
-                elif s.startswith('DEFAULT('):
-                    filedefaults.append(s[s.find('(') + 1:s.rfind(')')])
-                elif s != '':
-                    eq = s.find('=')
-                    if eq >= 0:
-                        key = s[0:eq].strip()
-                        if key in self.params:
-                            if if_not_defined: continue
-                            raise Exception('Error: duplicate key: ' + key + ' in ' + filename)
-                        value = s[eq + 1:].strip()
-                        self.params[key] = value;
-                        self.readOrder.append(key);
+            comments = []
+            with open(filename) as textFileHandle:
+                # Remove blanck lines and comment lines from the python list of lists.
+                for line in textFileHandle:
+                    s = line.strip()
+                    if s == 'END':break
+                    if s.startswith('#'):
+                        comments.append(s[1:].rstrip())
+                        continue
+                    elif s.startswith('INCLUDE('):
+                        fileincludes.append(s[s.find('(') + 1:s.rfind(')')])
+                    elif s.startswith('DEFAULT('):
+                        filedefaults.append(s[s.find('(') + 1:s.rfind(')')])
+                    elif s != '':
+                        eq = s.find('=')
+                        if eq >= 0:
+                            key = s[0:eq].strip()
+                            if key in self.params:
+                                if if_not_defined: continue
+                                raise IniError('Error: duplicate key: ' + key + ' in ' + filename)
+                            value = s[eq + 1:].strip()
+                            self.params[key] = value
+                            self.readOrder.append(key)
+                            if len(comments): self.comments[key] = comments
+                    if not s.startswith('#'): comments = []
 
-            textFileHandle.close()
             if keep_includes:
                 self.includes += fileincludes
                 self.defaults += filedefaults
@@ -63,16 +71,20 @@ class iniFile(object):
             print 'Error in ' + filename
             raise
 
+    def __str__(self):
+        return "\n".join(self.fileLines())
+
     def saveFile(self, filename=None):
         if not filename: filename = self.original_filename
-        if not filename: raise Exception('No filename for iniFile.saveFile()')
-        with open(filename, 'w') as f: f.write("\n".join(self.fileLines()))
+        if not filename: raise IniError('No filename for iniFile.saveFile()')
+        with open(filename, 'w') as f:
+            f.write(str(self))
 
     def fileLines(self):
 
         def asIniText(value):
             if type(value) == type(''): return value
-            if type(value) == type(True):
+            if type(value) == bool:
                 return str(value)[0]
             return str(value)
 
@@ -96,17 +108,15 @@ class iniFile(object):
 
 
     def replaceTags(self, placeholder, text):
-
         for key in self.params:
             self.params[key] = self.params[key].replace(placeholder, text);
-
-            return self.params
+        return self.params
 
     def delete_keys(self, keys):
         for k in keys: self.params.pop(k, None)
 
     def _undefined(self, name):
-        raise Exception('parameter not defined: ' + name)
+        raise IniError('parameter not defined: ' + name)
 
     def hasKey(self, name):
         return name in self.params
@@ -115,9 +125,21 @@ class iniFile(object):
         return name in self.params and (allowEmpty or self.params[name] != "")
 
     def asType(self, name, tp, default=None, allowEmpty=False):
-        if self.isSet(name, allowEmpty): return tp(self.params[name])
+        if self.isSet(name, allowEmpty):
+            if tp == bool:
+                return self.bool(name, default)
+            elif tp == list:
+                return self.split(name, default)
+            elif tp == np.ndarray:
+                return self.ndarray(name, default)
+            else:
+                return tp(self.params[name])
         elif default is not None: return default
         else: self._undefined(name)
+
+    def setAttr(self, name, instance, default=None, allowEmpty=False):
+        default = getattr(instance, name, default)
+        setattr(instance, name, self.asType(name, type(default), default, allowEmpty=allowEmpty))
 
     def bool(self, name, default=False):
         if self.isSet(name):
@@ -125,7 +147,7 @@ class iniFile(object):
             if isinstance(s, bool): return s
             if s == 'T': return True
             elif s == 'F': return False
-            raise Exception('parameter does not have valid T or F boolean value: ' + name)
+            raise IniError('parameter does not have valid T or F boolean value: ' + name)
         elif default is not None: return default
         else: self._undefined(name)
 
@@ -142,6 +164,9 @@ class iniFile(object):
         s = self.string(name, default)
         if isinstance(s, basestring): return s.split()
         else: return s
+
+    def ndarray(self, name, default=None, tp=np.double):
+        return np.array([tp(x) for x in self.split(name, default)])
 
     def array_int(self, name, index=1, default=None):
         return self.int(name + '(%u)' % index, default)

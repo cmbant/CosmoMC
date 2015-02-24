@@ -535,8 +535,9 @@ installed manually or obtained from the cosmomc git repository (access available
 <UL>
 <LI><B>March 2015</B><BR>
 <UL>
-<LI>1D distributions with boundaries (e.g. r, mnu, etc) now use a simple linear boundary kernel to get more accurate distribution slope at the boundary (boundary_correction_method=1, <A HREF="http://www3.stat.sinica.edu.tw/statistica/oldpdf/A6n414.pdf">Jones and Foster 1996</A>)
-<LI>Python GetDist fixes, and faster 1D density code
+<LI>For distribution boundaries (e.g. r, mnu, etc), now use a linear boundary kernel to get more accurate first distribution slope at the boundary (boundary_correction_method=1, <A HREF="http://www3.stat.sinica.edu.tw/statistica/oldpdf/A6n414.pdf">Jones and Foster 1996</A>)
+<LI>Kernel densities now use multiplicative bias correction (combined with the linear boundary correction, this gives significantly more accurate results with wider smoothing); (<A HREF="http://biomet.oxfordjournals.org/content/82/2/327.short">Jones, Sigorni, Hjort</A>; <A HREF="http://www.jstor.org/stable/2965571">Jones and Sigorni</A>)
+<LI>Python GetDist fixes, all convergence tests, and much faster
 </Ul>
 <LI><B>February 2015</B><BR>
 <UL>

@@ -419,11 +419,3 @@ class chains(object):
         self.weights *= np.exp(-(logLikes - scale))
         self.norm = np.sum(self.weights)
 
-
-# c = loadChains('C:\\tmp\\Planck\\chains\\base_nrun_r_planck_CAMspec_lowl_lowLike', ignore_frac=0.3, separate_chains=False)
-# c.getChainsStats()
-
-# c = chains()
-# c.loadWMAPChain('C:\\tmp\\Planck\\WMAP9\\test\\', 'C:\\Work\\Dist\\git\\cosmomcplanck\\LAMBDA.paramnames', thinfac=50)
-# c.thin(30)
-# c.writeSingle('z:\\test_thin')
