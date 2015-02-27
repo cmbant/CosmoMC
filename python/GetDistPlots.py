@@ -925,8 +925,24 @@ class GetDistPlotter(object):
             self.subplot_number(i)
             self.plot_2d(roots, param_pair=pair, filled=filled, shaded=not filled and shaded,
                          add_legend_proxy=i == 0)
-        self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_order=label_order)
 
+        try:
+            x = np.arange(-1.5, 8, 0.02)
+            y = np.arange(-8, 8, 0.02)
+            x, y = np.meshgrid(x, y)
+            invcov = np.linalg.inv(np.array([[3, 0], [0, 1]]))
+            like = (x) ** 2 * invcov[0, 0] + 2 * x * y * invcov[0, 1] + (y) ** 2 * invcov[1, 1]
+            density = Density2D()
+            density.pts = exp(-like / 2)
+            levels = MCSamples.get2DContourLevels(density.pts, contours=[0.68, 0.95, 0.99])
+            density.x1 = x
+            density.x2 = y
+        #                levels = exp(-np.array([1.509, 2.4477, 3.034854259]) ** 2 / 2)
+            density.contours = levels
+            self.add_2d_contours(roots[0], 'x', 'y', filled=False, density=density)
+        except:
+            pass
+        self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_order=label_order)
         return plot_col, plot_row
 
     def subplot(self, x, y, **kwargs):

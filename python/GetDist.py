@@ -40,7 +40,9 @@ single_column_chain_files = ini.bool('single_column_chain_files', False)
 mc.initParameters(ini)
 
 
-adjust_priors = ini.bool('adjust_priors', False)
+if ini.bool('adjust_priors', False) or ini.bool('map_params', False):
+    print 'To adjust priors or define new parameters, use a separate python script; see the python getdist docs for examples'
+    sys.exit()
 
 plot_ext = ini.string('plot_ext', 'py')
 
@@ -67,10 +69,6 @@ cool = ini.float('cool', 1.0)
 exclude_chain = ini.string('exclude_chain')
 chain_exclude = [ int(s) for s in exclude_chain.split(' ') if s <> '' ]
 num_exclude = len(chain_exclude) - chain_exclude.count(0)
-
-map_params = ini.bool('map_params', False)
-if (map_params):
-    print 'WARNING: Mapping params - .covmat file is new params.'
 
 shade_meanlikes = ini.bool('shade_meanlikes', False)
 mc.shade_meanlikes = shade_meanlikes
@@ -138,12 +136,7 @@ last_chain = ini.int('chain_num', -1)
 # -1 means keep reading until one not found
 if last_chain == -1: last_chain = getLastChainIndex(in_root)
 
-# Read in the chains
-ok = mc.loadChains(in_root, chain_files)
-# if (not ok): print ''
-# if (mc.numrows==0):
-#    print 'No un-ignored rows! (check number of chains/burn in)'
-#    sys.exit()
+mc.loadChains(in_root, chain_files)
 
 mc.removeBurnFraction(ignorerows)
 mc.deleteFixedParams()
@@ -154,11 +147,8 @@ def filterPars(names):
     return [ name for name in names if mc.paramNames.parWithName(name) ]
 
 if cool <> 1:
-    mc.CoolChain(cool)
-
-# Adjust weights if requested
-if adjust_priors:
-    mc.AdjustPriors()
+    print 'Cooling chains by ', cool
+    mc.cool(cool)
 
 plotparams = []
 line = ini.string('plot_params', '')
@@ -197,11 +187,7 @@ for ix in range(1, num_3D_plots + 1):
     if len(pars) <> 3: raise Exception('3D_plot parameter not found, not varied, or not wrong number of parameters')
     plot_3D.append(pars)
 
-
-if adjust_priors:
-    mc.DeleteZeros()
-
-mc.updateChainBaseStatistics()
+mc.updateBaseStatistics()
 
 if not no_tests:
     mc.DoConvergeTests(mc.converge_test_limit, writeDataToFile=True, feedback=True)

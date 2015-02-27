@@ -399,7 +399,6 @@ class MainWindow(QMainWindow):
             summary = samples.getNumSampleSummaryText()
             if getattr(samples, 'GelmanRubin', None):
                 summary += "var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F" % samples.GelmanRubin
-
         except Exception as e:
             self.errorReport(e, caption="Convergence stats")
         finally:
@@ -420,6 +419,8 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Calculating margestats....")
             samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
             stats = samples.getMargeStats()
+        except Exception as e:
+            self.errorReport(e, caption="Marge stats")
         finally:
             self.statusBar().showMessage("")
 
@@ -458,7 +459,8 @@ class MainWindow(QMainWindow):
         """
         QMessageBox.about(
             self, "About GetDist GUI",
-            "GetDist GUI v " + str(MCSamples.version) + "\ncosmologist.info/cosmomc/\n\nMatplotlib: " + matplotlib.__version__ + "\nPySide: " + PySide.__version__)
+            "GetDist GUI v " + str(MCSamples.version) + "\ncosmologist.info/cosmomc/\n\nMatplotlib: "
+            + matplotlib.__version__ + "\nNumpy: " + np.version.version + "\nPySide: " + PySide.__version__)
 
 
     def selectRootDirName(self):
@@ -561,6 +563,8 @@ class MainWindow(QMainWindow):
         self.dataTag = ""
         self.data2chains = {}
         self.listRoots.clear()
+        self.listParametersX.clear()
+        self.listParametersY.clear()
         self.rootnames = {}
         self.plotter = None
 
@@ -1164,7 +1168,7 @@ class DialogConvergeStats(QDialog):
             self.text2.setText(summary)
             self.text2.setWordWrapMode(QTextOption.NoWrap)
             self.text2.setFont(font)
-            self.text2.setMaximumHeight(80)
+            self.text2.setMaximumHeight(100)
             layout.addWidget(self.text2, 0, 0)
 
         self.setLayout(layout)

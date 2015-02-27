@@ -1,9 +1,19 @@
 import os, pickle, random
 import numpy as np
 from getdist import paramNames
+from scipy.signal import fftconvolve
+
+class WeightedSampleError(Exception):
+    pass
 
 def lastModified(files):
     return max([os.path.getmtime(fname) for fname in files if os.path.exists(fname)])
+
+def convolve1D(x, y, mode):
+    if min(x.shape[0], y.shape[0]) > 1000:
+        return fftconvolve(x, y, mode)
+    else:
+        return np.convolve(x, y, mode)
 
 def chainFiles(root, chain_indices=None, ext='.txt'):
     index = -1
@@ -31,26 +41,15 @@ def loadChains(root=None, chain_indices=None, ignore_rows=0, ignore_frac=0, no_c
             if not no_stat: c.getChainsStats()
             if not separate_chains:
                 c.makeSingle()
-                c.updateChainBaseStatistics()
+                c.updateBaseStatistics()
                 with open(c.cachefile, 'wb') as output:
                     pickle.dump(c, output, pickle.HIGHEST_PROTOCOL)
             return c
         return None
 
-def loadGridChain(rootdir, model, data, importance=None, ignore_frac=0):
-    tags = [model, data]
-    if importance is not None: tags += ['post', importance]
-    path = model + os.sep + data + os.sep + "_".join(tags)
-    print path
-    return loadChains(rootdir + os.sep + path, ignore_frac=ignore_frac, separate_chains=False, no_stat=True)
-
-
 def getSignalToNoise(C, noise=None, R=None, eigs_only=False):
     if R is None:
-        if noise is None: raise Exception('Must give noise or rotation R')
-#        w, U = np.linalg.eigh(noise)  # noise = (U * w).dot(U.T)
-#        w = w ** (-0.5)
-#        R = (U * w).dot(U.T)
+        if noise is None: raise WeightedSampleError('Must give noise or rotation R')
         R = np.linalg.inv(np.linalg.cholesky(noise))
 
     M = np.dot(R, C).dot(R.T)
@@ -61,93 +60,125 @@ def getSignalToNoise(C, noise=None, R=None, eigs_only=False):
         U = np.dot(U.T, R)
         return w, U
 
+def covToCorr(cov, copy=True):
+    if copy: cov = cov.copy()
+    for i, di in enumerate(np.sqrt(cov.diagonal())):
+        if di:
+            cov[i, :] /= di
+            cov[:, i] /= di
+    return cov
 
-class chain(object):
+class paramConfidenceData(object): pass
+
+class parSamples(object): pass
+
+
+class WeightedSamples(object):
     def __init__(self, filename=None, ignore_rows=0, samples=None, weights=None, loglikes=None):
         if filename:
             self.setColData(np.loadtxt(filename, skiprows=ignore_rows))
         else:
-            self.setSamples(samples)
-            self.weights = weights
-            self.loglikes = loglikes
-
+            self.setSamples(samples, weights, loglikes)
 
     def setColData(self, coldata):
-        self.setSamples(coldata[:, 2:])
-        self.weights = coldata[:, 0]
-        self.loglikes = coldata[:, 1]
+        self.setSamples(coldata[:, 2:], coldata[:, 0], coldata[:, 1])
 
-    def setSamples(self, samples):
+    def setSamples(self, samples, weights=None, loglikes=None):
+        self.weights = weights
+        self.loglikes = loglikes
         self.samples = samples
-        self.n = self.samples.shape[1]
-        self.means = []
+        if samples is not None:
+            self.n = self.samples.shape[1]
+            self.numrows = self.samples.shape[0]
+        self._weightsChanged()
 
-    def getCov(self, n):
-        if len(self.means) == 0: self.getMeans()
-        cov = np.zeros((n, n))
-        for i in range(n):
-            weightdiff = (self.samples[:, i] - self.means[i]) * self.weights
-            for j in range(i, n):
-                cov[i, j] = np.dot(weightdiff , self.samples[:, j] - self.means[j]) / self.norm
-                cov[j, i] = cov[i, j]
-        self.cov = cov
-        return cov
+    def changeSamples(self, samples):
+        self.setSamples(samples, self.weights, self.loglikes)
 
-    def getMeans(self):
-        self.norm = np.sum(self.weights)
-        self.means = np.empty(self.n)
-        for i in range(self.n):
-            self.means[i] = np.dot(self.samples[:, i], self.weights) / self.norm
+    def _weightsChanged(self):
+        if self.weights is not None:
+            self.norm = np.sum(self.weights)
+        elif self.samples is not None:
+            self.weights = np.ones(self.numrows)
+            self.norm = np.float64(self.numrows)
+        self.means = None
+        self.mean_loglike = None
+        self.diffs = None
+        self.fullcov = None
+        self.correlationMatrix = None
+        self.vars = None
+        self.sddev = None
+
+
+    def _makeParamvec(self, par):
+        if isinstance(par, (int, long)):
+            if par >= 0 and par < self.n:
+                return self.samples[:, par]
+            elif par == -1:
+                if self.loglikes is None:
+                    raise WeightedSampleError('Samples do not have logLikes (par=-1)' % (par))
+                return self.loglikes
+            elif par == -2:
+                return self.weights
+            else: raise WeightedSampleError('Parameter %i does not exist' % (par))
+        return par
+
+    def getCov(self, nparam=None):
+        if self.fullcov is None:
+            return self.setCov()
+        return self.fullcov[:nparam, :nparam]
+
+    def setCov(self):
+        self.fullcov = self.cov()
+        return self.fullcov
+
+    def getCorrelationMatrix(self):
+        if self.correlationMatrix is None:
+            self.correlationMatrix = covToCorr(self.getCov())
+        return self.correlationMatrix
+
+    def setMeans(self):
+        self.means = self.weights.dot(self.samples) / self.norm
+        if self.loglikes is not None: self.mean_loglike = self.weights.dot(self.loglikes) / self.norm
         return self.means
 
-class paramConfidenceData(object):
-    pass
+    def getMeans(self):
+        if self.means is None:
+            return self.setMeans()
+        return self.means
 
-class parSamples(object): pass
+    def getVars(self):
+        if self.means is None: self.setMeans()
+        self.vars = np.empty(self.n)
+        for i in range(self.n):
+            self.vars[i] = self.weights.dot((self.samples[:, i] - self.means[i]) ** 2) / self.norm
+        self.sddev = np.sqrt(self.vars)
+        return self.vars
 
-class chains(object):
+    def setDiffs(self):
+        self.diffs = self.mean_diffs()
+        return self.diffs
 
-    def __init__(self, root=None, ignore_rows=0, jobItem=None):
-        self.jobItem = jobItem
-        self.precision = '%.8e'
-        self.ignore_lines = ignore_rows
-        self.root = root
-        self.samples = None
-        self.hasNames = os.path.exists(root + '.paramnames')
-        self.needs_update = True
-        if self.hasNames:
-            self.paramNames = paramNames.paramNames(root + '.paramnames')
-            self.getParamIndices()
+    def getWeightedAutocorrelation(self, paramVec, maxOff=None):
+        """ get auto covariance in weight units; 
+            divide by var to normalize
+            multiply by n/norm to get in sample point (row) units
+       """
+        if maxOff is None: maxOff = self.n - 1
+        d = self.mean_diff(paramVec) * self.weights
+        corr = convolve1D(d, d[::-1], 'full')[-d.size:]
+        return corr[0:maxOff + 1] * d.size / (self.norm * np.arange(d.size, d.size - maxOff - 1, -1))
 
-    def getParamIndices(self):
-        index = dict()
-        for i, name in enumerate(self.paramNames.names):
-            index[name.name] = i
-        self.index = index
-
-    def setParams(self, obj):
-        for i, name in enumerate(self.paramNames.names):
-            setattr(obj, name.name, self.samples[:, i])
-
-    def getParams(self):
-        pars = parSamples()
-        self.setParams(pars)
-        return pars
-
-    def valuesForParam(self, param, force_array=False):
-        if isinstance(param, np.ndarray): return param
-        if isinstance(param, basestring): param = [param]
-        results = []
-        for par in param:
-            if isinstance(par, basestring):
-                ix = self.index[par]
-                results.append(self.samples[:, ix])
-            else: results.append(par)
-        if len(results) == 1 and not force_array: return results[0]
-        return results
+    def getEffectiveSamples(self, j=-1, min_corr=0.05):
+        corr = self.getWeightedAutocorrelation(j, self.numrows / 10)
+        corr /= self.var(j)
+        ix = np.argmin(corr > min_corr * corr[0])
+        N = corr[0] + 2 * np.sum(corr[1:ix])
+        return self.get_norm() / N
 
     def weighted_sum(self, paramVec, where=None):
-        if where is None: return np.dot(paramVec, self.weights)
+        paramVec = self._makeParamvec(paramVec)
+        if where is None: return self.weights.dot(paramVec)
         return np.dot(paramVec[where], self.weights[where])
 
     def get_norm(self, where=None):
@@ -161,20 +192,50 @@ class chains(object):
         return self.weighted_sum(paramVec, where) / self.get_norm(where)
 
     def var(self, paramVec, where=None):
-        return self.weighted_sum((paramVec - self.mean(paramVec, where)) ** 2 , where) / self.get_norm(where)
+        return self.weighted_sum(self.mean_diff(paramVec) ** 2 , where) / self.get_norm(where)
 
     def std(self, paramVec, where=None):
         return np.sqrt(self.var(paramVec, where))
+
+    def cov(self, pars=None):
+        diffs = self.mean_diffs(pars)
+        if pars is None:
+            pars = range(self.n)
+        n = len(pars)
+        cov = np.empty((n, n))
+        for i, diff in enumerate(diffs):
+            weightdiff = diff * self.weights
+            for j in range(i, n):
+                cov[i, j] = weightdiff.dot(diffs[j]) / self.norm
+                cov[j, i] = cov[i, j]
+        return cov
+
+    def corr(self, pars=None):
+        return self.covToCorr(self.cov(pars))
+
+    def mean_diff(self, paramVec):
+        if isinstance(paramVec, (int, long)) and paramVec >= 0:
+            if self.diffs is not None:
+                return self.diffs[paramVec]
+            return self.samples[:, paramVec] - self.getMeans()[paramVec]
+        paramVec = self._makeParamvec(paramVec)
+        return paramVec - self.mean(paramVec)
+
+    def mean_diffs(self, pars=None):
+        if pars is None: pars = self.n
+        if isinstance(pars, (int, long)) and pars >= 0:
+            means = self.getMeans()
+            return [self.samples[:, i] - means[i] for i in range(pars)]
+        return [self.mean_diff(i) for i in pars]
 
     def twoTailLimits(self, paramVec, confidence):
         limits = np.array([(1 - confidence) / 2, 1 - (1 - confidence) / 2])
         return self.confidence(paramVec, limits)
 
-
     def initParamConfidenceData(self, paramVec, start=0, end=None, weights=None):
         if weights is None: weights = self.weights
         d = paramConfidenceData()
-        d.paramVec = self.valuesForParam(paramVec)[start:end]
+        d.paramVec = self._makeParamvec(paramVec)[start:end]
         d.norm = np.sum(weights[start:end])
         d.indexes = d.paramVec.argsort()
         weightsort = weights[start + d.indexes]
@@ -182,6 +243,9 @@ class chains(object):
         return d
 
     def confidence(self, paramVec, limfrac, upper=False, start=0, end=None, weights=None):
+        """ 
+        Raw sample confidence limits, not using kernel densities
+        """
         if isinstance(paramVec, paramConfidenceData):
             d = paramVec
         else:
@@ -192,30 +256,6 @@ class chains(object):
         ix = np.searchsorted(d.cumsum, target)
         return d.paramVec[d.indexes[np.minimum(ix, d.indexes.shape[0] - 1)]]
 
-    def cov(self, paramVecs):
-        paramVecs = self.valuesForParam(paramVecs, force_array=True)
-        diffs = [vec - self.mean(vec) for vec in paramVecs]
-        n = len(paramVecs)
-        cov = np.zeros((n, n))
-        for i, diff1 in enumerate(diffs):
-            weightdiff = diff1 * self.weights
-            for j, diff2 in enumerate(diffs[:i + 1]):
-                cov[i, j] = np.dot(weightdiff , diff2) / self.norm
-                cov[j, i] = cov[i, j]
-        return cov
-
-    def corr(self, paramVecs, cov=None):
-        if cov is not None:
-            corr = np.copy(cov)
-        else:
-            corr = self.cov(paramVecs)
-        diag = [np.sqrt(corr[i, i]) for i in range(len(paramVecs))]
-        for i, di in enumerate(diag):
-            if di:
-                corr[i, :] /= di
-                corr[:, i] /= di
-        return corr
-
     def getSignalToNoise(self, params, noise=None, R=None, eigs_only=False):
         """
         Returns w, M, where w is the eigenvalues of the signal to noise (small means better constrained)
@@ -223,132 +263,10 @@ class chains(object):
         C = self.cov(params)
         return getSignalToNoise(C, noise, R, eigs_only)
 
-
-    def updateChainBaseStatistics(self):
-        self.norm = np.sum(self.weights)
-        self.numrows = self.samples.shape[0]
-        self.num_vars = self.samples.shape[1]
-        self.getParamIndices()
-        self.needs_update = False
-
-    def addDerived(self, paramVec, **kwargs):
-        self.samples = np.c_[self.samples, paramVec]
-        self.needs_update = True
-        return self.paramNames.addDerived(**kwargs)
-    #    self.updateChainBaseStatistics()
-
-    def loadChains(self, root, files):
-        self.chains = []
-        for fname in files:
-                print fname
-                self.chains.append(chain(fname, self.ignore_lines))
-        if len(self.chains) == 0: print 'loadChains - no chains found for ' + root
-        return len(self.chains) > 0
-
-    def getChainsStats(self, nparam=None):
-        nparam = nparam or self.paramNames.numNonDerived()
-        for chain in self.chains: chain.getCov(nparam)
-        norm = np.sum([chain.norm for chain in self.chains])
-        self.means = np.zeros(nparam)
-        for chain in self.chains:
-            self.means = self.means + chain.means[0:nparam] * chain.norm
-        self.means /= norm
-        meanscov = np.zeros((nparam, nparam))
-        for i in range(nparam):
-            for j in range(nparam):
-                meanscov[i, j] = np.sum([chain.norm * (chain.means[i] - self.means[i]) * (chain.means[j] - self.means[j]) for chain in self.chains])
-                meanscov[j, i] = meanscov[i, j]
-        meanscov *= len(self.chains) / (len(self.chains) - 1) / norm
-        self.meancov = np.zeros((nparam, nparam))
-        for chain in self.chains:
-            self.meancov += chain.cov * chain.norm
-        self.meancov /= norm
-        M = self.meancov
-        for i in range(nparam):
-            norm = np.sqrt(self.meancov[i, i])
-            M[i, :] /= norm
-            M[:, i] /= norm
-            meanscov[:, i] /= norm
-            meanscov[i, :] /= norm
-        R = np.linalg.inv(np.linalg.cholesky(M))
-        D = np.linalg.eigvalsh(np.dot(R, meanscov).dot(R.T))
-        self.GelmanRubin = max(np.real(D))
-        print 'R-1 = ', self.GelmanRubin
-
-
-    def makeSingle(self):
-        self.chain_offsets = np.cumsum(np.array([0] + [chain.samples.shape[0] for chain in self.chains]))
-        self.weights = np.hstack((chain.weights for chain in self.chains))
-        self.loglikes = np.hstack((chain.loglikes for chain in self.chains))
-        self.samples = np.vstack((chain.samples for chain in self.chains))
-        del(self.chains)
-        return self
-
-    def getSeparateChains(self):
-        if hasattr(self, 'chains'): return self.chains
-        chainlist = []
-        for off1, off2 in zip(self.chain_offsets[:-1], self.chain_offsets[1:]):
-            chainlist.append(chain(samples=self.samples[off1:off2], weights=self.weights[off1:off2], loglikes=self.loglikes[off1:off2]))
-        return chainlist
-
-    def loadWMAPChain(self, chainPath, namesFile, thinfac=1):
-        params = paramNames.paramNames(namesFile)
-        cols = []
-        self.weights = np.loadtxt(chainPath + 'weight', usecols=(1,))
-        self.loglikes = np.loadtxt(chainPath + 'neglnlike', usecols=(1,))
-        if thinfac <> 1:
-            thin_ix = self.thin_indices(thinfac)
-            self.weights = np.ones(len(thin_ix))
-            self.loglikes = self.loglikes[thin_ix]
-        else: thin_ix = None
-
-        usednames = []
-        for param in params.names:
-            if os.path.exists(chainPath + param.name):
-                col = np.loadtxt(chainPath + param.name, usecols=(1,))
-                if thin_ix is not None: col = col[thin_ix]
-                cols.append(col)
-                usednames.append(param)
-        params.names = usednames
-        self.paramNames = params
-        self.samples = np.vstack(cols).transpose()
-        self.numrows = self.samples.shape[0]
-
-
-    def removeBurnFraction(self, ignore_frac):
-        for chain in self.chains:
-            ix = int(round(chain.samples.shape[0] * ignore_frac))
-            chain.samples = chain.samples[ix:, :]
-            if chain.weights is not None:
-                chain.weights = chain.weights[ix:]
-            if chain.loglikes is not None:
-                chain.loglikes = chain.loglikes[ix:]
-
-    def deleteFixedParams(self):
-        fixed = []
-        if self.samples is not None:
-            for i in range(self.samples.shape[1]):
-                if np.all(self.samples[:, i] == self.samples[0, i]): fixed.append(i)
-            self.samples = np.delete(self.samples, fixed, 1)
-        else:
-            chain = self.chains[0]
-            for i in range(chain.n):
-                if np.all(chain.samples[:, i] == chain.samples[0, i]): fixed.append(i)
-            for chain in self.chains:
-                chain.setSamples(np.delete(chain.samples, fixed, 1))
-        if self.hasNames:
-            self.paramNames.deleteIndices(fixed)
-            self.getParamIndices()
-#           print 'Non-derived parameters: ', [name.name for name in self.paramNames.names[0:self.paramNames.numNonDerived()]]
-
-
-    def writeSingle(self, root):
-        np.savetxt(root + '.txt', np.hstack((self.weights.reshape(-1, 1), self.loglikes.reshape(-1, 1), self.samples)), fmt=self.precision)
-        self.paramNames.saveAsText(root + '.paramnames')
-
     def thin_indices(self, factor, weights=None):
-        tot = 0
-        i = 0
+        """
+        Indices to make single weight 1 samples. Assumes intefer weights
+        """
         if weights is None:  weights = self.weights
         numrows = len(weights)
         norm1 = np.sum(weights)
@@ -356,14 +274,16 @@ class chains(object):
         norm = np.sum(weights)
 
         if abs(norm - norm1) > 1e-4:
-                raise Exception('Can only thin with integer weights')
+                raise WeightedSampleError('Can only thin with integer weights')
         if factor <> int(factor):
-                raise Exception('Thin factor must be integer')
+                raise WeightedSampleError('Thin factor must be integer')
 
         if factor >= np.max(weights):
             cumsum = np.cumsum(weights) / int(factor)
             _, thin_ix = np.unique(cumsum, return_index=True)
         else:
+            tot = 0
+            i = 0
             thin_ix = np.empty(norm / factor, dtype=np.int)
             ix = 0
             mult = weights[i]
@@ -384,7 +304,7 @@ class chains(object):
 
         return thin_ix
 
-    def singleSamples_indices(self):
+    def randomSingleSamples_indices(self):
         max_weight = np.max(self.weights)
         thin_ix = []
         for i in range(self.numrows):
@@ -393,29 +313,157 @@ class chains(object):
                 thin_ix.append(i)
         return np.array(thin_ix, dtype=np.int)
 
-    def makeSingleSamples(self):
-        thin_ix = self.singleSamples_indices()
-        self.samples = self.samples[thin_ix, :]
-        self.weights = np.ones(len(thin_ix))
-        self.loglikes = self.loglikes[thin_ix]
-        self.norm = np.sum(self.weights)
-
     def thin(self, factor):
         thin_ix = self.thin_indices(factor)
-        self.samples = self.samples[thin_ix, :]
-        self.weights = np.ones(len(thin_ix))
-        self.loglikes = self.loglikes[thin_ix]
-        self.norm = len(thin_ix)
+        self.setSamples(self.samples[thin_ix, :], loglikes=self.loglikes[thin_ix])
 
     def filter(self, where):
-        self.samples = self.samples[where, :]
-        self.weights = self.weights[where]
-        self.loglikes = self.loglikes[where]
-        self.norm = np.sum(self.weights)
+        self.setSamples(self.samples[where, :], self.weights[where], self.loglikes[where])
 
-    def reweight_plus_logLike(self, logLikes):
+    def reweightAddingLogLikes(self, logLikes):
         scale = np.min(logLikes)
         self.loglikes += logLikes
         self.weights *= np.exp(-(logLikes - scale))
-        self.norm = np.sum(self.weights)
+        self._weightsChanged()
+
+    def cool(self, cool):
+        MaxL = np.max(self.loglikes)
+        newL = self.loglikes * cool
+        self.weights = self.weights * np.exp(-(newL - self.loglikes) - (MaxL * (1 - cool)))
+        self.loglikes = newL
+        self._weightsChanged()
+
+    def deleteZeros(self):
+        self.filter(self.weights == 0)
+
+    def deleteFixedParams(self):
+        fixed = []
+        for i in range(self.samples.shape[1]):
+            if np.all(self.samples[:, i] == self.samples[0, i]): fixed.append(i)
+        self.changeSamples(np.delete(self.samples, fixed, 1))
+
+class chains(WeightedSamples):
+
+    def __init__(self, root=None, ignore_rows=0, jobItem=None, paramNameFile=None):
+        WeightedSamples.__init__(self)
+        self.jobItem = jobItem
+        self.precision = '%.8e'
+        self.ignore_lines = ignore_rows
+        self.root = root
+        self.samples = None
+        paramNameFile = paramNameFile or root + '.paramnames'
+        self.hasNames = os.path.exists(paramNameFile)
+        self.needs_update = True
+        self.chains = None
+        if self.hasNames:
+            self.paramNames = paramNames.paramNames(paramNameFile)
+            self.getParamIndices()
+
+    def getParamIndices(self):
+        index = dict()
+        for i, name in enumerate(self.paramNames.names):
+            index[name.name] = i
+        self.index = index
+
+    def setParams(self, obj):
+        for i, name in enumerate(self.paramNames.names):
+            setattr(obj, name.name, self.samples[:, i])
+
+    def getParams(self):
+        pars = parSamples()
+        self.setParams(pars)
+        return pars
+
+    def _makeParamvec(self, par):
+        if isinstance(par, basestring):
+                return self.samples[:, self.index[par]]
+        return WeightedSamples._makeParamvec(self, par)
+
+    def updateBaseStatistics(self):
+        self.getVars()
+        self.mean_mult = self.norm / self.numrows
+        self.max_mult = np.max(self.weights)
+        self.getParamIndices()
+        self.needs_update = False
+
+    def addDerived(self, paramVec, **kwargs):
+        self.samples = np.c_[self.samples, paramVec]
+        self.needs_update = True
+        return self.paramNames.addDerived(**kwargs)
+
+    def loadChains(self, root, files):
+        self.chains = []
+        for fname in files:
+                print fname
+                self.chains.append(WeightedSamples(fname, self.ignore_lines))
+        if len(self.chains) == 0: print 'loadChains - no chains found for ' + root
+        return len(self.chains) > 0
+
+
+    def getGelmanRubinEigenvalues(self, nparam=None, chainlist=None):
+        # Assess convergence in the var(mean)/mean(var) in the worst eigenvalue
+        # c.f. Brooks and Gelman 1997
+        if chainlist is None:
+            chainlist = self.getSeparateChains()
+        nparam = nparam or self.paramNames.numNonDerived()
+        meanscov = np.zeros((nparam, nparam))
+        means = self.getMeans()[:nparam]
+        for chain in chainlist:
+            diff = chain.getMeans()[:nparam] - means
+            meanscov += np.outer(diff, diff)
+        meanscov /= (len(chainlist) - 1)
+        cov = self.getCov(nparam)
+        invertible = np.min(cov.diagonal()) > 0
+        if invertible:
+            R = np.linalg.inv(np.linalg.cholesky(cov))
+            D = np.linalg.eigvalsh(np.dot(R, meanscov).dot(R.T))
+            return D
+        else:
+            return None
+
+    def makeSingle(self):
+        self.chain_offsets = np.cumsum(np.array([0] + [chain.samples.shape[0] for chain in self.chains]))
+        weights = np.hstack((chain.weights for chain in self.chains))
+        loglikes = np.hstack((chain.loglikes for chain in self.chains))
+        self.setSamples(np.vstack((chain.samples for chain in self.chains)), weights, loglikes)
+        self.chains = None
+        self.needs_update = True
+        return self
+
+    def getSeparateChains(self):
+        if self.chains is not None:
+            return self.chains
+        chainlist = []
+        for off1, off2 in zip(self.chain_offsets[:-1], self.chain_offsets[1:]):
+            chainlist.append(WeightedSamples(samples=self.samples[off1:off2], weights=self.weights[off1:off2], loglikes=self.loglikes[off1:off2]))
+        return chainlist
+
+    def removeBurnFraction(self, ignore_frac):
+        for chain in self.chains:
+            ix = int(round(chain.samples.shape[0] * ignore_frac))
+            if chain.weights is not None:
+                chain.weights = chain.weights[ix:]
+            if chain.loglikes is not None:
+                chain.loglikes = chain.loglikes[ix:]
+            chain.changeSamples(chain.samples[ix:, :])
+
+    def deleteFixedParams(self):
+        if self.samples is not None:
+            WeightedSamples.deleteFixedParams(self)
+            self.chains = None
+        else:
+            fixed = []
+            chain = self.chains[0]
+            for i in range(chain.n):
+                if np.all(chain.samples[:, i] == chain.samples[0, i]): fixed.append(i)
+            for chain in self.chains:
+                chain.changeSamples(np.delete(chain.samples, fixed, 1))
+        if self.hasNames:
+            self.paramNames.deleteIndices(fixed)
+            self.getParamIndices()
+
+    def writeSingle(self, root):
+        np.savetxt(root + '.txt', np.hstack((self.weights.reshape(-1, 1), self.loglikes.reshape(-1, 1), self.samples)), fmt=self.precision)
+        self.paramNames.saveAsText(root + '.paramnames')
+
 
