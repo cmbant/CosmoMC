@@ -193,7 +193,7 @@ if not no_tests:
     mc.DoConvergeTests(mc.converge_test_limit, writeDataToFile=True, feedback=True)
 
 mc.writeCovMatrix()
-mc.writeCorrMatrix()
+mc.writeCorrelationMatrix()
 
 # Output thinned data if requested
 # Must do this with unsorted output
@@ -233,8 +233,7 @@ if not no_plots:
     if plot_2D_param == 'corr':
         # In this case output the most correlated variable combinations
         print '...doing 2D plots for most correlated variables'
-        num_cust2D_plots_0 = 12
-        cust2DPlots = mc.GetCust2DPlots(num_cust2D_plots_0)
+        cust2DPlots = mc.getCorrelatedVariable2DPlots()
         plot_2D_param = None
     elif plot_2D_param:
         mc.paramNames.parWithName(plot_2D_param, error=True)  # just check

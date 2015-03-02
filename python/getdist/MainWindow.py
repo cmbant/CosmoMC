@@ -10,6 +10,7 @@ import numpy as np
 from iniFile import iniFile
 from getdist import MCSamples
 from sys import platform
+import scipy
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -254,7 +255,7 @@ class MainWindow(QMainWindow):
         self.checkShade.setEnabled(False)
 
         self.toggleColor = QRadioButton("Color by:")
-        self.connect(self.toggleColor, SIGNAL("toggled()"),
+        self.connect(self.toggleColor, SIGNAL("toggled(bool)"),
                      self.statusPlotType)
 
         self.comboBoxColor = QComboBox(self)
@@ -459,8 +460,12 @@ class MainWindow(QMainWindow):
         """
         QMessageBox.about(
             self, "About GetDist GUI",
-            "GetDist GUI v " + str(MCSamples.version) + "\ncosmologist.info/cosmomc/\n\nMatplotlib: "
-            + matplotlib.__version__ + "\nNumpy: " + np.version.version + "\nPySide: " + PySide.__version__)
+            "GetDist GUI v " + str(MCSamples.version) + "\ncosmologist.info/cosmomc/\n" +
+            "\nPython: " + sys.version +
+            "\nMatplotlib: " + matplotlib.__version__ +
+            "\nSciPy: " + scipy.__version__ +
+            "\nNumpy: " + np.version.version +
+            "\nPySide: " + PySide.__version__)
 
 
     def selectRootDirName(self):
@@ -516,11 +521,8 @@ class MainWindow(QMainWindow):
         roots = self.checkedRootNames()
         if not len(roots):
             return
-        if self.rootnames.has_key(roots[0]):
-            rootname, _ = self.rootnames[roots[0]]
-            paramNames = self.plotter.sampleAnalyser.samplesForRoot(rootname).paramNames.list()
-        else:
-            raise Exception('rootnames out of synch')
+        paramNames = self.plotter.sampleAnalyser.samplesForRoot(self.rootfiles[roots[0]]).paramNames.list()
+
 #         all_params = []
 #
 #         for root in  self.checkedRootNames():
@@ -565,7 +567,7 @@ class MainWindow(QMainWindow):
         self.listRoots.clear()
         self.listParametersX.clear()
         self.listParametersY.clear()
-        self.rootnames = {}
+        self.rootfiles = {}
         self.plotter = None
 
     def _readGridChains(self, batchPath):
@@ -621,9 +623,6 @@ class MainWindow(QMainWindow):
 
 
     def newRootItem(self, root, fileroot=None):
-        if self.rootnames.has_key(root):
-            logging.warning("Root allready in list")
-            return
 
         self.updating = True
         item = QListWidgetItem(self.listRoots)
@@ -636,7 +635,7 @@ class MainWindow(QMainWindow):
                 self.plotter.sampleAnalyser.addRootGrid(root)
             else:
                 self.plotter.sampleAnalyser.addRoot(fileroot)
-            self.rootnames[root] = [fileroot or root, True]
+            self.rootfiles[root] = fileroot or root
             item.setCheckState(Qt.Checked)
             item.setText(root)
             self._updateParameters()
@@ -660,16 +659,6 @@ class MainWindow(QMainWindow):
 
     def updateListRoots(self, item):
         if self.updating: return
-        logging.debug("updateListRoots")
-        nitems = self.listRoots.count()
-        for i in range(nitems):
-            item = self.listRoots.item(i)
-            root = item.text()
-            state = item.checkState() == Qt.Checked
-            if self.rootnames.has_key(root):
-                self.rootnames[root][1] = state
-            else:
-                logging.warning('No root found for %s' % root)
         self._updateParameters()
 
     def removeRoot(self):
@@ -682,24 +671,12 @@ class MainWindow(QMainWindow):
                     root = str(item.text())
                     logging.debug("Remove root %s" % root)
                     self.plotter.sampleAnalyser.removeRoot(root)
-                    if self.rootnames.has_key(root):
-                        del self.rootnames[root]
+                    if self.rootfiles.has_key(root):
+                        del self.rootfiles[root]
                     self.listRoots.takeItem(i)
         finally:
             self._updateParameters()
             self.updating = False
-
-    def getRoots(self):
-        logging.debug("Get status for roots")
-        for i in range(self.listRoots.count()):
-            item = self.listRoots.item(i)
-            root = str(item.text())
-            state = (item.checkState() == Qt.Checked)
-            if self.rootnames.has_key(root):
-                self.rootnames[root][1] = state
-                logging.debug("status for '%s': %s" % (root, state))
-            else:
-                logging.warning("No key for root '%s'" % root)
 
     def setParamTag(self, strParamTag):
         """
@@ -810,15 +787,10 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Generating plot....")
         try:
             # Ensure at least 1 root name specified
-            self.getRoots()
             os.chdir(self.base_dir)
 
-            nroots = 0
-            for basename, values in self.rootnames.items():
-                rootname, state = values
-                if state: nroots += 1
-
-            if nroots == 0:
+            roots = self.checkedRootNames()
+            if not len(roots):
                 logging.warning("No rootname selected")
                 QMessageBox.warning(self, "Plot data", "No root selected")
                 return
@@ -848,22 +820,23 @@ class MainWindow(QMainWindow):
                 script += "g=s.%s(chain_dir=r'%s')\n" % (plot_func, self.rootdirname)
             else:
                 if isinstance(self.iniFile, basestring):
-                    script += "g=s.%s(mcsamples=True, ini_file=r'%s')\n" % (plot_func, self.iniFile)
+                    script += "g=s.%s(mcsamples=True, analysis_settings=r'%s')\n" % (plot_func, self.iniFile)
+                elif isinstance(self.iniFile, iniFile):
+                    script += 'analysis_settings = %s\n' % (self.iniFile.params)
+                    script += "g=s.%s(mcsamples=True, analysis_settings=%s)\n" % (plot_func, 'analysis_settings')
                 else:
                     script += "g=s.%s(mcsamples=True)\n" % (plot_func)
 
             # Root names
-            roots = []
-            for basename in self.checkedRootNames():
-                if self.rootnames.has_key(basename):
-                    rootname, state = self.rootnames[basename]
-                    roots.append(os.path.basename(rootname))
-                    if not self.is_grid:
-                        script += "g.sampleAnalyser.addRoot(r'%s')\n" % (rootname)
+            if not self.is_grid:
+                for root in roots:
+                    script += "g.sampleAnalyser.addRoot(r'%s')\n" % (self.rootfiles[root])
 
-            script += "roots = []\n"
-            for root in roots:
-                script += "roots.append('%s')\n" % (root)
+            if len(roots) < 3: script += 'roots = %s\n' % (roots)
+            else:
+                script += "roots = []\n"
+                for root in roots:
+                    script += "roots.append('%s')\n" % (root)
 
             logging.debug("Plotting with roots = %s" % str(roots))
 
@@ -919,16 +892,6 @@ class MainWindow(QMainWindow):
                     else:
                         ncol = None
                     self.plotter.plots_1d(roots, params=params, legend_ncol=ncol)
-
-                    x = np.linspace(-1.5, 8, num=2000)
-                    self.plotter.subplots[0, 0].plot(x, np.exp(-x ** 2 / (3 * 2)), color='blue')
-                    x = np.linspace(-4, 4, num=2000)
-                    self.plotter.subplots[1, 0].plot(x, np.exp(-x ** 2 / (1 * 2)), color='blue')
-#                    n = 50000
-#                    x = np.linspace(-1.5, 8, num=n)
-#                    D = MCSamples.Density1D(-1.5, n, x[1] - x[0], np.exp(-x ** 2 / 6))
-#                    print 'true limits:', D.Limits(0.68)
-
                 except Exception as e:
                     self.errorReport(e, caption="plot1D", msg="Error for command:\n\nplots_1d(roots, params=params)\n\nwith roots=%s\nparams=%s\n" % (str(roots), str(params)))
                 self.updatePlot()

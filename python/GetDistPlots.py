@@ -167,7 +167,7 @@ class SampleAnalysisGetDist(object):
         if pts is None: return None
         result.x = pts[:, 0]
         result.pts = pts[:, 1]
-        if (likes): result.likes = self.load_1d(root, param, '.likes')[:, 1]
+        if likes: result.likes = self.load_1d(root, param, '.likes')[:, 1]
         return result
 
     def load_single_samples(self, root):
@@ -241,8 +241,12 @@ class MCSampleAnalysis(object):
         self.reset(settings)
 
     def reset(self, settings=None):
+        self.analysis_settings = {}
         if isinstance(settings, iniFile.iniFile):
             ini = settings
+        elif isinstance(settings, dict):
+            ini = iniFile.iniFile(MCSamples.default_getdist_settings)
+            ini.params.update(settings)
         else:
             ini = iniFile.iniFile(settings or MCSamples.default_getdist_settings)
         if self.ini:
@@ -261,13 +265,13 @@ class MCSampleAnalysis(object):
             root = os.path.basename(root)
         if root in self.mcsamples and cache: return self.mcsamples[root]
         jobItem = None
-        dist_setings = {}
+        dist_settings = {}
         if not file_root:
             if self.batch:
                 jobItem = self.batch.resolveRoot(root)
                 if not jobItem: raise Exception('chain not found: ' + root)
                 file_root = jobItem.chainRoot
-                dist_setings = jobItem.dist_settings
+                dist_settings = jobItem.dist_settings
             else:
                 for directory in self.chain_dir:
                     name = os.path.join(directory, root)
@@ -275,7 +279,7 @@ class MCSampleAnalysis(object):
                         file_root = name
                         break
                 if not file_root:  raise Exception('chain not found: ' + root)
-        self.mcsamples[root] = MCSamples.loadMCSamples(file_root, self.ini, jobItem, dist_settings=dist_setings)
+        self.mcsamples[root] = MCSamples.loadMCSamples(file_root, self.ini, jobItem, dist_settings=dist_settings)
         return self.mcsamples[root]
 
     def addRootGrid(self, root):
@@ -900,24 +904,6 @@ class GetDistPlotter(object):
             self.plot_2d(roots, param_pair=pair, filled=filled, shaded=not filled and shaded,
                          add_legend_proxy=i == 0)
 
-        try:
-            x = np.arange(-1, 8, 0.02)
-            y = np.arange(-8, 8, 0.02)
-            x, y = np.meshgrid(x, y)
-            corr = 0.9
-            a = 1.
-            invcov = np.linalg.inv(np.array([[a, np.sqrt(a) * corr], [np.sqrt(a) * corr, 1]]))
-            like = (x) ** 2 * invcov[0, 0] + 2 * x * y * invcov[0, 1] + (y) ** 2 * invcov[1, 1]
-            density = Density2D()
-            density.pts = exp(-like / 2)
-            levels = MCSamples.get2DContourLevels(density.pts, contours=[0.68, 0.95, 0.99])
-            density.x1 = x
-            density.x2 = y
-        #                levels = exp(-np.array([1.509, 2.4477, 3.034854259]) ** 2 / 2)
-            density.contours = levels
-            self.add_2d_contours(roots[0], 'x', 'y', filled=False, density=density)
-        except:
-            pass
         self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_order=label_order)
         return plot_col, plot_row
 

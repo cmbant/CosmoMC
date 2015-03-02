@@ -37,7 +37,7 @@ if os.path.exists(config_file):
     use_plot_data = config_ini.bool('use_plot_data', use_plot_data)
     default_plot_output = config_ini.string('default_plot_output', default_plot_output)
     loglevel = config_ini.string('logging', '')
-    if logging: logging.basicConfig(level=loglevel)
+    if loglevel: logging.basicConfig(level=loglevel)
 else:
     config_ini = iniFile()
 
@@ -316,7 +316,7 @@ class MCSamples(chains):
         ini.setAttr('subplot_size_inch3', self)
         ini.setAttr('plot_output', self)
         ini.setAttr('force_twotail', self)
-        if self.force_twotail: print 'Computing two tail limits'
+        if self.force_twotail: logging.warning('Computing two tail limits')
         ini.setAttr('max_corr_2D', self)
 
         if ini.hasKey('contours'):
@@ -403,7 +403,7 @@ class MCSamples(chains):
         mult_max = (self.mean_mult * self.numrows) / min(self.numrows / 2, 500)
         outliers = np.sum(self.weights > mult_max)
         if outliers <> 0:
-            print 'outlier fraction ', float(outliers) / self.numrows
+            logging.warning('outlier fraction %s ', float(outliers) / self.numrows)
 
         self.N_eff = self.getEffectiveSamples()
         self.indep_thin = 0
@@ -442,12 +442,12 @@ class MCSamples(chains):
 
     def WriteThinData(self, fname, thin_ix, cool):
         nparams = self.samples.shape[1]
-        if cool <> 1: print 'Cooled thinned output with temp: ', cool
+        if cool <> 1: logging.info('Cooled thinned output with temp: %s', cool)
         MaxL = np.max(self.loglikes)
         with open(fname, 'w') as f:
             i = 0
             for thin in thin_ix:
-                if (cool <> 1):
+                if cool <> 1:
                     newL = self.loglikes[thin] * cool
                     f.write("%16.7E" % (
                             np.exp(-(newL - self.loglikes[thin]) - MaxL * (1 - cool))))
@@ -460,7 +460,6 @@ class MCSamples(chains):
                     for j in nparams:
                         f.write("%16.7E" % (self.samples[i][j]))
                 i += 1
-
         print  'Wrote ', len(thin_ix), ' thinned samples'
 
     def getCovMat(self):
@@ -472,7 +471,7 @@ class MCSamples(chains):
         filename = filename or self.rootdirname + ".covmat"
         self.getCovMat().saveToFile(filename)
 
-    def writecorrelationMatrix(self, filename=None):
+    def writeCorrelationMatrix(self, filename=None):
         filename = filename or self.rootdirname + ".corr"
         np.savetxt(filename, self.getCorrelationMatrix(), fmt="%15.7E")
 
@@ -489,8 +488,8 @@ class MCSamples(chains):
         with optional (log) mapping.
         """
 
-        print 'Doing PCA for ', len(params), ' parameters'
-        if len(conditional_params): print 'conditional %u fixed parameters' % len(conditional_params)
+        logging.info('Doing PCA for %s parameters', len(params))
+        if len(conditional_params): logging.info('conditional %u fixed parameters' , len(conditional_params))
 
         PCAtext = 'PCA for parameters:\n'
 
@@ -728,7 +727,7 @@ class MCSamples(chains):
                 GRSummary = " var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F" % self.GelmanRubin
             else:
                 self.GelmanRubin = None
-                GRSummary = 'WARNING: Gelman-Rubin covariance not invertible (parameter not moved?)'
+                GRSummary = logging.warning('Gelman-Rubin covariance not invertible (parameter not moved?)')
             if feedback: print GRSummary
             lines += "\n"
 
@@ -749,8 +748,7 @@ class MCSamples(chains):
                 for ix, frac in enumerate(frac_indices):
                     split_n = 2 + ix
                     for f1, f2 in zip(frac[:-1], frac[1:]):
-                        split_tests[ix, :] += \
-                         (self.confidence(self.samples[:, j], limits, start=f1, end=f2) - confids) ** 2
+                        split_tests[ix, :] += (self.confidence(self.samples[:, j], limits, start=f1, end=f2) - confids) ** 2
 
                     split_tests[ix, :] = np.sqrt(split_tests[ix, :] / split_n) / self.sddev[j]
                 for endb, typestr in enumerate(['upper', 'lower']):
@@ -779,55 +777,54 @@ class MCSamples(chains):
                     thin_fac[ix] = int(round(np.max(chain.weights)))
                     try:
                         for j in range(nparamMC):
-#                            if self.force_twotail or not self.has_limits[j]:
-                                # Get binary chain depending on whether above or below confidence value
-                                confids = self.confidence(chain.samples[:, j], limits, weights=chain.weights)
-                                for endb in [0, 1]:
-                                    u = confids[endb]
-                                    while(True):
-                                        thin_ix = self.thin_indices(thin_fac[ix], chain.weights)
-                                        thin_rows = len(thin_ix)
-                                        if thin_rows < 2: break
-                                        binchain = np.ones(thin_rows, dtype=np.int)
-                                        binchain[chain.samples[thin_ix, j] >= u] = 0
-                                        indexes = binchain[:-2] * 4 + binchain[1:-1] * 2 + binchain[2:]
-                                        # Estimate transitions probabilities for 2nd order process
-                                        tran = np.bincount(indexes, minlength=8).reshape((2, 2, 2))
-    #                                    tran[:, :, :] = 0
-    #                                    for i in range(2, thin_rows):
-    #                                        tran[binchain[i - 2]][binchain[i - 1]][binchain[i]] += 1
+                            # Get binary chain depending on whether above or below confidence value
+                            confids = self.confidence(chain.samples[:, j], limits, weights=chain.weights)
+                            for endb in [0, 1]:
+                                u = confids[endb]
+                                while(True):
+                                    thin_ix = self.thin_indices(thin_fac[ix], chain.weights)
+                                    thin_rows = len(thin_ix)
+                                    if thin_rows < 2: break
+                                    binchain = np.ones(thin_rows, dtype=np.int)
+                                    binchain[chain.samples[thin_ix, j] >= u] = 0
+                                    indexes = binchain[:-2] * 4 + binchain[1:-1] * 2 + binchain[2:]
+                                    # Estimate transitions probabilities for 2nd order process
+                                    tran = np.bincount(indexes, minlength=8).reshape((2, 2, 2))
+#                                    tran[:, :, :] = 0
+#                                    for i in range(2, thin_rows):
+#                                        tran[binchain[i - 2]][binchain[i - 1]][binchain[i]] += 1
 
-                                        # Test whether 2nd order is better than Markov using BIC statistic
-                                        g2 = 0
-                                        for i1 in [0, 1]:
-                                            for i2 in [0, 1]:
-                                                for i3 in [0, 1]:
-                                                    if tran[i1][i2][i3] <> 0:
-                                                        fitted = float(
-                                                            (tran[i1][i2][0] + tran[i1][i2][1]) *
-                                                            (tran[0][i2][i3] + tran[1][i2][i3])) \
-                                                        / float(tran[0][i2][0] + tran[0][i2][1] +
-                                                                tran[1][i2][0] + tran[1][i2][1])
-                                                        focus = float(tran[i1][i2][i3])
-                                                        g2 += math.log(focus / fitted) * focus
-                                        g2 = g2 * 2
+                                    # Test whether 2nd order is better than Markov using BIC statistic
+                                    g2 = 0
+                                    for i1 in [0, 1]:
+                                        for i2 in [0, 1]:
+                                            for i3 in [0, 1]:
+                                                if tran[i1][i2][i3] <> 0:
+                                                    fitted = float(
+                                                        (tran[i1][i2][0] + tran[i1][i2][1]) *
+                                                        (tran[0][i2][i3] + tran[1][i2][i3])) \
+                                                    / float(tran[0][i2][0] + tran[0][i2][1] +
+                                                            tran[1][i2][0] + tran[1][i2][1])
+                                                    focus = float(tran[i1][i2][i3])
+                                                    g2 += math.log(focus / fitted) * focus
+                                    g2 = g2 * 2
 
-                                        if g2 - math.log(float(thin_rows - 2)) * 2 < 0: break
-                                        thin_fac[ix] += 1
+                                    if g2 - math.log(float(thin_rows - 2)) * 2 < 0: break
+                                    thin_fac[ix] += 1
 
-                                    # Get Markov transition probabilities for binary processes
-                                    if np.sum(tran[:, 0, 1]) == 0 or np.sum(tran[:, 1, 0]) == 0:
-                                        thin_fac[ix] = 0
-                                        raise LoopException()
+                                # Get Markov transition probabilities for binary processes
+                                if np.sum(tran[:, 0, 1]) == 0 or np.sum(tran[:, 1, 0]) == 0:
+                                    thin_fac[ix] = 0
+                                    raise LoopException()
 
-                                    alpha = np.sum(tran[:, 0, 1]) / float(np.sum(tran[:, 0, 0]) + np.sum(tran[:, 0, 1]))
-                                    beta = np.sum(tran[:, 1, 0]) / float(np.sum(tran[:, 1, 0]) + np.sum(tran[:, 1, 1]))
-                                    probsum = alpha + beta
-                                    tmp1 = math.log(probsum * epsilon / max(alpha, beta)) / math.log(abs(1.0 - probsum))
-                                    if (int(tmp1 + 1) * thin_fac[ix] > nburn[ix]):
-                                        nburn[ix] = int(tmp1 + 1) * thin_fac[ix]
-                                        hardest = j
-                                        hardestend = endb
+                                alpha = np.sum(tran[:, 0, 1]) / float(np.sum(tran[:, 0, 0]) + np.sum(tran[:, 0, 1]))
+                                beta = np.sum(tran[:, 1, 0]) / float(np.sum(tran[:, 1, 0]) + np.sum(tran[:, 1, 1]))
+                                probsum = alpha + beta
+                                tmp1 = math.log(probsum * epsilon / max(alpha, beta)) / math.log(abs(1.0 - probsum))
+                                if (int(tmp1 + 1) * thin_fac[ix] > nburn[ix]):
+                                    nburn[ix] = int(tmp1 + 1) * thin_fac[ix]
+                                    hardest = j
+                                    hardestend = endb
 
                         markov_thin[ix] = thin_fac[ix]
 
@@ -991,11 +988,11 @@ class MCSamples(chains):
             opt_width = self.getAutoBandwidth1D()
             smooth_1D = opt_width * min(par.sigma_range, self.sddev[j]) * abs(self.smooth_scale_1D)
             if smooth_1D < 0.5 * width:
-                print 'Warning: num_bins not large enough for optimal density - ' + par.name
+                logging.warning('num_bins not large enough for optimal density - ' + par.name)
         elif self.smooth_scale_1D < 1.0:
             smooth_1D = self.smooth_scale_1D * self.sddev[j]
             if smooth_1D < width:
-                print 'Warning: num_bins not large enough to well sample smoothed density - ' + par.name
+                logging.warning('num_bins not large enough to well sample smoothed density - ' + par.name)
         else:
             smooth_1D = self.smooth_scale_1D * width
 
@@ -1077,15 +1074,17 @@ class MCSamples(chains):
                 w = self.weights * np.exp(self.mean_loglike - self.loglikes)
             finebinlikes = np.bincount(ix2, weights=w, minlength=fine_max - fine_min + 1)
 
-        # check if bin variation at ends looks sensible for no prior, i.e. no big jumps
+        # check if bin variation at ends looks sensible for no prior, i.e. no big jumps. Reduce to 32 bins.
         nbig = finebins.shape[0] // fine_fac
         binsraw = finebins[ :nbig * fine_fac].reshape(nbig, fine_fac).sum(1)  # rebin by fine_fac
+        binsraw = np.concatenate((binsraw, np.zeros(32 * (1 + int(binsraw.size / 32)) - binsraw.size)))
+        binsraw = binsraw.reshape(32, binsraw.size / 32).sum(1)
         diffs = np.abs(np.diff(binsraw))
         jumps = np.argwhere(diffs > 0.1 * np.max(binsraw))
         if par.has_limits_bot: jumps = jumps[2:]
         if par.has_limits_top: jumps = jumps[:-2]
         if len(jumps) and (binsraw[jumps[0] - 1] == 0 or binsraw[jumps[-1] + 1] == 0):
-            print 'Warning: sharp edge in parameter %s - check ranges and limits[%s] or bin sizes' % (par.name, par.name)
+            logging.warning('sharp edge in parameter %s - check ranges and limits[%s] or bin sizes', par.name, par.name)
 
         Kernel = Kernel1D(winw, fine_fac * smooth_1D)
         fineused = finebins[imin - winw - fine_min:imax + winw + 1 - fine_min]
@@ -1178,7 +1177,6 @@ class MCSamples(chains):
         if not self.no_plots:
             bincounts = density1D.P[ix_min * fine_fac - imin:ix_max * fine_fac - imin + 1:fine_fac]
             if self.plot_meanlikes:
-                # In f90, binlikes(ix_min(j):ix_max(j))
                 rawbins = conv[ix_min * fine_fac - imin:ix_max * fine_fac - imin + 1:fine_fac]
                 binlikes = np.zeros(ix_max - ix_min + 1)
                 if self.shade_likes_is_mean_loglikes: binlikes[:] = logZero
@@ -1199,9 +1197,8 @@ class MCSamples(chains):
                 likes = binlikes / maxbin
             else:
                 likes = None
-            if writeDataToFile:
-                logging.debug("Write data to file ...")
 
+            if writeDataToFile:
                 fname = self.rootname + "_p_" + self.parName(j)
                 filename = os.path.join(self.plot_data_dir, fname + ".dat")
                 with open(filename, 'w') as f:
@@ -1250,6 +1247,8 @@ class MCSamples(chains):
         """
         Get 2D plot data.
         """
+        start = time.time()
+
         parx = self.paramNames.names[j]
         pary = self.paramNames.names[j2]
 
@@ -1258,18 +1257,19 @@ class MCSamples(chains):
         logging.debug('Doing 2D: %s - %s', parx.name, pary.name)
         logging.debug('scalex, sigma_x: %s, %s', scale_x, parx.err)
         logging.debug('scaley, sigma_y: %s, %s', scale_y, pary.err)
-        start = time.time()
         fine_fac_base = 5
         has_prior = parx.has_limits or pary.has_limits
 
         corr = self.getCorrelationMatrix()[j2][j]
+        if corr == 1: logging.warning('Parameters are 100%% correlated, %s, %s', parx.name, pary.name)
         # keep things simple unless obvious degeneracy
-        if abs(corr) < 0.2: corr = 0.
+        if abs(corr) < 0.1: corr = 0.
         corr = max(-self.max_corr_2D, corr)
         corr = min(self.max_corr_2D, corr)
 
         # for tight degeneracies increase bin density
         angle_scale = np.sqrt(1 - abs(corr))
+        if angle_scale == 0: raise SettingException('max_corr_2D cannot be >=1')
 
         nbin2D = int(round(self.num_bins_2D / max(0.2, angle_scale)))
 
@@ -1282,7 +1282,7 @@ class MCSamples(chains):
             smooth_x = opt_width * scale_x / widthx * angle_scale
             smooth_y = opt_width * scale_y / widthy * angle_scale
             if smooth_x < 0.5 or smooth_y < 0.5:
-                print 'Warning: num_bins_2D not large enough for optimal density'
+                logging.warning('num_bins_2D not large enough for optimal density')
         elif self.smooth_scale_2D < 1.0:
             smooth_x = self.smooth_scale_2D * parx.err / widthx * angle_scale
             smooth_y = self.smooth_scale_2D * pary.err / widthy * angle_scale
@@ -1339,6 +1339,9 @@ class MCSamples(chains):
         ix1, ix2 = np.mgrid[-winw:winw + 1, -winw:winw + 1]
         Win = np.exp(-(ix1 ** 2 * Cinv[0, 0] + ix2 ** 2 * Cinv[1, 1] + 2 * Cinv[1, 0] * ix1 * ix2) / 2)
         Win /= np.sum(Win)
+
+        logging.debug('time 2D binning: %s', time.time() - start)
+        start = time.time()
 
         fineused = finebins[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
                             ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin]
@@ -1411,6 +1414,8 @@ class MCSamples(chains):
         if num_plot_contours: ncontours = min(num_plot_contours, ncontours)
         contours = self.contours[:ncontours]
 
+        logging.debug('time 2D convolutions: %s', time.time() - start)
+
         # Get contour containing contours(:) of the probability
         contour_levels = get2DContourLevels(bins2D, contours, missing_norm=missing_norm)
 
@@ -1428,7 +1433,6 @@ class MCSamples(chains):
         if self.shade_meanlikes:
             bin2Dlikes /= np.max(bin2Dlikes)
 
-        logging.debug('time 2D: %s', time.time() - start)
         if writeDataToFile:
             # note store things in confusing traspose form
             name = self.parName(j)
@@ -1602,22 +1606,22 @@ class MCSamples(chains):
                 tag = 'two'
             par.limits.append(ResultObjs.paramLimit(lim, tag))
 
-    def GetCust2DPlots(self, num_cust2D_plots):
+    def getCorrelatedVariable2DPlots(self, num_plots=12, nparam=None):
         # gets most ocrrelated variable pair names
+        nparam = nparam or self.paramNames.numNonDerived()
         try_t = 1e5
         x, y = 0, 0
         cust2DPlots = []
         correlationMatrix = self.correlationMatrix
-        for j in range(num_cust2D_plots):
+        for _ in range(num_plots):
             try_b = -1e5
-            for ix1 in range(self.n):
-                for ix2 in range(ix1 + 1, self.n):
+            for ix1 in range(nparam):
+                for ix2 in range(ix1 + 1, nparam):
                     if (abs(correlationMatrix[ix1][ix2]) < try_t) and \
                             (abs(correlationMatrix[ix1][ix2]) > try_b) :
                         try_b = abs(correlationMatrix[ix1][ix2])
                         x, y = ix1, ix2
             if try_b == -1e5:
-                num_cust2D_plots = j - 1
                 break
             try_t = try_b
             cust2DPlots.append([self.parName(x), self.parName(y)])
@@ -1647,7 +1651,7 @@ class MCSamples(chains):
 
     def WriteScriptPlots2D(self, filename, plot_2D_param, cust2DPlots, plots_only, ext=None):
         ext = ext or self.plot_output
-        self.done2D = np.zeros(dtype=bool)
+        self.done2D = np.zeros((self.n, self.n), dtype=bool)
 
         with open(filename, 'w') as f:
             textInit = self.WritePlotFileInit()
