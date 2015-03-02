@@ -724,7 +724,6 @@ class MainWindow(QMainWindow):
     def _updateListParameters(self, items, listParameters, items_old=None):
         """
         """
-        logging.debug("Fill ListParameters with %i items" % (len(items)))
         listParameters.clear()
         for item in items:
             listItem = QListWidgetItem()
@@ -783,9 +782,6 @@ class MainWindow(QMainWindow):
             idx = self.comboBoxColor.findText(param_old, Qt.MatchExactly)
             if idx <> -1:
                 self.comboBoxColor.setCurrentIndex(idx)
-                logging.debug("Re set param %s at index %i" % (param_old, idx))
-            else:
-                logging.debug("Param %s not found in new list" % (param_old))
 
     def checkedRootNames(self):
         items = []
@@ -923,6 +919,16 @@ class MainWindow(QMainWindow):
                     else:
                         ncol = None
                     self.plotter.plots_1d(roots, params=params, legend_ncol=ncol)
+
+                    x = np.linspace(-1.5, 8, num=2000)
+                    self.plotter.subplots[0, 0].plot(x, np.exp(-x ** 2 / (3 * 2)), color='blue')
+                    x = np.linspace(-4, 4, num=2000)
+                    self.plotter.subplots[1, 0].plot(x, np.exp(-x ** 2 / (1 * 2)), color='blue')
+#                    n = 50000
+#                    x = np.linspace(-1.5, 8, num=n)
+#                    D = MCSamples.Density1D(-1.5, n, x[1] - x[0], np.exp(-x ** 2 / 6))
+#                    print 'true limits:', D.Limits(0.68)
+
                 except Exception as e:
                     self.errorReport(e, caption="plot1D", msg="Error for command:\n\nplots_1d(roots, params=params)\n\nwith roots=%s\nparams=%s\n" % (str(roots), str(params)))
                 self.updatePlot()

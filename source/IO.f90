@@ -311,7 +311,7 @@
     nameFormat = concat('(1A',j+1,')')
 
     call F%CreateFile(trim(froot)//'.margestats')
-    F%RealFormat = '(*(1E15.7))'
+    F%RealFormat = '(*(E15.7))'
     call F%Write('Marginalized limits: ' // contours_str)
     call F%NewLine()
     call F%WriteLeftAligned(nameFormat,'parameter')

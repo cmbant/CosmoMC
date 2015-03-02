@@ -218,13 +218,13 @@ if PCA_num > 0 and not plots_only:
     mc.PCA(PCA_params, PCA_func, PCA_NormParam, writeDataToFile=True)
 
 # Do 1D bins
-mc.Do1DBins(mc.max_frac_twotail, writeDataToFile=not no_plots)
+mc.Do1DBins(writeDataToFile=not no_plots)
 
 if not no_plots:
     # Output files for 1D plots
     print 'Calculating plot data...'
 
-    mc.writeBounds(os.path.join(plot_data_dir, rootname.strip() + '.bounds'))
+    mc.getBounds().saveToFile(os.path.join(plot_data_dir, rootname.strip() + '.bounds'))
 
     filename = rootdirname + '.' + plot_ext
     mc.WriteScriptPlots1D(filename, plotparams)
@@ -253,7 +253,7 @@ if not no_plots:
                 j = mc.index[triangle_params[i]]
                 j2 = mc.index[triangle_params[i2]]
                 if mc.done2D is None or not mc.done2D[j2][j] and not plots_only:
-                    mc.Get2DPlotData(j2, j, writeDataToFile=True)
+                    mc.get2DPlotData(j2, j, writeDataToFile=True)
 
     # Do 3D plots (i.e. 2D scatter plots with coloured points)
     if num_3D_plots <> 0:

@@ -7,6 +7,7 @@ matplotlib.use('Agg')
 from pylab import *
 import batchJob
 from getdist import MCSamples, paramNames
+from getdist.paramPriors import ParamBounds
 
 """Plotting scripts for GetDist outputs"""
 
@@ -140,26 +141,6 @@ class Density2D(object):
     def xy_bounds(self):
         return (self.x1.min(), self.x1.max()), (self.x2.min(), self.x2.max())
 
-class paramBounds(object):
-    def __init__(self, fileName):
-        self.upper = dict()
-        self.lower = dict()
-        if os.path.exists(fileName):
-            textFileHandle = open(fileName)
-            for line in textFileHandle:
-                name, low, high = [text.strip() for text in  line.split()]
-                if low != 'N': self.lower[name] = float(low)
-                if high != 'N': self.upper[name] = float(high)
-            textFileHandle.close()
-
-    def getUpper(self, name):
-        if name in self.upper: return self.upper[name]
-        else: return None
-
-    def getLower(self, name):
-        if name in self.lower: return self.lower[name]
-        else: return None
-
 
 class SampleAnalysisGetDist(object):
 
@@ -199,7 +180,7 @@ class SampleAnalysisGetDist(object):
         return names
 
     def boundsForRoot(self, root):
-        return paramBounds(self.plot_data_file(root) + '.bounds')
+        return ParamBounds(self.plot_data_file(root) + '.bounds')
 
     def plot_data_file(self, root):
         # find first match to roots that exist in list of plot_data paths
@@ -310,7 +291,6 @@ class MCSampleAnalysis(object):
 
     def removeRoot(self, file_root):
         root = os.path.basename(file_root)
-        print "remove root for %s" % root
         if self.mcsamples.has_key(root):
             del self.mcsamples[root]
 
@@ -329,7 +309,7 @@ class MCSampleAnalysis(object):
         if density is None:
             index = samples.index.get(name)
             if index is None: return None
-            density = samples.Get1DDensity(index)
+            density = samples.get1DDensityGridData(index)
             rootdata[name] = density
         return density
 
@@ -352,9 +332,7 @@ class MCSampleAnalysis(object):
             index1 = samples.index.get(param1.name)
             index2 = samples.index.get(param2.name)
             if index1 is None or index2 is None: return None
-            samples.initParamRanges(index1)
-            samples.initParamRanges(index2)
-            density = samples.Get2DPlotData(index1, index2, num_plot_contours=conts)
+            density = samples.get2DPlotData(index1, index2, num_plot_contours=conts)
             if density is None: return None
             rootdata[key] = density
         result = Density2D()
@@ -380,11 +358,7 @@ class MCSampleAnalysis(object):
         return names
 
     def boundsForRoot(self, root):
-        lower, upper = self.samplesForRoot(root).getBounds()
-        bounds = paramBounds("")
-        bounds.lower = lower
-        bounds.upper = upper
-        return bounds
+        return self.samplesForRoot(root)  # #defines getUpper and getLower, all that's needed
 
 
 class GetDistPlotter(object):
@@ -927,10 +901,12 @@ class GetDistPlotter(object):
                          add_legend_proxy=i == 0)
 
         try:
-            x = np.arange(-1.5, 8, 0.02)
+            x = np.arange(-1, 8, 0.02)
             y = np.arange(-8, 8, 0.02)
             x, y = np.meshgrid(x, y)
-            invcov = np.linalg.inv(np.array([[3, 0], [0, 1]]))
+            corr = 0.9
+            a = 1.
+            invcov = np.linalg.inv(np.array([[a, np.sqrt(a) * corr], [np.sqrt(a) * corr, 1]]))
             like = (x) ** 2 * invcov[0, 0] + 2 * x * y * invcov[0, 1] + (y) ** 2 * invcov[1, 1]
             density = Density2D()
             density.pts = exp(-like / 2)

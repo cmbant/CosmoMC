@@ -125,7 +125,7 @@ class WeightedSamples(object):
 
     def getCov(self, nparam=None):
         if self.fullcov is None:
-            return self.setCov()
+            self.setCov()
         return self.fullcov[:nparam, :nparam]
 
     def setCov(self):
@@ -169,7 +169,7 @@ class WeightedSamples(object):
         corr = convolve1D(d, d[::-1], 'full')[-d.size:]
         return corr[0:maxOff + 1] * d.size / (self.norm * np.arange(d.size, d.size - maxOff - 1, -1))
 
-    def getEffectiveSamples(self, j=-1, min_corr=0.05):
+    def getEffectiveSamples(self, j=0, min_corr=0.05):
         corr = self.getWeightedAutocorrelation(j, self.numrows / 10)
         corr /= self.var(j)
         ix = np.argmin(corr > min_corr * corr[0])
@@ -183,7 +183,7 @@ class WeightedSamples(object):
 
     def get_norm(self, where=None):
         if where is None:
-            if not hasattr(self, 'norm'): self.norm = np.sum(self.weights)
+            if self.norm is None: self.norm = np.sum(self.weights)
             return self.norm
         else:
             return np.sum(self.weights[where])
@@ -192,41 +192,52 @@ class WeightedSamples(object):
         return self.weighted_sum(paramVec, where) / self.get_norm(where)
 
     def var(self, paramVec, where=None):
-        return self.weighted_sum(self.mean_diff(paramVec) ** 2 , where) / self.get_norm(where)
+        if where is not None:
+            return np.dot(self.mean_diff(paramVec, where) ** 2, self.weights[where]) / self.get_norm(where)
+        else:
+            return np.dot(self.mean_diff(paramVec) ** 2, self.weights) / self.get_norm()
 
     def std(self, paramVec, where=None):
         return np.sqrt(self.var(paramVec, where))
 
-    def cov(self, pars=None):
-        diffs = self.mean_diffs(pars)
+    def cov(self, pars=None, where=None):
+        diffs = self.mean_diffs(pars, where)
         if pars is None:
             pars = range(self.n)
         n = len(pars)
         cov = np.empty((n, n))
+        if where is not None:
+            weights = self.weights[where]
+        else:
+            weights = self.weights
         for i, diff in enumerate(diffs):
-            weightdiff = diff * self.weights
+            weightdiff = diff * weights
             for j in range(i, n):
-                cov[i, j] = weightdiff.dot(diffs[j]) / self.norm
+                cov[i, j] = weightdiff.dot(diffs[j])
                 cov[j, i] = cov[i, j]
+        cov /= self.get_norm(where)
         return cov
 
     def corr(self, pars=None):
         return self.covToCorr(self.cov(pars))
 
-    def mean_diff(self, paramVec):
-        if isinstance(paramVec, (int, long)) and paramVec >= 0:
+    def mean_diff(self, paramVec, where=None):
+        if isinstance(paramVec, (int, long)) and paramVec >= 0 and where is None:
             if self.diffs is not None:
                 return self.diffs[paramVec]
             return self.samples[:, paramVec] - self.getMeans()[paramVec]
         paramVec = self._makeParamvec(paramVec)
-        return paramVec - self.mean(paramVec)
+        if where is None:
+            return paramVec - self.mean(paramVec)
+        else:
+            return paramVec[where] - self.mean(paramVec, where)
 
-    def mean_diffs(self, pars=None):
+    def mean_diffs(self, pars=None, where=None):
         if pars is None: pars = self.n
-        if isinstance(pars, (int, long)) and pars >= 0:
+        if isinstance(pars, (int, long)) and pars >= 0 and where is None:
             means = self.getMeans()
             return [self.samples[:, i] - means[i] for i in range(pars)]
-        return [self.mean_diff(i) for i in pars]
+        return [self.mean_diff(i, where) for i in pars]
 
     def twoTailLimits(self, paramVec, confidence):
         limits = np.array([(1 - confidence) / 2, 1 - (1 - confidence) / 2])
@@ -342,6 +353,18 @@ class WeightedSamples(object):
             if np.all(self.samples[:, i] == self.samples[0, i]): fixed.append(i)
         self.changeSamples(np.delete(self.samples, fixed, 1))
 
+    def removeBurn(self, remove=0.3):
+        if remove >= 1:
+            ix = int(remove)
+        else:
+            ix = int(round(self.numrows * remove))
+        if self.weights is not None:
+            self.weights = self.weights[ix:]
+        if self.loglikes is not None:
+            self.loglikes = self.loglikes[ix:]
+        self.changeSamples(self.samples[ix:, :])
+
+
 class chains(WeightedSamples):
 
     def __init__(self, root=None, ignore_rows=0, jobItem=None, paramNameFile=None):
@@ -396,7 +419,8 @@ class chains(WeightedSamples):
         for fname in files:
                 print fname
                 self.chains.append(WeightedSamples(fname, self.ignore_lines))
-        if len(self.chains) == 0: print 'loadChains - no chains found for ' + root
+        if len(self.chains) == 0:
+            raise WeightedSampleError('loadChains - no chains found for ' + root)
         return len(self.chains) > 0
 
 
@@ -408,18 +432,23 @@ class chains(WeightedSamples):
         nparam = nparam or self.paramNames.numNonDerived()
         meanscov = np.zeros((nparam, nparam))
         means = self.getMeans()[:nparam]
+        meancov = np.zeros(meanscov.shape)
         for chain in chainlist:
             diff = chain.getMeans()[:nparam] - means
             meanscov += np.outer(diff, diff)
+            meancov += chain.getCov(nparam)
         meanscov /= (len(chainlist) - 1)
-        cov = self.getCov(nparam)
-        invertible = np.min(cov.diagonal()) > 0
-        if invertible:
-            R = np.linalg.inv(np.linalg.cholesky(cov))
-            D = np.linalg.eigvalsh(np.dot(R, meanscov).dot(R.T))
+        meancov /= len(chainlist)
+        w, U = np.linalg.eigh(meancov)
+        if np.min(w) > 0:
+            U /= np.sqrt(w)
+            D = np.linalg.eigvalsh(np.dot(U.T, meanscov).dot(U))
             return D
         else:
             return None
+
+    def getGelmanRubin(self, nparam=None, chainlist=None):
+        return np.max(self.getGelmanRubinEigenvalues(nparam, chainlist))
 
     def makeSingle(self):
         self.chain_offsets = np.cumsum(np.array([0] + [chain.samples.shape[0] for chain in self.chains]))
@@ -439,13 +468,13 @@ class chains(WeightedSamples):
         return chainlist
 
     def removeBurnFraction(self, ignore_frac):
-        for chain in self.chains:
-            ix = int(round(chain.samples.shape[0] * ignore_frac))
-            if chain.weights is not None:
-                chain.weights = chain.weights[ix:]
-            if chain.loglikes is not None:
-                chain.loglikes = chain.loglikes[ix:]
-            chain.changeSamples(chain.samples[ix:, :])
+        if self.samples is not None:
+            self.removeBurn(ignore_frac)
+            self.chains = None
+            self.needs_update = True
+        else:
+            for chain in self.chains:
+                chain.removeBurn(ignore_frac)
 
     def deleteFixedParams(self):
         if self.samples is not None:
