@@ -75,33 +75,5 @@ if not args.plots:
                         while len(processes) >= args.procs:
                             time.sleep(.1)
                             processes.difference_update([p for p in processes if p.poll() is not None])
-#                        os.system(args.command + '' + fname)
                     else: print "Chains do not exist yet: " + jobItem.chainRoot
-
-
-
-if not args.norun and args.plots:
-        cat_cmd = 'cat '
-        for jobItem in Opts.filteredBatchItems():
-                if plot_ext == 'm': os.chdir(jobItem.distPath)
-                for tp in plot_types:
-                    fname = jobItem.distRoot + tp + plot_ext
-                    print fname
-                    if os.path.exists(fname):
-                        cat_cmd = cat_cmd + ' ' + fname
-                    if hasattr(jobItem, 'compareRoots'):
-                        for root in jobItem.compareRoots:
-                            fname = root + tp + plot_ext
-                            print fname
-                            if os.path.exists(fname):
-                                cat_cmd = cat_cmd + ' ' + fname
-
-        if len(cat_cmd) > 5: os.system(cat_cmd + '|' + plot_cmd)
-
-#    if args.name is None and not args.compare_only:
-#        specficPath = batch.batchPath + 'specific_plots' + os.sep
-#        checkDir(specficPath)
-#        os.chdir(specficPath)
-#        os.system('export getdist_plot_data=' + data_dir + ';export MATLABPATH=' + batch.basePath + 'mscripts' + os.sep
-#                    + ';cat ' + batch.commonPath + 'specificplots' + os.sep + '*.m | ' + matlab)
 

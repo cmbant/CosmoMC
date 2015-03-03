@@ -34,6 +34,9 @@ import batchJob
 import makeGrid
 # ==============================================================================
 
+class GuiSelectionError(Exception):
+    pass
+
 class ParamListWidget(QListWidget):
     def __init__(self, widget, owner):
         QListWidget.__init__(self, widget)
@@ -134,6 +137,13 @@ class MainWindow(QMainWindow):
                                statusTip="Show Convergence Stats",
                                triggered=self.showConvergeStats)
 
+
+        self.PCAAct = QAction(QIcon(":/images/view_text.png"),
+                               "Parameter PCA", self,
+                               shortcut="",
+                               statusTip="Do PCA of selected parameters",
+                               triggered=self.showPCA)
+
         self.optionsAct = QAction(QIcon(""),
                                "Analysis settings", self,
                                shortcut="",
@@ -161,6 +171,7 @@ class MainWindow(QMainWindow):
         self.dataMenu.addAction(self.statsAct)
         self.dataMenu.addAction(self.likeStatsAct)
         self.dataMenu.addAction(self.convergeAct)
+        self.dataMenu.addAction(self.PCAAct)
 
         self.menuBar().addSeparator()
         self.optionMenu = self.menuBar().addMenu("&Options")
@@ -384,7 +395,6 @@ class MainWindow(QMainWindow):
             rootname = str(item.text())
         if rootname is None:
             QMessageBox.warning(self, "Chain Stats", "Select a root name first. ")
-            # logging.warning("No rootname. Can't show marge stats")
         return rootname
 
     def showConvergeStats(self):
@@ -396,7 +406,7 @@ class MainWindow(QMainWindow):
         try:
             self.statusBar().showMessage("Calculating convergence stats....")
             samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
-            stats = samples.DoConvergeTests(samples.converge_test_limit)
+            stats = samples.getConvergeTests(samples.converge_test_limit)
             summary = samples.getNumSampleSummaryText()
             if getattr(samples, 'GelmanRubin', None):
                 summary += "var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F" % samples.GelmanRubin
@@ -408,6 +418,26 @@ class MainWindow(QMainWindow):
         dlg = DialogConvergeStats(self, stats, summary, rootname)
         dlg.show()
         dlg.activateWindow()
+
+    def showPCA(self):
+        """
+        Callback for action 'Show PCA'.
+        """
+        rootname = self.getRootname()
+        if rootname is None: return
+        try:
+            samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
+            pars = self.getXParams()
+            if len(pars) == 1: pars += self.getYParams()
+            if len(pars) < 2: raise GuiSelectionError('Select two or more parameters first')
+            self.statusBar().showMessage("Calculating PCA....")
+            PCA = samples.PCA(pars)
+            dlg = DialogPCA(self, PCA, rootname)
+            dlg.show()
+        except Exception as e:
+            self.errorReport(e, caption="Parameter PCA")
+        finally:
+            self.statusBar().showMessage("")
 
 
     def showMargeStats(self):
@@ -699,8 +729,6 @@ class MainWindow(QMainWindow):
         self.newRootItem(self.paramTag + '_' + self.dataTag)
 
     def _updateListParameters(self, items, listParameters, items_old=None):
-        """
-        """
         listParameters.clear()
         for item in items:
             listItem = QListWidgetItem()
@@ -768,16 +796,23 @@ class MainWindow(QMainWindow):
                 items.append(str(item.text()))
         return items
 
-    def errorReport(self, e, caption="Error", msg="Unknown Error"):
+    def errorReport(self, e, caption="Error", msg=""):
         if isinstance(e, MCSamples.SettingException):
             QMessageBox.critical(self, 'Setting error', str(e))
         elif isinstance(e, MCSamples.ParamException):
             QMessageBox.critical(self, 'Param error', str(e))
         elif isinstance(e, MCSamples.FileException):
             QMessageBox.critical(self, 'File error', str(e))
+        elif isinstance(e, GuiSelectionError):
+            QMessageBox.critical(self, caption, str(e))
         else:
+            if not msg:
+                import traceback
+                msg = "\n".join(traceback.format_tb(sys.exc_info()[2])[-5:])
             QMessageBox.critical(self, caption, str(e) + "\n\n" + msg)
-        raise
+            del msg
+
+        if not isinstance(e, GuiSelectionError): raise
 
 
     def plotData(self):
@@ -785,6 +820,7 @@ class MainWindow(QMainWindow):
         Slot function called when pushButtonPlot is pressed.
         """
         self.statusBar().showMessage("Generating plot....")
+        actionText = "plot"
         try:
             # Ensure at least 1 root name specified
             os.chdir(self.base_dir)
@@ -859,6 +895,7 @@ class MainWindow(QMainWindow):
             # Check type of plot
             if self.trianglePlot.isChecked():
                 # Triangle plot
+                actionText = "Triangle plot"
                 if len(items_x) > 1:
                     params = items_x
                     logging.debug("Triangle plot with params = %s" % str(params))
@@ -870,47 +907,38 @@ class MainWindow(QMainWindow):
                         param_3d = None
                         script += "param_3d = None\n"
                     setSizeForN(len(params))
-                    try:
-                        self.plotter.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled, shaded=shaded)
-                    except Exception as e:
-                        self.errorReport(e, caption="Triangle plot", msg=
-                            "Error for command:\n\ntriangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled)\n\nwith roots=%s\nparams=%s\nparam_3d=%s\nfilled=%s\n" % (str(roots), str(params), str(param_3d), str(filled)))
+                    self.plotter.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled, shaded=shaded)
                     self.updatePlot()
                     script += "g.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=%s, shaded=%s)\n" % (filled, shaded)
                 else:
-                    QMessageBox.warning(self, "Triangle plot", "Select more than 1 x parameter for triangle plot")
+                    raise GuiSelectionError("Select more than 1 x parameter for triangle plot")
 
             elif len(items_x) > 0 and len(items_y) == 0:
                 # 1D plot
+                actionText = "1D plot"
                 params = items_x
                 logging.debug("1D plot with params = %s" % str(params))
                 script += "params=%s\n" % str(params)
                 setSizeForN(round(np.sqrt(len(params) / 1.4)))
-                try:
-                    if len(roots) > 3:
-                        ncol = 2
-                    else:
-                        ncol = None
-                    self.plotter.plots_1d(roots, params=params, legend_ncol=ncol)
-                except Exception as e:
-                    self.errorReport(e, caption="plot1D", msg="Error for command:\n\nplots_1d(roots, params=params)\n\nwith roots=%s\nparams=%s\n" % (str(roots), str(params)))
+                if len(roots) > 3:
+                    ncol = 2
+                else:
+                    ncol = None
+                self.plotter.plots_1d(roots, params=params, legend_ncol=ncol)
                 self.updatePlot()
                 script += "g.plots_1d(roots, params=params)\n"
 
             elif len(items_x) > 0 and len(items_y) > 0:
                     if len(items_x) > 1 and len(items_y) > 1:
                         # Rectangle plot
+                        actionText = 'Rectangle plot'
                         script += "xparams = %s\n" % str(items_x)
                         script += "yparams = %s\n" % str(items_y)
                         script += "filled=%s\n" % filled
                         logging.debug("Rectangle plot with xparams=%s and yparams=%s" % (str(items_x), str(items_y)))
 
                         setSizeQT(min(height / len(items_y), width / len(items_x)))
-                        try:
-                            self.plotter.rectangle_plot(items_x, items_y, roots=roots, filled=filled)
-                        except  Exception as e:
-                            self.errorReport(e, caption="Plot 2D", msg=
-                                "Error for command:\n\nrectangle_plot(xparams, yparams, roots=roots)\n\nwith xparams=%s\nyparams=%s\nroots=%s\n" % (str(items_x), str(items_y), str(roots)))
+                        self.plotter.rectangle_plot(items_x, items_y, roots=roots, filled=filled)
                         self.updatePlot()
                         script += "g.rectangle_plot(xparams, yparams, roots=roots,filled=filled)\n"
 
@@ -930,37 +958,28 @@ class MainWindow(QMainWindow):
                         else:
                             pairs = []
                         if filled or line:
+                            actionText = '2D plot'
                             script += "pairs = %s\n" % pairs
                             logging.debug("2D plot with pairs = %s" % str(pairs))
-                            try:
-                                self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled, shaded=shaded)
-                            except Exception as e:
-                                self.errorReport(e, caption="Plot 2D", msg=
-                                    "Error for command:\n\nplots_2d(roots, param_pairs=pairs, filled=filled)\n\nwith roots=%s\npairs=%s\nfilled=%s\n"
-                                    % (str(roots), str(pairs), str(filled)))
+                            self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled, shaded=shaded)
                             self.updatePlot()
                             script += "g.plots_2d(roots, param_pairs=pairs, filled=%s, shaded=%s)\n" % (str(filled), str(shaded))
                         elif color:
                             # 3D plot
                             sets = [list(pair) + [color_param] for pair in pairs]
                             logging.debug("3D plot with sets = %s" % str(sets))
-                            try:
-                                triplets = ["['%s', '%s', '%s']" % tuple(trip) for trip in sets]
-                                if len(sets) == 1:
-                                    script += "g.plot_3d(roots, %s)\n" % triplets[0]
-                                    self.plotter.settings.scatter_size = 6
-                                    self.plotter.make_figure(1, ystretch=0.75)
-                                    self.plotter.plot_3d(roots, sets[0])
-                                else:
-                                    script += "sets = [" + ",".join(triplets) + "]\n"
-                                    script += "g.plots_3d(roots, sets)\n"
-                                    self.plotter.plots_3d(roots, sets)
-                            except Exception as e:
-                                self.errorReport(e, caption="Plot 3D", msg=
-                                    "Error for command:\n\nplots_3d(roots, sets)\n\nwith roots=%s\nsets=%s\n" % (str(roots), str(sets)))
+                            actionText = '3D plot'
+                            triplets = ["['%s', '%s', '%s']" % tuple(trip) for trip in sets]
+                            if len(sets) == 1:
+                                script += "g.plot_3d(roots, %s)\n" % triplets[0]
+                                self.plotter.settings.scatter_size = 6
+                                self.plotter.make_figure(1, ystretch=0.75)
+                                self.plotter.plot_3d(roots, sets[0])
+                            else:
+                                script += "sets = [" + ",".join(triplets) + "]\n"
+                                script += "g.plots_3d(roots, sets)\n"
+                                self.plotter.plots_3d(roots, sets)
                             self.updatePlot()
-
-
             else:
                 text = ""
                 text += "Wrong parameters selection. Specify parameters such as:\n"
@@ -973,25 +992,21 @@ class MainWindow(QMainWindow):
                 text += "\n"
                 text += "3D plot: Select x parameter, y parameter and 'Color by' parameter\n"
                 text += "\n"
-
                 QMessageBox.warning(self, "Plot usage", text)
                 return
 
             script += "g.export()\n"
             self.script = script
-
+        except Exception as e:
+            self.errorReport(e, caption=actionText)
         finally:
             self.statusBar().showMessage("")
 
 
     def updatePlot(self):
         if self.plotter.fig is None:
-            # logging.debug("Define an empty central widget")
-            # self.figure = None
             self.canvas = None
         else:
-            # logging.debug("Define new canvas in central widget")
-            # Remove everything from layout
             i = 0
             while 1:
                 item = self.plotWidget.layout().takeAt(i)
@@ -1005,14 +1020,32 @@ class MainWindow(QMainWindow):
                 self.plotWidget.layout().addWidget(self.toolbar)
             self.plotWidget.layout().addWidget(self.canvas)
             self.canvas.draw()
-            # self.plotWidget.update()
             self.plotWidget.show()
 
 # ==============================================================================
 
-class DialogLikeStats(QDialog):
-    def __init__(self, parent, stats, root):
+
+class DialogTextOutput(QDialog):
+
+    def __init__(self, parent, text):
         QDialog.__init__(self, parent)
+        self.textfont = QFont("Monospace")
+        self.textfont.setStyleHint(QFont.TypeWriter)
+        self.text = self.getTextBox(text)
+        self.setAttribute(Qt.WA_DeleteOnClose)
+
+    def getTextBox(self, text):
+        box = QTextEdit(self)
+        box.setWordWrapMode(QTextOption.NoWrap)
+        box.setFont(self.textfont)
+        box.setText(text)
+        return box
+
+# ==============================================================================
+
+class DialogLikeStats(DialogTextOutput):
+    def __init__(self, parent, stats, root):
+        DialogTextOutput.__init__(self, parent, stats.likeSummary())
 
         self.label = QLabel(self)
         self.table = QTableWidget(self)
@@ -1021,17 +1054,10 @@ class DialogLikeStats(QDialog):
         layout = QGridLayout()
         layout.addWidget(self.table, 1, 0)
         self.setLayout(layout)
-        self.setWindowTitle(self.tr('Likelihood constraints: ' + root + ".likestats"))
+        self.setWindowTitle(self.tr('Sample likelihood constraints: ' + root))
 
-        self.text = QTextEdit(self)
-        self.text.setText(stats.likeSummary())
-        self.text.setWordWrapMode(QTextOption.NoWrap)
         self.text.setMaximumHeight(80)
-        font = QFont("Monospace")
-        font.setStyleHint(QFont.TypeWriter)
-        self.text.setFont(font)
         layout.addWidget(self.text, 0, 0)
-        self.setAttribute(Qt.WA_DeleteOnClose)
 
         if stats:
             headers = stats.headerLine().strip().split() + [ 'label' ]
@@ -1073,9 +1099,6 @@ class DialogMargeStats(QDialog):
 
         self.label = QLabel(self)
         self.table = QTableWidget(self)
-#       self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-#       self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-#       self.table.horizontalHeader().hide()
         self.table.verticalHeader().hide()
 
         layout = QGridLayout()
@@ -1119,24 +1142,14 @@ class DialogMargeStats(QDialog):
 
 # ==============================================================================
 
-class DialogConvergeStats(QDialog):
+class DialogConvergeStats(DialogTextOutput):
 
     def __init__(self, parent, stats, summary, root):
-        QDialog.__init__(self, parent)
-        self.text = QTextEdit(self)
-        self.text.setText(stats)
-        self.text.setWordWrapMode(QTextOption.NoWrap)
-        font = QFont("Monospace")
-        font.setStyleHint(QFont.TypeWriter)
-        self.text.setFont(font)
+        DialogTextOutput.__init__(self, parent, stats)
         layout = QGridLayout()
         layout.addWidget(self.text, 1, 0)
-        self.text = QTextEdit(self)
         if summary:
-            self.text2 = QTextEdit(self)
-            self.text2.setText(summary)
-            self.text2.setWordWrapMode(QTextOption.NoWrap)
-            self.text2.setFont(font)
+            self.text2 = self.getTextBox(summary)
             self.text2.setMaximumHeight(100)
             layout.addWidget(self.text2, 0, 0)
 
@@ -1144,7 +1157,21 @@ class DialogConvergeStats(QDialog):
         self.setWindowTitle(self.tr('Convergence stats: ' + root))
         h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, 1200)
         self.resize(700, h)
-        self.setAttribute(Qt.WA_DeleteOnClose)
+
+
+# ==============================================================================
+
+class DialogPCA(DialogTextOutput):
+
+    def __init__(self, parent, PCA_text, root):
+        DialogTextOutput.__init__(self, parent, PCA_text)
+        layout = QGridLayout()
+        layout.addWidget(self.text, 0, 0)
+        self.setLayout(layout)
+        self.setWindowTitle(self.tr('PCA constraints for: ' + root))
+        h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, 800)
+        self.resize(500, h)
+
 
 # ==============================================================================
 

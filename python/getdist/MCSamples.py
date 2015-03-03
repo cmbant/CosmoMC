@@ -14,7 +14,6 @@ from getdist import ResultObjs, covMat, paramNames
 from getdist.paramPriors import ParamBounds
 from scipy.signal import fftconvolve
 
-
 pickle_version = 19
 version = 1.1
 
@@ -234,7 +233,8 @@ class MCSamples(chains):
         self._readRanges()
 
         # Other variables
-        self.no_plots = False
+        self.range_ND_contour = 1
+        self.range_confidence = 0.001
         self.num_bins = 100
         self.num_bins_2D = 40
         self.smooth_scale_1D = -1.
@@ -296,6 +296,8 @@ class MCSamples(chains):
         else:
             self.ignore_frac = 0
 
+        ini.setAttr('range_ND_contour', self)
+        ini.setAttr('range_confidence', self)
         ini.setAttr('num_bins', self)
         ini.setAttr('num_bins_2D', self)
 
@@ -305,7 +307,6 @@ class MCSamples(chains):
         ini.setAttr('boundary_correction_order', self, 1)
         ini.setAttr('mult_bias_correction_order', self, 1)
 
-        ini.setAttr('no_plots', self, False)
         ini.setAttr('plot_meanlikes', self, False)
         ini.setAttr('plot_meanlikes', self)
         ini.setAttr('plot_meanlikes', self)
@@ -336,7 +337,7 @@ class MCSamples(chains):
         ini.setAttr('corr_length_thin', self)
         ini.setAttr('corr_length_steps', self)
 
-    def initLimits(self, ini=None):
+    def _initLimits(self, ini=None):
 
         bin_limits = ""
         if ini: bin_limits = ini.string('all_limits', '')
@@ -408,16 +409,15 @@ class MCSamples(chains):
         self.N_eff = self.getEffectiveSamples()
         self.indep_thin = 0
         self.setCov()
+        self.done_1Dbins = False
+        self.density1D = dict()
 
-        self.initLimits(self.ini)
-
-        # Init arrays for 1D densities
-        self._Init1DDensity()
+        self._initLimits(self.ini)
 
         # Get ND confidence region
         self.setLikeStats()
 
-    def MakeSingleSamples(self, filename="", single_thin=None):
+    def makeSingleSamples(self, filename="", single_thin=None):
         """
         Make file of weight-1 samples by choosing samples
         with probability given by their weight.
@@ -481,7 +481,7 @@ class MCSamples(chains):
         return fraction_indices
 
 
-    def PCA(self, params, param_map, normparam=None, writeDataToFile=False, conditional_params=[]):
+    def PCA(self, params, param_map=None, normparam=None, writeDataToFile=False, filename=None, conditional_params=[]):
         """
         Perform principle component analysis. In other words,
         get eigenvectors and eigenvalues for normalized variables
@@ -506,14 +506,19 @@ class MCSamples(chains):
         else: normparam = -1
 
         n = len(indices)
-        correlationMatrix = np.zeros((n, n))
-        PCdata = self.samples[:, indices]
+        PCdata = self.samples[:, indices].copy()
         PClabs = []
 
         PCmean = np.zeros(n)
         sd = np.zeros(n)
         newmean = np.zeros(n)
         newsd = np.zeros(n)
+        if param_map is None:
+            param_map = ''
+            for par in self.paramNames.parsWithNames(params):
+                self._initParamRanges(par.name)
+                if par.param_max < 0 or par.param_min < par.param_max - par.param_min: param_map += 'N'
+                else: param_map += 'L'
 
         doexp = False
         for i, parix in enumerate(indices):
@@ -532,14 +537,14 @@ class MCSamples(chains):
                 PCAtext += "%10s :%s\n" % (str(parix + 1), str(PClabs[i]))
 
             PCmean[i] = np.dot(self.weights , PCdata[:, i]) / self.norm
-            PCdata[:, i] = PCdata[:, i] - PCmean[i]
+            PCdata[:, i] -= PCmean[i]
             sd[i] = np.sqrt(np.dot(self.weights , PCdata[:, i] ** 2) / self.norm)
-            if sd[i] <> 0: PCdata[:, i] = PCdata[:, i] / sd[i]
+            if sd[i] <> 0: PCdata[:, i] /= sd[i]
 
         PCAtext += "\n"
         PCAtext += 'Correlation matrix for reduced parameters\n'
-        for i, parix in enumerate(indices):
-            correlationMatrix[i][i] = 1
+        correlationMatrix = np.ones((n, n))
+        for i in range(n):
             for j in range(i):
                 correlationMatrix[j][i] = np.dot(self.weights , PCdata[:, i] * PCdata[:, j]) / self.norm
                 correlationMatrix[i][j] = correlationMatrix[j][i]
@@ -573,10 +578,10 @@ class MCSamples(chains):
             PCAtext += '%3i:' % (indices[j] + 1)
             for i in range(n):
                 isort = isorted[i]
-                '%8.4f' % (evects[j][isort])
+                PCAtext += '%8.4f' % (evects[j][isort])
             PCAtext += '\n'
 
-        if (normparam <> -1):
+        if normparam <> -1:
             # Set so parameter normparam has exponent 1
             for i in range(n):
                 u[i, :] = u[i, :] / u[i, normparam] * sd[normparam]
@@ -589,7 +594,7 @@ class MCSamples(chains):
         nrows = PCdata.shape[0]
         for i in range(nrows):
             PCdata[i, :] = np.dot(u, PCdata[i, :])
-            if (doexp): PCdata[i, :] = np.exp(PCdata[i, :])
+            if doexp: PCdata[i, :] = np.exp(PCdata[i, :])
 
         PCAtext += '\n'
         PCAtext += 'Principle components\n'
@@ -608,13 +613,13 @@ class MCSamples(chains):
                     PCAtext += '[%f]  (%s/%s)^{%s}\n' % (u[i][j], label, div, expo)
                 else:
                     expo = "%f" % (sd[j] / u[i][j])
-                    if (doexp):
+                    if doexp:
                         PCAtext += '[%f]   exp((%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo)
                     else:
                         PCAtext += '[%f]   (%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo)
 
             newmean[i] = self.mean(PCdata[:, i])
-            newsd[i] = np.sqrt(self.mean(PCdata[:, i] - newmean[i]) ** 2)
+            newsd[i] = np.sqrt(self.mean((PCdata[:, i] - newmean[i]) ** 2))
             PCAtext += '          = %f +- %f\n' % (newmean[i], newsd[i])
             PCAtext += '\n'
 
@@ -642,7 +647,7 @@ class MCSamples(chains):
             PCAtext += '   (%s)\n' % (self.parLabel(j))
 
         if writeDataToFile:
-            with open(self.rootdirname + ".PCA", "w") as f:
+            with open(filename or self.rootdirname + ".PCA", "w") as f:
                 f.write(PCAtext)
         return PCAtext
 
@@ -655,7 +660,7 @@ class MCSamples(chains):
         lines += 'Effective number of weighted samples (sum w)^2/sum(w^2): %s\n' % (int(self.norm ** 2 / np.dot(self.weights, self.weights)))
         return lines
 
-    def DoConvergeTests(self, limfrac, quick=False, writeDataToFile=False,
+    def getConvergeTests(self, limfrac, quick=False, writeDataToFile=False,
                         what=['MeanVar', 'GelmanRubin', 'SplitTest', 'RafteryLewis', 'CorrLengths'],
                         filename=None, feedback=False):
         """
@@ -968,29 +973,34 @@ class MCSamples(chains):
 
 
     def _initParamRanges(self, j, paramConfid=None):
-
+        if isinstance(j, basestring): j = self.index[j]
         paramVec = self.samples[:, j]
         par = self.paramNames.names[j]
         par.err = self.sddev[j]
+        par.mean = self.means[j]
         par.param_min = np.min(paramVec)
         par.param_max = np.max(paramVec)
         paramConfid = paramConfid or self.initParamConfidenceData(paramVec)
-        lowend, highend, low_1sig, high_1sig = self.confidence(paramConfid, np.array([0.001, 1 - 0.001, 0.16, 0.84]))
-        par.sigma_range = (high_1sig - low_1sig) / 2
-        par.range_min = min(par.ND_limit_bot[1], lowend)
-        par.range_max = max(par.ND_limit_top[1], highend)
+        par.range_min, par.range_max, low_1sig, mid, high_1sig = self.confidence(paramConfid, np.array([self.range_confidence, 1 - self.range_confidence, 0.16, 0.5, 0.84]))
+        # sigma_range is estimate related to shape of structure in the distribution; the "min" prevents overestimation for broad tails and peaked ends
+        par.sigma_range = min((high_1sig - low_1sig) / 2, mid - par.param_min, par.param_max - mid)
+        if self.range_ND_contour >= 0:
+            if self.range_ND_contour >= par.ND_limit_bot.size:
+                raise SettingException("range_ND_contour should be -1 (off), or 0, 1 for first or second contour level")
+            par.range_min = min(max(par.range_min - par.err, par.ND_limit_bot[self.range_ND_contour]), par.range_min)
+            par.range_max = max(max(par.range_max + par.err, par.ND_limit_top[self.range_ND_contour]), par.range_max)
 
         width = (par.range_max - par.range_min) / self.num_bins
-        if width == 0: raise MCSamplesError('Parameter range is zero: %s' % (par.name))
+        if width == 0: raise MCSamplesError('Parameter range is zero: ' + par.name)
 
         if self.smooth_scale_1D <= 0:
         # Set automatically
             opt_width = self.getAutoBandwidth1D()
-            smooth_1D = opt_width * min(par.sigma_range, self.sddev[j]) * abs(self.smooth_scale_1D)
+            smooth_1D = opt_width * min(par.sigma_range, par.err) * abs(self.smooth_scale_1D)
             if smooth_1D < 0.5 * width:
                 logging.warning('num_bins not large enough for optimal density - ' + par.name)
         elif self.smooth_scale_1D < 1.0:
-            smooth_1D = self.smooth_scale_1D * self.sddev[j]
+            smooth_1D = self.smooth_scale_1D * par.err
             if smooth_1D < width:
                 logging.warning('num_bins not large enough to well sample smoothed density - ' + par.name)
         else:
@@ -1019,6 +1029,7 @@ class MCSamples(chains):
             par.bin_ref_point = par.range_min
 
         smooth_1D_bins = max(1., smooth_1D / width)
+        logging.debug("%s 1D sigma_range, std: %s, %s; smooth_1D_bins: %s ", par.name, par.sigma_range, par.err, smooth_1D_bins)
 
         return par, width, smooth_1D_bins
 
@@ -1029,9 +1040,7 @@ class MCSamples(chains):
         density = self.density1D.get(name, None)
         if density is not None: return density
         if isinstance(name, paramNames.paramInfo): name = name.name
-        j = self.index.get(name, None)
-        if j is None: return None
-        return self.get1DDensityGridData(j, get_density=True)
+        return self.get1DDensityGridData(name, get_density=True)
 
 
     def get1DDensityGridData(self, j, writeDataToFile=False, get_density=False, paramConfid=None):
@@ -1084,7 +1093,7 @@ class MCSamples(chains):
         if par.has_limits_bot: jumps = jumps[2:]
         if par.has_limits_top: jumps = jumps[:-2]
         if len(jumps) and (binsraw[jumps[0] - 1] == 0 or binsraw[jumps[-1] + 1] == 0):
-            logging.warning('sharp edge in parameter %s - check ranges and limits[%s] or bin sizes', par.name, par.name)
+            logging.warning('sharp edge in parameter %s - check ranges or set limits[%s]', par.name, par.name)
 
         Kernel = Kernel1D(winw, fine_fac * smooth_1D)
         fineused = finebins[imin - winw - fine_min:imax + winw + 1 - fine_min]
@@ -1174,45 +1183,43 @@ class MCSamples(chains):
         if get_density: return density1D
 
         logZero = 1e30
-        if not self.no_plots:
-            bincounts = density1D.P[ix_min * fine_fac - imin:ix_max * fine_fac - imin + 1:fine_fac]
+        bincounts = density1D.P[ix_min * fine_fac - imin:ix_max * fine_fac - imin + 1:fine_fac]
+        if self.plot_meanlikes:
+            rawbins = conv[ix_min * fine_fac - imin:ix_max * fine_fac - imin + 1:fine_fac]
+            binlikes = np.zeros(ix_max - ix_min + 1)
+            if self.shade_likes_is_mean_loglikes: binlikes[:] = logZero
+
+            # Output values for plots
+            for ix2 in range(ix_min, ix_max + 1):
+                if rawbins[ix2 - ix_min] > 0:
+                    istart, iend = (ix2 * fine_fac - winw) - fine_min, (ix2 * fine_fac + winw + 1) - fine_min
+                    binlikes[ix2 - ix_min] = np.dot(Kernel.Win, finebinlikes[istart:iend]) / rawbins[ix2 - ix_min]
+
+            if self.shade_likes_is_mean_loglikes:
+                maxbin = min(binlikes)
+                binlikes = np.where((binlikes - maxbin) < 30, np.exp(-(binlikes - maxbin)), 0)
+
+        x = par.bin_ref_point + np.arange(ix_min, ix_max + 1) * width
+        if self.plot_meanlikes:
+            maxbin = np.max(binlikes)
+            likes = binlikes / maxbin
+        else:
+            likes = None
+
+        if writeDataToFile:
+            fname = self.rootname + "_p_" + par.name
+            filename = os.path.join(self.plot_data_dir, fname + ".dat")
+            with open(filename, 'w') as f:
+                for xval, binval in zip(x, bincounts):
+                    f.write("%16.7E%16.7E\n" % (xval, binval))
+
             if self.plot_meanlikes:
-                rawbins = conv[ix_min * fine_fac - imin:ix_max * fine_fac - imin + 1:fine_fac]
-                binlikes = np.zeros(ix_max - ix_min + 1)
-                if self.shade_likes_is_mean_loglikes: binlikes[:] = logZero
-
-                # Output values for plots
-                for ix2 in range(ix_min, ix_max + 1):
-                    if rawbins[ix2 - ix_min] > 0:
-                        istart, iend = (ix2 * fine_fac - winw) - fine_min, (ix2 * fine_fac + winw + 1) - fine_min
-                        binlikes[ix2 - ix_min] = np.dot(Kernel.Win, finebinlikes[istart:iend]) / rawbins[ix2 - ix_min]
-
-                if self.shade_likes_is_mean_loglikes:
-                    maxbin = min(binlikes)
-                    binlikes = np.where((binlikes - maxbin) < 30, np.exp(-(binlikes - maxbin)), 0)
-
-            x = par.bin_ref_point + np.arange(ix_min, ix_max + 1) * width
-            if self.plot_meanlikes:
-                maxbin = np.max(binlikes)
-                likes = binlikes / maxbin
-            else:
-                likes = None
-
-            if writeDataToFile:
-                fname = self.rootname + "_p_" + self.parName(j)
-                filename = os.path.join(self.plot_data_dir, fname + ".dat")
-                with open(filename, 'w') as f:
-                    for xval, binval in zip(x, bincounts):
+                filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
+                with open(filename_like, 'w') as f:
+                    for xval, binval in zip(x, likes):
                         f.write("%16.7E%16.7E\n" % (xval, binval))
+        return x, bincounts, likes
 
-                if self.plot_meanlikes:
-                    filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
-                    with open(filename_like, 'w') as f:
-                        for xval, binval in zip(x, likes):
-                            f.write("%16.7E%16.7E\n" % (xval, binval))
-            return x, bincounts, likes
-
-        return None, None, None
 
     def _setEdgeMask2D(self, parx, pary, prior_mask, winw, alledge=False):
         if parx.has_limits_bot:
@@ -1448,12 +1455,6 @@ class MCSamples(chains):
         else:
             return bins2D, bin2Dlikes, contour_levels, x, y
 
-    def _Init1DDensity(self):
-        self.done_1Dbins = False
-        self.density1D = dict()
-        self.marge_limits_bot = np.zeros([len(self.contours), self.n], dtype=bool)
-        self.marge_limits_top = np.zeros([len(self.contours), self.n], dtype=bool)
-
     def setLikeStats(self):
         # Find best fit sample and mean likelihood
         m = ResultObjs.likeStats()
@@ -1515,7 +1516,7 @@ class MCSamples(chains):
         return None
 
     def getMargeStats(self):
-        self.Do1DBins()
+        self.setDensitiesandMarge1D()
         m = ResultObjs.margeStats()
         m.hasBestFit = False
         m.limits = self.contours
@@ -1526,68 +1527,60 @@ class MCSamples(chains):
         return self.likeStats or self.setLikeStats()
 
 
-    def Do1DBins(self, max_frac_twotail=None, writeDataToFile=False):
+    def setDensitiesandMarge1D(self, max_frac_twotail=None, writeDataToFile=False):
         if self.done_1Dbins: return
-        if max_frac_twotail is None:
-            max_frac_twotail = self.max_frac_twotail
 
         for j in range(self.n):
             paramConfid = self.initParamConfidenceData(self.samples[:, j])
             self.get1DDensityGridData(j, writeDataToFile, get_density=not writeDataToFile, paramConfid=paramConfid)
-            self.setMargeLimits(j, max_frac_twotail, paramConfid=paramConfid)
+            self.setMargeLimits(self.paramNames.names[j], paramConfid, max_frac_twotail)
 
         self.done_1Dbins = True
 
 
-    def setMargeLimits(self, j, max_frac_twotail, paramConfid=None):
+    def setMargeLimits(self, par, paramConfid, max_frac_twotail=None, density1D=None):
 
         # Get limits, one or two tail depending on whether posterior
         # goes to zero at the limits or not
-        par = self.paramNames.names[j]
-        par.mean = self.means[j]
-        par.err = self.sddev[j]
+        if max_frac_twotail is None:
+            max_frac_twotail = self.max_frac_twotail
         par.limits = []
-        density1D = self.density1D[par.name]
+        density1D = density1D or self.get1DDensity(par.name)
         interpGrid = None
-        paramConfid = paramConfid or self.initParamConfidenceData(self.samples[:, j])
         for ix1, contour in enumerate(self.contours):
 
-            self.marge_limits_bot[ix1][j] = par.has_limits_bot and \
-                (not self.force_twotail) and (density1D.P[0] > max_frac_twotail[ix1])
-            self.marge_limits_top[ix1][j] = par.has_limits_top and \
-                (not self.force_twotail) and (density1D.P[-1] > max_frac_twotail[ix1])
+            marge_limits_bot = par.has_limits_bot and \
+                not self.force_twotail and density1D.P[0] > max_frac_twotail[ix1]
+            marge_limits_top = par.has_limits_top and \
+                not self.force_twotail and density1D.P[-1] > max_frac_twotail[ix1]
 
-            if not self.marge_limits_bot[ix1][j] or not self.marge_limits_top[ix1][j]:
+            if not marge_limits_bot or not marge_limits_top:
                 # give limit
                 if not interpGrid: interpGrid = density1D.initLimitGrids()
-                tail_limit_bot, tail_limit_top, marge_bot, marge_top = density1D.getLimits(contour, interpGrid)
-                self.marge_limits_bot[ix1][j] = marge_bot
-                self.marge_limits_top[ix1][j] = marge_top
-
+                tail_limit_bot, tail_limit_top, marge_limits_bot, marge_limits_top = density1D.getLimits(contour, interpGrid)
                 limfrac = 1 - contour
 
-                if self.marge_limits_bot[ix1][j]:
+                if marge_limits_bot:
                     # fix to end of prior range
                     tail_limit_bot = par.range_min
-                elif self.marge_limits_top[ix1][j]:
+                elif marge_limits_top:
                     # 1 tail limit
                     tail_limit_bot = self.confidence(paramConfid, limfrac, upper=False)
                 else:
                     # 2 tail limit
                     tail_confid_bot = self.confidence(paramConfid, limfrac / 2, upper=False)
 
-                if self.marge_limits_top[ix1][j]:
+                if marge_limits_top:
                     tail_limit_top = par.range_max
-                elif self.marge_limits_bot[ix1][j]:
+                elif marge_limits_bot:
                     tail_limit_top = self.confidence(paramConfid, limfrac, upper=True)
                 else:
                     tail_confid_top = self.confidence(paramConfid, limfrac / 2, upper=True)
 
-                if not self.marge_limits_bot[ix1][j] and  not self.marge_limits_top[ix1][j]:
+                if not marge_limits_bot and  not marge_limits_top:
                     # Two tail, check if limits are at very different density
                     if (math.fabs(density1D.Prob(tail_confid_top) -
-                                   density1D.Prob(tail_confid_bot))
-                        < self.credible_interval_threshold):
+                                   density1D.Prob(tail_confid_bot)) < self.credible_interval_threshold):
                         tail_limit_top = tail_confid_top
                         tail_limit_bot = tail_confid_bot
 
@@ -1596,11 +1589,11 @@ class MCSamples(chains):
                 # no limit
                 lim = [par.range_min, par.range_max]
 
-            if self.marge_limits_bot[ix1][j] and self.marge_limits_top[ix1][j]:
+            if marge_limits_bot and marge_limits_top:
                 tag = 'none'
-            elif self.marge_limits_bot[ix1][j]:
+            elif marge_limits_bot:
                 tag = '>'
-            elif self.marge_limits_top[ix1][j]:
+            elif marge_limits_top:
                 tag = '<'
             else:
                 tag = 'two'

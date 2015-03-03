@@ -2,10 +2,10 @@
 # Use in cosmomc .ini file using e.g.
 # cmb_dataset[MyForecast]=data/MyForecast/test_lensedCls_exactsim.dataset
 
-from numpy import *
+import numpy as np
 import iniFile
 import shutil
-import sys, os
+import os
 
 
 # Edit parameters you want to change here
@@ -41,7 +41,7 @@ dataset['fields_use'] = 'T E'
 
 # #Now produce the Planck_like files
 fwhm = fwhm_arcmin / 60
-xlc = 180 * sqrt(8.*log(2.)) / pi
+xlc = 180 * np.sqrt(8.*np.log(2.)) / np.pi
 sigma2 = (fwhm / xlc) ** 2
 
 outPath = ''
@@ -51,7 +51,7 @@ NoiseOut = []
 # d = loadtxt(lensedTotClFileRoot)
 # SN = 0
 for l in range(lmax + 1):
-    NoiseCl = l * (l + 1) / 2 / pi * NoiseVar * exp(l * (l + 1) * sigma2)
+    NoiseCl = l * (l + 1) / 2 / np.pi * NoiseVar * np.exp(l * (l + 1) * sigma2)
     NoiseOut.append([NoiseCl, ENoiseFac * NoiseCl, ENoiseFac * NoiseCl])
 #    if (l >= 2): SN += (2 * l + 1) * fsky * (d[l - 2, 1] / (NoiseCl + d[l - 2, 1])) ** 2
 # print 'Number of modes: ', SN

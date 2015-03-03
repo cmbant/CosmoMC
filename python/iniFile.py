@@ -151,22 +151,37 @@ class iniFile(object):
         elif default is not None: return default
         else: self._undefined(name)
 
+    def bool_list(self, name, default=[]):
+        return self.split(name, default, tp=bool)
+
     def string(self, name, default=None, allowEmpty=True):
         return self.asType(name, str, default, allowEmpty=allowEmpty)
+
+    def list(self, name, default=[], tp=None):
+        return self.split(name, default, tp)
 
     def float(self, name, default=None):
         return self.asType(name, float, default)
 
+    def float_list(self, name, default=[]):
+        return self.split(name, default, tp=float)
+
     def int(self, name, default=None):
         return self.asType(name, int, default)
 
-    def split(self, name, default=None):
+    def int_list(self, name, default=[]):
+        return self.split(name, default, tp=int)
+
+    def split(self, name, default=None, tp=None):
         s = self.string(name, default)
-        if isinstance(s, basestring): return s.split()
+        if isinstance(s, basestring):
+            if tp is not None:
+                return [tp(x) for x in s.split()]
+            return s.split()
         else: return s
 
     def ndarray(self, name, default=None, tp=np.double):
-        return np.array([tp(x) for x in self.split(name, default)])
+        return np.array(self.split(name, default, tp=tp))
 
     def array_int(self, name, index=1, default=None):
         return self.int(name + '(%u)' % index, default)
