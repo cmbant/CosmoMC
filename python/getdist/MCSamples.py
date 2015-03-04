@@ -5,12 +5,12 @@ import logging
 import time
 import copy
 import numpy as np
-from scipy.interpolate import splrep, splev
 from scipy.stats import norm
 import pickle
 from iniFile import iniFile
-from getdist.chains import chains, chainFiles, lastModified, convolve1D
 from getdist import ResultObjs, covMat, paramNames
+from getdist.densities import Density1D, Density2D
+from getdist.chains import chains, chainFiles, lastModified, convolve1D
 from getdist.paramPriors import ParamBounds
 from scipy.signal import fftconvolve
 
@@ -79,56 +79,6 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settin
                 pickle.dump(samples, output, pickle.HIGHEST_PROTOCOL)
         return samples
 
-def get2DContourLevels(bins2D, contours=[0.68, 0.95], missing_norm=0, half_edge=True):
-    """
-     Get countour levels encolosing "countours" of the probability.
-     bins 2D is the density. If half_edge, then edge bins are only half integrated over in each direction.
-     missing_norm accounts of any points not included in bin2D (e.g. points in far tails that are not plotted)
-    """
-    contour_levels = np.zeros(len(contours))
-    if half_edge:
-        abins = bins2D.copy()
-        abins[:, 0] /= 2
-        abins[0, :] /= 2
-        abins[:, -1] /= 2
-        abins[-1, :] /= 2
-    else:
-        abins = bins2D
-    norm = np.sum(abins)
-    targets = (1 - np.array(contours)) * norm - missing_norm
-    if True:
-        bins = abins.reshape(-1)
-        indexes = bins2D.reshape(-1).argsort()
-        sortgrid = bins[indexes]
-        cumsum = np.cumsum(sortgrid)
-        ixs = np.searchsorted(cumsum, targets)
-        for i, ix in enumerate(ixs):
-            if ix == 0:
-                raise MCSamplesError("Contour level outside plotted ranges")
-            h = cumsum[ix] - cumsum[ix - 1]
-            d = (cumsum[ix] - targets[i]) / h
-            contour_levels[i] = sortgrid[ix] * (1 - d) + d * sortgrid[ix - 1]
-    else:
-        # old method, twice or so slower
-        try_t = np.max(bins2D)
-        lastcontour = 0
-        for i, (contour, target) in enumerate(zip(contours, targets)):
-            if contour < lastcontour: raise SettingException('contour levels must be decreasing')
-            lastcontour = contour
-            try_b = 0
-            lasttry = -1
-            while True:
-                try_sum = np.sum(abins[bins2D < (try_b + try_t) / 2])
-                if try_sum > target:
-                    try_t = (try_b + try_t) / 2
-                else:
-                    try_b = (try_b + try_t) / 2
-                if try_sum == lasttry: break
-                lasttry = try_sum
-            contour_levels[i] = (try_b + try_t) / 2
-    return contour_levels
-
-# =============================================================================
 
 class Kernel1D(object):
 
@@ -138,84 +88,6 @@ class Kernel1D(object):
         self.x = np.arange(-winw, winw + 1)
         Win = np.exp(-(self.x / h) ** 2 / 2.)
         self.Win = Win / np.sum(Win)
-
-
-class Density1D(object):
-
-    def __init__(self, xmin, n, spacing, P=None, missing_norm=0):
-        self.n = n
-        self.X = xmin + np.arange(n) * float(spacing)
-        self.spacing = float(spacing)
-        self.missing_norm = missing_norm
-        self.setP(P)
-
-    def setP(self, P=None):
-        if P is not None:
-            self.P = P
-        else:
-            self.P = np.zeros(self.n)
-        self.spl = None
-
-    def InitSpline(self):
-        self.spl = splrep(self.X, self.P, s=0)
-
-    def Prob(self, x):
-        if self.spl is None: self.InitSpline()
-        if isinstance(x, np.ndarray):
-            return splev(x, self.spl)
-        else:
-            return splev([x], self.spl)
-
-
-    def initLimitGrids(self, factor=None):
-        class InterpGrid(object): pass
-
-        g = InterpGrid()
-        if factor is None:
-            g.factor = max(2, 20000 // self.n)
-        else:
-            g.factor = factor
-        g.bign = (self.n - 1) * g.factor + 1
-        vecx = self.X[0] + np.arange(g.bign) * self.spacing / g.factor
-        g.grid = splev(vecx, self.spl)
-
-        norm = np.sum(g.grid)
-        g.norm = norm - (0.5 * self.P[-1]) - (0.5 * self.P[0])
-
-        g.sortgrid = np.sort(g.grid)
-        g.cumsum = np.cumsum(g.sortgrid)
-        return g
-
-    def getLimits(self, p, interpGrid=None, accuracy_factor=None):
-        if self.spl is None: self.InitSpline()
-        g = interpGrid or self.initLimitGrids(accuracy_factor)
-
-        target = (1 - p) * g.norm - self.missing_norm * g.factor
-        ix = np.searchsorted(g.cumsum, target)
-        trial = g.sortgrid[ix]
-        if ix > 0:
-            d = g.cumsum[ix] - g.cumsum[ix - 1]
-            frac = (g.cumsum[ix] - target) / d
-            trial = (1 - frac) * trial + frac * g.sortgrid[ix + 1]
-
-        finespace = self.spacing / g.factor
-        lim_bot = (g.grid[0] >= trial)
-        if lim_bot:
-            mn = self.X[0]
-        else:
-            i = np.argmax(g.grid > trial)
-            d = (g.grid[i] - trial) / (g.grid[i] - g.grid[i - 1])
-            mn = self.X[0] + (i - d) * finespace
-
-        lim_top = (g.grid[-1] >= trial)
-        if lim_top:
-            mx = self.X[-1]
-        else:
-            i = g.bign - np.argmax(g.grid[::-1] > trial) - 1
-            d = (g.grid[i] - trial) / (g.grid[i] - g.grid[i + 1])
-            mx = self.X[0] + (i + d) * finespace
-
-        return mn, mx, lim_bot, lim_top
 
 # =============================================================================
 
@@ -245,8 +117,7 @@ class MCSamples(chains):
         self.contours = np.array([0.68, 0.95])
         self.max_scatter_points = 2000
         self.credible_interval_threshold = 0.05
-        self.plot_meanlikes = False
-        self.shade_meanlikes = False
+
         self.shade_likes_is_mean_loglikes = False
 
         self.likeStats = None
@@ -275,8 +146,6 @@ class MCSamples(chains):
         self.corr_length_steps = 15
 
         self.done_1Dbins = False
-        self.done2D = None
-
         self.density1D = dict()
 
         self.updateSettings(ini)
@@ -307,15 +176,14 @@ class MCSamples(chains):
         ini.setAttr('boundary_correction_order', self, 1)
         ini.setAttr('mult_bias_correction_order', self, 1)
 
-        ini.setAttr('plot_meanlikes', self, False)
-        ini.setAttr('plot_meanlikes', self)
-        ini.setAttr('plot_meanlikes', self)
         ini.setAttr('max_scatter_points', self)
         ini.setAttr('credible_interval_threshold', self)
+
         ini.setAttr('subplot_size_inch', self)
         ini.setAttr('subplot_size_inch2', self)
         ini.setAttr('subplot_size_inch3', self)
         ini.setAttr('plot_output', self)
+
         ini.setAttr('force_twotail', self)
         if self.force_twotail: logging.warning('Computing two tail limits')
         ini.setAttr('max_corr_2D', self)
@@ -1039,15 +907,13 @@ class MCSamples(chains):
         """
         density = self.density1D.get(name, None)
         if density is not None: return density
-        if isinstance(name, paramNames.paramInfo): name = name.name
         return self.get1DDensityGridData(name, get_density=True)
 
 
-    def get1DDensityGridData(self, j, writeDataToFile=False, get_density=False, paramConfid=None):
+    def get1DDensityGridData(self, j, writeDataToFile=False, get_density=False, paramConfid=None, meanlikes=False):
 
-        if isinstance(j, basestring):
-            j = self.index.get(j, None)
-            if j is None: return None
+        j = self._parAndNumber(j)[0]
+        if j is None: return None
 
         paramVec = self.samples[:, j]
         par, width, smooth_1D = self._initParamRanges(j, paramConfid)
@@ -1076,11 +942,11 @@ class MCSamples(chains):
         fine_max = max(imax + winw, np.max(ix2))
         ix2 -= fine_min
         finebins = np.bincount(ix2, weights=self.weights, minlength=fine_max - fine_min + 1)
-        if self.plot_meanlikes:
+        if meanlikes:
             if self.shade_likes_is_mean_loglikes:
                 w = self.weights * self.loglikes
             else:
-                w = self.weights * np.exp(self.mean_loglike - self.loglikes)
+                w = self.weights * np.exp((self.mean_loglike - self.loglikes))
             finebinlikes = np.bincount(ix2, weights=w, minlength=fine_max - fine_min + 1)
 
         # check if bin variation at ends looks sensible for no prior, i.e. no big jumps. Reduce to 32 bins.
@@ -1099,9 +965,11 @@ class MCSamples(chains):
         fineused = finebins[imin - winw - fine_min:imax + winw + 1 - fine_min]
 
         conv = convolve1D(fineused, Kernel.Win, 'valid')
-        missing_norm = np.sum(finebins) - np.sum(fineused[winw:-winw + 1])
 
-        density1D = Density1D(par.bin_ref_point + imin * fine_width, imax - imin + 1, fine_width, P=conv)
+        density1D = Density1D(np.linspace(par.bin_ref_point + imin * fine_width,
+                                          par.bin_ref_point + imax * fine_width, imax - imin + 1), P=conv)
+        density1D.missing_norm = np.sum(finebins) - np.sum(fineused[winw:-winw + 1])
+        if meanlikes: rawbins = conv.copy()
 
         if par.has_limits and self.boundary_correction_order >= 0:
             # correct for cuts allowing for normalization over window
@@ -1171,36 +1039,29 @@ class MCSamples(chains):
                 density1D.setP(density1D.P * conv)
                 density1D.P[ix] /= a0[ix]
 
-        maxbin = np.max(density1D.P)
-        if maxbin == 0:
-            raise MCSamplesError('no samples in bin, param: ' + self.parName(j))
-        density1D.P /= maxbin
-        density1D.missing_norm = missing_norm / maxbin
-
-        density1D.InitSpline()
+        density1D.normalize('max', in_place=True)
         self.density1D[par.name] = density1D
 
         if get_density: return density1D
 
-        logZero = 1e30
+        # get thinner grid over restricted range for plotting
         bincounts = density1D.P[ix_min * fine_fac - imin:ix_max * fine_fac - imin + 1:fine_fac]
-        if self.plot_meanlikes:
-            rawbins = conv[ix_min * fine_fac - imin:ix_max * fine_fac - imin + 1:fine_fac]
-            binlikes = np.zeros(ix_max - ix_min + 1)
-            if self.shade_likes_is_mean_loglikes: binlikes[:] = logZero
+        if meanlikes:
+            fine = finebinlikes[imin - fine_min:imax + 1 - fine_min]
+            ix = density1D.P > 0
+            fine[ix] /= density1D.P[ix]
+            binlikes = convolve1D(fine, Kernel.Win, 'same')
+            binlikes[ix] *= density1D.P[ix] / rawbins[ix]
 
-            # Output values for plots
-            for ix2 in range(ix_min, ix_max + 1):
-                if rawbins[ix2 - ix_min] > 0:
-                    istart, iend = (ix2 * fine_fac - winw) - fine_min, (ix2 * fine_fac + winw + 1) - fine_min
-                    binlikes[ix2 - ix_min] = np.dot(Kernel.Win, finebinlikes[istart:iend]) / rawbins[ix2 - ix_min]
+            binlikes = binlikes[ix_min * fine_fac - imin:ix_max * fine_fac - imin + 1:fine_fac]
 
             if self.shade_likes_is_mean_loglikes:
-                maxbin = min(binlikes)
+                maxbin = np.min(binlikes)
                 binlikes = np.where((binlikes - maxbin) < 30, np.exp(-(binlikes - maxbin)), 0)
+                binlikes[rawbins == 0] = 0
 
         x = par.bin_ref_point + np.arange(ix_min, ix_max + 1) * width
-        if self.plot_meanlikes:
+        if meanlikes:
             maxbin = np.max(binlikes)
             likes = binlikes / maxbin
         else:
@@ -1213,12 +1074,14 @@ class MCSamples(chains):
                 for xval, binval in zip(x, bincounts):
                     f.write("%16.7E%16.7E\n" % (xval, binval))
 
-            if self.plot_meanlikes:
+            if meanlikes:
                 filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
                 with open(filename_like, 'w') as f:
                     for xval, binval in zip(x, likes):
                         f.write("%16.7E%16.7E\n" % (xval, binval))
-        return x, bincounts, likes
+        result = Density1D(x, bincounts)
+        result.likes = likes
+        return result
 
 
     def _setEdgeMask2D(self, parx, pary, prior_mask, winw, alledge=False):
@@ -1250,14 +1113,31 @@ class MCSamples(chains):
             scale = (mx - mn) / (2 * 0.675)
         return scale
 
-    def get2DPlotData(self, j, j2, writeDataToFile=False, num_plot_contours=None):
+    def _parAndNumber(self, name):
+        if isinstance(name, paramNames.paramInfo): name = name.name
+        if isinstance(name, basestring):
+            name = self.index.get(name, None)
+            if name is None: return None, None
+        if isinstance(name, (int, long)):
+            return name, self.paramNames.names[name]
+        raise ParamException("Unknown parameter type %s" % (name))
+
+    def get2DDensity(self, x, y):
+        """
+        Returns a Density2D instance for parameters with given names
+        """
+        return self.get2DDensityGridData(x, y, get_density=True)
+
+
+    def get2DDensityGridData(self, j, j2, writeDataToFile=False,
+                      num_plot_contours=None, get_density=False, meanlikes=False):
         """
         Get 2D plot data.
         """
         start = time.time()
-
-        parx = self.paramNames.names[j]
-        pary = self.paramNames.names[j2]
+        j, parx = self._parAndNumber(j)
+        j2, pary = self._parAndNumber(j2)
+        if j is None or j2 is None: return None
 
         scale_x = self._getScaleForParam(parx)
         scale_y = self._getScaleForParam(pary)
@@ -1268,7 +1148,7 @@ class MCSamples(chains):
         has_prior = parx.has_limits or pary.has_limits
 
         corr = self.getCorrelationMatrix()[j2][j]
-        if corr == 1: logging.warning('Parameters are 100%% correlated, %s, %s', parx.name, pary.name)
+        if corr == 1: logging.warning('Parameters are 100%% correlated: %s, %s', parx.name, pary.name)
         # keep things simple unless obvious degeneracy
         if abs(corr) < 0.1: corr = 0.
         corr = max(-self.max_corr_2D, corr)
@@ -1336,13 +1216,13 @@ class MCSamples(chains):
 #        for i, (ix1, ix2) in enumerate(zip(ix1s - imin, ix2s - jmin)):
 #            finebins[ix2][ix1] += self.weights[i]
 
-        if self.shade_meanlikes:
+        if meanlikes:
             likeweights = self.weights * np.exp(self.mean_loglike - self.loglikes)
             finebinlikes = np.bincount(flatix, weights=likeweights,
                     minlength=(jmax - jmin + 1) * (imax - imin + 1)).reshape((jmax - jmin + 1 , imax - imin + 1))
 
         indexes = np.arange(-winw, winw + 1)
-        Cinv = np.linalg.inv((fine_fac * smooth_scale) ** 2 * np.matrix([[ ry ** 2, rx * ry * corr], [rx * ry * corr, rx ** 2]]))
+        Cinv = np.linalg.inv((fine_fac * smooth_scale) ** 2 * np.array([[ ry ** 2, rx * ry * corr], [rx * ry * corr, rx ** 2]]))
         ix1, ix2 = np.mgrid[-winw:winw + 1, -winw:winw + 1]
         Win = np.exp(-(ix1 ** 2 * Cinv[0, 0] + ix2 ** 2 * Cinv[1, 1] + 2 * Cinv[1, 0] * ix1 * ix2) / 2)
         Win /= np.sum(Win)
@@ -1355,7 +1235,7 @@ class MCSamples(chains):
         missing_norm = np.sum(finebins) - np.sum(fineused[winw:-winw, winw:-winw])
         bins2D = fftconvolve(fineused, Win, 'valid')
 
-        if self.shade_meanlikes:
+        if meanlikes:
             bin2Dlikes = fftconvolve(finebinlikes[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
                                                   ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
                                                   Win, 'valid')
@@ -1413,9 +1293,11 @@ class MCSamples(chains):
                 bins2D *= fftconvolve(box, Win, 'same')
                 bins2D[ix] /= a00
 
-        mx = np.max(bins2D)
-        bins2D = bins2D / mx
-        missing_norm /= mx
+        x = parx.bin_ref_point + np.arange(ixmin * fine_fac, ixmax * fine_fac + 1) * finewidthx
+        y = pary.bin_ref_point + np.arange(iymin * fine_fac, iymax * fine_fac + 1) * finewidthy
+        density = Density2D(x, y, bins2D, missing_norm=missing_norm)
+        density.normalize('max', in_place=True)
+        if get_density: return density
 
         ncontours = len(self.contours)
         if num_plot_contours: ncontours = min(num_plot_contours, ncontours)
@@ -1424,36 +1306,32 @@ class MCSamples(chains):
         logging.debug('time 2D convolutions: %s', time.time() - start)
 
         # Get contour containing contours(:) of the probability
-        contour_levels = get2DContourLevels(bins2D, contours, missing_norm=missing_norm)
+        contour_levels = density.getContourLevels(contours)
 
-        if True:
-            bins2D = bins2D[::fine_fac, ::fine_fac ]
-            if self.shade_meanlikes:
-                bin2Dlikes = bin2Dlikes[::fine_fac, ::fine_fac ]
-            x = parx.bin_ref_point + np.arange(ixmin, ixmax + 1) * widthx
-            y = pary.bin_ref_point + np.arange(iymin, iymax + 1) * widthy
-        else:
-            x = parx.bin_ref_point + np.arange(ixmin * fine_fac, ixmax * fine_fac + 1) * finewidthx
-            y = pary.bin_ref_point + np.arange(iymin * fine_fac, iymax * fine_fac + 1) * finewidthy
+        bins2D = bins2D[::fine_fac, ::fine_fac ]
+        if meanlikes:
+            bin2Dlikes = bin2Dlikes[::fine_fac, ::fine_fac ]
+        x = parx.bin_ref_point + np.arange(ixmin, ixmax + 1) * widthx
+        y = pary.bin_ref_point + np.arange(iymin, iymax + 1) * widthy
 
         bins2D[bins2D < 1e-30] = 0
-        if self.shade_meanlikes:
+        if meanlikes:
             bin2Dlikes /= np.max(bin2Dlikes)
 
         if writeDataToFile:
             # note store things in confusing traspose form
-            name = self.parName(j)
-            name2 = self.parName(j2)
-            plotfile = self.rootname + "_2D_%s_%s" % (name, name2)
+            plotfile = self.rootname + "_2D_%s_%s" % (parx.name, pary.name)
             filename = os.path.join(self.plot_data_dir, plotfile)
             np.savetxt(filename, bins2D.T, "%16.7E")
             np.savetxt(filename + "_y", x, "%16.7E")
             np.savetxt(filename + "_x", y, "%16.7E")
             np.savetxt(filename + "_cont", np.atleast_2d(contour_levels), "%16.7E")
-            if self.shade_meanlikes:
+            if meanlikes:
                 np.savetxt(filename + "_likes", bin2Dlikes.T , "%16.7E")
-        else:
-            return bins2D, bin2Dlikes, contour_levels, x, y
+        res = Density2D(x, y, bins2D)
+        res.contours = contour_levels
+        res.likes = bin2Dlikes
+        return res
 
     def setLikeStats(self):
         # Find best fit sample and mean likelihood
@@ -1527,12 +1405,12 @@ class MCSamples(chains):
         return self.likeStats or self.setLikeStats()
 
 
-    def setDensitiesandMarge1D(self, max_frac_twotail=None, writeDataToFile=False):
+    def setDensitiesandMarge1D(self, max_frac_twotail=None, writeDataToFile=False, meanlikes=False):
         if self.done_1Dbins: return
 
         for j in range(self.n):
             paramConfid = self.initParamConfidenceData(self.samples[:, j])
-            self.get1DDensityGridData(j, writeDataToFile, get_density=not writeDataToFile, paramConfid=paramConfid)
+            self.get1DDensityGridData(j, writeDataToFile, get_density=not writeDataToFile, paramConfid=paramConfid, meanlikes=meanlikes)
             self.setMargeLimits(self.paramNames.names[j], paramConfid, max_frac_twotail)
 
         self.done_1Dbins = True
@@ -1642,9 +1520,9 @@ class MCSamples(chains):
             f.write(textExport % (fname))
 
 
-    def WriteScriptPlots2D(self, filename, plot_2D_param, cust2DPlots, plots_only, ext=None):
+    def WriteScriptPlots2D(self, filename, plot_2D_param, cust2DPlots, plots_only, ext=None, shade_meanlikes=False):
         ext = ext or self.plot_output
-        self.done2D = np.zeros((self.n, self.n), dtype=bool)
+        done2D = {}
 
         with open(filename, 'w') as f:
             textInit = self.WritePlotFileInit()
@@ -1666,14 +1544,14 @@ class MCSamples(chains):
                     if plot_2D_param and par2 <> plot_2D_param: continue
                     if cust2DPlots and (par1 + '__' + par2) not in cuts: continue
                     plot_num += 1
-                    self.done2D[j][j2] = True
-                    if not plots_only: self.get2DPlotData(j, j2, writeDataToFile=True)
+                    done2D[(par1, par2)] = True
+                    if not plots_only: self.get2DDensityGridData(j, j2, writeDataToFile=True, meanlikes=shade_meanlikes)
                     f.write("pairs.append(['%s','%s'])\n" % (par1, par2))
             f.write('g.plots_2d(roots,param_pairs=pairs)\n')
             textExport = self.WritePlotFileExport()
             fname = self.rootname + '_2D.' + ext
             f.write(textExport % (fname))
-
+        return done2D
 
     def WriteScriptPlotsTri(self, filename, triangle_params, ext=None):
         ext = ext or self.plot_output

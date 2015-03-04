@@ -28,6 +28,12 @@ class paramInfo(object):
                 self.comment = ''
         return self
 
+    def latexLabel(self):
+        if self.label:
+            return '$' + self.label + '$'
+        else:
+            return self.name
+
     def setFromStringWithComment(self, items):
         self.setFromString(items[0])
         if items[1] != 'NULL':self.comment = items[1]

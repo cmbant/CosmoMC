@@ -66,7 +66,7 @@ chain_exclude = ini.int_list('exclude_chain')
 num_exclude = len(chain_exclude) - chain_exclude.count(0)
 
 shade_meanlikes = ini.bool('shade_meanlikes', False)
-mc.shade_meanlikes = shade_meanlikes
+plot_meanlikes = ini.bool('plot_meanlikes', False)
 
 out_dir = ini.string('out_dir')
 if out_dir:
@@ -212,11 +212,12 @@ if PCA_num > 0 and not plots_only:
     mc.PCA(PCA_params, PCA_func, PCA_NormParam, writeDataToFile=True)
 
 # Do 1D bins
-mc.setDensitiesandMarge1D(writeDataToFile=not no_plots)
+mc.setDensitiesandMarge1D(writeDataToFile=not no_plots, meanlikes=plot_meanlikes)
 
 if not no_plots:
     # Output files for 1D plots
     print 'Calculating plot data...'
+    done2D = {}
 
     mc.getBounds().saveToFile(os.path.join(plot_data_dir, rootname.strip() + '.bounds'))
 
@@ -236,7 +237,7 @@ if not no_plots:
     if cust2DPlots or plot_2D_param:
         print '...producing 2D plots'
         filename = rootdirname + '_2D.' + plot_ext
-        mc.WriteScriptPlots2D(filename, plot_2D_param, cust2DPlots, plots_only)
+        done2D = mc.WriteScriptPlots2D(filename, plot_2D_param, cust2DPlots, plots_only, shade_meanlikes=shade_meanlikes)
         if make_plots: runScript(filename)
 
     if triangle_plot:
@@ -244,12 +245,10 @@ if not no_plots:
         print '...producing triangle plot'
         filename = rootdirname + '_tri.' + plot_ext
         mc.WriteScriptPlotsTri(filename, triangle_params)
-        for i in range(triangle_num):
-            for i2 in range(i + 1, triangle_num):
-                j = mc.index[triangle_params[i]]
-                j2 = mc.index[triangle_params[i2]]
-                if mc.done2D is None or not mc.done2D[j2][j] and not plots_only:
-                    mc.get2DPlotData(j2, j, writeDataToFile=True)
+        for i, p1 in enumerate(triangle_params):
+            for p2 in triangle_params[i + 1:]:
+                if not done2D.get((p2, p1)) and not plots_only:
+                    mc.get2DDensityGridData(p2, p1, writeDataToFile=True, meanlikes=shade_meanlikes)
         if make_plots: runScript(filename)
 
     # Do 3D plots (i.e. 2D scatter plots with coloured points)

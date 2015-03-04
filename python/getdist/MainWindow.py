@@ -701,8 +701,7 @@ class MainWindow(QMainWindow):
                     root = str(item.text())
                     logging.debug("Remove root %s" % root)
                     self.plotter.sampleAnalyser.removeRoot(root)
-                    if self.rootfiles.has_key(root):
-                        del self.rootfiles[root]
+                    self.rootfiles.pop(root, None)
                     self.listRoots.takeItem(i)
         finally:
             self._updateParameters()

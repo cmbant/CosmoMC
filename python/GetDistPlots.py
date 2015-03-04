@@ -10,6 +10,7 @@ import numpy as np
 import batchJob
 from getdist import MCSamples, paramNames
 from getdist.paramPriors import ParamBounds
+from getdist.densities import Density1D, Density2D
 
 """Plotting scripts for GetDist outputs"""
 
@@ -36,14 +37,14 @@ class GetDistPlotSettings(object):
         self.x_label_rotation = 0
         self.num_shades = 80
         self.shade_level_scale = 1.8  # contour levels at [0:1:spacing]**shade_level_scale
-        self.shade_level_scale_meanlikes = 1.2  # equivalnet if shade_meanlikes = True
+        self.shade_level_scale_meanlikes = 1.2  # equivalent if shade_meanlikes = True
         self.fig_width_inch = fig_width_inch  # if you want to force specific fixed width
         self.progress = False
         self.tight_layout = True
         self.no_triangle_axis_labels = True
 # see http://www.scipy.org/Cookbook/Matplotlib/Show_colormaps
-        self.colormap = cm.get_cmap("Blues")
-        self.colormap_scatter = cm.get_cmap("jet")
+        self.colormap = "Blues"
+        self.colormap_scatter = "jet"
         self.colorbar_rotation = None  # e.g. -90
         self.colorbar_label_pad = 0
         self.colorbar_label_rotation = -90  # seems to cause problems with some versions, can set to zero
@@ -133,17 +134,6 @@ def getSubplotPlotter(subplot_size=2, width_inch=None, **kwargs):
     return plotter
 
 
-class Density1D(object):
-    def bounds(self): return min(self.x), max(self.x)
-
-class Density2D(object):
-    def bounds(self):
-        return (self.x1.min(), self.x2.min()), (self.x1.max(), self.x2.max())
-
-    def xy_bounds(self):
-        return (self.x1.min(), self.x1.max()), (self.x2.min(), self.x2.max())
-
-
 class SampleAnalysisGetDist(object):
 
     def __init__(self, plot_data):
@@ -155,20 +145,16 @@ class SampleAnalysisGetDist(object):
         self.single_samples = dict()
 
     def get_density_grid(self, root, param1, param2, conts=2, likes=False):
-        if likes:  res = self.load_2d(root, param1, param2, '_likes')
-        else: res = self.load_2d(root, param1, param2)
+        res = self.load_2d(root, param1, param2)
+        if likes: res.likes = self.load_2d(root, param1, param2, '_likes', no_axes=True)
         if res is None: return None
-        result = Density2D()
-        (result.pts, result.x1, result.x2) = res
-        if conts > 0: result.contours = self.load_2d(root, param1, param2, '_cont', no_axes=True)[0:conts]
-        return result
+        if conts > 0: res.contours = self.load_2d(root, param1, param2, '_cont', no_axes=True)[0:conts]
+        return res
 
     def get_density(self, root, param, likes=False):
-        result = Density1D()
         pts = self.load_1d(root, param)
         if pts is None: return None
-        result.x = pts[:, 0]
-        result.pts = pts[:, 1]
+        result = Density1D(pts[:, 0], pts[:, 1])
         if likes: result.likes = self.load_1d(root, param, '.likes')[:, 1]
         return result
 
@@ -221,8 +207,8 @@ class SampleAnalysisGetDist(object):
         if no_axes: return pts
         x = np.loadtxt(fname + '_x')
         y = np.loadtxt(fname + '_y')
-        if transpose: return (pts, y, x)
-        else: return (pts, x, y)
+        if transpose: return Density2D(y, x, pts)
+        else: return Density2D(x, y, pts)
 
 
 class MCSampleAnalysis(object):
@@ -304,7 +290,7 @@ class MCSampleAnalysis(object):
     def newPlot(self):
         pass
 
-    def get_1d(self, root, param, likes=False):
+    def get_density(self, root, param, likes=False):
         rootdata = self.densities_1D.get(root)
         if rootdata is None:
             rootdata = {}
@@ -312,44 +298,28 @@ class MCSampleAnalysis(object):
 
         name = param.name
         samples = self.samplesForRoot(root)
-        density = rootdata.get(name)
+        key = name
+        if likes: key = (name, likes)
+        density = rootdata.get(key)
         if density is None:
-            index = samples.index.get(name)
-            if index is None: return None
-            density = samples.get1DDensityGridData(index)
-            rootdata[name] = density
+            density = samples.get1DDensityGridData(name, meanlikes=likes)
+            if density is None: return None
+            rootdata[key] = density
         return density
-
-    def get_density(self, root, param, likes=False):
-        result = Density1D()
-        pts = self.get_1d(root, param, likes)
-        if pts is None: return None
-        result.x, result.pts, result.likes = pts
-        return result
 
     def get_density_grid(self, root, param1, param2, conts=2, likes=False):
         rootdata = self.densities_2D.get(root)
         if not rootdata:
             rootdata = {}
             self.densities_2D[root] = rootdata
-        key = (param1.name, param2.name)
+        key = (param1.name, param2.name, likes)
         density = rootdata.get(key)
         if not density:
             samples = self.samplesForRoot(root)
-            index1 = samples.index.get(param1.name)
-            index2 = samples.index.get(param2.name)
-            if index1 is None or index2 is None: return None
-            density = samples.get2DPlotData(index1, index2, num_plot_contours=conts)
+            density = samples.get2DDensityGridData(param1.name, param2.name, num_plot_contours=conts, meanlikes=likes)
             if density is None: return None
             rootdata[key] = density
-        result = Density2D()
-        dat, datlikes, cont, result.x1, result.x2 = density
-        if likes:
-            result.pts = datlikes
-        else:
-            result.pts = dat
-        if conts > 0: result.contours = cont[0:conts]
-        return result
+        return density
 
     def load_single_samples(self, root):
         if not root in self.single_samples:
@@ -382,8 +352,6 @@ class GetDistPlotter(object):
         else: self.plot_data = plot_data
         if chain_dir is not None or mcsamples and plot_data is None:
             self.sampleAnalyser = MCSampleAnalysis(chain_dir, analysis_settings)
-            self.sampleAnalyser.ini.params.update({'plot_meanlikes':self.settings.plot_meanlikes})
-            self.sampleAnalyser.ini.params.update({'shade_meanlikes':self.settings.shade_meanlikes})
         else:
             self.sampleAnalyser = SampleAnalysisGetDist(self.plot_data)
         self.newPlot()
@@ -471,15 +439,11 @@ class GetDistPlotter(object):
         param = self.check_param(root, param)
         density = self.sampleAnalyser.get_density(root, param, likes=self.settings.plot_meanlikes)
         if density is None: return None;
-        pts = density.pts
-        if normalized:
-            norm = (pts[0] + pts[-1]) / 2 + sum(pts[1:-1])
-            norm *= density.x[1] - density.x[0]
-            pts /= norm
+        if normalized: density.normalize()
 
         kwargs = self.get_line_styles(plotno, **kwargs)
         self.lines_added[plotno] = kwargs
-        l, = plt.plot(density.x, pts, **kwargs)
+        l, = plt.plot(density.x, density.P, **kwargs)
         if kwargs.get('dashes'):
             l.set_dashes(kwargs['dashes'])
         if self.settings.plot_meanlikes:
@@ -492,7 +456,8 @@ class GetDistPlotter(object):
                             add_legend_proxy=True, param_pair=None, density=None, alpha=None, **kwargs):
         param1, param2 = self.get_param_array(root, param_pair or [param1, param2])
 
-        if not density: density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_plot_contours, likes=False)
+        if not density: density = self.sampleAnalyser.get_density_grid(root, param1, param2,
+                                    conts=self.settings.num_plot_contours, likes=self.settings.shade_meanlikes)
         if density is None:
             if add_legend_proxy: self.contours_added.append(None)
             return None
@@ -517,10 +482,10 @@ class GetDistPlotter(object):
                     for _ in range(1, len(density.contours)):
                         cols = [[c * (1 - self.settings.solid_contour_palefactor) + self.settings.solid_contour_palefactor for c in cols[0]]] + cols
                 else: cols = color
-            levels = sorted(np.append([density.pts.max() + 1], density.contours))
-            CS = plt.contourf(density.x1, density.x2, density.pts, levels, colors=cols, alpha=alpha, **kwargs)
+            levels = sorted(np.append([density.P.max() + 1], density.contours))
+            CS = plt.contourf(density.x, density.y, density.P, levels, colors=cols, alpha=alpha, **kwargs)
             if proxyIx >= 0: self.contours_added[proxyIx] = (plt.Rectangle((0, 0), 1, 1, fc=CS.tcolors[-1][0]))
-            plt.contour(density.x1, density.x2, density.pts, levels[:1], colors=CS.tcolors[1],
+            plt.contour(density.x, density.y, density.P, levels[:1], colors=CS.tcolors[1],
                     linewidths=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines, **kwargs)
         else:
             args = self.get_line_styles(plotno, **kwargs)
@@ -531,7 +496,7 @@ class GetDistPlotter(object):
             cols = [args['color']]
             kwargs = self.get_plot_args(plotno, **kwargs)
             kwargs['alpha'] = alpha
-            CS = plt.contour(density.x1, density.x2, density.pts, density.contours, colors=cols , linestyles=linestyles, linewidths=self.settings.lw_contour, **kwargs)
+            CS = plt.contour(density.x, density.y, density.P, density.contours, colors=cols , linestyles=linestyles, linewidths=self.settings.lw_contour, **kwargs)
             dashes = args.get('dashes')
             if dashes:
                 for c in CS.collections:
@@ -541,11 +506,11 @@ class GetDistPlotter(object):
                 if dashes: line.set_dashes(dashes)
                 self.contours_added[proxyIx] = line
 
-        return density.xy_bounds()
+        return density.bounds()
 
-    def add_2d_shading(self, root, param1, param2, colormap=None):
+    def add_2d_shading(self, root, param1, param2, colormap=None, density=None):
         param1, param2 = self.get_param_array(root, [param1, param2])
-        density = self.sampleAnalyser.get_density_grid(root, param1, param2, conts=0, likes=self.settings.shade_meanlikes)
+        density = density or self.sampleAnalyser.get_density_grid(root, param1, param2, conts=0, likes=self.settings.shade_meanlikes)
         if density is None: return
         if colormap is None: colormap = self.settings.colormap
         scalarMap = cm.ScalarMappable(cmap=colormap)
@@ -557,16 +522,19 @@ class GetDistPlotter(object):
         for i in range(n):
             cols[i + 1] = (white * (n - i) + np.array(cols[i + 1]) * i) / float(n)
         cols[0][3] = 0  # keep edges clear
-#        pcolor(density.x1, density.x2, density.pts, cmap=self.settings.colormap, vmin=1. / self.settings.num_shades)
+#        pcolor(density.x, density.y, density.P, cmap=self.settings.colormap, vmin=1. / self.settings.num_shades)
         levels = np.linspace(0, 1, self.settings.num_shades)
         if self.settings.shade_meanlikes:
             levels = levels ** self.settings.shade_level_scale_meanlikes
         else:
             levels = levels ** self.settings.shade_level_scale
-
-        plt.contourf(density.x1, density.x2, density.pts, self.settings.num_shades, colors=cols, levels=levels)
+        if self.settings.shade_meanlikes:
+            points = density.likes
+        else:
+            points = density.P
+        plt.contourf(density.x, density.y, points, self.settings.num_shades, colors=cols, levels=levels)
 # doing contourf gets rid of annoying wehite lines in pdfs
-        plt.contour(density.x1, density.x2, density.pts, self.settings.num_shades, colors=cols, levels=levels)
+        plt.contour(density.x, density.y, points, self.settings.num_shades, colors=cols, levels=levels)
 
 
     def updateLimit(self, bounds, curbounds):
@@ -690,15 +658,15 @@ class GetDistPlotter(object):
             self.setAxisProperties(ax.yaxis, False, prune)
             if do_ylabel:self.set_ylabel(params[1])
             elif no_label_no_numbers: ax.set_yticklabels([])
-        if color_label_in_axes and len(params) > 2: self.add_text(r'$' + params[2].label + '$')
+        if color_label_in_axes and len(params) > 2: self.add_text(params[2].latexLabel())
         return ax
 
     def set_xlabel(self, param):
-        plt.xlabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize,
+        plt.xlabel(param.latexLabel(), fontsize=self.settings.lab_fontsize,
                 verticalalignment='baseline', labelpad=4 + self.settings.font_size)  # test_size because need a number not e.g. 'medium'
 
     def set_ylabel(self, param):
-        plt.ylabel(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize)
+        plt.ylabel(param.latexLabel(), fontsize=self.settings.lab_fontsize)
 
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
                 no_ylabel=False, no_ytick=False, no_zero=False, normalized=False, param_renames={}, **kwargs):
@@ -773,7 +741,7 @@ class GetDistPlotter(object):
         else:
             p = self.check_param(root, param)
         if not p: raise Exception('Parameter not found: ' + param)
-        return r'$' + p.label + r'$'
+        return p.latexLabel()
 
     def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False,
                    figure=False, ax=None, label_order=None, align_right=False, fontsize=None):
