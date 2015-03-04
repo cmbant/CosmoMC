@@ -252,7 +252,7 @@ if not no_plots:
         if make_plots: runScript(filename)
 
     # Do 3D plots (i.e. 2D scatter plots with coloured points)
-    if num_3D_plots <> 0:
+    if num_3D_plots:
         print '...producing ', num_3D_plots, '2D colored scatter plots'
         filename = rootdirname + '_3D.' + plot_ext
         mc.WriteScriptPlots3D(filename, plot_3D)

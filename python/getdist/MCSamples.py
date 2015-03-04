@@ -1236,9 +1236,17 @@ class MCSamples(chains):
         bins2D = fftconvolve(fineused, Win, 'valid')
 
         if meanlikes:
-            bin2Dlikes = fftconvolve(finebinlikes[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
-                                                  ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
-                                                  Win, 'valid')
+            fine = finebinlikes[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
+                                ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin]
+            bin2Dlikes = fftconvolve(fine, Win, 'valid')
+            if self.mult_bias_correction_order:
+                ix = bin2Dlikes > 0
+                fine = fine[winw:-winw, winw:-winw]
+                fine[ix] /= bin2Dlikes[ix]
+                likes2 = fftconvolve(fine, Win, 'same')
+                likes2[ix] *= bin2Dlikes[ix]
+                bin2Dlikes = likes2
+
             del finebinlikes
             mx = 1e-4 * np.max(bins2D)
             bin2Dlikes[bins2D > mx] /= bins2D[bins2D > mx]

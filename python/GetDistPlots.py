@@ -14,6 +14,8 @@ from getdist.densities import Density1D, Density2D
 
 """Plotting scripts for GetDist outputs"""
 
+class GetDistPlotError(Exception):
+    pass
 
 class GetDistPlotSettings(object):
     """Default sizes, font, styles etc settings for use by plots"""
@@ -37,7 +39,6 @@ class GetDistPlotSettings(object):
         self.x_label_rotation = 0
         self.num_shades = 80
         self.shade_level_scale = 1.8  # contour levels at [0:1:spacing]**shade_level_scale
-        self.shade_level_scale_meanlikes = 1.2  # equivalent if shade_meanlikes = True
         self.fig_width_inch = fig_width_inch  # if you want to force specific fixed width
         self.progress = False
         self.tight_layout = True
@@ -256,7 +257,7 @@ class MCSampleAnalysis(object):
         if not file_root:
             if self.batch:
                 jobItem = self.batch.resolveRoot(root)
-                if not jobItem: raise Exception('chain not found: ' + root)
+                if not jobItem: raise GetDistPlotError('chain not found: ' + root)
                 file_root = jobItem.chainRoot
                 dist_settings = jobItem.dist_settings
             else:
@@ -265,7 +266,7 @@ class MCSampleAnalysis(object):
                     if os.path.exists(name + '_1.txt') or os.path.exists(name + '.txt'):
                         file_root = name
                         break
-                if not file_root:  raise Exception('chain not found: ' + root)
+                if not file_root:  raise GetDistPlotError('chain not found: ' + root)
         self.mcsamples[root] = MCSamples.loadMCSamples(file_root, self.ini, jobItem, dist_settings=dist_settings)
         return self.mcsamples[root]
 
@@ -298,8 +299,8 @@ class MCSampleAnalysis(object):
 
         name = param.name
         samples = self.samplesForRoot(root)
-        key = name
-        if likes: key = (name, likes)
+        key = (name, likes)
+        rootdata.pop((name, not likes), None)
         density = rootdata.get(key)
         if density is None:
             density = samples.get1DDensityGridData(name, meanlikes=likes)
@@ -312,7 +313,7 @@ class MCSampleAnalysis(object):
         if not rootdata:
             rootdata = {}
             self.densities_2D[root] = rootdata
-        key = (param1.name, param2.name, likes)
+        key = (param1.name, param2.name, likes, conts)
         density = rootdata.get(key)
         if not density:
             samples = self.samplesForRoot(root)
@@ -345,6 +346,7 @@ class GetDistPlotter(object):
         Set plot_data to directory name if you have pre-compputed plot_data/ directory from GetDist
         Set chain_dir to directly to use chains in the given directory (can also be a list of directories to search)
         """
+        self.chain_dir = chain_dir
         if settings is None: self.settings = copy.deepcopy(defaultSettings)
         else: self.settings = settings
         if chain_dir is None and plot_data is None: chain_dir = MCSamples.default_grid_root
@@ -379,10 +381,17 @@ class GetDistPlotter(object):
             print key, ':', value
 
     def get_plot_args(self, plotno, **kwargs):
-        if not self.settings.plot_args is None and len(self.settings.plot_args) > plotno:
-            args = self.settings.plot_args[plotno]  #
-            if args is None: args = dict()
-        else: args = dict()
+        if isinstance(self.settings.plot_args, dict):
+            args = self.settings.plot_args
+        elif isinstance(self.settings.plot_args, list):
+            if len(self.settings.plot_args) > plotno:
+                args = self.settings.plot_args[plotno]
+                if args is None: args = dict()
+            else:
+                args = {}
+        elif not self.settings.plot_args: args = dict()
+        else:
+            raise GetDistPlotError('plot_args must be list of dictionaries or dictionary: %s' % (self.settings.plot_args))
         args.update(kwargs)
         return args
 
@@ -485,7 +494,7 @@ class GetDistPlotter(object):
             levels = sorted(np.append([density.P.max() + 1], density.contours))
             CS = plt.contourf(density.x, density.y, density.P, levels, colors=cols, alpha=alpha, **kwargs)
             if proxyIx >= 0: self.contours_added[proxyIx] = (plt.Rectangle((0, 0), 1, 1, fc=CS.tcolors[-1][0]))
-            plt.contour(density.x, density.y, density.P, levels[:1], colors=CS.tcolors[1],
+            plt.contour(density.x, density.y, density.P, levels[:1], colors=CS.tcolors[-1],
                     linewidths=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines, **kwargs)
         else:
             args = self.get_line_styles(plotno, **kwargs)
@@ -510,7 +519,7 @@ class GetDistPlotter(object):
 
     def add_2d_shading(self, root, param1, param2, colormap=None, density=None):
         param1, param2 = self.get_param_array(root, [param1, param2])
-        density = density or self.sampleAnalyser.get_density_grid(root, param1, param2, conts=0, likes=self.settings.shade_meanlikes)
+        density = density or self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_plot_contours, likes=self.settings.shade_meanlikes)
         if density is None: return
         if colormap is None: colormap = self.settings.colormap
         scalarMap = cm.ScalarMappable(cmap=colormap)
@@ -523,11 +532,7 @@ class GetDistPlotter(object):
             cols[i + 1] = (white * (n - i) + np.array(cols[i + 1]) * i) / float(n)
         cols[0][3] = 0  # keep edges clear
 #        pcolor(density.x, density.y, density.P, cmap=self.settings.colormap, vmin=1. / self.settings.num_shades)
-        levels = np.linspace(0, 1, self.settings.num_shades)
-        if self.settings.shade_meanlikes:
-            levels = levels ** self.settings.shade_level_scale_meanlikes
-        else:
-            levels = levels ** self.settings.shade_level_scale
+        levels = np.linspace(0, 1, self.settings.num_shades) ** self.settings.shade_level_scale
         if self.settings.shade_meanlikes:
             points = density.likes
         else:
@@ -684,7 +689,7 @@ class GetDistPlotter(object):
             if bounds is not None and not plotparam:
                     plotparam = root_param
                     plotroot = root
-        if plotparam is None: raise Exception('No roots have parameter: ' + str(param))
+        if plotparam is None: raise GetDistPlotError('No roots have parameter: ' + str(param))
         if marker is not None: self.add_x_marker(marker, marker_color)
         if not 'lims' in kwargs:
             xmin, xmax = self.checkBounds(plotroot, plotparam.name, xmin, xmax)
@@ -699,8 +704,8 @@ class GetDistPlotter(object):
             if label_right:
                 ax.yaxis.set_label_position("right")
                 ax.yaxis.tick_right()
-                ax.ylabel(lab)
-            else: ax.ylabel(lab)
+                ax.set_ylabel(lab)
+            else: ax.set_ylabel(lab)
         if no_ytick or not self.settings.prob_y_ticks: ax.set_yticks([])
         elif no_ylabel: ax.set_yticklabels([])
         elif no_zero and not normalized:
@@ -740,7 +745,7 @@ class GetDistPlotter(object):
             p = self.sampleAnalyser.paramsForRoot(root, labelParams=labelParams).parWithName(param)
         else:
             p = self.check_param(root, param)
-        if not p: raise Exception('Parameter not found: ' + param)
+        if not p: raise GetDistPlotError('Parameter not found: ' + param)
         return p.latexLabel()
 
     def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False,
@@ -862,12 +867,12 @@ class GetDistPlotter(object):
                 params2 = self.get_param_array(roots[0], params2)
                 for param in params2:
                     if param.name != param1.name: pairs.append((param1, param))
-            else: raise Exception('No parameter or parameter pairs for 2D plot')
+            else: raise GetDistPlotError('No parameter or parameter pairs for 2D plot')
         else:
             for pair in param_pairs:
                 pairs.append((self.check_param(roots[0], pair[0]), self.check_param(roots[0], pair[1])))
         if filled and shaded:
-            raise Exception("Plots cannot be both filled and shaded")
+            raise GetDistPlotError("Plots cannot be both filled and shaded")
         plot_col, plot_row = self.make_figure(len(pairs), nx=nx)
 
         for i, pair in enumerate(pairs):
@@ -978,7 +983,7 @@ class GetDistPlotter(object):
             xshares = []
             ax_arr = []
             if plot_roots and yroots or roots and yroots or plot_roots and roots:
-                raise Exception('rectangle plot: must have one of roots, yroots, plot_roots')
+                raise GetDistPlotError('rectangle plot: must have one of roots, yroots, plot_roots')
             limits = dict()
             for x, xparam in enumerate(xparams):
                 sharex = None
@@ -1040,7 +1045,7 @@ class GetDistPlotter(object):
             (ax or plt.gca()).add_line(plt.Line2D(P1, P2, color=color, ls=ls, zorder=zorder, **kwargs))
 
     def add_colorbar_label(self, cb, param):
-        cb.set_label(r'$' + param.label + '$', fontsize=self.settings.lab_fontsize,
+        cb.set_label(param.latexLabel(), fontsize=self.settings.lab_fontsize,
                      rotation=self.settings.colorbar_label_rotation, labelpad=self.settings.colorbar_label_pad)
         plt.setp(plt.getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.colorbar_axes_fontsize)
 
@@ -1081,7 +1086,7 @@ class GetDistPlotter(object):
         if params_for_plots:
             params_for_plots = [self.get_param_array(root, p) for p, root in zip(params_for_plots, roots)]
         else:
-            if not in_params: raise Exception('No parameters for plot_3d!')
+            if not in_params: raise GetDistPlotError('No parameters for plot_3d!')
             params = self.get_param_array(roots[0], in_params)
             params_for_plots = [params for root in roots]  # all the same
         if self.fig is None: self.make_figure()

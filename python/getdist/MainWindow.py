@@ -3,6 +3,7 @@
 import os
 import sys
 import signal
+import copy
 import logging
 import GetDistPlots
 import matplotlib
@@ -67,12 +68,19 @@ class MainWindow(QMainWindow):
         self.app = app
         self.base_dir = base_dir
 
+        self.orig_rc = matplotlib.rcParams.copy()
+        self.plot_module = 'GetDistPlots'
+        self.script_plot_module = self.plot_module
+
         # GUI setup
         self.createWidgets()
         self.createActions()
         self.createMenus()
         self.createStatusBar()
         self.settingDlg = None
+        self.ConfigDlg = None
+        self.plotSettingDlg = None
+        self.custom_plot_settings = {}
 
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.setWindowTitle("GetDist GUI")
@@ -85,8 +93,6 @@ class MainWindow(QMainWindow):
 
         # Path of root directory
         self.rootdirname = None
-
-        self.plot_module = 'GetDistPlots'
 
         self._resetGridData()
         self._resetPlotData()
@@ -147,8 +153,20 @@ class MainWindow(QMainWindow):
         self.optionsAct = QAction(QIcon(""),
                                "Analysis settings", self,
                                shortcut="",
-                               statusTip="Show settings for getdist and plots",
+                               statusTip="Show settings for getdist and plot densities",
                                triggered=self.showSettings)
+
+        self.plotOptionsAct = QAction(QIcon(""),
+                               "Plot settings", self,
+                               shortcut="",
+                               statusTip="Show settings for plot display",
+                               triggered=self.showPlotSettings)
+
+        self.configOptionsAct = QAction(QIcon(""),
+                               "Plot module config ", self,
+                               shortcut="",
+                               statusTip="Configure plot module",
+                               triggered=self.showConfigSettings)
 
         self.aboutAct = QAction(QIcon(":/images/help_about.png"),
                                 "&About", self,
@@ -176,6 +194,8 @@ class MainWindow(QMainWindow):
         self.menuBar().addSeparator()
         self.optionMenu = self.menuBar().addMenu("&Options")
         self.optionMenu.addAction(self.optionsAct)
+        self.optionMenu.addAction(self.plotOptionsAct)
+        self.optionMenu.addAction(self.configOptionsAct)
 
         self.menuBar().addSeparator()
 
@@ -343,11 +363,16 @@ class MainWindow(QMainWindow):
         size = settings.value("size", size)
         self.resize(size)
         self.move(pos)
+        self.plot_module = settings.value("plot_module", self.plot_module)
+        self.script_plot_module = settings.value("script_plot_module", self.script_plot_module)
+
 
     def writeSettings(self):
         settings = self.getSettings()
         settings.setValue("pos", self.pos())
         settings.setValue("size", self.size())
+        settings.setValue('plot_module', self.plot_module)
+        settings.setValue('script_plot_module', self.script_plot_module)
 
     # slots for menu actions
 
@@ -471,18 +496,99 @@ class MainWindow(QMainWindow):
         Callback for action 'Show settings'
         """
         if not self.plotter:
-            QMessageBox.warning(self, "settings", "Open chains first ")
+            QMessageBox.warning(self, "Settings", "Open chains first ")
             return
         if isinstance(self.iniFile, basestring): self.iniFile = iniFile(self.iniFile)
         self.settingDlg = self.settingDlg or DialogSettings(self, self.iniFile)
         self.settingDlg.show()
         self.settingDlg.activateWindow()
 
+
     def settingsChanged(self):
         if self.plotter:
             self.plotter.sampleAnalyser.reset(self.iniFile)
             self.plotData()
 
+    def showPlotSettings(self):
+        """
+        Callback for action 'Show plot settings'
+        """
+        self.getPlotter()
+        settings = self.default_plot_settings
+        pars = ['plot_meanlikes', 'shade_meanlikes', 'prob_label', 'norm_prob_label', 'prob_y_ticks', 'lineM', 'plot_args', 'solid_colors',
+                'default_dash_styles', 'line_labels', 'x_label_rotation', 'num_shades', 'shade_level_scale',
+                'tight_layout', 'no_triangle_axis_labels', 'colormap', 'colormap_scatter', 'colorbar_rotation', 'colorbar_label_pad',
+                'colorbar_label_rotation', 'tick_prune', 'tight_gap_fraction', 'legend_loc', 'figure_legend_loc', 'legend_frame',
+                'figure_legend_frame', 'figure_legend_ncol', 'legend_rect_border', 'legend_frac_subplot_margin', 'legend_frac_subplot_line',
+                'num_plot_contours', 'solid_contour_palefactor', 'alpha_filled_add', 'alpha_factor_contour_lines', 'axis_marker_color',
+                'axis_marker_ls', 'axis_marker_lw']
+        pars.sort
+        ini = iniFile()
+        for par in pars:
+            ini.getAttr(settings, par)
+        ini.params.update(self.custom_plot_settings)
+        self.plotSettingIni = ini
+
+        self.plotSettingDlg = self.plotSettingDlg or DialogPlotSettings(self, ini, pars, title='Plot Settings', width=450)
+        self.plotSettingDlg.show()
+        self.plotSettingDlg.activateWindow()
+
+    def plotSettingsChanged(self, vals):
+        try:
+            settings = self.default_plot_settings
+            self.custom_plot_settings = {}
+            for key, value in vals.iteritems():
+                current = getattr(settings, key)
+                if str(current) <> value and len(value):
+                    if isinstance(current, basestring):
+                        self.custom_plot_settings[key] = value
+                    elif current is None:
+                        try:
+                            self.custom_plot_settings[key] = eval(value)
+                        except:
+                            self.custom_plot_settings[key] = value
+                    else:
+                            self.custom_plot_settings[key] = eval(value)
+                else:
+                    self.custom_plot_settings.pop(key, None)
+        except Exception as e:
+            self.errorReport(e, caption="Plot settings")
+        self.plotData()
+
+    def showConfigSettings(self):
+        """
+        Callback for action 'Show config settings'
+        """
+        ini = iniFile()
+        ini.params['plot_module'] = self.plot_module
+        ini.params['script_plot_module'] = self.script_plot_module
+        ini.comments['plot_module'] = ["module used by the GUI (e.g. change to planckStyle)"]
+        ini.comments['script_plot_module'] = ["module used by saved plot scripts  (e.g. change to planckStyle)"]
+        self.ConfigDlg = self.ConfigDlg or DialogConfigSettings(self, ini, ini.params.keys(), title='Plot Config')
+        self.ConfigDlg.show()
+        self.ConfigDlg.activate()
+
+
+    def configSettingsChanged(self, vals):
+        scriptmod = vals.get('script_plot_module', self.script_plot_module)
+        self.script = ''
+        mod = vals.get('plot_module', self.plot_module)
+        if mod <> self.plot_module or scriptmod <> self.script_plot_module:
+            try:
+                matplotlib.rcParams.update(self.orig_rc)
+                __import__(mod)  # test for error
+                self.plot_module = mod
+                self.script_plot_module = scriptmod
+                if self.plotSettingDlg:
+                    self.plotSettingDlg.close()
+                    self.plotSettingDlg = None
+                if self.plotter:
+                    hasPlot = self.plotter.fig
+                    self.getPlotter(loadNew=True, chain_dir=self.plotter.chain_dir)
+                    self.custom_plot_settings = {}
+                    if hasPlot: self.plotData()
+            except Exception as e:
+                self.errorReport(e, "plot_module")
 
     def about(self):
         """
@@ -541,9 +647,15 @@ class MainWindow(QMainWindow):
 
         self._updateComboBoxRootname(root_list)
 
-    def getPlotter(self, chain_dir=None):
-        if self.plotter is None or chain_dir:
-            self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True, chain_dir=chain_dir, analysis_settings=self.iniFile)
+    def getPlotter(self, chain_dir=None, loadNew=False):
+        try:
+            if self.plotter is None or chain_dir or loadNew:
+                module = __import__(self.plot_module)
+                self.plotter = module.getPlotter(mcsamples=True, chain_dir=chain_dir, analysis_settings=self.iniFile)
+    #            self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True, chain_dir=chain_dir, analysis_settings=self.iniFile)
+                self.default_plot_settings = copy.copy(self.plotter.settings)
+        except Exception as e:
+            self.errorReport(e, caption="Make plotter")
         return self.plotter
 
     def _updateParameters(self):
@@ -802,7 +914,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, 'Param error', str(e))
         elif isinstance(e, MCSamples.FileException):
             QMessageBox.critical(self, 'File error', str(e))
-        elif isinstance(e, GuiSelectionError):
+        elif isinstance(e, (GuiSelectionError, GetDistPlots.GetDistPlotError)):
             QMessageBox.critical(self, caption, str(e))
         else:
             if not msg:
@@ -812,7 +924,6 @@ class MainWindow(QMainWindow):
             del msg
 
         if not isinstance(e, GuiSelectionError): raise
-
 
     def plotData(self):
         """
@@ -842,32 +953,42 @@ class MainWindow(QMainWindow):
             # X and Y items
             items_x = self.getXParams()
             items_y = self.getYParams()
+            self.plotter.settings = copy.copy(self.default_plot_settings)
             self.plotter.settings.setWithSubplotSize(3.5)
             self.plotter.settings.legend_position_config = 2
             self.plotter.settings.legend_frac_subplot_margin = 0.05
+            self.plotter.settings.__dict__.update(self.custom_plot_settings)
 
-            script = "import %s as s\nimport os\n\n" % self.plot_module
+            script = "import %s as s\nimport os\n\n" % self.script_plot_module
+            if isinstance(self.iniFile, iniFile):
+                    script += 'analysis_settings = %s\n' % (self.iniFile.params)
             if len(items_x) > 1 or len(items_y) > 1:
                 plot_func = 'getSubplotPlotter'
             else:
                 plot_func = 'getSinglePlotter'
             if self.is_grid:
-                script += "g=s.%s(chain_dir=r'%s')\n" % (plot_func, self.rootdirname)
+                if isinstance(self.iniFile, iniFile):
+                    script += "g=s.%s(chain_dir=r'%s',analysis_settings=analysis_settings)\n" % (plot_func, self.rootdirname)
+                else:
+                    script += "g=s.%s(chain_dir=r'%s')\n" % (plot_func, self.rootdirname)
             else:
                 if isinstance(self.iniFile, basestring):
                     script += "g=s.%s(mcsamples=True, analysis_settings=r'%s')\n" % (plot_func, self.iniFile)
                 elif isinstance(self.iniFile, iniFile):
-                    script += 'analysis_settings = %s\n' % (self.iniFile.params)
-                    script += "g=s.%s(mcsamples=True, analysis_settings=%s)\n" % (plot_func, 'analysis_settings')
+                    script += "g=s.%s(mcsamples=True, analysis_settings=analysis_settings)\n" % (plot_func)
                 else:
                     script += "g=s.%s(mcsamples=True)\n" % (plot_func)
-
-            # Root names
-            if not self.is_grid:
                 for root in roots:
                     script += "g.sampleAnalyser.addRoot(r'%s')\n" % (self.rootfiles[root])
 
-            if len(roots) < 3: script += 'roots = %s\n' % (roots)
+            if self.custom_plot_settings:
+                for key, value in self.custom_plot_settings.iteritems():
+                    if isinstance(value, basestring):
+                        value = '"' + value + '"'
+                    script += 'g.settings.%s = %s\n' % (key, value)
+
+            if len(roots) < 3:
+                script += 'roots = %s\n' % (roots)
             else:
                 script += "roots = []\n"
                 for root in roots:
@@ -1171,27 +1292,26 @@ class DialogPCA(DialogTextOutput):
         h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, 800)
         self.resize(500, h)
 
-
 # ==============================================================================
 
 class DialogSettings(QDialog):
 
-    def __init__(self, parent, ini):
+    def __init__(self, parent, ini, items=None, title='Analysis Settings', width=300, update=None):
         QDialog.__init__(self, parent)
 
+        self.update = update
         self.table = QTableWidget(self)
         self.table.verticalHeader().hide()
 
         layout = QGridLayout()
         layout.addWidget(self.table, 0, 0)
         button = QPushButton("Update")
-        self.connect(button, SIGNAL("clicked()"),
-                     self.doUpdate)
+        self.connect(button, SIGNAL("clicked()"), self.doUpdate)
 
         layout.addWidget(button, 1, 0)
         self.setLayout(layout)
 
-        self.setWindowTitle(self.tr('Settings'))
+        self.setWindowTitle(self.tr(title))
 
         headers = ['parameter', 'value']
         self.table.setColumnCount(len(headers))
@@ -1200,18 +1320,21 @@ class DialogSettings(QDialog):
         self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
 
-        names = iniFile(MCSamples.default_getdist_settings)
-        items = []
-        self.ini = ini
-        for key in ini.readOrder:
-            if key in names.params:
-                items.append(key)
+        if items is None:
+            names = iniFile(MCSamples.default_getdist_settings)
+            items = []
+            self.ini = ini
+            for key in ini.readOrder:
+                if key in names.params:
+                    items.append(key)
 
-        for key in ini.params:
-            if not key in items and key in names.params:
-                items.append(key)
+            for key in ini.params:
+                if not key in items and key in names.params:
+                    items.append(key)
+        else:
+            names = ini
 
-        nblank = 3
+        nblank = 1
         self.rows = len(items) + nblank
         self.table.setRowCount(self.rows)
         for irow, key in enumerate(items):
@@ -1235,14 +1358,27 @@ class DialogSettings(QDialog):
 
         h = self.table.verticalHeader().length() + 40
         h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, h)
-        self.resize(300, h)
+        self.resize(width, h)
 
-    def doUpdate(self):
+    def getDict(self):
+        vals = {}
         for row in range(self.rows):
             key = self.table.item(row, 0).text().strip()
             if key:
-                self.ini.params[key] = self.table.item(row, 1).text().strip()
+                vals[key] = self.table.item(row, 1).text().strip()
+        return vals
+
+    def doUpdate(self):
+        self.ini.params.update(self.getDict())
         self.parent().settingsChanged()
+
+class DialogPlotSettings(DialogSettings):
+    def doUpdate(self):
+        self.parent().plotSettingsChanged(self.getDict())
+
+class DialogConfigSettings(DialogSettings):
+    def doUpdate(self):
+        self.parent().configSettingsChanged(self.getDict())
 
 
 if __name__ == "__main__":

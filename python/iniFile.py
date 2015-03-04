@@ -141,13 +141,17 @@ class iniFile(object):
         default = getattr(instance, name, default)
         setattr(instance, name, self.asType(name, type(default), default, allowEmpty=allowEmpty))
 
+    def getAttr(self, instance, name, default=None):
+        val = getattr(instance, name, default)
+        self.params[name] = val
+
     def bool(self, name, default=False):
         if self.isSet(name):
             s = self.params[name]
             if isinstance(s, bool): return s
-            if s == 'T': return True
-            elif s == 'F': return False
-            raise IniError('parameter does not have valid T or F boolean value: ' + name)
+            if s[0] == 'T': return True
+            elif s[0] == 'F': return False
+            raise IniError('parameter does not have valid T(rue) or F(alse) boolean value: ' + name)
         elif default is not None: return default
         else: self._undefined(name)
 
