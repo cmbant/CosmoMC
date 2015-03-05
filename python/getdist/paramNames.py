@@ -60,7 +60,7 @@ class paramList(object):
         if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
 
     def setDefault(self, n):
-        self.names = [paramInfo(name=str(i + 1)) for i in range(n)]
+        self.names = [paramInfo(name='param' + str(i + 1), label='p_' + str(i + 1)) for i in range(n)]
         return self
 
     def setWithNames(self, names):

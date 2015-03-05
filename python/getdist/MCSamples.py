@@ -293,15 +293,14 @@ class MCSamples(chains):
         rand = np.random.random_sample(self.numrows)
 
         if filename:
-            textFileHandle = open(filename, 'w')
-            for i, r in enumerate(rand):
-                if (r <= self.weights[i] / self.max_mult / single_thin):
-                    textFileHandle.write("%16.7E" % (1.0))
-                    textFileHandle.write("%16.7E" % (self.loglikes[i]))
-                    for j in range(self.n):
-                        textFileHandle.write("%16.7E" % (self.samples[i][j]))
-                    textFileHandle.write("\n")
-            textFileHandle.close()
+            with open(filename, 'w') as f:
+                for i, r in enumerate(rand):
+                    if r <= self.weights[i] / self.max_mult / single_thin:
+                        f.write("%16.7E" % (1.0))
+                        f.write("%16.7E" % (self.loglikes[i]))
+                        for j in range(self.n):
+                            f.write("%16.7E" % (self.samples[i][j]))
+                        f.write("\n")
         else:
             # return data
             return self.samples[rand <= self.weights / (self.max_mult * single_thin)]

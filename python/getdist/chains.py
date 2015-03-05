@@ -1,6 +1,6 @@
 import os, pickle, random
 import numpy as np
-from getdist.paramNames import paramNames
+from getdist.paramNames import paramNames, paramInfo
 from scipy.signal import fftconvolve
 
 class WeightedSampleError(Exception):
@@ -149,7 +149,10 @@ class WeightedSamples(object):
 
     def setMeans(self):
         self.means = self.weights.dot(self.samples) / self.norm
-        if self.loglikes is not None: self.mean_loglike = self.weights.dot(self.loglikes) / self.norm
+        if self.loglikes is not None:
+            self.mean_loglike = self.weights.dot(self.loglikes) / self.norm
+        else:
+            self.mean_loglike = None
         return self.means
 
     def getMeans(self):
@@ -383,22 +386,28 @@ class chains(WeightedSamples):
         self.precision = '%.8e'
         self.ignore_lines = float(kwargs.get('ignore_rows', 0))
         self.root = root
-        paramNamesFile = paramNamesFile or str(root) + '.paramnames'
+        if not paramNamesFile and root and os.path.exists(root + '.paramnames'):
+            paramNamesFile = root + '.paramnames'
         self.needs_update = True
         self.chains = None
+        self.setParamNames(paramNamesFile)
+
+    def setParamNames(self, names=None):
         self.paramNames = None
-        if isinstance(paramNamesFile, paramNames):
-            self.paramNames = paramNamesFile
-        elif os.path.exists(paramNamesFile):
-            self.paramNames = paramNames(paramNamesFile)
+        if isinstance(names, paramNames):
+            self.paramNames = names
+        elif isinstance(names, basestring):
+            self.paramNames = paramNames(names)
         elif names is not None:
             self.paramNames = paramNames(names=names)
         elif self.samples is not None:
             self.paramNames = paramNames(default=self.n)
-        if self.paramNames: self.getParamIndices()
-
+        if self.paramNames:
+            self.getParamIndices()
 
     def getParamIndices(self):
+        if len(self.paramNames.names) <> self.n and self.samples is not None:
+            raise WeightedSampleError("paramNames size does not match number of parameters in samples")
         index = dict()
         for i, name in enumerate(self.paramNames.names):
             index[name.name] = i
@@ -414,9 +423,15 @@ class chains(WeightedSamples):
         return pars
 
     def _makeParamvec(self, par):
+        if self.needs_update: self.updateBaseStatistics()
+        if isinstance(par, paramInfo): par = par.name
         if isinstance(par, basestring):
                 return self.samples[:, self.index[par]]
         return WeightedSamples._makeParamvec(self, par)
+
+    def updateChainBaseStatistics(self):
+        # old name, use updateBaseStatistics
+        self.updateBaseStatistics()
 
     def updateBaseStatistics(self):
         self.getVars()
@@ -426,7 +441,7 @@ class chains(WeightedSamples):
         self.needs_update = False
 
     def addDerived(self, paramVec, **kwargs):
-        self.samples = np.c_[self.samples, paramVec]
+        self.changeSamples(np.c_[self.samples, paramVec])
         self.needs_update = True
         return self.paramNames.addDerived(**kwargs)
 
@@ -507,7 +522,7 @@ class chains(WeightedSamples):
         self.paramNames.deleteIndices(fixed)
         self.getParamIndices()
 
-    def writeSingle(self, root):
+    def saveAsText(self, root):
         np.savetxt(root + '.txt', np.hstack((self.weights.reshape(-1, 1), self.loglikes.reshape(-1, 1), self.samples)), fmt=self.precision)
         self.paramNames.saveAsText(root + '.paramnames')
 
