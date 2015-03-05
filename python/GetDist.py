@@ -112,23 +112,15 @@ make_scatter_samples = ini.bool('make_scatter_samples', False)
 
 # ==============================================================================
 
-# Chain files
-chain_files = chains.chainFiles(in_root)
-
-def getLastChainIndex(in_root):
-    if not chain_files: return 0
-    names_files = [ os.path.basename(f) for f in chain_files ]
-    basename = os.path.basename(in_root)
-    indexes = [ int(f.replace(basename + '_', '').replace('.txt', '')) for f in names_files ]
-    return max(indexes)
-
 def runScript(fname):
     subprocess.Popen(['python', fname])
 
 first_chain = ini.int('first_chain', 1)
 last_chain = ini.int('chain_num', -1)
 # -1 means keep reading until one not found
-if last_chain == -1: last_chain = getLastChainIndex(in_root)
+
+# Chain files
+chain_files = chains.chainFiles(in_root, first_chain=first_chain, last_chain=last_chain)
 
 mc.loadChains(in_root, chain_files)
 
@@ -206,7 +198,7 @@ if make_single_samples:
     mc.makeSingleSamples(filename, single_thin)
 
 print mc.getNumSampleSummaryText().strip()
-print mc.likeStats.likeSummary().strip()
+if mc.likeStats: print mc.likeStats.likeSummary().strip()
 
 if PCA_num > 0 and not plots_only:
     mc.PCA(PCA_params, PCA_func, PCA_NormParam, writeDataToFile=True)
@@ -217,9 +209,12 @@ mc.setDensitiesandMarge1D(writeDataToFile=not no_plots, meanlikes=plot_meanlikes
 if not no_plots:
     # Output files for 1D plots
     print 'Calculating plot data...'
-    done2D = {}
 
-    mc.getBounds().saveToFile(os.path.join(plot_data_dir, rootname.strip() + '.bounds'))
+    # Write paramNames file
+    mc.getParamNames().saveAsText(os.path.join(plot_data_dir, rootname + '.paramnames'))
+    mc.getBounds().saveToFile(os.path.join(plot_data_dir, rootname + '.bounds'))
+
+    done2D = {}
 
     filename = rootdirname + '.' + plot_ext
     mc.WriteScriptPlots1D(filename, plotparams)
@@ -257,9 +252,6 @@ if not no_plots:
         filename = rootdirname + '_3D.' + plot_ext
         mc.WriteScriptPlots3D(filename, plot_3D)
         if make_plots: runScript(filename)
-
-# Write paramNames file
-    mc.paramNames.saveAsText(os.path.join(plot_data_dir, rootname + '.paramnames'))
 
 if not plots_only:
 # Write out stats marginalized

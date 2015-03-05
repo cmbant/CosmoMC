@@ -282,6 +282,7 @@ class MCSamples(chains):
 
         # Get ND confidence region
         self.setLikeStats()
+        return self
 
     def makeSingleSamples(self, filename="", single_thin=None):
         """
@@ -902,6 +903,7 @@ class MCSamples(chains):
         """
         Returns a Density1D instance for parameter with given name
         """
+        if self.needs_update: self.updateBaseStatistics()
         density = self.density1D.get(name, None)
         if density is not None: return density
         return self.get1DDensityGridData(name, get_density=True)
@@ -1131,6 +1133,7 @@ class MCSamples(chains):
         """
         Get 2D plot data.
         """
+        if self.needs_update: self.updateBaseStatistics()
         start = time.time()
         j, parx = self._parAndNumber(j)
         j2, pary = self._parAndNumber(j2)

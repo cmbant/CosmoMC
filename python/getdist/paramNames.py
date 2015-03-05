@@ -116,9 +116,8 @@ class paramList(object):
                 param.isDerived = par.isDerived
 
     def fileList(self, fname):
-        textFileHandle = open(fname)
-        textFileLines = textFileHandle.readlines()
-        textFileHandle.close()
+        with open(fname) as f:
+            textFileLines = f.readlines()
         return textFileLines
 
     def deleteIndices(self, indices):

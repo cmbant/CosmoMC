@@ -1,4 +1,4 @@
-import os, pickle, random
+import os, random
 import numpy as np
 from getdist.paramNames import paramNames, paramInfo
 from scipy.signal import fftconvolve
@@ -15,37 +15,17 @@ def convolve1D(x, y, mode):
     else:
         return np.convolve(x, y, mode)
 
-def chainFiles(root, chain_indices=None, ext='.txt'):
+def chainFiles(root, chain_indices=None, ext='.txt', first_chain=0, last_chain=-1):
     index = -1
     files = []
     while True:
         index += 1
         fname = root + ('', '_' + str(index))[index > 0] + ext
-        if index > 0 and not os.path.exists(fname): break
-        if (chain_indices is None or index in chain_indices) and os.path.exists(fname):
+        if index > 0 and not os.path.exists(fname) or last_chain > 0 and index >= last_chain: break
+        if (chain_indices is None or index in chain_indices) and index >= first_chain and os.path.exists(fname):
             files.append(fname)
     return files
 
-
-def loadChains(root=None, chain_indices=None, ignore_rows=0, ignore_frac=0, no_cache=False, separate_chains=False, no_stat=False, ext='.txt'):
-    c = chains(root, ignore_rows=ignore_rows)
-    if root is not None:
-        files = chainFiles(root, chain_indices, ext=ext)
-        c.cachefile = root + ext + '.pysamples'
-        if not separate_chains and chain_indices is None and not no_cache and os.path.exists(c.cachefile) and lastModified(files) < os.path.getmtime(c.cachefile):
-            with open(c.cachefile, 'rb') as inp:
-                return pickle.load(inp)
-        elif c.loadChains(root, files):
-            c.removeBurnFraction(ignore_frac)
-            c.deleteFixedParams()
-            if not no_stat: c.getChainsStats()
-            if not separate_chains:
-                c.makeSingle()
-                c.updateBaseStatistics()
-                with open(c.cachefile, 'wb') as output:
-                    pickle.dump(c, output, pickle.HIGHEST_PROTOCOL)
-            return c
-        return None
 
 def getSignalToNoise(C, noise=None, R=None, eigs_only=False):
     if R is None:
@@ -81,6 +61,7 @@ class WeightedSamples(object):
         else:
             self.setSamples(samples, weights, loglikes)
             self.name_tag = name_tag
+        self.needs_update = True
 
     def setColData(self, coldata):
         self.setSamples(coldata[:, 2:], coldata[:, 0], coldata[:, 1])
@@ -118,7 +99,7 @@ class WeightedSamples(object):
         self.correlationMatrix = None
         self.vars = None
         self.sddev = None
-
+        self.needs_update = True
 
     def _makeParamvec(self, par):
         if isinstance(par, (int, long)):
@@ -390,7 +371,7 @@ class chains(WeightedSamples):
             paramNamesFile = root + '.paramnames'
         self.needs_update = True
         self.chains = None
-        self.setParamNames(paramNamesFile)
+        self.setParamNames(paramNamesFile or names)
 
     def setParamNames(self, names=None):
         self.paramNames = None
@@ -405,17 +386,22 @@ class chains(WeightedSamples):
         if self.paramNames:
             self.getParamIndices()
 
+    def getParamNames(self):
+        return self.paramNames
+
     def getParamIndices(self):
-        if len(self.paramNames.names) <> self.n and self.samples is not None:
+        if self.samples is not None and len(self.paramNames.names) <> self.n:
             raise WeightedSampleError("paramNames size does not match number of parameters in samples")
         index = dict()
         for i, name in enumerate(self.paramNames.names):
             index[name.name] = i
         self.index = index
+        return self.index
 
     def setParams(self, obj):
         for i, name in enumerate(self.paramNames.names):
             setattr(obj, name.name, self.samples[:, i])
+        return obj
 
     def getParams(self):
         pars = parSamples()
@@ -431,7 +417,7 @@ class chains(WeightedSamples):
 
     def updateChainBaseStatistics(self):
         # old name, use updateBaseStatistics
-        self.updateBaseStatistics()
+        return self.updateBaseStatistics()
 
     def updateBaseStatistics(self):
         self.getVars()
@@ -439,20 +425,24 @@ class chains(WeightedSamples):
         self.max_mult = np.max(self.weights)
         self.getParamIndices()
         self.needs_update = False
+        return self
 
     def addDerived(self, paramVec, **kwargs):
         self.changeSamples(np.c_[self.samples, paramVec])
-        self.needs_update = True
         return self.paramNames.addDerived(**kwargs)
 
-    def loadChains(self, root, files):
+    def loadChains(self, root, files, ignore_lines=None):
         self.chains = []
+        self.samples = None
+        self.weights = None
+        self.loglikes = None
         self.name_tag = self.name_tag or root
         for fname in files:
                 print fname
-                self.chains.append(WeightedSamples(fname, self.ignore_lines))
+                self.chains.append(WeightedSamples(fname, ignore_lines or self.ignore_lines))
         if len(self.chains) == 0:
             raise WeightedSampleError('loadChains - no chains found for ' + root)
+        self._weightsChanged()
         return len(self.chains) > 0
 
 
