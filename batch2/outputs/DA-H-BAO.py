@@ -24,16 +24,13 @@ def BAOdensityG():
     cov[1, 0] = cov[0, 1]
     invcov = inv(cov)
 
-    H = np.arange(85, 110, 0.3)
-    DA = np.arange(1000, 1500, 4)
+    Hv = np.arange(85, 110, 0.3)
+    DAv = np.arange(1000, 1500, 4)
 
-    H, DA = np.meshgrid(H, DA)
+    H, DA = np.meshgrid(Hv, DAv)
     like = (DA - DAbar) ** 2 * invcov[0, 0] + 2 * (DA - DAbar) * (H - Hbar) * invcov[0, 1] + (H - Hbar) ** 2 * invcov[1, 1]
 
-    density = GetDistPlots.Density2D()
-    density.pts = exp(-like / 2)
-    density.x1 = DA
-    density.x2 = H
+    density = GetDistPlots.Density2D(Hv, DAv, exp(-like / 2))
     density.contours = exp(-np.array([1.509, 2.4477]) ** 2 / 2)
     return density
 
@@ -62,10 +59,7 @@ densityG = BAOdensityG()
 perp = alpha_perp * DA_fid
 para = H_fid / alpha_pl
 
-density = GetDistPlots.Density2D()
-density.pts = prob
-density.x1 = perp
-density.x2 = para
+density = GetDistPlots.Density2D(perp, para, prob)
 density.contours = exp(-np.array([1.509, 2.4477]) ** 2 / 2)
 
 root = 'base_plikHM_TT_lowTEB_lensing'
@@ -83,7 +77,7 @@ def makeNew(samples):
     Daphys = Da / rd_fid
     comb = (Daphys / 9.385) * (Hphys / 0.4582) ** 1.7
 
-    samples.updateChainBaseStatistics()
+    samples.updateBaseStatistics()
     print 'Da ', samples.mean(Da), samples.std(Da)
     print 'rsH ', samples.mean(rsH), samples.std(rsH)
     print 'Daphys ', samples.mean(Daphys), samples.std(Daphys)

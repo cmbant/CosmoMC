@@ -1159,7 +1159,7 @@ class GetDistPlotter(object):
         if watermark:
             self.fig.text(0.45, 0.5, self._escapeLatex(watermark), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
 
-        self.fig.savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
+        plt.savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
 
     def paramNameListFromFile(self, fname):
         p = paramNames.paramNames(fname)
