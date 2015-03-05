@@ -374,8 +374,6 @@ class MainWindow(QMainWindow):
         settings.setValue('plot_module', self.plot_module)
         settings.setValue('script_plot_module', self.script_plot_module)
 
-    # slots for menu actions
-
     def export(self):
         """
         Callback for action 'Export as PDF/Image'.
@@ -488,6 +486,9 @@ class MainWindow(QMainWindow):
         if rootname is None: return
         samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
         stats = samples.getLikeStats()
+        if stats is None:
+            QMessageBox.warning(self, "Like stats", "Samples do not likelihoods")
+            return
         dlg = DialogLikeStats(self, stats, rootname)
         dlg.show()
 
@@ -566,7 +567,7 @@ class MainWindow(QMainWindow):
         ini.comments['script_plot_module'] = ["module used by saved plot scripts  (e.g. change to planckStyle)"]
         self.ConfigDlg = self.ConfigDlg or DialogConfigSettings(self, ini, ini.params.keys(), title='Plot Config')
         self.ConfigDlg.show()
-        self.ConfigDlg.activate()
+        self.ConfigDlg.activateWindow()
 
 
     def configSettingsChanged(self, vals):
@@ -577,6 +578,7 @@ class MainWindow(QMainWindow):
             try:
                 matplotlib.rcParams.update(self.orig_rc)
                 __import__(mod)  # test for error
+                logging.debug('Loaded module %s', mod)
                 self.plot_module = mod
                 self.script_plot_module = scriptmod
                 if self.plotSettingDlg:
@@ -584,6 +586,7 @@ class MainWindow(QMainWindow):
                     self.plotSettingDlg = None
                 if self.plotter:
                     hasPlot = self.plotter.fig
+                    self.closePlots()
                     self.getPlotter(loadNew=True, chain_dir=self.plotter.chain_dir)
                     self.custom_plot_settings = {}
                     if hasPlot: self.plotData()
@@ -654,6 +657,7 @@ class MainWindow(QMainWindow):
                 self.plotter = module.getPlotter(mcsamples=True, chain_dir=chain_dir, analysis_settings=self.iniFile)
     #            self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True, chain_dir=chain_dir, analysis_settings=self.iniFile)
                 self.default_plot_settings = copy.copy(self.plotter.settings)
+
         except Exception as e:
             self.errorReport(e, caption="Make plotter")
         return self.plotter
@@ -925,6 +929,11 @@ class MainWindow(QMainWindow):
 
         if not isinstance(e, GuiSelectionError): raise
 
+    def closePlots(self):
+        if self.plotter.fig is not None:
+            self.plotter.fig.clf()
+        plt.close('all')
+
     def plotData(self):
         """
         Slot function called when pushButtonPlot is pressed.
@@ -944,11 +953,7 @@ class MainWindow(QMainWindow):
             if self.plotter is None:
                 QMessageBox.warning(self, "Plot data", "No GetDistPlotter instance")
                 return
-
-            if self.plotter.fig is not None:
-                self.plotter.fig.clf()
-
-            plt.close('all')
+            self.closePlots()
 
             # X and Y items
             items_x = self.getXParams()
@@ -1131,6 +1136,7 @@ class MainWindow(QMainWindow):
             while 1:
                 item = self.plotWidget.layout().takeAt(i)
                 if item is None: break
+                del item
             if hasattr(self, "canvas"): del self.canvas
             if hasattr(self, "toolbar"): del self.toolbar
             self.canvas = FigureCanvas(self.plotter.fig)
@@ -1139,6 +1145,7 @@ class MainWindow(QMainWindow):
                 self.toolbar = NavigationToolbar(self.canvas, self)
                 self.plotWidget.layout().addWidget(self.toolbar)
             self.plotWidget.layout().addWidget(self.canvas)
+            self.plotWidget.layout()
             self.canvas.draw()
             self.plotWidget.show()
 

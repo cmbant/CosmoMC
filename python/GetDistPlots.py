@@ -14,6 +14,12 @@ from getdist.densities import Density1D, Density2D
 
 """Plotting scripts for GetDist outputs"""
 
+def makeList(roots):
+    if isinstance(roots, (list, tuple)):
+        return roots
+    else:
+        return [roots]
+
 class GetDistPlotError(Exception):
     pass
 
@@ -249,6 +255,7 @@ class MCSampleAnalysis(object):
         self.single_samples = dict()
 
     def samplesForRoot(self, root, file_root=None, cache=True):
+        if isinstance(root, MCSamples.MCSamples): return root
         if os.path.isabs(root):
             root = os.path.basename(root)
         if root in self.mcsamples and cache: return self.mcsamples[root]
@@ -568,11 +575,7 @@ class GetDistPlotter(object):
             c = args.copy()  # careful to copy before modifying any
             line_args[i] = c
             if colors and i < len(colors) and colors[i]:
-                if isinstance(colors[i], basestring):
-#                    c['color'] = matplotlib.colors.colorConverter.to_rgb(colors[i])
-                    c['color'] = colors[i]
-                else:
-                    c['color'] = colors[i]
+                c['color'] = colors[i]
             if ls and i < len(ls) and ls[i]: c['ls'] = ls[i]
             if alphas and i < len(alphas) and alphas[i]: c['alpha'] = alphas[i]
             if lws and i < len(lws) and lws[i]: c['lw'] = lws[i]
@@ -590,8 +593,8 @@ class GetDistPlotter(object):
 
     def plot_2d(self, roots, param1=None, param2=None, param_pair=None, shaded=False, add_legend_proxy=True, **kwargs):
         if self.fig is None: self.make_figure()
-        if isinstance(roots, basestring):roots = [roots]
-        if isinstance(param1, list):
+        roots = makeList(roots)
+        if isinstance(param1, (list, tuple)):
             param_pair = param1
             param1 = None
         param_pair = self.get_param_array(roots[0], param_pair or [param1, param2])
@@ -675,7 +678,7 @@ class GetDistPlotter(object):
 
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
                 no_ylabel=False, no_ytick=False, no_zero=False, normalized=False, param_renames={}, **kwargs):
-        if isinstance(roots, basestring): roots = [roots]
+        roots = makeList(roots)
         if self.fig is None: self.make_figure()
         plotparam = None
         plotroot = None
@@ -824,13 +827,20 @@ class GetDistPlotter(object):
         else:
             return text
 
+    def _rootDisplayName(self, root, i):
+        if isinstance(root, MCSamples.MCSamples):
+            root = root.getName()
+        if not root: root = 'samples' + str(i)
+        return self._escapeLatex(root)
+
     def default_legend_labels(self, legend_labels, roots):
         if legend_labels is None:
-            return [self._escapeLatex(root) for root in roots]
+            return [self._rootDisplayName(root, i) for i, root in enumerate(roots)]
         else: return legend_labels
 
     def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, label_order=None, nx=None,
                  paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None, param_renames={}):
+        roots = makeList(roots)
         if roots_per_param:
             params = [self.check_param(root[0], param, param_renames) for root, param in zip(roots, params)]
         else: params = self.get_param_array(roots[0], params, param_renames)
@@ -860,7 +870,7 @@ class GetDistPlotter(object):
     def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None, legend_ncol=None,
                  label_order=None, filled=False, shaded=False):
         pairs = []
-        if isinstance(roots, basestring): roots = [roots]
+        roots = makeList(roots)
         if param_pairs is None:
             if param1 is not None:
                 param1 = self.check_param(roots[0], param1)
@@ -916,7 +926,7 @@ class GetDistPlotter(object):
 
     def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled=False, filled_compare=False, shaded=False,
                       contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None, label_order=None):
-        if isinstance(roots, basestring):roots = [roots]
+        roots = makeList(roots)
         params = self.get_param_array(roots[0], in_params)
         plot_col = len(params)
         if plot_3d_with_param is not None: col_param = self.check_param(roots[0], plot_3d_with_param)
@@ -931,7 +941,7 @@ class GetDistPlotter(object):
             cols = [self.settings.solid_colors[len(roots) - plotno - 1] for plotno in range(len(params))]
             line_args = []
             for col in cols:
-                if isinstance(col, tuple) or isinstance(col, list): col = col[-1]
+                if isinstance(col, (tuple, list)): col = col[-1]
                 line_args += [{'color': col} ]
         for i, param in enumerate(params):
             ax = self.subplot(i, i)
@@ -1082,7 +1092,7 @@ class GetDistPlotter(object):
         return [xbounds, ybounds]
 
     def plot_3d(self, roots, in_params=None, params_for_plots=None, color_bar=True, line_offset=0, add_legend_proxy=True, **kwargs):
-        if isinstance(roots, basestring): roots = [roots]
+        roots = makeList(roots)
         if params_for_plots:
             params_for_plots = [self.get_param_array(root, p) for p, root in zip(params_for_plots, roots)]
         else:
@@ -1104,7 +1114,7 @@ class GetDistPlotter(object):
         self.setAxes(params, **kwargs)
 
     def plots_3d(self, roots, param_sets, nx=None, filled_compare=False, legend_labels=None, **kwargs):
-        if isinstance(roots, basestring):roots = [roots]
+        roots = makeList(roots)
         sets = [[self.check_param(roots[0], param) for param in param_group] for param_group in param_sets]
         plot_col, plot_row = self.make_figure(len(sets), nx=nx, xstretch=1.3)
 
@@ -1116,7 +1126,7 @@ class GetDistPlotter(object):
 
     def plots_3d_z(self, roots, param_x, param_y, param_z=None, max_z=None, **kwargs):
         """Make set of plots of param_x against param_y, each coloured by values of parameters in param_z (all if None)"""
-        if isinstance(roots, basestring):roots = [roots]
+        roots = makeList(roots)
         param_z = self.get_param_array(roots[0], param_z)
         if max_z is not None and len(param_z) > max_z: param_z = param_z[:max_z]
         param_x, param_y = self.get_param_array(roots[0], [param_x, param_y])
@@ -1128,7 +1138,7 @@ class GetDistPlotter(object):
         args.update(kwargs)
         if isinstance(ax, int):
             ax = self.fig.axes[ax]
-        if isinstance(ax, list):
+        if isinstance(ax, (list, tuple)):
             ax = self.subplots[ax[0], ax[1]]
         else:
             ax = ax or plt.gca()
@@ -1147,9 +1157,9 @@ class GetDistPlotter(object):
         adir = os.path.dirname(fname)
         if adir and not os.path.exists(adir): os.makedirs(adir)
         if watermark:
-            plt.gcf().text(0.45, 0.5, self._escapeLatex(watermark), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
+            self.fig.text(0.45, 0.5, self._escapeLatex(watermark), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
 
-        plt.savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
+        self.fig.savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
 
     def paramNameListFromFile(self, fname):
         p = paramNames.paramNames(fname)

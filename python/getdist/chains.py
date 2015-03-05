@@ -1,6 +1,6 @@
 import os, pickle, random
 import numpy as np
-from getdist import paramNames
+from getdist.paramNames import paramNames
 from scipy.signal import fftconvolve
 
 class WeightedSampleError(Exception):
@@ -74,20 +74,30 @@ class parSamples(object): pass
 
 
 class WeightedSamples(object):
-    def __init__(self, filename=None, ignore_rows=0, samples=None, weights=None, loglikes=None):
+    def __init__(self, filename=None, ignore_rows=0, samples=None, weights=None, loglikes=None, name_tag=None):
         if filename:
             self.setColData(np.loadtxt(filename, skiprows=ignore_rows))
+            self.name_tag = name_tag or os.path.basename(filename)
         else:
             self.setSamples(samples, weights, loglikes)
+            self.name_tag = name_tag
 
     def setColData(self, coldata):
         self.setSamples(coldata[:, 2:], coldata[:, 0], coldata[:, 1])
+
+    def getName(self):
+        return self.name_tag
 
     def setSamples(self, samples, weights=None, loglikes=None):
         self.weights = weights
         self.loglikes = loglikes
         self.samples = samples
         if samples is not None:
+            if isinstance(samples, (list, tuple)):
+                samples = np.hstack([x.reshape(-1, 1) for x in samples])
+            elif len(samples.shape) == 1:
+                samples = np.atleast_2d(samples).transpose()
+            self.samples = samples
             self.n = self.samples.shape[1]
             self.numrows = self.samples.shape[0]
         self._weightsChanged()
@@ -367,20 +377,26 @@ class WeightedSamples(object):
 
 class chains(WeightedSamples):
 
-    def __init__(self, root=None, ignore_rows=0, jobItem=None, paramNameFile=None):
-        WeightedSamples.__init__(self)
+    def __init__(self, root=None, jobItem=None, paramNamesFile=None, names=None, **kwargs):
+        WeightedSamples.__init__(self, **kwargs)
         self.jobItem = jobItem
         self.precision = '%.8e'
-        self.ignore_lines = ignore_rows
+        self.ignore_lines = float(kwargs.get('ignore_rows', 0))
         self.root = root
-        self.samples = None
-        paramNameFile = paramNameFile or root + '.paramnames'
-        self.hasNames = os.path.exists(paramNameFile)
+        paramNamesFile = paramNamesFile or str(root) + '.paramnames'
         self.needs_update = True
         self.chains = None
-        if self.hasNames:
-            self.paramNames = paramNames.paramNames(paramNameFile)
-            self.getParamIndices()
+        self.paramNames = None
+        if isinstance(paramNamesFile, paramNames):
+            self.paramNames = paramNamesFile
+        elif os.path.exists(paramNamesFile):
+            self.paramNames = paramNames(paramNamesFile)
+        elif names is not None:
+            self.paramNames = paramNames(names=names)
+        elif self.samples is not None:
+            self.paramNames = paramNames(default=self.n)
+        if self.paramNames: self.getParamIndices()
+
 
     def getParamIndices(self):
         index = dict()
@@ -416,6 +432,7 @@ class chains(WeightedSamples):
 
     def loadChains(self, root, files):
         self.chains = []
+        self.name_tag = self.name_tag or root
         for fname in files:
                 print fname
                 self.chains.append(WeightedSamples(fname, self.ignore_lines))
@@ -487,9 +504,8 @@ class chains(WeightedSamples):
                 if np.all(chain.samples[:, i] == chain.samples[0, i]): fixed.append(i)
             for chain in self.chains:
                 chain.changeSamples(np.delete(chain.samples, fixed, 1))
-        if self.hasNames:
-            self.paramNames.deleteIndices(fixed)
-            self.getParamIndices()
+        self.paramNames.deleteIndices(fixed)
+        self.getParamIndices()
 
     def writeSingle(self, root):
         np.savetxt(root + '.txt', np.hstack((self.weights.reshape(-1, 1), self.loglikes.reshape(-1, 1), self.samples)), fmt=self.precision)

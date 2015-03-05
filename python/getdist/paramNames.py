@@ -3,13 +3,13 @@ import os
 
 class paramInfo(object):
 
-    def __init__(self, line=None, name='', label='', comment='', derived=False):
+    def __init__(self, line=None, name='', label='', comment='', derived=False, number=None):
         self.name = name
         self.isDerived = derived
         self.label = label or name
         self.comment = comment
         self.filenameLoadedFrom = ''
-        self.number = None
+        self.number = number
         if line is not None:
             self.setFromString(line)
 
@@ -51,11 +51,21 @@ class paramInfo(object):
 
 class paramList(object):
 
-    def __init__(self, fileName=None, setParamNameFile=None):
+    def __init__(self, fileName=None, setParamNameFile=None, default=None, names=None):
 
         self.names = []
+        if default: self.setDefault(default)
+        if names is not None: self.setWithNames(names)
         if fileName is not None: self.loadFromFile(fileName)
         if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
+
+    def setDefault(self, n):
+        self.names = [paramInfo(name=str(i + 1)) for i in range(n)]
+        return self
+
+    def setWithNames(self, names):
+        self.names = [paramInfo(name) for name in names]
+        return self
 
     def numDerived(self):
         return len([1 for info in self.names if info.isDerived])
@@ -157,9 +167,8 @@ class paramNames(paramList):
     def loadFromFile(self, fileName):
 
         self.filenameLoadedFrom = os.path.split(fileName)[1]
-        f = open(fileName)
-        self.names = [paramInfo(line) for line in [s.strip() for s in f] if line != '']
-        f.close()
+        with open(fileName) as f:
+            self.names = [paramInfo(line) for line in [s.strip() for s in f] if line != '']
 
     def loadFromKeyWords(self, keywordProvider):
         num_params_used = keywordProvider.keyWord_int('num_params_used')

@@ -1,6 +1,7 @@
 import os, GetDistPlots, batchJob
 from matplotlib import rcParams, rc, pylab
 from getdist import ResultObjs, MCSamples
+import copy
 
 # common setup for matplotlib
 params = {'backend': 'pdf',
@@ -87,7 +88,7 @@ BAO = 'BAO'
 
 LCDM = r'$\Lambda$CDM'
 
-s = GetDistPlots.defaultSettings
+s = copy.copy(GetDistPlots.defaultSettings)
 s.legend_frame = False
 s.figure_legend_frame = False
 s.prob_label = r'$P/P_{\rm max}$'
@@ -147,6 +148,8 @@ class planckPlotter(GetDistPlots.GetDistPlotter):
 
 def getPlotter(plot_data=None, chain_dir=None, **kwargs):
     global plotter, rootdir
+    if not kwargs.get('settings'):
+        kwargs['settings'] = s
     if plot_data is not None or use_plot_data:
         plotter = planckPlotter(plot_data or os.path.join(rootdir, 'plot_data'), **kwargs)
     if chain_dir or not use_plot_data:

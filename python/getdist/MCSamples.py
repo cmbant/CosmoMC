@@ -93,8 +93,8 @@ class Kernel1D(object):
 
 class MCSamples(chains):
 
-    def __init__(self, root=None, ignore_rows=0, jobItem=None, ini=None):
-        chains.__init__(self, root, jobItem=jobItem)
+    def __init__(self, root=None, jobItem=None, ini=None, **kwargs):
+        chains.__init__(self, root, jobItem=jobItem, **kwargs)
 
         self.version = pickle_version
 
@@ -131,8 +131,7 @@ class MCSamples(chains):
 
         self.rootdirname = ""
         self.indep_thin = 0
-        self.samples = None
-        self.ignore_rows = float(ignore_rows)
+        self.ignore_rows = float(kwargs.get('ignore_rows', 0))
         self.subplot_size_inch = 4.0
         self.subplot_size_inch2 = self.subplot_size_inch
         self.subplot_size_inch3 = 6.0
@@ -246,7 +245,7 @@ class MCSamples(chains):
             ini.params.update(ini_settings)
         self.ini = ini
         if ini: self.initParameters(ini)
-        if doUpdate and self.samples: self.updateBaseStatistics()
+        if doUpdate and self.samples is not None: self.updateBaseStatistics()
 
     def readChains(self, chain_files):
         # Used for by plotting scripts and gui
@@ -267,7 +266,6 @@ class MCSamples(chains):
         return self
 
     def updateBaseStatistics(self):
-
         super(MCSamples, self).updateBaseStatistics()
         mult_max = (self.mean_mult * self.numrows) / min(self.numrows / 2, 500)
         outliers = np.sum(self.weights > mult_max)
@@ -852,7 +850,7 @@ class MCSamples(chains):
         par.range_min, par.range_max, low_1sig, mid, high_1sig = self.confidence(paramConfid, np.array([self.range_confidence, 1 - self.range_confidence, 0.16, 0.5, 0.84]))
         # sigma_range is estimate related to shape of structure in the distribution; the "min" prevents overestimation for broad tails and peaked ends
         par.sigma_range = min((high_1sig - low_1sig) / 2, mid - par.param_min, par.param_max - mid)
-        if self.range_ND_contour >= 0:
+        if self.range_ND_contour >= 0 and self.likeStats:
             if self.range_ND_contour >= par.ND_limit_bot.size:
                 raise SettingException("range_ND_contour should be -1 (off), or 0, 1 for first or second contour level")
             par.range_min = min(max(par.range_min - par.err, par.ND_limit_bot[self.range_ND_contour]), par.range_min)
@@ -1343,6 +1341,9 @@ class MCSamples(chains):
 
     def setLikeStats(self):
         # Find best fit sample and mean likelihood
+        if self.loglikes is None:
+            self.likeStats = None
+            return None
         m = ResultObjs.likeStats()
         bestfit_ix = np.argmin(self.loglikes)
         maxlike = self.loglikes[bestfit_ix]
@@ -1372,11 +1373,12 @@ class MCSamples(chains):
         return m
 
     def _readRanges(self):
-        ranges_file = self.root + '.ranges'
-        if os.path.isfile(ranges_file):
-            self.ranges = ParamBounds(ranges_file)
-        else:
-            self.ranges = ParamBounds()
+        if self.root:
+            ranges_file = self.root + '.ranges'
+            if os.path.isfile(ranges_file):
+                self.ranges = ParamBounds(ranges_file)
+                return
+        self.ranges = ParamBounds()
 
     def getBounds(self):
         # note not the same as self.ranges, as updated for actual plot ranges depending on posterior
