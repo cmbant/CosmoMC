@@ -94,7 +94,7 @@ s.figure_legend_frame = False
 s.prob_label = r'$P/P_{\rm max}$'
 s.norm_prob_label = 'Probability density'
 s.prob_y_ticks = True
-s.param_names_for_labels = 'clik_units.paramnames'
+s.param_names_for_labels = os.path.join(batchJob.getCodeRootPath(), 'clik_units.paramnames')
 s.alpha_filled_add = 0.85
 s.solid_contour_palefactor = 0.6
 

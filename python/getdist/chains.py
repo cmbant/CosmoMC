@@ -1,19 +1,13 @@
 import os, random
 import numpy as np
 from getdist.paramNames import paramNames, paramInfo
-from scipy.signal import fftconvolve
+from getdist.convolve import convolve1D
 
 class WeightedSampleError(Exception):
     pass
 
 def lastModified(files):
     return max([os.path.getmtime(fname) for fname in files if os.path.exists(fname)])
-
-def convolve1D(x, y, mode):
-    if min(x.shape[0], y.shape[0]) > 1000:
-        return fftconvolve(x, y, mode)
-    else:
-        return np.convolve(x, y, mode)
 
 def chainFiles(root, chain_indices=None, ext='.txt', first_chain=0, last_chain=-1):
     index = -1
@@ -153,22 +147,70 @@ class WeightedSamples(object):
         self.diffs = self.mean_diffs()
         return self.diffs
 
-    def getWeightedAutocorrelation(self, paramVec, maxOff=None):
-        """ get auto covariance in weight units; 
+    def getAutocorrelation(self, paramVec, maxOff=None, weight_units=True, normalized=True):
+        """ get auto covariance in weight units (i.e. standard units for separate samples from original chain); 
             divide by var to normalize
-            multiply by n/norm to get in sample point (row) units
+            weight_units=False to get result in sample point (row) units; weight_units=False gives standard definition for raw chains
+            set normalized=False to get covariance (note even if normalized, corr[0]<>1 in general unless weights are unity)
+            If samples are made from multiple chains, neglects edge effects
        """
         if maxOff is None: maxOff = self.n - 1
         d = self.mean_diff(paramVec) * self.weights
         corr = convolve1D(d, d[::-1], 'full')[-d.size:]
-        return corr[0:maxOff + 1] * d.size / (self.norm * np.arange(d.size, d.size - maxOff - 1, -1))
+        result = corr[0:maxOff + 1] * d.size / (self.norm * np.arange(d.size, d.size - maxOff - 1, -1))
+        if normalized: result /= self.var(paramVec)
+        if weight_units:
+            return result
+        else:
+            return result / (self.get_norm() / self.numrows)
 
-    def getEffectiveSamples(self, j=0, min_corr=0.05):
-        corr = self.getWeightedAutocorrelation(j, self.numrows / 10)
-        corr /= self.var(j)
+    def getCorrelationLength(self, j, weight_units=True, min_corr=0.05, corr=None):
+        if corr is None:
+            corr = self.getAutocorrelation(j, self.numrows / 10, weight_units=weight_units)
         ix = np.argmin(corr > min_corr * corr[0])
         N = corr[0] + 2 * np.sum(corr[1:ix])
-        return self.get_norm() / N
+        return N
+
+    def getEffectiveSamples(self, j=0, min_corr=0.05):
+        """
+        Gets effective number of samples N_eff so that the error on mean of parameter j is sigma_j/N_eff
+        """
+        return self.get_norm() / self.getCorrelationLength(j, min_corr)
+
+    def getEffectiveSamplesGaussianKDE(self, paramVec, h=None, kernel_std=None, maxoff=None, min_corr=0.05):
+        """
+         Estimate very roughly effective sample number for leading term for variance of Gaussian KDE MISE
+         Uses fiducial assumed kernel scale h; result does depend on this (typically by factors O(2))
+         For bias-corrected KDE only need very rough estimate to use in rule of thumb for bandwidth
+         In the limit h-> 0 (but still >0) answer should be correct (then just includes MCMC rejection duplicates), 
+         In reality correct result for practicle h should depends on shape of correlation function
+        """
+        d = self._makeParamvec(paramVec)
+        # Result does depend on kernel width, but hopefully not strongly around typical values ~ sigma/4
+        h = h or 0.2
+        kernel_std = kernel_std or self.std(d) * h
+        # Dependence is from very correlated points due to MCMC rejections; shouldn't need more than about correlation length
+        if maxoff is None: maxoff = int(self.getCorrelationLength(d, weight_units=False) * 1.5) + 4
+        uncorr_len = self.numrows / 2
+        UncorrTerm = 0
+        nav = 0
+        # first get expected value of each term for uncorrelated samples
+        for k in range(uncorr_len, uncorr_len + 5):
+            nav += self.numrows - k
+            diff2 = (d[:-k] - d[k:]) ** 2 / kernel_std ** 2
+            UncorrTerm += np.dot(np.exp(-diff2 / 4) * self.weights[:-k] , self.weights[k:])
+        UncorrTerm /= nav
+
+        corr = np.zeros(maxoff + 1)
+        corr[0] = np.dot(self.weights, self.weights)
+        n = float(self.numrows)
+        for k in range(1, maxoff + 1):
+            diff2 = (d[:-k] - d[k:]) ** 2 / kernel_std ** 2
+            corr[k] = np.dot(np.exp(-diff2 / 4) * self.weights[:-k] , self.weights[k:]) - (n - k) * UncorrTerm
+            if corr[k] < min_corr * corr[0]: break
+        N = corr[0] + 2 * np.sum(corr[1:])
+        return self.get_norm() ** 2 / N
+
 
     def weighted_sum(self, paramVec, where=None):
         paramVec = self._makeParamvec(paramVec)

@@ -116,7 +116,7 @@
     do j = 1, N
         do
             do i = 1, N
-                vec(i) = Gaussian1()
+                vec(i) = real(Gaussian1())
             end do
             do i = 1, j-1
                 vec = vec - sum(vec*R(i,:))*R(i,:)

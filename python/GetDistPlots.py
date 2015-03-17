@@ -366,7 +366,6 @@ class GetDistPlotter(object):
         self.newPlot()
 
     def newPlot(self):
-        plt.clf()
         self.extra_artists = []
         self.contours_added = []
         self.lines_added = dict()
@@ -851,7 +850,6 @@ class GetDistPlotter(object):
         if share_y is None: share_y = self.settings.prob_label is not None and nparam > 1
         plot_col, plot_row = self.make_figure(nparam, nx=nx)
         plot_roots = roots
-
         for i, param in enumerate(params):
             ax = self.subplot_number(i)
             if roots_per_param: plot_roots = roots[i]
@@ -862,7 +860,6 @@ class GetDistPlotter(object):
             self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, param_renames=param_renames)
             if xlims is not None: ax.set_xlim(xlims[i][0], xlims[i][1])
             if share_y: self.spaceTicks(ax.xaxis, expand=True)
-
         self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_order=label_order)
         if share_y: plt.subplots_adjust(wspace=0)
         return plot_col, plot_row
@@ -871,6 +868,9 @@ class GetDistPlotter(object):
                  label_order=None, filled=False, shaded=False):
         pairs = []
         roots = makeList(roots)
+        if isinstance(param1, (list, tuple)) and len(param1) == 2:
+            params2 = param1[1]
+            param1 = param1[0]
         if param_pairs is None:
             if param1 is not None:
                 param1 = self.check_param(roots[0], param1)
@@ -1159,7 +1159,7 @@ class GetDistPlotter(object):
         if watermark:
             self.fig.text(0.45, 0.5, self._escapeLatex(watermark), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
 
-        plt.savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
+        self.fig.savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
 
     def paramNameListFromFile(self, fname):
         p = paramNames.paramNames(fname)

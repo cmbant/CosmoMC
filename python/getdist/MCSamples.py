@@ -10,9 +10,9 @@ import pickle
 from iniFile import iniFile
 from getdist import ResultObjs, covMat, paramNames
 from getdist.densities import Density1D, Density2D
-from getdist.chains import chains, chainFiles, lastModified, convolve1D
+from getdist.chains import chains, chainFiles, lastModified
+from getdist.convolve import convolve1D, convolve2D, gaussian_kde_bandwidth
 from getdist.paramPriors import ParamBounds
-from scipy.signal import fftconvolve
 
 pickle_version = 19
 version = 1.1
@@ -532,9 +532,8 @@ class MCSamples(chains):
         """
         Do convergence tests. 
         """
-        # Get statistics for individual chains, and do split tests on the samples
         lines = ''
-        nparam = self.paramNames.numParams()
+        nparam = self.n
 
         chainlist = self.getSeparateChains()
         num_chains_used = len(chainlist)
@@ -554,7 +553,7 @@ class MCSamples(chains):
             for j in range(nparam):
                 corr = np.zeros(maxoff + 1)
                 for chain in chainlist:
-                    corr += chain.getWeightedAutocorrelation(j, maxoff) * chain.norm
+                    corr += chain.getAutocorrelation(j, maxoff, normalized=False) * chain.norm
                 corr /= self.norm * self.vars[j]
                 ix = np.argmin(corr > 0.05 * corr[0])
                 N = corr[0] + 2 * np.sum(corr[1:ix])
@@ -824,18 +823,27 @@ class MCSamples(chains):
                 f.write(lines)
         return lines
 
-    def getAutoBandwidth1D(self):
+    def getAutoBandwidth1D(self, param=0):
         """
-        get default kernel density bandwidth (in units of standard deviation)
+        Get default kernel density bandwidth (in units of standard deviation or scale estimate)
+        The result is multipled by the parameter sigma_range estimate of scale (std dev for Gaussian)
         """
+        N_eff = self.getEffectiveSamplesGaussianKDE(param)
+        h = gaussian_kde_bandwidth
         if self.mult_bias_correction_order:
             # e.g.  http://biomet.oxfordjournals.org/content/82/2/327.full.pdf+html
             # some prefactors given in  http://eprints.whiterose.ac.uk/42950/6/taylorcc2%5D.pdf
-            return 1. / max(1.0, self.N_eff) ** (1. / 9)
+            return 1. / max(1.0, N_eff) ** (1. / 9)
         else:
             # Automatically set smoothing scale from rule of thumb for Gaussian, e.g. see
             # http://en.wikipedia.org/wiki/Kernel_density_estimation
-            return 1.06 / max(1.0, self.N_eff) ** 0.2
+            return 1.06 / max(1.0, N_eff) ** 0.2
+
+    def getAutoBandwidth2D(self, param1, param2):
+        """
+        get default kernel density bandwidth (in units of standard deviation or scale estimate)
+        """
+        return self.getAutoBandwidth1D() * 1.4
 
 
     def _initParamRanges(self, j, paramConfid=None):
@@ -847,9 +855,26 @@ class MCSamples(chains):
         par.param_min = np.min(paramVec)
         par.param_max = np.max(paramVec)
         paramConfid = paramConfid or self.initParamConfidenceData(paramVec)
-        par.range_min, par.range_max, low_1sig, mid, high_1sig = self.confidence(paramConfid, np.array([self.range_confidence, 1 - self.range_confidence, 0.16, 0.5, 0.84]))
-        # sigma_range is estimate related to shape of structure in the distribution; the "min" prevents overestimation for broad tails and peaked ends
-        par.sigma_range = min((high_1sig - low_1sig) / 2, mid - par.param_min, par.param_max - mid)
+        # sigma_range is estimate related to shape of structure in the distribution = std dev for Gaussian
+        # search for peaks using quantiles, e.g. like simplified version of Janssen 95 (http://dx.doi.org/10.1080/10485259508832654)
+        confid_points = np.linspace(0.1, 0.9, 9)
+        confids = self.confidence(paramConfid, np.array([self.range_confidence, 1 - self.range_confidence] + list(confid_points)))
+        par.range_min, par.range_max = confids[0:2]
+        confids[1:-1] = confids[2:]
+        confids[0] = par.param_min
+        confids[-1] = par.param_max
+        diffs = confids[4:] - confids[:-4]
+        print 'searching..', par.err
+        scale = np.min(diffs) / 1.049
+        for d in diffs:
+            print d / 1.048801025 / par.err
+        if np.all(diffs > par.err * 1.049) and np.all(diffs < scale * 1.5):
+            # very flat, can use bigger
+            par.sigma_range = scale
+        else:
+            par.sigma_range = min(par.err, scale)
+#        par.range_min, par.range_max, low_1sig, mid, high_1sig = self.confidence(paramConfid, np.array([self.range_confidence, 1 - self.range_confidence, 0.16, 0.5, 0.84]))
+        # par.sigma_range = min((high_1sig - low_1sig) / 2, mid - par.param_min, par.param_max - mid)
         if self.range_ND_contour >= 0 and self.likeStats:
             if self.range_ND_contour >= par.ND_limit_bot.size:
                 raise SettingException("range_ND_contour should be -1 (off), or 0, 1 for first or second contour level")
@@ -861,8 +886,9 @@ class MCSamples(chains):
 
         if self.smooth_scale_1D <= 0:
         # Set automatically
-            opt_width = self.getAutoBandwidth1D()
-            smooth_1D = opt_width * min(par.sigma_range, par.err) * abs(self.smooth_scale_1D)
+            opt_width = self.getAutoBandwidth1D(j)
+            smooth_1D = opt_width * par.sigma_range * abs(self.smooth_scale_1D)
+            print par.name + ' smooth_1d=', smooth_1D / par.err
             if smooth_1D < 0.5 * width:
                 logging.warning('num_bins not large enough for optimal density - ' + par.name)
         elif self.smooth_scale_1D < 1.0:
@@ -890,7 +916,7 @@ class MCSamples(chains):
         if par.has_limits_top:
             par.bin_ref_point = par.range_max
             if par.has_limits_bot:
-                width = (par.range_max - par.range_min) / self.num_bins  # Feb15
+                width = (par.range_max - par.range_min) / self.num_bins
         else:
             par.bin_ref_point = par.range_min
 
@@ -1150,22 +1176,22 @@ class MCSamples(chains):
         corr = self.getCorrelationMatrix()[j2][j]
         if corr == 1: logging.warning('Parameters are 100%% correlated: %s, %s', parx.name, pary.name)
         # keep things simple unless obvious degeneracy
+        if abs(self.max_corr_2D) > 1: raise SettingException('max_corr_2D cannot be >=1')
         if abs(corr) < 0.1: corr = 0.
         corr = max(-self.max_corr_2D, corr)
         corr = min(self.max_corr_2D, corr)
 
         # for tight degeneracies increase bin density
-        angle_scale = np.sqrt(1 - abs(corr))
-        if angle_scale == 0: raise SettingException('max_corr_2D cannot be >=1')
+        angle_scale = max(0.2, np.sqrt(1 - abs(corr)))
 
-        nbin2D = int(round(self.num_bins_2D / max(0.2, angle_scale)))
+        nbin2D = int(round(self.num_bins_2D / angle_scale))
 
         widthx = (parx.range_max - parx.range_min) / nbin2D
         widthy = (pary.range_max - pary.range_min) / nbin2D
 
         # smooth_x and smooth_y should be in rotated bin units
         if self.smooth_scale_2D < 0:
-            opt_width = self.getAutoBandwidth1D() * abs(self.smooth_scale_2D) * 1.4
+            opt_width = self.getAutoBandwidth2D(j, j2) * abs(self.smooth_scale_2D)
             smooth_x = opt_width * scale_x / widthx * angle_scale
             smooth_y = opt_width * scale_y / widthy * angle_scale
             if smooth_x < 0.5 or smooth_y < 0.5:
@@ -1233,17 +1259,17 @@ class MCSamples(chains):
         fineused = finebins[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
                             ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin]
         missing_norm = np.sum(finebins) - np.sum(fineused[winw:-winw, winw:-winw])
-        bins2D = fftconvolve(fineused, Win, 'valid')
+        bins2D = convolve2D(fineused, Win, 'valid')
 
         if meanlikes:
             fine = finebinlikes[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
                                 ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin]
-            bin2Dlikes = fftconvolve(fine, Win, 'valid')
+            bin2Dlikes = convolve2D(fine, Win, 'valid')
             if self.mult_bias_correction_order:
                 ix = bin2Dlikes > 0
                 fine = fine[winw:-winw, winw:-winw]
                 fine[ix] /= bin2Dlikes[ix]
-                likes2 = fftconvolve(fine, Win, 'same')
+                likes2 = convolve2D(fine, Win, 'same')
                 likes2[ix] *= bin2Dlikes[ix]
                 bin2Dlikes = likes2
 
@@ -1258,7 +1284,7 @@ class MCSamples(chains):
             # Correct for edge effects
             prior_mask = np.ones(fineused.shape)
             self._setEdgeMask2D(parx, pary, prior_mask, winw)
-            a00 = fftconvolve(prior_mask, Win, 'valid')
+            a00 = convolve2D(prior_mask, Win, 'valid')
             ix = np.nonzero(a00 * bins2D)
             a00 = a00[ix]
             normed = bins2D[ix] / a00
@@ -1269,13 +1295,13 @@ class MCSamples(chains):
                     y[:, i] = indexes
                 winx = Win * indexes
                 winy = Win * y
-                a10 = fftconvolve(prior_mask, winx, 'valid')[ix]
-                a01 = fftconvolve(prior_mask, winy, 'valid')[ix]
-                a20 = fftconvolve(prior_mask, winx * indexes, 'valid')[ix]
-                a02 = fftconvolve(prior_mask, winy * y, 'valid')[ix]
-                a11 = fftconvolve(prior_mask, winy * indexes, 'valid')[ix]
-                xP = fftconvolve(fineused, winx, 'valid')[ix]
-                yP = fftconvolve(fineused, winy, 'valid')[ix]
+                a10 = convolve2D(prior_mask, winx, 'valid')[ix]
+                a01 = convolve2D(prior_mask, winy, 'valid')[ix]
+                a20 = convolve2D(prior_mask, winx * indexes, 'valid')[ix]
+                a02 = convolve2D(prior_mask, winy * y, 'valid')[ix]
+                a11 = convolve2D(prior_mask, winy * indexes, 'valid')[ix]
+                xP = convolve2D(fineused, winx, 'valid')[ix]
+                yP = convolve2D(fineused, winy, 'valid')[ix]
                 denom = (a20 * a01 ** 2 + a10 ** 2 * a02 - a00 * a02 * a20 + a11 ** 2 * a00 - 2 * a01 * a10 * a11)
                 A = a11 ** 2 - a02 * a20
                 Ax = a10 * a02 - a01 * a11
@@ -1290,7 +1316,7 @@ class MCSamples(chains):
         if self.mult_bias_correction_order:
             prior_mask = np.ones(fineused.shape)
             self._setEdgeMask2D(parx, pary, prior_mask, winw, alledge=True)
-            a00 = fftconvolve(prior_mask, Win, 'valid')
+            a00 = convolve2D(prior_mask, Win, 'valid')
             ix = np.nonzero(a00 * bins2D)
             box = fineused[winw:-winw, winw:-winw].copy()
             box_orig = fineused[winw:-winw, winw:-winw]
@@ -1298,7 +1324,7 @@ class MCSamples(chains):
             a00 = a00[ix]
             for _ in range(self.mult_bias_correction_order):
                 box[ix2] = box_orig[ix2] / bins2D[ix2]
-                bins2D *= fftconvolve(box, Win, 'same')
+                bins2D *= convolve2D(box, Win, 'same')
                 bins2D[ix] /= a00
 
         x = parx.bin_ref_point + np.arange(ixmin * fine_fac, ixmax * fine_fac + 1) * finewidthx

@@ -240,10 +240,10 @@ if not no_plots:
         print '...producing triangle plot'
         filename = rootdirname + '_tri.' + plot_ext
         mc.WriteScriptPlotsTri(filename, triangle_params)
-        for i, p1 in enumerate(triangle_params):
-            for p2 in triangle_params[i + 1:]:
-                if not done2D.get((p2, p1)) and not plots_only:
-                    mc.get2DDensityGridData(p2, p1, writeDataToFile=True, meanlikes=shade_meanlikes)
+        for i, p2 in enumerate(triangle_params):
+            for p1 in triangle_params[i + 1:]:
+                if not done2D.get((p1, p2)) and not plots_only:
+                    mc.get2DDensityGridData(p1, p2, writeDataToFile=True, meanlikes=shade_meanlikes)
         if make_plots: runScript(filename)
 
     # Do 3D plots (i.e. 2D scatter plots with coloured points)
