@@ -45,7 +45,7 @@
     real(dl), PARAMETER :: c = 3.0d8 ! speed of light in m/s
     real(dl), PARAMETER :: msun = 1.98892d30 ! mass of sun in kg
     real(dl), PARAMETER :: rhocrit0=2.7751973751261264d11 ! rhocrit in units of h^-1 Msun/ h^-3 Mpc^3
-
+    real(dl),PARAMETER :: PI=3.141592653589793238463D0
     end module constants_sz
 
 
@@ -254,9 +254,8 @@
 
     ! ####################################################################
 
-    module power
+    module power_sz
     use PRECISION
-    use TRANSFER
     use cosmology
 
     use Calculator_Cosmology
@@ -345,14 +344,14 @@
 
 
 
-    end module power
+    end module power_sz
 
     ! ####################################################################
 
     module massfunction
     USE PRECISION
     USE CONSTANTS_sz
-    USE POWER
+    USE POWER_SZ
     USE massobservable
 
     implicit none
@@ -592,7 +591,7 @@
     module numbercounts
     USE PRECISION
     USE CONSTANTS_sz
-    USE POWER
+    USE POWER_SZ
     USE MASSOBSERVABLE
     USE MASSFUNCTION
     IMPLICIT NONE
@@ -1342,7 +1341,6 @@
 
 
     module szcounts
-    use MatrixUtils
     use settings
     use CosmologyTypes
     use CosmoTheory
