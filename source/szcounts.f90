@@ -32,7 +32,7 @@
     !
     !                   v 4.0
     !                Anna Bonaldi 2014-2015
-    !      - updates for 2014 analysis
+    !      - updates for 2015 analysis
     !      - dN and dzdq likelihood
     !-----------------------------------------------------------!
 
