@@ -16,24 +16,29 @@ class ParamBounds(object):
                 if len(strings) == 3:
                     self.setRange(strings[0], strings[1:])
 
+    def __str__(self):
+        s = ''
+        for name in self.names:
+            valMin = self.getLower(name)
+            if valMin is not None:
+                lim1 = "%15.7E" % valMin
+            else:
+                lim1 = "    N"
+            valMax = self.getUpper(name)
+            if valMax is not None:
+                lim2 = "%15.7E" % valMax
+            else:
+                lim2 = "    N"
+            s += "%22s%17s%17s\n" % (name, lim1, lim2)
+        return s
+
     def saveToFile(self, fileName):
         with open(fileName, 'w') as f:
-            for name in self.names:
-                    valMin = self.getLower(name)
-                    if valMin is not None:
-                        lim1 = "%15.7E" % valMin
-                    else:
-                        lim1 = "    N"
-                    valMax = self.getUpper(name)
-                    if valMax is not None:
-                        lim2 = "%15.7E" % valMax
-                    else:
-                        lim2 = "    N"
-                    f.write("%22s%17s%17s\n" % (name, lim1, lim2))
+            f.write(str(self))
 
     def setRange(self, name, strings):
-        if strings[0] <> 'N': self.lower[name] = float(strings[0])
-        if strings[1] <> 'N': self.upper[name] = float(strings[1])
+        if strings[0] <> 'N' and strings[0] is not None: self.lower[name] = float(strings[0])
+        if strings[1] <> 'N' and strings[1] is not None: self.upper[name] = float(strings[1])
         if not name in self.names: self.names.append(name)
 
     def getUpper(self, name):

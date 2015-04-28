@@ -56,6 +56,7 @@
         logical :: SlashComments = .false.
         logical :: Echo_Read = .false.
         logical :: Fail_on_not_found = .false.
+        logical :: ExpandEnvironmentVariables = .true.
         character(LEN=:), allocatable :: Original_filename
         Type(TNameValueList) :: ReadValues
     contains
@@ -328,10 +329,11 @@
     subroutine Ini_NameValue_AddLine(this,AInLine,only_if_undefined)
     class(TIniFile) :: this
     character (LEN=*), intent(IN) :: AInLine
-    integer EqPos, slashpos, lastpos
+    integer EqPos, slashpos, lastpos, EndPos
     logical, optional, intent(in) :: only_if_undefined
     logical isDefault
-    character (LEN=len(AInLine)) :: AName, S, InLine
+    character (LEN=len(AInLine)) :: AName, InLine
+    character(LEN=:), allocatable ::  val
 
     isDefault = DefaultFalse(only_if_undefined)
 
@@ -340,20 +342,29 @@
     if (EqPos/=0 .and. InLine(1:1)/='#' .and. .not. StringStarts(InLine,'COMMENT')) then
         AName = trim(InLine(1:EqPos-1))
 
-        S = adjustl(InLine(EqPos+1:))
+        val = adjustl(InLine(EqPos+1:))
         if (this%SlashComments) then
-            slashpos=scan(S,'/')
+            slashpos=scan(val,'/')
             if (slashpos /= 0) then
-                S  = S(1:slashpos-1)
+                val  = val(1:slashpos-1)
             end if
         end if
-        lastpos=len_trim(S)
+        if (this%ExpandEnvironmentVariables) then
+            EqPos = index(val,'$(')
+            if (EqPos > 0) then
+                EndPos = index(val,')',back=.true.)
+                if (EndPos > EqPos) then
+                    val = val(1:EqPos-1)//GetEnvironmentVariable(val(EqPos+2:EndPos-1))//val(EndPos+1:)
+                end if
+            end if
+        end if
+        lastpos=len_trim(val)
         if (lastpos>1) then
-            if (S(1:1)=='''' .and. S(lastpos:lastpos)=='''') then
-                S = S(2:lastpos-1)
+            if (val(1:1)=='''' .and. val(lastpos:lastpos)=='''') then
+                val = val(2:lastpos-1)
             end if
         end if
-        call this%Add(AName, S,only_if_undefined = isDefault)
+        call this%Add(AName, val, only_if_undefined = isDefault)
     end if
 
     end subroutine Ini_NameValue_AddLine
@@ -712,7 +723,7 @@
             call this%Error('Wrong number of enumeration values', Key)
         end if
     end if
-    allocate(Enums(n), source= values(:n))
+    allocate(Enums, source= values(:n))
 
     end subroutine Ini_Read_Enumeration_List
 

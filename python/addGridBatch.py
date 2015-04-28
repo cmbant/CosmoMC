@@ -1,4 +1,7 @@
-import os, sys, batchJob
+import os
+
+import sys
+from paramgrid import batchJob
 
 
 if len(sys.argv) < 3:

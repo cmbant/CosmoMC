@@ -1,4 +1,9 @@
-import os, batchJobArgs, plik_postprocess, iniFile
+import os
+
+import plik_postprocess
+from getdist import inifile
+from paramgrid import batchJobArgs
+
 
 Opts = batchJobArgs.batchArgs('add plik params and bestfits', importance=True)
 
@@ -13,7 +18,7 @@ for jobItem in Opts.filteredBatchItems():
     properties = jobItem.propertiesIni()
     if 'plik' in name and os.path.exists(name) and not properties.bool('plik_foregrounds', False):
 
-        ini = iniFile.iniFile(jobItem.chainRoot + '.inputparams')
+        ini = inifile.IniFile(jobItem.chainRoot + '.inputparams')
         dat = ini.string('clik_data_plik', '')
         params = ini.string('clik_params_plik', '')
         hasderived = dat

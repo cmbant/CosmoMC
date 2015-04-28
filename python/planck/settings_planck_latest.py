@@ -1,4 +1,8 @@
-import batchJob, copy, re
+import copy
+import re
+
+from paramgrid import batchJob
+
 
 ini_dir = 'batch2/'
 cov_dir = 'planck_covmats/'

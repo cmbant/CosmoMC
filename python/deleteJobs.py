@@ -1,4 +1,7 @@
-import jobQueue, batchJobArgs, subprocess
+import subprocess
+
+from paramgrid import batchJobArgs, jobQueue
+
 
 Opts = batchJobArgs.batchArgs('Delete running or queued jobs', importance=True, batchPathOptional=True)
 

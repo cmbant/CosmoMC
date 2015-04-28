@@ -1,5 +1,5 @@
 # settings to test out BKP-only runs
-import batchJob
+from paramgrid import batchJob
 
 # Directory to find .ini files
 ini_dir = 'batch2/'

@@ -1,5 +1,2 @@
-# from ResultObjs import *
-# #from chains import *
-# from MCSamples import *
-
-__all__ = ['ResultObjs', 'MCSamples', 'chains']
+__author__ = 'Antony Lewis'
+__all__ = ['ResultObjs', 'paramNames', 'MCSamples', 'chains']

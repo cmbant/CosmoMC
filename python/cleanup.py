@@ -1,4 +1,8 @@
-import os, fnmatch, batchJobArgs
+import os
+import fnmatch
+
+from paramgrid import batchJobArgs
+
 
 Opts = batchJobArgs.batchArgs('delete failed chains, files etc.', importance=True, converge=True)
 

@@ -128,7 +128,8 @@
 
     subroutine TBK_planck_AddForegrounds(this,Cls,DataParams)
     class(TBK_planck) :: this
-    class(TMapCrossPowerSpectrum), intent(inout) :: Cls(:,:)
+    class(TMapCrossPowerSpectrum), target, intent(inout) :: Cls(:,:)
+    class(TMapCrossPowerSpectrum), pointer :: CL
     real(mcp), intent(in) :: DataParams(:)
     real(mcp) :: Adust, Async, alphadust, betadust, Tdust
     real(mcp) :: alphasync, betasync, dustsync_corr
@@ -157,28 +158,26 @@
 
     do i=1, this%nmaps_required
         do j=1, i
-            associate(CL=> Cls(i,j))
-                dust = fdust(i)*fdust(j)
-                sync = fsync(i)*fsync(j)
-                dustsync = fdust(i)*fsync(j) + fsync(i)*fdust(j)
-                If (CL%theory_i==2 .and. CL%theory_j==2) then
-                    ! EE spectrum: multiply foregrounds by EE/BB ratio
-                    dust = dust * EEtoBB_dust
-                    sync = sync * EEtoBB_sync
-                    dustsync = dustsync * sqrt(EEtoBB_dust*EEtoBB_sync)
-                end if
+            CL=> Cls(i,j)
+            dust = fdust(i)*fdust(j)
+            sync = fsync(i)*fsync(j)
+            dustsync = fdust(i)*fsync(j) + fsync(i)*fdust(j)
+            If (CL%theory_i==2 .and. CL%theory_j==2) then
+                ! EE spectrum: multiply foregrounds by EE/BB ratio
+                dust = dust * EEtoBB_dust
+                sync = sync * EEtoBB_sync
+                dustsync = dustsync * sqrt(EEtoBB_dust*EEtoBB_sync)
+            end if
 
-                if ((CL%theory_i==2 .and. CL%theory_j==2) .or. &
-                    (CL%theory_i==3 .and. CL%theory_j==3)) then
-                    ! Only add foregrounds to EE or BB.
-                    do l=this%pcl_lmin,this%pcl_lmax
-                        CL%CL(l) = CL%CL(l) + &
-                            dust*Adust*(l/lpivot)**(alphadust) + &
-                            sync*Async*(l/lpivot)**(alphasync) + &
-                            dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
-                    end do
-                end if
-            end associate
+            if ((CL%theory_i==2 .and. CL%theory_j==2) .or. (CL%theory_i==3 .and. CL%theory_j==3)) then
+                ! Only add foregrounds to EE or BB.
+                do l=this%pcl_lmin,this%pcl_lmax
+                    CL%CL(l) = CL%CL(l) + &
+                        dust*Adust*(l/lpivot)**(alphadust) + &
+                        sync*Async*(l/lpivot)**(alphasync) + &
+                        dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
+                end do
+            end if
         end do
     end do
 

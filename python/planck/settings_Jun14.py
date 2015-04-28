@@ -1,4 +1,8 @@
-import re, batchJob, copy
+import re
+import copy
+
+from paramgrid import batchJob
+
 
 # Look at Alens=1 for fixed lensing template amplitude
 

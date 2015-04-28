@@ -1,7 +1,13 @@
-import os, GetDistPlots, batchJob
-from matplotlib import rcParams, rc, pylab
-from getdist import ResultObjs, MCSamples
+import os
 import copy
+
+from matplotlib import rcParams, rc
+import pylab as plt
+
+from paramgrid import batchJob
+import getdist.plots as plots
+from getdist import ResultObjs, MCSamples
+
 
 # common setup for matplotlib
 params = {'backend': 'pdf',
@@ -88,7 +94,7 @@ BAO = 'BAO'
 
 LCDM = r'$\Lambda$CDM'
 
-s = copy.copy(GetDistPlots.defaultSettings)
+s = copy.copy(plots.defaultSettings)
 s.legend_frame = False
 s.figure_legend_frame = False
 s.prob_label = r'$P/P_{\rm max}$'
@@ -101,6 +107,8 @@ s.solid_contour_palefactor = 0.6
 s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#A1A1A1'), 'g', 'cadetblue', 'indianred']
 s.axis_marker_lw = 0.6
 s.lw_contour = 1
+
+s.param_names_for_labels = os.path.normpath(os.path.join(os.path.dirname(__file__), '..' ,'clik_latex.paramnames'))
 
 use_plot_data = MCSamples.use_plot_data
 rootdir = MCSamples.default_grid_root or os.path.join(batchJob.getCodeRootPath(), 'main')
@@ -115,11 +123,11 @@ def planck_lensing(omm, sigma):
 
 
 def plotBounds(omm, data, c='gray'):
-    pylab.fill_between(omm, data(omm, -2), data(omm, 2), facecolor=c, alpha=0.15, edgecolor=c, lw=0)
-    pylab.fill_between(omm, data(omm, -1), data(omm, 1), facecolor=c, alpha=0.25, edgecolor=c, lw=0)
+    plt.fill_between(omm, data(omm, -2), data(omm, 2), facecolor=c, alpha=0.15, edgecolor=c, lw=0)
+    plt.fill_between(omm, data(omm, -1), data(omm, 1), facecolor=c, alpha=0.25, edgecolor=c, lw=0)
 
 
-class planckPlotter(GetDistPlots.GetDistPlotter):
+class planckPlotter(plots.GetDistPlotter):
 
     def getBatch(self):
         if not hasattr(self, 'batch'): self.batch = batchJob.readobject(rootdir)

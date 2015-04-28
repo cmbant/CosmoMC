@@ -8,9 +8,9 @@ class textFile(object):
         self.lines = lines
 
     def write(self, outfile):
-        textFileHandle = open(outfile, 'w')
-        textFileHandle.write("\n".join(self.lines))
-        textFileHandle.close()
+        with open(outfile, 'w') as f:
+            f.write("\n".join(self.lines))
+
 
 def texEscapeText(string):
         return string.replace('_', '{\\textunderscore}')

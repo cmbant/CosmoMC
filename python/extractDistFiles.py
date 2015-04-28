@@ -1,4 +1,9 @@
-import os, fnmatch, shutil, batchJobArgs
+import os
+import fnmatch
+import shutil
+
+from paramgrid import batchJobArgs
+
 
 Opts = batchJobArgs.batchArgs('copy all files of a given type from all getdist output directories in the batch', importance=True, converge=True)
 

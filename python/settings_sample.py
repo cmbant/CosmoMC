@@ -1,6 +1,6 @@
 # sample settings for a particular grid run
 
-import batchJob
+from paramgrid import batchJob
 
 # Directory to find .ini files
 ini_dir = 'batch2/'

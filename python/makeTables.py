@@ -1,8 +1,10 @@
-import os, copy
+import os
+import copy
+
 import planckStyle
-import batchJob
-import batchJobArgs
+from paramgrid import batchJob, batchJobArgs
 from getdist import ResultObjs, paramNames
+
 
 Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True, converge=True)
 Opts.parser.add_argument('latex_filename', help="name of latex/PDF file to produce")

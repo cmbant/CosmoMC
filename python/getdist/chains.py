@@ -1,7 +1,13 @@
 import os, random
 import numpy as np
 from getdist.paramNames import paramNames, paramInfo
-from getdist.convolve import convolve1D
+from getdist.convolve import autoConvolve
+try:
+    import pandas
+    from distutils.version import LooseVersion
+    use_pandas = LooseVersion(pandas.version.version) > LooseVersion("0.14.0")
+except:
+    use_pandas = False
 
 class WeightedSampleError(Exception):
     pass
@@ -20,6 +26,12 @@ def chainFiles(root, chain_indices=None, ext='.txt', first_chain=0, last_chain=-
             files.append(fname)
     return files
 
+
+def loadNumpyTxt(fname, skiprows=None):
+    if use_pandas:
+        return pandas.read_csv(fname, delim_whitespace=True, header=None, dtype=np.float64, skiprows=skiprows).values
+    else:
+        return np.loadtxt(fname, skiprows=skiprows)
 
 def getSignalToNoise(C, noise=None, R=None, eigs_only=False):
     if R is None:
@@ -50,7 +62,8 @@ class parSamples(object): pass
 class WeightedSamples(object):
     def __init__(self, filename=None, ignore_rows=0, samples=None, weights=None, loglikes=None, name_tag=None):
         if filename:
-            self.setColData(np.loadtxt(filename, skiprows=ignore_rows))
+            cols = loadNumpyTxt(filename, skiprows=ignore_rows)
+            self.setColData(cols)
             self.name_tag = name_tag or os.path.basename(filename)
         else:
             self.setSamples(samples, weights, loglikes)
@@ -108,10 +121,13 @@ class WeightedSamples(object):
             else: raise WeightedSampleError('Parameter %i does not exist' % (par))
         return par
 
-    def getCov(self, nparam=None):
+    def getCov(self, nparam=None, pars=None):
         if self.fullcov is None:
             self.setCov()
-        return self.fullcov[:nparam, :nparam]
+        if pars is not None:
+            return self.fullcov[np.ix_(pars, pars)]
+        else:
+            return self.fullcov[:nparam, :nparam]
 
     def setCov(self):
         self.fullcov = self.cov()
@@ -156,13 +172,12 @@ class WeightedSamples(object):
        """
         if maxOff is None: maxOff = self.n - 1
         d = self.mean_diff(paramVec) * self.weights
-        corr = convolve1D(d, d[::-1], 'full')[-d.size:]
-        result = corr[0:maxOff + 1] * d.size / (self.norm * np.arange(d.size, d.size - maxOff - 1, -1))
-        if normalized: result /= self.var(paramVec)
+        corr = autoConvolve(d, n=maxOff + 1, normalize=True)
+        if normalized: corr /= self.var(paramVec)
         if weight_units:
-            return result
+            return corr * d.size / self.get_norm()
         else:
-            return result / (self.get_norm() / self.numrows)
+            return corr
 
     def getCorrelationLength(self, j, weight_units=True, min_corr=0.05, corr=None):
         if corr is None:
@@ -177,7 +192,7 @@ class WeightedSamples(object):
         """
         return self.get_norm() / self.getCorrelationLength(j, min_corr)
 
-    def getEffectiveSamplesGaussianKDE(self, paramVec, h=None, kernel_std=None, maxoff=None, min_corr=0.05):
+    def getEffectiveSamplesGaussianKDE(self, paramVec, h=0.2, scale=None, maxoff=None, min_corr=0.05):
         """
          Estimate very roughly effective sample number for leading term for variance of Gaussian KDE MISE
          Uses fiducial assumed kernel scale h; result does depend on this (typically by factors O(2))
@@ -187,8 +202,7 @@ class WeightedSamples(object):
         """
         d = self._makeParamvec(paramVec)
         # Result does depend on kernel width, but hopefully not strongly around typical values ~ sigma/4
-        h = h or 0.2
-        kernel_std = kernel_std or self.std(d) * h
+        kernel_std = (scale or self.std(d)) * h
         # Dependence is from very correlated points due to MCMC rejections; shouldn't need more than about correlation length
         if maxoff is None: maxoff = int(self.getCorrelationLength(d, weight_units=False) * 1.5) + 4
         uncorr_len = self.numrows / 2
@@ -207,7 +221,9 @@ class WeightedSamples(object):
         for k in range(1, maxoff + 1):
             diff2 = (d[:-k] - d[k:]) ** 2 / kernel_std ** 2
             corr[k] = np.dot(np.exp(-diff2 / 4) * self.weights[:-k] , self.weights[k:]) - (n - k) * UncorrTerm
-            if corr[k] < min_corr * corr[0]: break
+            if corr[k] < min_corr * corr[0]:
+                corr[k] = 0
+                break
         N = corr[0] + 2 * np.sum(corr[1:])
         return self.get_norm() ** 2 / N
 
@@ -478,7 +494,7 @@ class chains(WeightedSamples):
         self.samples = None
         self.weights = None
         self.loglikes = None
-        self.name_tag = self.name_tag or root
+        self.name_tag = self.name_tag or os.path.basename(root)
         for fname in files:
                 print fname
                 self.chains.append(WeightedSamples(fname, ignore_lines or self.ignore_lines))
@@ -557,5 +573,10 @@ class chains(WeightedSamples):
     def saveAsText(self, root):
         np.savetxt(root + '.txt', np.hstack((self.weights.reshape(-1, 1), self.loglikes.reshape(-1, 1), self.samples)), fmt=self.precision)
         self.paramNames.saveAsText(root + '.paramnames')
+
+    def savePickle(self, filename):
+        import pickle
+        with open(filename, 'wb') as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
 

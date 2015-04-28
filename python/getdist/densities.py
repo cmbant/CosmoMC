@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.interpolate import splrep, splev, bisplrep, bisplev
+from scipy.interpolate import splrep, splev, RectBivariateSpline
 
 class DensitiesError(Exception):
     pass
@@ -73,7 +73,6 @@ class GridDensity(object):
         if in_place: self.P /= norm
         else: self.setP(self.P / norm)
         self.spl = None
-        self.missing_norm /= norm
         return self
 
     def setP(self, P=None):
@@ -88,24 +87,29 @@ class GridDensity(object):
 
     def bounds(self):
         # give bounds in order x, y, z..
-        b = [(ax[0], ax[-1]) for ax in self.axes]
-        b.reverse()
+        if self.view_ranges is not None:
+            return self.view_ranges
+        else:
+            b = [(ax[0], ax[-1]) for ax in self.axes]
+            b.reverse()
         return b
 
     def getContourLevels(self, contours=defaultContours):
-        return getContourLevels(self.P, contours, missing_norm=self.missing_norm)
+        return getContourLevels(self.P, contours)
 
-class Density1D(GridDensity):
+class Density1D(GridDensity, RectBivariateSpline):
 
-    def __init__(self, x, P=None, missing_norm=0):
+    def __init__(self, x, P=None, view_ranges=None):
         self.n = x.size
         self.axes = [x]
         self.x = x
+        self.view_ranges = view_ranges
         self.spacing = x[1] - x[0]
-        self.missing_norm = missing_norm
         self.setP(P)
 
     def bounds(self):
+        if self.view_ranges is not None:
+            return self.view_ranges
         return self.x[0], self.x[-1]
 
     def _initSpline(self):
@@ -114,12 +118,15 @@ class Density1D(GridDensity):
     def Prob(self, x, derivative=0):
         if self.spl is None: self._initSpline()
         if isinstance(x, np.ndarray):
-            return splev(x, self.spl, derivative)
+            return splev(x, self.spl, derivative, ext=1)
         else:
-            return splev([x], self.spl, derivative)
+            return splev([x], self.spl, derivative, ext=1)
+
+    def integrate(self, P):
+        return  ((P[0] + P[-1]) / 2 + np.sum(P[1:-1])) * self.spacing
 
     def integral(self):
-        return  ((self.P[0] + self.P[-1]) / 2 + np.sum(self.P[1:-1])) * self.spacing
+        return self.integrate(self.P)
 
     def initLimitGrids(self, factor=None):
         class InterpGrid(object): pass
@@ -144,7 +151,7 @@ class Density1D(GridDensity):
     def getLimits(self, p, interpGrid=None, accuracy_factor=None):
         g = interpGrid or self.initLimitGrids(accuracy_factor)
         parr = np.atleast_1d(p)
-        targets = (1 - parr) * g.norm - self.missing_norm * g.factor
+        targets = (1 - parr) * g.norm
         ixs = np.searchsorted(g.cumsum, targets)
         results = []
         for ix, target in zip(ixs, targets):
@@ -175,24 +182,29 @@ class Density1D(GridDensity):
         return results
 
 
-class Density2D(GridDensity):
+class Density2D(GridDensity, RectBivariateSpline):
 
-    def __init__(self, x, y, P=None, missing_norm=0):
+    def __init__(self, x, y, P=None, view_ranges=None):
         self.x = x
         self.y = y
         self.axes = [y, x]
-        self.missing_norm = missing_norm
+        self.view_ranges = view_ranges
+        self.spacing = (self.x[1] - self.x[0]) * (self.y[1] - self.y[0])
         self.setP(P)
 
-    def integral(self):
-        norm = np.sum(self.P[1:-1, 1:-1]) + (self.P[0, 0] + self.P[0, -1] + self.P[-1, 0] + self.P[-1, -1]) / 4.0 \
-            + (np.sum(self.P[1:-1, 0]) + np.sum(self.P[0, 1:-1]) + np.sum(self.P[1:-1, -1]) + np.sum(self.P[-1, 1:-1])) / 2.0
-        norm *= (self.x[1] - self.x[0]) * (self.y[1] - self.y[0])
+    def integrate(self, P):
+        norm = np.sum(P[1:-1, 1:-1]) + (P[0, 0] + P[0, -1] + P[-1, 0] + P[-1, -1]) / 4.0 \
+            + (np.sum(P[1:-1, 0]) + np.sum(P[0, 1:-1]) + np.sum(P[1:-1, -1]) + np.sum(P[-1, 1:-1])) / 2.0
+        norm *= self.spacing
         return norm
 
-    def _initSpline(self):
-        self.spl = bisplrep(self.x, self.y, self.P, s=0)
+    def integral(self):
+        return self.integrate(self.P)
 
-    def Prob(self, x, y, dx=0, dy=0):
+    def _initSpline(self):
+        RectBivariateSpline.__init__(self, self.x, self.y, self.P.T, s=0)
+        self.spl = self
+
+    def Prob(self, x, y):
         if self.spl is None: self._initSpline()
-        return bisplev(x, y, self.spl, dx, dy)
+        return self.spl.ev(x, y)

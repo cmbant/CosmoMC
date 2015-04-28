@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-import os, jobQueue, batchJobArgs
+import os
+
+from paramgrid import batchJobArgs, jobQueue
+
 
 parser = batchJobArgs.argParser("Submit a single job to queue")
 

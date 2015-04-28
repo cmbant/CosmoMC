@@ -220,7 +220,7 @@
     Type(BlockProposer), pointer :: BP
 
     if (.not. allocated(this%propose_matrix)) then
-        allocate(this%propose_matrix(num_params_used,num_params_used), source=propose_matrix)
+        allocate(this%propose_matrix, source=propose_matrix)
     else
         this%propose_matrix=propose_matrix
     end if

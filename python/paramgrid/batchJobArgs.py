@@ -1,8 +1,12 @@
-import sys, os, batchJob, fnmatch
-try: import argparse
+import fnmatch
+import sys
+try:
+    import argparse
 except:
     print 'use "module load" to load python 2.7'
     sys.exit()
+from paramgrid import batchJob
+
 
 def argParser(desc=''):
     return argparse.ArgumentParser(description=desc)
@@ -57,13 +61,13 @@ class batchArgs(object):
                 self.batch = batchJob.readobject(args.batchPath)
                 if self.batch is None: raise Exception('batchPath does not exist or it not initialized with makeGrid.py')
                 if self.doplots:
-                    import GetDistPlots
+                    import getdist.plots as plots
                     from getdist import paramNames
                     if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
                     if args.plot_data is not None:
-                        g = GetDistPlots.GetDistPlotter(plot_data=args.plot_data)
+                        g = plots.GetDistPlotter(plot_data=args.plot_data)
                     else:
-                        g = GetDistPlots.GetDistPlotter(chain_dir=self.batch.batchPath)
+                        g = plots.GetDistPlotter(chain_dir=self.batch.batchPath)
                     if args.size_inch is not None: g.settings.setWithSubplotSize(args.size_inch)
                     return (self.batch, self.args, g)
                 else:

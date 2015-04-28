@@ -1,5 +1,6 @@
 import os
-import batchJobArgs
+
+from paramgrid import batchJobArgs
 from getdist import ResultObjs, paramNames
 
 

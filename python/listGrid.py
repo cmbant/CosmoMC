@@ -1,4 +1,4 @@
-import batchJobArgs
+from paramgrid import batchJobArgs
 
 
 Opts = batchJobArgs.batchArgs('List items in a grid', importance=True, converge=True, notExist=True)

@@ -323,7 +323,7 @@
     select type (Pt)
     class is (object_array_pointer)
         if (this%ownsObjects) then
-            allocate(Pt%P(1:SIZE(P)), source= P)
+            allocate(Pt%P, source= P)
         else
             Pt%P => P
         end if
@@ -496,7 +496,7 @@
         end if
         deallocate(this%Items)
         this%Capacity = newCount
-        allocate(this%Items(this%Capacity), source = TmpItems)
+        allocate(this%Items, source = TmpItems)
         this%Count = newCount
         deallocate(TmpItems)
     end if

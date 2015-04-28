@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import os
-import sys
-import iniFile
 import subprocess
-from getdist import MCSamples, chains
+
+import sys
+from getdist import MCSamples, chains, inifile
+
 # ==============================================================================
 
 if len(sys.argv) < 2:
@@ -17,7 +18,7 @@ if not os.path.isfile(ini_file):
     sys.exit()
 
 # Input parameters
-ini = iniFile.iniFile(ini_file)
+ini = inifile.IniFile(ini_file)
 
 # File root
 if len(sys.argv) > 2:

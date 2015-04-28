@@ -1,4 +1,11 @@
-import subprocess, os, numpy as np, re, pickle, time, shutil
+import subprocess
+import os
+import numpy as np
+import re
+import pickle
+import time
+import shutil
+from distutils import spawn
 
 def addArguments(parser, combinedJobs=False):
     parser.add_argument('--nodes', type=int)
@@ -49,6 +56,16 @@ class jobSettings(object):
 
     def __init__(self, jobName, msg=False, **kwargs):
         self.jobName = jobName
+        grid_engine = 'PBS'
+        if spawn.find_executable("msub") is not None:
+            grid_engine = 'MOAB'
+        else:
+            try:
+                help_info = subprocess.check_output('qstat -h', shell=True).strip()
+                if 'OGS/GE' in help_info: grid_engine = 'OGS'  # Open Grid Scheduler, as on StarCluster
+            except:
+                pass
+
         self.job_template = getDefaulted('job_template', 'job_script', **kwargs)
         with open(self.job_template, 'r') as f:
             template = f.read()
@@ -71,10 +88,11 @@ class jobSettings(object):
         self.walltime = getDefaulted('walltime', '24:00:00', template=template, **kwargs)
         self.program = getDefaulted('program', './cosmomc', template=template, **kwargs)
         self.queue = getDefaulted('queue', '', template=template, **kwargs)
-        self.gridEngine = getDefaulted('GridEngine', 'PBS', template=template, **kwargs)
+        self.gridEngine = getDefaulted('GridEngine', grid_engine, template=template, **kwargs)
         self.qsub = getDefaulted('qsub', ('qsub', 'msub')[self.gridEngine == 'MOAB'], template=template, **kwargs)
         self.qdel = getDefaulted('qdel', ('qdel', 'canceljob')[self.gridEngine == 'MOAB'], template=template, **kwargs)
         self.runCommand = extractValue(template, 'RUN')
+
 
 
 class jobIndex(object):
@@ -249,6 +267,9 @@ def submitJob(jobName, paramFiles, sequential=False, msg=False, **kwargs):
             if not res: print 'No qsub output'
             else:
                 j.paramFiles = paramFiles
+                if 'Your job ' in res:
+                    m = re.search('Your job (\d*) ', res)
+                    res = m.group(1)
                 j.jobId = res
                 j.subTime = time.time()
                 open(scriptRoot + '.sub', 'w').write(res)
@@ -263,14 +284,21 @@ def queue_job_details(batchPath=None, running=True, queued=True, warnNotBatch=Tr
     if not index:
         print 'No existing job index found'
         return []
-    res = subprocess.check_output('showq -u $USER', shell=True).strip()
+    if spawn.find_executable("showq") is not None:
+        res = subprocess.check_output('showq -U $USER', shell=True).strip()
+        running = ' Running '
+    else:
+        # e.g. Sun Grid Engine/OGS
+        res = subprocess.check_output('qstat -u $USER', shell=True).strip()
+        running = ' r '
     res = res.split("\n")
     names = []
     jobNames = []
     ids = []
     infos = []
     for line in res[2:]:
-        if ' ' + os.environ.get('USER') + ' ' in line and (queued and not ' Running ' in line or running and ' Running ' in line):
+        if ' ' + os.environ.get('USER') + ' ' in line and (queued and not re.search(running, line, re.IGNORECASE)
+                                                            or running and re.search(running, line, re.IGNORECASE)):
             items = line.split()
             jobId = items[0]
             j = index.jobSettings.get(jobId)

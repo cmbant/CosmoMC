@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-import hashlib, os, batchJobArgs, jobQueue
+import hashlib
+import os
+
+from paramgrid import batchJobArgs, jobQueue
+
 
 Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', notExist=True, notall=True, converge=True)
 

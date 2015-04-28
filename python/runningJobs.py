@@ -1,4 +1,4 @@
-import jobQueue, batchJobArgs
+from paramgrid import batchJobArgs, jobQueue
 
 Opts = batchJobArgs.batchArgs('List details of running or queued jobs; gives job stats, then current R-1 and job/chain names', importance=True, batchPathOptional=True)
 

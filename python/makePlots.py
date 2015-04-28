@@ -1,4 +1,6 @@
-import os, batchJobArgs
+import os
+
+from paramgrid import batchJobArgs
 
 
 Opts = batchJobArgs.batchArgs('Make plots from getdist outputs', importance=True, converge=True, plots=True)

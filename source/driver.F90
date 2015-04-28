@@ -270,7 +270,7 @@
         call Setup%ImportanceSampler%ImportanceSample(rootname)
         call DoStop('Postprocesing done',.false.)
     else if (Setup%action == action_tests) then
-        allocate(test_paramvals(num_params), source = BaseParams%Center(:num_params))
+        allocate(test_paramvals, source = BaseParams%Center(:num_params))
         if (test_used_params/='') then
             read(test_used_params,*, iostat=status) test_paramvals(params_used)
             if (status/=0) call MpiStop('Error reading test_used_params array')

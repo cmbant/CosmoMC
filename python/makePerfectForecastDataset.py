@@ -2,10 +2,13 @@
 # Use in cosmomc .ini file using e.g.
 # cmb_dataset[MyForecast]=data/MyForecast/test_lensedCls_exactsim.dataset
 
-import numpy as np
-import iniFile
 import shutil
 import os
+
+import numpy as np
+
+from getdist import inifile
+
 
 
 # Edit parameters you want to change here
@@ -32,7 +35,7 @@ fsky = 0.57
 
 
 # os.path.dirname(sys.path[0])+'/data/'
-ini = iniFile.iniFile()
+ini = inifile.IniFile()
 dataset = ini.params
 
 # change this if you don't want to use all pol

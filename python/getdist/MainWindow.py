@@ -1,17 +1,22 @@
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python
 
+# -*- coding: utf-8 -*-
 import os
-import sys
-import signal
 import copy
 import logging
-import GetDistPlots
+
 import matplotlib
 import numpy as np
-from iniFile import iniFile
-from getdist import MCSamples
-from sys import platform
 import scipy
+
+import sys
+import signal
+matplotlib.use('Qt4Agg')
+matplotlib.rcParams['backend.qt4'] = 'PySide'
+
+from getdist import MCSamples, plots
+from getdist.inifile import IniFile
+from sys import platform
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -22,7 +27,6 @@ try:
     from PySide.QtCore import *
     from PySide.QtGui  import *
     os.environ['QT_API'] = 'pyside'
-    matplotlib.rcParams['backend.qt4'] = 'PySide'
     try:
         import Resources_pyside
     except ImportError:
@@ -31,8 +35,7 @@ except ImportError:
     print "Can't import PySide modules, please install PySide first."
     sys.exit()
 
-import batchJob
-import makeGrid
+from paramgrid import batchJob, gridconfig
 # ==============================================================================
 
 class GuiSelectionError(Exception):
@@ -69,7 +72,7 @@ class MainWindow(QMainWindow):
         self.base_dir = base_dir
 
         self.orig_rc = matplotlib.rcParams.copy()
-        self.plot_module = 'GetDistPlots'
+        self.plot_module = 'getdist.plots'
         self.script_plot_module = self.plot_module
 
         # GUI setup
@@ -499,7 +502,7 @@ class MainWindow(QMainWindow):
         if not self.plotter:
             QMessageBox.warning(self, "Settings", "Open chains first ")
             return
-        if isinstance(self.iniFile, basestring): self.iniFile = iniFile(self.iniFile)
+        if isinstance(self.iniFile, basestring): self.iniFile = IniFile(self.iniFile)
         self.settingDlg = self.settingDlg or DialogSettings(self, self.iniFile)
         self.settingDlg.show()
         self.settingDlg.activateWindow()
@@ -524,7 +527,7 @@ class MainWindow(QMainWindow):
                 'num_plot_contours', 'solid_contour_palefactor', 'alpha_filled_add', 'alpha_factor_contour_lines', 'axis_marker_color',
                 'axis_marker_ls', 'axis_marker_lw']
         pars.sort
-        ini = iniFile()
+        ini = IniFile()
         for par in pars:
             ini.getAttr(settings, par)
         ini.params.update(self.custom_plot_settings)
@@ -560,7 +563,7 @@ class MainWindow(QMainWindow):
         """
         Callback for action 'Show config settings'
         """
-        ini = iniFile()
+        ini = IniFile()
         ini.params['plot_module'] = self.plot_module
         ini.params['script_plot_module'] = self.script_plot_module
         ini.comments['plot_module'] = ["module used by the GUI (e.g. change to planckStyle)"]
@@ -630,32 +633,34 @@ class MainWindow(QMainWindow):
     def openDirectory(self, dirName):
 
         # Check if it's a grid
-        if makeGrid.pathIsGrid(dirName):
+        try:
+            if gridconfig.pathIsGrid(dirName):
+                self.rootdirname = dirName
+                self.lineEditDirectory.setText(self.rootdirname)
+                self._readGridChains(self.rootdirname)
+                return
+            else:
+                if self.is_grid:
+                    self._resetGridData()
+
+            root_list = MCSamples.GetChainRootFiles(dirName)
+            if not len(root_list):
+                QMessageBox.critical(self, "Open chains", "No chains or grid found in that directory")
+                return
             self.rootdirname = dirName
             self.lineEditDirectory.setText(self.rootdirname)
-            self._readGridChains(self.rootdirname)
-            return
-        else:
-            if self.is_grid:
-                self._resetGridData()
 
-        root_list = MCSamples.GetChainRootFiles(dirName)
-        if not len(root_list):
-            QMessageBox.critical(self, "Open chains", "No chains or grid found in that directory")
-            return
-        self.rootdirname = dirName
-        self.lineEditDirectory.setText(self.rootdirname)
+            self.getPlotter(chain_dir=self.rootdirname)
 
-        self.getPlotter(chain_dir=self.rootdirname)
-
-        self._updateComboBoxRootname(root_list)
+            self._updateComboBoxRootname(root_list)
+        except Exception as e:
+            self.errorReport(e, caption="Open chains", capture=True)
 
     def getPlotter(self, chain_dir=None, loadNew=False):
         try:
             if self.plotter is None or chain_dir or loadNew:
-                module = __import__(self.plot_module)
+                module = __import__(self.plot_module, fromlist=['dummy'])
                 self.plotter = module.getPlotter(mcsamples=True, chain_dir=chain_dir, analysis_settings=self.iniFile)
-    #            self.plotter = GetDistPlots.GetDistPlotter(mcsamples=True, chain_dir=chain_dir, analysis_settings=self.iniFile)
                 self.default_plot_settings = copy.copy(self.plotter.settings)
 
         except Exception as e:
@@ -785,7 +790,8 @@ class MainWindow(QMainWindow):
             item.setCheckState(Qt.Checked)
             item.setText(root)
             self._updateParameters()
-        except:
+        except Exception as e:
+            self.errorReport(e)
             self.listRoots.takeItem(self.listRoots.count() - 1)
             raise
         finally:
@@ -911,14 +917,14 @@ class MainWindow(QMainWindow):
                 items.append(str(item.text()))
         return items
 
-    def errorReport(self, e, caption="Error", msg=""):
-        if isinstance(e, MCSamples.SettingException):
+    def errorReport(self, e, caption="Error", msg="", capture=False):
+        if isinstance(e, MCSamples.SettingError):
             QMessageBox.critical(self, 'Setting error', str(e))
-        elif isinstance(e, MCSamples.ParamException):
+        elif isinstance(e, MCSamples.ParamError):
             QMessageBox.critical(self, 'Param error', str(e))
-        elif isinstance(e, MCSamples.FileException):
+        elif isinstance(e, IOError):
             QMessageBox.critical(self, 'File error', str(e))
-        elif isinstance(e, (GuiSelectionError, GetDistPlots.GetDistPlotError)):
+        elif isinstance(e, (GuiSelectionError, plots.GetDistPlotError)):
             QMessageBox.critical(self, caption, str(e))
         else:
             if not msg:
@@ -927,7 +933,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, caption, str(e) + "\n\n" + msg)
             del msg
 
-        if not isinstance(e, GuiSelectionError): raise
+        if not isinstance(e, GuiSelectionError) and not capture: raise
 
     def closePlots(self):
         if self.plotter.fig is not None:
@@ -965,21 +971,21 @@ class MainWindow(QMainWindow):
             self.plotter.settings.__dict__.update(self.custom_plot_settings)
 
             script = "import %s as s\nimport os\n\n" % self.script_plot_module
-            if isinstance(self.iniFile, iniFile):
+            if isinstance(self.iniFile, IniFile):
                     script += 'analysis_settings = %s\n' % (self.iniFile.params)
             if len(items_x) > 1 or len(items_y) > 1:
                 plot_func = 'getSubplotPlotter'
             else:
                 plot_func = 'getSinglePlotter'
             if self.is_grid:
-                if isinstance(self.iniFile, iniFile):
+                if isinstance(self.iniFile, IniFile):
                     script += "g=s.%s(chain_dir=r'%s',analysis_settings=analysis_settings)\n" % (plot_func, self.rootdirname)
                 else:
                     script += "g=s.%s(chain_dir=r'%s')\n" % (plot_func, self.rootdirname)
             else:
                 if isinstance(self.iniFile, basestring):
                     script += "g=s.%s(mcsamples=True, analysis_settings=r'%s')\n" % (plot_func, self.iniFile)
-                elif isinstance(self.iniFile, iniFile):
+                elif isinstance(self.iniFile, IniFile):
                     script += "g=s.%s(mcsamples=True, analysis_settings=analysis_settings)\n" % (plot_func)
                 else:
                     script += "g=s.%s(mcsamples=True)\n" % (plot_func)
@@ -1328,7 +1334,7 @@ class DialogSettings(QDialog):
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
 
         if items is None:
-            names = iniFile(MCSamples.default_getdist_settings)
+            names = IniFile(MCSamples.default_getdist_settings)
             items = []
             self.ini = ini
             for key in ini.readOrder:

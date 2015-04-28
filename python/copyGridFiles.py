@@ -1,4 +1,10 @@
-import os, fnmatch, shutil, batchJobArgs, batchJob, zipfile
+import os
+import fnmatch
+import shutil
+import zipfile
+
+from paramgrid import batchJob, batchJobArgs
+
 
 Opts = batchJobArgs.batchArgs('copy or zip chains and optionally other files', importance=True, converge=True)
 

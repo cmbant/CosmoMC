@@ -1,4 +1,4 @@
-import batchJobArgs
+from paramgrid import batchJobArgs
 
 Opts = batchJobArgs.batchArgs('Find chains which have failed or not converged.', importance=True, converge=True)
 

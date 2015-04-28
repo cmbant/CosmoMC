@@ -759,9 +759,9 @@
     call this%Clear()
     this%nx = size(x)
     this%ny = size(y)
-    allocate(this%x(this%nx), source = x)
-    allocate(this%y(this%ny), source = y)
-    allocate(this%z(size(z,1),size(z,2)), source = z)
+    allocate(this%x, source = x)
+    allocate(this%y, source = y)
+    allocate(this%z, source = z)
 
     call this%InitInterp()
 

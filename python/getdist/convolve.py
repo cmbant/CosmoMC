@@ -1,62 +1,132 @@
 import numpy as np
-from scipy.signal import fftconvolve
-# convolve2D is just an alias to be consistent with convolve1D and allow playing with alternatives if desired
-from scipy.signal import fftconvolve as convolve2D
 from scipy import fftpack
-from scipy.optimize import fsolve
-import math
 
-# numbers of the form 2^n3^m
-fastFFT = np.array([ 2, 4, 8, 16, 32, 64, 96, 128, 144, 192, 256, 288, 384, 512, 576, 768, 1024, 1152, 1536, 2048, 2304, 3072,
-4096 , 4608, 6144, 8192, 9216, 12288, 16384, 18432, 24576, 32768, 36864, 49152, 65536, 73728,
-98304 , 131072, 147456, 196608, 262144, 294912, 393216, 524288, 589824, 786432, 1048576,
-1179648 , 1572864, 2097152, 2359296, 3145728, 4194304, 4718592, 6291456, 8388608,
-9437184 , 12582912, 16777216, 18874368, 25165824, 33554432, 37748736, 50331648, 67108864,
-75497472 , 100663296, 134217728, 150994944, 201326592, 268435456, 301989888, 402653184, 452984832,
-536870912 , 603979776, 805306368, 905969664], dtype=np.int)
+# numbers of the form 2^n3^m5^r, even only and r<=1
+fastFFT = np.array([2, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128, 144, 160, 192, 256, 288, 320, 384, 432, 480,
+                    512, 576, 640, 720, 768, 864, 960, 1024, 1152, 1280, 1440, 1536, 1728, 1920, 2048, 2304, 2560, 2880, 3072,
+                    3456, 3840, 4096, 4608, 5120, 5760, 6144, 6912, 7680, 8192, 9216, 10240, 11520, 12288, 13824, 15360, 16384,
+                    18432, 20480, 23040, 24576, 27648, 30720, 32768, 36864, 40960, 46080, 49152, 55296, 61440, 65536, 73728, 81920,
+                    92160, 98304, 110592, 122880, 131072, 147456, 163840, 184320, 196608, 221184, 245760, 262144, 294912, 327680,
+                    368640, 393216, 442368, 491520, 524288, 589824, 655360, 737280, 786432, 884736, 983040, 1048576, 1179648,
+                    1310720, 1474560, 1572864, 1769472, 1966080, 2097152, 2359296, 2621440, 2949120, 3145728, 3538944, 3932160,
+                    4194304, 4718592, 5242880, 5898240, 6291456, 7077888, 7864320, 8388608, 9437184, 10485760, 11796480, 12582912,
+                    14155776, 15728640, 16777216, 18874368, 20971520, 23592960, 25165824, 28311552, 31457280, 33554432, 37748736,
+                    41943040, 47185920, 50331648, 56623104, 62914560, 67108864, 75497472, 83886080, 94371840, 100663296, 113246208,
+                    125829120, 134217728, 150994944, 167772160, 188743680, 201326592, 226492416, 234881024, 251658240, 268435456,
+                    301989888, 335544320, 377487360, 402653184, 452984832, 503316480, 536870912, 603979776, 671088640, 754974720,
+                    805306368, 905969664, 1006632960, 1207959552, 1342177280, 1358954496, 1509949440, 1610612736, 1811939328, 2013265920], dtype=np.int)
 
-rootpi = math.sqrt(np.pi)
-root2pi = math.sqrt(2 * np.pi)
-pisquared = np.pi ** 2
-
-_kde_lmax_bandwidth = 7
-_kde_consts = np.array([(1 + 0.5 ** (s + 0.5)) / 3 * np.prod(np.arange(1, 2 * s, 2)) / root2pi for s in  range(_kde_lmax_bandwidth - 1, 1, -1)])
-
-def _bandwidth_fixed_point(t, N, I, logI, a2):
-    # this implements the function t-zeta*gamma^[l](t)
-    f = 2 * np.pi ** (2 * _kde_lmax_bandwidth) * np.dot(a2, np.exp(_kde_lmax_bandwidth * logI - I * (pisquared * t)))
-    for s, const in zip(range(_kde_lmax_bandwidth - 1, 1, -1), _kde_consts):
-        time = (2 * const / N / f) ** (2 / (3. + 2 * s));
-        f = 2 * np.pi ** (2 * s) * np.dot(a2, np.exp(s * logI - I * (pisquared * time)));
-    return t - (2 * N * rootpi * f) ** (-2. / 5);
-
-def gaussian_kde_bandwidth(data, Neff, a=None):
-    """
-     Return optimal standard kernel bandwidth assuming data is binned from Neff independent samples
-     Return value is the bandwidth in units of the range of data (i.e. multiply by max(data)-min(data))
-
-     Uses Improved Sheather-Jones algorithm from
-     Kernel density estimation via diffusion: Z. I. Botev, J. F. Grotowski, and D. P. Kroese (2010)
-     Annals of Statistics, Volume 38, Number 5, pages 2916-2957. 
-     http://arxiv.org/abs/1011.2602
-    """
-    I = np.arange(1, data.size) ** 2
-    logI = np.log(I)
-    if a is None: a = fftpack.dct(data / np.sum(data))
-    a2 = (a[1:] / 2) ** 2
-    t = 0.28 * Neff ** (-2. / 5)  # default value in case of failure
-    try:
-        t = fsolve(_bandwidth_fixed_point, t, (Neff, I, logI, a2), xtol=t / 20)
-    except:
-        print 'kde_bandwidth failed'
-    return math.sqrt(t)
+def nearestFFTnumber(x):
+    return np.maximum(x, fastFFT[np.searchsorted(fastFFT, x)])
 
 
-def convolve1D(x, y, mode):
+def convolve1D(x, y, mode, largest_size=0, cache=None):
     if min(x.shape[0], y.shape[0]) > 1000:
-        return fftconvolve(x, y, mode)
+        return convolveFFT(x, y, mode, largest_size=largest_size, cache=cache)
     else:
         return np.convolve(x, y, mode)
+
+def convolve2D(x, y, mode, largest_size=0, cache=None):
+    return convolveFFTn(x, y, mode, largest_size, cache)
+
+def convolveFFT(x, y, mode='same', yfft=None, xfft=None, largest_size=0, cache=None):
+    """
+    convolution of x with y; fft cans be cached
+    """
+    size = x.size + y.size - 1
+    fsize = nearestFFTnumber(np.maximum(largest_size, size))
+
+    if yfft is None:
+        if cache is not None:
+            key = (fsize, y.size, id(y))
+            yfft = cache.get(key)
+        if yfft is None:
+            yfft = np.fft.rfft(y, fsize)
+            if cache is not None: cache[key] = yfft
+    if xfft is None:
+        if cache is not None:
+            key = (fsize, x.size, id(x))
+            xfft = cache.get(key)
+        if xfft is None:
+            xfft = np.fft.rfft(x, fsize)
+            if cache is not None: cache[key] = xfft
+    res = np.fft.irfft(xfft * yfft)[0:size]
+    if mode == 'same':
+        return res[(y.size - 1) // 2:(y.size - 1) // 2 + x.size]
+    elif mode == 'full':
+        return res
+    elif mode == 'valid':
+        return res[y.size - 1:x.size]
+
+def convolveFFTn(in1, in2, mode="same", largest_size=0, cache=None, yfft=None, xfft=None):
+
+    s1 = np.array(in1.shape)
+    s2 = np.array(in2.shape)
+    size = s1 + s2 - 1
+    fsize = nearestFFTnumber(np.maximum(largest_size, size))
+    if cache is not None:
+        if xfft is None:
+            key = (tuple(fsize), tuple(in1.shape), id(in1))
+            xfft = cache.get(key)
+        if yfft is None:
+            key2 = (tuple(fsize), tuple(in2.shape), id(in2))
+            yfft = cache.get(key2)
+    if xfft is None:
+        xfft = np.fft.rfftn(in1, fsize)
+        if cache is not None: cache[key] = xfft
+    if yfft is None:
+        yfft = np.fft.rfftn(in2, fsize)
+        if cache is not None: cache[key2] = yfft
+
+    fslice = tuple([slice(0, int(sz)) for sz in size])
+    ret = np.fft.irfftn(xfft * yfft, fsize)[fslice]
+
+    if mode == "full":
+        return ret
+    elif mode == "same":
+        return _centered(ret, s1)
+    elif mode == "valid":
+        return _centered(ret, s1 - s2 + 1)
+
+def _centered(arr, newsize):
+    # Return the center newsize portion of the array.
+    startind = (np.array(arr.shape) - newsize) // 2
+    endind = startind + newsize
+    myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
+    return arr[tuple(myslice)]
+
+
+def autoCorrelation(x, n=None, normalized=True, start_index=0):
+    """
+        Calculates auto-correlation of x, result[k] = sum_{i=0}^{n-k} x_i x_{i+k}/(n-k)
+        if normalized=True, divides by the variance (for if start_index=0, first number is one)
+    """
+    result = autoConvolve(x - x.mean(), n, normalize=True)
+    if normalized:
+        result /= result[0]
+    return result[start_index:]
+
+def autoConvolve(x, n=None, normalize=True):
+    """
+    Calculates auto-covariance of x, result[k] = sum_i x_i x_{i+k}
+    n is maxmimum size to return (k = 0..n-1)
+    if normalize=True then normalize convolution by the number of terms for each k
+    (can input x-mean(x) and divide result by variance to get auto correlation)
+    """
+    s = nearestFFTnumber(2 * x.size)
+#    yt = np.fft.rfft(x, s)
+#    yt *= yt.conj()
+#    return np.fft.irfft(yt)[0:x.size]
+    xt = fftpack.rfft(x, s)
+    auto = np.empty((xt.size // 2) + 1)
+    auto[0] = xt[0] ** 2
+    auto[-1] = xt[-1] ** 2
+    auto[1:-1] = (xt[1:-2:2] ** 2 + xt[2:-1:2] ** 2)
+    n = n or x.size
+    res = fftpack.idct(auto, type=1)[0:n] / s
+    if normalize:
+        res /= np.arange(x.size, x.size - n, -1)
+    return res
 
 def convolveGaussianDCT(x, sigma, pad_sigma=4, mode='same', cache={}):
     """
@@ -69,7 +139,7 @@ def convolveGaussianDCT(x, sigma, pad_sigma=4, mode='same', cache={}):
     fill = int(pad_sigma * sigma)
     actual_size = x.size + fill * 2
     if fill > 0:
-        s = max(actual_size, fastFFT[np.searchsorted(fastFFT, actual_size)])
+        s = nearestFFTnumber(actual_size)
         fill2 = s - x.size - fill
         padded_x = np.pad(x, (fill, fill2), mode='constant')
     else:
@@ -94,11 +164,12 @@ def convolveGaussian(x, sigma, sigma_range=4, cache={}):
     1D convolution of x with Gaussian of width sigma pixels
     x_max = int(sigma_range*sigma) the zero padding range at ends
     This uses periodic boundary conditions, and mode = 'same'
+    This is the fastest fft version
     """
     fill = int(sigma_range * sigma)
     actual_size = x.size + 2 * fill
     if fill > 0:
-        s = max(actual_size, fastFFT[np.searchsorted(fastFFT, actual_size)])
+        s = nearestFFTnumber(actual_size)
     else:
         s = actual_size
     gauss = cache.get((fill, actual_size, sigma))
@@ -119,10 +190,7 @@ def convolveGaussianTrunc(x, sigma, sigma_range=4, mode='same', cache={}):
     """
     fill = int(sigma_range * sigma)
     actual_size = x.size + 2 * fill
-    if fill > 0:
-        s = max(actual_size, fastFFT[np.searchsorted(fastFFT, actual_size)])
-    else:
-        s = actual_size
+    s = nearestFFTnumber(actual_size)
     gauss = cache.get((fill, actual_size, sigma))
     if gauss is None:
         points = np.arange(-fill, fill + 1)
@@ -137,3 +205,11 @@ def convolveGaussianTrunc(x, sigma, sigma_range=4, mode='same', cache={}):
         return res
     elif mode == 'valid':
         return res[2 * fill:-2 * fill]
+
+
+def dct2d(a):
+    return fftpack.dct(fftpack.dct(a, axis=0), axis=1)
+
+def idct2d(a):
+    return fftpack.idct(fftpack.idct(a, axis=1), axis=0)
+

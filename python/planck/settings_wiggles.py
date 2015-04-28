@@ -1,4 +1,7 @@
-import re, batchJob, copy
+import copy
+
+from paramgrid import batchJob
+
 
 ini_dir = 'batch2/'
 

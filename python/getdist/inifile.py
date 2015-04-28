@@ -5,7 +5,7 @@ import numpy as np
 class IniError(Exception):
     pass
 
-class iniFile(object):
+class IniFile(object):
 
     def __init__(self, settings=None, keep_includes=False):
 

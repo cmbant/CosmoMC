@@ -1,34 +1,36 @@
 import os
 import glob
-import math
 import logging
-import time
 import copy
+import pickle
+import math
+import time
 import numpy as np
 from scipy.stats import norm
-import pickle
-from iniFile import iniFile
 from getdist import ResultObjs, covMat, paramNames
+from getdist.inifile import IniFile
 from getdist.densities import Density1D, Density2D
 from getdist.chains import chains, chainFiles, lastModified
-from getdist.convolve import convolve1D, convolve2D, gaussian_kde_bandwidth
+from getdist.convolve import convolve1D, convolve2D
+import getdist.kde_bandwidth as kde
 from getdist.paramPriors import ParamBounds
 
-pickle_version = 19
+
+pickle_version = 20
 version = 1.1
 
-default_grid_root = None
 output_base_dir = None
 cache_dir = None
 use_plot_data = False
 default_getdist_settings = os.path.join(os.path.dirname(__file__), 'analysis_defaults.ini')
 default_plot_output = 'pdf'
+default_grid_root = ''
 
 config_file = os.environ.get('GETDIST_CONFIG', None)
 if not config_file:
     config_file = os.path.join(os.path.dirname(__file__), 'config.ini')
 if os.path.exists(config_file):
-    config_ini = iniFile(config_file)
+    config_ini = IniFile(config_file)
     default_grid_root = config_ini.string('default_grid_root', '')
     output_base_dir = config_ini.string('output_base_dir', '')
     cache_dir = config_ini.string('cache_dir', '')
@@ -38,18 +40,15 @@ if os.path.exists(config_file):
     loglevel = config_ini.string('logging', '')
     if loglevel: logging.basicConfig(level=loglevel)
 else:
-    config_ini = iniFile()
+    config_ini = IniFile()
 
 class MCSamplesError(Exception):
     pass
 
-class FileException(MCSamplesError):
+class SettingError(MCSamplesError):
     pass
 
-class SettingException(MCSamplesError):
-    pass
-
-class ParamException(MCSamplesError):
+class ParamError(MCSamplesError):
     pass
 
 
@@ -59,8 +58,7 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settin
         path = cache_dir or path
         if not os.path.exists(path): os.mkdir(path)
         cachefile = os.path.join(path, name) + '.py_mcsamples'
-        samples = MCSamples(file_root, jobItem=jobItem)
-        samples.updateSettings(ini, dist_settings)
+        samples = MCSamples(file_root, jobItem=jobItem, ini=ini, settings=dist_settings)
         allfiles = files + [file_root + '.ranges', file_root + '.paramnames']
         if not no_cache and os.path.exists(cachefile) and lastModified(allfiles) < os.path.getmtime(cachefile):
             try:
@@ -73,10 +71,10 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settin
                     return cache
             except:
                 pass
-        if not len(files): FileException('No chains found: ' + file_root)
+        if not len(files):
+            raise IOError('No chains found: ' + file_root)
         samples.readChains(files)
-        with open(cachefile, 'wb') as output:
-                pickle.dump(samples, output, pickle.HIGHEST_PROTOCOL)
+        samples.savePickle(cachefile)
         return samples
 
 
@@ -93,7 +91,7 @@ class Kernel1D(object):
 
 class MCSamples(chains):
 
-    def __init__(self, root=None, jobItem=None, ini=None, **kwargs):
+    def __init__(self, root=None, jobItem=None, ini=None, settings={}, ranges=None, **kwargs):
         chains.__init__(self, root, jobItem=jobItem, **kwargs)
 
         self.version = pickle_version
@@ -103,12 +101,16 @@ class MCSamples(chains):
         self.ini = ini
 
         self._readRanges()
+        if ranges:
+            self.setRanges(ranges)
 
         # Other variables
         self.range_ND_contour = 1
         self.range_confidence = 0.001
-        self.num_bins = 100
+        self.num_bins = 128
+        self.fine_bins = 1024
         self.num_bins_2D = 40
+        self.fine_bins_2D = 256
         self.smooth_scale_1D = -1.
         self.smooth_scale_2D = -1.
         self.boundary_correction_order = 1
@@ -147,7 +149,18 @@ class MCSamples(chains):
         self.done_1Dbins = False
         self.density1D = dict()
 
-        self.updateSettings(ini)
+        self.updateSettings(ini, settings)
+
+    def setRanges(self, ranges):
+        if isinstance(ranges, (list, tuple)):
+            for i, minmax in enumerate(ranges):
+                self.ranges.setRange(self.parName(i), minmax)
+        elif isinstance(ranges, dict):
+            for key, value in ranges.iteritems():
+                self.ranges.setRange(key, value)
+        else:
+            raise ValueError('MCSamples ranges parameter must be list or dict')
+        self.needs_update = True
 
     def parName(self, i, starDerived=False):
         return self.paramNames.name(i, starDerived)
@@ -167,7 +180,10 @@ class MCSamples(chains):
         ini.setAttr('range_ND_contour', self)
         ini.setAttr('range_confidence', self)
         ini.setAttr('num_bins', self)
+        ini.setAttr('fine_bins', self)
+
         ini.setAttr('num_bins_2D', self)
+        ini.setAttr('fine_bins_2D', self)
 
         ini.setAttr('smooth_scale_1D', self)
         ini.setAttr('smooth_scale_2D', self)
@@ -237,10 +253,10 @@ class MCSamples(chains):
         if not ini:
             ini = self.ini
         elif isinstance(ini, basestring):
-            ini = iniFile(ini)
+            ini = IniFile(ini)
         else:
             ini = copy.deepcopy(ini)
-        if not ini: ini = iniFile(default_getdist_settings)
+        if not ini: ini = IniFile(default_getdist_settings)
         if ini_settings:
             ini.params.update(ini_settings)
         self.ini = ini
@@ -272,7 +288,6 @@ class MCSamples(chains):
         if outliers <> 0:
             logging.warning('outlier fraction %s ', float(outliers) / self.numrows)
 
-        self.N_eff = self.getEffectiveSamples()
         self.indep_thin = 0
         self.setCov()
         self.done_1Dbins = False
@@ -823,35 +838,112 @@ class MCSamples(chains):
                 f.write(lines)
         return lines
 
-    def getAutoBandwidth1D(self, param=0):
+    def _get1DNeff(self, par, param):
+        N_eff = getattr(par, 'N_eff_kde', None)
+        if N_eff is None:
+            par.N_eff_kde = self.getEffectiveSamplesGaussianKDE(param, scale=par.sigma_range)
+            N_eff = par.N_eff_kde
+        return N_eff
+
+    def getAutoBandwidth1D(self, bins, par, param, mult_bias_correction_order=None, kernel_order=1):
         """
-        Get default kernel density bandwidth (in units of standard deviation or scale estimate)
-        The result is multipled by the parameter sigma_range estimate of scale (std dev for Gaussian)
+        Get default kernel density bandwidth (in units the range of the bins)
+        Based on optimal result for basic Parzen kernel, then scaled if higher-order method being used
         """
-        N_eff = self.getEffectiveSamplesGaussianKDE(param)
-        h = gaussian_kde_bandwidth
-        if self.mult_bias_correction_order:
+        N_eff = self._get1DNeff(par, param)
+        h = kde.gaussian_kde_bandwidth_binned(bins, Neff=N_eff)
+        par.kde_h = h
+        m = mult_bias_correction_order
+        if m is None: m = self.mult_bias_correction_order
+        if kernel_order > 1: m = max(m, 1)
+        if m:
+            # higher order method
             # e.g.  http://biomet.oxfordjournals.org/content/82/2/327.full.pdf+html
             # some prefactors given in  http://eprints.whiterose.ac.uk/42950/6/taylorcc2%5D.pdf
-            return 1. / max(1.0, N_eff) ** (1. / 9)
+            # Here we just take unit prefactor relative to Gaussian
+            # and rescale the optimal h for standardard KDE to accounts for higher order scaling
+            # Should be about 1.3 x larger for Gaussian, but smaller in some other cases
+            return h * N_eff ** (1. / 5 - 1. / (4 * m + 5))
         else:
-            # Automatically set smoothing scale from rule of thumb for Gaussian, e.g. see
-            # http://en.wikipedia.org/wiki/Kernel_density_estimation
-            return 1.06 / max(1.0, N_eff) ** 0.2
+            return h
 
-    def getAutoBandwidth2D(self, param1, param2):
+
+    def getAutoBandwidth2D(self, bins, parx, pary, paramx, paramy, corr, rangex, rangey, base_fine_bins_2D,
+                           mult_bias_correction_order=None, min_corr=0.2):
         """
-        get default kernel density bandwidth (in units of standard deviation or scale estimate)
+        get kernel density bandwidth matrix in parameter units
         """
-        return self.getAutoBandwidth1D() * 1.4
+        N_eff = max(self._get1DNeff(parx, paramx), self._get1DNeff(pary, paramy))
+        logging.debug('%s %s AutoBandwidth2D: N_eff=%s, corr=%s', parx.name, pary.name, N_eff, corr)
+        has_limits = parx.has_limits or pary.has_limits
+        do_correlated = not parx.has_limits or not pary.has_limits
+
+        if abs(corr) > min_corr and abs(corr) <= self.max_corr_2D and do_correlated:
+            # 'shear' the data so fairly uncorrelated, making sure shear keeps any bounds on one parameter unchanged
+            # the binning step will rescale to make roughly isotropic as assumed by the 2D kernel optimizer psi_{ab} derivatives
+            i, j = paramx, paramy
+            imax, imin = None, None
+            if parx.has_limits_bot:
+                imin = parx.range_min
+            if parx.has_limits_top:
+                imax = parx.range_max
+            if pary.has_limits:
+                    i, j = j, i
+                    if pary.has_limits_bot:
+                        imin = pary.range_min
+                    if pary.has_limits_top:
+                        imax = pary.range_max
+
+            cov = self.getCov(pars=[i, j])
+            S = np.linalg.cholesky(cov)
+            ichol = np.linalg.inv(S)
+            S *= ichol[0, 0]
+            r = ichol[1, :] / ichol[0, 0]
+            p1 = self.samples[:, i]
+            p2 = r[0] * self.samples[:, i] + r[1] * self.samples[:, j]
+
+            bin1, R1 = kde.bin_samples(p1, nbins=base_fine_bins_2D, range_min=imin, range_max=imax)
+            bin2, R2 = kde.bin_samples(p2, nbins=base_fine_bins_2D)
+            rotbins, _ = self._make2Dhist(bin1, bin2, base_fine_bins_2D, base_fine_bins_2D)
+            opt = kde.KernelOptimizer2D(rotbins, N_eff, 0, do_correlation=not has_limits)
+            hx, hy, c = opt.get_h()
+            hx *= R1
+            hy *= R2
+            kernelC = S.dot(np.array([[ hx ** 2, hx * hy * c], [hx * hy * c, hy ** 2]])).dot(S.T)
+            hx, hy, c = np.sqrt(kernelC[0, 0]), np.sqrt(kernelC[1, 1]), kernelC[0, 1] / np.sqrt(kernelC[0, 0] * kernelC[1, 1])
+            if pary.has_limits:
+                hx, hy = hy, hx
+#            print 'derotated pars', hx, hy, c
+        elif abs(corr) > self.max_corr_2D or not do_correlated and corr > 0.8:
+            c = max(min(corr, self.max_corr_2D), -self.max_corr_2D)
+            hx = parx.sigma_range / N_eff ** (1. / 6)
+            hy = pary.sigma_range / N_eff ** (1. / 6)
+        else:
+            opt = kde.KernelOptimizer2D(bins, N_eff, corr, do_correlation=not has_limits)
+            hx, hy, c = opt.get_h()
+            hx *= rangex
+            hy *= rangey
+
+        if mult_bias_correction_order is None: mult_bias_correction_order = self.mult_bias_correction_order
+        logging.debug('hx/sig, hy/sig, corr =%s, %s, %s', hx / parx.err, hy / pary.err, c)
+        if mult_bias_correction_order:
+            scale = 1.1 * N_eff ** (1. / 6 - 1. / (2 + 4 * (1 + mult_bias_correction_order)))
+            hx *= scale
+            hy *= scale
+            logging.debug('hx/sig, hy/sig, corr, scale =%s, %s, %s, %s', hx / parx.err, hy / pary.err, c, scale)
+        return hx, hy, c
 
 
     def _initParamRanges(self, j, paramConfid=None):
         if isinstance(j, basestring): j = self.index[j]
         paramVec = self.samples[:, j]
-        par = self.paramNames.names[j]
-        par.err = self.sddev[j]
-        par.mean = self.means[j]
+        return self._initParam(self.paramNames.names[j], paramVec, self.means[j], self.sddev[j], paramConfid)
+
+    def _initParam(self, par, paramVec, mean=None, sddev=None, paramConfid=None):
+        if mean is None: mean = paramVec.mean()
+        if sddev is None: sddev = paramVec.std()
+        par.err = sddev
+        par.mean = mean
         par.param_min = np.min(paramVec)
         par.param_max = np.max(paramVec)
         paramConfid = paramConfid or self.initParamConfidenceData(paramVec)
@@ -864,39 +956,19 @@ class MCSamples(chains):
         confids[0] = par.param_min
         confids[-1] = par.param_max
         diffs = confids[4:] - confids[:-4]
-        print 'searching..', par.err
         scale = np.min(diffs) / 1.049
-        for d in diffs:
-            print d / 1.048801025 / par.err
         if np.all(diffs > par.err * 1.049) and np.all(diffs < scale * 1.5):
             # very flat, can use bigger
             par.sigma_range = scale
         else:
             par.sigma_range = min(par.err, scale)
-#        par.range_min, par.range_max, low_1sig, mid, high_1sig = self.confidence(paramConfid, np.array([self.range_confidence, 1 - self.range_confidence, 0.16, 0.5, 0.84]))
-        # par.sigma_range = min((high_1sig - low_1sig) / 2, mid - par.param_min, par.param_max - mid)
         if self.range_ND_contour >= 0 and self.likeStats:
             if self.range_ND_contour >= par.ND_limit_bot.size:
-                raise SettingException("range_ND_contour should be -1 (off), or 0, 1 for first or second contour level")
+                raise SettingError("range_ND_contour should be -1 (off), or 0, 1 for first or second contour level")
             par.range_min = min(max(par.range_min - par.err, par.ND_limit_bot[self.range_ND_contour]), par.range_min)
             par.range_max = max(max(par.range_max + par.err, par.ND_limit_top[self.range_ND_contour]), par.range_max)
 
-        width = (par.range_max - par.range_min) / self.num_bins
-        if width == 0: raise MCSamplesError('Parameter range is zero: ' + par.name)
-
-        if self.smooth_scale_1D <= 0:
-        # Set automatically
-            opt_width = self.getAutoBandwidth1D(j)
-            smooth_1D = opt_width * par.sigma_range * abs(self.smooth_scale_1D)
-            print par.name + ' smooth_1d=', smooth_1D / par.err
-            if smooth_1D < 0.5 * width:
-                logging.warning('num_bins not large enough for optimal density - ' + par.name)
-        elif self.smooth_scale_1D < 1.0:
-            smooth_1D = self.smooth_scale_1D * par.err
-            if smooth_1D < width:
-                logging.warning('num_bins not large enough to well sample smoothed density - ' + par.name)
-        else:
-            smooth_1D = self.smooth_scale_1D * width
+        smooth_1D = par.sigma_range * 0.4
 
         if par.has_limits_bot:
             if par.range_min - par.limmin > 2 * smooth_1D and par.param_min - par.limmin > smooth_1D:
@@ -911,121 +983,125 @@ class MCSamples(chains):
             else:
                 par.range_max = par.limmax
 
+        if not par.has_limits_bot:
+            par.range_min -= smooth_1D * 2
+
+        if not par.has_limits_top:
+            par.range_max += smooth_1D * 2
+
         par.has_limits = par.has_limits_top or par.has_limits_bot
 
-        if par.has_limits_top:
-            par.bin_ref_point = par.range_max
-            if par.has_limits_bot:
-                width = (par.range_max - par.range_min) / self.num_bins
-        else:
-            par.bin_ref_point = par.range_min
+        return par
 
-        smooth_1D_bins = max(1., smooth_1D / width)
-        logging.debug("%s 1D sigma_range, std: %s, %s; smooth_1D_bins: %s ", par.name, par.sigma_range, par.err, smooth_1D_bins)
+    def _binSamples(self, paramVec, par, num_fine_bins, borderfrac=0.1):
 
-        return par, width, smooth_1D_bins
+        # High resolution density (sampled many times per smoothing scale). First and last bins are half width
 
-    def get1DDensity(self, name):
+        border = (par.range_max - par.range_min) * borderfrac
+        binmin = min(par.param_min, par.range_min)
+        if not par.has_limits_bot:
+            binmin -= border
+        binmax = max(par.param_max, par.range_max)
+        if not par.has_limits_top:
+            binmax += border
+        fine_width = (binmax - binmin) / (num_fine_bins - 1)
+        ix = ((paramVec - binmin) / fine_width + 0.5).astype(np.int)
+        return ix, fine_width, binmin, binmax
+
+    def get1DDensity(self, name, **kwargs):
         """
         Returns a Density1D instance for parameter with given name
         """
         if self.needs_update: self.updateBaseStatistics()
-        density = self.density1D.get(name, None)
-        if density is not None: return density
-        return self.get1DDensityGridData(name, get_density=True)
+        if not kwargs:
+            density = self.density1D.get(name, None)
+            if density is not None: return density
+        return self.get1DDensityGridData(name, get_density=True, **kwargs)
 
 
-    def get1DDensityGridData(self, j, writeDataToFile=False, get_density=False, paramConfid=None, meanlikes=False):
+    def get1DDensityGridData(self, j, writeDataToFile=False, get_density=False, paramConfid=None, meanlikes=False, **kwargs):
 
         j = self._parAndNumber(j)[0]
         if j is None: return None
 
-        paramVec = self.samples[:, j]
-        par, width, smooth_1D = self._initParamRanges(j, paramConfid)
+        par = self._initParamRanges(j, paramConfid)
+        num_bins = kwargs.get('num_bins', self.num_bins)
+        smooth_scale_1D = kwargs.get('smooth_scale_1D', self.smooth_scale_1D)
+        boundary_correction_order = kwargs.get('boundary_correction_order', self.boundary_correction_order)
+        mult_bias_correction_order = kwargs.get('mult_bias_correction_order', self.mult_bias_correction_order)
+        fine_bins = kwargs.get('fine_bins', self.fine_bins)
 
-        ix_min = int(round((par.range_min - par.bin_ref_point) / width))
-        ix_max = int(round((par.range_max - par.bin_ref_point) / width))
+        paramrange = par.range_max - par.range_min
+        if paramrange == 0: raise MCSamplesError('Parameter range is zero: ' + par.name)
+        width = paramrange / (num_bins - 1)
 
-        end_edge = int(round(smooth_1D * 2))
-        if not par.has_limits_bot: ix_min -= end_edge
-        if not par.has_limits_top: ix_max += end_edge
+        bin_indices, fine_width, binmin, binmax = self._binSamples(self.samples[:, j], par, fine_bins)
+        bins = np.bincount(bin_indices, weights=self.weights, minlength=fine_bins)
 
-        fine_fac = 10
-        winw = int(round(2.5 * fine_fac * smooth_1D))
-        fine_width = width / fine_fac
-
-        imin = int(round((par.param_min - par.bin_ref_point) / fine_width))
-        imax = int(round((par.param_max - par.bin_ref_point) / fine_width))
-        imin = min(ix_min * fine_fac, imin)
-        imax = max(ix_max * fine_fac, imax)
-        if par.has_limits_bot: imin = ix_min * fine_fac
-        if par.has_limits_top: imax = ix_max * fine_fac
-
-        # High resolution density (sampled many times per smoothing scale)
-        ix2 = np.round((paramVec - par.bin_ref_point) / fine_width).astype(np.int)
-        fine_min = min(imin - winw, np.min(ix2))
-        fine_max = max(imax + winw, np.max(ix2))
-        ix2 -= fine_min
-        finebins = np.bincount(ix2, weights=self.weights, minlength=fine_max - fine_min + 1)
         if meanlikes:
             if self.shade_likes_is_mean_loglikes:
                 w = self.weights * self.loglikes
             else:
                 w = self.weights * np.exp((self.mean_loglike - self.loglikes))
-            finebinlikes = np.bincount(ix2, weights=w, minlength=fine_max - fine_min + 1)
+            finebinlikes = np.bincount(bin_indices, weights=w, minlength=fine_bins)
 
-        # check if bin variation at ends looks sensible for no prior, i.e. no big jumps. Reduce to 32 bins.
-        nbig = finebins.shape[0] // fine_fac
-        binsraw = finebins[ :nbig * fine_fac].reshape(nbig, fine_fac).sum(1)  # rebin by fine_fac
-        binsraw = np.concatenate((binsraw, np.zeros(32 * (1 + int(binsraw.size / 32)) - binsraw.size)))
-        binsraw = binsraw.reshape(32, binsraw.size / 32).sum(1)
-        diffs = np.abs(np.diff(binsraw))
-        jumps = np.argwhere(diffs > 0.1 * np.max(binsraw))
-        if par.has_limits_bot: jumps = jumps[2:]
-        if par.has_limits_top: jumps = jumps[:-2]
-        if len(jumps) and (binsraw[jumps[0] - 1] == 0 or binsraw[jumps[-1] + 1] == 0):
-            logging.warning('sharp edge in parameter %s - check ranges or set limits[%s]', par.name, par.name)
+        if smooth_scale_1D <= 0:
+            # Set automatically.
+            smooth_1D = self.getAutoBandwidth1D(bins, par, j, mult_bias_correction_order, boundary_correction_order) \
+                           * (binmax - binmin) * abs(smooth_scale_1D) / fine_width
+#            print smooth_1D * width / par.err / abs(smooth_scale_1D)
+        elif smooth_scale_1D < 1.0:
+            smooth_1D = smooth_scale_1D * par.err / fine_width
+        else:
+            smooth_1D = smooth_scale_1D * width / fine_width
 
-        Kernel = Kernel1D(winw, fine_fac * smooth_1D)
-        fineused = finebins[imin - winw - fine_min:imax + winw + 1 - fine_min]
+        if smooth_1D < 2:
+            logging.warning('fine_bins not large enough to well sample smoothing scale - ' + par.name)
 
-        conv = convolve1D(fineused, Kernel.Win, 'valid')
+        smooth_1D = min(max(1., smooth_1D), fine_bins // 2)
 
-        density1D = Density1D(np.linspace(par.bin_ref_point + imin * fine_width,
-                                          par.bin_ref_point + imax * fine_width, imax - imin + 1), P=conv)
-        density1D.missing_norm = np.sum(finebins) - np.sum(fineused[winw:-winw + 1])
+        logging.debug("%s 1D sigma_range, std: %s, %s; smooth_1D_bins: %s ", par.name, par.sigma_range, par.err, smooth_1D)
+
+        winw = min(int(round(2.5 * smooth_1D)), fine_bins // 2 - 2)
+        Kernel = Kernel1D(winw, smooth_1D)
+
+        cache = {}
+        conv = convolve1D(bins, Kernel.Win, 'same', cache=cache)
+        fine_x = np.linspace(binmin, binmax, fine_bins)
+        density1D = Density1D(fine_x, P=conv, view_ranges=[par.range_min, par.range_max])
+
         if meanlikes: rawbins = conv.copy()
 
-        if par.has_limits and self.boundary_correction_order >= 0:
+        if par.has_limits and boundary_correction_order >= 0:
             # correct for cuts allowing for normalization over window
-            prior_mask = np.ones(imax - imin + 2 * winw + 1)
+            prior_mask = np.ones(fine_bins + 2 * winw)
             if par.has_limits_bot:
                 prior_mask[ winw ] = 0.5
                 prior_mask[ : winw ] = 0
             if par.has_limits_top:
                 prior_mask[-winw ] = 0.5
                 prior_mask[-winw : ] = 0
-            a0 = convolve1D(prior_mask, Kernel.Win, 'valid')
+            a0 = convolve1D(prior_mask, Kernel.Win, 'valid', cache=cache)
             ix = np.nonzero(a0 * density1D.P)
             a0 = a0[ix]
             normed = density1D.P[ix] / a0
-            if self.boundary_correction_order == 0:
+            if boundary_correction_order == 0:
                 density1D.P[ix] = normed
-            elif self.boundary_correction_order <= 2:
+            elif boundary_correction_order <= 2:
                 # linear boundary kernel, e.g. Jones 1993, Jones and Foster 1996
                 #  www3.stat.sinica.edu.tw/statistica/oldpdf/A6n414.pdf after Eq 1b, expressed for general prior mask
                 # cf arXiv:1411.5528
                 xWin = Kernel.Win * Kernel.x
-                a1 = convolve1D(prior_mask, xWin, 'valid')[ix]
-                a2 = convolve1D(prior_mask, xWin * Kernel.x, 'valid')[ix]
-                xP = convolve1D(fineused, xWin, 'valid')[ix]
-                if self.boundary_correction_order == 1:
+                a1 = convolve1D(prior_mask, xWin, 'valid', cache=cache)[ix]
+                a2 = convolve1D(prior_mask, xWin * Kernel.x, 'valid', cache=cache)[ix]
+                xP = convolve1D(bins, xWin, 'same', cache=cache)[ix]
+                if boundary_correction_order == 1:
                     corrected = (density1D.P[ix] * a2 - xP * a1) / (a0 * a2 - a1 ** 2)
                 else:
                     # quadratic correction
-                    a3 = convolve1D(prior_mask, xWin * Kernel.x ** 2, 'valid')[ix]
-                    a4 = convolve1D(prior_mask, xWin * Kernel.x ** 3, 'valid')[ix]
-                    x2P = convolve1D(fineused, xWin * Kernel.x, 'valid')[ix]
+                    a3 = convolve1D(prior_mask, xWin * Kernel.x ** 2, 'valid', cache=cache)[ix]
+                    a4 = convolve1D(prior_mask, xWin * Kernel.x ** 3, 'valid', cache=cache)[ix]
+                    x2P = convolve1D(bins, xWin * Kernel.x, 'same', cache=cache)[ix]
                     denom = a4 * a2 * a0 - a4 * a1 ** 2 - a2 ** 3 - a3 ** 2 * a0 + 2 * a1 * a2 * a3
                     A = a4 * a2 - a3 ** 2
                     B = a2 * a3 - a4 * a1
@@ -1033,66 +1109,65 @@ class MCSamples(chains):
                     corrected = (density1D.P[ix] * A + xP * B + x2P * C) / denom
                 density1D.P[ix] = normed * np.exp(np.minimum(corrected / normed, 4) - 1)
             else:
-                raise SettingException('Unknown boundary_correction_order (expected 0, 1, 2)')
-        elif self.boundary_correction_order == 2:
-            # higher order kernel, typically not better than shrinking width
+                raise SettingError('Unknown boundary_correction_order (expected 0, 1, 2)')
+        elif boundary_correction_order == 2:
+            # higher order kernel
             # eg. see http://www.jstor.org/stable/2965571
             xWin2 = Kernel.Win * Kernel.x ** 2
-            x2P = convolve1D(fineused, xWin2, 'valid')
+            x2P = convolve1D(bins, xWin2, 'same', cache=cache)
             a2 = np.sum(xWin2)
             a4 = np.dot(xWin2 , Kernel.x ** 2)
             corrected = (density1D.P * a4 - a2 * x2P) / (a4 - a2 ** 2)
             ix = density1D.P > 0
             density1D.P[ix] = density1D.P[ix] * np.exp(np.minimum(corrected[ix] / density1D.P[ix], 2) - 1)
 
-        if self.mult_bias_correction_order:
-            prior_mask = np.ones(imax - imin + 1)
+        if mult_bias_correction_order:
+            prior_mask = np.ones(fine_bins)
             if par.has_limits_bot:
                 prior_mask[ 0] *= 0.5
             if par.has_limits_top:
                 prior_mask[-1] *= 0.5
-            a0 = convolve1D(prior_mask, Kernel.Win, 'same')
-            ix = np.nonzero(a0)
-            fine = np.zeros(imax - imin + 1)
-            for _ in range(self.mult_bias_correction_order):
+            a0 = convolve1D(prior_mask, Kernel.Win, 'same', cache=cache)
+            for _ in range(mult_bias_correction_order):
                 # estimate using flattened samples to remove second order biases
                 # mostly good performance, see http://www.jstor.org/stable/2965571 method 3,1 for first order
                 prob1 = density1D.P.copy()
                 prob1[prob1 == 0] = 1
-                fine = fineused[winw:-winw] / prob1
-                conv = convolve1D(fine, Kernel.Win, 'same')
+                fine = bins / prob1
+                conv = convolve1D(fine, Kernel.Win, 'same', cache=cache)
                 density1D.setP(density1D.P * conv)
-                density1D.P[ix] /= a0[ix]
+                density1D.P /= a0
 
         density1D.normalize('max', in_place=True)
-        self.density1D[par.name] = density1D
+        if not kwargs: self.density1D[par.name] = density1D
 
         if get_density: return density1D
 
-        # get thinner grid over restricted range for plotting
-        bincounts = density1D.P[ix_min * fine_fac - imin:ix_max * fine_fac - imin + 1:fine_fac]
         if meanlikes:
-            fine = finebinlikes[imin - fine_min:imax + 1 - fine_min]
             ix = density1D.P > 0
-            fine[ix] /= density1D.P[ix]
-            binlikes = convolve1D(fine, Kernel.Win, 'same')
+            finebinlikes[ix] /= density1D.P[ix]
+            binlikes = convolve1D(finebinlikes, Kernel.Win, 'same', cache=cache)
             binlikes[ix] *= density1D.P[ix] / rawbins[ix]
-
-            binlikes = binlikes[ix_min * fine_fac - imin:ix_max * fine_fac - imin + 1:fine_fac]
-
             if self.shade_likes_is_mean_loglikes:
                 maxbin = np.min(binlikes)
                 binlikes = np.where((binlikes - maxbin) < 30, np.exp(-(binlikes - maxbin)), 0)
                 binlikes[rawbins == 0] = 0
-
-        x = par.bin_ref_point + np.arange(ix_min, ix_max + 1) * width
-        if meanlikes:
-            maxbin = np.max(binlikes)
-            likes = binlikes / maxbin
+            binlikes /= np.max(binlikes)
+            density1D.likes = binlikes
         else:
-            likes = None
+            density1D.likes = None
 
         if writeDataToFile:
+            # get thinner grid over restricted range for plotting
+            x = par.range_min + np.arange(num_bins) * width
+            bincounts = density1D.Prob(x)
+
+            if meanlikes:
+                likeDensity = Density1D(fine_x, P=binlikes)
+                likes = likeDensity.Prob(x)
+            else:
+                likes = None
+
             fname = self.rootname + "_p_" + par.name
             filename = os.path.join(self.plot_data_dir, fname + ".dat")
             with open(filename, 'w') as f:
@@ -1104,9 +1179,12 @@ class MCSamples(chains):
                 with open(filename_like, 'w') as f:
                     for xval, binval in zip(x, likes):
                         f.write("%16.7E%16.7E\n" % (xval, binval))
-        result = Density1D(x, bincounts)
-        result.likes = likes
-        return result
+
+            density = Density1D(x, bincounts)
+            density.likes = likes
+            return density
+        else:
+            return density1D
 
 
     def _setEdgeMask2D(self, parx, pary, prior_mask, winw, alledge=False):
@@ -1145,17 +1223,23 @@ class MCSamples(chains):
             if name is None: return None, None
         if isinstance(name, (int, long)):
             return name, self.paramNames.names[name]
-        raise ParamException("Unknown parameter type %s" % (name))
+        raise ParamError("Unknown parameter type %s" % (name))
 
-    def get2DDensity(self, x, y):
+    def _make2Dhist(self, ixs, iys, xsize, ysize):
+        flatix = ixs + iys * xsize
+        # note arrays are indexed y,x
+        return np.bincount(flatix, weights=self.weights,
+                    minlength=xsize * ysize).reshape((ysize , xsize)), flatix
+
+    def get2DDensity(self, x, y, **kwargs):
         """
         Returns a Density2D instance for parameters with given names
         """
-        return self.get2DDensityGridData(x, y, get_density=True)
-
+        if self.needs_update: self.updateBaseStatistics()
+        return self.get2DDensityGridData(x, y, get_density=True, **kwargs)
 
     def get2DDensityGridData(self, j, j2, writeDataToFile=False,
-                      num_plot_contours=None, get_density=False, meanlikes=False):
+                      num_plot_contours=None, get_density=False, meanlikes=False, **kwargs):
         """
         Get 2D plot data.
         """
@@ -1165,114 +1249,91 @@ class MCSamples(chains):
         j2, pary = self._parAndNumber(j2)
         if j is None or j2 is None: return None
 
-        scale_x = self._getScaleForParam(parx)
-        scale_y = self._getScaleForParam(pary)
-        logging.debug('Doing 2D: %s - %s', parx.name, pary.name)
-        logging.debug('scalex, sigma_x: %s, %s', scale_x, parx.err)
-        logging.debug('scaley, sigma_y: %s, %s', scale_y, pary.err)
-        fine_fac_base = 5
+        self._initParamRanges(j)
+        self._initParamRanges(j2)
+
+        base_fine_bins_2D = kwargs.get('fine_bins_2D', self.fine_bins_2D)
+        boundary_correction_order = kwargs.get('boundary_correction_order', self.boundary_correction_order)
+        mult_bias_correction_order = kwargs.get('mult_bias_correction_order', self.mult_bias_correction_order)
+        smooth_scale_2D = float(kwargs.get('smooth_scale_2D', self.smooth_scale_2D))
+
+
         has_prior = parx.has_limits or pary.has_limits
 
         corr = self.getCorrelationMatrix()[j2][j]
         if corr == 1: logging.warning('Parameters are 100%% correlated: %s, %s', parx.name, pary.name)
+
+        logging.debug('Doing 2D: %s - %s', parx.name, pary.name)
+        logging.debug('sample x_err, y_err, correlation: %s, %s, %s', parx.err, pary.err, corr)
+
         # keep things simple unless obvious degeneracy
-        if abs(self.max_corr_2D) > 1: raise SettingException('max_corr_2D cannot be >=1')
+        if abs(self.max_corr_2D) > 1: raise SettingError('max_corr_2D cannot be >=1')
         if abs(corr) < 0.1: corr = 0.
-        corr = max(-self.max_corr_2D, corr)
-        corr = min(self.max_corr_2D, corr)
 
         # for tight degeneracies increase bin density
-        angle_scale = max(0.2, np.sqrt(1 - abs(corr)))
+        angle_scale = max(0.2, np.sqrt(1 - min(self.max_corr_2D, abs(corr)) ** 2))
 
         nbin2D = int(round(self.num_bins_2D / angle_scale))
+        fine_bins_2D = base_fine_bins_2D
+        if corr:
+            scaled = 192 * int(3 / angle_scale) // 3
+            if  base_fine_bins_2D < scaled and int(1 / angle_scale) > 1:
+                fine_bins_2D = scaled
 
-        widthx = (parx.range_max - parx.range_min) / nbin2D
-        widthy = (pary.range_max - pary.range_min) / nbin2D
+        ixs, finewidthx, xbinmin, xbinmax = self._binSamples(self.samples[:, j], parx, fine_bins_2D)
+        iys, finewidthy, ybinmin, ybinmax = self._binSamples(self.samples[:, j2], pary, fine_bins_2D)
 
-        # smooth_x and smooth_y should be in rotated bin units
-        if self.smooth_scale_2D < 0:
-            opt_width = self.getAutoBandwidth2D(j, j2) * abs(self.smooth_scale_2D)
-            smooth_x = opt_width * scale_x / widthx * angle_scale
-            smooth_y = opt_width * scale_y / widthy * angle_scale
-            if smooth_x < 0.5 or smooth_y < 0.5:
-                logging.warning('num_bins_2D not large enough for optimal density')
-        elif self.smooth_scale_2D < 1.0:
-            smooth_x = self.smooth_scale_2D * parx.err / widthx * angle_scale
-            smooth_y = self.smooth_scale_2D * pary.err / widthy * angle_scale
-        else:
-            smooth_x = self.smooth_scale_2D
-            smooth_y = self.smooth_scale_2D
+        xsize = fine_bins_2D
+        ysize = fine_bins_2D
 
-        smooth = float(max(smooth_x  , smooth_y))
-        rx = smooth_x / smooth
-        ry = smooth_y / smooth
-        logging.debug('corr, rx, ry: %s, %s, %s', corr, rx, ry)
-        logging.debug('smoothx, smoothy: %s, %s', smooth_x, smooth_y)
-
-        smooth_scale = (smooth * nbin2D) / self.num_bins_2D
-        fine_fac = max(2, int(round(fine_fac_base / smooth_scale)))
-
-        ixmin = int(round((parx.range_min - parx.bin_ref_point) / widthx))
-        ixmax = int(round((parx.range_max - parx.bin_ref_point) / widthx))
-
-        iymin = int(round((pary.range_min - pary.bin_ref_point) / widthy))
-        iymax = int(round((pary.range_max - pary.bin_ref_point) / widthy))
-
-        if not parx.has_limits_bot: ixmin -= 1
-        if not pary.has_limits_bot: iymin -= 1
-        if not parx.has_limits_top: ixmax += 1
-        if not pary.has_limits_top: iymax += 1
-
-        finewidthx = widthx / fine_fac
-        finewidthy = widthy / fine_fac
-        winw = int(round(2 * fine_fac * smooth_scale))
-
-        ix1s = np.round((self.samples[:, j] - parx.bin_ref_point) / finewidthx).astype(np.int)
-        ix2s = np.round((self.samples[:, j2] - pary.bin_ref_point) / finewidthy).astype(np.int)
-        imin = min(ixmin * fine_fac, np.min(ix1s)) - winw
-        imax = max(ixmax * fine_fac, np.max(ix1s)) + winw
-        jmin = min(iymin * fine_fac, np.min(ix2s)) - winw
-        jmax = max(iymax * fine_fac, np.max(ix2s)) + winw
-
-        flatix = (ix1s - imin) + (ix2s - jmin) * (imax - imin + 1)
-        finebins = np.bincount(flatix, weights=self.weights,
-                    minlength=(jmax - jmin + 1) * (imax - imin + 1)).reshape((jmax - jmin + 1 , imax - imin + 1))
-# equivalent to this slow method
-#        finebins = np.zeros((jmax - jmin + 1, imax - imin + 1))
-#        for i, (ix1, ix2) in enumerate(zip(ix1s - imin, ix2s - jmin)):
-#            finebins[ix2][ix1] += self.weights[i]
+        histbins, flatix = self._make2Dhist(ixs, iys, xsize, ysize)
 
         if meanlikes:
             likeweights = self.weights * np.exp(self.mean_loglike - self.loglikes)
             finebinlikes = np.bincount(flatix, weights=likeweights,
-                    minlength=(jmax - jmin + 1) * (imax - imin + 1)).reshape((jmax - jmin + 1 , imax - imin + 1))
+                    minlength=xsize * ysize).reshape((ysize , xsize))
 
-        indexes = np.arange(-winw, winw + 1)
-        Cinv = np.linalg.inv((fine_fac * smooth_scale) ** 2 * np.array([[ ry ** 2, rx * ry * corr], [rx * ry * corr, rx ** 2]]))
+        # smooth_x and smooth_y should be in rotated bin units
+        if smooth_scale_2D < 0:
+            rx, ry, corr = self.getAutoBandwidth2D(histbins, parx, pary, j, j2, corr, xbinmax - xbinmin, ybinmax - ybinmin,
+                        base_fine_bins_2D, mult_bias_correction_order=mult_bias_correction_order)
+
+            rx = rx * abs(smooth_scale_2D) / finewidthx
+            ry = ry * abs(smooth_scale_2D) / finewidthy
+        elif smooth_scale_2D < 1.0:
+            rx = smooth_scale_2D * parx.err / finewidthx
+            ry = smooth_scale_2D * pary.err / finewidthy
+        else:
+            rx = smooth_scale_2D * fine_bins_2D / nbin2D
+            ry = smooth_scale_2D * fine_bins_2D / nbin2D
+
+        smooth_scale = float(max(rx  , ry))
+        logging.debug('corr, rx, ry: %s, %s, %s', corr, rx, ry)
+
+        if smooth_scale < 2:
+            logging.warning('fine_bins_2D not large enough for optimal density')
+
+        winw = int(round(2.5 * smooth_scale))
+
+        Cinv = np.linalg.inv(np.array([[ ry ** 2, rx * ry * corr], [rx * ry * corr, rx ** 2]]))
         ix1, ix2 = np.mgrid[-winw:winw + 1, -winw:winw + 1]
         Win = np.exp(-(ix1 ** 2 * Cinv[0, 0] + ix2 ** 2 * Cinv[1, 1] + 2 * Cinv[1, 0] * ix1 * ix2) / 2)
         Win /= np.sum(Win)
 
-        logging.debug('time 2D binning: %s', time.time() - start)
+        logging.debug('time 2D binning and bandwidth: %s ; bins: %s', time.time() - start, fine_bins_2D)
         start = time.time()
-
-        fineused = finebins[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
-                            ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin]
-        missing_norm = np.sum(finebins) - np.sum(fineused[winw:-winw, winw:-winw])
-        bins2D = convolve2D(fineused, Win, 'valid')
+        cache = {}
+        convolvesize = xsize + 2 * winw + Win.shape[0]
+        bins2D = convolve2D(histbins, Win, 'same', largest_size=convolvesize, cache=cache)
 
         if meanlikes:
-            fine = finebinlikes[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
-                                ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin]
-            bin2Dlikes = convolve2D(fine, Win, 'valid')
-            if self.mult_bias_correction_order:
+            bin2Dlikes = convolve2D(finebinlikes, Win, 'same', largest_size=convolvesize, cache=cache)
+            if mult_bias_correction_order:
                 ix = bin2Dlikes > 0
-                fine = fine[winw:-winw, winw:-winw]
-                fine[ix] /= bin2Dlikes[ix]
-                likes2 = convolve2D(fine, Win, 'same')
+                finebinlikes[ix] /= bin2Dlikes[ix]
+                likes2 = convolve2D(finebinlikes, Win, 'same', largest_size=convolvesize, cache=cache)
                 likes2[ix] *= bin2Dlikes[ix]
                 bin2Dlikes = likes2
-
             del finebinlikes
             mx = 1e-4 * np.max(bins2D)
             bin2Dlikes[bins2D > mx] /= bins2D[bins2D > mx]
@@ -1280,56 +1341,55 @@ class MCSamples(chains):
         else:
             bin2Dlikes = None
 
-        if has_prior and self.boundary_correction_order >= 0:
+        if has_prior and boundary_correction_order >= 0:
             # Correct for edge effects
-            prior_mask = np.ones(fineused.shape)
+            prior_mask = np.ones((ysize + 2 * winw, xsize + 2 * winw))
             self._setEdgeMask2D(parx, pary, prior_mask, winw)
-            a00 = convolve2D(prior_mask, Win, 'valid')
-            ix = np.nonzero(a00 * bins2D)
+            a00 = convolve2D(prior_mask, Win, 'valid', largest_size=convolvesize, cache=cache)
+            ix = a00 * bins2D > np.max(bins2D) * 1e-8
             a00 = a00[ix]
             normed = bins2D[ix] / a00
-            if self.boundary_correction_order == 1:
+            if boundary_correction_order == 1:
                 # linear boundary correction
+                indexes = np.arange(-winw, winw + 1)
                 y = np.empty(Win.shape)
                 for i in range(Win.shape[0]):
                     y[:, i] = indexes
                 winx = Win * indexes
                 winy = Win * y
-                a10 = convolve2D(prior_mask, winx, 'valid')[ix]
-                a01 = convolve2D(prior_mask, winy, 'valid')[ix]
-                a20 = convolve2D(prior_mask, winx * indexes, 'valid')[ix]
-                a02 = convolve2D(prior_mask, winy * y, 'valid')[ix]
-                a11 = convolve2D(prior_mask, winy * indexes, 'valid')[ix]
-                xP = convolve2D(fineused, winx, 'valid')[ix]
-                yP = convolve2D(fineused, winy, 'valid')[ix]
+                a10 = convolve2D(prior_mask, winx, 'valid', largest_size=convolvesize, cache=cache)[ix]
+                a01 = convolve2D(prior_mask, winy, 'valid', largest_size=convolvesize, cache=cache)[ix]
+                a20 = convolve2D(prior_mask, winx * indexes, 'valid', largest_size=convolvesize, cache=cache)[ix]
+                a02 = convolve2D(prior_mask, winy * y, 'valid', largest_size=convolvesize, cache=cache)[ix]
+                a11 = convolve2D(prior_mask, winy * indexes, 'valid', largest_size=convolvesize, cache=cache)[ix]
+                xP = convolve2D(histbins, winx, 'same', largest_size=convolvesize, cache=cache)[ix]
+                yP = convolve2D(histbins, winy, 'same', largest_size=convolvesize, cache=cache)[ix]
                 denom = (a20 * a01 ** 2 + a10 ** 2 * a02 - a00 * a02 * a20 + a11 ** 2 * a00 - 2 * a01 * a10 * a11)
                 A = a11 ** 2 - a02 * a20
                 Ax = a10 * a02 - a01 * a11
                 Ay = a01 * a20 - a10 * a11
                 corrected = (bins2D[ix] * A + xP * Ax + yP * Ay) / denom
                 bins2D[ix] = normed * np.exp(np.minimum(corrected / normed, 4) - 1)
-            elif self.boundary_correction_order == 0:
+            elif boundary_correction_order == 0:
                 # simple boundary correction by normalization
                 bins2D[ix] = normed
-            else: raise SettingException('unknown boundary_correction_order (expected 0 or 1)')
+            else: raise SettingError('unknown boundary_correction_order (expected 0 or 1)')
 
-        if self.mult_bias_correction_order:
-            prior_mask = np.ones(fineused.shape)
+        if mult_bias_correction_order:
+            prior_mask = np.ones((ysize + 2 * winw, xsize + 2 * winw))
             self._setEdgeMask2D(parx, pary, prior_mask, winw, alledge=True)
-            a00 = convolve2D(prior_mask, Win, 'valid')
-            ix = np.nonzero(a00 * bins2D)
-            box = fineused[winw:-winw, winw:-winw].copy()
-            box_orig = fineused[winw:-winw, winw:-winw]
-            ix2 = bins2D > 0
-            a00 = a00[ix]
-            for _ in range(self.mult_bias_correction_order):
-                box[ix2] = box_orig[ix2] / bins2D[ix2]
-                bins2D *= convolve2D(box, Win, 'same')
-                bins2D[ix] /= a00
+            a00 = convolve2D(prior_mask, Win, 'valid', largest_size=convolvesize, cache=cache)
+            for _ in range(mult_bias_correction_order):
+                box = histbins.copy()  # careful with cache in convolve2D.
+                ix2 = bins2D > np.max(bins2D) * 1e-8
+                box[ix2] /= bins2D[ix2]
+                bins2D *= convolve2D(box, Win, 'same', largest_size=convolvesize, cache=cache)
+                bins2D /= a00
 
-        x = parx.bin_ref_point + np.arange(ixmin * fine_fac, ixmax * fine_fac + 1) * finewidthx
-        y = pary.bin_ref_point + np.arange(iymin * fine_fac, iymax * fine_fac + 1) * finewidthy
-        density = Density2D(x, y, bins2D, missing_norm=missing_norm)
+        x = np.linspace(xbinmin, xbinmax, xsize)
+        y = np.linspace(ybinmin, ybinmax, ysize)
+
+        density = Density2D(x, y, bins2D, view_ranges=[(parx.range_min, parx.range_max), (pary.range_min, pary.range_max) ])
         density.normalize('max', in_place=True)
         if get_density: return density
 
@@ -1340,32 +1400,38 @@ class MCSamples(chains):
         logging.debug('time 2D convolutions: %s', time.time() - start)
 
         # Get contour containing contours(:) of the probability
-        contour_levels = density.getContourLevels(contours)
+        density.contours = density.getContourLevels(contours)
 
-        bins2D = bins2D[::fine_fac, ::fine_fac ]
-        if meanlikes:
-            bin2Dlikes = bin2Dlikes[::fine_fac, ::fine_fac ]
-        x = parx.bin_ref_point + np.arange(ixmin, ixmax + 1) * widthx
-        y = pary.bin_ref_point + np.arange(iymin, iymax + 1) * widthy
+        # now make smaller num_bins grid between ranges for plotting
+#        x = parx.range_min + np.arange(nbin2D + 1) * widthx
+#        y = pary.range_min + np.arange(nbin2D + 1) * widthy
+#        bins2D = density.Prob(x, y)
+#        bins2D[bins2D < 1e-30] = 0
 
-        bins2D[bins2D < 1e-30] = 0
         if meanlikes:
             bin2Dlikes /= np.max(bin2Dlikes)
+            density.likes = bin2Dlikes
+        else:
+            density.likes = None
 
         if writeDataToFile:
             # note store things in confusing traspose form
+#            if meanlikes:
+#                filedensity = Density2D(x, y, bin2Dlikes)
+#                bin2Dlikes = filedensity.Prob(x, y)
+
             plotfile = self.rootname + "_2D_%s_%s" % (parx.name, pary.name)
             filename = os.path.join(self.plot_data_dir, plotfile)
             np.savetxt(filename, bins2D.T, "%16.7E")
             np.savetxt(filename + "_y", x, "%16.7E")
             np.savetxt(filename + "_x", y, "%16.7E")
-            np.savetxt(filename + "_cont", np.atleast_2d(contour_levels), "%16.7E")
+            np.savetxt(filename + "_cont", np.atleast_2d(density.contours), "%16.7E")
             if meanlikes:
                 np.savetxt(filename + "_likes", bin2Dlikes.T , "%16.7E")
-        res = Density2D(x, y, bins2D)
-        res.contours = contour_levels
-        res.likes = bin2Dlikes
-        return res
+#       res = Density2D(x, y, bins2D)
+#       res.contours = density.contours
+#       res.likes = bin2Dlikes
+        return density
 
     def setLikeStats(self):
         # Find best fit sample and mean likelihood
@@ -1537,6 +1603,9 @@ class MCSamples(chains):
 
         return cust2DPlots
 
+    def saveAsText(self, root):
+        super(MCSamples, self).saveAsText(root)
+        self.ranges.saveToFile(root + '.ranges')
 
     # Write functions for GetDist.py
 
@@ -1624,8 +1693,8 @@ class MCSamples(chains):
 
 
     def WritePlotFileInit(self):
-        return """import GetDistPlots, os
-g=GetDistPlots.GetDistPlotter(plot_data='%s')
+        return """import getdist.plots as plots, os
+g=plots.GetDistPlotter(plot_data='%s')
 g.settings.setWithSubplotSize(%f)
 outdir='%s'
 roots=['%s']

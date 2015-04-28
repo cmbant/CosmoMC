@@ -1,9 +1,14 @@
 # Load CosmoMC format .dataset files with lensing likelihood data
 # AL July 2014
+# note this is not well tested with final published versions of likelihoods
+# Does not handle calibration parameter
 
+import pylab as plt
 import os
-import iniFile
-from pylab import *
+import numpy as np
+import sys
+from getdist import inifile
+
 
 def readTextCommentColumns(fname, cols):
         with open(fname) as f:
@@ -11,14 +16,14 @@ def readTextCommentColumns(fname, cols):
             if x[0] != '#': raise Exception('No Comment')
         incols = x[1:].split()
         colnums = [incols.index(col) for col in cols]
-        return loadtxt(fname, usecols=colnums, unpack=True)
+        return np.loadtxt(fname, usecols=colnums, unpack=True)
 
 def readWithHeader(fname):
         with open(fname) as f:
             x = f.readline().strip()
             if x[0] != '#': raise Exception('No Comment')
             x = x[1:].split()
-        return x, loadtxt(fname)
+        return x, np.loadtxt(fname)
 
 class ClsArray(object):
         # Store arrays of cls: self.cls_array[i,j] is zero based array of correlation of field i with j
@@ -34,7 +39,7 @@ class ClsArray(object):
             if cols is None:
                 cols, dat = readWithHeader(filename)
             else:
-                dat = loadtxt(filename)
+                dat = np.loadtxt(filename)
             Lix = cols.index('L')
             L = dat[:, Lix]
             self.lmin = L[0]
@@ -150,7 +155,7 @@ class DatasetLikelihood(object):
 
         def loadDataset(self, froot):
             if not '.dataset' in froot: froot += '.dataset'
-            ini = iniFile.iniFile(froot)
+            ini = inifile.IniFile(froot)
             self.readIni(ini)
 
         def readIni(self, ini):
@@ -198,10 +203,10 @@ class DatasetLikelihood(object):
 
             self.cov = np.loadtxt(ini.relativeFileName('covmat_fiducial'))
             cov = self.cov[self.bin_min:self.bin_max + 1, self.bin_min:self.bin_max + 1]
-            self.covinv = inv(cov)
+            self.covinv = np.linalg.inv(cov)
 
-            if 'linear_correction_fiducial' in ini.params:
-                self.fid_correction = loadtxt(ini.relativeFileName('linear_correction_fiducial'))[:, 1]
+            if 'linear_correction_fiducial_file' in ini.params:
+                self.fid_correction = np.loadtxt(ini.relativeFileName('linear_correction_fiducial_file'))[:, 1]
                 self.linear_correction = self.readBinWindows(ini, 'linear_correction_bin_window')
             else:
                 self.linear_correction = None
@@ -230,17 +235,13 @@ class DatasetLikelihood(object):
             binned_phicl_err = np.zeros(self.nbins)
             for b in range(self.nbins):
                 binned_phicl_err[b] = np.sqrt(self.cov[b, b])
-            errorbar(lbin, self.bandpowers, yerr=binned_phicl_err  , xerr=[lbin - self.lmin, self.lmax - lbin], fmt='o')
-#           if dofid:
-#               self.fid_bandpowers = np.dot(self.binning_matrix, self.fid_phi)
-#               errorbar(lbin, self.fid_bandpowers , yerr=binned_phicl_err , xerr=[lbin - self.lmin, self.lmax - lbin], fmt='o', alpha=0.3)
-#               if phicl is None: phicl = self.fid_phi
+            plt.errorbar(lbin, self.bandpowers, yerr=binned_phicl_err  , xerr=[lbin - self.lmin, self.lmax - lbin], fmt='o')
 
             if phicl is not None:
                 if isinstance(phicl, ClsArray): phicl = phicl.get([3, 3])
                 if ls is None: ls = np.arange(len(phicl))
-                plot(ls, phicl, color='k')
-                xlim([2, ls[-1]])
+                plt.plot(ls, phicl, color='k')
+                plt.xlim([2, ls[-1]])
 
         def chi_squared(self, ClArray):
 
@@ -259,7 +260,7 @@ def plotAndChisq(dataset, cl_file):
     cls = ClsArray(cl_file)
     d.plot(cls)
     print 'Chi-squared: ', d.chi_squared(cls)
-    show()
+    plt.show()
 
 
 if __name__ == "__main__":

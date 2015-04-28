@@ -1,4 +1,10 @@
-import os, iniFile, batchJobArgs, time, subprocess
+import os
+import subprocess
+
+from getdist import inifile
+import time
+from paramgrid import batchJobArgs
+
 
 def checkDir(fname):
     if not os.path.exists(fname): os.makedirs(fname)
@@ -44,7 +50,7 @@ processes = set()
 
 if not args.plots:
         for jobItem in Opts.filteredBatchItems():
-                ini = iniFile.iniFile()
+                ini = inifile.IniFile()
                 ini.params['file_root'] = jobItem.chainRoot
                 checkDir(jobItem.distPath)
                 ini.params['out_dir'] = jobItem.distPath

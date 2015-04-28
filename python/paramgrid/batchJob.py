@@ -1,7 +1,11 @@
+import os
+import shutil
+import pickle
+import copy
 
-import os, sys, shutil, pickle, time, copy
-import iniFile
-from getdist import ResultObjs
+import sys
+import time
+from getdist import ResultObjs, inifile
 
 
 def resetGrid(directory):
@@ -9,20 +13,20 @@ def resetGrid(directory):
     if os.path.exists(fname): os.remove(fname)
 
 def readobject(directory=None):
-    import makeGrid
+    from paramgrid import gridconfig
     if directory == None:
         directory = sys.argv[1]
     fname = os.path.abspath(directory) + os.sep + 'batch.pyobj'
     if not os.path.exists(fname):
-        if makeGrid.pathIsGrid(directory):
-            return makeGrid.makeGrid(directory, readOnly=True, interactive=False)
+        if gridconfig.pathIsGrid(directory):
+            return gridconfig.makeGrid(directory, readOnly=True, interactive=False)
         return None
     try:
         with open(fname, 'rb') as inp:
             return pickle.load(inp)
     except:
-        if makeGrid.pathIsGrid(directory):
-            return makeGrid.makeGrid(directory, readOnly=True, interactive=False)
+        if gridconfig.pathIsGrid(directory):
+            return gridconfig.makeGrid(directory, readOnly=True, interactive=False)
         raise
 
 def saveobject(obj, filename):
@@ -36,14 +40,14 @@ def nonEmptyFile(fname):
     return os.path.exists(fname) and os.path.getsize(fname) > 0
 
 def getCodeRootPath():
-    return os.path.normpath(os.path.join(os.path.dirname(__file__), '..' + os.sep)) + os.sep
+    return os.path.normpath(os.path.join(os.path.dirname(__file__), '..' ,'..')) + os.sep
 
 class propertiesItem(object):
     def propertiesIni(self):
         if os.path.exists(self.propertiesIniFile()):
-            return iniFile.iniFile(self.propertiesIniFile())
+            return inifile.IniFile(self.propertiesIniFile())
         else:
-            ini = iniFile.iniFile()
+            ini = inifile.IniFile()
             ini.original_filename = self.propertiesIniFile()
             return ini
 

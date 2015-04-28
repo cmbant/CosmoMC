@@ -23,7 +23,6 @@
     end type ClikLikelihood
 
     type, extends(ClikLikelihood) :: ClikLensingLikelihood
-        !integer(kind=4) lensing_lmax
         integer(kind=4), dimension(7) :: lensing_lmaxs
     contains
     procedure :: LogLike => clik_lensing_LnLike
@@ -200,7 +199,7 @@
     ! lmaxs(1) will never be -1, but all the other can be is the likelihood is set not to include renormalization
     call clik_lensing_get_lmaxs(this%clikid,this%lensing_lmaxs)
 
-    this%clik_nnuis = 0 !clik_lensing_get_extra_parameter_names(this%clikid,this%names)
+    this%clik_nnuis = clik_lensing_get_extra_parameter_names(this%clikid,this%names)
     allocate(this%cl_lmax(CL_phi,CL_phi), source=0)
     this%cl_lmax(CL_T,CL_T) = this%lensing_lmaxs(2)
     this%cl_lmax(CL_E,CL_T) = this%lensing_lmaxs(5)
@@ -212,7 +211,7 @@
     end where
     call this%do_checks()
     print *,'lensing lmax: ', this%lensing_lmaxs
-    this%clik_n = sum(this%lensing_lmaxs(1:7)+1) !2*(this%lensing_lmax+1) + this%clik_nnuis
+    this%clik_n = sum(this%lensing_lmaxs(1:7)+1) + this%clik_nnuis
 
     end subroutine clik_lensing_likeinit
 

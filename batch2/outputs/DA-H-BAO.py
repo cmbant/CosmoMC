@@ -1,7 +1,9 @@
-import planckStyle as s
-import batchJob
-import GetDistPlots
 from pylab import *
+
+import planckStyle as s
+from paramgrid import batchJob
+import GetDistPlots
+
 
 g = s.getSinglePlotter()
 

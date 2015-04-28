@@ -1,5 +1,6 @@
-import batchJobArgs
 from pylab import *
+
+from paramgrid import batchJobArgs
 
 
 Opts = batchJobArgs.batchArgs('Compare how parameters means and errors vary', importance=True, converge=True, plots=True)
