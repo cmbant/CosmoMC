@@ -11,7 +11,8 @@ from matplotlib import cm, rcParams
 import matplotlib.pyplot as plt
 import numpy as np
 from paramgrid import batchJob, gridconfig
-from getdist import MCSamples, paramNames, inifile
+import getdist
+from getdist import MCSamples, loadMCSamples, paramNames, IniFile
 from getdist.paramPriors import ParamBounds
 from getdist.densities import Density1D, Density2D
 import logging
@@ -235,20 +236,20 @@ class MCSampleAnalysis(object):
                 self.batch = batchJob.readobject(chain_dir)
                 # this gets things like specific parameter limits etc.
                 if os.path.exists(self.batch.commonPath + 'getdist_common.ini'):
-                    self.ini = inifile.IniFile(self.batch.commonPath + 'getdist_common.ini')
+                    self.ini = IniFile(self.batch.commonPath + 'getdist_common.ini')
             else:
                 self.chain_dir = [chain_dir]
         self.reset(settings)
 
     def reset(self, settings=None):
         self.analysis_settings = {}
-        if isinstance(settings, inifile.IniFile):
+        if isinstance(settings, IniFile):
             ini = settings
         elif isinstance(settings, dict):
-            ini = inifile.IniFile(MCSamples.default_getdist_settings)
+            ini = IniFile(getdist.default_getdist_settings)
             ini.params.update(settings)
         else:
-            ini = inifile.IniFile(settings or MCSamples.default_getdist_settings)
+            ini = IniFile(settings or getdist.default_getdist_settings)
         if self.ini:
             self.ini.params.update(ini.params)
         else:
@@ -260,7 +261,7 @@ class MCSampleAnalysis(object):
         self.single_samples = dict()
 
     def samplesForRoot(self, root, file_root=None, cache=True):
-        if isinstance(root, MCSamples.MCSamples): return root
+        if isinstance(root, MCSamples): return root
         if os.path.isabs(root):
             root = os.path.basename(root)
         if root in self.mcsamples and cache: return self.mcsamples[root]
@@ -279,7 +280,7 @@ class MCSampleAnalysis(object):
                         file_root = name
                         break
                 if not file_root:  raise GetDistPlotError('chain not found: ' + root)
-        self.mcsamples[root] = MCSamples.loadMCSamples(file_root, self.ini, jobItem, dist_settings=dist_settings)
+        self.mcsamples[root] = loadMCSamples(file_root, self.ini, jobItem, dist_settings=dist_settings)
         return self.mcsamples[root]
 
     def addRootGrid(self, root):
@@ -361,7 +362,7 @@ class GetDistPlotter(object):
         self.chain_dir = chain_dir
         if settings is None: self.settings = copy.deepcopy(defaultSettings)
         else: self.settings = settings
-        if chain_dir is None and plot_data is None: chain_dir = MCSamples.default_grid_root
+        if chain_dir is None and plot_data is None: chain_dir = getdist.default_grid_root
         if isinstance(plot_data, basestring): self.plot_data = [plot_data]
         else: self.plot_data = plot_data
         if chain_dir is not None or mcsamples and plot_data is None:
@@ -728,7 +729,7 @@ class GetDistPlotter(object):
             if ticks[-1] > 1: ticks = ticks[:-1]
             ax.set_yticks(ticks[1:])
 
-    def make_figure(self, nplot=1, nx=None, ny=None, xstretch=1, ystretch=1):
+    def make_figure(self, nplot=1, nx=None, ny=None, xstretch=1.0, ystretch=1.0):
         self.newPlot()
         if nx is None: self.plot_col = int(round(np.sqrt(nplot / 1.4)))
         else: self.plot_col = nx
@@ -840,7 +841,7 @@ class GetDistPlotter(object):
             return text
 
     def _rootDisplayName(self, root, i):
-        if isinstance(root, MCSamples.MCSamples):
+        if isinstance(root, MCSamples):
             root = root.getName()
         if not root: root = 'samples' + str(i)
         return self._escapeLatex(root)
@@ -1226,7 +1227,7 @@ class GetDistPlotter(object):
     def export(self, fname=None, adir=None, watermark=None, tag=None):
         if fname is None: fname = os.path.basename(sys.argv[0]).replace('.py', '')
         if tag: fname += '_' + tag
-        if not '.' in fname: fname += '.' + MCSamples.default_plot_output
+        if not '.' in fname: fname += '.' + getdist.default_plot_output
         if adir is not None and not os.sep in fname: fname = os.path.join(adir, fname)
         adir = os.path.dirname(fname)
         if adir and not os.path.exists(adir): os.makedirs(adir)

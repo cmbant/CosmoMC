@@ -14,8 +14,9 @@ import signal
 matplotlib.use('Qt4Agg')
 matplotlib.rcParams['backend.qt4'] = 'PySide'
 
-from getdist import MCSamples, plots
-from getdist.inifile import IniFile
+import getdist
+from getdist import MCSamples, plots, IniFile
+from getdist.MCSamples import GetChainRootFiles, SettingError, ParamError
 from sys import platform
 
 import matplotlib.pyplot as plt
@@ -28,7 +29,7 @@ try:
     from PySide.QtGui  import *
     os.environ['QT_API'] = 'pyside'
     try:
-        import Resources_pyside
+        import getdist.gui.Resources_pyside
     except ImportError:
         print "Missing Resources_pyside.py: Run script update_resources.sh"
 except ImportError:
@@ -76,7 +77,7 @@ class MainWindow(QMainWindow):
         self.script_plot_module = self.plot_module
 
         # GUI setup
-        self.createWidgets()
+        self._createWidgets()
         self.createActions()
         self.createMenus()
         self.createStatusBar()
@@ -92,7 +93,7 @@ class MainWindow(QMainWindow):
         signal.signal(signal.SIGINT, signal.SIG_DFL)
 
         # Path for .ini file
-        self.iniFile = ini or MCSamples.default_getdist_settings
+        self.iniFile = ini or getdist.default_getdist_settings
 
         # Path of root directory
         self.rootdirname = None
@@ -211,7 +212,7 @@ class MainWindow(QMainWindow):
         """
         self.statusBar().showMessage("Ready", 2000)
 
-    def createWidgets(self):
+    def _createWidgets(self):
         """
         Create widgets.
         """
@@ -526,7 +527,7 @@ class MainWindow(QMainWindow):
                 'figure_legend_frame', 'figure_legend_ncol', 'legend_rect_border', 'legend_frac_subplot_margin', 'legend_frac_subplot_line',
                 'num_plot_contours', 'solid_contour_palefactor', 'alpha_filled_add', 'alpha_factor_contour_lines', 'axis_marker_color',
                 'axis_marker_ls', 'axis_marker_lw']
-        pars.sort
+        pars.sort()
         ini = IniFile()
         for par in pars:
             ini.getAttr(settings, par)
@@ -602,7 +603,7 @@ class MainWindow(QMainWindow):
         """
         QMessageBox.about(
             self, "About GetDist GUI",
-            "GetDist GUI v " + str(MCSamples.version) + "\ncosmologist.info/cosmomc/\n" +
+            "GetDist GUI v " + getdist.__version__ + "\ncosmologist.info/cosmomc/\n" +
             "\nPython: " + sys.version +
             "\nMatplotlib: " + matplotlib.__version__ +
             "\nSciPy: " + scipy.__version__ +
@@ -643,7 +644,7 @@ class MainWindow(QMainWindow):
                 if self.is_grid:
                     self._resetGridData()
 
-            root_list = MCSamples.GetChainRootFiles(dirName)
+            root_list = GetChainRootFiles(dirName)
             if not len(root_list):
                 QMessageBox.critical(self, "Open chains", "No chains or grid found in that directory")
                 return
@@ -740,7 +741,7 @@ class MainWindow(QMainWindow):
         items = dict()
         for jobItem in batch.items(True, True):
             if jobItem.chainExists():
-                if not jobItem.paramtag in items: items[jobItem.paramtag] = []
+                if jobItem.paramtag not in items: items[jobItem.paramtag] = []
                 items[jobItem.paramtag].append(jobItem)
         logging.debug("Found %i names for grid" % len(items.keys()))
         self.grid_paramtag_jobItems = items
@@ -918,9 +919,9 @@ class MainWindow(QMainWindow):
         return items
 
     def errorReport(self, e, caption="Error", msg="", capture=False):
-        if isinstance(e, MCSamples.SettingError):
+        if isinstance(e, SettingError):
             QMessageBox.critical(self, 'Setting error', str(e))
-        elif isinstance(e, MCSamples.ParamError):
+        elif isinstance(e, ParamError):
             QMessageBox.critical(self, 'Param error', str(e))
         elif isinstance(e, IOError):
             QMessageBox.critical(self, 'File error', str(e))
@@ -1334,7 +1335,7 @@ class DialogSettings(QDialog):
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
 
         if items is None:
-            names = IniFile(MCSamples.default_getdist_settings)
+            names = IniFile(getdist.default_getdist_settings)
             items = []
             self.ini = ini
             for key in ini.readOrder:
@@ -1366,7 +1367,7 @@ class DialogSettings(QDialog):
             self.table.setItem(irow, 1, item)
         self.table.resizeRowsToContents()
         self.table.resizeColumnsToContents()
-        self.table.horizontalHeader().setStretchLastSection(True);
+        self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setEditTriggers(QAbstractItemView.AllEditTriggers)
 
         h = self.table.verticalHeader().length() + 40

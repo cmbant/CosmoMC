@@ -7,8 +7,8 @@ import math
 import time
 import numpy as np
 from scipy.stats import norm
-from getdist import ResultObjs, covMat, paramNames
-from getdist.inifile import IniFile
+import getdist
+from getdist import ResultObjs, covMat, paramNames, IniFile
 from getdist.densities import Density1D, Density2D
 from getdist.chains import chains, chainFiles, lastModified
 from getdist.convolve import convolve1D, convolve2D
@@ -17,30 +17,6 @@ from getdist.paramPriors import ParamBounds
 
 
 pickle_version = 20
-version = 1.1
-
-output_base_dir = None
-cache_dir = None
-use_plot_data = False
-default_getdist_settings = os.path.join(os.path.dirname(__file__), 'analysis_defaults.ini')
-default_plot_output = 'pdf'
-default_grid_root = ''
-
-config_file = os.environ.get('GETDIST_CONFIG', None)
-if not config_file:
-    config_file = os.path.join(os.path.dirname(__file__), 'config.ini')
-if os.path.exists(config_file):
-    config_ini = IniFile(config_file)
-    default_grid_root = config_ini.string('default_grid_root', '')
-    output_base_dir = config_ini.string('output_base_dir', '')
-    cache_dir = config_ini.string('cache_dir', '')
-    default_getdist_settings = config_ini.string('default_getdist_settings', default_getdist_settings)
-    use_plot_data = config_ini.bool('use_plot_data', use_plot_data)
-    default_plot_output = config_ini.string('default_plot_output', default_plot_output)
-    loglevel = config_ini.string('logging', '')
-    if loglevel: logging.basicConfig(level=loglevel)
-else:
-    config_ini = IniFile()
 
 class MCSamplesError(Exception):
     pass
@@ -55,7 +31,7 @@ class ParamError(MCSamplesError):
 def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settings={}):
         files = chainFiles(file_root)
         path, name = os.path.split(file_root)
-        path = cache_dir or path
+        path = getdist.cache_dir or path
         if not os.path.exists(path): os.mkdir(path)
         cachefile = os.path.join(path, name) + '.py_mcsamples'
         samples = MCSamples(file_root, jobItem=jobItem, ini=ini, settings=dist_settings)
@@ -137,7 +113,7 @@ class MCSamples(chains):
         self.subplot_size_inch = 4.0
         self.subplot_size_inch2 = self.subplot_size_inch
         self.subplot_size_inch3 = 6.0
-        self.plot_output = default_plot_output
+        self.plot_output = getdist.default_plot_output
         self.out_dir = ""
 
         self.max_split_tests = 4
@@ -256,7 +232,7 @@ class MCSamples(chains):
             ini = IniFile(ini)
         else:
             ini = copy.deepcopy(ini)
-        if not ini: ini = IniFile(default_getdist_settings)
+        if not ini: ini = IniFile(getdist.default_getdist_settings)
         if ini_settings:
             ini.params.update(ini_settings)
         self.ini = ini

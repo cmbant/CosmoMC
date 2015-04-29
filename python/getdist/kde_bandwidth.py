@@ -179,7 +179,6 @@ class KernelOptimizer2D(object):
         bias = 0.25 * (
                 hx ** 4 * self.p[4, 0] + hy ** 4 * self.p[0, 4] + 2 * hx ** 2 * hy ** 2 * self.p[2, 2] * (2 * c ** 2 + 1)
                 + 4 * c * hx * hy * (hx ** 2 * self.p[3, 1] + hy ** 2 * self.p[1, 3]))
-#        print 'c, var, bias', c, var, bias, var + max(bias, 0)
         if bias < 0:
             raise Exception("bias not positive definite")
         return var + bias
@@ -239,7 +238,6 @@ class KernelOptimizer2D(object):
                 AMISEopt = self.AMISE(res.x)
                 if AMISEopt < AMISE * 0.9:
                     h_x, h_y, corr = res.x
-#              print 'res x,AMISE = ', res.x, AMISEopt
         except:
             logging.debug('AMISE optmization failed')
             pass
