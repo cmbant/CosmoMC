@@ -5,8 +5,8 @@ from matplotlib import rcParams, rc
 import pylab as plt
 
 from paramgrid import batchJob
-import getdist.plots as plots
-from getdist import ResultObjs, MCSamples
+import getdist
+from getdist import ResultObjs, plots
 
 
 # common setup for matplotlib
@@ -108,11 +108,11 @@ s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#
 s.axis_marker_lw = 0.6
 s.lw_contour = 1
 
-s.param_names_for_labels = os.path.normpath(os.path.join(os.path.dirname(__file__), '..' ,'clik_latex.paramnames'))
+s.param_names_for_labels = os.path.normpath(os.path.join(os.path.dirname(__file__), '..' , 'clik_latex.paramnames'))
 
-use_plot_data = MCSamples.use_plot_data
-rootdir = MCSamples.default_grid_root or os.path.join(batchJob.getCodeRootPath(), 'main')
-output_base_dir = MCSamples.output_base_dir or batchJob.getCodeRootPath()
+use_plot_data = getdist.use_plot_data
+rootdir = getdist.default_grid_root or os.path.join(batchJob.getCodeRootPath(), 'main')
+output_base_dir = getdist.output_base_dir or batchJob.getCodeRootPath()
 
 H0_gpe = [70.6, 3.3]
 
