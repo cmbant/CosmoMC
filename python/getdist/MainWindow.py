@@ -28,7 +28,7 @@ try:
     from PySide.QtGui  import *
     os.environ['QT_API'] = 'pyside'
     try:
-        import Resources_pyside
+        import getdist.Resources_pyside
     except ImportError:
         print "Missing Resources_pyside.py: Run script update_resources.sh"
 except ImportError:
