@@ -17,9 +17,9 @@ matplotlib.rcParams['backend.qt4'] = 'PySide'
 
 import getdist
 from getdist import MCSamples, plots, IniFile
+from getdist.gui import SyntaxHighlight
 from getdist.MCSamples import GetChainRootFiles, SettingError, ParamError
 from sys import platform
-import SyntaxHighlight
 
 try:
     import PySide
