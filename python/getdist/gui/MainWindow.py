@@ -7,6 +7,7 @@ import logging
 
 import matplotlib
 import numpy as np
+
 import scipy
 
 import sys
@@ -18,10 +19,7 @@ import getdist
 from getdist import MCSamples, plots, IniFile
 from getdist.MCSamples import GetChainRootFiles, SettingError, ParamError
 from sys import platform
-
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+import SyntaxHighlight
 
 try:
     import PySide
@@ -36,7 +34,13 @@ except ImportError:
     print "Can't import PySide modules, please install PySide first."
     sys.exit()
 
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+
 from paramgrid import batchJob, gridconfig
+
 # ==============================================================================
 
 class GuiSelectionError(Exception):
@@ -216,10 +220,17 @@ class MainWindow(QMainWindow):
         """
         Create widgets.
         """
-        self.centralWidget = QWidget(self)
-        self.setCentralWidget(self.centralWidget)
+        self.tabWidget = QTabWidget(self)
+        self.tabWidget.setTabPosition(QTabWidget.East)
+        self.tabWidget.setTabPosition(QTabWidget.South)
+        self.connect(self.tabWidget, SIGNAL("currentChanged(int)"), self.tabChanged)
+        self.setCentralWidget(self.tabWidget)
 
-        self.selectWidget = QWidget(self.centralWidget)
+        # First tab: Gui Selection
+        self.firstWidget = QWidget(self)
+        self.tabWidget.addTab(self.firstWidget, "Gui Selection")
+
+        self.selectWidget = QWidget(self.firstWidget)
         self.lineEditDirectory = QLineEdit(self.selectWidget)
         self.lineEditDirectory.clear()
         self.lineEditDirectory.setReadOnly(True)
@@ -336,11 +347,11 @@ class MainWindow(QMainWindow):
         self.comboBoxParamTag.hide()
         self.comboBoxDataTag.hide()
 
-        self.plotWidget = QWidget(self.centralWidget)
+        self.plotWidget = QWidget(self.firstWidget)
         layout = QVBoxLayout(self.plotWidget)
         self.plotWidget.setLayout(layout)
 
-        splitter = QSplitter(self.centralWidget)
+        splitter = QSplitter(self.firstWidget)
         splitter.addWidget(self.selectWidget)
         splitter.addWidget(self.plotWidget)
         w = self.width()
@@ -348,7 +359,57 @@ class MainWindow(QMainWindow):
 
         hbox = QHBoxLayout()
         hbox.addWidget(splitter)
-        self.centralWidget.setLayout(hbox)
+        self.firstWidget.setLayout(hbox)
+
+        # Second tab: Script
+        self.secondWidget = QWidget(self)
+        self.tabWidget.addTab(self.secondWidget, "Script")
+
+        self.editWidget = QWidget(self.secondWidget)
+
+        self.toolBar = QToolBar()
+        openAct = QAction(QIcon(":/images/file_open.png"),
+                          "open script", self.toolBar,
+                          statusTip="Open script",
+                          triggered=self.openScript)
+        saveAct = QAction(QIcon(":/images/file_save.png"),
+                          "Save script", self.toolBar,
+                          statusTip="Save script",
+                          triggered=self.saveScript2)
+        clearAct = QAction(QIcon(":/images/view_clear.png"),
+                           "Clear", self.toolBar,
+                           statusTip="Clear",
+                           triggered=self.clearScript)
+        self.toolBar.addAction(openAct)
+        self.toolBar.addAction(saveAct)
+        self.toolBar.addAction(clearAct)
+
+        self.textWidget = QPlainTextEdit(self.editWidget)
+        highlight = SyntaxHighlight.PythonHighlighter(self.textWidget.document())
+
+        self.pushButtonPlot2 = QPushButton("Make plot", self.editWidget)
+        self.connect(self.pushButtonPlot2, SIGNAL("clicked()"), self.plotData2)
+
+        layoutEdit = QVBoxLayout()
+        layoutEdit.addWidget(self.toolBar)
+        layoutEdit.addWidget(self.textWidget)
+        layoutEdit.addWidget(self.pushButtonPlot2)
+        self.editWidget.setLayout(layoutEdit)
+
+        self.plotWidget2 = QWidget(self.secondWidget)
+        layout2 = QVBoxLayout(self.plotWidget2)
+        self.plotWidget2.setLayout(layout2)
+
+        splitter2 = QSplitter(self.secondWidget)
+        splitter2.addWidget(self.editWidget)
+        splitter2.addWidget(self.plotWidget2)
+        w = self.width()
+        splitter2.setSizes([w / 2., w / 2.])
+
+        hbox2 = QHBoxLayout()
+        hbox2.addWidget(splitter2)
+        self.secondWidget.setLayout(hbox2)
+
         self.canvas = None
         self.readSettings()
 
@@ -1156,6 +1217,132 @@ class MainWindow(QMainWindow):
             self.canvas.draw()
             self.plotWidget.show()
 
+
+    # Edit script
+
+    def tabChanged(self, index):
+        """
+        Update script text editor when entering 'gui' tab.
+        """
+        if index == 1 and self.script:
+            self.script_edit = self.textWidget.toPlainText()
+            if self.script_edit and self.script_edit <> self.script:
+                reply = QMessageBox.question(
+                    self, "Overwrite script",
+                    "Script is not empty. Overwrite current script?",
+                    QMessageBox.Yes | QMessageBox.No)
+                if reply == QMessageBox.No: return
+
+            self.script_edit = self.script
+            self.textWidget.setPlainText(self.script_edit)
+
+    def openScript(self):
+        filename, _ = QFileDialog.getOpenFileName(
+            self, "Choose a file name", '.', "Python (*.py)")
+        if not filename: return
+        filename = str(filename)
+        logging.debug("Open file %s" % filename)
+        with open(filename, 'r') as f:
+            self.script_edit = f.read()
+        self.textWidget.setPlainText(self.script_edit)
+
+
+    def saveScript2(self):
+        """
+        Callback for action 'Save script'.
+        """
+        if not hasattr(self, "script_edit") or self.script_edit == '':
+            QMessageBox.warning(self, "Script", "No script to save")
+            # logging.warning("Script is empty!")
+            return
+
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Choose a file name", '.', "Python (*.py)")
+        if not filename: return
+        filename = str(filename)
+        logging.debug("Export script to %s" % filename)
+        self.script_edit = self.textWidget.toPlainText()
+        with open(filename, 'w') as f:
+            f.write(self.script_edit)
+
+    def clearScript(self):
+        self.textWidget.clear()
+        if hasattr(self, "script_edit"):
+            self.script_edit = ''
+
+        self.toolbar2.close()
+        self.canvas2.close()
+
+
+    def plotData2(self):
+        """
+        Slot function called when pushButtonPlot2 is pressed.
+        """
+        self.script_edit = self.textWidget.toPlainText()
+        try:
+            script_exec = self.script_edit
+            if "g.export()" in script_exec:
+                script_exec = script_exec.replace("g.export()", "")
+            exec(script_exec)
+
+            self.plotter2 = None
+            for k, v in locals().items():
+                if isinstance(v, plots.GetDistPlotter):
+                    self.plotter2 = v
+            if self.plotter2:
+                self.updatePlot2()
+
+        except Exception as e:
+            self.errorReport(e, caption="Plot script")
+
+    def updatePlot2(self):
+        if self.plotter2.fig is None:
+            self.canvas2 = None
+        else:
+            i = 0
+            while 1:
+                item = self.plotWidget2.layout().takeAt(i)
+                if item is None: break
+                del item
+            if hasattr(self, "canvas2"): del self.canvas2
+            if hasattr(self, "toolbar2"): del self.toolbar2
+
+            scrollArea = QScrollArea()
+            self.canvas2 = FigureCanvas(self.plotter2.fig)
+            sizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            self.canvas2.setSizePolicy(sizePolicy)
+            scrollArea.setWidget(self.canvas2)
+            scrollArea.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+            scrollArea.setStyleSheet("background-color: rgb(255,255,255)")
+            self.plotter2.fig.set_facecolor('white')
+
+            if platform <> "darwin":
+                # for some reason the toolbar crashes out on a Mac; just don't show it
+                self.toolbar2 = NavigationToolbar(self.canvas2, self)
+                self.plotWidget2.layout().addWidget(self.toolbar2)
+            self.plotWidget2.layout().addWidget(scrollArea)
+            self.plotWidget2.layout()
+            self.canvas2.draw()
+            self.plotWidget2.show()
+
+            import io
+            self.plotter2.fig.savefig(
+                io.BytesIO(),
+                format='pdf',
+                edgecolor='w',
+                facecolor='w',
+                dpi=100,
+                bbox_extra_artists=[],
+                bbox_inches='tight')
+
+            # self.canvas2.print_figure(
+            #     io.BytesIO(),
+            #     edgecolor='w',
+            #     facecolor='w',
+            #     dpi=100,
+            #     bbox_extra_artists=[],
+            #     bbox_inches='tight')
+
 # ==============================================================================
 
 
@@ -1403,5 +1590,3 @@ if __name__ == "__main__":
     sys.exit(app.exec_())
 
 # ==============================================================================
-
-
