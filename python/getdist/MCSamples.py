@@ -1579,9 +1579,10 @@ class MCSamples(chains):
 
         return cust2DPlots
 
-    def saveAsText(self, root):
-        super(MCSamples, self).saveAsText(root)
-        self.ranges.saveToFile(root + '.ranges')
+    def saveAsText(self, root, chain_index=None):
+        super(MCSamples, self).saveAsText(root, chain_index)
+        if not chain_index:
+            self.ranges.saveToFile(root + '.ranges')
 
     # Write functions for GetDist.py
 
