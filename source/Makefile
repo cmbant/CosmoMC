@@ -118,19 +118,15 @@ ifneq ($(PRECISION),)
 FFLAGS += -D$(PRECISION) -DMATRIX_$(PRECISION)
 endif
 
-ifneq ($(NONCLIKLIKE),)
-FFLAGS += -DNONCLIK
-endif
-
 PLANCKLIKEFILES= $(OUTPUT_DIR)/CMB_BK_Planck.o
-
 
 ifneq ($(CLIK_PATH),)
 FFLAGS += -DCLIK
-PLANCKLIKEFILES += $(OUTPUT_DIR)/$(PLANCKLIKE).o
+PLANCKLIKEFILES += $(OUTPUT_DIR)/cliklike.o
 endif
 
 ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
+FFLAGS += -DNONCLIK
 PLANCKLIKEFILES +=  $(OUTPUT_DIR)/temp_like.o
 PLANCKLIKEFILES += $(OUTPUT_DIR)/cliklike_CamSpec.o
 endif

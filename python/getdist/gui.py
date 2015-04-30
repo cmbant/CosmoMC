@@ -4,20 +4,21 @@ import os
 import sys
 import logging
 
-try: import argparse
-except:
+try:
+    import argparse
+except ImportError:
     print 'use "module load" to load python 2.7, or see docs/readme_python.html for how to install'
     sys.exit()
 
 try:
-    from PySide.QtGui  import QApplication
+    from PySide.QtGui import QApplication
     os.environ['QT_API'] = 'pyside'
 except ImportError:
     print "Can't import PySide modules. See docs/readme_python.html for how to install."
     sys.exit()
 
 try:
-    from getdist.MainWindow import MainWindow
+    from getdist.gui.mainWindow import MainWindow
 except ImportError:
     print "Configure your PYTHONPATH as described in the readme!"
     sys.exit()
@@ -29,11 +30,10 @@ args = parser.parse_args()
 
 # Configure the logging
 level = logging.INFO
-if args.verbose: level = logging.DEBUG
+if args.verbose:
+    level = logging.DEBUG
 FORMAT = '%(asctime).19s [%(levelname)s]\t[%(filename)s:%(lineno)d]\t\t%(message)s'
 logging.basicConfig(level=level, format=FORMAT)
-
-
 
 # GUI application
 app = QApplication(sys.argv)

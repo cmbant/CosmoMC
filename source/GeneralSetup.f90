@@ -90,7 +90,7 @@
                 class is (TMpiChainCollector)
                     Collector%Sampler => Sampler
                     if (BaseParams%covariance_has_new) &
-                    & Collector%MPi%MPI_Max_R_ProposeUpdate = Collector%Mpi%MPI_Max_R_ProposeUpdateNew
+                        & Collector%MPi%MPI_Max_R_ProposeUpdate = Collector%Mpi%MPI_Max_R_ProposeUpdateNew
                 end select
             end if
             call Sampler%SetCovariance(BaseParams%covariance_estimate)
@@ -161,11 +161,15 @@
     time = Timer%Time()
     write(*,*) '   loglike     chi-sq'
     if (Feedback <=2) call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%likelihoods)
-    write(*,*) 'Test likelihoods done, total logLike = '//RealToStr(logLike)//', chi-sq = '//RealToStr(logLike*2)
-    write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(time)
-    if (output_root/='') then
-        call this%LikeCalculator%WriteParamPointTextData(output_root, Params)
-        call this%LikeCalculator%WriteParamsHumanText(output_root//'.pars', Params, LogLike)
+    if (logLike == logZero) then
+        write(*,*) 'Test likelihoods done, parameter point rejected (logZero or outside prior)'
+    else
+        write(*,*) 'Test likelihoods done, total logLike = '//RealToStr(logLike)//', chi-sq = '//RealToStr(logLike*2)
+        write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(time)
+        if (output_root/='') then
+            call this%LikeCalculator%WriteParamPointTextData(output_root, Params)
+            call this%LikeCalculator%WriteParamsHumanText(output_root//'.pars', Params, LogLike)
+        end if
     end if
     call DoStop()
 

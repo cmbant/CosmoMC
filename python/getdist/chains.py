@@ -570,9 +570,10 @@ class chains(WeightedSamples):
         self.paramNames.deleteIndices(fixed)
         self.getParamIndices()
 
-    def saveAsText(self, root):
-        np.savetxt(root + '.txt', np.hstack((self.weights.reshape(-1, 1), self.loglikes.reshape(-1, 1), self.samples)), fmt=self.precision)
-        self.paramNames.saveAsText(root + '.paramnames')
+    def saveAsText(self, root, chain_index=None):
+        np.savetxt(root + ('' if chain_index is None else '_' + str(chain_index + 1)) + '.txt',
+                   np.hstack((self.weights.reshape(-1, 1), self.loglikes.reshape(-1, 1), self.samples)), fmt=self.precision)
+        if not chain_index: self.paramNames.saveAsText(root + '.paramnames')
 
     def savePickle(self, filename):
         import pickle
