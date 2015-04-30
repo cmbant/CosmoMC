@@ -17,14 +17,14 @@ setup(name='GetDist',
       description='GetDist Monte Carlo sample analysis, plotting and GUI',
       author='Antony Lewis',
       url="https://cosmologist.info/cosmomc/",
-      packages=['getdist','getdist.gui','paramgrid'],
-      scripts=['GetDist'],
+      packages=['getdist', 'getdist.gui', 'paramgrid'],
+      scripts=['GetDist', 'GetDistGUI'],
       package_data={'getdist': ['getdist/analysis_defaults.ini']},
       requires=[
           'numpy',
           'matplotlib',
           "scipy (>=0.11.0)"]
- #These are optional
+ # These are optional
  #       'GUI':  ["PySide"],
  #       'fastread': ["pandas>=0.14.0"]}
       )

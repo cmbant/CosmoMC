@@ -1,4 +1,4 @@
-# AL Apr 11,Jun13, Jul14
+# AL 2011-2015
 import os
 import numpy as np
 
@@ -7,7 +7,7 @@ class IniError(Exception):
 
 class IniFile(object):
 
-    def __init__(self, settings=None, keep_includes=False):
+    def __init__(self, settings=None, keep_includes=False, expand_environment_variables=True):
 
         self.params = dict()
         self.comments = dict()
@@ -15,10 +15,36 @@ class IniFile(object):
         self.defaults = []
         self.includes = []
         self.original_filename = None
+        self.expand_environment_variables = expand_environment_variables
         if isinstance(settings, basestring):
             self.readFile(settings, keep_includes)
         elif isinstance(settings, dict):
             self.params.update(settings)
+
+    def expand_placeholders(self, s):
+        """Expand shell variables of the forms $(var), like in Makefiles"""
+        if '$(' not in s:
+            return s
+        res = ''
+        index = 0
+        pathlen = len(s)
+        while index < pathlen:
+            c = s[index]
+            if c == '$':
+                if s[index + 1] == '$':
+                    res = res + c
+                    index = index + 1
+                elif s[index + 1] == '(':
+                    s = s[index + 2:]
+                    pathlen = len(s)
+                    index = s.index(')')
+                    var = s[:index]
+                    if var in os.environ:
+                        res = res + os.environ[var]
+            else:
+                res = res + c
+            index = index + 1
+        return res
 
     def readFile(self, filename, keep_includes=False, if_not_defined=False):
         try:
@@ -46,6 +72,8 @@ class IniFile(object):
                                 if if_not_defined: continue
                                 raise IniError('Error: duplicate key: ' + key + ' in ' + filename)
                             value = s[eq + 1:].strip()
+                            if self.expand_environment_variables:
+                                value = self.expand_placeholders(value)
                             self.params[key] = value
                             self.readOrder.append(key)
                             if len(comments): self.comments[key] = comments

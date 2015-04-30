@@ -15,7 +15,7 @@ matplotlib.use('Qt4Agg')
 matplotlib.rcParams['backend.qt4'] = 'PySide'
 
 import getdist
-from getdist import MCSamples, plots, IniFile
+from getdist import plots, IniFile
 from getdist.MCSamples import GetChainRootFiles, SettingError, ParamError
 from sys import platform
 
