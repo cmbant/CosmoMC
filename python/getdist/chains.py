@@ -60,18 +60,21 @@ class parSamples(object): pass
 
 
 class WeightedSamples(object):
-    def __init__(self, filename=None, ignore_rows=0, samples=None, weights=None, loglikes=None, name_tag=None):
+    def __init__(self, filename=None, ignore_rows=0, samples=None, weights=None, loglikes=None, name_tag=None, files_are_chains=True):
         if filename:
             cols = loadNumpyTxt(filename, skiprows=ignore_rows)
-            self.setColData(cols)
+            self.setColData(cols, are_chains=files_are_chains)
             self.name_tag = name_tag or os.path.basename(filename)
         else:
             self.setSamples(samples, weights, loglikes)
             self.name_tag = name_tag
         self.needs_update = True
 
-    def setColData(self, coldata):
-        self.setSamples(coldata[:, 2:], coldata[:, 0], coldata[:, 1])
+    def setColData(self, coldata, are_chains=True):
+        if are_chains:
+            self.setSamples(coldata[:, 2:], coldata[:, 0], coldata[:, 1])
+        else:
+            self.setSamples(coldata)
 
     def getName(self):
         return self.name_tag

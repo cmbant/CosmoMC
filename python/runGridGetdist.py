@@ -21,22 +21,17 @@ Opts.parser.add_argument('--delay', type=int, help="run after delay of some numb
 Opts.parser.add_argument('--procs', type=int, default=1, help="number of getdist instances to run in parallel")
 Opts.parser.add_argument('--command', default='./getdist', help="program to run")
 
-
-
 (batch, args) = Opts.parseForBatch()
 
 base_ini = 'getdist_common.ini'
 
-
 plot_ext = 'py'
 plot_cmd = 'python'
-
-# plot_cmd = 'matlab'
 
 # the plotting matlab run is optional and only if you are using plot_ext=m in getdist
 plot_types = ['.', '_2D.']
 # you don't need these for python plots generated separately
-# '_tri.m' is very slow for so many
+# '_tri' is very slow for so many
 
 if args.plot_data is None: data_dir = batch.batchPath + 'plot_data' + os.sep
 else: data_dir = os.path.abspath(args.plot_data) + os.sep
@@ -61,8 +56,6 @@ if not args.plots:
                     ini.includes.append(custom_plot2)
                 elif os.path.exists(custom_plot):
                     ini.includes.append(custom_plot)
-#                elif len(jobItem.param_set) > 0:
-#                   ini.params['plot_2D_param'] = jobItem.param_set[0]
                 ini.defaults.append(batch.commonPath + base_ini)
                 tag = ''
                 if jobItem.isImportanceJob or args.burn_removed or jobItem.isBurnRemoved():
