@@ -13,7 +13,7 @@ from getdist.densities import Density1D, Density2D
 from getdist.chains import chains, chainFiles, lastModified
 from getdist.convolve import convolve1D, convolve2D
 import getdist.kde_bandwidth as kde
-from getdist.paramPriors import ParamBounds
+from getdist.parampriors import ParamBounds
 
 
 pickle_version = 20

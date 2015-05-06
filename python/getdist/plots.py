@@ -13,7 +13,7 @@ import numpy as np
 from paramgrid import batchJob, gridconfig
 import getdist
 from getdist import mcsamples, loadMCSamples, paramnames, IniFile
-from getdist.paramPriors import ParamBounds
+from getdist.parampriors import ParamBounds
 from getdist.densities import Density1D, Density2D
 import logging
 
