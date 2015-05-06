@@ -2,7 +2,7 @@
 import os
 
 import sys
-from getdist import ResultObjs, inifile
+from getdist import types, inifile
 
 
 if len(sys.argv) < 3:
@@ -22,7 +22,7 @@ ini.params['temp_cmb'] = 2.7255
 ini.params['CMB_outputscale'] = 2.7255e6 ** 2.
 ini.defaults.append('params.ini')
 
-bf = ResultObjs.bestFit(root + '.minimum', setParamNameFile=root + '.paramnames', want_fixed=True)
+bf = types.BestFit(root + '.minimum', setParamNameFile=root + '.paramnames', want_fixed=True)
 
 for camb, cosmomc in pars.items():
     par = bf.parWithName(cosmomc)

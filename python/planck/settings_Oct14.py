@@ -13,51 +13,50 @@ defaults = ['common.ini']
 importanceDefaults = ['importance_sampling.ini']
 
 override_defaults = ['pico.ini']
-extra_opts = {'indep_sample':0, 'checkpoint':'F', 'pre_marged':'F'}
+extra_opts = {'indep_sample': 0, 'checkpoint': 'F', 'pre_marged': 'F'}
 
 Camspec = 'CAMspec_defaults.ini'
 highL = 'highL'
 lowl = 'lowl'
 # dataset names
-tauprior = {'prior[tau]':'0.07 0.015'}
+tauprior = {'prior[tau]': '0.07 0.015'}
 tauname = 'tau07'
-WMAPtau = {'prior[tau]':'0.09 0.013'}
+WMAPtau = {'prior[tau]': '0.09 0.013'}
 
+TT = {'want_spec': 'T T T T F F'}
+EE = {'want_spec': 'F F F F F T'}
+TE = {'want_spec': 'F F F F T F'}
+TEEE = {'want_spec': 'F F F F T T'}
+TTTE = {'want_spec': 'T T T T T F'}
+full = {'want_spec': 'T T T T T T'}
 
-TT = {'want_spec':'T T T T F F'}
-EE = {'want_spec':'F F F F F T'}
-TE = {'want_spec':'F F F F T F'}
-TEEE = {'want_spec':'F F F F T T'}
-TTTE = {'want_spec':'T T T T T F'}
-full = {'want_spec':'T T T T T T'}
-
-TT100_217 = {'want_spec':'T F T F F F', 'param[cal2]':'0.995', 'param[aps143]':'0', 'param[psr]':'1', 'param[cibr]':'1'}
-TT100_143 = {'want_spec':'T T F F F F', 'param[cal2]':'0.995', 'param[aps217]':'0', 'param[psr]':'1', 'param[cibr]':'1'}
-no217auto = {'want_spec':'T T F T F F'}
-
+TT100_217 = {'want_spec': 'T F T F F F', 'param[cal2]': '0.995', 'param[aps143]': '0', 'param[psr]': '1',
+             'param[cibr]': '1'}
+TT100_143 = {'want_spec': 'T T F F F F', 'param[cal2]': '0.995', 'param[aps217]': '0', 'param[psr]': '1',
+             'param[cibr]': '1'}
+no217auto = {'want_spec': 'T T F T F F'}
 
 CamSpecVars = ['v910F', 'v910CMH']
 planck_detsets = ['nonclik_detsets.ini']
 planck_CS = ['nonclik.ini']
 
 # not using these checks yet
-wig1800_217 = {'param[wig2_217]':'0 -50 50 3 3'}
-wig1800_143 = {'param[wig2_143]':'0 -50 50 3 3'}
-wig1460_217 = {'param[wig1_217]':'0 -50 50 3 3'}
+wig1800_217 = {'param[wig2_217]': '0 -50 50 3 3'}
+wig1800_143 = {'param[wig2_143]': '0 -50 50 3 3'}
+wig1460_217 = {'param[wig1_217]': '0 -50 50 3 3'}
 
 detsets = []
 CS = []
 for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detsets, planck_CS]):
-    datasets.append(batchJob.dataSet([name , 'TT'], planck_vars + ['CAMspec_TT.ini']))
+    datasets.append(batchJob.dataSet([name, 'TT'], planck_vars + ['CAMspec_TT.ini']))
 
 detsetsTT = copy.copy(detsets)
 CSTT = copy.copy(CS)
 
 for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detsets, planck_CS]):
-    datasets.append(batchJob.dataSet([name , 'TE'], planck_vars + ['CAMspec_TE.ini']))
-    datasets.append(batchJob.dataSet([name , 'EE'], planck_vars + ['CAMspec_EE.ini']))
-    datasets.append(batchJob.dataSet([name , 'TTTEEE'], planck_vars + ['CAMspec_TTTEEE.ini']))
-
+    datasets.append(batchJob.dataSet([name, 'TE'], planck_vars + ['CAMspec_TE.ini']))
+    datasets.append(batchJob.dataSet([name, 'EE'], planck_vars + ['CAMspec_EE.ini']))
+    datasets.append(batchJob.dataSet([name, 'TTTEEE'], planck_vars + ['CAMspec_TTTEEE.ini']))
 
 plikHM1 = []
 plikHM1.append(batchJob.dataSet(['plikHMv16', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
@@ -86,8 +85,12 @@ plikDS.append(batchJob.dataSet(['plikDSv16sz', 'EE'], ['plik_dx11dr2_DS_v16_EE.i
 plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
 
 plik1bin = []
-plik1bin.append(batchJob.dataSet(['plikHMv16bin1sz', 'TT'], [{'clik_data_plik':'data/clik/hi_l/plik/plik_dx11dr2_HM_v16_TT_bin1.clik'}, 'plik_dx11dr2_HM_v16_TT.ini']))
-plik1bin.append(batchJob.dataSet(['bin1l80sz', 'TT'], [{'clik_data_plik':'data/clik/hi_l/plik/plik_dx11dr2_HM_v16_TT_bin1l80.clik'}, 'plik_dx11dr2_HM_v16_TT.ini']))
+plik1bin.append(batchJob.dataSet(['plikHMv16bin1sz', 'TT'],
+                                 [{'clik_data_plik': 'data/clik/hi_l/plik/plik_dx11dr2_HM_v16_TT_bin1.clik'},
+                                  'plik_dx11dr2_HM_v16_TT.ini']))
+plik1bin.append(batchJob.dataSet(['bin1l80sz', 'TT'],
+                                 [{'clik_data_plik': 'data/clik/hi_l/plik/plik_dx11dr2_HM_v16_TT_bin1l80.clik'},
+                                  'plik_dx11dr2_HM_v16_TT.ini']))
 
 Mspec = []
 Mspec.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
@@ -152,11 +155,10 @@ for lmax in range(600, 1601, 200):
 g.params = [[]]
 groups.append(g)
 
-
 g = batchJob.jobGroup('channels')
 chopdatasets = []
 for aset in detsetsTT + CSTT:
-# for name, planck_vars in zip(CamSpecVars, [planck_detsets, planck_CS]):
+    # for name, planck_vars in zip(CamSpecVars, [planck_detsets, planck_CS]):
     for namecut, cutvars in zip(['no143', 'no217', 'no217auto'], [TT100_217, TT100_143, no217auto]):
         d = copy.deepcopy(aset)
         d.add(namecut, cutvars)
@@ -179,7 +181,7 @@ for lmin in lmins:
     sets = copy.deepcopy(chopdatasets)
     for d in sets:
         d.add(tauname, tauprior)
-        d.add('lmin' + str(lmin), {'param[cal0]':'0.9997', 'camspec_lmin': '2500 ' + (str(lmin) + ' ') * 5})
+        d.add('lmin' + str(lmin), {'param[cal0]': '0.9997', 'camspec_lmin': '2500 ' + (str(lmin) + ' ') * 5})
     g.datasets += sets
 g.params = [[]]
 groups.append(g)
@@ -188,18 +190,19 @@ covrenames = []
 covrenames.append(['_tau07_lowl', '_lowTEB'])
 covrenames.append(['_tau07', '_lowTEB'])
 
-covNameMappings = {'v910CMH':'CamSpec', 'v910F':'CamSpec', 'plikHMv17':'plik', 'plikDSv16sz':'plik', 'plikHMv16sz':'plik',
-                   'plikHMv16bin1sz':'plik', 'bin1l80sz':'plik', 'tau07':'lowTEB'}
-covNameMappings['no217auto'] = ''
-covNameMappings['no217'] = ''
-covNameMappings['no143'] = ''
+covNameMappings = {'v910CMH': 'CamSpec', 'v910F': 'CamSpec', 'plikHMv17': 'plik', 'plikDSv16sz': 'plik',
+                   'plikHMv16sz': 'plik', 'plikHMv16bin1sz': 'plik', 'bin1l80sz': 'plik', 'tau07': 'lowTEB',
+                   'no217auto': '', 'no217': '', 'no143': ''}
 
 for mx in lmaxs:
     covNameMappings[mx] = ''
 
+
 def covRenamer(name):
-#    renamed = re.sub(r'_lmax.*', '', name, re.I)
+    # renamed = re.sub(r'_lmax.*', '', name, re.I)
     renamed = re.sub(r'_v.*', '_CamSpecHM_TT_lowTEB', name, re.I)
 
-    if renamed == name: return[]
-    else: return [renamed]
+    if renamed == name:
+        return []
+    else:
+        return [renamed]

@@ -1,4 +1,3 @@
-
 ini_dir = 'batch2/'
 
 defaults = ['common.ini']
@@ -26,15 +25,16 @@ planck_lowl = [[planck, lowl], [Camspec, 'lowl.ini']]
 WMAP9 = [[WMAP], ['WMAP.ini']]
 
 planck_lowl_lowLike_BAO = [[planck, lowl, lowLike, BAO], [Camspec, 'lowl.ini', 'lowLike.ini', 'BAO.ini']]
-planck_lowl_lowLike_highL_BAO = [[planck, lowl, lowLike, highL, BAO], [CamspecHighL, 'lowl.ini', 'lowLike.ini', 'BAO.ini']]
+planck_lowl_lowLike_highL_BAO = [[planck, lowl, lowLike, highL, BAO],
+                                 [CamspecHighL, 'lowl.ini', 'lowLike.ini', 'BAO.ini']]
 planck_lowl_lowLike_SNLS = [[planck, lowl, lowLike, SNLS], [Camspec, 'lowl.ini', 'lowLike.ini', 'SNLS.ini']]
 planck_lowl_lowLike_Union = [[planck, lowl, lowLike, Union], [Camspec, 'lowl.ini', 'lowLike.ini', 'Union.ini']]
 planck_lowl_lowLike_HST = [[planck, lowl, lowLike, HST], [Camspec, 'lowl.ini', 'lowLike.ini', 'HST.ini']]
 planck_lowl_lowLike_lensing = [[planck, lowl, lowLike, lensing], [Camspec, 'lowl.ini', 'lowLike.ini', 'lensing.ini']]
-planck_lowl_lowLike_highL_lensing = [[planck, lowl, lowLike, highL, lensing], [CamspecHighL, 'lowl.ini', 'lowLike.ini', 'lensing.ini']]
+planck_lowl_lowLike_highL_lensing = [[planck, lowl, lowLike, highL, lensing],
+                                     [CamspecHighL, 'lowl.ini', 'lowLike.ini', 'lensing.ini']]
 planck_tauprior = [[planck, 'tauprior'], [Camspec, 'tauprior.ini']]
 planck_tauprior_highL = [[planck, 'tauprior', highL], [CamspecHighL, 'tauprior.ini']]
-
 
 start_at_bestfit = False
 newCovmats = True
@@ -43,7 +43,8 @@ newCovmats = True
 
 class importanceFilterLensing:
     def wantImportance(self, jobItem):
-        return planck in jobItem.data_set.names and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
+        return planck in jobItem.data_set.names and (not 'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
+
 
 class importanceFilterNotOmegakLowl:
     def wantImportance(self, jobItem):
@@ -57,7 +58,8 @@ post_SNLS = [[SNLS], ['SNLS_marge.ini'], importanceFilterNotOmegakLowl()]
 post_Union = [[Union], ['Union.ini'], importanceFilterNotOmegakLowl()]
 
 # set up groups of parameters and data sets
-class group:pass
+class group: pass
+
 
 groups = []
 
@@ -85,7 +87,7 @@ groups.append(g2)
 g3 = group()
 g3.params = [['omegak']]
 g3.datasets = [planck_lowl_lowLike_BAO, planck_lowl_lowLike_highL_BAO]
-g3.importanceRuns = [post_lensing , post_BAO, post_HST]
+g3.importanceRuns = [post_lensing, post_BAO, post_HST]
 g3.groupName = 'geom'
 groups.append(g3)
 
@@ -95,7 +97,6 @@ g4.datasets = [planck_lowl]
 g4.importanceRuns = [post_BAO, post_HST]
 g4.groupName = 'planckonly'
 groups.append(g4)
-
 
 skip = ['base_nnu_meffsterile_planck_lowl_lowLike']
 

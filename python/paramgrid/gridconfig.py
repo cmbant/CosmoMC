@@ -2,7 +2,7 @@ import os
 import copy
 
 import sys
-from getdist import inifile
+from getdist import IniFile
 from paramgrid import batchJob, batchJobArgs
 
 
@@ -45,7 +45,7 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
             readOnly = True
             sys.path.insert(0, batchPath + 'config')
             sys.modules['batchJob']= batchJob #old name
-            settings = __import__(inifile.IniFile(batchPath + 'config/config.ini').params['setting_file'].replace('.py', ''))
+            settings = __import__(IniFile(batchPath + 'config/config.ini').params['setting_file'].replace('.py', ''))
         else:
             settings = __import__(settingName, fromlist=['dummy'])
 

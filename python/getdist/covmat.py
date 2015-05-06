@@ -1,9 +1,10 @@
 import numpy as np
 
+
 class covMat(object):
-
-    def __init__(self, filename='', matrix=None, paramNames=[]):
-
+    def __init__(self, filename='', matrix=None, paramNames=None):
+        if not paramNames:
+            paramNames = []
         self.matrix = matrix
         self.paramNames = paramNames
         self.size = 0
@@ -32,9 +33,10 @@ class covMat(object):
     def rescaleParameter(self, name, scale):
         if name in self.paramNames:
             i = self.paramNames.index(name)
-            self.matrix[:, i] = self.matrix[:, i] * scale;
-            self.matrix[i, :] = self.matrix[i, :] * scale;
-        else: print 'Not in covmat: ' + name
+            self.matrix[:, i] = self.matrix[:, i] * scale
+            self.matrix[i, :] = self.matrix[i, :] * scale
+        else:
+            print 'Not in covmat: ' + name
 
     def mergeCovmatWhereNew(self, cov2):
         params1 = self.paramNames
@@ -44,8 +46,8 @@ class covMat(object):
         C.paramNames.extend(params1)
 
         for param in cov2.paramNames:
-                if param not in C.paramNames:
-                    C.paramNames.append(param)
+            if param not in C.paramNames:
+                C.paramNames.append(param)
         l1 = len(params1)
         l2 = len(params2)
         l = len(C.paramNames)
@@ -73,7 +75,8 @@ class covMat(object):
         return m
 
     def plot(self):
-        import pylab as plt
+        import matplotlib.pyplot as plt
+
         plt.pcolor(self.correlation())
         plt.colorbar()
         sz = self.size

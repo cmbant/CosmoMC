@@ -1,7 +1,7 @@
 import os
 
 from paramgrid import batchJobArgs
-from getdist import ResultObjs, paramNames
+from getdist import types, paramnames
 
 
 Opts = batchJobArgs.batchArgs('Compare parameter constraints over set of models')
@@ -17,11 +17,10 @@ Opts.parser.add_argument('--mathColumns', action='store_true')
 Opts.parser.add_argument('--endline', default='\\cr')
 Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames')
 
-
 (batch, args) = Opts.parseForBatch()
-formatter = ResultObjs.tableFormatter()
+formatter = types.TableFormatter()
 
-names = paramNames.paramNames(args.paramNameFile)
+names = paramnames.ParamNames(args.paramNameFile)
 
 if args.chain_name_params is None: args.chain_name_params = args.params
 
@@ -34,7 +33,9 @@ for par in args.params:
 
 for jobItem in Opts.filteredBatchItems():
     if (args.compare is None or jobItem.matchesDatatag(args.compare)) and (not args.single_extparam or
-                                len(jobItem.param_set) == 1  and jobItem.hasParam(args.chain_name_params)):
+                                                                                       len(
+                                                                                               jobItem.param_set) == 1 and jobItem.hasParam(
+                                                                                       args.chain_name_params)):
         jobItem.loadJobItemResults(paramNameFile=None, bestfit=not args.nobestfits, noconverge=True, silent=True)
         if jobItem.result_marge is not None:
             results = []
@@ -47,13 +48,19 @@ for jobItem in Opts.filteredBatchItems():
                     if not jobItem.normed_data in dataTable: dataTable[jobItem.normed_data] = dict()
                     dataTable[jobItem.normed_data][par] = texValues
 
+
 def makeMath(txt):
-    if args.mathColumns: return '$' + txt + '$'
-    else: return txt
+    if args.mathColumns:
+        return '$' + txt + '$'
+    else:
+        return txt
+
 
 def textAsColumn(txt, latex=True):
-        if latex: return makeMath(txt)
-        else: return txt
+    if latex:
+        return makeMath(txt)
+    else:
+        return txt
 
 
 def sortData(batch, datatags):
@@ -61,6 +68,7 @@ def sortData(batch, datatags):
     for tag in datatags:
         items += [item for item in batch if item == tag]
     return items
+
 
 lines = []
 
@@ -72,17 +80,17 @@ for i, par in enumerate(args.params):
         cols = [makeMath(names.parWithName(par, True).label)]
         for datatag in dataTable:
             if args.latex_filename is not None:
-                for par in args.params:
-                    if par in table[paramtag][datatag]:
-                        res = table[paramtag][datatag][par]
+                for par2 in args.params:
+                    if par2 in table[paramtag][datatag]:
+                        res = table[paramtag][datatag][par2]
                         if len(res) > 1: cols.append(textAsColumn(res[1]))
                         cols.append(textAsColumn(res[0], latex=res[0] != '---'))
-            else: print ' ', table[paramtag][datatag], datatag
+            else:
+                print ' ', table[paramtag][datatag], datatag
         lines.append(" & ".join(cols) + args.endline)
 
-
 if args.latex_filename is not None:
-        if args.latex_filename .find('.') < 0: args.latex_filename += '.tex'
-        (outdir, outname) = os.path.split(args.latex_filename)
-        if not os.path.exists(outdir): os.makedirs(os.path.dirname(outdir))
-        ResultObjs.textFile(lines).write(args.latex_filename)
+    if args.latex_filename.find('.') < 0: args.latex_filename += '.tex'
+    (outdir, outname) = os.path.split(args.latex_filename)
+    if not os.path.exists(outdir): os.makedirs(os.path.dirname(outdir))
+    types.TextFile(lines).write(args.latex_filename)

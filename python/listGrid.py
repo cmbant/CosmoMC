@@ -5,7 +5,6 @@ Opts = batchJobArgs.batchArgs('List items in a grid', importance=True, converge=
 Opts.parser.add_argument('--exists', action='store_true', help='chain must exist')
 Opts.parser.add_argument('--normed', action='store_true', help='Output normed names')
 
-
 (batch, args) = Opts.parseForBatch()
 items = Opts.sortedParamtagDict(chainExist=args.exists)
 

@@ -18,15 +18,15 @@ Camspec = 'CAMspec_defaults.ini'
 highL = 'highL'
 lowl = 'lowl'
 # dataset names
-tauprior = {'prior[tau]':'0.07 0.015'}
+tauprior = {'prior[tau]': '0.07 0.015'}
 tauname = 'tau07'
-WMAPtau = {'prior[tau]':'0.09 0.013'}
-
+WMAPtau = {'prior[tau]': '0.09 0.013'}
 
 planck_detsets = ['nonclik_detsets.ini']
 planck_CS = ['nonclik.ini']
 
-CamSpec = [batchJob.dataSet(['CamSpecHM', 'TT', 'lowl', tauname], ['nonclik.ini', 'CAMspec_TT.ini', 'lowl.ini', tauprior])]
+CamSpec = [
+    batchJob.dataSet(['CamSpecHM', 'TT', 'lowl', tauname], ['nonclik.ini', 'CAMspec_TT.ini', 'lowl.ini', tauprior])]
 
 start_at_bestfit = False
 newCovmats = True
@@ -49,18 +49,19 @@ covrenames = []
 covrenames.append(['_tau07_lowl', '_lowTEB'])
 covrenames.append(['_tau07', '_lowTEB'])
 
-covNameMappings = {'v910CMH':'CamSpec', 'CamSpecHM':'CamSpec', 'plikHMv17':'plik', 'plikDSv16sz':'plik', 'plikHMv16sz':'plik',
-                   'plikHMv16bin1sz':'plik', 'bin1l80sz':'plik', 'tau07':'lowTEB'}
-covNameMappings['no217auto'] = ''
-covNameMappings['no217'] = ''
-covNameMappings['no143'] = ''
+covNameMappings = {'v910CMH': 'CamSpec', 'CamSpecHM': 'CamSpec', 'plikHMv17': 'plik', 'plikDSv16sz': 'plik',
+                   'plikHMv16sz': 'plik', 'plikHMv16bin1sz': 'plik', 'bin1l80sz': 'plik', 'tau07': 'lowTEB',
+                   'no217auto': '', 'no217': '', 'no143': ''}
 
 for mx in lmaxs:
     covNameMappings['lmax' + str(mx)] = ''
 
+
 def covRenamer(name):
-#    renamed = re.sub(r'_lmax.*', '', name, re.I)
+    # renamed = re.sub(r'_lmax.*', '', name, re.I)
     renamed = re.sub(r'_v.*', '_CamSpecHM_TT_lowTEB', name, re.I)
 
-    if renamed == name: return[]
-    else: return [renamed]
+    if renamed == name:
+        return []
+    else:
+        return [renamed]

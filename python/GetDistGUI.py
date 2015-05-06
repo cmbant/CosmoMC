@@ -18,7 +18,7 @@ except ImportError:
     sys.exit()
 
 try:
-    from getdist.gui.mainWindow import MainWindow
+    from getdist.gui.mainwindow import MainWindow
 except ImportError:
     print "Configure your PYTHONPATH as described in the readme!"
     sys.exit()

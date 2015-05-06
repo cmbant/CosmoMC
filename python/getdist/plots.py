@@ -12,12 +12,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from paramgrid import batchJob, gridconfig
 import getdist
-from getdist import MCSamples, loadMCSamples, paramNames, IniFile
-from getdist.paramPriors import ParamBounds
+from getdist import mcsamples, loadMCSamples, paramnames, IniFile
+from getdist.parampriors import ParamBounds
 from getdist.densities import Density1D, Density2D
 import logging
 
 """Plotting scripts for GetDist outputs"""
+
 
 def makeList(roots):
     if isinstance(roots, (list, tuple)):
@@ -46,8 +47,9 @@ class GetDistPlotSettings(object):
         # self.prob_label = 'Probability'
         self.lineM = ['-k', '-r', '-b', '-g', '-m', '-c', '-y', '--k', '--r', '--b', '--g', '--m']
         self.plot_args = None
-        self.solid_colors = ['#006FED', '#E03424', 'gray', '#009966', '#000866', '#336600', '#006633' , 'm', 'r']  # '#66CC99'
-        self.default_dash_styles = {'--':(3, 2), '-.':(4, 1, 1, 1)}
+        self.solid_colors = ['#006FED', '#E03424', 'gray', '#009966', '#000866', '#336600', '#006633', 'm',
+                             'r']  # '#66CC99'
+        self.default_dash_styles = {'--': (3, 2), '-.': (4, 1, 1, 1)}
         self.line_labels = True
         self.x_label_rotation = 0
         self.num_shades = 80
@@ -56,7 +58,7 @@ class GetDistPlotSettings(object):
         self.progress = False
         self.tight_layout = True
         self.no_triangle_axis_labels = True
-# see http://www.scipy.org/Cookbook/Matplotlib/Show_colormaps
+        # see http://www.scipy.org/Cookbook/Matplotlib/Show_colormaps
         self.colormap = "Blues"
         self.colormap_scatter = "jet"
         self.colorbar_rotation = None  # e.g. -90
@@ -104,21 +106,25 @@ class GetDistPlotSettings(object):
         self.scatter_size = 3
         if size_inch > 4: self.scatter_size = size_inch * 2
         self.colorbar_axes_fontsize = self.axes_fontsize
-        if  self.colorbar_label_rotation:  self.colorbar_label_pad = size_inch * 3
+        if self.colorbar_label_rotation:  self.colorbar_label_pad = size_inch * 3
 
     def rcSizes(self, axes_fontsize=None, lab_fontsize=None, legend_fontsize=None):
         self.font_size = rcParams['font.size']
         self.legend_fontsize = legend_fontsize or rcParams['legend.fontsize']
-        self.lab_fontsize = lab_fontsize  or rcParams['axes.labelsize']
+        self.lab_fontsize = lab_fontsize or rcParams['axes.labelsize']
         self.axes_fontsize = axes_fontsize or rcParams['xtick.labelsize']
-        if isinstance(self.axes_fontsize, int): self.colorbar_axes_fontsize = self.axes_fontsize - 1
-        else: self.colorbar_axes_fontsize = 'smaller'
+        if isinstance(self.axes_fontsize, int):
+            self.colorbar_axes_fontsize = self.axes_fontsize - 1
+        else:
+            self.colorbar_axes_fontsize = 'smaller'
 
 
 defaultSettings = GetDistPlotSettings()
 
+
 def getPlotter(**kwargs):
     return GetDistPlotter(**kwargs)
+
 
 def getSinglePlotter(ratio=3 / 4., width_inch=6, **kwargs):
     """ 
@@ -127,9 +133,10 @@ def getSinglePlotter(ratio=3 / 4., width_inch=6, **kwargs):
     plotter = getPlotter(**kwargs)
     plotter.settings.setWithSubplotSize(width_inch)
     plotter.settings.fig_width_inch = width_inch
-#    if settings is None: plotter.settings.rcSizes()
+    # if settings is None: plotter.settings.rcSizes()
     plotter.make_figure(1, xstretch=1. / ratio)
     return plotter
+
 
 def getSubplotPlotter(subplot_size=2, width_inch=None, **kwargs):
     """ 
@@ -149,7 +156,6 @@ def getSubplotPlotter(subplot_size=2, width_inch=None, **kwargs):
 
 
 class SampleAnalysisGetDist(object):
-
     def __init__(self, plot_data):
         self.plot_data = plot_data
         self.newPlot()
@@ -173,11 +179,12 @@ class SampleAnalysisGetDist(object):
         return result
 
     def load_single_samples(self, root):
-        if not root in self.single_samples: self.single_samples[root] = np.loadtxt(self.plot_data_file(root) + '_single.txt')[:, 2:]
+        if not root in self.single_samples: self.single_samples[root] = np.loadtxt(
+            self.plot_data_file(root) + '_single.txt')[:, 2:]
         return self.single_samples[root]
 
     def paramsForRoot(self, root, labelParams=None):
-        names = paramNames.paramNames(self.plot_data_file(root) + '.paramnames')
+        names = paramnames.ParamNames(self.plot_data_file(root) + '.paramnames')
         if labelParams is not None: names.setLabelsAndDerivedFromParamNames(labelParams)
         return names
 
@@ -203,14 +210,17 @@ class SampleAnalysisGetDist(object):
         fname = self.plot_data_file(root) + '_2D_' + name2 + '_' + name1
         if not os.path.exists(fname):
             return self.plot_data_file(root) + '_2D_' + name1 + '_' + name2, True
-        else: return fname, False
+        else:
+            return fname, False
 
     def load_1d(self, root, param, ext='.dat'):
         fname = self.plot_data_file_1D(root, param.name) + ext
         if not hasattr(param, 'plot_data'): param.plot_data = dict()
         if not fname in param.plot_data:
-            if not os.path.exists(fname): param.plot_data[fname] = None
-            else: param.plot_data[fname] = np.loadtxt(fname)
+            if not os.path.exists(fname):
+                param.plot_data[fname] = None
+            else:
+                param.plot_data[fname] = np.loadtxt(fname)
         return param.plot_data[fname]
 
     def load_2d(self, root, param1, param2, ext='', no_axes=False):
@@ -221,12 +231,13 @@ class SampleAnalysisGetDist(object):
         if no_axes: return pts
         x = np.loadtxt(fname + '_x')
         y = np.loadtxt(fname + '_y')
-        if transpose: return Density2D(y, x, pts)
-        else: return Density2D(x, y, pts)
+        if transpose:
+            return Density2D(y, x, pts)
+        else:
+            return Density2D(x, y, pts)
 
 
 class MCSampleAnalysis(object):
-
     def __init__(self, chain_dir=None, settings=None):
         self.chain_dir = chain_dir
         self.batch = None
@@ -261,7 +272,7 @@ class MCSampleAnalysis(object):
         self.single_samples = dict()
 
     def samplesForRoot(self, root, file_root=None, cache=True):
-        if isinstance(root, MCSamples): return root
+        if isinstance(root, mcsamples.MCSamples): return root
         if os.path.isabs(root):
             root = os.path.basename(root)
         if root in self.mcsamples and cache: return self.mcsamples[root]
@@ -353,18 +364,21 @@ class MCSampleAnalysis(object):
 
 
 class GetDistPlotter(object):
-
     def __init__(self, plot_data=None, chain_dir=None, settings=None, analysis_settings=None, mcsamples=True):
         """
         Set plot_data to directory name if you have pre-compputed plot_data/ directory from GetDist
         Set chain_dir to directly to use chains in the given directory (can also be a list of directories to search)
         """
         self.chain_dir = chain_dir
-        if settings is None: self.settings = copy.deepcopy(defaultSettings)
-        else: self.settings = settings
+        if settings is None:
+            self.settings = copy.deepcopy(defaultSettings)
+        else:
+            self.settings = settings
         if chain_dir is None and plot_data is None: chain_dir = getdist.default_grid_root
-        if isinstance(plot_data, basestring): self.plot_data = [plot_data]
-        else: self.plot_data = plot_data
+        if isinstance(plot_data, basestring):
+            self.plot_data = [plot_data]
+        else:
+            self.plot_data = plot_data
         if chain_dir is not None or mcsamples and plot_data is None:
             self.sampleAnalyser = MCSampleAnalysis(chain_dir, analysis_settings)
         else:
@@ -380,6 +394,7 @@ class GetDistPlotter(object):
         self.sampleAnalyser.newPlot()
         self.fig = None
         self.subplots = None
+        self.plot_col = 0
 
     def show_all_settings(self):
         print 'Python version:', sys.version
@@ -401,9 +416,11 @@ class GetDistPlotter(object):
                 if args is None: args = dict()
             else:
                 args = {}
-        elif not self.settings.plot_args: args = dict()
+        elif not self.settings.plot_args:
+            args = dict()
         else:
-            raise GetDistPlotError('plot_args must be list of dictionaries or dictionary: %s' % (self.settings.plot_args))
+            raise GetDistPlotError(
+                'plot_args must be list of dictionaries or dictionary: %s' % self.settings.plot_args)
         args.update(kwargs)
         return args
 
@@ -436,12 +453,15 @@ class GetDistPlotter(object):
 
     def get_alpha2D(self, plotno, **kwargs):
         args = self.get_plot_args(plotno, **kwargs)
-        if kwargs.get('filled') and plotno > 0: default = self.settings.alpha_filled_add
-        else: default = 1
+        if kwargs.get('filled') and plotno > 0:
+            default = self.settings.alpha_filled_add
+        else:
+            default = 1
         return args.get('alpha', default)
 
     def paramNamesForRoot(self, root):
-        if not root in self.param_name_sets: self.param_name_sets[root] = self.sampleAnalyser.paramsForRoot(root, labelParams=self.settings.param_names_for_labels)
+        if not root in self.param_name_sets: self.param_name_sets[root] = self.sampleAnalyser.paramsForRoot(root,
+                                                                                                            labelParams=self.settings.param_names_for_labels)
         return self.param_name_sets[root]
 
     def paramBoundsForRoot(self, root):
@@ -477,12 +497,13 @@ class GetDistPlotter(object):
         return self.add_2d_contours(None, density=density, **kwargs)
 
     def add_2d_contours(self, root, param1=None, param2=None, plotno=0, of=None, cols=None, contour_levels=None,
-                            add_legend_proxy=True, param_pair=None, density=None, alpha=None, **kwargs):
+                        add_legend_proxy=True, param_pair=None, density=None, alpha=None, **kwargs):
         if density is None:
             param1, param2 = self.get_param_array(root, param_pair or [param1, param2])
 
             density = self.sampleAnalyser.get_density_grid(root, param1, param2,
-                                    conts=self.settings.num_plot_contours, likes=self.settings.shade_meanlikes)
+                                                           conts=self.settings.num_plot_contours,
+                                                           likes=self.settings.shade_meanlikes)
             if density is None:
                 if add_legend_proxy: self.contours_added.append(None)
                 return None
@@ -494,41 +515,50 @@ class GetDistPlotter(object):
             self.contours_added.append(None)
         elif None in self.contours_added and self.contours_added.index(None) == plotno:
             proxyIx = plotno
-        else: proxyIx = -1
+        else:
+            proxyIx = -1
 
         if kwargs.get('filled'):
-            linestyles = ['-']
             if cols is None:
                 color = kwargs.get('color')
                 if color is None:
-                    if of is not None: color = self.settings.solid_colors[of - plotno - 1]
-                    else: color = self.settings.solid_colors[plotno]
+                    if of is not None:
+                        color = self.settings.solid_colors[of - plotno - 1]
+                    else:
+                        color = self.settings.solid_colors[plotno]
                 if isinstance(color, basestring):
                     cols = [matplotlib.colors.colorConverter.to_rgb(color)]
                     for _ in range(1, len(contour_levels)):
-                        cols = [[c * (1 - self.settings.solid_contour_palefactor) + self.settings.solid_contour_palefactor for c in cols[0]]] + cols
-                else: cols = color
+                        cols = [[c * (
+                            1 - self.settings.solid_contour_palefactor) + self.settings.solid_contour_palefactor for c
+                                 in
+                                 cols[0]]] + cols
+                else:
+                    cols = color
             levels = sorted(np.append([density.P.max() + 1], contour_levels))
             CS = plt.contourf(density.x, density.y, density.P, levels, colors=cols, alpha=alpha, **kwargs)
             if proxyIx >= 0: self.contours_added[proxyIx] = (plt.Rectangle((0, 0), 1, 1, fc=CS.tcolors[-1][0]))
             plt.contour(density.x, density.y, density.P, levels[:1], colors=CS.tcolors[-1],
-                    linewidths=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines, **kwargs)
+                        linewidths=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines,
+                        **kwargs)
         else:
             args = self.get_line_styles(plotno, **kwargs)
-#            if color is None: color = self.get_color(plotno, **kwargs)
-#            cols = [color]
-#            if ls is None: ls = self.get_linestyle(plotno, **kwargs)
+            # if color is None: color = self.get_color(plotno, **kwargs)
+            # cols = [color]
+            #            if ls is None: ls = self.get_linestyle(plotno, **kwargs)
             linestyles = [args['ls']]
             cols = [args['color']]
             kwargs = self.get_plot_args(plotno, **kwargs)
             kwargs['alpha'] = alpha
-            CS = plt.contour(density.x, density.y, density.P, contour_levels, colors=cols , linestyles=linestyles, linewidths=self.settings.lw_contour, **kwargs)
+            CS = plt.contour(density.x, density.y, density.P, contour_levels, colors=cols, linestyles=linestyles,
+                             linewidths=self.settings.lw_contour, **kwargs)
             dashes = args.get('dashes')
             if dashes:
                 for c in CS.collections:
                     c.set_dashes([(0, dashes)])
             if proxyIx >= 0:
-                line = plt.Line2D([0, 1], [0, 1], ls=linestyles[0], lw=self.settings.lw_contour, color=cols[0], alpha=args.get('alpha'))
+                line = plt.Line2D([0, 1], [0, 1], ls=linestyles[0], lw=self.settings.lw_contour, color=cols[0],
+                                  alpha=args.get('alpha'))
                 if dashes: line.set_dashes(dashes)
                 self.contours_added[proxyIx] = line
 
@@ -536,7 +566,9 @@ class GetDistPlotter(object):
 
     def add_2d_shading(self, root, param1, param2, colormap=None, density=None):
         param1, param2 = self.get_param_array(root, [param1, param2])
-        density = density or self.sampleAnalyser.get_density_grid(root, param1, param2, conts=self.settings.num_plot_contours, likes=self.settings.shade_meanlikes)
+        density = density or self.sampleAnalyser.get_density_grid(root, param1, param2,
+                                                                  conts=self.settings.num_plot_contours,
+                                                                  likes=self.settings.shade_meanlikes)
         if density is None: return
         if colormap is None: colormap = self.settings.colormap
         scalarMap = cm.ScalarMappable(cmap=colormap)
@@ -548,14 +580,14 @@ class GetDistPlotter(object):
         for i in range(n):
             cols[i + 1] = (white * (n - i) + np.array(cols[i + 1]) * i) / float(n)
         cols[0][3] = 0  # keep edges clear
-#        pcolor(density.x, density.y, density.P, cmap=self.settings.colormap, vmin=1. / self.settings.num_shades)
+        # pcolor(density.x, density.y, density.P, cmap=self.settings.colormap, vmin=1. / self.settings.num_shades)
         levels = np.linspace(0, 1, self.settings.num_shades) ** self.settings.shade_level_scale
         if self.settings.shade_meanlikes:
             points = density.likes
         else:
             points = density.P
         plt.contourf(density.x, density.y, points, self.settings.num_shades, colors=cols, levels=levels)
-# doing contourf gets rid of annoying wehite lines in pdfs
+        # doing contourf gets rid of annoying wehite lines in pdfs
         plt.contour(density.x, density.y, points, self.settings.num_shades, colors=cols, levels=levels)
 
 
@@ -567,15 +599,19 @@ class GetDistPlotter(object):
     def updateLimits(self, res, xlims, ylims, doResize=True):
         if res is None: return xlims, ylims
         if xlims is None and ylims is None: return res
-        if not doResize: return xlims, ylims
-        else: return self.updateLimit(res[0], xlims), self.updateLimit(res[1], ylims)
+        if not doResize:
+            return xlims, ylims
+        else:
+            return self.updateLimit(res[0], xlims), self.updateLimit(res[1], ylims)
 
 
     def _make_line_args(self, nroots, **kwargs):
         line_args = kwargs.get('line_args')
         if line_args is None: line_args = kwargs.get('contour_args')
-        if line_args is None: line_args = [{}] * nroots
-        elif isinstance(line_args, dict): line_args = [line_args] * nroots
+        if line_args is None:
+            line_args = [{}] * nroots
+        elif isinstance(line_args, dict):
+            line_args = [line_args] * nroots
         if len(line_args) < nroots: line_args += [{}] * (nroots - len(line_args))
         colors = kwargs.get('colors')
         lws = kwargs.get('lws')
@@ -615,12 +651,13 @@ class GetDistPlotter(object):
         contour_args = self._make_contour_args(len(roots), **kwargs)
         for i, root in enumerate(roots):
             res = self.add_2d_contours(root, param_pair[0], param_pair[1], line_offset + i, of=len(roots),
-                                       add_legend_proxy=add_legend_proxy and not root in proxy_root_exclude, **contour_args[i])
+                                       add_legend_proxy=add_legend_proxy and not root in proxy_root_exclude,
+                                       **contour_args[i])
             xbounds, ybounds = self.updateLimits(res, xbounds, ybounds)
         if xbounds is None: return
         if not 'lims' in kwargs:
-            lim1 = self.checkBounds(roots[0], param_pair[0].name , xbounds[0], xbounds[1])
-            lim2 = self.checkBounds(roots[0], param_pair[1].name , ybounds[0], ybounds[1])
+            lim1 = self.checkBounds(roots[0], param_pair[0].name, xbounds[0], xbounds[1])
+            lim2 = self.checkBounds(roots[0], param_pair[1].name, ybounds[0], ybounds[1])
             kwargs['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]
 
         self.setAxes(param_pair, **kwargs)
@@ -646,12 +683,14 @@ class GetDistPlotter(object):
         if xlim is None: xlim = ax.xaxis.get_view_interval()
         one = np.array([1, 1])
         c = color
-        if alpha2 > 0: ax.fill_between(xlim, one * (y - sigma * 2), one * (y + sigma * 2), facecolor=c, alpha=alpha2, edgecolor=c, lw=0)
-        if alpha1 > 0: ax.fill_between(xlim, one * (y - sigma), one * (y + sigma), facecolor=c, alpha=alpha1, edgecolor=c, lw=0)
+        if alpha2 > 0: ax.fill_between(xlim, one * (y - sigma * 2), one * (y + sigma * 2), facecolor=c, alpha=alpha2,
+                                       edgecolor=c, lw=0)
+        if alpha1 > 0: ax.fill_between(xlim, one * (y - sigma), one * (y + sigma), facecolor=c, alpha=alpha1,
+                                       edgecolor=c, lw=0)
 
     def set_locator(self, axis, x=False, prune=None):
         if x: xmin, xmax = axis.get_view_interval()
-        if (x and (abs(xmax - xmin) < 0.01 or max(abs(xmin), abs(xmax)) >= 1000)):
+        if x and (abs(xmax - xmin) < 0.01 or max(abs(xmin), abs(xmax)) >= 1000):
             axis.set_major_locator(plt.MaxNLocator(self.settings.subplot_size_inch / 2 + 3, prune=prune))
         else:
             axis.set_major_locator(plt.MaxNLocator(self.settings.subplot_size_inch / 2 + 4, prune=prune))
@@ -661,29 +700,35 @@ class GetDistPlotter(object):
         formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
         axis.set_major_formatter(formatter)
         plt.tick_params(axis='both', which='major', labelsize=self.settings.axes_fontsize)
-        if x and self.settings.x_label_rotation != 0:plt.setp(plt.xticks()[1], rotation=self.settings.x_label_rotation)
+        if x and self.settings.x_label_rotation != 0: plt.setp(plt.xticks()[1], rotation=self.settings.x_label_rotation)
         self.set_locator(axis, x, prune=prune)
 
-    def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None, prune=None,
+    def setAxes(self, params=[], lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None,
+                prune=None,
                 color_label_in_axes=False, ax=None, **other_args):
         ax = ax or plt.gca()
         if lims is not None: ax.axis(lims)
         if prune is None: prune = self.settings.tick_prune
         self.setAxisProperties(ax.xaxis, True, prune)
         if pos is not None: ax.set_position(pos)  # # set [left, bottom, width, height] for the figure
-        if do_xlabel and len(params) > 0:self.set_xlabel(params[0])
-        elif no_label_no_numbers: ax.set_xticklabels([])
+        if do_xlabel and len(params) > 0:
+            self.set_xlabel(params[0])
+        elif no_label_no_numbers:
+            ax.set_xticklabels([])
         if len(params) > 1:
             self.setAxisProperties(ax.yaxis, False, prune)
-            if do_ylabel:self.set_ylabel(params[1])
-            elif no_label_no_numbers: ax.set_yticklabels([])
+            if do_ylabel:
+                self.set_ylabel(params[1])
+            elif no_label_no_numbers:
+                ax.set_yticklabels([])
         if color_label_in_axes and len(params) > 2: self.add_text(params[2].latexLabel())
         return ax
 
     def set_xlabel(self, param, ax=None):
         ax = ax or plt.gca()
         ax.set_xlabel(param.latexLabel(), fontsize=self.settings.lab_fontsize,
-                verticalalignment='baseline', labelpad=4 + self.settings.font_size)  # test_size because need a number not e.g. 'medium'
+            verticalalignment='baseline',
+            labelpad=4 + self.settings.font_size)  # test_size because need a number not e.g. 'medium'
 
     def set_ylabel(self, param, ax=None):
         ax = ax or plt.gca()
@@ -703,27 +748,34 @@ class GetDistPlotter(object):
             bounds = self.add_1d(root, root_param, i, normalized=normalized, **line_args[i])
             xmin, xmax = self.updateLimit(bounds, (xmin, xmax))
             if bounds is not None and not plotparam:
-                    plotparam = root_param
-                    plotroot = root
+                plotparam = root_param
+                plotroot = root
         if plotparam is None: raise GetDistPlotError('No roots have parameter: ' + str(param))
         if marker is not None: self.add_x_marker(marker, marker_color)
         if not 'lims' in kwargs:
             xmin, xmax = self.checkBounds(plotroot, plotparam.name, xmin, xmax)
-            if normalized: mx = plt.gca().yaxis.get_view_interval()[-1]
-            else: mx = 1.099
+            if normalized:
+                mx = plt.gca().yaxis.get_view_interval()[-1]
+            else:
+                mx = 1.099
             kwargs['lims'] = [xmin, xmax, 0, mx]
         ax = self.setAxes([plotparam], **kwargs)
 
-        if normalized: lab = self.settings.norm_prob_label
-        else: lab = self.settings.prob_label
+        if normalized:
+            lab = self.settings.norm_prob_label
+        else:
+            lab = self.settings.prob_label
         if lab and not no_ylabel:
             if label_right:
                 ax.yaxis.set_label_position("right")
                 ax.yaxis.tick_right()
                 ax.set_ylabel(lab)
-            else: ax.set_ylabel(lab)
-        if no_ytick or not self.settings.prob_y_ticks: ax.set_yticks([])
-        elif no_ylabel: ax.set_yticklabels([])
+            else:
+                ax.set_ylabel(lab)
+        if no_ytick or not self.settings.prob_y_ticks:
+            ax.set_yticks([])
+        elif no_ylabel:
+            ax.set_yticklabels([])
         elif no_zero and not normalized:
             ticks = ax.get_yticks()
             if ticks[-1] > 1: ticks = ticks[:-1]
@@ -731,29 +783,38 @@ class GetDistPlotter(object):
 
     def make_figure(self, nplot=1, nx=None, ny=None, xstretch=1.0, ystretch=1.0):
         self.newPlot()
-        if nx is None: self.plot_col = int(round(np.sqrt(nplot / 1.4)))
-        else: self.plot_col = nx
-        if ny is None: self.plot_row = (nplot + self.plot_col - 1) / self.plot_col
-        else: self.plot_row = ny
-        if self.settings.fig_width_inch is not None:
-            self.fig = plt.figure(figsize=(self.settings.fig_width_inch, (self.settings.fig_width_inch * self.plot_row * ystretch) / (self.plot_col * xstretch)))
+        if nx is None:
+            self.plot_col = int(round(np.sqrt(nplot / 1.4)))
         else:
-            self.fig = plt.figure(figsize=(self.settings.subplot_size_inch * self.plot_col * xstretch, self.settings.subplot_size_inch * self.plot_row * ystretch))
+            self.plot_col = nx
+        if ny is None:
+            self.plot_row = (nplot + self.plot_col - 1) / self.plot_col
+        else:
+            self.plot_row = ny
+        if self.settings.fig_width_inch is not None:
+            self.fig = plt.figure(figsize=(self.settings.fig_width_inch,
+                                           (self.settings.fig_width_inch * self.plot_row * ystretch) / (
+                                               self.plot_col * xstretch)))
+        else:
+            self.fig = plt.figure(figsize=(self.settings.subplot_size_inch * self.plot_col * xstretch,
+                                           self.settings.subplot_size_inch * self.plot_row * ystretch))
         self.subplots = np.ndarray((self.plot_row, self.plot_col), dtype=object)
         self.subplots[:, :] = None
         return self.plot_col, self.plot_row
 
     def get_param_array(self, root, in_params=None, renames={}):
-        if in_params is None or len(in_params) == 0: return self.paramNamesForRoot(root).names
+        if in_params is None or len(in_params) == 0:
+            return self.paramNamesForRoot(root).names
         else:
-            if not all([isinstance(param, paramNames.paramInfo) for param in in_params]):
+            if not all([isinstance(param, paramnames.ParamInfo) for param in in_params]):
                 return self.paramNamesForRoot(root).parsWithNames(in_params, error=True, renames=renames)
         return in_params
 
     def check_param(self, root, param, renames={}):
-        if not isinstance(param, paramNames.paramInfo):
+        if not isinstance(param, paramnames.ParamInfo):
             return self.paramNamesForRoot(root).parWithName(param, error=True, renames=renames)
-        elif renames: return self.paramNamesForRoot(root).parWithName(param.name, error=False, renames=renames)
+        elif renames:
+            return self.paramNamesForRoot(root).parWithName(param.name, error=False, renames=renames)
         return param
 
     def param_latex_label(self, root, param, labelParams=None):
@@ -766,73 +827,85 @@ class GetDistPlotter(object):
 
     def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False,
                    figure=False, ax=None, label_order=None, align_right=False, fontsize=None):
-            if legend_loc is None:
-                if figure: legend_loc = self.settings.figure_legend_loc
-                else: legend_loc = self.settings.legend_loc
-            if legend_ncol is None: legend_ncol = self.settings.figure_legend_ncol
-            lines = []
-            if len(self.contours_added) == 0:
-                for i in enumerate(legend_labels):
-                    args = self.lines_added.get(i[0]) or self.get_line_styles(i[0] + line_offset)
-                    args.pop('filled', None)
-                    lines.append(plt.Line2D([0, 1], [0, 1], **args))
-            else: lines = self.contours_added
-            args = {'ncol':legend_ncol}
-            if fontsize or self.settings.legend_fontsize: args['prop'] = {'size':fontsize or self.settings.legend_fontsize}
-            if colored_text:
-                args['handlelength'] = 0
-                args['handletextpad'] = 0
-            if label_order is not None:
-                if label_order == '-1': label_order = range(len(lines)).reverse()
-                lines = [lines[i] for i in label_order]
-                legend_labels = [legend_labels[i] for i in label_order]
+        if legend_loc is None:
             if figure:
-#                args['frameon'] = self.settings.figure_legend_frame
-                self.legend = self.fig.legend(lines, legend_labels, loc=legend_loc, **args)
-                if not self.settings.figure_legend_frame:
-                    # this works with tight_layout
-                    self.legend.get_frame().set_edgecolor('none')
+                legend_loc = self.settings.figure_legend_loc
             else:
-                args['frameon'] = self.settings.legend_frame and not colored_text
-                self.legend = (ax or plt.gca()).legend(lines, legend_labels, loc=legend_loc, **args)
-            if align_right:
-                vp = self.legend ._legend_box._children[-1]._children[0]
-                for c in vp._children:
-                    c._children.reverse()
-                vp.align = "right"
-            if not self.settings.legend_rect_border:
-                for rect in self.legend.get_patches():
-                    rect.set_edgecolor(rect.get_facecolor())
-            if colored_text:
-                for h, text in zip(self.legend.legendHandles, self.legend.get_texts()):
-                    h.set_visible(False)
-                    if isinstance(h, plt.Line2D):
-                        c = h.get_color()
-                    elif isinstance(h, matplotlib.patches.Patch):
-                        c = h.get_facecolor()
-                    else: continue
-                    text.set_color(c)
-            return self.legend
+                legend_loc = self.settings.legend_loc
+        if legend_ncol is None: legend_ncol = self.settings.figure_legend_ncol
+        lines = []
+        if len(self.contours_added) == 0:
+            for i in enumerate(legend_labels):
+                args = self.lines_added.get(i[0]) or self.get_line_styles(i[0] + line_offset)
+                args.pop('filled', None)
+                lines.append(plt.Line2D([0, 1], [0, 1], **args))
+        else:
+            lines = self.contours_added
+        args = {'ncol': legend_ncol}
+        if fontsize or self.settings.legend_fontsize: args['prop'] = {'size': fontsize or self.settings.legend_fontsize}
+        if colored_text:
+            args['handlelength'] = 0
+            args['handletextpad'] = 0
+        if label_order is not None:
+            if label_order == '-1': label_order = range(len(lines)).reverse()
+            lines = [lines[i] for i in label_order]
+            legend_labels = [legend_labels[i] for i in label_order]
+        if figure:
+            # args['frameon'] = self.settings.figure_legend_frame
+            self.legend = self.fig.legend(lines, legend_labels, loc=legend_loc, **args)
+            if not self.settings.figure_legend_frame:
+                # this works with tight_layout
+                self.legend.get_frame().set_edgecolor('none')
+        else:
+            args['frameon'] = self.settings.legend_frame and not colored_text
+            self.legend = (ax or plt.gca()).legend(lines, legend_labels, loc=legend_loc, **args)
+        if align_right:
+            vp = self.legend._legend_box._children[-1]._children[0]
+            for c in vp._children:
+                c._children.reverse()
+            vp.align = "right"
+        if not self.settings.legend_rect_border:
+            for rect in self.legend.get_patches():
+                rect.set_edgecolor(rect.get_facecolor())
+        if colored_text:
+            for h, text in zip(self.legend.legendHandles, self.legend.get_texts()):
+                h.set_visible(False)
+                if isinstance(h, plt.Line2D):
+                    c = h.get_color()
+                elif isinstance(h, matplotlib.patches.Patch):
+                    c = h.get_facecolor()
+                else:
+                    continue
+                text.set_color(c)
+        return self.legend
 
-    def finish_plot(self, legend_labels=None, legend_loc=None, line_offset=0, legend_ncol=None, label_order=None, no_gap=False, no_extra_legend_space=False, no_tight=False):
+    def finish_plot(self, legend_labels=None, legend_loc=None, line_offset=0, legend_ncol=None, label_order=None,
+                    no_gap=False, no_extra_legend_space=False, no_tight=False):
         has_legend = self.settings.line_labels and legend_labels and len(legend_labels) > 1
         if self.settings.tight_layout and not no_tight:
-            if no_gap: plt.tight_layout(h_pad=0, w_pad=0)
-            else: plt.tight_layout()
+            if no_gap:
+                plt.tight_layout(h_pad=0, w_pad=0)
+            else:
+                plt.tight_layout()
 
         if has_legend:
             if legend_ncol is None: legend_ncol = self.settings.figure_legend_ncol
             if legend_loc is None: legend_loc = self.settings.figure_legend_loc
-            self.extra_artists = [self.add_legend(legend_labels, legend_loc, line_offset, legend_ncol, label_order=label_order, figure=True)]
+            self.extra_artists = [
+                self.add_legend(legend_labels, legend_loc, line_offset, legend_ncol, label_order=label_order,
+                                figure=True)]
             if self.settings.tight_layout and not no_extra_legend_space:
                 nrows = len(legend_labels) / legend_ncol
                 if self.settings.legend_position_config == 1:
                     frac = self.settings.legend_frac_subplot_margin + nrows * self.settings.legend_frac_subplot_line
                 else:
-                    frac = self.settings.legend_frac_subplot_margin + (nrows * self.settings.legend_fontsize * 0.015) / self.settings.subplot_size_inch
+                    frac = self.settings.legend_frac_subplot_margin + (
+                                                                          nrows * self.settings.legend_fontsize * 0.015) / self.settings.subplot_size_inch
                 if self.plot_row == 1: frac = min(frac, 0.5)
-                if 'upper' in legend_loc: plt.subplots_adjust(top=1 - frac / self.plot_row)
-                elif 'lower' in legend_loc: plt.subplots_adjust(bottom=frac / self.plot_row)
+                if 'upper' in legend_loc:
+                    plt.subplots_adjust(top=1 - frac / self.plot_row)
+                elif 'lower' in legend_loc:
+                    plt.subplots_adjust(bottom=frac / self.plot_row)
 
     def _escapeLatex(self, text):
         if matplotlib.rcParams['text.usetex']:
@@ -841,7 +914,7 @@ class GetDistPlotter(object):
             return text
 
     def _rootDisplayName(self, root, i):
-        if isinstance(root, MCSamples):
+        if isinstance(root, mcsamples.MCSamples):
             root = root.getName()
         if not root: root = 'samples' + str(i)
         return self._escapeLatex(root)
@@ -849,17 +922,20 @@ class GetDistPlotter(object):
     def default_legend_labels(self, legend_labels, roots):
         if legend_labels is None:
             return [self._rootDisplayName(root, i) for i, root in enumerate(roots) if root is not None]
-        else: return legend_labels
+        else:
+            return legend_labels
 
     def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, label_order=None, nx=None,
                  paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None, param_renames={}):
         roots = makeList(roots)
         if roots_per_param:
             params = [self.check_param(root[0], param, param_renames) for root, param in zip(roots, params)]
-        else: params = self.get_param_array(roots[0], params, param_renames)
+        else:
+            params = self.get_param_array(roots[0], params, param_renames)
         if paramList is not None:
             wantedParams = self.paramNameListFromFile(paramList)
-            params = [param for param in params if param.name in wantedParams or param_renames.get(param.name, '') in wantedParams]
+            params = [param for param in params if
+                      param.name in wantedParams or param_renames.get(param.name, '') in wantedParams]
         nparam = len(params)
         if share_y is None: share_y = self.settings.prob_label is not None and nparam > 1
         plot_col, plot_row = self.make_figure(nparam, nx=nx)
@@ -867,18 +943,23 @@ class GetDistPlotter(object):
         for i, param in enumerate(params):
             ax = self.subplot_number(i)
             if roots_per_param: plot_roots = roots[i]
+            marker = None
             if markers is not None:
-                if isinstance(markers, dict): marker = markers.get(param.name, None)
-                elif i < len(markers): marker = markers[i]
-            else: marker = None
-            self.plot_1d(plot_roots, param, no_ylabel=share_y and  i % self.plot_col > 0, marker=marker, param_renames=param_renames)
+                if isinstance(markers, dict):
+                    marker = markers.get(param.name, None)
+                elif i < len(markers):
+                    marker = markers[i]
+            self.plot_1d(plot_roots, param, no_ylabel=share_y and i % self.plot_col > 0, marker=marker,
+                         param_renames=param_renames)
             if xlims is not None: ax.set_xlim(xlims[i][0], xlims[i][1])
             if share_y: self.spaceTicks(ax.xaxis, expand=True)
-        self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_order=label_order)
+        self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol,
+                         label_order=label_order)
         if share_y: plt.subplots_adjust(wspace=0)
         return plot_col, plot_row
 
-    def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None, legend_ncol=None,
+    def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None,
+                 legend_ncol=None,
                  label_order=None, filled=False, shaded=False):
         pairs = []
         roots = makeList(roots)
@@ -891,7 +972,8 @@ class GetDistPlotter(object):
                 params2 = self.get_param_array(roots[0], params2)
                 for param in params2:
                     if param.name != param1.name: pairs.append((param1, param))
-            else: raise GetDistPlotError('No parameter or parameter pairs for 2D plot')
+            else:
+                raise GetDistPlotError('No parameter or parameter pairs for 2D plot')
         else:
             for pair in param_pairs:
                 pairs.append((self.check_param(roots[0], pair[0]), self.check_param(roots[0], pair[1])))
@@ -904,7 +986,8 @@ class GetDistPlotter(object):
             self.plot_2d(roots, param_pair=pair, filled=filled, shaded=not filled and shaded,
                          add_legend_proxy=i == 0)
 
-        self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol, label_order=label_order)
+        self.finish_plot(self.default_legend_labels(legend_labels, roots), legend_ncol=legend_ncol,
+                         label_order=label_order)
         return plot_col, plot_row
 
     def subplot(self, x, y, **kwargs):
@@ -920,26 +1003,28 @@ class GetDistPlotter(object):
         for i, (root, param1, param2) in enumerate(root_params_triplets):
             ax = self.subplot_number(i)
             self.plot_2d(root, param_pair=[param1, param2], filled=filled, add_legend_proxy=i == 0)
-            if x_lim is not None:ax.set_xlim(x_lim)
+            if x_lim is not None: ax.set_xlim(x_lim)
         self.finish_plot()
         return plot_col, plot_row
 
     def spaceTicks(self, axis, expand=True):
-            lims = axis.get_view_interval()
-            tick = [tick for tick in axis.get_ticklocs() if tick > lims[0] and tick < lims[1]]
-            gap_wanted = (lims[1] - lims[0]) * self.settings.tight_gap_fraction
-            if expand:
-                lims = [min(tick[0] - gap_wanted, lims[0]), max(tick[-1] + gap_wanted, lims[1])]
-                axis.set_view_interval(lims[0], lims[1])
-            else:
-                if tick[0] - lims[0] < gap_wanted: tick = tick[1:]
-                if lims[1] - tick[-1] < gap_wanted:tick = tick[:-1]
-            axis.set_ticks(tick)
-            return tick
+        lims = axis.get_view_interval()
+        tick = [x for x in axis.get_ticklocs() if lims[0] < x < lims[1]]
+        gap_wanted = (lims[1] - lims[0]) * self.settings.tight_gap_fraction
+        if expand:
+            lims = [min(tick[0] - gap_wanted, lims[0]), max(tick[-1] + gap_wanted, lims[1])]
+            axis.set_view_interval(lims[0], lims[1])
+        else:
+            if tick[0] - lims[0] < gap_wanted: tick = tick[1:]
+            if lims[1] - tick[-1] < gap_wanted: tick = tick[:-1]
+        axis.set_ticks(tick)
+        return tick
 
 
-    def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled=False, filled_compare=False, shaded=False,
-                      contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None, label_order=None,
+    def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled=False,
+                      filled_compare=False, shaded=False,
+                      contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None,
+                      label_order=None,
                       legend_ncol=None, upper_roots=None, upper_kwargs={}):
         roots = makeList(roots)
         params = self.get_param_array(roots[0], in_params)
@@ -966,7 +1051,7 @@ class GetDistPlotter(object):
                     line_args.append({})
                 else:
                     if isinstance(col, (tuple, list)): col = col[-1]
-                    line_args += [{'color': col} ]
+                    line_args += [{'color': col}]
             return line_args
 
         contour_args = self._make_contour_args(len(roots), filled=filled, contour_args=contour_args,
@@ -989,7 +1074,8 @@ class GetDistPlotter(object):
 
         for i, param in enumerate(params):
             ax = self.subplot(i, i)
-            self.plot_1d(roots1d, param, do_xlabel=i == plot_col - 1, no_label_no_numbers=self.settings.no_triangle_axis_labels,
+            self.plot_1d(roots1d, param, do_xlabel=i == plot_col - 1,
+                         no_label_no_numbers=self.settings.no_triangle_axis_labels,
                          label_right=True, no_zero=True, no_ylabel=True, no_ytick=True, line_args=line_args)
             # set no_ylabel=True for now, can't see how to not screw up spacing with right-sided y label
             if self.settings.no_triangle_axis_labels: self.spaceTicks(ax.xaxis)
@@ -1002,12 +1088,12 @@ class GetDistPlotter(object):
                 ax = self.subplot(i, i2)
                 if plot_3d_with_param is not None:
                     self.plot_3d(roots, pair + [col_param], color_bar=False, line_offset=1, add_legend_proxy=False,
-                      do_xlabel=i2 == plot_col - 1, do_ylabel=i == 0, contour_args=contour_args,
-                      no_label_no_numbers=self.settings.no_triangle_axis_labels)
+                                 do_xlabel=i2 == plot_col - 1, do_ylabel=i == 0, contour_args=contour_args,
+                                 no_label_no_numbers=self.settings.no_triangle_axis_labels)
                 else:
                     self.plot_2d(roots, param_pair=pair, do_xlabel=i2 == plot_col - 1, do_ylabel=i == 0,
-                                        no_label_no_numbers=self.settings.no_triangle_axis_labels, shaded=shaded,
-                                         add_legend_proxy=i == 0 and i2 == 1, contour_args=contour_args)
+                                 no_label_no_numbers=self.settings.no_triangle_axis_labels, shaded=shaded,
+                                 add_legend_proxy=i == 0 and i2 == 1, contour_args=contour_args)
                 ax.set_xticks(ticks[i])
                 ax.set_yticks(ticks[i2])
                 ax.set_xlim(lims[i])
@@ -1017,22 +1103,23 @@ class GetDistPlotter(object):
                     ax = self.subplot(i2, i)
                     pair.reverse()
                     if plot_3d_with_param is not None:
-                        self.plot_3d(upper_roots, pair + [col_param], color_bar=False, line_offset=1, add_legend_proxy=False,
-                          do_xlabel=False, do_ylabel=False, contour_args=upper_contour_args,
-                          no_label_no_numbers=self.settings.no_triangle_axis_labels)
+                        self.plot_3d(upper_roots, pair + [col_param], color_bar=False, line_offset=1,
+                                     add_legend_proxy=False,
+                                     do_xlabel=False, do_ylabel=False, contour_args=upper_contour_args,
+                                     no_label_no_numbers=self.settings.no_triangle_axis_labels)
                     else:
                         self.plot_2d(upper_roots, param_pair=pair, do_xlabel=False, do_ylabel=False,
-                                            no_label_no_numbers=self.settings.no_triangle_axis_labels, shaded=shaded,
-                                             add_legend_proxy=i == 0 and i2 == 1,
-                                             proxy_root_exclude=[root for root in upper_roots if root in roots],
-                                             contour_args=upper_contour_args)
+                                     no_label_no_numbers=self.settings.no_triangle_axis_labels, shaded=shaded,
+                                     add_legend_proxy=i == 0 and i2 == 1,
+                                     proxy_root_exclude=[root for root in upper_roots if root in roots],
+                                     contour_args=upper_contour_args)
                     ax.set_xticks(ticks[i2])
                     ax.set_yticks(ticks[i])
                     ax.set_xlim(lims[i2])
                     ax.set_ylim(lims[i])
 
         if upper_roots is not None:
-            # make label on first 1D plot appropraite for 2D plots in rest of row
+            # make label on first 1D plot appropriate for 2D plots in rest of row
             label_ax = self.subplots[0, 0].twinx()
             label_ax.yaxis.tick_left()
             label_ax.yaxis.set_label_position('left')
@@ -1050,61 +1137,65 @@ class GetDistPlotter(object):
             self.add_colorbar_label(cb, col_param)
 
         labels = self.default_legend_labels(legend_labels, roots1d)
-        self.finish_plot(labels, label_order=label_order, legend_ncol=legend_ncol or (None if upper_roots is None else len(labels)),
-                         legend_loc=None, no_gap=self.settings.no_triangle_axis_labels, no_extra_legend_space=upper_roots is None)
+        self.finish_plot(labels, label_order=label_order,
+                         legend_ncol=legend_ncol or (None if upper_roots is None else len(labels)),
+                         legend_loc=None, no_gap=self.settings.no_triangle_axis_labels,
+                         no_extra_legend_space=upper_roots is None)
 
     def rectangle_plot(self, xparams, yparams, yroots=None, roots=None, plot_roots=None, plot_texts=None,
                        ymarkers=None, xmarkers=None, param_limits={}, legend_labels=None, legend_ncol=None,
                        label_order=None, marker_args={}, **kwargs):
-            """
-                roots uses the same set of roots for every plot in the rectangle
-                yroots (list of list of roots) allows use of different set of roots for each row of the plot
-                plot_roots allows you to specify (via list of list of list of roots) the set of roots for each individual subplot
-            """
-            self.make_figure(nx=len(xparams), ny=len(yparams))
-#            f, plots = subplots(len(yparams), len(xparams), sharex='col', sharey='row')
-            sharey = None
-            yshares = []
-            xshares = []
-            ax_arr = []
-            if plot_roots and yroots or roots and yroots or plot_roots and roots:
-                raise GetDistPlotError('rectangle plot: must have one of roots, yroots, plot_roots')
-            limits = dict()
-            for x, xparam in enumerate(xparams):
-                sharex = None
-                if plot_roots: yroots = plot_roots[x]
-                elif roots: yroots = [roots for _ in yparams]
-                axarray = []
-                res = None
-                for y, (yparam, subplot_roots) in enumerate(zip(yparams, yroots)):
-                    if x > 0: sharey = yshares[y]
-                    ax = self.subplot(x, y , sharex=sharex, sharey=sharey)
-                    if y == 0:
-                        sharex = ax
-                        xshares.append(ax)
-                    res = self.plot_2d(subplot_roots, param_pair=[xparam, yparam], do_xlabel=y == len(yparams) - 1,
-                                 do_ylabel=x == 0, add_legend_proxy=x == 0 and y == 0, **kwargs)
-                    if ymarkers is not None and ymarkers[y] is not None: self.add_y_marker(ymarkers[y], **marker_args)
-                    if xmarkers is not None and xmarkers[x] is not None: self.add_x_marker(xmarkers[x], **marker_args)
-                    limits[xparam], limits[yparam] = self.updateLimits(res, limits.get(xparam), limits.get(yparam))
-                    if y != len(yparams) - 1: plt.setp(ax.get_xticklabels(), visible=False)
-                    if x != 0: plt.setp(ax.get_yticklabels(), visible=False)
-                    if x == 0: yshares.append(ax)
-                    if plot_texts: self.add_text_left(plot_texts[x][y], y=0.9, ax=ax)
-                    axarray.append(ax)
-                ax_arr.append(axarray)
-            for xparam, ax in zip(xparams, xshares):
-                ax.set_xlim(param_limits.get(xparam, limits[xparam]))
-                self.spaceTicks(ax.xaxis)
-                ax.set_xlim(ax.xaxis.get_view_interval())
-            for yparam, ax in zip(yparams, yshares):
-                ax.set_ylim(param_limits.get(yparam, limits[yparam]))
-                self.spaceTicks(ax.yaxis)
-                ax.set_ylim(ax.yaxis.get_view_interval())
-            plt.subplots_adjust(wspace=0, hspace=0)
-            if roots: legend_labels = self.default_legend_labels(legend_labels, roots)
-            self.finish_plot(no_gap=True, legend_labels=legend_labels, label_order=label_order, legend_ncol=legend_ncol or len(legend_labels))
-            return ax_arr
+        """
+            roots uses the same set of roots for every plot in the rectangle
+            yroots (list of list of roots) allows use of different set of roots for each row of the plot
+            plot_roots allows you to specify (via list of list of list of roots) the set of roots for each individual subplot
+        """
+        self.make_figure(nx=len(xparams), ny=len(yparams))
+        # f, plots = subplots(len(yparams), len(xparams), sharex='col', sharey='row')
+        sharey = None
+        yshares = []
+        xshares = []
+        ax_arr = []
+        if plot_roots and yroots or roots and yroots or plot_roots and roots:
+            raise GetDistPlotError('rectangle plot: must have one of roots, yroots, plot_roots')
+        limits = dict()
+        for x, xparam in enumerate(xparams):
+            sharex = None
+            if plot_roots:
+                yroots = plot_roots[x]
+            elif roots:
+                yroots = [roots for _ in yparams]
+            axarray = []
+            for y, (yparam, subplot_roots) in enumerate(zip(yparams, yroots)):
+                if x > 0: sharey = yshares[y]
+                ax = self.subplot(x, y, sharex=sharex, sharey=sharey)
+                if y == 0:
+                    sharex = ax
+                    xshares.append(ax)
+                self.plot_2d(subplot_roots, param_pair=[xparam, yparam], do_xlabel=y == len(yparams) - 1,
+                             do_ylabel=x == 0, add_legend_proxy=x == 0 and y == 0, **kwargs)
+                if ymarkers is not None and ymarkers[y] is not None: self.add_y_marker(ymarkers[y], **marker_args)
+                if xmarkers is not None and xmarkers[x] is not None: self.add_x_marker(xmarkers[x], **marker_args)
+                limits[xparam], limits[yparam] = self.updateLimits(res, limits.get(xparam), limits.get(yparam))
+                if y != len(yparams) - 1: plt.setp(ax.get_xticklabels(), visible=False)
+                if x != 0: plt.setp(ax.get_yticklabels(), visible=False)
+                if x == 0: yshares.append(ax)
+                if plot_texts: self.add_text_left(plot_texts[x][y], y=0.9, ax=ax)
+                axarray.append(ax)
+            ax_arr.append(axarray)
+        for xparam, ax in zip(xparams, xshares):
+            ax.set_xlim(param_limits.get(xparam, limits[xparam]))
+            self.spaceTicks(ax.xaxis)
+            ax.set_xlim(ax.xaxis.get_view_interval())
+        for yparam, ax in zip(yparams, yshares):
+            ax.set_ylim(param_limits.get(yparam, limits[yparam]))
+            self.spaceTicks(ax.yaxis)
+            ax.set_ylim(ax.yaxis.get_view_interval())
+        plt.subplots_adjust(wspace=0, hspace=0)
+        if roots: legend_labels = self.default_legend_labels(legend_labels, roots)
+        self.finish_plot(no_gap=True, legend_labels=legend_labels, label_order=label_order,
+                         legend_ncol=legend_ncol or len(legend_labels))
+        return ax_arr
 
     def rotate_yticklabels(self, ax=None, rotation=90):
         if ax is None: ax = plt.gca()
@@ -1125,17 +1216,18 @@ class GetDistPlotter(object):
         return cb
 
     def add_line(self, P1, P2, zorder=0, color=None, ls=None, ax=None, **kwargs):
-            if color is None: color = self.settings.axis_marker_color
-            if ls is None: ls = self.settings.axis_marker_ls
-            (ax or plt.gca()).add_line(plt.Line2D(P1, P2, color=color, ls=ls, zorder=zorder, **kwargs))
+        if color is None: color = self.settings.axis_marker_color
+        if ls is None: ls = self.settings.axis_marker_ls
+        (ax or plt.gca()).add_line(plt.Line2D(P1, P2, color=color, ls=ls, zorder=zorder, **kwargs))
 
     def add_colorbar_label(self, cb, param):
         cb.set_label(param.latexLabel(), fontsize=self.settings.lab_fontsize,
-                     rotation=self.settings.colorbar_label_rotation, labelpad=self.settings.colorbar_label_pad)
+            rotation=self.settings.colorbar_label_rotation, labelpad=self.settings.colorbar_label_pad)
         plt.setp(plt.getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.colorbar_axes_fontsize)
 
     def _makeParamObject(self, names, samples):
         class sampleNames(object): pass
+
         p = sampleNames()
         for i, par in enumerate(names.names):
             setattr(p, par.name, samples[:, i])
@@ -1152,9 +1244,10 @@ class GetDistPlotter(object):
             else:
                 samples.append(pts[:, names.numberOfName(param.name)])
         if extra_thin > 1:
-            samples = [ pts[::extra_thin] for pts in samples]
+            samples = [pts[::extra_thin] for pts in samples]
         self.last_scatter = plt.scatter(samples[0], samples[1], edgecolors='none',
-                s=self.settings.scatter_size, c=samples[2], cmap=self.settings.colormap_scatter, alpha=alpha)
+                                        s=self.settings.scatter_size, c=samples[2], cmap=self.settings.colormap_scatter,
+                                        alpha=alpha)
         if color_bar: self.last_colorbar = self.add_colorbar(params[2], **ax_args)
         xbounds = [min(samples[0]), max(samples[0])]
         r = xbounds[1] - xbounds[0]
@@ -1166,25 +1259,27 @@ class GetDistPlotter(object):
         ybounds[1] += r / 20
         return [xbounds, ybounds]
 
-    def plot_3d(self, roots, in_params=None, params_for_plots=None, color_bar=True, line_offset=0, add_legend_proxy=True, **kwargs):
+    def plot_3d(self, roots, in_params=None, params_for_plots=None, color_bar=True, line_offset=0,
+                add_legend_proxy=True, **kwargs):
         roots = makeList(roots)
         if params_for_plots:
             params_for_plots = [self.get_param_array(root, p) for p, root in zip(params_for_plots, roots)]
         else:
             if not in_params: raise GetDistPlotError('No parameters for plot_3d!')
             params = self.get_param_array(roots[0], in_params)
-            params_for_plots = [params for root in roots]  # all the same
+            params_for_plots = [params for _ in roots]  # all the same
         if self.fig is None: self.make_figure()
         contour_args = self._make_contour_args(len(roots) - 1, **kwargs)
         xlims, ylims = self.add_3d_scatter(roots[0], params_for_plots[0], color_bar=color_bar, **kwargs)
         for i, root in enumerate(roots[1:]):
             params = params_for_plots[i + 1]
-            res = self.add_2d_contours(root, params[0], params[1], i + line_offset, add_legend_proxy=add_legend_proxy, zorder=i + 1, **contour_args[i])
+            res = self.add_2d_contours(root, params[0], params[1], i + line_offset, add_legend_proxy=add_legend_proxy,
+                                       zorder=i + 1, **contour_args[i])
             xlims, ylims = self.updateLimits(res, xlims, ylims)
         if not 'lims' in kwargs:
             params = params_for_plots[0]
-            lim1 = self.checkBounds(roots[0], params[0].name , xlims[0], xlims[1])
-            lim2 = self.checkBounds(roots[0], params[1].name , ylims[0], ylims[1])
+            lim1 = self.checkBounds(roots[0], params[0].name, xlims[0], xlims[1])
+            lim2 = self.checkBounds(roots[0], params[1].name, ylims[0], ylims[1])
             kwargs['lims'] = [lim1[0], lim1[1], lim2[0], lim2[1]]
         self.setAxes(params, **kwargs)
 
@@ -1209,7 +1304,7 @@ class GetDistPlotter(object):
         return self.plots_3d(roots, sets, **kwargs)
 
     def add_text(self, text_label, x=0.95, y=0.06, ax=None, **kwargs):
-        args = {'horizontalalignment':'right', 'verticalalignment':'center'}
+        args = {'horizontalalignment': 'right', 'verticalalignment': 'center'}
         args.update(kwargs)
         if isinstance(ax, int):
             ax = self.fig.axes[ax]
@@ -1220,7 +1315,7 @@ class GetDistPlotter(object):
         ax.text(x, y, text_label, transform=ax.transAxes, **args)
 
     def add_text_left(self, text_label, x=0.05, y=0.06, ax=None, **kwargs):
-        args = {'horizontalalignment':'left'}
+        args = {'horizontalalignment': 'left'}
         args.update(kwargs)
         self.add_text(text_label, x, y, ax, **args)
 
@@ -1232,11 +1327,12 @@ class GetDistPlotter(object):
         adir = os.path.dirname(fname)
         if adir and not os.path.exists(adir): os.makedirs(adir)
         if watermark:
-            self.fig.text(0.45, 0.5, self._escapeLatex(watermark), fontsize=30, color='gray', ha='center', va='center', alpha=0.2)
+            self.fig.text(0.45, 0.5, self._escapeLatex(watermark), fontsize=30, color='gray', ha='center', va='center',
+                          alpha=0.2)
 
         self.fig.savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
 
     def paramNameListFromFile(self, fname):
-        p = paramNames.paramNames(fname)
+        p = paramnames.ParamNames(fname)
         return [name.name for name in p.names]
 

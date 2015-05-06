@@ -24,7 +24,8 @@ g.datasets = []
 
 # lists of dataset names to combine, with corresponding sets of inis to include
 g.datasets.append(batchJob.dataSet(['plikHM', 'TT', 'lowTEB'], ['plik_dx11dr2_HM_v18_TT.ini', 'lowTEB.ini']))
-g.datasets.append(batchJob.dataSet(['plikHM', 'TT', 'lowTEB', 'lensing'], ['plik_dx11dr2_HM_v18_TT.ini', 'lowTEB.ini', 'lensing.ini']))
+g.datasets.append(batchJob.dataSet(['plikHM', 'TT', 'lowTEB', 'lensing'],
+                                   ['plik_dx11dr2_HM_v18_TT.ini', 'lowTEB.ini', 'lensing.ini']))
 
 
 # add importance name tags, and list of specific .ini files to include (in batch1/)
@@ -37,7 +38,7 @@ groups.append(g)
 # e.g. get name without particular data combinations
 covWithoutNameOrder = ['lensing', 'BAO']
 # or try replacing various names (these are standard for provided planck_covmats)
-covNameMappings = {'plikHM':'plik', 'plikLite':'plik'}
+covNameMappings = {'plikHM': 'plik', 'plikLite': 'plik'}
 # for mapping to nominal mission names try
 # covNameMappings = {'plikHM':'planck','TT':'', 'lowTEB':'lowLike'}
 

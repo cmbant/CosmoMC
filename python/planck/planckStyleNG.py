@@ -10,10 +10,10 @@ params = {'backend': 'pdf',
           'xtick.major.pad': 4,
           'ytick.labelsize': 8,
           'text.usetex': True,
-          'font.family':'sans-serif',
-          'linewidth':0.3,
+          'font.family': 'sans-serif',
+          'linewidth': 0.3,
           # free font similar to Helvetica
-          'font.sans-serif':'FreeSans'}
+          'font.sans-serif': 'FreeSans'}
 
 sfmath = r'C://Work/Planck/tauNL/python/TauNL/sfmath'
 # use of Sans Serif also in math mode

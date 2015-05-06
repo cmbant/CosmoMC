@@ -2,11 +2,11 @@ import os
 import copy
 
 from matplotlib import rcParams, rc
-import pylab as plt
+from matplotlib import pyplot as plt
 
 from paramgrid import batchJob
 import getdist
-from getdist import ResultObjs, plots
+from getdist import types, plots
 
 
 # common setup for matplotlib
@@ -193,7 +193,7 @@ def getSinglePlotter(ratio=3 / 4., plot_data=None, chain_dir=None, width_inch=3.
     return plotter
 
 
-class planckStyleTableFormatter(ResultObjs.noLineTableFormatter):
+class planckStyleTableFormatter(types.NoLineTableFormatter):
     """Planck style guide compliant formatter
     
     Andrea Zonca (edits by AL for consistent class structure)"""
@@ -246,7 +246,7 @@ class planckStyleTableFormatter(ResultObjs.noLineTableFormatter):
         self.spacer = ''
 
     def formatTitle(self, title):
-        return ResultObjs.texEscapeText(title)
+        return types.texEscapeText(title)
 
     def belowTitleLine(self, colsPerParam, numResults):
         out = r'\noalign{\vskip -3pt}'
