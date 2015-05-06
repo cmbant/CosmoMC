@@ -1,5 +1,4 @@
 __author__ = 'Antony Lewis'
-__all__ = ['ResultObjs', 'paramNames', 'MCSamples', 'chains', 'inifile']
 __version__ = "0.2.0"
 
 from getdist.inifile import IniFile
