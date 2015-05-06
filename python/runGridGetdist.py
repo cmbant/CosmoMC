@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-from getdist import inifile
+from getdist import IniFile
 import time
 from paramgrid import batchJobArgs
 
@@ -33,8 +33,10 @@ plot_types = ['.', '_2D.']
 # you don't need these for python plots generated separately
 # '_tri' is very slow for so many
 
-if args.plot_data is None: data_dir = batch.batchPath + 'plot_data' + os.sep
-else: data_dir = os.path.abspath(args.plot_data) + os.sep
+if args.plot_data is None:
+    data_dir = batch.batchPath + 'plot_data' + os.sep
+else:
+    data_dir = os.path.abspath(args.plot_data) + os.sep
 ini_dir = batch.batchPath + 'getdist' + os.sep
 
 checkDir(data_dir)
@@ -44,35 +46,37 @@ if args.delay: time.sleep(args.delay)
 processes = set()
 
 if not args.plots:
-        for jobItem in Opts.filteredBatchItems():
-                ini = inifile.IniFile()
-                ini.params['file_root'] = jobItem.chainRoot
-                checkDir(jobItem.distPath)
-                ini.params['out_dir'] = jobItem.distPath
-                ini.params['plot_data_dir'] = data_dir
-                custom_plot = batch.commonPath + 'plots' + os.sep + jobItem.paramtag + '.ini'
-                custom_plot2 = batch.commonPath + 'plots' + os.sep + jobItem.name + '.ini'
-                if os.path.exists(custom_plot2):
-                    ini.includes.append(custom_plot2)
-                elif os.path.exists(custom_plot):
-                    ini.includes.append(custom_plot)
-                ini.defaults.append(batch.commonPath + base_ini)
-                tag = ''
-                if jobItem.isImportanceJob or args.burn_removed or jobItem.isBurnRemoved():
-                    ini.params['ignore_rows'] = 0
-                if jobItem.isImportanceJob:
-                    ini.params['compare_num'] = 1
-                    ini.params['compare1'] = jobItem.parent.chainRoot
-                if args.no_plots: ini.params['no_plots'] = True
-                fname = ini_dir + jobItem.name + tag + '.ini'
-                ini.params.update(jobItem.dist_settings)
-                ini.saveFile(fname)
-                if not args.norun and (not args.notexist or not jobItem.getDistExists()) and (not args.update_only or jobItem.getDistNeedsUpdate()):
-                    if jobItem.chainExists():
-                        print "running: " + fname
-                        processes.add(subprocess.Popen([args.command, fname]))
-                        while len(processes) >= args.procs:
-                            time.sleep(.1)
-                            processes.difference_update([p for p in processes if p.poll() is not None])
-                    else: print "Chains do not exist yet: " + jobItem.chainRoot
+    for jobItem in Opts.filteredBatchItems():
+        ini = IniFile()
+        ini.params['file_root'] = jobItem.chainRoot
+        checkDir(jobItem.distPath)
+        ini.params['out_dir'] = jobItem.distPath
+        ini.params['plot_data_dir'] = data_dir
+        custom_plot = batch.commonPath + 'plots' + os.sep + jobItem.paramtag + '.ini'
+        custom_plot2 = batch.commonPath + 'plots' + os.sep + jobItem.name + '.ini'
+        if os.path.exists(custom_plot2):
+            ini.includes.append(custom_plot2)
+        elif os.path.exists(custom_plot):
+            ini.includes.append(custom_plot)
+        ini.defaults.append(batch.commonPath + base_ini)
+        tag = ''
+        if jobItem.isImportanceJob or args.burn_removed or jobItem.isBurnRemoved():
+            ini.params['ignore_rows'] = 0
+        if jobItem.isImportanceJob:
+            ini.params['compare_num'] = 1
+            ini.params['compare1'] = jobItem.parent.chainRoot
+        if args.no_plots: ini.params['no_plots'] = True
+        fname = ini_dir + jobItem.name + tag + '.ini'
+        ini.params.update(jobItem.dist_settings)
+        ini.saveFile(fname)
+        if not args.norun and (not args.notexist or not jobItem.getDistExists()) and (
+                    not args.update_only or jobItem.getDistNeedsUpdate()):
+            if jobItem.chainExists():
+                print "running: " + fname
+                processes.add(subprocess.Popen([args.command, fname]))
+                while len(processes) >= args.procs:
+                    time.sleep(.1)
+                    processes.difference_update([p for p in processes if p.poll() is not None])
+            else:
+                print "Chains do not exist yet: " + jobItem.chainRoot
 

@@ -16,7 +16,7 @@ matplotlib.rcParams['backend.qt4'] = 'PySide'
 
 import getdist
 from getdist import plots, IniFile
-from getdist.MCSamples import GetChainRootFiles, SettingError, ParamError
+from getdist.mcsamples import GetChainRootFiles, SettingError, ParamError
 from sys import platform
 
 import matplotlib.pyplot as plt
@@ -607,7 +607,7 @@ class MainWindow(QMainWindow):
             "\nPython: " + sys.version +
             "\nMatplotlib: " + matplotlib.__version__ +
             "\nSciPy: " + scipy.__version__ +
-            "\nNumpy: " + np.version.version +
+            "\nNumpy: " + np.__version__ +
             "\nPySide: " + PySide.__version__)
 
 
@@ -973,7 +973,7 @@ class MainWindow(QMainWindow):
 
             script = "import %s as s\nimport os\n\n" % self.script_plot_module
             if isinstance(self.iniFile, IniFile):
-                    script += 'analysis_settings = %s\n' % (self.iniFile.params)
+                script += 'analysis_settings = %s\n' % self.iniFile.params
             if len(items_x) > 1 or len(items_y) > 1:
                 plot_func = 'getSubplotPlotter'
             else:
@@ -987,9 +987,9 @@ class MainWindow(QMainWindow):
                 if isinstance(self.iniFile, basestring):
                     script += "g=s.%s(mcsamples=True, analysis_settings=r'%s')\n" % (plot_func, self.iniFile)
                 elif isinstance(self.iniFile, IniFile):
-                    script += "g=s.%s(mcsamples=True, analysis_settings=analysis_settings)\n" % (plot_func)
+                    script += "g=s.%s(mcsamples=True, analysis_settings=analysis_settings)\n" % plot_func
                 else:
-                    script += "g=s.%s(mcsamples=True)\n" % (plot_func)
+                    script += "g=s.%s(mcsamples=True)\n" % plot_func
                 for root in roots:
                     script += "g.sampleAnalyser.addRoot(r'%s')\n" % (self.rootfiles[root])
 
@@ -1000,11 +1000,11 @@ class MainWindow(QMainWindow):
                     script += 'g.settings.%s = %s\n' % (key, value)
 
             if len(roots) < 3:
-                script += 'roots = %s\n' % (roots)
+                script += 'roots = %s\n' % roots
             else:
                 script += "roots = []\n"
                 for root in roots:
-                    script += "roots.append('%s')\n" % (root)
+                    script += "roots.append('%s')\n" % root
 
             logging.debug("Plotting with roots = %s" % str(roots))
 

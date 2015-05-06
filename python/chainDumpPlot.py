@@ -1,8 +1,9 @@
-from pylab import *
+import matplotlib.pyplot as plt
 import matplotlib.cm as cmx
 import matplotlib.colors as colors
+import numpy as np
 import os, fnmatch
-from getdist import ResultObjs
+from getdist import types
 
 """
     load and plot chain cl data, as export by cosmomc using action =1 and redo_output_txt_theory=T, redo_output_txt_dir=xxx
@@ -23,9 +24,9 @@ def loadFiles(pat, max_files=400, cl_ix=1, calParam=None, rescale=1):
     for f in os.listdir(d):
         if fnmatch.fnmatch(f, name + '.theory_cl'):
             fname = f.replace('.theory_cl', '')
-            params = ResultObjs.bestFit(os.path.join(d, fname + '.pars'))
+            params = types.BestFit(os.path.join(d, fname + '.pars'))
             pars.append(params)
-            cl = loadtxt(os.path.join(d, fname + '.theory_cl'))
+            cl = np.loadtxt(os.path.join(d, fname + '.theory_cl'))
             if calParam:
                 cal = params.parWithName(calParam).best_fit
             else:
@@ -77,7 +78,7 @@ def CLdensity(samples, param, scalarMap, nbins=300, deltaL=1, Lmax=200, color_po
     for i in range(nL):
             for j in range(nbins):
                 colorVal[j, i, :] = scalarMap.to_rgba(psums[i, j], sums[i, j] ** color_pow)
-    im = imshow(colorVal, origin='lower', aspect='auto', extent=[2, Lmax, 0, maxCl])
+im = plt.imshow(colorVal, origin='lower', aspect='auto', extent=[2, Lmax, 0, maxCl])
     im.set_interpolation('bicubic')
 
 
@@ -98,8 +99,8 @@ def getColorMap(parvals, parname):
     return scalarMap, cNorm
 
 def setLabels(scalarMap, cNorm, par):
-    xlabel('$L$')
-    cb = colorbar(scalarMap, norm=cNorm)
+    plt.xlabel('$L$')
+    cb = plt.colorbar(scalarMap, norm=cNorm)
     lab = label_dict.get(par.name, par.label)
 
     cb.set_label('$' + lab + '$', rotation=colorbar_label_rotation_angle, labelpad=10)
@@ -124,9 +125,9 @@ def rainbowLinePlot(ls, pars, cls, parname, lpow=2, delta_to=None, last_colors=N
     for parval, cl in zip(parvals, cls):
         colorVal = scalarMap.to_rgba(parval)
         if delta_to is not None:
-            plot(ls, (cl - delta_to) * sc, color=colorVal, alpha=alpha)
+            plt.plot(ls, (cl - delta_to) * sc, color=colorVal, alpha=alpha)
         else:
-            plot(ls, cl * sc, color=colorVal, alpha=alpha)
+            plt.plot(ls, cl * sc, color=colorVal, alpha=alpha)
     setLabels(scalarMap, cNorm, pars[0].parWithName(parname))
     return scalarMap, cNorm
 

@@ -185,9 +185,9 @@ def deleteJobs(batchPath, jobIds=None, rootNames=None, jobNames=None, jobId_minm
             parts = jobIdStr.split('.')
             if len(parts) == 1 or parts[0].isdigit(): jobId = int(parts[0])
             else: jobId = int(parts[1])
-            if (jobId_minmax is not None and (jobId >= jobId_minmax[0] and jobId <= jobId_minmax[1]) or
-                jobId_min is not None and jobId >= jobId_min):
-                if not jobIdStr in jobIds: jobIds.append(jobIdStr)
+            if (jobId_minmax is not None and (jobId_minmax[0] <= jobId <= jobId_minmax[1]) or
+                            jobId_min is not None and jobId >= jobId_min) and not jobIdStr in jobIds:
+                jobIds.append(jobIdStr)
 
     validIds = queue_job_details(batchPath, running=not queued, queued=not running)[0]
     for jobId in jobIds:
@@ -286,19 +286,19 @@ def queue_job_details(batchPath=None, running=True, queued=True, warnNotBatch=Tr
         return []
     if spawn.find_executable("showq") is not None:
         res = subprocess.check_output('showq -U $USER', shell=True).strip()
-        running = ' Running '
+        runningTxt = ' Running '
     else:
         # e.g. Sun Grid Engine/OGS
         res = subprocess.check_output('qstat -u $USER', shell=True).strip()
-        running = ' r '
+        runningTxt = ' r '
     res = res.split("\n")
     names = []
     jobNames = []
     ids = []
     infos = []
     for line in res[2:]:
-        if ' ' + os.environ.get('USER') + ' ' in line and (queued and not re.search(running, line, re.IGNORECASE)
-                                                            or running and re.search(running, line, re.IGNORECASE)):
+        if ' ' + os.environ.get('USER') + ' ' in line and (queued and not re.search(runningTxt, line, re.IGNORECASE)
+                                                           or running and re.search(runningTxt, line, re.IGNORECASE)):
             items = line.split()
             jobId = items[0]
             j = index.jobSettings.get(jobId)

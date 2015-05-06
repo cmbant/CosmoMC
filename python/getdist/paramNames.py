@@ -1,7 +1,8 @@
 # AL Apr 11
 import os
 
-class paramInfo(object):
+
+class ParamInfo(object):
 
     def __init__(self, line=None, name='', label='', comment='', derived=False, number=None):
         self.name = name
@@ -39,17 +40,18 @@ class paramInfo(object):
         if items[1] != 'NULL':self.comment = items[1]
 
     def string(self, wantComments=True):
-        res = self.name;
-        if (self.isDerived): res = res + '*'
+        res = self.name
+        if self.isDerived: res += '*'
         res = res + '\t' + self.label
-        if (wantComments and self.comment != ''):
+        if wantComments and self.comment != '':
             res = res + '\t#' + self.comment
         return res
 
     def __str__(self):
         return self.string()
 
-class paramList(object):
+
+class ParamList(object):
 
     def __init__(self, fileName=None, setParamNameFile=None, default=None, names=None):
 
@@ -60,11 +62,11 @@ class paramList(object):
         if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
 
     def setDefault(self, n):
-        self.names = [paramInfo(name='param' + str(i + 1), label='p_' + str(i + 1)) for i in range(n)]
+        self.names = [ParamInfo(name='param' + str(i + 1), label='p_' + str(i + 1)) for i in range(n)]
         return self
 
     def setWithNames(self, names):
-        self.names = [paramInfo(name) for name in names]
+        self.names = [ParamInfo(name) for name in names]
         return self
 
     def numDerived(self):
@@ -103,12 +105,13 @@ class paramList(object):
     def parsWithNames(self, names, error=False, renames={}):
         res = []
         for name in names:
-            if isinstance(name, paramInfo): res.append(name)
+            if isinstance(name, ParamInfo):
+                res.append(name)
             else: res.append(self.parWithName(name, error, renames))
         return res
 
     def setLabelsAndDerivedFromParamNames(self, fname):
-        p = paramNames(fname)
+        p = ParamNames(fname)
         for par in p.names:
             param = self.parWithName(par.name)
             if not param is None:
@@ -133,7 +136,7 @@ class paramList(object):
     def addDerived(self, name, **kwargs):
         if kwargs.get('derived') is None: kwargs['derived'] = True
         kwargs['name'] = name
-        self.names.append(paramInfo(**kwargs))
+        self.names.append(ParamInfo(**kwargs))
         return self.names[-1]
 
     def maxNameLen(self):
@@ -161,20 +164,20 @@ class paramList(object):
             f.write(str(self))
 
 
-class paramNames(paramList):
+class ParamNames(ParamList):
 
     def loadFromFile(self, fileName):
 
         self.filenameLoadedFrom = os.path.split(fileName)[1]
         with open(fileName) as f:
-            self.names = [paramInfo(line) for line in [s.strip() for s in f] if line != '']
+            self.names = [ParamInfo(line) for line in [s.strip() for s in f] if line != '']
 
     def loadFromKeyWords(self, keywordProvider):
         num_params_used = keywordProvider.keyWord_int('num_params_used')
         num_derived_params = keywordProvider.keyWord_int('num_derived_params')
         nparam = num_params_used + num_derived_params
         for i in range(nparam):
-            info = paramInfo()
+            info = ParamInfo()
             info.setFromStringWithComment(keywordProvider.keyWordAndComment('param_' + str(i + 1)))
             self.names.append(info)
         return nparam
@@ -183,7 +186,7 @@ class paramNames(paramList):
         keywordProvider.setKeyWord_int('num_params_used', len(self.names) - self.numDerived())
         keywordProvider.setKeyWord_int('num_derived_params', self.numDerived())
         for i, name in enumerate(self.names):
-            keywordProvider.setKeyWord('param_' + str(i + 1), name.string(False).replace('\\', '!'), \
+            keywordProvider.setKeyWord('param_' + str(i + 1), name.string(False).replace('\\', '!'),
                 name.comment)
 
 

@@ -52,8 +52,7 @@ auto_label = ini.bool('auto_label', False)
 
 prob_label = ini.bool('prob_label', False)
 
-
-no_plots = ini.bool('no_plots', False);
+no_plots = ini.bool('no_plots', False)
 plots_only = ini.bool('plots_only', False)
 no_tests = plots_only or ini.bool('no_tests', False)
 make_plots = ini.bool('make_plots', False)

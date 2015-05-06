@@ -2,7 +2,7 @@ import os
 import re
 
 from paramgrid import batchJobArgs
-from getdist import paramNames
+from getdist import paramnames
 
 
 Opts = batchJobArgs.batchArgs('rename parameter in all .paramnames files in grid', importance=True)
@@ -17,7 +17,7 @@ Opts.parser.add_argument('--confirm', action='store_true', help="true to replace
 if args.old_new and len(args.old_new) < 2: raise Exception('Must have at least one pair of parameters to rename')
 
 if args.labelNames:
-    labels = paramNames.paramNames(args.labelNames)
+    labels = paramnames.ParamNames(args.labelNames)
 else:
     labels = None
 
@@ -36,7 +36,7 @@ if args.old_new:
 for jobItem in Opts.filteredBatchItems():
     name = jobItem.chainRoot + '.paramnames'
     if os.path.exists(name):
-        names = paramNames.paramNames(name)
+        names = paramnames.ParamNames(name)
         has = False
         if mapper:
             for p in names.names:

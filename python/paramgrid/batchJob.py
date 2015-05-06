@@ -5,7 +5,7 @@ import copy
 
 import sys
 import time
-from getdist import ResultObjs, inifile
+from getdist import types, inifile
 
 
 def resetGrid(directory):
@@ -14,7 +14,8 @@ def resetGrid(directory):
 
 def readobject(directory=None):
     from paramgrid import gridconfig
-    if directory == None:
+
+    if directory is None:
         directory = sys.argv[1]
     fname = os.path.abspath(directory) + os.sep + 'batch.pyobj'
     if not os.path.exists(fname):
@@ -52,7 +53,9 @@ class propertiesItem(object):
             return ini
 
 class dataSet(object):
-    def __init__(self, names, params=None, covmat=None, dist_settings={}):
+    def __init__(self, names, params=None, covmat=None, dist_settings=None):
+        if not dist_settings:
+            dist_settings = {}
         if isinstance(names, basestring): names = [names]
         if params is None: params = [(name + '.ini') for name in names]
         else: params = self.standardizeParams(params)
@@ -62,10 +65,10 @@ class dataSet(object):
         self.tag = "_".join(self.names)
         self.dist_settings = dist_settings
 
-    def add(self, name, params=None, overrideExisting=True, dist_settings={}):
+    def add(self, name, params=None, overrideExisting=True, dist_settings=None):
         if params is None: params = [name]
         params = self.standardizeParams(params)
-        self.dist_settings.update(dist_settings)
+        if dist_settings: self.dist_settings.update(dist_settings)
         if overrideExisting:
             self.params = params + self.params  # can be an array of items, either ini file name or dictionaries of parameters
         else:
@@ -74,7 +77,9 @@ class dataSet(object):
             self.names += [name]
             self.tag = "_".join(self.names)
 
-    def addEnd(self, name, params, dist_settings={}):
+    def addEnd(self, name, params, dist_settings=None):
+        if not dist_settings:
+            dist_settings = {}
         self.add(name, params, overrideExisting=False, dist_settings=dist_settings)
 
     def extendForImportance(self, names, params):
@@ -123,17 +128,25 @@ class dataSet(object):
 
 
 class jobGroup(object):
-    def __init__(self, name, params=[[]], importanceRuns=[], datasets=[]):
+    def __init__(self, name, params=None, importanceRuns=None, datasets=None):
+        if importanceRuns is None:
+            importanceRuns = []
+        if params is None:
+            params = [[]]
+        if datasets is None:
+            datasets = []
             self.params = params
             self.groupName = name
             self.importanceRuns = importanceRuns
             self.datasets = datasets
 
 class importanceSetting(object):
-    def __init__(self, names, inis=[], dist_settings={}, minimize=True):
+    def __init__(self, names, inis=None, dist_settings=None, minimize=True):
+        if not inis:
+            inis = []
         self.names = names
         self.inis = inis
-        self.dist_settings = dist_settings
+        self.dist_settings = dist_settings or {}
         self.want_minimize = minimize
 
     def wantImportance(self, jobItem):
@@ -279,7 +292,7 @@ class jobItem(propertiesItem):
     def chainBestfit(self, paramNameFile=None):
         bf_file = self.chainRoot + '.minimum'
         if nonEmptyFile(bf_file):
-            return ResultObjs.bestFit(bf_file, paramNameFile)
+            return types.BestFit(bf_file, paramNameFile)
         return None
 
     def chainMinimumConverged(self):
@@ -317,13 +330,13 @@ class jobItem(propertiesItem):
         return self.chainExists() and (not self.getDistExists() or self.chainFileDate() > os.path.getmtime(self.distRoot + '.margestats'))
 
     def parentChanged(self):
-        return (not self.chainExists() or self.chainFileDate() < self.parent.chainFileDate())
+        return not self.chainExists() or self.chainFileDate() < self.parent.chainFileDate()
 
     def R(self):
         if self.result_converge is None:
             fname = self.distRoot + '.converge'
             if not nonEmptyFile(fname): return None
-            self.result_converge = ResultObjs.convergeStats(fname)
+            self.result_converge = types.ConvergeStats(fname)
         return float(self.result_converge.worstR())
 
     def hasConvergeBetterThan(self, R, returnNotExist=False):
@@ -343,9 +356,9 @@ class jobItem(propertiesItem):
         if not bestfitonly:
             marge_root = self.distRoot
             if self.getDistExists():
-                if not noconverge: self.result_converge = ResultObjs.convergeStats(marge_root + '.converge')
-                self.result_marge = ResultObjs.margeStats(marge_root + '.margestats', paramNameFile)
-                self.result_likemarge = ResultObjs.likeStats(marge_root + '.likestats')
+                if not noconverge: self.result_converge = types.ConvergeStats(marge_root + '.converge')
+                self.result_marge = types.MargeStats(marge_root + '.margestats', paramNameFile)
+                self.result_likemarge = types.LikeStats(marge_root + '.likestats')
                 if self.result_bestfit is not None and bestfit: self.result_marge.addBestFit(self.result_bestfit)
             elif not silent: print 'missing: ' + marge_root
 

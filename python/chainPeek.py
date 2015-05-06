@@ -1,7 +1,7 @@
 # Just look at parameters being produced in single chain
 
 import os, sys
-from getdist import paramNames
+from getdist import paramnames
 import numpy as np
 
 
@@ -17,6 +17,6 @@ index = 1
 if len(sys.argv) > 4: index = int(sys.argv[3])
 
 d = np.loadtxt(chain + '_' + str(index) + '.txt')
-names = paramNames.paramNames(chain + '.paramnames')
+names = paramnames.ParamNames(chain + '.paramnames')
 
 print d[:, names.numberOfName(param) + 2]

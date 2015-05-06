@@ -11,18 +11,17 @@ importanceDefaults = ['importance_sampling.ini']
 
 Camspec = 'CAMspec_defaults.ini'
 # dataset names
-tauprior = {'prior[tau]':'0.06 0.02'}
-WMAPtau = {'prior[tau]':'0.09 0.013'}
+tauprior = {'prior[tau]': '0.06 0.02'}
+WMAPtau = {'prior[tau]': '0.09 0.013'}
 
-no217auto = {'want_spec':'T T F T'}
-freecal = {'prior[cal0]':' 1 0.05', 'prior[cal2]':'1 0.05'}
+no217auto = {'want_spec': 'T T F T'}
+freecal = {'prior[cal0]': ' 1 0.05', 'prior[cal2]': '1 0.05'}
 
+planck_vars = ['pico.ini', 'nonclik_v85F.ini', Camspec, 'lowl.ini', {'indep_sample': 0}]
 
-planck_vars = ['pico.ini', 'nonclik_v85F.ini', Camspec, 'lowl.ini', {'indep_sample':0} ]
-
-wig1800_217 = {'param[wig2_217]':'0 -50 50 3 3'}
-wig1800_143 = {'param[wig2_143]':'0 -50 50 3 3'}
-wig1460_217 = {'param[wig1_217]':'0 -50 50 3 3'}
+wig1800_217 = {'param[wig2_217]': '0 -50 50 3 3'}
+wig1800_143 = {'param[wig2_143]': '0 -50 50 3 3'}
+wig1460_217 = {'param[wig1_217]': '0 -50 50 3 3'}
 
 datasets = []
 
