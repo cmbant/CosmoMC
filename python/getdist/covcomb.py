@@ -3,7 +3,7 @@
 # Nb. in1 values take priority over in2
 
 import sys
-from getdist import covMat
+from getdist import covmat
 
 if len(sys.argv) < 3:
     print 'Usage: python covcmb.py out.covmat in1.covmat in2.covmat [in3.covmat...]'
@@ -11,10 +11,10 @@ if len(sys.argv) < 3:
 
 foutname = sys.argv[1]
 
-cov = covMat.covMat(sys.argv[2])
+cov = covmat.covMat(sys.argv[2])
 
 for fname in sys.argv[3:]:
     print 'merging: ' + fname
-    cov = cov.mergeCovmatWhereNew(covMat.covMat(fname))
+    cov = cov.mergeCovmatWhereNew(covmat.covMat(fname))
 
 cov.saveToFile(foutname)

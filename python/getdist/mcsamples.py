@@ -8,7 +8,7 @@ import time
 import numpy as np
 from scipy.stats import norm
 import getdist
-from getdist import types, covMat, paramnames, IniFile
+from getdist import types, covmat, paramnames, IniFile
 from getdist.densities import Density1D, Density2D
 from getdist.chains import chains, chainFiles, lastModified
 from getdist.convolve import convolve1D, convolve2D
@@ -321,7 +321,7 @@ class MCSamples(chains):
 
     def getCovMat(self):
         nparamNonDerived = self.paramNames.numNonDerived()
-        return covMat.covMat(matrix=self.fullcov[:nparamNonDerived, :nparamNonDerived],
+        return covmat.covMat(matrix=self.fullcov[:nparamNonDerived, :nparamNonDerived],
                                     paramNames=self.paramNames.list()[:nparamNonDerived])
 
     def writeCovMatrix(self, filename=None):

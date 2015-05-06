@@ -1,6 +1,6 @@
 
 import sys, fnmatch, os
-from getdist import covMat
+from getdist import covmat
 
 if len(sys.argv) < 4:
     print 'covscale rescales parmeter(s) in all .covmat files in a directory and outputs to another directory'
@@ -18,7 +18,7 @@ if not os.path.exists(outdir): os.makedirs(outdir)
 for f in os.listdir(indir):
     if fnmatch.fnmatch(f, "*.covmat"):
         print indir + f
-        cov = covMat.covMat(indir + f)
+        cov = covmat.covMat(indir + f)
         for par, factor in zip(pars, factors):
             cov.rescaleParameter(par, float(factor))
         cov.saveToFile(outdir + f)

@@ -1,7 +1,7 @@
 import os, sys
 from numpy import *
 import matplotlib.pyplot as plt
-from getdist import covMat, chains, types
+from getdist import covmat, chains, types
 import matplotlib.animation as animation
 
 if False:
@@ -192,7 +192,7 @@ print c.mean(derived), c.std(derived), c.std(derived) / c.mean(derived)
 
 sys.exit()
 
-cov = covMat.covMat(os.path.dirname(os.path.abspath(__file__)) + r'/../planck_covmats/base_TTTEEE_lowTEB_plik.covmat')
+cov = covmat.covMat(os.path.dirname(os.path.abspath(__file__)) + r'/../planck_covmats/base_TTTEEE_lowTEB_plik.covmat')
 
 cov.plot()
 show()
