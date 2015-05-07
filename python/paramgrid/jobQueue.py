@@ -61,7 +61,7 @@ class jobSettings(object):
             grid_engine = 'MOAB'
         else:
             try:
-                help_info = subprocess.check_output('qstat -h', shell=True).strip()
+                help_info = subprocess.check_output('qstat -help', shell=True).strip()
                 if 'OGS/GE' in help_info: grid_engine = 'OGS'  # Open Grid Scheduler, as on StarCluster
             except:
                 pass
@@ -89,8 +89,11 @@ class jobSettings(object):
         self.program = getDefaulted('program', './cosmomc', template=template, **kwargs)
         self.queue = getDefaulted('queue', '', template=template, **kwargs)
         self.gridEngine = getDefaulted('GridEngine', grid_engine, template=template, **kwargs)
-        self.qsub = getDefaulted('qsub', ('qsub', 'msub')[self.gridEngine == 'MOAB'], template=template, **kwargs)
-        self.qdel = getDefaulted('qdel', ('qdel', 'canceljob')[self.gridEngine == 'MOAB'], template=template, **kwargs)
+        if grid_engine == 'OGS' and os.getenv('SGE_CLUSTER_NAME', '') == 'STARCLUSTER':
+            self.qsub = 'qsub -pe orte ##NUMSLOTS##'
+        else:
+            self.qsub = getDefaulted('qsub', 'msub' if self.gridEngine == 'MOAB' else 'qsub', template=template, **kwargs)
+        self.qdel = getDefaulted('qdel', 'canceljob' if self.gridEngine == 'MOAB' else 'qdel', template=template, **kwargs)
         self.runCommand = extractValue(template, 'RUN')
 
 
@@ -234,6 +237,7 @@ def submitJob(jobName, paramFiles, sequential=False, msg=False, **kwargs):
     vals['PPN'] = j.chainsPerNode * j.runsPerJob * j.omp
     vals['MPIPERNODE'] = j.chainsPerNode * j.runsPerJob
     vals['NUMTASKS'] = j.nchains * j.runsPerJob
+    vals['NUMSLOTS'] = vals['PPN'] * j.nodes
     vals['ROOTDIR'] = j.path
     vals['ONERUN'] = j.onerun
     vals['PROGRAM'] = j.program
@@ -263,7 +267,7 @@ def submitJob(jobName, paramFiles, sequential=False, msg=False, **kwargs):
         if len(paramFiles) > 1:
             open(scriptRoot + '.batch', 'w').write("\n".join(paramFiles))
         if not kwargs.get('no_sub', False):
-            res = subprocess.check_output(j.qsub + ' ' + scriptName, shell=True).strip()
+            res = subprocess.check_output(replacePlaceholders(j.qsub, vals) + ' ' + scriptName, shell=True).strip()
             if not res: print 'No qsub output'
             else:
                 j.paramFiles = paramFiles
