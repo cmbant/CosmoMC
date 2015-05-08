@@ -2,6 +2,7 @@
 import planckStyle as s
 from paramgrid import batchJob
 from pylab import *
+from getdist.densities import Density2D
 
 
 roots = ['base_' + s.defdata + '_lensing']
@@ -19,7 +20,7 @@ def RSDdensity(FAPbar, f8bar, covfile):
     FAP, f8 = np.meshgrid(FAPv, f8v)
     like = (FAP - FAPbar) ** 2 * invcov[0, 0] + 2 * (FAP - FAPbar) * (f8 - f8bar) * invcov[0, 1] + (f8 - f8bar) ** 2 * invcov[1, 1]
 
-    density = GetDistPlots.Density2D(FAPv, f8v, exp(-like / 2))
+    density = Density2D(FAPv, f8v, exp(-like / 2))
     density.contours = exp(-np.array([1.509, 2.4477]) ** 2 / 2)
     return density
 
