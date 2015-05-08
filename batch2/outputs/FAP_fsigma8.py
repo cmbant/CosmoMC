@@ -1,8 +1,7 @@
-from pylab import *
 
 import planckStyle as s
-import GetDistPlots
 from paramgrid import batchJob
+from pylab import *
 
 
 roots = ['base_' + s.defdata + '_lensing']

@@ -1,9 +1,8 @@
-from pylab import *
 
 import planckStyle as s
 from paramgrid import batchJob
 import GetDistPlots
-
+from pylab import *
 
 g = s.getSinglePlotter()
 
