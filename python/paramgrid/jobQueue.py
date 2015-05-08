@@ -89,7 +89,7 @@ class jobSettings(object):
         self.program = getDefaulted('program', './cosmomc', template=template, **kwargs)
         self.queue = getDefaulted('queue', '', template=template, **kwargs)
         self.gridEngine = getDefaulted('GridEngine', grid_engine, template=template, **kwargs)
-        if grid_engine == 'OGS' and os.getenv('SGE_CLUSTER_NAME', '') == 'STARCLUSTER':
+        if grid_engine == 'OGS' and os.getenv('SGE_CLUSTER_NAME', '') == 'starcluster':
             self.qsub = 'qsub -pe orte ##NUMSLOTS##'
         else:
             self.qsub = getDefaulted('qsub', 'msub' if self.gridEngine == 'MOAB' else 'qsub', template=template, **kwargs)
