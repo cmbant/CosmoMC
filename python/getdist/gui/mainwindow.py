@@ -1324,7 +1324,7 @@ class MainWindow(QMainWindow):
                 edgecolor='w',
                 facecolor='w',
                 dpi=100,
-                bbox_extra_artists=[],
+                bbox_extra_artists=self.plotter2.extra_artists,
                 bbox_inches='tight')
             buf.seek(0)
             im = Image.open(buf)
