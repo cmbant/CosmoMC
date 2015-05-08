@@ -1172,7 +1172,8 @@ class GetDistPlotter(object):
                 if y == 0:
                     sharex = ax
                     xshares.append(ax)
-                self.plot_2d(subplot_roots, param_pair=[xparam, yparam], do_xlabel=y == len(yparams) - 1,
+                res = None
+                res = self.plot_2d(subplot_roots, param_pair=[xparam, yparam], do_xlabel=y == len(yparams) - 1,
                              do_ylabel=x == 0, add_legend_proxy=x == 0 and y == 0, **kwargs)
                 if ymarkers is not None and ymarkers[y] is not None: self.add_y_marker(ymarkers[y], **marker_args)
                 if xmarkers is not None and xmarkers[x] is not None: self.add_x_marker(xmarkers[x], **marker_args)
