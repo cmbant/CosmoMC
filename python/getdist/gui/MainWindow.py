@@ -9,6 +9,8 @@ import matplotlib
 import numpy as np
 
 import scipy
+import io
+from PIL import Image
 
 import sys
 import signal
@@ -20,6 +22,10 @@ from getdist import MCSamples, plots, IniFile
 from getdist.gui import SyntaxHighlight
 from getdist.MCSamples import GetChainRootFiles, SettingError, ParamError
 from sys import platform
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 
 try:
     import PySide
@@ -33,11 +39,6 @@ try:
 except ImportError:
     print "Can't import PySide modules, please install PySide first."
     sys.exit()
-
-
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 
 from paramgrid import batchJob, gridconfig
 
@@ -399,6 +400,9 @@ class MainWindow(QMainWindow):
         self.plotWidget2 = QWidget(self.secondWidget)
         layout2 = QVBoxLayout(self.plotWidget2)
         self.plotWidget2.setLayout(layout2)
+        self.scrollArea = QScrollArea(self.plotWidget2)
+        self.plotWidget2.layout().addWidget(self.scrollArea)
+
 
         splitter2 = QSplitter(self.secondWidget)
         splitter2.addWidget(self.editWidget)
@@ -1282,7 +1286,8 @@ class MainWindow(QMainWindow):
         try:
             script_exec = self.script_edit
             if "g.export()" in script_exec:
-                script_exec = script_exec.replace("g.export()", "")
+                # Comment line which produces export to PDF
+                script_exec = script_exec.replace("g.export", "#g.export")
             exec(script_exec)
 
             self.plotter2 = None
@@ -1290,6 +1295,9 @@ class MainWindow(QMainWindow):
                 if isinstance(v, plots.GetDistPlotter):
                     self.plotter2 = v
             if self.plotter2:
+                # Reset plot settings for figure size
+                self.plotter2.settings.setWithSubplotSize(2)
+                self.plotter2.settings.fig_width_inch = None
                 self.updatePlot2()
 
         except Exception as e:
@@ -1297,51 +1305,45 @@ class MainWindow(QMainWindow):
 
     def updatePlot2(self):
         if self.plotter2.fig is None:
-            self.canvas2 = None
+            return
         else:
+
             i = 0
             while 1:
                 item = self.plotWidget2.layout().takeAt(i)
                 if item is None: break
+                if hasattr(item, "widget"):
+                    child = item.widget()
+                    del child
                 del item
-            if hasattr(self, "canvas2"): del self.canvas2
-            if hasattr(self, "toolbar2"): del self.toolbar2
 
-            scrollArea = QScrollArea()
-            self.canvas2 = FigureCanvas(self.plotter2.fig)
-            sizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            self.canvas2.setSizePolicy(sizePolicy)
-            scrollArea.setWidget(self.canvas2)
-            scrollArea.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-            scrollArea.setStyleSheet("background-color: rgb(255,255,255)")
-            self.plotter2.fig.set_facecolor('white')
-
-            if platform <> "darwin":
-                # for some reason the toolbar crashes out on a Mac; just don't show it
-                self.toolbar2 = NavigationToolbar(self.canvas2, self)
-                self.plotWidget2.layout().addWidget(self.toolbar2)
-            self.plotWidget2.layout().addWidget(scrollArea)
-            self.plotWidget2.layout()
-            self.canvas2.draw()
-            self.plotWidget2.show()
-
-            import io
+            # Save to a byte array in PNG format, and display it in a QLabel
+            buf = io.BytesIO()
             self.plotter2.fig.savefig(
-                io.BytesIO(),
-                format='pdf',
+                buf,
+                format='png',
                 edgecolor='w',
                 facecolor='w',
                 dpi=100,
                 bbox_extra_artists=[],
                 bbox_inches='tight')
+            buf.seek(0)
+            im = Image.open(buf)
+            data = im.tostring('raw', 'RGBA')
 
-            # self.canvas2.print_figure(
-            #     io.BytesIO(),
-            #     edgecolor='w',
-            #     facecolor='w',
-            #     dpi=100,
-            #     bbox_extra_artists=[],
-            #     bbox_inches='tight')
+            image = QImage(data, im.size[0], im.size[1], QImage.Format_ARGB32)
+            pixmap = QPixmap.fromImage(image)
+            label = QLabel(self.scrollArea)
+            label.setPixmap(pixmap)
+
+            self.scrollArea = QScrollArea(self.plotWidget2)
+            self.scrollArea.setWidget(label)
+            self.scrollArea.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+            self.scrollArea.setStyleSheet("background-color: rgb(255,255,255)")
+
+            self.plotWidget2.layout().addWidget(self.scrollArea)
+            self.plotWidget2.layout()
+            self.plotWidget2.show()
 
 # ==============================================================================
 
