@@ -36,7 +36,7 @@ except ImportError:
     print "Can't import PySide modules, please install PySide first."
     sys.exit()
 
-from paramgrid import batchJob, gridconfig
+from paramgrid import batchjob, gridconfig
 # ==============================================================================
 
 class GuiSelectionError(Exception):
@@ -66,7 +66,7 @@ class MainWindow(QMainWindow):
         """
         super(MainWindow, self).__init__()
 
-        if base_dir is None: base_dir = batchJob.getCodeRootPath()
+        if base_dir is None: base_dir = batchjob.getCodeRootPath()
         os.chdir(base_dir)
         self.updating = False
         self.app = app
@@ -411,7 +411,7 @@ class MainWindow(QMainWindow):
 
     def reLoad(self):
         adir = self.getSettings().value('lastSearchDirectory')
-        batchJob.resetGrid(adir)
+        batchjob.resetGrid(adir)
         self.openDirectory(adir)
 
     def getRootname(self):
@@ -732,10 +732,10 @@ class MainWindow(QMainWindow):
         self.is_grid = True
         logging.debug("Read grid chain in %s" % batchPath)
         try:
-            batch = batchJob.readobject(batchPath)
+            batch = batchjob.readobject(batchPath)
         except:
-            batchJob.resetGrid(batchPath)
-            batch = batchJob.readobject(batchPath)
+            batchjob.resetGrid(batchPath)
+            batch = batchjob.readobject(batchPath)
 
         self.batch = batch
         items = dict()

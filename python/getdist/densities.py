@@ -8,7 +8,7 @@ defaultContours = [0.68, 0.95]
 
 def getContourLevels(inbins, contours=defaultContours, missing_norm=0, half_edge=True):
     """
-     Get countour levels encolosing "countours" of the probability.
+     Get contour levels enclosing "contours" of the probability.
      inbins is the density. If half_edge, then edge bins are only half integrated over in each direction.
      missing_norm accounts of any points not included in inbins (e.g. points in far tails that are not in inbins)
      Works for any dimension bins array

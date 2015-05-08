@@ -2,11 +2,11 @@ import os
 import copy
 
 import planckStyle
-from paramgrid import batchJob, batchJobArgs
+from paramgrid import batchjob, batchjob_args
 from getdist import types, paramnames
 
 
-Opts = batchJobArgs.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True,
+Opts = batchjob_args.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True,
                               converge=True)
 Opts.parser.add_argument('latex_filename', help="name of latex/PDF file to produce")
 Opts.parser.add_argument('--limit', type=int, default=2, help="sigmas of quoted confidence intervals")
@@ -186,7 +186,7 @@ for paramtag, parambatch in items:
             baseJobItems[jobItem.normed_data] = referenceJobItem
 
 loc = os.path.split(args.latex_filename)[0]
-if loc: batchJob.makePath(loc)
+if loc: batchjob.makePath(loc)
 
 for limit in limits:
     args.limit = limit

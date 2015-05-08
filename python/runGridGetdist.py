@@ -3,14 +3,14 @@ import subprocess
 
 from getdist import IniFile
 import time
-from paramgrid import batchJobArgs
+from paramgrid import batchjob_args
 
 
 def checkDir(fname):
     if not os.path.exists(fname): os.makedirs(fname)
 
 
-Opts = batchJobArgs.batchArgs('Run getdist over the grid of models', notExist=True)
+Opts = batchjob_args.batchArgs('Run getdist over the grid of models', notExist=True)
 Opts.parser.add_argument('--update_only', action='store_true')
 Opts.parser.add_argument('--plots', action='store_true')
 Opts.parser.add_argument('--norun', action='store_true')

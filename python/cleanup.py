@@ -1,10 +1,10 @@
 import os
 import fnmatch
 
-from paramgrid import batchJobArgs
+from paramgrid import batchjob_args
 
 
-Opts = batchJobArgs.batchArgs('delete failed chains, files etc.', importance=True, converge=True)
+Opts = batchjob_args.batchArgs('delete failed chains, files etc.', importance=True, converge=True)
 
 Opts.parser.add_argument('--dist', action='store_true')
 Opts.parser.add_argument('--ext', nargs='+', default=['*'])

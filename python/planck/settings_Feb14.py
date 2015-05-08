@@ -3,7 +3,7 @@
 # New BAO -> DR11
 import re
 
-from paramgrid import batchJob
+from paramgrid import batchjob
 
 
 ini_dir = 'batch2/'
@@ -34,7 +34,7 @@ Camspec = 'CAMspec_defaults.ini'
 basedata = [Camspec, lowl, lowLike]
 
 planck_sets = [[[planck, lowl, lowLike], [planck] + basedata] for planck in planck_vars]
-planck_sets += [batchJob.dataSet([planck, lowl, lowLike]) for planck in planck_pol]
+planck_sets += [batchjob.dataSet([planck, lowl, lowLike]) for planck in planck_pol]
 
 basedata = ['nonclik_v85F'] + basedata
 planck_cuts = [[[cut, lowl, lowLike], [cut] + basedata] for cut in cuts]

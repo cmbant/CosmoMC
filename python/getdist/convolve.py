@@ -109,7 +109,7 @@ def autoCorrelation(x, n=None, normalized=True, start_index=0):
 def autoConvolve(x, n=None, normalize=True):
     """
     Calculates auto-covariance of x, result[k] = sum_i x_i x_{i+k}
-    n is maxmimum size to return (k = 0..n-1)
+    n is maximum size to return (k = 0..n-1)
     if normalize=True then normalize convolution by the number of terms for each k
     (can input x-mean(x) and divide result by variance to get auto correlation)
     """

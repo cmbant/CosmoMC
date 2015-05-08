@@ -1,6 +1,6 @@
-from paramgrid import batchJobArgs, jobQueue
+from paramgrid import batchjob_args, jobqueue
 
-Opts = batchJobArgs.batchArgs(
+Opts = batchjob_args.batchArgs(
     'List details of running or queued jobs; gives job stats, then current R-1 and job/chain names', importance=True,
     batchPathOptional=True)
 
@@ -14,7 +14,7 @@ if batch:
     items = [jobItem for jobItem in Opts.filteredBatchItems()]
     batchNames = set([jobItem.name for jobItem in items] + [jobItem.name + '_minimize' for jobItem in items])
 
-ids, jobNames, nameslist, infos = jobQueue.queue_job_details(args.batchPath, running=not args.queued,
+ids, jobNames, nameslist, infos = jobqueue.queue_job_details(args.batchPath, running=not args.queued,
                                                              queued=not args.running)
 for jobId, jobName, names, info in zip(ids, jobNames, nameslist, infos):
     if not batch or batchNames.intersection(set(names)):

@@ -1,5 +1,5 @@
 # settings to test out BKP-only runs
-from paramgrid import batchJob
+from paramgrid import batchjob
 
 # Directory to find .ini files
 ini_dir = 'batch2/'
@@ -14,7 +14,7 @@ defaults = ['common.ini']
 groups = []
 
 # make first group of runs (all parameter variations with all data combinations)
-g = batchJob.jobGroup('main')
+g = batchjob.jobGroup('main')
 
 g.params = [['r']]
 
@@ -24,7 +24,7 @@ variants = ['fiducial', 'y1y2', '9bins', 'no217', 'relaxbetad', 'relaxalphad', '
 g.datasets = []
 
 for i, var in enumerate(variants):
-    g.datasets.append(batchJob.dataSet(['BKPlanckonly', var], [{'root_dir':''},
+    g.datasets.append(batchjob.dataSet(['BKPlanckonly', var], [{'root_dir': ''},
                                                                'BKPlanck/BKPlanck_0%u_%s.ini' % (i + 1, var)]))
 
 

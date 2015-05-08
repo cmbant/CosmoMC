@@ -321,7 +321,7 @@ class MCSamples(chains):
 
     def getCovMat(self):
         nparamNonDerived = self.paramNames.numNonDerived()
-        return covmat.covMat(matrix=self.fullcov[:nparamNonDerived, :nparamNonDerived],
+        return covmat.CovMat(matrix=self.fullcov[:nparamNonDerived, :nparamNonDerived],
                                     paramNames=self.paramNames.list()[:nparamNonDerived])
 
     def writeCovMatrix(self, filename=None):
@@ -517,7 +517,7 @@ class MCSamples(chains):
         lines += 'Effective number of weighted samples (sum w)^2/sum(w^2): %s\n' % (int(self.norm ** 2 / np.dot(self.weights, self.weights)))
         return lines
 
-    def getConvergeTests(self, limfrac, quick=False, writeDataToFile=False,
+    def getConvergeTests(self, limfrac, writeDataToFile=False,
                         what=['MeanVar', 'GelmanRubin', 'SplitTest', 'RafteryLewis', 'CorrLengths'],
                         filename=None, feedback=False):
         """
@@ -840,7 +840,7 @@ class MCSamples(chains):
             # e.g.  http://biomet.oxfordjournals.org/content/82/2/327.full.pdf+html
             # some prefactors given in  http://eprints.whiterose.ac.uk/42950/6/taylorcc2%5D.pdf
             # Here we just take unit prefactor relative to Gaussian
-            # and rescale the optimal h for standardard KDE to accounts for higher order scaling
+            # and rescale the optimal h for standard KDE to accounts for higher order scaling
             # Should be about 1.3 x larger for Gaussian, but smaller in some other cases
             return h * N_eff ** (1. / 5 - 1. / (4 * m + 5))
         else:
@@ -1394,7 +1394,7 @@ class MCSamples(chains):
             density.likes = None
 
         if writeDataToFile:
-            # note store things in confusing traspose form
+            # note store things in confusing transpose form
 #            if meanlikes:
 #                filedensity = Density2D(x, y, bin2Dlikes)
 #                bin2Dlikes = filedensity.Prob(x, y)
@@ -1561,7 +1561,7 @@ class MCSamples(chains):
             par.limits.append(types.ParamLimit(lim, tag))
 
     def getCorrelatedVariable2DPlots(self, num_plots=12, nparam=None):
-        # gets most ocrrelated variable pair names
+        # gets most correlated variable pair names
         nparam = nparam or self.paramNames.numNonDerived()
         try_t = 1e5
         x, y = 0, 0
@@ -1571,8 +1571,7 @@ class MCSamples(chains):
             try_b = -1e5
             for ix1 in range(nparam):
                 for ix2 in range(ix1 + 1, nparam):
-                    if (abs(correlationMatrix[ix1][ix2]) < try_t) and \
-                            (abs(correlationMatrix[ix1][ix2]) > try_b) :
+                    if try_b < abs(correlationMatrix[ix1][ix2]) < try_t:
                         try_b = abs(correlationMatrix[ix1][ix2])
                         x, y = ix1, ix2
             if try_b == -1e5:

@@ -2,10 +2,11 @@ import os
 import fnmatch
 import shutil
 
-from paramgrid import batchJobArgs
+from paramgrid import batchjob_args
 
 
-Opts = batchJobArgs.batchArgs('copy all files of a given type from all getdist output directories in the batch', importance=True, converge=True)
+Opts = batchjob_args.batchArgs('copy all files of a given type from all getdist output directories in the batch',
+                               importance=True, converge=True)
 
 Opts.parser.add_argument('target_dir')
 Opts.parser.add_argument('file_extension', nargs='+')
