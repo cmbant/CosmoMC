@@ -58,8 +58,6 @@ for name, datasets, planck_vars in zip(['v97', 'v97CS'], [detsets, CS], [planck_
     datasets.append(batchjob.dataSet([name, 'TE'], [TE, varTE, freecalTE] + planck_vars))
     datasets.append(batchjob.dataSet([name, 'EE'], [EE, varEE, freecalEE] + planck_vars))
     datasets.append(batchjob.dataSet([name, 'all'], [full, varTE, varEE, freecalTE, freecalEE] + planck_vars))
-# datasets.append(batchJob.dataSet(name + 'TEEE', [TEEE] + planck_vars))
-#    datasets.append(batchJob.dataSet(name + 'TTTE', [TTTE] + planck_vars))
 
 plik = []
 plik.append(
