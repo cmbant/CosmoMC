@@ -210,7 +210,7 @@ def compare_method_nsims(g, probs, sizes=[1000, 10000], **kwargs):
         ax = g.subplot_number(i)
         plot_compare_probs_methods(ax, probs, nsmap=size, **kwargs)
 
-def compare_method(g, probs, nx=2, fname='', **kwargs):
+def compare_method(probs, nx=2, fname='', **kwargs):
     ny = (len(probs) - 1) // nx + 1
     fig, axs = plt.subplots(ny, nx, sharex=True, sharey=True, squeeze=False , figsize=(nx * 3, ny * 3))
     for i, prob in enumerate(probs):
@@ -261,7 +261,7 @@ if __name__ == "__main__":
     g = plots.getSubplotPlotter(subplot_size=2)
 
     if 'ISE_1D' in args.plots:
-        compare_method(g, test1D.distributions(), nx=3,
+        compare_method(test1D.distributions(), nx=3,
                       test_settings=[ {'mult_bias_correction_order':1, 'boundary_correction_order':1},
                          {'mult_bias_correction_order':2, 'boundary_correction_order':1},
                         # {'mult_bias_correction_order':1, 'boundary_correction_order':0},
@@ -274,7 +274,7 @@ if __name__ == "__main__":
                        )
 
     if 'ISE_2D' in args.plots:
-        compare_method(g, test2D.distributions(), nx=4,
+        compare_method(test2D.distributions(), nx=4,
                       test_settings=[ {'mult_bias_correction_order':1, 'boundary_correction_order':1},
                          {'mult_bias_correction_order':2, 'boundary_correction_order':1},
                         # {'mult_bias_correction_order':1, 'boundary_correction_order':0},

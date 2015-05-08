@@ -1,10 +1,10 @@
 import os
 
-from paramgrid import batchJobArgs
+from paramgrid import batchjob_args
 from getdist import types, paramnames
 
 
-Opts = batchJobArgs.batchArgs('Compare parameter constraints over set of models')
+Opts = batchjob_args.batchArgs('Compare parameter constraints over set of models')
 Opts.parser.add_argument('--params', nargs='+')
 Opts.parser.add_argument('--chain_name_params', nargs='+')
 

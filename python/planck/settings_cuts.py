@@ -1,7 +1,7 @@
 import re
 import copy
 
-from paramgrid import batchJob
+from paramgrid import batchjob
 
 
 # Look at Alens=1 for fixed lensing template amplitude
@@ -26,7 +26,7 @@ planck_detsets = ['nonclik_detsets.ini']
 planck_CS = ['nonclik.ini']
 
 CamSpec = [
-    batchJob.dataSet(['CamSpecHM', 'TT', 'lowl', tauname], ['nonclik.ini', 'CAMspec_TT.ini', 'lowl.ini', tauprior])]
+    batchjob.dataSet(['CamSpecHM', 'TT', 'lowl', tauname], ['nonclik.ini', 'CAMspec_TT.ini', 'lowl.ini', tauprior])]
 
 start_at_bestfit = False
 newCovmats = True
@@ -35,7 +35,7 @@ lmaxs = range(700, 2501, 50)
 
 groups = []
 
-g = batchJob.jobGroup('main')
+g = batchjob.jobGroup('main')
 # Main group with just tau prior
 g.datasets = []
 for lmax in lmaxs:

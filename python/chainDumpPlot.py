@@ -78,7 +78,7 @@ def CLdensity(samples, param, scalarMap, nbins=300, deltaL=1, Lmax=200, color_po
     for i in range(nL):
             for j in range(nbins):
                 colorVal[j, i, :] = scalarMap.to_rgba(psums[i, j], sums[i, j] ** color_pow)
-im = plt.imshow(colorVal, origin='lower', aspect='auto', extent=[2, Lmax, 0, maxCl])
+    im = plt.imshow(colorVal, origin='lower', aspect='auto', extent=[2, Lmax, 0, maxCl])
     im.set_interpolation('bicubic')
 
 

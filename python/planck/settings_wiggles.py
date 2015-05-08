@@ -1,6 +1,6 @@
 import copy
 
-from paramgrid import batchJob
+from paramgrid import batchjob
 
 
 ini_dir = 'batch2/'
@@ -25,13 +25,13 @@ wig1460_217 = {'param[wig1_217]': '0 -50 50 3 3'}
 
 datasets = []
 
-datasets.append(batchJob.dataSet('v85F', planck_vars))
-datasets.append(batchJob.dataSet('no217auto', [no217auto] + planck_vars))
-datasets.append(batchJob.dataSet('wig1800_217', planck_vars + [wig1800_217]))
-datasets.append(batchJob.dataSet('wig1800_143', planck_vars + [wig1800_143]))
-datasets.append(batchJob.dataSet('wig1460_217', planck_vars + [wig1460_217]))
-datasets.append(batchJob.dataSet('wig1800_143_217', planck_vars + [wig1800_217, wig1800_143]))
-datasets.append(batchJob.dataSet('wig_both', planck_vars + [wig1800_217, wig1800_143, wig1460_217]))
+datasets.append(batchjob.dataSet('v85F', planck_vars))
+datasets.append(batchjob.dataSet('no217auto', [no217auto] + planck_vars))
+datasets.append(batchjob.dataSet('wig1800_217', planck_vars + [wig1800_217]))
+datasets.append(batchjob.dataSet('wig1800_143', planck_vars + [wig1800_143]))
+datasets.append(batchjob.dataSet('wig1460_217', planck_vars + [wig1460_217]))
+datasets.append(batchjob.dataSet('wig1800_143_217', planck_vars + [wig1800_217, wig1800_143]))
+datasets.append(batchjob.dataSet('wig_both', planck_vars + [wig1800_217, wig1800_143, wig1460_217]))
 
 covmat = 'planck_covmats/base_planck_lowl_lowLike.covmat'
 
@@ -40,14 +40,14 @@ newCovmats = True
 
 groups = []
 
-g = batchJob.jobGroup('main')
+g = batchjob.jobGroup('main')
 g.datasets = copy.deepcopy(datasets)
 for d in g.datasets:
     d.add(None, tauprior)
 
 groups.append(g)
 
-g = batchJob.jobGroup('freecal')
+g = batchjob.jobGroup('freecal')
 g.datasets = copy.deepcopy(datasets)
 for d in g.datasets:
     d.add(None, tauprior)
@@ -55,7 +55,7 @@ for d in g.datasets:
 
 groups.append(g)
 
-g = batchJob.jobGroup('WMAPtau')
+g = batchjob.jobGroup('WMAPtau')
 g.datasets = copy.deepcopy(datasets)
 for d in g.datasets:
     d.add('WMAPtau', WMAPtau)

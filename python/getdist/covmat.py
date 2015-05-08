@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class covMat(object):
+class CovMat(object):
     def __init__(self, filename='', matrix=None, paramNames=None):
         if not paramNames:
             paramNames = []
@@ -42,7 +42,7 @@ class covMat(object):
         params1 = self.paramNames
         params2 = cov2.paramNames
 
-        C = covMat()
+        C = CovMat()
         C.paramNames.extend(params1)
 
         for param in cov2.paramNames:

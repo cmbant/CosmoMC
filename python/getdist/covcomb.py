@@ -11,10 +11,10 @@ if len(sys.argv) < 3:
 
 foutname = sys.argv[1]
 
-cov = covmat.covMat(sys.argv[2])
+cov = covmat.CovMat(sys.argv[2])
 
 for fname in sys.argv[3:]:
     print 'merging: ' + fname
-    cov = cov.mergeCovmatWhereNew(covmat.covMat(fname))
+    cov = cov.mergeCovmatWhereNew(covmat.CovMat(fname))
 
 cov.saveToFile(foutname)

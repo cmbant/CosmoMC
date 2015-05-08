@@ -1,9 +1,9 @@
 import os
 
-from paramgrid import batchJobArgs
+from paramgrid import batchjob_args
 
 
-Opts = batchJobArgs.batchArgs('Make plots from getdist outputs', importance=True, converge=True, plots=True)
+Opts = batchjob_args.batchArgs('Make plots from getdist outputs', importance=True, converge=True, plots=True)
 Opts.parser.add_argument('out_dir', help='directory to put the produced plots in')
 
 Opts.parser.add_argument('--compare_data', nargs='+', default=None,

@@ -1,9 +1,9 @@
 from pylab import *
 
-from paramgrid import batchJobArgs
+from paramgrid import batchjob_args
 
 
-Opts = batchJobArgs.batchArgs('Compare how parameters means and errors vary', importance=True, converge=True,
+Opts = batchjob_args.batchArgs('Compare how parameters means and errors vary', importance=True, converge=True,
                               plots=True)
 Opts.parser.add_argument('fname', help='filename root for the produced plots')
 Opts.parser.add_argument('--compare', nargs='+', help="datatag templates for data combinations to compare")

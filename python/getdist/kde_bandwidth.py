@@ -11,7 +11,7 @@ from convolve import dct2d
 import logging
 
 """
-Code to find optimal bandwidths for basic kernel density estiamtors in 1 and 2D
+Code to find optimal bandwidths for basic kernel density estimators in 1 and 2D
 Adapted from Matlab code by Zdravko Botev
 Extended to include correlation estimation and numerical AMISE minimization in 2D case
 Antony Lewis, 2015-03
@@ -239,7 +239,7 @@ class KernelOptimizer2D(object):
                 if AMISEopt < AMISE * 0.9:
                     h_x, h_y, corr = res.x
         except:
-            logging.debug('AMISE optmization failed')
+            logging.debug('AMISE optimization failed')
             pass
         return h_x, h_y, corr
 

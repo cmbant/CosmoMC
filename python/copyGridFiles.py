@@ -3,10 +3,10 @@ import fnmatch
 import shutil
 import zipfile
 
-from paramgrid import batchJob, batchJobArgs
+from paramgrid import batchjob, batchjob_args
 
 
-Opts = batchJobArgs.batchArgs('copy or zip chains and optionally other files', importance=True, converge=True)
+Opts = batchjob_args.batchArgs('copy or zip chains and optionally other files', importance=True, converge=True)
 
 Opts.parser.add_argument('target_dir', help="output root directory or zip file name")
 
@@ -36,7 +36,7 @@ if args.zip:
 else:
     zipper = None
     target_dir = os.path.abspath(args.target_dir) + os.sep
-    batchJob.makePath(target_dir)
+    batchjob.makePath(target_dir)
 
 if args.sym_link and (args.remove_burn_fraction or args.zip): raise Exception('option not compatible with --sym_link')
 
@@ -92,7 +92,7 @@ def writeIni(iniName, props):
 
 if not args.no_config:
     config_path = os.path.join(batch.batchPath, 'config/')
-    if not args.dryrun and not args.zip: batchJob.makePath(target_dir + 'config')
+    if not args.dryrun and not args.zip: batchjob.makePath(target_dir + 'config')
     for f in os.listdir(config_path):
         doCopy(config_path, 'config/', f)
 
@@ -104,7 +104,7 @@ for jobItem in Opts.filteredBatchItems():
         distfiles = 0
         doneProperties = False
         outdir = jobItem.relativePath
-        if not args.zip: batchJob.makePath(target_dir + outdir)
+        if not args.zip: batchjob.makePath(target_dir + outdir)
         if args.chains:
             i = 1
             while os.path.exists(jobItem.chainRoot + '_%d.txt' % i):
@@ -126,7 +126,7 @@ for jobItem in Opts.filteredBatchItems():
                 doCopy(jobItem.chainPath, outdir, f)
         if args.dist and os.path.exists(jobItem.distPath):
             outdir += 'dist' + os.sep
-            if not args.zip: batchJob.makePath(target_dir + outdir)
+            if not args.zip: batchjob.makePath(target_dir + outdir)
             for f in os.listdir(jobItem.distPath):
                 if fileMatches(f, jobItem.name):
                     distfiles += 1

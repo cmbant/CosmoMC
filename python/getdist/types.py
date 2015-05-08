@@ -344,7 +344,7 @@ class BestFit(ParamResults):
         if fileName is not None: self.loadFromFile(fileName, want_fixed=want_fixed)
         if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
 
-    def getColumnLabels(self, limit=None):
+    def getColumnLabels(self, **kwargs):
         return ['Best fit']
 
     def loadFromFile(self, filename, want_fixed=False):
@@ -408,7 +408,7 @@ class BestFit(ParamResults):
         return None
 
 
-    def texValues(self, formatter, p, limit=None, refResults=None, shiftSigma_indep=False, shiftSigma_subset=False):
+    def texValues(self, formatter, p, **kwargs):
         param = self.parWithName(p.name)
         if param is not None:
             return [formatter.numberFormatter.formatNumber(param.best_fit)]

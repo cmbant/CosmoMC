@@ -1,6 +1,6 @@
-from paramgrid import batchJobArgs
+from paramgrid import batchjob_args
 
-Opts = batchJobArgs.batchArgs('Find chains which have failed or not converged.', importance=True, converge=True)
+Opts = batchjob_args.batchArgs('Find chains which have failed or not converged.', importance=True, converge=True)
 
 Opts.parser.add_argument('--exist', action='store_true')
 Opts.parser.add_argument('--checkpoint', action='store_true')

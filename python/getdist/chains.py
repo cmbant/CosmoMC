@@ -216,7 +216,7 @@ class WeightedSamples(object):
          Uses fiducial assumed kernel scale h; result does depend on this (typically by factors O(2))
          For bias-corrected KDE only need very rough estimate to use in rule of thumb for bandwidth
          In the limit h-> 0 (but still >0) answer should be correct (then just includes MCMC rejection duplicates), 
-         In reality correct result for practicle h should depends on shape of correlation function
+         In reality correct result for practical h should depends on shape of correlation function
         """
         d = self._makeParamvec(paramVec)
         # Result does depend on kernel width, but hopefully not strongly around typical values ~ sigma/4

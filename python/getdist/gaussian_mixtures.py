@@ -81,7 +81,7 @@ class MixtureND(object):
 
     def pdf(self, x):
         """
-        Calcualte the PDF. Note this assumes x and y are within the boundaries (does not return zero outside)
+        Calculate the PDF. Note this assumes x and y are within the boundaries (does not return zero outside)
         Result is also only normalized if no boundaries
         """
         tot = None
@@ -183,7 +183,7 @@ class Mixture2D(MixtureND):
 
     def pdf(self, x, y=None):
         """
-        Calcualte the PDF. Note this assumes x and y are within the boundaries (does not return zero outside)
+        Calculate the PDF. Note this assumes x and y are within the boundaries (does not return zero outside)
         Result is also only normalized if no boundaries
         """
         if y is None: return super(Mixture2D, self).pdf(x)
