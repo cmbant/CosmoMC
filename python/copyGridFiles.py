@@ -32,7 +32,9 @@ sizeMB = 0
 
 if args.zip:
     zipper = zipfile.ZipFile(args.target_dir, 'w', compression=zipfile.ZIP_DEFLATED, allowZip64=True)
+    target_dir = None
 else:
+    zipper = None
     target_dir = os.path.abspath(args.target_dir) + os.sep
     batchJob.makePath(target_dir)
 
@@ -47,7 +49,8 @@ def fileMatches(f, name):
             return True
     return False
 
-def doCopy(source, dest, name, hasBurn=False):
+
+def doCopy(source, dest, f, hasBurn=False):
     global sizeMB
     if args.verbose: print source + f
     frac = 1
@@ -94,7 +97,7 @@ if not args.no_config:
         doCopy(config_path, 'config/', f)
 
 for jobItem in Opts.filteredBatchItems():
-    if (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
+    if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
         print jobItem.name
         chainfiles = 0
         infofiles = 0
@@ -104,8 +107,8 @@ for jobItem in Opts.filteredBatchItems():
         if not args.zip: batchJob.makePath(target_dir + outdir)
         if args.chains:
             i = 1
-            while os.path.exists(jobItem.chainRoot + ('_%d.txt') % i):
-                f = jobItem.name + ('_%d.txt') % i
+            while os.path.exists(jobItem.chainRoot + '_%d.txt' % i):
+                f = jobItem.name + '_%d.txt' % i
                 chainfiles += 1
                 doCopy(jobItem.chainPath, outdir, f, not jobItem.isImportanceJob)
                 i += 1
@@ -130,6 +133,6 @@ for jobItem in Opts.filteredBatchItems():
                     doCopy(jobItem.distPath, outdir, f)
         print '... %d chain files, %d other files and %d dist files' % (chainfiles, infofiles, distfiles)
 
-if args.zip: zipper.close()
+if zipper: zipper.close()
 
-print 'Total size: %u MB' % (sizeMB)
+print 'Total size: %u MB' % sizeMB

@@ -134,7 +134,6 @@ def convolveGaussianDCT(x, sigma, pad_sigma=4, mode='same', cache={}):
     If pad_sigma>0, pads ends with zeros by int(pad_sigma*sigma) pixels
     Otherwise does unpadded fast cosine transform, hence reflection from the ends
     """
-    global gauss, cache_s, cache_sigma
 
     fill = int(pad_sigma * sigma)
     actual_size = x.size + fill * 2
@@ -159,7 +158,8 @@ def convolveGaussianDCT(x, sigma, pad_sigma=4, mode='same', cache={}):
         return res[fill * 2:-fill2 - fill]
     else: raise ValueError('mode not supported for convolveGaussianDCT')
 
-def convolveGaussian(x, sigma, sigma_range=4, cache={}):
+
+def convolveGaussian(x, sigma, sigma_range=4, cache=None):
     """
     1D convolution of x with Gaussian of width sigma pixels
     x_max = int(sigma_range*sigma) the zero padding range at ends
@@ -172,17 +172,18 @@ def convolveGaussian(x, sigma, sigma_range=4, cache={}):
         s = nearestFFTnumber(actual_size)
     else:
         s = actual_size
-    gauss = cache.get((fill, actual_size, sigma))
+    gauss = None if cache is None else cache.get((fill, actual_size, sigma))
     if gauss is None:
         hnorm = sigma / float(s)
         ps = np.arange(1, s + 1) // 2
         gauss = np.exp(-(ps * (np.pi * hnorm)) ** 2 * 2)
-        cache[(fill, actual_size, sigma)] = gauss
+        if cache is not None:
+            cache[(fill, actual_size, sigma)] = gauss
     res = fftpack.irfft(fftpack.rfft(x, s) * gauss, s)
     return res[:x.size]
 
 
-def convolveGaussianTrunc(x, sigma, sigma_range=4, mode='same', cache={}):
+def convolveGaussianTrunc(x, sigma, sigma_range=4, mode='same', cache=None):
     """
     1D convolution of x with Gaussian of width sigma pixels
     x_max = int(sigma_range*sigma) determines the finite support (in pixels) of the truncated gaussian
@@ -191,13 +192,14 @@ def convolveGaussianTrunc(x, sigma, sigma_range=4, mode='same', cache={}):
     fill = int(sigma_range * sigma)
     actual_size = x.size + 2 * fill
     s = nearestFFTnumber(actual_size)
-    gauss = cache.get((fill, actual_size, sigma))
+    gauss = None if cache is None else cache.get((fill, actual_size, sigma))
     if gauss is None:
         points = np.arange(-fill, fill + 1)
         Win = np.exp(-(points / sigma) ** 2 / 2.)
         Win /= np.sum(Win)
         gauss = np.fft.rfft(Win, s)
-        cache[(fill, actual_size, sigma)] = gauss
+        if cache is not None:
+            cache[(fill, actual_size, sigma)] = gauss
     res = np.fft.irfft(np.fft.rfft(x, s) * gauss, s)[:actual_size]
     if mode == 'same':
         return res[fill:-fill]

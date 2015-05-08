@@ -1,42 +1,45 @@
 #!/usr/bin/env python
 import os
 import subprocess
-
 import sys
-from getdist import MCSamples, chains, inifile
-
-# ==============================================================================
-
-if len(sys.argv) < 2:
-    print 'Usage: python/GetDist.py ini_file [chain_root]'
+from getdist import MCSamples, chains, IniFile
+try:
+    import argparse
+except:
+    print 'Make sure you are using python 2.7+'
     sys.exit()
 
-# Parameter file
-ini_file = os.path.abspath(sys.argv[1])
-if not os.path.isfile(ini_file):
-    print 'Parameter file does not exist ', ini_file
+
+parser = argparse.ArgumentParser(description='GetDist sample analyser')
+parser.add_argument('ini_file', help='.ini file with analysis settings')
+parser.add_argument('chain_root', nargs='?', help='Root name of chain to analyse (e.g. chains/test)')
+args = parser.parse_args()
+
+if not os.path.isfile(args.ini_file):
+    print 'Parameter file does not exist ', args.ini_file
     sys.exit()
 
 # Input parameters
-ini = inifile.IniFile(ini_file)
+ini = IniFile(args.ini_file)
 
 # File root
-if len(sys.argv) > 2:
-    in_root = sys.argv[2]
+if args.chain_root is not None:
+    in_root = args.chain_root
 else:
     in_root = ini.params['file_root']
 if in_root == '':
-    print 'Root file does not exist ', in_root
+    print 'Chain Root file name not given ', in_root
     sys.exit()
 rootname = os.path.basename(in_root)
 
 ignorerows = ini.float('ignore_rows', 0.0)
 
+samples_are_chains = ini.bool('samples_are_chains', True)
+
 # Create instance of MCSamples
-mc = MCSamples.MCSamples(in_root)
+mc = MCSamples(in_root, files_are_chains=samples_are_chains)
 
 mc.initParameters(ini)
-
 
 if ini.bool('adjust_priors', False) or ini.bool('map_params', False):
     print 'To adjust priors or define new parameters, use a separate python script; see the python getdist docs for examples'
@@ -49,9 +52,7 @@ auto_label = ini.bool('auto_label', False)
 
 prob_label = ini.bool('prob_label', False)
 
-samples_are_chains = ini.bool('samples_are_chains', True)
-
-no_plots = ini.bool('no_plots', False);
+no_plots = ini.bool('no_plots', False)
 plots_only = ini.bool('plots_only', False)
 no_tests = plots_only or ini.bool('no_tests', False)
 make_plots = ini.bool('make_plots', False)
@@ -116,7 +117,7 @@ make_scatter_samples = ini.bool('make_scatter_samples', False)
 def runScript(fname):
     subprocess.Popen(['python', fname])
 
-first_chain = ini.int('first_chain', 1)
+first_chain = ini.int('first_chain', 0)
 last_chain = ini.int('chain_num', -1)
 # -1 means keep reading until one not found
 
@@ -128,7 +129,6 @@ mc.loadChains(in_root, chain_files)
 mc.removeBurnFraction(ignorerows)
 mc.deleteFixedParams()
 mc.makeSingle()
-
 
 def filterPars(names):
     return [ name for name in names if mc.paramNames.parWithName(name) ]

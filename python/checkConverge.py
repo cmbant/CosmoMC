@@ -32,7 +32,7 @@ else:
         if not jobItem.chainExists():
             notExist.append(jobItem)
         elif args.converge == 0 or args.checkpoint or not jobItem.hasConvergeBetterThan(args.converge, returnNotExist=True):
-            if (not args.not_running or jobItem.notRunning()): converge.append(jobItem)
+            if not args.not_running or jobItem.notRunning(): converge.append(jobItem)
 
     print 'Checking batch (from last runGridGetdist.py output):'
     if not args.exist and len(notExist) > 0:

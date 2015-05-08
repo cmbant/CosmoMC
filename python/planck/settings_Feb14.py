@@ -33,13 +33,11 @@ Camspec = 'CAMspec_defaults.ini'
 
 basedata = [Camspec, lowl, lowLike]
 
-planck_sets = [ [[planck, lowl, lowLike], [planck] + basedata] for planck in planck_vars]
+planck_sets = [[[planck, lowl, lowLike], [planck] + basedata] for planck in planck_vars]
 planck_sets += [batchJob.dataSet([planck, lowl, lowLike]) for planck in planck_pol]
 
-
 basedata = ['nonclik_v85F'] + basedata
-planck_cuts = [ [[cut, lowl, lowLike], [cut] + basedata] for cut in cuts]
-
+planck_cuts = [[[cut, lowl, lowLike], [cut] + basedata] for cut in cuts]
 
 start_at_bestfit = False
 newCovmats = True
@@ -48,7 +46,8 @@ newCovmats = True
 
 class importanceFilterLensing:
     def wantImportance(self, jobItem):
-        return planck in jobItem.data_set.names and (not'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
+        return planck in jobItem.data_set.names and (not 'omegak' in jobItem.param_set or (len(jobItem.param_set) == 1))
+
 
 class importanceFilterNotOmegakLowl:
     def wantImportance(self, jobItem):
@@ -60,7 +59,8 @@ post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegakLowl()]
 post_HST = [[HST], ['HST.ini'], importanceFilterNotOmegakLowl()]
 post_SN = [[JLA], ['JLA_marge.ini'], importanceFilterNotOmegakLowl()]
 # set up groups of parameters and data sets
-class group:pass
+class group: pass
+
 
 groups = []
 
@@ -88,22 +88,20 @@ g.importanceRuns = []
 g.groupName = 'cuts'
 groups.append(g)
 
-
-
 skip = ['base_nnu_meffsterile_planck_lowl_lowLike']
-
 
 
 def covRenamer(name):
     renamed = re.sub(r'nonclik_([^_]*)', 'planck', name, re.I)
     renamed = re.sub(r'CAMspec_([^_]*)', 'planck', renamed, re.I)
-    if renamed == name: return[]
-    else: return [renamed]
+    if renamed == name:
+        return []
+    else:
+        return [renamed]
 
 
 # try to match run to exisitng covmat
 covrenames = []
-covrenames.append([planck, 'planck'])
 covrenames.append(['planck', 'planck_CAMspec'])
 covrenames.append(['tauprior', 'lowl_lowLike'])
 covrenames.append(['_lensing', '_post_lensing'])

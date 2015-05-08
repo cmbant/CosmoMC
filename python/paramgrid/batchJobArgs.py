@@ -21,7 +21,7 @@ class batchArgs(object):
                 else:
                     self.parser.add_argument('batchPath', help='directory containing the grid')
             if converge: self.parser.add_argument('--converge', type=float, default=0, help='minimum R-1 convergence')
-            self.importanceParameter = importance;
+            self.importanceParameter = importance
             self.notExist = notExist
             self.notall = notall
             self.doplots = plots
@@ -62,16 +62,17 @@ class batchArgs(object):
                 if self.batch is None: raise Exception('batchPath does not exist or it not initialized with makeGrid.py')
                 if self.doplots:
                     import getdist.plots as plots
-                    from getdist import paramNames
-                    if args.paramList is not None: args.paramList = paramNames.paramNames(args.paramList)
+                    from getdist import paramnames
+
+                    if args.paramList is not None: args.paramList = paramnames.ParamNames(args.paramList)
                     if args.plot_data is not None:
                         g = plots.GetDistPlotter(plot_data=args.plot_data)
                     else:
                         g = plots.GetDistPlotter(chain_dir=self.batch.batchPath)
                     if args.size_inch is not None: g.settings.setWithSubplotSize(args.size_inch)
-                    return (self.batch, self.args, g)
+                    return self.batch, self.args, g
                 else:
-                    return (self.batch, self.args)
+                    return self.batch, self.args
             else: return None, self.args
 
         def wantImportance(self, jobItem):

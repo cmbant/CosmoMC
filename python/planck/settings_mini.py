@@ -17,7 +17,7 @@ SNLS = 'SNLS'
 Union = 'Union2'
 
 # set up groups of parameters and data sets
-class group:pass
+class group: pass
 
 
 g = group()
@@ -46,6 +46,7 @@ g.datasets.append([[planck, 'lmin1200', lowl, lowLike, highL], ['CAMspec_lmin120
 class importanceFilterPlanck:
     def wantImportance(self, jobItem):
         return planck in jobItem.data_set.names
+
 
 class importanceFilterAcc:
     def wantImportance(self, jobItem):

@@ -11,13 +11,14 @@ import getopt
 from datetime import datetime
 import time
 
+
 class unzip(object):
     def __init__(self, info_only=False):
         self.info_only = info_only
 
-    def extract(self, file):
-        zf = zipfile.ZipFile(file, allowZip64=True)
-        if (self.info_only):
+    def extract(self, f):
+        zf = zipfile.ZipFile(f, allowZip64=True)
+        if self.info_only:
             # zf.printdir() #debug code
             for info in zf.infolist():
                 try:
@@ -72,12 +73,13 @@ class unzip(object):
                 dirs.append(info.filename)
         # while is dir deletion needed?
         dirs.sort(reverse=True)
-        for dir in dirs:
+        for dr in dirs:
             try:
-                os.rmdir(dir)
+                os.rmdir(dr)
             except:
-                print "rmdir failed:", dir.decode("GB18030", 'ignore').encode("UTF8", 'ignore')
+                print "rmdir failed:", dr.decode("GB18030", 'ignore').encode("UTF8", 'ignore')
                 pass
+
 
 def usage():
     print """usage: unzip.py -z <zipfile>
@@ -118,5 +120,6 @@ def main():
         sys.exit()
 
     unzipper.extract(zipsource)
+
 
 if __name__ == '__main__': main()

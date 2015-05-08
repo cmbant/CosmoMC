@@ -1,7 +1,7 @@
 import os
 
-class ParamBounds(object):
 
+class ParamBounds(object):
     def __init__(self, fileName=None):
         self.names = []
         self.lower = {}
@@ -12,7 +12,7 @@ class ParamBounds(object):
         self.filenameLoadedFrom = os.path.split(fileName)[1]
         with open(fileName) as f:
             for line in f:
-                strings = [text.strip() for text in  line.split()]
+                strings = [text.strip() for text in line.split()]
                 if len(strings) == 3:
                     self.setRange(strings[0], strings[1:])
 

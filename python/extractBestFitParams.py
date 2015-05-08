@@ -5,7 +5,7 @@ with open(sys.argv[1], 'r') as f:
     f.readline()
     f.readline()
     x = f.readline().strip()
-    while(not x == ''):
+    while not x == '':
             print("param[" + x.split()[2] + "]=" + x.split()[1])
             x = f.readline().strip()
 
