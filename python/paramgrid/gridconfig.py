@@ -98,7 +98,7 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
     for jobItem in batch.items(wantSubItems=False):
 
         jobItem.makeChainPath()
-        ini = inifile.IniFile()
+        ini = IniFile()
 
         for param in jobItem.param_set:
             ini.params['param[' + param + ']'] = settings.params[param]
@@ -190,7 +190,7 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
                 'importance sampling something you already have?')
             for minimize in (False, True):
                 if minimize and not getattr(imp, 'want_minimize', True): continue
-                ini = inifile.IniFile()
+                ini = IniFile()
                 updateIniParams(ini, imp.importanceSettings, batch.commonPath)
                 if cosmomcAction == 0 and not minimize:
                     for deffile in settings.importanceDefaults:

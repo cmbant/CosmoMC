@@ -1,6 +1,6 @@
 
 import planckStyle as s
-from paramgrid import batchJob
+from paramgrid import batchjob
 import GetDistPlots
 from pylab import *
 
@@ -52,7 +52,7 @@ def BAOdensity(prob_file):
     prob = prob / np.max(prob)
     return alpha_perp, alpha_pl, prob
 
-alpha_perp, alpha_pl, prob = BAOdensity(batchJob.getCodeRootPath() + 'data/sdss_DR11CMASS_consensus.dat')
+alpha_perp, alpha_pl, prob = BAOdensity(batchjob.getCodeRootPath() + 'data/sdss_DR11CMASS_consensus.dat')
 
 
 densityG = BAOdensityG()

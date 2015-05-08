@@ -1,6 +1,6 @@
 
 import planckStyle as s
-from paramgrid import batchJob
+from paramgrid import batchjob
 from pylab import *
 from getdist.densities import Density2D
 
@@ -28,7 +28,7 @@ def RSDdensity(FAPbar, f8bar, covfile):
 
 FAPbar = 0.6725
 f8bar = 0.4412
-density = RSDdensity(FAPbar, f8bar, batchJob.getCodeRootPath() + 'data/sdss_DR11CMASS_RSD_bao_invcov_Samushia.txt')
+density = RSDdensity(FAPbar, f8bar, batchjob.getCodeRootPath() + 'data/sdss_DR11CMASS_RSD_bao_invcov_Samushia.txt')
 g.add_2d_contours(roots[0], 'FAP057', 'fsigma8z057', filled=True, density=density)
 
 
@@ -37,7 +37,7 @@ g.add_2d_contours(roots[0], 'FAP057', 'fsigma8z057', filled=True, density=densit
 
 FAPbar = .683
 f8bar = 0.422
-density = RSDdensity(FAPbar, f8bar, batchJob.getCodeRootPath() + 'data/sdss_DR11CMASS_RSD_bao_invcov_Beutler.txt')
+density = RSDdensity(FAPbar, f8bar, batchjob.getCodeRootPath() + 'data/sdss_DR11CMASS_RSD_bao_invcov_Beutler.txt')
 g.add_2d_contours(roots[0], 'FAP057', 'fsigma8z057', filled=False, density=density, ls=':', alpha=0.5)
 
 g.add_2d_contours(roots[0], 'FAP057', 'fsigma8z057', filled=True, plotno=3)

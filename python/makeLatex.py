@@ -34,7 +34,6 @@ def makeSnippetFiles(outdir, rootname, params, texs, tag=None):
 
 if __name__ == "__main__":
     import argparse
-#    import batchJobArgs
 
     parser = argparse.ArgumentParser(description='make latex constraints for specific .margestats file')
     parser.add_argument('rootname', help='rootname.margestats should be the file you want to convert')

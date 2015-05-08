@@ -279,7 +279,7 @@ export COSMOMC_queue=default_queue
 export COSMOMC_walltime=24:00:00
 </pre>
 </UL>
-If necessary you can also edit the <b>submitJob</b> function in <b>python/paramgrid/jobQueue.py</b>, but most things can be configured via the template and .bashrc settings.
+If necessary you can also edit the <b>submitJob</b> function in <b>python/paramgrid/jobqueue.py</b>, but most things can be configured via the template and .bashrc settings.
 You can change the number of chains, nodes, walltime etc when submitting a job by using optional parameters to runMPI.py and runbatch.py: see <b>-h</b> help for available options.
 </P>
 
@@ -614,7 +614,7 @@ for details and references see the <A HREF="http://cosmologist.info/notes/GetDis
 <LI>Grid scripts:
 <UL>
 <LI>New optional script parameters to select more specifically in various ways
-<LI>deleteJobs.py and corresponding functions in jobQueue.py
+<LI>deleteJobs.py and corresponding functions in jobqueue.py
 <LI>listGrid.py to view chain names in grid
 <LI>batchJob functions to resolve actual chain name given param and data tags (in any order)
 <LI>Matching of .covmat names using normalized name tags
