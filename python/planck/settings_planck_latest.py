@@ -92,10 +92,10 @@ WMAP9 = [[WMAP], ['WMAP.ini']]
 likechecks = []
 likechecks.append(batchjob.dataSet(['CamSpecDS', 'TT'], camspec_detsets + ['CAMspec_TT.ini']))
 likechecks.append(batchjob.dataSet(['plikDS', 'TT'], ['plik_dx11dr2_DS_v18_TT.ini']))
-# likechecks.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
-# likechecks.append(batchJob.dataSet(['cleanCMH', 'TT'], ['cleanCMH.ini']))
-# likechecks.append(batchJob.dataSet(['plikLite', 'TT'], ['plik_lite_TT.ini']))
-# likechecks.append(batchJob.dataSet(['plikLite', 'TTTEEE'], ['plik_lite_TTTEEE.ini']))
+# likechecks.append(batchjob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
+# likechecks.append(batchjob.dataSet(['cleanCMH', 'TT'], ['cleanCMH.ini']))
+# likechecks.append(batchjob.dataSet(['plikLite', 'TT'], ['plik_lite_TT.ini']))
+# likechecks.append(batchjob.dataSet(['plikLite', 'TTTEEE'], ['plik_lite_TTTEEE.ini']))
 
 
 newCovmats = False
