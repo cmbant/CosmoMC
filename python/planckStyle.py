@@ -1,12 +1,13 @@
 import os
 import copy
 
+import getdist
+from getdist import types, plots
+
 from matplotlib import rcParams, rc
 from matplotlib import pyplot as plt
 
 from paramgrid import batchjob
-import getdist
-from getdist import types, plots
 
 
 # common setup for matplotlib
