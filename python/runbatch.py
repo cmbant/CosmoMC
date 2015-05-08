@@ -2,13 +2,13 @@
 import hashlib
 import os
 
-from paramgrid import batchJobArgs, jobQueue
+from paramgrid import batchjob_args, jobqueue
 
 
-Opts = batchJobArgs.batchArgs('Submit jobs to run chains or importance sample', notExist=True, notall=True,
+Opts = batchjob_args.batchArgs('Submit jobs to run chains or importance sample', notExist=True, notall=True,
                               converge=True)
 
-jobQueue.addArguments(Opts.parser, combinedJobs=True)
+jobqueue.addArguments(Opts.parser, combinedJobs=True)
 
 Opts.parser.add_argument('--subitems', action='store_true', help='include sub-grid items')
 Opts.parser.add_argument('--not_queued', action='store_true')
@@ -29,7 +29,7 @@ Opts.parser.add_argument('--parent_stopped', action='store_true', help='only run
 
 if args.not_queued:
     print 'Getting queued names...'
-    queued = jobQueue.queue_job_names(args.batchPath)
+    queued = jobqueue.queue_job_names(args.batchPath)
 
 
 def notQueued(name):
@@ -62,7 +62,7 @@ if args.combineOneJobName:
 
 iniFiles = []
 
-jobQueue.checkArguments(**args.__dict__)
+jobqueue.checkArguments(**args.__dict__)
 
 
 def jobName():
@@ -84,7 +84,7 @@ def submitJob(ini):
     if args.combineOneJobName: return
     if len(iniFiles) >= args.runsPerJob:
         if args.runsPerJob > 1: print '--> jobName: ', jobName()
-        jobQueue.submitJob(jobName(), iniFiles, **args.__dict__)
+        jobqueue.submitJob(jobName(), iniFiles, **args.__dict__)
         iniFiles = []
 
 
@@ -109,5 +109,5 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
 
 if len(iniFiles) > 0:
     if args.runsPerJob > 1: print '--> jobName: ', jobName()
-    jobQueue.submitJob(args.combineOneJobName or jobName(), iniFiles, sequential=args.combineOneJobName is not None,
+    jobqueue.submitJob(args.combineOneJobName or jobName(), iniFiles, sequential=args.combineOneJobName is not None,
                        **args.__dict__)

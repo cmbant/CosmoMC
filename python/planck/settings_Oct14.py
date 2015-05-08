@@ -1,7 +1,7 @@
 import re
 import copy
 
-from paramgrid import batchJob
+from paramgrid import batchjob
 
 
 # Look at Alens=1 for fixed lensing template amplitude
@@ -48,52 +48,52 @@ wig1460_217 = {'param[wig1_217]': '0 -50 50 3 3'}
 detsets = []
 CS = []
 for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detsets, planck_CS]):
-    datasets.append(batchJob.dataSet([name, 'TT'], planck_vars + ['CAMspec_TT.ini']))
+    datasets.append(batchjob.dataSet([name, 'TT'], planck_vars + ['CAMspec_TT.ini']))
 
 detsetsTT = copy.copy(detsets)
 CSTT = copy.copy(CS)
 
 for name, datasets, planck_vars in zip(CamSpecVars, [detsets, CS], [planck_detsets, planck_CS]):
-    datasets.append(batchJob.dataSet([name, 'TE'], planck_vars + ['CAMspec_TE.ini']))
-    datasets.append(batchJob.dataSet([name, 'EE'], planck_vars + ['CAMspec_EE.ini']))
-    datasets.append(batchJob.dataSet([name, 'TTTEEE'], planck_vars + ['CAMspec_TTTEEE.ini']))
+    datasets.append(batchjob.dataSet([name, 'TE'], planck_vars + ['CAMspec_TE.ini']))
+    datasets.append(batchjob.dataSet([name, 'EE'], planck_vars + ['CAMspec_EE.ini']))
+    datasets.append(batchjob.dataSet([name, 'TTTEEE'], planck_vars + ['CAMspec_TTTEEE.ini']))
 
 plikHM1 = []
-plikHM1.append(batchJob.dataSet(['plikHMv16', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
-plikHM1.append(batchJob.dataSet(['plikHMv16', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
+plikHM1.append(batchjob.dataSet(['plikHMv16', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
+plikHM1.append(batchjob.dataSet(['plikHMv16', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
 
 plikDS1 = []
-plikDS1.append(batchJob.dataSet(['plikDSv16', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
-plikDS1.append(batchJob.dataSet(['plikDSv16', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
+plikDS1.append(batchjob.dataSet(['plikDSv16', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
+plikDS1.append(batchjob.dataSet(['plikDSv16', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
 
 plikHMsz = []
-plikHMsz.append(batchJob.dataSet(['plikHMv16sz', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
-plikHMsz.append(batchJob.dataSet(['plikHMv16sz', 'TE'], ['plik_dx11dr2_HM_v16_TE.ini']))
-plikHMsz.append(batchJob.dataSet(['plikHMv16sz', 'EE'], ['plik_dx11dr2_HM_v16_EE.ini']))
-plikHMsz.append(batchJob.dataSet(['plikHMv16sz', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
+plikHMsz.append(batchjob.dataSet(['plikHMv16sz', 'TT'], ['plik_dx11dr2_HM_v16_TT.ini']))
+plikHMsz.append(batchjob.dataSet(['plikHMv16sz', 'TE'], ['plik_dx11dr2_HM_v16_TE.ini']))
+plikHMsz.append(batchjob.dataSet(['plikHMv16sz', 'EE'], ['plik_dx11dr2_HM_v16_EE.ini']))
+plikHMsz.append(batchjob.dataSet(['plikHMv16sz', 'TTTEEE'], ['plik_dx11dr2_HM_v16_TTTEEE.ini']))
 
 plikHM = []
-plikHM.append(batchJob.dataSet(['plikHMv17', 'TT'], ['plik_dx11dr2_HM_v17_TT.ini']))
-plikHM.append(batchJob.dataSet(['plikHMv17', 'TE'], ['plik_dx11dr2_HM_v17_TE.ini']))
-plikHM.append(batchJob.dataSet(['plikHMv17', 'EE'], ['plik_dx11dr2_HM_v17_EE.ini']))
-plikHM.append(batchJob.dataSet(['plikHMv17', 'TTTEEE'], ['plik_dx11dr2_HM_v17_TTTEEE.ini']))
+plikHM.append(batchjob.dataSet(['plikHMv17', 'TT'], ['plik_dx11dr2_HM_v17_TT.ini']))
+plikHM.append(batchjob.dataSet(['plikHMv17', 'TE'], ['plik_dx11dr2_HM_v17_TE.ini']))
+plikHM.append(batchjob.dataSet(['plikHMv17', 'EE'], ['plik_dx11dr2_HM_v17_EE.ini']))
+plikHM.append(batchjob.dataSet(['plikHMv17', 'TTTEEE'], ['plik_dx11dr2_HM_v17_TTTEEE.ini']))
 
 plikDS = []
-plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
-plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TE'], ['plik_dx11dr2_DS_v16_TE.ini']))
-plikDS.append(batchJob.dataSet(['plikDSv16sz', 'EE'], ['plik_dx11dr2_DS_v16_EE.ini']))
-plikDS.append(batchJob.dataSet(['plikDSv16sz', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
+plikDS.append(batchjob.dataSet(['plikDSv16sz', 'TT'], ['plik_dx11dr2_DS_v16_TT.ini']))
+plikDS.append(batchjob.dataSet(['plikDSv16sz', 'TE'], ['plik_dx11dr2_DS_v16_TE.ini']))
+plikDS.append(batchjob.dataSet(['plikDSv16sz', 'EE'], ['plik_dx11dr2_DS_v16_EE.ini']))
+plikDS.append(batchjob.dataSet(['plikDSv16sz', 'TTTEEE'], ['plik_dx11dr2_DS_v16_TTTEEE.ini']))
 
 plik1bin = []
-plik1bin.append(batchJob.dataSet(['plikHMv16bin1sz', 'TT'],
+plik1bin.append(batchjob.dataSet(['plikHMv16bin1sz', 'TT'],
                                  [{'clik_data_plik': 'data/clik/hi_l/plik/plik_dx11dr2_HM_v16_TT_bin1.clik'},
                                   'plik_dx11dr2_HM_v16_TT.ini']))
-plik1bin.append(batchJob.dataSet(['bin1l80sz', 'TT'],
+plik1bin.append(batchjob.dataSet(['bin1l80sz', 'TT'],
                                  [{'clik_data_plik': 'data/clik/hi_l/plik/plik_dx11dr2_HM_v16_TT_bin1l80.clik'},
                                   'plik_dx11dr2_HM_v16_TT.ini']))
 
 Mspec = []
-Mspec.append(batchJob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
+Mspec.append(batchjob.dataSet(['Mspec', 'TT'], ['mspec_dx11d_HM_v1_TT.ini']))
 
 plik = plikHM + plikHMsz + plikDS  # + plikHM1 + plikDS1
 
@@ -102,7 +102,7 @@ newCovmats = True
 
 groups = []
 
-g = batchJob.jobGroup('main')
+g = batchjob.jobGroup('main')
 # Main group with just tau prior
 
 g.datasets = copy.deepcopy(detsets) + copy.deepcopy(CS) + copy.deepcopy(plik) + copy.deepcopy(Mspec)
@@ -122,7 +122,7 @@ for d in g.datasets:
 groups.append(g)
 
 lmaxs = []
-g = batchJob.jobGroup('lmax')
+g = batchjob.jobGroup('lmax')
 g.datasets = []
 for lmax in range(550, 2600, 150):
     sets = copy.deepcopy(detsets) + copy.deepcopy(CS)
@@ -135,7 +135,7 @@ for lmax in range(550, 2600, 150):
 g.params = [[], ['yhe'], ['nnu'], ['Alens']]
 groups.append(g)
 
-g = batchJob.jobGroup('PCA')
+g = batchjob.jobGroup('PCA')
 g.datasets = []
 for lmax in range(600, 1601, 200):
     datasets = detsetsTT + CSTT
@@ -155,7 +155,7 @@ for lmax in range(600, 1601, 200):
 g.params = [[]]
 groups.append(g)
 
-g = batchJob.jobGroup('channels')
+g = batchjob.jobGroup('channels')
 chopdatasets = []
 for aset in detsetsTT + CSTT:
     # for name, planck_vars in zip(CamSpecVars, [planck_detsets, planck_CS]):
@@ -174,7 +174,7 @@ for lmax in range(550, 2550, 150):
 g.params = [[], ['Alens'], ['nnu']]
 groups.append(g)
 
-g = batchJob.jobGroup('lmin')
+g = batchjob.jobGroup('lmin')
 lmins = [800, 1200]
 g.datasets = []
 for lmin in lmins:

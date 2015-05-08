@@ -1,7 +1,7 @@
-from paramgrid import batchJobArgs
+from paramgrid import batchjob_args
 
 
-Opts = batchJobArgs.batchArgs('List items in a grid', importance=True, converge=True, notExist=True)
+Opts = batchjob_args.batchArgs('List items in a grid', importance=True, converge=True, notExist=True)
 Opts.parser.add_argument('--exists', action='store_true', help='chain must exist')
 Opts.parser.add_argument('--normed', action='store_true', help='Output normed names')
 

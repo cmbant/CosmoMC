@@ -10,7 +10,7 @@ matplotlib.use('Agg', warn=False)
 from matplotlib import cm, rcParams
 import matplotlib.pyplot as plt
 import numpy as np
-from paramgrid import batchJob, gridconfig
+from paramgrid import batchjob, gridconfig
 import getdist
 from getdist import mcsamples, loadMCSamples, paramnames, IniFile
 from getdist.parampriors import ParamBounds
@@ -37,7 +37,7 @@ class GetDistPlotSettings(object):
 
     def __init__(self, subplot_size_inch=2, fig_width_inch=None):
         # if fig_width_inch set, forces fixed size, subplot_size_inch then just determines font sizes etc
-        # otherwise width as wide as neccessary to show all subplots at specified size
+        # otherwise width as wide as necessary to show all subplots at specified size
 
         self.plot_meanlikes = False
         self.shade_meanlikes = False
@@ -244,7 +244,7 @@ class MCSampleAnalysis(object):
         self.ini = None
         if chain_dir and isinstance(chain_dir, basestring):
             if gridconfig.pathIsGrid(chain_dir):
-                self.batch = batchJob.readobject(chain_dir)
+                self.batch = batchjob.readobject(chain_dir)
                 # this gets things like specific parameter limits etc.
                 if os.path.exists(self.batch.commonPath + 'getdist_common.ini'):
                     self.ini = IniFile(self.batch.commonPath + 'getdist_common.ini')
@@ -356,7 +356,7 @@ class MCSampleAnalysis(object):
         samples = self.samplesForRoot(root)
         names = samples.paramNames
         if labelParams is not None:
-            names.setLabelsAndDerivedFromParamNames(os.path.join(batchJob.getCodeRootPath(), labelParams))
+            names.setLabelsAndDerivedFromParamNames(os.path.join(batchjob.getCodeRootPath(), labelParams))
         return names
 
     def boundsForRoot(self, root):
@@ -366,7 +366,7 @@ class MCSampleAnalysis(object):
 class GetDistPlotter(object):
     def __init__(self, plot_data=None, chain_dir=None, settings=None, analysis_settings=None, mcsamples=True):
         """
-        Set plot_data to directory name if you have pre-compputed plot_data/ directory from GetDist
+        Set plot_data to directory name if you have pre-computed plot_data/ directory from GetDist
         Set chain_dir to directly to use chains in the given directory (can also be a list of directories to search)
         """
         self.chain_dir = chain_dir
@@ -587,7 +587,7 @@ class GetDistPlotter(object):
         else:
             points = density.P
         plt.contourf(density.x, density.y, points, self.settings.num_shades, colors=cols, levels=levels)
-        # doing contourf gets rid of annoying wehite lines in pdfs
+        # doing contourf gets rid of annoying white lines in pdfs
         plt.contour(density.x, density.y, points, self.settings.num_shades, colors=cols, levels=levels)
 
 
@@ -994,7 +994,7 @@ class GetDistPlotter(object):
         self.subplots[y, x] = ax = plt.subplot(self.plot_row, self.plot_col, y * self.plot_col + x + 1, **kwargs)
         return ax
 
-    def subplot_number(self, i, **kwargs):
+    def subplot_number(self, i):
         self.subplots[i / self.plot_col, i % self.plot_col] = ax = plt.subplot(self.plot_row, self.plot_col, i + 1)
         return ax
 
@@ -1062,7 +1062,7 @@ class GetDistPlotter(object):
         roots1d = copy.copy(roots)
         if upper_roots is not None:
             if plot_3d_with_param is not None:
-                logging.warning('triangle_plot currently doesn''t fully work with plot_3d_with_param')
+                logging.warning("triangle_plot currently doesn't fully work with plot_3d_with_param")
             upper_contour_args = self._make_contour_args(len(upper_roots), **upper_kwargs)
             args = upper_kwargs.copy()
             args['line_args'] = args.get('line_args') or defLineArgs(upper_contour_args)
@@ -1172,7 +1172,8 @@ class GetDistPlotter(object):
                 if y == 0:
                     sharex = ax
                     xshares.append(ax)
-                self.plot_2d(subplot_roots, param_pair=[xparam, yparam], do_xlabel=y == len(yparams) - 1,
+                res = None
+                res = self.plot_2d(subplot_roots, param_pair=[xparam, yparam], do_xlabel=y == len(yparams) - 1,
                              do_ylabel=x == 0, add_legend_proxy=x == 0 and y == 0, **kwargs)
                 if ymarkers is not None and ymarkers[y] is not None: self.add_y_marker(ymarkers[y], **marker_args)
                 if xmarkers is not None and xmarkers[x] is not None: self.add_x_marker(xmarkers[x], **marker_args)

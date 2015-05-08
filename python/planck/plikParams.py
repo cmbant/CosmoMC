@@ -2,10 +2,10 @@ import os
 
 import plik_postprocess
 from getdist import inifile
-from paramgrid import batchJobArgs
+from paramgrid import batchjob_args
 
 
-Opts = batchJobArgs.batchArgs('add plik params and bestfits', importance=True)
+Opts = batchjob_args.batchArgs('add plik params and bestfits', importance=True)
 
 Opts.parser.add_argument('--finished', action='store_true', help='only run on completed chains')
 

@@ -4,7 +4,7 @@ import copy
 from matplotlib import rcParams, rc
 from matplotlib import pyplot as plt
 
-from paramgrid import batchJob
+from paramgrid import batchjob
 import getdist
 from getdist import types, plots
 
@@ -100,7 +100,7 @@ s.figure_legend_frame = False
 s.prob_label = r'$P/P_{\rm max}$'
 s.norm_prob_label = 'Probability density'
 s.prob_y_ticks = True
-s.param_names_for_labels = os.path.join(batchJob.getCodeRootPath(), 'clik_units.paramnames')
+s.param_names_for_labels = os.path.join(batchjob.getCodeRootPath(), 'clik_units.paramnames')
 s.alpha_filled_add = 0.85
 s.solid_contour_palefactor = 0.6
 
@@ -111,8 +111,8 @@ s.lw_contour = 1
 s.param_names_for_labels = os.path.normpath(os.path.join(os.path.dirname(__file__), '..' , 'clik_latex.paramnames'))
 
 use_plot_data = getdist.use_plot_data
-rootdir = getdist.default_grid_root or os.path.join(batchJob.getCodeRootPath(), 'main')
-output_base_dir = getdist.output_base_dir or batchJob.getCodeRootPath()
+rootdir = getdist.default_grid_root or os.path.join(batchjob.getCodeRootPath(), 'main')
+output_base_dir = getdist.output_base_dir or batchjob.getCodeRootPath()
 
 H0_gpe = [70.6, 3.3]
 
@@ -130,7 +130,7 @@ def plotBounds(omm, data, c='gray'):
 class planckPlotter(plots.GetDistPlotter):
 
     def getBatch(self):
-        if not hasattr(self, 'batch'): self.batch = batchJob.readobject(rootdir)
+        if not hasattr(self, 'batch'): self.batch = batchjob.readobject(rootdir)
         return self.batch
 
     def doExport(self, fname=None, adir=None, watermark=None, tag=None):

@@ -192,7 +192,7 @@ print c.mean(derived), c.std(derived), c.std(derived) / c.mean(derived)
 
 sys.exit()
 
-cov = covmat.covMat(os.path.dirname(os.path.abspath(__file__)) + r'/../planck_covmats/base_TTTEEE_lowTEB_plik.covmat')
+cov = covmat.CovMat(os.path.dirname(os.path.abspath(__file__)) + r'/../planck_covmats/base_TTTEEE_lowTEB_plik.covmat')
 
 cov.plot()
 show()

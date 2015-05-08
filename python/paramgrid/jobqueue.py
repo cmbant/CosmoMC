@@ -7,6 +7,7 @@ import time
 import shutil
 from distutils import spawn
 
+
 def addArguments(parser, combinedJobs=False):
     parser.add_argument('--nodes', type=int)
     parser.add_argument('--chainsPerNode', type=int)
@@ -34,26 +35,29 @@ def replacePlaceholders(txt, vals):
         txt = txt.replace('##' + name + '##', str(value))
     return txt
 
+
 def extractValue(template, name):
     match = re.search('##' + name + ':(.*)##', template)
     if match: return match.group(1).strip()
     return None
 
+
 def getDefaulted(key_name, default=None, tp=str, template=None, ext_env=None, **kwargs):
     val = kwargs.get(key_name)
     if val is None and template is not None:
-            val = extractValue(template, 'DEFAULT_' + key_name)
+        val = extractValue(template, 'DEFAULT_' + key_name)
     if val is None: val = os.environ.get('COSMOMC_' + key_name, None)
     if val is None and ext_env: val = os.environ.get('ext_env', None)
     if val is None: val = default
     if val is None: return None
     return tp(val)
 
+
 def checkArguments(**kwargs):
     submitJob(None, None, msg=True, **kwargs)
 
-class jobSettings(object):
 
+class jobSettings(object):
     def __init__(self, jobName, msg=False, **kwargs):
         self.jobName = jobName
         grid_engine = 'PBS'
@@ -61,7 +65,7 @@ class jobSettings(object):
             grid_engine = 'MOAB'
         else:
             try:
-                help_info = subprocess.check_output('qstat -h', shell=True).strip()
+                help_info = subprocess.check_output('qstat -help', shell=True).strip()
                 if 'OGS/GE' in help_info: grid_engine = 'OGS'  # Open Grid Scheduler, as on StarCluster
             except:
                 pass
@@ -82,23 +86,28 @@ class jobSettings(object):
         if self.omp != np.floor(self.omp): raise Exception('Chains must each have equal number of cores')
         if msg:
             print 'Job parameters: %i cosmomc runs of %i chains on %i nodes, each node with %i MPI chains, each chain using %i OpenMP cores (%i cores per node)' % (
-             self.runsPerJob, self.nchains, self.nodes, self.chainsPerNode, self.omp, self.coresPerNode)
+                self.runsPerJob, self.nchains, self.nodes, self.chainsPerNode, self.omp, self.coresPerNode)
 
         self.mem_per_node = getDefaulted('mem_per_node', 63900, tp=int, template=template, **kwargs)
         self.walltime = getDefaulted('walltime', '24:00:00', template=template, **kwargs)
         self.program = getDefaulted('program', './cosmomc', template=template, **kwargs)
         self.queue = getDefaulted('queue', '', template=template, **kwargs)
         self.gridEngine = getDefaulted('GridEngine', grid_engine, template=template, **kwargs)
-        self.qsub = getDefaulted('qsub', ('qsub', 'msub')[self.gridEngine == 'MOAB'], template=template, **kwargs)
-        self.qdel = getDefaulted('qdel', ('qdel', 'canceljob')[self.gridEngine == 'MOAB'], template=template, **kwargs)
+        if grid_engine == 'OGS' and os.getenv('SGE_CLUSTER_NAME', '') == 'starcluster':
+            self.qsub = 'qsub -pe orte ##NUMSLOTS##'
+        else:
+            self.qsub = getDefaulted('qsub', 'msub' if self.gridEngine == 'MOAB' else 'qsub', template=template,
+                                     **kwargs)
+        self.qdel = getDefaulted('qdel', 'canceljob' if self.gridEngine == 'MOAB' else 'qdel', template=template,
+                                 **kwargs)
         self.runCommand = extractValue(template, 'RUN')
-
 
 
 class jobIndex(object):
     """
      Stores the mappings between job Ids, jobNames
     """
+
     def __init__(self):
         self.jobSettings = dict()
         self.jobNames = dict()
@@ -106,20 +115,20 @@ class jobIndex(object):
         self.jobSequence = []
 
     def addJob(self, j):
-            self.jobSettings[j.jobId] = j
-            self.jobNames[j.jobName] = j.jobId
-            for name in j.names:
-                self.rootNames[name] = j.jobId
-            self.jobSequence.append(j.jobId)
+        self.jobSettings[j.jobId] = j
+        self.jobNames[j.jobName] = j.jobId
+        for name in j.names:
+            self.rootNames[name] = j.jobId
+        self.jobSequence.append(j.jobId)
 
     def delId(self, jobId):
         if jobId is not None:
             j = self.jobSettings.get(jobId)
             if j is not None:
                 for rootname in j.names:
-                    del(self.rootNames[rootname])
-                del(self.jobSettings[jobId])
-                del(self.jobNames[j.jobName])
+                    del (self.rootNames[rootname])
+                del (self.jobSettings[jobId])
+                del (self.jobNames[j.jobName])
                 self.jobSequence = [s for s in self.jobSequence if s != jobId]
 
 
@@ -132,6 +141,7 @@ def loadJobIndex(batchPath, must_exist=False):
     else:
         if not must_exist: return jobIndex()
         return None
+
 
 def saveJobIndex(obj, batchPath=None):
     if batchPath is None: batchPath = './scripts/'
@@ -149,6 +159,7 @@ def addJobIndex(batchPath, jobName, j):
     index.addJob(j)
     saveJobIndex(index, batchPath)
 
+
 def deleteJobNames(batchPath, jobNames):
     if batchPath is None: batchPath = './scripts/'
     index = loadJobIndex(batchPath)
@@ -160,10 +171,13 @@ def deleteJobNames(batchPath, jobNames):
         index.delId(jobId)
     saveJobIndex(index, batchPath)
 
+
 def deleteRootNames(batchPath, rootNames):
     deleteJobs(batchPath, rootNames=rootNames)
 
-def deleteJobs(batchPath, jobIds=None, rootNames=None, jobNames=None, jobId_minmax=None, jobId_min=None, confirm=True, running=False, queued=False):
+
+def deleteJobs(batchPath, jobIds=None, rootNames=None, jobNames=None, jobId_minmax=None, jobId_min=None, confirm=True,
+               running=False, queued=False):
     if batchPath is None: batchPath = './scripts/'
     index = loadJobIndex(batchPath)
     if not index:
@@ -183,8 +197,10 @@ def deleteJobs(batchPath, jobIds=None, rootNames=None, jobNames=None, jobId_minm
     if jobId_minmax is not None or jobId_min is not None:
         for jobIdStr, j in index.jobSettings.items():
             parts = jobIdStr.split('.')
-            if len(parts) == 1 or parts[0].isdigit(): jobId = int(parts[0])
-            else: jobId = int(parts[1])
+            if len(parts) == 1 or parts[0].isdigit():
+                jobId = int(parts[0])
+            else:
+                jobId = int(parts[1])
             if (jobId_minmax is not None and (jobId_minmax[0] <= jobId <= jobId_minmax[1]) or
                             jobId_min is not None and jobId >= jobId_min) and not jobIdStr in jobIds:
                 jobIds.append(jobIdStr)
@@ -196,8 +212,10 @@ def deleteJobs(batchPath, jobIds=None, rootNames=None, jobNames=None, jobId_minm
             if confirm:
                 if jobId in validIds:
                     print 'Cancelling: ', j.jobName, jobId
-                    if hasattr(j, 'qdel'): qdel = j.qdel
-                    else: qdel = 'qdel'
+                    if hasattr(j, 'qdel'):
+                        qdel = j.qdel
+                    else:
+                        qdel = 'qdel'
                     subprocess.check_output(qdel + ' ' + str(jobId), shell=True).strip()
                 index.delId(jobId)
             elif jobId in validIds:
@@ -208,7 +226,6 @@ def deleteJobs(batchPath, jobIds=None, rootNames=None, jobNames=None, jobId_minm
 
 
 def submitJob(jobName, paramFiles, sequential=False, msg=False, **kwargs):
-
     j = jobSettings(jobName, msg, **kwargs)
     if kwargs.get('dryrun', False) or paramFiles is None: return
 
@@ -217,7 +234,7 @@ def submitJob(jobName, paramFiles, sequential=False, msg=False, **kwargs):
 
     j.runsPerJob = (len(paramFiles), 1)[sequential]
     # adjust omp for the actual number (may not be equal to input runsPerJob because of non-integer multiple)
-    j.omp = int(j.coresPerNode / (j.chainsPerNode * j.runsPerJob))
+    j.omp = j.coresPerNode // (j.chainsPerNode * j.runsPerJob)
 
     j.path = os.getcwd()
     j.onerun = (0, 1)[len(paramFiles) == 1 or sequential]
@@ -234,12 +251,13 @@ def submitJob(jobName, paramFiles, sequential=False, msg=False, **kwargs):
     vals['PPN'] = j.chainsPerNode * j.runsPerJob * j.omp
     vals['MPIPERNODE'] = j.chainsPerNode * j.runsPerJob
     vals['NUMTASKS'] = j.nchains * j.runsPerJob
+    vals['NUMSLOTS'] = vals['PPN'] * j.nodes
     vals['ROOTDIR'] = j.path
     vals['ONERUN'] = j.onerun
     vals['PROGRAM'] = j.program
     vals['QUEUE'] = j.queue
 
-    j.names = [ os.path.basename(param) for param in paramFiles]
+    j.names = [os.path.basename(param) for param in paramFiles]
 
     commands = []
     for param, name in zip(paramFiles, j.names):
@@ -250,7 +268,7 @@ def submitJob(jobName, paramFiles, sequential=False, msg=False, **kwargs):
             command = replacePlaceholders(j.runCommand, vals) + (' &', '')[sequential]
         else:
             command = ('time mpirun -np %i %s %s > ./scripts/%s.log 2>&1 %s' %
-                         (j.nchains, j.program, ini, os.path.basename(ini), ('&', '')[sequential]))
+                       (j.nchains, j.program, ini, os.path.basename(ini), ('&', '')[sequential]))
         commands.append(command)
 
     vals['COMMAND'] = "\n".join(commands)
@@ -263,8 +281,9 @@ def submitJob(jobName, paramFiles, sequential=False, msg=False, **kwargs):
         if len(paramFiles) > 1:
             open(scriptRoot + '.batch', 'w').write("\n".join(paramFiles))
         if not kwargs.get('no_sub', False):
-            res = subprocess.check_output(j.qsub + ' ' + scriptName, shell=True).strip()
-            if not res: print 'No qsub output'
+            res = subprocess.check_output(replacePlaceholders(j.qsub, vals) + ' ' + scriptName, shell=True).strip()
+            if not res:
+                print 'No qsub output'
             else:
                 j.paramFiles = paramFiles
                 if 'Your job ' in res:
@@ -305,8 +324,10 @@ def queue_job_details(batchPath=None, running=True, queued=True, warnNotBatch=Tr
             if j is None:
                 jobId = items[0].split('.')
                 if jobId[0].upper() == 'TOTAL': continue
-                if len(jobId) == 1 or jobId[0].isdigit(): jobId = jobId[0]
-                else: jobId = jobId[1]
+                if len(jobId) == 1 or jobId[0].isdigit():
+                    jobId = jobId[0]
+                else:
+                    jobId = jobId[1]
                 j = index.jobSettings.get(jobId)
             if j is None:
                 if warnNotBatch: print '...Job ' + jobId + ' not in this batch, skipping'
@@ -317,6 +338,7 @@ def queue_job_details(batchPath=None, running=True, queued=True, warnNotBatch=Tr
             ids += [jobId]
             infos += [line]
     return ids, jobNames, names, infos
+
 
 def queue_job_names(batchPath=None, running=False, queued=True):
     lists = queue_job_details(batchPath, running, queued)[2]
