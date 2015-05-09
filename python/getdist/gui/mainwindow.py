@@ -275,7 +275,7 @@ class MainWindow(QMainWindow):
         self.listParametersX.clear()
         # self.connect(self.listParametersX,
         # SIGNAL("itemChanged(QListWidgetItem *)"),
-        #                     self.itemParamXChanged)
+        # self.itemParamXChanged)
 
         self.listParametersY = QListWidget(self.selectWidget)
         self.listParametersY.clear()
@@ -1237,9 +1237,9 @@ class MainWindow(QMainWindow):
         """
 
         # Enable menu options for edition only
-        self.reLoadAct.setEnabled(index==0)
-        self.dataMenu.setEnabled(index==0)
-        self.optionMenu.setEnabled(index==0)
+        self.reLoadAct.setEnabled(index == 0)
+        self.dataMenu.setEnabled(index == 0)
+        self.optionMenu.setEnabled(index == 0)
 
         if index == 1 and self.script:
             self.script_edit = self.textWidget.toPlainText()
