@@ -1282,25 +1282,36 @@ class MainWindow(QMainWindow):
         Slot function called when pushButtonPlot2 is pressed.
         """
         self.script_edit = self.textWidget.toPlainText()
+        oldset = plots.defaultSettings
+        oldrc = matplotlib.rcParams.copy()
+        plots.defaultSettings = plots.GetDistPlotSettings()
+        matplotlib.rcParams.clear()
+        matplotlib.rcParams.update(self.orig_rc)
+        self.statusBar().showMessage("Rendering plot....")
         try:
             script_exec = self.script_edit
             if "g.export()" in script_exec:
                 # Comment line which produces export to PDF
                 script_exec = script_exec.replace("g.export", "#g.export")
-            exec(script_exec)
 
+            globaldic = {}
+            localdic = {}
+            exec script_exec in globaldic, localdic
             self.plotter2 = None
-            for k, v in locals().items():
+
+            for _, v in localdic.items():
                 if isinstance(v, plots.GetDistPlotter):
                     self.plotter2 = v
-            if self.plotter2:
-                # Reset plot settings for figure size
-                self.plotter2.settings.setWithSubplotSize(2)
-                self.plotter2.settings.fig_width_inch = None
-                self.updatePlot2()
-
+                    self.updatePlot2()
+                    break
         except Exception as e:
             self.errorReport(e, caption="Plot script")
+        finally:
+            plots.defaultSettings = oldset
+            matplotlib.rcParams.clear()
+            matplotlib.rcParams.update(oldrc)
+            self.statusBar().showMessage("")
+
 
     def updatePlot2(self):
         if self.plotter2.fig is None:
@@ -1318,6 +1329,7 @@ class MainWindow(QMainWindow):
 
             # Save to a byte array in PNG format, and display it in a QLabel
             buf = io.BytesIO()
+
             self.plotter2.fig.savefig(
                 buf,
                 format='png',

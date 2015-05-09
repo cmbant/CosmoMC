@@ -1,10 +1,7 @@
 import os
 import copy
-
 import matplotlib
-
 import sys
-
 
 matplotlib.use('Agg', warn=False)
 from matplotlib import cm, rcParams
@@ -120,7 +117,6 @@ class GetDistPlotSettings(object):
 
 
 defaultSettings = GetDistPlotSettings()
-
 
 def getPlotter(**kwargs):
     return GetDistPlotter(**kwargs)

@@ -26,9 +26,12 @@ params = {'backend': 'pdf',
 
 sfmath = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'sfmath'
 # use of Sans Serif also in math mode
-rc('text.latex', preamble=r'\usepackage{' + sfmath.replace(os.sep, '/') + '}')
 
-rcParams.update(params)
+def setRc():
+    rc('text.latex', preamble=r'\usepackage{' + sfmath.replace(os.sep, '/') + '}')
+    rcParams.update(params)
+
+setRc()
 
 if False:
     non_final = True
@@ -159,6 +162,8 @@ def getPlotter(plot_data=None, chain_dir=None, **kwargs):
     global plotter, rootdir
     if not kwargs.get('settings'):
         kwargs['settings'] = s
+    # make sure rc changed as desired  (e.g. module is reloaded)
+    setRc()
     if plot_data is not None or use_plot_data:
         plotter = planckPlotter(plot_data or os.path.join(rootdir, 'plot_data'), **kwargs)
     if chain_dir or not use_plot_data:
