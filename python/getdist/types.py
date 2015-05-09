@@ -1,6 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import decimal
 import numpy as np
 from getdist import paramnames
+import six
+from six.moves import map
+from six.moves import range
 
 
 class TextFile(object):
@@ -400,7 +405,7 @@ class BestFit(ParamResults):
         for (kind, val) in self.chiSquareds:
             if not kind in likes: likes[kind] = []
             likes[kind].append(val)
-        return sorted(likes.iteritems())
+        return sorted(six.iteritems(likes))
 
     def chiSquareForKindName(self, kind, name):
         for (akind, val) in self.chiSquareds:
@@ -635,7 +640,7 @@ class ConvergeStats(ParamResults):
                         self.auto_correlation_pars.append(items[0])
                         self.auto_correlations.append([float(s) for s in items[1:-1]])
         except:
-            print 'Error reading: ' + filename
+            print('Error reading: ' + filename)
             raise
 
     def worstR(self):

@@ -1,4 +1,7 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from paramgrid import batchjob_args, jobqueue
+from six.moves import zip
 
 Opts = batchjob_args.batchArgs(
     'List details of running or queued jobs; gives job stats, then current R-1 and job/chain names', importance=True,
@@ -27,9 +30,9 @@ for jobId, jobName, names, info in zip(ids, jobNames, nameslist, infos):
                         if R: stats[name] = "%6.3f" % R
                         break
         R = stats.get(jobName) or ' ' * 6
-        print  info + ' |', R, jobName
+        print(info + ' |', R, jobName)
         if len(names) > 1:
             for name in names:
                 R = stats.get(name) or ' ' * 6
-                print '    >> ', R, name
+                print('    >> ', R, name)
 

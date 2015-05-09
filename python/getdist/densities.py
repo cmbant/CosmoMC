@@ -1,5 +1,7 @@
+from __future__ import absolute_import
 import numpy as np
 from scipy.interpolate import splrep, splev, RectBivariateSpline
+from six.moves import zip
 
 class DensitiesError(Exception):
     pass
@@ -78,7 +80,7 @@ class GridDensity(object):
     def setP(self, P=None):
         if P is not None:
             for size, ax in zip(P.shape, self.axes):
-                if size <> ax.size:
+                if size != ax.size:
                     raise DensitiesError("Array size mismatch in Density arrays: P %s, axis %s" % (size, ax.size))
             self.P = P
         else:

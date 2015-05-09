@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import os
 import copy
 
@@ -8,6 +9,7 @@ from matplotlib import rcParams, rc
 from matplotlib import pyplot as plt
 
 from paramgrid import batchjob
+from six.moves import range
 
 
 # common setup for matplotlib
@@ -82,7 +84,7 @@ lensingall = datalabel[defdata_all_lensing]
 defplanck = datalabel[defdata]
 
 shortlabel = {}
-for key, value in datalabel.items():
+for key, value in list(datalabel.items()):
     shortlabel[key] = value.replace(planck + ' ', '')
 
 NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'

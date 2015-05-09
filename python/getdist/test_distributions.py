@@ -1,8 +1,12 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import getdist.plots as plots
 import matplotlib.pyplot as plt
 
 import numpy as np
 from getdist.gaussian_mixtures import Mixture2D, Mixture1D, Gaussian1D, Gaussian2D, make_2D_Cov
+from six.moves import range
+from six.moves import zip
 
 default_nsamp = 10000
 
@@ -182,7 +186,7 @@ class Test2DDistributions(object):
 def plot_compare_method(ax, prob, colors=['k'], sims=100, nsamp=default_nsamp,
                        scalings=[0.3, 0.5, 0.7, 0.9, 1, 1.1, 1.3, 1.5], test_settings=[None], linestyles=['-']):
     # compare Parzen estimator with higher order
-    print prob.label, ', size = ', nsamp
+    print(prob.label, ', size = ', nsamp)
     if len(colors) == 1: colors = colors * len(scalings)
     if len(linestyles) == 1: linestyles = linestyles * len(scalings)
     miselist = np.empty((len(scalings), len(test_settings)))
@@ -194,7 +198,7 @@ def plot_compare_method(ax, prob, colors=['k'], sims=100, nsamp=default_nsamp,
         ax.plot(scales, MISEs, ls=ls, color=color)
         miselist[:, i] = MISEs
     for i, scale in enumerate(scalings):
-        print scale, miselist[i, :]
+        print(scale, miselist[i, :])
     ax.set_yscale('log')
     ax.set_xlim([scalings[0], scalings[-1]])
 #    ax.set_yticks(ax.get_yticks()[1:-1])
@@ -289,7 +293,7 @@ if __name__ == "__main__":
         g.newPlot()
         start = time.time()
         compare1D(g, test1D.distributions(), nsamp=args.nsamp, settings=test_settings)
-        print '1D timing:', time.time() - start
+        print('1D timing:', time.time() - start)
         join_subplots(g.subplots)
         plt.savefig('test_dists_1D_mbc%s_bco%s_N%s.pdf' % (args.mbc, args.bco, args.nsamp), bbox_inches='tight')
 
@@ -297,7 +301,7 @@ if __name__ == "__main__":
         g.newPlot()
         start = time.time()
         compare2D(g, test2D.distributions(), nsamp=args.nsamp, settings=test_settings)
-        print '2D timing:', time.time() - start
+        print('2D timing:', time.time() - start)
         join_subplots(g.subplots)
         plt.savefig('test_dists_2D_mbc%s_bco%s_N%s.pdf' % (args.mbc, args.bco, args.nsamp), bbox_inches='tight')
 
@@ -306,8 +310,8 @@ if __name__ == "__main__":
         print('testing 1D gaussian MISE...')
         scales, MISEs = get1DMises(test1D.gauss)
         for scale, MISE in zip(scales, MISEs):
-            print scale, MISE, np.sqrt(MISE)
+            print(scale, MISE, np.sqrt(MISE))
         print('testing 2D gaussian MISE...')
         scales, MISEs = get2DMises(test2D.gauss)
         for scale, MISE in zip(scales, MISEs):
-            print scale, MISE, np.sqrt(MISE)
+            print(scale, MISE, np.sqrt(MISE))

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 
 from paramgrid import batchjob_args
@@ -67,10 +69,10 @@ items = Opts.sortedParamtagDict()
 for paramtag, parambatch in items:
     g.newPlot()
     if args.compare_replacing is not None:
-        print 'comparing changes in data for: ' + paramtag
+        print('comparing changes in data for: ' + paramtag)
         origCompare = [item for item in parambatch if args.compare_replacing[0] in item.data_set.names]
         if len(origCompare) == 0:
-            print '..None'
+            print('..None')
             continue
         else:
             for jobItem in origCompare:
@@ -80,21 +82,21 @@ for paramtag, parambatch in items:
                         batch.normalizeDataTag(jobItem.data_set.tagReplacing(args.compare_replacing[0], replace)))
                 compares = Opts.filterForDataCompare(parambatch, compares)
                 if len(compares) == 1 or args.allhave and len(compares) != len(args.compare_replacing): continue
-                print 'comparing: ', [i.name for i in compares]
+                print('comparing: ', [i.name for i in compares])
                 comparePlot(compares)
                 for ext in args.outputs: g.export(
                     outdir + jobItem.name + '-vs-' + "-".join(args.compare_replacing[1:]) + tp + '.' + ext)
     elif args.compare_data is not None or args.compare_alldata:
-        print 'comparing data combinations for: ' + paramtag
+        print('comparing data combinations for: ' + paramtag)
         if args.compare_alldata:
             compares = parambatch
         else:
             compares = Opts.filterForDataCompare(parambatch, args.compare_data)
         if len(compares) == 0:
-            print '..None'
+            print('..None')
             continue
         if not args.compare_alldata and args.allhave and len(compares) != len(args.compare_data):
-            print '..not all, skipping'
+            print('..not all, skipping')
             continue
         else:
             comparePlot(compares)
@@ -102,7 +104,7 @@ for paramtag, parambatch in items:
     elif args.compare_importance is not None:
         for jobItem in parambatch:
             if not jobItem.isImportanceJob:
-                print 'plotting: ' + jobItem.name
+                print('plotting: ' + jobItem.name)
                 roots = [jobItem.name]
                 for imp in jobItem.importanceItems:
                     if len(args.compare_importance) == 0 or imp.importanceTag in args.compare_importance: roots.append(
@@ -113,7 +115,7 @@ for paramtag, parambatch in items:
         for jobItem in parambatch:
             if not jobItem.paramtag in args.compare_paramtag:
                 output = jobItem.name + '-vs-' + "-".join(args.compare_paramtag)
-                print 'plotting: ' + output
+                print('plotting: ' + output)
                 roots = [batch.normed_name_item(tag + '_' + jobItem.normed_data, wantImportance=True) for tag in
                          args.compare_paramtag]
                 roots = [jobItem.name] + [root.name for root in roots if root is not None]
@@ -122,7 +124,7 @@ for paramtag, parambatch in items:
                     for ext in args.outputs: g.export(outdir + output + tp + '.' + ext)
     else:
         for jobItem in parambatch:
-            print 'plotting: ' + jobItem.name
+            print('plotting: ' + jobItem.name)
             doplot([jobItem.name])
             for ext in args.outputs: g.export(outdir + jobItem.name + tp + '.' + ext)
 

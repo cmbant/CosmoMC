@@ -1,10 +1,14 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import fnmatch
 import sys
+import six
+from six.moves import zip
 
 try:
     import argparse
 except:
-    print 'use "module load" to load python 2.7'
+    print('use "module load" to load python 2.7')
     sys.exit()
 from paramgrid import batchjob
 
@@ -145,7 +149,7 @@ class batchArgs(object):
             if not chainExist or jobItem.chainExists():
                 if not jobItem.paramtag in items: items[jobItem.paramtag] = []
                 items[jobItem.paramtag].append(jobItem)
-        return sorted(items.iteritems())
+        return sorted(six.iteritems(items))
 
     def filterForDataCompare(self, batch, datatags, getDistExists=False):
         items = []

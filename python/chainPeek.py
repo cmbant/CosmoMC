@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 # Just look at parameters being produced in single chain
 
 import os, sys
@@ -6,8 +8,8 @@ import numpy as np
 
 
 if len(sys.argv) < 3:
-    print 'Usage: python/chainPeek.py chains/chainroot paramname [chain_index]'
-    print 'e.g. python/makeGrid.py chains/test omegabh2 1'
+    print('Usage: python/chainPeek.py chains/chainroot paramname [chain_index]')
+    print('e.g. python/makeGrid.py chains/test omegabh2 1')
     sys.exit()
 
 
@@ -19,4 +21,4 @@ if len(sys.argv) > 4: index = int(sys.argv[3])
 d = np.loadtxt(chain + '_' + str(index) + '.txt')
 names = paramnames.ParamNames(chain + '.paramnames')
 
-print d[:, names.numberOfName(param) + 2]
+print(d[:, names.numberOfName(param) + 2])

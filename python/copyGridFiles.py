@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import fnmatch
 import shutil
@@ -52,7 +54,7 @@ def fileMatches(f, name):
 
 def doCopy(source, dest, f, hasBurn=False):
     global sizeMB
-    if args.verbose: print source + f
+    if args.verbose: print(source + f)
     frac = 1
     if not args.dryrun:
         if args.remove_burn_fraction and hasBurn:
@@ -98,7 +100,7 @@ if not args.no_config:
 
 for jobItem in Opts.filteredBatchItems():
     if args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge):
-        print jobItem.name
+        print(jobItem.name)
         chainfiles = 0
         infofiles = 0
         distfiles = 0
@@ -122,7 +124,7 @@ for jobItem in Opts.filteredBatchItems():
             if fileMatches(f, jobItem.name):
                 if doneProperties and '.properties.ini' in f: continue
                 infofiles += 1
-                if args.verbose: print jobItem.chainPath + f
+                if args.verbose: print(jobItem.chainPath + f)
                 doCopy(jobItem.chainPath, outdir, f)
         if args.dist and os.path.exists(jobItem.distPath):
             outdir += 'dist' + os.sep
@@ -131,8 +133,8 @@ for jobItem in Opts.filteredBatchItems():
                 if fileMatches(f, jobItem.name):
                     distfiles += 1
                     doCopy(jobItem.distPath, outdir, f)
-        print '... %d chain files, %d other files and %d dist files' % (chainfiles, infofiles, distfiles)
+        print('... %d chain files, %d other files and %d dist files' % (chainfiles, infofiles, distfiles))
 
 if zipper: zipper.close()
 
-print 'Total size: %u MB' % sizeMB
+print('Total size: %u MB' % sizeMB)

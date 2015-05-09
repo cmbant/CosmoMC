@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 __author__ = 'Antony Lewis'
 __version__ = "0.2.0"
 

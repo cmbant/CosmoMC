@@ -1,13 +1,17 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import numpy as np
 import sys
 from scipy import fftpack
+from six.moves import range
+from six.moves import zip
 try:
     from scipy.optimize import fsolve, brentq, minimize
 except ImportError:
-    print 'Install scipy version 11 or higher (or e.g. module load python 2.7.5 or higher which is likely linked to later scipy)'
+    print('Install scipy version 11 or higher (or e.g. module load python 2.7.5 or higher which is likely linked to later scipy)')
     sys.exit()
 
-from convolve import dct2d
+from .convolve import dct2d
 import logging
 
 """
@@ -56,11 +60,11 @@ _kde_consts_1d = np.array([(1 + 0.5 ** (j + 0.5)) / 3 * np.prod(np.arange(1, 2 *
 
 def _bandwidth_fixed_point(h, N, I, logI, a2):
     f = 2 * np.pi ** (2 * _kde_lmax_bandwidth) * np.dot(a2, np.exp(_kde_lmax_bandwidth * logI - I * (pisquared * h ** 2)))
-    for j, const in zip(range(_kde_lmax_bandwidth - 1, 1, -1), _kde_consts_1d):
+    for j, const in zip(list(range(_kde_lmax_bandwidth - 1, 1, -1)), _kde_consts_1d):
         try:
             t_j = (const / N / f) ** (2 / (3. + 2 * j))
         except:
-            print f, h, N, j
+            print(f, h, N, j)
             raise
         f = 2 * np.pi ** (2 * j) * np.dot(a2, np.exp(j * logI - I * (pisquared * t_j)))
     return h - (2 * N * rootpi * f) ** (-1. / 5)
@@ -102,7 +106,7 @@ def gaussian_kde_bandwidth_binned(data, Neff, a=None):
 #        hfrac = brentq(_bandwidth_fixed_point, 0, 0.2, (Neff, I, logI, a2), xtol=0.001)
         hfrac = fsolve(_bandwidth_fixed_point, hfrac, (Neff, I, logI, a2), xtol=hfrac / 20)
     except:
-        print 'kde_bandwidth failed'
+        print('kde_bandwidth failed')
     return hfrac
 
 # ##2D functions
@@ -114,7 +118,7 @@ class KernelOptimizer2D(object):
 
     def __init__(self, data, Neff, correlation, do_correlation=True):
         size = data.shape[0]
-        if size <> data.shape[1]:
+        if size != data.shape[1]:
             raise ValueError('KernelOptimizer2D only handles square arrays currently')
         self.a2 = dct2d(data / np.sum(data))[1:, 1:] ** 2
         self.I = np.arange(1, size, dtype=np.float64) ** 2

@@ -3,6 +3,8 @@
     Copyright 2011 Hin-Tak Leung
     All rights reserved.
 """
+from __future__ import absolute_import
+from __future__ import print_function
 
 import sys
 import zipfile
@@ -24,32 +26,32 @@ class unzip(object):
                 try:
                     if info.filename.endswith('/'):  # test for info.CRC?
                         # need to be 1!
-                        print "Path =", info.filename.rsplit("/", 1)[0].decode("GB2312").encode("UTF8")
-                        print "Folder = +"
+                        print("Path =", info.filename.rsplit("/", 1)[0].decode("GB2312").encode("UTF8"))
+                        print("Folder = +")
                     else:
-                        print "Path =", info.filename.decode("GB2312").encode("UTF8")
-                        print "Folder = -"
+                        print("Path =", info.filename.decode("GB2312").encode("UTF8"))
+                        print("Folder = -")
                 except UnicodeDecodeError:
-                    print
-                    print "Failed with GB2312 =", info.filename.decode("GB2312", 'ignore').encode("UTF8", 'ignore')
-                    print "Retry with GB18030 =", info.filename.decode("GB18030", 'ignore').encode("UTF8", 'ignore')
+                    print()
+                    print("Failed with GB2312 =", info.filename.decode("GB2312", 'ignore').encode("UTF8", 'ignore'))
+                    print("Retry with GB18030 =", info.filename.decode("GB18030", 'ignore').encode("UTF8", 'ignore'))
                     pass
-                print "Size =", info.file_size
-                print "Packed Size =", info.compress_size
-                print "Modified = %04d-%02d-%02d %02d:%02d:%02d" % info.date_time
-                print info.compress_type
-                print info.comment
-                print info.extra
-                print info.create_system
-                print info.create_version
-                print info.extract_version
-                print info.reserved
-                print info.flag_bits
-                print info.volume
-                print info.internal_attr
-                print info.external_attr
-                print info.header_offset
-                print "CRC = %06X" % info.CRC
+                print("Size =", info.file_size)
+                print("Packed Size =", info.compress_size)
+                print("Modified = %04d-%02d-%02d %02d:%02d:%02d" % info.date_time)
+                print(info.compress_type)
+                print(info.comment)
+                print(info.extra)
+                print(info.create_system)
+                print(info.create_version)
+                print(info.extract_version)
+                print(info.reserved)
+                print(info.flag_bits)
+                print(info.volume)
+                print(info.internal_attr)
+                print(info.external_attr)
+                print(info.header_offset)
+                print("CRC = %06X" % info.CRC)
             return
 
         # extract() is new to python 2.6
@@ -60,8 +62,8 @@ class unzip(object):
                 newname = info.filename.decode("GB2312").encode("UTF8")
             except:
                 newname = info.filename.decode("GB18030").encode("UTF8")
-                print "Failed with GB2312 =", info.filename.decode("GB2312", 'ignore').encode("UTF8", 'ignore')
-                print "Retry with GB18030 =", info.filename.decode("GB18030", 'ignore').encode("UTF8", 'ignore')
+                print("Failed with GB2312 =", info.filename.decode("GB2312", 'ignore').encode("UTF8", 'ignore'))
+                print("Retry with GB18030 =", info.filename.decode("GB18030", 'ignore').encode("UTF8", 'ignore'))
                 pass
             zf.extract(info)
             os.rename(info.filename, newname)
@@ -77,19 +79,19 @@ class unzip(object):
             try:
                 os.rmdir(dr)
             except:
-                print "rmdir failed:", dr.decode("GB18030", 'ignore').encode("UTF8", 'ignore')
+                print("rmdir failed:", dr.decode("GB18030", 'ignore').encode("UTF8", 'ignore'))
                 pass
 
 
 def usage():
-    print """usage: unzip.py -z <zipfile>
+    print("""usage: unzip.py -z <zipfile>
     <zipfile> is the source zipfile to extract
 
     -z zipfile to extract
     -i  - show content info only
 
     long options also work:
-    --zipfile=<zipfile>"""
+    --zipfile=<zipfile>""")
 
 
 def main():

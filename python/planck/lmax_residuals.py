@@ -1,8 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os, sys
 from numpy import *
 import matplotlib.pyplot as plt
 from getdist import covmat, chains, types
 import matplotlib.animation as animation
+from six.moves import range
 
 if False:
     d = loadtxt(r'z://base_plikHM_TT_lowTEB_lensing_50k_lenspotentialCls.dat')
@@ -94,11 +97,11 @@ if True:
     extparam = ['Alens']
     base = "_".join(['base'] + extparam)
     if not separate:
-        lmaxs = range(800, 2501, 100)
+        lmaxs = list(range(800, 2501, 100))
         f, axs = plt.subplots(4, 4, figsize=(34, 30))
         axs = axs.reshape(-1)
     else:
-        lmaxs = range(700, 2501, 50)
+        lmaxs = list(range(700, 2501, 50))
         f = plt.figure()
     plt.rc('text', usetex=True)
     def drawFor(i):
@@ -137,7 +140,7 @@ if True:
         if separate: plt.savefig(r'C:\tmp\Planck\final_Nov14\cuts\%s_Lmax%u.pdf' % (base, lmx), bbox_inches='tight')
 
     if separate:
-        ani = animation.FuncAnimation(f, drawFor, range(len(lmaxs)), interval=800, blit=False, repeat_delay=2000)
+        ani = animation.FuncAnimation(f, drawFor, list(range(len(lmaxs))), interval=800, blit=False, repeat_delay=2000)
         ani.save(r'C:\tmp\Planck\final_Nov14\cuts' + os.sep + base + '_lmax_fit.mp4')
     else:
         for i in range(len(lmaxs)):
@@ -160,7 +163,7 @@ for i in range(1, 6000):
     var += (L + 0.5) * my[i, 5] / 4  # * 3.1415 * 2 / 4
     cum[i] = var
 
-print 'rms = ', var
+print('rms = ', var)
 gca().set_xscale('log')
 
 L = my[:, 0]
@@ -188,7 +191,7 @@ c = chains.loadGridChain("C://tmp/Planck/clik9.0/", 'base', 'lensonly', ignore_f
 p = c.getParams()
 
 derived = p.A * (p.omegam ** 0.6 * p.H0 / 100) ** 2.3
-print c.mean(derived), c.std(derived), c.std(derived) / c.mean(derived)
+print(c.mean(derived), c.std(derived), c.std(derived) / c.mean(derived))
 
 sys.exit()
 
@@ -208,5 +211,5 @@ d = loadtxt(cov)
 d = linalg.inv(d)
 
 for i in range(len(d[:, 0])):
-    print sqrt(1 / d[i, i]), header[i]
+    print(sqrt(1 / d[i, i]), header[i])
 

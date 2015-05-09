@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 # Get CAMB input parameters from best-fit .minimum file from cosmomc
 import os
 
@@ -6,7 +8,7 @@ from getdist import types, inifile
 
 
 if len(sys.argv) < 3:
-    print 'Usage: python/bestFitCAMB.py chain_root iniName'
+    print('Usage: python/bestFitCAMB.py chain_root iniName')
     sys.exit()
 
 root = os.path.abspath(sys.argv[1])
@@ -24,7 +26,7 @@ ini.defaults.append('params.ini')
 
 bf = types.BestFit(root + '.minimum', setParamNameFile=root + '.paramnames', want_fixed=True)
 
-for camb, cosmomc in pars.items():
+for camb, cosmomc in list(pars.items()):
     par = bf.parWithName(cosmomc)
     if par is not None: ini.params[camb] = par.best_fit
 
@@ -47,4 +49,4 @@ if inPars.bool('use_nonlinear_lensing', True):
 
 ini.saveFile(sys.argv[2])
 
-print 'OK, though note this does not support all parameter extensions from LCDM'
+print('OK, though note this does not support all parameter extensions from LCDM')

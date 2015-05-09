@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from matplotlib import rcParams, rc
 
 # common setup for matplotlib

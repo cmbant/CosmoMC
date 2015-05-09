@@ -1,6 +1,9 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from pylab import *
 
 from paramgrid import batchjob_args
+from six.moves import range
 
 
 Opts = batchjob_args.batchArgs('Compare how parameters means and errors vary', importance=True, converge=True,
@@ -8,7 +11,7 @@ Opts = batchjob_args.batchArgs('Compare how parameters means and errors vary', i
 Opts.parser.add_argument('fname', help='filename root for the produced plots')
 Opts.parser.add_argument('--compare', nargs='+', help="datatag templates for data combinations to compare")
 
-Opts.parser.add_argument('--placeholder_sub', nargs='+', default=['XX'] + range(700, 2501, 150),
+Opts.parser.add_argument('--placeholder_sub', nargs='+', default=['XX'] + list(range(700, 2501, 150)),
                          help="placeholder to replace, followed by array of replacement values")
 
 Opts.parser.add_argument('--bands_sigma', type=float, nargs='+', default=None)
@@ -31,7 +34,7 @@ else:
 lmaxs = [int(x) for x in args.placeholder_sub[1:]]
 
 for paramtag, parambatch in items:
-    print 'Doing paramtag: ' + paramtag + '...'
+    print('Doing paramtag: ' + paramtag + '...')
     datanames = []
     parnames = []
     par_sigmas = dict()
@@ -39,12 +42,12 @@ for paramtag, parambatch in items:
     for parse in [True, False]:
         for compi, comp in enumerate(args.compare):
             datanames = [comp.replace(args.placeholder_sub[0], str(lmax)) for lmax in lmaxs]
-            print datanames
+            print(datanames)
             compares = Opts.filterForDataCompare(parambatch, datanames, getDistExists=True)
             if not compares: continue
             if len(compares) != len(datanames):
-                print 'not all chain results exist:' + comp
-                print 'missing -->', [d for d in datanames if not d in [c.datatag for c in compares]]
+                print('not all chain results exist:' + comp)
+                print('missing -->', [d for d in datanames if not d in [c.datatag for c in compares]])
                 continue
             if parse:
                 for jobItem in compares:

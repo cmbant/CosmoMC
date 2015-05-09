@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import subprocess
 import os
 import numpy as np
@@ -6,6 +8,8 @@ import pickle
 import time
 import shutil
 from distutils import spawn
+import six
+from six.moves import zip
 
 
 def addArguments(parser, combinedJobs=False):
@@ -31,7 +35,7 @@ def addArguments(parser, combinedJobs=False):
 
 def replacePlaceholders(txt, vals):
     txt = txt.replace('\r', '')
-    for name, value in vals.iteritems():
+    for name, value in six.iteritems(vals):
         txt = txt.replace('##' + name + '##', str(value))
     return txt
 
@@ -85,8 +89,8 @@ class jobSettings(object):
         self.omp = self.coresPerNode / (self.chainsPerNode * self.runsPerJob)
         if self.omp != np.floor(self.omp): raise Exception('Chains must each have equal number of cores')
         if msg:
-            print 'Job parameters: %i cosmomc runs of %i chains on %i nodes, each node with %i MPI chains, each chain using %i OpenMP cores (%i cores per node)' % (
-                self.runsPerJob, self.nchains, self.nodes, self.chainsPerNode, self.omp, self.coresPerNode)
+            print('Job parameters: %i cosmomc runs of %i chains on %i nodes, each node with %i MPI chains, each chain using %i OpenMP cores (%i cores per node)' % (
+                self.runsPerJob, self.nchains, self.nodes, self.chainsPerNode, self.omp, self.coresPerNode))
 
         self.mem_per_node = getDefaulted('mem_per_node', 63900, tp=int, template=template, **kwargs)
         self.walltime = getDefaulted('walltime', '24:00:00', template=template, **kwargs)
@@ -165,7 +169,7 @@ def deleteJobNames(batchPath, jobNames):
     index = loadJobIndex(batchPath)
     if not index:
         raise Exception('No existing job index found')
-    if isinstance(jobNames, basestring): jobNames = [jobNames]
+    if isinstance(jobNames, six.string_types): jobNames = [jobNames]
     for name in jobNames:
         jobId = index.jobNames.get(name)
         index.delId(jobId)
@@ -183,19 +187,19 @@ def deleteJobs(batchPath, jobIds=None, rootNames=None, jobNames=None, jobId_minm
     if not index:
         raise Exception('No existing job index found')
     if jobIds is None: jobIds = []
-    if isinstance(jobIds, basestring): jobIds = [jobIds]
+    if isinstance(jobIds, six.string_types): jobIds = [jobIds]
     if rootNames is not None:
-        if isinstance(rootNames, basestring): rootNames = [rootNames]
+        if isinstance(rootNames, six.string_types): rootNames = [rootNames]
         for name in rootNames:
             jobId = index.rootNames.get(name)
             if not jobId in jobIds: jobIds.append(jobId)
     if jobNames is not None:
-        if isinstance(jobNames, basestring): jobNames = [jobNames]
+        if isinstance(jobNames, six.string_types): jobNames = [jobNames]
         for name in jobNames:
             jobId = index.jobNames.get(name)
             if not jobId in jobIds: jobIds.append(jobId)
     if jobId_minmax is not None or jobId_min is not None:
-        for jobIdStr, j in index.jobSettings.items():
+        for jobIdStr, j in list(index.jobSettings.items()):
             parts = jobIdStr.split('.')
             if len(parts) == 1 or parts[0].isdigit():
                 jobId = int(parts[0])
@@ -211,7 +215,7 @@ def deleteJobs(batchPath, jobIds=None, rootNames=None, jobNames=None, jobId_minm
         if j is not None:
             if confirm:
                 if jobId in validIds:
-                    print 'Cancelling: ', j.jobName, jobId
+                    print('Cancelling: ', j.jobName, jobId)
                     if hasattr(j, 'qdel'):
                         qdel = j.qdel
                     else:
@@ -219,7 +223,7 @@ def deleteJobs(batchPath, jobIds=None, rootNames=None, jobNames=None, jobId_minm
                     subprocess.check_output(qdel + ' ' + str(jobId), shell=True).strip()
                 index.delId(jobId)
             elif jobId in validIds:
-                print '...', j.jobName, jobId
+                print('...', j.jobName, jobId)
 
     if confirm: saveJobIndex(index, batchPath)
     return jobIds
@@ -229,7 +233,7 @@ def submitJob(jobName, paramFiles, sequential=False, msg=False, **kwargs):
     j = jobSettings(jobName, msg, **kwargs)
     if kwargs.get('dryrun', False) or paramFiles is None: return
 
-    if isinstance(paramFiles, basestring): paramFiles = [paramFiles]
+    if isinstance(paramFiles, six.string_types): paramFiles = [paramFiles]
     paramFiles = [ini.replace('.ini', '') for ini in paramFiles]
 
     j.runsPerJob = (len(paramFiles), 1)[sequential]
@@ -283,7 +287,7 @@ def submitJob(jobName, paramFiles, sequential=False, msg=False, **kwargs):
         if not kwargs.get('no_sub', False):
             res = subprocess.check_output(replacePlaceholders(j.qsub, vals) + ' ' + scriptName, shell=True).strip()
             if not res:
-                print 'No qsub output'
+                print('No qsub output')
             else:
                 j.paramFiles = paramFiles
                 if 'Your job ' in res:
@@ -301,7 +305,7 @@ def queue_job_details(batchPath=None, running=True, queued=True, warnNotBatch=Tr
     """
     index = loadJobIndex(batchPath)
     if not index:
-        print 'No existing job index found'
+        print('No existing job index found')
         return []
     if spawn.find_executable("showq") is not None:
         res = subprocess.check_output('showq -U $USER', shell=True).strip()
@@ -330,7 +334,7 @@ def queue_job_details(batchPath=None, running=True, queued=True, warnNotBatch=Tr
                     jobId = jobId[1]
                 j = index.jobSettings.get(jobId)
             if j is None:
-                if warnNotBatch: print '...Job ' + jobId + ' not in this batch, skipping'
+                if warnNotBatch: print('...Job ' + jobId + ' not in this batch, skipping')
                 continue
 
             names += [j.names]

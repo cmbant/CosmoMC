@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import random
 
@@ -5,6 +7,9 @@ import numpy as np
 
 from getdist.paramnames import ParamNames, ParamInfo
 from getdist.convolve import autoConvolve
+import six
+from six.moves import range
+from six.moves import zip
 
 
 try:
@@ -126,7 +131,7 @@ class WeightedSamples(object):
         self.needs_update = True
 
     def _makeParamvec(self, par):
-        if isinstance(par, (int, long)):
+        if isinstance(par, six.integer_types):
             if 0 <= par < self.n:
                 return self.samples[:, par]
             elif par == -1:
@@ -273,7 +278,7 @@ class WeightedSamples(object):
     def cov(self, pars=None, where=None):
         diffs = self.mean_diffs(pars, where)
         if pars is None:
-            pars = range(self.n)
+            pars = list(range(self.n))
         n = len(pars)
         cov = np.empty((n, n))
         if where is not None:
@@ -292,7 +297,7 @@ class WeightedSamples(object):
         return covToCorr(self.cov(pars))
 
     def mean_diff(self, paramVec, where=None):
-        if isinstance(paramVec, (int, long)) and paramVec >= 0 and where is None:
+        if isinstance(paramVec, six.integer_types) and paramVec >= 0 and where is None:
             if self.diffs is not None:
                 return self.diffs[paramVec]
             return self.samples[:, paramVec] - self.getMeans()[paramVec]
@@ -304,7 +309,7 @@ class WeightedSamples(object):
 
     def mean_diffs(self, pars=None, where=None):
         if pars is None: pars = self.n
-        if isinstance(pars, (int, long)) and pars >= 0 and where is None:
+        if isinstance(pars, six.integer_types) and pars >= 0 and where is None:
             means = self.getMeans()
             return [self.samples[:, i] - means[i] for i in range(pars)]
         return [self.mean_diff(i, where) for i in pars]
@@ -358,7 +363,7 @@ class WeightedSamples(object):
 
         if abs(norm - norm1) > 1e-4:
             raise WeightedSampleError('Can only thin with integer weights')
-        if factor <> int(factor):
+        if factor != int(factor):
             raise WeightedSampleError('Thin factor must be integer')
 
         if factor >= np.max(weights):
@@ -457,7 +462,7 @@ class chains(WeightedSamples):
         self.paramNames = None
         if isinstance(names, ParamNames):
             self.paramNames = names
-        elif isinstance(names, basestring):
+        elif isinstance(names, six.string_types):
             self.paramNames = ParamNames(names)
         elif names is not None:
             self.paramNames = ParamNames(names=names)
@@ -470,7 +475,7 @@ class chains(WeightedSamples):
         return self.paramNames
 
     def getParamIndices(self):
-        if self.samples is not None and len(self.paramNames.names) <> self.n:
+        if self.samples is not None and len(self.paramNames.names) != self.n:
             raise WeightedSampleError("paramNames size does not match number of parameters in samples")
         index = dict()
         for i, name in enumerate(self.paramNames.names):
@@ -491,7 +496,7 @@ class chains(WeightedSamples):
     def _makeParamvec(self, par):
         if self.needs_update: self.updateBaseStatistics()
         if isinstance(par, ParamInfo): par = par.name
-        if isinstance(par, basestring):
+        if isinstance(par, six.string_types):
             return self.samples[:, self.index[par]]
         return WeightedSamples._makeParamvec(self, par)
 
@@ -518,7 +523,7 @@ class chains(WeightedSamples):
         self.loglikes = None
         self.name_tag = self.name_tag or os.path.basename(root)
         for fname in files:
-            print fname
+            print(fname)
             self.chains.append(WeightedSamples(fname, ignore_lines or self.ignore_lines))
         if len(self.chains) == 0:
             raise WeightedSampleError('loadChains - no chains found for ' + root)

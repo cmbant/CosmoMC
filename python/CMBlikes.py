@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 # Load CosmoMC format .dataset files with lensing likelihood data
 # AL July 2014
 # note this is not well tested with final published versions of likelihoods
@@ -8,6 +10,8 @@ import os
 import numpy as np
 import sys
 from getdist import inifile
+from six.moves import range
+from six.moves import zip
 
 
 def readTextCommentColumns(fname, cols):
@@ -149,7 +153,7 @@ class DatasetLikelihood(object):
                         bins.binning_matrix[b, :, L - self.cl_lmin] = window[i, 1:]
                     else:
                         Err = Err or any(window[i, 1:] != 0)
-                if Err: print 'WARNING: %s %u outside cl_lmin-cl_max range: %s' % (file_stem, b, windows % (b + 1))
+                if Err: print('WARNING: %s %u outside cl_lmin-cl_max range: %s' % (file_stem, b, windows % (b + 1)))
             return bins
 
 
@@ -259,7 +263,7 @@ def plotAndChisq(dataset, cl_file):
     d = DatasetLikelihood(dataset)
     cls = ClsArray(cl_file)
     d.plot(cls)
-    print 'Chi-squared: ', d.chi_squared(cls)
+    print('Chi-squared: ', d.chi_squared(cls))
     plt.show()
 
 
@@ -268,7 +272,7 @@ if __name__ == "__main__":
 #    sys.exit()
     try: import argparse
     except:
-        print 'use "module load" to load python 2.7'
+        print('use "module load" to load python 2.7')
         sys.exit()
     parser = argparse.ArgumentParser(description="Load .dataset and calculate likelihood")
     parser.add_argument('dataset', help='.dataset filename')

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 #!/usr/bin/env python
 
 # -*- coding: utf-8 -*-
@@ -7,9 +9,15 @@ import logging
 import matplotlib
 import numpy as np
 import scipy
-import cStringIO
 import sys
 import signal
+import six
+from six.moves import range
+from six.moves import zip
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import BytesIO as StringIO
 
 matplotlib.use('Qt4Agg')
 matplotlib.rcParams['backend.qt4'] = 'PySide'
@@ -32,9 +40,9 @@ try:
     try:
         import getdist.gui.Resources_pyside
     except ImportError:
-        print "Missing Resources_pyside.py: Run script update_resources.sh"
+        print("Missing Resources_pyside.py: Run script update_resources.sh")
 except ImportError:
-    print "Can't import PySide modules, please install PySide first."
+    print("Can't import PySide modules, install PySide with 'pip install PySide'.")
     sys.exit()
 
 from paramgrid import batchjob, gridconfig
@@ -586,7 +594,7 @@ class MainWindow(QMainWindow):
         if not self.plotter:
             QMessageBox.warning(self, "Settings", "Open chains first ")
             return
-        if isinstance(self.iniFile, basestring): self.iniFile = IniFile(self.iniFile)
+        if isinstance(self.iniFile, six.string_types): self.iniFile = IniFile(self.iniFile)
         self.settingDlg = self.settingDlg or DialogSettings(self, self.iniFile)
         self.settingDlg.show()
         self.settingDlg.activateWindow()
@@ -631,10 +639,10 @@ class MainWindow(QMainWindow):
         try:
             settings = self.default_plot_settings
             self.custom_plot_settings = {}
-            for key, value in vals.iteritems():
+            for key, value in six.iteritems(vals):
                 current = getattr(settings, key)
-                if str(current) <> value and len(value):
-                    if isinstance(current, basestring):
+                if str(current) != value and len(value):
+                    if isinstance(current, six.string_types):
                         self.custom_plot_settings[key] = value
                     elif current is None:
                         try:
@@ -658,7 +666,7 @@ class MainWindow(QMainWindow):
         ini.params['script_plot_module'] = self.script_plot_module
         ini.comments['plot_module'] = ["module used by the GUI (e.g. change to planckStyle)"]
         ini.comments['script_plot_module'] = ["module used by saved plot scripts  (e.g. change to planckStyle)"]
-        self.ConfigDlg = self.ConfigDlg or DialogConfigSettings(self, ini, ini.params.keys(), title='Plot Config')
+        self.ConfigDlg = self.ConfigDlg or DialogConfigSettings(self, ini, list(ini.params.keys()), title='Plot Config')
         self.ConfigDlg.show()
         self.ConfigDlg.activateWindow()
 
@@ -667,7 +675,7 @@ class MainWindow(QMainWindow):
         scriptmod = vals.get('script_plot_module', self.script_plot_module)
         self.script = ''
         mod = vals.get('plot_module', self.plot_module)
-        if mod <> self.plot_module or scriptmod <> self.script_plot_module:
+        if mod != self.plot_module or scriptmod != self.script_plot_module:
             try:
                 matplotlib.rcParams.clear()
                 matplotlib.rcParams.update(self.orig_rc)
@@ -809,7 +817,7 @@ class MainWindow(QMainWindow):
             if jobItem.chainExists():
                 if jobItem.paramtag not in items: items[jobItem.paramtag] = []
                 items[jobItem.paramtag].append(jobItem)
-        logging.debug("Found %i names for grid" % len(items.keys()))
+        logging.debug("Found %i names for grid" % len(list(items.keys())))
         self.grid_paramtag_jobItems = items
 
         self.getPlotter(chain_dir=self.rootdirname)
@@ -974,7 +982,7 @@ class MainWindow(QMainWindow):
             self.comboBoxColor.clear()
             self.comboBoxColor.addItems(listOfParams)
             idx = self.comboBoxColor.findText(param_old, Qt.MatchExactly)
-            if idx <> -1:
+            if idx != -1:
                 self.comboBoxColor.setCurrentIndex(idx)
 
     def checkedRootNames(self):
@@ -1053,7 +1061,7 @@ class MainWindow(QMainWindow):
                 else:
                     script += "g=gplot.%s(chain_dir=r'%s')\n" % (plot_func, self.rootdirname)
             else:
-                if isinstance(self.iniFile, basestring):
+                if isinstance(self.iniFile, six.string_types):
                     script += "g=gplot.%s(mcsamples=True, analysis_settings=r'%s')\n" % (plot_func, self.iniFile)
                 elif isinstance(self.iniFile, IniFile):
                     script += "g=gplot.%s(mcsamples=True, analysis_settings=analysis_settings)\n" % plot_func
@@ -1063,8 +1071,8 @@ class MainWindow(QMainWindow):
                     script += "g.sampleAnalyser.addRoot(r'%s')\n" % (self.rootfiles[root])
 
             if self.custom_plot_settings:
-                for key, value in self.custom_plot_settings.iteritems():
-                    if isinstance(value, basestring):
+                for key, value in six.iteritems(self.custom_plot_settings):
+                    if isinstance(value, six.string_types):
                         value = '"' + value + '"'
                     script += 'g.settings.%s = %s\n' % (key, value)
 
@@ -1152,11 +1160,11 @@ class MainWindow(QMainWindow):
                         setSizeQT(min(height, width))
                     elif len(items_x) == 1 and len(items_y) > 1:
                         item_x = items_x[0]
-                        pairs = zip([item_x] * len(items_y), items_y)
+                        pairs = list(zip([item_x] * len(items_y), items_y))
                         setSizeForN(round(np.sqrt(len(pairs) / 1.4)))
                     elif len(items_x) > 1 and len(items_y) == 1:
                         item_y = items_y[0]
-                        pairs = zip(items_x, [item_y] * len(items_x))
+                        pairs = list(zip(items_x, [item_y] * len(items_x)))
                         setSizeForN(round(np.sqrt(len(pairs) / 1.4)))
                     else:
                         pairs = []
@@ -1219,7 +1227,7 @@ class MainWindow(QMainWindow):
             if hasattr(self, "canvas"): del self.canvas
             if hasattr(self, "toolbar"): del self.toolbar
             self.canvas = FigureCanvas(self.plotter.fig)
-            if sys.platform <> "darwin":
+            if sys.platform != "darwin":
                 # for some reason the toolbar crashes out on a Mac; just don't show it
                 self.toolbar = NavigationToolbar(self.canvas, self)
                 self.plotWidget.layout().addWidget(self.toolbar)
@@ -1243,7 +1251,7 @@ class MainWindow(QMainWindow):
 
         if index == 1 and self.script:
             self.script_edit = self.textWidget.toPlainText()
-            if self.script_edit and self.script_edit <> self.script:
+            if self.script_edit and self.script_edit != self.script:
                 reply = QMessageBox.question(
                     self, "Overwrite script",
                     "Script is not empty. Overwrite current script?",
@@ -1286,9 +1294,9 @@ class MainWindow(QMainWindow):
 
             globaldic = {}
             localdic = {}
-            exec script_exec in globaldic, localdic
+            exec(script_exec, globaldic, localdic)
 
-            for _, v in localdic.items():
+            for v in six.itervalues(localdic):
                 if isinstance(v, plots.GetDistPlotter):
                     self.updateScriptPreview(v)
                     break
@@ -1308,7 +1316,7 @@ class MainWindow(QMainWindow):
         self.plotter_script = plotter
 
         i = 0
-        while 1:
+        while True:
             item = self.plotWidget2.layout().takeAt(i)
             if item is None: break
             if hasattr(item, "widget"):
@@ -1317,7 +1325,7 @@ class MainWindow(QMainWindow):
             del item
 
         # Save in PNG format, and display it in a QLabel
-        buf = cStringIO.StringIO()
+        buf = StringIO()
 
         plotter.fig.savefig(
             buf,

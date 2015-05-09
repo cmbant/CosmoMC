@@ -1,9 +1,12 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import copy
 
 import sys
 from getdist import IniFile
 from paramgrid import batchjob, batchjob_args
+import six
 
 
 def getArgs(vals=None):
@@ -27,7 +30,7 @@ def updateIniParams(ini, params, path):
     for iniitem in params:
         if isinstance(iniitem, dict):
             ini.params.update(iniitem)
-        elif isinstance(iniitem, basestring):
+        elif isinstance(iniitem, six.string_types):
             ini.defaults.append(path + iniitem)
         elif isinstance(iniitem, (list, tuple)):
             updateIniParams(ini, iniitem, path)
@@ -87,7 +90,7 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
             if not jobItem.chainExists():
                 batch.jobItems.remove(jobItem)
         batch.save()
-        print 'OK, configured grid with %u existing chains' % (len(batch.jobItems))
+        print('OK, configured grid with %u existing chains' % (len(batch.jobItems)))
         return batch
     else:
         batch.makeDirectories(settings.__file__)
@@ -164,10 +167,10 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
                 covmat = os.path.join(batch.basePath, covdir2, name + '.covmat')
                 if os.path.exists(covmat):
                     ini.params['propose_matrix'] = covmat
-                    print 'covmat ' + jobItem.name + ' -> ' + name
+                    print('covmat ' + jobItem.name + ' -> ' + name)
                     hasCov = True
                     break
-            if not hasCov: print 'WARNING: no matching specific covmat for ' + jobItem.name
+            if not hasCov: print('WARNING: no matching specific covmat for ' + jobItem.name)
 
         ini.params['start_at_bestfit'] = start_at_bestfit
         updateIniParams(ini, jobItem.data_set.params, batch.commonPath)
@@ -209,11 +212,11 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
                 if cosmomcAction != 0: break
 
     if not interactive: return batch
-    print  'Done... to run do: python python/runbatch.py ' + batchPath
+    print('Done... to run do: python python/runbatch.py ' + batchPath)
     if not start_at_bestfit:
-        print '....... for best fits: python python/runbatch.py ' + batchPath + ' --minimize'
-    print ''
-    print 'for importance sampled: python python/runbatch.py ' + batchPath + ' --importance'
-    print 'for best-fit for importance sampled: python python/runbatch.py ' + batchPath + ' --importance_minimize'
+        print('....... for best fits: python python/runbatch.py ' + batchPath + ' --minimize')
+    print('')
+    print('for importance sampled: python python/runbatch.py ' + batchPath + ' --importance')
+    print('for best-fit for importance sampled: python python/runbatch.py ' + batchPath + ' --importance_minimize')
 
 

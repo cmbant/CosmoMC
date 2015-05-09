@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import copy
 
@@ -135,7 +137,7 @@ def compareTable(jobItems, titles=None):
     for jobItem in jobItems:
         jobItem.loadJobItemResults(paramNameFile=args.paramNameFile, bestfit=not args.nobestfit,
                                    bestfitonly=args.bestfitonly)
-        print jobItem.name
+        print(jobItem.name)
     if titles is None:
         titles = [jobItem.datatag for jobItem in jobItems if jobItem.result_marge is not None]
     else:
@@ -226,7 +228,7 @@ for limit in limits:
                 lines.append(section)
                 lines += compareTable(compares, args.titles)
             else:
-                print 'no matches for compare: ' + paramtag
+                print('no matches for compare: ' + paramtag)
         else:
             lines.append(section)
             theseItems = [jobItem for jobItem in parambatch
@@ -290,9 +292,9 @@ for limit in limits:
                     tableLines = paramResultTable(jobItem, referenceJobItem, referenceDataJobItem)
                     if args.separate_tex: types.TextFile(tableLines).write(jobItem.distRoot + '.tex')
                     lines += tableLines
-                except Exception  as e:
-                    print 'ERROR: ' + jobItem.name
-                    print "Index Error:" + e.message
+                except Exception as e:
+                    print('ERROR: ' + jobItem.name)
+                    print("Index Error:" + e.message)
 
     if not args.forpaper: lines.append('\\end{document}')
 
@@ -302,7 +304,7 @@ for limit in limits:
     (root, _) = os.path.splitext(outfile)
 
     if not args.forpaper:
-        print 'Now converting to PDF...'
+        print('Now converting to PDF...')
         delext = ['aux', 'log', 'out', 'toc']
         if len(outdir) > 0:
             dodir = 'cd ' + outdir + '; '

@@ -1,7 +1,12 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import copy
 import matplotlib
 import sys
+import six
+from six.moves import range
+from six.moves import zip
 
 matplotlib.use('Agg', warn=False)
 from matplotlib import cm, rcParams
@@ -238,7 +243,7 @@ class MCSampleAnalysis(object):
         self.chain_dir = chain_dir
         self.batch = None
         self.ini = None
-        if chain_dir and isinstance(chain_dir, basestring):
+        if chain_dir and isinstance(chain_dir, six.string_types):
             if gridconfig.pathIsGrid(chain_dir):
                 self.batch = batchjob.readobject(chain_dir)
                 # this gets things like specific parameter limits etc.
@@ -371,7 +376,7 @@ class GetDistPlotter(object):
         else:
             self.settings = settings
         if chain_dir is None and plot_data is None: chain_dir = getdist.default_grid_root
-        if isinstance(plot_data, basestring):
+        if isinstance(plot_data, six.string_types):
             self.plot_data = [plot_data]
         else:
             self.plot_data = plot_data
@@ -393,15 +398,15 @@ class GetDistPlotter(object):
         self.plot_col = 0
 
     def show_all_settings(self):
-        print 'Python version:', sys.version
-        print '\nMatplotlib version:', matplotlib.__version__
-        print '\nGetDist Plot Settings:'
+        print('Python version:', sys.version)
+        print('\nMatplotlib version:', matplotlib.__version__)
+        print('\nGetDist Plot Settings:')
         sets = self.settings.__dict__
-        for key, value in sets.items():
-            print key, ':', value
-        print '\nRC params:'
-        for key, value in matplotlib.rcParams.items():
-            print key, ':', value
+        for key, value in list(sets.items()):
+            print(key, ':', value)
+        print('\nRC params:')
+        for key, value in list(matplotlib.rcParams.items()):
+            print(key, ':', value)
 
     def get_plot_args(self, plotno, **kwargs):
         if isinstance(self.settings.plot_args, dict):
@@ -427,7 +432,7 @@ class GetDistPlotter(object):
         try:
             return self.settings.lineM[plotno]
         except IndexError:
-            print 'Error adding line ' + str(plotno) + ': Add more default line stype entries to settings.lineM'
+            print('Error adding line ' + str(plotno) + ': Add more default line stype entries to settings.lineM')
             raise
 
     def get_line_styles(self, plotno, **kwargs):
@@ -522,7 +527,7 @@ class GetDistPlotter(object):
                         color = self.settings.solid_colors[of - plotno - 1]
                     else:
                         color = self.settings.solid_colors[plotno]
-                if isinstance(color, basestring):
+                if isinstance(color, six.string_types):
                     cols = [matplotlib.colors.colorConverter.to_rgb(color)]
                     for _ in range(1, len(contour_levels)):
                         cols = [[c * (
@@ -641,7 +646,7 @@ class GetDistPlotter(object):
             param_pair = param1
             param1 = None
         param_pair = self.get_param_array(roots[0], param_pair or [param1, param2])
-        if self.settings.progress: print 'plotting: ', [param.name for param in param_pair]
+        if self.settings.progress: print('plotting: ', [param.name for param in param_pair])
         if shaded and not kwargs.get('filled'): self.add_2d_shading(roots[0], param_pair[0], param_pair[1])
         xbounds, ybounds = None, None
         contour_args = self._make_contour_args(len(roots), **kwargs)
@@ -843,7 +848,7 @@ class GetDistPlotter(object):
             args['handlelength'] = 0
             args['handletextpad'] = 0
         if label_order is not None:
-            if label_order == '-1': label_order = range(len(lines)).reverse()
+            if label_order == '-1': label_order = list(range(len(lines))).reverse()
             lines = [lines[i] for i in label_order]
             legend_labels = [legend_labels[i] for i in label_order]
         if figure:

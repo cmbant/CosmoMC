@@ -1,5 +1,7 @@
+from __future__ import absolute_import
 import numpy as np
 from scipy import fftpack
+from six.moves import range
 
 # numbers of the form 2^n3^m5^r, even only and r<=1
 fastFFT = np.array([2, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128, 144, 160, 192, 256, 288, 320, 384, 432, 480,

@@ -1,10 +1,13 @@
+from __future__ import absolute_import
+from __future__ import print_function
 
 import sys, fnmatch, os
 from getdist import covmat
+from six.moves import zip
 
 if len(sys.argv) < 4:
-    print 'covscale rescales parameter(s) in all .covmat files in a directory and outputs to another directory'
-    print 'Usage: python covscale.py in_dir out_dir param1:param2:.. fac1:fac2:..'
+    print('covscale rescales parameter(s) in all .covmat files in a directory and outputs to another directory')
+    print('Usage: python covscale.py in_dir out_dir param1:param2:.. fac1:fac2:..')
     sys.exit()
 
 
@@ -17,7 +20,7 @@ if not os.path.exists(outdir): os.makedirs(outdir)
 
 for f in os.listdir(indir):
     if fnmatch.fnmatch(f, "*.covmat"):
-        print indir + f
+        print(indir + f)
         cov = covmat.CovMat(indir + f)
         for par, factor in zip(pars, factors):
             cov.rescaleParameter(par, float(factor))

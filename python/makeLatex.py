@@ -1,6 +1,9 @@
+from __future__ import absolute_import
+from __future__ import print_function
 
 import os
 from getdist import types
+from six.moves import zip
 
 def margeParamTex(rootname, params=None, limit=1, paramNameFile=None):
     """ Get tex snipped for constraint on parameters in params """
@@ -55,10 +58,10 @@ if __name__ == "__main__":
         for label, value in zip(labels, texs):
             if args.tabular:
                 if value != '---':
-                    print("$ {0:<33}$ & $ {1:<33}$\\\\".txformat(label, value))
+                    print(("$ {0:<33}$ & $ {1:<33}$\\\\".txformat(label, value)))
                 else:
-                    print("$ {0:<33}$ &   {1:<33} \\\\".txformat(label, value))
+                    print(("$ {0:<33}$ &   {1:<33} \\\\".txformat(label, value)))
             else:
-                print("{0:<33} {1:}".txformat(label, value))
+                print(("{0:<33} {1:}".txformat(label, value)))
 
 

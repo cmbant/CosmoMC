@@ -1,9 +1,12 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import chainDumpPlot as r
 import CMBlikes
 import os
-import planckStyleNG
+from . import planckStyleNG
 import matplotlib.pyplot as plt
 import numpy as np
+from six.moves import range
 
 def_figsize = 12
 def_max = 400
@@ -67,7 +70,7 @@ def plotCommander(lmax=29):
     planck = np.loadtxt(commander)
     col = 'k'
     ls = planck[:lmax - 1, 0]
-    print ls
+    print(ls)
     plt.plot(ls, planck[:lmax - 1, 3], 'o', color=col, ls='None', markersize=1)
     dat = planck
     for i in range(min(lmax - 1, planck.shape[0])):

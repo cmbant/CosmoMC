@@ -1,5 +1,8 @@
+from __future__ import absolute_import
 import numpy as np
 from getdist import mcsamples, densities
+import six
+from six.moves import zip
 
 
 def make_2D_Cov(sigmax, sigmay, corr):
@@ -48,7 +51,7 @@ class MixtureND(object):
                 block = min(max(size, 100000), int(1.1 * (size * (size - tot))) // max(tot, 1) + 1)
         samples = np.vstack(res)
         if len(res) > 1: samples = np.random.permutation(samples)
-        if tot <> size:
+        if tot != size:
             samples = samples[:-(tot - size), :]
         return samples
 
@@ -95,7 +98,7 @@ class MixtureND(object):
         return tot
 
     def pdf_marged(self, index, x, no_limit_marge=False):
-        if isinstance(index, basestring): index = self.names.index(index)
+        if isinstance(index, six.string_types): index = self.names.index(index)
         if not no_limit_marge: self.checkNoLimits([index])
         tot = None
         for i, (mean, cov, weight) in enumerate(zip(self.means, self.covs, self.weights)):
@@ -109,7 +112,7 @@ class MixtureND(object):
         return tot
 
     def density1D(self, index=0, num_points=1024, sigma_max=4, no_limit_marge=False):
-        if isinstance(index, basestring): index = self.names.index(index)
+        if isinstance(index, six.string_types): index = self.names.index(index)
         if not no_limit_marge: self.checkNoLimits([index])
         mn, mx = self.autoRanges(sigma_max)[index]
         x = np.linspace(mn, mx, num_points)
@@ -119,7 +122,7 @@ class MixtureND(object):
     def marginalizedMixture(self, params, label=None, no_limit_marge=False):
         indices = []
         for p in params:
-            if isinstance(p, basestring):
+            if isinstance(p, six.string_types):
                 indices.append(self.names.index(p))
             else:
                 indices.append(p)

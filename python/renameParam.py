@@ -1,8 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import re
 
 from paramgrid import batchjob_args
 from getdist import paramnames
+from six.moves import zip
 
 
 Opts = batchjob_args.batchArgs('rename parameter in all .paramnames files in grid', importance=True)
@@ -52,7 +55,7 @@ for jobItem in Opts.filteredBatchItems():
                     has = True
                     p.label = plab.label
         if has:
-            print jobItem.chainRoot
+            print(jobItem.chainRoot)
             if args.confirm: names.saveAsText(name)
         bestfit = jobItem.chainRoot + '.minimum'
         if os.path.exists(bestfit):
@@ -85,10 +88,10 @@ for jobItem in Opts.filteredBatchItems():
                         del items[8:]
                 lines[i] = "".join(items) + "\n"
             if has:
-                print bestfit
+                print(bestfit)
                 if args.confirm: open(bestfit).write("".join(lines))
 
 if args.confirm:
-    print 'Done. Re-run getdist to update getdist outputs.'
+    print('Done. Re-run getdist to update getdist outputs.')
 else:
-    print '... run with --confirm to actually replace .paramname files'
+    print('... run with --confirm to actually replace .paramname files')

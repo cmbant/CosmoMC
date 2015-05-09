@@ -1,6 +1,9 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import numpy as np
 from pylab import *
 from getdist import chains
+from six.moves import range
 
 rootdir = r'C:\tmp\Planck\SNmodes'
 
@@ -27,23 +30,23 @@ if False:
     noise = inv(N)
 
 w, U = lowl.getSignalToNoise(params, noise)
-print params
+print(params)
 
 for i in range(len(params)):
     U[i, :] *= np.sqrt(np.diagonal(allcov))
-    print w[i], U[i, :]
+    print(w[i], U[i, :])
 
 
-print 'SVD'
+print('SVD')
 for i in range(len(params)):
     U[i, :] *= sqrt(w[i])
 
 X = np.dot(U.T, U)
 w2, U2 = np.linalg.eigh(X)
-print params
+print(params)
 
 for i in range(len(params)):
-    print w2[i], U2[i, :]
+    print(w2[i], U2[i, :])
 
 
 # u, s, v = np.linalg.svd(U[:, :], full_matrices=False)
@@ -51,11 +54,11 @@ for i in range(len(params)):
 # print params
 # print v
 
-print 'combined..'
+print('combined..')
 U1 = U[-1, :]
 U2 = U[-2, :]
 U2p = U2 - U1 * U2[0] / U1[0]
-print U2p
+print(U2p)
 
 
 

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from paramgrid import batchjob_args
 
 
@@ -15,6 +17,6 @@ for paramtag, parambatch in items:
         else:
             tag = ''
         if args.normed:
-            print jobItem.normed_name, tag
+            print(jobItem.normed_name, tag)
         else:
-            print jobItem.name, tag
+            print(jobItem.name, tag)

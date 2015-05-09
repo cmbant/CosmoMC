@@ -1,7 +1,9 @@
+from __future__ import absolute_import
 import re
 import copy
 
 from paramgrid import batchjob
+from six.moves import range
 
 
 # Look at Alens=1 for fixed lensing template amplitude
@@ -31,7 +33,7 @@ CamSpec = [
 start_at_bestfit = False
 newCovmats = True
 
-lmaxs = range(700, 2501, 50)
+lmaxs = list(range(700, 2501, 50))
 
 groups = []
 

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import subprocess
 
@@ -72,11 +74,11 @@ if not args.plots:
         if not args.norun and (not args.notexist or not jobItem.getDistExists()) and (
                     not args.update_only or jobItem.getDistNeedsUpdate()):
             if jobItem.chainExists():
-                print "running: " + fname
+                print("running: " + fname)
                 processes.add(subprocess.Popen([args.command, fname]))
                 while len(processes) >= args.procs:
                     time.sleep(.1)
                     processes.difference_update([p for p in processes if p.poll() is not None])
             else:
-                print "Chains do not exist yet: " + jobItem.chainRoot
+                print("Chains do not exist yet: " + jobItem.chainRoot)
 

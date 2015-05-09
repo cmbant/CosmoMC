@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 
 from paramgrid import batchjob_args
@@ -75,7 +77,7 @@ lines = []
 for i, par in enumerate(args.params):
     for paramtag in paramtag_for_param[par]:
         dataTable = table[paramtag]
-        print paramtag, len(dataTable)
+        print(paramtag, len(dataTable))
         if args.compare is not None: dataTable = sortData(dataTable, args.compare)
         cols = [makeMath(names.parWithName(par, True).label)]
         for datatag in dataTable:
@@ -86,7 +88,7 @@ for i, par in enumerate(args.params):
                         if len(res) > 1: cols.append(textAsColumn(res[1]))
                         cols.append(textAsColumn(res[0], latex=res[0] != '---'))
             else:
-                print ' ', table[paramtag][datatag], datatag
+                print(' ', table[paramtag][datatag], datatag)
         lines.append(" & ".join(cols) + args.endline)
 
 if args.latex_filename is not None:

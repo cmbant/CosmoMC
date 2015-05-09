@@ -1,7 +1,10 @@
+from __future__ import absolute_import
 import re
 import copy
 
 from paramgrid import batchjob
+from six.moves import range
+from six.moves import zip
 
 
 # Look at Alens=1 for fixed lensing template amplitude

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 #!/usr/bin/env python
 import hashlib
 import os
@@ -28,7 +30,7 @@ Opts.parser.add_argument('--parent_stopped', action='store_true', help='only run
 (batch, args) = Opts.parseForBatch()
 
 if args.not_queued:
-    print 'Getting queued names...'
+    print('Getting queued names...')
     queued = jobqueue.queue_job_names(args.batchPath)
 
 
@@ -58,7 +60,7 @@ if args.importance is None:
 isMinimize = args.importance_minimize or args.minimize
 
 if args.combineOneJobName:
-    print 'Combining multiple (hopefully fast) into single job script: ' + args.combineOneJobName
+    print('Combining multiple (hopefully fast) into single job script: ' + args.combineOneJobName)
 
 iniFiles = []
 
@@ -77,13 +79,13 @@ def submitJob(ini):
     global iniFiles
     ini = ini.replace('.ini', '')
     if not args.dryrun:
-        print 'Submitting...' + ini
+        print('Submitting...' + ini)
     else:
-        print '... ' + ini
+        print('... ' + ini)
     iniFiles.append(ini)
     if args.combineOneJobName: return
     if len(iniFiles) >= args.runsPerJob:
-        if args.runsPerJob > 1: print '--> jobName: ', jobName()
+        if args.runsPerJob > 1: print('--> jobName: ', jobName())
         jobqueue.submitJob(jobName(), iniFiles, **args.__dict__)
         iniFiles = []
 
@@ -108,6 +110,6 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
                             submitJob(jobItem.iniFile(variant))
 
 if len(iniFiles) > 0:
-    if args.runsPerJob > 1: print '--> jobName: ', jobName()
+    if args.runsPerJob > 1: print('--> jobName: ', jobName())
     jobqueue.submitJob(args.combineOneJobName or jobName(), iniFiles, sequential=args.combineOneJobName is not None,
                        **args.__dict__)

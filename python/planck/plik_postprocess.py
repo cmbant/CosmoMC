@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 #! /usr/bin/env python
 
 import numpy as nm
@@ -7,6 +9,7 @@ import clik
 import clik.smicahlp as smh
 import re
 import os, sys
+from six.moves import range
 
 
 def parse_minimumfile(minfile):
@@ -78,15 +81,15 @@ def main_fgfile(argv):
 
     llp1 = (nm.arange(lmax + 1) * (nm.arange(lmax + 1) + 1.) / 2. / nm.pi)
     Dl = res * (llp1[:, nm.newaxis, nm.newaxis])
-    print "save fg file to :", where
+    print("save fg file to :", where)
 
     f = open(where, "w")
-    print >> f, "#    l      TT100x100      TT143X143      TT143X217      TT217X217      EE100X100      EE100X143      EE100X217      EE143X143      EE143X217      EE217X217      TE100X100      TE100X143      TE100X217      TE143X143      TE143X217      TE217X217"
-    print >> f, "#"
+    print("#    l      TT100x100      TT143X143      TT143X217      TT217X217      EE100X100      EE100X143      EE100X217      EE143X143      EE143X217      EE217X217      TE100X100      TE100X143      TE100X217      TE143X143      TE143X217      TE217X217", file=f)
+    print("#", file=f)
     for i in range(2, lmax + 1):
-        print >> f, ("%6d" + " %14E" * 16) % (
+        print(("%6d" + " %14E" * 16) % (
             i, Dl[i, 0, 0], Dl[i, 1, 1], Dl[i, 1, 2], Dl[i, 2, 2], Dl[i, 3, 3], Dl[i, 3, 4], Dl[i, 3, 5], Dl[i, 4, 4],
-            Dl[i, 4, 5], Dl[i, 5, 5], Dl[i, 0, 3], Dl[i, 0, 4], Dl[i, 0, 5], Dl[i, 1, 4], Dl[i, 1, 5], Dl[i, 2, 5])
+            Dl[i, 4, 5], Dl[i, 5, 5], Dl[i, 0, 3], Dl[i, 0, 4], Dl[i, 0, 5], Dl[i, 1, 4], Dl[i, 1, 5], Dl[i, 2, 5]), file=f)
 
     f.close()
 
@@ -118,18 +121,18 @@ def main_fg2000(argv, tag=''):
 
     nchainparfile = chainparfile[:-len(".paramnames")] + tag + ".paramnames"
     ls = open(chainparfile, "r").readlines()
-    print "save paranames file to :", nchainparfile
+    print("save paranames file to :", nchainparfile)
     f = open(nchainparfile, "w")
     for i, l in enumerate(ls):
         if re.search("^chi2_", l):
             break
-        print >> f, l.rstrip()
+        print(l.rstrip(), file=f)
     ib = i
-    print >> f, "f2000_143*\tf_{2000}^{143}"
-    print >> f, "f2000_x*\tf_{2000}^{143\\times217}"
-    print >> f, "f2000_217*\tf_{2000}^{217}"
+    print("f2000_143*\tf_{2000}^{143}", file=f)
+    print("f2000_x*\tf_{2000}^{143\\times217}", file=f)
+    print("f2000_217*\tf_{2000}^{217}", file=f)
     for i, l in enumerate(ls[ib:]):
-        print >> f, l.rstrip()
+        print(l.rstrip(), file=f)
 
     f.close()
 
@@ -140,12 +143,12 @@ def main_fg2000(argv, tag=''):
             if b == c:
                 dc[a] = float(b)
         rdc = dict([(keys[i], dc.get(ppf[i], None)) for i in range(len(ppf))])
-        print rdc
+        print(rdc)
     else:
         dc = parse_minimumfile(minfile)
         rdc = dict([(keys[i], dc[ppf[i]]) for i in range(len(ppf))])
         nminimumfile = minfile[:-len(".minimum")] + tag + ".minimum"
-        print "save minimum file to :", nminimumfile
+        print("save minimum file to :", nminimumfile)
         fo = open(minfile, "r")
         ls = fo.readlines()
         fo.close()
@@ -158,7 +161,7 @@ def main_fg2000(argv, tag=''):
         assert fnd, "bad format for %s" % minfile
         ibreak = i
         for l in ls[:ibreak]:
-            print >> f, l.rstrip()
+            print(l.rstrip(), file=f)
 
         vl = int(ls[ibreak].strip().split()[0])
 
@@ -167,20 +170,20 @@ def main_fg2000(argv, tag=''):
             ppars = [rdc[k] for k in p.varpar]
             res = res + p(ppars)[:, :3, :3]
 
-        print >> f, "%5d %#14E   %-21s %s" % (vl, res[0, 1, 1] * llp1, "f2000_143", "f_{2000}^{143}")
-        print >> f, "%5d %#14E   %-21s %s" % (vl + 1, res[0, 1, 2] * llp1, "f2000_x", "f_{2000}^{143\\times217}")
-        print >> f, "%5d %#14E   %-21s %s" % (vl + 2, res[0, 2, 2] * llp1, "f2000_217", "f_{2000}^{217}")
+        print("%5d %#14E   %-21s %s" % (vl, res[0, 1, 1] * llp1, "f2000_143", "f_{2000}^{143}"), file=f)
+        print("%5d %#14E   %-21s %s" % (vl + 1, res[0, 1, 2] * llp1, "f2000_x", "f_{2000}^{143\\times217}"), file=f)
+        print("%5d %#14E   %-21s %s" % (vl + 2, res[0, 2, 2] * llp1, "f2000_217", "f_{2000}^{217}"), file=f)
 
         cnt = vl + 3
         keep = True
         for l in ls[ibreak:]:
             rr = re.search("\s+(\d+)\s+(.+?)\s+(.+?)\s+", l)
             if rr and keep:
-                print >> f, "%5d%s" % (cnt, l[5:].rstrip())
+                print("%5d%s" % (cnt, l[5:].rstrip()), file=f)
                 cnt += 1
             else:
                 keep = False
-                print >> f, l.rstrip()
+                print(l.rstrip(), file=f)
         f.close()
 
     for chain in chains:
@@ -191,10 +194,10 @@ def main_fg2000(argv, tag=''):
         else:
             nchain = chain
         f = open(nchain, "w")
-        print nchain, ":",
+        print(nchain, ":", end=' ')
         for i in range((ch.shape[0])):
             if i % 1000 == 0:
-                print "%d/%d" % (i, ch.shape[0]),
+                print("%d/%d" % (i, ch.shape[0]), end=' ')
                 sys.stdout.flush()
             res = 0
             for p in prms:
@@ -205,15 +208,15 @@ def main_fg2000(argv, tag=''):
                     else:
                         ppars += [rdc[k]]
                 res = res + p(ppars)[:, :3, :3]
-            print >> f, "",
+            print("", end=' ', file=f)
             for v in ch[i][:ib + 2]:
-                print >> f, " %14E" % v,
-            print >> f, " %14E  %14E  %14E" % (res[0, 1, 1] * llp1, res[0, 1, 2] * llp1, res[0, 2, 2] * llp1),
+                print(" %14E" % v, end=' ', file=f)
+            print(" %14E  %14E  %14E" % (res[0, 1, 1] * llp1, res[0, 1, 2] * llp1, res[0, 2, 2] * llp1), end=' ', file=f)
             for v in ch[i][ib + 2:]:
-                print >> f, " %14E" % v,
-            print >> f, ""
+                print(" %14E" % v, end=' ', file=f)
+            print("", file=f)
         f.close()
-        print ""
+        print("")
 
 
 def main(argv):

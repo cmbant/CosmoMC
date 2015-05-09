@@ -1,6 +1,8 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 
-import plik_postprocess
+from . import plik_postprocess
 from getdist import inifile
 from paramgrid import batchjob_args
 
@@ -31,11 +33,11 @@ for jobItem in Opts.filteredBatchItems():
         if not dat: raise Exception('no clik file found:' + jobItem.chainRoot)
         dat = dat.replace('%DATASETDIR%', './data/')
         params = params.replace('%DATASETDIR%', './data/')
-        print dat, params
+        print(dat, params)
 
         minroot = jobItem.chainRoot + '.minimum'
         if os.path.exists(jobItem.chainRoot + '.minimum'):
-            print minroot
+            print(minroot)
             plik_postprocess.main_fgfile([ '', dat, params, minroot, minroot + '.plik_foregrounds'])
         else: minroot = jobItem.chainRoot + '.ranges'
         chains = jobItem.chainNames()
@@ -43,4 +45,4 @@ for jobItem in Opts.filteredBatchItems():
         properties.params['plik_foregrounds'] = True
         properties.saveFile()
 
-print 'Done. Re-run getdist to update getdist outputs.'
+print('Done. Re-run getdist to update getdist outputs.')

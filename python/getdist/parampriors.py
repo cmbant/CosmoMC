@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import os
 
 
@@ -37,8 +38,8 @@ class ParamBounds(object):
             f.write(str(self))
 
     def setRange(self, name, strings):
-        if strings[0] <> 'N' and strings[0] is not None: self.lower[name] = float(strings[0])
-        if strings[1] <> 'N' and strings[1] is not None: self.upper[name] = float(strings[1])
+        if strings[0] != 'N' and strings[0] is not None: self.lower[name] = float(strings[0])
+        if strings[1] != 'N' and strings[1] is not None: self.upper[name] = float(strings[1])
         if not name in self.names: self.names.append(name)
 
     def getUpper(self, name):

@@ -1,4 +1,8 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import numpy as np
+from six.moves import range
+from six.moves import zip
 
 
 class CovMat(object):
@@ -36,7 +40,7 @@ class CovMat(object):
             self.matrix[:, i] = self.matrix[:, i] * scale
             self.matrix[i, :] = self.matrix[i, :] * scale
         else:
-            print 'Not in covmat: ' + name
+            print('Not in covmat: ' + name)
 
     def mergeCovmatWhereNew(self, cov2):
         params1 = self.paramNames
@@ -52,9 +56,9 @@ class CovMat(object):
         l2 = len(params2)
         l = len(C.paramNames)
 
-        map1 = dict(zip(params1, range(0, l1)))
-        map2 = dict(zip(params2, range(0, l2)))
-        covmap = dict(zip(range(0, l), C.paramNames))
+        map1 = dict(list(zip(params1, list(range(0, l1)))))
+        map2 = dict(list(zip(params2, list(range(0, l2)))))
+        covmap = dict(list(zip(list(range(0, l)), C.paramNames)))
 
         C.matrix = np.zeros((l, l))
         for i in range(0, l):
@@ -80,9 +84,9 @@ class CovMat(object):
         plt.pcolor(self.correlation())
         plt.colorbar()
         sz = self.size
-        plt.yticks(np.arange(0.5, sz + .5), range(1, sz + 1))
+        plt.yticks(np.arange(0.5, sz + .5), list(range(1, sz + 1)))
         plt.gca().set_yticklabels(self.paramNames)
-        plt.xticks(np.arange(0.5, sz + .5), range(1, sz + 1))
+        plt.xticks(np.arange(0.5, sz + .5), list(range(1, sz + 1)))
         plt.xlim([0, sz])
         plt.ylim([0, sz])
 

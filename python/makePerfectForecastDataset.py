@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # take CAMB file (e.g. test_lensedCls.dat) and produce dataset with given noise for testing
 # Use in cosmomc .ini file using e.g.
 # cmb_dataset[MyForecast]=data/MyForecast/test_lensedCls_exactsim.dataset
@@ -8,6 +9,7 @@ import os
 import numpy as np
 
 from getdist import inifile
+from six.moves import range
 
 
 

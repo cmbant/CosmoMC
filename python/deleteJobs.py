@@ -1,6 +1,9 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import subprocess
 
 from paramgrid import batchjob_args, jobqueue
+from six.moves import range
 
 
 Opts = batchjob_args.batchArgs('Delete running or queued jobs', importance=True, batchPathOptional=True)
@@ -31,12 +34,12 @@ if batch:
         batchNames = set([jobItem.name for jobItem in items])
         jobqueue.deleteJobs(args.batchPath, rootNames=batchNames, confirm=args.confirm)
 
-    if not args.confirm: print 'jobs not actually deleted: add --confirm to really cancel them'
+    if not args.confirm: print('jobs not actually deleted: add --confirm to really cancel them')
 
 else:
     ids = []
-    if args.delete_id_range is not None: ids = range(args.delete_id_range[0], args.delete_id_range[1] + 1)
+    if args.delete_id_range is not None: ids = list(range(args.delete_id_range[0], args.delete_id_range[1] + 1))
     elif args.delete_ids is not None: ids += args.delete_ids
-    else: print 'Must give --delete_id_range or --delete_ids if no batch directory'
+    else: print('Must give --delete_id_range or --delete_ids if no batch directory')
     for jobId in ids:
         subprocess.check_output('qdel ' + str(jobId), shell=True).strip()

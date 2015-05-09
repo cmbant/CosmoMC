@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 # Load Duncan lenslike .dat files, convert to cosmomc format
 # and calculate likelihood using first order perturbative renormalization corrections
 # AL May 2014
@@ -6,6 +8,7 @@ from pylab import *
 import numpy as np
 import os
 import CMBlikes
+from six.moves import range
 
 
 def parseStr(x):
@@ -54,14 +57,14 @@ class lensLike(CMBlikes.DatasetLikelihood):
             n1qbins, n1pbins = readParsedLine(f)
             self.num_estimators, self.num_estimator_crosses = readParsedLine(f)
             self.s4hat, self.s4std = readParsedLine(f)
-            print '%u nbins, %u estimators' % (self.nbins, self.num_estimators)
+            print('%u nbins, %u estimators' % (self.nbins, self.num_estimators))
             self.lmin = np.zeros(self.nbins)
             self.lmax = np.zeros(self.nbins)
             self.Ahat = np.zeros(self.nbins)
             for ix in range(self.nbins):
                 _, self.lmin[ix], self.lmax[ix], self.Ahat[ix] = readParsedLine(f)
             self.lmid = (self.lmax + self.lmin) / 2
-            print 'L midpoints:', self.lmid
+            print('L midpoints:', self.lmid)
 
             self.cov = np.zeros((self.nbins, self.nbins))
             for ix in range(self.nbins):
@@ -103,7 +106,7 @@ class lensLike(CMBlikes.DatasetLikelihood):
                 # self.lav[b] = sum(tmp * ls * phicl)
                 # a = self.lav[b]
                 self.lav[b] = sum(tmp * ls)
-                print self.lmid[b], self.lav[b]
+                print(self.lmid[b], self.lav[b])
 
                 self.fid_bandpowers[b] = sum(tmp * norm * phicl)
             # self.bandpowers[b] = self.Ahat[b] * self.fid_phi[self.lmid[b], 1] * sum(tmp * phicl)
@@ -122,10 +125,10 @@ class lensLike(CMBlikes.DatasetLikelihood):
             self.N1_matrix = np.zeros((n1qbins, n1pbins))
             norm = normPhi(self.N1_p_L)
             normL = normPhi(self.N1_q_L)
-            print self.N1_p_L
+            print(self.N1_p_L)
             for i, L in enumerate(self.N1_q_L):
                 self.N1_matrix[i, :] = normL[i] * np.array(readParsedLine(f)) * self.fid_phi[L, 6] / norm
-            print 'N1 shape:', self.N1_matrix.shape
+            print('N1 shape:', self.N1_matrix.shape)
             ls = self.fid_phi[:, 0]
             self.fid_N1 = self.fid_phi[:, 6] * self.fid_phi[:, 4] * normPhi(ls)
 
@@ -264,12 +267,12 @@ class lensLike(CMBlikes.DatasetLikelihood):
 
 
     def testLikes(self):
-        print 'chi2 fid=', lens.chi_squared(self.fid_phi)
+        print('chi2 fid=', lens.chi_squared(self.fid_phi))
         ls = self.fid_cl[:2049, 0]
         cl_fid = self.fid_cl[:2049, 1]
         cl2 = cl_fid * (ls / 1000.0) ** 0.03 * 1.02
         phi = self.fid_phi * 1.1 * (ls / 1000.0) ** 0.02
-        print 'chi2 =', self.chi_squared(phi)
+        print('chi2 =', self.chi_squared(phi))
 
 
 def ConvertDuncan(fname, adir, root, var):

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 # -*- coding: utf-8 -*-
 
 import os
@@ -7,21 +9,21 @@ import logging
 try:
     import argparse
 except ImportError:
-    print 'use "module load" to load python 2.7, or see docs/readme_python.html for how to install'
+    print('use "module load" to load python 2.7, or see docs/readme_python.html for how to install')
     sys.exit()
 
 try:
     from PySide.QtGui import QApplication
     os.environ['QT_API'] = 'pyside'
 except ImportError:
-    print "Can't import PySide modules. See docs/readme_python.html for how to install."
+    print("Can't import PySide modules. See docs/readme_python.html for how to install.")
     sys.exit()
 
 try:
     from getdist.gui.mainwindow import MainWindow
 except ImportError:
-    print "Configure your PYTHONPATH as described in the readme!"
-    sys.exit()
+    print("Configure your PYTHONPATH as described in the readme!")
+    raise
 
 parser = argparse.ArgumentParser(description='GetDist GUI')
 parser.add_argument('-v', '--verbose', help='verbose', action="store_true")
@@ -33,7 +35,7 @@ level = logging.INFO
 if args.verbose:
     level = logging.DEBUG
 FORMAT = '%(asctime).19s [%(levelname)s]\t[%(filename)s:%(lineno)d]\t\t%(message)s'
-logging.basicConfig(level=level, txformat=FORMAT)
+logging.basicConfig(level=level, format=FORMAT)
 
 # GUI application
 app = QApplication(sys.argv)

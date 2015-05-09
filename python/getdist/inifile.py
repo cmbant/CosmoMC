@@ -1,6 +1,9 @@
+from __future__ import absolute_import
+from __future__ import print_function
 # AL 2011-2015
 import os
 import numpy as np
+import six
 
 
 class IniError(Exception):
@@ -17,7 +20,7 @@ class IniFile(object):
         self.includes = []
         self.original_filename = None
         self.expand_environment_variables = expand_environment_variables
-        if isinstance(settings, basestring):
+        if isinstance(settings, six.string_types):
             self.readFile(settings, keep_includes)
         elif isinstance(settings, dict):
             self.params.update(settings)
@@ -97,7 +100,7 @@ class IniFile(object):
 
             return self.params
         except:
-            print 'Error in ' + filename
+            print('Error in ' + filename)
             raise
 
     def __str__(self):
@@ -123,7 +126,7 @@ class IniFile(object):
         for default in self.defaults:
             parameterLines.append('DEFAULT(' + default + ')')
 
-        keys = self.params.keys()
+        keys = list(self.params.keys())
         keys.sort()
 
         for key in self.readOrder:
@@ -221,7 +224,7 @@ class IniFile(object):
 
     def split(self, name, default=None, tp=None):
         s = self.string(name, default)
-        if isinstance(s, basestring):
+        if isinstance(s, six.string_types):
             if tp is not None:
                 return [tp(x) for x in s.split()]
             return s.split()

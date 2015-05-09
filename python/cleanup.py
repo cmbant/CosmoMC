@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import fnmatch
 
@@ -41,8 +43,8 @@ for jobItem in Opts.filteredBatchItems():
                         fname = adir + f
                         if os.path.exists(fname):
                             if not args.empty or os.path.getsize(fname) == 0:
-                                print fname, ' (' + fsizestr(fname) + ')'
+                                print(fname, ' (' + fsizestr(fname) + ')')
                                 if args.confirm: os.remove(fname)
 
-print 'Total size: %u MB' % sizeMB
-if not args.confirm: print 'Files not actually deleted: add --confirm to delete'
+print('Total size: %u MB' % sizeMB)
+if not args.confirm: print('Files not actually deleted: add --confirm to delete')

@@ -1,12 +1,15 @@
+from __future__ import absolute_import
+from __future__ import print_function
 #!/usr/bin/env python
 import os
 import subprocess
 import sys
 from getdist import MCSamples, chains, IniFile
+from six.moves import range
 try:
     import argparse
 except:
-    print 'Make sure you are using python 2.7+'
+    print('Make sure you are using python 2.7+')
     sys.exit()
 
 
@@ -16,7 +19,7 @@ parser.add_argument('chain_root', nargs='?', help='Root name of chain to analyse
 args = parser.parse_args()
 
 if not os.path.isfile(args.ini_file):
-    print 'Parameter file does not exist ', args.ini_file
+    print('Parameter file does not exist ', args.ini_file)
     sys.exit()
 
 # Input parameters
@@ -28,7 +31,7 @@ if args.chain_root is not None:
 else:
     in_root = ini.params['file_root']
 if in_root == '':
-    print 'Chain Root file name not given ', in_root
+    print('Chain Root file name not given ', in_root)
     sys.exit()
 rootname = os.path.basename(in_root)
 
@@ -42,7 +45,7 @@ mc = MCSamples(in_root, files_are_chains=samples_are_chains)
 mc.initParameters(ini)
 
 if ini.bool('adjust_priors', False) or ini.bool('map_params', False):
-    print 'To adjust priors or define new parameters, use a separate python script; see the python getdist docs for examples'
+    print('To adjust priors or define new parameters, use a separate python script; see the python getdist docs for examples')
     sys.exit()
 
 plot_ext = ini.string('plot_ext', 'py')
@@ -72,13 +75,13 @@ plot_meanlikes = ini.bool('plot_meanlikes', False)
 
 out_dir = ini.string('out_dir')
 if out_dir:
-    print 'producing files in directory ', out_dir
+    print('producing files in directory ', out_dir)
 mc.out_dir = out_dir
 
 out_root = ini.string('out_root')
 if out_root:
     rootname = out_root
-    print 'producing files with with root ', out_root
+    print('producing files with with root ', out_root)
 mc.rootname = rootname
 
 plot_data_dir = ini.string('plot_data_dir') or 'plot_data/'
@@ -90,8 +93,8 @@ mc.plot_data_dir = plot_data_dir
 
 rootdirname = os.path.join(out_dir, rootname); mc.rootdirname = rootdirname
 
-if ini.params.has_key('do_minimal_1d_intervals'):
-    print 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
+if 'do_minimal_1d_intervals' in ini.params:
+    print('do_minimal_1d_intervals no longer used; set credible_interval_threshold instead')
     sys.exit()
 
 line = ini.string('PCA_params', '')
@@ -100,9 +103,9 @@ if line.lower() == 'all':
 else:
     PCA_params = line.split()
 PCA_num = ini.int('PCA_num', len(PCA_params))
-if PCA_num <> 0:
+if PCA_num != 0:
     if PCA_num < 2:
-        print 'Can only do PCA for 2 or more parameters'
+        print('Can only do PCA for 2 or more parameters')
         sys.exit()
     PCA_func = ini.string('PCA_func', '')
     # Characters representing functional mapping
@@ -133,8 +136,8 @@ mc.makeSingle()
 def filterPars(names):
     return [ name for name in names if mc.paramNames.parWithName(name) ]
 
-if cool <> 1:
-    print 'Cooling chains by ', cool
+if cool != 1:
+    print('Cooling chains by ', cool)
     mc.cool(cool)
 
 plotparams = []
@@ -144,7 +147,7 @@ if line not in ['', '0']:
 
 line = ini.string('plot_2D_param', '')
 plot_2D_param = None
-if line.strip() and line <> '0':
+if line.strip() and line != '0':
     plot_2D_param = line.strip()
 
 cust2DPlots = []
@@ -154,7 +157,7 @@ if not plot_2D_param:
     for i in range(1, num_cust2D_plots + 1):
         line = ini.string('plot' + str(i))
         pars = filterPars(line.split())
-        if len(pars) <> 2: raise Exception('plot_2D_num parameter not found, not varied, or not wrong number of parameters')
+        if len(pars) != 2: raise Exception('plot_2D_num parameter not found, not varied, or not wrong number of parameters')
         cust2DPlots.append(pars)
 
 triangle_params = []
@@ -171,7 +174,7 @@ plot_3D = []
 for ix in range(1, num_3D_plots + 1):
     line = ini.string('3D_plot' + str(ix))
     pars = filterPars(line.split())
-    if len(pars) <> 3: raise Exception('3D_plot parameter not found, not varied, or not wrong number of parameters')
+    if len(pars) != 3: raise Exception('3D_plot parameter not found, not varied, or not wrong number of parameters')
     plot_3D.append(pars)
 
 mc.updateBaseStatistics()
@@ -184,7 +187,7 @@ mc.writeCorrelationMatrix()
 
 # Output thinned data if requested
 # Must do this with unsorted output
-if thin_factor <> 0:
+if thin_factor != 0:
     thin_ix = mc.thin_indices(thin_factor)
     filename = rootdirname + '_thin.txt'
     mc.WriteThinData(filename, thin_ix, thin_cool)
@@ -198,8 +201,8 @@ if make_single_samples:
     filename = os.path.join(plot_data_dir, rootname.strip() + '_single.txt')
     mc.makeSingleSamples(filename, single_thin)
 
-print mc.getNumSampleSummaryText().strip()
-if mc.likeStats: print mc.likeStats.likeSummary().strip()
+print(mc.getNumSampleSummaryText().strip())
+if mc.likeStats: print(mc.likeStats.likeSummary().strip())
 
 if PCA_num > 0 and not plots_only:
     mc.PCA(PCA_params, PCA_func, PCA_NormParam, writeDataToFile=True)
@@ -209,7 +212,7 @@ mc.setDensitiesandMarge1D(writeDataToFile=not no_plots, meanlikes=plot_meanlikes
 
 if not no_plots:
     # Output files for 1D plots
-    print 'Calculating plot data...'
+    print('Calculating plot data...')
 
     # Write paramNames file
     mc.getParamNames().saveAsText(os.path.join(plot_data_dir, rootname + '.paramnames'))
@@ -224,21 +227,21 @@ if not no_plots:
     # Do 2D bins
     if plot_2D_param == 'corr':
         # In this case output the most correlated variable combinations
-        print '...doing 2D plots for most correlated variables'
+        print('...doing 2D plots for most correlated variables')
         cust2DPlots = mc.getCorrelatedVariable2DPlots()
         plot_2D_param = None
     elif plot_2D_param:
         mc.paramNames.parWithName(plot_2D_param, error=True)  # just check
 
     if cust2DPlots or plot_2D_param:
-        print '...producing 2D plots'
+        print('...producing 2D plots')
         filename = rootdirname + '_2D.' + plot_ext
         done2D = mc.WriteScriptPlots2D(filename, plot_2D_param, cust2DPlots, plots_only, shade_meanlikes=shade_meanlikes)
         if make_plots: runScript(filename)
 
     if triangle_plot:
         # Add the off-diagonal 2D plots
-        print '...producing triangle plot'
+        print('...producing triangle plot')
         filename = rootdirname + '_tri.' + plot_ext
         mc.WriteScriptPlotsTri(filename, triangle_params)
         for i, p2 in enumerate(triangle_params):
@@ -249,7 +252,7 @@ if not no_plots:
 
     # Do 3D plots (i.e. 2D scatter plots with coloured points)
     if num_3D_plots:
-        print '...producing ', num_3D_plots, '2D colored scatter plots'
+        print('...producing ', num_3D_plots, '2D colored scatter plots')
         filename = rootdirname + '_3D.' + plot_ext
         mc.WriteScriptPlots3D(filename, plot_3D)
         if make_plots: runScript(filename)

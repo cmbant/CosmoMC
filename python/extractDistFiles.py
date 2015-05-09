@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import fnmatch
 import shutil
@@ -32,7 +34,7 @@ for ext in args.file_extension:
         if os.path.exists(jobItem.distPath) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
             for f in os.listdir(jobItem.distPath):
                 if fnmatch.fnmatch(f, jobItem.name + pattern):
-                    print jobItem.distPath + f
+                    print(jobItem.distPath + f)
                     if args.normalize_names:
                         fout = jobItem.makeNormedName(replacements)[0] + os.path.splitext(f)[1]
                     else:

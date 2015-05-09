@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import shutil
 import pickle
@@ -6,6 +8,8 @@ import copy
 import sys
 import time
 from getdist import types, inifile
+import six
+from six.moves import range
 
 
 def resetGrid(directory):
@@ -63,7 +67,7 @@ class dataSet(object):
     def __init__(self, names, params=None, covmat=None, dist_settings=None):
         if not dist_settings:
             dist_settings = {}
-        if isinstance(names, basestring): names = [names]
+        if isinstance(names, six.string_types): names = [names]
         if params is None:
             params = [(name + '.ini') for name in names]
         else:
@@ -101,19 +105,19 @@ class dataSet(object):
         return data
 
     def standardizeParams(self, params):
-        if isinstance(params, dict) or isinstance(params, basestring): params = [params]
+        if isinstance(params, dict) or isinstance(params, six.string_types): params = [params]
         for i in range(len(params)):
-            if isinstance(params[i], basestring) and not '.ini' in params[i]: params[i] += '.ini'
+            if isinstance(params[i], six.string_types) and not '.ini' in params[i]: params[i] += '.ini'
         return params
 
     def hasName(self, name):
-        if isinstance(name, basestring):
+        if isinstance(name, six.string_types):
             return name in self.names
         else:
             return any([True for i in name if i in self.names])
 
     def hasAll(self, name):
-        if isinstance(name, basestring):
+        if isinstance(name, six.string_types):
             return name in self.names
         else:
             return all([(i in self.names) for i in name])
@@ -212,7 +216,7 @@ class jobItem(propertiesItem):
                 if len(impRun) > 2 and not impRun[2].wantImportance(self): continue
                 impRun = importanceSetting(impRun[0], impRun[1])
             if len(set(impRun.names).intersection(self.data_set.names)) > 0:
-                print 'importance job duplicating parent data set:' + self.name
+                print('importance job duplicating parent data set:' + self.name)
                 continue
             data = self.data_set.extendForImportance(impRun.names, impRun.inis)
             job = jobItem(self.batchPath, self.param_set, data, minimize=impRun.want_minimize)
@@ -249,7 +253,7 @@ class jobItem(propertiesItem):
         return self.datatag.replace('_post', '') in [tag.replace('_post', '') for tag in tagList]
 
     def hasParam(self, name):
-        if isinstance(name, basestring):
+        if isinstance(name, six.string_types):
             return name in self.param_set
         else:
             return any([True for i in name if i in self.param_set])
@@ -364,7 +368,7 @@ class jobItem(propertiesItem):
             if chainR is None: return returnNotExist
             return chainR <= R
         except:
-            print 'WARNING: Bad .converge for ' + self.name
+            print('WARNING: Bad .converge for ' + self.name)
             return returnNotExist
 
     def loadJobItemResults(self, paramNameFile=None, bestfit=True, bestfitonly=False, noconverge=False, silent=False):
@@ -380,7 +384,7 @@ class jobItem(propertiesItem):
                 self.result_likemarge = types.LikeStats(marge_root + '.likestats')
                 if self.result_bestfit is not None and bestfit: self.result_marge.addBestFit(self.result_bestfit)
             elif not silent:
-                print 'missing: ' + marge_root
+                print('missing: ' + marge_root)
 
 
 class batchJob(propertiesItem):
@@ -411,15 +415,15 @@ class batchJob(propertiesItem):
             self.jobItems.append(item)
             item.makeImportance(allImportance)
 
-        for item in self.items():
+        for item in list(self.items()):
             for x in [imp for imp in item.importanceJobs()]:
                 if self.has_normed_name(x.normed_name):
-                    if messages: print 'replacing importance sampling run with full run: ' + x.name
+                    if messages: print('replacing importance sampling run with full run: ' + x.name)
                     item.importanceItems.remove(x)
-        for item in self.items():
+        for item in list(self.items()):
             for x in [imp for imp in item.importanceJobs()]:
                 if self.has_normed_name(x.normed_name, wantImportance=True, exclude=x):
-                    if messages: print 'removing duplicate importance sampling run: ' + x.name
+                    if messages: print('removing duplicate importance sampling run: ' + x.name)
                     item.importanceItems.remove(x)
 
 
@@ -453,7 +457,7 @@ class batchJob(propertiesItem):
     def resolveName(self, paramtag, datatag, wantSubItems=True, wantImportance=True, raiseError=True, base='base',
                     returnJobItem=False):
         if paramtag:
-            if isinstance(paramtag, basestring): paramtag = paramtag.split('_')
+            if isinstance(paramtag, six.string_types): paramtag = paramtag.split('_')
             paramtags = [base] + sorted(paramtag)
         else:
             paramtag = [base]

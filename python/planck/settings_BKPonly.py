@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # settings to test out BKP-only runs
 from paramgrid import batchjob
 
