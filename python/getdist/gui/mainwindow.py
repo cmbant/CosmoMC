@@ -367,6 +367,7 @@ class MainWindow(QMainWindow):
         self.tabWidget.addTab(self.secondWidget, "Script Preview")
 
         self.editWidget = QWidget(self.secondWidget)
+        self.script_edit = ""
 
         self.toolBar = QToolBar()
         openAct = QAction(QIcon(":/images/file_open.png"),
@@ -376,7 +377,7 @@ class MainWindow(QMainWindow):
         saveAct = QAction(QIcon(":/images/file_save.png"),
                           "Save script", self.toolBar,
                           statusTip="Save script",
-                          triggered=self.saveScript2)
+                          triggered=self.saveScript)
         clearAct = QAction(QIcon(":/images/view_clear.png"),
                            "Clear", self.toolBar,
                            statusTip="Clear",
@@ -464,7 +465,14 @@ class MainWindow(QMainWindow):
         """
         Callback for action 'Save script'.
         """
-        if self.script == '':
+        index = self.tabWidget.currentIndex()
+        if index == 0:
+            script = self.script
+        else:
+            self.script_edit = self.textWidget.toPlainText()
+            script = self.script_edit
+
+        if script == '':
             QMessageBox.warning(self, "Script", "No script to save")
             # logging.warning("Script is empty!")
             return
@@ -475,7 +483,7 @@ class MainWindow(QMainWindow):
         filename = str(filename)
         logging.debug("Export script to %s" % filename)
         with open(filename, 'w') as f:
-            f.write(self.script)
+            f.write(script)
 
     def reLoad(self):
         adir = self.getSettings().value('lastSearchDirectory')
@@ -1228,7 +1236,7 @@ class MainWindow(QMainWindow):
 
         if index == 1 and self.script:
             self.script_edit = self.textWidget.toPlainText()
-            if self.script_edit and self.script_edit <> self.script:
+            if self.script_edit <> self.script:
                 reply = QMessageBox.question(
                     self, "Overwrite script",
                     "Script is not empty. Overwrite current script?",
@@ -1248,29 +1256,9 @@ class MainWindow(QMainWindow):
             self.script_edit = f.read()
         self.textWidget.setPlainText(self.script_edit)
 
-
-    def saveScript2(self):
-        """
-        Callback for action 'Save script'.
-        """
-        if not hasattr(self, "script_edit") or self.script_edit == '':
-            QMessageBox.warning(self, "Script", "No script to save")
-            # logging.warning("Script is empty!")
-            return
-
-        filename, _ = QFileDialog.getSaveFileName(
-            self, "Choose a file name", '.', "Python (*.py)")
-        if not filename: return
-        filename = str(filename)
-        logging.debug("Export script to %s" % filename)
-        self.script_edit = self.textWidget.toPlainText()
-        with open(filename, 'w') as f:
-            f.write(self.script_edit)
-
     def clearScript(self):
         self.textWidget.clear()
-        if hasattr(self, "script_edit"):
-            self.script_edit = ''
+        self.script_edit = ''
 
     def plotData2(self):
         """
