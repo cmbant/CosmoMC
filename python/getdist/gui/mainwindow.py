@@ -368,6 +368,7 @@ class MainWindow(QMainWindow):
 
         self.editWidget = QWidget(self.secondWidget)
         self.script_edit = ""
+        self.plotter_script = None
 
         self.toolBar = QToolBar()
         openAct = QAction(QIcon(":/images/file_open.png"),
@@ -451,12 +452,18 @@ class MainWindow(QMainWindow):
         """
         Callback for action 'Export as PDF/Image'.
         """
-        if self.plotter:
+        index = self.tabWidget.currentIndex()
+        if index == 0:
+            plotter = self.plotter
+        else:
+            plotter = self.plotter_script
+
+        if plotter:
             filename, _ = QFileDialog.getSaveFileName(
                 self, "Choose a file name", '.', "PDF (*.pdf);; Image (*.png *.jpg)")
             if not filename: return
             filename = str(filename)
-            self.plotter.export(filename)
+            plotter.export(filename)
         else:
             # logging.warning("No plotter data to export")
             QMessageBox.warning(self, "Export", "No plotter data to export")
@@ -1297,6 +1304,8 @@ class MainWindow(QMainWindow):
     def updateScriptPreview(self, plotter):
         if plotter.fig is None:
             return
+
+        self.plotter_script = plotter
 
         i = 0
         while 1:
