@@ -477,13 +477,13 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Calculating margestats....")
             samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
             stats = samples.getMargeStats()
+            dlg = DialogMargeStats(self, stats, rootname)
+            dlg.show()
         except Exception as e:
             self.errorReport(e, caption="Marge stats")
         finally:
             self.statusBar().showMessage("")
 
-        dlg = DialogMargeStats(self, stats, rootname)
-        dlg.show()
 
     def showLikeStats(self):
         rootname = self.getRootname()
