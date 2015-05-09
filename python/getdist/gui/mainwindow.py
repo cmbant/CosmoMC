@@ -9,7 +9,7 @@ import matplotlib
 import numpy as np
 
 import scipy
-import io
+import cStringIO
 from PIL import Image
 
 import sys
@@ -1327,8 +1327,8 @@ class MainWindow(QMainWindow):
                     del child
                 del item
 
-            # Save to a byte array in PNG format, and display it in a QLabel
-            buf = io.BytesIO()
+            # Save in PNG format, and display it in a QLabel
+            buf = cStringIO.StringIO()
 
             self.plotter2.fig.savefig(
                 buf,
@@ -1339,10 +1339,9 @@ class MainWindow(QMainWindow):
                 bbox_extra_artists=self.plotter2.extra_artists,
                 bbox_inches='tight')
             buf.seek(0)
-            im = Image.open(buf)
-            data = im.tostring('raw', 'RGBA')
 
-            image = QImage(data, im.size[0], im.size[1], QImage.Format_ARGB32)
+            image = QImage.fromData(buf.getvalue())
+
             pixmap = QPixmap.fromImage(image)
             label = QLabel(self.scrollArea)
             label.setPixmap(pixmap)
@@ -1350,7 +1349,7 @@ class MainWindow(QMainWindow):
             self.scrollArea = QScrollArea(self.plotWidget2)
             self.scrollArea.setWidget(label)
             self.scrollArea.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-            self.scrollArea.setStyleSheet("background-color: rgb(255,255,255)")
+#            self.scrollArea.setStyleSheet("background-color: rgb(255,255,255)")
 
             self.plotWidget2.layout().addWidget(self.scrollArea)
             self.plotWidget2.layout()
