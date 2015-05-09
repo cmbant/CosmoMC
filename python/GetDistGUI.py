@@ -33,7 +33,7 @@ level = logging.INFO
 if args.verbose:
     level = logging.DEBUG
 FORMAT = '%(asctime).19s [%(levelname)s]\t[%(filename)s:%(lineno)d]\t\t%(message)s'
-logging.basicConfig(level=level, format=FORMAT)
+logging.basicConfig(level=level, txformat=FORMAT)
 
 # GUI application
 app = QApplication(sys.argv)

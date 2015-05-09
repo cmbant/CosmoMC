@@ -84,7 +84,7 @@ def CLdensity(samples, param, scalarMap, nbins=300, deltaL=1, Lmax=200, color_po
 
 def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=200):
     new_cmap = colors.LinearSegmentedColormap.from_list(
-        'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
+        'trunc({n},{a:.2f},{b:.2f})'.txformat(n=cmap.name, a=minval, b=maxval),
         cmap(np.linspace(minval, maxval, n)))
     return new_cmap
 

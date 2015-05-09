@@ -1278,10 +1278,6 @@ class MainWindow(QMainWindow):
         if hasattr(self, "script_edit"):
             self.script_edit = ''
 
-        self.toolbar2.close()
-        self.canvas2.close()
-
-
     def plotData2(self):
         """
         Slot function called when pushButtonPlot2 is pressed.
@@ -1329,12 +1325,12 @@ class MainWindow(QMainWindow):
                 del child
             del item
 
-        # Save in PNG format, and display it in a QLabel
+        # Save in PNG txformat, and display it in a QLabel
         buf = cStringIO.StringIO()
 
         plotter.fig.savefig(
             buf,
-            format='png',
+            txformat='png',
             edgecolor='w',
             facecolor='w',
             dpi=100,
