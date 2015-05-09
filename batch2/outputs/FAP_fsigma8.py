@@ -7,7 +7,7 @@ from getdist.densities import Density2D
 
 roots = ['base_' + s.defdata + '_lensing']
 g = s.getSinglePlotter(ratio=1)
-g.newPlot()
+
 pars = g.get_param_array(roots[0], ['FAP057', 'fsigma8z057'])
 
 def RSDdensity(FAPbar, f8bar, covfile):
