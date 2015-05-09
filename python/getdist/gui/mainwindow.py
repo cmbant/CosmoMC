@@ -4,16 +4,13 @@
 import os
 import copy
 import logging
-
 import matplotlib
 import numpy as np
-
 import scipy
 import cStringIO
-from PIL import Image
-
 import sys
 import signal
+
 matplotlib.use('Qt4Agg')
 matplotlib.rcParams['backend.qt4'] = 'PySide'
 
@@ -21,7 +18,6 @@ import getdist
 from getdist.gui import SyntaxHighlight
 from getdist import plots, IniFile
 from getdist.mcsamples import GetChainRootFiles, SettingError, ParamError
-from sys import platform
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -30,7 +26,8 @@ from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as Navigatio
 try:
     import PySide
     from PySide.QtCore import *
-    from PySide.QtGui  import *
+    from PySide.QtGui import *
+
     os.environ['QT_API'] = 'pyside'
     try:
         import getdist.gui.Resources_pyside
@@ -45,6 +42,7 @@ from paramgrid import batchjob, gridconfig
 
 class GuiSelectionError(Exception):
     pass
+
 
 class ParamListWidget(QListWidget):
     def __init__(self, widget, owner):
@@ -63,7 +61,6 @@ class ParamListWidget(QListWidget):
 
 
 class MainWindow(QMainWindow):
-
     def __init__(self, app, ini=None, base_dir=None):
         """
         Initialize of GUI components.
@@ -134,47 +131,46 @@ class MainWindow(QMainWindow):
                                triggered=self.close)
 
         self.statsAct = QAction(QIcon(":/images/view_text.png"),
-                               "Marge Stats", self,
-                               shortcut="",
-                               statusTip="Show Marge Stats",
-                               triggered=self.showMargeStats)
+                                "Marge Stats", self,
+                                shortcut="",
+                                statusTip="Show Marge Stats",
+                                triggered=self.showMargeStats)
 
         self.likeStatsAct = QAction(QIcon(":/images/view_text.png"),
-                               "Like Stats", self,
-                               shortcut="",
-                               statusTip="Show Likelihood (N-D) Stats",
-                               triggered=self.showLikeStats)
+                                    "Like Stats", self,
+                                    shortcut="",
+                                    statusTip="Show Likelihood (N-D) Stats",
+                                    triggered=self.showLikeStats)
 
         self.convergeAct = QAction(QIcon(":/images/view_text.png"),
-                               "Converge Stats", self,
-                               shortcut="",
-                               statusTip="Show Convergence Stats",
-                               triggered=self.showConvergeStats)
-
+                                   "Converge Stats", self,
+                                   shortcut="",
+                                   statusTip="Show Convergence Stats",
+                                   triggered=self.showConvergeStats)
 
         self.PCAAct = QAction(QIcon(":/images/view_text.png"),
-                               "Parameter PCA", self,
-                               shortcut="",
-                               statusTip="Do PCA of selected parameters",
-                               triggered=self.showPCA)
+                              "Parameter PCA", self,
+                              shortcut="",
+                              statusTip="Do PCA of selected parameters",
+                              triggered=self.showPCA)
 
         self.optionsAct = QAction(QIcon(""),
-                               "Analysis settings", self,
-                               shortcut="",
-                               statusTip="Show settings for getdist and plot densities",
-                               triggered=self.showSettings)
+                                  "Analysis settings", self,
+                                  shortcut="",
+                                  statusTip="Show settings for getdist and plot densities",
+                                  triggered=self.showSettings)
 
         self.plotOptionsAct = QAction(QIcon(""),
-                               "Plot settings", self,
-                               shortcut="",
-                               statusTip="Show settings for plot display",
-                               triggered=self.showPlotSettings)
+                                      "Plot settings", self,
+                                      shortcut="",
+                                      statusTip="Show settings for plot display",
+                                      triggered=self.showPlotSettings)
 
         self.configOptionsAct = QAction(QIcon(""),
-                               "Plot module config ", self,
-                               shortcut="",
-                               statusTip="Configure plot module",
-                               triggered=self.showConfigSettings)
+                                        "Plot module config ", self,
+                                        shortcut="",
+                                        statusTip="Configure plot module",
+                                        triggered=self.showConfigSettings)
 
         self.aboutAct = QAction(QIcon(":/images/help_about.png"),
                                 "&About", self,
@@ -215,6 +211,11 @@ class MainWindow(QMainWindow):
         Create Qt status bar.
         """
         self.statusBar().showMessage("Ready", 2000)
+
+    def showMessage(self, msg=''):
+        self.statusBar().showMessage(msg)
+        if msg:
+            QCoreApplication.processEvents()
 
     def _createWidgets(self):
         """
@@ -272,15 +273,15 @@ class MainWindow(QMainWindow):
 
         self.listParametersX = QListWidget(self.selectWidget)
         self.listParametersX.clear()
-#        self.connect(self.listParametersX,
-#                     SIGNAL("itemChanged(QListWidgetItem *)"),
-#                     self.itemParamXChanged)
+        # self.connect(self.listParametersX,
+        # SIGNAL("itemChanged(QListWidgetItem *)"),
+        #                     self.itemParamXChanged)
 
         self.listParametersY = QListWidget(self.selectWidget)
         self.listParametersY.clear()
-#        self.connect(self.listParametersY,
-#                     SIGNAL("itemChanged(QListWidgetItem *)"),
-#                     self.itemParamYChanged)
+        #        self.connect(self.listParametersY,
+        #                     SIGNAL("itemChanged(QListWidgetItem *)"),
+        #                     self.itemParamYChanged)
 
         self.selectAllX = QCheckBox("Select All", self.selectWidget)
         self.selectAllX.setCheckState(Qt.Unchecked)
@@ -363,7 +364,7 @@ class MainWindow(QMainWindow):
 
         # Second tab: Script
         self.secondWidget = QWidget(self)
-        self.tabWidget.addTab(self.secondWidget, "Script")
+        self.tabWidget.addTab(self.secondWidget, "Script Preview")
 
         self.editWidget = QWidget(self.secondWidget)
 
@@ -405,7 +406,6 @@ class MainWindow(QMainWindow):
         self.plotWidget2.setLayout(layout2)
         self.scrollArea = QScrollArea(self.plotWidget2)
         self.plotWidget2.layout().addWidget(self.scrollArea)
-
 
         splitter2 = QSplitter(self.secondWidget)
         splitter2.addWidget(self.editWidget)
@@ -499,20 +499,19 @@ class MainWindow(QMainWindow):
         rootname = self.getRootname()
         if rootname is None: return
         try:
-            self.statusBar().showMessage("Calculating convergence stats....")
+            self.showMessage("Calculating convergence stats....")
             samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
             stats = samples.getConvergeTests(samples.converge_test_limit)
             summary = samples.getNumSampleSummaryText()
             if getattr(samples, 'GelmanRubin', None):
                 summary += "var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F" % samples.GelmanRubin
+            dlg = DialogConvergeStats(self, stats, summary, rootname)
+            dlg.show()
+            dlg.activateWindow()
         except Exception as e:
             self.errorReport(e, caption="Convergence stats")
         finally:
-            self.statusBar().showMessage("")
-
-        dlg = DialogConvergeStats(self, stats, summary, rootname)
-        dlg.show()
-        dlg.activateWindow()
+            self.showMessage()
 
     def showPCA(self):
         """
@@ -525,14 +524,14 @@ class MainWindow(QMainWindow):
             pars = self.getXParams()
             if len(pars) == 1: pars += self.getYParams()
             if len(pars) < 2: raise GuiSelectionError('Select two or more parameters first')
-            self.statusBar().showMessage("Calculating PCA....")
+            self.showMessage("Calculating PCA....")
             PCA = samples.PCA(pars)
             dlg = DialogPCA(self, PCA, rootname)
             dlg.show()
         except Exception as e:
             self.errorReport(e, caption="Parameter PCA")
         finally:
-            self.statusBar().showMessage("")
+            self.showMessage()
 
 
     def showMargeStats(self):
@@ -542,7 +541,8 @@ class MainWindow(QMainWindow):
         rootname = self.getRootname()
         if rootname is None: return
         try:
-            self.statusBar().showMessage("Calculating margestats....")
+            self.showMessage("Calculating margestats....")
+            QCoreApplication.processEvents()
             samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
             stats = samples.getMargeStats()
             dlg = DialogMargeStats(self, stats, rootname)
@@ -550,7 +550,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.errorReport(e, caption="Marge stats")
         finally:
-            self.statusBar().showMessage("")
+            self.showMessage()
 
 
     def showLikeStats(self):
@@ -588,12 +588,17 @@ class MainWindow(QMainWindow):
         """
         self.getPlotter()
         settings = self.default_plot_settings
-        pars = ['plot_meanlikes', 'shade_meanlikes', 'prob_label', 'norm_prob_label', 'prob_y_ticks', 'lineM', 'plot_args', 'solid_colors',
+        pars = ['plot_meanlikes', 'shade_meanlikes', 'prob_label', 'norm_prob_label', 'prob_y_ticks', 'lineM',
+                'plot_args', 'solid_colors',
                 'default_dash_styles', 'line_labels', 'x_label_rotation', 'num_shades', 'shade_level_scale',
-                'tight_layout', 'no_triangle_axis_labels', 'colormap', 'colormap_scatter', 'colorbar_rotation', 'colorbar_label_pad',
-                'colorbar_label_rotation', 'tick_prune', 'tight_gap_fraction', 'legend_loc', 'figure_legend_loc', 'legend_frame',
-                'figure_legend_frame', 'figure_legend_ncol', 'legend_rect_border', 'legend_frac_subplot_margin', 'legend_frac_subplot_line',
-                'num_plot_contours', 'solid_contour_palefactor', 'alpha_filled_add', 'alpha_factor_contour_lines', 'axis_marker_color',
+                'tight_layout', 'no_triangle_axis_labels', 'colormap', 'colormap_scatter', 'colorbar_rotation',
+                'colorbar_label_pad',
+                'colorbar_label_rotation', 'tick_prune', 'tight_gap_fraction', 'legend_loc', 'figure_legend_loc',
+                'legend_frame',
+                'figure_legend_frame', 'figure_legend_ncol', 'legend_rect_border', 'legend_frac_subplot_margin',
+                'legend_frac_subplot_line',
+                'num_plot_contours', 'solid_contour_palefactor', 'alpha_filled_add', 'alpha_factor_contour_lines',
+                'axis_marker_color',
                 'axis_marker_ls', 'axis_marker_lw']
         pars.sort()
         ini = IniFile()
@@ -602,7 +607,8 @@ class MainWindow(QMainWindow):
         ini.params.update(self.custom_plot_settings)
         self.plotSettingIni = ini
 
-        self.plotSettingDlg = self.plotSettingDlg or DialogPlotSettings(self, ini, pars, title='Plot Settings', width=450)
+        self.plotSettingDlg = self.plotSettingDlg or DialogPlotSettings(self, ini, pars, title='Plot Settings',
+                                                                        width=450)
         self.plotSettingDlg.show()
         self.plotSettingDlg.activateWindow()
 
@@ -621,7 +627,7 @@ class MainWindow(QMainWindow):
                         except:
                             self.custom_plot_settings[key] = value
                     else:
-                            self.custom_plot_settings[key] = eval(value)
+                        self.custom_plot_settings[key] = eval(value)
                 else:
                     self.custom_plot_settings.pop(key, None)
         except Exception as e:
@@ -738,34 +744,10 @@ class MainWindow(QMainWindow):
         return self.plotter
 
     def _updateParameters(self):
-
         roots = self.checkedRootNames()
         if not len(roots):
             return
         paramNames = self.plotter.sampleAnalyser.samplesForRoot(self.rootfiles[roots[0]]).paramNames.list()
-
-#         all_params = []
-#
-#         for root in  self.checkedRootNames():
-#             if self.rootnames.has_key(root):
-#                 rootname, _ = self.roonames[root]
-#                 params = self.plotter.sampleAnalyser.samplesForRoot(rootname).paramNames.list()
-#                 logging.debug("%i parameters" % len(params))
-#                 all_params.append(params)
-#         if all_params:
-#             if len(all_params) == 1:
-#                 paramNames = all_params[0]
-#                 logging.debug("%i parameters used" % len(paramNames))
-#             else:
-#                 # Find shared parameters
-#                 shared_params = []
-#                 for param in all_params[0]:
-#                     shared = True
-#                     for other_params in all_params[1:]:
-#                         if not param in other_params: shared = False
-#                     if shared: shared_params.append(param)
-#                 paramNames = shared_params
-#                 logging.debug("%i (shared) parameters used" % len(paramNames))
 
         self._updateListParameters(paramNames, self.listParametersX, self.getXParams())
         self._updateListParameters(paramNames, self.listParametersY, self.getYParams())
@@ -834,7 +816,7 @@ class MainWindow(QMainWindow):
         self.comboBoxRootname.clear()
         self.listRoots.show()
         self.pushButtonRemove.show()
-        baseRoots = [ os.path.basename(root) for root in listOfRoots ]
+        baseRoots = [os.path.basename(root) for root in listOfRoots]
         self.comboBoxRootname.addItems(baseRoots)
         if len(baseRoots) > 1:
             self.comboBoxRootname.setCurrentIndex(-1)
@@ -907,7 +889,7 @@ class MainWindow(QMainWindow):
         logging.debug("Param: %s" % self.paramTag)
 
         self.comboBoxDataTag.clear()
-        self.comboBoxDataTag.addItems([ jobItem.datatag for jobItem in self.grid_paramtag_jobItems[self.paramTag]])
+        self.comboBoxDataTag.addItems([jobItem.datatag for jobItem in self.grid_paramtag_jobItems[self.paramTag]])
         self.comboBoxDataTag.setCurrentIndex(-1)
         self.comboBoxDataTag.show()
 
@@ -935,7 +917,8 @@ class MainWindow(QMainWindow):
                     match_items[0].setCheckState(Qt.Checked)
 
     def getCheckedParams(self, checklist):
-        return [checklist.item(i).text() for i in range(checklist.count()) if checklist.item(i).checkState() == Qt.Checked]
+        return [checklist.item(i).text() for i in range(checklist.count()) if
+                checklist.item(i).checkState() == Qt.Checked]
 
     def getXParams(self):
         return self.getCheckedParams(self.listParametersX)
@@ -999,6 +982,7 @@ class MainWindow(QMainWindow):
         else:
             if not msg:
                 import traceback
+
                 msg = "\n".join(traceback.format_tb(sys.exc_info()[2])[-5:])
             QMessageBox.critical(self, caption, str(e) + "\n\n" + msg)
             del msg
@@ -1014,7 +998,7 @@ class MainWindow(QMainWindow):
         """
         Slot function called when pushButtonPlot is pressed.
         """
-        self.statusBar().showMessage("Generating plot....")
+        self.showMessage("Generating plot....")
         actionText = "plot"
         try:
             # Ensure at least 1 root name specified
@@ -1049,7 +1033,8 @@ class MainWindow(QMainWindow):
                 plot_func = 'getSinglePlotter'
             if self.is_grid:
                 if isinstance(self.iniFile, IniFile):
-                    script += "g=gplot.%s(chain_dir=r'%s',analysis_settings=analysis_settings)\n" % (plot_func, self.rootdirname)
+                    script += "g=gplot.%s(chain_dir=r'%s',analysis_settings=analysis_settings)\n" % (
+                        plot_func, self.rootdirname)
                 else:
                     script += "g=gplot.%s(chain_dir=r'%s')\n" % (plot_func, self.rootdirname)
             else:
@@ -1108,9 +1093,11 @@ class MainWindow(QMainWindow):
                         param_3d = None
                         script += "param_3d = None\n"
                     setSizeForN(len(params))
-                    self.plotter.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled, shaded=shaded)
+                    self.plotter.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled,
+                                               shaded=shaded)
                     self.updatePlot()
-                    script += "g.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=%s, shaded=%s)\n" % (filled, shaded)
+                    script += "g.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=%s, shaded=%s)\n" % (
+                        filled, shaded)
                 else:
                     raise GuiSelectionError("Select more than 1 x parameter for triangle plot")
 
@@ -1130,57 +1117,58 @@ class MainWindow(QMainWindow):
                 script += "g.plots_1d(roots, params=params)\n"
 
             elif len(items_x) > 0 and len(items_y) > 0:
-                    if len(items_x) > 1 and len(items_y) > 1:
-                        # Rectangle plot
-                        actionText = 'Rectangle plot'
-                        script += "xparams = %s\n" % str(items_x)
-                        script += "yparams = %s\n" % str(items_y)
-                        script += "filled=%s\n" % filled
-                        logging.debug("Rectangle plot with xparams=%s and yparams=%s" % (str(items_x), str(items_y)))
+                if len(items_x) > 1 and len(items_y) > 1:
+                    # Rectangle plot
+                    actionText = 'Rectangle plot'
+                    script += "xparams = %s\n" % str(items_x)
+                    script += "yparams = %s\n" % str(items_y)
+                    script += "filled=%s\n" % filled
+                    logging.debug("Rectangle plot with xparams=%s and yparams=%s" % (str(items_x), str(items_y)))
 
-                        setSizeQT(min(height / len(items_y), width / len(items_x)))
-                        self.plotter.rectangle_plot(items_x, items_y, roots=roots, filled=filled)
-                        self.updatePlot()
-                        script += "g.rectangle_plot(xparams, yparams, roots=roots,filled=filled)\n"
+                    setSizeQT(min(height / len(items_y), width / len(items_x)))
+                    self.plotter.rectangle_plot(items_x, items_y, roots=roots, filled=filled)
+                    self.updatePlot()
+                    script += "g.rectangle_plot(xparams, yparams, roots=roots,filled=filled)\n"
 
+                else:
+                    # 2D plot
+                    if len(items_x) == 1 and len(items_y) == 1:
+                        pairs = [[items_x[0], items_y[0]]]
+                        setSizeQT(min(height, width))
+                    elif len(items_x) == 1 and len(items_y) > 1:
+                        item_x = items_x[0]
+                        pairs = zip([item_x] * len(items_y), items_y)
+                        setSizeForN(round(np.sqrt(len(pairs) / 1.4)))
+                    elif len(items_x) > 1 and len(items_y) == 1:
+                        item_y = items_y[0]
+                        pairs = zip(items_x, [item_y] * len(items_x))
+                        setSizeForN(round(np.sqrt(len(pairs) / 1.4)))
                     else:
-                        # 2D plot
-                        if len(items_x) == 1 and len(items_y) == 1:
-                            pairs = [ [items_x[0], items_y[0]] ]
-                            setSizeQT(min(height, width))
-                        elif len(items_x) == 1 and len(items_y) > 1:
-                            item_x = items_x[0]
-                            pairs = zip([item_x] * len(items_y), items_y)
-                            setSizeForN(round(np.sqrt(len(pairs) / 1.4)))
-                        elif len(items_x) > 1 and len(items_y) == 1:
-                            item_y = items_y[0]
-                            pairs = zip(items_x, [item_y] * len(items_x))
-                            setSizeForN(round(np.sqrt(len(pairs) / 1.4)))
+                        pairs = []
+                    if filled or line:
+                        actionText = '2D plot'
+                        script += "pairs = %s\n" % pairs
+                        logging.debug("2D plot with pairs = %s" % str(pairs))
+                        self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled, shaded=shaded)
+                        self.updatePlot()
+                        script += "g.plots_2d(roots, param_pairs=pairs, filled=%s, shaded=%s)\n" % (
+                            str(filled), str(shaded))
+                    elif color:
+                        # 3D plot
+                        sets = [list(pair) + [color_param] for pair in pairs]
+                        logging.debug("3D plot with sets = %s" % str(sets))
+                        actionText = '3D plot'
+                        triplets = ["['%s', '%s', '%s']" % tuple(trip) for trip in sets]
+                        if len(sets) == 1:
+                            script += "g.plot_3d(roots, %s)\n" % triplets[0]
+                            self.plotter.settings.scatter_size = 6
+                            self.plotter.make_figure(1, ystretch=0.75)
+                            self.plotter.plot_3d(roots, sets[0])
                         else:
-                            pairs = []
-                        if filled or line:
-                            actionText = '2D plot'
-                            script += "pairs = %s\n" % pairs
-                            logging.debug("2D plot with pairs = %s" % str(pairs))
-                            self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled, shaded=shaded)
-                            self.updatePlot()
-                            script += "g.plots_2d(roots, param_pairs=pairs, filled=%s, shaded=%s)\n" % (str(filled), str(shaded))
-                        elif color:
-                            # 3D plot
-                            sets = [list(pair) + [color_param] for pair in pairs]
-                            logging.debug("3D plot with sets = %s" % str(sets))
-                            actionText = '3D plot'
-                            triplets = ["['%s', '%s', '%s']" % tuple(trip) for trip in sets]
-                            if len(sets) == 1:
-                                script += "g.plot_3d(roots, %s)\n" % triplets[0]
-                                self.plotter.settings.scatter_size = 6
-                                self.plotter.make_figure(1, ystretch=0.75)
-                                self.plotter.plot_3d(roots, sets[0])
-                            else:
-                                script += "sets = [" + ",".join(triplets) + "]\n"
-                                script += "g.plots_3d(roots, sets)\n"
-                                self.plotter.plots_3d(roots, sets)
-                            self.updatePlot()
+                            script += "sets = [" + ",".join(triplets) + "]\n"
+                            script += "g.plots_3d(roots, sets)\n"
+                            self.plotter.plots_3d(roots, sets)
+                        self.updatePlot()
             else:
                 text = ""
                 text += "Wrong parameters selection. Specify parameters such as:\n"
@@ -1201,7 +1189,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.errorReport(e, caption=actionText)
         finally:
-            self.statusBar().showMessage("")
+            self.showMessage()
 
 
     def updatePlot(self):
@@ -1216,7 +1204,7 @@ class MainWindow(QMainWindow):
             if hasattr(self, "canvas"): del self.canvas
             if hasattr(self, "toolbar"): del self.toolbar
             self.canvas = FigureCanvas(self.plotter.fig)
-            if platform <> "darwin":
+            if sys.platform <> "darwin":
                 # for some reason the toolbar crashes out on a Mac; just don't show it
                 self.toolbar = NavigationToolbar(self.canvas, self)
                 self.plotWidget.layout().addWidget(self.toolbar)
@@ -1288,7 +1276,7 @@ class MainWindow(QMainWindow):
         plots.defaultSettings = plots.GetDistPlotSettings()
         matplotlib.rcParams.clear()
         matplotlib.rcParams.update(self.orig_rc)
-        self.statusBar().showMessage("Rendering plot....")
+        self.showMessage("Rendering plot....")
         try:
             script_exec = self.script_edit
             if "g.export()" in script_exec:
@@ -1309,7 +1297,7 @@ class MainWindow(QMainWindow):
             plots.defaultSettings = oldset
             matplotlib.rcParams.clear()
             matplotlib.rcParams.update(oldrc)
-            self.statusBar().showMessage("")
+            self.showMessage()
 
 
     def updateScriptPreview(self, plotter):
@@ -1347,17 +1335,17 @@ class MainWindow(QMainWindow):
         self.scrollArea = QScrollArea(self.plotWidget2)
         self.scrollArea.setWidget(label)
         self.scrollArea.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-#            self.scrollArea.setStyleSheet("background-color: rgb(255,255,255)")
+        # self.scrollArea.setStyleSheet("background-color: rgb(255,255,255)")
 
         self.plotWidget2.layout().addWidget(self.scrollArea)
         self.plotWidget2.layout()
         self.plotWidget2.show()
 
+
 # ==============================================================================
 
 
 class DialogTextOutput(QDialog):
-
     def __init__(self, parent, text):
         QDialog.__init__(self, parent)
         self.textfont = QFont("Monospace")
@@ -1371,6 +1359,7 @@ class DialogTextOutput(QDialog):
         box.setFont(self.textfont)
         box.setText(text)
         return box
+
 
 # ==============================================================================
 
@@ -1391,7 +1380,7 @@ class DialogLikeStats(DialogTextOutput):
         layout.addWidget(self.text, 0, 0)
 
         if stats:
-            headers = stats.headerLine().strip().split() + [ 'label' ]
+            headers = stats.headerLine().strip().split() + ['label']
             self.table.setColumnCount(len(headers))
             self.table.setHorizontalHeaderLabels([h.replace('_', ' ') for h in headers])
             self.table.verticalHeader().setVisible(False)
@@ -1424,7 +1413,6 @@ class DialogLikeStats(DialogTextOutput):
 # ==============================================================================
 
 class DialogMargeStats(QDialog):
-
     def __init__(self, parent=None, stats="", root=''):
         QDialog.__init__(self, parent)
 
@@ -1441,11 +1429,11 @@ class DialogMargeStats(QDialog):
 
         if stats:
 
-            headers = stats.headerLine(inc_limits=True)[0].split() + [ 'label' ]
+            headers = stats.headerLine(inc_limits=True)[0].split() + ['label']
             self.table.setColumnCount(len(headers))
             self.table.setHorizontalHeaderLabels([h.replace('_', ' ') for h in headers])
             self.table.verticalHeader().setVisible(False)
-#            self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+            # self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
             self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
             self.table.setSelectionMode(QAbstractItemView.SingleSelection)
             self.table.setRowCount(stats.numParams())
@@ -1471,10 +1459,10 @@ class DialogMargeStats(QDialog):
             h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, h)
             self.resize(w, h)
 
+
 # ==============================================================================
 
 class DialogConvergeStats(DialogTextOutput):
-
     def __init__(self, parent, stats, summary, root):
         DialogTextOutput.__init__(self, parent, stats)
         layout = QGridLayout()
@@ -1493,7 +1481,6 @@ class DialogConvergeStats(DialogTextOutput):
 # ==============================================================================
 
 class DialogPCA(DialogTextOutput):
-
     def __init__(self, parent, PCA_text, root):
         DialogTextOutput.__init__(self, parent, PCA_text)
         layout = QGridLayout()
@@ -1503,10 +1490,10 @@ class DialogPCA(DialogTextOutput):
         h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, 800)
         self.resize(500, h)
 
+
 # ==============================================================================
 
 class DialogSettings(QDialog):
-
     def __init__(self, parent, ini, items=None, title='Analysis Settings', width=300, update=None):
         QDialog.__init__(self, parent)
 
@@ -1549,13 +1536,13 @@ class DialogSettings(QDialog):
         self.rows = len(items) + nblank
         self.table.setRowCount(self.rows)
         for irow, key in enumerate(items):
-                item = QTableWidgetItem(str(key))
-                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                self.table.setItem(irow, 0, item)
-                item = QTableWidgetItem(ini.string(key))
-                hint = names.comments.get(key, None)
-                if hint: item.setToolTip("\n".join(hint))
-                self.table.setItem(irow, 1, item)
+            item = QTableWidgetItem(str(key))
+            item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+            self.table.setItem(irow, 0, item)
+            item = QTableWidgetItem(ini.string(key))
+            hint = names.comments.get(key, None)
+            if hint: item.setToolTip("\n".join(hint))
+            self.table.setItem(irow, 1, item)
         for i in range(nblank):
             item = QTableWidgetItem(str(""))
             irow = len(items) + i
@@ -1583,9 +1570,11 @@ class DialogSettings(QDialog):
         self.ini.params.update(self.getDict())
         self.parent().settingsChanged()
 
+
 class DialogPlotSettings(DialogSettings):
     def doUpdate(self):
         self.parent().plotSettingsChanged(self.getDict())
+
 
 class DialogConfigSettings(DialogSettings):
     def doUpdate(self):
@@ -1593,7 +1582,6 @@ class DialogConfigSettings(DialogSettings):
 
 
 if __name__ == "__main__":
-
     app = QApplication(sys.argv)
     mainWin = MainWindow(app)
     mainWin.show()

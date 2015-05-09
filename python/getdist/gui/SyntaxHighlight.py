@@ -17,16 +17,15 @@ def txformat(color, style=''):
 
     return _format
 
-
 # Syntax styles that can be shared by all languages
 STYLES = {
-    'keyword': txformat('blue', 'bold'),
-    'operator': txformat('red'),
+    'keyword': txformat('navy', 'bold'),
+    'operator': txformat('black'),
     'brace': txformat('black'),
     'defclass': txformat('black', 'bold'),
-    'string': txformat('magenta'),
-    'string2': txformat('darkMagenta'),
-    'comment': txformat('darkGreen', 'italic'),
+    'string': txformat('green','bold'),
+    'string2': txformat('green'),
+    'comment': txformat('darkGray', 'italic'),
     'self': txformat('black', 'italic'),
     'numbers': txformat('brown'),
 }
