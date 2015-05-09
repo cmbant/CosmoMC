@@ -1236,7 +1236,7 @@ class MainWindow(QMainWindow):
 
         if index == 1 and self.script:
             self.script_edit = self.textWidget.toPlainText()
-            if self.script_edit <> self.script:
+            if self.script_edit and self.script_edit <> self.script:
                 reply = QMessageBox.question(
                     self, "Overwrite script",
                     "Script is not empty. Overwrite current script?",
@@ -1307,7 +1307,7 @@ class MainWindow(QMainWindow):
                 del child
             del item
 
-        # Save in PNG txformat, and display it in a QLabel
+        # Save in PNG format, and display it in a QLabel
         buf = cStringIO.StringIO()
 
         plotter.fig.savefig(
