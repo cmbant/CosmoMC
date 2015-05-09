@@ -78,9 +78,9 @@ class MainWindow(QMainWindow):
         self.script_plot_module = self.plot_module
 
         # GUI setup
-        self._createWidgets()
         self.createActions()
         self.createMenus()
+        self._createWidgets()
         self.createStatusBar()
         self.settingDlg = None
         self.ConfigDlg = None
@@ -1220,6 +1220,12 @@ class MainWindow(QMainWindow):
         """
         Update script text editor when entering 'gui' tab.
         """
+
+        # Enable menu options for edition only
+        self.reLoadAct.setEnabled(index==0)
+        self.dataMenu.setEnabled(index==0)
+        self.optionMenu.setEnabled(index==0)
+
         if index == 1 and self.script:
             self.script_edit = self.textWidget.toPlainText()
             if self.script_edit and self.script_edit <> self.script:
