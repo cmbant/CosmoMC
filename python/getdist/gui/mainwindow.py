@@ -385,7 +385,11 @@ class MainWindow(QMainWindow):
         self.toolBar.addAction(clearAct)
 
         self.textWidget = QPlainTextEdit(self.editWidget)
-        highlight = SyntaxHighlight.PythonHighlighter(self.textWidget.document())
+        textfont = QFont("Monospace")
+        textfont.setStyleHint(QFont.TypeWriter)
+        self.textWidget.setWordWrapMode(QTextOption.NoWrap)
+        self.textWidget.setFont(textfont)
+        SyntaxHighlight.PythonHighlighter(self.textWidget.document())
 
         self.pushButtonPlot2 = QPushButton("Make plot", self.editWidget)
         self.connect(self.pushButtonPlot2, SIGNAL("clicked()"), self.plotData2)
@@ -644,6 +648,7 @@ class MainWindow(QMainWindow):
         mod = vals.get('plot_module', self.plot_module)
         if mod <> self.plot_module or scriptmod <> self.script_plot_module:
             try:
+                matplotlib.rcParams.clear()
                 matplotlib.rcParams.update(self.orig_rc)
                 __import__(mod)  # test for error
                 logging.debug('Loaded module %s', mod)
@@ -1035,7 +1040,7 @@ class MainWindow(QMainWindow):
             self.plotter.settings.legend_frac_subplot_margin = 0.05
             self.plotter.settings.__dict__.update(self.custom_plot_settings)
 
-            script = "import %s as s\nimport os\n\n" % self.script_plot_module
+            script = "import %s as gplot\nimport os\n\n" % self.script_plot_module
             if isinstance(self.iniFile, IniFile):
                 script += 'analysis_settings = %s\n' % self.iniFile.params
             if len(items_x) > 1 or len(items_y) > 1:
@@ -1044,16 +1049,16 @@ class MainWindow(QMainWindow):
                 plot_func = 'getSinglePlotter'
             if self.is_grid:
                 if isinstance(self.iniFile, IniFile):
-                    script += "g=s.%s(chain_dir=r'%s',analysis_settings=analysis_settings)\n" % (plot_func, self.rootdirname)
+                    script += "g=gplot.%s(chain_dir=r'%s',analysis_settings=analysis_settings)\n" % (plot_func, self.rootdirname)
                 else:
-                    script += "g=s.%s(chain_dir=r'%s')\n" % (plot_func, self.rootdirname)
+                    script += "g=gplot.%s(chain_dir=r'%s')\n" % (plot_func, self.rootdirname)
             else:
                 if isinstance(self.iniFile, basestring):
-                    script += "g=s.%s(mcsamples=True, analysis_settings=r'%s')\n" % (plot_func, self.iniFile)
+                    script += "g=gplot.%s(mcsamples=True, analysis_settings=r'%s')\n" % (plot_func, self.iniFile)
                 elif isinstance(self.iniFile, IniFile):
-                    script += "g=s.%s(mcsamples=True, analysis_settings=analysis_settings)\n" % plot_func
+                    script += "g=gplot.%s(mcsamples=True, analysis_settings=analysis_settings)\n" % plot_func
                 else:
-                    script += "g=s.%s(mcsamples=True)\n" % plot_func
+                    script += "g=gplot.%s(mcsamples=True)\n" % plot_func
                 for root in roots:
                     script += "g.sampleAnalyser.addRoot(r'%s')\n" % (self.rootfiles[root])
 
@@ -1297,12 +1302,10 @@ class MainWindow(QMainWindow):
             globaldic = {}
             localdic = {}
             exec script_exec in globaldic, localdic
-            self.plotter2 = None
 
             for _, v in localdic.items():
                 if isinstance(v, plots.GetDistPlotter):
-                    self.plotter2 = v
-                    self.updatePlot2()
+                    self.updateScriptPreview(v)
                     break
         except Exception as e:
             self.errorReport(e, caption="Plot script")
@@ -1313,47 +1316,46 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("")
 
 
-    def updatePlot2(self):
-        if self.plotter2.fig is None:
+    def updateScriptPreview(self, plotter):
+        if plotter.fig is None:
             return
-        else:
 
-            i = 0
-            while 1:
-                item = self.plotWidget2.layout().takeAt(i)
-                if item is None: break
-                if hasattr(item, "widget"):
-                    child = item.widget()
-                    del child
-                del item
+        i = 0
+        while 1:
+            item = self.plotWidget2.layout().takeAt(i)
+            if item is None: break
+            if hasattr(item, "widget"):
+                child = item.widget()
+                del child
+            del item
 
-            # Save in PNG format, and display it in a QLabel
-            buf = cStringIO.StringIO()
+        # Save in PNG format, and display it in a QLabel
+        buf = cStringIO.StringIO()
 
-            self.plotter2.fig.savefig(
-                buf,
-                format='png',
-                edgecolor='w',
-                facecolor='w',
-                dpi=100,
-                bbox_extra_artists=self.plotter2.extra_artists,
-                bbox_inches='tight')
-            buf.seek(0)
+        plotter.fig.savefig(
+            buf,
+            format='png',
+            edgecolor='w',
+            facecolor='w',
+            dpi=100,
+            bbox_extra_artists=plotter.extra_artists,
+            bbox_inches='tight')
+        buf.seek(0)
 
-            image = QImage.fromData(buf.getvalue())
+        image = QImage.fromData(buf.getvalue())
 
-            pixmap = QPixmap.fromImage(image)
-            label = QLabel(self.scrollArea)
-            label.setPixmap(pixmap)
+        pixmap = QPixmap.fromImage(image)
+        label = QLabel(self.scrollArea)
+        label.setPixmap(pixmap)
 
-            self.scrollArea = QScrollArea(self.plotWidget2)
-            self.scrollArea.setWidget(label)
-            self.scrollArea.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.scrollArea = QScrollArea(self.plotWidget2)
+        self.scrollArea.setWidget(label)
+        self.scrollArea.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 #            self.scrollArea.setStyleSheet("background-color: rgb(255,255,255)")
 
-            self.plotWidget2.layout().addWidget(self.scrollArea)
-            self.plotWidget2.layout()
-            self.plotWidget2.show()
+        self.plotWidget2.layout().addWidget(self.scrollArea)
+        self.plotWidget2.layout()
+        self.plotWidget2.show()
 
 # ==============================================================================
 

@@ -1,6 +1,4 @@
 
-import sys
-
 from PySide.QtCore import QRegExp
 from PySide.QtGui import QColor, QTextCharFormat, QFont, QSyntaxHighlighter
 
@@ -22,9 +20,9 @@ def format(color, style=''):
 
 # Syntax styles that can be shared by all languages
 STYLES = {
-    'keyword': format('blue'),
+    'keyword': format('blue', 'bold'),
     'operator': format('red'),
-    'brace': format('darkGray'),
+    'brace': format('black'),
     'defclass': format('black', 'bold'),
     'string': format('magenta'),
     'string2': format('darkMagenta'),
