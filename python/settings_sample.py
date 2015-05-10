@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 # sample settings for a particular grid run
 
 from paramgrid import batchjob

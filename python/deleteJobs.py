@@ -1,10 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import subprocess
-
 from paramgrid import batchjob_args, jobqueue
-from six.moves import range
-
 
 Opts = batchjob_args.batchArgs('Delete running or queued jobs', importance=True, batchPathOptional=True)
 
@@ -15,9 +12,7 @@ group.add_argument('--running', action='store_true')
 Opts.parser.add_argument('--delete_id_min', type=int)
 Opts.parser.add_argument('--delete_id_range', nargs=2, type=int)
 Opts.parser.add_argument('--delete_ids', nargs='+', type=int)
-
 Opts.parser.add_argument('--confirm', action='store_true')
-
 
 (batch, args) = Opts.parseForBatch()
 

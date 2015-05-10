@@ -9,7 +9,6 @@ import time
 import shutil
 from distutils import spawn
 import six
-from six.moves import zip
 
 
 def addArguments(parser, combinedJobs=False):

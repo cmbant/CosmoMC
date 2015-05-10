@@ -5,8 +5,6 @@ import copy
 import matplotlib
 import sys
 import six
-from six.moves import range
-from six.moves import zip
 
 matplotlib.use('Agg', warn=False)
 from matplotlib import cm, rcParams
@@ -14,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from paramgrid import batchjob, gridconfig
 import getdist
-from getdist import mcsamples, loadMCSamples, paramnames, IniFile
+from getdist import MCSamples, loadMCSamples, ParamNames, ParamInfo, IniFile
 from getdist.parampriors import ParamBounds
 from getdist.densities import Density1D, Density2D
 import logging
@@ -185,7 +183,7 @@ class SampleAnalysisGetDist(object):
         return self.single_samples[root]
 
     def paramsForRoot(self, root, labelParams=None):
-        names = paramnames.ParamNames(self.plot_data_file(root) + '.paramnames')
+        names = ParamNames(self.plot_data_file(root) + '.paramnames')
         if labelParams is not None: names.setLabelsAndDerivedFromParamNames(labelParams)
         return names
 
@@ -273,7 +271,7 @@ class MCSampleAnalysis(object):
         self.single_samples = dict()
 
     def samplesForRoot(self, root, file_root=None, cache=True):
-        if isinstance(root, mcsamples.MCSamples): return root
+        if isinstance(root, MCSamples): return root
         if os.path.isabs(root):
             root = os.path.basename(root)
         if root in self.mcsamples and cache: return self.mcsamples[root]
@@ -807,12 +805,12 @@ class GetDistPlotter(object):
         if in_params is None or len(in_params) == 0:
             return self.paramNamesForRoot(root).names
         else:
-            if not all([isinstance(param, paramnames.ParamInfo) for param in in_params]):
+            if not all([isinstance(param, ParamInfo) for param in in_params]):
                 return self.paramNamesForRoot(root).parsWithNames(in_params, error=True, renames=renames)
         return in_params
 
     def check_param(self, root, param, renames={}):
-        if not isinstance(param, paramnames.ParamInfo):
+        if not isinstance(param, ParamInfo):
             return self.paramNamesForRoot(root).parWithName(param, error=True, renames=renames)
         elif renames:
             return self.paramNamesForRoot(root).parWithName(param.name, error=False, renames=renames)
@@ -915,7 +913,7 @@ class GetDistPlotter(object):
             return text
 
     def _rootDisplayName(self, root, i):
-        if isinstance(root, mcsamples.MCSamples):
+        if isinstance(root, MCSamples):
             root = root.getName()
         if not root: root = 'samples' + str(i)
         return self._escapeLatex(root)
@@ -1335,6 +1333,6 @@ class GetDistPlotter(object):
         self.fig.savefig(fname, bbox_extra_artists=self.extra_artists, bbox_inches='tight')
 
     def paramNameListFromFile(self, fname):
-        p = paramnames.ParamNames(fname)
+        p = ParamNames(fname)
         return [name.name for name in p.names]
 

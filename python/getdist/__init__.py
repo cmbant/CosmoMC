@@ -1,10 +1,10 @@
-from __future__ import absolute_import
 __author__ = 'Antony Lewis'
 __version__ = "0.2.0"
 
 from getdist.inifile import IniFile
-from getdist.mcsamples import MCSamples, loadMCSamples
+from getdist.paramnames import ParamInfo, ParamNames
 from getdist.chains import WeightedSamples
+from getdist.mcsamples import MCSamples, loadMCSamples
 
 
 def get_defaults():

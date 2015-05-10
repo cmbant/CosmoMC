@@ -4,9 +4,6 @@ import decimal
 import numpy as np
 from getdist import paramnames
 import six
-from six.moves import map
-from six.moves import range
-
 
 class TextFile(object):
     def __init__(self, lines=None):

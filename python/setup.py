@@ -1,6 +1,6 @@
-from __future__ import absolute_import
 #!/usr/bin/env python
 
+from __future__ import absolute_import
 from distutils.core import setup
 import io
 import re
@@ -26,6 +26,7 @@ setup(name='GetDist',
       requires=[
           'numpy',
           'matplotlib',
+          'six',
           "scipy (>=0.11.0)",
           'PySide']
       # These are optional

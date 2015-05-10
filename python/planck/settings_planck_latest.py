@@ -1,10 +1,6 @@
-from __future__ import absolute_import
 import copy
 import re
-
 from paramgrid import batchjob
-from six.moves import zip
-
 
 ini_dir = 'batch2/'
 cov_dir = 'planck_covmats/'

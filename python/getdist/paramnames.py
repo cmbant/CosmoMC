@@ -1,8 +1,5 @@
-from __future__ import absolute_import
 # AL Apr 11
 import os
-from six.moves import range
-
 
 class ParamInfo(object):
 

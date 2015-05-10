@@ -10,16 +10,13 @@ import time
 import numpy as np
 from scipy.stats import norm
 import getdist
-from getdist import types, covmat, paramnames, IniFile
+from getdist import types, covmat, ParamInfo, IniFile
 from getdist.densities import Density1D, Density2D
 from getdist.chains import chains, chainFiles, lastModified
 from getdist.convolve import convolve1D, convolve2D
 import getdist.kde_bandwidth as kde
 from getdist.parampriors import ParamBounds
 import six
-from six.moves import range
-from six.moves import zip
-
 
 pickle_version = 20
 
@@ -264,7 +261,7 @@ class MCSamples(chains):
 
     def updateBaseStatistics(self):
         super(MCSamples, self).updateBaseStatistics()
-        mult_max = (self.mean_mult * self.numrows) / min(self.numrows / 2, 500)
+        mult_max = (self.mean_mult * self.numrows) / min(self.numrows // 2, 500)
         outliers = np.sum(self.weights > mult_max)
         if outliers != 0:
             logging.warning('outlier fraction %s ', float(outliers) / self.numrows)
@@ -544,7 +541,7 @@ class MCSamples(chains):
             lines += "Parameter autocorrelation lengths (effective number of samples N_eff = tot weight/weight length)\n"
             lines += "\n"
             lines += parForm % "" + '%15s %15s %15s\n' % ('Weight Length', 'Sample length', 'N_eff')
-            maxoff = np.min([chain.weights.size / 10  for chain in chainlist])
+            maxoff = np.min([chain.weights.size // 10  for chain in chainlist])
             maxN = 0
             for j in range(nparam):
                 corr = np.zeros(maxoff + 1)
@@ -774,7 +771,7 @@ class MCSamples(chains):
 
                 thin_ix = self.thin_indices(autocorr_thin)
                 thin_rows = len(thin_ix)
-                maxoff = int(min(self.corr_length_steps, thin_rows / (2 * num_chains_used)))
+                maxoff = int(min(self.corr_length_steps, thin_rows // (2 * num_chains_used)))
 
                 if maxoff > 0:
                     if False:
@@ -799,7 +796,7 @@ class MCSamples(chains):
                         for chain in chainlist:
                             thin_ix = chain.thin_indices(autocorr_thin)
                             thin_rows = len(thin_ix)
-                            maxoff = min(maxoff, thin_rows / autocorr_thin)
+                            maxoff = min(maxoff, thin_rows // autocorr_thin)
                             for j in range(nparam):
                                 diff = chain.diffs[j][thin_ix]
                                 for off in range(1, maxoff + 1):
@@ -1201,7 +1198,7 @@ class MCSamples(chains):
         return scale
 
     def _parAndNumber(self, name):
-        if isinstance(name, paramnames.ParamInfo): name = name.name
+        if isinstance(name, ParamInfo): name = name.name
         if isinstance(name, six.string_types):
             name = self.index.get(name, None)
             if name is None: return None, None

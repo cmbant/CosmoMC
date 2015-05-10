@@ -1,6 +1,4 @@
-from __future__ import absolute_import
 import os
-
 
 class ParamBounds(object):
     def __init__(self, fileName=None):

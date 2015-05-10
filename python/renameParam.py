@@ -2,10 +2,8 @@ from __future__ import absolute_import
 from __future__ import print_function
 import os
 import re
-
 from paramgrid import batchjob_args
 from getdist import paramnames
-from six.moves import zip
 
 
 Opts = batchjob_args.batchArgs('rename parameter in all .paramnames files in grid', importance=True)

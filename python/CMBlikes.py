@@ -1,17 +1,14 @@
-from __future__ import absolute_import
-from __future__ import print_function
 # Load CosmoMC format .dataset files with lensing likelihood data
 # AL July 2014
 # note this is not well tested with final published versions of likelihoods
 # Does not handle calibration parameter
-
+from __future__ import absolute_import
+from __future__ import print_function
 from matplotlib import pyplot as plt
 import os
 import numpy as np
 import sys
-from getdist import inifile
-from six.moves import range
-from six.moves import zip
+from getdist import IniFile
 
 
 def readTextCommentColumns(fname, cols):
@@ -159,7 +156,7 @@ class DatasetLikelihood(object):
 
         def loadDataset(self, froot):
             if not '.dataset' in froot: froot += '.dataset'
-            ini = inifile.IniFile(froot)
+            ini = IniFile(froot)
             self.readIni(ini)
 
         def readIni(self, ini):

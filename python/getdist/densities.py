@@ -1,7 +1,5 @@
-from __future__ import absolute_import
 import numpy as np
 from scipy.interpolate import splrep, splev, RectBivariateSpline
-from six.moves import zip
 
 class DensitiesError(Exception):
     pass

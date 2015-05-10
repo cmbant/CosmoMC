@@ -1,7 +1,6 @@
-from __future__ import absolute_import
 #!/usr/bin/env python
-import os
 
+import os
 from paramgrid import batchjob_args, jobqueue
 
 

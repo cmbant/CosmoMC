@@ -1,15 +1,11 @@
 from __future__ import absolute_import
 import os
 import copy
-
 import getdist
 from getdist import types, plots
-
 from matplotlib import rcParams, rc
 from matplotlib import pyplot as plt
-
 from paramgrid import batchjob
-from six.moves import range
 
 
 # common setup for matplotlib

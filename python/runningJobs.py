@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from paramgrid import batchjob_args, jobqueue
-from six.moves import zip
 
 Opts = batchjob_args.batchArgs(
     'List details of running or queued jobs; gives job stats, then current R-1 and job/chain names', importance=True,

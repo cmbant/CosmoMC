@@ -1,8 +1,6 @@
-from __future__ import absolute_import
-from __future__ import print_function
 #!/usr/bin/env python
 
-# -*- coding: utf-8 -*-
+from __future__ import print_function
 import os
 import copy
 import logging
@@ -11,18 +9,12 @@ import numpy as np
 import scipy
 import sys
 import signal
+from io import BytesIO
 import six
-from six.moves import range
-from six.moves import zip
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import BytesIO as StringIO
 
 matplotlib.use('Qt4Agg')
 matplotlib.rcParams['backend.qt4'] = 'PySide'
 
-import getdist
 from getdist.gui import SyntaxHighlight
 from getdist import plots, IniFile
 from getdist.mcsamples import GetChainRootFiles, SettingError, ParamError
@@ -1325,7 +1317,7 @@ class MainWindow(QMainWindow):
             del item
 
         # Save in PNG format, and display it in a QLabel
-        buf = StringIO()
+        buf = BytesIO()
 
         plotter.fig.savefig(
             buf,

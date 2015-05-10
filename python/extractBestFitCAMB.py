@@ -1,11 +1,9 @@
+# Get CAMB input parameters from best-fit .minimum file from cosmomc
 from __future__ import absolute_import
 from __future__ import print_function
-# Get CAMB input parameters from best-fit .minimum file from cosmomc
 import os
-
 import sys
-from getdist import types, inifile
-
+from getdist import types, IniFile
 
 if len(sys.argv) < 3:
     print('Usage: python/bestFitCAMB.py chain_root iniName')
@@ -17,7 +15,7 @@ pars = {'ombh2':'omegabh2', 'omch2':'omegach2', 'omnuh2':'omeganuh2', 'hubble':'
         'helium_fraction':'yheused', 'scalar_amp(1)':'A' , 'scalar_spectral_index(1)':'ns', 'scalar_nrun(1)':'nrun', 'initial_ratio(1)':'r',
         're_optical_depth':'tau', 're_delta_redshift':'deltazrei', 'massless_neutrinos':'nnu'}
 
-ini = inifile.IniFile()
+ini = IniFile()
 
 ini.params['re_use_optical_depth'] = True
 ini.params['temp_cmb'] = 2.7255
@@ -41,7 +39,7 @@ ini.params['share_delta_neff'] = False
 ini.params['tensor_spectral_index(1)'] = -float(ini.params['initial_ratio(1)']) / 8
 
 
-inPars = inifile.IniFile(root + '.inputparams')
+inPars = IniFile(root + '.inputparams')
 if inPars.bool('use_nonlinear_lensing', True):
     ini.params['do_nonlinear'] = 3
 # Note, if you want accurate spectrun on small scales, may need to increase accuracy

@@ -3,9 +3,7 @@ from __future__ import print_function
 import os
 import fnmatch
 import shutil
-
 from paramgrid import batchjob_args
-
 
 Opts = batchjob_args.batchArgs('copy all files of a given type from all getdist output directories in the batch',
                                importance=True, converge=True)

@@ -1,11 +1,11 @@
+#!/usr/bin/env python
+
 from __future__ import absolute_import
 from __future__ import print_function
-#!/usr/bin/env python
 import os
 import subprocess
 import sys
 from getdist import MCSamples, chains, IniFile
-from six.moves import range
 try:
     import argparse
 except:

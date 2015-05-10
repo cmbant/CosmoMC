@@ -1,7 +1,6 @@
+# Just look at parameters being produced in single chain
 from __future__ import absolute_import
 from __future__ import print_function
-# Just look at parameters being produced in single chain
-
 import os, sys
 from getdist import paramnames
 import numpy as np

@@ -1,12 +1,9 @@
-from __future__ import absolute_import
+
 from __future__ import print_function
 import getdist.plots as plots
 import matplotlib.pyplot as plt
-
 import numpy as np
 from getdist.gaussian_mixtures import Mixture2D, Mixture1D, Gaussian1D, Gaussian2D, make_2D_Cov
-from six.moves import range
-from six.moves import zip
 
 default_nsamp = 10000
 

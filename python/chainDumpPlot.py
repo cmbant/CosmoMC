@@ -3,10 +3,9 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cmx
 import matplotlib.colors as colors
 import numpy as np
-import os, fnmatch
+import os
+import fnmatch
 from getdist import types
-from six.moves import range
-from six.moves import zip
 
 """
     load and plot chain cl data, as export by cosmomc using action =1 and redo_output_txt_theory=T, redo_output_txt_dir=xxx

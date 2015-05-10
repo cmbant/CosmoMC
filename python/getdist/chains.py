@@ -1,16 +1,10 @@
-from __future__ import absolute_import
 from __future__ import print_function
 import os
 import random
-
 import numpy as np
-
 from getdist.paramnames import ParamNames, ParamInfo
 from getdist.convolve import autoConvolve
 import six
-from six.moves import range
-from six.moves import zip
-
 
 try:
     import pandas
@@ -204,7 +198,7 @@ class WeightedSamples(object):
 
     def getCorrelationLength(self, j, weight_units=True, min_corr=0.05, corr=None):
         if corr is None:
-            corr = self.getAutocorrelation(j, self.numrows / 10, weight_units=weight_units)
+            corr = self.getAutocorrelation(j, self.numrows // 10, weight_units=weight_units)
         ix = np.argmin(corr > min_corr * corr[0])
         N = corr[0] + 2 * np.sum(corr[1:ix])
         return N
@@ -228,7 +222,7 @@ class WeightedSamples(object):
         kernel_std = (scale or self.std(d)) * h
         # Dependence is from very correlated points due to MCMC rejections; shouldn't need more than about correlation length
         if maxoff is None: maxoff = int(self.getCorrelationLength(d, weight_units=False) * 1.5) + 4
-        uncorr_len = self.numrows / 2
+        uncorr_len = self.numrows // 2
         UncorrTerm = 0
         nav = 0
         # first get expected value of each term for uncorrelated samples
@@ -365,15 +359,15 @@ class WeightedSamples(object):
             raise WeightedSampleError('Can only thin with integer weights')
         if factor != int(factor):
             raise WeightedSampleError('Thin factor must be integer')
-
+        factor = int(factor)
         if factor >= np.max(weights):
-            cumsum = np.cumsum(weights) / int(factor)
+            cumsum = np.cumsum(weights) // factor
             # noinspection PyTupleAssignmentBalance
             _, thin_ix = np.unique(cumsum, return_index=True)
         else:
             tot = 0
             i = 0
-            thin_ix = np.empty(norm / factor, dtype=np.int)
+            thin_ix = np.empty(norm // factor, dtype=np.int)
             ix = 0
             mult = weights[i]
             while i < numrows:

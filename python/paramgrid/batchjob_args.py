@@ -3,12 +3,11 @@ from __future__ import print_function
 import fnmatch
 import sys
 import six
-from six.moves import zip
 
 try:
     import argparse
 except:
-    print('use "module load" to load python 2.7')
+    print('use "module load" to load python 2.7+')
     sys.exit()
 from paramgrid import batchjob
 

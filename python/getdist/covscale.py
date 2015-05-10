@@ -1,9 +1,8 @@
-from __future__ import absolute_import
 from __future__ import print_function
-
-import sys, fnmatch, os
+import sys
+import fnmatch
+import os
 from getdist import covmat
-from six.moves import zip
 
 if len(sys.argv) < 4:
     print('covscale rescales parameter(s) in all .covmat files in a directory and outputs to another directory')

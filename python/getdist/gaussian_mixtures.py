@@ -1,8 +1,6 @@
-from __future__ import absolute_import
 import numpy as np
 from getdist import mcsamples, densities
 import six
-from six.moves import zip
 
 
 def make_2D_Cov(sigmax, sigmay, corr):

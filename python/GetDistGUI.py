@@ -1,7 +1,7 @@
+#!/usr/bin/env python
+
 from __future__ import absolute_import
 from __future__ import print_function
-# -*- coding: utf-8 -*-
-
 import os
 import sys
 import logging
@@ -9,7 +9,7 @@ import logging
 try:
     import argparse
 except ImportError:
-    print('use "module load" to load python 2.7, or see docs/readme_python.html for how to install')
+    print('use "module load" to load python 2.7+, or see docs/readme_python.html for how to install')
     sys.exit()
 
 try:
@@ -22,7 +22,7 @@ except ImportError:
 try:
     from getdist.gui.mainwindow import MainWindow
 except ImportError:
-    print("Configure your PYTHONPATH as described in the readme!")
+    print("Could not find getdist.gui.mainwindow: configure your PYTHONPATH as described in the readme!")
     raise
 
 parser = argparse.ArgumentParser(description='GetDist GUI')

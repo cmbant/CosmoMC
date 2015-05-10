@@ -1,10 +1,7 @@
-from __future__ import absolute_import
 from __future__ import print_function
 import numpy as np
 import sys
 from scipy import fftpack
-from six.moves import range
-from six.moves import zip
 try:
     from scipy.optimize import fsolve, brentq, minimize
 except ImportError:
@@ -60,7 +57,7 @@ _kde_consts_1d = np.array([(1 + 0.5 ** (j + 0.5)) / 3 * np.prod(np.arange(1, 2 *
 
 def _bandwidth_fixed_point(h, N, I, logI, a2):
     f = 2 * np.pi ** (2 * _kde_lmax_bandwidth) * np.dot(a2, np.exp(_kde_lmax_bandwidth * logI - I * (pisquared * h ** 2)))
-    for j, const in zip(list(range(_kde_lmax_bandwidth - 1, 1, -1)), _kde_consts_1d):
+    for j, const in zip(range(_kde_lmax_bandwidth - 1, 1, -1), _kde_consts_1d):
         try:
             t_j = (const / N / f) ** (2 / (3. + 2 * j))
         except:
@@ -104,7 +101,7 @@ def gaussian_kde_bandwidth_binned(data, Neff, a=None):
     hfrac = 0.53 * Neff ** (-1. / 5)  # default value in case of failure
     try:
 #        hfrac = brentq(_bandwidth_fixed_point, 0, 0.2, (Neff, I, logI, a2), xtol=0.001)
-        hfrac = fsolve(_bandwidth_fixed_point, hfrac, (Neff, I, logI, a2), xtol=hfrac / 20)
+        hfrac = fsolve(_bandwidth_fixed_point, hfrac, (Neff, I, logI, a2), xtol=hfrac / 20)[0]
     except:
         print('kde_bandwidth failed')
     return hfrac

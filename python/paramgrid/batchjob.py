@@ -4,12 +4,10 @@ import os
 import shutil
 import pickle
 import copy
-
 import sys
 import time
-from getdist import types, inifile
+from getdist import types, IniFile
 import six
-from six.moves import range
 
 
 def resetGrid(directory):
@@ -56,9 +54,9 @@ def getCodeRootPath():
 class propertiesItem(object):
     def propertiesIni(self):
         if os.path.exists(self.propertiesIniFile()):
-            return inifile.IniFile(self.propertiesIniFile())
+            return IniFile(self.propertiesIniFile())
         else:
-            ini = inifile.IniFile()
+            ini = IniFile()
             ini.original_filename = self.propertiesIniFile()
             return ini
 
