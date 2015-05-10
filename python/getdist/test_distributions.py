@@ -242,8 +242,7 @@ def join_subplots(ax_array):
     plt.tight_layout(0, 0, 0)
 
 
-if __name__ == "__main__":
-    # simFiles(Test2DDistributions().trimodal[0], 'z://test_pickled', text=True)
+def testProgram():
     import time
     import argparse
 
@@ -265,7 +264,6 @@ if __name__ == "__main__":
         compare_method(test1D.distributions(), nx=3,
                       test_settings=[ {'mult_bias_correction_order':1, 'boundary_correction_order':1},
                          {'mult_bias_correction_order':2, 'boundary_correction_order':1},
-                        # {'mult_bias_correction_order':1, 'boundary_correction_order':0},
                          {'mult_bias_correction_order':0, 'boundary_correction_order':0},
                          {'mult_bias_correction_order':0, 'boundary_correction_order':1},
                          {'mult_bias_correction_order':0, 'boundary_correction_order':2},
@@ -278,7 +276,6 @@ if __name__ == "__main__":
         compare_method(test2D.distributions(), nx=4,
                       test_settings=[ {'mult_bias_correction_order':1, 'boundary_correction_order':1},
                          {'mult_bias_correction_order':2, 'boundary_correction_order':1},
-                        # {'mult_bias_correction_order':1, 'boundary_correction_order':0},
                          {'mult_bias_correction_order':0, 'boundary_correction_order':0},
                          {'mult_bias_correction_order':0, 'boundary_correction_order':1},
                          ], colors=['k', 'b', 'r', 'm', 'c', 'g'], linestyles=['-', '-', ':', '-.', '--'],
@@ -312,3 +309,7 @@ if __name__ == "__main__":
         scales, MISEs = get2DMises(test2D.gauss)
         for scale, MISE in zip(scales, MISEs):
             print(scale, MISE, np.sqrt(MISE))
+
+
+if __name__ == "__main__":
+    testProgram()

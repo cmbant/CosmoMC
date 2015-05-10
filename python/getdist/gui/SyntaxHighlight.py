@@ -42,7 +42,7 @@ class PythonHighlighter (QSyntaxHighlighter):
         'for', 'from', 'global', 'if', 'import', 'in',
         'is', 'lambda', 'not', 'or', 'pass', 'print',
         'raise', 'return', 'try', 'while', 'yield',
-        'None', 'True', 'False',
+        'None', 'True', 'False','as',
     ]
 
     # Python operators
@@ -114,14 +114,14 @@ class PythonHighlighter (QSyntaxHighlighter):
         """Apply syntax highlighting to the given block of text.
         """
         # Do other syntax formatting
-        for expression, nth, txformat in self.rules:
+        for expression, nth, _format in self.rules:
             index = expression.indexIn(text, 0)
 
             while index >= 0:
                 # We actually want the index of the nth match
                 index = expression.pos(nth)
                 length = len(expression.cap(nth))
-                self.setFormat(index, length, txformat)
+                self.setFormat(index, length, _format)
                 index = expression.indexIn(text, index + length)
 
         self.setCurrentBlockState(0)

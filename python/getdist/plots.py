@@ -1034,24 +1034,24 @@ class GetDistPlotter(object):
         ticks = dict()
         if filled_compare: filled = filled_compare
 
-        def defLineArgs(contour_args):
+        def defLineArgs(cont_args):
             cols = []
-            for plotno, arg in enumerate(contour_args):
-                if not arg.get('filled'):
+            for plotno, _arg in enumerate(cont_args):
+                if not _arg.get('filled'):
                     if contour_colors is not None and len(contour_colors) > plotno:
                         cols.append(contour_colors[plotno])
                     else:
                         cols.append(None)
                 else:
-                    cols.append(arg.get('color', None) or self.settings.solid_colors[len(contour_args) - plotno - 1])
-            line_args = []
+                    cols.append(_arg.get('color', None) or self.settings.solid_colors[len(cont_args) - plotno - 1])
+            _line_args = []
             for col in cols:
                 if col is None:
-                    line_args.append({})
+                    _line_args.append({})
                 else:
                     if isinstance(col, (tuple, list)): col = col[-1]
-                    line_args += [{'color': col}]
-            return line_args
+                    _line_args += [{'color': col}]
+            return _line_args
 
         contour_args = self._make_contour_args(len(roots), filled=filled, contour_args=contour_args,
                                                colors=contour_colors, ls=contour_ls, lws=contour_lws)
@@ -1171,7 +1171,6 @@ class GetDistPlotter(object):
                 if y == 0:
                     sharex = ax
                     xshares.append(ax)
-                res = None
                 res = self.plot_2d(subplot_roots, param_pair=[xparam, yparam], do_xlabel=y == len(yparams) - 1,
                              do_ylabel=x == 0, add_legend_proxy=x == 0 and y == 0, **kwargs)
                 if ymarkers is not None and ymarkers[y] is not None: self.add_y_marker(ymarkers[y], **marker_args)

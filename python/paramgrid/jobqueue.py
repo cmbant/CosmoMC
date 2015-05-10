@@ -156,7 +156,7 @@ def saveJobIndex(obj, batchPath=None):
     shutil.move(fname + '_tmp', fname)
 
 
-def addJobIndex(batchPath, jobName, j):
+def addJobIndex(batchPath, j):
     if batchPath is None: batchPath = './scripts/'
     index = loadJobIndex(batchPath)
     index.addJob(j)
@@ -295,7 +295,7 @@ def submitJob(jobName, paramFiles, sequential=False, msg=False, **kwargs):
                 j.jobId = res
                 j.subTime = time.time()
                 open(scriptRoot + '.sub', 'w').write(res)
-                addJobIndex(kwargs.get('batchPath'), jobName, j)
+                addJobIndex(kwargs.get('batchPath'), j)
 
 
 def queue_job_details(batchPath=None, running=True, queued=True, warnNotBatch=True):
