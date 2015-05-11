@@ -306,14 +306,10 @@ for limit in limits:
         print('Now converting to PDF...')
         delext = ['aux', 'log', 'out', 'toc']
         if len(outdir) > 0:
-            dodir = 'cd ' + outdir + '; '
-        else:
-            dodir = ''
-        os.system(dodir + 'pdflatex ' + outname)
-        # #again to get table of contents
-        os.system(dodir + 'pdflatex ' + outname)
-        # and again to get page numbers
-        os.system(dodir + 'pdflatex ' + outname)
+            os.chdir(outdir)
+        for _ in range(3):
+            # iterate three times to get table of contents page numbers right
+            os.system('pdflatex ' + outname)
         for ext in delext:
             if os.path.exists(root + '.' + ext):
                 os.remove(root + '.' + ext)
