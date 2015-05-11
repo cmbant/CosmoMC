@@ -1321,7 +1321,7 @@ class MainWindow(QMainWindow):
 
         plotter.fig.savefig(
             buf,
-            txformat='png',
+            format='png',
             edgecolor='w',
             facecolor='w',
             dpi=100,

@@ -215,16 +215,16 @@ class ResultTable(object):
         # results is a margeStats or bestFit table
         self.lines = []
         if formatter is None:
-            self.txformat = NoLineTableFormatter()
+            self.format = NoLineTableFormatter()
         else:
-            self.txformat = formatter
+            self.format = formatter
         self.ncol = ncol
         if tableParamNames is None:
             self.tableParamNames = results[0]
         else:
             self.tableParamNames = tableParamNames
         if paramList is not None: self.tableParamNames = self.tableParamNames.filteredCopy(paramList)
-        if numFormatter is not None: self.txformat.numFormatter = numFormatter
+        if numFormatter is not None: self.format.numFormatter = numFormatter
 
         self.results = results
         self.boldBaseParameters = True
@@ -245,7 +245,7 @@ class ResultTable(object):
             for i in range(numrow * col, min(numrow * (col + 1), nparams)):
                 rows[i - numrow * col].append(self.tableParamNames.names[i])
 
-        self.lines.append(self.txformat.startTable(ncol, self.colsPerResult, len(results)))
+        self.lines.append(self.format.startTable(ncol, self.colsPerResult, len(results)))
         if titles is not None: self.addTitlesRow(titles)
         self.addHeaderRow()
         for row in rows[:-1]:
@@ -260,70 +260,70 @@ class ResultTable(object):
 
 
     def addFullTableRow(self, row):
-        txt = self.txformat.colSeparator.join(self.paramLabelColumn(param) + self.paramResultsTex(param) for param in row)
+        txt = self.format.colSeparator.join(self.paramLabelColumn(param) + self.paramResultsTex(param) for param in row)
         if not self.ncol == len(row):
-            txt += self.txformat.colSeparator * ((1 + self.colsPerParam) * (self.ncol - len(row)))
-        self.lines.append(txt + self.txformat.endofrow)
+            txt += self.format.colSeparator * ((1 + self.colsPerParam) * (self.ncol - len(row)))
+        self.lines.append(txt + self.format.endofrow)
 
 
     def addLine(self, position):
-        if self.txformat.getLine(position) is None:  # no line is appended if the attribute is None
+        if self.format.getLine(position) is None:  # no line is appended if the attribute is None
             return self.lines
         else:
-            return self.lines.append(self.txformat.getLine(position))
+            return self.lines.append(self.format.getLine(position))
 
 
     def addTitlesRow(self, titles):
         self.addLine("aboveTitles")
-        cols = [self.txformat.titleSubColumn(1, '')]
-        cols += [self.txformat.titleSubColumn(self.colsPerResult, title) for title in titles]
-        self.lines.append(self.txformat.colSeparator.join(cols * self.ncol) + self.txformat.endofrow)
+        cols = [self.format.titleSubColumn(1, '')]
+        cols += [self.format.titleSubColumn(self.colsPerResult, title) for title in titles]
+        self.lines.append(self.format.colSeparator.join(cols * self.ncol) + self.format.endofrow)
 
-        # res = self.txformat.titleSubColumn(1, '') + self.txformat.colSeparator + self.txformat.colSeparator.join(self.txformat.titleSubColumn(self.colsPerResult, title) for title in titles)
-        # self.lines.append(((self.txformat.colSeparator + res) * self.ncol)[1:] + self.txformat.endofrow)
-        belowTitleLine = self.txformat.belowTitleLine(self.colsPerResult, self.colsPerParam / self.colsPerResult)
+        # res = self.format.titleSubColumn(1, '') + self.format.colSeparator + self.format.colSeparator.join(self.format.titleSubColumn(self.colsPerResult, title) for title in titles)
+        # self.lines.append(((self.format.colSeparator + res) * self.ncol)[1:] + self.format.endofrow)
+        belowTitleLine = self.format.belowTitleLine(self.colsPerResult, self.colsPerParam / self.colsPerResult)
         if belowTitleLine:
             self.lines.append(belowTitleLine)
 
 
     def addHeaderRow(self):
         self.addLine("aboveHeader")
-        cols = [self.txformat.headerWrapper % self.txformat.paramText]
+        cols = [self.format.headerWrapper % self.format.paramText]
         for result in self.results:
-            cols += [self.txformat.headerWrapper % s for s in result.getColumnLabels(self.limit)]
-        self.lines.append(self.txformat.colSeparator.join(cols * self.ncol) + self.txformat.endofrow)
+            cols += [self.format.headerWrapper % s for s in result.getColumnLabels(self.limit)]
+        self.lines.append(self.format.colSeparator.join(cols * self.ncol) + self.format.endofrow)
 
-        # res = self.txformat.colSeparator + self.txformat.headerWrapper % self.txformat.paramText
+        # res = self.format.colSeparator + self.format.headerWrapper % self.format.paramText
         # for result in self.results:
-        #            res += self.txformat.colSeparator + self.txformat.colSeparator.join([self.txformat.headerWrapper % s for s in result.getColumnLabels(self.limit)])
-        #        self.lines.append((res * self.ncol).replace(self.txformat.colSeparator,'',1) + self.txformat.endofrow)
+        #            res += self.format.colSeparator + self.format.colSeparator.join([self.format.headerWrapper % s for s in result.getColumnLabels(self.limit)])
+        #        self.lines.append((res * self.ncol).replace(self.format.colSeparator,'',1) + self.format.endofrow)
         self.addLine("belowHeader")
 
 
     def paramResultsTex(self, param):
-        return self.txformat.colSeparator.join(self.paramResultTex(result, param) for result in self.results)
+        return self.format.colSeparator.join(self.paramResultTex(result, param) for result in self.results)
 
 
     def paramResultTex(self, result, p):
-        values = result.texValues(self.txformat, p, self.limit, self.refResults,
+        values = result.texValues(self.format, p, self.limit, self.refResults,
                                   shiftSigma_subset=self.shiftSigma_subset, shiftSigma_indep=self.shiftSigma_indep)
         if values is not None:
             if len(values) > 1:
-                txt = self.txformat.textAsColumn(values[1], True, separator=True)
+                txt = self.format.textAsColumn(values[1], True, separator=True)
             else:
                 txt = ''
-            txt += self.txformat.textAsColumn(values[0], values[0] != self.txformat.noConstraint)
+            txt += self.format.textAsColumn(values[0], values[0] != self.format.noConstraint)
             return txt
         else:
-            return self.txformat.textAsColumn('') * len(result.getColumnLabels(self.limit))
+            return self.format.textAsColumn('') * len(result.getColumnLabels(self.limit))
 
 
     def paramLabelColumn(self, param):
-        return self.txformat.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
+        return self.format.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
 
 
     def endTable(self):
-        self.lines.append(self.txformat.endTable())
+        self.lines.append(self.format.endTable())
 
 
     def tableTex(self):
@@ -356,7 +356,7 @@ class BestFit(ParamResults):
             self.weight = float(first[1].strip())
             del (textFileLines[0])
             first = textFileLines[0].strip().split('=')
-        if first[0].strip() != '-log(Like)': raise Exception('Error in txformat of parameter (best fit) file')
+        if first[0].strip() != '-log(Like)': raise Exception('Error in format of parameter (best fit) file')
         self.logLike = float(first[1].strip())
         isFixed = False
         isDerived = False
