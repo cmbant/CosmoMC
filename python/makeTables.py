@@ -293,7 +293,7 @@ for limit in limits:
                     lines += tableLines
                 except Exception as e:
                     print('ERROR: ' + jobItem.name)
-                    print("Index Error:" + e.message)
+                    print("Index Error:" + str(e))
 
     if not args.forpaper: lines.append('\\end{document}')
 

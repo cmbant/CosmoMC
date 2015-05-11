@@ -236,7 +236,7 @@ class ResultTable(object):
         self.shiftSigma_subset = shiftSigma_subset
 
         nparams = self.tableParamNames.numParams()
-        numrow = nparams / ncol
+        numrow = nparams // ncol
         if nparams % ncol != 0: numrow += 1
         rows = []
         for par in self.tableParamNames.names[0:numrow]:

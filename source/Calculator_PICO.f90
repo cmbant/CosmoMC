@@ -205,7 +205,7 @@
     call this%CAMB_Calculator%ReadParams(Ini)
     this%calcName ='PICO'
     
-    !$ write(*,*) 'WARNING: PICO may not work when CosmoMC compiled with -openmp (why??)'
+    !$ write(*,*) '**WARNING**: pico may not work when CosmoMC compiled with -openmp (why??)'
 
     call fpico_init(1_fpint)
     call fpico_load(Ini%Read_String_Default("pico_datafile", EnvDefault=.true.))
