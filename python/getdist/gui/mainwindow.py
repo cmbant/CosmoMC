@@ -1555,6 +1555,7 @@ class DialogSettings(QDialog):
         self.table.resizeRowsToContents()
         self.table.resizeColumnsToContents()
         self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setEditTriggers(QAbstractItemView.AllEditTriggers)
 
         h = self.table.verticalHeader().length() + 40
@@ -1588,6 +1589,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     mainWin = MainWindow(app)
     mainWin.show()
+    mainWin.raise_()
     sys.exit(app.exec_())
 
 # ==============================================================================
