@@ -2,11 +2,36 @@ from __future__ import absolute_import
 from __future__ import print_function
 import os
 import copy
-
 import sys
+import six
 from getdist import IniFile
 from paramgrid import batchjob, batchjob_args
-import six
+
+default_params = dict()
+default_params['mnu'] = '0.02 0 5 0.1 0.03'
+default_params['omegak'] = '-0.0008 -0.3 0.3 0.001 0.001'  # starting exactly on flat seems to confuse minimizer
+default_params['w'] = '-0.995 -3 -0.3 0.02 0.02'
+default_params['nnu'] = '3.046 0.05 10 0.05 0.05'
+default_params['nrun'] = '0 -1 1 0.005 0.001'
+default_params['nrunrun'] = '0 -1 1 0.005 0.001'
+default_params['r'] = '0 0 3 0.03 0.03'
+default_params['Alens'] = '1 0 10 0.05 0.05'
+default_params['yhe'] = '0.245 0.1 0.5 0.006 0.006'
+default_params['alpha1'] = '0 -1 1 0.0003 0.0003'
+default_params['deltazrei'] = '0.5 0.1 3 0.3 0.3'
+default_params['wa'] = '0 -2 2 0.3 0.3'
+default_params['meffsterile'] = '0.1 0 3 0.1 0.03'
+default_params['Aphiphi'] = '1 0 10 0.02 0.02'
+default_params['Alensf'] = '1 0 10 0.03 0.03'
+default_params['nt'] = '0 -3 3 0.2 0.02'
+
+default_param_extra_opts = {
+        'mnu':{'num_massive_neutrinos': 3},
+        'meffsterile': {'param[mnu]': '0.06', 'param[nnu]': '3.1 3.046 10 0.05 0.05', 'num_massive_neutrinos':1, 'accuracy_level':1.2 },
+        'yhe': {'bbn_consistency':False},
+        'r': {'compute_tensors': True},
+        'nt':{'inflation_consistency': False, 'lmax_tensor': 1000 }
+        }
 
 
 def getArgs(vals=None):
@@ -62,27 +87,6 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
 
     batch = batchjob.batchJob(batchPath, settings.ini_dir)
 
-    # priors and widths for parameters which are varied
-    if not hasattr(settings, 'params'):
-        params = dict()
-        params['mnu'] = '0.02 0 5 0.1 0.03'
-        params['omegak'] = '-0.0008 -0.3 0.3 0.001 0.001'  # starting exactly on flat seems to confuse minimizer
-        params['w'] = '-0.995 -3 -0.3 0.02 0.02'
-        params['nnu'] = '3.046 0.05 10 0.05 0.05'
-        params['nrun'] = '0 -1 1 0.005 0.001'
-        params['nrunrun'] = '0 -1 1 0.005 0.001'
-        params['r'] = '0 0 3 0.03 0.03'
-        params['Alens'] = '1 0 10 0.05 0.05'
-        params['yhe'] = '0.245 0.1 0.5 0.006 0.006'
-        params['alpha1'] = '0 -1 1 0.0003 0.0003'
-        params['deltazrei'] = '0.5 0.1 3 0.3 0.3'
-        params['wa'] = '0 -2 2 0.3 0.3'
-        params['meffsterile'] = '0.1 0 3 0.1 0.03'
-        params['Aphiphi'] = '1 0 10 0.02 0.02'
-        params['Alensf'] = '1 0 10 0.03 0.03'
-        params['nt'] = '0 -3 3 0.2 0.02'
-        settings.params = params
-
     if hasattr(settings, 'skip'): batch.skip = settings.skip
     batch.makeItems(settings, messages=not readOnly)
     if readOnly:
@@ -96,7 +100,10 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
         batch.makeDirectories(settings.__file__)
         batch.save()
 
+    # priors and widths for parameters which are varied
     start_at_bestfit = getattr(settings, 'start_at_bestfit', False)
+    params = getattr(settings, 'params', default_params)
+    param_extra = getattr(settings, 'param_extra_opts', default_param_extra_opts)
 
     for jobItem in batch.items(wantSubItems=False):
 
@@ -104,22 +111,10 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
         ini = IniFile()
 
         for param in jobItem.param_set:
-            ini.params['param[' + param + ']'] = settings.params[param]
+            ini.params['param[' + param + ']'] = params[param]
+            if param_extra is not None and param in param_extra:
+                ini.params.update(param_extra[param])
 
-        if 'mnu' in jobItem.param_set:
-            ini.params['num_massive_neutrinos'] = 3
-        if 'meffsterile' in jobItem.param_set:
-            ini.params['param[mnu]'] = '0.06'
-            ini.params['param[nnu]'] = '3.1 3.046 10 0.05 0.05'
-            ini.params['num_massive_neutrinos'] = 1
-            ini.params['accuracy_level'] = 1.2  # to use 4 rather than 3 momentum modes
-        if 'yhe' in jobItem.param_set:
-            ini.params['bbn_consistency'] = False
-        if 'r' in jobItem.param_set:
-            ini.params['compute_tensors'] = True
-        if 'nt' in jobItem.param_set:
-            ini.params['inflation_consistency'] = False
-            ini.params['lmax_tensor'] = 1000
         if hasattr(settings, 'extra_opts'):
             ini.params.update(settings.extra_opts)
 

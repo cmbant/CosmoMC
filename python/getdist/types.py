@@ -281,7 +281,7 @@ class ResultTable(object):
 
         # res = self.format.titleSubColumn(1, '') + self.format.colSeparator + self.format.colSeparator.join(self.format.titleSubColumn(self.colsPerResult, title) for title in titles)
         # self.lines.append(((self.format.colSeparator + res) * self.ncol)[1:] + self.format.endofrow)
-        belowTitleLine = self.format.belowTitleLine(self.colsPerResult, self.colsPerParam / self.colsPerResult)
+        belowTitleLine = self.format.belowTitleLine(self.colsPerResult, self.colsPerParam // self.colsPerResult)
         if belowTitleLine:
             self.lines.append(belowTitleLine)
 

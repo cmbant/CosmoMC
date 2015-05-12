@@ -195,7 +195,7 @@ if thin_factor != 0:
 # Produce file of weight-1 samples if requested
 if (num_3D_plots and not make_single_samples or make_scatter_samples) and not no_plots:
     make_single_samples = True
-    single_thin = max(1, int(round(mc.norm / mc.max_mult)) / mc.max_scatter_points)
+    single_thin = max(1, int(round(mc.norm / mc.max_mult)) // mc.max_scatter_points)
 
 if make_single_samples:
     filename = os.path.join(plot_data_dir, rootname.strip() + '_single.txt')

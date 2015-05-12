@@ -31,7 +31,7 @@ class batchArgs(object):
         self.notall = notall
         self.doplots = plots
 
-    def parseForBatch(self):
+    def parseForBatch(self, vals=None):
         if self.importanceParameter:
             self.parser.add_argument('--noimportance', action='store_true',
                                      help='original chains only, no importance sampled')
@@ -75,7 +75,7 @@ class batchArgs(object):
             self.parser.add_argument('--nx', default=None, help='number of plots per row')
             self.parser.add_argument('--outputs', nargs='+', default=['pdf'], help='output file type (default: pdf)')
 
-        args = self.parser.parse_args()
+        args = self.parser.parse_args(vals)
         self.args = args
         if args.batchPath:
             self.batch = batchjob.readobject(args.batchPath)

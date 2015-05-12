@@ -25,6 +25,14 @@ params['meffsterile'] = '0.1 0 3 0.1 0.03'
 params['Aphiphi'] = '1 0 10 0.02 0.02'
 params['Alensf'] = '1 0 10 0.03 0.03'
 
+param_extra_opts = {
+                    'mnu':{'num_massive_neutrinos': 3},
+                    'meffsterile': {'param[mnu]': '0.06', 'param[nnu]': '3.1 3.046 10 0.05 0.05', 'num_massive_neutrinos':1, 'accuracy_level':1.2 },
+                    'yhe': {'bbn_consistency':False},
+                    'r': {'compute_tensors': True},
+                    'nt':{'inflation_consistency': False, 'lmax_tensor': 1000 }
+                    }
+
 
 # dataset names
 lensing = 'lensing'

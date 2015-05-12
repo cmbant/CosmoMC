@@ -573,7 +573,7 @@ class GetDistPlotter(object):
         scalarMap = cm.ScalarMappable(cmap=colormap)
         cols = scalarMap.to_rgba(np.linspace(0, 1, self.settings.num_shades))
         # make sure outside area white and nice fade
-        n = min(self.settings.num_shades / 3, 20)
+        n = min(self.settings.num_shades // 3, 20)
         white = np.array([1, 1, 1, 1])
         # would be better to fade in alpha, but then the extra contourf fix doesn't work well
         for i in range(n):
@@ -787,7 +787,7 @@ class GetDistPlotter(object):
         else:
             self.plot_col = nx
         if ny is None:
-            self.plot_row = (nplot + self.plot_col - 1) / self.plot_col
+            self.plot_row = (nplot + self.plot_col - 1) // self.plot_col
         else:
             self.plot_row = ny
         if self.settings.fig_width_inch is not None:
@@ -894,7 +894,7 @@ class GetDistPlotter(object):
                 self.add_legend(legend_labels, legend_loc, line_offset, legend_ncol, label_order=label_order,
                                 figure=True)]
             if self.settings.tight_layout and not no_extra_legend_space:
-                nrows = len(legend_labels) / legend_ncol
+                nrows = len(legend_labels) // legend_ncol
                 if self.settings.legend_position_config == 1:
                     frac = self.settings.legend_frac_subplot_margin + nrows * self.settings.legend_frac_subplot_line
                 else:
@@ -994,7 +994,7 @@ class GetDistPlotter(object):
         return ax
 
     def subplot_number(self, i):
-        self.subplots[i / self.plot_col, i % self.plot_col] = ax = plt.subplot(self.plot_row, self.plot_col, i + 1)
+        self.subplots[i // self.plot_col, i % self.plot_col] = ax = plt.subplot(self.plot_row, self.plot_col, i + 1)
         return ax
 
     def plots_2d_triplets(self, root_params_triplets, nx=None, filled=False, x_lim=None):

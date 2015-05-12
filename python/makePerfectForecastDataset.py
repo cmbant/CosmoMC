@@ -51,7 +51,7 @@ NoiseOut = []
 # d = loadtxt(lensedTotClFileRoot)
 # SN = 0
 for l in range(lmax + 1):
-    NoiseCl = l * (l + 1) / 2 / np.pi * NoiseVar * np.exp(l * (l + 1) * sigma2)
+    NoiseCl = l * (l + 1.) / 2 / np.pi * NoiseVar * np.exp(l * (l + 1) * sigma2)
     NoiseOut.append([NoiseCl, ENoiseFac * NoiseCl, ENoiseFac * NoiseCl])
 #    if (l >= 2): SN += (2 * l + 1) * fsky * (d[l - 2, 1] / (NoiseCl + d[l - 2, 1])) ** 2
 # print 'Number of modes: ', SN
