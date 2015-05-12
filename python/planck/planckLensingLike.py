@@ -8,7 +8,6 @@ from pylab import *
 import numpy as np
 import os
 import CMBlikes
-from six.moves import range
 
 
 def parseStr(x):

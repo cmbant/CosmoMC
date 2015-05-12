@@ -300,7 +300,7 @@ for limit in limits:
     (outdir, outname) = os.path.split(outfile)
     if len(outdir) > 0 and not os.path.exists(outdir): os.makedirs(outdir)
     types.TextFile(lines).write(outfile)
-    (root, _) = os.path.splitext(outfile)
+    root = os.path.splitext(outfile)[0]
 
     if not args.forpaper:
         print('Now converting to PDF...')

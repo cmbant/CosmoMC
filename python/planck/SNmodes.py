@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import numpy as np
-from pylab import *
+import math
+from matplotlib.pyplot import *
 from getdist import chains
-from six.moves import range
 
 rootdir = r'C:\tmp\Planck\SNmodes'
 
@@ -25,9 +25,9 @@ allcov = allL.cov(params)
 noise = highL.cov(params)
 if False:
     i = params.index('tau')
-    N = inv(noise)
+    N = np.linalg.inv(noise)
     N[i, i] -= 1 / 0.02 ** 2
-    noise = inv(N)
+    noise = np.linalg.inv(N)
 
 w, U = lowl.getSignalToNoise(params, noise)
 print(params)
@@ -39,7 +39,7 @@ for i in range(len(params)):
 
 print('SVD')
 for i in range(len(params)):
-    U[i, :] *= sqrt(w[i])
+    U[i, :] *= math.sqrt(w[i])
 
 X = np.dot(U.T, U)
 w2, U2 = np.linalg.eigh(X)

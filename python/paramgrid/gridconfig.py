@@ -26,12 +26,13 @@ default_params['Alensf'] = '1 0 10 0.03 0.03'
 default_params['nt'] = '0 -3 3 0.2 0.02'
 
 default_param_extra_opts = {
-        'mnu':{'num_massive_neutrinos': 3},
-        'meffsterile': {'param[mnu]': '0.06', 'param[nnu]': '3.1 3.046 10 0.05 0.05', 'num_massive_neutrinos':1, 'accuracy_level':1.2 },
-        'yhe': {'bbn_consistency':False},
-        'r': {'compute_tensors': True},
-        'nt':{'inflation_consistency': False, 'lmax_tensor': 1000 }
-        }
+    'mnu': {'num_massive_neutrinos': 3},
+    'meffsterile': {'param[mnu]': '0.06', 'param[nnu]': '3.1 3.046 10 0.05 0.05', 'num_massive_neutrinos': 1,
+                    'accuracy_level': 1.2},
+    'yhe': {'bbn_consistency': False},
+    'r': {'compute_tensors': True},
+    'nt': {'inflation_consistency': False, 'lmax_tensor': 1000}
+}
 
 
 def getArgs(vals=None):
@@ -131,6 +132,8 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
             if not os.path.exists(covmat) and hasattr(jobItem.data_set,
                                                       'covmat'): covmat = batch.basePath + jobItem.data_set.covmat
             if not os.path.exists(covmat) and hasattr(settings, 'covmat'): covmat = batch.basePath + settings.covmat
+        else:
+            covNameMappings = None
         if os.path.exists(covmat):
             ini.params['propose_matrix'] = covmat
             if getattr(settings, 'newCovmats', True): ini.params['MPI_Max_R_ProposeUpdate'] = 20

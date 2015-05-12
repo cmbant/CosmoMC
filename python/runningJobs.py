@@ -15,11 +15,13 @@ group.add_argument('--running', action='store_true')
 if batch:
     items = [jobItem for jobItem in Opts.filteredBatchItems()]
     batchNames = set([jobItem.name for jobItem in items] + [jobItem.name + '_minimize' for jobItem in items])
+else:
+    batchNames= set()
 
 ids, jobNames, nameslist, infos = jobqueue.queue_job_details(args.batchPath, running=not args.queued,
                                                              queued=not args.running)
 for jobId, jobName, names, info in zip(ids, jobNames, nameslist, infos):
-    if not batch or batchNames.intersection(set(names)):
+    if batchNames.intersection(set(names)):
         stats = dict()
         if batch:
             for name in names:

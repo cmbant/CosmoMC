@@ -6,7 +6,6 @@ import os
 from . import planckStyleNG
 import matplotlib.pyplot as plt
 import numpy as np
-from six.moves import range
 
 def_figsize = 12
 def_max = 400

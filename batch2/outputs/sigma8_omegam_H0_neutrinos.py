@@ -17,14 +17,14 @@ for TT in [False, True]:
 
     ref = 'base_' + basedat + '_lensing_post_BAO'
     refs = [ref]
-    vars = ['nnu', 'mnu', 'nnu_mnu', 'nnu_meffsterile']
+    pars = ['nnu', 'mnu', 'nnu_mnu', 'nnu_meffsterile']
 
     roots = [[g.getRoot(var, basedat),
               g.getRoot(var, basedat + '_lensing'),
               g.getRoot(var, basedat + '_lensing_BAO'),
               ref,
               'base_' + var + '_WLonlyHeymans_H070p6_BAO_theta',
-              ] for var in vars]
+              ] for var in pars]
     labels = [basedatname, '+lensing', '+lensing+BAO', '$\Lambda$CDM']
 
     mnu = r'$\Sigma m_\nu$'

@@ -7,7 +7,6 @@ import clik
 import clik.smicahlp as smh
 import re
 import os, sys
-from six.moves import range
 
 
 def parse_minimumfile(minfile):

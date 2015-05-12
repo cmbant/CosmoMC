@@ -3,7 +3,6 @@ from __future__ import print_function
 from pylab import *
 
 from paramgrid import batchjob_args
-from six.moves import range
 
 
 Opts = batchjob_args.batchArgs('Compare how parameters means and errors vary', importance=True, converge=True,

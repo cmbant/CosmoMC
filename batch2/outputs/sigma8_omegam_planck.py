@@ -1,5 +1,5 @@
 import planckStyle as s
-from pylab import *
+from matplotlib.pyplot import *
 
 g = s.getSinglePlotter()
 
@@ -38,7 +38,7 @@ if False:
         g.add_text(allname, 0.96, 0.12, color='magenta')
     #    g.add_text(basedatname + '+$\\tau(0.09\pm 0.013)$', 0.96, 0.06, color='brown', alpha=0.4)
 
-        g.add_legend(legends, legend_loc='upper right', colored_text=True);
+        g.add_legend(legends, legend_loc='upper right', colored_text=True)
 
         g.export(fname + '_sigma_8-omega_m')
 
@@ -74,6 +74,6 @@ g.add_text(s.planckall + '+lensing', 0.96, 0.12, color='darkred')
 # g.add_text(s.planckall + '+lensing ($z_{\\rm re}>6.5$)', 0.96, 0.06, color='midnightblue', alpha=1)
 g.add_text(s.NoLowLE + '+reion prior', 0.96, 0.06, color='midnightblue', alpha=1)
 
-g.add_legend(legends, legend_loc='upper right', colored_text=True, align_right=True);
+g.add_legend(legends, legend_loc='upper right', colored_text=True, align_right=True)
 gca().set_yticks(np.arange(0.75, 1, 0.05))
 g.export()

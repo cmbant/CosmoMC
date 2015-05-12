@@ -6,7 +6,7 @@ try:
     from scipy.optimize import fsolve, brentq, minimize
 except ImportError:
     print('Install scipy version 11 or higher (or e.g. module load python 2.7.5 or higher which is likely linked to later scipy)')
-    sys.exit()
+    raise
 
 from .convolve import dct2d
 import logging

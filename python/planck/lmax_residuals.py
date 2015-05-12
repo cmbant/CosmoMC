@@ -5,7 +5,6 @@ from numpy import *
 import matplotlib.pyplot as plt
 from getdist import covmat, chains, types
 import matplotlib.animation as animation
-from six.moves import range
 
 if False:
     d = loadtxt(r'z://base_plikHM_TT_lowTEB_lensing_50k_lenspotentialCls.dat')
