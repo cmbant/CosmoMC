@@ -1380,7 +1380,7 @@ class MainWindow(QMainWindow):
 
 class DialogTextOutput(QDialog):
     def __init__(self, parent, text=None):
-        QDialog.__init__(self, parent)
+        QDialog.__init__(self, parent, Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
         self.textfont = QFont("Monospace")
         self.textfont.setStyleHint(QFont.TypeWriter)
         if text:
@@ -1448,7 +1448,7 @@ class DialogLikeStats(DialogTextOutput):
 
 class DialogMargeStats(QDialog):
     def __init__(self, parent=None, stats="", root=''):
-        QDialog.__init__(self, parent)
+        QDialog.__init__(self, parent, Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
 
         self.label = QLabel(self)
         self.table = QTableWidget(self)
@@ -1582,7 +1582,7 @@ class DialogParamTables(DialogTextOutput):
 
 class DialogSettings(QDialog):
     def __init__(self, parent, ini, items=None, title='Analysis Settings', width=300, update=None):
-        QDialog.__init__(self, parent)
+        QDialog.__init__(self, parent, Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
 
         self.update = update
         self.table = QTableWidget(self)
