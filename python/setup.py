@@ -28,7 +28,13 @@ setup(name='GetDist',
           'matplotlib',
           'six',
           "scipy (>=0.11.0)",
-          'PySide']
+          'PySide'],
+      classifiers=[
+        "Programming Language :: Python :: 2",
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
+      ],
       # These are optional
       # 'GUI':  ["PySide"],
       # 'fastread': ["pandas>=0.14.0"]}

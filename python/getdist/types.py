@@ -1,12 +1,17 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import decimal
+import os
+from io import BytesIO
 import numpy as np
 from getdist import paramnames
 import six
+import tempfile
 
 class TextFile(object):
     def __init__(self, lines=None):
+        if isinstance(lines, six.string_types):
+            lines = [lines]
         self.lines = lines or []
 
     def write(self, outfile):
@@ -162,6 +167,12 @@ class TableFormatter(object):
     def formatTitle(self, title):
         return '\\bf ' + texEscapeText(title)
 
+    def texEquation(self, txt):
+        if txt and txt[0] != '$':
+            return '$' + txt + '$'
+        else:
+            return txt
+
     def textAsColumn(self, txt, latex=False, separator=False, bold=False):
         wid = len(txt)
         if latex:
@@ -169,10 +180,9 @@ class TableFormatter(object):
             if bold: wid += 11
         res = txt + self.spacer * max(0, 28 - wid)
         if latex:
+            res = self.texEquation(res)
             if bold:
-                res = '{\\boldmath$' + res + '$}'
-            else:
-                res = '$' + res + '$'
+                res = '{\\boldmath' + res + '}'
         if separator: res += self.colSeparator
         return res
 
@@ -258,7 +268,6 @@ class ResultTable(object):
         self.addLine("belowFinalRow")
         self.endTable()
 
-
     def addFullTableRow(self, row):
         txt = self.format.colSeparator.join(self.paramLabelColumn(param) + self.paramResultsTex(param) for param in row)
         if not self.ncol == len(row):
@@ -319,20 +328,67 @@ class ResultTable(object):
 
 
     def paramLabelColumn(self, param):
-        return self.format.textAsColumn(param.label, True, separator=True, bold=not param.isDerived)
+        return self.format.textAsColumn(param.getLabel(), True, separator=True, bold=not param.isDerived)
 
 
     def endTable(self):
         self.lines.append(self.format.endTable())
 
 
-    def tableTex(self):
-        return "\n".join(self.lines)
+    def tableTex(self, document=False, latex_preamble=None, packages=['amsmath', 'amssymb', 'bm']):
+        if document:
+            lines = []
+            lines.append(r'\documentclass{article}')
+            lines.append(r'\pagestyle{empty}')
+            for package in packages:
+                lines.append(r'\usepackage{%s}' % package)
+            lines.append('\\renewcommand{\\arraystretch}{1.5}')
+            if latex_preamble:
+                lines.append(latex_preamble)
+            lines.append('\\begin{document}')
+            lines += self.lines
+            lines.append('\\end{document}')
+        else:
+            lines = self.lines
+        return "\n".join(lines)
 
 
-    def writeTable(self, fname):
-        TextFile(self.lines).write(fname)
+    def write(self, fname, **kwargs):
+        TextFile(self.tableTex(**kwargs)).write(fname)
 
+    def tablePNG(self, dpi=None, latex_preamble=None, filename=None, bytesIO=False):
+        texfile = tempfile.mktemp(suffix='.tex')
+        self.write(texfile, document=True, latex_preamble=latex_preamble)
+        basefile = os.path.splitext(texfile)[0]
+        outfile = filename or  basefile + '.png'
+        old_pwd = os.getcwd()
+
+        def runCommand(command):
+            command += ' 2>%s 1>&2' % os.devnull
+            os.system(command)
+
+        try:
+            os.chdir(os.path.dirname(texfile))
+            runCommand('latex %s' % texfile)
+            cmd = 'dvipng'
+            if dpi:
+                cmd += ' -D %s' % dpi
+            cmd += ' -T tight -x 1000 -z 9 --truecolor -o "%s" "%s" ' \
+                   % (outfile, basefile + '.dvi')
+            runCommand(cmd)
+        finally:
+            for f in  [basefile + ext for ext in ('.tex', '.dvi', '.aux', '.log')]:
+                if os.path.isfile(f):
+                    os.remove(f)
+            os.chdir(old_pwd)
+        if bytesIO:
+            with open(outfile, 'rb') as f:
+                result = BytesIO(f.read())
+            os.remove(outfile)
+            result.seek(0)
+            return result
+        else:
+            return outfile
 
 class ParamResults(paramnames.ParamList): pass
 
@@ -507,15 +563,18 @@ class MargeStats(ParamResults):
             par.best_fit = param.best_fit
             par.isDerived = param.isDerived
 
+    def limitText(self, limit):
+        txt = str(round(self.limits[limit - 1] * 100.))
+        if txt.endswith(".0"):  # e.g. 95.0 -> 95
+            txt = txt.split(".")[0]
+        return txt
+
     def getColumnLabels(self, limit=2):
         if self.hasBestFit:
             res = ['Best fit']
         else:
             res = []
-        number_string = str(round(float(self.limits[limit - 1]) * 100))
-        if number_string.endswith(".0"):  # e.g. 95.0 -> 95
-            number_string = number_string.split(".")[0]
-        return res + [number_string + '\\% limits']
+        return res + [self.limitText(limit) + '\\% limits']
 
     def texValues(self, formatter, p, limit=2, refResults=None, shiftSigma_indep=False, shiftSigma_subset=False):
         if not isinstance(p, paramnames.ParamInfo):

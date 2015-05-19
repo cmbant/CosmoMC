@@ -1478,17 +1478,21 @@ class MCSamples(chains):
             return par.limmin
         return None
 
-    def getMargeStats(self):
+    def getMargeStats(self, include_bestfit=False):
         self.setDensitiesandMarge1D()
         m = types.MargeStats()
         m.hasBestFit = False
         m.limits = self.contours
         m.names = self.paramNames.names
+        if include_bestfit:
+            m.addBestFit(self.getLikeStats)
         return m
 
     def getLikeStats(self):
         return self.likeStats or self.setLikeStats()
 
+    def getTable(self, columns=1, include_bestfit=False, **kwargs):
+        return types.ResultTable(columns, [self.getMargeStats(include_bestfit)], **kwargs)
 
     def setDensitiesandMarge1D(self, max_frac_twotail=None, writeDataToFile=False, meanlikes=False):
         if self.done_1Dbins: return
@@ -1502,7 +1506,6 @@ class MCSamples(chains):
 
 
     def setMargeLimits(self, par, paramConfid, max_frac_twotail=None, density1D=None):
-
         # Get limits, one or two tail depending on whether posterior
         # goes to zero at the limits or not
         if max_frac_twotail is None:

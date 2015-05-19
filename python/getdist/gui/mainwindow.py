@@ -154,6 +154,12 @@ class MainWindow(QMainWindow):
                               statusTip="Do PCA of selected parameters",
                               triggered=self.showPCA)
 
+        self.paramTableAct = QAction(QIcon(""),
+                              "Parameter table (latex)", self,
+                              shortcut="",
+                              statusTip="View parameter table",
+                              triggered=self.showParamTable)
+
         self.optionsAct = QAction(QIcon(""),
                                   "Analysis settings", self,
                                   shortcut="",
@@ -193,7 +199,9 @@ class MainWindow(QMainWindow):
         self.dataMenu.addAction(self.statsAct)
         self.dataMenu.addAction(self.likeStatsAct)
         self.dataMenu.addAction(self.convergeAct)
+        self.dataMenu.addSeparator()
         self.dataMenu.addAction(self.PCAAct)
+        self.dataMenu.addAction(self.paramTableAct)
 
         self.menuBar().addSeparator()
         self.optionMenu = self.menuBar().addMenu("&Options")
@@ -548,7 +556,6 @@ class MainWindow(QMainWindow):
         finally:
             self.showMessage()
 
-
     def showMargeStats(self):
         """
         Callback for action 'Show Marge Stats'.
@@ -564,6 +571,29 @@ class MainWindow(QMainWindow):
             dlg.show()
         except Exception as e:
             self.errorReport(e, caption="Marge stats")
+        finally:
+            self.showMessage()
+
+    def showParamTable(self):
+        """
+        Callback for action 'Show Parameter Table'.
+        """
+        rootname = self.getRootname()
+        if rootname is None: return
+        try:
+            samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
+            pars = self.getXParams()
+            if len(pars) < 1:
+                pars = self.getXParams(fulllist=True)
+            if len(pars) < 1:
+                raise GuiSelectionError('Select one or more parameters first')
+            self.showMessage("Generating table....")
+            cols = len(pars) // 20 + 1
+            tables = [samples.getTable(columns=cols, limit=lim + 1, paramList=pars) for lim in range(len(samples.contours))]
+            dlg = DialogParamTables(self, tables, rootname)
+            dlg.show()
+        except Exception as e:
+            self.errorReport(e, caption="Parameter tables")
         finally:
             self.showMessage()
 
@@ -931,12 +961,12 @@ class MainWindow(QMainWindow):
                 if match_items:
                     match_items[0].setCheckState(Qt.Checked)
 
-    def getCheckedParams(self, checklist):
+    def getCheckedParams(self, checklist, fulllist=False):
         return [checklist.item(i).text() for i in range(checklist.count()) if
-                checklist.item(i).checkState() == Qt.Checked]
+                fulllist or checklist.item(i).checkState() == Qt.Checked]
 
-    def getXParams(self):
-        return self.getCheckedParams(self.listParametersX)
+    def getXParams(self, fulllist=False):
+        return self.getCheckedParams(self.listParametersX, fulllist)
 
     def getYParams(self):
         return self.getCheckedParams(self.listParametersY)
@@ -1349,11 +1379,12 @@ class MainWindow(QMainWindow):
 
 
 class DialogTextOutput(QDialog):
-    def __init__(self, parent, text):
+    def __init__(self, parent, text=None):
         QDialog.__init__(self, parent)
         self.textfont = QFont("Monospace")
         self.textfont.setStyleHint(QFont.TypeWriter)
-        self.text = self.getTextBox(text)
+        if text:
+            self.text = self.getTextBox(text)
         self.setAttribute(Qt.WA_DeleteOnClose)
 
     def getTextBox(self, text):
@@ -1493,6 +1524,59 @@ class DialogPCA(DialogTextOutput):
         h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, 800)
         self.resize(500, h)
 
+# ==============================================================================
+
+class DialogParamTables(DialogTextOutput):
+    def __init__(self, parent, tables, root):
+        DialogTextOutput.__init__(self, parent)
+        self.tables = tables
+        self.root = root
+        self.tabWidget = QTabWidget(self)
+        self.tabWidget.setTabPosition(QTabWidget.North)
+        self.connect(self.tabWidget, SIGNAL("currentChanged(int)"), self.tabChanged)
+        layout = QGridLayout()
+        layout.addWidget(self.tabWidget, 1, 0, 1, 2)
+        self.copyButton = QPushButton(QIcon(""), "Copy latex")
+        self.saveButton = QPushButton(QIcon(""), "Save latex")
+        self.connect(self.copyButton, SIGNAL("clicked()"), self.copyLatex)
+        self.connect(self.saveButton, SIGNAL("clicked()"), self.saveLatex)
+
+        layout.addWidget(self.copyButton, 2, 0)
+        layout.addWidget(self.saveButton, 2, 1)
+
+        self.setLayout(layout)
+        self.tabs = [QWidget(self) for _ in range(len(tables))]
+        self.generated = [None] * len(tables)
+        for table, tab in zip(tables, self.tabs):
+            self.tabWidget.addTab(tab, table.results[0].limitText(table.limit) + '%')
+        self.tabChanged(0)
+
+        self.setWindowTitle(self.tr('Parameter tables for: ' + root))
+        # h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, 800)
+        # self.resize(500, h)
+        self.adjustSize()
+
+    def tabChanged(self, index):
+        if not self.generated[index]:
+            viewWidget = QWidget(self.tabs[index])
+            buf = self.tables[index].tablePNG(bytesIO=True)
+            pixmap = QPixmap.fromImage(QImage.fromData(buf.getvalue()))
+            label = QLabel(viewWidget)
+            label.setPixmap(pixmap)
+            layout = QGridLayout()
+            layout.addWidget(label, 1, 0)
+            self.tabs[index].setLayout(layout)
+            self.generated[index] = True
+
+    def copyLatex(self):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.tables[self.tabWidget.currentIndex()].tableTex())
+
+    def saveLatex(self):
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Choose a file name", '.', "Latex (*.tex)")
+        if not filename: return
+        self.tables[self.tabWidget.currentIndex()].write(str(filename))
 
 # ==============================================================================
 
@@ -1555,7 +1639,6 @@ class DialogSettings(QDialog):
         self.table.resizeRowsToContents()
         self.table.resizeColumnsToContents()
         self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setEditTriggers(QAbstractItemView.AllEditTriggers)
 
         h = self.table.verticalHeader().length() + 40
@@ -1589,7 +1672,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     mainWin = MainWindow(app)
     mainWin.show()
-    mainWin.raise_()
     sys.exit(app.exec_())
 
 # ==============================================================================

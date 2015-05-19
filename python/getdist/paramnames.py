@@ -28,6 +28,12 @@ class ParamInfo(object):
                 self.comment = ''
         return self
 
+    def getLabel(self):
+        if self.label:
+            return self.label
+        else:
+            return self.name
+
     def latexLabel(self):
         if self.label:
             return '$' + self.label + '$'
@@ -128,8 +134,12 @@ class ParamList(object):
     def filteredCopy(self, params):
         usedNames = self.__class__()
         for name in self.names:
-            p = params.parWithName(name.name)
-            if p is not None: usedNames.names.append(name)
+            if isinstance(params, list):
+                p = name.name in params
+            else:
+                p = params.parWithName(name.name)
+            if p:
+                usedNames.names.append(name)
         return usedNames
 
     def addDerived(self, name, **kwargs):
