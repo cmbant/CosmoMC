@@ -25,7 +25,7 @@ from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as Navigatio
 
 try:
     import PySide
-    from PySide.QtCore import *
+    from PySide.QtCore import Qt, SIGNAL, QSize, QSettings, QPoint, QCoreApplication
     from PySide.QtGui import *
     os.environ['QT_API'] = 'pyside'
     try:

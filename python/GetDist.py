@@ -261,11 +261,9 @@ if __name__ == '__main__':
         import argparse
     except ImportError:
         print('Make sure you are using python 2.7+')
-        sys.exit()
+        raise
 
     parser = argparse.ArgumentParser(description='GetDist sample analyser')
     parser.add_argument('ini_file', help='.ini file with analysis settings')
     parser.add_argument('chain_root', nargs='?', help='Root name of chain to analyse (e.g. chains/test)')
-    args = parser.parse_args()
-
-    main(args)
+    main(parser.parse_args())
